@@ -3,106 +3,101 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lovetree | Memory Editor</title>
+    <title>메모리 에디터 | Lovetree 성장</title>
     <link rel="stylesheet" href="css/editor.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
 </head>
-<body class="paper-grain">
-    <header class="app-header">
-        <div style="display: flex; align-items: center; gap: 48px;">
-            <span class="font-headline" style="font-size: 24px; font-weight: 500; color: var(--primary); font-style: italic;">Lovetree</span>
-            <nav style="display: flex; gap: 32px;">
-                <a href="index.html" style="text-decoration: none; color: var(--primary); border-bottom: 2px solid var(--primary); padding-bottom: 4px; font-weight: 600;">My Trees</a>
-                <a href="#" style="text-decoration: none; color: var(--on-surface-variant);">Explore</a>
-            </nav>
-        </div>
-        <div style="display: flex; align-items: center; gap: 24px;">
-            <div style="display: flex; gap: 16px; color: var(--on-surface-variant);">
-                <span class="material-symbols-outlined" style="cursor: pointer;">search</span>
-                <span class="material-symbols-outlined" style="cursor: pointer;">account_circle</span>
+<body>
+    <div class="noise-overlay"></div>
+    
+    <header class="nav-bar">
+        <div class="headline" style="font-size: 1.5rem; font-weight: 900; color: var(--on-surface); letter-spacing: -0.04em; cursor: pointer;" onclick="location.href='index.html'">Lovetree</div>
+        
+        <nav style="display: flex; align-items: center; gap: 40px;">
+            <div class="nav-links">
+                <a href="index.html">러브트리</a>
+                <a href="search.html">커뮤니티</a>
+                <a href="editor.html" class="active">기록하기</a>
             </div>
-            <button class="btn btn-primary" style="padding: 10px 24px;">New Memory</button>
-        </div>
+
+            <div style="display: flex; align-items: center; gap: 20px;">
+                <div class="lang-toggle">
+                    <button class="lang-btn active">KR</button>
+                    <button class="lang-btn">EN</button>
+                </div>
+                <a href="login.html" class="btn-round btn-outline" style="text-decoration: none; padding: 8px 20px; font-size: 14px;">로그인</a>
+            </div>
+        </nav>
     </header>
 
-    <main class="main-content">
+    <div class="editor-layout">
         <aside class="sidebar">
             <div class="tool-group">
-                <button class="tool-btn active">
-                    <div class="tool-icon"><span class="material-symbols-outlined">add_circle</span></div>
-                    <span class="tool-label">기억 추가</span>
-                </button>
-                <button class="tool-btn">
-                    <div class="tool-icon"><span class="material-symbols-outlined">schema</span></div>
-                    <span class="tool-label">가지 스타일</span>
-                </button>
-                <button class="tool-btn">
-                    <div class="tool-icon"><span class="material-symbols-outlined">auto_fix</span></div>
-                    <span class="tool-label">테마 필터</span>
-                </button>
+                <h3>도구</h3>
+                <div class="tool-item active">
+                    <span class="material-symbols-outlined">account_tree</span>
+                    <span>트리 보기</span>
+                </div>
+                <div class="tool-item">
+                    <span class="material-symbols-outlined">timeline</span>
+                    <span>타임라인</span>
+                </div>
             </div>
-            <div style="margin-top: auto;">
-                <button class="tool-btn">
-                    <div class="tool-icon"><span class="material-symbols-outlined">settings</span></div>
-                </button>
+
+            <div class="tool-group" style="margin-top: auto;">
+                <h3>추가</h3>
+                <div class="tool-item">
+                    <span class="material-symbols-outlined" style="background: var(--primary); color: white;">add</span>
+                    <span>영상 추가</span>
+                </div>
             </div>
         </aside>
 
-        <section class="canvas-section" id="canvas">
-            <svg id="organic-svg" xmlns="http://www.w3.org/2000/svg">
-                <!-- Lines populated by JS -->
-            </svg>
-            
-            <!-- Nodes populated by JS -->
-        </section>
+        <main class="canvas-area" id="canvasArea">
+            <svg class="canvas-svg" id="canvasSvg"></svg>
+            <!-- JS dynamic content -->
+        </main>
 
         <aside class="detail-panel" id="detailPanel">
-            <div class="detail-header">
-                <h3>Memory Detail</h3>
-                <span class="material-symbols-outlined" style="cursor: pointer; color: var(--on-surface-variant);">close</span>
+            <div class="panel-header">
+                <h3 class="headline" style="font-size: 1.5rem;">메모리 상세</h3>
+                <button class="icon-btn"><span class="material-symbols-outlined">more_horiz</span></button>
             </div>
+            
+            <div class="detail-content">
+                <div class="detail-video">
+                    <img id="detailImg" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBJb2reehtYkk1tSupKcTenf09sFrI1MN_2H_orLdE8A1rOAlc27BWm62BVBav5qtwxTUJ7ctbr2bDNmU2EfruV9ajOc0QCzABvXJ5-qWXAeR8GOQumFqygnon2pN6L7Wc3UJvG-f9dh26hzO_bnWAoTverOtXlPKc4AqL95xSgqIwuVjm5Pb_eQ8gJI5kv4se7YvCHY5v3jZ5m1n6OzaavO3FKOfXk35Bs0O-w4R19eHXM2fn2Lr1bS2uizoWLcKYYZOKGHH6COFc" alt="Preview">
+                    <div class="play-overlay"><span class="material-symbols-outlined">play_arrow</span></div>
+                </div>
 
-            <div class="detail-video">
-                <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuAdSX_Bz6BWlxMeRsT4OQzZUie0ZmROkvHtd9hShOgvsrzy7qRNQHMLyUUfcimLXzu0WT1B64cABt5iCKN_W72mwRRC7pihwpCbdxha6bwInXSXzF_gs3o09ul09tQhe-vstGREWOCzMpGy0osljaqRFvmBDkhiEMDTsvNYhjMgUnf0lcyNvVLjUiRmtfKiWbUbEJXE5vWMI4jNVvZS46GeybdE6bsvb9kiInmb3Z6S8VWyG4L8Ws1Gx0jCb-LgZ0a6IjLD9u1zJ4s" alt="Video cover">
-                <div class="play-btn">
-                    <div class="play-icon-wrapper">
-                        <span class="material-symbols-outlined" style="color: white; font-size: 32px;">play_arrow</span>
+                <div class="detail-info-group">
+                    <label>기록 일자</label>
+                    <p id="detailDateText">2024.03.14</p>
+                </div>
+
+                <div class="detail-info-group">
+                    <label>감정 태그</label>
+                    <div class="tags-container">
+                        <span class="tag tag-primary">강렬한</span>
+                        <span class="tag tag-secondary">환희</span>
+                    </div>
+                </div>
+
+                <div class="detail-info-group">
+                    <label>기록 메모</label>
+                    <div class="diary-note">
+                        "마지막 앙코르 곡이 울려 퍼질 때, 그 순간의 공기와 팬들의 함성 소리가 아직도 생생해."
                     </div>
                 </div>
             </div>
-
-            <div class="detail-info-group">
-                <label>날짜 및 시간</label>
-                <p class="font-headline" style="font-size: 18px;">2023년 5월 21일, 오후 8시 45분</p>
-            </div>
-
-            <div class="detail-info-group">
-                <label>감정 태그</label>
-                <div class="tags-container">
-                    <span class="tag tag-primary">강렬한 (Intense)</span>
-                    <span class="tag tag-secondary">환희 (Euphoria)</span>
-                    <span class="tag tag-neutral">여운 (Lingering)</span>
-                </div>
-            </div>
-
-            <div class="detail-info-group">
-                <label>다이어리 노트</label>
-                <div class="diary-note">
-                    "마지막 앙코르 곡이 울려 퍼질 때, 그 순간의 공기와 팬들의 함성 소리가 아직도 생생해. 세상에 우리만 있는 것 같은 그런 기분. 이 기억은 절대 시들지 않았으면 좋겠어."
-                </div>
-            </div>
-
+            
             <div class="panel-footer">
-                <button class="btn btn-surface">
-                    <span class="material-symbols-outlined" style="font-size: 16px;">edit</span> 수정하기
-                </button>
-                <button class="btn btn-primary">
-                    <span class="material-symbols-outlined" style="font-size: 16px;">share</span> 공유
-                </button>
+                <button class="btn-round btn-primary" style="width: 100%;">이 기억 저장하기</button>
             </div>
         </aside>
-    </main>
+    </div>
 
     <script src="js/editor.js"></script>
+    <script src="js/auth.js"></script>
 </body>
 </html>

@@ -3,53 +3,80 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lovetree | The Living Archive</title>
+    <title>Lovetree | 사랑을 기록하고 잇는 공간</title>
     <link rel="stylesheet" href="css/global.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
     <style>
         .app-container {
-            width: 90vw;
+            width: 95vw;
             max-width: 1440px;
-            height: 90vh;
+            height: 92vh;
             max-height: 900px;
-            background: rgba(246, 241, 233, 0.92);
-            border-radius: 6rem;
-            box-shadow: 0 80px 160px -40px rgba(0,0,0,0.15);
+            background: rgba(255, 255, 255, 0.94);
+            border-radius: 4rem;
+            box-shadow: 0 100px 200px -50px rgba(0,0,0,0.12);
             position: relative;
             overflow: hidden;
             display: flex;
             flex-direction: column;
-            padding: 4rem 6rem;
-            margin: 5vh auto;
+            padding: 2.5rem 5rem;
+            margin: 4vh auto;
         }
 
         .hero-title {
-            font-size: 3.6rem;
-            line-height: 1.25;
+            font-size: 4rem;
+            line-height: 1.15;
             color: var(--on-surface);
-            margin-bottom: 2rem;
-            font-weight: 700;
+            margin-bottom: 1.5rem;
+            font-weight: 900;
+        }
+
+        .hero-title span {
+            color: var(--primary);
         }
 
         .memory-card-mini {
             background: white;
-            border-radius: 1rem;
-            padding: 10px;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.06);
-            width: 155px;
+            border-radius: 1.2rem;
+            padding: 12px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.08);
+            width: 160px;
             position: absolute;
             z-index: 20;
-            transition: transform 0.3s;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
 
-        .memory-card-mini:hover { transform: scale(1.05); }
+        .memory-card-mini:hover { 
+            transform: scale(1.08) rotate(2deg);
+            box-shadow: 0 30px 60px rgba(0,0,0,0.12);
+        }
 
-        .vine-connector {
-            position: absolute;
-            top: 0; right: 0;
-            width: 60%;
-            height: 100%;
-            z-index: 5;
+        .feature-card {
+            background: white;
+            padding: 2rem;
+            border-radius: 2.5rem;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            border: 1px solid rgba(0,0,0,0.03);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.02);
+            transition: all 0.3s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(144, 73, 81, 0.08);
+            border-color: var(--outline-variant);
+        }
+
+        .feature-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
         }
     </style>
 </head>
@@ -57,66 +84,94 @@
     <div class="noise-overlay"></div>
     
     <main class="app-container">
-        <!-- Navigation Header -->
-        <header style="display: flex; justify-content: space-between; align-items: center; z-index: 100;">
-            <div class="serif" style="font-size: 2rem; font-weight: 700; color: var(--primary);">Lovetree</div>
-            <nav class="nav-links">
-                <a href="index.html" class="active">Home</a>
-                <a href="search.html">Search</a>
-                <a href="editor.html">Grow</a>
-                <a href="#">Explore</a>
+        <!-- Unified Header -->
+        <header class="nav-bar" style="background: transparent; border: none; padding: 20px 0;">
+            <div class="headline" style="font-size: 1.8rem; font-weight: 900; color: var(--on-surface); letter-spacing: -0.04em;">Lovetree</div>
+            
+            <nav style="display: flex; align-items: center; gap: 48px;">
+                <div class="nav-links">
+                    <a href="index.html" class="active">러브트리</a>
+                    <a href="search.html">커뮤니티</a>
+                    <a href="editor.html">기록하기</a>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 20px;">
+                    <div class="lang-toggle">
+                        <button class="lang-btn active">KR</button>
+                        <button class="lang-btn">EN</button>
+                    </div>
+                    <a href="login.html" class="btn-round btn-primary" style="text-decoration: none; padding: 10px 24px;">로그인</a>
+                </div>
             </nav>
         </header>
 
         <!-- Main Hero Section -->
-        <section style="flex-grow: 1; display: flex; margin-top: 4rem; position: relative;">
-            <div style="width: 45%; padding-top: 4rem;">
-                <h1 class="hero-title serif">사랑에 빠진 모든<br>순간을 연결하세요.</h1>
-                <p style="font-size: 1.3rem; color: var(--on-surface-variant); margin-bottom: 3rem; font-weight: 300;">
-                    영상, 날짜, 감정, 메모가 아름답게 이어져<br>
-                    당신만의 러브트리가 자라납니다.
+        <section style="flex-grow: 1; display: flex; margin-top: 5rem; position: relative;">
+            <div style="width: 50%; padding-top: 2rem;">
+                <div style="background: rgba(144, 73, 81, 0.08); color: var(--primary); padding: 4px 16px; border-radius: 99px; width: fit-content; font-size: 12px; font-weight: 800; margin-bottom: 24px;">
+                    🌱 사랑이 자라나는 기록
+                </div>
+                <h1 class="hero-title">러브트리는 사랑에 빠진<br><span>모든 순간들</span>이 자라난 기록입니다.</h1>
+                <p style="font-size: 1.25rem; color: var(--on-surface-variant); margin-bottom: 3.5rem; font-weight: 400; max-width: 90%; line-height: 1.6;">
+                    우리가 좋아하는 아티스트와 함께한 시간들이 흩어지지 않도록,<br>
+                    영상과 감정의 실을 엮어 하나의 줄기로 만들어보세요.
                 </p>
-                <div style="display: flex; gap: 20px;">
-                    <a href="editor.html" class="btn-round btn-primary" style="text-decoration: none;">러브트리 시작하기</a>
-                    <a href="search.html" class="btn-round btn-outline" style="text-decoration: none;">파편 포착하기</a>
+                <div style="display: flex; gap: 16px;">
+                    <a href="editor.html" class="btn-round btn-primary" style="text-decoration: none;">내 러브트리 시작하기</a>
+                    <a href="search.html" class="btn-round btn-outline" style="text-decoration: none;">다른 트리 둘러보기</a>
                 </div>
             </div>
 
-            <div style="width: 55%; position: relative;">
-                <svg class="vine-connector" viewBox="0 0 600 800" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M 300 800 C 280 600 350 400 330 100" stroke="#D1C4B8" stroke-width="1.2" opacity="0.5"/>
-                    <path d="M 315 700 C 380 650 400 580 380 480" stroke="#D1C4B8" stroke-width="1" opacity="0.3"/>
-                    <path d="M 295 630 C 200 580 180 550 120 580" stroke="#D1C4B8" stroke-width="1" opacity="0.3"/>
+            <div style="width: 50%; position: relative;">
+                <svg class="vine-connector" style="position: absolute; width: 100%; height: 100%; opacity: 0.1;" viewBox="0 0 600 800" fill="none">
+                    <path d="M 300 800 C 280 600 350 400 330 100" stroke="#1b1c1a" stroke-width="1.5"/>
+                    <path d="M 315 700 C 450 650 480 580 440 480" stroke="#1b1c1a" stroke-width="1"/>
                 </svg>
 
-                <!-- Floating Previews -->
-                <div class="memory-card-mini" style="top: 20%; left: 0%;">
-                    <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuBJb2reehtYkk1tSupKcTenf09sFrI1MN_2H_orLdE8A1rOAlc27BWm62BVBav5qtwxTUJ7ctbr2bDNmU2EfruV9ajOc0QCzABvXJ5-qWXAeR8GOQumFqygnon2pN6L7Wc3UJvG-f9dh26hzO_bnWAoTverOtXlPKc4AqL95xSgqIwuVjm5Pb_eQ8gJI5kv4se7YvCHY5v3jZ5m1n6OzaavO3FKOfXk35Bs0O-w4R19eHXM2fn2Lr1bS2uizoWLcKYYZOKGHH6COFc" style="width:100%; border-radius: 0.5rem;" alt="Memory">
-                    <div style="font-size: 9px; margin-top: 5px; color: var(--on-surface-variant);">2024.03.14</div>
+                <div class="memory-card-mini" style="top: 15%; right: 10%; transform: rotate(4deg);">
+                    <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuBJb2reehtYkk1tSupKcTenf09sFrI1MN_2H_orLdE8A1rOAlc27BWm62BVBav5qtwxTUJ7ctbr2bDNmU2EfruV9ajOc0QCzABvXJ5-qWXAeR8GOQumFqygnon2pN6L7Wc3UJvG-f9dh26hzO_bnWAoTverOtXlPKc4AqL95xSgqIwuVjm5Pb_eQ8gJI5kv4se7YvCHY5v3jZ5m1n6OzaavO3FKOfXk35Bs0O-w4R19eHXM2fn2Lr1bS2uizoWLcKYYZOKGHH6COFc" style="width:100%; border-radius: 0.8rem;" alt="Memory">
                 </div>
 
-                <div class="memory-card-mini" style="top: 50%; left: 40%;">
-                    <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuCcoOf2DhclRgqR7XU5nXxqEOPCGUFxdWrwsFjWbAI4xfFNoiEhQe-i-M46NoauL0-rODRWb0UV5uR2GXRrMojFrNpT5_fSF6JJ-N0S9nBRy6yh2hKkN3VoH5ieyDzoFl8K2g5yvA31TWKgni7DZSAIgXV9438kVGFvW02_RiwILtOd53xc90t4rov09GexhNq6k7ONuLAzx70HvMSOceJVSXGauM0BIWl3-mVxudnjoHTGwjCTUoW7aWYLzMFbw0BTpXUE3qL8Ruw" style="width:100%; border-radius: 0.5rem;" alt="Memory">
-                    <div style="font-size: 9px; margin-top: 5px; color: var(--on-surface-variant);">2024.03.24</div>
+                <div class="memory-card-mini" style="top: 45%; left: 15%; transform: rotate(-3deg);">
+                    <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuCcoOf2DhclRgqR7XU5nXxqEOPCGUFxdWrwsFjWbAI4xfFNoiEhQe-i-M46NoauL0-rODRWb0UV5uR2GXRrMojFrNpT5_fSF6JJ-N0S9nBRy6yh2hKkN3VoH5ieyDzoFl8K2g5yvA31TWKgni7DZSAIgXV9438kVGFvW02_RiwILtOd53xc90t4rov09GexhNq6k7ONuLAzx70HvMSOceJVSXGauM0BIWl3-mVxudnjoHTGwjCTUoW7aWYLzMFbw0BTpXUE3qL8Ruw" style="width:100%; border-radius: 0.8rem;" alt="Memory">
                 </div>
             </div>
         </section>
 
         <!-- Footer Features -->
-        <footer style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; padding-bottom: 2rem;">
-            <div class="whisper-card" style="padding: 1.5rem; display: flex; gap: 16px; align-items: center; background: rgba(255,255,255,0.4); border: 1px solid white;">
-                <div style="width: 48px; height: 48px; border-radius: 12px; background: #ebe0d3; display: flex; align-items: center; justify-content: center; color: var(--primary);">
-                    <span class="material-symbols-outlined">auto_fix</span>
-                </div>
+        <footer style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; padding-bottom: 3rem;">
+            <div class="feature-card">
+                <div class="feature-icon" style="background: #fff0f1;">📸</div>
                 <div>
-                    <div style="font-weight: 700; color: var(--on-surface);">순간 포착</div>
-                    <div style="font-size: 0.8rem; color: var(--on-surface-variant);">좋아하게 된 장면을 기록합니다.</div>
+                    <div style="font-weight: 900; color: var(--on-surface); margin-bottom: 4px;">순간 포착</div>
+                    <div style="font-size: 0.85rem; color: var(--on-surface-variant); line-height: 1.4;">기억하고 싶은 영상과 가슴 떨리는 장면을 기록합니다.</div>
                 </div>
             </div>
-            <!-- ... more items can be added -->
+            <div class="feature-card">
+                <div class="feature-icon" style="background: #f0f4ff;">🔗</div>
+                <div>
+                    <div style="font-weight: 900; color: var(--on-surface); margin-bottom: 4px;">경로 연결</div>
+                    <div style="font-size: 0.85rem; color: var(--on-surface-variant); line-height: 1.4;">기록들이 시간 순서대로 모여 나만의 줄기가 됩니다.</div>
+                </div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon" style="background: #f0fff4;">🌱</div>
+                <div>
+                    <div style="font-weight: 900; color: var(--on-surface); margin-bottom: 4px;">트리 완성</div>
+                    <div style="font-size: 0.85rem; color: var(--on-surface-variant); line-height: 1.4;">모든 순간들이 자라나 당신만의 러브트리가 됩니다.</div>
+                </div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon" style="background: #fff9f0;">📢</div>
+                <div>
+                    <div style="font-weight: 900; color: var(--on-surface); margin-bottom: 4px;">공유하기</div>
+                    <div style="font-size: 0.85rem; color: var(--on-surface-variant); line-height: 1.4;">완성된 기억의 여정을 다른 팬들과 함께 나눕니다.</div>
+                </div>
+            </div>
         </footer>
     </main>
 
     <script src="js/index.js"></script>
+    <script src="js/auth.js"></script>
 </body>
 </html>
