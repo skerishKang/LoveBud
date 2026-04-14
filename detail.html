@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Archive | Lovetree Detail</title>
+    <link rel="stylesheet" href="css/global.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
+    <style>
+        .detail-layout {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 60px 40px;
+            display: grid;
+            grid-template-columns: 3fr 2fr;
+            gap: 60px;
+        }
+
+        .video-main {
+            width: 100%;
+            aspect-ratio: 16/9;
+            background: #000;
+            border-radius: var(--radius-default);
+            overflow: hidden;
+            box-shadow: var(--shadow-whisper);
+            margin-bottom: 32px;
+        }
+
+        .action-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 16px;
+        }
+
+        .action-group {
+            display: flex;
+            gap: 24px;
+            color: var(--on-surface-variant);
+        }
+
+        .action-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+
+        .action-item:hover { color: var(--primary); }
+
+        .connected-section {
+            margin-top: 64px;
+        }
+
+        .moment-card {
+            background: var(--surface-container-lowest);
+            padding: 24px;
+            border-radius: var(--radius-default);
+            box-shadow: var(--shadow-whisper);
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .diary-container {
+            background: var(--surface-container-lowest);
+            padding: 40px;
+            border-radius: var(--radius-default);
+            box-shadow: var(--shadow-whisper);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .diary-container::after {
+            content: "";
+            position: absolute;
+            top: 0; right: 0;
+            width: 120px; height: 120px;
+            background: rgba(141, 71, 79, 0.05);
+            border-radius: 0 0 0 100%;
+        }
+
+        .growth-visualization {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 40px;
+        }
+
+        .growth-line {
+            width: 4px; height: 48px;
+            background: rgba(82, 99, 83, 0.2);
+            border-radius: 99px;
+            margin-bottom: 8px;
+        }
+
+        .growth-dot {
+            width: 16px; height: 16px;
+            background: var(--secondary);
+            border-radius: 50%;
+            box-shadow: 0 0 0 4px rgba(82, 99, 83, 0.2);
+        }
+    </style>
+</head>
+<body class="paper-grain">
+    <header class="nav-bar">
+        <div class="serif" style="font-size: 1.5rem; font-weight: 700; color: var(--primary);">The Living Archive</div>
+        <nav class="nav-links">
+            <a href="index.html">Home</a>
+            <a href="search.html">Search</a>
+            <a href="editor.html">Grow</a>
+            <a href="#" class="active">Memories</a>
+        </nav>
+        <div style="display: flex; gap: 16px; align-items: center;">
+            <span class="material-symbols-outlined">settings</span>
+            <div style="width: 40px; height: 40px; border-radius: 50%; overflow: hidden;">
+                <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuDbLycwOAxfurOwe21u8O4Xl41HTlgVKPV1a-x7xnOZTN7vvHzt5ZjIE7GxqjVr_AQ_ZEgKfFRukV8Wf9O_y8CLNduTd7S3lJ6izAyvyUJ6lNSd28YR7auCNRPbWBsiHmRHqq4Kn8_tmz6yj0TSvBGoSa79sCeN7fmA7woewYnzYDScOKdgtOx-xMgBOKywqt_by48A5-aODVOGcvHp9zRcQHhXiNckQV76obrcGaHL5EEWxCo5-l3Ova9DkzQPKM06Vc6A5sMprYs" alt="Profile" style="width:100%; height:100%; object-fit:cover;">
+            </div>
+        </div>
+    </header>
+
+    <main class="detail-layout">
+        <section>
+            <div id="videoMain" class="video-main">
+                <!-- YouTube Embed -->
+            </div>
+            
+            <div class="action-bar">
+                <div class="action-group">
+                    <div class="action-item"><span class="material-symbols-outlined">favorite</span> 좋아요</div>
+                    <div class="action-item"><span class="material-symbols-outlined">chat_bubble</span> 댓글</div>
+                    <div class="action-item"><span class="material-symbols-outlined">share</span> 공유하기</div>
+                </div>
+                <button class="btn-round btn-outline">수정하기</button>
+            </div>
+
+            <div class="connected-section">
+                <h3 class="serif" style="margin-bottom: 24px; color: var(--on-surface-variant);">연결된 순간들</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                    <div class="moment-card">
+                        <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuCjWA-AFRh14rYIbsTF5UrmCAv4anuXsXRDXbbJEtgT_CRm5FBJ80uZ5_uPK-7ApmWmn4wXjjbDashR1q3SqHrJIN-yLVFsMbfl2zrcM8FLFcUvNOl7u6XdFuN0wZ4_UoA3zyqywS5KkHqxbTEPs0LQLLI8Te3GFo9vMgYdOuAHl49cFYJXNPjue0sE9e9vPRf7as1s6uQBMMjhOVzcPrrluUWdegAlNl5n3L4_OKJGkQdS2Zozr-fxkOFmKFbUokuLf7tEsSyqbg0" style="width: 80px; height: 80px; border-radius: 8px; object-fit: cover;" alt="Moment">
+                        <div>
+                            <div style="font-size: 12px; color: var(--on-surface-variant);">2024.03.14</div>
+                            <div style="font-weight: 600; color: var(--primary);">사전 녹화 대기 중</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="diary-section">
+            <div style="margin-bottom: 32px;">
+                <p style="font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: var(--on-surface-variant); margin-bottom: 8px;">ARCHIVES — 2024.03.15</p>
+                <h1 class="serif" style="font-size: 2.5rem; color: var(--primary); line-height: 1.2;">Lovetree: 첫 번째 만남의 기억</h1>
+                <div style="display: flex; gap: 8px; margin-top: 16px;">
+                    <span class="tag-chip" style="font-size: 12px;">Excited</span>
+                    <span class="tag-chip" style="font-size: 12px;">Happy</span>
+                </div>
+            </div>
+
+            <div class="diary-container">
+                <p class="serif" style="font-size: 1.1rem; color: var(--on-surface-variant); font-style: italic; margin-bottom: 24px;">
+                    "드디어 그들을 만나는 날. 아침부터 심장이 너무 빨리 뛰어서 제대로 밥도 먹지 못했다. 공연장 앞에 도착했을 때의 그 차가운 공기와 사람들의 열기가 아직도 생생하다."
+                </p>
+                <div style="line-height: 1.8; color: var(--on-surface);">
+                    행복하다는 말로는 부족한, 정말 꿈만 같았던 시간이었다. 다음에 다시 만날 때까지 이 감정을 소중히 간직해야지.
+                </div>
+            </div>
+
+            <div class="growth-visualization">
+                <div class="growth-line"></div>
+                <div class="growth-dot"></div>
+                <p style="margin-top: 16px; font-style: italic; color: var(--secondary); font-size: 0.9rem;">The journey continues...</p>
+            </div>
+        </section>
+    </main>
+
+    <script src="js/detail.js"></script>
+</body>
+</html>

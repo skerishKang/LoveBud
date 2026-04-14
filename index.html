@@ -3,72 +3,119 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LoveBud | Love Journey Archive</title>
-    <meta name="description" content="사랑에 빠진 그 순간을 기록하고, 당신만의 팬심의 지도를 그려보세요. Relovetree Identity Site.">
-    <link rel="stylesheet" href="css/index.css">
+    <title>Lovetree | The Living Archive</title>
+    <link rel="stylesheet" href="css/global.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
+    <style>
+        .app-container {
+            width: 90vw;
+            max-width: 1440px;
+            height: 90vh;
+            max-height: 900px;
+            background: rgba(246, 241, 233, 0.92);
+            border-radius: 6rem;
+            box-shadow: 0 80px 160px -40px rgba(0,0,0,0.15);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            padding: 4rem 6rem;
+            margin: 5vh auto;
+        }
+
+        .hero-title {
+            font-size: 3.6rem;
+            line-height: 1.25;
+            color: var(--on-surface);
+            margin-bottom: 2rem;
+            font-weight: 700;
+        }
+
+        .memory-card-mini {
+            background: white;
+            border-radius: 1rem;
+            padding: 10px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.06);
+            width: 155px;
+            position: absolute;
+            z-index: 20;
+            transition: transform 0.3s;
+        }
+
+        .memory-card-mini:hover { transform: scale(1.05); }
+
+        .vine-connector {
+            position: absolute;
+            top: 0; right: 0;
+            width: 60%;
+            height: 100%;
+            z-index: 5;
+        }
+    </style>
 </head>
-<body>
-    <div class="bg-bloomed"></div>
-    <div class="bg-leaf"></div>
+<body class="bokeh-bg">
+    <div class="noise-overlay"></div>
+    
+    <main class="app-container">
+        <!-- Navigation Header -->
+        <header style="display: flex; justify-content: space-between; align-items: center; z-index: 100;">
+            <div class="serif" style="font-size: 2rem; font-weight: 700; color: var(--primary);">Lovetree</div>
+            <nav class="nav-links">
+                <a href="index.html" class="active">Home</a>
+                <a href="search.html">Search</a>
+                <a href="editor.html">Grow</a>
+                <a href="#">Explore</a>
+            </nav>
+        </header>
 
-    <header class="hero">
-        <div class="hero-content">
-            <h1>LoveBud</h1>
-            <p>Where Every Love Story Begins</p>
-        </div>
-    </header>
-
-    <main>
-        <section class="narrative container">
-            <div class="section-title reveal">
-                <h2>The Identity of Love</h2>
-                <p>사랑이 어떻게 시작되고, 어떻게 자라나는지 기록합니다.</p>
+        <!-- Main Hero Section -->
+        <section style="flex-grow: 1; display: flex; margin-top: 4rem; position: relative;">
+            <div style="width: 45%; padding-top: 4rem;">
+                <h1 class="hero-title serif">사랑에 빠진 모든<br>순간을 연결하세요.</h1>
+                <p style="font-size: 1.3rem; color: var(--on-surface-variant); margin-bottom: 3rem; font-weight: 300;">
+                    영상, 날짜, 감정, 메모가 아름답게 이어져<br>
+                    당신만의 러브트리가 자라납니다.
+                </p>
+                <div style="display: flex; gap: 20px;">
+                    <a href="editor.html" class="btn-round btn-primary" style="text-decoration: none;">러브트리 시작하기</a>
+                    <a href="search.html" class="btn-round btn-outline" style="text-decoration: none;">파편 포착하기</a>
+                </div>
             </div>
 
-            <div class="flow-container">
-                <div class="flow-card reveal">
-                    <span class="icon">🌸</span>
-                    <h3>The Bud</h3>
-                    <p>호기심이 사랑으로 변하는 그 첫 순간. 찰나의 감정을 잊지 않도록 기록하세요.</p>
+            <div style="width: 55%; position: relative;">
+                <svg class="vine-connector" viewBox="0 0 600 800" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M 300 800 C 280 600 350 400 330 100" stroke="#D1C4B8" stroke-width="1.2" opacity="0.5"/>
+                    <path d="M 315 700 C 380 650 400 580 380 480" stroke="#D1C4B8" stroke-width="1" opacity="0.3"/>
+                    <path d="M 295 630 C 200 580 180 550 120 580" stroke="#D1C4B8" stroke-width="1" opacity="0.3"/>
+                </svg>
+
+                <!-- Floating Previews -->
+                <div class="memory-card-mini" style="top: 20%; left: 0%;">
+                    <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuBJb2reehtYkk1tSupKcTenf09sFrI1MN_2H_orLdE8A1rOAlc27BWm62BVBav5qtwxTUJ7ctbr2bDNmU2EfruV9ajOc0QCzABvXJ5-qWXAeR8GOQumFqygnon2pN6L7Wc3UJvG-f9dh26hzO_bnWAoTverOtXlPKc4AqL95xSgqIwuVjm5Pb_eQ8gJI5kv4se7YvCHY5v3jZ5m1n6OzaavO3FKOfXk35Bs0O-w4R19eHXM2fn2Lr1bS2uizoWLcKYYZOKGHH6COFc" style="width:100%; border-radius: 0.5rem;" alt="Memory">
+                    <div style="font-size: 9px; margin-top: 5px; color: var(--on-surface-variant);">2024.03.14</div>
                 </div>
-                <div class="flow-card reveal">
-                    <span class="icon">🌿</span>
-                    <h3>The Route</h3>
-                    <p>유튜브에서 트위터로, 다시 리액션 영상으로 이어지는 당신만의 팬심 지도를 연결합니다.</p>
-                </div>
-                <div class="flow-card reveal">
-                    <span class="icon">🌳</span>
-                    <h3>The Tree</h3>
-                    <p>함께 나누고 증폭되는 감정. 당신의 사랑은 이제 하나의 숲이 됩니다.</p>
+
+                <div class="memory-card-mini" style="top: 50%; left: 40%;">
+                    <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuCcoOf2DhclRgqR7XU5nXxqEOPCGUFxdWrwsFjWbAI4xfFNoiEhQe-i-M46NoauL0-rODRWb0UV5uR2GXRrMojFrNpT5_fSF6JJ-N0S9nBRy6yh2hKkN3VoH5ieyDzoFl8K2g5yvA31TWKgni7DZSAIgXV9438kVGFvW02_RiwILtOd53xc90t4rov09GexhNq6k7ONuLAzx70HvMSOceJVSXGauM0BIWl3-mVxudnjoHTGwjCTUoW7aWYLzMFbw0BTpXUE3qL8Ruw" style="width:100%; border-radius: 0.5rem;" alt="Memory">
+                    <div style="font-size: 9px; margin-top: 5px; color: var(--on-surface-variant);">2024.03.24</div>
                 </div>
             </div>
         </section>
 
-        <section class="gallery-section container">
-            <div class="section-title reveal">
-                <h2>Archive of Buds</h2>
-                <p>우리가 사랑에 빠졌던 그 모든 순간들</p>
+        <!-- Footer Features -->
+        <footer style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; padding-bottom: 2rem;">
+            <div class="whisper-card" style="padding: 1.5rem; display: flex; gap: 16px; align-items: center; background: rgba(255,255,255,0.4); border: 1px solid white;">
+                <div style="width: 48px; height: 48px; border-radius: 12px; background: #ebe0d3; display: flex; align-items: center; justify-content: center; color: var(--primary);">
+                    <span class="material-symbols-outlined">auto_fix</span>
+                </div>
+                <div>
+                    <div style="font-weight: 700; color: var(--on-surface);">순간 포착</div>
+                    <div style="font-size: 0.8rem; color: var(--on-surface-variant);">좋아하게 된 장면을 기록합니다.</div>
+                </div>
             </div>
-            
-            <div id="galleryGrid" class="gallery-grid">
-                <!-- Dynamically populated -->
-            </div>
-        </section>
-
-        <section class="narrative container" style="text-align: center;">
-            <div class="reveal">
-                <h2>Start Your Own LoveBud</h2>
-                <p style="margin-top: 20px;">당신의 여정을 기록할 준비가 되셨나요?</p>
-                <a href="editor.html" style="display: inline-block; text-decoration: none; margin-top: 30px; padding: 15px 40px; border-radius: 30px; border: none; background: var(--primary-color); color: white; cursor: pointer; font-size: 1rem; font-weight: 600;">지금 시작하기</a>
-            </div>
-        </section>
+            <!-- ... more items can be added -->
+        </footer>
     </main>
-
-    <footer>
-        <div class="container">
-            <p>&copy; 2026 LoveBud / Relovetree. All memories conserved.</p>
-        </div>
-    </footer>
 
     <script src="js/index.js"></script>
 </body>

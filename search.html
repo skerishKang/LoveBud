@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Capture a Fragment | Lovetree Search</title>
+    <link rel="stylesheet" href="css/global.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
+    <style>
+        .search-container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 80px 40px;
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 60px;
+        }
+
+        .search-input-wrapper {
+            position: relative;
+            margin-bottom: 40px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 24px 24px 24px 64px;
+            border-radius: var(--radius-default);
+            border: none;
+            background: var(--surface-container-lowest);
+            box-shadow: var(--shadow-whisper);
+            font-size: 1.25rem;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .search-input:focus {
+            box-shadow: 0 0 0 4px rgba(141, 71, 79, 0.1), var(--shadow-whisper);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 24px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--primary);
+        }
+
+        .tag-chip {
+            padding: 8px 20px;
+            border-radius: 99px;
+            background: var(--surface-container-low);
+            color: var(--on-surface-variant);
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .tag-chip.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .result-card {
+            display: flex;
+            gap: 24px;
+            padding: 24px;
+            background: var(--surface-container-lowest);
+            border-radius: var(--radius-default);
+            box-shadow: var(--shadow-whisper);
+            margin-bottom: 32px;
+            transition: all 0.3s;
+        }
+
+        .result-card:hover { transform: translateY(-4px); }
+
+        .thumbnail-wrapper {
+            width: 220px;
+            height: 140px;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #000;
+            position: relative;
+        }
+
+        .thumbnail-wrapper img {
+            width: 100%; height: 100%;
+            object-fit: cover;
+            opacity: 0.9;
+        }
+
+        .preview-sidebar {
+            position: sticky;
+            top: 120px;
+            height: fit-content;
+            background: var(--surface-container-low);
+            padding: 32px;
+            border-radius: var(--radius-default);
+            border: 1px solid var(--outline-variant);
+        }
+
+        .video-container {
+            width: 100%;
+            aspect-ratio: 16/9;
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 24px;
+        }
+    </style>
+</head>
+<body class="paper-grain">
+    <header class="nav-bar">
+        <div class="serif" style="font-size: 1.5rem; font-weight: 700; color: var(--primary);">Lovetree</div>
+        <nav class="nav-links">
+            <a href="index.html">Home</a>
+            <a href="search.html" class="active">Search</a>
+            <a href="editor.html">Grow</a>
+            <a href="#">Archive</a>
+        </nav>
+        <div style="display: flex; gap: 16px; align-items: center;">
+            <span class="material-symbols-outlined">settings</span>
+            <div style="width: 40px; height: 40px; border-radius: 50%; background: #eee; overflow: hidden;">
+                <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuDbLycwOAxfurOwe21u8O4Xl41HTlgVKPV1a-x7xnOZTN7vvHzt5ZjIE7GxqjVr_AQ_ZEgKfFRukV8Wf9O_y8CLNduTd7S3lJ6izAyvyUJ6lNSd28YR7auCNRPbWBsiHmRHqq4Kn8_tmz6yj0TSvBGoSa79sCeN7fmA7woewYnzYDScOKdgtOx-xMgBOKywqt_by48A5-aODVOGcvHp9zRcQHhXiNckQV76obrcGaHL5EEWxCo5-l3Ova9DkzQPKM06Vc6A5sMprYs" alt="Profile" style="width: 100%; height: 100%; object-fit: cover;">
+            </div>
+        </div>
+    </header>
+
+    <main class="search-container">
+        <section>
+            <h2 class="serif" style="font-size: 3rem; margin-bottom: 1rem;">Capture a Fragment</h2>
+            <p style="color: var(--on-surface-variant); margin-bottom: 40px; font-size: 1.1rem;">Preserve the performances that moved you.</p>
+
+            <div class="search-input-wrapper">
+                <span class="material-symbols-outlined search-icon">search</span>
+                <input type="text" id="searchInput" class="search-input" placeholder="Search for videos, stage cams, or links">
+            </div>
+
+            <div style="display: flex; gap: 12px; margin-bottom: 48px;">
+                <span class="tag-chip active">Music Video</span>
+                <span class="tag-chip">Stage Cam</span>
+                <span class="tag-chip">Comeback</span>
+                <span class="tag-chip">Fanmade</span>
+            </div>
+
+            <div id="resultsList">
+                <!-- Populated by JS -->
+            </div>
+        </section>
+
+        <aside class="preview-sidebar" id="previewSidebar">
+            <h3 class="serif" style="margin-bottom: 24px;">Archive Preview</h3>
+            <div id="previewVideoContainer" class="video-container">
+                <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:#666;">
+                    Select a fragment to preview
+                </div>
+            </div>
+            <div id="previewDetails">
+                <h4 id="previewTitle" class="serif" style="font-size: 1.25rem; margin-bottom: 8px;">---</h4>
+                <p id="previewDesc" style="font-style: italic; color: var(--on-surface-variant); margin-bottom: 24px;">---</p>
+                <div style="padding-top: 24px; border-top: 1px solid var(--outline-variant);">
+                    <div style="font-size: 10px; font-weight: 700; color: var(--primary); margin-bottom: 16px; letter-spacing: 1px;">ARCHIVAL DETAILS</div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; font-size: 14px;">
+                        <div>
+                            <div style="color: #888;">Artist</div>
+                            <div id="detailArtist">-</div>
+                        </div>
+                        <div>
+                            <div style="color: #888;">Date</div>
+                            <div id="detailDate">-</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <script src="js/search.js"></script>
+</body>
+</html>
