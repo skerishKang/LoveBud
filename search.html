@@ -64,6 +64,132 @@
             color: white;
         }
 
+        /* Tree Card Styles */
+        .tree-card {
+            display: flex;
+            flex-direction: column;
+            padding: 28px;
+            background: white;
+            border-radius: 2rem;
+            border: 1px solid rgba(0,0,0,0.03);
+            margin-bottom: 24px;
+            transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+            cursor: pointer;
+        }
+
+        .tree-card:hover {
+            transform: scale(1.02);
+            border-color: var(--outline-variant);
+            box-shadow: var(--shadow-whisper);
+        }
+
+        .tree-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .tree-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, var(--primary-soft) 0%, var(--accent-rose) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+        }
+
+        .tree-title-group {
+            flex: 1;
+        }
+
+        .tree-title {
+            font-size: 1.3rem;
+            font-weight: 800;
+            margin-bottom: 4px;
+            color: var(--on-surface);
+        }
+
+        .tree-subtitle {
+            font-size: 0.85rem;
+            color: var(--on-surface-variant);
+        }
+
+        .tree-path-preview {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 16px;
+            padding: 16px;
+            background: var(--surface-container-low);
+            border-radius: 1rem;
+        }
+
+        .path-node {
+            width: 48px;
+            height: 48px;
+            border-radius: 8px;
+            overflow: hidden;
+            flex-shrink: 0;
+            border: 2px solid white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .path-node img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .path-arrow {
+            color: var(--on-surface-variant);
+            opacity: 0.4;
+            font-size: 20px;
+        }
+
+        .path-more {
+            width: 48px;
+            height: 48px;
+            border-radius: 8px;
+            background: var(--surface-container);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--on-surface-variant);
+            flex-shrink: 0;
+        }
+
+        .tree-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            color: var(--on-surface-variant);
+        }
+
+        .tree-stats {
+            display: flex;
+            gap: 16px;
+        }
+
+        .tree-emotions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .emotion-tag {
+            padding: 4px 10px;
+            border-radius: 99px;
+            background: var(--surface-container-low);
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--on-surface-variant);
+        }
+
         .result-card {
             display: flex;
             gap: 28px;
@@ -200,7 +326,7 @@
                 <div class="nav-links">
                 <a href="index.html">소개</a>
                 <a href="search.html" class="active">둘러보기</a>
-                <a href="editor.html">내 러브트리</a>
+                <a href="my-trees.html">내 러브트리</a>
                 </div>
 
             <div style="display: flex; align-items: center; gap: 20px;">
@@ -223,7 +349,7 @@
 
             <div class="search-input-wrapper">
                 <span class="material-symbols-outlined search-icon">search</span>
-                <input type="text" id="searchInput" class="search-input" placeholder="예: 아티스트명 · 영상 제목 · 공연명" required>
+                <input type="text" id="searchInput" class="search-input" placeholder="예: 아티스트명 · 러브트리 주제 · 감정 태그" required>
             </div>
 
             <div style="display: flex; gap: 10px; margin-bottom: 48px;">
@@ -239,27 +365,24 @@
         </section>
 
         <aside class="preview-sidebar" id="previewSidebar">
-            <h3 class="headline" style="font-size: 1.5rem; margin-bottom: 24px;">감상 미리보기</h3>
+            <h3 class="headline" style="font-size: 1.5rem; margin-bottom: 24px;">러브트리 미리보기</h3>
             <div id="previewVideoContainer" class="video-container">
                 <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:#999; font-size: 14px;">
-                     기록을 선택하면 미리 감상할 수 있어요
+                     트리를 선택하면 대표 순간들을 미리 볼 수 있어요
                 </div>
             </div>
             <div id="previewDetails">
                 <h4 id="previewTitle" class="headline" style="font-size: 1.25rem; margin-bottom: 8px; font-weight: 800;">---</h4>
-                <p id="previewDesc" style="font-style: italic; color: var(--on-surface-variant); margin-bottom: 24px; font-size: 14px;">---</p>
-                     <div style="padding-top: 24px; border-top: 1px solid var(--outline-variant);">
-                         <div style="font-size: 10px; font-weight: 900; color: var(--primary); margin-bottom: 16px; letter-spacing: 2px;">기록 정보</div>
-                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; font-size: 14px;">
-                             <div>
-                                 <div style="color: #aaa; font-weight: 700; margin-bottom: 4px;">아티스트</div>
-                                 <div id="detailArtist">-</div>
-                             </div>
-                             <div>
-                                 <div style="color: #aaa; font-weight: 700; margin-bottom: 4px;">기억한 날</div>
-                                 <div id="detailDate">-</div>
-                             </div>
-                         </div>
+                <p id="previewDesc" style="font-style: italic; color: var(--on-surface-variant); margin-bottom: 16px; font-size: 14px;">---</p>
+                <div id="previewTreeStats" style="display: flex; gap: 16px; margin-bottom: 24px; font-size: 12px; color: var(--on-surface-variant);">
+                    <span><span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle;">account_tree</span> <span id="previewMemoriesCount">-</span>개 순간</span>
+                    <span><span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle;">schedule</span> <span id="previewTreeDuration">-</span></span>
+                </div>
+                <div style="padding-top: 24px; border-top: 1px solid var(--outline-variant);">
+                    <div style="font-size: 10px; font-weight: 900; color: var(--primary); margin-bottom: 16px; letter-spacing: 2px;">대표 감정 태그</div>
+                    <div id="previewEmotionTags" style="display: flex; flex-wrap: wrap; gap: 8px;">
+                        <!-- Populated by JS -->
+                    </div>
                 </div>
             </div>
         </aside>
@@ -271,6 +394,6 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="js/firebase-config.js?v=20260415-6"></script>
-    <script src="js/auth.js?v=20260415-12"></script>
+    <script src="js/auth.js?v=20260415-15"></script>
 </body>
 </html>
