@@ -1,26 +1,30 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap');
 
 :root {
-    /* Premium Modern Palette (Restored) */
-    --primary: #904951;
-    --primary-vibrant: #e91e63;
+    /* Premium Modern Palette - Warm Scrapbook Tone */
+    --primary: #904951;           /* 뮤트 로즈 - 메인 브랜드 */
+    --primary-vibrant: #b85c66;   /* 채도 낮춘 로즈 - hover accent (원색 금지) */
+    --primary-soft: #d4a5a9;      /* 소프트 로즈 - 감정 태그용 */
     --on-primary: #ffffff;
 
-    --secondary: #526353;
+    --secondary: #7a8b6e;         /* 웜 그린 - 자연/성장 */
     --on-secondary: #ffffff;
     
-    --background: #fbf9f5;
-    --on-background: #1b1c1a;
-    --surface: #fbf9f5;
-    --on-surface: #1b1c1a;
-    --on-surface-variant: #534344;
+    --accent-warm: #c9a87c;       /* 웜 베이지 - 감정적 하이라이트 */
+    --accent-rose: #e8c4c8;       /* 로즈 베이지 - 부드러운 강조 */
+    
+    --background: #fdfbf7;        /* 종이 질감 베이지 (완전 화이트 금지) */
+    --on-background: #3e342f;     /* 다크 브라운 텍스트 (완전 블랙 금지) */
+    --surface: #fdfbf7;
+    --on-surface: #3e342f;
+    --on-surface-variant: #6b5d54; /* 뮤트 브라운 - 보조 텍스트 */
 
-    --surface-container-low: #f5f3ef;
-    --surface-container: #efeeea;
+    --surface-container-low: #f8f5f0;
+    --surface-container: #f2efe9;
     --surface-container-lowest: #ffffff;
     
-    --outline-variant: rgba(141, 71, 79, 0.1);
-    --shadow-whisper: 0 12px 40px rgba(75, 64, 57, 0.05);
+    --outline-variant: rgba(144, 73, 81, 0.12);
+    --shadow-whisper: 0 12px 40px rgba(75, 64, 57, 0.06);
 
     --radius-default: 1rem;
     --radius-lg: 2rem;

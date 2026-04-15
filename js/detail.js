@@ -11,7 +11,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // URL에서 memory ID 가져오기
     const urlParams = new URLSearchParams(window.location.search);
-    const memoryId = urlParams.get('id') || 'root';
+    const memoryId = urlParams.get('id');
+
+    // ID 없이 진입 시 search.html로 리다이렉트
+    if (!memoryId) {
+        window.location.href = 'search.html';
+        return;
+    }
 
     // ── 메모리 데이터: API 우선, 실패 시 mock fallback ──
     let memory = null;
@@ -29,9 +35,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     // API 실패 시 mock fallback
     if (!memory) {
         memory = typeof getMemory === 'function' ? getMemory(memoryId) : null;
-        if (!memory && memoryId !== 'root') {
-            memory = typeof getMemory === 'function' ? getMemory('root') : null;
-        }
     }
     if (!memory) {
         // ── memory 조회 실패 시 fallback UI 표시 ──

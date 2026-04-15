@@ -1,12 +1,14 @@
 /**
  * LoveBud - Authentication Module (Firebase Auth)
- * v20260415-13
+ * v20260415-15
  *
  * Auth state observer updates #auth-nav (non-login pages) or
  * #auth-nav-container (login.html) using innerHTML container pattern.
- * Improved loading state with spinner for index.html/editor.html headers.
  *
- * Version: ?v=20260415-13
+ * Loading state: neutral skeleton ONLY - no interactive content before Firebase confirms auth.
+ * This prevents stale cached state from showing wrong UI (e.g., "내 계정" for logged-out user).
+ *
+ * Version: ?v=20260415-15
  */
 
 var EMAIL_AUTH_MODE = 'login';
@@ -40,6 +42,17 @@ function clearStaleFirebaseAuthState() {
 
 // ── Core Auth ─────────────────────────────────────────────────────────────────
 
+/**
+ * Apply cached auth state for fast initial render (prevents flicker).
+ *
+ * IMPORTANT: This renders a NEUTRAL SKELETON ONLY. No interactive auth content
+ * is shown here because Firebase hasn't confirmed the actual auth state yet.
+ * Showing cached "logged in" UI when the session is actually expired is worse
+ * than showing a skeleton — it creates a false sense of authentication.
+ *
+ * The skeleton preserves layout space. Actual UI is set by updateNavUI()
+ * after onAuthStateChanged fires.
+ */
 function applyCachedAuthState() {
   var isLoginPage = window.location.pathname.indexOf('login.html') !== -1;
   if (isLoginPage) return false;
@@ -47,27 +60,22 @@ function applyCachedAuthState() {
   var authNav = document.getElementById('auth-nav');
   if (!authNav) return false;
 
+  // Always show neutral skeleton — never show cached interactive state.
+  // This ensures we never display stale "내 계정" or "로그인" based on cache
+  // before Firebase has confirmed the actual auth state.
   try {
-    var cacheStr = localStorage.getItem('lovebud_auth_cache');
-    if (cacheStr === 'null') {
-      authNav.innerHTML = buildLoginButton();
-      return true;
-    } else if (cacheStr) {
-      var user = JSON.parse(cacheStr);
-      authNav.innerHTML = buildUserDropdown(user);
-      return true;
-    }
+    authNav.innerHTML = '<div class="auth-skeleton" style="width:100px;height:36px;border-radius:18px;background:var(--surface-container-highest, #e8e8e8);pointer-events:none;"></div>';
   } catch(e) {}
-  return false;
+  return true;
 }
 
 function initAuth() {
   // Apply cached state immediately to prevent flicker
-  var hasCache = applyCachedAuthState();
+  applyCachedAuthState();
 
   // Ready 전 상태로 초기화 - 완전히 숨김
   window[AUTH_READY_FLAG] = false;
-  markAuthLoading(hasCache);
+  markAuthLoading();
 
   // 안전장치: 5초 타임아웃 - Firebase 응답 없을 때 오프라인 모드로 전환
   var authTimeout = setTimeout(function() {
@@ -142,17 +150,19 @@ function initOfflineAuth() {
 // ── Loading State (prevent flash) ────────────────────────────────────────────
 
 /**
- * Show auth nav loading state - preserves layout space with smooth transition.
- * index.html에는 초기 로딩 스피너가 있으므로, 이를 유지하되 투명도만 조정
+ * Show auth nav loading state - neutral skeleton with pointer-events blocked.
+ *
+ * IMPORTANT: During loading, the skeleton container is completely non-interactive.
+ * This prevents any stale cached auth UI from being clickable before Firebase
+ * confirms the actual auth state.
  */
-function markAuthLoading(hasCache) {
+function markAuthLoading() {
   var authNav = document.getElementById('auth-nav');
   var authContainer = document.getElementById('auth-nav-container');
-  // Ready 전: 레이아웃 유지하되 콘텐츠 흐릿하게 표시 (캐시가 있으면 선명하게 유지)
-  var opacity = hasCache ? '1' : '0.6';
-  var loadingStyle = 'opacity:' + opacity + ';transition:opacity 0.2s ease;min-width:100px;height:36px;display:flex;align-items:center;justify-content:flex-end;';
+  // During loading: layout-preserving skeleton that is completely non-interactive.
+  // pointer-events:none ensures no click/keyboard interaction until AUTH_READY_FLAG.
+  var loadingStyle = 'pointer-events:none;opacity:0.6;transition:opacity 0.2s ease;min-width:100px;height:36px;display:flex;align-items:center;justify-content:flex-end;user-select:none;';
   if (authNav) {
-    // 기존 내용(스피너)을 유지하되 투명도만 조정 (캐시가 없을 때만)
     authNav.style.cssText = loadingStyle;
   }
   if (authContainer) {
@@ -162,14 +172,15 @@ function markAuthLoading(hasCache) {
 
 /**
  * Mark auth as ready and reveal the nav UI with smooth fade-in.
- * index.html의 로딩 스피너를 지우고 실제 UI를 표시
+ * index.html의 로딩 스피너를 지우고 실제 UI를 표시.
+ * pointer-events:auto explicit 설정으로 interactive 전환을 보장.
  */
 function markAuthReady() {
   window[AUTH_READY_FLAG] = true;
   var authNav = document.getElementById('auth-nav');
   var authContainer = document.getElementById('auth-nav-container');
-  // Ready 후: 스피너 제거하고 부드럽게 표시
-  var visibleStyle = 'opacity:1;transition:opacity 0.2s ease;min-width:100px;height:36px;display:flex;align-items:center;justify-content:flex-end;';
+  // Ready 후: 스피너 제거 + pointer-events 복원 + 부드럽게 표시
+  var visibleStyle = 'pointer-events:auto;opacity:1;transition:opacity 0.2s ease;min-width:100px;height:36px;display:flex;align-items:center;justify-content:flex-end;user-select:auto;';
   if (authNav) {
     // 로딩 스피너 제거 (index.html의 초기 스피너)
     var spinner = authNav.querySelector('.material-symbols-outlined');

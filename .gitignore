@@ -8,3 +8,6 @@ nul
 
 # Local test account files
 .local/test-accounts.json
+# Local agent docs (ignored from public repo)
+AGENT.md
+LOCAL_AGENT.md

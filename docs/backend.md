@@ -114,20 +114,14 @@ Netlify auto-installs `package.json` dependencies during build.
 
 **시드 데이터 (Verified Seed Data):**
 - `002_seed_demo_data.sql` — **실제 공식 YouTube 채널에서 확인 가능한 공개 콘텐츠만** 포함
-- 1개 public tree: `[샘플] BTS 공식 MV 모음`
-- **4개 검증된 public memories** (BTS Official YouTube 채널)
-  - BTS — 봄날 (Spring Day) Official MV - 2017.02.13
-  - BTS — Dynamite Official MV - 2020.08.21
-  - BTS — Butter Official MV - 2021.05.21
-  - BTS — Permission to Dance Official MV - 2021.07.09
-- **삭제된 항목 (2025-04-15 정리)**:
-  - Hearts2Hearts 트리 및 모든 관련 memories (placeholder/확인불가 ID)
-  - dQw4w9WgXcQ, XqZsoesa55w, 9bZkp7q19f0 (placeholder)
-  - 2yJ73PpitWw, QpgP7CnQ61k (Hearts2Hearts - 확인 불가)
+- 2개 public trees (BTS, Hearts2Hearts 샘플)
+- **5개 검증된 public memories**
+  - BTS: 봄날, Dynamite, Butter, Permission to Dance (4개 — BTS Official YouTube)
+  - Hearts2Hearts: The Chase MV (1개 — @hearts2hearts.official 공식 채널, 2025.02.24 데뷔)
 - `ON CONFLICT` 구문으로 재실행 시 업데이트 가능 (단, owner_id는 유지됨)
 - Neon 콘솔 또는 `psql`로 실행: `\i netlify/sql/002_seed_demo_data.sql`
 
-**참고**: 현재 mock-data.js와 SQL seed는 동일한 검증된 BTS 공식 콘텐츠 4개만 포함합니다.
+**참고**: Hearts2Hearts 공식 채널(@hearts2hearts.official)에 Butterflies, RUDE!, STYLE 등 추가 콘텐츠가 있으며, 확인 후 확장 가능합니다.
 
 **Detail 화면 API 연결 방법:**
 - `apiClient.getMemory(memoryId)` — GET `/api/memories/:memoryId` 직접 호출

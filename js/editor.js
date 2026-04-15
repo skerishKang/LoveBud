@@ -73,6 +73,35 @@ document.addEventListener('DOMContentLoaded', () => {
         // ── 메모리 데이터: API 우선, 실패 시 mock fallback ──
         let memories = [];
         const treeId = tree.id || tree.data?.id;
+
+        // ── API 응답 정규화: snake_case → camelCase, {id, data} → flat 형태로 변환
+        // 저장 계약: window.currentTreeMemories는 항상 이 정규화가 적용된 배열
+        // (normalizeMemory를 먼저 정의하고 이후에 사용)
+        const normalizeMemory = (mem) => {
+            if (!mem) return null;
+            // snake_case → camelCase
+            const normalized = {
+                treeId: mem.tree_id || mem.treeId,
+                parentId: mem.parent_id || mem.parentId,
+                sourceUrl: mem.source_url || mem.sourceUrl,
+                sourceType: mem.source_type || mem.sourceType,
+                emotionTags: mem.emotion_tags || mem.emotionTags,
+                createdAt: mem.created_at || mem.createdAt
+            };
+            // 공통 필드 복사 (id, title, memo 등)
+            const commonFields = ['id', 'title', 'memo', 'quote', 'timestamp', 'thumbnail', 'visibility', 'artist', 'source', 'delay', 'x', 'y'];
+            commonFields.forEach(field => {
+                if (mem[field] !== undefined) normalized[field] = mem[field];
+            });
+            // {id, data} 형태 풀기 (data 객체의 필드도 병합)
+            if (mem.data && typeof mem.data === 'object') {
+                Object.keys(mem.data).forEach(key => {
+                    if (normalized[key] === undefined) normalized[key] = mem.data[key];
+                });
+            }
+            return normalized;
+        };
+
         try {
             if (window.apiClient && window.apiClient.getMemoriesByTree) {
                 const apiMemories = await window.apiClient.getMemoriesByTree(treeId);
@@ -90,28 +119,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (memories.length === 0) {
             memories = typeof getMemoriesByTree === 'function' ? getMemoriesByTree(treeId) : [];
         }
-        // 전역 접근 가능하게 설정 (기존 코드 호환)
-        window.currentTreeMemories = memories;
-
-        // ── API 응답 정규화: snake_case → camelCase, {id, data} 형태 변환 ──
-        const normalizeMemory = (mem) => {
-            if (!mem) return null;
-            // snake_case → camelCase
-            const normalized = {
-                ...mem,
-                treeId: mem.tree_id || mem.treeId,
-                parentId: mem.parent_id || mem.parentId,
-                sourceUrl: mem.source_url || mem.sourceUrl,
-                sourceType: mem.source_type || mem.sourceType,
-                emotionTags: mem.emotion_tags || mem.emotionTags,
-                createdAt: mem.created_at || mem.createdAt
-            };
-            // {id, data} 형태 풀기
-            if (mem.data && typeof mem.data === 'object') {
-                Object.assign(normalized, mem.data);
-            }
-            return normalized;
-        };
+        // 저장 계약: 항상 정규화된 형태로 저장
+        window.currentTreeMemories = memories.map(normalizeMemory).filter(Boolean);
 
         // ── root 초기 선택 안정화 ──
         const createInitialMemory = () => {
@@ -415,16 +424,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const addMemoryFromForm = async () => {
             const url = urlInput.value.trim();
-            if (!url) {
-                alert('YouTube 링크를 입력해주세요.');
-                return;
-            }
+if (!url) {
+    showToast('YouTube 링크를 입력해주세요.', 'warn');
+    return;
+  }
 
-            const match = url.match(/(?:v=|\/|youtu\.be\/)([0-9A-Za-z_-]{11})/);
-            if (!match) {
-                alert('유효한 YouTube 링크가 아닙니다.\n예: https://www.youtube.com/watch?v=dQw4w9WgXcQ');
-                return;
-            }
+  const match = url.match(/(?:v=|\/|youtu\.be\/)([0-9A-Za-z_-]{11})/);
+  if (!match) {
+    showToast('유효한 YouTube 링크가 아닙니다.', 'error');
+    return;
+  }
 
             const videoId = match[1];
             const today = new Date();
@@ -479,21 +488,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
             }
 
-            // ── createMemory 후 갱신: 재조회 우선, 실패 시 로컬 추가 ──
-            try {
-                const refreshed = await window.apiClient.getMemoriesByTree(treeId);
-                if (Array.isArray(refreshed)) {
-                    window.currentTreeMemories = refreshed;
-                } else {
-                    // 재조회 실패 시 로컬에 추가 (중복 방지)
-                    const exists = window.currentTreeMemories.some(m => m.id === createdMemory.id);
-                    if (!exists) window.currentTreeMemories.push(createdMemory);
-                }
-            } catch (e) {
-                // API 실패 시 로컬에 추가 (중복 방지)
-                const exists = window.currentTreeMemories.some(m => m.id === createdMemory.id);
-                if (!exists) window.currentTreeMemories.push(createdMemory);
-            }
+// ── createMemory 후 갱신: 재조회 우선, 실패 시 로컬 추가 ──
+  // 저장 계약: window.currentTreeMemories는 항상 normalizeMemory가 적용된 메모리 배열
+  const normalizedNew = normalizeMemory(createdMemory);
+  try {
+    const refreshed = await window.apiClient.getMemoriesByTree(treeId);
+    if (Array.isArray(refreshed)) {
+      // 재조회 성공 시 정규화된 형태로 저장 ({id,data}+snake_case → flat+camelCase)
+      window.currentTreeMemories = refreshed.map(normalizeMemory);
+    } else {
+      // 재조회 실패 시 로컬에 추가 (중복 방지, 정규화 적용)
+      const exists = window.currentTreeMemories.some(m => m.id === normalizedNew.id);
+      if (!exists && normalizedNew) window.currentTreeMemories.push(normalizedNew);
+    }
+  } catch (e) {
+    // API 실패 시 로컬에 추가 (중복 방지, 정규화 적용)
+    const exists = window.currentTreeMemories.some(m => m.id === normalizedNew.id);
+    if (!exists && normalizedNew) window.currentTreeMemories.push(normalizedNew);
+  }
 
             // ── UI 렌더링: API 응답 정규화 후 렌더링 ──
             // snake_case → camelCase, {id, data} 형태 정규화
