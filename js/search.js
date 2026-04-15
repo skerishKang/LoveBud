@@ -286,9 +286,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             `;
 
             card.addEventListener('click', () => {
-                // 트리의 첫 번째 메모리로 이동 (임시: 트리 상세 페이지 없음)
+                // 러브트리 감상 흐름: 트리의 첫 번째 순간부터 감상 시작
                 if (tree.memories && tree.memories.length > 0) {
-                    window.location.href = `detail.html?id=${tree.memories[0].id}&tree=${tree.id}`;
+                    const firstMemory = tree.memories[0];
+                    // tree 파라미터와 from 파라미터로 감상 맥락 전달
+                    window.location.href = `detail.html?id=${firstMemory.id}&tree=${tree.id}&from=browse`;
                 }
             });
 

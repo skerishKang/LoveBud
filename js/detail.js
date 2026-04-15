@@ -19,6 +19,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
+    // URL 파라미터에서 감상 맥락 확인
+    const fromBrowse = urlParams.get('from') === 'browse';
+    const treeIdFromUrl = urlParams.get('tree');
+
     // ── 메모리 데이터: API 우선, 실패 시 mock fallback ──
     let memory = null;
     try {
@@ -47,9 +51,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     요청하신 기억이 존재하지 않거나<br>접근할 수 없는 상태입니다.
                 </p>
                 <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
-                    <a href="index.html" class="btn-round btn-outline" style="text-decoration: none;">소개 보기</a>
-                    <a href="search.html" class="btn-round btn-outline" style="text-decoration: none;">둘러보기</a>
-                    <a href="my-trees.html" class="btn-round btn-primary" style="text-decoration: none;">내 러브트리</a>
+                    <a href="../index.html" class="btn-round btn-outline" style="text-decoration: none;">첫화면으로</a>
+                    <a href="search.html" class="btn-round btn-outline" style="text-decoration: none;">러브트리 둘러보기</a>
                 </div>
             </div>
         `;
@@ -80,6 +83,33 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!tree) {
         console.warn('Tree data not found. Detail page cannot initialize.');
         return;
+    }
+
+    // ── 트리 맥락 표시 ──
+    const treeTitle = tree.title || tree.data?.title || '러브트리';
+    const treeContextEl = document.getElementById('treeContext');
+    if (treeContextEl) {
+        treeContextEl.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                <span class="material-symbols-outlined" style="color: var(--primary); font-size: 20px;">account_tree</span>
+                <span style="font-size: 14px; font-weight: 700; color: var(--on-surface-variant);">러브트리 감상 중</span>
+            </div>
+            <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--on-surface); margin: 0;">${treeTitle}</h2>
+            <p style="font-size: 13px; color: var(--on-surface-variant); margin-top: 4px;">
+                ${fromBrowse ? '둘러보기에서 선택한 트리의 첫 순간' : '러브트리의 감정 경로'}
+            </p>
+        `;
+    }
+
+    // ── 페이지 타이틀 업데이트 ──
+    document.title = `${memory.title} | ${treeTitle} — Lovetree`;
+
+    // ── 돌아가기 버튼 설정 ──
+    const backButton = document.getElementById('backButton');
+    if (backButton) {
+        backButton.onclick = () => {
+            window.location.href = fromBrowse ? 'search.html' : 'search.html';
+        };
     }
 
     // ── 형제 메모리: API 우선, 실패 시 mock fallback ──

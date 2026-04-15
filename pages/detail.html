@@ -180,42 +180,33 @@
 <body class="paper-grain">
     <div class="noise-overlay"></div>
     
-    <header class="nav-bar">
-        <div class="headline" style="font-size: 1.5rem; font-weight: 900; color: var(--on-surface); letter-spacing: -0.04em; cursor: pointer;" onclick="location.href='../index.html'">Lovetree</div>
-        
-<nav class="main-nav">
-      <div class="nav-links">
-        <a href="../index.html">첫화면</a>
-        <a href="intro.html">소개</a>
-        <a href="search.html" class="active">둘러보기</a>
-        <a href="my-trees.html">내 러브트리</a>
-      </div>
-
-            <div style="display: flex; align-items: center; gap: 20px;">
-                <div class="lang-toggle">
-                    <button class="lang-btn active">KR</button>
-                    <button class="lang-btn">EN</button>
-                </div>
-                <div id="auth-nav"><a href="login.html" class="btn-round btn-outline" style="text-decoration: none; padding: 8px 20px; font-size: 14px;">로그인</a></div>
-            </div>
-        </nav>
-    </header>
+    <!-- Shared Header -->
+    <div id="shared-header"></div>
 
     <main class="detail-layout">
         <section>
+            <!-- 트리 맥락 표시 영역 -->
+            <div id="treeContext" style="margin-bottom: 24px; padding: 20px 24px; background: linear-gradient(135deg, rgba(144, 73, 81, 0.06), rgba(122, 139, 110, 0.04)); border-radius: 1.5rem; border: 1px solid rgba(144, 73, 81, 0.1);">
+                <!-- JS에서 동적으로 채워집니다 -->
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span class="material-symbols-outlined" style="color: var(--primary);">account_tree</span>
+                    <span style="font-size: 14px; color: var(--on-surface-variant);">러브트리 로딩 중...</span>
+                </div>
+            </div>
+
             <div id="videoMain" class="video-main">
                 <!-- YouTube Embed -->
             </div>
-            
+
             <div class="action-bar">
                 <div class="action-group">
 <div class="action-item"><span class="material-symbols-outlined">favorite</span> 1.2k</div>
 <div class="action-item"><span class="material-symbols-outlined">chat_bubble</span> 342</div>
 <div class="action-item"><span class="material-symbols-outlined">share</span> 공유하기</div>
                 </div>
-                <button class="btn-round btn-outline" onclick="location.href='pages/search.html'" style="display: flex; align-items: center; gap: 6px;">
+                <button id="backButton" class="btn-round btn-outline" style="display: flex; align-items: center; gap: 6px;">
                     <span class="material-symbols-outlined" style="font-size: 18px;">arrow_back</span>
-                    둘러보기로 돌아가기
+                    러브트리 목록으로
                 </button>
             </div>
 
@@ -265,6 +256,8 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="../js/firebase-config.js?v=20260415-6"></script>
+    <script src="../js/shared-header.js?v=20260416-1"></script>
     <script src="../js/auth.js?v=20260416-16"></script>
+    <script>renderSharedHeader();</script>
 </body>
 </html>
