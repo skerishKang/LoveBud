@@ -23,7 +23,6 @@ exports.handler = async (event) => {
 
     const memories = await queryMemories({
       visibility: 'public',
-      parentId: null,  // Only root-level memories (not replies/children)
       limit,
     });
 

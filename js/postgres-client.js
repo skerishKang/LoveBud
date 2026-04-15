@@ -193,6 +193,22 @@
         },
         'getFirstTree'
       );
+    },
+
+    /**
+     * 8. Create a new tree (신규 사용자 첫 트리 생성용)
+     * API 필수 (mock에는 create 기능 없음)
+     */
+    createTree: async (payload) => {
+      try {
+        return await apiFetch('/trees', {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        });
+      } catch (error) {
+        console.error('[apiClient] createTree failed:', error.message);
+        throw error;
+      }
     }
   };
 

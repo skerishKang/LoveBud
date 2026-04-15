@@ -1,11 +1,11 @@
 /**
  * LoveBud - Authentication Module (Firebase Auth)
- * v20260415-11
+ * v20260415-12
  *
  * Auth state observer updates #auth-nav (non-login pages) or
  * #auth-nav-container (login.html) using innerHTML container pattern.
  *
- * Version: ?v=20260415-11
+ * Version: ?v=20260415-12
  */
 
 var EMAIL_AUTH_MODE = 'login';
@@ -44,8 +44,17 @@ function initAuth() {
   window[AUTH_READY_FLAG] = false;
   markAuthLoading();
 
+  // 안전장치: 5초 타임아웃 - Firebase 응답 없을 때 오프라인 모드로 전환
+  var authTimeout = setTimeout(function() {
+    if (!window[AUTH_READY_FLAG]) {
+      console.warn('[auth] Firebase auth timeout - switching to offline mode');
+      initOfflineAuth();
+    }
+  }, 5000);
+
   if (typeof firebase === 'undefined') {
     console.warn('Firebase SDK not loaded. Auth running in offline mode.');
+    clearTimeout(authTimeout);
     initOfflineAuth();
     return;
   }
@@ -54,16 +63,22 @@ function initAuth() {
 
   if (!firebase.apps || !firebase.apps.length) {
     console.error('Firebase not initialized. Auth setup aborted.');
+    clearTimeout(authTimeout);
     initOfflineAuth();
     return;
   }
 
-  if (window[AUTH_INIT_FLAG]) return;
+  if (window[AUTH_INIT_FLAG]) {
+    clearTimeout(authTimeout);
+    return;
+  }
   window[AUTH_INIT_FLAG] = true;
 
   attachDropdownListener();
 
   firebase.auth().onAuthStateChanged(async function (user) {
+    clearTimeout(authTimeout); // 정상 응답 - 타임아웃 취소
+    
     if (user) {
       try {
         if (typeof user.reload === 'function') await user.reload();
@@ -77,8 +92,8 @@ function initAuth() {
       }
     }
     // Auth 상태 확인 완료 후 UI 업데이트 및 표시
-    updateNavUI(user);
     markAuthReady();
+    updateNavUI(user);
 
     if (typeof window.onAuthReady === 'function') {
       window.onAuthReady(user);
@@ -94,8 +109,9 @@ function initAuth() {
 function initOfflineAuth() {
   var isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
   // Offline 모드에서도 ready 상태로 전환 후 UI 표시
-  updateNavUI(isLoggedIn ? { uid: 'offline', email: 'offline@example.com' } : null);
+  // 순서 중요: markAuthReady 먼저, updateNavUI 나중
   markAuthReady();
+  updateNavUI(isLoggedIn ? { uid: 'offline', email: 'offline@example.com' } : null);
 }
 
 // ── Loading State (prevent flash) ────────────────────────────────────────────

@@ -1,24 +1,66 @@
 document.addEventListener('DOMContentLoaded', () => {
     // ── 인증 가드: onAuthReady 콜백 기반 ──
+    // ── 사용자 알림용 토스트 유틸리티 ──
+    const showToast = (message, type = 'info') => {
+        const existing = document.getElementById('editorToast');
+        if (existing) existing.remove();
+        const toast = document.createElement('div');
+        toast.id = 'editorToast';
+        toast.style.cssText = `
+            position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+            background: ${type === 'error' ? '#c62828' : type === 'warn' ? '#ef6c00' : '#2e7d32'};
+            color: white; padding: 12px 24px; border-radius: 8px;
+            font-size: 14px; font-weight: 500; z-index: 9999;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            animation: fadeInUp 0.3s ease;
+        `;
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transition = 'opacity 0.3s';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    };
+
     const startEditor = async () => {
         const canvas = document.getElementById('canvasArea');
         const svg = document.getElementById('canvasSvg');
         const detailPanel = document.getElementById('detailPanel');
         const addBtn = document.getElementById('addMemoryBtn');
 
-        // ── 트리 데이터: API 우선, 실패 시 mock fallback ──
+        // ── 트리 데이터: API 우선, 없으면 생성, 실패 시 mock fallback ──
         let tree = null;
+        let isNewTree = false;
         try {
             if (window.apiClient && window.apiClient.getFirstTree) {
                 const apiTree = await window.apiClient.getFirstTree();
                 if (apiTree) {
                     tree = apiTree;
                     console.log('[editor] API tree loaded');
+                } else {
+                    // API는 성공했지만 트리가 없음 → 신규 사용자, 기본 트리 생성
+                    console.log('[editor] No tree found, creating default tree...');
+                    if (window.apiClient.createTree) {
+                        const newTree = await window.apiClient.createTree({
+                            title: '나의 첫 러브트리',
+                            visibility: 'private'
+                        });
+                        tree = newTree;
+                        isNewTree = true;
+                        console.log('[editor] Default tree created:', newTree);
+                    }
                 }
             }
         } catch (e) {
-            console.warn('[editor] API getFirstTree failed, fallback to mock:', e.message);
+            console.warn('[editor] API tree failed, fallback to mock:', e.message);
+            if (e.message?.includes('401') || e.message?.includes('Authentication')) {
+                showToast('로그인이 필요합니다. 로그인 페이지로 이동합니다.', 'error');
+                setTimeout(() => window.location.href = 'login.html?redirect=editor.html', 2000);
+                return;
+            }
         }
+        // API 실패 시에만 mock fallback
         if (!tree) {
             const trees = typeof getTrees === 'function' ? getTrees() : [];
             tree = trees[0];
@@ -41,6 +83,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (e) {
             console.warn('[editor] API getMemoriesByTree failed, fallback to mock:', e.message);
+            if (e.message?.includes('401') || e.message?.includes('403')) {
+                showToast('데이터를 불러올 수 없습니다. 데모 모드로 전환됩니다.', 'warn');
+            }
         }
         if (memories.length === 0) {
             memories = typeof getMemoriesByTree === 'function' ? getMemoriesByTree(treeId) : [];
@@ -262,6 +307,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const titleInput = document.getElementById('memoryTitleInput');
         const memoInput = document.getElementById('memoryMemoInput');
         const canvasArea = document.getElementById('canvasArea');
+        const cancelBtn = document.getElementById('cancelAddMemory');
+        const confirmBtn = document.getElementById('confirmAddMemory');
 
         // 포커스 트랩: 폼 내 순환 포커스 유지
         const formInputs = [urlInput, titleInput, memoInput];
@@ -380,6 +427,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } catch (e) {
                 console.warn('[editor] API createMemory failed, fallback to mock:', e.message);
+                if (e.message?.includes('401') || e.message?.includes('403')) {
+                    showToast('저장 권한이 없습니다. 로컬에만 추가됩니다.', 'warn');
+                } else if (e.message?.includes('400')) {
+                    showToast('입력값을 확인해주세요.', 'error');
+                } else {
+                    showToast('서버 연결 실패. 로컬에만 추가됩니다.', 'warn');
+                }
             }
 
             // API 실패 시 mock fallback - 로컬에만 추가
@@ -466,6 +520,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
         }
+
+        // 미구현 버튼 숨김 처리
+        const hideUnimplementedButtons = () => {
+            const moreBtn = detailPanel.querySelector('.icon-btn');
+            const footerBtn = detailPanel.querySelector('.panel-footer');
+            if (moreBtn) moreBtn.style.display = 'none';
+            if (footerBtn) footerBtn.style.display = 'none';
+        };
+        hideUnimplementedButtons();
 
         initCanvas();
         console.log('[editor] Ready — tree:', treeId, 'memories:', treeMemories().length);

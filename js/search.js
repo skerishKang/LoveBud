@@ -134,20 +134,76 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     // ── 결과 렌더링 ──
-    const populateResults = (results) => {
+    // isDemo: true일 경우 "샘플 데이터" 배지를 표시
+    const populateResults = (results, isDemo = false) => {
         resultsList.innerHTML = '';
+        
+        // 샘플 데이터 배지 (isDemo일 경우 상단에 표시)
+        if (isDemo) {
+            const demoBadge = document.createElement('div');
+            demoBadge.style.cssText = 'background: #fff3cd; border: 1px solid #ffc107; color: #856404; padding: 8px 16px; border-radius: 8px; margin-bottom: 16px; font-size: 12px; text-align: center;';
+            demoBadge.innerHTML = '<span style="font-weight: 700;">⚠️ 샘플 데이터</span> — 실제 사용자 콘텐츠가 아닌 MVP 데모용 예시입니다';
+            resultsList.appendChild(demoBadge);
+        }
+        
         resultsList.classList.add('results-fade-in');
         // 애니메이션 후 클래스 제거 (재사용 가능하게)
         setTimeout(() => resultsList.classList.remove('results-fade-in'), 350);
 
         if (results.length === 0) {
-            resultsList.innerHTML = `
-                <div style="text-align: center; padding: 80px 24px; color: var(--on-surface-variant);">
-                    <span class="material-symbols-outlined" style="font-size: 48px; opacity: 0.3; margin-bottom: 16px; display: block;">search_off</span>
-                    <p style="font-size: 1.1rem; font-weight: 700; margin-bottom: 8px;">아직 이런 기억은 없네요</p>
-                    <p style="font-size: 0.9rem; opacity: 0.7;">다른 키워드나 카테고리로 찾아보세요</p>
-                </div>
-            `;
+            // API는 성공했지만 데이터가 없는 경우 (빈 DB)
+            const isEmptyApi = loadError === null && allMemories.length === 0;
+            
+            if (isEmptyApi) {
+                // 빈 데이터베이스 상태 - 사용자 참여 유도
+                resultsList.innerHTML = `
+                    <div style="text-align: center; padding: 60px 24px; color: var(--on-surface-variant);">
+                        <span class="material-symbols-outlined" style="font-size: 56px; color: var(--primary); opacity: 0.6; margin-bottom: 20px; display: block;">forest</span>
+                        <p style="font-size: 1.25rem; font-weight: 800; margin-bottom: 12px; color: var(--on-surface);">러브트리가 자라나는 중입니다</p>
+                        <p style="font-size: 0.95rem; opacity: 0.8; margin-bottom: 24px; line-height: 1.6;">
+                            아직 공개된 기억이 없어요.<br>
+                            첫 번째 기억을 기록하고 나무를 키워보세요!
+                        </p>
+                        <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+                            <a href="editor.html" class="btn-round btn-primary" style="text-decoration: none; font-size: 14px; padding: 10px 20px;">
+                                <span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle; margin-right: 4px;">add_circle</span>
+                                첫 기억 기록하기
+                            </a>
+                            <button id="loadDemoData" class="btn-round btn-outline" style="font-size: 14px; padding: 10px 20px;">
+                                <span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle; margin-right: 4px;">play_circle</span>
+                                데모 데이터 보기
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                // 데모 데이터 버튼 이벤트 리스너
+                const demoBtn = document.getElementById('loadDemoData');
+                if (demoBtn) {
+                    demoBtn.addEventListener('click', () => {
+                        // mock 데이터로 폴백
+                        if (typeof memories !== 'undefined') {
+                            allMemories = memories.filter(m => m.id !== 'root' && m.visibility === 'public');
+                            populateResults(allMemories, /* isDemo */ true);
+                            // 검색/필터 UI 초기화
+                            currentQuery = '';
+                            currentCategory = '전체';
+                            searchInput.value = '';
+                            tagChips.forEach(c => c.classList.remove('active'));
+                            document.querySelector('.tag-chip[data-category="전체"]')?.classList.add('active');
+                        }
+                    });
+                }
+            } else {
+                // 필터 결과 없음
+                resultsList.innerHTML = `
+                    <div style="text-align: center; padding: 80px 24px; color: var(--on-surface-variant);">
+                        <span class="material-symbols-outlined" style="font-size: 48px; opacity: 0.3; margin-bottom: 16px; display: block;">search_off</span>
+                        <p style="font-size: 1.1rem; font-weight: 700; margin-bottom: 8px;">아직 이런 기억은 없네요</p>
+                        <p style="font-size: 0.9rem; opacity: 0.7;">다른 키워드나 카테고리로 찾아보세요</p>
+                    </div>
+                `;
+            }
             return;
         }
 

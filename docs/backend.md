@@ -104,11 +104,20 @@ Netlify auto-installs `package.json` dependencies during build.
 
 **Not yet implemented:**
 - Neon PostgreSQL actual database + schema run
-- detail.html, editor.html API 연결 (postgres-client.js는 준비됨)
+- detail.html API 연결 (postgres-client.js는 준비됨)
+- editor.html API 연결 — createMemory, getMemoriesByTree 구현 완료
 
 **Next step:**
 1. Run `001_initial_schema.sql` against Neon PostgreSQL
-2. Update Netlify environment variables (`FIREBASE_SERVICE_ACCOUNT_JSON`, `NETLIFY_DATABASE_URL`)
+2. Run `002_seed_demo_data.sql` for demo content (optional but recommended for public browsing)
+3. Update Netlify environment variables (`FIREBASE_SERVICE_ACCOUNT_JSON`, `NETLIFY_DATABASE_URL`)
+
+**시드 데이터 (Seed Data):**
+- `002_seed_demo_data.sql` — 검증된 공개 콘텐츠 기반 데모 데이터
+- 2개 public trees (BTS, Hearts2Hearts 샘플)
+- 9개 public memories (공식 YouTube 채널 기반)
+- `ON CONFLICT` 구문으로 재실행 시 업데이트 가능
+- Neon 콘솔 또는 `psql`로 실행: `\i netlify/sql/002_seed_demo_data.sql`
 
 **Detail 화면 API 연결 방법:**
 - `apiClient.getMemory(memoryId)` — GET `/api/memories/:memoryId` 직접 호출
