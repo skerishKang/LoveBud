@@ -56,6 +56,30 @@
         <main class="canvas-area" id="canvasArea">
             <svg class="canvas-svg" id="canvasSvg"></svg>
             <!-- JS dynamic content -->
+
+            <!-- 새 기억 입력 폼 (prompt 대체) -->
+            <div id="addMemoryForm" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 32px; border-radius: 2rem; box-shadow: 0 20px 60px rgba(0,0,0,0.15); border: 1px solid var(--outline-variant); width: 90%; max-width: 420px; z-index: 100;">
+                <h3 class="headline" style="font-size: 1.4rem; margin-bottom: 24px; display: flex; align-items: center; gap: 8px;">
+                    <span class="material-symbols-outlined" style="color: var(--primary);">add_circle</span>
+                    새 기억 추가
+                </h3>
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; font-size: 12px; font-weight: 700; color: var(--on-surface-variant); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">YouTube 링크</label>
+                    <input type="text" id="memoryUrlInput" placeholder="https://www.youtube.com/watch?v=..." style="width: 100%; padding: 12px 16px; border: 1px solid var(--outline-variant); border-radius: 1rem; font-size: 14px; font-family: inherit;">
+                </div>
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; font-size: 12px; font-weight: 700; color: var(--on-surface-variant); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">제목</label>
+                    <input type="text" id="memoryTitleInput" placeholder="이 기억의 제목을 입력하세요" style="width: 100%; padding: 12px 16px; border: 1px solid var(--outline-variant); border-radius: 1rem; font-size: 14px; font-family: inherit;">
+                </div>
+                <div style="margin-bottom: 24px;">
+                    <label style="display: block; font-size: 12px; font-weight: 700; color: var(--on-surface-variant); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">메모 (선택)</label>
+                    <textarea id="memoryMemoInput" placeholder="이 순간의 감정을 남겨보세요..." rows="3" style="width: 100%; padding: 12px 16px; border: 1px solid var(--outline-variant); border-radius: 1rem; font-size: 14px; font-family: inherit; resize: vertical;"></textarea>
+                </div>
+                <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                    <button id="cancelAddMemory" class="btn-round btn-outline" style="padding: 10px 20px; font-size: 13px;">취소</button>
+                    <button id="confirmAddMemory" class="btn-round btn-primary" style="padding: 10px 20px; font-size: 13px;">추가하기</button>
+                </div>
+            </div>
         </main>
 
         <aside class="detail-panel" id="detailPanel">
@@ -99,7 +123,7 @@
 
     <script src="js/mock-data.js?v=20260415-8"></script>
     <script src="js/postgres-client.js?v=20260415-9"></script>
-    <script src="js/editor.js?v=20260415-10"></script>
+    <script src="js/editor.js?v=20260415-11"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="js/firebase-config.js?v=20260415-6"></script>

@@ -8,8 +8,37 @@ document.addEventListener('DOMContentLoaded', async () => {
     const searchInput = document.getElementById('searchInput');
     const tagChips = document.querySelectorAll('.tag-chip');
 
+    // ── 초기 로딩 상태 표시 ──
+    const showLoading = () => {
+        resultsList.innerHTML = `
+            <div style="text-align: center; padding: 80px 24px; color: var(--on-surface-variant);">
+                <span class="material-symbols-outlined" style="font-size: 48px; opacity: 0.4; margin-bottom: 16px; display: block; animation: spin 1s linear infinite;">sync</span>
+                <p style="font-size: 1.1rem; font-weight: 500;">기억들을 불러오는 중...</p>
+            </div>
+        `;
+    };
+
+    // 로딩 및 페이드 인 애니메이션 CSS (없으면 추가)
+    if (!document.getElementById('search-anim-style')) {
+        const style = document.createElement('style');
+        style.id = 'search-anim-style';
+        style.textContent = `
+            @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+            @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+            .results-fade-in { animation: fadeIn 0.3s ease-out; }
+        `;
+        document.head.appendChild(style);
+    }
+
+    showLoading();
+
     // ── 데이터 소스: API 우선, 실패 시 mock fallback ──
+    // 최소 로딩 시간 (깜빡임 방지)
+    const MIN_LOADING_TIME = 400;
+    const startTime = Date.now();
+
     let allMemories = [];
+    let loadError = null;
     try {
         // API 우선 시도
         if (window.apiClient && window.apiClient.getCommunityMemories) {
@@ -26,10 +55,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     } catch (error) {
         // API 실패 시 mock-data.js fallback
+        loadError = error;
         console.warn('[search] API 실패, mock fallback:', error.message);
         if (typeof memories !== 'undefined') {
             allMemories = memories.filter(m => m.id !== 'root');
         }
+    }
+
+    // 최소 로딩 시간 보장 (깜빡임 방지)
+    const elapsed = Date.now() - startTime;
+    if (elapsed < MIN_LOADING_TIME) {
+        await new Promise(resolve => setTimeout(resolve, MIN_LOADING_TIME - elapsed));
     }
 
     // ── 현재 필터/검색 상태 ──
@@ -100,6 +136,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ── 결과 렌더링 ──
     const populateResults = (results) => {
         resultsList.innerHTML = '';
+        resultsList.classList.add('results-fade-in');
+        // 애니메이션 후 클래스 제거 (재사용 가능하게)
+        setTimeout(() => resultsList.classList.remove('results-fade-in'), 350);
 
         if (results.length === 0) {
             resultsList.innerHTML = `

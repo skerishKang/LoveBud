@@ -133,6 +133,18 @@ body {
     box-shadow: 0 25px 50px rgba(144, 73, 81, 0.15);
 }
 
+/* 새 노드 추가 피드백 애니메이션 */
+.new-node-highlight .node-card {
+    animation: newNodePulse 1.5s ease-in-out 3;
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 4px rgba(144, 73, 81, 0.3), 0 25px 50px rgba(144, 73, 81, 0.2) !important;
+}
+
+@keyframes newNodePulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+}
+
 /* Detail Panel Refinement */
 .detail-panel {
     width: var(--detail-panel-width);

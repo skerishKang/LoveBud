@@ -251,19 +251,112 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
-        const addMemoryFromPrompt = async () => {
-            const url = prompt('YouTube 링크를 입력하세요:\n(예: https://www.youtube.com/watch?v=dQw4w9WgXcQ)');
-            if (!url) return;
-            const match = url.match(/(?:v=|\/)([0-9A-Za-z_-]{11})/);
-            if (!match) { alert('유효한 YouTube 링크가 아닙니다.'); return; }
+        // ── 폼 상태 추적 ──
+        let isFormOpen = false;
+        let escHandler = null;
+        let outsideClickHandler = null;
+
+        // ── 새 기억 추가 폼 제어 ──
+        const addMemoryForm = document.getElementById('addMemoryForm');
+        const urlInput = document.getElementById('memoryUrlInput');
+        const titleInput = document.getElementById('memoryTitleInput');
+        const memoInput = document.getElementById('memoryMemoInput');
+        const canvasArea = document.getElementById('canvasArea');
+
+        // 포커스 트랩: 폼 내 순환 포커스 유지
+        const formInputs = [urlInput, titleInput, memoInput];
+        const focusTrap = (e) => {
+            if (!isFormOpen) return;
+            if (e.key !== 'Tab') return;
+            
+            const focused = document.activeElement;
+            const lastInput = formInputs[formInputs.length - 1];
+            const firstInput = formInputs[0];
+            
+            if (e.shiftKey && focused === firstInput) {
+                e.preventDefault();
+                lastInput.focus();
+            } else if (!e.shiftKey && focused === lastInput) {
+                e.preventDefault();
+                firstInput.focus();
+            }
+        };
+
+        const showAddMemoryForm = () => {
+            urlInput.value = '';
+            titleInput.value = '';
+            memoInput.value = '';
+            addMemoryForm.style.display = 'block';
+            isFormOpen = true;
+            
+            // 포커스 트랩 활성화
+            document.addEventListener('keydown', focusTrap);
+            urlInput.focus();
+
+            // Esc 키 핸들러
+            escHandler = (e) => {
+                if (e.key === 'Escape') {
+                    e.stopPropagation();
+                    hideAddMemoryForm();
+                }
+            };
+            document.addEventListener('keydown', escHandler);
+
+            // 외부 클릭 핸들러 (캡처링으로 폼 외부 클릭 감지)
+            outsideClickHandler = (e) => {
+                const target = e.target;
+                // 폼 내부 클릭은 무시
+                if (addMemoryForm.contains(target)) return;
+                // 버튼 클릭 무시
+                if (target.closest('#addMemoryBtn')) return;
+                hideAddMemoryForm();
+            };
+            // 지연 등록: 현재 클릭 이벤트 방해 방지
+            setTimeout(() => {
+                document.addEventListener('click', outsideClickHandler, true);
+            }, 0);
+        };
+
+        const hideAddMemoryForm = () => {
+            addMemoryForm.style.display = 'none';
+            isFormOpen = false;
+            
+            // 이벤트 핸들러 정리
+            document.removeEventListener('keydown', focusTrap);
+            if (escHandler) {
+                document.removeEventListener('keydown', escHandler);
+                escHandler = null;
+            }
+            if (outsideClickHandler) {
+                document.removeEventListener('click', outsideClickHandler, true);
+                outsideClickHandler = null;
+            }
+        };
+
+        const addMemoryFromForm = async () => {
+            const url = urlInput.value.trim();
+            if (!url) {
+                alert('YouTube 링크를 입력해주세요.');
+                return;
+            }
+
+            const match = url.match(/(?:v=|\/|youtu\.be\/)([0-9A-Za-z_-]{11})/);
+            if (!match) {
+                alert('유효한 YouTube 링크가 아닙니다.\n예: https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+                return;
+            }
+
             const videoId = match[1];
             const today = new Date();
             const dateStr = `${today.getFullYear()}.${String(today.getMonth()+1).padStart(2,'0')}.${String(today.getDate()).padStart(2,'0')}`;
 
+            // 기본 제목 자동 생성 (입력 없을 시)
+            const title = titleInput.value.trim() || `새로운 기억 ${dateStr}`;
+
             const newMemoryData = {
                 treeId: treeId,
-                title: prompt('이 기억의 제목은?', '새로운 기억') || '새로운 기억',
-                memo: prompt('이 기억의 메모를 남겨보세요:', '') || '',
+                title: title,
+                memo: memoInput.value.trim() || '',
                 timestamp: dateStr,
                 sourceUrl: `https://www.youtube.com/embed/${videoId}`,
                 sourceType: 'youtube',
@@ -273,6 +366,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 artist: '',
                 source: 'YouTube'
             };
+
+            hideAddMemoryForm();
 
             // ── API 우선 생성 시도 ──
             let createdMemory = null;
@@ -327,10 +422,51 @@ document.addEventListener('DOMContentLoaded', () => {
             if (parent) drawBranch(calcPosition(parent), calcPosition(normalizedMemory));
 
             const el = document.querySelector(`.memory-node[data-memory-id="${normalizedMemory.id}"]`);
-            if (el) selectNode(el, normalizedMemory);
+            if (el) {
+                selectNode(el, normalizedMemory);
+                
+                // 새 노드 피드백: 선택 강조 + 오토스크롤
+                el.classList.add('new-node-highlight');
+                setTimeout(() => el.classList.remove('new-node-highlight'), 2000);
+                
+                // 오토스크롤: 노드 위치로 smooth scroll
+                const nodeRect = el.getBoundingClientRect();
+                const canvasRect = canvasArea.getBoundingClientRect();
+                const scrollX = el.offsetLeft - canvasRect.width / 2 + nodeRect.width / 2;
+                const scrollY = el.offsetTop - canvasRect.height / 2 + nodeRect.height / 2;
+                canvasArea.scrollTo({
+                    left: Math.max(0, scrollX),
+                    top: Math.max(0, scrollY),
+                    behavior: 'smooth'
+                });
+            }
         };
 
-        if (addBtn) addBtn.addEventListener('click', addMemoryFromPrompt);
+        // 폼 버튼 이벤트 리스너
+        if (addBtn) addBtn.addEventListener('click', showAddMemoryForm);
+        if (cancelBtn) cancelBtn.addEventListener('click', hideAddMemoryForm);
+        if (confirmBtn) confirmBtn.addEventListener('click', addMemoryFromForm);
+
+        // Enter 키로 폼 제출
+        if (urlInput) {
+            urlInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') titleInput.focus();
+            });
+        }
+        if (titleInput) {
+            titleInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') memoInput.focus();
+            });
+        }
+        if (memoInput) {
+            memoInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    addMemoryFromForm();
+                }
+            });
+        }
+
         initCanvas();
         console.log('[editor] Ready — tree:', treeId, 'memories:', treeMemories().length);
     };

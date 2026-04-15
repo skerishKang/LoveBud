@@ -34,7 +34,28 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
     if (!memory) {
-        console.warn('Memory data not found. Detail page cannot initialize.');
+        // ── memory 조회 실패 시 fallback UI 표시 ──
+        console.warn('[detail] Memory not found, showing fallback UI');
+        const fallbackHTML = `
+            <div style="max-width: 600px; margin: 80px auto; text-align: center; padding: 48px;">
+                <span class="material-symbols-outlined" style="font-size: 64px; color: var(--on-surface-variant); opacity: 0.5; margin-bottom: 24px; display: block;">sentiment_dissatisfied</span>
+                <h2 class="headline" style="font-size: 1.8rem; margin-bottom: 16px; color: var(--on-surface);">기억을 찾지 못했어요</h2>
+                <p style="color: var(--on-surface-variant); margin-bottom: 32px; line-height: 1.6;">
+                    요청하신 기억이 존재하지 않거나<br>접근할 수 없는 상태입니다.
+                </p>
+                <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+                    <a href="index.html" class="btn-round btn-outline" style="text-decoration: none;">소개 보기</a>
+                    <a href="search.html" class="btn-round btn-outline" style="text-decoration: none;">둘러보기</a>
+                    <a href="editor.html" class="btn-round btn-primary" style="text-decoration: none;">내 러브트리</a>
+                </div>
+            </div>
+        `;
+        // 메인 콘텐츠 영역을 fallback으로 교체
+        const mainLayout = document.querySelector('.detail-layout');
+        if (mainLayout) {
+            mainLayout.innerHTML = fallbackHTML;
+            mainLayout.style.display = 'block';
+        }
         return;
     }
 
