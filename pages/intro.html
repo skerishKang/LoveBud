@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>소개 | Lovetree</title>
+  <link rel="stylesheet" href="../css/global.css?v=20260415-10">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
+  <style>
+    .intro-wrapper {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .intro-hero {
+      padding: 100px 48px 60px;
+      max-width: 900px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .intro-hero h1 {
+      font-size: 2.8rem;
+      font-weight: 900;
+      color: var(--on-surface);
+      margin-bottom: 1.5rem;
+      line-height: 1.2;
+    }
+
+    .intro-hero h1 span {
+      color: var(--primary);
+    }
+
+    .intro-hero .lead {
+      font-size: 1.2rem;
+      color: var(--on-surface-variant);
+      line-height: 1.7;
+      margin-bottom: 2rem;
+    }
+
+    .intro-section {
+      padding: 60px 48px;
+      max-width: 900px;
+      margin: 0 auto;
+      width: 100%;
+      border-top: 1px solid var(--outline-variant);
+    }
+
+    .intro-section h2 {
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: var(--on-surface);
+      margin-bottom: 1.5rem;
+    }
+
+    .intro-section p {
+      font-size: 1.05rem;
+      color: var(--on-surface-variant);
+      line-height: 1.7;
+      margin-bottom: 1rem;
+    }
+
+    .how-to-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+      margin-top: 2rem;
+    }
+
+    .how-to-card {
+      background: white;
+      border-radius: 1.5rem;
+      padding: 28px;
+      border: 1px solid var(--outline-variant);
+      transition: all 0.3s;
+    }
+
+    .how-to-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 32px rgba(144, 73, 81, 0.08);
+    }
+
+    .how-to-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+      background: var(--surface-container-low);
+    }
+
+    .how-to-icon .material-symbols-outlined {
+      font-size: 26px;
+      color: var(--primary);
+    }
+
+    .how-to-card h3 {
+      font-size: 1rem;
+      font-weight: 800;
+      color: var(--on-surface);
+      margin-bottom: 8px;
+    }
+
+    .how-to-card p {
+      font-size: 0.88rem;
+      color: var(--on-surface-variant);
+      line-height: 1.5;
+      margin: 0;
+    }
+
+    .value-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+      margin-top: 1.5rem;
+    }
+
+    .value-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 20px;
+      background: white;
+      border-radius: 1.2rem;
+      border: 1px solid var(--outline-variant);
+    }
+
+    .value-item .material-symbols-outlined {
+      font-size: 24px;
+      color: var(--primary);
+      flex-shrink: 0;
+    }
+
+    .value-item h4 {
+      font-size: 0.95rem;
+      font-weight: 800;
+      color: var(--on-surface);
+      margin-bottom: 4px;
+    }
+
+    .value-item p {
+      font-size: 0.85rem;
+      color: var(--on-surface-variant);
+      line-height: 1.5;
+      margin: 0;
+    }
+
+    .cta-section {
+      padding: 60px 48px 80px;
+      max-width: 900px;
+      margin: 0 auto;
+      width: 100%;
+      text-align: center;
+      border-top: 1px solid var(--outline-variant);
+    }
+
+    .cta-section h2 {
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: var(--on-surface);
+      margin-bottom: 1rem;
+    }
+
+    .cta-section p {
+      font-size: 1.05rem;
+      color: var(--on-surface-variant);
+      margin-bottom: 2rem;
+    }
+
+    .cta-buttons {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+    }
+
+    @media (max-width: 768px) {
+      .intro-hero, .intro-section, .cta-section {
+        padding: 80px 24px 40px;
+      }
+
+      .intro-hero h1 {
+        font-size: 2rem;
+      }
+
+      .how-to-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .value-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .cta-buttons {
+        flex-direction: column;
+        align-items: center;
+      }
+    }
+  </style>
+</head>
+<body class="bokeh-bg">
+  <div class="noise-overlay"></div>
+
+  <div class="intro-wrapper">
+    <header class="nav-bar">
+      <div class="headline" style="font-size: 1.5rem; font-weight: 900; color: var(--on-surface); letter-spacing: -0.04em; cursor: pointer;" onclick="location.href='../index.html'">Lovetree</div>
+      <nav class="main-nav">
+        <div class="nav-links">
+          <a href="../index.html">첫화면</a>
+          <a href="intro.html" class="active">소개</a>
+          <a href="search.html">둘러보기</a>
+          <a href="my-trees.html">내 러브트리</a>
+        </div>
+        <div style="display: flex; align-items: center; gap: 20px;">
+          <div class="lang-toggle">
+            <button class="lang-btn active">KR</button>
+            <button class="lang-btn">EN</button>
+          </div>
+          <div id="auth-nav" style="min-width:100px;height:36px;display:flex;align-items:center;justify-content:flex-end;">
+            <span class="material-symbols-outlined" style="color:var(--on-surface-variant);animation:spin 1s linear infinite;font-size:20px;">progress_activity</span>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main>
+      <!-- Hero -->
+      <section class="intro-hero">
+        <h1>사랑하는 것들의<br><span>성장 과정을 기록하다</span></h1>
+        <p class="lead">
+          Lovetree는 좋아하는 대상의 입덕 순간부터 지금까지, 당신이 경험한 감정의 전 과정을 하나의 나무로 기록하는 공간입니다. 벚꽃이 피고结実하는 것처럼, 당신의 팬심도 하나의 나무로 자라납니다.
+        </p>
+        <div style="display: flex; gap: 16px;">
+          <a href="my-trees.html" class="btn-round btn-primary" style="text-decoration: none;">내 러브트리 시작하기</a>
+          <a href="search.html" class="btn-round btn-outline" style="text-decoration: none;">다른 트리 둘러보기</a>
+        </div>
+      </section>
+
+      <!-- What is LoveTree -->
+      <section class="intro-section">
+        <h2>LoveTree란?</h2>
+        <p>
+          LoveTree는 특정 인물이나 그룹(주로 가수, 배우, 캐릭터 등)에 대한 감정과 기억을 시각적으로 기록하는 팬 다이어리 서비스입니다. 단순한 텍스트 일기가 아니라, 당신이 좋아하는 영상/음악의 한 장면을 기억에 남기고, 그 감정의 연결 고리를 나무 모양으로 시각화합니다.
+        </p>
+        <p>
+          각 기억은 "입덕 순간", "최애 직캠", "성장 메모" 등 감정 태그와 함께 노드에 저장됩니다. 시간이 지나도 다시あの頃に戻れる — LoveTree는 그런 공간입니다.
+        </p>
+      </section>
+
+      <!-- How to Use -->
+      <section class="intro-section">
+        <h2>어떻게 쓰나요?</h2>
+        <p>세 가지 단계로 당신만의 LoveTree를 완성하세요.</p>
+        <div class="how-to-grid">
+          <div class="how-to-card">
+            <div class="how-to-icon">
+              <span class="material-symbols-outlined">play_circle</span>
+            </div>
+            <h3>영상 추가</h3>
+            <p>YouTube 링크를 붙여넣으면 자동으로 썸네일을 가져와 노드에 저장됩니다. 가장 좋아하는 장면 한 컷을 골라보세요.</p>
+          </div>
+          <div class="how-to-card">
+            <div class="how-to-icon">
+              <span class="material-symbols-outlined">edit_note</span>
+            </div>
+            <h3>감정 메모</h3>
+            <p>그 순간 느꼈던 감정을 태그와 함께 메모로 남기세요. 입덕, 설렘, 감사, 그리움 — 모든 감정이 모여 나무가 됩니다.</p>
+          </div>
+          <div class="how-to-card">
+            <div class="how-to-icon">
+              <span class="material-symbols-outlined">account_tree</span>
+            </div>
+            <h3>트리 확인</h3>
+            <p>편집 화면에서 기억들이树枝처럼 연결된 당신만의 LoveTree를 확인하고, 완성되면 둘러보기에 공유하세요.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Value -->
+      <section class="intro-section">
+        <h2>이건 어떤 공간인가요?</h2>
+        <div class="value-grid">
+          <div class="value-item">
+            <span class="material-symbols-outlined">favorite</span>
+            <div>
+              <h4>감정의 아카이브</h4>
+              <p>단순한 기록이 아니라, 특정 시점에 느낀 감정의 결을 남기는 공간입니다.</p>
+            </div>
+          </div>
+          <div class="value-item">
+            <span class="material-symbols-outlined">psychology</span>
+            <div>
+              <h4>성장 과정可视化</h4>
+              <p>얼마나 좋아졌는지, 어떤 감정을 지나왔는지 한눈에 볼 수 있습니다.</p>
+            </div>
+          </div>
+          <div class="value-item">
+            <span class="material-symbols-outlined">group</span>
+            <div>
+              <h4>함께 나누는 기쁨</h4>
+              <p>완성된 LoveTree를 둘러보기에 올리면, 같은 취향의 다른 사람과 감정을 나눌 수 있습니다.</p>
+            </div>
+          </div>
+          <div class="value-item">
+            <span class="material-symbols-outlined">auto_awesome</span>
+            <div>
+              <h4>보물 같은 추억</h4>
+              <p>시간이 지나도あの頃の 감정이 생생하게 남아 있습니다.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- CTA -->
+      <section class="cta-section">
+        <h2>이제 당신의 LoveTree를 시작하세요</h2>
+        <p>좋아하는 것의 첫 번째 기억을 기록하는 그 순간을 놓치지 마세요.</p>
+        <div class="cta-buttons">
+          <a href="my-trees.html" class="btn-round btn-primary" style="text-decoration: none; padding: 14px 32px;">내 러브트리 시작하기</a>
+          <a href="search.html" class="btn-round btn-outline" style="text-decoration: none; padding: 14px 32px;">둘러보기</a>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="../js/firebase-config.js?v=20260415-5"></script>
+  <script src="../js/auth.js?v=20260416-16"></script>
+</body>
+</html>

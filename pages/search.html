@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>둘러보기 | Lovetree</title>
+    <link rel="stylesheet" href="../css/global.css?v=20260415-10">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
+    <style>
+        .search-container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 60px 48px;
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 64px;
+        }
+
+        .search-input-wrapper {
+            position: relative;
+            margin-bottom: 32px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 28px 28px 28px 68px;
+            border-radius: 1.5rem;
+            border: 1px solid var(--outline-variant);
+            background: white;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.02);
+            font-size: 1.25rem;
+            font-family: var(--font-body);
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .search-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 15px 40px rgba(141, 71, 79, 0.08);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 28px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--primary);
+            font-size: 28px;
+        }
+
+        .tag-chip {
+            padding: 8px 18px;
+            border-radius: 99px;
+            background: var(--surface-container-low);
+            color: var(--on-surface-variant);
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tag-chip.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        /* Tree Card Styles */
+        .tree-card {
+            display: flex;
+            flex-direction: column;
+            padding: 28px;
+            background: white;
+            border-radius: 2rem;
+            border: 1px solid rgba(0,0,0,0.03);
+            margin-bottom: 24px;
+            transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+            cursor: pointer;
+        }
+
+        .tree-card:hover {
+            transform: scale(1.02);
+            border-color: var(--outline-variant);
+            box-shadow: var(--shadow-whisper);
+        }
+
+        .tree-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .tree-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, var(--primary-soft) 0%, var(--accent-rose) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+        }
+
+        .tree-title-group {
+            flex: 1;
+        }
+
+        .tree-title {
+            font-size: 1.3rem;
+            font-weight: 800;
+            margin-bottom: 4px;
+            color: var(--on-surface);
+        }
+
+        .tree-subtitle {
+            font-size: 0.85rem;
+            color: var(--on-surface-variant);
+        }
+
+        .tree-path-preview {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 16px;
+            padding: 16px;
+            background: var(--surface-container-low);
+            border-radius: 1rem;
+        }
+
+        .path-node {
+            width: 48px;
+            height: 48px;
+            border-radius: 8px;
+            overflow: hidden;
+            flex-shrink: 0;
+            border: 2px solid white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .path-node img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .path-arrow {
+            color: var(--on-surface-variant);
+            opacity: 0.4;
+            font-size: 20px;
+        }
+
+        .path-more {
+            width: 48px;
+            height: 48px;
+            border-radius: 8px;
+            background: var(--surface-container);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--on-surface-variant);
+            flex-shrink: 0;
+        }
+
+        .tree-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            color: var(--on-surface-variant);
+        }
+
+        .tree-stats {
+            display: flex;
+            gap: 16px;
+        }
+
+        .tree-emotions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .emotion-tag {
+            padding: 4px 10px;
+            border-radius: 99px;
+            background: var(--surface-container-low);
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--on-surface-variant);
+        }
+
+        .result-card {
+            display: flex;
+            gap: 28px;
+            padding: 24px;
+            background: white;
+            border-radius: 2rem;
+            border: 1px solid rgba(0,0,0,0.03);
+            margin-bottom: 24px;
+            transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+            cursor: pointer;
+        }
+
+        .result-card:hover {
+            transform: scale(1.02);
+            border-color: var(--outline-variant);
+            box-shadow: var(--shadow-whisper);
+        }
+
+        .thumbnail-wrapper {
+            width: 240px;
+            height: 140px;
+            border-radius: 1rem;
+            overflow: hidden;
+            background: #000;
+        }
+
+        .thumbnail-wrapper img {
+            width: 100%; height: 100%;
+            object-fit: cover;
+        }
+
+        .preview-sidebar {
+            position: sticky;
+            top: 120px;
+            height: fit-content;
+            background: white;
+            padding: 40px;
+            border-radius: 2.5rem;
+            border: 1px solid var(--outline-variant);
+            box-shadow: var(--shadow-whisper);
+        }
+
+        .video-container {
+            width: 100%;
+            aspect-ratio: 16/9;
+            background: #000;
+            border-radius: 1.2rem;
+            overflow: hidden;
+            margin-bottom: 24px;
+        }
+
+        /* Tablet and below */
+        @media (max-width: 1024px) {
+            .search-container {
+                grid-template-columns: 1fr;
+                gap: 48px;
+                padding: 40px 24px;
+            }
+
+            .preview-sidebar {
+                position: static;
+            }
+
+            .thumbnail-wrapper {
+                width: 180px;
+                height: 120px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .search-container {
+                padding: 24px 16px;
+                gap: 32px;
+            }
+
+            .search-input {
+                font-size: 1rem;
+                padding: 20px 20px 20px 56px;
+            }
+
+            .search-icon {
+                font-size: 24px;
+                left: 20px;
+            }
+
+            .result-card {
+                padding: 16px;
+                gap: 16px;
+            }
+
+            .thumbnail-wrapper {
+                width: 140px;
+                height: 100px;
+            }
+
+            .preview-sidebar {
+                padding: 24px;
+                border-radius: 1.5rem;
+            }
+
+            .video-container {
+                border-radius: 1rem;
+            }
+
+            .result-card h3 {
+                font-size: 1.1rem !important;
+            }
+
+            .tag-chip {
+                font-size: 12px;
+                padding: 6px 14px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .thumbnail-wrapper {
+                width: 100px;
+                height: 75px;
+            }
+
+            .result-card {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body class="paper-grain">
+    <div class="noise-overlay"></div>
+    
+    <header class="nav-bar">
+        <div class="headline" style="font-size: 1.5rem; font-weight: 900; color: var(--on-surface); letter-spacing: -0.04em; cursor: pointer;" onclick="location.href='../index.html'">Lovetree</div>
+        
+<nav class="main-nav">
+      <div class="nav-links">
+        <a href="../index.html">첫화면</a>
+        <a href="intro.html">소개</a>
+        <a href="search.html" class="active">둘러보기</a>
+        <a href="my-trees.html">내 러브트리</a>
+      </div>
+
+            <div style="display: flex; align-items: center; gap: 20px;">
+                <div class="lang-toggle">
+                    <button class="lang-btn active">KR</button>
+                    <button class="lang-btn">EN</button>
+                </div>
+                <div id="auth-nav"><a href="login.html" class="btn-round btn-outline" style="text-decoration: none; padding: 8px 20px; font-size: 14px;">로그인</a></div>
+            </div>
+        </nav>
+    </header>
+
+    <main class="search-container">
+        <section>
+            <h2 class="headline" style="font-size: 3rem; margin-bottom: 0.5rem;">러브트리 감상하기</h2>
+            <p style="color: var(--on-surface-variant); margin-bottom: 40px; font-size: 1.1rem; font-weight: 400;">
+                누군가의 입덕 순간부터 지금까지, 어떤 감정들이 쌓여갔을까요?<br>
+                다른 사람들이 완성한 사랑의 경로를 둘러보세요.
+            </p>
+
+            <div class="search-input-wrapper">
+                <span class="material-symbols-outlined search-icon">search</span>
+                <input type="text" id="searchInput" class="search-input" placeholder="예: 아티스트명 · 러브트리 주제 · 감정 태그" required>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-bottom: 48px;">
+                <span class="tag-chip active" data-category="전체">전체 경로</span>
+                <span class="tag-chip" data-category="입덕">입덕 순간</span>
+                <span class="tag-chip" data-category="성장">성장 과정</span>
+                <span class="tag-chip" data-category="최애">최애 확정</span>
+            </div>
+
+            <div id="resultsList">
+                <!-- Populated by JS -->
+            </div>
+        </section>
+
+        <aside class="preview-sidebar" id="previewSidebar">
+            <h3 class="headline" style="font-size: 1.5rem; margin-bottom: 24px;">러브트리 미리보기</h3>
+                <div id="previewVideoContainer" class="video-container">
+                <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:#999; font-size: 14px;">
+                     트리를 선택하여 감상하기
+                </div>
+            </div>
+            <div id="previewDetails">
+                <h4 id="previewTitle" class="headline" style="font-size: 1.25rem; margin-bottom: 8px; font-weight: 800;">---</h4>
+                <p id="previewDesc" style="font-style: italic; color: var(--on-surface-variant); margin-bottom: 16px; font-size: 14px;">---</p>
+                <div id="previewTreeStats" style="display: flex; gap: 16px; margin-bottom: 24px; font-size: 12px; color: var(--on-surface-variant);">
+                    <span><span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle;">account_tree</span> <span id="previewMemoriesCount">-</span>개 순간</span>
+                    <span><span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle;">schedule</span> <span id="previewTreeDuration">-</span></span>
+                </div>
+                <div style="padding-top: 24px; border-top: 1px solid var(--outline-variant);">
+                    <div style="font-size: 10px; font-weight: 900; color: var(--primary); margin-bottom: 16px; letter-spacing: 2px;">대표 감정 태그</div>
+                    <div id="previewEmotionTags" style="display: flex; flex-wrap: wrap; gap: 8px;">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <script src="../js/mock-data.js?v=20260415-8"></script>
+    <script src="../js/postgres-client.js?v=20260415-10"></script>
+    <script src="../js/search.js?v=20260415-12"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="../js/firebase-config.js?v=20260415-6"></script>
+    <script src="../js/auth.js?v=20260416-16"></script>
+</body>
+</html>
