@@ -7,7 +7,7 @@
  */
 const { requireUser } = require('./_lib/auth');
 const { ok, noContent, httpError, handleError } = require('./_lib/http');
-const { getMemory, updateMemory, deleteMemory } = require('./_lib/doc-store');
+const { getMemory, updateMemory, deleteMemory, getTree } = require('./_lib/doc-store');
 
 exports.handler = async (event) => {
   const requestOrigin = event.headers?.origin || event.headers?.Origin || '';
@@ -29,13 +29,23 @@ exports.handler = async (event) => {
     const existing = await getMemory(memoryId);
     if (!existing) throw httpError(404, 'Memory not found');
 
-    // Ownership check
-    // TODO: load tree.owner_id and compare with user.uid
-    //       For now, any authenticated user can modify — tighten in next iteration.
+    // Ownership check: memory가 속한 tree의 owner 확인
+    const tree = await getTree(existing.data.tree_id);
+    const isOwner = tree && tree.data.owner_id === user.uid;
 
     // ── GET ─────────────────────────────────────────────────────────────────
+    // GET: private memory는 owner만, public memory는 anyone (auth required)
     if (event.httpMethod === 'GET') {
+      const isPublic = existing.data.visibility === 'public';
+      if (!isPublic && !isOwner) {
+        throw httpError(403, 'Access denied: private memory');
+      }
       return ok(existing, { 'Access-Control-Allow-Origin': '*' });
+    }
+
+    // PATCH/DELETE: owner only
+    if (!isOwner) {
+      throw httpError(403, 'Access denied: not your memory');
     }
 
     // ── PATCH ───────────────────────────────────────────────────────────────

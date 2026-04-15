@@ -13,16 +13,36 @@ document.addEventListener('DOMContentLoaded', async () => {
     const urlParams = new URLSearchParams(window.location.search);
     const memoryId = urlParams.get('id') || 'root';
 
-    // 공통 데이터에서 메모리 찾기
-    const memory = getMemory(memoryId) || getMemory('root');
+    // ── 메모리 데이터: API 우선, 실패 시 mock fallback ──
+    let memory = null;
+    try {
+        if (window.apiClient && window.apiClient.getMemory) {
+            const apiMemory = await window.apiClient.getMemory(memoryId);
+            if (apiMemory) {
+                memory = apiMemory;
+                console.log('[detail] API memory loaded:', memoryId);
+            }
+        }
+    } catch (e) {
+        console.warn('[detail] API getMemory failed, fallback to mock:', e.message);
+    }
+    // API 실패 시 mock fallback
+    if (!memory) {
+        memory = typeof getMemory === 'function' ? getMemory(memoryId) : null;
+        if (!memory && memoryId !== 'root') {
+            memory = typeof getMemory === 'function' ? getMemory('root') : null;
+        }
+    }
     if (!memory) {
         console.warn('Memory data not found. Detail page cannot initialize.');
         return;
     }
+
+    // ── 트리 데이터: API 우선, 실패 시 mock fallback ──
     let tree = null;
     try {
         if (window.apiClient && window.apiClient.getTree) {
-            const apiTree = await window.apiClient.getTree(memory.treeId);
+            const apiTree = await window.apiClient.getTree(memory.treeId || memory.data?.tree_id);
             if (apiTree) tree = apiTree;
         }
     } catch (e) {
@@ -30,13 +50,31 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     if (!tree) {
         const trees = typeof getTrees === 'function' ? getTrees() : [];
-        tree = trees.find(t => t.id === memory.treeId) || trees[0];
+        const targetTreeId = memory.treeId || memory.data?.tree_id;
+        tree = trees.find(t => t.id === targetTreeId) || trees[0];
     }
     if (!tree) {
         console.warn('Tree data not found. Detail page cannot initialize.');
         return;
     }
-    const memories = getMemoriesByTree(tree.id);
+
+    // ── 형제 메모리: API 우선, 실패 시 mock fallback ──
+    let memories = [];
+    const treeId = tree.id || tree.data?.id;
+    try {
+        if (window.apiClient && window.apiClient.getMemoriesByTree) {
+            const apiMemories = await window.apiClient.getMemoriesByTree(treeId);
+            if (Array.isArray(apiMemories)) {
+                memories = apiMemories;
+                console.log('[detail] API memories loaded:', apiMemories.length);
+            }
+        }
+    } catch (e) {
+        console.warn('[detail] API getMemoriesByTree failed, fallback to mock:', e.message);
+    }
+    if (memories.length === 0) {
+        memories = typeof getMemoriesByTree === 'function' ? getMemoriesByTree(treeId) : [];
+    }
 
     // 비디오 로드 (sourceUrl은 이미 embed URL)
     if (memory.sourceUrl) {

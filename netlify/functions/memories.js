@@ -8,7 +8,7 @@
  */
 const { requireUser } = require('./_lib/auth');
 const { ok, created, httpError, handleError } = require('./_lib/http');
-const { queryMemories, createMemory } = require('./_lib/doc-store');
+const { queryMemories, createMemory, queryTrees, getTree } = require('./_lib/doc-store');
 
 exports.handler = async (event) => {
   const requestOrigin = event.headers?.origin || event.headers?.Origin || '';
@@ -30,6 +30,12 @@ exports.handler = async (event) => {
       }
 
       if (!body.treeId) throw httpError(400, 'treeId is required');
+
+      // tree ownership 검증: 본인 소유 tree에만 메모리 생성 가능
+      const targetTree = await getTree(body.treeId);
+      if (!targetTree || targetTree.data.owner_id !== user.uid) {
+        throw httpError(403, 'Access denied: not your tree');
+      }
 
       const memory = await createMemory({
         treeId: body.treeId,
@@ -53,11 +59,33 @@ exports.handler = async (event) => {
     if (event.httpMethod === 'GET') {
       const params = event.queryStringParameters || {};
 
-      // TODO: enforce that only memories belonging to user's trees are returned.
-      // Currently returns memories filtered only by query params — no ownership check.
-      // MVP scope: implement tree ownership check in next iteration.
+      // ownership enforcement: 사용자가 소유한 트리의 메모리만 조회
+      let allowedTreeIds = [];
+
+      if (params.treeId) {
+        // 특정 treeId 조회 시 본인 소유인지 확인
+        const tree = await getTree(params.treeId);
+        if (!tree || tree.data.owner_id !== user.uid) {
+          throw httpError(403, 'Access denied: not your tree');
+        }
+        allowedTreeIds = [params.treeId];
+      } else {
+        // treeId 없이 조회 시 본인 모든 트리 조회
+        const userTrees = await queryTrees({ ownerId: user.uid });
+        allowedTreeIds = userTrees.map((t) => t.id);
+      }
+
       const filters = {};
-      if (params.treeId) filters.treeId = params.treeId;
+      if (allowedTreeIds.length === 1) {
+        filters.treeId = allowedTreeIds[0];
+      } else if (allowedTreeIds.length > 1) {
+        // 여러 트리 허용 (doc-store.js 수정 필요하지만 우선 첫 번째만)
+        filters.treeId = allowedTreeIds[0]; // MVP: 첫 트리만 조회
+      } else {
+        // 소유한 트리 없음 → 빈 결과
+        return ok([], { 'Access-Control-Allow-Origin': '*' });
+      }
+
       if ('parentId' in params) {
         filters.parentId = params.parentId === 'null' ? null : params.parentId;
       }

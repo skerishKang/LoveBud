@@ -1,0 +1,10 @@
+{
+  "name": "lovebud-mvp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "LoveBud MVP — Netlify static site + Functions",
+  "dependencies": {
+    "firebase-admin": "^12.0.0",
+    "pg": "^8.12.0"
+  }
+}

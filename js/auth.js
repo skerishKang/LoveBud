@@ -1,12 +1,16 @@
 /**
  * LoveBud - Authentication Module (Firebase Auth)
+ * v20260415-11
  *
- * Safe to call on any page — gracefully degrades if Firebase SDK is absent.
- * Auth state observer updates #auth-nav (non-login pages) or #auth-nav-container (login.html).
+ * Auth state observer updates #auth-nav (non-login pages) or
+ * #auth-nav-container (login.html) using innerHTML container pattern.
+ *
+ * Version: ?v=20260415-11
  */
 
 var EMAIL_AUTH_MODE = 'login';
 var AUTH_INIT_FLAG = '__lovebudAuthInitialized';
+var DROPDOWN_LISTENER_ATTACHED = false;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -35,6 +39,9 @@ function clearStaleFirebaseAuthState() {
 // ── Core Auth ─────────────────────────────────────────────────────────────────
 
 function initAuth() {
+  // Mark auth-nav as loading immediately so UI doesn't flash empty or wrong state
+  markAuthLoading();
+
   if (typeof firebase === 'undefined') {
     console.warn('Firebase SDK not loaded. Auth running in offline mode.');
     initOfflineAuth();
@@ -51,6 +58,8 @@ function initAuth() {
 
   if (window[AUTH_INIT_FLAG]) return;
   window[AUTH_INIT_FLAG] = true;
+
+  attachDropdownListener();
 
   firebase.auth().onAuthStateChanged(async function (user) {
     if (user) {
@@ -80,7 +89,21 @@ function initAuth() {
 
 function initOfflineAuth() {
   var isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-  updateNavUI(isLoggedIn ? { uid: 'offline', displayName: 'Offline User' } : null);
+  updateNavUI(isLoggedIn ? { uid: 'offline', email: 'offline@example.com' } : null);
+}
+
+// ── Loading State (prevent flash) ────────────────────────────────────────────
+
+/**
+ * Show a minimal loading placeholder while auth state is resolving.
+ * CSS: .auth-nav-loading matches the approximate dimensions of the login button.
+ */
+function markAuthLoading() {
+  var authNav = document.getElementById('auth-nav');
+  var authContainer = document.getElementById('auth-nav-container');
+  var loading = '<span style="display:inline-block;width:80px;height:36px;border-radius:99px;background:var(--surface-container,#f0f0f0);opacity:0.5;"></span>';
+  if (authNav) authNav.innerHTML = loading;
+  if (authContainer) authContainer.innerHTML = loading;
 }
 
 // ── UI Builders ───────────────────────────────────────────────────────────────
@@ -89,13 +112,28 @@ function buildLoginButton() {
   return '<a href="login.html" class="btn-round btn-outline" style="text-decoration:none;padding:8px 20px;font-size:14px;">로그인</a>';
 }
 
+/**
+ * Build user dropdown HTML.
+ *
+ * Header trigger label: always "내 계정" (never displayName/email).
+ * User identity (name/email) is shown only as small helper text inside the dropdown menu.
+ *
+ * @param {Object} user - Firebase user object
+ */
 function buildUserDropdown(user) {
-  var name = (user && (user.displayName || user.email || '내 계정')) || '내 계정';
+  // Real name/email only shown as secondary text INSIDE the dropdown
+  var userSubtitle = '';
+  if (user) {
+    var name = user.displayName || user.email || '';
+    if (name) userSubtitle = '<span style="font-size:11px;color:var(--on-surface-variant,#888);margin-left:4px;">' + name + '</span>';
+  }
+
   return [
     '<div class="user-dropdown" id="userDropdown">',
-    '<button class="user-dropdown-trigger btn-round btn-primary" style="padding:8px 16px;display:flex;align-items:center;gap:8px;" aria-label="User menu">',
+    '<button class="user-dropdown-trigger btn-round btn-primary" style="padding:8px 16px;display:flex;align-items:center;gap:6px;" aria-label="User menu">',
     '<span class="material-symbols-outlined">account_circle</span>',
-    '<span>' + name + '</span>',
+    '<span>내 계정</span>',
+    userSubtitle,
     '</button>',
     '<div class="user-dropdown-menu">',
     '<a href="editor.html" class="user-dropdown-item"><span class="material-symbols-outlined">account_tree</span>내 러브트리</a>',
@@ -111,37 +149,37 @@ function buildUserDropdown(user) {
 
 /**
  * Update right-side nav area based on auth state.
- * - Non-login pages: writes to #auth-nav innerHTML
- * - Login page: writes to #auth-nav-container (always present, initially empty)
+ * Container #auth-nav / #auth-nav-container is never destroyed —
+ * only its innerHTML is replaced.
  *
- * Never destroys surrounding nav elements.
+ * Called by onAuthStateChanged whenever Firebase auth state changes.
  */
 function updateNavUI(user) {
-  // Determine which container to use
   var authNav = document.getElementById('auth-nav');
   var authContainer = document.getElementById('auth-nav-container');
 
   if (user) {
-    // ── Logged in: show user dropdown ──
     var html = buildUserDropdown(user);
     if (authNav) authNav.innerHTML = html;
     if (authContainer) authContainer.innerHTML = html;
-    setupDropdownToggle();
   } else {
-    // ── Logged out: show login button ──
     var html = buildLoginButton();
     if (authNav) authNav.innerHTML = html;
-    // authContainer stays empty on login page (it has its own login form)
+    // authContainer stays empty on login page (has its own form)
   }
 }
 
-// ── Dropdown ──────────────────────────────────────────────────────────────────
+// ── Dropdown (event delegation — attached once) ─────────────────────────────
 
-var dropdownToggleInitialized = false;
-function setupDropdownToggle() {
-  if (dropdownToggleInitialized) return;
-  dropdownToggleInitialized = true;
-  // Event delegation for dropdown toggle
+/**
+ * Attach a SINGLE delegated click listener to document for all dropdowns.
+ * Called once on initAuth, never again.
+ * Uses document-level delegation so survives innerHTML replacements.
+ */
+function attachDropdownListener() {
+  if (DROPDOWN_LISTENER_ATTACHED) return;
+  DROPDOWN_LISTENER_ATTACHED = true;
+
   document.addEventListener('click', function (e) {
     var trigger = e.target.closest('.user-dropdown-trigger');
     if (trigger) {
@@ -150,14 +188,12 @@ function setupDropdownToggle() {
       if (!dropdown) return;
       var menu = dropdown.querySelector('.user-dropdown-menu');
       if (!menu) return;
-      // close other open menus
       document.querySelectorAll('.user-dropdown-menu.show').forEach(function (m) {
         if (m !== menu) m.classList.remove('show');
       });
       menu.classList.toggle('show');
       return;
     }
-    // click outside any dropdown closes all
     if (!e.target.closest('.user-dropdown')) {
       document.querySelectorAll('.user-dropdown-menu.show').forEach(function (m) {
         m.classList.remove('show');

@@ -6,13 +6,7 @@ env_file = ".env"
 [functions]
 directory = "netlify/functions"
 
-# SPA fallback — 모든 경로를 index.html로
-[[redirects]]
-from = "/*"
-to = "/index.html"
-status = 200
-
-# ── API Routes ───────────────────────────────────────────────────────────────
+# ── API Routes (must come BEFORE SPA fallback) ────────────────────────────────
 
 # Trees
 [[redirects]]
@@ -40,4 +34,10 @@ status = 200
 [[redirects]]
 from = "/api/community/memories"
 to = "/.netlify/functions/community-memories"
+status = 200
+
+# ── SPA Fallback (must be LAST) ────────────────────────────────────────────────
+[[redirects]]
+from = "/*"
+to = "/index.html"
 status = 200

@@ -60,26 +60,58 @@ const user = await requireUser(event); // throws 401 if not authenticated
 | `NETLIFY_DATABASE_URL` | Yes | Neon PostgreSQL connection string |
 | `CORS_ALLOWED_ORIGINS` | No | Comma-separated allowed origins |
 
+## Top-level Dependencies
+
+| Package | Version | Why |
+|---------|---------|-----|
+| `firebase-admin` | ^12.0.0 | `_lib/auth.js` calls `require('firebase-admin')` to verify ID tokens in protected functions |
+| `pg` | ^8.12.0 | `_lib/db.js` calls `require('pg')` for Neon PostgreSQL connection pool |
+
+Both are **server-side only** (Netlify Functions) — never bundled into the browser.
+Netlify auto-installs `package.json` dependencies during build.
+
+## Netlify 배포 설정
+
+**package.json**: 루트에 위치하며 Netlify Functions 빌드 시 의존성 자동 설치  
+**netlify.toml**: `[functions]` 섹션으로 Functions 디렉토리 지정, `[[redirects]]` 순서는 `/api/*` → `/*` (SPA fallback은 항상 마지막)  
+빌드 에러 시 확인: Functions 로그에서 "Cannot find module" 오류 → package.json 의존성 누락 확인
+
 ## Current Status
 
 **Implemented:**
+- Browser-side fetch client (js/postgres-client.js) — API-first with mock fallback
 - `_lib/` (auth, db, http, doc-store) — full CRUD scaffold
 - `trees.js` — GET/POST with auth
 - `tree-detail.js` — GET with access control
-- `memories.js` — GET/POST with auth
-- `memory-detail.js` — GET/PATCH/DELETE scaffold
+- `memories.js` — GET/POST with auth + ownership enforcement
+- `memory-detail.js` — GET/PATCH/DELETE with ownership check
 - `community-memories.js` — public read (no auth)
 - SQL schema (netlify/sql/001_initial_schema.sql)
 
-**Not yet implemented:**
-- Tree ownership enforcement in memories.js (GET list)
-- Memory ownership enforcement in memory-detail.js (PATCH/DELETE)
-- Browser-side fetch client (js/postgres-client.js) — not built yet
-- Integration with mock-data.js fallback (not done yet)
-- Neon PostgreSQL actual database + schema run
+**GET 정책 (모두 인증 필수):**
+- `/api/memories` GET: 인증된 사용자의 own trees 메모리만 조회 (treeId 지정 시 해당 tree 소유권 검증)
+- `/api/memories/:memoryId` GET: 인증 필수. public memory는 anyone이 조회 가능, private memory는 owner만 조회 가능
 
-**Next step for frontend integration:**
+**Ownership 검증 완료:**
+- memories.js GET: 사용자가 소유한 트리의 메모리만 반환
+- memories.js POST: body.treeId가 본인 소유 트리인지 검증 후 생성
+- memory-detail.js GET: public anyone / private owner only
+- memory-detail.js PATCH/DELETE: memory가 속한 tree의 owner만 수정/삭제 가능
+
+**Frontend 연결 상태:**
+- `search.html` — `window.apiClient.getCommunityMemories()` API 우선 + mock fallback 적용 완료
+- `js/postgres-client.js` — 모든 메서드 API 우선, 실패 시 mock fallback
+
+**Not yet implemented:**
+- Neon PostgreSQL actual database + schema run
+- detail.html, editor.html API 연결 (postgres-client.js는 준비됨)
+
+**Next step:**
 1. Run `001_initial_schema.sql` against Neon PostgreSQL
-2. Create `js/postgres-client.js` — window.db wrapper with fetch() calls
-3. In each HTML page, load postgres-client.js and use window.db.trees/memories instead of mock-data.js
-4. Update netlify.toml auth env vars in Netlify dashboard
+2. Update Netlify environment variables (`FIREBASE_SERVICE_ACCOUNT_JSON`, `NETLIFY_DATABASE_URL`)
+
+**Detail 화면 API 연결 방법:**
+- `apiClient.getMemory(memoryId)` — GET `/api/memories/:memoryId` 직접 호출
+- `apiClient.getMemoriesByTree(treeId)` — GET `/api/memories?treeId=...` 호출
+- `apiClient.getFirstTree()` — GET `/api/trees` 후 첫 번째 선택
+- 모든 메서드는 API 실패 시 자동으로 mock-data.js fallback

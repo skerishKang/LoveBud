@@ -1,19 +1,96 @@
 document.addEventListener('DOMContentLoaded', () => {
     // ── 인증 가드: onAuthReady 콜백 기반 ──
-    const startEditor = () => {
+    const startEditor = async () => {
         const canvas = document.getElementById('canvasArea');
         const svg = document.getElementById('canvasSvg');
         const detailPanel = document.getElementById('detailPanel');
         const addBtn = document.getElementById('addMemoryBtn');
 
-        const tree = getTrees()[0];
+        // ── 트리 데이터: API 우선, 실패 시 mock fallback ──
+        let tree = null;
+        try {
+            if (window.apiClient && window.apiClient.getFirstTree) {
+                const apiTree = await window.apiClient.getFirstTree();
+                if (apiTree) {
+                    tree = apiTree;
+                    console.log('[editor] API tree loaded');
+                }
+            }
+        } catch (e) {
+            console.warn('[editor] API getFirstTree failed, fallback to mock:', e.message);
+        }
+        if (!tree) {
+            const trees = typeof getTrees === 'function' ? getTrees() : [];
+            tree = trees[0];
+        }
         if (!tree) {
             console.warn('Tree data not found.');
             return;
         }
+
+        // ── 메모리 데이터: API 우선, 실패 시 mock fallback ──
+        let memories = [];
+        const treeId = tree.id || tree.data?.id;
+        try {
+            if (window.apiClient && window.apiClient.getMemoriesByTree) {
+                const apiMemories = await window.apiClient.getMemoriesByTree(treeId);
+                if (Array.isArray(apiMemories)) {
+                    memories = apiMemories;
+                    console.log('[editor] API memories loaded:', apiMemories.length);
+                }
+            }
+        } catch (e) {
+            console.warn('[editor] API getMemoriesByTree failed, fallback to mock:', e.message);
+        }
+        if (memories.length === 0) {
+            memories = typeof getMemoriesByTree === 'function' ? getMemoriesByTree(treeId) : [];
+        }
+        // 전역 접근 가능하게 설정 (기존 코드 호환)
+        window.currentTreeMemories = memories;
+
+        // ── API 응답 정규화: snake_case → camelCase, {id, data} 형태 변환 ──
+        const normalizeMemory = (mem) => {
+            if (!mem) return null;
+            // snake_case → camelCase
+            const normalized = {
+                ...mem,
+                treeId: mem.tree_id || mem.treeId,
+                parentId: mem.parent_id || mem.parentId,
+                sourceUrl: mem.source_url || mem.sourceUrl,
+                sourceType: mem.source_type || mem.sourceType,
+                emotionTags: mem.emotion_tags || mem.emotionTags,
+                createdAt: mem.created_at || mem.createdAt
+            };
+            // {id, data} 형태 풀기
+            if (mem.data && typeof mem.data === 'object') {
+                Object.assign(normalized, mem.data);
+            }
+            return normalized;
+        };
+
+        // ── root 초기 선택 안정화 ──
+        const createInitialMemory = () => {
+            const memories = treeMemories();
+            // root가 있으면 root, 없으면 첫 번째 메모리, 없으면 더미 root
+            const rootMem = memories.find(m => m.id === 'root');
+            if (rootMem) return rootMem;
+            if (memories.length > 0) return memories[0];
+            // API/render에 root가 없을 때를 위한 기본 데이터
+            return {
+                id: 'root',
+                treeId: treeId,
+                title: '첫 번째 기억',
+                memo: '아직 등록된 기억이 없습니다. "영상 추가" 버튼을 클릭하여 첫 번째 추억을 기록해보세요.',
+                timestamp: new Date().toISOString().slice(0,10).replace(/-/g,'.'),
+                thumbnail: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 90"><rect fill="%23f5f5f5" width="120" height="90"/><text x="60" y="50" text-anchor="middle" fill="%23999" font-size="12">No Memory</text></svg>',
+                emotionTags: [],
+                parentId: null
+            };
+        };
+
         let selectedNodeId = 'root';
 
-        const treeMemories = () => window.memories.filter(m => m.treeId === tree.id);
+        const treeMemories = () => (window.currentTreeMemories || []).map(normalizeMemory);
 
         // ── 배치 상수 ──
         const ROOT_X = 400, ROOT_Y = 300;
@@ -57,7 +134,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
             }
 
-            const parent = window.memories.find(m => m.id === parentId);
+            const parent = treeMemories().find(m => m.id === parentId);
             const parentPos = parent ? calcPosition(parent, visited) : { x: ROOT_X, y: ROOT_Y };
             const angle = count > 0 ? (idx / count) * 360 : 0;
             return {
@@ -68,7 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const nextMemoryId = () => {
             let max = 0;
-            window.memories.forEach(m => {
+            treeMemories().forEach(m => {
                 const match = m.id.match(/^m(\d+)$/);
                 if (match) max = Math.max(max, parseInt(match[1]));
             });
@@ -160,16 +237,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const initCanvas = () => {
             drawRoot();
-            treeMemories().filter(m => m.id !== 'root').forEach(node => {
+            treeMemories().forEach(node => {
+                if (node.id === 'root') return; // root는 skip
                 drawNode(node);
                 const parentId = node.parentId || 'root';
                 const parent = treeMemories().find(m => m.id === parentId);
                 if (parent) drawBranch(calcPosition(parent), calcPosition(node));
             });
-            selectNodeById('root');
+            // root 초기 선택: 안정화된 함수를 사용
+            const initialMem = createInitialMemory();
+            if (initialMem) {
+                updateDetailPanel(initialMem);
+            }
         };
 
-        const addMemoryFromPrompt = () => {
+        const addMemoryFromPrompt = async () => {
             const url = prompt('YouTube 링크를 입력하세요:\n(예: https://www.youtube.com/watch?v=dQw4w9WgXcQ)');
             if (!url) return;
             const match = url.match(/(?:v=|\/)([0-9A-Za-z_-]{11})/);
@@ -178,9 +260,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const today = new Date();
             const dateStr = `${today.getFullYear()}.${String(today.getMonth()+1).padStart(2,'0')}.${String(today.getDate()).padStart(2,'0')}`;
 
-            const newMemory = {
-                id: nextMemoryId(),
-                treeId: tree.id,
+            const newMemoryData = {
+                treeId: treeId,
                 title: prompt('이 기억의 제목은?', '새로운 기억') || '새로운 기억',
                 memo: prompt('이 기억의 메모를 남겨보세요:', '') || '',
                 timestamp: dateStr,
@@ -189,25 +270,69 @@ document.addEventListener('DOMContentLoaded', () => {
                 emotionTags: ['기록'],
                 parentId: selectedNodeId,
                 thumbnail: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
-                createdAt: dateStr,
                 artist: '',
-                source: 'YouTube',
-                delay: '0.5s'
+                source: 'YouTube'
             };
 
-            window.memories.push(newMemory);
-            drawNode(newMemory);
-            const effectiveParentId = newMemory.parentId || 'root';
-            const parent = treeMemories().find(m => m.id === effectiveParentId);
-            if (parent) drawBranch(calcPosition(parent), calcPosition(newMemory));
+            // ── API 우선 생성 시도 ──
+            let createdMemory = null;
+            let useApi = false;
+            try {
+                if (window.apiClient && window.apiClient.createMemory) {
+                    createdMemory = await window.apiClient.createMemory(newMemoryData);
+                    useApi = true;
+                    console.log('[editor] API createMemory success:', createdMemory);
+                }
+            } catch (e) {
+                console.warn('[editor] API createMemory failed, fallback to mock:', e.message);
+            }
 
-            const el = document.querySelector(`.memory-node[data-memory-id="${newMemory.id}"]`);
-            if (el) selectNode(el, newMemory);
+            // API 실패 시 mock fallback - 로컬에만 추가
+            if (!createdMemory) {
+                createdMemory = {
+                    id: nextMemoryId(),
+                    ...newMemoryData,
+                    createdAt: dateStr,
+                    delay: '0.5s'
+                };
+            }
+
+            // ── createMemory 후 갱신: 재조회 우선, 실패 시 로컬 추가 ──
+            try {
+                const refreshed = await window.apiClient.getMemoriesByTree(treeId);
+                if (Array.isArray(refreshed)) {
+                    window.currentTreeMemories = refreshed;
+                } else {
+                    // 재조회 실패 시 로컬에 추가 (중복 방지)
+                    const exists = window.currentTreeMemories.some(m => m.id === createdMemory.id);
+                    if (!exists) window.currentTreeMemories.push(createdMemory);
+                }
+            } catch (e) {
+                // API 실패 시 로컬에 추가 (중복 방지)
+                const exists = window.currentTreeMemories.some(m => m.id === createdMemory.id);
+                if (!exists) window.currentTreeMemories.push(createdMemory);
+            }
+
+            // ── UI 렌더링: API 응답 정규화 후 렌더링 ──
+            // snake_case → camelCase, {id, data} 형태 정규화
+            const normalizedMemory = normalizeMemory(createdMemory);
+            if (!normalizedMemory) {
+                console.error('[editor] Memory normalization failed');
+                return;
+            }
+
+            drawNode(normalizedMemory);
+            const effectiveParentId = normalizedMemory.parentId || 'root';
+            const parent = treeMemories().find(m => m.id === effectiveParentId);
+            if (parent) drawBranch(calcPosition(parent), calcPosition(normalizedMemory));
+
+            const el = document.querySelector(`.memory-node[data-memory-id="${normalizedMemory.id}"]`);
+            if (el) selectNode(el, normalizedMemory);
         };
 
         if (addBtn) addBtn.addEventListener('click', addMemoryFromPrompt);
         initCanvas();
-        console.log('Editor ready — memories:', treeMemories().length);
+        console.log('[editor] Ready — tree:', treeId, 'memories:', treeMemories().length);
     };
 
     // ── 인증 상태에 따라 시작 ──
