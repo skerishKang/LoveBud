@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     const resultsList = document.getElementById('resultsList');
     const previewContainer = document.getElementById('previewVideoContainer');
     const previewTitle = document.getElementById('previewTitle');
@@ -8,8 +8,29 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchInput = document.getElementById('searchInput');
     const tagChips = document.querySelectorAll('.tag-chip');
 
-    // 공통 데이터에서 모든 메모리 가져오기 (root 제외)
-    const allMemories = memories.filter(m => m.id !== 'root');
+    // ── 데이터 소스: API 우선, 실패 시 mock fallback ──
+    let allMemories = [];
+    try {
+        // API 우선 시도
+        if (window.apiClient && window.apiClient.getCommunityMemories) {
+            const apiMemories = await window.apiClient.getCommunityMemories();
+            // API 응답이 배열이면 사용, 아니면 fallback
+            if (Array.isArray(apiMemories)) {
+                allMemories = apiMemories;
+                console.log('[search] API 데이터 사용:', apiMemories.length, '개');
+            } else {
+                throw new Error('API 응답 형식 오류');
+            }
+        } else {
+            throw new Error('apiClient 사용 불가');
+        }
+    } catch (error) {
+        // API 실패 시 mock-data.js fallback
+        console.warn('[search] API 실패, mock fallback:', error.message);
+        if (typeof memories !== 'undefined') {
+            allMemories = memories.filter(m => m.id !== 'root');
+        }
+    }
 
     // ── 현재 필터/검색 상태 ──
     let currentQuery = '';
@@ -100,10 +121,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
                 <div style="flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; min-width: 0;">
                     <div>
-                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
-                            <span style="font-size: 9px; font-weight: 900; color: var(--primary); background: rgba(141,71,79,0.08); padding: 3px 8px; border-radius: 99px; letter-spacing: 1px; text-transform: uppercase;">${categoryLabel(mem)}</span>
-                            <span style="font-size: 10px; color: var(--on-surface-variant); letter-spacing: 0.5px;">${mem.timestamp}</span>
-                        </div>
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap;">
+                <span style="font-size: 9px; font-weight: 900; color: var(--primary); background: rgba(141,71,79,0.08); padding: 3px 8px; border-radius: 99px; letter-spacing: 1px; text-transform: uppercase;">${categoryLabel(mem)}</span>
+                <span style="font-size: 10px; color: var(--on-surface-variant); letter-spacing: 0.5px;">${mem.timestamp}</span>
+                ${mem.source ? `<span style="font-size: 10px; color: var(--on-surface-variant); opacity: 0.8; margin-left: 4px;">${mem.source}</span>` : ''}
+            </div>
                         <h3 class="serif" style="font-size: 1.25rem; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${mem.title}</h3>
                         <p style="font-size: 0.85rem; color: var(--on-surface-variant); margin-bottom: 8px; line-height: 1.4;">
                             ${excerpt(mem.memo, 80)}

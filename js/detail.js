@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     const videoMain = document.getElementById('videoMain');
     const memoryTitle = document.getElementById('memoryTitle');
     const diaryQuote = document.getElementById('diaryQuote');
@@ -19,7 +19,19 @@ document.addEventListener('DOMContentLoaded', () => {
         console.warn('Memory data not found. Detail page cannot initialize.');
         return;
     }
-    const tree = getTrees()[0];
+    let tree = null;
+    try {
+        if (window.apiClient && window.apiClient.getTree) {
+            const apiTree = await window.apiClient.getTree(memory.treeId);
+            if (apiTree) tree = apiTree;
+        }
+    } catch (e) {
+        console.warn('[detail] API getTree failed, using mock fallback:', e.message);
+    }
+    if (!tree) {
+        const trees = typeof getTrees === 'function' ? getTrees() : [];
+        tree = trees.find(t => t.id === memory.treeId) || trees[0];
+    }
     if (!tree) {
         console.warn('Tree data not found. Detail page cannot initialize.');
         return;
@@ -46,7 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 메타데이터 채우기
     memoryTitle.textContent = memory.title;
     detailArtist.textContent = memory.artist || 'Unknown';
-    detailDate.textContent = memory.timestamp;
+    detailDate.textContent = memory.timestamp + (memory.source ? ' · ' + memory.source : '');
     if (detailSubtitle) detailSubtitle.textContent = '기록 — ' + memory.timestamp;
 
     // 감정 태그
@@ -62,7 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
         diaryContent.textContent = memory.memo;
     }
 
-    // 연결된 파편 (같은 부모를 가진 다른 메모리)
+    // 연결된 기억 (같은 부모를 가진 다른 메모리)
     const siblings = memories.filter(m =>
         m.id !== memory.id && m.parentId === memory.parentId
     );
@@ -75,8 +87,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div style="font-size: 11px; font-weight: 800; color: #aaa; text-transform: uppercase;">
                         ${sib.timestamp}
                     </div>
-                    <div style="font-weight: 800; color: var(--on-surface); font-size: 15px;">
+                    <div style="font-weight: 800; color: var(--on-surface); font-size: 15px; margin-bottom: 4px;">
                         ${sib.title}
+                    </div>
+                    <div style="font-size: 12px; color: var(--on-surface-variant);">
+                        ${sib.artist || ''}
                     </div>
                 </div>
             </div>
