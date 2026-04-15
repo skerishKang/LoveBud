@@ -196,7 +196,136 @@
     },
 
     /**
-     * 8. Create a new tree (신규 사용자 첫 트리 생성용)
+     * 8. Fetch public trees only (search/둘러보기 화면용)
+     * API 우선, 실패 시 mock-data.js의 public trees fallback
+     * Note: browse용 tree view model을 반환 (memories, emotionTags, theme 등 포함)
+     * FIX: /api/memories는 auth 필요 → /api/community/memories 사용 (no auth)
+     */
+    getPublicTrees: async () => {
+      return withFallback(
+        async () => {
+          // 1. public 트리 목록 조회 (auth 불필요 - trees.js GET에서 public fallback)
+          const apiTrees = await apiFetch('/trees');
+          const publicTreesMap = new Map();
+          (Array.isArray(apiTrees) ? apiTrees : []).forEach(tree => {
+            if (tree.data) {
+              if (tree.data.visibility === 'public') {
+                publicTreesMap.set(tree.id, {
+                  id: tree.id,
+                  title: tree.data.title,
+                  visibility: tree.data.visibility,
+                  created_at: tree.data.created_at,
+                  owner_id: tree.data.owner_id
+                });
+              }
+            } else if (tree.visibility === 'public') {
+              publicTreesMap.set(tree.id, tree);
+            }
+          });
+
+          if (publicTreesMap.size === 0) {
+            return [];
+          }
+
+          // 2. community/memories로 모든 public memories 한 번에 조회 (auth 불필요)
+          const allMemories = await apiFetch('/community/memories?limit=100');
+          const validMemories = (Array.isArray(allMemories) ? allMemories : [])
+            .map(m => m.data ? m.data : m) // unwrap if {id, data: {...}}
+            .filter(m => m.id && m.tree_id); // 유효한 memory만
+
+          // 3. treeId별로_memories 그룹핑
+          const memoriesByTree = {};
+          validMemories.forEach(m => {
+            const treeId = m.tree_id;
+            if (!memoriesByTree[treeId]) {
+              memoriesByTree[treeId] = [];
+            }
+            memoriesByTree[treeId].push({
+              id: m.id,
+              title: m.title,
+              timestamp: m.timestamp,
+              thumbnail: m.thumbnail,
+              artist: m.artist,
+              emotionTags: m.emotion_tags || [],
+              sourceUrl: m.source_url,
+              createdAt: m.created_at,
+              treeId: m.tree_id
+            });
+          });
+
+          // 4. 각 트리별 뷰 모델 구성
+          const treesWithMemories = [];
+          publicTreesMap.forEach((tree, treeId) => {
+            const mems = memoriesByTree[treeId] || [];
+            const sortedMems = mems.sort((a, b) =>
+              new Date(a.createdAt || 0) - new Date(b.createdAt || 0)
+            );
+
+            const allTags = sortedMems.flatMap(m => m.emotionTags || []);
+            const uniqueTags = [...new Set(allTags)].slice(0, 3);
+
+            const timestamps = sortedMems.map(m => m.timestamp).filter(Boolean);
+            const timeRange = timestamps.length >= 2
+              ? `${timestamps[0]} ~ ${timestamps[timestamps.length - 1]}`
+              : (timestamps[0] || 'recently');
+
+            treesWithMemories.push({
+              ...tree,
+              memories: sortedMems,
+              memoryCount: sortedMems.length,
+              emotionTags: uniqueTags,
+              timeRange: timeRange,
+              representativeThumbnail: sortedMems[0]?.thumbnail || '',
+              theme: sortedMems[0]?.artist || 'Mixed',
+              stage: sortedMems.length <= 2 ? '입덕' : (sortedMems.length <= 4 ? '성장' : '최애')
+            });
+          });
+
+          // 메모리가 없는 트리는 제외
+          return treesWithMemories.filter(t => t.memoryCount > 0);
+        },
+        () => {
+          // Mock fallback: search.js의 buildTreeData와 동일한 로직
+          const allMemories = typeof memories !== 'undefined' ? memories : [];
+          const trees = typeof getTrees === 'function' ? getTrees() : [];
+          const publicTrees = trees.filter(t => t.visibility === 'public');
+
+          // memories를 tree별로 그룹핑
+          const grouped = {};
+          allMemories.filter(m => m.id !== 'root' && m.visibility === 'public').forEach(m => {
+            const tid = m.treeId || 'ungrouped';
+            if (!grouped[tid]) grouped[tid] = [];
+            grouped[tid].push(m);
+          });
+
+          return publicTrees.map(tree => {
+            const mems = grouped[tree.id] || [];
+            const sortedMems = mems.sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
+            const allTags = sortedMems.flatMap(m => m.emotionTags || []);
+            const uniqueTags = [...new Set(allTags)].slice(0, 3);
+            const timestamps = sortedMems.map(m => m.timestamp).filter(Boolean);
+            const timeRange = timestamps.length >= 2
+              ? `${timestamps[0]} ~ ${timestamps[timestamps.length - 1]}`
+              : (timestamps[0] || 'recently');
+
+            return {
+              ...tree,
+              memories: sortedMems,
+              memoryCount: sortedMems.length,
+              emotionTags: uniqueTags,
+              timeRange: timeRange,
+              representativeThumbnail: sortedMems[0]?.thumbnail || '',
+              theme: sortedMems[0]?.artist || 'Mixed',
+              stage: sortedMems.length <= 2 ? '입덕' : (sortedMems.length <= 4 ? '성장' : '최애')
+            };
+          }).filter(t => t.memoryCount > 0);
+        },
+        'getPublicTrees'
+      );
+    },
+
+    /**
+     * 9. Create a new tree (신규 사용자 첫 트리 생성용)
      * API 필수 (mock에는 create 기능 없음)
      */
     createTree: async (payload) => {

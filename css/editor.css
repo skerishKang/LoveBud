@@ -126,11 +126,11 @@ body {
     object-fit: cover;
 }
 
-.memory-node:hover .node-card, 
+.memory-node:hover .node-card,
 .memory-node.selected .node-card {
-    transform: scale(1.1) rotate(2deg);
-    border-color: var(--primary);
-    box-shadow: 0 25px 50px rgba(144, 73, 81, 0.15);
+  transform: scale(1.05);
+  border-color: var(--primary);
+  box-shadow: 0 25px 50px rgba(144, 73, 81, 0.15);
 }
 
 /* 새 노드 추가 피드백 애니메이션 */

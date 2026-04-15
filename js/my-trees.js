@@ -119,7 +119,7 @@
       '<div class="empty-state">',
         '<span class="material-symbols-outlined empty-state-icon">account_tree</span>',
         '<h2>아직 러브트리가 없어요</h2>',
-        '<p>당신의 첫 번째 러브트리를 만들어 보세요. 영상의 감정적인 순간을 기록하고, 사랑이 자라나는 경로를可视化해 보세요.</p>',
+        '<p>첫 번째 순간을 기록하고 당신만의 사랑 나무를 시작해보세요.<br>입덕 순간부터 지금까지의 감정을 하나의 경로로 연결합니다.</p>',
         '<button class="btn-create-tree" id="createTreeBtn">',
           '<span class="material-symbols-outlined" style="font-size:20px;">add_circle</span>',
           '새 러브트리 만들기',
@@ -244,15 +244,26 @@
     }
   }
 
-  // ── Bootstrap: wait for auth then load ───────────────────────────────────
-  if (typeof firebase !== 'undefined' && firebase.auth && firebase.apps && firebase.apps.length) {
-    var unsubscribe = firebase.auth().onAuthStateChanged(function(user) {
-      unsubscribe();
-      startMyTrees(user);
-    });
-  } else {
-    // Firebase unavailable — try offline mode
-    startMyTrees({ uid: 'offline', email: 'offline@example.com' });
+  // ── Bootstrap: auth.js가 확정한 인증 상태를 기준으로 시작 ────────────────
+  // my-trees.js는 Firebase/Auth 스크립트보다 먼저 로드되므로, 여기서 직접
+  // firebase 존재 여부를 검사하면 비로그인 사용자가 오프라인 사용자로 통과할 수 있다.
+  var myTreesStarted = false;
+  function bootMyTrees(user) {
+    if (myTreesStarted) return;
+    myTreesStarted = true;
+    startMyTrees(user);
   }
+
+  window.onAuthReady = function(user) {
+    bootMyTrees(user);
+  };
+
+  // auth.js가 없는 비정상 상황만 최소한으로 처리한다.
+  window.addEventListener('load', function() {
+    setTimeout(function() {
+      if (myTreesStarted) return;
+      bootMyTrees(null);
+    }, 5500);
+  }, { once: true });
 
 })();

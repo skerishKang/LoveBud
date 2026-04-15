@@ -11,3 +11,6 @@ nul
 # Local agent docs (ignored from public repo)
 AGENT.md
 LOCAL_AGENT.md
+
+# Local Netlify folder
+.netlify

@@ -230,7 +230,7 @@ function buildUserDropdown(user) {
     userSubtitle,
     '</button>',
     '<div class="user-dropdown-menu">',
-    '<a href="editor.html" class="user-dropdown-item"><span class="material-symbols-outlined">account_tree</span>내 러브트리</a>',
+    '<a href="my-trees.html" class="user-dropdown-item"><span class="material-symbols-outlined">account_tree</span>내 러브트리</a>',
     '<button class="user-dropdown-item" disabled style="cursor:default;opacity:0.6;"><span class="material-symbols-outlined">settings</span>설정</button>',
     '<div class="dropdown-divider"></div>',
     '<button class="user-dropdown-item" onclick="signOut()"><span class="material-symbols-outlined">logout</span>로그아웃</button>',
@@ -315,7 +315,7 @@ function attachDropdownListener() {
 
 function getRedirectTarget() {
   var params = new URLSearchParams(window.location.search);
-  return params.get('redirect') || 'editor.html';
+  return params.get('redirect') || 'my-trees.html';
 }
 
 /**

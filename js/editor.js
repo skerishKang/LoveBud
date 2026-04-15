@@ -1,4 +1,37 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // ── root memory 식별 헬퍼 (UUID/ mock 호환) ──
+    // 규칙: parentId === null 이거나 id === 'root' (legacy mock)
+    const findRootMemory = (memories) => {
+        if (!Array.isArray(memories)) return null;
+        // 1순위: parentId === null (실제 root)
+        const byParentNull = memories.find(m => m.parentId === null);
+        if (byParentNull) return byParentNull;
+        // 2순위: id === 'root' (legacy mock)
+        return memories.find(m => m.id === 'root');
+    };
+
+    // root ID 반환 (없으면 'root' fallback - backward compatibility)
+    const getRootId = (memories) => {
+        const root = findRootMemory(memories);
+        return root ? root.id : 'root';
+    };
+
+    // canonical root ID를 반환 (한 번 계산하여 재사용)
+    let _canonicalRootId = null;
+    const getCanonicalRootId = (memories) => {
+        if (_canonicalRootId) return _canonicalRootId;
+        const root = findRootMemory(memories);
+        _canonicalRootId = root ? root.id : 'root';
+        return _canonicalRootId;
+    };
+
+    // memory가 canonical root인지 확인 (단일 root 기준)
+    const isRootMemory = (mem, rootId = null) => {
+        if (!mem) return false;
+        const canonicalId = rootId || getCanonicalRootId(window.currentTreeMemories || []);
+        return mem.id === canonicalId;
+    };
+
     // ── 인증 가드: onAuthReady 콜백 기반 ──
     // ── 사용자 알림용 토스트 유틸리티 ──
     const showToast = (message, type = 'info') => {
@@ -125,13 +158,13 @@ document.addEventListener('DOMContentLoaded', () => {
         // ── root 초기 선택 안정화 ──
         const createInitialMemory = () => {
             const memories = treeMemories();
-            // root가 있으면 root, 없으면 첫 번째 메모리, 없으면 더미 root
-            const rootMem = memories.find(m => m.id === 'root');
+            // canonical root 찾기: 단일 root 기준 (parentId === null 우선, 그 다음 id === 'root')
+            const rootMem = findRootMemory(memories);
             if (rootMem) return rootMem;
             if (memories.length > 0) return memories[0];
             // API/render에 root가 없을 때를 위한 기본 데이터
             return {
-                id: 'root',
+                id: canonicalRootId,
                 treeId: treeId,
                 title: '첫 번째 기억',
                 memo: '아직 등록된 기억이 없습니다. "영상 추가" 버튼을 클릭하여 첫 번째 추억을 기록해보세요.',
@@ -142,9 +175,12 @@ document.addEventListener('DOMContentLoaded', () => {
             };
         };
 
-        let selectedNodeId = 'root';
-
+        // treeMemories 함수 먼저 정의 (TDZ 방지)
         const treeMemories = () => (window.currentTreeMemories || []).map(normalizeMemory);
+
+        // canonical root ID 계산 (단일 기준점)
+        const canonicalRootId = getCanonicalRootId(treeMemories());
+        let selectedNodeId = canonicalRootId;
 
         // ── 배치 상수 ──
         const ROOT_X = 400, ROOT_Y = 300;
@@ -173,7 +209,8 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const calcPosition = (mem, visited = new Set()) => {
-            if (mem.id === 'root') return { x: ROOT_X, y: ROOT_Y };
+            // canonical root 기준으로 위치 계산
+            if (isRootMemory(mem, canonicalRootId)) return { x: ROOT_X, y: ROOT_Y };
 
             // 순환 참조 방지
             if (visited.has(mem.id)) {
@@ -182,7 +219,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             visited.add(mem.id);
 
-            const parentId = mem.parentId || 'root';
+            const parentId = mem.parentId || canonicalRootId;
 
             // 자기참조 방지
             if (parentId === mem.id) {
@@ -190,11 +227,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 return { x: ROOT_X, y: ROOT_Y };
             }
 
-            const siblings = treeMemories().filter(m => m.parentId === parentId && m.id !== 'root');
+            // siblings: canonical root는 제외, parentId가 같은 메모리들
+            const siblings = treeMemories().filter(m =>
+                m.parentId === parentId && !isRootMemory(m, canonicalRootId)
+            );
             const idx = siblings.findIndex(m => m.id === mem.id); // indexOf 대신 findIndex 사용 (객체 비교 안정성)
             const count = siblings.length;
 
-            if (parentId === 'root') {
+            if (parentId === canonicalRootId) {
                 // root 직속: 고정 각도 우선, 없으면 분산
                 let angle;
                 if (FIXED_ANGLES[mem.id] !== undefined) {
@@ -266,7 +306,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const node = treeMemories().find(m => m.id === id);
             if (!node) return;
             selectedNodeId = id;
-            if (id === 'root') {
+            // canonical root detection
+            if (isRootMemory(node, canonicalRootId)) {
                 document.querySelectorAll('.memory-node').forEach(n => n.classList.remove('selected'));
                 updateDetailPanel(node);
                 return;
@@ -325,9 +366,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const initCanvas = () => {
             drawRoot();
             treeMemories().forEach(node => {
-                if (node.id === 'root') return; // root는 skip
+                if (isRootMemory(node, canonicalRootId)) return; // canonical root만 skip
                 drawNode(node);
-                const parentId = node.parentId || 'root';
+                const parentId = node.parentId || canonicalRootId;
                 const parent = treeMemories().find(m => m.id === parentId);
                 if (parent) drawBranch(calcPosition(parent), calcPosition(node));
             });
@@ -516,7 +557,7 @@ if (!url) {
             }
 
             drawNode(normalizedMemory);
-            const effectiveParentId = normalizedMemory.parentId || 'root';
+            const effectiveParentId = normalizedMemory.parentId || canonicalRootId;
             const parent = treeMemories().find(m => m.id === effectiveParentId);
             if (parent) drawBranch(calcPosition(parent), calcPosition(normalizedMemory));
 

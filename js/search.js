@@ -85,7 +85,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     try {
-        // API 우선 시도 (tree 중심 API가 있다면 사용)
+        // API 우선 시도 - getPublicTrees가 browse용 tree view model을 반환
         if (window.apiClient && window.apiClient.getPublicTrees) {
             const apiTrees = await window.apiClient.getPublicTrees();
             if (Array.isArray(apiTrees)) {
@@ -98,9 +98,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             throw new Error('tree API 사용 불가, mock fallback');
         }
     } catch (error) {
-        // API 실패 시 mock-data.js fallback - memories를 tree로 그룹핑
+        // API 미지원 또는 예외 발생 시 mock fallback 직접 처리
         loadError = error;
-        console.warn('[search] API 실패, mock tree fallback:', error.message);
+        console.warn('[search] API 예외, mock fallback 직접 처리:', error.message);
+        // mock-data.js에서 직접 구성 (getPublicTrees를 통하지 않은 직접 fallback)
         if (typeof memories !== 'undefined' && typeof trees !== 'undefined') {
             allTrees = buildTreeData(memories, trees);
             console.log('[search] mock tree 데이터 구성:', allTrees.length, '개 트리');
@@ -232,32 +233,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                             첫 번째 순간을 기록하고 당신의 나무를 키워보세요!
                         </p>
                         <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
-                            <a href="editor.html" class="btn-round btn-primary" style="text-decoration: none; font-size: 14px; padding: 10px 20px;">
-                                <span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle; margin-right: 4px;">add_circle</span>
-                                첫 기억 기록하기
+                            <a href="my-trees.html" class="btn-round btn-primary" style="text-decoration: none; font-size: 14px; padding: 10px 20px;">
+                                <span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle; margin-right: 4px;">account_tree</span>
+                                내 러브트리 시작하기
                             </a>
-                            <button id="loadDemoData" class="btn-round btn-outline" style="font-size: 14px; padding: 10px 20px;">
-                                <span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle; margin-right: 4px;">play_circle</span>
-                                샘플 트리 보기
-                            </button>
+                            <a href="index.html" class="btn-round btn-outline" style="text-decoration: none; font-size: 14px; padding: 10px 20px;">
+                                <span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle; margin-right: 4px;">home</span>
+                                소개 보기
+                            </a>
                         </div>
                     </div>
                 `;
-
-                const demoBtn = document.getElementById('loadDemoData');
-                if (demoBtn) {
-                    demoBtn.addEventListener('click', () => {
-                        if (typeof memories !== 'undefined' && typeof trees !== 'undefined') {
-                            allTrees = buildTreeData(memories, trees);
-                            populateResults(allTrees, /* isDemo */ true);
-                            currentQuery = '';
-                            currentCategory = '전체';
-                            searchInput.value = '';
-                            tagChips.forEach(c => c.classList.remove('active'));
-                            document.querySelector('.tag-chip[data-category="전체"]')?.classList.add('active');
-                        }
-                    });
-                }
             } else {
                 resultsList.innerHTML = `
                     <div style="text-align: center; padding: 80px 24px; color: var(--on-surface-variant);">

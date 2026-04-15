@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
                     <a href="index.html" class="btn-round btn-outline" style="text-decoration: none;">소개 보기</a>
                     <a href="search.html" class="btn-round btn-outline" style="text-decoration: none;">둘러보기</a>
-                    <a href="editor.html" class="btn-round btn-primary" style="text-decoration: none;">내 러브트리</a>
+                    <a href="my-trees.html" class="btn-round btn-primary" style="text-decoration: none;">내 러브트리</a>
                 </div>
             </div>
         `;
