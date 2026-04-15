@@ -11,6 +11,7 @@
 var EMAIL_AUTH_MODE = 'login';
 var AUTH_INIT_FLAG = '__lovebudAuthInitialized';
 var DROPDOWN_LISTENER_ATTACHED = false;
+var AUTH_READY_FLAG = '__lovebudAuthReady';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -39,7 +40,8 @@ function clearStaleFirebaseAuthState() {
 // ── Core Auth ─────────────────────────────────────────────────────────────────
 
 function initAuth() {
-  // Mark auth-nav as loading immediately so UI doesn't flash empty or wrong state
+  // Ready 전 상태로 초기화 - 완전히 숨김
+  window[AUTH_READY_FLAG] = false;
   markAuthLoading();
 
   if (typeof firebase === 'undefined') {
@@ -74,7 +76,9 @@ function initAuth() {
         }
       }
     }
+    // Auth 상태 확인 완료 후 UI 업데이트 및 표시
     updateNavUI(user);
+    markAuthReady();
 
     if (typeof window.onAuthReady === 'function') {
       window.onAuthReady(user);
@@ -89,21 +93,43 @@ function initAuth() {
 
 function initOfflineAuth() {
   var isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+  // Offline 모드에서도 ready 상태로 전환 후 UI 표시
   updateNavUI(isLoggedIn ? { uid: 'offline', email: 'offline@example.com' } : null);
+  markAuthReady();
 }
 
 // ── Loading State (prevent flash) ────────────────────────────────────────────
 
 /**
- * Show a minimal loading placeholder while auth state is resolving.
- * CSS: .auth-nav-loading matches the approximate dimensions of the login button.
+ * Show auth nav loading state - completely hidden but preserves layout space.
+ * Uses visibility:hidden to prevent layout shift while hiding content.
  */
 function markAuthLoading() {
   var authNav = document.getElementById('auth-nav');
   var authContainer = document.getElementById('auth-nav-container');
-  var loading = '<span style="display:inline-block;width:80px;height:36px;border-radius:99px;background:var(--surface-container,#f0f0f0);opacity:0.5;"></span>';
-  if (authNav) authNav.innerHTML = loading;
-  if (authContainer) authContainer.innerHTML = loading;
+  // Ready 전: 공간은 차지하되 완전히 숨김 (레이아웃 시프트 방지)
+  var hiddenStyle = 'visibility:hidden;opacity:0;transition:opacity 0.2s ease;min-width:80px;height:36px;';
+  if (authNav) authNav.setAttribute('style', hiddenStyle);
+  if (authContainer) authContainer.setAttribute('style', hiddenStyle);
+}
+
+/**
+ * Mark auth as ready and reveal the nav UI with smooth fade-in.
+ */
+function markAuthReady() {
+  window[AUTH_READY_FLAG] = true;
+  var authNav = document.getElementById('auth-nav');
+  var authContainer = document.getElementById('auth-nav-container');
+  // Ready 후: 부드럽게 표시
+  var visibleStyle = 'visibility:visible;opacity:1;transition:opacity 0.2s ease;min-width:80px;';
+  if (authNav) {
+    authNav.setAttribute('style', visibleStyle);
+    authNav.classList.add('auth-ready');
+  }
+  if (authContainer) {
+    authContainer.setAttribute('style', visibleStyle);
+    authContainer.classList.add('auth-ready');
+  }
 }
 
 // ── UI Builders ───────────────────────────────────────────────────────────────
@@ -157,6 +183,11 @@ function buildUserDropdown(user) {
 function updateNavUI(user) {
   var authNav = document.getElementById('auth-nav');
   var authContainer = document.getElementById('auth-nav-container');
+
+  // Ready 전에는 innerHTML 교체하지 않음 (보이지 않는 상태)
+  if (!window[AUTH_READY_FLAG]) {
+    return;
+  }
 
   if (user) {
     var html = buildUserDropdown(user);
