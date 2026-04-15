@@ -16,20 +16,17 @@ document.addEventListener('DOMContentLoaded', () => {
         return root ? root.id : 'root';
     };
 
-    // canonical root ID를 반환 (한 번 계산하여 재사용)
-    let _canonicalRootId = null;
+    // ── canonical root 계산 (현재 메모리 배열 기준, 항상 fresh) ──
+    // 규칙: 1) parentId === null 우선, 2) id === 'root' (legacy mock), 3) 없으면 'root' fallback
     const getCanonicalRootId = (memories) => {
-        if (_canonicalRootId) return _canonicalRootId;
         const root = findRootMemory(memories);
-        _canonicalRootId = root ? root.id : 'root';
-        return _canonicalRootId;
+        return root ? root.id : 'root';
     };
 
-    // memory가 canonical root인지 확인 (단일 root 기준)
-    const isRootMemory = (mem, rootId = null) => {
-        if (!mem) return false;
-        const canonicalId = rootId || getCanonicalRootId(window.currentTreeMemories || []);
-        return mem.id === canonicalId;
+    // memory가 지정된 root ID와 같은지 확인
+    const isRootMemory = (mem, rootId) => {
+        if (!mem || !rootId) return false;
+        return mem.id === rootId;
     };
 
     // ── 인증 가드: onAuthReady 콜백 기반 ──
@@ -178,14 +175,15 @@ document.addEventListener('DOMContentLoaded', () => {
         // treeMemories 함수 먼저 정의 (TDZ 방지)
         const treeMemories = () => (window.currentTreeMemories || []).map(normalizeMemory);
 
-        // canonical root ID 계산 (단일 기준점)
+        // canonical root ID 계산 (세션 기준 고정값)
+        // 이 값은 editor 세션 동안 일관되게 사용됨 (새 메모리 추가로 root가 바뀌지 않음)
         const canonicalRootId = getCanonicalRootId(treeMemories());
         let selectedNodeId = canonicalRootId;
 
         // ── 배치 상수 ──
         const ROOT_X = 400, ROOT_Y = 300;
-        const RADIUS_L1 = 280;  // L1 반경 증가 (250→280)
-        const RADIUS_L2 = 200;  // L2 반경 증가 (150→200) - 노드 겹침 방지
+const RADIUS_L1 = 320; // L1 반경 (280→320) - 노드 겹침 방지
+const RADIUS_L2 = 240; // L2 반경 (200→240) - 노드 겹침 방지
         const NODE_WIDTH = 80;  // 노드 카드 너비 (px)
         const MIN_ANGLE_GAP = 35; // 최소 각도 간격 (도) - 겹침 방지
 
@@ -622,6 +620,7 @@ if (!url) {
 
     // ── 인증 상태에 따라 시작 ──
     // Use onAuthStateChanged directly (not onAuthReady) to avoid race conditions
+    // CRITICAL: Firebase unavailable ≠ authenticated. Always require real auth.
     if (typeof firebase !== 'undefined' && firebase.auth && firebase.apps && firebase.apps.length) {
         const unsubscribe = firebase.auth().onAuthStateChanged((user) => {
             unsubscribe(); // One-shot: only need the first resolution
@@ -632,7 +631,8 @@ if (!url) {
             startEditor();
         });
     } else {
-        // Firebase unavailable (offline/dev) — skip guard
-        startEditor();
+        // Firebase unavailable — DO NOT skip guard. Redirect to login.
+        // Offline/localStorage fallback cannot bypass protected pages.
+        window.location.href = 'login.html?redirect=editor.html';
     }
 });

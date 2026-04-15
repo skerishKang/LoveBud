@@ -252,8 +252,13 @@ body {
 }
 
 .panel-footer {
-    padding: 32px;
-    border-top: 1px solid var(--outline-variant);
+  padding: 32px;
+  border-top: 1px solid var(--outline-variant);
+}
+
+/* 비활성화状态的 기억 상세 패널 - 편집 기능 미구현으로 항상 읽기 전용 */
+.detail-panel .panel-footer.hidden {
+  display: none;
 }
 
 .icon-btn {

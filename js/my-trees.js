@@ -258,10 +258,27 @@
     bootMyTrees(user);
   };
 
-  // auth.js가 없는 비정상 상황만 최소한으로 처리한다.
+  // auth.js timeout 또는 Firebase unavailable 시에는 보호 페이지，而不是 localStorage fallback
+  // CT: 보호 페이지는 "확인된 실제 auth 상태" 없이는 열리면 안 된다.
   window.addEventListener('load', function() {
     setTimeout(function() {
       if (myTreesStarted) return;
+      
+      // Firebase unavailable/offline → DO NOT trust localStorage. Redirect to login.
+      // offline mode에서 localStorage에 isLoggedIn=true가 있어도 보호 페이지는 열면 안 된다.
+      var isFirebaseReady = typeof firebase !== 'undefined' && 
+                       firebase.auth && 
+                       firebase.apps && 
+                       firebase.apps.length > 0;
+      
+      if (!isFirebaseReady && window[AUTH_READY_FLAG]) {
+        // Firebase 없고 auth ready 상태 → offline mode. But protects shouldn't trust this.
+        console.warn('[my-trees] Firebase unavailable, redirecting to login');
+        window.location.href = 'login.html?redirect=my-trees.html';
+        return;
+      }
+      
+      // Firebase 없고 auth도 ready 아닌 경우만 null로 boot (redirect 될 것)
       bootMyTrees(null);
     }, 5500);
   }, { once: true });
