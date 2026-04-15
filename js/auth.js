@@ -1,20 +1,22 @@
 /**
  * LoveBud - Authentication Module (Firebase Auth)
- * v20260415-15
+ * v20260416-16
  *
  * Auth state observer updates #auth-nav (non-login pages) or
  * #auth-nav-container (login.html) using innerHTML container pattern.
  *
- * Loading state: neutral skeleton ONLY - no interactive content before Firebase confirms auth.
- * This prevents stale cached state from showing wrong UI (e.g., "내 계정" for logged-out user).
+ * Loading state: show confirmed cached auth UI immediately when available,
+ * otherwise fall back to a neutral skeleton until Firebase confirms auth.
  *
- * Version: ?v=20260415-15
+ * Version: ?v=20260416-16
  */
 
 var EMAIL_AUTH_MODE = 'login';
 var AUTH_INIT_FLAG = '__lovebudAuthInitialized';
 var DROPDOWN_LISTENER_ATTACHED = false;
 var AUTH_READY_FLAG = '__lovebudAuthReady';
+var AUTH_CACHE_KEY = 'lovebud_auth_cache';
+var AUTH_CONFIRMED_KEY = 'lovebud_auth_confirmed';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -40,18 +42,46 @@ function clearStaleFirebaseAuthState() {
   try { clearStorage(window.sessionStorage); } catch (e) {}
 }
 
+function getCachedAuthUser() {
+  try {
+    if (localStorage.getItem(AUTH_CONFIRMED_KEY) !== 'true') return null;
+    var raw = localStorage.getItem(AUTH_CACHE_KEY);
+    if (!raw || raw === 'null') return null;
+    var parsed = JSON.parse(raw);
+    if (!parsed || !parsed.uid) return null;
+    return parsed;
+  } catch (e) {
+    return null;
+  }
+}
+
+function setConfirmedAuthCache(user) {
+  try {
+    if (user && user.uid) {
+      var cacheData = { uid: user.uid, displayName: user.displayName || '', email: user.email || '' };
+      localStorage.setItem(AUTH_CACHE_KEY, JSON.stringify(cacheData));
+      localStorage.setItem(AUTH_CONFIRMED_KEY, 'true');
+      return;
+    }
+  } catch (e) {}
+  clearConfirmedAuthCache();
+}
+
+function clearConfirmedAuthCache() {
+  try {
+    localStorage.removeItem(AUTH_CACHE_KEY);
+    localStorage.removeItem(AUTH_CONFIRMED_KEY);
+  } catch (e) {}
+}
+
 // ── Core Auth ─────────────────────────────────────────────────────────────────
 
 /**
  * Apply cached auth state for fast initial render (prevents flicker).
  *
- * IMPORTANT: This renders a NEUTRAL SKELETON ONLY. No interactive auth content
- * is shown here because Firebase hasn't confirmed the actual auth state yet.
- * Showing cached "logged in" UI when the session is actually expired is worse
- * than showing a skeleton — it creates a false sense of authentication.
- *
- * The skeleton preserves layout space. Actual UI is set by updateNavUI()
- * after onAuthStateChanged fires.
+ * If we have a previously confirmed authenticated user, render the cached
+ * dropdown immediately and let Firebase revalidate in the background.
+ * If no confirmed cache exists, show a neutral skeleton that preserves layout.
  */
 function applyCachedAuthState() {
   var isLoginPage = window.location.pathname.indexOf('login.html') !== -1;
@@ -60,22 +90,30 @@ function applyCachedAuthState() {
   var authNav = document.getElementById('auth-nav');
   if (!authNav) return false;
 
-  // Always show neutral skeleton — never show cached interactive state.
-  // This ensures we never display stale "내 계정" or "로그인" based on cache
-  // before Firebase has confirmed the actual auth state.
   try {
+    var cachedUser = getCachedAuthUser();
+    if (cachedUser) {
+      authNav.innerHTML = buildUserDropdown(cachedUser);
+      authNav.style.cssText = 'pointer-events:auto;opacity:1;transition:opacity 0.2s ease;min-width:100px;height:36px;display:flex;align-items:center;justify-content:flex-end;user-select:auto;';
+      authNav.classList.add('auth-ready');
+      return true;
+    }
+
+    // If there is no confirmed cache, keep a neutral skeleton until Firebase answers.
     authNav.innerHTML = '<div class="auth-skeleton" style="width:100px;height:36px;border-radius:18px;background:var(--surface-container-highest, #e8e8e8);pointer-events:none;"></div>';
   } catch(e) {}
-  return true;
+  return false;
 }
 
 function initAuth() {
-  // Apply cached state immediately to prevent flicker
-  applyCachedAuthState();
+  // Apply confirmed cached state immediately to prevent flicker
+  var hasImmediateAuthUI = applyCachedAuthState();
 
-  // Ready 전 상태로 초기화 - 완전히 숨김
-  window[AUTH_READY_FLAG] = false;
-  markAuthLoading();
+  // Cached authenticated UI can stay visible while Firebase revalidates in background.
+  window[AUTH_READY_FLAG] = !!hasImmediateAuthUI;
+  if (!hasImmediateAuthUI) {
+    markAuthLoading();
+  }
 
   // 안전장치: 5초 타임아웃 - Firebase 응답 없을 때 오프라인 모드로 전환
   var authTimeout = setTimeout(function() {
@@ -120,6 +158,7 @@ function initAuth() {
           console.warn('Invalid Firebase session detected. Signing out.');
           await firebase.auth().signOut().catch(function () {});
           clearStaleFirebaseAuthState();
+          clearConfirmedAuthCache();
           return;
         }
       }
@@ -141,10 +180,11 @@ function initAuth() {
 
 function initOfflineAuth() {
   var isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+  var cachedUser = getCachedAuthUser();
   // Offline 모드에서도 ready 상태로 전환 후 UI 표시
   // 순서 중요: markAuthReady 먼저, updateNavUI 나중
   markAuthReady();
-  updateNavUI(isLoggedIn ? { uid: 'offline', email: 'offline@example.com' } : null);
+  updateNavUI(isLoggedIn ? (cachedUser || { uid: 'offline', email: 'offline@example.com' }) : null);
 }
 
 // ── Loading State (prevent flash) ────────────────────────────────────────────
@@ -257,15 +297,7 @@ function updateNavUI(user) {
     return;
   }
 
-  // Update Cache
-  try {
-    if (user) {
-      var cacheData = { uid: user.uid, displayName: user.displayName, email: user.email };
-      localStorage.setItem('lovebud_auth_cache', JSON.stringify(cacheData));
-    } else {
-      localStorage.setItem('lovebud_auth_cache', 'null');
-    }
-  } catch(e) {}
+  setConfirmedAuthCache(user);
 
   if (user) {
     var html = buildUserDropdown(user);
@@ -440,8 +472,8 @@ async function signOut() {
   clearStaleFirebaseAuthState();
   try {
     localStorage.removeItem('isLoggedIn');
-    localStorage.removeItem('lovebud_auth_cache');
   } catch (e) {}
+  clearConfirmedAuthCache();
   window.location.reload();
 }
 

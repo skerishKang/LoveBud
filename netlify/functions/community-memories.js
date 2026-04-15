@@ -4,22 +4,22 @@
  * No authentication required.
  */
 const { ok, httpError, handleError } = require('./_lib/http');
-const { queryMemories } = require('./_lib/doc-store');
+const { queryMemories, validateLimit } = require('./_lib/doc-store');
 
 exports.handler = async (event) => {
   const requestOrigin = event.headers?.origin || event.headers?.Origin || '';
 
   if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 204, headers: { 'Access-Control-Allow-Origin': '*' }, body: '' };
+    return ok(null, { 'Access-Control-Allow-Origin': '*' });
   }
 
   if (event.httpMethod !== 'GET') {
-    return { statusCode: 405, body: JSON.stringify({ error: 'Method not allowed' }) };
+    throw httpError(405, 'Method not allowed');
   }
 
   try {
     const params = event.queryStringParameters || {};
-    const limit = params.limit ? Math.min(Number(params.limit), 50) : 20;
+    const limit = validateLimit(params.limit, 20, 50);
 
     const memories = await queryMemories({
       visibility: 'public',

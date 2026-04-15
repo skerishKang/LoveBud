@@ -7,13 +7,19 @@
  */
 const { requireUser } = require('./_lib/auth');
 const { ok, noContent, httpError, handleError } = require('./_lib/http');
-const { getMemory, updateMemory, deleteMemory, getTree } = require('./_lib/doc-store');
+const { getMemory, updateMemory, deleteMemory, getTree, validateVisibility, validateSourceType, validateOptionalString, validateUuid } = require('./_lib/doc-store');
+
+// Allowed fields for PATCH ( whitelist approach)
+const ALLOWED_MEMORY_FIELDS = [
+  'title', 'memo', 'artist', 'source', 'sourceUrl', 'sourceUrl',
+  'sourceType', 'thumbnail', 'timestamp', 'visibility', 'parentId', 'emotionTags'
+];
 
 exports.handler = async (event) => {
   const requestOrigin = event.headers?.origin || event.headers?.Origin || '';
 
   if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 204, headers: { 'Access-Control-Allow-Origin': '*' }, body: '' };
+    return ok(null, { 'Access-Control-Allow-Origin': '*' });
   }
 
   try {
@@ -25,8 +31,11 @@ exports.handler = async (event) => {
 
     if (!memoryId) throw httpError(400, 'Missing memoryId');
 
+    // Validate memoryId format
+    const validatedMemoryId = validateUuid(memoryId, 'memoryId');
+
     // Load existing
-    const existing = await getMemory(memoryId);
+    const existing = await getMemory(validatedMemoryId);
     if (!existing) throw httpError(404, 'Memory not found');
 
     // Ownership check: memory가 속한 tree의 owner 확인
@@ -57,7 +66,43 @@ exports.handler = async (event) => {
         throw httpError(400, 'Invalid JSON body');
       }
 
-      const updated = await updateMemory(memoryId, body);
+      // Filter to only allowed fields (whitelist)
+      const allowedPatch = {};
+      for (const field of ALLOWED_MEMORY_FIELDS) {
+        if (body[field] !== undefined) {
+          // Field-specific validation
+          if (field === 'visibility') {
+            allowedPatch[field] = validateVisibility(body[field], 'private');
+          } else if (field === 'sourceType') {
+            allowedPatch[field] = validateSourceType(body[field], 'youtube');
+          } else if (field === 'emotionTags') {
+            if (!Array.isArray(body[field])) {
+              throw httpError(400, 'emotionTags must be an array');
+            }
+            if (body[field].length > 20) {
+              throw httpError(400, 'emotionTags exceeds maximum of 20 items');
+            }
+            allowedPatch[field] = body[field].map(tag => {
+              if (typeof tag !== 'string' || tag.trim().length === 0) {
+                throw httpError(400, 'emotionTags must contain non-empty strings');
+              }
+              return tag.trim();
+            });
+          } else if (field === 'parentId') {
+            if (body[field] === null || body[field] === '') {
+              allowedPatch[field] = null;
+            } else {
+              allowedPatch[field] = validateUuid(body[field], 'parentId');
+            }
+          } else {
+            // String fields with length limits
+            const limits = { title: 200, memo: 5000, artist: 100, source: 200, sourceUrl: 1000, thumbnail: 500, timestamp: 100 };
+            allowedPatch[field] = validateOptionalString(body[field], limits[field] || 5000);
+          }
+        }
+      }
+
+      const updated = await updateMemory(validatedMemoryId, allowedPatch);
       return ok(updated, { 'Access-Control-Allow-Origin': '*' });
     }
 

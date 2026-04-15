@@ -4,7 +4,7 @@
  */
 const { requireUser } = require('./_lib/auth');
 const { ok, created, httpError, handleError } = require('./_lib/http');
-const { queryTrees, createTree } = require('./_lib/doc-store');
+const { queryTrees, createTree, validateRequired, validateVisibility, validateOptionalString } = require('./_lib/doc-store');
 
 exports.handler = async (event) => {
   const requestOrigin = event.headers?.origin || event.headers?.Origin || '';
@@ -24,10 +24,14 @@ exports.handler = async (event) => {
         throw httpError(400, 'Invalid JSON body');
       }
 
+      // Validate input
+      const title = validateOptionalString(body.title, 200) || '나의 Lovetree';
+      const visibility = validateVisibility(body.visibility, 'private');
+
       const tree = await createTree({
         ownerId: user.uid,
-        title: body.title,
-        visibility: body.visibility || 'private',
+        title,
+        visibility,
       });
 
       return created(tree, { 'Access-Control-Allow-Origin': '*' });

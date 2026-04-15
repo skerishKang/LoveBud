@@ -1,5 +1,3 @@
-nul
-
 # Dependencies
 node_modules/
 
@@ -35,6 +33,8 @@ coverage/
 # Local agent docs (ignored from public repo)
 AGENT.md
 LOCAL_AGENT.md
+pages/
+docs/reports/
 
 # Local Netlify folder
 .netlify
@@ -49,3 +49,17 @@ LOCAL_AGENT.md
 # OS files
 .DS_Store
 Thumbs.db
+
+# Temp files
+*.tmp
+*.temp
+.tmp/
+.temp/
+.tmp.driveupload/
+
+# Screenshots
+*.JPG
+*.jpg
+*.png
+*.PNG
+

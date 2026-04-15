@@ -12,6 +12,80 @@
 const { query } = require('./db');
 const { httpError } = require('./http');
 
+// ── Validation Helpers ─────────────────────────────────────────────────────
+
+const VISIBILITY_VALUES = ['public', 'private'];
+const SOURCE_TYPE_VALUES = ['youtube', 'soundcloud', 'bandcamp', 'spotify', 'apple', 'other'];
+
+/**
+ * Validate required string field (non-empty after trim)
+ */
+function validateRequired(value, fieldName) {
+  if (value === undefined || value === null || typeof value !== 'string') {
+    throw httpError(400, `${fieldName} is required`);
+  }
+  if (value.trim().length === 0) {
+    throw httpError(400, `${fieldName} cannot be empty`);
+  }
+  return value.trim();
+}
+
+/**
+ * Validate optional string field (allow empty, but trim if provided)
+ */
+function validateOptionalString(value, maxLength = 5000) {
+  if (value === undefined || value === null) return '';
+  if (typeof value !== 'string') return '';
+  const trimmed = value.trim();
+  if (trimmed.length > maxLength) {
+    throw httpError(400, `Field exceeds maximum length of ${maxLength}`);
+  }
+  return trimmed;
+}
+
+/**
+ * Validate visibility value
+ */
+function validateVisibility(value, defaultValue = 'private') {
+  if (value === undefined || value === null) return defaultValue;
+  if (!VISIBILITY_VALUES.includes(value)) {
+    throw httpError(400, `visibility must be one of: ${VISIBILITY_VALUES.join(', ')}`);
+  }
+  return value;
+}
+
+/**
+ * Validate sourceType value
+ */
+function validateSourceType(value, defaultValue = 'youtube') {
+  if (value === undefined || value === null) return defaultValue;
+  if (!SOURCE_TYPE_VALUES.includes(value)) {
+    throw httpError(400, `sourceType must be one of: ${SOURCE_TYPE_VALUES.join(', ')}`);
+  }
+  return value;
+}
+
+/**
+ * Validate UUID format
+ */
+function validateUuid(value, fieldName) {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!value || typeof value !== 'string' || !uuidRegex.test(value)) {
+    throw httpError(400, `Invalid ${fieldName} format`);
+  }
+  return value;
+}
+
+/**
+ * Validate limit parameter
+ */
+function validateLimit(value, defaultValue = 20, maxValue = 100) {
+  if (!value) return defaultValue;
+  const num = Number(value);
+  if (isNaN(num) || num < 1) return defaultValue;
+  return Math.min(num, maxValue);
+}
+
 // ── Trees ──────────────────────────────────────────────────────────────────
 
 /**
@@ -287,4 +361,11 @@ module.exports = {
   createMemory,
   updateMemory,
   deleteMemory,
+  // Validation helpers (for function-level use)
+  validateRequired,
+  validateOptionalString,
+  validateVisibility,
+  validateSourceType,
+  validateUuid,
+  validateLimit,
 };

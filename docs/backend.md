@@ -38,12 +38,12 @@ netlify/
 | GET | /api/trees | optional | List user's trees (auth) or public trees (anon) |
 | POST | /api/trees | required | Create a new tree |
 | GET | /api/trees/:treeId | required* | Get tree + memories (*private requires owner) |
+| GET | /api/community/memories | none | Public memories from all trees (no auth required) |
 | GET | /api/memories | required | List memories (filter by treeId, parentId) |
 | POST | /api/memories | required | Create a new memory |
 | GET | /api/memories/:memoryId | required | Get single memory |
 | PATCH | /api/memories/:memoryId | required | Update memory fields |
 | DELETE | /api/memories/:memoryId | required | Delete memory |
-| GET | /api/community/memories | none | Public memories from all trees (no auth required) |
 
 ## Auth Pattern (per-function)
 ```javascript
@@ -97,6 +97,16 @@ Netlify auto-installs `package.json` dependencies during build.
 - memories.js POST: body.treeId가 본인 소유 트리인지 검증 후 생성
 - memory-detail.js GET: public anyone / private owner only
 - memory-detail.js PATCH/DELETE: memory가 속한 tree의 owner만 수정/삭제 가능
+
+**입력값 검증 규칙:**
+- 필수 필드(treeId 등) 누락 → 400 error
+- 빈 문자열/공백 → trim 후 빈 값이면 400 error  
+- UUID 파라미터(treeId, memoryId, parentId) → UUID 형식 검증
+- limit 파라미터 → 1~100 범위로 제한 (기본 20)
+- visibility → 'public' 또는 'private'만 허용
+- sourceType → 'youtube', 'soundcloud', 'bandcamp', 'spotify', 'apple', 'other'
+- 문자열 필드 길이 제한: title(200), memo(5000), artist(100), source(200), sourceUrl(1000), thumbnail(500), timestamp(100)
+- emotionTags → 배열, 최대 20개, 빈 문자열不允许
 
 **Frontend 연결 상태:**
 - `search.html` — `window.apiClient.getCommunityMemories()` API 우선 + mock fallback 적용 완료
