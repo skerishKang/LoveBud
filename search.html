@@ -114,6 +114,80 @@
             overflow: hidden;
             margin-bottom: 24px;
         }
+
+        /* Tablet and below */
+        @media (max-width: 1024px) {
+            .search-container {
+                grid-template-columns: 1fr;
+                gap: 48px;
+                padding: 40px 24px;
+            }
+
+            .preview-sidebar {
+                position: static;
+            }
+
+            .thumbnail-wrapper {
+                width: 180px;
+                height: 120px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .search-container {
+                padding: 24px 16px;
+                gap: 32px;
+            }
+
+            .search-input {
+                font-size: 1rem;
+                padding: 20px 20px 20px 56px;
+            }
+
+            .search-icon {
+                font-size: 24px;
+                left: 20px;
+            }
+
+            .result-card {
+                padding: 16px;
+                gap: 16px;
+            }
+
+            .thumbnail-wrapper {
+                width: 140px;
+                height: 100px;
+            }
+
+            .preview-sidebar {
+                padding: 24px;
+                border-radius: 1.5rem;
+            }
+
+            .video-container {
+                border-radius: 1rem;
+            }
+
+            .result-card h3 {
+                font-size: 1.1rem !important;
+            }
+
+            .tag-chip {
+                font-size: 12px;
+                padding: 6px 14px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .thumbnail-wrapper {
+                width: 100px;
+                height: 75px;
+            }
+
+            .result-card {
+                flex-direction: column;
+            }
+        }
     </style>
 </head>
 <body class="paper-grain">
@@ -122,7 +196,7 @@
     <header class="nav-bar">
         <div class="headline" style="font-size: 1.5rem; font-weight: 900; color: var(--on-surface); letter-spacing: -0.04em; cursor: pointer;" onclick="location.href='index.html'">Lovetree</div>
         
-        <nav style="display: flex; align-items: center; gap: 40px;">
+        <nav class="main-nav">
             <div class="nav-links">
                 <a href="index.html">러브트리</a>
                 <a href="search.html" class="active">커뮤니티</a>
@@ -171,8 +245,8 @@
             <div id="previewDetails">
                 <h4 id="previewTitle" class="headline" style="font-size: 1.25rem; margin-bottom: 8px; font-weight: 800;">---</h4>
                 <p id="previewDesc" style="font-style: italic; color: var(--on-surface-variant); margin-bottom: 24px; font-size: 14px;">---</p>
-                <div style="padding-top: 24px; border-top: 1px solid var(--outline-variant);">
-                    <div style="font-size: 10px; font-weight: 900; color: var(--primary); margin-bottom: 16px; letter-spacing: 2px;">ARCHIVAL DATA</div>
+                     <div style="padding-top: 24px; border-top: 1px solid var(--outline-variant);">
+                         <div style="font-size: 10px; font-weight: 900; color: var(--primary); margin-bottom: 16px; letter-spacing: 2px;">보관 정보</div>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; font-size: 14px;">
                         <div>
                             <div style="color: #aaa; font-weight: 700; margin-bottom: 4px;">아티스트</div>
@@ -188,7 +262,11 @@
         </aside>
     </main>
 
+    <script src="js/mock-data.js"></script>
     <script src="js/search.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="js/firebase-config.js"></script>
     <script src="js/auth.js"></script>
 </body>
 </html>

@@ -118,6 +118,63 @@
             border-radius: 50%;
             box-shadow: 0 0 0 8px rgba(144, 73, 81, 0.1);
         }
+
+        /* Tablet and below */
+        @media (max-width: 1024px) {
+            .detail-layout {
+                grid-template-columns: 1fr;
+                gap: 48px;
+                padding: 40px 24px;
+            }
+
+            .connected-section {
+                margin-top: 48px;
+            }
+
+            .diary-container {
+                padding: 48px;
+            }
+
+            #memoryTitle {
+                font-size: 2.5rem !important;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .detail-layout {
+                padding: 24px 16px;
+                gap: 32px;
+            }
+
+            .video-main {
+                border-radius: 1.5rem;
+                margin-bottom: 24px;
+            }
+
+            .diary-container {
+                padding: 32px 24px;
+                border-radius: 2rem;
+            }
+
+            #memoryTitle {
+                font-size: 2rem !important;
+                line-height: 1.2;
+            }
+
+            .moment-card {
+                padding: 16px;
+                gap: 16px;
+            }
+
+            .moment-card img {
+                width: 60px !important;
+                height: 60px !important;
+            }
+
+            .growth-visualization {
+                margin-top: 48px;
+            }
+        }
     </style>
 </head>
 <body class="paper-grain">
@@ -126,7 +183,7 @@
     <header class="nav-bar">
         <div class="headline" style="font-size: 1.5rem; font-weight: 900; color: var(--on-surface); letter-spacing: -0.04em; cursor: pointer;" onclick="location.href='index.html'">Lovetree</div>
         
-        <nav style="display: flex; align-items: center; gap: 40px;">
+        <nav class="main-nav">
             <div class="nav-links">
                 <a href="index.html">러브트리</a>
                 <a href="search.html">커뮤니티</a>
@@ -151,34 +208,33 @@
             
             <div class="action-bar">
                 <div class="action-group">
-                    <div class="action-item"><span class="material-symbols-outlined">favorite</span> 1.2k</div>
-                    <div class="action-item"><span class="material-symbols-outlined">chat_bubble</span> 342</div>
-                    <div class="action-item"><span class="material-symbols-outlined">share</span> 공유하기</div>
+<div class="action-item"><span class="material-symbols-outlined">favorite</span> 1.2k</div>
+<div class="action-item"><span class="material-symbols-outlined">chat_bubble</span> 342</div>
+<div class="action-item"><span class="material-symbols-outlined">share</span> 공유하기</div>
                 </div>
                 <button class="btn-round btn-outline">기록 수정</button>
             </div>
 
+            <!-- 메타데이터 표시 영역 -->
+            <div style="display: flex; gap: 24px; padding: 0 16px; margin-top: 16px; font-size: 14px; color: var(--on-surface-variant);">
+                <span id="detailArtist">아티스트</span>
+                <span>•</span>
+                <span id="detailDate">날짜</span>
+            </div>
+
             <div class="connected-section">
                 <h3 class="headline" style="font-size: 1.8rem; margin-bottom: 24px; font-weight: 800;">연결된 파편들</h3>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
-                    <div class="moment-card">
-                        <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuCjWA-AFRh14rYIbsTF5UrmCAv4anuXsXRDXbbJEtgT_CRm5FBJ80uZ5_uPK-7ApmWmn4wXjjbDashR1q3SqHrJIN-yLVFsMbfl2zrcM8FLFcUvNOl7u6XdFuN0wZ4_UoA3zyqywS5KkHqxbTEPs0LQLLI8Te3GFo9vMgYdOuAHl49cFYJXNPjue0sE9e9vPRf7as1s6uQBMMjhOVzcPrrluUWdegAlNl5n3L4_OKJGkQdS2Zozr-fxkOFmKFbUokuLf7tEsSyqbg0" style="width: 80px; height: 80px; border-radius: 1rem; object-fit: cover;" alt="Moment">
-                        <div>
-                            <div style="font-size: 11px; font-weight: 800; color: #aaa; text-transform: uppercase;">2024.03.14</div>
-                            <div style="font-weight: 800; color: var(--on-surface); font-size: 15px;">사전 녹화 대기 중</div>
-                        </div>
-                    </div>
+                <div id="connectedFragments" style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
                 </div>
             </div>
         </section>
 
         <section class="diary-section">
             <div style="margin-bottom: 40px;">
-                <p style="font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--primary); font-weight: 900; margin-bottom: 12px;">ARCHIVES — 2024.03.15</p>
+                <p id="detailSubtitle" style="font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--primary); font-weight: 900; margin-bottom: 12px;">기록 — 2024.01.15</p>
                 <h1 class="headline" id="memoryTitle" style="font-size: 3.2rem; color: var(--on-surface); line-height: 1.1; margin-bottom: 24px;">Lovetree: 첫 번째<br>만남의 기억</h1>
                 <div style="display: flex; gap: 10px;">
-                    <span class="tag-chip active" style="padding: 6px 16px; font-size: 12px;">Excited</span>
-                    <span class="tag-chip active" style="padding: 6px 16px; font-size: 12px;">Happy</span>
+                    <div class="tags-container" id="tagsContainer"></div>
                 </div>
             </div>
 
@@ -194,12 +250,16 @@
             <div class="growth-visualization">
                 <div class="growth-line"></div>
                 <div class="growth-dot"></div>
-                <p style="margin-top: 16px; font-weight: 800; color: var(--primary); font-size: 12px; text-transform: uppercase; letter-spacing: 2px;">The love story continues</p>
+                <p style="margin-top: 16px; font-weight: 800; color: var(--primary); font-size: 12px; text-transform: uppercase; letter-spacing: 2px;">사랑의 이야기는 계속됩니다</p>
             </div>
         </section>
     </main>
 
+    <script src="js/mock-data.js"></script>
     <script src="js/detail.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="js/firebase-config.js"></script>
     <script src="js/auth.js"></script>
 </body>
 </html>

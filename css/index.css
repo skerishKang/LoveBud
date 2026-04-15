@@ -251,4 +251,83 @@ footer p {
     .hero h1 {
         font-size: 2.5rem;
     }
+
+    .app-container {
+        width: 100vw;
+        max-width: none;
+        height: auto;
+        min-height: 100vh;
+        margin: 0;
+        padding: 20px;
+        border-radius: 0;
+        box-shadow: none;
+    }
+
+    .nav-bar {
+        padding: 16px 20px;
+    }
+
+    .nav-links {
+        gap: 16px;
+    }
+
+    .nav-links a {
+        font-size: 14px;
+    }
+
+    .hero-title {
+        font-size: 2.5rem;
+        line-height: 1.2;
+    }
+
+    .feature-card {
+        padding: 1.5rem;
+    }
+
+    .gallery-grid {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 12px;
+    }
+
+    footer {
+        padding: 40px 20px;
+    }
+
+    .memory-card-mini {
+        width: 120px;
+        display: none;
+    }
+
+    .memory-card-mini:first-child {
+        display: block;
+        top: 10% !important;
+        right: 5% !important;
+    }
+
+    .memory-card-mini:nth-child(2) {
+        display: block;
+        top: 60% !important;
+        left: 5% !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .hero-title {
+        font-size: 2rem;
+    }
+
+    .app-container > section:first-child {
+        flex-direction: column;
+        gap: 40px;
+    }
+
+    .app-container > section:first-child > div {
+        width: 100% !important;
+    }
+
+    .feature-card {
+        padding: 1.25rem;
+        flex-direction: column;
+        text-align: center;
+    }
 }
