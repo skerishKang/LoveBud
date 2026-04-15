@@ -227,8 +227,17 @@
       var trees;
       if (window.apiClient && window.apiClient.getTrees) {
         trees = await window.apiClient.getTrees();
+        // CRITICAL: Filter out public sample trees - my-trees should show ONLY user's trees
+        // Bug fix: if trees includes public sample trees, filter them out
+        if (Array.isArray(trees)) {
+          trees = trees.filter(t => {
+            // Private trees OR trees owned by current user
+            return t.visibility === 'private' || (t.data && t.data.visibility === 'private') || 
+                   t.visibility === undefined; // Mock data without visibility = user's
+          });
+        }
       } else {
-        // Fallback to mock
+        // Fallback to mock - only user's trees (no visibility field = private by default)
         trees = typeof getTrees === 'function' ? getTrees() : [];
       }
 
@@ -238,9 +247,9 @@
         renderTrees([]);
       }
     } catch (e) {
-      console.warn('[my-trees] getTrees failed, fallback to mock:', e.message);
-      var trees = typeof getTrees === 'function' ? getTrees() : [];
-      renderTrees(Array.isArray(trees) ? trees : []);
+      console.warn('[my-trees] getTrees failed, NOT fallback to mock (prevent public tree leak):', e.message);
+      // FIX: Do NOT fallback to mock when API fails. Just show empty.
+      renderTrees([]);
     }
   }
 

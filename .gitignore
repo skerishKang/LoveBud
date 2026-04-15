@@ -1,5 +1,29 @@
 nul
 
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+.output/
+deno.lock
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Cache
+.cache/
+.parcel-cache/
+.vite/
+.eslintcache
+
+# Coverage
+coverage/
+
 # Local-only secrets and test credentials
 .env
 .env.*
@@ -14,3 +38,14 @@ LOCAL_AGENT.md
 
 # Local Netlify folder
 .netlify
+
+# Editor/IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
