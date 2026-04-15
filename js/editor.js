@@ -139,12 +139,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // ── 배치 상수 ──
         const ROOT_X = 400, ROOT_Y = 300;
-        const RADIUS_L1 = 250;
-        const RADIUS_L2 = 150;
+        const RADIUS_L1 = 280;  // L1 반경 증가 (250→280)
+        const RADIUS_L2 = 200;  // L2 반경 증가 (150→200) - 노드 겹침 방지
+        const NODE_WIDTH = 80;  // 노드 카드 너비 (px)
+        const MIN_ANGLE_GAP = 35; // 최소 각도 간격 (도) - 겹침 방지
 
         const FIXED_ANGLES = {
             v1: -60, v2: -130, v3: 10,
             m2: 130, m3: -170, m4: 70
+        };
+
+        // ── 각도 분산 헬퍼 ──
+        // sibling 수에 따라 균등하게 각도 분배, 최소 간격 보장
+        const distributeAngles = (count, baseAngle = -90) => {
+            if (count <= 0) return [baseAngle];
+            const angles = [];
+            const totalSpread = Math.min(360, count * MIN_ANGLE_GAP * 1.5); // 분산 범위
+            const startAngle = baseAngle - totalSpread / 2;
+            for (let i = 0; i < count; i++) {
+                const ratio = count === 1 ? 0.5 : i / (count - 1);
+                angles.push(startAngle + totalSpread * ratio);
+            }
+            return angles;
         };
 
         const calcPosition = (mem, visited = new Set()) => {
@@ -166,22 +182,39 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const siblings = treeMemories().filter(m => m.parentId === parentId && m.id !== 'root');
-            const idx = siblings.indexOf(mem);
+            const idx = siblings.findIndex(m => m.id === mem.id); // indexOf 대신 findIndex 사용 (객체 비교 안정성)
             const count = siblings.length;
 
             if (parentId === 'root') {
-                let angle = (FIXED_ANGLES[mem.id] !== undefined)
-                    ? FIXED_ANGLES[mem.id]
-                    : (count > 0 ? (idx / count) * 360 - 90 : -90);
+                // root 직속: 고정 각도 우선, 없으면 분산
+                let angle;
+                if (FIXED_ANGLES[mem.id] !== undefined) {
+                    angle = FIXED_ANGLES[mem.id];
+                } else if (count > 0) {
+                    const angles = distributeAngles(count);
+                    angle = angles[idx] !== undefined ? angles[idx] : angles[0];
+                } else {
+                    angle = -90;
+                }
                 return {
                     x: ROOT_X + RADIUS_L1 * Math.cos(angle * Math.PI / 180),
                     y: ROOT_Y + RADIUS_L1 * Math.sin(angle * Math.PI / 180)
                 };
             }
 
+            // L2: 부모 기준 분산
             const parent = treeMemories().find(m => m.id === parentId);
             const parentPos = parent ? calcPosition(parent, visited) : { x: ROOT_X, y: ROOT_Y };
-            const angle = count > 0 ? (idx / count) * 360 : 0;
+            
+            // sibling이 많으면 각도 분산, 최소 간격 보장
+            let angle;
+            if (count > 0) {
+                const angles = distributeAngles(count, 0); // 0도 기준 분산
+                angle = angles[idx] !== undefined ? angles[idx] : (idx / count) * 360;
+            } else {
+                angle = 0;
+            }
+            
             return {
                 x: parentPos.x + RADIUS_L2 * Math.cos(angle * Math.PI / 180),
                 y: parentPos.y + RADIUS_L2 * Math.sin(angle * Math.PI / 180)

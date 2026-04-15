@@ -402,3 +402,14 @@ h1, h2, h3, h4, .headline {
         order: 2;
     }
 }
+
+/* Animations */
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* Auth nav loading state - smooth transition */
+#auth-nav, #auth-nav-container {
+    transition: opacity 0.2s ease;
+}

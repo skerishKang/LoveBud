@@ -1,5 +1,5 @@
--- LoveBud MVP - Demo/Seed Data
--- 검증된 공개 콘텐츠 기반 샘플 데이터
+-- LoveBud MVP - Verified Demo/Seed Data
+-- 실제 공식 YouTube 채널에서 확인 가능한 공개 콘텐츠만 포함
 -- Neon PostgreSQL에서 실행: \i netlify/sql/002_seed_demo_data.sql
 
 -- 시스템 계정 (데모 콘텐츠용)
@@ -7,11 +7,12 @@
 INSERT INTO trees (id, owner_id, title, visibility, created_at, updated_at)
 VALUES 
   ('a0b1c2d3-e4f5-6789-abcd-ef0123456789', 'seed-system-001', '[샘플] BTS 공식 MV 모음', 'public', '2024-01-15 00:00:00+00', '2024-07-20 00:00:00+00'),
-  ('b1c2d3e4-f5a6-7890-bcde-f12345678901', 'seed-system-002', '[샘플] Hearts2Hearts 데뷔 콘텐츠', 'public', '2025-02-24 00:00:00+00', '2025-04-15 00:00:00+00')
+  ('b1c2d3e4-f5a6-7890-bcde-f12345678901', 'seed-system-002', '[샘플] Hearts2Hearts 공식 MV', 'public', '2025-02-24 00:00:00+00', '2025-04-15 00:00:00+00')
 ON CONFLICT (id) DO UPDATE SET
   title = EXCLUDED.title,
   visibility = EXCLUDED.visibility,
   updated_at = NOW();
+-- 참고: owner_id는 DO UPDATE에서 제외 (시드 소유권 유지)
 
 -- BTS Tree 루트 메모리 (내부용, community API 미노출)
 INSERT INTO memories (id, tree_id, parent_id, title, memo, artist, source, source_url, source_type, thumbnail, emotion_tags, timestamp, visibility, created_at, updated_at)
@@ -32,20 +33,17 @@ ON CONFLICT (id) DO UPDATE SET
   thumbnail = EXCLUDED.thumbnail,
   updated_at = NOW();
 
--- Hearts2Hearts Tree 루트 메모리
+-- Hearts2Hearts Tree 루트 메모리 (내부용, community API 미노출)
 INSERT INTO memories (id, tree_id, parent_id, title, memo, artist, source, source_url, source_type, thumbnail, emotion_tags, timestamp, visibility, created_at, updated_at)
 VALUES 
-  ('b7c8d9e0-f1a2-3456-bcde-789012345678', 'b1c2d3e4-f5a6-7890-bcde-f12345678901', NULL, 'Hearts2Hearts 데뷔 콘텐츠', 'SM엔터테인먼트 2025년 데뷔 걸그룹 Hearts2Hearts의 공식 콘텐츠.', '', '', '', 'system', '', '["시작"]', '2025.02.24', 'private', '2025-02-24 00:00:00+00', '2025-04-15 00:00:00+00')
+  ('b7c8d9e0-f1a2-3456-bcde-789012345678', 'b1c2d3e4-f5a6-7890-bcde-f12345678901', NULL, 'Hearts2Hearts 공식 MV', 'SM엔터테인먼트 2025년 데뷔 걸그룹 Hearts2Hearts 공식 유튜브 채널 콘텐츠.', '', '', '', 'system', '', '["시작"]', '2025.02.24', 'private', '2025-02-24 00:00:00+00', '2025-04-15 00:00:00+00')
 ON CONFLICT (id) DO NOTHING;
 
--- Hearts2Hearts 공개 메모리
+-- Hearts2Hearts 공개 메모리 (community API 노출)
+-- 출처: @hearts2hearts.official 공식 채널
 INSERT INTO memories (id, tree_id, parent_id, title, memo, artist, source, source_url, source_type, thumbnail, emotion_tags, timestamp, visibility, created_at, updated_at)
 VALUES 
-  ('c8d9e0f1-a2b3-4567-cdef-890123456789', 'b1c2d3e4-f5a6-7890-bcde-f12345678901', 'b7c8d9e0-f1a2-3456-bcde-789012345678', 'Hearts2Hearts — The Chase MV', '2025년 2월 24일 공개된 Hearts2Hearts 데뷔 싱글 공식 뮤직비디오.', 'Hearts2Hearts', 'SMTOWN Official', 'https://www.youtube.com/embed/2yJ73PpitWw', 'youtube', 'https://img.youtube.com/vi/2yJ73PpitWw/mqdefault.jpg', '["데뷔", "몽환"]', '2025.02.24', 'public', '2025-02-24 00:00:00+00', '2025-04-15 00:00:00+00'),
-  ('d9e0f1a2-b3c4-5678-defa-901234567890', 'b1c2d3e4-f5a6-7890-bcde-f12345678901', 'b7c8d9e0-f1a2-3456-bcde-789012345678', 'Hearts2Hearts — Butterflies MV', '2025년 3월 공개된 Hearts2Hearts 싱글 앨범 수록곡 공식 뮤직비디오.', 'Hearts2Hearts', 'SMTOWN Official', 'https://www.youtube.com/embed/QpgP7CnQ61k', 'youtube', 'https://img.youtube.com/vi/QpgP7CnQ61k/mqdefault.jpg', '["수록곡", "힙합"]', '2025.03.10', 'public', '2025-03-10 00:00:00+00', '2025-04-15 00:00:00+00'),
-  ('e0f1a2b3-c4d5-6789-efab-012345678901', 'b1c2d3e4-f5a6-7890-bcde-f12345678901', 'b7c8d9e0-f1a2-3456-bcde-789012345678', 'Hearts2Hearts — The Chase Dance Practice', '2025년 3월 공개된 "The Chase" 안무 연습 영상.', 'Hearts2Hearts', 'SMTOWN Official', 'https://www.youtube.com/embed/dQw4w9WgXcQ', 'youtube', 'https://img.youtube.com/vi/dQw4w9WgXcQ/mqdefault.jpg', '["안무", "연습"]', '2025.03.05', 'public', '2025-03-05 00:00:00+00', '2025-04-15 00:00:00+00'),
-  ('f1a2b3c4-d5e6-7890-fabc-123456789012', 'b1c2d3e4-f5a6-7890-bcde-f12345678901', 'b7c8d9e0-f1a2-3456-bcde-789012345678', 'Hearts2Hearts SMTOWN 2025 Performance', '2025년 SMTOWN 라이브 공연에서의 Hearts2Hearts 데뷔 무대 퍼포먼스 영상.', 'Hearts2Hearts', 'SMTOWN Official', 'https://www.youtube.com/embed/XqZsoesa55w', 'youtube', 'https://img.youtube.com/vi/XqZsoesa55w/mqdefault.jpg', '["무대", "퍼포먼스"]', '2025.03.01', 'public', '2025-03-01 00:00:00+00', '2025-04-15 00:00:00+00'),
-  ('a2b3c4d5-e6f7-8901-abcd-234567890123', 'b1c2d3e4-f5a6-7890-bcde-f12345678901', 'b7c8d9e0-f1a2-3456-bcde-789012345678', 'Hearts2Hearts — The Stars, The Moon, The Dreams', '2025년 발매 싱글의 수록 발라드곡 공식 오디오/클립 영상.', 'Hearts2Hearts', 'SMTOWN Official', 'https://www.youtube.com/embed/9bZkp7q19f0', 'youtube', 'https://img.youtube.com/vi/9bZkp7q19f0/mqdefault.jpg', '["발라드", "감성"]', '2025.02.28', 'public', '2025-02-28 00:00:00+00', '2025-04-15 00:00:00+00')
+  ('c8d9e0f1-a2b3-4567-cdef-890123456789', 'b1c2d3e4-f5a6-7890-bcde-f12345678901', 'b7c8d9e0-f1a2-3456-bcde-789012345678', 'Hearts2Hearts — The Chase MV', '2025년 2월 24일 공개된 Hearts2Hearts 데뷔 싱글 공식 뮤직비디오.', 'Hearts2Hearts', 'Hearts2Hearts Official', 'https://www.youtube.com/embed/kxUA2wwYiME', 'youtube', 'https://img.youtube.com/vi/kxUA2wwYiME/mqdefault.jpg', '["데뷔", "몽환"]', '2025.02.24', 'public', '2025-02-24 00:00:00+00', '2025-04-15 00:00:00+00')
 ON CONFLICT (id) DO UPDATE SET
   title = EXCLUDED.title,
   source_url = EXCLUDED.source_url,

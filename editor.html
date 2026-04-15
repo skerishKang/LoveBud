@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>내 러브트리 | Lovetree</title>
-    <link rel="stylesheet" href="css/editor.css?v=20260415-6">
+    <link rel="stylesheet" href="css/editor.css?v=20260415-7">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
 </head>
 <body>
@@ -25,7 +25,10 @@
                     <button class="lang-btn active">KR</button>
                     <button class="lang-btn">EN</button>
                 </div>
-                <div id="auth-nav"><a href="login.html" class="btn-round btn-outline" style="text-decoration: none; padding: 8px 20px; font-size: 14px;">로그인</a></div>
+                <div id="auth-nav" style="min-width:100px;height:36px;display:flex;align-items:center;justify-content:flex-end;">
+                    <!-- 초기 상태: 로딩 스피너 (auth.js가 로드되면 교체) -->
+                    <span class="material-symbols-outlined" style="color:var(--on-surface-variant);animation:spin 1s linear infinite;font-size:20px;">progress_activity</span>
+                </div>
             </div>
         </nav>
     </header>
@@ -38,8 +41,8 @@
                     <span class="material-symbols-outlined">account_tree</span>
                     <span>트리 보기</span>
                 </div>
-<div class="tool-item">
-<span class="material-symbols-outlined">timeline</span>
+<div class="tool-item disabled" title="준비 중인 기능입니다" style="opacity:0.4;cursor:not-allowed;">
+<span class="material-symbols-outlined" style="background:var(--surface-container-low);color:var(--outline);">timeline</span>
 <span>타임라인</span>
 </div>
             </div>
@@ -123,10 +126,10 @@
 
     <script src="js/mock-data.js?v=20260415-8"></script>
     <script src="js/postgres-client.js?v=20260415-10"></script>
-    <script src="js/editor.js?v=20260415-12"></script>
+    <script src="js/editor.js?v=20260415-13"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="js/firebase-config.js?v=20260415-6"></script>
-    <script src="js/auth.js?v=20260415-12"></script>
+    <script src="js/auth.js?v=20260415-13"></script>
 </body>
 </html>

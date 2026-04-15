@@ -1,11 +1,12 @@
 /**
  * LoveBud - Authentication Module (Firebase Auth)
- * v20260415-12
+ * v20260415-13
  *
  * Auth state observer updates #auth-nav (non-login pages) or
  * #auth-nav-container (login.html) using innerHTML container pattern.
+ * Improved loading state with spinner for index.html/editor.html headers.
  *
- * Version: ?v=20260415-12
+ * Version: ?v=20260415-13
  */
 
 var EMAIL_AUTH_MODE = 'login';
@@ -39,10 +40,34 @@ function clearStaleFirebaseAuthState() {
 
 // ── Core Auth ─────────────────────────────────────────────────────────────────
 
+function applyCachedAuthState() {
+  var isLoginPage = window.location.pathname.indexOf('login.html') !== -1;
+  if (isLoginPage) return false;
+
+  var authNav = document.getElementById('auth-nav');
+  if (!authNav) return false;
+
+  try {
+    var cacheStr = localStorage.getItem('lovebud_auth_cache');
+    if (cacheStr === 'null') {
+      authNav.innerHTML = buildLoginButton();
+      return true;
+    } else if (cacheStr) {
+      var user = JSON.parse(cacheStr);
+      authNav.innerHTML = buildUserDropdown(user);
+      return true;
+    }
+  } catch(e) {}
+  return false;
+}
+
 function initAuth() {
+  // Apply cached state immediately to prevent flicker
+  var hasCache = applyCachedAuthState();
+
   // Ready 전 상태로 초기화 - 완전히 숨김
   window[AUTH_READY_FLAG] = false;
-  markAuthLoading();
+  markAuthLoading(hasCache);
 
   // 안전장치: 5초 타임아웃 - Firebase 응답 없을 때 오프라인 모드로 전환
   var authTimeout = setTimeout(function() {
@@ -117,33 +142,49 @@ function initOfflineAuth() {
 // ── Loading State (prevent flash) ────────────────────────────────────────────
 
 /**
- * Show auth nav loading state - completely hidden but preserves layout space.
- * Uses visibility:hidden to prevent layout shift while hiding content.
+ * Show auth nav loading state - preserves layout space with smooth transition.
+ * index.html에는 초기 로딩 스피너가 있으므로, 이를 유지하되 투명도만 조정
  */
-function markAuthLoading() {
+function markAuthLoading(hasCache) {
   var authNav = document.getElementById('auth-nav');
   var authContainer = document.getElementById('auth-nav-container');
-  // Ready 전: 공간은 차지하되 완전히 숨김 (레이아웃 시프트 방지)
-  var hiddenStyle = 'visibility:hidden;opacity:0;transition:opacity 0.2s ease;min-width:80px;height:36px;';
-  if (authNav) authNav.setAttribute('style', hiddenStyle);
-  if (authContainer) authContainer.setAttribute('style', hiddenStyle);
+  // Ready 전: 레이아웃 유지하되 콘텐츠 흐릿하게 표시 (캐시가 있으면 선명하게 유지)
+  var opacity = hasCache ? '1' : '0.6';
+  var loadingStyle = 'opacity:' + opacity + ';transition:opacity 0.2s ease;min-width:100px;height:36px;display:flex;align-items:center;justify-content:flex-end;';
+  if (authNav) {
+    // 기존 내용(스피너)을 유지하되 투명도만 조정 (캐시가 없을 때만)
+    authNav.style.cssText = loadingStyle;
+  }
+  if (authContainer) {
+    authContainer.style.cssText = loadingStyle;
+  }
 }
 
 /**
  * Mark auth as ready and reveal the nav UI with smooth fade-in.
+ * index.html의 로딩 스피너를 지우고 실제 UI를 표시
  */
 function markAuthReady() {
   window[AUTH_READY_FLAG] = true;
   var authNav = document.getElementById('auth-nav');
   var authContainer = document.getElementById('auth-nav-container');
-  // Ready 후: 부드럽게 표시
-  var visibleStyle = 'visibility:visible;opacity:1;transition:opacity 0.2s ease;min-width:80px;';
+  // Ready 후: 스피너 제거하고 부드럽게 표시
+  var visibleStyle = 'opacity:1;transition:opacity 0.2s ease;min-width:100px;height:36px;display:flex;align-items:center;justify-content:flex-end;';
   if (authNav) {
-    authNav.setAttribute('style', visibleStyle);
+    // 로딩 스피너 제거 (index.html의 초기 스피너)
+    var spinner = authNav.querySelector('.material-symbols-outlined');
+    if (spinner && spinner.textContent === 'progress_activity') {
+      spinner.remove();
+    }
+    authNav.style.cssText = visibleStyle;
     authNav.classList.add('auth-ready');
   }
   if (authContainer) {
-    authContainer.setAttribute('style', visibleStyle);
+    var spinner = authContainer.querySelector('.material-symbols-outlined');
+    if (spinner && spinner.textContent === 'progress_activity') {
+      spinner.remove();
+    }
+    authContainer.style.cssText = visibleStyle;
     authContainer.classList.add('auth-ready');
   }
 }
@@ -205,6 +246,16 @@ function updateNavUI(user) {
     return;
   }
 
+  // Update Cache
+  try {
+    if (user) {
+      var cacheData = { uid: user.uid, displayName: user.displayName, email: user.email };
+      localStorage.setItem('lovebud_auth_cache', JSON.stringify(cacheData));
+    } else {
+      localStorage.setItem('lovebud_auth_cache', 'null');
+    }
+  } catch(e) {}
+
   if (user) {
     var html = buildUserDropdown(user);
     if (authNav) authNav.innerHTML = html;
@@ -256,12 +307,99 @@ function getRedirectTarget() {
   return params.get('redirect') || 'editor.html';
 }
 
+/**
+ * Check if current environment supports Firebase Auth.
+ * Returns null if supported, or error message string if not.
+ */
+function getEnvironmentCheckError() {
+  var protocol = window.location.protocol || '';
+  // Check file:// protocol
+  if (protocol === 'file:') {
+    return '이 페이지는 파일:// 프로토콜에서 열 수 없습니다. http:// 또는 https:// 주소에서 접근해 주세요.';
+  }
+  // Check web storage availability
+  try {
+    var testKey = '__lovebud_storage_test__';
+    localStorage.setItem(testKey, testKey);
+    localStorage.removeItem(testKey);
+  } catch (e) {
+    return '브라우저 저장소(storage)가 비활성화되어 있습니다. 쿠키/저장소를 허용한 후 다시 시도해 주세요.';
+  }
+  // Check https requirement for some browsers
+  if (protocol === 'http:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    // Allow http on localhost for dev, warn otherwise
+    console.warn('[auth] Running on http:// - some features may be restricted');
+  }
+  return null;
+}
+
+/**
+ * Convert Firebase error to user-friendly Korean message.
+ * Original error is logged to console for developers.
+ */
+function getFriendlyErrorMessage(error, isGoogleLogin) {
+  if (!error) return '알 수 없는 오류가 발생했습니다.';
+  var code = error.code || '';
+  var message = error.message || '';
+  // Log full error for devs
+  console.error('Auth error (developer only):', error);
+  
+  // Environment-related errors
+  if (message.indexOf('location.protocol') !== -1 || message.indexOf('not supported in the environment') !== -1) {
+    return '이 브라우저 환경에서는 로그인할 수 없습니다. http:// 또는 https:// 주소(localhost 가능)에서 다시 시도해 주세요.';
+  }
+  if (message.indexOf('web storage') !== -1 || message.indexOf('storage') !== -1) {
+    return '브라우저 저장소(storage)가 비활성화되어 있습니다. 쿠키와 저장소를 허용한 후 다시 시도해 주세요.';
+  }
+  
+  // Common auth errors
+  switch (code) {
+    case 'auth/popup-closed-by-user':
+      return null; // User cancelled, no message needed
+    case 'auth/cancelled-popup-request':
+      return '로그인이 취소되었습니다.';
+    case 'auth/account-exists-with-different-credential':
+      return '이미 다른 방법으로 가입된 계정이 있습니다.';
+    case 'auth/credential-already-in-use':
+      return '이미 사용 중인Credential입니다.';
+    case 'auth/email-already-in-use':
+      return '이미 사용 중인 이메일 주소입니다.';
+    case 'auth/user-disabled':
+      return '비활성화된 계정입니다. 관리자에게 문의해 주세요.';
+    case 'auth/user-not-found':
+      return '가입되지 않은 이메일 주소입니다.';
+    case 'auth/wrong-password':
+      return '비밀번호가 올바르지 않습니다.';
+    case 'auth/invalid-email':
+      return '유효하지 않은 이메일 주소입니다.';
+    case 'auth/operation-not-allowed':
+      return '이 로그인 방법은 사용할 수 없습니다.';
+    case 'auth/requires-recent-login':
+      return '보안을 위해 다시 로그인해 주세요.';
+    case 'auth/too-many-requests':
+      return '시도 횟수 초과. 잠시 후 다시 시도해 주세요.';
+    case 'auth/network-request-failed':
+      return '네트워크 연결을 확인해 주세요.';
+    default:
+      // Generic fallback - don't expose raw message
+      return '로그인에 실패했습니다. 다시 시도해 주세요.';
+  }
+}
+
 async function signInWithGoogle() {
+  // Environment check first
+  var envError = getEnvironmentCheckError();
+  if (envError) {
+    alert(envError);
+    return;
+  }
+  
   if (!firebase.apps || !firebase.apps.length) {
     if (typeof initFirebase === 'function') initFirebase();
   }
   if (!firebase.apps || !firebase.apps.length) {
     console.error('Firebase not initialized before signInWithGoogle');
+    alert('로그인 시스템을 초기화할 수 없습니다. 페이지를 새로고침해 주세요.');
     return;
   }
 
@@ -273,8 +411,9 @@ async function signInWithGoogle() {
     window.location.href = getRedirectTarget();
   } catch (error) {
     console.error('Google login failed:', error);
-    if (error.code !== 'auth/popup-closed-by-user') {
-      alert('로그인에 실패했습니다: ' + error.message);
+    var friendlyMessage = getFriendlyErrorMessage(error, true);
+    if (friendlyMessage) {
+      alert(friendlyMessage);
     }
   }
 }
@@ -288,7 +427,10 @@ async function signOut() {
     console.error('Logout failed:', error);
   }
   clearStaleFirebaseAuthState();
-  try { localStorage.removeItem('isLoggedIn'); } catch (e) {}
+  try {
+    localStorage.removeItem('isLoggedIn');
+    localStorage.removeItem('lovebud_auth_cache');
+  } catch (e) {}
   window.location.reload();
 }
 
@@ -363,12 +505,20 @@ function setupEmailAuthForm() {
     });
   }
 
-  form.addEventListener('submit', async function (e) {
+form.addEventListener('submit', async function (e) {
     e.preventDefault();
+    
+    // Environment check
+    var envError = getEnvironmentCheckError();
+    if (envError) {
+      alert(envError);
+      return;
+    }
+    
     if (!emailInput || !passwordInput || !submitBtn) return;
 
     var email = String(emailInput.value || '').trim();
-    var password = String(passwordInput.value || '');
+    var password = String(passwordInput.value || '').trim();
 
     if (!email || !password) { alert('이메일과 비밀번호를 모두 입력해 주세요.'); return; }
     if (password.length < 6) { alert('비밀번호는 최소 6자 이상이어야 합니다.'); return; }
@@ -399,7 +549,8 @@ function setupEmailAuthForm() {
         await firebase.auth().signOut().catch(function () {});
         clearStaleFirebaseAuthState();
       }
-      alert('인증 중 오류가 발생했습니다: ' + error.message);
+      var friendlyMessage = getFriendlyErrorMessage(error, false);
+      alert(friendlyMessage || '인증 중 오류가 발생했습니다.');
     } finally {
       submitBtn.disabled = false;
       submitBtn.textContent = originalText;
@@ -411,5 +562,7 @@ function setupEmailAuthForm() {
 window.signInWithGoogle = signInWithGoogle;
 window.signOut = signOut;
 window.initAuth = initAuth;
+window.getEnvironmentCheckError = getEnvironmentCheckError;
+window.getFriendlyErrorMessage = getFriendlyErrorMessage;
 
 document.addEventListener('DOMContentLoaded', initAuth);
