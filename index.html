@@ -29,6 +29,10 @@
          .hero-content {
              max-width: 640px;
              z-index: 2;
+             display: flex;
+             flex-direction: column;
+             align-items: center;
+             text-align: center;
          }
 
          .hero-visual {
@@ -65,7 +69,7 @@
              border-radius: 1.2rem;
              padding: 12px;
              box-shadow: 0 20px 50px rgba(0,0,0,0.08);
-             width: 160px;
+             width: 220px;
              position: absolute;
              z-index: 20;
              transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -131,6 +135,136 @@
              letter-spacing: 0.02em;
          }
 
+         .hero-cta-group {
+             display: flex;
+             flex-wrap: wrap;
+             justify-content: center;
+             gap: 16px;
+             width: 100%;
+         }
+
+         .mini-tree-card {
+             top: 12%;
+             right: 2%;
+             padding: 14px;
+             border-radius: 1.5rem;
+             background: rgba(255, 255, 255, 0.96);
+             backdrop-filter: blur(10px);
+         }
+
+         .mini-tree-canvas {
+             position: relative;
+             height: 150px;
+             border-radius: 1rem;
+             background: radial-gradient(circle at top, rgba(255,255,255,0.9), rgba(255,245,246,0.88) 44%, rgba(246, 249, 241, 0.96) 100%);
+             border: 1px solid rgba(144, 73, 81, 0.08);
+             overflow: hidden;
+         }
+
+         .mini-tree-ground {
+             position: absolute;
+             left: 16px;
+             right: 16px;
+             bottom: 14px;
+             height: 18px;
+             border-radius: 999px;
+             background: linear-gradient(90deg, rgba(147, 175, 126, 0.2), rgba(122, 139, 110, 0.38), rgba(147, 175, 126, 0.2));
+         }
+
+         .mini-tree-trunk {
+             position: absolute;
+             left: 50%;
+             bottom: 24px;
+             width: 12px;
+             height: 66px;
+             transform: translateX(-50%);
+             border-radius: 999px;
+             background: linear-gradient(180deg, #c18b83, #904951);
+             box-shadow: 0 8px 18px rgba(144, 73, 81, 0.18);
+         }
+
+         .mini-tree-branch {
+             position: absolute;
+             height: 5px;
+             border-radius: 999px;
+             background: linear-gradient(90deg, #c18b83, #aa646d);
+             transform-origin: left center;
+         }
+
+         .mini-tree-branch.branch-left-top {
+             width: 50px;
+             left: 50%;
+             bottom: 72px;
+             transform: translateX(-6px) rotate(-36deg);
+         }
+
+         .mini-tree-branch.branch-right-top {
+             width: 54px;
+             left: 50%;
+             bottom: 78px;
+             transform: translateX(4px) rotate(30deg);
+         }
+
+         .mini-tree-branch.branch-left-bottom {
+             width: 42px;
+             left: 50%;
+             bottom: 52px;
+             transform: translateX(-6px) rotate(-18deg);
+         }
+
+         .mini-tree-node {
+             position: absolute;
+             width: 34px;
+             height: 34px;
+             border-radius: 50%;
+             display: flex;
+             align-items: center;
+             justify-content: center;
+             font-size: 16px;
+             background: rgba(255, 255, 255, 0.95);
+             border: 1px solid rgba(144, 73, 81, 0.12);
+             box-shadow: 0 10px 20px rgba(75, 64, 57, 0.08);
+         }
+
+         .mini-tree-node.node-root {
+             left: 50%;
+             bottom: 16px;
+             transform: translateX(-50%);
+             background: linear-gradient(135deg, #fff1f2, #ffffff);
+         }
+
+         .mini-tree-node.node-left-top {
+             left: 56px;
+             top: 30px;
+         }
+
+         .mini-tree-node.node-right-top {
+             right: 44px;
+             top: 22px;
+         }
+
+         .mini-tree-node.node-left-bottom {
+             left: 36px;
+             top: 76px;
+         }
+
+         .mini-tree-summary {
+             display: flex;
+             justify-content: space-between;
+             align-items: center;
+             margin-top: 12px;
+             font-size: 11px;
+             color: var(--on-surface-variant);
+             font-weight: 700;
+         }
+
+         .mini-tree-tag {
+             padding: 5px 10px;
+             border-radius: 999px;
+             background: rgba(144, 73, 81, 0.08);
+             color: var(--primary);
+         }
+
           /* Mobile adjustments */
           @media (max-width: 1024px) {
               .features-grid {
@@ -185,13 +319,12 @@
               }
 
               .hero-visual .memory-card-mini:first-child {
-                  top: 20% !important;
-                  transform: translateX(-50%) rotate(4deg) !important;
+                  top: 10% !important;
+                  transform: translateX(-50%) !important;
               }
 
               .hero-visual .memory-card-mini:nth-child(2) {
-                  top: 60% !important;
-                  transform: translateX(-50%) rotate(-3deg) !important;
+                  display: none;
               }
           }
      </style>
@@ -202,7 +335,7 @@
     <div class="landing-wrapper">
         <!-- Unified Header (match app pages styling) -->
         <header class="nav-bar">
-            <div class="headline" style="font-size: 1.5rem; font-weight: 900; color: var(--on-surface); letter-spacing: -0.04em; cursor: pointer;" onclick="location.href='pages/index.html'">Lovetree</div>
+            <div class="headline" style="font-size: 1.5rem; font-weight: 900; color: var(--on-surface); letter-spacing: -0.04em; cursor: pointer;" onclick="location.href='index.html'">Lovetree</div>
             
 <nav class="main-nav">
     <div class="nav-links">
@@ -234,7 +367,7 @@
     입덕의 첫 설렘, 가장 감동했던 그 장면, 그리고 지금 이 순간까지.
     당신이 느낀 감정의 결을 남기고, 하나의 나무로 완성하세요.
   </p>
-                <div style="display: flex; gap: 16px;">
+                <div class="hero-cta-group">
                     <a href="pages/my-trees.html" class="btn-round btn-primary" style="text-decoration: none;">내 러브트리 시작하기</a>
                     <a href="pages/search.html" class="btn-round btn-outline" style="text-decoration: none;">다른 트리 둘러보기</a>
                 </div>
@@ -343,26 +476,30 @@
                     <ellipse cx="250" cy="560" rx="40" ry="15" fill="none" stroke="#904951" stroke-width="1" opacity="0.2" stroke-dasharray="5,5"/>
                 </svg>
 
-                <!-- 플로팅 메모리 카드 (스크랩북 감성) -->
-                <div class="memory-card-mini hero-float-card" style="top: 8%; right: 5%; transform: rotate(6deg); animation: float 6s ease-in-out infinite;">
-                    <div style="width:100%; height:90px; background: linear-gradient(135deg, #fff0f1 0%, #ffe4e6 100%); border-radius: 0.8rem; display:flex; align-items:center; justify-content:center;">
-                        <span style="font-size: 24px;">💝</span>
+                <!-- 플로팅 미니 트리 카드 -->
+                <div class="memory-card-mini mini-tree-card hero-float-card" style="animation: float 6s ease-in-out infinite;">
+                    <div class="mini-tree-canvas">
+                        <div class="mini-tree-ground"></div>
+                        <div class="mini-tree-trunk"></div>
+                        <div class="mini-tree-branch branch-left-top"></div>
+                        <div class="mini-tree-branch branch-right-top"></div>
+                        <div class="mini-tree-branch branch-left-bottom"></div>
+                        <div class="mini-tree-node node-left-top">💝</div>
+                        <div class="mini-tree-node node-right-top">✨</div>
+                        <div class="mini-tree-node node-left-bottom">🌿</div>
+                        <div class="mini-tree-node node-root">🌱</div>
                     </div>
-                    <div style="position: absolute; bottom: 4px; left: 4px; right: 4px; background: rgba(144,73,81,0.9); color: white; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: 700;">입덕 순간</div>
+                    <div class="mini-tree-summary">
+                        <span class="mini-tree-tag">감정 4개</span>
+                        <span>나만의 트리</span>
+                    </div>
                 </div>
 
-                <div class="memory-card-mini hero-float-card" style="top: 38%; left: 8%; transform: rotate(-4deg); animation: float 7s ease-in-out infinite 1s;">
-                    <div style="width:100%; height:90px; background: linear-gradient(135deg, #f0f4ff 0%, #e8edff 100%); border-radius: 0.8rem; display:flex; align-items:center; justify-content:center;">
-                        <span style="font-size: 24px;">✨</span>
+                <div class="memory-card-mini hero-float-card" style="top: 56%; left: 6%; transform: rotate(-4deg); animation: float 7s ease-in-out infinite 1s;">
+                    <div style="width:100%; height:90px; background: linear-gradient(135deg, #fdf7ef 0%, #fff3de 100%); border-radius: 0.8rem; display:flex; align-items:center; justify-content:center;">
+                        <span style="font-size: 24px;">🫶</span>
                     </div>
-                    <div style="position: absolute; bottom: 4px; left: 4px; right: 4px; background: rgba(107,125,184,0.9); color: white; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: 700;">최애 직캠</div>
-                </div>
-
-                <div class="memory-card-mini hero-float-card" style="top: 65%; right: 12%; transform: rotate(3deg); animation: float 5s ease-in-out infinite 0.5s;">
-                    <div style="width:100%; height:90px; background: linear-gradient(135deg, #f0fff4 0%, #e8ffed 100%); border-radius: 0.8rem; display:flex; align-items:center; justify-content:center;">
-                        <span style="font-size: 24px;">🌟</span>
-                    </div>
-                    <div style="position: absolute; bottom: 4px; left: 4px; right: 4px; background: rgba(107,184,138,0.9); color: white; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: 700;">성장 메모</div>
+                    <div style="position: absolute; bottom: 4px; left: 4px; right: 4px; background: rgba(201,168,124,0.92); color: white; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: 700;">첫 설렘</div>
                 </div>
 
                 <!-- 플로팅 애니메이션 CSS -->
@@ -371,9 +508,8 @@
                         0%, 100% { transform: translateY(0) rotate(var(--rot, 0deg)); }
                         50% { transform: translateY(-10px) rotate(var(--rot, 0deg)); }
                     }
-                    .hero-float-card:nth-child(2) { --rot: 6deg; }
+                    .hero-float-card:nth-child(2) { --rot: 3deg; }
                     .hero-float-card:nth-child(3) { --rot: -4deg; }
-                    .hero-float-card:nth-child(4) { --rot: 3deg; }
                 </style>
             </div>
         </section>
