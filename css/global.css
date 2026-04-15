@@ -196,6 +196,49 @@ h1, h2, h3, h4, .headline {
     gap: 8px;
 }
 
+.user-dropdown-trigger-icon {
+    width: 46px;
+    height: 46px;
+    justify-content: center;
+    padding: 0;
+    border: 1px solid rgba(144, 73, 81, 0.14);
+    border-radius: 999px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(248,245,240,0.96));
+    box-shadow: 0 8px 20px rgba(75, 64, 57, 0.08);
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.user-dropdown-trigger-icon:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 24px rgba(75, 64, 57, 0.12);
+    border-color: rgba(144, 73, 81, 0.24);
+}
+
+.user-avatar-shell {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    overflow: hidden;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, rgba(144, 73, 81, 0.14), rgba(122, 139, 110, 0.18));
+    color: var(--primary);
+}
+
+.user-avatar-shell .material-symbols-outlined {
+    font-size: 24px;
+    font-variation-settings: 'FILL' 1;
+}
+
+.user-avatar-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
 .user-dropdown-menu {
     position: absolute;
     top: calc(100% + 8px);
@@ -212,6 +255,15 @@ h1, h2, h3, h4, .headline {
 
 .user-dropdown-menu.show {
     display: block;
+}
+
+.user-dropdown-meta {
+    padding: 14px 20px 10px;
+    color: var(--on-surface-variant);
+    font-size: 12px;
+    font-weight: 600;
+    border-bottom: 1px solid var(--outline-variant);
+    background: linear-gradient(180deg, rgba(242, 239, 233, 0.65), rgba(255, 255, 255, 0.85));
 }
 
 .user-dropdown-item {

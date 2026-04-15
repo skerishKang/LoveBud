@@ -249,27 +249,30 @@ function buildLoginButton() {
 /**
  * Build user dropdown HTML.
  *
- * Header trigger label: always "내 계정" (never displayName/email).
- * User identity (name/email) is shown only as small helper text inside the dropdown menu.
+ * Header trigger is icon-only so it can later swap to a real profile photo.
+ * User identity is shown inside the dropdown menu, not in the header trigger.
  *
  * @param {Object} user - Firebase user object
  */
 function buildUserDropdown(user) {
-  // Real name/email only shown as secondary text INSIDE the dropdown
-  var userSubtitle = '';
+  var userName = '';
+  var profileVisual = '<span class="material-symbols-outlined">account_circle</span>';
   if (user) {
-    var name = user.displayName || user.email || '';
-    if (name) userSubtitle = '<span style="font-size:11px;color:var(--on-surface-variant,#888);margin-left:4px;">' + name + '</span>';
+    userName = user.displayName || user.email || '';
+    if (user.photoURL) {
+      profileVisual = '<img src="' + user.photoURL + '" alt="" class="user-avatar-image" referrerpolicy="no-referrer">';
+    }
   }
 
   return [
     '<div class="user-dropdown" id="userDropdown">',
-    '<button class="user-dropdown-trigger btn-round btn-primary" style="padding:8px 16px;display:flex;align-items:center;gap:6px;" aria-label="User menu">',
-    '<span class="material-symbols-outlined">account_circle</span>',
-    '<span>내 계정</span>',
-    userSubtitle,
+    '<button class="user-dropdown-trigger user-dropdown-trigger-icon" aria-label="내 계정 메뉴">',
+    '<span class="user-avatar-shell">',
+    profileVisual,
+    '</span>',
     '</button>',
     '<div class="user-dropdown-menu">',
+    userName ? '<div class="user-dropdown-meta">' + userName + '</div>' : '',
     '<a href="my-trees.html" class="user-dropdown-item"><span class="material-symbols-outlined">account_tree</span>내 러브트리</a>',
     '<button class="user-dropdown-item" disabled style="cursor:default;opacity:0.6;"><span class="material-symbols-outlined">settings</span>설정</button>',
     '<div class="dropdown-divider"></div>',
