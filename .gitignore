@@ -57,6 +57,7 @@ Thumbs.db
 .tmp/
 .temp/
 .tmp.driveupload/
+nul
 
 # Screenshots
 *.JPG
