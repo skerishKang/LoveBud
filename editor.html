@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>내 러브트리 | Lovetree</title>
-    <link rel="stylesheet" href="css/editor.css?v=20260415-1">
+    <link rel="stylesheet" href="css/editor.css?v=20260415-6">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
 </head>
 <body>
@@ -16,7 +16,7 @@
             <nav class="main-nav">
                 <div class="nav-links">
                     <a href="index.html">소개</a>
-                    <a href="search.html">커뮤니티</a>
+                    <a href="search.html">둘러보기</a>
                     <a href="editor.html" class="active">내 러브트리</a>
                 </div>
 
@@ -25,7 +25,7 @@
                     <button class="lang-btn active">KR</button>
                     <button class="lang-btn">EN</button>
                 </div>
-                <a href="login.html" class="btn-round btn-outline" style="text-decoration: none; padding: 8px 20px; font-size: 14px;">로그인</a>
+                <div id="auth-nav"><a href="login.html" class="btn-round btn-outline" style="text-decoration: none; padding: 8px 20px; font-size: 14px;">로그인</a></div>
             </div>
         </nav>
     </header>
@@ -60,7 +60,7 @@
 
         <aside class="detail-panel" id="detailPanel">
             <div class="panel-header">
-                <h3 class="headline" style="font-size: 1.5rem;">기록 상세</h3>
+                <h3 class="headline" style="font-size: 1.5rem;">기억 상세</h3>
                 <button class="icon-btn"><span class="material-symbols-outlined">more_horiz</span></button>
             </div>
             
@@ -71,7 +71,7 @@
                 </div>
 
                 <div class="detail-info-group">
-                    <label>기록 일자</label>
+                    <label>기억한 날</label>
                     <p id="detailDateText">2024.03.14</p>
                 </div>
 
@@ -84,7 +84,7 @@
                 </div>
 
                 <div class="detail-info-group">
-                    <label>기록 메모</label>
+                    <label>감정 메모</label>
                     <div class="diary-note">
                         "마지막 앙코르 곡이 울려 퍼질 때, 그 순간의 공기와 팬들의 함성 소리가 아직도 생생해."
                     </div>
@@ -92,16 +92,16 @@
             </div>
             
             <div class="panel-footer">
-                <button class="btn-round btn-primary" style="width: 100%;">이 기억 저장하기</button>
+                <button class="btn-round btn-primary" style="width: 100%;">내 러브트리에 기록하기</button>
             </div>
         </aside>
     </div>
 
-    <script src="js/mock-data.js?v=20260415-1"></script>
-    <script src="js/editor.js?v=20260415-1"></script>
+    <script src="js/mock-data.js?v=20260415-6"></script>
+    <script src="js/editor.js?v=20260415-7"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-    <script src="js/firebase-config.js?v=20260415-1"></script>
-    <script src="js/auth.js?v=20260415-2"></script>
+    <script src="js/firebase-config.js?v=20260415-6"></script>
+    <script src="js/auth.js?v=20260415-10"></script>
 </body>
 </html>

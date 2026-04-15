@@ -1,0 +1,10 @@
+nul
+
+# Local-only secrets and test credentials
+.env
+.env.*
+!.env.example
+.secrets/
+
+# Local test account files
+.local/test-accounts.json

@@ -4,15 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>로그인 | Lovetree</title>
-    <link rel="stylesheet" href="css/global.css?v=20260415-1">
+    <link rel="stylesheet" href="css/global.css?v=20260415-7">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700&display=swap" />
     <style>
         .login-shell {
             min-height: 100vh;
             display: flex;
+            flex-direction: column;
             align-items: center;
-            justify-content: center;
-            padding: 40px;
+            padding: 120px 48px 80px;
         }
 
         .login-card {
@@ -87,39 +87,144 @@
             border-radius: 99px;
             text-transform: uppercase;
         }
+
+        /* User dropdown menu */
+        .user-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+
+        .user-dropdown-trigger {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 8px 12px;
+            border-radius: 99px;
+            transition: all 0.2s;
+        }
+
+        .user-dropdown-trigger:hover {
+            background: var(--surface-container-low);
+        }
+
+        .user-dropdown-menu {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 8px;
+            background: white;
+            border-radius: 1rem;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.12);
+            border: 1px solid var(--outline-variant);
+            min-width: 200px;
+            z-index: 1000;
+            display: none;
+            overflow: hidden;
+        }
+
+        .user-dropdown-menu.show {
+            display: block;
+        }
+
+        .user-dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 20px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--on-surface);
+            cursor: pointer;
+            transition: background 0.2s;
+            text-decoration: none;
+            width: 100%;
+            text-align: left;
+            border: none;
+            background: none;
+        }
+
+        .user-dropdown-item:hover {
+            background: var(--surface-container-low);
+        }
+
+        .user-dropdown-item .material-symbols-outlined {
+            font-size: 18px;
+            color: var(--on-surface-variant);
+        }
+
+        .dropdown-divider {
+            height: 1px;
+            background: var(--outline-variant);
+            margin: 4px 0;
+        }
+
+        @media (max-width: 768px) {
+            .login-shell {
+                padding: 24px;
+            }
+
+            .login-card {
+                padding: 40px 24px;
+            }
+        }
     </style>
 </head>
 <body class="bokeh-bg">
     <div class="noise-overlay"></div>
     
+    <!-- Unified Header (match app pages) -->
+    <header class="nav-bar">
+        <div class="headline" style="font-size: 1.5rem; font-weight: 900; color: var(--on-surface); letter-spacing: -0.04em; cursor: pointer;" onclick="location.href='index.html'">Lovetree</div>
+        
+        <nav class="main-nav">
+                <div class="nav-links">
+                    <a href="index.html">소개</a>
+                    <a href="search.html">둘러보기</a>
+                    <a href="editor.html">내 러브트리</a>
+                </div>
+
+            <div style="display: flex; align-items: center; gap: 20px;">
+                <div class="lang-toggle">
+                    <button class="lang-btn active">KR</button>
+                    <button class="lang-btn">EN</button>
+                </div>
+                <!-- User menu / login button will be injected here by auth.js -->
+                <div id="auth-nav-container"></div>
+            </div>
+        </nav>
+    </header>
+
     <div class="login-shell">
         <div class="login-card">
             <div class="serif" style="font-size: 2.2rem; font-weight: 950; color: var(--on-surface); margin-bottom: 12px; font-family: var(--font-heading); letter-spacing: -0.05em;">Lovetree</div>
-            <h1 class="headline" style="font-size: 1.5rem; color: var(--primary); margin-bottom: 16px; font-weight: 800;">다시, 기록할 시간</h1>
+            <h1 class="headline" style="font-size: 1.5rem; color: var(--primary); margin-bottom: 16px; font-weight: 800;">당신의 감정 나무를 시작하세요</h1>
             <p style="color: var(--on-surface-variant); margin-bottom: 48px; font-size: 1rem; line-height: 1.6; font-weight: 400;">
-                흩어진 순간들을 모아 하나의 나무로 완성하세요.<br>
-                로그인하면 모든 기록이 안전히 간직됩니다.
+                처음 사랑에 빠진 순간부터, 팬이 되어가는 모든 경로를<br>
+                영상과 메모로 연결해 기록하세요.
             </p>
 
-<button id="login-btn-google" class="login-btn-google">
-<img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/btn_google_light_normal_ios.svg" alt="Google" style="width: 20px;">
-구글 계정으로 시작하기
-</button>
+            <button id="login-btn-google" class="login-btn-google">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/btn_google_light_normal_ios.svg" alt="Google" style="width: 20px;">
+                Google로 시작하기
+            </button>
 
-<div class="login-divider">또는 이메일 계속</div>
+            <div class="login-divider">또는 이메일로 시작하기</div>
 
-<button id="login-btn-email" class="btn-round btn-outline" style="width: 100%; border-radius: 1.25rem; padding: 16px; font-size: 15px;">
-이메일 주소로 계속하기
-</button>
+            <button id="login-btn-email" class="btn-round btn-outline" style="width: 100%; border-radius: 1.25rem; padding: 16px; font-size: 15px;">
+                이메일로 시작하기
+            </button>
 
             <div class="badge-group">
-                <span class="badge">기억의 영구 보존</span>
-                <span class="badge">트리 동기화</span>
-                <span class="badge">비밀 기록 관리</span>
+                <span class="badge">첫 순간 기록</span>
+                <span class="badge">감정 나무 성장</span>
+                <span class="badge">안전한 보관</span>
             </div>
 
             <a href="index.html" style="display: block; margin-top: 40px; color: var(--on-surface-variant); font-size: 13px; text-decoration: none; font-weight: 700; opacity: 0.6; transition: opacity 0.3s;">
-                나중에 기록할게요 (홈으로)
+                나중에 시작하기
             </a>
         </div>
     </div>
@@ -127,7 +232,7 @@
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-    <script src="js/firebase-config.js?v=20260415-1"></script>
+    <script src="js/firebase-config.js?v=20260415-7"></script>
 
     <!-- Email Auth Modal -->
     <div id="email-auth-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:9999;align-items:center;justify-content:center;">
@@ -150,6 +255,6 @@
 </div>
 </div>
 
-    <script src="js/auth.js?v=20260415-2"></script>
+    <script src="js/auth.js?v=20260415-10"></script>
 </body>
 </html>

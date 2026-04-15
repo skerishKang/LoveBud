@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>커뮤니티 | Lovetree</title>
-    <link rel="stylesheet" href="css/global.css?v=20260415-1">
+    <title>둘러보기 | Lovetree</title>
+    <link rel="stylesheet" href="css/global.css?v=20260415-8">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
     <style>
         .search-container {
@@ -198,9 +198,9 @@
         
             <nav class="main-nav">
                 <div class="nav-links">
-                    <a href="index.html">소개</a>
-                    <a href="search.html" class="active">커뮤니티</a>
-                    <a href="editor.html">내 러브트리</a>
+                <a href="index.html">소개</a>
+                <a href="search.html" class="active">둘러보기</a>
+                <a href="editor.html">내 러브트리</a>
                 </div>
 
             <div style="display: flex; align-items: center; gap: 20px;">
@@ -208,19 +208,22 @@
                     <button class="lang-btn active">KR</button>
                     <button class="lang-btn">EN</button>
                 </div>
-                <a href="login.html" class="btn-round btn-outline" style="text-decoration: none; padding: 8px 20px; font-size: 14px;">로그인</a>
+                <div id="auth-nav"><a href="login.html" class="btn-round btn-outline" style="text-decoration: none; padding: 8px 20px; font-size: 14px;">로그인</a></div>
             </div>
         </nav>
     </header>
 
     <main class="search-container">
         <section>
-            <h2 class="headline" style="font-size: 3rem; margin-bottom: 0.5rem;">새로운 파편 포착</h2>
-            <p style="color: var(--on-surface-variant); margin-bottom: 40px; font-size: 1.1rem; font-weight: 400;">아름다운 파편들을 모아 당신만의 트리를 꾸며보세요.</p>
+            <h2 class="headline" style="font-size: 3rem; margin-bottom: 0.5rem;">러브트리 둘러보기</h2>
+            <p style="color: var(--on-surface-variant); margin-bottom: 40px; font-size: 1.1rem; font-weight: 400;">
+                다른 팬들이 간직한 감정의 궤적을 따라가 보세요.<br>
+                하나의 기억이 당신의 러브트리에 영감이 될 수 있어요.
+            </p>
 
             <div class="search-input-wrapper">
                 <span class="material-symbols-outlined search-icon">search</span>
-                <input type="text" id="searchInput" class="search-input" placeholder="아티스트명, 무대 이름, 또는 링크를 입력하세요">
+                <input type="text" id="searchInput" class="search-input" placeholder="예: 아티스트명 · 영상 제목 · 공연명" required>
             </div>
 
             <div style="display: flex; gap: 10px; margin-bottom: 48px;">
@@ -236,37 +239,37 @@
         </section>
 
         <aside class="preview-sidebar" id="previewSidebar">
-            <h3 class="headline" style="font-size: 1.5rem; margin-bottom: 24px;">파편 미리보기</h3>
+            <h3 class="headline" style="font-size: 1.5rem; margin-bottom: 24px;">감상 미리보기</h3>
             <div id="previewVideoContainer" class="video-container">
                 <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:#999; font-size: 14px;">
-                    파편을 선택하여 미리 감상하세요
+                     기록을 선택하면 미리 감상할 수 있어요
                 </div>
             </div>
             <div id="previewDetails">
                 <h4 id="previewTitle" class="headline" style="font-size: 1.25rem; margin-bottom: 8px; font-weight: 800;">---</h4>
                 <p id="previewDesc" style="font-style: italic; color: var(--on-surface-variant); margin-bottom: 24px; font-size: 14px;">---</p>
                      <div style="padding-top: 24px; border-top: 1px solid var(--outline-variant);">
-                         <div style="font-size: 10px; font-weight: 900; color: var(--primary); margin-bottom: 16px; letter-spacing: 2px;">보관 정보</div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; font-size: 14px;">
-                        <div>
-                            <div style="color: #aaa; font-weight: 700; margin-bottom: 4px;">아티스트</div>
-                            <div id="detailArtist">-</div>
-                        </div>
-                        <div>
-                            <div style="color: #aaa; font-weight: 700; margin-bottom: 4px;">기록일</div>
-                            <div id="detailDate">-</div>
-                        </div>
-                    </div>
+                         <div style="font-size: 10px; font-weight: 900; color: var(--primary); margin-bottom: 16px; letter-spacing: 2px;">기록 정보</div>
+                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; font-size: 14px;">
+                             <div>
+                                 <div style="color: #aaa; font-weight: 700; margin-bottom: 4px;">아티스트</div>
+                                 <div id="detailArtist">-</div>
+                             </div>
+                             <div>
+                                 <div style="color: #aaa; font-weight: 700; margin-bottom: 4px;">기억한 날</div>
+                                 <div id="detailDate">-</div>
+                             </div>
+                         </div>
                 </div>
             </div>
         </aside>
     </main>
 
-    <script src="js/mock-data.js?v=20260415-1"></script>
-    <script src="js/search.js?v=20260415-1"></script>
+    <script src="js/mock-data.js?v=20260415-9"></script>
+    <script src="js/search.js?v=20260415-9"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-    <script src="js/firebase-config.js?v=20260415-1"></script>
-    <script src="js/auth.js?v=20260415-2"></script>
+    <script src="js/firebase-config.js?v=20260415-6"></script>
+    <script src="js/auth.js?v=20260415-10"></script>
 </body>
 </html>

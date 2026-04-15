@@ -2,15 +2,6 @@
 // API 교체 시: 이 파일의 데이터 배열을 fetch 응답으로 대체하면 됨
 // 함수 시그니처(getMemory, getMemoriesByTree, getTrees)는 그대로 유지
 
-var trees = [
-  {
-    id: 'tree-sweet-magnolia',
-    title: 'Sweet Magnolia',
-    visibility: 'public',
-    createdAt: '2024-01-15'
-  }
-];
-
 var memories = [
   {
     id: 'root',
@@ -31,7 +22,7 @@ var memories = [
   {
     id: 'v1',
     treeId: 'tree-sweet-magnolia',
-    title: 'Whispering Petals — Live Stage',
+    title: 'Live Stage — Whispering Petals',
     memo: '마지막 앙코르 곡이 울려 퍼질 때, 그 순간의 공기와 팬들의 함성 소리가 아직도 생생해. 세상에 우리만 있는 것 같은 그런 기분.',
     timestamp: '2024.03.24',
     sourceUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
@@ -49,7 +40,7 @@ var memories = [
   {
     id: 'v2',
     treeId: 'tree-sweet-magnolia',
-    title: 'Eternal Spring — Official MV',
+    title: 'M/V — Eternal Spring',
     memo: '봄이 오는 것처럼, 그 시절의 순수한 마음이 다시 피어나는 것 같아. 파스텔 색감과 리듬 속에서 나의 청춘을 본다.',
     timestamp: '2024.04.02',
     sourceUrl: 'https://www.youtube.com/embed/9bZkp7q19f0',
@@ -67,7 +58,7 @@ var memories = [
   {
     id: 'v3',
     treeId: 'tree-sweet-magnolia',
-    title: 'Nightfall Serenade — Encore Cam',
+    title: 'Encore Cam — Nightfall Serenade',
     memo: '어두운 무대 위에서 빛나는 한 줄기 조명. 그 속에서 노래하는 목소리가 떨림과 감동으로 전해진다.',
     timestamp: '2024.04.15',
     sourceUrl: 'https://www.youtube.com/embed/jNQXAC9IVRw',
@@ -85,7 +76,7 @@ var memories = [
   {
     id: 'm2',
     treeId: 'tree-sweet-magnolia',
-    title: '첫 입덕 숏폼',
+    title: 'First Input — Short Form',
     memo: '처음 본 그 순간, 호기심이 시작됐다. 짧은 클립 하나가 나의 하루를 바꿨다.',
     timestamp: '2024.02.12',
     sourceUrl: 'https://www.youtube.com/embed/9bZkp7q19f0',
@@ -103,7 +94,7 @@ var memories = [
   {
     id: 'm3',
     treeId: 'tree-sweet-magnolia',
-    title: '퇴근길 실물 영접',
+    title: 'On-site — Heartbeat Moment',
     memo: '퇴근길에 우연히 마주친 실물. 그 순간의 떨림은 아직도 손끝에 남아있다.',
     timestamp: '2024.06.05',
     sourceUrl: 'https://www.youtube.com/embed/jNQXAC9IVRw',
@@ -121,7 +112,7 @@ var memories = [
   {
     id: 'm4',
     treeId: 'tree-sweet-magnolia',
-    title: '공식 굿즈 도착',
+    title: 'Unboxing — First Memory',
     memo: '기다리던 그 상자가 드디어 도착했다. 내 방에 피어나는 작은 꽃 한 송이.',
     timestamp: '2024.07.01',
     sourceUrl: 'https://www.youtube.com/embed/9bZkp7q19f0',

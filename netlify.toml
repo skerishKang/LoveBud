@@ -1,0 +1,43 @@
+[build]
+command = ""
+publish = "."
+env_file = ".env"
+
+[functions]
+directory = "netlify/functions"
+
+# SPA fallback — 모든 경로를 index.html로
+[[redirects]]
+from = "/*"
+to = "/index.html"
+status = 200
+
+# ── API Routes ───────────────────────────────────────────────────────────────
+
+# Trees
+[[redirects]]
+from = "/api/trees"
+to = "/.netlify/functions/trees"
+status = 200
+
+[[redirects]]
+from = "/api/trees/:treeId"
+to = "/.netlify/functions/tree-detail"
+status = 200
+
+# Memories
+[[redirects]]
+from = "/api/memories"
+to = "/.netlify/functions/memories"
+status = 200
+
+[[redirects]]
+from = "/api/memories/:memoryId"
+to = "/.netlify/functions/memory-detail"
+status = 200
+
+# Community
+[[redirects]]
+from = "/api/community/memories"
+to = "/.netlify/functions/community-memories"
+status = 200
