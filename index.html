@@ -3,96 +3,190 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lovetree | 사랑을 기록하고 잇는 공간</title>
-    <link rel="stylesheet" href="css/global.css">
+    <title>Lovetree | 사랑을 기록하는 공간</title>
+    <link rel="stylesheet" href="css/global.css?v=20260415-3">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
-    <style>
-        .app-container {
-            width: 95vw;
-            max-width: 1440px;
-            height: 92vh;
-            max-height: 900px;
-            background: rgba(255, 255, 255, 0.94);
-            border-radius: 4rem;
-            box-shadow: 0 100px 200px -50px rgba(0,0,0,0.12);
-            position: relative;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            padding: 2.5rem 5rem;
-            margin: 4vh auto;
-        }
+     <style>
+         /* Remove .app-container card styling - use open layout like app pages */
+         .landing-wrapper {
+             min-height: 100vh;
+             display: flex;
+             flex-direction: column;
+         }
 
-        .hero-title {
-            font-size: 4rem;
-            line-height: 1.15;
-            color: var(--on-surface);
-            margin-bottom: 1.5rem;
-            font-weight: 900;
-        }
+         .hero-section {
+             flex: 1;
+             display: flex;
+             align-items: center;
+             justify-content: center;
+             padding: 120px 48px 80px;
+             max-width: 1280px;
+             margin: 0 auto;
+             width: 100%;
+             position: relative;
+         }
 
-        .hero-title span {
-            color: var(--primary);
-        }
+         .hero-content {
+             max-width: 640px;
+             z-index: 2;
+         }
 
-        .memory-card-mini {
-            background: white;
-            border-radius: 1.2rem;
-            padding: 12px;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.08);
-            width: 160px;
-            position: absolute;
-            z-index: 20;
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
+         .hero-visual {
+             position: absolute;
+             right: 5%;
+             top: 50%;
+             transform: translateY(-50%);
+             width: 45%;
+             max-width: 500px;
+             z-index: 1;
+         }
 
-        .memory-card-mini:hover { 
-            transform: scale(1.08) rotate(2deg);
-            box-shadow: 0 30px 60px rgba(0,0,0,0.12);
-        }
+         .hero-title {
+             font-size: 3.5rem;
+             line-height: 1.15;
+             color: var(--on-surface);
+             margin-bottom: 1.5rem;
+             font-weight: 900;
+         }
 
-        .feature-card {
-            background: white;
-            padding: 2rem;
-            border-radius: 2.5rem;
-            display: flex;
-            align-items: center;
-            gap: 20px;
-            border: 1px solid rgba(0,0,0,0.03);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.02);
-            transition: all 0.3s;
-        }
+         .hero-title span {
+             color: var(--primary);
+         }
 
-        .feature-card:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 20px 40px rgba(144, 73, 81, 0.08);
-            border-color: var(--outline-variant);
-        }
+         .hero-desc {
+             font-size: 1.15rem;
+             color: var(--on-surface-variant);
+             margin-bottom: 2.5rem;
+             line-height: 1.6;
+         }
 
-        .feature-icon {
-            width: 56px;
-            height: 56px;
-            border-radius: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-        }
-    </style>
+         .memory-card-mini {
+             background: white;
+             border-radius: 1.2rem;
+             padding: 12px;
+             box-shadow: 0 20px 50px rgba(0,0,0,0.08);
+             width: 160px;
+             position: absolute;
+             z-index: 20;
+             transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+         }
+
+         .memory-card-mini:hover {
+             transform: scale(1.08) rotate(2deg);
+             box-shadow: 0 30px 60px rgba(0,0,0,0.12);
+         }
+
+         /* Feature cards section - use same spacing as app */
+         .features-section {
+             padding: 80px 48px;
+             max-width: 1280px;
+             margin: 0 auto;
+             width: 100%;
+         }
+
+         .features-grid {
+             display: grid;
+             grid-template-columns: repeat(4, 1fr);
+             gap: 24px;
+         }
+
+         .feature-card {
+             background: white;
+             padding: 2rem;
+             border-radius: 2.5rem;
+             display: flex;
+             align-items: center;
+             gap: 20px;
+             border: 1px solid rgba(0,0,0,0.03);
+             box-shadow: 0 10px 30px rgba(0,0,0,0.02);
+             transition: all 0.3s;
+         }
+
+         .feature-card:hover {
+             transform: translateY(-8px);
+             box-shadow: 0 20px 40px rgba(144, 73, 81, 0.08);
+             border-color: var(--outline-variant);
+         }
+
+         .feature-icon {
+             width: 56px;
+             height: 56px;
+             border-radius: 16px;
+             display: flex;
+             align-items: center;
+             justify-content: center;
+             font-size: 24px;
+             flex-shrink: 0;
+         }
+
+          /* Mobile adjustments */
+          @media (max-width: 1024px) {
+              .features-grid {
+                  grid-template-columns: repeat(2, 1fr);
+              }
+          }
+
+          @media (max-width: 768px) {
+              .hero-section {
+                  flex-direction: column;
+                  padding: 100px 24px 60px;
+                  text-align: center;
+              }
+
+              .hero-content {
+                  max-width: 100%;
+              }
+
+              .hero-visual {
+                  position: relative;
+                  right: auto;
+                  top: auto;
+                  transform: none;
+                  width: 100%;
+                  max-width: 400px;
+                  margin-top: 40px;
+              }
+
+              .hero-title {
+                  font-size: 2.5rem;
+              }
+
+              .features-grid {
+                  grid-template-columns: 1fr;
+              }
+
+              /* Stabilize memory card positions on mobile - center them */
+              .hero-visual .memory-card-mini {
+                  left: 50% !important;
+                  right: auto !important;
+                  transform: translateX(-50%) !important;
+              }
+
+              .hero-visual .memory-card-mini:first-child {
+                  top: 20% !important;
+                  transform: translateX(-50%) rotate(4deg) !important;
+              }
+
+              .hero-visual .memory-card-mini:nth-child(2) {
+                  top: 60% !important;
+                  transform: translateX(-50%) rotate(-3deg) !important;
+              }
+          }
+     </style>
 </head>
 <body class="bokeh-bg">
     <div class="noise-overlay"></div>
     
-    <main class="app-container">
-        <!-- Unified Header -->
-        <header class="nav-bar" style="background: transparent; border: none; padding: 20px 0;">
-            <div class="headline" style="font-size: 1.8rem; font-weight: 900; color: var(--on-surface); letter-spacing: -0.04em;">Lovetree</div>
+    <div class="landing-wrapper">
+        <!-- Unified Header (match app pages styling) -->
+        <header class="nav-bar">
+            <div class="headline" style="font-size: 1.8rem; font-weight: 900; color: var(--on-surface); letter-spacing: -0.04em; cursor: pointer;" onclick="location.href='index.html'">Lovetree</div>
             
             <nav class="main-nav">
                 <div class="nav-links">
-                    <a href="index.html" class="active">러브트리</a>
+                    <a href="index.html" class="active">소개</a>
                     <a href="search.html">커뮤니티</a>
-                    <a href="editor.html">기록하기</a>
+                    <a href="editor.html">내 러브트리</a>
                 </div>
 
                 <div style="display: flex; align-items: center; gap: 20px;">
@@ -106,13 +200,13 @@
         </header>
 
         <!-- Main Hero Section -->
-        <section style="flex-grow: 1; display: flex; margin-top: 5rem; position: relative;">
-            <div style="width: 50%; padding-top: 2rem;">
+        <section class="hero-section">
+            <div class="hero-content">
                 <div style="background: rgba(144, 73, 81, 0.08); color: var(--primary); padding: 4px 16px; border-radius: 99px; width: fit-content; font-size: 12px; font-weight: 800; margin-bottom: 24px;">
                     🌱 사랑이 자라나는 기록
                 </div>
                 <h1 class="hero-title">러브트리는 사랑에 빠진<br><span>모든 순간들</span>이 자라난 기록입니다.</h1>
-                <p style="font-size: 1.25rem; color: var(--on-surface-variant); margin-bottom: 3.5rem; font-weight: 400; max-width: 90%; line-height: 1.6;">
+                <p class="hero-desc">
                     우리가 좋아하는 아티스트와 함께한 시간들이 흩어지지 않도록,<br>
                     영상과 감정의 실을 엮어 하나의 줄기로 만들어보세요.
                 </p>
@@ -122,7 +216,7 @@
                 </div>
             </div>
 
-            <div style="width: 50%; position: relative;">
+            <div class="hero-visual">
                 <svg class="vine-connector" style="position: absolute; width: 100%; height: 100%; opacity: 0.1;" viewBox="0 0 600 800" fill="none">
                     <path d="M 300 800 C 280 600 350 400 330 100" stroke="#1b1c1a" stroke-width="1.5"/>
                     <path d="M 315 700 C 450 650 480 580 440 480" stroke="#1b1c1a" stroke-width="1"/>
@@ -138,43 +232,45 @@
             </div>
         </section>
 
-        <!-- Footer Features -->
-        <footer style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; padding-bottom: 3rem;">
-            <div class="feature-card">
-                <div class="feature-icon" style="background: #fff0f1;">📸</div>
-                <div>
-                    <div style="font-weight: 900; color: var(--on-surface); margin-bottom: 4px;">순간 포착</div>
-                    <div style="font-size: 0.85rem; color: var(--on-surface-variant); line-height: 1.4;">기억하고 싶은 영상과 가슴 떨리는 장면을 기록합니다.</div>
+        <!-- Features Section (kept as landing content) -->
+        <section class="features-section">
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon" style="background: #fff0f1;">📸</div>
+                    <div>
+                        <div style="font-weight: 900; color: var(--on-surface); margin-bottom: 4px;">순간 포착</div>
+                        <div style="font-size: 0.85rem; color: var(--on-surface-variant); line-height: 1.4;">기억하고 싶은 영상과 가슴 떨리는 장면을 기록합니다.</div>
+                    </div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon" style="background: #f0f4ff;">🔗</div>
+                    <div>
+                        <div style="font-weight: 900; color: var(--on-surface); margin-bottom: 4px;">경로 연결</div>
+                        <div style="font-size: 0.85rem; color: var(--on-surface-variant); line-height: 1.4;">기록들이 시간 순서대로 모여 나만의 줄기가 됩니다.</div>
+                    </div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon" style="background: #f0fff4;">🌱</div>
+                    <div>
+                        <div style="font-weight: 900; color: var(--on-surface); margin-bottom: 4px;">트리 성장</div>
+                        <div style="font-size: 0.85rem; color: var(--on-surface-variant); line-height: 1.4;">모든 순간들이 자라나 당신만의 러브트리가 됩니다.</div>
+                    </div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon" style="background: #fff9f0;">📢</div>
+                    <div>
+                        <div style="font-weight: 900; color: var(--on-surface); margin-bottom: 4px;">공유하기</div>
+                        <div style="font-size: 0.85rem; color: var(--on-surface-variant); line-height: 1.4;">완성된 기억의 여정을 다른 팬들과 함께 나눕니다.</div>
+                    </div>
                 </div>
             </div>
-            <div class="feature-card">
-                <div class="feature-icon" style="background: #f0f4ff;">🔗</div>
-                <div>
-                    <div style="font-weight: 900; color: var(--on-surface); margin-bottom: 4px;">경로 연결</div>
-                    <div style="font-size: 0.85rem; color: var(--on-surface-variant); line-height: 1.4;">기록들이 시간 순서대로 모여 나만의 줄기가 됩니다.</div>
-                </div>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon" style="background: #f0fff4;">🌱</div>
-                <div>
-                    <div style="font-weight: 900; color: var(--on-surface); margin-bottom: 4px;">트리 완성</div>
-                    <div style="font-size: 0.85rem; color: var(--on-surface-variant); line-height: 1.4;">모든 순간들이 자라나 당신만의 러브트리가 됩니다.</div>
-                </div>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon" style="background: #fff9f0;">📢</div>
-                <div>
-                    <div style="font-weight: 900; color: var(--on-surface); margin-bottom: 4px;">공유하기</div>
-                    <div style="font-size: 0.85rem; color: var(--on-surface-variant); line-height: 1.4;">완성된 기억의 여정을 다른 팬들과 함께 나눕니다.</div>
-                </div>
-            </div>
-        </footer>
-    </main>
+        </section>
+    </div>
 
-    <script src="js/index.js"></script>
+    <script src="js/index.js?v=20260415-1"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-    <script src="js/firebase-config.js"></script>
-    <script src="js/auth.js"></script>
+    <script src="js/firebase-config.js?v=20260415-1"></script>
+    <script src="js/auth.js?v=20260415-2"></script>
 </body>
 </html>

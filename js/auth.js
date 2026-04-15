@@ -137,9 +137,9 @@ async function signInWithGoogle() {
 
     try {
         await firebase.auth().signInWithPopup(provider);
-        // On login.html, redirect to home after success
+        // On login.html, redirect to dashboard after success
         if (isLoginPage()) {
-            window.location.href = 'index.html';
+            window.location.href = 'editor.html';
         }
     } catch (error) {
         console.error('Google login failed:', error);
@@ -320,9 +320,9 @@ function setupEmailAuthForm() {
                 await firebase.auth().createUserWithEmailAndPassword(email, password);
             }
             if (modal) modal.style.display = 'none';
-            // Redirect to home on login page
+            // Redirect to dashboard on successful login
             if (isLoginPage()) {
-                window.location.href = 'index.html';
+                window.location.href = 'editor.html';
             }
         } catch (error) {
             console.error('Email auth error:', error);
