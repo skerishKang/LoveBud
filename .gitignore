@@ -33,6 +33,7 @@ coverage/
 # Local agent docs (ignored from public repo)
 AGENT.md
 LOCAL_AGENT.md
+AGENTS.md
 pages/
 docs/reports/
 
