@@ -16,7 +16,13 @@ exports.handler = async (event) => {
   try {
     // ── POST: create tree ───────────────────────────────────────────────────
     if (event.httpMethod === 'POST') {
-      const user = await requireUser(event);
+      let user;
+      try {
+        user = await requireUser(event);
+      } catch (authError) {
+        // 인증 실패 시 명확한 에러 반환
+        return handleError('trees-auth', authError, requestOrigin);
+      }
       let body;
       try {
         body = JSON.parse(event.body || '{}');
@@ -41,12 +47,22 @@ exports.handler = async (event) => {
     if (event.httpMethod === 'GET') {
       // Try authenticated first; fall back to public community trees
       let trees;
+      let user = null;
       try {
-        const user = await requireUser(event);
-        trees = await queryTrees({ ownerId: user.uid });
+        user = await requireUser(event);
       } catch (_auth) {
-        // Unauthenticated — show public trees only
-        trees = await queryTrees({ visibility: 'public', limit: 20 });
+        // Unauthenticated — will show public trees only
+        user = null;
+      }
+      
+      try {
+        if (user) {
+          trees = await queryTrees({ ownerId: user.uid });
+        } else {
+          trees = await queryTrees({ visibility: 'public', limit: 20 });
+        }
+      } catch (dbError) {
+        return handleError('trees-db', dbError, requestOrigin);
       }
 
       return ok(trees, { 'Access-Control-Allow-Origin': '*' });
