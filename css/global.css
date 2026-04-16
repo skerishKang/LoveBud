@@ -173,17 +173,17 @@ h1, h2, h3, h4, .headline {
 }
 
 .lang-toggle-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    border: 1px solid transparent;
-    background: transparent;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    color: var(--on-surface-variant);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--on-surface-variant);
 }
 
 .lang-toggle-btn:hover {
@@ -522,11 +522,32 @@ h1, h2, h3, h4, .headline {
 
 /* Animations */
 @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 /* Auth nav loading state - smooth transition */
 #auth-nav, #auth-nav-container {
-    transition: opacity 0.2s ease;
+  transition: opacity 0.2s ease;
+}
+
+/* Material Symbols font loading: hide icons until font loads to prevent FOUC */
+/* 범위를 헤더/언어/프로필 영역으로 제한 */
+.nav-bar .material-symbols-outlined,
+.lang-toggle-btn .material-symbols-outlined,
+.user-avatar-shell .material-symbols-outlined,
+.user-dropdown-menu .material-symbols-outlined,
+#auth-nav .material-symbols-outlined {
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+/* When fonts are ready, show icons */
+.ms-fonts-loaded .nav-bar .material-symbols-outlined,
+.ms-fonts-loaded .lang-toggle-btn .material-symbols-outlined,
+.ms-fonts-loaded .user-avatar-shell .material-symbols-outlined,
+.ms-fonts-loaded .user-dropdown-menu .material-symbols-outlined,
+.ms-fonts-loaded #auth-nav .material-symbols-outlined,
+.material-symbols-outlined.ms-ready {
+  opacity: 1;
 }
