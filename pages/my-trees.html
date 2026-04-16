@@ -222,7 +222,7 @@
       100% { background-position: -200% 0; }
     }
 
-    /* Loading state */
+/* Loading state */
     .trees-loading {
       display: flex;
       flex-direction: column;
@@ -231,6 +231,70 @@
       padding: 80px;
       gap: 16px;
       color: var(--on-surface-variant);
+    }
+
+    .trees-loading .spinner {
+      width: 48px;
+      height: 48px;
+      border: 3px solid var(--outline-variant);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    .trees-loading .loading-text {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--on-surface-variant);
+    }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 80px 40px;
+      background: white;
+      border-radius: 2rem;
+      border: 1px solid var(--outline-variant);
+      box-shadow: var(--shadow-whisper);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .empty-state-icon {
+      font-size: 64px;
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    .empty-state h2 {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--on-surface);
+      margin-bottom: 8px;
+    }
+
+    .empty-state p {
+      color: var(--on-surface-variant);
+      font-size: 1rem;
+      line-height: 1.6;
+      margin-bottom: 16px;
+      max-width: 400px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    /* CTA section in empty state */
+    .empty-state-cta {
+      margin-top: 8px;
+    }
+
+    .empty-state-cta-desc {
+      font-size: 13px;
+      color: var(--on-surface-variant);
+      margin-bottom: 16px;
+      line-height: 1.5;
     }
 
     /* Toast */
@@ -297,8 +361,8 @@
       <!-- Trees container -->
       <div id="treesContainer">
         <div class="trees-loading">
-          <span class="material-symbols-outlined" style="font-size: 32px; animation: spin 1s linear infinite;">progress_activity</span>
-          <span>러브트리 목록을 불러오는 중...</span>
+          <div class="spinner"></div>
+          <span class="loading-text" data-i18n="myTrees.loading">러브트리 목록을 불러오는 중...</span>
         </div>
       </div>
     </main>

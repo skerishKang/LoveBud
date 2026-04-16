@@ -20,8 +20,8 @@
       en: 'No LoveTrees yet'
     },
     'empty_state_desc': {
-      ko: '첫 번째 순간을 기록하고 당신만의 사랑 나무를 시작해보세요.입덕 순간부터 지금까지의 감정을 하나의 경로로 연결합니다.',
-      en: 'Record your first moment and start your own love tree.Connect your emotions from your first fandom moment to now.'
+      ko: '첫 번째 순간을 기록하고 당신만의 사랑 나무를 시작해보세요. 입덕 순간부터 지금까지의 감정을 하나의 경로로 연결합니다.',
+      en: 'Record your first moment and start your own love tree. Connect your emotions from your first fandom moment to now.'
     },
     'create_tree_btn': {
       ko: '새 러브트리 만들기',
@@ -375,8 +375,8 @@
 
     // ── 누락 key 보충: editor.js ──
     'memory_added': {
-      ko: '기억이 추가되었습니다',
-      en: 'Memory added'
+      ko: '기억이 성공적으로 추가되었습니다',
+      en: 'Memory added successfully'
     },
     'firebase_init_fail': {
       ko: 'Firebase 준비 실패. 페이지를 새로고침해 주세요.',
