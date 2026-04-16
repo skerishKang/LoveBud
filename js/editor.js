@@ -88,9 +88,10 @@ const startEditor = async () => {
     if (!tree) {
       console.log('[editor] Creating/fetching new tree for URL treeId:', urlTreeId);
       try {
+        const i18n = window.t || ((k) => k);
         if (window.apiClient && window.apiClient.createTree) {
           const newTree = await window.apiClient.createTree({
-            title: '나의 첫 러브트리',
+            title: i18n('default_tree_title'),
             visibility: 'private'
           });
           tree = newTree;
@@ -98,13 +99,15 @@ const startEditor = async () => {
           console.log('[editor] New tree created:', newTree);
         } else {
           // API.createTree 없으면: client-side ID로 임시 트리 생성
-          tree = { id: urlTreeId, title: '나의 첫 러브트리', visibility: 'private' };
+          const i18n = window.t || ((k) => k);
+          tree = { id: urlTreeId, title: i18n('default_tree_title'), visibility: 'private' };
           isNewTree = true;
           console.log('[editor] Client-side tree created:', urlTreeId);
         }
       } catch (e2) {
+        const i18n = window.t || ((k) => k);
         console.warn('[editor] createTree failed, using client-side tree:', e2.message);
-        tree = { id: urlTreeId, title: '나의 첫 러브트리', visibility: 'private' };
+        tree = { id: urlTreeId, title: i18n('default_tree_title'), visibility: 'private' };
         isNewTree = true;
       }
     }
@@ -120,8 +123,9 @@ const startEditor = async () => {
           // API는 성공했지만 트리가 없음 → 신규 사용자, 기본 트리 생성
           console.log('[editor] No tree found, creating default tree...');
           if (window.apiClient.createTree) {
+            const i18n = window.t || ((k) => k);
             const newTree = await window.apiClient.createTree({
-              title: '나의 첫 러브트리',
+              title: i18n('default_tree_title'),
               visibility: 'private'
             });
             tree = newTree;
@@ -132,8 +136,9 @@ const startEditor = async () => {
       }
     } catch (e) {
       console.warn('[editor] API tree failed, fallback to mock:', e.message);
+      const i18n = window.t || ((k) => k);
       if (e.message?.includes('401') || e.message?.includes('Authentication')) {
-        showToast('로그인이 필요합니다. 로그인 페이지로 이동합니다.', 'error');
+        showToast(i18n('need_login'), 'error');
         setTimeout(() => window.location.href = 'login.html?redirect=editor.html', 2000);
         return;
       }
@@ -190,9 +195,10 @@ const startEditor = async () => {
                 }
             }
         } catch (e) {
+            const i18n = window.t || ((k) => k);
             console.warn('[editor] API getMemoriesByTree failed, fallback to mock:', e.message);
             if (e.message?.includes('401') || e.message?.includes('403')) {
-                showToast('데이터를 불러올 수 없습니다. 데모 모드로 전환됩니다.', 'warn');
+                showToast(i18n('data_load_fail_demo'), 'warn');
             }
         }
         if (memories.length === 0) {
@@ -209,11 +215,12 @@ const startEditor = async () => {
             if (rootMem) return rootMem;
             if (memories.length > 0) return memories[0];
             // API/render에 root가 없을 때를 위한 기본 데이터
+            const i18n = window.t || ((k) => k);
             return {
                 id: canonicalRootId,
                 treeId: treeId,
-                title: '첫 번째 기억',
-                memo: '아직 등록된 기억이 없습니다. "영상 추가" 버튼을 클릭하여 첫 번째 추억을 기록해보세요.',
+                title: i18n('first_memory'),
+                memo: i18n('no_memory_yet'),
                 timestamp: new Date().toISOString().slice(0,10).replace(/-/g,'.'),
                 thumbnail: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 90"><rect fill="%23f5f5f5" width="120" height="90"/><text x="60" y="50" text-anchor="middle" fill="%23999" font-size="12">No Memory</text></svg>',
                 emotionTags: [],
@@ -512,23 +519,25 @@ const RADIUS_L2 = 240; // L2 반경 (200→240) - 노드 겹침 방지
 
         const addMemoryFromForm = async () => {
             const url = urlInput.value.trim();
+const i18nToast = window.t || ((k) => k);
 if (!url) {
-    showToast('YouTube 링크를 입력해주세요.', 'warn');
+    showToast(i18nToast('enter_youtube'), 'warn');
     return;
   }
 
   const match = url.match(/(?:v=|\/|youtu\.be\/)([0-9A-Za-z_-]{11})/);
   if (!match) {
-    showToast('유효한 YouTube 링크가 아닙니다.', 'error');
+    showToast(i18nToast('invalid_youtube'), 'error');
     return;
   }
 
             const videoId = match[1];
             const today = new Date();
+            const i18n = window.t || ((k) => k);
             const dateStr = `${today.getFullYear()}.${String(today.getMonth()+1).padStart(2,'0')}.${String(today.getDate()).padStart(2,'0')}`;
 
             // 기본 제목 자동 생성 (입력 없을 시)
-            const title = titleInput.value.trim() || `새로운 기억 ${dateStr}`;
+            const title = titleInput.value.trim() || `${i18n('new_memory')} ${dateStr}`;
 
             const newMemoryData = {
                 treeId: treeId,
@@ -556,13 +565,14 @@ if (!url) {
                     console.log('[editor] API createMemory success:', createdMemory);
                 }
             } catch (e) {
+                const i18n = window.t || ((k) => k);
                 console.warn('[editor] API createMemory failed, fallback to mock:', e.message);
                 if (e.message?.includes('401') || e.message?.includes('403')) {
-                    showToast('저장 권한이 없습니다. 로컬에만 추가됩니다.', 'warn');
+                    showToast(i18n('no_permission_local'), 'warn');
                 } else if (e.message?.includes('400')) {
-                    showToast('입력값을 확인해주세요.', 'error');
+                    showToast(i18n('check_input'), 'error');
                 } else {
-                    showToast('서버 연결 실패. 로컬에만 추가됩니다.', 'warn');
+                    showToast(i18n('server_fail_local'), 'warn');
                 }
             }
 

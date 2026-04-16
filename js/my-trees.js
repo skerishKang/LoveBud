@@ -80,13 +80,14 @@
   }
 
   function buildTreeCard(tree) {
+    var i18n = window.t || function(k) { return k; };
     var a = document.createElement('a');
     a.href = 'editor.html?treeId=' + encodeURIComponent(tree.id);
     a.className = 'tree-card';
 
     // Visibility badge
     var visClass = tree.visibility === 'public' ? 'public' : 'private';
-    var visLabel = tree.visibility === 'public' ? '공개' : '비공개';
+    var visLabel = tree.visibility === 'public' ? i18n('visibility_public') : i18n('visibility_private');
 
     // Title fallback
     var title = tree.title || tree.data?.title || '나의 러브트리';
@@ -115,14 +116,15 @@
 
   // ── Empty state ──────────────────────────────────────────────────────────
   function renderEmptyState(container) {
+    var i18n = window.t || function(k) { return k; };
     container.innerHTML = [
       '<div class="empty-state">',
         '<span class="material-symbols-outlined empty-state-icon">account_tree</span>',
-        '<h2>아직 러브트리가 없어요</h2>',
-        '<p>첫 번째 순간을 기록하고 당신만의 사랑 나무를 시작해보세요.<br>입덕 순간부터 지금까지의 감정을 하나의 경로로 연결합니다.</p>',
+        '<h2>' + i18n('empty_state_title') + '</h2>',
+        '<p>' + i18n('empty_state_desc').replace('.', '.<br>') + '</p>',
         '<button class="btn-create-tree" id="createTreeBtn">',
           '<span class="material-symbols-outlined" style="font-size:20px;">add_circle</span>',
-          '새 러브트리 만들기',
+          i18n('create_tree_btn'),
         '</button>',
       '</div>'
     ].join('');
@@ -160,9 +162,10 @@
   // ── Create new tree ──────────────────────────────────────────────────────
   async function createNewTree() {
     var btn = document.getElementById('createTreeBtn');
+    var i18n = window.t || function(k) { return k; };
     if (btn) {
       btn.disabled = true;
-      btn.textContent = '만드는 중...';
+      btn.textContent = i18n('creating');
     }
 
     try {
@@ -176,7 +179,7 @@
       } else {
         // Fallback: generate client-side ID and redirect
         newTree = { id: 'tree-' + Date.now() };
-        showToast('데모 모드입니다. 실제 트리는 생성되지 않습니다.', 'error');
+        showToast((window.t || function(k){return k;})('demo_mode'), 'error');
       }
 
       // Redirect to editor with new tree
@@ -189,10 +192,11 @@
       }
     } catch (e) {
       console.error('[my-trees] createTree failed:', e);
-      showToast('러브트리 만들기 실패. 다시 시도해 주세요.', 'error');
+      var i18n = window.t || function(k) { return k; };
+      showToast(i18n('create_tree_fail'), 'error');
       if (btn) {
         btn.disabled = false;
-        btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:20px;">add_circle</span>새 러브트리 만들기';
+        btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:20px;">add_circle</span>' + i18n('create_tree_btn');
       }
     }
   }
