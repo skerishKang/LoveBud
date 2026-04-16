@@ -484,6 +484,12 @@ async function signOut() {
   try {
     localStorage.removeItem('isLoggedIn');
   } catch (e) {}
+  // ── Clear user's private caches on logout ──
+  // NOTE: public browse cache (lovebud_public_trees_cache) is intentionally kept.
+  // It contains non-sensitive public data; my-trees cache is the private one.
+  if (window.clearPrivateCaches) {
+    window.clearPrivateCaches();
+  }
   clearConfirmedAuthCache();
   window.location.reload();
 }
