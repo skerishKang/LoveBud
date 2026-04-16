@@ -386,9 +386,21 @@
     'myTrees.loading': {
       ko: '러브트리 목록을 불러오는 중...',
       en: 'Loading your LoveTrees...'
+    },
+
+    // ── editor.js 알림 메시지 ──
+    'no_permission_local': {
+      ko: '저장 권한이 없습니다. 로컬에만 추가됩니다.',
+      en: 'No save permission. Added to local only.'
+    },
+    'check_input': {
+      ko: '입력값을 확인해주세요.',
+      en: 'Please check your input.'
+    },
+    'server_fail_local': {
+      ko: '서버 연결 실패. 로컬에만 추가됩니다.',
+      en: 'Server connection failed. Added to local only.'
     }
-
-
 
   };
 
