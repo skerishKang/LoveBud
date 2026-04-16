@@ -65,9 +65,12 @@
         return 'pages';
     }
 
-    // 에디터 페이지인지 확인
+    // 에디터 페이지인지 확인 (URLSearchParams도 확인 - ?treeId= 있을 경우 editor로perin anyway)
     function isEditorPage() {
-        return getCurrentPage() === 'editor.html';
+        var path = window.location.pathname;
+        var search = window.location.search;
+        // editor.html이거나 treeId 파라미터가 있으면 editor 페이지로 간주
+        return path.indexOf('editor.html') !== -1 || search.indexOf('treeId=') !== -1;
     }
 
     // 로그인 페이지인지 확인
