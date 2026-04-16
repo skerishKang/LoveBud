@@ -1,6 +1,6 @@
 /**
  * LoveBud - i18n Module
- * v20260416-1
+ * v20260416-2
  *
  * 언어 설정 관리 및 다국어 지원
  * - 기본 언어: 한국어 (ko)
@@ -346,6 +346,98 @@
     'home.cta.browse': {
       ko: '둘러보기',
       en: 'Browse'
+    },
+
+    // ── 누락 key 보충: index.html ──
+    'home.badge': {
+      ko: '💝 나만의 러브트리',
+      en: '💝 My LoveTree'
+    },
+    'home.heroTitle': {
+      ko: '사랑하는 것의\n모든 순간이 하나의 나무가 된다',
+      en: 'Everything you love,\nevery moment becomes a tree'
+    },
+    'home.heroSubtitle': {
+      ko: '입덕의 첫 설렘, 가장 감동했던 그 장면, 그리고 지금 이 순간까지.\n당신이 느낀 감정의 결을 남기고, 하나의 나무로 완성하세요.',
+      en: 'From the first excitement of fandom, the most moving scene, to this very moment.\nLeave the texture of your emotions and complete them as a single tree.'
+    },
+    'home.intro': {
+      ko: '더 알고 싶으세요?',
+      en: 'Want to know more?'
+    },
+
+    // ── 누락 key 보충: search.html ──
+    'search.title': {
+      ko: '둘러보기',
+      en: 'Browse'
+    },
+    'search.subtitle': {
+      ko: '다른 팬들이 남긴 감정의 경로를 따라가보세요.\n어떤 순간들이 그들의 러브트리를 만들었을까요?',
+      en: "Follow the emotional paths left by other fans.\nWhat moments made their LoveTrees?"
+    },
+    'search.filter.all': {
+      ko: '전체 경로',
+      en: 'All Paths'
+    },
+    'search.filter.newbie': {
+      ko: '입덕 순간',
+      en: 'First Fandom'
+    },
+    'search.filter.growing': {
+      ko: '성장 과정',
+      en: 'Growing'
+    },
+    'search.filter.fan': {
+      ko: '최애 확정',
+      en: 'Ultimate Fan'
+    },
+
+    // ── 누락 key 보충: nav ──
+    'nav.intro': {
+      ko: 'LoveTree 소개 보기',
+      en: 'About LoveTree'
+    },
+
+    // ── 누락 key 보충: editor.js ──
+    'memory_added': {
+      ko: '기억이 추가되었습니다',
+      en: 'Memory added'
+    },
+    'firebase_init_fail': {
+      ko: 'Firebase 준비 실패. 페이지를 새로고침해 주세요.',
+      en: 'Firebase failed to initialize. Please refresh the page.'
+    },
+
+    // ── 누락 key 보충: my-trees ──
+    'myTrees.loading': {
+      ko: '러브트리 목록을 불러오는 중...',
+      en: 'Loading your LoveTrees...'
+    },
+    'myTrees.empty.title': {
+      ko: '아직 러브트리가 없어요',
+      en: 'No LoveTrees yet'
+    },
+    'myTrees.empty.desc': {
+      ko: '첫 번째 순간을 기록하고 당신만의 사랑 나무를 시작해보세요.\n입덕 순간부터 지금까지의 감정을 하나의 경로로 연결합니다.',
+      en: "Record your first moment and start your own love tree.\nConnect your emotions from your first fandom moment to now."
+    },
+    'myTrees.create': {
+      ko: '새 러브트리 만들기',
+      en: 'Create New LoveTree'
+    },
+
+    // ── 호환 alias: 예전 key명과 동일한 값을 제공 ──
+    'intro.step3Desc': {
+      ko: '편집 화면에서 기억들이 가지처럼 연결된 당신만의 LoveTree를 확인하고, 완성되면 둘러보기에 공유하세요.',
+      en: 'In the editor, see your memories connected like branches, and share to browse when complete.'
+    },
+    'intro.value3Desc': {
+      ko: '시간이 지나도 그때의 감정이 생생하게 남아 있습니다.',
+      en: 'Even as time passes, those feelings remain vivid.'
+    },
+    'intro.whatIsDesc2': {
+      ko: '각 기억은 "입덕 순간", "최애 직캠", "성장 메모" 등 감정 태그와 함께 노드에 저장됩니다. 시간이 지나도 그때 그 감정으로 돌아갈 수 있는 공간입니다.',
+      en: 'Each memory is saved as a node with emotion tags like "first fandom moment", "favorite fancam", "growth memo". A space where you can return to those feelings even as time passes.'
     }
   };
 
