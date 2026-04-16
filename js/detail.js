@@ -43,16 +43,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!memory) {
         // ── memory 조회 실패 시 fallback UI 표시 ──
         console.warn('[detail] Memory not found, showing fallback UI');
+        const i18n = window.t || ((k) => k);
         const fallbackHTML = `
             <div style="max-width: 600px; margin: 80px auto; text-align: center; padding: 48px;">
                 <span class="material-symbols-outlined" style="font-size: 64px; color: var(--on-surface-variant); opacity: 0.5; margin-bottom: 24px; display: block;">sentiment_dissatisfied</span>
-                <h2 class="headline" style="font-size: 1.8rem; margin-bottom: 16px; color: var(--on-surface);">기억을 찾지 못했어요</h2>
+                <h2 class="headline" style="font-size: 1.8rem; margin-bottom: 16px; color: var(--on-surface);">${i18n('memory_not_found_title')}</h2>
                 <p style="color: var(--on-surface-variant); margin-bottom: 32px; line-height: 1.6;">
-                    요청하신 기억이 존재하지 않거나<br>접근할 수 없는 상태입니다.
+                    ${i18n('memory_not_found_desc').replace('.', '<br>')}
                 </p>
                 <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
-                    <a href="../index.html" class="btn-round btn-outline" style="text-decoration: none;">첫화면으로</a>
-                    <a href="search.html" class="btn-round btn-outline" style="text-decoration: none;">러브트리 둘러보기</a>
+                    <a href="../index.html" class="btn-round btn-outline" style="text-decoration: none;">${i18n('back_to_home')}</a>
+                    <a href="search.html" class="btn-round btn-outline" style="text-decoration: none;">${i18n('browse_lovetrees')}</a>
                 </div>
             </div>
         `;
@@ -86,17 +87,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // ── 트리 맥락 표시 ──
+    const i18n = window.t || ((k) => k);
     const treeTitle = tree.title || tree.data?.title || '러브트리';
     const treeContextEl = document.getElementById('treeContext');
     if (treeContextEl) {
         treeContextEl.innerHTML = `
             <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
                 <span class="material-symbols-outlined" style="color: var(--primary); font-size: 20px;">account_tree</span>
-                <span style="font-size: 14px; font-weight: 700; color: var(--on-surface-variant);">러브트리 감상 중</span>
+                <span style="font-size: 14px; font-weight: 700; color: var(--on-surface-variant);">${i18n('viewing_lovetree')}</span>
             </div>
             <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--on-surface); margin: 0;">${treeTitle}</h2>
             <p style="font-size: 13px; color: var(--on-surface-variant); margin-top: 4px;">
-                ${sourceContext === 'browse' ? '둘러보기에서 선택한 트리의 첫 순간' : '내 러브트리의 감정 경로'}
+                ${sourceContext === 'browse' ? i18n('from_browse') : i18n('from_my_trees')}
             </p>
         `;
     }
@@ -145,16 +147,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                 allowfullscreen></iframe>
         `;
     } else {
+        const i18n = window.t || ((k) => k);
         videoMain.innerHTML = `
             <div style="width:100%;height:100%;background:var(--surface-container);display:flex;align-items:center;justify-content:center;color:var(--on-surface-variant);">
-                비디오가 없습니다
+                ${i18n('no_video')}
             </div>
         `;
     }
 
     // 메타데이터 채우기
     memoryTitle.textContent = memory.title;
-    detailArtist.textContent = memory.artist || 'Unknown';
+    detailArtist.textContent = memory.artist || ((window.t || ((k) => k))('unknown_artist'));
     detailDate.textContent = memory.timestamp + (memory.source ? ' · ' + memory.source : '');
     if (detailSubtitle) detailSubtitle.textContent = '기록 — ' + memory.timestamp;
 

@@ -181,6 +181,12 @@
                 this.classList.add('active');
                 dropdown.classList.remove('show');
                 console.log('[shared-header] Language selected:', lang);
+                // i18n 모듈이 있으면 언어 변경 및 적용
+                if (window.setCurrentLang) {
+                    window.setCurrentLang(lang === 'KR' ? 'ko' : 'en');
+                    if (window.applyI18n) window.applyI18n();
+                    if (window.triggerLangChange) window.triggerLangChange(lang === 'KR' ? 'ko' : 'en');
+                }
             });
         });
     }
