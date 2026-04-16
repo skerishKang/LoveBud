@@ -249,26 +249,29 @@ function buildLoginButton() {
 /**
  * Build user dropdown HTML.
  *
- * Header trigger is icon-only so it can later swap to a real profile photo.
- * User identity is shown inside the dropdown menu, not in the header trigger.
+ * Fixed avatar shell that stays in place - only inner content changes.
+ * This prevents visual "flicker" when photoURL loads.
  *
  * @param {Object} user - Firebase user object
  */
 function buildUserDropdown(user) {
   var userName = '';
-  var profileVisual = '<span class="material-symbols-outlined">account_circle</span>';
+  var hasPhoto = user && user.photoURL;
+  
   if (user) {
     userName = user.displayName || user.email || '';
-    if (user.photoURL) {
-      profileVisual = '<img src="' + user.photoURL + '" alt="" class="user-avatar-image" referrerpolicy="no-referrer">';
-    }
   }
+
+  // Shell stays constant - only content inside changes
+  var avatarContent = hasPhoto 
+    ? '<img src="' + user.photoURL + '" alt="" class="user-avatar-image" referrerpolicy="no-referrer">'
+    : '<span class="material-symbols-outlined user-avatar-fallback">account_circle</span>';
 
   return [
     '<div class="user-dropdown" id="userDropdown">',
     '<button class="user-dropdown-trigger user-dropdown-trigger-icon" aria-label="내 계정 메뉴">',
     '<span class="user-avatar-shell">',
-    profileVisual,
+    avatarContent,
     '</span>',
     '</button>',
     '<div class="user-dropdown-menu">',

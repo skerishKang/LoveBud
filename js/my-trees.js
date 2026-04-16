@@ -210,9 +210,25 @@
   // ── Auth guard: load trees on auth ready ─────────────────────────────────
   function startMyTrees(user) {
     if (!user) {
-      // Not logged in — redirect to login
-      window.location.href = 'login.html?redirect=my-trees.html';
-      return;
+      // No Firebase user - check confirmed auth cache before redirect
+      var cachedUser = null;
+      try {
+        if (localStorage.getItem('lovebud_auth_confirmed') === 'true') {
+          var raw = localStorage.getItem('lovebud_auth_cache');
+          if (raw && raw !== 'null') {
+            cachedUser = JSON.parse(raw);
+          }
+        }
+      } catch (e) {}
+      
+      if (cachedUser && cachedUser.uid) {
+        // Has confirmed auth cache - allow access, will revalidate in background
+        console.log('[my-trees] Using cached auth, proceeding...');
+      } else {
+        // No cache - must redirect to login
+        window.location.href = 'login.html?redirect=my-trees.html';
+        return;
+      }
     }
 
     // Render loading state
@@ -267,28 +283,40 @@
     bootMyTrees(user);
   };
 
-  // auth.js timeout 또는 Firebase unavailable 시에는 보호 페이지，而不是 localStorage fallback
-  // CT: 보호 페이지는 "확인된 실제 auth 상태" 없이는 열리면 안 된다.
+  // auth.js timeout 또는 Firebase unavailable 시에도 confirmed auth cache가 있으면 진입 허용
+  // CT: cached auth가 있으면 먼저 페이지를 보고, Firebase 재검증은后台에서 진행
   window.addEventListener('load', function() {
     setTimeout(function() {
       if (myTreesStarted) return;
       
-      // Firebase unavailable/offline → DO NOT trust localStorage. Redirect to login.
-      // offline mode에서 localStorage에 isLoggedIn=true가 있어도 보호 페이지는 열면 안 된다.
+      // Check for confirmed auth cache before redirect
+      var cachedUser = null;
+      try {
+        if (localStorage.getItem('lovebud_auth_confirmed') === 'true') {
+          var raw = localStorage.getItem('lovebud_auth_cache');
+          if (raw && raw !== 'null') {
+            cachedUser = JSON.parse(raw);
+          }
+        }
+      } catch (e) {}
+      
       var isFirebaseReady = typeof firebase !== 'undefined' && 
                        firebase.auth && 
                        firebase.apps && 
                        firebase.apps.length > 0;
       
-      if (!isFirebaseReady && window[AUTH_READY_FLAG]) {
-        // Firebase 없고 auth ready 상태 → offline mode. But protects shouldn't trust this.
-        console.warn('[my-trees] Firebase unavailable, redirecting to login');
+      if (!isFirebaseReady && !cachedUser) {
+        // Firebase 없고 cached auth도 없음 → login으로 redirect
+        console.warn('[my-trees] Firebase unavailable, no cached auth, redirecting to login');
         window.location.href = 'login.html?redirect=my-trees.html';
         return;
       }
       
-      // Firebase 없고 auth도 ready 아닌 경우만 null로 boot (redirect 될 것)
-      bootMyTrees(null);
+      // Firebase 없지만 cached auth 있음 OR Firebase 있음 → boot with cache
+      if (cachedUser) {
+        console.log('[my-trees] Using cached auth after timeout');
+      }
+      bootMyTrees(cachedUser);
     }, 5500);
   }, { once: true });
 
