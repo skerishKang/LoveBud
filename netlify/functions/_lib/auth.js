@@ -20,15 +20,25 @@ function getAdmin() {
       process.env.FIREBASE_SERVICE_ACCOUNT;
 
     if (!raw) {
-      throw new Error(
+      const err = new Error(
         'Missing Firebase service account: FIREBASE_SERVICE_ACCOUNT_JSON or FIREBASE_SERVICE_ACCOUNT'
       );
+      err.status = 503;
+      throw err;
     }
 
-    const serviceAccount = JSON.parse(raw);
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-    });
+    try {
+      const serviceAccount = JSON.parse(raw);
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+      });
+    } catch (parseError) {
+      const err = new Error(
+        'Invalid Firebase service account JSON: ' + parseError.message
+      );
+      err.status = 503;
+      throw err;
+    }
   }
 
   adminInitialized = true;

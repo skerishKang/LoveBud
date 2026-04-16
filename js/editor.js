@@ -597,7 +597,7 @@ if (!url) {
             const i18n = window.t || ((k) => k);
             const dateStr = `${today.getFullYear()}.${String(today.getMonth()+1).padStart(2,'0')}.${String(today.getDate()).padStart(2,'0')}`;
 
-            // 기본 제목 자동 생성 (입력 없을 시)
+// 기본 제목 자동 생성 (입력 없을 시)
             const title = titleInput.value.trim() || `${i18n('new_memory')} ${dateStr}`;
 
             const newMemoryData = {
@@ -615,55 +615,26 @@ if (!url) {
                 source: 'YouTube'
             };
 
-// ── 폼 상태 추적 ──
-let isFormOpen = false;
-let escHandler = null;
-let outsideClickHandler = null;
-
-// ── 새 기억 추가 폼 제어 ──
-const addMemoryForm = document.getElementById('addMemoryForm');
-const urlInput = document.getElementById('memoryUrlInput');
-const titleInput = document.getElementById('memoryTitleInput');
-const memoInput = document.getElementById('memoryMemoInput');
-const canvasArea = document.getElementById('canvasArea');
-const cancelBtn = document.getElementById('cancelAddMemory');
-const confirmBtn = document.getElementById('confirmAddMemory');
-
-// 포커스 트랩: 폼 내 순환 포커스 유지
-const formInputs = [urlInput, titleInput, memoInput];
-const focusTrap = (e) => {
-    if (!isFormOpen) return;
-    if (e.key !== 'Tab') return;
-    
-    const focused = document.activeElement;
-    const lastInput = formInputs[formInputs.length - 1];
-    const firstInput = formInputs[0];
-    
-    if (e.shiftKey && focused === firstInput) {
-        e.preventDefault();
-        lastInput.focus();
-    } else if (!e.shiftKey && focused === lastInput) {
-        e.preventDefault();
-        firstInput.focus();
-    }
-};
-
-const showAddMemoryForm = () => {
-    urlInput.value = '';
-    titleInput.value = '';
-    memoInput.value = '';
-    addMemoryForm.style.display = 'block';
-    isFormOpen = true;
-    
-    // 포커스 트랩 활성화
-    document.addEventListener('keydown', focusTrap);
-    urlInput.focus();
-
-    // Esc 키 핸들러
-    escHandler = (e) => {
-        if (e.key === 'Escape') {
-            e.stopPropagation();
             hideAddMemoryForm();
+
+            // ── API 우선 생성 시도 ──
+            let createdMemory = null;
+            let useApi = false;
+            try {
+                if (window.apiClient && window.apiClient.createMemory) {
+                    createdMemory = await window.apiClient.createMemory(newMemoryData);
+                    useApi = true;
+                    console.log('[editor] API createMemory success:', createdMemory);
+                }
+            } catch (e) {
+                const i18n = window.t || ((k) => k);
+                console.warn('[editor] API createMemory failed, fallback to mock:', e.message);
+                if (e.message?.includes('401') || e.message?.includes('403')) {
+                    showToast(i18n('no_permission_local'), 'warn');
+                } else if (e.message?.includes('400')) {
+                    showToast(i18n('check_input'), 'error');
+                } else {
+                    showToast(i18n('server_fail_local'), 'warn');
                 }
             }
 
@@ -677,24 +648,24 @@ const showAddMemoryForm = () => {
                 };
             }
 
-// ── createMemory 후 갱신: 재조회 우선, 실패 시 로컬 추가 ──
-  // 저장 계약: window.currentTreeMemories는 항상 normalizeMemory가 적용된 메모리 배열
-  const normalizedNew = normalizeMemory(createdMemory);
-  try {
-    const refreshed = await window.apiClient.getMemoriesByTree(treeId);
-    if (Array.isArray(refreshed)) {
-      // 재조회 성공 시 정규화된 형태로 저장 ({id,data}+snake_case → flat+camelCase)
-      window.currentTreeMemories = refreshed.map(normalizeMemory);
-    } else {
-      // 재조회 실패 시 로컬에 추가 (중복 방지, 정규화 적용)
-      const exists = window.currentTreeMemories.some(m => m.id === normalizedNew.id);
-      if (!exists && normalizedNew) window.currentTreeMemories.push(normalizedNew);
-    }
-  } catch (e) {
-    // API 실패 시 로컬에 추가 (중복 방지, 정규화 적용)
-    const exists = window.currentTreeMemories.some(m => m.id === normalizedNew.id);
-    if (!exists && normalizedNew) window.currentTreeMemories.push(normalizedNew);
-  }
+            // ── createMemory 후 갱신: 재조회 우선, 실패 시 로컬 추가 ──
+            // 저장 계약: window.currentTreeMemories는 항상 normalizeMemory가 적용된 메모리 배열
+            const normalizedNew = normalizeMemory(createdMemory);
+            try {
+                const refreshed = await window.apiClient.getMemoriesByTree(treeId);
+                if (Array.isArray(refreshed)) {
+                    // 재조회 성공 시 정규화된 형태로 저장 ({id,data}+snake_case → flat+camelCase)
+                    window.currentTreeMemories = refreshed.map(normalizeMemory);
+                } else {
+                    // 재조회 실패 시 로컬에 추가 (중복 방지, 정규화 적용)
+                    const exists = window.currentTreeMemories.some(m => m.id === normalizedNew.id);
+                    if (!exists && normalizedNew) window.currentTreeMemories.push(normalizedNew);
+                }
+            } catch (e) {
+                // API 실패 시 로컬에 추가 (중복 방지, 정규화 적용)
+                const exists = window.currentTreeMemories.some(m => m.id === normalizedNew.id);
+                if (!exists && normalizedNew) window.currentTreeMemories.push(normalizedNew);
+            }
 
             // ── UI 렌더링: API 응답 정규화 후 렌더링 ──
             // snake_case → camelCase, {id, data} 형태 정규화
@@ -727,22 +698,31 @@ const showAddMemoryForm = () => {
                     top: Math.max(0, scrollY),
                     behavior: 'smooth'
                 });
+
+                // 새 메모리 추가 성공 토스트
+                const i18nToast = window.t || ((k) => k);
+                showToast(i18nToast('memory_added') || '새 기억이 추가되었습니다!', 'success');
             }
 
-            // 성공 피드백: 토스트 메시지 + detail panel 업데이트
-            showToast(`"${normalizedMemory.title}" ${i18n('memory_added') || '기억이 추가되었습니다'}`, 'success');
-
-            // detail panel 즉시 업데이트 (감정 경로 표시)
-            const detailPanel = document.getElementById('detailPanel');
-            if (detailPanel && window.updateDetailPanel) {
-                window.updateDetailPanel(normalizedMemory);
+            // ── 메모리 추가 후 캐시 동기화 ──
+            if (typeof window.setCachedMemories === 'function' && treeId) {
+                window.setCachedMemories(treeId, window.currentTreeMemories);
+                console.log('[editor] 메모리 추가 후 캐시 저장:', window.currentTreeMemories.length, '개');
             }
         };
 
         // 폼 버튼 이벤트 리스너
         if (addBtn) addBtn.addEventListener('click', showAddMemoryForm);
         if (cancelBtn) cancelBtn.addEventListener('click', hideAddMemoryForm);
-        if (confirmBtn) confirmBtn.addEventListener('click', addMemoryFromForm);
+        if (confirmBtn) {
+            confirmBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                addMemoryFromForm().catch(err => {
+                    console.error('[editor] Failed to add memory:', err);
+                    showToast('기록 저장 중 오류가 발생했습니다', 'error');
+                });
+            });
+        }
 
         // Enter 키로 폼 제출
         if (urlInput) {
