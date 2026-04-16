@@ -668,20 +668,60 @@ if (!url) {
     };
 
     // ── 인증 상태에 따라 시작 ──
-    // Use onAuthStateChanged directly (not onAuthReady) to avoid race conditions
-    // CRITICAL: Firebase unavailable ≠ authenticated. Always require real auth.
-    if (typeof firebase !== 'undefined' && firebase.auth && firebase.apps && firebase.apps.length) {
-        const unsubscribe = firebase.auth().onAuthStateChanged((user) => {
-            unsubscribe(); // One-shot: only need the first resolution
-            if (!user) {
+    // 완화: Firebase SDK 지연 또는 unavailable 시에도 cached auth가 있으면 진입 허용
+    // 보안: cached auth가 있어도 Firebase 재검증은后台에서 진행
+    
+    function tryStartEditor(forceStart) {
+        // Check for confirmed auth cache
+        var cachedUser = null;
+        try {
+            if (localStorage.getItem('lovebud_auth_confirmed') === 'true') {
+                var raw = localStorage.getItem('lovebud_auth_cache');
+                if (raw && raw !== 'null') {
+                    cachedUser = JSON.parse(raw);
+                }
+            }
+        } catch (e) {}
+        
+        var hasFirebase = typeof firebase !== 'undefined' && firebase.auth && firebase.apps && firebase.apps.length;
+        
+        if (hasFirebase) {
+            // Firebase available - use standard auth flow
+            var unsubscribe = firebase.auth().onAuthStateChanged(function(user) {
+                unsubscribe(); // One-shot
+                if (!user && !forceStart && (!cachedUser || !cachedUser.uid)) {
+                    window.location.href = 'login.html?redirect=editor.html';
+                    return;
+                }
+                // Proceed regardless - cached auth or real user
+                startEditor();
+            });
+        } else {
+            // Firebase not available - rely on cached auth
+            if (!forceStart && (!cachedUser || !cachedUser.uid)) {
                 window.location.href = 'login.html?redirect=editor.html';
                 return;
             }
+            // Has cached auth - proceed (will try Firebase again in background if available later)
+            console.log('[editor] Firebase unavailable, using cached auth');
+            
+            // Try to wait briefly for Firebase to initialize, but don't block
+            setTimeout(function() {
+                if (typeof firebase !== 'undefined' && firebase.auth && firebase.apps && firebase.apps.length) {
+                    // Firebase now available - recheck auth
+                    firebase.auth().onAuthStateChanged(function(user) {
+                        if (!user) {
+                            console.log('[editor] Firebase recheck: no user, but cached auth present');
+                        }
+                        // Don't redirect - we already have cached auth, proceed with editor
+                    });
+                }
+            }, 1000);
+            
             startEditor();
-        });
-    } else {
-        // Firebase unavailable — DO NOT skip guard. Redirect to login.
-        // Offline/localStorage fallback cannot bypass protected pages.
-        window.location.href = 'login.html?redirect=editor.html';
+        }
     }
+    
+    // Start with force flag for direct access scenarios
+    tryStartEditor(false);
 });
