@@ -339,15 +339,15 @@
         <!-- Main Hero Section -->
         <section class="hero-section">
             <div class="hero-content">
-<div class="hero-badge">💝 나만의 러브트리</div>
-  <h1 class="hero-title">사랑하는 것의<br><span>모든 순간이 하나의 나무가 된다</span></h1>
-  <p class="hero-desc">
-    입덕의 첫 설렘, 가장 감동했던 그 장면, 그리고 지금 이 순간까지.
-    당신이 느낀 감정의 결을 남기고, 하나의 나무로 완성하세요.
-  </p>
+                <div class="hero-badge" data-i18n="home.badge">💝 나만의 러브트리</div>
+                <h1 class="hero-title" data-i18n="home.heroTitle">사랑하는 것의<br><span>모든 순간이 하나의 나무가 된다</span></h1>
+                <p class="hero-desc" data-i18n="home.heroSubtitle">
+                    입덕의 첫 설렘, 가장 감동했던 그 장면, 그리고 지금 이 순간까지.
+                    당신이 느낀 감정의 결을 남기고, 하나의 나무로 완성하세요.
+                </p>
                 <div class="hero-cta-group">
-                    <a href="pages/my-trees.html" class="btn-round btn-primary" style="text-decoration: none;">내 러브트리 시작하기</a>
-                    <a href="pages/search.html" class="btn-round btn-outline" style="text-decoration: none;">다른 트리 둘러보기</a>
+                    <a href="pages/my-trees.html" class="btn-round btn-primary" style="text-decoration: none;" data-i18n="home.cta.start">내 러브트리 시작하기</a>
+                    <a href="pages/search.html" class="btn-round btn-outline" style="text-decoration: none;" data-i18n="home.cta.browse">다른 트리 둘러보기</a>
                 </div>
             </div>
 
@@ -494,12 +494,12 @@
 
 <!-- CTA Section -->
 <section class="features-section" style="border-top: 1px solid var(--outline-variant);">
-  <p style="text-align: center; color: var(--on-surface-variant); font-size: 1rem; margin-bottom: 2rem;">
+  <p style="text-align: center; color: var(--on-surface-variant); font-size: 1rem; margin-bottom: 2rem;" data-i18n="home.intro">
     더 알고 싶으세요?
   </p>
   <div style="display: flex; gap: 16px; justify-content: center;">
-    <a href="pages/intro.html" class="btn-round btn-outline" style="text-decoration: none; background: white;">LoveTree 소개 보기</a>
-    <a href="pages/search.html" class="btn-round btn-outline" style="text-decoration: none;">둘러보기</a>
+    <a href="pages/intro.html" class="btn-round btn-outline" style="text-decoration: none; background: white;" data-i18n="nav.intro">LoveTree 소개 보기</a>
+    <a href="pages/search.html" class="btn-round btn-outline" style="text-decoration: none;" data-i18n="home.cta.browse">둘러보기</a>
   </div>
 </section>
     </div>
@@ -508,6 +508,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="js/firebase-config.js?v=20260415-5"></script>
+    <script src="js/i18n.js?v=20260416-1"></script>
     <script src="js/shared-header.js?v=20260416-1"></script>
     <script src="js/auth.js?v=20260416-16"></script>
     <script>renderSharedHeader();</script>
