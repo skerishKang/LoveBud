@@ -20,8 +20,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // URL 파라미터에서 감상 맥락 확인
-    const fromBrowse = urlParams.get('from') === 'browse';
-    const treeIdFromUrl = urlParams.get('tree');
+    // from: 'browse' (둘러보기에서 진입) | 'my-trees' (내 트리에서 진입)
+    const sourceContext = urlParams.get('from') === 'browse' ? 'browse' : 'my-trees';
 
     // ── 메모리 데이터: API 우선, 실패 시 mock fallback ──
     let memory = null;
@@ -96,7 +96,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             </div>
             <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--on-surface); margin: 0;">${treeTitle}</h2>
             <p style="font-size: 13px; color: var(--on-surface-variant); margin-top: 4px;">
-                ${fromBrowse ? '둘러보기에서 선택한 트리의 첫 순간' : '러브트리의 감정 경로'}
+                ${sourceContext === 'browse' ? '둘러보기에서 선택한 트리의 첫 순간' : '내 러브트리의 감정 경로'}
             </p>
         `;
     }
@@ -104,17 +104,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ── 페이지 타이틀 업데이트 ──
     document.title = `${memory.title} | ${treeTitle} — Lovetree`;
 
-    // ── 돌아가기 버튼 설정 ──
+    // ── 돌아가기 버튼 설정 ───
     const backButton = document.getElementById('backButton');
     if (backButton) {
         backButton.onclick = () => {
-            window.location.href = fromBrowse ? 'search.html' : 'search.html';
+            // 감상 맥락에 따라 자연스럽게 돌아가기
+            window.location.href = sourceContext === 'browse' ? 'search.html' : 'my-trees.html';
         };
     }
 
-    // ── 형제 메모리: API 우선, 실패 시 mock fallback ──
+    // ── 트리 ID 결정 ───
+    // URL의 tree 파라미터가 있으면 사용, 없으면 API/memory 데이터에서 추출
+    const effectiveTreeId = urlParams.get('tree') || tree.id || tree.data?.id;
+
+    // ── 형제 메모리: API 우선, 실패 시 mock fallback ───
     let memories = [];
-    const treeId = tree.id || tree.data?.id;
+    const treeId = effectiveTreeId;
     try {
         if (window.apiClient && window.apiClient.getMemoriesByTree) {
             const apiMemories = await window.apiClient.getMemoriesByTree(treeId);
@@ -173,7 +178,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (siblings.length > 0) {
         connectedFragments.innerHTML = siblings.map(sib => `
-            <div class="moment-card" onclick="location.href='detail.html?id=${sib.id}'">
+            <div class="moment-card" onclick="location.href='detail.html?id=${sib.id}&tree=${treeId}&from=${sourceContext}'">
                 <img src="${sib.thumbnail}" alt="${sib.title}" style="width: 80px; height: 80px; border-radius: 1rem; object-fit: cover;">
                 <div>
                     <div style="font-size: 11px; font-weight: 800; color: #aaa; text-transform: uppercase;">
