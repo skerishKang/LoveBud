@@ -24,6 +24,7 @@ function getAdmin() {
         'Missing Firebase service account: FIREBASE_SERVICE_ACCOUNT_JSON or FIREBASE_SERVICE_ACCOUNT'
       );
       err.status = 503;
+      console.error('[auth] Firebase service account env missing. Set FIREBASE_SERVICE_ACCOUNT_JSON in Netlify env.');
       throw err;
     }
 
@@ -37,6 +38,7 @@ function getAdmin() {
         'Invalid Firebase service account JSON: ' + parseError.message
       );
       err.status = 503;
+      console.error('[auth] Firebase service account JSON parse failed:', parseError.message);
       throw err;
     }
   }
