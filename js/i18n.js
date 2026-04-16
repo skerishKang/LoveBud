@@ -19,10 +19,10 @@
       ko: '아직 러브트리가 없어요',
       en: 'No LoveTrees yet'
     },
-    'empty_state_desc': {
-      ko: '첫 번째 순간을 기록하고 당신만의 사랑 나무를 시작해보세요. 입덕 순간부터 지금까지의 감정을 하나의 경로로 연결합니다.',
-      en: 'Record your first moment and start your own love tree. Connect your emotions from your first fandom moment to now.'
-    },
+'empty_state_desc': {
+ ko: '새 러브트리를 만들어 첫 추억의 씨앗을 심어보세요. 영상을 추가하고 감정을 기록하면 나무가 자라납니다.',
+ en: 'Create your first LoveTree and plant a seed of memory. Add videos and record emotions to watch it grow.'
+ },
     'create_tree_btn': {
       ko: '새 러브트리 만들기',
       en: 'Create New LoveTree'
@@ -374,10 +374,14 @@
     },
 
     // ── 누락 key 보충: editor.js ──
-    'memory_added': {
-      ko: '기억이 성공적으로 추가되었습니다',
-      en: 'Memory added successfully'
-    },
+'memory_added': {
+ ko: '기억이 성공적으로 추가되었습니다',
+ en: 'Memory added successfully'
+ },
+'memory_added_local': {
+ ko: '기억이 저장되었습니다 (로컬만)',
+ en: 'Memory saved locally'
+ },
     'firebase_init_fail': {
       ko: 'Firebase 준비 실패. 페이지를 새로고침해 주세요.',
       en: 'Firebase failed to initialize. Please refresh the page.'

@@ -67,9 +67,11 @@ const startEditor = async () => {
   // ── 캐시 키 설정 ──
   const cache = window.LoveBudCache;
   const TREE_CACHE_KEY = 'tree_' + (urlTreeId || 'default');
-  const MEMORIES_CACHE_KEY = 'memories_' + (urlTreeId || 'default');
+const MEMORIES_CACHE_KEY = 'memories_' + (urlTreeId || 'default');
+ // 로컬 폴백 모드 추적 (상세 패널에 표시용)
+ let isLocalSaveMode = false;
 
-  // ── 트리 데이터: treeId 우선, 없으면 getFirstTree fallback ──
+// ── 트리 데이터: treeId 우선, 없으면 getFirstTree fallback ──
   let tree = null;
   let isNewTree = false;
 
@@ -362,20 +364,23 @@ const RADIUS_L2 = 240; // L2 반경 (200→240) - 노드 겹침 방지
             const currentTree = window.currentTreeData || {};
             const treeId = currentTree.id || urlTreeId;
 
-            // 헤더: 제목 + detail 페이지 링크
-            const headerEl = detailPanel.querySelector('h3');
-            if (headerEl) {
-                headerEl.innerHTML = `
-                    <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
-                        <span style="font-size:1.1rem;line-height:1.3;">${data.title}</span>
-                        <a href="detail.html?id=${data.id}&tree=${treeId}&from=editor"
-                           title="전체 화면으로 감상하기"
-                           style="display:flex;align-items:center;gap:4px;padding:6px 12px;background:var(--primary-container);color:var(--on-primary-container);border-radius:99px;font-size:12px;font-weight:700;text-decoration:none;white-space:nowrap;">
-                            <span class="material-symbols-outlined" style="font-size:14px;">open_in_new</span>
-                            전체 보기
-                        </a>
-                    </div>
-                `;
+// 헤더: 제목 + 로컬 저장 배지 + detail 페이지 링크
+ const headerEl = detailPanel.querySelector('h3');
+ if (headerEl) {
+ const localBadge = isLocalSaveMode
+ ? '<span style="font-size:11px;padding:2px 8px;background:rgba(239,108,0,0.1);color:#ef6c00;border-radius:99px;font-weight:600;margin-left:8px;">로컬 저장</span>'
+ : '';
+ headerEl.innerHTML = `
+ <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
+ <span style="font-size:1.1rem;line-height:1.3;">${data.title}${localBadge}</span>
+ <a href="detail.html?id=${data.id}&tree=${treeId}&from=editor"
+ title="전체 화면으로 감상하기"
+ style="display:flex;align-items:center;gap:4px;padding:6px 12px;background:var(--primary-container);color:var(--on-primary-container);border-radius:99px;font-size:12px;font-weight:700;text-decoration:none;white-space:nowrap;">
+ <span class="material-symbols-outlined" style="font-size:14px;">open_in_new</span>
+ 전체 보기
+ </a>
+ </div>
+ `;
             }
 
             // 썸네일 업데이트
@@ -622,9 +627,10 @@ const RADIUS_L2 = 240; // L2 반경 (200→240) - 노드 겹침 방지
             let useApi = false;
             try {
                 if (window.apiClient && typeof window.apiClient.createMemory === 'function') {
-                    createdMemory = await window.apiClient.createMemory(newMemoryData);
-                    useApi = true;
-                    console.log('[editor] API createMemory success:', createdMemory);
+createdMemory = await window.apiClient.createMemory(newMemoryData);
+ useApi = true;
+ isLocalSaveMode = false; // API 성공 시 로컬 모드 해제
+ console.log('[editor] API createMemory success:', createdMemory);
                 }
             } catch (e) {
                 const i18n = window.t || ((k) => k);
@@ -640,15 +646,16 @@ const RADIUS_L2 = 240; // L2 반경 (200→240) - 노드 겹침 방지
 
             // API 실패 시 mock fallback - 로컬에만 추가
             // 방어적 처리: createdMemory가 null/undefined인 경우에도 로컬 객체 생성
-            if (!createdMemory || typeof createdMemory !== 'object') {
-                console.log('[editor] Using local fallback memory');
-                createdMemory = {
-                    id: nextMemoryId(),
-                    ...newMemoryData,
-                    createdAt: dateStr,
-                    delay: '0.5s'
-                };
-            }
+if (!createdMemory || typeof createdMemory !== 'object') {
+ console.log('[editor] Using local fallback memory');
+ isLocalSaveMode = true; // 로컬 폴백 모드 표시
+ createdMemory = {
+ id: nextMemoryId(),
+ ...newMemoryData,
+ createdAt: dateStr,
+ delay: '0.5s'
+ };
+ }
 
             // ── createMemory 후 갱신: 재조회 우선, 실패 시 로컬 추가 ──
             // 저장 계약: window.currentTreeMemories는 항상 normalizeMemory가 적용된 메모리 배열
@@ -700,9 +707,12 @@ const RADIUS_L2 = 240; // L2 반경 (200→240) - 노드 겹침 방지
                     behavior: 'smooth'
                 });
 
-                // 새 메모리 추가 성공 토스트
-                const i18nToast = window.t || ((k) => k);
-                showToast(i18nToast('memory_added') || '새 기억이 추가되었습니다!', 'success');
+// 새 메모리 추가 성공 토스트 (로컬 폴백 시 메시지 변경)
+ const i18nToast = window.t || ((k) => k);
+ const successMsg = useApi
+ ? (i18nToast('memory_added') || '새 기억이 추가되었습니다!')
+ : (i18nToast('memory_added_local') || '기억이 저장되었습니다 (로컬만)');
+ showToast(successMsg, useApi ? 'success' : 'warn');
             }
 
             // ── 메모리 추가 후 캐시 동기화 ──
