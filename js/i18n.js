@@ -65,18 +65,7 @@
       ko: '러브트리 둘러보기',
       en: 'Browse LoveTrees'
     },
-    'viewing_lovetree': {
-      ko: '러브트리 감상 중',
-      en: 'Viewing LoveTree'
-    },
-    'from_browse': {
-      ko: '둘러보기에서 선택한 트리의 첫 순간',
-      en: 'First moment from browse selection'
-    },
-    'from_my_trees': {
-      ko: '내 러브트리의 감정 경로',
-      en: 'Emotional path of my LoveTree'
-    },
+
     'no_video': {
       ko: '비디오가 없습니다',
       en: 'No video available'
@@ -115,18 +104,7 @@
       ko: '새로운 기억',
       en: 'New Memory'
     },
-    'no_permission_local': {
-      ko: '저장 권한이 없습니다. 로컬에만 추가됩니다.',
-      en: 'No save permission. Added to local only.'
-    },
-    'check_input': {
-      ko: '입력값을 확인해주세요.',
-      en: 'Please check your input.'
-    },
-    'server_fail_local': {
-      ko: '서버 연결 실패. 로컬에만 추가됩니다.',
-      en: 'Server connection failed. Added to local only.'
-    },
+
     'default_tree_title': {
       ko: '나의 첫 러브트리',
       en: 'My First LoveTree'
@@ -209,10 +187,7 @@
       ko: '이미 계정이 있나요? 로그인으로 전환',
       en: 'Already have an account? Switch to login'
     },
-    'close': {
-      ko: '닫기',
-      en: 'Close'
-    },
+
 
     // intro.html
     'intro.heroTitle': {
@@ -408,37 +383,13 @@
       en: 'Firebase failed to initialize. Please refresh the page.'
     },
 
-    // ── 누락 key 보충: my-trees ──
     'myTrees.loading': {
       ko: '러브트리 목록을 불러오는 중...',
       en: 'Loading your LoveTrees...'
-    },
-    'myTrees.empty.title': {
-      ko: '아직 러브트리가 없어요',
-      en: 'No LoveTrees yet'
-    },
-    'myTrees.empty.desc': {
-      ko: '첫 번째 순간을 기록하고 당신만의 사랑 나무를 시작해보세요.\n입덕 순간부터 지금까지의 감정을 하나의 경로로 연결합니다.',
-      en: "Record your first moment and start your own love tree.\nConnect your emotions from your first fandom moment to now."
-    },
-    'myTrees.create': {
-      ko: '새 러브트리 만들기',
-      en: 'Create New LoveTree'
-    },
-
-    // ── 호환 alias: 예전 key명과 동일한 값을 제공 ──
-    'intro.step3Desc': {
-      ko: '편집 화면에서 기억들이 가지처럼 연결된 당신만의 LoveTree를 확인하고, 완성되면 둘러보기에 공유하세요.',
-      en: 'In the editor, see your memories connected like branches, and share to browse when complete.'
-    },
-    'intro.value3Desc': {
-      ko: '시간이 지나도 그때의 감정이 생생하게 남아 있습니다.',
-      en: 'Even as time passes, those feelings remain vivid.'
-    },
-    'intro.whatIsDesc2': {
-      ko: '각 기억은 "입덕 순간", "최애 직캠", "성장 메모" 등 감정 태그와 함께 노드에 저장됩니다. 시간이 지나도 그때 그 감정으로 돌아갈 수 있는 공간입니다.',
-      en: 'Each memory is saved as a node with emotion tags like "first fandom moment", "favorite fancam", "growth memo". A space where you can return to those feelings even as time passes.'
     }
+
+
+
   };
 
   // 현재 언어 가져오기
