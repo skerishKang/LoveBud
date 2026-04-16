@@ -236,8 +236,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         // 샘플 데이터 배지 (isDemo일 경우 상단에 표시)
         if (isDemo) {
             const demoBadge = document.createElement('div');
-            demoBadge.style.cssText = 'background: #fff3cd; border: 1px solid #ffc107; color: #856404; padding: 8px 16px; border-radius: 8px; margin-bottom: 16px; font-size: 12px; text-align: center;';
-            demoBadge.innerHTML = '<span style="font-weight: 700;">⚠️ 샘플 데이터</span> — 실제 사용자 콘텐츠가 아닌 MVP 데모용 예시입니다';
+            demoBadge.style.cssText = 'background: var(--surface-container); border: 1px solid var(--outline-variant); color: var(--on-surface-variant); padding: 12px 20px; border-radius: 1rem; margin-bottom: 24px; font-size: 13px; text-align: center; font-style: italic;';
+            demoBadge.innerHTML = '<span style="font-weight: 700;">🌸 샘플 러브트리</span> — 다른 팬들이 남긴 감정의 경로를 둘러보세요';
             resultsList.appendChild(demoBadge);
         }
 
@@ -280,49 +280,66 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
-        trees.forEach(tree => {
+        trees.forEach((tree, index) => {
             const card = document.createElement('div');
             card.className = 'tree-card';
+            card.style.animationDelay = `${index * 0.05}s`;
 
-            // 감정 경로 설명: 첫 순간 → 마지막 순간
-            const firstMoment = tree.memories[0]?.title?.replace(/\s*-\s*.*/, '') || '첫 순간';
+            // 감정 경로 요약: 첫 순간 → 마지막 순간 (감정 흐름 강조)
+            const firstMem = tree.memories[0];
+            const lastMem = tree.memories[tree.memories.length - 1];
+            const firstMoment = firstMem?.title?.replace(/\s*-\s*.*/, '') || '첫 순간';
             const lastMoment = tree.memories.length >= 2
-                ? tree.memories[tree.memories.length - 1].title.replace(/\s*-\s*.*/, '')
+                ? lastMem?.title?.replace(/\s*-\s*.*/, '')
                 : null;
+            
+            // 감정 경로 설명 텍스트
             const pathDesc = lastMoment
-                ? `<span style="color:var(--primary);font-weight:700;">${firstMoment}</span> <span style="opacity:0.5;">→</span> <span style="color:var(--on-surface);">${lastMoment}</span>`
-                : `<span style="color:var(--primary);font-weight:700;">${firstMoment}</span>`;
+                ? `처음 <strong style="color:var(--primary);">${firstMoment}</strong>의 감정이 <strong>${lastMoment}</strong>까지 이어졌어요`
+                : `<strong style="color:var(--primary);">${firstMoment}</strong> — 입덕의 첫 순간`;
 
-            // 대표 감정 태그 (최대 3개)
+            // 대표 순간 썸네일 (첫 번째 순간)
+            const representativeThumb = firstMem?.thumbnail || '';
+            
+            // 감정 태그 (최대 3개, 시각적 강조)
             const emotionTagsHtml = tree.emotionTags
                 .slice(0, 3)
-                .map(tag => `<span class="emotion-tag" style="background:var(--primary-container);color:var(--on-primary-container);font-weight:700;">#${tag}</span>`)
+                .map(tag => `<span class="emotion-tag" style="background:var(--primary-container);color:var(--on-primary-container);font-weight:700;font-size:12px;padding:6px 12px;">#${tag}</span>`)
                 .join('');
 
+            // 카드 구조: 감정 경로 중심으로 재편성
             card.innerHTML = `
-                <div class="tree-header">
-                    <div class="tree-icon" title="${tree.stage} 단계">${getTreeIcon(tree.stage)}</div>
-                    <div class="tree-title-group">
-                        <div class="tree-title">${tree.title}</div>
-                        <div class="tree-path-desc" style="font-size:13px;margin-top:4px;">${pathDesc}</div>
+                <!-- 트리 헤더: 제목 + 단계 아이콘 -->
+                <div class="tree-header" style="margin-bottom:16px;">
+                    <div class="tree-icon" title="${tree.stage} 단계" style="width:48px;height:48px;border-radius:12px;font-size:24px;">${getTreeIcon(tree.stage)}</div>
+                    <div class="tree-title-group" style="flex:1;min-width:0;">
+                        <div class="tree-title" style="font-size:1.25rem;font-weight:800;line-height:1.3;">${tree.title}</div>
+                        <div style="font-size:12px;color:var(--on-surface-variant);margin-top:4px;display:flex;align-items:center;gap:8px;">
+                            <span class="material-symbols-outlined" style="font-size:14px;">account_tree</span>
+                            ${tree.memoryCount}개의 순간 · ${tree.timeRange}
+                        </div>
                     </div>
                 </div>
-                ${renderPathPreview(tree.memories)}
-                <div class="tree-meta" style="flex-direction:column;gap:12px;">
-                    <div class="tree-emotions" style="order:1;">
-                        ${emotionTagsHtml}
+                
+                <!-- 감정 경로 미리보기 (시각적 중심) -->
+                <div class="tree-path-section" style="background:var(--surface-container-low);border-radius:1rem;padding:16px;margin-bottom:16px;">
+                    <div style="font-size:11px;font-weight:800;color:var(--on-surface-variant);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px;">
+                        <span class="material-symbols-outlined" style="font-size:12px;vertical-align:middle;margin-right:4px;">route</span>
+                        감정 경로
                     </div>
-                    <div class="tree-stats" style="order:2;font-size:12px;opacity:0.7;">
-                        <span title="${tree.memoryCount}개의 순간이 기록됨">
-                            <span class="material-symbols-outlined" style="font-size: 12px; vertical-align: middle;">account_tree</span> ${tree.memoryCount}개 순간
-                        </span>
-                        <span title="감정 기간: ${tree.timeRange}">
-                            <span class="material-symbols-outlined" style="font-size: 12px; vertical-align: middle;">schedule</span> ${tree.timeRange}
-                        </span>
-                        <span title="테마: ${tree.theme}">
-                            <span class="material-symbols-outlined" style="font-size: 12px; vertical-align: middle;">music_note</span> ${tree.theme}
-                        </span>
-                    </div>
+                    <div style="font-size:14px;line-height:1.5;color:var(--on-surface);">${pathDesc}</div>
+                    ${renderPathPreview(tree.memories)}
+                </div>
+                
+                <!-- 감정 태그 -->
+                <div class="tree-emotions" style="margin-bottom:12px;">
+                    ${emotionTagsHtml}
+                </div>
+                
+                <!-- 감상 유도 문구 -->
+                <div style="font-size:13px;color:var(--on-surface-variant);font-style:italic;padding-top:12px;border-top:1px solid var(--outline-variant);display:flex;align-items:center;gap:6px;">
+                    <span class="material-symbols-outlined" style="font-size:16px;color:var(--primary);">play_circle</span>
+                    첫 순간부터 감상하기
                 </div>
             `;
 
@@ -340,61 +357,80 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     };
 
-    // ── 미리보기 업데이트: 트리 감상 안내판 스타일 ──
+    // ── 미리보기 업데이트: 감상 안내판 스타일 ──
     const updatePreview = (tree) => {
         const firstMem = tree.memories?.[0];
         if (!firstMem) return;
 
-        // 감상 경로 텍스트 생성
-        const pathStages = tree.memories.slice(0, 3).map((m, i) =>
-            `<span style="color:var(--primary);font-weight:700;">${i + 1}</span> <span style="opacity:0.8;">${m.title.replace(/\s*-\s*.*/, '')}</span>`
-        ).join(' <span style="opacity:0.4;">→</span> ');
-        const moreStages = tree.memories.length > 3 ? ` <span style="opacity:0.5;font-size:12px;">+${tree.memories.length - 3}개 더</span>` : '';
+        // 감정 경로 텍스트 생성 (더 자연스러운 흐름)
+        const pathStages = tree.memories.slice(0, 3).map((m, i) => {
+            const momentTitle = m.title.replace(/\s*-\s*.*/, '');
+            return `<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:var(--surface-container);border-radius:8px;font-size:13px;"><span style="color:var(--primary);font-weight:800;">${i + 1}</span><span>${momentTitle}</span></span>`;
+        }).join('<span style="opacity:0.3;margin:0 4px;">→</span>');
+        
+        const moreStages = tree.memories.length > 3 
+            ? `<div style="margin-top:8px;font-size:12px;color:var(--on-surface-variant);font-style:italic;">... 그리고 ${tree.memories.length - 3}개의 순간 더</div>` 
+            : '';
 
+        // preview 비디오 컨테이너 (감상 유도 강화)
         previewContainer.innerHTML = `
-            <div style="position:relative;width:100%;height:100%;border-radius:1rem;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.1);">
+            <div style="position:relative;width:100%;height:100%;border-radius:1rem;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.12);">
                 <iframe width="100%" height="100%"
                     src="${firstMem.sourceUrl}?autoplay=0&mute=1"
                     title="${tree.title}" frameborder="0"
                     allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowfullscreen style="position:absolute;top:0;left:0;"></iframe>
-                <div style="position:absolute;top:12px;left:12px;background:rgba(0,0,0,0.6);color:white;padding:6px 12px;border-radius:99px;font-size:12px;font-weight:700;">
-                    <span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;margin-right:4px;">play_circle</span>
-                    첫 순간부터 감상하기
+                <!-- 감상 시작 CTA 오버레이 -->
+                <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top,rgba(0,0,0,0.8),transparent);padding:40px 20px 20px;color:white;text-align:center;">
+                    <div style="font-size:14px;font-weight:700;margin-bottom:8px;opacity:0.9;">첫 순간부터 감상하기</div>
+                    <div style="font-size:12px;opacity:0.7;">${firstMem.title}</div>
                 </div>
             </div>
         `;
 
+        // 트리 타이틀 (단계 아이콘 포함)
         previewTitle.innerHTML = `
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-                <span style="font-size:1.5rem;">${getTreeIcon(tree.stage)}</span>
-                <span>${tree.title}</span>
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+                <span style="font-size:2rem;background:var(--surface-container-low);width:48px;height:48px;display:flex;align-items:center;justify-content:center;border-radius:12px;">${getTreeIcon(tree.stage)}</span>
+                <div>
+                    <div style="font-size:1.1rem;font-weight:800;color:var(--on-surface);line-height:1.3;">${tree.title}</div>
+                    <div style="font-size:12px;color:var(--on-surface-variant);margin-top:2px;">${tree.memoryCount}개 순간 · ${tree.timeRange}</div>
+                </div>
             </div>
         `;
 
+        // 감상 맥락 설명 (핵심 개선)
         previewDesc.innerHTML = `
-            <div style="background:var(--surface-container-low);padding:16px;border-radius:12px;margin-bottom:12px;">
-                <div style="font-size:12px;font-weight:700;color:var(--on-surface-variant);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">
-                    <span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;margin-right:4px;">route</span>
-                    감정 경로
+            <!-- 감정 경로 시각화 -->
+            <div style="background:var(--surface-container-low);padding:20px;border-radius:1rem;margin-bottom:16px;">
+                <div style="font-size:11px;font-weight:800;color:var(--on-surface-variant);margin-bottom:12px;text-transform:uppercase;letter-spacing:1px;display:flex;align-items:center;gap:4px;">
+                    <span class="material-symbols-outlined" style="font-size:14px;">route</span>
+                    어떻게 입덕했을까요?
                 </div>
-                <div style="font-size:14px;line-height:1.6;">
-                    ${pathStages}${moreStages}
+                <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;line-height:1.8;">
+                    ${pathStages}
                 </div>
+                ${moreStages}
             </div>
-            <div style="font-size:13px;color:var(--on-surface-variant);line-height:1.5;">
-                <strong style="color:var(--on-surface);">${tree.theme}</strong> 아티스트의 감정 여정.
-                ${tree.memoryCount}개의 순간이 <strong style="color:var(--primary);">${tree.timeRange}</strong> 동안 기록되었습니다.
-                클릭하여 전체 러브트리를 감상해보세요.
+            
+            <!-- 감상 유도 문구 -->
+            <div style="font-size:14px;color:var(--on-surface-variant);line-height:1.6;padding:0 4px;">
+                <strong style="color:var(--on-surface);">${tree.theme}</strong> 아티스트와 함께한 
+                <span style="color:var(--primary);font-weight:700;">${tree.memoryCount}개의 감정 순간</span>이 
+                <strong>${tree.timeRange}</strong> 동안 기록되었어요.
+                <div style="margin-top:12px;padding:12px;background:var(--primary-container);border-radius:0.75rem;font-size:13px;color:var(--on-primary-container);font-weight:500;display:flex;align-items:center;gap:8px;">
+                    <span class="material-symbols-outlined" style="font-size:18px;">touch_app</span>
+                    카드를 클릭하여 감정 경로를 따라가보세요
+                </div>
             </div>
         `;
 
         previewMemoriesCount.textContent = tree.memoryCount;
         previewTreeDuration.textContent = tree.timeRange;
 
-        // 감정 태그 업데이트 (강조)
+        // 감정 태그 업데이트 (더 눈에 띄게)
         previewEmotionTags.innerHTML = tree.emotionTags.slice(0, 4).map(tag =>
-            `<span class="emotion-tag" style="padding: 8px 16px; background: var(--primary-container); border-radius: 99px; font-size: 13px; font-weight: 700; color: var(--on-primary-container);">#${tag}</span>`
+            `<span style="padding:8px 14px;background:var(--primary-container);border-radius:99px;font-size:13px;font-weight:700;color:var(--on-primary-container);border:1px solid var(--outline-variant);">#${tag}</span>`
         ).join('');
     };
 

@@ -64,23 +64,52 @@
             color: white;
         }
 
-        /* Tree Card Styles */
+        /* Tree Card Styles - 감상 공간 느낌 강화 */
         .tree-card {
             display: flex;
             flex-direction: column;
-            padding: 28px;
+            padding: 24px;
             background: white;
-            border-radius: 2rem;
-            border: 1px solid rgba(0,0,0,0.03);
-            margin-bottom: 24px;
+            border-radius: 1.5rem;
+            border: 1px solid rgba(0,0,0,0.04);
+            margin-bottom: 20px;
             transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
             cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .tree-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-soft), var(--accent-rose));
+            opacity: 0;
+            transition: opacity 0.3s;
         }
 
         .tree-card:hover {
-            transform: scale(1.02);
-            border-color: var(--outline-variant);
-            box-shadow: var(--shadow-whisper);
+            transform: translateY(-4px);
+            border-color: var(--primary-soft);
+            box-shadow: 0 20px 50px rgba(144, 73, 81, 0.08);
+        }
+
+        .tree-card:hover::before {
+            opacity: 1;
+        }
+
+        /* 순차적 애니메이션 */
+        @keyframes cardFadeIn {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .tree-card {
+            animation: cardFadeIn 0.4s ease-out forwards;
+            opacity: 0;
         }
 
         .tree-header {
@@ -225,11 +254,21 @@
             position: sticky;
             top: 120px;
             height: fit-content;
-            background: white;
-            padding: 40px;
-            border-radius: 2.5rem;
+            background: linear-gradient(135deg, white 0%, var(--surface-container-low) 100%);
+            padding: 32px;
+            border-radius: 2rem;
             border: 1px solid var(--outline-variant);
             box-shadow: var(--shadow-whisper);
+        }
+
+        .preview-sidebar h3 {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: var(--on-surface);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .video-container {
@@ -324,11 +363,13 @@
 
     <main class="search-container">
         <section>
-            <h2 class="headline" style="font-size: 3rem; margin-bottom: 0.5rem;" data-i18n="search.title">러브트리 감상하기</h2>
-            <p style="color: var(--on-surface-variant); margin-bottom: 40px; font-size: 1.1rem; font-weight: 400;" data-i18n="search.subtitle">
-                누군가의 입덕 순간부터 지금까지, 어떤 감정들이 쌓여갔을까요?<br>
-                다른 사람들이 완성한 사랑의 경로를 둘러보세요.
-            </p>
+            <div style="margin-bottom: 40px;">
+                <h2 class="headline" style="font-size: 2.5rem; margin-bottom: 12px; line-height: 1.2;" data-i18n="search.title">둘러보기</h2>
+                <p style="color: var(--on-surface-variant); font-size: 1.1rem; font-weight: 400; line-height: 1.6;" data-i18n="search.subtitle">
+                    다른 팬들이 남긴 <span style="color: var(--primary); font-weight: 700;">감정의 경로</span>를 따라가보세요.<br>
+                    어떤 순간들이 그들의 러브트리를 만들었을까요?
+                </p>
+            </div>
 
             <div class="search-input-wrapper">
                 <span class="material-symbols-outlined search-icon">search</span>
@@ -348,21 +389,30 @@
         </section>
 
         <aside class="preview-sidebar" id="previewSidebar">
-            <h3 class="headline" style="font-size: 1.5rem; margin-bottom: 24px;" data-i18n="search.previewTitle">러브트리 미리보기</h3>
-                <div id="previewVideoContainer" class="video-container">
-                <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:#999; font-size: 14px;" data-i18n="search.previewPlaceholder">
-                     트리를 선택하여 감상하기
+            <h3 class="headline" data-i18n="search.previewTitle">
+                <span class="material-symbols-outlined" style="font-size: 24px; color: var(--primary);">play_circle</span>
+                감상하기
+            </h3>
+            <div id="previewVideoContainer" class="video-container" style="margin-bottom: 24px;">
+                <div style="width:100%; height:100%; display:flex; flex-direction: column; align-items:center; justify-content:center; color: var(--on-surface-variant); font-size: 14px; text-align: center; padding: 20px;" data-i18n="search.previewPlaceholder">
+                    <span class="material-symbols-outlined" style="font-size: 48px; margin-bottom: 12px; opacity: 0.4;">forest</span>
+                    <div>카드를 선택하여<br>감정 경로를 미리보세요</div>
                 </div>
             </div>
             <div id="previewDetails">
-                <h4 id="previewTitle" class="headline" style="font-size: 1.25rem; margin-bottom: 8px; font-weight: 800;">---</h4>
-                <p id="previewDesc" style="font-style: italic; color: var(--on-surface-variant); margin-bottom: 16px; font-size: 14px;">---</p>
-                <div id="previewTreeStats" style="display: flex; gap: 16px; margin-bottom: 24px; font-size: 12px; color: var(--on-surface-variant);">
+                <div id="previewTitle" class="headline" style="font-size: 1.1rem; margin-bottom: 12px; font-weight: 800; color: var(--on-surface);">---</div>
+                <div id="previewDesc" style="color: var(--on-surface-variant); font-size: 14px; line-height: 1.5;">
+                    <p style="font-style: italic; margin-bottom: 16px;">---</p>
+                </div>
+                <div id="previewTreeStats" style="display: flex; gap: 16px; margin: 16px 0; font-size: 12px; color: var(--on-surface-variant); padding: 12px 0; border-top: 1px solid var(--outline-variant); border-bottom: 1px solid var(--outline-variant);">
                     <span><span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle;">account_tree</span> <span id="previewMemoriesCount">-</span>개 순간</span>
                     <span><span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle;">schedule</span> <span id="previewTreeDuration">-</span></span>
                 </div>
-                <div style="padding-top: 24px; border-top: 1px solid var(--outline-variant);">
-                    <div style="font-size: 10px; font-weight: 900; color: var(--primary); margin-bottom: 16px; letter-spacing: 2px;">대표 감정 태그</div>
+                <div>
+                    <div style="font-size: 11px; font-weight: 800; color: var(--on-surface-variant); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 4px;">
+                        <span class="material-symbols-outlined" style="font-size: 14px;">tag</span>
+                        감정 태그
+                    </div>
                     <div id="previewEmotionTags" style="display: flex; flex-wrap: wrap; gap: 8px;">
                         <!-- Populated by JS -->
                     </div>
