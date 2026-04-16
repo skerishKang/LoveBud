@@ -147,22 +147,49 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log('[detail] mock memories fallback');
     }
 
-    // ── 트리 맥락 표시 ──
+    // ── 트리 맥락 표시: 감상 흐름 강화 ──
     const i18n = window.t || ((k) => k);
     const treeTitle = tree.title || tree.data?.title || '러브트리';
     const treeContextEl = document.getElementById('treeContext');
+    
+    // 감상 맥락별 안내 문구
+    const contextMessages = {
+        'browse': {
+            icon: 'explore',
+            label: '둘러보기',
+            desc: `${tree.memories?.length || 0}개의 순간이 이어진 감정 경로를 따라가고 있어요`
+        },
+        'editor': {
+            icon: 'edit',
+            label: '편집 중',
+            desc: '편집 중인 트리를 감상 모드로 보고 있어요'
+        },
+        'my-trees': {
+            icon: 'account_tree',
+            label: '내 러브트리',
+            desc: '내가 기록한 순간들을 다시 감상하고 있어요'
+        }
+    };
+    const contextInfo = contextMessages[sourceContext] || contextMessages['browse'];
+    
     if (treeContextEl) {
         treeContextEl.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
-                <span class="material-symbols-outlined" style="color: var(--primary); font-size: 20px;">account_tree</span>
-                <span style="font-size: 14px; font-weight: 700; color: var(--on-surface-variant);">${i18n('viewing_lovetree')}</span>
+            <div style="display: flex; align-items: flex-start; gap: 16px;">
+                <div style="width: 48px; height: 48px; background: var(--surface-container); border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    <span class="material-symbols-outlined" style="color: var(--primary); font-size: 24px;">${contextInfo.icon}</span>
+                </div>
+                <div style="flex: 1; min-width: 0;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                        <span style="font-size: 12px; font-weight: 800; color: var(--primary); text-transform: uppercase; letter-spacing: 1px;">${contextInfo.label}</span>
+                        <span style="color: var(--outline-variant);">·</span>
+                        <span style="font-size: 12px; color: var(--on-surface-variant);">${tree.memories?.length || 0}개 순간</span>
+                    </div>
+                    <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--on-surface); margin: 0; line-height: 1.3;">${treeTitle}</h2>
+                    <p style="font-size: 13px; color: var(--on-surface-variant); margin-top: 6px; line-height: 1.5;">
+                        ${contextInfo.desc}
+                    </p>
+                </div>
             </div>
-            <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--on-surface); margin: 0;">${treeTitle}</h2>
-            <p style="font-size: 13px; color: var(--on-surface-variant); margin-top: 4px;">
-                ${sourceContext === 'browse' ? '둘러보기에서 이 트리를 발견했어요' :
-                  sourceContext === 'editor' ? '편집 중인 트리를 감상하고 있어요' :
-                  '내 러브트리에서 이 순간을 찾았어요'}
-            </p>
         `;
     }
 

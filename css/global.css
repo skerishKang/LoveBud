@@ -551,3 +551,118 @@ h1, h2, h3, h4, .headline {
 .material-symbols-outlined.ms-ready {
   opacity: 1;
 }
+
+/* ─────────────────────────────────────────────────────────────
+   감상 공간 톤 - Browse/Detail 공통 스타일
+   ───────────────────────────────────────────────────────────── */
+
+/* 감정 경로 강조 */
+.emotion-path-highlight {
+    background: linear-gradient(135deg, var(--primary-container) 0%, var(--surface-container) 100%);
+    border-left: 4px solid var(--primary);
+    padding: 16px 20px;
+    border-radius: 0 12px 12px 0;
+    margin: 12px 0;
+}
+
+/* 감상 유도 CTA 버튼 */
+.cta-appreciation {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: var(--primary);
+    color: white;
+    border-radius: 99px;
+    font-weight: 700;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    border: none;
+}
+
+.cta-appreciation:hover {
+    background: var(--primary-vibrant);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(144, 73, 81, 0.25);
+}
+
+/* 카드 호버 효과 - 감상 느낌 강화 */
+.card-appreciation {
+    transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+
+.card-appreciation:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 24px 60px rgba(144, 73, 81, 0.12);
+}
+
+/* 감정 태그 스타일링 */
+.emotion-tag-refined {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 14px;
+    background: var(--primary-container);
+    color: var(--on-primary-container);
+    border-radius: 99px;
+    font-size: 13px;
+    font-weight: 700;
+    border: 1px solid var(--outline-variant);
+    transition: all 0.2s ease;
+}
+
+.emotion-tag-refined:hover {
+    background: var(--primary-soft);
+    transform: scale(1.05);
+}
+
+/* 순간(Moment) 인디케이터 */
+.moment-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    background: var(--surface-container);
+    border-radius: 99px;
+    font-size: 12px;
+    color: var(--on-surface-variant);
+    font-weight: 600;
+}
+
+.moment-indicator::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    background: var(--primary);
+    border-radius: 50%;
+}
+
+/* 감상 경로 화살표 */
+.path-arrow-refined {
+    color: var(--primary-soft);
+    opacity: 0.6;
+    font-size: 20px;
+    transition: all 0.3s ease;
+}
+
+/* 섹션 구분선 - 부드러운 그라데이션 */
+.section-divider-soft {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--outline-variant), transparent);
+    margin: 24px 0;
+}
+
+/* 인사이트/안내 텍스트 */
+.insight-text {
+    font-size: 14px;
+    color: var(--on-surface-variant);
+    font-style: italic;
+    line-height: 1.6;
+    padding-left: 16px;
+    border-left: 3px solid var(--primary-soft);
+}
+
+/* 감상 중임을 나타내는 배경 톤 */
+.appreciation-bg {
+    background: linear-gradient(180deg, var(--background) 0%, var(--surface-container-low) 100%);
+}
