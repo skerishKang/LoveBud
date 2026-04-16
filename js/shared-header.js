@@ -66,12 +66,12 @@
 
     // 에디터 페이지인지 확인
     function isEditorPage() {
-        return window.location.pathname.indexOf('editor.html') !== -1;
+        return getCurrentPage() === 'editor.html';
     }
 
     // 로그인 페이지인지 확인
     function isLoginPage() {
-        return window.location.pathname.indexOf('login.html') !== -1;
+        return getCurrentPage() === 'login.html';
     }
 
     // 헤더 HTML 생성
