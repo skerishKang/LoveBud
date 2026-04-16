@@ -20,25 +20,48 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // URL 파라미터에서 감상 맥락 확인
-    // from: 'browse' (둘러보기에서 진입) | 'my-trees' (내 트리에서 진입)
-    const sourceContext = urlParams.get('from') === 'browse' ? 'browse' : 'my-trees';
+    // from: 'browse' (둘러보기) | 'my-trees' (내 트리) | 'editor' (편집기)
+    const fromParam = urlParams.get('from');
+    const sourceContext = ['browse', 'my-trees', 'editor'].includes(fromParam) ? fromParam : 'browse';
 
-    // ── 메모리 데이터: API 우선, 실패 시 mock fallback ──
+    // ── 캐시 키 설정 ──
+    const cache = window.LoveBudCache;
+    const MEMORY_CACHE_KEY = 'memory_' + memoryId;
+    const TREE_CACHE_KEY = (tid) => 'tree_' + tid;
+    const MEMORIES_CACHE_KEY = (tid) => 'memories_' + tid;
+
+    // ── 메모리 데이터: 캐시 우선, API로 background refresh ──
     let memory = null;
+
+    // 1. 캐시된 memory 먼저 확인
+    const cachedMemory = cache ? cache.get(MEMORY_CACHE_KEY) : null;
+    if (cachedMemory) {
+        console.log('[detail] 캐시된 memory 사용:', memoryId);
+        memory = cachedMemory;
+    }
+
+    // 2. API로 최신 memory 가져오기
     try {
         if (window.apiClient && window.apiClient.getMemory) {
             const apiMemory = await window.apiClient.getMemory(memoryId);
             if (apiMemory) {
-                memory = apiMemory;
+                // 캐시 업데이트
+                if (cache) {
+                    cache.set(MEMORY_CACHE_KEY, apiMemory, 3 * 60 * 1000); // 3분 TTL
+                }
+                // 캐시와 다르면 갱신
+                if (JSON.stringify(memory) !== JSON.stringify(apiMemory)) {
+                    memory = apiMemory;
+                }
                 console.log('[detail] API memory loaded:', memoryId);
             }
         }
     } catch (e) {
-        console.warn('[detail] API getMemory failed, fallback to mock:', e.message);
-    }
-    // API 실패 시 mock fallback
-    if (!memory) {
-        memory = typeof getMemory === 'function' ? getMemory(memoryId) : null;
+        console.warn('[detail] API getMemory failed:', e.message);
+        // 캐시가 없으면 mock fallback
+        if (!memory && typeof getMemory === 'function') {
+            memory = getMemory(memoryId);
+        }
     }
     if (!memory) {
         // ── memory 조회 실패 시 fallback UI 표시 ──
@@ -66,24 +89,62 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
-    // ── 트리 데이터: API 우선, 실패 시 mock fallback ──
-    let tree = null;
-    try {
-        if (window.apiClient && window.apiClient.getTree) {
-            const apiTree = await window.apiClient.getTree(memory.treeId || memory.data?.tree_id);
-            if (apiTree) tree = apiTree;
-        }
-    } catch (e) {
-        console.warn('[detail] API getTree failed, using mock fallback:', e.message);
+    // ── 트리 + siblings 병렬 로딩 (캐시 우선) ──
+    const treeId = urlParams.get('tree') || memory.treeId || memory.data?.tree_id;
+    if (!treeId) {
+        console.warn('[detail] Tree ID not found. Detail page cannot initialize.');
+        return;
     }
+
+    // 캐시에서 먼저 확인
+    let tree = cache ? cache.get(TREE_CACHE_KEY(treeId)) : null;
+    let memories = cache ? cache.get(MEMORIES_CACHE_KEY(treeId)) : null;
+
+    // 병렬로 API 호출 (tree와 memories 동시에)
+    const loadPromises = [];
+
+    // Tree 로드
+    if (!tree && window.apiClient && window.apiClient.getTree) {
+        loadPromises.push(
+            window.apiClient.getTree(treeId)
+                .then(apiTree => {
+                    if (apiTree) {
+                        tree = apiTree;
+                        if (cache) cache.set(TREE_CACHE_KEY(treeId), apiTree, 5 * 60 * 1000);
+                    }
+                })
+                .catch(e => console.warn('[detail] API getTree failed:', e.message))
+        );
+    }
+
+    // Memories 로드 (siblings용)
+    if (!memories && window.apiClient && window.apiClient.getMemoriesByTree) {
+        loadPromises.push(
+            window.apiClient.getMemoriesByTree(treeId)
+                .then(apiMemories => {
+                    if (Array.isArray(apiMemories)) {
+                        memories = apiMemories;
+                        if (cache) cache.set(MEMORIES_CACHE_KEY(treeId), apiMemories, 3 * 60 * 1000);
+                    }
+                })
+                .catch(e => console.warn('[detail] API getMemoriesByTree failed:', e.message))
+        );
+    }
+
+    // 모든 API 호출 완료 대기
+    if (loadPromises.length > 0) {
+        await Promise.all(loadPromises);
+    }
+
+    // 캐시/API 모두 실패 시 mock fallback
     if (!tree) {
         const trees = typeof getTrees === 'function' ? getTrees() : [];
-        const targetTreeId = memory.treeId || memory.data?.tree_id;
-        tree = trees.find(t => t.id === targetTreeId) || trees[0];
+        tree = trees.find(t => t.id === treeId) || trees[0];
+        console.log('[detail] mock tree fallback');
     }
-    if (!tree) {
-        console.warn('Tree data not found. Detail page cannot initialize.');
-        return;
+    if (!memories) {
+        memories = typeof getMemoriesByTree === 'function' ? getMemoriesByTree(treeId) : [];
+        console.log('[detail] mock memories fallback');
     }
 
     // ── 트리 맥락 표시 ──
@@ -98,7 +159,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             </div>
             <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--on-surface); margin: 0;">${treeTitle}</h2>
             <p style="font-size: 13px; color: var(--on-surface-variant); margin-top: 4px;">
-                ${sourceContext === 'browse' ? i18n('from_browse') : i18n('from_my_trees')}
+                ${sourceContext === 'browse' ? '둘러보기에서 이 트리를 발견했어요' :
+                  sourceContext === 'editor' ? '편집 중인 트리를 감상하고 있어요' :
+                  '내 러브트리에서 이 순간을 찾았어요'}
             </p>
         `;
     }
@@ -106,35 +169,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ── 페이지 타이틀 업데이트 ──
     document.title = `${memory.title} | ${treeTitle} — Lovetree`;
 
-    // ── 돌아가기 버튼 설정 ───
+    // ── 돌아가기 버튼 설정: 흐름 일관성 유지 ───
     const backButton = document.getElementById('backButton');
     if (backButton) {
-        backButton.onclick = () => {
-            // 감상 맥락에 따라 자연스럽게 돌아가기
-            window.location.href = sourceContext === 'browse' ? 'search.html' : 'my-trees.html';
+        // 백 버튼 라벨 및 동작 설정
+        const backConfig = {
+            'browse': { label: '둘러보기', url: 'search.html' },
+            'my-trees': { label: '내 트리', url: 'my-trees.html' },
+            'editor': { label: '편집하기', url: `editor.html?treeId=${treeId || ''}` }
         };
-    }
+        const config = backConfig[sourceContext] || backConfig['browse'];
 
-    // ── 트리 ID 결정 ───
-    // URL의 tree 파라미터가 있으면 사용, 없으면 API/memory 데이터에서 추출
-    const effectiveTreeId = urlParams.get('tree') || tree.id || tree.data?.id;
-
-    // ── 형제 메모리: API 우선, 실패 시 mock fallback ───
-    let memories = [];
-    const treeId = effectiveTreeId;
-    try {
-        if (window.apiClient && window.apiClient.getMemoriesByTree) {
-            const apiMemories = await window.apiClient.getMemoriesByTree(treeId);
-            if (Array.isArray(apiMemories)) {
-                memories = apiMemories;
-                console.log('[detail] API memories loaded:', apiMemories.length);
-            }
-        }
-    } catch (e) {
-        console.warn('[detail] API getMemoriesByTree failed, fallback to mock:', e.message);
-    }
-    if (memories.length === 0) {
-        memories = typeof getMemoriesByTree === 'function' ? getMemoriesByTree(treeId) : [];
+        backButton.innerHTML = `<span class="material-symbols-outlined" style="font-size:18px;margin-right:4px;">arrow_back</span> ${config.label}`;
+        backButton.onclick = () => {
+            window.location.href = config.url;
+        };
     }
 
     // 비디오 로드 (sourceUrl은 이미 embed URL)

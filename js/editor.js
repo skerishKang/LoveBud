@@ -63,6 +63,11 @@ const startEditor = async () => {
   const urlParams = new URLSearchParams(window.location.search);
   const urlTreeId = urlParams.get('treeId');
   console.log('[editor] URL treeId:', urlTreeId);
+  
+  // ── 캐시 키 설정 ──
+  const cache = window.LoveBudCache;
+  const TREE_CACHE_KEY = 'tree_' + (urlTreeId || 'default');
+  const MEMORIES_CACHE_KEY = 'memories_' + (urlTreeId || 'default');
 
   // ── 트리 데이터: treeId 우선, 없으면 getFirstTree fallback ──
   let tree = null;
@@ -154,8 +159,6 @@ const startEditor = async () => {
     }
   }
 
-        // ── 메모리 데이터: API 우선, 실패 시 mock fallback ──
-        let memories = [];
         const treeId = tree.id || tree.data?.id;
 
         // ── API 응답 정규화: snake_case → camelCase, {id, data} → flat 형태로 변환
@@ -186,24 +189,45 @@ const startEditor = async () => {
             return normalized;
         };
 
+        // ── memories 캐시 우선 로딩 ──
+        let memories = [];
+        
+        // 1. 캐시된 memories 먼저 확인
+        const cachedMemories = cache ? cache.get(MEMORIES_CACHE_KEY) : null;
+        if (cachedMemories && Array.isArray(cachedMemories)) {
+            console.log('[editor] Using cached memories:', cachedMemories.length);
+            memories = cachedMemories;
+            window.currentTreeMemories = memories.map(normalizeMemory).filter(Boolean);
+            // 캐시 데이터로 먼저 UI 그리기 (빠른 첫 paint)
+            initCanvas();
+        }
+        
+        // 2. Background에서 API로 최신 데이터 가져오기
         try {
             if (window.apiClient && window.apiClient.getMemoriesByTree) {
                 const apiMemories = await window.apiClient.getMemoriesByTree(treeId);
                 if (Array.isArray(apiMemories)) {
                     memories = apiMemories;
                     console.log('[editor] API memories loaded:', apiMemories.length);
+                    // 캐시 업데이트
+                    if (cache) {
+                        cache.set(MEMORIES_CACHE_KEY, memories, 2 * 60 * 1000); // 2분 TTL
+                    }
                 }
             }
         } catch (e) {
             const i18n = window.t || ((k) => k);
-            console.warn('[editor] API getMemoriesByTree failed, fallback to mock:', e.message);
+            console.warn('[editor] API getMemoriesByTree failed:', e.message);
             if (e.message?.includes('401') || e.message?.includes('403')) {
                 showToast(i18n('data_load_fail_demo'), 'warn');
             }
+            // API 실패해도 캐시가 있으면 그대로 사용
         }
-        if (memories.length === 0) {
+        
+        if (memories.length === 0 && !cachedMemories) {
             memories = typeof getMemoriesByTree === 'function' ? getMemoriesByTree(treeId) : [];
         }
+        
         // 저장 계약: 항상 정규화된 형태로 저장
         window.currentTreeMemories = memories.map(normalizeMemory).filter(Boolean);
 
@@ -334,20 +358,57 @@ const RADIUS_L2 = 240; // L2 반경 (200→240) - 노드 겹침 방지
         };
 
         const updateDetailPanel = (data) => {
-            detailPanel.querySelector('h3').textContent = data.title;
+            // 현재 트리 정보 가져오기
+            const currentTree = window.currentTreeData || {};
+            const treeId = currentTree.id || urlTreeId;
+
+            // 헤더: 제목 + detail 페이지 링크
+            const headerEl = detailPanel.querySelector('h3');
+            if (headerEl) {
+                headerEl.innerHTML = `
+                    <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
+                        <span style="font-size:1.1rem;line-height:1.3;">${data.title}</span>
+                        <a href="detail.html?id=${data.id}&tree=${treeId}&from=editor"
+                           title="전체 화면으로 감상하기"
+                           style="display:flex;align-items:center;gap:4px;padding:6px 12px;background:var(--primary-container);color:var(--on-primary-container);border-radius:99px;font-size:12px;font-weight:700;text-decoration:none;white-space:nowrap;">
+                            <span class="material-symbols-outlined" style="font-size:14px;">open_in_new</span>
+                            전체 보기
+                        </a>
+                    </div>
+                `;
+            }
+
+            // 썸네일 업데이트
             const imgEl = detailPanel.querySelector('.detail-video img');
             if (imgEl) imgEl.src = data.thumbnail;
+
+            // 날짜 업데이트
             const dateEl = document.getElementById('detailDateText');
             if (dateEl) dateEl.textContent = data.timestamp;
+
+            // 감정 태그 업데이트
             const tagsContainer = detailPanel.querySelector('.tags-container');
             if (tagsContainer && data.emotionTags) {
                 tagsContainer.innerHTML = data.emotionTags.map(tag =>
                     `<span class="tag tag-primary">${tag}</span>`
                 ).join('');
             }
+
+            // 메모 업데이트 + 감정 경로 힌트
             const noteEl = detailPanel.querySelector('.diary-note');
-            if (noteEl) noteEl.textContent = data.memo || '';
+            if (noteEl) {
+                const parentInfo = data.parentId
+                    ? `<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--outline-variant);font-size:12px;color:var(--on-surface-variant);">
+                         <span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;margin-right:4px;">account_tree</span>
+                         이 순간은 감정 경로의 한 지점입니다
+                       </div>`
+                    : '<div style="margin-top:12px;font-size:12px;color:var(--primary);"><span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;margin-right:4px;">star</span> 러브트리의 시작점</div>';
+                noteEl.innerHTML = `<div style="line-height:1.6;">${data.memo || ''}</div>${parentInfo}`;
+            }
         };
+
+        // 전역에 노출 (메모리 추가 후 업데이트용)
+        window.updateDetailPanel = updateDetailPanel;
 
         const selectNode = (el, data) => {
             selectedNodeId = data.id;
@@ -554,26 +615,55 @@ if (!url) {
                 source: 'YouTube'
             };
 
-            hideAddMemoryForm();
+// ── 폼 상태 추적 ──
+let isFormOpen = false;
+let escHandler = null;
+let outsideClickHandler = null;
 
-            // ── API 우선 생성 시도 ──
-            let createdMemory = null;
-            let useApi = false;
-            try {
-                if (window.apiClient && window.apiClient.createMemory) {
-                    createdMemory = await window.apiClient.createMemory(newMemoryData);
-                    useApi = true;
-                    console.log('[editor] API createMemory success:', createdMemory);
-                }
-            } catch (e) {
-                const i18n = window.t || ((k) => k);
-                console.warn('[editor] API createMemory failed, fallback to mock:', e.message);
-                if (e.message?.includes('401') || e.message?.includes('403')) {
-                    showToast(i18n('no_permission_local'), 'warn');
-                } else if (e.message?.includes('400')) {
-                    showToast(i18n('check_input'), 'error');
-                } else {
-                    showToast(i18n('server_fail_local'), 'warn');
+// ── 새 기억 추가 폼 제어 ──
+const addMemoryForm = document.getElementById('addMemoryForm');
+const urlInput = document.getElementById('memoryUrlInput');
+const titleInput = document.getElementById('memoryTitleInput');
+const memoInput = document.getElementById('memoryMemoInput');
+const canvasArea = document.getElementById('canvasArea');
+const cancelBtn = document.getElementById('cancelAddMemory');
+const confirmBtn = document.getElementById('confirmAddMemory');
+
+// 포커스 트랩: 폼 내 순환 포커스 유지
+const formInputs = [urlInput, titleInput, memoInput];
+const focusTrap = (e) => {
+    if (!isFormOpen) return;
+    if (e.key !== 'Tab') return;
+    
+    const focused = document.activeElement;
+    const lastInput = formInputs[formInputs.length - 1];
+    const firstInput = formInputs[0];
+    
+    if (e.shiftKey && focused === firstInput) {
+        e.preventDefault();
+        lastInput.focus();
+    } else if (!e.shiftKey && focused === lastInput) {
+        e.preventDefault();
+        firstInput.focus();
+    }
+};
+
+const showAddMemoryForm = () => {
+    urlInput.value = '';
+    titleInput.value = '';
+    memoInput.value = '';
+    addMemoryForm.style.display = 'block';
+    isFormOpen = true;
+    
+    // 포커스 트랩 활성화
+    document.addEventListener('keydown', focusTrap);
+    urlInput.focus();
+
+    // Esc 키 핸들러
+    escHandler = (e) => {
+        if (e.key === 'Escape') {
+            e.stopPropagation();
+            hideAddMemoryForm();
                 }
             }
 
@@ -622,11 +712,11 @@ if (!url) {
             const el = document.querySelector(`.memory-node[data-memory-id="${normalizedMemory.id}"]`);
             if (el) {
                 selectNode(el, normalizedMemory);
-                
+
                 // 새 노드 피드백: 선택 강조 + 오토스크롤
                 el.classList.add('new-node-highlight');
                 setTimeout(() => el.classList.remove('new-node-highlight'), 2000);
-                
+
                 // 오토스크롤: 노드 위치로 smooth scroll
                 const nodeRect = el.getBoundingClientRect();
                 const canvasRect = canvasArea.getBoundingClientRect();
@@ -637,6 +727,15 @@ if (!url) {
                     top: Math.max(0, scrollY),
                     behavior: 'smooth'
                 });
+            }
+
+            // 성공 피드백: 토스트 메시지 + detail panel 업데이트
+            showToast(`"${normalizedMemory.title}" ${i18n('memory_added') || '기억이 추가되었습니다'}`, 'success');
+
+            // detail panel 즉시 업데이트 (감정 경로 표시)
+            const detailPanel = document.getElementById('detailPanel');
+            if (detailPanel && window.updateDetailPanel) {
+                window.updateDetailPanel(normalizedMemory);
             }
         };
 
