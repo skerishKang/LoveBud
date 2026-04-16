@@ -324,22 +324,22 @@
 
     <main class="search-container">
         <section>
-            <h2 class="headline" style="font-size: 3rem; margin-bottom: 0.5rem;">러브트리 감상하기</h2>
-            <p style="color: var(--on-surface-variant); margin-bottom: 40px; font-size: 1.1rem; font-weight: 400;">
+            <h2 class="headline" style="font-size: 3rem; margin-bottom: 0.5rem;" data-i18n="search.title">러브트리 감상하기</h2>
+            <p style="color: var(--on-surface-variant); margin-bottom: 40px; font-size: 1.1rem; font-weight: 400;" data-i18n="search.subtitle">
                 누군가의 입덕 순간부터 지금까지, 어떤 감정들이 쌓여갔을까요?<br>
                 다른 사람들이 완성한 사랑의 경로를 둘러보세요.
             </p>
 
             <div class="search-input-wrapper">
                 <span class="material-symbols-outlined search-icon">search</span>
-                <input type="text" id="searchInput" class="search-input" placeholder="예: 아티스트명 · 러브트리 주제 · 감정 태그" required>
+                <input type="text" id="searchInput" class="search-input" placeholder="예: 아티스트명 · 러브트리 주제 · 감정 태그" data-i18n-placeholder="search.placeholder" required>
             </div>
 
             <div style="display: flex; gap: 10px; margin-bottom: 48px;">
-                <span class="tag-chip active" data-category="전체">전체 경로</span>
-                <span class="tag-chip" data-category="입덕">입덕 순간</span>
-                <span class="tag-chip" data-category="성장">성장 과정</span>
-                <span class="tag-chip" data-category="최애">최애 확정</span>
+<span class="tag-chip active" data-category="전체" data-i18n="search.filter.all">전체 경로</span>
+            <span class="tag-chip" data-category="입덕" data-i18n="search.filter.newbie">입덕 순간</span>
+            <span class="tag-chip" data-category="성장" data-i18n="search.filter.growing">성장 과정</span>
+            <span class="tag-chip" data-category="최애" data-i18n="search.filter.fan">최애 확정</span>
             </div>
 
             <div id="resultsList">
@@ -348,9 +348,9 @@
         </section>
 
         <aside class="preview-sidebar" id="previewSidebar">
-            <h3 class="headline" style="font-size: 1.5rem; margin-bottom: 24px;">러브트리 미리보기</h3>
+            <h3 class="headline" style="font-size: 1.5rem; margin-bottom: 24px;" data-i18n="search.previewTitle">러브트리 미리보기</h3>
                 <div id="previewVideoContainer" class="video-container">
-                <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:#999; font-size: 14px;">
+                <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:#999; font-size: 14px;" data-i18n="search.previewPlaceholder">
                      트리를 선택하여 감상하기
                 </div>
             </div>
@@ -377,6 +377,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="../js/firebase-config.js?v=20260415-6"></script>
+    <script src="../js/i18n.js?v=20260416-1"></script>
     <script src="../js/shared-header.js?v=20260416-1"></script>
     <script src="../js/auth.js?v=20260416-16"></script>
     <script>renderSharedHeader();</script>
