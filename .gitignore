@@ -65,3 +65,13 @@ nul
 *.png
 *.PNG
 
+# Drive temp folders (AGENTS.md: never touch)
+.tmp.drivedownload/
+
+# Temp scripts
+*.tmp.ps1
+temp_*.ps1
+
+# Local codex notes (duplicate with conversation/)
+docs/*codex*.txt
+
