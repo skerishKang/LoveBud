@@ -621,7 +621,7 @@ const RADIUS_L2 = 240; // L2 반경 (200→240) - 노드 겹침 방지
             let createdMemory = null;
             let useApi = false;
             try {
-                if (window.apiClient && window.apiClient.createMemory) {
+                if (window.apiClient && typeof window.apiClient.createMemory === 'function') {
                     createdMemory = await window.apiClient.createMemory(newMemoryData);
                     useApi = true;
                     console.log('[editor] API createMemory success:', createdMemory);
@@ -656,15 +656,14 @@ const RADIUS_L2 = 240; // L2 반경 (200→240) - 노드 겹침 방지
             try {
                 const refreshed = await window.apiClient.getMemoriesByTree(treeId);
                 if (Array.isArray(refreshed)) {
-                    // 재조회 성공 시 정규화된 형태로 저장 ({id,data}+snake_case → flat+camelCase)
                     window.currentTreeMemories = refreshed.map(normalizeMemory);
                 } else {
-                    // 재조회 실패 시 로컬에 추가 (중복 방지, 정규화 적용)
+                    if (!Array.isArray(window.currentTreeMemories)) window.currentTreeMemories = [];
                     const exists = window.currentTreeMemories.some(m => m.id === normalizedNew.id);
                     if (!exists && normalizedNew) window.currentTreeMemories.push(normalizedNew);
                 }
             } catch (e) {
-                // API 실패 시 로컬에 추가 (중복 방지, 정규화 적용)
+                if (!Array.isArray(window.currentTreeMemories)) window.currentTreeMemories = [];
                 const exists = window.currentTreeMemories.some(m => m.id === normalizedNew.id);
                 if (!exists && normalizedNew) window.currentTreeMemories.push(normalizedNew);
             }
