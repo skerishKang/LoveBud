@@ -201,12 +201,17 @@
         showToast((window.t || function(k){return k;})('demo_mode'), 'error');
       }
 
+      // 캐시 무효화 - 새 트리 생성했으므로 목록 갱신 필요
+      if (window.LoveBudCache) {
+        window.LoveBudCache.clear(TREES_CACHE_KEY);
+        console.log('[my-trees] Cache cleared after new tree creation');
+      }
+      
       // Redirect to editor with new tree
       var treeId = newTree.id || newTree.data?.id;
       if (treeId) {
         window.location.href = 'editor.html?treeId=' + encodeURIComponent(treeId);
       } else {
-        // Fallback: redirect to editor without treeId (will auto-create)
         window.location.href = 'editor.html';
       }
     } catch (e) {
@@ -261,34 +266,55 @@
     loadTrees();
   }
 
+  // ── 캐시 키 상수 ───────────────────────────────────────────────────────
+  var TREES_CACHE_KEY = 'my_trees_list';
+
   async function loadTrees() {
+    var cache = window.LoveBudCache;
+    
+    // 1. 캐시된 트리 목록 먼저 렌더 (즉각 체감 속도)
+    var cachedTrees = cache ? cache.get(TREES_CACHE_KEY) : null;
+    if (cachedTrees && Array.isArray(cachedTrees)) {
+      console.log('[my-trees] Rendering cached trees:', cachedTrees.length);
+      renderTrees(cachedTrees);
+    } else {
+      // 캐시 없으면 skeleton만 표시
+      renderLoadingSkeletons();
+    }
+    
+    // 2. Background에서 API로 최신 데이터 가져오기
     try {
       var trees;
       if (window.apiClient && window.apiClient.getTrees) {
         trees = await window.apiClient.getTrees();
         // CRITICAL: Filter out public sample trees - my-trees should show ONLY user's trees
-        // Bug fix: if trees includes public sample trees, filter them out
         if (Array.isArray(trees)) {
           trees = trees.filter(t => {
-            // Private trees OR trees owned by current user
             return t.visibility === 'private' || (t.data && t.data.visibility === 'private') || 
-                   t.visibility === undefined; // Mock data without visibility = user's
+                   t.visibility === undefined;
           });
         }
       } else {
-        // Fallback to mock - only user's trees (no visibility field = private by default)
         trees = typeof getTrees === 'function' ? getTrees() : [];
       }
 
       if (Array.isArray(trees)) {
-        renderTrees(trees);
-      } else {
-        renderTrees([]);
+        // 캐시 업데이트
+        if (cache) {
+          cache.set(TREES_CACHE_KEY, trees, 3 * 60 * 1000); // 3분 TTL
+        }
+        // 화면 업데이트 (캐시와 다르면)
+        if (!cachedTrees || JSON.stringify(cachedTrees) !== JSON.stringify(trees)) {
+          console.log('[my-trees] Updating trees from API:', trees.length);
+          renderTrees(trees);
+        }
       }
     } catch (e) {
-      console.warn('[my-trees] getTrees failed, NOT fallback to mock (prevent public tree leak):', e.message);
-      // FIX: Do NOT fallback to mock when API fails. Just show empty.
-      renderTrees([]);
+      console.warn('[my-trees] getTrees failed:', e.message);
+      // API 실패시 캐시라도 보여줌 (있는 경우)
+      if (!cachedTrees) {
+        renderTrees([]);
+      }
     }
   }
 

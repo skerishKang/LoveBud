@@ -31,9 +31,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.head.appendChild(style);
     }
 
+    // ── 캐시 키 설정 ──
+    const cache = window.LoveBudCache;
+    const PUBLIC_TREES_CACHE_KEY = 'public_trees_list';
+
     showLoading();
 
-    // ── 데이터 소스: API 우선, 실패 시 mock fallback ──
+    // ── 데이터 소스: 캐시 우선, API로 background refresh ──
     // 최소 로딩 시간 (깜빡임 방지)
     const MIN_LOADING_TIME = 400;
     const startTime = Date.now();
@@ -84,27 +88,47 @@ document.addEventListener('DOMContentLoaded', async () => {
         }).filter(t => t.memoryCount > 0); // 메모리가 없는 트리는 제외
     };
 
+    // ── 1. 캐시된 public trees 먼저 확인 ──
+    let cachedTrees = null;
+    if (cache) {
+        cachedTrees = cache.get(PUBLIC_TREES_CACHE_KEY);
+        if (cachedTrees && Array.isArray(cachedTrees) && cachedTrees.length > 0) {
+            console.log('[search] 캐시된 public trees 사용:', cachedTrees.length, '개');
+            allTrees = cachedTrees;
+            // 초기 로드 시 populateResults가 뒤에서 호출됨
+        }
+    }
+
+    // ── 2. Background에서 API로 최신 데이터 가져오기 ──
+    let apiTreesLoaded = false;
     try {
-        // API 우선 시도 - getPublicTrees가 browse용 tree view model을 반환
         if (window.apiClient && window.apiClient.getPublicTrees) {
             const apiTrees = await window.apiClient.getPublicTrees();
             if (Array.isArray(apiTrees)) {
-                allTrees = apiTrees;
-                console.log('[search] API tree 데이터 사용:', apiTrees.length, '개');
+                console.log('[search] API public trees 로드:', apiTrees.length, '개');
+                // 캐시 업데이트
+                if (cache) {
+                    cache.set(PUBLIC_TREES_CACHE_KEY, apiTrees, 5 * 60 * 1000); // 5분 TTL
+                }
+                // 캐시와 다르면 데이터 갱신 (뒤에서 populateResults 호출)
+                if (JSON.stringify(allTrees) !== JSON.stringify(apiTrees)) {
+                    allTrees = apiTrees;
+                }
+                apiTreesLoaded = true;
             } else {
                 throw new Error('API 응답 형식 오류');
             }
         } else {
-            throw new Error('tree API 사용 불가, mock fallback');
+            throw new Error('tree API 사용 불가');
         }
     } catch (error) {
-        // API 미지원 또는 예외 발생 시 mock fallback 직접 처리
+        // API 실패 시, 캐시가 없으면 mock fallback
         loadError = error;
-        console.warn('[search] API 예외, mock fallback 직접 처리:', error.message);
-        // mock-data.js에서 직접 구성 (getPublicTrees를 통하지 않은 직접 fallback)
-        if (typeof memories !== 'undefined' && typeof trees !== 'undefined') {
+        console.warn('[search] API 실패:', error.message);
+
+        if (!cachedTrees && typeof memories !== 'undefined' && typeof trees !== 'undefined') {
             allTrees = buildTreeData(memories, trees);
-            console.log('[search] mock tree 데이터 구성:', allTrees.length, '개 트리');
+            console.log('[search] mock 데이터 fallback:', allTrees.length, '개 트리');
         }
     }
 
@@ -260,27 +284,44 @@ document.addEventListener('DOMContentLoaded', async () => {
             const card = document.createElement('div');
             card.className = 'tree-card';
 
-            // 트리 경로 설명 생성
-            const pathDesc = tree.memories.length >= 2
-                ? `${tree.memories[0].title.replace(/\s*-\s*.*/, '')} → ${tree.memories[tree.memories.length - 1].title.replace(/\s*-\s*.*/, '')}`
-                : (tree.memories[0]?.title?.replace(/\s*-\s*.*/, '') || '첫 순간');
+            // 감정 경로 설명: 첫 순간 → 마지막 순간
+            const firstMoment = tree.memories[0]?.title?.replace(/\s*-\s*.*/, '') || '첫 순간';
+            const lastMoment = tree.memories.length >= 2
+                ? tree.memories[tree.memories.length - 1].title.replace(/\s*-\s*.*/, '')
+                : null;
+            const pathDesc = lastMoment
+                ? `<span style="color:var(--primary);font-weight:700;">${firstMoment}</span> <span style="opacity:0.5;">→</span> <span style="color:var(--on-surface);">${lastMoment}</span>`
+                : `<span style="color:var(--primary);font-weight:700;">${firstMoment}</span>`;
+
+            // 대표 감정 태그 (최대 3개)
+            const emotionTagsHtml = tree.emotionTags
+                .slice(0, 3)
+                .map(tag => `<span class="emotion-tag" style="background:var(--primary-container);color:var(--on-primary-container);font-weight:700;">#${tag}</span>`)
+                .join('');
 
             card.innerHTML = `
                 <div class="tree-header">
-                    <div class="tree-icon">${getTreeIcon(tree.stage)}</div>
+                    <div class="tree-icon" title="${tree.stage} 단계">${getTreeIcon(tree.stage)}</div>
                     <div class="tree-title-group">
                         <div class="tree-title">${tree.title}</div>
-                        <div class="tree-subtitle">${tree.theme} · ${tree.timeRange}</div>
+                        <div class="tree-path-desc" style="font-size:13px;margin-top:4px;">${pathDesc}</div>
                     </div>
                 </div>
                 ${renderPathPreview(tree.memories)}
-                <div class="tree-meta">
-                    <div class="tree-stats">
-                        <span><span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle;">account_tree</span> ${tree.memoryCount}개 순간</span>
-                        <span><span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle;">schedule</span> ${tree.timeRange}</span>
+                <div class="tree-meta" style="flex-direction:column;gap:12px;">
+                    <div class="tree-emotions" style="order:1;">
+                        ${emotionTagsHtml}
                     </div>
-                    <div class="tree-emotions">
-                        ${tree.emotionTags.map(tag => `<span class="emotion-tag">#${tag}</span>`).join('')}
+                    <div class="tree-stats" style="order:2;font-size:12px;opacity:0.7;">
+                        <span title="${tree.memoryCount}개의 순간이 기록됨">
+                            <span class="material-symbols-outlined" style="font-size: 12px; vertical-align: middle;">account_tree</span> ${tree.memoryCount}개 순간
+                        </span>
+                        <span title="감정 기간: ${tree.timeRange}">
+                            <span class="material-symbols-outlined" style="font-size: 12px; vertical-align: middle;">schedule</span> ${tree.timeRange}
+                        </span>
+                        <span title="테마: ${tree.theme}">
+                            <span class="material-symbols-outlined" style="font-size: 12px; vertical-align: middle;">music_note</span> ${tree.theme}
+                        </span>
                     </div>
                 </div>
             `;
@@ -299,27 +340,61 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     };
 
-    // ── 미리보기 업데이트 (트리 중심) ──
+    // ── 미리보기 업데이트: 트리 감상 안내판 스타일 ──
     const updatePreview = (tree) => {
         const firstMem = tree.memories?.[0];
         if (!firstMem) return;
 
+        // 감상 경로 텍스트 생성
+        const pathStages = tree.memories.slice(0, 3).map((m, i) =>
+            `<span style="color:var(--primary);font-weight:700;">${i + 1}</span> <span style="opacity:0.8;">${m.title.replace(/\s*-\s*.*/, '')}</span>`
+        ).join(' <span style="opacity:0.4;">→</span> ');
+        const moreStages = tree.memories.length > 3 ? ` <span style="opacity:0.5;font-size:12px;">+${tree.memories.length - 3}개 더</span>` : '';
+
         previewContainer.innerHTML = `
-            <iframe width="100%" height="100%"
-                src="${firstMem.sourceUrl}"
-                title="${tree.title}" frameborder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowfullscreen></iframe>
+            <div style="position:relative;width:100%;height:100%;border-radius:1rem;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.1);">
+                <iframe width="100%" height="100%"
+                    src="${firstMem.sourceUrl}?autoplay=0&mute=1"
+                    title="${tree.title}" frameborder="0"
+                    allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowfullscreen style="position:absolute;top:0;left:0;"></iframe>
+                <div style="position:absolute;top:12px;left:12px;background:rgba(0,0,0,0.6);color:white;padding:6px 12px;border-radius:99px;font-size:12px;font-weight:700;">
+                    <span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;margin-right:4px;">play_circle</span>
+                    첫 순간부터 감상하기
+                </div>
+            </div>
         `;
 
-        previewTitle.textContent = tree.title;
-        previewDesc.textContent = `${tree.theme}의 감정 경로 · ${tree.memoryCount}개 순간`;
+        previewTitle.innerHTML = `
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                <span style="font-size:1.5rem;">${getTreeIcon(tree.stage)}</span>
+                <span>${tree.title}</span>
+            </div>
+        `;
+
+        previewDesc.innerHTML = `
+            <div style="background:var(--surface-container-low);padding:16px;border-radius:12px;margin-bottom:12px;">
+                <div style="font-size:12px;font-weight:700;color:var(--on-surface-variant);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">
+                    <span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;margin-right:4px;">route</span>
+                    감정 경로
+                </div>
+                <div style="font-size:14px;line-height:1.6;">
+                    ${pathStages}${moreStages}
+                </div>
+            </div>
+            <div style="font-size:13px;color:var(--on-surface-variant);line-height:1.5;">
+                <strong style="color:var(--on-surface);">${tree.theme}</strong> 아티스트의 감정 여정.
+                ${tree.memoryCount}개의 순간이 <strong style="color:var(--primary);">${tree.timeRange}</strong> 동안 기록되었습니다.
+                클릭하여 전체 러브트리를 감상해보세요.
+            </div>
+        `;
+
         previewMemoriesCount.textContent = tree.memoryCount;
         previewTreeDuration.textContent = tree.timeRange;
 
-        // 감정 태그 업데이트
-        previewEmotionTags.innerHTML = tree.emotionTags.map(tag =>
-            `<span class="emotion-tag" style="padding: 6px 12px; background: var(--surface-container-low); border-radius: 99px; font-size: 12px; font-weight: 700; color: var(--on-surface-variant);">#${tag}</span>`
+        // 감정 태그 업데이트 (강조)
+        previewEmotionTags.innerHTML = tree.emotionTags.slice(0, 4).map(tag =>
+            `<span class="emotion-tag" style="padding: 8px 16px; background: var(--primary-container); border-radius: 99px; font-size: 13px; font-weight: 700; color: var(--on-primary-container);">#${tag}</span>`
         ).join('');
     };
 
