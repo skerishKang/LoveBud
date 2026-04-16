@@ -94,13 +94,13 @@ function applyCachedAuthState() {
     var cachedUser = getCachedAuthUser();
     if (cachedUser) {
       authNav.innerHTML = buildUserDropdown(cachedUser);
-      authNav.style.cssText = 'pointer-events:auto;opacity:1;transition:opacity 0.2s ease;min-width:100px;height:36px;display:flex;align-items:center;justify-content:flex-end;user-select:auto;';
+      authNav.style.cssText = 'pointer-events:auto;opacity:1;transition:opacity 0.2s ease;min-width:36px;height:36px;display:flex;align-items:center;justify-content:flex-end;user-select:auto;';
       authNav.classList.add('auth-ready');
       return true;
     }
 
     // If there is no confirmed cache, keep a neutral skeleton until Firebase answers.
-    authNav.innerHTML = '<div class="auth-skeleton" style="width:100px;height:36px;border-radius:18px;background:var(--surface-container-highest, #e8e8e8);pointer-events:none;"></div>';
+    authNav.innerHTML = '<div class="auth-skeleton" style="width:36px;height:36px;border-radius:18px;background:var(--surface-container-highest, #e8e8e8);pointer-events:none;"></div>';
   } catch(e) {}
   return false;
 }
@@ -201,7 +201,7 @@ function markAuthLoading() {
   var authContainer = document.getElementById('auth-nav-container');
   // During loading: layout-preserving skeleton that is completely non-interactive.
   // pointer-events:none ensures no click/keyboard interaction until AUTH_READY_FLAG.
-  var loadingStyle = 'pointer-events:none;opacity:0.6;transition:opacity 0.2s ease;min-width:100px;height:36px;display:flex;align-items:center;justify-content:flex-end;user-select:none;';
+  var loadingStyle = 'pointer-events:none;opacity:0.6;transition:opacity 0.2s ease;min-width:36px;height:36px;display:flex;align-items:center;justify-content:flex-end;user-select:none;';
   if (authNav) {
     authNav.style.cssText = loadingStyle;
   }
@@ -220,7 +220,7 @@ function markAuthReady() {
   var authNav = document.getElementById('auth-nav');
   var authContainer = document.getElementById('auth-nav-container');
   // Ready 후: 스피너 제거 + pointer-events 복원 + 부드럽게 표시
-  var visibleStyle = 'pointer-events:auto;opacity:1;transition:opacity 0.2s ease;min-width:100px;height:36px;display:flex;align-items:center;justify-content:flex-end;user-select:auto;';
+  var visibleStyle = 'pointer-events:auto;opacity:1;transition:opacity 0.2s ease;min-width:36px;height:36px;display:flex;align-items:center;justify-content:flex-end;user-select:auto;';
   if (authNav) {
     // 로딩 스피너 제거 (index.html의 초기 스피너)
     var spinner = authNav.querySelector('.material-symbols-outlined');
@@ -262,6 +262,11 @@ function buildUserDropdown(user) {
     userName = user.displayName || user.email || '';
   }
 
+  // Determine context (root vs pages folder)
+  var isPagesContext = window.location.pathname.indexOf('/pages/') !== -1;
+  var settingsHref = isPagesContext ? 'settings.html' : 'pages/settings.html';
+  var myTreesHref = isPagesContext ? 'my-trees.html' : 'pages/my-trees.html';
+
   // Shell stays constant - only content inside changes
   var avatarContent = hasPhoto 
     ? '<img src="' + user.photoURL + '" alt="" class="user-avatar-image" referrerpolicy="no-referrer">'
@@ -276,7 +281,7 @@ function buildUserDropdown(user) {
     '</button>',
     '<div class="user-dropdown-menu">',
     userName ? '<div class="user-dropdown-meta">' + userName + '</div>' : '',
-    '<a href="my-trees.html" class="user-dropdown-item"><span class="material-symbols-outlined">account_tree</span>내 러브트리</a>',
+    '<a href="' + myTreesHref + '" class="user-dropdown-item"><span class="material-symbols-outlined">account_tree</span>내 러브트리</a>',
     '<button class="user-dropdown-item" disabled style="cursor:default;opacity:0.6;"><span class="material-symbols-outlined">settings</span>설정</button>',
     '<div class="dropdown-divider"></div>',
     '<button class="user-dropdown-item" onclick="signOut()"><span class="material-symbols-outlined">logout</span>로그아웃</button>',
