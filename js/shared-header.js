@@ -43,7 +43,8 @@
         'detail.html': 'search', // detail은 둘러보기 섹션
         'my-trees.html': 'myTrees',
         'editor.html': 'editor',
-        'login.html': null // login은 메뉴 active 없음
+        'login.html': null, // login은 메뉴 active 없음
+        'settings.html': null // settings도 메뉴 active 없음
     };
 
     // 현재 페이지 감지
