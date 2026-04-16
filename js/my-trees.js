@@ -160,6 +160,21 @@
   }
 
   // ── Create new tree ──────────────────────────────────────────────────────
+  function getDefaultVisibility() {
+    try {
+      var settings = localStorage.getItem('lovebud_user_settings');
+      if (settings) {
+        var parsed = JSON.parse(settings);
+        if (parsed.defaultVisibility === 'public' || parsed.defaultVisibility === 'private') {
+          return parsed.defaultVisibility;
+        }
+      }
+    } catch (e) {
+      console.warn('[my-trees] Failed to read settings:', e);
+    }
+    return 'private'; // 기본값은 반드시 private
+  }
+
   async function createNewTree() {
     var btn = document.getElementById('createTreeBtn');
     var i18n = window.t || function(k) { return k; };
@@ -168,12 +183,16 @@
       btn.textContent = i18n('creating');
     }
 
+    // 설정에서 defaultVisibility 읽기 (없으면 'private')
+    var defaultVisibility = getDefaultVisibility();
+    console.log('[my-trees] Creating tree with visibility:', defaultVisibility);
+
     try {
       var newTree;
       if (window.apiClient && window.apiClient.createTree) {
         newTree = await window.apiClient.createTree({
-          title: '나의 첫 러브트리',
-          visibility: 'private'
+          title: i18n('default_tree_title') || '나의 첫 러브트리',
+          visibility: defaultVisibility
         });
         console.log('[my-trees] Tree created:', newTree);
       } else {
