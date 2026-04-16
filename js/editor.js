@@ -53,52 +53,101 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 3000);
     };
 
-    const startEditor = async () => {
-        const canvas = document.getElementById('canvasArea');
-        const svg = document.getElementById('canvasSvg');
-        const detailPanel = document.getElementById('detailPanel');
-        const addBtn = document.getElementById('addMemoryBtn');
+const startEditor = async () => {
+  const canvas = document.getElementById('canvasArea');
+  const svg = document.getElementById('canvasSvg');
+  const detailPanel = document.getElementById('detailPanel');
+  const addBtn = document.getElementById('addMemoryBtn');
 
-        // ── 트리 데이터: API 우선, 없으면 생성, 실패 시 mock fallback ──
-        let tree = null;
-        let isNewTree = false;
-        try {
-            if (window.apiClient && window.apiClient.getFirstTree) {
-                const apiTree = await window.apiClient.getFirstTree();
-                if (apiTree) {
-                    tree = apiTree;
-                    console.log('[editor] API tree loaded');
-                } else {
-                    // API는 성공했지만 트리가 없음 → 신규 사용자, 기본 트리 생성
-                    console.log('[editor] No tree found, creating default tree...');
-                    if (window.apiClient.createTree) {
-                        const newTree = await window.apiClient.createTree({
-                            title: '나의 첫 러브트리',
-                            visibility: 'private'
-                        });
-                        tree = newTree;
-                        isNewTree = true;
-                        console.log('[editor] Default tree created:', newTree);
-                    }
-                }
-            }
-        } catch (e) {
-            console.warn('[editor] API tree failed, fallback to mock:', e.message);
-            if (e.message?.includes('401') || e.message?.includes('Authentication')) {
-                showToast('로그인이 필요합니다. 로그인 페이지로 이동합니다.', 'error');
-                setTimeout(() => window.location.href = 'login.html?redirect=editor.html', 2000);
-                return;
-            }
+  // ── URL에서 treeId 읽기 (최우선) ──
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlTreeId = urlParams.get('treeId');
+  console.log('[editor] URL treeId:', urlTreeId);
+
+  // ── 트리 데이터: treeId 우선, 없으면 getFirstTree fallback ──
+  let tree = null;
+  let isNewTree = false;
+
+  if (urlTreeId) {
+    // treeId가 URL에 있으면: 그 트리를 직접 조회
+    // 실패해도 demo tree로 fallback하지 않음 (새 트리일 수 있음)
+    try {
+      if (window.apiClient && window.apiClient.getTree) {
+        tree = await window.apiClient.getTree(urlTreeId);
+        if (tree) {
+          console.log('[editor] Tree from URL loaded:', tree.id || tree.data?.id);
         }
-        // API 실패 시에만 mock fallback
-        if (!tree) {
-            const trees = typeof getTrees === 'function' ? getTrees() : [];
-            tree = trees[0];
+      }
+    } catch (e) {
+      // treeId가 있는데 조회가 실패하면: 새 트리이거나 API 없음
+      // demo tree로 fallback하지 않고 빈 트리 상태로 진행
+      console.warn('[editor] Tree from URL not found or API error:', e.message);
+    }
+
+    // tree를 못 찾았으면: 빈 트리 상태로 신규 생성
+    if (!tree) {
+      console.log('[editor] Creating/fetching new tree for URL treeId:', urlTreeId);
+      try {
+        if (window.apiClient && window.apiClient.createTree) {
+          const newTree = await window.apiClient.createTree({
+            title: '나의 첫 러브트리',
+            visibility: 'private'
+          });
+          tree = newTree;
+          isNewTree = true;
+          console.log('[editor] New tree created:', newTree);
+        } else {
+          // API.createTree 없으면: client-side ID로 임시 트리 생성
+          tree = { id: urlTreeId, title: '나의 첫 러브트리', visibility: 'private' };
+          isNewTree = true;
+          console.log('[editor] Client-side tree created:', urlTreeId);
         }
-        if (!tree) {
-            console.warn('Tree data not found.');
-            return;
+      } catch (e2) {
+        console.warn('[editor] createTree failed, using client-side tree:', e2.message);
+        tree = { id: urlTreeId, title: '나의 첫 러브트리', visibility: 'private' };
+        isNewTree = true;
+      }
+    }
+  } else {
+    // treeId가 URL에 없으면: 기존 getFirstTree() flow
+    try {
+      if (window.apiClient && window.apiClient.getFirstTree) {
+        const apiTree = await window.apiClient.getFirstTree();
+        if (apiTree) {
+          tree = apiTree;
+          console.log('[editor] API tree loaded (getFirstTree)');
+        } else {
+          // API는 성공했지만 트리가 없음 → 신규 사용자, 기본 트리 생성
+          console.log('[editor] No tree found, creating default tree...');
+          if (window.apiClient.createTree) {
+            const newTree = await window.apiClient.createTree({
+              title: '나의 첫 러브트리',
+              visibility: 'private'
+            });
+            tree = newTree;
+            isNewTree = true;
+            console.log('[editor] Default tree created:', newTree);
+          }
         }
+      }
+    } catch (e) {
+      console.warn('[editor] API tree failed, fallback to mock:', e.message);
+      if (e.message?.includes('401') || e.message?.includes('Authentication')) {
+        showToast('로그인이 필요합니다. 로그인 페이지로 이동합니다.', 'error');
+        setTimeout(() => window.location.href = 'login.html?redirect=editor.html', 2000);
+        return;
+      }
+    }
+    // API 실패 시에만 mock fallback
+    if (!tree) {
+      const trees = typeof getTrees === 'function' ? getTrees() : [];
+      tree = trees[0];
+    }
+    if (!tree) {
+      console.warn('Tree data not found.');
+      return;
+    }
+  }
 
         // ── 메모리 데이터: API 우선, 실패 시 mock fallback ──
         let memories = [];
