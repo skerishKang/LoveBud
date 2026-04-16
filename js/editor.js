@@ -580,24 +580,24 @@ const RADIUS_L2 = 240; // L2 반경 (200→240) - 노드 겹침 방지
 
         const addMemoryFromForm = async () => {
             const url = urlInput.value.trim();
-const i18nToast = window.t || ((k) => k);
-if (!url) {
-    showToast(i18nToast('enter_youtube'), 'warn');
-    return;
-  }
+            const i18nToast = window.t || ((k) => k);
+            if (!url) {
+                showToast(i18nToast('enter_youtube'), 'warn');
+                return;
+            }
 
-  const match = url.match(/(?:v=|\/|youtu\.be\/)([0-9A-Za-z_-]{11})/);
-  if (!match) {
-    showToast(i18nToast('invalid_youtube'), 'error');
-    return;
-  }
+            const match = url.match(/(?:v=|\/|youtu\.be\/)([0-9A-Za-z_-]{11})/);
+            if (!match) {
+                showToast(i18nToast('invalid_youtube'), 'error');
+                return;
+            }
 
             const videoId = match[1];
             const today = new Date();
             const i18n = window.t || ((k) => k);
             const dateStr = `${today.getFullYear()}.${String(today.getMonth()+1).padStart(2,'0')}.${String(today.getDate()).padStart(2,'0')}`;
 
-// 기본 제목 자동 생성 (입력 없을 시)
+            // 기본 제목 자동 생성 (입력 없을 시)
             const title = titleInput.value.trim() || `${i18n('new_memory')} ${dateStr}`;
 
             const newMemoryData = {
@@ -628,10 +628,10 @@ if (!url) {
                 }
             } catch (e) {
                 const i18n = window.t || ((k) => k);
-                console.warn('[editor] API createMemory failed, fallback to mock:', e.message);
-                if (e.message?.includes('401') || e.message?.includes('403')) {
+                console.warn('[editor] API createMemory failed, fallback to mock:', e?.message || e);
+                if (e?.message?.includes('401') || e?.message?.includes('403')) {
                     showToast(i18n('no_permission_local'), 'warn');
-                } else if (e.message?.includes('400')) {
+                } else if (e?.message?.includes('400')) {
                     showToast(i18n('check_input'), 'error');
                 } else {
                     showToast(i18n('server_fail_local'), 'warn');
@@ -639,7 +639,9 @@ if (!url) {
             }
 
             // API 실패 시 mock fallback - 로컬에만 추가
-            if (!createdMemory) {
+            // 방어적 처리: createdMemory가 null/undefined인 경우에도 로컬 객체 생성
+            if (!createdMemory || typeof createdMemory !== 'object') {
+                console.log('[editor] Using local fallback memory');
                 createdMemory = {
                     id: nextMemoryId(),
                     ...newMemoryData,
