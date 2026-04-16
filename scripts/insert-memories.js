@@ -1,8 +1,18 @@
 const { Pool } = require('pg');
 
+// 환경변수에서 DB 연결 정보 읽기 (보안: 하드코딩 금지)
+const DATABASE_URL = process.env.NETLIFY_DATABASE_URL ||
+                     process.env.DATABASE_URL;
+
+if (!DATABASE_URL) {
+  console.error('❌ DATABASE_URL 또는 NETLIFY_DATABASE_URL 환경변수가 필요합니다');
+  console.error('   예시: DATABASE_URL=postgresql://... node scripts/insert-memories.js');
+  process.exit(1);
+}
+
 // Neon DB 연결
 const pool = new Pool({
-  connectionString: 'postgresql://neondb_owner:npg_5aH9oiPjWIyJ@ep-little-poetry-a1vjyiim-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require',
+  connectionString: DATABASE_URL,
   ssl: { rejectUnauthorized: false }
 });
 
