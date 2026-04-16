@@ -27,6 +27,7 @@ function getPool() {
     const err = new Error('Database is not configured');
     err.status = 503;
     err.details = 'Missing Postgres connection string (NETLIFY_DATABASE_URL or DATABASE_URL)';
+    console.error('[db] Database URL missing. Set NETLIFY_DATABASE_URL or DATABASE_URL in Netlify env.');
     throw err;
   }
 
@@ -35,6 +36,10 @@ function getPool() {
     ssl: process.env.PGSSL === 'disable' ? false : { rejectUnauthorized: false },
     max: Number(process.env.PG_POOL_MAX || 10),
     idleTimeoutMillis: Number(process.env.PG_IDLE_TIMEOUT_MS || 10000),
+  });
+
+  pool.on('error', (err) => {
+    console.error('[db] Unexpected pool error:', err.message);
   });
 
   return pool;
