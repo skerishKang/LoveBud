@@ -1,11 +1,12 @@
 /**
  * LoveBud - Shared Header Component
- * v20260416-1
+ * v20260416-2
  * 
  * 모든 페이지에 공통 헤더를 렌더링합니다.
  * - 현재 페이지에 맞는 active 메뉴 자동 표시
  * - 상대경로 차이 자동 처리 (root vs pages)
  * - auth.js가 붙을 #auth-nav 또는 #auth-nav-container 계약 유지
+ * - 언어 드롭다운 (KR/EN) 지원
  * 
  * 사용법:
  * <script src="js/shared-header.js"></script>
@@ -55,14 +56,11 @@
     // 루트(index.html)인지 pages 폴더인지 감지
     function getContextType() {
         var path = window.location.pathname;
-        // path에 /pages/가 포함되거나, root 바로 아래 html이면 pages 타입
         if (path.indexOf('/pages/') !== -1 || path.endsWith('.html') && path.split('/').length <= 2) {
-            // index.html은 root, others는 pages
             var filename = path.split('/').pop();
             if (filename === 'index.html' || filename === '') return 'root';
             return 'pages';
         }
-        // 기본은 pages (pages 폴더内的 기본값)
         return 'pages';
     }
 
@@ -127,6 +125,19 @@
             navLinksHTML += '<a href="' + menuConfig.editor.href + '"' + activeClass + '>' + menuConfig.editor.text + '</a>';
         }
 
+        // 언어 드롭다운 HTML
+        var langDropdownHTML = [
+            '<div class="lang-toggle">',
+                '<button class="lang-toggle-btn" id="langToggleBtn" aria-label="언어 선택">',
+                    '<span class="material-symbols-outlined">language</span>',
+                '</button>',
+                '<div class="lang-dropdown" id="langDropdown">',
+                    '<button class="lang-option active" data-lang="KR">KR</button>',
+                    '<button class="lang-option" data-lang="EN">EN</button>',
+                '</div>',
+            '</div>'
+        ].join('');
+
         return [
             '<header class="nav-bar">',
                 '<div class="headline" style="font-size: 1.5rem; font-weight: 900; color: var(--on-surface); letter-spacing: -0.04em; cursor: pointer;" onclick="location.href=\'' + logoHref + '\'">Lovetree</div>',
@@ -134,16 +145,43 @@
                     '<div class="nav-links">',
                         navLinksHTML,
                     '</div>',
-                    '<div style="display: flex; align-items: center; gap: 20px;">',
-                        '<div class="lang-toggle">',
-                            '<button class="lang-btn active">KR</button>',
-                            '<button class="lang-btn">EN</button>',
-                        '</div>',
+                    '<div style="display: flex; align-items: center; gap: 16px;">',
+                        langDropdownHTML,
                         authHTML,
                     '</div>',
                 '</nav>',
             '</header>'
         ].join('');
+    }
+
+    // 언어 토글 드롭다운 동작 설정
+    function setupLangDropdown() {
+        var toggleBtn = document.getElementById('langToggleBtn');
+        var dropdown = document.getElementById('langDropdown');
+        if (!toggleBtn || !dropdown) return;
+
+        toggleBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            dropdown.classList.toggle('show');
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!dropdown.contains(e.target)) {
+                dropdown.classList.remove('show');
+            }
+        });
+
+        // 언어 옵션 클릭
+        var options = dropdown.querySelectorAll('.lang-option');
+        options.forEach(function(opt) {
+            opt.addEventListener('click', function(e) {
+                var lang = this.dataset.lang;
+                options.forEach(function(o) { o.classList.remove('active'); });
+                this.classList.add('active');
+                dropdown.classList.remove('show');
+                console.log('[shared-header] Language selected:', lang);
+            });
+        });
     }
 
     // 공통 헤더 렌더링
@@ -154,6 +192,7 @@
             return;
         }
         container.innerHTML = buildHeaderHTML();
+        setupLangDropdown(); // 언어 드롭다운 이벤트 설정
         console.log('[shared-header] Rendered for:', getCurrentPage(), '| context:', getContextType());
     };
 
