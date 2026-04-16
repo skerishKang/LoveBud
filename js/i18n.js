@@ -207,11 +207,67 @@
     },
     'switch_to_login': {
       ko: '이미 계정이 있나요? 로그인으로 전환',
-      en: 'Have an account? Switch to login'
+      en: 'Already have an account? Switch to login'
     },
     'close': {
       ko: '닫기',
       en: 'Close'
+    },
+
+    // intro.html
+    'intro.heroTitle': {
+      ko: '사랑하는 것들의',
+      en: 'The things you love'
+    },
+    'intro.heroTitleSpan': {
+      ko: '성장 과정을 기록하다',
+      en: 'Record their growth'
+    },
+    'intro.heroLead': {
+      ko: 'Lovetree는 좋아하는 대상의 입덕 순간부터 지금까지, 당신이 경험한 감정의 전 과정을 하나의 나무로 기록하는 공간입니다. 벚꽃이 피고 열매 맺는 것처럼, 당신의 팬심도 하나의 나무로 자라납니다.',
+      en: 'Lovetree is a space to record the entire journey of emotions from your first fandom moment to now as a single tree. Like cherry blossoms blooming and bearing fruit, your fandom grows into a tree.'
+    },
+    'intro.visualizeGrowthTitle': {
+      ko: '성장 과정 한눈에 보기',
+      en: 'Visualize Your Growth'
+    },
+    'intro.visualizeGrowthDesc': {
+      ko: '얼마나 좋아졌는지, 어떤 감정을 지나왔는지 한눈에 볼 수 있습니다.',
+      en: 'See at a glance how much you have grown and what emotions you have experienced.'
+    },
+    'intro.whatIsDesc2Fixed': {
+      ko: '시간이 지나도 그때 그 감정으로 돌아갈 수 있는 공간입니다.',
+      en: 'A space where you can return to those feelings even as time passes.'
+    },
+    'intro.step3DescFixed': {
+      ko: '편집 화면에서 기억들이 가지처럼 연결된 당신만의 LoveTree를 확인하고, 완성되면 둘러보기에 공유하세요.',
+      en: 'In the editor, see your memories connected like branches, and share to browse when complete.'
+    },
+    'intro.value3DescFixed': {
+      ko: '시간이 지나도 그때의 감정이 생생하게 남아 있습니다.',
+      en: 'Even as time passes, those feelings remain vivid.'
+    },
+    'nav.myTrees': {
+      ko: '내 러브트리 시작하기',
+      en: 'Start My LoveTrees'
+    },
+    'nav.browseOthers': {
+      ko: '다른 트리 둘러보기',
+      en: 'Browse Other Trees'
+    },
+
+    // search.html
+    'search.previewTitle': {
+      ko: '러브트리 미리보기',
+      en: 'LoveTree Preview'
+    },
+    'search.previewPlaceholder': {
+      ko: '트리를 선택하여 감상하기',
+      en: 'Select a tree to view'
+    },
+    'search.placeholder': {
+      ko: '예: 아티스트명 · 러브트리 주제 · 감정 태그',
+      en: 'e.g., artist, theme, emotion tag'
     }
   };
 
@@ -257,6 +313,7 @@
 
   // data-i18n 속성을 가진 요소들에 번역 적용
   function applyI18n() {
+    // textContent 번역
     var elements = document.querySelectorAll('[data-i18n]');
     elements.forEach(function(el) {
       var key = el.getAttribute('data-i18n');
@@ -264,7 +321,17 @@
         el.textContent = t(key);
       }
     });
-    console.log('[i18n] Applied to', elements.length, 'elements');
+    
+    // placeholder 번역
+    var placeholderElements = document.querySelectorAll('[data-i18n-placeholder]');
+    placeholderElements.forEach(function(el) {
+      var key = el.getAttribute('data-i18n-placeholder');
+      if (key) {
+        el.placeholder = t(key);
+      }
+    });
+    
+    console.log('[i18n] Applied to', elements.length, 'elements,', placeholderElements.length, 'placeholders');
   }
 
   // 언어 변경 이벤트 리스너 (shared-header.js에서 호출)
