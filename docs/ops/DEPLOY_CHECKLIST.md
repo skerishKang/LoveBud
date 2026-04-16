@@ -1,7 +1,30 @@
 # LoveBud 배포 체크리스트
 
 > 생성: 2026-04-16
+> 갱신: 2026-04-16 (pre-deploy 자동화 추가)
 > 목적: 배포 전후 502/런타임 장애 재발 방지
+
+## 0. 빠른 자동 검증 (1분)
+
+```bash
+# 구문/i18n/라우트/파일 존재 — env/DB 의존 없이 즉시 실행
+npm run verify
+
+# 위 + env/DB/Firebase 로컬 검사
+npm run verify:full
+
+# 위 + 원격 엔드포인트 응답 확인
+npm run verify:remote
+```
+
+검사 항목:
+1. JS 구문 오류 (`node --check` — env 없이 초고속)
+2. i18n key 정합성 (HTML/JS ↔ dictionary 교차 검증)
+3. netlify.toml 라우트 ↔ 함수 파일 존재
+4. HTML 기본 구조 (DOCTYPE/html/head/body)
+5. 필수 파일 존재
+6. node_modules 의존성 설치
+7. env/DB/Firebase (--full 또는 --remote 시)
 
 ## 1. 배포 전 확인 (Push 전)
 

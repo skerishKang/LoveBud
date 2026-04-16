@@ -3,6 +3,13 @@
   "version": "1.0.0",
   "private": true,
   "description": "LoveBud MVP — Netlify static site + Functions",
+  "scripts": {
+    "verify": "node scripts/pre-deploy.js",
+    "verify:full": "node scripts/pre-deploy.js --full",
+    "verify:remote": "node scripts/pre-deploy.js --remote",
+    "verify:env": "node scripts/verify-env.js",
+    "verify:env:remote": "node scripts/verify-env.js --remote"
+  },
   "dependencies": {
     "firebase-admin": "^12.0.0",
     "pg": "^8.12.0"
