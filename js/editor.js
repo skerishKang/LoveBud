@@ -681,6 +681,21 @@ if (!url) {
     // 완화: Firebase SDK 지연 또는 unavailable 시에도 cached auth가 있으면 진입 허용
     // 보안: cached auth가 있어도 Firebase 재검증은后台에서 진행
     
+    function waitForFirebase(maxWaitMs, intervalMs, callback) {
+        var elapsed = 0;
+        var checkInterval = setInterval(function() {
+            elapsed += intervalMs;
+            var hasFirebase = typeof firebase !== 'undefined' && firebase.auth && firebase.apps && firebase.apps.length;
+            if (hasFirebase) {
+                clearInterval(checkInterval);
+                callback(true);
+            } else if (elapsed >= maxWaitMs) {
+                clearInterval(checkInterval);
+                callback(false);
+            }
+        }, intervalMs);
+    }
+
     function tryStartEditor(forceStart) {
         // Check for confirmed auth cache
         var cachedUser = null;
@@ -703,32 +718,40 @@ if (!url) {
                     window.location.href = 'login.html?redirect=editor.html';
                     return;
                 }
-                // Proceed regardless - cached auth or real user
+                // Firebase 준비 완료 후에만 editor 시작
+                console.log('[editor] Firebase ready, starting editor');
                 startEditor();
             });
-        } else {
-            // Firebase not available - rely on cached auth
-            if (!forceStart && (!cachedUser || !cachedUser.uid)) {
-                window.location.href = 'login.html?redirect=editor.html';
-                return;
-            }
-            // Has cached auth - proceed (will try Firebase again in background if available later)
-            console.log('[editor] Firebase unavailable, using cached auth');
+        } else if (cachedUser && cachedUser.uid) {
+            // Firebase not available but has cached auth - wait for Firebase
+            console.log('[editor] Firebase not ready, waiting with cached auth...');
             
-            // Try to wait briefly for Firebase to initialize, but don't block
-            setTimeout(function() {
-                if (typeof firebase !== 'undefined' && firebase.auth && firebase.apps && firebase.apps.length) {
-                    // Firebase now available - recheck auth
-                    firebase.auth().onAuthStateChanged(function(user) {
-                        if (!user) {
-                            console.log('[editor] Firebase recheck: no user, but cached auth present');
+            // preparing UI 유지하면서 Firebase 준비 대기
+            waitForFirebase(5000, 200, function(ready) {
+                if (ready) {
+                    // Firebase now ready - start with auth check
+                    var unsubscribe = firebase.auth().onAuthStateChanged(function(user) {
+                        unsubscribe();
+                        if (!user && !forceStart) {
+                            window.location.href = 'login.html?redirect=editor.html';
+                            return;
                         }
-                        // Don't redirect - we already have cached auth, proceed with editor
+                        console.log('[editor] Firebase became ready, starting editor');
+                        startEditor();
                     });
+                } else {
+                    // Firebase never ready - don't start API calls, show error
+                    console.error('[editor] Firebase failed to initialize after timeout');
+                    const i18n = window.t || ((k) => k);
+                    showToast(i18n('firebase_init_fail') || 'Firebase 준비 실패. 페이지를 새로고침해 주세요.', 'error');
+                    // startEditor()를 호출하지 않음 - API 호출 방지
                 }
-            }, 1000);
-            
-            startEditor();
+            });
+        } else {
+            // No Firebase and no cached auth - redirect to login
+            if (!forceStart) {
+                window.location.href = 'login.html?redirect=editor.html';
+            }
         }
     }
     
