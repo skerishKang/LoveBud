@@ -30,13 +30,23 @@
 
 **normalize.js (완료)**
 - HTML: detail.html, my-trees.html, editor.html, search.html
-- JS 호출: my-trees.js, detail.js, editor.js, search-data-adapter.js
+- JS 호출: detail.js, my-trees.js, editor.js, search-data-adapter.js
 - 상태: 모든 페이지에서 표준 사용 중
+
+**detail.js 적용 상태:**
+- loveBudNormalize?.normalizeMemory 사용 (line 284)
+-memory 정규화에 loveBudNormalize 우선
+- local fallback: `window.LoveBudNormalize?.normalizeMemory || ((m) => m)`
 
 **ui.js (시범 적용)**
 - HTML: search.html, my-trees.html, editor.html
 - JS 호출: my-trees.js, editor.js (모두 optional call: `LoveBudUI?.showToast`)
 - 상태: 로드되지만 일부 파일에서 local fallback 함께 보유
+
+**detail.js 적용 상태:**
+- LoveBudNormalize 사용 (line 284)
+- LoveBudPath 미사용 (local logic 사용 중)
+- LoveBudMedia 미사용 (직접 YouTube URL 처리)
 
 **path.js (시범 적용)**
 - HTML: search.html, my-trees.html, editor.html

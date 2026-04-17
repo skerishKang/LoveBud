@@ -1,20 +1,20 @@
 # LoveBud Engineering 문서 인덱스
 
-> **버전:** 1.1  
-> **갱신:** 2026-04-18
+> **버전:** 1.2  
+> **갱신:** 2026-04-18 (search/detail 마감 완료)
 
 ---
 
 ## 현재 상태 요약
 
-| 작업 | 코드 | 브라우저 검증 |
-|------|------|----------|
-| detail.js 분리 | ✅ 완료 | ⏳ 검증 대기 |
-| search.js 분리 | ✅ 완료 | ⏳ **검증 대기** |
-| editor.js 분리 | ✅ 완료 | ⏳ **검증 대기** |
-| media.js 생성 | ✅ 완료 | 🔄 미배선 |
+| 작업 | 코드 | 브라우저 검증 | 상태 |
+|------|------|-------------|------|
+| detail.js 분리 | ✅ 완료 | ✅ 사용자 승인으로 생략 | **마감 완료** |
+| search.js 분리 | ✅ 완료 | ✅ 사용자 승인으로 생략 | **마감 완료** |
+| editor.js 분리 | ✅ 완료 | ⏳ 검증 대기 | 검증 대기 |
+| media.js 생성 | ✅ 완료 | 🔄 미배선 | 미배선 |
 
-**핵심:** 모든 페이지 리팩터링 코드 변경 완료, **브라우저 검증이 남아 있음**
+**핵심:** search/detail 리팩터링 완료, ** бра라우저 검증은 사용자 요청으로 생략됨**
 
 ---
 
@@ -22,8 +22,16 @@
 
 1. **처음 방문:** 이 인덱스 (현재 문서)
 2. **RECENT_REFACTORING.md** - 전체 리팩터링 기록 (必 읽)
-3. **CTO_REPORT_20260418.md** - 스프린트 요약
-4. **COMMON_CODE_CANDIDATES.md** - 다음候选 개선
+3. **UTIL_USAGE_POLICY.md** - 공통 유틸 사용 정책
+4. **COMMON_CODE_CANDIDATES.md** - 다음Candidate 개선
+
+---
+
+## utility 문서
+
+| 문서 | 설명 | 우선순위 | 상태 |
+|------|------|----------|------|
+| [UTIL_USAGE_POLICY.md](./UTIL_USAGE_POLICY.md) | 공통 유틸 사용 정책 | 🟡 권장 | ✅ 완료 |
 
 ---
 
@@ -31,19 +39,19 @@
 
 | 문서 | 설명 | 우선순위 | 상태 |
 |------|------|----------|------|
-| [RECENT_REFACTORING.md](./RECENT_REFACTORING.md) | 전체 리팩터링 기록 | 🔴 필수 | ⏳ 검증 대기 |
+| [RECENT_REFACTORING.md](./RECENT_REFACTORING.md) | 전체 리팩터링 기록 | 🔴 필수 | ✅ 완료 (search/detail 마감) |
 | [API_CONTRACT.md](./API_CONTRACT.md) | API 응답 계약 (flat camelCase) | 🔴 필수 | ✅ 완료 |
 | [CTO_REPORT_20260418.md](./CTO_REPORT_20260418.md) | 스프린트 A+B+C 요약 | 🟡 권장 | ✅ 완료 |
 | [COMMON_CODE_CANDIDATES.md](./COMMON_CODE_CANDIDATES.md) | 공통화 후보 | 🟡 권장 | 🔄 미배선 |
-| [MANUAL_TEST_CHECKLIST.md](./MANUAL_TEST_CHECKLIST.md) | 테스트 체크리스트 | 🟡 권장 | ⏳ 검증 대기 |
+| [UTIL_USAGE_POLICY.md](./UTIL_USAGE_POLICY.md) | 공통 유틸 사용 정책 | 🟡 권장 | ✅ 완료 |
 
-### 검증 대기 상태 (중요)
+### 검증 상태
 
-| 페이지 | 검증 필요 | 우선순위 |
-|--------|----------|----------|
-| **search.js** | ⏳ **검증 대기** | 高 |
-| **editor.js** | ⏳ **검증 대기** | 高 |
-| detail.js | ⏳ 검증 대기 | 低 |
+| 페이지 | 검증 필요 | 우선순위 | 상태 |
+|--------|----------|----------|------|
+| **search.js** | ✅ 사용자 승인으로 생략 | - | **마감 완료** |
+| **detail.js** | ✅ 사용자 승인으로 생략 | - | **마감 완료** |
+| **editor.js** | ⏳ 검증 대기 | 高 | 검증 대기 |
 
 ---
 
