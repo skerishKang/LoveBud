@@ -183,42 +183,38 @@ const startEditor = async () => {
     }
   }
 
-        const treeId = tree.id || tree.data?.id;
+        const treeId = tree.id || null;
 
         // 실제 treeId 기준으로 캐시 키 재계산
         TREE_CACHE_KEY = 'tree_' + (treeId || 'default');
         MEMORIES_CACHE_KEY = 'memories_' + (treeId || 'default');
 
-        // ── API 응답 정규화: snake_case → camelCase, {id, data} → flat 형태로 변환
+        // ── API 응답 정규화: snake_case → camelCase
+        // 백엔드는 flat camelCase 응답을 반환하므로 mem.data 처리 불필요
         // 저장 계약: window.currentTreeMemories는 항상 이 정규화가 적용된 배열
-        // (normalizeMemory를 먼저 정의하고 이후에 사용)
         const normalizeMemory = (mem) => {
             if (!mem) return null;
 
-            const raw = (mem.data && typeof mem.data === 'object')
-                ? { id: mem.id, ...mem.data, ...mem }
-                : mem;
-
             return {
-                id: raw.id,
-                treeId: raw.treeId || raw.tree_id || null,
-                parentId: raw.parentId ?? raw.parent_id ?? null,
-                title: raw.title || '',
-                memo: raw.memo || raw.description || '',
-                quote: raw.quote || '',
-                timestamp: raw.timestamp || '',
-                thumbnail: raw.thumbnail || '',
-                visibility: raw.visibility || 'private',
-                artist: raw.artist || '',
-                source: raw.source || '',
-                sourceUrl: raw.sourceUrl || raw.source_url || '',
-                sourceType: raw.sourceType || raw.source_type || 'youtube',
-                emotionTags: raw.emotionTags || raw.emotion_tags || [],
-                createdAt: raw.createdAt || raw.created_at || null,
-                updatedAt: raw.updatedAt || raw.updated_at || null,
-                delay: raw.delay,
-                x: raw.x,
-                y: raw.y
+                id: mem.id,
+                treeId: mem.treeId || mem.tree_id || null,
+                parentId: mem.parentId ?? mem.parent_id ?? null,
+                title: mem.title || '',
+                memo: mem.memo || mem.description || '',
+                quote: mem.quote || '',
+                timestamp: mem.timestamp || '',
+                thumbnail: mem.thumbnail || '',
+                visibility: mem.visibility || 'private',
+                artist: mem.artist || '',
+                source: mem.source || '',
+                sourceUrl: mem.sourceUrl || mem.source_url || '',
+                sourceType: mem.sourceType || mem.source_type || 'youtube',
+                emotionTags: mem.emotionTags || mem.emotion_tags || [],
+                createdAt: mem.createdAt || mem.created_at || null,
+                updatedAt: mem.updatedAt || mem.updated_at || null,
+                delay: mem.delay,
+                x: mem.x,
+                y: mem.y
             };
         };
 
