@@ -41,6 +41,7 @@
 - [UI_COPY_IMPROVEMENT_REPORT.md](./reports/UI_COPY_IMPROVEMENT_REPORT.md) - UI 카피 개선 보고서
 - [UX-Improvement.md](./reports/UX-Improvement.md) - UX 개선안
 - [DOCS_REORG_PLAN.md](./reports/DOCS_REORG_PLAN.md) - 문서 재구성 계획 *(루트에서 이동)*
+- [RELEASE_NOTE_20260410_AI_AND_DB.md](./reports/RELEASE_NOTE_20260410_AI_AND_DB.md) - 2026-04-10 AI/DB 마이그레이션 릴리스 노트 *(ops에서 이동)*
 - [notebookLM_design.txt](./reports/notebookLM_design.txt) - NotebookLM 디자인 분석 *(루트에서 이동)*
 
 ## plans 문서군
@@ -87,7 +88,6 @@
 - [OPERATIONS.md](./ops/OPERATIONS.md) - 운영 가이드
 - [PR_CHECKLIST.md](./ops/PR_CHECKLIST.md) - PR 체크리스트
 - [QA_CREDENTIALS.txt](./ops/QA_CREDENTIALS.txt) - QA 테스트 계정
-- [RELEASE_NOTE_20260410_AI_AND_DB.md](./ops/RELEASE_NOTE_20260410_AI_AND_DB.md) - 2026-04-10 릴리스 노트
 - [RUNBOOK.md](./ops/RUNBOOK.md) - 런북 (장애 대응)
 - [backend.md](./ops/backend.md) - Netlify Functions 백엔드 개요 *(루트에서 이동)*
 - [git_tutorial.md](./ops/git_tutorial.md) - Git 튜토리얼 *(루트에서 이동)*

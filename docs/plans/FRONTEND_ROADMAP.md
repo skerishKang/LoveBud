@@ -1,4 +1,4 @@
-# Lovetree Frontend Baseline
+# Lovetree Frontend Roadmap
 
 ## 1. 개요 (Baseline Context)
 
