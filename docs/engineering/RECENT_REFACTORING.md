@@ -194,6 +194,14 @@ memoryTitle.textContent = memory.title || '기억의 순간';
 | `path.js` 신규 | 경로 유틸 생성 | ✅ 완료 |
 | `search.js` | `path.js` 시범 적용 | ✅ 완료 |
 
+### 4.1.2 스프린트 C 완료 (2026-04-18)
+
+| 커밋 | 작업 | 결과 |
+|------|------|------|
+| `media.js` 신규 | YouTube 처리 유틸 생성 | ✅ 완료 |
+| `media.js` 함수 | extractYouTubeId, getEmbedUrl, getThumbnailUrl, validateSourceUrl | ✅ 완료 |
+| `editor.js` 적용 | 보류 (파일 복잡성) | ⏳ 보류 |
+
 ### 4.2 단기 과제 (다음 스프린트)
 
 | 우선순위 | 작업 | 이유 | 상태 |
