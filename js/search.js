@@ -1,6 +1,10 @@
 document.addEventListener('DOMContentLoaded', async () => {
-    // ── 경로 유틸 ──
+    // ── 경로 유틸 (공통 유틸 사용, fallback 유지) ──
     const getBasePath = () => {
+        if (window.LoveBudPath?.getBasePath) {
+            return window.LoveBudPath.getBasePath();
+        }
+        // fallback: 기존 로직
         var path = window.location.pathname;
         return path.indexOf('/pages/') !== -1 ? '' : 'pages/';
     };
@@ -69,8 +73,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             const mems = grouped[tree.id] || [];
             const sortedMems = mems.sort((a, b) => new Date(a.timestamp || a.createdAt || 0) - new Date(b.timestamp || b.createdAt || 0));
 
-            // 대표 감정 태그 수집 (중복 제거, 최대 3개)
-            const allTags = sortedMems.flatMap(m => (m.emotion_tags || m.emotionTags || [])).filter(Boolean);
+            // 대표 감정 태그 수집 (normalizeEmotionTags 사용, 최대 3개)
+            const allTags = sortedMems.flatMap(m => {
+                const normalized = window.LoveBudNormalize?.normalizeMemory(m);
+                return window.LoveBudNormalize?.normalizeEmotionTags(normalized?.emotionTags) || [];
+            });
             const uniqueTags = [...new Set(allTags)].slice(0, 3);
 
             // 시간 범위 계산

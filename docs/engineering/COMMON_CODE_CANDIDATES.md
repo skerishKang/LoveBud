@@ -1,7 +1,7 @@
 # LoveBud 공통화 후보 목록
 
-> **버전:** 1.0  
-> **갱신:** 2026-04-18  
+> **버전:** 1.1  
+> **갱신:** 2026-04-18 (스프린트 A 완료)  
 > **목적:** 다음 리팩터링 대상 후보 발굴
 
 ---
@@ -38,8 +38,8 @@ window.LoveBudNormalize.normalizeTree(tree)
 ```
 
 **적용 대상:**
-- [ ] `js/search.js`
-- [ ] `js/my-trees.js`
+- [x] `js/search.js` (normalizeEmotionTags 사용)
+- [x] `js/my-trees.js` (normalizeTree 사용)
 
 ---
 
@@ -173,14 +173,14 @@ window.LoveBudUI = {
 
 ## 공통화 가치 순위
 
-| 순위 | 패턴 | 영향 파일 수 | 난이도 | 예상 효과 |
-|------|------|-------------|--------|----------|
-| 1 | Tree normalize | 4 | 하 | 데이터 일관성 |
-| 2 | Toast/Notification | 2 | 하 | 코드량 감소 |
-| 3 | basePath 처리 | 3 | 하 | 유지보수성 |
-| 4 | Date formatting | 3 | 중 | UX 일관성 |
-| 5 | sourceUrl 처리 | 3 | 중 | 미디어 처리 표준화 |
-| 6 | sourceContext | 2 | 중 | 네비게이션 일관성 |
+| 순위 | 패턴 | 상태 | 영향 파일 수 | 난이도 | 예상 효과 |
+|------|------|------|-------------|--------|----------|
+| 1 | Tree normalize | ✅ 완료 | 4 | 하 | 데이터 일관성 |
+| 2 | Toast/Notification | ✅ 완료 | 2 | 하 | 코드량 감소 |
+| 3 | basePath 처리 | 🔄 시범 적용 | 3 | 하 | 유지보수성 |
+| 4 | Date formatting | ⏳ 보류 | 3 | 중 | UX 일관성 |
+| 5 | sourceUrl 처리 | ⏳ 보류 | 3 | 중 | 미디어 처리 표준화 |
+| 6 | sourceContext | ⏳ 보류 | 2 | 중 | 네비게이션 일관성 |
 
 ---
 
