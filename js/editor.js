@@ -41,27 +41,14 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // ── 인증 가드: onAuthReady 콜백 기반 ──
-    // ── 사용자 알림용 토스트 유틸리티 ──
+    // ── 사용자 알림용 토스트 유틸리티 (공통 UI 사용) ──
     const showToast = (message, type = 'info') => {
-        const existing = document.getElementById('editorToast');
-        if (existing) existing.remove();
-        const toast = document.createElement('div');
-        toast.id = 'editorToast';
-        toast.style.cssText = `
-            position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
-            background: ${type === 'error' ? '#c62828' : type === 'warn' ? '#ef6c00' : '#2e7d32'};
-            color: white; padding: 12px 24px; border-radius: 8px;
-            font-size: 14px; font-weight: 500; z-index: 9999;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            animation: fadeInUp 0.3s ease;
-        `;
-        toast.textContent = message;
-        document.body.appendChild(toast);
-        setTimeout(() => {
-            toast.style.opacity = '0';
-            toast.style.transition = 'opacity 0.3s';
-            setTimeout(() => toast.remove(), 300);
-        }, 3000);
+        if (window.LoveBudUI?.showToast) {
+            window.LoveBudUI.showToast(message, type, 3000);
+        } else {
+            // fallback: 간단한 console 로그
+            console.log(`[Toast ${type}] ${message}`);
+        }
     };
 
 const startEditor = async () => {

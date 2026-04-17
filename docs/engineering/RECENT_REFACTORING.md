@@ -181,6 +181,19 @@ memoryTitle.textContent = memory.title || '기억의 순간';
 | detail.js | 안정화 완료 | 추가 작업 불필요 |
 | normalize 공통화 | 완료 | 유지 |
 
+### 4.1.1 스프린트 A 완료 (2026-04-18)
+
+| 커밋 | 작업 | 결과 |
+|------|------|------|
+| `normalize.js` 확장 | `normalizeTree`, `normalizeTreeList`, `normalizeEmotionTags` 추가 | ✅ 완료 |
+| `search.js` | `normalizeEmotionTags` 적용 | ✅ 완료 |
+| `my-trees.js` | `normalizeTree` 적용 | ✅ 완료 |
+| `ui.js` 신규 | Toast 공통화 | ✅ 완료 |
+| `editor.js` | Toast 공통 유틸 사용 | ✅ 완료 |
+| `my-trees.js` | Toast 공통 유틸 사용 | ✅ 완료 |
+| `path.js` 신규 | 경로 유틸 생성 | ✅ 완료 |
+| `search.js` | `path.js` 시범 적용 | ✅ 완료 |
+
 ### 4.2 단기 과제 (다음 스프린트)
 
 | 우선순위 | 작업 | 이유 |

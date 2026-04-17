@@ -11,22 +11,14 @@
  */
 
 (function() {
-  var TOAST_DURATION = 3000;
-
-  // ── Toast utility ─────────────────────────────────────────────────────────
+  // ── Toast utility (공통 UI 사용) ──────────────────────────────────────────
   function showToast(message, type) {
-    var existing = document.getElementById('myTreesToast');
-    if (existing) existing.remove();
-    var toast = document.createElement('div');
-    toast.id = 'myTreesToast';
-    toast.className = 'toast' + (type === 'error' ? ' error' : '');
-    toast.textContent = message;
-    document.body.appendChild(toast);
-    setTimeout(function() {
-      toast.style.opacity = '0';
-      toast.style.transition = 'opacity 0.3s';
-      setTimeout(function() { toast.remove(); }, 300);
-    }, TOAST_DURATION);
+    if (window.LoveBudUI?.showToast) {
+      window.LoveBudUI.showToast(message, type, 3000);
+    } else {
+      // fallback: 공통 유틸 로드 실패 시 기본 alert
+      console.log(`[Toast ${type}] ${message}`);
+    }
   }
 
   // ── Mini tree SVG for card thumbnails ───────────────────────────────────
@@ -81,18 +73,26 @@
 
   function buildTreeCard(tree) {
     var i18n = window.t || function(k) { return k; };
+
+    // Tree 정규화 (공통 유틸 사용)
+    var normalizedTree = window.LoveBudNormalize?.normalizeTree(tree) || {
+      id: tree?.id,
+      title: tree?.title || '나의 러브트리',
+      visibility: tree?.visibility || 'private',
+      updatedAt: tree?.updatedAt || tree?.createdAt || null
+    };
+
     var a = document.createElement('a');
-    a.href = 'editor.html?treeId=' + encodeURIComponent(tree.id);
+    a.href = 'editor.html?treeId=' + encodeURIComponent(normalizedTree.id);
     a.className = 'tree-card';
 
     // Visibility badge
-    var visClass = tree.visibility === 'public' ? 'public' : 'private';
-    var visLabel = tree.visibility === 'public' ? i18n('visibility_public') : i18n('visibility_private');
+    var visClass = normalizedTree.visibility === 'public' ? 'public' : 'private';
+    var visLabel = normalizedTree.visibility === 'public' ? i18n('visibility_public') : i18n('visibility_private');
 
-    // Title fallback (flat camelCase 표준)
-    var title = tree.title || '나의 러브트리';
-    // Updated date (flat camelCase 표준)
-    var date = tree.updatedAt || tree.createdAt || '';
+    // Title 및 날짜 (정규화된 값 사용)
+    var title = normalizedTree.title;
+    var date = normalizedTree.updatedAt || '';
     if (date) {
       date = date.slice(0, 10).replace(/-/g, '.');
     }
@@ -207,8 +207,8 @@
         console.log('[my-trees] Cache cleared after new tree creation');
       }
       
-      // Redirect to editor with new tree
-      var treeId = newTree.id || newTree.data?.id;
+      // Redirect to editor with new tree (flat camelCase 표준)
+      var treeId = newTree?.id;
       if (treeId) {
         window.location.href = 'editor.html?treeId=' + encodeURIComponent(treeId);
       } else {
