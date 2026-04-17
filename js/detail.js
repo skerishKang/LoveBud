@@ -253,39 +253,41 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // 비디오 로드 (sourceUrl은 이미 embed URL)
-    if (memory.sourceUrl) {
-        videoMain.innerHTML = `
-            <iframe width="100%" height="100%"
-                src="${memory.sourceUrl}?autoplay=0"
-                title="${memory.title}" frameborder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowfullscreen></iframe>
-        `;
-    } else {
-        const i18n = window.t || ((k) => k);
-        videoMain.innerHTML = `
-            <div style="width:100%;height:100%;background:var(--surface-container);display:flex;align-items:center;justify-content:center;color:var(--on-surface-variant);">
-                ${i18n('no_video')}
-            </div>
-        `;
+    if (videoMain) {
+        if (memory.sourceUrl) {
+            videoMain.innerHTML = `
+                <iframe width="100%" height="100%"
+                    src="${memory.sourceUrl}?autoplay=0"
+                    title="${memory.title}" frameborder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowfullscreen></iframe>
+            `;
+        } else {
+            const i18n = window.t || ((k) => k);
+            videoMain.innerHTML = `
+                <div style="width:100%;height:100%;background:var(--surface-container);display:flex;align-items:center;justify-content:center;color:var(--on-surface-variant);">
+                    ${i18n('no_video')}
+                </div>
+            `;
+        }
     }
 
-    // 메타데이터 채우기
-    memoryTitle.textContent = memory.title;
-    detailArtist.textContent = memory.artist || ((window.t || ((k) => k))('unknown_artist'));
-    detailDate.textContent = memory.timestamp + (memory.source ? ' · ' + memory.source : '');
-    if (detailSubtitle) detailSubtitle.textContent = '기록 — ' + memory.timestamp;
+    // 메타데이터 채우기 (null-safe)
+    if (memoryTitle) memoryTitle.textContent = memory.title || '';
+    if (detailArtist) detailArtist.textContent = memory.artist || ((window.t || ((k) => k))('unknown_artist'));
+    if (detailDate) detailDate.textContent = (memory.timestamp || '') + (memory.source ? ' · ' + memory.source : '');
+    if (detailSubtitle) detailSubtitle.textContent = '기록 — ' + (memory.timestamp || '');
 
     // 감정 태그
-    if (memory.emotionTags && memory.emotionTags.length > 0) {
+    if (tagsContainer && memory.emotionTags && memory.emotionTags.length > 0) {
         tagsContainer.innerHTML = memory.emotionTags.map(tag =>
             `<span class="tag-chip active">${tag}</span>`
         ).join('');
     }
 
-    // 일기 내용
-    diaryQuote.textContent = `"${memory.quote || memory.memo}"`;
-    if (memory.memo) {
+    // 일기 내용 (null-safe)
+    if (diaryQuote) diaryQuote.textContent = `"${memory.quote || memory.memo || ''}"`;
+    if (diaryContent && memory.memo) {
         diaryContent.textContent = memory.memo;
     }
 
