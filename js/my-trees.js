@@ -249,20 +249,14 @@
         }
       } catch (e) {}
       
-      if (cachedUser && cachedUser.uid) {
-        // Has confirmed auth cache - allow access, will revalidate in background
-        console.log('[my-trees] Using cached auth, proceeding...');
-      } else {
-        // No cache - must redirect to login
+      if (!cachedUser || !cachedUser.uid) {
         window.location.href = 'login.html?redirect=my-trees.html';
         return;
       }
+      // cached auth 있으면 아래로 진행
     }
 
-    // Render loading state
     renderLoadingSkeletons();
-
-    // Load trees
     loadTrees();
   }
 

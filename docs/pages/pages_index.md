@@ -6,6 +6,7 @@
 
 | 페이지 | 파일 | 설명 |
 |--------|------|------|
+| **home** | [home.md](home.md) | 랜딩, 첫 인상, 로그인/탐색 진입점 |
 | **my-trees** | [my-trees.md](my-trees.md) | 내 비공개 트리 목록, 생성, 선택 |
 | **editor** | [editor.md](editor.md) | 트리 시각화, 메모리 추가/편집 |
 | **search** | [search.md](search.md) | 공개 트리 탐색, 필터, 검색 |
