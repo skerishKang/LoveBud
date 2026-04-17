@@ -252,30 +252,39 @@ pwsh -NoProfile -Command whoami
 - 컴2에서 Codex 를 완전히 종료하고 새 PowerShell 창에서 재실행
 - 이후에도 동일 증상이 남으면 `D:\cli\pwsh.bat` 이름 변경 또는 제거 검토
 
-## 7. 빠른 체크리스트
+## 8. 2026-04-17 WSL / Google Drive 특이점 (AGENTS 참고용)
 
-컴2에서 원격/WSL/Codex 이상이 다시 생기면 아래 순서로 본다.
+이 메모는 2026-04-17에 발생한 WSL/Google Drive 경로 변환 이슈 및 적용된 조치이다.
 
-1. PowerShell:
+### 증상
 
-```powershell
-Get-Service sshd
-ipconfig
-where.exe pwsh
-```
+1. PowerShell 현재 위치가 `G:\다른 컴퓨터\내 컴퓨터\LoveBud` 일 때 `wsl` 실행 시 `Failed to translate ...` 발생
+2. 같은 시점에 `/mnt/g` 자동 마운트가 비어 보여 WSL 내부에서 Google Drive 경로 접근이 불안정했음
 
-2. WSL:
+### 판단
 
-```bash
-ls /mnt
-mount | grep '/mnt/g'
-ls "/mnt/g/다른 컴퓨터/내 컴퓨터/LoveBud"
-```
+핵심 장애는 `G:` Google Drive 경로의 WSL cwd 자동 변환 실패와 `/mnt/g` 자동 마운트 불안정.
 
-3. WSL 경로 진입 후:
+### 적용한 조치
 
-```bash
-cd "/mnt/g/다른 컴퓨터/내 컴퓨터/LoveBud"
-codex --help
-codex
-```
+- PowerShell 프로필 `C:\Users\user\Documents\PowerShell\Microsoft.PowerShell_profile.ps1`
+- Windows PowerShell 프로필 `C:\Users\user\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1`
+- 위 두 프로필에 `wsl` 래퍼 함수 추가
+  - 동작: 현재 경로가 `G:\*` 이고 `--cd` 인자가 없으면 `wsl.exe --cd ~` 로 실행해 cwd 변환 실패를 회피
+- WSL 내부 `/etc/profile.d/99-remount-gdrive.sh` 추가
+  - 동작: interactive root shell 진입 시 `/mnt/g` 가 비어 있으면 `mount -t drvfs G: /mnt/g` 로 재마운트 시도
+
+### 현재 사용법
+
+- PowerShell에서 `G:\다른 컴퓨터\내 컴퓨터\LoveBud` 에서 그대로 `wsl` 실행 가능
+- WSL 진입 후 프로젝트로 이동: `cd "/mnt/g/다른 컴퓨터/내 컴퓨터/LoveBud"`
+- `/mnt/g` 가 비어 보이면 새 interactive shell 한 번 더 열어 재마운트 상태 확인
+
+### 남은 메모
+
+- `Failed to start the systemd user session for 'root'` 경고는 관찰되었지만, 당시 확인 기준 `systemd` 자체는 올라와 있었고 핵심 작업 차단 원인은 아니었음
+
+## 참조
+
+- `docs/ops/PATHS_AND_SHELLS.md` — 경로 및 셸 규칙
+- `docs/ops/REMOTE_ACCESS_AND_WSL.md` — 원격 접근 및 WSL 설정
