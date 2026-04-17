@@ -170,6 +170,36 @@ js/utils/* (공통 유틸)
 | **메모리 Form** | editor.js 내장 | `editor-form.js` 분리 고려 (복잡한 폼 검증 시) |
 | **미디어 처리** | ✅ media.js 연결 완료 | `detail.js`, `search.js`에도 확대 적용 검토 |
 
+### Canvas/SVG 모듈 분리 상태 (2026-04-18 분석 완료)
+
+**현재 구조:**
+- `editor.js`: 메인 오케스트레이션 (SVG + DOM 혼합 렌더링)
+- `editor-root-helpers.js`: ✅ 분리 완료 (Root memory 식별)
+- `editor-canvas.js`: ⚠️ 구조 불일치로 보류
+
+**구조 차이 분석:**
+| 항목 | editor.js | editor-canvas.js | 충돌 수준 |
+|------|-----------|-------------------|-----------|
+| `drawNode` | `drawNode(mem)` - 1개 파라미터 | `drawNode(canvas, mem, calcPosition, onNodeClick)` - 4개 | 🔴 높음 |
+| `initCanvas` | 클로저 기반, 내부 상태 직접 접근 | 완전 외부 주입 (config 기반) | 🔴 높음 |
+| 상태/콜백 | `selectNode`, `createInitialMemory` 직접 참조 | 콜백 주입 방식 | 🟡 중간 |
+| SVG 접근 | `svg` 클로저 변수 | `config.svg`로 주입 | 🟢 낮음 |
+
+**판단:**
+- ❌ 지금 연결 금지: `initCanvas` 구조가 완전히 달라 단순 대체 불가
+- ✅ 부분 분리 가능: `drawRoot()`, `drawBranch()`만 SVG 유틸로 분리
+- 🔄 `editor-canvas.js` → `editor-svg.js`로 재설계 후 진행 권장
+
+**추천 방향 (A):**
+- `drawRoot()`, `drawBranch()`만 SVG helper 모듈로 분리
+- `drawNode()`는 DOM 기반으로 editor.js에 유지
+- 점진적 개선으로 MVP 안정성 보장
+
+**다음 스프린트 계획:**
+1. `editor-svg.js` 재설계 (SVG 유틸로) - 1시간
+2. `editor.js`에서 SVG 함수만 교체 - 1시간  
+3. 검증 및 문서화 - 30분
+
 ### 다음 개선 포인트
 
 1. **노드 드래그/편집 기능** - 캔버스 렌더링 모듈 분리 필요

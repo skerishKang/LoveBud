@@ -278,6 +278,38 @@ if (window.LoveBudMedia?.extractYouTubeId) {
 | YouTube 썸네일 404 | search.html | 네트워크, 리팩터링 전부터 존재 |
 | API 500/401 | editor.html | Netlify Functions 서버 문제, JS 무관 |
 
+### 4.1.6 editor-canvas.js 구조 분석 및 결정 (2026-04-18)
+
+**배경:**
+- `js/editor/editor-canvas.js` 파일은 생성되어 있으나, `js/editor.js`와 구조가 달라 단순 연결 불가
+
+**구조 차이 분석:**
+
+| 항목 | editor.js | editor-canvas.js | 충돌 수준 |
+|------|-----------|-------------------|-----------|
+| `drawNode` | `drawNode(mem)` - 1개 파라미터 | `drawNode(canvas, mem, calcPosition, onNodeClick)` - 4개 | 🔴 높음 |
+| `initCanvas` | 클로저 기반, 내부 상태 직접 접근 | 완전 외부 주입 (config 기반) | 🔴 높음 |
+| 상태/콜백 | `selectNode`, `createInitialMemory` 직접 참조 | 콜백 주입 방식 | 🟡 중간 |
+| SVG 접근 | `svg` 클로저 변수 | `config.svg`로 주입 | 🟢 낮음 |
+
+**판단:**
+- ❌ **지금 연결 금지**: `initCanvas` 구조가 완전히 달라 단순 대체 불가
+- ✅ **부분 분리 가능**: `drawRoot()`, `drawBranch()`만 SVG 유틸로 분리
+- 🔄 **재설계 권장**: `editor-canvas.js` → `editor-svg.js`로 재설계 후 진행
+
+**추천 방향:**
+```
+A. SVG 기반 유지 + editor-svg.js로 재설계
+   - drawRoot(), drawBranch()만 SVG helper 모듈로 분리
+   - drawNode()는 DOM 기반으로 editor.js에 유지
+   - 점진적 개선으로 MVP 안정성 보장
+```
+
+**다음 스프린트 계획:**
+1. `editor-svg.js` 재설계 (SVG 유틸로) - 1시간
+2. `editor.js`에서 SVG 함수만 교체 - 1시간  
+3. 검증 및 문서화 - 30분
+
 ### 4.2 단기 과제 (다음 스프린트)
 
 | 우선순위 | 작업 | 이유 | 상태 |
