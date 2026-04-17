@@ -5,6 +5,7 @@
  */
 const { ok, httpError, handleError } = require('./_lib/http');
 const { queryMemories, validateLimit } = require('./_lib/doc-store');
+const { serializeMemoryList } = require('./_lib/serializers');
 
 exports.handler = async (event) => {
   const requestOrigin = event.headers?.origin || event.headers?.Origin || '';
@@ -26,7 +27,7 @@ exports.handler = async (event) => {
       limit,
     });
 
-    return ok(memories, { 'Access-Control-Allow-Origin': '*' });
+    return ok(serializeMemoryList(memories), { 'Access-Control-Allow-Origin': '*' });
   } catch (error) {
     return handleError('community-memories', error, requestOrigin);
   }
