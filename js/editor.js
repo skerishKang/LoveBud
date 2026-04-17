@@ -912,49 +912,14 @@ if (!createdMemory || typeof createdMemory !== 'object') {
     };
 
     // ── 인증 가드: my-trees.js와 동일한 패턴 ──
-    // 단순화된 인증 체크: user 없으면 cache 확인 후 redirect, 있으면 진행
+    // user 없으면 cache 확인 후 redirect, 있으면 startEditor 진행
     var editorStarted = false;
     
     function tryStartEditor(user) {
         if (editorStarted) return;
         
-        // Check for confirmed auth cache
-        var cachedUser = null;
-        try {
-            if (localStorage.getItem('lovebud_auth_confirmed') === 'true') {
-                var raw = localStorage.getItem('lovebud_auth_cache');
-                if (raw && raw !== 'null') {
-                    cachedUser = JSON.parse(raw);
-                }
-            }
-        } catch (e) {}
-        
-        // 인증 실패: user 없고 cachedUser도 없으면 redirect
-        if (!user && (!cachedUser || !cachedUser.uid)) {
-            var basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
-            window.location.href = basePath + 'login.html?redirect=' + basePath + 'editor.html';
-            return;
-        }
-        
-        // 인증 성공 (또는 캐시된 인증 있음)
-        editorStarted = true;
-        console.log('[editor] Auth confirmed, starting editor');
-        startEditor();
-    }
-    
-    // 새로운 배열 콜백 패턴 사용
-    if (typeof window.registerOnAuthReady === 'function') {
-        window.registerOnAuthReady(tryStartEditor);
-    } else {
-        // 폴백: 구식 단일 콜백
-        window.onAuthReady = tryStartEditor;
-    }
-    
-    // auth.js timeout 또는 Firebase unavailable 시에도 cached auth가 있으면 진입 허용
-    window.addEventListener('load', function() {
-        setTimeout(function() {
-            if (editorStarted) return;
-            
+        if (!user) {
+            // No Firebase user - check confirmed auth cache before redirect
             var cachedUser = null;
             try {
                 if (localStorage.getItem('lovebud_auth_confirmed') === 'true') {
@@ -965,23 +930,23 @@ if (!createdMemory || typeof createdMemory !== 'object') {
                 }
             } catch (e) {}
             
-            var isFirebaseReady = typeof firebase !== 'undefined' && 
-                             firebase.auth && 
-                             firebase.apps && 
-                             firebase.apps.length > 0;
-            
-            if (!isFirebaseReady && !cachedUser) {
-                // Firebase 없고 cached auth도 없음 → login으로 redirect
+            if (!cachedUser || !cachedUser.uid) {
                 var basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
                 window.location.href = basePath + 'login.html?redirect=' + basePath + 'editor.html';
                 return;
             }
-            
-            // Firebase 없지만 cached auth 있음 OR Firebase 있음 → boot with cache
-            if (cachedUser) {
-                console.log('[editor] Using cached auth after timeout');
-            }
-            tryStartEditor(cachedUser);
-        }, 5500);
-    }, { once: true });
+            // cached auth 있으면 아래로 진행
+        }
+        
+        editorStarted = true;
+        console.log('[editor] Auth confirmed, starting editor');
+        startEditor();
+    }
+    
+    // 새로운 배열 콜백 패턴 사용 (폴백 포함)
+    if (typeof window.registerOnAuthReady === 'function') {
+        window.registerOnAuthReady(tryStartEditor);
+    } else {
+        window.onAuthReady = tryStartEditor;
+    }
 });
