@@ -73,7 +73,7 @@ UI/UX 디자인 및 비주얼 프롬프트는 `docs/design/` 아래에 정리됩
 
 백엔드 관련 문서는 `docs/backend/` 아래에 정리됩니다.
 
-- **index**: [README.md](./backend/README.md) - 백엔드 문서군 안내
+- **index**: [backend_index.md](./backend/backend_index.md) - 백엔드 문서군 안내
 - [backend.md](./backend/backend.md) - Netlify Functions 백엔드 개요 *(루트에서 이동)*
 - [DATA_MODEL_DRAFT.md](./backend/DATA_MODEL_DRAFT.md) - 데이터 모델 초안 *(product에서 이동)*
 

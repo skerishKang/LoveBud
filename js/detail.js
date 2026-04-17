@@ -44,28 +44,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // 2. API로 최신 memory 가져오기
     // 백엔드는 flat camelCase 응답을 반환하므로 별도의 {id, data} 처리 불필요
+    // 공통 normalize 유틸 사용 (window.LoveBudNormalize.normalizeMemory)
+    const normalize = window.LoveBudNormalize?.normalizeMemory || ((m) => m);
+
     try {
         if (window.apiClient && window.apiClient.getMemory) {
             const apiMemory = await window.apiClient.getMemory(memoryId);
             if (apiMemory) {
-                const normalizedMemory = {
-                    id: apiMemory.id,
-                    title: apiMemory.title || '',
-                    memo: apiMemory.memo || apiMemory.description || '',
-                    quote: apiMemory.quote || '',
-                    artist: apiMemory.artist || '',
-                    source: apiMemory.source || '',
-                    sourceUrl: apiMemory.sourceUrl || apiMemory.source_url || '',
-                    sourceType: apiMemory.sourceType || apiMemory.source_type || 'youtube',
-                    thumbnail: apiMemory.thumbnail || '',
-                    emotionTags: apiMemory.emotionTags || apiMemory.emotion_tags || [],
-                    timestamp: apiMemory.timestamp || '',
-                    visibility: apiMemory.visibility || 'public',
-                    createdAt: apiMemory.createdAt || apiMemory.created_at || null,
-                    updatedAt: apiMemory.updatedAt || apiMemory.updated_at || null,
-                    treeId: apiMemory.treeId || apiMemory.tree_id || null,
-                    parentId: apiMemory.parentId ?? apiMemory.parent_id ?? null
-                };
+                const normalizedMemory = normalize(apiMemory);
 
                 if (cache) {
                     cache.set(MEMORY_CACHE_KEY, normalizedMemory, 3 * 60 * 1000);
@@ -80,9 +66,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     } catch (e) {
         console.warn('[detail] API getMemory failed:', e.message);
-        // 캐시가 없으면 mock fallback
+        // 캐시가 없으면 mock fallback (normalize 적용)
         if (!memory && typeof getMemory === 'function') {
-            memory = getMemory(memoryId);
+            memory = normalize(getMemory(memoryId));
         }
     }
     if (!memory) {
