@@ -16,24 +16,26 @@
 
 ---
 
-## 현재 구현 상태
+## 현재 구현 상태 (2026-04-18 기준)
 
-### 주요 UI 섹션
-- **Sidebar (좌측)**: 도구 그룹 - 현재 상태, 추가 버튼
-- **Canvas Area (중앙)**: SVG 트리 렌더링 영역
-- **Detail Panel (우측)**: 선택된 순간의 상세 정보 및 향후 수정/삭제 진입점
+### 최근 수정사항 (Codex + Kimi 협업)
+| 날짜 | 수정사항 | 파일 |
+|------|----------|------|
+| 2026-04-18 | 인증 콜백 배열화 (`window.onAuthReady` → `registerOnAuthReady`) | auth.js, my-trees.js, editor.js |
+| 2026-04-18 | editor.js 인증 패턴 단순화 (my-trees.js와 통일) | editor.js |
+| 2026-04-18 | 에디터 저장 PUT 핸들러 추가 (memory-detail.js) | memory-detail.js |
+| 2026-04-18 | deleteMemory row 스코프 버그 + JSONB 최적화 | doc-store.js |
+| 2026-04-18 | 데이터 평탄화: detail.js, search.js | detail.js, search.js |
+| 2026-04-18 | root 모델 안정화 (findRootMemory 개선, parentId null 금지) | editor.js |
+| 2026-04-18 | search.js basePath 버그 + categorize() 구현 | search.js |
+| 2026-04-18 | editor.html에 cache-utils.js 추가 | editor.html |
 
-### 현재 파일 구조
-- `pages/editor.html` (118줄)
-- `js/editor.js` (~850줄)
-- `css/editor.css`
-
-### 주요 기능
-- SVG 기반 트리 노드 렌더링
-- 나뭇가지 브랜시 그리기
-- 순간 추가 폼 (YouTube URL, 제목, 메모)
-- 상세 패널 (썸네일, 날짜, 태그, 감정 메모)
-- 로컬 폴백 모드 (API 실패 시)
+### 주요 기술적 개선
+- **인증 시스템**: 여러 페이지 동시 인증 콜백 가능, 로그인/로그아웃 안정성 향상
+- **API 계약**: editor 저장/삭제 기능 서버 응답과 일치 (PUT 200, DELETE 200)
+- **데이터 모델**: API 응답 `{id, data:{...}}` → 평탄화 `{id, title, ...}` 변환
+- **트리 구조**: root 노드 식별 안정화 (createdAt 기준 oldest 선택), parentId null 자식 제거
+- **캐시**: editor 페이지에 LoveBudCache 통합, 빠른 첫 로드
 
 ---
 

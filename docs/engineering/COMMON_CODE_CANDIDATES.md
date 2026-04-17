@@ -43,7 +43,7 @@ window.LoveBudNormalize.normalizeTree(tree)
 
 ---
 
-### 2. source/sourceUrl/sourceType 처리 중복 ⭐⭐⭐⭐
+### 2. source/sourceUrl/sourceType 처리 중복 ⭐⭐⭐⭐ ✅ 완료
 
 **위치:**
 - `js/search.js:398` - `firstMem.sourceUrl`
@@ -54,15 +54,21 @@ window.LoveBudNormalize.normalizeTree(tree)
 **문제:**
 sourceUrl 유효성 검사, embed URL 변환 로직이 중복될 가능성.
 
-**제안:**
+**해결:**
 ```javascript
-// js/utils/media.js 신규
+// js/utils/media.js 신규 완료 (2026-04-18)
 window.LoveBudMedia = {
+  extractYouTubeId(url),
   getEmbedUrl(sourceUrl, type = 'youtube'),
-  validateSourceUrl(url),
-  getThumbnailUrl(sourceUrl, type)
+  getThumbnailUrl(sourceUrl, type, quality),
+  validateSourceUrl(url, type),
+  detectSourceType(url)
 };
 ```
+
+**적용 상태:**
+- [x] media.js 생성 완료
+- [ ] editor.js 적용 보류 (파일 복잡성)
 
 ---
 
@@ -179,7 +185,7 @@ window.LoveBudUI = {
 | 2 | Toast/Notification | ✅ 완료 | 2 | 하 | 코드량 감소 |
 | 3 | basePath 처리 | 🔄 시범 적용 | 3 | 하 | 유지보수성 |
 | 4 | Date formatting | ⏳ 보류 | 3 | 중 | UX 일관성 |
-| 5 | sourceUrl 처리 | ⏳ 보류 | 3 | 중 | 미디어 처리 표준화 |
+| 5 | sourceUrl 처리 | ✅ 완료 (media.js 생성) | 3 | 중 | 미디어 처리 표준화 |
 | 6 | sourceContext | ⏳ 보류 | 2 | 중 | 네비게이션 일관성 |
 
 ---
