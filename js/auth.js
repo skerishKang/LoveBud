@@ -18,6 +18,35 @@ var AUTH_READY_FLAG = '__lovebudAuthReady';
 var AUTH_CACHE_KEY = 'lovebud_auth_cache';
 var AUTH_CONFIRMED_KEY = 'lovebud_auth_confirmed';
 
+// ── Auth Ready Callbacks (배열 패턴) ─────────────────────────────────────────
+// 여러 모듈이 등록해도 덮어쓰기 문제 없음
+window.__onAuthReadyCallbacks = window.__onAuthReadyCallbacks || [];
+
+/**
+ * 인증 준비 후 실행할 콜백 등록
+ * @param {Function} callback - user 객체를 받는 콜백 함수
+ */
+window.registerOnAuthReady = function(callback) {
+  if (typeof callback !== 'function') return;
+  window.__onAuthReadyCallbacks.push(callback);
+  
+  // 이미 인증 준비 완료되었다면 즉시 실행
+  if (window[AUTH_READY_FLAG]) {
+    var user = window.__lastAuthUser || null;
+    try { callback(user); } catch (e) { console.error('[auth] Callback error:', e); }
+  }
+};
+
+/**
+ * 모든 등록된 콜백 실행 (auth.js 내부 사용)
+ */
+function fireAuthReadyCallbacks(user) {
+  window.__lastAuthUser = user;
+  window.__onAuthReadyCallbacks.forEach(function(callback) {
+    try { callback(user); } catch (e) { console.error('[auth] Callback error:', e); }
+  });
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function isInvalidAuthSessionError(error) {
@@ -168,9 +197,8 @@ function initAuth() {
     markAuthReady();
     updateNavUI(user);
 
-    if (typeof window.onAuthReady === 'function') {
-      window.onAuthReady(user);
-    }
+    // 배열 콜백 패턴으로 모든 등록된 콜백 실행
+    fireAuthReadyCallbacks(user);
   });
 
   setupGoogleBtn();
@@ -185,7 +213,10 @@ function initOfflineAuth() {
   // Offline 모드에서도 ready 상태로 전환 후 UI 표시
   // 순서 중요: markAuthReady 먼저, updateNavUI 나중
   markAuthReady();
-  updateNavUI(isLoggedIn ? (cachedUser || { uid: 'offline', email: 'offline@example.com' }) : null);
+  var user = isLoggedIn ? (cachedUser || { uid: 'offline', email: 'offline@example.com' }) : null;
+  updateNavUI(user);
+  // Offline 모드에서도 콜백 실행
+  fireAuthReadyCallbacks(user);
 }
 
 // ── Loading State (prevent flash) ────────────────────────────────────────────
@@ -248,6 +279,9 @@ function getBasePath() {
   var isPagesContext = path.indexOf('/pages/') !== -1;
   return isPagesContext ? '' : 'pages/';
 }
+
+// 전역으로 노출
+window.getBasePath = getBasePath;
 
 function buildLoginButton() {
   var basePath = getBasePath();

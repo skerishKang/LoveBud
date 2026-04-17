@@ -322,9 +322,13 @@
     startMyTrees(user);
   }
 
-  window.onAuthReady = function(user) {
-    bootMyTrees(user);
-  };
+  // 새로운 배열 콜백 패턴 사용 (덮어쓰기 문제 해결)
+  if (typeof window.registerOnAuthReady === 'function') {
+    window.registerOnAuthReady(bootMyTrees);
+  } else {
+    // 폴백: 구식 단일 콜백 (auth.js가 먼저 로드되지 않은 경우)
+    window.onAuthReady = bootMyTrees;
+  }
 
   // auth.js timeout 또는 Firebase unavailable 시에도 confirmed auth cache가 있으면 진입 허용
   // CT: cached auth가 있으면 먼저 페이지를 보고, Firebase 재검증은后台에서 진행
