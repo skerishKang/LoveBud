@@ -57,8 +57,9 @@ exports.handler = async (event) => {
       throw httpError(403, 'Access denied: not your memory');
     }
 
-    // ── PATCH ───────────────────────────────────────────────────────────────
-    if (event.httpMethod === 'PATCH') {
+    // ── PATCH / PUT ─────────────────────────────────────────────────────────
+    // PUT과 PATCH 모두 동일한 update 로직 사용 (JSON API 표준)
+    if (event.httpMethod === 'PATCH' || event.httpMethod === 'PUT') {
       let body;
       try {
         body = JSON.parse(event.body || '{}');
