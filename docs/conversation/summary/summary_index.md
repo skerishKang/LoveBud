@@ -17,7 +17,15 @@
 | 날짜 | 요약 파일명 | 전문 파일명 | 상태 |
 |------|------------|------------|------|
 | 2026-04-17 | [2026-04-17-01-runtime-stabilization_summary.md](2026-04-17-01-runtime-stabilization_summary.md) | [2026-04-17-01-runtime-stabilization.md](../full/2026-04-17-01-runtime-stabilization.md) | ✅ 완료 |
-| 2026-04-16 | [2026-04-16-01-codex-handoff_summary.md](2026-04-16-01-codex-handoff_summary.md) | [2026-04-16-01-codex-handoff.md](../full/2026-04-16-01-codex-handoff.md) | ✅ 완료 |
+| 2026-04-17 | [2026-04-17-02-handoff_summary.md](2026-04-17-02-handoff_summary.md) | [2026-04-17-02-handoff.md](../full/2026-04-17-02-handoff.md) | ✅ 완료 |
+| 2026-04-16 | [2026-04-16-codex-handoff-rules_summary.md](2026-04-16-codex-handoff-rules_summary.md) | [2026-04-16-codex-handoff-rules.md](../full/2026-04-16-codex-handoff-rules.md) | ✅ 완료 |
+| 2026-04-16 | [2026-04-16-01-codex-handoff-record_summary.md](2026-04-16-01-codex-handoff-record_summary.md) | [2026-04-16-01-codex-handoff-record.md](../full/2026-04-16-01-codex-handoff-record.md) | ✅ 완료 |
+| 2026-04-16 | [2026-04-16-03-opencode-db-lock_summary.md](2026-04-16-03-opencode-db-lock_summary.md) | [2026-04-16-03-opencode-db-lock.md](../full/2026-04-16-03-opencode-db-lock.md) | ✅ 완료 |
+| 2026-04-16 | [2026-04-16-04-backend-doc-sync_summary.md](2026-04-16-04-backend-doc-sync_summary.md) | [2026-04-16-04-backend-doc-sync.md](../full/2026-04-16-04-backend-doc-sync.md) | ✅ 완료 |
+| 2026-04-16 | [2026-04-16-05-smoke-qa-guide_summary.md](2026-04-16-05-smoke-qa-guide_summary.md) | [2026-04-16-05-smoke-qa-guide.md](../full/2026-04-16-05-smoke-qa-guide.md) | ✅ 완료 |
+| 2026-04-15 | [2026-04-15-01-search-ui-polish_summary.md](2026-04-15-01-search-ui-polish_summary.md) | [2026-04-15-01-search-ui-polish.md](../full/2026-04-15-01-search-ui-polish.md) | ✅ 완료 |
+| 2026-04-15 | [2026-04-15-02-editor-night-validation_summary.md](2026-04-15-02-editor-night-validation_summary.md) | [2026-04-15-02-editor-night-validation.md](../full/2026-04-15-02-editor-night-validation.md) | ✅ 완료 |
+| 2026-04-07 | [2026-04-07-01-dispatch-parser-fix_summary.md](2026-04-07-01-dispatch-parser-fix_summary.md) | [2026-04-07-01-dispatch-parser-fix.md](../full/2026-04-07-01-dispatch-parser-fix.md) | ✅ 완료 |
 
 ## 추후 추가
 각 세션이 끝날 때마다 요약 파일을 이 폴더에 저장하고, 위 표에 행을 추가하세요.
