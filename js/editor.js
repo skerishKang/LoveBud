@@ -194,27 +194,32 @@ const startEditor = async () => {
         // (normalizeMemory를 먼저 정의하고 이후에 사용)
         const normalizeMemory = (mem) => {
             if (!mem) return null;
-            // snake_case → camelCase
-            const normalized = {
-                treeId: mem.tree_id || mem.treeId,
-                parentId: mem.parent_id || mem.parentId,
-                sourceUrl: mem.source_url || mem.sourceUrl,
-                sourceType: mem.source_type || mem.sourceType,
-                emotionTags: mem.emotion_tags || mem.emotionTags,
-                createdAt: mem.created_at || mem.createdAt
+
+            const raw = (mem.data && typeof mem.data === 'object')
+                ? { id: mem.id, ...mem.data, ...mem }
+                : mem;
+
+            return {
+                id: raw.id,
+                treeId: raw.treeId || raw.tree_id || null,
+                parentId: raw.parentId ?? raw.parent_id ?? null,
+                title: raw.title || '',
+                memo: raw.memo || raw.description || '',
+                quote: raw.quote || '',
+                timestamp: raw.timestamp || '',
+                thumbnail: raw.thumbnail || '',
+                visibility: raw.visibility || 'private',
+                artist: raw.artist || '',
+                source: raw.source || '',
+                sourceUrl: raw.sourceUrl || raw.source_url || '',
+                sourceType: raw.sourceType || raw.source_type || 'youtube',
+                emotionTags: raw.emotionTags || raw.emotion_tags || [],
+                createdAt: raw.createdAt || raw.created_at || null,
+                updatedAt: raw.updatedAt || raw.updated_at || null,
+                delay: raw.delay,
+                x: raw.x,
+                y: raw.y
             };
-            // 공통 필드 복사 (id, title, memo 등)
-            const commonFields = ['id', 'title', 'memo', 'quote', 'timestamp', 'thumbnail', 'visibility', 'artist', 'source', 'delay', 'x', 'y'];
-            commonFields.forEach(field => {
-                if (mem[field] !== undefined) normalized[field] = mem[field];
-            });
-            // {id, data} 형태 풀기 (data 객체의 필드도 병합)
-            if (mem.data && typeof mem.data === 'object') {
-                Object.keys(mem.data).forEach(key => {
-                    if (normalized[key] === undefined) normalized[key] = mem.data[key];
-                });
-            }
-            return normalized;
         };
 
         // ── memories 캐시 우선 로딩 ──
