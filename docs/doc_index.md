@@ -69,6 +69,14 @@ UI/UX 디자인 및 비주얼 프롬프트는 `docs/design/` 아래에 정리됩
 - 하위 폴더: `analysis/`, `guides/`, `plans/`, `identity/`
 - [minimax2.7_draft.txt](./archive/plans/minimax2.7_draft.txt) - Minimax 2.7 초안 *(루트에서 이동)*
 
+## engineering 문서군
+
+기술/엔지니어링 관련 문서는 `docs/engineering/` 아래에 정리됩니다.
+
+- **index**: [engineering_index.md](./engineering/engineering_index.md) - 엔지니어링 문서 인덱스
+- [API_CONTRACT.md](./engineering/API_CONTRACT.md) - API 응답 계약 (flat camelCase 표준)
+- [RECENT_REFACTORING.md](./engineering/RECENT_REFACTORING.md) - 최근 리팩터링 기록 (2026-04)
+
 ## backend 문서군
 
 백엔드 관련 문서는 `docs/backend/` 아래에 정리됩니다.
