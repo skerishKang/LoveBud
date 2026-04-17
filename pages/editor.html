@@ -67,52 +67,91 @@
 
         <aside class="detail-panel" id="detailPanel">
             <div class="panel-header">
-                <h3 class="headline" style="font-size: 1.5rem;">기억 상세</h3>
-                <button class="icon-btn"><span class="material-symbols-outlined">more_horiz</span></button>
+                <h3 class="headline" style="font-size: 1.5rem;">순간 상세</h3>
+                <button class="icon-btn" id="detailMoreBtn" style="display: none;"><span class="material-symbols-outlined">more_horiz</span></button>
             </div>
-            
-            <div class="detail-content">
-                <div class="detail-video">
-                    <img id="detailImg" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBJb2reehtYkk1tSupKcTenf09sFrI1MN_2H_orLdE8A1rOAlc27BWm62BVBav5qtwxTUJ7ctbr2bDNmU2EfruV9ajOc0QCzABvXJ5-qWXAeR8GOQumFqygnon2pN6L7Wc3UJvG-f9dh26hzO_bnWAoTverOtXlPKc4AqL95xSgqIwuVjm5Pb_eQ8gJI5kv4se7YvCHY5v3jZ5m1n6OzaavO3FKOfXk35Bs0O-w4R19eHXM2fn2Lr1bS2uizoWLcKYYZOKGHH6COFc" alt="Preview">
-                    <div class="play-overlay"><span class="material-symbols-outlined">play_arrow</span></div>
-                </div>
 
-                <div class="detail-info-group">
-                    <label>기억한 날</label>
-                    <p id="detailDateText">2024.03.14</p>
-                </div>
+            <div class="detail-content" id="detailContent">
+                <!-- 읽기 모드 -->
+                <div id="detailViewMode">
+                    <div class="detail-video">
+                        <img id="detailImg" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBJb2reehtYkk1tSupKcTenf09sFrI1MN_2H_orLdE8A1rOAlc27BWm62BVBav5qtwxTUJ7ctbr2bDNmU2EfruV9ajOc0QCzABvXJ5-qWXAeR8GOQumFqygnon2pN6L7Wc3UJvG-f9dh26hzO_bnWAoTverOtXlPKc4AqL95xSgqIwuVjm5Pb_eQ8gJI5kv4se7YvCHY5v3jZ5m1n6OzaavO3FKOfXk35Bs0O-w4R19eHXM2fn2Lr1bS2uizoWLcKYYZOKGHH6COFc" alt="Preview">
+                        <div class="play-overlay"><span class="material-symbols-outlined">play_arrow</span></div>
+                    </div>
 
-                <div class="detail-info-group">
-                    <label>감정 태그</label>
-                    <div class="tags-container">
-                        <span class="tag tag-primary">강렬한</span>
-                        <span class="tag tag-secondary">환희</span>
+                    <div class="detail-info-group">
+                        <label>기억한 날</label>
+                        <p id="detailDateText">2024.03.14</p>
+                    </div>
+
+                    <div class="detail-info-group">
+                        <label>감정 태그</label>
+                        <div class="tags-container" id="detailTags">
+                            <span class="tag tag-primary">강렬한</span>
+                            <span class="tag tag-secondary">환희</span>
+                        </div>
+                    </div>
+
+                    <div class="detail-info-group">
+                        <label>감정 메모</label>
+                        <div class="diary-note" id="detailMemo">
+                            "마지막 앙코르 곡이 울려 퍼질 때, 그 순간의 공기와 팬들의 함성 소리가 아직도 생생해."
+                        </div>
+                    </div>
+
+                    <!-- 수정/삭제 버튼 영역 -->
+                    <div class="detail-actions" style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--outline-variant); display: flex; gap: 8px;">
+                        <button id="editMemoryBtn" class="btn-round btn-outline" style="flex: 1; padding: 10px 16px; font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                            <span class="material-symbols-outlined" style="font-size: 16px;">edit</span>
+                            순간 수정
+                        </button>
+                        <button id="deleteMemoryBtn" class="btn-round btn-outline" style="flex: 1; padding: 10px 16px; font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 6px; color: var(--error); border-color: var(--error);">
+                            <span class="material-symbols-outlined" style="font-size: 16px;">delete</span>
+                            순간 삭제
+                        </button>
                     </div>
                 </div>
 
-                <div class="detail-info-group">
-                    <label>감정 메모</label>
-                    <div class="diary-note">
-                        "마지막 앙코르 곡이 울려 퍼질 때, 그 순간의 공기와 팬들의 함성 소리가 아직도 생생해."
+                <!-- 편집 모드 -->
+                <div id="detailEditMode" style="display: none;">
+                    <div class="detail-info-group">
+                        <label>제목</label>
+                        <input type="text" id="editTitleInput" style="width: 100%; padding: 10px 12px; border: 1px solid var(--outline-variant); border-radius: 8px; font-size: 14px; font-family: inherit;" placeholder="순간의 제목을 입력하세요">
+                    </div>
+
+                    <div class="detail-info-group">
+                        <label>감정 메모</label>
+                        <textarea id="editMemoInput" rows="4" style="width: 100%; padding: 10px 12px; border: 1px solid var(--outline-variant); border-radius: 8px; font-size: 14px; font-family: inherit; resize: vertical;" placeholder="이 순간의 감정을 남겨보세요..."></textarea>
+                    </div>
+
+                    <div class="detail-info-group">
+                        <label>감정 태그 (쉼표로 구분)</label>
+                        <input type="text" id="editTagsInput" style="width: 100%; padding: 10px 12px; border: 1px solid var(--outline-variant); border-radius: 8px; font-size: 14px; font-family: inherit;" placeholder="#감동, #행복, #그리움">
+                    </div>
+
+                    <!-- 편집 모드 버튼 -->
+                    <div class="detail-actions" style="margin-top: 24px; display: flex; gap: 8px;">
+                        <button id="cancelEditBtn" class="btn-round btn-outline" style="flex: 1; padding: 10px 16px; font-size: 13px;">취소</button>
+                        <button id="saveEditBtn" class="btn-round btn-primary" style="flex: 1; padding: 10px 16px; font-size: 13px;">저장하기</button>
                     </div>
                 </div>
             </div>
-            
-            <div class="panel-footer">
+
+            <div class="panel-footer" id="detailPanelFooter" style="display: none;">
                 <button class="btn-round btn-primary" style="width: 100%;">내 러브트리에 기록하기</button>
             </div>
         </aside>
     </div>
 
-    <script src="../js/mock-data.js?v=20260417-1"></script>
-    <script src="../js/postgres-client.js?v=20260417-1"></script>
-    <script src="../js/editor.js?v=20260417-1"></script>
+    <script src="../js/mock-data.js?v=20260417-31"></script>
+    <script src="../js/postgres-client.js?v=20260417-31"></script>
+    <script src="../js/editor.js?v=20260417-31"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-    <script src="../js/firebase-config.js?v=20260417-1"></script>
-    <script src="../js/i18n.js?v=20260417-1"></script>
-    <script src="../js/shared-header.js?v=20260417-1"></script>
-    <script src="../js/auth.js?v=20260417-1"></script>
+    <script src="../js/firebase-config.js?v=20260417-31"></script>
+    <script src="../js/i18n.js?v=20260417-31"></script>
+    <script src="../js/shared-header.js?v=20260417-31"></script>
+    <script src="../js/auth.js?v=20260417-31"></script>
     <script>renderSharedHeader();</script>
 </body>
 </html>

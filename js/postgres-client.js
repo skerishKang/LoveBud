@@ -142,6 +142,39 @@
     },
 
     /**
+     * 4-1. Update an existing memory
+     * API 필수 (mock에는 update 기능 없음)
+     * 실패 시 에러를 throw하여 UI에서 처리
+     */
+    updateMemory: async (memoryId, payload) => {
+      try {
+        return await apiFetch(`/memories/${memoryId}`, {
+          method: 'PUT',
+          body: JSON.stringify(payload)
+        });
+      } catch (error) {
+        console.error('[apiClient] updateMemory failed (no mock fallback):', error.message);
+        throw error;
+      }
+    },
+
+    /**
+     * 4-2. Delete a memory
+     * API 필수 (mock에는 delete 기능 없음)
+     * 실패 시 에러를 throw하여 UI에서 처리
+     */
+    deleteMemory: async (memoryId) => {
+      try {
+        return await apiFetch(`/memories/${memoryId}`, {
+          method: 'DELETE'
+        });
+      } catch (error) {
+        console.error('[apiClient] deleteMemory failed (no mock fallback):', error.message);
+        throw error;
+      }
+    },
+
+    /**
      * 5. Get memory by ID (detail 화면용)
      * API 우선: GET /api/memories/:memoryId 직접 호출
      * 실패 시 mock fallback
@@ -199,78 +232,49 @@
      * 8. Fetch public trees only (search/둘러보기 화면용)
      * API 우선, 실패 시 mock-data.js의 public trees fallback
      * Note: browse용 tree view model을 반환 (memories, emotionTags, theme 등 포함)
-     * FIX: /api/memories는 auth 필요 → /api/community/memories 사용 (no auth)
+     * 2024-04-17 updated: trees API already includes payload.nodes, no need for separate memories call
      */
     getPublicTrees: async () => {
       return withFallback(
         async () => {
-          // 1. public 트리 목록 조회 (auth 불필요 - trees.js GET에서 public fallback)
+          // 1. public 트리 목록 조회 (trees API는 이미 payload.nodes 포함)
           const apiTrees = await apiFetch('/trees');
-          const publicTreesMap = new Map();
-          (Array.isArray(apiTrees) ? apiTrees : []).forEach(tree => {
-            if (tree.data) {
-              if (tree.data.visibility === 'public') {
-                publicTreesMap.set(tree.id, {
-                  id: tree.id,
-                  title: tree.data.title,
-                  visibility: tree.data.visibility,
-                  created_at: tree.data.created_at,
-                  owner_id: tree.data.owner_id
-                });
-              }
-            } else if (tree.visibility === 'public') {
-              publicTreesMap.set(tree.id, tree);
-            }
+          const validTrees = (Array.isArray(apiTrees) ? apiTrees : []).filter(tree => {
+            const t = tree.data || tree;
+            return t.visibility === 'public';
           });
 
-          if (publicTreesMap.size === 0) {
+          if (validTrees.length === 0) {
             return [];
           }
 
-          // 2. community/memories로 모든 public memories 한 번에 조회 (auth 불필요)
-          const allMemories = await apiFetch('/community/memories?limit=100');
-          const validMemories = (Array.isArray(allMemories) ? allMemories : [])
-            .map(m => m.data ? m.data : m) // unwrap if {id, data: {...}}
-            .filter(m => m.id && m.tree_id); // 유효한 memory만
+            // 2. 각 트리의 payload.nodes에서 memories 추출 및 그룹핑
+            const treesWithMemories = validTrees.map(tree => {
+              const t = tree.data || tree;
+              const payload = t.payload || {};
+              const nodes = Array.isArray(payload.nodes) ? payload.nodes : [];
 
-          // 3. treeId별로_memories 그룹핑
-          const memoriesByTree = {};
-          validMemories.forEach(m => {
-            const treeId = m.tree_id;
-            if (!memoriesByTree[treeId]) {
-              memoriesByTree[treeId] = [];
-            }
-            memoriesByTree[treeId].push({
-              id: m.id,
-              title: m.title,
-              timestamp: m.timestamp,
-              thumbnail: m.thumbnail,
-              artist: m.artist,
-              emotionTags: m.emotion_tags || [],
-              sourceUrl: m.source_url,
-              createdAt: m.created_at,
-              treeId: m.tree_id
-            });
-          });
+              // public memories만 (payload의 모든 node는 이미 public이어야 함)
+              const sortedMems = nodes.sort((a, b) =>
+                new Date(a.createdAt || a.timestamp || 0) - new Date(b.createdAt || b.timestamp || 0)
+              );
 
-          // 4. 각 트리별 뷰 모델 구성
-          const treesWithMemories = [];
-          publicTreesMap.forEach((tree, treeId) => {
-            const mems = memoriesByTree[treeId] || [];
-            const sortedMems = mems.sort((a, b) =>
-              new Date(a.createdAt || 0) - new Date(b.createdAt || 0)
-            );
+              // 감정 태그 수집 (DB 필드명: emotion_tags, snake_case)
+              const allTags = sortedMems.flatMap(m => (m.emotion_tags || [])).filter(Boolean);
+              const uniqueTags = [...new Set(allTags)].slice(0, 3);
 
-            const allTags = sortedMems.flatMap(m => m.emotionTags || []);
-            const uniqueTags = [...new Set(allTags)].slice(0, 3);
-
+            // 시간 범위 계산 (timestamp 필드)
             const timestamps = sortedMems.map(m => m.timestamp).filter(Boolean);
             const timeRange = timestamps.length >= 2
               ? `${timestamps[0]} ~ ${timestamps[timestamps.length - 1]}`
               : (timestamps[0] || 'recently');
 
-            treesWithMemories.push({
-              ...tree,
+            return {
+              id: tree.id,
+              title: t.title,
+              visibility: t.visibility,
+              created_at: t.created_at,
+              owner_id: t.owner_id,
               memories: sortedMems,
               memoryCount: sortedMems.length,
               emotionTags: uniqueTags,
@@ -278,11 +282,10 @@
               representativeThumbnail: sortedMems[0]?.thumbnail || '',
               theme: sortedMems[0]?.artist || 'Mixed',
               stage: sortedMems.length <= 2 ? '입덕' : (sortedMems.length <= 4 ? '성장' : '최애')
-            });
-          });
+            };
+          }).filter(t => t.memoryCount > 0);
 
-          // 메모리가 없는 트리는 제외
-          return treesWithMemories.filter(t => t.memoryCount > 0);
+          return treesWithMemories;
         },
         () => {
           // Mock fallback: search.js의 buildTreeData와 동일한 로직
@@ -301,7 +304,7 @@
           return publicTrees.map(tree => {
             const mems = grouped[tree.id] || [];
             const sortedMems = mems.sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
-            const allTags = sortedMems.flatMap(m => m.emotionTags || []);
+            const allTags = sortedMems.flatMap(m => m.emotionTags || []).filter(Boolean);
             const uniqueTags = [...new Set(allTags)].slice(0, 3);
             const timestamps = sortedMems.map(m => m.timestamp).filter(Boolean);
             const timeRange = timestamps.length >= 2
@@ -320,7 +323,7 @@
             };
           }).filter(t => t.memoryCount > 0);
         },
-        'getPublicTrees'
+'getPublicTrees'
       );
     },
 
