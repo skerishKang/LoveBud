@@ -268,7 +268,8 @@
               const nodes = Array.isArray(payload.nodes) ? payload.nodes : [];
 
               // public memories만 (payload의 모든 node는 이미 public이어야 함)
-              const sortedMems = nodes.sort((a, b) =>
+              // 원본 배열 mutation 방지
+              const sortedMems = [...nodes].sort((a, b) =>
                 new Date(a.createdAt || a.timestamp || 0) - new Date(b.createdAt || b.timestamp || 0)
               );
 

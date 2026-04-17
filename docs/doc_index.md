@@ -19,7 +19,7 @@
 
 제품 관련 문서는 `docs/product/` 아래에 정리됩니다.
 
-- **index**: [index.md](./product/index.md) - 제품 문서 인덱스
+- **index**: [product_index.md](./product/product_index.md) - 제품 문서 인덱스
 - [PRODUCT_BRIEF.md](./product/PRODUCT_BRIEF.md) - 현재 실행 기준 제품 개요
 - [PRODUCT_IDENTITY.md](./product/PRODUCT_IDENTITY.md) - 정체성/원칙
 - [MVP_SCOPE.md](./product/MVP_SCOPE.md) - MVP 정의
@@ -32,7 +32,7 @@
 
 UI/UX 디자인 및 비주얼 프롬프트는 `docs/design/` 아래에 정리됩니다.
 
-- **index**: [index.md](./design/index.md) - 디자인 문서 인덱스
+- **index**: [design_index.md](./design/design_index.md) - 디자인 문서 인덱스
 - [prompts/image-generation-prompts.md](./design/prompts/image-generation-prompts.md) - 이미지 생성 프롬프트 모음 (12개 화면)
 - [prompts/home-hero-slide-prompts.txt](./design/prompts/home-hero-slide-prompts.txt) - 홈 히어로 슬라이드 이미지 생성 프롬프트 (5장)
 
@@ -46,7 +46,7 @@ UI/UX 디자인 및 비주얼 프롬프트는 `docs/design/` 아래에 정리됩
 
 분석/개선 보고서는 `docs/reports/` 아래에 정리됩니다.
 
-- **index**: [index.md](./reports/index.md) - 보고서 인덱스
+- **index**: [reports_index.md](./reports/reports_index.md) - 보고서 인덱스
 - [UI_COPY_IMPROVEMENT_REPORT.md](./reports/UI_COPY_IMPROVEMENT_REPORT.md) - UI 카피 개선 보고서
 - [UX-Improvement.md](./reports/UX-Improvement.md) - UX 개선안
 - [DOCS_REORG_PLAN.md](./reports/DOCS_REORG_PLAN.md) - 문서 재구성 계획 *(루트에서 이동)*
@@ -57,7 +57,7 @@ UI/UX 디자인 및 비주얼 프롬프트는 `docs/design/` 아래에 정리됩
 
 실행 계획 및 로드맵은 `docs/plans/` 아래에 정리됩니다.
 
-- **index**: [index.md](./plans/index.md) - 계획 인덱스
+- **index**: [plans_index.md](./plans/plans_index.md) - 계획 인덱스
 - [FRONTEND_ROADMAP.md](./plans/FRONTEND_ROADMAP.md) - 프론트엔드 구현 로드맵 *(backend에서 이동)*
 - [ROADMAP.md](./plans/ROADMAP.md) - 프로젝트 로드맵 *(product에서 이동)*
 
@@ -65,7 +65,7 @@ UI/UX 디자인 및 비주얼 프롬프트는 `docs/design/` 아래에 정리됩
 
 레거시/보관 문서는 `docs/archive/` 아래에 정리됩니다.
 
-- **index**: [index.md](./archive/index.md) - 보관 문서 인덱스
+- **index**: [archive_index.md](./archive/archive_index.md) - 보관 문서 인덱스
 - 하위 폴더: `analysis/`, `guides/`, `plans/`, `identity/`
 - [minimax2.7_draft.txt](./archive/plans/minimax2.7_draft.txt) - Minimax 2.7 초안 *(루트에서 이동)*
 
@@ -81,7 +81,7 @@ UI/UX 디자인 및 비주얼 프롬프트는 `docs/design/` 아래에 정리됩
 
 운영 관련 문서는 `docs/ops/` 아래에 정리됩니다.
 
-- **index**: [index.md](./ops/index.md) - 운영 문서 인덱스
+- **index**: [ops_index.md](./ops/ops_index.md) - 운영 문서 인덱스
 - [PATHS_AND_SHELLS.md](./ops/PATHS_AND_SHELLS.md) - 컴1/컴2 경로와 셸 기준
 - [REMOTE_ACCESS_AND_WSL.md](./ops/REMOTE_ACCESS_AND_WSL.md) - 컴1 -> 컴2 SSH, WSL `G:` 마운트, Windows Codex 셸 실행 이슈
 - [DOC_WORKFLOW.md](./ops/DOC_WORKFLOW.md) - 대화 → 문서 → 구현으로 이어지는 작업 흐름
