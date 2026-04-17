@@ -11,7 +11,9 @@
 |------|------|----------|
 | [API_CONTRACT.md](./API_CONTRACT.md) | API 응답 계약 (flat camelCase 표준) | 🔴 필수 |
 | [RECENT_REFACTORING.md](./RECENT_REFACTORING.md) | 최근 리팩터링 기록 (2026-04) | 🔴 필수 |
+| [CTO_REPORT_20260418.md](./CTO_REPORT_20260418.md) | CTO 최종 보고서 (스프린트 A+B+C) | 🔴 필수 |
 | [COMMON_CODE_CANDIDATES.md](./COMMON_CODE_CANDIDATES.md) | 공통화 후보 목록 | 🟡 권장 |
+| [MANUAL_TEST_CHECKLIST.md](./MANUAL_TEST_CHECKLIST.md) | 수동 테스트 체크리스트 | 🟡 권장 |
 
 ---
 
