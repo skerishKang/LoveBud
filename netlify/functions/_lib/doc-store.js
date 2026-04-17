@@ -317,6 +317,13 @@ async function deleteMemory(memoryId) {
     `UPDATE trees SET payload = $1, node_count = $2, updated_at = NOW() WHERE id = $3`,
     [JSON.stringify(newPayload), nodes.length, targetTreeId]
   );
+
+  return {
+    deleted: true,
+    id: memoryId,
+    treeId: targetTreeId,
+    nodeCount: nodes.length
+  };
 }
 
 module.exports = {

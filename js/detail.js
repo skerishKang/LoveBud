@@ -178,11 +178,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const treeContextEl = document.getElementById('treeContext');
     
     // 감상 맥락별 안내 문구
+    const memoryCount = Array.isArray(memories) ? memories.length : (tree.memories?.length || 0);
+
     const contextMessages = {
         'browse': {
             icon: 'explore',
             label: '둘러보기',
-            desc: `${tree.memories?.length || 0}개의 순간이 이어진 감정 경로를 따라가고 있어요`
+            desc: `${memoryCount}개의 순간이 이어진 감정 경로를 따라가고 있어요`
         },
         'editor': {
             icon: 'edit',
@@ -207,7 +209,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
                         <span style="font-size: 12px; font-weight: 800; color: var(--primary); text-transform: uppercase; letter-spacing: 1px;">${contextInfo.label}</span>
                         <span style="color: var(--outline-variant);">·</span>
-                        <span style="font-size: 12px; color: var(--on-surface-variant);">${tree.memories?.length || 0}개 순간</span>
+                        <span style="font-size: 12px; color: var(--on-surface-variant);">${memoryCount}개 순간</span>
                     </div>
                     <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--on-surface); margin: 0; line-height: 1.3;">${treeTitle}</h2>
                     <p style="font-size: 13px; color: var(--on-surface-variant); margin-top: 6px; line-height: 1.5;">
