@@ -1,4 +1,4 @@
-const { queryTrees, queryMemories, getTree } = require('./netlify/functions/_lib/doc-store');
+const { queryTrees, queryMemories, getTree } = require('../netlify/functions/_lib/doc-store');
 const fs = require('fs');
 const path = require('path');
 

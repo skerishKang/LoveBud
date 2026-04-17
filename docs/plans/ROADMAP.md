@@ -100,9 +100,9 @@
 
 ## 연결된 문서
 
-- **페이지 문서**: `docs/pages/`
-- **상위 문서**: `docs/product/PRODUCT_BRIEF.md`
-- **스킬**: `skills/page-doc-writer/`, `skills/project-doc-sync/`
+- **페이지 문서**: `../pages/`
+- **상위 문서**: `../product/PRODUCT_BRIEF.md`
+- **스킬**: `../skills/page-doc-writer/`, `../skills/project-doc-sync/`
 
 ##Metadata
 updated: 2026-04-17

@@ -25,11 +25,7 @@
 - [MVP_SCOPE.md](./product/MVP_SCOPE.md) - MVP 정의
 - [USER_FLOW.md](./product/USER_FLOW.md) - 사용자 흐름
 - [DATA_NAMING_RULE.md](./product/DATA_NAMING_RULE.md) - 데이터 명명 규칙
-- [FRONTEND_BASELINE.md](./product/FRONTEND_BASELINE.md) - 프론트엔드 기준 상태
 - [READONLY_SHARE_SCOPE.md](./product/READONLY_SHARE_SCOPE.md) - 읽기 전용 공유 범위
-- [DATA_MODEL_DRAFT.md](./product/DATA_MODEL_DRAFT.md) - 데이터 모델 초안
-- [CTO_MVP_HANDOFF.md](./product/CTO_MVP_HANDOFF.md) - CTO 핸드오프 문서
-- [ROADMAP.md](./product/ROADMAP.md) - 프로젝트 로드맵 *(루트에서 이동)*
 
 ## pages 문서군
 
@@ -47,6 +43,14 @@
 - [DOCS_REORG_PLAN.md](./reports/DOCS_REORG_PLAN.md) - 문서 재구성 계획 *(루트에서 이동)*
 - [notebookLM_design.txt](./reports/notebookLM_design.txt) - NotebookLM 디자인 분석 *(루트에서 이동)*
 
+## plans 문서군
+
+실행 계획 및 로드맵은 `docs/plans/` 아래에 정리됩니다.
+
+- **index**: [index.md](./plans/index.md) - 계획 인덱스
+- [FRONTEND_ROADMAP.md](./plans/FRONTEND_ROADMAP.md) - 프론트엔드 구현 로드맵 *(backend에서 이동)*
+- [ROADMAP.md](./plans/ROADMAP.md) - 프로젝트 로드맵 *(product에서 이동)*
+
 ## archive 문서군
 
 레거시/보관 문서는 `docs/archive/` 아래에 정리됩니다.
@@ -59,8 +63,9 @@
 
 백엔드 관련 문서는 `docs/backend/` 아래에 정리됩니다.
 
+- **index**: [README.md](./backend/README.md) - 백엔드 문서군 안내
 - [backend.md](./backend/backend.md) - Netlify Functions 백엔드 개요 *(루트에서 이동)*
-- [README.md](./backend/README.md) - 백엔드 문서군 안내 *(미구현, 향후 작성)*
+- [DATA_MODEL_DRAFT.md](./backend/DATA_MODEL_DRAFT.md) - 데이터 모델 초안 *(product에서 이동)*
 
 ## ops 문서군
 
@@ -86,3 +91,4 @@
 - [RUNBOOK.md](./ops/RUNBOOK.md) - 런북 (장애 대응)
 - [backend.md](./ops/backend.md) - Netlify Functions 백엔드 개요 *(루트에서 이동)*
 - [git_tutorial.md](./ops/git_tutorial.md) - Git 튜토리얼 *(루트에서 이동)*
+- [CTO_MVP_HANDOFF.md](./ops/CTO_MVP_HANDOFF.md) - CTO 핸드오프 문서 *(product에서 이동)*

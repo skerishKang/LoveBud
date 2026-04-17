@@ -14,12 +14,19 @@
 | [PRODUCT_IDENTITY.md](PRODUCT_IDENTITY.md) | LoveBud의 핵심 정체성과 가치 |
 | [MVP_SCOPE.md](MVP_SCOPE.md) | MVP 범위 및 포함/제외 항목 |
 | [USER_FLOW.md](USER_FLOW.md) | 주요 사용자 여정 및 플로우 |
+| [PRODUCT_BRIEF.md](PRODUCT_BRIEF.md) | 현재 실행 기준 제품 개요 |
 | [DATA_NAMING_RULE.md](DATA_NAMING_RULE.md) | 데이터 명명 규칙 |
-| [FRONTEND_BASELINE.md](FRONTEND_BASELINE.md) | 프론트엔드 기준 상태 |
 | [READONLY_SHARE_SCOPE.md](READONLY_SHARE_SCOPE.md) | 읽기 전용 공유 범위 |
-| [DATA_MODEL_DRAFT.md](DATA_MODEL_DRAFT.md) | 데이터 모델 초안 |
-| [CTO_MVP_HANDOFF.md](CTO_MVP_HANDOFF.md) | CTO 핸드오프 문서 |
-| [ROADMAP.md](ROADMAP.md) | 프로젝트 로드맵 |
+
+## 먼저 읽기 순서
+
+이 폴더의 문서를 처음 접할 때 권장하는 순서:
+
+1. **PRODUCT_IDENTITY.md** — 제품 철학과 핵심 가치
+2. **MVP_SCOPE.md** — MVP 범위와 In/Out of Scope
+3. **USER_FLOW.md** — 사용자 여정과 핵심 플로우
+4. **PRODUCT_BRIEF.md** — 현재 실행 기준 요약
+5. 필요시 DATA_NAMING_RULE.md, READONLY_SHARE_SCOPE.md
 
 ## 참조
 - 전체 문서 인덱스: `../doc_index.md`

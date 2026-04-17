@@ -1,11 +1,22 @@
 document.addEventListener('DOMContentLoaded', () => {
     // ── root memory 식별 헬퍼 (UUID/ mock 호환) ──
-    // 규칙: parentId === null 이거나 id === 'root' (legacy mock)
+    // 규칙: 1) parentId === null 중 가장 오래된 것 (진짜 root), 2) id === 'root' (legacy mock)
     const findRootMemory = (memories) => {
         if (!Array.isArray(memories)) return null;
-        // 1순위: parentId === null (실제 root)
-        const byParentNull = memories.find(m => m.parentId === null);
-        if (byParentNull) return byParentNull;
+        // 1순위: parentId === null인 노드 중 createdAt이 가장 오래된 것 (진짜 root)
+        const parentNullNodes = memories.filter(m => m.parentId === null || m.parentId === undefined);
+        if (parentNullNodes.length === 1) {
+            return parentNullNodes[0];
+        } else if (parentNullNodes.length > 1) {
+            // 여러 개면 createdAt 기준으로 가장 오래된 것이 진짜 root
+            const oldest = parentNullNodes.sort((a, b) => {
+                const aTime = a.createdAt || a.timestamp || '9999';
+                const bTime = b.createdAt || b.timestamp || '9999';
+                return new Date(aTime) - new Date(bTime);
+            })[0];
+            console.log('[editor] Multiple parentId=null nodes found, using oldest as root:', oldest.id);
+            return oldest;
+        }
         // 2순위: id === 'root' (legacy mock)
         return memories.find(m => m.id === 'root');
     };
@@ -744,8 +755,8 @@ const RADIUS_L2 = 240; // L2 반경 (200→240) - 노드 겹침 방지
                 sourceUrl: `https://www.youtube.com/embed/${videoId}`,
                 sourceType: 'youtube',
                 emotionTags: ['기록'],
-                // root가 선택되어 있으면 parentId는 null (서버의 root 메모리와 연결)
-                parentId: selectedNodeId === canonicalRootId ? null : selectedNodeId,
+                // root 바로 아래 자식도 parentId를 canonicalRootId로 설정 (null 금지)
+                parentId: selectedNodeId === canonicalRootId ? canonicalRootId : selectedNodeId,
                 thumbnail: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
                 artist: '',
                 source: 'YouTube'

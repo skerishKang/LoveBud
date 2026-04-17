@@ -1,4 +1,4 @@
-const { queryMemories, getMemory } = require('./netlify/functions/_lib/doc-store');
+const { queryMemories, getMemory } = require('../netlify/functions/_lib/doc-store');
 const fs = require('fs');
 const path = require('path');
 
