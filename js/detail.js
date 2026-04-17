@@ -43,31 +43,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // 2. API로 최신 memory 가져오기
+    // 백엔드는 flat camelCase 응답을 반환하므로 별도의 {id, data} 처리 불필요
     try {
         if (window.apiClient && window.apiClient.getMemory) {
             const apiMemory = await window.apiClient.getMemory(memoryId);
             if (apiMemory) {
-                const raw = apiMemory && apiMemory.data
-                    ? { id: apiMemory.id, ...apiMemory.data }
-                    : apiMemory;
-
                 const normalizedMemory = {
-                    id: raw.id,
-                    title: raw.title || '',
-                    memo: raw.memo || raw.description || '',
-                    quote: raw.quote || '',
-                    artist: raw.artist || '',
-                    source: raw.source || '',
-                    sourceUrl: raw.sourceUrl || raw.source_url || '',
-                    sourceType: raw.sourceType || raw.source_type || 'youtube',
-                    thumbnail: raw.thumbnail || '',
-                    emotionTags: raw.emotionTags || raw.emotion_tags || [],
-                    timestamp: raw.timestamp || '',
-                    visibility: raw.visibility || 'public',
-                    createdAt: raw.createdAt || raw.created_at || null,
-                    updatedAt: raw.updatedAt || raw.updated_at || null,
-                    treeId: raw.treeId || raw.tree_id || null,
-                    parentId: raw.parentId ?? raw.parent_id ?? null
+                    id: apiMemory.id,
+                    title: apiMemory.title || '',
+                    memo: apiMemory.memo || apiMemory.description || '',
+                    quote: apiMemory.quote || '',
+                    artist: apiMemory.artist || '',
+                    source: apiMemory.source || '',
+                    sourceUrl: apiMemory.sourceUrl || apiMemory.source_url || '',
+                    sourceType: apiMemory.sourceType || apiMemory.source_type || 'youtube',
+                    thumbnail: apiMemory.thumbnail || '',
+                    emotionTags: apiMemory.emotionTags || apiMemory.emotion_tags || [],
+                    timestamp: apiMemory.timestamp || '',
+                    visibility: apiMemory.visibility || 'public',
+                    createdAt: apiMemory.createdAt || apiMemory.created_at || null,
+                    updatedAt: apiMemory.updatedAt || apiMemory.updated_at || null,
+                    treeId: apiMemory.treeId || apiMemory.tree_id || null,
+                    parentId: apiMemory.parentId ?? apiMemory.parent_id ?? null
                 };
 
                 if (cache) {
@@ -115,7 +112,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // ── 트리 + siblings 병렬 로딩 (캐시 우선) ──
-    const treeId = urlParams.get('tree') || memory.treeId || memory.data?.tree_id;
+    const treeId = urlParams.get('tree') || memory.treeId || null;
     if (!treeId) {
         console.warn('[detail] Tree ID not found. Detail page cannot initialize.');
         return;
@@ -174,7 +171,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // ── 트리 맥락 표시: 감상 흐름 강화 ──
     const i18n = window.t || ((k) => k);
-    const treeTitle = tree.title || tree.data?.title || '러브트리';
+    const treeTitle = tree.title || '러브트리';
     const treeContextEl = document.getElementById('treeContext');
     
     // 감상 맥락별 안내 문구
