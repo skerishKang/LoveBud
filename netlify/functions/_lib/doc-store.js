@@ -208,7 +208,14 @@ async function createMemory(data) {
     createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
   };
 
-  const newPayload = { ...tree.data, nodes: [...existing, newNode] };
+  const existingPayload = tree.data?.payload && typeof tree.data.payload === 'object'
+    ? tree.data.payload
+    : {};
+
+  const newPayload = {
+    ...existingPayload,
+    nodes: [...existing, newNode]
+  };
   await query(
     `UPDATE trees SET payload = $1, node_count = $2, updated_at = NOW() WHERE id = $3`,
     [JSON.stringify(newPayload), existing.length + 1, data.treeId]

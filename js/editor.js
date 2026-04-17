@@ -77,8 +77,8 @@ const startEditor = async () => {
   
   // ── 캐시 키 설정 ──
   const cache = window.LoveBudCache || null;
-  const TREE_CACHE_KEY = 'tree_' + (urlTreeId || 'default');
-const MEMORIES_CACHE_KEY = 'memories_' + (urlTreeId || 'default');
+  let TREE_CACHE_KEY = 'tree_default';
+  let MEMORIES_CACHE_KEY = 'memories_default';
  // 로컬 폴백 모드 추적 (상세 패널에 표시용)
  let isLocalSaveMode = false;
 
@@ -118,14 +118,24 @@ const MEMORIES_CACHE_KEY = 'memories_' + (urlTreeId || 'default');
         } else {
           // API.createTree 없으면: client-side ID로 임시 트리 생성
           const i18n = window.t || ((k) => k);
-          tree = { id: urlTreeId, title: i18n('default_tree_title'), visibility: 'private' };
+          tree = {
+            id: 'local-tree-' + Date.now(),
+            title: i18n('default_tree_title'),
+            visibility: 'private',
+            isLocalOnly: true
+          };
           isNewTree = true;
-          console.log('[editor] Client-side tree created:', urlTreeId);
+          console.log('[editor] Client-side tree created:', tree.id);
         }
       } catch (e2) {
         const i18n = window.t || ((k) => k);
         console.warn('[editor] createTree failed, using client-side tree:', e2.message);
-        tree = { id: urlTreeId, title: i18n('default_tree_title'), visibility: 'private' };
+        tree = {
+          id: 'local-tree-' + Date.now(),
+          title: i18n('default_tree_title'),
+          visibility: 'private',
+          isLocalOnly: true
+        };
         isNewTree = true;
       }
     }
@@ -174,6 +184,10 @@ const MEMORIES_CACHE_KEY = 'memories_' + (urlTreeId || 'default');
   }
 
         const treeId = tree.id || tree.data?.id;
+
+        // 실제 treeId 기준으로 캐시 키 재계산
+        TREE_CACHE_KEY = 'tree_' + (treeId || 'default');
+        MEMORIES_CACHE_KEY = 'memories_' + (treeId || 'default');
 
         // ── API 응답 정규화: snake_case → camelCase, {id, data} → flat 형태로 변환
         // 저장 계약: window.currentTreeMemories는 항상 이 정규화가 적용된 배열
