@@ -14,7 +14,7 @@
 2. `G:\Ddrive\BatangD\task\workdiary\133-relovetree\docs\product\MVP_SCOPE.md`
 3. `G:\Ddrive\BatangD\task\workdiary\133-relovetree\docs\product\USER_FLOW.md`
 4. `G:\Ddrive\BatangD\task\workdiary\133-relovetree\docs\design\UI_DESIGN_SYSTEM.md`
-5. `G:\Ddrive\BatangD\task\workdiary\LoveBud\docs\CTO_MVP_HANDOFF.md`
+5. `G:\다른 컴퓨터\내 컴퓨터\LoveBud\docs\ops\CTO_MVP_HANDOFF.md`
 
 ## 경로 기준
 

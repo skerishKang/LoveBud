@@ -1,4 +1,10 @@
 document.addEventListener('DOMContentLoaded', async () => {
+    // ── 경로 유틸 ──
+    const getBasePath = () => {
+        var path = window.location.pathname;
+        return path.indexOf('/pages/') !== -1 ? '' : 'pages/';
+    };
+
     const resultsList = document.getElementById('resultsList');
     const previewContainer = document.getElementById('previewVideoContainer');
     const previewTitle = document.getElementById('previewTitle');
@@ -106,13 +112,22 @@ document.addEventListener('DOMContentLoaded', async () => {
             const apiTrees = await window.apiClient.getPublicTrees();
             if (Array.isArray(apiTrees)) {
                 console.log('[search] API public trees 로드:', apiTrees.length, '개');
-                // 캐시 업데이트
+                // 평탄화: {id, data:{...}} → {...data, id} (snake_case → camelCase)
+                const flatTrees = apiTrees.map(tree => ({
+                    id: tree.id,
+                    ...tree.data,
+                    // snake_case → camelCase 매핑
+                    ownerId: tree.data?.owner_id,
+                    createdAt: tree.data?.created_at,
+                    updatedAt: tree.data?.updated_at
+                }));
+                // 캐시 업데이트 (flat 객체로 저장)
                 if (cache) {
-                    cache.set(PUBLIC_TREES_CACHE_KEY, apiTrees, 5 * 60 * 1000); // 5분 TTL
+                    cache.set(PUBLIC_TREES_CACHE_KEY, flatTrees, 5 * 60 * 1000); // 5분 TTL
                 }
                 // 캐시와 다르면 데이터 갱신 (뒤에서 populateResults 호출)
-                if (JSON.stringify(allTrees) !== JSON.stringify(apiTrees)) {
-                    allTrees = apiTrees;
+                if (JSON.stringify(allTrees) !== JSON.stringify(flatTrees)) {
+                    allTrees = flatTrees;
                 }
                 apiTreesLoaded = true;
             } else {
@@ -188,6 +203,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         ).join(' ');
     };
 
+    // ── 카테고리 분류 헬퍼 ──
+    const categorize = (mem) => {
+        if (!mem || !mem.emotionTags) return null;
+        const tags = mem.emotionTags;
+        if (tags.includes('MV') || tags.includes('뮤직비디오')) return 'mv';
+        if (tags.includes('공식') || tags.includes('무대')) return 'stage';
+        if (tags.includes('팬')) return 'fan';
+        return null;
+    };
+
     // ── 카테고리 뱃지 ──
     const categoryLabel = (mem) => {
         const cat = categorize(mem);
@@ -248,6 +273,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const isEmptyApi = loadError === null && allTrees.length === 0;
 
             if (isEmptyApi) {
+                var basePath = getBasePath();
                 resultsList.innerHTML = `
                     <div style="text-align: center; padding: 60px 24px; color: var(--on-surface-variant);">
                         <span class="material-symbols-outlined" style="font-size: 56px; color: var(--primary); opacity: 0.6; margin-bottom: 20px; display: block;">forest</span>

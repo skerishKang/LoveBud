@@ -109,7 +109,8 @@ exports.handler = async (event) => {
 
     // ── DELETE ──────────────────────────────────────────────────────────────
     if (event.httpMethod === 'DELETE') {
-      await deleteMemory(memoryId);
+      const deleted = await deleteMemory(memoryId);
+      if (!deleted) throw httpError(404, 'Memory not found');
       return noContent({ 'Access-Control-Allow-Origin': '*' });
     }
 
