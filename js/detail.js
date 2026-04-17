@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', async () => {
+    // ── DOM 요소 참조 (null-safe 처리를 위해 상단에서 한 번만) ──
     const videoMain = document.getElementById('videoMain');
     const memoryTitle = document.getElementById('memoryTitle');
     const diaryQuote = document.getElementById('diaryQuote');
@@ -8,6 +9,191 @@ document.addEventListener('DOMContentLoaded', async () => {
     const detailSubtitle = document.getElementById('detailSubtitle');
     const tagsContainer = document.getElementById('tagsContainer');
     const connectedFragments = document.getElementById('connectedFragments');
+    const treeContextEl = document.getElementById('treeContext');
+    const backButton = document.getElementById('backButton');
+
+    // ── 렌더링 헬퍼 함수들 ──
+    // memory 본문 렌더링 (tree context와 무관)
+    const renderMemoryBase = (memory) => {
+        const i18n = window.t || ((k) => k);
+
+        // 비디오 로드
+        if (videoMain) {
+            if (memory.sourceUrl) {
+                videoMain.innerHTML = `
+                    <iframe width="100%" height="100%"
+                        src="${memory.sourceUrl}?autoplay=0"
+                        title="${memory.title || ''}" frameborder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowfullscreen></iframe>
+                `;
+            } else {
+                videoMain.innerHTML = `
+                    <div style="width:100%;height:100%;background:var(--surface-container);display:flex;align-items:center;justify-content:center;color:var(--on-surface-variant);">
+                        ${i18n('no_video')}
+                    </div>
+                `;
+            }
+        }
+
+        // 메타데이터 채우기
+        if (memoryTitle) memoryTitle.textContent = memory.title || '기억의 순간';
+        if (detailArtist) detailArtist.textContent = memory.artist || i18n('unknown_artist');
+        if (detailDate) detailDate.textContent = (memory.timestamp || '') + (memory.source ? ' · ' + memory.source : '');
+        if (detailSubtitle) detailSubtitle.textContent = '기록 — ' + (memory.timestamp || '');
+
+        // 감정 태그
+        if (tagsContainer && memory.emotionTags && memory.emotionTags.length > 0) {
+            tagsContainer.innerHTML = memory.emotionTags.map(tag =>
+                `<span class="tag-chip active">${tag}</span>`
+            ).join('');
+        }
+
+        // 일기 내용
+        if (diaryQuote) diaryQuote.textContent = `"${memory.quote || memory.memo || ''}"`;
+        if (diaryContent && memory.memo) {
+            diaryContent.textContent = memory.memo;
+        }
+    };
+
+    // tree context 렌더링
+    const renderTreeContext = ({ hasTreeContext, tree, memories, sourceContext, degradedReason }) => {
+        if (!treeContextEl) return;
+
+        const i18n = window.t || ((k) => k);
+
+        if (degradedReason === 'missing-tree-id') {
+            // treeId 자체가 없음
+            treeContextEl.innerHTML = `
+                <div style="display: flex; align-items: flex-start; gap: 16px;">
+                    <div style="width: 48px; height: 48px; background: var(--surface-container); border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                        <span class="material-symbols-outlined" style="color: var(--primary); font-size: 24px;">favorite</span>
+                    </div>
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                            <span style="font-size: 12px; font-weight: 800; color: var(--primary); text-transform: uppercase; letter-spacing: 1px;">감상 중</span>
+                        </div>
+                        <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--on-surface); margin: 0; line-height: 1.3;">기억의 순간</h2>
+                        <p style="font-size: 13px; color: var(--on-surface-variant); margin-top: 6px; line-height: 1.5;">
+                            이 순간을 단독으로 감상하고 있어요. 트리 전체 경로를 보시려면 둘러보기에서 선택해주세요.
+                        </p>
+                    </div>
+                </div>
+            `;
+        } else if (degradedReason === 'tree-load-failed') {
+            // treeId는 있었으나 로드 실패
+            treeContextEl.innerHTML = `
+                <div style="display: flex; align-items: flex-start; gap: 16px;">
+                    <div style="width: 48px; height: 48px; background: var(--surface-container); border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                        <span class="material-symbols-outlined" style="color: var(--on-surface-variant); font-size: 24px;">forest</span>
+                    </div>
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                            <span style="font-size: 12px; font-weight: 800; color: var(--on-surface-variant); text-transform: uppercase; letter-spacing: 1px;">트리 정보 없음</span>
+                        </div>
+                        <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--on-surface); margin: 0; line-height: 1.3;">기억의 순간</h2>
+                        <p style="font-size: 13px; color: var(--on-surface-variant); margin-top: 6px; line-height: 1.5;">
+                            트리 정보를 불러오지 못했어요. 순간 감상은 계속할 수 있어요.
+                        </p>
+                    </div>
+                </div>
+            `;
+        } else if (hasTreeContext && tree) {
+            // 정상 트리 컨텍스트
+            const memoryCount = Array.isArray(memories) ? memories.length : 0;
+            const treeTitle = tree.title || '러브트리';
+            const contextMessages = {
+                'browse': {
+                    icon: 'explore',
+                    label: '둘러보기',
+                    desc: `${memoryCount}개의 순간이 이어진 감정 경로를 따라가고 있어요`
+                },
+                'editor': {
+                    icon: 'edit',
+                    label: '편집 중',
+                    desc: '편집 중인 트리를 감상 모드로 보고 있어요'
+                },
+                'my-trees': {
+                    icon: 'account_tree',
+                    label: '내 러브트리',
+                    desc: '내가 기록한 순간들을 다시 감상하고 있어요'
+                }
+            };
+            const contextInfo = contextMessages[sourceContext] || contextMessages['browse'];
+
+            treeContextEl.innerHTML = `
+                <div style="display: flex; align-items: flex-start; gap: 16px;">
+                    <div style="width: 48px; height: 48px; background: var(--surface-container); border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                        <span class="material-symbols-outlined" style="color: var(--primary); font-size: 24px;">${contextInfo.icon}</span>
+                    </div>
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                            <span style="font-size: 12px; font-weight: 800; color: var(--primary); text-transform: uppercase; letter-spacing: 1px;">${contextInfo.label}</span>
+                            <span style="color: var(--outline-variant);">·</span>
+                            <span style="font-size: 12px; color: var(--on-surface-variant);">${memoryCount}개 순간</span>
+                        </div>
+                        <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--on-surface); margin: 0; line-height: 1.3;">${treeTitle}</h2>
+                        <p style="font-size: 13px; color: var(--on-surface-variant); margin-top: 6px; line-height: 1.5;">
+                            ${contextInfo.desc}
+                        </p>
+                    </div>
+                </div>
+            `;
+        }
+    };
+
+    // connectedFragments 렌더링
+    const renderConnectedFragments = ({ memory, memories, treeId, sourceContext, degradedReason }) => {
+        if (!connectedFragments) return;
+
+        // tree context가 없으면 안내 메시지
+        if (degradedReason === 'missing-tree-id' || degradedReason === 'tree-load-failed') {
+            connectedFragments.innerHTML = `
+                <div style="text-align: center; padding: 24px; color: var(--on-surface-variant); font-size: 13px;">
+                    <span class="material-symbols-outlined" style="font-size: 24px; opacity: 0.5; margin-bottom: 8px; display: block;">forest</span>
+                    트리 경로 정보가 없어요<br>
+                    <a href="search.html" style="color: var(--primary); text-decoration: none; font-weight: 600;">둘러보기에서 트리 찾기</a>
+                </div>
+            `;
+            return;
+        }
+
+        // tree는 있지만 memories가 없으면
+        if (!memories || memories.length === 0) {
+            connectedFragments.innerHTML = '';
+            return;
+        }
+
+        const siblings = memories.filter(m =>
+            m.id !== memory.id && m.parentId === memory.parentId
+        );
+
+        if (siblings.length > 0) {
+            connectedFragments.innerHTML = siblings.map(sib => `
+                <div class="moment-card" onclick="location.href='detail.html?id=${sib.id}&tree=${treeId}&from=${sourceContext}'">
+                    <img src="${sib.thumbnail}" alt="${sib.title}" style="width: 80px; height: 80px; border-radius: 1rem; object-fit: cover;">
+                    <div>
+                        <div style="font-size: 11px; font-weight: 800; color: #aaa; text-transform: uppercase;">
+                            ${sib.timestamp}
+                        </div>
+                        <div style="font-weight: 800; color: var(--on-surface); font-size: 15px; margin-bottom: 4px;">
+                            ${sib.title}
+                        </div>
+                        <div style="font-size: 12px; color: var(--on-surface-variant);">
+                            ${sib.artist || ''}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            connectedFragments.innerHTML = `
+                <div style="text-align: center; padding: 24px; color: var(--on-surface-variant); font-size: 13px;">
+                    <span class="material-symbols-outlined" style="font-size: 24px; opacity: 0.5; margin-bottom: 8px; display: block;">device_hub</span>
+                    같은 경로의 다른 순간이 없어요
+                </div>
+            `;
+        }
+    };
 
     // URL에서 memory ID 가져오기
     const urlParams = new URLSearchParams(window.location.search);
@@ -101,8 +287,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     // treeId가 없어도 memory 단독 렌더링은 가능해야 함 (graceful degradation)
     const treeId = urlParams.get('tree') || memory.treeId || null;
     const hasTreeContext = !!treeId;
+    let degradedReason = null;
+
     if (!treeId) {
-        console.warn('[detail] Tree ID not found. Rendering memory without tree context.');
+        degradedReason = 'missing-tree-id';
+        console.warn('[detail] Tree ID missing. Rendering memory-only detail view.');
     }
 
     // 캐시에서 먼저 확인 (treeId 없으면 스킵)
@@ -146,15 +335,23 @@ document.addEventListener('DOMContentLoaded', async () => {
             await Promise.all(loadPromises);
         }
 
-        // 캐시/API 모두 실패 시 mock fallback
+        // 캐시/API 모두 실패 시 mock fallback (단, 임의 첫 트리 선택은 금지)
         if (!tree) {
-            const trees = typeof getTrees === 'function' ? getTrees() : [];
-            tree = trees.find(t => t.id === treeId) || trees[0];
-            console.log('[detail] mock tree fallback');
+            const mockTrees = typeof getTrees === 'function' ? getTrees() : [];
+            // 안전하게: treeId와 일치하는 트리만 사용, 없으면 null
+            tree = mockTrees.find(t => t.id === treeId) || null;
+            if (tree) {
+                console.log('[detail] Mock tree matched:', tree.id);
+            } else {
+                console.warn('[detail] Tree context unavailable. Rendering degraded detail view.');
+                degradedReason = 'tree-load-failed';
+            }
         }
         if (!memories) {
             memories = typeof getMemoriesByTree === 'function' ? getMemoriesByTree(treeId) : [];
-            console.log('[detail] mock memories fallback');
+            if (memories.length > 0) {
+                console.log('[detail] Mock memories loaded:', memories.length);
+            }
         }
     } else {
         // treeId 없음: tree/memories는 null/빈 배열로 유지
@@ -162,87 +359,36 @@ document.addEventListener('DOMContentLoaded', async () => {
         memories = [];
     }
 
-    // ── 트리 맥락 표시: 감상 흐름 강화 (tree 없으면 단독 순간 모드) ──
-    const i18n = window.t || ((k) => k);
+    // ── 렌더링 단계 ──
+    // 1. memory 본문 (tree context와 무관)
+    renderMemoryBase(memory);
+
+    // 2. tree context (상태에 따라 분기)
+    renderTreeContext({ hasTreeContext, tree, memories, sourceContext, degradedReason });
+
+    // 3. connectedFragments
+    renderConnectedFragments({ memory, memories, treeId, sourceContext, degradedReason });
+
+    // 4. 페이지 타이틀 업데이트
+    const safeTitle = memory.title || '기억의 순간';
     const treeTitle = tree?.title || '러브트리';
-    const treeContextEl = document.getElementById('treeContext');
-
-    if (treeContextEl) {
-        if (hasTreeContext && tree) {
-            // 정상 트리 컨텍스트 표시
-            const memoryCount = Array.isArray(memories) ? memories.length : 0;
-            const contextMessages = {
-                'browse': {
-                    icon: 'explore',
-                    label: '둘러보기',
-                    desc: `${memoryCount}개의 순간이 이어진 감정 경로를 따라가고 있어요`
-                },
-                'editor': {
-                    icon: 'edit',
-                    label: '편집 중',
-                    desc: '편집 중인 트리를 감상 모드로 보고 있어요'
-                },
-                'my-trees': {
-                    icon: 'account_tree',
-                    label: '내 러브트리',
-                    desc: '내가 기록한 순간들을 다시 감상하고 있어요'
-                }
-            };
-            const contextInfo = contextMessages[sourceContext] || contextMessages['browse'];
-
-            treeContextEl.innerHTML = `
-                <div style="display: flex; align-items: flex-start; gap: 16px;">
-                    <div style="width: 48px; height: 48px; background: var(--surface-container); border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                        <span class="material-symbols-outlined" style="color: var(--primary); font-size: 24px;">${contextInfo.icon}</span>
-                    </div>
-                    <div style="flex: 1; min-width: 0;">
-                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-                            <span style="font-size: 12px; font-weight: 800; color: var(--primary); text-transform: uppercase; letter-spacing: 1px;">${contextInfo.label}</span>
-                            <span style="color: var(--outline-variant);">·</span>
-                            <span style="font-size: 12px; color: var(--on-surface-variant);">${memoryCount}개 순간</span>
-                        </div>
-                        <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--on-surface); margin: 0; line-height: 1.3;">${treeTitle}</h2>
-                        <p style="font-size: 13px; color: var(--on-surface-variant); margin-top: 6px; line-height: 1.5;">
-                            ${contextInfo.desc}
-                        </p>
-                    </div>
-                </div>
-            `;
-        } else {
-            // 트리 정보 없음: 단독 순간 모드 표시
-            treeContextEl.innerHTML = `
-                <div style="display: flex; align-items: flex-start; gap: 16px;">
-                    <div style="width: 48px; height: 48px; background: var(--surface-container); border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                        <span class="material-symbols-outlined" style="color: var(--primary); font-size: 24px;">favorite</span>
-                    </div>
-                    <div style="flex: 1; min-width: 0;">
-                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-                            <span style="font-size: 12px; font-weight: 800; color: var(--primary); text-transform: uppercase; letter-spacing: 1px;">감상 중</span>
-                        </div>
-                        <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--on-surface); margin: 0; line-height: 1.3;">기억의 순간</h2>
-                        <p style="font-size: 13px; color: var(--on-surface-variant); margin-top: 6px; line-height: 1.5;">
-                            이 순간을 단독으로 감상하고 있어요. 트리 전체 경로를 보시려면 둘러보기에서 선택해주세요.
-                        </p>
-                    </div>
-                </div>
-            `;
-        }
-    }
-
-    // ── 페이지 타이틀 업데이트 ──
-    const pageTitle = hasTreeContext && tree
-        ? `${memory.title} | ${treeTitle} — Lovetree`
-        : `${memory.title} — Lovetree`;
+    const pageTitle = (hasTreeContext && tree && !degradedReason)
+        ? `${safeTitle} | ${treeTitle} — Lovetree`
+        : `${safeTitle} — Lovetree`;
     document.title = pageTitle;
 
-    // ── 돌아가기 버튼 설정: 흐름 일관성 유지 ───
-    const backButton = document.getElementById('backButton');
+    // 5. 돌아가기 버튼
     if (backButton) {
-        // 백 버튼 라벨 및 동작 설정
+        // 백 버튼 라벨 및 동작 설정 (treeId 없을 때 editor fallback)
+        let editorUrl = 'editor.html';
+        if (treeId) {
+            editorUrl = `editor.html?treeId=${treeId}`;
+        }
+
         const backConfig = {
             'browse': { label: '둘러보기', url: 'search.html' },
             'my-trees': { label: '내 트리', url: 'my-trees.html' },
-            'editor': { label: '편집하기', url: `editor.html?treeId=${treeId || ''}` }
+            'editor': { label: '편집하기', url: editorUrl }
         };
         const config = backConfig[sourceContext] || backConfig['browse'];
 
@@ -252,88 +398,5 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
     }
 
-    // 비디오 로드 (sourceUrl은 이미 embed URL)
-    if (videoMain) {
-        if (memory.sourceUrl) {
-            videoMain.innerHTML = `
-                <iframe width="100%" height="100%"
-                    src="${memory.sourceUrl}?autoplay=0"
-                    title="${memory.title}" frameborder="0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowfullscreen></iframe>
-            `;
-        } else {
-            const i18n = window.t || ((k) => k);
-            videoMain.innerHTML = `
-                <div style="width:100%;height:100%;background:var(--surface-container);display:flex;align-items:center;justify-content:center;color:var(--on-surface-variant);">
-                    ${i18n('no_video')}
-                </div>
-            `;
-        }
-    }
-
-    // 메타데이터 채우기 (null-safe)
-    if (memoryTitle) memoryTitle.textContent = memory.title || '';
-    if (detailArtist) detailArtist.textContent = memory.artist || ((window.t || ((k) => k))('unknown_artist'));
-    if (detailDate) detailDate.textContent = (memory.timestamp || '') + (memory.source ? ' · ' + memory.source : '');
-    if (detailSubtitle) detailSubtitle.textContent = '기록 — ' + (memory.timestamp || '');
-
-    // 감정 태그
-    if (tagsContainer && memory.emotionTags && memory.emotionTags.length > 0) {
-        tagsContainer.innerHTML = memory.emotionTags.map(tag =>
-            `<span class="tag-chip active">${tag}</span>`
-        ).join('');
-    }
-
-    // 일기 내용 (null-safe)
-    if (diaryQuote) diaryQuote.textContent = `"${memory.quote || memory.memo || ''}"`;
-    if (diaryContent && memory.memo) {
-        diaryContent.textContent = memory.memo;
-    }
-
-    // 연결된 기억 (같은 부모를 가진 다른 메모리) - treeId 있을 때만 표시
-    if (hasTreeContext && memories.length > 0) {
-        const siblings = memories.filter(m =>
-            m.id !== memory.id && m.parentId === memory.parentId
-        );
-
-        if (siblings.length > 0) {
-            connectedFragments.innerHTML = siblings.map(sib => `
-                <div class="moment-card" onclick="location.href='detail.html?id=${sib.id}&tree=${treeId}&from=${sourceContext}'">
-                    <img src="${sib.thumbnail}" alt="${sib.title}" style="width: 80px; height: 80px; border-radius: 1rem; object-fit: cover;">
-                    <div>
-                        <div style="font-size: 11px; font-weight: 800; color: #aaa; text-transform: uppercase;">
-                            ${sib.timestamp}
-                        </div>
-                        <div style="font-weight: 800; color: var(--on-surface); font-size: 15px; margin-bottom: 4px;">
-                            ${sib.title}
-                        </div>
-                        <div style="font-size: 12px; color: var(--on-surface-variant);">
-                            ${sib.artist || ''}
-                        </div>
-                    </div>
-                </div>
-            `).join('');
-        } else {
-            connectedFragments.innerHTML = `
-                <div style="text-align: center; padding: 24px; color: var(--on-surface-variant); font-size: 13px;">
-                    <span class="material-symbols-outlined" style="font-size: 24px; opacity: 0.5; margin-bottom: 8px; display: block;">device_hub</span>
-                    같은 경로의 다른 순간이 없어요
-                </div>
-            `;
-        }
-    } else if (!hasTreeContext) {
-        // treeId 없음: siblings 영역 숨김 또는 안내
-        connectedFragments.innerHTML = `
-            <div style="text-align: center; padding: 24px; color: var(--on-surface-variant); font-size: 13px;">
-                <span class="material-symbols-outlined" style="font-size: 24px; opacity: 0.5; margin-bottom: 8px; display: block;">forest</span>
-                트리 경로 정보가 없어요<br>
-                <a href="search.html" style="color: var(--primary); text-decoration: none; font-weight: 600;">둘러보기에서 트리 찾기</a>
-            </div>
-        `;
-    } else {
-        connectedFragments.innerHTML = '';
-    }
-
-    console.log('Detail View Loaded for:', memory.title);
+    console.log('[detail] Detail view loaded:', memory.title || 'Untitled');
 });
