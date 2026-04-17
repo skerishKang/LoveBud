@@ -415,11 +415,140 @@ const RADIUS_L2 = 240; // L2 반경 (200→240) - 노드 겹침 방지
         // 전역에 노출 (메모리 추가 후 업데이트용)
         window.updateDetailPanel = updateDetailPanel;
 
+        // 현재 편집 중인 메모리 데이터 저장
+        let currentEditingMemory = null;
+        let isEditMode = false;
+
+        const enterEditMode = () => {
+            if (!currentEditingMemory) return;
+            isEditMode = true;
+
+            const viewMode = document.getElementById('detailViewMode');
+            const editMode = document.getElementById('detailEditMode');
+
+            if (viewMode) viewMode.style.display = 'none';
+            if (editMode) editMode.style.display = 'block';
+
+            const titleInput = document.getElementById('editTitleInput');
+            const memoInput = document.getElementById('editMemoInput');
+            const tagsInput = document.getElementById('editTagsInput');
+
+            if (titleInput) titleInput.value = currentEditingMemory.title || '';
+            if (memoInput) memoInput.value = currentEditingMemory.memo || '';
+            if (tagsInput) tagsInput.value = (currentEditingMemory.emotionTags || []).join(', ');
+        };
+
+        const exitEditMode = () => {
+            isEditMode = false;
+            const viewMode = document.getElementById('detailViewMode');
+            const editMode = document.getElementById('detailEditMode');
+            if (viewMode) viewMode.style.display = 'block';
+            if (editMode) editMode.style.display = 'none';
+        };
+
+        const saveMemoryEdit = async () => {
+            if (!currentEditingMemory) return;
+
+            const i18n = window.t || ((k) => k);
+            const titleInput = document.getElementById('editTitleInput');
+            const memoInput = document.getElementById('editMemoInput');
+            const tagsInput = document.getElementById('editTagsInput');
+
+            const payload = {
+                title: titleInput ? titleInput.value.trim() : currentEditingMemory.title,
+                memo: memoInput ? memoInput.value.trim() : currentEditingMemory.memo,
+                emotionTags: tagsInput ? tagsInput.value.split(',').map(t => t.trim()).filter(t => t) : currentEditingMemory.emotionTags
+            };
+
+            try {
+                if (window.apiClient && typeof window.apiClient.updateMemory === 'function') {
+                    await window.apiClient.updateMemory(currentEditingMemory.id, payload);
+
+                    const memIndex = window.currentTreeMemories.findIndex(m => m.id === currentEditingMemory.id);
+                    if (memIndex >= 0) {
+                        window.currentTreeMemories[memIndex] = { ...window.currentTreeMemories[memIndex], ...payload };
+                    }
+
+                    currentEditingMemory = { ...currentEditingMemory, ...payload };
+                    exitEditMode();
+                    updateDetailPanel(currentEditingMemory);
+
+                    const nodeEl = document.querySelector(`.memory-node[data-memory-id="${currentEditingMemory.id}"]`);
+                    if (nodeEl) {
+                        const titleEl = nodeEl.querySelector('.node-title');
+                        if (titleEl) titleEl.textContent = payload.title;
+                    }
+
+                    showToast(i18n('memory_updated'), 'success');
+                } else {
+                    throw new Error('updateMemory not available');
+                }
+            } catch (error) {
+                console.error('[editor] Failed to update memory:', error);
+                showToast(i18n('update_failed'), 'error');
+            }
+        };
+
+        const deleteMemory = async () => {
+            if (!currentEditingMemory) return;
+
+            const i18n = window.t || ((k) => k);
+
+            if (!confirm(i18n('delete_confirm'))) {
+                return;
+            }
+
+            try {
+                if (window.apiClient && typeof window.apiClient.deleteMemory === 'function') {
+                    await window.apiClient.deleteMemory(currentEditingMemory.id);
+
+                    window.currentTreeMemories = window.currentTreeMemories.filter(m => m.id !== currentEditingMemory.id);
+
+                    const nodeEl = document.querySelector(`.memory-node[data-memory-id="${currentEditingMemory.id}"]`);
+                    if (nodeEl) {
+                        const branches = svg.querySelectorAll('.branch-line');
+                        const nodePos = calcPosition(currentEditingMemory);
+                        branches.forEach(branch => {
+                            const d = branch.getAttribute('d');
+                            if (d && d.includes(`${nodePos.x},${nodePos.y}`)) {
+                                branch.remove();
+                            }
+                        });
+                        nodeEl.remove();
+                    }
+
+                    currentEditingMemory = null;
+                    exitEditMode();
+
+                    const rootMem = findRootMemory(window.currentTreeMemories);
+                    if (rootMem) {
+                        selectedNodeId = rootMem.id;
+                        updateDetailPanel(rootMem);
+                    } else if (window.currentTreeMemories.length > 0) {
+                        selectedNodeId = window.currentTreeMemories[0].id;
+                        updateDetailPanel(window.currentTreeMemories[0]);
+                    } else {
+                        detailPanel.querySelector('h3').innerHTML = '순간 상세';
+                        const imgEl = detailPanel.querySelector('.detail-video img');
+                        if (imgEl) imgEl.src = '';
+                    }
+
+                    showToast(i18n('memory_deleted'), 'success');
+                } else {
+                    throw new Error('deleteMemory not available');
+                }
+            } catch (error) {
+                console.error('[editor] Failed to delete memory:', error);
+                showToast(i18n('delete_failed'), 'error');
+            }
+        };
+
         const selectNode = (el, data) => {
             selectedNodeId = data.id;
             document.querySelectorAll('.memory-node').forEach(n => n.classList.remove('selected'));
             el.classList.add('selected');
             updateDetailPanel(data);
+            currentEditingMemory = data;
         };
 
         const selectNodeById = (id) => {
@@ -765,6 +894,18 @@ if (!createdMemory || typeof createdMemory !== 'object') {
         hideUnimplementedButtons();
 
         initCanvas();
+
+        // 상세 패널 수정/삭제 버튼 이벤트 리스너
+        const editMemoryBtn = document.getElementById('editMemoryBtn');
+        const deleteMemoryBtn = document.getElementById('deleteMemoryBtn');
+        const cancelEditBtn = document.getElementById('cancelEditBtn');
+        const saveEditBtn = document.getElementById('saveEditBtn');
+
+        if (editMemoryBtn) editMemoryBtn.addEventListener('click', enterEditMode);
+        if (deleteMemoryBtn) deleteMemoryBtn.addEventListener('click', deleteMemory);
+        if (cancelEditBtn) cancelEditBtn.addEventListener('click', exitEditMode);
+        if (saveEditBtn) saveEditBtn.addEventListener('click', saveMemoryEdit);
+
         console.log('[editor] Ready — tree:', treeId, 'memories:', treeMemories().length);
     };
 

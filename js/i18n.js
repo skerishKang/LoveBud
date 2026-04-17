@@ -404,6 +404,44 @@
     'server_fail_local': {
       ko: '서버 연결 실패. 로컬에만 추가됩니다.',
       en: 'Server connection failed. Added to local only.'
+    },
+
+    // ── 순간 수정/삭제 메시지 ──
+    'edit_memory': {
+      ko: '순간 수정',
+      en: 'Edit Moment'
+    },
+    'delete_memory': {
+      ko: '순간 삭제',
+      en: 'Delete Moment'
+    },
+    'delete_confirm': {
+      ko: '정말 이 순간을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.',
+      en: 'Are you sure you want to delete this moment? This action cannot be undone.'
+    },
+    'memory_updated': {
+      ko: '순간이 수정되었습니다',
+      en: 'Moment updated successfully'
+    },
+    'memory_deleted': {
+      ko: '순간이 삭제되었습니다',
+      en: 'Moment deleted successfully'
+    },
+    'update_failed': {
+      ko: '수정에 실패했습니다',
+      en: 'Update failed'
+    },
+    'delete_failed': {
+      ko: '삭제에 실패했습니다',
+      en: 'Delete failed'
+    },
+    'cancel': {
+      ko: '취소',
+      en: 'Cancel'
+    },
+    'save': {
+      ko: '저장',
+      en: 'Save'
     }
 
   };

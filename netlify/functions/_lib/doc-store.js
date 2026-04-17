@@ -1,371 +1,318 @@
 /**
  * LoveBud - Document Store (Simplified)
  *
- * Direct PostgreSQL access for LoveBud MVP.
- * - trees table: id, owner_id, title, created_at, updated_at
- * - memories table: id, tree_id, parent_id, title, memo, artist, source,
- *                   source_url, source_type, thumbnail, emotion_tags,
- *                   timestamp, visibility, created_at, updated_at
- *
- * NOT a Firestore shim — direct SQL, LoveBud-specific schema.
+ * Schema: trees(id, owner_id, name, is_public, node_count, payload JSONB)
+ * memories 테이블 없음 → nodes는 trees.payload.nodes 배열에 저장
  */
+
 const { query } = require('./db');
 const { httpError } = require('./http');
 
-// ── Validation Helpers ─────────────────────────────────────────────────────
+// ── Validation ────────────────────────────────────────────────────────────
 
 const VISIBILITY_VALUES = ['public', 'private'];
 const SOURCE_TYPE_VALUES = ['youtube', 'soundcloud', 'bandcamp', 'spotify', 'apple', 'other'];
 
-/**
- * Validate required string field (non-empty after trim)
- */
-function validateRequired(value, fieldName) {
-  if (value === undefined || value === null || typeof value !== 'string') {
-    throw httpError(400, `${fieldName} is required`);
-  }
-  if (value.trim().length === 0) {
-    throw httpError(400, `${fieldName} cannot be empty`);
-  }
-  return value.trim();
+function validateRequired(v, n) {
+  if (v === undefined || v === null || typeof v !== 'string') throw httpError(400, `${n} is required`);
+  if (v.trim().length === 0) throw httpError(400, `${n} cannot be empty`);
+  return v.trim();
 }
-
-/**
- * Validate optional string field (allow empty, but trim if provided)
- */
-function validateOptionalString(value, maxLength = 5000) {
-  if (value === undefined || value === null) return '';
-  if (typeof value !== 'string') return '';
-  const trimmed = value.trim();
-  if (trimmed.length > maxLength) {
-    throw httpError(400, `Field exceeds maximum length of ${maxLength}`);
-  }
-  return trimmed;
+function validateOptionalString(v, max = 5000) {
+  if (v === undefined || v === null) return '';
+  if (typeof v !== 'string') return '';
+  const t = v.trim();
+  if (t.length > max) throw httpError(400, `Field exceeds max ${max}`);
+  return t;
 }
-
-/**
- * Validate visibility value
- */
-function validateVisibility(value, defaultValue = 'private') {
-  if (value === undefined || value === null) return defaultValue;
-  if (!VISIBILITY_VALUES.includes(value)) {
-    throw httpError(400, `visibility must be one of: ${VISIBILITY_VALUES.join(', ')}`);
-  }
-  return value;
+function validateVisibility(v, def = 'private') {
+  if (v === undefined || v === null) return def;
+  if (!VISIBILITY_VALUES.includes(v)) throw httpError(400, `visibility: ${VISIBILITY_VALUES.join(', ')}`);
+  return v;
 }
-
-/**
- * Validate sourceType value
- */
-function validateSourceType(value, defaultValue = 'youtube') {
-  if (value === undefined || value === null) return defaultValue;
-  if (!SOURCE_TYPE_VALUES.includes(value)) {
-    throw httpError(400, `sourceType must be one of: ${SOURCE_TYPE_VALUES.join(', ')}`);
-  }
-  return value;
+function validateSourceType(v, def = 'youtube') {
+  if (v === undefined || v === null) return def;
+  if (!SOURCE_TYPE_VALUES.includes(v)) throw httpError(400, `sourceType: ${SOURCE_TYPE_VALUES.join(', ')}`);
+  return v;
 }
-
-/**
- * Validate UUID format
- */
-function validateUuid(value, fieldName) {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  if (!value || typeof value !== 'string' || !uuidRegex.test(value)) {
-    throw httpError(400, `Invalid ${fieldName} format`);
-  }
-  return value;
+function validateUuid(v, n) {
+  const re = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!v || typeof v !== 'string' || !re.test(v)) throw httpError(400, `Invalid ${n}`);
+  return v;
 }
-
-/**
- * Validate limit parameter
- */
-function validateLimit(value, defaultValue = 20, maxValue = 100) {
-  if (!value) return defaultValue;
-  const num = Number(value);
-  if (isNaN(num) || num < 1) return defaultValue;
-  return Math.min(num, maxValue);
+function validateLimit(v, def = 20, max = 100) {
+  if (!v) return def;
+  const n = Number(v);
+  if (isNaN(n) || n < 1) return def;
+  return Math.min(n, max);
 }
 
 // ── Trees ──────────────────────────────────────────────────────────────────
 
-/**
- * Get a single tree by ID.
- * @param {string} treeId
- * @returns {Promise<{id, data}|null>}
- */
 async function getTree(treeId) {
-  const result = await query(
-    'SELECT id, owner_id, title, visibility, created_at, updated_at FROM trees WHERE id = $1',
+  const r = await query(
+    `SELECT id, owner_id, name as title, is_public as visibility, created_at, updated_at, payload
+     FROM trees WHERE id = $1`,
     [treeId]
   );
-  if (!result.rows.length) return null;
-  const r = result.rows[0];
-  return { id: r.id, data: r };
+  if (!r.rows.length) return null;
+  const row = r.rows[0];
+  return {
+    id: row.id,
+    data: {
+      id: row.id,
+      owner_id: row.owner_id,
+      title: row.title,
+      visibility: row.visibility ? 'public' : 'private',
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+      ...(row.payload || {})
+    }
+  };
 }
 
-/**
- * List trees with optional filter.
- * @param {Object} filters - { ownerId, visibility, limit }
- * @returns {Promise<Array<{id, data}>>}
- */
 async function queryTrees(filters = {}) {
-  const params = [];
-  const where = [];
-
-  if (filters.ownerId) {
-    params.push(filters.ownerId);
-    where.push(`owner_id = $${params.length}`);
-  }
+  const p = [], w = [];
+  if (filters.ownerId) { p.push(filters.ownerId); w.push(`owner_id = $${p.length}`); }
   if (filters.visibility) {
-    params.push(filters.visibility);
-    where.push(`visibility = $${params.length}`);
+    const pub = filters.visibility === 'public';
+    p.push(pub);
+    w.push(`is_public = $${p.length}`);
   }
-
-  let sql = `SELECT id, owner_id, title, visibility, created_at, updated_at FROM trees`;
-  if (where.length) sql += ` WHERE ${where.join(' AND ')}`;
+  let sql = `SELECT id, owner_id, name as title, is_public as visibility, created_at, updated_at, payload FROM trees`;
+  if (w.length) sql += ` WHERE ${w.join(' AND ')}`;
   sql += ' ORDER BY created_at DESC';
-
-  if (filters.limit) {
-    params.push(Number(filters.limit));
-    sql += ` LIMIT $${params.length}`;
-  }
-
-  const result = await query(sql, params);
-  return result.rows.map((r) => ({ id: r.id, data: r }));
+  if (filters.limit) { p.push(Number(filters.limit)); sql += ` LIMIT $${p.length}`; }
+  const r = await query(sql, p);
+  return r.rows.map(row => ({
+    id: row.id,
+    data: { id: row.id, owner_id: row.owner_id, title: row.title, visibility: row.visibility ? 'public' : 'private', created_at: row.created_at, updated_at: row.updated_at, ...(row.payload || {}) }
+  }));
 }
 
-/**
- * Create a new tree.
- * @param {Object} data - { ownerId, title, visibility }
- * @returns {Promise<{id, data}>}
- */
 async function createTree(data) {
   const id = require('crypto').randomUUID();
-  const result = await query(
-    `INSERT INTO trees (id, owner_id, title, visibility, created_at, updated_at)
-     VALUES ($1, $2, $3, $4, NOW(), NOW())
-     RETURNING id, owner_id, title, visibility, created_at, updated_at`,
-    [id, data.ownerId, data.title || '나의 Lovetree', data.visibility || 'private']
+  const isPublic = data.visibility === 'public';
+  const r = await query(
+    `INSERT INTO trees (id, owner_id, name, is_public, node_count, created_at, updated_at, payload)
+     VALUES ($1,$2,$3,$4,0,NOW(),NOW(),$5)
+     RETURNING id, owner_id, name as title, is_public as visibility, created_at, updated_at, payload`,
+    [id, data.ownerId, data.title || '나의 Lovetree', isPublic, JSON.stringify({})]
   );
-  const r = result.rows[0];
-  return { id: r.id, data: r };
+  const row = r.rows[0];
+  return { id: row.id, data: { id: row.id, owner_id: row.owner_id, title: row.title, visibility: row.visibility ? 'public' : 'private', created_at: row.created_at, updated_at: row.updated_at, ...(row.payload || {}) } };
 }
 
-/**
- * Update tree fields.
- * @param {string} treeId
- * @param {Object} patch - fields to update
- */
 async function updateTree(treeId, patch) {
-  const fields = [];
-  const params = [];
-
-  if (patch.title !== undefined) {
-    params.push(patch.title);
-    fields.push(`title = $${params.length}`);
-  }
-  if (patch.visibility !== undefined) {
-    params.push(patch.visibility);
-    fields.push(`visibility = $${params.length}`);
-  }
-
-  if (!fields.length) return getTree(treeId);
-
-  params.push(treeId);
-  fields.push('updated_at = NOW()');
-
-  const result = await query(
-    `UPDATE trees SET ${fields.join(', ')} WHERE id = $${params.length}
-     RETURNING id, owner_id, title, visibility, created_at, updated_at`,
-    params
+  const f = [], p = [];
+  if (patch.title !== undefined) { p.push(patch.title); f.push(`name = $${p.length}`); }
+  if (patch.visibility !== undefined) { p.push(patch.visibility === 'public'); f.push(`is_public = $${p.length}`); }
+  if (!f.length) return getTree(treeId);
+  p.push(treeId);
+  f.push('updated_at = NOW()');
+  const r = await query(
+    `UPDATE trees SET ${f.join(', ')} WHERE id = $${p.length} RETURNING id, owner_id, name as title, is_public as visibility, created_at, updated_at, payload`,
+    p
   );
-  if (!result.rows.length) return null;
-  const r = result.rows[0];
-  return { id: r.id, data: r };
+  if (!r.rows.length) return null;
+  const row = r.rows[0];
+  return { id: row.id, data: { id: row.id, owner_id: row.owner_id, title: row.title, visibility: row.visibility ? 'public' : 'private', created_at: row.created_at, updated_at: row.updated_at, ...(row.payload || {}) } };
 }
 
-// ── Memories ────────────────────────────────────────────────────────────────
+// ── Memories (payload.nodes) ───────────────────────────────────────────────
 
-/**
- * Get a single memory by ID.
- * @param {string} memoryId
- * @returns {Promise<{id, data}|null>}
- */
 async function getMemory(memoryId) {
-  const result = await query(
-    `SELECT id, tree_id, parent_id, title, memo, artist, source,
-            source_url, source_type, thumbnail, emotion_tags,
-            timestamp, visibility, created_at, updated_at
-     FROM memories WHERE id = $1`,
-    [memoryId]
-  );
-  if (!result.rows.length) return null;
-  return { id: result.rows[0].id, data: result.rows[0] };
+  const r = await query('SELECT id, payload FROM trees');
+  for (const row of r.rows) {
+    const nodes = Array.isArray(row.payload?.nodes) ? row.payload.nodes : [];
+    const found = nodes.find(n => n.id === memoryId);
+    if (found) {
+      return {
+        id: found.id,
+        data: {
+          id: found.id, tree_id: row.id, parent_id: found.parentId || null,
+          title: found.title || '', memo: found.description || found.memo || '',
+          artist: found.artist || '', source: found.source || '',
+          source_url: found.sourceUrl || found.source_url || '',
+          source_type: found.sourceType || found.source_type || 'youtube',
+          thumbnail: found.thumbnail || '',
+          emotion_tags: found.emotion_tags || found.emotionTags || [],
+          timestamp: found.timestamp || '',
+          visibility: found.visibility || 'public',
+          created_at: found.createdAt || new Date().toISOString(),
+          updated_at: found.updatedAt || new Date().toISOString()
+        }
+      };
+    }
+  }
+  return null;
 }
 
-/**
- * List memories with optional filters.
- * @param {Object} filters - { treeId, parentId, visibility, limit }
- * @returns {Promise<Array<{id, data}>>}
- */
 async function queryMemories(filters = {}) {
-  const params = [];
-  const where = [];
+  let collected = [];
 
   if (filters.treeId) {
-    params.push(filters.treeId);
-    where.push(`tree_id = $${params.length}`);
-  }
-  if (filters.parentId !== undefined) {
-    if (filters.parentId === null) {
-      where.push('parent_id IS NULL');
-    } else {
-      params.push(filters.parentId);
-      where.push(`parent_id = $${params.length}`);
+    const tree = await getTree(filters.treeId);
+    if (!tree) return [];
+    const nodes = Array.isArray(tree.data.nodes) ? tree.data.nodes : [];
+    collected = nodes.map(n => ({ ...n, tree_id: filters.treeId }));
+  } else {
+    const r = await query('SELECT id, payload FROM trees');
+    for (const row of r.rows) {
+      const nodes = Array.isArray(row.payload?.nodes) ? row.payload.nodes : [];
+      nodes.forEach(n => collected.push({ ...n, tree_id: row.id }));
     }
+  }
+
+  let results = collected;
+
+  if (filters.parentId !== undefined) {
+    results = results.filter(n => filters.parentId === null ? !n.parentId : n.parentId === filters.parentId);
   }
   if (filters.visibility) {
-    params.push(filters.visibility);
-    where.push(`visibility = $${params.length}`);
+    results = results.filter(n => (n.visibility || 'public') === filters.visibility);
   }
+  results.sort((a, b) => new Date(a.timestamp || a.createdAt || 0) - new Date(b.timestamp || b.createdAt || 0));
+  if (filters.limit) results = results.slice(0, Number(filters.limit));
 
-  let sql = `SELECT id, tree_id, parent_id, title, memo, artist, source,
-                    source_url, source_type, thumbnail, emotion_tags,
-                    timestamp, visibility, created_at, updated_at
-             FROM memories`;
-  if (where.length) sql += ` WHERE ${where.join(' AND ')}`;
-  sql += ' ORDER BY created_at ASC';
-
-  if (filters.limit) {
-    params.push(Number(filters.limit));
-    sql += ` LIMIT $${params.length}`;
-  }
-
-  const result = await query(sql, params);
-  return result.rows.map((r) => ({ id: r.id, data: r }));
+  return results.map(n => ({
+    id: n.id,
+    data: {
+      id: n.id, tree_id: n.tree_id, parent_id: n.parentId || null,
+      title: n.title || '', memo: n.description || n.memo || '',
+      artist: n.artist || '', source: n.source || '',
+      source_url: n.sourceUrl || '', source_type: n.sourceType || 'youtube',
+      thumbnail: n.thumbnail || '',
+      emotion_tags: n.emotion_tags || [],
+      timestamp: n.timestamp || '',
+      visibility: n.visibility || 'public',
+      created_at: n.createdAt || new Date().toISOString(),
+      updated_at: n.updatedAt || new Date().toISOString()
+    }
+  }));
 }
 
-/**
- * Create a new memory.
- * @param {Object} data - memory fields
- * @returns {Promise<{id, data}>}
- */
 async function createMemory(data) {
   const id = require('crypto').randomUUID();
-  const result = await query(
-    `INSERT INTO memories
-       (id, tree_id, parent_id, title, memo, artist, source,
-        source_url, source_type, thumbnail, emotion_tags,
-        timestamp, visibility, created_at, updated_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,NOW(),NOW())
-     RETURNING id, tree_id, parent_id, title, memo, artist, source,
-               source_url, source_type, thumbnail, emotion_tags,
-               timestamp, visibility, created_at, updated_at`,
-    [
-      id,
-      data.treeId,
-      data.parentId || null,
-      data.title || '',
-      data.memo || '',
-      data.artist || '',
-      data.source || '',
-      data.sourceUrl || '',
-      data.sourceType || 'youtube',
-      data.thumbnail || '',
-      JSON.stringify(data.emotionTags || []),
-      data.timestamp || '',
-      data.visibility || 'private',
-    ]
+  const tree = await getTree(data.treeId);
+  if (!tree) throw httpError(404, 'Tree not found');
+
+  const existing = Array.isArray(tree.data.nodes) ? tree.data.nodes : [];
+  const newNode = {
+    id, parentId: data.parentId || null, title: data.title || '',
+    description: data.memo || '', artist: data.artist || '',
+    source: data.source || '', sourceUrl: data.sourceUrl || '',
+    sourceType: data.sourceType || 'youtube', thumbnail: data.thumbnail || '',
+    emotion_tags: data.emotionTags || [], timestamp: data.timestamp || '',
+    visibility: data.visibility || 'private',
+    createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
+  };
+
+  const newPayload = { ...tree.data, nodes: [...existing, newNode] };
+  await query(
+    `UPDATE trees SET payload = $1, node_count = $2, updated_at = NOW() WHERE id = $3`,
+    [JSON.stringify(newPayload), existing.length + 1, data.treeId]
   );
-  const r = result.rows[0];
-  return { id: r.id, data: r };
+
+  return {
+    id,
+    data: {
+      id, tree_id: data.treeId, parent_id: newNode.parentId,
+      title: newNode.title, memo: newNode.description,
+      artist: newNode.artist, source: newNode.source,
+      source_url: newNode.sourceUrl, source_type: newNode.sourceType,
+      thumbnail: newNode.thumbnail, emotion_tags: newNode.emotion_tags,
+      timestamp: newNode.timestamp, visibility: newNode.visibility,
+      created_at: newNode.createdAt, updated_at: newNode.updatedAt
+    }
+  };
 }
 
-/**
- * Update memory fields.
- * @param {string} memoryId
- * @param {Object} patch
- * @returns {Promise<{id, data}|null>}
- */
 async function updateMemory(memoryId, patch) {
-  const fields = [];
-  const params = [];
+  const r = await query('SELECT id, payload FROM trees');
+  let targetTreeId = null;
+  let nodes = [];
+  let nodeIdx = -1;
 
-  const stringFields = [
-    'title', 'memo', 'artist', 'source', 'source_url', 'source_type',
-    'thumbnail', 'timestamp', 'visibility', 'parent_id',
-  ];
-  stringFields.forEach((f) => {
-    if (patch[f] !== undefined || patch[camelToSnake(f)] !== undefined) {
-      const val = patch[f] ?? patch[camelToSnake(f)];
-      params.push(val);
-      fields.push(`${snakeOf(f)} = $${params.length}`);
+  for (const row of r.rows) {
+    const payload = row.payload || {};
+    const current = Array.isArray(payload.nodes) ? payload.nodes : [];
+    const idx = current.findIndex(n => n.id === memoryId);
+    if (idx !== -1) {
+      targetTreeId = row.id;
+      nodes = current;
+      nodeIdx = idx;
+      break;
     }
-  });
-
-  if (patch.emotionTags) {
-    params.push(JSON.stringify(patch.emotionTags));
-    fields.push(`emotion_tags = $${params.length}`);
   }
 
-  if (!fields.length) return getMemory(memoryId);
+  if (!targetTreeId) return null;
 
-  params.push(memoryId);
-  fields.push('updated_at = NOW()');
+  const updated = { ...nodes[nodeIdx] };
+  Object.keys(patch).forEach(k => {
+    const v = patch[k];
+    let key = k;
+    if (k === 'emotionTags') key = 'emotion_tags';
+    else if (k === 'parentId') key = 'parentId';
+    else if (k === 'sourceUrl') key = 'sourceUrl';
+    else if (k === 'sourceType') key = 'sourceType';
+    updated[key] = v;
+  });
+  nodes[nodeIdx] = updated;
 
-  const result = await query(
-    `UPDATE memories SET ${fields.join(', ')} WHERE id = $${params.length}
-     RETURNING id, tree_id, parent_id, title, memo, artist, source,
-               source_url, source_type, thumbnail, emotion_tags,
-               timestamp, visibility, created_at, updated_at`,
-    params
-  );
-  if (!result.rows.length) return null;
-  const r = result.rows[0];
-  return { id: r.id, data: r };
-}
+  const tree = await getTree(targetTreeId);
+  const newPayload = { ...tree.data, nodes };
+  await query(`UPDATE trees SET payload = $1, updated_at = NOW() WHERE id = $2`, [JSON.stringify(newPayload), targetTreeId]);
 
-/**
- * Delete a memory.
- * @param {string} memoryId
- */
-async function deleteMemory(memoryId) {
-  await query('DELETE FROM memories WHERE id = $1', [memoryId]);
-}
-
-// ── Helpers ─────────────────────────────────────────────────────────────────
-
-function camelToSnake(str) {
-  return str.replace(/[A-Z]/g, (c) => '_' + c.toLowerCase());
-}
-
-function snakeOf(key) {
-  // tree_id, parent_id, source_url, source_type, emotion_tags
-  const map = {
-    treeId: 'tree_id', parentId: 'parent_id',
-    sourceUrl: 'source_url', sourceType: 'source_type',
-    emotionTags: 'emotion_tags', visibility: 'visibility',
+  return {
+    id: memoryId,
+    data: {
+      id: memoryId, tree_id: targetTreeId, parent_id: updated.parentId || null,
+      title: updated.title || '', memo: updated.description || updated.memo || '',
+      artist: updated.artist || '', source: updated.source || '',
+      source_url: updated.sourceUrl || '', source_type: updated.sourceType || 'youtube',
+      thumbnail: updated.thumbnail || '', emotion_tags: updated.emotion_tags || [],
+      timestamp: updated.timestamp || '', visibility: updated.visibility || 'public',
+      created_at: updated.createdAt || new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }
   };
-  return map[key] || key.replace(/[A-Z]/g, (c) => '_' + c.toLowerCase());
+}
+
+async function deleteMemory(memoryId) {
+  const r = await query('SELECT id, payload FROM trees');
+  let targetTreeId = null;
+  let nodes = [];
+  let nodeIdx = -1;
+
+  for (const row of r.rows) {
+    const payload = row.payload || {};
+    const current = Array.isArray(payload.nodes) ? payload.nodes : [];
+    const idx = current.findIndex(n => n.id === memoryId);
+    if (idx !== -1) {
+      targetTreeId = row.id;
+      nodes = current;
+      nodeIdx = idx;
+      break;
+    }
+  }
+
+  if (!targetTreeId) return;
+
+  nodes.splice(nodeIdx, 1);
+  // 기존 payload의 다른 필드들을 보존하면서 nodes만 업데이트
+  const existing = row.payload || {};
+  const newPayload = { ...existing, nodes, node_count: nodes.length };
+
+  await query(
+    `UPDATE trees SET payload = $1, node_count = $2, updated_at = NOW() WHERE id = $3`,
+    [JSON.stringify(newPayload), nodes.length, targetTreeId]
+  );
 }
 
 module.exports = {
-  // Trees
-  getTree,
-  queryTrees,
-  createTree,
-  updateTree,
-  // Memories
-  getMemory,
-  queryMemories,
-  createMemory,
-  updateMemory,
-  deleteMemory,
-  // Validation helpers (for function-level use)
-  validateRequired,
-  validateOptionalString,
-  validateVisibility,
-  validateSourceType,
-  validateUuid,
-  validateLimit,
+  getTree, queryTrees, createTree, updateTree,
+  getMemory, queryMemories, createMemory, updateMemory, deleteMemory,
+  validateRequired, validateOptionalString, validateVisibility,
+  validateSourceType, validateUuid, validateLimit
 };
