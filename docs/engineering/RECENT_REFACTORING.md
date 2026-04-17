@@ -212,6 +212,20 @@ memoryTitle.textContent = memory.title || '기억의 순간';
 | 불필요한 fallback | 모두 필요한 resilience | 없음 |
 | 로그 메시지 | 적절함 | 없음 |
 
+### 4.1.4 후속 보강 완료 (2026-04-18) - 3a34e87 후속
+
+| 항목 | 문제 | 조치 |
+|------|------|------|
+| editor.html 스크립트 로드 | ui.js, path.js 누락 | ✅ 추가 완료 |
+| my-trees.html 스크립트 로드 | normalize.js, ui.js, path.js 누락 | ✅ 추가 완료 |
+| search.html 스크립트 로드 | normalize.js, ui.js, path.js 누락 | ✅ 추가 완료 |
+| JS fallback warn | console.log만 사용 | ✅ console.warn 추가 |
+
+**발견된 문제:**
+- `3a34e87` 커밋에서 JS 유틸은 생성되었으나, HTML wiring이 누락됨
+- my-trees.js와 search.js는 LoveBudNormalize/UI/Path 사용하나 HTML에서 로드하지 않음
+- 이번 보강 작업으로 완전히 해결됨
+
 ### 4.2 단기 과제 (다음 스프린트)
 
 | 우선순위 | 작업 | 이유 | 상태 |

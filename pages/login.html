@@ -181,6 +181,17 @@
 
     <div class="login-shell">
         <div class="login-card">
+            <!-- Redirect notice: shown when user came from auth-gated page -->
+            <div id="redirect-notice" style="display:none; background:rgba(144,73,81,0.08); border:1px solid rgba(144,73,81,0.15); border-radius:1rem; padding:20px; margin-bottom:32px; text-align:left;">
+                <div style="display:flex; align-items:flex-start; gap:12px;">
+                    <span style="font-size:20px; flex-shrink:0;">🔒</span>
+                    <div>
+                        <div style="font-weight:800; color:var(--primary); font-size:14px; margin-bottom:4px;" data-i18n="redirect_notice_title">내 러브트리를 이용하려면 로그인이 필요합니다</div>
+                        <div style="color:var(--on-surface-variant); font-size:13px; line-height:1.5;" data-i18n="redirect_notice_desc">로그인 후 자동으로 이동합니다</div>
+                    </div>
+                </div>
+            </div>
+            
             <div class="serif" style="font-size: 2.2rem; font-weight: 950; color: var(--on-surface); margin-bottom: 12px; font-family: var(--font-heading); letter-spacing: -0.05em;">Lovetree</div>
             <h1 class="headline" style="font-size: 1.5rem; color: var(--primary); margin-bottom: 16px; font-weight: 800;" data-i18n="login_title">당신의 감정 나무를 시작하세요</h1>
             <p style="color: var(--on-surface-variant); margin-bottom: 48px; font-size: 1rem; line-height: 1.6; font-weight: 400;" data-i18n="login_desc">
@@ -248,6 +259,18 @@
     <script>
         // i18n 초기화 및 헤더 렌더링
         renderSharedHeader();
+        
+        // Show redirect notice if user came from auth-gated page
+        (function() {
+            var params = new URLSearchParams(window.location.search);
+            var redirect = params.get('redirect');
+            if (redirect) {
+                var noticeEl = document.getElementById('redirect-notice');
+                if (noticeEl) {
+                    noticeEl.style.display = 'block';
+                }
+            }
+        })();
         
         // 저장된 언어 불러와 적용
         document.addEventListener('DOMContentLoaded', function() {

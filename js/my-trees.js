@@ -17,6 +17,7 @@
       window.LoveBudUI.showToast(message, type, 3000);
     } else {
       // fallback: 공통 유틸 로드 실패 시 기본 alert
+      console.warn('[my-trees] LoveBudUI not loaded, toast degraded to console');
       console.log(`[Toast ${type}] ${message}`);
     }
   }
@@ -75,12 +76,16 @@
     var i18n = window.t || function(k) { return k; };
 
     // Tree 정규화 (공통 유틸 사용)
-    var normalizedTree = window.LoveBudNormalize?.normalizeTree(tree) || {
-      id: tree?.id,
-      title: tree?.title || '나의 러브트리',
-      visibility: tree?.visibility || 'private',
-      updatedAt: tree?.updatedAt || tree?.createdAt || null
-    };
+    var normalizedTree = window.LoveBudNormalize?.normalizeTree(tree);
+    if (!normalizedTree) {
+      console.warn('[my-trees] LoveBudNormalize not loaded, using local fallback');
+      normalizedTree = {
+        id: tree?.id,
+        title: tree?.title || '나의 러브트리',
+        visibility: tree?.visibility || 'private',
+        updatedAt: tree?.updatedAt || tree?.createdAt || null
+      };
+    }
 
     var a = document.createElement('a');
     a.href = 'editor.html?treeId=' + encodeURIComponent(normalizedTree.id);
