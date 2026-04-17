@@ -147,6 +147,14 @@
       ko: '나중에 시작하기',
       en: 'Start later'
     },
+    'redirect_notice_title': {
+      ko: '내 러브트리를 이용하려면 로그인이 필요합니다',
+      en: 'Login required to access My Lovetree'
+    },
+    'redirect_notice_desc': {
+      ko: '로그인 후 자동으로 이동합니다',
+      en: 'You will be redirected automatically after login'
+    },
     'email_modal_title_login': {
       ko: '이메일로 로그인',
       en: 'Login with Email'
