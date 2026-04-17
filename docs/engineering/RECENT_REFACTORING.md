@@ -202,6 +202,16 @@ memoryTitle.textContent = memory.title || '기억의 순간';
 | `media.js` 함수 | extractYouTubeId, getEmbedUrl, getThumbnailUrl, validateSourceUrl | ✅ 완료 |
 | `editor.js` 적용 | 보류 (파일 복잡성) | ⏳ 보류 |
 
+### 4.1.3 기술부채 청소 완료 (2026-04-18)
+
+| 항목 | 확인 결과 | 조치 |
+|------|----------|------|
+| `{id, data}` 잔재 | 없음 | 없음 |
+| `tree.data?.id` 접근 | my-trees.js line 211 | ✅ 제거 완료 |
+| 틀린 주석 | 없음 | 없음 |
+| 불필요한 fallback | 모두 필요한 resilience | 없음 |
+| 로그 메시지 | 적절함 | 없음 |
+
 ### 4.2 단기 과제 (다음 스프린트)
 
 | 우선순위 | 작업 | 이유 | 상태 |
