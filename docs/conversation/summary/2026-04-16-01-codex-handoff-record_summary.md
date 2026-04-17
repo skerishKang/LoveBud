@@ -1,4 +1,4 @@
-# 요약 - Codex Handoff
+# 요약 - codex-handoff-record
 
 **날짜**: 2026-04-16
 **세션 번호**: 01

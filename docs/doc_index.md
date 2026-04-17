@@ -19,10 +19,17 @@
 
 제품 관련 문서는 `docs/product/` 아래에 정리됩니다.
 
-- **PRODUCT_BRIEF.md** - 현재 실행 기준 제품 개요
-- **PRODUCT_IDENTITY.md** - 정체성/원칙
-- **MVP_SCOPE.md** - MVP 정의
-- **USER_FLOW.md** - 사용자 흐름
+- **index**: [index.md](./product/index.md) - 제품 문서 인덱스
+- [PRODUCT_BRIEF.md](./product/PRODUCT_BRIEF.md) - 현재 실행 기준 제품 개요
+- [PRODUCT_IDENTITY.md](./product/PRODUCT_IDENTITY.md) - 정체성/원칙
+- [MVP_SCOPE.md](./product/MVP_SCOPE.md) - MVP 정의
+- [USER_FLOW.md](./product/USER_FLOW.md) - 사용자 흐름
+- [DATA_NAMING_RULE.md](./product/DATA_NAMING_RULE.md) - 데이터 명명 규칙
+- [FRONTEND_BASELINE.md](./product/FRONTEND_BASELINE.md) - 프론트엔드 기준 상태
+- [READONLY_SHARE_SCOPE.md](./product/READONLY_SHARE_SCOPE.md) - 읽기 전용 공유 범위
+- [DATA_MODEL_DRAFT.md](./product/DATA_MODEL_DRAFT.md) - 데이터 모델 초안
+- [CTO_MVP_HANDOFF.md](./product/CTO_MVP_HANDOFF.md) - CTO 핸드오프 문서
+- [ROADMAP.md](./product/ROADMAP.md) - 프로젝트 로드맵 *(루트에서 이동)*
 
 ## pages 문서군
 
@@ -30,13 +37,52 @@
 
 - [pages_index.md](./pages/pages_index.md) - 페이지 문서 인덱스
 
-## 프로젝트 문서
+## reports 문서군
 
-- **ROADMAP.md** - 현재 구현 상태 및 다음 우선순위
+분석/개선 보고서는 `docs/reports/` 아래에 정리됩니다.
+
+- **index**: [index.md](./reports/index.md) - 보고서 인덱스
+- [UI_COPY_IMPROVEMENT_REPORT.md](./reports/UI_COPY_IMPROVEMENT_REPORT.md) - UI 카피 개선 보고서
+- [UX-Improvement.md](./reports/UX-Improvement.md) - UX 개선안
+- [DOCS_REORG_PLAN.md](./reports/DOCS_REORG_PLAN.md) - 문서 재구성 계획 *(루트에서 이동)*
+- [notebookLM_design.txt](./reports/notebookLM_design.txt) - NotebookLM 디자인 분석 *(루트에서 이동)*
+
+## archive 문서군
+
+레거시/보관 문서는 `docs/archive/` 아래에 정리됩니다.
+
+- **index**: [index.md](./archive/index.md) - 보관 문서 인덱스
+- 하위 폴더: `analysis/`, `guides/`, `plans/`
+- [minimax2.7_draft.txt](./archive/plans/minimax2.7_draft.txt) - Minimax 2.7 초안 *(루트에서 이동)*
+
+## backend 문서군
+
+백엔드 관련 문서는 `docs/backend/` 아래에 정리됩니다.
+
+- [backend.md](./backend/backend.md) - Netlify Functions 백엔드 개요 *(루트에서 이동)*
+- [README.md](./backend/README.md) - 백엔드 문서군 안내 *(미구현, 향후 작성)*
 
 ## ops 문서군
 
 운영 관련 문서는 `docs/ops/` 아래에 정리됩니다.
 
+- **index**: [index.md](./ops/index.md) - 운영 문서 인덱스
 - [PATHS_AND_SHELLS.md](./ops/PATHS_AND_SHELLS.md) - 컴1/컴2 경로와 셸 기준
 - [REMOTE_ACCESS_AND_WSL.md](./ops/REMOTE_ACCESS_AND_WSL.md) - 컴1 -> 컴2 SSH, WSL `G:` 마운트, Windows Codex 셸 실행 이슈
+- [DOC_WORKFLOW.md](./ops/DOC_WORKFLOW.md) - 대화 → 문서 → 구현으로 이어지는 작업 흐름
+- [ASSET_VERSIONING.md](./ops/ASSET_VERSIONING.md) - 정적 자산 버저닝
+- [CACHE_POLICY.md](./ops/CACHE_POLICY.md) - 캐시 정책
+- [DEPLOY_CHECKLIST.md](./ops/DEPLOY_CHECKLIST.md) - 배포 체크리스트
+- [EDITOR_ARCHITECTURE.md](./ops/EDITOR_ARCHITECTURE.md) - 에디터 아키텍처
+- [ENV_DEPENDENCY.md](./ops/ENV_DEPENDENCY.md) - 환경 변수 의존성
+- [FILE_BASELINE.md](./ops/FILE_BASELINE.md) - 파일 분류 기준표
+- [FLOW_A_QA_CHECKLIST.md](./ops/FLOW_A_QA_CHECKLIST.md) - Flow-A QA 체크리스트
+- [GIT_SSH_SETUP.md](./ops/GIT_SSH_SETUP.md) - Git/SSH 설정
+- [LOCAL_SECRETS.md](./ops/LOCAL_SECRETS.md) - 로컬 비밀값 관리
+- [OPERATIONS.md](./ops/OPERATIONS.md) - 운영 가이드
+- [PR_CHECKLIST.md](./ops/PR_CHECKLIST.md) - PR 체크리스트
+- [QA_CREDENTIALS.txt](./ops/QA_CREDENTIALS.txt) - QA 테스트 계정
+- [RELEASE_NOTE_20260410_AI_AND_DB.md](./ops/RELEASE_NOTE_20260410_AI_AND_DB.md) - 2026-04-10 릴리스 노트
+- [RUNBOOK.md](./ops/RUNBOOK.md) - 런북 (장애 대응)
+- [backend.md](./ops/backend.md) - Netlify Functions 백엔드 개요 *(루트에서 이동)*
+- [git_tutorial.md](./ops/git_tutorial.md) - Git 튜토리얼 *(루트에서 이동)*
