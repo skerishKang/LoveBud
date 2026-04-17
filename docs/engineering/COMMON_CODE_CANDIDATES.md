@@ -43,7 +43,7 @@ window.LoveBudNormalize.normalizeTree(tree)
 
 ---
 
-### 2. source/sourceUrl/sourceType 처리 중복 ⭐⭐⭐⭐ ✅ 완료
+### 2. source/sourceUrl/sourceType 처리 중복 ⭐⭐⭐⭐ 🔄 생성 완료, 적용 보류
 
 **위치:**
 - `js/search.js:398` - `firstMem.sourceUrl`
@@ -54,9 +54,9 @@ window.LoveBudNormalize.normalizeTree(tree)
 **문제:**
 sourceUrl 유효성 검사, embed URL 변환 로직이 중복될 가능성.
 
-**해결:**
+**해결 (2026-04-18):**
 ```javascript
-// js/utils/media.js 신규 완료 (2026-04-18)
+// js/utils/media.js 신규 생성됨
 window.LoveBudMedia = {
   extractYouTubeId(url),
   getEmbedUrl(sourceUrl, type = 'youtube'),
@@ -67,8 +67,24 @@ window.LoveBudMedia = {
 ```
 
 **적용 상태:**
-- [x] media.js 생성 완료
-- [ ] editor.js 적용 보류 (파일 복잡성)
+- [x] media.js 생성 완료 (사용 가능)
+- [ ] HTML 로드: 없음 (어떤 페이지도 로드하지 않음)
+- [ ] JS 사용: 없음 (어떤 파일도 사용하지 않음)
+- [ ] editor.js 적용: 보류 (파일 복잡성)
+
+**사용 가능한 곳:**
+- `editor.js`의 YouTube URL 처리 (현재 정규식 직접 사용 중)
+- `detail.js`의 embed URL 생성
+- `search.js`의 thumbnail URL 처리
+
+**적용 방법 (향후):**
+```html
+<script src="../js/utils/media.js?v=YYYYMMDD-N"></script>
+```
+```javascript
+const videoId = window.LoveBudMedia.extractYouTubeId(url);
+const embedUrl = window.LoveBudMedia.getEmbedUrl(url, 'youtube');
+```
 
 ---
 
@@ -185,7 +201,7 @@ window.LoveBudUI = {
 | 2 | Toast/Notification | ✅ 완료 | 2 | 하 | 코드량 감소 |
 | 3 | basePath 처리 | 🔄 시범 적용 | 3 | 하 | 유지보수성 |
 | 4 | Date formatting | ⏳ 보류 | 3 | 중 | UX 일관성 |
-| 5 | sourceUrl 처리 | ✅ 완료 (media.js 생성) | 3 | 중 | 미디어 처리 표준화 |
+| 5 | sourceUrl 처리 | 🔄 생성 완료, 적용 보류 | 3 | 중 | 미디어 처리 표준화 |
 | 6 | sourceContext | ⏳ 보류 | 2 | 중 | 네비게이션 일관성 |
 | 7 | 기술부채 청소 | ✅ 완료 | - | 하 | 코드 품질 |
 
