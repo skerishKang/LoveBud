@@ -284,8 +284,9 @@ async function deleteMemory(memoryId) {
   let targetTreeId = null;
   let nodes = [];
   let nodeIdx = -1;
+  let row; // 블록 밖에서도 접근 가능하도록 let으로 선언
 
-  for (const row of r.rows) {
+  for (row of r.rows) {
     const payload = row.payload || {};
     const current = Array.isArray(payload.nodes) ? payload.nodes : [];
     const idx = current.findIndex(n => n.id === memoryId);
