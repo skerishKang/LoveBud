@@ -89,10 +89,10 @@
     var visClass = tree.visibility === 'public' ? 'public' : 'private';
     var visLabel = tree.visibility === 'public' ? i18n('visibility_public') : i18n('visibility_private');
 
-    // Title fallback
-    var title = tree.title || tree.data?.title || '나의 러브트리';
-    // Updated date
-    var date = tree.updatedAt || tree.data?.updated_at || tree.createdAt || tree.data?.created_at || '';
+    // Title fallback (flat camelCase 표준)
+    var title = tree.title || '나의 러브트리';
+    // Updated date (flat camelCase 표준)
+    var date = tree.updatedAt || tree.createdAt || '';
     if (date) {
       date = date.slice(0, 10).replace(/-/g, '.');
     }
