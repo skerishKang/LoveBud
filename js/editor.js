@@ -360,19 +360,10 @@ const RADIUS_L2 = 240; // L2 반경 (200→240) - 노드 겹침 방지
             return 'm' + (max + 1);
         };
 
-const nextMemoryId = () => {
-    let max = 0;
-    treeMemories().forEach(m => {
-        const match = m.id.match(/^m(\d+)$/);
-        if (match) max = Math.max(max, parseInt(match[1]));
-    });
-    return 'm' + (max + 1);
-};
-
-const updateDetailPanel = (data) => {
-    // 현재 트리 정보 가져오기
-    const currentTree = window.currentTreeData || {};
-    const treeId = currentTree.id || urlTreeId;
+        const updateDetailPanel = (data) => {
+            // 현재 트리 정보 가져오기
+            const currentTree = window.currentTreeData || {};
+            const treeId = currentTree.id || urlTreeId;
 
 // 헤더: 제목 + 로컬 저장 배지 + detail 페이지 링크
  const headerEl = detailPanel.querySelector('h3');
@@ -920,26 +911,13 @@ if (!createdMemory || typeof createdMemory !== 'object') {
         console.log('[editor] Ready — tree:', treeId, 'memories:', treeMemories().length);
     };
 
-    // ── 인증 상태에 따라 시작 ──
-    // 완화: Firebase SDK 지연 또는 unavailable 시에도 cached auth가 있으면 진입 허용
-    // 보안: cached auth가 있어도 Firebase 재검증은后台에서 진행
+    // ── 인증 가드: my-trees.js와 동일한 패턴 ──
+    // 단순화된 인증 체크: user 없으면 cache 확인 후 redirect, 있으면 진행
+    var editorStarted = false;
     
-    function waitForFirebase(maxWaitMs, intervalMs, callback) {
-        var elapsed = 0;
-        var checkInterval = setInterval(function() {
-            elapsed += intervalMs;
-            var hasFirebase = typeof firebase !== 'undefined' && firebase.auth && firebase.apps && firebase.apps.length;
-            if (hasFirebase) {
-                clearInterval(checkInterval);
-                callback(true);
-            } else if (elapsed >= maxWaitMs) {
-                clearInterval(checkInterval);
-                callback(false);
-            }
-        }, intervalMs);
-    }
-
-    function tryStartEditor(forceStart) {
+    function tryStartEditor(user) {
+        if (editorStarted) return;
+        
         // Check for confirmed auth cache
         var cachedUser = null;
         try {
@@ -951,56 +929,59 @@ if (!createdMemory || typeof createdMemory !== 'object') {
             }
         } catch (e) {}
         
-        var hasFirebase = typeof firebase !== 'undefined' && firebase.auth && firebase.apps && firebase.apps.length;
-        
-        if (hasFirebase) {
-            // Firebase available - use standard auth flow
-            var unsubscribe = firebase.auth().onAuthStateChanged(function(user) {
-                unsubscribe(); // One-shot
-                if (!user && !forceStart && (!cachedUser || !cachedUser.uid)) {
-                    var basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
-                    window.location.href = basePath + 'login.html?redirect=' + basePath + 'editor.html';
-                    return;
-                }
-                // Firebase 준비 완료 후에만 editor 시작
-                console.log('[editor] Firebase ready, starting editor');
-                startEditor();
-            });
-        } else if (cachedUser && cachedUser.uid) {
-            // Firebase not available but has cached auth - wait for Firebase
-            console.log('[editor] Firebase not ready, waiting with cached auth...');
-            
-            // preparing UI 유지하면서 Firebase 준비 대기
-            waitForFirebase(5000, 200, function(ready) {
-                if (ready) {
-                    // Firebase now ready - start with auth check
-                    var unsubscribe = firebase.auth().onAuthStateChanged(function(user) {
-                        unsubscribe();
-                        if (!user && !forceStart) {
-                            var basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
-                            window.location.href = basePath + 'login.html?redirect=' + basePath + 'editor.html';
-                            return;
-                        }
-                        console.log('[editor] Firebase became ready, starting editor');
-                        startEditor();
-                    });
-                } else {
-                    // Firebase never ready - don't start API calls, show error
-                    console.error('[editor] Firebase failed to initialize after timeout');
-                    const i18n = window.t || ((k) => k);
-                    showToast(i18n('firebase_init_fail') || 'Firebase 준비 실패. 페이지를 새로고침해 주세요.', 'error');
-                    // startEditor()를 호출하지 않음 - API 호출 방지
-                }
-            });
-        } else {
-            // No Firebase and no cached auth - redirect to login
-            if (!forceStart) {
-                var basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
-                window.location.href = basePath + 'login.html?redirect=' + basePath + 'editor.html';
-            }
+        // 인증 실패: user 없고 cachedUser도 없으면 redirect
+        if (!user && (!cachedUser || !cachedUser.uid)) {
+            var basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
+            window.location.href = basePath + 'login.html?redirect=' + basePath + 'editor.html';
+            return;
         }
+        
+        // 인증 성공 (또는 캐시된 인증 있음)
+        editorStarted = true;
+        console.log('[editor] Auth confirmed, starting editor');
+        startEditor();
     }
     
-    // Start with force flag for direct access scenarios
-    tryStartEditor(false);
+    // 새로운 배열 콜백 패턴 사용
+    if (typeof window.registerOnAuthReady === 'function') {
+        window.registerOnAuthReady(tryStartEditor);
+    } else {
+        // 폴백: 구식 단일 콜백
+        window.onAuthReady = tryStartEditor;
+    }
+    
+    // auth.js timeout 또는 Firebase unavailable 시에도 cached auth가 있으면 진입 허용
+    window.addEventListener('load', function() {
+        setTimeout(function() {
+            if (editorStarted) return;
+            
+            var cachedUser = null;
+            try {
+                if (localStorage.getItem('lovebud_auth_confirmed') === 'true') {
+                    var raw = localStorage.getItem('lovebud_auth_cache');
+                    if (raw && raw !== 'null') {
+                        cachedUser = JSON.parse(raw);
+                    }
+                }
+            } catch (e) {}
+            
+            var isFirebaseReady = typeof firebase !== 'undefined' && 
+                             firebase.auth && 
+                             firebase.apps && 
+                             firebase.apps.length > 0;
+            
+            if (!isFirebaseReady && !cachedUser) {
+                // Firebase 없고 cached auth도 없음 → login으로 redirect
+                var basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
+                window.location.href = basePath + 'login.html?redirect=' + basePath + 'editor.html';
+                return;
+            }
+            
+            // Firebase 없지만 cached auth 있음 OR Firebase 있음 → boot with cache
+            if (cachedUser) {
+                console.log('[editor] Using cached auth after timeout');
+            }
+            tryStartEditor(cachedUser);
+        }, 5500);
+    }, { once: true });
 });
