@@ -194,25 +194,39 @@ memoryTitle.textContent = memory.title || '기억의 순간';
 | `path.js` 신규 | 경로 유틸 생성 | ✅ 완료 |
 | `search.js` | `path.js` 시범 적용 | ✅ 완료 |
 
-### 4.1.2 스프린트 C 상태 (2026-04-18) - 생성 완료, 적용 보류
+### 4.1.2 스프린트 C 상태 (2026-04-18) - 생성 완료, 런타임 미연결
 
 | 커밋 | 작업 | 결과 | 비고 |
 |------|------|------|------|
-| `media.js` 신규 | YouTube 처리 유틸 생성 | ✅ 생성 완료 | 사용 가능 |
-| `media.js` 함수 | extractYouTubeId, getEmbedUrl, getThumbnailUrl, validateSourceUrl | ✅ 구현 완료 | 테스트 미완료 |
-| `media.js` HTML 로드 | 페이지 로드 | ❌ 미적용 | 어떤 페이지도 로드하지 않음 |
-| `media.js` JS 사용 | 실제 사용 | ❌ 미적용 | 어떤 파일도 사용하지 않음 |
-| `editor.js` 적용 | 보류 (파일 복잡성) | ⏳ 보류 | 안정화 후 적용 예정 |
+| `media.js` 신규 | YouTube 처리 유틸 생성 | ✅ 생성 완료 | 함수 구현 완료, 사용 준비됨 |
+| `media.js` 함수 | extractYouTubeId, getEmbedUrl, getThumbnailUrl, validateSourceUrl | ✅ 구현 완료 | 테스트 가능 |
+| `media.js` HTML 로드 | 페이지 로드 | ⚠️ 미배선 | 어떤 HTML도 `<script>`로 로드하지 않음 |
+| `media.js` JS 사용 | 실제 호출 | ⚠️ 미연결 | 어떤 JS도 `LoveBudMedia`를 호출하지 않음 |
+| `editor.js` 적용 | 시범 적용 | ⏳ 보류 | 다음 스프린트 예정 |
 
-**현실적 상태:**
-- media.js는 생성되어 `js/utils/media.js`에 존재함
-- window.LoveBudMedia로 전역 노출됨
-- 하지만 어떤 HTML 페이지도 이 파일을 로드하지 않음
-- 따라서 현재는 사용 불가능한 "죽은 코드(dead code)" 상태
+**현재 상태 (미배선/unwired):**
+- ✅ 파일 존재: `js/utils/media.js`에 유틸 구현되어 있음
+- ✅ 전역 노출: `window.LoveBudMedia`로 접근 가능
+- ⚠️ HTML 미배선: 어떤 페이지도 `<script src="...media.js">`를 로드하지 않음
+- ⚠️ 호출 미연결: 어떤 JS 파일도 `LoveBudMedia` 함수를 실제로 호출하지 않음
+- 📋 결과: 런타임에서 사용되지 않는 **미배선(unwired)** 상태
+
+**다음 스프린트 액션:**
+```
+Step 1: HTML wiring
+  - editor.html (또는 detail.html)에 media.js 로드 추가
+
+Step 2: 시범 적용
+  - editor.js의 YouTube 처리를 media.js 기반으로 변경
+  - 또는 detail.js의 embed URL 생성에 적용
+
+Step 3: 검증 및 확산
+  - 나머지 파일들에도 동일 패턴 적용
+```
 
 **적용 가능 시점:**
 - editor.js 안정화 스프린트 때 함께 적용 권장
-- 또는 별도의 "media.js 적용" 스프린트 필요
+- 또는 별도의 "media.js 런타임 연결" 스프린트 (1-2시간)
 
 ### 4.1.3 기술부채 청소 완료 (2026-04-18)
 
