@@ -22,6 +22,7 @@ archive/
 | `analysis/` | 과거 분석 보고서 |
 | `guides/` | 오래된 가이드 문서 |
 | `plans/` | 기존 계획서 및 초안 |
+| `identity/` | 제품 정체성 인터뷰 자료 및 보관 문서 |
 
 ## 포함된 문서 (예시)
 - `minimax2.7_draft.txt` — Minimax 2.7 초안 (루트에서 이동 예정)

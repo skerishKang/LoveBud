@@ -183,7 +183,7 @@ async function queryMemories(filters = {}) {
       artist: n.artist || '', source: n.source || '',
       source_url: n.sourceUrl || '', source_type: n.sourceType || 'youtube',
       thumbnail: n.thumbnail || '',
-      emotion_tags: n.emotion_tags || [],
+      emotion_tags: n.emotion_tags || n.emotionTags || [],
       timestamp: n.timestamp || '',
       visibility: n.visibility || 'public',
       created_at: n.createdAt || new Date().toISOString(),

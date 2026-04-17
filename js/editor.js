@@ -212,8 +212,7 @@ const MEMORIES_CACHE_KEY = 'memories_' + (urlTreeId || 'default');
             console.log('[editor] Using cached memories:', cachedMemories.length);
             memories = cachedMemories;
             window.currentTreeMemories = memories.map(normalizeMemory).filter(Boolean);
-            // 캐시 데이터로 먼저 UI 그리기 (빠른 첫 paint)
-            initCanvas();
+            // initCanvas()는 아래에서 함수 선언 후 한 번만 호출
         }
         
         // 2. Background에서 API로 최신 데이터 가져오기

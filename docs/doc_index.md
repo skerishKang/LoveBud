@@ -26,6 +26,15 @@
 - [USER_FLOW.md](./product/USER_FLOW.md) - 사용자 흐름
 - [DATA_NAMING_RULE.md](./product/DATA_NAMING_RULE.md) - 데이터 명명 규칙
 - [READONLY_SHARE_SCOPE.md](./product/READONLY_SHARE_SCOPE.md) - 읽기 전용 공유 범위
+- **identity-source/**: [인터뷰 원본](./product/identity-source/) — 제품 정체성 인터뷰 소스 자료
+
+## design 문서군
+
+UI/UX 디자인 및 비주얼 프롬프트는 `docs/design/` 아래에 정리됩니다.
+
+- **index**: [index.md](./design/index.md) - 디자인 문서 인덱스
+- [prompts/image-generation-prompts.md](./design/prompts/image-generation-prompts.md) - 이미지 생성 프롬프트 모음 (12개 화면)
+- [prompts/home-hero-slide-prompts.txt](./design/prompts/home-hero-slide-prompts.txt) - 홈 히어로 슬라이드 이미지 생성 프롬프트 (5장)
 
 ## pages 문서군
 
@@ -57,7 +66,7 @@
 레거시/보관 문서는 `docs/archive/` 아래에 정리됩니다.
 
 - **index**: [index.md](./archive/index.md) - 보관 문서 인덱스
-- 하위 폴더: `analysis/`, `guides/`, `plans/`
+- 하위 폴더: `analysis/`, `guides/`, `plans/`, `identity/`
 - [minimax2.7_draft.txt](./archive/plans/minimax2.7_draft.txt) - Minimax 2.7 초안 *(루트에서 이동)*
 
 ## backend 문서군
