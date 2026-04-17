@@ -281,13 +281,7 @@
       var trees;
       if (window.apiClient && window.apiClient.getTrees) {
         trees = await window.apiClient.getTrees();
-        // CRITICAL: Filter out public sample trees - my-trees should show ONLY user's trees
-        if (Array.isArray(trees)) {
-          trees = trees.filter(t => {
-            return t.visibility === 'private' || (t.data && t.data.visibility === 'private') || 
-                   t.visibility === undefined;
-          });
-        }
+        // 인증된 /trees 는 이미 "내 트리 목록"이므로 추가 visibility 필터링 금지
       } else {
         trees = typeof getTrees === 'function' ? getTrees() : [];
       }

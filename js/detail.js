@@ -47,27 +47,37 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (window.apiClient && window.apiClient.getMemory) {
             const apiMemory = await window.apiClient.getMemory(memoryId);
             if (apiMemory) {
-                // 평탄화: {id, data:{...}} → {...data, id} (snake_case → camelCase)
-                const flatMemory = {
-                    id: apiMemory.id,
-                    ...apiMemory.data,
-                    // snake_case → camelCase 매핑
-                    parentId: apiMemory.data?.parent_id,
-                    sourceUrl: apiMemory.data?.source_url,
-                    sourceType: apiMemory.data?.source_type,
-                    emotionTags: apiMemory.data?.emotion_tags,
-                    createdAt: apiMemory.data?.created_at,
-                    updatedAt: apiMemory.data?.updated_at,
-                    treeId: apiMemory.data?.tree_id
+                const raw = apiMemory && apiMemory.data
+                    ? { id: apiMemory.id, ...apiMemory.data }
+                    : apiMemory;
+
+                const normalizedMemory = {
+                    id: raw.id,
+                    title: raw.title || '',
+                    memo: raw.memo || raw.description || '',
+                    quote: raw.quote || '',
+                    artist: raw.artist || '',
+                    source: raw.source || '',
+                    sourceUrl: raw.sourceUrl || raw.source_url || '',
+                    sourceType: raw.sourceType || raw.source_type || 'youtube',
+                    thumbnail: raw.thumbnail || '',
+                    emotionTags: raw.emotionTags || raw.emotion_tags || [],
+                    timestamp: raw.timestamp || '',
+                    visibility: raw.visibility || 'public',
+                    createdAt: raw.createdAt || raw.created_at || null,
+                    updatedAt: raw.updatedAt || raw.updated_at || null,
+                    treeId: raw.treeId || raw.tree_id || null,
+                    parentId: raw.parentId ?? raw.parent_id ?? null
                 };
-                // 캐시 업데이트 (flat 객체로 저장)
+
                 if (cache) {
-                    cache.set(MEMORY_CACHE_KEY, flatMemory, 3 * 60 * 1000); // 3분 TTL
+                    cache.set(MEMORY_CACHE_KEY, normalizedMemory, 3 * 60 * 1000);
                 }
-                // 캐시와 다르면 갱신
-                if (JSON.stringify(memory) !== JSON.stringify(flatMemory)) {
-                    memory = flatMemory;
+
+                if (JSON.stringify(memory) !== JSON.stringify(normalizedMemory)) {
+                    memory = normalizedMemory;
                 }
+
                 console.log('[detail] API memory loaded:', memoryId);
             }
         }
