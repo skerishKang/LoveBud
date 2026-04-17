@@ -84,7 +84,8 @@ function clearConfirmedAuthCache() {
  * If no confirmed cache exists, show a neutral skeleton that preserves layout.
  */
 function applyCachedAuthState() {
-  var isLoginPage = window.location.pathname.indexOf('login.html') !== -1;
+  var path = window.location.pathname;
+  var isLoginPage = path.indexOf('/pages/login.html') !== -1 || path.indexOf('login.html') !== -1;
   if (isLoginPage) return false;
 
   var authNav = document.getElementById('auth-nav');
@@ -242,8 +243,16 @@ function markAuthReady() {
 
 // ── UI Builders ───────────────────────────────────────────────────────────────
 
+function getBasePath() {
+  var path = window.location.pathname;
+  var isPagesContext = path.indexOf('/pages/') !== -1;
+  return isPagesContext ? '' : 'pages/';
+}
+
 function buildLoginButton() {
-  return '<a href="login.html" class="btn-round btn-outline" style="text-decoration:none;padding:8px 20px;font-size:14px;">로그인</a>';
+  var basePath = getBasePath();
+  var loginHref = basePath + 'login.html';
+  return '<a href="' + loginHref + '" class="btn-round btn-outline" style="text-decoration:none;padding:8px 20px;font-size:14px;">로그인</a>';
 }
 
 /**
@@ -358,7 +367,10 @@ function attachDropdownListener() {
 
 function getRedirectTarget() {
   var params = new URLSearchParams(window.location.search);
-  return params.get('redirect') || 'my-trees.html';
+  var redirect = params.get('redirect');
+  if (redirect) return redirect;
+  var basePath = getBasePath();
+  return basePath + 'my-trees.html';
 }
 
 /**

@@ -257,11 +257,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                             첫 번째 순간을 기록하고 당신의 나무를 키워보세요!
                         </p>
                         <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
-                            <a href="my-trees.html" class="btn-round btn-primary" style="text-decoration: none; font-size: 14px; padding: 10px 20px;">
+                            <a href="${basePath}my-trees.html" class="btn-round btn-primary" style="text-decoration: none; font-size: 14px; padding: 10px 20px;">
                                 <span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle; margin-right: 4px;">account_tree</span>
                                 내 러브트리 시작하기
                             </a>
-                            <a href="index.html" class="btn-round btn-outline" style="text-decoration: none; font-size: 14px; padding: 10px 20px;">
+                            <a href="${basePath}index.html" class="btn-round btn-outline" style="text-decoration: none; font-size: 14px; padding: 10px 20px;">
                                 <span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle; margin-right: 4px;">home</span>
                                 소개 보기
                             </a>
@@ -348,7 +348,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (tree.memories && tree.memories.length > 0) {
                     const firstMemory = tree.memories[0];
                     // tree 파라미터와 from 파라미터로 감상 맥락 전달
-                    window.location.href = `detail.html?id=${firstMemory.id}&tree=${tree.id}&from=browse`;
+                    var basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
+                    window.location.href = `${basePath}detail.html?id=${firstMemory.id}&tree=${tree.id}&from=browse`;
                 }
             });
 
