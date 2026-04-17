@@ -351,7 +351,8 @@
       if (!isFirebaseReady && !cachedUser) {
         // Firebase 없고 cached auth도 없음 → login으로 redirect
         console.warn('[my-trees] Firebase unavailable, no cached auth, redirecting to login');
-        window.location.href = 'login.html?redirect=my-trees.html';
+        var basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
+        window.location.href = basePath + 'login.html?redirect=' + basePath + 'my-trees.html';
         return;
       }
       

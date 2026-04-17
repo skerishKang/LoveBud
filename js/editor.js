@@ -146,7 +146,8 @@ const MEMORIES_CACHE_KEY = 'memories_' + (urlTreeId || 'default');
       const i18n = window.t || ((k) => k);
       if (e.message?.includes('401') || e.message?.includes('Authentication')) {
         showToast(i18n('need_login'), 'error');
-        setTimeout(() => window.location.href = 'login.html?redirect=editor.html', 2000);
+        var basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
+        setTimeout(() => window.location.href = basePath + 'login.html?redirect=' + basePath + 'editor.html', 2000);
         return;
       }
     }
@@ -359,10 +360,19 @@ const RADIUS_L2 = 240; // L2 반경 (200→240) - 노드 겹침 방지
             return 'm' + (max + 1);
         };
 
-        const updateDetailPanel = (data) => {
-            // 현재 트리 정보 가져오기
-            const currentTree = window.currentTreeData || {};
-            const treeId = currentTree.id || urlTreeId;
+const nextMemoryId = () => {
+    let max = 0;
+    treeMemories().forEach(m => {
+        const match = m.id.match(/^m(\d+)$/);
+        if (match) max = Math.max(max, parseInt(match[1]));
+    });
+    return 'm' + (max + 1);
+};
+
+const updateDetailPanel = (data) => {
+    // 현재 트리 정보 가져오기
+    const currentTree = window.currentTreeData || {};
+    const treeId = currentTree.id || urlTreeId;
 
 // 헤더: 제목 + 로컬 저장 배지 + detail 페이지 링크
  const headerEl = detailPanel.querySelector('h3');
@@ -370,10 +380,11 @@ const RADIUS_L2 = 240; // L2 반경 (200→240) - 노드 겹침 방지
  const localBadge = isLocalSaveMode
  ? '<span style="font-size:11px;padding:2px 8px;background:rgba(239,108,0,0.1);color:#ef6c00;border-radius:99px;font-weight:600;margin-left:8px;">로컬 저장</span>'
  : '';
+ var basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
  headerEl.innerHTML = `
  <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
  <span style="font-size:1.1rem;line-height:1.3;">${data.title}${localBadge}</span>
- <a href="detail.html?id=${data.id}&tree=${treeId}&from=editor"
+ <a href="${basePath}detail.html?id=${data.id}&tree=${treeId}&from=editor"
  title="전체 화면으로 감상하기"
  style="display:flex;align-items:center;gap:4px;padding:6px 12px;background:var(--primary-container);color:var(--on-primary-container);border-radius:99px;font-size:12px;font-weight:700;text-decoration:none;white-space:nowrap;">
  <span class="material-symbols-outlined" style="font-size:14px;">open_in_new</span>
@@ -947,7 +958,8 @@ if (!createdMemory || typeof createdMemory !== 'object') {
             var unsubscribe = firebase.auth().onAuthStateChanged(function(user) {
                 unsubscribe(); // One-shot
                 if (!user && !forceStart && (!cachedUser || !cachedUser.uid)) {
-                    window.location.href = 'login.html?redirect=editor.html';
+                    var basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
+                    window.location.href = basePath + 'login.html?redirect=' + basePath + 'editor.html';
                     return;
                 }
                 // Firebase 준비 완료 후에만 editor 시작
@@ -965,7 +977,8 @@ if (!createdMemory || typeof createdMemory !== 'object') {
                     var unsubscribe = firebase.auth().onAuthStateChanged(function(user) {
                         unsubscribe();
                         if (!user && !forceStart) {
-                            window.location.href = 'login.html?redirect=editor.html';
+                            var basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
+                            window.location.href = basePath + 'login.html?redirect=' + basePath + 'editor.html';
                             return;
                         }
                         console.log('[editor] Firebase became ready, starting editor');
@@ -982,7 +995,8 @@ if (!createdMemory || typeof createdMemory !== 'object') {
         } else {
             // No Firebase and no cached auth - redirect to login
             if (!forceStart) {
-                window.location.href = 'login.html?redirect=editor.html';
+                var basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
+                window.location.href = basePath + 'login.html?redirect=' + basePath + 'editor.html';
             }
         }
     }
