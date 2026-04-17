@@ -47,6 +47,31 @@ function validateLimit(v, def = 20, max = 100) {
   return Math.min(n, max);
 }
 
+// ── Payload helpers ─────────────────────────────────────────────────────────
+
+// tree.data 에 섞여 있는 tree 메타 필드를 제거하고 payload 성격의 값만 남긴다.
+// nodes는 별도로 주입하므로 여기서는 제외해도 되고, 남아 있어도 overwrite 된다.
+function extractPayloadOnly(treeLike) {
+  const source = treeLike?.data || treeLike || {};
+  const payload = { ...source };
+
+  delete payload.id;
+  delete payload.owner_id;
+  delete payload.ownerId;
+  delete payload.title;
+  delete payload.name;
+  delete payload.visibility;
+  delete payload.is_public;
+  delete payload.created_at;
+  delete payload.createdAt;
+  delete payload.updated_at;
+  delete payload.updatedAt;
+  delete payload.node_count;
+  delete payload.nodeCount;
+
+  return payload;
+}
+
 // ── Trees ──────────────────────────────────────────────────────────────────
 
 async function getTree(treeId) {
@@ -208,14 +233,12 @@ async function createMemory(data) {
     createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
   };
 
-  const existingPayload = tree.data?.payload && typeof tree.data.payload === 'object'
-    ? tree.data.payload
-    : {};
-
+  const basePayload = extractPayloadOnly(tree);
   const newPayload = {
-    ...existingPayload,
+    ...basePayload,
     nodes: [...existing, newNode]
   };
+
   await query(
     `UPDATE trees SET payload = $1, node_count = $2, updated_at = NOW() WHERE id = $3`,
     [JSON.stringify(newPayload), existing.length + 1, data.treeId]
@@ -268,8 +291,16 @@ async function updateMemory(memoryId, patch) {
   nodes[nodeIdx] = updated;
 
   const tree = await getTree(targetTreeId);
-  const newPayload = { ...tree.data, nodes };
-  await query(`UPDATE trees SET payload = $1, updated_at = NOW() WHERE id = $2`, [JSON.stringify(newPayload), targetTreeId]);
+  const basePayload = extractPayloadOnly(tree);
+  const newPayload = {
+    ...basePayload,
+    nodes
+  };
+
+  await query(
+    `UPDATE trees SET payload = $1, updated_at = NOW() WHERE id = $2`,
+    [JSON.stringify(newPayload), targetTreeId]
+  );
 
   return {
     id: memoryId,
@@ -317,8 +348,12 @@ async function deleteMemory(memoryId) {
 
   nodes.splice(nodeIdx, 1);
   // 기존 payload의 다른 필드들을 보존하면서 nodes만 업데이트
-  const existing = row.payload || {};
-  const newPayload = { ...existing, nodes, node_count: nodes.length };
+  const tree = await getTree(targetTreeId);
+  const basePayload = extractPayloadOnly(tree);
+  const newPayload = {
+    ...basePayload,
+    nodes
+  };
 
   await query(
     `UPDATE trees SET payload = $1, node_count = $2, updated_at = NOW() WHERE id = $3`,
