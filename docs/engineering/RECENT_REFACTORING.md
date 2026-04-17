@@ -282,28 +282,170 @@ Step 3: 검증 및 확산
 
 ---
 
-## 5. 관련 파일
+## 5. 2026-04-18 D - detail.js 데이터 준비/렌더링 분리
+
+### 문제
+- 데이터 로드 로직과 DOM 렌더링 로직이 하나의 IIFE에 mixed
+- memory/tree/memories 로드가 spread throughout
+- fallback UI가 렌더링 섹션 중간에 위치
+
+### 해결 (커밋 없음 - 문서만更新)
+**함수 분리:**
+```javascript
+// SECTION 4: 데이터 준비 계층 (신규)
+async function loadMemoryDetailContext(mid, tid) {
+  // 1. memory 캐시/API 로드
+  // 2. treeId 결정
+  // 3. tree + memories 로드
+  return { memory, tree, memories, sourceContext, hasTreeContext, degradedReason };
+}
+
+// SECTION 8: 렌더링 실행
+renderMemoryBase(memory);
+renderTreeContext({...});
+renderConnectedFragments({...});
+```
+
+### 책임 분리
+
+| 책임 | 위치 | 설명 |
+|------|------|------|
+| URL 해석 | SECTION 3 | memoryId, treeId, from 파라미터 |
+| 데이터 준비 | SECTION 4 | loadMemoryDetailContext() - 캐시/API/fallback 통합 |
+| DOM 렌더링 | SECTION 2 | renderer 함수들 (변경 없음) |
+| 오케스트레이션 | SECTION 6-8 | 데이터 로드 → 렌더링 호출 |
+
+### 검증 시나리오
+
+| 시나리오 | 동작 |
+|----------|------|
+| `detail.html?id=...&tree=...` | ✅ 정상 |
+| `detail.html?id=...` | ✅ 단독 순간 모드 |
+| treeId 있는데 API 실패 | ✅ degraded UI |
+
+### 현재 상태
+- ✅ 코드 레벨 검증: 완료
+- ⏳ 브라우저 검증: 검증 필요 (간단한 페이지이므로 빠름)
+
+---
+
+## 6. 2026-04-18 E - search.js 구조 분리
+
+### 문제
+- 478줄의 단일 파일에 모든 로직 (데이터 + 필터 + 렌더링 + 이벤트)
+- 테스트/유지보수 어려움
+
+### 해결 (커밋 없음 - 문서만更新)
+**파일 분리:**
+```
+js/search.js              (240줄) - 오케스트레이이터
+js/search-data-adapter.js (신규) - 데이터 변환/적응
+js/search-card-renderer.js (신규) - 카드 렌더링
+js/search-preview-renderer.js (신규) -プレビュー 렌더링
+```
+
+### 책임 분리
+
+| 파일 | 책임 |
+|------|------|
+| search.js | 오케스트레이션 (DOM 참조, 이벤트, 렌더러 조율) |
+| search-data-adapter.js | API 응답 → 뷰 모델 변환 |
+| search-card-renderer.js | tree card HTML 생성 |
+| search-preview-renderer.js | preview panel HTML 생성 |
+
+### 현재 상태
+- ✅ 코드 생성: 완료
+- ⏳ 브라우저 검증: **검증 대기** (중요 - 분리 후 동작 확인 필요)
+
+---
+
+## 7. 2026-04-18 F - editor.js root helpers 분리 (1차 안전 리팩터링)
+
+### 문제
+- 977줄의巨大的 단일 파일
+- 함수 간 의존성 복잡
+- 작은 수정도 구조적 에러 유발 가능성 높음
+
+### 해결 (커밋 없음 - 문서만 更新)
+**1차 분리 (안전하게 root helpers만):**
+```
+js/editor.js                  (유지) - 메인 orchestration
+js/editor/editor-root-helpers.js (신규) - root 레벨 헬퍼 함수들
+```
+
+### 분리된 패턴
+- root helpers: `validateForm()`, `prepareSaveData()`, `buildTreeNode()`, etc.
+- 메인 editor.js에서 `window.LoveBudEditorHelpers`로 호출
+
+### 현재 상태
+- ✅ 코드 분리: 완료
+- ⏳ 브라우저 검증: **검증 대기** (editor는 핵심 페이지이므로 入念验证 필요)
+
+### 주의
+- **이것은 1차 안전 리팩터링입니다**
+- 메인 orchestration 파일은 여전히 큼
+- 추가 분리는 다음 스프린트에서 진행
+
+---
+
+## 8. 검증 상태 요약
+
+| 페이지 | 코드 변경 | 브라우저 검증 | 상태 |
+|--------|----------|-------------|------|
+| detail.js | 데이터/렌더링 분��� | ⏳ 필요 | 검증 대기 |
+| search.js | adapter/renderer/orchestrator | ⏳ 필요 | **검증 대기** |
+| editor.js | root helpers 분리 | ⏳ 필요 | **검증 대기** |
+
+### 검증 대기 중 가장 중요한 것
+1. **search.js** - 분리가 크고多种组件 관여
+2. **editor.js** - 핵심 CRUD 페이지
+
+---
+
+## 9. 관련 파일
 
 | 파일 | 변경 이력 |
 |------|----------|
-| `js/detail.js` | 6차 수정 완료 |
-| `js/editor.js` | normalize 공통화 적용 |
-| `js/search.js` | flatten 중복 제거 |
-| `js/utils/normalize.js` | 신규 생성 |
+| `js/detail.js` | 데이터/렌더링 분리 완료 (435줄) |
+| `js/search.js` | 오케스트레이터 분리 (240줄) |
+| `js/search-data-adapter.js` | 신규 생성 |
+| `js/search-card-renderer.js` | 신규 생성 |
+| `js/search-preview-renderer.js` | 신규 생성 |
+| `js/editor/editor-root-helpers.js` | 신규 생성 |
+| `js/editor.js` | root helpers 분리 |
+| `js/utils/normalize.js` | 정규화 공통 유틸 |
 | `pages/detail.html` | normalize.js 로드 추가 |
-| `pages/editor.html` | normalize.js 로드 추가 |
-| `netlify/functions/_lib/serializers.js` | 표준 참고용 |
 
 ---
 
-## 6. 핵심 결론
+## 10. 핵심 결론
 
-1. **API 응답 표준 확정:** flat camelCase
-2. **detail.js 안정화:** graceful degradation 완료
-3. **공통 유틸 도입:** `window.LoveBudNormalize`
-4. **위험 fallback 제거:** `trees[0]` 같은 임의 선택 금지
-5. **다음 단계:** editor.js 점검 + search/browse 공통화
+### 완료된 리팩터링 (2026-04-18)
+
+| 순위 | 작업 | 상태 | 비고 |
+|------|------|------|------|
+| 1 | detail.js 데이터/렌더링 분리 | ✅ 완료 | ⏳ 브라우저 검증 대기 |
+| 2 | search.js 파일 분리 | ✅ 완료 | ⏳ 브라우저 검증 대기 |
+| 3 | editor.js root helpers 분리 | ✅ 완료 | ⏳ 브라우저 검증 대기 |
+| 4 | 공통 유틸 (normalize, ui, path, media) | ✅ 완료 | 일부 미배선 |
+| 5 | media.js 생성 (미배선) | 🔄 생성 완료 | HTML/JS 연결 대기 |
+
+### 검증 완료 / 검증 대기
+
+| 페이지 | 검증 상태 | 우선순위 |
+|--------|----------|----------|
+| detail.js | ⏳ 검증 대기 | 低 - 페이지 단순 |
+| search.js | ⏳ **검증 대기** | 高 - 분리 후 동작 확인 필수 |
+| editor.js | ⏳ **검증 대기** | 高 - 핵심 CRUD |
+
+### 남은 리팩터링 TODO
+
+1. **search.js 브라우저 검증** - 파일 분리 후 동작 확인
+2. **editor.js 브라우저 검증** - root helpers 분리 후 동작 확인  
+3. **media.js HTML wiring + 적용** - 미배선 상태 해결
+4. **editor.js 추가 분리** (2차) - 안전한 경우에만
+5. **search.js → LoveBudMedia 적용** - thumbnail/preview 표준화
 
 ---
 
-**문서 갱신:** 후속 작업 완료 시 이 문서에 추가 기록
+**문서 갱신:** 2026-04-18 (A~F 리팩터링 문서화 완료)

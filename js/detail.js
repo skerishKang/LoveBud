@@ -1,5 +1,19 @@
+/**
+ * detail.js - Memory Detail Renderer
+ * 
+ * Responsibilities:
+ * 1. Renderer functions (renderMemoryBase, renderTreeContext, renderConnectedFragments)
+ * 2. Data preparation (loadMemoryDetailContext)
+ * 3. Page orchestration
+ * 
+ * Data flow:
+ * URL params → loadMemoryDetailContext() → renderers → DOM
+ */
+
 document.addEventListener('DOMContentLoaded', async () => {
-    // ── DOM 요소 참조 (null-safe 처리를 위해 상단에서 한 번만) ──
+    // ═══════════════════════════════════════════════════════════════════════
+    // SECTION 1: DOM 요소 참조 (null-safe)
+    // ═══════════════════════════════════════════════════════════════════════
     const videoMain = document.getElementById('videoMain');
     const memoryTitle = document.getElementById('memoryTitle');
     const diaryQuote = document.getElementById('diaryQuote');
@@ -12,7 +26,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const treeContextEl = document.getElementById('treeContext');
     const backButton = document.getElementById('backButton');
 
-    // ── 렌더링 헬퍼 함수들 ──
+    // ═══════════════════════════════════════════════════════════════════════
+    // SECTION 2: 렌더링 헬퍼 함수들 (변경 없음)
+    // ═══════════════════════════════════════════════════════════════════════
     // memory 본문 렌더링 (tree context와 무관)
     const renderMemoryBase = (memory) => {
         const i18n = window.t || ((k) => k);
@@ -195,7 +211,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
-    // URL에서 memory ID 가져오기
+    // ═══════════════════════════════════════════════════════════════════════
+    // SECTION 3: URL 파라미터 파싱
+    // ═══════════════════════════════════════════════════════════════════════
     const urlParams = new URLSearchParams(window.location.search);
     const memoryId = urlParams.get('id');
 
@@ -212,53 +230,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     const fromParam = urlParams.get('from');
     const sourceContext = ['browse', 'my-trees', 'editor'].includes(fromParam) ? fromParam : 'browse';
 
-    // ── 캐시 키 설정 ──
-    const cache = window.LoveBudCache;
-    const MEMORY_CACHE_KEY = 'memory_' + memoryId;
-    const TREE_CACHE_KEY = (tid) => 'tree_' + tid;
-    const MEMORIES_CACHE_KEY = (tid) => 'memories_' + tid;
-
-    // ── 메모리 데이터: 캐시 우선, API로 background refresh ──
-    let memory = null;
-
-    // 1. 캐시된 memory 먼저 확인
-    const cachedMemory = cache ? cache.get(MEMORY_CACHE_KEY) : null;
-    if (cachedMemory) {
-        console.log('[detail] 캐시된 memory 사용:', memoryId);
-        memory = cachedMemory;
-    }
-
-    // 2. API로 최신 memory 가져오기
-    // 백엔드는 flat camelCase 응답을 반환하므로 별도의 {id, data} 처리 불필요
-    // 공통 normalize 유틸 사용 (window.LoveBudNormalize.normalizeMemory)
-    const normalize = window.LoveBudNormalize?.normalizeMemory || ((m) => m);
-
-    try {
-        if (window.apiClient && window.apiClient.getMemory) {
-            const apiMemory = await window.apiClient.getMemory(memoryId);
-            if (apiMemory) {
-                const normalizedMemory = normalize(apiMemory);
-
-                if (cache) {
-                    cache.set(MEMORY_CACHE_KEY, normalizedMemory, 3 * 60 * 1000);
-                }
-
-                if (JSON.stringify(memory) !== JSON.stringify(normalizedMemory)) {
-                    memory = normalizedMemory;
-                }
-
-                console.log('[detail] API memory loaded:', memoryId);
-            }
-        }
-    } catch (e) {
-        console.warn('[detail] API getMemory failed:', e.message);
-        // 캐시가 없으면 mock fallback (normalize 적용)
-        if (!memory && typeof getMemory === 'function') {
-            memory = normalize(getMemory(memoryId));
-        }
-    }
-    if (!memory) {
-        // ── memory 조회 실패 시 fallback UI 표시 ──
+// ═══════════════════════════════════════════════════════════════════════
+    // SECTION 6: 데이터 로드 및 렌더링 실행
+    // ═══════════════════════════════════════════════════════════════════════
+    
+    // treeId 추출 (URL 우선, memory.treeId fallback)
+    const treeId = urlParams.get('tree') || null;
+    
+    // 데이터 로드
+    const context = await loadMemoryDetailContext(memoryId, treeId);
+    
+    // memory 없으면 fallback UI
+    if (!context.memory) {
         console.warn('[detail] Memory not found, showing fallback UI');
         const i18n = window.t || ((k) => k);
         const fallbackHTML = `
@@ -274,7 +257,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </div>
             </div>
         `;
-        // 메인 콘텐츠 영역을 fallback으로 교체
         const mainLayout = document.querySelector('.detail-layout');
         if (mainLayout) {
             mainLayout.innerHTML = fallbackHTML;
@@ -282,84 +264,135 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         return;
     }
+    
+    // 분해된 값 사용
+    const { memory, tree, memories, hasTreeContext, degradedReason } = context;
+    const actualTreeId = treeId || memory?.treeId || null;
 
-    // ── 트리 + siblings 병렬 로딩 (캐시 우선) ──
-    // treeId가 없어도 memory 단독 렌더링은 가능해야 함 (graceful degradation)
-    const treeId = urlParams.get('tree') || memory.treeId || null;
-    const hasTreeContext = !!treeId;
-    let degradedReason = null;
-
-    if (!treeId) {
-        degradedReason = 'missing-tree-id';
-        console.warn('[detail] Tree ID missing. Rendering memory-only detail view.');
-    }
-
-    // 캐시에서 먼저 확인 (treeId 없으면 스킵)
-    let tree = hasTreeContext && cache ? cache.get(TREE_CACHE_KEY(treeId)) : null;
-    let memories = hasTreeContext && cache ? cache.get(MEMORIES_CACHE_KEY(treeId)) : null;
-
-    // 병렬로 API 호출 (tree와 memories 동시에) - treeId 있을 때만
-    const loadPromises = [];
-
-    if (hasTreeContext) {
-        // Tree 로드
-        if (!tree && window.apiClient && window.apiClient.getTree) {
-            loadPromises.push(
-                window.apiClient.getTree(treeId)
-                    .then(apiTree => {
-                        if (apiTree) {
-                            tree = apiTree;
-                            if (cache) cache.set(TREE_CACHE_KEY(treeId), apiTree, 5 * 60 * 1000);
-                        }
-                    })
-                    .catch(e => console.warn('[detail] API getTree failed:', e.message))
-            );
+    // ═══════════════════════════════════════════════════════════════════════
+    // SECTION 7: 렌더링 실행 (분리된 함수 호출)
+    // ═══════════════════════════════════════════════════════════════════════
+    
+    /**
+     * memory 상세 페이지에 필요한 모든 데이터를 준비합니다.
+     * @param {string} memoryId - 메모리 ID
+     * @param {string|null} treeId - 트리 ID (URL 또는 memory에서 추출)
+     * @returns {Promise<{memory, tree, memories, sourceContext, hasTreeContext, degradedReason}>}
+     */
+    async function loadMemoryDetailContext(mid, tid) {
+        const cache = window.LoveBudCache;
+        const normalize = window.LoveBudNormalize?.normalizeMemory || ((m) => m);
+        
+        const MEMORY_CACHE_KEY = 'memory_' + mid;
+        const TREE_CACHE_KEY = (t) => 'tree_' + t;
+        const MEMORIES_CACHE_KEY = (t) => 'memories_' + t;
+        
+        let memory = null;
+        let tree = null;
+        let memories = [];
+        let degradedReason = null;
+        
+        // 1. memory 캐시/API 로드
+        const cachedMemory = cache ? cache.get(MEMORY_CACHE_KEY) : null;
+        if (cachedMemory) {
+            console.log('[detail] 캐시된 memory 사용:', mid);
+            memory = cachedMemory;
         }
-
-        // Memories 로드 (siblings용)
-        if (!memories && window.apiClient && window.apiClient.getMemoriesByTree) {
-            loadPromises.push(
-                window.apiClient.getMemoriesByTree(treeId)
-                    .then(apiMemories => {
-                        if (Array.isArray(apiMemories)) {
-                            memories = apiMemories;
-                            if (cache) cache.set(MEMORIES_CACHE_KEY(treeId), apiMemories, 3 * 60 * 1000);
-                        }
-                    })
-                    .catch(e => console.warn('[detail] API getMemoriesByTree failed:', e.message))
-            );
-        }
-
-        // 모든 API 호출 완료 대기
-        if (loadPromises.length > 0) {
-            await Promise.all(loadPromises);
-        }
-
-        // 캐시/API 모두 실패 시 mock fallback (단, 임의 첫 트리 선택은 금지)
-        if (!tree) {
-            const mockTrees = typeof getTrees === 'function' ? getTrees() : [];
-            // 안전하게: treeId와 일치하는 트리만 사용, 없으면 null
-            tree = mockTrees.find(t => t.id === treeId) || null;
-            if (tree) {
-                console.log('[detail] Mock tree matched:', tree.id);
-            } else {
-                console.warn('[detail] Tree context unavailable. Rendering degraded detail view.');
-                degradedReason = 'tree-load-failed';
+        
+        try {
+            if (window.apiClient && window.apiClient.getMemory) {
+                const apiMemory = await window.apiClient.getMemory(mid);
+                if (apiMemory) {
+                    const normalizedMemory = normalize(apiMemory);
+                    if (cache) {
+                        cache.set(MEMORY_CACHE_KEY, normalizedMemory, 3 * 60 * 1000);
+                    }
+                    memory = normalizedMemory;
+                    console.log('[detail] API memory loaded:', mid);
+                }
+            }
+        } catch (e) {
+            console.warn('[detail] API getMemory failed:', e.message);
+            if (!memory && typeof getMemory === 'function') {
+                memory = normalize(getMemory(mid));
             }
         }
-        if (!memories) {
-            memories = typeof getMemoriesByTree === 'function' ? getMemoriesByTree(treeId) : [];
-            if (memories.length > 0) {
-                console.log('[detail] Mock memories loaded:', memories.length);
+        
+        // memory 없으면 조기 반환
+        if (!memory) {
+            return { memory: null, tree: null, memories: [], sourceContext, hasTreeContext: false, degradedReason: 'not-found' };
+        }
+        
+        // 2. treeId 결정
+        let actualTreeId = tid || memory.treeId || null;
+        const hasTreeContext = !!actualTreeId;
+        
+        if (!actualTreeId) {
+            degradedReason = 'missing-tree-id';
+            console.warn('[detail] Tree ID missing. Rendering memory-only detail view.');
+        }
+        
+        // 3. tree + memories 로드
+        if (hasTreeContext) {
+            tree = cache ? cache.get(TREE_CACHE_KEY(actualTreeId)) : null;
+            memories = cache ? cache.get(MEMORIES_CACHE_KEY(actualTreeId)) : [];
+            
+            const loadPromises = [];
+            
+            if (!tree && window.apiClient?.getTree) {
+                loadPromises.push(
+                    window.apiClient.getTree(actualTreeId)
+                        .then(apiTree => {
+                            if (apiTree) {
+                                tree = apiTree;
+                                if (cache) cache.set(TREE_CACHE_KEY(actualTreeId), apiTree, 5 * 60 * 1000);
+                            }
+                        })
+                        .catch(e => console.warn('[detail] API getTree failed:', e.message))
+                );
+            }
+            
+            if ((!memories || memories.length === 0) && window.apiClient?.getMemoriesByTree) {
+                loadPromises.push(
+                    window.apiClient.getMemoriesByTree(actualTreeId)
+                        .then(apiMemories => {
+                            if (Array.isArray(apiMemories)) {
+                                memories = apiMemories;
+                                if (cache) cache.set(MEMORIES_CACHE_KEY(actualTreeId), apiMemories, 3 * 60 * 1000);
+                            }
+                        })
+                        .catch(e => console.warn('[detail] API getMemoriesByTree failed:', e.message))
+                );
+            }
+            
+            if (loadPromises.length > 0) {
+                await Promise.all(loadPromises);
+            }
+            
+            // mock fallback (임의 선택 금지)
+            if (!tree) {
+                const mockTrees = typeof getTrees === 'function' ? getTrees() : [];
+                tree = mockTrees.find(t => t.id === actualTreeId) || null;
+                if (!tree) {
+                    degradedReason = 'tree-load-failed';
+                }
+            }
+            if (!memories || memories.length === 0) {
+                memories = typeof getMemoriesByTree === 'function' ? getMemoriesByTree(actualTreeId) : [];
             }
         }
-    } else {
-        // treeId 없음: tree/memories는 null/빈 배열로 유지
-        tree = null;
-        memories = [];
+        
+        return { memory, tree, memories, sourceContext, hasTreeContext, degradedReason };
     }
 
-    // ── 렌더링 단계 ──
+    // ═══════════════════════════════════════════════════════════════════════
+    // (Legacy 코드 제거됨 - loadMemoryDetailContext로 대체됨)
+    // ══════════════════════════════════════════════════════���═��══════════════
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // SECTION 8: 렌더링 실행 (분리된 함수 호출)
+    // ═══════════════════════════════════════════════════════════════════════
+    
     // 1. memory 본문 (tree context와 무관)
     renderMemoryBase(memory);
 
@@ -367,7 +400,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderTreeContext({ hasTreeContext, tree, memories, sourceContext, degradedReason });
 
     // 3. connectedFragments
-    renderConnectedFragments({ memory, memories, treeId, sourceContext, degradedReason });
+    renderConnectedFragments({ memory, memories, treeId: actualTreeId, sourceContext, degradedReason });
 
     // 4. 페이지 타이틀 업데이트
     const safeTitle = memory.title || '기억의 순간';
@@ -381,8 +414,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (backButton) {
         // 백 버튼 라벨 및 동작 설정 (treeId 없을 때 editor fallback)
         let editorUrl = 'editor.html';
-        if (treeId) {
-            editorUrl = `editor.html?treeId=${treeId}`;
+        if (actualTreeId) {
+            editorUrl = `editor.html?treeId=${actualTreeId}`;
         }
 
         const backConfig = {

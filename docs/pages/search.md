@@ -21,11 +21,43 @@
 
 ### 현재 파일 구조
 - `pages/search.html` (inline CSS 포함)
-- `js/search.js` (~460줄)
+- `js/search.js` (~150줄, orchestrator only)
+- `js/search-data-adapter.js` (~220줄, data layer)
+- `js/search-card-renderer.js` (~280줄, card rendering)
+- `js/search-preview-renderer.js` (~170줄, preview rendering)
+
+### 모듈 구조 (v20260418-1)
+```
+search.html
+├── search.js (orchestrator)
+├── search-data-adapter.js (data transformation)
+├── search-card-renderer.js (card + empty state)
+└── search-preview-renderer.js (preview sidebar)
+```
+
+### 데이터 계층 (search-data-adapter.js)
+- `buildTreeData(memories, trees)` - raw data → view models
+- `filterTrees(trees, query, category)` - query + category filtering
+- `estimateStage(count)` - memory count → stage (입덕/성장/최애)
+- `calculateTimeRange(memories)` - timestamps → range string
+- `collectEmotionTags(memories)` - memories → unique tags (max 3)
+
+### 렌더 계층 (분리된 rendering 모듈)
+
+**Card Rendering (search-card-renderer.js)**
+- `renderTreeCard(tree, index)` - single card HTML
+- `renderResults(trees, options)` - batch render
+- `renderNoTreesState()` - no data empty state
+- `renderEmptySearchState()` - no results state
+- `attachCardEvents(cardEl, tree)` - click/hover binding
+
+**Preview Rendering (search-preview-renderer.js)**
+- `updatePreview(tree)` - preview panel DOM update
+- `resetPreview()` - placeholder state
 
 ### 주요 기능
 - 캐시 우선 렌더링 + background API refresh
-- buildTreeData: memories를 tree 단위로 그룹핑
+- 데이터 가공과 UI 렌더링 분리
 - 필터: stage 기반 (입덕/성장/최애)
 - 검색: 제목, 테마, memory 제목/아티스트 검색
 - 인피니티 스크롤 (page size 12)
@@ -89,6 +121,37 @@
 | public trees | `apiClient.getPublicTrees()` | payload.nodes 포함 |
 | trees list | `apiFetch('/trees')` | GET |
 | mock fallback | `getTrees()`, `memories` (mock-data.js) | |
+
+---
+
+## 향후 확장 포인트
+
+### 데이터 계층 확장
+- `search-data-adapter.js`에 새로운 필터 로직 추가 (아티스트, 태그)
+- 페이지네이션 지원 (`filterTrees`에 offset, limit 파라미터)
+- 정렬 옵션 추가 (최신, 오래된, 메모리 수)
+
+### 렌더 계층 확장
+- 카드 레이아웃variants (grid/list toggle)
+- Virtual scrolling for large datasets
+-Skeleton loading states
+
+### 새 모듈 추가 예시
+```javascript
+// search.SortOptions.js
+window.LoveBudSearchSort = {
+  sortByDate: (trees, order) => { /* ... */ },
+  sortByMemoryCount: (trees, order) => { /* ... */ }
+};
+```
+
+```javascript
+// search.Pagination.js
+window.LoveBudSearchPagination = {
+  getPage: (trees, page, pageSize) => { /* ... */ },
+  getPageCount: (total, pageSize) => { /* ... */ }
+};
+```
 
 ---
 
