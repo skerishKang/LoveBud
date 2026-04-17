@@ -18,6 +18,7 @@
 |------|--------|------|
 | 2026-04-17 | [2026-04-17-01-runtime-stabilization.md](2026-04-17-01-runtime-stabilization.md) | 런타임 안정화: i18n 정리, shared-header 복구, API 502 진단, 에셋 버저닝, SSH/Git 연결, 문서 구조 생성 |
 | 2026-04-17 | [2026-04-17-02-handoff.md](2026-04-17-02-handoff.md) | 버전 규칙 확정(20260417-31), DB 스키마 매핑 수정, browse 11개 트리 표시 복구 |
+| 2026-04-17 | [2026-04-17-03-api-response-unification.md](2026-04-17-03-api-response-unification.md) | 1-2차 API 응답 통일: 백엔드 flat camelCase 표준화, serializers 적용, search.js flatten 로직 수정 |
 | 2026-04-16 | [2026-04-16-01-codex-handoff-record.md](2026-04-16-01-codex-handoff-record.md) | Codex 인계 기록: 경로/커밋 규칙, 핵심 판단 정리, DB/public 데이터 상태 |
 | 2026-04-16 | [2026-04-16-codex-handoff-rules.md](2026-04-16-codex-handoff-rules.md) | Codex 인계 규칙: 경로/커밋/판단 요약 (Derived) |
 | 2026-04-16 | [2026-04-16-03-opencode-db-lock.md](2026-04-16-03-opencode-db-lock.md) | opencode sqlite database is locked 오류 조사 및 WSL/PowerShell 환경 문제 확인 |

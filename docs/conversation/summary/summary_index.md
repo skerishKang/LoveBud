@@ -18,6 +18,7 @@
 |------|------------|------------|------|
 | 2026-04-17 | [2026-04-17-01-runtime-stabilization_summary.md](2026-04-17-01-runtime-stabilization_summary.md) | [2026-04-17-01-runtime-stabilization.md](../full/2026-04-17-01-runtime-stabilization.md) | ✅ 완료 |
 | 2026-04-17 | [2026-04-17-02-handoff_summary.md](2026-04-17-02-handoff_summary.md) | [2026-04-17-02-handoff.md](../full/2026-04-17-02-handoff.md) | ✅ 완료 |
+| 2026-04-17 | [2026-04-17-03-api-response-unification_summary.md](2026-04-17-03-api-response-unification_summary.md) | [2026-04-17-03-api-response-unification.md](../full/2026-04-17-03-api-response-unification.md) | 🔄 진행 중 |
 | 2026-04-16 | [2026-04-16-codex-handoff-rules_summary.md](2026-04-16-codex-handoff-rules_summary.md) | [2026-04-16-codex-handoff-rules.md](../full/2026-04-16-codex-handoff-rules.md) | ✅ 완료 |
 | 2026-04-16 | [2026-04-16-01-codex-handoff-record_summary.md](2026-04-16-01-codex-handoff-record_summary.md) | [2026-04-16-01-codex-handoff-record.md](../full/2026-04-16-01-codex-handoff-record.md) | ✅ 완료 |
 | 2026-04-16 | [2026-04-16-03-opencode-db-lock_summary.md](2026-04-16-03-opencode-db-lock_summary.md) | [2026-04-16-03-opencode-db-lock.md](../full/2026-04-16-03-opencode-db-lock.md) | ✅ 완료 |
