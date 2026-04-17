@@ -66,7 +66,7 @@
 | LoveBudNormalize | `normalize.js` | Memory/Tree/Tags 정규화 | detail, editor, search, my-trees |
 | LoveBudUI | `ui.js` | Toast, Loading, Confirm | editor, my-trees |
 | LoveBudPath | `path.js` | 경로 처리 | search (시범) |
-| LoveBudMedia | `media.js` | YouTube 처리 | ✅ 생성 완료<br>❌ HTML 로드 없음<br>❌ JS 사용 없음 |
+| LoveBudMedia | `media.js` | YouTube 처리 | ✅ 생성 완료<br>⚠️ HTML 미배선<br>⚠️ JS 호출 미연결<br>📋 미배선(unwired) 상태 |
 
 ### 3.2 공통 유틸 아키텍처
 
@@ -250,13 +250,57 @@ const embed = window.LoveBudMedia.getEmbedUrl(url);
 
 ## 11. 남은 작업 (다음 스프린트)
 
-| 우선순위 | 작업 | 이유 | 크기 |
-|----------|------|------|------|
-| 1 | media.js 실제 적용 | 현재는 생성만 되고 사용되지 않음 | 중간 |
-| 2 | editor.js 안정화 | 977줄, 구조 개선 필요 | 큼 |
-| 3 | path.js 전면 적용 | 현재 search.js만 적용 | 작음 |
-| 4 | 테스트 자동화 | QA 효율화 | 중간 |
-| 5 | Date formatting 공통화 | UX 일관성 | 작음 |
+| 우선순위 | 작업 | 이유 | 크기 | 구체적 액션 |
+|----------|------|------|------|-----------|
+| 1 | **media.js 런타임 연결** | 생성 완료, HTML/JS 연결 없음 | 작음 (1-2시간) | 아래 2단계 참고 |
+| 2 | editor.js 안정화 | 977줄, 구조 개선 필요 | 큼 | 별도 전담 스프린트 |
+| 3 | path.js 전면 적용 | 현재 search.js만 적용 | 작음 | detail.js, my-trees.js 확대 |
+| 4 | 테스트 자동화 | QA 효율화 | 중간 | Cypress/Playwright 도입 |
+| 5 | Date formatting 공통화 | UX 일관성 | 작음 | js/utils/date.js 신규 |
+
+### 11.1 media.js 런타임 연결 구체적 액션
+
+**적용 후보 페이지:**
+- **권장:** `editor.js` (YouTube URL 처리 정규식 → media.js 기반)
+- **대안:** `detail.js` (embed URL 생성에 적용)
+- **후보:** `search.js` (thumbnail URL 처리)
+
+**2단계 작업:**
+
+```markdown
+단계 1: HTML script 로드 추가
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+파일: pages/editor.html (또는 pages/detail.html)
+추가 위치: normalize.js 다음, postgres-client.js 이전
+
+<script src="../js/utils/media.js?v=20260418-1"></script>
+
+단계 2: JS 파일에 시범 적용
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+파일: js/editor.js (addMemoryFromForm 함수 내)
+변경 전:
+  const match = url.match(/(?:v=|\/|youtu\.be\/)([0-9A-Za-z_-]{11})/);
+  const videoId = match ? match[1] : null;
+
+변경 후:
+  const videoId = window.LoveBudMedia?.extractYouTubeId(url);
+  if (!videoId) { showToast('유효하지 않은 YouTube URL', 'error'); return; }
+  
+  const embedUrl = window.LoveBudMedia.getEmbedUrl(url, 'youtube');
+  const thumbnail = window.LoveBudMedia.getThumbnailUrl(url, 'youtube', 'mqdefault');
+
+단계 3: 검증 (수동 테스트)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- editor.html 진입 → Console에 [LoveBudMedia] 로그 확인
+- YouTube URL 입력 → 정상 추출/저장 확인
+- 유효하지 않은 URL → Toast 에러 확인
+```
+
+**완료 기준:**
+- [ ] media.js가 HTML에서 로드됨
+- [ ] 어떤 JS 파일에서든 LoveBudMedia 함수 호출됨
+- [ ] 기존 정규식 로직이 media.js 기반으로 교체됨
+- [ ] 수동 테스트 통과
 
 ## 12. 결론
 
