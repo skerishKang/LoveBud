@@ -48,7 +48,7 @@
 | [PR_CHECKLIST.md](PR_CHECKLIST.md) | Pull Request 작성 및 검토 체크리스트 |
 | [RUNBOOK.md](RUNBOOK.md) | 장애 대응 런북 (502, DB 연결 실패 등) |
 | [FLOW_A_QA_CHECKLIST.md](FLOW_A_QA_CHECKLIST.md) | Flow-A 페이지 QA 확인 사항 |
-| [QA_CREDENTIALS.txt](QA_CREDENTIALS.txt) | QA 테스트용 계정 정보 |
+| [QA_CREDENTIALS.txt](QA_CREDENTIALS.txt) | QA 테스트 계정 위치/사용법 안내 (실제 값은 `.local/`에서 관리) |
 
 ### 정책/아키텍처 (Architecture)
 
