@@ -25,19 +25,32 @@
     }
   }
 
-  // Helper to get Firebase Auth Token
+  // Helper to get Firebase Auth Token with retry
   async function getAuthHeaders() {
     const headers = {
       'Content-Type': 'application/json'
     };
-    if (window.firebase && firebase.auth && firebase.auth().currentUser) {
-      try {
-        const token = await firebase.auth().currentUser.getIdToken();
-        headers['Authorization'] = `Bearer ${token}`;
-      } catch (error) {
-        console.warn("Failed to get Firebase Auth token:", error);
+    
+    // Firebase Auth가 준비될 때까지 최대 3초 대기 (500ms × 6회)
+    let attempts = 0;
+    const maxAttempts = 6;
+    while (attempts < maxAttempts) {
+      if (window.firebase && firebase.auth && firebase.auth().currentUser) {
+        try {
+          const token = await firebase.auth().currentUser.getIdToken();
+          headers['Authorization'] = `Bearer ${token}`;
+          return headers;
+        } catch (error) {
+          console.warn("Failed to get Firebase Auth token:", error);
+          break;
+        }
       }
+      // Firebase Auth가 아직 준비되지 않음 - 잠시 대기 후 재시도
+      await new Promise(resolve => setTimeout(resolve, 500));
+      attempts++;
     }
+    
+    // 토큰 획득 실패 - 인증 없이 진행 (public API용)
     return headers;
   }
 
