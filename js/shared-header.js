@@ -15,23 +15,31 @@
  */
 
 (function() {
-    // 페이지 유형별 메뉴 설정
+    // i18n 헬퍼 ( fallback: 키 반환)
+    function t(key) {
+        if (window.t && typeof window.t === 'function') {
+            return window.t(key);
+        }
+        return key;
+    }
+
+    // 페이지 유형별 메뉴 설정 (i18n 키 사용)
     var MENU_CONFIG = {
         // root (index.html)
         'root': {
-            home: { text: '첫화면', href: 'index.html', active: true },
-            intro: { text: '소개', href: 'pages/intro.html' },
-            search: { text: '둘러보기', href: 'pages/search.html' },
-            myTrees: { text: '내 러브트리', href: 'pages/my-trees.html' },
+            home: { textKey: 'nav.home', href: 'index.html', active: true },
+            intro: { textKey: 'nav.intro', href: 'pages/intro.html' },
+            search: { textKey: 'nav.search', href: 'pages/search.html' },
+            myTrees: { textKey: 'nav.myTrees', href: 'pages/my-trees.html' },
             editor: null // root에서는 에디터 숨김
         },
         // pages 폴더 내 페이지
         'pages': {
-            home: { text: '첫화면', href: '../index.html' },
-            intro: { text: '소개', href: 'intro.html' },
-            search: { text: '둘러보기', href: 'search.html' },
-            myTrees: { text: '내 러브트리', href: 'my-trees.html' },
-            editor: { text: '편집하기', href: 'editor.html' }
+            home: { textKey: 'nav.home', href: '../index.html' },
+            intro: { textKey: 'nav.intro', href: 'intro.html' },
+            search: { textKey: 'nav.search', href: 'search.html' },
+            myTrees: { textKey: 'nav.myTrees', href: 'my-trees.html' },
+            editor: { textKey: 'nav.editor', href: 'editor.html' }
         }
     };
 
@@ -98,31 +106,31 @@
         // 첫화면
         if (menuConfig.home) {
             var activeClass = activeKey === 'home' ? ' class="active"' : '';
-            navLinksHTML += '<a href="' + menuConfig.home.href + '"' + activeClass + '>' + menuConfig.home.text + '</a>';
+            navLinksHTML += '<a href="' + menuConfig.home.href + '"' + activeClass + '>' + t(menuConfig.home.textKey) + '</a>';
         }
         
         // 소개
         if (menuConfig.intro) {
             var activeClass = activeKey === 'intro' ? ' class="active"' : '';
-            navLinksHTML += '<a href="' + menuConfig.intro.href + '"' + activeClass + '>' + menuConfig.intro.text + '</a>';
+            navLinksHTML += '<a href="' + menuConfig.intro.href + '"' + activeClass + '>' + t(menuConfig.intro.textKey) + '</a>';
         }
         
         // 둘러보기
         if (menuConfig.search) {
             var activeClass = activeKey === 'search' ? ' class="active"' : '';
-            navLinksHTML += '<a href="' + menuConfig.search.href + '"' + activeClass + '>' + menuConfig.search.text + '</a>';
+            navLinksHTML += '<a href="' + menuConfig.search.href + '"' + activeClass + '>' + t(menuConfig.search.textKey) + '</a>';
         }
         
         // 내 러브트리 (에디터 페이지에서는 숨김)
         if (menuConfig.myTrees && !isEditorPage()) {
             var activeClass = activeKey === 'myTrees' ? ' class="active"' : '';
-            navLinksHTML += '<a href="' + menuConfig.myTrees.href + '"' + activeClass + '>' + menuConfig.myTrees.text + '</a>';
+            navLinksHTML += '<a href="' + menuConfig.myTrees.href + '"' + activeClass + '>' + t(menuConfig.myTrees.textKey) + '</a>';
         }
         
         // 편집하기 (에디터 페이지에서만 표시)
         if (menuConfig.editor && isEditorPage()) {
             var activeClass = ' class="active"';
-            navLinksHTML += '<a href="' + menuConfig.editor.href + '"' + activeClass + '>' + menuConfig.editor.text + '</a>';
+            navLinksHTML += '<a href="' + menuConfig.editor.href + '"' + activeClass + '>' + t(menuConfig.editor.textKey) + '</a>';
         }
 
         // 언어 드롭다운 HTML

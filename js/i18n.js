@@ -14,6 +14,33 @@
 
   // 번역 딕셔너리
   var dictionary = {
+    // shared-header.js - 네비게이션
+    'nav.home': {
+      ko: '첫화면',
+      en: 'Home'
+    },
+    'nav.intro': {
+      ko: '소개',
+      en: 'About'
+    },
+    'nav.search': {
+      ko: '둘러보기',
+      en: 'Browse'
+    },
+    'nav.myTrees': {
+      ko: '내 러브트리',
+      en: 'My Trees'
+    },
+    'nav.editor': {
+      ko: '편집하기',
+      en: 'Edit'
+    },
+    // detail.html - 댓글/공유 (준비중)
+    'action_coming_soon': {
+      ko: '준비중',
+      en: 'Coming soon'
+    },
+
     // my-trees.js
     'empty_state_title': {
       ko: '아직 러브트리가 없어요',
