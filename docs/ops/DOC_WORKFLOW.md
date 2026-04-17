@@ -123,6 +123,28 @@
 
 ---
 
+## 인덱스 파일명 규칙
+
+LoveBud 문서군의 인덱스 파일명은 일반적인 `index.md` 가 아니라 **`폴더명_index.md`** 를 기본으로 사용합니다.
+
+예:
+- `pages_index.md`
+- `product_index.md`
+- `ops_index.md`
+- `reports_index.md`
+- `plans_index.md`
+- `archive_index.md`
+- `design_index.md`
+
+예외:
+- 최상위 문서 인덱스는 `docs/doc_index.md`
+- conversation 하위는 기존 관례대로 `full_index.md`, `summary_index.md`
+
+따라서 새 폴더 인덱스를 만들 때는 먼저 해당 폴더의 기존 네이밍 관례를 확인하고,
+관례가 없으면 `폴더명_index.md`를 사용합니다.
+
+---
+
 ## 페이지 문서 원칙
 
 페이지 문서는 UI 설명서가 아닙니다.
