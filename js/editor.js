@@ -749,13 +749,32 @@ const RADIUS_L2 = 240; // L2 반경 (200→240) - 노드 겹침 방지
                 return;
             }
 
-            const match = url.match(/(?:v=|\/|youtu\.be\/)([0-9A-Za-z_-]{11})/);
-            if (!match) {
-                showToast(i18nToast('invalid_youtube'), 'error');
-                return;
+            // ── YouTube 처리: LoveBudMedia 공통 유틸 사용 ──
+            let videoId;
+            let embedUrl;
+            let thumbnailUrl;
+            
+            if (window.LoveBudMedia?.extractYouTubeId) {
+                videoId = window.LoveBudMedia.extractYouTubeId(url);
+                if (!videoId) {
+                    showToast(i18nToast('invalid_youtube'), 'error');
+                    return;
+                }
+                embedUrl = window.LoveBudMedia.getEmbedUrl(url, 'youtube');
+                thumbnailUrl = window.LoveBudMedia.getThumbnailUrl(url, 'youtube', 'mqdefault');
+            } else {
+                // fallback: 기존 정규식 로직 (media.js 로드 실패 시)
+                console.warn('[editor] LoveBudMedia not loaded, using fallback YouTube parsing');
+                const match = url.match(/(?:v=|\/|youtu\.be\/)([0-9A-Za-z_-]{11})/);
+                if (!match) {
+                    showToast(i18nToast('invalid_youtube'), 'error');
+                    return;
+                }
+                videoId = match[1];
+                embedUrl = `https://www.youtube.com/embed/${videoId}`;
+                thumbnailUrl = `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
             }
 
-            const videoId = match[1];
             const today = new Date();
             const i18n = window.t || ((k) => k);
             const dateStr = `${today.getFullYear()}.${String(today.getMonth()+1).padStart(2,'0')}.${String(today.getDate()).padStart(2,'0')}`;
@@ -768,12 +787,12 @@ const RADIUS_L2 = 240; // L2 반경 (200→240) - 노드 겹침 방지
                 title: title,
                 memo: memoInput.value.trim() || '',
                 timestamp: dateStr,
-                sourceUrl: `https://www.youtube.com/embed/${videoId}`,
+                sourceUrl: embedUrl,
                 sourceType: 'youtube',
                 emotionTags: ['기록'],
                 // root 바로 아래 자식도 parentId를 canonicalRootId로 설정 (null 금지)
                 parentId: selectedNodeId === canonicalRootId ? canonicalRootId : selectedNodeId,
-                thumbnail: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
+                thumbnail: thumbnailUrl,
                 artist: '',
                 source: 'YouTube'
             };

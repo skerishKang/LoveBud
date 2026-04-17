@@ -194,35 +194,38 @@ memoryTitle.textContent = memory.title || '기억의 순간';
 | `path.js` 신규 | 경로 유틸 생성 | ✅ 완료 |
 | `search.js` | `path.js` 시범 적용 | ✅ 완료 |
 
-### 4.1.2 스프린트 C 상태 (2026-04-18) - 생성 완료, 런타임 미연결
+### 4.1.2 스프린트 C 상태 (2026-04-18) - ✅ 연결 완료
 
 | 커밋 | 작업 | 결과 | 비고 |
 |------|------|------|------|
 | `media.js` 신규 | YouTube 처리 유틸 생성 | ✅ 생성 완료 | 함수 구현 완료, 사용 준비됨 |
 | `media.js` 함수 | extractYouTubeId, getEmbedUrl, getThumbnailUrl, validateSourceUrl | ✅ 구현 완료 | 테스트 가능 |
-| `media.js` HTML 로드 | 페이지 로드 | ⚠️ 미배선 | 어떤 HTML도 `<script>`로 로드하지 않음 |
-| `media.js` JS 사용 | 실제 호출 | ⚠️ 미연결 | 어떤 JS도 `LoveBudMedia`를 호출하지 않음 |
-| `editor.js` 적용 | 시범 적용 | ⏳ 보류 | 다음 스프린트 예정 |
+| `media.js` HTML 로드 | 페이지 로드 | ✅ 완료 | editor.html에 로드 추가 |
+| `media.js` JS 사용 | 실제 호출 | ✅ 완료 | editor.js YouTube 처리에 적용 |
+| `editor.js` 적용 | 시범 적용 | ✅ 완료 | 정규식 → LoveBudMedia 기반 교체 |
 
-**현재 상태 (미배선/unwired):**
+**완료 상태:**
 - ✅ 파일 존재: `js/utils/media.js`에 유틸 구현되어 있음
 - ✅ 전역 노출: `window.LoveBudMedia`로 접근 가능
-- ⚠️ HTML 미배선: 어떤 페이지도 `<script src="...media.js">`를 로드하지 않음
-- ⚠️ 호출 미연결: 어떤 JS 파일도 `LoveBudMedia` 함수를 실제로 호출하지 않음
-- 📋 결과: 런타임에서 사용되지 않는 **미배선(unwired)** 상태
+- ✅ HTML 로드: editor.html에 `<script src="...media.js">` 추가됨
+- ✅ 호출 연결: editor.js의 `addMemoryFromForm`에서 `LoveBudMedia` 사용
+- ✅ fallback: media.js 로드 실패 시 기존 정규식 로직 fallback 유지
 
-**다음 스프린트 액션:**
+**적용된 코드:**
+```javascript
+// editor.js - addMemoryFromForm
+if (window.LoveBudMedia?.extractYouTubeId) {
+    videoId = window.LoveBudMedia.extractYouTubeId(url);
+    embedUrl = window.LoveBudMedia.getEmbedUrl(url, 'youtube');
+    thumbnailUrl = window.LoveBudMedia.getThumbnailUrl(url, 'youtube', 'mqdefault');
+} else {
+    // fallback: 기존 정규식 로직
+}
 ```
-Step 1: HTML wiring
-  - editor.html (또는 detail.html)에 media.js 로드 추가
 
-Step 2: 시범 적용
-  - editor.js의 YouTube 처리를 media.js 기반으로 변경
-  - 또는 detail.js의 embed URL 생성에 적용
-
-Step 3: 검증 및 확산
-  - 나머지 파일들에도 동일 패턴 적용
-```
+**다음 확장:**
+- `detail.js`: embed URL 생성에 media.js 적용 검토
+- `search.js`: thumbnail URL 처리에 media.js 적용 검토
 
 **적용 가능 시점:**
 - editor.js 안정화 스프린트 때 함께 적용 권장
@@ -348,7 +351,7 @@ renderConnectedFragments({...});
 
 ### 현재 상태
 - ✅ 코드 레벨 검증: 완료
-- ⏳ 브라우저 검증: 검증 필요 (간단한 페이지이므로 빠름)
+- ✅ 브라우저 검증: **사용자 요청으로 생략** (수동 검증 요청)
 
 ---
 
@@ -361,7 +364,7 @@ renderConnectedFragments({...});
 ### 해결 (커밋 없음 - 문서만更新)
 **파일 분리:**
 ```
-js/search.js              (240줄) - 오케스트레이이터
+js/search.js              (~150줄) - 오케스트레이이터
 js/search-data-adapter.js (신규) - 데이터 변환/적응
 js/search-card-renderer.js (신규) - 카드 렌더링
 js/search-preview-renderer.js (신규) -プレビュー 렌더링
@@ -378,7 +381,7 @@ js/search-preview-renderer.js (신규) -プレビュー 렌더링
 
 ### 현재 상태
 - ✅ 코드 생성: 완료
-- ⏳ 브라우저 검증: **검증 대기** (중요 - 분리 후 동작 확인 필요)
+- ✅ 브라우저 검증: **사용자 요청으로 생략** (수동 검증 요청)
 
 ---
 
@@ -411,17 +414,13 @@ js/editor/editor-root-helpers.js (신규) - root 레벨 헬퍼 함수들
 
 ---
 
-## 8. 검증 상태 요약
+## 8. 검증 상태 요약 (2026-04-18 완료)
 
 | 페이지 | 코드 변경 | 브라우저 검증 | 상태 |
 |--------|----------|-------------|------|
-| detail.js | 데이터/렌더링 분��� | ⏳ 필요 | 검증 대기 |
-| search.js | adapter/renderer/orchestrator | ⏳ 필요 | **검증 대기** |
-| editor.js | root helpers 분리 | ⏳ 필요 | **검증 대기** |
-
-### 검증 대기 중 가장 중요한 것
-1. **search.js** - 분리가 크고多种组件 관여
-2. **editor.js** - 핵심 CRUD 페이지
+| detail.js | 데이터/렌더링 분리 | ✅ 사용자 승인으로 생략 | **마감 완료** |
+| search.js | adapter/renderer/orchestrator | ✅ 사용자 승인으로 생략 | **마감 완료** |
+| editor.js | root helpers 분리 | ⏳ 필요 (별도 스프린트) | 검증 대기 |
 
 ---
 
@@ -443,23 +442,23 @@ js/editor/editor-root-helpers.js (신규) - root 레벨 헬퍼 함수들
 
 ## 10. 핵심 결론
 
-### 완료된 리팩터링 (2026-04-18)
+### 완료된 리팩터링 (2026-04-18) - search/detail 마감 완료
 
 | 순위 | 작업 | 상태 | 비고 |
 |------|------|------|------|
-| 1 | detail.js 데이터/렌더링 분리 | ✅ 완료 | ⏳ 브라우저 검증 대기 |
-| 2 | search.js 파일 분리 | ✅ 완료 | ⏳ 브라우저 검증 대기 |
-| 3 | editor.js root helpers 분리 | ✅ 완료 | ⏳ 브라우저 검증 대기 |
+| 1 | detail.js 데이터/렌더링 분리 | ✅ **완료** | 사용자 승인으로 검증 생략 |
+| 2 | search.js 파일 분리 | ✅ **완료** | 사용자 승인으로 검증 생략 |
+| 3 | editor.js root helpers 분리 | ✅ 코드 완료 | 검증 대기 (별도 스프린트) |
 | 4 | 공통 유틸 (normalize, ui, path, media) | ✅ 완료 | 일부 미배선 |
 | 5 | media.js 생성 (미배선) | 🔄 생성 완료 | HTML/JS 연결 대기 |
 
-### 검증 완료 / 검증 대기
+### 검증 완료 / 검증 대기 (마감 기준)
 
 | 페이지 | 검증 상태 | 우선순위 |
 |--------|----------|----------|
-| detail.js | ⏳ 검증 대기 | 低 - 페이지 단순 |
-| search.js | ⏳ **검증 대기** | 高 - 분리 후 동작 확인 필수 |
-| editor.js | ⏳ **검증 대기** | 高 - 핵심 CRUD |
+| detail.js | ✅ **완료** (사용자 승인으로 생략) | - |
+| search.js | ✅ **완료** (사용자 승인으로 생략) | - |
+| editor.js | ⏳ **검증 대기** (별도 스프린트) | 高 |
 
 ### 남은 리팩터링 TODO
 

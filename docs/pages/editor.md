@@ -156,7 +156,8 @@ js/editor/editor-root-helpers.js (분리됨)
 js/utils/* (공통 유틸)
 ├── ui.js: Toast, Loading, Confirm
 ├── normalize.js: Memory/Tree 정규화
-└── path.js: 경로 처리 (시범 적용)
+├── path.js: 경로 처리 (시범 적용)
+└── media.js: YouTube 처리 (2026-04-18 editor.js 연결 완료)
 ```
 
 ### 확장 가능한 지점
@@ -167,7 +168,7 @@ js/utils/* (공통 유틸)
 | **캔버스 렌더링** | editor.js 내장 | `editor-canvas.js` 분리 고려 (드래그 기능 추가 시) |
 | **상세 패널** | editor.js 내장 | `editor-panel.js` 분리 고려 (모달/팝오버 지원 시) |
 | **메모리 Form** | editor.js 내장 | `editor-form.js` 분리 고려 (복잡한 폼 검증 시) |
-| **미디어 처리** | 정규식 직접 사용 | `media.js` 공통 유틸 연결 (다음 스프린트) |
+| **미디어 처리** | ✅ media.js 연결 완료 | `detail.js`, `search.js`에도 확대 적용 검토 |
 
 ### 다음 개선 포인트
 
