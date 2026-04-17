@@ -317,7 +317,7 @@
 
           return publicTrees.map(tree => {
             const mems = grouped[tree.id] || [];
-            const sortedMems = mems.sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
+            const sortedMems = [...mems].sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
             const allTags = sortedMems.flatMap(m => m.emotionTags || []).filter(Boolean);
             const uniqueTags = [...new Set(allTags)].slice(0, 3);
             const timestamps = sortedMems.map(m => m.timestamp).filter(Boolean);
