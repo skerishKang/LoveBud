@@ -272,8 +272,8 @@
                 new Date(a.createdAt || a.timestamp || 0) - new Date(b.createdAt || b.timestamp || 0)
               );
 
-              // 감정 태그 수집 (DB 필드명: emotion_tags, snake_case)
-              const allTags = sortedMems.flatMap(m => (m.emotion_tags || [])).filter(Boolean);
+              // 감정 태그 수집 (DB 필드명: emotion_tags, API 필드명: emotionTags - 호환성)
+              const allTags = sortedMems.flatMap(m => (m.emotion_tags || m.emotionTags || [])).filter(Boolean);
               const uniqueTags = [...new Set(allTags)].slice(0, 3);
 
             // 시간 범위 계산 (timestamp 필드)
@@ -286,8 +286,8 @@
               id: tree.id,
               title: t.title,
               visibility: t.visibility,
-              created_at: t.created_at,
-              owner_id: t.owner_id,
+              createdAt: t.createdAt || t.created_at,
+              ownerId: t.ownerId || t.owner_id,
               memories: sortedMems,
               memoryCount: sortedMems.length,
               emotionTags: uniqueTags,
