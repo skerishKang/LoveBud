@@ -1,10 +1,15 @@
 document.addEventListener('DOMContentLoaded', async () => {
     // ── 경로 유틸 (공통 유틸 사용, fallback 유지) ──
+    let pathWarningShown = false;
     const getBasePath = () => {
         if (window.LoveBudPath?.getBasePath) {
             return window.LoveBudPath.getBasePath();
         }
         // fallback: 기존 로직
+        if (!pathWarningShown) {
+            console.warn('[search] LoveBudPath not loaded, using local fallback');
+            pathWarningShown = true;
+        }
         var path = window.location.pathname;
         return path.indexOf('/pages/') !== -1 ? '' : 'pages/';
     };
@@ -74,8 +79,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             const sortedMems = mems.sort((a, b) => new Date(a.timestamp || a.createdAt || 0) - new Date(b.timestamp || b.createdAt || 0));
 
             // 대표 감정 태그 수집 (normalizeEmotionTags 사용, 최대 3개)
+            let normalizeWarningShown = false;
             const allTags = sortedMems.flatMap(m => {
                 const normalized = window.LoveBudNormalize?.normalizeMemory(m);
+                if (!normalized && !normalizeWarningShown) {
+                    console.warn('[search] LoveBudNormalize not loaded, emotionTags may be inconsistent');
+                    normalizeWarningShown = true;
+                }
                 return window.LoveBudNormalize?.normalizeEmotionTags(normalized?.emotionTags) || [];
             });
             const uniqueTags = [...new Set(allTags)].slice(0, 3);

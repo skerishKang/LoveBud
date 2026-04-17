@@ -42,11 +42,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ── 인증 가드: onAuthReady 콜백 기반 ──
     // ── 사용자 알림용 토스트 유틸리티 (공통 UI 사용) ──
+    let toastWarningShown = false;
     const showToast = (message, type = 'info') => {
         if (window.LoveBudUI?.showToast) {
             window.LoveBudUI.showToast(message, type, 3000);
         } else {
             // fallback: 간단한 console 로그
+            if (!toastWarningShown) {
+                console.warn('[editor] LoveBudUI not loaded, toast degraded to console');
+                toastWarningShown = true;
+            }
             console.log(`[Toast ${type}] ${message}`);
         }
     };
@@ -184,8 +189,13 @@ const startEditor = async () => {
         // ── API 응답 정규화: 공통 유틸 사용
         // 백엔드는 flat camelCase 응답을 반환하므로 mem.data 처리 불필요
         // 저장 계약: window.currentTreeMemories는 항상 이 정규화가 적용된 배열
+        let normalizeWarningShown = false;
         const normalizeMemory = window.LoveBudNormalize?.normalizeMemory || ((mem) => {
             // fallback: 공통 유틸 로드 실패 시 기본 정규화
+            if (!normalizeWarningShown) {
+                console.warn('[editor] LoveBudNormalize not loaded, using local fallback');
+                normalizeWarningShown = true;
+            }
             if (!mem) return null;
             return {
                 id: mem.id,
