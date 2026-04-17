@@ -43,7 +43,7 @@ window.LoveBudNormalize.normalizeTree(tree)
 
 ---
 
-### 2. source/sourceUrl/sourceType 처리 중복 ⭐⭐⭐⭐ 🔄 생성 완료, 적용 보류
+### 2. source/sourceUrl/sourceType 처리 중복 ⭐⭐⭐⭐ 🔄 생성 완료, 런타임 미연결
 
 **위치:**
 - `js/search.js:398` - `firstMem.sourceUrl`
@@ -66,24 +66,30 @@ window.LoveBudMedia = {
 };
 ```
 
-**적용 상태:**
-- [x] media.js 생성 완료 (사용 가능)
-- [ ] HTML 로드: 없음 (어떤 페이지도 로드하지 않음)
-- [ ] JS 사용: 없음 (어떤 파일도 사용하지 않음)
-- [ ] editor.js 적용: 보류 (파일 복잡성)
+**적용 상태 (미배선/unwired):**
+- [x] media.js 생성 완료 (함수 구현 완료, 사용 준비됨)
+- [ ] HTML 로드: 미배선 (어떤 페이지도 `<script>` 태그로 로드하지 않음)
+- [ ] JS 호출 연결: 미연결 (어떤 JS 파일도 `LoveBudMedia`를 호출하지 않음)
+- [ ] 실사용 적용: 보류 (생성 완료 → 런타임 연결 단계 미진행)
 
-**사용 가능한 곳:**
+**현재 상태:**
+파일은 존재하고 유틸도 구현되어 있으나, HTML wiring과 실제 호출 연결이 없어 런타임에서 사용되지 않는 **미배선(unwired)** 상태.
+
+**적용 후보:**
 - `editor.js`의 YouTube URL 처리 (현재 정규식 직접 사용 중)
 - `detail.js`의 embed URL 생성
 - `search.js`의 thumbnail URL 처리
 
-**적용 방법 (향후):**
-```html
-<script src="../js/utils/media.js?v=YYYYMMDD-N"></script>
-```
-```javascript
-const videoId = window.LoveBudMedia.extractYouTubeId(url);
-const embedUrl = window.LoveBudMedia.getEmbedUrl(url, 'youtube');
+**다음 스프린트 액션:**
+```markdown
+1단계: HTML script 로드 추가
+  <script src="../js/utils/media.js?v=YYYYMMDD-N"></script>
+
+2단계: 적용 후보 1개 파일에 시범 적용
+  - 권장: editor.js (YouTube 처리 통합)
+  - 대안: detail.js (embed URL 생성)
+
+3단계: 검증 후 나머지 파일 확산 적용
 ```
 
 ---
