@@ -15,7 +15,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // ID 없이 진입 시 search.html로 리다이렉트
     if (!memoryId) {
-        window.location.href = 'search.html';
+        var isPagesContext = window.location.pathname.indexOf('/pages/') !== -1;
+        var searchHref = isPagesContext ? 'search.html' : 'pages/search.html';
+        window.location.href = searchHref;
         return;
     }
 
