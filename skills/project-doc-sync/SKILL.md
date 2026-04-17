@@ -55,7 +55,31 @@
    - `conversation/` = 기록
    - `pages/product/backend/ops/reports/plans` = 정제 문서
 7. **index 문서 우선**:
-   - 폴더 구조가 바뀌면 해당 폴더 `index.md`와 `docs/doc_index.md`를 함께 본다
+   - 폴더 구조가 바뀌면 해당 폴더의 `*_index.md`와 `docs/doc_index.md`를 함께 본다
+
+## 인덱스 파일명 규칙
+
+이 스킬은 문서 인덱스 파일명을 아래 기준으로 다룹니다.
+
+- 기본 규칙: **하위 폴더 인덱스는 `폴더명_index.md`**
+- 예:
+  - `docs/pages/pages_index.md`
+  - `docs/product/product_index.md`
+  - `docs/ops/ops_index.md`
+  - `docs/reports/reports_index.md`
+  - `docs/plans/plans_index.md`
+  - `docs/archive/archive_index.md`
+  - `docs/design/design_index.md`
+- conversation 특수 규칙:
+  - `docs/conversation/full/full_index.md`
+  - `docs/conversation/summary/summary_index.md`
+- 최상위 예외:
+  - `docs/doc_index.md`
+
+중요:
+- 새로운 하위 폴더 인덱스를 만들 때 일반적인 `index.md`를 기본값으로 쓰지 말 것
+- 기존에 잘못 생성된 `index.md`가 있다면, 현재 네이밍 규칙과 충돌하는지 먼저 확인할 것
+- 구조 정리 시 해당 폴더 인덱스와 `docs/doc_index.md`를 함께 갱신할 것
 
 ## 현재 기준 문서 구조
 
@@ -86,7 +110,7 @@
 
 예:
 - 루트 문서를 하위 폴더로 이동
-- `index.md` 신규 생성
+- `*_index.md` 신규 생성
 - `doc_index.md` 갱신
 - 폴더 역할 재분류
 
@@ -262,7 +286,7 @@ updated: {YYYY-MM-DD}
 
 폴더 구조가 바뀌면 함께 확인할 문서:
 
-1. 해당 폴더 `index.md`
+1. 해당 폴더의 `*_index.md`
 2. `docs/doc_index.md`
 3. 관련 상위/하위 문서 링크
 
