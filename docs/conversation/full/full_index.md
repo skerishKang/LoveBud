@@ -16,6 +16,7 @@
 
 | 날짜 | 파일명 | 설명 |
 |------|--------|------|
+| 2026-04-18 | [2026-04-18-01-conversation-archiver-intake-design.md](2026-04-18-01-conversation-archiver-intake-design.md) | conversation-archiver 스킬 intake 모드 설계: 새 transcript 정식 편입 규칙, 제목 생성 원칙, txt→md 변환, index 갱신 |
 | 2026-04-17 | [2026-04-17-01-runtime-stabilization.md](2026-04-17-01-runtime-stabilization.md) | 런타임 안정화: i18n 정리, shared-header 복구, API 502 진단, 에셋 버저닝, SSH/Git 연결, 문서 구조 생성 |
 | 2026-04-17 | [2026-04-17-02-handoff.md](2026-04-17-02-handoff.md) | 버전 규칙 확정(20260417-31), DB 스키마 매핑 수정, browse 11개 트리 표시 복구 |
 | 2026-04-17 | [2026-04-17-03-api-response-unification.md](2026-04-17-03-api-response-unification.md) | 1-2차 API 응답 통일: 백엔드 flat camelCase 표준화, serializers 적용, search.js flatten 로직 수정 |
