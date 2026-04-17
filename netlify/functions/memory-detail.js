@@ -4,7 +4,7 @@
  * GET    /api/memories/:memoryId → get single memory
  *
  * GET: public memory는 비로그인도 허용
- * PATCH/DELETE: owner only
+ * PATCH/PUT/DELETE: owner only
  */
 const { requireUser, getUserFromEvent } = require('./_lib/auth');
 const { ok, noContent, httpError, handleError } = require('./_lib/http');
