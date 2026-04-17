@@ -252,6 +252,29 @@ Step 3: 검증 및 확산
 - my-trees.js와 search.js는 LoveBudNormalize/UI/Path 사용하나 HTML에서 로드하지 않음
 - 이번 보강 작업으로 완전히 해결됨
 
+### 4.1.5 런타임 검증 완료 (2026-04-18)
+
+**검증 환경:** https://lovebud.netlify.app/  
+**검증 결과:** 리팩터링 성공, 런타임 검증 통과
+
+| 페이지 | 결과 | JS 에러 | 신규 모듈 로드 | 기본 동작 | 비고 |
+|--------|------|---------|----------------|-----------|------|
+| search.html | ✅ 성공 | 0 | ✅ 3개 정상 | 목록/필터/preview 동작 | - |
+| editor.html | ✅ 성공 | 0 | ✅ root-helpers 정상 | 트리/루트 노드/패널 동작 | API 500은 서버 문제 |
+| detail.html | ✅ 성공 | 0 | ✅ normalize.js 정상 | fallback UI 동작 | - |
+
+**콘솔 확인:**
+- `[cache-utils]` 로그: 정상
+- `[shared-header]` 로그: 정상
+- `[editor-root-helpers]` 로그: 정상
+- JS 에러: 0개 (3페이지 전체)
+
+**리팩터링 무관 이슈 (기존 문제):**
+| 이슈 | 위치 | 비고 |
+|------|------|------|
+| YouTube 썸네일 404 | search.html | 네트워크, 리팩터링 전부터 존재 |
+| API 500/401 | editor.html | Netlify Functions 서버 문제, JS 무관 |
+
 ### 4.2 단기 과제 (다음 스프린트)
 
 | 우선순위 | 작업 | 이유 | 상태 |
