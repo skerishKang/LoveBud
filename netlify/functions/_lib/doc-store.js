@@ -280,7 +280,12 @@ async function updateMemory(memoryId, patch) {
 }
 
 async function deleteMemory(memoryId) {
-  const r = await query('SELECT id, payload FROM trees');
+  // JSONB 쿼리로 해당 메모리가 속한 트리만 효율적으로 검색
+  const r = await query(
+    `SELECT id, payload FROM trees WHERE payload->'nodes' @> $1::jsonb`,
+    [JSON.stringify([{ id: memoryId }])]
+  );
+  
   let targetTreeId = null;
   let nodes = [];
   let nodeIdx = -1;
@@ -298,7 +303,10 @@ async function deleteMemory(memoryId) {
     }
   }
 
-  if (!targetTreeId) return;
+  if (!targetTreeId) {
+    console.log('[deleteMemory] Memory not found:', memoryId);
+    return null; // 명시적 null 반환 (404 처리용)
+  }
 
   nodes.splice(nodeIdx, 1);
   // 기존 payload의 다른 필드들을 보존하면서 nodes만 업데이트

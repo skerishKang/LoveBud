@@ -92,5 +92,5 @@
 
 이유:
 - 기존 핵심 페이지 문서(`my-trees`, `editor`, `search`, `detail`)는 이미 존재
-- `ROADMAP.md`에서도 다음 항목으로 `Home (landing)`이 명시됨
+- `../plans/ROADMAP.md`에서도 다음 항목으로 `Home (landing)`이 명시됨
 - 세션 기억이 끊긴 상태에서 홈의 역할부터 다시 정하면 이후 페이지 간 연결이 쉬워짐

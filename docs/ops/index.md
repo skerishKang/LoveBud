@@ -32,6 +32,7 @@
 | [EDITOR_ARCHITECTURE.md](EDITOR_ARCHITECTURE.md) | 에디터 아키텍처 |
 | [backend.md](../backend.md) | Netlify Functions 백엔드 개요 *(이동 예정)* |
 | [git_tutorial.md](git_tutorial.md) | Git 튜토리얼 *(루트에서 이동)* |
+| [CTO_MVP_HANDOFF.md](CTO_MVP_HANDOFF.md) | CTO MVP 핸드오프 문서 *(product에서 이동)* |
 
 ## 참조
 - 전체 문서 인덱스: `../doc_index.md`
