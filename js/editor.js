@@ -76,7 +76,7 @@ const startEditor = async () => {
   console.log('[editor] URL treeId:', urlTreeId);
   
   // ── 캐시 키 설정 ──
-  const cache = window.LoveBudCache;
+  const cache = window.LoveBudCache || null;
   const TREE_CACHE_KEY = 'tree_' + (urlTreeId || 'default');
 const MEMORIES_CACHE_KEY = 'memories_' + (urlTreeId || 'default');
  // 로컬 폴백 모드 추적 (상세 패널에 표시용)

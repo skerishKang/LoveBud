@@ -47,13 +47,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (window.apiClient && window.apiClient.getMemory) {
             const apiMemory = await window.apiClient.getMemory(memoryId);
             if (apiMemory) {
-                // 캐시 업데이트
+                // 평탄화: {id, data:{...}} → {...data, id} (snake_case → camelCase)
+                const flatMemory = {
+                    id: apiMemory.id,
+                    ...apiMemory.data,
+                    // snake_case → camelCase 매핑
+                    parentId: apiMemory.data?.parent_id,
+                    sourceUrl: apiMemory.data?.source_url,
+                    sourceType: apiMemory.data?.source_type,
+                    emotionTags: apiMemory.data?.emotion_tags,
+                    createdAt: apiMemory.data?.created_at,
+                    updatedAt: apiMemory.data?.updated_at,
+                    treeId: apiMemory.data?.tree_id
+                };
+                // 캐시 업데이트 (flat 객체로 저장)
                 if (cache) {
-                    cache.set(MEMORY_CACHE_KEY, apiMemory, 3 * 60 * 1000); // 3분 TTL
+                    cache.set(MEMORY_CACHE_KEY, flatMemory, 3 * 60 * 1000); // 3분 TTL
                 }
                 // 캐시와 다르면 갱신
-                if (JSON.stringify(memory) !== JSON.stringify(apiMemory)) {
-                    memory = apiMemory;
+                if (JSON.stringify(memory) !== JSON.stringify(flatMemory)) {
+                    memory = flatMemory;
                 }
                 console.log('[detail] API memory loaded:', memoryId);
             }

@@ -100,6 +100,7 @@
 
 ## 연결된 문서
 
+- **프론트엔드 구현 상세**: `../plans/FRONTEND_ROADMAP.md` — 품질 기준 및 빌드 큐
 - **페이지 문서**: `../pages/`
 - **상위 문서**: `../product/PRODUCT_BRIEF.md`
 - **스킬**: `../skills/page-doc-writer/`, `../skills/project-doc-sync/`
