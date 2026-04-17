@@ -30,12 +30,13 @@ coverage/
 
 # Local test account files
 .local/test-accounts.json
-# Local agent docs (ignored from public repo)
+# Local agent docs / notes (ignored from public repo)
 AGENT.md
 LOCAL_AGENT.md
 AGENTS.md
-pages/
-docs/reports/
+
+# App pages and project reports are real repo assets and must stay trackable.
+# Do not ignore `pages/` or `docs/reports/`.
 
 # Local Netlify folder
 .netlify
@@ -75,3 +76,5 @@ temp_*.ps1
 # Local codex notes (duplicate with conversation/)
 docs/*codex*.txt
 
+# SSH backup (private keys - never commit)
+.ssh-backup/

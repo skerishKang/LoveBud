@@ -61,10 +61,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         // trees 배열 기반으로 트리 메타데이터 구성
         return trees.map(tree => {
             const mems = grouped[tree.id] || [];
-            const sortedMems = mems.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+            const sortedMems = mems.sort((a, b) => new Date(a.timestamp || a.createdAt || 0) - new Date(b.timestamp || b.createdAt || 0));
 
             // 대표 감정 태그 수집 (중복 제거, 최대 3개)
-            const allTags = sortedMems.flatMap(m => m.emotionTags || []);
+            const allTags = sortedMems.flatMap(m => (m.emotion_tags || m.emotionTags || [])).filter(Boolean);
             const uniqueTags = [...new Set(allTags)].slice(0, 3);
 
             // 시간 범위 계산
@@ -85,7 +85,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // 입덕/성장/최애 단계 추정
                 stage: sortedMems.length <= 2 ? '입덕' : (sortedMems.length <= 4 ? '성장' : '최애')
             };
-        }).filter(t => t.memoryCount > 0); // 메모리가 없는 트리는 제외
+}).filter(t => t.memoryCount > 0); // 메모리가 없는 트리는 제외
     };
 
     // ── 1. 캐시된 public trees 먼저 확인 ──

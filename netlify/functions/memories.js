@@ -8,7 +8,7 @@
  */
 const { requireUser } = require('./_lib/auth');
 const { ok, created, httpError, handleError } = require('./_lib/http');
-const { queryMemories, createMemory, queryTrees, getTree, validateRequired, validateVisibility, validateSourceType, validateOptionalString, validateUuid, validateLimit } = require('./_lib/doc-store');
+const { queryMemories, createMemory, updateMemory, deleteMemory, queryTrees, getTree, validateRequired, validateVisibility, validateSourceType, validateOptionalString, validateUuid, validateLimit } = require('./_lib/doc-store');
 
 exports.handler = async (event) => {
   const requestOrigin = event.headers?.origin || event.headers?.Origin || '';
@@ -130,6 +130,104 @@ exports.handler = async (event) => {
 
       const memories = await queryMemories(filters);
       return ok(memories, { 'Access-Control-Allow-Origin': '*' });
+    }
+
+    // ── PUT: update memory ──────────────────────────────────────────────────
+    if (event.httpMethod === 'PUT') {
+      const pathParts = event.path.split('/');
+      const memoryId = pathParts[pathParts.length - 1];
+
+      if (!memoryId || memoryId === 'memories') {
+        throw httpError(400, 'Memory ID is required');
+      }
+
+      let body;
+      try {
+        body = JSON.parse(event.body || '{}');
+      } catch (_) {
+        throw httpError(400, 'Invalid JSON body');
+      }
+
+      // Validate fields
+      const title = validateOptionalString(body.title, 200);
+      const memo = validateOptionalString(body.memo, 5000);
+      const artist = validateOptionalString(body.artist, 100);
+      const source = validateOptionalString(body.source, 200);
+      const sourceUrl = validateOptionalString(body.sourceUrl, 1000);
+      const thumbnail = validateOptionalString(body.thumbnail, 500);
+      const timestamp = validateOptionalString(body.timestamp, 100);
+      const visibility = body.visibility ? validateVisibility(body.visibility) : undefined;
+
+      // Validate emotionTags if provided
+      let emotionTags;
+      if (body.emotionTags !== undefined) {
+        if (!Array.isArray(body.emotionTags)) {
+          throw httpError(400, 'emotionTags must be an array');
+        }
+        if (body.emotionTags.length > 20) {
+          throw httpError(400, 'emotionTags exceeds maximum of 20 items');
+        }
+        emotionTags = body.emotionTags.map(tag => {
+          if (typeof tag !== 'string' || tag.trim().length === 0) {
+            throw httpError(400, 'emotionTags must contain non-empty strings');
+          }
+          return tag.trim();
+        });
+      }
+
+      // Build patch object with only provided fields
+      const patch = {};
+      if (title !== undefined) patch.title = title;
+      if (memo !== undefined) patch.memo = memo;
+      if (artist !== undefined) patch.artist = artist;
+      if (source !== undefined) patch.source = source;
+      if (sourceUrl !== undefined) patch.sourceUrl = sourceUrl;
+      if (thumbnail !== undefined) patch.thumbnail = thumbnail;
+      if (timestamp !== undefined) patch.timestamp = timestamp;
+      if (visibility !== undefined) patch.visibility = visibility;
+      if (emotionTags !== undefined) patch.emotionTags = emotionTags;
+
+      if (Object.keys(patch).length === 0) {
+        throw httpError(400, 'No fields to update');
+      }
+
+      // Verify ownership through tree
+      const memories = await queryMemories({ id: memoryId });
+      if (!memories || memories.length === 0) {
+        throw httpError(404, 'Memory not found');
+      }
+      const memory = memories[0];
+      const tree = await getTree(memory.data.tree_id);
+      if (!tree || tree.data.owner_id !== user.uid) {
+        throw httpError(403, 'Access denied');
+      }
+
+      const updated = await updateMemory(memoryId, patch);
+      return ok(updated, { 'Access-Control-Allow-Origin': '*' });
+    }
+
+    // ── DELETE: delete memory ───────────────────────────────────────────────
+    if (event.httpMethod === 'DELETE') {
+      const pathParts = event.path.split('/');
+      const memoryId = pathParts[pathParts.length - 1];
+
+      if (!memoryId || memoryId === 'memories') {
+        throw httpError(400, 'Memory ID is required');
+      }
+
+      // Verify ownership through tree
+      const memories = await queryMemories({ id: memoryId });
+      if (!memories || memories.length === 0) {
+        throw httpError(404, 'Memory not found');
+      }
+      const memory = memories[0];
+      const tree = await getTree(memory.data.tree_id);
+      if (!tree || tree.data.owner_id !== user.uid) {
+        throw httpError(403, 'Access denied');
+      }
+
+      await deleteMemory(memoryId);
+      return ok({ deleted: true, id: memoryId }, { 'Access-Control-Allow-Origin': '*' });
     }
 
     throw httpError(405, 'Method not allowed');

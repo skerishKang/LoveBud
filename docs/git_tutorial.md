@@ -8,13 +8,15 @@
 - `git commit -m "커밋 메시지"` – 스테이징된 파일을 커밋
 - `git push` – 로컬 커밋을 원격 저장소에 푸시
 
-## 2️⃣ 예시 워크플로우
+## 2️⃣ 예시 워크플로우 (LoveBud 원칙)
 ```bash
 # 1. 파일 수정 후 현재 상태 확인
 git status
 
-# 2. 변경된 파일 모두 스테이징
-git add .
+# 2. 변경된 파일만 명시적으로 스테이징 (LoveBud 원칙: git add -A 금지)
+git add js/my-trees.js docs/pages/my-trees.md
+# 또는 관련 파일만
+git add js/ docs/pages/
 
 # 3. 의미있는 커밋 메시지와 함께 커밋
 git commit -m "Add Git tutorial docs"
@@ -22,6 +24,9 @@ git commit -m "Add Git tutorial docs"
 # 4. 원격 저장소에 푸시 (기본 브랜치가 main인 경우)
 git push origin main
 ```
+
+> **참고:** LoveBud 프로젝트에서는 `git add -A`와 `git add .`를 금지합니다.
+> 관련 파일만 명시적으로 staging하는 것이 원칙입니다.
 
 ## 3️⃣ 팁
 - **커밋 메시지는 왜(Why)와 무엇(What)을 명확히** 적어 주세요.
@@ -34,4 +39,6 @@ git push origin main
 
 ---
 
-이 가이드를 프로젝트 루트의 `docs/git_tutorial.md` 파일에 저장하고, 위 명령어를 통해 커밋·푸시하면 됩니다.
+> **LoveBud 운영 원칙:** `git add -A`와 `git add .`를 금지합니다.
+> 관련 파일만 명시적으로 staging하는 것이 원칙입니다.
+> 상세: `docs/ops/PATHS_AND_SHELLS.md`
