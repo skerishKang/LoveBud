@@ -189,12 +189,12 @@ const startEditor = async () => {
         TREE_CACHE_KEY = 'tree_' + (treeId || 'default');
         MEMORIES_CACHE_KEY = 'memories_' + (treeId || 'default');
 
-        // ── API 응답 정규화: snake_case → camelCase
+        // ── API 응답 정규화: 공통 유틸 사용
         // 백엔드는 flat camelCase 응답을 반환하므로 mem.data 처리 불필요
         // 저장 계약: window.currentTreeMemories는 항상 이 정규화가 적용된 배열
-        const normalizeMemory = (mem) => {
+        const normalizeMemory = window.LoveBudNormalize?.normalizeMemory || ((mem) => {
+            // fallback: 공통 유틸 로드 실패 시 기본 정규화
             if (!mem) return null;
-
             return {
                 id: mem.id,
                 treeId: mem.treeId || mem.tree_id || null,
@@ -216,7 +216,7 @@ const startEditor = async () => {
                 x: mem.x,
                 y: mem.y
             };
-        };
+        });
 
         // ── memories 캐시 우선 로딩 ──
         let memories = [];
