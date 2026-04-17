@@ -45,7 +45,7 @@
 
     /**
      * Normalize a list of memories.
-     * 
+     *
      * @param {Array} memories - Array of raw memory objects
      * @returns {Array} Array of normalized memory objects (null items filtered out)
      */
@@ -54,10 +54,56 @@
         return memories.map(normalizeMemory).filter(Boolean);
     }
 
+    /**
+     * Normalize a tree object to standard flat camelCase shape.
+     *
+     * @param {Object} tree - Raw tree data from API, cache, or mock
+     * @returns {Object|null} Normalized tree object or null if input is falsy
+     */
+    function normalizeTree(tree) {
+        if (!tree) return null;
+
+        return {
+            id: tree.id,
+            userId: tree.userId || tree.user_id || null,
+            title: tree.title || '나의 러브트리',
+            visibility: tree.visibility || 'private',
+            createdAt: tree.createdAt || tree.created_at || null,
+            updatedAt: tree.updatedAt || tree.updated_at || null,
+            memoryCount: tree.memoryCount || tree.memory_count || 0,
+            isArchived: tree.isArchived || tree.is_archived || false
+        };
+    }
+
+    /**
+     * Normalize a list of trees.
+     *
+     * @param {Array} trees - Array of raw tree objects
+     * @returns {Array} Array of normalized tree objects (null items filtered out)
+     */
+    function normalizeTreeList(trees) {
+        if (!Array.isArray(trees)) return [];
+        return trees.map(normalizeTree).filter(Boolean);
+    }
+
+    /**
+     * Normalize emotion tags array (dedupe, filter empty).
+     *
+     * @param {Array} tags - Raw tags array
+     * @returns {Array} Normalized tags array
+     */
+    function normalizeEmotionTags(tags) {
+        if (!Array.isArray(tags)) return [];
+        return [...new Set(tags.filter(Boolean))];
+    }
+
     // Expose to global scope for browser usage
     global.LoveBudNormalize = {
         normalizeMemory,
-        normalizeMemoryList
+        normalizeMemoryList,
+        normalizeTree,
+        normalizeTreeList,
+        normalizeEmotionTags
     };
 
 })(typeof window !== 'undefined' ? window : global);
