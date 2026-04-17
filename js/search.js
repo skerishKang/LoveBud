@@ -112,23 +112,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             const apiTrees = await window.apiClient.getPublicTrees();
             if (Array.isArray(apiTrees)) {
                 console.log('[search] API public trees 로드:', apiTrees.length, '개');
-                // 평탄화: {id, data:{...}} → {...data, id} (snake_case → camelCase)
-                const flatTrees = apiTrees.map(tree => ({
-                    id: tree.id,
-                    ...tree.data,
-                    // snake_case → camelCase 매핑
-                    ownerId: tree.data?.owner_id,
-                    createdAt: tree.data?.created_at,
-                    updatedAt: tree.data?.updated_at
-                }));
-                // 캐시 업데이트 (flat 객체로 저장)
+
                 if (cache) {
-                    cache.set(PUBLIC_TREES_CACHE_KEY, flatTrees, 5 * 60 * 1000); // 5분 TTL
+                    cache.set(PUBLIC_TREES_CACHE_KEY, apiTrees, 5 * 60 * 1000); // 5분 TTL
                 }
-                // 캐시와 다르면 데이터 갱신 (뒤에서 populateResults 호출)
-                if (JSON.stringify(allTrees) !== JSON.stringify(flatTrees)) {
-                    allTrees = flatTrees;
+
+                if (JSON.stringify(allTrees) !== JSON.stringify(apiTrees)) {
+                    allTrees = apiTrees;
                 }
+
                 apiTreesLoaded = true;
             } else {
                 throw new Error('API 응답 형식 오류');

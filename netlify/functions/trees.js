@@ -4,7 +4,8 @@
  */
 const { requireUser } = require('./_lib/auth');
 const { ok, created, httpError, handleError } = require('./_lib/http');
-const { queryTrees, createTree, validateRequired, validateVisibility, validateOptionalString } = require('./_lib/doc-store');
+const { queryTrees, createTree, validateVisibility, validateOptionalString } = require('./_lib/doc-store');
+const { serializeTree, serializeTreeList } = require('./_lib/serializers');
 
 exports.handler = async (event) => {
   const requestOrigin = event.headers?.origin || event.headers?.Origin || '';
@@ -40,7 +41,7 @@ exports.handler = async (event) => {
         visibility,
       });
 
-      return created(tree, { 'Access-Control-Allow-Origin': '*' });
+      return created(serializeTree(tree), { 'Access-Control-Allow-Origin': '*' });
     }
 
     // ── GET: list trees ─────────────────────────────────────────────────────
@@ -65,7 +66,7 @@ exports.handler = async (event) => {
         return handleError('trees-db', dbError, requestOrigin);
       }
 
-      return ok(trees, { 'Access-Control-Allow-Origin': '*' });
+      return ok(serializeTreeList(trees), { 'Access-Control-Allow-Origin': '*' });
     }
 
     throw httpError(405, 'Method not allowed');

@@ -5,7 +5,8 @@
  */
 const { getUserFromEvent } = require('./_lib/auth');
 const { ok, httpError, handleError } = require('./_lib/http');
-const { getTree, queryMemories, validateUuid, validateLimit } = require('./_lib/doc-store');
+const { getTree, queryMemories, validateUuid } = require('./_lib/doc-store');
+const { serializeTree, serializeMemoryList } = require('./_lib/serializers');
 
 exports.handler = async (event) => {
   const requestOrigin = event.headers?.origin || event.headers?.Origin || '';
@@ -19,31 +20,35 @@ exports.handler = async (event) => {
   }
 
   try {
-    // Extract treeId from path — /api/trees/:treeId
     const pathParts = (event.path || '').split('/');
     const treeId = pathParts[pathParts.length - 1];
 
     if (!treeId) throw httpError(400, 'Missing treeId');
 
-    // Validate treeId format
     const validatedTreeId = validateUuid(treeId, 'treeId');
 
-    const tree = await getTree(validatedTreeId);
-    if (!tree) throw httpError(404, 'Tree not found');
+    const rawTree = await getTree(validatedTreeId);
+    if (!rawTree) throw httpError(404, 'Tree not found');
 
-    // Load memories for this tree
-    const memories = await queryMemories({ treeId: validatedTreeId });
+    const rawMemories = await queryMemories({ treeId: validatedTreeId });
+    const memories = serializeMemoryList(rawMemories);
+    const tree = serializeTree(rawTree, { nodes: memories });
 
-    // Check access: public = OK, private = owner only
-    const isPublic = tree.data.visibility === 'public';
+    const isPublic = tree.visibility === 'public';
     if (!isPublic) {
       const user = await getUserFromEvent(event);
-      if (!user || user.uid !== tree.data.owner_id) {
+      if (!user || user.uid !== tree.ownerId) {
         throw httpError(403, 'Access denied');
       }
     }
 
-    return ok({ ...tree, memories }, { 'Access-Control-Allow-Origin': '*' });
+    return ok(
+      {
+        ...tree,
+        memories,
+      },
+      { 'Access-Control-Allow-Origin': '*' }
+    );
   } catch (error) {
     return handleError('tree-detail', error, requestOrigin);
   }
