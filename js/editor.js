@@ -93,7 +93,7 @@ const startEditor = async () => {
       if (window.apiClient && window.apiClient.getTree) {
         tree = await window.apiClient.getTree(urlTreeId);
         if (tree) {
-          console.log('[editor] Tree from URL loaded:', tree.id || tree.data?.id);
+          console.log('[editor] Tree from URL loaded:', tree.id);
         }
       }
     } catch (e) {
@@ -174,8 +174,13 @@ const startEditor = async () => {
     }
     // API 실패 시에만 mock fallback
     if (!tree) {
-      const trees = typeof getTrees === 'function' ? getTrees() : [];
-      tree = trees[0];
+      const mockTrees = typeof getTrees === 'function' ? getTrees() : [];
+      // urlTreeId가 있으면 해당 ID로 찾기, 없으면 첫 번째 트리(mock 개발용)
+      if (urlTreeId) {
+        tree = mockTrees.find(t => t.id === urlTreeId) || null;
+      } else {
+        tree = mockTrees[0] || null;
+      }
     }
     if (!tree) {
       console.warn('Tree data not found.');
