@@ -1,5 +1,66 @@
 # detail (기억 상세)
 
+## 2026-04-18 리팩터링 (734bc68 후속)
+
+### 구조 변경
+
+```
+js/detail.js (435줄)
+├── SECTION 1: DOM 요소 참조
+├── SECTION 2: 렌더링 헬퍼 함수들
+│   ├── renderMemoryBase(memory)
+│   ├── renderTreeContext({hasTreeContext, tree, memories, sourceContext, degradedReason})
+│   └── renderConnectedFragments({memory, memories, treeId, sourceContext, degradedReason})
+├── SECTION 3: URL 파라미터 파싱
+├── SECTION 4: loadMemoryDetailContext(mid, tid) - 데이터 준비 계층 (신규)
+│   → {memory, tree, memories, sourceContext, hasTreeContext, degradedReason}
+├── SECTION 5-7: 데이터 로드 및 렌더링 오케스트레이션
+└── SECTION 8: 렌더링 실행 (분리된 함수 호출)
+```
+
+### 책임 분리
+
+| 책임 | 위치 | 설명 |
+|------|------|------|
+| URL 해석 | SECTION 3 | memoryId, treeId, from 파라미터 추출 |
+| 데이터 준비 | SECTION 4 | loadMemoryDetailContext() - 캐시/API/fallback 통합 |
+| DOM 렌더링 | SECTION 2 | renderer 함수들 (tree 무관) |
+| 오케스트레이션 | SECTION 6-8 | 데이터 로드 → 렌더링 호출 → 페이지 설정 |
+
+### loadMemoryDetailContext() 반환값
+
+```javascript
+{
+  memory,        // 메모리 데이터 (null 가능)
+  tree,         // 트리 데이터 (null 가능)
+  memories,    // 같은 트리의 다른 기억들
+  sourceContext, // 'browse' | 'my-trees' | 'editor'
+  hasTreeContext, // boolean
+  degradedReason  // null | 'missing-tree-id' | 'tree-load-failed' | 'not-found'
+}
+```
+
+###degradedReason 상태
+
+| 상태 | 조건 | UI |
+|------|------|-----|
+| null | 정상 | 트리 컨텍스트 표시 |
+| missing-tree-id | treeId 파라미터 없음 | "기억의 순간" (단독 모드) |
+| tree-load-failed | treeId 있는데 로드 실패 | "트리 정보 없음" |
+| not-found | memory 조회 실패 | fallback UI |
+
+### 검증 시나리오
+
+| 시나리오 | 동작 |
+|----------|------|
+| `detail.html?id=...&tree=...` | 정상 |
+| `detail.html?id=...` | 단독 순간 모드 |
+| treeId 있는데 API 실패 | degraded UI |
+
+---
+
+# detail (기억 상세)
+
 ## 페이지 목적
 특정 메모리(기억)의 상세 정보를 보고, 같은 트리의 다른 기억들과의 연결을 확인하는 페이지.
 
@@ -21,9 +82,9 @@
 - **Connected Section**: 같은 트리의 다른 기억들 (Moment Cards)
 
 ### 현재 파일 구조
-- `pages/detail.html` (265줄)
+- `pages/detail.html` (266줄)
 - CSS: `global.css` 공통
-- JS: 인라인 또는 별도 (파일 확인 필요)
+- JS: `js/detail.js` (435줄, 리팩터링 완료)
 
 ### 주요 기능
 - URL 파라미터로 treeId, memoryId 수신

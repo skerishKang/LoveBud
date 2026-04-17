@@ -18,9 +18,18 @@
 
 ## 현재 구현 상태 (2026-04-18 기준)
 
+### 모듈 구조 (최소 리팩터링 적용)
+| 파일 | 책임 | 비고 |
+|------|------|------|
+| `js/editor.js` | 메인 오케스트레이션 | 979줄 → Root helpers 분리 |
+| `js/editor/editor-root-helpers.js` | Root memory 식별/관리 | 순수 함수, 재사용 가능 |
+| `js/utils/ui.js` | Toast/Loading/Confirm | 공통 유틸, editor.js에서 사용 |
+| `js/utils/normalize.js` | Memory/Tree 정규화 | 공통 유틸, editor.js에서 사용 |
+
 ### 최근 수정사항 (Codex + Kimi 협업)
 | 날짜 | 수정사항 | 파일 |
 |------|----------|------|
+| 2026-04-18 | **editor.js 구조 리팩터링** | editor.js, editor-root-helpers.js |
 | 2026-04-18 | 인증 콜백 배열화 (`window.onAuthReady` → `registerOnAuthReady`) | auth.js, my-trees.js, editor.js |
 | 2026-04-18 | editor.js 인증 패턴 단순화 (my-trees.js와 통일) | editor.js |
 | 2026-04-18 | 에디터 저장 PUT 핸들러 추가 (memory-detail.js) | memory-detail.js |
@@ -124,10 +133,46 @@
 
 ---
 
-## 다음 개선 포인트
+## 에디터 구조 및 확장 포인트
 
-1. 노드 드래그/편집 기능
-2. 브랜치 연결 편집 (parent 변경)
-3. 미리보기 기능 실제 구현
-4. 노드 상세 modal 대안 (현재는 detail 패널)
-5. 모바일 Responsive (현재 desktop 중심)
+### 현재 아키텍처 (2026-04-18 리팩터링 후)
+
+```
+js/editor.js (메인 오케스트레이션)
+├── 초기화: 트리 로드, 캐시 설정, 인증 가드
+├── 상태 관리: selectedNodeId, isLocalSaveMode, currentEditingMemory
+├── 캔버스 렌더링: initCanvas, drawRoot, drawBranch, drawNode
+├── 상세 패널: updateDetailPanel, enterEditMode, exitEditMode
+├── 메모리 조작: saveMemoryEdit, deleteMemory, addMemoryFromForm
+├── 이벤트 바인딩: 버튼 클릭, 키보드, 폼 제출
+└── 위치 계산: calcPosition (트리 레이아웃 알고리즘)
+
+js/editor/editor-root-helpers.js (분리됨)
+├── findRootMemory: parentId === null 기반 root 식별
+├── getRootId: root ID 반환
+├── getCanonicalRootId: canonical root 계산
+└── isRootMemory: root 여부 확인
+
+js/utils/* (공통 유틸)
+├── ui.js: Toast, Loading, Confirm
+├── normalize.js: Memory/Tree 정규화
+└── path.js: 경로 처리 (시범 적용)
+```
+
+### 확장 가능한 지점
+
+| 영역 | 현재 | 확장 방향 |
+|------|------|-----------|
+| **Root Helpers** | 분리 완료 | 다른 트리 뷰 페이지에서 재사용 가능 |
+| **캔버스 렌더링** | editor.js 내장 | `editor-canvas.js` 분리 고려 (드래그 기능 추가 시) |
+| **상세 패널** | editor.js 내장 | `editor-panel.js` 분리 고려 (모달/팝오버 지원 시) |
+| **메모리 Form** | editor.js 내장 | `editor-form.js` 분리 고려 (복잡한 폼 검증 시) |
+| **미디어 처리** | 정규식 직접 사용 | `media.js` 공통 유틸 연결 (다음 스프린트) |
+
+### 다음 개선 포인트
+
+1. **노드 드래그/편집 기능** - 캔버스 렌더링 모듈 분리 필요
+2. **브랜치 연결 편집** (parent 변경) - calcPosition 알고리즘 수정
+3. **미리보기 기능** 실제 구현 - media.js 연결
+4. **노드 상세 modal 대안** - 상세 패널 모듈 분리
+5. **모바일 Responsive** - 별도 모바일 에디터 또는 반응형 캔버스

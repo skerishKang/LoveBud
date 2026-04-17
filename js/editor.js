@@ -1,14 +1,19 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // ── root memory 식별 헬퍼 (UUID/ mock 호환) ──
-    // 규칙: 1) parentId === null 중 가장 오래된 것 (진짜 root), 2) id === 'root' (legacy mock)
-    const findRootMemory = (memories) => {
+    // ── Root Memory Helpers ──
+    // 분리된 모듈(editor-root-helpers.js) 사용, fallback 유지
+    let rootHelperWarningShown = false;
+    const rootUtils = window.LoveBudEditorUtils || {};
+    
+    const findRootMemory = rootUtils.findRootMemory || function(memories) {
+        if (!rootHelperWarningShown) {
+            console.warn('[editor] LoveBudEditorUtils not loaded, using local fallback for root helpers');
+            rootHelperWarningShown = true;
+        }
         if (!Array.isArray(memories)) return null;
-        // 1순위: parentId === null인 노드 중 createdAt이 가장 오래된 것 (진짜 root)
         const parentNullNodes = memories.filter(m => m.parentId === null || m.parentId === undefined);
         if (parentNullNodes.length === 1) {
             return parentNullNodes[0];
         } else if (parentNullNodes.length > 1) {
-            // 여러 개면 createdAt 기준으로 가장 오래된 것이 진짜 root
             const oldest = parentNullNodes.sort((a, b) => {
                 const aTime = a.createdAt || a.timestamp || '9999';
                 const bTime = b.createdAt || b.timestamp || '9999';
@@ -17,25 +22,20 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('[editor] Multiple parentId=null nodes found, using oldest as root:', oldest.id);
             return oldest;
         }
-        // 2순위: id === 'root' (legacy mock)
         return memories.find(m => m.id === 'root');
     };
 
-    // root ID 반환 (없으면 'root' fallback - backward compatibility)
-    const getRootId = (memories) => {
+    const getRootId = rootUtils.getRootId || function(memories) {
         const root = findRootMemory(memories);
         return root ? root.id : 'root';
     };
 
-    // ── canonical root 계산 (현재 메모리 배열 기준, 항상 fresh) ──
-    // 규칙: 1) parentId === null 우선, 2) id === 'root' (legacy mock), 3) 없으면 'root' fallback
-    const getCanonicalRootId = (memories) => {
+    const getCanonicalRootId = rootUtils.getCanonicalRootId || function(memories) {
         const root = findRootMemory(memories);
         return root ? root.id : 'root';
     };
 
-    // memory가 지정된 root ID와 같은지 확인
-    const isRootMemory = (mem, rootId) => {
+    const isRootMemory = rootUtils.isRootMemory || function(mem, rootId) {
         if (!mem || !rootId) return false;
         return mem.id === rootId;
     };
