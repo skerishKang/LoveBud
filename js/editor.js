@@ -86,6 +86,13 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('[editor] currentTreeData set:', window.currentTreeData.visibility);
     };
 
+    const resolveParentIdForCreate = (selectedNodeId, canonicalRootId) => {
+        if (!selectedNodeId || selectedNodeId === canonicalRootId) {
+            return canonicalRootId === 'root' ? null : canonicalRootId;
+        }
+        return selectedNodeId;
+    };
+
     const getMyTreesHref = () => getEditorBasePath() + 'my-trees.html';
 
     const escapeHtml = (value) => String(value ?? '')
@@ -1069,8 +1076,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 sourceUrl: embedUrl,
                 sourceType: 'youtube',
                 emotionTags: ['기록'],
-                // root 바로 아래 자식도 parentId를 canonicalRootId로 설정 (null 금지)
-                parentId: selectedNodeId === canonicalRootId ? canonicalRootId : selectedNodeId,
+                // synthetic root('root') 선택 상태에서는 첫 메모리를 root-level(null)로 저장
+                parentId: resolveParentIdForCreate(selectedNodeId, canonicalRootId),
                 thumbnail: thumbnailUrl,
                 artist: '',
                 source: 'YouTube'

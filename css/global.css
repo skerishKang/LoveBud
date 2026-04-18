@@ -703,3 +703,14 @@ h1, h2, h3, h4, .headline {
 .save-status-indicator .last-saved-time {
   font-weight: 500;
 }
+
+/* Material Symbols fallback text guard
+   폰트가 준비되기 전에는 raw icon name(search, tag 등)을 숨긴다. */
+.material-symbols-outlined {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+html.material-symbols-ready .material-symbols-outlined {
+  opacity: 1;
+}

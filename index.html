@@ -379,9 +379,9 @@
                     당신이 느낀 감정의 결을 남기고, 하나의 나무로 완성하세요.
                 </p>
                 <!-- 첫 방문자용-microcopy + 가치제안 -->
-                <p style="font-size: 0.9rem; color: var(--primary); margin-bottom: 0.5rem; font-weight: 600;">
-                    🌱 LoveBud는 좋아하는 것의 감정을 기록하는 공간입니다
-                </p>
+<p style="font-size: 0.9rem; color: var(--primary); margin-bottom: 0.5rem; font-weight: 600;">
+    🌱 Lovetree는 좋아하는 것의 감정을 기록하는 공간입니다
+</p>
                 <div class="hero-flow" aria-label="시작 흐름 안내">
                     <span class="hero-flow-step"><strong>1</strong> 로그인</span>
                     <span class="hero-flow-step"><strong>2</strong> 첫 순간 추가</span>
@@ -548,13 +548,21 @@
 </section>
     </div>
 
+
     <script src="js/index.js?v=20260417-31"></script>
+    <script src="js/material-symbols-guard.js?v=20260419-1"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="js/firebase-config.js?v=20260417-31"></script>
     <script src="js/i18n.js?v=20260417-31"></script>
     <script src="js/shared-header.js?v=20260417-31"></script>
     <script src="js/auth.js?v=20260417-31"></script>
-    <script>renderSharedHeader();</script>
+    <script src="js/page-shell.js?v=20260419-1"></script>
+    <script>
+        window.LovetreePageShell.initSharedPage({
+            renderHeader: true,
+            applyI18n: true
+        });
+    </script>
 </body>
 </html>

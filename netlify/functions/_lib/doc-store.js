@@ -71,28 +71,45 @@ async function getTree(treeId) {
 }
 
 async function queryTrees(filters = {}) {
-  const p = [], w = [];
-  if (filters.ownerId) { p.push(filters.ownerId); w.push(`owner_id = $${p.length}`); }
-  
-  // Defensive is_public / visibility check
-  if (filters.visibility) {
-    p.push(filters.visibility === 'public');
-    // Try to be resilient to column name differences if possible, 
-    // but for now, we assume the code must match the DB.
-    // If production fails here, we will know from logs.
-    w.push(`is_public = $${p.length}`); 
+  const p = [];
+  const w = [];
+
+  if (filters.ownerId) {
+    p.push(filters.ownerId);
+    w.push(`owner_id = $${p.length}`);
   }
-  
-  let sql = `SELECT id, owner_id, name, is_public, created_at, updated_at, payload FROM trees`;
-  if (w.length) sql += ` WHERE ${w.join(' AND ')}`;
+
+  if (filters.visibility) {
+    p.push(filters.visibility);
+    w.push(`visibility = $${p.length}`);
+  }
+
+  let sql = `
+    SELECT id, owner_id, title, visibility, created_at, updated_at
+    FROM trees
+  `;
+
+  if (w.length) {
+    sql += ` WHERE ${w.join(' AND ')}`;
+  }
+
   sql += ' ORDER BY created_at DESC';
-  if (filters.limit) { p.push(Number(filters.limit)); sql += ` LIMIT $${p.length}`; }
-  
+
+  if (filters.limit) {
+    p.push(Number(filters.limit));
+    sql += ` LIMIT $${p.length}`;
+  }
+
   try {
     const r = await query(sql, p);
     return r.rows;
   } catch (e) {
-    const schema = await query(`SELECT column_name FROM information_schema.columns WHERE table_name = 'trees'`);
+    const schema = await query(`
+      SELECT column_name
+      FROM information_schema.columns
+      WHERE table_name = 'trees'
+      ORDER BY ordinal_position
+    `);
     console.error('Query failed. Current schema:', schema.rows);
     throw e;
   }
@@ -146,8 +163,17 @@ async function getMemory(memoryId) {
 
 async function queryMemories(filters = {}) {
   const p = [], w = [];
-  
-  if (filters.treeId) { p.push(filters.treeId); w.push(`tree_id = $${p.length}`); }
+
+  if (Array.isArray(filters.treeIds)) {
+    if (filters.treeIds.length === 0) {
+      return [];
+    }
+    p.push(filters.treeIds);
+    w.push(`tree_id = ANY($${p.length})`);
+  } else if (filters.treeId) {
+    p.push(filters.treeId);
+    w.push(`tree_id = $${p.length}`);
+  }
   if (filters.parentId !== undefined) {
     if (filters.parentId === null) {
       w.push(`parent_id IS NULL`);
@@ -156,7 +182,7 @@ async function queryMemories(filters = {}) {
     }
   }
   if (filters.visibility) { p.push(filters.visibility); w.push(`visibility = $${p.length}`); }
-  
+
   let sql = `SELECT id, tree_id, parent_id, title, memo, artist, source, source_url,
                     source_type, thumbnail, emotion_tags, timestamp, visibility,
                     created_at, updated_at
@@ -164,7 +190,7 @@ async function queryMemories(filters = {}) {
   if (w.length) sql += ` WHERE ${w.join(' AND ')}`;
   sql += ' ORDER BY created_at DESC';
   if (filters.limit) { p.push(Number(filters.limit)); sql += ` LIMIT $${p.length}`; }
-  
+
   const r = await query(sql, p);
   return r.rows;
 }
@@ -180,21 +206,21 @@ async function createMemory(data) {
      RETURNING id, tree_id, parent_id, title, memo, artist, source, source_url,
                source_type, thumbnail, emotion_tags, timestamp, visibility,
                created_at, updated_at`,
-    [
-      id,
-      data.treeId,
-      data.parentId || null,
-      data.title || '',
-      data.memo || '',
-      data.artist || '',
-      data.source || '',
-      data.sourceUrl || '',
-      data.sourceType || 'youtube',
-      data.thumbnail || '',
-      JSON.stringify(data.emotionTags || []),
-      data.timestamp || '',
-      data.visibility || 'private'
-    ]
+     [
+       id,
+       data.treeId,
+       data.parentId || null,
+       data.title || '',
+       data.memo || '',
+       data.artist || '',
+       data.source || '',
+       data.sourceUrl || '',
+       data.sourceType || 'youtube',
+       data.thumbnail || '',
+       JSON.stringify(data.emotionTags || []),
+       data.timestamp || '',
+       data.visibility || 'private'
+     ]
   );
   return r.rows[0];
 }
@@ -206,18 +232,18 @@ async function updateMemory(memoryId, patch) {
   if (patch.memo !== undefined) { p.push(patch.memo); f.push(`memo = $${p.length}`); }
   if (patch.artist !== undefined) { p.push(patch.artist); f.push(`artist = $${p.length}`); }
   if (patch.visibility !== undefined) { p.push(patch.visibility); f.push(`visibility = $${p.length}`); }
-  
+   
   if (!f.length) return getMemory(memoryId);
   p.push(memoryId);
   f.push('updated_at = NOW()');
-  
+   
   const r = await query(
     `UPDATE memories SET ${f.join(', ')} WHERE id = $${p.length}
      RETURNING id, tree_id, parent_id, title, memo, artist, source, source_url,
              source_type, thumbnail, emotion_tags, timestamp, visibility,
              created_at, updated_at`,
-    p
-  );
+     p
+   );
   return r.rows[0] || null;
 }
 
