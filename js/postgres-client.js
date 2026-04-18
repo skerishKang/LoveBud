@@ -355,6 +355,38 @@
         console.error('[apiClient] createTree failed:', error.message);
         throw error;
       }
+    },
+
+    /**
+     * 10. Update tree (이름 변경 등)
+     * @param {string} treeId - 트리 ID
+     * @param {Object} payload - { title, visibility } 등 변경할 필드
+     */
+    updateTree: async (treeId, payload) => {
+      try {
+        return await apiFetch('/trees/' + treeId, {
+          method: 'PUT',
+          body: JSON.stringify(payload)
+        });
+      } catch (error) {
+        console.error('[apiClient] updateTree failed:', error.message);
+        throw error;
+      }
+    },
+
+    /**
+     * 11. Delete tree (트리 삭제)
+     * @param {string} treeId - 트리 ID
+     */
+    deleteTree: async (treeId) => {
+      try {
+        return await apiFetch('/trees/' + treeId, {
+          method: 'DELETE'
+        });
+      } catch (error) {
+        console.error('[apiClient] deleteTree failed:', error.message);
+        throw error;
+      }
     }
   };
 

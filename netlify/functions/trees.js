@@ -1,10 +1,12 @@
 /**
- * GET /api/trees      → list user's trees
- * POST /api/trees     → create new tree
+ * GET /api/trees         → list user's trees
+ * POST /api/trees        → create new tree
+ * PUT /api/trees/{id}    → update tree
+ * DELETE /api/trees/{id} → delete tree
  */
 const { requireUser } = require('./_lib/auth');
 const { ok, created, httpError, handleError } = require('./_lib/http');
-const { queryTrees, createTree, validateVisibility, validateOptionalString } = require('./_lib/doc-store');
+const { queryTrees, createTree, getTreeById, updateTree, deleteTree, validateVisibility, validateOptionalString } = require('./_lib/doc-store');
 const { serializeTree, serializeTreeList } = require('./_lib/serializers');
 
 exports.handler = async (event) => {
@@ -67,6 +69,81 @@ exports.handler = async (event) => {
       }
 
       return ok(serializeTreeList(trees), { 'Access-Control-Allow-Origin': '*' });
+    }
+
+    // ── PUT: update tree ───────────────────────────────────────────────────
+    if (event.httpMethod === 'PUT') {
+      let user;
+      try {
+        user = await requireUser(event);
+      } catch (authError) {
+        return handleError('trees-auth', authError, requestOrigin);
+      }
+
+      // Extract treeId from path: /trees/{id}
+      const pathParts = event.path.split('/').filter(Boolean);
+      const treeId = pathParts[pathParts.length - 1];
+      if (!treeId) {
+        return httpError(400, 'Tree ID required');
+      }
+
+      // Get tree and verify ownership
+      const tree = await getTreeById(treeId);
+      if (!tree) {
+        return httpError(404, 'Tree not found');
+      }
+      if (tree.ownerId !== user.uid) {
+        return httpError(403, 'Forbidden: not your tree');
+      }
+
+      // Parse and validate body
+      let body;
+      try {
+        body = JSON.parse(event.body || '{}');
+      } catch (_) {
+        throw httpError(400, 'Invalid JSON body');
+      }
+
+      // Update fields
+      const updates = {};
+      if (body.title !== undefined) {
+        updates.title = validateOptionalString(body.title, 200) || tree.title;
+      }
+      if (body.visibility !== undefined) {
+        updates.visibility = validateVisibility(body.visibility, tree.visibility);
+      }
+
+      const updated = await updateTree(treeId, updates);
+      return ok(serializeTree(updated), { 'Access-Control-Allow-Origin': '*' });
+    }
+
+    // ── DELETE: delete tree ─────────────────────────────────────────────────
+    if (event.httpMethod === 'DELETE') {
+      let user;
+      try {
+        user = await requireUser(event);
+      } catch (authError) {
+        return handleError('trees-auth', authError, requestOrigin);
+      }
+
+      // Extract treeId from path
+      const pathParts = event.path.split('/').filter(Boolean);
+      const treeId = pathParts[pathParts.length - 1];
+      if (!treeId) {
+        return httpError(400, 'Tree ID required');
+      }
+
+      // Get tree and verify ownership
+      const tree = await getTreeById(treeId);
+      if (!tree) {
+        return httpError(404, 'Tree not found');
+      }
+      if (tree.ownerId !== user.uid) {
+        return httpError(403, 'Forbidden: not your tree');
+      }
+
+      await deleteTree(treeId);
+      return ok({ deleted: true, id: treeId }, { 'Access-Control-Allow-Origin': '*' });
     }
 
     throw httpError(405, 'Method not allowed');
