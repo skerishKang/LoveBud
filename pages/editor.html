@@ -15,25 +15,21 @@
 
     <div class="editor-layout">
         <aside class="sidebar">
-            <div class="tool-group">
+            <section class="editor-status-section">
                 <h3>현재 상태</h3>
-                <div class="tool-item active" title="러브트리를 보고 편집하는 모드입니다">
-                    <span class="material-symbols-outlined">account_tree</span>
-                    <span>트리 보기/편집</span>
+                <div class="editor-status-card">
+                    <strong>트리 보기 / 편집</strong>
+                    <p>내 러브트리를 계속 다듬고 새로운 순간을 추가할 수 있어요.</p>
                 </div>
-                <div class="tool-item disabled" title="준비 중인 기능입니다" style="opacity:0.4;cursor:not-allowed;pointer-events:none;">
-                    <span class="material-symbols-outlined" style="background:var(--surface-container-low);color:var(--outline);">visibility</span>
-                    <span>미리보기 (준비중)</span>
+                <div class="editor-preview-note">
+                    미리보기 기능은 준비 중입니다.
                 </div>
-            </div>
+            </section>
 
-            <div class="tool-group" style="margin-top: auto;">
+            <section class="editor-add-section" style="margin-top: auto;">
                 <h3>추가</h3>
-                <div class="tool-item" id="addMemoryBtn">
-                    <span class="material-symbols-outlined" style="background: var(--primary); color: white;">add</span>
-                    <span>영상 추가</span>
-                </div>
-            </div>
+                <button type="button" class="secondary-btn" id="addMemoryBtn">영상 추가</button>
+            </section>
         </aside>
 
         <main class="canvas-area" id="canvasArea">
@@ -41,11 +37,8 @@
             <!-- JS dynamic content -->
 
             <!-- 새 기억 입력 폼 (prompt 대체) -->
-            <div id="addMemoryForm" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 32px; border-radius: 2rem; box-shadow: 0 20px 60px rgba(0,0,0,0.15); border: 1px solid var(--outline-variant); width: 90%; max-width: 420px; z-index: 100;">
-                <h3 class="headline" style="font-size: 1.4rem; margin-bottom: 24px; display: flex; align-items: center; gap: 8px;">
-                    <span class="material-symbols-outlined" style="color: var(--primary);">add_circle</span>
-                    새 기억 추가
-                </h3>
+                <div id="addMemoryForm" class="memory-create-section" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 32px; border-radius: 2rem; box-shadow: 0 20px 60px rgba(0,0,0,0.15); border: 1px solid var(--outline-variant); width: 90%; max-width: 420px; z-index: 100;">
+                <h3 class="headline" style="font-size: 1.4rem; margin-bottom: 24px;">새 기억 추가</h3>
                 <div style="margin-bottom: 16px;">
                     <label style="display: block; font-size: 12px; font-weight: 700; color: var(--on-surface-variant); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">YouTube 링크</label>
                     <input type="text" id="memoryUrlInput" placeholder="https://www.youtube.com/watch?v=..." style="width: 100%; padding: 12px 16px; border: 1px solid var(--outline-variant); border-radius: 1rem; font-size: 14px; font-family: inherit;">
@@ -65,10 +58,10 @@
             </div>
         </main>
 
-        <aside class="detail-panel" id="detailPanel">
+        <aside class="detail-panel memory-detail-section" id="detailPanel">
             <div class="panel-header">
                 <h3 class="headline" style="font-size: 1.5rem;">순간 상세</h3>
-                <button class="icon-btn" id="detailMoreBtn" style="display: none;"><span class="material-symbols-outlined">more_horiz</span></button>
+                <button type="button" class="icon-menu-btn" aria-label="더보기" id="detailMoreBtn" style="display: none;">더보기</button>
             </div>
 
             <div class="detail-content" id="detailContent">
@@ -76,7 +69,9 @@
                 <div id="detailViewMode">
                     <div class="detail-video">
                         <img id="detailImg" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBJb2reehtYkk1tSupKcTenf09sFrI1MN_2H_orLdE8A1rOAlc27BWm62BVBav5qtwxTUJ7ctbr2bDNmU2EfruV9ajOc0QCzABvXJ5-qWXAeR8GOQumFqygnon2pN6L7Wc3UJvG-f9dh26hzO_bnWAoTverOtXlPKc4AqL95xSgqIwuVjm5Pb_eQ8gJI5kv4se7YvCHY5v3jZ5m1n6OzaavO3FKOfXk35Bs0O-w4R19eHXM2fn2Lr1bS2uizoWLcKYYZOKGHH6COFc" alt="Preview">
-                        <div class="play-overlay"><span class="material-symbols-outlined">play_arrow</span></div>
+                        <div class="memory-preview-overlay">
+                            <button type="button" class="play-btn" aria-label="재생">재생</button>
+                        </div>
                     </div>
 
                     <div class="detail-info-group">
@@ -100,20 +95,14 @@
                     </div>
 
                 <!-- 수정/삭제 버튼 영역 -->
-                <div class="detail-actions" style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--outline-variant); display: flex; gap: 8px;">
-                    <button id="editMemoryBtn" class="btn-round btn-outline" style="flex: 1; padding: 10px 16px; font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 6px;">
-                        <span class="material-symbols-outlined" style="font-size: 16px;">edit</span>
-                        순간 수정
-                    </button>
-                    <button id="deleteMemoryBtn" class="btn-round btn-outline" style="flex: 1; padding: 10px 16px; font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 6px; color: var(--error); border-color: var(--error);">
-                        <span class="material-symbols-outlined" style="font-size: 16px;">delete</span>
-                        순간 삭제
-                    </button>
+                <div class="memory-actions" style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--outline-variant); display: flex; gap: 8px;">
+                    <button id="editMemoryBtn" class="btn-round btn-outline" style="flex: 1; padding: 10px 16px; font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 6px;">순간 수정</button>
+                    <button id="deleteMemoryBtn" class="btn-round btn-outline" style="flex: 1; padding: 10px 16px; font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 6px; color: var(--error); border-color: var(--error);">순간 삭제</button>
                 </div>
 
                 <!-- Save status indicator (UX hardening) -->
-                <div id="saveStatusIndicator" class="save-status-indicator" style="margin-top: 12px; display: none; justify-content: center; gap: 4px;">
-                    <span class="material-symbols-outlined" id="saveStatusIcon">check_circle</span>
+                <div id="saveStatusIndicator" class="save-status-indicator save-status" aria-live="polite" style="margin-top: 12px; display: none; justify-content: center; gap: 4px;">
+                    <span id="saveStatusIcon" style="display:none;"></span>
                     <span id="saveStatusText">저장됨</span>
                     <span id="lastSavedTime" class="last-saved-time"></span>
                 </div>
@@ -144,8 +133,8 @@
                 </div>
             </div>
 
-            <div class="panel-footer" id="detailPanelFooter" style="display: none;">
-                <button class="btn-round btn-primary" style="width: 100%;">내 러브트리에 기록하기</button>
+            <div class="panel-footer editor-submit-wrap" id="detailPanelFooter" style="display: none;">
+                <button type="submit" class="primary-btn" style="width: 100%;">내 러브트리에 기록하기</button>
             </div>
         </aside>
     </div>
