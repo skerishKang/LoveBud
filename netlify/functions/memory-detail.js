@@ -60,7 +60,7 @@ exports.handler = async (event) => {
 
     // Ownership check: memory가 속한 tree의 owner 확인
     const tree = await getTree(existingFlat.treeId);
-    const ownerId = tree?.data?.owner_id;
+    const ownerId = tree?.owner_id;
     const optionalUser = await getUserFromEvent(event);
     const isOwner = !!optionalUser && ownerId === optionalUser.uid;
 

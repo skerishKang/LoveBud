@@ -107,7 +107,7 @@ exports.handler = async (event) => {
       if (!tree) {
         return httpError(404, 'Tree not found');
       }
-      if (tree.ownerId !== user.uid) {
+      if (tree.owner_id !== user.uid) {
         return httpError(403, 'Forbidden: not your tree');
       }
 
@@ -153,7 +153,7 @@ exports.handler = async (event) => {
       if (!tree) {
         return httpError(404, 'Tree not found');
       }
-      if (tree.ownerId !== user.uid) {
+      if (tree.owner_id !== user.uid) {
         return httpError(403, 'Forbidden: not your tree');
       }
 
