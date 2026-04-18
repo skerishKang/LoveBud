@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 분리된 모듈(editor-root-helpers.js) 사용, fallback 유지
     let rootHelperWarningShown = false;
     const rootUtils = window.LoveBudEditorUtils || {};
-    
+
     const findRootMemory = rootUtils.findRootMemory || function(memories) {
         if (!rootHelperWarningShown) {
             console.warn('[editor] LoveBudEditorUtils not loaded, using local fallback for root helpers');
@@ -56,136 +56,211 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-const startEditor = async () => {
-  const canvas = document.getElementById('canvasArea');
-  const svg = document.getElementById('canvasSvg');
-  const detailPanel = document.getElementById('detailPanel');
-  const addBtn = document.getElementById('addMemoryBtn');
+    const getI18n = () => window.t || ((k) => k);
 
-  // ── URL에서 treeId 읽기 (최우선) ──
-  const urlParams = new URLSearchParams(window.location.search);
-  const urlTreeId = urlParams.get('treeId');
-  console.log('[editor] URL treeId:', urlTreeId);
-  
-  // ── 캐시 키 설정 ──
-  const cache = window.LoveBudCache || null;
-  let TREE_CACHE_KEY = 'tree_default';
-  let MEMORIES_CACHE_KEY = 'memories_default';
- // 로컬 폴백 모드 추적 (상세 패널에 표시용)
- let isLocalSaveMode = false;
+    const getEditorBasePath = () =>
+        window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
 
-// ── 트리 데이터: treeId 우선, 없으면 getFirstTree fallback ──
-  let tree = null;
-  let isNewTree = false;
+    const buildEditorRedirectTarget = () =>
+        getEditorBasePath() + 'editor.html' + (window.location.search || '');
 
-  if (urlTreeId) {
-    // treeId가 URL에 있으면: 그 트리를 직접 조회
-    // 실패해도 demo tree로 fallback하지 않음 (새 트리일 수 있음)
-    try {
-      if (window.apiClient && window.apiClient.getTree) {
-        tree = await window.apiClient.getTree(urlTreeId);
-        if (tree) {
-          console.log('[editor] Tree from URL loaded:', tree.id);
+    const redirectToEditorLogin = (delayMs = 0) => {
+        const loginUrl =
+            getEditorBasePath() + 'login.html?redirect=' + encodeURIComponent(buildEditorRedirectTarget());
+
+        if (delayMs > 0) {
+            setTimeout(() => {
+                window.location.href = loginUrl;
+            }, delayMs);
+            return;
         }
-      }
-    } catch (e) {
-      // treeId가 있는데 조회가 실패하면: 새 트리이거나 API 없음
-      // demo tree로 fallback하지 않고 빈 트리 상태로 진행
-      console.warn('[editor] Tree from URL not found or API error:', e.message);
-    }
 
-    // tree를 못 찾았으면: 빈 트리 상태로 신규 생성
-    if (!tree) {
-      console.log('[editor] Creating/fetching new tree for URL treeId:', urlTreeId);
-      try {
-        const i18n = window.t || ((k) => k);
-        if (window.apiClient && window.apiClient.createTree) {
-          const newTree = await window.apiClient.createTree({
-            title: i18n('default_tree_title'),
-            visibility: 'private'
-          });
-          tree = newTree;
-          isNewTree = true;
-          console.log('[editor] New tree created:', newTree);
-        } else {
-          // API.createTree 없으면: client-side ID로 임시 트리 생성
-          const i18n = window.t || ((k) => k);
-          tree = {
-            id: 'local-tree-' + Date.now(),
-            title: i18n('default_tree_title'),
-            visibility: 'private',
-            isLocalOnly: true
-          };
-          isNewTree = true;
-          console.log('[editor] Client-side tree created:', tree.id);
-        }
-      } catch (e2) {
-        const i18n = window.t || ((k) => k);
-        console.warn('[editor] createTree failed, using client-side tree:', e2.message);
-        tree = {
-          id: 'local-tree-' + Date.now(),
-          title: i18n('default_tree_title'),
-          visibility: 'private',
-          isLocalOnly: true
-        };
-        isNewTree = true;
-      }
-    }
-  } else {
-    // treeId가 URL에 없으면: 기존 getFirstTree() flow
-    try {
-      if (window.apiClient && window.apiClient.getFirstTree) {
-        const apiTree = await window.apiClient.getFirstTree();
-        if (apiTree) {
-          tree = apiTree;
-          console.log('[editor] API tree loaded (getFirstTree)');
-        } else {
-          // API는 성공했지만 트리가 없음 → 신규 사용자, 기본 트리 생성
-          console.log('[editor] No tree found, creating default tree...');
-          if (window.apiClient.createTree) {
-            const i18n = window.t || ((k) => k);
-            const newTree = await window.apiClient.createTree({
-              title: i18n('default_tree_title'),
-              visibility: 'private'
-            });
-            tree = newTree;
-            isNewTree = true;
-            console.log('[editor] Default tree created:', newTree);
-          }
-        }
-      }
-    } catch (e) {
-      console.warn('[editor] API tree failed, fallback to mock:', e.message);
-      const i18n = window.t || ((k) => k);
-      if (e.message?.includes('401') || e.message?.includes('Authentication')) {
-        showToast(i18n('need_login'), 'error');
-        var basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
-        setTimeout(() => window.location.href = basePath + 'login.html?redirect=' + basePath + 'editor.html', 2000);
-        return;
-      }
-    }
-    // API 실패 시에만 mock fallback
-    if (!tree) {
-      const mockTrees = typeof getTrees === 'function' ? getTrees() : [];
-      // urlTreeId가 있으면 해당 ID로 찾기, 없으면 첫 번째 트리(mock 개발용)
-      if (urlTreeId) {
-        tree = mockTrees.find(t => t.id === urlTreeId) || null;
-      } else {
-        tree = mockTrees[0] || null;
-      }
-    }
-    if (!tree) {
-      console.warn('Tree data not found.');
-      return;
-    }
-    
-    // 📌 트리 데이터 전역 저장 + visibility 확보
-    window.currentTreeData = {
-      ...tree,
-      visibility: tree.visibility || (isNewTree ? 'private' : 'private')
+        window.location.href = loginUrl;
     };
-    console.log('[editor] currentTreeData set:', window.currentTreeData.visibility);
-  }
+
+    const syncCurrentTreeData = (tree) => {
+        window.currentTreeData = {
+            ...tree,
+            visibility: tree.visibility || 'private'
+        };
+        console.log('[editor] currentTreeData set:', window.currentTreeData.visibility);
+    };
+
+    const getMyTreesHref = () => getEditorBasePath() + 'my-trees.html';
+
+    const escapeHtml = (value) => String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+
+    const safeUrl = (value, { allowDataImage = false } = {}) => {
+        const raw = String(value || '').trim();
+        if (!raw) return '';
+
+        if (allowDataImage && raw.startsWith('data:image/')) {
+            return raw;
+        }
+
+        try {
+            const url = new URL(raw, window.location.origin);
+            const protocol = url.protocol.toLowerCase();
+            if (protocol === 'http:' || protocol === 'https:') {
+                return url.toString();
+            }
+            return '';
+        } catch (e) {
+            return '';
+        }
+    };
+
+    const renderTreeLoadError = ({ canvas, detailPanel, addBtn, errorTitle, errorDesc }) => {
+        canvas.innerHTML = `
+            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;padding:32px;background:rgba(255,255,255,0.96);border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,0.1);max-width:360px;width:calc(100% - 32px);">
+                <div style="font-size:48px;margin-bottom:16px;">🌿</div>
+                <div style="font-size:1.2rem;font-weight:800;margin-bottom:8px;color:var(--on-surface);">${escapeHtml(errorTitle)}</div>
+                <div style="font-size:14px;color:var(--on-surface-variant);line-height:1.6;margin-bottom:20px;">
+                    ${escapeHtml(errorDesc)}
+                </div>
+                <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+                    <button type="button" id="retryOpenTreeBtn" class="btn-round btn-outline" style="padding:10px 16px;">
+                        다시 시도
+                    </button>
+                    <a href="${escapeHtml(getMyTreesHref())}" class="btn-round btn-primary" style="padding:10px 16px;text-decoration:none;">
+                        내 트리로 가기
+                    </a>
+                </div>
+            </div>
+        `;
+
+        const headerEl = detailPanel.querySelector('h3');
+        if (headerEl) {
+            headerEl.textContent = errorTitle;
+        }
+
+        const retryBtn = document.getElementById('retryOpenTreeBtn');
+        if (retryBtn) {
+            retryBtn.addEventListener('click', () => window.location.reload());
+        }
+
+        if (addBtn) addBtn.disabled = true;
+    };
+
+    const getFirstMockTree = () => {
+        const mockTrees = typeof getTrees === 'function' ? getTrees() : [];
+        return mockTrees[0] || null;
+    };
+
+    const startEditor = async () => {
+        const canvas = document.getElementById('canvasArea');
+        const svg = document.getElementById('canvasSvg');
+        const detailPanel = document.getElementById('detailPanel');
+        const addBtn = document.getElementById('addMemoryBtn');
+
+        // ── URL에서 treeId 읽기 (최우선) ──
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlTreeId = urlParams.get('treeId');
+        console.log('[editor] URL treeId:', urlTreeId);
+
+        // ── 캐시 키 설정 ──
+        const cache = window.LoveBudCache || null;
+        let TREE_CACHE_KEY = 'tree_default';
+        let MEMORIES_CACHE_KEY = 'memories_default';
+        // 로컬 폴백 모드 추적 (상세 패널에 표시용)
+        let isLocalSaveMode = false;
+
+        // ── 트리 데이터: treeId 우선, 없으면 getFirstTree fallback ──
+        let tree = null;
+        let isNewTree = false;
+
+        if (urlTreeId) {
+            // treeId가 URL에 있으면: 그 트리를 직접 조회
+            // 이 경우 조회 실패를 신규 트리 생성으로 바꾸면 안 됨
+            let treeLoadStatus = 'not_found';
+
+            try {
+                if (window.apiClient && window.apiClient.getTree) {
+                    tree = await window.apiClient.getTree(urlTreeId);
+                    if (tree) {
+                        treeLoadStatus = 'loaded';
+                        console.log('[editor] Tree from URL loaded:', tree.id);
+                    }
+                } else {
+                    treeLoadStatus = 'api_unavailable';
+                }
+            } catch (e) {
+                treeLoadStatus = 'error';
+                console.warn('[editor] Tree from URL load failed:', e.message);
+            }
+
+            if (!tree) {
+                const i18n = getI18n();
+                const errorTitle =
+                    treeLoadStatus === 'api_unavailable'
+                        ? '트리를 불러올 수 없어요'
+                        : treeLoadStatus === 'error'
+                            ? '트리를 여는 중 문제가 발생했어요'
+                            : '트리를 찾을 수 없어요';
+
+                const errorDesc =
+                    treeLoadStatus === 'api_unavailable'
+                        ? '트리 조회 API를 사용할 수 없는 상태입니다. 잠시 후 다시 시도해주세요.'
+                        : treeLoadStatus === 'error'
+                            ? '일시적인 서버 문제 또는 접근 권한 문제일 수 있습니다. 다시 시도하거나 내 트리 목록으로 돌아가 주세요.'
+                            : '잘못된 링크이거나 접근 권한이 없는 트리입니다.';
+
+                renderTreeLoadError({ canvas, detailPanel, addBtn, errorTitle, errorDesc });
+
+                return;
+            }
+
+            // urlTreeId 분기에서 tree 확보 성공 시 여기까지 내려옴
+        } else {
+            // treeId가 URL에 없으면: 기존 getFirstTree() flow
+            try {
+                if (window.apiClient && window.apiClient.getFirstTree) {
+                    const apiTree = await window.apiClient.getFirstTree();
+                    if (apiTree) {
+                        tree = apiTree;
+                        console.log('[editor] API tree loaded (getFirstTree)');
+                    } else {
+                        // API는 성공했지만 트리가 없음 → 신규 사용자, 기본 트리 생성
+                        console.log('[editor] No tree found, creating default tree...');
+                        if (window.apiClient.createTree) {
+                            const i18n = getI18n();
+                            const newTree = await window.apiClient.createTree({
+                                title: i18n('default_tree_title'),
+                                visibility: 'private'
+                            });
+                            tree = newTree;
+                            isNewTree = true;
+                            console.log('[editor] Default tree created:', newTree);
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn('[editor] API tree failed, fallback to mock:', e.message);
+                const i18n = getI18n();
+                if (e.message?.includes('401') || e.message?.includes('Authentication')) {
+                    showToast(i18n('need_login'), 'error');
+                    redirectToEditorLogin(2000);
+                    return;
+                }
+            }
+            // API 실패 시에만 mock fallback
+            if (!tree) {
+                tree = getFirstMockTree();
+            }
+        } // end else (no urlTreeId)
+
+        if (!tree) {
+            console.warn('Tree data not found.');
+            return;
+        }
+
+        // urlTreeId 직접 진입이든 일반 진입이든 현재 트리 상태를 항상 전역에 동기화
+        syncCurrentTreeData(tree);
 
         const treeId = tree.id || null;
 
@@ -229,7 +304,7 @@ const startEditor = async () => {
 
         // ── memories 캐시 우선 로딩 ──
         let memories = [];
-        
+
         // 1. 캐시된 memories 먼저 확인
         const cachedMemories = cache ? cache.get(MEMORIES_CACHE_KEY) : null;
         if (cachedMemories && Array.isArray(cachedMemories)) {
@@ -238,7 +313,7 @@ const startEditor = async () => {
             window.currentTreeMemories = memories.map(normalizeMemory).filter(Boolean);
             // initCanvas()는 아래에서 함수 선언 후 한 번만 호출
         }
-        
+
         // 2. Background에서 API로 최신 데이터 가져오기
         try {
             if (window.apiClient && window.apiClient.getMemoriesByTree) {
@@ -260,11 +335,11 @@ const startEditor = async () => {
             }
             // API 실패해도 캐시가 있으면 그대로 사용
         }
-        
+
         if (memories.length === 0 && !cachedMemories) {
             memories = typeof getMemoriesByTree === 'function' ? getMemoriesByTree(treeId) : [];
         }
-        
+
         // 저장 계약: 항상 정규화된 형태로 저장
         window.currentTreeMemories = memories.map(normalizeMemory).filter(Boolean);
 
@@ -275,11 +350,11 @@ const startEditor = async () => {
             const rootMem = findRootMemory(memories);
             if (rootMem) return rootMem;
             if (memories.length > 0) return memories[0];
-            
+
             // 📌 새 트리(empty) 감지 - memories가 0이면 새 트리
             const isNewTree = memories.length === 0;
             const i18n = window.t || ((k) => k);
-            
+
             return {
                 id: canonicalRootId,
                 treeId: treeId,
@@ -288,7 +363,7 @@ const startEditor = async () => {
                 memo: i18n('no_memory_yet'),
                 timestamp: new Date().toISOString().slice(0,10).replace(/-/g,'.'),
                 // 📌 새 트리일 때 빈 공간 아이콘
-                thumbnail: isNewTree 
+                thumbnail: isNewTree
                     ? 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 90"><rect fill="%23e8f5e9" width="120" height="90"/><text x="60" y="45" text-anchor="middle" fill="%234caf50" font-size="24">🌱</text><text x="60" y="70" text-anchor="middle" fill="%23666" font-size="10">새 트리</text></svg>'
                     : 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 90"><rect fill="%23f5f5f5" width="120" height="90"/><text x="60" y="50" text-anchor="middle" fill="%23999" font-size="12">No Memory</text></svg>',
                 emotionTags: [],
@@ -308,8 +383,8 @@ const startEditor = async () => {
 
         // ── 배치 상수 ──
         const ROOT_X = 400, ROOT_Y = 350; // 300→350: 첫 노드가 화면 위로 벗어나는 문제 완화
-const RADIUS_L1 = 320; // L1 반경 (280→320) - 노드 겹침 방지
-const RADIUS_L2 = 240; // L2 반경 (200→240) - 노드 겹침 방지
+        const RADIUS_L1 = 320; // L1 반경 (280→320) - 노드 겹침 방지
+        const RADIUS_L2 = 240; // L2 반경 (200→240) - 노드 겹침 방지
         const NODE_WIDTH = 80;  // 노드 카드 너비 (px)
         const MIN_ANGLE_GAP = 35; // 최소 각도 간격 (도) - 겹침 방지
 
@@ -378,7 +453,7 @@ const RADIUS_L2 = 240; // L2 반경 (200→240) - 노드 겹침 방지
             // L2: 부모 기준 분산
             const parent = treeMemories().find(m => m.id === parentId);
             const parentPos = parent ? calcPosition(parent, visited) : { x: ROOT_X, y: ROOT_Y };
-            
+
             // sibling이 많으면 각도 분산, 최소 간격 보장
             let angle;
             if (count > 0) {
@@ -387,7 +462,7 @@ const RADIUS_L2 = 240; // L2 반경 (200→240) - 노드 겹침 방지
             } else {
                 angle = 0;
             }
-            
+
             return {
                 x: parentPos.x + RADIUS_L2 * Math.cos(angle * Math.PI / 180),
                 y: parentPos.y + RADIUS_L2 * Math.sin(angle * Math.PI / 180)
@@ -408,67 +483,67 @@ const RADIUS_L2 = 240; // L2 반경 (200→240) - 노드 겹침 방지
             const currentTree = window.currentTreeData || {};
             const treeId = currentTree.id || urlTreeId;
 
-// 📌 헤더: 제목 + visibility + 공유
-  const headerEl = detailPanel.querySelector('h3');
-  if (headerEl) {
-  const i18n = window.t || ((k) => k);
-  const localBadge = isLocalSaveMode
-  ? '<span style="font-size:11px;padding:2px 8px;background:rgba(239,108,0,0.1);color:#ef6c00;border-radius:99px;font-weight:600;margin-left:8px;">로컬 저장</span>'
-  : '';
-  
-  // 📌 visibility 표시
-  const visibility = window.currentTreeData?.visibility || 'private';
-  const isPublic = visibility === 'public';
-  const visIcon = isPublic ? 'public' : 'lock';
-  const visLabel = isPublic ? i18n('visibility_public') : i18n('visibility_private');
-  const visInfo = isPublic ? i18n('share_info') : i18n('private_info');
-  const visStyle = isPublic 
-    ? 'background:rgba(76,175,80,0.1);color:#4caf50;border:1px solid rgba(76,175,80,0.3);'
-    : 'background:rgba(158,158,158,0.1);color:#757575;border:1px solid rgba(158,158,158,0.3);';
-  
-  // 📌 링크 복사 (공개 트리만)
-  const shareBtn = isPublic 
-    ? `<button id="shareTreeBtn" style="${visStyle}font-size:12px;padding:6px 12px;border-radius:99px;cursor:pointer;border:none;font-weight:600;display:flex;align-items:center;gap:4px;">
-       <span class="material-symbols-outlined" style="font-size:14px;">content_copy</span>
-       ${i18n('share_link')}
-     </button>`
-    : '';
-     
-  var basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
-  headerEl.innerHTML = `
-  <div style="display:flex;flex-direction:column;gap:8px;">
-    <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
-      <span style="font-size:1.1rem;line-height:1.3;">${data.title}${localBadge}</span>
-      ${shareBtn}
-    </div>
-    <!-- visibility 표시 -->
-    <div style="display:flex;align-items:center;gap:8px;font-size:12px;">
-       <span style="${visStyle}padding:4px 10px;border-radius:99px;display:flex;align-items:center;gap:4px;">
-         <span class="material-symbols-outlined" style="font-size:12px;">${visIcon}</span>
-         ${visLabel}
-       </span>
-       <span style="color:var(--on-surface-variant);font-size:11px;">${visInfo}</span>
-    </div>
-  </div>
-  `;
-  
-  // 📌 링크 복사 이벤트
-  if (isPublic) {
-    setTimeout(() => {
-      const btn = document.getElementById('shareTreeBtn');
-      if (btn) {
-        btn.onclick = () => {
-          const shareUrl = window.location.origin + '/' + basePath + 'detail.html?id=' + data.id + '&tree=' + treeId;
-          navigator.clipboard?.writeText(shareUrl).then(() => {
-            showToast(i18n('copied_link') || '링크가 복사되었습니다!', 'success');
-          }).catch(() => {
-            showToast('링크 복사에 실패했습니다', 'error');
-          });
-        };
-      }
-    }, 100);
-  }
-             }
+            // 📌 헤더: 제목 + visibility + 공유
+            const headerEl = detailPanel.querySelector('h3');
+            if (headerEl) {
+                const i18n = window.t || ((k) => k);
+                const localBadge = isLocalSaveMode
+                    ? '<span style="font-size:11px;padding:2px 8px;background:rgba(239,108,0,0.1);color:#ef6c00;border-radius:99px;font-weight:600;margin-left:8px;">로컬 저장</span>'
+                    : '';
+
+                // 📌 visibility 표시
+                const visibility = window.currentTreeData?.visibility || 'private';
+                const isPublic = visibility === 'public';
+                const visIcon = isPublic ? 'public' : 'lock';
+                const visLabel = isPublic ? i18n('visibility_public') : i18n('visibility_private');
+                const visInfo = isPublic ? i18n('share_info') : i18n('private_info');
+                const visStyle = isPublic
+                    ? 'background:rgba(76,175,80,0.1);color:#4caf50;border:1px solid rgba(76,175,80,0.3);'
+                    : 'background:rgba(158,158,158,0.1);color:#757575;border:1px solid rgba(158,158,158,0.3);';
+
+                // 📌 링크 복사 (공개 트리만)
+                const shareBtn = isPublic
+                    ? `<button id="shareTreeBtn" style="${visStyle}font-size:12px;padding:6px 12px;border-radius:99px;cursor:pointer;border:none;font-weight:600;display:flex;align-items:center;gap:4px;">
+                        <span class="material-symbols-outlined" style="font-size:14px;">content_copy</span>
+                        ${i18n('share_link')}
+                       </button>`
+                    : '';
+
+                var basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
+                headerEl.innerHTML = `
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                    <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
+                        <span style="font-size:1.1rem;line-height:1.3;">${data.title}${localBadge}</span>
+                        ${shareBtn}
+                    </div>
+                    <!-- visibility 표시 -->
+                    <div style="display:flex;align-items:center;gap:8px;font-size:12px;">
+                        <span style="${visStyle}padding:4px 10px;border-radius:99px;display:flex;align-items:center;gap:4px;">
+                          <span class="material-symbols-outlined" style="font-size:12px;">${visIcon}</span>
+                          ${visLabel}
+                        </span>
+                        <span style="color:var(--on-surface-variant);font-size:11px;">${visInfo}</span>
+                    </div>
+                </div>
+                `;
+
+                // 📌 링크 복사 이벤트
+                if (isPublic) {
+                    setTimeout(() => {
+                        const btn = document.getElementById('shareTreeBtn');
+                        if (btn) {
+                            btn.addEventListener('click', () => {
+                                const shareUrl = window.location.origin + '/' + basePath + 'detail.html?id=' + data.id + '&tree=' + treeId;
+                                navigator.clipboard?.writeText(shareUrl).then(() => {
+                                    showToast(i18n('copied_link') || '링크가 복사되었습니다!', 'success');
+                                }).catch(() => {
+                                    showToast('링크 복사에 실패했습니다', 'error');
+                                });
+                            });
+                        }
+                    }, 100);
+                }
+            }
 
             // 썸네일 업데이트
             const imgEl = detailPanel.querySelector('.detail-video img');
@@ -480,22 +555,43 @@ const RADIUS_L2 = 240; // L2 반경 (200→240) - 노드 겹침 방지
 
             // 감정 태그 업데이트
             const tagsContainer = detailPanel.querySelector('.tags-container');
-            if (tagsContainer && data.emotionTags) {
-                tagsContainer.innerHTML = data.emotionTags.map(tag =>
-                    `<span class="tag tag-primary">${tag}</span>`
-                ).join('');
+            if (tagsContainer) {
+                tagsContainer.innerHTML = '';
+                if (Array.isArray(data.emotionTags)) {
+                    data.emotionTags.forEach((tag) => {
+                        const tagEl = document.createElement('span');
+                        tagEl.className = 'tag tag-primary';
+                        tagEl.textContent = tag;
+                        tagsContainer.appendChild(tagEl);
+                    });
+                }
             }
 
             // 메모 업데이트 + 감정 경로 힌트
             const noteEl = detailPanel.querySelector('.diary-note');
             if (noteEl) {
-                const parentInfo = data.parentId
-                    ? `<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--outline-variant);font-size:12px;color:var(--on-surface-variant);">
-                         <span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;margin-right:4px;">account_tree</span>
-                         이 순간은 감정 경로의 한 지점입니다
-                       </div>`
-                    : '<div style="margin-top:12px;font-size:12px;color:var(--primary);"><span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;margin-right:4px;">star</span> 러브트리의 시작점</div>';
-                noteEl.innerHTML = `<div style="line-height:1.6;">${data.memo || ''}</div>${parentInfo}`;
+                noteEl.innerHTML = '';
+
+                const memoBody = document.createElement('div');
+                memoBody.style.lineHeight = '1.6';
+                memoBody.textContent = data.memo || '';
+                noteEl.appendChild(memoBody);
+
+                const hintEl = document.createElement('div');
+                if (data.parentId) {
+                    hintEl.style.marginTop = '12px';
+                    hintEl.style.paddingTop = '12px';
+                    hintEl.style.borderTop = '1px solid var(--outline-variant)';
+                    hintEl.style.fontSize = '12px';
+                    hintEl.style.color = 'var(--on-surface-variant)';
+                    hintEl.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;margin-right:4px;">account_tree</span>이 순간은 감정 경로의 한 지점입니다';
+                } else {
+                    hintEl.style.marginTop = '12px';
+                    hintEl.style.fontSize = '12px';
+                    hintEl.style.color = 'var(--primary)';
+                    hintEl.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;margin-right:4px;">star</span> 러브트리의 시작점';
+                }
+                noteEl.appendChild(hintEl);
             }
         };
 
@@ -705,17 +801,37 @@ const RADIUS_L2 = 240; // L2 반경 (200→240) - 노드 겹침 방지
             nodeEl.style.left = `${pos.x - 40}px`;
             nodeEl.style.top = `${pos.y - 40}px`;
             nodeEl.style.animationDelay = mem.delay || '0s';
-            nodeEl.innerHTML = `
-                <div class="node-card">
-                    <div class="node-img-wrapper">
-                        <img src="${mem.thumbnail}" alt="${mem.title}">
-                    </div>
-                </div>
-                <div class="node-info-label">
-                    <p class="node-title">${mem.title}</p>
-                    <p class="node-date">${mem.timestamp}</p>
-                </div>
-            `;
+
+            const card = document.createElement('div');
+            card.className = 'node-card';
+
+            const imgWrapper = document.createElement('div');
+            imgWrapper.className = 'node-img-wrapper';
+
+            const img = document.createElement('img');
+            img.src = safeUrl(mem.thumbnail, { allowDataImage: true }) || '';
+            img.alt = mem.title || '';
+
+            imgWrapper.appendChild(img);
+            card.appendChild(imgWrapper);
+
+            const infoLabel = document.createElement('div');
+            infoLabel.className = 'node-info-label';
+
+            const titleEl = document.createElement('p');
+            titleEl.className = 'node-title';
+            titleEl.textContent = mem.title || '';
+
+            const dateEl = document.createElement('p');
+            dateEl.className = 'node-date';
+            dateEl.textContent = mem.timestamp || '';
+
+            infoLabel.appendChild(titleEl);
+            infoLabel.appendChild(dateEl);
+
+            nodeEl.appendChild(card);
+            nodeEl.appendChild(infoLabel);
+
             nodeEl.addEventListener('click', () => selectNode(nodeEl, mem));
             canvas.appendChild(nodeEl);
         };
@@ -728,12 +844,11 @@ const RADIUS_L2 = 240; // L2 반경 (200→240) - 노드 겹침 방지
                 const parentId = node.parentId || canonicalRootId;
                 const parent = treeMemories().find(m => m.id === parentId);
                 if (parent) drawBranch(calcPosition(parent), calcPosition(node));
-            };
-            
+            });
+
             // 📌 새 트리 확인 - 캔버스에 메시지 표시
             const initialMem = createInitialMemory();
             if (initialMem.isNewTree) {
-                // 새 트리일 때 빈 캔버스에 안내 메시지
                 const emptyMsg = document.createElement('div');
                 emptyMsg.id = 'emptyTreeMessage';
                 emptyMsg.innerHTML = `
@@ -747,8 +862,7 @@ const RADIUS_L2 = 240; // L2 반경 (200→240) - 노드 겹침 방지
                 `;
                 canvas.appendChild(emptyMsg);
             }
-            
-            // root 초기 선택: 안정화된 함수를 사용
+
             const selectedMem = createInitialMemory();
             if (selectedMem) {
                 updateDetailPanel(selectedMem);
@@ -757,66 +871,66 @@ const RADIUS_L2 = 240; // L2 반경 (200→240) - 노드 겹침 방지
 
         // ── Save status indicator ────────────────────────────────────────────
         let saveStatusData = {
-          status: 'saved',
-          lastSaved: null,
-          timer: null
+            status: 'saved',
+            lastSaved: null,
+            timer: null
         };
 
         function updateSaveStatus(status, message) {
-          const indicator = document.getElementById('saveStatusIndicator');
-          const iconEl = document.getElementById('saveStatusIcon');
-          const textEl = document.getElementById('saveStatusText');
-          const timeEl = document.getElementById('lastSavedTime');
+            const indicator = document.getElementById('saveStatusIndicator');
+            const iconEl = document.getElementById('saveStatusIcon');
+            const textEl = document.getElementById('saveStatusText');
+            const timeEl = document.getElementById('lastSavedTime');
 
-          if (!indicator || !iconEl || !textEl) return;
+            if (!indicator || !iconEl || !textEl) return;
 
-          if (saveStatusData.timer) {
-            clearTimeout(saveStatusData.timer);
-            saveStatusData.timer = null;
-          }
+            if (saveStatusData.timer) {
+                clearTimeout(saveStatusData.timer);
+                saveStatusData.timer = null;
+            }
 
-          saveStatusData.status = status;
+            saveStatusData.status = status;
 
-          const i18n = window.t || ((k) => k);
+            const i18n = window.t || ((k) => k);
 
-          switch (status) {
-            case 'saving':
-              iconEl.textContent = 'hourglass_empty';
-              textEl.textContent = message || i18n('save_saving') || '저장 중...';
-              indicator.className = 'save-status-indicator saving';
-              indicator.style.display = 'flex';
-              break;
-            case 'saved':
-              iconEl.textContent = 'check_circle';
-              textEl.textContent = message || i18n('save_saved') || '저장됨';
-              indicator.className = 'save-status-indicator saved';
-              saveStatusData.lastSaved = new Date();
-              if (timeEl) {
-                timeEl.textContent = formatTimeAgo(saveStatusData.lastSaved);
-              }
-              saveStatusData.timer = setTimeout(() => {
-                indicator.style.display = 'none';
-              }, 3000);
-              break;
-            case 'failed':
-              iconEl.textContent = 'error';
-              textEl.textContent = message || i18n('save_failed') || '저장 실패';
-              indicator.className = 'save-status-indicator failed';
-              saveStatusData.timer = setTimeout(() => {
-                indicator.style.display = 'none';
-              }, 5000);
-              break;
-           }
-         }
+            switch (status) {
+                case 'saving':
+                    iconEl.textContent = 'hourglass_empty';
+                    textEl.textContent = message || i18n('save_saving') || '저장 중...';
+                    indicator.className = 'save-status-indicator saving';
+                    indicator.style.display = 'flex';
+                    break;
+                case 'saved':
+                    iconEl.textContent = 'check_circle';
+                    textEl.textContent = message || i18n('save_saved') || '저장됨';
+                    indicator.className = 'save-status-indicator saved';
+                    saveStatusData.lastSaved = new Date();
+                    if (timeEl) {
+                        timeEl.textContent = formatTimeAgo(saveStatusData.lastSaved);
+                    }
+                    saveStatusData.timer = setTimeout(() => {
+                        indicator.style.display = 'none';
+                    }, 3000);
+                    break;
+                case 'failed':
+                    iconEl.textContent = 'error';
+                    textEl.textContent = message || i18n('save_failed') || '저장 실패';
+                    indicator.className = 'save-status-indicator failed';
+                    saveStatusData.timer = setTimeout(() => {
+                        indicator.style.display = 'none';
+                    }, 5000);
+                    break;
+            }
+        }
 
-         function formatTimeAgo(date) {
-          if (!date) return '';
-          const now = new Date();
-          const diff = Math.floor((now - date) / 1000);
-          if (diff < 60) return '방금';
-          if (diff < 3600) return `${Math.floor(diff / 60)}분 전`;
-          if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`;
-          return `${Math.floor(diff / 86400)}일 전`;
+        function formatTimeAgo(date) {
+            if (!date) return '';
+            const now = new Date();
+            const diff = Math.floor((now - date) / 1000);
+            if (diff < 60) return '방금';
+            if (diff < 3600) return `${Math.floor(diff / 60)}분 전`;
+            if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`;
+            return `${Math.floor(diff / 86400)}일 전`;
         }
 
         // ── 폼 상태 추적 ──
@@ -838,11 +952,11 @@ const RADIUS_L2 = 240; // L2 반경 (200→240) - 노드 겹침 방지
         const focusTrap = (e) => {
             if (!isFormOpen) return;
             if (e.key !== 'Tab') return;
-            
+
             const focused = document.activeElement;
             const lastInput = formInputs[formInputs.length - 1];
             const firstInput = formInputs[0];
-            
+
             if (e.shiftKey && focused === firstInput) {
                 e.preventDefault();
                 lastInput.focus();
@@ -858,7 +972,7 @@ const RADIUS_L2 = 240; // L2 반경 (200→240) - 노드 겹침 방지
             memoInput.value = '';
             addMemoryForm.style.display = 'block';
             isFormOpen = true;
-            
+
             // 포커스 트랩 활성화
             document.addEventListener('keydown', focusTrap);
             urlInput.focus();
@@ -890,7 +1004,7 @@ const RADIUS_L2 = 240; // L2 반경 (200→240) - 노드 겹침 방지
         const hideAddMemoryForm = () => {
             addMemoryForm.style.display = 'none';
             isFormOpen = false;
-            
+
             // 이벤트 핸들러 정리
             document.removeEventListener('keydown', focusTrap);
             if (escHandler) {
@@ -918,7 +1032,7 @@ const RADIUS_L2 = 240; // L2 반경 (200→240) - 노드 겹침 방지
             let videoId;
             let embedUrl;
             let thumbnailUrl;
-            
+
             if (window.LoveBudMedia?.extractYouTubeId) {
                 videoId = window.LoveBudMedia.extractYouTubeId(url);
                 if (!videoId) {
@@ -964,49 +1078,49 @@ const RADIUS_L2 = 240; // L2 반경 (200→240) - 노드 겹침 방지
 
             hideAddMemoryForm();
 
-             // ── API 우선 생성 시도 ──
-             let createdMemory = null;
-             let useApi = false;
-             try {
-                 if (window.apiClient && typeof window.apiClient.createMemory === 'function') {
-                 createdMemory = await window.apiClient.createMemory(newMemoryData);
-                 useApi = true;
-                 isLocalSaveMode = false; // API 성공 시 로컬 모드 해제
-                 console.log('[editor] API createMemory success:', createdMemory);
+            // ── API 우선 생성 시도 ──
+            let createdMemory = null;
+            let useApi = false;
+            try {
+                if (window.apiClient && typeof window.apiClient.createMemory === 'function') {
+                    createdMemory = await window.apiClient.createMemory(newMemoryData);
+                    useApi = true;
+                    isLocalSaveMode = false; // API 성공 시 로컬 모드 해제
+                    console.log('[editor] API createMemory success:', createdMemory);
 
-                 // ── Save success status (UX hardening) ──
-                 updateSaveStatus('saved', '저장됨');
-                 } else {
-                 throw new Error('createMemory API not available');
-                 }
-             } catch (e) {
-                 const i18n = window.t || ((k) => k);
-                 console.warn('[editor] API createMemory failed, fallback to mock:', e?.message || e);
+                    // ── Save success status (UX hardening) ──
+                    updateSaveStatus('saved', '저장됨');
+                } else {
+                    throw new Error('createMemory API not available');
+                }
+            } catch (e) {
+                const i18n = window.t || ((k) => k);
+                console.warn('[editor] API createMemory failed, fallback to mock:', e?.message || e);
 
-                 // ── Save failed status (UX hardening) ──
-                 updateSaveStatus('failed', '저장 실패');
+                // ── Save failed status (UX hardening) ──
+                updateSaveStatus('failed', '저장 실패');
 
-                 if (e?.message?.includes('401') || e?.message?.includes('403')) {
-                     showToast(i18n('no_permission_local'), 'warn');
-                 } else if (e?.message?.includes('400')) {
-                     showToast(i18n('check_input'), 'error');
-                 } else {
-                     showToast(i18n('server_fail_local'), 'warn');
-                 }
-             }
+                if (e?.message?.includes('401') || e?.message?.includes('403')) {
+                    showToast(i18n('no_permission_local'), 'warn');
+                } else if (e?.message?.includes('400')) {
+                    showToast(i18n('check_input'), 'error');
+                } else {
+                    showToast(i18n('server_fail_local'), 'warn');
+                }
+            }
 
             // API 실패 시 mock fallback - 로컬에만 추가
             // 방어적 처리: createdMemory가 null/undefined인 경우에도 로컬 객체 생성
-if (!createdMemory || typeof createdMemory !== 'object') {
- console.log('[editor] Using local fallback memory');
- isLocalSaveMode = true; // 로컬 폴백 모드 표시
- createdMemory = {
- id: nextMemoryId(),
- ...newMemoryData,
- createdAt: dateStr,
- delay: '0.5s'
- };
- }
+            if (!createdMemory || typeof createdMemory !== 'object') {
+                console.log('[editor] Using local fallback memory');
+                isLocalSaveMode = true; // 로컬 폴백 모드 표시
+                createdMemory = {
+                    id: nextMemoryId(),
+                    ...newMemoryData,
+                    createdAt: dateStr,
+                    delay: '0.5s'
+                };
+            }
 
             // ── createMemory 후 갱신: 재조회 우선, 실패 시 로컬 추가 ──
             // 저장 계약: window.currentTreeMemories는 항상 normalizeMemory가 적용된 메모리 배열
@@ -1039,28 +1153,28 @@ if (!createdMemory || typeof createdMemory !== 'object') {
             const parent = treeMemories().find(m => m.id === effectiveParentId);
             if (parent) drawBranch(calcPosition(parent), calcPosition(normalizedMemory));
 
-             const el = document.querySelector(`.memory-node[data-memory-id="${normalizedMemory.id}"]`);
-             if (el) {
-                 selectNode(el, normalizedMemory);
+            const el = document.querySelector(`.memory-node[data-memory-id="${normalizedMemory.id}"]`);
+            if (el) {
+                selectNode(el, normalizedMemory);
 
-                 // 새 노드 피드백: 선택 강조 + 오토스크롤
-                 el.classList.add('new-node-highlight');
-                 setTimeout(() => el.classList.remove('new-node-highlight'), 2000);
+                // 새 노드 피드백: 선택 강조 + 오토스크롤
+                el.classList.add('new-node-highlight');
+                setTimeout(() => el.classList.remove('new-node-highlight'), 2000);
 
-                 // 오토스크롤: 노드 위치로 smooth scroll
-                 const nodeRect = el.getBoundingClientRect();
-                 const canvasRect = canvasArea.getBoundingClientRect();
-                 const scrollX = el.offsetLeft - canvasRect.width / 2 + nodeRect.width / 2;
-                 const scrollY = el.offsetTop - canvasRect.height / 2 + nodeRect.height / 2;
-                 canvasArea.scrollTo({
-                     left: Math.max(0, scrollX),
-                     top: Math.max(0, scrollY),
-                     behavior: 'smooth'
-                 });
+                // 오토스크롤: 노드 위치로 smooth scroll
+                const nodeRect = el.getBoundingClientRect();
+                const canvasRect = canvasArea.getBoundingClientRect();
+                const scrollX = el.offsetLeft - canvasRect.width / 2 + nodeRect.width / 2;
+                const scrollY = el.offsetTop - canvasRect.height / 2 + nodeRect.height / 2;
+                canvasArea.scrollTo({
+                    left: Math.max(0, scrollX),
+                    top: Math.max(0, scrollY),
+                    behavior: 'smooth'
+                });
 
-                 // ── Show saved status again (selectNode hides it) ──
-                 updateSaveStatus('saved', useApi ? (i18n('save_saved') || '저장됨') : (i18n('save_saved_local') || '로컬 저장됨'));
-             }
+                // ── Show saved status again (selectNode hides it) ──
+                updateSaveStatus('saved', useApi ? (i18n('save_saved') || '저장됨') : (i18n('save_saved_local') || '로컬 저장됨'));
+            }
 
             // ── 메모리 추가 후 캐시 동기화 ──
             if (typeof window.setCachedMemories === 'function' && treeId) {
@@ -1130,10 +1244,10 @@ if (!createdMemory || typeof createdMemory !== 'object') {
     // ── 인증 가드: my-trees.js와 동일한 패턴 ──
     // user 없으면 cache 확인 후 redirect, 있으면 startEditor 진행
     var editorStarted = false;
-    
+
     function tryStartEditor(user) {
         if (editorStarted) return;
-        
+
         if (!user) {
             // No Firebase user - check confirmed auth cache before redirect
             var cachedUser = null;
@@ -1145,20 +1259,19 @@ if (!createdMemory || typeof createdMemory !== 'object') {
                     }
                 }
             } catch (e) {}
-            
+
             if (!cachedUser || !cachedUser.uid) {
-                var basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
-                window.location.href = basePath + 'login.html?redirect=' + basePath + 'editor.html';
+                redirectToEditorLogin();
                 return;
             }
             // cached auth 있으면 아래로 진행
         }
-        
+
         editorStarted = true;
         console.log('[editor] Auth confirmed, starting editor');
         startEditor();
     }
-    
+
     // 새로운 배열 콜백 패턴 사용 (폴백 포함)
     if (typeof window.registerOnAuthReady === 'function') {
         window.registerOnAuthReady(tryStartEditor);
