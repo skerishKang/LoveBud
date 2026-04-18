@@ -8,7 +8,11 @@
     "verify:full": "node scripts/pre-deploy.js --full",
     "verify:remote": "node scripts/pre-deploy.js --remote",
     "verify:env": "node scripts/verify-env.js",
-    "verify:env:remote": "node scripts/verify-env.js --remote"
+    "verify:env:remote": "node scripts/verify-env.js --remote",
+    "test:batch": "node scripts/batch-test-runner.js",
+    "test:batch:headed": "node scripts/batch-test-runner.js --headed",
+    "test:screenshots": "node scripts/capture-screenshots.js",
+    "test:screenshots:xg": "node scripts/capture-screenshots.js xg-test-$(Get-Date -Format 'yyyy-MM-dd-HHmm')"
   },
   "dependencies": {
     "firebase-admin": "^12.0.0",

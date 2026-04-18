@@ -112,12 +112,12 @@
       en: 'Failed to load data. Switching to demo mode.'
     },
     'first_memory': {
-      ko: '첫 번째 기억',
-      en: 'First Memory'
+      ko: '🌱 새 트리의 시작',
+      en: '🌱 New Tree Start'
     },
     'no_memory_yet': {
-      ko: '아직 등록된 기억이 없습니다. "영상 추가" 버튼을 클릭하여 첫 번째 추억을 기록해보세요.',
-      en: 'No memories yet. Click "Add Video" to record your first memory.'
+      ko: '🎉 첫 번째 순간을 추가해보세요! "영상 추가" 버튼을 클릭하면 감정이 시작됩니다.',
+      en: '🎉 Click "Add Video" to add your first moment!'
     },
     'enter_youtube': {
       ko: 'YouTube 링크를 입력해주세요.',
@@ -135,6 +135,42 @@
     'default_tree_title': {
       ko: '나의 첫 러브트리',
       en: 'My First LoveTree'
+    },
+    'visibility_public': {
+      ko: '공개',
+      en: 'Public'
+    },
+    'visibility_private': {
+      ko: '비공개',
+      en: 'Private'
+    },
+    'share_info': {
+      ko: '링크를 다른 사람과 공유할 수 있어요',
+      en: 'You can share this link with others'
+    },
+    'private_info': {
+      ko: '이 트리는 나만 볼 수 있어요',
+      en: 'Only you can see this tree'
+    },
+    'share_link': {
+      ko: '링크 복사',
+      en: 'Copy Link'
+    },
+    'copied_link': {
+      ko: '링크가 복사되었습니다!',
+      en: 'Link copied!'
+    },
+    'sort_recent': {
+      ko: '최근 수정순',
+      en: 'Recent'
+    },
+    'sort_oldest': {
+      ko: '생성순',
+      en: 'Oldest'
+    },
+    'sort_name': {
+      ko: '이름순',
+      en: 'Name'
     },
 
     // login.html
