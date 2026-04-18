@@ -96,6 +96,13 @@ async function getTree(treeId) {
   };
 }
 
+// Alias for compatibility
+const getTreeById = getTree;
+
+async function deleteTree(treeId) {
+  await query('DELETE FROM trees WHERE id = $1', [treeId]);
+}
+
 async function queryTrees(filters = {}) {
   const p = [], w = [];
   if (filters.ownerId) { p.push(filters.ownerId); w.push(`owner_id = $${p.length}`); }
@@ -369,7 +376,7 @@ async function deleteMemory(memoryId) {
 }
 
 module.exports = {
-  getTree, queryTrees, createTree, updateTree,
+  getTree, getTreeById, queryTrees, createTree, updateTree, deleteTree,
   getMemory, queryMemories, createMemory, updateMemory, deleteMemory,
   validateRequired, validateOptionalString, validateVisibility,
   validateSourceType, validateUuid, validateLimit
