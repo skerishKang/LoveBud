@@ -178,6 +178,13 @@ const startEditor = async () => {
       console.warn('Tree data not found.');
       return;
     }
+    
+    // 📌 트리 데이터 전역 저장 + visibility 확보
+    window.currentTreeData = {
+      ...tree,
+      visibility: tree.visibility || (isNewTree ? 'private' : 'private')
+    };
+    console.log('[editor] currentTreeData set:', window.currentTreeData.visibility);
   }
 
         const treeId = tree.id || null;
@@ -268,17 +275,26 @@ const startEditor = async () => {
             const rootMem = findRootMemory(memories);
             if (rootMem) return rootMem;
             if (memories.length > 0) return memories[0];
-            // API/render에 root가 없을 때를 위한 기본 데이터
+            
+            // 📌 새 트리(empty) 감지 - memories가 0이면 새 트리
+            const isNewTree = memories.length === 0;
             const i18n = window.t || ((k) => k);
+            
             return {
                 id: canonicalRootId,
                 treeId: treeId,
-                title: i18n('first_memory'),
+                // 📌 새 트리일 때 명확한 제목
+                title: isNewTree ? i18n('first_memory') : i18n('first_memory'),
                 memo: i18n('no_memory_yet'),
                 timestamp: new Date().toISOString().slice(0,10).replace(/-/g,'.'),
-                thumbnail: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 90"><rect fill="%23f5f5f5" width="120" height="90"/><text x="60" y="50" text-anchor="middle" fill="%23999" font-size="12">No Memory</text></svg>',
+                // 📌 새 트리일 때 빈 공간 아이콘
+                thumbnail: isNewTree 
+                    ? 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 90"><rect fill="%23e8f5e9" width="120" height="90"/><text x="60" y="45" text-anchor="middle" fill="%234caf50" font-size="24">🌱</text><text x="60" y="70" text-anchor="middle" fill="%23666" font-size="10">새 트리</text></svg>'
+                    : 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 90"><rect fill="%23f5f5f5" width="120" height="90"/><text x="60" y="50" text-anchor="middle" fill="%23999" font-size="12">No Memory</text></svg>',
                 emotionTags: [],
-                parentId: null
+                parentId: null,
+                // 📌 새 트리 표시용 플래그
+                isNewTree: isNewTree
             };
         };
 
@@ -392,25 +408,67 @@ const RADIUS_L2 = 240; // L2 반경 (200→240) - 노드 겹침 방지
             const currentTree = window.currentTreeData || {};
             const treeId = currentTree.id || urlTreeId;
 
-// 헤더: 제목 + 로컬 저장 배지 + detail 페이지 링크
- const headerEl = detailPanel.querySelector('h3');
- if (headerEl) {
- const localBadge = isLocalSaveMode
- ? '<span style="font-size:11px;padding:2px 8px;background:rgba(239,108,0,0.1);color:#ef6c00;border-radius:99px;font-weight:600;margin-left:8px;">로컬 저장</span>'
- : '';
- var basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
- headerEl.innerHTML = `
- <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
- <span style="font-size:1.1rem;line-height:1.3;">${data.title}${localBadge}</span>
- <a href="${basePath}detail.html?id=${data.id}&tree=${treeId}&from=editor"
- title="전체 화면으로 감상하기"
- style="display:flex;align-items:center;gap:4px;padding:6px 12px;background:var(--primary-container);color:var(--on-primary-container);border-radius:99px;font-size:12px;font-weight:700;text-decoration:none;white-space:nowrap;">
- <span class="material-symbols-outlined" style="font-size:14px;">open_in_new</span>
- 전체 보기
- </a>
- </div>
- `;
-            }
+// 📌 헤더: 제목 + visibility + 공유
+  const headerEl = detailPanel.querySelector('h3');
+  if (headerEl) {
+  const i18n = window.t || ((k) => k);
+  const localBadge = isLocalSaveMode
+  ? '<span style="font-size:11px;padding:2px 8px;background:rgba(239,108,0,0.1);color:#ef6c00;border-radius:99px;font-weight:600;margin-left:8px;">로컬 저장</span>'
+  : '';
+  
+  // 📌 visibility 표시
+  const visibility = window.currentTreeData?.visibility || 'private';
+  const isPublic = visibility === 'public';
+  const visIcon = isPublic ? 'public' : 'lock';
+  const visLabel = isPublic ? i18n('visibility_public') : i18n('visibility_private');
+  const visInfo = isPublic ? i18n('share_info') : i18n('private_info');
+  const visStyle = isPublic 
+    ? 'background:rgba(76,175,80,0.1);color:#4caf50;border:1px solid rgba(76,175,80,0.3);'
+    : 'background:rgba(158,158,158,0.1);color:#757575;border:1px solid rgba(158,158,158,0.3);';
+  
+  // 📌 링크 복사 (공개 트리만)
+  const shareBtn = isPublic 
+    ? `<button id="shareTreeBtn" style="${visStyle}font-size:12px;padding:6px 12px;border-radius:99px;cursor:pointer;border:none;font-weight:600;display:flex;align-items:center;gap:4px;">
+       <span class="material-symbols-outlined" style="font-size:14px;">content_copy</span>
+       ${i18n('share_link')}
+     </button>`
+    : '';
+     
+  var basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
+  headerEl.innerHTML = `
+  <div style="display:flex;flex-direction:column;gap:8px;">
+    <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
+      <span style="font-size:1.1rem;line-height:1.3;">${data.title}${localBadge}</span>
+      ${shareBtn}
+    </div>
+    <!-- visibility 표시 -->
+    <div style="display:flex;align-items:center;gap:8px;font-size:12px;">
+       <span style="${visStyle}padding:4px 10px;border-radius:99px;display:flex;align-items:center;gap:4px;">
+         <span class="material-symbols-outlined" style="font-size:12px;">${visIcon}</span>
+         ${visLabel}
+       </span>
+       <span style="color:var(--on-surface-variant);font-size:11px;">${visInfo}</span>
+    </div>
+  </div>
+  `;
+  
+  // 📌 링크 복사 이벤트
+  if (isPublic) {
+    setTimeout(() => {
+      const btn = document.getElementById('shareTreeBtn');
+      if (btn) {
+        btn.onclick = () => {
+          const shareUrl = window.location.origin + '/' + basePath + 'detail.html?id=' + data.id + '&tree=' + treeId;
+          navigator.clipboard?.writeText(shareUrl).then(() => {
+            showToast(i18n('copied_link') || '링크가 복사되었습니다!', 'success');
+          }).catch(() => {
+            showToast('링크 복사에 실패했습니다', 'error');
+          });
+        };
+      }
+    }, 100);
+  }
+             }
 
             // 썸네일 업데이트
             const imgEl = detailPanel.querySelector('.detail-video img');
@@ -649,11 +707,30 @@ const RADIUS_L2 = 240; // L2 반경 (200→240) - 노드 겹침 방지
                 const parentId = node.parentId || canonicalRootId;
                 const parent = treeMemories().find(m => m.id === parentId);
                 if (parent) drawBranch(calcPosition(parent), calcPosition(node));
-            });
-            // root 초기 선택: 안정화된 함수를 사용
+            };
+            
+            // 📌 새 트리 확인 - 캔버스에 메시지 표시
             const initialMem = createInitialMemory();
-            if (initialMem) {
-                updateDetailPanel(initialMem);
+            if (initialMem.isNewTree) {
+                // 새 트리일 때 빈 캔버스에 안내 메시지
+                const emptyMsg = document.createElement('div');
+                emptyMsg.id = 'emptyTreeMessage';
+                emptyMsg.innerHTML = `
+                    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;padding:32px;background:rgba(255,255,255,0.95);border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,0.1);max-width:320px;">
+                        <div style="font-size:48px;margin-bottom:16px;">🌱</div>
+                        <div style="font-size:1.25rem;font-weight:800;margin-bottom:8px;color:var(--on-surface);">새 트리가 비어있어요</div>
+                        <div style="font-size:14px;color:var(--on-surface-variant);margin-bottom:16px;line-height:1.5;">
+                            "영상 추가" 버튼을 클릭하여<br>첫 번째 감정을 기록해보세요!
+                        </div>
+                    </div>
+                `;
+                canvas.appendChild(emptyMsg);
+            }
+            
+            // root 초기 선택: 안정화된 함수를 사용
+            const selectedMem = createInitialMemory();
+            if (selectedMem) {
+                updateDetailPanel(selectedMem);
             }
         };
 

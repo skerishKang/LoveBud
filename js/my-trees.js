@@ -22,6 +22,73 @@
     }
   }
 
+  // ── Setup header create button (always visible CTA) ───────────────────────
+  function setupHeaderCreateButton() {
+    var btn = document.getElementById('headerCreateTreeBtn');
+    if (btn) {
+      btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        createNewTree();
+      });
+    }
+  }
+
+  // ── Tree management: rename ─────────────────────────────────────────────
+  async function renameTree(treeId, currentTitle) {
+    var i18n = window.t || function(k) { return k; };
+    var newTitle = prompt(i18n('rename_tree_prompt') || '트리 이름을 입력하세요:', currentTitle);
+    
+    if (!newTitle || newTitle.trim() === '' || newTitle === currentTitle) {
+      return; // cancelled or unchanged
+    }
+
+    try {
+      if (window.apiClient && window.apiClient.updateTree) {
+        await window.apiClient.updateTree(treeId, { title: newTitle.trim() });
+        showToast(i18n('rename_success') || '트리 이름이 변경되었습니다.', 'success');
+        // Refresh tree list
+        loadTrees();
+      } else {
+        // Fallback: just show toast (API not available)
+        showToast(i18n('api_not_available') || 'API를 사용할 수 없습니다.', 'error');
+      }
+    } catch (e) {
+      console.error('[my-trees] renameTree failed:', e);
+      showToast(i18n('rename_fail') || '이름 변경에 실패했습니다.', 'error');
+    }
+  }
+
+  // ── Tree management: delete ──────────────────────────────────────────────
+  async function deleteTree(treeId, treeTitle) {
+    var i18n = window.t || function(k) { return k; };
+    var confirmed = confirm((i18n('delete_tree_confirm') || '정말 "{title}" 트리를 삭제하시겠습니까?').replace('{title}', treeTitle));
+    
+    if (!confirmed) return;
+
+    try {
+      if (window.apiClient && window.apiClient.deleteTree) {
+        await window.apiClient.deleteTree(treeId);
+        showToast(i18n('delete_success') || '트리가 삭제되었습니다.', 'success');
+        // Refresh tree list
+        loadTrees();
+      } else {
+        // Fallback: just show toast (API not available)
+        showToast(i18n('api_not_available') || 'API를 사용할 수 없습니다.', 'error');
+      }
+    } catch (e) {
+      console.error('[my-trees] deleteTree failed:', e);
+      showToast(i18n('delete_fail') || '삭제에 실패했습니다.', 'error');
+    }
+  }
+
+  // ── Close all dropdowns ───────────────────────────────────────────────────
+  function closeAllDropdowns() {
+    document.querySelectorAll('.tree-card-dropdown').forEach(function(dd) {
+      dd.classList.remove('show');
+    });
+  }
+
   // ── Mini tree SVG for card thumbnails ───────────────────────────────────
   function buildMiniTreeSVG() {
     return [
@@ -50,10 +117,13 @@
     ].join('');
   }
 
-  // ── Render tree cards grid ───────────────────────────────────────────────
+  // ── Render tree cards grid + 관리 요약 ───────────────────────────────────────────────
   function renderTrees(trees) {
     var container = document.getElementById('treesContainer');
     if (!container) return;
+
+    // 📌 관리 요약 바 업데이트
+    updateManageSummary(trees);
 
     if (!trees || trees.length === 0) {
       renderEmptyState(container);
@@ -72,6 +142,64 @@
     container.appendChild(grid);
   }
 
+  // 📌 트리 정렬
+  function sortTrees(trees, sortBy) {
+    if (!sortBy || !trees) return trees;
+    
+    var sorted = [...trees];
+    switch (sortBy) {
+      case 'recent':
+        sorted.sort(function(a, b) {
+          var dateA = new Date(a.updatedAt || a.createdAt || 0);
+          var dateB = new Date(b.updatedAt || b.createdAt || 0);
+          return dateB - dateA;
+        });
+        break;
+      case 'oldest':
+        sorted.sort(function(a, b) {
+          var dateA = new Date(a.updatedAt || a.createdAt || 0);
+          var dateB = new Date(b.updatedAt || b.createdAt || 0);
+          return dateA - dateB;
+        });
+        break;
+      case 'name':
+        sorted.sort(function(a, b) {
+          return (a.title || '').localeCompare(b.title || '');
+        });
+        break;
+    }
+    return sorted;
+  }
+
+  // 📌 관리 요약 바 업데이트
+  function updateManageSummary(trees) {
+    var summaryBar = document.getElementById('manageSummaryBar');
+    if (!summaryBar || !trees || trees.length === 0) {
+      if (summaryBar) summaryBar.style.display = 'none';
+      return;
+    }
+    
+    // 📌 데이터를 정렬을 위해 저장
+    lastTreesData = trees;
+    
+    // 트리 수 계산
+    var total = trees.length;
+    var publicCount = trees.filter(function(t) { return t.visibility === 'public'; }).length;
+    var privateCount = total - publicCount;
+    
+    // 요소 업데이트
+    var totalEl = document.getElementById('totalTreesCount');
+    var publicEl = document.getElementById('publicTreesCount');
+    var privateEl = document.getElementById('privateTreesCount');
+    
+    if (totalEl) totalEl.textContent = total;
+    if (publicEl) publicEl.textContent = publicCount;
+    if (privateEl) privateEl.textContent = privateCount;
+    
+    // 요약 바 표시
+    summaryBar.style.display = 'flex';
+  }
+
   function buildTreeCard(tree) {
     var i18n = window.t || function(k) { return k; };
 
@@ -87,9 +215,19 @@
       };
     }
 
-    var a = document.createElement('a');
-    a.href = 'editor.html?treeId=' + encodeURIComponent(normalizedTree.id);
-    a.className = 'tree-card';
+    // Card container (was <a>, now <div> to allow menu button)
+    var card = document.createElement('div');
+    card.className = 'tree-card';
+    card.style.cursor = 'pointer';
+
+    // Click card to go to editor (excluding menu button area)
+    card.addEventListener('click', function(e) {
+      // Don't navigate if clicking menu or dropdown
+      if (e.target.closest('.tree-card-menu') || e.target.closest('.tree-card-dropdown')) {
+        return;
+      }
+      window.location.href = 'editor.html?treeId=' + encodeURIComponent(normalizedTree.id);
+    });
 
     // Visibility badge
     var visClass = normalizedTree.visibility === 'public' ? 'public' : 'private';
@@ -102,7 +240,27 @@
       date = date.slice(0, 10).replace(/-/g, '.');
     }
 
-    a.innerHTML = [
+    // Menu button HTML
+    var menuBtnId = 'menuBtn_' + normalizedTree.id;
+    var dropdownId = 'dropdown_' + normalizedTree.id;
+
+    card.innerHTML = [
+      // Menu button (⋮)
+      '<button class="tree-card-menu" id="' + menuBtnId + '" type="button">',
+        '<span class="material-symbols-outlined" style="font-size:18px;color:#666;">more_vert</span>',
+      '</button>',
+      // Dropdown menu
+      '<div class="tree-card-dropdown" id="' + dropdownId + '">',
+        '<div class="dropdown-item rename" data-action="rename">',
+          '<span class="material-symbols-outlined" style="font-size:16px;">edit</span>',
+          i18n('rename') || '이름 변경',
+        '</div>',
+        '<div class="dropdown-item delete" data-action="delete">',
+          '<span class="material-symbols-outlined" style="font-size:16px;">delete</span>',
+          i18n('delete') || '삭제',
+        '</div>',
+      '</div>',
+      // Card content
       '<div class="tree-card-thumb">' + buildMiniTreeSVG() + '</div>',
       '<div class="tree-card-info">',
         '<div class="tree-card-title">' + escapeHtml(title) + '</div>',
@@ -116,7 +274,43 @@
       '</div>'
     ].join('');
 
-    return a;
+    // Setup menu button click
+    setTimeout(function() {
+      var menuBtn = document.getElementById(menuBtnId);
+      var dropdown = document.getElementById(dropdownId);
+      
+      if (menuBtn && dropdown) {
+        menuBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          
+          // Close other dropdowns
+          closeAllDropdowns();
+          
+          // Toggle this dropdown
+          dropdown.classList.toggle('show');
+        });
+
+        // Dropdown item clicks
+        dropdown.querySelectorAll('.dropdown-item').forEach(function(item) {
+          item.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            var action = this.getAttribute('data-action');
+            if (action === 'rename') {
+              renameTree(normalizedTree.id, title);
+            } else if (action === 'delete') {
+              deleteTree(normalizedTree.id, title);
+            }
+            
+            closeAllDropdowns();
+          });
+        });
+      }
+    }, 0);
+
+    return card;
   }
 
   // ── Empty state ──────────────────────────────────────────────────────────
@@ -261,6 +455,9 @@
       // cached auth 있으면 아래로 진행
     }
 
+    // Setup header create button (always visible CTA)
+    setupHeaderCreateButton();
+
     renderLoadingSkeletons();
     loadTrees();
   }
@@ -315,10 +512,21 @@
   // my-trees.js는 Firebase/Auth 스크립트보다 먼저 로드되므로, 여기서 직접
   // firebase 존재 여부를 검사하면 비로그인 사용자가 오프라인 사용자로 통과할 수 있다.
   var myTreesStarted = false;
+  var lastTreesData = []; // 📌 정렬용 데이터 저장
+
   function bootMyTrees(user) {
     if (myTreesStarted) return;
     myTreesStarted = true;
     startMyTrees(user);
+    
+    // 📌 정렬 드롭다운 이벤트
+    var sortSelect = document.getElementById('sortTreesSelect');
+    if (sortSelect) {
+      sortSelect.addEventListener('change', function() {
+        var sorted = sortTrees(lastTreesData, this.value);
+        renderTrees(sorted);
+      });
+    }
   }
 
   // 새로운 배열 콜백 패턴 사용 (덮어쓰기 문제 해결)
