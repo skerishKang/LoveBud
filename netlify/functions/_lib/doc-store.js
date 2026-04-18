@@ -116,23 +116,8 @@ async function queryTrees(filters = {}) {
 async function createTree(data) {
   console.log('[createTree] start', { ownerId: data.ownerId, title: data.title, visibility: data.visibility });
   
-  // Auto-provision user if not exists (lazy provisioning for new sign-ups).
-  try {
-    console.log('[createTree] ensuring user row', { ownerId: data.ownerId });
-    await query(
-      `INSERT INTO users (id, created_at, updated_at) VALUES ($1, NOW(), NOW())
-       ON CONFLICT (id) DO NOTHING`,
-      [data.ownerId]
-    );
-    console.log('[createTree] user row ensured');
-  } catch (userErr) {
-    console.error('[createTree] user provisioning failed', { 
-      error: userErr.message, 
-      code: userErr.code,
-      stack: userErr.stack?.substring(0, 200)
-    });
-    throw userErr;
-  }
+  // Note: users table not in v1 schema - skip user provisioning
+  // (auth is handled by Firebase, not by this DB)
 
   const id = require('crypto').randomUUID();
   
