@@ -227,70 +227,58 @@
       100% { background-position: -200% 0; }
     }
 
-/* Loading state */
-    .trees-loading {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 80px;
-      gap: 16px;
-      color: var(--on-surface-variant);
-    }
+     /* Error state */
+     .error-state {
+       text-align: center;
+       padding: 80px 40px;
+       background: white;
+       border-radius: 2rem;
+       border: 1px solid rgba(198, 40, 40, 0.2);
+       box-shadow: var(--shadow-whisper);
+       display: flex;
+       flex-direction: column;
+       align-items: center;
+       gap: 16px;
+     }
 
-    .trees-loading .spinner {
-      width: 48px;
-      height: 48px;
-      border: 3px solid var(--outline-variant);
-      border-top-color: var(--primary);
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-    }
+     .error-state-icon {
+       font-size: 64px;
+       margin-bottom: 8px;
+       display: block;
+       color: #c62828;
+     }
 
-    .trees-loading .loading-text {
-      font-size: 15px;
-      font-weight: 600;
-      color: var(--on-surface-variant);
-    }
+     .error-state h2 {
+       font-size: 1.5rem;
+       font-weight: 800;
+       color: var(--on-surface);
+       margin-bottom: 8px;
+     }
 
-    /* Empty state */
-    .empty-state {
-      text-align: center;
-      padding: 80px 40px;
-      background: white;
-      border-radius: 2rem;
-      border: 1px solid var(--outline-variant);
-      box-shadow: var(--shadow-whisper);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 16px;
-    }
+     .error-state p {
+       color: var(--on-surface-variant);
+       font-size: 1rem;
+       line-height: 1.6;
+       margin-bottom: 24px;
+       max-width: 400px;
+       margin-left: auto;
+       margin-right: auto;
+     }
 
-    .empty-state-icon {
-      font-size: 64px;
-      margin-bottom: 8px;
-      display: block;
-    }
+     /* Button disabled state */
+     .btn-header-create:disabled {
+       opacity: 0.6;
+       cursor: not-allowed;
+       transform: none;
+       box-shadow: 0 2px 8px rgba(232, 90, 122, 0.2);
+     }
 
-    .empty-state h2 {
-      font-size: 1.5rem;
-      font-weight: 800;
-      color: var(--on-surface);
-      margin-bottom: 8px;
-    }
+      .btn-header-create:disabled:hover {
+        transform: none;
+        box-shadow: 0 2px 8px rgba(232, 90, 122, 0.2);
+      }
 
-    .empty-state p {
-      color: var(--on-surface-variant);
-      font-size: 1rem;
-      line-height: 1.6;
-      margin-bottom: 16px;
-      max-width: 400px;
-      margin-left: auto;
-      margin-right: auto;
-    }
-
-    /* CTA section in empty state */
+     /* CTA section in empty state */
     .empty-state-cta {
       margin-top: 8px;
     }
@@ -502,13 +490,38 @@
         </div>
       </div>
 
-      <!-- Trees container -->
-      <div id="treesContainer">
-        <div class="trees-loading">
-          <div class="spinner"></div>
-          <span class="loading-text" data-i18n="myTrees.loading">러브트리 목록을 불러오는 중...</span>
-        </div>
-      </div>
+       <!-- Trees container -->
+       <div id="treesContainer">
+         <!-- State: Loading (default initial state) -->
+         <div id="state-loading" class="trees-loading" style="display: flex;">
+           <div class="spinner"></div>
+           <span class="loading-text" data-i18n="myTrees.loading">러브트리 목록을 불러오는 중...</span>
+         </div>
+
+         <!-- State: Error -->
+         <div id="state-error" class="error-state" style="display: none;">
+           <span class="material-symbols-outlined error-state-icon">error</span>
+           <h2 data-i18n="myTrees.error_title">불러오기에 실패했습니다</h2>
+           <p data-i18n="myTrees.error_desc">네트워크 연결을 확인하고 다시 시도해주세요.</p>
+           <button class="btn-round btn-primary" id="retryLoadBtn" data-i18n="myTrees.retry">다시 시도</button>
+         </div>
+
+          <!-- State: Empty (no trees) -->
+          <div id="state-empty" class="empty-state" style="display: none;">
+            <span class="material-symbols-outlined empty-state-icon">account_tree</span>
+            <h2 data-i18n="empty_state_title">아직 러브트리가 없어요</h2>
+            <p data-i18n="empty_state_desc">첫 번째 러브트리를 만들어 감정의 나무를 키워보세요.</p>
+            <button class="btn-create-tree" id="createTreeBtn">
+              <span class="material-symbols-outlined" style="font-size:20px;">add_circle</span>
+              <span data-i18n="create_tree_btn">새 러브트리 만들기</span>
+            </button>
+          </div>
+
+         <!-- State: Loaded (trees grid will be injected here) -->
+         <div id="state-loaded" style="display: none;">
+           <!-- Trees grid rendered by JS -->
+         </div>
+       </div>
     </main>
   </div>
 

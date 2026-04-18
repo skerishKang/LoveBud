@@ -33,6 +33,21 @@ function validateLimit(v, def = 20) {
   return isNaN(n) ? def : n;
 }
 
+// ── Users ──────────────────────────────────────────────────────────────────
+
+async function ensureUserRecord(user) {
+  if (!user || !user.uid) return;
+  const r = await query('SELECT id FROM users WHERE id = $1', [user.uid]);
+  if (!r.rows.length) {
+    const dispName = user.displayName || (user.decoded && user.decoded.name) || '';
+    await query(
+      `INSERT INTO users (id, email, display_name, created_at, updated_at)
+       VALUES ($1, $2, $3, NOW(), NOW())`,
+      [user.uid, user.email || '', dispName]
+    );
+  }
+}
+
 // ── Trees ──────────────────────────────────────────────────────────────────
 
 async function getTree(treeId) {
@@ -55,7 +70,9 @@ async function queryTrees(filters = {}) {
   return r.rows;
 }
 
-async function createTree(data) {
+async function createTree(data, user = null) {
+  if (user) await ensureUserRecord(user);
+  
   const id = require('crypto').randomUUID();
   const payload = { nodes: [], edges: [] };
   const safeTitle = data.title || '나의 Lovetree';
@@ -184,5 +201,6 @@ async function deleteMemory(memoryId) {
 module.exports = {
   getTree, getTreeById: getTree, queryTrees, createTree, updateTree, deleteTree,
   getMemory, queryMemories, createMemory, updateMemory, deleteMemory,
+  ensureUserRecord,
   validateRequired, validateOptionalString, validateVisibility, validateSourceType, validateUuid, validateLimit
 };

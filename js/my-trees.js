@@ -22,17 +22,99 @@
     }
   }
 
-  // ── Setup header create button (always visible CTA) ───────────────────────
-  function setupHeaderCreateButton() {
-    var btn = document.getElementById('headerCreateTreeBtn');
-    if (btn) {
-      btn.addEventListener('click', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        createNewTree();
-      });
-    }
-  }
+   // ── State management ─────────────────────────────────────────────────────
+   const STATE = {
+     LOADING: 'loading',
+     LOADED: 'loaded',
+     EMPTY: 'empty',
+     ERROR: 'error'
+   };
+
+   let currentState = STATE.LOADING;
+
+   function setState(newState) {
+     currentState = newState;
+     const container = document.getElementById('treesContainer');
+     if (!container) return;
+
+     // Hide all state sections
+     const sections = {
+       loading: document.getElementById('state-loading'),
+       error: document.getElementById('state-error'),
+       empty: document.getElementById('state-empty'),
+       loaded: document.getElementById('state-loaded')
+     };
+
+     Object.values(sections).forEach(el => {
+       if (el) el.style.display = 'none';
+     });
+
+     // Show target state
+     switch (newState) {
+       case STATE.LOADING:
+         if (sections.loading) sections.loading.style.display = 'flex';
+         break;
+       case STATE.ERROR:
+         if (sections.error) sections.error.style.display = 'flex';
+         break;
+       case STATE.EMPTY:
+         if (sections.empty) sections.empty.style.display = 'flex';
+         break;
+       case STATE.LOADED:
+         if (sections.loaded) sections.loaded.style.display = 'block';
+         break;
+     }
+   }
+
+   // ── Setup header create button (always visible CTA) ───────────────────────
+   function setupHeaderCreateButton() {
+     var btn = document.getElementById('headerCreateTreeBtn');
+     if (btn) {
+       btn.addEventListener('click', function(e) {
+         e.preventDefault();
+         e.stopPropagation();
+         createNewTree();
+       });
+     }
+   }
+
+   // ── Setup retry button ────────────────────────────────────────────────────
+   function setupRetryButton() {
+     var retryBtn = document.getElementById('retryLoadBtn');
+     if (retryBtn) {
+       retryBtn.addEventListener('click', function() {
+         console.log('[my-trees] Retry loading trees');
+         loadTrees();
+       });
+     }
+   }
+
+   // ── Auth guard: load trees on auth ready ─────────────────────────────────
+   function startMyTrees(user) {
+     if (!user) {
+       var cachedUser = null;
+       try {
+         if (localStorage.getItem('lovebud_auth_confirmed') === 'true') {
+           var raw = localStorage.getItem('lovebud_auth_cache');
+           if (raw && raw !== 'null') {
+             cachedUser = JSON.parse(raw);
+           }
+         }
+       } catch (e) {}
+
+       if (!cachedUser || !cachedUser.uid) {
+         window.location.href = 'login.html?redirect=my-trees.html';
+         return;
+       }
+     }
+
+     // Setup buttons
+     setupHeaderCreateButton();
+     setupRetryButton();
+
+     // Initial load (will set appropriate state)
+     loadTrees();
+   }
 
   // ── Tree management: rename ─────────────────────────────────────────────
   async function renameTree(treeId, currentTitle) {
@@ -117,30 +199,32 @@
     ].join('');
   }
 
-  // ── Render tree cards grid + 관리 요약 ───────────────────────────────────────────────
-  function renderTrees(trees) {
-    var container = document.getElementById('treesContainer');
-    if (!container) return;
+   // ── Render tree cards grid + 관리 요약 ───────────────────────────────────────────────
+   function renderTrees(trees) {
+     var container = document.getElementById('state-loaded');
+     if (!container) return;
 
-    // 📌 관리 요약 바 업데이트
-    updateManageSummary(trees);
+     // 📌 관리 요약 바 업데이트
+     updateManageSummary(trees);
 
-    if (!trees || trees.length === 0) {
-      renderEmptyState(container);
-      return;
-    }
+     if (!trees || trees.length === 0) {
+       setState(STATE.EMPTY);
+       return;
+     }
 
-    var grid = document.createElement('div');
-    grid.className = 'trees-grid';
+     var grid = document.createElement('div');
+     grid.className = 'trees-grid';
 
-    trees.forEach(function(tree) {
-      var card = buildTreeCard(tree);
-      grid.appendChild(card);
-    });
+     trees.forEach(function(tree) {
+       var card = buildTreeCard(tree);
+       grid.appendChild(card);
+     });
 
-    container.innerHTML = '';
-    container.appendChild(grid);
-  }
+     container.innerHTML = '';
+     container.appendChild(grid);
+
+     setState(STATE.LOADED);
+   }
 
   // 📌 트리 정렬
   function sortTrees(trees, sortBy) {
@@ -313,116 +397,76 @@
     return card;
   }
 
-  // ── Empty state ──────────────────────────────────────────────────────────
-  function renderEmptyState(container) {
-    var i18n = window.t || function(k) { return k; };
-    container.innerHTML = [
-      '<div class="empty-state">',
-        '<span class="material-symbols-outlined empty-state-icon">account_tree</span>',
-        '<h2>' + i18n('empty_state_title') + '</h2>',
-        '<p>' + i18n('empty_state_desc').replace('.', '.<br>') + '</p>',
-        '<button class="btn-create-tree" id="createTreeBtn">',
-          '<span class="material-symbols-outlined" style="font-size:20px;">add_circle</span>',
-          i18n('create_tree_btn'),
-        '</button>',
-      '</div>'
-    ].join('');
-
-    document.getElementById('createTreeBtn').addEventListener('click', createNewTree);
-  }
-
-  // ── Loading skeletons ────────────────────────────────────────────────────
-  function renderLoadingSkeletons() {
-    var container = document.getElementById('treesContainer');
-    if (!container) return;
-
-    var grid = document.createElement('div');
-    grid.className = 'trees-grid';
-    grid.style.display = 'flex';
-    grid.style.gap = '24px';
-
-    for (var i = 0; i < 3; i++) {
-      var skeleton = document.createElement('div');
-      skeleton.className = 'tree-card-skeleton';
-      skeleton.innerHTML = [
-        '<div class="skeleton-thumb"></div>',
-        '<div class="skeleton-info">',
-          '<div class="skeleton-line" style="width:80%;margin-bottom:16px;"></div>',
-          '<div class="skeleton-line short"></div>',
-        '</div>'
-      ].join('');
-      grid.appendChild(skeleton);
-    }
-
-    container.innerHTML = '';
-    container.appendChild(grid);
-  }
-
   // ── Create new tree ──────────────────────────────────────────────────────
-  function getDefaultVisibility() {
-    try {
-      var settings = localStorage.getItem('lovebud_user_settings');
-      if (settings) {
-        var parsed = JSON.parse(settings);
-        if (parsed.defaultVisibility === 'public' || parsed.defaultVisibility === 'private') {
-          return parsed.defaultVisibility;
-        }
-      }
-    } catch (e) {
-      console.warn('[my-trees] Failed to read settings:', e);
-    }
-    return 'private'; // 기본값은 반드시 private
-  }
+   function getDefaultVisibility() {
+     try {
+       var settings = localStorage.getItem('lovebud_user_settings');
+       if (settings) {
+         var parsed = JSON.parse(settings);
+         if (parsed.defaultVisibility === 'public' || parsed.defaultVisibility === 'private') {
+           return parsed.defaultVisibility;
+         }
+       }
+     } catch (e) {
+       console.warn('[my-trees] Failed to read settings:', e);
+     }
+     return 'private'; // 기본값은 반드시 private
+   }
 
-  async function createNewTree() {
-    var btn = document.getElementById('createTreeBtn');
-    var i18n = window.t || function(k) { return k; };
-    if (btn) {
-      btn.disabled = true;
-      btn.textContent = i18n('creating');
-    }
+   async function createNewTree() {
+     var btn = document.getElementById('createTreeBtn');
+     var i18n = window.t || function(k) { return k; };
 
-    // 설정에서 defaultVisibility 읽기 (없으면 'private')
-    var defaultVisibility = getDefaultVisibility();
-    console.log('[my-trees] Creating tree with visibility:', defaultVisibility);
+     // Disable button immediately (UX hardening)
+     if (btn) {
+       btn.disabled = true;
+       btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:20px;">hourglass_empty</span> ' + (i18n('creating') || '생성 중...');
+     }
 
-    try {
-      var newTree;
-      if (window.apiClient && window.apiClient.createTree) {
-        newTree = await window.apiClient.createTree({
-          title: i18n('default_tree_title') || '나의 첫 러브트리',
-          visibility: defaultVisibility
-        });
-        console.log('[my-trees] Tree created:', newTree);
-      } else {
-        // Fallback: generate client-side ID and redirect
-        newTree = { id: 'tree-' + Date.now() };
-        showToast((window.t || function(k){return k;})('demo_mode'), 'error');
-      }
+     var defaultVisibility = getDefaultVisibility();
+     console.log('[my-trees] Creating tree with visibility:', defaultVisibility);
 
-      // 캐시 무효화 - 새 트리 생성했으므로 목록 갱신 필요
-      if (window.LoveBudCache) {
-        window.LoveBudCache.clear(TREES_CACHE_KEY);
-        console.log('[my-trees] Cache cleared after new tree creation');
-      }
-      
-      // Redirect to editor with new tree (flat camelCase 표준)
-      var treeId = newTree?.id;
-      if (treeId) {
-        window.location.href = 'editor.html?treeId=' + encodeURIComponent(treeId);
-      } else {
-        window.location.href = 'editor.html';
-      }
-    } catch (e) {
-      console.error('[my-trees] createTree failed:', e);
-      var i18n = window.t || function(k) { return k; };
-      showToast(i18n('create_tree_fail'), 'error');
-      if (btn) {
-        btn.disabled = false;
-        btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:20px;">add_circle</span>' + i18n('create_tree_btn');
-      }
-    }
-  }
+     try {
+       var newTree;
+       if (window.apiClient && window.apiClient.createTree) {
+         newTree = await window.apiClient.createTree({
+           title: i18n('default_tree_title') || '나의 첫 러브트리',
+           visibility: defaultVisibility
+         });
+         console.log('[my-trees] Tree created:', newTree);
+       } else {
+         // Fallback: generate client-side ID and redirect
+         newTree = { id: 'tree-' + Date.now() };
+         showToast((window.t || function(k){return k;})('demo_mode'), 'error');
+       }
+
+       // Cache invalidation
+       if (window.LoveBudCache) {
+         window.LoveBudCache.clear(TREES_CACHE_KEY);
+         console.log('[my-trees] Cache cleared after new tree creation');
+       }
+
+       // Redirect immediately to editor
+       var treeId = newTree?.id;
+       if (treeId) {
+         window.location.href = 'editor.html?treeId=' + encodeURIComponent(treeId);
+       } else {
+         window.location.href = 'editor.html';
+       }
+     } catch (e) {
+       console.error('[my-trees] createTree failed:', e);
+
+       // Re-enable button (UX hardening)
+       if (btn) {
+         btn.disabled = false;
+         btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:20px;">add_circle</span> ' + (i18n('create_tree_btn') || '새 러브트리');
+       }
+
+       // Show error toast (UX hardening)
+       var errorMsg = i18n('create_tree_fail') || '트리 생성에 실패했습니다';
+       showToast(errorMsg, 'error');
+     }
+   }
 
   // ── Escape HTML ──────────────────────────────────────────────────────────
   function escapeHtml(str) {
@@ -455,58 +499,78 @@
       // cached auth 있으면 아래로 진행
     }
 
-    // Setup header create button (always visible CTA)
-    setupHeaderCreateButton();
+     // Setup header create button (always visible CTA)
+     setupHeaderCreateButton();
 
-    renderLoadingSkeletons();
-    loadTrees();
-  }
+     // Initial load (shows loading state automatically)
+     loadTrees();
+   }
 
   // ── 캐시 키 상수 ───────────────────────────────────────────────────────
   var TREES_CACHE_KEY = 'my_trees_list';
 
-  async function loadTrees() {
-    var cache = window.LoveBudCache;
-    
-    // 1. 캐시된 트리 목록 먼저 렌더 (즉각 체감 속도)
-    var cachedTrees = cache ? cache.get(TREES_CACHE_KEY) : null;
-    if (cachedTrees && Array.isArray(cachedTrees)) {
-      console.log('[my-trees] Rendering cached trees:', cachedTrees.length);
-      renderTrees(cachedTrees);
-    } else {
-      // 캐시 없으면 skeleton만 표시
-      renderLoadingSkeletons();
-    }
-    
-    // 2. Background에서 API로 최신 데이터 가져오기
-    try {
-      var trees;
-      if (window.apiClient && window.apiClient.getTrees) {
-        trees = await window.apiClient.getTrees();
-        // 인증된 /trees 는 이미 "내 트리 목록"이므로 추가 visibility 필터링 금지
-      } else {
-        trees = typeof getTrees === 'function' ? getTrees() : [];
-      }
+   async function loadTrees() {
+     var cache = window.LoveBudCache;
+     var i18n = window.t || function(k) { return k; };
 
-      if (Array.isArray(trees)) {
-        // 캐시 업데이트
-        if (cache) {
-          cache.set(TREES_CACHE_KEY, trees, 3 * 60 * 1000); // 3분 TTL
-        }
-        // 화면 업데이트 (캐시와 다르면)
-        if (!cachedTrees || JSON.stringify(cachedTrees) !== JSON.stringify(trees)) {
-          console.log('[my-trees] Updating trees from API:', trees.length);
-          renderTrees(trees);
-        }
-      }
-    } catch (e) {
-      console.warn('[my-trees] getTrees failed:', e.message);
-      // API 실패시 캐시라도 보여줌 (있는 경우)
-      if (!cachedTrees) {
-        renderTrees([]);
-      }
-    }
-  }
+     // 1. Show loading state
+     setState(STATE.LOADING);
+
+     // 2. Try to load from cache first for instant UI
+     var cachedTrees = cache ? cache.get(TREES_CACHE_KEY) : null;
+     if (cachedTrees && Array.isArray(cachedTrees)) {
+       console.log('[my-trees] Rendering cached trees:', cachedTrees.length);
+       renderTrees(cachedTrees);
+     }
+
+     // 3. Fetch fresh data from API
+     try {
+       var trees;
+       if (window.apiClient && window.apiClient.getTrees) {
+         trees = await window.apiClient.getTrees();
+       } else {
+         trees = typeof getTrees === 'function' ? getTrees() : [];
+       }
+
+       if (Array.isArray(trees)) {
+         // Update cache
+         if (cache) {
+           cache.set(TREES_CACHE_KEY, trees, 3 * 60 * 1000); // 3 min TTL
+         }
+
+         // Render fresh data (will set state to LOADED or EMPTY)
+         renderTrees(trees);
+       } else {
+         // Invalid response format
+         console.error('[my-trees] Invalid trees response:', trees);
+         setState(STATE.ERROR);
+       }
+       } catch (e) {
+         console.error('[my-trees] loadTrees error:', e);
+
+         // If we have cached data, show that even on error
+         if (cachedTrees && Array.isArray(cachedTrees)) {
+           console.log('[my-trees] Showing cached trees after API error');
+           renderTrees(cachedTrees);
+           showToast(i18n('myTrees.offline_mode') || '오프라인 모드 - 캐시된 데이터를 표시합니다', 'warn');
+         } else {
+           // No cache, show error state
+           setState(STATE.ERROR);
+           showToast(i18n('myTrees.load_failed') || '트리 목록을 불러오는데 실패했습니다', 'error');
+         }
+       }
+   }
+
+   // ── Retry button handler ─────────────────────────────────────────────────
+   function setupRetryButton() {
+     var retryBtn = document.getElementById('retryLoadBtn');
+     if (retryBtn) {
+       retryBtn.addEventListener('click', function() {
+         console.log('[my-trees] Retry loading trees');
+         loadTrees();
+       });
+     }
+   }
 
   // ── Bootstrap: auth.js가 확정한 인증 상태를 기준으로 시작 ────────────────
   // my-trees.js는 Firebase/Auth 스크립트보다 먼저 로드되므로, 여기서 직접

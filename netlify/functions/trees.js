@@ -44,7 +44,7 @@ exports.handler = async (event) => {
         ownerId: user.uid,
         title,
         visibility,
-      });
+      }, user);
 
       return created(serializeTree(tree), { 'Access-Control-Allow-Origin': '*' });
     }

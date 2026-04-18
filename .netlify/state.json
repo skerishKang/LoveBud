@@ -2,7 +2,7 @@
 	"siteId": "6c10124e-569a-414e-b819-6706bda059df",
 	"geolocation": {
 		"data": {
-			"city": "Gwangsan-gu",
+			"city": "Seo-gu",
 			"country": {
 				"code": "KR",
 				"name": "South Korea"
@@ -12,10 +12,10 @@
 				"name": "Gwangju"
 			},
 			"timezone": "Asia/Seoul",
-			"latitude": 35.2119,
-			"longitude": 126.8545,
-			"postalCode": "622"
+			"latitude": 35.1644,
+			"longitude": 126.8546,
+			"postalCode": "619"
 		},
-		"timestamp": 1776267824006
+		"timestamp": 1776526646736
 	}
 }
