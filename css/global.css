@@ -667,3 +667,39 @@ h1, h2, h3, h4, .headline {
 .appreciation-bg {
     background: linear-gradient(180deg, var(--background) 0%, var(--surface-container-low) 100%);
 }
+
+/* Save status indicator (Editor UX hardening) */
+.save-status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--on-surface-variant);
+  padding: 4px 8px;
+  border-radius: 99px;
+  background: var(--surface-container-low);
+  transition: all 0.2s ease;
+}
+
+.save-status-indicator.saving {
+  color: var(--primary);
+  background: rgba(144, 73, 81, 0.08);
+}
+
+.save-status-indicator.saved {
+  color: var(--secondary);
+  background: rgba(122, 139, 110, 0.08);
+}
+
+.save-status-indicator.failed {
+  color: #c62828;
+  background: rgba(198, 40, 40, 0.08);
+}
+
+.save-status-indicator .material-symbols-outlined {
+  font-size: 14px;
+}
+
+.save-status-indicator .last-saved-time {
+  font-weight: 500;
+}

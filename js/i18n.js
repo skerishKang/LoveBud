@@ -62,10 +62,54 @@
       ko: '데모 모드입니다. 실제 트리는 생성되지 않습니다.',
       en: 'Demo mode. No actual tree will be created.'
     },
-    'create_tree_fail': {
-      ko: '러브트리 만들기 실패. 다시 시도해 주세요.',
-      en: 'Failed to create LoveTree. Please try again.'
-    },
+     'create_tree_fail': {
+       ko: '러브트리 만들기 실패. 다시 시도해 주세요.',
+       en: 'Failed to create LoveTree. Please try again.'
+     },
+
+     // my-trees.js - State messages (UX hardening)
+     'myTrees.loading': {
+       ko: '러브트리 목록을 불러오는 중...',
+       en: 'Loading your LoveTrees...'
+     },
+     'myTrees.error_title': {
+       ko: '불러오기에 실패했습니다',
+       en: 'Failed to load'
+     },
+     'myTrees.error_desc': {
+       ko: '네트워크 연결을 확인하고 다시 시도해주세요.',
+       en: 'Please check your network connection and try again.'
+     },
+     'myTrees.retry': {
+       ko: '다시 시도',
+       en: 'Retry'
+     },
+     'myTrees.offline_mode': {
+       ko: '오프라인 모드 - 캐시된 데이터를 표시합니다',
+       en: 'Offline mode - Showing cached data'
+     },
+     'myTrees.load_failed': {
+       ko: '트리 목록을 불러오는데 실패했습니다',
+       en: 'Failed to load trees'
+     },
+
+     // editor.js - Save status (UX hardening)
+     'save_saving': {
+       ko: '저장 중...',
+       en: 'Saving...'
+     },
+     'save_saved': {
+       ko: '저장됨',
+       en: 'Saved'
+     },
+     'save_failed': {
+       ko: '저장 실패',
+       en: 'Save failed'
+     },
+     'save_saved_local': {
+       ko: '로컬 저장됨',
+       en: 'Saved locally'
+     },
     'visibility_public': {
       ko: '공개',
       en: 'Public'
