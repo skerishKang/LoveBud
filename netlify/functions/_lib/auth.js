@@ -29,7 +29,9 @@ function getAdmin() {
     }
 
     try {
+      console.log('[auth] Parsing Firebase service account JSON...');
       const serviceAccount = JSON.parse(raw);
+      console.log('[auth] Initializing Firebase Admin for project:', serviceAccount.project_id);
       admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
       });
@@ -38,7 +40,7 @@ function getAdmin() {
         'Invalid Firebase service account JSON: ' + parseError.message
       );
       err.status = 503;
-      console.error('[auth] Firebase service account JSON parse failed:', parseError.message);
+      console.error('[auth] CRITICAL: Firebase Admin init failed:', parseError.message, parseError.stack);
       throw err;
     }
   }

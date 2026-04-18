@@ -40,11 +40,17 @@ async function ensureUserRecord(user) {
   const r = await query('SELECT id FROM users WHERE id = $1', [user.uid]);
   if (!r.rows.length) {
     const dispName = user.displayName || (user.decoded && user.decoded.name) || '';
-    await query(
-      `INSERT INTO users (id, email, display_name, created_at, updated_at)
-       VALUES ($1, $2, $3, NOW(), NOW())`,
-      [user.uid, user.email || '', dispName]
-    );
+    console.log('[doc-store] Syncing new user:', user.uid);
+    try {
+      await query(
+        `INSERT INTO users (id, email, display_name, created_at, updated_at)
+         VALUES ($1, $2, $3, NOW(), NOW())`,
+        [user.uid, user.email || '', dispName]
+      );
+    } catch (err) {
+      console.error('[doc-store] Sync users table failed:', err.message);
+      // We don't throw here to avoid blocking completely if user record exists but SELECT failed
+    }
   }
 }
 
@@ -75,14 +81,18 @@ async function createTree(data, user = null) {
   
   const id = require('crypto').randomUUID();
   const payload = { nodes: [], edges: [] };
-  const safeTitle = data.title || '나의 Lovetree';
-  
-  const r = await query(
-    `INSERT INTO trees (id, owner_id, name, is_public, payload, node_count, created_at, updated_at)
-     VALUES ($1, $2, $3, $4, $5, 0, NOW(), NOW()) RETURNING *`,
-    [id, data.ownerId, safeTitle, data.visibility === 'public', JSON.stringify(payload)]
-  );
-  return r.rows[0];
+  try {
+    console.log('[doc-store] INSERT trees:', { ownerId: data.ownerId, title: safeTitle });
+    const r = await query(
+      `INSERT INTO trees (id, owner_id, name, is_public, payload, node_count, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, 0, NOW(), NOW()) RETURNING *`,
+      [id, data.ownerId, safeTitle, data.visibility === 'public', JSON.stringify(payload)]
+    );
+    return r.rows[0];
+  } catch (err) {
+    console.error('[doc-store] createTree SQL failed:', err.message, err.stack);
+    throw err;
+  }
 }
 
 async function updateTree(treeId, patch) {
