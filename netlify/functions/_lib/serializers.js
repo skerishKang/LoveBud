@@ -1,6 +1,12 @@
 /**
  * API response serializers
  * Internal doc-store shape ({ id, data: {...} }) -> flat camelCase API shape
+ * 
+ * Adapted for production schema v1 (001_initial_schema.sql):
+ *   trees: id, owner_id, title, visibility, created_at, updated_at
+ *   memories: id, tree_id, parent_id, title, memo, artist, source, source_url,
+ *              source_type, thumbnail, emotion_tags, timestamp, visibility,
+ *              created_at, updated_at
  */
 
 function serializeMemory(input) {
@@ -31,38 +37,6 @@ function serializeMemoryList(items) {
 
 function serializeTree(input, options = {}) {
   const raw = input && input.data ? { id: input.id, ...input.data } : (input || {});
-  const payload = {};
-
-  // 기존 payload가 있으면 우선 반영
-  if (raw.payload && typeof raw.payload === 'object' && !Array.isArray(raw.payload)) {
-    Object.assign(payload, raw.payload);
-  }
-
-  // doc-store가 payload를 spread해서 올려보내는 구조도 payload로 다시 묶음
-  const reserved = new Set([
-    'id',
-    'owner_id',
-    'ownerId',
-    'title',
-    'visibility',
-    'created_at',
-    'createdAt',
-    'updated_at',
-    'updatedAt',
-    'node_count',
-    'nodeCount',
-    'payload',
-  ]);
-
-  Object.keys(raw).forEach((key) => {
-    if (!reserved.has(key)) {
-      payload[key] = raw[key];
-    }
-  });
-
-  if (options.nodes) {
-    payload.nodes = options.nodes;
-  }
 
   return {
     id: raw.id || null,
@@ -71,11 +45,6 @@ function serializeTree(input, options = {}) {
     visibility: raw.visibility || 'private',
     createdAt: raw.created_at ?? raw.createdAt ?? null,
     updatedAt: raw.updated_at ?? raw.updatedAt ?? null,
-    nodeCount:
-      raw.node_count ??
-      raw.nodeCount ??
-      (Array.isArray(payload.nodes) ? payload.nodes.length : 0),
-    payload,
   };
 }
 
