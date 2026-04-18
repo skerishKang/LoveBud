@@ -105,14 +105,12 @@
 
     /**
      * Renders a single tree card
-     * 
+     *
      * @param {Object} tree - Tree view model
      * @param {number} index - Card index (for animation delay)
-     * @param {Function} onClick - Click handler (optional, uses default navigation if omitted)
-     * @param {Function} onHover - Hover handler (optional)
      * @returns {string} HTML string
      */
-    function renderTreeCard(tree, index, onClick, onHover) {
+    function renderTreeCard(tree, index) {
         const firstMem = tree.memories[0];
         const lastMem = tree.memories[tree.memories.length - 1];
         
@@ -171,32 +169,6 @@
 
         // If custom handlers provided, return plain HTML - caller attaches events
         return html;
-    }
-
-    /**
-     * Attaches default event handlers to card element
-     * @param {HTMLElement} cardEl - Card DOM element
-     * @param {Object} tree - Tree view model
-     * @param {Function} onClickOverride - Optional click override
-     */
-    function attachCardEvents(cardEl, tree, onClickOverride) {
-        if (!cardEl) return;
-
-        const clickHandler = () => {
-            if (onClickOverride) {
-                onClickOverride(tree);
-                return;
-            }
-            
-            // Default: navigate to first memory
-            if (tree.memories && tree.memories.length > 0) {
-                const firstMemory = tree.memories[0];
-                const basePath = getBasePath();
-                window.location.href = `${basePath}detail.html?id=${firstMemory.id}&tree=${tree.id}&from=browse`;
-            }
-        };
-
-        cardEl.addEventListener('click', clickHandler);
     }
 
     /**
@@ -273,13 +245,13 @@
 
     /**
      * Renders all results (cards or empty state)
-     * 
+     *
      * @param {Array} trees - Tree view models
-     * @param {Object} options - Options { isDemo?, onCardClick?, onCardHover? }
+     * @param {Object} options - Options { isDemo? }
      * @returns {string} HTML string
      */
     function renderResults(trees, options = {}) {
-        const { isDemo = false, onCardClick, onCardHover } = options;
+        const { isDemo = false } = options;
 
         // Ensure animations
         _addAnimations();
@@ -289,13 +261,13 @@
         }
 
         let html = '';
-        
+
         if (isDemo) {
             html += renderDemoBadge();
         }
 
         trees.forEach((tree, index) => {
-            html += renderTreeCard(tree, index, onCardClick, onCardHover);
+            html += renderTreeCard(tree, index);
         });
 
         return html;
@@ -324,7 +296,6 @@
     window.LoveBudSearchCardRenderer = {
         init: init,
         renderTreeCard: renderTreeCard,
-        attachCardEvents: attachCardEvents,
         renderResults: renderResults,
         renderLoading: renderLoading,
         renderNoTreesState: renderNoTreesState,

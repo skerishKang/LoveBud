@@ -1,0 +1,165 @@
+.login-shell {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 120px 48px 80px;
+}
+
+.login-card {
+    width: 100%;
+    max-width: 480px;
+    background: white;
+    padding: 64px;
+    border-radius: 3rem;
+    box-shadow: 0 40px 100px rgba(0,0,0,0.1);
+    text-align: center;
+    border: 1px solid rgba(0,0,0,0.02);
+}
+
+.login-btn-google {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    background: white;
+    border: 1px solid var(--outline-variant);
+    padding: 16px;
+    border-radius: 1.25rem;
+    font-weight: 700;
+    font-family: var(--font-heading);
+    cursor: pointer;
+    margin-bottom: 24px;
+    transition: all 0.3s;
+}
+
+.login-btn-google:hover {
+    background: #f8f9fa;
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+}
+
+.login-divider {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    color: var(--on-surface-variant);
+    opacity: 0.6;
+    font-size: 11px;
+    font-weight: 800;
+    margin: 32px 0;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.login-divider::before,
+.login-divider::after {
+    content: "";
+    flex-grow: 1;
+    height: 1px;
+    background: var(--outline-variant);
+}
+
+.badge-group {
+    margin-top: 48px;
+    padding-top: 32px;
+    border-top: 1px solid var(--outline-variant);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+}
+
+.badge {
+    font-size: 11px;
+    font-weight: 800;
+    padding: 6px 14px;
+    background: var(--surface-container-low);
+    color: var(--on-surface-variant);
+    border-radius: 99px;
+    text-transform: uppercase;
+}
+
+/* User dropdown menu */
+.user-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.user-dropdown-trigger {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 8px 12px;
+    border-radius: 99px;
+    transition: all 0.2s;
+}
+
+.user-dropdown-trigger:hover {
+    background: var(--surface-container-low);
+}
+
+.user-dropdown-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 8px;
+    background: white;
+    border-radius: 1rem;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.12);
+    border: 1px solid var(--outline-variant);
+    min-width: 200px;
+    z-index: 1000;
+    display: none;
+    overflow: hidden;
+}
+
+.user-dropdown-menu.show {
+    display: block;
+}
+
+.user-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 20px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--on-surface);
+    cursor: pointer;
+    transition: background 0.2s;
+    text-decoration: none;
+    width: 100%;
+    text-align: left;
+    border: none;
+    background: none;
+}
+
+.user-dropdown-item:hover {
+    background: var(--surface-container-low);
+}
+
+.user-dropdown-item .material-symbols-outlined {
+    font-size: 18px;
+    color: var(--on-surface-variant);
+}
+
+.dropdown-divider {
+    height: 1px;
+    background: var(--outline-variant);
+    margin: 4px 0;
+}
+
+@media (max-width: 768px) {
+    .login-shell {
+        padding: 24px;
+    }
+
+    .login-card {
+        padding: 40px 24px;
+    }
+}

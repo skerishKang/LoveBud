@@ -32,12 +32,15 @@ status = 200
 
 # Community
 [[redirects]]
+from = "/api/community/trees"
+to = "/.netlify/functions/community-trees"
+status = 200
+
+[[redirects]]
 from = "/api/community/memories"
 to = "/.netlify/functions/community-memories"
 status = 200
 
-# ── SPA Fallback (must be LAST) ────────────────────────────────────────────────
-[[redirects]]
-from = "/*"
-to = "/index.html"
-status = 200
+# ── Static multipage app: no global SPA fallback ─────────────────────────────
+# LoveBud currently serves explicit HTML pages under /pages.
+# Invalid paths should surface as 404s instead of silently falling back to /index.html.

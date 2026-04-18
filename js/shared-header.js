@@ -207,6 +207,15 @@
         }
         container.innerHTML = buildHeaderHTML();
         setupLangDropdown(); // 언어 드롭다운 이벤트 설정
+        // 헤더가 동적으로 렌더된 뒤 auth 컨테이너가 생기므로,
+        // auth.js가 DOMContentLoaded 시점을 놓쳤더라도 다시 바인딩되게 한다.
+        if (typeof window.initAuth === 'function') {
+            try {
+                window.initAuth();
+            } catch (e) {
+                console.error('[shared-header] initAuth after render failed:', e);
+            }
+        }
         console.log('[shared-header] Rendered for:', getCurrentPage(), '| context:', getContextType());
     };
 
