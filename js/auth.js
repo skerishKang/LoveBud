@@ -11,7 +11,18 @@
  * Version: ?v=20260416-16
  */
 
-var EMAIL_AUTH_MODE = window.__initialAuthMode || 'login';
+var EMAIL_AUTH_MODE = (function() {
+  try {
+    if (window.__initialAuthMode === 'signup' || window.__initialAuthMode === 'login') {
+      return window.__initialAuthMode;
+    }
+    var params = new URLSearchParams(window.location.search);
+    var mode = params.get('mode');
+    return mode === 'signup' ? 'signup' : 'login';
+  } catch (e) {
+    return 'login';
+  }
+})();
 var AUTH_INIT_FLAG = '__lovebudAuthInitialized';
 var DROPDOWN_LISTENER_ATTACHED = false;
 var AUTH_READY_FLAG = '__lovebudAuthReady';
@@ -203,6 +214,8 @@ function initAuth() {
 
   setupGoogleBtn();
   setupEmailAuthForm();
+  setupSignupForm();
+  setupSignupGoogleBtn();
 }
 
 // ── Offline Fallback ──────────────────────────────────────────────────────────
@@ -543,12 +556,27 @@ async function signOut() {
 // ── Google Btn (login.html) ───────────────────────────────────────────────────
 
 function setupGoogleBtn() {
-  var googleBtn = document.querySelector('.login-btn-google');
+  var googleBtn = document.getElementById('login-btn-google');
   if (!googleBtn) return;
   googleBtn.onclick = null;
   googleBtn.addEventListener('click', function (e) {
     e.preventDefault();
     signInWithGoogle();
+  });
+}
+
+async function signUpWithGoogle() {
+  // Signup also uses Google Auth, but keeps separate semantic entry point.
+  await signInWithGoogle();
+}
+
+function setupSignupGoogleBtn() {
+  var signupGoogleBtn = document.getElementById('signup-btn-google');
+  if (!signupGoogleBtn) return;
+  signupGoogleBtn.onclick = null;
+  signupGoogleBtn.addEventListener('click', function (e) {
+    e.preventDefault();
+    signUpWithGoogle();
   });
 }
 
@@ -660,6 +688,65 @@ form.addEventListener('submit', async function (e) {
     } finally {
       submitBtn.disabled = false;
       submitBtn.textContent = originalText;
+    }
+  });
+}
+
+function setupSignupForm() {
+  var signupForm = document.getElementById('signup-form');
+  if (!signupForm) return;
+  if (typeof firebase === 'undefined' || !firebase.auth) return;
+
+  var emailInput = document.getElementById('signup-email');
+  var passwordInput = document.getElementById('signup-password');
+  var submitBtn = document.getElementById('signup-submit');
+
+  signupForm.addEventListener('submit', async function (e) {
+    e.preventDefault();
+
+    var envError = getEnvironmentCheckError();
+    if (envError) {
+      alert(envError);
+      return;
+    }
+
+    var email = String(emailInput?.value || '').trim();
+    var password = String(passwordInput?.value || '').trim();
+
+    if (!email || !password) {
+      alert('이메일과 비밀번호를 입력해주세요.');
+      return;
+    }
+    if (password.length < 6) {
+      alert('비밀번호는 최소 6자 이상이어야 합니다.');
+      return;
+    }
+
+    if (submitBtn) {
+      submitBtn.disabled = true;
+    }
+    var originalText = submitBtn ? submitBtn.textContent : '';
+    if (submitBtn) {
+      submitBtn.textContent = '가입 중...';
+    }
+
+    try {
+      if (typeof initFirebase === 'function') initFirebase();
+      if (!firebase.apps || !firebase.apps.length) {
+        throw new Error('Firebase not initialized');
+      }
+
+      await firebase.auth().createUserWithEmailAndPassword(email, password);
+      window.location.href = getRedirectTarget();
+    } catch (error) {
+      console.error('Signup error:', error);
+      var friendlyMessage = getFriendlyErrorMessage(error, false);
+      alert(friendlyMessage || '회원가입 중 오류가 발생했습니다.');
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+      }
     }
   });
 }

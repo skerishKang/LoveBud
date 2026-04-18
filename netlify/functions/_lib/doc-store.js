@@ -1,8 +1,16 @@
 /**
- * LoveBud - Document Store (Simplified)
+ * LoveBud - Document Store
  *
- * Schema: trees(id, owner_id, name, is_public, node_count, payload JSONB)
- * memories 테이블 없음 → nodes는 trees.payload.nodes 배열에 저장
+ * Canonical model: trees.payload.nodes (JSONB) stores memories as nested nodes.
+ * The `memories` table (001_initial_schema.sql) is legacy — do not use.
+ *
+ * trees table schema (after 002_add_payload_columns migration):
+ *   id, owner_id, name, is_public (bool), node_count (int),
+ *   payload (JSONB — {"nodes": [...]}), title (compat), visibility (compat),
+ *   created_at, updated_at
+ *
+ * doc-store.js reads/writes: name, is_public, node_count, payload
+ * title/visibility columns are kept for backward compatibility with seed data.
  */
 
 const { query } = require('./db');
