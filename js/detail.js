@@ -118,6 +118,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             // 정상 트리 컨텍스트
             const memoryCount = Array.isArray(memories) ? memories.length : 0;
             const treeTitle = tree.title || '러브트리';
+            
+            // 📌 visibility 표시
+            const visibility = tree.visibility || 'private';
+            const isPublic = visibility === 'public';
+            const i18n = window.t || ((k) => k);
+            const visIcon = isPublic ? 'public' : 'lock';
+            const visLabel = isPublic ? i18n('visibility_public') : i18n('visibility_private');
+            const visStyle = isPublic 
+                ? 'background:rgba(76,175,80,0.1);color:#4caf50;'
+                : 'background:rgba(158,158,158,0.1);color:#757575;';
+            
             const contextMessages = {
                 'browse': {
                     icon: 'explore',
@@ -143,10 +154,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <span class="material-symbols-outlined" style="color: var(--primary); font-size: 24px;">${contextInfo.icon}</span>
                     </div>
                     <div style="flex: 1; min-width: 0;">
-                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;flex-wrap:wrap;">
                             <span style="font-size: 12px; font-weight: 800; color: var(--primary); text-transform: uppercase; letter-spacing: 1px;">${contextInfo.label}</span>
                             <span style="color: var(--outline-variant);">·</span>
                             <span style="font-size: 12px; color: var(--on-surface-variant);">${memoryCount}개 순간</span>
+                            <!-- visibility 배지 -->
+                            <span style="${visStyle}font-size:11px;padding:2px 8px;border-radius:99px;display:inline-flex;align-items:center;gap:4px;margin-left:4px;">
+                                <span class="material-symbols-outlined" style="font-size:12px;">${visIcon}</span>
+                                ${visLabel}
+                            </span>
                         </div>
                         <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--on-surface); margin: 0; line-height: 1.3;">${treeTitle}</h2>
                         <p style="font-size: 13px; color: var(--on-surface-variant); margin-top: 6px; line-height: 1.5;">

@@ -11,7 +11,7 @@
  * Version: ?v=20260416-16
  */
 
-var EMAIL_AUTH_MODE = 'login';
+var EMAIL_AUTH_MODE = window.__initialAuthMode || 'login';
 var AUTH_INIT_FLAG = '__lovebudAuthInitialized';
 var DROPDOWN_LISTENER_ATTACHED = false;
 var AUTH_READY_FLAG = '__lovebudAuthReady';
