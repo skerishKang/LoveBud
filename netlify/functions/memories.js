@@ -76,7 +76,7 @@ exports.handler = async (event) => {
       }
 
       const targetTree = await getTree(treeId);
-      if (!targetTree || targetTree.data.owner_id !== user.uid) {
+      if (!targetTree || targetTree.owner_id !== user.uid) {
         throw httpError(403, 'Access denied: not your tree');
       }
 
@@ -105,7 +105,7 @@ exports.handler = async (event) => {
 
       if (params.treeId) {
         const tree = await getTree(params.treeId);
-        if (!tree || tree.data.owner_id !== user.uid) {
+        if (!tree || tree.owner_id !== user.uid) {
           throw httpError(403, 'Access denied: not your tree');
         }
         allowedTreeIds = [params.treeId];
