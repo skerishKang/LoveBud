@@ -1,0 +1,44 @@
+{
+  "groupName": "XG",
+  "groupNameKorean": "XG",
+  "fanPersona": "XG 팬으로서 감정을 기록하고 싶다",
+  "testUrls": [
+    {
+      "id": 1,
+      "url": "https://www.youtube.com/watch?v=QZEmM8X1t5E",
+      "title": "Tippy Toes",
+      "description": "데뷔곡이고 정말 좋았어요"
+    },
+    {
+      "id": 2,
+      "url": "https://www.youtube.com/watch?v=1X_9v2s9k4",
+      "title": "MASCARA",
+      "description": "중독성이 정말 강했어요"
+    },
+    {
+      "id": 3,
+      "url": "https://www.youtube.com/watch?v=2Y_8w3v7l0",
+      "title": "SHOOTING STAR",
+      "description": "다들 너무 좋았어요"
+    },
+    {
+      "id": 4,
+      "url": "https://www.youtube.com/watch?v=3Z_9x6u4m6",
+      "title": "GRL GVNG",
+      "description": "대박이었어요!"
+    },
+    {
+      "id": 5,
+      "url": "https://www.youtube.com/watch?v=4A_7y5t2n8",
+      "title": "Left Right",
+      "description": "글로벌 히트였어요"
+    },
+    {
+      "id": 6,
+      "url": "https://www.youtube.com/watch?v=5B_6v4q1o0",
+      "title": "Crazy",
+      "description": "컨셉이 정말 좋았어요"
+    }
+  ],
+  "treeName": "XG 콘텐츠 정리용 트리"
+}

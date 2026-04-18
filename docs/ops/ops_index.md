@@ -27,6 +27,7 @@
 | 파일명 | 설명 |
 |--------|------|
 | [DOC_WORKFLOW.md](DOC_WORKFLOW.md) | 문서 작업 흐름 (대화 → 문서 → 구현) 및 문서군 역할 정의 |
+| [SKILL_REGISTRY.md](SKILL_REGISTRY.md) | 로컬 스킬 목록, 트리거, 새 세션에서의 우선 사용 규칙 |
 | [PATHS_AND_SHELLS.md](PATHS_AND_SHELLS.md) | 컴1/컴2 경로 판별 기준 및 셸 사용 규칙 |
 | [REMOTE_ACCESS_AND_WSL.md](REMOTE_ACCESS_AND_WSL.md) | 컴1→컴2 SSH 접근 및 WSL 드라이브 마운트 설정 |
 | [GIT_SSH_SETUP.md](GIT_SSH_SETUP.md) | Git SSH 키 설정 및 remote 구성 방법 |

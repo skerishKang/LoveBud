@@ -1,0 +1,44 @@
+{
+  "groupName": "NMIXX",
+  "groupNameKorean": "엔믹스",
+  "fanPersona": "엔믹스 팬으로서 감정을 기록하고 싶다",
+  "testUrls": [
+    {
+      "id": 1,
+      "url": "https://www.youtube.com/watch?v=EdxE56a3P9M",
+      "title": "O.O",
+      "description": "데뷔곡이고 정말 좋았어요"
+    },
+    {
+      "id": 2,
+      "url": "https://www.youtube.com/watch?v=Q0IRF0z4P3c",
+      "title": "Tank",
+      "description": "중독성 甲이었어요"
+    },
+    {
+      "id": 3,
+      "url": "https://www.youtube.com/watch?v=KshZILf3w5w",
+      "title": "Dice",
+      "description": "다들 너무 좋았어요"
+    },
+    {
+      "id": 4,
+      "url": "https://www.youtube.com/watch?v=kK3N5eX9s7w",
+      "title": "Love Like That",
+      "description": "감성곡인데 정말 좋아요"
+    },
+    {
+      "id": 5,
+      "url": "https://www.youtube.com/watch?v=W3g7L1hK9zM",
+      "title": "Party?",
+      "description": "대박이었어요!"
+    },
+    {
+      "id": 6,
+      "url": "https://www.youtube.com/watch?v=0AoG1M1lGfE",
+      "title": "Break The Wall",
+      "description": "컨셉이 정말 좋았어요"
+    }
+  ],
+  "treeName": "엔믹스 콘텐츠 정리용 트리"
+}

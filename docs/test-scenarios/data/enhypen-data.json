@@ -1,0 +1,44 @@
+{
+  "groupName": "Enhypen",
+  "groupNameKorean": "엔하이픈",
+  "fanPersona": "엔하이픈 팬으로서 감정을 기록하고 싶다",
+  "testUrls": [
+    {
+      "id": 1,
+      "url": "https://www.youtube.com/watch?v=0Z2MnUy4e9Q",
+      "title": "Given-Taken",
+      "description": "데뷔곡이고 정말 좋았어요"
+    },
+    {
+      "id": 2,
+      "url": "https://www.youtube.com/watch?v=cB7F2VzXwZM",
+      "title": "Let Me In",
+      "description": "컨셉이 정말 좋았어요"
+    },
+    {
+      "id": 3,
+      "url": "https://www.youtube.com/watch?v=k2p43l50kL4",
+      "title": "Drunk-Dazed",
+      "description": "중독성 甲이었어요"
+    },
+    {
+      "id": 4,
+      "url": "https://www.youtube.com/watch?v=0AoG1M1lGfE",
+      "title": "Tamed-Dashed",
+      "description": "다들 너무 좋았어요"
+    },
+    {
+      "id": 5,
+      "url": "https://www.youtube.com/watch?v=HUE7B8W3qos",
+      "title": "Polaroid Love",
+      "description": "감성곡인데 정말 좋아요"
+    },
+    {
+      "id": 6,
+      "url": "https://www.youtube.com/watch?v=S3KBu4L-U1E",
+      "title": "Bite Me",
+      "description": "글로벌 히트였어요"
+    }
+  ],
+  "treeName": "엔하이픈 콘텐츠 정리용 트리"
+}

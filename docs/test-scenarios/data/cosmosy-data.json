@@ -1,0 +1,44 @@
+{
+  "groupName": "Cosmosy",
+  "groupNameKorean": "코스모시",
+  "fanPersona": "코스모시 팬으로서 감정을 기록하고 싶다",
+  "testUrls": [
+    {
+      "id": 1,
+      "url": "https://www.youtube.com/watch?v=abc1234567",
+      "title": "Lucky=One",
+      "description": "데뷔곡이고 정말 좋았어요"
+    },
+    {
+      "id": 2,
+      "url": "https://www.youtube.com/watch?v=def2345678",
+      "title": "zigy=zigy",
+      "description": "중독성이 정말 강했어요"
+    },
+    {
+      "id": 3,
+      "url": "https://www.youtube.com/watch?v=ghi3456789",
+      "title": "the a(e)nd",
+      "description": "다들 너무 좋았어요"
+    },
+    {
+      "id": 4,
+      "url": "https://www.youtube.com/watch?v=jkl4567890",
+      "title": "Physics",
+      "description": "대박이었어요!"
+    },
+    {
+      "id": 5,
+      "url": "https://www.youtube.com/watch?v=mno5678901",
+      "title": "Baby Don't Cry",
+      "description": "감성곡인데 정말 좋아요"
+    },
+    {
+      "id": 6,
+      "url": "https://www.youtube.com/watch?v=pqr6789012",
+      "title": "Dream",
+      "description": "글로벌 히트였어요"
+    }
+  ],
+  "treeName": "코스모시 콘텐츠 정리용 트리"
+}

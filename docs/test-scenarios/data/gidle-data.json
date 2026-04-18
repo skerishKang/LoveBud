@@ -1,0 +1,44 @@
+{
+  "groupName": "Gidle",
+  "groupNameKorean": "(여자)아이들",
+  "fanPersona": "(여자)아이들 팬으로서 감정을 기록하고 싶다",
+  "testUrls": [
+    {
+      "id": 1,
+      "url": "https://www.youtube.com/watch?v=9qtL-0HlP5c",
+      "title": "LATATA",
+      "description": "데뷔곡이고 정말 좋았어요"
+    },
+    {
+      "id": 2,
+      "url": "https://www.youtube.com/watch?v=MgqC8mKd8Fw",
+      "title": "HANN",
+      "description": "중독성 甲이었어요"
+    },
+    {
+      "id": 3,
+      "url": "https://www.youtube.com/watch?v=2dY0lZ8Z6p0",
+      "title": "Senorita",
+      "description": "다들 너무 좋았어요"
+    },
+    {
+      "id": 4,
+      "url": "https://www.youtube.com/watch?v=3l5l4X5v7w8",
+      "title": "Oh My God",
+      "description": "대박이었어요!"
+    },
+    {
+      "id": 5,
+      "url": "https://www.youtube.com/watch?v=kK3N5eX9s7w",
+      "title": "TOMBOY",
+      "description": "글로벌 히트였어요"
+    },
+    {
+      "id": 6,
+      "url": "https://www.youtube.com/watch?v=Q0IRF0z4P3c",
+      "title": "Nxde",
+      "description": "컨셉이 정말 좋았어요"
+    }
+  ],
+  "treeName": "(여자)아이들 콘텐츠 정리용 트리"
+}

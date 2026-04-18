@@ -1,0 +1,44 @@
+{
+  "groupName": "TwoNE1",
+  "groupNameKorean": "2NE1",
+  "fanPersona": "2NE1 팬으로서 감정을 기록하고 싶다",
+  "testUrls": [
+    {
+      "id": 1,
+      "url": "https://www.youtube.com/watch?v=j7Y2Z8r4Z9w",
+      "title": "I Don't Care",
+      "description": "데뷔곡이고 가장 좋아하는曲"
+    },
+    {
+      "id": 2,
+      "url": "https://www.youtube.com/watch?v=CVnE-GLpz1U",
+      "title": "I Love You",
+      "description": "발라드曲이지만 정말 감성적이에요"
+    },
+    {
+      "id": 3,
+      "url": "https://www.youtube.com/watch?v=aPercr3CWH0",
+      "title": "I AM THE BEST",
+      "description": "자신감炸裂인曲"
+    },
+    {
+      "id": 4,
+      "url": "https://www.youtube.com/watch?v=bKKuKPb2pU",
+      "title": "Falling In Love",
+      "description": "중독성 甲이었어요"
+    },
+    {
+      "id": 5,
+      "url": "https://www.youtube.com/watch?v=Da5Ut2EkaE8",
+      "title": "Come Back Home",
+      "description": "다시 듣고 싶어요"
+    },
+    {
+      "id": 6,
+      "url": "https://www.youtube.com/watch?v=8fPjuGaaX2I",
+      "title": "그리워해",
+      "description": "마지막曲이라 더 애틋해요"
+    }
+  ],
+  "treeName": "2NE1 콘텐츠 정리용 트리"
+}
