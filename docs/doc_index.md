@@ -94,6 +94,7 @@ UI/UX 디자인 및 비주얼 프롬프트는 `docs/design/` 아래에 정리됩
 - [REMOTE_ACCESS_AND_WSL.md](./ops/REMOTE_ACCESS_AND_WSL.md) - 컴1 -> 컴2 SSH, WSL `G:` 마운트, Windows Codex 셸 실행 이슈
 - [DOC_WORKFLOW.md](./ops/DOC_WORKFLOW.md) - 대화 → 문서 → 구현으로 이어지는 작업 흐름
 - [SKILL_REGISTRY.md](./ops/SKILL_REGISTRY.md) - 로컬 스킬 목록과 작업 유형별 트리거
+- [AI_REQUEST_PATTERNS.md](./ops/AI_REQUEST_PATTERNS.md) - 자연어 요청을 스킬 절차로 해석하는 패턴 모음
 - [ASSET_VERSIONING.md](./ops/ASSET_VERSIONING.md) - 정적 자산 버저닝
 - [CACHE_POLICY.md](./ops/CACHE_POLICY.md) - 캐시 정책
 - [DEPLOY_CHECKLIST.md](./ops/DEPLOY_CHECKLIST.md) - 배포 체크리스트
