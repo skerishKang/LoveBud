@@ -112,6 +112,7 @@ async function deleteTree(treeId) {
 }
 
 async function queryTrees(filters = {}) {
+  console.log('[queryTrees] start', { filters });
   const p = [], w = [];
   if (filters.ownerId) { p.push(filters.ownerId); w.push(`owner_id = $${p.length}`); }
   if (filters.visibility) {
@@ -123,24 +124,67 @@ async function queryTrees(filters = {}) {
   if (w.length) sql += ` WHERE ${w.join(' AND ')}`;
   sql += ' ORDER BY created_at DESC';
   if (filters.limit) { p.push(Number(filters.limit)); sql += ` LIMIT $${p.length}`; }
-  const r = await query(sql, p);
-  return r.rows.map(row => ({
-    id: row.id,
-    data: { id: row.id, owner_id: row.owner_id, title: row.title, visibility: row.visibility ? 'public' : 'private', created_at: row.created_at, updated_at: row.updated_at, ...(row.payload || {}) }
-  }));
+  
+  try {
+    console.log('[queryTrees] executing SQL', { sql: sql.substring(0, 100), paramCount: p.length });
+    const r = await query(sql, p);
+    console.log('[queryTrees] success', { count: r.rows.length });
+    return r.rows.map(row => ({
+      id: row.id,
+      data: { id: row.id, owner_id: row.owner_id, title: row.title, visibility: row.visibility ? 'public' : 'private', created_at: row.created_at, updated_at: row.updated_at, ...(row.payload || {}) }
+    }));
+  } catch (err) {
+    console.error('[queryTrees] failed', { error: err.message, code: err.code, stack: err.stack?.substring(0, 200) });
+    throw err;
+  }
 }
 
 async function createTree(data) {
+  console.log('[createTree] start', { ownerId: data.ownerId, title: data.title, visibility: data.visibility });
+  
+  // Auto-provision user if not exists (lazy provisioning for new sign-ups).
+  // trees.owner_id FK → users.id (Firebase UID).
+  // If the user row doesn't exist yet, INSERT is no-op via ON CONFLICT.
+  try {
+    console.log('[createTree] ensuring user row', { ownerId: data.ownerId });
+    await query(
+      `INSERT INTO users (id, created_at, updated_at) VALUES ($1, NOW(), NOW())
+       ON CONFLICT (id) DO NOTHING`,
+      [data.ownerId]
+    );
+    console.log('[createTree] user row ensured');
+  } catch (userErr) {
+    console.error('[createTree] user provisioning failed', { 
+      error: userErr.message, 
+      code: userErr.code,
+      stack: userErr.stack?.substring(0, 200)
+    });
+    throw userErr;
+  }
+
   const id = require('crypto').randomUUID();
   const isPublic = data.visibility === 'public';
-  const r = await query(
-    `INSERT INTO trees (id, owner_id, name, is_public, node_count, created_at, updated_at, payload)
-     VALUES ($1,$2,$3,$4,0,NOW(),NOW(),$5)
-     RETURNING id, owner_id, name as title, is_public as visibility, created_at, updated_at, payload`,
-    [id, data.ownerId, data.title || '나의 Lovetree', isPublic, JSON.stringify({})]
-  );
-  const row = r.rows[0];
-  return { id: row.id, data: { id: row.id, owner_id: row.owner_id, title: row.title, visibility: row.visibility ? 'public' : 'private', created_at: row.created_at, updated_at: row.updated_at, ...(row.payload || {}) } };
+  
+  try {
+    console.log('[createTree] inserting tree', { id, ownerId: data.ownerId, isPublic });
+    const r = await query(
+      `INSERT INTO trees (id, owner_id, name, is_public, node_count, created_at, updated_at, payload)
+      VALUES ($1,$2,$3,$4,0,NOW(),NOW(),$5)
+      RETURNING id, owner_id, name as title, is_public as visibility, created_at, updated_at, payload`,
+      [id, data.ownerId, data.title || '나의 Lovetree', isPublic, JSON.stringify({})]
+    );
+    const row = r.rows[0];
+    console.log('[createTree] tree inserted successfully', { treeId: row.id });
+    return { id: row.id, data: { id: row.id, owner_id: row.owner_id, title: row.title, visibility: row.visibility ? 'public' : 'private', created_at: row.created_at, updated_at: row.updated_at, ...(row.payload || {}) } };
+  } catch (treeErr) {
+    console.error('[createTree] tree insert failed', {
+      error: treeErr.message,
+      code: treeErr.code,
+      detail: treeErr.detail,
+      stack: treeErr.stack?.substring(0, 200)
+    });
+    throw treeErr;
+  }
 }
 
 async function updateTree(treeId, patch) {

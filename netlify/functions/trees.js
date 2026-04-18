@@ -11,6 +11,9 @@ const { serializeTree, serializeTreeList } = require('./_lib/serializers');
 
 exports.handler = async (event) => {
   const requestOrigin = event.headers?.origin || event.headers?.Origin || '';
+  
+  // 관측성: 핸들러 진입 로깅
+  console.log('[trees] handler entry', { method: event.httpMethod, path: event.path });
 
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 204, headers: { 'Access-Control-Allow-Origin': '*' }, body: '' };
@@ -48,26 +51,38 @@ exports.handler = async (event) => {
 
     // ── GET: list trees ─────────────────────────────────────────────────────
     if (event.httpMethod === 'GET') {
+      console.log('[trees] GET handler start');
+      
       // Try authenticated first; fall back to public community trees
       let trees;
       let user = null;
       try {
         user = await requireUser(event);
-      } catch (_auth) {
+        console.log('[trees] auth success', { uid: user?.uid });
+      } catch (authErr) {
         // Unauthenticated — will show public trees only
+        console.log('[trees] auth failed (public mode)', { error: authErr.message });
         user = null;
       }
       
       try {
+        console.log('[trees] querying trees', { ownerId: user?.uid, mode: user ? 'private' : 'public' });
         if (user) {
           trees = await queryTrees({ ownerId: user.uid });
         } else {
           trees = await queryTrees({ visibility: 'public', limit: 20 });
         }
+        console.log('[trees] query success', { count: trees?.length || 0 });
       } catch (dbError) {
+        console.error('[trees] query failed', { 
+          error: dbError.message, 
+          code: dbError.code,
+          stack: dbError.stack?.substring(0, 200)
+        });
         return handleError('trees-db', dbError, requestOrigin);
       }
 
+      console.log('[trees] GET handler success');
       return ok(serializeTreeList(trees), { 'Access-Control-Allow-Origin': '*' });
     }
 
