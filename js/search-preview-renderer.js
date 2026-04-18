@@ -167,8 +167,7 @@
     function renderPlaceholder() {
         return `
             <div style="width:100%; height:100%; display:flex; flex-direction: column; align-items:center; justify-content:center; color: var(--on-surface-variant); font-size: 14px; text-align: center; padding: 20px;">
-                <span class="material-symbols-outlined" style="font-size: 48px; margin-bottom: 12px; opacity: 0.4;">forest</span>
-                <div>카드를 선택하여<br>감정 경로를 미리보세요</div>
+                <p>카드를 선택하면 감정의 흐름과 대표 순간을 미리 볼 수 있어요.</p>
             </div>
         `;
     }
