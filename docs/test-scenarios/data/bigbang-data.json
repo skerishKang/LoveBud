@@ -1,0 +1,44 @@
+{
+  "groupName": "BigBang",
+  "groupNameKorean": "빅뱅",
+  "fanPersona": "빅뱅 팬으로서 감정을 기록하고 싶다",
+  "testUrls": [
+    {
+      "id": 1,
+      "url": "https://www.youtube.com/watch?v=AAbokV76SvU",
+      "title": "Haru Haru",
+      "description": "이름이 Haru Haru이고 정말 좋아하는 곡"
+    },
+    {
+      "id": 2,
+      "url": "https://www.youtube.com/watch?v=M-2vLHG5KGo",
+      "title": "Lies",
+      "description": "초기 히트곡 중 가장 좋아요"
+    },
+    {
+      "id": 3,
+      "url": "https://www.youtube.com/watch?v=VJFpUk2BCrE",
+      "title": "Last Farewell",
+      "description": "중독성 甲이었어요"
+    },
+    {
+      "id": 4,
+      "url": "https://www.youtube.com/watch?v=t8R9BXq1jQ8",
+      "title": "Heartbreaker",
+      "description": "SOL의 걸크러쉬임"
+    },
+    {
+      "id": 5,
+      "url": "https://www.youtube.com/watch?v=GpgmuLRVCyE",
+      "title": "Fantastic Baby",
+      "description": "콘서트에서 무조건 부르는曲"
+    },
+    {
+      "id": 6,
+      "url": "https://www.youtube.com/watch?v=2zhV5IYPhc4",
+      "title": " Bae Bae",
+      "description": "다들 너무 좋았어요"
+    }
+  ],
+  "treeName": "빅뱅 콘텐츠 정리용 트리"
+}

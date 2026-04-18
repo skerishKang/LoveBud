@@ -1,0 +1,44 @@
+{
+  "groupName": "StrayKids",
+  "groupNameKorean": "스트레이키즈",
+  "fanPersona": "스트레이키즈 팬으로서 감정을 기록하고 싶다",
+  "testUrls": [
+    {
+      "id": 1,
+      "url": "https://www.youtube.com/watch?v=TYbD7t8v6L4",
+      "title": "District 9",
+      "description": "데뷔곡이고 정말 좋았어요"
+    },
+    {
+      "id": 2,
+      "url": "https://www.youtube.com/watch?v=R7q0gDBnDE4",
+      "title": "My Pace",
+      "description": "중독성이 정말 강했어요"
+    },
+    {
+      "id": 3,
+      "url": "https://www.youtube.com/watch?v=Q3QKA3pNP3s",
+      "title": "Boomerang",
+      "description": "중독성 甲이었어요"
+    },
+    {
+      "id": 4,
+      "url": "https://www.youtube.com/watch?v=sK5m8lV6pK4",
+      "title": "God's Menu",
+      "description": "대박이었어요!"
+    },
+    {
+      "id": 5,
+      "url": "https://www.youtube.com/watch?v=7jMSK3PWMG0",
+      "title": "Back Door",
+      "description": "다들 너무 좋았어요"
+    },
+    {
+      "id": 6,
+      "url": "https://www.youtube.com/watch?v=yEvXx8zVEtc",
+      "title": "Maniac",
+      "description": "전 세계가 달렸어요"
+    }
+  ],
+  "treeName": "스트레이키즈 콘텐츠 정리용 트리"
+}

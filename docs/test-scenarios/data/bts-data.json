@@ -1,0 +1,44 @@
+{
+  "groupName": "BTS",
+  "groupNameKorean": "방탄소년단",
+  "fanPersona": "BTS 팬으로서 감정을 기록하고 싶다",
+  "testUrls": [
+    {
+      "id": 1,
+      "url": "https://www.youtube.com/watch?v=gdZLi9oWNZg",
+      "title": "Dynamite Official MV",
+      "description": "힘든 하루였는데 에너지가 생겼어요"
+    },
+    {
+      "id": 2,
+      "url": "https://www.youtube.com/watch?v=gxbwKfLqGkU",
+      "title": "Spring Day 뮤비",
+      "description": "이 노래는 위로가 돼요"
+    },
+    {
+      "id": 3,
+      "url": "https://www.youtube.com/watch?v=CuklIb9d1VQ",
+      "title": "Butter 무대",
+      "description": "그래미 노미네이션 축하해요"
+    },
+    {
+      "id": 4,
+      "url": "https://www.youtube.com/watch?v=kTlv5_Bs8aw",
+      "title": "Blood Sweat & Tears",
+      "description": "첫 입덕곡이에요"
+    },
+    {
+      "id": 5,
+      "url": "https://www.youtube.com/watch?v=hmE9fyaAxnU",
+      "title": "Permission to Dance",
+      "description": "코로나 때 힘이 됐어요"
+    },
+    {
+      "id": 6,
+      "url": "https://www.youtube.com/watch?v=pBuZEGYXA6E",
+      "title": "ON 퍼포먼스",
+      "description": "안무가 정말 대단해요"
+    }
+  ],
+  "treeName": "BTS 콘텐츠 정리용 트리"
+}

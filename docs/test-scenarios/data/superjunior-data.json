@@ -1,0 +1,44 @@
+{
+  "groupName": "SuperJunior",
+  "groupNameKorean": "슈퍼주니어",
+  "fanPersona": "슈퍼주니어 팬으로서 감정을 기록하고 싶다",
+  "testUrls": [
+    {
+      "id": 1,
+      "url": "https://www.youtube.com/watch?v=xmM-YpH3KzU",
+      "title": "U",
+      "description": "데뷔곡이고 정말 상징적이에요"
+    },
+    {
+      "id": 2,
+      "url": "https://www.youtube.com/watch?v=gk0xEaU5f7I",
+      "title": "Don't Don",
+      "description": "역시 곡이 정말 좋았어요"
+    },
+    {
+      "id": 3,
+      "url": "https://www.youtube.com/watch?v=4jRVkyN03yg",
+      "title": "It's You",
+      "description": "가장 좋아하는OST래요"
+    },
+    {
+      "id": 4,
+      "url": "https://www.youtube.com/watch?v=6pA8xKkjw6g",
+      "title": " MAMACITA",
+      "description": "중간중간 느낌이 좋았어요"
+    },
+    {
+      "id": 5,
+      "url": "https://www.youtube.com/watch?v=wbY4Kj0A4s8",
+      "title": "Devil",
+      "description": "역시 수퍼주니어가 최고입니다"
+    },
+    {
+      "id": 6,
+      "url": "https://www.youtube.com/watch?v=Y2pVvYjKjvM",
+      "title": "Black Suit",
+      "description": "깔끔하고 세련된曲"
+    }
+  ],
+  "treeName": "슈퍼주니어 콘텐츠 정리용 트리"
+}

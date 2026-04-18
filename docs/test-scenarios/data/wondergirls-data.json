@@ -1,0 +1,44 @@
+{
+  "groupName": "WonderGirls",
+  "groupNameKorean": "원더걸스",
+  "fanPersona": "원더걸스 팬으로서 감정을 기록하고 싶다",
+  "testUrls": [
+    {
+      "id": 1,
+      "url": "https://www.youtube.com/watch?v=s2KQ5C2W2qU",
+      "title": "Tell Me",
+      "description": "데뷔곡이고 정말 상징적이에요"
+    },
+    {
+      "id": 2,
+      "url": "https://www.youtube.com/watch?v=PYnA8M2E4m8",
+      "title": "So Hot",
+      "description": "중독성 甲이었던曲"
+    },
+    {
+      "id": 3,
+      "url": "https://www.youtube.com/watch?v=k6iR5V60CKM",
+      "title": "Nobody",
+      "description": " 해외까지 나가게 한 히트곡"
+    },
+    {
+      "id": 4,
+      "url": "https://www.youtube.com/watch?v=Y_gW7yY9cC4",
+      "title": "Like This",
+      "description": " 댄스キャッチ가 정말 좋았어요"
+    },
+    {
+      "id": 5,
+      "url": "https://www.youtube.com/watch?v=Q7GzJ5N6KJY",
+      "title": "Why So Lonely",
+      "description": "힙합라인이 정말好啊"
+    },
+    {
+      "id": 6,
+      "url": "https://www.youtube.com/watch?v=hgTw4M6K6vk",
+      "title": "Be My Baby",
+      "description": "애미四人归蓖ulu!"
+    }
+  ],
+  "treeName": "원더걸스 콘텐츠 정리용 트리"
+}

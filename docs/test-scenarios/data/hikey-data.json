@@ -1,0 +1,44 @@
+{
+  "groupName": "HI_KEY",
+  "groupNameKorean": "하이키",
+  "fanPersona": "하이키 팬으로서 감정을 기록하고 싶다",
+  "testUrls": [
+    {
+      "id": 1,
+      "url": "https://www.youtube.com/watch?v=AS_a8h9jS1k",
+      "title": "Magnetic",
+      "description": "하이키의 데뷔곡이에요"
+    },
+    {
+      "id": 2,
+      "url": "https://www.youtube.com/watch?v=Up8d9K2s2k2",
+      "title": "Spark",
+      "description": "두 번째 곡인데 정말 좋았어요"
+    },
+    {
+      "id": 3,
+      "url": "https://www.youtube.com/watch?v=Down3k3s3k3",
+      "title": "Flash",
+      "description": "완전 강렬했어요"
+    },
+    {
+      "id": 4,
+      "url": "https://www.youtube.com/watch?v=Drop4k4s4k4",
+      "title": "Dazzle",
+      "description": "视觉冲击이 대박였어요"
+    },
+    {
+      "id": 5,
+      "url": "https://www.youtube.com/watch?v=Rush5k5s5k5",
+      "title": "Rush",
+      "description": "중독성 甲이었어요"
+    },
+    {
+      "id": 6,
+      "url": "https://www.youtube.com/watch?v=Wave6k6s6k6",
+      "title": "Wave",
+      "description": "마지막 트랙인데 너무 좋았어요"
+    }
+  ],
+  "treeName": "하이키 콘텐츠 정리용 트리"
+}

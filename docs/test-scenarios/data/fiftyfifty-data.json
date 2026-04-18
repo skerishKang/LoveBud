@@ -1,0 +1,44 @@
+{
+  "groupName": "FIFTY FIFTY",
+  "groupNameKorean": "피프티피프티",
+  "fanPersona": "피프티피프티 팬으로서 감정을 기록하고 싶다",
+  "testUrls": [
+    {
+      "id": 1,
+      "url": "https://www.youtube.com/watch?v=TT1a1g1g1g1",
+      "title": "ASIAA",
+      "description": "피프티피프티의 데뷔곡"
+    },
+    {
+      "id": 2,
+      "url": "https://www.youtube.com/watch?v=LOVE2v2v2v2",
+      "title": "LOVER",
+      "description": "두 번째 곡인데 감성적이었어요"
+    },
+    {
+      "id": 3,
+      "url": "https://www.youtube.com/watch?v=NGHT3f3f3f3",
+      "title": "NGHT",
+      "description": "밤 분위기의 곡"
+    },
+    {
+      "id": 4,
+      "url": "https://www.youtube.com/watch?v=CODE4r4r4r4",
+      "title": "CODE",
+      "description": "역할놀이 느낌이았어요"
+    },
+    {
+      "id": 5,
+      "url": "https://www.youtube.com/watch?v=SNOW5s5s5s5",
+      "title": "SNOW",
+      "description": "겨울 시즌곡"
+    },
+    {
+      "id": 6,
+      "url": "https://www.youtube.com/watch?v=AWAY6s6s6s6",
+      "title": "AWAY",
+      "description": "이별 노래인데 힘들었어요"
+    }
+  ],
+  "treeName": "피프티피프티 콘텐츠 정리용 트리"
+}

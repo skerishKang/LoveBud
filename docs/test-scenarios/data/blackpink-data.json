@@ -1,0 +1,44 @@
+{
+  "groupName": "Blackpink",
+  "groupNameKorean": "블랙핑크",
+  "fanPersona": "블랙핑크 팬으로서 감정을 기록하고 싶다",
+  "testUrls": [
+    {
+      "id": 1,
+      "url": "https://www.youtube.com/watch?v=IHNzOHi8Css",
+      "title": "Whistle",
+      "description": "데뷔곡이고 좋았어요"
+    },
+    {
+      "id": 2,
+      "url": "https://www.youtube.com/watch?v=9bDtT3C4jOE",
+      "title": "Boombayah",
+      "description": "Energy炸裂!"
+    },
+    {
+      "id": 3,
+      "url": "https://www.youtube.com/watch?v=bhK1tdxX1bM",
+      "title": "Playing With Fire",
+      "description": "발라드曲이지만 강렬했어요"
+    },
+    {
+      "id": 4,
+      "url": "https://www.youtube.com/watch?v=2s24-0I6f8g",
+      "title": "As If It's Your Last",
+      "description": "마지막 느낌의 밝은曲"
+    },
+    {
+      "id": 5,
+      "url": "https://www.youtube.com/watch?v=ioNng23DqIM",
+      "title": "How You Like That",
+      "description": "글로벌 대박이었어요"
+    },
+    {
+      "id": 6,
+      "url": "https://www.youtube.com/watch?v=yl5CsvgHIS8",
+      "title": "Pink Venom",
+      "description": "다시 돌아온 블랙핑크"
+    }
+  ],
+  "treeName": "블랙핑크 콘텐츠 정리용 트리"
+}

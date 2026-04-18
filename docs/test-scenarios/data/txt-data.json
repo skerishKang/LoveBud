@@ -1,0 +1,44 @@
+{
+  "groupName": "TXT",
+  "groupNameKorean": "투모로우바이투게더",
+  "fanPersona": "투모로우바이투게더 팬으로서 감정을 기록하고 싶다",
+  "testUrls": [
+    {
+      "id": 1,
+      "url": "https://www.youtube.com/watch?v=2iM7lO7p8vU",
+      "title": "CROWN",
+      "description": "데뷔곡이고 정말 좋았어요"
+    },
+    {
+      "id": 2,
+      "url": "https://www.youtube.com/watch?v=1nCLqPk7X4g",
+      "title": "Run Away",
+      "description": "대박이었어요!"
+    },
+    {
+      "id": 3,
+      "url": "https://www.youtube.com/watch?v=3t2Ld0i9x7Q",
+      "title": "Can't You See Me",
+      "description": "중독성 甲이었어요"
+    },
+    {
+      "id": 4,
+      "url": "https://www.youtube.com/watch?v=W3g7L1hK9zM",
+      "title": "Blue Hour",
+      "description": "가장 좋아하는曲"
+    },
+    {
+      "id": 5,
+      "url": "https://www.youtube.com/watch?v=Q3L5c1lP6g0",
+      "title": "I Can't Stop Me",
+      "description": "다들 너무 좋았어요"
+    },
+    {
+      "id": 6,
+      "url": "https://www.youtube.com/watch?v=R3lN0lL6k0A",
+      "title": "Sugar Rush Ride",
+      "description": "글로벌 히트였어요"
+    }
+  ],
+  "treeName": "투모로우바이투게더 콘텐츠 정리용 트리"
+}

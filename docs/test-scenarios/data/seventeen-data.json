@@ -1,0 +1,14 @@
+{
+  "groupName": "Seventeen",
+  "groupNameKorean": "세븐틴",
+  "fanPersona": "세븐틴 팬으로서 감정을 기록하고 싶다",
+  "testUrls": [
+    {"id": 1, "url": "https://www.youtube.com/watch?v=Seventeen_DontWannaCry", "title": "울고 싶지 않아 MV", "description": "처음 입덕하게 된 곡이에요"},
+    {"id": 2, "url": "https://www.youtube.com/watch?v=Seventeen_VeryNice", "title": "아주 Nice 무대", "description": "콘서트에서 너무 신났어요"},
+    {"id": 3, "url": "https://www.youtube.com/watch?v=Seventeen_LeftRight", "title": "Left & Right 퍼포먼스", "description": "안무가 정말 대단해요"},
+    {"id": 4, "url": "https://www.youtube.com/watch?v=Seventeen_Hoshi_Fancam", "title": "호시 직캠", "description": "호시 춤선이 예술이에요"},
+    {"id": 5, "url": "https://www.youtube.com/watch?v=Seventeen_Jeonghan_Clip", "title": "정한 예능 클립", "description": "웃긴 순간을 기록하고 싶어요"},
+    {"id": 6, "url": "https://www.youtube.com/watch?v=Seventeen_GoingSeventeen", "title": "Going Seventeen", "description": "고잉 컨텐츠 정말 재밌어요"}
+  ],
+  "treeName": "세븐틴 콘텐츠 정리용 트리"
+}

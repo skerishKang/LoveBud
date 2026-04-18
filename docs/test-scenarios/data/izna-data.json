@@ -1,0 +1,44 @@
+{
+  "groupName": "izna",
+  "groupNameKorean": "이즈나",
+  "fanPersona": "이즈나 팬으로서 감정을 기록하고 싶다",
+  "testUrls": [
+    {
+      "id": 1,
+      "url": "https://www.youtube.com/watch?v=L2-3m4n5p6",
+      "title": "N/a",
+      "description": "데뷔곡이고 정말 좋았어요"
+    },
+    {
+      "id": 2,
+      "url": "https://www.youtube.com/watch?v=M3-4o5q6r7",
+      "title": "SIGN",
+      "description": "중독성이 정말 강했어요"
+    },
+    {
+      "id": 3,
+      "url": "https://www.youtube.com/watch?v=N4-5p6s7t8",
+      "title": "BEEP",
+      "description": "다들 너무 좋았어요"
+    },
+    {
+      "id": 4,
+      "url": "https://www.youtube.com/watch?v=O5-6q7u8v9",
+      "title": "Not Just Pretty",
+      "description": "대박이었어요!"
+    },
+    {
+      "id": 5,
+      "url": "https://www.youtube.com/watch?v=P6-7r8w0x0",
+      "title": "Dream",
+      "description": "감성곡인데 정말 좋아요"
+    },
+    {
+      "id": 6,
+      "url": "https://www.youtube.com/watch?v=Q7-8s9x1y1",
+      "title": "Last",
+      "description": "글로벌 히트였어요"
+    }
+  ],
+  "treeName": "이즈나 콘텐츠 정리용 트리"
+}
