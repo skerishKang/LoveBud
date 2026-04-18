@@ -92,7 +92,12 @@ function handleError(scope, error, requestOrigin) {
       headers
     );
   }
-  return buildResponse(500, { error: 'Internal error' }, headers);
+  return buildResponse(500, { 
+    error: 'Internal error', 
+    message: error?.message || 'Unknown error',
+    details: error?.details || null,
+    stack: process.env.NODE_ENV === 'production' ? null : error?.stack // Stack only if not production (safe debug)
+  }, headers);
 }
 
 module.exports = {
