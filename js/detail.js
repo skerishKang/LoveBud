@@ -26,27 +26,90 @@ document.addEventListener('DOMContentLoaded', async () => {
     const treeContextEl = document.getElementById('treeContext');
     const backButton = document.getElementById('backButton');
 
+    const getI18n = () => window.t || ((k) => k);
+
+    const escapeHtml = (value) => String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+
+    const safeUrl = (value, { allowRelative = false } = {}) => {
+        const raw = String(value || '').trim();
+        if (!raw) return '';
+
+        if (allowRelative && /^(?:\.{0,2}\/|\/)/.test(raw)) {
+            return raw;
+        }
+
+        try {
+            const url = new URL(raw, window.location.origin);
+            const protocol = url.protocol.toLowerCase();
+            if (protocol === 'http:' || protocol === 'https:') {
+                return url.toString();
+            }
+            return '';
+        } catch (e) {
+            return '';
+        }
+    };
+
+    const buildDetailHref = ({ id, treeId, sourceContext }) => {
+        const params = new URLSearchParams();
+        if (id) params.set('id', String(id));
+        if (treeId) params.set('tree', String(treeId));
+        if (sourceContext) params.set('from', String(sourceContext));
+        return `detail.html?${params.toString()}`;
+    };
+
+    const attachFragmentLinkHandlers = (container) => {
+        if (!container) return;
+
+        container.querySelectorAll('[data-detail-href]').forEach((el) => {
+            const href = el.getAttribute('data-detail-href');
+            if (!href) return;
+
+            el.style.cursor = 'pointer';
+            el.addEventListener('click', () => {
+                window.location.href = href;
+            });
+
+            el.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    window.location.href = href;
+                }
+            });
+        });
+    };
+
     // ═══════════════════════════════════════════════════════════════════════
     // SECTION 2: 렌더링 헬퍼 함수들 (변경 없음)
     // ═══════════════════════════════════════════════════════════════════════
     // memory 본문 렌더링 (tree context와 무관)
     const renderMemoryBase = (memory) => {
-        const i18n = window.t || ((k) => k);
+        const i18n = getI18n();
 
         // 비디오 로드
         if (videoMain) {
-            if (memory.sourceUrl) {
-                videoMain.innerHTML = `
-                    <iframe width="100%" height="100%"
-                        src="${memory.sourceUrl}?autoplay=0"
-                        title="${memory.title || ''}" frameborder="0"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowfullscreen></iframe>
-                `;
+            const safeSourceUrl = safeUrl(memory.sourceUrl);
+            if (safeSourceUrl) {
+                const iframe = document.createElement('iframe');
+                iframe.width = '100%';
+                iframe.height = '100%';
+                iframe.src = `${safeSourceUrl}?autoplay=0`;
+                iframe.title = escapeHtml(memory.title || '');
+                iframe.frameBorder = '0';
+                iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+                iframe.allowFullscreen = true;
+
+                videoMain.innerHTML = '';
+                videoMain.appendChild(iframe);
             } else {
                 videoMain.innerHTML = `
                     <div style="width:100%;height:100%;background:var(--surface-container);display:flex;align-items:center;justify-content:center;color:var(--on-surface-variant);">
-                        ${i18n('no_video')}
+                        ${escapeHtml(i18n('no_video'))}
                     </div>
                 `;
             }
@@ -59,14 +122,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (detailSubtitle) detailSubtitle.textContent = '기록 — ' + (memory.timestamp || '');
 
         // 감정 태그
-        if (tagsContainer && memory.emotionTags && memory.emotionTags.length > 0) {
-            tagsContainer.innerHTML = memory.emotionTags.map(tag =>
-                `<span class="tag-chip active">${tag}</span>`
-            ).join('');
+        if (tagsContainer) {
+            tagsContainer.innerHTML = '';
+            if (Array.isArray(memory.emotionTags) && memory.emotionTags.length > 0) {
+                memory.emotionTags.forEach((tag) => {
+                    const span = document.createElement('span');
+                    span.className = 'tag-chip active';
+                    span.textContent = tag;
+                    tagsContainer.appendChild(span);
+                });
+            }
         }
 
         // 일기 내용
-        if (diaryQuote) diaryQuote.textContent = `"${memory.quote || memory.memo || ''}"`;
+        if (diaryQuote) diaryQuote.textContent = `\"${memory.quote || memory.memo || ''}\"`;
         if (diaryContent && memory.memo) {
             diaryContent.textContent = memory.memo;
         }
@@ -117,25 +186,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else if (hasTreeContext && tree) {
             // 정상 트리 컨텍스트
             const memoryCount = Array.isArray(memories) ? memories.length : 0;
-            const treeTitle = tree.title || '러브트리';
-            
-            // 📌 visibility 표시
+            const treeTitle = escapeHtml(tree.title || '러브트리');
+
             const visibility = tree.visibility || 'private';
             const isPublic = visibility === 'public';
-            const i18n = window.t || ((k) => k);
+            const i18n = getI18n();
             const visIcon = isPublic ? 'public' : 'lock';
-            const visLabel = isPublic ? i18n('visibility_public') : i18n('visibility_private');
-            const visStyle = isPublic 
+            const visLabel = escapeHtml(isPublic ? i18n('visibility_public') : i18n('visibility_private'));
+            const visStyle = isPublic
                 ? 'background:rgba(76,175,80,0.1);color:#4caf50;'
                 : 'background:rgba(158,158,158,0.1);color:#757575;';
-            
+
             const contextMessages = {
-                'browse': {
+                browse: {
                     icon: 'explore',
                     label: '둘러보기',
                     desc: `${memoryCount}개의 순간이 이어진 감정 경로를 따라가고 있어요`
                 },
-                'editor': {
+                editor: {
                     icon: 'edit',
                     label: '편집 중',
                     desc: '편집 중인 트리를 감상 모드로 보고 있어요'
@@ -146,27 +214,26 @@ document.addEventListener('DOMContentLoaded', async () => {
                     desc: '내가 기록한 순간들을 다시 감상하고 있어요'
                 }
             };
-            const contextInfo = contextMessages[sourceContext] || contextMessages['browse'];
+            const contextInfo = contextMessages[sourceContext] || contextMessages.browse;
 
             treeContextEl.innerHTML = `
                 <div style="display: flex; align-items: flex-start; gap: 16px;">
                     <div style="width: 48px; height: 48px; background: var(--surface-container); border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                        <span class="material-symbols-outlined" style="color: var(--primary); font-size: 24px;">${contextInfo.icon}</span>
+                        <span class="material-symbols-outlined" style="color: var(--primary); font-size: 24px;">${escapeHtml(contextInfo.icon)}</span>
                     </div>
                     <div style="flex: 1; min-width: 0;">
                         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;flex-wrap:wrap;">
-                            <span style="font-size: 12px; font-weight: 800; color: var(--primary); text-transform: uppercase; letter-spacing: 1px;">${contextInfo.label}</span>
+                            <span style="font-size: 12px; font-weight: 800; color: var(--primary); text-transform: uppercase; letter-spacing: 1px;">${escapeHtml(contextInfo.label)}</span>
                             <span style="color: var(--outline-variant);">·</span>
                             <span style="font-size: 12px; color: var(--on-surface-variant);">${memoryCount}개 순간</span>
-                            <!-- visibility 배지 -->
                             <span style="${visStyle}font-size:11px;padding:2px 8px;border-radius:99px;display:inline-flex;align-items:center;gap:4px;margin-left:4px;">
-                                <span class="material-symbols-outlined" style="font-size:12px;">${visIcon}</span>
+                                <span class="material-symbols-outlined" style="font-size:12px;">${escapeHtml(visIcon)}</span>
                                 ${visLabel}
                             </span>
                         </div>
                         <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--on-surface); margin: 0; line-height: 1.3;">${treeTitle}</h2>
                         <p style="font-size: 13px; color: var(--on-surface-variant); margin-top: 6px; line-height: 1.5;">
-                            ${contextInfo.desc}
+                            ${escapeHtml(contextInfo.desc)}
                         </p>
                     </div>
                 </div>
@@ -201,22 +268,37 @@ document.addEventListener('DOMContentLoaded', async () => {
         );
 
         if (siblings.length > 0) {
-            connectedFragments.innerHTML = siblings.map(sib => `
-                <div class="moment-card" onclick="location.href='detail.html?id=${sib.id}&tree=${treeId}&from=${sourceContext}'">
-                    <img src="${sib.thumbnail}" alt="${sib.title}" style="width: 80px; height: 80px; border-radius: 1rem; object-fit: cover;">
-                    <div>
-                        <div style="font-size: 11px; font-weight: 800; color: #aaa; text-transform: uppercase;">
-                            ${sib.timestamp}
-                        </div>
-                        <div style="font-weight: 800; color: var(--on-surface); font-size: 15px; margin-bottom: 4px;">
-                            ${sib.title}
-                        </div>
-                        <div style="font-size: 12px; color: var(--on-surface-variant);">
-                            ${sib.artist || ''}
+            connectedFragments.innerHTML = siblings.map((sib) => {
+                const href = buildDetailHref({
+                    id: sib.id,
+                    treeId,
+                    sourceContext
+                });
+
+                return `
+                    <div class="moment-card"
+                         role="button"
+                         tabindex="0"
+                         data-detail-href="${escapeHtml(href)}">
+                        <img src="${escapeHtml(safeUrl(sib.thumbnail))}"
+                             alt="${escapeHtml(sib.title || '')}"
+                             style="width: 80px; height: 80px; border-radius: 1rem; object-fit: cover;">
+                        <div>
+                            <div style="font-size: 11px; font-weight: 800; color: #aaa; text-transform: uppercase;">
+                                ${escapeHtml(sib.timestamp || '')}
+                            </div>
+                            <div style="font-weight: 800; color: var(--on-surface); font-size: 15px; margin-bottom: 4px;">
+                                ${escapeHtml(sib.title || '')}
+                            </div>
+                            <div style="font-size: 12px; color: var(--on-surface-variant);">
+                                ${escapeHtml(sib.artist || '')}
+                            </div>
                         </div>
                     </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
+
+            attachFragmentLinkHandlers(connectedFragments);
         } else {
             connectedFragments.innerHTML = `
                 <div style="text-align: center; padding: 24px; color: var(--on-surface-variant); font-size: 13px;">
@@ -228,8 +310,35 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     // ═══════════════════════════════════════════════════════════════════════
-    // SECTION 3: URL 파라미터 파싱
+    // SECTION 2-1: 에러 상태 UI 렌더링 (신규)
     // ═══════════════════════════════════════════════════════════════════════
+    const renderDetailErrorState = (message) => {
+        const titleEl = document.getElementById('memoryTitle');
+        const bodyEl = document.getElementById('diaryContent');
+        const metaEl = document.getElementById('detailSubtitle');
+
+        if (titleEl) titleEl.textContent = '데이터를 불러오지 못했어요';
+        if (bodyEl) {
+            bodyEl.innerHTML = `
+                <div class="empty-state" style="padding:24px;text-align:center;">
+                    <p style="margin-bottom:16px;color:var(--on-surface-variant);">
+                        ${escapeHtml(message || '서버 연결 또는 권한 상태를 확인한 뒤 다시 시도해주세요.')}
+                    </p>
+                    <button type="button" class="primary-btn" id="retryDetailLoadBtn">다시 시도</button>
+                </div>
+            `;
+
+            const retryBtn = document.getElementById('retryDetailLoadBtn');
+            if (retryBtn) {
+                retryBtn.addEventListener('click', () => window.location.reload());
+            }
+        }
+        if (metaEl) metaEl.textContent = '';
+    };
+
+     // ═══════════════════════════════════════════════════════════════════════
+     // SECTION 3: URL 파라미터 파싱
+     // ═══════════════════════════════════════════════════════════════════════
     const urlParams = new URLSearchParams(window.location.search);
     const memoryId = urlParams.get('id');
 
@@ -252,11 +361,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // treeId 추출 (URL 우선, memory.treeId fallback)
     const treeId = urlParams.get('tree') || null;
-    
+
     // 데이터 로드
-    const context = await loadMemoryDetailContext(memoryId, treeId);
-    
-    // memory 없으면 fallback UI
+    let context;
+    try {
+        context = await loadMemoryDetailContext(memoryId, treeId);
+    } catch (e) {
+        console.error('[detail] failed to load detail:', e);
+        renderDetailErrorState(
+            e?.message?.includes('403') || e?.message?.includes('401')
+                ? '로그인 또는 접근 권한을 확인해주세요.'
+                : '서버 연결 또는 데이터 상태를 확인한 뒤 다시 시도해주세요.'
+        );
+        return;
+    }
+
+    // memory 없으면 fallback UI (API는 성공했지만 데이터가 없는 경우)
     if (!context.memory) {
         console.warn('[detail] Memory not found, showing fallback UI');
         const i18n = window.t || ((k) => k);
@@ -328,10 +448,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }
         } catch (e) {
-            console.warn('[detail] API getMemory failed:', e.message);
-            if (!memory && typeof getMemory === 'function') {
-                memory = normalize(getMemory(mid));
-            }
+            console.error('[detail] API getMemory failed:', e.message);
+            throw e;
         }
         
         // memory 없으면 조기 반환
@@ -385,17 +503,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 await Promise.all(loadPromises);
             }
             
-            // mock fallback (임의 선택 금지)
+            // mock fallback 제거: API 실패 시 degradedReason만 설정
             if (!tree) {
-                const mockTrees = typeof getTrees === 'function' ? getTrees() : [];
-                tree = mockTrees.find(t => t.id === actualTreeId) || null;
-                if (!tree) {
-                    degradedReason = 'tree-load-failed';
-                }
+                degradedReason = 'tree-load-failed';
             }
-            if (!memories || memories.length === 0) {
-                memories = typeof getMemoriesByTree === 'function' ? getMemoriesByTree(actualTreeId) : [];
-            }
+            // memories가 없어도 degradedReason 설정하지 않음 (빈 배열 유지)
         }
         
         return { memory, tree, memories, sourceContext, hasTreeContext, degradedReason };

@@ -1,13 +1,13 @@
 /**
  * LoveBud Search Page Orchestrator
  * v20260418-1
- * 
+ *
  * Search page orchestration:
  * - Data loading (cache → API → mock fallback)
  * - Filter state management
  * - Event binding
  * - Renderer coordination
- * 
+ *
  * Dependencies (loaded before this):
  * - mock-data.js, cache-utils.js
  * - utils/normalize.js, utils/path.js, utils/ui.js
@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ─────────────────────────────────────────────────────────
     // DOM References
     // ─────────────────────────────────────────────────────────
-    
+
     const resultsList = document.getElementById('resultsList');
     const previewContainer = document.getElementById('previewVideoContainer');
     const previewTitle = document.getElementById('previewTitle');
@@ -33,11 +33,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ─────────────────────────────────────────────────────────
     // Initialize Renderers
     // ─────────────────────────────────────────────────────────
-    
+
     // Card renderer
     const CardRenderer = window.LoveBudSearchCardRenderer;
     CardRenderer.init(resultsList);
-    
+
     // Preview renderer
     const PreviewRenderer = window.LoveBudSearchPreviewRenderer;
     PreviewRenderer.init({
@@ -55,17 +55,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ─────────────────────────────────────────────────────────
     // Show Loading
     // ─────────────────────────────────────────────────────────
-    
+
     resultsList.innerHTML = CardRenderer.renderLoading();
 
     // ─────────────────────────────────────────────────────────
     // Data Loading: Cache → API → Mock Fallback
     // ─────────────────────────────────────────────────────────
-    
+
     const cache = window.LoveBudCache;
     const PUBLIC_TREES_CACHE_KEY = 'public_trees_list';
     const MIN_LOADING_TIME = 400;
-    
+const isMockFallbackEnabled = () =>
+    window.LoveBudRuntimeFlags?.isMockFallbackEnabled
+        ? window.LoveBudRuntimeFlags.isMockFallbackEnabled()
+        : (
+              window.location.hostname === 'localhost' ||
+              window.location.hostname === '127.0.0.1' ||
+              window.location.search.includes('mock=1') ||
+              window.localStorage?.getItem('lovebud_force_mock') === '1'
+          );
+
     const startTime = Date.now();
     let allTrees = [];
     let loadError = null;
@@ -89,17 +98,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             const apiTrees = await window.apiClient.getPublicTrees();
             if (Array.isArray(apiTrees)) {
                 console.log('[search] API public trees 로드:', apiTrees.length, '개');
-                
+
                 // Update cache
                 if (cache) {
                     cache.set(PUBLIC_TREES_CACHE_KEY, apiTrees, 5 * 60 * 1000); // 5분 TTL
                 }
-                
+
                 // Use API data (replace cache)
                 if (JSON.stringify(allTrees) !== JSON.stringify(apiTrees)) {
                     allTrees = apiTrees;
                 }
-                
+
                 apiTreesLoaded = true;
             } else {
                 throw new Error('API 응답 형식 오류');
@@ -110,11 +119,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (error) {
         loadError = error;
         console.warn('[search] API 실패:', error.message);
-        
-        // 3. Fallback to mock if no cache
-        if (!cachedTrees && typeof memories !== 'undefined' && typeof trees !== 'undefined') {
+
+        // 개발/데모 모드에서만 mock fallback 허용
+        if (
+            !cachedTrees &&
+            isMockFallbackEnabled() &&
+            typeof memories !== 'undefined' &&
+            typeof trees !== 'undefined'
+        ) {
             allTrees = Adapter.buildTreeData(memories, trees);
             console.log('[search] mock 데이터 fallback:', allTrees.length, '개 트리');
+        } else if (!cachedTrees) {
+            allTrees = [];
         }
     }
 
@@ -127,7 +143,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ─────────────────────────────────────────────────────────
     // Filter State
     // ─────────────────────────────────────────────────────────
-    
+
     let currentQuery = '';
     let currentCategory = '전체';
 
@@ -141,7 +157,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ─────────────────────────────────────────────────────────
     // Event Handlers
     // ─────────────────────────────────────────────────────────
-    
+
+    const navigateToTreeDetail = (tree) => {
+        if (!tree?.memories || tree.memories.length === 0) return;
+
+        const basePath = window.LoveBudPath?.getBasePath
+            ? window.LoveBudPath.getBasePath()
+            : (window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/');
+
+        const firstMemory = tree.memories[0];
+        window.location.href = `${basePath}detail.html?id=${firstMemory.id}&tree=${tree.id}&from=browse`;
+    };
+
+    const showTreePreview = (tree) => {
+        if (!tree) return;
+        PreviewRenderer.updatePreview(tree);
+    };
+
     // Search input
     searchInput.addEventListener('input', (e) => {
         currentQuery = e.target.value.trim();
@@ -159,81 +191,87 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     /**
+     * Renders empty/error state when data load fails
+     */
+    const renderLoadErrorState = () => {
+        resultsList.innerHTML = `
+            <div class="empty-state" style="padding:24px;text-align:center;">
+                <h3 style="margin-bottom:8px;">데이터를 불러오지 못했어요</h3>
+                <p style="margin-bottom:16px;color:var(--on-surface-variant);">
+                    서버 연결 또는 인증 상태를 확인한 뒤 다시 시도해주세요.
+                </p>
+                <button type="button" id="retryLoadBtn" class="primary-btn">다시 시도</button>
+            </div>
+        `;
+
+        const retryBtn = document.getElementById('retryLoadBtn');
+        if (retryBtn) {
+            retryBtn.addEventListener('click', () => window.location.reload());
+        }
+
+        PreviewRenderer.resetPreview();
+    };
+
+    /**
      * Renders results to DOM
      */
     const renderResults = () => {
         const filtered = getFilteredTrees();
-        
+
         if (filtered.length === 0) {
-            // Check if this is truly empty or no data at all
-            const isEmptyApi = loadError === null && allTrees.length === 0;
-            
-            if (isEmptyApi) {
+            const hasNoData = loadError === null && allTrees.length === 0;
+            const isApiFailureWithoutFallback =
+                loadError !== null &&
+                !isFromCache &&
+                !isMockFallbackEnabled() &&
+                allTrees.length === 0;
+
+            if (isApiFailureWithoutFallback) {
+                renderLoadErrorState();
+            } else if (hasNoData) {
                 resultsList.innerHTML = CardRenderer.renderNoTreesState();
+                PreviewRenderer.resetPreview();
             } else {
                 resultsList.innerHTML = CardRenderer.renderEmptySearchState();
+                PreviewRenderer.resetPreview();
             }
-            
-            // Reset preview
-            PreviewRenderer.resetPreview();
+
             return;
         }
-        
-        // Render cards with event handlers
+
+        // Render cards (no event handlers passed)
         const html = CardRenderer.renderResults(filtered, {
-            isDemo: !apiTreesLoaded && !loadError,
-            onCardClick: (tree) => {
-                // Click navigates to detail
-                if (tree.memories && tree.memories.length > 0) {
-                    const basePath = window.LoveBudPath?.getBasePath 
-                        ? window.LoveBudPath.getBasePath()
-                        : (window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/');
-                    const firstMemory = tree.memories[0];
-                    window.location.href = `${basePath}detail.html?id=${firstMemory.id}&tree=${tree.id}&from=browse`;
-                }
-            },
-            onCardHover: (tree) => {
-                // Update preview panel
-                PreviewRenderer.updatePreview(tree);
-            }
+            isDemo: !apiTreesLoaded && !loadError
         });
-        
+
         resultsList.innerHTML = html;
-        
+
         // Attach events to cards
         const cards = resultsList.querySelectorAll('.tree-card');
-        cards.forEach((card, index) => {
+        cards.forEach((card) => {
             const treeId = card.dataset.treeId;
             const tree = filtered.find(t => t.id === treeId);
             if (!tree) return;
-            
-            // Click event
+
             card.addEventListener('click', () => {
-                if (tree.memories && tree.memories.length > 0) {
-                    const basePath = window.LoveBudPath?.getBasePath 
-                        ? window.LoveBudPath.getBasePath()
-                        : (window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/');
-                    const firstMemory = tree.memories[0];
-                    window.location.href = `${basePath}detail.html?id=${firstMemory.id}&tree=${tree.id}&from=browse`;
-                }
+                navigateToTreeDetail(tree);
             });
-            
-            // Hover event
+
             card.addEventListener('mouseenter', () => {
-                PreviewRenderer.updatePreview(tree);
+                showTreePreview(tree);
             });
         });
-        
-        // Auto-select first tree preview if none selected
+
+        // Auto-select first tree preview
         if (filtered.length > 0) {
-            PreviewRenderer.updatePreview(filtered[0]);
+            showTreePreview(filtered[0]);
         }
     };
 
     // ─────────────────────────────────────────────────────────
     // Initial Render
     // ─────────────────────────────────────────────────────────
-    
+
     renderResults();
 });
 

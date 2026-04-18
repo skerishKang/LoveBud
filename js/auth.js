@@ -29,6 +29,88 @@ var AUTH_READY_FLAG = '__lovebudAuthReady';
 var AUTH_CACHE_KEY = 'lovebud_auth_cache';
 var AUTH_CONFIRMED_KEY = 'lovebud_auth_confirmed';
 
+function isLoginPage() {
+  var path = window.location.pathname || '';
+  return path.indexOf('/pages/login.html') !== -1 || path.indexOf('login.html') !== -1;
+}
+
+function resolveEmailAuthMode() {
+  try {
+    if (window.__initialAuthMode === 'signup' || window.__initialAuthMode === 'login') {
+      return window.__initialAuthMode;
+    }
+    var params = new URLSearchParams(window.location.search);
+    var mode = params.get('mode');
+    return mode === 'signup' ? 'signup' : 'login';
+  } catch (e) {
+    return 'login';
+  }
+}
+
+function syncEmailAuthModeUi(options) {
+  var titleEl = options && options.titleEl;
+  var helperEl = options && options.helperEl;
+  var submitBtn = options && options.submitBtn;
+  var toggleBtn = options && options.toggleBtn;
+  var badgeEl = options && options.badgeEl;
+
+  var isSignup = EMAIL_AUTH_MODE === 'signup';
+
+  if (badgeEl) {
+    badgeEl.textContent = isSignup ? '회원가입' : '로그인';
+    badgeEl.style.background = isSignup ? 'var(--secondary)' : 'var(--primary)';
+  }
+
+  if (titleEl) {
+    titleEl.textContent = isSignup ? '이메일로 회원가입' : '이메일로 로그인';
+    titleEl.setAttribute('data-i18n', isSignup ? 'email_modal_title_signup' : 'email_modal_title_login');
+  }
+
+  if (helperEl) {
+    helperEl.textContent = isSignup
+      ? '새 이메일 계정을 만들고 로그인합니다.'
+      : '이미 만든 이메일 계정으로 로그인합니다.';
+    helperEl.setAttribute('data-i18n', isSignup ? 'email_modal_desc_signup' : 'email_modal_desc_login');
+  }
+
+  if (submitBtn) {
+    submitBtn.textContent = isSignup ? '회원가입' : '로그인';
+    submitBtn.setAttribute('data-i18n', isSignup ? 'signup_btn' : 'login_btn');
+  }
+
+  if (toggleBtn) {
+    toggleBtn.textContent = isSignup
+      ? '이미 계정이 있나요? 로그인으로 전환'
+      : '계정이 없나요? 회원가입으로 전환';
+    toggleBtn.setAttribute('data-i18n', isSignup ? 'switch_to_login' : 'switch_to_signup');
+  }
+
+  if (window.applyI18n) {
+    window.applyI18n();
+  }
+}
+
+function setupLoginPageAuthUi() {
+  if (!isLoginPage()) return;
+
+  EMAIL_AUTH_MODE = resolveEmailAuthMode();
+
+  var params = new URLSearchParams(window.location.search);
+  var redirect = params.get('redirect');
+  var noticeEl = document.getElementById('redirect-notice');
+  if (noticeEl) {
+    noticeEl.style.display = redirect ? 'block' : 'none';
+  }
+
+  syncEmailAuthModeUi({
+    titleEl: document.getElementById('email-auth-title'),
+    helperEl: document.getElementById('email-auth-helper'),
+    submitBtn: document.getElementById('email-auth-submit'),
+    toggleBtn: document.getElementById('email-auth-toggle'),
+    badgeEl: document.getElementById('auth-mode-badge')
+  });
+}
+
 // ── Auth Ready Callbacks (배열 패턴) ─────────────────────────────────────────
 // 여러 모듈이 등록해도 덮어쓰기 문제 없음
 window.__onAuthReadyCallbacks = window.__onAuthReadyCallbacks || [];
@@ -147,6 +229,9 @@ function applyCachedAuthState() {
 }
 
 function initAuth() {
+  EMAIL_AUTH_MODE = resolveEmailAuthMode();
+  setupLoginPageAuthUi();
+
   // Apply confirmed cached state immediately to prevent flicker
   var hasImmediateAuthUI = applyCachedAuthState();
 
@@ -596,18 +681,13 @@ function setupEmailAuthForm() {
   var helperEl = document.getElementById('email-auth-helper');
 
   function updateModeUi() {
-    if (!submitBtn || !toggleBtn) return;
-    if (EMAIL_AUTH_MODE === 'login') {
-      if (titleEl) titleEl.textContent = '이메일로 로그인';
-      if (helperEl) helperEl.textContent = '이미 만든 이메일 계정으로 로그인합니다.';
-      submitBtn.textContent = '로그인';
-      if (toggleBtn) toggleBtn.textContent = '계정이 없나요? 회원가입으로 전환';
-    } else {
-      if (titleEl) titleEl.textContent = '이메일로 회원가입';
-      if (helperEl) helperEl.textContent = '새 이메일 계정을 만들고 로그인합니다.';
-      submitBtn.textContent = '회원가입';
-      if (toggleBtn) toggleBtn.textContent = '이미 계정이 있나요? 로그인으로 전환';
-    }
+    syncEmailAuthModeUi({
+      titleEl: titleEl,
+      helperEl: helperEl,
+      submitBtn: submitBtn,
+      toggleBtn: toggleBtn,
+      badgeEl: document.getElementById('auth-mode-badge')
+    });
   }
 
   updateModeUi();

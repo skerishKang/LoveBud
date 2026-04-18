@@ -15,7 +15,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const vm = require('vm');
 
 const ROOT = path.resolve(__dirname, '..');
 const args = process.argv.slice(2);
@@ -53,6 +53,11 @@ function collectJsFiles(dir, results) {
   }
 }
 
+function checkJsSyntaxFile(file) {
+  const source = fs.readFileSync(file, 'utf8');
+  new vm.Script(source, { filename: file });
+}
+
 // ── 1. JS 구문 검사 (node --check) ───────────────────────────────────────────
 
 function verifyJSSyntax() {
@@ -66,10 +71,10 @@ function verifyJSSyntax() {
     for (const file of backendFiles) {
       const rel = relPath(file);
       try {
-        execSync(`node --check "${file}"`, { stdio: 'pipe', timeout: 5000 });
+        checkJsSyntaxFile(file);
         check(`syntax: ${rel}`, true);
       } catch (e) {
-        const msg = (e.stderr ? e.stderr.toString() : e.message).split('\n')[0];
+        const msg = String(e.message || e).split('\n')[0];
         check(`syntax: ${rel}`, false, msg);
       }
     }
@@ -83,17 +88,11 @@ function verifyJSSyntax() {
     for (const file of frontendFiles) {
       const rel = relPath(file);
       try {
-        execSync(`node --check "${file}"`, { stdio: 'pipe', timeout: 5000 });
+        checkJsSyntaxFile(file);
         check(`syntax: ${rel}`, true);
       } catch (e) {
-        const stderr = e.stderr ? e.stderr.toString() : '';
-        // IIFE 패턴이면 성공, ES 모듈이면 import 문법 에러 → 본문 파싱은 OK로 간주
-        if (stderr.includes('Cannot use import statement') || stderr.includes('Unexpected token')) {
-          check(`syntax: ${rel}`, true, '브라우저 전용 (import 제외 문법 OK)');
-        } else {
-          const msg = stderr.split('\n')[0];
-          check(`syntax: ${rel}`, false, msg);
-        }
+        const msg = String(e.message || e).split('\n')[0];
+        check(`syntax: ${rel}`, false, msg);
       }
     }
   }

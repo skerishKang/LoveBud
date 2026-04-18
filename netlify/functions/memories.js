@@ -114,22 +114,19 @@ exports.handler = async (event) => {
         allowedTreeIds = userTrees.map((t) => t.id);
       }
 
-      const filters = {};
-      if (allowedTreeIds.length === 1) {
-        filters.treeId = allowedTreeIds[0];
-      } else if (allowedTreeIds.length > 1) {
-        filters.treeId = allowedTreeIds[0]; // MVP 유지
-      } else {
-        return ok([], { 'Access-Control-Allow-Origin': '*' });
-      }
-
+      const baseFilters = {};
       if ('parentId' in params) {
-        filters.parentId = params.parentId === 'null' ? null : params.parentId;
+        baseFilters.parentId = params.parentId === 'null' ? null : params.parentId;
       }
-      if (params.visibility) filters.visibility = params.visibility;
-      if (params.limit) filters.limit = validateLimit(params.limit);
+      if (params.visibility) baseFilters.visibility = params.visibility;
+      if (params.limit) baseFilters.limit = validateLimit(params.limit);
 
-      const memories = await queryMemories(filters);
+      const memories = await queryMemories({
+        ...baseFilters,
+        ...(allowedTreeIds.length === 1
+          ? { treeId: allowedTreeIds[0] }
+          : { treeIds: allowedTreeIds }),
+      });
       return ok(serializeMemoryList(memories), { 'Access-Control-Allow-Origin': '*' });
     }
 
