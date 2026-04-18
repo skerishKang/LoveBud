@@ -266,7 +266,7 @@
                 <span class="badge" data-i18n="badge_safe">안전한 보관</span>
             </div>
 
-            <a href="index.html" style="display: block; margin-top: 40px; color: var(--on-surface-variant); font-size: 13px; text-decoration: none; font-weight: 700; opacity: 0.6; transition: opacity 0.3s;" data-i18n="later">
+            <a href="../index.html" style="display: block; margin-top: 40px; color: var(--on-surface-variant); font-size: 13px; text-decoration: none; font-weight: 700; opacity: 0.6; transition: opacity 0.3s;" data-i18n="later">
                 나중에 시작하기
             </a>
         </div>
@@ -374,62 +374,6 @@
             });
         }
         
-        // 회원가입 폼 처리
-        var signupForm = document.getElementById('signup-form');
-        if (signupForm) {
-            signupForm.addEventListener('submit', function(e) {
-                e.preventDefault();
-                
-                var email = document.getElementById('signup-email').value;
-                var password = document.getElementById('signup-password').value;
-                
-                if (!email || !password) {
-                    alert('이메일과 비밀번호를 입력해주세요.');
-                    return;
-                }
-                
-                // Firebase 회원가입
-                if (typeof firebase !== 'undefined' && firebase.auth) {
-                    firebase.auth().createUserWithEmailAndPassword(email, password)
-                        .then(function(userCredential) {
-                            console.log('회원가입 성공:', userCredential.user);
-                            alert('회원가입이 완료되었습니다!');
-                            // my-trees 페이지로 이동
-                            window.location.href = 'my-trees.html';
-                        })
-                        .catch(function(error) {
-                            console.error('회원가입 실패:', error);
-                            alert('회원가입 실패: ' + error.message);
-                        });
-                } else {
-                    console.error('Firebase Auth가 로드되지 않았습니다.');
-                    alert('인증 서비스를 사용할 수 없습니다.');
-                }
-            });
-        }
-        
-        // Google 회원가입 버튼
-        var signupGoogleBtn = document.getElementById('signup-btn-google');
-        if (signupGoogleBtn) {
-            signupGoogleBtn.addEventListener('click', function() {
-                if (typeof firebase !== 'undefined' && firebase.auth) {
-                    var provider = new firebase.auth.GoogleAuthProvider();
-                    firebase.auth().signInWithPopup(provider)
-                        .then(function(result) {
-                            console.log('Google 로그인 성공:', result.user);
-                            // my-trees 페이지로 이동
-                            window.location.href = 'my-trees.html';
-                        })
-                        .catch(function(error) {
-                            console.error('Google 로그인 실패:', error);
-                            alert('Google 로그인 실패: ' + error.message);
-                        });
-                } else {
-                    console.error('Firebase Auth가 로드되지 않았습니다.');
-                    alert('인증 서비스를 사용할 수 없습니다.');
-                }
-            });
-        }
     </script>
 </body>
 </html>
