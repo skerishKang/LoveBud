@@ -215,6 +215,51 @@
                 이메일로 시작하기
             </button>
 
+            <!-- 회원가입 섹션 -->
+            <div class="signup-section" style="margin-top: 32px; padding-top: 32px; border-top: 1px solid var(--outline-variant);">
+                <p style="text-align: center; color: var(--on-surface-variant); font-size: 14px; margin-bottom: 16px; font-weight: 600;">
+                    처음 오셨나요? <span style="color: var(--primary);">새로운 계정 만들기</span>
+                </p>
+                
+                <!-- Google 회원가입 -->
+                <button id="signup-btn-google" class="login-btn-google" style="margin-bottom: 12px;">
+                    <svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" style="width: 20px; height: 20px;">
+                        <path fill="#4285F4" d="M45.12,24.5c0-2.46-0.2-4.84-0.64-7.12l-14.54,0c0.24,1.08,0.4,2.2,0.4,3.4c0,5.6-3.8,10.8-10.8,10.8l-8.72,0c-6.48,0-11.76-5.28-11.76-11.76c0-6.4,5.2-11.64,11.64-11.64c2.96,0,5.56,1.12,7.6,2.96l6.24-6.16C29.32,6.56,24.36,5.72,19.04,5.72c-9.36,0-17.52,6.76-17.52,16.08c0,9.28,8.16,16.08,17.52,16.08c6.8,0,11.52-3.28,14.36-7.96c0.76,0.08,1.56,0.12,2.4,0.12C42.4,29.92,45.12,27.56,45.12,24.5z"/>
+                        <path fill="#34A853" d="M19.12,44.36c6.56,0,12.16-2.44,16.24-6.56l-7.68-5.92C25.24,34.8,22.52,36,19.12,36c-6.08,0-10.8-4.16-12.48-9.76l-7.76,0C3.48,31.96,10.64,44.36,19.12,44.36z"/>
+                        <path fill="#FBBC05" d="M9.84,26.68c-1.56-2.92-2.4-6.08-2.4-9.48c0-3.4,0.84-6.56,2.4-9.48L3.2,12.08C1.24,16.52,0.04,21.48,0.04,26.32C0.04,31.16,1.24,36.12,3.2,40.56L9.84,26.68z"/>
+                        <path fill="#EA4335" d="M19.12,12.32c4.76,0,8.24,1.92,10.04,3.56l7.24-7.16C34.76,5.92,29.32,4.8,23.72,4.8c-7.4,0-14,4.4-17.6,10.96l7.76,6.44C15.48,16.84,18.32,12.32,19.12,12.32z"/>
+                    </svg>
+                    <span data-i18n="google_signup">Google로 가입하기 (바로 시작)</span>
+                </button>
+                
+                <p style="text-align: center; color: var(--on-surface-variant); font-size: 12px; margin: 8px 0; opacity: 0.7;">
+                    Google 계정으로 가입 시 별도 인증 없이 바로 시작됩니다
+                </p>
+                
+                <div class="login-divider" style="margin: 16px 0;">
+                    <span style="font-size: 12px;">또는 이메일로 가입</span>
+                </div>
+                
+                <!-- 이메일 회원가입 폼 -->
+                <form id="signup-form" style="text-align: left;" novalidate>
+                    <div style="margin-bottom: 12px;">
+                        <label for="signup-email" style="display: block; margin-bottom: 6px; font-weight: 700; font-size: 0.85rem;" data-i18n="email_label">이메일</label>
+                        <input type="email" id="signup-email" name="email" required placeholder="your@email.com" 
+                            style="width: 100%; padding: 12px; border: 1px solid var(--outline-variant); border-radius: 0.75rem; font-size: 1rem;">
+                    </div>
+                    <div style="margin-bottom: 16px;">
+                        <label for="signup-password" style="display: block; margin-bottom: 6px; font-weight: 700; font-size: 0.85rem;" data-i18n="password_label">비밀번호</label>
+                        <input type="password" id="signup-password" name="password" required placeholder="8자 이상 입력" minlength="8"
+                            style="width: 100%; padding: 12px; border: 1px solid var(--outline-variant); border-radius: 0.75rem; font-size: 1rem;">
+                    </div>
+                    <button type="submit" id="signup-submit" 
+                        style="width: 100%; padding: 14px; background: var(--secondary); color: white; border: none; border-radius: 1rem; font-weight: 700; font-size: 1rem; cursor: pointer;"
+                        data-i18n="signup_btn">
+                        회원가입 완료
+                    </button>
+                </form>
+            </div>
+
             <div class="badge-group">
                 <span class="badge" data-i18n="badge_first_moment">첫 순간 기록</span>
                 <span class="badge" data-i18n="badge_tree_grow">감정 나무 성장</span>
@@ -236,8 +281,12 @@
     <div id="email-auth-modal" role="dialog" aria-modal="true" aria-labelledby="email-auth-title" aria-describedby="email-auth-helper" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:9999;align-items:center;justify-content:center;">
     <div style="background:white;border-radius:2rem;padding:48px;max-width:420px;width:90%;text-align:center;position:relative;">
     <button id="email-auth-close" aria-label="모달 닫기" style="position:absolute;top:16px;right:20px;background:none;border:none;font-size:24px;cursor:pointer;color:var(--on-surface-variant);opacity:0.6;">&times;</button>
-    <h2 id="email-auth-title" style="font-size:1.4rem;font-weight:900;margin-bottom:8px;" data-i18n="email_modal_title_login">이메일로 로그인</h2>
-    <p id="email-auth-helper" style="color:var(--on-surface-variant);margin-bottom:24px;font-size:0.9rem;" data-i18n="email_modal_desc_login">이미 만든 이메일 계정으로 로그인합니다</p>
+<!-- 모드 표시 -->
+<div id="auth-mode-badge" style="display:inline-block; background:var(--primary); color:white; font-size:11px; font-weight:800; padding:4px 12px; border-radius:99px; margin-bottom:12px;">
+    로그인
+</div>
+<h2 id="email-auth-title" style="font-size:1.4rem;font-weight:900;margin-bottom:8px;" data-i18n="email_modal_title_login">이메일로 로그인</h2>
+<p id="email-auth-helper" style="color:var(--on-surface-variant);margin-bottom:24px;font-size:0.9rem;" data-i18n="email_modal_desc_login">이미 만든 이메일 계정으로 로그인합니다</p>
 <form id="email-auth-form" style="text-align:left;" novalidate>
 <div style="margin-bottom:16px;">
     <label for="email-auth-email" style="display:block;margin-bottom:6px;font-weight:700;font-size:0.85rem;" data-i18n="email_label">이메일</label>
@@ -260,7 +309,7 @@
         // i18n 초기화 및 헤더 렌더링
         renderSharedHeader();
         
-        // Show redirect notice if user came from auth-gated page
+        // Show redirect notice / handle mode param
         (function() {
             var params = new URLSearchParams(window.location.search);
             var redirect = params.get('redirect');
@@ -269,6 +318,13 @@
                 if (noticeEl) {
                     noticeEl.style.display = 'block';
                 }
+            }
+            
+            // mode param: signup으로 진입 시 이메일 Auth 모달 자동 열기 (auth.js에서 처리)
+            var mode = params.get('mode');
+            if (mode === 'signup') {
+                // auth.js의 EMAIL_AUTH_MODE 초기화를 signup으로 변경
+                window.__initialAuthMode = 'signup';
             }
         })();
         
@@ -292,7 +348,7 @@
             });
         }
         
-        // 모달 로그인/회원가입 토글 시 번역 키 교체
+        // 모달 로그인/회원가입 토글 시 번역 키 + 배지 교체
         var emailToggleBtn = document.getElementById('email-auth-toggle');
         if (emailToggleBtn) {
             emailToggleBtn.addEventListener('click', function() {
@@ -302,7 +358,12 @@
                     var helperEl = document.getElementById('email-auth-helper');
                     var submitBtn = document.getElementById('email-auth-submit');
                     var toggleBtn = document.getElementById('email-auth-toggle');
+                    var badgeEl = document.getElementById('auth-mode-badge');
                     
+                    if (badgeEl) {
+                        badgeEl.textContent = isSignup ? '회원가입' : '로그인';
+                        badgeEl.style.background = isSignup ? 'var(--secondary)' : 'var(--primary)';
+                    }
                     if (titleEl) titleEl.setAttribute('data-i18n', isSignup ? 'email_modal_title_signup' : 'email_modal_title_login');
                     if (helperEl) helperEl.setAttribute('data-i18n', isSignup ? 'email_modal_desc_signup' : 'email_modal_desc_login');
                     if (submitBtn) submitBtn.setAttribute('data-i18n', isSignup ? 'signup_btn' : 'login_btn');
@@ -310,6 +371,63 @@
                     
                     if (window.applyI18n) window.applyI18n();
                 }, 50);
+            });
+        }
+        
+        // 회원가입 폼 처리
+        var signupForm = document.getElementById('signup-form');
+        if (signupForm) {
+            signupForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                var email = document.getElementById('signup-email').value;
+                var password = document.getElementById('signup-password').value;
+                
+                if (!email || !password) {
+                    alert('이메일과 비밀번호를 입력해주세요.');
+                    return;
+                }
+                
+                // Firebase 회원가입
+                if (typeof firebase !== 'undefined' && firebase.auth) {
+                    firebase.auth().createUserWithEmailAndPassword(email, password)
+                        .then(function(userCredential) {
+                            console.log('회원가입 성공:', userCredential.user);
+                            alert('회원가입이 완료되었습니다!');
+                            // my-trees 페이지로 이동
+                            window.location.href = 'my-trees.html';
+                        })
+                        .catch(function(error) {
+                            console.error('회원가입 실패:', error);
+                            alert('회원가입 실패: ' + error.message);
+                        });
+                } else {
+                    console.error('Firebase Auth가 로드되지 않았습니다.');
+                    alert('인증 서비스를 사용할 수 없습니다.');
+                }
+            });
+        }
+        
+        // Google 회원가입 버튼
+        var signupGoogleBtn = document.getElementById('signup-btn-google');
+        if (signupGoogleBtn) {
+            signupGoogleBtn.addEventListener('click', function() {
+                if (typeof firebase !== 'undefined' && firebase.auth) {
+                    var provider = new firebase.auth.GoogleAuthProvider();
+                    firebase.auth().signInWithPopup(provider)
+                        .then(function(result) {
+                            console.log('Google 로그인 성공:', result.user);
+                            // my-trees 페이지로 이동
+                            window.location.href = 'my-trees.html';
+                        })
+                        .catch(function(error) {
+                            console.error('Google 로그인 실패:', error);
+                            alert('Google 로그인 실패: ' + error.message);
+                        });
+                } else {
+                    console.error('Firebase Auth가 로드되지 않았습니다.');
+                    alert('인증 서비스를 사용할 수 없습니다.');
+                }
             });
         }
     </script>
