@@ -1094,9 +1094,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     useApi = true;
                     isLocalSaveMode = false; // API 성공 시 로컬 모드 해제
                     console.log('[editor] API createMemory success:', createdMemory);
-
-                    // ── Save success status (UX hardening) ──
-                    updateSaveStatus('saved', '저장됨');
                 } else {
                     throw new Error('createMemory API not available');
                 }
@@ -1110,9 +1107,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (e?.message?.includes('401') || e?.message?.includes('403')) {
                     showToast(i18n('no_permission_local'), 'warn');
                 } else if (e?.message?.includes('400')) {
-                    showToast(i18n('check_input'), 'error');
+                    showToast(i18n('check_input') || '입력값을 다시 확인해주세요.', 'error');
                 } else {
-                    showToast(i18n('server_fail_local'), 'warn');
+                    showToast(i18n('server_fail_local') || '서버 저장에 실패해 로컬 저장으로 전환됩니다.', 'error');
                 }
             }
 
@@ -1132,18 +1129,25 @@ document.addEventListener('DOMContentLoaded', () => {
             // ── createMemory 후 갱신: 재조회 우선, 실패 시 로컬 추가 ──
             // 저장 계약: window.currentTreeMemories는 항상 normalizeMemory가 적용된 메모리 배열
             const normalizedNew = normalizeMemory(createdMemory);
+            let didRefreshFromServer = false;
+
             try {
-                const refreshed = await window.apiClient.getMemoriesByTree(treeId);
-                if (Array.isArray(refreshed)) {
-                    window.currentTreeMemories = refreshed.map(normalizeMemory);
-                } else {
+                if (useApi && window.apiClient && typeof window.apiClient.getMemoriesByTree === 'function') {
+                    const refreshed = await window.apiClient.getMemoriesByTree(treeId);
+                    if (Array.isArray(refreshed)) {
+                        window.currentTreeMemories = refreshed.map(normalizeMemory).filter(Boolean);
+                        didRefreshFromServer = true;
+                    }
+                }
+
+                if (!didRefreshFromServer) {
                     if (!Array.isArray(window.currentTreeMemories)) window.currentTreeMemories = [];
-                    const exists = window.currentTreeMemories.some(m => m.id === normalizedNew.id);
+                    const exists = window.currentTreeMemories.some(m => m.id === normalizedNew?.id);
                     if (!exists && normalizedNew) window.currentTreeMemories.push(normalizedNew);
                 }
             } catch (e) {
                 if (!Array.isArray(window.currentTreeMemories)) window.currentTreeMemories = [];
-                const exists = window.currentTreeMemories.some(m => m.id === normalizedNew.id);
+                const exists = window.currentTreeMemories.some(m => m.id === normalizedNew?.id);
                 if (!exists && normalizedNew) window.currentTreeMemories.push(normalizedNew);
             }
 
@@ -1152,7 +1156,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const normalizedMemory = normalizeMemory(createdMemory);
             if (!normalizedMemory) {
                 console.error('[editor] Memory normalization failed');
+                updateSaveStatus('failed', '정규화 실패');
                 return;
+            }
+
+            // 📌 첫 노드 추가 시 "비어있음" 메시지 제거
+            const emptyMsg = document.getElementById('emptyTreeMessage');
+            if (emptyMsg) {
+                emptyMsg.remove();
+                console.log('[editor] Removed emptyTreeMessage after first node added');
             }
 
             drawNode(normalizedMemory);
@@ -1178,10 +1190,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     top: Math.max(0, scrollY),
                     behavior: 'smooth'
                 });
-
-                // ── Show saved status again (selectNode hides it) ──
-                updateSaveStatus('saved', useApi ? (i18n('save_saved') || '저장됨') : (i18n('save_saved_local') || '로컬 저장됨'));
             }
+
+             // ── 최종 저장 상태: 재조회 성공 여부에 따라 구분 ──
+             if (useApi && didRefreshFromServer) {
+                 updateSaveStatus('saved', i18n('save_saved') || '저장됨');
+             } else {
+                 updateSaveStatus('saved', i18n('save_saved_local') || '로컬 저장됨');
+             }
 
             // ── 메모리 추가 후 캐시 동기화 ──
             if (typeof window.setCachedMemories === 'function' && treeId) {
