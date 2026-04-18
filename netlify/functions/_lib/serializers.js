@@ -1,60 +1,57 @@
 /**
- * API response serializers
- * Internal doc-store shape ({ id, data: {...} }) -> flat camelCase API shape
+ * netlify/functions/_lib/serializers.js
  * 
- * Adapted for production schema v1 (001_initial_schema.sql):
- *   trees: id, owner_id, title, visibility, created_at, updated_at
- *   memories: id, tree_id, parent_id, title, memo, artist, source, source_url,
- *              source_type, thumbnail, emotion_tags, timestamp, visibility,
- *              created_at, updated_at
+ * Maps DB Schema (name, is_public, description) to Frontend API Contract (title, visibility, memo).
  */
 
 function serializeMemory(input) {
-  const raw = input && input.data ? { id: input.id, ...input.data } : (input || {});
-
+  const raw = input || {};
+  
   return {
     id: raw.id || null,
-    treeId: raw.tree_id ?? raw.treeId ?? null,
-    parentId: raw.parent_id ?? raw.parentId ?? null,
+    treeId: raw.treeId || raw.tree_id || null,
+    parentId: raw.parentId || raw.parent_id || null,
     title: raw.title || '',
-    memo: raw.memo ?? raw.description ?? '',
+    memo: raw.description || raw.memo || '', // DB description -> API memo
     artist: raw.artist || '',
-    source: raw.source || '',
-    sourceUrl: raw.source_url ?? raw.sourceUrl ?? '',
-    sourceType: raw.source_type ?? raw.sourceType ?? 'youtube',
+    sourceUrl: raw.sourceUrl || raw.source_url || '',
     thumbnail: raw.thumbnail || '',
-    emotionTags: raw.emotion_tags ?? raw.emotionTags ?? [],
-    timestamp: raw.timestamp || '',
+    emotionTags: raw.emotionTags || raw.emotion_tags || [],
+    timestamp: raw.timestamp || raw.date || '',
     visibility: raw.visibility || 'private',
-    createdAt: raw.created_at ?? raw.createdAt ?? null,
-    updatedAt: raw.updated_at ?? raw.updatedAt ?? null,
+    createdAt: raw.created_at || raw.createdAt || null,
+    updatedAt: raw.updated_at || raw.updatedAt || null,
   };
 }
 
-function serializeMemoryList(items) {
-  return Array.isArray(items) ? items.map(serializeMemory) : [];
-}
-
-function serializeTree(input, options = {}) {
-  const raw = input && input.data ? { id: input.id, ...input.data } : (input || {});
-
+function serializeTree(input) {
+  const raw = input || {};
+  
+  // Final Safety Fix: Ensure payload is an object
+  let payload = raw.payload || { nodes: [], edges: [] };
+  if (typeof payload === 'string') {
+    try {
+      payload = JSON.parse(payload);
+    } catch (e) {
+      payload = { nodes: [], edges: [] };
+    }
+  }
+  
   return {
     id: raw.id || null,
-    ownerId: raw.owner_id ?? raw.ownerId ?? null,
-    title: raw.title || '',
-    visibility: raw.visibility || 'private',
-    createdAt: raw.created_at ?? raw.createdAt ?? null,
-    updatedAt: raw.updated_at ?? raw.updatedAt ?? null,
+    ownerId: raw.owner_id || raw.ownerId || null,
+    title: raw.name || raw.title || '', // DB name -> API title
+    visibility: raw.is_public === true ? 'public' : 'private', // DB is_public(bool) -> API visibility(string)
+    createdAt: raw.created_at || raw.createdAt || null,
+    updatedAt: raw.updated_at || raw.updatedAt || null,
+    nodeCount: raw.node_count || 0,
+    payload: payload
   };
-}
-
-function serializeTreeList(items) {
-  return Array.isArray(items) ? items.map((item) => serializeTree(item)) : [];
 }
 
 module.exports = {
   serializeMemory,
-  serializeMemoryList,
+  serializeMemoryList: (items) => (Array.isArray(items) ? items.map(serializeMemory) : []),
   serializeTree,
-  serializeTreeList,
+  serializeTreeList: (items) => (Array.isArray(items) ? items.map(serializeTree) : []),
 };
