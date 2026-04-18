@@ -271,6 +271,91 @@
             gap: 8px;
         }
 
+        .search-panel-header {
+            margin-bottom: 40px;
+        }
+
+        .search-panel-header h2 {
+            font-size: 2.5rem;
+            margin-bottom: 12px;
+            line-height: 1.2;
+        }
+
+        .search-panel-header p {
+            color: var(--on-surface-variant);
+            font-size: 1.1rem;
+            font-weight: 400;
+            line-height: 1.6;
+        }
+
+        .preview-panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .preview-panel-header h3 {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: var(--on-surface);
+            margin: 0;
+        }
+
+        .preview-badge {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--primary);
+            background: var(--surface-container-low);
+            padding: 6px 12px;
+            border-radius: 99px;
+        }
+
+        .preview-empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: var(--on-surface-variant);
+            font-size: 14px;
+            padding: 20px;
+        }
+
+        .preview-empty-state p {
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        .tree-meta {
+            display: flex;
+            gap: 16px;
+            font-size: 12px;
+            color: var(--on-surface-variant);
+            padding: 12px 0;
+            border-top: 1px solid var(--outline-variant);
+            border-bottom: 1px solid var(--outline-variant);
+            margin: 16px 0;
+        }
+
+        .tree-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .emotion-tags-label {
+            font-size: 11px;
+            font-weight: 800;
+            color: var(--on-surface-variant);
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
         .video-container {
             width: 100%;
             aspect-ratio: 16/9;
@@ -361,15 +446,12 @@
     <!-- Shared Header -->
     <div id="shared-header"></div>
 
-    <main class="search-container">
-        <section>
-            <div style="margin-bottom: 40px;">
-                <h2 class="headline" style="font-size: 2.5rem; margin-bottom: 12px; line-height: 1.2;" data-i18n="search.title">둘러보기</h2>
-                <p style="color: var(--on-surface-variant); font-size: 1.1rem; font-weight: 400; line-height: 1.6;" data-i18n="search.subtitle">
-                    다른 팬들이 남긴 <span style="color: var(--primary); font-weight: 700;">감정의 경로</span>를 따라가보세요.<br>
-                    어떤 순간들이 그들의 러브트리를 만들었을까요?
-                </p>
-            </div>
+        <main class="search-container">
+            <section>
+                <div class="search-panel-header">
+                    <h2 class="headline" data-i18n="search.title">트리 검색</h2>
+                    <p data-i18n="search.subtitle">좋아하는 아티스트나 키워드로 다른 팬들의 러브트리를 찾아보세요.</p>
+                </div>
 
             <div class="search-input-wrapper">
                 <span class="material-symbols-outlined search-icon">search</span>
@@ -389,14 +471,13 @@
         </section>
 
         <aside class="preview-sidebar" id="previewSidebar">
-            <h3 class="headline" data-i18n="search.previewTitle">
-                <span class="material-symbols-outlined" style="font-size: 24px; color: var(--primary);">play_circle</span>
-                감상하기
-            </h3>
+            <div class="preview-panel-header">
+                <h3>미리보기</h3>
+                <span class="preview-badge">대표 순간 보기</span>
+            </div>
             <div id="previewVideoContainer" class="video-container" style="margin-bottom: 24px;">
-                <div style="width:100%; height:100%; display:flex; flex-direction: column; align-items:center; justify-content:center; color: var(--on-surface-variant); font-size: 14px; text-align: center; padding: 20px;" data-i18n="search.previewPlaceholder">
-                    <span class="material-symbols-outlined" style="font-size: 48px; margin-bottom: 12px; opacity: 0.4;">forest</span>
-                    <div>카드를 선택하여<br>감정 경로를 미리보세요</div>
+                <div class="preview-empty-state" style="width:100%; height:100%; display:flex; flex-direction: column; align-items:center; justify-content:center; color: var(--on-surface-variant); font-size: 14px; text-align: center; padding: 20px;">
+                    <p>카드를 선택하면 감정의 흐름과 대표 순간을 미리 볼 수 있어요.</p>
                 </div>
             </div>
             <div id="previewDetails">
@@ -404,12 +485,12 @@
                 <div id="previewDesc" style="color: var(--on-surface-variant); font-size: 14px; line-height: 1.5;">
                     <p style="font-style: italic; margin-bottom: 16px;">---</p>
                 </div>
-                <div id="previewTreeStats" style="display: flex; gap: 16px; margin: 16px 0; font-size: 12px; color: var(--on-surface-variant); padding: 12px 0; border-top: 1px solid var(--outline-variant); border-bottom: 1px solid var(--outline-variant);">
-                    <span><span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle;">account_tree</span> <span id="previewMemoriesCount">-</span>개 순간</span>
-                    <span><span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle;">schedule</span> <span id="previewTreeDuration">-</span></span>
+                <div id="previewTreeStats" class="tree-meta">
+                    <span class="tree-meta-item"><span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle;">account_tree</span> <span id="previewMemoriesCount">0</span>개 순간</span>
+                    <span class="tree-meta-item"><span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle;">schedule</span> 업데이트 정보 준비 중</span>
                 </div>
                 <div>
-                    <div style="font-size: 11px; font-weight: 800; color: var(--on-surface-variant); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 4px;">
+                    <div class="emotion-tags-label">
                         <span class="material-symbols-outlined" style="font-size: 14px;">tag</span>
                         감정 태그
                     </div>
