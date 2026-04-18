@@ -547,9 +547,15 @@ const RADIUS_L2 = 240; // L2 반경 (200→240) - 노드 겹침 방지
                 emotionTags: tagsInput ? tagsInput.value.split(',').map(t => t.trim()).filter(t => t) : currentEditingMemory.emotionTags
             };
 
+            // ── Show saving status (UX hardening) ──
+            updateSaveStatus('saving', '저장 중...');
+
             try {
                 if (window.apiClient && typeof window.apiClient.updateMemory === 'function') {
                     await window.apiClient.updateMemory(currentEditingMemory.id, payload);
+
+                    // ── Save success (UX hardening) ──
+                    updateSaveStatus('saved', '저장됨');
 
                     const memIndex = window.currentTreeMemories.findIndex(m => m.id === currentEditingMemory.id);
                     if (memIndex >= 0) {
@@ -572,6 +578,10 @@ const RADIUS_L2 = 240; // L2 반경 (200→240) - 노드 겹침 방지
                 }
             } catch (error) {
                 console.error('[editor] Failed to update memory:', error);
+
+                // ── Save failed status (UX hardening) ──
+                updateSaveStatus('failed', '저장 실패');
+
                 showToast(i18n('update_failed'), 'error');
             }
         };
@@ -634,6 +644,17 @@ const RADIUS_L2 = 240; // L2 반경 (200→240) - 노드 겹침 방지
             selectedNodeId = data.id;
             document.querySelectorAll('.memory-node').forEach(n => n.classList.remove('selected'));
             el.classList.add('selected');
+
+            // Hide save status when switching nodes (UX hardening)
+            const indicator = document.getElementById('saveStatusIndicator');
+            if (indicator) {
+                indicator.style.display = 'none';
+                if (saveStatusData.timer) {
+                    clearTimeout(saveStatusData.timer);
+                    saveStatusData.timer = null;
+                }
+            }
+
             updateDetailPanel(data);
             currentEditingMemory = data;
         };
@@ -734,6 +755,70 @@ const RADIUS_L2 = 240; // L2 반경 (200→240) - 노드 겹침 방지
             }
         };
 
+        // ── Save status indicator ────────────────────────────────────────────
+        let saveStatusData = {
+          status: 'saved',
+          lastSaved: null,
+          timer: null
+        };
+
+        function updateSaveStatus(status, message) {
+          const indicator = document.getElementById('saveStatusIndicator');
+          const iconEl = document.getElementById('saveStatusIcon');
+          const textEl = document.getElementById('saveStatusText');
+          const timeEl = document.getElementById('lastSavedTime');
+
+          if (!indicator || !iconEl || !textEl) return;
+
+          if (saveStatusData.timer) {
+            clearTimeout(saveStatusData.timer);
+            saveStatusData.timer = null;
+          }
+
+          saveStatusData.status = status;
+
+          const i18n = window.t || ((k) => k);
+
+          switch (status) {
+            case 'saving':
+              iconEl.textContent = 'hourglass_empty';
+              textEl.textContent = message || i18n('save_saving') || '저장 중...';
+              indicator.className = 'save-status-indicator saving';
+              indicator.style.display = 'flex';
+              break;
+            case 'saved':
+              iconEl.textContent = 'check_circle';
+              textEl.textContent = message || i18n('save_saved') || '저장됨';
+              indicator.className = 'save-status-indicator saved';
+              saveStatusData.lastSaved = new Date();
+              if (timeEl) {
+                timeEl.textContent = formatTimeAgo(saveStatusData.lastSaved);
+              }
+              saveStatusData.timer = setTimeout(() => {
+                indicator.style.display = 'none';
+              }, 3000);
+              break;
+            case 'failed':
+              iconEl.textContent = 'error';
+              textEl.textContent = message || i18n('save_failed') || '저장 실패';
+              indicator.className = 'save-status-indicator failed';
+              saveStatusData.timer = setTimeout(() => {
+                indicator.style.display = 'none';
+              }, 5000);
+              break;
+           }
+         }
+
+         function formatTimeAgo(date) {
+          if (!date) return '';
+          const now = new Date();
+          const diff = Math.floor((now - date) / 1000);
+          if (diff < 60) return '방금';
+          if (diff < 3600) return `${Math.floor(diff / 60)}분 전`;
+          if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`;
+          return `${Math.floor(diff / 86400)}일 전`;
+        }
+
         // ── 폼 상태 추적 ──
         let isFormOpen = false;
         let escHandler = null;
@@ -826,6 +911,9 @@ const RADIUS_L2 = 240; // L2 반경 (200→240) - 노드 겹침 방지
                 return;
             }
 
+            // ── Show saving status (UX hardening) ──
+            updateSaveStatus('saving', '저장 중...');
+
             // ── YouTube 처리: LoveBudMedia 공통 유틸 사용 ──
             let videoId;
             let embedUrl;
@@ -876,27 +964,36 @@ const RADIUS_L2 = 240; // L2 반경 (200→240) - 노드 겹침 방지
 
             hideAddMemoryForm();
 
-            // ── API 우선 생성 시도 ──
-            let createdMemory = null;
-            let useApi = false;
-            try {
-                if (window.apiClient && typeof window.apiClient.createMemory === 'function') {
-createdMemory = await window.apiClient.createMemory(newMemoryData);
- useApi = true;
- isLocalSaveMode = false; // API 성공 시 로컬 모드 해제
- console.log('[editor] API createMemory success:', createdMemory);
-                }
-            } catch (e) {
-                const i18n = window.t || ((k) => k);
-                console.warn('[editor] API createMemory failed, fallback to mock:', e?.message || e);
-                if (e?.message?.includes('401') || e?.message?.includes('403')) {
-                    showToast(i18n('no_permission_local'), 'warn');
-                } else if (e?.message?.includes('400')) {
-                    showToast(i18n('check_input'), 'error');
-                } else {
-                    showToast(i18n('server_fail_local'), 'warn');
-                }
-            }
+             // ── API 우선 생성 시도 ──
+             let createdMemory = null;
+             let useApi = false;
+             try {
+                 if (window.apiClient && typeof window.apiClient.createMemory === 'function') {
+                 createdMemory = await window.apiClient.createMemory(newMemoryData);
+                 useApi = true;
+                 isLocalSaveMode = false; // API 성공 시 로컬 모드 해제
+                 console.log('[editor] API createMemory success:', createdMemory);
+
+                 // ── Save success status (UX hardening) ──
+                 updateSaveStatus('saved', '저장됨');
+                 } else {
+                 throw new Error('createMemory API not available');
+                 }
+             } catch (e) {
+                 const i18n = window.t || ((k) => k);
+                 console.warn('[editor] API createMemory failed, fallback to mock:', e?.message || e);
+
+                 // ── Save failed status (UX hardening) ──
+                 updateSaveStatus('failed', '저장 실패');
+
+                 if (e?.message?.includes('401') || e?.message?.includes('403')) {
+                     showToast(i18n('no_permission_local'), 'warn');
+                 } else if (e?.message?.includes('400')) {
+                     showToast(i18n('check_input'), 'error');
+                 } else {
+                     showToast(i18n('server_fail_local'), 'warn');
+                 }
+             }
 
             // API 실패 시 mock fallback - 로컬에만 추가
             // 방어적 처리: createdMemory가 null/undefined인 경우에도 로컬 객체 생성
@@ -942,32 +1039,28 @@ if (!createdMemory || typeof createdMemory !== 'object') {
             const parent = treeMemories().find(m => m.id === effectiveParentId);
             if (parent) drawBranch(calcPosition(parent), calcPosition(normalizedMemory));
 
-            const el = document.querySelector(`.memory-node[data-memory-id="${normalizedMemory.id}"]`);
-            if (el) {
-                selectNode(el, normalizedMemory);
+             const el = document.querySelector(`.memory-node[data-memory-id="${normalizedMemory.id}"]`);
+             if (el) {
+                 selectNode(el, normalizedMemory);
 
-                // 새 노드 피드백: 선택 강조 + 오토스크롤
-                el.classList.add('new-node-highlight');
-                setTimeout(() => el.classList.remove('new-node-highlight'), 2000);
+                 // 새 노드 피드백: 선택 강조 + 오토스크롤
+                 el.classList.add('new-node-highlight');
+                 setTimeout(() => el.classList.remove('new-node-highlight'), 2000);
 
-                // 오토스크롤: 노드 위치로 smooth scroll
-                const nodeRect = el.getBoundingClientRect();
-                const canvasRect = canvasArea.getBoundingClientRect();
-                const scrollX = el.offsetLeft - canvasRect.width / 2 + nodeRect.width / 2;
-                const scrollY = el.offsetTop - canvasRect.height / 2 + nodeRect.height / 2;
-                canvasArea.scrollTo({
-                    left: Math.max(0, scrollX),
-                    top: Math.max(0, scrollY),
-                    behavior: 'smooth'
-                });
+                 // 오토스크롤: 노드 위치로 smooth scroll
+                 const nodeRect = el.getBoundingClientRect();
+                 const canvasRect = canvasArea.getBoundingClientRect();
+                 const scrollX = el.offsetLeft - canvasRect.width / 2 + nodeRect.width / 2;
+                 const scrollY = el.offsetTop - canvasRect.height / 2 + nodeRect.height / 2;
+                 canvasArea.scrollTo({
+                     left: Math.max(0, scrollX),
+                     top: Math.max(0, scrollY),
+                     behavior: 'smooth'
+                 });
 
-// 새 메모리 추가 성공 토스트 (로컬 폴백 시 메시지 변경)
- const i18nToast = window.t || ((k) => k);
- const successMsg = useApi
- ? (i18nToast('memory_added') || '새 기억이 추가되었습니다!')
- : (i18nToast('memory_added_local') || '기억이 저장되었습니다 (로컬만)');
- showToast(successMsg, useApi ? 'success' : 'warn');
-            }
+                 // ── Show saved status again (selectNode hides it) ──
+                 updateSaveStatus('saved', useApi ? (i18n('save_saved') || '저장됨') : (i18n('save_saved_local') || '로컬 저장됨'));
+             }
 
             // ── 메모리 추가 후 캐시 동기화 ──
             if (typeof window.setCachedMemories === 'function' && treeId) {
