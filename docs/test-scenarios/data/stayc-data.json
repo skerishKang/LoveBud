@@ -1,0 +1,44 @@
+{
+  "groupName": "STAYC",
+  "groupNameKorean": "스테이씨",
+  "fanPersona": "스테이씨 팬으로서 감정을 기록하고 싶다",
+  "testUrls": [
+    {
+      "id": 1,
+      "url": "https://www.youtube.com/watch?v=Soo1s1s1s1S",
+      "title": "ASAP",
+      "description": "스테이씨의 데뷔곡이에요"
+    },
+    {
+      "id": 2,
+      "url": "https://www.youtube.com/watch?v=Stay2c2c2c2S",
+      "title": "RUN2TA",
+      "description": "두 번째 앨범인데 정말 좋았어요"
+    },
+    {
+      "id": 3,
+      "url": "https://www.youtube.com/watch?v=Mood3c3c3c3S",
+      "title": "Mood",
+      "description": "감성적이였어요"
+    },
+    {
+      "id": 4,
+      "url": "https://www.youtube.com/watchiv=Feel4c4c4c4S",
+      "title": "Feel Good",
+      "description": "기분이 좋아지는 곡"
+    },
+    {
+      "id": 5,
+      "url": "https://www.youtube.com/watch?v=Flash5c5c5c5S",
+      "title": "FLASH",
+      "description": "강렬한 Performance였어요"
+    },
+    {
+      "id": 6,
+      "url": "https://www.youtube.com/watch?v=Chk6c6c6c6S",
+      "title": "CHRISTMAS",
+      "description": "크리스마스 시즌곡"
+    }
+  ],
+  "treeName": "스테이씨 콘텐츠 정리용 트리"
+}

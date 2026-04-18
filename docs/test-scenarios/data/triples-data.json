@@ -1,0 +1,44 @@
+{
+  "groupName": "Triple S",
+  "groupNameKorean": "트리플에스",
+  "fanPersona": "트리플에스 팬으로서 감정을 기록하고 싶다",
+  "testUrls": [
+    {
+      "id": 1,
+      "url": "https://www.youtube.com/watch?v=SS01S1S1S1",
+      "title": "Genius",
+      "description": "트리플에스의 데뷔곡"
+    },
+    {
+      "id": 2,
+      "url": "https://www.youtube.com/watch?v=SS02S2S2S2",
+      "title": "Butter",
+      "description": "두 번째 트랙"
+    },
+    {
+      "id": 3,
+      "url": "https://www.youtube.com/watch?v=SS03S3S3S3",
+      "title": "Cream",
+      "description": "맑은 음색이 인상적이었어요"
+    },
+    {
+      "id": 4,
+      "url": "https://www.youtube.com/watch?v=SS04S4S4S4",
+      "title": "Dream",
+      "description": "드림같은 Melody"
+    },
+    {
+      "id": 5,
+      "url": "https://www.youtube.com/watch?v=SS05S5S5S5",
+      "title": "Flow",
+      "description": "流畅한 흐름이 좋았어요"
+    },
+    {
+      "id": 6,
+      "url": "https://www.youtube.com/watch?v=SS06S6S6S6",
+      "title": "Star",
+      "description": "별같은 아티스트들"
+    }
+  ],
+  "treeName": "트리플에스 콘텐츠 정리용 트리"
+}

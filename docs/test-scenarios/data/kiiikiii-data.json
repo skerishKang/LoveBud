@@ -1,0 +1,44 @@
+{
+  "groupName": "KiiiKiii",
+  "groupNameKorean": "키키",
+  "fanPersona": "키키 팬으로서 감정을 기록하고 싶다",
+  "testUrls": [
+    {
+      "id": 1,
+      "url": "https://www.youtube.com/watch?v=Q6XLoLNQ9gI",
+      "title": "I DO ME",
+      "description": "데뷔곡이고 정말 좋았어요"
+    },
+    {
+      "id": 2,
+      "url": "https://www.youtube.com/watch?v=UnG-1pU6P_k",
+      "title": "UNCUT GEM",
+      "description": "중독성이 정말 강했어요"
+    },
+    {
+      "id": 3,
+      "url": "https://www.youtube.com/watch?v=ABC1234567X",
+      "title": "Bad",
+      "description": "다들 너무 좋았어요"
+    },
+    {
+      "id": 4,
+      "url": "https://www.youtube.com/watch?v=DEF7890123Y",
+      "title": "Crown",
+      "description": "컨셉이 정말 좋았어요"
+    },
+    {
+      "id": 5,
+      "url": "https://www.youtube.com/watch?v=GHI4567890Z",
+      "title": "Sweet Dreams",
+      "description": "대박이었어요!"
+    },
+    {
+      "id": 6,
+      "url": "https://www.youtube.com/watch?v=JKL0123456A",
+      "title": "Like That",
+      "description": "글로벌 히트였어요"
+    }
+  ],
+  "treeName": "키키 콘텐츠 정리용 트리"
+}

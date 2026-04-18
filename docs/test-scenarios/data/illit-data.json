@@ -1,0 +1,44 @@
+{
+  "groupName": "ILLIT",
+  "groupNameKorean": "아일릿",
+  "fanPersona": "아일릿 팬으로서 감정을 기록하고 싶다",
+  "testUrls": [
+    {
+      "id": 1,
+      "url": "https://www.youtube.com/watch?v=6hW8X2w3Y4",
+      "title": "Magnetic",
+      "description": "데뷔곡이고 정말 좋았어요"
+    },
+    {
+      "id": 2,
+      "url": "https://www.youtube.com/watch?v=7i9Y3z1A5",
+      "title": "My World",
+      "description": "중독성이 정말 강했어요"
+    },
+    {
+      "id": 3,
+      "url": "https://www.youtube.com/watch?v=8j0A4v2B6",
+      "title": "NOT CUTE ANYMORE",
+      "description": "다들 너무 좋았어요"
+    },
+    {
+      "id": 4,
+      "url": "https://www.youtube.com/watch?v=9k1B5u3C7",
+      "title": "Almond Chocolate",
+      "description": "대박이었어요!"
+    },
+    {
+      "id": 5,
+      "url": "https://www.youtube.com/watch?v=0l2C6v4D8",
+      "title": "I'LL LIKE YOU",
+      "description": "감성곡인데 정말 좋아요"
+    },
+    {
+      "id": 6,
+      "url": "https://www.youtube.com/watch?v=1m3D7w5E9",
+      "title": "SUPER REAL ME",
+      "description": "첫 미니앨범인데 정말 좋아요"
+    }
+  ],
+  "treeName": "아일릿 콘텐츠 정리용 트리"
+}

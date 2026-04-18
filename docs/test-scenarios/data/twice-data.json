@@ -1,0 +1,44 @@
+{
+  "groupName": "Twice",
+  "groupNameKorean": "트와이스",
+  "fanPersona": "트와이스 팬으로서 감정을 기록하고 싶다",
+  "testUrls": [
+    {
+      "id": 1,
+      "url": "https://www.youtube.com/watch?v=0-FP4mMlC2w",
+      "title": "Like OOH-AHH",
+      "description": "데뷔곡이고 정말 좋았어요"
+    },
+    {
+      "id": 2,
+      "url": "https://www.youtube.com/watch?v=3ymw8xlC0Bw",
+      "title": "Cheer Up",
+      "description": "대박 히트곡이었어요"
+    },
+    {
+      "id": 3,
+      "url": "https://www.youtube.com/watch?v=rQ1fjRuFXjI",
+      "title": "TT",
+      "description": "중독성 甲이었던曲"
+    },
+    {
+      "id": 4,
+      "url": "https://www.youtube.com/watch?v=c7rR5T4mNYg",
+      "title": "Likey",
+      "description": "좋아요!"
+    },
+    {
+      "id": 5,
+      "url": "https://www.youtube.com/watch?v=RTsH4t2J6os",
+      "title": "What is Love?",
+      "description": "콘셉트가 정말 좋았어요"
+    },
+    {
+      "id": 6,
+      "url": "https://www.youtube.com/watch?v=CfwgS4-Aglw",
+      "title": "ICSY",
+      "description": "감성곡인데 정말 좋아요"
+    }
+  ],
+  "treeName": "트와이스 콘텐츠 정리용 트리"
+}

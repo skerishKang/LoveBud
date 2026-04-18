@@ -1,0 +1,44 @@
+{
+  "groupName": "RedVelvet",
+  "groupNameKorean": "레드벨벳",
+  "fanPersona": "레드벨벳 팬으로서 감정을 기록하고 싶다",
+  "testUrls": [
+    {
+      "id": 1,
+      "url": "https://www.youtube.com/watch?v=o0I_Agjt3T4",
+      "title": "Happiness",
+      "description": "데뷔곡이고 좋았어요"
+    },
+    {
+      "id": 2,
+      "url": "https://www.youtube.com/watch?v=Qfln1R4X3d8",
+      "title": "Ice Cream",
+      "description": "달콤可爱한曲"
+    },
+    {
+      "id": 3,
+      "url": "https://www.youtube.com/watch?v=zENvVy0Zl3w",
+      "title": "Dumb Dumb",
+      "description": "중독성 甲이었어요"
+    },
+    {
+      "id": 4,
+      "url": "https://www.youtube.com/watch?v=R9M3qw8u4p4",
+      "title": "Russian Roulette",
+      "description": "중독적였어요"
+    },
+    {
+      "id": 5,
+      "url": "https://www.youtube.com/watch?v=CuklIb9juBs",
+      "title": "Red Flavor",
+      "description": "여름曲의 정석"
+    },
+    {
+      "id": 6,
+      "url": "https://www.youtube.com/watch?v=5M29_1tV6Hs",
+      "title": "Psycho",
+      "description": "역시 레드벨벳!"
+    }
+  ],
+  "treeName": "레드벨벳 콘텐츠 정리용 트리"
+}

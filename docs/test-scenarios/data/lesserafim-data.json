@@ -1,0 +1,44 @@
+{
+  "groupName": "LeSserafim",
+  "groupNameKorean": "르세라핌",
+  "fanPersona": "르세라핌 팬으로서 감정을 기록하고 싶다",
+  "testUrls": [
+    {
+      "id": 1,
+      "url": "https://www.youtube.com/watch?v=cmH9F0CplIk",
+      "title": "FEARLESS",
+      "description": "데뷔곡이고 정말 좋았어요"
+    },
+    {
+      "id": 2,
+      "url": "https://www.youtube.com/watch?v=2v3Jbv4P7Xw",
+      "title": "ANTIFRAGILE",
+      "description": "중독성 甲이었어요"
+    },
+    {
+      "id": 3,
+      "url": "https://www.youtube.com/watch?v=SXfC-mR0U5s",
+      "title": "UNFORGIVEN",
+      "description": "다들 너무 좋았어요"
+    },
+    {
+      "id": 4,
+      "url": "https://www.youtube.com/watch?v=8b8YmLghX8w",
+      "title": "Perfect Night",
+      "description": "글로벌 히트였어요"
+    },
+    {
+      "id": 5,
+      "url": "https://www.youtube.com/watch?v=dOwH0H2y4Zs",
+      "title": "Easy",
+      "description": "대박이었어요!"
+    },
+    {
+      "id": 6,
+      "url": "https://www.youtube.com/watch?v=4WhJ2ePp8w8",
+      "title": "Good Blues",
+      "description": "컨셉이 정말 좋았어요"
+    }
+  ],
+  "treeName": "르세라핌 콘텐츠 정리용 트리"
+}

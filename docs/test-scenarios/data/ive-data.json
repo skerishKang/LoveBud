@@ -1,0 +1,44 @@
+{
+  "groupName": "IVE",
+  "groupNameKorean": "아이브",
+  "fanPersona": "아이브 팬으로서 감정을 기록하고 싶다",
+  "testUrls": [
+    {
+      "id": 1,
+      "url": "https://www.youtube.com/watch?v=Ive_IAM_OfficialMV",
+      "title": "IAM Official MV",
+      "description": "첫 티저 봤을 때부터 기대됐어요"
+    },
+    {
+      "id": 2,
+      "url": "https://www.youtube.com/watch?v=Ive_LoveDive_Stage",
+      "title": "Love Dive 무대",
+      "description": "음중 1위 했던 날 정말 행복했어요"
+    },
+    {
+      "id": 3,
+      "url": "https://www.youtube.com/watch?v=Ive_AfterLIKE_Performance",
+      "title": "After LIKE 퍼포먼스",
+      "description": "이 노래로 여름을 보냈어요"
+    },
+    {
+      "id": 4,
+      "url": "https://www.youtube.com/watch?v=Ive_Yujin_Fancam",
+      "title": "유진 직캠",
+      "description": "유진이 표정 너무 예뻐요"
+    },
+    {
+      "id": 5,
+      "url": "https://www.youtube.com/watch?v=Ive_Wonyoung_Fancam",
+      "title": "원영 직캠",
+      "description": "원영이 춤선이 정말 아름다워요"
+    },
+    {
+      "id": 6,
+      "url": "https://www.youtube.com/watch?v=Ive_ELEVEN_MV",
+      "title": "ELEVEN MV",
+      "description": "데뷔곡, 지금도 자주 들어요"
+    }
+  ],
+  "treeName": "아이브 콘텐츠 정리용 트리"
+}

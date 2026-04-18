@@ -1,0 +1,44 @@
+{
+  "groupName": "GirlsGeneration",
+  "groupNameKorean": "소녀시대",
+  "fanPersona": "소녀시대 팬으로서 감정을 기록하고 싶다",
+  "testUrls": [
+    {
+      "id": 1,
+      "url": "https://www.youtube.com/watch?v=psX1rQ1W6jE",
+      "title": "Into The New World (다시anko)",
+      "description": "데뷔곡이었고 가장 좋아하는 곡이에요"
+    },
+    {
+      "id": 2,
+      "url": "https://www.youtube.com/watch?v=hZmoMyfxP8E",
+      "title": "Gee",
+      "description": "첫 히트곡, 중독성이 대단해요"
+    },
+    {
+      "id": 3,
+      "url": "https://www.youtube.com/watch?v=6rYdnE2WCQk",
+      "title": "The Boys",
+      "description": "K-POP 글로벌 전환점이었어요"
+    },
+    {
+      "id": 4,
+      "url": "https://www.youtube.com/watch?v=4b-Ly6f4EpI",
+      "title": "Lion Heart",
+      "description": "레트로 감성이 정말 좋아요"
+    },
+    {
+      "id": 5,
+      "url": "https://www.youtube.com/watch?v=QW0jR2qzfIM",
+      "title": "Party",
+      "description": "여름 느낌나는 밝은 곡"
+    },
+    {
+      "id": 6,
+      "url": "https://www.youtube.com/watch?v=FRKsD6UkKKs",
+      "title": "All My Love Is You",
+      "description": "히든 트랙이지만 정말 좋아요"
+    }
+  ],
+  "treeName": "소녀년대 콘텐츠 정리용 트리"
+}

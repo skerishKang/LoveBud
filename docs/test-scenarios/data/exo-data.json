@@ -1,0 +1,44 @@
+{
+  "groupName": "EXO",
+  "groupNameKorean": "엑소",
+  "fanPersona": "엑소 팬으로서 감정을 기록하고 싶다",
+  "testUrls": [
+    {
+      "id": 1,
+      "url": "https://www.youtube.com/watch?v=Y0pxaXwDqTQ",
+      "title": "Mama",
+      "description": "데뷔곡이고 키포인트였어요"
+    },
+    {
+      "id": 2,
+      "url": "https://www.youtube.com/watch?v=r5sZ2t2X5wM",
+      "title": "Growl",
+      "description": "대박 히트곡이었어요"
+    },
+    {
+      "id": 3,
+      "url": "https://www.youtube.com/watch?v=WJ0YLUwD918",
+      "title": "Overdose",
+      "description": "중독성 甲이었던曲"
+    },
+    {
+      "id": 4,
+      "url": "https://www.youtube.com/watch?v=KSHFHZwA4g4",
+      "title": "Call Me Baby",
+      "description": "다들 정말 잘했어요"
+    },
+    {
+      "id": 5,
+      "url": "https://www.youtube.com/watch?v=BaDNjQfy4bU",
+      "title": "Love Shot",
+      "description": "다시보고 싶어요"
+    },
+    {
+      "id": 6,
+      "url": "https://www.youtube.com/watch?v=6fZl7yNz7zc",
+      "title": "Cream",
+      "description": "컨셉이 정말 좋았어요"
+    }
+  ],
+  "treeName": "엑소 콘텐츠 정리용 트리"
+}
