@@ -489,18 +489,27 @@
        ko: '저장 권한이 없습니다. 로컬에만 추가됩니다.',
        en: 'No save permission. Added to local only.'
      },
-     'check_input': {
-       ko: '입력값을 확인해주세요.',
-       en: 'Please check your input.'
-     },
-     // ── detail.js ──
-     'no_siblings_in_path': {
-       ko: '같은 경로의 다른 순간이 없어요',
-       en: 'No other moments in this path'
-     },
     'server_fail_local': {
       ko: '서버 연결 실패. 로컬에만 추가됩니다.',
       en: 'Server connection failed. Added to local only.'
+    },
+
+    // ── detail.js ──
+    'lovetree_brand': {
+      ko: '러브트리',
+      en: 'LoveTree'
+    },
+    'edit_action': {
+      ko: '편집하기',
+      en: 'Edit'
+    },
+    'memory_record_prefix': {
+      ko: '기록 — ',
+      en: 'Recorded — '
+    },
+    'my_trees_short': {
+      ko: '내 트리',
+      en: 'My Trees'
     },
 
     // ── 순간 수정/삭제 메시지 ──
