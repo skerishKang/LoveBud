@@ -1557,9 +1557,25 @@ document.addEventListener('DOMContentLoaded', () => {
         updateSidebarStatus();
     };
 
-    // ?�?� ?�증 가?? my-trees.js?� ?�일???�턴 ?�?�
-    // user ?�으�?cache ?�인 ??redirect, ?�으�?startEditor 진행
+    // ?? ?증 가?? my-trees.js? ?일???턴 ??
+    // user ?으?cache ?인 ??redirect, ?으?startEditor 진행
     var editorStarted = false;
+
+    // Confirmed session helper (from auth.js or local fallback)
+    function getConfirmedSessionUser() {
+      try {
+        if (window.getConfirmedAuthUser) {
+          return window.getConfirmedAuthUser();
+        }
+        if (localStorage.getItem('lovebud_auth_confirmed') === 'true') {
+          var raw = localStorage.getItem('lovebud_auth_cache');
+          if (raw && raw !== 'null') {
+            return JSON.parse(raw);
+          }
+        }
+      } catch (e) {}
+      return null;
+    }
 
     function tryStartEditor(user) {
         // ?��? ?�디?��? ?�작?�었?�라?? ?��? ?�보가 ?�다가 ?�로 ?�겼?�면 ?�이???�로???�도
@@ -1596,7 +1612,14 @@ document.addEventListener('DOMContentLoaded', () => {
         startEditor();
     }
 
-    // ?�로??배열 콜백 ?�턴 ?�용 (?�백 ?�함)
+    // DOMContentLoaded: confirmed session이 있으면 즉시 boot (before auth ready callback)
+    var cachedUser = getConfirmedSessionUser();
+    if (cachedUser) {
+        console.log('[editor] Booting immediately from confirmed session cache');
+        tryStartEditor(cachedUser);
+    }
+
+    // ?로??배열 콜백 ?턴 ?용 (?백 ?함)
     if (typeof window.registerOnAuthReady === 'function') {
         window.registerOnAuthReady(tryStartEditor);
     } else {
