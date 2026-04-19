@@ -44,6 +44,7 @@ lodocument.addEventListener('DOMContentLoaded', () => {
     const editorSaveStatus = window.LoveBudEditorSaveStatus || {};
     const editorPageHelpers = window.LoveBudEditorPageHelpers || {};
     const editorTreeHelpers = window.LoveBudEditorTreeHelpers || {};
+    const editorBindings = window.LoveBudEditorBindings || {};
 
     // Auth guard bootstrapping via onAuthReady callback
     // Shared toast utility wrapper
@@ -794,68 +795,94 @@ lodocument.addEventListener('DOMContentLoaded', () => {
         const cancelBtn = document.getElementById('cancelAddMemory');
         const confirmBtn = document.getElementById('confirmAddMemory');
 
-        // Button event listeners
-        if (addBtn) {
-            addBtn.disabled = false;
-            addBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                showAddMemoryForm();
+        if (editorBindings.bindMemoryCreateControls) {
+            editorBindings.bindMemoryCreateControls({
+                addBtn,
+                cancelBtn,
+                confirmBtn,
+                urlInput,
+                titleInput,
+                memoInput,
+                showAddMemoryForm,
+                hideAddMemoryForm,
+                addMemoryFromForm,
+                updateSaveStatus,
+                showToast,
+                i18n
             });
-        }
-        if (cancelBtn) cancelBtn.addEventListener('click', hideAddMemoryForm);
-        if (confirmBtn) {
-             confirmBtn.addEventListener('click', (e) => {
-                 e.preventDefault();
-                 addMemoryFromForm().catch(err => {
-                     console.error('[editor] Failed to add memory:', err);
-                     updateSaveStatus('failed', i18n('save_failed'));
-                     showToast(i18n('record_error') || '기록 중 오류가 발생했습니다', 'error');
-                 });
-             });
-        }
-
-        // Enter key submit shortcuts
-        if (urlInput) {
-            urlInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') titleInput.focus();
-            });
-        }
-        if (titleInput) {
-            titleInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') memoInput.focus();
-            });
-        }
-        if (memoInput) {
-            memoInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
+        } else {
+            if (addBtn) {
+                addBtn.disabled = false;
+                addBtn.addEventListener('click', (e) => {
                     e.preventDefault();
-                    addMemoryFromForm();
-                }
-            });
+                    e.stopPropagation();
+                    showAddMemoryForm();
+                });
+            }
+            if (cancelBtn) cancelBtn.addEventListener('click', hideAddMemoryForm);
+            if (confirmBtn) {
+                 confirmBtn.addEventListener('click', (e) => {
+                     e.preventDefault();
+                     addMemoryFromForm().catch(err => {
+                         console.error('[editor] Failed to add memory:', err);
+                         updateSaveStatus('failed', i18n('save_failed'));
+                         showToast(i18n('record_error') || '기록 중 오류가 발생했습니다', 'error');
+                     });
+                 });
+            }
+
+            if (urlInput) {
+                urlInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') titleInput.focus();
+                });
+            }
+            if (titleInput) {
+                titleInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') memoInput.focus();
+                });
+            }
+            if (memoInput) {
+                memoInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        addMemoryFromForm();
+                    }
+                });
+            }
         }
 
-        // Hide unimplemented buttons for now
-        const hideUnimplementedButtons = () => {
-            const moreBtn = detailPanel.querySelector('.icon-btn');
-            const footerBtn = detailPanel.querySelector('.panel-footer');
+        const hideUnimplementedButtons = editorBindings.hideUnimplementedButtons || ((panel) => {
+            const moreBtn = panel.querySelector('.icon-btn');
+            const footerBtn = panel.querySelector('.panel-footer');
             if (moreBtn) moreBtn.style.display = 'none';
             if (footerBtn) footerBtn.style.display = 'none';
-        };
-        hideUnimplementedButtons();
+        });
+        hideUnimplementedButtons(detailPanel);
 
         initCanvas();
 
-        // Detail panel edit/delete button listeners
         const editMemoryBtn = document.getElementById('editMemoryBtn');
         const deleteMemoryBtn = document.getElementById('deleteMemoryBtn');
         const cancelEditBtn = document.getElementById('cancelEditBtn');
         const saveEditBtn = document.getElementById('saveEditBtn');
 
-        if (editMemoryBtn) editMemoryBtn.addEventListener('click', enterEditMode);
-        if (deleteMemoryBtn) deleteMemoryBtn.addEventListener('click', deleteMemory);
-        if (cancelEditBtn) cancelEditBtn.addEventListener('click', exitEditMode);
-        if (saveEditBtn) saveEditBtn.addEventListener('click', saveMemoryEdit);
+        if (editorBindings.bindDetailActionButtons) {
+            editorBindings.bindDetailActionButtons({
+                editMemoryBtn,
+                deleteMemoryBtn,
+                cancelEditBtn,
+                saveEditBtn,
+                enterEditMode,
+                deleteMemory,
+                exitEditMode,
+                saveMemoryEdit
+            });
+        } else {
+            if (editMemoryBtn) editMemoryBtn.addEventListener('click', enterEditMode);
+            if (deleteMemoryBtn) deleteMemoryBtn.addEventListener('click', deleteMemory);
+            if (cancelEditBtn) cancelEditBtn.addEventListener('click', exitEditMode);
+            if (saveEditBtn) saveEditBtn.addEventListener('click', saveMemoryEdit);
+        }
 
         console.log('[editor] Ready for tree:', treeId, 'memories:', treeMemories().length);
         updateSidebarStatus();
