@@ -1026,6 +1026,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             updateDetailPanel(data);
             currentEditingMemory = data;
+            updateFocusSelectedBtn();
+            setDetailEmptyState(false);
         };
 
         const selectNodeById = (id) => {
@@ -1140,7 +1142,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const initCanvas = () => {
-            // 기존 ?드 중복 방?: 초기????기존 DOM ?드 ?거
+            // 기존 노드 중복 방지: 초기화 시 기존 DOM 노드 제거
             canvas.querySelectorAll('.memory-node').forEach(n => n.remove());
             canvas.querySelectorAll('#emptyTreeMessage').forEach(el => el.remove());
             svg.querySelectorAll('.branch-line').forEach(l => l.remove());
@@ -1149,8 +1151,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const hasMoments = treeMemories().length > 0;
             if (!hasMoments) {
                 selectedNodeId = null;
-                renderEmptyDetailState();
+                setDetailEmptyState(true);
+            } else {
+                setDetailEmptyState(false);
             }
+            updateFocusSelectedBtn();
 
             treeMemories().forEach(node => {
                 if (isRootMemory(node, canonicalRootId)) return; // canonical root?skip
@@ -1159,23 +1164,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const parent = treeMemories().find(m => m.id === parentId);
                 if (parent) drawBranch(calcPosition(parent), calcPosition(node));
             });
-
-            // ???리 ?인 - 캔버?에 메시지 ?시
-            const initialMem = createInitialMemory();
-            if (initialMem.isNewTree) {
-                const emptyMsg = document.createElement('div');
-                emptyMsg.id = 'emptyTreeMessage';
-                emptyMsg.innerHTML = `
-                    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;padding:32px;background:rgba(255,255,255,0.95);border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,0.1);max-width:320px;">
-                        <div style="font-size:48px;margin-bottom:16px;">?</div>
-                        <div style="font-size:1.25rem;font-weight:800;margin-bottom:8px;color:var(--on-surface);">${i18n('empty_tree_title') || '새 트리가 비어있어요'}</div>
-                        <div style="font-size:14px;color:var(--on-surface-variant);margin-bottom:16px;line-height:1.5;">
-                            ${i18n('empty_tree_desc') || '"순간 추가" 버튼을 클릭해 첫 감정을 기록해보세요!'}
-                        </div>
-                    </div>
-                `;
-                canvas.appendChild(emptyMsg);
-            }
 
             // 트리가 비어있지 않을 때만 첫 메모리 선택
             if (hasMoments) {
@@ -1186,12 +1174,39 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
-        // 빈 트리 상태용 상세 패널 empty state 렌더링
-        const renderEmptyDetailState = () => {
+        // 빈 트리 상태용 상세 패널 empty state 토글 (DOM 구조 유지)
+        const setDetailEmptyState = (isEmpty) => {
             const detailContent = document.getElementById('detailContent');
             if (!detailContent) return;
 
-            detailContent.innerHTML = '<div style="text-align:center;padding:40px 24px;color:var(--on-surface-variant);"><span class="material-symbols-outlined" style="font-size:48px;opacity:0.4;margin-bottom:16px;display:block;">sentiment_satisfied</span><p style="font-size:1rem;font-weight:600;margin-bottom:8px;color:var(--on-surface);">아직 추가된 순간이 없어요</p><p style="font-size:0.9rem;opacity:0.7;line-height:1.5;">왼쪽 아래의 \'순간 추가\' 버튼으로 첫 기록을 남겨보세요.</p></div>';
+            // empty state 엘리먼트 생성/토글
+            let emptyState = document.getElementById('detailEmptyState');
+            if (!emptyState) {
+                emptyState = document.createElement('div');
+                emptyState.id = 'detailEmptyState';
+                emptyState.innerHTML = '<div style="text-align:center;padding:40px 24px;color:var(--on-surface-variant);"><span class="material-symbols-outlined" style="font-size:48px;opacity:0.4;margin-bottom:16px;display:block;">sentiment_satisfied</span><p style="font-size:1rem;font-weight:600;margin-bottom:8px;color:var(--on-surface);">아직 추가된 순간이 없어요</p><p style="font-size:0.9rem;opacity:0.7;line-height:1.5;">왼쪽 아래의 \'순간 추가\' 버튼으로 첫 기록을 남겨보세요.</p></div>';
+                detailContent.appendChild(emptyState);
+            }
+
+            // 기존 DOM 요소들 토글
+            const viewMode = document.getElementById('detailViewMode');
+            const editMode = document.getElementById('detailEditMode');
+            const actions = detailContent.querySelector('.memory-actions');
+
+            if (emptyState) emptyState.style.display = isEmpty ? 'block' : 'none';
+            if (viewMode) viewMode.style.display = isEmpty ? 'none' : 'block';
+            if (editMode) editMode.style.display = 'none';
+            if (actions) actions.style.display = isEmpty ? 'none' : 'flex';
+        };
+
+        // focusSelectedBtn 상태 동기화
+        const updateFocusSelectedBtn = () => {
+            const btn = document.getElementById('focusSelectedBtn');
+            if (!btn) return;
+            const hasSelection = !!selectedNodeId;
+            btn.disabled = !hasSelection;
+            btn.style.opacity = hasSelection ? '1' : '0.5';
+            btn.style.cursor = hasSelection ? 'pointer' : 'not-allowed';
         };
 
         // ?�?� Save status indicator ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�
@@ -1444,7 +1459,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
             }
 
-            // ?�?� createMemory ??갱신: ?�조???�선, ?�패 ??로컬 추�? ?�?�
+            // ?�?� createMemory ??갱신: ?�조???�공 ?��????�라 구분 ?�?�
             // ?�??계약: window.currentTreeMemories????�� normalizeMemory가 ?�용??메모�?배열
             const normalizedNew = normalizeMemory(createdMemory);
             let didRefreshFromServer = false;
@@ -1512,7 +1527,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
              // ?�?� 최종 ?�???�태: ?�조???�공 ?��????�라 구분 ?�?�
              if (useApi && didRefreshFromServer) {
-                 updateSaveStatus('saved', i18n('save_saved') || '저장됨');
+                 updateSaveStatus('saved', i18n('save_saved'));
              } else {
                  updateSaveStatus('saved', i18n('save_saved_local') || '로컬 저장됨');
              }
@@ -1525,10 +1540,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // ?�?� ?�이?�바 ?�데?�트 ?�?�
             updateSidebarStatus();
+            updateFocusSelectedBtn();
+            setDetailEmptyState(false);
+
         };
 
         // ??버튼 ?�벤??리스??
-        if (addBtn) addBtn.addEventListener('click', showAddMemoryForm);
+        if (addBtn) {
+            addBtn.disabled = false;
+            addBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                showAddMemoryForm();
+            });
+        }
         if (cancelBtn) cancelBtn.addEventListener('click', hideAddMemoryForm);
         if (confirmBtn) {
              confirmBtn.addEventListener('click', (e) => {
