@@ -16,7 +16,8 @@ function createEditorMemoryActions(deps) {
         findRootMemory,
         detailPanel,
         svg,
-        calcPosition
+        calcPosition,
+        setDetailEmptyState
     } = deps;
 
     let isEditMode = false;
@@ -135,14 +136,14 @@ function createEditorMemoryActions(deps) {
                 if (rootMem) {
                     setSelectedNodeId(rootMem.id);
                     updateDetailPanel(rootMem);
+                    setDetailEmptyState(false);
                 } else if (nextMemories.length > 0) {
                     setSelectedNodeId(nextMemories[0].id);
                     updateDetailPanel(nextMemories[0]);
+                    setDetailEmptyState(false);
                 } else {
-                    setSelectedNodeId(getCanonicalRootId());
-                    detailPanel.querySelector('h3').innerHTML = i18n('moment_detail') || '순간 상세';
-                    const imgEl = detailPanel.querySelector('.detail-video img');
-                    if (imgEl) imgEl.src = '';
+                    setSelectedNodeId(null);
+                    setDetailEmptyState(true);
                 }
 
                 updateSidebarStatus();

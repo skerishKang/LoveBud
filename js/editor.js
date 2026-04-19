@@ -240,10 +240,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `;
 
-        const headerEl = detailPanel.querySelector('h3');
-        if (headerEl) {
-            headerEl.textContent = errorTitle;
-        }
+        setDetailEmptyState(true);
 
         const retryBtn = document.getElementById('retryOpenTreeBtn');
         if (retryBtn) {
@@ -734,7 +731,8 @@ document.addEventListener('DOMContentLoaded', () => {
             findRootMemory,
             detailPanel,
             svg,
-            calcPosition
+            calcPosition,
+            setDetailEmptyState
         });
 
         const {
