@@ -849,9 +849,9 @@ document.addEventListener('DOMContentLoaded', () => {
             circle.setAttribute("cx", ROOT_X);
             circle.setAttribute("cy", ROOT_Y);
             circle.setAttribute("r", "10");
-            circle.setAttribute("fill", "var(--primary)");
-            circle.setAttribute("stroke", "white");
-            circle.setAttribute("stroke-width", "3");
+            circle.setAttribute("fill", "transparent");
+            circle.setAttribute("stroke", "transparent");
+            circle.setAttribute("stroke-width", "0");
             svg.appendChild(circle);
         };
 

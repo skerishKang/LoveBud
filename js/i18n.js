@@ -484,6 +484,16 @@
       en: 'Loading your LoveTrees...'
     },
 
+    // ── editor.js placeholder/fallback 키 ──
+    'default_tree_title': {
+      ko: '새 러브트리',
+      en: 'New LoveTree'
+    },
+    'private_info': {
+      ko: '나만 볼 수 있는 트리입니다',
+      en: 'Only you can see this tree'
+    },
+
      // ── editor.js 알림 메시지 ──
      'no_permission_local': {
        ko: '저장 권한이 없습니다. 로컬에만 추가됩니다.',
