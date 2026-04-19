@@ -41,6 +41,37 @@ from = "/api/community/memories"
 to = "/.netlify/functions/community-memories"
 status = 200
 
+# ── Static page aliases (root -> /pages) ────────────────────────────────────
+[[redirects]]
+from = "/intro.html"
+to = "/pages/intro.html"
+status = 200
+
+[[redirects]]
+from = "/login.html"
+to = "/pages/login.html"
+status = 200
+
+[[redirects]]
+from = "/search.html"
+to = "/pages/search.html"
+status = 200
+
+[[redirects]]
+from = "/detail.html"
+to = "/pages/detail.html"
+status = 200
+
+[[redirects]]
+from = "/editor.html"
+to = "/pages/editor.html"
+status = 200
+
+[[redirects]]
+from = "/my-trees.html"
+to = "/pages/my-trees.html"
+status = 200
+
 # ── Static multipage app: no global SPA fallback ─────────────────────────────
 # LoveBud currently serves explicit HTML pages under /pages.
 # Invalid paths should surface as 404s instead of silently falling back to /index.html.
