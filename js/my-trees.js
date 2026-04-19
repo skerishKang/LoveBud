@@ -14,6 +14,7 @@
   var myTreesUI = window.LoveBudMyTreesUI || null;
   var myTreesActions = window.LoveBudMyTreesActions || null;
   var myTreesData = window.LoveBudMyTreesData || null;
+  var myTreesState = window.LoveBudMyTreesState || null;
 
   // ── Toast utility (공통 UI 사용) ──────────────────────────────────────────
   function showToast(message, type) {
@@ -288,9 +289,13 @@
 
   // 📌 트리 정렬
   function sortTrees(trees, sortBy) {
+    if (myTreesState && typeof myTreesState.sortTrees === 'function') {
+      return myTreesState.sortTrees(trees, sortBy);
+    }
+
     if (!sortBy || !trees) return trees;
-    
-    var sorted = [...trees];
+
+    var sorted = Array.isArray(trees) ? trees.slice() : [];
     switch (sortBy) {
       case 'recent':
         sorted.sort(function(a, b) {
@@ -329,7 +334,11 @@
       return;
     }
 
-    lastTreesData = trees;
+    if (myTreesState && typeof myTreesState.setLastTreesData === 'function') {
+      myTreesState.setLastTreesData(trees);
+    } else {
+      lastTreesData = trees;
+    }
 
     var total = trees.length;
     var publicCount = trees.filter(function(t) { return t.visibility === 'public'; }).length;
@@ -682,16 +691,27 @@
   // my-trees.js는 Firebase/Auth 스크립트보다 먼저 로드되므로, 여기서 직접
   // firebase 존재 여부를 검사하면 비로그인 사용자가 오프라인 사용자로 통과할 수 있다.
   var myTreesStarted = false;
-  var lastTreesData = []; // 📌 정렬용 데이터 저장
+  var lastTreesData = []; // fallback only
 
   function bootMyTrees(user) {
     if (myTreesStarted) return;
     myTreesStarted = true;
     startMyTrees(user);
-    
+
     // 📌 정렬 드롭다운 이벤트
     var sortSelect = document.getElementById('sortTreesSelect');
-    if (sortSelect) {
+    if (myTreesState && typeof myTreesState.bindSortSelect === 'function') {
+      myTreesState.bindSortSelect({
+        select: sortSelect,
+        renderTrees: renderTrees,
+        getLastTreesData: function() {
+          if (myTreesState && typeof myTreesState.getLastTreesData === 'function') {
+            return myTreesState.getLastTreesData();
+          }
+          return lastTreesData;
+        }
+      });
+    } else if (sortSelect) {
       sortSelect.addEventListener('change', function() {
         var sorted = sortTrees(lastTreesData, this.value);
         renderTrees(sorted);
