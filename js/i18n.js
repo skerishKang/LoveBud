@@ -203,11 +203,23 @@
       ko: 'YouTube 링크를 입력해주세요.',
       en: 'Please enter a YouTube link.'
     },
-    'invalid_youtube': {
-      ko: '유효한 YouTube 링크가 아닙니다.',
-      en: 'Invalid YouTube link.'
-    },
-    'new_memory': {
+     'invalid_youtube': {
+       ko: '유효한 YouTube 링크가 아닙니다.',
+       en: 'Invalid YouTube link.'
+     },
+     'invalid_youtube_format': {
+       ko: '전체 YouTube 링크를 붙여넣어 주세요.',
+       en: 'Please paste the full YouTube URL.'
+     },
+     'invalid_youtube_unsupported': {
+       ko: 'YouTube 링크만 지원합니다. youtube.com 또는 youtu.be 링크를 사용해 주세요.',
+       en: 'Only YouTube links are supported. Please use a youtube.com or youtu.be link.'
+     },
+     'invalid_youtube_id_length': {
+       ko: '링크가 중간에 잘린 것 같아요. 전체 YouTube 링크를 다시 복사해 주세요.',
+       en: 'The link looks incomplete. Please copy the full YouTube URL again.'
+     },
+     'new_memory': {
       ko: '새로운 기억',
       en: 'New Memory'
     },
