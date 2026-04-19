@@ -802,8 +802,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const nodeEl = document.createElement('div');
             nodeEl.className = 'memory-node floating-node';
             nodeEl.dataset.memoryId = mem.id;
-            nodeEl.style.left = `${pos.x - 40}px`;
-            nodeEl.style.top = `${pos.y - 40}px`;
+            const nodeHalf = Math.round(NODE_WIDTH / 2);
+            nodeEl.style.left = `${pos.x - nodeHalf}px`;
+            nodeEl.style.top = `${pos.y - nodeHalf}px`;
             nodeEl.style.animationDelay = mem.delay || '0s';
 
             const card = document.createElement('div');
