@@ -35,6 +35,32 @@
       en: 'Browse Other Trees'
     },
 
+    // 홈 화면 (home.*)
+    'home.badge': {
+      ko: '💝 나만의 러브트리',
+      en: '💝 My LoveTree'
+    },
+    'home.heroTitle': {
+      ko: '사랑하는 것의<br><span>모든 순간이 하나의 나무가 된다</span>',
+      en: 'Every moment of what you love<br><span>becomes a single tree</span>'
+    },
+    'home.heroSubtitle': {
+      ko: '입덕의 첫 설렘, 가장 감동했던 그 장면, 그리고 지금 이 순간까지. 당신이 느낀 감정의 결을 남기고, 하나의 나무로 완성하세요.',
+      en: 'From the first spark of fandom to the most moving scene and this very moment. Capture the texture of your emotions and grow them into a single tree.'
+    },
+    'home.cta.start': {
+      ko: '나의 첫 러브트리 만들기',
+      en: 'Create My First LoveTree'
+    },
+    'home.cta.browse': {
+      ko: '예시 트리 먼저 보기',
+      en: 'Browse Sample Trees First'
+    },
+    'home.intro': {
+      ko: '직접 만들어보기 전에 미리 둘러보고 싶다면',
+      en: 'If you want to look around before creating your own'
+    },
+
     // 공통 버튼/액션
     'login_btn': {
       ko: '로그인',
