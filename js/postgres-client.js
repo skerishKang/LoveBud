@@ -11,6 +11,23 @@ const AUTH_TOKEN_KEY = 'lovebud_auth_token';
 const AUTH_CONFIRMED_KEY = 'lovebud_auth_confirmed';
 const AUTH_CACHE_KEY = 'lovebud_auth_cache';
 
+// Auth wait settings - shared with auth-firebase.js
+const AUTH_WAIT_MS =
+  typeof window.__LOVEBUD_AUTH_WAIT_MS === 'number' &&
+  window.__LOVEBUD_AUTH_WAIT_MS > 0
+    ? window.__LOVEBUD_AUTH_WAIT_MS
+    : 2000;
+
+const AUTH_POLL_INTERVAL_MS = 100;
+
+function getAuthWaitAttempts(forceLongWait) {
+  const shouldLongWait = forceLongWait || shouldWaitLongerForAuth();
+  if (!shouldLongWait) {
+    return Math.max(1, Math.floor(500 / AUTH_POLL_INTERVAL_MS));
+  }
+  return Math.max(1, Math.floor(AUTH_WAIT_MS / AUTH_POLL_INTERVAL_MS));
+}
+
 function getCachedAuthUser() {
   try {
     const raw = localStorage.getItem(AUTH_CACHE_KEY);
@@ -134,8 +151,7 @@ function isMockFallbackEnabled() {
         let attempts = 0;
         const AUTH_READY_FLAG = '__lovebudAuthReady';
         const forceLongWait = !!options.forceLongWait;
-        const shouldLongWait = forceLongWait || shouldWaitLongerForAuth();
-        const maxAttempts = shouldLongWait ? 20 : 5; // 100ms * 20 = 2s
+        const maxAttempts = getAuthWaitAttempts(forceLongWait);
 
         while (attempts < maxAttempts) {
             const nextCachedToken = getCachedTokenRecord();
@@ -166,7 +182,7 @@ function isMockFallbackEnabled() {
                     return headers;
                 }
             }
-            await new Promise(resolve => setTimeout(resolve, 100));
+            await new Promise(resolve => setTimeout(resolve, AUTH_POLL_INTERVAL_MS));
             attempts++;
         }
 
@@ -201,7 +217,7 @@ function isMockFallbackEnabled() {
                 if (DEBUG) {
                     console.warn(`[apiClient] ${endpoint} got ${response.status} without auth header; retrying after auth wait`);
                 }
-                await waitForAuthToken(1200);
+                await waitForAuthToken(Math.min(1200, AUTH_WAIT_MS));
                 const retryHeaders = await getAuthHeaders({ forceLongWait: true });
                 if (retryHeaders.Authorization) {
                     config = buildConfig(retryHeaders);

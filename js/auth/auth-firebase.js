@@ -256,14 +256,20 @@ var cachedUser = typeof getCachedAuthUser === 'function' ? getCachedAuthUser() :
       markAuthLoading();
     }
 
+    var AUTH_WAIT_MS =
+      typeof window.__LOVEBUD_AUTH_WAIT_MS === 'number' &&
+      window.__LOVEBUD_AUTH_WAIT_MS > 0
+        ? window.__LOVEBUD_AUTH_WAIT_MS
+        : 2000;
+
     var authTimeout = setTimeout(function() {
       if (!authReadyFlag || !window[authReadyFlag]) {
-        console.warn('[auth] Firebase auth timeout (2s) - switching to offline mode');
+        console.warn('[auth] Firebase auth timeout (' + AUTH_WAIT_MS + 'ms) - switching to offline mode');
         if (typeof initOfflineAuthFn === 'function') {
           initOfflineAuthFn();
         }
       }
-    }, 2000);
+    }, AUTH_WAIT_MS);
 
     if (typeof firebase === 'undefined') {
       console.warn('Firebase SDK not loaded. Auth running in offline mode.');
