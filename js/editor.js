@@ -486,85 +486,113 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const updateDetailPanel = (data) => {
-            // 현재 트리 정보 가져오기
             const currentTree = window.currentTreeData || {};
             const treeId = currentTree.id || urlTreeId;
+            const i18n = window.t || ((k) => k);
 
-            // 📌 헤더: 제목 + visibility + 공유
+            const visibility = currentTree.visibility || 'private';
+            const isPublic = visibility === 'public';
+            const visIcon = isPublic ? 'public' : 'lock';
+            const visLabel = isPublic ? i18n('visibility_public') : i18n('visibility_private');
+            const visInfo = isPublic ? i18n('share_info') : i18n('private_info');
+            const visStyle = isPublic
+                ? 'background:rgba(76,175,80,0.1);color:#4caf50;border:1px solid rgba(76,175,80,0.3);'
+                : 'background:rgba(158,158,158,0.1);color:#757575;border:1px solid rgba(158,158,158,0.3);';
+
+            const isEmptyState = !!data?.isNewTree;
+            const isRootSelected = !isEmptyState && isRootMemory(data, canonicalRootId);
+
             const headerEl = detailPanel.querySelector('h3');
             if (headerEl) {
-                const i18n = window.t || ((k) => k);
                 const localBadge = isLocalSaveMode
                     ? '<span style="font-size:11px;padding:2px 8px;background:rgba(239,108,0,0.1);color:#ef6c00;border-radius:99px;font-weight:600;margin-left:8px;">로컬 저장</span>'
                     : '';
 
-                // 📌 visibility 표시
-                const visibility = window.currentTreeData?.visibility || 'private';
-                const isPublic = visibility === 'public';
-                const visIcon = isPublic ? 'public' : 'lock';
-                const visLabel = isPublic ? i18n('visibility_public') : i18n('visibility_private');
-                const visInfo = isPublic ? i18n('share_info') : i18n('private_info');
-                const visStyle = isPublic
-                    ? 'background:rgba(76,175,80,0.1);color:#4caf50;border:1px solid rgba(76,175,80,0.3);'
-                    : 'background:rgba(158,158,158,0.1);color:#757575;border:1px solid rgba(158,158,158,0.3);';
-
-                // 📌 링크 복사 (공개 트리만)
-                const shareBtn = isPublic
-                    ? `<button id="shareTreeBtn" style="${visStyle}font-size:12px;padding:6px 12px;border-radius:99px;cursor:pointer;border:none;font-weight:600;display:flex;align-items:center;gap:4px;">
-                        <span class="material-symbols-outlined" style="font-size:14px;">content_copy</span>
-                        ${i18n('share_link')}
-                       </button>`
-                    : '';
-
-                var basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
-                headerEl.innerHTML = `
-                <div style="display:flex;flex-direction:column;gap:8px;">
-                    <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
-                        <span style="font-size:1.1rem;line-height:1.3;">${data.title}${localBadge}</span>
-                        ${shareBtn}
+                const treeMetaHtml = `
+                    <div style="margin-top:10px;padding:12px 14px;border-radius:12px;background:var(--surface-container);display:flex;flex-direction:column;gap:8px;">
+                        <div style="font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--on-surface-variant);text-transform:uppercase;">
+                            현재 트리
+                        </div>
+                        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+                            <div style="font-size:14px;font-weight:700;color:var(--on-surface);">${escapeHtml(currentTree.title || '러브트리')}</div>
+                            <span style="${visStyle}padding:4px 10px;border-radius:99px;display:inline-flex;align-items:center;gap:4px;font-size:12px;">
+                                <span class="material-symbols-outlined" style="font-size:12px;">${escapeHtml(visIcon)}</span>
+                                ${escapeHtml(visLabel)}
+                            </span>
+                        </div>
+                        <div style="font-size:11px;color:var(--on-surface-variant);">${escapeHtml(visInfo)}</div>
                     </div>
-                    <!-- visibility 표시 -->
-                    <div style="display:flex;align-items:center;gap:8px;font-size:12px;">
-                        <span style="${visStyle}padding:4px 10px;border-radius:99px;display:flex;align-items:center;gap:4px;">
-                          <span class="material-symbols-outlined" style="font-size:12px;">${visIcon}</span>
-                          ${visLabel}
-                        </span>
-                        <span style="color:var(--on-surface-variant);font-size:11px;">${visInfo}</span>
-                    </div>
-                </div>
                 `;
 
-                // 📌 링크 복사 이벤트
-                if (isPublic) {
-                    setTimeout(() => {
-                        const btn = document.getElementById('shareTreeBtn');
-                        if (btn) {
-                            btn.addEventListener('click', () => {
-                                const shareUrl = window.location.origin + '/' + basePath + 'detail.html?id=' + data.id + '&tree=' + treeId;
-                                navigator.clipboard?.writeText(shareUrl).then(() => {
-                                    showToast(i18n('copied_link') || '링크가 복사되었습니다!', 'success');
-                                }).catch(() => {
-                                    showToast('링크 복사에 실패했습니다', 'error');
+                let shareBtn = '';
+                if (isPublic && !isEmptyState && data?.id) {
+                    shareBtn = `<button id="shareTreeBtn" style="${visStyle}font-size:12px;padding:6px 12px;border-radius:99px;cursor:pointer;border:none;font-weight:600;display:flex;align-items:center;gap:4px;">
+                        <span class="material-symbols-outlined" style="font-size:14px;">content_copy</span>
+                        ${i18n('share_link')}
+                    </button>`;
+                }
+
+                if (isEmptyState) {
+                    headerEl.innerHTML = `
+                        <div style="display:flex;flex-direction:column;gap:8px;">
+                            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                                <span style="font-size:1.1rem;line-height:1.3;font-weight:800;">첫 순간을 기다리고 있어요${localBadge}</span>
+                            </div>
+                            <div style="font-size:13px;color:var(--on-surface-variant);line-height:1.5;">
+                                아직 선택된 순간이 없습니다. 첫 번째 영상을 추가하면 이 패널에 순간 정보가 표시됩니다.
+                            </div>
+                            ${treeMetaHtml}
+                        </div>
+                    `;
+                } else {
+                    const sectionLabel = isRootSelected ? '시작 순간' : '선택된 순간';
+                    var basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
+
+                    headerEl.innerHTML = `
+                        <div style="display:flex;flex-direction:column;gap:8px;">
+                            <div style="font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--primary);text-transform:uppercase;">
+                                ${sectionLabel}
+                            </div>
+                            <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
+                                <span style="font-size:1.1rem;line-height:1.3;font-weight:800;">${escapeHtml(data.title || '')}${localBadge}</span>
+                                ${shareBtn}
+                            </div>
+                            ${treeMetaHtml}
+                        </div>
+                    `;
+
+                    if (isPublic && data?.id) {
+                        setTimeout(() => {
+                            const btn = document.getElementById('shareTreeBtn');
+                            if (btn) {
+                                btn.addEventListener('click', () => {
+                                    const shareUrl = window.location.origin + '/' + basePath + 'detail.html?id=' + data.id + '&tree=' + treeId;
+                                    navigator.clipboard?.writeText(shareUrl).then(() => {
+                                        showToast(i18n('copied_link') || '링크가 복사되었습니다!', 'success');
+                                    }).catch(() => {
+                                        showToast('링크 복사에 실패했습니다', 'error');
+                                    });
                                 });
-                            });
-                        }
-                    }, 100);
+                            }
+                        }, 100);
+                    }
                 }
             }
 
-            // 썸네일 업데이트
             const imgEl = detailPanel.querySelector('.detail-video img');
-            if (imgEl) imgEl.src = data.thumbnail;
+            if (imgEl) {
+                imgEl.src = data?.thumbnail || '';
+            }
 
-            // 날짜 업데이트
             const dateEl = document.getElementById('detailDateText');
-            if (dateEl) dateEl.textContent = data.timestamp;
+            if (dateEl) {
+                dateEl.textContent = isEmptyState ? '' : (data?.timestamp || '');
+            }
 
-            // 감정 태그 업데이트
             const tagsContainer = detailPanel.querySelector('.tags-container');
             if (tagsContainer) {
                 tagsContainer.innerHTML = '';
-                if (Array.isArray(data.emotionTags)) {
+                if (!isEmptyState && Array.isArray(data.emotionTags)) {
                     data.emotionTags.forEach((tag) => {
                         const tagEl = document.createElement('span');
                         tagEl.className = 'tag tag-primary';
@@ -574,31 +602,36 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            // 메모 업데이트 + 감정 경로 힌트
             const noteEl = detailPanel.querySelector('.diary-note');
             if (noteEl) {
                 noteEl.innerHTML = '';
 
                 const memoBody = document.createElement('div');
                 memoBody.style.lineHeight = '1.6';
-                memoBody.textContent = data.memo || '';
+                memoBody.textContent = isEmptyState
+                    ? '이 트리는 아직 비어 있습니다. “영상 추가” 버튼으로 첫 순간을 기록해 보세요.'
+                    : (data.memo || '');
                 noteEl.appendChild(memoBody);
 
-                const hintEl = document.createElement('div');
-                if (data.parentId) {
-                    hintEl.style.marginTop = '12px';
-                    hintEl.style.paddingTop = '12px';
-                    hintEl.style.borderTop = '1px solid var(--outline-variant)';
-                    hintEl.style.fontSize = '12px';
-                    hintEl.style.color = 'var(--on-surface-variant)';
-                    hintEl.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;margin-right:4px;">account_tree</span>이 순간은 감정 경로의 한 지점입니다';
-                } else {
+                if (!isEmptyState) {
+                    const hintEl = document.createElement('div');
                     hintEl.style.marginTop = '12px';
                     hintEl.style.fontSize = '12px';
-                    hintEl.style.color = 'var(--primary)';
-                    hintEl.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;margin-right:4px;">star</span> 러브트리의 시작점';
+
+                    if (isRootSelected) {
+                        hintEl.style.color = 'var(--primary)';
+                        hintEl.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;margin-right:4px;">star</span> 이 순간은 현재 트리의 시작점입니다';
+                    } else if (data.parentId) {
+                        hintEl.style.paddingTop = '12px';
+                        hintEl.style.borderTop = '1px solid var(--outline-variant)';
+                        hintEl.style.color = 'var(--on-surface-variant)';
+                        hintEl.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;margin-right:4px;">account_tree</span> 이 순간은 감정 경로의 한 지점입니다';
+                    }
+
+                    if (hintEl.innerHTML) {
+                        noteEl.appendChild(hintEl);
+                    }
                 }
-                noteEl.appendChild(hintEl);
             }
         };
 
