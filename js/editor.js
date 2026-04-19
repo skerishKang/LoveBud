@@ -673,6 +673,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
             }
+
+            // 빈 트리/비선택 상태에서는 수정/삭제 버튼 숨김
+            const memoryActions = detailPanel.querySelector('.memory-actions');
+            if (memoryActions) {
+                memoryActions.style.display = isEmptyState ? 'none' : 'flex';
+            }
         };
 
         // 전역에 노출 (메모리 추가 후 업데이트용)
@@ -1159,7 +1165,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const dateStr = `${today.getFullYear()}.${String(today.getMonth()+1).padStart(2,'0')}.${String(today.getDate()).padStart(2,'0')}`;
 
             // 기본 제목 자동 생성 (입력 없을 시)
-            const title = titleInput.value.trim() || `${i18n('new_memory')} ${dateStr}`;
+            const title = titleInput.value.trim() || `새 순간`;
 
             const newMemoryData = {
                 treeId: treeId,
