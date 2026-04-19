@@ -25,8 +25,10 @@
     });
   }
 
-  window.LovetreePageShell = {
+// Canonical namespace
+window.LoveTreePageShell = {
     initSharedPage: initSharedPage,
-  };
-  window.LoveTreePageShell = window.LovetreePageShell;
+};
+// Legacy alias retained for compatibility
+window.LovetreePageShell = window.LoveTreePageShell;
 })();
