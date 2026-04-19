@@ -16,6 +16,55 @@ function createEditorDetailUI(deps) {
         showToast
     } = deps;
 
+    const resetDetailViewState = () => {
+        const headerEl = detailPanel.querySelector('h3');
+        if (headerEl) {
+            headerEl.innerHTML = '';
+        }
+
+        const imgEl = detailPanel.querySelector('.detail-video img');
+        if (imgEl) {
+            imgEl.removeAttribute('src');
+            imgEl.src = '';
+            imgEl.alt = '';
+        }
+
+        const dateEl = document.getElementById('detailDateText');
+        if (dateEl) {
+            dateEl.textContent = '';
+        }
+
+        const tagsContainer = detailPanel.querySelector('.tags-container');
+        if (tagsContainer) {
+            tagsContainer.innerHTML = '';
+        }
+
+        const noteEl = document.querySelector('.diary-note');
+        if (noteEl) {
+            noteEl.innerHTML = '';
+        }
+
+        const editTitleInput = document.getElementById('editTitleInput');
+        const editMemoInput = document.getElementById('editMemoInput');
+        const editTagsInput = document.getElementById('editTagsInput');
+        if (editTitleInput) editTitleInput.value = '';
+        if (editMemoInput) editMemoInput.value = '';
+        if (editTagsInput) editTagsInput.value = '';
+
+        const indicator = document.getElementById('saveStatusIndicator');
+        const iconEl = document.getElementById('saveStatusIcon');
+        const textEl = document.getElementById('saveStatusText');
+        const timeEl = document.getElementById('lastSavedTime');
+
+        if (indicator) indicator.style.display = 'none';
+        if (iconEl) iconEl.textContent = '';
+        if (textEl) textEl.textContent = i18n('save_saved') || '저장됨';
+        if (timeEl) {
+            timeEl.textContent = '';
+            timeEl.style.display = 'none';
+        }
+    };
+
     const setDetailEmptyState = (isEmpty) => {
         const detailContent = document.getElementById('detailContent');
         if (!detailContent) return;
@@ -31,11 +80,17 @@ function createEditorDetailUI(deps) {
         const viewMode = document.getElementById('detailViewMode');
         const editMode = document.getElementById('detailEditMode');
         const actions = detailContent.querySelector('.memory-actions');
+        const indicator = document.getElementById('saveStatusIndicator');
+
+        if (isEmpty) {
+            resetDetailViewState();
+        }
 
         if (emptyState) emptyState.style.display = isEmpty ? 'block' : 'none';
         if (viewMode) viewMode.style.display = isEmpty ? 'none' : 'block';
         if (editMode) editMode.style.display = 'none';
         if (actions) actions.style.display = isEmpty ? 'none' : 'flex';
+        if (indicator && isEmpty) indicator.style.display = 'hide';
     };
 
     const updateFocusSelectedBtn = () => {
