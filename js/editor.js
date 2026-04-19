@@ -848,18 +848,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 momentCountEl.textContent = `순간 ${count}개`;
             }
             if (hintEl) {
-                const selected = selectedNodeId && treeMemories().find(m => m.id === selectedNodeId);
-                if (selected && !isRootMemory(selected, canonicalRootId)) {
-                    hintEl.textContent = `현재 선택: ${selected.title || '제목 없음'}`;
-                    hintEl.style.fontStyle = 'normal';
-                    hintEl.style.color = 'var(--primary)';
-                } else {
-                    const count = treeMemories().filter(m => !isRootMemory(m, canonicalRootId)).length;
-                    if (count === 0) {
-                        hintEl.textContent = '첫 순간을 추가해 트리를 시작해 보세요';
-                    } else {
-                        hintEl.textContent = '노드를 선택하면 상세 정보가 표시됩니다';
-                    }
+                const selected = treeMemories().find(m => m.id === selectedNodeId);
+                hintEl.textContent = selected?.title
+                    ? `현재 선택: ${selected.title}`
+                    : '첫 순간을 추가해 트리를 시작해 보세요.';
                     hintEl.style.fontStyle = 'italic';
                     hintEl.style.color = 'var(--on-surface-variant)';
                 }
@@ -1086,18 +1078,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 skeleton.style.display = 'none';
             };
             
-            let fallbackIndex = 0;
-            const fallbackChain = getThumbnailFallbackChain(mem);
-            
             img.onerror = () => {
-                fallbackIndex++;
-                if (fallbackIndex < fallbackChain.length) {
-                    img.src = fallbackChain[fallbackIndex];
-                } else {
-                    img.style.display = 'none';
-                    skeleton.classList.add('error');
-                    skeleton.textContent = '♪';
+                const currentSrc = img.getAttribute('src') || '';
+
+                if (currentSrc.includes('/hqdefault.jpg')) {
+                    img.src = currentSrc.replace('/hqdefault.jpg', '/mqdefault.jpg');
+                    return;
                 }
+
+                if (currentSrc.includes('/mqdefault.jpg')) {
+                    img.src = currentSrc.replace('/mqdefault.jpg', '/default.jpg');
+                    return;
+                }
+
+                img.style.display = 'none';
+                skeleton.classList.add('error');
+                skeleton.textContent = '♪';
             };
             if (img.complete) {
                 img.classList.add('loaded');

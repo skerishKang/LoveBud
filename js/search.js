@@ -197,10 +197,10 @@ const isMockFallbackEnabled = () =>
         resultsList.innerHTML = `
             <div class="empty-state" style="padding:60px 24px; text-align:center; color: var(--on-surface-variant);">
                 <span class="material-symbols-outlined" style="font-size: 56px; color: var(--error); opacity: 0.6; margin-bottom: 20px; display: block;">cloud_off</span>
-                <h3 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 12px; color: var(--on-surface);">데이터를 불러오지 못했어요</h3>
+                <h3 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 12px; color: var(--on-surface);">불러오기 실패</h3>
                 <p style="font-size: 0.95rem; opacity: 0.8; margin-bottom: 24px; line-height: 1.6;">
-                    서버와의 연결이 원활하지 않거나 인증 세션이 만료되었을 수 있습니다.<br>
-                    잠시 후 다시 시도해 주세요.
+                    서버 연결에 문제가 발생했습니다.<br>
+                    네트워크 상태를 확인하고 잠시 후 다시 시도해 주세요.
                 </p>
                 <button type="button" id="retryLoadBtn" class="btn-round btn-primary" style="padding: 10px 24px;">다시 시도</button>
             </div>
