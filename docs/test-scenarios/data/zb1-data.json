@@ -1,0 +1,26 @@
+﻿{
+  "groupName": "ZEROBASEONE",
+  "groupNameKorean": "제로베이스원",
+  "fanPersona": "ZB1과 함께 반짝이는 제로즈(ZE_ROSE)",
+  "testUrls": [
+    {
+      "id": 1,
+      "url": "https://www.youtube.com/watch?v=7uSjZp8kZog",
+      "title": "ZEROBASEONE (제로베이스원) \"In Bloom\" MV",
+      "description": "꽃처럼 피어난 아이들, 볼 때마다 감동이에요"
+    },
+    {
+      "id": 2,
+      "url": "https://www.youtube.com/watch?v=mI_jG1L2gA8",
+      "title": "ZEROBASEONE (제로베이스원) \"CRUSH (가시)\" MV",
+      "description": "강렬한 카리스마에 완전 압도당했어요"
+    },
+    {
+      "id": 3,
+      "url": "https://www.youtube.com/watch?v=fEx8Q8fG3zI",
+      "title": "ZEROBASEONE (제로베이스원) \"Feel the POP\" MV",
+      "description": "청량 탄산 그 자체! 너무 시원하고 신나요"
+    }
+  ],
+  "treeName": "제베원과 함께 피워낸 러브트리"
+}

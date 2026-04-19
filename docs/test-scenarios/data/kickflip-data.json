@@ -1,0 +1,14 @@
+﻿{
+  "groupName": "KickFlip",
+  "groupNameKorean": "킥플립",
+  "fanPersona": "JYP의 새로운 에너지 킥플립을 응원하는 팬",
+  "testUrls": [
+    {
+      "id": 1,
+      "url": "https://www.youtube.com/watch?v=kYAsU8G9-w8",
+      "title": "KickFlip \"Flip It, Kick It!\" MV",
+      "description": "JYP 특유의 박진감이 느껴져요! 첫 시작이 너무 좋아요"
+    }
+  ],
+  "treeName": "KickFlip과 함께 달리는 추억"
+}

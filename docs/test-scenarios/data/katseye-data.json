@@ -1,0 +1,20 @@
+﻿{
+  "groupName": "KATSEYE",
+  "groupNameKorean": "캣츠아이",
+  "fanPersona": "글로벌 캣츠아이의 성장을 지켜보는 팬",
+  "testUrls": [
+    {
+      "id": 1,
+      "url": "https://www.youtube.com/watch?v=gdZLi9oWNZg",
+      "title": "KATSEYE \"Touch\" MV",
+      "description": "글로벌 감성이 제대로 느껴지는 곡이에요. 중독성 최고!"
+    },
+    {
+      "id": 2,
+      "url": "https://www.youtube.com/watch?v=gdZLi9oWNZg",
+      "title": "KATSEYE \"Debut\" MV",
+      "description": "이들의 첫 시작, 설레는 마음으로 기록합니다"
+    }
+  ],
+  "treeName": "KATSEYE 글로벌 여정 기록"
+}
