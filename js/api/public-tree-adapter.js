@@ -2,6 +2,8 @@
   /**
    * LoveTree public tree adapter
    *
+   * Canonical namespace: LoveTreePublicTreeAdapter
+   *
    * Transitional compatibility only for public browse paths.
    *
    * Migration-only fallback scope:
