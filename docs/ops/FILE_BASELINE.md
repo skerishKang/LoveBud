@@ -5,6 +5,10 @@
 
 ---
 
+> **주의**: 이 문서의 분류는 참고용 기준표이며, 실제 운영 파일 판단은 각 HTML 엔트리 파일에서 현재 직접 로드하는 CSS/JS 경로를 우선합니다.  
+> 현재 사용자 노출 페이지 중 일부는 `pages/*.html`에서 `../css/global.css`, `../js/*`를 직접 로드합니다.  
+> 따라서 `src/*`, `assets/css/*`만을 현재 운영 구조 전체로 간주하면 안 됩니다.
+
 ## 1. 핵심 운영 파일 (Core Operating Files)
 
 ### 1.1 루트 핵심 파일
@@ -21,30 +25,27 @@
 
 | 파일 | 용도 | 종속 src |
 |------|------|----------|
-| `pages/lovetree.html` | 제품 소개 (랜딩) | shared, auth |
-| `pages/community.html` | 탐색 광장 (Discovery) | flow-shared |
-| `pages/my-trees.html` | 마이 트리 대시보드 | shared, auth |
+| `pages/intro.html` | 서비스 소개 | shared, auth |
 | `pages/login.html` | 로그인 페이지 | auth |
-| `pages/editor.html` | 트리 에디터 (37 스크립트) | **별도 트랙** |
-| `pages/owner.html` | 오너 콘솔 | owner-* |
-| `pages/admin.html` | 관리자 대시보드 | admin-* |
-| `pages/mobile-tree.html` | 모바일 트리 뷰 | mobile-tree.js |
-| `pages/community-tree-detail.html` | 커뮤니티 트리 상세 | community-* |
+| `pages/search.html` | 공개 러브트리 둘러보기 | search, search-card-renderer, search-preview-renderer, auth, i18n |
+| `pages/detail.html` | 메모리 상세 | detail, auth, i18n |
+| `pages/editor.html` | 트리 에디터 | **별도 트랙** |
+| `pages/my-trees.html` | 마이 트리 대시보드 | my-trees, shared, auth |
 
 ### 1.3 src/shared - 공통 레이어
 
 | 파일 | 용도 | 중요도 |
 |------|------|--------|
-| `src/shared.js` | 공유 бизнес 로직 (initApp, forkTree) | **핵심** |
-| `src/shared-layout.js` | GNB 주입 + Auth UI 초기화 | **핵심** |
-| `src/shared-utils.js` | 유틸리티 (debounce, copyTextToClipboard) | **핵심** |
+| `src/shared.js` | 공유 business 로직 (initApp, forkTree) | 중요 |
+| `src/shared-layout.js` | GNB 주입 + Auth UI 초기화 | 중요 |
+| `src/shared-utils.js` | 유틸리티 (debounce, copyTextToClipboard) | 중요 |
 | `src/shared-dom.js` | DOM 조작 유틸 | 중요 |
 | `src/shared-theme.js` | 테마 관리 | 중요 |
 | `src/shared-storage.js` | 로컬 스토리지 | 중요 |
-| `src/auth.js` | Firebase Auth 로직 | **핵심** |
-| `src/runtime-config.js` | 런타임 설정 (payment, app-check) | **핵심** |
-| `src/postgres-client-browser.js` | 브라우저 PostgreSQL 클라이언트 | **핵심** |
-| `src/firebase-firestore-compat.js` | Firestore→PostgreSQL shim | **핵심** |
+| `src/auth.js` | Firebase Auth 로직 | 중요 |
+| `src/runtime-config.js` | 런타임 설정 (payment, app-check) | 중요 |
+| `src/postgres-client-browser.js` | 브라우저 PostgreSQL 클라이언트 | 중요 |
+| `src/firebase-firestore-compat.js` | Firestore→PostgreSQL shim | 중요 |
 | `src/concept-state.js` | 페이지 상태 바인딩 | 중요 |
 | `src/api.js` | API 호출 래퍼 | 중요 |
 | `src/flow-shared.js` | 커뮤니티 탐색 로직 | 중요 |
@@ -85,9 +86,7 @@
 | `src/community-comments.js` | 댓글 기능 | 사용 |
 | `src/community-write.js` | 글쓰기 | 사용 |
 | `src/community-runtime.js` | 런타임 | 사용 |
-| `src/community-moderation.js` | moderation | 사용 |
-
-> **참고**: community.html은 inline script로 직접 처리하고 있어 community-*.js 모듈을 직접 로드하지 않음
+ | `src/community-moderation.js` | moderation | 사용 |
 
 ### 1.7 src/owner - 오너 콘솔 모듈
 
@@ -160,10 +159,10 @@
 
 | 파일 | 중요도 |
 |------|--------|
-| `src/editor-bootstrap.js` | **핵심** - DB 할당 |
-| `src/editor-runtime.js` | **핵심** - 런타임 |
-| `src/editor-data.js` | **핵심** - 데이터 (FieldValue 사용) |
-| `src/editor-actions.js` | **핵심** - 액션 (FieldValue 사용) |
+| `src/editor-bootstrap.js` | 중요 - DB 할당 |
+| `src/editor-runtime.js` | 중요 - 런타임 |
+| `src/editor-data.js` | 중요 - 데이터 (FieldValue 사용) |
+| `src/editor-actions.js` | 중요 - 액션 (FieldValue 사용) |
 | `src/editor-comments.js` | 중요 - 댓글 |
 | `src/editor-page-init.js` | 중요 - 페이지 초기화 |
 | `src/editor-orchestration.js` | 중요 - 오케스트레이션 |
@@ -183,24 +182,24 @@
 | `src/editor-ai-actions.js` | 중요 - AI 액션 |
 | `src/editor-ai-tree-editor.js` | 중요 - AI 트리 에디터 |
 
-### 2.3 assets/css - 운영 CSS
+### 2.3 assets/css - 트랙별 스타일 자산 (일부 페이지/트랙에서 사용)
 
 | 파일 | 용도 |
 |------|------|
-| `assets/css/app.css` | 공통 앱 |
-| `assets/css/app-base.css` | 베이스 |
-| `assets/css/app-buttons.css` | 버튼 |
-| `assets/css/app-modal.css` | 모달 |
-| `assets/css/app-nav.css` | 내비게이션 |
-| `assets/css/app-utils.css` | 유틸 |
-| `assets/css/app-feedback.css` | 피드백 |
-| `assets/css/editor-core.css` | 에디터 코어 |
-| `assets/css/editor-canvas.css` | 에디터 캔버스 |
-| `assets/css/editor-detail.css` | 에디터 상세 |
-| `assets/css/index.css` | 인덱스 |
-| `assets/css/index-hero.css` | 인덱스 히어로 |
-| `assets/css/index-sections.css` | 인덱스 섹션 |
-| `assets/css/community-*.css` | 커뮤니티 스타일 |
+| `assets/css/app.css` | 일부 페이지/트랙 공통 스타일 자산 |
+| `assets/css/app-base.css` | 베이스 스타일 자산 |
+| `assets/css/app-buttons.css` | 버튼 스타일 자산 |
+| `assets/css/app-modal.css` | 모달 스타일 자산 |
+| `assets/css/app-nav.css` | 내비게이션 스타일 자산 |
+| `assets/css/app-utils.css` | 유틸 스타일 자산 |
+| `assets/css/app-feedback.css` | 피드백 스타일 자산 |
+| `assets/css/editor-core.css` | 에디터 관련 스타일 |
+| `assets/css/editor-canvas.css` | 에디터 캔버스 스타일 |
+| `assets/css/editor-detail.css` | 에디터 상세 스타일 |
+| `assets/css/index.css` | 일부 인덱스 계열 스타일 |
+| `assets/css/index-hero.css` | 일부 인덱스 히어로 스타일 |
+| `assets/css/index-sections.css` | 일부 인덱스 섹션 스타일 |
+| `assets/css/community-*.css` | 커뮤니티 계열 스타일 |
 
 ---
 
@@ -302,9 +301,9 @@
 
 | 파일/폴더 | 이유 |
 |----------|------|
-| `src/shared.js`, `src/shared-layout.js`, `src/auth.js` | 핵심 공유/인증 |
-| `src/firebase-firestore-compat.js` | 브라우저 shim 핵심 |
-| `src/postgres-client-browser.js` | 브라우저 PostgreSQL 클라이언트 |
+ | `src/shared.js`, `src/shared-layout.js`, `src/auth.js` | 공유/인증 |
+ | `src/firebase-firestore-compat.js` | 브라우저 shim |
+ | `src/postgres-client-browser.js` | 브라우저 PostgreSQL 클라이언트 |
 | `src/runtime-config.js` | 런타임 설정 |
 | `src/concept-state.js`, `src/flow-shared.js` | 페이지 상태/탐색 |
 | `src/entries/*.js` | 페이지 진입점 |
@@ -312,12 +311,12 @@
 | `src/owner-*.js` | 오너 콘솔 모듈 |
 | `src/admin-*.js` | 관리자 모듈 |
 | `src/editor-*.js` | 에디터 전체 (별도 트랙) |
-| `pages/editor.html` | 에디터 핵심 |
-| `pages/community.html`, `pages/my-trees.html`, `pages/login.html` | 주요 페이지 |
+ | `pages/editor.html` | 에디터 핵심 |
+ | `pages/search.html`, `pages/my-trees.html`, `pages/login.html` | 주요 페이지 |
 | `netlify/functions/_lib/db-api.js` | 서버 API 권장 진입점 |
 | `netlify/functions/_lib/document-store.js` | PostgreSQL store |
-| `tests/editor-*.spec.js`, `tests/smoke.spec.js` | 테스트 |
-| `assets/css/*` | 운영 CSS |
+ | `tests/editor-*.spec.js`, `tests/smoke.spec.js` | 테스트 |
+ | `assets/css/*` | 일부 페이지/트랙에서 사용하는 스타일 자산 |
 
 ### 6.2 DEPRECATED - 사용 권장 안 함
 
@@ -365,7 +364,7 @@
 5. `src/postgres-client-browser.js` - 브라우저 DB 클라이언트
 6. `src/runtime-config.js` - 런타임 설정
 7. `src/concept-state.js` - 페이지 상태
-8. `pages/community.html` - 커뮤니티 페이지
+ 8. `pages/search.html` - 공개 트리 둘러보기
 9. `pages/my-trees.html` - 마이 트리
 10. `pages/editor.html` - 에디터 (37 스크립트)
 11. `src/editor-bootstrap.js` - 에디터 부트 (위험)
@@ -415,7 +414,7 @@
 
 | 용어 | 정의 | 예시 |
 |------|------|------|
-| ✅ KEEP | 핵심 운영 파일, 절대 삭제 금지 | `src/shared.js`, `pages/community.html` |
+| ✅ KEEP | 핵심 운영 파일, 절대 삭제 금지 | `src/shared.js`, `pages/search.html` |
 | ⚠️ INACTIVE | 파일은 존재하지만 리다이렉트/미사용 | `pages/editor-desktop.html` |
 | 🗑️ DEPRECATED | 사용 권장 안 함 (코드에서 참조 안 함) | `src/postgres-client.js` |
 | 📦 ARCHIVE | 파일系统中移动, 백업으로 보관됨 | `archive/recovered-legacy/` |
