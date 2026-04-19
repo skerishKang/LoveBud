@@ -26,6 +26,12 @@ var EMAIL_AUTH_MODE = (function() {
 var AUTH_INIT_FLAG = '__lovebudAuthInitialized';
 var DROPDOWN_LISTENER_ATTACHED = false;
 var AUTH_READY_FLAG = '__lovebudAuthReady';
+
+// 인증 캐시 키 정책:
+// - lovebud_auth_cache: {uid, displayName, email} - 사용자 기본 정보 (로그아웃 시 삭제)
+// - lovebud_auth_confirmed: 'true' 문자열 - 인증 확인 플래그 (로그아웃 시 삭제)
+// - lovebud_auth_token: {uid, token, expiresAt} - Firebase ID 토큰 (로그아웃 시 삭제)
+// TTL: 토큰은 Firebase 기본 1시간, 캐시는 명시적 로그아웃 전까지 유지
 var AUTH_CACHE_KEY = 'lovebud_auth_cache';
 var AUTH_CONFIRMED_KEY = 'lovebud_auth_confirmed';
 var AUTH_TOKEN_KEY = 'lovebud_auth_token';
@@ -1032,5 +1038,12 @@ window.signOut = signOut;
 window.initAuth = initAuth;
 window.getEnvironmentCheckError = getEnvironmentCheckError;
 window.getFriendlyErrorMessage = getFriendlyErrorMessage;
+
+// Confirmed session helpers for protected pages
+window.getConfirmedAuthUser = getCachedAuthUser;
+window.hasConfirmedAuthSession = function() {
+  return !!getCachedAuthUser();
+};
+window.getCachedAuthToken = getCachedAuthToken;
 
 document.addEventListener('DOMContentLoaded', initAuth);
