@@ -7,7 +7,7 @@
  *   ?parentId=<id>     — filter by parent memory (null = root-level)
  */
 const { requireUser } = require('./_lib/auth');
-const { ok, created, httpError, handleError } = require('./_lib/http');
+const { ok, created, preflight, httpError, handleError } = require('./_lib/http');
 const {
   queryMemories,
   createMemory,
@@ -26,7 +26,7 @@ exports.handler = async (event) => {
   const requestOrigin = event.headers?.origin || event.headers?.Origin || '';
 
   if (event.httpMethod === 'OPTIONS') {
-    return ok(null, { 'Access-Control-Allow-Origin': '*' });
+    return preflight(requestOrigin);
   }
 
   try {
@@ -95,7 +95,7 @@ exports.handler = async (event) => {
         visibility,
       });
 
-      return created(serializeMemory(memory), { 'Access-Control-Allow-Origin': '*' });
+      return created(serializeMemory(memory), null, requestOrigin);
     }
 
     // ── GET: list memories ──────────────────────────────────────────────────
@@ -127,7 +127,7 @@ exports.handler = async (event) => {
           ? { treeId: allowedTreeIds[0] }
           : { treeIds: allowedTreeIds }),
       });
-      return ok(serializeMemoryList(memories), { 'Access-Control-Allow-Origin': '*' });
+      return ok(serializeMemoryList(memories), null, requestOrigin);
     }
 
     throw httpError(405, 'Method not allowed');
