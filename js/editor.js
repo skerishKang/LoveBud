@@ -50,21 +50,21 @@ lodocument.addEventListener('DOMContentLoaded', () => {
 
     // Auth guard bootstrapping via onAuthReady callback
     // Shared toast utility wrapper
-    let toastWarningShown = false;
-    const showToast = (message, type = 'info') => {
-        if (window.LoveBudUI?.showToast) {
-            window.LoveBudUI.showToast(message, type, 3000);
-        } else {
-            // Fallback: log to console when shared UI helper is unavailable
-            if (!toastWarningShown) {
-                console.warn('[editor] LoveBudUI not loaded, toast degraded to console');
-                toastWarningShown = true;
+    const showToast = editorHelpers.createToast
+        ? editorHelpers.createToast({ warningKey: '__editorToastWarningShown' })
+        : ((message, type = 'info') => {
+            if (window.LoveBudUI?.showToast) {
+                window.LoveBudUI.showToast(message, type, 3000);
+            } else {
+                if (!window.__editorToastWarningShown) {
+                    console.warn('[editor] LoveBudUI not loaded, toast degraded to console');
+                    window.__editorToastWarningShown = true;
+                }
+                console.log(`[Toast ${type}] ${message}`);
             }
-            console.log(`[Toast ${type}] ${message}`);
-        }
-    };
+        });
 
-    const getI18n = () => window.t || ((k) => k);
+    const getI18n = editorHelpers.getI18n || (() => window.t || ((k) => k));
     const i18n = getI18n();
 
     const getEditorBasePath = editorPageHelpers.getEditorBasePath || (() =>
