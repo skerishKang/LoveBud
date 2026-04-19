@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Prefer editor-root-helpers.js and keep a local fallback.
     let rootHelperWarningShown = false;
     const rootUtils = window.LoveBudEditorUtils || {};
+    const editorHelpers = window.LoveBudEditorHelpers || {};
 
     const findRootMemory = rootUtils.findRootMemory || function(memories) {
         if (!rootHelperWarningShown) {
@@ -79,42 +80,41 @@ document.addEventListener('DOMContentLoaded', () => {
         window.location.href = loginUrl;
     };
 
-    // Safe fallback for raw i18n keys leaking into the UI
-    const safeI18nText = (i18nFn, key, fallback) => {
+    const safeI18nText = editorHelpers.safeI18nText || ((i18nFn, key, fallback) => {
         const result = i18nFn(key);
         if (!result || result === key) return fallback;
         return result;
-    };
+    });
 
-    const resolveHintText = (rawValue, fallbackKey, fallbackText) => {
+    const resolveHintText = editorHelpers.resolveHintText || ((i18nFn, rawValue, fallbackKey, fallbackText) => {
         const value = String(rawValue || '').trim();
         if (!value || value === fallbackKey) {
-            return safeI18nText(i18n, fallbackKey, fallbackText);
+            return safeI18nText(i18nFn, fallbackKey, fallbackText);
         }
         return value;
-    };
+    });
 
-    const resolveTreeTitleText = (rawTitle) => {
+    const resolveTreeTitleText = editorHelpers.resolveTreeTitleText || ((i18nFn, rawTitle) => {
         const value = String(rawTitle || '').trim();
         if (!value) {
-            return safeI18nText(i18n, 'default_tree_title', '러브트리');
+            return safeI18nText(i18nFn, 'default_tree_title', '러브트리');
         }
         if (value === 'default_tree_title') {
-            return safeI18nText(i18n, 'default_tree_title', '러브트리');
+            return safeI18nText(i18nFn, 'default_tree_title', '러브트리');
         }
         if (value === 'lovetree_brand') {
-            return safeI18nText(i18n, 'lovetree_brand', '러브트리');
+            return safeI18nText(i18nFn, 'lovetree_brand', '러브트리');
         }
         return value;
-    };
+    });
 
-    const resolveInfoText = (rawValue, fallbackKey, fallbackText) => {
+    const resolveInfoText = editorHelpers.resolveInfoText || ((i18nFn, rawValue, fallbackKey, fallbackText) => {
         const value = String(rawValue || '').trim();
         if (!value || value === fallbackKey) {
-            return safeI18nText(i18n, fallbackKey, fallbackText);
+            return safeI18nText(i18nFn, fallbackKey, fallbackText);
         }
         return value;
-    };
+    });
 
     const syncCurrentTreeData = (tree) => {
         window.currentTreeData = {
@@ -133,24 +133,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const getMyTreesHref = () => getEditorBasePath() + 'my-trees.html';
 
-    const escapeHtml = (value) => String(value ?? '')
+    const escapeHtml = editorHelpers.escapeHtml || ((value) => String(value ?? '')
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
+        .replace(/'/g, '&#39;'));
 
-    const safeUrl = (value, { allowDataImage = false } = {}) => {
+    const safeUrl = editorHelpers.safeUrl || ((value, { allowDataImage = false } = {}) => {
         const raw = String(value || '').trim();
         if (!raw) return '';
 
-        if (allowDataImage && raw.startsWith('data:image/')) {
+        if (allowDataImage && raw.indexOf('data:image/') === 0) {
             return raw;
         }
 
         try {
             const url = new URL(raw, window.location.origin);
-            const protocol = url.protocol.toLowerCase();
+            const protocol = String(url.protocol || '').toLowerCase();
             if (protocol === 'http:' || protocol === 'https:') {
                 return url.toString();
             }
@@ -158,43 +158,45 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) {
             return '';
         }
-    };
+    });
 
-    const resolveMemoryThumbnail = (memory, quality = 'hqdefault') => {
-        const thumbnail = safeUrl(memory?.thumbnail, { allowDataImage: true });
+    const resolveMemoryThumbnail = editorHelpers.resolveMemoryThumbnail || ((memory, quality = 'hqdefault') => {
+        const thumbnail = safeUrl(memory && memory.thumbnail, { allowDataImage: true });
         if (thumbnail) return thumbnail;
 
-        const sourceUrl = safeUrl(memory?.sourceUrl);
-        const sourceType = memory?.sourceType || window.LoveBudMedia?.detectSourceType?.(sourceUrl) || 'youtube';
+        const sourceUrl = safeUrl(memory && memory.sourceUrl);
+        const sourceType = memory && memory.sourceType || window.LoveBudMedia?.detectSourceType?.(sourceUrl) || 'youtube';
         if (sourceUrl && sourceType === 'youtube') {
-            const videoId = window.LoveBudMedia?.extractYouTubeId?.(sourceUrl) || 
+            const videoId = window.LoveBudMedia?.extractYouTubeId?.(sourceUrl) ||
                            extractYouTubeIdFallback(sourceUrl);
             if (videoId) {
-                return `https://img.youtube.com/vi/${videoId}/${quality}.jpg`;
+                return 'https://img.youtube.com/vi/' + videoId + '/' + quality + '.jpg';
             }
         }
         return '';
-    };
+    });
 
-    const extractYouTubeIdFallback = (url) => {
+    const extractYouTubeIdFallback = editorHelpers.extractYouTubeIdFallback || ((url) => {
         const patterns = [
             /(?:v=|\/|youtu\.be\/|shorts\/)([0-9A-Za-z_-]{11})/i,
             /youtube\.com\/watch\?v=([0-9A-Za-z_-]{11})/i,
             /youtu\.be\/([0-9A-Za-z_-]{11})/i
         ];
-        for (const pattern of patterns) {
-            const match = url.match(pattern);
+        for (var i = 0; i < patterns.length; i += 1) {
+            const match = String(url || '').match(patterns[i]);
             if (match) return match[1];
         }
         return null;
-    };
+    });
 
-    const getThumbnailFallbackChain = (memory) => {
+    const getThumbnailFallbackChain = editorHelpers.getThumbnailFallbackChain || ((memory) => {
         const qualities = ['hqdefault', 'mqdefault', 'default'];
-        return qualities.map(q => resolveMemoryThumbnail(memory, q));
-    };
+        return qualities.map(function(q) {
+            return resolveMemoryThumbnail(memory, q);
+        });
+    });
 
-    const getYouTubeInputErrorMessage = (rawUrl) => {
+    const getYouTubeInputErrorMessage = editorHelpers.getYouTubeInputErrorMessage || ((rawUrl) => {
         const value = String(rawUrl || '').trim();
 
         if (!value) {
@@ -219,7 +221,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         return i18n('invalid_youtube') || '유효한 YouTube 링크를 입력해 주세요.';
-    };
+    });
 
     const renderTreeLoadError = ({ canvas, detailPanel, addBtn, errorTitle, errorDesc }) => {
         canvas.innerHTML = `
@@ -714,10 +716,10 @@ document.addEventListener('DOMContentLoaded', () => {
             getSelectedNodeId: () => selectedNodeId,
             getCanonicalRootId: () => canonicalRootId,
             resolveParentIdForCreate,
-            updateSaveStatus,
-            showToast,
-            getYouTubeInputErrorMessage,
-            nextMemoryId,
+             updateSaveStatus,
+             showToast,
+             getYouTubeInputErrorMessage: (rawUrl) => getYouTubeInputErrorMessage(i18n, rawUrl),
+             nextMemoryId,
             normalizeMemory,
             getTreeMemories: () => window.currentTreeMemories || [],
             setTreeMemories: (value) => {
