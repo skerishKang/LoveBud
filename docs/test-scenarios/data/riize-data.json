@@ -1,0 +1,44 @@
+{
+  "groupName": "RIIZE",
+  "groupNameKorean": "라이즈",
+  "fanPersona": "RIIZE와 함께 성장하는 브리즈(BRIIZE)",
+  "testUrls": [
+    {
+      "id": 1,
+      "url": "https://www.youtube.com/watch?v=iUw3LPM6YpE",
+      "title": "RIIZE 'Get A Guitar' MV",
+      "description": "기타 소리 들리자마자 바로 입덕 완료!"
+    },
+    {
+      "id": 2,
+      "url": "https://www.youtube.com/watch?v=kYAsU8G9-w8",
+      "title": "RIIZE 'Siren' Performance Video",
+      "description": "이 안무 실력은 진짜 미쳤어요... 소름 돋음"
+    },
+    {
+      "id": 3,
+      "url": "https://www.youtube.com/watch?v=84_iG2Wk-t8",
+      "title": "RIIZE 'Talk Saxy' MV",
+      "description": "색소폰 리프가 하루 종일 귓가에 맴돌아요"
+    },
+    {
+      "id": 4,
+      "url": "https://www.youtube.com/watch?v=0ZpP6Iny6T0",
+      "title": "RIIZE 'Love 119' MV",
+      "description": "겨울 감성 제대로 저격... 듣자마자 눈물 핑 돌아요"
+    },
+    {
+      "id": 5,
+      "url": "https://www.youtube.com/watch?v=vVjXUaY7y2Y",
+      "title": "RIIZE 'Impossible' MV",
+      "description": "하우스 댄스 리듬감이 너무 중독적이에요"
+    },
+    {
+      "id": 6,
+      "url": "https://www.youtube.com/watch?v=vV7Yp9_8Prc",
+      "title": "RIIZE 'Boom Boom Bass' MV",
+      "description": "청량한데 힙해! 라이즈 컨셉 소화력 최고예요"
+    }
+  ],
+  "treeName": "BRIIZE의 소중한 라이즈 추억"
+}
