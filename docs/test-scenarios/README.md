@@ -139,6 +139,15 @@ AI가 테스트를 수행할 때는:
 | IVE | `data/ive-data.json` | 아이브 콘텐츠 정리 | ✅ 준비 완료 |
 | BTS | `data/bts-data.json` | 방탄 콘텐츠 정리 | ✅ 준비 완료 |
 | 하츠투하츠 | `data/hearts2hearts-data.json` | 하츠투하츠 콘텐츠 정리 | ✅ 준비 완료 |
+| RIIZE | `data/riize-data.json` | 라이즈 콘텐츠 정리 | ✅ 준비 완료 |
+| TWS | `data/tws-data.json` | 투어스 콘텐츠 정리 | ✅ 준비 완료 |
+| ZEROBASEONE | `data/zb1-data.json` | 제베원 콘텐츠 정리 | ✅ 준비 완료 |
+| ILLIT | `data/illit-data.json` | 아일릿 콘텐츠 정리 | ✅ 준비 완료 |
+| MEOVV | `data/meovv-data.json` | 미야오 콘텐츠 정리 | ✅ 준비 완료 |
+| KickFlip | `data/kickflip-data.json` | 킥플립 콘텐츠 정리 | ✅ 준비 완료 |
+| KATSEYE | `data/katseye-data.json` | 캣츠아이 콘텐츠 정리 | ✅ 준비 완료 |
+| Cortiz | `data/cortiz-data.json` | 코르티즈 콘텐츠 정리 | ✅ 준비 완료 |
+| Santos Bravos | `data/santos-data.json` | 산토스 브라보스 콘텐츠 정리 | ✅ 준비 완료 |
 
 ### 테스트 결과 예시
 
