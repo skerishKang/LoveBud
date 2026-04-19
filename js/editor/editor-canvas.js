@@ -1,169 +1,279 @@
-/**
- * editor-canvas.js
- * 
- * 러브트리 에디터 - Canvas 렌더링 모듈
- * 
- * 책임:
- * - SVG 캔버스 초기화 및 렌더링
- * - 트리 노드 (root, memory nodes) 그리기
- * - 브랜치 (부모-자식 연결선) 그리기
- * - 노드 위치 계산 지원
- * 
- * 의존성:
- * - 외부에서 canvas, svg 엘리먼트 제공받음
- * - 외부에서 treeMemories, calcPosition, isRootMemory 제공받음
- * 
- * 사용처: editor.js
- * 
- * @version 1.0.0
- * @since 2026-04-18
- */
+function createEditorCanvas(deps) {
+    const {
+        canvas,
+        svg,
+        getTreeMemories,
+        getCanonicalRootId,
+        isRootMemory,
+        resolveMemoryThumbnail,
+        updateDetailPanel,
+        setDetailEmptyState,
+        updateFocusSelectedBtn,
+        createInitialMemory,
+        onNodeClick
+    } = deps;
 
-(function() {
-    'use strict';
-
-    // 배치 상수 - 첫 노드 중앙 정렬
-    const ROOT_X = 320; // 400→320: 첫 노드를 캔버스 중심축으로 이동
-    const ROOT_Y = 300; // 350→300: 중앙 정렬
-    const RADIUS_L1 = 320; // L1 반경 (280→320) - 노드 겹침 방지
-    const RADIUS_L2 = 240; // L2 반경 (200→240) - 노드 겹침 방지
-    const NODE_WIDTH = 80;  // 노드 카드 너비 (px)
-    const MIN_ANGLE_GAP = 35; // 최소 각도 간격 (도) - 겹침 방지
-
-    /**
-     * 루트 노드 그리기
-     * @param {SVGElement} svg - SVG 엘리먼트
-     */
-    const drawRoot = (svg) => {
-        // Root marker is no longer rendered in production UI.
-        // The editor treats the root as a logical anchor only.
-        return null;
+    const viewportState = {
+        offsetX: 0,
+        offsetY: 0,
+        initialized: false,
+        isPanning: false,
+        startX: 0,
+        startY: 0
     };
 
-    /**
-     * 브랜치 (연결선) 그리기
-     * @param {SVGElement} svg - SVG 엘리먼트
-     * @param {Object} startPos - 시작 위치 {x, y}
-     * @param {Object} endPos - 끝 위치 {x, y}
-     */
-    const drawBranch = (svg, startPos, endPos) => {
-        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    const ROOT_X = Math.max(460, Math.round(canvas.clientWidth * 0.42));
+    const ROOT_Y = Math.max(420, Math.round(canvas.clientHeight * 0.52));
+    const RADIUS_L1 = 320;
+    const RADIUS_L2 = 250;
+    const NODE_WIDTH = 108;
+    const MIN_ANGLE_GAP = 40;
+
+    const FIXED_ANGLES = {
+        v1: -60,
+        v2: -130,
+        v3: 10,
+        m2: 130,
+        m3: -170,
+        m4: 70
+    };
+
+    const distributeAngles = (count, baseAngle = -90) => {
+        if (count <= 0) return [baseAngle];
+        if (count === 1) return [baseAngle];
+
+        const safeCount = Math.max(count - 1, 1);
+        const totalSpread = Math.min(300, Math.max(110, safeCount * MIN_ANGLE_GAP));
+        const startAngle = baseAngle - totalSpread / 2;
+
+        return Array.from({ length: count }, (_, i) => {
+            const ratio = count === 1 ? 0.5 : i / (count - 1);
+            return startAngle + totalSpread * ratio;
+        });
+    };
+
+    const calcPosition = (mem, visited = new Set()) => {
+        const canonicalRootId = getCanonicalRootId();
+        const treeMemories = getTreeMemories();
+
+        if (isRootMemory(mem, canonicalRootId)) {
+            return { x: ROOT_X, y: ROOT_Y };
+        }
+
+        if (visited.has(mem.id)) {
+            console.warn(`Cycle detected at memory ${mem.id}, falling back to root`);
+            return { x: ROOT_X, y: ROOT_Y };
+        }
+        visited.add(mem.id);
+
+        const parentId = mem.parentId || canonicalRootId;
+        if (parentId === mem.id) {
+            console.warn(`Self-reference detected for ${mem.id}, using root as parent`);
+            return { x: ROOT_X, y: ROOT_Y };
+        }
+
+        const siblings = treeMemories.filter((m) => (
+            m.parentId === parentId && !isRootMemory(m, canonicalRootId)
+        ));
+        const idx = siblings.findIndex((m) => m.id === mem.id);
+        const count = siblings.length;
+
+        if (parentId === canonicalRootId) {
+            let angle;
+
+            if (FIXED_ANGLES[mem.id] !== undefined) {
+                angle = FIXED_ANGLES[mem.id];
+            } else if (count > 0) {
+                const angles = distributeAngles(count, -20);
+                angle = angles[idx] !== undefined ? angles[idx] : angles[0];
+            } else {
+                angle = -20;
+            }
+
+            return {
+                x: ROOT_X + RADIUS_L1 * Math.cos(angle * Math.PI / 180),
+                y: ROOT_Y + RADIUS_L1 * Math.sin(angle * Math.PI / 180)
+            };
+        }
+
+        const parent = treeMemories.find((m) => m.id === parentId);
+        const parentPos = parent ? calcPosition(parent, visited) : { x: ROOT_X, y: ROOT_Y };
+
+        let angle;
+        if (count > 0) {
+            const angles = distributeAngles(count, 0);
+            angle = angles[idx] !== undefined ? angles[idx] : (idx / count) * 360;
+        } else {
+            angle = 0;
+        }
+
+        return {
+            x: parentPos.x + RADIUS_L2 * Math.cos(angle * Math.PI / 180),
+            y: parentPos.y + RADIUS_L2 * Math.sin(angle * Math.PI / 180)
+        };
+    };
+
+    const drawBranch = (startPos, endPos) => {
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
         const cp1x = startPos.x + (endPos.x - startPos.x) / 2;
         const d = `M ${startPos.x},${startPos.y} Q ${cp1x},${startPos.y} ${endPos.x},${endPos.y}`;
-        path.setAttribute("d", d);
-        path.setAttribute("class", "branch-line");
-        path.setAttribute("fill", "none");
-        path.setAttribute("stroke", "var(--secondary)");
-        path.setAttribute("stroke-width", "2");
-        path.setAttribute("opacity", "0.5");
+        path.setAttribute('d', d);
+        path.setAttribute('class', 'branch-line');
+        path.setAttribute('fill', 'none');
+        path.setAttribute('stroke', 'var(--secondary)');
+        path.setAttribute('stroke-width', '2');
+        path.setAttribute('opacity', '0.5');
         svg.appendChild(path);
     };
 
-    /**
-     * 메모리 노드 그리기
-     * @param {HTMLElement} canvas - 캔버스 컨테이너
-     * @param {Object} mem - memory 데이터
-     * @param {Function} calcPosition - 위치 계산 함수
-     * @param {Function} onNodeClick - 노드 클릭 핸들러
-     */
-    const drawNode = (canvas, mem, calcPosition, onNodeClick) => {
+    const drawNode = (mem) => {
+        const existingNode = document.querySelector(`.memory-node[data-memory-id="${mem.id}"]`);
+        if (existingNode) {
+            console.log('[editor] Node already exists, skipping:', mem.id);
+            return existingNode;
+        }
+
         const pos = calcPosition(mem);
+        const nodeHalf = Math.round(NODE_WIDTH / 2);
         const nodeEl = document.createElement('div');
         nodeEl.className = 'memory-node floating-node';
         nodeEl.dataset.memoryId = mem.id;
-        nodeEl.style.left = `${pos.x - 40}px`;
-        nodeEl.style.top = `${pos.y - 40}px`;
+        nodeEl.style.left = `${pos.x - nodeHalf}px`;
+        nodeEl.style.top = `${pos.y - nodeHalf}px`;
         nodeEl.style.animationDelay = mem.delay || '0s';
-        nodeEl.innerHTML = `
-            <div class="node-card">
-                <div class="node-img-wrapper">
-                    <img src="${mem.thumbnail}" alt="${mem.title}">
-                </div>
-            </div>
-            <div class="node-info-label">
-                <p class="node-title">${mem.title}</p>
-                <p class="node-date">${mem.timestamp}</p>
-            </div>
-        `;
-        if (onNodeClick) {
-            nodeEl.addEventListener('click', () => onNodeClick(nodeEl, mem));
+
+        const card = document.createElement('div');
+        card.className = 'node-card';
+
+        const imgWrapper = document.createElement('div');
+        imgWrapper.className = 'node-img-wrapper';
+        imgWrapper.style.position = 'relative';
+
+        const skeleton = document.createElement('div');
+        skeleton.className = 'node-skeleton';
+        imgWrapper.appendChild(skeleton);
+
+        const img = document.createElement('img');
+        img.src = resolveMemoryThumbnail(mem);
+        img.alt = mem.title || '';
+
+        img.onload = () => {
+            img.classList.add('loaded');
+            skeleton.style.display = 'none';
+        };
+
+        img.onerror = () => {
+            const currentSrc = img.getAttribute('src') || '';
+
+            if (currentSrc.includes('/hqdefault.jpg')) {
+                img.src = currentSrc.replace('/hqdefault.jpg', '/mqdefault.jpg');
+                return;
+            }
+
+            if (currentSrc.includes('/mqdefault.jpg')) {
+                img.src = currentSrc.replace('/mqdefault.jpg', '/default.jpg');
+                return;
+            }
+
+            img.style.display = 'none';
+            skeleton.classList.add('error');
+            skeleton.textContent = '♪';
+        };
+
+        if (img.complete) {
+            img.classList.add('loaded');
+            skeleton.style.display = 'none';
         }
+
+        imgWrapper.appendChild(img);
+        card.appendChild(imgWrapper);
+
+        const infoLabel = document.createElement('div');
+        infoLabel.className = 'node-info-label';
+
+        const titleEl = document.createElement('p');
+        titleEl.className = 'node-title';
+        titleEl.textContent = mem.title || '';
+
+        const dateEl = document.createElement('p');
+        dateEl.className = 'node-date';
+        dateEl.textContent = mem.timestamp || '';
+
+        infoLabel.appendChild(titleEl);
+        infoLabel.appendChild(dateEl);
+        nodeEl.appendChild(card);
+        nodeEl.appendChild(infoLabel);
+        nodeEl.addEventListener('click', () => onNodeClick(nodeEl, mem));
         canvas.appendChild(nodeEl);
+
         return nodeEl;
     };
 
-    /**
-     * 캔버스 초기화 - 전체 트리 렌더링
-     * @param {Object} config - 설정 객체
-     * @param {HTMLElement} config.canvas - 캔버스 컨테이너
-     * @param {SVGElement} config.svg - SVG 엘리먼트
-     * @param {Array} config.memories - memory 배열
-     * @param {Function} config.calcPosition - 위치 계산 함수
-     * @param {Function} config.isRootMemory - root 체크 함수
-     * @param {string} config.canonicalRootId - canonical root ID
-     * @param {Function} config.onNodeClick - 노드 클릭 핸들러
-     */
-    const initCanvas = (config) => {
-        const { canvas, svg, memories, calcPosition, isRootMemory, canonicalRootId, onNodeClick } = config;
-        
-        if (!canvas || !svg) {
-            console.warn('[editor-canvas] Canvas or SVG element not provided');
-            return;
+    const initCanvas = () => {
+        const canonicalRootId = getCanonicalRootId();
+        const treeMemories = getTreeMemories();
+
+        canvas.querySelectorAll('.memory-node').forEach((node) => node.remove());
+        canvas.querySelectorAll('#emptyTreeMessage').forEach((el) => el.remove());
+        svg.querySelectorAll('.branch-line').forEach((line) => line.remove());
+
+        const hasMoments = treeMemories.length > 0;
+        setDetailEmptyState(!hasMoments);
+        updateFocusSelectedBtn();
+
+        treeMemories.forEach((node) => {
+            if (isRootMemory(node, canonicalRootId)) return;
+            drawNode(node);
+            const parentId = node.parentId || canonicalRootId;
+            const parent = treeMemories.find((m) => m.id === parentId);
+            if (parent) {
+                drawBranch(calcPosition(parent), calcPosition(node));
+            }
+        });
+
+        if (hasMoments) {
+            const selectedMem = createInitialMemory();
+            if (selectedMem) {
+                updateDetailPanel(selectedMem);
+            }
         }
-
-        // SVG 초기화
-        svg.innerHTML = '';
-        
-        // 루트는 논리적 anchor만 유지하고 시각 마커는 그리지 않음
-        drawRoot(svg);
-
-        // 메모리 노드들 그리기
-        if (Array.isArray(memories)) {
-            memories.forEach(node => {
-                if (isRootMemory && isRootMemory(node, canonicalRootId)) return;
-                
-                const nodeEl = drawNode(canvas, node, calcPosition, onNodeClick);
-                
-                // 브랜치 그리기
-                const parentId = node.parentId || canonicalRootId;
-                const parent = memories.find(m => m.id === parentId);
-                if (parent) {
-                    drawBranch(svg, calcPosition(parent), calcPosition(node));
-                }
-            });
-        }
-
-        console.log('[editor-canvas] Tree rendered:', memories?.length || 0, 'nodes');
     };
 
-    /**
-     * 캔버스 유틸리티 객체
-     */
-    const LoveBudEditorCanvas = {
-        drawRoot,
+    const bindCanvasPan = ({ getSelectedNodeId, selectNodeById }) => {
+        canvas.addEventListener('mousedown', (e) => {
+            if (e.target.closest('.memory-node') || e.target.closest('#addMemoryForm')) return;
+            viewportState.isPanning = true;
+            viewportState.startX = e.clientX;
+            viewportState.startY = e.clientY;
+            canvas.classList.add('panning');
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!viewportState.isPanning) return;
+            const dx = e.clientX - viewportState.startX;
+            const dy = e.clientY - viewportState.startY;
+            viewportState.startX = e.clientX;
+            viewportState.startY = e.clientY;
+            viewportState.offsetX += dx;
+            viewportState.offsetY += dy;
+            initCanvas();
+            selectNodeById(getSelectedNodeId());
+        });
+
+        window.addEventListener('mouseup', () => {
+            viewportState.isPanning = false;
+            canvas.classList.remove('panning');
+        });
+    };
+
+    return {
+        calcPosition,
         drawBranch,
         drawNode,
         initCanvas,
-        // 상수 노출
-        constants: {
-            ROOT_X,
-            ROOT_Y,
-            RADIUS_L1,
-            RADIUS_L2,
-            NODE_WIDTH,
-            MIN_ANGLE_GAP
-        }
+        bindCanvasPan,
+        viewportState
     };
+}
 
-    // 전역 노출
-    if (typeof window !== 'undefined') {
-        window.LoveBudEditorCanvas = LoveBudEditorCanvas;
-    }
-
-    // 모듈 환경 지원
-    if (typeof module !== 'undefined' && module.exports) {
-        module.exports = LoveBudEditorCanvas;
-    }
-
-    console.log('[editor-canvas] Canvas rendering utilities loaded v1.0.0');
-})();
+window.createEditorCanvas = createEditorCanvas;

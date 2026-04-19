@@ -513,162 +513,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const canonicalRootId = getCanonicalRootId(treeMemories());
         let selectedNodeId = canonicalRootId;
 
-        // Viewport & Pan State
-        const viewportState = {
-            offsetX: 0,
-            offsetY: 0,
-            initialized: false,
-            isPanning: false,
-            startX: 0,
-            startY: 0
-        };
-
-        const toViewportPos = (pos) => ({
-            x: pos.x + viewportState.offsetX,
-            y: pos.y + viewportState.offsetY
-        });
-
-        const centerOnLogicalPos = (pos) => {
-            viewportState.offsetX = Math.round(canvas.clientWidth / 2 - pos.x);
-            viewportState.offsetY = Math.round(canvas.clientHeight / 2 - pos.y);
-        };
-
-        const centerOnMemory = (mem) => {
-            if (!mem) return;
-            centerOnLogicalPos(calcPosition(mem));
-        };
-
-        const updateSidebarSummary = () => {
-            const treeTitleEl = document.getElementById('sidebarTreeTitle');
-            const momentCountEl = document.getElementById('sidebarMomentCount');
-            if (treeTitleEl) {
-                treeTitleEl.textContent = resolveTreeTitleText(window.currentTreeData && window.currentTreeData.title);
-            }
-            if (momentCountEl) {
-                const count = treeMemories().filter(m => !isRootMemory(m, canonicalRootId)).length;
-                momentCountEl.textContent = `순간 ${count}개`;
-            }
-        };
-
-        const bindCanvasPan = () => {
-            canvas.addEventListener('mousedown', (e) => {
-                if (e.target.closest('.memory-node') || e.target.closest('#addMemoryForm')) return;
-                viewportState.isPanning = true;
-                viewportState.startX = e.clientX;
-                viewportState.startY = e.clientY;
-                canvas.classList.add('panning');
-            });
-
-            window.addEventListener('mousemove', (e) => {
-                if (!viewportState.isPanning) return;
-                const dx = e.clientX - viewportState.startX;
-                const dy = e.clientY - viewportState.startY;
-                viewportState.startX = e.clientX;
-                viewportState.startY = e.clientY;
-                viewportState.offsetX += dx;
-                viewportState.offsetY += dy;
-                initCanvas();
-                selectNodeById(selectedNodeId);
-            });
-
-            window.addEventListener('mouseup', () => {
-                viewportState.isPanning = false;
-                canvas.classList.remove('panning');
-            });
-        };
-
-        // Layout constants
-        const ROOT_X = Math.max(460, Math.round(canvas.clientWidth * 0.42));
-        const ROOT_Y = Math.max(420, Math.round(canvas.clientHeight * 0.52));
-        const RADIUS_L1 = 320;
-        const RADIUS_L2 = 250;
-        const NODE_WIDTH = 108;
-        const MIN_ANGLE_GAP = 40;
-
-        const FIXED_ANGLES = {
-            v1: -60, v2: -130, v3: 10,
-            m2: 130, m3: -170, m4: 70
-        };
-
-        // Angle distribution helper
-        // Spread siblings evenly while keeping a minimum gap.
-        const distributeAngles = (count, baseAngle = -90) => {
-            if (count <= 0) return [baseAngle];
-            if (count === 1) return [baseAngle];
-
-            const safeCount = Math.max(count - 1, 1);
-            const totalSpread = Math.min(300, Math.max(110, safeCount * MIN_ANGLE_GAP));
-            const startAngle = baseAngle - totalSpread / 2;
-
-            return Array.from({ length: count }, (_, i) => {
-                const ratio = count === 1 ? 0.5 : i / (count - 1);
-                return startAngle + totalSpread * ratio;
-            });
-        };
-
-        const calcPosition = (mem, visited = new Set()) => {
-            // Position relative to the canonical root
-            if (isRootMemory(mem, canonicalRootId)) return { x: ROOT_X, y: ROOT_Y };
-
-            // Prevent circular references
-            if (visited.has(mem.id)) {
-                console.warn(`Cycle detected at memory ${mem.id}, falling back to root`);
-                return { x: ROOT_X, y: ROOT_Y };
-            }
-            visited.add(mem.id);
-
-            const parentId = mem.parentId || canonicalRootId;
-
-            // Prevent self-reference
-            if (parentId === mem.id) {
-                console.warn(`Self-reference detected for ${mem.id}, using root as parent`);
-                return { x: ROOT_X, y: ROOT_Y };
-            }
-
-            // Siblings share the same parent and exclude the canonical root.
-            const siblings = treeMemories().filter(m =>
-                m.parentId === parentId && !isRootMemory(m, canonicalRootId)
-            );
-            const idx = siblings.findIndex(m => m.id === mem.id); // Prefer findIndex for object-safe lookup
-            const count = siblings.length;
-
-            if (parentId === canonicalRootId) {
-                let angle;
-
-                if (FIXED_ANGLES[mem.id] !== undefined) {
-                    angle = FIXED_ANGLES[mem.id];
-                } else if (count > 0) {
-                    const angles = distributeAngles(count, -20);
-                    angle = angles[idx] !== undefined ? angles[idx] : angles[0];
-                } else {
-                    angle = -20;
-                }
-
-                return {
-                    x: ROOT_X + RADIUS_L1 * Math.cos(angle * Math.PI / 180),
-                    y: ROOT_Y + RADIUS_L1 * Math.sin(angle * Math.PI / 180)
-                };
-            }
-
-            // L2: spread around the parent branch
-            const parent = treeMemories().find(m => m.id === parentId);
-            const parentPos = parent ? calcPosition(parent, visited) : { x: ROOT_X, y: ROOT_Y };
-
-            // Spread siblings with minimum angular separation
-            let angle;
-            if (count > 0) {
-                const angles = distributeAngles(count, 0); // centered around 0 degrees
-                angle = angles[idx] !== undefined ? angles[idx] : (idx / count) * 360;
-            } else {
-                angle = 0;
-            }
-
-            return {
-                x: parentPos.x + RADIUS_L2 * Math.cos(angle * Math.PI / 180),
-                y: parentPos.y + RADIUS_L2 * Math.sin(angle * Math.PI / 180)
-            };
-        };
-
         const nextMemoryId = () => {
             let max = 0;
             treeMemories().forEach(m => {
@@ -706,40 +550,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let currentEditingMemory = null;
 
-        const memoryActions = window.createEditorMemoryActions({
-            i18n,
-            updateSaveStatus,
-            updateDetailPanel,
-            updateSidebarStatus,
-            showToast,
-            getCurrentEditingMemory: () => currentEditingMemory,
-            setCurrentEditingMemory: (value) => {
-                currentEditingMemory = value;
-            },
-            getTreeMemories: () => window.currentTreeMemories || [],
-            setTreeMemories: (value) => {
-                window.currentTreeMemories = value;
-            },
-            getSelectedNodeId: () => selectedNodeId,
-            setSelectedNodeId: (value) => {
-                selectedNodeId = value;
-            },
-            getCanonicalRootId: () => canonicalRootId,
-            isRootMemory,
-            findRootMemory,
-            detailPanel,
-            svg,
-            calcPosition,
-            setDetailEmptyState
-        });
-
-        const {
-            enterEditMode,
-            exitEditMode,
-            saveMemoryEdit,
-            deleteMemory
-        } = memoryActions;
-
         const selectNode = (el, data) => {
             selectedNodeId = data.id;
             document.querySelectorAll('.memory-node').forEach(n => n.classList.remove('selected'));
@@ -775,136 +585,27 @@ document.addEventListener('DOMContentLoaded', () => {
             if (el) selectNode(el, node);
         };
 
-        // drawRoot removed to prevent exposing the red root marker
-        // const drawRoot = () => { ... }
+        const editorCanvas = window.createEditorCanvas({
+            canvas,
+            svg,
+            getTreeMemories: () => treeMemories(),
+            getCanonicalRootId: () => canonicalRootId,
+            isRootMemory,
+            resolveMemoryThumbnail,
+            updateDetailPanel,
+            setDetailEmptyState,
+            updateFocusSelectedBtn,
+            createInitialMemory,
+            onNodeClick: selectNode
+        });
 
-        const drawBranch = (startPos, endPos) => {
-            const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-            const cp1x = startPos.x + (endPos.x - startPos.x) / 2;
-            const d = `M ${startPos.x},${startPos.y} Q ${cp1x},${startPos.y} ${endPos.x},${endPos.y}`;
-            path.setAttribute("d", d);
-            path.setAttribute("class", "branch-line");
-            path.setAttribute("fill", "none");
-            path.setAttribute("stroke", "var(--secondary)");
-            path.setAttribute("stroke-width", "2");
-            path.setAttribute("opacity", "0.5");
-            svg.appendChild(path);
-        };
-
-        const drawNode = (mem) => {
-            // Avoid drawing duplicate nodes with the same memory id
-            const existingNode = document.querySelector(`.memory-node[data-memory-id="${mem.id}"]`);
-            if (existingNode) {
-                console.log('[editor] Node already exists, skipping:', mem.id);
-                return;
-            }
-            const pos = calcPosition(mem);
-            const nodeEl = document.createElement('div');
-            nodeEl.className = 'memory-node floating-node';
-            nodeEl.dataset.memoryId = mem.id;
-            const nodeHalf = Math.round(NODE_WIDTH / 2);
-            nodeEl.style.left = `${pos.x - nodeHalf}px`;
-            nodeEl.style.top = `${pos.y - nodeHalf}px`;
-            nodeEl.style.animationDelay = mem.delay || '0s';
-
-            const card = document.createElement('div');
-            card.className = 'node-card';
-
-            const imgWrapper = document.createElement('div');
-            imgWrapper.className = 'node-img-wrapper';
-            imgWrapper.style.position = 'relative';
-
-            const skeleton = document.createElement('div');
-            skeleton.className = 'node-skeleton';
-            imgWrapper.appendChild(skeleton);
-
-            const img = document.createElement('img');
-            img.src = resolveMemoryThumbnail(mem);
-            img.alt = mem.title || '';
-            
-            img.onload = () => {
-                img.classList.add('loaded');
-                skeleton.style.display = 'none';
-            };
-            
-            img.onerror = () => {
-                const currentSrc = img.getAttribute('src') || '';
-
-                if (currentSrc.includes('/hqdefault.jpg')) {
-                    img.src = currentSrc.replace('/hqdefault.jpg', '/mqdefault.jpg');
-                    return;
-                }
-
-                if (currentSrc.includes('/mqdefault.jpg')) {
-                    img.src = currentSrc.replace('/mqdefault.jpg', '/default.jpg');
-                    return;
-                }
-
-                img.style.display = 'none';
-                skeleton.classList.add('error');
-                skeleton.textContent = '♪';
-            };
-            if (img.complete) {
-                img.classList.add('loaded');
-                skeleton.style.display = 'none';
-            }
-
-            imgWrapper.appendChild(img);
-            card.appendChild(imgWrapper);
-
-            const infoLabel = document.createElement('div');
-            infoLabel.className = 'node-info-label';
-
-            const titleEl = document.createElement('p');
-            titleEl.className = 'node-title';
-            titleEl.textContent = mem.title || '';
-
-            const dateEl = document.createElement('p');
-            dateEl.className = 'node-date';
-            dateEl.textContent = mem.timestamp || '';
-
-            infoLabel.appendChild(titleEl);
-            infoLabel.appendChild(dateEl);
-
-            nodeEl.appendChild(card);
-            nodeEl.appendChild(infoLabel);
-
-            nodeEl.addEventListener('click', () => selectNode(nodeEl, mem));
-            canvas.appendChild(nodeEl);
-        };
-
-        const initCanvas = () => {
-            // 기존 노드 중복 방지: 초기화 시 기존 DOM 노드 제거
-            canvas.querySelectorAll('.memory-node').forEach(n => n.remove());
-            canvas.querySelectorAll('#emptyTreeMessage').forEach(el => el.remove());
-            svg.querySelectorAll('.branch-line').forEach(l => l.remove());
-
-            // 트리가 비어있으면 선택 상태 초기화 및 상세 패널 empty state로
-            const hasMoments = treeMemories().length > 0;
-            if (!hasMoments) {
-                selectedNodeId = null;
-                setDetailEmptyState(true);
-            } else {
-                setDetailEmptyState(false);
-            }
-            updateFocusSelectedBtn();
-
-            treeMemories().forEach(node => {
-                if (isRootMemory(node, canonicalRootId)) return; // canonical root?skip
-                drawNode(node);
-                const parentId = node.parentId || canonicalRootId;
-                const parent = treeMemories().find(m => m.id === parentId);
-                if (parent) drawBranch(calcPosition(parent), calcPosition(node));
-            });
-
-            // 트리가 비어있지 않을 때만 첫 메모리 선택
-            if (hasMoments) {
-                const selectedMem = createInitialMemory();
-                if (selectedMem) {
-                    updateDetailPanel(selectedMem);
-                }
-            }
-        };
+        const {
+            calcPosition,
+            drawBranch,
+            drawNode,
+            initCanvas,
+            bindCanvasPan
+        } = editorCanvas;
 
         // Save status indicator state
         let saveStatusData = {
@@ -973,6 +674,39 @@ document.addEventListener('DOMContentLoaded', () => {
             if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`;
             return `${Math.floor(diff / 86400)}일 전`;
         }
+
+        const memoryActions = window.createEditorMemoryActions({
+            i18n,
+            updateSaveStatus,
+            updateDetailPanel,
+            updateSidebarStatus,
+            showToast,
+            getCurrentEditingMemory: () => currentEditingMemory,
+            setCurrentEditingMemory: (value) => {
+                currentEditingMemory = value;
+            },
+            getTreeMemories: () => window.currentTreeMemories || [],
+            setTreeMemories: (value) => {
+                window.currentTreeMemories = value;
+            },
+            getSelectedNodeId: () => selectedNodeId,
+            setSelectedNodeId: (value) => {
+                selectedNodeId = value;
+            },
+            getCanonicalRootId: () => canonicalRootId,
+            isRootMemory,
+            findRootMemory,
+            detailPanel,
+            svg,
+            calcPosition
+        });
+
+        const {
+            enterEditMode,
+            exitEditMode,
+            saveMemoryEdit,
+            deleteMemory
+        } = memoryActions;
 
         const memoryForm = window.createEditorMemoryForm({
             i18n,
