@@ -64,12 +64,17 @@
 
   // data-i18n 속성을 가진 요소들에 번역 적용
   function applyI18n() {
-    // textContent 번역
+    // text/html 번역
     var elements = document.querySelectorAll('[data-i18n]');
     elements.forEach(function(el) {
       var key = el.getAttribute('data-i18n');
       if (key) {
-        el.textContent = t(key);
+        var translated = t(key);
+        if (el.hasAttribute('data-i18n-html')) {
+          el.innerHTML = translated;
+        } else {
+          el.textContent = translated;
+        }
       }
     });
 
