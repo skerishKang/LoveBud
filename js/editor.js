@@ -709,141 +709,40 @@ document.addEventListener('DOMContentLoaded', () => {
 
         window.updateDetailPanel = updateDetailPanel;
 
-        // Currently edited memory
         let currentEditingMemory = null;
-        let isEditMode = false;
 
-        const enterEditMode = () => {
-            if (!currentEditingMemory) return;
-            isEditMode = true;
+        const memoryActions = window.createEditorMemoryActions({
+            i18n,
+            updateSaveStatus,
+            updateDetailPanel,
+            updateSidebarStatus,
+            showToast,
+            getCurrentEditingMemory: () => currentEditingMemory,
+            setCurrentEditingMemory: (value) => {
+                currentEditingMemory = value;
+            },
+            getTreeMemories: () => window.currentTreeMemories || [],
+            setTreeMemories: (value) => {
+                window.currentTreeMemories = value;
+            },
+            getSelectedNodeId: () => selectedNodeId,
+            setSelectedNodeId: (value) => {
+                selectedNodeId = value;
+            },
+            getCanonicalRootId: () => canonicalRootId,
+            isRootMemory,
+            findRootMemory,
+            detailPanel,
+            svg,
+            calcPosition
+        });
 
-            const viewMode = document.getElementById('detailViewMode');
-            const editMode = document.getElementById('detailEditMode');
-
-            if (viewMode) viewMode.style.display = 'none';
-            if (editMode) editMode.style.display = 'block';
-
-            const titleInput = document.getElementById('editTitleInput');
-            const memoInput = document.getElementById('editMemoInput');
-            const tagsInput = document.getElementById('editTagsInput');
-
-            if (titleInput) titleInput.value = currentEditingMemory.title || '';
-            if (memoInput) memoInput.value = currentEditingMemory.memo || '';
-            if (tagsInput) tagsInput.value = (currentEditingMemory.emotionTags || []).join(', ');
-        };
-
-        const exitEditMode = () => {
-            isEditMode = false;
-            const viewMode = document.getElementById('detailViewMode');
-            const editMode = document.getElementById('detailEditMode');
-            if (viewMode) viewMode.style.display = 'block';
-            if (editMode) editMode.style.display = 'none';
-        };
-
-        const saveMemoryEdit = async () => {
-            if (!currentEditingMemory) return;
-
-            const titleInput = document.getElementById('editTitleInput');
-            const memoInput = document.getElementById('editMemoInput');
-            const tagsInput = document.getElementById('editTagsInput');
-
-            const payload = {
-                title: titleInput ? titleInput.value.trim() : currentEditingMemory.title,
-                memo: memoInput ? memoInput.value.trim() : currentEditingMemory.memo,
-                emotionTags: tagsInput ? tagsInput.value.split(',').map(t => t.trim()).filter(t => t) : currentEditingMemory.emotionTags
-            };
-
-            // Show saving status
-            updateSaveStatus('saving', i18n('save_saving'));
-
-            try {
-                if (window.apiClient && typeof window.apiClient.updateMemory === 'function') {
-                    await window.apiClient.updateMemory(currentEditingMemory.id, payload);
-
-                    // Save success state
-                    updateSaveStatus('saved', i18n('save_saved'));
-
-                    const memIndex = window.currentTreeMemories.findIndex(m => m.id === currentEditingMemory.id);
-                    if (memIndex >= 0) {
-                        window.currentTreeMemories[memIndex] = { ...window.currentTreeMemories[memIndex], ...payload };
-                    }
-
-                    currentEditingMemory = { ...currentEditingMemory, ...payload };
-                    exitEditMode();
-                    updateDetailPanel(currentEditingMemory);
-
-                    const nodeEl = document.querySelector(`.memory-node[data-memory-id="${currentEditingMemory.id}"]`);
-                    if (nodeEl) {
-                        const titleEl = nodeEl.querySelector('.node-title');
-                        if (titleEl) titleEl.textContent = payload.title;
-                    }
-
-                    showToast(i18n('memory_updated'), 'success');
-                } else {
-                    throw new Error('updateMemory not available');
-                }
-            } catch (error) {
-                console.error('[editor] Failed to update memory:', error);
-
-                // Save failed state
-                updateSaveStatus('failed', i18n('save_failed'));
-
-                showToast(i18n('update_failed'), 'error');
-            }
-        };
-
-        const deleteMemory = async () => {
-            if (!currentEditingMemory) return;
-
-            if (!confirm(i18n('delete_confirm'))) {
-                return;
-            }
-
-            try {
-                if (window.apiClient && typeof window.apiClient.deleteMemory === 'function') {
-                    await window.apiClient.deleteMemory(currentEditingMemory.id);
-
-                    window.currentTreeMemories = window.currentTreeMemories.filter(m => m.id !== currentEditingMemory.id);
-
-                    const nodeEl = document.querySelector(`.memory-node[data-memory-id="${currentEditingMemory.id}"]`);
-                    if (nodeEl) {
-                        const branches = svg.querySelectorAll('.branch-line');
-                        const nodePos = calcPosition(currentEditingMemory);
-                        branches.forEach(branch => {
-                            const d = branch.getAttribute('d');
-                            if (d && d.includes(`${nodePos.x},${nodePos.y}`)) {
-                                branch.remove();
-                            }
-                        });
-                        nodeEl.remove();
-                    }
-
-                    currentEditingMemory = null;
-                    exitEditMode();
-
-                    const rootMem = findRootMemory(window.currentTreeMemories);
-                    if (rootMem) {
-                        selectedNodeId = rootMem.id;
-                        updateDetailPanel(rootMem);
-                    } else if (window.currentTreeMemories.length > 0) {
-                        selectedNodeId = window.currentTreeMemories[0].id;
-                        updateDetailPanel(window.currentTreeMemories[0]);
-                    } else {
-                        detailPanel.querySelector('h3').innerHTML = i18n('moment_detail') || '순간 상세';
-                        const imgEl = detailPanel.querySelector('.detail-video img');
-                        if (imgEl) imgEl.src = '';
-                    }
-
-                    showToast(i18n('memory_deleted'), 'success');
-                    updateSidebarStatus();
-                } else {
-                    throw new Error('deleteMemory not available');
-                }
-            } catch (error) {
-                console.error('[editor] Failed to delete memory:', error);
-                showToast(i18n('delete_failed'), 'error');
-            }
-        };
+        const {
+            enterEditMode,
+            exitEditMode,
+            saveMemoryEdit,
+            deleteMemory
+        } = memoryActions;
 
         const selectNode = (el, data) => {
             selectedNodeId = data.id;
@@ -1078,273 +977,48 @@ document.addEventListener('DOMContentLoaded', () => {
             return `${Math.floor(diff / 86400)}일 전`;
         }
 
-        // Form state tracking
-        let isFormOpen = false;
-        let escHandler = null;
-        let outsideClickHandler = null;
+        const memoryForm = window.createEditorMemoryForm({
+            i18n,
+            treeId,
+            getSelectedNodeId: () => selectedNodeId,
+            getCanonicalRootId: () => canonicalRootId,
+            resolveParentIdForCreate,
+            updateSaveStatus,
+            showToast,
+            getYouTubeInputErrorMessage,
+            nextMemoryId,
+            normalizeMemory,
+            getTreeMemories: () => window.currentTreeMemories || [],
+            setTreeMemories: (value) => {
+                window.currentTreeMemories = value;
+            },
+            setLocalSaveMode: (value) => {
+                isLocalSaveMode = value;
+            },
+            getLocalSaveMode: () => isLocalSaveMode,
+            drawNode,
+            drawBranch,
+            calcPosition,
+            updateSidebarStatus,
+            updateFocusSelectedBtn,
+            setDetailEmptyState,
+            selectNode,
+            treeMemories,
+            setCachedMemories: window.setCachedMemories,
+            canvasArea: canvas
+        });
 
-        // Add-memory form elements
-        const addMemoryForm = document.getElementById('addMemoryForm');
+        const {
+            showAddMemoryForm,
+            hideAddMemoryForm,
+            addMemoryFromForm
+        } = memoryForm;
+
         const urlInput = document.getElementById('memoryUrlInput');
         const titleInput = document.getElementById('memoryTitleInput');
         const memoInput = document.getElementById('memoryMemoInput');
-        const canvasArea = document.getElementById('canvasArea');
         const cancelBtn = document.getElementById('cancelAddMemory');
         const confirmBtn = document.getElementById('confirmAddMemory');
-
-        // Focus trap: cycle focus inside the form
-        const formInputs = [urlInput, titleInput, memoInput];
-        const focusTrap = (e) => {
-            if (!isFormOpen) return;
-            if (e.key !== 'Tab') return;
-
-            const focused = document.activeElement;
-            const lastInput = formInputs[formInputs.length - 1];
-            const firstInput = formInputs[0];
-
-            if (e.shiftKey && focused === firstInput) {
-                e.preventDefault();
-                lastInput.focus();
-            } else if (!e.shiftKey && focused === lastInput) {
-                e.preventDefault();
-                firstInput.focus();
-            }
-        };
-
-        const showAddMemoryForm = () => {
-            urlInput.value = '';
-            titleInput.value = '';
-            memoInput.value = '';
-            addMemoryForm.style.display = 'block';
-            isFormOpen = true;
-
-            // Enable focus trap
-            document.addEventListener('keydown', focusTrap);
-            urlInput.focus();
-
-            // Escape handler
-            escHandler = (e) => {
-                if (e.key === 'Escape') {
-                    e.stopPropagation();
-                    hideAddMemoryForm();
-                }
-            };
-            document.addEventListener('keydown', escHandler);
-
-            // Outside click handler (capture phase)
-            outsideClickHandler = (e) => {
-                const target = e.target;
-                // Ignore clicks inside the modal
-                if (addMemoryForm.contains(target)) return;
-                // Ignore clicks on the trigger button
-                if (target.closest('#addMemoryBtn')) return;
-                hideAddMemoryForm();
-            };
-            // Delay binding to avoid interfering with the current click
-            setTimeout(() => {
-                document.addEventListener('click', outsideClickHandler, true);
-            }, 0);
-        };
-
-        const hideAddMemoryForm = () => {
-            addMemoryForm.style.display = 'none';
-            isFormOpen = false;
-
-            // Remove event handlers
-            document.removeEventListener('keydown', focusTrap);
-            if (escHandler) {
-                document.removeEventListener('keydown', escHandler);
-                escHandler = null;
-            }
-            if (outsideClickHandler) {
-                document.removeEventListener('click', outsideClickHandler, true);
-                outsideClickHandler = null;
-            }
-        };
-
-        const addMemoryFromForm = async () => {
-            const url = urlInput.value.trim();
-            if (!url) {
-                showToast(i18n('enter_youtube'), 'warn');
-                return;
-            }
-
-            // Process YouTube using the shared LoveBudMedia helper when available
-            let videoId;
-            let embedUrl;
-            let thumbnailUrl;
-
-            if (window.LoveBudMedia?.extractYouTubeId) {
-                videoId = window.LoveBudMedia.extractYouTubeId(url);
-                if (!videoId) {
-                    showToast(getYouTubeInputErrorMessage(url), 'error');
-                    return;
-                }
-                embedUrl = window.LoveBudMedia.getEmbedUrl(url, 'youtube');
-                thumbnailUrl = window.LoveBudMedia.getThumbnailUrl(url, 'youtube', 'mqdefault');
-            } else {
-                // Fallback to local YouTube parsing if media.js is unavailable
-                console.warn('[editor] LoveBudMedia not loaded, using fallback YouTube parsing');
-                const match = url.match(/(?:v=|\/|youtu\.be\/)([0-9A-Za-z_-]{11})/);
-                if (!match) {
-                    showToast(getYouTubeInputErrorMessage(url), 'error');
-                    return;
-                }
-                videoId = match[1];
-                embedUrl = `https://www.youtube.com/embed/${videoId}`;
-                thumbnailUrl = `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
-            }
-
-            // Show saving status before validation/network work
-            updateSaveStatus('saving', i18n('save_saving'));
-
-            const today = new Date();
-            const dateStr = `${today.getFullYear()}.${String(today.getMonth()+1).padStart(2,'0')}.${String(today.getDate()).padStart(2,'0')}`;
-
-            // Auto-fill a default title when the field is empty
-            const title = titleInput.value.trim() || '새 순간';
-
-            const newMemoryData = {
-                treeId: treeId,
-                title: title,
-                memo: memoInput.value.trim() || '',
-                timestamp: dateStr,
-                sourceUrl: embedUrl,
-                sourceType: 'youtube',
-                emotionTags: [i18n('tag_record') || '기록'],
-                // If synthetic root ('root') is selected, create the first memory at root level (null)
-                parentId: resolveParentIdForCreate(selectedNodeId, canonicalRootId),
-                thumbnail: thumbnailUrl,
-                artist: '',
-                source: 'YouTube',
-                visibility: 'public'
-            };
-
-            hideAddMemoryForm();
-
-            // Try API create first
-            let createdMemory = null;
-            let useApi = false;
-            try {
-                if (window.apiClient && typeof window.apiClient.createMemory === 'function') {
-                    createdMemory = await window.apiClient.createMemory(newMemoryData);
-                    useApi = true;
-                    isLocalSaveMode = false; // API success disables local-save mode
-                    console.log('[editor] API createMemory success:', createdMemory);
-                } else {
-                    throw new Error('createMemory API not available');
-                }
-            } catch (e) {
-                console.warn('[editor] API createMemory failed, fallback to mock:', e?.message || e);
-
-                if (e?.message?.includes('401') || e?.message?.includes('403')) {
-                    showToast(i18n('no_permission_local'), 'warn');
-                } else if (e?.message?.includes('400')) {
-                    updateSaveStatus('failed', i18n('check_input') || '입력값을 다시 확인해 주세요.');
-                    showToast(i18n('check_input') || '입력값을 다시 확인해 주세요.', 'error');
-                } else {
-                    showToast(i18n('server_fail_local') || '서버 저장에 실패해 로컬 저장으로 전환합니다.', 'error');
-                }
-            }
-
-            // API failed: fallback to local-only memory creation
-            // Defensive guard: create a local object even if createdMemory is null/undefined
-            if (!createdMemory || typeof createdMemory !== 'object') {
-                console.log('[editor] Using local fallback memory');
-                isLocalSaveMode = true; // Explicitly mark local fallback mode
-                createdMemory = {
-                    id: nextMemoryId(),
-                    ...newMemoryData,
-                    createdAt: dateStr,
-                    delay: '0.5s'
-                };
-            }
-
-            // Refresh after createMemory and distinguish between server refresh and local fallback
-            // Contract: window.currentTreeMemories always stores normalized memories
-            const normalizedNew = normalizeMemory(createdMemory);
-            let didRefreshFromServer = false;
-
-            try {
-                if (useApi && window.apiClient && typeof window.apiClient.getMemoriesByTree === 'function') {
-                    const refreshed = await window.apiClient.getMemoriesByTree(treeId);
-                    if (Array.isArray(refreshed)) {
-                        window.currentTreeMemories = refreshed.map(normalizeMemory).filter(Boolean);
-                        didRefreshFromServer = true;
-                    }
-                }
-
-                if (!didRefreshFromServer) {
-                    if (!Array.isArray(window.currentTreeMemories)) window.currentTreeMemories = [];
-                    const exists = window.currentTreeMemories.some(m => m.id === normalizedNew?.id);
-                    if (!exists && normalizedNew) window.currentTreeMemories.push(normalizedNew);
-                }
-            } catch (e) {
-                if (!Array.isArray(window.currentTreeMemories)) window.currentTreeMemories = [];
-                const exists = window.currentTreeMemories.some(m => m.id === normalizedNew?.id);
-                if (!exists && normalizedNew) window.currentTreeMemories.push(normalizedNew);
-            }
-
-            // Normalize before updating the UI
-            // Handle snake_case to camelCase and flat response shapes
-            const normalizedMemory = normalizeMemory(createdMemory);
-            if (!normalizedMemory) {
-                console.error('[editor] Memory normalization failed');
-                updateSaveStatus('failed', i18n('save_failed'));
-                return;
-            }
-
-            // Remove the empty-state message after the first node is added
-            const emptyMsg = document.getElementById('emptyTreeMessage');
-            if (emptyMsg) {
-                emptyMsg.remove();
-                console.log('[editor] Removed emptyTreeMessage after first node added');
-            }
-
-            drawNode(normalizedMemory);
-            const effectiveParentId = normalizedMemory.parentId || canonicalRootId;
-            const parent = treeMemories().find(m => m.id === effectiveParentId);
-            if (parent) drawBranch(calcPosition(parent), calcPosition(normalizedMemory));
-
-            const el = document.querySelector(`.memory-node[data-memory-id="${normalizedMemory.id}"]`);
-            if (el) {
-                selectNode(el, normalizedMemory);
-
-                // Highlight the newly created node
-                el.classList.add('new-node-highlight');
-                setTimeout(() => el.classList.remove('new-node-highlight'), 2000);
-
-                // Smooth-scroll to the new node
-                const nodeRect = el.getBoundingClientRect();
-                const canvasRect = canvasArea.getBoundingClientRect();
-                const scrollX = el.offsetLeft - canvasRect.width / 2 + nodeRect.width / 2;
-                const scrollY = el.offsetTop - canvasRect.height / 2 + nodeRect.height / 2;
-                canvasArea.scrollTo({
-                    left: Math.max(0, scrollX),
-                    top: Math.max(0, scrollY),
-                    behavior: 'smooth'
-                });
-            }
-
-             // Final save status depends on whether the server refresh succeeded
-             if (useApi && didRefreshFromServer) {
-                 updateSaveStatus('saved', i18n('save_saved'));
-             } else {
-                 updateSaveStatus('saved', i18n('save_saved_local') || '로컬 저장됨');
-             }
-
-            // Update cache after adding a memory
-            if (typeof window.setCachedMemories === 'function' && treeId) {
-                window.setCachedMemories(treeId, window.currentTreeMemories);
-                console.log('[editor] 메모리 추가 후 캐시 갱신', window.currentTreeMemories.length, '개');
-            }
-
-            // Refresh sidebar state
-            updateSidebarStatus();
-            updateFocusSelectedBtn();
-            setDetailEmptyState(false);
-
-        };
 
         // Button event listeners
         if (addBtn) {
