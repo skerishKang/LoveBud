@@ -130,14 +130,19 @@
       color: var(--primary);
     }
 
-    /* Empty state */
+    /* Empty state - centered compact design */
     .empty-state {
       text-align: center;
-      padding: 80px 40px;
+      padding: 64px 32px;
       background: white;
       border-radius: 2rem;
       border: 1px solid var(--outline-variant);
       box-shadow: var(--shadow-whisper);
+      max-width: 480px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
 
     .empty-state-icon {
