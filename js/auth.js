@@ -672,9 +672,10 @@ function setupEmailAuthForm() {
   if (!form) return;
   if (typeof firebase === 'undefined' || !firebase.auth) return;
 
-  var emailInput = document.getElementById('email-auth-email');
-  var passwordInput = document.getElementById('email-auth-password');
-  var submitBtn = document.getElementById('email-auth-submit');
+   var emailInput = document.getElementById('email-auth-email');
+   var passwordInput = document.getElementById('email-auth-password');
+   var displayNameInput = document.getElementById('email-auth-display-name');
+   var submitBtn = document.getElementById('email-auth-submit');
   var toggleBtn = document.getElementById('email-auth-toggle');
   var modal = document.getElementById('email-auth-modal');
   var titleEl = document.getElementById('email-auth-title');
@@ -692,10 +693,15 @@ function setupEmailAuthForm() {
 
   updateModeUi();
 
-  if (toggleBtn) {
-    toggleBtn.addEventListener('click', function () {
-      EMAIL_AUTH_MODE = EMAIL_AUTH_MODE === 'login' ? 'signup' : 'login';
-      updateModeUi();
+   if (toggleBtn) {
+     toggleBtn.addEventListener('click', function () {
+       EMAIL_AUTH_MODE = EMAIL_AUTH_MODE === 'login' ? 'signup' : 'login';
+       updateModeUi();
+       syncDisplayNameVisibility();
+     });
+   }
+
+   syncDisplayNameVisibility();
     });
   }
 
@@ -731,11 +737,13 @@ form.addEventListener('submit', async function (e) {
     
     if (!emailInput || !passwordInput || !submitBtn) return;
 
-    var email = String(emailInput.value || '').trim();
-    var password = String(passwordInput.value || '').trim();
+     var email = String(emailInput.value || '').trim();
+     var password = String(passwordInput.value || '').trim();
+     var displayName = String(displayNameInput?.value || '').trim();
 
-    if (!email || !password) { alert('이메일과 비밀번호를 모두 입력해 주세요.'); return; }
-    if (password.length < 6) { alert('비밀번호는 최소 6자 이상이어야 합니다.'); return; }
+     if (!email || !password) { alert('이메일과 비밀번호를 모두 입력해 주세요.'); return; }
+     if (EMAIL_AUTH_MODE === 'signup' && !displayName) { alert('닉네임을 입력해 주세요.'); return; }
+     if (password.length < 6) { alert('비밀번호는 최소 6자 이상이어야 합니다.'); return; }
 
     submitBtn.disabled = true;
     var originalText = submitBtn.textContent;
@@ -749,14 +757,17 @@ form.addEventListener('submit', async function (e) {
       return;
     }
 
-    try {
-      if (EMAIL_AUTH_MODE === 'login') {
-        await firebase.auth().signInWithEmailAndPassword(email, password);
-      } else {
-        await firebase.auth().createUserWithEmailAndPassword(email, password);
-      }
-      if (modal) modal.style.display = 'none';
-      window.location.href = getRedirectTarget();
+     try {
+       if (EMAIL_AUTH_MODE === 'login') {
+         await firebase.auth().signInWithEmailAndPassword(email, password);
+       } else {
+         var signupResult = await firebase.auth().createUserWithEmailAndPassword(email, password);
+         if (signupResult && signupResult.user && typeof signupResult.user.updateProfile === 'function') {
+           await signupResult.user.updateProfile({ displayName: displayName });
+         }
+       }
+       if (modal) modal.style.display = 'none';
+       window.location.href = getRedirectTarget();
     } catch (error) {
       console.error('Email auth error:', error);
       if (isInvalidAuthSessionError(error)) {
@@ -777,9 +788,10 @@ function setupSignupForm() {
   if (!signupForm) return;
   if (typeof firebase === 'undefined' || !firebase.auth) return;
 
-  var emailInput = document.getElementById('signup-email');
-  var passwordInput = document.getElementById('signup-password');
-  var submitBtn = document.getElementById('signup-submit');
+   var displayNameInput = document.getElementById('signup-display-name');
+   var emailInput = document.getElementById('signup-email');
+   var passwordInput = document.getElementById('signup-password');
+   var submitBtn = document.getElementById('signup-submit');
 
   signupForm.addEventListener('submit', async function (e) {
     e.preventDefault();
@@ -790,13 +802,14 @@ function setupSignupForm() {
       return;
     }
 
-    var email = String(emailInput?.value || '').trim();
-    var password = String(passwordInput?.value || '').trim();
+     var displayName = String(displayNameInput?.value || '').trim();
+     var email = String(emailInput?.value || '').trim();
+     var password = String(passwordInput?.value || '').trim();
 
-    if (!email || !password) {
-      alert('이메일과 비밀번호를 입력해주세요.');
-      return;
-    }
+     if (!displayName || !email || !password) {
+       alert('닉네임, 이메일, 비밀번호를 입력해주세요.');
+       return;
+     }
     if (password.length < 6) {
       alert('비밀번호는 최소 6자 이상이어야 합니다.');
       return;
@@ -816,8 +829,11 @@ function setupSignupForm() {
         throw new Error('Firebase not initialized');
       }
 
-      await firebase.auth().createUserWithEmailAndPassword(email, password);
-      window.location.href = getRedirectTarget();
+       var signupResult = await firebase.auth().createUserWithEmailAndPassword(email, password);
+       if (signupResult && signupResult.user && typeof signupResult.user.updateProfile === 'function') {
+         await signupResult.user.updateProfile({ displayName: displayName });
+       }
+       window.location.href = getRedirectTarget();
     } catch (error) {
       console.error('Signup error:', error);
       var friendlyMessage = getFriendlyErrorMessage(error, false);
