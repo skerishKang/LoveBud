@@ -376,30 +376,34 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
-    // memory 없으면 fallback UI (API는 성공했지만 데이터가 없는 경우)
-    if (!context.memory) {
-        console.warn('[detail] Memory not found, showing fallback UI');
-        const i18n = window.t || ((k) => k);
-        const fallbackHTML = `
-            <div style="max-width: 600px; margin: 80px auto; text-align: center; padding: 48px;">
-                <span class="material-symbols-outlined" style="font-size: 64px; color: var(--on-surface-variant); opacity: 0.5; margin-bottom: 24px; display: block;">sentiment_dissatisfied</span>
-                <h2 class="headline" style="font-size: 1.8rem; margin-bottom: 16px; color: var(--on-surface);">${i18n('memory_not_found_title')}</h2>
-                <p style="color: var(--on-surface-variant); margin-bottom: 32px; line-height: 1.6;">
-                    ${i18n('memory_not_found_desc').replace('.', '<br>')}
-                </p>
-                <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
-                    <a href="../index.html" class="btn-round btn-outline" style="text-decoration: none;">${i18n('back_to_home')}</a>
-                    <a href="search.html" class="btn-round btn-outline" style="text-decoration: none;">${i18n('browse_lovetrees')}</a>
-                </div>
-            </div>
-        `;
-        const mainLayout = document.querySelector('.detail-layout');
-        if (mainLayout) {
-            mainLayout.innerHTML = fallbackHTML;
-            mainLayout.style.display = 'block';
-        }
-        return;
-    }
+     // memory 없으면 fallback UI (API는 성공했지만 데이터가 없는 경우)
+     if (!context.memory) {
+         console.warn('[detail] Memory not found, showing fallback UI');
+         const i18n = window.t || ((k) => k);
+         const isPagesContext = window.location.pathname.indexOf('/pages/') !== -1;
+         const homeHref = isPagesContext ? '../index.html' : 'index.html';
+         const searchHref = isPagesContext ? 'search.html' : 'pages/search.html';
+
+         const fallbackHTML = `
+             <div style="max-width: 600px; margin: 80px auto; text-align: center; padding: 48px;">
+                 <span class="material-symbols-outlined" style="font-size: 64px; color: var(--on-surface-variant); opacity: 0.5; margin-bottom: 24px; display: block;">sentiment_dissatisfied</span>
+                 <h2 class="headline" style="font-size: 1.8rem; margin-bottom: 16px; color: var(--on-surface);">${i18n('memory_not_found_title')}</h2>
+                 <p style="color: var(--on-surface-variant); margin-bottom: 32px; line-height: 1.6;">
+                     ${i18n('memory_not_found_desc').replace('.', '<br>')}
+                 </p>
+                 <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+                     <a href="${homeHref}" class="btn-round btn-outline" style="text-decoration: none;">${i18n('back_to_home')}</a>
+                     <a href="${searchHref}" class="btn-round btn-outline" style="text-decoration: none;">${i18n('browse_lovetrees')}</a>
+                 </div>
+             </div>
+         `;
+         const mainLayout = document.querySelector('.detail-layout');
+         if (mainLayout) {
+             mainLayout.innerHTML = fallbackHTML;
+             mainLayout.style.display = 'block';
+         }
+         return;
+     }
     
     // 분해된 값 사용
     const { memory, tree, memories, hasTreeContext, degradedReason } = context;
@@ -554,9 +558,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         const config = backConfig[sourceContext] || backConfig['browse'];
 
         backButton.innerHTML = `<span class="material-symbols-outlined" style="font-size:18px;margin-right:4px;">arrow_back</span> ${config.label}`;
-        backButton.onclick = () => {
+
+        if (backButton.__detailBackHandler) {
+            backButton.removeEventListener('click', backButton.__detailBackHandler);
+        }
+
+        const handleBackClick = () => {
             window.location.href = config.url;
         };
+
+        backButton.addEventListener('click', handleBackClick);
+        backButton.__detailBackHandler = handleBackClick;
     }
 
     console.log('[detail] Detail view loaded:', memory.title || 'Untitled');
