@@ -14,6 +14,7 @@
 var __authStateModule = window.LoveBudAuthState || null;
 var __authUiModule = window.LoveBudAuthUI || null;
 var __authSessionModule = window.LoveBudAuthSession || null;
+var __authFirebaseModule = window.LoveBudAuthFirebase || null;
 var EMAIL_AUTH_MODE = __authStateModule
   ? __authStateModule.getEmailAuthMode()
   : (function() {
@@ -364,6 +365,13 @@ function preloadRedirectTargetData() {
  * If no confirmed cache exists, show a neutral skeleton that preserves layout.
  */
 function applyCachedAuthState() {
+  if (__authFirebaseModule) {
+    return __authFirebaseModule.applyCachedAuthState({
+      isLoginPage: isLoginPage,
+      getCachedAuthUser: getCachedAuthUser,
+      buildUserDropdown: buildUserDropdown
+    });
+  }
   var path = window.location.pathname;
   var isLoginPage = path.indexOf('/pages/login.html') !== -1 || path.indexOf('login.html') !== -1;
   if (isLoginPage) return false;
@@ -387,6 +395,30 @@ function applyCachedAuthState() {
 }
 
 function initAuth() {
+  if (__authFirebaseModule) {
+    __authFirebaseModule.initAuth({
+      resolveEmailAuthMode: resolveEmailAuthMode,
+      setupLoginPageAuthUi: setupLoginPageAuthUi,
+      applyCachedAuthState: applyCachedAuthState,
+      markAuthLoading: markAuthLoading,
+      markAuthReady: markAuthReady,
+      initOfflineAuth: initOfflineAuth,
+      attachDropdownListener: attachDropdownListener,
+      persistConfirmedAuthSession: persistConfirmedAuthSession,
+      updateNavUI: updateNavUI,
+      fireAuthReadyCallbacks: fireAuthReadyCallbacks,
+      isInvalidAuthSessionError: isInvalidAuthSessionError,
+      clearStaleFirebaseAuthState: clearStaleFirebaseAuthState,
+      clearConfirmedAuthCache: clearConfirmedAuthCache,
+      setupGoogleBtn: setupGoogleBtn,
+      setupEmailAuthForm: setupEmailAuthForm,
+      setupSignupForm: setupSignupForm,
+      setupSignupGoogleBtn: setupSignupGoogleBtn,
+      authInitFlag: AUTH_INIT_FLAG,
+      authReadyFlag: AUTH_READY_FLAG
+    });
+    return;
+  }
   EMAIL_AUTH_MODE = resolveEmailAuthMode();
   if (__authStateModule) __authStateModule.setEmailAuthMode(EMAIL_AUTH_MODE);
   setupLoginPageAuthUi();
@@ -467,6 +499,15 @@ function initAuth() {
 // ── Offline Fallback ──────────────────────────────────────────────────────────
 
 function initOfflineAuth() {
+  if (__authFirebaseModule) {
+    __authFirebaseModule.initOfflineAuth({
+      markAuthReady: markAuthReady,
+      updateNavUI: updateNavUI,
+      getCachedAuthUser: getCachedAuthUser,
+      fireAuthReadyCallbacks: fireAuthReadyCallbacks
+    });
+    return;
+  }
   var isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
   var cachedUser = getCachedAuthUser();
   // Offline 모드에서도 ready 상태로 전환 후 UI 표시
@@ -737,6 +778,7 @@ function getRedirectTarget() {
  * Returns null if supported, or error message string if not.
  */
 function getEnvironmentCheckError() {
+  if (__authFirebaseModule) return __authFirebaseModule.getEnvironmentCheckError();
   var protocol = window.location.protocol || '';
   // Check file:// protocol
   if (protocol === 'file:') {
@@ -763,6 +805,7 @@ function getEnvironmentCheckError() {
  * Original error is logged to console for developers.
  */
 function getFriendlyErrorMessage(error, isGoogleLogin) {
+  if (__authFirebaseModule) return __authFirebaseModule.getFriendlyErrorMessage(error, isGoogleLogin);
   if (!error) return '알 수 없는 오류가 발생했습니다.';
   var code = error.code || '';
   var message = error.message || '';
@@ -776,7 +819,7 @@ function getFriendlyErrorMessage(error, isGoogleLogin) {
   if (message.indexOf('web storage') !== -1 || message.indexOf('storage') !== -1) {
     return '브라우저 저장소(storage)가 비활성화되어 있습니다. 쿠키와 저장소를 허용한 후 다시 시도해 주세요.';
   }
-  
+   
    // Common auth errors
    switch (code) {
      case 'auth/popup-closed-by-user':
@@ -818,6 +861,16 @@ function getFriendlyErrorMessage(error, isGoogleLogin) {
 }
 
 async function signInWithGoogle() {
+  if (__authFirebaseModule) {
+    await __authFirebaseModule.signInWithGoogle({
+      getEnvironmentCheckError: getEnvironmentCheckError,
+      isLoginPage: isLoginPage,
+      persistConfirmedAuthSession: persistConfirmedAuthSession,
+      preloadRedirectTargetData: preloadRedirectTargetData,
+      getRedirectTarget: getRedirectTarget
+    });
+    return;
+  }
   // Environment check first
   var envError = getEnvironmentCheckError();
   if (envError) {
@@ -881,6 +934,13 @@ async function signInWithGoogle() {
 }
 
 async function signOut() {
+  if (__authFirebaseModule) {
+    await __authFirebaseModule.signOut({
+      clearStaleFirebaseAuthState: clearStaleFirebaseAuthState,
+      clearConfirmedAuthCache: clearConfirmedAuthCache
+    });
+    return;
+  }
   try {
     if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length) {
       await firebase.auth().signOut();
