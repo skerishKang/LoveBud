@@ -681,17 +681,26 @@ function setupEmailAuthForm() {
   var titleEl = document.getElementById('email-auth-title');
   var helperEl = document.getElementById('email-auth-helper');
 
-  function updateModeUi() {
-    syncEmailAuthModeUi({
-      titleEl: titleEl,
-      helperEl: helperEl,
-      submitBtn: submitBtn,
-      toggleBtn: toggleBtn,
-      badgeEl: document.getElementById('auth-mode-badge')
-    });
-  }
+   function updateModeUi() {
+     syncEmailAuthModeUi({
+       titleEl: titleEl,
+       helperEl: helperEl,
+       submitBtn: submitBtn,
+       toggleBtn: toggleBtn,
+       badgeEl: document.getElementById('auth-mode-badge')
+     });
+   }
 
-  updateModeUi();
+   function syncDisplayNameVisibility() {
+     if (!displayNameInput) return;
+     var wrapper = displayNameInput.closest('[data-auth-display-name-wrap]');
+     if (!wrapper) return;
+     wrapper.style.display = EMAIL_AUTH_MODE === 'signup' ? 'block' : 'none';
+     displayNameInput.required = EMAIL_AUTH_MODE === 'signup';
+   }
+
+   updateModeUi();
+   syncDisplayNameVisibility();
 
    if (toggleBtn) {
      toggleBtn.addEventListener('click', function () {
@@ -701,11 +710,7 @@ function setupEmailAuthForm() {
      });
    }
 
-   syncDisplayNameVisibility();
-    });
-  }
-
-  var emailBtn = document.getElementById('login-btn-email');
+   var emailBtn = document.getElementById('login-btn-email');
   if (emailBtn) {
     emailBtn.addEventListener('click', function (e) {
       e.preventDefault();
