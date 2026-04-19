@@ -1192,13 +1192,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const detailContent = document.getElementById('detailContent');
             if (!detailContent) return;
 
-            detailContent.innerHTML = `
-                <div style="text-align:center;padding:40px 24px;color:var(--on-surface-variant);">
-                    <span class="material-symbols-outlined" style="font-size:48px;opacity:0.4;margin-bottom:16px;display:block;">sentiment_satisfied</span>
-                    <p style="font-size:1rem;font-weight:600;margin-bottom:8px;color:var(--on-surface);">아직 추가된 순간이 없어요</p>
-                    <p style="font-size:0.9rem;opacity:0.7;line-height:1.5;">왼쪽 아래의 '순간 추가' 버튼으로<br>첫 기록을 남겨보세요.</p>
-                </div>
-            `;
+            detailContent.innerHTML = '<div style="text-align:center;padding:40px 24px;color:var(--on-surface-variant);"><span class="material-symbols-outlined" style="font-size:48px;opacity:0.4;margin-bottom:16px;display:block;">sentiment_satisfied</span><p style="font-size:1rem;font-weight:600;margin-bottom:8px;color:var(--on-surface);">아직 추가된 순간이 없어요</p><p style="font-size:0.9rem;opacity:0.7;line-height:1.5;">왼쪽 아래의 \'순간 추가\' 버튼으로 첫 기록을 남겨보세요.</p></div>';
         };
 
         // ?�?� Save status indicator ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�
