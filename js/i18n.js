@@ -322,11 +322,19 @@
       ko: '이메일',
       en: 'Email'
     },
-    'password_label': {
-      ko: '비밀번호',
-      en: 'Password'
-    },
-    'login_btn': {
+     'password_label': {
+       ko: '비밀번호',
+       en: 'Password'
+     },
+     'display_name_label': {
+       ko: '닉네임',
+       en: 'Nickname'
+     },
+     'display_name_placeholder': {
+       ko: '예: XG Alpha',
+       en: 'e.g. XG Alpha'
+     },
+     'login_btn': {
       ko: '로그인',
       en: 'Login'
     },
