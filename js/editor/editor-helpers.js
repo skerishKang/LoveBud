@@ -147,6 +147,30 @@
     return i18nFn('invalid_youtube') || '유효한 YouTube 링크를 입력해 주세요.';
   }
 
+  function createToast(options) {
+    var warningKey = (options && options.warningKey) || '__editorToastWarningShown';
+
+    return function showToast(message, type) {
+      var nextType = type || 'info';
+
+      if (window.LoveBudUI?.showToast) {
+        window.LoveBudUI.showToast(message, nextType, 3000);
+        return;
+      }
+
+      if (!window[warningKey]) {
+        console.warn('[editor] LoveBudUI not loaded, toast degraded to console');
+        window[warningKey] = true;
+      }
+
+      console.log('[Toast ' + nextType + '] ' + message);
+    };
+  }
+
+  function getI18n() {
+    return window.t || function(k) { return k; };
+  }
+
   window.LoveBudEditorHelpers = {
     safeI18nText: safeI18nText,
     resolveHintText: resolveHintText,
@@ -157,6 +181,8 @@
     extractYouTubeIdFallback: extractYouTubeIdFallback,
     resolveMemoryThumbnail: resolveMemoryThumbnail,
     getThumbnailFallbackChain: getThumbnailFallbackChain,
-    getYouTubeInputErrorMessage: getYouTubeInputErrorMessage
+    getYouTubeInputErrorMessage: getYouTubeInputErrorMessage,
+    createToast: createToast,
+    getI18n: getI18n
   };
 })();
