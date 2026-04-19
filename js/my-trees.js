@@ -12,6 +12,7 @@
 
 (function() {
   var myTreesUI = window.LoveBudMyTreesUI || null;
+  var myTreesActions = window.LoveBudMyTreesActions || null;
 
   // ── Toast utility (공통 UI 사용) ──────────────────────────────────────────
   function showToast(message, type) {
@@ -134,11 +135,19 @@
      loadTrees();
    }
 
-  // ── Tree management: rename ─────────────────────────────────────────────
+  // ── Tree management: rename/delete ─────────────────────────────────────
   async function renameTree(treeId, currentTitle) {
+    if (myTreesActions && typeof myTreesActions.renameTree === 'function') {
+      return myTreesActions.renameTree(treeId, currentTitle, {
+        showToast: showToast,
+        reloadTrees: loadTrees,
+        i18n: window.t || function(k) { return k; }
+      });
+    }
+
     var i18n = window.t || function(k) { return k; };
     var newTitle = prompt(i18n('rename_tree_prompt') || '트리 이름을 입력하세요:', currentTitle);
-    
+
     if (!newTitle || newTitle.trim() === '' || newTitle === currentTitle) {
       return; // cancelled or unchanged
     }
@@ -159,11 +168,18 @@
     }
   }
 
-  // ── Tree management: delete ──────────────────────────────────────────────
   async function deleteTree(treeId, treeTitle) {
+    if (myTreesActions && typeof myTreesActions.deleteTree === 'function') {
+      return myTreesActions.deleteTree(treeId, treeTitle, {
+        showToast: showToast,
+        reloadTrees: loadTrees,
+        i18n: window.t || function(k) { return k; }
+      });
+    }
+
     var i18n = window.t || function(k) { return k; };
     var confirmed = confirm((i18n('delete_tree_confirm') || '정말 "{title}" 트리를 삭제하시겠습니까?').replace('{title}', treeTitle));
-    
+
     if (!confirmed) return;
 
     try {
@@ -443,6 +459,10 @@
 
   // ── Create new tree ──────────────────────────────────────────────────────
    function isTestPublicMode() {
+     if (myTreesActions && typeof myTreesActions.isTestPublicMode === 'function') {
+       return myTreesActions.isTestPublicMode();
+     }
+
      // 테스트 시나리오에서 public 트리 생성을 강제하는 모드 감지
      try {
        var urlParams = new URLSearchParams(window.location.search);
@@ -454,6 +474,12 @@
    }
 
    function getDefaultVisibility() {
+     if (myTreesActions && typeof myTreesActions.getDefaultVisibility === 'function') {
+       return myTreesActions.getDefaultVisibility({
+         isTestPublicMode: isTestPublicMode
+       });
+     }
+
      // 테스트 모드일 때는 public을 기본으로
      if (isTestPublicMode()) {
        console.log('[my-trees] Test public mode: defaulting to public');
@@ -475,6 +501,15 @@
    }
 
    async function createNewTree() {
+     if (myTreesActions && typeof myTreesActions.createNewTree === 'function') {
+       return myTreesActions.createNewTree({
+         getDefaultVisibility: getDefaultVisibility,
+         showToast: showToast,
+         cacheKey: TREES_CACHE_KEY,
+         i18n: window.t || function(k) { return k; }
+       });
+     }
+
      var btn = document.getElementById('createTreeBtn');
      var i18n = window.t || function(k) { return k; };
 
@@ -539,7 +574,7 @@
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
+      .replace(/\"/g, '&quot;');
   }
 
   // ── 캐시 키 상수 ───────────────────────────────────────────────────────
