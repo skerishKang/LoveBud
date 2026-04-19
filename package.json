@@ -16,6 +16,7 @@
     "test:batch:headed": "node scripts/batch-test-runner.js --headed",
     "test:screenshots": "node scripts/capture-screenshots.js",
     "test:screenshots:xg": "node scripts/capture-screenshots.js xg-test-$(Get-Date -Format 'yyyy-MM-dd-HHmm')",
+    "test:e2e:search-detail": "node scripts/e2e-search-detail-smoke.js",
     "ci": "npm run lint && npm run build && npm run test && npm run verify"
   },
   "dependencies": {
