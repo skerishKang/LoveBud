@@ -381,6 +381,15 @@ function getBasePath() {
 // 전역으로 노출
 window.getBasePath = getBasePath;
 
+function escapeHtml(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function buildLoginButton() {
   var basePath = getBasePath();
   var loginHref = basePath + 'login.html';
@@ -397,11 +406,14 @@ function buildLoginButton() {
  */
 function buildUserDropdown(user) {
   var userName = '';
-  var hasPhoto = user && user.photoURL;
-  
+  var hasPhoto = !!(user && user.photoURL);
+
   if (user) {
     userName = user.displayName || user.email || '';
   }
+
+  var safeUserName = escapeHtml(userName);
+  var safePhotoUrl = hasPhoto ? escapeHtml(user.photoURL) : '';
 
   // Determine context (root vs pages folder)
   var isPagesContext = window.location.pathname.indexOf('/pages/') !== -1;
@@ -409,8 +421,8 @@ function buildUserDropdown(user) {
   var myTreesHref = isPagesContext ? 'my-trees.html' : 'pages/my-trees.html';
 
   // Shell stays constant - only content inside changes
-  var avatarContent = hasPhoto 
-    ? '<img src="' + user.photoURL + '" alt="" class="user-avatar-image" referrerpolicy="no-referrer">'
+  var avatarContent = hasPhoto
+    ? '<img src="' + safePhotoUrl + '" alt="" class="user-avatar-image" referrerpolicy="no-referrer">'
     : '<span class="material-symbols-outlined user-avatar-fallback">account_circle</span>';
 
   return [
@@ -421,7 +433,7 @@ function buildUserDropdown(user) {
     '</span>',
     '</button>',
     '<div class="user-dropdown-menu">',
-    userName ? '<div class="user-dropdown-meta">' + userName + '</div>' : '',
+    safeUserName ? '<div class="user-dropdown-meta">' + safeUserName + '</div>' : '',
     '<a href="' + myTreesHref + '" class="user-dropdown-item"><span class="material-symbols-outlined">account_tree</span>내 러브트리</a>',
     '<button class="user-dropdown-item" disabled style="cursor:default;opacity:0.6;"><span class="material-symbols-outlined">settings</span>설정</button>',
     '<div class="dropdown-divider"></div>',
