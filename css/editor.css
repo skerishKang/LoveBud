@@ -2,7 +2,7 @@
 
 :root {
     /* Editor Specific Layout Constants */
-    --sidebar-width: 100px;
+    --sidebar-width: 120px;
     --detail-panel-width: 420px;
     --header-height: 80px;
 }
@@ -42,8 +42,13 @@ body {
     font-size: 10px;
     font-weight: 800;
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 0.5px;
     color: #aaa;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    text-align: center;
 }
 
 .tool-item {
@@ -80,6 +85,11 @@ body {
     font-size: 11px;
     font-weight: 700;
     color: var(--on-surface-variant);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    text-align: center;
 }
 
 /* Canvas Area */
