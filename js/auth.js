@@ -11,37 +11,44 @@
  * Version: ?v=20260416-16
  */
 
-var EMAIL_AUTH_MODE = (function() {
-  try {
-    if (window.__initialAuthMode === 'signup' || window.__initialAuthMode === 'login') {
-      return window.__initialAuthMode;
-    }
-    var params = new URLSearchParams(window.location.search);
-    var mode = params.get('mode');
-    return mode === 'signup' ? 'signup' : 'login';
-  } catch (e) {
-    return 'login';
-  }
-})();
-var AUTH_INIT_FLAG = '__lovebudAuthInitialized';
-var DROPDOWN_LISTENER_ATTACHED = false;
-var AUTH_READY_FLAG = '__lovebudAuthReady';
+var __authStateModule = window.LoveBudAuthState || null;
+var EMAIL_AUTH_MODE = __authStateModule
+  ? __authStateModule.getEmailAuthMode()
+  : (function() {
+      try {
+        if (window.__initialAuthMode === 'signup' || window.__initialAuthMode === 'login') {
+          return window.__initialAuthMode;
+        }
+        var params = new URLSearchParams(window.location.search);
+        var mode = params.get('mode');
+        return mode === 'signup' ? 'signup' : 'login';
+      } catch (e) {
+        return 'login';
+      }
+    })();
+var AUTH_INIT_FLAG = __authStateModule ? __authStateModule.AUTH_INIT_FLAG : '__lovebudAuthInitialized';
+var AUTH_READY_FLAG = __authStateModule ? __authStateModule.AUTH_READY_FLAG : '__lovebudAuthReady';
+var DROPDOWN_LISTENER_ATTACHED = __authStateModule
+  ? __authStateModule.isDropdownListenerAttached()
+  : false;
 
 // 인증 캐시 키 정책:
 // - lovebud_auth_cache: {uid, displayName, email} - 사용자 기본 정보 (로그아웃 시 삭제)
 // - lovebud_auth_confirmed: 'true' 문자열 - 인증 확인 플래그 (로그아웃 시 삭제)
 // - lovebud_auth_token: {uid, token, expiresAt} - Firebase ID 토큰 (로그아웃 시 삭제)
 // TTL: 토큰은 Firebase 기본 1시간, 캐시는 명시적 로그아웃 전까지 유지
-var AUTH_CACHE_KEY = 'lovebud_auth_cache';
-var AUTH_CONFIRMED_KEY = 'lovebud_auth_confirmed';
-var AUTH_TOKEN_KEY = 'lovebud_auth_token';
+var AUTH_CACHE_KEY = __authStateModule ? __authStateModule.AUTH_CACHE_KEY : 'lovebud_auth_cache';
+var AUTH_CONFIRMED_KEY = __authStateModule ? __authStateModule.AUTH_CONFIRMED_KEY : 'lovebud_auth_confirmed';
+var AUTH_TOKEN_KEY = __authStateModule ? __authStateModule.AUTH_TOKEN_KEY : 'lovebud_auth_token';
 
 function isLoginPage() {
+  if (__authStateModule) return __authStateModule.isLoginPage();
   var path = window.location.pathname || '';
   return path.indexOf('/pages/login.html') !== -1 || path.indexOf('login.html') !== -1;
 }
 
 function resolveEmailAuthMode() {
+  if (__authStateModule) return __authStateModule.resolveEmailAuthMode();
   try {
     if (window.__initialAuthMode === 'signup' || window.__initialAuthMode === 'login') {
       return window.__initialAuthMode;
@@ -101,6 +108,7 @@ function setupLoginPageAuthUi() {
   if (!isLoginPage()) return;
 
   EMAIL_AUTH_MODE = resolveEmailAuthMode();
+  if (__authStateModule) __authStateModule.setEmailAuthMode(EMAIL_AUTH_MODE);
 
   var params = new URLSearchParams(window.location.search);
   var redirect = params.get('redirect');
@@ -121,16 +129,19 @@ function setupLoginPageAuthUi() {
 // ── Auth Ready Callbacks (배열 패턴) ─────────────────────────────────────────
 // 여러 모듈이 등록해도 덮어쓰기 문제 없음
 window.__onAuthReadyCallbacks = window.__onAuthReadyCallbacks || [];
+var __authCallbacksModule = window.LoveBudAuthCallbacks || null;
 
 /**
  * 인증 준비 후 실행할 콜백 등록
  * @param {Function} callback - user 객체를 받는 콜백 함수
  */
 window.registerOnAuthReady = function(callback) {
+  if (__authCallbacksModule) {
+    __authCallbacksModule.registerOnAuthReady(callback, AUTH_READY_FLAG);
+    return;
+  }
   if (typeof callback !== 'function') return;
   window.__onAuthReadyCallbacks.push(callback);
-  
-  // 이미 인증 준비 완료되었다면 즉시 실행
   if (window[AUTH_READY_FLAG]) {
     var user = window.__lastAuthUser || null;
     try { callback(user); } catch (e) { console.error('[auth] Callback error:', e); }
@@ -141,6 +152,10 @@ window.registerOnAuthReady = function(callback) {
  * 모든 등록된 콜백 실행 (auth.js 내부 사용)
  */
 function fireAuthReadyCallbacks(user) {
+  if (__authCallbacksModule) {
+    __authCallbacksModule.fireAuthReadyCallbacks(user);
+    return;
+  }
   window.__lastAuthUser = user;
   window.__onAuthReadyCallbacks.forEach(function(callback) {
     try { callback(user); } catch (e) { console.error('[auth] Callback error:', e); }
@@ -148,13 +163,19 @@ function fireAuthReadyCallbacks(user) {
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
+var __authCacheModule = window.LoveBudAuthCache || null;
 
 function isInvalidAuthSessionError(error) {
+  if (__authCacheModule) return __authCacheModule.isInvalidAuthSessionError(error);
   var message = String((error && (error.code || error.message)) || '');
   return /USER_NOT_FOUND|user-not-found|invalid-user-token|token.*expired|user token/i.test(message);
 }
 
 function clearStaleFirebaseAuthState() {
+  if (__authCacheModule) {
+    __authCacheModule.clearStaleFirebaseAuthState();
+    return;
+  }
   var prefixes = ['firebase:authUser:', 'firebase:pendingRedirect:', 'firebase:redirectUser:'];
   function clearStorage(storage) {
     if (!storage) return;
@@ -172,6 +193,9 @@ function clearStaleFirebaseAuthState() {
 }
 
 function getCachedAuthUser() {
+  if (__authCacheModule) {
+    return __authCacheModule.getCachedAuthUser(AUTH_CACHE_KEY, AUTH_CONFIRMED_KEY);
+  }
   try {
     if (localStorage.getItem(AUTH_CONFIRMED_KEY) !== 'true') return null;
     var raw = localStorage.getItem(AUTH_CACHE_KEY);
@@ -185,6 +209,10 @@ function getCachedAuthUser() {
 }
 
 function setConfirmedAuthCache(user) {
+  if (__authCacheModule) {
+    __authCacheModule.setConfirmedAuthCache(user, AUTH_CACHE_KEY, AUTH_CONFIRMED_KEY, AUTH_TOKEN_KEY);
+    return;
+  }
   try {
     if (user && user.uid) {
       var cacheData = { uid: user.uid, displayName: user.displayName || '', email: user.email || '' };
@@ -197,6 +225,10 @@ function setConfirmedAuthCache(user) {
 }
 
 function clearConfirmedAuthCache() {
+  if (__authCacheModule) {
+    __authCacheModule.clearConfirmedAuthCache(AUTH_CACHE_KEY, AUTH_CONFIRMED_KEY, AUTH_TOKEN_KEY);
+    return;
+  }
   try {
     localStorage.removeItem(AUTH_CACHE_KEY);
     localStorage.removeItem(AUTH_CONFIRMED_KEY);
@@ -205,6 +237,9 @@ function clearConfirmedAuthCache() {
 }
 
 function getCachedAuthToken() {
+  if (__authCacheModule) {
+    return __authCacheModule.getCachedAuthToken(AUTH_TOKEN_KEY);
+  }
   try {
     var raw = localStorage.getItem(AUTH_TOKEN_KEY);
     if (!raw || raw === 'null') return null;
@@ -218,6 +253,10 @@ function getCachedAuthToken() {
 }
 
 async function persistConfirmedAuthSession(user) {
+  if (__authCacheModule) {
+    await __authCacheModule.persistConfirmedAuthSession(user, AUTH_CACHE_KEY, AUTH_CONFIRMED_KEY, AUTH_TOKEN_KEY);
+    return;
+  }
   try {
     if (!user || !user.uid) {
       clearConfirmedAuthCache();
@@ -339,6 +378,7 @@ function applyCachedAuthState() {
 
 function initAuth() {
   EMAIL_AUTH_MODE = resolveEmailAuthMode();
+  if (__authStateModule) __authStateModule.setEmailAuthMode(EMAIL_AUTH_MODE);
   setupLoginPageAuthUi();
 
   // Apply confirmed cached state immediately to prevent flicker
@@ -610,6 +650,7 @@ function updateNavUI(user) {
 function attachDropdownListener() {
   if (DROPDOWN_LISTENER_ATTACHED) return;
   DROPDOWN_LISTENER_ATTACHED = true;
+  if (__authStateModule) __authStateModule.setDropdownListenerAttached(true);
 
   document.addEventListener('click', function (e) {
     var trigger = e.target.closest('.user-dropdown-trigger');
@@ -879,7 +920,8 @@ function setupEmailAuthForm() {
 
    if (toggleBtn) {
      toggleBtn.addEventListener('click', function () {
-       EMAIL_AUTH_MODE = EMAIL_AUTH_MODE === 'login' ? 'signup' : 'login';
+      EMAIL_AUTH_MODE = EMAIL_AUTH_MODE === 'login' ? 'signup' : 'login';
+      if (__authStateModule) __authStateModule.setEmailAuthMode(EMAIL_AUTH_MODE);
        updateModeUi();
        syncDisplayNameVisibility();
      });
