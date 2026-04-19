@@ -403,12 +403,24 @@ body {
     .sidebar {
         width: 100%;
         height: auto;
-        flex-direction: row;
-        padding: 12px 20px;
+        flex-direction: column;
+        padding: 14px 16px;
         border-right: none;
         border-bottom: 1px solid var(--outline-variant);
-        gap: 16px;
-        overflow-x: auto;
+        gap: 12px;
+        overflow: visible;
+    }
+
+    .editor-status-section,
+    .editor-add-section {
+        width: 100%;
+    }
+
+    .editor-add-section {
+        position: static;
+        margin-top: 0;
+        padding-top: 10px;
+        background: none;
     }
 
     .tool-group {
@@ -456,9 +468,7 @@ body {
         transform: translateX(0);
     }
 
-    .canvas-area {
-        height: calc(100vh - 60px);
-    }
+    .canvas-area { height: auto; }
 
     .node-card {
         padding: 4px;
@@ -477,7 +487,7 @@ body {
     }
 
     .sidebar {
-        height: 60px;
+        height: auto;
     }
 
     .tool-group {
@@ -504,9 +514,7 @@ body {
         display: none;
     }
 
-    .canvas-area {
-        height: calc(100vh - 120px);
-    }
+    .canvas-area { height: auto; }
 
     .detail-panel {
         width: 100%;
