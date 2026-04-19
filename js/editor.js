@@ -160,16 +160,38 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    const resolveMemoryThumbnail = (memory) => {
+    const resolveMemoryThumbnail = (memory, quality = 'hqdefault') => {
         const thumbnail = safeUrl(memory?.thumbnail, { allowDataImage: true });
         if (thumbnail) return thumbnail;
 
         const sourceUrl = safeUrl(memory?.sourceUrl);
         const sourceType = memory?.sourceType || window.LoveBudMedia?.detectSourceType?.(sourceUrl) || 'youtube';
-        if (sourceUrl && sourceType === 'youtube' && window.LoveBudMedia?.getThumbnailUrl) {
-            return window.LoveBudMedia.getThumbnailUrl(sourceUrl, 'youtube', 'mqdefault') || '';
+        if (sourceUrl && sourceType === 'youtube') {
+            const videoId = window.LoveBudMedia?.extractYouTubeId?.(sourceUrl) || 
+                           extractYouTubeIdFallback(sourceUrl);
+            if (videoId) {
+                return `https://img.youtube.com/vi/${videoId}/${quality}.jpg`;
+            }
         }
         return '';
+    };
+
+    const extractYouTubeIdFallback = (url) => {
+        const patterns = [
+            /(?:v=|\/|youtu\.be\/|shorts\/)([0-9A-Za-z_-]{11})/i,
+            /youtube\.com\/watch\?v=([0-9A-Za-z_-]{11})/i,
+            /youtu\.be\/([0-9A-Za-z_-]{11})/i
+        ];
+        for (const pattern of patterns) {
+            const match = url.match(pattern);
+            if (match) return match[1];
+        }
+        return null;
+    };
+
+    const getThumbnailFallbackChain = (memory) => {
+        const qualities = ['hqdefault', 'mqdefault', 'default'];
+        return qualities.map(q => resolveMemoryThumbnail(memory, q));
     };
 
     const getYouTubeInputErrorMessage = (rawUrl) => {
@@ -816,12 +838,31 @@ document.addEventListener('DOMContentLoaded', () => {
         const updateSidebarStatus = () => {
             const treeTitleEl = document.getElementById('sidebarTreeTitle');
             const momentCountEl = document.getElementById('sidebarMomentCount');
+            const hintEl = document.getElementById('sidebarSelectionHint');
+
             if (treeTitleEl) {
                 treeTitleEl.textContent = resolveTreeTitleText(window.currentTreeData?.title);
             }
             if (momentCountEl) {
                 const count = treeMemories().filter(m => !isRootMemory(m, canonicalRootId)).length;
-                momentCountEl.textContent = `?�간 ${count}�?;
+                momentCountEl.textContent = `순간 ${count}개`;
+            }
+            if (hintEl) {
+                const selected = selectedNodeId && treeMemories().find(m => m.id === selectedNodeId);
+                if (selected && !isRootMemory(selected, canonicalRootId)) {
+                    hintEl.textContent = `현재 선택: ${selected.title || '제목 없음'}`;
+                    hintEl.style.fontStyle = 'normal';
+                    hintEl.style.color = 'var(--primary)';
+                } else {
+                    const count = treeMemories().filter(m => !isRootMemory(m, canonicalRootId)).length;
+                    if (count === 0) {
+                        hintEl.textContent = '첫 순간을 추가해 트리를 시작해 보세요';
+                    } else {
+                        hintEl.textContent = '노드를 선택하면 상세 정보가 표시됩니다';
+                    }
+                    hintEl.style.fontStyle = 'italic';
+                    hintEl.style.color = 'var(--on-surface-variant)';
+                }
             }
         };
 
@@ -1044,9 +1085,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 img.classList.add('loaded');
                 skeleton.style.display = 'none';
             };
+            
+            let fallbackIndex = 0;
+            const fallbackChain = getThumbnailFallbackChain(mem);
+            
             img.onerror = () => {
-                img.style.display = 'none';
-                skeleton.classList.add('error');
+                fallbackIndex++;
+                if (fallbackIndex < fallbackChain.length) {
+                    img.src = fallbackChain[fallbackIndex];
+                } else {
+                    img.style.display = 'none';
+                    skeleton.classList.add('error');
+                    skeleton.textContent = '♪';
+                }
             };
             if (img.complete) {
                 img.classList.add('loaded');

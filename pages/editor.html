@@ -20,16 +20,25 @@
                 <div class="editor-status-card">
                     <strong id="sidebarTreeTitle">새 러브트리</strong>
                     <p id="sidebarMomentCount">순간 0개</p>
+                    <span id="sidebarSelectionHint" class="editor-sidebar-meta">첫 순간을 추가해 트리를 시작해 보세요</span>
                 </div>
                 <div class="editor-sidebar-actions">
-                    <button type="button" class="secondary-btn" id="focusSelectedBtn">선택 이동</button>
-                    <button type="button" class="secondary-btn" id="recenterCanvasBtn">전체 보기</button>
+                    <button type="button" class="sidebar-btn" id="focusSelectedBtn">
+                        <span class="btn-icon">→</span>
+                        <span class="btn-label">선택으로</span>
+                    </button>
+                    <button type="button" class="sidebar-btn" id="recenterCanvasBtn">
+                        <span class="btn-icon">⌂</span>
+                        <span class="btn-label">전체 보기</span>
+                    </button>
                 </div>
             </section>
 
             <section class="editor-add-section" style="margin-top: auto;">
-                <h3>추가</h3>
-                <button type="button" class="secondary-btn" id="addMemoryBtn">+ 순간</button>
+                <button type="button" class="sidebar-btn sidebar-btn-primary" id="addMemoryBtn">
+                    <span class="btn-icon">+</span>
+                    <span class="btn-label">순간 추가</span>
+                </button>
             </section>
         </aside>
 

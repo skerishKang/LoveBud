@@ -120,6 +120,21 @@
   - 사용자가 명시하지 않은 파일을 무리하게 포함하지 않음
   - 커밋/푸시 여부는 항상 범위를 분명히 함
 
+### `production-scenario-tester`
+
+- 경로: `skills/production-scenario-tester/SKILL.md`
+- 목적: 실운영 도메인(https://lovebud.netlify.app)에서 사용자 여정 검증 및 증빙
+- 대표 트리거:
+  - 새로운 아이돌 그룹 시나리오를 테스트해야 함
+  - 실운영 도메인에서 엔드 투 엔드(E2E) 검증이 필요함
+  - 브라우저 서브에이전트를 이용한 자동화 테스트를 수행해야 함
+- 주요 출력:
+  - `docs/test-scenarios/results/` 하위 결과 폴더 및 `test-result.md`
+  - 단계별 증빙 스크린샷 (`screenshots/*.png`)
+- 주의:
+  - 로컬 테스트(`localhost:8888`)는 금지되며 반드시 실운영 도메인 사용
+  - 테스트마다 새로운 계정 생성 규칙 준수
+
 ## 작업 유형별 빠른 매핑
 
 | 요청 유형 | 먼저 읽을 스킬 |
@@ -130,6 +145,7 @@
 | 페이지 문서 작성 | `skills/page-doc-writer/SKILL.md` |
 | 패치 리뷰/검증 | `skills/runtime-patch-review/SKILL.md` |
 | 자산 버전 갱신 | `skills/asset-version-bump/SKILL.md` |
+| 실운영 시나리오 테스트 | `skills/production-scenario-tester/SKILL.md` |
 | staging/commit/push | `skills/git-publish/SKILL.md` |
 
 ## 새 세션용 체크포인트
