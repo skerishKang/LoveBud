@@ -1,10 +1,14 @@
 /**
  * LoveBud Search Data Adapter
  * v20260418-1
- * 
+ *
  * Data processing layer: transforms raw memories/trees into tree view models.
  * UI-agnostic - focuses on data transformation only.
  */
+
+// 1. /api/community/trees camelCase-only
+// 2. /api/community/memories camelCase-only
+// 3. mock browse camelCase-only
 
 (function() {
     'use strict';

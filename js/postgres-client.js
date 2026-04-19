@@ -409,66 +409,14 @@ function isMockFallbackEnabled() {
          * - this compatibility is migration-only and should be removed once
          *   /community/trees and /community/memories are confirmed to return flat camelCase only
          */
-        getPublicTrees: async () => {
-            return withFallback(
-                async () => {
-                    // 1) 공개 트리 목록 - normalize early
-                    const apiTrees = await apiFetch('/community/trees');
-                    const validTrees = (Array.isArray(apiTrees) ? apiTrees : [])
-                        .map((rawTree) => normalizeBrowseTreeRecord(rawTree))
-                        .filter((tree) => tree.visibility === 'public');
-
-                    if (validTrees.length === 0) {
-                        return [];
-                    }
-
-                    // 2) 공개 메모리 목록
-                    const apiMemories = await apiFetch('/community/memories');
-                    const publicMemories = Array.isArray(apiMemories) ? apiMemories : [];
-
-                    // 3) treeId 기준 그룹핑 - normalize each memory
-                    const grouped = {};
-                    publicMemories.forEach((rawMemory) => {
-                        const memory = normalizeBrowseMemoryRecord(rawMemory);
-                        if (!memory.treeId) return;
-                        if (!grouped[memory.treeId]) grouped[memory.treeId] = [];
-                        grouped[memory.treeId].push(memory);
-                    });
-
-                    // 4) browse용 view model 생성 - use normalized fields only
-                    return validTrees.map((tree) => {
-                        const mems = grouped[tree.id] || [];
-                        const sortedMems = [...mems].sort((a, b) =>
-                            new Date(a.createdAt || a.timestamp || 0) -
-                            new Date(b.createdAt || b.timestamp || 0)
-                        );
-
-                        const allTags = sortedMems
-                            .flatMap((m) => m.emotionTags)
-                            .filter(Boolean);
-                        const uniqueTags = [...new Set(allTags)].slice(0, 3);
-
-                        const timestamps = sortedMems.map((m) => m.timestamp).filter(Boolean);
-                        const timeRange = timestamps.length >= 2
-                            ? `${timestamps[0]} ~ ${timestamps[timestamps.length - 1]}`
-                            : (timestamps[0] || 'recently');
-
-                        return {
-                            id: tree.id,
-                            title: tree.title,
-                            visibility: tree.visibility,
-                            createdAt: tree.createdAt,
-                            ownerId: tree.ownerId,
-                            memories: sortedMems,
-                            memoryCount: sortedMems.length,
-                            emotionTags: uniqueTags,
-                            timeRange,
-                            representativeThumbnail: sortedMems[0]?.thumbnail || '',
-                            theme: sortedMems[0]?.artist || 'Mixed',
-                            stage: sortedMems.length <= 2 ? '입덕' : (sortedMems.length <= 4 ? '성장' : '최애')
-                        };
-                    }).filter((t) => t.memoryCount > 0);
-                },
+getPublicTrees: async () => {
+             return withFallback(
+                 async () => {
+                     const PublicTreeAdapter = window.LoveTreePublicTreeAdapter;
+                     const apiTrees = await apiFetch('/community/trees');
+                     const apiMemories = await apiFetch('/community/memories');
+                     return PublicTreeAdapter.buildPublicTreeViewModels(apiTrees, apiMemories);
+                 },
                 () => {
                     const allMemories = typeof memories !== 'undefined' ? memories : [];
                     const trees = typeof getTrees === 'function' ? getTrees() : [];
@@ -567,57 +515,12 @@ function isMockFallbackEnabled() {
     // Expose as a global object
     window.apiClient = apiClient;
 
-    // Transitional helpers for public tree browse
-    function unwrapTreeRecord(tree) {
-        return tree?.data || tree || {};
-    }
-
-    function unwrapMemoryRecord(memory) {
-        return memory?.data || memory || {};
-    }
-
-    function getRecordTreeId(record) {
-        return record.treeId || record.tree_id || null;
-    }
-
-    // Browse-specific normalization helpers
-    function normalizeBrowseTreeRecord(rawTree) {
-        const tree = unwrapTreeRecord(rawTree);
-        return {
-            id: tree.id || rawTree?.id || null,
-            title: tree.title || '',
-            visibility: tree.visibility || 'private',
-            createdAt: tree.createdAt || tree.created_at || null,
-            ownerId: tree.ownerId || tree.owner_id || null,
-        };
-    }
-
-    function normalizeBrowseMemoryRecord(rawMemory) {
-        const memory = unwrapMemoryRecord(rawMemory);
-        return {
-            id: memory.id || null,
-            treeId: memory.treeId || memory.tree_id || null,
-            createdAt: memory.createdAt || memory.created_at || null,
-            timestamp: memory.timestamp || '',
-            thumbnail: memory.thumbnail || '',
-            artist: memory.artist || '',
-            emotionTags: Array.isArray(memory.emotionTags)
-                ? memory.emotionTags
-                : (Array.isArray(memory.emotion_tags) ? memory.emotion_tags : []),
-        };
-    }
-
-    // Expose internals for testing
+    // Expose internals for testing (auth-related only; tree/memory adapters moved to js/api/public-tree-adapter.js)
     if (typeof window !== 'undefined') {
         window.__LoveBudApiClientInternals = {
             endpointLikelyRequiresAuth,
             getAuthWaitAttempts,
             hasConfirmedAuthSession,
-            unwrapTreeRecord,
-            unwrapMemoryRecord,
-            getRecordTreeId,
-            normalizeBrowseTreeRecord,
-            normalizeBrowseMemoryRecord,
         };
     }
 
