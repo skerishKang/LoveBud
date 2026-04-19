@@ -90,7 +90,7 @@ function createEditorDetailUI(deps) {
         if (viewMode) viewMode.style.display = isEmpty ? 'none' : 'block';
         if (editMode) editMode.style.display = 'none';
         if (actions) actions.style.display = isEmpty ? 'none' : 'flex';
-        if (indicator && isEmpty) indicator.style.display = 'hide';
+        if (indicator && isEmpty) indicator.style.display = 'none';
     };
 
     const updateFocusSelectedBtn = () => {
