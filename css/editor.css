@@ -200,9 +200,14 @@ body {
     color: var(--on-surface-variant);
 }
 
-/* Slightly clearer selected node */
 .memory-node.selected .node-card {
     box-shadow: 0 25px 50px rgba(144, 73, 81, 0.18);
+}
+
+/* Prevent text selection while panning */
+.memory-node,
+.memory-node * {
+    user-select: none;
 }
 
 .node-img-wrapper img {
@@ -562,7 +567,7 @@ body {
 }
 
 .editor-status-card p {
-    margin: 8px 0 0;
+    margin: 10px 0 0;
     font-size: 14px;
     line-height: 1.7;
     color: var(--on-surface-variant);
@@ -675,11 +680,11 @@ body {
 /* Sidebar selection hint */
 .editor-sidebar-meta {
     display: block;
-    margin-top: 10px;
-    padding-top: 10px;
+    margin-top: 14px;
+    padding-top: 12px;
     border-top: 1px dashed var(--outline-variant);
     font-size: 12px;
-    line-height: 1.5;
+    line-height: 1.6;
     color: var(--on-surface-variant);
     font-style: italic;
 }
