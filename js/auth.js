@@ -396,6 +396,19 @@ function buildLoginButton() {
   return '<a href="' + loginHref + '" class="btn-round btn-outline" style="text-decoration:none;padding:8px 20px;font-size:14px;">로그인</a>';
 }
 
+function getUserAvatarInitial(user) {
+  var source = '';
+
+  if (user) {
+    source = String(user.displayName || user.email || '').trim();
+  }
+
+  if (!source) return 'L';
+
+  var firstChar = source.charAt(0).toUpperCase();
+  return /[A-Z0-9가-힣]/.test(firstChar) ? firstChar : 'L';
+}
+
 /**
  * Build user dropdown HTML.
  *
@@ -420,10 +433,12 @@ function buildUserDropdown(user) {
   var settingsHref = isPagesContext ? 'settings.html' : 'pages/settings.html';
   var myTreesHref = isPagesContext ? 'my-trees.html' : 'pages/my-trees.html';
 
+  var avatarInitial = getUserAvatarInitial(user);
+
   // Shell stays constant - only content inside changes
   var avatarContent = hasPhoto
     ? '<img src="' + safePhotoUrl + '" alt="" class="user-avatar-image" referrerpolicy="no-referrer">'
-    : '<span class="material-symbols-outlined user-avatar-fallback">account_circle</span>';
+    : '<span class="user-avatar-initial" aria-hidden="true">' + escapeHtml(avatarInitial) + '</span>';
 
   return [
     '<div class="user-dropdown" id="userDropdown">',
