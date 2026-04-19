@@ -122,6 +122,34 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    const getYouTubeInputErrorMessage = (rawUrl) => {
+        const value = String(rawUrl || '').trim();
+        const i18n = window.t || ((k) => k);
+
+        if (!value) {
+            return i18n('enter_youtube') || 'YouTube 링크를 입력해 주세요.';
+        }
+
+        const looksLikeUrl = /^(https?:\/\/|www\.)/i.test(value);
+        const hasYouTubeHint = /(youtube\.com|youtu\.be|youtube\.com\/shorts\/)/i.test(value);
+        const idLikeMatch = value.match(/(?:v=|\/|youtu\.be\/|shorts\/)([0-9A-Za-z_-]+)/i);
+        const candidateId = idLikeMatch ? idLikeMatch[1] : '';
+
+        if (!looksLikeUrl) {
+            return i18n('invalid_youtube_format') || '전체 YouTube 링크를 붙여넣어 주세요.';
+        }
+
+        if (!hasYouTubeHint) {
+            return i18n('invalid_youtube_unsupported') || 'YouTube 링크만 지원합니다. youtube.com 또는 youtu.be 링크를 사용해 주세요.';
+        }
+
+        if (candidateId && candidateId.length !== 11) {
+            return i18n('invalid_youtube_id_length') || '링크가 중간에 잘린 것 같아요. 전체 YouTube 링크를 다시 복사해 주세요.';
+        }
+
+        return i18n('invalid_youtube') || '유효한 YouTube 링크를 입력해 주세요.';
+    };
+
     const renderTreeLoadError = ({ canvas, detailPanel, addBtn, errorTitle, errorDesc }) => {
         canvas.innerHTML = `
             <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;padding:32px;background:rgba(255,255,255,0.96);border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,0.1);max-width:360px;width:calc(100% - 32px);">
@@ -1073,22 +1101,22 @@ document.addEventListener('DOMContentLoaded', () => {
             let embedUrl;
             let thumbnailUrl;
 
-            if (window.LoveBudMedia?.extractYouTubeId) {
-                videoId = window.LoveBudMedia.extractYouTubeId(url);
-                if (!videoId) {
-                    showToast(i18nToast('invalid_youtube'), 'error');
-                    return;
-                }
-                embedUrl = window.LoveBudMedia.getEmbedUrl(url, 'youtube');
-                thumbnailUrl = window.LoveBudMedia.getThumbnailUrl(url, 'youtube', 'mqdefault');
-            } else {
-                // fallback: 기존 정규식 로직 (media.js 로드 실패 시)
-                console.warn('[editor] LoveBudMedia not loaded, using fallback YouTube parsing');
-                const match = url.match(/(?:v=|\/|youtu\.be\/)([0-9A-Za-z_-]{11})/);
-                if (!match) {
-                    showToast(i18nToast('invalid_youtube'), 'error');
-                    return;
-                }
+             if (window.LoveBudMedia?.extractYouTubeId) {
+                 videoId = window.LoveBudMedia.extractYouTubeId(url);
+                 if (!videoId) {
+                     showToast(getYouTubeInputErrorMessage(url), 'error');
+                     return;
+                 }
+                 embedUrl = window.LoveBudMedia.getEmbedUrl(url, 'youtube');
+                 thumbnailUrl = window.LoveBudMedia.getThumbnailUrl(url, 'youtube', 'mqdefault');
+             } else {
+                 // fallback: 기존 정규식 로직 (media.js 로드 실패 시)
+                 console.warn('[editor] LoveBudMedia not loaded, using fallback YouTube parsing');
+                 const match = url.match(/(?:v=|\/|youtu\.be\/)([0-9A-Za-z_-]{11})/);
+                 if (!match) {
+                     showToast(getYouTubeInputErrorMessage(url), 'error');
+                     return;
+                 }
                 videoId = match[1];
                 embedUrl = `https://www.youtube.com/embed/${videoId}`;
                 thumbnailUrl = `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
