@@ -52,4 +52,46 @@
             };
         };
     }
+
+    if (!treeHelpers.syncCurrentTreeData) {
+        treeHelpers.syncCurrentTreeData = function syncCurrentTreeData(tree) {
+            window.currentTreeData = {
+                ...tree,
+                visibility: tree && tree.visibility ? tree.visibility : 'public'
+            };
+            console.log('[editor] currentTreeData set:', window.currentTreeData.visibility);
+        };
+    }
+
+    if (!treeHelpers.resolveParentIdForCreate) {
+        treeHelpers.resolveParentIdForCreate = function resolveParentIdForCreate(selectedNodeId, canonicalRootId) {
+            if (!selectedNodeId || selectedNodeId === canonicalRootId) {
+                return canonicalRootId === 'root' ? null : canonicalRootId;
+            }
+            return selectedNodeId;
+        };
+    }
+
+    if (!treeHelpers.getFirstMockTree) {
+        treeHelpers.getFirstMockTree = function getFirstMockTree() {
+            var mockTrees = typeof getTrees === 'function' ? getTrees() : [];
+            return mockTrees[0] || null;
+        };
+    }
+
+    if (!treeHelpers.nextMemoryIdFromMemories) {
+        treeHelpers.nextMemoryIdFromMemories = function nextMemoryIdFromMemories(memories) {
+            var max = 0;
+
+            (Array.isArray(memories) ? memories : []).forEach(function(m) {
+                if (!m || !m.id) return;
+                var match = String(m.id).match(/^m(\d+)$/);
+                if (match) {
+                    max = Math.max(max, parseInt(match[1], 10));
+                }
+            });
+
+            return 'm' + (max + 1);
+        };
+    }
 })();
