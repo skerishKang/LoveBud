@@ -45,6 +45,7 @@ lodocument.addEventListener('DOMContentLoaded', () => {
     const editorPageHelpers = window.LoveBudEditorPageHelpers || {};
     const editorTreeHelpers = window.LoveBudEditorTreeHelpers || {};
     const editorBindings = window.LoveBudEditorBindings || {};
+    const editorDataLoader = window.LoveBudEditorDataLoader || {};
 
     // Auth guard bootstrapping via onAuthReady callback
     // Shared toast utility wrapper
@@ -410,97 +411,121 @@ lodocument.addEventListener('DOMContentLoaded', () => {
         TREE_CACHE_KEY = 'tree_' + (treeId || 'default');
         MEMORIES_CACHE_KEY = 'memories_' + (treeId || 'default');
 
-        const refreshMemories = async () => {
-            if (!treeId) return;
-            try {
-                if (window.apiClient && window.apiClient.getMemoriesByTree) {
-                    const apiMemories = await window.apiClient.getMemoriesByTree(treeId);
-                    if (Array.isArray(apiMemories)) {
-                        window.currentTreeMemories = apiMemories.map(normalizeMemory).filter(Boolean);
-                        console.log('[editor] Memories refreshed:', window.currentTreeMemories.length);
-                        if (typeof initCanvas === 'function') initCanvas();
-                        if (typeof updateSidebarStatus === 'function') updateSidebarStatus();
+        const normalizeMemory = editorDataLoader.createNormalizeMemory
+            ? editorDataLoader.createNormalizeMemory({
+                sharedNormalize: window.LoveBudNormalize?.normalizeMemory
+            })
+            : (window.LoveBudNormalize?.normalizeMemory || ((mem) => {
+                if (!window.__editorNormalizeWarningShown) {
+                    console.warn('[editor] LoveBudNormalize not loaded, using local fallback');
+                    window.__editorNormalizeWarningShown = true;
+                }
+                if (!mem) return null;
+                return {
+                    id: mem.id,
+                    treeId: mem.treeId || mem.tree_id || null,
+                    parentId: mem.parentId ?? mem.parent_id ?? null,
+                    title: mem.title || '',
+                    memo: mem.memo || mem.description || '',
+                    quote: mem.quote || '',
+                    timestamp: mem.timestamp || '',
+                    thumbnail: mem.thumbnail || '',
+                    visibility: mem.visibility || 'public',
+                    artist: mem.artist || '',
+                    source: mem.source || '',
+                    sourceUrl: mem.sourceUrl || mem.source_url || '',
+                    sourceType: mem.sourceType || mem.source_type || 'youtube',
+                    emotionTags: mem.emotionTags || mem.emotion_tags || [],
+                    createdAt: mem.createdAt || mem.created_at || null,
+                    updatedAt: mem.updatedAt || mem.updated_at || null,
+                    delay: mem.delay,
+                    x: mem.x,
+                    y: mem.y
+                };
+            }));
+
+        const memoryLoadResult = editorDataLoader.loadEditorMemories
+            ? await editorDataLoader.loadEditorMemories({
+                treeId,
+                cache,
+                cacheKey: MEMORIES_CACHE_KEY,
+                apiClient: window.apiClient,
+                getMemoriesByTreeFallback: typeof getMemoriesByTree === 'function' ? getMemoriesByTree : null,
+                showToast,
+                i18n,
+                normalizeMemory
+            })
+            : await (async () => {
+                let memories = [];
+                const cachedMemories = cache ? cache.get(MEMORIES_CACHE_KEY) : null;
+
+                if (cachedMemories && Array.isArray(cachedMemories)) {
+                    console.log('[editor] Using cached memories:', cachedMemories.length);
+                    memories = cachedMemories;
+                    window.currentTreeMemories = memories.map(normalizeMemory).filter(Boolean);
+                }
+
+                try {
+                    if (window.apiClient && window.apiClient.getMemoriesByTree) {
+                        const apiMemories = await window.apiClient.getMemoriesByTree(treeId);
+                        if (Array.isArray(apiMemories)) {
+                            memories = apiMemories;
+                            console.log('[editor] API memories loaded:', apiMemories.length);
+                            if (cache) {
+                                cache.set(MEMORIES_CACHE_KEY, memories, 2 * 60 * 1000);
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.warn('[editor] API getMemoriesByTree failed:', e.message);
+                    if (e.message?.includes('401') || e.message?.includes('403')) {
+                        showToast(i18n('data_load_fail_demo'), 'warn');
                     }
                 }
-            } catch (e) {
-                console.warn('[editor] Failed to refresh memories:', e.message);
-            }
-        };
-        window.refreshMemories = refreshMemories;
 
-        // Normalize API responses through the shared utility.
-        // Backend returns a flat camelCase shape, so mem.data handling is unnecessary.
-        // Contract: window.currentTreeMemories always stores normalized memory objects.
-        let normalizeWarningShown = false;
-        const normalizeMemory = window.LoveBudNormalize?.normalizeMemory || ((mem) => {
-            // Fallback: local normalizer when the shared util is unavailable
-            if (!normalizeWarningShown) {
-                console.warn('[editor] LoveBudNormalize not loaded, using local fallback');
-                normalizeWarningShown = true;
-            }
-            if (!mem) return null;
-            return {
-                id: mem.id,
-                treeId: mem.treeId || mem.tree_id || null,
-                parentId: mem.parentId ?? mem.parent_id ?? null,
-                title: mem.title || '',
-                memo: mem.memo || mem.description || '',
-                quote: mem.quote || '',
-                timestamp: mem.timestamp || '',
-                thumbnail: mem.thumbnail || '',
-                visibility: mem.visibility || 'public',
-                artist: mem.artist || '',
-                source: mem.source || '',
-                sourceUrl: mem.sourceUrl || mem.source_url || '',
-                sourceType: mem.sourceType || mem.source_type || 'youtube',
-                emotionTags: mem.emotionTags || mem.emotion_tags || [],
-                createdAt: mem.createdAt || mem.created_at || null,
-                updatedAt: mem.updatedAt || mem.updated_at || null,
-                delay: mem.delay,
-                x: mem.x,
-                y: mem.y
+                if (memories.length === 0 && !cachedMemories) {
+                    memories = typeof getMemoriesByTree === 'function' ? getMemoriesByTree(treeId) : [];
+                }
+
+                window.currentTreeMemories = memories.map(normalizeMemory).filter(Boolean);
+
+                return {
+                    memories,
+                    normalizedMemories: window.currentTreeMemories,
+                    cachedMemories
+                };
+            })();
+
+        let memories = memoryLoadResult.memories || [];
+
+        const refreshMemories = editorDataLoader.createRefreshMemories
+            ? editorDataLoader.createRefreshMemories({
+                treeId,
+                apiClient: window.apiClient,
+                normalizeMemory,
+                onMemoriesUpdated: () => {
+                    if (typeof initCanvas === 'function') initCanvas();
+                    if (typeof updateSidebarStatus === 'function') updateSidebarStatus();
+                }
+            })
+            : async () => {
+                if (!treeId) return;
+                try {
+                    if (window.apiClient && window.apiClient.getMemoriesByTree) {
+                        const apiMemories = await window.apiClient.getMemoriesByTree(treeId);
+                        if (Array.isArray(apiMemories)) {
+                            window.currentTreeMemories = apiMemories.map(normalizeMemory).filter(Boolean);
+                            console.log('[editor] Memories refreshed:', window.currentTreeMemories.length);
+                            if (typeof initCanvas === 'function') initCanvas();
+                            if (typeof updateSidebarStatus === 'function') updateSidebarStatus();
+                        }
+                    }
+                } catch (e) {
+                    console.warn('[editor] Failed to refresh memories:', e.message);
+                }
             };
-        });
 
-        // Load memories from cache first
-        let memories = [];
-
-        // 1) Check cached memories first
-        const cachedMemories = cache ? cache.get(MEMORIES_CACHE_KEY) : null;
-        if (cachedMemories && Array.isArray(cachedMemories)) {
-            console.log('[editor] Using cached memories:', cachedMemories.length);
-            memories = cachedMemories;
-            window.currentTreeMemories = memories.map(normalizeMemory).filter(Boolean);
-            // initCanvas() is called later, so only seed state here once
-        }
-
-        // 2) Refresh from the API in the background
-        try {
-            if (window.apiClient && window.apiClient.getMemoriesByTree) {
-                const apiMemories = await window.apiClient.getMemoriesByTree(treeId);
-                if (Array.isArray(apiMemories)) {
-                    memories = apiMemories;
-                    console.log('[editor] API memories loaded:', apiMemories.length);
-                    // Cache update
-                    if (cache) {
-                        cache.set(MEMORIES_CACHE_KEY, memories, 2 * 60 * 1000); // 2 min TTL
-                    }
-                }
-            }
-        } catch (e) {
-            console.warn('[editor] API getMemoriesByTree failed:', e.message);
-            if (e.message?.includes('401') || e.message?.includes('403')) {
-                showToast(i18n('data_load_fail_demo'), 'warn');
-            }
-            // If API fails but cache exists, keep using the cache
-        }
-
-        if (memories.length === 0 && !cachedMemories) {
-            memories = typeof getMemoriesByTree === 'function' ? getMemoriesByTree(treeId) : [];
-        }
-
-        // Contract: always store normalized memory state
-        window.currentTreeMemories = memories.map(normalizeMemory).filter(Boolean);
+        window.refreshMemories = refreshMemories;
 
         // Choose the initial root selection
         const createInitialMemory = () => {
