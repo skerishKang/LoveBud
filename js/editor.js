@@ -57,6 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const getI18n = () => window.t || ((k) => k);
+    const i18n = getI18n();
 
     const getEditorBasePath = () =>
         window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
@@ -131,7 +132,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const getYouTubeInputErrorMessage = (rawUrl) => {
         const value = String(rawUrl || '').trim();
-        const i18n = window.t || ((k) => k);
 
         if (!value) {
             return i18n('enter_youtube') || 'YouTube 링크를 입력해 주세요.';
@@ -158,7 +158,6 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const renderTreeLoadError = ({ canvas, detailPanel, addBtn, errorTitle, errorDesc }) => {
-        const i18n = window.t || ((k) => k);
         canvas.innerHTML = `
             <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;padding:32px;background:rgba(255,255,255,0.96);border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,0.1);max-width:360px;width:calc(100% - 32px);">
                 <div style="font-size:48px;margin-bottom:16px;">🌿</div>
@@ -200,7 +199,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const svg = document.getElementById('canvasSvg');
         const detailPanel = document.getElementById('detailPanel');
         const addBtn = document.getElementById('addMemoryBtn');
-        const i18n = getI18n();
 
         // ── URL에서 treeId 읽기 (최우선) ──
         const urlParams = new URLSearchParams(window.location.search);
@@ -284,7 +282,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } catch (e) {
                 console.warn('[editor] API tree failed, fallback to mock:', e.message);
-                const i18n = getI18n();
                 if (e.message?.includes('401') || e.message?.includes('Authentication')) {
                     showToast(i18n('need_login'), 'error');
                     redirectToEditorLogin(2000);
@@ -991,8 +988,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             saveStatusData.status = status;
-
-            const i18n = window.t || ((k) => k);
 
             switch (status) {
                 case 'saving':
