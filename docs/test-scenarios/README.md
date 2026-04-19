@@ -1,294 +1,207 @@
 # 테스트 시나리오 문서화 시스템
 
-## 폴더 구조
+이 폴더는 LoveBud / LoveTree의 수동 테스트 시나리오, 테스트 데이터, 결과 문서를 같은 위치에서 관리하기 위한 운영 폴더입니다.
 
-```
+이번 정비의 원칙은 **폴더 분리보다 역할 분리**입니다.
+즉, 기존 문서를 버리지 않고 `docs/test-scenarios/` 안에서 다음을 구분합니다.
+
+- 현재 제품 기준으로 먼저 실행해야 하는 **대표 시나리오**
+- 과거 이슈 재발 여부를 확인하는 **회귀 시나리오**
+- 계정, 실행, 결과 저장을 돕는 **운영 가이드 문서**
+
+---
+
+## 1. 먼저 읽을 문서
+
+### 가장 먼저 볼 문서
+1. `CURRENT_SCENARIOS.md`
+2. `QUICKSTART.md`
+3. 필요한 대표 시나리오 문서
+
+### 현재 대표 시나리오
+- `core_newuser_001.md`
+- `core_returning_001.md`
+- `core_browse_001.md`
+- `access_public_private_001.md`
+- `persistence_001.md`
+
+### 회귀 시나리오
+- `repeatability-node-creation-test.md`
+
+이 문서는 유지하지만, 현재 제품 전체를 대표하는 메인 시나리오가 아니라 **회귀용 보조 시나리오**로 사용합니다.
+
+---
+
+## 2. 폴더 구조
+
+```text
 docs/test-scenarios/
-├── README.md                              # 이 파일 (사용 방법)
-├── repeatability-node-creation-test.md    # 공통 시나리오 원본 (아이돌无关)
-├── data/                                  # 아이돌별 테스트 데이터
-│   ├── ive-data.json                      # IVE 테스트 데이터
-│   ├── bts-data.json                      # BTS 테스트 데이터
-│   ├── hearts2hearts-data.json            # 하츠투하츠 테스트 데이터
-│   └── {group}-data.json                  # 새 그룹 데이터 추가
-├── results/                               # 테스트 결과 저장소
-│   ├── common-test-TEMPLATE.md            # 공통 결과 템플릿
-│   └── {그룹명}-{userType}-test-YYYY-MM-DD-HHMM/     # 테스트별 폴더
-│       ├── test-result.md                  # 테스트 결과 (markdown)
-│       └── 📸 스크린샷 (필요시 촬영)
-│           ├── step1-home.png              (선택)
-│           ├── step2-login.png             (선택)
-│           ├── error-popup.png             (문제 발생시)
-│           ├── tree-created.png            (선택)
-│           └── ... (상황에 따라 추가)..
+├── README.md
+├── QUICKSTART.md
+├── CURRENT_SCENARIOS.md
+├── ACCOUNT_RULES.md
+├── repeatability-node-creation-test.md
+├── core_newuser_001.md
+├── core_returning_001.md
+├── core_browse_001.md
+├── access_public_private_001.md
+├── persistence_001.md
+├── test_scenario_todo_2026_04_20.md
+├── data/
+│   ├── ive-data.json
+│   ├── bts-data.json
+│   ├── hearts2hearts-data.json
+│   └── {group}-data.json
+└── results/
+    ├── common-test-TEMPLATE.md
+    └── {scenario}-{group}-YYYY-MM-DD-HHMM/
+        ├── test-result.md
+        └── screenshots/
 ```
 
 ---
 
-## 사용 방법
+## 3. 문서 역할 설명
 
-### 1. 새 테스트 수행 시
+### A. 대표 시나리오
+현재 제품 상태를 기준으로 가장 먼저 수행해야 하는 문서입니다.
 
-**STEP 1**: 시나리오 파일 + 아이돌 데이터 파일 함께 참조
-```
-repeatability-node-creation-test.md    # 공통 시나리오
-data/ive-data.json                      # 테스트할 그룹 데이터
-```
+| 파일 | 목적 |
+|------|------|
+| `core_newuser_001.md` | 첫 방문 사용자의 이해, 로그인, 첫 트리, 첫 저장 검증 |
+| `core_returning_001.md` | 기존 사용자의 재방문, 기존 트리 탐색, 추가 작업 검증 |
+| `core_browse_001.md` | search → detail 공개 탐색 흐름 검증 |
+| `access_public_private_001.md` | 공개/비공개 및 소유자 권한 경계 검증 |
+| `persistence_001.md` | 저장 후 새로고침/재진입/목록-에디터 일관성 검증 |
 
-**STEP 2**: 결과 템플릿 복사
-```bash
-# Windows PowerShell
-copy docs\test-scenarios\results\ive-test-TEMPLATE.md docs\test-scenarios\results\ive-test-YYYY-MM-DD-HHMM.md
+### B. 회귀 시나리오
+과거에 중요했던 실패 지점이 다시 나타나는지 확인하기 위한 문서입니다.
 
-# 또는 직접 파일 생성
-```
+| 파일 | 역할 |
+|------|------|
+| `repeatability-node-creation-test.md` | 반복 생성, 잘못된 URL, 뒤로가기, 새로고침, 로그인 가드 등 회귀 확인 |
 
-**STEP 3**: 테스트 결과 기록
-- 각 STEP별로 결과 작성
-- 스크린샷 캡처 시 `screenshots/ive-test-YYYY-MM-DD-HHMM/` 폴더에 저장
+### C. 운영 가이드 문서
+실제 테스트를 시작하고 결과를 남기는 데 도움을 주는 문서입니다.
 
-**STEP 4**: Git 커밋 (선택)
-```bash
-git add docs/test-scenarios/results/ive-test-YYYY-MM-DD-HHMM.md
-git commit -m "test: IVE 팬 여정 반복 생성 테스트 결과 - YYYY-MM-DD"
-```
-
----
-
-## 테스트 결과 파일명 규칙
-
-### 그룹별 시나리오 코드
-
-| 그룹명 | 시나리오 코드 | 예시 파일명 |
-|--------|--------------|-------------|
-| IVE | `ive-test` | `ive-test-2026-04-18-1430.md` |
-| BTS | `bts-test` | `bts-test-2026-04-18-1500.md` |
-| 하츠투하츠 | `h2h-test` | `h2h-test-2026-04-18-1600.md` |
-| 르세라핌 | `lesserafim-test` | `lesserafim-test-2026-04-19-1000.md` |
-| 새로운 그룹 | `{그룹명}-test` | `{그룹명}-test-YYYY-MM-DD-HHMM.md` |
-
-### 구성 요소
-
-| 구성 요소 | 설명 | 예시 |
-|-----------|------|------|
-| 시나리오 코드 | 그룹별 접두사 | `ive-test`, `bts-test` |
-| 날짜 | `YYYY-MM-DD` | 2026-04-18 |
-| 시간 | `HHMM` | 1430 (14:30) |
-| 확장자 | `.md` | .md |
-
-**완성 예시**: `ive-test-2026-04-18-1430.md`
+| 파일 | 역할 |
+|------|------|
+| `QUICKSTART.md` | 빠른 시작 안내 |
+| `ACCOUNT_RULES.md` | 계정 관리 규칙 |
+| `CURRENT_SCENARIOS.md` | 어떤 문서를 먼저 써야 하는지 정리 |
+| `results/common-test-TEMPLATE.md` | 결과 기록 템플릿 |
 
 ---
 
-## 반복 테스트 추적
+## 4. 추천 실행 순서
 
-같은 시나리오를 여러 번 수행하면 시간/품질 개선 추적 가능:
+### 릴리스 전 최소 세트
+1. `core_newuser_001.md`
+2. `core_browse_001.md`
+3. `persistence_001.md`
 
-| 테스트 회차 | 파일명 | 총 소요 시간 | 핵심 문제 | 개선 여부 |
-|-------------|--------|--------------|-----------|-----------|
-| 1차 | ive-test-2026-04-18-1430.md | 8분 | 로그인 헷갈림 | - |
-| 2차 | ive-test-2026-04-19-0930.md | 5분 | - | ✅ 개선 |
-| 3차 | ive-test-2026-04-20-1100.md | 4분 | - | ✅ 안정화 |
+### 일반 수동 QA 기본 세트
+1. `core_newuser_001.md`
+2. `core_returning_001.md`
+3. `core_browse_001.md`
+4. `access_public_private_001.md`
+5. `persistence_001.md`
+6. `repeatability-node-creation-test.md` (회귀 확인 필요 시)
 
----
+### 인증/권한 변경 후
+1. `access_public_private_001.md`
+2. `core_newuser_001.md`
+3. `core_returning_001.md`
+4. `persistence_001.md`
 
-## 스크린샷 저장 규칙
-
-```
-docs/test-scenarios/results/screenshots/
-└── ive-test-YYYY-MM-DD-HHMM/
-    ├── step1-home.png          # 홈화면
-    ├── step2-login.png         # 로그인
-    ├── step3-tree.png          # 트리 생성
-    ├── step4-node1.png         # 노드 1
-    ├── step4-node2.png         # 노드 2
-    ├── step4-node3.png         # 노드 3
-    ├── step4-node4.png         # 노드 4
-    ├── step5-node5.png         # 반복 테스트 노드 5
-    ├── step5-node6.png         # 반복 테스트 노드 6
-    └── step6-final.png         # 최종 트리 상태
-```
+### 저장/캐시 변경 후
+1. `core_newuser_001.md`
+2. `core_returning_001.md`
+3. `persistence_001.md`
+4. `repeatability-node-creation-test.md`
 
 ---
 
-## AI 에이전트 테스트 지침
+## 5. 결과 저장 규칙
 
-AI가 테스트를 수행할 때는:
+결과는 계속 `docs/test-scenarios/results/` 아래에 저장합니다.
 
-1. **시나리오 파일**을 먼저 읽음
-2. **템플릿을 복사**하여 새 결과 파일 생성
-3. 각 STEP마다 **즉시 기록**
-4. **스크린샷**은 지정된 폴더에 저장
-5. **최종 평가**까지 완료 후 파일 저장
-6. **Git 커밋** (사용자 요청 시)
+권장 폴더명 예시:
+- `core-newuser-001-ive-2026-04-20-1930/`
+- `core-returning-001-bts-2026-04-20-2010/`
+- `core-browse-001-riize-2026-04-20-2105/`
+- `access-public-private-001-2026-04-20-2140/`
+- `persistence-001-xg-2026-04-20-2230/`
+- `repeat-node-regression-zb1-2026-04-20-2310/`
 
----
+각 결과 폴더에는 아래 구성을 권장합니다.
 
-## 현재 등록된 시나리오
-
-### 공통 시나리오
-
-| 시나리오 ID | 파일명 | 목적 | 상태 |
-|-------------|--------|------|------|
-| REPEAT-NODE-001 | repeatability-node-creation-test.md | 노드 반복 생성 가능성 검증 (아이돌无关) | ✅ 등록 완료 |
-
-### 그룹별 테스트 데이터
-
-| 그룹명 | 데이터 파일 | 팬 페르소나 | 상태 |
-|--------|------------|-------------|------|
-| IVE | `data/ive-data.json` | 아이브 콘텐츠 정리 | ✅ 준비 완료 |
-| BTS | `data/bts-data.json` | 방탄 콘텐츠 정리 | ✅ 준비 완료 |
-| 하츠투하츠 | `data/hearts2hearts-data.json` | 하츠투하츠 콘텐츠 정리 | ✅ 준비 완료 |
-| RIIZE | `data/riize-data.json` | 라이즈 콘텐츠 정리 | ✅ 준비 완료 |
-| TWS | `data/tws-data.json` | 투어스 콘텐츠 정리 | ✅ 준비 완료 |
-| ZEROBASEONE | `data/zb1-data.json` | 제베원 콘텐츠 정리 | ✅ 준비 완료 |
-| ILLIT | `data/illit-data.json` | 아일릿 콘텐츠 정리 | ✅ 준비 완료 |
-| MEOVV | `data/meovv-data.json` | 미야오 콘텐츠 정리 | ✅ 준비 완료 |
-| KickFlip | `data/kickflip-data.json` | 킥플립 콘텐츠 정리 | ✅ 준비 완료 |
-| KATSEYE | `data/katseye-data.json` | 캣츠아이 콘텐츠 정리 | ✅ 준비 완료 |
-| Cortiz | `data/cortiz-data.json` | 코르티즈 콘텐츠 정리 | ✅ 준비 완료 |
-| Santos Bravos | `data/santos-data.json` | 산토스 브라보스 콘텐츠 정리 | ✅ 준비 완료 |
-
-### 테스트 결과 예시
-
-| 테스트 회차 | 그룹 | 파일명 | 총 소요 시간 | 상태 |
-|-------------|------|--------|--------------|------|
-| 1차 | IVE | ive-test-2026-04-18-1430.md | 8분 | ⏳ 대기중 |
-| 1차 | BTS | bts-test-2026-04-18-1500.md | - | ⏳ 대기중 |
-| 1차 | 하츠투하츠 | h2h-test-2026-04-18-1600.md | - | ⏳ 대기중 |
-
----
-
-## 새 아이돌 그룹 추가 방법
-
-### 방법 1: 기존 시나리오 재사용 (권장)
-
-1. `data/{그룹명}-data.json` 파일 생성
-2. 테스트 수행
-3. 결과를 `{그룹명}-test-YYYY-MM-DD-HHMM.md`로 저장
-
-**예시**: 새로운 그룹 "NewJeans" 추가
-```bash
-# 1. 데이터 파일 생성
-docs/test-scenarios/data/newjeans-data.json
-
-# 2. 테스트 수행 (repeatability-node-creation-test.md 참조)
-
-# 3. 결과 저장
-docs/test-scenarios/results/newjeans-test-2026-04-18-1400.md
-```
-
-### 방법 2: 완전히 새로운 시나리오 생성
-
-1. `docs/test-scenarios/`에 `{시나리오명}-test.md` 파일 생성
-2. `docs/test-scenarios/results/`에 `{시나리오명}-test-TEMPLATE.md` 템플릿 생성
-3. `data/`에 필요한 데이터 파일 추가
-4. 이 README에 그룹 정보 추가
-5. Git 커밋
-
----
-
-## 체크리스트
-
-새 테스트 수행 전:
-
-- [ ] 시나리오 파일 읽었는가?
-- [ ] 결과 파일명 결정 (날짜/시간 포함)
-- [ ] 스크린샷 폴더 준비
-- [ ] 테스트 데이터 준비 (IVE URL 4개)
-
-테스트 수행 중:
-
-- [ ] 각 STEP마다 즉시 기록
-- [ ] 혼란/막힌 지점 즉시 메모
-- [ ] 스크린샷 캡처
-
-테스트 수행 후:
-
-- [ ] 최종 평가 작성
-- [ ] UX 개선 포인트 정리
-- [ ] 파일 저장
-- [ ] Git 커밋 (선택)
-
----
-
-*마지막 업데이트: 2026-04-18*
-
----
-
-## 테스트 자동화 관련 사항
-
-### 인증/로그인 및 공개 설정
-- **LoveBud는 이메일 인증이 없음** - 회원가입 후 바로 로그인됨
-- 신규 가입자 테스트는 매번 **새로운 계정**으로 회원가입 필요
-- 테스트 이메일 패턴: `test-{그룹ID}-{타임스탬프}@example.com`
-- **중요**: 테스트 환경 최적화를 위해 생성되는 모든 트리/메모리는 기본적으로 **공개(Public)**로 설정됩니다. 이는 검색(Browse) 페이지 검증을 자동화하기 위함입니다.
-
-### ⚠️ 테스트 계정 생성 (필수)
-**모든 테스트 시작 전 반드시 실행**
-
-1. **새 테스트 계정 생성** (LoveBud 로그인 페이지에서)
-   - 이메일: `test-{그룹ID}-{YYYY-MM-DD-HHmm}@example.com`
-   - 비밀번호: `Test1234!` (고정)
-   - 닉네임: `{그룹ID} Fan` 또는 테스트용
-
-2. **계정 정보 기록** (`.local/test-accounts.json`)
-   ```json
-   {
-     "group": "xg",
-     "testId": "xg-test-2026-04-18-2037",
-     "email": "test-xg-2026-04-18-2037@example.com",
-     "password": "Test1234!",
-     "createdAt": "2026-04-18T20:37:00",
-     "notes": "XG 그룹 테스트용"
-   }
-   ```
-
-3. **테스트 실행** (로그인 상태에서 진행)
-
-**⚡ 자동화 요구사항**: 테스트 시작 시 반드시 회원가입부터 진행. 계정 없이 테스트 불가.
-
-### 계정 정보 저장
-- 테스트 계정 정보는 `.local/test-accounts.json`에 **로컬만 저장** (Git 제외)
-- 테스트 완료 후 계정은 **수동으로 삭제하거나 별도 관리**
-- 예시: `test-xg-2026-04-18-1058@example.com`
-
-### 자동화 제약사항 및 알려진 블로커
-
-| 항목 | 문제 | 원인 및 해결방법 |
-|------|------|----------|
-| **메모리 저장 실패** | 노드 추가 시 400 에러 (`Invalid parentId`) | **시스템 버그**: 신규 트리 생성 후 ID가 메모리 추가 API에 즉시 전달되지 않음. 현재 수정 필요. |
-| **스크린샷 저장** | 에이전트 스크린샷 자동 이동 불가 | **도구 제약**: 스크린샷은 임시 스토리지에 저장됨. 테스트 완료 후 에이전트가 결과를 수동 이동 및 정리해야 함. |
-| **입력 필드 접근** | 일부 input에 id/aria-label 없음 | **UI 미비**: HTML에 `id="video-url"` 등 명확한 식별자 추가 필요 (현재 `placeholder` 등으로 우회 중) |
-| **데이터 유실** | 새로고침 시 데이터 사라짐 | **로직 이슈**: 서버 저장 실패 시 UI가 로컬 모드로 작동하여 사용자에게 성공한 것처럼 오인 유도. |
-
-### ⚠️ 에이전트 주의 사항 (BTS 테스트 교훈)
-- 신규 가입 테스트 시 **회원가입 -> 트리 생성 -> 새로고침 -> 메모리 추가** 순서로 진행하여 ID 정합성을 확인해야 함.
-- API 에러가 백그라운드에서 발생하더라도 UI는 중단되지 않으므로, 에이전트는 반드시 **네트워크 탭(또는 콘솔 로그)를 모니터링**해야 함.
-
-#### 에이전트 자동 정리 프로세스 (권장)
-1. **스크린샷 찍기**: 서브에이전트에게 파일명만 지정하여 캡처 요청
-2. **자동 정리 실행**: 터미널에서 아래 스크립트 실행
-   ```powershell
-   .\scripts\sync-screenshots.ps1 -TestId "{결과폴더명}"
-   ```
-
-#### 수동 정리 예시 (CMD/PowerShell)
-// copy 01-home.png G:\Ddrive\BatangD\task\workdiary\LoveBud\docs\test-scenarios\results\{폴더명}\screenshots\
-
-#### 결과 폴더 구조
-```
-docs/test-scenarios/results/{그룹ID}-test-{YYYY-MM-DD-HHmm}/
+```text
+results/{scenario}-{group}-YYYY-MM-DD-HHMM/
 ├── test-result.md
 └── screenshots/
     ├── 01-home.png
     ├── 02-login.png
     ├── 03-my-trees.png
-    ├── 04-editor.png
-    └── 05-search.png
+    └── ...
 ```
 
-### 개선 필요사항
-- [ ] 검색 페이지 URL 입력 필드에 `id` 또는 `aria-label` 추가
-- [ ] 스크린샷 저장을 위한 로컬 Playwright 설정 가이드
-- [ ] 테스트 계정 자동 생성/삭제 스크립트
+스크린샷은 필수가 아닙니다.
+다만 오류, 혼란, 화면 불일치, 권한 문제, 저장 유실이 보일 때는 남기는 것을 권장합니다.
+
+---
+
+## 6. known blocker / 과거 이슈 취급 원칙
+
+이 폴더에 과거 문제 설명이 남아 있더라도, 아래 원칙을 따릅니다.
+
+- **현재도 재현되는 문제**: known issue 또는 blocker로 유지
+- **이미 고쳐진 문제**: 삭제보다 히스토리 또는 회귀 포인트로 남김
+- **대표 시나리오와 무관한 과거 이슈**: 회귀 문서 또는 결과 기록으로 이동
+
+즉, 오래된 문제 설명을 그대로 메인 안내에 두지 않습니다.
+현재 상태와 맞는지 항상 다시 확인합니다.
+
+---
+
+## 7. 새 그룹 데이터 추가 방법
+
+1. `data/{group}-data.json` 생성
+2. 적절한 대표 시나리오 선택
+3. 결과를 `results/{scenario}-{group}-YYYY-MM-DD-HHMM/`에 저장
+4. 필요 시 이 README의 그룹 목록을 갱신
+
+---
+
+## 8. 체크리스트
+
+테스트 시작 전:
+- [ ] `CURRENT_SCENARIOS.md`를 확인했는가
+- [ ] 어떤 대표 시나리오를 돌릴지 정했는가
+- [ ] 데이터 파일을 정했는가
+- [ ] 결과 폴더명을 정했는가
+
+테스트 중:
+- [ ] 각 단계 결과를 즉시 기록했는가
+- [ ] 혼란 지점을 그대로 남겼는가
+- [ ] 오류 또는 상태 불일치 시 스크린샷을 남겼는가
+
+테스트 후:
+- [ ] 최종 판정을 기록했는가
+- [ ] 가장 먼저 고쳐야 할 문제 1개를 뽑았는가
+- [ ] 대표 시나리오인지 회귀 시나리오인지 문맥을 유지했는가
+
+---
+
+## 9. 현재 상태 요약
+
+현재 폴더는 다음 상태를 목표로 운영합니다.
+
+- 대표 시나리오와 회귀 시나리오가 명확히 구분됨
+- 같은 폴더 안에서 어떤 문서를 먼저 써야 하는지 알 수 있음
+- 결과 템플릿이 새 시나리오 체계를 따라감
+- 과거 이슈는 삭제보다 회귀 포인트로 관리됨
+
+---
+
+*마지막 업데이트: 2026-04-20*
