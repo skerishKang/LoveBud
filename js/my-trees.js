@@ -15,15 +15,20 @@
   var myTreesActions = window.LoveBudMyTreesActions || null;
   var myTreesData = window.LoveBudMyTreesData || null;
   var myTreesState = window.LoveBudMyTreesState || null;
+  var myTreesPage = window.LoveBudMyTreesPage || null;
 
   // ── Toast utility (공통 UI 사용) ──────────────────────────────────────────
   function showToast(message, type) {
+    if (myTreesPage && typeof myTreesPage.showToast === 'function') {
+      return myTreesPage.showToast(message, type);
+    }
+
     if (window.LoveBudUI?.showToast) {
       window.LoveBudUI.showToast(message, type, 3000);
     } else {
       // fallback: 공통 유틸 로드 실패 시 기본 alert
       console.warn('[my-trees] LoveBudUI not loaded, toast degraded to console');
-      console.log(`[Toast ${type}] ${message}`);
+      console.log('[Toast ' + type + '] ' + message);
     }
   }
 
@@ -44,33 +49,36 @@
   }
 
    // ── State management ─────────────────────────────────────────────────────
-   const STATE = {
+   var STATE = myTreesPage?.STATE || {
      LOADING: 'loading',
      LOADED: 'loaded',
      EMPTY: 'empty',
      ERROR: 'error'
    };
 
-   let currentState = STATE.LOADING;
+   var currentState = STATE.LOADING;
 
    function setState(newState) {
      currentState = newState;
-     const container = document.getElementById('treesContainer');
+
+     if (myTreesPage && typeof myTreesPage.setState === 'function') {
+       return myTreesPage.setState(newState);
+     }
+
+     var container = document.getElementById('treesContainer');
      if (!container) return;
 
-     // Hide all state sections
-     const sections = {
+     var sections = {
        loading: document.getElementById('state-loading'),
        error: document.getElementById('state-error'),
        empty: document.getElementById('state-empty'),
        loaded: document.getElementById('state-loaded')
      };
 
-     Object.values(sections).forEach(el => {
+     Object.values(sections).forEach(function(el) {
        if (el) el.style.display = 'none';
      });
 
-     // Show target state
      switch (newState) {
        case STATE.LOADING:
          if (sections.loading) sections.loading.style.display = 'flex';
@@ -89,6 +97,12 @@
 
    // ── Setup header create button (always visible CTA) ───────────────────────
    function setupHeaderCreateButton() {
+     if (myTreesPage && typeof myTreesPage.setupHeaderCreateButton === 'function') {
+       return myTreesPage.setupHeaderCreateButton({
+         onCreate: createNewTree
+       });
+     }
+
      var btn = document.getElementById('headerCreateTreeBtn');
      if (btn) {
        btn.addEventListener('click', function(e) {
@@ -101,6 +115,12 @@
 
    // ── Setup retry button ────────────────────────────────────────────────────
    function setupRetryButton() {
+     if (myTreesPage && typeof myTreesPage.setupRetryButton === 'function') {
+       return myTreesPage.setupRetryButton({
+         onRetry: loadTrees
+       });
+     }
+
      var retryBtn = document.getElementById('retryLoadBtn');
      if (retryBtn) {
        retryBtn.addEventListener('click', function() {
