@@ -242,10 +242,15 @@ async function persistConfirmedAuthSession(user) {
   }
 }
 
-// ── Preload my-trees cache after login ─────────────────────────────────────────
-function preloadMyTreesCache() {
-  // Fire-and-forget: 로그인 직후 my-trees 데이터를 백그라운드에서 preload
+// ── Preload redirect target data after login ────────────────────────────────────
+function preloadRedirectTargetData() {
+  // Fire-and-forget: 로그인 직후 redirect 대상에 필요한 데이터 preload
+  var redirectTarget = getRedirectTarget();
+  var isEditorTarget = redirectTarget.indexOf('editor.html') !== -1;
+  var isMyTreesTarget = redirectTarget.indexOf('my-trees.html') !== -1;
+
   try {
+    // 1. my-trees 또는 editor 모두에 필요한 trees 목록 preload
     if (window.apiClient && window.apiClient.getTrees) {
       window.apiClient.getTrees().then(function(trees) {
         if (trees && trees.length > 0) {
@@ -254,14 +259,43 @@ function preloadMyTreesCache() {
             timestamp: Date.now()
           }));
           console.log('[auth] Preloaded my-trees cache:', trees.length, 'trees');
+
+          // 2. editor 진입 시 첫 번째 트리 상세도 preload
+          if ((isEditorTarget || isMyTreesTarget) && trees[0]) {
+            var firstTreeId = trees[0].id || trees[0];
+            if (firstTreeId) {
+              Promise.all([
+                window.apiClient.getTree ? window.apiClient.getTree(firstTreeId).catch(function() {}) : Promise.resolve(),
+                window.apiClient.getMemoriesByTree ? window.apiClient.getMemoriesByTree(firstTreeId).catch(function() {}) : Promise.resolve()
+              ]).then(function(results) {
+                var treeDetail = results[0];
+                var memories = results[1];
+                if (treeDetail) {
+                  localStorage.setItem('tree_detail_' + firstTreeId, JSON.stringify({
+                    data: treeDetail,
+                    timestamp: Date.now()
+                  }));
+                }
+                if (memories && Array.isArray(memories)) {
+                  localStorage.setItem('tree_memories_' + firstTreeId, JSON.stringify({
+                    data: memories,
+                    timestamp: Date.now()
+                  }));
+                }
+                console.log('[auth] Preloaded first tree detail for editor:', firstTreeId, 'memories:', memories ? memories.length : 0);
+              }).catch(function(err) {
+                console.warn('[auth] Preload first tree detail failed:', err.message);
+              });
+            }
+          }
         }
       }).catch(function(err) {
         // preload 실패는 무시 (console만)
-        console.warn('[auth] Preload my-trees cache failed:', err.message);
+        console.warn('[auth] Preload trees cache failed:', err.message);
       });
     }
   } catch (e) {
-    console.warn('[auth] Preload my-trees cache error:', e);
+    console.warn('[auth] Preload redirect target data error:', e);
   }
 }
 
@@ -310,13 +344,14 @@ function initAuth() {
     markAuthLoading();
   }
 
-  // 안전장치: 5초 타임아웃 - Firebase 응답 없을 때 오프라인 모드로 전환
+  // 안전장치: 2초 타임아웃 (MVP 공격적 축소) - Firebase 응답 없을 때 오프라인 모드로 전환
+  // confirmed session cache가 있으면 즉시 진입하므로 긴 대기 불필요
   var authTimeout = setTimeout(function() {
     if (!window[AUTH_READY_FLAG]) {
-      console.warn('[auth] Firebase auth timeout - switching to offline mode');
+      console.warn('[auth] Firebase auth timeout (2s) - switching to offline mode');
       initOfflineAuth();
     }
-  }, 5000);
+  }, 2000);
 
   if (typeof firebase === 'undefined') {
     console.warn('Firebase SDK not loaded. Auth running in offline mode.');
@@ -711,9 +746,9 @@ async function signInWithGoogle() {
 
   try {
     var authResult = await firebase.auth().signInWithPopup(provider);
-    // 세션 캐시 저장 및 my-trees preload (비동기, 실패 무시)
+    // 세션 캐시 저장 및 redirect target 데이터 preload (비동기, 실패 무시)
     await persistConfirmedAuthSession(authResult && authResult.user ? authResult.user : firebase.auth().currentUser);
-    preloadMyTreesCache();
+    preloadRedirectTargetData();
     window.location.href = getRedirectTarget();
   } catch (error) {
     console.error('Google login failed:', error);
@@ -908,9 +943,9 @@ form.addEventListener('submit', async function (e) {
          }
          authUser = signupResult && signupResult.user ? signupResult.user : firebase.auth().currentUser;
        }
-       // 세션 캐시 저장 및 my-trees preload (비동기, 실패 무시)
+       // 세션 캐시 저장 및 redirect target 데이터 preload (비동기, 실패 무시)
        await persistConfirmedAuthSession(authUser);
-       preloadMyTreesCache();
+       preloadRedirectTargetData();
        window.location.href = getRedirectTarget();
     } catch (error) {
       console.error('Email auth error:', error);
