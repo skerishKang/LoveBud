@@ -88,9 +88,10 @@ function isMockFallbackEnabled() {
             return headers;
         }
 
-        // 2. Firebase Auth 및 auth.js가 준비될 때까지 짧게 대기 (150ms × 6회 = 900ms)
+        // 2. Firebase Auth 및 auth.js가 준비될 때까지 MVP 기준 짧게 대기 (100ms × 5회 = 500ms)
+        // confirmed session cache가 있으면 1단계에서 바로 반환되므로 이 경로는 후순위
         let attempts = 0;
-        const maxAttempts = 6;
+        const maxAttempts = 5;
         const AUTH_READY_FLAG = '__lovebudAuthReady';
 
         while (attempts < maxAttempts) {
@@ -119,8 +120,8 @@ function isMockFallbackEnabled() {
                     return headers;
                 }
             }
-            // 아직 준비되지 않음 - 짧게 대기 후 재시도
-            await new Promise(resolve => setTimeout(resolve, 150));
+            // 아직 준비되지 않음 - MVP 기준 짧게 대기 후 재시도
+            await new Promise(resolve => setTimeout(resolve, 100));
             attempts++;
         }
 
