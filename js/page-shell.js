@@ -28,4 +28,5 @@
   window.LovetreePageShell = {
     initSharedPage: initSharedPage,
   };
+  window.LoveTreePageShell = window.LovetreePageShell;
 })();
