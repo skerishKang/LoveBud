@@ -136,5 +136,10 @@
 
 ## 참고 자료
 
-- **스크린샷 폴더**: `screenshots/bts-newuser-test-2026-04-19-0825/`
+- **스크린샷 폴더**: [screenshots/](file:///g:/Ddrive/BatangD/task/workdiary/LoveBud/docs/test-scenarios/results/bts-newuser-test-2026-04-19-0825/screenshots/)
+  - `step-01.png`: 초기 홈 화면
+  - `step-03.png`: 회원가입 완료 및 트리 페이지
+  - `step-10.png`: YouTube URL 입력 과정
+  - `step-20.png`: 최종 에러 상태 (데이터 유실 확인)
+- **비디오 녹화**: 브라우저 서브에이전트 세션 녹화본 참조
 - **콘솔 로그**: `POST https://lovebud.netlify.app/api/memories 400 (Bad Request)`
