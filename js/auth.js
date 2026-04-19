@@ -28,6 +28,7 @@ var DROPDOWN_LISTENER_ATTACHED = false;
 var AUTH_READY_FLAG = '__lovebudAuthReady';
 var AUTH_CACHE_KEY = 'lovebud_auth_cache';
 var AUTH_CONFIRMED_KEY = 'lovebud_auth_confirmed';
+var AUTH_TOKEN_KEY = 'lovebud_auth_token';
 
 function isLoginPage() {
   var path = window.location.pathname || '';
@@ -193,7 +194,75 @@ function clearConfirmedAuthCache() {
   try {
     localStorage.removeItem(AUTH_CACHE_KEY);
     localStorage.removeItem(AUTH_CONFIRMED_KEY);
+    localStorage.removeItem(AUTH_TOKEN_KEY);
   } catch (e) {}
+}
+
+function getCachedAuthToken() {
+  try {
+    var raw = localStorage.getItem(AUTH_TOKEN_KEY);
+    if (!raw || raw === 'null') return null;
+    var parsed = JSON.parse(raw);
+    if (!parsed || !parsed.token || !parsed.expiresAt) return null;
+    if (Date.now() >= Number(parsed.expiresAt) - 30000) return null;
+    return parsed;
+  } catch (e) {
+    return null;
+  }
+}
+
+async function persistConfirmedAuthSession(user) {
+  try {
+    if (!user || !user.uid) {
+      clearConfirmedAuthCache();
+      return;
+    }
+
+    var cacheData = {
+      uid: user.uid,
+      displayName: user.displayName || '',
+      email: user.email || ''
+    };
+
+    localStorage.setItem(AUTH_CACHE_KEY, JSON.stringify(cacheData));
+    localStorage.setItem(AUTH_CONFIRMED_KEY, 'true');
+
+    if (typeof user.getIdTokenResult === 'function') {
+      var tokenResult = await user.getIdTokenResult();
+      if (tokenResult && tokenResult.token) {
+        localStorage.setItem(AUTH_TOKEN_KEY, JSON.stringify({
+          uid: user.uid,
+          token: tokenResult.token,
+          expiresAt: new Date(tokenResult.expirationTime).getTime()
+        }));
+      }
+    }
+  } catch (e) {
+    console.warn('[auth] Failed to persist confirmed session:', e);
+  }
+}
+
+// ── Preload my-trees cache after login ─────────────────────────────────────────
+function preloadMyTreesCache() {
+  // Fire-and-forget: 로그인 직후 my-trees 데이터를 백그라운드에서 preload
+  try {
+    if (window.apiClient && window.apiClient.getTrees) {
+      window.apiClient.getTrees().then(function(trees) {
+        if (trees && trees.length > 0) {
+          localStorage.setItem('lovebud_trees_cache', JSON.stringify({
+            data: trees,
+            timestamp: Date.now()
+          }));
+          console.log('[auth] Preloaded my-trees cache:', trees.length, 'trees');
+        }
+      }).catch(function(err) {
+        // preload 실패는 무시 (console만)
+        console.warn('[auth] Preload my-trees cache failed:', err.message);
+      });
+    }
+  } catch (e) {
+    console.warn('[auth] Preload my-trees cache error:', e);
+  }
 }
 
 // ── Core Auth ─────────────────────────────────────────────────────────────────
@@ -289,7 +358,8 @@ function initAuth() {
         }
       }
     }
-    // Auth 상태 확인 완료 후 UI 업데이트 및 표시
+    // Auth 상태 확인 완료 후 세션 캐시 저장 및 UI 업데이트
+    await persistConfirmedAuthSession(user);
     markAuthReady();
     updateNavUI(user);
 
@@ -476,7 +546,7 @@ function updateNavUI(user) {
     return;
   }
 
-  setConfirmedAuthCache(user);
+  persistConfirmedAuthSession(user);
 
   if (user) {
     var html = buildUserDropdown(user);
@@ -640,7 +710,10 @@ async function signInWithGoogle() {
   var loginPage = isLoginPage();
 
   try {
-    await firebase.auth().signInWithPopup(provider);
+    var authResult = await firebase.auth().signInWithPopup(provider);
+    // 세션 캐시 저장 및 my-trees preload (비동기, 실패 무시)
+    await persistConfirmedAuthSession(authResult && authResult.user ? authResult.user : firebase.auth().currentUser);
+    preloadMyTreesCache();
     window.location.href = getRedirectTarget();
   } catch (error) {
     console.error('Google login failed:', error);
@@ -824,15 +897,20 @@ form.addEventListener('submit', async function (e) {
     }
 
      try {
+       var authUser;
        if (EMAIL_AUTH_MODE === 'login') {
-         await firebase.auth().signInWithEmailAndPassword(email, password);
+         var loginResult = await firebase.auth().signInWithEmailAndPassword(email, password);
+         authUser = loginResult && loginResult.user ? loginResult.user : firebase.auth().currentUser;
        } else {
          var signupResult = await firebase.auth().createUserWithEmailAndPassword(email, password);
          if (signupResult && signupResult.user && typeof signupResult.user.updateProfile === 'function') {
            await signupResult.user.updateProfile({ displayName: displayName });
          }
+         authUser = signupResult && signupResult.user ? signupResult.user : firebase.auth().currentUser;
        }
-       if (modal) modal.style.display = 'none';
+       // 세션 캐시 저장 및 my-trees preload (비동기, 실패 무시)
+       await persistConfirmedAuthSession(authUser);
+       preloadMyTreesCache();
        window.location.href = getRedirectTarget();
     } catch (error) {
       console.error('Email auth error:', error);
