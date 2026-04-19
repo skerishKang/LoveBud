@@ -1,20 +1,26 @@
-lodocument.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', () => {
     // Root memory helpers
     // Prefer editor-root-helpers.js and keep a local fallback.
     let rootHelperWarningShown = false;
     const rootUtils = window.LoveBudEditorUtils || {};
     const editorHelpers = window.LoveBudEditorHelpers || {};
 
-    const findRootMemory = rootUtils.findRootMemory || function(memories) {
+    const warnRootHelperFallback = () => {
         if (!rootHelperWarningShown) {
             console.warn('[editor] LoveBudEditorUtils not loaded, using local fallback for root helpers');
             rootHelperWarningShown = true;
         }
+    };
+
+    const findRootMemory = rootUtils.findRootMemory || function(memories) {
+        warnRootHelperFallback();
         if (!Array.isArray(memories)) return null;
+
         const parentNullNodes = memories.filter(m => m.parentId === null || m.parentId === undefined);
         if (parentNullNodes.length === 1) {
             return parentNullNodes[0];
-        } else if (parentNullNodes.length > 1) {
+        }
+        if (parentNullNodes.length > 1) {
             const oldest = parentNullNodes.sort((a, b) => {
                 const aTime = a.createdAt || a.timestamp || '9999';
                 const bTime = b.createdAt || b.timestamp || '9999';
@@ -23,22 +29,25 @@ lodocument.addEventListener('DOMContentLoaded', () => {
             console.log('[editor] Multiple parentId=null nodes found, using oldest as root:', oldest.id);
             return oldest;
         }
-        return memories.find(m => m.id === 'root');
+
+        return memories.find(m => m.id === 'root') || null;
     };
 
     const getRootId = rootUtils.getRootId || function(memories) {
+        warnRootHelperFallback();
         const root = findRootMemory(memories);
         return root ? root.id : 'root';
     };
 
     const getCanonicalRootId = rootUtils.getCanonicalRootId || function(memories) {
+        warnRootHelperFallback();
         const root = findRootMemory(memories);
         return root ? root.id : 'root';
     };
 
     const isRootMemory = rootUtils.isRootMemory || function(mem, rootId) {
-        if (!mem || !rootId) return false;
-        return mem.id === rootId;
+        warnRootHelperFallback();
+        return !!(mem && rootId && mem.id === rootId);
     };
 
     const editorSaveStatus = window.LoveBudEditorSaveStatus || {};
