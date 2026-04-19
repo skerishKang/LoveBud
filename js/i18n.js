@@ -511,6 +511,94 @@
       ko: '내 트리',
       en: 'My Trees'
     },
+    'retry': {
+      ko: '다시 시도',
+      en: 'Retry'
+    },
+    'go_to_my_trees': {
+      ko: '내 트리로 가기',
+      en: 'Go to My Trees'
+    },
+    'tree_load_fail_title': {
+      ko: '트리를 불러올 수 없어요',
+      en: 'Unable to load tree'
+    },
+    'tree_load_error_title': {
+      ko: '트리를 여는 중 문제가 발생했어요',
+      en: 'Error opening tree'
+    },
+    'tree_not_found_title': {
+      ko: '트리를 찾을 수 없어요',
+      en: 'Tree not found'
+    },
+    'tree_load_api_unavailable': {
+      ko: '트리 조회 API를 사용할 수 없는 상태입니다. 잠시 후 다시 시도해주세요.',
+      en: 'Tree API is unavailable. Please try again later.'
+    },
+    'tree_load_error_desc': {
+      ko: '일시적인 서버 문제 또는 접근 권한 문제일 수 있습니다. 다시 시도하거나 내 트리 목록으로 돌아가 주세요.',
+      en: 'This may be a temporary server issue or permission problem. Please retry or go back to your trees.'
+    },
+    'tree_load_not_found_desc': {
+      ko: '잘못된 링크이거나 접근 권한이 없는 트리입니다.',
+      en: 'Invalid link or you do not have permission to access this tree.'
+    },
+    'local_save_badge': {
+      ko: '로컬 저장',
+      en: 'Local Save'
+    },
+    'current_tree': {
+      ko: '현재 트리',
+      en: 'Current Tree'
+    },
+    'waiting_first_moment': {
+      ko: '첫 순간을 기다리고 있어요',
+      en: 'Waiting for the first moment'
+    },
+    'empty_panel_hint': {
+      ko: '아직 선택된 순간이 없습니다. 첫 번째 영상을 추가하면 이 패널에 순간 정보가 표시됩니다.',
+      en: 'No moment selected yet. Add your first video to see moment details here.'
+    },
+    'start_moment': {
+      ko: '시작 순간',
+      en: 'Starting Moment'
+    },
+    'selected_moment': {
+      ko: '선택된 순간',
+      en: 'Selected Moment'
+    },
+    'empty_tree_memo': {
+      ko: '이 트리는 아직 비어 있습니다. "영상 추가" 버튼으로 첫 순간을 기록해 보세요.',
+      en: 'This tree is empty. Click "Add Video" to record your first moment.'
+    },
+    'root_moment_hint': {
+      ko: '이 순간은 현재 트리의 시작점입니다',
+      en: 'This moment is the starting point of the tree'
+    },
+    'path_moment_hint': {
+      ko: '이 순간은 감정 경로의 한 지점입니다',
+      en: 'This moment is a point along the emotional path'
+    },
+    'moment_detail': {
+      ko: '순간 상세',
+      en: 'Moment Detail'
+    },
+    'empty_tree_title': {
+      ko: '새 트리가 비어있어요',
+      en: 'New Tree is Empty'
+    },
+    'empty_tree_desc': {
+      ko: '"영상 추가" 버튼을 클릭하여 첫 번째 감정을 기록해보세요!',
+      en: 'Click "Add Video" to record your first emotion!'
+    },
+    'record_error': {
+      ko: '기록 저장 중 오류가 발생했습니다',
+      en: 'Error occurred while saving the record'
+    },
+    'tag_record': {
+      ko: '기록',
+      en: 'Record'
+    },
 
     // ── 순간 수정/삭제 메시지 ──
     'edit_memory': {
