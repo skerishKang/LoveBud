@@ -677,11 +677,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Save status indicator state
         let saveStatusData = editorSaveStatus.createSaveStatusState
             ? editorSaveStatus.createSaveStatusState()
-            : {
-                status: 'saved',
-                lastSaved: null,
-                timer: null
-            };
+            : { status: 'saved', lastSaved: null, timer: null };
 
         function updateSaveStatus(status, message) {
             if (editorSaveStatus.updateSaveStatus) {
@@ -707,39 +703,40 @@ document.addEventListener('DOMContentLoaded', () => {
 
             saveStatusData.status = status;
 
-            switch (status) {
-                case 'saving':
-                    iconEl.textContent = 'hourglass_empty';
-                    textEl.textContent = message || i18n('save_saving');
-                    indicator.className = 'save-status-indicator saving';
-                    indicator.style.display = 'flex';
-                    // Hide last-saved time while actively saving
-                    if (timeEl) timeEl.style.display = 'none';
-                    break;
-                case 'saved':
-                    iconEl.textContent = 'check_circle';
-                    textEl.textContent = message || i18n('save_saved');
-                    indicator.className = 'save-status-indicator saved';
-                    saveStatusData.lastSaved = new Date();
-                    // Restore last-saved time after a successful save
-                    if (timeEl) {
-                        timeEl.style.display = 'inline';
-                        timeEl.textContent = formatTimeAgo(saveStatusData.lastSaved);
-                    }
-                    saveStatusData.timer = setTimeout(() => {
-                        indicator.style.display = 'none';
-                    }, 3000);
-                    break;
-                case 'failed':
-                    iconEl.textContent = 'error';
-                    textEl.textContent = message || i18n('save_failed');
-                    indicator.className = 'save-status-indicator failed';
-                    // Hide last-saved time after a failed save
-                    if (timeEl) timeEl.style.display = 'none';
-                    saveStatusData.timer = setTimeout(() => {
-                        indicator.style.display = 'none';
-                    }, 5000);
-                    break;
+            const hideLater = (ms) => {
+                saveStatusData.timer = setTimeout(() => {
+                    indicator.style.display = 'none';
+                }, ms);
+            };
+
+            if (status === 'saving') {
+                iconEl.textContent = 'hourglass_empty';
+                textEl.textContent = message || i18n('save_saving');
+                indicator.className = 'save-status-indicator saving';
+                indicator.style.display = 'flex';
+                if (timeEl) timeEl.style.display = 'none';
+                return;
+            }
+
+            if (status === 'saved') {
+                iconEl.textContent = 'check_circle';
+                textEl.textContent = message || i18n('save_saved');
+                indicator.className = 'save-status-indicator saved';
+                saveStatusData.lastSaved = new Date();
+                if (timeEl) {
+                    timeEl.style.display = 'inline';
+                    timeEl.textContent = formatTimeAgo(saveStatusData.lastSaved);
+                }
+                hideLater(3000);
+                return;
+            }
+
+            if (status === 'failed') {
+                iconEl.textContent = 'error';
+                textEl.textContent = message || i18n('save_failed');
+                indicator.className = 'save-status-indicator failed';
+                if (timeEl) timeEl.style.display = 'none';
+                hideLater(5000);
             }
         }
 
@@ -749,8 +746,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (!date) return '';
-            const now = new Date();
-            const diff = Math.floor((now - date) / 1000);
+            const diff = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
             if (diff < 60) return '방금';
             if (diff < 3600) return `${Math.floor(diff / 60)}분 전`;
             if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`;
