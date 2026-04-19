@@ -1,4 +1,25 @@
 (function () {
+  /**
+   * LoveTree public tree adapter
+   *
+   * Transitional compatibility only for public browse paths.
+   *
+   * Migration-only fallback scope:
+   * - legacy `{ data }` wrapper
+   * - `tree_id`
+   * - `created_at`
+   * - `owner_id`
+   * - `emotion_tags`
+   *
+   * Remove these fallback paths after:
+   * 1) /api/community/trees is camelCase-only
+   * 2) /api/community/memories is camelCase-only
+   * 3) mock browse path is camelCase-only
+   * 4) contract tests stay green without legacy fixtures
+   *
+   * New code outside this adapter must not directly read snake_case fields.
+   */
+
   function unwrapTreeRecord(tree) {
     return tree?.data || tree || {};
   }
