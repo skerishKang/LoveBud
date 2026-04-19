@@ -1,148 +1,194 @@
 # LoveBud 테스트 빠른 시작 가이드
 
-> ⚡️ 3초만에 테스트 시작하기
+> 어떤 테스트를 해야 할지 빠르게 고르고, 바로 실행하기 위한 문서입니다.
 
 ---
 
-## 🎯 한 줄 명령어
+## 1. 가장 빠른 시작 순서
 
+1. `CURRENT_SCENARIOS.md`를 연다.
+2. 이번에 필요한 테스트 목적을 고른다.
+3. 아래 표에서 맞는 시나리오 문서를 연다.
+4. `data/{group}-data.json`를 함께 본다.
+5. 결과를 `results/{scenario}-{group}-YYYY-MM-DD-HHMM/test-result.md`에 기록한다.
+
+---
+
+## 2. 어떤 테스트를 해야 하나
+
+| 내가 확인하고 싶은 것 | 먼저 열 문서 |
+|----------------------|-------------|
+| 처음 온 사용자가 바로 시작 가능한지 | `core_newuser_001.md` |
+| 기존 사용자가 계속 쓸 수 있는지 | `core_returning_001.md` |
+| 공개 탐색 흐름이 자연스러운지 | `core_browse_001.md` |
+| 공개/비공개와 권한이 안 깨졌는지 | `access_public_private_001.md` |
+| 저장 후 새로고침/재진입이 안정적인지 | `persistence_001.md` |
+| 과거 반복 생성/새로고침 이슈가 다시 생겼는지 | `repeatability-node-creation-test.md` |
+
+---
+
+## 3. 추천 실행 세트
+
+### 릴리스 전 최소 세트
+- `core_newuser_001.md`
+- `core_browse_001.md`
+- `persistence_001.md`
+
+### 일반 수동 QA 기본 세트
+- `core_newuser_001.md`
+- `core_returning_001.md`
+- `core_browse_001.md`
+- `access_public_private_001.md`
+- `persistence_001.md`
+
+### 저장/캐시 변경 후
+- `core_newuser_001.md`
+- `core_returning_001.md`
+- `persistence_001.md`
+- `repeatability-node-creation-test.md`
+
+### 인증/권한 변경 후
+- `access_public_private_001.md`
+- `core_newuser_001.md`
+- `core_returning_001.md`
+- `persistence_001.md`
+
+---
+
+## 4. 한 줄 요청 예시
+
+```text
+"IVE 데이터로 core_newuser_001 테스트 해줘"
 ```
-"{그룹명} {유형} 테스트 해줘"
+
+```text
+"BTS 데이터로 core_returning_001 테스트 해줘"
 ```
 
-### 예시
-
-| 원하는 테스트 | 명령어 |
-|--------------|--------|
-| IVE 신규 가입자 | `"IVE 신규 테스트 해줘"` |
-| BTS 기존 가입자 | `"BTS 기존 테스트 해줘"` |
-| 하츠투하츠 테스트 | `"하츠투하츠 테스트 해줘"` (기본: 신규) |
-
----
-
-## 📋 테스트 진행 순서
-
-### AI가 자동으로 하는 일
-
-1. **시나리오 읽기** → `repeatability-node-creation-test.md`
-2. **그룹 데이터 읽기** → `data/{그룹명}-data.json`
-3. **브라우저 접속** → https://lovebud.netlify.app
-4. **테스트 수행** → STEP별로 진행 + 기록
-5. **결과 저장** → `results/{그룹명}-{유형}-test-YYYY-MM-DD-HHMM/test-result.md`
-
----
-
-## 👤 사용자 유형 선택
-
-| 유형 | 언제 사용? | 명령어 예시 |
-|------|-----------|------------|
-| **신규** (기본) | 처음 사용하는 사용자 흐름 | `"IVE 신규 테스트 해줘"` |
-| **기존** | 이미 가입된 사용자 흤름 | `"BTS 기존 테스트 해줘"` |
-
----
-
-## 🎤 지원하는 아이돌 그룹
-
-### 현재 등록된 그룹 (3개)
-
-| 그룹 | 명령어 | 데이터 파일 |
-|------|--------|------------|
-| IVE (아이브) | `"IVE 테스트 해줘"` | `data/ive-data.json` |
-| BTS (방탄) | `"BTS 테스트 해줘"` | `data/bts-data.json` |
-| 하츠투하츠 | `"하츠투하츠 테스트 해줘"` | `data/hearts2hearts-data.json` |
-
-### 다른 그룹 테스트 원하면?
-
-1. `data/{그룹명}-data.json` 파일 생성
-2. `"{그룹명} 테스트 해줘"` 실행
-
----
-
-## 📁 결과 파일 위치
-
+```text
+"RIIZE 데이터로 core_browse_001 테스트 해줘"
 ```
+
+```text
+"권한 경계 확인하려고 access_public_private_001 테스트 해줘"
+```
+
+```text
+"저장 안정성 확인하려고 persistence_001 테스트 해줘"
+```
+
+```text
+"예전 반복 생성 회귀 확인하려고 repeatability-node-creation-test.md 기준으로 테스트 해줘"
+```
+
+---
+
+## 5. 사용자 유형 선택
+
+| 유형 | 언제 사용? | 주로 연결되는 시나리오 |
+|------|-----------|------------------------|
+| 신규 | 처음 사용하는 사용자 흐름 확인 | `core_newuser_001.md` |
+| 기존 | 이미 트리/메모리를 가진 사용자 흐름 확인 | `core_returning_001.md`, `persistence_001.md` |
+| 비로그인 탐색 | browse / 공개 노출 확인 | `core_browse_001.md`, `access_public_private_001.md` |
+
+---
+
+## 6. 지원하는 그룹 데이터
+
+현재 README 기준으로 등록되어 있는 데이터 예시는 아래와 같습니다.
+
+- IVE
+- BTS
+- hearts2hearts
+- RIIZE
+- TWS
+- ZEROBASEONE
+- ILLIT
+- MEOVV
+- KickFlip
+- KATSEYE
+- Cortiz
+- Santos Bravos
+
+실제 사용 시에는 `docs/test-scenarios/data/` 아래의 JSON 파일 존재 여부를 기준으로 판단합니다.
+
+새 그룹이 필요하면:
+1. `data/{group}-data.json` 생성
+2. 적절한 시나리오 문서 선택
+3. 결과 저장
+
+---
+
+## 7. 결과 파일 위치
+
+```text
 docs/test-scenarios/results/
-└── {그룹명}-{유형}-test-YYYY-MM-DD-HHMM/     # ✅ 테스트별 폴더
-    ├── test-result.md                      # 테스트 결과 (markdown)
-    └── 📸 스크린샷 (필요시 촬영, 없어도 OK)
-        ├── step1-home.png                  (중요한 단계)
-        ├── error-popup.png                 (문제 발생시 필수)
-        └── ... (상황에 따라 선택적으로 추가)
+└── {scenario}-{group}-YYYY-MM-DD-HHMM/
+    ├── test-result.md
+    └── screenshots/
 ```
 
-**스크린샷 규칙**:
-- **필수**: 오류 발생 화면, 버그 발견 시
-- **선택**: 중요한 UI 단계, 기억해둘 만한 화면
-- **생략 가능**: 단순하거나 중복되는 화면
-- **문서만 있어도 OK**: 스크린샷 없이 텍스트 기록만으로도 충분함
+예시:
+- `results/core-newuser-001-ive-2026-04-20-1930/test-result.md`
+- `results/core-browse-001-riize-2026-04-20-2015/test-result.md`
+- `results/persistence-001-bts-2026-04-20-2140/test-result.md`
+
+스크린샷 규칙:
+- 필수 아님
+- 오류, 권한 문제, 저장 유실, 상태 불일치, UX 혼란 화면은 권장
 
 ---
 
-## ⚙️ 고급 사용법
+## 8. 결과 기록 최소 항목
 
-### 명확하게 지정하기
+최소한 아래 항목은 남기는 것을 권장합니다.
 
-```
-"docs/test-scenarios/repeatability-node-creation-test.md 참고해서 
- IVE 신규 가입자로 테스트 해줘. 
- 결과는 results/ive-newuser-test-2026-04-18-1430/test-result.md에 저장해"
-```
+- 테스트한 시나리오 문서명
+- 사용한 데이터 파일
+- 단계별 결과 요약
+- 가장 큰 문제 1개
+- 최종 판정: 통과 / 조건부 통과 / 실패
 
-### 여러 그룹 동시에
-
-```
-"IVE, BTS, 하츠투하츠 모두 신규 테스트 해줘"
-```
+자세한 형식은 `results/common-test-TEMPLATE.md`를 사용합니다.
 
 ---
 
-## 🔧 문제 해결
+## 9. 문제 해결
 
-### "그룹 데이터가 없습니다" 에러
+### 어떤 문서를 먼저 써야 할지 모르겠다
+→ `CURRENT_SCENARIOS.md` 먼저 확인
 
-→ `data/{그룹명}-data.json` 파일이 없는 경우
+### 신규 사용자 흐름을 보고 싶다
+→ `core_newuser_001.md`
 
-**해결**: 데이터 파일 먼저 생성
-```json
-{
-  "groupName": "Seventeen",
-  "groupNameKorean": "세븐틴",
-  "fanPersona": "세븐틴 팬으로서 감정을 기록하고 싶다",
-  "testUrls": [
-    {"id": 1, "url": "...", "title": "...", "description": "..."},
-    ...
-  ],
-  "treeName": "세븐틴 콘텐츠 정리용 트리"
-}
-```
+### 기존 사용자 흐름을 보고 싶다
+→ `core_returning_001.md`
 
-### "기존 가입자 테스트" 시 계정 문제
+### browse 흐름만 보고 싶다
+→ `core_browse_001.md`
 
-→ `.local/test-accounts.json` 필요
+### 권한/공개 범위가 의심된다
+→ `access_public_private_001.md`
 
-**해결**: ACCOUNT_RULES.md 참조하여 계정 정보 설정
+### 저장 후 유실이 의심된다
+→ `persistence_001.md`
+
+### 예전 버그가 다시 생겼는지 확인하고 싶다
+→ `repeatability-node-creation-test.md`
 
 ---
 
-## 📚 더 알아보기
+## 10. 더 읽을 문서
 
-| 문서 | 설명 | 경로 |
-|------|------|------|
-| **상세 사용법** | 폴더 구조, 규칙 설명 | `README.md` |
-| **계정 관리** | 테스트 계정 규칙 | `ACCOUNT_RULES.md` |
-| **시나리오 상세** | STEP별 상세 내용 | `repeatability-node-creation-test.md` |
-| **결과 템플릿** | 결과 작성 양식 | `results/common-test-TEMPLATE.md` |
-
----
-
-## 💡 팁
-
-- **그룹명은 대소문자 구분 없음**: `"ive"`, `"IVE"`, `"아이브"` 모두 가능
-- **유형 생략 시 신규 가입자로 진행**
-- **테스트 중간에 멈추고 싶으면**: "여기까지 하고 결과 정리해줘"
+| 문서 | 설명 |
+|------|------|
+| `README.md` | 폴더 전체 구조와 운영 원칙 |
+| `CURRENT_SCENARIOS.md` | 지금 기준 대표 시나리오 맵 |
+| `ACCOUNT_RULES.md` | 계정 관리 규칙 |
+| `results/common-test-TEMPLATE.md` | 결과 작성 템플릿 |
 
 ---
 
-**🚀 이제 테스트 시작해보세요!**
+**바로 시작 예시**
 
-> `"IVE 신규 테스트 해줘"`
+> `"IVE 데이터로 core_newuser_001 테스트 해줘"`
