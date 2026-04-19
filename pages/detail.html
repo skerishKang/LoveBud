@@ -281,6 +281,12 @@
      <script src="../js/auth/auth-session.js?v=20260417-31"></script>
      <script src="../js/auth/auth-firebase.js?v=20260420-1"></script>
      <script src="../js/auth.js?v=20260417-31"></script>
-    <script>renderSharedHeader();</script>
+     <script src="../js/page-shell.js?v=20260420-1"></script>
+     <script>
+       LoveTreePageShell.initSharedPage({
+         renderHeader: true,
+         applyI18n: true
+       });
+     </script>
 </body>
 </html>
