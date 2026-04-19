@@ -168,11 +168,7 @@
             navLinksHTML += '<a href="' + menuConfig.myTrees.href + '"' + activeClass + '>' + t(menuConfig.myTrees.textKey) + '</a>';
         }
         
-        // 편집하기 (에디터 페이지에서만 표시)
-        if (menuConfig.editor && isEditorPage()) {
-            var activeClass = ' class="active"';
-            navLinksHTML += '<a href="' + menuConfig.editor.href + '"' + activeClass + '>' + t(menuConfig.editor.textKey) + '</a>';
-        }
+        // 에디터 페이지에서는 "편집하기" 메뉴 숨김 (이미 편집 화면 안에 있음)
 
         // 언어 드롭다운 HTML
         var langDropdownHTML = [

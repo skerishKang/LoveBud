@@ -1141,39 +1141,64 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const initCanvas = () => {
-            // 기존 ?�드 중복 방�?: 초기????기존 DOM ?�드 ?�거
+            // 기존 ?드 중복 방?: 초기????기존 DOM ?드 ?거
             canvas.querySelectorAll('.memory-node').forEach(n => n.remove());
             canvas.querySelectorAll('#emptyTreeMessage').forEach(el => el.remove());
             svg.querySelectorAll('.branch-line').forEach(l => l.remove());
+
+            // 트리가 비어있으면 선택 상태 초기화 및 상세 패널 empty state로
+            const hasMoments = treeMemories().length > 0;
+            if (!hasMoments) {
+                selectedNodeId = null;
+                renderEmptyDetailState();
+            }
+
             treeMemories().forEach(node => {
-                if (isRootMemory(node, canonicalRootId)) return; // canonical root�?skip
+                if (isRootMemory(node, canonicalRootId)) return; // canonical root?skip
                 drawNode(node);
                 const parentId = node.parentId || canonicalRootId;
                 const parent = treeMemories().find(m => m.id === parentId);
                 if (parent) drawBranch(calcPosition(parent), calcPosition(node));
             });
 
-            // ???�리 ?�인 - 캔버?�에 메시지 ?�시
+            // ???리 ?인 - 캔버?에 메시지 ?시
             const initialMem = createInitialMemory();
             if (initialMem.isNewTree) {
                 const emptyMsg = document.createElement('div');
                 emptyMsg.id = 'emptyTreeMessage';
                 emptyMsg.innerHTML = `
                     <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;padding:32px;background:rgba(255,255,255,0.95);border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,0.1);max-width:320px;">
-                        <div style="font-size:48px;margin-bottom:16px;">?��</div>
-                        <div style="font-size:1.25rem;font-weight:800;margin-bottom:8px;color:var(--on-surface);">${i18n('empty_tree_title') || '???�리가 비어?�어??}</div>
+                        <div style="font-size:48px;margin-bottom:16px;">?</div>
+                        <div style="font-size:1.25rem;font-weight:800;margin-bottom:8px;color:var(--on-surface);">${i18n('empty_tree_title') || '???리가 비어?어??}</div>
                         <div style="font-size:14px;color:var(--on-surface-variant);margin-bottom:16px;line-height:1.5;">
-                            ${i18n('empty_tree_desc') || '"?�상 추�?" 버튼???�릭?�여 �?번째 감정??기록?�보?�요!'}
+                            ${i18n('empty_tree_desc') || '"?상 추?" 버튼???릭?여 ?번째 감정??기록?보?요!'}
                         </div>
                     </div>
                 `;
                 canvas.appendChild(emptyMsg);
             }
 
-            const selectedMem = createInitialMemory();
-            if (selectedMem) {
-                updateDetailPanel(selectedMem);
+            // 트리가 비어있지 않을 때만 첫 메모리 선택
+            if (hasMoments) {
+                const selectedMem = createInitialMemory();
+                if (selectedMem) {
+                    updateDetailPanel(selectedMem);
+                }
             }
+        };
+
+        // 빈 트리 상태용 상세 패널 empty state 렌더링
+        const renderEmptyDetailState = () => {
+            const detailContent = document.getElementById('detailContent');
+            if (!detailContent) return;
+
+            detailContent.innerHTML = `
+                <div style="text-align:center;padding:40px 24px;color:var(--on-surface-variant);">
+                    <span class="material-symbols-outlined" style="font-size:48px;opacity:0.4;margin-bottom:16px;display:block;">sentiment_satisfied</span>
+                    <p style="font-size:1rem;font-weight:600;margin-bottom:8px;color:var(--on-surface);">아직 추가된 순간이 없어요</p>
+                    <p style="font-size:0.9rem;opacity:0.7;line-height:1.5;">왼쪽 아래의 '순간 추가' 버튼으로<br>첫 기록을 남겨보세요.</p>
+                </div>
+            `;
         };
 
         // ?�?� Save status indicator ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�
