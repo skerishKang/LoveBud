@@ -173,7 +173,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (siblings.length > 0) {
             connectedFragments.innerHTML = siblings.map(sib => `
-                <div class="moment-card" onclick="location.href='detail.html?id=${sib.id}&tree=${treeId}&from=${sourceContext}'">
+                <div class="moment-card" data-detail-href="detail.html?id=${sib.id}&tree=${treeId}&from=${sourceContext}" tabindex="0" role="link">
                     <img src="${sib.thumbnail}" alt="${sib.title}" style="width: 80px; height: 80px; border-radius: 1rem; object-fit: cover;">
                     <div>
                         <div style="font-size: 11px; font-weight: 800; color: #aaa; text-transform: uppercase;">
@@ -188,6 +188,21 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>
                 </div>
             `).join('');
+
+            // data-detail-href 기반 이벤트 등록 (Enter/Space 지원)
+            connectedFragments.querySelectorAll('.moment-card[data-detail-href]').forEach(card => {
+                const navigate = () => {
+                    const href = card.getAttribute('data-detail-href');
+                    if (href) window.location.href = href;
+                };
+                card.addEventListener('click', navigate);
+                card.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        navigate();
+                    }
+                });
+            });
         } else {
             connectedFragments.innerHTML = `
                 <div style="text-align: center; padding: 24px; color: var(--on-surface-variant); font-size: 13px;">
@@ -394,9 +409,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         const config = backConfig[sourceContext] || backConfig['browse'];
 
         backButton.innerHTML = `<span class="material-symbols-outlined" style="font-size:18px;margin-right:4px;">arrow_back</span> ${config.label}`;
-        backButton.addEventListener('click', () => {
-            window.location.href = config.url;
-        });
+
+        // 중복 바인딩 방지
+        if (backButton.__detailBackHandler) {
+            backButton.removeEventListener('click', backButton.__detailBackHandler);
+        }
+        const backHandler = () => { window.location.href = config.url; };
+        backButton.addEventListener('click', backHandler);
+        backButton.__detailBackHandler = backHandler;
     }
 
     console.log('[detail] Detail view loaded:', memory.title || 'Untitled');
