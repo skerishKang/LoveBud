@@ -148,7 +148,7 @@
 
         return [
             '<header class="nav-bar">',
-                '<div class="headline" style="font-size: 1.5rem; font-weight: 900; color: var(--on-surface); letter-spacing: -0.04em; cursor: pointer;" onclick="location.href=\'' + logoHref + '\'">Lovetree</div>',
+                '<div class="headline" style="font-size: 1.5rem; font-weight: 900; color: var(--on-surface); letter-spacing: -0.04em; cursor: pointer;" onclick="location.href=\'' + logoHref + '\'">러브트리</div>',
                 '<nav class="main-nav">',
                     '<div class="nav-links">',
                         navLinksHTML,
