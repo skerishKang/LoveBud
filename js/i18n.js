@@ -291,8 +291,8 @@
       en: 'Record their growth'
     },
     'intro.heroLead': {
-      ko: 'Lovetree는 좋아하는 대상의 입덕 순간부터 지금까지, 당신이 경험한 감정의 전 과정을 하나의 나무로 기록하는 공간입니다. 벚꽃이 피고 열매 맺는 것처럼, 당신의 팬심도 하나의 나무로 자라납니다.',
-      en: 'Lovetree is a space to record the entire journey of emotions from your first fandom moment to now as a single tree. Like cherry blossoms blooming and bearing fruit, your fandom grows into a tree.'
+      ko: '러브트리는 좋아하는 대상의 입덕 순간부터 지금까지, 당신이 경험한 감정의 전 과정을 하나의 나무로 기록하는 공간입니다. 벚꽃이 피고 열매 맺는 것처럼, 당신의 팬심도 하나의 나무로 자라납니다.',
+      en: 'LoveTree is a space to record the entire journey of emotions from your first fandom moment to now as a single tree. Like cherry blossoms blooming and bearing fruit, your fandom grows into a tree.'
     },
     'intro.visualizeGrowthTitle': {
       ko: '성장 과정 한눈에 보기',
@@ -307,7 +307,7 @@
       en: 'A space where you can return to those feelings even as time passes.'
     },
     'intro.step3DescFixed': {
-      ko: '편집 화면에서 기억들이 가지처럼 연결된 당신만의 Lovetree를 확인하고, 완성되면 둘러보기에 공유하세요.',
+      ko: '편집 화면에서 기억들이 가지처럼 연결된 당신만의 러브트리를 확인하고, 완성되면 둘러보기에 공유하세요.',
       en: 'In the editor, see your memories connected like branches, and share to browse when complete.'
     },
     'intro.value3DescFixed': {
@@ -339,20 +339,20 @@
 
     // intro.html - hero section
     'intro.whatIs': {
-      ko: 'Lovetree란?',
-      en: 'What is Lovetree?'
+      ko: '러브트리란?',
+      en: 'What is LoveTree?'
     },
     'intro.whatIsDesc1': {
-      ko: 'Lovetree는 특정 인물이나 그룹(주로 가수, 배우, 캐릭터 등)에 대한 감정과 기억을 시각적으로 기록하는 팬 다이어리 서비스입니다. 단순한 텍스트 일기가 아니라, 당신이 좋아하는 영상/음악의 한 장면을 기억에 남기고, 그 감정의 연결 고리를 나무 모양으로 시각화합니다.',
-      en: 'Lovetree is a fan diary service that visually records emotions and memories for specific people or groups. Not just text diaries, but saving scenes from videos/music you love and visualizing the emotional connections as a tree.'
+      ko: '러브트리는 특정 인물이나 그룹(주로 가수, 배우, 캐릭터 등)에 대한 감정과 기억을 시각적으로 기록하는 팬 다이어리 서비스입니다. 단순한 텍스트 일기가 아니라, 당신이 좋아하는 영상/음악의 한 장면을 기억에 남기고, 그 감정의 연결 고리를 나무 모양으로 시각화합니다.',
+      en: 'LoveTree is a fan diary service that visually records emotions and memories for specific people or groups. Not just text diaries, but saving scenes from videos/music you love and visualizing the emotional connections as a tree.'
     },
     'intro.howToTitle': {
       ko: '어떻게 쓰나요?',
       en: 'How to use?'
     },
     'intro.howToSubtitle': {
-      ko: '세 가지 단계로 당신만의 Lovetree를 완성하세요.',
-      en: 'Complete your Lovetree in three steps.'
+      ko: '세 가지 단계로 당신만의 러브트리를 완성하세요.',
+      en: 'Complete your LoveTree in three steps.'
     },
     'intro.step1Title': {
       ko: '영상 추가',
@@ -391,16 +391,16 @@
       en: 'Shared Joy'
     },
     'intro.value2Desc': {
-      ko: '완성된 Lovetree를 둘러보기에 올리면, 같은 취향의 다른 사람과 감정을 나눌 수 있습니다.',
-      en: 'Share your completed Lovetree to browse and connect with others who have similar tastes.'
+      ko: '완성된 러브트리를 둘러보기에 올리면, 같은 취향의 다른 사람과 감정을 나눌 수 있습니다.',
+      en: 'Share your completed LoveTree to browse and connect with others who have similar tastes.'
     },
     'intro.value3Title': {
       ko: '보물 같은 추억',
       en: 'Treasured Memories'
     },
     'intro.ctaTitle': {
-      ko: '이제 당신의 Lovetree를 시작하세요',
-      en: 'Start Your Lovetree Now'
+      ko: '이제 당신의 러브트리를 시작하세요',
+      en: 'Start Your LoveTree Now'
     },
     'intro.ctaDesc': {
       ko: '좋아하는 것의 첫 번째 기억을 기록하는 그 순간을 놓치지 마세요.',
