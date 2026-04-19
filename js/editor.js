@@ -580,10 +580,10 @@ document.addEventListener('DOMContentLoaded', () => {
         // Layout constants
         const ROOT_X = Math.max(460, Math.round(canvas.clientWidth * 0.42));
         const ROOT_Y = Math.max(420, Math.round(canvas.clientHeight * 0.52));
-        const RADIUS_L1 = 260;
-        const RADIUS_L2 = 210;
-        const NODE_WIDTH = 80;
-        const MIN_ANGLE_GAP = 32;
+        const RADIUS_L1 = 320;
+        const RADIUS_L2 = 250;
+        const NODE_WIDTH = 108;
+        const MIN_ANGLE_GAP = 40;
 
         const FIXED_ANGLES = {
             v1: -60, v2: -130, v3: 10,
@@ -594,14 +594,16 @@ document.addEventListener('DOMContentLoaded', () => {
         // Spread siblings evenly while keeping a minimum gap.
         const distributeAngles = (count, baseAngle = -90) => {
             if (count <= 0) return [baseAngle];
-            const angles = [];
-            const totalSpread = Math.min(360, count * MIN_ANGLE_GAP * 1.5); // 분산 범위
+            if (count === 1) return [baseAngle];
+
+            const safeCount = Math.max(count - 1, 1);
+            const totalSpread = Math.min(300, Math.max(110, safeCount * MIN_ANGLE_GAP));
             const startAngle = baseAngle - totalSpread / 2;
-            for (let i = 0; i < count; i++) {
+
+            return Array.from({ length: count }, (_, i) => {
                 const ratio = count === 1 ? 0.5 : i / (count - 1);
-                angles.push(startAngle + totalSpread * ratio);
-            }
-            return angles;
+                return startAngle + totalSpread * ratio;
+            });
         };
 
         const calcPosition = (mem, visited = new Set()) => {
@@ -633,17 +635,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if (parentId === canonicalRootId) {
                 let angle;
 
-                if (count === 1) {
-                    angle = -35;
-                } else if (count === 2) {
-                    angle = idx === 0 ? -55 : -5;
-                } else if (FIXED_ANGLES[mem.id] !== undefined) {
+                if (FIXED_ANGLES[mem.id] !== undefined) {
                     angle = FIXED_ANGLES[mem.id];
                 } else if (count > 0) {
-                    const angles = distributeAngles(count, -35);
+                    const angles = distributeAngles(count, -20);
                     angle = angles[idx] !== undefined ? angles[idx] : angles[0];
                 } else {
-                    angle = -35;
+                    angle = -20;
                 }
 
                 return {
