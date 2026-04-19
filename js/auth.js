@@ -12,6 +12,7 @@
  */
 
 var __authStateModule = window.LoveBudAuthState || null;
+var __authUiModule = window.LoveBudAuthUI || null;
 var EMAIL_AUTH_MODE = __authStateModule
   ? __authStateModule.getEmailAuthMode()
   : (function() {
@@ -478,6 +479,10 @@ function initOfflineAuth() {
  * confirms the actual auth state.
  */
 function markAuthLoading() {
+  if (__authUiModule) {
+    __authUiModule.markAuthLoading();
+    return;
+  }
   var authNav = document.getElementById('auth-nav');
   var authContainer = document.getElementById('auth-nav-container');
   // During loading: layout-preserving skeleton that is completely non-interactive.
@@ -497,6 +502,10 @@ function markAuthLoading() {
  * pointer-events:auto explicit 설정으로 interactive 전환을 보장.
  */
 function markAuthReady() {
+  if (__authUiModule) {
+    __authUiModule.markAuthReady(AUTH_READY_FLAG);
+    return;
+  }
   window[AUTH_READY_FLAG] = true;
   var authNav = document.getElementById('auth-nav');
   var authContainer = document.getElementById('auth-nav-container');
@@ -524,6 +533,7 @@ function markAuthReady() {
 // ── UI Builders ───────────────────────────────────────────────────────────────
 
 function getBasePath() {
+  if (__authUiModule) return __authUiModule.getBasePath();
   var path = window.location.pathname;
   var isPagesContext = path.indexOf('/pages/') !== -1;
   return isPagesContext ? '' : 'pages/';
@@ -533,6 +543,7 @@ function getBasePath() {
 window.getBasePath = getBasePath;
 
 function escapeHtml(value) {
+  if (__authUiModule) return __authUiModule.escapeHtml(value);
   return String(value == null ? '' : value)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -542,12 +553,14 @@ function escapeHtml(value) {
 }
 
 function buildLoginButton() {
+  if (__authUiModule) return __authUiModule.buildLoginButton();
   var basePath = getBasePath();
   var loginHref = basePath + 'login.html';
   return '<a href="' + loginHref + '" class="btn-round btn-outline" style="text-decoration:none;padding:8px 20px;font-size:14px;">로그인</a>';
 }
 
 function getUserAvatarInitial(user) {
+  if (__authUiModule) return __authUiModule.getUserAvatarInitial(user);
   var source = '';
 
   if (user) {
@@ -569,6 +582,7 @@ function getUserAvatarInitial(user) {
  * @param {Object} user - Firebase user object
  */
 function buildUserDropdown(user) {
+  if (__authUiModule) return __authUiModule.buildUserDropdown(user);
   var userName = '';
   var hasPhoto = !!(user && user.photoURL);
 
@@ -619,6 +633,16 @@ function buildUserDropdown(user) {
  * Called by onAuthStateChanged whenever Firebase auth state changes.
  */
 function updateNavUI(user) {
+  if (__authUiModule) {
+    __authUiModule.updateNavUI({
+      user: user,
+      authReadyFlagKey: AUTH_READY_FLAG,
+      persistConfirmedAuthSession: persistConfirmedAuthSession,
+      buildUserDropdown: buildUserDropdown,
+      buildLoginButton: buildLoginButton
+    });
+    return;
+  }
   var authNav = document.getElementById('auth-nav');
   var authContainer = document.getElementById('auth-nav-container');
 
@@ -648,6 +672,18 @@ function updateNavUI(user) {
  * Uses document-level delegation so survives innerHTML replacements.
  */
 function attachDropdownListener() {
+  if (__authUiModule) {
+    __authUiModule.attachDropdownListener({
+      isAttached: function () {
+        return !!DROPDOWN_LISTENER_ATTACHED;
+      },
+      setAttached: function (attached) {
+        DROPDOWN_LISTENER_ATTACHED = !!attached;
+        if (__authStateModule) __authStateModule.setDropdownListenerAttached(!!attached);
+      }
+    });
+    return;
+  }
   if (DROPDOWN_LISTENER_ATTACHED) return;
   DROPDOWN_LISTENER_ATTACHED = true;
   if (__authStateModule) __authStateModule.setDropdownListenerAttached(true);
