@@ -200,6 +200,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const svg = document.getElementById('canvasSvg');
         const detailPanel = document.getElementById('detailPanel');
         const addBtn = document.getElementById('addMemoryBtn');
+        const i18n = getI18n();
 
         // ── URL에서 treeId 읽기 (최우선) ──
         const urlParams = new URLSearchParams(window.location.search);
@@ -238,7 +239,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (!tree) {
-                const i18n = getI18n();
                 const errorTitle =
                     treeLoadStatus === 'api_unavailable'
                         ? (i18n('tree_load_fail_title') || '트리를 불러올 수 없어요')
@@ -371,7 +371,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         } catch (e) {
-            const i18n = window.t || ((k) => k);
             console.warn('[editor] API getMemoriesByTree failed:', e.message);
             if (e.message?.includes('401') || e.message?.includes('403')) {
                 showToast(i18n('data_load_fail_demo'), 'warn');
@@ -396,7 +395,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // 📌 새 트리(empty) 감지 - memories가 0이면 새 트리
             const isNewTree = memories.length === 0;
-            const i18n = window.t || ((k) => k);
+            const isNewTree = memories.length === 0;
 
             return {
                 id: canonicalRootId,
@@ -524,7 +523,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const updateDetailPanel = (data) => {
             const currentTree = window.currentTreeData || {};
             const treeId = currentTree.id || urlTreeId;
-            const i18n = window.t || ((k) => k);
 
             const visibility = currentTree.visibility || 'private';
             const isPublic = visibility === 'public';
@@ -714,7 +712,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const saveMemoryEdit = async () => {
             if (!currentEditingMemory) return;
 
-            const i18n = window.t || ((k) => k);
             const titleInput = document.getElementById('editTitleInput');
             const memoInput = document.getElementById('editMemoInput');
             const tagsInput = document.getElementById('editTagsInput');
@@ -766,8 +763,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const deleteMemory = async () => {
             if (!currentEditingMemory) return;
-
-            const i18n = window.t || ((k) => k);
 
             if (!confirm(i18n('delete_confirm'))) {
                 return;
@@ -1126,9 +1121,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const addMemoryFromForm = async () => {
             const url = urlInput.value.trim();
-            const i18nToast = window.t || ((k) => k);
             if (!url) {
-                showToast(i18nToast('enter_youtube'), 'warn');
+                showToast(i18n('enter_youtube'), 'warn');
                 return;
             }
 
@@ -1162,7 +1156,6 @@ document.addEventListener('DOMContentLoaded', () => {
             updateSaveStatus('saving', i18n('save_saving'));
 
             const today = new Date();
-            const i18n = window.t || ((k) => k);
             const dateStr = `${today.getFullYear()}.${String(today.getMonth()+1).padStart(2,'0')}.${String(today.getDate()).padStart(2,'0')}`;
 
             // 기본 제목 자동 생성 (입력 없을 시)
@@ -1198,7 +1191,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     throw new Error('createMemory API not available');
                 }
             } catch (e) {
-                const i18n = window.t || ((k) => k);
                 console.warn('[editor] API createMemory failed, fallback to mock:', e?.message || e);
 
                 if (e?.message?.includes('401') || e?.message?.includes('403')) {
