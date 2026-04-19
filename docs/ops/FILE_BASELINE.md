@@ -1,4 +1,4 @@
-# Lovetree 운영 파일 기준표
+# LoveTree 운영 파일 기준표
 
 > 이 문서는 133-relovetree 프로젝트의 파일들을 사용 현황 기준으로 분류한 기준표입니다.
 > 다음 작업 전에 이 표만 보고 방향을 잡을 수 있도록 작성되었습니다.
@@ -301,9 +301,9 @@
 
 | 파일/폴더 | 이유 |
 |----------|------|
- | `src/shared.js`, `src/shared-layout.js`, `src/auth.js` | 공유/인증 |
- | `src/firebase-firestore-compat.js` | 브라우저 shim |
- | `src/postgres-client-browser.js` | 브라우저 PostgreSQL 클라이언트 |
+| `src/shared.js`, `src/shared-layout.js`, `src/auth.js` | 공유/인증 |
+| `src/firebase-firestore-compat.js` | 브라우저 shim |
+| `src/postgres-client-browser.js` | 브라우저 PostgreSQL 클라이언트 |
 | `src/runtime-config.js` | 런타임 설정 |
 | `src/concept-state.js`, `src/flow-shared.js` | 페이지 상태/탐색 |
 | `src/entries/*.js` | 페이지 진입점 |
@@ -311,12 +311,12 @@
 | `src/owner-*.js` | 오너 콘솔 모듈 |
 | `src/admin-*.js` | 관리자 모듈 |
 | `src/editor-*.js` | 에디터 전체 (별도 트랙) |
- | `pages/editor.html` | 에디터 핵심 |
- | `pages/search.html`, `pages/my-trees.html`, `pages/login.html` | 주요 페이지 |
+| `pages/editor.html` | 에디터 핵심 |
+| `pages/search.html`, `pages/my-trees.html`, `pages/login.html` | 주요 페이지 |
 | `netlify/functions/_lib/db-api.js` | 서버 API 권장 진입점 |
 | `netlify/functions/_lib/document-store.js` | PostgreSQL store |
- | `tests/editor-*.spec.js`, `tests/smoke.spec.js` | 테스트 |
- | `assets/css/*` | 일부 페이지/트랙에서 사용하는 스타일 자산 |
+| `tests/editor-*.spec.js`, `tests/smoke.spec.js` | 테스트 |
+| `assets/css/*` | 일부 페이지/트랙에서 사용하는 스타일 자산 |
 
 ### 6.2 DEPRECATED - 사용 권장 안 함
 
@@ -417,7 +417,7 @@
 | ✅ KEEP | 핵심 운영 파일, 절대 삭제 금지 | `src/shared.js`, `pages/search.html` |
 | ⚠️ INACTIVE | 파일은 존재하지만 리다이렉트/미사용 | `pages/editor-desktop.html` |
 | 🗑️ DEPRECATED | 사용 권장 안 함 (코드에서 참조 안 함) | `src/postgres-client.js` |
-| 📦 ARCHIVE | 파일系统中移动, 백업으로 보관됨 | `archive/recovered-legacy/` |
+| 📦 ARCHIVE | 파일 시스템에서 이동되어 백업으로 보관됨 | `archive/recovered-legacy/` |
 | ⏳ PENDING | 판단 보류, 사용 여부 확인 필요 | `src/payment.js` |
 | 🗑️ DELETE LATER | 향후 삭제 검토 대상 | `archive/old-ui/` 일부 |
 
@@ -442,6 +442,6 @@
 
 ---
 
-**최종 업데이트**: 2026-04-13
+**최종 업데이트**: 2026-04-20
 **작성자**: Sisyphus
-**용도**: Lovetree 프로젝트 파일 분류 및 작업 가이드
+**용도**: LoveTree 프로젝트 파일 분류 및 작업 가이드
