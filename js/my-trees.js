@@ -22,6 +22,22 @@
     }
   }
 
+  // ── Confirmed session helper ───────────────────────────────────────────────
+  function getConfirmedSessionUser() {
+    try {
+      if (window.getConfirmedAuthUser) {
+        return window.getConfirmedAuthUser();
+      }
+      if (localStorage.getItem('lovebud_auth_confirmed') === 'true') {
+        var raw = localStorage.getItem('lovebud_auth_cache');
+        if (raw && raw !== 'null') {
+          return JSON.parse(raw);
+        }
+      }
+    } catch (e) {}
+    return null;
+  }
+
    // ── State management ─────────────────────────────────────────────────────
    const STATE = {
      LOADING: 'loading',
@@ -610,6 +626,15 @@
     }
   }
 
+  // DOMContentLoaded: confirmed session이 있으면 즉시 boot
+  document.addEventListener('DOMContentLoaded', function() {
+    var cachedUser = getConfirmedSessionUser();
+    if (cachedUser && !myTreesStarted) {
+      console.log('[my-trees] Booting immediately from confirmed session cache');
+      bootMyTrees(cachedUser);
+    }
+  }, { once: true });
+
   // 새로운 배열 콜백 패턴 사용 (덮어쓰기 문제 해결)
   if (typeof window.registerOnAuthReady === 'function') {
     window.registerOnAuthReady(bootMyTrees);
@@ -625,15 +650,7 @@
       if (myTreesStarted) return;
       
       // Check for confirmed auth cache before redirect
-      var cachedUser = null;
-      try {
-        if (localStorage.getItem('lovebud_auth_confirmed') === 'true') {
-          var raw = localStorage.getItem('lovebud_auth_cache');
-          if (raw && raw !== 'null') {
-            cachedUser = JSON.parse(raw);
-          }
-        }
-      } catch (e) {}
+      var cachedUser = getConfirmedSessionUser();
       
       var isFirebaseReady = typeof firebase !== 'undefined' && 
                        firebase.auth && 
@@ -653,7 +670,7 @@
         console.log('[my-trees] Using cached auth after timeout');
       }
       bootMyTrees(cachedUser);
-    }, 5500);
+    }, 700); // 5500ms → 700ms 축소
   }, { once: true });
 
 })();

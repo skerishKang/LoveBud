@@ -7,6 +7,8 @@
 (function() {
 const API_BASE = '/api';
 const DEBUG = false;
+const AUTH_TOKEN_KEY = 'lovebud_auth_token';
+const AUTH_CONFIRMED_KEY = 'lovebud_auth_confirmed';
 
 function isMockFallbackEnabled() {
   return window.LoveBudRuntimeFlags?.isMockFallbackEnabled
@@ -47,27 +49,66 @@ function isMockFallbackEnabled() {
         }
     }
 
-    // Helper to get Firebase Auth Token with retry
+    // Cache helpers for confirmed session
+    function getCachedTokenRecord() {
+        try {
+            const raw = localStorage.getItem(AUTH_TOKEN_KEY);
+            if (!raw || raw === 'null') return null;
+            const parsed = JSON.parse(raw);
+            if (!parsed || !parsed.token || !parsed.expiresAt) return null;
+            if (Date.now() >= Number(parsed.expiresAt) - 30000) return null;
+            return parsed;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function setCachedTokenRecord(user, tokenResult) {
+        try {
+            if (!user || !user.uid || !tokenResult || !tokenResult.token) return;
+            localStorage.setItem(AUTH_TOKEN_KEY, JSON.stringify({
+                uid: user.uid,
+                token: tokenResult.token,
+                expiresAt: new Date(tokenResult.expirationTime).getTime()
+            }));
+        } catch (e) {}
+    }
+
+    // Helper to get Firebase Auth Token with retry - cached token first
     async function getAuthHeaders() {
         const headers = {
             'Content-Type': 'application/json'
         };
 
-        // Firebase Auth 및 auth.js가 준비될 때까지 최대 5초 대기 (500ms × 10회)
+        // 1. 먼저 cached token이 유효한지 확인
+        const cachedToken = getCachedTokenRecord();
+        if (cachedToken && cachedToken.token) {
+            headers['Authorization'] = `Bearer ${cachedToken.token}`;
+            if (DEBUG) console.log('[apiClient] Using cached auth token');
+            return headers;
+        }
+
+        // 2. Firebase Auth 및 auth.js가 준비될 때까지 짧게 대기 (150ms × 6회 = 900ms)
         let attempts = 0;
-        const maxAttempts = 10;
+        const maxAttempts = 6;
         const AUTH_READY_FLAG = '__lovebudAuthReady';
 
         while (attempts < maxAttempts) {
-            // 1. auth.js의 ready 플래그와 firebase 유저 상태 동시 확인
+            // auth.js의 ready 플래그와 firebase 유저 상태 동시 확인
             if (window[AUTH_READY_FLAG] && window.firebase && firebase.auth) {
                 const user = firebase.auth().currentUser;
                 if (user) {
                     try {
-                        const token = await user.getIdToken();
-                        headers['Authorization'] = `Bearer ${token}`;
-                        if (DEBUG) console.log(`[apiClient] Auth token acquired on attempt ${attempts + 1}`);
-                        return headers;
+                        const tokenResult = typeof user.getIdTokenResult === 'function'
+                            ? await user.getIdTokenResult()
+                            : null;
+                        const token = tokenResult ? tokenResult.token : await user.getIdToken();
+                        if (token) {
+                            headers['Authorization'] = `Bearer ${token}`;
+                            if (tokenResult) setCachedTokenRecord(user, tokenResult);
+                            if (DEBUG) console.log(`[apiClient] Auth token acquired on attempt ${attempts + 1}`);
+                            return headers;
+                        }
                     } catch (error) {
                         console.warn("[apiClient] Failed to get Firebase Auth token:", error);
                         break;
@@ -78,8 +119,8 @@ function isMockFallbackEnabled() {
                     return headers;
                 }
             }
-            // 아직 준비되지 않음 - 잠시 대기 후 재시도
-            await new Promise(resolve => setTimeout(resolve, 500));
+            // 아직 준비되지 않음 - 짧게 대기 후 재시도
+            await new Promise(resolve => setTimeout(resolve, 150));
             attempts++;
         }
 
