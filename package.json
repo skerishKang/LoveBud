@@ -22,6 +22,7 @@
     "test:e2e:editor-delete": "node scripts/e2e-editor-delete-smoke.js",
     "test:e2e:login-success": "node scripts/e2e-login-success-smoke.js",
     "test:e2e:login-timeout": "node scripts/e2e-login-timeout-smoke.js",
+    "test:e2e:ci": "npm run test:e2e:search-detail && npm run test:e2e:login-timeout",
     "ci": "npm run lint && npm run build && npm run test && npm run verify"
   },
   "dependencies": {
