@@ -25,7 +25,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const previewTitle = document.getElementById('previewTitle');
     const previewDesc = document.getElementById('previewDesc');
     const previewMemoriesCount = document.getElementById('previewMemoriesCount');
-    const previewTreeDuration = document.getElementById('previewTreeDuration');
     const previewEmotionTags = document.getElementById('previewEmotionTags');
     const searchInput = document.getElementById('searchInput');
     const tagChips = document.querySelectorAll('.tag-chip');
@@ -45,7 +44,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         previewTitle,
         previewDesc,
         previewMemoriesCount,
-        previewTreeDuration,
         previewEmotionTags
     });
 
@@ -80,6 +78,22 @@ const isMockFallbackEnabled = () =>
     let loadError = null;
     let isFromCache = false;
 
+    // Shallow comparison helper to avoid unnecessary re-renders
+    const areTreesEffectivelySame = (prevTrees, nextTrees) => {
+        if (!Array.isArray(prevTrees) || !Array.isArray(nextTrees)) return false;
+        if (prevTrees.length !== nextTrees.length) return false;
+
+        return prevTrees.every((prevTree, index) => {
+            const nextTree = nextTrees[index];
+            if (!nextTree) return false;
+
+            const prevStamp = prevTree.updatedAt || prevTree.createdAt || prevTree.memoryCount || 0;
+            const nextStamp = nextTree.updatedAt || nextTree.createdAt || nextTree.memoryCount || 0;
+
+            return prevTree.id === nextTree.id && prevStamp === nextStamp;
+        });
+    };
+
     // 1. Try cache first
     let cachedTrees = null;
     if (cache) {
@@ -105,7 +119,7 @@ const isMockFallbackEnabled = () =>
                 }
 
                 // Use API data (replace cache)
-                if (JSON.stringify(allTrees) !== JSON.stringify(apiTrees)) {
+                if (!areTreesEffectivelySame(allTrees, apiTrees)) {
                     allTrees = apiTrees;
                 }
 
@@ -174,10 +188,18 @@ const isMockFallbackEnabled = () =>
         PreviewRenderer.updatePreview(tree);
     };
 
-    // Search input
+    // Search input with debounce
+    let searchInputTimer = null;
     searchInput.addEventListener('input', (e) => {
         currentQuery = e.target.value.trim();
-        renderResults();
+
+        if (searchInputTimer) {
+            clearTimeout(searchInputTimer);
+        }
+
+        searchInputTimer = setTimeout(() => {
+            renderResults();
+        }, 200);
     });
 
     // Filter chips
