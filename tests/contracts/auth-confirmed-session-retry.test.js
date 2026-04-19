@@ -5,6 +5,8 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 const ROOT = path.resolve(__dirname, '..', '..');
+const AUTH_POLICY_PATH = path.join(ROOT, 'js', 'api', 'auth-policy.js');
+const PUBLIC_TREE_ADAPTER_PATH = path.join(ROOT, 'js', 'api', 'public-tree-adapter.js');
 const POSTGRES_CLIENT_PATH = path.join(ROOT, 'js', 'postgres-client.js');
 
 function loadInternals(options = {}) {
@@ -24,7 +26,11 @@ function loadInternals(options = {}) {
     },
   };
 
+  // Load sources
+  const authPolicySource = fs.readFileSync(AUTH_POLICY_PATH, 'utf8');
+  const publicTreeAdapterSource = fs.readFileSync(PUBLIC_TREE_ADAPTER_PATH, 'utf8');
   const source = fs.readFileSync(POSTGRES_CLIENT_PATH, 'utf8');
+  
   const sandbox = {
     window: {
       __LOVEBUD_AUTH_WAIT_MS: options.authWaitMs || 2000,
@@ -47,6 +53,12 @@ function loadInternals(options = {}) {
   };
 
   vm.createContext(sandbox);
+  
+  // Load auth policy first
+  vm.runInContext(authPolicySource, sandbox, { filename: AUTH_POLICY_PATH });
+  // Load public tree adapter
+  vm.runInContext(publicTreeAdapterSource, sandbox, { filename: PUBLIC_TREE_ADAPTER_PATH });
+  // Load postgres-client.js
   vm.runInContext(source, sandbox, { filename: POSTGRES_CLIENT_PATH });
 
   return sandbox.window.__LoveBudApiClientInternals;
