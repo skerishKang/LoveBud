@@ -419,6 +419,134 @@ document.addEventListener('DOMContentLoaded', () => {
         const canonicalRootId = getCanonicalRootId(treeMemories());
         let selectedNodeId = canonicalRootId;
 
+        // Viewport & Pan State
+        const viewportState = {
+            offsetX: 0,
+            offsetY: 0,
+            initialized: false,
+            isPanning: false,
+            startX: 0,
+            startY: 0
+        };
+
+        const toViewportPos = (pos) => ({
+            x: pos.x + viewportState.offsetX,
+            y: pos.y + viewportState.offsetY
+        });
+
+        const centerOnLogicalPos = (pos) => {
+            viewportState.offsetX = Math.round(canvas.clientWidth / 2 - pos.x);
+            viewportState.offsetY = Math.round(canvas.clientHeight / 2 - pos.y);
+        };
+
+        const centerOnMemory = (mem) => {
+            if (!mem) return;
+            centerOnLogicalPos(calcPosition(mem));
+        };
+
+        const updateSidebarSummary = () => {
+            const treeTitleEl = document.getElementById('sidebarTreeTitle');
+            const momentCountEl = document.getElementById('sidebarMomentCount');
+            if (treeTitleEl) {
+                treeTitleEl.textContent = (window.currentTreeData && window.currentTreeData.title) || '새 러브트리';
+            }
+            if (momentCountEl) {
+                const count = treeMemories().filter(m => !isRootMemory(m, canonicalRootId)).length;
+                momentCountEl.textContent = `순간 ${count}개`;
+            }
+        };
+
+        const bindCanvasPan = () => {
+            canvas.addEventListener('mousedown', (e) => {
+                if (e.target.closest('.memory-node') || e.target.closest('#addMemoryForm')) return;
+                viewportState.isPanning = true;
+                viewportState.startX = e.clientX;
+                viewportState.startY = e.clientY;
+                canvas.classList.add('panning');
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (!viewportState.isPanning) return;
+                const dx = e.clientX - viewportState.startX;
+                const dy = e.clientY - viewportState.startY;
+                viewportState.startX = e.clientX;
+                viewportState.startY = e.clientY;
+                viewportState.offsetX += dx;
+                viewportState.offsetY += dy;
+                initCanvas();
+                selectNodeById(selectedNodeId);
+            });
+
+            window.addEventListener('mouseup', () => {
+                viewportState.isPanning = false;
+                canvas.classList.remove('panning');
+            });
+        };
+
+        // Viewport & Pan State
+        const viewportState = {
+            offsetX: 0,
+            offsetY: 0,
+            initialized: false,
+            isPanning: false,
+            startX: 0,
+            startY: 0
+        };
+
+        const toViewportPos = (pos) => ({
+            x: pos.x + viewportState.offsetX,
+            y: pos.y + viewportState.offsetY
+        });
+
+        const centerOnLogicalPos = (pos) => {
+            viewportState.offsetX = Math.round(canvas.clientWidth / 2 - pos.x);
+            viewportState.offsetY = Math.round(canvas.clientHeight / 2 - pos.y);
+        };
+
+        const centerOnMemory = (mem) => {
+            if (!mem) return;
+            centerOnLogicalPos(calcPosition(mem));
+        };
+
+        const updateSidebarSummary = () => {
+            const treeTitleEl = document.getElementById('sidebarTreeTitle');
+            const momentCountEl = document.getElementById('sidebarMomentCount');
+            if (treeTitleEl) {
+                treeTitleEl.textContent = (window.currentTreeData && window.currentTreeData.title) || '새 러브트리';
+            }
+            if (momentCountEl) {
+                const count = treeMemories().filter(m => !isRootMemory(m, canonicalRootId)).length;
+                momentCountEl.textContent = `순간 ${count}개`;
+            }
+        };
+
+        const bindCanvasPan = () => {
+            canvas.addEventListener('mousedown', (e) => {
+                if (e.target.closest('.memory-node') || e.target.closest('#addMemoryForm')) return;
+                viewportState.isPanning = true;
+                viewportState.startX = e.clientX;
+                viewportState.startY = e.clientY;
+                canvas.classList.add('panning');
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (!viewportState.isPanning) return;
+                const dx = e.clientX - viewportState.startX;
+                const dy = e.clientY - viewportState.startY;
+                viewportState.startX = e.clientX;
+                viewportState.startY = e.clientY;
+                viewportState.offsetX += dx;
+                viewportState.offsetY += dy;
+                initCanvas();
+                selectNodeById(selectedNodeId);
+            });
+
+            window.addEventListener('mouseup', () => {
+                viewportState.isPanning = false;
+                canvas.classList.remove('panning');
+            });
+        };
+
         // ── 배치 상수 ──
         const ROOT_X = 400, ROOT_Y = 350; // 300→350: 첫 노드가 화면 위로 벗어나는 문제 완화
         const RADIUS_L1 = 320; // L1 반경 (280→320) - 노드 겹침 방지

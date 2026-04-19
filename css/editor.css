@@ -96,10 +96,16 @@ body {
 .canvas-area {
     flex: 1;
     position: relative;
-    background-image: 
+    background-image:
         radial-gradient(var(--outline-variant) 1px, transparent 1px);
     background-size: 40px 40px;
     overflow: hidden;
+    cursor: grab;
+    user-select: none;
+}
+
+.canvas-area.panning {
+    cursor: grabbing;
 }
 
 .canvas-svg {
@@ -508,4 +514,40 @@ body {
     min-height: 44px;
     white-space: nowrap;
     box-sizing: border-box;
+}
+
+/* Sidebar actions - new */
+.editor-sidebar-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.editor-sidebar-actions .secondary-btn {
+    width: 100%;
+}
+
+/* Prevent text selection while panning */
+.memory-node,
+.memory-node * {
+    user-select: none;
+}
+
+/* Sidebar actions - new */
+.editor-sidebar-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.editor-sidebar-actions .secondary-btn {
+    width: 100%;
+}
+
+/* Prevent text selection while panning */
+.memory-node,
+.memory-node * {
+    user-select: none;
 }
