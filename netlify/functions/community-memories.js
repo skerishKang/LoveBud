@@ -3,7 +3,7 @@
  * Returns public memories from all trees, newest first.
  * No authentication required.
  */
-const { ok, httpError, handleError } = require('./_lib/http');
+const { ok, preflight, httpError, handleError } = require('./_lib/http');
 const { queryMemories, validateLimit } = require('./_lib/doc-store');
 const { serializeMemoryList } = require('./_lib/serializers');
 
@@ -14,7 +14,7 @@ exports.handler = async (event) => {
   console.log('[community-memories] handler entry', { method: event.httpMethod, path: event.path });
 
   if (event.httpMethod === 'OPTIONS') {
-    return ok(null, { 'Access-Control-Allow-Origin': '*' });
+    return preflight(requestOrigin);
   }
 
   if (event.httpMethod !== 'GET') {
@@ -35,7 +35,7 @@ exports.handler = async (event) => {
     console.log('[community-memories] query success', { count: memories?.length || 0 });
 
     console.log('[community-memories] handler success');
-    return ok(serializeMemoryList(memories), { 'Access-Control-Allow-Origin': '*' });
+    return ok(serializeMemoryList(memories), null, requestOrigin);
   } catch (error) {
     console.error('[community-memories] handler failed', {
       error: error.message,

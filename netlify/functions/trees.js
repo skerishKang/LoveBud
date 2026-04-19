@@ -4,7 +4,7 @@
  * POST → create new tree
  */
 const { requireUser } = require('./_lib/auth');
-const { ok, created, httpError, handleError } = require('./_lib/http');
+const { ok, created, preflight, httpError, handleError } = require('./_lib/http');
 const {
   queryTrees,
   createTree,
@@ -17,7 +17,7 @@ exports.handler = async (event) => {
   const requestOrigin = event.headers?.origin || event.headers?.Origin || '';
 
   if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 204, headers: { 'Access-Control-Allow-Origin': '*' }, body: '' };
+    return preflight(requestOrigin);
   }
 
   try {
@@ -45,7 +45,7 @@ exports.handler = async (event) => {
         visibility,
       });
 
-      return created(serializeTree(tree), { 'Access-Control-Allow-Origin': '*' });
+      return created(serializeTree(tree), null, requestOrigin);
     }
 
     if (event.httpMethod === 'GET') {
@@ -58,7 +58,7 @@ exports.handler = async (event) => {
 
       try {
         const trees = await queryTrees({ ownerId: user.uid });
-        return ok(serializeTreeList(trees), { 'Access-Control-Allow-Origin': '*' });
+        return ok(serializeTreeList(trees), null, requestOrigin);
       } catch (dbError) {
         console.error('[trees] query failed', {
           error: dbError.message,

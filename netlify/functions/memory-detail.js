@@ -7,7 +7,7 @@
  * PATCH/PUT/DELETE: owner only
  */
 const { requireUser, getUserFromEvent } = require('./_lib/auth');
-const { ok, noContent, httpError, handleError } = require('./_lib/http');
+const { ok, noContent, preflight, httpError, handleError } = require('./_lib/http');
 const {
   getMemory,
   updateMemory,
@@ -39,7 +39,7 @@ exports.handler = async (event) => {
   const requestOrigin = event.headers?.origin || event.headers?.Origin || '';
 
   if (event.httpMethod === 'OPTIONS') {
-    return ok(null, { 'Access-Control-Allow-Origin': '*' });
+    return preflight(requestOrigin);
   }
 
   try {
@@ -71,7 +71,7 @@ exports.handler = async (event) => {
       if (!isPublic && !isOwner) {
         throw httpError(403, 'Access denied: private memory');
       }
-      return ok(existingFlat, { 'Access-Control-Allow-Origin': '*' });
+      return ok(existingFlat, null, requestOrigin);
     }
 
     // PATCH/DELETE는 인증 필수
@@ -134,14 +134,14 @@ exports.handler = async (event) => {
       const updated = await updateMemory(validatedMemoryId, allowedPatch);
       if (!updated) throw httpError(404, 'Memory not found');
 
-      return ok(serializeMemory(updated), { 'Access-Control-Allow-Origin': '*' });
+      return ok(serializeMemory(updated), null, requestOrigin);
     }
 
     // ── DELETE ──────────────────────────────────────────────────────────────
     if (event.httpMethod === 'DELETE') {
       const deleted = await deleteMemory(validatedMemoryId);
       if (!deleted) throw httpError(404, 'Memory not found');
-      return noContent({ 'Access-Control-Allow-Origin': '*' });
+      return noContent(null, requestOrigin);
     }
 
     throw httpError(405, 'Method not allowed');

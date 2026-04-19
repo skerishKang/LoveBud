@@ -5,7 +5,7 @@
  * DELETE → delete tree
  */
 const { getUserFromEvent, requireUser } = require('./_lib/auth');
-const { ok, httpError, handleError } = require('./_lib/http');
+const { ok, preflight, httpError, handleError } = require('./_lib/http');
 const {
   getTree,
   queryMemories,
@@ -21,7 +21,7 @@ exports.handler = async (event) => {
   const requestOrigin = event.headers?.origin || event.headers?.Origin || '';
 
   if (event.httpMethod === 'OPTIONS') {
-    return ok(null, { 'Access-Control-Allow-Origin': '*' });
+    return preflight(requestOrigin);
   }
 
   try {
@@ -60,7 +60,8 @@ exports.handler = async (event) => {
           ...tree,
           memories,
         },
-        { 'Access-Control-Allow-Origin': '*' }
+        null,
+        requestOrigin
       );
     }
 
@@ -87,7 +88,7 @@ exports.handler = async (event) => {
       }
 
       const updated = await updateTree(validatedTreeId, patch);
-      return ok(serializeTree(updated), { 'Access-Control-Allow-Origin': '*' });
+      return ok(serializeTree(updated), null, requestOrigin);
     }
 
     if (event.httpMethod === 'DELETE') {
@@ -98,7 +99,7 @@ exports.handler = async (event) => {
       if (rawTree.owner_id !== user.uid) throw httpError(403, 'Forbidden: not your tree');
 
       await deleteTree(validatedTreeId);
-      return ok({ deleted: true, id: validatedTreeId }, { 'Access-Control-Allow-Origin': '*' });
+      return ok({ deleted: true, id: validatedTreeId }, null, requestOrigin);
     }
 
     throw httpError(405, 'Method not allowed');
