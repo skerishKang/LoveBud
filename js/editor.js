@@ -315,18 +315,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const errorTitle =
                     treeLoadStatus === 'api_unavailable'
-                        ? (i18n('tree_load_fail_title') || '?�리�?불러?????�어??)
+                        ? (i18n('tree_load_fail_title') || '트리를 불러올 수 없어요')
                         : /Access denied/i.test(treeLoadErrorMessage)
-                            ? (i18n('tree_access_denied_title') || '이 러브트리�?열 ???�는 권한???�어??)
+                            ? (i18n('tree_access_denied_title') || '이 러브트리를 열 권한이 없어요')
                         : treeLoadStatus === 'error'
-                            ? (i18n('tree_load_error_title') || '?�리�??�는 �?문제가 발생?�어??)
-                            : (i18n('tree_not_found_title') || '?�리�?찾을 ???�어??);
+                            ? (i18n('tree_load_error_title') || '트리를 여는 중 문제가 발생했어요')
+                            : (i18n('tree_not_found_title') || '트리를 찾을 수 없어요');
 
                 const errorDesc =
                     treeLoadStatus === 'api_unavailable'
                         ? (i18n('tree_load_api_unavailable') || '?�리 조회 API�??�용?????�는 ?�태?�니?? ?�시 ???�시 ?�도?�주?�요.')
                         : /Access denied/i.test(treeLoadErrorMessage)
-                            ? (i18n('tree_access_denied_desc') || '비공개 러브트리이거나 내 계정에 권한�?없어?? ?�시 ?�인???�른 계정으�?로그인?�해 보세??)
+                            ? (i18n('tree_access_denied_desc') || '비공개 러브트리이거나 내 계정에 권한이 없어요. 다시 확인하거나 다른 계정으로 로그인해 보세요.')
                         : treeLoadStatus === 'error'
                             ? (i18n('tree_load_error_desc') || '?�시?�인 ?�버 문제 ?�는 ?�근 권한 문제?????�습?�다. ?�시 ?�도?�거?????�리 목록?�로 ?�아가 주세??')
                             : (i18n('tree_load_not_found_desc') || '?�못??링크?�거???�근 권한???�는 ?�리?�니??');
@@ -550,7 +550,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             if (momentCountEl) {
                 const count = treeMemories().filter(m => !isRootMemory(m, canonicalRootId)).length;
-                momentCountEl.textContent = `?�간 ${count}�?;
+                momentCountEl.textContent = `순간 ${count}개`;
             }
         };
 
@@ -693,8 +693,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const visIcon = isPublic ? 'public' : 'lock';
             const visLabel = isPublic ? i18n('visibility_public') : i18n('visibility_private');
             const visInfo = isPublic
-                ? resolveInfoText(i18n('share_info'), 'share_info', '링크�?가�??�람?� ???�리�?�????�습?�다')
-                : resolveInfoText(currentTree.info || i18n('private_info'), 'private_info', '?�만 �????�는 ?�리?�니??);
+                ? resolveInfoText(i18n('share_info'), 'share_info', '링크가 있는 사람은 이 트리를 볼 수 있습니다')
+                : resolveInfoText(currentTree.info || i18n('private_info'), 'private_info', '나만 볼 수 있는 트리입니다');
             const visStyle = isPublic
                 ? 'background:rgba(76,175,80,0.1);color:#4caf50;border:1px solid rgba(76,175,80,0.3);'
                 : 'background:rgba(158,158,158,0.1);color:#757575;border:1px solid rgba(158,158,158,0.3);';
@@ -706,7 +706,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const headerEl = detailPanel.querySelector('h3');
             if (headerEl) {
                 const localBadge = isLocalSaveMode
-                    ? `<span style="font-size:11px;padding:2px 8px;background:rgba(239,108,0,0.1);color:#ef6c00;border-radius:99px;font-weight:600;margin-left:8px;">${i18n('local_save_badge') || '로컬 ?�??}</span>`
+                    ? `<span style="font-size:11px;padding:2px 8px;background:rgba(239,108,0,0.1);color:#ef6c00;border-radius:99px;font-weight:600;margin-left:8px;">${i18n('local_save_badge') || '로컬 저장'}</span>`
                     : '';
 
                 const treeMetaHtml = `
@@ -737,7 +737,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     headerEl.innerHTML = `
                         <div style="display:flex;flex-direction:column;gap:8px;">
                             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-                                <span style="font-size:1.4rem;line-height:1.2;font-weight:900;letter-spacing:-0.03em;color:var(--on-surface);">${i18n('waiting_first_moment') || '�??�간??기다리고 ?�어??}${localBadge}</span>
+                                <span style="font-size:1.4rem;line-height:1.2;font-weight:900;letter-spacing:-0.03em;color:var(--on-surface);">${i18n('waiting_first_moment') || '첫 순간을 기다리고 있어요'}${localBadge}</span>
                             </div>
                              <div style="font-size:13px;color:var(--on-surface-variant);line-height:1.5;">
                                  ${resolveHintText(i18n('empty_panel_hint_short'), 'empty_panel_hint_short', '첫 영상을 추가하면 여기에 표시됩니다.')}
@@ -746,7 +746,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                     `;
                 } else {
-                    const sectionLabel = isRootSelected ? (i18n('start_moment') || '?�작 ?�간') : (i18n('selected_moment') || '?�택???�간');
+                    const sectionLabel = isRootSelected ? (i18n('start_moment') || '시작 순간') : (i18n('selected_moment') || '선택된 순간');
                     var basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
 
                     headerEl.innerHTML = `
@@ -816,7 +816,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 memoBody.style.fontSize = '0.95rem';
                 memoBody.style.color = 'var(--on-surface)';
                 memoBody.textContent = isEmptyState
-                    ? i18n('empty_tree_memo') || '???�리???�직 비어 ?�습?�다. "?�상 추�?" 버튼?�로 �??�간??기록??보세??'
+                    ? i18n('empty_tree_memo') || '트리가 아직 비어 있습니다. "순간 추가" 버튼으로 첫 순간을 기록해보세요.'
                     : (data.memo || '');
                 noteEl.appendChild(memoBody);
 
@@ -827,12 +827,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     if (isRootSelected) {
                         hintEl.style.color = 'var(--primary)';
-                        hintEl.innerHTML = `<span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;margin-right:4px;">star</span> ${i18n('root_moment_hint') || '???�간?� ?�재 ?�리???�작?�입?�다'}`;
+                        hintEl.innerHTML = `<span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;margin-right:4px;">star</span> ${i18n('root_moment_hint') || '이 순간은 현재 트리의 시작점입니다'}`;
                     } else if (data.parentId) {
                         hintEl.style.paddingTop = '12px';
                         hintEl.style.borderTop = '1px solid var(--outline-variant)';
                         hintEl.style.color = 'var(--on-surface-variant)';
-                        hintEl.innerHTML = `<span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;margin-right:4px;">account_tree</span> ${i18n('path_moment_hint') || '???�간?� 감정 경로????지?�입?�다'}`;
+                        hintEl.innerHTML = `<span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;margin-right:4px;">account_tree</span> ${i18n('path_moment_hint') || '이 순간은 감정 경로 안에 연결되어 있습니다'}`;
                     }
 
                     if (hintEl.innerHTML) {
@@ -868,9 +868,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 hintEl.textContent = selected?.title
                     ? `현재 선택: ${selected.title}`
                     : '첫 순간을 추가해 트리를 시작해 보세요.';
-                    hintEl.style.fontStyle = 'italic';
-                    hintEl.style.color = 'var(--on-surface-variant)';
-                }
+                hintEl.style.fontStyle = 'italic';
+                hintEl.style.color = 'var(--on-surface-variant)';
             }
         };
 
@@ -994,7 +993,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         selectedNodeId = window.currentTreeMemories[0].id;
                         updateDetailPanel(window.currentTreeMemories[0]);
                     } else {
-                        detailPanel.querySelector('h3').innerHTML = i18n('moment_detail') || '?�간 ?�세';
+                        detailPanel.querySelector('h3').innerHTML = i18n('moment_detail') || '순간 상세';
                         const imgEl = detailPanel.querySelector('.detail-video img');
                         if (imgEl) imgEl.src = '';
                     }
@@ -1169,9 +1168,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 emptyMsg.innerHTML = `
                     <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;padding:32px;background:rgba(255,255,255,0.95);border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,0.1);max-width:320px;">
                         <div style="font-size:48px;margin-bottom:16px;">?</div>
-                        <div style="font-size:1.25rem;font-weight:800;margin-bottom:8px;color:var(--on-surface);">${i18n('empty_tree_title') || '???리가 비어?어??}</div>
+                        <div style="font-size:1.25rem;font-weight:800;margin-bottom:8px;color:var(--on-surface);">${i18n('empty_tree_title') || '새 트리가 비어있어요'}</div>
                         <div style="font-size:14px;color:var(--on-surface-variant);margin-bottom:16px;line-height:1.5;">
-                            ${i18n('empty_tree_desc') || '"?상 추?" 버튼???릭?여 ?번째 감정??기록?보?요!'}
+                            ${i18n('empty_tree_desc') || '"순간 추가" 버튼을 클릭해 첫 감정을 기록해보세요!'}
                         </div>
                     </div>
                 `;
@@ -1258,9 +1257,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const now = new Date();
             const diff = Math.floor((now - date) / 1000);
             if (diff < 60) return '방금';
-            if (diff < 3600) return `${Math.floor(diff / 60)}�???;
-            if (diff < 86400) return `${Math.floor(diff / 3600)}?�간 ??;
-            return `${Math.floor(diff / 86400)}????;
+            if (diff < 3600) return `${Math.floor(diff / 60)}분 전`;
+            if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`;
+            return `${Math.floor(diff / 86400)}일 전`;
         }
 
         // ?�?� ???�태 추적 ?�?�
@@ -1387,7 +1386,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const dateStr = `${today.getFullYear()}.${String(today.getMonth()+1).padStart(2,'0')}.${String(today.getDate()).padStart(2,'0')}`;
 
             // 기본 ?�목 ?�동 ?�성 (?�력 ?�을 ??
-            const title = titleInput.value.trim() || `???�간`;
+            const title = titleInput.value.trim() || '새 순간';
 
             const newMemoryData = {
                 treeId: treeId,
@@ -1425,10 +1424,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (e?.message?.includes('401') || e?.message?.includes('403')) {
                     showToast(i18n('no_permission_local'), 'warn');
                 } else if (e?.message?.includes('400')) {
-                    updateSaveStatus('failed', i18n('check_input') || '?�력값을 ?�시 ?�인?�주?�요.');
-                    showToast(i18n('check_input') || '?�력값을 ?�시 ?�인?�주?�요.', 'error');
+                    updateSaveStatus('failed', i18n('check_input') || '입력값을 다시 확인해 주세요.');
+                    showToast(i18n('check_input') || '입력값을 다시 확인해 주세요.', 'error');
                 } else {
-                    showToast(i18n('server_fail_local') || '?�버 ?�?�에 ?�패??로컬 ?�?�으�??�환?�니??', 'error');
+                    showToast(i18n('server_fail_local') || '서버 저장에 실패해 로컬 저장으로 전환합니다.', 'error');
                 }
             }
 
@@ -1513,15 +1512,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
              // ?�?� 최종 ?�???�태: ?�조???�공 ?��????�라 구분 ?�?�
              if (useApi && didRefreshFromServer) {
-                 updateSaveStatus('saved', i18n('save_saved') || '?�?�됨');
+                 updateSaveStatus('saved', i18n('save_saved') || '저장됨');
              } else {
-                 updateSaveStatus('saved', i18n('save_saved_local') || '로컬 ?�?�됨');
+                 updateSaveStatus('saved', i18n('save_saved_local') || '로컬 저장됨');
              }
 
             // ?�?� 메모�?추�? ??캐시 ?�기???�?�
             if (typeof window.setCachedMemories === 'function' && treeId) {
                 window.setCachedMemories(treeId, window.currentTreeMemories);
-                console.log('[editor] 메모�?추�? ??캐시 ?�??', window.currentTreeMemories.length, '�?);
+                console.log('[editor] 메모리 추가 후 캐시 갱신', window.currentTreeMemories.length, '개');
             }
 
             // ?�?� ?�이?�바 ?�데?�트 ?�?�
@@ -1537,7 +1536,7 @@ document.addEventListener('DOMContentLoaded', () => {
                  addMemoryFromForm().catch(err => {
                      console.error('[editor] Failed to add memory:', err);
                      updateSaveStatus('failed', i18n('save_failed'));
-                     showToast(i18n('record_error') || '기록 ?�??�??�류가 발생?�습?�다', 'error');
+                     showToast(i18n('record_error') || '기록 중 오류가 발생했습니다', 'error');
                  });
              });
         }
