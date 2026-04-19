@@ -308,6 +308,24 @@ document.addEventListener('DOMContentLoaded', () => {
         TREE_CACHE_KEY = 'tree_' + (treeId || 'default');
         MEMORIES_CACHE_KEY = 'memories_' + (treeId || 'default');
 
+        const refreshMemories = async () => {
+            if (!treeId) return;
+            try {
+                if (window.apiClient && window.apiClient.getMemoriesByTree) {
+                    const apiMemories = await window.apiClient.getMemoriesByTree(treeId);
+                    if (Array.isArray(apiMemories)) {
+                        window.currentTreeMemories = apiMemories.map(normalizeMemory).filter(Boolean);
+                        console.log('[editor] Memories refreshed:', window.currentTreeMemories.length);
+                        if (typeof initCanvas === 'function') initCanvas();
+                        if (typeof updateSidebarStatus === 'function') updateSidebarStatus();
+                    }
+                }
+            } catch (e) {
+                console.warn('[editor] Failed to refresh memories:', e.message);
+            }
+        };
+        window.refreshMemories = refreshMemories;
+
         // ── API 응답 정규화: 공통 유틸 사용
         // 백엔드는 flat camelCase 응답을 반환하므로 mem.data 처리 불필요
         // 저장 계약: window.currentTreeMemories는 항상 이 정규화가 적용된 배열
@@ -756,24 +774,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 momentCountEl.textContent = `순간 ${count}개`;
             }
         };
-
-        const refreshMemories = async () => {
-            if (!treeId) return;
-            try {
-                if (window.apiClient && window.apiClient.getMemoriesByTree) {
-                    const apiMemories = await window.apiClient.getMemoriesByTree(treeId);
-                    if (Array.isArray(apiMemories)) {
-                        window.currentTreeMemories = apiMemories.map(normalizeMemory).filter(Boolean);
-                        console.log('[editor] Memories refreshed:', window.currentTreeMemories.length);
-                        initCanvas();
-                        updateSidebarStatus();
-                    }
-                }
-            } catch (e) {
-                console.warn('[editor] Failed to refresh memories:', e.message);
-            }
-        };
-        window.refreshMemories = refreshMemories;
 
         // 현재 편집 중인 메모리 데이터 저장
         let currentEditingMemory = null;
