@@ -11,6 +11,8 @@
  */
 
 (function() {
+  var myTreesUI = window.LoveBudMyTreesUI || null;
+
   // ── Toast utility (공통 UI 사용) ──────────────────────────────────────────
   function showToast(message, type) {
     if (window.LoveBudUI?.showToast) {
@@ -182,6 +184,9 @@
 
   // ── Close all dropdowns ───────────────────────────────────────────────────
   function closeAllDropdowns() {
+    if (myTreesUI && typeof myTreesUI.closeAllDropdowns === 'function') {
+      return myTreesUI.closeAllDropdowns();
+    }
     document.querySelectorAll('.tree-card-dropdown').forEach(function(dd) {
       dd.classList.remove('show');
     });
@@ -189,6 +194,9 @@
 
   // ── Mini tree SVG for card thumbnails ───────────────────────────────────
   function buildMiniTreeSVG() {
+    if (myTreesUI && typeof myTreesUI.buildMiniTreeSVG === 'function') {
+      return myTreesUI.buildMiniTreeSVG();
+    }
     return [
       '<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">',
         '<defs>',
@@ -198,18 +206,14 @@
             '<stop offset="100%" style="stop-color:#904951;stop-opacity:1" />',
           '</linearGradient>',
         '</defs>',
-        '<!-- Trunk -->',
         '<path d="M 100 180 Q 98 140 100 110 Q 102 80 95 50" stroke="url(#trunkGrad)" stroke-width="6" fill="none" stroke-linecap="round"/>',
-        '<!-- Branches -->',
         '<path d="M 100 130 Q 70 120 55 95 Q 45 75 50 55" stroke="#c97b83" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.8"/>',
         '<path d="M 100 110 Q 130 100 145 80 Q 155 65 150 45" stroke="#c97b83" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.8"/>',
         '<path d="M 98 80 Q 75 70 65 50 Q 58 35 62 20" stroke="#c97b83" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.7"/>',
-        '<!-- Nodes -->',
         '<circle cx="50" cy="55" r="10" fill="white" stroke="#e8d0d3" stroke-width="1.5"/>',
         '<circle cx="150" cy="45" r="10" fill="white" stroke="#e8d0d3" stroke-width="1.5"/>',
         '<circle cx="62" cy="20" r="8" fill="white" stroke="#e8d0d3" stroke-width="1.5"/>',
         '<circle cx="95" cy="50" r="12" fill="white" stroke="#e8d0d3" stroke-width="1.5"/>',
-        '<!-- Glow -->',
         '<ellipse cx="100" cy="170" rx="30" ry="10" fill="none" stroke="#904951" stroke-width="1" opacity="0.15" stroke-dasharray="4,4"/>',
       '</svg>'
     ].join('');
@@ -217,10 +221,33 @@
 
    // ── Render tree cards grid + 관리 요약 ───────────────────────────────────────────────
    function renderTrees(trees) {
+     if (myTreesUI && typeof myTreesUI.renderTrees === 'function') {
+       return myTreesUI.renderTrees(trees, {
+         setState: setState,
+         stateEnum: STATE,
+         setLastTreesData: function(value) { lastTreesData = value; },
+         updateManageSummary: function(nextTrees, uiOptions) {
+           return updateManageSummary(nextTrees, uiOptions);
+         },
+         buildTreeCard: function(tree, uiOptions) {
+           return buildTreeCard(tree, uiOptions);
+         },
+         normalizeTree: function(tree) {
+           return window.LoveBudNormalize?.normalizeTree(tree);
+         },
+         onRename: renameTree,
+         onDelete: deleteTree,
+         onNavigate: function(normalizedTree) {
+           window.location.href = 'editor.html?treeId=' + encodeURIComponent(normalizedTree.id);
+         },
+         closeAllDropdowns: closeAllDropdowns,
+         i18n: window.t || function(k) { return k; }
+       });
+     }
+
      var container = document.getElementById('state-loaded');
      if (!container) return;
 
-     // 📌 관리 요약 바 업데이트
      updateManageSummary(trees);
 
      if (!trees || trees.length === 0) {
@@ -272,38 +299,54 @@
   }
 
   // 📌 관리 요약 바 업데이트
-  function updateManageSummary(trees) {
+  function updateManageSummary(trees, uiOptions) {
+    if (myTreesUI && typeof myTreesUI.updateManageSummary === 'function' && !uiOptions) {
+      return myTreesUI.updateManageSummary(trees, {
+        setLastTreesData: function(value) { lastTreesData = value; }
+      });
+    }
+
     var summaryBar = document.getElementById('manageSummaryBar');
     if (!summaryBar || !trees || trees.length === 0) {
       if (summaryBar) summaryBar.style.display = 'none';
       return;
     }
-    
-    // 📌 데이터를 정렬을 위해 저장
+
     lastTreesData = trees;
-    
-    // 트리 수 계산
+
     var total = trees.length;
     var publicCount = trees.filter(function(t) { return t.visibility === 'public'; }).length;
     var privateCount = total - publicCount;
-    
-    // 요소 업데이트
+
     var totalEl = document.getElementById('totalTreesCount');
     var publicEl = document.getElementById('publicTreesCount');
     var privateEl = document.getElementById('privateTreesCount');
-    
+
     if (totalEl) totalEl.textContent = total;
     if (publicEl) publicEl.textContent = publicCount;
     if (privateEl) privateEl.textContent = privateCount;
-    
-    // 요약 바 표시
+
     summaryBar.style.display = 'flex';
   }
 
-  function buildTreeCard(tree) {
+  function buildTreeCard(tree, uiOptions) {
+    if (myTreesUI && typeof myTreesUI.buildTreeCard === 'function' && !uiOptions) {
+      return myTreesUI.buildTreeCard(tree, {
+        i18n: window.t || function(k) { return k; },
+        normalizeTree: function(nextTree) {
+          return window.LoveBudNormalize?.normalizeTree(nextTree);
+        },
+        onRename: renameTree,
+        onDelete: deleteTree,
+        onNavigate: function(normalizedTree) {
+          window.location.href = 'editor.html?treeId=' + encodeURIComponent(normalizedTree.id);
+        },
+        closeAllDropdowns: closeAllDropdowns
+      });
+    }
+
     var i18n = window.t || function(k) { return k; };
 
-    // Tree 정규화 (공통 유틸 사용)
     var normalizedTree = window.LoveBudNormalize?.normalizeTree(tree);
     if (!normalizedTree) {
       console.warn('[my-trees] LoveBudNormalize not loaded, using local fallback');
@@ -315,41 +358,33 @@
       };
     }
 
-    // Card container (was <a>, now <div> to allow menu button)
     var card = document.createElement('div');
     card.className = 'tree-card';
     card.style.cursor = 'pointer';
 
-    // Click card to go to editor (excluding menu button area)
     card.addEventListener('click', function(e) {
-      // Don't navigate if clicking menu or dropdown
       if (e.target.closest('.tree-card-menu') || e.target.closest('.tree-card-dropdown')) {
         return;
       }
       window.location.href = 'editor.html?treeId=' + encodeURIComponent(normalizedTree.id);
     });
 
-    // Visibility badge
     var visClass = normalizedTree.visibility === 'public' ? 'public' : 'private';
     var visLabel = normalizedTree.visibility === 'public' ? i18n('visibility_public') : i18n('visibility_private');
 
-    // Title 및 날짜 (정규화된 값 사용)
     var title = normalizedTree.title;
     var date = normalizedTree.updatedAt || '';
     if (date) {
       date = date.slice(0, 10).replace(/-/g, '.');
     }
 
-    // Menu button HTML
     var menuBtnId = 'menuBtn_' + normalizedTree.id;
     var dropdownId = 'dropdown_' + normalizedTree.id;
 
     card.innerHTML = [
-      // Menu button (⋮)
       '<button class="tree-card-menu" id="' + menuBtnId + '" type="button">',
         '<span class="material-symbols-outlined" style="font-size:18px;color:#666;">more_vert</span>',
       '</button>',
-      // Dropdown menu
       '<div class="tree-card-dropdown" id="' + dropdownId + '">',
         '<div class="dropdown-item rename" data-action="rename">',
           '<span class="material-symbols-outlined" style="font-size:16px;">edit</span>',
@@ -360,7 +395,6 @@
           i18n('delete') || '삭제',
         '</div>',
       '</div>',
-      // Card content
       '<div class="tree-card-thumb">' + buildMiniTreeSVG() + '</div>',
       '<div class="tree-card-info">',
         '<div class="tree-card-title">' + escapeHtml(title) + '</div>',
@@ -374,36 +408,30 @@
       '</div>'
     ].join('');
 
-    // Setup menu button click
     setTimeout(function() {
       var menuBtn = document.getElementById(menuBtnId);
       var dropdown = document.getElementById(dropdownId);
-      
+
       if (menuBtn && dropdown) {
         menuBtn.addEventListener('click', function(e) {
           e.preventDefault();
           e.stopPropagation();
-          
-          // Close other dropdowns
           closeAllDropdowns();
-          
-          // Toggle this dropdown
           dropdown.classList.toggle('show');
         });
 
-        // Dropdown item clicks
         dropdown.querySelectorAll('.dropdown-item').forEach(function(item) {
           item.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
-            
+
             var action = this.getAttribute('data-action');
             if (action === 'rename') {
               renameTree(normalizedTree.id, title);
             } else if (action === 'delete') {
               deleteTree(normalizedTree.id, title);
             }
-            
+
             closeAllDropdowns();
           });
         });
@@ -503,6 +531,9 @@
 
   // ── Escape HTML ──────────────────────────────────────────────────────────
   function escapeHtml(str) {
+    if (myTreesUI && typeof myTreesUI.escapeHtml === 'function') {
+      return myTreesUI.escapeHtml(str);
+    }
     if (!str) return '';
     return String(str)
       .replace(/&/g, '&amp;')
