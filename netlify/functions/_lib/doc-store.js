@@ -231,14 +231,7 @@ async function updateMemory(memoryId, patch) {
   if (patch.title !== undefined) { p.push(patch.title); f.push(`title = $${p.length}`); }
   if (patch.memo !== undefined) { p.push(patch.memo); f.push(`memo = $${p.length}`); }
   if (patch.artist !== undefined) { p.push(patch.artist); f.push(`artist = $${p.length}`); }
-  if (patch.source !== undefined) { p.push(patch.source); f.push(`source = $${p.length}`); }
-  if (patch.sourceUrl !== undefined) { p.push(patch.sourceUrl); f.push(`source_url = $${p.length}`); }
-  if (patch.sourceType !== undefined) { p.push(patch.sourceType); f.push(`source_type = $${p.length}`); }
-  if (patch.thumbnail !== undefined) { p.push(patch.thumbnail); f.push(`thumbnail = $${p.length}`); }
-  if (patch.timestamp !== undefined) { p.push(patch.timestamp); f.push(`timestamp = $${p.length}`); }
   if (patch.visibility !== undefined) { p.push(patch.visibility); f.push(`visibility = $${p.length}`); }
-  if (patch.parentId !== undefined) { p.push(patch.parentId); f.push(`parent_id = $${p.length}`); }
-  if (patch.emotionTags !== undefined) { p.push(JSON.stringify(patch.emotionTags)); f.push(`emotion_tags = $${p.length}`); }
    
   if (!f.length) return getMemory(memoryId);
   p.push(memoryId);
