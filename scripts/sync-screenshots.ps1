@@ -1,5 +1,5 @@
-# LoveBud 테스트 스크린샷 정리 스크립트
-# 사용법: .\scripts\sync-screenshots.ps1 -TestId "bts-newuser-test-2026-04-19-0825"
+# LoveBud Screenshot Sync Script
+# Usage: .\scripts\sync-screenshots.ps1 -TestId "bts-newuser-test-2026-04-19-0824"
 
 param (
     [Parameter(Mandatory=$true)]
@@ -15,36 +15,57 @@ $DestDir = "g:\Ddrive\BatangD\task\workdiary\LoveBud\docs\test-scenarios\results
 
 if (-not (Test-Path $DestDir)) {
     New-Item -ItemType Directory -Path $DestDir -Force | Out-Null
-    Write-Host "디렉토리 생성됨: $DestDir" -ForegroundColor Cyan
+    Write-Host "Directory created: $DestDir" -ForegroundColor Cyan
 }
 
-Write-Host "Brain 루트 및 임시 저장소에서 최신 $Count 개의 스크린샷을 가져오는 중..." -ForegroundColor Yellow
+Write-Host "Scanning Brain root and .tempmediaStorage for screenshots..." -ForegroundColor Yellow
 
-# 루트와 .tempmediaStorage 모두에서 검색
-$Files = Get-ChildItem -Path $BrainDir, $TempDir -Filter *.png -ErrorAction SilentlyContinue | 
-         Where-Object { $_.Name -like "step*" } |
-         Sort-Object LastWriteTime -Descending | 
-         Select-Object -First $Count
+# Patterns to find: 01_home, 02_login, 03_tree, 04_node, 05_final, step*
+$Patterns = @("01_home*", "02_login*", "03_tree*", "04_node*", "05_final*", "step*")
+$Files = @()
+
+foreach ($Pattern in $Patterns) {
+    $Matched = Get-ChildItem -Path $BrainDir, $TempDir -Filter $Pattern -ErrorAction SilentlyContinue
+    if ($Matched) {
+        $Files += $Matched
+    }
+}
+
+# Remove duplicates (if any files are found in both dirs)
+$Files = $Files | Sort-Object FullName -Unique | Sort-Object LastWriteTime -Descending | Select-Object -First $Count
 
 if ($null -eq $Files -or $Files.Count -eq 0) {
-    Write-Error "오류: 복사할 스크린샷을 찾지 못했습니다! 필터(step*)와 디렉토리($BrainDir)를 확인하세요."
+    Write-Error "Error: No screenshots found! Check patterns or directory: $BrainDir"
     exit 1
 }
 
-Write-Host "발견된 파일: $($Files.Count)개" -ForegroundColor Cyan
+Write-Host "Found $($Files.Count) files. Syncing..." -ForegroundColor Cyan
 
-$i = 1
 foreach ($File in ($Files | Sort-Object LastWriteTime)) {
-    $NewName = "step-$($i.ToString('00')).png"
+    # Map pattern back to standard name
+    $NewName = $File.Name
+    if ($File.Name -like "01_home*") { $NewName = "01-home.png" }
+    elseif ($File.Name -like "02_login*") { $NewName = "02-login.png" }
+    elseif ($File.Name -like "03_tree*") { $NewName = "03-tree.png" }
+    elseif ($File.Name -like "04_node*") {
+        # Check if it is node 1, 2, 3, 4
+        if ($File.Name -match "node1") { $NewName = "04-node1.png" }
+        elseif ($File.Name -match "node2") { $NewName = "04-node2.png" }
+        elseif ($File.Name -match "node3") { $NewName = "04-node3.png" }
+        elseif ($File.Name -match "node4") { $NewName = "04-node4.png" }
+        else { $NewName = $File.Name.Replace("_", "-").Split("_")[0] + ".png" }
+    }
+    elseif ($File.Name -like "05_final*") { $NewName = "05-final.png" }
+    elseif ($File.Name -like "step*") { $NewName = $File.Name.Replace("_", "-").Split("_")[0] + ".png" }
+    
     $TargetPath = Join-Path $DestDir $NewName
     
     try {
         Copy-Item $File.FullName -Destination $TargetPath -Force -ErrorAction Stop
         Write-Host "   [OK] $($File.Name) -> $NewName"
     } catch {
-        Write-Error "   [Fail] $($File.Name) 복사 실패: $_"
+        Write-Error "   [Fail] Failed to copy $($File.Name): $_"
     }
-    $i++
 }
 
-Write-Host "`n정리 완료! $TestId 폴더($DestDir)에서 $(($i-1))장의 이미지를 확인하세요." -ForegroundColor Green
+Write-Host "`nSync Complete! Check images in results/$TestId/screenshots" -ForegroundColor Green
