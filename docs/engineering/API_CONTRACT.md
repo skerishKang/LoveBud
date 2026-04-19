@@ -1,12 +1,21 @@
 # LoveBud API 응답 계약
 
-> **버전:** 1.0  
-> **최종 갱신:** 2026-04-18  
+> **버전:** 1.1  
+> **최종 갱신:** 2026-04-20  
 > **관련 커밋:** `0230475`, `bb9741b`, `bb9e663`
 
 ---
 
-## 1. 개요 (왜 `{id, data}`를 버렸는가)
+## 1. 개요
+
+> ⚠️ **이행기(Migration) 상태 안내**
+> 
+> 현재 표준 응답 계약은 **flat camelCase**로 확정되었습니다.
+> 다만 클라이언트 런타임에는 snake_case 및 legacy `{id, data}` 형태를 수용하는 이행기 호환용 fallback이 일부 남아 있습니다.
+> 
+> - 신규 API, 문서, 테스트는 flat camelCase만 정식 계약으로 간주합니다.
+> - fallback 제거 전에는 관련 엔드포인트 응답 스냅샷 또는 계약 테스트를 먼저 고정해야 합니다.
+> - 목표: `/community/trees`, `/community/memories` 및 주요 API가 flat camelCase만 반환하면 클라이언트 fallback 제거
 
 ### 1.1 문제 배경
 
@@ -154,25 +163,26 @@ const treeId = memory.treeId;
 const normalized = window.LoveBudNormalize.normalizeMemory(apiResponse);
 ```
 
-### 3.3 snake_case 임시 보정
+### 3.3 snake_case 이행기 호환 (Migration-Only)
 
-**원칙:** snake_case는 백엔드에서 이미 camelCase로 변환되어야 합니다.
+**원칙:** 신규 코드와 서버 응답은 flat camelCase만 사용해야 합니다.
 
-**임시 예외:** 백엔드 직렬화기에서 아직 처리되지 않은 필드에 대해서만 `normalizeMemory`에서 보정을 허용합니다.
+**이행기 호환:** 클라이언트 런타임이 아직 legacy snake_case 및 `{id, data}` 형태를 수용하는 것은 이행기 기간 동안만 허용됩니다.
+
+**제거 조건:** `/community/trees`, `/community/memories` 및 주요 API가 flat camelCase만 반환하는 것이 확인되면, `js/utils/normalize.js`와 `js/postgres-client.js`의 transitional fallback을 제거합니다.
 
 ```javascript
-// js/utils/normalize.js
+// js/utils/normalize.js - transitional fallback block
+// Accept legacy snake_case fields during migration only.
+// New code and server responses must prefer flat camelCase only.
 function normalizeMemory(mem) {
   if (!mem || typeof mem !== 'object') return mem;
-  
-  // 이미 camelCase면 그대로 반환
-  if (mem.treeId !== undefined) return mem;
-  
-  // snake_case 보정 (임시)
+
   return {
-    ...mem,
-    treeId: mem.tree_id ?? mem.treeId ?? null,
-    // ... 기타 필드
+    id: mem.id,
+    treeId: mem.treeId || mem.tree_id || null,  // TODO: remove || mem.tree_id after migration
+    parentId: mem.parentId ?? mem.parent_id ?? null,  // TODO: remove ?? mem.parent_id
+    // ...
   };
 }
 ```
@@ -235,11 +245,20 @@ const response = serializeTree(internal);
 
 ### 6.1 snake_case fallback 완전 제거 검토
 
-**현재:** 직렬화기와 normalize에서 snake_case/camelCase 병행 지원
+**현재:** 직렬화기와 normalize에서 snake_case/camelCase 병행 지원 (이행기 호환)
 **목표:** 백엔드는 camelCase만, 프론트는 별도 변환 불필요
-**검증 필요:**
-- 모든 API 엔드포인트가 serializers를 거치는지
-- DB에서 꺼낸 raw 데이터가 어디까지 흘러가는지
+
+**제거 조건 (완료 기준):**
+1. `/community/trees`, `/community/memories` 엔드포인트가 flat camelCase만 반환
+2. `/api/trees/*`, `/api/memories/*` 엔드포인트가 flat camelCase만 반환
+3. mock-data.js, cache 저장 데이터가 flat camelCase로 정리됨
+4. 관련 테스트 스냅샷이 flat camelCase 기준으로 고정됨
+
+**제거 대상 파일 및 코드:**
+- `js/utils/normalize.js`: snake_case fallback 블록
+- `js/postgres-client.js`: `getPublicTrees()` 내 `{id,data}` wrapper 및 snake_case fallback
+
+**목표 시점:** 위 제거 조건 충족 후 즉시 진행 (마일스톤: TBD)
 
 ### 6.2 normalizeMemory 역할 축소
 

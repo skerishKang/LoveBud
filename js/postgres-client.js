@@ -386,6 +386,12 @@ function isMockFallbackEnabled() {
          * API 우선, 실패 시 mock-data.js의 public trees fallback
          * Note: browse용 tree view model을 반환 (memories, emotionTags, theme 등 포함)
          * Updated: combines /community/trees + /community/memories to build view model
+         *
+         * Transitional contract note:
+         * - target response shape is flat camelCase
+         * - current runtime still accepts legacy `{ id, data }` wrappers and snake_case fields
+         * - this compatibility is migration-only and should be removed once
+         *   /community/trees and /community/memories are confirmed to return flat camelCase only
          */
         getPublicTrees: async () => {
             return withFallback(
@@ -416,6 +422,7 @@ function isMockFallbackEnabled() {
                     });
 
                     // 4) browse용 view model 생성
+                    // TODO: Remove transitional fallbacks after API returns flat camelCase only
                     return validTrees.map((tree) => {
                         const t = tree?.data || tree || {};
                         const mems = grouped[t.id || tree.id] || [];
