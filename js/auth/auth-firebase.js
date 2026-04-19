@@ -102,14 +102,13 @@
     var getCachedAuthUser = options && options.getCachedAuthUser;
     var fireAuthReadyCallbacks = options && options.fireAuthReadyCallbacks;
 
-    var isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-    var cachedUser = typeof getCachedAuthUser === 'function' ? getCachedAuthUser() : null;
-
+var cachedUser = typeof getCachedAuthUser === 'function' ? getCachedAuthUser() : null;
     if (typeof markAuthReady === 'function') {
       markAuthReady();
     }
-
-    var user = isLoggedIn ? (cachedUser || { uid: 'offline', email: 'offline@example.com' }) : null;
+    // Do not fabricate a logged-in user from localStorage.isLoggedIn.
+    // Offline mode may use a previously confirmed cached user only.
+    var user = cachedUser && cachedUser.uid ? cachedUser : null;
 
     if (typeof updateNavUI === 'function') {
       updateNavUI(user);

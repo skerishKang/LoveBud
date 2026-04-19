@@ -9,6 +9,46 @@ const API_BASE = '/api';
 const DEBUG = false;
 const AUTH_TOKEN_KEY = 'lovebud_auth_token';
 const AUTH_CONFIRMED_KEY = 'lovebud_auth_confirmed';
+const AUTH_CACHE_KEY = 'lovebud_auth_cache';
+
+function getCachedAuthUser() {
+  try {
+    const raw = localStorage.getItem(AUTH_CACHE_KEY);
+    if (!raw || raw === 'null') return null;
+    const parsed = JSON.parse(raw);
+    return parsed && parsed.uid ? parsed : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function hasConfirmedAuthSession() {
+  try {
+    if (localStorage.getItem(AUTH_CONFIRMED_KEY) !== 'true') return false;
+    return !!getCachedAuthUser();
+  } catch (e) {
+    return false;
+  }
+}
+
+function shouldWaitLongerForAuth() {
+  try {
+    if (hasConfirmedAuthSession()) return true;
+    if (window.__lovebudAuthReady === true) return false;
+    if (typeof firebase !== 'undefined' && firebase.auth) return true;
+  } catch (e) {}
+  return false;
+}
+
+function endpointLikelyRequiresAuth(endpoint) {
+  return !String(endpoint || '').startsWith('/community/');
+}
+
+async function waitForAuthToken(extraMs) {
+  const waitMs = Number(extraMs || 0);
+  if (waitMs <= 0) return;
+  await new Promise(resolve => setTimeout(resolve, waitMs));
+}
 
 function isMockFallbackEnabled() {
   return window.LoveBudRuntimeFlags?.isMockFallbackEnabled
@@ -75,7 +115,7 @@ function isMockFallbackEnabled() {
     }
 
     // Helper to get Firebase Auth Token with retry - cached token first
-    async function getAuthHeaders() {
+    async function getAuthHeaders(options = {}) {
         const headers = {
             'Content-Type': 'application/json'
         };
@@ -88,21 +128,27 @@ function isMockFallbackEnabled() {
             return headers;
         }
 
-        // 2. Firebase Auth 및 auth.js가 준비될 때까지 MVP 기준 짧게 대기 (100ms × 5회 = 500ms)
-        // confirmed session cache가 있으면 1단계에서 바로 반환되므로 이 경로는 후순위
+        // 2. Firebase/Auth 준비를 기다림
+        // - 기본은 짧게
+        // - confirmed auth cache 또는 auth init 진행 정황이 있으면 더 길게 대기
         let attempts = 0;
-        const maxAttempts = 5;
         const AUTH_READY_FLAG = '__lovebudAuthReady';
+        const forceLongWait = !!options.forceLongWait;
+        const shouldLongWait = forceLongWait || shouldWaitLongerForAuth();
+        const maxAttempts = shouldLongWait ? 20 : 5; // 100ms * 20 = 2s
 
         while (attempts < maxAttempts) {
-            // auth.js의 ready 플래그와 firebase 유저 상태 동시 확인
+            const nextCachedToken = getCachedTokenRecord();
+            if (nextCachedToken && nextCachedToken.token) {
+                headers['Authorization'] = `Bearer ${nextCachedToken.token}`;
+                if (DEBUG) console.log('[apiClient] Using refreshed cached auth token');
+                return headers;
+            }
             if (window[AUTH_READY_FLAG] && window.firebase && firebase.auth) {
                 const user = firebase.auth().currentUser;
                 if (user) {
                     try {
-                        const tokenResult = typeof user.getIdTokenResult === 'function'
-                            ? await user.getIdTokenResult()
-                            : null;
+                        const tokenResult = typeof user.getIdTokenResult === 'function' ? await user.getIdTokenResult() : null;
                         const token = tokenResult ? tokenResult.token : await user.getIdToken();
                         if (token) {
                             headers['Authorization'] = `Bearer ${token}`;
@@ -111,37 +157,57 @@ function isMockFallbackEnabled() {
                             return headers;
                         }
                     } catch (error) {
-                        console.warn("[apiClient] Failed to get Firebase Auth token:", error);
+                        console.warn('[apiClient] Failed to get Firebase Auth token:', error);
                         break;
                     }
                 } else {
-                    // Ready 되었으나 유저가 없는 경우 (Anonymous or Not logged in)
+                    // auth ready but no actual user
                     if (DEBUG) console.log(`[apiClient] Auth ready but no user found on attempt ${attempts + 1}`);
                     return headers;
                 }
             }
-            // 아직 준비되지 않음 - MVP 기준 짧게 대기 후 재시도
             await new Promise(resolve => setTimeout(resolve, 100));
             attempts++;
         }
 
-        if (DEBUG) console.warn("[apiClient] Auth headers fallback to public (max attempts reached)");
+        if (DEBUG) console.warn('[apiClient] Auth headers fallback to public (max attempts reached)');
         return headers;
     }
 
     // Core fetch logic with error handling
     async function apiFetch(endpoint, options = {}) {
         const authHeaders = await getAuthHeaders();
-        const config = {
+        const hadAuthHeader = !!authHeaders.Authorization;
+        const buildConfig = (baseHeaders) => ({
             ...options,
             headers: {
-                ...authHeaders,
+                ...baseHeaders,
                 ...options.headers
             }
-        };
+        });
+        let config = buildConfig(authHeaders);
 
         try {
-            const response = await fetch(`${API_BASE}${endpoint}`, config);
+            let response = await fetch(`${API_BASE}${endpoint}`, config);
+
+            // If a private-looking endpoint failed without Authorization, and we have
+            // confirmed-auth signals locally, wait once more for token readiness and retry.
+            if (
+                (response.status === 401 || response.status === 403) &&
+                !hadAuthHeader &&
+                endpointLikelyRequiresAuth(endpoint) &&
+                hasConfirmedAuthSession()
+            ) {
+                if (DEBUG) {
+                    console.warn(`[apiClient] ${endpoint} got ${response.status} without auth header; retrying after auth wait`);
+                }
+                await waitForAuthToken(1200);
+                const retryHeaders = await getAuthHeaders({ forceLongWait: true });
+                if (retryHeaders.Authorization) {
+                    config = buildConfig(retryHeaders);
+                    response = await fetch(`${API_BASE}${endpoint}`, config);
+                }
+            }
 
             if (!response.ok) {
                 let errorMsg = `HTTP Error ${response.status}`;
@@ -157,7 +223,6 @@ function isMockFallbackEnabled() {
             return await response.json();
         } catch (error) {
             console.error(`[apiClient] API fetch failed for ${endpoint}:`, error.message);
-            // Structured so UI scripts can catch this error and fallback to mock-data.js if needed.
             throw error;
         }
     }
