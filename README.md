@@ -8,11 +8,15 @@
 
 ## 현재 MVP 페이지
 
+현재 저장소의 실제 경로 기준 주요 페이지는 다음과 같습니다.
+
 - `index.html` — 홈/랜딩
-- `search.html` — 공개 트리 둘러보기
-- `detail.html` — 메모리 상세
-- `editor.html` — 트리 편집
-- `login.html` — Firebase Auth
+- `pages/search.html` — 공개 러브트리 둘러보기
+- `pages/detail.html` — 메모리 상세
+- `pages/editor.html` — 트리 편집
+- `pages/login.html` — Firebase Auth
+
+> 문서의 페이지 경로 표기는 실제 저장소 파일 경로를 기준으로 합니다.
 
 ## 문서 시작점
 
