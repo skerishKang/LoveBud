@@ -881,10 +881,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const imgWrapper = document.createElement('div');
             imgWrapper.className = 'node-img-wrapper';
+            imgWrapper.style.position = 'relative';
+
+            const skeleton = document.createElement('div');
+            skeleton.className = 'node-skeleton';
+            imgWrapper.appendChild(skeleton);
 
             const img = document.createElement('img');
             img.src = safeUrl(mem.thumbnail, { allowDataImage: true }) || '';
             img.alt = mem.title || '';
+            
+            img.onload = () => {
+                img.classList.add('loaded');
+                skeleton.style.display = 'none';
+            };
+            img.onerror = () => {
+                img.style.display = 'none';
+                skeleton.classList.add('error');
+            };
+            if (img.complete) {
+                img.classList.add('loaded');
+                skeleton.style.display = 'none';
+            }
 
             imgWrapper.appendChild(img);
             card.appendChild(imgWrapper);
