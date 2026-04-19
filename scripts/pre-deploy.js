@@ -2,9 +2,10 @@
 
 /**
  * LoveBud Pre-Deploy Verification
- * v20260416-2
+ * v20260420-1
  *
  * 배포 전 자동 검증 스크립트.
+ * 현재 저장소 구조(pages/*.html, js/*, netlify/functions/*) 기준으로
  * 환경변수/DB/Firebase 의존성 없이 실행 가능한 항목을 우선 검사합니다.
  *
  * 사용법:
@@ -16,6 +17,7 @@
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
+const { execSync } = require('child_process');
 
 const ROOT = path.resolve(__dirname, '..');
 const args = process.argv.slice(2);
