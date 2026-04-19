@@ -414,8 +414,8 @@ function isMockFallbackEnabled() {
                 async () => {
                     // 1) 공개 트리 목록
                     const apiTrees = await apiFetch('/community/trees');
-                    const validTrees = (Array.isArray(apiTrees) ? apiTrees : []).filter((tree) => {
-                        const t = tree?.data || tree || {};
+                    const validTrees = (Array.isArray(apiTrees) ? apiTrees : []).filter((rawTree) => {
+                        const t = unwrapTreeRecord(rawTree);
                         return t.visibility === 'public';
                     });
 
@@ -429,19 +429,18 @@ function isMockFallbackEnabled() {
 
                     // 3) treeId 기준 그룹핑
                     const grouped = {};
-                    publicMemories.forEach((memory) => {
-                        const m = memory?.data || memory || {};
-                        const treeId = m.treeId || m.tree_id;
+                    publicMemories.forEach((rawMemory) => {
+                        const m = unwrapMemoryRecord(rawMemory);
+                        const treeId = getRecordTreeId(m);
                         if (!treeId) return;
                         if (!grouped[treeId]) grouped[treeId] = [];
                         grouped[treeId].push(m);
                     });
 
                     // 4) browse용 view model 생성
-                    // TODO: Remove transitional fallbacks after API returns flat camelCase only
-                    return validTrees.map((tree) => {
-                        const t = tree?.data || tree || {};
-                        const mems = grouped[t.id || tree.id] || [];
+                    return validTrees.map((rawTree) => {
+                        const t = unwrapTreeRecord(rawTree);
+                        const mems = grouped[t.id || rawTree.id] || [];
                         const sortedMems = [...mems].sort((a, b) =>
                             new Date(a.createdAt || a.created_at || a.timestamp || 0) -
                             new Date(b.createdAt || b.created_at || b.timestamp || 0)
@@ -570,5 +569,30 @@ function isMockFallbackEnabled() {
 
     // Expose as a global object
     window.apiClient = apiClient;
+
+    // Transitional helpers for public tree browse
+    function unwrapTreeRecord(tree) {
+        return tree?.data || tree || {};
+    }
+
+    function unwrapMemoryRecord(memory) {
+        return memory?.data || memory || {};
+    }
+
+    function getRecordTreeId(record) {
+        return record.treeId || record.tree_id || null;
+    }
+
+    // Expose internals for testing
+    if (typeof window !== 'undefined') {
+        window.__LoveBudApiClientInternals = {
+            endpointLikelyRequiresAuth,
+            getAuthWaitAttempts,
+            hasConfirmedAuthSession,
+            unwrapTreeRecord,
+            unwrapMemoryRecord,
+            getRecordTreeId,
+        };
+    }
 
 })();
