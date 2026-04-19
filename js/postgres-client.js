@@ -53,26 +53,37 @@ function isMockFallbackEnabled() {
             'Content-Type': 'application/json'
         };
 
-        // Firebase Auth가 준비될 때까지 최대 3초 대기 (500ms × 6회)
+        // Firebase Auth 및 auth.js가 준비될 때까지 최대 5초 대기 (500ms × 10회)
         let attempts = 0;
-        const maxAttempts = 6;
+        const maxAttempts = 10;
+        const AUTH_READY_FLAG = '__lovebudAuthReady';
+
         while (attempts < maxAttempts) {
-            if (window.firebase && firebase.auth && firebase.auth().currentUser) {
-                try {
-                    const token = await firebase.auth().currentUser.getIdToken();
-                    headers['Authorization'] = `Bearer ${token}`;
+            // 1. auth.js의 ready 플래그와 firebase 유저 상태 동시 확인
+            if (window[AUTH_READY_FLAG] && window.firebase && firebase.auth) {
+                const user = firebase.auth().currentUser;
+                if (user) {
+                    try {
+                        const token = await user.getIdToken();
+                        headers['Authorization'] = `Bearer ${token}`;
+                        if (DEBUG) console.log(`[apiClient] Auth token acquired on attempt ${attempts + 1}`);
+                        return headers;
+                    } catch (error) {
+                        console.warn("[apiClient] Failed to get Firebase Auth token:", error);
+                        break;
+                    }
+                } else {
+                    // Ready 되었으나 유저가 없는 경우 (Anonymous or Not logged in)
+                    if (DEBUG) console.log(`[apiClient] Auth ready but no user found on attempt ${attempts + 1}`);
                     return headers;
-                } catch (error) {
-                    console.warn("Failed to get Firebase Auth token:", error);
-                    break;
                 }
             }
-            // Firebase Auth가 아직 준비되지 않음 - 잠시 대기 후 재시도
+            // 아직 준비되지 않음 - 잠시 대기 후 재시도
             await new Promise(resolve => setTimeout(resolve, 500));
             attempts++;
         }
 
-        // 토큰 획득 실패 - 인증 없이 진행 (public API용)
+        if (DEBUG) console.warn("[apiClient] Auth headers fallback to public (max attempts reached)");
         return headers;
     }
 
