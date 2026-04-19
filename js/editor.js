@@ -78,6 +78,13 @@ document.addEventListener('DOMContentLoaded', () => {
         window.location.href = loginUrl;
     };
 
+    // ── i18n 결과가 raw key일 때를 방어하는 safe fallback ──
+    const safeI18nText = (i18nFn, key, fallback) => {
+        const result = i18nFn(key);
+        if (!result || result === key) return fallback;
+        return result;
+    };
+
     const syncCurrentTreeData = (tree) => {
         window.currentTreeData = {
             ...tree,
@@ -266,7 +273,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (window.apiClient.createTree) {
                             const i18n = getI18n();
                             const newTree = await window.apiClient.createTree({
-                                title: i18n('default_tree_title'),
+                                title: safeI18nText(i18n, 'default_tree_title', '새 러브트리'),
                                 visibility: 'private'
                             });
                             tree = newTree;
@@ -523,7 +530,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const isPublic = visibility === 'public';
             const visIcon = isPublic ? 'public' : 'lock';
             const visLabel = isPublic ? i18n('visibility_public') : i18n('visibility_private');
-            const visInfo = isPublic ? i18n('share_info') : i18n('private_info');
+            const visInfo = isPublic ? i18n('share_info') : safeI18nText(i18n, 'private_info', '나만 볼 수 있는 트리입니다');
             const visStyle = isPublic
                 ? 'background:rgba(76,175,80,0.1);color:#4caf50;border:1px solid rgba(76,175,80,0.3);'
                 : 'background:rgba(158,158,158,0.1);color:#757575;border:1px solid rgba(158,158,158,0.3);';
@@ -844,16 +851,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (el) selectNode(el, node);
         };
 
-        const drawRoot = () => {
-            const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-            circle.setAttribute("cx", ROOT_X);
-            circle.setAttribute("cy", ROOT_Y);
-            circle.setAttribute("r", "10");
-            circle.setAttribute("fill", "transparent");
-            circle.setAttribute("stroke", "transparent");
-            circle.setAttribute("stroke-width", "0");
-            svg.appendChild(circle);
-        };
+        // drawRoot 제거 - 붉은 점/루트 마커 노출 방지
+        // const drawRoot = () => { ... }
 
         const drawBranch = (startPos, endPos) => {
             const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
@@ -869,6 +868,12 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const drawNode = (mem) => {
+            // 중복 노드 방지: 이미 동일 memory-id가 있으면 skip
+            const existingNode = document.querySelector(`.memory-node[data-memory-id="${mem.id}"]`);
+            if (existingNode) {
+                console.log('[editor] Node already exists, skipping:', mem.id);
+                return;
+            }
             const pos = calcPosition(mem);
             const nodeEl = document.createElement('div');
             nodeEl.className = 'memory-node floating-node';
@@ -930,7 +935,10 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const initCanvas = () => {
-            drawRoot();
+            // 기존 노드 중복 방지: 초기화 전 기존 DOM 노드 제거
+            canvas.querySelectorAll('.memory-node').forEach(n => n.remove());
+            canvas.querySelectorAll('#emptyTreeMessage').forEach(el => el.remove());
+            svg.querySelectorAll('.branch-line').forEach(l => l.remove());
             treeMemories().forEach(node => {
                 if (isRootMemory(node, canonicalRootId)) return; // canonical root만 skip
                 drawNode(node);
@@ -992,15 +1000,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     textEl.textContent = message || i18n('save_saving');
                     indicator.className = 'save-status-indicator saving';
                     indicator.style.display = 'flex';
-                    // saving 상태에서는 시간 표시 숨김
-                    if (timeEl) timeEl.textContent = '';
+                    // saving 상태에서는 시간 영역 완전히 숨김
+                    if (timeEl) timeEl.style.display = 'none';
                     break;
                 case 'saved':
                     iconEl.textContent = 'check_circle';
                     textEl.textContent = message || i18n('save_saved');
                     indicator.className = 'save-status-indicator saved';
                     saveStatusData.lastSaved = new Date();
+                    // saved 상태에서만 시간 영역 표시
                     if (timeEl) {
+                        timeEl.style.display = 'inline';
                         timeEl.textContent = formatTimeAgo(saveStatusData.lastSaved);
                     }
                     saveStatusData.timer = setTimeout(() => {
@@ -1011,8 +1021,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     iconEl.textContent = 'error';
                     textEl.textContent = message || i18n('save_failed');
                     indicator.className = 'save-status-indicator failed';
-                    // failed 상태에서도 시간 표시 숨김
-                    if (timeEl) timeEl.textContent = '';
+                    // failed 상태에서도 시간 영역 완전히 숨김
+                    if (timeEl) timeEl.style.display = 'none';
                     saveStatusData.timer = setTimeout(() => {
                         indicator.style.display = 'none';
                     }, 5000);
