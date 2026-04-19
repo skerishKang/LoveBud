@@ -511,36 +511,47 @@
       .replace(/"/g, '&quot;');
   }
 
-  // ── Auth guard: load trees on auth ready ─────────────────────────────────
-  function startMyTrees(user) {
-    if (!user) {
-      // No Firebase user - check confirmed auth cache before redirect
-      var cachedUser = null;
-      try {
-        if (localStorage.getItem('lovebud_auth_confirmed') === 'true') {
-          var raw = localStorage.getItem('lovebud_auth_cache');
-          if (raw && raw !== 'null') {
-            cachedUser = JSON.parse(raw);
-          }
-        }
-      } catch (e) {}
-      
-      if (!cachedUser || !cachedUser.uid) {
-        window.location.href = 'login.html?redirect=my-trees.html';
-        return;
-      }
-      // cached auth 있으면 아래로 진행
-    }
-
-     // Setup header create button (always visible CTA)
-     setupHeaderCreateButton();
-
-     // Initial load (shows loading state automatically)
-     loadTrees();
-   }
-
   // ── 캐시 키 상수 ───────────────────────────────────────────────────────
   var TREES_CACHE_KEY = 'my_trees_list';
+  var TREE_DETAIL_CACHE_KEY = 'tree_detail_'; // prefix + treeId
+  var TREE_MEMORIES_CACHE_KEY = 'tree_memories_'; // prefix + treeId
+
+  // 첫 번째 트리 상세 정보 preload (fire-and-forget)
+  function preloadFirstTreeDetail(trees) {
+    try {
+      if (!trees || !trees.length || !window.apiClient) return;
+      var firstTree = trees[0];
+      var treeId = firstTree.id || firstTree;
+      if (!treeId) return;
+
+      // 비동기로 tree detail과 memories preload
+      Promise.all([
+        window.apiClient.getTree ? window.apiClient.getTree(treeId).catch(function() {}) : Promise.resolve(),
+        window.apiClient.getMemoriesByTree ? window.apiClient.getMemoriesByTree(treeId).catch(function() {}) : Promise.resolve()
+      ]).then(function(results) {
+        var treeDetail = results[0];
+        var memories = results[1];
+
+        if (treeDetail) {
+          localStorage.setItem(TREE_DETAIL_CACHE_KEY + treeId, JSON.stringify({
+            data: treeDetail,
+            timestamp: Date.now()
+          }));
+        }
+        if (memories && Array.isArray(memories)) {
+          localStorage.setItem(TREE_MEMORIES_CACHE_KEY + treeId, JSON.stringify({
+            data: memories,
+            timestamp: Date.now()
+          }));
+        }
+        console.log('[my-trees] Preloaded first tree detail:', treeId, 'memories:', memories ? memories.length : 0);
+      }).catch(function(err) {
+        console.warn('[my-trees] Preload first tree detail failed:', err.message);
+      });
+    } catch (e) {
+      console.warn('[my-trees] Preload first tree detail error:', e);
+    }
+  }
 
    async function loadTrees() {
      var cache = window.LoveBudCache;
@@ -573,6 +584,9 @@
 
          // Render fresh data (will set state to LOADED or EMPTY)
          renderTrees(trees);
+
+         // 첫 번째 트리 상세 정보 백그라운드 preload (editor 진입 속도 향상)
+         preloadFirstTreeDetail(trees);
        } else {
          // Invalid response format
          console.error('[my-trees] Invalid trees response:', trees);
@@ -592,17 +606,6 @@
            showToast(i18n('myTrees.load_failed') || '트리 목록을 불러오는데 실패했습니다', 'error');
          }
        }
-   }
-
-   // ── Retry button handler ─────────────────────────────────────────────────
-   function setupRetryButton() {
-     var retryBtn = document.getElementById('retryLoadBtn');
-     if (retryBtn) {
-       retryBtn.addEventListener('click', function() {
-         console.log('[my-trees] Retry loading trees');
-         loadTrees();
-       });
-     }
    }
 
   // ── Bootstrap: auth.js가 확정한 인증 상태를 기준으로 시작 ────────────────
