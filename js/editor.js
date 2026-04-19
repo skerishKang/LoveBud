@@ -165,6 +165,71 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const getMyTreesHref = editorPageHelpers.getMyTreesHref || (() => getEditorBasePath() + 'my-trees.html');
 
+    const createInlineMediaResolversFallbacks = () => {
+        const safeUrl = (value, { allowDataImage = false } = {}) => {
+            const raw = String(value || '').trim();
+            if (!raw) return '';
+
+            if (allowDataImage && raw.indexOf('data:image/') === 0) {
+                return raw;
+            }
+
+            try {
+                const url = new URL(raw, window.location.origin);
+                const protocol = String(url.protocol || '').toLowerCase();
+                if (protocol === 'http:' || protocol === 'https:') {
+                    return url.toString();
+                }
+                return '';
+            } catch (e) {
+                return '';
+            }
+        };
+
+        const extractYouTubeIdFallback = (url) => {
+            const patterns = [
+                /(?:v=|\/|youtu\.be\/|shorts\/)([0-9A-Za-z_-]{11})/i,
+                /youtube\.com\/watch\?v=([0-9A-Za-z_-]{11})/i,
+                /youtu\.be\/([0-9A-Za-z_-]{11})/i
+            ];
+            for (var i = 0; i < patterns.length; i += 1) {
+                const match = String(url || '').match(patterns[i]);
+                if (match) return match[1];
+            }
+            return null;
+        };
+
+        const resolveMemoryThumbnail = (memory, quality = 'hqdefault') => {
+            const thumbnail = safeUrl(memory && memory.thumbnail, { allowDataImage: true });
+            if (thumbnail) return thumbnail;
+
+            const sourceUrl = safeUrl(memory && memory.sourceUrl);
+            const sourceType = memory && memory.sourceType || window.LoveBudMedia?.detectSourceType?.(sourceUrl) || 'youtube';
+            if (sourceUrl && sourceType === 'youtube') {
+                const videoId = window.LoveBudMedia?.extractYouTubeId?.(sourceUrl) ||
+                               extractYouTubeIdFallback(sourceUrl);
+                if (videoId) {
+                    return 'https://img.youtube.com/vi/' + videoId + '/' + quality + '.jpg';
+                }
+            }
+            return '';
+        };
+
+        const getThumbnailFallbackChain = (memory) => {
+            const qualities = ['hqdefault', 'mqdefault', 'default'];
+            return qualities.map(function(q) {
+                return resolveMemoryThumbnail(memory, q);
+            });
+        };
+
+        return {
+            safeUrl,
+            extractYouTubeIdFallback,
+            resolveMemoryThumbnail,
+            getThumbnailFallbackChain
+        };
+    };
+
     const escapeHtml = editorHelpers.escapeHtml || ((value) => String(value ?? '')
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
@@ -172,61 +237,12 @@ document.addEventListener('DOMContentLoaded', () => {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;'));
 
-    const safeUrl = editorHelpers.safeUrl || ((value, { allowDataImage = false } = {}) => {
-        const raw = String(value || '').trim();
-        if (!raw) return '';
+    const inlineMediaResolvers = createInlineMediaResolversFallbacks();
 
-        if (allowDataImage && raw.indexOf('data:image/') === 0) {
-            return raw;
-        }
-
-        try {
-            const url = new URL(raw, window.location.origin);
-            const protocol = String(url.protocol || '').toLowerCase();
-            if (protocol === 'http:' || protocol === 'https:') {
-                return url.toString();
-            }
-            return '';
-        } catch (e) {
-            return '';
-        }
-    });
-
-    const resolveMemoryThumbnail = editorHelpers.resolveMemoryThumbnail || ((memory, quality = 'hqdefault') => {
-        const thumbnail = safeUrl(memory && memory.thumbnail, { allowDataImage: true });
-        if (thumbnail) return thumbnail;
-
-        const sourceUrl = safeUrl(memory && memory.sourceUrl);
-        const sourceType = memory && memory.sourceType || window.LoveBudMedia?.detectSourceType?.(sourceUrl) || 'youtube';
-        if (sourceUrl && sourceType === 'youtube') {
-            const videoId = window.LoveBudMedia?.extractYouTubeId?.(sourceUrl) ||
-                           extractYouTubeIdFallback(sourceUrl);
-            if (videoId) {
-                return 'https://img.youtube.com/vi/' + videoId + '/' + quality + '.jpg';
-            }
-        }
-        return '';
-    });
-
-    const extractYouTubeIdFallback = editorHelpers.extractYouTubeIdFallback || ((url) => {
-        const patterns = [
-            /(?:v=|\/|youtu\.be\/|shorts\/)([0-9A-Za-z_-]{11})/i,
-            /youtube\.com\/watch\?v=([0-9A-Za-z_-]{11})/i,
-            /youtu\.be\/([0-9A-Za-z_-]{11})/i
-        ];
-        for (var i = 0; i < patterns.length; i += 1) {
-            const match = String(url || '').match(patterns[i]);
-            if (match) return match[1];
-        }
-        return null;
-    });
-
-    const getThumbnailFallbackChain = editorHelpers.getThumbnailFallbackChain || ((memory) => {
-        const qualities = ['hqdefault', 'mqdefault', 'default'];
-        return qualities.map(function(q) {
-            return resolveMemoryThumbnail(memory, q);
-        });
-    });
+    const safeUrl = editorHelpers.safeUrl || inlineMediaResolvers.safeUrl;
+    const extractYouTubeIdFallback = editorHelpers.extractYouTubeIdFallback || inlineMediaResolvers.extractYouTubeIdFallback;
+    const resolveMemoryThumbnail = editorHelpers.resolveMemoryThumbnail || inlineMediaResolvers.resolveMemoryThumbnail;
+    const getThumbnailFallbackChain = editorHelpers.getThumbnailFallbackChain || inlineMediaResolvers.getThumbnailFallbackChain;
 
     const getYouTubeInputErrorMessage = editorHelpers.getYouTubeInputErrorMessage || ((rawUrl) => {
         const value = String(rawUrl || '').trim();
