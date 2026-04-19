@@ -757,6 +757,24 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
+        const refreshMemories = async () => {
+            if (!treeId) return;
+            try {
+                if (window.apiClient && window.apiClient.getMemoriesByTree) {
+                    const apiMemories = await window.apiClient.getMemoriesByTree(treeId);
+                    if (Array.isArray(apiMemories)) {
+                        window.currentTreeMemories = apiMemories.map(normalizeMemory).filter(Boolean);
+                        console.log('[editor] Memories refreshed:', window.currentTreeMemories.length);
+                        initCanvas();
+                        updateSidebarStatus();
+                    }
+                }
+            } catch (e) {
+                console.warn('[editor] Failed to refresh memories:', e.message);
+            }
+        };
+        window.refreshMemories = refreshMemories;
+
         // 현재 편집 중인 메모리 데이터 저장
         let currentEditingMemory = null;
         let isEditMode = false;
@@ -1443,7 +1461,15 @@ document.addEventListener('DOMContentLoaded', () => {
     var editorStarted = false;
 
     function tryStartEditor(user) {
-        if (editorStarted) return;
+        // 이미 에디터가 시작되었더라도, 유저 정보가 없다가 새로 생겼다면 데이터 재로딩 시도
+        if (editorStarted) {
+            if (user && (!window.currentTreeMemories || window.currentTreeMemories.length <= 1)) {
+                console.log('[editor] Real user detected late, re-fetching data...');
+                // 전역 helper fetchMemories 트리거 (필요 시 정의)
+                if (window.refreshMemories) window.refreshMemories();
+            }
+            return;
+        }
 
         if (!user) {
             // No Firebase user - check confirmed auth cache before redirect
@@ -1465,7 +1491,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         editorStarted = true;
-        console.log('[editor] Auth confirmed, starting editor');
+        console.log('[editor] Auth confirmed, starting editor (user source: ' + (user ? 'firebase' : 'cache') + ')');
         startEditor();
     }
 
