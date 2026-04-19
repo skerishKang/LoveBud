@@ -86,7 +86,7 @@
 | `src/community-comments.js` | 댓글 기능 | 사용 |
 | `src/community-write.js` | 글쓰기 | 사용 |
 | `src/community-runtime.js` | 런타임 | 사용 |
- | `src/community-moderation.js` | moderation | 사용 |
+| `src/community-moderation.js` | moderation | 사용 |
 
 ### 1.7 src/owner - 오너 콘솔 모듈
 
@@ -364,7 +364,7 @@
 5. `src/postgres-client-browser.js` - 브라우저 DB 클라이언트
 6. `src/runtime-config.js` - 런타임 설정
 7. `src/concept-state.js` - 페이지 상태
- 8. `pages/search.html` - 공개 트리 둘러보기
+8. `pages/search.html` - 공개 트리 둘러보기
 9. `pages/my-trees.html` - 마이 트리
 10. `pages/editor.html` - 에디터 (37 스크립트)
 11. `src/editor-bootstrap.js` - 에디터 부트 (위험)
