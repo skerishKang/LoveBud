@@ -439,21 +439,16 @@ document.addEventListener('DOMContentLoaded', () => {
             viewportState.offsetY = Math.round(canvas.clientHeight / 2 - pos.y);
         };
 
-        const centerOnMemory = (mem) => {
-            if (!mem) return;
-            centerOnLogicalPos(calcPosition(mem));
-        };
-
-        const updateSidebarSummary = () => {
-            const treeTitleEl = document.getElementById('sidebarTreeTitle');
-            const momentCountEl = document.getElementById('sidebarMomentCount');
-            if (treeTitleEl) {
-                treeTitleEl.textContent = (window.currentTreeData && window.currentTreeData.title) || '새 러브트리';
             }
-            if (momentCountEl) {
-                const count = treeMemories().filter(m => !isRootMemory(m, canonicalRootId)).length;
-                momentCountEl.textContent = `순간 ${count}개`;
-            }
+        }
+    }
+} catch (e) {
+    console.warn('[editor] API getMemoriesByTree failed:', e.message);
+    if (e.message?.includes('401') || e.message?.includes('403')) {
+        showToast(i18n('data_load_fail_demo'), 'warn');
+    }
+    // API 실패해도 캐시가 있으면 그대로 사용
+}
         };
 
         const bindCanvasPan = () => {
