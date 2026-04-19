@@ -239,9 +239,8 @@ document.addEventListener('DOMContentLoaded', () => {
         return i18n('invalid_youtube') || '유효한 YouTube 링크를 입력해 주세요.';
     });
 
-    const renderTreeLoadError = editorPageHelpers.renderTreeLoadError || (({
+    const createInlineRenderTreeLoadErrorFallback = () => ({
         canvas,
-        detailPanel,
         addBtn,
         errorTitle,
         errorDesc,
@@ -275,7 +274,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (addBtn) addBtn.disabled = true;
-    });
+    };
+
+    const renderTreeLoadError = editorPageHelpers.renderTreeLoadError || createInlineRenderTreeLoadErrorFallback();
 
     const getFirstMockTree = editorTreeHelpers.getFirstMockTree || (() => {
         const mockTrees = typeof getTrees === 'function' ? getTrees() : [];
