@@ -564,7 +564,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     headerEl.innerHTML = `
                         <div style="display:flex;flex-direction:column;gap:8px;">
                             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-                                <span style="font-size:1.1rem;line-height:1.3;font-weight:800;">첫 순간을 기다리고 있어요${localBadge}</span>
+                                <span style="font-size:1.4rem;line-height:1.2;font-weight:900;letter-spacing:-0.03em;color:var(--on-surface);">첫 순간을 기다리고 있어요${localBadge}</span>
                             </div>
                             <div style="font-size:13px;color:var(--on-surface-variant);line-height:1.5;">
                                 아직 선택된 순간이 없습니다. 첫 번째 영상을 추가하면 이 패널에 순간 정보가 표시됩니다.
@@ -582,7 +582,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 ${sectionLabel}
                             </div>
                             <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
-                                <span style="font-size:1.1rem;line-height:1.3;font-weight:800;">${escapeHtml(data.title || '')}${localBadge}</span>
+                                <span style="font-size:1.4rem;line-height:1.2;font-weight:900;letter-spacing:-0.03em;color:var(--on-surface);">${escapeHtml(data.title || '')}${localBadge}</span>
                                 ${shareBtn}
                             </div>
                             ${treeMetaHtml}
@@ -615,6 +615,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const dateEl = document.getElementById('detailDateText');
             if (dateEl) {
                 dateEl.textContent = isEmptyState ? '' : (data?.timestamp || '');
+                dateEl.style.fontSize = '0.85rem';
+                dateEl.style.color = 'var(--on-surface-variant)';
+                dateEl.style.opacity = '0.8';
+                dateEl.style.fontWeight = '500';
             }
 
             const tagsContainer = detailPanel.querySelector('.tags-container');
@@ -635,7 +639,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 noteEl.innerHTML = '';
 
                 const memoBody = document.createElement('div');
-                memoBody.style.lineHeight = '1.6';
+                memoBody.style.lineHeight = '1.7';
+                memoBody.style.fontSize = '0.95rem';
+                memoBody.style.color = 'var(--on-surface)';
                 memoBody.textContent = isEmptyState
                     ? '이 트리는 아직 비어 있습니다. “영상 추가” 버튼으로 첫 순간을 기록해 보세요.'
                     : (data.memo || '');

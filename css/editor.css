@@ -243,12 +243,12 @@ body {
 
 .diary-note {
     background: var(--surface-container-low);
-    padding: 20px;
+    padding: 24px;
     border-radius: 12px;
-    font-style: italic;
-    line-height: 1.6;
-    color: var(--on-surface-variant);
-    font-size: 14px;
+    border-left: 4px solid var(--primary-container);
+    line-height: 1.7;
+    color: var(--on-surface);
+    font-size: 0.95rem;
 }
 
 .panel-footer {
