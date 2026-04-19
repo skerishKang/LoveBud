@@ -745,6 +745,18 @@ document.addEventListener('DOMContentLoaded', () => {
         // 전역에 노출 (메모리 추가 후 업데이트용)
         window.updateDetailPanel = updateDetailPanel;
 
+        const updateSidebarStatus = () => {
+            const treeTitleEl = document.getElementById('sidebarTreeTitle');
+            const momentCountEl = document.getElementById('sidebarMomentCount');
+            if (treeTitleEl) {
+                treeTitleEl.textContent = (window.currentTreeData?.title) || i18n('default_tree_title') || '새 러브트리';
+            }
+            if (momentCountEl) {
+                const count = treeMemories().filter(m => !isRootMemory(m, canonicalRootId)).length;
+                momentCountEl.textContent = `순간 ${count}개`;
+            }
+        };
+
         // 현재 편집 중인 메모리 데이터 저장
         let currentEditingMemory = null;
         let isEditMode = false;
@@ -871,6 +883,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
 
                     showToast(i18n('memory_deleted'), 'success');
+                    updateSidebarStatus();
                 } else {
                     throw new Error('deleteMemory not available');
                 }
@@ -1359,6 +1372,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.setCachedMemories(treeId, window.currentTreeMemories);
                 console.log('[editor] 메모리 추가 후 캐시 저장:', window.currentTreeMemories.length, '개');
             }
+
+            // ── 사이드바 업데이트 ──
+            updateSidebarStatus();
+        };
         };
 
         // 폼 버튼 이벤트 리스너
@@ -1418,6 +1435,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (saveEditBtn) saveEditBtn.addEventListener('click', saveMemoryEdit);
 
         console.log('[editor] Ready — tree:', treeId, 'memories:', treeMemories().length);
+        updateSidebarStatus();
     };
 
     // ── 인증 가드: my-trees.js와 동일한 패턴 ──
