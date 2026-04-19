@@ -234,7 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         ${i18n('retry') || '?�시 ?�도'}
                     </button>
                     <a href="${escapeHtml(getMyTreesHref())}" class="btn-round btn-primary" style="padding:10px 16px;text-decoration:none;">
-                        ${i18n('go_to_my_trees') || '???�리�?가�?}
+                        ${i18n('go_to_my_trees') || '내 트리로 가기'}
                     </a>
                 </div>
             </div>
@@ -284,6 +284,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // treeId가 URL???�으�? �??�리�?직접 조회
             // ??경우 조회 ?�패�??�규 ?�리 ?�성?�로 바꾸�?????
             let treeLoadStatus = 'not_found';
+            let treeLoadErrorMessage = '';
 
             try {
                 if (window.apiClient && window.apiClient.getTree) {
@@ -297,13 +298,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } catch (e) {
                 treeLoadStatus = 'error';
+                treeLoadErrorMessage = String(e?.message || '');
                 console.warn('[editor] Tree from URL load failed:', e.message);
             }
 
             if (!tree) {
+                const authRequired =
+                    /401|Authentication required|Invalid ID token/i.test(treeLoadErrorMessage) ||
+                    (/Access denied/i.test(treeLoadErrorMessage) && !getConfirmedSessionUser());
+
+                if (authRequired) {
+                    showToast(i18n('need_login'), 'error');
+                    redirectToEditorLogin(2000);
+                    return;
+                }
+
                 const errorTitle =
                     treeLoadStatus === 'api_unavailable'
                         ? (i18n('tree_load_fail_title') || '?�리�?불러?????�어??)
+                        : /Access denied/i.test(treeLoadErrorMessage)
+                            ? (i18n('tree_access_denied_title') || '이 러브트리�?열 ???�는 권한???�어??)
                         : treeLoadStatus === 'error'
                             ? (i18n('tree_load_error_title') || '?�리�??�는 �?문제가 발생?�어??)
                             : (i18n('tree_not_found_title') || '?�리�?찾을 ???�어??);
@@ -311,6 +325,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const errorDesc =
                     treeLoadStatus === 'api_unavailable'
                         ? (i18n('tree_load_api_unavailable') || '?�리 조회 API�??�용?????�는 ?�태?�니?? ?�시 ???�시 ?�도?�주?�요.')
+                        : /Access denied/i.test(treeLoadErrorMessage)
+                            ? (i18n('tree_access_denied_desc') || '비공개 러브트리이거나 내 계정에 권한�?없어?? ?�시 ?�인???�른 계정으�?로그인?�해 보세??)
                         : treeLoadStatus === 'error'
                             ? (i18n('tree_load_error_desc') || '?�시?�인 ?�버 문제 ?�는 ?�근 권한 문제?????�습?�다. ?�시 ?�도?�거?????�리 목록?�로 ?�아가 주세??')
                             : (i18n('tree_load_not_found_desc') || '?�못??링크?�거???�근 권한???�는 ?�리?�니??');
