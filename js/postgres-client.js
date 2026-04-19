@@ -320,15 +320,15 @@ function isMockFallbackEnabled() {
          * 8. Fetch public trees only (search/둘러보기 화면용)
          * API 우선, 실패 시 mock-data.js의 public trees fallback
          * Note: browse용 tree view model을 반환 (memories, emotionTags, theme 등 포함)
-         * 2024-04-17 updated: trees API already includes payload.nodes, no need for separate memories call
+         * Updated: combines /community/trees + /community/memories to build view model
          */
         getPublicTrees: async () => {
             return withFallback(
                 async () => {
-                    // 1. public 커뮤니티 트리 목록 조회 (전용 API)
+                    // 1) 공개 트리 목록
                     const apiTrees = await apiFetch('/community/trees');
-                    const validTrees = (Array.isArray(apiTrees) ? apiTrees : []).filter(tree => {
-                        const t = tree.data || tree;
+                    const validTrees = (Array.isArray(apiTrees) ? apiTrees : []).filter((tree) => {
+                        const t = tree?.data || tree || {};
                         return t.visibility === 'public';
                     });
 
@@ -336,81 +336,96 @@ function isMockFallbackEnabled() {
                         return [];
                     }
 
-                    // 2. 각 트리의 payload.nodes에서 memories 추출 및 그룹핑
-                    const treesWithMemories = validTrees.map(tree => {
-                        const t = tree.data || tree;
-                        const payload = t.payload || {};
-                        const nodes = Array.isArray(payload.nodes) ? payload.nodes : [];
+                    // 2) 공개 메모리 목록
+                    const apiMemories = await apiFetch('/community/memories');
+                    const publicMemories = Array.isArray(apiMemories) ? apiMemories : [];
 
-                        // public memories만 (payload의 모든 node는 이미 public이어야 함)
-                        // 원본 배열 mutation 방지
-                        const sortedMems = [...nodes].sort((a, b) =>
-                            new Date(a.createdAt || a.timestamp || 0) - new Date(b.createdAt || b.timestamp || 0)
+                    // 3) treeId 기준 그룹핑
+                    const grouped = {};
+                    publicMemories.forEach((memory) => {
+                        const m = memory?.data || memory || {};
+                        const treeId = m.treeId || m.tree_id;
+                        if (!treeId) return;
+                        if (!grouped[treeId]) grouped[treeId] = [];
+                        grouped[treeId].push(m);
+                    });
+
+                    // 4) browse용 view model 생성
+                    return validTrees.map((tree) => {
+                        const t = tree?.data || tree || {};
+                        const mems = grouped[t.id || tree.id] || [];
+                        const sortedMems = [...mems].sort((a, b) =>
+                            new Date(a.createdAt || a.created_at || a.timestamp || 0) -
+                            new Date(b.createdAt || b.created_at || b.timestamp || 0)
                         );
 
-                        // 감정 태그 수집 (DB 필드명: emotion_tags, API 필드명: emotionTags - 호환성)
-                        const allTags = sortedMems.flatMap(m => (m.emotion_tags || m.emotionTags || [])).filter(Boolean);
+                        const allTags = sortedMems
+                            .flatMap((m) => (m.emotionTags || m.emotion_tags || []))
+                            .filter(Boolean);
                         const uniqueTags = [...new Set(allTags)].slice(0, 3);
 
-                        // 시간 범위 계산 (timestamp 필드)
-                        const timestamps = sortedMems.map(m => m.timestamp).filter(Boolean);
+                        const timestamps = sortedMems.map((m) => m.timestamp).filter(Boolean);
                         const timeRange = timestamps.length >= 2
                             ? `${timestamps[0]} ~ ${timestamps[timestamps.length - 1]}`
                             : (timestamps[0] || 'recently');
 
                         return {
-                            id: tree.id,
-                            title: t.title,
-                            visibility: t.visibility,
-                            createdAt: t.createdAt || t.created_at,
-                            ownerId: t.ownerId || t.owner_id,
+                            id: t.id || tree.id,
+                            title: t.title || '',
+                            visibility: t.visibility || 'private',
+                            createdAt: t.createdAt || t.created_at || null,
+                            ownerId: t.ownerId || t.owner_id || null,
                             memories: sortedMems,
                             memoryCount: sortedMems.length,
                             emotionTags: uniqueTags,
-                            timeRange: timeRange,
+                            timeRange,
                             representativeThumbnail: sortedMems[0]?.thumbnail || '',
                             theme: sortedMems[0]?.artist || 'Mixed',
                             stage: sortedMems.length <= 2 ? '입덕' : (sortedMems.length <= 4 ? '성장' : '최애')
                         };
-                    }).filter(t => t.memoryCount > 0);
-
-                    return treesWithMemories;
+                    }).filter((t) => t.memoryCount > 0);
                 },
                 () => {
-                    // Mock fallback: search.js의 buildTreeData와 동일한 로직
                     const allMemories = typeof memories !== 'undefined' ? memories : [];
                     const trees = typeof getTrees === 'function' ? getTrees() : [];
-                    const publicTrees = trees.filter(t => t.visibility === 'public');
+                    const publicTrees = trees.filter((t) => t.visibility === 'public');
 
-                    // memories를 tree별로 그룹핑
                     const grouped = {};
-                    allMemories.filter(m => m.id !== 'root' && m.visibility === 'public').forEach(m => {
-                        const tid = m.treeId || 'ungrouped';
-                        if (!grouped[tid]) grouped[tid] = [];
-                        grouped[tid].push(m);
-                    });
+                    allMemories
+                        .filter((m) => m.id !== 'root' && m.visibility === 'public')
+                        .forEach((m) => {
+                            const tid = m.treeId || 'ungrouped';
+                            if (!grouped[tid]) grouped[tid] = [];
+                            grouped[tid].push(m);
+                        });
 
-                    return publicTrees.map(tree => {
+                    return publicTrees.map((tree) => {
                         const mems = grouped[tree.id] || [];
-                        const sortedMems = [...mems].sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
-                        const allTags = sortedMems.flatMap(m => m.emotionTags || []).filter(Boolean);
+                        const sortedMems = [...mems].sort((a, b) =>
+                            new Date(a.createdAt || a.timestamp || 0) - new Date(b.createdAt || b.timestamp || 0)
+                        );
+                        const allTags = sortedMems
+                            .flatMap((m) => (m.emotionTags || m.emotion_tags || []))
+                            .filter(Boolean);
                         const uniqueTags = [...new Set(allTags)].slice(0, 3);
-                        const timestamps = sortedMems.map(m => m.timestamp).filter(Boolean);
+                        const timestamps = sortedMems.map((m) => m.timestamp).filter(Boolean);
                         const timeRange = timestamps.length >= 2
                             ? `${timestamps[0]} ~ ${timestamps[timestamps.length - 1]}`
                             : (timestamps[0] || 'recently');
 
                         return {
                             ...tree,
+                            createdAt: tree.createdAt || tree.created_at || null,
+                            ownerId: tree.ownerId || tree.owner_id || null,
                             memories: sortedMems,
                             memoryCount: sortedMems.length,
                             emotionTags: uniqueTags,
-                            timeRange: timeRange,
+                            timeRange,
                             representativeThumbnail: sortedMems[0]?.thumbnail || '',
                             theme: sortedMems[0]?.artist || 'Mixed',
                             stage: sortedMems.length <= 2 ? '입덕' : (sortedMems.length <= 4 ? '성장' : '최애')
                         };
-                    }).filter(t => t.memoryCount > 0);
+                    }).filter((t) => t.memoryCount > 0);
                 },
                 'getPublicTrees'
             );
