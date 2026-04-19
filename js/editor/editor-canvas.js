@@ -13,103 +13,148 @@ function createEditorCanvas(deps) {
         onNodeClick
     } = deps;
 
+    const treeId = (window.currentTreeData && window.currentTreeData.id)
+        || new URLSearchParams(window.location.search).get('treeId')
+        || 'default';
+    const layoutStorageKey = 'lovebud_tree_layout_' + treeId;
+
     const viewportState = {
         offsetX: 0,
         offsetY: 0,
         initialized: false,
         isPanning: false,
         startX: 0,
-        startY: 0
+        startY: 0,
+        isDraggingNode: false,
+        dragNodeId: null,
+        dragStartClientX: 0,
+        dragStartClientY: 0,
+        dragStartWorldX: 0,
+        dragStartWorldY: 0,
+        dragMoved: false,
+        controlsBound: false,
+        globalsBound: false,
+        positions: loadStoredPositions()
     };
 
-    const ROOT_X = Math.max(460, Math.round(canvas.clientWidth * 0.42));
-    const ROOT_Y = Math.max(420, Math.round(canvas.clientHeight * 0.52));
-    const RADIUS_L1 = 320;
-    const RADIUS_L2 = 250;
+    const ROOT_RIGHT_GUTTER = 260;
+    const ROOT_BOTTOM_GUTTER = 180;
     const NODE_WIDTH = 108;
-    const MIN_ANGLE_GAP = 40;
+    const NODE_HALF = Math.round(NODE_WIDTH / 2);
 
-    const FIXED_ANGLES = {
-        v1: -60,
-        v2: -130,
-        v3: 10,
-        m2: 130,
-        m3: -170,
-        m4: 70
-    };
+    function loadStoredPositions() {
+        try {
+            const raw = localStorage.getItem(layoutStorageKey);
+            if (!raw || raw === 'null') return {};
+            const parsed = JSON.parse(raw);
+            return parsed && typeof parsed === 'object' ? parsed : {};
+        } catch (e) {
+            return {};
+        }
+    }
 
-    const distributeAngles = (count, baseAngle = -90) => {
+    function persistStoredPositions() {
+        try {
+            localStorage.setItem(layoutStorageKey, JSON.stringify(viewportState.positions));
+        } catch (e) {}
+    }
+
+    function getMetrics() {
+        return {
+            width: Math.max(canvas.clientWidth || 0, 720),
+            height: Math.max(canvas.clientHeight || 0, 520)
+        };
+    }
+
+    function getRootBasePosition() {
+        const metrics = getMetrics();
+        return {
+            x: Math.max(260, Math.min(Math.round(metrics.width * 0.32), metrics.width - ROOT_RIGHT_GUTTER)),
+            y: Math.max(240, Math.min(Math.round(metrics.height * 0.48), metrics.height - ROOT_BOTTOM_GUTTER))
+        };
+    }
+
+    function getRadiusL1() {
+        const metrics = getMetrics();
+        return Math.max(180, Math.min(250, Math.round(metrics.width * 0.20)));
+    }
+
+    function getRadiusL2() {
+        const metrics = getMetrics();
+        return Math.max(130, Math.min(190, Math.round(metrics.width * 0.14)));
+    }
+
+    function distributeAngles(count, baseAngle = -10) {
         if (count <= 0) return [baseAngle];
         if (count === 1) return [baseAngle];
 
-        const safeCount = Math.max(count - 1, 1);
-        const totalSpread = Math.min(300, Math.max(110, safeCount * MIN_ANGLE_GAP));
+        const totalSpread = Math.min(220, Math.max(90, (count - 1) * 36));
         const startAngle = baseAngle - totalSpread / 2;
 
         return Array.from({ length: count }, (_, i) => {
-            const ratio = count === 1 ? 0.5 : i / (count - 1);
-            return startAngle + totalSpread * ratio;
+            return startAngle + (totalSpread * i / (count - 1));
         });
-    };
+    }
 
-    const calcPosition = (mem, visited = new Set()) => {
+    function getWorldPosition(mem, visited = new Set()) {
         const canonicalRootId = getCanonicalRootId();
         const treeMemories = getTreeMemories();
 
+        if (!mem) {
+            return getRootBasePosition();
+        }
+
+        if (viewportState.positions[mem.id]) {
+            return {
+                x: Number(viewportState.positions[mem.id].x) || 0,
+                y: Number(viewportState.positions[mem.id].y) || 0
+            };
+        }
+
         if (isRootMemory(mem, canonicalRootId)) {
-            return { x: ROOT_X, y: ROOT_Y };
+            return getRootBasePosition();
         }
 
         if (visited.has(mem.id)) {
-            console.warn(`Cycle detected at memory ${mem.id}, falling back to root`);
-            return { x: ROOT_X, y: ROOT_Y };
+            return getRootBasePosition();
         }
         visited.add(mem.id);
 
         const parentId = mem.parentId || canonicalRootId;
-        if (parentId === mem.id) {
-            console.warn(`Self-reference detected for ${mem.id}, using root as parent`);
-            return { x: ROOT_X, y: ROOT_Y };
-        }
-
         const siblings = treeMemories.filter((m) => (
-            m.parentId === parentId && !isRootMemory(m, canonicalRootId)
+            (m.parentId || canonicalRootId) === parentId && !isRootMemory(m, canonicalRootId)
         ));
-        const idx = siblings.findIndex((m) => m.id === mem.id);
-        const count = siblings.length;
+        const idx = Math.max(0, siblings.findIndex((m) => m.id === mem.id));
+        const count = Math.max(1, siblings.length);
 
         if (parentId === canonicalRootId) {
-            let angle;
-
-            if (FIXED_ANGLES[mem.id] !== undefined) {
-                angle = FIXED_ANGLES[mem.id];
-            } else if (count > 0) {
-                const angles = distributeAngles(count, -20);
-                angle = angles[idx] !== undefined ? angles[idx] : angles[0];
-            } else {
-                angle = -20;
-            }
-
+            const angles = distributeAngles(count, -10);
+            const angle = angles[idx] !== undefined ? angles[idx] : -10;
+            const rootBase = getRootBasePosition();
+            const radius = getRadiusL1();
             return {
-                x: ROOT_X + RADIUS_L1 * Math.cos(angle * Math.PI / 180),
-                y: ROOT_Y + RADIUS_L1 * Math.sin(angle * Math.PI / 180)
+                x: rootBase.x + radius * Math.cos(angle * Math.PI / 180),
+                y: rootBase.y + radius * Math.sin(angle * Math.PI / 180)
             };
         }
 
         const parent = treeMemories.find((m) => m.id === parentId);
-        const parentPos = parent ? calcPosition(parent, visited) : { x: ROOT_X, y: ROOT_Y };
-
-        let angle;
-        if (count > 0) {
-            const angles = distributeAngles(count, 0);
-            angle = angles[idx] !== undefined ? angles[idx] : (idx / count) * 360;
-        } else {
-            angle = 0;
-        }
+        const parentPos = parent ? getWorldPosition(parent, visited) : getRootBasePosition();
+        const childAngles = distributeAngles(count, 0);
+        const childAngle = childAngles[idx] !== undefined ? childAngles[idx] : 0;
+        const radius = getRadiusL2();
 
         return {
-            x: parentPos.x + RADIUS_L2 * Math.cos(angle * Math.PI / 180),
-            y: parentPos.y + RADIUS_L2 * Math.sin(angle * Math.PI / 180)
+            x: parentPos.x + radius * Math.cos(childAngle * Math.PI / 180),
+            y: parentPos.y + radius * Math.sin(childAngle * Math.PI / 180)
+        };
+    }
+
+    const calcPosition = (mem) => {
+        const world = getWorldPosition(mem);
+        return {
+            x: world.x + viewportState.offsetX,
+            y: world.y + viewportState.offsetY
         };
     };
 
@@ -126,20 +171,41 @@ function createEditorCanvas(deps) {
         svg.appendChild(path);
     };
 
-    const drawNode = (mem) => {
-        const existingNode = document.querySelector(`.memory-node[data-memory-id="${mem.id}"]`);
-        if (existingNode) {
-            console.log('[editor] Node already exists, skipping:', mem.id);
-            return existingNode;
-        }
+    function bindNodeDrag(nodeEl, mem) {
+        nodeEl.addEventListener('mousedown', (e) => {
+            if (e.button !== 0) return;
+            if (e.target.closest('button')) return;
+            e.preventDefault();
+            e.stopPropagation();
 
+            const startWorld = getWorldPosition(mem);
+            viewportState.isDraggingNode = true;
+            viewportState.dragNodeId = mem.id;
+            viewportState.dragStartClientX = e.clientX;
+            viewportState.dragStartClientY = e.clientY;
+            viewportState.dragStartWorldX = startWorld.x;
+            viewportState.dragStartWorldY = startWorld.y;
+            viewportState.dragMoved = false;
+        });
+
+        nodeEl.addEventListener('click', (e) => {
+            if (nodeEl.dataset.suppressClick === '1') {
+                nodeEl.dataset.suppressClick = '';
+                e.preventDefault();
+                e.stopPropagation();
+                return;
+            }
+            onNodeClick(nodeEl, mem);
+        });
+    }
+
+    const drawNode = (mem) => {
         const pos = calcPosition(mem);
-        const nodeHalf = Math.round(NODE_WIDTH / 2);
         const nodeEl = document.createElement('div');
         nodeEl.className = 'memory-node floating-node';
         nodeEl.dataset.memoryId = mem.id;
-        nodeEl.style.left = `${pos.x - nodeHalf}px`;
-        nodeEl.style.top = `${pos.y - nodeHalf}px`;
+        nodeEl.style.left = `${pos.x - NODE_HALF}px`;
+        nodeEl.style.top = `${pos.y - NODE_HALF}px`;
         nodeEl.style.animationDelay = mem.delay || '0s';
 
         const card = document.createElement('div');
@@ -203,15 +269,24 @@ function createEditorCanvas(deps) {
         infoLabel.appendChild(dateEl);
         nodeEl.appendChild(card);
         nodeEl.appendChild(infoLabel);
-        nodeEl.addEventListener('click', () => onNodeClick(nodeEl, mem));
+        bindNodeDrag(nodeEl, mem);
         canvas.appendChild(nodeEl);
 
         return nodeEl;
     };
 
+    function reapplySelection(selectedNodeId) {
+        if (!selectedNodeId) return;
+        const selectedEl = document.querySelector(`.memory-node[data-memory-id="${selectedNodeId}"]`);
+        if (selectedEl) {
+            selectedEl.classList.add('selected');
+        }
+    }
+
     const initCanvas = () => {
         const canonicalRootId = getCanonicalRootId();
         const treeMemories = getTreeMemories();
+        const selectedNodeId = document.querySelector('.memory-node.selected')?.dataset?.memoryId || null;
 
         canvas.querySelectorAll('.memory-node').forEach((node) => node.remove());
         canvas.querySelectorAll('#emptyTreeMessage').forEach((el) => el.remove());
@@ -232,14 +307,82 @@ function createEditorCanvas(deps) {
         });
 
         if (hasMoments) {
-            const selectedMem = createInitialMemory();
+            const selectedMem = selectedNodeId
+                ? treeMemories.find((m) => m.id === selectedNodeId)
+                : createInitialMemory();
             if (selectedMem) {
                 updateDetailPanel(selectedMem);
+                reapplySelection(selectedMem.id);
             }
         }
+
+        bindCanvasPan();
+        bindViewportControls();
+        viewportState.initialized = true;
     };
 
-    const bindCanvasPan = ({ getSelectedNodeId, selectNodeById }) => {
+    function focusNodeById(nodeId) {
+        if (!nodeId) return;
+        const treeMemories = getTreeMemories();
+        const target = treeMemories.find((m) => m.id === nodeId);
+        if (!target) return;
+
+        const world = getWorldPosition(target);
+        const metrics = getMetrics();
+        viewportState.offsetX = Math.round(metrics.width * 0.45 - world.x);
+        viewportState.offsetY = Math.round(metrics.height * 0.42 - world.y);
+        initCanvas();
+        reapplySelection(nodeId);
+    }
+
+    function recenterViewport() {
+        const treeMemories = getTreeMemories();
+        if (!treeMemories.length) {
+            viewportState.offsetX = 0;
+            viewportState.offsetY = 0;
+            initCanvas();
+            return;
+        }
+
+        const points = treeMemories.map((mem) => getWorldPosition(mem));
+        const minX = Math.min(...points.map((p) => p.x));
+        const maxX = Math.max(...points.map((p) => p.x));
+        const minY = Math.min(...points.map((p) => p.y));
+        const maxY = Math.max(...points.map((p) => p.y));
+        const metrics = getMetrics();
+
+        viewportState.offsetX = Math.round(metrics.width * 0.45 - ((minX + maxX) / 2));
+        viewportState.offsetY = Math.round(metrics.height * 0.42 - ((minY + maxY) / 2));
+        initCanvas();
+    }
+
+    function bindViewportControls() {
+        if (viewportState.controlsBound) return;
+        viewportState.controlsBound = true;
+
+        const focusBtn = document.getElementById('focusSelectedBtn');
+        const recenterBtn = document.getElementById('recenterCanvasBtn');
+
+        if (focusBtn) {
+            focusBtn.addEventListener('click', () => {
+                const selectedId = document.querySelector('.memory-node.selected')?.dataset?.memoryId;
+                if (selectedId) {
+                    focusNodeById(selectedId);
+                }
+            });
+        }
+
+        if (recenterBtn) {
+            recenterBtn.addEventListener('click', () => {
+                recenterViewport();
+            });
+        }
+    }
+
+    const bindCanvasPan = () => {
+        if (viewportState.globalsBound) return;
+        viewportState.globalsBound = true;
+
         canvas.addEventListener('mousedown', (e) => {
             if (e.target.closest('.memory-node') || e.target.closest('#addMemoryForm')) return;
             viewportState.isPanning = true;
@@ -249,6 +392,22 @@ function createEditorCanvas(deps) {
         });
 
         window.addEventListener('mousemove', (e) => {
+            if (viewportState.isDraggingNode && viewportState.dragNodeId) {
+                const dx = e.clientX - viewportState.dragStartClientX;
+                const dy = e.clientY - viewportState.dragStartClientY;
+                if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
+                    viewportState.dragMoved = true;
+                }
+                viewportState.positions[viewportState.dragNodeId] = {
+                    x: Math.round(viewportState.dragStartWorldX + dx),
+                    y: Math.round(viewportState.dragStartWorldY + dy)
+                };
+                persistStoredPositions();
+                initCanvas();
+                reapplySelection(viewportState.dragNodeId);
+                return;
+            }
+
             if (!viewportState.isPanning) return;
             const dx = e.clientX - viewportState.startX;
             const dy = e.clientY - viewportState.startY;
@@ -257,10 +416,24 @@ function createEditorCanvas(deps) {
             viewportState.offsetX += dx;
             viewportState.offsetY += dy;
             initCanvas();
-            selectNodeById(getSelectedNodeId());
         });
 
         window.addEventListener('mouseup', () => {
+            if (viewportState.isDraggingNode && viewportState.dragNodeId) {
+                const draggedId = viewportState.dragNodeId;
+                const moved = viewportState.dragMoved;
+                viewportState.isDraggingNode = false;
+                viewportState.dragNodeId = null;
+                viewportState.dragMoved = false;
+                const draggedEl = document.querySelector(`.memory-node[data-memory-id="${draggedId}"]`);
+                if (draggedEl && moved) {
+                    draggedEl.dataset.suppressClick = '1';
+                    if (window.LoveBudUI?.showToast) {
+                        window.LoveBudUI.showToast('순간 위치를 조정했습니다', 'success', 1800);
+                    }
+                }
+            }
+
             viewportState.isPanning = false;
             canvas.classList.remove('panning');
         });
@@ -272,8 +445,68 @@ function createEditorCanvas(deps) {
         drawNode,
         initCanvas,
         bindCanvasPan,
-        viewportState
+        viewportState,
+        focusNodeById,
+        recenterViewport
     };
 }
 
+function injectEditorRenameButton() {
+    if (document.getElementById('renameTreeBtn')) return;
+    const statusSection = document.querySelector('.editor-status-section');
+    const actions = document.querySelector('.editor-sidebar-actions');
+    if (!statusSection || !actions) return;
+
+    const renameBtn = document.createElement('button');
+    renameBtn.type = 'button';
+    renameBtn.id = 'renameTreeBtn';
+    renameBtn.className = 'sidebar-btn';
+    renameBtn.innerHTML = '<span class="btn-icon">✎</span><span class="btn-label">트리 제목 변경</span>';
+
+    renameBtn.addEventListener('click', async () => {
+        const currentTree = window.currentTreeData || {};
+        const treeId = currentTree.id || new URLSearchParams(window.location.search).get('treeId');
+        if (!treeId) {
+            if (window.LoveBudUI?.showToast) {
+                window.LoveBudUI.showToast('트리 정보를 찾을 수 없습니다', 'error', 2500);
+            }
+            return;
+        }
+
+        const currentTitle = currentTree.title || '러브트리';
+        const nextTitle = window.prompt('새 트리 제목을 입력해 주세요.', currentTitle);
+        if (nextTitle === null) return;
+        const trimmed = String(nextTitle || '').trim();
+        if (!trimmed || trimmed === currentTitle) return;
+
+        try {
+            if (window.apiClient && typeof window.apiClient.updateTree === 'function') {
+                await window.apiClient.updateTree(treeId, { title: trimmed });
+            }
+            window.currentTreeData = {
+                ...currentTree,
+                title: trimmed
+            };
+            const titleEl = document.getElementById('sidebarTreeTitle');
+            if (titleEl) titleEl.textContent = trimmed;
+            if (window.LoveBudUI?.showToast) {
+                window.LoveBudUI.showToast('트리 제목을 변경했습니다', 'success', 2200);
+            }
+        } catch (error) {
+            console.error('[editor] rename tree failed:', error);
+            if (window.LoveBudUI?.showToast) {
+                window.LoveBudUI.showToast('트리 제목 변경에 실패했습니다', 'error', 2600);
+            }
+        }
+    });
+
+    actions.insertAdjacentElement('afterend', renameBtn);
+
+    const hintEl = document.getElementById('sidebarSelectionHint');
+    if (hintEl && hintEl.textContent && !hintEl.textContent.includes('드래그')) {
+        hintEl.textContent += ' · 빈 공간 드래그로 화면 이동, 순간 드래그로 위치 조정';
+    }
+}
+
 window.createEditorCanvas = createEditorCanvas;
+document.addEventListener('DOMContentLoaded', injectEditorRenameButton);
