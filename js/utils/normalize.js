@@ -1,12 +1,13 @@
 /**
  * Memory/Tree data normalization utilities
  *
- * Standard API contract target: flat camelCase objects.
+ * Canonical contract target:
+ * - flat camelCase response objects
  *
- * Transitional compatibility:
- * - snake_case fields are still accepted temporarily
- * - this fallback exists only for migration-period compatibility
- * - remove these fallbacks after API, cache, and mock responses are fully aligned to flat camelCase
+ * Transitional compatibility only:
+ * - snake_case fields are still accepted during migration
+ * - legacy response compatibility must not be treated as the long-term contract
+ * - remove fallback paths after API, cache, and mock responses are fully aligned
  *
  * Used by: detail.js, editor.js, and other pages handling memory/tree data.
  */
