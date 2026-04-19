@@ -66,6 +66,8 @@ nul
 *.jpg
 *.png
 *.PNG
+!docs/test-scenarios/results/**/screenshots/*.png
+!docs/test-scenarios/results/**/screenshots/*.PNG
 
 # Drive temp folders (AGENTS.md: never touch)
 .tmp.drivedownload/
