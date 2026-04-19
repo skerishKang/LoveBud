@@ -35,33 +35,38 @@ function getCorsHeaders(requestOrigin, extraHeaders) {
   );
 }
 
-function buildResponse(statusCode, bodyObj, extraHeaders) {
+function buildResponse(statusCode, bodyObj, extraHeaders, requestOrigin) {
+  const resolvedOrigin = requestOrigin || '';
   return {
     statusCode,
     headers: Object.assign(
-      {
-        'Access-Control-Allow-Origin': resolveCorsOrigin(),
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-        'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
-        'Vary': 'Origin',
+      getCorsHeaders(resolvedOrigin, {
         'Content-Type': 'application/json; charset=utf-8',
-      },
+      }),
       extraHeaders || {}
     ),
     body: bodyObj == null ? '' : JSON.stringify(bodyObj),
   };
 }
 
-function ok(bodyObj, extraHeaders) {
-  return buildResponse(200, bodyObj, extraHeaders);
+function preflight(requestOrigin, extraHeaders) {
+  return {
+    statusCode: 204,
+    headers: getCorsHeaders(requestOrigin, extraHeaders),
+    body: '',
+  };
 }
 
-function created(bodyObj, extraHeaders) {
-  return buildResponse(201, bodyObj, extraHeaders);
+function ok(bodyObj, extraHeaders, requestOrigin) {
+  return buildResponse(200, bodyObj, extraHeaders, requestOrigin);
 }
 
-function noContent(extraHeaders) {
-  return buildResponse(204, null, extraHeaders);
+function created(bodyObj, extraHeaders, requestOrigin) {
+  return buildResponse(201, bodyObj, extraHeaders, requestOrigin);
+}
+
+function noContent(extraHeaders, requestOrigin) {
+  return buildResponse(204, null, extraHeaders, requestOrigin);
 }
 
 function httpError(status, message, details) {
@@ -89,7 +94,8 @@ function handleError(scope, error, requestOrigin) {
     return buildResponse(
       error.status,
       { error: error.message || 'Error', details: error.details || null },
-      headers
+      headers,
+      requestOrigin
     );
   }
   return buildResponse(500, { 
@@ -97,12 +103,14 @@ function handleError(scope, error, requestOrigin) {
     message: error?.message || 'Unknown error',
     details: error?.details || null,
     stack: process.env.NODE_ENV === 'production' ? null : error?.stack // Stack only if not production (safe debug)
-  }, headers);
+  }, headers, requestOrigin);
 }
 
 module.exports = {
   buildResponse,
   getCorsHeaders,
+  resolveCorsOrigin,
+  preflight,
   ok,
   created,
   noContent,
