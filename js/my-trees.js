@@ -13,6 +13,7 @@
 (function() {
   var myTreesUI = window.LoveBudMyTreesUI || null;
   var myTreesActions = window.LoveBudMyTreesActions || null;
+  var myTreesData = window.LoveBudMyTreesData || null;
 
   // ── Toast utility (공통 UI 사용) ──────────────────────────────────────────
   function showToast(message, type) {
@@ -578,19 +579,22 @@
   }
 
   // ── 캐시 키 상수 ───────────────────────────────────────────────────────
-  var TREES_CACHE_KEY = 'my_trees_list';
-  var TREE_DETAIL_CACHE_KEY = 'tree_detail_'; // prefix + treeId
-  var TREE_MEMORIES_CACHE_KEY = 'tree_memories_'; // prefix + treeId
+  var TREES_CACHE_KEY = myTreesData?.TREES_CACHE_KEY || 'my_trees_list';
+  var TREE_DETAIL_CACHE_KEY = myTreesData?.TREE_DETAIL_CACHE_KEY || 'tree_detail_'; // prefix + treeId
+  var TREE_MEMORIES_CACHE_KEY = myTreesData?.TREE_MEMORIES_CACHE_KEY || 'tree_memories_'; // prefix + treeId
 
   // 첫 번째 트리 상세 정보 preload (fire-and-forget)
   function preloadFirstTreeDetail(trees) {
+    if (myTreesData && typeof myTreesData.preloadFirstTreeDetail === 'function') {
+      return myTreesData.preloadFirstTreeDetail(trees);
+    }
+
     try {
       if (!trees || !trees.length || !window.apiClient) return;
       var firstTree = trees[0];
       var treeId = firstTree.id || firstTree;
       if (!treeId) return;
 
-      // 비동기로 tree detail과 memories preload
       Promise.all([
         window.apiClient.getTree ? window.apiClient.getTree(treeId).catch(function() {}) : Promise.resolve(),
         window.apiClient.getMemoriesByTree ? window.apiClient.getMemoriesByTree(treeId).catch(function() {}) : Promise.resolve()
@@ -620,20 +624,27 @@
   }
 
    async function loadTrees() {
+     if (myTreesData && typeof myTreesData.loadTrees === 'function') {
+       return myTreesData.loadTrees({
+         setState: setState,
+         stateEnum: STATE,
+         renderTrees: renderTrees,
+         showToast: showToast,
+         i18n: window.t || function(k) { return k; }
+       });
+     }
+
      var cache = window.LoveBudCache;
      var i18n = window.t || function(k) { return k; };
 
-     // 1. Show loading state
      setState(STATE.LOADING);
 
-     // 2. Try to load from cache first for instant UI
      var cachedTrees = cache ? cache.get(TREES_CACHE_KEY) : null;
      if (cachedTrees && Array.isArray(cachedTrees)) {
        console.log('[my-trees] Rendering cached trees:', cachedTrees.length);
        renderTrees(cachedTrees);
      }
 
-     // 3. Fetch fresh data from API
      try {
        var trees;
        if (window.apiClient && window.apiClient.getTrees) {
@@ -643,35 +654,28 @@
        }
 
        if (Array.isArray(trees)) {
-         // Update cache
          if (cache) {
-           cache.set(TREES_CACHE_KEY, trees, 3 * 60 * 1000); // 3 min TTL
+           cache.set(TREES_CACHE_KEY, trees, 3 * 60 * 1000);
          }
 
-         // Render fresh data (will set state to LOADED or EMPTY)
          renderTrees(trees);
-
-         // 첫 번째 트리 상세 정보 백그라운드 preload (editor 진입 속도 향상)
          preloadFirstTreeDetail(trees);
        } else {
-         // Invalid response format
          console.error('[my-trees] Invalid trees response:', trees);
          setState(STATE.ERROR);
        }
-       } catch (e) {
-         console.error('[my-trees] loadTrees error:', e);
+     } catch (e) {
+       console.error('[my-trees] loadTrees error:', e);
 
-         // If we have cached data, show that even on error
-         if (cachedTrees && Array.isArray(cachedTrees)) {
-           console.log('[my-trees] Showing cached trees after API error');
-           renderTrees(cachedTrees);
-           showToast(i18n('myTrees.offline_mode') || '오프라인 모드 - 캐시된 데이터를 표시합니다', 'warn');
-         } else {
-           // No cache, show error state
-           setState(STATE.ERROR);
-           showToast(i18n('myTrees.load_failed') || '트리 목록을 불러오는데 실패했습니다', 'error');
-         }
+       if (cachedTrees && Array.isArray(cachedTrees)) {
+         console.log('[my-trees] Showing cached trees after API error');
+         renderTrees(cachedTrees);
+         showToast(i18n('myTrees.offline_mode') || '오프라인 모드 - 캐시된 데이터를 표시합니다', 'warn');
+       } else {
+         setState(STATE.ERROR);
+         showToast(i18n('myTrees.load_failed') || '트리 목록을 불러오는데 실패했습니다', 'error');
        }
+     }
    }
 
   // ── Bootstrap: auth.js가 확정한 인증 상태를 기준으로 시작 ────────────────
