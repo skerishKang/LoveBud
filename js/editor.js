@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // ?�?� Root Memory Helpers ?�?�
-    // 분리??모듈(editor-root-helpers.js) ?�용, fallback ?��?
+    // Root memory helpers
+    // Prefer editor-root-helpers.js and keep a local fallback.
     let rootHelperWarningShown = false;
     const rootUtils = window.LoveBudEditorUtils || {};
 
@@ -40,14 +40,14 @@ document.addEventListener('DOMContentLoaded', () => {
         return mem.id === rootId;
     };
 
-    // ?�?� ?�증 가?? onAuthReady 콜백 기반 ?�?�
-    // ?�?� ?�용???�림???�스???�틸리티 (공통 UI ?�용) ?�?�
+    // Auth guard bootstrapping via onAuthReady callback
+    // Shared toast utility wrapper
     let toastWarningShown = false;
     const showToast = (message, type = 'info') => {
         if (window.LoveBudUI?.showToast) {
             window.LoveBudUI.showToast(message, type, 3000);
         } else {
-            // fallback: 간단??console 로그
+            // Fallback: log to console when shared UI helper is unavailable
             if (!toastWarningShown) {
                 console.warn('[editor] LoveBudUI not loaded, toast degraded to console');
                 toastWarningShown = true;
@@ -79,7 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
         window.location.href = loginUrl;
     };
 
-    // ?�?� i18n 결과가 raw key???��? 방어?�는 safe fallback ?�?�
+    // Safe fallback for raw i18n keys leaking into the UI
     const safeI18nText = (i18nFn, key, fallback) => {
         const result = i18nFn(key);
         if (!result || result === key) return fallback;
@@ -97,13 +97,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const resolveTreeTitleText = (rawTitle) => {
         const value = String(rawTitle || '').trim();
         if (!value) {
-            return safeI18nText(i18n, 'default_tree_title', '???�브?�리');
+            return safeI18nText(i18n, 'default_tree_title', '러브트리');
         }
         if (value === 'default_tree_title') {
-            return safeI18nText(i18n, 'default_tree_title', '???�브?�리');
+            return safeI18nText(i18n, 'default_tree_title', '러브트리');
         }
         if (value === 'lovetree_brand') {
-            return safeI18nText(i18n, 'lovetree_brand', '?�브?�리');
+            return safeI18nText(i18n, 'lovetree_brand', '러브트리');
         }
         return value;
     };
@@ -198,7 +198,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const value = String(rawUrl || '').trim();
 
         if (!value) {
-            return i18n('enter_youtube') || 'YouTube 링크�??�력??주세??';
+            return i18n('enter_youtube') || 'YouTube 링크를 입력해 주세요.';
         }
 
         const looksLikeUrl = /^(https?:\/\/|www\.)/i.test(value);
@@ -207,31 +207,31 @@ document.addEventListener('DOMContentLoaded', () => {
         const candidateId = idLikeMatch ? idLikeMatch[1] : '';
 
         if (!looksLikeUrl) {
-            return i18n('invalid_youtube_format') || '?�체 YouTube 링크�?붙여?�어 주세??';
+            return i18n('invalid_youtube_format') || '전체 YouTube 링크를 붙여 넣어 주세요.';
         }
 
         if (!hasYouTubeHint) {
-            return i18n('invalid_youtube_unsupported') || 'YouTube 링크�?지?�합?�다. youtube.com ?�는 youtu.be 링크�??�용??주세??';
+            return i18n('invalid_youtube_unsupported') || 'YouTube 링크만 지원합니다. youtube.com 또는 youtu.be 링크를 사용해 주세요.';
         }
 
         if (candidateId && candidateId.length !== 11) {
-            return i18n('invalid_youtube_id_length') || '링크가 중간???�린 �?같아?? ?�체 YouTube 링크�??�시 복사??주세??';
+            return i18n('invalid_youtube_id_length') || '링크가 중간에 잘린 것 같아요. 전체 YouTube 링크를 다시 복사해 주세요.';
         }
 
-        return i18n('invalid_youtube') || '?�효??YouTube 링크�??�력??주세??';
+        return i18n('invalid_youtube') || '유효한 YouTube 링크를 입력해 주세요.';
     };
 
     const renderTreeLoadError = ({ canvas, detailPanel, addBtn, errorTitle, errorDesc }) => {
         canvas.innerHTML = `
             <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;padding:32px;background:rgba(255,255,255,0.96);border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,0.1);max-width:360px;width:calc(100% - 32px);">
-                <div style="font-size:48px;margin-bottom:16px;">?��</div>
+                <div style="font-size:48px;margin-bottom:16px;">🌱</div>
                 <div style="font-size:1.2rem;font-weight:800;margin-bottom:8px;color:var(--on-surface);">${escapeHtml(errorTitle)}</div>
                 <div style="font-size:14px;color:var(--on-surface-variant);line-height:1.6;margin-bottom:20px;">
                     ${escapeHtml(errorDesc)}
                 </div>
                 <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
                     <button type="button" id="retryOpenTreeBtn" class="btn-round btn-outline" style="padding:10px 16px;">
-                        ${i18n('retry') || '?�시 ?�도'}
+                        ${i18n('retry') || '다시 시도'}
                     </button>
                     <a href="${escapeHtml(getMyTreesHref())}" class="btn-round btn-primary" style="padding:10px 16px;text-decoration:none;">
                         ${i18n('go_to_my_trees') || '내 트리로 가기'}
@@ -264,25 +264,25 @@ document.addEventListener('DOMContentLoaded', () => {
         const detailPanel = document.getElementById('detailPanel');
         const addBtn = document.getElementById('addMemoryBtn');
 
-        // ?�?� URL?�서 treeId ?�기 (최우?? ?�?�
+        // Read treeId from URL first
         const urlParams = new URLSearchParams(window.location.search);
         const urlTreeId = urlParams.get('treeId');
         console.log('[editor] URL treeId:', urlTreeId);
 
-        // ?�?� 캐시 ???�정 ?�?�
+        // Cache keys
         const cache = window.LoveBudCache || null;
         let TREE_CACHE_KEY = 'tree_default';
         let MEMORIES_CACHE_KEY = 'memories_default';
-        // 로컬 ?�백 모드 추적 (?�세 ?�널???�시??
+        // Track local fallback mode for sidebar/detail UI
         let isLocalSaveMode = false;
 
-        // ?�?� ?�리 ?�이?? treeId ?�선, ?�으�?getFirstTree fallback ?�?�
+        // Tree load order: direct treeId first, then getFirstTree fallback
         let tree = null;
         let isNewTree = false;
 
         if (urlTreeId) {
-            // treeId가 URL???�으�? �??�리�?직접 조회
-            // ??경우 조회 ?�패�??�규 ?�리 ?�성?�로 바꾸�?????
+            // When treeId exists in URL, load that tree directly.
+            // If this fails, surface an explicit error instead of creating a new tree.
             let treeLoadStatus = 'not_found';
             let treeLoadErrorMessage = '';
 
@@ -324,21 +324,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const errorDesc =
                     treeLoadStatus === 'api_unavailable'
-                        ? (i18n('tree_load_api_unavailable') || '?�리 조회 API�??�용?????�는 ?�태?�니?? ?�시 ???�시 ?�도?�주?�요.')
+                        ? (i18n('tree_load_api_unavailable') || '트리 조회 API를 사용할 수 없는 상태입니다. 잠시 후 다시 시도해 주세요.')
                         : /Access denied/i.test(treeLoadErrorMessage)
                             ? (i18n('tree_access_denied_desc') || '비공개 러브트리이거나 내 계정에 권한이 없어요. 다시 확인하거나 다른 계정으로 로그인해 보세요.')
                         : treeLoadStatus === 'error'
-                            ? (i18n('tree_load_error_desc') || '?�시?�인 ?�버 문제 ?�는 ?�근 권한 문제?????�습?�다. ?�시 ?�도?�거?????�리 목록?�로 ?�아가 주세??')
-                            : (i18n('tree_load_not_found_desc') || '?�못??링크?�거???�근 권한???�는 ?�리?�니??');
+                            ? (i18n('tree_load_error_desc') || '일시적인 서버 문제 또는 접근 권한 문제일 수 있습니다. 다시 시도하거나 트리 목록으로 돌아가 주세요.')
+                            : (i18n('tree_load_not_found_desc') || '잘못된 링크이거나 접근 권한이 없는 트리입니다.');
 
                 renderTreeLoadError({ canvas, detailPanel, addBtn, errorTitle, errorDesc });
 
                 return;
             }
 
-            // urlTreeId 분기?�서 tree ?�보 ?�공 ???�기까�? ?�려??
+            // In the urlTreeId branch, wait until the tree is loaded successfully.
         } else {
-            // treeId가 URL???�으�? 기존 getFirstTree() flow
+            // No treeId in URL: continue with the existing getFirstTree() flow
             try {
                 if (window.apiClient && window.apiClient.getFirstTree) {
                     const apiTree = await window.apiClient.getFirstTree();
@@ -346,12 +346,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         tree = apiTree;
                         console.log('[editor] API tree loaded (getFirstTree)');
                     } else {
-                        // API???�공?��?�??�리가 ?�음 ???�규 ?�용?? 기본 ?�리 ?�성
+                        // API succeeded but there is no tree yet, so create a default tree
                         console.log('[editor] No tree found, creating default tree...');
                         if (window.apiClient.createTree) {
                             const i18n = getI18n();
                             const newTree = await window.apiClient.createTree({
-                                title: safeI18nText(i18n, 'default_tree_title', '???�브?�리'),
+                                title: safeI18nText(i18n, 'default_tree_title', '러브트리'),
                                 visibility: 'public'
                             });
                             tree = newTree;
@@ -368,7 +368,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
             }
-            // API ?�패 ?�에�?mock fallback
+            // API failed, fall back to the local mock source
             if (!tree) {
                 tree = getFirstMockTree();
             }
@@ -379,12 +379,12 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // urlTreeId 직접 진입?�든 ?�반 진입?�든 ?�재 ?�리 ?�태�???�� ?�역???�기??
+        // Keep current tree state in sync for both direct entry and normal entry
         syncCurrentTreeData(tree);
 
         const treeId = tree.id || null;
 
-        // ?�제 treeId 기�??�로 캐시 ???�계??
+        // Rebuild cache keys from the resolved treeId
         TREE_CACHE_KEY = 'tree_' + (treeId || 'default');
         MEMORIES_CACHE_KEY = 'memories_' + (treeId || 'default');
 
@@ -406,12 +406,12 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         window.refreshMemories = refreshMemories;
 
-        // ?�?� API ?�답 ?�규?? 공통 ?�틸 ?�용
-        // 백엔?�는 flat camelCase ?�답??반환?��?�?mem.data 처리 불필??
-        // ?�??계약: window.currentTreeMemories????�� ???�규?��? ?�용??배열
+        // Normalize API responses through the shared utility.
+        // Backend returns a flat camelCase shape, so mem.data handling is unnecessary.
+        // Contract: window.currentTreeMemories always stores normalized memory objects.
         let normalizeWarningShown = false;
         const normalizeMemory = window.LoveBudNormalize?.normalizeMemory || ((mem) => {
-            // fallback: 공통 ?�틸 로드 ?�패 ??기본 ?�규??
+            // Fallback: local normalizer when the shared util is unavailable
             if (!normalizeWarningShown) {
                 console.warn('[editor] LoveBudNormalize not loaded, using local fallback');
                 normalizeWarningShown = true;
@@ -440,28 +440,28 @@ document.addEventListener('DOMContentLoaded', () => {
             };
         });
 
-        // ?�?� memories 캐시 ?�선 로딩 ?�?�
+        // Load memories from cache first
         let memories = [];
 
-        // 1. 캐시??memories 먼�? ?�인
+        // 1) Check cached memories first
         const cachedMemories = cache ? cache.get(MEMORIES_CACHE_KEY) : null;
         if (cachedMemories && Array.isArray(cachedMemories)) {
             console.log('[editor] Using cached memories:', cachedMemories.length);
             memories = cachedMemories;
             window.currentTreeMemories = memories.map(normalizeMemory).filter(Boolean);
-            // initCanvas()???�래?�서 ?�수 ?�언 ????번만 ?�출
+            // initCanvas() is called later, so only seed state here once
         }
 
-        // 2. Background?�서 API�?최신 ?�이??가?�오�?
+        // 2) Refresh from the API in the background
         try {
             if (window.apiClient && window.apiClient.getMemoriesByTree) {
                 const apiMemories = await window.apiClient.getMemoriesByTree(treeId);
                 if (Array.isArray(apiMemories)) {
                     memories = apiMemories;
                     console.log('[editor] API memories loaded:', apiMemories.length);
-                    // 캐시 ?�데?�트
+                    // Cache update
                     if (cache) {
-                        cache.set(MEMORIES_CACHE_KEY, memories, 2 * 60 * 1000); // 2�?TTL
+                        cache.set(MEMORIES_CACHE_KEY, memories, 2 * 60 * 1000); // 2 min TTL
                     }
                 }
             }
@@ -470,50 +470,49 @@ document.addEventListener('DOMContentLoaded', () => {
             if (e.message?.includes('401') || e.message?.includes('403')) {
                 showToast(i18n('data_load_fail_demo'), 'warn');
             }
-            // API ?�패?�도 캐시가 ?�으�?그�?�??�용
+            // If API fails but cache exists, keep using the cache
         }
 
         if (memories.length === 0 && !cachedMemories) {
             memories = typeof getMemoriesByTree === 'function' ? getMemoriesByTree(treeId) : [];
         }
 
-        // ?�??계약: ??�� ?�규?�된 ?�태�??�??
+        // Contract: always store normalized memory state
         window.currentTreeMemories = memories.map(normalizeMemory).filter(Boolean);
 
-        // ?�?� root 초기 ?�택 ?�정???�?�
+        // Choose the initial root selection
         const createInitialMemory = () => {
             const memories = treeMemories();
-            // canonical root 찾기: ?�일 root 기�? (parentId === null ?�선, �??�음 id === 'root')
+            // Find canonical root: prefer a single parentId === null root, then fallback to id === 'root'
             const rootMem = findRootMemory(memories);
             if (rootMem) return rootMem;
             if (memories.length > 0) return memories[0];
 
-            // ?�� ???�리(empty) 감�? - memories가 0?�면 ???�리
+            // Empty tree detection: no memories means an empty tree
             const isNewTree = memories.length === 0;
 
             return {
                 id: canonicalRootId,
                 treeId: treeId,
-                // ?�� ???�리????명확???�목
+                // Clear placeholder title for an empty tree
                 title: isNewTree ? i18n('first_memory') : i18n('first_memory'),
                 memo: i18n('no_memory_yet'),
                 timestamp: new Date().toISOString().slice(0,10).replace(/-/g,'.'),
-                // ?�� ???�리????�?공간 ?�이�?
+                // Dedicated empty-tree illustration
                 thumbnail: isNewTree
-                    ? 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 90"><rect fill="%23e8f5e9" width="120" height="90"/><text x="60" y="45" text-anchor="middle" fill="%234caf50" font-size="24">?��</text><text x="60" y="70" text-anchor="middle" fill="%23666" font-size="10">???�리</text></svg>'
+                    ? 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 90"><rect fill="%23e8f5e9" width="120" height="90"/><text x="60" y="45" text-anchor="middle" fill="%234caf50" font-size="24">🌱</text><text x="60" y="70" text-anchor="middle" fill="%23666" font-size="10">빈 트리</text></svg>'
                     : 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 90"><rect fill="%23f5f5f5" width="120" height="90"/><text x="60" y="50" text-anchor="middle" fill="%23999" font-size="12">No Memory</text></svg>',
                 emotionTags: [],
                 parentId: null,
-                // ?�� ???�리 ?�시???�래�?
+                // Mark as a synthetic empty-tree placeholder
                 isNewTree: isNewTree
             };
         };
 
-        // treeMemories ?�수 먼�? ?�의 (TDZ 방�?)
+        // Define treeMemories before other helpers use it (avoid TDZ issues)
         const treeMemories = () => (window.currentTreeMemories || []).map(normalizeMemory);
 
-        // canonical root ID 계산 (?�션 기�? 고정�?
-        // ??값�? editor ?�션 ?�안 ?��??�게 ?�용??(??메모�?추�?�?root가 바뀌�? ?�음)
+        // Compute canonical root ID once and keep it stable for this editor session.
         const canonicalRootId = getCanonicalRootId(treeMemories());
         let selectedNodeId = canonicalRootId;
 
@@ -581,7 +580,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         };
 
-        // ?�?� 배치 ?�수 ?�?�
+        // Layout constants
         const ROOT_X = Math.max(460, Math.round(canvas.clientWidth * 0.42));
         const ROOT_Y = Math.max(420, Math.round(canvas.clientHeight * 0.52));
         const RADIUS_L1 = 260;
@@ -594,8 +593,8 @@ document.addEventListener('DOMContentLoaded', () => {
             m2: 130, m3: -170, m4: 70
         };
 
-        // ?�?� 각도 분산 ?�퍼 ?�?�
-        // sibling ?�에 ?�라 균등?�게 각도 분배, 최소 간격 보장
+        // Angle distribution helper
+        // Spread siblings evenly while keeping a minimum gap.
         const distributeAngles = (count, baseAngle = -90) => {
             if (count <= 0) return [baseAngle];
             const angles = [];
@@ -609,10 +608,10 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const calcPosition = (mem, visited = new Set()) => {
-            // canonical root 기�??�로 ?�치 계산
+            // Position relative to the canonical root
             if (isRootMemory(mem, canonicalRootId)) return { x: ROOT_X, y: ROOT_Y };
 
-            // ?�환 참조 방�?
+            // Prevent circular references
             if (visited.has(mem.id)) {
                 console.warn(`Cycle detected at memory ${mem.id}, falling back to root`);
                 return { x: ROOT_X, y: ROOT_Y };
@@ -621,17 +620,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const parentId = mem.parentId || canonicalRootId;
 
-            // ?�기참조 방�?
+            // Prevent self-reference
             if (parentId === mem.id) {
                 console.warn(`Self-reference detected for ${mem.id}, using root as parent`);
                 return { x: ROOT_X, y: ROOT_Y };
             }
 
-            // siblings: canonical root???�외, parentId가 같�? 메모리들
+            // Siblings share the same parent and exclude the canonical root.
             const siblings = treeMemories().filter(m =>
                 m.parentId === parentId && !isRootMemory(m, canonicalRootId)
             );
-            const idx = siblings.findIndex(m => m.id === mem.id); // indexOf ?�??findIndex ?�용 (객체 비교 ?�정??
+            const idx = siblings.findIndex(m => m.id === mem.id); // Prefer findIndex for object-safe lookup
             const count = siblings.length;
 
             if (parentId === canonicalRootId) {
@@ -656,14 +655,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
             }
 
-            // L2: 부�?기�? 분산
+            // L2: spread around the parent branch
             const parent = treeMemories().find(m => m.id === parentId);
             const parentPos = parent ? calcPosition(parent, visited) : { x: ROOT_X, y: ROOT_Y };
 
-            // sibling??많으�?각도 분산, 최소 간격 보장
+            // Spread siblings with minimum angular separation
             let angle;
             if (count > 0) {
-                const angles = distributeAngles(count, 0); // 0??기�? 분산
+                const angles = distributeAngles(count, 0); // centered around 0 degrees
                 angle = angles[idx] !== undefined ? angles[idx] : (idx / count) * 360;
             } else {
                 angle = 0;
@@ -710,7 +709,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         window.updateDetailPanel = updateDetailPanel;
 
-        // ?�재 ?�집 중인 메모�??�이???�??
+        // Currently edited memory
         let currentEditingMemory = null;
         let isEditMode = false;
 
@@ -754,14 +753,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 emotionTags: tagsInput ? tagsInput.value.split(',').map(t => t.trim()).filter(t => t) : currentEditingMemory.emotionTags
             };
 
-            // ?�?� Show saving status (UX hardening) ?�?�
+            // Show saving status
             updateSaveStatus('saving', i18n('save_saving'));
 
             try {
                 if (window.apiClient && typeof window.apiClient.updateMemory === 'function') {
                     await window.apiClient.updateMemory(currentEditingMemory.id, payload);
 
-                    // ?�?� Save success (UX hardening) ?�?�
+                    // Save success state
                     updateSaveStatus('saved', i18n('save_saved'));
 
                     const memIndex = window.currentTreeMemories.findIndex(m => m.id === currentEditingMemory.id);
@@ -786,7 +785,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (error) {
                 console.error('[editor] Failed to update memory:', error);
 
-                // ?�?� Save failed status (UX hardening) ?�?�
+                // Save failed state
                 updateSaveStatus('failed', i18n('save_failed'));
 
                 showToast(i18n('update_failed'), 'error');
@@ -881,7 +880,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (el) selectNode(el, node);
         };
 
-        // drawRoot ?�거 - 붉�? ??루트 마커 ?�출 방�?
+        // drawRoot removed to prevent exposing the red root marker
         // const drawRoot = () => { ... }
 
         const drawBranch = (startPos, endPos) => {
@@ -898,7 +897,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const drawNode = (mem) => {
-            // 중복 ?�드 방�?: ?��? ?�일 memory-id가 ?�으�?skip
+            // Avoid drawing duplicate nodes with the same memory id
             const existingNode = document.querySelector(`.memory-node[data-memory-id="${mem.id}"]`);
             if (existingNode) {
                 console.log('[editor] Node already exists, skipping:', mem.id);
@@ -1011,7 +1010,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
-        // ?�?� Save status indicator ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�
+        // Save status indicator state
         let saveStatusData = {
             status: 'saved',
             lastSaved: null,
@@ -1039,7 +1038,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     textEl.textContent = message || i18n('save_saving');
                     indicator.className = 'save-status-indicator saving';
                     indicator.style.display = 'flex';
-                    // saving ?�태?�서???�간 ?�역 ?�전???��?
+                    // Hide last-saved time while actively saving
                     if (timeEl) timeEl.style.display = 'none';
                     break;
                 case 'saved':
@@ -1047,7 +1046,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     textEl.textContent = message || i18n('save_saved');
                     indicator.className = 'save-status-indicator saved';
                     saveStatusData.lastSaved = new Date();
-                    // saved ?�태?�서�??�간 ?�역 ?�시
+                    // Restore last-saved time after a successful save
                     if (timeEl) {
                         timeEl.style.display = 'inline';
                         timeEl.textContent = formatTimeAgo(saveStatusData.lastSaved);
@@ -1060,7 +1059,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     iconEl.textContent = 'error';
                     textEl.textContent = message || i18n('save_failed');
                     indicator.className = 'save-status-indicator failed';
-                    // failed ?�태?�서???�간 ?�역 ?�전???��?
+                    // Hide last-saved time after a failed save
                     if (timeEl) timeEl.style.display = 'none';
                     saveStatusData.timer = setTimeout(() => {
                         indicator.style.display = 'none';
@@ -1079,12 +1078,12 @@ document.addEventListener('DOMContentLoaded', () => {
             return `${Math.floor(diff / 86400)}일 전`;
         }
 
-        // ?�?� ???�태 추적 ?�?�
+        // Form state tracking
         let isFormOpen = false;
         let escHandler = null;
         let outsideClickHandler = null;
 
-        // ?�?� ??기억 추�? ???�어 ?�?�
+        // Add-memory form elements
         const addMemoryForm = document.getElementById('addMemoryForm');
         const urlInput = document.getElementById('memoryUrlInput');
         const titleInput = document.getElementById('memoryTitleInput');
@@ -1093,7 +1092,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const cancelBtn = document.getElementById('cancelAddMemory');
         const confirmBtn = document.getElementById('confirmAddMemory');
 
-        // ?�커???�랩: ?????�환 ?�커???��?
+        // Focus trap: cycle focus inside the form
         const formInputs = [urlInput, titleInput, memoInput];
         const focusTrap = (e) => {
             if (!isFormOpen) return;
@@ -1119,11 +1118,11 @@ document.addEventListener('DOMContentLoaded', () => {
             addMemoryForm.style.display = 'block';
             isFormOpen = true;
 
-            // ?�커???�랩 ?�성??
+            // Enable focus trap
             document.addEventListener('keydown', focusTrap);
             urlInput.focus();
 
-            // Esc ???�들??
+            // Escape handler
             escHandler = (e) => {
                 if (e.key === 'Escape') {
                     e.stopPropagation();
@@ -1132,16 +1131,16 @@ document.addEventListener('DOMContentLoaded', () => {
             };
             document.addEventListener('keydown', escHandler);
 
-            // ?��? ?�릭 ?�들??(캡처링으�????��? ?�릭 감�?)
+            // Outside click handler (capture phase)
             outsideClickHandler = (e) => {
                 const target = e.target;
-                // ???��? ?�릭?� 무시
+                // Ignore clicks inside the modal
                 if (addMemoryForm.contains(target)) return;
-                // 버튼 ?�릭 무시
+                // Ignore clicks on the trigger button
                 if (target.closest('#addMemoryBtn')) return;
                 hideAddMemoryForm();
             };
-            // 지???�록: ?�재 ?�릭 ?�벤??방해 방�?
+            // Delay binding to avoid interfering with the current click
             setTimeout(() => {
                 document.addEventListener('click', outsideClickHandler, true);
             }, 0);
@@ -1151,7 +1150,7 @@ document.addEventListener('DOMContentLoaded', () => {
             addMemoryForm.style.display = 'none';
             isFormOpen = false;
 
-            // ?�벤???�들???�리
+            // Remove event handlers
             document.removeEventListener('keydown', focusTrap);
             if (escHandler) {
                 document.removeEventListener('keydown', escHandler);
@@ -1170,7 +1169,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // ?�?� YouTube 처리: LoveBudMedia 공통 ?�틸 ?�용 ?�?�
+            // Process YouTube using the shared LoveBudMedia helper when available
             let videoId;
             let embedUrl;
             let thumbnailUrl;
@@ -1184,7 +1183,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 embedUrl = window.LoveBudMedia.getEmbedUrl(url, 'youtube');
                 thumbnailUrl = window.LoveBudMedia.getThumbnailUrl(url, 'youtube', 'mqdefault');
             } else {
-                // fallback: 기존 ?�규??로직 (media.js 로드 ?�패 ??
+                // Fallback to local YouTube parsing if media.js is unavailable
                 console.warn('[editor] LoveBudMedia not loaded, using fallback YouTube parsing');
                 const match = url.match(/(?:v=|\/|youtu\.be\/)([0-9A-Za-z_-]{11})/);
                 if (!match) {
@@ -1196,13 +1195,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 thumbnailUrl = `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
             }
 
-            // ?�?� 검�??�과 ?�에�??�???�태 ?�시 ?�?�
+            // Show saving status before validation/network work
             updateSaveStatus('saving', i18n('save_saving'));
 
             const today = new Date();
             const dateStr = `${today.getFullYear()}.${String(today.getMonth()+1).padStart(2,'0')}.${String(today.getDate()).padStart(2,'0')}`;
 
-            // 기본 ?�목 ?�동 ?�성 (?�력 ?�을 ??
+            // Auto-fill a default title when the field is empty
             const title = titleInput.value.trim() || '새 순간';
 
             const newMemoryData = {
@@ -1213,7 +1212,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 sourceUrl: embedUrl,
                 sourceType: 'youtube',
                 emotionTags: [i18n('tag_record') || '기록'],
-                // synthetic root('root') ?�택 ?�태?�서??�?메모리�? root-level(null)�??�??
+                // If synthetic root ('root') is selected, create the first memory at root level (null)
                 parentId: resolveParentIdForCreate(selectedNodeId, canonicalRootId),
                 thumbnail: thumbnailUrl,
                 artist: '',
@@ -1223,14 +1222,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
             hideAddMemoryForm();
 
-            // ?�?� API ?�선 ?�성 ?�도 ?�?�
+            // Try API create first
             let createdMemory = null;
             let useApi = false;
             try {
                 if (window.apiClient && typeof window.apiClient.createMemory === 'function') {
                     createdMemory = await window.apiClient.createMemory(newMemoryData);
                     useApi = true;
-                    isLocalSaveMode = false; // API ?�공 ??로컬 모드 ?�제
+                    isLocalSaveMode = false; // API success disables local-save mode
                     console.log('[editor] API createMemory success:', createdMemory);
                 } else {
                     throw new Error('createMemory API not available');
@@ -1248,11 +1247,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            // API ?�패 ??mock fallback - 로컬?�만 추�?
-            // 방어??처리: createdMemory가 null/undefined??경우?�도 로컬 객체 ?�성
+            // API failed: fallback to local-only memory creation
+            // Defensive guard: create a local object even if createdMemory is null/undefined
             if (!createdMemory || typeof createdMemory !== 'object') {
                 console.log('[editor] Using local fallback memory');
-                isLocalSaveMode = true; // 로컬 ?�백 모드 ?�시
+                isLocalSaveMode = true; // Explicitly mark local fallback mode
                 createdMemory = {
                     id: nextMemoryId(),
                     ...newMemoryData,
@@ -1261,8 +1260,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
             }
 
-            // ?�?� createMemory ??갱신: ?�조???�공 ?��????�라 구분 ?�?�
-            // ?�??계약: window.currentTreeMemories????�� normalizeMemory가 ?�용??메모�?배열
+            // Refresh after createMemory and distinguish between server refresh and local fallback
+            // Contract: window.currentTreeMemories always stores normalized memories
             const normalizedNew = normalizeMemory(createdMemory);
             let didRefreshFromServer = false;
 
@@ -1286,8 +1285,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!exists && normalizedNew) window.currentTreeMemories.push(normalizedNew);
             }
 
-            // ?�?� UI ?�더�? API ?�답 ?�규?????�더�??�?�
-            // snake_case ??camelCase, {id, data} ?�태 ?�규??
+            // Normalize before updating the UI
+            // Handle snake_case to camelCase and flat response shapes
             const normalizedMemory = normalizeMemory(createdMemory);
             if (!normalizedMemory) {
                 console.error('[editor] Memory normalization failed');
@@ -1295,7 +1294,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // �??�드 추�? ??"비어?�음" 메시지 ?�거
+            // Remove the empty-state message after the first node is added
             const emptyMsg = document.getElementById('emptyTreeMessage');
             if (emptyMsg) {
                 emptyMsg.remove();
@@ -1311,11 +1310,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (el) {
                 selectNode(el, normalizedMemory);
 
-                // ???�드 ?�드�? ?�택 강조 + ?�토?�크�?
+                // Highlight the newly created node
                 el.classList.add('new-node-highlight');
                 setTimeout(() => el.classList.remove('new-node-highlight'), 2000);
 
-                // ?�토?�크�? ?�드 ?�치�?smooth scroll
+                // Smooth-scroll to the new node
                 const nodeRect = el.getBoundingClientRect();
                 const canvasRect = canvasArea.getBoundingClientRect();
                 const scrollX = el.offsetLeft - canvasRect.width / 2 + nodeRect.width / 2;
@@ -1327,27 +1326,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
 
-             // ?�?� 최종 ?�???�태: ?�조???�공 ?��????�라 구분 ?�?�
+             // Final save status depends on whether the server refresh succeeded
              if (useApi && didRefreshFromServer) {
                  updateSaveStatus('saved', i18n('save_saved'));
              } else {
                  updateSaveStatus('saved', i18n('save_saved_local') || '로컬 저장됨');
              }
 
-            // ?�?� 메모�?추�? ??캐시 ?�기???�?�
+            // Update cache after adding a memory
             if (typeof window.setCachedMemories === 'function' && treeId) {
                 window.setCachedMemories(treeId, window.currentTreeMemories);
                 console.log('[editor] 메모리 추가 후 캐시 갱신', window.currentTreeMemories.length, '개');
             }
 
-            // ?�?� ?�이?�바 ?�데?�트 ?�?�
+            // Refresh sidebar state
             updateSidebarStatus();
             updateFocusSelectedBtn();
             setDetailEmptyState(false);
 
         };
 
-        // ??버튼 ?�벤??리스??
+        // Button event listeners
         if (addBtn) {
             addBtn.disabled = false;
             addBtn.addEventListener('click', (e) => {
@@ -1368,7 +1367,7 @@ document.addEventListener('DOMContentLoaded', () => {
              });
         }
 
-        // Enter ?�로 ???�출
+        // Enter key submit shortcuts
         if (urlInput) {
             urlInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') titleInput.focus();
@@ -1388,7 +1387,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        // 미구??버튼 ?��? 처리
+        // Hide unimplemented buttons for now
         const hideUnimplementedButtons = () => {
             const moreBtn = detailPanel.querySelector('.icon-btn');
             const footerBtn = detailPanel.querySelector('.panel-footer');
@@ -1399,7 +1398,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         initCanvas();
 
-        // ?�세 ?�널 ?�정/??�� 버튼 ?�벤??리스??
+        // Detail panel edit/delete button listeners
         const editMemoryBtn = document.getElementById('editMemoryBtn');
         const deleteMemoryBtn = document.getElementById('deleteMemoryBtn');
         const cancelEditBtn = document.getElementById('cancelEditBtn');
@@ -1410,12 +1409,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (cancelEditBtn) cancelEditBtn.addEventListener('click', exitEditMode);
         if (saveEditBtn) saveEditBtn.addEventListener('click', saveMemoryEdit);
 
-        console.log('[editor] Ready ??tree:', treeId, 'memories:', treeMemories().length);
+        console.log('[editor] Ready for tree:', treeId, 'memories:', treeMemories().length);
         updateSidebarStatus();
     };
 
-    // ?? ?증 가?? my-trees.js? ?일???턴 ??
-    // user ?으?cache ?인 ??redirect, ?으?startEditor 진행
+    // Same auth-guard pattern as my-trees.js
+    // If there is no user, check cache and redirect; otherwise continue to startEditor.
     var editorStarted = false;
 
     // Confirmed session helper (from auth.js or local fallback)
@@ -1435,11 +1434,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function tryStartEditor(user) {
-        // ?��? ?�디?��? ?�작?�었?�라?? ?��? ?�보가 ?�다가 ?�로 ?�겼?�면 ?�이???�로???�도
+        // If the editor already started and real auth arrives later, try re-fetching data
         if (editorStarted) {
             if (user && (!window.currentTreeMemories || window.currentTreeMemories.length <= 1)) {
                 console.log('[editor] Real user detected late, re-fetching data...');
-                // ?�역 helper fetchMemories ?�리�?(?�요 ???�의)
+                // Use the shared refresh helper if available
                 if (window.refreshMemories) window.refreshMemories();
             }
             return;
@@ -1461,7 +1460,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 redirectToEditorLogin();
                 return;
             }
-            // cached auth ?�으�??�래�?진행
+            // Proceed with confirmed cached auth
         }
 
         editorStarted = true;
@@ -1476,7 +1475,7 @@ document.addEventListener('DOMContentLoaded', () => {
         tryStartEditor(cachedUser);
     }
 
-    // ?로??배열 콜백 ?턴 ?용 (?백 ?함)
+    // Use the callback-array auth pattern when available
     if (typeof window.registerOnAuthReady === 'function') {
         window.registerOnAuthReady(tryStartEditor);
     } else {
