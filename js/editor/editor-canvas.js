@@ -35,14 +35,9 @@
      * @param {SVGElement} svg - SVG 엘리먼트
      */
     const drawRoot = (svg) => {
-        const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-        circle.setAttribute("cx", ROOT_X);
-        circle.setAttribute("cy", ROOT_Y);
-        circle.setAttribute("r", "10");
-        circle.setAttribute("fill", "var(--primary)");
-        circle.setAttribute("stroke", "white");
-        circle.setAttribute("stroke-width", "3");
-        svg.appendChild(circle);
+        // Root marker is no longer rendered in production UI.
+        // The editor treats the root as a logical anchor only.
+        return null;
     };
 
     /**
@@ -119,7 +114,7 @@
         // SVG 초기화
         svg.innerHTML = '';
         
-        // 루트 그리기
+        // 루트는 논리적 anchor만 유지하고 시각 마커는 그리지 않음
         drawRoot(svg);
 
         // 메모리 노드들 그리기

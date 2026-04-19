@@ -2,7 +2,7 @@
 
 :root {
     /* Editor Specific Layout Constants */
-    --sidebar-width: 220px;
+    --sidebar-width: 252px;
     --detail-panel-width: 420px;
     --header-height: 80px;
 }
@@ -23,6 +23,7 @@ body {
 /* Sidebar Refinement */
 .sidebar {
     width: var(--sidebar-width);
+    min-width: var(--sidebar-width);
     background: white;
     border-right: 1px solid var(--outline-variant);
     display: flex;
@@ -512,7 +513,8 @@ body {
 .editor-add-section .secondary-btn {
     width: 100%;
     min-height: 44px;
-    white-space: nowrap;
+    white-space: normal;
+    line-height: 1.45;
     box-sizing: border-box;
 }
 
@@ -526,6 +528,10 @@ body {
 
 .editor-sidebar-actions .secondary-btn {
     width: 100%;
+    white-space: normal;
+    line-height: 1.45;
+    text-align: center;
+    padding: 12px 14px;
 }
 
 /* Prevent text selection while panning */
