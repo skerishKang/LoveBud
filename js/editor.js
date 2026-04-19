@@ -86,6 +86,14 @@ document.addEventListener('DOMContentLoaded', () => {
         return result;
     };
 
+    const resolveHintText = (rawValue, fallbackKey, fallbackText) => {
+        const value = String(rawValue || '').trim();
+        if (!value || value === fallbackKey) {
+            return safeI18nText(i18n, fallbackKey, fallbackText);
+        }
+        return value;
+    };
+
     const resolveTreeTitleText = (rawTitle) => {
         const value = String(rawTitle || '').trim();
         if (!value) {
@@ -693,9 +701,9 @@ document.addEventListener('DOMContentLoaded', () => {
                             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
                                 <span style="font-size:1.4rem;line-height:1.2;font-weight:900;letter-spacing:-0.03em;color:var(--on-surface);">${i18n('waiting_first_moment') || '�??�간??기다리고 ?�어??}${localBadge}</span>
                             </div>
-                            <div style="font-size:13px;color:var(--on-surface-variant);line-height:1.5;">
-                                ${i18n('empty_panel_hint_short') || '�??�상??추�??�면 ?�기???�시?�니??'}
-                            </div>
+                             <div style="font-size:13px;color:var(--on-surface-variant);line-height:1.5;">
+                                 ${resolveHintText(i18n('empty_panel_hint_short'), 'empty_panel_hint_short', '첫 영상을 추가하면 여기에 표시됩니다.')}
+                             </div>
                             ${treeMetaHtml}
                         </div>
                     `;

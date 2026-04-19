@@ -485,12 +485,12 @@
 
     // ── 누락 key 보충: search.html ──
     'search.title': {
-      ko: '둘러보기',
-      en: 'Browse'
+      ko: '공개 러브트리 둘러보기',
+      en: 'Browse Public LoveTrees'
     },
     'search.subtitle': {
-      ko: '다른 팬들이 남긴 감정의 경로를 따라가보세요.\n어떤 순간들이 그들의 러브트리를 만들었을까요?',
-      en: "Follow the emotional paths left by other fans.\nWhat moments made their LoveTrees?"
+      ko: '다른 팬들이 정성껏 가꾼 공개 러브트리들을 둘러보고 함께 추억을 나누어 보세요.',
+      en: "Explore public LoveTrees shared by other fans and connect through shared memories."
     },
     'search.filter.all': {
       ko: '전체 경로',
