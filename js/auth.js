@@ -562,38 +562,44 @@ function getFriendlyErrorMessage(error, isGoogleLogin) {
     return '브라우저 저장소(storage)가 비활성화되어 있습니다. 쿠키와 저장소를 허용한 후 다시 시도해 주세요.';
   }
   
-  // Common auth errors
-  switch (code) {
-    case 'auth/popup-closed-by-user':
-      return null; // User cancelled, no message needed
-    case 'auth/cancelled-popup-request':
-      return '로그인이 취소되었습니다.';
-    case 'auth/account-exists-with-different-credential':
-      return '이미 다른 방법으로 가입된 계정이 있습니다.';
-    case 'auth/credential-already-in-use':
-      return '이미 사용 중인Credential입니다.';
-    case 'auth/email-already-in-use':
-      return '이미 사용 중인 이메일 주소입니다.';
-    case 'auth/user-disabled':
-      return '비활성화된 계정입니다. 관리자에게 문의해 주세요.';
-    case 'auth/user-not-found':
-      return '가입되지 않은 이메일 주소입니다.';
-    case 'auth/wrong-password':
-      return '비밀번호가 올바르지 않습니다.';
-    case 'auth/invalid-email':
-      return '유효하지 않은 이메일 주소입니다.';
-    case 'auth/operation-not-allowed':
-      return '이 로그인 방법은 사용할 수 없습니다.';
-    case 'auth/requires-recent-login':
-      return '보안을 위해 다시 로그인해 주세요.';
-    case 'auth/too-many-requests':
-      return '시도 횟수 초과. 잠시 후 다시 시도해 주세요.';
-    case 'auth/network-request-failed':
-      return '네트워크 연결을 확인해 주세요.';
-    default:
-      // Generic fallback - don't expose raw message
-      return '로그인에 실패했습니다. 다시 시도해 주세요.';
-  }
+   // Common auth errors
+   switch (code) {
+     case 'auth/popup-closed-by-user':
+       return null; // User cancelled, no message needed
+     case 'auth/cancelled-popup-request':
+       return '로그인이 취소되었습니다.';
+     case 'auth/popup-blocked':
+       return '브라우저가 로그인 팝업을 차단했습니다. 팝업 허용 후 다시 시도해 주세요.';
+     case 'auth/web-storage-unsupported':
+       return '브라우저 저장소를 사용할 수 없어 로그인할 수 없습니다. 시크릿 모드/보안 설정을 확인해 주세요.';
+     case 'auth/unauthorized-domain':
+       return '현재 도메인이 Firebase 인증 허용 도메인에 등록되지 않았습니다.';
+     case 'auth/account-exists-with-different-credential':
+       return '이미 다른 방법으로 가입된 계정이 있습니다.';
+     case 'auth/credential-already-in-use':
+       return '이미 사용 중인Credential입니다.';
+     case 'auth/email-already-in-use':
+       return '이미 사용 중인 이메일 주소입니다.';
+     case 'auth/user-disabled':
+       return '비활성화된 계정입니다. 관리자에게 문의해 주세요.';
+     case 'auth/user-not-found':
+       return '가입되지 않은 이메일 주소입니다.';
+     case 'auth/wrong-password':
+       return '비밀번호가 올바르지 않습니다.';
+     case 'auth/invalid-email':
+       return '유효하지 않은 이메일 주소입니다.';
+     case 'auth/operation-not-allowed':
+       return '이 로그인 방법은 사용할 수 없습니다.';
+     case 'auth/requires-recent-login':
+       return '보안을 위해 다시 로그인해 주세요.';
+     case 'auth/too-many-requests':
+       return '시도 횟수 초과. 잠시 후 다시 시도해 주세요.';
+     case 'auth/network-request-failed':
+       return '네트워크 연결을 확인해 주세요.';
+     default:
+       // Generic fallback - don't expose raw message
+       return '로그인에 실패했습니다. 다시 시도해 주세요.';
+   }
 }
 
 async function signInWithGoogle() {
@@ -603,7 +609,7 @@ async function signInWithGoogle() {
     alert(envError);
     return;
   }
-  
+
   if (!firebase.apps || !firebase.apps.length) {
     if (typeof initFirebase === 'function') initFirebase();
   }
@@ -616,11 +622,39 @@ async function signInWithGoogle() {
   var provider = new firebase.auth.GoogleAuthProvider();
   try { provider.setCustomParameters({ prompt: 'select_account' }); } catch (e) {}
 
+  var loginPage = isLoginPage();
+
   try {
     await firebase.auth().signInWithPopup(provider);
     window.location.href = getRedirectTarget();
   } catch (error) {
     console.error('Google login failed:', error);
+
+    var popupFallbackCodes = {
+      'auth/popup-blocked': true,
+      'auth/web-storage-unsupported': true,
+      'auth/cancelled-popup-request': true
+    };
+
+    var shouldTryRedirectFallback =
+      loginPage &&
+      popupFallbackCodes[error && error.code];
+
+    if (shouldTryRedirectFallback) {
+      try {
+        alert('팝업 로그인에 실패해 리디렉션 방식으로 다시 시도합니다.');
+        await firebase.auth().signInWithRedirect(provider);
+        return;
+      } catch (redirectError) {
+        console.error('Google redirect fallback failed:', redirectError);
+        var redirectMessage = getFriendlyErrorMessage(redirectError, true);
+        if (redirectMessage) {
+          alert(redirectMessage);
+        }
+        return;
+      }
+    }
+
     var friendlyMessage = getFriendlyErrorMessage(error, true);
     if (friendlyMessage) {
       alert(friendlyMessage);
