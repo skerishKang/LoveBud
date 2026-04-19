@@ -483,76 +483,13 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         };
 
-        // Viewport & Pan State
-        const viewportState = {
-            offsetX: 0,
-            offsetY: 0,
-            initialized: false,
-            isPanning: false,
-            startX: 0,
-            startY: 0
-        };
-
-        const toViewportPos = (pos) => ({
-            x: pos.x + viewportState.offsetX,
-            y: pos.y + viewportState.offsetY
-        });
-
-        const centerOnLogicalPos = (pos) => {
-            viewportState.offsetX = Math.round(canvas.clientWidth / 2 - pos.x);
-            viewportState.offsetY = Math.round(canvas.clientHeight / 2 - pos.y);
-        };
-
-        const centerOnMemory = (mem) => {
-            if (!mem) return;
-            centerOnLogicalPos(calcPosition(mem));
-        };
-
-        const updateSidebarSummary = () => {
-            const treeTitleEl = document.getElementById('sidebarTreeTitle');
-            const momentCountEl = document.getElementById('sidebarMomentCount');
-            if (treeTitleEl) {
-                treeTitleEl.textContent = (window.currentTreeData && window.currentTreeData.title) || '새 러브트리';
-            }
-            if (momentCountEl) {
-                const count = treeMemories().filter(m => !isRootMemory(m, canonicalRootId)).length;
-                momentCountEl.textContent = `순간 ${count}개`;
-            }
-        };
-
-        const bindCanvasPan = () => {
-            canvas.addEventListener('mousedown', (e) => {
-                if (e.target.closest('.memory-node') || e.target.closest('#addMemoryForm')) return;
-                viewportState.isPanning = true;
-                viewportState.startX = e.clientX;
-                viewportState.startY = e.clientY;
-                canvas.classList.add('panning');
-            });
-
-            window.addEventListener('mousemove', (e) => {
-                if (!viewportState.isPanning) return;
-                const dx = e.clientX - viewportState.startX;
-                const dy = e.clientY - viewportState.startY;
-                viewportState.startX = e.clientX;
-                viewportState.startY = e.clientY;
-                viewportState.offsetX += dx;
-                viewportState.offsetY += dy;
-                initCanvas();
-                selectNodeById(selectedNodeId);
-            });
-
-            window.addEventListener('mouseup', () => {
-                viewportState.isPanning = false;
-                canvas.classList.remove('panning');
-            });
-        };
-
         // ── 배치 상수 ──
-        const ROOT_X = 400, ROOT_Y = 350; // 300→350: 첫 노드가 화면 위로 벗어나는 문제 완화
-        const RADIUS_L1 = 320; // L1 반경 (280→320) - 노드 겹침 방지
-        const RADIUS_L2 = 240; // L2 반경 (200→240) - 노드 겹침 방지
-        const NODE_WIDTH = 80;  // 노드 카드 너비 (px)
-        const MIN_ANGLE_GAP = 35; // 최소 각도 간격 (도) - 겹침 방지
+        const ROOT_X = Math.max(460, Math.round(canvas.clientWidth * 0.42));
+        const ROOT_Y = Math.max(420, Math.round(canvas.clientHeight * 0.52));
+        const RADIUS_L1 = 260;
+        const RADIUS_L2 = 210;
+        const NODE_WIDTH = 80;
+        const MIN_ANGLE_GAP = 32;
 
         const FIXED_ANGLES = {
             v1: -60, v2: -130, v3: 10,
@@ -600,16 +537,21 @@ document.addEventListener('DOMContentLoaded', () => {
             const count = siblings.length;
 
             if (parentId === canonicalRootId) {
-                // root 직속: 고정 각도 우선, 없으면 분산
                 let angle;
-                if (FIXED_ANGLES[mem.id] !== undefined) {
+
+                if (count === 1) {
+                    angle = -35;
+                } else if (count === 2) {
+                    angle = idx === 0 ? -55 : -5;
+                } else if (FIXED_ANGLES[mem.id] !== undefined) {
                     angle = FIXED_ANGLES[mem.id];
                 } else if (count > 0) {
-                    const angles = distributeAngles(count);
+                    const angles = distributeAngles(count, -35);
                     angle = angles[idx] !== undefined ? angles[idx] : angles[0];
                 } else {
-                    angle = -90;
+                    angle = -35;
                 }
+
                 return {
                     x: ROOT_X + RADIUS_L1 * Math.cos(angle * Math.PI / 180),
                     y: ROOT_Y + RADIUS_L1 * Math.sin(angle * Math.PI / 180)
