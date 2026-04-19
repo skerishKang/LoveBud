@@ -568,7 +568,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <span style="font-size:1.4rem;line-height:1.2;font-weight:900;letter-spacing:-0.03em;color:var(--on-surface);">${i18n('waiting_first_moment') || '첫 순간을 기다리고 있어요'}${localBadge}</span>
                             </div>
                             <div style="font-size:13px;color:var(--on-surface-variant);line-height:1.5;">
-                                ${i18n('empty_panel_hint') || '아직 선택된 순간이 없습니다. 첫 번째 영상을 추가하면 이 패널에 순간 정보가 표시됩니다.'}
+                                ${i18n('empty_panel_hint_short') || '첫 영상을 추가하면 여기에 표시됩니다.'}
                             </div>
                             ${treeMetaHtml}
                         </div>
@@ -992,6 +992,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     textEl.textContent = message || i18n('save_saving');
                     indicator.className = 'save-status-indicator saving';
                     indicator.style.display = 'flex';
+                    // saving 상태에서는 시간 표시 숨김
+                    if (timeEl) timeEl.textContent = '';
                     break;
                 case 'saved':
                     iconEl.textContent = 'check_circle';
@@ -1009,6 +1011,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     iconEl.textContent = 'error';
                     textEl.textContent = message || i18n('save_failed');
                     indicator.className = 'save-status-indicator failed';
+                    // failed 상태에서도 시간 표시 숨김
+                    if (timeEl) timeEl.textContent = '';
                     saveStatusData.timer = setTimeout(() => {
                         indicator.style.display = 'none';
                     }, 5000);
