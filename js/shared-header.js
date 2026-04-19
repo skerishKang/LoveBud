@@ -149,13 +149,18 @@
         return [
             '<header class="nav-bar">',
                 '<div class="headline" style="font-size: 1.5rem; font-weight: 900; color: var(--on-surface); letter-spacing: -0.04em; cursor: pointer;" onclick="location.href=\'' + logoHref + '\'">LoveTree</div>',
-                '<nav class="main-nav">',
-                    '<div class="nav-links">',
-                        navLinksHTML,
-                    '</div>',
-                    '<div style="display: flex; align-items: center; gap: 16px;">',
-                        langDropdownHTML,
-                        authHTML,
+                '<button class="mobile-nav-toggle" id="mobileNavToggle" type="button" aria-label="메뉴 열기" aria-expanded="false">',
+                    '<span class="material-symbols-outlined">menu</span>',
+                '</button>',
+                '<nav class="main-nav" id="mainNav">',
+                    '<div class="main-nav-panel" id="mainNavPanel">',
+                        '<div class="nav-links">',
+                            navLinksHTML,
+                        '</div>',
+                        '<div class="nav-actions">',
+                            langDropdownHTML,
+                            authHTML,
+                        '</div>',
                     '</div>',
                 '</nav>',
             '</header>'
@@ -198,6 +203,34 @@
         });
     }
 
+    function setupMobileNav() {
+        var toggleBtn = document.getElementById('mobileNavToggle');
+        var panel = document.getElementById('mainNavPanel');
+        if (!toggleBtn || !panel) return;
+
+        toggleBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            var isOpen = panel.classList.toggle('show');
+            toggleBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!panel.contains(e.target) && !toggleBtn.contains(e.target)) {
+                panel.classList.remove('show');
+                toggleBtn.setAttribute('aria-expanded', 'false');
+            }
+        });
+
+        panel.querySelectorAll('a, button').forEach(function(el) {
+            el.addEventListener('click', function() {
+                if (window.innerWidth <= 768) {
+                    panel.classList.remove('show');
+                    toggleBtn.setAttribute('aria-expanded', 'false');
+                }
+            });
+        });
+    }
+
     // 공통 헤더 렌더링
     window.renderSharedHeader = function() {
         var container = document.getElementById('shared-header');
@@ -207,6 +240,7 @@
         }
         container.innerHTML = buildHeaderHTML();
         setupLangDropdown(); // 언어 드롭다운 이벤트 설정
+        setupMobileNav();
         // 헤더가 동적으로 렌더된 뒤 auth 컨테이너가 생기므로,
         // auth.js가 DOMContentLoaded 시점을 놓쳤더라도 다시 바인딩되게 한다.
         if (typeof window.initAuth === 'function') {
