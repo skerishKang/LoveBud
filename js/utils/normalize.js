@@ -1,10 +1,14 @@
 /**
- * Memory data normalization utilities
- * 
- * Converts various memory data formats (API flat camelCase, snake_case fallback)
- * into a standardized flat camelCase shape.
- * 
- * Used by: detail.js, editor.js, and any other page handling memory data.
+ * Memory/Tree data normalization utilities
+ *
+ * Standard API contract target: flat camelCase objects.
+ *
+ * Transitional compatibility:
+ * - snake_case fields are still accepted temporarily
+ * - this fallback exists only for migration-period compatibility
+ * - remove these fallbacks after API, cache, and mock responses are fully aligned to flat camelCase
+ *
+ * Used by: detail.js, editor.js, and other pages handling memory/tree data.
  */
 
 (function (global) {
@@ -19,6 +23,9 @@
     function normalizeMemory(mem) {
         if (!mem) return null;
 
+        // Transitional fallback block:
+        // Accept legacy snake_case fields during migration.
+        // New code and server responses must prefer flat camelCase only.
         return {
             id: mem.id,
             treeId: mem.treeId || mem.tree_id || null,
@@ -63,6 +70,9 @@
     function normalizeTree(tree) {
         if (!tree) return null;
 
+        // Transitional fallback block:
+        // Accept legacy snake_case fields during migration.
+        // New code and server responses must prefer flat camelCase only.
         return {
             id: tree.id,
             userId: tree.userId || tree.user_id || null,
