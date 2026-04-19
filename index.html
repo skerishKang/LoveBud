@@ -15,25 +15,38 @@
          }
 
          .hero-section {
-             flex: 1;
-             display: flex;
-             align-items: center;
-             justify-content: center;
-             padding: 120px 48px 80px;
-             max-width: 1280px;
-             margin: 0 auto;
-             width: 100%;
-             position: relative;
-         }
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 120px 48px 80px;
+            background-image: url('assets/hero-bg.jpg');
+            background-size: cover;
+            background-position: center;
+            position: relative;
+        }
+
+        .hero-section::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(
+                to bottom,
+                rgba(255,255,255,0.16) 0%,
+                rgba(255,255,255,0.08) 40%,
+                rgba(255,255,255,0.02) 100%
+            );
+            pointer-events: none;
+        }
 
          .hero-content {
-             max-width: 640px;
-             z-index: 2;
-             display: flex;
-             flex-direction: column;
-             align-items: center;
-             text-align: center;
-         }
+            max-width: 640px;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            position: relative;
+        }
 
          .hero-visual {
              position: absolute;
@@ -46,12 +59,14 @@
          }
 
          .hero-title {
-             font-size: 3.5rem;
-             line-height: 1.15;
-             color: var(--on-surface);
-             margin-bottom: 1.5rem;
-             font-weight: 900;
-         }
+            font-size: 3.5rem;
+            line-height: 1.15;
+            color: var(--on-surface);
+            font-family: var(--font-heading);
+            letter-spacing: -0.03em;
+            font-weight: 900;
+            text-shadow: 0 1px 10px rgba(255,255,255,0.2);
+        }
 
          .hero-title span {
              color: var(--primary);
