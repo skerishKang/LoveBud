@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
+lodocument.addEventListener('DOMContentLoaded', () => {
     // Root memory helpers
     // Prefer editor-root-helpers.js and keep a local fallback.
     let rootHelperWarningShown = false;
@@ -42,6 +42,8 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const editorSaveStatus = window.LoveBudEditorSaveStatus || {};
+    const editorPageHelpers = window.LoveBudEditorPageHelpers || {};
+    const editorTreeHelpers = window.LoveBudEditorTreeHelpers || {};
 
     // Auth guard bootstrapping via onAuthReady callback
     // Shared toast utility wrapper
@@ -62,13 +64,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const getI18n = () => window.t || ((k) => k);
     const i18n = getI18n();
 
-    const getEditorBasePath = () =>
-        window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
+    const getEditorBasePath = editorPageHelpers.getEditorBasePath || (() =>
+        window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/');
 
-    const buildEditorRedirectTarget = () =>
-        getEditorBasePath() + 'editor.html' + (window.location.search || '');
+    const buildEditorRedirectTarget = editorPageHelpers.buildEditorRedirectTarget || (() =>
+        getEditorBasePath() + 'editor.html' + (window.location.search || ''));
 
-    const redirectToEditorLogin = (delayMs = 0) => {
+    const redirectToEditorLogin = editorPageHelpers.redirectToEditorLogin || ((delayMs = 0) => {
         const loginUrl =
             getEditorBasePath() + 'login.html?redirect=' + encodeURIComponent(buildEditorRedirectTarget());
 
@@ -80,7 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         window.location.href = loginUrl;
-    };
+    });
 
     const safeI18nText = editorHelpers.safeI18nText || ((i18nFn, key, fallback) => {
         const result = i18nFn(key);
@@ -118,22 +120,22 @@ document.addEventListener('DOMContentLoaded', () => {
         return value;
     });
 
-    const syncCurrentTreeData = (tree) => {
+    const syncCurrentTreeData = editorTreeHelpers.syncCurrentTreeData || ((tree) => {
         window.currentTreeData = {
             ...tree,
             visibility: tree.visibility || 'public'
         };
         console.log('[editor] currentTreeData set:', window.currentTreeData.visibility);
-    };
+    });
 
-    const resolveParentIdForCreate = (selectedNodeId, canonicalRootId) => {
+    const resolveParentIdForCreate = editorTreeHelpers.resolveParentIdForCreate || ((selectedNodeId, canonicalRootId) => {
         if (!selectedNodeId || selectedNodeId === canonicalRootId) {
             return canonicalRootId === 'root' ? null : canonicalRootId;
         }
         return selectedNodeId;
-    };
+    });
 
-    const getMyTreesHref = () => getEditorBasePath() + 'my-trees.html';
+    const getMyTreesHref = editorPageHelpers.getMyTreesHref || (() => getEditorBasePath() + 'my-trees.html');
 
     const escapeHtml = editorHelpers.escapeHtml || ((value) => String(value ?? '')
         .replace(/&/g, '&amp;')
@@ -225,7 +227,16 @@ document.addEventListener('DOMContentLoaded', () => {
         return i18n('invalid_youtube') || '유효한 YouTube 링크를 입력해 주세요.';
     });
 
-    const renderTreeLoadError = ({ canvas, detailPanel, addBtn, errorTitle, errorDesc }) => {
+    const renderTreeLoadError = editorPageHelpers.renderTreeLoadError || (({
+        canvas,
+        detailPanel,
+        addBtn,
+        errorTitle,
+        errorDesc,
+        i18n,
+        escapeHtml,
+        setDetailEmptyState
+    }) => {
         canvas.innerHTML = `
             <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;padding:32px;background:rgba(255,255,255,0.96);border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,0.1);max-width:360px;width:calc(100% - 32px);">
                 <div style="font-size:48px;margin-bottom:16px;">🌱</div>
@@ -252,12 +263,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (addBtn) addBtn.disabled = true;
-    };
+    });
 
-    const getFirstMockTree = () => {
+    const getFirstMockTree = editorTreeHelpers.getFirstMockTree || (() => {
         const mockTrees = typeof getTrees === 'function' ? getTrees() : [];
         return mockTrees[0] || null;
-    };
+    });
 
     const startEditor = async () => {
         const canvas = document.getElementById('canvasArea');
@@ -332,7 +343,16 @@ document.addEventListener('DOMContentLoaded', () => {
                             ? (i18n('tree_load_error_desc') || '일시적인 서버 문제 또는 접근 권한 문제일 수 있습니다. 다시 시도하거나 트리 목록으로 돌아가 주세요.')
                             : (i18n('tree_load_not_found_desc') || '잘못된 링크이거나 접근 권한이 없는 트리입니다.');
 
-                renderTreeLoadError({ canvas, detailPanel, addBtn, errorTitle, errorDesc });
+                renderTreeLoadError({
+                    canvas,
+                    detailPanel,
+                    addBtn,
+                    errorTitle,
+                    errorDesc,
+                    i18n,
+                    escapeHtml,
+                    setDetailEmptyState
+                });
 
                 return;
             }
@@ -518,10 +538,14 @@ document.addEventListener('DOMContentLoaded', () => {
         let selectedNodeId = canonicalRootId;
 
         const nextMemoryId = () => {
+            if (editorTreeHelpers.nextMemoryIdFromMemories) {
+                return editorTreeHelpers.nextMemoryIdFromMemories(treeMemories());
+            }
+
             let max = 0;
             treeMemories().forEach(m => {
                 const match = m.id.match(/^m(\d+)$/);
-                if (match) max = Math.max(max, parseInt(match[1]));
+                if (match) max = Math.max(max, parseInt(match[1], 10));
             });
             return 'm' + (max + 1);
         };
