@@ -22,9 +22,9 @@
 (function() {
     'use strict';
 
-    // 배치 상수
-    const ROOT_X = 400;
-    const ROOT_Y = 350; // 300→350: 첫 노드가 화면 위로 벗어나는 문제 완화
+    // 배치 상수 - 첫 노드 중앙 정렬
+    const ROOT_X = 320; // 400→320: 첫 노드를 캔버스 중심축으로 이동
+    const ROOT_Y = 300; // 350→300: 중앙 정렬
     const RADIUS_L1 = 320; // L1 반경 (280→320) - 노드 겹침 방지
     const RADIUS_L2 = 240; // L2 반경 (200→240) - 노드 겹침 방지
     const NODE_WIDTH = 80;  // 노드 카드 너비 (px)

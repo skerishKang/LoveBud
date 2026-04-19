@@ -398,7 +398,24 @@
   }
 
   // ── Create new tree ──────────────────────────────────────────────────────
+   function isTestPublicMode() {
+     // 테스트 시나리오에서 public 트리 생성을 강제하는 모드 감지
+     try {
+       var urlParams = new URLSearchParams(window.location.search);
+       if (urlParams.get('testPublic') === '1') return true;
+       if (window.localStorage?.getItem('lovebud_test_public') === '1') return true;
+       if (window.LoveBudRuntimeFlags?.forcePublicTrees) return true;
+     } catch (e) {}
+     return false;
+   }
+
    function getDefaultVisibility() {
+     // 테스트 모드일 때는 public을 기본으로
+     if (isTestPublicMode()) {
+       console.log('[my-trees] Test public mode: defaulting to public');
+       return 'public';
+     }
+
      try {
        var settings = localStorage.getItem('lovebud_user_settings');
        if (settings) {
@@ -410,7 +427,7 @@
      } catch (e) {
        console.warn('[my-trees] Failed to read settings:', e);
      }
-     return 'private'; // 기본값은 반드시 private
+     return 'private'; // 실제 사용자 기본값은 반드시 private
    }
 
    async function createNewTree() {

@@ -177,14 +177,14 @@
      */
     function renderNoTreesState() {
         const basePath = getBasePath();
-        
+
         return `
             <div style="text-align: center; padding: 60px 24px; color: var(--on-surface-variant);">
                 <span class="material-symbols-outlined" style="font-size: 56px; color: var(--primary); opacity: 0.6; margin-bottom: 20px; display: block;">public</span>
                 <p style="font-size: 1.25rem; font-weight: 800; margin-bottom: 12px; color: var(--on-surface);">아직 공개된 러브트리가 없어요</p>
                 <p style="font-size: 0.95rem; opacity: 0.8; margin-bottom: 24px; line-height: 1.6;">
-                    둘러보기 페이지에는 <strong>공개(Public)</strong>로 설정된 트리만 나타납니다.<br>
-                    테스트용 트리를 생성할 때 공개 설정을 확인해 주세요!
+                    다른 사람의 공개 트리가 생기면 여기서 둘러볼 수 있어요.<br>
+                    지금은 둘러볼 공개 러브트리가 아직 없는 상태입니다.
                 </p>
                 <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
                     <a href="${basePath}my-trees.html" class="btn-round btn-primary" style="text-decoration: none; font-size: 14px; padding: 10px 20px;">

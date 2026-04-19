@@ -246,8 +246,8 @@
       en: '🌱 New Tree Start'
     },
     'no_memory_yet': {
-      ko: '🎉 첫 번째 순간을 추가해보세요! "영상 추가" 버튼을 클릭하면 감정이 시작됩니다.',
-      en: '🎉 Click "Add Video" to add your first moment!'
+      ko: '첫 번째 순간을 추가해보세요! "영상 추가" 버튼을 클릭하면 감정이 시작됩니다.',
+      en: 'Click "Add Video" to add your first moment!'
     },
     'enter_youtube': {
       ko: 'YouTube 링크를 입력해주세요.',
@@ -256,6 +256,14 @@
      'invalid_youtube': {
        ko: '유효한 YouTube 링크가 아닙니다.',
        en: 'Invalid YouTube link.'
+     },
+     'empty_panel_hint_short': {
+       ko: '첫 영상을 추가하면 여기에 표시됩니다',
+       en: 'First video will appear here'
+     },
+     'waiting_first_moment': {
+       ko: '첫 순간을 기다리고 있어요',
+       en: 'Waiting for first moment'
      },
      'invalid_youtube_format': {
        ko: '전체 YouTube 링크를 붙여넣어 주세요.',

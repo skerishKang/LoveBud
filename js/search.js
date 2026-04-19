@@ -231,9 +231,11 @@ const isMockFallbackEnabled = () =>
             if (isApiFailureWithoutFallback) {
                 renderLoadErrorState();
             } else if (hasNoData) {
+                // 공개 트리가 0개인 상태 (API 정상, 데이터 없음)
                 resultsList.innerHTML = CardRenderer.renderNoTreesState();
                 PreviewRenderer.resetPreview();
             } else {
+                // 검색 결과 없음 (필터링 결과 0개)
                 resultsList.innerHTML = CardRenderer.renderEmptySearchState();
                 PreviewRenderer.resetPreview();
             }
