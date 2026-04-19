@@ -148,7 +148,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const i18n = window.t || ((k) => k);
 
         if (degradedReason === 'missing-tree-id') {
-            // treeId 자체가 없음
+            // treeId 자체가 없음: 처음 접속 or 깊은 링크로 유입됨
             treeContextEl.innerHTML = `
                 <div style="display: flex; align-items: flex-start; gap: 16px;">
                     <div style="width: 48px; height: 48px; background: var(--surface-container); border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
@@ -156,16 +156,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>
                     <div style="flex: 1; min-width: 0;">
                         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-                            <span style="font-size: 12px; font-weight: 800; color: var(--primary); text-transform: uppercase; letter-spacing: 1px;">감상 중</span>
+                            <span style="font-size: 12px; font-weight: 800; color: var(--primary); text-transform: uppercase; letter-spacing: 1px;">${i18n('tree_context_viewing')}</span>
                         </div>
-                        <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--on-surface); margin: 0; line-height: 1.3;">기억의 순간</h2>
+                        <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--on-surface); margin: 0; line-height: 1.3;">${i18n('tree_context_moment')}</h2>
                         <p style="font-size: 13px; color: var(--on-surface-variant); margin-top: 6px; line-height: 1.5;">
-                            이 순간을 단독으로 감상하고 있어요. 트리 전체 경로를 보시려면 둘러보기에서 선택해주세요.
+                            ${i18n('tree_context_solo_view')}
                         </p>
                     </div>
                 </div>
             `;
-        } else if (degradedReason === 'tree-load-failed') {
+            return;
+        }
+
+        if (degradedReason === 'tree-load-failed') {
             // treeId는 있었으나 로드 실패
             treeContextEl.innerHTML = `
                 <div style="display: flex; align-items: flex-start; gap: 16px;">
@@ -174,45 +177,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>
                     <div style="flex: 1; min-width: 0;">
                         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-                            <span style="font-size: 12px; font-weight: 800; color: var(--on-surface-variant); text-transform: uppercase; letter-spacing: 1px;">트리 정보 없음</span>
+                            <span style="font-size: 12px; font-weight: 800; color: var(--on-surface-variant); text-transform: uppercase; letter-spacing: 1px;">${i18n('tree_info_missing')}</span>
                         </div>
-                        <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--on-surface); margin: 0; line-height: 1.3;">기억의 순간</h2>
+                        <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--on-surface); margin: 0; line-height: 1.3;">${i18n('tree_context_moment')}</h2>
                         <p style="font-size: 13px; color: var(--on-surface-variant); margin-top: 6px; line-height: 1.5;">
-                            트리 정보를 불러오지 못했어요. 순간 감상은 계속할 수 있어요.
+                            ${i18n('tree_load_failed_desc')}
                         </p>
                     </div>
                 </div>
             `;
-        } else if (hasTreeContext && tree) {
-            // 정상 트리 컨텍스트
-            const memoryCount = Array.isArray(memories) ? memories.length : 0;
-            const treeTitle = escapeHtml(tree.title || '러브트리');
-
-            const visibility = tree.visibility || 'private';
-            const isPublic = visibility === 'public';
-            const i18n = getI18n();
-            const visIcon = isPublic ? 'public' : 'lock';
-            const visLabel = escapeHtml(isPublic ? i18n('visibility_public') : i18n('visibility_private'));
-            const visStyle = isPublic
-                ? 'background:rgba(76,175,80,0.1);color:#4caf50;'
-                : 'background:rgba(158,158,158,0.1);color:#757575;';
-
-            const contextMessages = {
-                browse: {
-                    icon: 'explore',
-                    label: '둘러보기',
-                    desc: `${memoryCount}개의 순간이 이어진 감정 경로를 따라가고 있어요`
-                },
-                editor: {
-                    icon: 'edit',
-                    label: '편집 중',
-                    desc: '편집 중인 트리를 감상 모드로 보고 있어요'
-                },
-                'my-trees': {
-                    icon: 'account_tree',
-                    label: '내 러브트리',
-                    desc: '내가 기록한 순간들을 다시 감상하고 있어요'
-                }
+            return;
+        }
             };
             const contextInfo = contextMessages[sourceContext] || contextMessages.browse;
 
@@ -250,10 +225,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             connectedFragments.innerHTML = `
                 <div style="text-align: center; padding: 24px; color: var(--on-surface-variant); font-size: 13px;">
                     <span class="material-symbols-outlined" style="font-size: 24px; opacity: 0.5; margin-bottom: 8px; display: block;">forest</span>
-                    트리 경로 정보가 없어요<br>
-                    <a href="search.html" style="color: var(--primary); text-decoration: none; font-weight: 600;">둘러보기에서 트리 찾기</a>
+                    ${i18n('tree_path_missing')}<br>
+                    <a href="search.html" style="color: var(--primary); text-decoration: none; font-weight: 600;">${i18n('find_tree_in_browse')}</a>
                 </div>
             `;
+            return;
+        }
+
+        // tree는 있지만 memories가 없으면
+        if (!memories || memories.length === 0) {
+            connectedFragments.innerHTML = '';
             return;
         }
 
@@ -303,11 +284,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             connectedFragments.innerHTML = `
                 <div style="text-align: center; padding: 24px; color: var(--on-surface-variant); font-size: 13px;">
                     <span class="material-symbols-outlined" style="font-size: 24px; opacity: 0.5; margin-bottom: 8px; display: block;">device_hub</span>
-                    같은 경로의 다른 순간이 없어요
+                    ${i18n('no_siblings_in_path')}
                 </div>
             `;
         }
-    };
+
+        // tree는 있지만 memories가 없으면
+        if (!memories || memories.length === 0) {
+            connectedFragments.innerHTML = `
+                <div style="text-align: center; padding: 24px; color: var(--on-surface-variant); font-size: 13px;">
+                    <span class="material-symbols-outlined" style="font-size: 24px; opacity: 0.5; margin-bottom: 8px; display: block;">device_hub</span>
+                    ${i18n('no_siblings_in_path')}
+                </div>
+            `;
+        };
 
     // ═══════════════════════════════════════════════════════════════════════
     // SECTION 2-1: 에러 상태 UI 렌더링 (신규)

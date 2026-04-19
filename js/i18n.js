@@ -219,132 +219,49 @@
        ko: '링크가 중간에 잘린 것 같아요. 전체 YouTube 링크를 다시 복사해 주세요.',
        en: 'The link looks incomplete. Please copy the full YouTube URL again.'
      },
-     'new_memory': {
-      ko: '새로운 기억',
-      en: 'New Memory'
-    },
-
-    'default_tree_title': {
-      ko: '나의 첫 러브트리',
-      en: 'My First LoveTree'
-    },
-    'visibility_public': {
-      ko: '공개',
-      en: 'Public'
-    },
-    'visibility_private': {
-      ko: '비공개',
-      en: 'Private'
-    },
-    'share_info': {
-      ko: '링크를 다른 사람과 공유할 수 있어요',
-      en: 'You can share this link with others'
-    },
-    'private_info': {
-      ko: '이 트리는 나만 볼 수 있어요',
-      en: 'Only you can see this tree'
-    },
-    'share_link': {
-      ko: '링크 복사',
-      en: 'Copy Link'
-    },
-    'copied_link': {
-      ko: '링크가 복사되었습니다!',
-      en: 'Link copied!'
-    },
-    'sort_recent': {
-      ko: '최근 수정순',
-      en: 'Recent'
-    },
-    'sort_oldest': {
-      ko: '생성순',
-      en: 'Oldest'
-    },
-    'sort_name': {
-      ko: '이름순',
-      en: 'Name'
-    },
-
-    // login.html
-    'login_title': {
-      ko: '당신의 감정 나무를 시작하세요',
-      en: 'Start Your Emotional Tree'
-    },
-    'login_desc': {
-      ko: '처음 사랑에 빠진 순간부터, 팬이 되어가는 모든 경로를영상과 메모로 연결해 기록하세요.',
-      en: 'From your first fandom moment to becoming a fan,record your journey with videos and memos.'
-    },
-    'google_login': {
-      ko: 'Google로 시작하기',
-      en: 'Start with Google'
-    },
-    'google_signup': {
-      ko: 'Google로 계속하기',
-      en: 'Continue with Google'
-    },
-    'or_email': {
-      ko: '또는 이메일로 시작하기',
-      en: 'Or start with email'
-    },
-    'email_login': {
-      ko: '이메일로 시작하기',
-      en: 'Start with email'
-    },
-    'badge_first_moment': {
-      ko: '첫 순간 기록',
-      en: 'First Moment'
-    },
-    'badge_tree_grow': {
-      ko: '감정 나무 성장',
-      en: 'Growing Tree'
-    },
-    'badge_safe': {
-      ko: '안전한 보관',
-      en: 'Safe Storage'
-    },
-    'later': {
-      ko: '나중에 시작하기',
-      en: 'Start later'
-    },
-    'redirect_notice_title': {
-      ko: '내 러브트리를 이용하려면 로그인이 필요합니다',
-      en: 'Login required to access My Lovetree'
-    },
-    'redirect_notice_desc': {
-      ko: '로그인 후 자동으로 이동합니다',
-      en: 'You will be redirected automatically after login'
-    },
-    'email_modal_title_login': {
-      ko: '이메일로 로그인',
-      en: 'Login with Email'
-    },
-    'email_modal_desc_login': {
-      ko: '이미 만든 이메일 계정으로 로그인합니다',
-      en: 'Login with your existing email account'
-    },
-    'email_modal_title_signup': {
-      ko: '이메일로 회원가입',
-      en: 'Sign up with Email'
-    },
-    'email_modal_desc_signup': {
-      ko: '새로운 이메일 계정을 만듭니다',
-      en: 'Create a new email account'
-    },
-    'email_label': {
-      ko: '이메일',
-      en: 'Email'
-    },
-     'password_label': {
-       ko: '비밀번호',
-       en: 'Password'
+     'tree_context_viewing': {
+       ko: '감상 중',
+       en: 'Viewing'
      },
-     'display_name_label': {
-       ko: '닉네임',
-       en: 'Nickname'
+     'tree_context_moment': {
+       ko: '기억의 순간',
+       en: 'Moment of Memory'
      },
-     'display_name_placeholder': {
-       ko: '예: XG Alpha',
-       en: 'e.g. XG Alpha'
+     'tree_context_solo_view': {
+       ko: '이 순간을 단독으로 감상하고 있어요. 트리 전체 경로를 보시려면 둘러보기에서 선택해주세요.',
+       en: 'You are viewing this moment alone. Browse to see the full tree path.'
+     },
+     'tree_info_missing': {
+       ko: '트리 정보 없음',
+       en: 'Tree Info Missing'
+     },
+     'tree_load_failed_desc': {
+       ko: '트리 정보를 불러오지 못했어요. 순간 감상은 계속할 수 있어요.',
+       en: 'Could not load tree info. You can still view this moment.'
+     },
+     'tree_path_missing': {
+       ko: '트리 경로 정보가 없어요',
+       en: 'No tree path information'
+     },
+     'find_tree_in_browse': {
+       ko: '둘러보기에서 트리 찾기',
+       en: 'Find Tree in Browse'
+     },
+     'no_siblings_in_path': {
+       ko: '같은 경로의 다른 순간이 없어요',
+       en: 'No other moments in this path'
+     },
+     'browse_label': {
+       ko: '둘러보기',
+       en: 'Browse'
+     },
+     'editor_label': {
+       ko: '편집 중',
+       en: 'Editing'
+     },
+     'my_trees_label': {
+       ko: '내 러브트리',
+       en: 'My LoveTrees'
      },
      'login_btn': {
       ko: '로그인',
@@ -567,15 +484,20 @@
       en: 'Loading your LoveTrees...'
     },
 
-    // ── editor.js 알림 메시지 ──
-    'no_permission_local': {
-      ko: '저장 권한이 없습니다. 로컬에만 추가됩니다.',
-      en: 'No save permission. Added to local only.'
-    },
-    'check_input': {
-      ko: '입력값을 확인해주세요.',
-      en: 'Please check your input.'
-    },
+     // ── editor.js 알림 메시지 ──
+     'no_permission_local': {
+       ko: '저장 권한이 없습니다. 로컬에만 추가됩니다.',
+       en: 'No save permission. Added to local only.'
+     },
+     'check_input': {
+       ko: '입력값을 확인해주세요.',
+       en: 'Please check your input.'
+     },
+     // ── detail.js ──
+     'no_siblings_in_path': {
+       ko: '같은 경로의 다른 순간이 없어요',
+       en: 'No other moments in this path'
+     },
     'server_fail_local': {
       ko: '서버 연결 실패. 로컬에만 추가됩니다.',
       en: 'Server connection failed. Added to local only.'

@@ -18,18 +18,33 @@ if (-not (Test-Path $DestDir)) {
     Write-Host "디렉토리 생성됨: $DestDir" -ForegroundColor Cyan
 }
 
-Write-Host "임시 저장소에서 최신 $Count 개의 스크린샷을 가져오는 중..." -ForegroundColor Yellow
+Write-Host "Brain 루트 및 임시 저장소에서 최신 $Count 개의 스크린샷을 가져오는 중..." -ForegroundColor Yellow
 
-$Files = Get-ChildItem -Path $TempDir -Filter *.png | Sort-Object LastWriteTime -Descending | Select-Object -First $Count
+# 루트와 .tempmediaStorage 모두에서 검색
+$Files = Get-ChildItem -Path $BrainDir, $TempDir -Filter *.png -ErrorAction SilentlyContinue | 
+         Where-Object { $_.Name -like "step*" } |
+         Sort-Object LastWriteTime -Descending | 
+         Select-Object -First $Count
+
+if ($null -eq $Files -or $Files.Count -eq 0) {
+    Write-Error "오류: 복사할 스크린샷을 찾지 못했습니다! 필터(step*)와 디렉토리($BrainDir)를 확인하세요."
+    exit 1
+}
+
+Write-Host "발견된 파일: $($Files.Count)개" -ForegroundColor Cyan
 
 $i = 1
 foreach ($File in ($Files | Sort-Object LastWriteTime)) {
     $NewName = "step-$($i.ToString('00')).png"
     $TargetPath = Join-Path $DestDir $NewName
     
-    Copy-Item $File.FullName -Destination $TargetPath -Force
-    Write-Host "복사됨: $($File.Name) -> $NewName"
+    try {
+        Copy-Item $File.FullName -Destination $TargetPath -Force -ErrorAction Stop
+        Write-Host "   [OK] $($File.Name) -> $NewName"
+    } catch {
+        Write-Error "   [Fail] $($File.Name) 복사 실패: $_"
+    }
     $i++
 }
 
-Write-Host "`n정리 완료! $TestId 폴더에서 확인하세요." -ForegroundColor Green
+Write-Host "`n정리 완료! $TestId 폴더($DestDir)에서 $(($i-1))장의 이미지를 확인하세요." -ForegroundColor Green
