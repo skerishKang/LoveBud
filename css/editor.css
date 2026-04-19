@@ -510,28 +510,26 @@ body {
     overflow-wrap: anywhere;
 }
 
-.editor-add-section .secondary-btn {
-    width: 100%;
-    min-height: 44px;
-    white-space: normal;
-    line-height: 1.45;
-    box-sizing: border-box;
-}
-
-/* Sidebar actions - new */
-.editor-sidebar-actions {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-top: 12px;
-}
-
+.editor-add-section .secondary-btn,
 .editor-sidebar-actions .secondary-btn {
     width: 100%;
+    min-height: 44px;
+    padding: 12px 16px;
+    border-radius: 999px;
+    border: 1px solid rgba(144, 73, 81, 0.18);
+    background: rgba(255,255,255,0.92);
+    color: var(--on-surface);
+    font-weight: 700;
     white-space: normal;
-    line-height: 1.45;
-    text-align: center;
-    padding: 12px 14px;
+    line-height: 1.4;
+    transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+}
+
+.editor-add-section .secondary-btn:hover,
+.editor-sidebar-actions .secondary-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 18px rgba(75, 64, 57, 0.08);
+    background: rgba(255,255,255,0.98);
 }
 
 /* Prevent text selection while panning */

@@ -180,11 +180,11 @@
         
         return `
             <div style="text-align: center; padding: 60px 24px; color: var(--on-surface-variant);">
-                <span class="material-symbols-outlined" style="font-size: 56px; color: var(--primary); opacity: 0.6; margin-bottom: 20px; display: block;">forest</span>
-                <p style="font-size: 1.25rem; font-weight: 800; margin-bottom: 12px; color: var(--on-surface);">러브트리가 자라나는 중입니다</p>
+                <span class="material-symbols-outlined" style="font-size: 56px; color: var(--primary); opacity: 0.6; margin-bottom: 20px; display: block;">public</span>
+                <p style="font-size: 1.25rem; font-weight: 800; margin-bottom: 12px; color: var(--on-surface);">아직 공개된 러브트리가 없어요</p>
                 <p style="font-size: 0.95rem; opacity: 0.8; margin-bottom: 24px; line-height: 1.6;">
-                    아직 공개된 러브트리가 없어요.<br>
-                    첫 번째 순간을 기록하고 당신의 나무를 키워보세요!
+                    둘러보기 페이지에는 <strong>공개(Public)</strong>로 설정된 트리만 나타납니다.<br>
+                    테스트용 트리를 생성할 때 공개 설정을 확인해 주세요!
                 </p>
                 <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
                     <a href="${basePath}my-trees.html" class="btn-round btn-primary" style="text-decoration: none; font-size: 14px; padding: 10px 20px;">
@@ -208,8 +208,8 @@
         return `
             <div style="text-align: center; padding: 80px 24px; color: var(--on-surface-variant);">
                 <span class="material-symbols-outlined" style="font-size: 48px; opacity: 0.3; margin-bottom: 16px; display: block;">search_off</span>
-                <p style="font-size: 1.1rem; font-weight: 700; margin-bottom: 8px;">이런 러브트리는 아직 없네요</p>
-                <p style="font-size: 0.9rem; opacity: 0.7;">다른 키워드나 단계로 찾아보세요</p>
+                <p style="font-size: 1.1rem; font-weight: 700; margin-bottom: 8px;">조건에 맞는 공개 트리가 없네요</p>
+                <p style="font-size: 0.9rem; opacity: 0.7;">다른 키워드나 태그로 공개된 러브트리를 찾아보세요.</p>
             </div>
         `;
     }
