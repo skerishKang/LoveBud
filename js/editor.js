@@ -282,6 +282,36 @@ document.addEventListener('DOMContentLoaded', () => {
         return mockTrees[0] || null;
     });
 
+    const createInlineNormalizeMemoryFallback = () => (mem) => {
+        if (!window.__editorNormalizeWarningShown) {
+            console.warn('[editor] LoveBudNormalize not loaded, using local fallback');
+            window.__editorNormalizeWarningShown = true;
+        }
+        if (!mem) return null;
+
+        return {
+            id: mem.id,
+            treeId: mem.treeId || mem.tree_id || null,
+            parentId: mem.parentId ?? mem.parent_id ?? null,
+            title: mem.title || '',
+            memo: mem.memo || mem.description || '',
+            quote: mem.quote || '',
+            timestamp: mem.timestamp || '',
+            thumbnail: mem.thumbnail || '',
+            visibility: mem.visibility || 'public',
+            artist: mem.artist || '',
+            source: mem.source || '',
+            sourceUrl: mem.sourceUrl || mem.source_url || '',
+            sourceType: mem.sourceType || mem.source_type || 'youtube',
+            emotionTags: mem.emotionTags || mem.emotion_tags || [],
+            createdAt: mem.createdAt || mem.created_at || null,
+            updatedAt: mem.updatedAt || mem.updated_at || null,
+            delay: mem.delay,
+            x: mem.x,
+            y: mem.y
+        };
+    };
+
     const startEditor = async () => {
         const canvas = document.getElementById('canvasArea');
         const svg = document.getElementById('canvasSvg');
@@ -425,34 +455,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ? editorDataLoader.createNormalizeMemory({
                 sharedNormalize: window.LoveBudNormalize?.normalizeMemory
             })
-            : (window.LoveBudNormalize?.normalizeMemory || ((mem) => {
-                if (!window.__editorNormalizeWarningShown) {
-                    console.warn('[editor] LoveBudNormalize not loaded, using local fallback');
-                    window.__editorNormalizeWarningShown = true;
-                }
-                if (!mem) return null;
-                return {
-                    id: mem.id,
-                    treeId: mem.treeId || mem.tree_id || null,
-                    parentId: mem.parentId ?? mem.parent_id ?? null,
-                    title: mem.title || '',
-                    memo: mem.memo || mem.description || '',
-                    quote: mem.quote || '',
-                    timestamp: mem.timestamp || '',
-                    thumbnail: mem.thumbnail || '',
-                    visibility: mem.visibility || 'public',
-                    artist: mem.artist || '',
-                    source: mem.source || '',
-                    sourceUrl: mem.sourceUrl || mem.source_url || '',
-                    sourceType: mem.sourceType || mem.source_type || 'youtube',
-                    emotionTags: mem.emotionTags || mem.emotion_tags || [],
-                    createdAt: mem.createdAt || mem.created_at || null,
-                    updatedAt: mem.updatedAt || mem.updated_at || null,
-                    delay: mem.delay,
-                    x: mem.x,
-                    y: mem.y
-                };
-            }));
+            : (window.LoveBudNormalize?.normalizeMemory || createInlineNormalizeMemoryFallback());
 
         const memoryLoadResult = editorDataLoader.loadEditorMemories
             ? await editorDataLoader.loadEditorMemories({
