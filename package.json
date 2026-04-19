@@ -17,6 +17,11 @@
     "test:screenshots": "node scripts/capture-screenshots.js",
     "test:screenshots:xg": "node scripts/capture-screenshots.js xg-test-$(Get-Date -Format 'yyyy-MM-dd-HHmm')",
     "test:e2e:search-detail": "node scripts/e2e-search-detail-smoke.js",
+    "test:e2e:auth-guard": "node scripts/e2e-auth-guard-smoke.js",
+    "test:e2e:editor-save": "node scripts/e2e-editor-save-smoke.js",
+    "test:e2e:editor-delete": "node scripts/e2e-editor-delete-smoke.js",
+    "test:e2e:login-success": "node scripts/e2e-login-success-smoke.js",
+    "test:e2e:login-timeout": "node scripts/e2e-login-timeout-smoke.js",
     "ci": "npm run lint && npm run build && npm run test && npm run verify"
   },
   "dependencies": {

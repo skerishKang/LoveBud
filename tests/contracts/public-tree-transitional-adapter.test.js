@@ -7,7 +7,10 @@ const vm = require('node:vm');
 const ROOT = path.resolve(__dirname, '..', '..');
 
 function loadInternals() {
-  const source = fs.readFileSync(path.join(ROOT, 'js/postgres-client.js'), 'utf8');
+  // Load postgres-client.js first to create __LoveBudApiClientInternals
+  const postgresSource = fs.readFileSync(path.join(ROOT, 'js/postgres-client.js'), 'utf8');
+  // Load adapter to add adapter functions to internals (for backward compatibility)
+  const adapterSource = fs.readFileSync(path.join(ROOT, 'js/api/public-tree-adapter.js'), 'utf8');
   const sandbox = {
     window: {
       location: { hostname: 'localhost', search: '' },
@@ -29,7 +32,10 @@ function loadInternals() {
     clearTimeout,
   };
   vm.createContext(sandbox);
-  vm.runInContext(source, sandbox);
+  // Load postgres-client.js first (creates __LoveBudApiClientInternals)
+  vm.runInContext(postgresSource, sandbox);
+  // Then load adapter (extends __LoveBudApiClientInternals for backward compatibility)
+  vm.runInContext(adapterSource, sandbox);
   return sandbox.window.__LoveBudApiClientInternals;
 }
 
