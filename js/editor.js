@@ -57,6 +57,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const editorDataLoader = window.LoveBudEditorDataLoader || {};
     const editorAuthHelpers = window.LoveBudEditorAuthHelpers || {};
 
+    const readConfirmedAuthCache = editorAuthHelpers.readConfirmedAuthCache || function() {
+        try {
+            if (localStorage.getItem('lovebud_auth_confirmed') === 'true') {
+                var raw = localStorage.getItem('lovebud_auth_cache');
+                if (raw && raw !== 'null') {
+                    return JSON.parse(raw);
+                }
+            }
+        } catch (e) {}
+        return null;
+    };
+
     // Auth guard bootstrapping via onAuthReady callback
     // Shared toast utility wrapper
     const showToast = editorHelpers.createToast
@@ -962,20 +974,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // If there is no user, check cache and redirect; otherwise continue to startEditor.
     var editorStarted = false;
 
-    // Confirmed session helper (from auth.js or local fallback)
+    // Confirmed session helper (from auth helper or local fallback)
     const getConfirmedSessionUser = editorAuthHelpers.getConfirmedSessionUser || function() {
       try {
         if (window.getConfirmedAuthUser) {
           return window.getConfirmedAuthUser();
         }
-        if (localStorage.getItem('lovebud_auth_confirmed') === 'true') {
-          var raw = localStorage.getItem('lovebud_auth_cache');
-          if (raw && raw !== 'null') {
-            return JSON.parse(raw);
-          }
-        }
       } catch (e) {}
-      return null;
+      return readConfirmedAuthCache();
     };
 
     function tryStartEditor(user) {
@@ -991,20 +997,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!user) {
             // No Firebase user - check confirmed auth cache before redirect
-            var cachedUser = editorAuthHelpers.readConfirmedAuthCache
-                ? editorAuthHelpers.readConfirmedAuthCache()
-                : null;
-
-            if (!cachedUser) {
-                try {
-                    if (localStorage.getItem('lovebud_auth_confirmed') === 'true') {
-                        var raw = localStorage.getItem('lovebud_auth_cache');
-                        if (raw && raw !== 'null') {
-                            cachedUser = JSON.parse(raw);
-                        }
-                    }
-                } catch (e) {}
-            }
+            var cachedUser = readConfirmedAuthCache();
 
             if (!cachedUser || !cachedUser.uid) {
                 redirectToEditorLogin();
