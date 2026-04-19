@@ -533,21 +533,3 @@ body {
 .memory-node * {
     user-select: none;
 }
-
-/* Sidebar actions - new */
-.editor-sidebar-actions {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-top: 12px;
-}
-
-.editor-sidebar-actions .secondary-btn {
-    width: 100%;
-}
-
-/* Prevent text selection while panning */
-.memory-node,
-.memory-node * {
-    user-select: none;
-}
