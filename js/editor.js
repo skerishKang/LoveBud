@@ -106,7 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
-        .replace(/\"/g, '&quot;')
+        .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
 
     const safeUrl = (value, { allowDataImage = false } = {}) => {
@@ -648,7 +648,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 memoBody.style.fontSize = '0.95rem';
                 memoBody.style.color = 'var(--on-surface)';
                 memoBody.textContent = isEmptyState
-                    ? i18n('empty_tree_memo') || '이 트리는 아직 비어 있습니다. \"영상 추가\" 버튼으로 첫 순간을 기록해 보세요.'
+                    ? i18n('empty_tree_memo') || '이 트리는 아직 비어 있습니다. "영상 추가" 버튼으로 첫 순간을 기록해 보세요.'
                     : (data.memo || '');
                 noteEl.appendChild(memoBody);
 
@@ -957,7 +957,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div style="font-size:48px;margin-bottom:16px;">🌱</div>
                         <div style="font-size:1.25rem;font-weight:800;margin-bottom:8px;color:var(--on-surface);">${i18n('empty_tree_title') || '새 트리가 비어있어요'}</div>
                         <div style="font-size:14px;color:var(--on-surface-variant);margin-bottom:16px;line-height:1.5;">
-                            ${i18n('empty_tree_desc') || '\"영상 추가\" 버튼을 클릭하여 첫 번째 감정을 기록해보세요!'}
+                            ${i18n('empty_tree_desc') || '"영상 추가" 버튼을 클릭하여 첫 번째 감정을 기록해보세요!'}
                         </div>
                     </div>
                 `;
@@ -1255,7 +1255,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // 첫 노드 추가 시 \"비어있음\" 메시지 제거
+            // 첫 노드 추가 시 "비어있음" 메시지 제거
             const emptyMsg = document.getElementById('emptyTreeMessage');
             if (emptyMsg) {
                 emptyMsg.remove();
