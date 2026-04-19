@@ -46,6 +46,7 @@ lodocument.addEventListener('DOMContentLoaded', () => {
     const editorTreeHelpers = window.LoveBudEditorTreeHelpers || {};
     const editorBindings = window.LoveBudEditorBindings || {};
     const editorDataLoader = window.LoveBudEditorDataLoader || {};
+    const editorAuthHelpers = window.LoveBudEditorAuthHelpers || {};
 
     // Auth guard bootstrapping via onAuthReady callback
     // Shared toast utility wrapper
@@ -921,7 +922,7 @@ lodocument.addEventListener('DOMContentLoaded', () => {
     var editorStarted = false;
 
     // Confirmed session helper (from auth.js or local fallback)
-    function getConfirmedSessionUser() {
+    const getConfirmedSessionUser = editorAuthHelpers.getConfirmedSessionUser || function() {
       try {
         if (window.getConfirmedAuthUser) {
           return window.getConfirmedAuthUser();
@@ -934,7 +935,7 @@ lodocument.addEventListener('DOMContentLoaded', () => {
         }
       } catch (e) {}
       return null;
-    }
+    };
 
     function tryStartEditor(user) {
         // If the editor already started and real auth arrives later, try re-fetching data
@@ -949,15 +950,20 @@ lodocument.addEventListener('DOMContentLoaded', () => {
 
         if (!user) {
             // No Firebase user - check confirmed auth cache before redirect
-            var cachedUser = null;
-            try {
-                if (localStorage.getItem('lovebud_auth_confirmed') === 'true') {
-                    var raw = localStorage.getItem('lovebud_auth_cache');
-                    if (raw && raw !== 'null') {
-                        cachedUser = JSON.parse(raw);
+            var cachedUser = editorAuthHelpers.readConfirmedAuthCache
+                ? editorAuthHelpers.readConfirmedAuthCache()
+                : null;
+
+            if (!cachedUser) {
+                try {
+                    if (localStorage.getItem('lovebud_auth_confirmed') === 'true') {
+                        var raw = localStorage.getItem('lovebud_auth_cache');
+                        if (raw && raw !== 'null') {
+                            cachedUser = JSON.parse(raw);
+                        }
                     }
-                }
-            } catch (e) {}
+                } catch (e) {}
+            }
 
             if (!cachedUser || !cachedUser.uid) {
                 redirectToEditorLogin();
