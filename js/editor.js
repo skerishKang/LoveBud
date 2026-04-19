@@ -1093,34 +1093,34 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // ── Show saving status (UX hardening) ──
-            updateSaveStatus('saving', '저장 중...');
-
             // ── YouTube 처리: LoveBudMedia 공통 유틸 사용 ──
             let videoId;
             let embedUrl;
             let thumbnailUrl;
 
-             if (window.LoveBudMedia?.extractYouTubeId) {
-                 videoId = window.LoveBudMedia.extractYouTubeId(url);
-                 if (!videoId) {
-                     showToast(getYouTubeInputErrorMessage(url), 'error');
-                     return;
-                 }
-                 embedUrl = window.LoveBudMedia.getEmbedUrl(url, 'youtube');
-                 thumbnailUrl = window.LoveBudMedia.getThumbnailUrl(url, 'youtube', 'mqdefault');
-             } else {
-                 // fallback: 기존 정규식 로직 (media.js 로드 실패 시)
-                 console.warn('[editor] LoveBudMedia not loaded, using fallback YouTube parsing');
-                 const match = url.match(/(?:v=|\/|youtu\.be\/)([0-9A-Za-z_-]{11})/);
-                 if (!match) {
-                     showToast(getYouTubeInputErrorMessage(url), 'error');
-                     return;
-                 }
+            if (window.LoveBudMedia?.extractYouTubeId) {
+                videoId = window.LoveBudMedia.extractYouTubeId(url);
+                if (!videoId) {
+                    showToast(getYouTubeInputErrorMessage(url), 'error');
+                    return;
+                }
+                embedUrl = window.LoveBudMedia.getEmbedUrl(url, 'youtube');
+                thumbnailUrl = window.LoveBudMedia.getThumbnailUrl(url, 'youtube', 'mqdefault');
+            } else {
+                // fallback: 기존 정규식 로직 (media.js 로드 실패 시)
+                console.warn('[editor] LoveBudMedia not loaded, using fallback YouTube parsing');
+                const match = url.match(/(?:v=|\/|youtu\.be\/)([0-9A-Za-z_-]{11})/);
+                if (!match) {
+                    showToast(getYouTubeInputErrorMessage(url), 'error');
+                    return;
+                }
                 videoId = match[1];
                 embedUrl = `https://www.youtube.com/embed/${videoId}`;
                 thumbnailUrl = `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
             }
+
+            // ── 검증 통과 후에만 저장 상태 표시 ──
+            updateSaveStatus('saving', '저장 중...');
 
             const today = new Date();
             const i18n = window.t || ((k) => k);
@@ -1162,12 +1162,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const i18n = window.t || ((k) => k);
                 console.warn('[editor] API createMemory failed, fallback to mock:', e?.message || e);
 
-                // ── Save failed status (UX hardening) ──
-                updateSaveStatus('failed', '저장 실패');
-
                 if (e?.message?.includes('401') || e?.message?.includes('403')) {
                     showToast(i18n('no_permission_local'), 'warn');
                 } else if (e?.message?.includes('400')) {
+                    updateSaveStatus('failed', i18n('check_input') || '입력값을 다시 확인해주세요.');
                     showToast(i18n('check_input') || '입력값을 다시 확인해주세요.', 'error');
                 } else {
                     showToast(i18n('server_fail_local') || '서버 저장에 실패해 로컬 저장으로 전환됩니다.', 'error');
@@ -1271,13 +1269,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (addBtn) addBtn.addEventListener('click', showAddMemoryForm);
         if (cancelBtn) cancelBtn.addEventListener('click', hideAddMemoryForm);
         if (confirmBtn) {
-            confirmBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                addMemoryFromForm().catch(err => {
-                    console.error('[editor] Failed to add memory:', err);
-                    showToast('기록 저장 중 오류가 발생했습니다', 'error');
-                });
-            });
+             confirmBtn.addEventListener('click', (e) => {
+                 e.preventDefault();
+                 addMemoryFromForm().catch(err => {
+                     console.error('[editor] Failed to add memory:', err);
+                     updateSaveStatus('failed', '저장 실패');
+                     showToast('기록 저장 중 오류가 발생했습니다', 'error');
+                 });
+             });
         }
 
         // Enter 키로 폼 제출
