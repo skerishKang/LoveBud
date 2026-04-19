@@ -412,12 +412,11 @@ function isMockFallbackEnabled() {
         getPublicTrees: async () => {
             return withFallback(
                 async () => {
-                    // 1) 공개 트리 목록
+                    // 1) 공개 트리 목록 - normalize early
                     const apiTrees = await apiFetch('/community/trees');
-                    const validTrees = (Array.isArray(apiTrees) ? apiTrees : []).filter((rawTree) => {
-                        const t = unwrapTreeRecord(rawTree);
-                        return t.visibility === 'public';
-                    });
+                    const validTrees = (Array.isArray(apiTrees) ? apiTrees : [])
+                        .map((rawTree) => normalizeBrowseTreeRecord(rawTree))
+                        .filter((tree) => tree.visibility === 'public');
 
                     if (validTrees.length === 0) {
                         return [];
@@ -427,27 +426,25 @@ function isMockFallbackEnabled() {
                     const apiMemories = await apiFetch('/community/memories');
                     const publicMemories = Array.isArray(apiMemories) ? apiMemories : [];
 
-                    // 3) treeId 기준 그룹핑
+                    // 3) treeId 기준 그룹핑 - normalize each memory
                     const grouped = {};
                     publicMemories.forEach((rawMemory) => {
-                        const m = unwrapMemoryRecord(rawMemory);
-                        const treeId = getRecordTreeId(m);
-                        if (!treeId) return;
-                        if (!grouped[treeId]) grouped[treeId] = [];
-                        grouped[treeId].push(m);
+                        const memory = normalizeBrowseMemoryRecord(rawMemory);
+                        if (!memory.treeId) return;
+                        if (!grouped[memory.treeId]) grouped[memory.treeId] = [];
+                        grouped[memory.treeId].push(memory);
                     });
 
-                    // 4) browse용 view model 생성
-                    return validTrees.map((rawTree) => {
-                        const t = unwrapTreeRecord(rawTree);
-                        const mems = grouped[t.id || rawTree.id] || [];
+                    // 4) browse용 view model 생성 - use normalized fields only
+                    return validTrees.map((tree) => {
+                        const mems = grouped[tree.id] || [];
                         const sortedMems = [...mems].sort((a, b) =>
-                            new Date(a.createdAt || a.created_at || a.timestamp || 0) -
-                            new Date(b.createdAt || b.created_at || b.timestamp || 0)
+                            new Date(a.createdAt || a.timestamp || 0) -
+                            new Date(b.createdAt || b.timestamp || 0)
                         );
 
                         const allTags = sortedMems
-                            .flatMap((m) => (m.emotionTags || m.emotion_tags || []))
+                            .flatMap((m) => m.emotionTags)
                             .filter(Boolean);
                         const uniqueTags = [...new Set(allTags)].slice(0, 3);
 
@@ -457,11 +454,11 @@ function isMockFallbackEnabled() {
                             : (timestamps[0] || 'recently');
 
                         return {
-                            id: t.id || tree.id,
-                            title: t.title || '',
-                            visibility: t.visibility || 'private',
-                            createdAt: t.createdAt || t.created_at || null,
-                            ownerId: t.ownerId || t.owner_id || null,
+                            id: tree.id,
+                            title: tree.title,
+                            visibility: tree.visibility,
+                            createdAt: tree.createdAt,
+                            ownerId: tree.ownerId,
                             memories: sortedMems,
                             memoryCount: sortedMems.length,
                             emotionTags: uniqueTags,
@@ -583,6 +580,33 @@ function isMockFallbackEnabled() {
         return record.treeId || record.tree_id || null;
     }
 
+    // Browse-specific normalization helpers
+    function normalizeBrowseTreeRecord(rawTree) {
+        const tree = unwrapTreeRecord(rawTree);
+        return {
+            id: tree.id || rawTree?.id || null,
+            title: tree.title || '',
+            visibility: tree.visibility || 'private',
+            createdAt: tree.createdAt || tree.created_at || null,
+            ownerId: tree.ownerId || tree.owner_id || null,
+        };
+    }
+
+    function normalizeBrowseMemoryRecord(rawMemory) {
+        const memory = unwrapMemoryRecord(rawMemory);
+        return {
+            id: memory.id || null,
+            treeId: memory.treeId || memory.tree_id || null,
+            createdAt: memory.createdAt || memory.created_at || null,
+            timestamp: memory.timestamp || '',
+            thumbnail: memory.thumbnail || '',
+            artist: memory.artist || '',
+            emotionTags: Array.isArray(memory.emotionTags)
+                ? memory.emotionTags
+                : (Array.isArray(memory.emotion_tags) ? memory.emotion_tags : []),
+        };
+    }
+
     // Expose internals for testing
     if (typeof window !== 'undefined') {
         window.__LoveBudApiClientInternals = {
@@ -592,6 +616,8 @@ function isMockFallbackEnabled() {
             unwrapTreeRecord,
             unwrapMemoryRecord,
             getRecordTreeId,
+            normalizeBrowseTreeRecord,
+            normalizeBrowseMemoryRecord,
         };
     }
 
