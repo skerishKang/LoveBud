@@ -40,6 +40,8 @@ document.addEventListener('DOMContentLoaded', () => {
         return mem.id === rootId;
     };
 
+    const editorSaveStatus = window.LoveBudEditorSaveStatus || {};
+
     // Auth guard bootstrapping via onAuthReady callback
     // Shared toast utility wrapper
     let toastWarningShown = false;
@@ -608,13 +610,24 @@ document.addEventListener('DOMContentLoaded', () => {
         } = editorCanvas;
 
         // Save status indicator state
-        let saveStatusData = {
-            status: 'saved',
-            lastSaved: null,
-            timer: null
-        };
+        let saveStatusData = editorSaveStatus.createSaveStatusState
+            ? editorSaveStatus.createSaveStatusState()
+            : {
+                status: 'saved',
+                lastSaved: null,
+                timer: null
+            };
 
         function updateSaveStatus(status, message) {
+            if (editorSaveStatus.updateSaveStatus) {
+                saveStatusData = editorSaveStatus.updateSaveStatus(saveStatusData, {
+                    status,
+                    message,
+                    i18n
+                }) || saveStatusData;
+                return;
+            }
+
             const indicator = document.getElementById('saveStatusIndicator');
             const iconEl = document.getElementById('saveStatusIcon');
             const textEl = document.getElementById('saveStatusText');
@@ -666,6 +679,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         function formatTimeAgo(date) {
+            if (editorSaveStatus.formatTimeAgo) {
+                return editorSaveStatus.formatTimeAgo(date);
+            }
+
             if (!date) return '';
             const now = new Date();
             const diff = Math.floor((now - date) / 1000);
