@@ -96,41 +96,57 @@ document.addEventListener('DOMContentLoaded', () => {
         window.location.href = loginUrl;
     });
 
-    const safeI18nText = editorHelpers.safeI18nText || ((i18nFn, key, fallback) => {
-        const result = i18nFn(key);
-        if (!result || result === key) return fallback;
-        return result;
-    });
+    const createInlineTextResolversFallbacks = () => {
+        const safeI18nText = (i18nFn, key, fallback) => {
+            const result = i18nFn(key);
+            if (!result || result === key) return fallback;
+            return result;
+        };
 
-    const resolveHintText = editorHelpers.resolveHintText || ((i18nFn, rawValue, fallbackKey, fallbackText) => {
-        const value = String(rawValue || '').trim();
-        if (!value || value === fallbackKey) {
-            return safeI18nText(i18nFn, fallbackKey, fallbackText);
-        }
-        return value;
-    });
+        const resolveHintText = (i18nFn, rawValue, fallbackKey, fallbackText) => {
+            const value = String(rawValue || '').trim();
+            if (!value || value === fallbackKey) {
+                return safeI18nText(i18nFn, fallbackKey, fallbackText);
+            }
+            return value;
+        };
 
-    const resolveTreeTitleText = editorHelpers.resolveTreeTitleText || ((i18nFn, rawTitle) => {
-        const value = String(rawTitle || '').trim();
-        if (!value) {
-            return safeI18nText(i18nFn, 'default_tree_title', '러브트리');
-        }
-        if (value === 'default_tree_title') {
-            return safeI18nText(i18nFn, 'default_tree_title', '러브트리');
-        }
-        if (value === 'lovetree_brand') {
-            return safeI18nText(i18nFn, 'lovetree_brand', '러브트리');
-        }
-        return value;
-    });
+        const resolveTreeTitleText = (i18nFn, rawTitle) => {
+            const value = String(rawTitle || '').trim();
+            if (!value) {
+                return safeI18nText(i18nFn, 'default_tree_title', '러브트리');
+            }
+            if (value === 'default_tree_title') {
+                return safeI18nText(i18nFn, 'default_tree_title', '러브트리');
+            }
+            if (value === 'lovetree_brand') {
+                return safeI18nText(i18nFn, 'lovetree_brand', '러브트리');
+            }
+            return value;
+        };
 
-    const resolveInfoText = editorHelpers.resolveInfoText || ((i18nFn, rawValue, fallbackKey, fallbackText) => {
-        const value = String(rawValue || '').trim();
-        if (!value || value === fallbackKey) {
-            return safeI18nText(i18nFn, fallbackKey, fallbackText);
-        }
-        return value;
-    });
+        const resolveInfoText = (i18nFn, rawValue, fallbackKey, fallbackText) => {
+            const value = String(rawValue || '').trim();
+            if (!value || value === fallbackKey) {
+                return safeI18nText(i18nFn, fallbackKey, fallbackText);
+            }
+            return value;
+        };
+
+        return {
+            safeI18nText,
+            resolveHintText,
+            resolveTreeTitleText,
+            resolveInfoText
+        };
+    };
+
+    const inlineTextResolvers = createInlineTextResolversFallbacks();
+
+    const safeI18nText = editorHelpers.safeI18nText || inlineTextResolvers.safeI18nText;
+    const resolveHintText = editorHelpers.resolveHintText || inlineTextResolvers.resolveHintText;
+    const resolveTreeTitleText = editorHelpers.resolveTreeTitleText || inlineTextResolvers.resolveTreeTitleText;
+    const resolveInfoText = editorHelpers.resolveInfoText || inlineTextResolvers.resolveInfoText;
 
     const syncCurrentTreeData = editorTreeHelpers.syncCurrentTreeData || ((tree) => {
         window.currentTreeData = {
