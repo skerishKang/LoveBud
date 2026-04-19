@@ -86,6 +86,28 @@ document.addEventListener('DOMContentLoaded', () => {
         return result;
     };
 
+    const resolveTreeTitleText = (rawTitle) => {
+        const value = String(rawTitle || '').trim();
+        if (!value) {
+            return safeI18nText(i18n, 'default_tree_title', '새 러브트리');
+        }
+        if (value === 'default_tree_title') {
+            return safeI18nText(i18n, 'default_tree_title', '새 러브트리');
+        }
+        if (value === 'lovetree_brand') {
+            return safeI18nText(i18n, 'lovetree_brand', '러브트리');
+        }
+        return value;
+    };
+
+    const resolveInfoText = (rawValue, fallbackKey, fallbackText) => {
+        const value = String(rawValue || '').trim();
+        if (!value || value === fallbackKey) {
+            return safeI18nText(i18n, fallbackKey, fallbackText);
+        }
+        return value;
+    };
+
     const syncCurrentTreeData = (tree) => {
         window.currentTreeData = {
             ...tree,
@@ -128,6 +150,18 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) {
             return '';
         }
+    };
+
+    const resolveMemoryThumbnail = (memory) => {
+        const thumbnail = safeUrl(memory?.thumbnail, { allowDataImage: true });
+        if (thumbnail) return thumbnail;
+
+        const sourceUrl = safeUrl(memory?.sourceUrl);
+        const sourceType = memory?.sourceType || window.LoveBudMedia?.detectSourceType?.(sourceUrl) || 'youtube';
+        if (sourceUrl && sourceType === 'youtube' && window.LoveBudMedia?.getThumbnailUrl) {
+            return window.LoveBudMedia.getThumbnailUrl(sourceUrl, 'youtube', 'mqdefault') || '';
+        }
+        return '';
     };
 
     const getYouTubeInputErrorMessage = (rawUrl) => {
@@ -466,9 +500,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const treeTitleEl = document.getElementById('sidebarTreeTitle');
             const momentCountEl = document.getElementById('sidebarMomentCount');
             if (treeTitleEl) {
-                const rawTitle = window.currentTreeData && window.currentTreeData.title;
-                const isRawKey = rawTitle === 'default_tree_title' || rawTitle === 'lovetree_brand';
-                treeTitleEl.textContent = (rawTitle && !isRawKey ? rawTitle : '새 러브트리');
+                treeTitleEl.textContent = resolveTreeTitleText(window.currentTreeData && window.currentTreeData.title);
             }
             if (momentCountEl) {
                 const count = treeMemories().filter(m => !isRootMemory(m, canonicalRootId)).length;
@@ -614,10 +646,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const isPublic = visibility === 'public';
             const visIcon = isPublic ? 'public' : 'lock';
             const visLabel = isPublic ? i18n('visibility_public') : i18n('visibility_private');
-            const visInfo = isPublic ? i18n('share_info') : safeI18nText(i18n, 'private_info', '나만 볼 수 있는 트리입니다');
+            const visInfo = isPublic
+                ? resolveInfoText(i18n('share_info'), 'share_info', '링크를 가진 사람은 이 트리를 볼 수 있습니다')
+                : resolveInfoText(currentTree.info || i18n('private_info'), 'private_info', '나만 볼 수 있는 트리입니다');
             const visStyle = isPublic
                 ? 'background:rgba(76,175,80,0.1);color:#4caf50;border:1px solid rgba(76,175,80,0.3);'
                 : 'background:rgba(158,158,158,0.1);color:#757575;border:1px solid rgba(158,158,158,0.3);';
+            const displayTreeTitle = resolveTreeTitleText(currentTree.title);
 
             const isEmptyState = !!data?.isNewTree;
             const isRootSelected = !isEmptyState && isRootMemory(data, canonicalRootId);
@@ -634,7 +669,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             ${i18n('current_tree') || '현재 트리'}
                         </div>
                         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
-                            <div style="font-size:14px;font-weight:700;color:var(--on-surface);">${escapeHtml(currentTree.title || (i18n('lovetree_brand') || '러브트리'))}</div>
+                            <div style="font-size:14px;font-weight:700;color:var(--on-surface);">${escapeHtml(displayTreeTitle)}</div>
                             <span style="${visStyle}padding:4px 10px;border-radius:99px;display:inline-flex;align-items:center;gap:4px;font-size:12px;">
                                 <span class="material-symbols-outlined" style="font-size:12px;">${escapeHtml(visIcon)}</span>
                                 ${escapeHtml(visLabel)}
@@ -701,7 +736,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const imgEl = detailPanel.querySelector('.detail-video img');
             if (imgEl) {
-                imgEl.src = data?.thumbnail || '';
+                imgEl.src = resolveMemoryThumbnail(data);
             }
 
             const dateEl = document.getElementById('detailDateText');
@@ -774,7 +809,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const treeTitleEl = document.getElementById('sidebarTreeTitle');
             const momentCountEl = document.getElementById('sidebarMomentCount');
             if (treeTitleEl) {
-                treeTitleEl.textContent = (window.currentTreeData?.title) || i18n('default_tree_title') || '새 러브트리';
+                treeTitleEl.textContent = resolveTreeTitleText(window.currentTreeData?.title);
             }
             if (momentCountEl) {
                 const count = treeMemories().filter(m => !isRootMemory(m, canonicalRootId)).length;
@@ -994,7 +1029,7 @@ document.addEventListener('DOMContentLoaded', () => {
             imgWrapper.appendChild(skeleton);
 
             const img = document.createElement('img');
-            img.src = safeUrl(mem.thumbnail, { allowDataImage: true }) || '';
+            img.src = resolveMemoryThumbnail(mem);
             img.alt = mem.title || '';
             
             img.onload = () => {
@@ -1400,7 +1435,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // ── 사이드바 업데이트 ──
             updateSidebarStatus();
-        };
         };
 
         // 폼 버튼 이벤트 리스너
