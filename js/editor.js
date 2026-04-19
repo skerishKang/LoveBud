@@ -392,7 +392,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // 📌 새 트리(empty) 감지 - memories가 0이면 새 트리
             const isNewTree = memories.length === 0;
-            const isNewTree = memories.length === 0;
 
             return {
                 id: canonicalRootId,
