@@ -15,6 +15,7 @@ var __authStateModule = window.LoveBudAuthState || null;
 var __authUiModule = window.LoveBudAuthUI || null;
 var __authSessionModule = window.LoveBudAuthSession || null;
 var __authFirebaseModule = window.LoveBudAuthFirebase || null;
+var __authLoginPageModule = window.LoveBudAuthLoginPage || null;
 var EMAIL_AUTH_MODE = __authStateModule
   ? __authStateModule.getEmailAuthMode()
   : (function() {
@@ -65,6 +66,19 @@ function resolveEmailAuthMode() {
 }
 
 function syncEmailAuthModeUi(options) {
+  if (__authLoginPageModule) {
+    __authLoginPageModule.syncEmailAuthModeUi({
+      emailAuthMode: EMAIL_AUTH_MODE,
+      titleEl: options && options.titleEl,
+      helperEl: options && options.helperEl,
+      submitBtn: options && options.submitBtn,
+      toggleBtn: options && options.toggleBtn,
+      badgeEl: options && options.badgeEl,
+      applyI18n: window.applyI18n
+    });
+    return;
+  }
+
   var titleEl = options && options.titleEl;
   var helperEl = options && options.helperEl;
   var submitBtn = options && options.submitBtn;
@@ -108,6 +122,19 @@ function syncEmailAuthModeUi(options) {
 }
 
 function setupLoginPageAuthUi() {
+  if (__authLoginPageModule) {
+    __authLoginPageModule.setupLoginPageAuthUi({
+      isLoginPage: isLoginPage,
+      resolveEmailAuthMode: resolveEmailAuthMode,
+      setEmailAuthMode: function(mode) {
+        EMAIL_AUTH_MODE = mode;
+        if (__authStateModule) __authStateModule.setEmailAuthMode(mode);
+      },
+      syncEmailAuthModeUi: syncEmailAuthModeUi
+    });
+    return;
+  }
+
   if (!isLoginPage()) return;
 
   EMAIL_AUTH_MODE = resolveEmailAuthMode();
@@ -965,6 +992,13 @@ async function signOut() {
 // ── Google Btn (login.html) ───────────────────────────────────────────────────
 
 function setupGoogleBtn() {
+  if (__authLoginPageModule) {
+    __authLoginPageModule.setupGoogleBtn({
+      signInWithGoogle: signInWithGoogle
+    });
+    return;
+  }
+
   var googleBtn = document.getElementById('login-btn-google');
   if (!googleBtn) return;
   googleBtn.onclick = null;
@@ -980,6 +1014,13 @@ async function signUpWithGoogle() {
 }
 
 function setupSignupGoogleBtn() {
+  if (__authLoginPageModule) {
+    __authLoginPageModule.setupSignupGoogleBtn({
+      signUpWithGoogle: signUpWithGoogle
+    });
+    return;
+  }
+
   var signupGoogleBtn = document.getElementById('signup-btn-google');
   if (!signupGoogleBtn) return;
   signupGoogleBtn.onclick = null;
@@ -992,9 +1033,30 @@ function setupSignupGoogleBtn() {
 // ── Email Auth Form ───────────────────────────────────────────────────────────
 
 function setupEmailAuthForm() {
-  var form = document.getElementById('email-auth-form');
-  if (!form) return;
-  if (typeof firebase === 'undefined' || !firebase.auth) return;
+  if (__authLoginPageModule) {
+    __authLoginPageModule.setupEmailAuthForm({
+      firebase: typeof firebase !== 'undefined' ? firebase : undefined,
+      initFirebase: typeof initFirebase === 'function' ? initFirebase : null,
+      getEnvironmentCheckError: getEnvironmentCheckError,
+      getFriendlyErrorMessage: getFriendlyErrorMessage,
+      getEmailAuthMode: function() { return EMAIL_AUTH_MODE; },
+      setEmailAuthMode: function(mode) {
+        EMAIL_AUTH_MODE = mode;
+        if (__authStateModule) __authStateModule.setEmailAuthMode(mode);
+      },
+      syncEmailAuthModeUi: syncEmailAuthModeUi,
+      persistConfirmedAuthSession: persistConfirmedAuthSession,
+      preloadRedirectTargetData: preloadRedirectTargetData,
+      getRedirectTarget: getRedirectTarget,
+      isInvalidAuthSessionError: isInvalidAuthSessionError,
+      clearStaleFirebaseAuthState: clearStaleFirebaseAuthState
+    });
+    return;
+  }
+
+   var form = document.getElementById('email-auth-form');
+   if (!form) return;
+   if (typeof firebase === 'undefined' || !firebase.auth) return;
 
    var emailInput = document.getElementById('email-auth-email');
    var passwordInput = document.getElementById('email-auth-password');
@@ -1119,6 +1181,19 @@ form.addEventListener('submit', async function (e) {
 }
 
 function setupSignupForm() {
+  if (__authLoginPageModule) {
+    __authLoginPageModule.setupSignupForm({
+      firebase: typeof firebase !== 'undefined' ? firebase : undefined,
+      initFirebase: typeof initFirebase === 'function' ? initFirebase : null,
+      getEnvironmentCheckError: getEnvironmentCheckError,
+      getFriendlyErrorMessage: getFriendlyErrorMessage,
+      persistConfirmedAuthSession: persistConfirmedAuthSession,
+      preloadRedirectTargetData: preloadRedirectTargetData,
+      getRedirectTarget: getRedirectTarget
+    });
+    return;
+  }
+
   var signupForm = document.getElementById('signup-form');
   if (!signupForm) return;
   if (typeof firebase === 'undefined' || !firebase.auth) return;
