@@ -13,6 +13,7 @@
 
 var __authStateModule = window.LoveBudAuthState || null;
 var __authUiModule = window.LoveBudAuthUI || null;
+var __authSessionModule = window.LoveBudAuthSession || null;
 var EMAIL_AUTH_MODE = __authStateModule
   ? __authStateModule.getEmailAuthMode()
   : (function() {
@@ -290,6 +291,14 @@ async function persistConfirmedAuthSession(user) {
 
 // ── Preload redirect target data after login ────────────────────────────────────
 function preloadRedirectTargetData() {
+  if (__authSessionModule) {
+    __authSessionModule.preloadRedirectTargetData({
+      getRedirectTarget: getRedirectTarget,
+      apiClient: window.apiClient,
+      logger: console
+    });
+    return;
+  }
   // Fire-and-forget: 로그인 직후 redirect 대상에 필요한 데이터 preload
   var redirectTarget = getRedirectTarget();
   var isEditorTarget = redirectTarget.indexOf('editor.html') !== -1;
@@ -713,6 +722,9 @@ function attachDropdownListener() {
 // ── Sign In/Out ───────────────────────────────────────────────────────────────
 
 function getRedirectTarget() {
+  if (__authSessionModule) {
+    return __authSessionModule.getRedirectTarget(getBasePath);
+  }
   var params = new URLSearchParams(window.location.search);
   var redirect = params.get('redirect');
   if (redirect) return redirect;
