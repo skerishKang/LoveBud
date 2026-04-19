@@ -41,14 +41,18 @@ exports.handler = async (event) => {
       const tree = serializeTree(rawTree);
       const isPublic = tree.visibility === 'public';
 
-      if (!isPublic) {
-        const user = await getUserFromEvent(event);
-        if (!user || user.uid !== tree.ownerId) {
-          throw httpError(403, 'Access denied');
-        }
+      const user = await getUserFromEvent(event);
+      const isOwner = !!user && user.uid === tree.ownerId;
+
+      if (!isPublic && !isOwner) {
+        throw httpError(403, 'Access denied');
       }
 
-      const rawMemories = await queryMemories({ treeId: validatedTreeId });
+      const memoryQuery = isOwner
+        ? { treeId: validatedTreeId }
+        : { treeId: validatedTreeId, visibility: 'public' };
+
+      const rawMemories = await queryMemories(memoryQuery);
       const memories = serializeMemoryList(rawMemories);
 
       return ok(
