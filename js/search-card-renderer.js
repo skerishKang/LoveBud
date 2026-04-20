@@ -93,8 +93,16 @@
      * @param {Array} memories - Tree memories
      * @returns {string} HTML string
      */
-     function renderPathPreview(memories) {
-         if (!memories || memories.length === 0) return '';
+     function renderPathPreview(memories, treeCreatedAt) {
+         // Memory 0개 트리용 fallback placeholder
+         if (!memories || memories.length === 0) {
+             return `
+                 <div class="tree-path-preview empty-tree-preview" style="display:flex;align-items:center;justify-content:center;gap:12px;padding:20px;background:linear-gradient(135deg,var(--surface-container-low),var(--surface-container));border-radius:12px;">
+                     <span class="material-symbols-outlined" style="font-size:32px;color:var(--primary-soft);">psychiatry</span>
+                     <span style="font-size:13px;color:var(--on-surface-variant);font-weight:500;">아직 순간이 비어있어요. 첫 입덕을 기록해보세요!</span>
+                 </div>
+             `;
+         }
 
          const previewCount = Math.min(memories.length, 3);
          const previewMems = memories.slice(0, previewCount);
@@ -144,25 +152,35 @@
      */
      function renderTreeCard(tree, index) {
          const firstMem = tree.memories[0];
-         const lastMem = tree.memories[tree.memories.length - 1];
+        const lastMem = tree.memories[tree.memories.length - 1];
+        
+        // Clean titles
+        const firstMomentRaw = firstMem?.title?.replace(/\s*-\s*.*/, '') || '첫 순간';
+        const lastMomentRaw = tree.memories.length >= 2
+            ? lastMem?.title?.replace(/\s*-\s*.*/, '')
+            : null;
+        
+        const safeFirstMoment = escapeHtml(firstMomentRaw);
+        const safeLastMoment = lastMomentRaw ? escapeHtml(lastMomentRaw) : null;
+        const safeTreeId = escapeHtml(tree.id);
+        const safeStage = escapeHtml(tree.stage);
+        const safeTitle = escapeHtml(tree.title);
+        const safeTimeRange = escapeHtml(tree.timeRange);
+        
+        // 생성일 기반 구분자 (제목 중복 시 구분용)
+        const createdDate = tree.createdAt 
+            ? new Date(tree.createdAt).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })
+            : '';
          
-         // Clean titles
-         const firstMomentRaw = firstMem?.title?.replace(/\s*-\s*.*/, '') || '첫 순간';
-         const lastMomentRaw = tree.memories.length >= 2
-             ? lastMem?.title?.replace(/\s*-\s*.*/, '')
-             : null;
-         
-         const safeFirstMoment = escapeHtml(firstMomentRaw);
-         const safeLastMoment = lastMomentRaw ? escapeHtml(lastMomentRaw) : null;
-         const safeTreeId = escapeHtml(tree.id);
-         const safeStage = escapeHtml(tree.stage);
-         const safeTitle = escapeHtml(tree.title);
-         const safeTimeRange = escapeHtml(tree.timeRange);
-         
-         // Path description
-         const pathDesc = safeLastMoment
-             ? `처음 <strong style="color:var(--primary);">${safeFirstMoment}</strong>의 감정이 <strong>${safeLastMoment}</strong>까지 이어졌어요`
-             : `<strong style="color:var(--primary);">${safeFirstMoment}</strong> — 입덕의 첫 순간`;
+         // Path description (memory 0개 트리용 문구 개선)
+        let pathDesc;
+        if (tree.memories.length === 0) {
+            pathDesc = `<span style="color:var(--on-surface-variant);">🌱 아직 첫 순간을 기록하지 않았어요</span>`;
+        } else if (safeLastMoment) {
+            pathDesc = `처음 <strong style="color:var(--primary);">${safeFirstMoment}</strong>의 감정이 <strong>${safeLastMoment}</strong>까지 이어졌어요`;
+        } else {
+            pathDesc = `<strong style="color:var(--primary);">${safeFirstMoment}</strong> — 입덕의 첫 순간`;
+        }
 
          const emotionTagsHtml = renderEmotionTags(tree.emotionTags);
          
@@ -175,12 +193,13 @@
                  <div class="tree-header" style="margin-bottom:16px;">
                      <div class="tree-icon" title="${safeStage} 단계" style="width:48px;height:48px;border-radius:12px;font-size:24px;">${getTreeIcon(tree.stage)}</div>
                      <div class="tree-title-group" style="flex:1;min-width:0;">
-                         <div class="tree-title" style="font-size:1.25rem;font-weight:800;line-height:1.3;">${safeTitle}</div>
-                         <div style="font-size:12px;color:var(--on-surface-variant);margin-top:4px;display:flex;align-items:center;gap:8px;">
-                             <span class="material-symbols-outlined" style="font-size:14px;">account_tree</span>
-                             ${tree.memoryCount}개의 순간 · ${safeTimeRange}
-                         </div>
-                     </div>
+                        <div class="tree-title" style="font-size:1.25rem;font-weight:800;line-height:1.3;">${safeTitle}</div>
+                        <div style="font-size:12px;color:var(--on-surface-variant);margin-top:4px;display:flex;align-items:center;gap:8px;">
+                            <span class="material-symbols-outlined" style="font-size:14px;">account_tree</span>
+                            ${tree.memoryCount}개의 순간 · ${safeTimeRange}
+                            ${createdDate ? `<span style="margin-left:4px;padding-left:8px;border-left:1px solid var(--outline-variant);">${createdDate} 생성</span>` : ''}
+                        </div>
+                    </div>
                  </div>
                  
                  <!-- 감정 경로 미리보기 (시각적 중심) -->
@@ -190,7 +209,7 @@
                          감정 경로
                      </div>
                      <div style="font-size:14px;line-height:1.5;color:var(--on-surface);">${pathDesc}</div>
-                     ${renderPathPreview(tree.memories)}
+                     ${renderPathPreview(tree.memories, tree.createdAt)}
                  </div>
                  
                  <!-- 감정 태그 -->
