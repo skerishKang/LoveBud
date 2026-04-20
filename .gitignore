@@ -65,12 +65,8 @@ Thumbs.db
 nul
 
 # Screenshots
-*.JPG
-*.jpg
-*.png
-*.PNG
-!docs/test-scenarios/results/**/screenshots/*.png
-!docs/test-scenarios/results/**/screenshots/*.PNG
+# Ignore only test resulting screenshots to save repo space
+docs/test-scenarios/results/**/screenshots/
 
 # Drive temp folders (AGENTS.md: never touch)
 .tmp.drivedownload/
