@@ -599,6 +599,10 @@ document.addEventListener('DOMContentLoaded', () => {
         return `${Math.floor(diff / 86400)}일 전`;
     };
 
+    const markEditorReady = () => {
+        document.body?.classList.remove('editor-preload');
+    };
+
     const startEditor = async () => {
         const canvas = document.getElementById('canvasArea');
         const svg = document.getElementById('canvasSvg');
@@ -667,6 +671,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     escapeHtml,
                     setDetailEmptyState: null
                 });
+                markEditorReady();
                 return;
             }
 
@@ -1074,6 +1079,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         console.log('[editor] Ready for tree:', treeId, 'memories:', treeMemories().length);
         updateSidebarStatus();
+        markEditorReady();
     };
 
     // Same auth-guard pattern as my-trees.js
