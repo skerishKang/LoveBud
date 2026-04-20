@@ -67,15 +67,8 @@
         return path.indexOf('/pages/') !== -1 ? '' : 'pages/';
     }
 
-    /**
-     * Excerpts text to max length
-     * @param {string} text 
-     * @param {number} max 
-     * @returns {string}
-     */
-    function excerpt(text, max = 60) {
-        if (!text) return '';
-        return text.length > max ? text.slice(0, max) + '…' : text;
+    function getSearchTitleHelper() {
+        return window.LoveBudSearchTitleHelper || null;
     }
 
     /**
@@ -93,7 +86,7 @@
      * @param {Array} memories - Tree memories
      * @returns {string} HTML string
      */
-     function renderPathPreview(memories, treeCreatedAt) {
+     function renderPathPreview(memories) {
          // Memory 0개 트리용 fallback placeholder
          if (!memories || memories.length === 0) {
              return renderEmptyTreePreview();
@@ -202,10 +195,10 @@
         const safeStage = escapeHtml(tree.stage);
         const safeTimeRange = escapeHtml(tree.timeRange);
 
-        // Helper로 display title 계산 (중복 로직 제거)
-        const TitleHelper = window.LoveBudSearchTitleHelper;
-        const displayTitleRaw = TitleHelper?.getBrowseDisplayTitle
-            ? TitleHelper.getBrowseDisplayTitle(tree)
+        // Helper로 display title 계산
+        const titleHelper = getSearchTitleHelper();
+        const displayTitleRaw = titleHelper?.getBrowseDisplayTitle
+            ? titleHelper.getBrowseDisplayTitle(tree)
             : (String(tree.title || '').trim() || '러브트리');
 
         // 생성일 기반 구분자 (제목 중복 시 구분용)
@@ -245,7 +238,7 @@
                  <div class="tree-path-section" style="background:var(--surface-container-low);border-radius:1rem;padding:16px;margin-bottom:16px;">
                      ${renderCardSectionHeading('route', '감정 경로')}
                      <div style="font-size:14px;line-height:1.5;color:var(--on-surface);">${pathDesc}</div>
-                     ${renderPathPreview(tree.memories, tree.createdAt)}
+                     ${renderPathPreview(tree.memories)}
                  </div>
                  
                  <!-- 감정 태그 -->
