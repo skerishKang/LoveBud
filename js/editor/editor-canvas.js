@@ -295,8 +295,7 @@ function createEditorCanvas(deps) {
         return card;
     }
 
-    const drawNode = (mem) => {
-        const pos = calcPosition(mem);
+    function createNodeElement(mem, pos) {
         const nodeEl = document.createElement('div');
         nodeEl.className = 'memory-node floating-node';
         nodeEl.dataset.memoryId = mem.id;
@@ -305,8 +304,13 @@ function createEditorCanvas(deps) {
         nodeEl.style.left = `${pos.x - NODE_HALF}px`;
         nodeEl.style.top = `${pos.y - NODE_HALF}px`;
         nodeEl.style.animationDelay = mem.delay || '0s';
-
         nodeEl.appendChild(createNodeCard(mem));
+        return nodeEl;
+    }
+
+    const drawNode = (mem) => {
+        const pos = calcPosition(mem);
+        const nodeEl = createNodeElement(mem, pos);
 
         if (typeof canvasNode.appendNodeInfo === 'function') {
             canvasNode.appendNodeInfo(nodeEl, mem);
