@@ -620,6 +620,8 @@ document.addEventListener('DOMContentLoaded', () => {
         setText('focusSelectedBtnLabel', 'sidebar_focus_selected', '선택한 순간 보기');
         setText('recenterCanvasBtnLabel', 'sidebar_recenter_tree', '트리 한눈에 보기');
         setText('addMemoryBtnLabel', 'editor_add_memory', '순간 추가');
+        setText('saveStatusText', 'save_saved', '저장됨');
+        setText('detailMoreBtn', 'more', '더보기');
 
         setText('addMemoryFormTitle', 'editor_new_memory', '새 기억 추가');
         setText('memoryUrlLabel', 'editor_youtube_link', 'YouTube 링크');
@@ -653,6 +655,8 @@ document.addEventListener('DOMContentLoaded', () => {
         setText('saveEditBtn', 'editor_save', '저장하기');
         setText('detailSubmitBtn', 'editor_record_submit', '내 러브트리에 기록하기');
     };
+
+    applyEditorShellCopy();
 
     const startEditor = async () => {
         const canvas = document.getElementById('canvasArea');
