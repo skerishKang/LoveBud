@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
@@ -9,31 +9,30 @@
 </head>
 <body class="editor-preload">
     <div class="noise-overlay"></div>
-    
-    <!-- Shared Header -->
+
     <div id="shared-header"></div>
 
     <div class="editor-layout">
         <aside class="sidebar">
             <section class="editor-status-section">
-                <h3>흐름</h3>
+                <h3 id="editorFlowHeading">러브트리</h3>
                 <div class="editor-status-card">
                     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-                        <strong id="sidebarTreeTitle">러브트리</strong>
+                        <strong id="sidebarTreeTitle">LoveTree</strong>
                         <button type="button" id="renameTreeBtn" class="icon-menu-btn" aria-label="트리 제목 변경" title="트리 제목 변경" style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border:1px solid var(--outline-variant);border-radius:999px;background:var(--surface);cursor:pointer;font-size:13px;flex:0 0 auto;">✎</button>
                     </div>
-                    <p id="sidebarMomentCount">순간 0개가 이어지고 있어요</p>
-                    <p id="sidebarFlowSummary" style="margin:8px 0 0;font-size:13px;line-height:1.6;color:var(--on-surface);">첫 기억이 심어지면 이곳에 감정의 흐름이 차곡차곡 쌓여요.</p>
-                    <span id="sidebarSelectionHint" class="editor-sidebar-meta">첫 순간이 심어지면 러브트리가 자라나요.</span>
+                    <p id="sidebarMomentCount"></p>
+                    <p id="sidebarFlowSummary" style="margin:8px 0 0;font-size:13px;line-height:1.6;color:var(--on-surface);"></p>
+                    <span id="sidebarSelectionHint" class="editor-sidebar-meta"></span>
                 </div>
                 <div class="editor-sidebar-actions">
                     <button type="button" class="sidebar-btn" id="focusSelectedBtn" disabled style="opacity:0.5;cursor:not-allowed;">
                         <span class="btn-icon">→</span>
-                        <span class="btn-label">선택한 순간 보기</span>
+                        <span class="btn-label" id="focusSelectedBtnLabel">선택</span>
                     </button>
                     <button type="button" class="sidebar-btn" id="recenterCanvasBtn">
                         <span class="btn-icon">⌂</span>
-                        <span class="btn-label">트리 한눈에 보기</span>
+                        <span class="btn-label" id="recenterCanvasBtnLabel">트리</span>
                     </button>
                 </div>
             </section>
@@ -41,33 +40,31 @@
             <section class="editor-add-section" style="margin-top: auto;">
                 <button type="button" class="sidebar-btn sidebar-btn-primary" id="addMemoryBtn">
                     <span class="btn-icon">+</span>
-                    <span class="btn-label">순간 추가</span>
+                    <span class="btn-label" id="addMemoryBtnLabel">추가</span>
                 </button>
             </section>
         </aside>
 
         <main class="canvas-area" id="canvasArea">
             <svg class="canvas-svg" id="canvasSvg"></svg>
-            <!-- JS dynamic content -->
 
-            <!-- 새 기억 입력 폼 (prompt 대체) -->
-                <div id="addMemoryForm" class="memory-create-section" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 32px; border-radius: 2rem; box-shadow: 0 20px 60px rgba(0,0,0,0.15); border: 1px solid var(--outline-variant); width: 90%; max-width: 420px; z-index: 100;">
-                <h3 class="headline" style="font-size: 1.4rem; margin-bottom: 24px;">새 기억 추가</h3>
+            <div id="addMemoryForm" class="memory-create-section" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 32px; border-radius: 2rem; box-shadow: 0 20px 60px rgba(0,0,0,0.15); border: 1px solid var(--outline-variant); width: 90%; max-width: 420px; z-index: 100;">
+                <h3 class="headline" id="addMemoryFormTitle" style="font-size: 1.4rem; margin-bottom: 24px;">...</h3>
                 <div style="margin-bottom: 16px;">
-                    <label style="display: block; font-size: 12px; font-weight: 700; color: var(--on-surface-variant); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">YouTube 링크</label>
+                    <label id="memoryUrlLabel" style="display: block; font-size: 12px; font-weight: 700; color: var(--on-surface-variant); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">...</label>
                     <input type="text" id="memoryUrlInput" placeholder="https://www.youtube.com/watch?v=..." style="width: 100%; padding: 12px 16px; border: 1px solid var(--outline-variant); border-radius: 1rem; font-size: 14px; font-family: inherit;">
                 </div>
                 <div style="margin-bottom: 16px;">
-                    <label style="display: block; font-size: 12px; font-weight: 700; color: var(--on-surface-variant); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">제목</label>
-                    <input type="text" id="memoryTitleInput" placeholder="이 기억의 제목을 입력하세요" style="width: 100%; padding: 12px 16px; border: 1px solid var(--outline-variant); border-radius: 1rem; font-size: 14px; font-family: inherit;">
+                    <label id="memoryTitleLabel" style="display: block; font-size: 12px; font-weight: 700; color: var(--on-surface-variant); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">...</label>
+                    <input type="text" id="memoryTitleInput" placeholder="..." style="width: 100%; padding: 12px 16px; border: 1px solid var(--outline-variant); border-radius: 1rem; font-size: 14px; font-family: inherit;">
                 </div>
                 <div style="margin-bottom: 24px;">
-                    <label style="display: block; font-size: 12px; font-weight: 700; color: var(--on-surface-variant); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">메모 (선택)</label>
-                    <textarea id="memoryMemoInput" placeholder="이 순간의 감정을 남겨보세요..." rows="3" style="width: 100%; padding: 12px 16px; border: 1px solid var(--outline-variant); border-radius: 1rem; font-size: 14px; font-family: inherit; resize: vertical;"></textarea>
+                    <label id="memoryMemoLabel" style="display: block; font-size: 12px; font-weight: 700; color: var(--on-surface-variant); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">...</label>
+                    <textarea id="memoryMemoInput" placeholder="..." rows="3" style="width: 100%; padding: 12px 16px; border: 1px solid var(--outline-variant); border-radius: 1rem; font-size: 14px; font-family: inherit; resize: vertical;"></textarea>
                 </div>
                 <div style="display: flex; gap: 12px; justify-content: flex-end;">
-                    <button id="cancelAddMemory" class="btn-round btn-outline" style="padding: 10px 20px; font-size: 13px;">취소</button>
-                    <button id="confirmAddMemory" class="btn-round btn-primary" style="padding: 10px 20px; font-size: 13px;">추가하기</button>
+                    <button id="cancelAddMemory" class="btn-round btn-outline" style="padding: 10px 20px; font-size: 13px;">...</button>
+                    <button id="confirmAddMemory" class="btn-round btn-primary" style="padding: 10px 20px; font-size: 13px;">...</button>
                 </div>
             </div>
         </main>
@@ -80,9 +77,13 @@
 
             <div class="detail-content" id="detailContent">
                 <div id="detailEmptyState" style="display:block;">
-                    <div style="text-align:center;padding:40px 24px;color:var(--on-surface-variant);"><span class="material-symbols-outlined" style="font-size:48px;opacity:0.4;margin-bottom:16px;display:block;">sentiment_satisfied</span><p style="font-size:1rem;font-weight:700;margin-bottom:8px;color:var(--on-surface);">첫 순간이 트리를 깨워요</p><p style="font-size:0.9rem;opacity:0.78;line-height:1.6;">왼쪽 아래의 '순간 추가' 버튼으로 당신의 첫 기억을 심어보세요.</p></div>
+                    <div style="text-align:center;padding:40px 24px;color:var(--on-surface-variant);">
+                        <span class="material-symbols-outlined" style="font-size:48px;opacity:0.4;margin-bottom:16px;display:block;">sentiment_satisfied</span>
+                        <p id="detailEmptyTitle" style="font-size:1rem;font-weight:700;margin-bottom:8px;color:var(--on-surface);"></p>
+                        <p id="detailEmptyDesc" style="font-size:0.9rem;opacity:0.78;line-height:1.6;"></p>
+                    </div>
                 </div>
-                <!-- 읽기 모드 -->
+
                 <div id="detailViewMode" style="display: none;">
                     <div class="detail-video">
                         <img id="detailImg" src="" alt="">
@@ -92,61 +93,57 @@
                     </div>
 
                     <div class="detail-info-group">
-                        <label>기억한 날</label>
+                        <label id="detailDateLabel">...</label>
                         <p id="detailDateText"></p>
                     </div>
 
                     <div class="detail-info-group">
-                        <label>감정 태그</label>
+                        <label id="detailTagsLabel">...</label>
                         <div class="tags-container" id="detailTags"></div>
                     </div>
 
                     <div class="detail-info-group">
-                        <label>감정 메모</label>
+                        <label id="detailMemoLabel">...</label>
                         <div class="diary-note" id="detailMemo"></div>
                     </div>
 
-                <!-- 수정/삭제 버튼 영역 -->
-                <div class="memory-actions" style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--outline-variant); display: none; gap: 8px;">
-                    <button id="editMemoryBtn" class="btn-round btn-outline" style="flex: 1; padding: 10px 16px; font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 6px;">순간 수정</button>
-                    <button id="deleteMemoryBtn" class="btn-round btn-outline" style="flex: 1; padding: 10px 16px; font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 6px; color: var(--error); border-color: var(--error);">순간 삭제</button>
+                    <div class="memory-actions" style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--outline-variant); display: none; gap: 8px;">
+                        <button id="editMemoryBtn" class="btn-round btn-outline" style="flex: 1; padding: 10px 16px; font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 6px;">...</button>
+                        <button id="deleteMemoryBtn" class="btn-round btn-outline" style="flex: 1; padding: 10px 16px; font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 6px; color: var(--error); border-color: var(--error);">...</button>
+                    </div>
+
+                    <div id="saveStatusIndicator" class="save-status-indicator save-status" aria-live="polite" style="margin-top: 12px; display: none; justify-content: center; gap: 4px;">
+                        <span id="saveStatusIcon" style="display:none;"></span>
+                        <span id="saveStatusText">저장됨</span>
+                        <span id="lastSavedTime" class="last-saved-time"></span>
+                    </div>
                 </div>
 
-                <!-- Save status indicator (UX hardening) -->
-                <div id="saveStatusIndicator" class="save-status-indicator save-status" aria-live="polite" style="margin-top: 12px; display: none; justify-content: center; gap: 4px;">
-                    <span id="saveStatusIcon" style="display:none;"></span>
-                    <span id="saveStatusText">저장됨</span>
-                    <span id="lastSavedTime" class="last-saved-time"></span>
-                </div>
-                </div>
-
-                <!-- 편집 모드 -->
                 <div id="detailEditMode" style="display: none;">
                     <div class="detail-info-group">
-                        <label>제목</label>
-                        <input type="text" id="editTitleInput" style="width: 100%; padding: 10px 12px; border: 1px solid var(--outline-variant); border-radius: 8px; font-size: 14px; font-family: inherit;" placeholder="순간의 제목을 입력하세요">
+                        <label id="editTitleLabel">...</label>
+                        <input type="text" id="editTitleInput" style="width: 100%; padding: 10px 12px; border: 1px solid var(--outline-variant); border-radius: 8px; font-size: 14px; font-family: inherit;" placeholder="...">
                     </div>
 
                     <div class="detail-info-group">
-                        <label>감정 메모</label>
-                        <textarea id="editMemoInput" rows="4" style="width: 100%; padding: 10px 12px; border: 1px solid var(--outline-variant); border-radius: 8px; font-size: 14px; font-family: inherit; resize: vertical;" placeholder="이 순간의 감정을 남겨보세요..."></textarea>
+                        <label id="editMemoLabel">...</label>
+                        <textarea id="editMemoInput" rows="4" style="width: 100%; padding: 10px 12px; border: 1px solid var(--outline-variant); border-radius: 8px; font-size: 14px; font-family: inherit; resize: vertical;" placeholder="..."></textarea>
                     </div>
 
                     <div class="detail-info-group">
-                        <label>감정 태그 (쉼표로 구분)</label>
-                        <input type="text" id="editTagsInput" style="width: 100%; padding: 10px 12px; border: 1px solid var(--outline-variant); border-radius: 8px; font-size: 14px; font-family: inherit;" placeholder="#감동, #행복, #그리움">
+                        <label id="editTagsLabel">...</label>
+                        <input type="text" id="editTagsInput" style="width: 100%; padding: 10px 12px; border: 1px solid var(--outline-variant); border-radius: 8px; font-size: 14px; font-family: inherit;" placeholder="...">
                     </div>
 
-                    <!-- 편집 모드 버튼 -->
                     <div class="detail-actions" style="margin-top: 24px; display: flex; gap: 8px;">
-                        <button id="cancelEditBtn" class="btn-round btn-outline" style="flex: 1; padding: 10px 16px; font-size: 13px;">취소</button>
-                        <button id="saveEditBtn" class="btn-round btn-primary" style="flex: 1; padding: 10px 16px; font-size: 13px;">저장하기</button>
+                        <button id="cancelEditBtn" class="btn-round btn-outline" style="flex: 1; padding: 10px 16px; font-size: 13px;">...</button>
+                        <button id="saveEditBtn" class="btn-round btn-primary" style="flex: 1; padding: 10px 16px; font-size: 13px;">...</button>
                     </div>
                 </div>
             </div>
 
             <div class="panel-footer editor-submit-wrap" id="detailPanelFooter" style="display: none;">
-                <button type="submit" class="primary-btn" style="width: 100%;">내 러브트리에 기록하기</button>
+                <button type="submit" class="primary-btn" id="detailSubmitBtn" style="width: 100%;">...</button>
             </div>
         </aside>
     </div>
@@ -157,18 +154,18 @@
     <script src="../js/utils/path.js?v=20260418-1"></script>
     <script src="../js/utils/ui.js?v=20260418-1"></script>
     <script src="../js/utils/media.js?v=20260418-1"></script>
-<script src="../js/editor/editor-root-helpers.js?v=20260418-1"></script>
-<script src="../js/editor/editor-canvas-layout.js?v=20260420-1"></script>
-<script src="../js/editor/editor-canvas-node.js?v=20260420-1"></script>
-<script src="../js/editor/editor-canvas-interaction.js?v=20260420-1"></script>
-<script src="../js/editor/editor-canvas.js?v=20260420-5"></script>
-<script src="../js/editor/editor-rename-ui.js?v=20260420-1"></script>
-<script src="../js/editor/editor-detail-ui.js?v=20260420-4"></script>
-<script src="../js/editor/editor-memory-actions.js?v=20260419-1"></script>
-<script src="../js/editor/editor-memory-form.js?v=20260419-1"></script>
-<script src="../js/api/auth-policy.js?v=20260420-1"></script>
-<script src="../js/api/base-api-fetch.js?v=20260420-1"></script>
-<script src="../js/postgres-client.js?v=20260420-2"></script>
+    <script src="../js/editor/editor-root-helpers.js?v=20260418-1"></script>
+    <script src="../js/editor/editor-canvas-layout.js?v=20260420-1"></script>
+    <script src="../js/editor/editor-canvas-node.js?v=20260420-1"></script>
+    <script src="../js/editor/editor-canvas-interaction.js?v=20260420-1"></script>
+    <script src="../js/editor/editor-canvas.js?v=20260420-5"></script>
+    <script src="../js/editor/editor-rename-ui.js?v=20260420-1"></script>
+    <script src="../js/editor/editor-detail-ui.js?v=20260420-4"></script>
+    <script src="../js/editor/editor-memory-actions.js?v=20260419-1"></script>
+    <script src="../js/editor/editor-memory-form.js?v=20260419-1"></script>
+    <script src="../js/api/auth-policy.js?v=20260420-1"></script>
+    <script src="../js/api/base-api-fetch.js?v=20260420-1"></script>
+    <script src="../js/postgres-client.js?v=20260420-2"></script>
     <script src="../js/editor/editor-helpers.js?v=20260420-1"></script>
     <script src="../js/editor/editor-save-status.js?v=20260420-1"></script>
     <script src="../js/editor/editor-page-helpers.js?v=20260420-1"></script>
@@ -191,13 +188,13 @@
     <script src="../js/i18n/i18n-index.js?v=20260419-2"></script>
     <script src="../js/i18n.js?v=20260419-2"></script>
     <script src="../js/shared-header.js?v=20260417-31"></script>
-     <script src="../js/auth/auth-state.js?v=20260417-31"></script>
-     <script src="../js/auth/auth-callbacks.js?v=20260417-31"></script>
-     <script src="../js/auth/auth-cache.js?v=20260417-31"></script>
-     <script src="../js/auth/auth-ui.js?v=20260417-31"></script>
-     <script src="../js/auth/auth-session.js?v=20260417-31"></script>
-     <script src="../js/auth/auth-firebase.js?v=20260420-1"></script>
-     <script src="../js/auth.js?v=20260417-31"></script>
+    <script src="../js/auth/auth-state.js?v=20260417-31"></script>
+    <script src="../js/auth/auth-callbacks.js?v=20260417-31"></script>
+    <script src="../js/auth/auth-cache.js?v=20260417-31"></script>
+    <script src="../js/auth/auth-ui.js?v=20260417-31"></script>
+    <script src="../js/auth/auth-session.js?v=20260417-31"></script>
+    <script src="../js/auth/auth-firebase.js?v=20260420-1"></script>
+    <script src="../js/auth.js?v=20260417-31"></script>
     <script>renderSharedHeader();</script>
 </body>
 </html>
