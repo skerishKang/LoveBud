@@ -17,12 +17,12 @@
             <section class="editor-status-section">
                 <h3 id="editorFlowHeading">러브트리</h3>
                 <div class="editor-status-card">
-                    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                    <div class="editor-space-between-row">
                         <strong id="sidebarTreeTitle">LoveTree</strong>
                         <button type="button" id="renameTreeBtn" class="icon-menu-btn" aria-label="트리 제목 변경" title="트리 제목 변경" style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border:1px solid var(--outline-variant);border-radius:999px;background:var(--surface);cursor:pointer;font-size:13px;flex:0 0 auto;">✎</button>
                     </div>
                     <p id="sidebarMomentCount"></p>
-                    <p id="sidebarFlowSummary" style="margin:8px 0 0;font-size:13px;line-height:1.6;color:var(--on-surface);"></p>
+                    <p id="sidebarFlowSummary" class="editor-flow-summary"></p>
                     <span id="sidebarSelectionHint" class="editor-sidebar-meta"></span>
                 </div>
                 <div class="editor-sidebar-actions">
@@ -48,23 +48,23 @@
         <main class="canvas-area" id="canvasArea">
             <svg class="canvas-svg" id="canvasSvg"></svg>
 
-            <div id="addMemoryForm" class="memory-create-section" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 32px; border-radius: 2rem; box-shadow: 0 20px 60px rgba(0,0,0,0.15); border: 1px solid var(--outline-variant); width: 90%; max-width: 420px; z-index: 100;">
-                <h3 class="headline" id="addMemoryFormTitle" style="font-size: 1.4rem; margin-bottom: 24px;">...</h3>
-                <div style="margin-bottom: 16px;">
-                    <label id="memoryUrlLabel" style="display: block; font-size: 12px; font-weight: 700; color: var(--on-surface-variant); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">...</label>
-                    <input type="text" id="memoryUrlInput" placeholder="https://www.youtube.com/watch?v=..." style="width: 100%; padding: 12px 16px; border: 1px solid var(--outline-variant); border-radius: 1rem; font-size: 14px; font-family: inherit;">
+            <div id="addMemoryForm" class="memory-create-section editor-memory-form-modal">
+                <h3 class="headline editor-modal-title" id="addMemoryFormTitle">...</h3>
+                <div class="editor-form-field">
+                    <label id="memoryUrlLabel" class="editor-form-label">...</label>
+                    <input type="text" id="memoryUrlInput" placeholder="https://www.youtube.com/watch?v=..." class="editor-form-input">
                 </div>
-                <div style="margin-bottom: 16px;">
-                    <label id="memoryTitleLabel" style="display: block; font-size: 12px; font-weight: 700; color: var(--on-surface-variant); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">...</label>
-                    <input type="text" id="memoryTitleInput" placeholder="..." style="width: 100%; padding: 12px 16px; border: 1px solid var(--outline-variant); border-radius: 1rem; font-size: 14px; font-family: inherit;">
+                <div class="editor-form-field">
+                    <label id="memoryTitleLabel" class="editor-form-label">...</label>
+                    <input type="text" id="memoryTitleInput" placeholder="..." class="editor-form-input">
                 </div>
-                <div style="margin-bottom: 24px;">
-                    <label id="memoryMemoLabel" style="display: block; font-size: 12px; font-weight: 700; color: var(--on-surface-variant); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">...</label>
-                    <textarea id="memoryMemoInput" placeholder="..." rows="3" style="width: 100%; padding: 12px 16px; border: 1px solid var(--outline-variant); border-radius: 1rem; font-size: 14px; font-family: inherit; resize: vertical;"></textarea>
+                <div class="editor-form-field-last">
+                    <label id="memoryMemoLabel" class="editor-form-label">...</label>
+                    <textarea id="memoryMemoInput" placeholder="..." rows="3" class="editor-form-textarea"></textarea>
                 </div>
-                <div style="display: flex; gap: 12px; justify-content: flex-end;">
-                    <button id="cancelAddMemory" class="btn-round btn-outline" style="padding: 10px 20px; font-size: 13px;">...</button>
-                    <button id="confirmAddMemory" class="btn-round btn-primary" style="padding: 10px 20px; font-size: 13px;">...</button>
+                <div class="editor-form-actions">
+                    <button id="cancelAddMemory" class="btn-round btn-outline editor-form-action-btn">...</button>
+                    <button id="confirmAddMemory" class="btn-round btn-primary editor-form-action-btn">...</button>
                 </div>
             </div>
         </main>
@@ -77,10 +77,10 @@
 
             <div class="detail-content" id="detailContent">
                 <div id="detailEmptyState" style="display:block;">
-                    <div style="text-align:center;padding:40px 24px;color:var(--on-surface-variant);">
-                        <span class="material-symbols-outlined" style="font-size:48px;opacity:0.4;margin-bottom:16px;display:block;">sentiment_satisfied</span>
-                        <p id="detailEmptyTitle" style="font-size:1rem;font-weight:700;margin-bottom:8px;color:var(--on-surface);"></p>
-                        <p id="detailEmptyDesc" style="font-size:0.9rem;opacity:0.78;line-height:1.6;"></p>
+                    <div class="editor-empty-state-box">
+                        <span class="material-symbols-outlined editor-empty-state-icon">sentiment_satisfied</span>
+                        <p id="detailEmptyTitle" class="editor-empty-state-title"></p>
+                        <p id="detailEmptyDesc" class="editor-empty-state-desc"></p>
                     </div>
                 </div>
 
@@ -107,12 +107,12 @@
                         <div class="diary-note" id="detailMemo"></div>
                     </div>
 
-                    <div class="memory-actions" style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--outline-variant); display: none; gap: 8px;">
-                        <button id="editMemoryBtn" class="btn-round btn-outline" style="flex: 1; padding: 10px 16px; font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 6px;">...</button>
-                        <button id="deleteMemoryBtn" class="btn-round btn-outline" style="flex: 1; padding: 10px 16px; font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 6px; color: var(--error); border-color: var(--error);">...</button>
+                    <div class="memory-actions editor-memory-actions-row">
+                        <button id="editMemoryBtn" class="btn-round btn-outline editor-memory-action-btn">...</button>
+                        <button id="deleteMemoryBtn" class="btn-round btn-outline editor-memory-action-btn editor-memory-delete-btn">...</button>
                     </div>
 
-                    <div id="saveStatusIndicator" class="save-status-indicator save-status" aria-live="polite" style="margin-top: 12px; display: none; justify-content: center; gap: 4px;">
+                    <div id="saveStatusIndicator" class="save-status-indicator save-status editor-save-status-wrap" aria-live="polite">
                         <span id="saveStatusIcon" style="display:none;"></span>
                         <span id="saveStatusText">저장됨</span>
                         <span id="lastSavedTime" class="last-saved-time"></span>
@@ -122,28 +122,28 @@
                 <div id="detailEditMode" style="display: none;">
                     <div class="detail-info-group">
                         <label id="editTitleLabel">...</label>
-                        <input type="text" id="editTitleInput" style="width: 100%; padding: 10px 12px; border: 1px solid var(--outline-variant); border-radius: 8px; font-size: 14px; font-family: inherit;" placeholder="...">
+                        <input type="text" id="editTitleInput" class="editor-edit-input" placeholder="...">
                     </div>
 
                     <div class="detail-info-group">
                         <label id="editMemoLabel">...</label>
-                        <textarea id="editMemoInput" rows="4" style="width: 100%; padding: 10px 12px; border: 1px solid var(--outline-variant); border-radius: 8px; font-size: 14px; font-family: inherit; resize: vertical;" placeholder="..."></textarea>
+                        <textarea id="editMemoInput" rows="4" class="editor-edit-textarea" placeholder="..."></textarea>
                     </div>
 
                     <div class="detail-info-group">
                         <label id="editTagsLabel">...</label>
-                        <input type="text" id="editTagsInput" style="width: 100%; padding: 10px 12px; border: 1px solid var(--outline-variant); border-radius: 8px; font-size: 14px; font-family: inherit;" placeholder="...">
+                        <input type="text" id="editTagsInput" class="editor-edit-input" placeholder="...">
                     </div>
 
-                    <div class="detail-actions" style="margin-top: 24px; display: flex; gap: 8px;">
-                        <button id="cancelEditBtn" class="btn-round btn-outline" style="flex: 1; padding: 10px 16px; font-size: 13px;">...</button>
-                        <button id="saveEditBtn" class="btn-round btn-primary" style="flex: 1; padding: 10px 16px; font-size: 13px;">...</button>
+                    <div class="detail-actions editor-edit-actions-row">
+                        <button id="cancelEditBtn" class="btn-round btn-outline editor-edit-action-btn">...</button>
+                        <button id="saveEditBtn" class="btn-round btn-primary editor-edit-action-btn">...</button>
                     </div>
                 </div>
             </div>
 
-            <div class="panel-footer editor-submit-wrap" id="detailPanelFooter" style="display: none;">
-                <button type="submit" class="primary-btn" id="detailSubmitBtn" style="width: 100%;">...</button>
+            <div class="panel-footer editor-submit-wrap editor-submit-footer" id="detailPanelFooter">
+                <button type="submit" class="primary-btn editor-submit-btn-full" id="detailSubmitBtn">...</button>
             </div>
         </aside>
     </div>
