@@ -555,6 +555,29 @@ document.addEventListener('DOMContentLoaded', () => {
         return 'm' + (max + 1);
     };
 
+    const createInlineRefreshMemoriesFallback = (options) => async () => {
+        const opts = options || {};
+        const treeId = opts.treeId || null;
+        const apiClient = opts.apiClient || null;
+        const normalizeMemory = opts.normalizeMemory || ((mem) => mem);
+        const onMemoriesUpdated = opts.onMemoriesUpdated || (() => {});
+
+        if (!treeId) return;
+
+        try {
+            if (apiClient && apiClient.getMemoriesByTree) {
+                const apiMemories = await apiClient.getMemoriesByTree(treeId);
+                if (Array.isArray(apiMemories)) {
+                    window.currentTreeMemories = apiMemories.map(normalizeMemory).filter(Boolean);
+                    console.log('[editor] Memories refreshed:', window.currentTreeMemories.length);
+                    onMemoriesUpdated(window.currentTreeMemories);
+                }
+            }
+        } catch (e) {
+            console.warn('[editor] Failed to refresh memories:', e.message);
+        }
+    };
+
     const startEditor = async () => {
         const canvas = document.getElementById('canvasArea');
         const svg = document.getElementById('canvasSvg');
@@ -673,22 +696,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 normalizeMemory,
                 onMemoriesUpdated: handleMemoriesUpdated
             })
-            : async () => {
-                if (!treeId) return;
-
-                try {
-                    if (window.apiClient && window.apiClient.getMemoriesByTree) {
-                        const apiMemories = await window.apiClient.getMemoriesByTree(treeId);
-                        if (Array.isArray(apiMemories)) {
-                            window.currentTreeMemories = apiMemories.map(normalizeMemory).filter(Boolean);
-                            console.log('[editor] Memories refreshed:', window.currentTreeMemories.length);
-                            handleMemoriesUpdated();
-                        }
-                    }
-                } catch (e) {
-                    console.warn('[editor] Failed to refresh memories:', e.message);
-                }
-            };
+            : createInlineRefreshMemoriesFallback({
+                treeId,
+                apiClient: window.apiClient,
+                normalizeMemory,
+                onMemoriesUpdated: handleMemoriesUpdated
+            });
 
         window.refreshMemories = refreshMemories;
 
