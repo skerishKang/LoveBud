@@ -30,6 +30,10 @@
       ko: '편집하기',
       en: 'Edit'
     },
+    'nav.settings': {
+      ko: '설정',
+      en: 'Settings'
+    },
     'nav.browseOthers': {
       ko: '다른 트리 둘러보기',
       en: 'Browse Other Trees'
