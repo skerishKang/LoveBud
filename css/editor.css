@@ -709,6 +709,23 @@ body {
     box-shadow: 0 8px 20px rgba(75, 64, 57, 0.05);
 }
 
+/* Keep editor canvas drag-safe while allowing text copy in UI cards */
+.editor-status-card,
+.editor-status-card strong,
+.editor-status-card p,
+.editor-sidebar-meta,
+.detail-panel h3,
+.detail-panel label,
+.detail-panel p,
+.detail-panel .tag,
+.detail-panel .diary-note,
+.detail-panel .diary-note *,
+.detail-panel input,
+.detail-panel textarea {
+    -webkit-user-select: text;
+    user-select: text;
+}
+
 /* Prevent text selection while panning */
 .memory-node,
 .memory-node * {
