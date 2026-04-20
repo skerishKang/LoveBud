@@ -17,8 +17,19 @@ function createEditorCanvas(deps) {
         || new URLSearchParams(window.location.search).get('treeId')
         || 'default';
     const layoutStorageKey = 'lovebud_tree_layout_v2_' + treeId;
+    const canvasLayout = window.LoveBudEditorCanvasLayout || {};
 
     function loadStoredLayout() {
+        if (typeof canvasLayout.createLayoutStore === 'function') {
+            const store = canvasLayout.createLayoutStore(treeId);
+            const initialState = store.createInitialViewportState();
+            return {
+                positions: initialState.positions,
+                offsetX: initialState.offsetX,
+                offsetY: initialState.offsetY
+            };
+        }
+
         try {
             const raw = localStorage.getItem(layoutStorageKey);
             if (!raw || raw === 'null') return { positions: {}, offsetX: 0, offsetY: 0 };
@@ -61,6 +72,12 @@ function createEditorCanvas(deps) {
     const NODE_HALF = Math.round(NODE_WIDTH / 2);
 
     function persistStoredPositions() {
+        if (typeof canvasLayout.createLayoutStore === 'function') {
+            const store = canvasLayout.createLayoutStore(treeId);
+            store.persist(viewportState);
+            return;
+        }
+
         try {
             localStorage.setItem(layoutStorageKey, JSON.stringify({
                 positions: viewportState.positions,
