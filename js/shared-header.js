@@ -67,11 +67,20 @@
     // 루트(index.html)인지 pages 폴더인지 감지
     function getContextType() {
         var path = window.location.pathname;
-        if (path.indexOf('/pages/') !== -1 || path.endsWith('.html') && path.split('/').length <= 2) {
-            var filename = path.split('/').pop();
-            if (filename === 'index.html' || filename === '') return 'root';
+        var filename = path.split('/').pop();
+
+        if (path === '/' || filename === 'index.html' || filename === '') {
+            return 'root';
+        }
+
+        if (path.indexOf('/pages/') !== -1) {
             return 'pages';
         }
+
+        if (path.endsWith('.html') && path.split('/').length <= 2) {
+            return 'pages';
+        }
+
         return 'pages';
     }
 
