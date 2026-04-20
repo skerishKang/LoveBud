@@ -112,27 +112,24 @@
          return '업데이트 정보 없음';
      }
 
-     function getPreviewDisplayTitle(tree) {
-         if (window.LoveBudSearchTitleHelper?.getBrowseDisplayTitle) {
-             return window.LoveBudSearchTitleHelper.getBrowseDisplayTitle(tree);
-         }
-         return String(tree?.title || '').trim() || '러브트리';
-     }
-
-     function getThemeLabel(tree) {
-         if (window.LoveBudSearchTitleHelper?.getThemeLabel) {
-             return window.LoveBudSearchTitleHelper.getThemeLabel(tree);
-         }
-         const themeRaw = String(tree?.theme || '').trim();
-         if (!themeRaw || themeRaw === 'LoveTree' || themeRaw === 'Mixed') {
-             return '';
-         }
-         return themeRaw;
+     function getSearchTitleHelper() {
+         return window.LoveBudSearchTitleHelper || null;
      }
 
      function getPreviewSummaryCopy(tree, memories) {
-         const displayTitle = getPreviewDisplayTitle(tree);
-         const themeLabel = getThemeLabel(tree);
+         const titleHelper = getSearchTitleHelper();
+         const displayTitle = titleHelper?.getBrowseDisplayTitle
+             ? titleHelper.getBrowseDisplayTitle(tree)
+             : (String(tree?.title || '').trim() || '러브트리');
+         const themeLabel = titleHelper?.getThemeLabel
+             ? titleHelper.getThemeLabel(tree)
+             : (() => {
+                 const themeRaw = String(tree?.theme || '').trim();
+                 if (!themeRaw || themeRaw === 'LoveTree' || themeRaw === 'Mixed') {
+                     return '';
+                 }
+                 return themeRaw;
+             })();
          const timeRange = String(tree?.timeRange || '기록 없음').trim();
          const memoryCount = Number(tree?.memoryCount || 0);
 
@@ -201,7 +198,10 @@
          // ─────────────────────────────────────────────
          
          if (_dom.previewContainer) {
-            const previewDisplayTitle = getPreviewDisplayTitle(tree);
+            const titleHelper = getSearchTitleHelper();
+            const previewDisplayTitle = titleHelper?.getBrowseDisplayTitle
+                ? titleHelper.getBrowseDisplayTitle(tree)
+                : (String(tree?.title || '').trim() || '러브트리');
             const safeTreeTitle = escapeHtml(previewDisplayTitle);
 
             if (!hasMemories) {
@@ -243,7 +243,10 @@
          // ─────────────────────────────────────────
          
          if (_dom.previewTitle) {
-             const previewDisplayTitle = getPreviewDisplayTitle(tree);
+             const titleHelper = getSearchTitleHelper();
+             const previewDisplayTitle = titleHelper?.getBrowseDisplayTitle
+                 ? titleHelper.getBrowseDisplayTitle(tree)
+                 : (String(tree?.title || '').trim() || '러브트리');
              const safeTreeTitle = escapeHtml(previewDisplayTitle);
              const safeTimeRange = escapeHtml(tree.timeRange || '기록 없음');
 
@@ -263,8 +266,7 @@
          // ─────────────────────────────────────────
          
          if (_dom.previewDesc) {
-            const previewDisplayTitle = getPreviewDisplayTitle(tree);
-            const safePreviewDisplayTitle = escapeHtml(previewDisplayTitle);
+            const titleHelper = getSearchTitleHelper();
 
             if (!hasMemories) {
                 _dom.previewDesc.innerHTML = `
