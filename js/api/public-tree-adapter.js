@@ -89,7 +89,7 @@
       const timestamps = sortedMems.map((m) => m.timestamp).filter(Boolean);
       const timeRange = timestamps.length >= 2
         ? `${timestamps[0]} ~ ${timestamps[timestamps.length - 1]}`
-        : (timestamps[0] || 'recently');
+        : (timestamps[0] || '');
 
       return {
         id: tree.id,
@@ -100,12 +100,14 @@
         memories: sortedMems,
         memoryCount: sortedMems.length,
         emotionTags: uniqueTags,
-        timeRange,
+        timeRange: timeRange || '기록 없음',
         representativeThumbnail: sortedMems[0]?.thumbnail || '',
-        theme: sortedMems[0]?.artist || 'Mixed',
-        stage: sortedMems.length <= 2 ? '입덕' : (sortedMems.length <= 4 ? '성장' : '최애')
+        theme: sortedMems[0]?.artist || 'LoveTree',
+        stage: sortedMems.length === 0
+          ? '새 트리'
+          : (sortedMems.length <= 2 ? '입덕' : (sortedMems.length <= 4 ? '성장' : '최애'))
       };
-    }).filter((tree) => tree.memoryCount > 0);
+    });
   }
 
   // Expose as LoveTreePublicTreeAdapter
