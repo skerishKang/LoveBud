@@ -29,5 +29,8 @@
   "dependencies": {
     "firebase-admin": "^12.0.0",
     "pg": "^8.12.0"
+  },
+  "devDependencies": {
+    "dotenv": "^17.4.2"
   }
 }
