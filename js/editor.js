@@ -658,16 +658,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
     applyEditorShellCopy();
 
+    const createEditorDomRefs = () => ({
+        canvas: document.getElementById('canvasArea'),
+        svg: document.getElementById('canvasSvg'),
+        detailPanel: document.getElementById('detailPanel'),
+        addBtn: document.getElementById('addMemoryBtn')
+    });
+
+    const prepareEditorShell = () => {
+        applyEditorShellCopy();
+
+        const detailEmptyState = document.getElementById('detailEmptyState');
+        const detailViewMode = document.getElementById('detailViewMode');
+        const detailEditMode = document.getElementById('detailEditMode');
+
+        if (detailEmptyState) detailEmptyState.style.display = 'block';
+        if (detailViewMode) detailViewMode.style.display = 'none';
+        if (detailEditMode) detailEditMode.style.display = 'none';
+    };
+
     const startEditor = async () => {
-        const canvas = document.getElementById('canvasArea');
-        const svg = document.getElementById('canvasSvg');
-        const detailPanel = document.getElementById('detailPanel');
-        const addBtn = document.getElementById('addMemoryBtn');
+        const { canvas, svg, detailPanel, addBtn } = createEditorDomRefs();
         const urlParams = new URLSearchParams(window.location.search);
         const urlTreeId = urlParams.get('treeId');
         console.log('[editor] URL treeId:', urlTreeId);
 
-        applyEditorShellCopy();
+        prepareEditorShell();
 
         const cache = window.LoveBudCache || null;
         let TREE_CACHE_KEY = 'tree_default';
