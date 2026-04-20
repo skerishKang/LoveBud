@@ -12,39 +12,58 @@ document.addEventListener('DOMContentLoaded', async () => {
     const treeContextEl = document.getElementById('treeContext');
     const backButton = document.getElementById('backButton');
     const isPagesContext = window.location.pathname.indexOf('/pages/') !== -1;
+
+    // 공통 경로 헬퍼 - pages 컨텍스트 일관성 유지
+    const buildPageHref = (page, params = {}) => {
+        const base = isPagesContext ? `${page}.html` : `pages/${page}.html`;
+        const searchParams = new URLSearchParams();
+
+        Object.entries(params).forEach(([key, value]) => {
+            if (value !== null && value !== undefined && value !== '') {
+                searchParams.set(key, value);
+            }
+        });
+
+        const query = searchParams.toString();
+        return query ? `${base}?${query}` : base;
+    };
+
     const homeHref = isPagesContext ? '../index.html' : 'index.html';
-    const searchHref = isPagesContext ? 'search.html' : 'pages/search.html';
+    const searchHref = buildPageHref('search');
+    const myTreesHref = buildPageHref('my-trees');
     const i18n = window.t || ((k) => k);
 
+    // Back button 설정 - 핸들러는 한 번만 등록, 이후 URL만 변경
     const configureBackButton = (sourceContext, treeId) => {
         if (!backButton) return;
 
-        let editorUrl = 'editor.html';
-        if (treeId) {
-            editorUrl = `editor.html?treeId=${treeId}`;
-        }
-
         const backConfig = {
             'browse': { label: i18n('browse_label'), url: searchHref },
-            'my-trees': { label: i18n('my_trees_short'), url: isPagesContext ? 'my-trees.html' : 'pages/my-trees.html' },
-            'editor': { label: i18n('edit_action'), url: editorUrl }
+            'my-trees': { label: i18n('my_trees_short'), url: myTreesHref },
+            'editor': {
+                label: i18n('edit_action'),
+                url: buildPageHref('editor', treeId ? { treeId } : {})
+            }
         };
-        const config = backConfig[sourceContext] || backConfig['browse'];
+
+        const config = backConfig[sourceContext] || backConfig.browse;
 
         backButton.type = 'button';
         backButton.innerHTML = `<span class="material-symbols-outlined" style="font-size:18px;margin-right:4px;">arrow_back</span> ${config.label}`;
         backButton.setAttribute('aria-label', config.label);
 
-        if (backButton.__detailBackHandler) {
-            backButton.removeEventListener('click', backButton.__detailBackHandler);
+        // 핸들러는 최초 한 번만 등록 - 재등록/제거 반복 리스크 제거
+        if (!backButton.__detailBackHandler) {
+            backButton.__detailBackHandler = (event) => {
+                event.preventDefault();
+                const url = backButton.dataset.backUrl || searchHref;
+                window.location.assign(url);
+            };
+            backButton.addEventListener('click', backButton.__detailBackHandler);
         }
 
-        const backHandler = (event) => {
-            event.preventDefault();
-            window.location.assign(config.url);
-        };
-        backButton.addEventListener('click', backHandler);
-        backButton.__detailBackHandler = backHandler;
+        // URL은 dataset에 저장하여 핸들러가 참조
+        backButton.dataset.backUrl = config.url;
     };
 
     // ── 렌더링 헬퍼 함수들 ──
@@ -177,6 +196,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
+    // Detail 페이지 링크 생성 헬퍼
+    const buildDetailHref = (memoryId, treeId, sourceContext) =>
+        buildPageHref('detail', {
+            id: memoryId,
+            tree: treeId,
+            from: sourceContext
+        });
+
     // connectedFragments 렌더링
     const renderConnectedFragments = ({ memory, memories, treeId, sourceContext, degradedReason }) => {
         if (!connectedFragments) return;
@@ -187,7 +214,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <div style="text-align: center; padding: 24px; color: var(--on-surface-variant); font-size: 13px;">
                     <span class="material-symbols-outlined" style="font-size: 24px; opacity: 0.5; margin-bottom: 8px; display: block;">forest</span>
                     ${i18n('tree_path_missing')}<br>
-                    <a href="search.html" style="color: var(--primary); text-decoration: none; font-weight: 600;">${i18n('find_tree_in_browse')}</a>
+                    <a href="${searchHref}" style="color: var(--primary); text-decoration: none; font-weight: 600;">${i18n('find_tree_in_browse')}</a>
                 </div>
             `;
             return;
@@ -205,7 +232,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (siblings.length > 0) {
             connectedFragments.innerHTML = siblings.map(sib => `
-                <div class="moment-card" data-detail-href="detail.html?id=${sib.id}&tree=${treeId}&from=${sourceContext}" tabindex="0" role="link">
+                <div class="moment-card" data-detail-href="${buildDetailHref(sib.id, treeId, sourceContext)}" tabindex="0" role="link">
                     <img src="${sib.thumbnail}" alt="${sib.title}" style="width: 80px; height: 80px; border-radius: 1rem; object-fit: cover;">
                     <div>
                         <div style="font-size: 11px; font-weight: 800; color: #aaa; text-transform: uppercase;">

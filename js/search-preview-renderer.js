@@ -76,26 +76,27 @@
          ).join('');
      }
 
-     function formatShortDate(value) {
-         if (!value) return '';
-         const date = new Date(value);
-         if (Number.isNaN(date.getTime())) return '';
-         return date.toLocaleDateString('ko-KR', {
-             month: 'short',
-             day: 'numeric'
-         });
-     }
-
      function getTimelineLabel(tree, memories) {
+         const titleHelper = getSearchTitleHelper();
+         const formatDate = titleHelper?.formatShortDate || ((value) => {
+             if (!value) return '';
+             const date = new Date(value);
+             if (Number.isNaN(date.getTime())) return '';
+             return date.toLocaleDateString('ko-KR', {
+                 month: 'short',
+                 day: 'numeric'
+             });
+         });
+
          const updatedAt = tree.updatedAt || '';
          const createdAt = tree.createdAt || '';
          const firstTimestamp = memories[0]?.timestamp || '';
          const lastTimestamp = memories[memories.length - 1]?.timestamp || '';
 
-         const safeUpdated = formatShortDate(updatedAt);
-         const safeCreated = formatShortDate(createdAt);
-         const safeFirst = formatShortDate(firstTimestamp);
-         const safeLast = formatShortDate(lastTimestamp);
+         const safeUpdated = formatDate(updatedAt);
+         const safeCreated = formatDate(createdAt);
+         const safeFirst = formatDate(firstTimestamp);
+         const safeLast = formatDate(lastTimestamp);
 
          if (safeUpdated) {
              return `최근 업데이트 ${safeUpdated}`;
