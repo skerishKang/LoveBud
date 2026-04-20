@@ -154,6 +154,8 @@ body {
 
 /* Node label hardening */
 .memory-node {
+    position: absolute;
+    z-index: 2;
     width: 108px;
 }
 
