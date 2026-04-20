@@ -7,14 +7,99 @@
     <link rel="stylesheet" href="../css/global.css?v=20260415-10">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
     <style>
+        .detail-page-shell {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 28px 48px 60px;
+        }
+
+        .detail-topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 18px;
+        }
+
+        .detail-back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--on-surface-variant);
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 700;
+            transition: color 0.2s ease;
+        }
+
+        .detail-back-link:hover { color: var(--primary); }
+        .detail-back-link .material-symbols-outlined { font-size: 18px; }
+
+        .detail-view-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.78);
+            border: 1px solid rgba(144, 73, 81, 0.08);
+            color: var(--on-surface-variant);
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .detail-view-chip .material-symbols-outlined {
+            font-size: 16px;
+            color: var(--primary);
+        }
+
+        .detail-hero {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            margin-bottom: 28px;
+            padding: 28px 32px;
+            border-radius: 2rem;
+            background: linear-gradient(135deg, rgba(255,255,255,0.92), rgba(249,245,242,0.94));
+            border: 1px solid rgba(144, 73, 81, 0.08);
+            box-shadow: 0 18px 45px rgba(75, 64, 57, 0.05);
+        }
+
+        .detail-hero-kicker {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--primary);
+        }
+
+        .detail-hero-title {
+            margin: 0;
+            font-size: 2.2rem;
+            line-height: 1.2;
+            color: var(--on-surface);
+        }
+
+        .detail-hero-desc {
+            margin: 0;
+            max-width: 760px;
+            font-size: 1rem;
+            line-height: 1.7;
+            color: var(--on-surface-variant);
+        }
+
         .detail-layout {
             max-width: 1400px;
             margin: 0 auto;
-            padding: 60px 48px;
             display: grid;
             grid-template-columns: 3fr 2fr;
             gap: 72px;
         }
+
+        .detail-main-media { margin-bottom: 28px; }
 
         .video-main {
             width: 100%;
@@ -23,36 +108,60 @@
             border-radius: 2.5rem;
             overflow: hidden;
             box-shadow: 0 40px 100px -20px rgba(0,0,0,0.2);
-            margin-bottom: 32px;
+            margin-bottom: 24px;
         }
 
-        .action-bar {
+        .detail-memory-meta {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0 16px;
-        }
-
-        .action-group {
-            display: flex;
-            gap: 32px;
+            flex-wrap: wrap;
+            gap: 12px;
+            font-size: 13px;
             color: var(--on-surface-variant);
         }
 
-        .action-item {
-            display: flex;
+        .detail-meta-pill {
+            display: inline-flex;
             align-items: center;
-            gap: 8px;
-            cursor: pointer;
-            font-weight: 700;
-            font-size: 14px;
-            transition: color 0.3s;
+            gap: 6px;
+            padding: 8px 12px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.78);
+            border: 1px solid rgba(144, 73, 81, 0.08);
         }
 
-        .action-item:hover { color: var(--primary); }
+        .detail-meta-pill .material-symbols-outlined {
+            font-size: 16px;
+            color: var(--primary);
+        }
 
-        .connected-section {
-            margin-top: 80px;
+        .connected-section { margin-top: 72px; }
+
+        .connected-heading {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 24px;
+        }
+
+        .connected-kicker {
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--primary);
+        }
+
+        .connected-section h3 {
+            margin: 0;
+            font-size: 1.8rem;
+            font-weight: 800;
+        }
+
+        .connected-summary {
+            margin: 0;
+            color: var(--on-surface-variant);
+            font-size: 0.96rem;
+            line-height: 1.6;
         }
 
         .moment-card {
@@ -73,6 +182,24 @@
             transform: translateY(-4px);
             border-color: var(--outline-variant);
             box-shadow: var(--shadow-whisper);
+        }
+
+        .detail-side-intro { margin-bottom: 28px; }
+
+        .detail-side-kicker {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--primary);
+            font-weight: 900;
+            margin-bottom: 12px;
+        }
+
+        .detail-side-summary {
+            font-size: 0.98rem;
+            color: var(--on-surface-variant);
+            line-height: 1.7;
+            margin-top: 18px;
         }
 
         .diary-container {
@@ -101,7 +228,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            margin-top: 64px;
+            margin-top: 48px;
         }
 
         .growth-line {
@@ -119,142 +246,100 @@
             box-shadow: 0 0 0 8px rgba(144, 73, 81, 0.1);
         }
 
-        /* Tablet and below */
         @media (max-width: 1024px) {
-            .detail-layout {
-                grid-template-columns: 1fr;
-                gap: 48px;
-                padding: 40px 24px;
-            }
-
-            .connected-section {
-                margin-top: 48px;
-            }
-
-            .diary-container {
-                padding: 48px;
-            }
-
-            #memoryTitle {
-                font-size: 2.5rem !important;
-            }
+            .detail-page-shell { padding: 24px 24px 40px; }
+            .detail-layout { grid-template-columns: 1fr; gap: 48px; }
+            .connected-section { margin-top: 48px; }
+            .diary-container { padding: 48px; }
+            #memoryTitle { font-size: 2.5rem !important; }
         }
 
         @media (max-width: 768px) {
-            .detail-layout {
-                padding: 24px 16px;
-                gap: 32px;
-            }
-
-            .video-main {
-                border-radius: 1.5rem;
-                margin-bottom: 24px;
-            }
-
-            .diary-container {
-                padding: 32px 24px;
-                border-radius: 2rem;
-            }
-
-            #memoryTitle {
-                font-size: 2rem !important;
-                line-height: 1.2;
-            }
-
-            .moment-card {
-                padding: 16px;
-                gap: 16px;
-            }
-
-            .moment-card img {
-                width: 60px !important;
-                height: 60px !important;
-            }
-
-            .growth-visualization {
-                margin-top: 48px;
-            }
+            .detail-page-shell { padding: 18px 16px 32px; }
+            .detail-topbar { align-items: flex-start; flex-direction: column; margin-bottom: 14px; }
+            .detail-hero { padding: 22px 20px; border-radius: 1.5rem; margin-bottom: 24px; }
+            .detail-hero-title { font-size: 1.8rem; line-height: 1.25; }
+            .detail-layout { gap: 32px; }
+            .video-main { border-radius: 1.5rem; margin-bottom: 20px; }
+            .diary-container { padding: 32px 24px; border-radius: 2rem; }
+            #memoryTitle { font-size: 2rem !important; line-height: 1.2; }
+            .moment-card { padding: 16px; gap: 16px; }
+            .moment-card img { width: 60px !important; height: 60px !important; }
+            .growth-visualization { margin-top: 40px; }
+            #connectedFragments { grid-template-columns: 1fr !important; }
         }
     </style>
 </head>
 <body class="paper-grain">
     <div class="noise-overlay"></div>
-    
-    <!-- Shared Header -->
     <div id="shared-header"></div>
 
-    <main class="detail-layout">
-        <section>
-            <!-- 트리 맥락 표시 영역 -->
-            <div id="treeContext" style="margin-bottom: 24px; padding: 20px 24px; background: linear-gradient(135deg, rgba(144, 73, 81, 0.06), rgba(122, 139, 110, 0.04)); border-radius: 1.5rem; border: 1px solid rgba(144, 73, 81, 0.1);">
-                <!-- JS에서 동적으로 채워집니다 -->
-                <div style="display: flex; align-items: center; gap: 12px;">
-                     <span class="material-symbols-outlined" style="color: var(--primary);">account_tree</span>
-                     <span style="font-size: 14px; color: var(--on-surface-variant);">...</span>
-                </div>
+    <div class="detail-page-shell">
+        <div class="detail-topbar">
+            <a id="backButton" class="detail-back-link" href="search.html">
+                <span class="material-symbols-outlined">arrow_back</span>
+                <span>...</span>
+            </a>
+            <div class="detail-view-chip">
+                <span class="material-symbols-outlined">visibility</span>
+                <span id="detailViewChipLabel">공개 러브트리 감상</span>
             </div>
+        </div>
 
-            <div id="videoMain" class="video-main">
-                <!-- YouTube Embed -->
-            </div>
-
-            <div class="action-bar">
-                <div class="action-group">
-                    <div class="action-item" style="opacity: 0.5; cursor: not-allowed;" title="준비중">
-                         <span class="material-symbols-outlined">favorite</span> 좋아요 <span class="count">1.2k</span>
-                    </div>
-                    <div class="action-item" style="opacity: 0.5; cursor: not-allowed;" title="준비중">
-                         <span class="material-symbols-outlined">chat_bubble</span> 댓글 <span class="count">342</span>
-                    </div>
-                    <div class="action-item" style="opacity: 0.5; cursor: not-allowed;" title="준비중">
-                        <span class="material-symbols-outlined">share</span> 공유하기
-                    </div>
-                </div>
-                <a id="backButton" class="btn-round btn-outline" href="search.html" style="display: flex; align-items: center; gap: 6px; text-decoration: none;">
-                    <span class="material-symbols-outlined" style="font-size:18px;">arrow_back</span>
-                    <span>...</span>
-                </a>
-            </div>
-
-            <!-- 메타데이터 표시 영역 -->
-            <div style="display: flex; gap: 24px; padding: 0 16px; margin-top: 16px; font-size: 14px; color: var(--on-surface-variant);">
-                <span id="detailArtist">&nbsp;</span>
-                <span>•</span>
-                <span id="detailDate">&nbsp;</span>
-            </div>
-
-            <div class="connected-section">
-                <h3 class="headline" style="font-size: 1.8rem; margin-bottom: 24px; font-weight: 800;">이어진 기억들</h3>
-                <div id="connectedFragments" style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
-                </div>
-            </div>
+        <section id="detailHero" class="detail-hero">
+            <div id="detailHeroKicker" class="detail-hero-kicker">공개 러브트리</div>
+            <h2 id="detailHeroTitle" class="headline detail-hero-title">...</h2>
+            <p id="detailHeroDesc" class="detail-hero-desc">...</p>
+            <div id="treeContext"></div>
         </section>
 
-        <section class="diary-section">
-            <div style="margin-bottom: 40px;">
-                <p id="detailSubtitle" style="font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--primary); font-weight: 900; margin-bottom: 12px;">&nbsp;</p>
-                <h1 class="headline" id="memoryTitle" style="font-size: 3.2rem; color: var(--on-surface); line-height: 1.1; margin-bottom: 24px;">&nbsp;</h1>
-                <div style="display: flex; gap: 10px;">
-                    <div class="tags-container" id="tagsContainer"></div>
+        <main class="detail-layout">
+            <section class="detail-main-media">
+                <div id="videoMain" class="video-main"></div>
+                <div class="detail-memory-meta">
+                    <span class="detail-meta-pill">
+                        <span class="material-symbols-outlined">artist</span>
+                        <span id="detailArtist">&nbsp;</span>
+                    </span>
+                    <span class="detail-meta-pill">
+                        <span class="material-symbols-outlined">calendar_today</span>
+                        <span id="detailDate">&nbsp;</span>
+                    </span>
                 </div>
-            </div>
 
-            <div class="diary-container">
-                <p id="diaryQuote" style="font-size: 1.25rem; color: var(--on-surface); font-weight: 500; font-style: italic; line-height: 1.6; margin-bottom: 32px;">
-                    &nbsp;
-                </p>
-                <div id="diaryContent" style="line-height: 2; color: var(--on-surface-variant); font-size: 1.05rem;">
-                    &nbsp;
+                <div class="connected-section">
+                    <div class="connected-heading">
+                        <span id="connectedKicker" class="connected-kicker">이어진 흐름</span>
+                        <h3 id="connectedTitle" class="headline">이어진 기억들</h3>
+                        <p id="connectedSummary" class="connected-summary">이 트리 안에서 함께 이어지는 순간들을 천천히 따라가 보세요.</p>
+                    </div>
+                    <div id="connectedFragments" style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;"></div>
                 </div>
-            </div>
+            </section>
 
-            <div class="growth-visualization">
-                <div class="growth-line"></div>
-                <div class="growth-dot"></div>
-                <p style="margin-top: 16px; font-weight: 800; color: var(--primary); font-size: 12px; text-transform: uppercase; letter-spacing: 2px;">&nbsp;</p>
-            </div>
-        </section>
-    </main>
+            <section class="diary-section">
+                <div class="detail-side-intro">
+                    <p id="detailSubtitle" class="detail-side-kicker">&nbsp;</p>
+                    <h1 class="headline" id="memoryTitle" style="font-size: 3.2rem; color: var(--on-surface); line-height: 1.1; margin-bottom: 24px;">&nbsp;</h1>
+                    <div style="display: flex; gap: 10px;">
+                        <div class="tags-container" id="tagsContainer"></div>
+                    </div>
+                    <p id="detailSideSummary" class="detail-side-summary">지금 이 순간에 남겨진 마음을 천천히 읽어보세요.</p>
+                </div>
+
+                <div class="diary-container">
+                    <p id="diaryQuote" style="font-size: 1.25rem; color: var(--on-surface); font-weight: 500; font-style: italic; line-height: 1.6; margin-bottom: 32px;">&nbsp;</p>
+                    <div id="diaryContent" style="line-height: 2; color: var(--on-surface-variant); font-size: 1.05rem;">&nbsp;</div>
+                </div>
+
+                <div class="growth-visualization">
+                    <div class="growth-line"></div>
+                    <div class="growth-dot"></div>
+                    <p id="growthLabel" style="margin-top: 16px; font-weight: 800; color: var(--primary); font-size: 12px; text-transform: uppercase; letter-spacing: 2px;">&nbsp;</p>
+                </div>
+            </section>
+        </main>
+    </div>
 
 <script src="../js/mock-data.js?v=20260418-1"></script>
 <script src="../js/cache-utils.js?v=20260418-1"></script>
@@ -262,34 +347,31 @@
 <script src="../js/api/auth-policy.js?v=20260420-1"></script>
 <script src="../js/api/base-api-fetch.js?v=20260420-1"></script>
 <script src="../js/postgres-client.js?v=20260420-1"></script>
-    <script src="../js/detail.js?v=20260421-2"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-    <script src="../js/firebase-config.js?v=20260417-31"></script>
-    <script src="../js/i18n/i18n-core.js?v=20260419-2"></script>
-    <script src="../js/i18n/i18n-shared.js?v=20260419-2"></script>
-    <script src="../js/i18n/i18n-login.js?v=20260419-2"></script>
-    <script src="../js/i18n/i18n-intro.js?v=20260419-2"></script>
-    <script src="../js/i18n/i18n-search.js?v=20260419-2"></script>
-    <script src="../js/i18n/i18n-detail.js?v=20260421-1"></script>
-    <script src="../js/i18n/i18n-editor.js?v=20260419-2"></script>
-    <script src="../js/i18n/i18n-my-trees.js?v=20260419-2"></script>
-    <script src="../js/i18n/i18n-index.js?v=20260419-2"></script>
-    <script src="../js/i18n.js?v=20260419-2"></script>
-    <script src="../js/shared-header.js?v=20260417-31"></script>
-     <script src="../js/auth/auth-state.js?v=20260417-31"></script>
-     <script src="../js/auth/auth-callbacks.js?v=20260417-31"></script>
-     <script src="../js/auth/auth-cache.js?v=20260417-31"></script>
-     <script src="../js/auth/auth-ui.js?v=20260417-31"></script>
-     <script src="../js/auth/auth-session.js?v=20260417-31"></script>
-     <script src="../js/auth/auth-firebase.js?v=20260420-1"></script>
-     <script src="../js/auth.js?v=20260417-31"></script>
-     <script src="../js/page-shell.js?v=20260420-1"></script>
-     <script>
-       LoveTreePageShell.initSharedPage({
-         renderHeader: true,
-         applyI18n: true
-       });
-     </script>
+<script src="../js/detail.js?v=20260421-2"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="../js/firebase-config.js?v=20260417-31"></script>
+<script src="../js/i18n/i18n-core.js?v=20260419-2"></script>
+<script src="../js/i18n/i18n-shared.js?v=20260419-2"></script>
+<script src="../js/i18n/i18n-login.js?v=20260419-2"></script>
+<script src="../js/i18n/i18n-intro.js?v=20260419-2"></script>
+<script src="../js/i18n/i18n-search.js?v=20260419-2"></script>
+<script src="../js/i18n/i18n-detail.js?v=20260421-1"></script>
+<script src="../js/i18n/i18n-editor.js?v=20260419-2"></script>
+<script src="../js/i18n/i18n-my-trees.js?v=20260419-2"></script>
+<script src="../js/i18n/i18n-index.js?v=20260419-2"></script>
+<script src="../js/i18n.js?v=20260419-2"></script>
+<script src="../js/shared-header.js?v=20260417-31"></script>
+<script src="../js/auth/auth-state.js?v=20260417-31"></script>
+<script src="../js/auth/auth-callbacks.js?v=20260417-31"></script>
+<script src="../js/auth/auth-cache.js?v=20260417-31"></script>
+<script src="../js/auth/auth-ui.js?v=20260417-31"></script>
+<script src="../js/auth/auth-session.js?v=20260417-31"></script>
+<script src="../js/auth/auth-firebase.js?v=20260420-1"></script>
+<script src="../js/auth.js?v=20260417-31"></script>
+<script src="../js/page-shell.js?v=20260420-1"></script>
+<script>
+  LoveTreePageShell.initSharedPage({ renderHeader: true, applyI18n: true });
+</script>
 </body>
 </html>
