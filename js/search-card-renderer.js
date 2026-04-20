@@ -96,12 +96,7 @@
      function renderPathPreview(memories, treeCreatedAt) {
          // Memory 0개 트리용 fallback placeholder
          if (!memories || memories.length === 0) {
-             return `
-                 <div class="tree-path-preview empty-tree-preview" style="display:flex;align-items:center;justify-content:center;gap:12px;padding:20px;background:linear-gradient(135deg,var(--surface-container-low),var(--surface-container));border-radius:12px;">
-                     <span class="material-symbols-outlined" style="font-size:32px;color:var(--primary-soft);">psychiatry</span>
-                     <span style="font-size:13px;color:var(--on-surface-variant);font-weight:500;">아직 순간이 비어있어요. 첫 입덕을 기록해보세요!</span>
-                 </div>
-             `;
+             return renderEmptyTreePreview();
          }
 
          const previewCount = Math.min(memories.length, 3);
@@ -143,6 +138,45 @@
          return tags.slice(0, 3).map(tag =>
              `<span class="emotion-tag" style="background:var(--primary-container);color:var(--on-primary-container);font-weight:700;font-size:12px;padding:6px 12px;">#${escapeHtml(tag)}</span>`
          ).join('');
+     }
+
+     function renderCardSectionHeading(icon, label) {
+         return `
+             <div style="font-size:11px;font-weight:800;color:var(--on-surface-variant);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px;">
+                 <span class="material-symbols-outlined" style="font-size:12px;vertical-align:middle;margin-right:4px;">${escapeHtml(icon)}</span>
+                 ${escapeHtml(label)}
+             </div>
+         `;
+     }
+
+     function renderCardMetaRow(memoryCount, timeRange, createdDate) {
+         const safeTimeRange = escapeHtml(timeRange || '기록 없음');
+
+         return `
+             <div style="font-size:12px;color:var(--on-surface-variant);margin-top:4px;display:flex;align-items:center;gap:8px;">
+                 <span class="material-symbols-outlined" style="font-size:14px;">account_tree</span>
+                 ${memoryCount}개의 순간 · ${safeTimeRange}
+                 ${createdDate ? `<span style="margin-left:4px;padding-left:8px;border-left:1px solid var(--outline-variant);">${escapeHtml(createdDate)} 생성</span>` : ''}
+             </div>
+         `;
+     }
+
+     function renderCardFooterCta(text) {
+         return `
+             <div style="font-size:13px;color:var(--on-surface-variant);font-style:italic;padding-top:12px;border-top:1px solid var(--outline-variant);display:flex;align-items:center;gap:6px;">
+                 <span class="material-symbols-outlined" style="font-size:16px;color:var(--primary);">play_circle</span>
+                 ${escapeHtml(text)}
+             </div>
+         `;
+     }
+
+     function renderEmptyTreePreview() {
+         return `
+             <div class="tree-path-preview empty-tree-preview" style="display:flex;align-items:center;justify-content:center;gap:12px;padding:20px;background:linear-gradient(135deg,var(--surface-container-low),var(--surface-container));border-radius:12px;">
+                 <span class="material-symbols-outlined" style="font-size:32px;color:var(--primary-soft);">psychiatry</span>
+                 <span style="font-size:13px;color:var(--on-surface-variant);font-weight:500;">아직 순간이 비어있어요. 첫 입덕을 기록해보세요!</span>
+             </div>
+         `;
      }
 
     /**
@@ -203,20 +237,13 @@
                      <div class="tree-icon" title="${safeStage} 단계" style="width:48px;height:48px;border-radius:12px;font-size:24px;">${getTreeIcon(tree.stage)}</div>
                      <div class="tree-title-group" style="flex:1;min-width:0;">
                         <div class="tree-title" style="font-size:1.25rem;font-weight:800;line-height:1.3;">${safeTitle}</div>
-                        <div style="font-size:12px;color:var(--on-surface-variant);margin-top:4px;display:flex;align-items:center;gap:8px;">
-                            <span class="material-symbols-outlined" style="font-size:14px;">account_tree</span>
-                            ${tree.memoryCount}개의 순간 · ${safeTimeRange}
-                            ${createdDate ? `<span style="margin-left:4px;padding-left:8px;border-left:1px solid var(--outline-variant);">${createdDate} 생성</span>` : ''}
-                        </div>
+                        ${renderCardMetaRow(tree.memoryCount, tree.timeRange, createdDate)}
                     </div>
                  </div>
                  
                  <!-- 감정 경로 미리보기 (시각적 중심) -->
                  <div class="tree-path-section" style="background:var(--surface-container-low);border-radius:1rem;padding:16px;margin-bottom:16px;">
-                     <div style="font-size:11px;font-weight:800;color:var(--on-surface-variant);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px;">
-                         <span class="material-symbols-outlined" style="font-size:12px;vertical-align:middle;margin-right:4px;">route</span>
-                         감정 경로
-                     </div>
+                     ${renderCardSectionHeading('route', '감정 경로')}
                      <div style="font-size:14px;line-height:1.5;color:var(--on-surface);">${pathDesc}</div>
                      ${renderPathPreview(tree.memories, tree.createdAt)}
                  </div>
@@ -227,10 +254,7 @@
                  </div>
                  
                  <!-- 감상 유도 문구 -->
-                 <div style="font-size:13px;color:var(--on-surface-variant);font-style:italic;padding-top:12px;border-top:1px solid var(--outline-variant);display:flex;align-items:center;gap:6px;">
-                     <span class="material-symbols-outlined" style="font-size:16px;color:var(--primary);">play_circle</span>
-                     첫 순간부터 감상하기
-                 </div>
+                 ${renderCardFooterCta('첫 순간부터 감상하기')}
              </div>
          `;
 
