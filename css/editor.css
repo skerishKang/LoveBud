@@ -967,3 +967,33 @@ body.editor-preload .editor-layout {
 .editor-submit-btn-full {
     width: 100%;
 }
+
+.editor-rename-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--outline-variant);
+    border-radius: 999px;
+    background: var(--surface);
+    cursor: pointer;
+    font-size: 13px;
+    flex: 0 0 auto;
+}
+
+.editor-panel-headline {
+    font-size: 1.5rem;
+}
+
+.editor-hidden-initial {
+    display: none;
+}
+
+.editor-visible-initial {
+    display: block;
+}
+
+.editor-save-status-icon-hidden {
+    display: none;
+}
