@@ -18,7 +18,10 @@
             <section class="editor-status-section">
                 <h3>상태</h3>
                 <div class="editor-status-card">
-                    <strong id="sidebarTreeTitle">새 러브트리</strong>
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                        <strong id="sidebarTreeTitle">새 러브트리</strong>
+                        <button type="button" id="renameTreeBtn" class="icon-menu-btn" aria-label="트리 제목 변경" title="트리 제목 변경" style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border:1px solid var(--outline-variant);border-radius:999px;background:var(--surface);cursor:pointer;font-size:13px;flex:0 0 auto;">✎</button>
+                    </div>
                     <p id="sidebarMomentCount">순간 0개</p>
                     <span id="sidebarSelectionHint" class="editor-sidebar-meta">첫 순간을 추가해 러브트리를 시작해보세요.</span>
                 </div>
@@ -75,10 +78,13 @@
             </div>
 
             <div class="detail-content" id="detailContent">
+                <div id="detailEmptyState" style="display:block;">
+                    <div style="text-align:center;padding:40px 24px;color:var(--on-surface-variant);"><span class="material-symbols-outlined" style="font-size:48px;opacity:0.4;margin-bottom:16px;display:block;">sentiment_satisfied</span><p style="font-size:1rem;font-weight:600;margin-bottom:8px;color:var(--on-surface);">아직 추가된 순간이 없어요</p><p style="font-size:0.9rem;opacity:0.7;line-height:1.5;">왼쪽 아래의 '순간 추가' 버튼으로 첫 기록을 남겨보세요.</p></div>
+                </div>
                 <!-- 읽기 모드 -->
-                <div id="detailViewMode">
+                <div id="detailViewMode" style="display: none;">
                     <div class="detail-video">
-                        <img id="detailImg" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBJb2reehtYkk1tSupKcTenf09sFrI1MN_2H_orLdE8A1rOAlc27BWm62BVBav5qtwxTUJ7ctbr2bDNmU2EfruV9ajOc0QCzABvXJ5-qWXAeR8GOQumFqygnon2pN6L7Wc3UJvG-f9dh26hzO_bnWAoTverOtXlPKc4AqL95xSgqIwuVjm5Pb_eQ8gJI5kv4se7YvCHY5v3jZ5m1n6OzaavO3FKOfXk35Bs0O-w4R19eHXM2fn2Lr1bS2uizoWLcKYYZOKGHH6COFc" alt="Preview">
+                        <img id="detailImg" src="" alt="">
                         <div class="memory-preview-overlay">
                             <button type="button" class="play-btn" aria-label="재생">재생</button>
                         </div>
@@ -86,26 +92,21 @@
 
                     <div class="detail-info-group">
                         <label>기억한 날</label>
-                        <p id="detailDateText">2024.03.14</p>
+                        <p id="detailDateText"></p>
                     </div>
 
                     <div class="detail-info-group">
                         <label>감정 태그</label>
-                        <div class="tags-container" id="detailTags">
-                            <span class="tag tag-primary">강렬한</span>
-                            <span class="tag tag-secondary">환희</span>
-                        </div>
+                        <div class="tags-container" id="detailTags"></div>
                     </div>
 
                     <div class="detail-info-group">
                         <label>감정 메모</label>
-                        <div class="diary-note" id="detailMemo">
-                            "마지막 앙코르 곡이 울려 퍼질 때, 그 순간의 공기와 팬들의 함성 소리가 아직도 생생해."
-                        </div>
+                        <div class="diary-note" id="detailMemo"></div>
                     </div>
 
                 <!-- 수정/삭제 버튼 영역 -->
-                <div class="memory-actions" style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--outline-variant); display: flex; gap: 8px;">
+                <div class="memory-actions" style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--outline-variant); display: none; gap: 8px;">
                     <button id="editMemoryBtn" class="btn-round btn-outline" style="flex: 1; padding: 10px 16px; font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 6px;">순간 수정</button>
                     <button id="deleteMemoryBtn" class="btn-round btn-outline" style="flex: 1; padding: 10px 16px; font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 6px; color: var(--error); border-color: var(--error);">순간 삭제</button>
                 </div>
@@ -156,8 +157,8 @@
     <script src="../js/utils/ui.js?v=20260418-1"></script>
     <script src="../js/utils/media.js?v=20260418-1"></script>
 <script src="../js/editor/editor-root-helpers.js?v=20260418-1"></script>
-<script src="../js/editor/editor-canvas.js?v=20260419-2"></script>
-<script src="../js/editor/editor-detail-ui.js?v=20260419-1"></script>
+<script src="../js/editor/editor-canvas.js?v=20260420-2"></script>
+<script src="../js/editor/editor-detail-ui.js?v=20260420-2"></script>
 <script src="../js/editor/editor-memory-actions.js?v=20260419-1"></script>
 <script src="../js/editor/editor-memory-form.js?v=20260419-1"></script>
 <script src="../js/api/auth-policy.js?v=20260420-1"></script>
