@@ -785,3 +785,185 @@ body.editor-preload .editor-layout {
     color: var(--on-surface-variant);
     font-style: italic;
 }
+
+.editor-space-between-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.editor-flow-summary {
+    margin: 8px 0 0;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--on-surface);
+}
+
+.editor-add-section-auto {
+    margin-top: auto;
+}
+
+.editor-memory-form-modal {
+    display: none;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    padding: 32px;
+    border-radius: 2rem;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+    border: 1px solid var(--outline-variant);
+    width: 90%;
+    max-width: 420px;
+    z-index: 100;
+}
+
+.editor-modal-title {
+    font-size: 1.4rem;
+    margin-bottom: 24px;
+}
+
+.editor-form-field {
+    margin-bottom: 16px;
+}
+
+.editor-form-field-last {
+    margin-bottom: 24px;
+}
+
+.editor-form-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--on-surface-variant);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.editor-form-input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1px solid var(--outline-variant);
+    border-radius: 1rem;
+    font-size: 14px;
+    font-family: inherit;
+}
+
+.editor-form-textarea {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1px solid var(--outline-variant);
+    border-radius: 1rem;
+    font-size: 14px;
+    font-family: inherit;
+    resize: vertical;
+}
+
+.editor-form-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+}
+
+.editor-form-action-btn {
+    padding: 10px 20px;
+    font-size: 13px;
+}
+
+.editor-empty-state-box {
+    text-align: center;
+    padding: 40px 24px;
+    color: var(--on-surface-variant);
+}
+
+.editor-empty-state-icon {
+    font-size: 48px;
+    opacity: 0.4;
+    margin-bottom: 16px;
+    display: block;
+}
+
+.editor-empty-state-title {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: var(--on-surface);
+}
+
+.editor-empty-state-desc {
+    font-size: 0.9rem;
+    opacity: 0.78;
+    line-height: 1.6;
+}
+
+.editor-memory-actions-row {
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid var(--outline-variant);
+    display: none;
+    gap: 8px;
+}
+
+.editor-memory-action-btn {
+    flex: 1;
+    padding: 10px 16px;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.editor-memory-delete-btn {
+    color: var(--error);
+    border-color: var(--error);
+}
+
+.editor-save-status-wrap {
+    margin-top: 12px;
+    display: none;
+    justify-content: center;
+    gap: 4px;
+}
+
+.editor-edit-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--outline-variant);
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+}
+
+.editor-edit-textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--outline-variant);
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    resize: vertical;
+}
+
+.editor-edit-actions-row {
+    margin-top: 24px;
+    display: flex;
+    gap: 8px;
+}
+
+.editor-edit-action-btn {
+    flex: 1;
+    padding: 10px 16px;
+    font-size: 13px;
+}
+
+.editor-submit-footer {
+    display: none;
+}
+
+.editor-submit-btn-full {
+    width: 100%;
+}
