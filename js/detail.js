@@ -32,16 +32,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     const searchHref = buildPageHref('search');
     const myTreesHref = buildPageHref('my-trees');
     const i18n = window.t || ((k) => k);
+    const tText = (key, fallback) => {
+        const translated = i18n(key);
+        if (typeof translated !== 'string') return fallback;
+
+        const normalized = translated.trim();
+        if (!normalized || normalized === key) return fallback;
+
+        return translated;
+    };
 
     // Back button 설정 - 핸들러는 한 번만 등록, 이후 URL만 변경
     const configureBackButton = (sourceContext, treeId) => {
         if (!backButton) return;
 
         const backConfig = {
-            'browse': { label: i18n('browse_label'), url: searchHref },
-            'my-trees': { label: i18n('my_trees_short'), url: myTreesHref },
+            'browse': { label: tText('browse_label', '둘러보기'), url: searchHref },
+            'my-trees': { label: tText('my_trees_short', '내 트리'), url: myTreesHref },
             'editor': {
-                label: i18n('edit_action'),
+                label: tText('edit_action', '편집하기'),
                 url: buildPageHref('editor', treeId ? { treeId } : {})
             }
         };
@@ -84,17 +93,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             } else {
                 videoMain.innerHTML = `
                     <div style="width:100%;height:100%;background:var(--surface-container);display:flex;align-items:center;justify-content:center;color:var(--on-surface-variant);">
-                        ${i18n('no_video')}
+                        ${tText('no_video', '비디오가 없습니다')}
                     </div>
                 `;
             }
         }
 
         // 메타데이터 채우기
-        if (memoryTitle) memoryTitle.textContent = memory.title || i18n('tree_context_moment');
-        if (detailArtist) detailArtist.textContent = memory.artist || i18n('unknown_artist');
+        if (memoryTitle) memoryTitle.textContent = memory.title || tText('tree_context_moment', '순간 상세');
+        if (detailArtist) detailArtist.textContent = memory.artist || tText('unknown_artist', '아티스트 정보 없음');
         if (detailDate) detailDate.textContent = (memory.timestamp || '') + (memory.source ? ' · ' + memory.source : '');
-        if (detailSubtitle) detailSubtitle.textContent = i18n('memory_record_prefix') + (memory.timestamp || '');
+        if (detailSubtitle) detailSubtitle.textContent = tText('memory_record_prefix', '기록 — ') + (memory.timestamp || '');
 
         // 감정 태그
         if (tagsContainer && memory.emotionTags && memory.emotionTags.length > 0) {
@@ -114,8 +123,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const renderTreeContext = ({ hasTreeContext, tree, memories, sourceContext, degradedReason }) => {
         if (!treeContextEl) return;
 
-        const i18n = window.t || ((k) => k);
-
         if (degradedReason === 'missing-tree-id') {
             // treeId 자체가 없음
             treeContextEl.innerHTML = `
@@ -125,11 +132,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>
                     <div style="flex: 1; min-width: 0;">
                         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-                            <span style="font-size: 12px; font-weight: 800; color: var(--primary); text-transform: uppercase; letter-spacing: 1px;">${i18n('tree_context_viewing')}</span>
+                            <span style="font-size: 12px; font-weight: 800; color: var(--primary); text-transform: uppercase; letter-spacing: 1px;">${tText('tree_context_viewing', '감상 중')}</span>
                         </div>
-                        <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--on-surface); margin: 0; line-height: 1.3;">${i18n('tree_context_moment')}</h2>
+                        <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--on-surface); margin: 0; line-height: 1.3;">${tText('tree_context_moment', '순간 상세')}</h2>
                         <p style="font-size: 13px; color: var(--on-surface-variant); margin-top: 6px; line-height: 1.5;">
-                            ${i18n('tree_context_solo_view')}
+                            ${tText('tree_context_solo_view', '이 순간만 단독으로 감상하고 있어요.')}
                         </p>
                     </div>
                 </div>
@@ -143,11 +150,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>
                     <div style="flex: 1; min-width: 0;">
                         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-                            <span style="font-size: 12px; font-weight: 800; color: var(--on-surface-variant); text-transform: uppercase; letter-spacing: 1px;">${i18n('tree_info_missing')}</span>
+                            <span style="font-size: 12px; font-weight: 800; color: var(--on-surface-variant); text-transform: uppercase; letter-spacing: 1px;">${tText('tree_info_missing', '트리 정보 없음')}</span>
                         </div>
-                        <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--on-surface); margin: 0; line-height: 1.3;">${i18n('tree_context_moment')}</h2>
+                        <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--on-surface); margin: 0; line-height: 1.3;">${tText('tree_context_moment', '순간 상세')}</h2>
                         <p style="font-size: 13px; color: var(--on-surface-variant); margin-top: 6px; line-height: 1.5;">
-                            ${i18n('tree_load_failed_desc')}
+                            ${tText('tree_load_failed_desc', '트리 정보를 불러오지 못했어요. 순간 감상은 계속할 수 있어요.')}
                         </p>
                     </div>
                 </div>
@@ -155,22 +162,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else if (hasTreeContext && tree) {
             // 정상 트리 컨텍스트
             const memoryCount = Array.isArray(memories) ? memories.length : 0;
-            const treeTitle = tree.title || i18n('lovetree_brand');
+            const treeTitle = tree.title || tText('lovetree_brand', '러브트리');
+            const momentCountLabel = `${memoryCount}${tText('tree_context_moment_count_desc', '개의 순간이 이어진 감정 경로를 따라가고 있어요')}`;
+            const memoryCountCaption = `${memoryCount}${tText('tree_context_moment_count_short', '개 순간')}`;
             const contextMessages = {
                 'browse': {
                     icon: 'explore',
-                    label: i18n('browse_label'),
-                    desc: `${memoryCount}${i18n('tree_context_moment_count_desc') || '개의 순간이 이어진 감정 경로를 따라가고 있어요'}`
+                    label: tText('browse_label', '둘러보기'),
+                    desc: momentCountLabel
                 },
                 'editor': {
                     icon: 'edit',
-                    label: i18n('editor_label'),
-                    desc: i18n('tree_context_editor_desc') || '편집 중인 트리를 감상 모드로 보고 있어요'
+                    label: tText('editor_label', '편집기'),
+                    desc: tText('tree_context_editor_desc', '편집 중인 트리를 감상 모드로 보고 있어요')
                 },
                 'my-trees': {
                     icon: 'account_tree',
-                    label: i18n('my_trees_label'),
-                    desc: i18n('tree_context_my_trees_desc') || '내가 기록한 순간들을 다시 감상하고 있어요'
+                    label: tText('my_trees_label', '내 트리'),
+                    desc: tText('tree_context_my_trees_desc', '내가 기록한 순간들을 다시 감상하고 있어요')
                 }
             };
             const contextInfo = contextMessages[sourceContext] || contextMessages['browse'];
@@ -184,7 +193,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
                             <span style="font-size: 12px; font-weight: 800; color: var(--primary); text-transform: uppercase; letter-spacing: 1px;">${contextInfo.label}</span>
                             <span style="color: var(--outline-variant);">·</span>
-                            <span style="font-size: 12px; color: var(--on-surface-variant);">${memoryCount}개 순간</span>
+                            <span style="font-size: 12px; color: var(--on-surface-variant);">${memoryCountCaption}</span>
                         </div>
                         <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--on-surface); margin: 0; line-height: 1.3;">${treeTitle}</h2>
                         <p style="font-size: 13px; color: var(--on-surface-variant); margin-top: 6px; line-height: 1.5;">
@@ -213,8 +222,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             connectedFragments.innerHTML = `
                 <div style="text-align: center; padding: 24px; color: var(--on-surface-variant); font-size: 13px;">
                     <span class="material-symbols-outlined" style="font-size: 24px; opacity: 0.5; margin-bottom: 8px; display: block;">forest</span>
-                    ${i18n('tree_path_missing')}<br>
-                    <a href="${searchHref}" style="color: var(--primary); text-decoration: none; font-weight: 600;">${i18n('find_tree_in_browse')}</a>
+                    ${tText('tree_path_missing', '트리 경로 정보가 없어요')}<br>
+                    <a href="${searchHref}" style="color: var(--primary); text-decoration: none; font-weight: 600;">${tText('find_tree_in_browse', '둘러보기에서 트리 찾기')}</a>
                 </div>
             `;
             return;
@@ -266,7 +275,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             connectedFragments.innerHTML = `
                 <div style="text-align: center; padding: 24px; color: var(--on-surface-variant); font-size: 13px;">
                     <span class="material-symbols-outlined" style="font-size: 24px; opacity: 0.5; margin-bottom: 8px; display: block;">device_hub</span>
-                    ${i18n('no_siblings_in_path')}
+                    ${tText('no_siblings_in_path', '같은 경로의 다른 순간이 없어요')}
                 </div>
             `;
         }
@@ -337,17 +346,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!memory) {
         // ── memory 조회 실패 시 fallback UI 표시 ──
         console.warn('[detail] Memory not found, showing fallback UI');
-        const i18n = window.t || ((k) => k);
         const fallbackHTML = `
             <div style="max-width: 600px; margin: 80px auto; text-align: center; padding: 48px;">
                 <span class="material-symbols-outlined" style="font-size: 64px; color: var(--on-surface-variant); opacity: 0.5; margin-bottom: 24px; display: block;">sentiment_dissatisfied</span>
-                <h2 class="headline" style="font-size: 1.8rem; margin-bottom: 16px; color: var(--on-surface);">${i18n('memory_not_found_title')}</h2>
+                <h2 class="headline" style="font-size: 1.8rem; margin-bottom: 16px; color: var(--on-surface);">${tText('memory_not_found_title', '기억을 찾지 못했어요')}</h2>
                 <p style="color: var(--on-surface-variant); margin-bottom: 32px; line-height: 1.6;">
-                    ${i18n('memory_not_found_desc').replace('.', '<br>')}
+                    ${tText('memory_not_found_desc', '요청하신 기억이 존재하지 않거나 접근할 수 없는 상태입니다.').replace('.', '<br>')}
                 </p>
                 <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
-                    <a href="${homeHref}" class="btn-round btn-outline" style="text-decoration: none;">${i18n('back_to_home')}</a>
-                    <a href="${searchHref}" class="btn-round btn-outline" style="text-decoration: none;">${i18n('browse_lovetrees')}</a>
+                    <a href="${homeHref}" class="btn-round btn-outline" style="text-decoration: none;">${tText('back_to_home', '홈으로')}</a>
+                    <a href="${searchHref}" class="btn-round btn-outline" style="text-decoration: none;">${tText('browse_lovetrees', '러브트리 둘러보기')}</a>
                 </div>
             </div>
         `;
@@ -455,9 +463,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderConnectedFragments({ memory, memories, treeId, sourceContext, degradedReason });
 
     // 4. 페이지 타이틀 업데이트
-    const safeTitle = memory.title || i18n('tree_context_moment');
-    const treeTitle = tree?.title || i18n('lovetree_brand');
-    const brandTitle = i18n('lovetree_brand');
+    const safeTitle = memory.title || tText('tree_context_moment', '순간 상세');
+    const treeTitle = tree?.title || tText('lovetree_brand', '러브트리');
+    const brandTitle = tText('lovetree_brand', '러브트리');
     const pageTitle = (hasTreeContext && tree && !degradedReason)
         ? `${safeTitle} | ${treeTitle} — ${brandTitle}`
         : `${safeTitle} — ${brandTitle}`;
