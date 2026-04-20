@@ -106,23 +106,31 @@ function createEditorDetailUI(deps) {
     const updateSidebarStatus = () => {
         const treeTitleEl = document.getElementById('sidebarTreeTitle');
         const momentCountEl = document.getElementById('sidebarMomentCount');
+        const flowSummaryEl = document.getElementById('sidebarFlowSummary');
         const hintEl = document.getElementById('sidebarSelectionHint');
         const currentTreeData = getCurrentTreeData();
         const selectedNodeId = getSelectedNodeId();
         const treeMemories = getTreeMemories();
         const canonicalRootId = getCanonicalRootId();
+        const count = treeMemories.filter(m => !isRootMemory(m, canonicalRootId)).length;
+        const selected = treeMemories.find(m => m.id === selectedNodeId);
 
         if (treeTitleEl) {
             treeTitleEl.textContent = resolveTreeTitleText(currentTreeData?.title);
         }
         if (momentCountEl) {
-            const count = treeMemories.filter(m => !isRootMemory(m, canonicalRootId)).length;
-            momentCountEl.textContent = `순간 ${count}개`;
+            momentCountEl.textContent = `순간 ${count}개가 이어지고 있어요`;
+        }
+        if (flowSummaryEl) {
+            flowSummaryEl.textContent = selected?.title
+                ? `지금은 "${selected.title}" 순간에 마음이 머물러 있어요.`
+                : count > 0
+                    ? `${count}개의 순간이 하나의 러브트리로 차곡차곡 이어지고 있어요.`
+                    : '첫 기억이 심어지면 이곳에 감정의 흐름이 차곡차곡 쌓여요.';
         }
         if (hintEl) {
-            const selected = treeMemories.find(m => m.id === selectedNodeId);
             hintEl.textContent = selected?.title
-                ? `현재 선택: ${selected.title}`
+                ? `선택한 순간: ${selected.title}`
                 : '첫 순간이 심어지면 러브트리가 자라나요.';
             hintEl.style.fontStyle = 'italic';
             hintEl.style.color = 'var(--on-surface-variant)';
