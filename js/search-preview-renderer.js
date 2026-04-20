@@ -112,6 +112,31 @@
          return '업데이트 정보 없음';
      }
 
+     function getPreviewDisplayTitle(tree) {
+         const rawTitle = String(tree?.title || '').trim();
+         const firstTagRaw = Array.isArray(tree?.emotionTags) && tree.emotionTags.length
+             ? String(tree.emotionTags[0] || '').trim()
+             : '';
+         const themeRaw = String(tree?.theme || '').trim();
+         const createdDate = formatShortDate(tree?.createdAt || '');
+         const isDefaultTitle = rawTitle === '새 러브트리' || rawTitle === '나의 첫 러브트리';
+
+         if (!isDefaultTitle) {
+             return rawTitle || '러브트리';
+         }
+
+         if (themeRaw && themeRaw !== 'LoveTree' && themeRaw !== 'Mixed') {
+             return `${themeRaw} 러브트리`;
+         }
+         if (firstTagRaw) {
+             return `${firstTagRaw}으로 시작한 러브트리`;
+         }
+         if (createdDate) {
+             return `${createdDate} 시작한 러브트리`;
+         }
+         return '새로 시작된 러브트리';
+     }
+
     /**
      * Updates preview details for a tree
      * 
@@ -132,7 +157,8 @@
          // ─────────────────────────────────────────────
          
          if (_dom.previewContainer) {
-            const safeTreeTitle = escapeHtml(tree.title || '');
+            const previewDisplayTitle = getPreviewDisplayTitle(tree);
+            const safeTreeTitle = escapeHtml(previewDisplayTitle);
 
             if (!hasMemories) {
                 _dom.previewContainer.innerHTML = `
@@ -173,7 +199,8 @@
          // ─────────────────────────────────────────
          
          if (_dom.previewTitle) {
-             const safeTreeTitle = escapeHtml(tree.title || '');
+             const previewDisplayTitle = getPreviewDisplayTitle(tree);
+             const safeTreeTitle = escapeHtml(previewDisplayTitle);
              const safeTimeRange = escapeHtml(tree.timeRange || '기록 없음');
 
              _dom.previewTitle.innerHTML = `
@@ -192,6 +219,8 @@
          // ─────────────────────────────────────────
          
          if (_dom.previewDesc) {
+            const previewDisplayTitle = getPreviewDisplayTitle(tree);
+            const safePreviewDisplayTitle = escapeHtml(previewDisplayTitle);
             const safeTreeTheme = escapeHtml(tree.theme || 'LoveTree');
             const safeTimeRange = escapeHtml(tree.timeRange || '기록 없음');
 
@@ -209,7 +238,8 @@
                     </div>
 
                     <div style="font-size:14px;color:var(--on-surface-variant);line-height:1.6;padding:0 4px;">
-                        <strong style="color:var(--on-surface);">${safeTreeTheme}</strong> 테마로 시작된 새 러브트리예요.
+                        <strong style="color:var(--on-surface);">${safePreviewDisplayTitle}</strong>는
+                        <strong style="color:var(--on-surface);">${safeTreeTheme}</strong> 테마로 시작된 공개 러브트리예요.
                         <span style="color:var(--primary);font-weight:700;">아직 기록은 0개</span>지만,
                         다음 순간이 쌓이면 감정 경로가 여기서 채워집니다.
                         <div style="margin-top:12px;padding:12px;background:var(--surface-container);border-radius:0.75rem;font-size:13px;color:var(--on-surface-variant);font-weight:500;display:flex;align-items:center;gap:8px;">
