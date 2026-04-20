@@ -14,6 +14,38 @@ document.addEventListener('DOMContentLoaded', async () => {
     const isPagesContext = window.location.pathname.indexOf('/pages/') !== -1;
     const homeHref = isPagesContext ? '../index.html' : 'index.html';
     const searchHref = isPagesContext ? 'search.html' : 'pages/search.html';
+    const i18n = window.t || ((k) => k);
+
+    const configureBackButton = (sourceContext, treeId) => {
+        if (!backButton) return;
+
+        let editorUrl = 'editor.html';
+        if (treeId) {
+            editorUrl = `editor.html?treeId=${treeId}`;
+        }
+
+        const backConfig = {
+            'browse': { label: i18n('browse_label'), url: searchHref },
+            'my-trees': { label: i18n('my_trees_short'), url: isPagesContext ? 'my-trees.html' : 'pages/my-trees.html' },
+            'editor': { label: i18n('edit_action'), url: editorUrl }
+        };
+        const config = backConfig[sourceContext] || backConfig['browse'];
+
+        backButton.type = 'button';
+        backButton.innerHTML = `<span class="material-symbols-outlined" style="font-size:18px;margin-right:4px;">arrow_back</span> ${config.label}`;
+        backButton.setAttribute('aria-label', config.label);
+
+        if (backButton.__detailBackHandler) {
+            backButton.removeEventListener('click', backButton.__detailBackHandler);
+        }
+
+        const backHandler = (event) => {
+            event.preventDefault();
+            window.location.assign(config.url);
+        };
+        backButton.addEventListener('click', backHandler);
+        backButton.__detailBackHandler = backHandler;
+    };
 
     // ── 렌더링 헬퍼 함수들 ──
     // memory 본문 렌더링 (tree context와 무관)
@@ -227,6 +259,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // from: 'browse' (둘러보기) | 'my-trees' (내 트리) | 'editor' (편집기)
     const fromParam = urlParams.get('from');
     const sourceContext = ['browse', 'my-trees', 'editor'].includes(fromParam) ? fromParam : 'browse';
+    const initialTreeId = urlParams.get('tree');
+    configureBackButton(sourceContext, initialTreeId);
 
     // ── 캐시 키 설정 ──
     const cache = window.LoveBudCache;
@@ -394,31 +428,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         : `${safeTitle} — ${brandTitle}`;
     document.title = pageTitle;
 
-    // 5. 돌아가기 버튼
-    if (backButton) {
-        // 백 버튼 라벨 및 동작 설정 (treeId 없을 때 editor fallback)
-        let editorUrl = 'editor.html';
-        if (treeId) {
-            editorUrl = `editor.html?treeId=${treeId}`;
-        }
-
-        const backConfig = {
-            'browse': { label: i18n('browse_label'), url: searchHref },
-            'my-trees': { label: i18n('my_trees_short'), url: isPagesContext ? 'my-trees.html' : 'pages/my-trees.html' },
-            'editor': { label: i18n('edit_action'), url: editorUrl }
-        };
-        const config = backConfig[sourceContext] || backConfig['browse'];
-
-        backButton.innerHTML = `<span class="material-symbols-outlined" style="font-size:18px;margin-right:4px;">arrow_back</span> ${config.label}`;
-
-        // 중복 바인딩 방지
-        if (backButton.__detailBackHandler) {
-            backButton.removeEventListener('click', backButton.__detailBackHandler);
-        }
-        const backHandler = () => { window.location.href = config.url; };
-        backButton.addEventListener('click', backHandler);
-        backButton.__detailBackHandler = backHandler;
-    }
+    // 5. 돌아가기 버튼 URL 재확정
+    configureBackButton(sourceContext, treeId);
 
     console.log('[detail] Detail view loaded:', memory.title || 'Untitled');
 });
