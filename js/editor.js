@@ -578,6 +578,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    const createInlineFormatTimeAgoFallback = () => (date) => {
+        if (!date) return '';
+
+        const diff = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
+        if (diff < 60) return '??';
+        if (diff < 3600) return `${Math.floor(diff / 60)}? ?`;
+        if (diff < 86400) return `${Math.floor(diff / 3600)}?? ?`;
+        return `${Math.floor(diff / 86400)}? ?`;
+    };
+
     const startEditor = async () => {
         const canvas = document.getElementById('canvasArea');
         const svg = document.getElementById('canvasSvg');
@@ -884,18 +894,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        function formatTimeAgo(date) {
-            if (editorSaveStatus.formatTimeAgo) {
-                return editorSaveStatus.formatTimeAgo(date);
-            }
-
-            if (!date) return '';
-            const diff = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
-            if (diff < 60) return '방금';
-            if (diff < 3600) return `${Math.floor(diff / 60)}분 전`;
-            if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`;
-            return `${Math.floor(diff / 86400)}일 전`;
-        }
+        const formatTimeAgo = editorSaveStatus.formatTimeAgo || createInlineFormatTimeAgoFallback();
 
         const memoryActions = window.createEditorMemoryActions({
             i18n,
