@@ -363,6 +363,102 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     };
 
+    const createInlineLoadInitialTreeFallback = () => async (options) => {
+        const opts = options || {};
+        const requestedTreeId = opts.urlTreeId || '';
+        const apiClient = opts.apiClient || null;
+        const getFirstMockTreeFallback = opts.getFirstMockTree || (() => null);
+        const createDefaultTreeTitle = opts.createDefaultTreeTitle || (() => '러브트리');
+        const getConfirmedSessionUserFallback = opts.getConfirmedSessionUser || (() => null);
+
+        let tree = null;
+        let isNewTree = false;
+        let treeLoadStatus = 'not_found';
+        let treeLoadErrorMessage = '';
+        let authRequired = false;
+
+        if (requestedTreeId) {
+            try {
+                if (apiClient && apiClient.getTree) {
+                    tree = await apiClient.getTree(requestedTreeId);
+                    if (tree) {
+                        treeLoadStatus = 'loaded';
+                        console.log('[editor] Tree from URL loaded:', tree.id);
+                    }
+                } else {
+                    treeLoadStatus = 'api_unavailable';
+                }
+            } catch (e) {
+                treeLoadStatus = 'error';
+                treeLoadErrorMessage = String(e?.message || '');
+                console.warn('[editor] Tree from URL load failed:', e.message);
+            }
+
+            if (!tree) {
+                authRequired =
+                    /401|Authentication required|Invalid ID token/i.test(treeLoadErrorMessage) ||
+                    (/Access denied/i.test(treeLoadErrorMessage) && !getConfirmedSessionUserFallback());
+            }
+
+            return {
+                tree,
+                isNewTree,
+                treeLoadStatus,
+                treeLoadErrorMessage,
+                authRequired
+            };
+        }
+
+        try {
+            if (apiClient && apiClient.getFirstTree) {
+                const apiTree = await apiClient.getFirstTree();
+                if (apiTree) {
+                    tree = apiTree;
+                    treeLoadStatus = 'loaded';
+                    console.log('[editor] API tree loaded (getFirstTree)');
+                } else {
+                    console.log('[editor] No tree found, creating default tree...');
+                    if (apiClient.createTree) {
+                        const newTree = await apiClient.createTree({
+                            title: createDefaultTreeTitle(),
+                            visibility: 'public'
+                        });
+                        tree = newTree;
+                        isNewTree = true;
+                        treeLoadStatus = 'created';
+                        console.log('[editor] Default tree created:', newTree);
+                    }
+                }
+            }
+        } catch (e) {
+            treeLoadErrorMessage = String(e?.message || '');
+            console.warn('[editor] API tree failed, fallback to mock:', e.message);
+            authRequired = /401|Authentication/i.test(treeLoadErrorMessage);
+        }
+
+        if (authRequired) {
+            return {
+                tree: null,
+                isNewTree: false,
+                treeLoadStatus: 'auth_required',
+                treeLoadErrorMessage,
+                authRequired: true
+            };
+        }
+
+        if (!tree) {
+            tree = getFirstMockTreeFallback();
+        }
+
+        return {
+            tree,
+            isNewTree,
+            treeLoadStatus: tree ? (treeLoadStatus === 'not_found' ? 'loaded' : treeLoadStatus) : 'not_found',
+            treeLoadErrorMessage,
+            authRequired: false
+        };
+    };
+
     const startEditor = async () => {
         const canvas = document.getElementById('canvasArea');
         const svg = document.getElementById('canvasSvg');
@@ -381,101 +477,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Track local fallback mode for sidebar/detail UI
         let isLocalSaveMode = false;
 
-        const loadInitialTree = editorDataLoader.loadInitialEditorTree || (async (options) => {
-            const opts = options || {};
-            const requestedTreeId = opts.urlTreeId || '';
-            const apiClient = opts.apiClient || null;
-            const getFirstMockTreeFallback = opts.getFirstMockTree || (() => null);
-            const createDefaultTreeTitle = opts.createDefaultTreeTitle || (() => '러브트리');
-            const getConfirmedSessionUserFallback = opts.getConfirmedSessionUser || (() => null);
-
-            let tree = null;
-            let isNewTree = false;
-            let treeLoadStatus = 'not_found';
-            let treeLoadErrorMessage = '';
-            let authRequired = false;
-
-            if (requestedTreeId) {
-                try {
-                    if (apiClient && apiClient.getTree) {
-                        tree = await apiClient.getTree(requestedTreeId);
-                        if (tree) {
-                            treeLoadStatus = 'loaded';
-                            console.log('[editor] Tree from URL loaded:', tree.id);
-                        }
-                    } else {
-                        treeLoadStatus = 'api_unavailable';
-                    }
-                } catch (e) {
-                    treeLoadStatus = 'error';
-                    treeLoadErrorMessage = String(e?.message || '');
-                    console.warn('[editor] Tree from URL load failed:', e.message);
-                }
-
-                if (!tree) {
-                    authRequired =
-                        /401|Authentication required|Invalid ID token/i.test(treeLoadErrorMessage) ||
-                        (/Access denied/i.test(treeLoadErrorMessage) && !getConfirmedSessionUserFallback());
-                }
-
-                return {
-                    tree,
-                    isNewTree,
-                    treeLoadStatus,
-                    treeLoadErrorMessage,
-                    authRequired
-                };
-            }
-
-            try {
-                if (apiClient && apiClient.getFirstTree) {
-                    const apiTree = await apiClient.getFirstTree();
-                    if (apiTree) {
-                        tree = apiTree;
-                        treeLoadStatus = 'loaded';
-                        console.log('[editor] API tree loaded (getFirstTree)');
-                    } else {
-                        console.log('[editor] No tree found, creating default tree...');
-                        if (apiClient.createTree) {
-                            const newTree = await apiClient.createTree({
-                                title: createDefaultTreeTitle(),
-                                visibility: 'public'
-                            });
-                            tree = newTree;
-                            isNewTree = true;
-                            treeLoadStatus = 'created';
-                            console.log('[editor] Default tree created:', newTree);
-                        }
-                    }
-                }
-            } catch (e) {
-                treeLoadErrorMessage = String(e?.message || '');
-                console.warn('[editor] API tree failed, fallback to mock:', e.message);
-                authRequired = /401|Authentication/i.test(treeLoadErrorMessage);
-            }
-
-            if (authRequired) {
-                return {
-                    tree: null,
-                    isNewTree: false,
-                    treeLoadStatus: 'auth_required',
-                    treeLoadErrorMessage,
-                    authRequired: true
-                };
-            }
-
-            if (!tree) {
-                tree = getFirstMockTreeFallback();
-            }
-
-            return {
-                tree,
-                isNewTree,
-                treeLoadStatus: tree ? (treeLoadStatus === 'not_found' ? 'loaded' : treeLoadStatus) : 'not_found',
-                treeLoadErrorMessage,
-                authRequired: false
-            };
-        });
+        const loadInitialTree = editorDataLoader.loadInitialEditorTree || createInlineLoadInitialTreeFallback();
 
         const treeLoadResult = await loadInitialTree({
             urlTreeId,
