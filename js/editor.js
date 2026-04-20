@@ -459,6 +459,59 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     };
 
+    const createInlineLoadEditorMemoriesFallback = () => async (options) => {
+        const opts = options || {};
+        const treeId = opts.treeId;
+        const cache = opts.cache || null;
+        const cacheKey = opts.cacheKey || 'memories_default';
+        const apiClient = opts.apiClient || null;
+        const getMemoriesByTreeFallback = opts.getMemoriesByTreeFallback || null;
+        const showToast = opts.showToast || function() {};
+        const i18n = opts.i18n || function(key) { return key; };
+        const normalizeMemory = opts.normalizeMemory || ((mem) => mem);
+
+        let memories = [];
+        const cachedMemories = cache ? cache.get(cacheKey) : null;
+
+        if (cachedMemories && Array.isArray(cachedMemories)) {
+            console.log('[editor] Using cached memories:', cachedMemories.length);
+            memories = cachedMemories;
+            window.currentTreeMemories = memories.map(normalizeMemory).filter(Boolean);
+        }
+
+        try {
+            if (apiClient && apiClient.getMemoriesByTree) {
+                const apiMemories = await apiClient.getMemoriesByTree(treeId);
+                if (Array.isArray(apiMemories)) {
+                    memories = apiMemories;
+                    console.log('[editor] API memories loaded:', apiMemories.length);
+                    if (cache) {
+                        cache.set(cacheKey, memories, 2 * 60 * 1000);
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('[editor] API getMemoriesByTree failed:', e.message);
+            if (e.message?.includes('401') || e.message?.includes('403')) {
+                showToast(i18n('data_load_fail_demo'), 'warn');
+            }
+        }
+
+        if (memories.length === 0 && !cachedMemories) {
+            memories = typeof getMemoriesByTreeFallback === 'function'
+                ? (getMemoriesByTreeFallback(treeId) || [])
+                : [];
+        }
+
+        window.currentTreeMemories = memories.map(normalizeMemory).filter(Boolean);
+
+        return {
+            memories,
+            normalizedMemories: window.currentTreeMemories,
+            cachedMemories
+        };
+    };
+
     const startEditor = async () => {
         const canvas = document.getElementById('canvasArea');
         const svg = document.getElementById('canvasSvg');
@@ -549,57 +602,19 @@ document.addEventListener('DOMContentLoaded', () => {
             })
             : (window.LoveBudNormalize?.normalizeMemory || createInlineNormalizeMemoryFallback());
 
-        const memoryLoadResult = editorDataLoader.loadEditorMemories
-            ? await editorDataLoader.loadEditorMemories({
-                treeId,
-                cache,
-                cacheKey: MEMORIES_CACHE_KEY,
-                apiClient: window.apiClient,
-                getMemoriesByTreeFallback: typeof getMemoriesByTree === 'function' ? getMemoriesByTree : null,
-                showToast,
-                i18n,
-                normalizeMemory
-            })
-            : await (async () => {
-                let memories = [];
-                const cachedMemories = cache ? cache.get(MEMORIES_CACHE_KEY) : null;
+        const loadEditorMemoriesFallback =
+            editorDataLoader.loadEditorMemories || createInlineLoadEditorMemoriesFallback();
 
-                if (cachedMemories && Array.isArray(cachedMemories)) {
-                    console.log('[editor] Using cached memories:', cachedMemories.length);
-                    memories = cachedMemories;
-                    window.currentTreeMemories = memories.map(normalizeMemory).filter(Boolean);
-                }
-
-                try {
-                    if (window.apiClient && window.apiClient.getMemoriesByTree) {
-                        const apiMemories = await window.apiClient.getMemoriesByTree(treeId);
-                        if (Array.isArray(apiMemories)) {
-                            memories = apiMemories;
-                            console.log('[editor] API memories loaded:', apiMemories.length);
-                            if (cache) {
-                                cache.set(MEMORIES_CACHE_KEY, memories, 2 * 60 * 1000);
-                            }
-                        }
-                    }
-                } catch (e) {
-                    console.warn('[editor] API getMemoriesByTree failed:', e.message);
-                    if (e.message?.includes('401') || e.message?.includes('403')) {
-                        showToast(i18n('data_load_fail_demo'), 'warn');
-                    }
-                }
-
-                if (memories.length === 0 && !cachedMemories) {
-                    memories = typeof getMemoriesByTree === 'function' ? getMemoriesByTree(treeId) : [];
-                }
-
-                window.currentTreeMemories = memories.map(normalizeMemory).filter(Boolean);
-
-                return {
-                    memories,
-                    normalizedMemories: window.currentTreeMemories,
-                    cachedMemories
-                };
-            })();
+        const memoryLoadResult = await loadEditorMemoriesFallback({
+            treeId,
+            cache,
+            cacheKey: MEMORIES_CACHE_KEY,
+            apiClient: window.apiClient,
+            getMemoriesByTreeFallback: typeof getMemoriesByTree === 'function' ? getMemoriesByTree : null,
+            showToast,
+            i18n,
+            normalizeMemory
+        });
 
         let memories = memoryLoadResult.memories || [];
 
