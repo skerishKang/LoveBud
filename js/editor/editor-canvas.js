@@ -473,7 +473,6 @@ function createEditorCanvas(deps) {
                     x: Math.round(viewportState.dragStartWorldX + dx),
                     y: Math.round(viewportState.dragStartWorldY + dy)
                 };
-                persistStoredPositions();
                 scheduleInitCanvas();
                 return;
             }
