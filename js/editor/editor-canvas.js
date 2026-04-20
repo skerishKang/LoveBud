@@ -269,7 +269,6 @@ function createEditorCanvas(deps) {
     function createNodeImageSection(mem) {
         const imgWrapper = document.createElement('div');
         imgWrapper.className = 'node-img-wrapper';
-        imgWrapper.style.position = 'relative';
         const skeleton = document.createElement('div');
         skeleton.className = 'node-skeleton';
         imgWrapper.appendChild(skeleton);
