@@ -158,6 +158,25 @@
              width: 100%;
          }
 
+         .hero-cta-btn {
+             min-height: 56px;
+             padding: 0 32px;
+             border-radius: 999px;
+             display: inline-flex;
+             align-items: center;
+             justify-content: center;
+             text-decoration: none;
+             font-size: 1rem;
+             font-weight: 700;
+             line-height: 1;
+             white-space: nowrap;
+             text-align: center;
+         }
+
+         .hero-cta-btn.btn-outline {
+             opacity: 1;
+         }
+
          .hero-flow {
              display: flex;
              flex-wrap: wrap;
@@ -368,6 +387,11 @@
                   top: 12% !important;
                   transform: translateX(-50%) !important;
               }
+
+              .hero-cta-btn {
+                  width: 100%;
+                  max-width: 320px;
+              }
           }
      </style>
 </head>
@@ -397,8 +421,8 @@
                     <span class="hero-flow-step"><strong>3</strong> 나만의 트리 완성</span>
                 </div>
                 <div class="hero-cta-group">
-                    <a href="pages/login.html?redirect=my-trees.html" class="btn-round btn-primary" style="text-decoration: none; font-weight: 700; padding: 16px 32px; font-size: 1.05rem;" data-i18n="home.cta.start">나의 첫 러브트리 만들기</a>
-                    <a href="pages/search.html" class="btn-round btn-outline" style="text-decoration: none; opacity: 0.75; font-size: 0.95rem;" data-i18n="home.cta.browse">예시 트리 먼저 보기</a>
+                    <a href="pages/login.html?redirect=my-trees.html" class="btn-round btn-primary hero-cta-btn" data-i18n="home.cta.start">나의 첫 러브트리 만들기</a>
+                    <a href="pages/search.html" class="btn-round btn-outline hero-cta-btn" data-i18n="home.cta.browse">예시 트리 먼저 보기</a>
                 </div>
                 <p class="hero-support-copy">
                     로그인 후 바로 내 트리 화면으로 이동합니다. 샘플 러브트리는 둘러보기에서 먼저 볼 수 있어요.
