@@ -113,31 +113,16 @@
      }
 
      function getPreviewDisplayTitle(tree) {
-         const rawTitle = String(tree?.title || '').trim();
-         const firstTagRaw = Array.isArray(tree?.emotionTags) && tree.emotionTags.length
-             ? String(tree.emotionTags[0] || '').trim()
-             : '';
-         const themeRaw = String(tree?.theme || '').trim();
-         const createdDate = formatShortDate(tree?.createdAt || '');
-         const isDefaultTitle = rawTitle === '새 러브트리' || rawTitle === '나의 첫 러브트리';
-
-         if (!isDefaultTitle) {
-             return rawTitle || '러브트리';
+         if (window.LoveBudSearchTitleHelper?.getBrowseDisplayTitle) {
+             return window.LoveBudSearchTitleHelper.getBrowseDisplayTitle(tree);
          }
-
-         if (themeRaw && themeRaw !== 'LoveTree' && themeRaw !== 'Mixed') {
-             return `${themeRaw} 러브트리`;
-         }
-         if (firstTagRaw) {
-             return `${firstTagRaw}으로 시작한 러브트리`;
-         }
-         if (createdDate) {
-             return `${createdDate} 시작한 러브트리`;
-         }
-         return '새로 시작된 러브트리';
+         return String(tree?.title || '').trim() || '러브트리';
      }
 
      function getThemeLabel(tree) {
+         if (window.LoveBudSearchTitleHelper?.getThemeLabel) {
+             return window.LoveBudSearchTitleHelper.getThemeLabel(tree);
+         }
          const themeRaw = String(tree?.theme || '').trim();
          if (!themeRaw || themeRaw === 'LoveTree' || themeRaw === 'Mixed') {
              return '';
