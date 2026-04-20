@@ -190,6 +190,7 @@ body.editor-preload .editor-layout {
 .node-img-wrapper {
     width: 90px;
     height: 90px;
+    position: relative;
 }
 
 .node-info-label {
