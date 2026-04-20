@@ -608,17 +608,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const svg = document.getElementById('canvasSvg');
         const detailPanel = document.getElementById('detailPanel');
         const addBtn = document.getElementById('addMemoryBtn');
-
-        // Read treeId from URL first
         const urlParams = new URLSearchParams(window.location.search);
         const urlTreeId = urlParams.get('treeId');
         console.log('[editor] URL treeId:', urlTreeId);
 
-        // Cache keys
         const cache = window.LoveBudCache || null;
         let TREE_CACHE_KEY = 'tree_default';
         let MEMORIES_CACHE_KEY = 'memories_default';
-        // Track local fallback mode for sidebar/detail UI
         let isLocalSaveMode = false;
 
         const loadInitialTree = editorDataLoader.loadInitialEditorTree || createInlineLoadInitialTreeFallback();
@@ -676,15 +672,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             console.warn('Tree data not found.');
+            markEditorReady();
             return;
         }
 
-        // Keep current tree state in sync for both direct entry and normal entry
         syncCurrentTreeData(tree);
 
         const treeId = tree.id || null;
-
-        // Rebuild cache keys from the resolved treeId
         TREE_CACHE_KEY = 'tree_' + (treeId || 'default');
         MEMORIES_CACHE_KEY = 'memories_' + (treeId || 'default');
 
@@ -731,7 +725,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         window.refreshMemories = refreshMemories;
 
-        // Choose the initial root selection
         const createInitialMemory = editorTreeHelpers.createInitialMemory
             ? () => editorTreeHelpers.createInitialMemory({
                 getTreeMemories: () => treeMemories(),
@@ -748,10 +741,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 i18n
             });
 
-        // Define treeMemories before other helpers use it (avoid TDZ issues)
         const treeMemories = () => (window.currentTreeMemories || []).map(normalizeMemory);
-
-        // Compute canonical root ID once and keep it stable for this editor session.
         const canonicalRootId = getCanonicalRootId(treeMemories());
         let selectedNodeId = canonicalRootId;
 
@@ -792,7 +782,6 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('.memory-node').forEach(n => n.classList.remove('selected'));
             el.classList.add('selected');
 
-            // Hide save status when switching nodes (UX hardening)
             const indicator = document.getElementById('saveStatusIndicator');
             if (indicator) {
                 indicator.style.display = 'none';
@@ -812,7 +801,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const node = treeMemories().find(m => m.id === id);
             if (!node) return;
             selectedNodeId = id;
-            // canonical root detection
             if (isRootMemory(node, canonicalRootId)) {
                 document.querySelectorAll('.memory-node').forEach(n => n.classList.remove('selected'));
                 updateDetailPanel(node);
@@ -844,7 +832,6 @@ document.addEventListener('DOMContentLoaded', () => {
             bindCanvasPan
         } = editorCanvas;
 
-        // Save status indicator state
         let saveStatusData = editorSaveStatus.createSaveStatusState
             ? editorSaveStatus.createSaveStatusState()
             : { status: 'saved', lastSaved: null, timer: null };
@@ -1082,11 +1069,8 @@ document.addEventListener('DOMContentLoaded', () => {
         markEditorReady();
     };
 
-    // Same auth-guard pattern as my-trees.js
-    // If there is no user, check cache and redirect; otherwise continue to startEditor.
     var editorStarted = false;
 
-    // Confirmed session helper (from auth helper or local fallback)
     const getConfirmedSessionUser = editorAuthHelpers.getConfirmedSessionUser || function() {
       try {
         if (window.getConfirmedAuthUser) {
@@ -1097,25 +1081,21 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     function tryStartEditor(user) {
-        // If the editor already started and real auth arrives later, try re-fetching data
         if (editorStarted) {
             if (user && (!window.currentTreeMemories || window.currentTreeMemories.length <= 1)) {
                 console.log('[editor] Real user detected late, re-fetching data...');
-                // Use the shared refresh helper if available
                 if (window.refreshMemories) window.refreshMemories();
             }
             return;
         }
 
         if (!user) {
-            // No Firebase user - check confirmed auth cache before redirect
             var cachedUser = readConfirmedAuthCache();
 
             if (!cachedUser || !cachedUser.uid) {
                 redirectToEditorLogin();
                 return;
             }
-            // Proceed with confirmed cached auth
         }
 
         editorStarted = true;
@@ -1123,14 +1103,12 @@ document.addEventListener('DOMContentLoaded', () => {
         startEditor();
     }
 
-    // DOMContentLoaded: confirmed session이 있으면 즉시 boot (before auth ready callback)
     var cachedUser = getConfirmedSessionUser();
     if (cachedUser) {
         console.log('[editor] Booting immediately from confirmed session cache');
         tryStartEditor(cachedUser);
     }
 
-    // Use the callback-array auth pattern when available
     if (typeof window.registerOnAuthReady === 'function') {
         window.registerOnAuthReady(tryStartEditor);
     } else {
