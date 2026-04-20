@@ -76,6 +76,42 @@
          ).join('');
      }
 
+     function formatShortDate(value) {
+         if (!value) return '';
+         const date = new Date(value);
+         if (Number.isNaN(date.getTime())) return '';
+         return date.toLocaleDateString('ko-KR', {
+             month: 'short',
+             day: 'numeric'
+         });
+     }
+
+     function getTimelineLabel(tree, memories) {
+         const updatedAt = tree.updatedAt || '';
+         const createdAt = tree.createdAt || '';
+         const firstTimestamp = memories[0]?.timestamp || '';
+         const lastTimestamp = memories[memories.length - 1]?.timestamp || '';
+
+         const safeUpdated = formatShortDate(updatedAt);
+         const safeCreated = formatShortDate(createdAt);
+         const safeFirst = formatShortDate(firstTimestamp);
+         const safeLast = formatShortDate(lastTimestamp);
+
+         if (safeUpdated) {
+             return `최근 업데이트 ${safeUpdated}`;
+         }
+         if (safeLast) {
+             return `마지막 순간 ${safeLast}`;
+         }
+         if (safeFirst && safeLast && safeFirst !== safeLast) {
+             return `${safeFirst} ~ ${safeLast}`;
+         }
+         if (safeCreated) {
+             return `${safeCreated} 생성`;
+         }
+         return '업데이트 정보 없음';
+     }
+
     /**
      * Updates preview details for a tree
      * 
@@ -138,7 +174,7 @@
          
          if (_dom.previewTitle) {
              const safeTreeTitle = escapeHtml(tree.title || '');
-             const safeTimeRange = escapeHtml(tree.timeRange || '');
+             const safeTimeRange = escapeHtml(tree.timeRange || '기록 없음');
 
              _dom.previewTitle.innerHTML = `
                  <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
@@ -224,9 +260,9 @@
          if (_dom.previewMemoriesCount) {
              _dom.previewMemoriesCount.textContent = tree.memoryCount;
          }
-         
+
          if (_dom.previewTreeDuration) {
-             _dom.previewTreeDuration.textContent = tree.timeRange;
+             _dom.previewTreeDuration.textContent = getTimelineLabel(tree, memories);
          }
 
          // ─────────────────────────────────────────
