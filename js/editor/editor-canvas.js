@@ -18,9 +18,27 @@ function createEditorCanvas(deps) {
         || 'default';
     const layoutStorageKey = 'lovebud_tree_layout_' + treeId;
 
+    function loadStoredLayout() {
+        try {
+            const raw = localStorage.getItem(layoutStorageKey);
+            if (!raw || raw === 'null') return { positions: {}, offsetX: 0, offsetY: 0 };
+            const parsed = JSON.parse(raw);
+            if (!parsed || typeof parsed !== 'object') return { positions: {}, offsetX: 0, offsetY: 0 };
+            return {
+                positions: (parsed.positions && typeof parsed.positions === 'object') ? parsed.positions : {},
+                offsetX: typeof parsed.offsetX === 'number' ? parsed.offsetX : 0,
+                offsetY: typeof parsed.offsetY === 'number' ? parsed.offsetY : 0
+            };
+        } catch (e) {
+            return { positions: {}, offsetX: 0, offsetY: 0 };
+        }
+    }
+
+    const storedLayout = loadStoredLayout();
+
     const viewportState = {
-        offsetX: 0,
-        offsetY: 0,
+        offsetX: storedLayout.offsetX,
+        offsetY: storedLayout.offsetY,
         initialized: false,
         isPanning: false,
         startX: 0,
@@ -34,7 +52,7 @@ function createEditorCanvas(deps) {
         dragMoved: false,
         controlsBound: false,
         globalsBound: false,
-        positions: loadStoredPositions()
+        positions: storedLayout.positions
     };
 
     const ROOT_RIGHT_GUTTER = 260;
@@ -42,20 +60,13 @@ function createEditorCanvas(deps) {
     const NODE_WIDTH = 108;
     const NODE_HALF = Math.round(NODE_WIDTH / 2);
 
-    function loadStoredPositions() {
-        try {
-            const raw = localStorage.getItem(layoutStorageKey);
-            if (!raw || raw === 'null') return {};
-            const parsed = JSON.parse(raw);
-            return parsed && typeof parsed === 'object' ? parsed : {};
-        } catch (e) {
-            return {};
-        }
-    }
-
     function persistStoredPositions() {
         try {
-            localStorage.setItem(layoutStorageKey, JSON.stringify(viewportState.positions));
+            localStorage.setItem(layoutStorageKey, JSON.stringify({
+                positions: viewportState.positions,
+                offsetX: viewportState.offsetX,
+                offsetY: viewportState.offsetY
+            }));
         } catch (e) {}
     }
 
@@ -383,6 +394,18 @@ function createEditorCanvas(deps) {
         if (viewportState.globalsBound) return;
         viewportState.globalsBound = true;
 
+        let rafScheduled = false;
+        let rafFrame = null;
+
+        function scheduleInitCanvas() {
+            if (rafScheduled) return;
+            rafScheduled = true;
+            rafFrame = requestAnimationFrame(() => {
+                rafScheduled = false;
+                initCanvas();
+            });
+        }
+
         canvas.addEventListener('mousedown', (e) => {
             if (e.target.closest('.memory-node') || e.target.closest('#addMemoryForm')) return;
             viewportState.isPanning = true;
@@ -415,10 +438,16 @@ function createEditorCanvas(deps) {
             viewportState.startY = e.clientY;
             viewportState.offsetX += dx;
             viewportState.offsetY += dy;
-            initCanvas();
+            scheduleInitCanvas();
         });
 
         window.addEventListener('mouseup', () => {
+            if (rafFrame) {
+                cancelAnimationFrame(rafFrame);
+                rafFrame = null;
+                rafScheduled = false;
+            }
+
             if (viewportState.isDraggingNode && viewportState.dragNodeId) {
                 const draggedId = viewportState.dragNodeId;
                 const moved = viewportState.dragMoved;
@@ -436,6 +465,7 @@ function createEditorCanvas(deps) {
 
             viewportState.isPanning = false;
             canvas.classList.remove('panning');
+            persistStoredPositions();
         });
     };
 
@@ -453,59 +483,92 @@ function createEditorCanvas(deps) {
 
 function injectEditorRenameButton() {
     if (document.getElementById('renameTreeBtn')) return;
-    const statusSection = document.querySelector('.editor-status-section');
-    const actions = document.querySelector('.editor-sidebar-actions');
-    if (!statusSection || !actions) return;
 
-    const renameBtn = document.createElement('button');
-    renameBtn.type = 'button';
-    renameBtn.id = 'renameTreeBtn';
-    renameBtn.className = 'sidebar-btn';
-    renameBtn.innerHTML = '<span class="btn-icon">✎</span><span class="btn-label">트리 제목 변경</span>';
+    let attempts = 0;
+    const maxAttempts = 3;
+    const retryDelay = 400;
 
-    renameBtn.addEventListener('click', async () => {
-        const currentTree = window.currentTreeData || {};
-        const treeId = currentTree.id || new URLSearchParams(window.location.search).get('treeId');
-        if (!treeId) {
-            if (window.LoveBudUI?.showToast) {
-                window.LoveBudUI.showToast('트리 정보를 찾을 수 없습니다', 'error', 2500);
+    function attemptInject() {
+        attempts += 1;
+        const statusSection = document.querySelector('.editor-status-section');
+        const actions = document.querySelector('.editor-sidebar-actions');
+
+        if (!statusSection || !actions) {
+            if (attempts < maxAttempts) {
+                setTimeout(attemptInject, retryDelay);
+                return;
             }
+            console.warn('[editor] rename button inject failed after', maxAttempts, 'attempts');
             return;
         }
 
-        const currentTitle = currentTree.title || '러브트리';
-        const nextTitle = window.prompt('새 트리 제목을 입력해 주세요.', currentTitle);
-        if (nextTitle === null) return;
-        const trimmed = String(nextTitle || '').trim();
-        if (!trimmed || trimmed === currentTitle) return;
+        if (document.getElementById('renameTreeBtn')) return;
 
-        try {
-            if (window.apiClient && typeof window.apiClient.updateTree === 'function') {
-                await window.apiClient.updateTree(treeId, { title: trimmed });
+        const renameBtn = document.createElement('button');
+        renameBtn.type = 'button';
+        renameBtn.id = 'renameTreeBtn';
+        renameBtn.className = 'sidebar-btn';
+        renameBtn.innerHTML = '<span class="btn-icon">✎</span><span class="btn-label">트리 제목 변경</span>';
+
+        renameBtn.addEventListener('click', async () => {
+            const currentTree = window.currentTreeData || {};
+            const treeId = currentTree.id || new URLSearchParams(window.location.search).get('treeId');
+            if (!treeId) {
+                if (window.LoveBudUI?.showToast) {
+                    window.LoveBudUI.showToast('트리 정보를 찾을 수 없습니다', 'error', 2500);
+                }
+                return;
             }
-            window.currentTreeData = {
-                ...currentTree,
-                title: trimmed
-            };
-            const titleEl = document.getElementById('sidebarTreeTitle');
-            if (titleEl) titleEl.textContent = trimmed;
-            if (window.LoveBudUI?.showToast) {
-                window.LoveBudUI.showToast('트리 제목을 변경했습니다', 'success', 2200);
+
+            const currentTitle = currentTree.title || '러브트리';
+            const nextTitle = window.prompt('새 트리 제목을 입력해 주세요.', currentTitle);
+            if (nextTitle === null) return;
+            const trimmed = String(nextTitle || '').trim();
+            if (!trimmed || trimmed === currentTitle) return;
+
+            try {
+                if (window.apiClient && typeof window.apiClient.updateTree === 'function') {
+                    await window.apiClient.updateTree(treeId, { title: trimmed });
+                }
+                window.currentTreeData = {
+                    ...currentTree,
+                    title: trimmed
+                };
+                const sidebarTitleEl = document.getElementById('sidebarTreeTitle');
+                if (sidebarTitleEl) sidebarTitleEl.textContent = trimmed;
+                
+                const detailTitleEl = document.querySelector('.detail-tree-title');
+                if (detailTitleEl) detailTitleEl.textContent = trimmed;
+
+                const detailPanel = document.getElementById('detailPanel');
+                if (detailPanel) {
+                    const existingTitle = detailPanel.querySelector('.tree-title-text');
+                    if (existingTitle) existingTitle.textContent = trimmed;
+                }
+
+                if (window.LoveBudUI?.showToast) {
+                    window.LoveBudUI.showToast('트리 제목을 변경했습니다', 'success', 2200);
+                }
+            } catch (error) {
+                console.error('[editor] rename tree failed:', error);
+                if (window.LoveBudUI?.showToast) {
+                    window.LoveBudUI.showToast('트리 제목 변경에 실패했습니다', 'error', 2600);
+                }
             }
-        } catch (error) {
-            console.error('[editor] rename tree failed:', error);
-            if (window.LoveBudUI?.showToast) {
-                window.LoveBudUI.showToast('트리 제목 변경에 실패했습니다', 'error', 2600);
+        });
+
+        actions.insertAdjacentElement('afterend', renameBtn);
+
+        if (!window.__editorDragHintInjected) {
+            const hintEl = document.getElementById('sidebarSelectionHint');
+            if (hintEl && hintEl.textContent && !hintEl.textContent.includes('드래그')) {
+                hintEl.textContent += ' · 빈 공간 드래그로 화면 이동, 순간 드래그로 위치 조정';
+                window.__editorDragHintInjected = true;
             }
         }
-    });
-
-    actions.insertAdjacentElement('afterend', renameBtn);
-
-    const hintEl = document.getElementById('sidebarSelectionHint');
-    if (hintEl && hintEl.textContent && !hintEl.textContent.includes('드래그')) {
-        hintEl.textContent += ' · 빈 공간 드래그로 화면 이동, 순간 드래그로 위치 조정';
     }
+
+    attemptInject();
 }
 
 window.createEditorCanvas = createEditorCanvas;
