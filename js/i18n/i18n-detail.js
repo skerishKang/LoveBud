@@ -205,6 +205,78 @@
     'record_error': {
       ko: '기록 저장 중 오류가 발생했습니다',
       en: 'Error occurred while saving the record'
+    },
+    'public_tree_view_chip': {
+      ko: '공개 러브트리 감상',
+      en: 'Viewing a public LoveTree'
+    },
+    'public_tree_kicker': {
+      ko: '공개 러브트리',
+      en: 'Public LoveTree'
+    },
+    'public_tree_fallback_title': {
+      ko: '누군가의 러브트리를 감상하고 있어요',
+      en: 'You are viewing someone\'s LoveTree'
+    },
+    'public_tree_desc_join': {
+      ko: ' 안에서',
+      en: ' contains '
+    },
+    'public_tree_desc_suffix': {
+      ko: '개의 순간으로 이어진 감정의 흐름을 따라가고 있어요. 지금 보고 있는 순간을 시작으로 이 트리를 천천히 감상해 보세요.',
+      en: ' connected moments. Start with this moment and gently follow the emotional flow of the tree.'
+    },
+    'public_tree_context_desc': {
+      ko: '지금은 다른 사람이 공개한 러브트리 안에서 한 순간을 감상하고 있어요.',
+      en: 'You are viewing a moment inside someone else\'s public LoveTree.'
+    },
+    'current_moment_kicker': {
+      ko: '지금 감상 중인 순간',
+      en: 'Current moment'
+    },
+    'current_moment_side_summary': {
+      ko: '순간에 남겨진 마음을 천천히 읽어보세요.',
+      en: 'Take a moment to read the feeling left in this memory.'
+    },
+    'current_moment_side_summary_fallback': {
+      ko: '지금 이 순간에 남겨진 마음을 천천히 읽어보세요.',
+      en: 'Take a moment to read the feeling left here.'
+    },
+    'connected_flow_kicker': {
+      ko: '이어진 흐름',
+      en: 'Connected flow'
+    },
+    'connected_flow_title': {
+      ko: '이 트리의 이어진 기억',
+      en: 'More moments in this tree'
+    },
+    'connected_flow_summary': {
+      ko: '이 공개 러브트리 안에서 함께 이어지는 순간들을 천천히 따라가 보세요.',
+      en: 'Gently follow the connected moments that continue within this public LoveTree.'
+    },
+    'public_tree_growth_label': {
+      ko: '공개 트리 감상 중',
+      en: 'Viewing public tree'
+    },
+    'my_tree_growth_label': {
+      ko: '내 트리를 다시 감상 중',
+      en: 'Revisiting my tree'
+    },
+    'editor_tree_growth_label': {
+      ko: '편집 트리를 감상 모드로 확인 중',
+      en: 'Reviewing edited tree in view mode'
+    },
+    'back_to_browse_soft': {
+      ko: '둘러보기로 돌아가기',
+      en: 'Back to browse'
+    },
+    'back_to_my_trees_soft': {
+      ko: '내 트리로 돌아가기',
+      en: 'Back to my trees'
+    },
+    'back_to_editor_soft': {
+      ko: '편집 화면으로 돌아가기',
+      en: 'Back to editor'
     }
   };
 })();
