@@ -20,7 +20,7 @@
              .replace(/&/g, '&amp;')
              .replace(/</g, '&lt;')
              .replace(/>/g, '&gt;')
-             .replace(/"/g, '&quot;')
+             .replace(/\"/g, '&quot;')
              .replace(/'/g, '&#39;');
      }
 
@@ -115,7 +115,9 @@
 
              html += `
                  <div class="path-node" title="${safeTitle}">
-                     <img src="${safeThumb}" alt="${safeTitle}" loading="lazy">
+                     ${safeThumb
+                         ? `<img src="${safeThumb}" alt="${safeTitle}" loading="lazy">`
+                         : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--surface-container),var(--surface-container-low));color:var(--primary);font-size:11px;font-weight:800;line-height:1.3;text-align:center;padding:4px;">기록<br>준비중</div>`}
                  </div>
              `;
              if (idx < previewCount - 1) {
