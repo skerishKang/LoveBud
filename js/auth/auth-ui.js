@@ -85,6 +85,7 @@
     var safePhotoUrl = hasPhoto ? escapeHtml(user.photoURL) : "";
     var isPagesContext = window.location.pathname.indexOf("/pages/") !== -1;
     var myTreesHref = isPagesContext ? "my-trees.html" : "pages/my-trees.html";
+    var settingsHref = isPagesContext ? "settings.html" : "pages/settings.html";
     var avatarInitial = getUserAvatarInitial(user);
 
     var avatarContent = hasPhoto
@@ -109,7 +110,9 @@
       '<a href="' +
         myTreesHref +
         '" class="user-dropdown-item"><span class="material-symbols-outlined">account_tree</span>내 러브트리</a>',
-      '<button class="user-dropdown-item" disabled style="cursor:default;opacity:0.6;"><span class="material-symbols-outlined">settings</span>설정</button>',
+      '<a href="' +
+        settingsHref +
+        '" class="user-dropdown-item"><span class="material-symbols-outlined">settings</span>설정</a>',
       '<div class="dropdown-divider"></div>',
       '<button class="user-dropdown-item" onclick="signOut()"><span class="material-symbols-outlined">logout</span>로그아웃</button>',
       "</div>",
