@@ -1,6 +1,6 @@
 /**
  * LoveBud Search Preview Renderer
- * v20260420-4
+ * v20260420-5
  * 
  * Rendering layer: preview sidebar panel.
  * DOM-agnostic - updates passed DOM elements.
@@ -73,29 +73,15 @@
 
     let _dom = null;
 
-    /**
-     * Initializes DOM references
-     * @param {Object} domRefs - { previewContainer, previewTitle, previewDesc, previewMemoriesCount, previewTreeDuration, previewEmotionTags }
-     */
     function init(domRefs) {
         _dom = domRefs;
     }
 
-    /**
-     * Gets tree icon by stage
-     * @param {string} stage 
-     * @returns {string} Emoji
-     */
     function getTreeIcon(stage) {
         const icons = { '입덕': '🌱', '성장': '🌿', '최애': '🌳' };
         return icons[stage] || '🌱';
     }
 
-    /**
-     * Renders emotion tags for preview panel
-     * @param {Array} tags 
-     * @returns {string} HTML string
-     */
     function renderEmotionTags(tags) {
         if (!tags || !tags.length) return '';
         return tags.slice(0, 4).map(tag =>
@@ -162,7 +148,7 @@
                 }
                 return themeRaw;
             })();
-        const timeRange = String(tree?.timeRange || '기록 없음').trim();
+        const timeRange = String(tree?.timeRange || getSearchCopy('search.previewUnknownRange', '기록 없음', 'No timeline yet')).trim();
         const memoryCount = Number(tree?.memoryCount || 0);
         const safeTitle = escapeHtml(displayTitle);
         const safeTheme = escapeHtml(themeLabel);
@@ -238,11 +224,6 @@
         );
     }
 
-    /**
-     * Updates preview details for a tree
-     * 
-     * @param {Object} tree - Tree view model
-     */
     function updatePreview(tree) {
         if (!_dom) {
             console.warn('[LoveBudSearchPreviewRenderer] DOM not initialized');
@@ -254,10 +235,6 @@
         const hasMemories = memories.length > 0;
         const previewStats = getPreviewStatsElement();
 
-        // ─────────────────────────────────────────────
-        // Video/Iframe container
-        // ─────────────────────────────────────────────
-        
         if (_dom.previewContainer) {
             const titleHelper = getSearchTitleHelper();
             const previewDisplayTitle = titleHelper?.getBrowseDisplayTitle
@@ -299,17 +276,13 @@
             }
         }
 
-        // ─────────────────────────────────────────
-        // Title
-        // ─────────────────────────────────────────
-        
         if (_dom.previewTitle) {
             const titleHelper = getSearchTitleHelper();
             const previewDisplayTitle = titleHelper?.getBrowseDisplayTitle
                 ? titleHelper.getBrowseDisplayTitle(tree)
                 : (String(tree?.title || '').trim() || getDefaultTreeName());
             const safeTreeTitle = escapeHtml(previewDisplayTitle);
-            const safeTimeRange = escapeHtml(tree.timeRange || '기록 없음');
+            const safeTimeRange = escapeHtml(String(tree?.timeRange || getSearchCopy('search.previewUnknownRange', '기록 없음', 'No timeline yet')).trim());
             const memoryCountSuffix = getSearchCopy('search.previewMomentCountSuffix', '개 순간', 'moments');
 
             _dom.previewTitle.innerHTML = `
@@ -323,12 +296,18 @@
             `;
         }
 
-        // ─────────────────────────────────────────
-        // Description with path visualization
-        // ─────────────────────────────────────────
-        
         if (_dom.previewDesc) {
             if (!hasMemories) {
+                const noRecordsLine = formatSearchCopy(
+                    'search.previewNoRecordsLine',
+                    {
+                        countLabel: escapeHtml(getSearchCopy('search.previewNoRecordsYet', '아직 기록은 0개', 'There are still 0 records')),
+                        followup: escapeHtml(getSearchCopy('search.previewNoRecordsFollowup', '다음 순간이 쌓이면 감정 경로가 여기서 채워집니다.', 'As new moments are added, the emotional path will fill in here.'))
+                    },
+                    '{countLabel}지만, {followup}',
+                    '{countLabel}, and {followup}'
+                );
+
                 _dom.previewDesc.innerHTML = `
                     <div style="background:var(--surface-container-low);padding:20px;border-radius:1rem;margin-bottom:16px;">
                         ${renderSectionHeading('route', getSearchCopy('search.previewTimelineHeading', '어떻게 입덕했을까요?', 'How did this fandom begin?'))}
@@ -340,8 +319,7 @@
 
                     <div style="font-size:14px;color:var(--on-surface-variant);line-height:1.6;padding:0 4px;">
                         ${getPreviewSummaryCopy(tree, memories)}
-                        <span style="color:var(--primary);font-weight:700;">${escapeHtml(getSearchCopy('search.previewNoRecordsYet', '아직 기록은 0개', 'There are still 0 records'))}</span>
-                        ${escapeHtml(getSearchCopy('search.previewNoRecordsFollowup', '다음 순간이 쌓이면 감정 경로가 여기서 채워집니다.', 'As new moments are added, the emotional path will fill in here.'))}
+                        <span style="color:var(--primary);font-weight:700;">${noRecordsLine}</span>
                         ${renderInfoCallout('info', getSearchCopy('search.previewNewTreeInfo', '새로 시작된 공개 트리입니다', 'This is a newly started public tree.'))}
                     </div>
                 `;
@@ -370,10 +348,6 @@
             }
         }
 
-        // ─────────────────────────────────────────
-        // Stats
-        // ─────────────────────────────────────────
-
         if (previewStats) {
             previewStats.hidden = false;
         }
@@ -385,20 +359,12 @@
         if (_dom.previewTreeDuration) {
             _dom.previewTreeDuration.textContent = getTimelineLabel(tree, memories);
         }
-
-        // ─────────────────────────────────────────
-        // Emotion Tags
-        // ─────────────────────────────────────────
         
         if (_dom.previewEmotionTags) {
             _dom.previewEmotionTags.innerHTML = renderEmotionTags(tree.emotionTags);
         }
     }
 
-    /**
-     * Renders placeholder when no tree selected
-     * @returns {string} HTML string
-     */
     function renderPlaceholder() {
         const lead = getSearchCopy(
             'search.previewEmptyLead',
@@ -419,9 +385,6 @@
         `;
     }
 
-    /**
-     * Resets preview to placeholder state
-     */
     function resetPreview() {
         if (!_dom || !_dom.previewContainer) return;
 
@@ -466,19 +429,14 @@
         }
     }
 
-    // ─────────────────────────────────────────────────────────
-    // Exports
-    // ─────────────────────────────────────────────────────────
-
     window.LoveBudSearchPreviewRenderer = {
         init: init,
         updatePreview: updatePreview,
         resetPreview: resetPreview,
         renderPlaceholder: renderPlaceholder,
-        // Helpers
         getTreeIcon: getTreeIcon,
         renderEmotionTags: renderEmotionTags
     };
 
-    console.log('[LoveBudSearchPreviewRenderer] Search preview renderer loaded v20260420-4');
+    console.log('[LoveBudSearchPreviewRenderer] Search preview renderer loaded v20260420-5');
 })();
