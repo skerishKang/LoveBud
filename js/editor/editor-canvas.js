@@ -314,11 +314,15 @@ function createEditorCanvas(deps) {
         canvas.appendChild(nodeEl);
     }
 
+    function attachNodeBehavior(nodeEl, mem) {
+        bindNodeDrag(nodeEl, mem);
+    }
+
     const drawNode = (mem) => {
         const pos = calcPosition(mem);
         const nodeEl = createNodeElement(mem, pos);
         attachNodeInfo(nodeEl, mem);
-        bindNodeDrag(nodeEl, mem);
+        attachNodeBehavior(nodeEl, mem);
         return nodeEl;
     };
 
