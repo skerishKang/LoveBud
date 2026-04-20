@@ -1,6 +1,6 @@
 /**
  * LoveBud - i18n Search Dictionary
- * v20260420-3
+ * v20260420-4
  *
  * 검색/둘러보기 페이지(search.html) 번역 키
  */
@@ -76,6 +76,10 @@
       ko: '다음 순간이 쌓이면 감정 경로가 여기서 채워집니다.',
       en: 'As new moments are added, the emotional path will fill in here.'
     },
+    'search.previewNoRecordsLine': {
+      ko: '{countLabel}지만, {followup}',
+      en: '{countLabel}, and {followup}'
+    },
     'search.previewNewTreeInfo': {
       ko: '새로 시작된 공개 트리입니다',
       en: 'This is a newly started public tree.'
@@ -115,6 +119,10 @@
     'search.previewDefaultTreeName': {
       ko: '러브트리',
       en: 'LoveTree'
+    },
+    'search.previewUnknownRange': {
+      ko: '기록 없음',
+      en: 'No timeline yet'
     },
     'search.previewMoreMoments': {
       ko: '... 그리고 {count}개의 순간 더',
