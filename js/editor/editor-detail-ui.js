@@ -27,6 +27,148 @@ function createEditorDetailUI(deps) {
         return text;
     };
 
+    const createInlineIcon = (name, size = '12px') => {
+        const icon = document.createElement('span');
+        icon.className = 'material-symbols-outlined';
+        icon.style.fontSize = size;
+        icon.textContent = name;
+        return icon;
+    };
+
+    const createTextBlock = (tag, text, styleMap = null) => {
+        const el = document.createElement(tag);
+        el.textContent = text || '';
+        if (styleMap) Object.assign(el.style, styleMap);
+        return el;
+    };
+
+    const createTreeMetaBlock = ({
+        displayTreeTitle,
+        visIcon,
+        visLabel,
+        visInfo,
+        visStyle,
+        i18n
+    }) => {
+        const wrap = document.createElement('div');
+        wrap.style.marginTop = '10px';
+        wrap.style.padding = '12px 14px';
+        wrap.style.borderRadius = '12px';
+        wrap.style.background = 'var(--surface-container)';
+        wrap.style.display = 'flex';
+        wrap.style.flexDirection = 'column';
+        wrap.style.gap = '8px';
+
+        wrap.appendChild(createTextBlock('div', i18n('current_tree') || '현재 트리', {
+            fontSize: '11px',
+            fontWeight: '800',
+            letterSpacing: '.06em',
+            color: 'var(--on-surface-variant)',
+            textTransform: 'uppercase'
+        }));
+
+        const topRow = document.createElement('div');
+        topRow.style.display = 'flex';
+        topRow.style.alignItems = 'center';
+        topRow.style.justifyContent = 'space-between';
+        topRow.style.gap = '8px';
+        topRow.style.flexWrap = 'wrap';
+
+        const titleEl = document.createElement('div');
+        titleEl.className = 'tree-title-text';
+        titleEl.style.fontSize = '14px';
+        titleEl.style.fontWeight = '700';
+        titleEl.style.color = 'var(--on-surface)';
+        titleEl.textContent = displayTreeTitle;
+
+        const visBadge = document.createElement('span');
+        visBadge.style.cssText = `${visStyle}padding:4px 10px;border-radius:99px;display:inline-flex;align-items:center;gap:4px;font-size:12px;`;
+        visBadge.appendChild(createInlineIcon(visIcon, '12px'));
+        visBadge.appendChild(document.createTextNode(visLabel));
+
+        topRow.appendChild(titleEl);
+        topRow.appendChild(visBadge);
+
+        wrap.appendChild(topRow);
+        wrap.appendChild(createTextBlock('div', visInfo, {
+            fontSize: '11px',
+            color: 'var(--on-surface-variant)'
+        }));
+
+        return wrap;
+    };
+
+    const createHeaderTitleRow = ({ titleText, localBadgeText, shareButtonEl = null }) => {
+        const row = document.createElement('div');
+        row.style.display = 'flex';
+        row.style.alignItems = 'center';
+        row.style.gap = '8px';
+        row.style.justifyContent = 'space-between';
+
+        const left = document.createElement('div');
+        left.style.display = 'flex';
+        left.style.alignItems = 'center';
+        left.style.gap = '8px';
+        left.style.flexWrap = 'wrap';
+
+        const title = document.createElement('span');
+        title.style.fontSize = '1.4rem';
+        title.style.lineHeight = '1.2';
+        title.style.fontWeight = '900';
+        title.style.letterSpacing = '-0.03em';
+        title.style.color = 'var(--on-surface)';
+        title.textContent = titleText || '';
+
+        left.appendChild(title);
+
+        if (localBadgeText) {
+            const badge = document.createElement('span');
+            badge.style.fontSize = '11px';
+            badge.style.padding = '2px 8px';
+            badge.style.background = 'rgba(239,108,0,0.1)';
+            badge.style.color = '#ef6c00';
+            badge.style.borderRadius = '99px';
+            badge.style.fontWeight = '600';
+            badge.textContent = localBadgeText;
+            left.appendChild(badge);
+        }
+
+        row.appendChild(left);
+
+        if (shareButtonEl) {
+            row.appendChild(shareButtonEl);
+        }
+
+        return row;
+    };
+
+    const createShareTreeButton = ({ visStyle, shareLabel }) => {
+        const btn = document.createElement('button');
+        btn.id = 'shareTreeBtn';
+        btn.type = 'button';
+        btn.style.cssText = `${visStyle}font-size:12px;padding:6px 12px;border-radius:99px;cursor:pointer;border:none;font-weight:600;display:flex;align-items:center;gap:4px;`;
+        btn.appendChild(createInlineIcon('content_copy', '14px'));
+        btn.appendChild(document.createTextNode(shareLabel));
+        return btn;
+    };
+
+    const bindShareButton = ({ btn, data, treeId, i18n, showToast }) => {
+        if (!btn || !data?.id) return;
+        if (btn.dataset.shareBound === '1') return;
+        btn.dataset.shareBound = '1';
+
+        const basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
+
+        btn.addEventListener('click', () => {
+            const shareUrl = window.location.origin + '/' + basePath + 'detail.html?id=' + data.id + '&tree=' + treeId;
+            navigator.clipboard?.writeText(shareUrl).then(() => {
+                showToast(i18n('copied_link') || '링크가 복사되었습니다', 'success');
+            }).catch(() => {
+                showToast(i18n('copy_link_failed') || '링크 복사에 실패했습니다', 'error');
+            });
+        });
+    };
+
     const resetDetailViewState = () => {
         const headerEl = detailPanel.querySelector('h3');
         if (headerEl) {
@@ -171,77 +313,82 @@ function createEditorDetailUI(deps) {
 
         const headerEl = detailPanel.querySelector('h3');
         if (headerEl) {
-            const localBadge = localSaveMode
-                ? `<span style="font-size:11px;padding:2px 8px;background:rgba(239,108,0,0.1);color:#ef6c00;border-radius:99px;font-weight:600;margin-left:8px;">${i18n('local_save_badge') || '로컬 저장'}</span>`
+            headerEl.innerHTML = '';
+
+            const localBadgeText = localSaveMode
+                ? (i18n('local_save_badge') || '로컬 저장')
                 : '';
 
-            const treeMetaHtml = `
-                <div style="margin-top:10px;padding:12px 14px;border-radius:12px;background:var(--surface-container);display:flex;flex-direction:column;gap:8px;">
-                    <div style="font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--on-surface-variant);text-transform:uppercase;">
-                        ${i18n('current_tree') || '현재 트리'}
-                    </div>
-                    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
-                        <div class="tree-title-text" style="font-size:14px;font-weight:700;color:var(--on-surface);">${escapeHtml(displayTreeTitle)}</div>
-                        <span style="${visStyle}padding:4px 10px;border-radius:99px;display:inline-flex;align-items:center;gap:4px;font-size:12px;">
-                            <span class="material-symbols-outlined" style="font-size:12px;">${escapeHtml(visIcon)}</span>
-                            ${escapeHtml(visLabel)}
-                        </span>
-                    </div>
-                    <div style="font-size:11px;color:var(--on-surface-variant);">${escapeHtml(visInfo)}</div>
-                </div>
-            `;
+            const treeMetaBlock = createTreeMetaBlock({
+                displayTreeTitle,
+                visIcon,
+                visLabel,
+                visInfo,
+                visStyle,
+                i18n
+            });
 
-            let shareBtn = '';
-            if (isPublic && !isEmptyState && data?.id) {
-                shareBtn = `<button id="shareTreeBtn" style="${visStyle}font-size:12px;padding:6px 12px;border-radius:99px;cursor:pointer;border:none;font-weight:600;display:flex;align-items:center;gap:4px;">
-                    <span class="material-symbols-outlined" style="font-size:14px;">content_copy</span>
-                    ${i18n('share_link')}
-                </button>`;
-            }
+            const headerWrap = document.createElement('div');
+            headerWrap.style.display = 'flex';
+            headerWrap.style.flexDirection = 'column';
+            headerWrap.style.gap = '8px';
 
             if (isEmptyState) {
-                headerEl.innerHTML = `
-                    <div style="display:flex;flex-direction:column;gap:8px;">
-                        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-                            <span style="font-size:1.4rem;line-height:1.2;font-weight:900;letter-spacing:-0.03em;color:var(--on-surface);">${formatI18nText('waiting_first_moment', '첫 순간을 기다리고 있어요')}${localBadge}</span>
-                        </div>
-                        <div style="font-size:13px;color:var(--on-surface-variant);line-height:1.6;">
-                            ${resolveHintText(i18n('empty_panel_hint_short'), 'empty_panel_hint_short', '첫 순간이 심어지면 여기에 따뜻하게 펼쳐집니다.')}
-                        </div>
-                        ${treeMetaHtml}
-                    </div>
-                `;
-            } else {
-                const sectionLabel = isRootSelected ? (i18n('start_moment') || '시작 순간') : (i18n('selected_moment') || '선택된 순간');
-                const basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
+                headerWrap.appendChild(createHeaderTitleRow({
+                    titleText: formatI18nText('waiting_first_moment', '첫 순간을 기다리고 있어요'),
+                    localBadgeText
+                }));
 
-                headerEl.innerHTML = `
-                    <div style="display:flex;flex-direction:column;gap:8px;">
-                        <div style="font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--primary);text-transform:uppercase;">
-                            ${sectionLabel}
-                        </div>
-                        <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
-                            <span style="font-size:1.4rem;line-height:1.2;font-weight:900;letter-spacing:-0.03em;color:var(--on-surface);">${escapeHtml(data.title || '')}${localBadge}</span>
-                            ${shareBtn}
-                        </div>
-                        ${treeMetaHtml}
-                    </div>
-                `;
-
-                if (isPublic && data?.id) {
-                    const btn = document.getElementById('shareTreeBtn');
-                    if (btn && btn.dataset.shareBound !== '1') {
-                        btn.dataset.shareBound = '1';
-                        btn.addEventListener('click', () => {
-                            const shareUrl = window.location.origin + '/' + basePath + 'detail.html?id=' + data.id + '&tree=' + treeId;
-                            navigator.clipboard?.writeText(shareUrl).then(() => {
-                                showToast(i18n('copied_link') || '링크가 복사되었습니다', 'success');
-                            }).catch(() => {
-                                showToast(i18n('copy_link_failed') || '링크 복사에 실패했습니다', 'error');
-                            });
-                        });
+                headerWrap.appendChild(createTextBlock(
+                    'div',
+                    resolveHintText(i18n('empty_panel_hint_short'), 'empty_panel_hint_short', '첫 순간이 심어지면 여기에 따뜻하게 펼쳐집니다.'),
+                    {
+                        fontSize: '13px',
+                        color: 'var(--on-surface-variant)',
+                        lineHeight: '1.6'
                     }
+                ));
+
+                headerWrap.appendChild(treeMetaBlock);
+                headerEl.appendChild(headerWrap);
+            } else {
+                const sectionLabel = isRootSelected
+                    ? (i18n('start_moment') || '시작 순간')
+                    : (i18n('selected_moment') || '선택된 순간');
+
+                const sectionEl = createTextBlock('div', sectionLabel, {
+                    fontSize: '11px',
+                    fontWeight: '800',
+                    letterSpacing: '.06em',
+                    color: 'var(--primary)',
+                    textTransform: 'uppercase'
+                });
+
+                let shareBtn = null;
+                if (isPublic && data?.id) {
+                    shareBtn = createShareTreeButton({
+                        visStyle,
+                        shareLabel: i18n('share_link')
+                    });
                 }
+
+                headerWrap.appendChild(sectionEl);
+                headerWrap.appendChild(createHeaderTitleRow({
+                    titleText: data.title || '',
+                    localBadgeText,
+                    shareButtonEl: shareBtn
+                }));
+                headerWrap.appendChild(treeMetaBlock);
+
+                headerEl.appendChild(headerWrap);
+
+                bindShareButton({
+                    btn: shareBtn,
+                    data,
+                    treeId,
+                    i18n,
+                    showToast
+                });
             }
         }
 
