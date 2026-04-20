@@ -96,7 +96,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const buildEditorRedirectTarget = editorPageHelpers.buildEditorRedirectTarget || (() =>
         getEditorBasePath() + 'editor.html' + (window.location.search || ''));
 
-    const redirectToEditorLogin = editorPageHelpers.redirectToEditorLogin || ((delayMs = 0) => {
+    const createInlineRedirectToEditorLoginFallback = (options) => (delayMs = 0) => {
+        const opts = options || {};
+        const getEditorBasePath = opts.getEditorBasePath || (() => '');
+        const buildEditorRedirectTarget = opts.buildEditorRedirectTarget || (() => 'editor.html');
+
         const loginUrl =
             getEditorBasePath() + 'login.html?redirect=' + encodeURIComponent(buildEditorRedirectTarget());
 
@@ -108,6 +112,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         window.location.href = loginUrl;
+    };
+
+    const redirectToEditorLogin = editorPageHelpers.redirectToEditorLogin || createInlineRedirectToEditorLoginFallback({
+        getEditorBasePath,
+        buildEditorRedirectTarget
     });
 
     const createInlineTextResolversFallbacks = () => {
