@@ -1,6 +1,6 @@
 /**
  * LoveBud - i18n Search Dictionary
- * v20260420-2
+ * v20260420-3
  *
  * 검색/둘러보기 페이지(search.html) 번역 키
  */
@@ -72,6 +72,10 @@
       ko: '아직 기록은 0개',
       en: 'There are still 0 records'
     },
+    'search.previewNoRecordsFollowup': {
+      ko: '다음 순간이 쌓이면 감정 경로가 여기서 채워집니다.',
+      en: 'As new moments are added, the emotional path will fill in here.'
+    },
     'search.previewNewTreeInfo': {
       ko: '새로 시작된 공개 트리입니다',
       en: 'This is a newly started public tree.'
@@ -111,6 +115,26 @@
     'search.previewDefaultTreeName': {
       ko: '러브트리',
       en: 'LoveTree'
+    },
+    'search.previewMoreMoments': {
+      ko: '... 그리고 {count}개의 순간 더',
+      en: '... and {count} more moments'
+    },
+    'search.previewSummaryThemeStart': {
+      ko: '<strong style="color:var(--on-surface);">{title}</strong>는 <strong style="color:var(--on-surface);">{theme}</strong> 테마로 시작된 공개 러브트리예요.',
+      en: '<strong style="color:var(--on-surface);">{title}</strong> is a public LoveTree that began with the <strong style="color:var(--on-surface);">{theme}</strong> theme.'
+    },
+    'search.previewSummaryStart': {
+      ko: '<strong style="color:var(--on-surface);">{title}</strong>는 이제 막 시작된 공개 러브트리예요.',
+      en: '<strong style="color:var(--on-surface);">{title}</strong> is a newly started public LoveTree.'
+    },
+    'search.previewSummaryThemeRange': {
+      ko: '<strong style="color:var(--on-surface);">{theme}</strong>와 함께한 <span style="color:var(--primary);font-weight:700;">{count}개의 감정 순간</span>이 <strong>{range}</strong> 동안 기록되었어요.',
+      en: '<strong style="color:var(--on-surface);">{count} emotional moments</strong> with <strong style="color:var(--on-surface);">{theme}</strong> were recorded across <strong>{range}</strong>.'
+    },
+    'search.previewSummaryRange': {
+      ko: '<strong style="color:var(--on-surface);">{title}</strong>에 담긴 <span style="color:var(--primary);font-weight:700;">{count}개의 감정 순간</span>이 <strong>{range}</strong> 동안 기록되었어요.',
+      en: '<strong style="color:var(--on-surface);">{count} emotional moments</strong> in <strong style="color:var(--on-surface);">{title}</strong> were recorded across <strong>{range}</strong>.'
     },
 
     // 검색 입력
