@@ -230,6 +230,17 @@ function createEditorCanvas(deps) {
         });
     }
 
+    function resolveNodeHighlightText(mem) {
+        if (Array.isArray(mem.emotionTags) && mem.emotionTags.length > 0) {
+            return `#${String(mem.emotionTags[0] || '').replace(/^#/, '')}`;
+        }
+
+        const memo = String(mem.memo || '').trim();
+        if (!memo) return '';
+
+        return memo.length > 18 ? `${memo.slice(0, 18)}…` : memo;
+    }
+
     const drawNode = (mem) => {
         const pos = calcPosition(mem);
         const nodeEl = document.createElement('div');
@@ -300,8 +311,15 @@ function createEditorCanvas(deps) {
         dateEl.className = 'node-date';
         dateEl.textContent = mem.timestamp || '';
 
+        const highlightText = resolveNodeHighlightText(mem);
+        const moodEl = document.createElement('p');
+        moodEl.className = 'node-mood';
+        moodEl.textContent = highlightText;
+        moodEl.style.display = highlightText ? 'block' : 'none';
+
         infoLabel.appendChild(titleEl);
         infoLabel.appendChild(dateEl);
+        infoLabel.appendChild(moodEl);
         nodeEl.appendChild(card);
         nodeEl.appendChild(infoLabel);
         bindNodeDrag(nodeEl, mem);
