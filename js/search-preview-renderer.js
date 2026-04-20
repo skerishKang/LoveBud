@@ -87,34 +87,50 @@
              return;
          }
 
-         const firstMem = tree.memories?.[0];
-         if (!firstMem) return;
+         const memories = Array.isArray(tree.memories) ? tree.memories : [];
+        const firstMem = memories[0];
+        const hasMemories = memories.length > 0;
 
          // ─────────────────────────────────────────────
          // Video/Iframe container
          // ─────────────────────────────────────────────
          
          if (_dom.previewContainer) {
-             const safeSourceUrl = sanitizeUrl(firstMem.sourceUrl || '');
-             const iframeSrc = safeSourceUrl ? safeSourceUrl + (safeSourceUrl.includes('?') ? '&' : '?') + 'autoplay=0&mute=1' : '';
-             const safeFirstMemTitle = escapeHtml(firstMem.title || '');
-             const safeTreeTitle = escapeHtml(tree.title || '');
+            const safeTreeTitle = escapeHtml(tree.title || '');
 
-             _dom.previewContainer.innerHTML = iframeSrc ? `
-                 <div style="position:relative;width:100%;height:100%;border-radius:1rem;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.12);">
-                     <iframe width="100%" height="100%"
-                         src="${iframeSrc}"
-                         title="${safeTreeTitle}" frameborder="0"
-                         allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                         allowfullscreen style="position:absolute;top:0;left:0;"></iframe>
-                     <!-- 감상 시작 CTA 오버레이 -->
-                     <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top,rgba(0,0,0,0.8),transparent);padding:40px 20px 20px;color:white;text-align:center;">
-                         <div style="font-size:14px;font-weight:700;margin-bottom:8px;opacity:0.9;">첫 순간부터 감상하기</div>
-                         <div style="font-size:12px;opacity:0.7;">${safeFirstMemTitle}</div>
-                     </div>
-                 </div>
-             ` : renderPlaceholder();
-         }
+            if (!hasMemories) {
+                _dom.previewContainer.innerHTML = `
+                    <div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;background:linear-gradient(135deg,var(--surface-container-low),white);border-radius:1rem;color:var(--on-surface-variant);">
+                        <span class="material-symbols-outlined" style="font-size:36px;color:var(--primary);margin-bottom:12px;">psychiatry</span>
+                        <div style="font-size:14px;font-weight:800;color:var(--on-surface);margin-bottom:8px;">${safeTreeTitle}</div>
+                        <p style="margin:0;font-size:13px;line-height:1.6;">
+                            아직 대표 순간이 없어요.<br>
+                            첫 입덕 순간이 기록되면 여기에서 바로 미리 볼 수 있어요.
+                        </p>
+                    </div>
+                `;
+            } else {
+                const safeSourceUrl = sanitizeUrl(firstMem.sourceUrl || '');
+                const iframeSrc = safeSourceUrl
+                    ? safeSourceUrl + (safeSourceUrl.includes('?') ? '&' : '?') + 'autoplay=0&mute=1'
+                    : '';
+                const safeFirstMemTitle = escapeHtml(firstMem.title || '');
+
+                _dom.previewContainer.innerHTML = iframeSrc ? `
+                    <div style="position:relative;width:100%;height:100%;border-radius:1rem;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.12);">
+                        <iframe width="100%" height="100%"
+                            src="${iframeSrc}"
+                            title="${safeTreeTitle}" frameborder="0"
+                            allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowfullscreen style="position:absolute;top:0;left:0;"></iframe>
+                        <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top,rgba(0,0,0,0.8),transparent);padding:40px 20px 20px;color:white;text-align:center;">
+                            <div style="font-size:14px;font-weight:700;margin-bottom:8px;opacity:0.9;">첫 순간부터 감상하기</div>
+                            <div style="font-size:12px;opacity:0.7;">${safeFirstMemTitle}</div>
+                        </div>
+                    </div>
+                ` : renderPlaceholder();
+            }
+        }
 
          // ──��──────────────────────────────────────
          // Title
@@ -140,44 +156,66 @@
          // ─────────────────────────────────────────
          
          if (_dom.previewDesc) {
-             // Path stages visualization
-             const pathStages = tree.memories.slice(0, 3).map((m, i) => {
-                 const momentTitle = escapeHtml((m.title || '').replace(/\s*-\s*.*/, ''));
-                 return `<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:var(--surface-container);border-radius:8px;font-size:13px;"><span style="color:var(--primary);font-weight:800;">${i + 1}</span><span>${momentTitle}</span></span>`;
-             }).join('<span style="opacity:0.3;margin:0 4px;">→</span>');
-             
-             const moreStages = tree.memories.length > 3 
-                 ? `<div style="margin-top:8px;font-size:12px;color:var(--on-surface-variant);font-style:italic;">... 그리고 ${tree.memories.length - 3}개의 순간 더</div>` 
-                 : '';
+            const safeTreeTheme = escapeHtml(tree.theme || 'LoveTree');
+            const safeTimeRange = escapeHtml(tree.timeRange || '기록 없음');
 
-             const safeTreeTheme = escapeHtml(tree.theme || '');
-             const safeTimeRange = escapeHtml(tree.timeRange || '');
+            if (!hasMemories) {
+                _dom.previewDesc.innerHTML = `
+                    <div style="background:var(--surface-container-low);padding:20px;border-radius:1rem;margin-bottom:16px;">
+                        <div style="font-size:11px;font-weight:800;color:var(--on-surface-variant);margin-bottom:12px;text-transform:uppercase;letter-spacing:1px;display:flex;align-items:center;gap:4px;">
+                            <span class="material-symbols-outlined" style="font-size:14px;">route</span>
+                            어떻게 입덕했을까요?
+                        </div>
+                        <div style="font-size:14px;line-height:1.7;color:var(--on-surface-variant);">
+                            아직 기록된 순간이 없어 감정 경로가 비어 있어요.<br>
+                            첫 순간이 추가되면 이 패널에서 흐름을 바로 미리 볼 수 있어요.
+                        </div>
+                    </div>
 
-             _dom.previewDesc.innerHTML = `
-                 <!-- 감정 경로 시각화 -->
-                 <div style="background:var(--surface-container-low);padding:20px;border-radius:1rem;margin-bottom:16px;">
-                     <div style="font-size:11px;font-weight:800;color:var(--on-surface-variant);margin-bottom:12px;text-transform:uppercase;letter-spacing:1px;display:flex;align-items:center;gap:4px;">
-                         <span class="material-symbols-outlined" style="font-size:14px;">route</span>
-                         어떻게 입덕했을까요?
-                     </div>
-                     <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;line-height:1.8;">
-                         ${pathStages}
-                     </div>
-                     ${moreStages}
-                 </div>
-                 
-                 <!-- 감상 유도 문구 -->
-                 <div style="font-size:14px;color:var(--on-surface-variant);line-height:1.6;padding:0 4px;">
-                     <strong style="color:var(--on-surface);">${safeTreeTheme}</strong> 아티스트와 함께한 
-                     <span style="color:var(--primary);font-weight:700;">${tree.memoryCount}개의 감정 순간</span>이 
-                     <strong>${safeTimeRange}</strong> 동안 기록되었어요.
-                     <div style="margin-top:12px;padding:12px;background:var(--primary-container);border-radius:0.75rem;font-size:13px;color:var(--on-primary-container);font-weight:500;display:flex;align-items:center;gap:8px;">
-                         <span class="material-symbols-outlined" style="font-size:18px;">touch_app</span>
-                         카드를 클릭하여 감정 경로를 따라가보세요
-                     </div>
-                 </div>
-             `;
-         }
+                    <div style="font-size:14px;color:var(--on-surface-variant);line-height:1.6;padding:0 4px;">
+                        <strong style="color:var(--on-surface);">${safeTreeTheme}</strong> 테마로 시작된 새 러브트리예요.
+                        <span style="color:var(--primary);font-weight:700;">아직 기록은 0개</span>지만,
+                        다음 순간이 쌓이면 감정 경로가 여기서 채워집니다.
+                        <div style="margin-top:12px;padding:12px;background:var(--surface-container);border-radius:0.75rem;font-size:13px;color:var(--on-surface-variant);font-weight:500;display:flex;align-items:center;gap:8px;">
+                            <span class="material-symbols-outlined" style="font-size:18px;">info</span>
+                            새로 시작된 공개 트리입니다
+                        </div>
+                    </div>
+                `;
+            } else {
+                const pathStages = memories.slice(0, 3).map((m, i) => {
+                    const momentTitle = escapeHtml((m.title || '').replace(/\s*-\s*.*/, ''));
+                    return `<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:var(--surface-container);border-radius:8px;font-size:13px;"><span style="color:var(--primary);font-weight:800;">${i + 1}</span><span>${momentTitle}</span></span>`;
+                }).join('<span style="opacity:0.3;margin:0 4px;">→</span>');
+
+                const moreStages = memories.length > 3
+                    ? `<div style="margin-top:8px;font-size:12px;color:var(--on-surface-variant);font-style:italic;">... 그리고 ${memories.length - 3}개의 순간 더</div>` 
+                    : '';
+
+                _dom.previewDesc.innerHTML = `
+                    <div style="background:var(--surface-container-low);padding:20px;border-radius:1rem;margin-bottom:16px;">
+                        <div style="font-size:11px;font-weight:800;color:var(--on-surface-variant);margin-bottom:12px;text-transform:uppercase;letter-spacing:1px;display:flex;align-items:center;gap:4px;">
+                            <span class="material-symbols-outlined" style="font-size:14px;">route</span>
+                            어떻게 입덕했을까요?
+                        </div>
+                        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;line-height:1.8;">
+                            ${pathStages}
+                        </div>
+                        ${moreStages}
+                    </div>
+
+                    <div style="font-size:14px;color:var(--on-surface-variant);line-height:1.6;padding:0 4px;">
+                        <strong style="color:var(--on-surface);">${safeTreeTheme}</strong> 아티스트와 함께한
+                        <span style="color:var(--primary);font-weight:700;">${tree.memoryCount}개의 감정 순간</span>이
+                        <strong>${safeTimeRange}</strong> 동안 기록되었어요.
+                        <div style="margin-top:12px;padding:12px;background:var(--primary-container);border-radius:0.75rem;font-size:13px;color:var(--on-primary-container);font-weight:500;display:flex;align-items:center;gap:8px;">
+                            <span class="material-symbols-outlined" style="font-size:18px;">touch_app</span>
+                            카드를 클릭하여 감정 경로를 따라가보세요
+                        </div>
+                    </div>
+                `;
+            }
+        }
 
          // ─────────────────────────────────────────
          // Stats
