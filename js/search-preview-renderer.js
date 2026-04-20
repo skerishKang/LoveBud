@@ -1,6 +1,6 @@
 /**
  * LoveBud Search Preview Renderer
- * v20260420-3
+ * v20260420-4
  * 
  * Rendering layer: preview sidebar panel.
  * DOM-agnostic - updates passed DOM elements.
@@ -52,6 +52,15 @@
             return dict[locale] || dict.ko || dict.en || fallbackKo;
         }
         return locale === 'en' ? fallbackEn : fallbackKo;
+    }
+
+    function formatSearchCopy(key, replacements, fallbackKo, fallbackEn) {
+        const template = getSearchCopy(key, fallbackKo, fallbackEn);
+        return String(template).replace(/\{(\w+)\}/g, (_, token) => {
+            return Object.prototype.hasOwnProperty.call(replacements, token)
+                ? String(replacements[token])
+                : '';
+        });
     }
 
     function getPreviewStatsElement() {
@@ -155,19 +164,42 @@
             })();
         const timeRange = String(tree?.timeRange || '기록 없음').trim();
         const memoryCount = Number(tree?.memoryCount || 0);
+        const safeTitle = escapeHtml(displayTitle);
+        const safeTheme = escapeHtml(themeLabel);
+        const safeRange = escapeHtml(timeRange);
 
         if (!memories.length) {
             if (themeLabel) {
-                return `<strong style="color:var(--on-surface);">${escapeHtml(displayTitle)}</strong>는 <strong style="color:var(--on-surface);">${escapeHtml(themeLabel)}</strong> 테마로 시작된 공개 러브트리예요.`;
+                return formatSearchCopy(
+                    'search.previewSummaryThemeStart',
+                    { title: safeTitle, theme: safeTheme },
+                    '<strong style="color:var(--on-surface);">{title}</strong>는 <strong style="color:var(--on-surface);">{theme}</strong> 테마로 시작된 공개 러브트리예요.',
+                    '<strong style="color:var(--on-surface);">{title}</strong> is a public LoveTree that began with the <strong style="color:var(--on-surface);">{theme}</strong> theme.'
+                );
             }
-            return `<strong style="color:var(--on-surface);">${escapeHtml(displayTitle)}</strong>는 이제 막 시작된 공개 러브트리예요.`;
+            return formatSearchCopy(
+                'search.previewSummaryStart',
+                { title: safeTitle },
+                '<strong style="color:var(--on-surface);">{title}</strong>는 이제 막 시작된 공개 러브트리예요.',
+                '<strong style="color:var(--on-surface);">{title}</strong> is a newly started public LoveTree.'
+            );
         }
 
         if (themeLabel) {
-            return `<strong style="color:var(--on-surface);">${escapeHtml(themeLabel)}</strong>와 함께한 <span style="color:var(--primary);font-weight:700;">${memoryCount}개의 감정 순간</span>이 <strong>${escapeHtml(timeRange)}</strong> 동안 기록되었어요.`;
+            return formatSearchCopy(
+                'search.previewSummaryThemeRange',
+                { theme: safeTheme, count: memoryCount, range: safeRange },
+                '<strong style="color:var(--on-surface);">{theme}</strong>와 함께한 <span style="color:var(--primary);font-weight:700;">{count}개의 감정 순간</span>이 <strong>{range}</strong> 동안 기록되었어요.',
+                '<strong style="color:var(--on-surface);">{count} emotional moments</strong> with <strong style="color:var(--on-surface);">{theme}</strong> were recorded across <strong>{range}</strong>.'
+            );
         }
 
-        return `<strong style="color:var(--on-surface);">${escapeHtml(displayTitle)}</strong>에 담긴 <span style="color:var(--primary);font-weight:700;">${memoryCount}개의 감정 순간</span>이 <strong>${escapeHtml(timeRange)}</strong> 동안 기록되었어요.`;
+        return formatSearchCopy(
+            'search.previewSummaryRange',
+            { title: safeTitle, count: memoryCount, range: safeRange },
+            '<strong style="color:var(--on-surface);">{title}</strong>에 담긴 <span style="color:var(--primary);font-weight:700;">{count}개의 감정 순간</span>이 <strong>{range}</strong> 동안 기록되었어요.',
+            '<strong style="color:var(--on-surface);">{count} emotional moments</strong> in <strong style="color:var(--on-surface);">{title}</strong> were recorded across <strong>{range}</strong>.'
+        );
     }
 
     function renderSectionHeading(icon, label) {
@@ -198,7 +230,12 @@
 
     function renderMoreStagesText(count) {
         if (!count || count <= 0) return '';
-        return `<div style="margin-top:8px;font-size:12px;color:var(--on-surface-variant);font-style:italic;">... 그리고 ${count}개의 순간 더</div>`;
+        return formatSearchCopy(
+            'search.previewMoreMoments',
+            { count },
+            '... 그리고 {count}개의 순간 더',
+            '... and {count} more moments'
+        );
     }
 
     /**
@@ -303,8 +340,8 @@
 
                     <div style="font-size:14px;color:var(--on-surface-variant);line-height:1.6;padding:0 4px;">
                         ${getPreviewSummaryCopy(tree, memories)}
-                        <span style="color:var(--primary);font-weight:700;">${escapeHtml(getSearchCopy('search.previewNoRecordsYet', '아직 기록은 0개', 'There are still 0 records'))}</span>지만,
-                        다음 순간이 쌓이면 감정 경로가 여기서 채워집니다.
+                        <span style="color:var(--primary);font-weight:700;">${escapeHtml(getSearchCopy('search.previewNoRecordsYet', '아직 기록은 0개', 'There are still 0 records'))}</span>
+                        ${escapeHtml(getSearchCopy('search.previewNoRecordsFollowup', '다음 순간이 쌓이면 감정 경로가 여기서 채워집니다.', 'As new moments are added, the emotional path will fill in here.'))}
                         ${renderInfoCallout('info', getSearchCopy('search.previewNewTreeInfo', '새로 시작된 공개 트리입니다', 'This is a newly started public tree.'))}
                     </div>
                 `;
@@ -322,7 +359,7 @@
                         <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;line-height:1.8;">
                             ${pathStages}
                         </div>
-                        ${moreStages}
+                        <div style="margin-top:8px;font-size:12px;color:var(--on-surface-variant);font-style:italic;">${escapeHtml(moreStages)}</div>
                     </div>
 
                     <div style="font-size:14px;color:var(--on-surface-variant);line-height:1.6;padding:0 4px;">
@@ -443,5 +480,5 @@
         renderEmotionTags: renderEmotionTags
     };
 
-    console.log('[LoveBudSearchPreviewRenderer] Search preview renderer loaded v20260420-3');
+    console.log('[LoveBudSearchPreviewRenderer] Search preview renderer loaded v20260420-4');
 })();
