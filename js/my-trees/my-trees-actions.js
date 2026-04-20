@@ -86,20 +86,7 @@
       console.log('[my-trees-actions] Test public mode: defaulting to public');
       return 'public';
     }
-
-    try {
-      var settings = localStorage.getItem('lovebud_user_settings');
-      if (settings) {
-        var parsed = JSON.parse(settings);
-        if (parsed.defaultVisibility === 'public' || parsed.defaultVisibility === 'private') {
-          return parsed.defaultVisibility;
-        }
-      }
-    } catch (e) {
-      console.warn('[my-trees-actions] Failed to read settings:', e);
-    }
-
-    return 'private';
+    return 'public';
   }
 
   async function createNewTree(options) {

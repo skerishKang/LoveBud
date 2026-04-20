@@ -137,6 +137,34 @@
          return '새로 시작된 러브트리';
      }
 
+     function getThemeLabel(tree) {
+         const themeRaw = String(tree?.theme || '').trim();
+         if (!themeRaw || themeRaw === 'LoveTree' || themeRaw === 'Mixed') {
+             return '';
+         }
+         return themeRaw;
+     }
+
+     function getPreviewSummaryCopy(tree, memories) {
+         const displayTitle = getPreviewDisplayTitle(tree);
+         const themeLabel = getThemeLabel(tree);
+         const timeRange = String(tree?.timeRange || '기록 없음').trim();
+         const memoryCount = Number(tree?.memoryCount || 0);
+
+         if (!memories.length) {
+             if (themeLabel) {
+                 return `<strong style="color:var(--on-surface);">${escapeHtml(displayTitle)}</strong>는 <strong style="color:var(--on-surface);">${escapeHtml(themeLabel)}</strong> 테마로 시작된 공개 러브트리예요.`;
+             }
+             return `<strong style="color:var(--on-surface);">${escapeHtml(displayTitle)}</strong>는 이제 막 시작된 공개 러브트리예요.`;
+         }
+
+         if (themeLabel) {
+             return `<strong style="color:var(--on-surface);">${escapeHtml(themeLabel)}</strong>와 함께한 <span style="color:var(--primary);font-weight:700;">${memoryCount}개의 감정 순간</span>이 <strong>${escapeHtml(timeRange)}</strong> 동안 기록되었어요.`;
+         }
+
+         return `<strong style="color:var(--on-surface);">${escapeHtml(displayTitle)}</strong>에 담긴 <span style="color:var(--primary);font-weight:700;">${memoryCount}개의 감정 순간</span>이 <strong>${escapeHtml(timeRange)}</strong> 동안 기록되었어요.`;
+     }
+
     /**
      * Updates preview details for a tree
      * 
@@ -221,8 +249,6 @@
          if (_dom.previewDesc) {
             const previewDisplayTitle = getPreviewDisplayTitle(tree);
             const safePreviewDisplayTitle = escapeHtml(previewDisplayTitle);
-            const safeTreeTheme = escapeHtml(tree.theme || 'LoveTree');
-            const safeTimeRange = escapeHtml(tree.timeRange || '기록 없음');
 
             if (!hasMemories) {
                 _dom.previewDesc.innerHTML = `
@@ -238,8 +264,7 @@
                     </div>
 
                     <div style="font-size:14px;color:var(--on-surface-variant);line-height:1.6;padding:0 4px;">
-                        <strong style="color:var(--on-surface);">${safePreviewDisplayTitle}</strong>는
-                        <strong style="color:var(--on-surface);">${safeTreeTheme}</strong> 테마로 시작된 공개 러브트리예요.
+                        ${getPreviewSummaryCopy(tree, memories)}
                         <span style="color:var(--primary);font-weight:700;">아직 기록은 0개</span>지만,
                         다음 순간이 쌓이면 감정 경로가 여기서 채워집니다.
                         <div style="margin-top:12px;padding:12px;background:var(--surface-container);border-radius:0.75rem;font-size:13px;color:var(--on-surface-variant);font-weight:500;display:flex;align-items:center;gap:8px;">
@@ -271,9 +296,7 @@
                     </div>
 
                     <div style="font-size:14px;color:var(--on-surface-variant);line-height:1.6;padding:0 4px;">
-                        <strong style="color:var(--on-surface);">${safeTreeTheme}</strong> 아티스트와 함께한
-                        <span style="color:var(--primary);font-weight:700;">${tree.memoryCount}개의 감정 순간</span>이
-                        <strong>${safeTimeRange}</strong> 동안 기록되었어요.
+                        ${getPreviewSummaryCopy(tree, memories)}
                         <div style="margin-top:12px;padding:12px;background:var(--primary-container);border-radius:0.75rem;font-size:13px;color:var(--on-primary-container);font-weight:500;display:flex;align-items:center;gap:8px;">
                             <span class="material-symbols-outlined" style="font-size:18px;">touch_app</span>
                             카드를 클릭하여 감정 경로를 따라가보세요
