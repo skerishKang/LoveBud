@@ -76,6 +76,8 @@ function createEditorCanvas(deps) {
     const ROOT_BOTTOM_GUTTER = 180;
     const NODE_WIDTH = 108;
     const NODE_HALF = Math.round(NODE_WIDTH / 2);
+    const AFFORDANCE_OFFSET_X = 168;
+    const AFFORDANCE_OFFSET_Y = 10;
 
     function persistStoredPositions() {
         if (typeof canvasLayout.createLayoutStore === 'function') {
@@ -342,6 +344,138 @@ function createEditorCanvas(deps) {
         }
     }
 
+    function clearGrowthAffordance() {
+        canvas.querySelectorAll('.memory-add-affordance').forEach((el) => el.remove());
+        svg.querySelectorAll('.branch-line-affordance').forEach((el) => el.remove());
+    }
+
+    function openAddMomentFromCanvas() {
+        const addBtn = document.getElementById('addMemoryBtn');
+        if (addBtn) {
+            addBtn.click();
+        }
+    }
+
+    function getGrowthAffordancePosition(anchorPos) {
+        const metrics = getMetrics();
+        return {
+            x: Math.max(120, Math.min(anchorPos.x + AFFORDANCE_OFFSET_X, metrics.width - 96)),
+            y: Math.max(110, Math.min(anchorPos.y - AFFORDANCE_OFFSET_Y, metrics.height - 80))
+        };
+    }
+
+    function drawGrowthAffordanceBranch(startPos, endPos) {
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        const cp1x = startPos.x + ((endPos.x - startPos.x) * 0.45);
+        const cp1y = startPos.y - 18;
+        const d = `M ${startPos.x},${startPos.y} Q ${cp1x},${cp1y} ${endPos.x},${endPos.y}`;
+        path.setAttribute('d', d);
+        path.setAttribute('class', 'branch-line branch-line-affordance');
+        path.setAttribute('fill', 'none');
+        path.setAttribute('stroke', 'rgba(144, 73, 81, 0.42)');
+        path.setAttribute('stroke-width', '2');
+        path.setAttribute('stroke-linecap', 'round');
+        path.setAttribute('stroke-dasharray', '6 7');
+        path.setAttribute('opacity', '0.95');
+        svg.appendChild(path);
+    }
+
+    function createGrowthAffordanceElement(anchorMem, labelText, helperText) {
+        const anchorPos = calcPosition(anchorMem);
+        const affPos = getGrowthAffordancePosition(anchorPos);
+        const wrap = document.createElement('button');
+        wrap.type = 'button';
+        wrap.className = 'memory-add-affordance';
+        wrap.setAttribute('aria-label', labelText);
+        wrap.style.position = 'absolute';
+        wrap.style.left = `${affPos.x - 46}px`;
+        wrap.style.top = `${affPos.y - 30}px`;
+        wrap.style.zIndex = '4';
+        wrap.style.display = 'flex';
+        wrap.style.alignItems = 'center';
+        wrap.style.gap = '10px';
+        wrap.style.padding = '10px 14px 10px 10px';
+        wrap.style.border = '1px solid rgba(144, 73, 81, 0.18)';
+        wrap.style.borderRadius = '999px';
+        wrap.style.background = 'linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,246,244,0.96))';
+        wrap.style.boxShadow = '0 12px 28px rgba(75, 64, 57, 0.10)';
+        wrap.style.cursor = 'pointer';
+        wrap.style.backdropFilter = 'blur(8px)';
+        wrap.style.transition = 'transform 0.18s ease, box-shadow 0.18s ease';
+
+        const plusBubble = document.createElement('span');
+        plusBubble.textContent = '+';
+        plusBubble.style.width = '32px';
+        plusBubble.style.height = '32px';
+        plusBubble.style.borderRadius = '50%';
+        plusBubble.style.display = 'inline-flex';
+        plusBubble.style.alignItems = 'center';
+        plusBubble.style.justifyContent = 'center';
+        plusBubble.style.background = 'linear-gradient(180deg, rgba(144, 73, 81, 1), rgba(144, 73, 81, 0.88))';
+        plusBubble.style.color = '#fff';
+        plusBubble.style.fontSize = '18px';
+        plusBubble.style.fontWeight = '700';
+        plusBubble.style.flex = '0 0 auto';
+        plusBubble.style.boxShadow = '0 6px 14px rgba(144, 73, 81, 0.22)';
+
+        const textWrap = document.createElement('span');
+        textWrap.style.display = 'flex';
+        textWrap.style.flexDirection = 'column';
+        textWrap.style.alignItems = 'flex-start';
+        textWrap.style.gap = '1px';
+
+        const titleEl = document.createElement('span');
+        titleEl.textContent = labelText;
+        titleEl.style.fontSize = '13px';
+        titleEl.style.fontWeight = '700';
+        titleEl.style.color = 'var(--on-surface)';
+        titleEl.style.lineHeight = '1.25';
+
+        const hintEl = document.createElement('span');
+        hintEl.textContent = helperText;
+        hintEl.style.fontSize = '11px';
+        hintEl.style.fontWeight = '600';
+        hintEl.style.color = 'var(--on-surface-variant)';
+        hintEl.style.lineHeight = '1.25';
+        hintEl.style.opacity = '0.82';
+
+        textWrap.appendChild(titleEl);
+        textWrap.appendChild(hintEl);
+        wrap.appendChild(plusBubble);
+        wrap.appendChild(textWrap);
+
+        wrap.addEventListener('mouseenter', () => {
+            wrap.style.transform = 'translateY(-2px)';
+            wrap.style.boxShadow = '0 16px 30px rgba(144, 73, 81, 0.16)';
+        });
+        wrap.addEventListener('mouseleave', () => {
+            wrap.style.transform = 'translateY(0)';
+            wrap.style.boxShadow = '0 12px 28px rgba(75, 64, 57, 0.10)';
+        });
+        wrap.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            openAddMomentFromCanvas();
+        });
+
+        drawGrowthAffordanceBranch(
+            { x: anchorPos.x + NODE_HALF - 2, y: anchorPos.y + 4 },
+            { x: affPos.x - 54, y: affPos.y }
+        );
+        canvas.appendChild(wrap);
+    }
+
+    function renderGrowthAffordance(anchorMem, options) {
+        if (!anchorMem) return;
+        const opts = options || {};
+        const labelText = opts.labelText || (i18n('continue_moment') || '순간 이어가기');
+        const helperText = opts.helperText || (opts.isFirstStep
+            ? (i18n('growth_start_hint') || '여기서 다음 가지가 자라나요')
+            : (i18n('growth_continue_hint') || '선택한 순간 뒤로 감정이 이어져요'));
+
+        createGrowthAffordanceElement(anchorMem, labelText, helperText);
+    }
+
     const initCanvas = () => {
         const canonicalRootId = getCanonicalRootId();
         const treeMemories = getTreeMemories();
@@ -355,6 +489,7 @@ function createEditorCanvas(deps) {
         canvas.querySelectorAll('.memory-node').forEach((node) => node.remove());
         canvas.querySelectorAll('#emptyTreeMessage').forEach((el) => el.remove());
         svg.querySelectorAll('.branch-line').forEach((line) => line.remove());
+        clearGrowthAffordance();
 
         setDetailEmptyState(!hasVisibleNodes);
         updateFocusSelectedBtn();
@@ -379,6 +514,9 @@ function createEditorCanvas(deps) {
             if (selectedMem) {
                 updateDetailPanel(selectedMem);
                 reapplySelection(selectedMem.id);
+                renderGrowthAffordance(selectedMem, {
+                    isFirstStep: drawableMemories.length <= 1
+                });
             }
         }
 
@@ -504,7 +642,7 @@ function createEditorCanvas(deps) {
         canvas.style.touchAction = 'none';
 
         canvas.addEventListener('mousedown', (e) => {
-            if (e.target.closest('.memory-node') || e.target.closest('#addMemoryForm')) return;
+            if (e.target.closest('.memory-node') || e.target.closest('#addMemoryForm') || e.target.closest('.memory-add-affordance')) return;
             viewportState.isPanning = true;
             viewportState.startX = e.clientX;
             viewportState.startY = e.clientY;
