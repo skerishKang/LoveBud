@@ -73,7 +73,7 @@ function createEditorDetailUI(deps) {
         if (!emptyState) {
             emptyState = document.createElement('div');
             emptyState.id = 'detailEmptyState';
-            emptyState.innerHTML = '<div style="text-align:center;padding:40px 24px;color:var(--on-surface-variant);"><span class="material-symbols-outlined" style="font-size:48px;opacity:0.4;margin-bottom:16px;display:block;">sentiment_satisfied</span><p style="font-size:1rem;font-weight:600;margin-bottom:8px;color:var(--on-surface);">아직 추가된 순간이 없어요</p><p style="font-size:0.9rem;opacity:0.7;line-height:1.5;">왼쪽 아래의 \'순간 추가\' 버튼으로 첫 기록을 남겨보세요.</p></div>';
+            emptyState.innerHTML = '<div style="text-align:center;padding:40px 24px;color:var(--on-surface-variant);"><span class="material-symbols-outlined" style="font-size:48px;opacity:0.4;margin-bottom:16px;display:block;">sentiment_satisfied</span><p style="font-size:1rem;font-weight:700;margin-bottom:8px;color:var(--on-surface);">첫 순간이 트리를 깨워요</p><p style="font-size:0.9rem;opacity:0.78;line-height:1.6;">왼쪽 아래의 \'순간 추가\' 버튼으로 당신의 첫 기억을 심어보세요.</p></div>';
             detailContent.appendChild(emptyState);
         }
 
@@ -123,7 +123,7 @@ function createEditorDetailUI(deps) {
             const selected = treeMemories.find(m => m.id === selectedNodeId);
             hintEl.textContent = selected?.title
                 ? `현재 선택: ${selected.title}`
-                : '첫 순간을 추가해 트리를 시작해 보세요.';
+                : '첫 순간이 심어지면 러브트리가 자라나요.';
             hintEl.style.fontStyle = 'italic';
             hintEl.style.color = 'var(--on-surface-variant)';
         }
@@ -184,8 +184,8 @@ function createEditorDetailUI(deps) {
                         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
                             <span style="font-size:1.4rem;line-height:1.2;font-weight:900;letter-spacing:-0.03em;color:var(--on-surface);">${i18n('waiting_first_moment') || '첫 순간을 기다리고 있어요'}${localBadge}</span>
                         </div>
-                        <div style="font-size:13px;color:var(--on-surface-variant);line-height:1.5;">
-                            ${resolveHintText(i18n('empty_panel_hint_short'), 'empty_panel_hint_short', '첫 영상을 추가하면 여기에 표시됩니다.')}
+                        <div style="font-size:13px;color:var(--on-surface-variant);line-height:1.6;">
+                            ${resolveHintText(i18n('empty_panel_hint_short'), 'empty_panel_hint_short', '첫 순간이 심어지면 여기에 따뜻하게 펼쳐집니다.')}
                         </div>
                         ${treeMetaHtml}
                     </div>
@@ -260,7 +260,7 @@ function createEditorDetailUI(deps) {
             memoBody.style.fontSize = '0.95rem';
             memoBody.style.color = 'var(--on-surface)';
             memoBody.textContent = isEmptyState
-                ? i18n('empty_tree_memo') || '트리가 아직 비어 있습니다. "순간 추가" 버튼으로 첫 순간을 기록해보세요.'
+                ? i18n('empty_tree_memo') || '아직 비어 있는 자리예요. 첫 순간을 심으면 이 트리가 당신의 흐름으로 자라나기 시작해요.'
                 : (data.memo || '');
             noteEl.appendChild(memoBody);
 
