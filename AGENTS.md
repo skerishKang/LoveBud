@@ -28,13 +28,46 @@
 - 일반 북마크 도구
 - 관리자 대시보드
 - 범용 커뮤니티 피드
+- 기계적인 워크플로우 편집기
+- 차가운 데이터 관리 툴
 
 **핵심 정체성:**
 - 팬 감정 러브트리
 - 따뜻한 디지털 스크랩북
-- 입덧의 첫 순간 우선
+- 입덕의 첫 순간 우선
 - 감정이 연결된 경로
 - 비공개 우선, 공유는 그 다음
+
+---
+
+## 브랜드/UX 실행 가드레일
+
+LoveTree / LoveBud는 팬페이지 기반 감성 서비스입니다.
+주 사용자층은 **10~20대 여성 팬**을 우선 고려하되, 30~40대 여성 및 일부 남성 사용자도 배제하지 않습니다.
+
+에이전트는 UI를 생산성 툴처럼 만들지 않습니다.
+우선해야 하는 인상은 다음과 같습니다.
+
+- 감성적
+- 발랄함
+- 부드러움
+- 따뜻함
+- 조용한 몰입감
+- 팬 경험에 어울리는 관람성
+
+세부 실행 원칙:
+- 감상 페이지는 정보 나열보다 **감정 흐름을 따라가는 경험**을 우선합니다.
+- 편집 페이지는 단순 입력 폼보다 **트리를 키워가는 경험**을 우선합니다.
+- 랜딩은 기능 나열보다 **정체성과 감정 톤**을 먼저 전달해야 합니다.
+- `노드 생성`, `워크플로우`, `관리`, `오브젝트 추가` 같은 툴 중심 표현을 남발하지 않습니다.
+- 대신 `순간 이어가기`, `대표 순간`, `이어진 기억`, `감정 흐름`, `시작 순간` 같은 표현을 선호합니다.
+- affordance는 필요하지만 n8n 같은 기계적 워크플로우 UI를 그대로 모사하지 않습니다.
+- `+` 버튼, 연결선, 다음 행동 힌트는 허용되지만, LoveTree답게 더 부드럽고 감성적으로 번역합니다.
+- 중복 CTA, 본문 중간의 어색한 전역 버튼, 의미 불명확한 레이블은 몰입을 깨므로 우선 제거 또는 재구성합니다.
+
+상세 기준은 다음 문서를 함께 확인합니다.
+- `docs/product/PRODUCT_IDENTITY.md`
+- `docs/product/BRAND_EXPERIENCE.md`
 
 ---
 
@@ -53,8 +86,9 @@
 제품 결정을 내리기 전에:
 
 1. `docs/product/PRODUCT_IDENTITY.md`
-2. `docs/product/MVP_SCOPE.md`
-3. `docs/product/USER_FLOW.md`
+2. `docs/product/BRAND_EXPERIENCE.md`
+3. `docs/product/MVP_SCOPE.md`
+4. `docs/product/USER_FLOW.md`
 
 대화 기록을 빠르게 복원하려면:
 1. `docs/doc_index.md`
@@ -71,7 +105,7 @@
 2. `docs/doc_index.md`
 3. `docs/conversation/summary/summary_index.md`
 4. 최신 summary 파일
-5. 제품 판단이 필요하면 `docs/product/PRODUCT_IDENTITY.md`, `docs/product/MVP_SCOPE.md`, `docs/product/USER_FLOW.md`
+5. 제품 판단이 필요하면 `docs/product/PRODUCT_IDENTITY.md`, `docs/product/BRAND_EXPERIENCE.md`, `docs/product/MVP_SCOPE.md`, `docs/product/USER_FLOW.md`
 6. 운영/문서/대화 정리 요청이면 `docs/ops/DOC_WORKFLOW.md`
 7. 요청 유형이 특정 스킬과 맞으면 해당 `skills/*/SKILL.md`
 
@@ -224,6 +258,8 @@ Codex는 기본적으로 CTO 역할을 수행합니다.
 2. 관련 없는 동작이 명백히 깨지지 않았는지
 3. 변경된 파일이 범위 지정되어 있는지
 4. 테스트가 실행되었는지 (또는 이유 명시)
+5. 팬 경험과 감정 톤을 해치지 않았는지
+6. 감상 페이지 / 편집 페이지 / 랜딩의 역할이 더 명확해졌는지
 
 **패치 검증**: `skills/runtime-patch-review/SKILL.md` 참고
 
@@ -287,7 +323,7 @@ Codex는 기본적으로 CTO 역할을 수행합니다.
 
 4. **시나리오 정밀도 및 격리 원칙**
    - **클린 스타트 (Clean Start)**: 신규 사용자 및 권한 관련 테스트 시, 에이전트는 반드시 기존 세션을 로그아웃하고 브라우저 저장소(LocalStorage, IndexedDB)를 초기화하여 '순수 신규 상태'임을 보장해야 한다. 가급적 인코그니토 모드를 사용한다.
-   - **용어 일치 (Terminology Match)**: 시나리오 문서와 테스트 보고서는 반드시 실제 UI에 표시된 텍스트(예: "나의 첫 러브트리 만들기")를 정확히 사용해야 하며, "시작하기"와 같은 임의의 요약 표현을 금지한다.
+   - **용어 일치 (Terminology Match)**: 시나리오 문서와 테스트 보고서는 반드시 실제 UI에 표시된 텍스트를 정확히 사용해야 하며, 임의의 요약 표현을 금지한다.
 
 ---
 
@@ -298,6 +334,7 @@ Functions 500 에러 디버깅 및 로컬 테스트는 Netlify Dev를 사용합�
 ### 설정
 - `netlify.toml`에 이미 Functions 디렉토리 설정됨: `netlify/functions`
 - 환경변수는 `.env` 파일에서 자동 로드됨
+- 사전 점검이 필요하면 `npm run verify:env`를 사용합니다.
 
 ### 실행 방법
 ```bash
