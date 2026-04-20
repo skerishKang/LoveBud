@@ -69,21 +69,23 @@ document.addEventListener('DOMContentLoaded', () => {
         return null;
     };
 
+    const createInlineShowToastFallback = () => (message, type = 'info') => {
+        if (window.LoveBudUI?.showToast) {
+            window.LoveBudUI.showToast(message, type, 3000);
+        } else {
+            if (!window.__editorToastWarningShown) {
+                console.warn('[editor] LoveBudUI not loaded, toast degraded to console');
+                window.__editorToastWarningShown = true;
+            }
+            console.log(`[Toast ${type}] ${message}`);
+        }
+    };
+
     // Auth guard bootstrapping via onAuthReady callback
     // Shared toast utility wrapper
     const showToast = editorHelpers.createToast
         ? editorHelpers.createToast({ warningKey: '__editorToastWarningShown' })
-        : ((message, type = 'info') => {
-            if (window.LoveBudUI?.showToast) {
-                window.LoveBudUI.showToast(message, type, 3000);
-            } else {
-                if (!window.__editorToastWarningShown) {
-                    console.warn('[editor] LoveBudUI not loaded, toast degraded to console');
-                    window.__editorToastWarningShown = true;
-                }
-                console.log(`[Toast ${type}] ${message}`);
-            }
-        });
+        : createInlineShowToastFallback();
 
     const getI18n = editorHelpers.getI18n || (() => window.t || ((k) => k));
     const i18n = getI18n();
