@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+require('dotenv').config();
 
 /**
  * LoveBud 환경변수 및 엔드포인트 검증 스크립트
@@ -145,9 +146,10 @@ async function verifyFunctionSyntax() {
     'netlify/functions/_lib/doc-store.js',
   ];
 
+  const path = require('path');
   for (const fn of functions) {
     try {
-      require('./' + fn);
+      require(path.resolve(process.cwd(), fn));
       check(fn, true);
     } catch (e) {
       check(fn, false, e.message.split('\n')[0]);
