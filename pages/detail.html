@@ -190,7 +190,7 @@
                 <!-- JS에서 동적으로 채워집니다 -->
                 <div style="display: flex; align-items: center; gap: 12px;">
                      <span class="material-symbols-outlined" style="color: var(--primary);">account_tree</span>
-                     <span style="font-size: 14px; color: var(--on-surface-variant);">러브트리 불러오는 중...</span>
+                     <span style="font-size: 14px; color: var(--on-surface-variant);">...</span>
                 </div>
             </div>
 
@@ -210,16 +210,17 @@
                         <span class="material-symbols-outlined">share</span> 공유하기
                     </div>
                 </div>
-                <button id="backButton" class="btn-round btn-outline" style="display: flex; align-items: center; gap: 6px;">
-                    ← 러브트리 목록으로
+                <button id="backButton" class="btn-round btn-outline" type="button" style="display: flex; align-items: center; gap: 6px;">
+                    <span class="material-symbols-outlined" style="font-size:18px;">arrow_back</span>
+                    <span>...</span>
                 </button>
             </div>
 
             <!-- 메타데이터 표시 영역 -->
             <div style="display: flex; gap: 24px; padding: 0 16px; margin-top: 16px; font-size: 14px; color: var(--on-surface-variant);">
-                <span id="detailArtist">아티스트</span>
+                <span id="detailArtist">&nbsp;</span>
                 <span>•</span>
-                <span id="detailDate">날짜</span>
+                <span id="detailDate">&nbsp;</span>
             </div>
 
             <div class="connected-section">
@@ -231,8 +232,8 @@
 
         <section class="diary-section">
             <div style="margin-bottom: 40px;">
-                <p id="detailSubtitle" style="font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--primary); font-weight: 900; margin-bottom: 12px;">기록 — 2024.01.15</p>
-                <h1 class="headline" id="memoryTitle" style="font-size: 3.2rem; color: var(--on-surface); line-height: 1.1; margin-bottom: 24px;">러브트리: 첫 번째<br>만남의 기억</h1>
+                <p id="detailSubtitle" style="font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--primary); font-weight: 900; margin-bottom: 12px;">&nbsp;</p>
+                <h1 class="headline" id="memoryTitle" style="font-size: 3.2rem; color: var(--on-surface); line-height: 1.1; margin-bottom: 24px;">&nbsp;</h1>
                 <div style="display: flex; gap: 10px;">
                     <div class="tags-container" id="tagsContainer"></div>
                 </div>
@@ -240,17 +241,17 @@
 
             <div class="diary-container">
                 <p id="diaryQuote" style="font-size: 1.25rem; color: var(--on-surface); font-weight: 500; font-style: italic; line-height: 1.6; margin-bottom: 32px;">
-                    "드디어 그들을 만나는 날. 아침부터 심장이 너무 빨리 뛰어서 제대로 밥도 먹지 못했다. 공연장 앞에 도착했을 때의 그 차가운 공기와 사람들의 열기가 아직도 생생하다."
+                    &nbsp;
                 </p>
                 <div id="diaryContent" style="line-height: 2; color: var(--on-surface-variant); font-size: 1.05rem;">
-                    행복하다는 말로는 부족한, 정말 꿈만 같았던 시간이었다. 다음에 다시 만날 때까지 이 감정을 소중히 간직해야지. 이 기억이 나의 러브트리의 첫 번째 싹이 될 것이다.
+                    &nbsp;
                 </div>
             </div>
 
             <div class="growth-visualization">
                 <div class="growth-line"></div>
                 <div class="growth-dot"></div>
-                <p style="margin-top: 16px; font-weight: 800; color: var(--primary); font-size: 12px; text-transform: uppercase; letter-spacing: 2px;">사랑의 이야기는 계속됩니다</p>
+                <p style="margin-top: 16px; font-weight: 800; color: var(--primary); font-size: 12px; text-transform: uppercase; letter-spacing: 2px;">&nbsp;</p>
             </div>
         </section>
     </main>
@@ -261,7 +262,7 @@
 <script src="../js/api/auth-policy.js?v=20260420-1"></script>
 <script src="../js/api/base-api-fetch.js?v=20260420-1"></script>
 <script src="../js/postgres-client.js?v=20260420-1"></script>
-    <script src="../js/detail.js?v=20260420-1"></script>
+    <script src="../js/detail.js?v=20260421-1"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="../js/firebase-config.js?v=20260417-31"></script>
