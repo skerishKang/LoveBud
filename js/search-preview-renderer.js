@@ -1,6 +1,6 @@
 /**
  * LoveBud Search Preview Renderer
- * v20260420-2
+ * v20260420-3
  * 
  * Rendering layer: preview sidebar panel.
  * DOM-agnostic - updates passed DOM elements.
@@ -8,59 +8,59 @@
  * Dependencies: LoveBudPath (for navigation)
  */
 
- (function() {
-     'use strict';
+(function() {
+    'use strict';
 
-     // ─────────────────────────────────────────────────────────
-     // Security helpers (XSS prevention)
-     // ─────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────
+    // Security helpers (XSS prevention)
+    // ─────────────────────────────────────────────────────────
 
-     function escapeHtml(value) {
-         return String(value == null ? '' : value)
-             .replace(/&/g, '&amp;')
-             .replace(/</g, '&lt;')
-             .replace(/>/g, '&gt;')
-             .replace(/\"/g, '&quot;')
-             .replace(/'/g, '&#39;');
-     }
+    function escapeHtml(value) {
+        return String(value == null ? '' : value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/\"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
 
-     function sanitizeUrl(value) {
-         if (!value) return '';
-         const raw = String(value).trim();
-         if (!raw) return '';
-         try {
-             const parsed = new URL(raw, window.location.origin);
-             const protocol = parsed.protocol;
-             if (protocol === 'http:' || protocol === 'https:') {
-                 return parsed.href;
-             }
-             return '';
-         } catch (e) {
-             return '';
-         }
-     }
+    function sanitizeUrl(value) {
+        if (!value) return '';
+        const raw = String(value).trim();
+        if (!raw) return '';
+        try {
+            const parsed = new URL(raw, window.location.origin);
+            const protocol = parsed.protocol;
+            if (protocol === 'http:' || protocol === 'https:') {
+                return parsed.href;
+            }
+            return '';
+        } catch (e) {
+            return '';
+        }
+    }
 
-     function getCurrentLocale() {
-         const locale = window.i18n?.currentLang || document.documentElement?.lang || 'ko';
-         return String(locale).toLowerCase().startsWith('en') ? 'en' : 'ko';
-     }
+    function getCurrentLocale() {
+        const locale = window.i18n?.currentLang || document.documentElement?.lang || 'ko';
+        return String(locale).toLowerCase().startsWith('en') ? 'en' : 'ko';
+    }
 
-     function getSearchCopy(key, fallbackKo, fallbackEn) {
-         const locale = getCurrentLocale();
-         const dict = window.i18nSearch?.[key];
-         if (dict && typeof dict === 'object') {
-             return dict[locale] || dict.ko || dict.en || fallbackKo;
-         }
-         return locale === 'en' ? fallbackEn : fallbackKo;
-     }
+    function getSearchCopy(key, fallbackKo, fallbackEn) {
+        const locale = getCurrentLocale();
+        const dict = window.i18nSearch?.[key];
+        if (dict && typeof dict === 'object') {
+            return dict[locale] || dict.ko || dict.en || fallbackKo;
+        }
+        return locale === 'en' ? fallbackEn : fallbackKo;
+    }
 
-     function getPreviewStatsElement() {
-         return _dom?.previewMemoriesCount?.closest?.('#previewTreeStats') || document.getElementById('previewTreeStats');
-     }
+    function getPreviewStatsElement() {
+        return _dom?.previewMemoriesCount?.closest?.('#previewTreeStats') || document.getElementById('previewTreeStats');
+    }
 
-     // ─────────────────────────────────────────────────────────
-     // DOM References (cached on init)
-     // ─────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────
+    // DOM References (cached on init)
+    // ─────────────────────────────────────────────────────────
 
     let _dom = null;
 
@@ -87,141 +87,145 @@
      * @param {Array} tags 
      * @returns {string} HTML string
      */
-     function renderEmotionTags(tags) {
-         if (!tags || !tags.length) return '';
-         return tags.slice(0, 4).map(tag =>
-             `<span style="padding:8px 14px;background:var(--primary-container);border-radius:99px;font-size:13px;font-weight:700;color:var(--on-primary-container);border:1px solid var(--outline-variant);">#${escapeHtml(tag)}</span>`
-         ).join('');
-     }
+    function renderEmotionTags(tags) {
+        if (!tags || !tags.length) return '';
+        return tags.slice(0, 4).map(tag =>
+            `<span style="padding:8px 14px;background:var(--primary-container);border-radius:99px;font-size:13px;font-weight:700;color:var(--on-primary-container);border:1px solid var(--outline-variant);">#${escapeHtml(tag)}</span>`
+        ).join('');
+    }
 
-     function getTimelineLabel(tree, memories) {
-         const titleHelper = getSearchTitleHelper();
-         const formatDate = titleHelper?.formatShortDate || ((value) => {
-             if (!value) return '';
-             const date = new Date(value);
-             if (Number.isNaN(date.getTime())) return '';
-             return date.toLocaleDateString('ko-KR', {
-                 month: 'short',
-                 day: 'numeric'
-             });
-         });
+    function getTimelineLabel(tree, memories) {
+        const titleHelper = getSearchTitleHelper();
+        const formatDate = titleHelper?.formatShortDate || ((value) => {
+            if (!value) return '';
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) return '';
+            return date.toLocaleDateString(getCurrentLocale() === 'en' ? 'en-US' : 'ko-KR', {
+                month: 'short',
+                day: 'numeric'
+            });
+        });
 
-         const updatedAt = tree.updatedAt || '';
-         const createdAt = tree.createdAt || '';
-         const firstTimestamp = memories[0]?.timestamp || '';
-         const lastTimestamp = memories[memories.length - 1]?.timestamp || '';
+        const updatedAt = tree.updatedAt || '';
+        const createdAt = tree.createdAt || '';
+        const firstTimestamp = memories[0]?.timestamp || '';
+        const lastTimestamp = memories[memories.length - 1]?.timestamp || '';
 
-         const safeUpdated = formatDate(updatedAt);
-         const safeCreated = formatDate(createdAt);
-         const safeFirst = formatDate(firstTimestamp);
-         const safeLast = formatDate(lastTimestamp);
+        const safeUpdated = formatDate(updatedAt);
+        const safeCreated = formatDate(createdAt);
+        const safeFirst = formatDate(firstTimestamp);
+        const safeLast = formatDate(lastTimestamp);
 
-         if (safeUpdated) {
-             return `최근 업데이트 ${safeUpdated}`;
-         }
-         if (safeLast) {
-             return `마지막 순간 ${safeLast}`;
-         }
-         if (safeFirst && safeLast && safeFirst !== safeLast) {
-             return `${safeFirst} ~ ${safeLast}`;
-         }
-         if (safeCreated) {
-             return `${safeCreated} 생성`;
-         }
-         return '업데이트 정보 없음';
-     }
+        if (safeUpdated) {
+            return `${getSearchCopy('search.previewTimelineRecentUpdate', '최근 업데이트', 'Recently updated')} ${safeUpdated}`;
+        }
+        if (safeLast) {
+            return `${getSearchCopy('search.previewTimelineLastMoment', '마지막 순간', 'Last moment')} ${safeLast}`;
+        }
+        if (safeFirst && safeLast && safeFirst !== safeLast) {
+            return `${safeFirst} ~ ${safeLast}`;
+        }
+        if (safeCreated) {
+            return `${safeCreated} ${getSearchCopy('search.previewTimelineCreated', '생성', 'Created')}`;
+        }
+        return getSearchCopy('search.previewTimelineUnavailable', '업데이트 정보 없음', 'No update info');
+    }
 
-     function getSearchTitleHelper() {
-         return window.LoveBudSearchTitleHelper || null;
-     }
+    function getSearchTitleHelper() {
+        return window.LoveBudSearchTitleHelper || null;
+    }
 
-     function getPreviewSummaryCopy(tree, memories) {
-         const titleHelper = getSearchTitleHelper();
-         const displayTitle = titleHelper?.getBrowseDisplayTitle
-             ? titleHelper.getBrowseDisplayTitle(tree)
-             : (String(tree?.title || '').trim() || '러브트리');
-         const themeLabel = titleHelper?.getThemeLabel
-             ? titleHelper.getThemeLabel(tree)
-             : (() => {
-                 const themeRaw = String(tree?.theme || '').trim();
-                 if (!themeRaw || themeRaw === 'LoveTree' || themeRaw === 'Mixed') {
-                     return '';
-                 }
-                 return themeRaw;
-             })();
-         const timeRange = String(tree?.timeRange || '기록 없음').trim();
-         const memoryCount = Number(tree?.memoryCount || 0);
+    function getDefaultTreeName() {
+        return getSearchCopy('search.previewDefaultTreeName', '러브트리', 'LoveTree');
+    }
 
-         if (!memories.length) {
-             if (themeLabel) {
-                 return `<strong style="color:var(--on-surface);">${escapeHtml(displayTitle)}</strong>는 <strong style="color:var(--on-surface);">${escapeHtml(themeLabel)}</strong> 테마로 시작된 공개 러브트리예요.`;
-             }
-             return `<strong style="color:var(--on-surface);">${escapeHtml(displayTitle)}</strong>는 이제 막 시작된 공개 러브트리예요.`;
-         }
+    function getPreviewSummaryCopy(tree, memories) {
+        const titleHelper = getSearchTitleHelper();
+        const displayTitle = titleHelper?.getBrowseDisplayTitle
+            ? titleHelper.getBrowseDisplayTitle(tree)
+            : (String(tree?.title || '').trim() || getDefaultTreeName());
+        const themeLabel = titleHelper?.getThemeLabel
+            ? titleHelper.getThemeLabel(tree)
+            : (() => {
+                const themeRaw = String(tree?.theme || '').trim();
+                if (!themeRaw || themeRaw === 'LoveTree' || themeRaw === 'Mixed') {
+                    return '';
+                }
+                return themeRaw;
+            })();
+        const timeRange = String(tree?.timeRange || '기록 없음').trim();
+        const memoryCount = Number(tree?.memoryCount || 0);
 
-         if (themeLabel) {
-             return `<strong style="color:var(--on-surface);">${escapeHtml(themeLabel)}</strong>와 함께한 <span style="color:var(--primary);font-weight:700;">${memoryCount}개의 감정 순간</span>이 <strong>${escapeHtml(timeRange)}</strong> 동안 기록되었어요.`;
-         }
+        if (!memories.length) {
+            if (themeLabel) {
+                return `<strong style="color:var(--on-surface);">${escapeHtml(displayTitle)}</strong>는 <strong style="color:var(--on-surface);">${escapeHtml(themeLabel)}</strong> 테마로 시작된 공개 러브트리예요.`;
+            }
+            return `<strong style="color:var(--on-surface);">${escapeHtml(displayTitle)}</strong>는 이제 막 시작된 공개 러브트리예요.`;
+        }
 
-         return `<strong style="color:var(--on-surface);">${escapeHtml(displayTitle)}</strong>에 담긴 <span style="color:var(--primary);font-weight:700;">${memoryCount}개의 감정 순간</span>이 <strong>${escapeHtml(timeRange)}</strong> 동안 기록되었어요.`;
-     }
+        if (themeLabel) {
+            return `<strong style="color:var(--on-surface);">${escapeHtml(themeLabel)}</strong>와 함께한 <span style="color:var(--primary);font-weight:700;">${memoryCount}개의 감정 순간</span>이 <strong>${escapeHtml(timeRange)}</strong> 동안 기록되었어요.`;
+        }
 
-     function renderSectionHeading(icon, label) {
-         return `
-             <div style="font-size:11px;font-weight:800;color:var(--on-surface-variant);margin-bottom:12px;text-transform:uppercase;letter-spacing:1px;display:flex;align-items:center;gap:4px;">
-                 <span class="material-symbols-outlined" style="font-size:14px;">${escapeHtml(icon)}</span>
-                 ${escapeHtml(label)}
-             </div>
-         `;
-     }
+        return `<strong style="color:var(--on-surface);">${escapeHtml(displayTitle)}</strong>에 담긴 <span style="color:var(--primary);font-weight:700;">${memoryCount}개의 감정 순간</span>이 <strong>${escapeHtml(timeRange)}</strong> 동안 기록되었어요.`;
+    }
 
-     function renderInfoCallout(icon, text, variant = 'neutral') {
-         const isPrimary = variant === 'primary';
-         const background = isPrimary ? 'var(--primary-container)' : 'var(--surface-container)';
-         const color = isPrimary ? 'var(--on-primary-container)' : 'var(--on-surface-variant)';
+    function renderSectionHeading(icon, label) {
+        return `
+            <div style="font-size:11px;font-weight:800;color:var(--on-surface-variant);margin-bottom:12px;text-transform:uppercase;letter-spacing:1px;display:flex;align-items:center;gap:4px;">
+                <span class="material-symbols-outlined" style="font-size:14px;">${escapeHtml(icon)}</span>
+                ${escapeHtml(label)}
+            </div>
+        `;
+    }
 
-         return `
-             <div style="margin-top:12px;padding:12px;background:${background};border-radius:0.75rem;font-size:13px;color:${color};font-weight:500;display:flex;align-items:center;gap:8px;">
-                 <span class="material-symbols-outlined" style="font-size:18px;">${escapeHtml(icon)}</span>
-                 ${escapeHtml(text)}
-             </div>
-         `;
-     }
+    function renderInfoCallout(icon, text, variant = 'neutral') {
+        const isPrimary = variant === 'primary';
+        const background = isPrimary ? 'var(--primary-container)' : 'var(--surface-container)';
+        const color = isPrimary ? 'var(--on-primary-container)' : 'var(--on-surface-variant)';
 
-     function renderPathStageBadge(index, title) {
-         return `<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:var(--surface-container);border-radius:8px;font-size:13px;"><span style="color:var(--primary);font-weight:800;">${index}</span><span>${escapeHtml(title)}</span></span>`;
-     }
+        return `
+            <div style="margin-top:12px;padding:12px;background:${background};border-radius:0.75rem;font-size:13px;color:${color};font-weight:500;display:flex;align-items:center;gap:8px;">
+                <span class="material-symbols-outlined" style="font-size:18px;">${escapeHtml(icon)}</span>
+                ${escapeHtml(text)}
+            </div>
+        `;
+    }
 
-     function renderMoreStagesText(count) {
-         if (!count || count <= 0) return '';
-         return `<div style="margin-top:8px;font-size:12px;color:var(--on-surface-variant);font-style:italic;">... 그리고 ${count}개의 순간 더</div>`;
-     }
+    function renderPathStageBadge(index, title) {
+        return `<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:var(--surface-container);border-radius:8px;font-size:13px;"><span style="color:var(--primary);font-weight:800;">${index}</span><span>${escapeHtml(title)}</span></span>`;
+    }
+
+    function renderMoreStagesText(count) {
+        if (!count || count <= 0) return '';
+        return `<div style="margin-top:8px;font-size:12px;color:var(--on-surface-variant);font-style:italic;">... 그리고 ${count}개의 순간 더</div>`;
+    }
 
     /**
      * Updates preview details for a tree
      * 
      * @param {Object} tree - Tree view model
      */
-     function updatePreview(tree) {
-         if (!_dom) {
-             console.warn('[LoveBudSearchPreviewRenderer] DOM not initialized');
-             return;
-         }
+    function updatePreview(tree) {
+        if (!_dom) {
+            console.warn('[LoveBudSearchPreviewRenderer] DOM not initialized');
+            return;
+        }
 
-         const memories = Array.isArray(tree.memories) ? tree.memories : [];
+        const memories = Array.isArray(tree.memories) ? tree.memories : [];
         const firstMem = memories[0];
         const hasMemories = memories.length > 0;
         const previewStats = getPreviewStatsElement();
 
-         // ─────────────────────────────────────────────
-         // Video/Iframe container
-         // ─────────────────────────────────────────────
-         
-         if (_dom.previewContainer) {
+        // ─────────────────────────────────────────────
+        // Video/Iframe container
+        // ─────────────────────────────────────────────
+        
+        if (_dom.previewContainer) {
             const titleHelper = getSearchTitleHelper();
             const previewDisplayTitle = titleHelper?.getBrowseDisplayTitle
                 ? titleHelper.getBrowseDisplayTitle(tree)
-                : (String(tree?.title || '').trim() || '러브트리');
+                : (String(tree?.title || '').trim() || getDefaultTreeName());
             const safeTreeTitle = escapeHtml(previewDisplayTitle);
 
             if (!hasMemories) {
@@ -230,8 +234,8 @@
                         <span class="material-symbols-outlined" style="font-size:36px;color:var(--primary);margin-bottom:12px;">psychiatry</span>
                         <div style="font-size:14px;font-weight:800;color:var(--on-surface);margin-bottom:8px;">${safeTreeTitle}</div>
                         <p style="margin:0;font-size:13px;line-height:1.6;">
-                            아직 대표 순간이 없어요.<br>
-                            첫 입덕 순간이 기록되면 여기에서 바로 미리 볼 수 있어요.
+                            ${escapeHtml(getSearchCopy('search.previewNoMomentTitle', '아직 대표 순간이 없어요.', 'There is no featured moment yet.'))}<br>
+                            ${escapeHtml(getSearchCopy('search.previewNoMomentBody', '첫 입덕 순간이 기록되면 여기에서 바로 미리 볼 수 있어요.', 'Once the first fandom moment is recorded, you will be able to preview it here.'))}
                         </p>
                     </div>
                 `;
@@ -250,7 +254,7 @@
                             allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                             allowfullscreen style="position:absolute;top:0;left:0;"></iframe>
                         <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top,rgba(0,0,0,0.8),transparent);padding:40px 20px 20px;color:white;text-align:center;">
-                            <div style="font-size:14px;font-weight:700;margin-bottom:8px;opacity:0.9;">첫 순간부터 감상하기</div>
+                            <div style="font-size:14px;font-weight:700;margin-bottom:8px;opacity:0.9;">${escapeHtml(getSearchCopy('search.previewStartFromFirstMoment', '첫 순간부터 감상하기', 'Start from the first moment'))}</div>
                             <div style="font-size:12px;opacity:0.7;">${safeFirstMemTitle}</div>
                         </div>
                     </div>
@@ -258,49 +262,50 @@
             }
         }
 
-         // ─────────────────────────────────────────
-         // Title
-         // ─────────────────────────────────────────
-         
-         if (_dom.previewTitle) {
-             const titleHelper = getSearchTitleHelper();
-             const previewDisplayTitle = titleHelper?.getBrowseDisplayTitle
-                 ? titleHelper.getBrowseDisplayTitle(tree)
-                 : (String(tree?.title || '').trim() || '러브트리');
-             const safeTreeTitle = escapeHtml(previewDisplayTitle);
-             const safeTimeRange = escapeHtml(tree.timeRange || '기록 없음');
+        // ─────────────────────────────────────────
+        // Title
+        // ─────────────────────────────────────────
+        
+        if (_dom.previewTitle) {
+            const titleHelper = getSearchTitleHelper();
+            const previewDisplayTitle = titleHelper?.getBrowseDisplayTitle
+                ? titleHelper.getBrowseDisplayTitle(tree)
+                : (String(tree?.title || '').trim() || getDefaultTreeName());
+            const safeTreeTitle = escapeHtml(previewDisplayTitle);
+            const safeTimeRange = escapeHtml(tree.timeRange || '기록 없음');
+            const memoryCountSuffix = getSearchCopy('search.previewMomentCountSuffix', '개 순간', 'moments');
 
-             _dom.previewTitle.innerHTML = `
-                 <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
-                     <span style="font-size:2rem;background:var(--surface-container-low);width:48px;height:48px;display:flex;align-items:center;justify-content:center;border-radius:12px;">${getTreeIcon(tree.stage)}</span>
-                     <div>
-                         <div style="font-size:1.1rem;font-weight:800;color:var(--on-surface);line-height:1.3;">${safeTreeTitle}</div>
-                         <div style="font-size:12px;color:var(--on-surface-variant);margin-top:2px;">${tree.memoryCount}개 순간 · ${safeTimeRange}</div>
-                     </div>
-                 </div>
-             `;
-         }
+            _dom.previewTitle.innerHTML = `
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+                    <span style="font-size:2rem;background:var(--surface-container-low);width:48px;height:48px;display:flex;align-items:center;justify-content:center;border-radius:12px;">${getTreeIcon(tree.stage)}</span>
+                    <div>
+                        <div style="font-size:1.1rem;font-weight:800;color:var(--on-surface);line-height:1.3;">${safeTreeTitle}</div>
+                        <div style="font-size:12px;color:var(--on-surface-variant);margin-top:2px;">${tree.memoryCount} ${escapeHtml(memoryCountSuffix)} · ${safeTimeRange}</div>
+                    </div>
+                </div>
+            `;
+        }
 
-         // ─────────────────────────────────────────
-         // Description with path visualization
-         // ─────────────────────────────────────────
-         
-         if (_dom.previewDesc) {
+        // ─────────────────────────────────────────
+        // Description with path visualization
+        // ─────────────────────────────────────────
+        
+        if (_dom.previewDesc) {
             if (!hasMemories) {
                 _dom.previewDesc.innerHTML = `
                     <div style="background:var(--surface-container-low);padding:20px;border-radius:1rem;margin-bottom:16px;">
-                        ${renderSectionHeading('route', '어떻게 입덕했을까요?')}
+                        ${renderSectionHeading('route', getSearchCopy('search.previewTimelineHeading', '어떻게 입덕했을까요?', 'How did this fandom begin?'))}
                         <div style="font-size:14px;line-height:1.7;color:var(--on-surface-variant);">
-                            아직 기록된 순간이 없어 감정 경로가 비어 있어요.<br>
-                            첫 순간이 추가되면 이 패널에서 흐름을 바로 미리 볼 수 있어요.
+                            ${escapeHtml(getSearchCopy('search.previewTimelineEmpty', '아직 기록된 순간이 없어 감정 경로가 비어 있어요.', 'No moments have been recorded yet, so the emotional path is still empty.'))}<br>
+                            ${escapeHtml(getSearchCopy('search.previewTimelineEmptyBody', '첫 순간이 추가되면 이 패널에서 흐름을 바로 미리 볼 수 있어요.', 'Once the first moment is added, you will be able to preview the flow in this panel.'))}
                         </div>
                     </div>
 
                     <div style="font-size:14px;color:var(--on-surface-variant);line-height:1.6;padding:0 4px;">
                         ${getPreviewSummaryCopy(tree, memories)}
-                        <span style="color:var(--primary);font-weight:700;">아직 기록은 0개</span>지만,
+                        <span style="color:var(--primary);font-weight:700;">${escapeHtml(getSearchCopy('search.previewNoRecordsYet', '아직 기록은 0개', 'There are still 0 records'))}</span>지만,
                         다음 순간이 쌓이면 감정 경로가 여기서 채워집니다.
-                        ${renderInfoCallout('info', '새로 시작된 공개 트리입니다')}
+                        ${renderInfoCallout('info', getSearchCopy('search.previewNewTreeInfo', '새로 시작된 공개 트리입니다', 'This is a newly started public tree.'))}
                     </div>
                 `;
             } else {
@@ -313,7 +318,7 @@
 
                 _dom.previewDesc.innerHTML = `
                     <div style="background:var(--surface-container-low);padding:20px;border-radius:1rem;margin-bottom:16px;">
-                        ${renderSectionHeading('route', '어떻게 입덕했을까요?')}
+                        ${renderSectionHeading('route', getSearchCopy('search.previewTimelineHeading', '어떻게 입덕했을까요?', 'How did this fandom begin?'))}
                         <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;line-height:1.8;">
                             ${pathStages}
                         </div>
@@ -322,36 +327,36 @@
 
                     <div style="font-size:14px;color:var(--on-surface-variant);line-height:1.6;padding:0 4px;">
                         ${getPreviewSummaryCopy(tree, memories)}
-                        ${renderInfoCallout('touch_app', '카드를 클릭하여 감정 경로를 따라가보세요', 'primary')}
+                        ${renderInfoCallout('touch_app', getSearchCopy('search.previewJourneyCta', '카드를 클릭하여 감정 경로를 따라가보세요', 'Click a card to follow the emotional path.'), 'primary')}
                     </div>
                 `;
             }
         }
 
-         // ─────────────────────────────────────────
-         // Stats
-         // ─────────────────────────────────────────
+        // ─────────────────────────────────────────
+        // Stats
+        // ─────────────────────────────────────────
 
-         if (previewStats) {
-             previewStats.hidden = false;
-         }
-         
-         if (_dom.previewMemoriesCount) {
-             _dom.previewMemoriesCount.textContent = tree.memoryCount;
-         }
+        if (previewStats) {
+            previewStats.hidden = false;
+        }
+        
+        if (_dom.previewMemoriesCount) {
+            _dom.previewMemoriesCount.textContent = tree.memoryCount;
+        }
 
-         if (_dom.previewTreeDuration) {
-             _dom.previewTreeDuration.textContent = getTimelineLabel(tree, memories);
-         }
+        if (_dom.previewTreeDuration) {
+            _dom.previewTreeDuration.textContent = getTimelineLabel(tree, memories);
+        }
 
-         // ─────────────────────────────────────────
-         // Emotion Tags
-         // ─────────────────────────────────────────
-         
-         if (_dom.previewEmotionTags) {
-             _dom.previewEmotionTags.innerHTML = renderEmotionTags(tree.emotionTags);
-         }
-     }
+        // ─────────────────────────────────────────
+        // Emotion Tags
+        // ─────────────────────────────────────────
+        
+        if (_dom.previewEmotionTags) {
+            _dom.previewEmotionTags.innerHTML = renderEmotionTags(tree.emotionTags);
+        }
+    }
 
     /**
      * Renders placeholder when no tree selected
@@ -438,5 +443,5 @@
         renderEmotionTags: renderEmotionTags
     };
 
-     console.log('[LoveBudSearchPreviewRenderer] Search preview renderer loaded v20260420-2');
- })();
+    console.log('[LoveBudSearchPreviewRenderer] Search preview renderer loaded v20260420-3');
+})();
