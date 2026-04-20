@@ -153,7 +153,9 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     };
 
-    const inlineTextResolvers = createInlineTextResolversFallbacks();
+    const inlineTextResolvers = editorHelpers.safeI18nText
+        ? editorHelpers
+        : createInlineTextResolversFallbacks();
 
     const safeI18nText = editorHelpers.safeI18nText || inlineTextResolvers.safeI18nText;
     const resolveHintText = editorHelpers.resolveHintText || inlineTextResolvers.resolveHintText;
@@ -246,10 +248,12 @@ document.addEventListener('DOMContentLoaded', () => {
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
+        .replace(/\"/g, '&quot;')
         .replace(/'/g, '&#39;'));
 
-    const inlineMediaResolvers = createInlineMediaResolversFallbacks();
+    const inlineMediaResolvers = editorHelpers.safeUrl
+        ? editorHelpers
+        : createInlineMediaResolversFallbacks();
 
     const safeUrl = editorHelpers.safeUrl || inlineMediaResolvers.safeUrl;
     const extractYouTubeIdFallback = editorHelpers.extractYouTubeIdFallback || inlineMediaResolvers.extractYouTubeIdFallback;
