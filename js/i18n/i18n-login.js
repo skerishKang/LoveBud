@@ -1,6 +1,6 @@
 /**
  * LoveBud - i18n Login Dictionary
- * v20260419-1
+ * v20260420-1
  *
  * 로그인/회원가입 페이지 번역 키
  */
@@ -49,6 +49,24 @@
       en: 'Continue with email'
     },
 
+    // 이메일 인증 모달
+    'email_modal_title_login': {
+      ko: '이메일로 로그인',
+      en: 'Sign in with email'
+    },
+    'email_modal_desc_login': {
+      ko: '이미 만든 이메일 계정으로 로그인합니다',
+      en: 'Sign in with an email account you already created'
+    },
+    'email_modal_title_signup': {
+      ko: '이메일로 회원가입',
+      en: 'Create an account with email'
+    },
+    'email_modal_desc_signup': {
+      ko: '이메일과 닉네임으로 러브트리를 시작합니다',
+      en: 'Start your LoveTree with an email address and display name'
+    },
+
     // 폼 레이블
     'display_name_label': {
       ko: '닉네임',
@@ -65,6 +83,20 @@
     'password_label': {
       ko: '비밀번호',
       en: 'Password'
+    },
+
+    // 버튼 문구
+    'login_btn': {
+      ko: '로그인',
+      en: 'Log in'
+    },
+    'signup_btn': {
+      ko: '회원가입 완료',
+      en: 'Create account'
+    },
+    'later': {
+      ko: '나중에 시작하기',
+      en: 'Maybe later'
     },
 
     // 전환 링크
