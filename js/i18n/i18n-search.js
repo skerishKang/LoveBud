@@ -1,6 +1,6 @@
 /**
  * LoveBud - i18n Search Dictionary
- * v20260420-1
+ * v20260420-2
  *
  * 검색/둘러보기 페이지(search.html) 번역 키
  */
@@ -43,6 +43,74 @@
     'search.previewEmptyBody': {
       ko: '해당 트리의 감정 흐름과 대표 순간을 여기서 미리 볼 수 있어요.',
       en: 'and preview its emotional flow and featured moment here.'
+    },
+    'search.previewNoMomentTitle': {
+      ko: '아직 대표 순간이 없어요.',
+      en: 'There is no featured moment yet.'
+    },
+    'search.previewNoMomentBody': {
+      ko: '첫 입덕 순간이 기록되면 여기에서 바로 미리 볼 수 있어요.',
+      en: 'Once the first fandom moment is recorded, you will be able to preview it here.'
+    },
+    'search.previewStartFromFirstMoment': {
+      ko: '첫 순간부터 감상하기',
+      en: 'Start from the first moment'
+    },
+    'search.previewTimelineHeading': {
+      ko: '어떻게 입덕했을까요?',
+      en: 'How did this fandom begin?'
+    },
+    'search.previewTimelineEmpty': {
+      ko: '아직 기록된 순간이 없어 감정 경로가 비어 있어요.',
+      en: 'No moments have been recorded yet, so the emotional path is still empty.'
+    },
+    'search.previewTimelineEmptyBody': {
+      ko: '첫 순간이 추가되면 이 패널에서 흐름을 바로 미리 볼 수 있어요.',
+      en: 'Once the first moment is added, you will be able to preview the flow in this panel.'
+    },
+    'search.previewNoRecordsYet': {
+      ko: '아직 기록은 0개',
+      en: 'There are still 0 records'
+    },
+    'search.previewNewTreeInfo': {
+      ko: '새로 시작된 공개 트리입니다',
+      en: 'This is a newly started public tree.'
+    },
+    'search.previewJourneyCta': {
+      ko: '카드를 클릭하여 감정 경로를 따라가보세요',
+      en: 'Click a card to follow the emotional path.'
+    },
+    'search.previewMomentCountSuffix': {
+      ko: '개 순간',
+      en: 'moments'
+    },
+    'search.previewDurationPending': {
+      ko: '업데이트 정보 준비 중',
+      en: 'Preparing update info'
+    },
+    'search.previewEmotionTagsLabel': {
+      ko: '감정 태그',
+      en: 'Emotion Tags'
+    },
+    'search.previewTimelineRecentUpdate': {
+      ko: '최근 업데이트',
+      en: 'Recently updated'
+    },
+    'search.previewTimelineLastMoment': {
+      ko: '마지막 순간',
+      en: 'Last moment'
+    },
+    'search.previewTimelineCreated': {
+      ko: '생성',
+      en: 'Created'
+    },
+    'search.previewTimelineUnavailable': {
+      ko: '업데이트 정보 없음',
+      en: 'No update info'
+    },
+    'search.previewDefaultTreeName': {
+      ko: '러브트리',
+      en: 'LoveTree'
     },
 
     // 검색 입력
