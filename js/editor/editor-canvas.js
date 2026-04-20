@@ -287,6 +287,14 @@ function createEditorCanvas(deps) {
         return imgWrapper;
     }
 
+    function createNodeCard(mem) {
+        const card = document.createElement('div');
+        card.className = 'node-card';
+        const imgWrapper = createNodeImageSection(mem);
+        card.appendChild(imgWrapper);
+        return card;
+    }
+
     const drawNode = (mem) => {
         const pos = calcPosition(mem);
         const nodeEl = document.createElement('div');
@@ -298,12 +306,7 @@ function createEditorCanvas(deps) {
         nodeEl.style.top = `${pos.y - NODE_HALF}px`;
         nodeEl.style.animationDelay = mem.delay || '0s';
 
-        const card = document.createElement('div');
-        card.className = 'node-card';
-
-        const imgWrapper = createNodeImageSection(mem);
-        card.appendChild(imgWrapper);
-        nodeEl.appendChild(card);
+        nodeEl.appendChild(createNodeCard(mem));
 
         if (typeof canvasNode.appendNodeInfo === 'function') {
             canvasNode.appendNodeInfo(nodeEl, mem);
