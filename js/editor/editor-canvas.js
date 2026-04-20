@@ -210,82 +210,84 @@ function createEditorCanvas(deps) {
         svg.appendChild(path);
     };
 
-function bindNodeDrag(nodeEl, mem) {
-  nodeEl.style.cursor = 'grab';
+    function bindNodeDrag(nodeEl, mem) {
+        nodeEl.style.cursor = 'grab';
 
-  nodeEl.addEventListener('mousedown', (e) => {
-    if (typeof canvasInteraction.beginNodeDrag === 'function') {
-      canvasInteraction.beginNodeDrag(e, nodeEl, mem, viewportState, getWorldPosition);
-      return;
+        nodeEl.addEventListener('mousedown', (e) => {
+            if (typeof canvasInteraction.beginNodeDrag === 'function') {
+                canvasInteraction.beginNodeDrag(e, nodeEl, mem, viewportState, getWorldPosition);
+                return;
+            }
+
+            if (e.button !== 0) return;
+            if (e.target.closest('button')) return;
+            e.preventDefault();
+            e.stopPropagation();
+
+            const startWorld = getWorldPosition(mem);
+            viewportState.isDraggingNode = true;
+            viewportState.dragNodeId = mem.id;
+            viewportState.dragStartClientX = e.clientX;
+            viewportState.dragStartClientY = e.clientY;
+            viewportState.dragStartWorldX = startWorld.x;
+            viewportState.dragStartWorldY = startWorld.y;
+            viewportState.dragMoved = false;
+            nodeEl.style.cursor = 'grabbing';
+        });
+
+        nodeEl.addEventListener('click', (e) => {
+            if (nodeEl.dataset.suppressClick === '1') {
+                nodeEl.dataset.suppressClick = '';
+                e.preventDefault();
+                e.stopPropagation();
+                return;
+            }
+            onNodeClick(nodeEl, mem);
+        });
     }
 
-    if (e.button !== 0) return;
-    if (e.target.closest('button')) return;
-    e.preventDefault();
-    e.stopPropagation();
-
-    const startWorld = getWorldPosition(mem);
-    viewportState.isDraggingNode = true;
-    viewportState.dragNodeId = mem.id;
-    viewportState.dragStartClientX = e.clientX;
-    viewportState.dragStartClientY = e.clientY;
-    viewportState.dragStartWorldX = startWorld.x;
-    viewportState.dragStartWorldY = startWorld.y;
-    viewportState.dragMoved = false;
-    nodeEl.style.cursor = 'grabbing';
-  });
-
-  nodeEl.addEventListener('click', (e) => {
-    if (nodeEl.dataset.suppressClick === '1') {
-      nodeEl.dataset.suppressClick = '';
-      e.preventDefault();
-      e.stopPropagation();
-      return;
+    function hideNodeSkeleton(img, skeleton) {
+        img.classList.add('loaded');
+        skeleton.style.display = 'none';
     }
-    onNodeClick(nodeEl, mem);
-  });
-}
 
-function hideNodeSkeleton(img, skeleton) {
-  img.classList.add('loaded');
-  skeleton.style.display = 'none';
-}
-function handleNodeImageError(img, skeleton) {
-  const currentSrc = img.getAttribute('src') || '';
-  if (currentSrc.includes('/hqdefault.jpg')) {
-    img.src = currentSrc.replace('/hqdefault.jpg', '/mqdefault.jpg');
-    return;
-  }
-  if (currentSrc.includes('/mqdefault.jpg')) {
-    img.src = currentSrc.replace('/mqdefault.jpg', '/default.jpg');
-    return;
-  }
-  img.style.display = 'none';
-  skeleton.classList.add('error');
-  skeleton.textContent = '♪';
-}
-function createNodeImageSection(mem) {
-  const imgWrapper = document.createElement('div');
-  imgWrapper.className = 'node-img-wrapper';
-  imgWrapper.style.position = 'relative';
-  const skeleton = document.createElement('div');
-  skeleton.className = 'node-skeleton';
-  imgWrapper.appendChild(skeleton);
-  const img = document.createElement('img');
-  img.src = resolveMemoryThumbnail(mem);
-  img.alt = mem.title || '';
-  img.draggable = false;
-  img.addEventListener('dragstart', (e) => e.preventDefault());
-  img.onload = () => hideNodeSkeleton(img, skeleton);
-  img.onerror = () => handleNodeImageError(img, skeleton);
-  if (img.complete) {
-    hideNodeSkeleton(img, skeleton);
-  }
-  imgWrapper.appendChild(img);
-  return imgWrapper;
-}
+    function handleNodeImageError(img, skeleton) {
+        const currentSrc = img.getAttribute('src') || '';
+        if (currentSrc.includes('/hqdefault.jpg')) {
+            img.src = currentSrc.replace('/hqdefault.jpg', '/mqdefault.jpg');
+            return;
+        }
+        if (currentSrc.includes('/mqdefault.jpg')) {
+            img.src = currentSrc.replace('/mqdefault.jpg', '/default.jpg');
+            return;
+        }
+        img.style.display = 'none';
+        skeleton.classList.add('error');
+        skeleton.textContent = '♪';
+    }
 
-const drawNode = (mem) => {
+    function createNodeImageSection(mem) {
+        const imgWrapper = document.createElement('div');
+        imgWrapper.className = 'node-img-wrapper';
+        imgWrapper.style.position = 'relative';
+        const skeleton = document.createElement('div');
+        skeleton.className = 'node-skeleton';
+        imgWrapper.appendChild(skeleton);
+        const img = document.createElement('img');
+        img.src = resolveMemoryThumbnail(mem);
+        img.alt = mem.title || '';
+        img.draggable = false;
+        img.addEventListener('dragstart', (e) => e.preventDefault());
+        img.onload = () => hideNodeSkeleton(img, skeleton);
+        img.onerror = () => handleNodeImageError(img, skeleton);
+        if (img.complete) {
+            hideNodeSkeleton(img, skeleton);
+        }
+        imgWrapper.appendChild(img);
+        return imgWrapper;
+    }
+
+    const drawNode = (mem) => {
         const pos = calcPosition(mem);
         const nodeEl = document.createElement('div');
         nodeEl.className = 'memory-node floating-node';
@@ -296,12 +298,12 @@ const drawNode = (mem) => {
         nodeEl.style.top = `${pos.y - NODE_HALF}px`;
         nodeEl.style.animationDelay = mem.delay || '0s';
 
-const card = document.createElement('div');
-  card.className = 'node-card';
+        const card = document.createElement('div');
+        card.className = 'node-card';
 
-  const imgWrapper = createNodeImageSection(mem);
-  card.appendChild(imgWrapper);
-  nodeEl.appendChild(card);
+        const imgWrapper = createNodeImageSection(mem);
+        card.appendChild(imgWrapper);
+        nodeEl.appendChild(card);
 
         if (typeof canvasNode.appendNodeInfo === 'function') {
             canvasNode.appendNodeInfo(nodeEl, mem);
