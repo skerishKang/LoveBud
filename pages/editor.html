@@ -26,10 +26,10 @@
                     <span id="sidebarSelectionHint" class="editor-sidebar-meta"></span>
                 </div>
                 <div class="editor-sidebar-actions">
-                    <button type="button" class="sidebar-btn" id="focusSelectedBtn" disabled style="opacity:0.5;cursor:not-allowed;">
-                        <span class="btn-icon">→</span>
-                        <span class="btn-label" id="focusSelectedBtnLabel">선택</span>
-                    </button>
+<button type="button" class="sidebar-btn editor-focus-btn is-disabled" id="focusSelectedBtn" disabled>
+<span class="btn-icon">→</span>
+<span class="btn-label" id="focusSelectedBtnLabel">선택</span>
+</button>
                     <button type="button" class="sidebar-btn" id="recenterCanvasBtn">
                         <span class="btn-icon">⌂</span>
                         <span class="btn-label" id="recenterCanvasBtnLabel">트리</span>
@@ -37,7 +37,7 @@
                 </div>
             </section>
 
-            <section class="editor-add-section" style="margin-top: auto;">
+            <section class="editor-add-section editor-add-section-bottom">
                 <button type="button" class="sidebar-btn sidebar-btn-primary" id="addMemoryBtn">
                     <span class="btn-icon">+</span>
                     <span class="btn-label" id="addMemoryBtnLabel">추가</span>
@@ -72,7 +72,7 @@
         <aside class="detail-panel memory-detail-section" id="detailPanel">
             <div class="panel-header">
                 <h3 class="headline editor-panel-headline"></h3>
-                <button type="button" class="icon-menu-btn editor-hidden-initial" aria-label="더보기" id="detailMoreBtn">더보기</button>
+                <button type="button" class="icon-menu-btn editor-hidden-initial editor-detail-more-btn" aria-label="더보기" id="detailMoreBtn">더보기</button>
             </div>
 
             <div class="detail-content" id="detailContent">
@@ -142,7 +142,7 @@
                 </div>
             </div>
 
-            <div class="panel-footer editor-submit-wrap editor-submit-footer" id="detailPanelFooter">
+            <div class="panel-footer editor-submit-wrap editor-submit-footer editor-hidden-initial" id="detailPanelFooter">
                 <button type="submit" class="primary-btn editor-submit-btn-full" id="detailSubmitBtn">...</button>
             </div>
         </aside>
