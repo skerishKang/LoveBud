@@ -601,26 +601,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let memories = memoryLoadResult.memories || [];
 
+        const handleMemoriesUpdated = () => {
+            if (typeof initCanvas === 'function') initCanvas();
+            if (typeof updateSidebarStatus === 'function') updateSidebarStatus();
+        };
+
         const refreshMemories = editorDataLoader.createRefreshMemories
             ? editorDataLoader.createRefreshMemories({
                 treeId,
                 apiClient: window.apiClient,
                 normalizeMemory,
-                onMemoriesUpdated: () => {
-                    if (typeof initCanvas === 'function') initCanvas();
-                    if (typeof updateSidebarStatus === 'function') updateSidebarStatus();
-                }
+                onMemoriesUpdated: handleMemoriesUpdated
             })
             : async () => {
                 if (!treeId) return;
+
                 try {
                     if (window.apiClient && window.apiClient.getMemoriesByTree) {
                         const apiMemories = await window.apiClient.getMemoriesByTree(treeId);
                         if (Array.isArray(apiMemories)) {
                             window.currentTreeMemories = apiMemories.map(normalizeMemory).filter(Boolean);
                             console.log('[editor] Memories refreshed:', window.currentTreeMemories.length);
-                            if (typeof initCanvas === 'function') initCanvas();
-                            if (typeof updateSidebarStatus === 'function') updateSidebarStatus();
+                            handleMemoriesUpdated();
                         }
                     }
                 } catch (e) {
