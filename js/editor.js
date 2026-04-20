@@ -665,6 +665,14 @@ document.addEventListener('DOMContentLoaded', () => {
         addBtn: document.getElementById('addMemoryBtn')
     });
 
+    const createEditorFormRefs = () => ({
+        urlInput: document.getElementById('memoryUrlInput'),
+        titleInput: document.getElementById('memoryTitleInput'),
+        memoInput: document.getElementById('memoryMemoInput'),
+        cancelBtn: document.getElementById('cancelAddMemory'),
+        confirmBtn: document.getElementById('confirmAddMemory')
+    });
+
     const prepareEditorShell = () => {
         applyEditorShellCopy();
 
@@ -1042,11 +1050,13 @@ document.addEventListener('DOMContentLoaded', () => {
             addMemoryFromForm
         } = memoryForm;
 
-        const urlInput = document.getElementById('memoryUrlInput');
-        const titleInput = document.getElementById('memoryTitleInput');
-        const memoInput = document.getElementById('memoryMemoInput');
-        const cancelBtn = document.getElementById('cancelAddMemory');
-        const confirmBtn = document.getElementById('confirmAddMemory');
+        const {
+            urlInput,
+            titleInput,
+            memoInput,
+            cancelBtn,
+            confirmBtn
+        } = createEditorFormRefs();
 
         if (editorBindings.bindMemoryCreateControls) {
             editorBindings.bindMemoryCreateControls({
