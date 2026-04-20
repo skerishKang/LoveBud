@@ -239,22 +239,25 @@ function createEditorDetailUI(deps) {
             resetDetailViewState();
         }
 
-        if (emptyState) emptyState.style.display = isEmpty ? 'block' : 'none';
-        if (viewMode) viewMode.style.display = isEmpty ? 'none' : 'block';
-        if (editMode) editMode.style.display = 'none';
-        if (actions) actions.style.display = isEmpty ? 'none' : 'flex';
-        if (indicator && isEmpty) indicator.style.display = 'none';
-    };
+if (emptyState) emptyState.style.display = isEmpty ? 'block' : 'none';
+  if (viewMode) viewMode.style.display = isEmpty ? 'none' : 'block';
+  if (editMode) editMode.style.display = 'none';
+  if (actions) actions.style.display = isEmpty ? 'none' : 'flex';
+  if (indicator && isEmpty) indicator.style.display = 'none';
+  const footer = document.getElementById('detailPanelFooter');
+  if (footer) {
+    footer.style.display = 'none';
+  }
+};
 
-    const updateFocusSelectedBtn = () => {
-        const btn = document.getElementById('focusSelectedBtn');
-        if (!btn) return;
+const updateFocusSelectedBtn = () => {
+  const btn = document.getElementById('focusSelectedBtn');
+  if (!btn) return;
 
-        const hasSelection = !!getSelectedNodeId();
-        btn.disabled = !hasSelection;
-        btn.style.opacity = hasSelection ? '1' : '0.5';
-        btn.style.cursor = hasSelection ? 'pointer' : 'not-allowed';
-    };
+  const hasSelection = !!getSelectedNodeId();
+  btn.disabled = !hasSelection;
+  btn.classList.toggle('is-disabled', !hasSelection);
+};
 
     const updateSidebarStatus = () => {
         const treeTitleEl = document.getElementById('sidebarTreeTitle');
