@@ -13,6 +13,7 @@ function createEditorCanvas(deps) {
         onNodeClick
     } = deps;
 
+    const i18n = window.t || function(key) { return key; };
     const treeId = (window.currentTreeData && window.currentTreeData.id)
         || new URLSearchParams(window.location.search).get('treeId')
         || 'default';
@@ -505,7 +506,7 @@ function createEditorCanvas(deps) {
                     draggedEl.dataset.suppressClick = '1';
                     draggedEl.style.cursor = 'grab';
                     if (window.LoveBudUI?.showToast) {
-                        window.LoveBudUI.showToast('순간 위치를 조정했습니다', 'success', 1800);
+                        window.LoveBudUI.showToast(i18n('node_position_adjusted') || '순간 위치를 조정했습니다', 'success', 1800);
                     }
                 }
             }
