@@ -16,6 +16,39 @@
   var TREES_CACHE_KEY = 'my_trees_list';
   var TREE_DETAIL_CACHE_KEY = 'tree_detail_';
   var TREE_MEMORIES_CACHE_KEY = 'tree_memories_';
+  var PERSISTENT_TREES_CACHE_KEY = 'lovebud_my_trees_list_cache';
+  var PERSISTENT_TREES_CACHE_TTL_MS = 3 * 60 * 1000;
+
+  function readPersistentTreesCache() {
+    try {
+      var raw = localStorage.getItem(PERSISTENT_TREES_CACHE_KEY);
+      if (!raw) return null;
+
+      var parsed = JSON.parse(raw);
+      if (!parsed || !Array.isArray(parsed.data)) return null;
+      if (parsed.expiry && Date.now() > parsed.expiry) {
+        localStorage.removeItem(PERSISTENT_TREES_CACHE_KEY);
+        return null;
+      }
+
+      return parsed.data;
+    } catch (e) {
+      console.warn('[my-trees-data] Failed to read persistent trees cache:', e);
+      return null;
+    }
+  }
+
+  function writePersistentTreesCache(trees) {
+    try {
+      localStorage.setItem(PERSISTENT_TREES_CACHE_KEY, JSON.stringify({
+        data: trees,
+        expiry: Date.now() + PERSISTENT_TREES_CACHE_TTL_MS,
+        cachedAt: Date.now()
+      }));
+    } catch (e) {
+      console.warn('[my-trees-data] Failed to write persistent trees cache:', e);
+    }
+  }
 
   function preloadFirstTreeDetail(trees) {
     try {
@@ -63,14 +96,19 @@
     var renderTrees = options?.renderTrees;
     var showToast = options?.showToast;
 
-    if (typeof setState === 'function' && stateEnum?.LOADING) {
-      setState(stateEnum.LOADING);
+    var cachedTrees = cache ? cache.get(TREES_CACHE_KEY) : null;
+    if ((!cachedTrees || !Array.isArray(cachedTrees)) ) {
+      cachedTrees = readPersistentTreesCache();
+      if (cachedTrees && Array.isArray(cachedTrees) && cache) {
+        cache.set(TREES_CACHE_KEY, cachedTrees, PERSISTENT_TREES_CACHE_TTL_MS);
+      }
     }
 
-    var cachedTrees = cache ? cache.get(TREES_CACHE_KEY) : null;
     if (cachedTrees && Array.isArray(cachedTrees) && typeof renderTrees === 'function') {
       console.log('[my-trees-data] Rendering cached trees:', cachedTrees.length);
       renderTrees(cachedTrees);
+    } else if (typeof setState === 'function' && stateEnum?.LOADING) {
+      setState(stateEnum.LOADING);
     }
 
     try {
@@ -85,6 +123,7 @@
         if (cache) {
           cache.set(TREES_CACHE_KEY, trees, 3 * 60 * 1000);
         }
+        writePersistentTreesCache(trees);
 
         if (typeof renderTrees === 'function') {
           renderTrees(trees);
@@ -93,7 +132,7 @@
         preloadFirstTreeDetail(trees);
       } else {
         console.error('[my-trees-data] Invalid trees response:', trees);
-        if (typeof setState === 'function' && stateEnum?.ERROR) {
+        if (!cachedTrees && typeof setState === 'function' && stateEnum?.ERROR) {
           setState(stateEnum.ERROR);
         }
       }
@@ -119,6 +158,7 @@
     TREES_CACHE_KEY: TREES_CACHE_KEY,
     TREE_DETAIL_CACHE_KEY: TREE_DETAIL_CACHE_KEY,
     TREE_MEMORIES_CACHE_KEY: TREE_MEMORIES_CACHE_KEY,
+    PERSISTENT_TREES_CACHE_KEY: PERSISTENT_TREES_CACHE_KEY,
     preloadFirstTreeDetail: preloadFirstTreeDetail,
     loadTrees: loadTrees
   };
