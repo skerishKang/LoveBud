@@ -98,7 +98,7 @@ function createEditorCanvas(deps) {
         const metrics = getMetrics();
         return {
             x: Math.max(360, Math.min(Math.round(metrics.width * 0.42), metrics.width - ROOT_RIGHT_GUTTER)),
-            y: Math.max(220, Math.min(Math.round(metrics.height * 0.36), metrics.height - ROOT_BOTTOM_GUTTER))
+            y: Math.max(260, Math.min(Math.round(metrics.height * 0.48), metrics.height - ROOT_BOTTOM_GUTTER))
         };
     }
 
@@ -235,6 +235,8 @@ function createEditorCanvas(deps) {
         const nodeEl = document.createElement('div');
         nodeEl.className = 'memory-node floating-node';
         nodeEl.dataset.memoryId = mem.id;
+        nodeEl.draggable = false;
+        nodeEl.style.touchAction = 'none';
         nodeEl.style.left = `${pos.x - NODE_HALF}px`;
         nodeEl.style.top = `${pos.y - NODE_HALF}px`;
         nodeEl.style.animationDelay = mem.delay || '0s';
@@ -253,6 +255,8 @@ function createEditorCanvas(deps) {
         const img = document.createElement('img');
         img.src = resolveMemoryThumbnail(mem);
         img.alt = mem.title || '';
+        img.draggable = false;
+        img.addEventListener('dragstart', (e) => e.preventDefault());
 
         img.onload = () => {
             img.classList.add('loaded');
@@ -318,6 +322,7 @@ function createEditorCanvas(deps) {
         const canonicalRootId = getCanonicalRootId();
         const treeMemories = getTreeMemories();
         const selectedNodeId = document.querySelector('.memory-node.selected')?.dataset?.memoryId || null;
+        canvas.style.backgroundPosition = `${viewportState.offsetX}px ${viewportState.offsetY}px`;
 
         canvas.querySelectorAll('.memory-node').forEach((node) => node.remove());
         canvas.querySelectorAll('#emptyTreeMessage').forEach((el) => el.remove());
@@ -427,6 +432,7 @@ function createEditorCanvas(deps) {
         }
 
         canvas.style.cursor = 'grab';
+        canvas.style.touchAction = 'none';
 
         canvas.addEventListener('mousedown', (e) => {
             if (e.target.closest('.memory-node') || e.target.closest('#addMemoryForm')) return;

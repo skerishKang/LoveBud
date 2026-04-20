@@ -9,7 +9,7 @@
 (function() {
   var SETTINGS_KEY = 'lovebud_user_settings';
   var DEFAULT_SETTINGS = {
-    defaultVisibility: 'private'
+    defaultVisibility: 'public'
   };
 
   // 설정 불러오기
