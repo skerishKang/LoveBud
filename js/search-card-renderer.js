@@ -166,13 +166,34 @@
         const safeLastMoment = lastMomentRaw ? escapeHtml(lastMomentRaw) : null;
         const safeTreeId = escapeHtml(tree.id);
         const safeStage = escapeHtml(tree.stage);
-        const safeTitle = escapeHtml(tree.title);
         const safeTimeRange = escapeHtml(tree.timeRange);
-        
+
         // 생성일 기반 구분자 (제목 중복 시 구분용)
-        const createdDate = tree.createdAt 
+        const createdDate = tree.createdAt
             ? new Date(tree.createdAt).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })
             : '';
+
+        const rawTitle = String(tree.title || '').trim();
+        const firstTagRaw = Array.isArray(tree.emotionTags) && tree.emotionTags.length
+            ? String(tree.emotionTags[0] || '').trim()
+            : '';
+        const themeRaw = String(tree.theme || '').trim();
+        const isDefaultTitle = rawTitle === '새 러브트리' || rawTitle === '나의 첫 러브트리';
+
+        let displayTitleRaw = rawTitle || '러브트리';
+        if (isDefaultTitle) {
+            if (themeRaw && themeRaw !== 'LoveTree' && themeRaw !== 'Mixed') {
+                displayTitleRaw = `${themeRaw} 러브트리`;
+            } else if (firstTagRaw) {
+                displayTitleRaw = `${firstTagRaw}으로 시작한 러브트리`;
+            } else if (createdDate) {
+                displayTitleRaw = `${createdDate} 시작한 러브트리`;
+            } else {
+                displayTitleRaw = '새로 시작된 러브트리';
+            }
+        }
+
+        const safeTitle = escapeHtml(displayTitleRaw);
          
          // Path description (memory 0개 트리용 문구 개선)
         let pathDesc;
