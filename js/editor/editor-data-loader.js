@@ -40,6 +40,100 @@
         };
     }
 
+    async function loadInitialEditorTree(options) {
+        const opts = options || {};
+        const urlTreeId = opts.urlTreeId || '';
+        const apiClient = opts.apiClient || null;
+        const getFirstMockTree = opts.getFirstMockTree || function() { return null; };
+        const createDefaultTreeTitle = opts.createDefaultTreeTitle || function() { return '러브트리'; };
+        const getConfirmedSessionUser = opts.getConfirmedSessionUser || function() { return null; };
+
+        let tree = null;
+        let isNewTree = false;
+        let treeLoadStatus = 'not_found';
+        let treeLoadErrorMessage = '';
+        let authRequired = false;
+
+        if (urlTreeId) {
+            try {
+                if (apiClient && apiClient.getTree) {
+                    tree = await apiClient.getTree(urlTreeId);
+                    if (tree) {
+                        treeLoadStatus = 'loaded';
+                        console.log('[editor] Tree from URL loaded:', tree.id);
+                    }
+                } else {
+                    treeLoadStatus = 'api_unavailable';
+                }
+            } catch (e) {
+                treeLoadStatus = 'error';
+                treeLoadErrorMessage = String(e?.message || '');
+                console.warn('[editor] Tree from URL load failed:', e.message);
+            }
+
+            if (!tree) {
+                authRequired =
+                    /401|Authentication required|Invalid ID token/i.test(treeLoadErrorMessage) ||
+                    (/Access denied/i.test(treeLoadErrorMessage) && !getConfirmedSessionUser());
+            }
+
+            return {
+                tree,
+                isNewTree,
+                treeLoadStatus,
+                treeLoadErrorMessage,
+                authRequired
+            };
+        }
+
+        try {
+            if (apiClient && apiClient.getFirstTree) {
+                const apiTree = await apiClient.getFirstTree();
+                if (apiTree) {
+                    tree = apiTree;
+                    treeLoadStatus = 'loaded';
+                    console.log('[editor] API tree loaded (getFirstTree)');
+                } else if (apiClient.createTree) {
+                    console.log('[editor] No tree found, creating default tree...');
+                    const newTree = await apiClient.createTree({
+                        title: createDefaultTreeTitle(),
+                        visibility: 'public'
+                    });
+                    tree = newTree;
+                    isNewTree = true;
+                    treeLoadStatus = 'created';
+                    console.log('[editor] Default tree created:', newTree);
+                }
+            }
+        } catch (e) {
+            treeLoadErrorMessage = String(e?.message || '');
+            console.warn('[editor] API tree failed, fallback to mock:', e.message);
+            authRequired = /401|Authentication/i.test(treeLoadErrorMessage);
+        }
+
+        if (authRequired) {
+            return {
+                tree: null,
+                isNewTree: false,
+                treeLoadStatus: 'auth_required',
+                treeLoadErrorMessage,
+                authRequired: true
+            };
+        }
+
+        if (!tree) {
+            tree = typeof getFirstMockTree === 'function' ? getFirstMockTree() : null;
+        }
+
+        return {
+            tree,
+            isNewTree,
+            treeLoadStatus: tree ? (treeLoadStatus === 'not_found' ? 'loaded' : treeLoadStatus) : 'not_found',
+            treeLoadErrorMessage,
+            authRequired: false
+        };
+    }
+
     async function loadEditorMemories(options) {
         const opts = options || {};
         const treeId = opts.treeId;
@@ -121,6 +215,7 @@
 
     window.LoveBudEditorDataLoader = {
         createNormalizeMemory,
+        loadInitialEditorTree,
         loadEditorMemories,
         createRefreshMemories
     };
