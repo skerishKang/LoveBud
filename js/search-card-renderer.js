@@ -168,30 +168,16 @@
         const safeStage = escapeHtml(tree.stage);
         const safeTimeRange = escapeHtml(tree.timeRange);
 
+        // Helper로 display title 계산 (중복 로직 제거)
+        const TitleHelper = window.LoveBudSearchTitleHelper;
+        const displayTitleRaw = TitleHelper?.getBrowseDisplayTitle
+            ? TitleHelper.getBrowseDisplayTitle(tree)
+            : (String(tree.title || '').trim() || '러브트리');
+
         // 생성일 기반 구분자 (제목 중복 시 구분용)
         const createdDate = tree.createdAt
             ? new Date(tree.createdAt).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })
             : '';
-
-        const rawTitle = String(tree.title || '').trim();
-        const firstTagRaw = Array.isArray(tree.emotionTags) && tree.emotionTags.length
-            ? String(tree.emotionTags[0] || '').trim()
-            : '';
-        const themeRaw = String(tree.theme || '').trim();
-        const isDefaultTitle = rawTitle === '새 러브트리' || rawTitle === '나의 첫 러브트리';
-
-        let displayTitleRaw = rawTitle || '러브트리';
-        if (isDefaultTitle) {
-            if (themeRaw && themeRaw !== 'LoveTree' && themeRaw !== 'Mixed') {
-                displayTitleRaw = `${themeRaw} 러브트리`;
-            } else if (firstTagRaw) {
-                displayTitleRaw = `${firstTagRaw}으로 시작한 러브트리`;
-            } else if (createdDate) {
-                displayTitleRaw = `${createdDate} 시작한 러브트리`;
-            } else {
-                displayTitleRaw = '새로 시작된 러브트리';
-            }
-        }
 
         const safeTitle = escapeHtml(displayTitleRaw);
          
