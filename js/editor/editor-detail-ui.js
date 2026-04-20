@@ -16,6 +16,17 @@ function createEditorDetailUI(deps) {
         showToast
     } = deps;
 
+    const formatI18nText = (key, fallback, replacements) => {
+        let text = i18n(key) || fallback;
+        if (!text || text === key) text = fallback;
+        if (replacements && typeof replacements === 'object') {
+            Object.keys(replacements).forEach((name) => {
+                text = text.replace(new RegExp(`\\{${name}\\}`, 'g'), String(replacements[name] ?? ''));
+            });
+        }
+        return text;
+    };
+
     const resetDetailViewState = () => {
         const headerEl = detailPanel.querySelector('h3');
         if (headerEl) {
@@ -73,7 +84,7 @@ function createEditorDetailUI(deps) {
         if (!emptyState) {
             emptyState = document.createElement('div');
             emptyState.id = 'detailEmptyState';
-            emptyState.innerHTML = '<div style="text-align:center;padding:40px 24px;color:var(--on-surface-variant);"><span class="material-symbols-outlined" style="font-size:48px;opacity:0.4;margin-bottom:16px;display:block;">sentiment_satisfied</span><p style="font-size:1rem;font-weight:700;margin-bottom:8px;color:var(--on-surface);">' + (i18n('detail_empty_title') || '아직 추가된 순간이 없어요') + '</p><p style="font-size:0.9rem;opacity:0.78;line-height:1.6;">' + (i18n('detail_empty_desc') || '왼쪽 아래의 \'순간 추가\' 버튼으로 첫 기록을 남겨보세요.') + '</p></div>';
+            emptyState.innerHTML = '<div style="text-align:center;padding:40px 24px;color:var(--on-surface-variant);"><span class="material-symbols-outlined" style="font-size:48px;opacity:0.4;margin-bottom:16px;display:block;">sentiment_satisfied</span><p style="font-size:1rem;font-weight:700;margin-bottom:8px;color:var(--on-surface);">' + formatI18nText('detail_empty_title', '첫 순간이 트리를 깨워요') + '</p><p style="font-size:0.9rem;opacity:0.78;line-height:1.6;">' + formatI18nText('detail_empty_desc', '왼쪽 아래의 "순간 추가" 버튼으로 당신의 첫 기억을 심어보세요.') + '</p></div>';
             detailContent.appendChild(emptyState);
         }
 
@@ -119,14 +130,14 @@ function createEditorDetailUI(deps) {
             treeTitleEl.textContent = resolveTreeTitleText(currentTreeData?.title);
         }
         if (momentCountEl) {
-            momentCountEl.textContent = `순간 ${count}개가 이어지고 있어요`;
+            momentCountEl.textContent = formatI18nText('sidebar_moment_count', `순간 ${count}개가 이어지고 있어요`, { count });
         }
         if (flowSummaryEl) {
             flowSummaryEl.textContent = selected?.title
-                ? `지금은 "${selected.title}" 순간에 마음이 머물러 있어요.`
+                ? formatI18nText('sidebar_flow_summary_selected', `지금은 "${selected.title}" 순간에 마음이 머물러 있어요.`, { title: selected.title })
                 : count > 0
-                    ? `${count}개의 순간이 하나의 러브트리로 차곡차곡 이어지고 있어요.`
-                    : '첫 기억이 심어지면 이곳에 감정의 흐름이 차곡차곡 쌓여요.';
+                    ? formatI18nText('sidebar_flow_summary_connected', `${count}개의 순간이 하나의 러브트리로 차곡차곡 이어지고 있어요.`, { count })
+                    : formatI18nText('sidebar_flow_summary_empty', '첫 기억이 심어지면 이곳에 감정의 흐름이 차곡차곡 쌓여요.');
         }
         if (hintEl) {
             const currentSelectionLabel = i18n('sidebar_current_selection') || '현재 선택';
@@ -192,7 +203,7 @@ function createEditorDetailUI(deps) {
                 headerEl.innerHTML = `
                     <div style="display:flex;flex-direction:column;gap:8px;">
                         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-                            <span style="font-size:1.4rem;line-height:1.2;font-weight:900;letter-spacing:-0.03em;color:var(--on-surface);">${i18n('waiting_first_moment') || '첫 순간을 기다리고 있어요'}${localBadge}</span>
+                            <span style="font-size:1.4rem;line-height:1.2;font-weight:900;letter-spacing:-0.03em;color:var(--on-surface);">${formatI18nText('waiting_first_moment', '첫 순간을 기다리고 있어요')}${localBadge}</span>
                         </div>
                         <div style="font-size:13px;color:var(--on-surface-variant);line-height:1.6;">
                             ${resolveHintText(i18n('empty_panel_hint_short'), 'empty_panel_hint_short', '첫 순간이 심어지면 여기에 따뜻하게 펼쳐집니다.')}
@@ -270,7 +281,7 @@ function createEditorDetailUI(deps) {
             memoBody.style.fontSize = '0.95rem';
             memoBody.style.color = 'var(--on-surface)';
             memoBody.textContent = isEmptyState
-                ? i18n('empty_tree_memo') || '아직 비어 있는 자리예요. 첫 순간을 심으면 이 트리가 당신의 흐름으로 자라나기 시작해요.'
+                ? formatI18nText('empty_tree_memo', '아직 비어 있는 자리예요. 첫 순간을 심으면 이 트리가 당신의 흐름으로 자라나기 시작해요.')
                 : (data.memo || '');
             noteEl.appendChild(memoBody);
 
@@ -281,12 +292,12 @@ function createEditorDetailUI(deps) {
 
                 if (isRootSelected) {
                     hintEl.style.color = 'var(--primary)';
-                    hintEl.innerHTML = `<span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;margin-right:4px;">star</span> ${i18n('root_moment_hint') || '이 순간은 현재 트리의 시작점입니다'}`;
+                    hintEl.innerHTML = `<span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;margin-right:4px;">star</span> ${formatI18nText('root_moment_hint', '이 순간은 현재 트리의 시작점입니다')}`;
                 } else if (data.parentId) {
                     hintEl.style.paddingTop = '12px';
                     hintEl.style.borderTop = '1px solid var(--outline-variant)';
                     hintEl.style.color = 'var(--on-surface-variant)';
-                    hintEl.innerHTML = `<span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;margin-right:4px;">account_tree</span> ${i18n('path_moment_hint') || '이 순간은 감정 경로 안에 연결되어 있습니다'}`;
+                    hintEl.innerHTML = `<span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;margin-right:4px;">account_tree</span> ${formatI18nText('path_moment_hint', '이 순간은 감정 경로 안에 연결되어 있습니다')}`;
                 }
 
                 if (hintEl.innerHTML) {
