@@ -90,7 +90,7 @@
       normalizedTree = {
         id: tree && tree.id,
         title: (tree && tree.title) || '나의 러브트리',
-        visibility: (tree && tree.visibility) || 'private',
+        visibility: (tree && tree.visibility) || 'public',
         updatedAt: (tree && (tree.updatedAt || tree.createdAt)) || null
       };
     }

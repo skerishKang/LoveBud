@@ -132,7 +132,7 @@ function createEditorDetailUI(deps) {
     const updateDetailPanel = (data) => {
         const currentTree = getCurrentTreeData() || {};
         const treeId = currentTree.id || new URLSearchParams(window.location.search).get('tree');
-        const visibility = currentTree.visibility || 'private';
+        const visibility = currentTree.visibility || 'public';
         const isPublic = visibility === 'public';
         const visIcon = isPublic ? 'public' : 'lock';
         const visLabel = isPublic ? i18n('visibility_public') : i18n('visibility_private');
