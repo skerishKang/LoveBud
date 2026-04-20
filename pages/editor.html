@@ -19,7 +19,7 @@
                 <div class="editor-status-card">
                     <div class="editor-space-between-row">
                         <strong id="sidebarTreeTitle">LoveTree</strong>
-                        <button type="button" id="renameTreeBtn" class="icon-menu-btn" aria-label="트리 제목 변경" title="트리 제목 변경" style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border:1px solid var(--outline-variant);border-radius:999px;background:var(--surface);cursor:pointer;font-size:13px;flex:0 0 auto;">✎</button>
+                        <button type="button" id="renameTreeBtn" class="icon-menu-btn editor-rename-btn" aria-label="트리 제목 변경" title="트리 제목 변경">✎</button>
                     </div>
                     <p id="sidebarMomentCount"></p>
                     <p id="sidebarFlowSummary" class="editor-flow-summary"></p>
@@ -71,12 +71,12 @@
 
         <aside class="detail-panel memory-detail-section" id="detailPanel">
             <div class="panel-header">
-                <h3 class="headline" style="font-size: 1.5rem;"></h3>
-                <button type="button" class="icon-menu-btn" aria-label="더보기" id="detailMoreBtn" style="display: none;">더보기</button>
+                <h3 class="headline editor-panel-headline"></h3>
+                <button type="button" class="icon-menu-btn editor-hidden-initial" aria-label="더보기" id="detailMoreBtn">더보기</button>
             </div>
 
             <div class="detail-content" id="detailContent">
-                <div id="detailEmptyState" style="display:block;">
+                <div id="detailEmptyState" class="editor-visible-initial">
                     <div class="editor-empty-state-box">
                         <span class="material-symbols-outlined editor-empty-state-icon">sentiment_satisfied</span>
                         <p id="detailEmptyTitle" class="editor-empty-state-title"></p>
@@ -84,7 +84,7 @@
                     </div>
                 </div>
 
-                <div id="detailViewMode" style="display: none;">
+                <div id="detailViewMode" class="editor-hidden-initial">
                     <div class="detail-video">
                         <img id="detailImg" src="" alt="">
                         <div class="memory-preview-overlay">
@@ -113,13 +113,13 @@
                     </div>
 
                     <div id="saveStatusIndicator" class="save-status-indicator save-status editor-save-status-wrap" aria-live="polite">
-                        <span id="saveStatusIcon" style="display:none;"></span>
+                        <span id="saveStatusIcon" class="editor-save-status-icon-hidden"></span>
                         <span id="saveStatusText">저장됨</span>
                         <span id="lastSavedTime" class="last-saved-time"></span>
                     </div>
                 </div>
 
-                <div id="detailEditMode" style="display: none;">
+                <div id="detailEditMode" class="editor-hidden-initial">
                     <div class="detail-info-group">
                         <label id="editTitleLabel">...</label>
                         <input type="text" id="editTitleInput" class="editor-edit-input" placeholder="...">
