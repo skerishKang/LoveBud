@@ -16,7 +16,7 @@ function createEditorCanvas(deps) {
     const treeId = (window.currentTreeData && window.currentTreeData.id)
         || new URLSearchParams(window.location.search).get('treeId')
         || 'default';
-    const layoutStorageKey = 'lovebud_tree_layout_' + treeId;
+    const layoutStorageKey = 'lovebud_tree_layout_v2_' + treeId;
 
     function loadStoredLayout() {
         try {
@@ -55,7 +55,7 @@ function createEditorCanvas(deps) {
         positions: storedLayout.positions
     };
 
-    const ROOT_RIGHT_GUTTER = 260;
+    const ROOT_RIGHT_GUTTER = 300;
     const ROOT_BOTTOM_GUTTER = 180;
     const NODE_WIDTH = 108;
     const NODE_HALF = Math.round(NODE_WIDTH / 2);
@@ -80,8 +80,8 @@ function createEditorCanvas(deps) {
     function getRootBasePosition() {
         const metrics = getMetrics();
         return {
-            x: Math.max(260, Math.min(Math.round(metrics.width * 0.32), metrics.width - ROOT_RIGHT_GUTTER)),
-            y: Math.max(240, Math.min(Math.round(metrics.height * 0.48), metrics.height - ROOT_BOTTOM_GUTTER))
+            x: Math.max(360, Math.min(Math.round(metrics.width * 0.42), metrics.width - ROOT_RIGHT_GUTTER)),
+            y: Math.max(220, Math.min(Math.round(metrics.height * 0.36), metrics.height - ROOT_BOTTOM_GUTTER))
         };
     }
 
@@ -183,6 +183,8 @@ function createEditorCanvas(deps) {
     };
 
     function bindNodeDrag(nodeEl, mem) {
+        nodeEl.style.cursor = 'grab';
+
         nodeEl.addEventListener('mousedown', (e) => {
             if (e.button !== 0) return;
             if (e.target.closest('button')) return;
@@ -197,6 +199,7 @@ function createEditorCanvas(deps) {
             viewportState.dragStartWorldX = startWorld.x;
             viewportState.dragStartWorldY = startWorld.y;
             viewportState.dragMoved = false;
+            nodeEl.style.cursor = 'grabbing';
         });
 
         nodeEl.addEventListener('click', (e) => {
@@ -340,8 +343,8 @@ function createEditorCanvas(deps) {
 
         const world = getWorldPosition(target);
         const metrics = getMetrics();
-        viewportState.offsetX = Math.round(metrics.width * 0.45 - world.x);
-        viewportState.offsetY = Math.round(metrics.height * 0.42 - world.y);
+        viewportState.offsetX = Math.round(metrics.width * 0.5 - world.x);
+        viewportState.offsetY = Math.round(metrics.height * 0.38 - world.y);
         initCanvas();
         reapplySelection(nodeId);
     }
@@ -362,8 +365,8 @@ function createEditorCanvas(deps) {
         const maxY = Math.max(...points.map((p) => p.y));
         const metrics = getMetrics();
 
-        viewportState.offsetX = Math.round(metrics.width * 0.45 - ((minX + maxX) / 2));
-        viewportState.offsetY = Math.round(metrics.height * 0.42 - ((minY + maxY) / 2));
+        viewportState.offsetX = Math.round(metrics.width * 0.5 - ((minX + maxX) / 2));
+        viewportState.offsetY = Math.round(metrics.height * 0.38 - ((minY + maxY) / 2));
         initCanvas();
     }
 
@@ -406,12 +409,15 @@ function createEditorCanvas(deps) {
             });
         }
 
+        canvas.style.cursor = 'grab';
+
         canvas.addEventListener('mousedown', (e) => {
             if (e.target.closest('.memory-node') || e.target.closest('#addMemoryForm')) return;
             viewportState.isPanning = true;
             viewportState.startX = e.clientX;
             viewportState.startY = e.clientY;
             canvas.classList.add('panning');
+            canvas.style.cursor = 'grabbing';
         });
 
         window.addEventListener('mousemove', (e) => {
@@ -426,8 +432,7 @@ function createEditorCanvas(deps) {
                     y: Math.round(viewportState.dragStartWorldY + dy)
                 };
                 persistStoredPositions();
-                initCanvas();
-                reapplySelection(viewportState.dragNodeId);
+                scheduleInitCanvas();
                 return;
             }
 
@@ -457,6 +462,7 @@ function createEditorCanvas(deps) {
                 const draggedEl = document.querySelector(`.memory-node[data-memory-id="${draggedId}"]`);
                 if (draggedEl && moved) {
                     draggedEl.dataset.suppressClick = '1';
+                    draggedEl.style.cursor = 'grab';
                     if (window.LoveBudUI?.showToast) {
                         window.LoveBudUI.showToast('순간 위치를 조정했습니다', 'success', 1800);
                     }
@@ -465,7 +471,9 @@ function createEditorCanvas(deps) {
 
             viewportState.isPanning = false;
             canvas.classList.remove('panning');
+            canvas.style.cursor = 'grab';
             persistStoredPositions();
+            initCanvas();
         });
     };
 
@@ -482,35 +490,24 @@ function createEditorCanvas(deps) {
 }
 
 function injectEditorRenameButton() {
-    if (document.getElementById('renameTreeBtn')) return;
-
     let attempts = 0;
     const maxAttempts = 3;
     const retryDelay = 400;
 
-    function attemptInject() {
-        attempts += 1;
-        const statusSection = document.querySelector('.editor-status-section');
-        const actions = document.querySelector('.editor-sidebar-actions');
+    function syncTreeTitleEverywhere(nextTitle) {
+        const sidebarTitleEl = document.getElementById('sidebarTreeTitle');
+        if (sidebarTitleEl) sidebarTitleEl.textContent = nextTitle;
 
-        if (!statusSection || !actions) {
-            if (attempts < maxAttempts) {
-                setTimeout(attemptInject, retryDelay);
-                return;
-            }
-            console.warn('[editor] rename button inject failed after', maxAttempts, 'attempts');
-            return;
-        }
+        document.querySelectorAll('.tree-title-text').forEach((el) => {
+            el.textContent = nextTitle;
+        });
+    }
 
-        if (document.getElementById('renameTreeBtn')) return;
+    function bindRenameButton(buttonEl) {
+        if (!buttonEl || buttonEl.dataset.renameBound === '1') return;
+        buttonEl.dataset.renameBound = '1';
 
-        const renameBtn = document.createElement('button');
-        renameBtn.type = 'button';
-        renameBtn.id = 'renameTreeBtn';
-        renameBtn.className = 'sidebar-btn';
-        renameBtn.innerHTML = '<span class="btn-icon">✎</span><span class="btn-label">트리 제목 변경</span>';
-
-        renameBtn.addEventListener('click', async () => {
+        buttonEl.addEventListener('click', async () => {
             const currentTree = window.currentTreeData || {};
             const treeId = currentTree.id || new URLSearchParams(window.location.search).get('treeId');
             if (!treeId) {
@@ -534,18 +531,7 @@ function injectEditorRenameButton() {
                     ...currentTree,
                     title: trimmed
                 };
-                const sidebarTitleEl = document.getElementById('sidebarTreeTitle');
-                if (sidebarTitleEl) sidebarTitleEl.textContent = trimmed;
-                
-                const detailTitleEl = document.querySelector('.detail-tree-title');
-                if (detailTitleEl) detailTitleEl.textContent = trimmed;
-
-                const detailPanel = document.getElementById('detailPanel');
-                if (detailPanel) {
-                    const existingTitle = detailPanel.querySelector('.tree-title-text');
-                    if (existingTitle) existingTitle.textContent = trimmed;
-                }
-
+                syncTreeTitleEverywhere(trimmed);
                 if (window.LoveBudUI?.showToast) {
                     window.LoveBudUI.showToast('트리 제목을 변경했습니다', 'success', 2200);
                 }
@@ -556,14 +542,30 @@ function injectEditorRenameButton() {
                 }
             }
         });
+    }
 
-        actions.insertAdjacentElement('afterend', renameBtn);
+    function attemptInject() {
+        attempts += 1;
+        const inlineButton = document.getElementById('renameTreeBtn');
+        const legacyButton = document.getElementById('renameTreeSidebarBtn');
+        const hintEl = document.getElementById('sidebarSelectionHint');
 
-        if (!window.__editorDragHintInjected) {
-            const hintEl = document.getElementById('sidebarSelectionHint');
-            if (hintEl && hintEl.textContent && !hintEl.textContent.includes('드래그')) {
-                hintEl.textContent += ' · 빈 공간 드래그로 화면 이동, 순간 드래그로 위치 조정';
-                window.__editorDragHintInjected = true;
+        if (inlineButton) {
+            bindRenameButton(inlineButton);
+        } else if (attempts < maxAttempts) {
+            setTimeout(attemptInject, retryDelay);
+            return;
+        }
+
+        if (legacyButton) {
+            legacyButton.remove();
+        }
+
+        if (hintEl) {
+            const baseHint = hintEl.dataset.baseHintText || hintEl.textContent || '첫 순간을 추가해 트리를 시작해 보세요.';
+            hintEl.dataset.baseHintText = baseHint;
+            if (!hintEl.textContent.includes('드래그')) {
+                hintEl.textContent = `${baseHint} · 빈 공간 드래그로 화면 이동, 순간 드래그로 위치 조정`;
             }
         }
     }
