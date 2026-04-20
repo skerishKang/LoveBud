@@ -314,7 +314,9 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `;
 
-        setDetailEmptyState(true);
+        if (typeof setDetailEmptyState === 'function') {
+            setDetailEmptyState(true);
+        }
 
         const retryBtn = document.getElementById('retryOpenTreeBtn');
         if (retryBtn) {
@@ -379,114 +381,153 @@ document.addEventListener('DOMContentLoaded', () => {
         // Track local fallback mode for sidebar/detail UI
         let isLocalSaveMode = false;
 
-        // Tree load order: direct treeId first, then getFirstTree fallback
-        let tree = null;
-        let isNewTree = false;
+        const loadInitialTree = editorDataLoader.loadInitialEditorTree || (async (options) => {
+            const opts = options || {};
+            const requestedTreeId = opts.urlTreeId || '';
+            const apiClient = opts.apiClient || null;
+            const getFirstMockTreeFallback = opts.getFirstMockTree || (() => null);
+            const createDefaultTreeTitle = opts.createDefaultTreeTitle || (() => '러브트리');
+            const getConfirmedSessionUserFallback = opts.getConfirmedSessionUser || (() => null);
 
-        if (urlTreeId) {
-            // When treeId exists in URL, load that tree directly.
-            // If this fails, surface an explicit error instead of creating a new tree.
+            let tree = null;
+            let isNewTree = false;
             let treeLoadStatus = 'not_found';
             let treeLoadErrorMessage = '';
+            let authRequired = false;
+
+            if (requestedTreeId) {
+                try {
+                    if (apiClient && apiClient.getTree) {
+                        tree = await apiClient.getTree(requestedTreeId);
+                        if (tree) {
+                            treeLoadStatus = 'loaded';
+                            console.log('[editor] Tree from URL loaded:', tree.id);
+                        }
+                    } else {
+                        treeLoadStatus = 'api_unavailable';
+                    }
+                } catch (e) {
+                    treeLoadStatus = 'error';
+                    treeLoadErrorMessage = String(e?.message || '');
+                    console.warn('[editor] Tree from URL load failed:', e.message);
+                }
+
+                if (!tree) {
+                    authRequired =
+                        /401|Authentication required|Invalid ID token/i.test(treeLoadErrorMessage) ||
+                        (/Access denied/i.test(treeLoadErrorMessage) && !getConfirmedSessionUserFallback());
+                }
+
+                return {
+                    tree,
+                    isNewTree,
+                    treeLoadStatus,
+                    treeLoadErrorMessage,
+                    authRequired
+                };
+            }
 
             try {
-                if (window.apiClient && window.apiClient.getTree) {
-                    tree = await window.apiClient.getTree(urlTreeId);
-                    if (tree) {
+                if (apiClient && apiClient.getFirstTree) {
+                    const apiTree = await apiClient.getFirstTree();
+                    if (apiTree) {
+                        tree = apiTree;
                         treeLoadStatus = 'loaded';
-                        console.log('[editor] Tree from URL loaded:', tree.id);
+                        console.log('[editor] API tree loaded (getFirstTree)');
+                    } else {
+                        console.log('[editor] No tree found, creating default tree...');
+                        if (apiClient.createTree) {
+                            const newTree = await apiClient.createTree({
+                                title: createDefaultTreeTitle(),
+                                visibility: 'public'
+                            });
+                            tree = newTree;
+                            isNewTree = true;
+                            treeLoadStatus = 'created';
+                            console.log('[editor] Default tree created:', newTree);
+                        }
                     }
-                } else {
-                    treeLoadStatus = 'api_unavailable';
                 }
             } catch (e) {
-                treeLoadStatus = 'error';
                 treeLoadErrorMessage = String(e?.message || '');
-                console.warn('[editor] Tree from URL load failed:', e.message);
+                console.warn('[editor] API tree failed, fallback to mock:', e.message);
+                authRequired = /401|Authentication/i.test(treeLoadErrorMessage);
+            }
+
+            if (authRequired) {
+                return {
+                    tree: null,
+                    isNewTree: false,
+                    treeLoadStatus: 'auth_required',
+                    treeLoadErrorMessage,
+                    authRequired: true
+                };
             }
 
             if (!tree) {
-                const authRequired =
-                    /401|Authentication required|Invalid ID token/i.test(treeLoadErrorMessage) ||
-                    (/Access denied/i.test(treeLoadErrorMessage) && !getConfirmedSessionUser());
+                tree = getFirstMockTreeFallback();
+            }
 
-                if (authRequired) {
-                    showToast(i18n('need_login'), 'error');
-                    redirectToEditorLogin(2000);
-                    return;
-                }
+            return {
+                tree,
+                isNewTree,
+                treeLoadStatus: tree ? (treeLoadStatus === 'not_found' ? 'loaded' : treeLoadStatus) : 'not_found',
+                treeLoadErrorMessage,
+                authRequired: false
+            };
+        });
+
+        const treeLoadResult = await loadInitialTree({
+            urlTreeId,
+            apiClient: window.apiClient,
+            getFirstMockTree,
+            createDefaultTreeTitle: () => safeI18nText(i18n, 'default_tree_title', '러브트리'),
+            getConfirmedSessionUser
+        });
+
+        let tree = treeLoadResult.tree || null;
+
+        if (!tree) {
+            if (treeLoadResult.authRequired) {
+                showToast(i18n('need_login'), 'error');
+                redirectToEditorLogin(2000);
+                return;
+            }
+
+            if (urlTreeId) {
+                const treeLoadStatus = treeLoadResult.treeLoadStatus || 'not_found';
+                const treeLoadErrorMessage = treeLoadResult.treeLoadErrorMessage || '';
 
                 const errorTitle =
                     treeLoadStatus === 'api_unavailable'
                         ? (i18n('tree_load_fail_title') || '트리를 불러올 수 없어요')
                         : /Access denied/i.test(treeLoadErrorMessage)
                             ? (i18n('tree_access_denied_title') || '이 러브트리를 열 권한이 없어요')
-                        : treeLoadStatus === 'error'
-                            ? (i18n('tree_load_error_title') || '트리를 여는 중 문제가 발생했어요')
-                            : (i18n('tree_not_found_title') || '트리를 찾을 수 없어요');
+                            : treeLoadStatus === 'error'
+                                ? (i18n('tree_load_error_title') || '트리를 여는 중 문제가 발생했어요')
+                                : (i18n('tree_not_found_title') || '트리를 찾을 수 없어요');
 
                 const errorDesc =
                     treeLoadStatus === 'api_unavailable'
                         ? (i18n('tree_load_api_unavailable') || '트리 조회 API를 사용할 수 없는 상태입니다. 잠시 후 다시 시도해 주세요.')
                         : /Access denied/i.test(treeLoadErrorMessage)
                             ? (i18n('tree_access_denied_desc') || '비공개 러브트리이거나 내 계정에 권한이 없어요. 다시 확인하거나 다른 계정으로 로그인해 보세요.')
-                        : treeLoadStatus === 'error'
-                            ? (i18n('tree_load_error_desc') || '일시적인 서버 문제 또는 접근 권한 문제일 수 있습니다. 다시 시도하거나 트리 목록으로 돌아가 주세요.')
-                            : (i18n('tree_load_not_found_desc') || '잘못된 링크이거나 접근 권한이 없는 트리입니다.');
+                            : treeLoadStatus === 'error'
+                                ? (i18n('tree_load_error_desc') || '일시적인 서버 문제 또는 접근 권한 문제일 수 있습니다. 다시 시도하거나 트리 목록으로 돌아가 주세요.')
+                                : (i18n('tree_load_not_found_desc') || '잘못된 링크이거나 접근 권한이 없는 트리입니다.');
 
                 renderTreeLoadError({
                     canvas,
-                    detailPanel,
                     addBtn,
                     errorTitle,
                     errorDesc,
                     i18n,
                     escapeHtml,
-                    setDetailEmptyState
+                    setDetailEmptyState: null
                 });
-
                 return;
             }
 
-            // In the urlTreeId branch, wait until the tree is loaded successfully.
-        } else {
-            // No treeId in URL: continue with the existing getFirstTree() flow
-            try {
-                if (window.apiClient && window.apiClient.getFirstTree) {
-                    const apiTree = await window.apiClient.getFirstTree();
-                    if (apiTree) {
-                        tree = apiTree;
-                        console.log('[editor] API tree loaded (getFirstTree)');
-                    } else {
-                        // API succeeded but there is no tree yet, so create a default tree
-                        console.log('[editor] No tree found, creating default tree...');
-                        if (window.apiClient.createTree) {
-                            const i18n = getI18n();
-                            const newTree = await window.apiClient.createTree({
-                                title: safeI18nText(i18n, 'default_tree_title', '러브트리'),
-                                visibility: 'public'
-                            });
-                            tree = newTree;
-                            isNewTree = true;
-                            console.log('[editor] Default tree created:', newTree);
-                        }
-                    }
-                }
-            } catch (e) {
-                console.warn('[editor] API tree failed, fallback to mock:', e.message);
-                if (e.message?.includes('401') || e.message?.includes('Authentication')) {
-                    showToast(i18n('need_login'), 'error');
-                    redirectToEditorLogin(2000);
-                    return;
-                }
-            }
-            // API failed, fall back to the local mock source
-            if (!tree) {
-                tree = getFirstMockTree();
-            }
-        } // end else (no urlTreeId)
-
-        if (!tree) {
             console.warn('Tree data not found.');
             return;
         }
