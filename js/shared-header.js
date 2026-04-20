@@ -169,12 +169,6 @@
             var activeClass = activeKey === 'myTrees' ? ' class="active"' : '';
             navLinksHTML += '<a href="' + menuConfig.myTrees.href + '"' + activeClass + '>' + t(menuConfig.myTrees.textKey) + '</a>';
         }
-
-        // 설정
-        if (menuConfig.settings) {
-            var activeClass = activeKey === 'settings' ? ' class="active"' : '';
-            navLinksHTML += '<a href="' + menuConfig.settings.href + '"' + activeClass + '>' + t(menuConfig.settings.textKey) + '</a>';
-        }
         
         // 에디터 페이지에서는 "편집하기" 메뉴 숨김 (이미 편집 화면 안에 있음)
 
