@@ -11,8 +11,18 @@
  */
 
 (function() {
+  var PERSISTENT_TREES_CACHE_KEY = 'lovebud_my_trees_list_cache';
+
   function getI18n(options) {
     return options?.i18n || window.t || function(k) { return k; };
+  }
+
+  function clearPersistentTreesCache() {
+    try {
+      localStorage.removeItem(PERSISTENT_TREES_CACHE_KEY);
+    } catch (e) {
+      console.warn('[my-trees-actions] Failed to clear persistent trees cache:', e);
+    }
   }
 
   async function renameTree(treeId, currentTitle, options) {
@@ -26,6 +36,7 @@
     try {
       if (window.apiClient && window.apiClient.updateTree) {
         await window.apiClient.updateTree(treeId, { title: newTitle.trim() });
+        clearPersistentTreesCache();
         options?.showToast?.(i18n('rename_success') || '트리 이름이 변경되었습니다.', 'success');
         options?.reloadTrees?.();
       } else {
@@ -46,6 +57,7 @@
     try {
       if (window.apiClient && window.apiClient.deleteTree) {
         await window.apiClient.deleteTree(treeId);
+        clearPersistentTreesCache();
         options?.showToast?.(i18n('delete_success') || '트리가 삭제되었습니다.', 'success');
         options?.reloadTrees?.();
       } else {
@@ -130,6 +142,7 @@
         window.LoveBudCache.clear(options.cacheKey);
         console.log('[my-trees-actions] Cache cleared after new tree creation');
       }
+      clearPersistentTreesCache();
 
       var treeId = newTree?.id;
       if (treeId) {
