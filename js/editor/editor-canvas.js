@@ -19,6 +19,7 @@ function createEditorCanvas(deps) {
         || 'default';
     const layoutStorageKey = 'lovebud_tree_layout_v2_' + treeId;
     const canvasLayout = window.LoveBudEditorCanvasLayout || {};
+    const canvasNode = window.LoveBudEditorCanvasNode || {};
 
     function loadStoredLayout() {
         if (typeof canvasLayout.createLayoutStore === 'function') {
@@ -231,17 +232,6 @@ function createEditorCanvas(deps) {
         });
     }
 
-    function resolveNodeHighlightText(mem) {
-        if (Array.isArray(mem.emotionTags) && mem.emotionTags.length > 0) {
-            return `#${String(mem.emotionTags[0] || '').replace(/^#/, '')}`;
-        }
-
-        const memo = String(mem.memo || '').trim();
-        if (!memo) return '';
-
-        return memo.length > 18 ? `${memo.slice(0, 18)}…` : memo;
-    }
-
     const drawNode = (mem) => {
         const pos = calcPosition(mem);
         const nodeEl = document.createElement('div');
@@ -300,29 +290,12 @@ function createEditorCanvas(deps) {
 
         imgWrapper.appendChild(img);
         card.appendChild(imgWrapper);
-
-        const infoLabel = document.createElement('div');
-        infoLabel.className = 'node-info-label';
-
-        const titleEl = document.createElement('p');
-        titleEl.className = 'node-title';
-        titleEl.textContent = mem.title || '';
-
-        const dateEl = document.createElement('p');
-        dateEl.className = 'node-date';
-        dateEl.textContent = mem.timestamp || '';
-
-        const highlightText = resolveNodeHighlightText(mem);
-        const moodEl = document.createElement('p');
-        moodEl.className = 'node-mood';
-        moodEl.textContent = highlightText;
-        moodEl.style.display = highlightText ? 'block' : 'none';
-
-        infoLabel.appendChild(titleEl);
-        infoLabel.appendChild(dateEl);
-        infoLabel.appendChild(moodEl);
         nodeEl.appendChild(card);
-        nodeEl.appendChild(infoLabel);
+
+        if (typeof canvasNode.appendNodeInfo === 'function') {
+            canvasNode.appendNodeInfo(nodeEl, mem);
+        }
+
         bindNodeDrag(nodeEl, mem);
         canvas.appendChild(nodeEl);
 
