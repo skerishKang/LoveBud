@@ -52,6 +52,17 @@
             transition: transform 0.25s ease, opacity 0.25s ease;
         }
 
+        .node-mood {
+            display: none;
+            margin-top: 6px;
+            font-size: 11px;
+            line-height: 1.4;
+            color: rgba(144, 73, 81, 0.92);
+            font-weight: 700;
+            letter-spacing: -0.01em;
+            opacity: 0.94;
+        }
+
         .memory-node:hover .node-card {
             transform: scale(1.04);
             border-color: rgba(144, 73, 81, 0.35);
@@ -77,6 +88,10 @@
 
         .memory-node.selected .node-date {
             color: rgba(144, 73, 81, 0.82);
+        }
+
+        .memory-node.selected .node-mood {
+            display: block;
         }
 
         .diary-note {
