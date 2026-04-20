@@ -2,7 +2,7 @@
 
 :root {
     /* Editor Specific Layout Constants */
-    --sidebar-width: 252px;
+    --sidebar-width: 268px;
     --detail-panel-width: 420px;
     --header-height: 80px;
 }
@@ -10,10 +10,6 @@
 body {
     overflow: hidden;
     height: 100vh;
-}
-
-body.editor-preload .editor-layout {
-    visibility: hidden;
 }
 
 /* Layout */
@@ -32,7 +28,7 @@ body.editor-preload .editor-layout {
     border-right: 1px solid var(--outline-variant);
     display: flex;
     flex-direction: column;
-    padding: 24px 16px 16px;
+    padding: 24px 16px;
     gap: 24px;
     overflow-y: auto;
 }
@@ -79,7 +75,7 @@ body.editor-preload .editor-layout {
     transition: all 0.3s;
 }
 
-.tool-item:hover .material-symbols-outlined,
+.tool-item:hover .material-symbols-outlined, 
 .tool-item.active .material-symbols-outlined {
     background: var(--primary);
     color: white;
@@ -101,27 +97,12 @@ body.editor-preload .editor-layout {
 .canvas-area {
     flex: 1;
     position: relative;
-    background:
-        radial-gradient(circle at 18% 20%, rgba(255, 232, 236, 0.9) 0%, rgba(255, 232, 236, 0) 26%),
-        radial-gradient(circle at 82% 16%, rgba(255, 244, 232, 0.7) 0%, rgba(255, 244, 232, 0) 22%),
-        radial-gradient(circle at 50% 78%, rgba(246, 238, 234, 0.92) 0%, rgba(246, 238, 234, 0) 34%),
-        radial-gradient(rgba(144, 73, 81, 0.10) 1px, transparent 1px),
-        linear-gradient(180deg, #fffdfc 0%, #fbf7f4 100%);
-    background-size: auto, auto, auto, 40px 40px, auto;
+    background-image:
+        radial-gradient(var(--outline-variant) 1px, transparent 1px);
+    background-size: 40px 40px;
     overflow: hidden;
     cursor: grab;
     user-select: none;
-}
-
-.canvas-area::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    background:
-        radial-gradient(circle at 50% 46%, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.14) 48%, rgba(255, 255, 255, 0.32) 100%),
-        linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.02));
-    opacity: 0.9;
 }
 
 .canvas-area.panning {
@@ -135,16 +116,15 @@ body.editor-preload .editor-layout {
     pointer-events: none;
 }
 
+/* Legacy root marker fallback:
+   JS 경로가 섞여도 중앙 붉은 점(circle)이 보이지 않게 방어 */
 .canvas-svg circle {
     display: none !important;
 }
 
-.branch-line {
-    stroke: rgba(144, 73, 81, 0.26) !important;
-    stroke-width: 2.5 !important;
-    opacity: 0.9 !important;
-    filter: drop-shadow(0 6px 12px rgba(144, 73, 81, 0.10));
-    transition: stroke 0.25s ease, opacity 0.25s ease, filter 0.25s ease;
+/* Sidebar bottom CTA stays visible and stable */
+.sidebar {
+    padding-bottom: 16px;
 }
 
 .editor-add-section {
@@ -161,6 +141,7 @@ body.editor-preload .editor-layout {
     );
 }
 
+/* Status card spacing refinement */
 .editor-status-card p {
     margin: 10px 0 0;
 }
@@ -171,6 +152,7 @@ body.editor-preload .editor-layout {
     line-height: 1.6;
 }
 
+/* Node label hardening */
 .memory-node {
     position: absolute;
     z-index: 2;
@@ -180,17 +162,11 @@ body.editor-preload .editor-layout {
 .node-card {
     width: 102px;
     margin: 0 auto;
-    border-radius: 999px;
-    background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(252,247,244,0.96));
-    box-shadow: 0 12px 24px rgba(75, 64, 57, 0.08);
-    border: 1px solid rgba(144, 73, 81, 0.08);
-    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease, background 0.25s ease;
 }
 
 .node-img-wrapper {
     width: 90px;
     height: 90px;
-    position: relative;
 }
 
 .node-info-label {
@@ -199,7 +175,6 @@ body.editor-preload .editor-layout {
     transform: translateX(-10px);
     text-align: center;
     pointer-events: none;
-    transition: transform 0.25s ease, opacity 0.25s ease;
 }
 
 .node-title,
@@ -227,17 +202,7 @@ body.editor-preload .editor-layout {
     color: var(--on-surface-variant);
 }
 
-.node-mood {
-    display: none;
-    margin-top: 6px;
-    font-size: 11px;
-    line-height: 1.4;
-    color: rgba(144, 73, 81, 0.92);
-    font-weight: 700;
-    letter-spacing: -0.01em;
-    opacity: 0.94;
-}
-
+/* Prevent text selection while panning */
 .memory-node,
 .memory-node * {
     user-select: none;
@@ -256,6 +221,7 @@ body.editor-preload .editor-layout {
     opacity: 1;
 }
 
+/* Skeleton Placeholder */
 .node-skeleton {
     position: absolute;
     inset: 0;
@@ -286,37 +252,14 @@ body.editor-preload .editor-layout {
     100% { background-position: 0% 0%; }
 }
 
-.memory-node:hover .node-card {
-  transform: scale(1.04);
-  border-color: rgba(144, 73, 81, 0.35);
-  box-shadow: 0 20px 42px rgba(144, 73, 81, 0.16);
-}
-
+.memory-node:hover .node-card,
 .memory-node.selected .node-card {
-  transform: scale(1.06);
-  border-color: rgba(144, 73, 81, 0.42);
-  background: linear-gradient(180deg, rgba(255,255,255,1), rgba(252,242,238,0.98));
-  box-shadow:
-      0 0 0 6px rgba(144, 73, 81, 0.08),
-      0 28px 58px rgba(144, 73, 81, 0.20);
+  transform: scale(1.05);
+  border-color: var(--primary);
+  box-shadow: 0 25px 50px rgba(144, 73, 81, 0.18);
 }
 
-.memory-node.selected .node-info-label {
-    transform: translateX(-10px) translateY(2px);
-}
-
-.memory-node.selected .node-title {
-    color: var(--primary);
-}
-
-.memory-node.selected .node-date {
-    color: rgba(144, 73, 81, 0.82);
-}
-
-.memory-node.selected .node-mood {
-    display: block;
-}
-
+/* 새 노드 추가 피드백 애니메이션 */
 .new-node-highlight .node-card {
     animation: newNodePulse 1.5s ease-in-out 3;
     border-color: var(--primary) !important;
@@ -328,6 +271,7 @@ body.editor-preload .editor-layout {
     50% { transform: scale(1.15); }
 }
 
+/* Detail Panel Refinement */
 .detail-panel {
     width: var(--detail-panel-width);
     background: white;
@@ -424,55 +368,13 @@ body.editor-preload .editor-layout {
 .tag-secondary { background: var(--secondary-container); color: var(--on-secondary-container); }
 
 .diary-note {
-    position: relative;
-    background:
-        linear-gradient(180deg, rgba(255,255,255,0.98), rgba(252,245,241,0.98)),
-        repeating-linear-gradient(
-            180deg,
-            rgba(144, 73, 81, 0.00) 0,
-            rgba(144, 73, 81, 0.00) 31px,
-            rgba(144, 73, 81, 0.05) 31px,
-            rgba(144, 73, 81, 0.05) 32px
-        );
-    padding: 26px 24px 22px;
-    border-radius: 20px;
-    border: 1px solid rgba(144, 73, 81, 0.08);
-    border-left: 4px solid rgba(144, 73, 81, 0.24);
-    box-shadow: 0 14px 28px rgba(75, 64, 57, 0.07);
-    line-height: 1.9;
+    background: var(--surface-container-low);
+    padding: 24px;
+    border-radius: 12px;
+    border-left: 4px solid var(--primary-container);
+    line-height: 1.7;
     color: var(--on-surface);
     font-size: 0.95rem;
-    overflow: hidden;
-}
-
-.diary-note::before {
-    content: attr(data-label);
-    display: block;
-    margin-bottom: 12px;
-    font-size: 11px;
-    font-weight: 800;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: rgba(144, 73, 81, 0.72);
-}
-
-.diary-note:not([data-label])::before,
-.diary-note[data-label='']::before {
-    content: '나의 마음 기록';
-}
-
-.diary-note > div:first-child {
-    font-size: 15px;
-    line-height: 1.9;
-    color: var(--on-surface);
-    white-space: pre-wrap;
-    word-break: keep-all;
-}
-
-.diary-note > div + div {
-    margin-top: 14px;
-    padding-top: 12px;
-    border-top: 1px dashed rgba(144, 73, 81, 0.16);
 }
 
 .panel-footer {
@@ -480,6 +382,7 @@ body.editor-preload .editor-layout {
   border-top: 1px solid var(--outline-variant);
 }
 
+/* 비활성화状态的 기억 상세 패널 - 편집 기능 미구현으로 항상 읽기 전용 */
 .detail-panel .panel-footer.hidden {
   display: none;
 }
@@ -493,6 +396,7 @@ body.editor-preload .editor-layout {
 
 .icon-btn:hover { color: var(--primary); }
 
+/* Tablet adjustments */
 @media (max-width: 1024px) {
     .editor-layout {
         flex-direction: column;
@@ -578,6 +482,7 @@ body.editor-preload .editor-layout {
     }
 }
 
+/* Mobile adjustments */
 @media (max-width: 768px) {
     .editor-layout {
         height: calc(100vh - 60px);
@@ -633,6 +538,7 @@ body.editor-preload .editor-layout {
     }
 }
 
+/* Sidebar readability hardening */
 .editor-status-section,
 .editor-add-section {
     width: 100%;
@@ -651,9 +557,8 @@ body.editor-preload .editor-layout {
     width: 100%;
     padding: 16px;
     border-radius: 16px;
-    background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,246,244,0.96));
+    background: var(--surface-container-low);
     box-sizing: border-box;
-    box-shadow: 0 8px 20px rgba(75, 64, 57, 0.05);
 }
 
 .editor-status-card strong {
@@ -677,6 +582,7 @@ body.editor-preload .editor-layout {
     overflow-wrap: anywhere;
 }
 
+/* Sidebar buttons - unified card style */
 .editor-sidebar-actions {
     display: flex;
     flex-direction: column;
@@ -728,10 +634,11 @@ body.editor-preload .editor-layout {
     font-size: 12px;
 }
 
+/* New sidebar button styles - pill/soft UI */
 .sidebar-btn {
     width: 100%;
-    min-height: 46px;
-    padding: 12px 16px;
+    min-height: 48px;
+    padding: 12px 18px;
     border-radius: 999px;
     border: 1px solid rgba(144, 73, 81, 0.15);
     background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,246,244,0.95));
@@ -741,11 +648,12 @@ body.editor-preload .editor-layout {
     line-height: 1.4;
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     gap: 8px;
     cursor: pointer;
     transition: all 0.2s ease;
     box-shadow: 0 4px 12px rgba(75, 64, 57, 0.06);
+    text-align: left;
 }
 
 .sidebar-btn:hover {
@@ -770,12 +678,20 @@ body.editor-preload .editor-layout {
 .btn-icon {
     font-size: 14px;
     line-height: 1;
+    flex: 0 0 auto;
 }
 
 .btn-label {
     font-size: 13px;
+    flex: 1 1 auto;
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: keep-all;
+    line-height: 1.35;
 }
 
+/* Sidebar selection hint */
 .editor-sidebar-meta {
     display: block;
     margin-top: 14px;
@@ -787,214 +703,14 @@ body.editor-preload .editor-layout {
     font-style: italic;
 }
 
-.editor-space-between-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
+/* Enhanced status card */
+.editor-status-card {
+    background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,246,244,0.96));
+    box-shadow: 0 8px 20px rgba(75, 64, 57, 0.05);
 }
 
-.editor-flow-summary {
-    margin: 8px 0 0;
-    font-size: 13px;
-    line-height: 1.6;
-    color: var(--on-surface);
-}
-
-.editor-add-section-auto {
-    margin-top: auto;
-}
-
-.editor-memory-form-modal {
-    display: none;
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: white;
-    padding: 32px;
-    border-radius: 2rem;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.15);
-    border: 1px solid var(--outline-variant);
-    width: 90%;
-    max-width: 420px;
-    z-index: 100;
-}
-
-.editor-modal-title {
-    font-size: 1.4rem;
-    margin-bottom: 24px;
-}
-
-.editor-form-field {
-    margin-bottom: 16px;
-}
-
-.editor-form-field-last {
-    margin-bottom: 24px;
-}
-
-.editor-form-label {
-    display: block;
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--on-surface-variant);
-    margin-bottom: 6px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.editor-form-input {
-    width: 100%;
-    padding: 12px 16px;
-    border: 1px solid var(--outline-variant);
-    border-radius: 1rem;
-    font-size: 14px;
-    font-family: inherit;
-}
-
-.editor-form-textarea {
-    width: 100%;
-    padding: 12px 16px;
-    border: 1px solid var(--outline-variant);
-    border-radius: 1rem;
-    font-size: 14px;
-    font-family: inherit;
-    resize: vertical;
-}
-
-.editor-form-actions {
-    display: flex;
-    gap: 12px;
-    justify-content: flex-end;
-}
-
-.editor-form-action-btn {
-    padding: 10px 20px;
-    font-size: 13px;
-}
-
-.editor-empty-state-box {
-    text-align: center;
-    padding: 40px 24px;
-    color: var(--on-surface-variant);
-}
-
-.editor-empty-state-icon {
-    font-size: 48px;
-    opacity: 0.4;
-    margin-bottom: 16px;
-    display: block;
-}
-
-.editor-empty-state-title {
-    font-size: 1rem;
-    font-weight: 700;
-    margin-bottom: 8px;
-    color: var(--on-surface);
-}
-
-.editor-empty-state-desc {
-    font-size: 0.9rem;
-    opacity: 0.78;
-    line-height: 1.6;
-}
-
-.editor-memory-actions-row {
-    margin-top: 24px;
-    padding-top: 16px;
-    border-top: 1px solid var(--outline-variant);
-    display: none;
-    gap: 8px;
-}
-
-.editor-memory-action-btn {
-    flex: 1;
-    padding: 10px 16px;
-    font-size: 13px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-}
-
-.editor-memory-delete-btn {
-    color: var(--error);
-    border-color: var(--error);
-}
-
-.editor-save-status-wrap {
-    margin-top: 12px;
-    display: none;
-    justify-content: center;
-    gap: 4px;
-}
-
-.editor-edit-input {
-    width: 100%;
-    padding: 10px 12px;
-    border: 1px solid var(--outline-variant);
-    border-radius: 8px;
-    font-size: 14px;
-    font-family: inherit;
-}
-
-.editor-edit-textarea {
-    width: 100%;
-    padding: 10px 12px;
-    border: 1px solid var(--outline-variant);
-    border-radius: 8px;
-    font-size: 14px;
-    font-family: inherit;
-    resize: vertical;
-}
-
-.editor-edit-actions-row {
-    margin-top: 24px;
-    display: flex;
-    gap: 8px;
-}
-
-.editor-edit-action-btn {
-    flex: 1;
-    padding: 10px 16px;
-    font-size: 13px;
-}
-
-.editor-submit-footer {
-    display: none;
-}
-
-.editor-submit-btn-full {
-    width: 100%;
-}
-
-.editor-rename-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-    border: 1px solid var(--outline-variant);
-    border-radius: 999px;
-    background: var(--surface);
-    cursor: pointer;
-    font-size: 13px;
-    flex: 0 0 auto;
-}
-
-.editor-panel-headline {
-    font-size: 1.5rem;
-}
-
-.editor-hidden-initial {
-    display: none;
-}
-
-.editor-visible-initial {
-    display: block;
-}
-
-.editor-save-status-icon-hidden {
-    display: none;
+/* Prevent text selection while panning */
+.memory-node,
+.memory-node * {
+    user-select: none;
 }
