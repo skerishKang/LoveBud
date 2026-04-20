@@ -1,6 +1,6 @@
 /**
  * LoveBud Search Preview Renderer
- * v20260420-1
+ * v20260420-2
  * 
  * Rendering layer: preview sidebar panel.
  * DOM-agnostic - updates passed DOM elements.
@@ -20,7 +20,7 @@
              .replace(/&/g, '&amp;')
              .replace(/</g, '&lt;')
              .replace(/>/g, '&gt;')
-             .replace(/"/g, '&quot;')
+             .replace(/\"/g, '&quot;')
              .replace(/'/g, '&#39;');
      }
 
@@ -38,6 +38,24 @@
          } catch (e) {
              return '';
          }
+     }
+
+     function getCurrentLocale() {
+         const locale = window.i18n?.currentLang || document.documentElement?.lang || 'ko';
+         return String(locale).toLowerCase().startsWith('en') ? 'en' : 'ko';
+     }
+
+     function getSearchCopy(key, fallbackKo, fallbackEn) {
+         const locale = getCurrentLocale();
+         const dict = window.i18nSearch?.[key];
+         if (dict && typeof dict === 'object') {
+             return dict[locale] || dict.ko || dict.en || fallbackKo;
+         }
+         return locale === 'en' ? fallbackEn : fallbackKo;
+     }
+
+     function getPreviewStatsElement() {
+         return _dom?.previewMemoriesCount?.closest?.('#previewTreeStats') || document.getElementById('previewTreeStats');
      }
 
      // ─────────────────────────────────────────────────────────
@@ -193,6 +211,7 @@
          const memories = Array.isArray(tree.memories) ? tree.memories : [];
         const firstMem = memories[0];
         const hasMemories = memories.length > 0;
+        const previewStats = getPreviewStatsElement();
 
          // ─────────────────────────────────────────────
          // Video/Iframe container
@@ -239,7 +258,7 @@
             }
         }
 
-         // ──��──────────────────────────────────────
+         // ─────────────────────────────────────────
          // Title
          // ─────────────────────────────────────────
          
@@ -267,8 +286,6 @@
          // ─────────────────────────────────────────
          
          if (_dom.previewDesc) {
-            const titleHelper = getSearchTitleHelper();
-
             if (!hasMemories) {
                 _dom.previewDesc.innerHTML = `
                     <div style="background:var(--surface-container-low);padding:20px;border-radius:1rem;margin-bottom:16px;">
@@ -314,6 +331,10 @@
          // ─────────────────────────────────────────
          // Stats
          // ─────────────────────────────────────────
+
+         if (previewStats) {
+             previewStats.hidden = false;
+         }
          
          if (_dom.previewMemoriesCount) {
              _dom.previewMemoriesCount.textContent = tree.memoryCount;
@@ -337,9 +358,21 @@
      * @returns {string} HTML string
      */
     function renderPlaceholder() {
+        const lead = getSearchCopy(
+            'search.previewEmptyLead',
+            '왼쪽 목록에서 공개 러브트리를 선택하면',
+            'Choose a public LoveTree from the list to the left'
+        );
+        const body = getSearchCopy(
+            'search.previewEmptyBody',
+            '해당 트리의 감정 흐름과 대표 순간을 여기서 미리 볼 수 있어요.',
+            'and preview its emotional flow and featured moment here.'
+        );
+
         return `
-            <div style="width:100%; height:100%; display:flex; flex-direction: column; align-items:center; justify-content:center; color: var(--on-surface-variant); font-size: 14px; text-align: center; padding: 20px;">
-                <p>카드를 선택하면 감정의 흐름과 대표 순간을 미리 볼 수 있어요.</p>
+            <div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--on-surface-variant);font-size:14px;text-align:center;padding:20px;">
+                <p style="margin:0 0 8px;">${escapeHtml(lead)}</p>
+                <p style="margin:0;line-height:1.5;">${escapeHtml(body)}</p>
             </div>
         `;
     }
@@ -349,25 +382,41 @@
      */
     function resetPreview() {
         if (!_dom || !_dom.previewContainer) return;
+
+        const previewStats = getPreviewStatsElement();
+        const placeholderTitle = getSearchCopy(
+            'search.previewPlaceholder',
+            '트리를 선택하여 감상하기',
+            'Select a tree to preview'
+        );
+        const placeholderDescription = getSearchCopy(
+            'search.previewDescriptionPlaceholder',
+            '카드를 선택하면 감정의 흐름과 대표 순간을 미리 볼 수 있어요.',
+            'Select a card to preview the emotional flow and featured moment.'
+        );
         
         if (_dom.previewContainer) {
             _dom.previewContainer.innerHTML = renderPlaceholder();
         }
         
         if (_dom.previewTitle) {
-            _dom.previewTitle.innerHTML = '---';
+            _dom.previewTitle.textContent = placeholderTitle;
         }
         
         if (_dom.previewDesc) {
-            _dom.previewDesc.innerHTML = '<p style="font-style: italic; margin-bottom: 16px;">---</p>';
+            _dom.previewDesc.innerHTML = `<p style="margin-bottom:16px;">${escapeHtml(placeholderDescription)}</p>`;
+        }
+
+        if (previewStats) {
+            previewStats.hidden = true;
         }
         
         if (_dom.previewMemoriesCount) {
-            _dom.previewMemoriesCount.textContent = '-';
+            _dom.previewMemoriesCount.textContent = '0';
         }
         
         if (_dom.previewTreeDuration) {
-            _dom.previewTreeDuration.textContent = '-';
+            _dom.previewTreeDuration.textContent = '';
         }
         
         if (_dom.previewEmotionTags) {
@@ -389,5 +438,5 @@
         renderEmotionTags: renderEmotionTags
     };
 
-     console.log('[LoveBudSearchPreviewRenderer] Search preview renderer loaded v20260420-1');
+     console.log('[LoveBudSearchPreviewRenderer] Search preview renderer loaded v20260420-2');
  })();
