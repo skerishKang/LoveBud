@@ -308,17 +308,18 @@ function createEditorCanvas(deps) {
         return nodeEl;
     }
 
-    const drawNode = (mem) => {
-        const pos = calcPosition(mem);
-        const nodeEl = createNodeElement(mem, pos);
-
+    function attachNodeInfo(nodeEl, mem) {
         if (typeof canvasNode.appendNodeInfo === 'function') {
             canvasNode.appendNodeInfo(nodeEl, mem);
         }
-
-        bindNodeDrag(nodeEl, mem);
         canvas.appendChild(nodeEl);
+    }
 
+    const drawNode = (mem) => {
+        const pos = calcPosition(mem);
+        const nodeEl = createNodeElement(mem, pos);
+        attachNodeInfo(nodeEl, mem);
+        bindNodeDrag(nodeEl, mem);
         return nodeEl;
     };
 
