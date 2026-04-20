@@ -20,6 +20,7 @@ function createEditorCanvas(deps) {
     const layoutStorageKey = 'lovebud_tree_layout_v2_' + treeId;
     const canvasLayout = window.LoveBudEditorCanvasLayout || {};
     const canvasNode = window.LoveBudEditorCanvasNode || {};
+    const canvasInteraction = window.LoveBudEditorCanvasInteraction || {};
 
     function loadStoredLayout() {
         if (typeof canvasLayout.createLayoutStore === 'function') {
@@ -65,7 +66,9 @@ function createEditorCanvas(deps) {
         dragMoved: false,
         controlsBound: false,
         globalsBound: false,
-        positions: storedLayout.positions
+        positions: storedLayout.positions,
+        rafScheduled: false,
+        rafFrame: null
     };
 
     const ROOT_RIGHT_GUTTER = 300;
@@ -205,6 +208,11 @@ function createEditorCanvas(deps) {
         nodeEl.style.cursor = 'grab';
 
         nodeEl.addEventListener('mousedown', (e) => {
+            if (typeof canvasInteraction.beginNodeDrag === 'function') {
+                canvasInteraction.beginNodeDrag(e, nodeEl, mem, viewportState, getWorldPosition);
+                return;
+            }
+
             if (e.button !== 0) return;
             if (e.target.closest('button')) return;
             e.preventDefault();
@@ -408,20 +416,26 @@ function createEditorCanvas(deps) {
     }
 
     const bindCanvasPan = () => {
+        if (typeof canvasInteraction.bind === 'function') {
+            canvasInteraction.bind({
+                canvas,
+                viewportState,
+                scheduleRender: scheduleInitCanvas,
+                persistStoredPositions,
+                initCanvas,
+                getWorldPosition,
+                getDragTargetElement: (draggedId) => document.querySelector(`.memory-node[data-memory-id="${draggedId}"]`),
+                showMovedToast: () => {
+                    if (window.LoveBudUI?.showToast) {
+                        window.LoveBudUI.showToast(i18n('node_position_adjusted') || '순간 위치를 조정했습니다', 'success', 1800);
+                    }
+                }
+            });
+            return;
+        }
+
         if (viewportState.globalsBound) return;
         viewportState.globalsBound = true;
-
-        let rafScheduled = false;
-        let rafFrame = null;
-
-        function scheduleInitCanvas() {
-            if (rafScheduled) return;
-            rafScheduled = true;
-            rafFrame = requestAnimationFrame(() => {
-                rafScheduled = false;
-                initCanvas();
-            });
-        }
 
         canvas.style.cursor = 'grab';
         canvas.style.touchAction = 'none';
@@ -461,10 +475,11 @@ function createEditorCanvas(deps) {
         });
 
         window.addEventListener('mouseup', () => {
-            if (rafFrame) {
-                cancelAnimationFrame(rafFrame);
-                rafFrame = null;
-                rafScheduled = false;
+            const currentFrame = viewportState.rafFrame;
+            if (currentFrame) {
+                cancelAnimationFrame(currentFrame);
+                viewportState.rafFrame = null;
+                viewportState.rafScheduled = false;
             }
 
             if (viewportState.isDraggingNode && viewportState.dragNodeId) {
@@ -490,6 +505,16 @@ function createEditorCanvas(deps) {
             initCanvas();
         });
     };
+
+    function scheduleInitCanvas() {
+        if (viewportState.rafScheduled) return;
+        viewportState.rafScheduled = true;
+        viewportState.rafFrame = requestAnimationFrame(() => {
+            viewportState.rafScheduled = false;
+            viewportState.rafFrame = null;
+            initCanvas();
+        });
+    }
 
     return {
         calcPosition,
