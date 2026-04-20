@@ -1,6 +1,8 @@
 document.addEventListener('DOMContentLoaded', () => {
     // Load editor data loader fallbacks
     const dataLoaderFallbacks = window.LoveBudEditorDataLoaderFallbacks || {};
+    // Load editor resolver fallbacks
+    const resolverFallbacks = window.LoveBudEditorResolverFallbacks || {};
 
     // Root memory helpers
     // Prefer editor-root-helpers.js and keep a local fallback.
@@ -122,51 +124,7 @@ document.addEventListener('DOMContentLoaded', () => {
         buildEditorRedirectTarget
     });
 
-    const createInlineTextResolversFallbacks = () => {
-        const safeI18nText = (i18nFn, key, fallback) => {
-            const result = i18nFn(key);
-            if (!result || result === key) return fallback;
-            return result;
-        };
-
-        const resolveHintText = (i18nFn, rawValue, fallbackKey, fallbackText) => {
-            const value = String(rawValue || '').trim();
-            if (!value || value === fallbackKey) {
-                return safeI18nText(i18nFn, fallbackKey, fallbackText);
-            }
-            return value;
-        };
-
-        const resolveTreeTitleText = (i18nFn, rawTitle) => {
-            const value = String(rawTitle || '').trim();
-            if (!value) {
-                return safeI18nText(i18nFn, 'default_tree_title', '러브트리');
-            }
-            if (value === 'default_tree_title') {
-                return safeI18nText(i18nFn, 'default_tree_title', '러브트리');
-            }
-            if (value === 'lovetree_brand') {
-                return safeI18nText(i18nFn, 'lovetree_brand', '러브트리');
-            }
-            return value;
-        };
-
-        const resolveInfoText = (i18nFn, rawValue, fallbackKey, fallbackText) => {
-            const value = String(rawValue || '').trim();
-            if (!value || value === fallbackKey) {
-                return safeI18nText(i18nFn, fallbackKey, fallbackText);
-            }
-            return value;
-        };
-
-        return {
-            safeI18nText,
-            resolveHintText,
-            resolveTreeTitleText,
-            resolveInfoText
-        };
-    };
-
+    const createInlineTextResolversFallbacks = resolverFallbacks.createInlineTextResolversFallbacks || (() => ({}));
     const inlineTextResolvers = editorHelpers.safeI18nText
         ? editorHelpers
         : createInlineTextResolversFallbacks();
@@ -193,76 +151,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const getMyTreesHref = editorPageHelpers.getMyTreesHref || (() => getEditorBasePath() + 'my-trees.html');
 
-    const createInlineMediaResolversFallbacks = () => {
-        const safeUrl = (value, { allowDataImage = false } = {}) => {
-            const raw = String(value || '').trim();
-            if (!raw) return '';
-
-            if (allowDataImage && raw.indexOf('data:image/') === 0) {
-                return raw;
-            }
-
-            try {
-                const url = new URL(raw, window.location.origin);
-                const protocol = String(url.protocol || '').toLowerCase();
-                if (protocol === 'http:' || protocol === 'https:') {
-                    return url.toString();
-                }
-                return '';
-            } catch (e) {
-                return '';
-            }
-        };
-
-        const extractYouTubeIdFallback = (url) => {
-            const patterns = [
-                /(?:v=|\/|youtu\.be\/|shorts\/)([0-9A-Za-z_-]{11})/i,
-                /youtube\.com\/watch\?v=([0-9A-Za-z_-]{11})/i,
-                /youtu\.be\/([0-9A-Za-z_-]{11})/i
-            ];
-            for (var i = 0; i < patterns.length; i += 1) {
-                const match = String(url || '').match(patterns[i]);
-                if (match) return match[1];
-            }
-            return null;
-        };
-
-        const resolveMemoryThumbnail = (memory, quality = 'hqdefault') => {
-            const thumbnail = safeUrl(memory && memory.thumbnail, { allowDataImage: true });
-            if (thumbnail) return thumbnail;
-
-            const sourceUrl = safeUrl(memory && memory.sourceUrl);
-            const sourceType = memory && memory.sourceType || window.LoveBudMedia?.detectSourceType?.(sourceUrl) || 'youtube';
-            if (sourceUrl && sourceType === 'youtube') {
-                const videoId = window.LoveBudMedia?.extractYouTubeId?.(sourceUrl) ||
-                               extractYouTubeIdFallback(sourceUrl);
-                if (videoId) {
-                    return 'https://img.youtube.com/vi/' + videoId + '/' + quality + '.jpg';
-                }
-            }
-            return '';
-        };
-
-        const getThumbnailFallbackChain = (memory) => {
-            const qualities = ['hqdefault', 'mqdefault', 'default'];
-            return qualities.map(function(q) {
-                return resolveMemoryThumbnail(memory, q);
-            });
-        };
-
-        return {
-            safeUrl,
-            extractYouTubeIdFallback,
-            resolveMemoryThumbnail,
-            getThumbnailFallbackChain
-        };
-    };
+const createInlineMediaResolversFallbacks = resolverFallbacks.createInlineMediaResolversFallbacks || (() => ({}));
 
     const escapeHtml = editorHelpers.escapeHtml || ((value) => String(value ?? '')
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
-        .replace(/\"/g, '&quot;')
+        .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;'));
 
     const inlineMediaResolvers = editorHelpers.safeUrl
