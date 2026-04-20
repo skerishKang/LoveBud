@@ -78,6 +78,7 @@ function createEditorCanvas(deps) {
     const NODE_HALF = Math.round(NODE_WIDTH / 2);
     const AFFORDANCE_OFFSET_X = 168;
     const AFFORDANCE_OFFSET_Y = 10;
+    const AFFORDANCE_CARD_HALF = 108;
 
     function persistStoredPositions() {
         if (typeof canvasLayout.createLayoutStore === 'function') {
@@ -358,16 +359,31 @@ function createEditorCanvas(deps) {
 
     function getGrowthAffordancePosition(anchorPos) {
         const metrics = getMetrics();
+        const edgePadding = 28;
+        const minCenterX = AFFORDANCE_CARD_HALF + edgePadding;
+        const maxCenterX = metrics.width - AFFORDANCE_CARD_HALF - edgePadding;
+        const hasRightRoom = anchorPos.x + NODE_HALF + AFFORDANCE_CARD_HALF + edgePadding <= metrics.width;
+        const hasLeftRoom = anchorPos.x - NODE_HALF - AFFORDANCE_CARD_HALF - edgePadding >= 0;
+        const shouldPlaceLeft = !hasRightRoom && hasLeftRoom;
+
         return {
-            x: Math.max(120, Math.min(anchorPos.x + AFFORDANCE_OFFSET_X, metrics.width - 96)),
-            y: Math.max(110, Math.min(anchorPos.y - AFFORDANCE_OFFSET_Y, metrics.height - 80))
+            x: Math.max(
+                minCenterX,
+                Math.min(
+                    shouldPlaceLeft ? anchorPos.x - AFFORDANCE_OFFSET_X : anchorPos.x + AFFORDANCE_OFFSET_X,
+                    maxCenterX
+                )
+            ),
+            y: Math.max(110, Math.min(anchorPos.y - AFFORDANCE_OFFSET_Y, metrics.height - 80)),
+            side: shouldPlaceLeft ? 'left' : 'right'
         };
     }
 
-    function drawGrowthAffordanceBranch(startPos, endPos) {
+    function drawGrowthAffordanceBranch(startPos, endPos, side) {
         const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        const cp1x = startPos.x + ((endPos.x - startPos.x) * 0.45);
-        const cp1y = startPos.y - 18;
+        const tension = side === 'left' ? 0.55 : 0.45;
+        const cp1x = startPos.x + ((endPos.x - startPos.x) * tension);
+        const cp1y = Math.min(startPos.y, endPos.y) - 18;
         const d = `M ${startPos.x},${startPos.y} Q ${cp1x},${cp1y} ${endPos.x},${endPos.y}`;
         path.setAttribute('d', d);
         path.setAttribute('class', 'branch-line branch-line-affordance');
@@ -388,7 +404,7 @@ function createEditorCanvas(deps) {
         wrap.className = 'memory-add-affordance';
         wrap.setAttribute('aria-label', labelText);
         wrap.style.position = 'absolute';
-        wrap.style.left = `${affPos.x - 46}px`;
+        wrap.style.left = `${affPos.x - AFFORDANCE_CARD_HALF}px`;
         wrap.style.top = `${affPos.y - 30}px`;
         wrap.style.zIndex = '4';
         wrap.style.display = 'flex';
@@ -459,8 +475,15 @@ function createEditorCanvas(deps) {
         });
 
         drawGrowthAffordanceBranch(
-            { x: anchorPos.x + NODE_HALF - 2, y: anchorPos.y + 4 },
-            { x: affPos.x - 54, y: affPos.y }
+            {
+                x: anchorPos.x + (affPos.side === 'left' ? (-NODE_HALF + 2) : (NODE_HALF - 2)),
+                y: anchorPos.y + 4
+            },
+            {
+                x: affPos.x + (affPos.side === 'left' ? 72 : -72),
+                y: affPos.y
+            },
+            affPos.side
         );
         canvas.appendChild(wrap);
     }
