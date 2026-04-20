@@ -351,10 +351,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </div>
             </div>
         `;
-        // 메인 콘텐츠 영역을 fallback으로 교체
+        // 콘텐츠 영역만 fallback으로 교체 (레이아웃/네비게이션 유지)
         const mainLayout = document.querySelector('.detail-layout');
+        const contentSlot =
+            document.querySelector('.detail-main') ||
+            document.querySelector('.detail-content') ||
+            mainLayout;
+
+        if (contentSlot) {
+            contentSlot.innerHTML = fallbackHTML;
+        }
+
         if (mainLayout) {
-            mainLayout.innerHTML = fallbackHTML;
             mainLayout.style.display = 'block';
         }
         return;
