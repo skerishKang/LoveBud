@@ -534,12 +534,25 @@ document.addEventListener('DOMContentLoaded', () => {
             memo: i18n('no_memory_yet'),
             timestamp: new Date().toISOString().slice(0, 10).replace(/-/g, '.'),
             thumbnail: isNewTree
-                ? 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 90"><rect fill="%23e8f5e9" width="120" height="90"/><text x="60" y="45" text-anchor="middle" fill="%234caf50" font-size="24">🌱</text><text x="60" y="70" text-anchor="middle" fill="%23666" font-size="10">빈 트리</text></svg>'
-                : 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 90"><rect fill="%23f5f5f5" width="120" height="90"/><text x="60" y="50" text-anchor="middle" fill="%23999" font-size="12">No Memory</text></svg>',
+                ? 'data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 120 90\"><rect fill=\"%23e8f5e9\" width=\"120\" height=\"90\"/><text x=\"60\" y=\"45\" text-anchor=\"middle\" fill=\"%234caf50\" font-size=\"24\">🌱</text><text x=\"60\" y=\"70\" text-anchor=\"middle\" fill=\"%23666\" font-size=\"10\">빈 트리</text></svg>'
+                : 'data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 120 90\"><rect fill=\"%23f5f5f5\" width=\"120\" height=\"90\"/><text x=\"60\" y=\"50\" text-anchor=\"middle\" fill=\"%23999\" font-size=\"12\">No Memory</text></svg>',
             emotionTags: [],
             parentId: null,
             isNewTree: isNewTree
         };
+    };
+
+    const createInlineNextMemoryIdFallback = (options) => () => {
+        const opts = options || {};
+        const treeMemories = opts.treeMemories || (() => []);
+
+        let max = 0;
+        treeMemories().forEach((m) => {
+            const match = m.id.match(/^m(\d+)$/);
+            if (match) max = Math.max(max, parseInt(match[1], 10));
+        });
+
+        return 'm' + (max + 1);
     };
 
     const startEditor = async () => {
@@ -703,18 +716,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const canonicalRootId = getCanonicalRootId(treeMemories());
         let selectedNodeId = canonicalRootId;
 
-        const nextMemoryId = () => {
-            if (editorTreeHelpers.nextMemoryIdFromMemories) {
-                return editorTreeHelpers.nextMemoryIdFromMemories(treeMemories());
-            }
-
-            let max = 0;
-            treeMemories().forEach(m => {
-                const match = m.id.match(/^m(\d+)$/);
-                if (match) max = Math.max(max, parseInt(match[1], 10));
-            });
-            return 'm' + (max + 1);
-        };
+        const nextMemoryId = editorTreeHelpers.nextMemoryIdFromMemories
+            ? () => editorTreeHelpers.nextMemoryIdFromMemories(treeMemories())
+            : createInlineNextMemoryIdFallback({ treeMemories });
 
         const detailUI = window.createEditorDetailUI({
             detailPanel,
