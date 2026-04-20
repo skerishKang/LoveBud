@@ -260,7 +260,7 @@ var cachedUser = typeof getCachedAuthUser === 'function' ? getCachedAuthUser() :
       typeof window.__LOVEBUD_AUTH_WAIT_MS === 'number' &&
       window.__LOVEBUD_AUTH_WAIT_MS > 0
         ? window.__LOVEBUD_AUTH_WAIT_MS
-        : 2000;
+        : 8000;
 
     var authTimeout = setTimeout(function() {
       if (!authReadyFlag || !window[authReadyFlag]) {
