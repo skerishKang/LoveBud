@@ -97,23 +97,24 @@
     <div class="editor-layout">
         <aside class="sidebar">
             <section class="editor-status-section">
-                <h3>상태</h3>
+                <h3>흐름</h3>
                 <div class="editor-status-card">
                     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
                         <strong id="sidebarTreeTitle">러브트리</strong>
                         <button type="button" id="renameTreeBtn" class="icon-menu-btn" aria-label="트리 제목 변경" title="트리 제목 변경" style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border:1px solid var(--outline-variant);border-radius:999px;background:var(--surface);cursor:pointer;font-size:13px;flex:0 0 auto;">✎</button>
                     </div>
-                    <p id="sidebarMomentCount">순간 0개</p>
+                    <p id="sidebarMomentCount">순간 0개가 이어지고 있어요</p>
+                    <p id="sidebarFlowSummary" style="margin:8px 0 0;font-size:13px;line-height:1.6;color:var(--on-surface);">첫 기억이 심어지면 이곳에 감정의 흐름이 차곡차곡 쌓여요.</p>
                     <span id="sidebarSelectionHint" class="editor-sidebar-meta">첫 순간이 심어지면 러브트리가 자라나요.</span>
                 </div>
                 <div class="editor-sidebar-actions">
                     <button type="button" class="sidebar-btn" id="focusSelectedBtn" disabled style="opacity:0.5;cursor:not-allowed;">
                         <span class="btn-icon">→</span>
-                        <span class="btn-label">선택 영역 보기</span>
+                        <span class="btn-label">선택한 순간 보기</span>
                     </button>
                     <button type="button" class="sidebar-btn" id="recenterCanvasBtn">
                         <span class="btn-icon">⌂</span>
-                        <span class="btn-label">트리 전체 보기</span>
+                        <span class="btn-label">트리 한눈에 보기</span>
                     </button>
                 </div>
             </section>
