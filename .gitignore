@@ -30,6 +30,8 @@ coverage/
 
 # Local test account files
 .local/test-accounts.json
+.local/*
+!.local/test-accounts.example.json
 # Local agent docs / notes (ignored from public repo)
 AGENT.md
 LOCAL_AGENT.md
@@ -59,6 +61,7 @@ Thumbs.db
 .temp/
 .tmp.driveupload/
 .windsurf/
+.kilo/skill/
 nul
 
 # Screenshots
