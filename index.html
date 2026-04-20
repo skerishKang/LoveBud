@@ -44,17 +44,17 @@
             z-index: 2;
             display: flex;
             flex-direction: column;
-            gap: 24px;
+            gap: 20px;
             position: relative;
         }
 
          .hero-visual {
              position: absolute;
-             right: 5%;
+             right: 6%;
              top: 50%;
              transform: translateY(-50%);
-             width: 45%;
-             max-width: 500px;
+             width: 40%;
+             max-width: 440px;
              z-index: 1;
          }
 
@@ -75,7 +75,7 @@
          .hero-desc {
              font-size: 1.15rem;
              color: var(--on-surface-variant);
-             margin-bottom: 2.5rem;
+             margin-bottom: 0.75rem;
              line-height: 1.6;
          }
 
@@ -91,7 +91,7 @@
          }
 
          .memory-card-mini:hover {
-             transform: scale(1.08) rotate(2deg);
+             transform: scale(1.04) rotate(1deg);
              box-shadow: 0 30px 60px rgba(0,0,0,0.12);
          }
 
@@ -163,7 +163,7 @@
              flex-wrap: wrap;
              justify-content: center;
              gap: 10px;
-             margin: 0 0 1rem;
+             margin: 0 0 0.5rem;
              width: 100%;
          }
 
@@ -185,19 +185,28 @@
          }
 
          .hero-support-copy {
-             margin-top: 14px;
+             margin-top: 4px;
+             max-width: 520px;
              font-size: 0.88rem;
              line-height: 1.6;
              color: var(--on-surface-variant);
          }
 
          .mini-tree-card {
-             top: 12%;
-             right: 2%;
+             top: 22%;
+             right: 8%;
              padding: 14px;
              border-radius: 1.5rem;
              background: rgba(255, 255, 255, 0.96);
              backdrop-filter: blur(10px);
+         }
+
+         .love-tree-svg {
+             position: absolute;
+             width: 100%;
+             height: 100%;
+             overflow: visible;
+             opacity: 0.9;
          }
 
          .mini-tree-canvas {
@@ -338,7 +347,7 @@
                   transform: none;
                   width: 100%;
                   max-width: 400px;
-                  margin-top: 40px;
+                  margin-top: 28px;
               }
 
               .hero-title {
@@ -349,30 +358,15 @@
                   grid-template-columns: 1fr;
               }
 
-              /* Stabilize memory card positions on mobile - center them */
+              .love-tree-svg {
+                  max-height: 350px;
+              }
+
               .hero-visual .memory-card-mini {
                   left: 50% !important;
                   right: auto !important;
+                  top: 12% !important;
                   transform: translateX(-50%) !important;
-              }
-
-              /* Mobile: Show smaller tree, hide some floating cards */
-              @media (max-width: 768px) {
-                  .love-tree-svg {
-                      max-height: 350px;
-                  }
-                  .hero-float-card:nth-child(3) {
-                      display: none; /* Hide one card on mobile */
-                  }
-              }
-
-              .hero-visual .memory-card-mini:first-child {
-                  top: 10% !important;
-                  transform: translateX(-50%) !important;
-              }
-
-              .hero-visual .memory-card-mini:nth-child(2) {
-                  display: none;
               }
           }
      </style>
@@ -394,7 +388,7 @@
                     당신이 느낀 감정의 결을 남기고, 하나의 나무로 완성하세요.
                 </p>
                 <!-- 첫 방문자용-microcopy + 가치제안 -->
-<p style="font-size: 0.9rem; color: var(--primary); margin-bottom: 0.5rem; font-weight: 600;">
+<p style="font-size: 0.9rem; color: var(--primary); margin-bottom: 0.25rem; font-weight: 600;">
     🌱 러브트리는 좋아하는 것의 감정을 기록하는 공간입니다
 </p>
                 <div class="hero-flow" aria-label="시작 흐름 안내">
@@ -413,7 +407,7 @@
 
             <div class="hero-visual">
                 <!-- 러브트리 성장 시각화 -->
-                <svg class="love-tree-svg" viewBox="0 0 500 600" style="position: absolute; width: 100%; height: 100%; overflow: visible;">
+                <svg class="love-tree-svg" viewBox="0 0 500 600">
                     <!-- 정의: 그라데이션 및 필터 -->
                     <defs>
                         <linearGradient id="trunkGradient" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -455,66 +449,54 @@
 
                     <!-- 기억 노드 (메모리 카드 아이콘) -->
                     <g filter="url(#softShadow)">
-                        <!-- 노드 1: 뿌리 근처 첫 기억 -->
                         <rect x="200" y="420" width="60" height="45" rx="8" fill="white" stroke="#e8e0e0" stroke-width="1"/>
                         <rect x="205" y="425" width="50" height="30" rx="4" fill="#fff0f1"/>
                         <circle cx="230" cy="440" r="8" fill="#904951" opacity="0.3"/>
                         <text x="230" y="444" text-anchor="middle" fill="#904951" font-size="8">▶</text>
-                        
-                        <!-- 노드 2: 왼쪽 가지 -->
+
                         <rect x="100" y="200" width="55" height="40" rx="7" fill="white" stroke="#e8e0e0" stroke-width="1"/>
                         <rect x="104" y="204" width="47" height="25" rx="3" fill="#f0f4ff"/>
                         <circle cx="127" cy="216" r="6" fill="#6b7db8" opacity="0.4"/>
-                        
-                        <!-- 노드 3: 오른쪽 가지 -->
+
                         <rect x="360" y="160" width="55" height="40" rx="7" fill="white" stroke="#e8e0e0" stroke-width="1"/>
                         <rect x="364" y="164" width="47" height="25" rx="3" fill="#f0fff4"/>
                         <circle cx="387" cy="176" r="6" fill="#6bb88a" opacity="0.4"/>
-                        
-                        <!-- 노드 4: 상단 새싹 -->
+
                         <rect x="165" y="50" width="50" height="38" rx="6" fill="white" stroke="#e8e0e0" stroke-width="1"/>
                         <rect x="169" y="54" width="42" height="22" rx="3" fill="#fff9f0"/>
                         <circle cx="190" cy="65" r="5" fill="#b89a6b" opacity="0.4"/>
                     </g>
 
-                    <!-- 감정 태그 (떠다니는 느낌) -->
                     <g opacity="0.9">
                         <rect x="280" y="280" width="50" height="22" rx="11" fill="#fff0f1" stroke="#e8d0d3" stroke-width="1"/>
                         <text x="305" y="294" text-anchor="middle" fill="#904951" font-size="10" font-weight="600">행복</text>
-                        
+
                         <rect x="130" y="320" width="45" height="20" rx="10" fill="#f0f4ff" stroke="#d0d8e8" stroke-width="1"/>
                         <text x="152" y="334" text-anchor="middle" fill="#6b7db8" font-size="9" font-weight="600">설렘</text>
-                        
+
                         <rect x="320" y="380" width="55" height="22" rx="11" fill="#f0fff4" stroke="#d0e8d5" stroke-width="1"/>
                         <text x="347" y="394" text-anchor="middle" fill="#6bb88a" font-size="10" font-weight="600">성장</text>
-                        
+
                         <rect x="70" y="150" width="48" height="20" rx="10" fill="#fff9f0" stroke="#e8e0d0" stroke-width="1"/>
                         <text x="94" y="164" text-anchor="middle" fill="#8a7d6b" font-size="9" font-weight="600">추억</text>
                     </g>
 
-                    <!-- 성장 표시 (새싹, 잎사귀) -->
                     <g filter="url(#glow)">
-                        <!-- 상단 새싹 -->
                         <ellipse cx="250" cy="125" rx="12" ry="18" fill="#90c97b" opacity="0.6"/>
                         <ellipse cx="250" cy="120" rx="8" ry="12" fill="#a8d98f" opacity="0.8"/>
-                        
-                        <!-- 작은 잎사귀들 -->
                         <ellipse cx="185" cy="60" rx="6" ry="10" fill="#90c97b" opacity="0.5" transform="rotate(-30 185 60)"/>
                         <ellipse cx="360" cy="110" rx="5" ry="8" fill="#90c97b" opacity="0.5" transform="rotate(30 360 110)"/>
                         <ellipse cx="150" cy="140" rx="5" ry="8" fill="#90c97b" opacity="0.4" transform="rotate(-20 150 140)"/>
                     </g>
 
-                    <!-- 연결선 (기억과 가지를 잇는 실) -->
                     <path d="M 230 420 Q 230 400 240 380" stroke="#d0c0c0" stroke-width="1" stroke-dasharray="3,3" opacity="0.6"/>
                     <path d="M 127 240 Q 130 230 140 220" stroke="#d0c0c0" stroke-width="1" stroke-dasharray="3,3" opacity="0.6"/>
                     <path d="M 387 200 Q 385 190 380 180" stroke="#d0c0c0" stroke-width="1" stroke-dasharray="3,3" opacity="0.6"/>
                     <path d="M 190 88 Q 188 75 185 60" stroke="#d0c0c0" stroke-width="1" stroke-dasharray="3,3" opacity="0.6"/>
 
-                    <!-- 뿌리 애니메이션 힌트 (점선 원) -->
                     <ellipse cx="250" cy="560" rx="40" ry="15" fill="none" stroke="#904951" stroke-width="1" opacity="0.2" stroke-dasharray="5,5"/>
                 </svg>
 
-                <!-- 플로팅 미니 트리 카드 -->
                 <div class="memory-card-mini mini-tree-card hero-float-card" style="animation: float 6s ease-in-out infinite;">
                     <div class="mini-tree-canvas">
                         <div class="mini-tree-ground"></div>
@@ -533,34 +515,14 @@
                     </div>
                 </div>
 
-                <div class="memory-card-mini hero-float-card" style="top: 56%; left: 6%; transform: rotate(-4deg); animation: float 7s ease-in-out infinite 1s;">
-                    <div style="width:100%; height:90px; background: linear-gradient(135deg, #fdf7ef 0%, #fff3de 100%); border-radius: 0.8rem; display:flex; align-items:center; justify-content:center;">
-                        <span style="font-size: 24px;">🫶</span>
-                    </div>
-                    <div style="position: absolute; bottom: 4px; left: 4px; right: 4px; background: rgba(201,168,124,0.92); color: white; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: 700;">첫 설렘</div>
-                </div>
-
-                <!-- 플로팅 애니메이션 CSS -->
                 <style>
                     @keyframes float {
-                        0%, 100% { transform: translateY(0) rotate(var(--rot, 0deg)); }
-                        50% { transform: translateY(-10px) rotate(var(--rot, 0deg)); }
+                        0%, 100% { transform: translateY(0) rotate(0deg); }
+                        50% { transform: translateY(-10px) rotate(0deg); }
                     }
-                    .hero-float-card:nth-child(2) { --rot: 3deg; }
-                    .hero-float-card:nth-child(3) { --rot: -4deg; }
                 </style>
             </div>
         </section>
-
-<!-- CTA Section (하단 - 보조) -->
-<section class="features-section" style="border-top: 1px solid var(--outline-variant); padding: 60px 48px;">
-  <p style="text-align: center; color: var(--on-surface-variant); font-size: 0.85rem; margin-bottom: 1rem;" data-i18n="home.intro">
-    직접 만들어보기 전에 미리 둘러보고 싶다면
-  </p>
-  <div style="display: flex; gap: 12px; justify-content: center;">
-    <a href="pages/search.html" class="btn-round btn-outline" style="text-decoration: none; font-size: 0.85rem; padding: 10px 18px; opacity: 0.8;" data-i18n="home.cta.browse">예시 트리 둘러보기</a>
-  </div>
-</section>
     </div>
 
 
