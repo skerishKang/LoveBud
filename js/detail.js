@@ -42,7 +42,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         return translated;
     };
 
-    // Back button 설정 - 핸들러는 한 번만 등록, 이후 URL만 변경
+    // Back button 설정 - anchor href fallback + 버튼 핸들러 동시 지원
     const configureBackButton = (sourceContext, treeId) => {
         if (!backButton) return;
 
@@ -56,10 +56,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
 
         const config = backConfig[sourceContext] || backConfig.browse;
+        const isAnchorButton = backButton.tagName === 'A';
 
-        backButton.type = 'button';
         backButton.innerHTML = `<span class="material-symbols-outlined" style="font-size:18px;margin-right:4px;">arrow_back</span> ${config.label}`;
         backButton.setAttribute('aria-label', config.label);
+        backButton.dataset.backUrl = config.url;
+
+        if (isAnchorButton) {
+            backButton.setAttribute('href', config.url);
+            return;
+        }
+
+        backButton.type = 'button';
 
         // 핸들러는 최초 한 번만 등록 - 재등록/제거 반복 리스크 제거
         if (!backButton.__detailBackHandler) {
@@ -70,9 +78,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             };
             backButton.addEventListener('click', backButton.__detailBackHandler);
         }
-
-        // URL은 dataset에 저장하여 핸들러가 참조
-        backButton.dataset.backUrl = config.url;
     };
 
     // ── 렌더링 헬퍼 함수들 ──
