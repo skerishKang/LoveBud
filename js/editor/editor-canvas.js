@@ -246,20 +246,30 @@ function createEditorCanvas(deps) {
         });
     }
 
-    const drawNode = (mem) => {
-        const pos = calcPosition(mem);
-        const nodeEl = document.createElement('div');
-        nodeEl.className = 'memory-node floating-node';
-        nodeEl.dataset.memoryId = mem.id;
-        nodeEl.draggable = false;
-        nodeEl.style.touchAction = 'none';
-        nodeEl.style.left = `${pos.x - NODE_HALF}px`;
-        nodeEl.style.top = `${pos.y - NODE_HALF}px`;
-        nodeEl.style.animationDelay = mem.delay || '0s';
+    function hideNodeSkeleton(img, skeleton) {
+        img.classList.add('loaded');
+        skeleton.style.display = 'none';
+    }
 
-        const card = document.createElement('div');
-        card.className = 'node-card';
+    function handleNodeImageError(img, skeleton) {
+        const currentSrc = img.getAttribute('src') || '';
 
+        if (currentSrc.includes('/hqdefault.jpg')) {
+            img.src = currentSrc.replace('/hqdefault.jpg', '/mqdefault.jpg');
+            return;
+        }
+
+        if (currentSrc.includes('/mqdefault.jpg')) {
+            img.src = currentSrc.replace('/mqdefault.jpg', '/default.jpg');
+            return;
+        }
+
+        img.style.display = 'none';
+        skeleton.classList.add('error');
+        skeleton.textContent = '♪';
+    }
+
+    function createNodeImageSection(mem) {
         const imgWrapper = document.createElement('div');
         imgWrapper.className = 'node-img-wrapper';
         imgWrapper.style.position = 'relative';
@@ -274,35 +284,32 @@ function createEditorCanvas(deps) {
         img.draggable = false;
         img.addEventListener('dragstart', (e) => e.preventDefault());
 
-        img.onload = () => {
-            img.classList.add('loaded');
-            skeleton.style.display = 'none';
-        };
-
-        img.onerror = () => {
-            const currentSrc = img.getAttribute('src') || '';
-
-            if (currentSrc.includes('/hqdefault.jpg')) {
-                img.src = currentSrc.replace('/hqdefault.jpg', '/mqdefault.jpg');
-                return;
-            }
-
-            if (currentSrc.includes('/mqdefault.jpg')) {
-                img.src = currentSrc.replace('/mqdefault.jpg', '/default.jpg');
-                return;
-            }
-
-            img.style.display = 'none';
-            skeleton.classList.add('error');
-            skeleton.textContent = '♪';
-        };
+        img.onload = () => hideNodeSkeleton(img, skeleton);
+        img.onerror = () => handleNodeImageError(img, skeleton);
 
         if (img.complete) {
-            img.classList.add('loaded');
-            skeleton.style.display = 'none';
+            hideNodeSkeleton(img, skeleton);
         }
 
         imgWrapper.appendChild(img);
+        return imgWrapper;
+    }
+
+    const drawNode = (mem) => {
+        const pos = calcPosition(mem);
+        const nodeEl = document.createElement('div');
+        nodeEl.className = 'memory-node floating-node';
+        nodeEl.dataset.memoryId = mem.id;
+        nodeEl.draggable = false;
+        nodeEl.style.touchAction = 'none';
+        nodeEl.style.left = `${pos.x - NODE_HALF}px`;
+        nodeEl.style.top = `${pos.y - NODE_HALF}px`;
+        nodeEl.style.animationDelay = mem.delay || '0s';
+
+        const card = document.createElement('div');
+        card.className = 'node-card';
+
+        const imgWrapper = createNodeImageSection(mem);
         card.appendChild(imgWrapper);
         nodeEl.appendChild(card);
 
