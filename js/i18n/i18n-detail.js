@@ -1,1 +1,210 @@
-(function(){'use strict';window.i18nDetail={'memory_not_found_title':{ko:'기억을 찾지 못했어요',en:'Memory not found'},'memory_not_found_desc':{ko:'요청하신 기억이 존재하지 않거나 접근할 수 없는 상태입니다.',en:'The requested memory does not exist or is inaccessible.'},'no_video':{ko:'비디오가 없습니다',en:'No video available'},'tree_load_fail_title':{ko:'트리를 불러올 수 없어요',en:'Unable to load tree'},'tree_load_error_title':{ko:'트리를 여는 중 문제가 발생했어요',en:'Error opening tree'},'tree_not_found_title':{ko:'트리를 찾을 수 없어요',en:'Tree not found'},'tree_load_api_unavailable':{ko:'트리 조회 API를 사용할 수 없는 상태입니다. 잠시 후 다시 시도해주세요.',en:'Tree API is unavailable. Please try again later.'},'tree_load_error_desc':{ko:'일시적인 서버 문제 또는 접근 권한 문제일 수 있습니다. 다시 시도하거나 내 트리 목록으로 돌아가 주세요.',en:'This may be a temporary server issue or permission problem. Please retry or go back to your trees.'},'tree_load_not_found_desc':{ko:'잘못된 링크이거나 접근 권한이 없는 트리입니다.',en:'Invalid link or you do not have permission to access this tree.'},'current_tree':{ko:'현재 트리',en:'Current Tree'},'tree_info_missing':{ko:'트리 정보 없음',en:'Tree Info Missing'},'tree_load_failed_desc':{ko:'트리 정보를 불러오지 못했어요. 순간 감상은 계속할 수 있어요.',en:'Could not load tree info. You can still view this moment.'},'tree_path_missing':{ko:'트리 경로 정보가 없어요',en:'No tree path information'},'waiting_first_moment':{ko:'첫 순간을 기다리고 있어요',en:'Waiting for the first moment'},'start_moment':{ko:'시작 순간',en:'Starting Moment'},'selected_moment':{ko:'선택된 순간',en:'Selected Moment'},'moment_detail':{ko:'순간 상세',en:'Moment Detail'},'memory_record_prefix':{ko:'기록 — ',en:'Recorded — '},'edit_action':{ko:'편집하기',en:'Edit'},'go_to_my_trees':{ko:'내 트리로 가기',en:'Go to My Trees'},'find_tree_in_browse':{ko:'둘러보기에서 트리 찾기',en:'Find Tree in Browse'},'no_siblings_in_path':{ko:'같은 경로의 다른 순간이 없어요',en:'No other moments in this path'},'empty_panel_hint':{ko:'아직 선택된 순간이 없습니다. 첫 번째 영상을 추가하면 이 패널에 순간 정보가 표시됩니다.',en:'No moment selected yet. Add your first video to see moment details here.'},'empty_tree_title':{ko:'새 트리가 비어있어요',en:'New Tree is Empty'},'empty_tree_desc':{ko:'"영상 추가" 버튼을 클릭하여 첫 번째 감정을 기록해보세요!',en:'Click "Add Video" to record your first emotion!'},'empty_tree_memo':{ko:'이 트리는 아직 비어 있습니다. "영상 추가" 버튼으로 첫 순간을 기록해 보세요.',en:'This tree is empty. Click "Add Video" to record your first moment.'},'root_moment_hint':{ko:'이 순간은 현재 트리의 시작점입니다',en:'This moment is the starting point of the tree'},'path_moment_hint':{ko:'이 순간은 감정 경로의 한 지점입니다',en:'This moment is a point along the emotional path'},'edit_memory':{ko:'순간 수정',en:'Edit Moment'},'delete_memory':{ko:'순간 삭제',en:'Delete Moment'},'delete_confirm':{ko:'정말 이 순간을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.',en:'Are you sure you want to delete this moment? This action cannot be undone.'},'memory_updated':{ko:'순간이 수정되었습니다',en:'Moment updated successfully'},'memory_deleted':{ko:'순간이 삭제되었습니다',en:'Moment deleted successfully'},'update_failed':{ko:'수정에 실패했습니다',en:'Update failed'},'delete_failed':{ko:'삭제에 실패했습니다',en:'Delete failed'},'record_error':{ko:'기록 저장 중 오류가 발생했습니다',en:'Error occurred while saving the record'}};})();
+(function() {
+  'use strict';
+
+  window.i18nDetail = {
+    'memory_not_found_title': {
+      ko: '기억을 찾지 못했어요',
+      en: 'Memory not found'
+    },
+    'memory_not_found_desc': {
+      ko: '요청하신 기억이 존재하지 않거나 접근할 수 없는 상태입니다.',
+      en: 'The requested memory does not exist or is inaccessible.'
+    },
+    'no_video': {
+      ko: '비디오가 없습니다',
+      en: 'No video available'
+    },
+    'tree_load_fail_title': {
+      ko: '트리를 불러올 수 없어요',
+      en: 'Unable to load tree'
+    },
+    'tree_load_error_title': {
+      ko: '트리를 여는 중 문제가 발생했어요',
+      en: 'Error opening tree'
+    },
+    'tree_not_found_title': {
+      ko: '트리를 찾을 수 없어요',
+      en: 'Tree not found'
+    },
+    'tree_load_api_unavailable': {
+      ko: '트리 조회 API를 사용할 수 없는 상태입니다. 잠시 후 다시 시도해주세요.',
+      en: 'Tree API is unavailable. Please try again later.'
+    },
+    'tree_load_error_desc': {
+      ko: '일시적인 서버 문제 또는 접근 권한 문제일 수 있습니다. 다시 시도하거나 내 트리 목록으로 돌아가 주세요.',
+      en: 'This may be a temporary server issue or permission problem. Please retry or go back to your trees.'
+    },
+    'tree_load_not_found_desc': {
+      ko: '잘못된 링크이거나 접근 권한이 없는 트리입니다.',
+      en: 'Invalid link or you do not have permission to access this tree.'
+    },
+    'current_tree': {
+      ko: '현재 트리',
+      en: 'Current Tree'
+    },
+    'tree_info_missing': {
+      ko: '트리 정보 없음',
+      en: 'Tree Info Missing'
+    },
+    'tree_load_failed_desc': {
+      ko: '트리 정보를 불러오지 못했어요. 순간 감상은 계속할 수 있어요.',
+      en: 'Could not load tree info. You can still view this moment.'
+    },
+    'tree_path_missing': {
+      ko: '트리 경로 정보가 없어요',
+      en: 'No tree path information'
+    },
+    'waiting_first_moment': {
+      ko: '첫 순간을 기다리고 있어요',
+      en: 'Waiting for the first moment'
+    },
+    'start_moment': {
+      ko: '시작 순간',
+      en: 'Starting Moment'
+    },
+    'selected_moment': {
+      ko: '선택된 순간',
+      en: 'Selected Moment'
+    },
+    'moment_detail': {
+      ko: '순간 상세',
+      en: 'Moment Detail'
+    },
+    'tree_context_moment': {
+      ko: '순간 상세',
+      en: 'Moment Detail'
+    },
+    'tree_context_viewing': {
+      ko: '감상 중',
+      en: 'Viewing'
+    },
+    'tree_context_solo_view': {
+      ko: '이 순간만 단독으로 감상하고 있어요.',
+      en: 'You are viewing just this moment on its own.'
+    },
+    'tree_context_moment_count_desc': {
+      ko: '개의 순간이 이어진 감정 경로를 따라가고 있어요',
+      en: ' moments are connected along this emotional path'
+    },
+    'tree_context_moment_count_short': {
+      ko: '개 순간',
+      en: ' moments'
+    },
+    'tree_context_editor_desc': {
+      ko: '편집 중인 트리를 감상 모드로 보고 있어요',
+      en: 'You are viewing the tree you were editing in viewing mode.'
+    },
+    'tree_context_my_trees_desc': {
+      ko: '내가 기록한 순간들을 다시 감상하고 있어요',
+      en: 'You are revisiting the moments you recorded.'
+    },
+    'memory_record_prefix': {
+      ko: '기록 — ',
+      en: 'Recorded — '
+    },
+    'edit_action': {
+      ko: '편집하기',
+      en: 'Edit'
+    },
+    'editor_label': {
+      ko: '편집기',
+      en: 'Editor'
+    },
+    'go_to_my_trees': {
+      ko: '내 트리로 가기',
+      en: 'Go to My Trees'
+    },
+    'find_tree_in_browse': {
+      ko: '둘러보기에서 트리 찾기',
+      en: 'Find Tree in Browse'
+    },
+    'browse_label': {
+      ko: '둘러보기',
+      en: 'Browse'
+    },
+    'browse_lovetrees': {
+      ko: '러브트리 둘러보기',
+      en: 'Browse LoveTrees'
+    },
+    'my_trees_label': {
+      ko: '내 트리',
+      en: 'My Trees'
+    },
+    'my_trees_short': {
+      ko: '내 트리',
+      en: 'My Trees'
+    },
+    'lovetree_brand': {
+      ko: '러브트리',
+      en: 'LoveTree'
+    },
+    'unknown_artist': {
+      ko: '아티스트 정보 없음',
+      en: 'Artist information unavailable'
+    },
+    'back_to_home': {
+      ko: '첫화면으로',
+      en: 'Home'
+    },
+    'no_siblings_in_path': {
+      ko: '같은 경로의 다른 순간이 없어요',
+      en: 'No other moments in this path'
+    },
+    'empty_panel_hint': {
+      ko: '아직 선택된 순간이 없습니다. 첫 번째 영상을 추가하면 이 패널에 순간 정보가 표시됩니다.',
+      en: 'No moment selected yet. Add your first video to see moment details here.'
+    },
+    'empty_tree_title': {
+      ko: '새 트리가 비어있어요',
+      en: 'New Tree is Empty'
+    },
+    'empty_tree_desc': {
+      ko: '"영상 추가" 버튼을 클릭하여 첫 번째 감정을 기록해보세요!',
+      en: 'Click "Add Video" to record your first emotion!'
+    },
+    'empty_tree_memo': {
+      ko: '이 트리는 아직 비어 있습니다. "영상 추가" 버튼으로 첫 순간을 기록해 보세요.',
+      en: 'This tree is empty. Click "Add Video" to record your first moment.'
+    },
+    'root_moment_hint': {
+      ko: '이 순간은 현재 트리의 시작점입니다',
+      en: 'This moment is the starting point of the tree'
+    },
+    'path_moment_hint': {
+      ko: '이 순간은 감정 경로의 한 지점입니다',
+      en: 'This moment is a point along the emotional path'
+    },
+    'edit_memory': {
+      ko: '순간 수정',
+      en: 'Edit Moment'
+    },
+    'delete_memory': {
+      ko: '순간 삭제',
+      en: 'Delete Moment'
+    },
+    'delete_confirm': {
+      ko: '정말 이 순간을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.',
+      en: 'Are you sure you want to delete this moment? This action cannot be undone.'
+    },
+    'memory_updated': {
+      ko: '순간이 수정되었습니다',
+      en: 'Moment updated successfully'
+    },
+    'memory_deleted': {
+      ko: '순간이 삭제되었습니다',
+      en: 'Moment deleted successfully'
+    },
+    'update_failed': {
+      ko: '수정에 실패했습니다',
+      en: 'Update failed'
+    },
+    'delete_failed': {
+      ko: '삭제에 실패했습니다',
+      en: 'Delete failed'
+    },
+    'record_error': {
+      ko: '기록 저장 중 오류가 발생했습니다',
+      en: 'Error occurred while saving the record'
+    }
+  };
+})();
