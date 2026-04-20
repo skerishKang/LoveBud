@@ -31,6 +31,7 @@
             intro: { textKey: 'nav.intro', href: 'pages/intro.html' },
             search: { textKey: 'nav.search', href: 'pages/search.html' },
             myTrees: { textKey: 'nav.myTrees', href: 'pages/my-trees.html' },
+            settings: { textKey: 'nav.settings', href: 'pages/settings.html' },
             editor: null // root에서는 에디터 숨김
         },
         // pages 폴더 내 페이지
@@ -39,6 +40,7 @@
             intro: { textKey: 'nav.intro', href: 'intro.html' },
             search: { textKey: 'nav.search', href: 'search.html' },
             myTrees: { textKey: 'nav.myTrees', href: 'my-trees.html' },
+            settings: { textKey: 'nav.settings', href: 'settings.html' },
             editor: { textKey: 'nav.editor', href: 'editor.html' }
         }
     };
@@ -52,7 +54,7 @@
         'my-trees.html': 'myTrees',
         'editor.html': 'editor',
         'login.html': null, // login은 메뉴 active 없음
-        'settings.html': null // settings도 메뉴 active 없음
+        'settings.html': 'settings'
     };
 
     // 현재 페이지 감지
@@ -166,6 +168,12 @@
         if (menuConfig.myTrees && !isEditorPage()) {
             var activeClass = activeKey === 'myTrees' ? ' class="active"' : '';
             navLinksHTML += '<a href="' + menuConfig.myTrees.href + '"' + activeClass + '>' + t(menuConfig.myTrees.textKey) + '</a>';
+        }
+
+        // 설정
+        if (menuConfig.settings) {
+            var activeClass = activeKey === 'settings' ? ' class="active"' : '';
+            navLinksHTML += '<a href="' + menuConfig.settings.href + '"' + activeClass + '>' + t(menuConfig.settings.textKey) + '</a>';
         }
         
         // 에디터 페이지에서는 "편집하기" 메뉴 숨김 (이미 편집 화면 안에 있음)
