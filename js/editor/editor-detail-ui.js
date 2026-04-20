@@ -73,7 +73,7 @@ function createEditorDetailUI(deps) {
         if (!emptyState) {
             emptyState = document.createElement('div');
             emptyState.id = 'detailEmptyState';
-            emptyState.innerHTML = '<div style="text-align:center;padding:40px 24px;color:var(--on-surface-variant);"><span class="material-symbols-outlined" style="font-size:48px;opacity:0.4;margin-bottom:16px;display:block;">sentiment_satisfied</span><p style="font-size:1rem;font-weight:700;margin-bottom:8px;color:var(--on-surface);">첫 순간이 트리를 깨워요</p><p style="font-size:0.9rem;opacity:0.78;line-height:1.6;">왼쪽 아래의 \'순간 추가\' 버튼으로 당신의 첫 기억을 심어보세요.</p></div>';
+            emptyState.innerHTML = '<div style="text-align:center;padding:40px 24px;color:var(--on-surface-variant);"><span class="material-symbols-outlined" style="font-size:48px;opacity:0.4;margin-bottom:16px;display:block;">sentiment_satisfied</span><p style="font-size:1rem;font-weight:700;margin-bottom:8px;color:var(--on-surface);">' + (i18n('detail_empty_title') || '아직 추가된 순간이 없어요') + '</p><p style="font-size:0.9rem;opacity:0.78;line-height:1.6;">' + (i18n('detail_empty_desc') || '왼쪽 아래의 \'순간 추가\' 버튼으로 첫 기록을 남겨보세요.') + '</p></div>';
             detailContent.appendChild(emptyState);
         }
 
@@ -129,9 +129,11 @@ function createEditorDetailUI(deps) {
                     : '첫 기억이 심어지면 이곳에 감정의 흐름이 차곡차곡 쌓여요.';
         }
         if (hintEl) {
+            const currentSelectionLabel = i18n('sidebar_current_selection') || '현재 선택';
+            const firstMomentHint = i18n('sidebar_first_moment_hint') || '첫 순간을 추가해 트리를 시작해 보세요.';
             hintEl.textContent = selected?.title
-                ? `선택한 순간: ${selected.title}`
-                : '첫 순간이 심어지면 러브트리가 자라나요.';
+                ? `${currentSelectionLabel}: ${selected.title}`
+                : firstMomentHint;
             hintEl.style.fontStyle = 'italic';
             hintEl.style.color = 'var(--on-surface-variant)';
         }
@@ -224,7 +226,7 @@ function createEditorDetailUI(deps) {
                             navigator.clipboard?.writeText(shareUrl).then(() => {
                                 showToast(i18n('copied_link') || '링크가 복사되었습니다', 'success');
                             }).catch(() => {
-                                showToast('링크 복사에 실패했습니다', 'error');
+                                showToast(i18n('copy_link_failed') || '링크 복사에 실패했습니다', 'error');
                             });
                         });
                     }
