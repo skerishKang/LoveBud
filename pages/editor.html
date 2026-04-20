@@ -4,141 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>러브트리 편집 | LoveTree</title>
-    <link rel="stylesheet" href="../css/editor.css?v=20260419-2">
+    <link rel="stylesheet" href="../css/editor.css?v=20260420-1">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
-    <style>
-        body.editor-preload .editor-layout {
-            visibility: hidden;
-        }
-
-        .canvas-area {
-            background:
-                radial-gradient(circle at 18% 20%, rgba(255, 232, 236, 0.9) 0%, rgba(255, 232, 236, 0) 26%),
-                radial-gradient(circle at 82% 16%, rgba(255, 244, 232, 0.7) 0%, rgba(255, 244, 232, 0) 22%),
-                radial-gradient(circle at 50% 78%, rgba(246, 238, 234, 0.92) 0%, rgba(246, 238, 234, 0) 34%),
-                radial-gradient(rgba(144, 73, 81, 0.10) 1px, transparent 1px),
-                linear-gradient(180deg, #fffdfc 0%, #fbf7f4 100%);
-            background-size: auto, auto, auto, 40px 40px, auto;
-        }
-
-        .canvas-area::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            pointer-events: none;
-            background:
-                radial-gradient(circle at 50% 46%, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.14) 48%, rgba(255, 255, 255, 0.32) 100%),
-                linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.02));
-            opacity: 0.9;
-        }
-
-        .branch-line {
-            stroke: rgba(144, 73, 81, 0.26) !important;
-            stroke-width: 2.5 !important;
-            opacity: 0.9 !important;
-            filter: drop-shadow(0 6px 12px rgba(144, 73, 81, 0.10));
-            transition: stroke 0.25s ease, opacity 0.25s ease, filter 0.25s ease;
-        }
-
-        .node-card {
-            border-radius: 999px;
-            background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(252,247,244,0.96));
-            box-shadow: 0 12px 24px rgba(75, 64, 57, 0.08);
-            border: 1px solid rgba(144, 73, 81, 0.08);
-            transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease, background 0.25s ease;
-        }
-
-        .node-info-label {
-            transition: transform 0.25s ease, opacity 0.25s ease;
-        }
-
-        .node-mood {
-            display: none;
-            margin-top: 6px;
-            font-size: 11px;
-            line-height: 1.4;
-            color: rgba(144, 73, 81, 0.92);
-            font-weight: 700;
-            letter-spacing: -0.01em;
-            opacity: 0.94;
-        }
-
-        .memory-node:hover .node-card {
-            transform: scale(1.04);
-            border-color: rgba(144, 73, 81, 0.35);
-            box-shadow: 0 20px 42px rgba(144, 73, 81, 0.16);
-        }
-
-        .memory-node.selected .node-card {
-            transform: scale(1.06);
-            border-color: rgba(144, 73, 81, 0.42);
-            background: linear-gradient(180deg, rgba(255,255,255,1), rgba(252,242,238,0.98));
-            box-shadow:
-                0 0 0 6px rgba(144, 73, 81, 0.08),
-                0 28px 58px rgba(144, 73, 81, 0.20);
-        }
-
-        .memory-node.selected .node-info-label {
-            transform: translateX(-10px) translateY(2px);
-        }
-
-        .memory-node.selected .node-title {
-            color: var(--primary);
-        }
-
-        .memory-node.selected .node-date {
-            color: rgba(144, 73, 81, 0.82);
-        }
-
-        .memory-node.selected .node-mood {
-            display: block;
-        }
-
-        .diary-note {
-            position: relative;
-            background:
-                linear-gradient(180deg, rgba(255,255,255,0.98), rgba(252,245,241,0.98)),
-                repeating-linear-gradient(
-                    180deg,
-                    rgba(144, 73, 81, 0.00) 0,
-                    rgba(144, 73, 81, 0.00) 31px,
-                    rgba(144, 73, 81, 0.05) 31px,
-                    rgba(144, 73, 81, 0.05) 32px
-                );
-            padding: 26px 24px 22px;
-            border-radius: 20px;
-            border: 1px solid rgba(144, 73, 81, 0.08);
-            border-left: 4px solid rgba(144, 73, 81, 0.24);
-            box-shadow: 0 14px 28px rgba(75, 64, 57, 0.07);
-            line-height: 1.9;
-            overflow: hidden;
-        }
-
-        .diary-note::before {
-            content: '나의 마음 기록';
-            display: block;
-            margin-bottom: 12px;
-            font-size: 11px;
-            font-weight: 800;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-            color: rgba(144, 73, 81, 0.72);
-        }
-
-        .diary-note > div:first-child {
-            font-size: 15px;
-            line-height: 1.9;
-            color: var(--on-surface);
-            white-space: pre-wrap;
-            word-break: keep-all;
-        }
-
-        .diary-note > div + div {
-            margin-top: 14px;
-            padding-top: 12px;
-            border-top: 1px dashed rgba(144, 73, 81, 0.16);
-        }
-    </style>
 </head>
 <body class="editor-preload">
     <div class="noise-overlay"></div>
@@ -296,7 +163,7 @@
 <script src="../js/editor/editor-canvas-interaction.js?v=20260420-1"></script>
 <script src="../js/editor/editor-canvas.js?v=20260420-5"></script>
 <script src="../js/editor/editor-rename-ui.js?v=20260420-1"></script>
-<script src="../js/editor/editor-detail-ui.js?v=20260420-3"></script>
+<script src="../js/editor/editor-detail-ui.js?v=20260420-4"></script>
 <script src="../js/editor/editor-memory-actions.js?v=20260419-1"></script>
 <script src="../js/editor/editor-memory-form.js?v=20260419-1"></script>
 <script src="../js/api/auth-policy.js?v=20260420-1"></script>
@@ -309,7 +176,7 @@
     <script src="../js/editor/editor-bindings.js?v=20260420-1"></script>
     <script src="../js/editor/editor-auth-helpers.js?v=20260420-1"></script>
     <script src="../js/editor/editor-data-loader.js?v=20260420-1"></script>
-    <script src="../js/editor.js?v=20260420-9"></script>
+    <script src="../js/editor.js?v=20260420-10"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="../js/firebase-config.js?v=20260417-31"></script>
@@ -319,7 +186,7 @@
     <script src="../js/i18n/i18n-intro.js?v=20260419-2"></script>
     <script src="../js/i18n/i18n-search.js?v=20260419-2"></script>
     <script src="../js/i18n/i18n-detail.js?v=20260419-2"></script>
-    <script src="../js/i18n/i18n-editor.js?v=20260419-2"></script>
+    <script src="../js/i18n/i18n-editor.js?v=20260420-3"></script>
     <script src="../js/i18n/i18n-my-trees.js?v=20260419-2"></script>
     <script src="../js/i18n/i18n-index.js?v=20260419-2"></script>
     <script src="../js/i18n.js?v=20260419-2"></script>
