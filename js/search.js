@@ -25,6 +25,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const previewTitle = document.getElementById('previewTitle');
     const previewDesc = document.getElementById('previewDesc');
     const previewMemoriesCount = document.getElementById('previewMemoriesCount');
+    const previewTreeDuration = document.getElementById('previewTreeDuration');
     const previewEmotionTags = document.getElementById('previewEmotionTags');
     const searchInput = document.getElementById('searchInput');
     const tagChips = document.querySelectorAll('.tag-chip');
@@ -44,6 +45,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         previewTitle,
         previewDesc,
         previewMemoriesCount,
+        previewTreeDuration,
         previewEmotionTags
     });
 
