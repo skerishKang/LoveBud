@@ -150,6 +150,37 @@
          return `<strong style="color:var(--on-surface);">${escapeHtml(displayTitle)}</strong>에 담긴 <span style="color:var(--primary);font-weight:700;">${memoryCount}개의 감정 순간</span>이 <strong>${escapeHtml(timeRange)}</strong> 동안 기록되었어요.`;
      }
 
+     function renderSectionHeading(icon, label) {
+         return `
+             <div style="font-size:11px;font-weight:800;color:var(--on-surface-variant);margin-bottom:12px;text-transform:uppercase;letter-spacing:1px;display:flex;align-items:center;gap:4px;">
+                 <span class="material-symbols-outlined" style="font-size:14px;">${escapeHtml(icon)}</span>
+                 ${escapeHtml(label)}
+             </div>
+         `;
+     }
+
+     function renderInfoCallout(icon, text, variant = 'neutral') {
+         const isPrimary = variant === 'primary';
+         const background = isPrimary ? 'var(--primary-container)' : 'var(--surface-container)';
+         const color = isPrimary ? 'var(--on-primary-container)' : 'var(--on-surface-variant)';
+
+         return `
+             <div style="margin-top:12px;padding:12px;background:${background};border-radius:0.75rem;font-size:13px;color:${color};font-weight:500;display:flex;align-items:center;gap:8px;">
+                 <span class="material-symbols-outlined" style="font-size:18px;">${escapeHtml(icon)}</span>
+                 ${escapeHtml(text)}
+             </div>
+         `;
+     }
+
+     function renderPathStageBadge(index, title) {
+         return `<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:var(--surface-container);border-radius:8px;font-size:13px;"><span style="color:var(--primary);font-weight:800;">${index}</span><span>${escapeHtml(title)}</span></span>`;
+     }
+
+     function renderMoreStagesText(count) {
+         if (!count || count <= 0) return '';
+         return `<div style="margin-top:8px;font-size:12px;color:var(--on-surface-variant);font-style:italic;">... 그리고 ${count}개의 순간 더</div>`;
+     }
+
     /**
      * Updates preview details for a tree
      * 
@@ -238,10 +269,7 @@
             if (!hasMemories) {
                 _dom.previewDesc.innerHTML = `
                     <div style="background:var(--surface-container-low);padding:20px;border-radius:1rem;margin-bottom:16px;">
-                        <div style="font-size:11px;font-weight:800;color:var(--on-surface-variant);margin-bottom:12px;text-transform:uppercase;letter-spacing:1px;display:flex;align-items:center;gap:4px;">
-                            <span class="material-symbols-outlined" style="font-size:14px;">route</span>
-                            어떻게 입덕했을까요?
-                        </div>
+                        ${renderSectionHeading('route', '어떻게 입덕했을까요?')}
                         <div style="font-size:14px;line-height:1.7;color:var(--on-surface-variant);">
                             아직 기록된 순간이 없어 감정 경로가 비어 있어요.<br>
                             첫 순간이 추가되면 이 패널에서 흐름을 바로 미리 볼 수 있어요.
@@ -252,28 +280,20 @@
                         ${getPreviewSummaryCopy(tree, memories)}
                         <span style="color:var(--primary);font-weight:700;">아직 기록은 0개</span>지만,
                         다음 순간이 쌓이면 감정 경로가 여기서 채워집니다.
-                        <div style="margin-top:12px;padding:12px;background:var(--surface-container);border-radius:0.75rem;font-size:13px;color:var(--on-surface-variant);font-weight:500;display:flex;align-items:center;gap:8px;">
-                            <span class="material-symbols-outlined" style="font-size:18px;">info</span>
-                            새로 시작된 공개 트리입니다
-                        </div>
+                        ${renderInfoCallout('info', '새로 시작된 공개 트리입니다')}
                     </div>
                 `;
             } else {
                 const pathStages = memories.slice(0, 3).map((m, i) => {
-                    const momentTitle = escapeHtml((m.title || '').replace(/\s*-\s*.*/, ''));
-                    return `<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:var(--surface-container);border-radius:8px;font-size:13px;"><span style="color:var(--primary);font-weight:800;">${i + 1}</span><span>${momentTitle}</span></span>`;
+                    const momentTitle = (m.title || '').replace(/\s*-\s*.*/, '');
+                    return renderPathStageBadge(i + 1, momentTitle);
                 }).join('<span style="opacity:0.3;margin:0 4px;">→</span>');
 
-                const moreStages = memories.length > 3
-                    ? `<div style="margin-top:8px;font-size:12px;color:var(--on-surface-variant);font-style:italic;">... 그리고 ${memories.length - 3}개의 순간 더</div>` 
-                    : '';
+                const moreStages = renderMoreStagesText(memories.length - 3);
 
                 _dom.previewDesc.innerHTML = `
                     <div style="background:var(--surface-container-low);padding:20px;border-radius:1rem;margin-bottom:16px;">
-                        <div style="font-size:11px;font-weight:800;color:var(--on-surface-variant);margin-bottom:12px;text-transform:uppercase;letter-spacing:1px;display:flex;align-items:center;gap:4px;">
-                            <span class="material-symbols-outlined" style="font-size:14px;">route</span>
-                            어떻게 입덕했을까요?
-                        </div>
+                        ${renderSectionHeading('route', '어떻게 입덕했을까요?')}
                         <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;line-height:1.8;">
                             ${pathStages}
                         </div>
@@ -282,10 +302,7 @@
 
                     <div style="font-size:14px;color:var(--on-surface-variant);line-height:1.6;padding:0 4px;">
                         ${getPreviewSummaryCopy(tree, memories)}
-                        <div style="margin-top:12px;padding:12px;background:var(--primary-container);border-radius:0.75rem;font-size:13px;color:var(--on-primary-container);font-weight:500;display:flex;align-items:center;gap:8px;">
-                            <span class="material-symbols-outlined" style="font-size:18px;">touch_app</span>
-                            카드를 클릭하여 감정 경로를 따라가보세요
-                        </div>
+                        ${renderInfoCallout('touch_app', '카드를 클릭하여 감정 경로를 따라가보세요', 'primary')}
                     </div>
                 `;
             }
