@@ -20,5 +20,9 @@ Object.assign(window.i18nEditor, {
     editor_edit_tag_label: { ko: '감정 태그 (쉼표로 구분)', en: 'Emotion tags (comma separated)' },
     editor_edit_tag_placeholder: { ko: '#감동, #행복, #그리움', en: '#moving, #happy, #longing' },
     editor_save: { ko: '저장하기', en: 'Save' },
-    editor_record_submit: { ko: '내 러브트리에 기록하기', en: 'Save to my LoveTree' }
+    editor_record_submit: { ko: '내 러브트리에 기록하기', en: 'Save to my LoveTree' },
+    visibility_public: { ko: '공개', en: 'Public' },
+    visibility_private: { ko: '비공개', en: 'Private' },
+    share_info: { ko: '링크가 있는 사람은 이 트리를 볼 수 있습니다', en: 'Anyone with the link can view this tree.' },
+    share_link: { ko: '링크 복사', en: 'Copy link' }
 });
