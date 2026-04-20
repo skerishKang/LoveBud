@@ -21,6 +21,7 @@ function createEditorCanvas(deps) {
     const canvasLayout = window.LoveBudEditorCanvasLayout || {};
     const canvasNode = window.LoveBudEditorCanvasNode || {};
     const canvasInteraction = window.LoveBudEditorCanvasInteraction || {};
+    const canvasViewport = window.LoveBudEditorCanvasViewport || {};
 
     function loadStoredLayout() {
         if (typeof canvasLayout.createLayoutStore === 'function') {
@@ -192,6 +193,11 @@ function createEditorCanvas(deps) {
     };
 
     const drawBranch = (startPos, endPos) => {
+        if (typeof canvasViewport.drawBranch === 'function') {
+            canvasViewport.drawBranch(svg, startPos, endPos);
+            return;
+        }
+
         const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
         const cp1x = startPos.x + (endPos.x - startPos.x) / 2;
         const d = `M ${startPos.x},${startPos.y} Q ${cp1x},${startPos.y} ${endPos.x},${endPos.y}`;
@@ -358,6 +364,19 @@ function createEditorCanvas(deps) {
     };
 
     function focusNodeById(nodeId) {
+        if (typeof canvasViewport.focusNodeById === 'function') {
+            canvasViewport.focusNodeById({
+                nodeId,
+                getTreeMemories,
+                getWorldPosition,
+                getMetrics,
+                viewportState,
+                initCanvas,
+                reapplySelection
+            });
+            return;
+        }
+
         if (!nodeId) return;
         const treeMemories = getTreeMemories();
         const target = treeMemories.find((m) => m.id === nodeId);
@@ -372,6 +391,17 @@ function createEditorCanvas(deps) {
     }
 
     function recenterViewport() {
+        if (typeof canvasViewport.recenterViewport === 'function') {
+            canvasViewport.recenterViewport({
+                getTreeMemories,
+                getWorldPosition,
+                getMetrics,
+                viewportState,
+                initCanvas
+            });
+            return;
+        }
+
         const treeMemories = getTreeMemories();
         if (!treeMemories.length) {
             viewportState.offsetX = 0;
@@ -393,6 +423,15 @@ function createEditorCanvas(deps) {
     }
 
     function bindViewportControls() {
+        if (typeof canvasViewport.bindControls === 'function') {
+            canvasViewport.bindControls({
+                viewportState,
+                focusNodeById,
+                recenterViewport
+            });
+            return;
+        }
+
         if (viewportState.controlsBound) return;
         viewportState.controlsBound = true;
 
