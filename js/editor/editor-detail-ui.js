@@ -208,19 +208,18 @@ function createEditorDetailUI(deps) {
                 `;
 
                 if (isPublic && data?.id) {
-                    setTimeout(() => {
-                        const btn = document.getElementById('shareTreeBtn');
-                        if (btn) {
-                            btn.addEventListener('click', () => {
-                                const shareUrl = window.location.origin + '/' + basePath + 'detail.html?id=' + data.id + '&tree=' + treeId;
-                                navigator.clipboard?.writeText(shareUrl).then(() => {
-                                    showToast(i18n('copied_link') || '링크가 복사되었습니다', 'success');
-                                }).catch(() => {
-                                    showToast('링크 복사에 실패했습니다', 'error');
-                                });
+                    const btn = document.getElementById('shareTreeBtn');
+                    if (btn && btn.dataset.shareBound !== '1') {
+                        btn.dataset.shareBound = '1';
+                        btn.addEventListener('click', () => {
+                            const shareUrl = window.location.origin + '/' + basePath + 'detail.html?id=' + data.id + '&tree=' + treeId;
+                            navigator.clipboard?.writeText(shareUrl).then(() => {
+                                showToast(i18n('copied_link') || '링크가 복사되었습니다', 'success');
+                            }).catch(() => {
+                                showToast('링크 복사에 실패했습니다', 'error');
                             });
-                        }
-                    }, 100);
+                        });
+                    }
                 }
             }
         }
