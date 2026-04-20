@@ -160,7 +160,7 @@ function createEditorDetailUI(deps) {
                         ${i18n('current_tree') || '현재 트리'}
                     </div>
                     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
-                        <div style="font-size:14px;font-weight:700;color:var(--on-surface);">${escapeHtml(displayTreeTitle)}</div>
+                        <div class="tree-title-text" style="font-size:14px;font-weight:700;color:var(--on-surface);">${escapeHtml(displayTreeTitle)}</div>
                         <span style="${visStyle}padding:4px 10px;border-radius:99px;display:inline-flex;align-items:center;gap:4px;font-size:12px;">
                             <span class="material-symbols-outlined" style="font-size:12px;">${escapeHtml(visIcon)}</span>
                             ${escapeHtml(visLabel)}
