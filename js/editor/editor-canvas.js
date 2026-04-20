@@ -294,7 +294,7 @@ function createEditorCanvas(deps) {
         return card;
     }
 
-function applyNodePosition(nodeEl, pos, mem) {
+    function applyNodePosition(nodeEl, pos, mem) {
         nodeEl.style.left = `${pos.x - NODE_HALF}px`;
         nodeEl.style.top = `${pos.y - NODE_HALF}px`;
         nodeEl.style.animationDelay = mem.delay || '0s';
@@ -346,18 +346,24 @@ function applyNodePosition(nodeEl, pos, mem) {
         const canonicalRootId = getCanonicalRootId();
         const treeMemories = getTreeMemories();
         const selectedNodeId = document.querySelector('.memory-node.selected')?.dataset?.memoryId || null;
+        const drawableMemories = treeMemories.filter((node) => !isRootMemory(node, canonicalRootId));
+        const rootMemory = treeMemories.find((node) => isRootMemory(node, canonicalRootId)) || null;
+        const shouldRenderRootNode = drawableMemories.length === 0 && !!rootMemory;
+        const hasVisibleNodes = drawableMemories.length > 0 || shouldRenderRootNode;
         canvas.style.backgroundPosition = `${viewportState.offsetX}px ${viewportState.offsetY}px`;
 
         canvas.querySelectorAll('.memory-node').forEach((node) => node.remove());
         canvas.querySelectorAll('#emptyTreeMessage').forEach((el) => el.remove());
         svg.querySelectorAll('.branch-line').forEach((line) => line.remove());
 
-        const hasMoments = treeMemories.length > 0;
-        setDetailEmptyState(!hasMoments);
+        setDetailEmptyState(!hasVisibleNodes);
         updateFocusSelectedBtn();
 
-        treeMemories.forEach((node) => {
-            if (isRootMemory(node, canonicalRootId)) return;
+        if (shouldRenderRootNode) {
+            drawNode(rootMemory);
+        }
+
+        drawableMemories.forEach((node) => {
             drawNode(node);
             const parentId = node.parentId || canonicalRootId;
             const parent = treeMemories.find((m) => m.id === parentId);
@@ -366,7 +372,7 @@ function applyNodePosition(nodeEl, pos, mem) {
             }
         });
 
-        if (hasMoments) {
+        if (hasVisibleNodes) {
             const selectedMem = selectedNodeId
                 ? treeMemories.find((m) => m.id === selectedNodeId)
                 : createInitialMemory();
