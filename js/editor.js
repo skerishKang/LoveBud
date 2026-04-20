@@ -603,6 +603,57 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body?.classList.remove('editor-preload');
     };
 
+    const applyEditorShellCopy = () => {
+        const setText = (id, key, fallback) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.textContent = safeI18nText(i18n, key, fallback);
+        };
+
+        const setPlaceholder = (id, key, fallback) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.setAttribute('placeholder', safeI18nText(i18n, key, fallback));
+        };
+
+        setText('editorFlowHeading', 'sidebar_flow_heading', '흐름');
+        setText('focusSelectedBtnLabel', 'sidebar_focus_selected', '선택한 순간 보기');
+        setText('recenterCanvasBtnLabel', 'sidebar_recenter_tree', '트리 한눈에 보기');
+        setText('addMemoryBtnLabel', 'editor_add_memory', '순간 추가');
+
+        setText('addMemoryFormTitle', 'editor_new_memory', '새 기억 추가');
+        setText('memoryUrlLabel', 'editor_youtube_link', 'YouTube 링크');
+        setText('memoryTitleLabel', 'editor_memory_title', '제목');
+        setText('memoryMemoLabel', 'editor_memory_memo_optional', '메모 (선택)');
+        setText('cancelAddMemory', 'editor_cancel', '취소');
+        setText('confirmAddMemory', 'editor_confirm_add', '추가하기');
+
+        setPlaceholder('memoryTitleInput', 'editor_memory_title_placeholder', '이 기억의 제목을 입력하세요');
+        setPlaceholder('memoryMemoInput', 'editor_memory_memo_placeholder', '이 순간의 감정을 남겨보세요...');
+
+        setText('detailEmptyTitle', 'detail_empty_title', '첫 순간이 트리를 깨워요');
+        setText('detailEmptyDesc', 'detail_empty_desc', '왼쪽 아래의 "순간 추가" 버튼으로 당신의 첫 기억을 심어보세요.');
+
+        setText('detailDateLabel', 'editor_date_label', '기억한 날');
+        setText('detailTagsLabel', 'editor_tag_label', '감정 태그');
+        setText('detailMemoLabel', 'editor_note_label', '감정 메모');
+
+        setText('editMemoryBtn', 'editor_edit', '순간 수정');
+        setText('deleteMemoryBtn', 'editor_delete', '순간 삭제');
+
+        setText('editTitleLabel', 'editor_memory_title', '제목');
+        setText('editMemoLabel', 'editor_note_label', '감정 메모');
+        setText('editTagsLabel', 'editor_edit_tag_label', '감정 태그 (쉼표로 구분)');
+
+        setPlaceholder('editTitleInput', 'editor_edit_title_placeholder', '순간의 제목을 입력하세요');
+        setPlaceholder('editMemoInput', 'editor_memory_memo_placeholder', '이 순간의 감정을 남겨보세요...');
+        setPlaceholder('editTagsInput', 'editor_edit_tag_placeholder', '#감동, #행복, #그리움');
+
+        setText('cancelEditBtn', 'editor_cancel', '취소');
+        setText('saveEditBtn', 'editor_save', '저장하기');
+        setText('detailSubmitBtn', 'editor_record_submit', '내 러브트리에 기록하기');
+    };
+
     const startEditor = async () => {
         const canvas = document.getElementById('canvasArea');
         const svg = document.getElementById('canvasSvg');
@@ -611,6 +662,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const urlParams = new URLSearchParams(window.location.search);
         const urlTreeId = urlParams.get('treeId');
         console.log('[editor] URL treeId:', urlTreeId);
+
+        applyEditorShellCopy();
 
         const cache = window.LoveBudCache || null;
         let TREE_CACHE_KEY = 'tree_default';
