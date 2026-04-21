@@ -1,3 +1,4 @@
+REM Requires NETLIFY_DATABASE_URL or DATABASE_URL to be set before running.
 @echo off
 cd /d G:\다른 컴퓨터\내 컴퓨터\LoveBud
 
