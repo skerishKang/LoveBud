@@ -253,6 +253,10 @@ document.addEventListener('DOMContentLoaded', () => {
         setText('saveStatusText', 'save_saved', '저장됨');
         setText('detailMoreBtn', 'editor_open_detail', '상세로 보기');
         setText('detailEmptyStartBtn', 'editor_add_first_memory', '첫 순간 심기');
+        setText('canvasEmptyGuideEyebrow', 'editor_canvas_empty_eyebrow', '첫 순간 준비');
+        setText('canvasEmptyGuideTitle', 'editor_canvas_empty_title', '이 장면에서 러브트리가 시작돼요');
+        setText('canvasEmptyGuideDesc', 'editor_canvas_empty_desc', '첫 순간을 심으면 이 공간에 감정의 흐름이 천천히 뻗어나갑니다.');
+        setText('canvasEmptyStartBtn', 'editor_add_first_memory', '첫 순간 심기');
         setText('addMemoryFormEyebrow', 'editor_add_first_memory', '첫 순간 심기');
         setText('addMemoryFormTitle', 'editor_new_memory', '어떤 순간이 이어졌나요?');
         setText('addMemoryFormIntro', 'editor_add_memory_intro', '지금 선택한 순간 다음에 새로운 장면을 이어 심어 보세요. 첫 순간이라면 여기서 러브트리가 시작됩니다.');
@@ -378,8 +382,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ? editorDataLoader.createNormalizeMemory({ sharedNormalize: window.LoveBudNormalize?.normalizeMemory })
             : (window.LoveBudNormalize?.normalizeMemory || createInlineNormalizeMemoryFallback());
 
-        const loadEditorMemoriesFallback = editorDataLoader.loadEditorMemories || createInlineLoadEditorMemoriesFallback();
-        await loadEditorMemoriesFallback({
+        await (editorDataLoader.loadEditorMemories || createInlineLoadEditorMemoriesFallback())({
             treeId,
             cache,
             cacheKey: MEMORIES_CACHE_KEY,
@@ -403,6 +406,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const nextMemoryId = editorTreeHelpers.nextMemoryIdFromMemories
             ? () => editorTreeHelpers.nextMemoryIdFromMemories(treeMemories())
             : createInlineNextMemoryIdFallback({ treeMemories });
+
+        const updateCanvasEmptyGuide = () => {
+            const guide = document.getElementById('canvasEmptyGuide');
+            if (!guide) return;
+            const hasMoments = treeMemories().length > 0;
+            guide.classList.toggle('editor-canvas-empty-guide-hidden', hasMoments);
+        };
 
         const selectNode = (el, data) => {
             if (!data) return;
@@ -520,8 +530,13 @@ document.addEventListener('DOMContentLoaded', () => {
             updateSelectedMemoryFields
         });
 
-        const { setDetailEmptyState, updateFocusSelectedBtn, updateSidebarStatus, updateDetailPanel } = detailUI;
+        const { setDetailEmptyState, updateFocusSelectedBtn, updateSidebarStatus: updateSidebarStatusBase, updateDetailPanel } = detailUI;
         window.updateDetailPanel = updateDetailPanel;
+
+        const updateSidebarStatus = () => {
+            updateSidebarStatusBase();
+            updateCanvasEmptyGuide();
+        };
 
         editorCanvas = window.createEditorCanvas({
             canvas,
@@ -677,7 +692,15 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
+        const canvasEmptyStartBtn = document.getElementById('canvasEmptyStartBtn');
+        if (canvasEmptyStartBtn) {
+            canvasEmptyStartBtn.addEventListener('click', () => {
+                showAddMemoryForm();
+            });
+        }
+
         initCanvas();
+        updateCanvasEmptyGuide();
         const initialSelection = treeMemories().find((memory) => memory.id === selectedNodeId) || createInitialMemory();
         if (initialSelection) {
             currentEditingMemory = initialSelection;
