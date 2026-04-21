@@ -16,19 +16,19 @@
     <div class="login-shell">
         <div class="login-card">
             <!-- Redirect notice: shown when user came from auth-gated page -->
-            <div id="redirect-notice" style="display:none; background:rgba(144,73,81,0.08); border:1px solid rgba(144,73,81,0.15); border-radius:1rem; padding:20px; margin-bottom:32px; text-align:left;">
-                <div style="display:flex; align-items:flex-start; gap:12px;">
-                    <span style="font-size:20px; flex-shrink:0;">🔒</span>
-                    <div>
-                        <div style="font-weight:800; color:var(--primary); font-size:14px; margin-bottom:4px;" data-i18n="redirect_notice_title">내 러브트리를 이용하려면 로그인이 필요합니다</div>
-                        <div style="color:var(--on-surface-variant); font-size:13px; line-height:1.5;" data-i18n="redirect_notice_desc">로그인 후 자동으로 이동합니다</div>
+            <div id="redirect-notice" style="display:none; background:rgba(144,73,81,0.05); border:1px solid rgba(144,73,81,0.1); border-radius:1rem; padding:14px 16px; margin-bottom:20px; text-align:left; box-shadow:0 8px 20px rgba(75,64,57,0.03);">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <span class="material-symbols-outlined" style="font-size:18px; color:var(--primary); flex-shrink:0;">lock</span>
+                    <div style="min-width:0;">
+                        <div style="font-weight:800; color:var(--on-surface); font-size:13px; margin-bottom:2px; line-height:1.5;" data-i18n="redirect_notice_title">내 러브트리를 이용하려면 로그인이 필요합니다</div>
+                        <div style="color:var(--on-surface-variant); font-size:12px; line-height:1.45;" data-i18n="redirect_notice_desc">로그인 후 자동으로 이동합니다</div>
                     </div>
                 </div>
             </div>
             
             <div class="serif" style="font-size: 2.2rem; font-weight: 950; color: var(--on-surface); margin-bottom: 12px; font-family: var(--font-heading); letter-spacing: -0.05em;">러브트리</div>
             <h1 class="headline" style="font-size: 1.5rem; color: var(--primary); margin-bottom: 16px; font-weight: 800;" data-i18n="login_title">당신의 감정 나무를 시작하세요</h1>
-            <p style="color: var(--on-surface-variant); margin-bottom: 48px; font-size: 1rem; line-height: 1.6; font-weight: 400;" data-i18n="login_desc">
+            <p style="color: var(--on-surface-variant); margin-bottom: 40px; font-size: 1rem; line-height: 1.6; font-weight: 400;" data-i18n="login_desc">
                 처음 사랑에 빠진 순간부터, 팬이 되어가는 모든 경로를<br>
                 영상과 메모로 연결해 기록하세요.
             </p>
@@ -50,13 +50,22 @@
             </button>
 
             <!-- 회원가입 섹션 -->
-            <div class="signup-section" style="margin-top: 32px; padding-top: 32px; border-top: 1px solid var(--outline-variant);">
-                <p style="text-align: center; color: var(--on-surface-variant); font-size: 14px; margin-bottom: 16px; font-weight: 600;">
-                    처음 오셨나요? <span style="color: var(--primary);">바로 시작해보세요</span>
-                </p>
+            <div class="signup-section" style="margin-top: 28px; padding-top: 24px; border-top: 1px solid var(--outline-variant);">
+                <div style="display:flex; flex-direction:column; align-items:center; gap:10px; margin-bottom:18px; text-align:center;">
+                    <span style="display:inline-flex; align-items:center; gap:6px; min-height:30px; padding:0 12px; border-radius:999px; background:rgba(144,73,81,0.08); color:var(--primary); font-size:12px; font-weight:800;">
+                        <span class="material-symbols-outlined" style="font-size:16px;">sparkles</span>
+                        처음 오셨나요?
+                    </span>
+                    <p style="margin:0; color: var(--on-surface); font-size: 15px; font-weight: 700; line-height: 1.55;">
+                        계정만 만들면 바로 첫 순간을 남길 수 있어요
+                    </p>
+                    <p style="margin:0; color: var(--primary); font-size: 13px; font-weight: 800; line-height: 1.5;">
+                        아래에서 Google 또는 이메일로 바로 시작해보세요
+                    </p>
+                </div>
                 
                 <!-- Google 회원가입 -->
-                <button id="signup-btn-google" class="login-btn-google" style="margin-bottom: 12px;">
+                <button id="signup-btn-google" class="login-btn-google" style="margin-bottom: 12px; box-shadow:0 10px 24px rgba(75,64,57,0.04);">
                     <svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" style="width: 20px; height: 20px;">
                         <path fill="#4285F4" d="M45.12,24.5c0-2.46-0.2-4.84-0.64-7.12l-14.54,0c0.24,1.08,0.4,2.2,0.4,3.4c0,5.6-3.8,10.8-10.8,10.8l-8.72,0c-6.48,0-11.76-5.28-11.76-11.76c0-6.4,5.2-11.64,11.64-11.64c2.96,0,5.56,1.12,7.6,2.96l6.24-6.16C29.32,6.56,24.36,5.72,19.04,5.72c-9.36,0-17.52,6.76-17.52,16.08c0,9.28,8.16,16.08,17.52,16.08c6.8,0,11.52-3.28,14.36-7.96c0.76,0.08,1.56,0.12,2.4,0.12C42.4,29.92,45.12,27.56,45.12,24.5z"/>
                         <path fill="#34A853" d="M19.12,44.36c6.56,0,12.16-2.44,16.24-6.56l-7.68-5.92C25.24,34.8,22.52,36,19.12,36c-6.08,0-10.8-4.16-12.48-9.76l-7.76,0C3.48,31.96,10.64,44.36,19.12,44.36z"/>
@@ -66,11 +75,11 @@
                     <span data-i18n="google_signup">Google로 바로 시작하기</span>
                 </button>
                 
-                <p style="text-align: center; color: var(--primary); font-size: 12px; margin: 8px 0; font-weight: 600;">
-                    Google 계정으로 로그인만 하면 바로 시작됩니다 (별도 가입 없음)
+                <p style="text-align: center; color: var(--on-surface-variant); font-size: 12px; margin: 8px 0 0; font-weight: 700; line-height:1.55;">
+                    Google 계정으로 로그인만 하면 별도 가입 없이 바로 시작됩니다
                 </p>
                 
-                <div class="login-divider" style="margin: 16px 0;">
+                <div class="login-divider" style="margin: 18px 0 16px;">
                     <span style="font-size: 12px;">또는 이메일로 계정 만들기</span>
                 </div>
                 
