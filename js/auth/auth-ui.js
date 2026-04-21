@@ -61,6 +61,14 @@
     return lang === 'en' ? 'English' : '한국어';
   }
 
+  function tText(key, fallback) {
+    if (typeof window.t === 'function') {
+      var translated = window.t(key);
+      if (translated && translated !== key) return translated;
+    }
+    return fallback;
+  }
+
   function buildLangInlineOptions(currentLang) {
     return [
       '<div class="user-dropdown-meta" style="border-bottom:none;padding-bottom:6px;">언어 / Language</div>',
@@ -86,7 +94,7 @@
       '<button type="button" class="lang-option' + (currentLang === 'en' ? ' active' : '') + '" data-lang="en">English</button>',
       '</div>',
       '</div>',
-      '<a href="' + loginHref + '" class="btn-round btn-outline" style="text-decoration:none;padding:8px 20px;font-size:14px;">로그인</a>',
+      '<a href="' + loginHref + '" class="btn-round btn-outline" style="text-decoration:none;padding:8px 20px;font-size:14px;">' + tText('login_btn', '로그인') + '</a>',
       '</div>'
     ].join('');
   }
@@ -134,14 +142,14 @@
         : "",
       '<a href="' +
         myTreesHref +
-        '" class="user-dropdown-item"><span class="material-symbols-outlined">account_tree</span>내 러브트리</a>',
+        '" class="user-dropdown-item"><span class="material-symbols-outlined">account_tree</span>' + tText('nav.myTrees', '내 러브트리') + '</a>',
       '<a href="' +
         settingsHref +
-        '" class="user-dropdown-item"><span class="material-symbols-outlined">settings</span>설정</a>',
+        '" class="user-dropdown-item"><span class="material-symbols-outlined">settings</span>' + tText('nav.settings', '설정') + '</a>',
       '<div class="dropdown-divider"></div>',
       buildLangInlineOptions(currentLang),
       '<div class="dropdown-divider"></div>',
-      '<button class="user-dropdown-item" onclick="signOut()"><span class="material-symbols-outlined">logout</span>로그아웃</button>',
+      '<button class="user-dropdown-item" onclick="signOut()"><span class="material-symbols-outlined">logout</span>' + tText('logout_btn', '로그아웃') + '</button>',
       "</div>",
       "</div>",
     ].join("");

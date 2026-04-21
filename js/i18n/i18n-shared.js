@@ -1,6 +1,6 @@
 /**
  * LoveBud - i18n Shared Dictionary
- * v20260421-3
+ * v20260421-4
  *
  * 공통 번역 키 (네비게이션, 버튼, 상태 메시지 등)
  */
@@ -97,6 +97,10 @@
     'save': {
       ko: '저장',
       en: 'Save'
+    },
+    'close': {
+      ko: '닫기',
+      en: 'Close'
     },
     'rename': {
       ko: '이름 변경',
