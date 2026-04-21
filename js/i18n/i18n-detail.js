@@ -83,12 +83,12 @@
       en: 'Selected Moment'
     },
     'moment_detail': {
-      ko: '순간 상세',
-      en: 'Moment Detail'
+      ko: '남겨진 순간',
+      en: 'Saved Moment'
     },
     'tree_context_moment': {
-      ko: '순간 상세',
-      en: 'Moment Detail'
+      ko: '남겨진 순간',
+      en: 'Saved Moment'
     },
     'tree_context_viewing': {
       ko: '감상 중',
