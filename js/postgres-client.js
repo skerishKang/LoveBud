@@ -35,20 +35,42 @@
     }
 
     function createCommunityApi() {
+        let publicMemoriesCache = null;
+
+        async function getCommunityMemories() {
+            const memories = await BaseApiFetch.apiFetch('/community/memories');
+            publicMemoriesCache = Array.isArray(memories) ? memories : [];
+            return publicMemoriesCache;
+        }
+
+        async function getCachedCommunityMemories() {
+            if (Array.isArray(publicMemoriesCache)) {
+                return publicMemoriesCache;
+            }
+            return getCommunityMemories();
+        }
+
         return {
-            getCommunityMemories: async () => BaseApiFetch.apiFetch('/community/memories')
+            getCommunityMemories,
+            getCachedCommunityMemories
         };
     }
 
-    function createBrowseApi() {
+    function createBrowseApi(communityApi) {
         return {
             getPublicTrees: async () => {
                 if (!PublicTreeAdapter) {
                     throw new Error('LoveTreePublicTreeAdapter not loaded');
                 }
                 const apiTrees = await BaseApiFetch.apiFetch('/community/trees');
-                const apiMemories = await BaseApiFetch.apiFetch('/community/memories');
-                return PublicTreeAdapter.buildPublicTreeViewModels(apiTrees, apiMemories);
+                return PublicTreeAdapter.buildPublicTreeSummaryModels(apiTrees);
+            },
+            getPublicTreePreview: async (tree) => {
+                if (!PublicTreeAdapter) {
+                    throw new Error('LoveTreePublicTreeAdapter not loaded');
+                }
+                const apiMemories = await communityApi.getCachedCommunityMemories();
+                return PublicTreeAdapter.hydrateTreeWithPublicMemories(tree, apiMemories);
             }
         };
     }
@@ -56,7 +78,7 @@
     const treeApi = createTreeApi();
     const memoryApi = createMemoryApi();
     const communityApi = createCommunityApi();
-    const browseApi = createBrowseApi();
+    const browseApi = createBrowseApi(communityApi);
 
     const apiClient = {
         ...treeApi,
