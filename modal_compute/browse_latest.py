@@ -96,31 +96,26 @@ def fetch_latest_public_tree_snapshots(limit: int = 3) -> list[dict[str, Any]]:
     """Fetch the latest public tree snapshots using a robust join-lateral query."""
 
     query = """
-        WITH latest_public_trees AS (
-            SELECT id, title, visibility, created_at, updated_at
-            FROM trees
-            WHERE visibility = 'public'
-            ORDER BY created_at DESC
-            LIMIT %s
-        ),
-        counts AS (
+        SELECT 
+            t.id, t.title, t.visibility, t.created_at, t.updated_at,
+            c.memory_count,
+            c.all_tags,
+            m.thumbnail as raw_thumbnail,
+            m.source_url as raw_source_url
+        FROM trees t
+        INNER JOIN (
+            -- Quality Filter: Only trees with 3+ public memories
             SELECT 
                 tree_id,
                 count(*) as memory_count,
                 ARRAY_AGG(emotion_tags) as all_tags
             FROM memories
-            WHERE visibility = 'public' 
-              AND tree_id IN (SELECT id FROM latest_public_trees)
+            WHERE visibility = 'public'
             GROUP BY tree_id
-        )
-        SELECT 
-            t.id, t.title, t.visibility, t.created_at, t.updated_at,
-            COALESCE(c.memory_count, 0) as memory_count,
-            c.all_tags,
-            m.thumbnail as raw_thumbnail,
-            m.source_url as raw_source_url
-        FROM latest_public_trees t
+            HAVING count(*) >= 3
+        ) c ON t.id = c.tree_id
         LEFT JOIN LATERAL (
+            -- Representative Snapshot: Latest memory with visual data
             SELECT thumbnail, source_url
             FROM memories
             WHERE tree_id = t.id 
@@ -129,8 +124,9 @@ def fetch_latest_public_tree_snapshots(limit: int = 3) -> list[dict[str, Any]]:
             ORDER BY created_at DESC
             LIMIT 1
         ) m ON TRUE
-        LEFT JOIN counts c ON t.id = c.tree_id
-        ORDER BY t.created_at DESC;
+        WHERE t.visibility = 'public'
+        ORDER BY t.created_at DESC
+        LIMIT %s;
     """
 
     with get_db_connection() as conn:
