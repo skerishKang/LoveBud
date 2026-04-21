@@ -926,6 +926,10 @@ body {
     .editor-status-card strong {
         font-size: 1.1rem;
     }
+
+    .editor-title-settings-panel {
+        grid-template-columns: 1fr;
+    }
 }
 
 .editor-status-section,
@@ -1017,6 +1021,46 @@ body {
     background: rgba(144,73,81,0.08);
     color: var(--primary);
     border: 1px solid rgba(144,73,81,0.14);
+}
+
+.editor-title-settings-panel {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.editor-mini-setting-btn {
+    min-height: 38px;
+    padding: 9px 11px;
+    border-radius: 14px;
+    border: 1px solid rgba(144,73,81,0.10);
+    background: rgba(255,255,255,0.78);
+    color: var(--on-surface);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.35;
+    text-align: center;
+    cursor: pointer;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.55);
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+
+.editor-mini-setting-btn .material-symbols-outlined {
+    font-size: 15px;
+    flex: 0 0 auto;
+    color: var(--primary);
+}
+
+.editor-mini-setting-btn:hover {
+    transform: translateY(-1px);
+    background: rgba(255,255,255,0.96);
+    border-color: rgba(144,73,81,0.18);
+    box-shadow: 0 8px 18px rgba(75,64,57,0.06);
 }
 
 .editor-flow-summary {
