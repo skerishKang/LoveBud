@@ -93,6 +93,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
+    const buildSoftPanelMarkup = ({ icon, kicker, title, description }) => `
+        <div style="display:flex;flex-direction:column;align-items:flex-start;gap:12px;padding:24px;border-radius:1.5rem;background:linear-gradient(180deg, rgba(250,246,243,0.96), rgba(255,255,255,0.98));border:1px solid rgba(144, 73, 81, 0.08);box-shadow:0 14px 34px rgba(75,64,57,0.05);">
+            <span class="material-symbols-outlined" style="font-size:22px;color:var(--primary);">${icon}</span>
+            <div style="font-size:11px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--primary);">${escapeHtml(kicker)}</div>
+            <div style="font-size:1rem;font-weight:800;line-height:1.5;color:var(--on-surface);">${escapeHtml(title)}</div>
+            <p style="margin:0;font-size:0.95rem;line-height:1.7;color:var(--on-surface-variant);">${escapeHtml(description)}</p>
+        </div>
+    `;
+
     const buildVideoUnavailableMarkup = (memory) => {
         const normalizedVideo = normalizeVideoSourceUrl(memory?.sourceUrl || memory?.videoUrl || memory?.originalUrl || '');
         const watchUrl = normalizedVideo.watchUrl;
@@ -105,7 +114,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <span class="material-symbols-outlined" style="font-size:34px;display:block;margin-bottom:14px;opacity:0.88;">play_circle</span>
                     <div style="font-size:1.05rem;font-weight:800;line-height:1.5;margin-bottom:10px;">${tText('video_unavailable_soft_title', '이 순간의 영상은 여기서 바로 열리지 않을 수 있어요.')}</div>
                     <p style="margin:0 0 18px;font-size:0.95rem;line-height:1.7;color:rgba(255,255,255,0.76);">${tText('video_unavailable_soft_desc', '재생이 열리지 않더라도 이 순간의 감상은 이어서 읽어볼 수 있어요.')}</p>
-                    ${hasWatchUrl ? `<a href="${escapeHtml(watchUrl)}" target="_blank" rel="noopener noreferrer" aria-label="${escapeHtml(title)}" style="display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:999px;background:rgba(255,255,255,0.14);border:1px solid rgba(255,255,255,0.18);color:#fff;text-decoration:none;font-size:13px;font-weight:700;backdrop-filter:blur(10px);">
+                    ${hasWatchUrl ? `<a href="${escapeHtml(watchUrl)}" target="_blank" rel="noopener noreferrer" aria-label="${title}" style="display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:999px;background:rgba(255,255,255,0.14);border:1px solid rgba(255,255,255,0.18);color:#fff;text-decoration:none;font-size:13px;font-weight:700;backdrop-filter:blur(10px);">
                         <span class="material-symbols-outlined" style="font-size:18px;">open_in_new</span>
                         <span>${tText('video_embed_fallback_cta', '원본에서 감상 이어가기')}</span>
                     </a>` : ''}
@@ -114,17 +123,47 @@ document.addEventListener('DOMContentLoaded', async () => {
         `;
     };
 
-    const applyViewingPageCopy = ({ sourceContext, treeTitle, memoryTitleText, memoryCount }) => {
+    const buildEmptyMemoMarkup = () => buildSoftPanelMarkup({
+        icon: 'auto_stories',
+        kicker: tText('empty_memo_kicker', '남겨진 마음'),
+        title: tText('empty_memo_title', '아직 길게 남겨진 메모는 없지만, 이 순간의 여운은 그대로 머물러 있어요.'),
+        description: tText('empty_memo_desc', '짧은 장면 하나만으로도 시작되는 감정이 있어요. 이 러브트리는 그 조용한 시작까지 함께 감상하는 공간이에요.')
+    });
+
+    const buildConnectedEmptyMarkup = () => buildSoftPanelMarkup({
+        icon: 'device_hub',
+        kicker: tText('connected_empty_kicker', '이어질 다음 장면'),
+        title: tText('connected_empty_title', '지금은 이 순간이 가장 또렷하게 남아 있어요.'),
+        description: tText('connected_empty_desc', '아직 같은 흐름의 다른 순간은 보이지 않지만, 이 장면 하나만으로도 트리의 분위기를 천천히 느껴볼 수 있어요.')
+    });
+
+    const getHeroFallbackTitle = (memory) => {
+        const artist = String(memory?.artist || '').trim();
+        if (artist) {
+            return tText('public_tree_fallback_title_with_artist', `${artist}에게 마음이 닿기 시작한 순간을 감상하고 있어요`);
+        }
+        return tText('public_tree_fallback_title', '누군가의 러브트리를 감상하고 있어요');
+    };
+
+    const getHeroFallbackDesc = ({ memoryCount, memoryTitleText }) => {
+        if (memoryTitleText) {
+            return tText('public_tree_desc_fallback_with_memory', `“${memoryTitleText}”에서 시작된 마음을 따라가고 있어요. 연결된 순간이 많지 않아도, 이 장면만으로 남겨진 분위기를 천천히 감상해 보세요.`);
+        }
+        const baseCount = memoryCount > 0 ? memoryCount : 1;
+        return `${baseCount}${tText('public_tree_desc_suffix', '개의 순간으로 이어진 감정의 흐름을 따라가고 있어요. 지금 보고 있는 순간을 시작으로 이 트리를 천천히 감상해 보세요.')}`;
+    };
+
+    const applyViewingPageCopy = ({ sourceContext, treeTitle, memoryTitleText, memoryCount, memory }) => {
         if (detailViewChipLabel) detailViewChipLabel.textContent = tText('public_tree_view_chip', '공개 러브트리 감상');
         if (detailHeroKicker) detailHeroKicker.textContent = tText('public_tree_kicker', '공개 러브트리');
         if (detailHeroTitle) {
-            detailHeroTitle.textContent = treeTitle || tText('public_tree_fallback_title', '누군가의 러브트리를 감상하고 있어요');
+            detailHeroTitle.textContent = treeTitle || getHeroFallbackTitle(memory);
         }
         if (detailHeroDesc) {
             const baseCount = memoryCount > 0 ? memoryCount : 1;
             detailHeroDesc.textContent = treeTitle
                 ? `${treeTitle}${tText('public_tree_desc_join', ' 안에서')} ${baseCount}${tText('public_tree_desc_suffix', '개의 순간으로 이어진 감정의 흐름을 따라가고 있어요. 지금 보고 있는 순간을 시작으로 이 트리를 천천히 감상해 보세요.')}`
-                : `${baseCount}${tText('public_tree_desc_suffix', '개의 순간으로 이어진 감정의 흐름을 따라가고 있어요. 지금 보고 있는 순간을 시작으로 이 트리를 천천히 감상해 보세요.')}`;
+                : getHeroFallbackDesc({ memoryCount: baseCount, memoryTitleText });
         }
         if (detailSideSummary) {
             detailSideSummary.textContent = memoryTitleText
@@ -218,8 +257,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                 .join('');
         }
 
-        if (diaryQuote) diaryQuote.textContent = `"${memory.quote || memory.memo || ''}"`;
-        if (diaryContent && memory.memo) diaryContent.textContent = memory.memo;
+        const quoteText = String(memory.quote || '').trim();
+        const memoText = String(memory.memo || '').trim();
+        if (diaryQuote) {
+            diaryQuote.textContent = quoteText ? `"${quoteText}"` : tText('empty_memo_quote', '짧게 남은 장면 하나도 오래 머무는 마음이 될 수 있어요.');
+        }
+        if (diaryContent) {
+            if (memoText) {
+                diaryContent.textContent = memoText;
+            } else {
+                diaryContent.innerHTML = buildEmptyMemoMarkup();
+            }
+        }
     };
 
     const renderTreeContext = ({ hasTreeContext, tree, memories, sourceContext, degradedReason }) => {
@@ -233,7 +282,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>
                     <div style="flex:1; min-width:0;">
                         <div style="font-size:12px; font-weight:800; color:var(--primary); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">${tText('tree_context_viewing', '감상 중')}</div>
-                        <p style="margin:0; font-size:14px; color:var(--on-surface-variant); line-height:1.6;">${tText('tree_context_solo_view', '이 순간만 단독으로 감상하고 있어요.')}</p>
+                        <p style="margin:0; font-size:14px; color:var(--on-surface-variant); line-height:1.7;">${tText('tree_context_solo_view_warm', '아직 연결된 트리 정보는 보이지 않지만, 이 순간만으로도 남겨진 마음을 천천히 따라가 볼 수 있어요.')}</p>
                     </div>
                 </div>
             `;
@@ -248,7 +297,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>
                     <div style="flex:1; min-width:0;">
                         <div style="font-size:12px; font-weight:800; color:var(--on-surface-variant); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">${tText('tree_info_missing', '트리 정보 없음')}</div>
-                        <p style="margin:0; font-size:14px; color:var(--on-surface-variant); line-height:1.6;">${tText('tree_load_failed_desc', '트리 정보를 불러오지 못했어요. 순간 감상은 계속할 수 있어요.')}</p>
+                        <p style="margin:0; font-size:14px; color:var(--on-surface-variant); line-height:1.7;">${tText('tree_load_failed_desc_warm', '트리 전체 분위기는 아직 또렷하게 보이지 않지만, 지금 이 순간에 남겨진 장면과 마음은 계속 감상할 수 있어요.')}</p>
                     </div>
                 </div>
             `;
@@ -276,7 +325,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <span style="font-size:12px; color:var(--on-surface-variant);">${memoryCount}${tText('tree_context_moment_count_short', '개 순간')}</span>
                         </div>
                         <div style="font-size:1.15rem; font-weight:800; color:var(--on-surface); line-height:1.4; margin-bottom:4px;">${treeTitle}</div>
-                        <p style="margin:0; font-size:14px; color:var(--on-surface-variant); line-height:1.6;">${contextMessages[sourceContext] || contextMessages.browse}</p>
+                        <p style="margin:0; font-size:14px; color:var(--on-surface-variant); line-height:1.7;">${contextMessages[sourceContext] || contextMessages.browse}</p>
                     </div>
                 </div>
             `;
@@ -290,10 +339,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (degradedReason === 'missing-tree-id' || degradedReason === 'tree-load-failed') {
             connectedFragments.innerHTML = `
-                <div style="text-align:center; padding:24px; color:var(--on-surface-variant); font-size:13px;">
-                    <span class="material-symbols-outlined" style="font-size:24px; opacity:0.5; margin-bottom:8px; display:block;">forest</span>
-                    ${tText('tree_path_missing', '트리 경로 정보가 없어요')}<br>
-                    <a href="${searchHref}" style="color: var(--primary); text-decoration: none; font-weight: 600;">${tText('find_tree_in_browse', '둘러보기에서 트리 찾기')}</a>
+                <div style="display:grid;grid-template-columns:1fr;gap:24px;">
+                    ${buildSoftPanelMarkup({
+                        icon: 'forest',
+                        kicker: tText('connected_empty_kicker', '이어질 다음 장면'),
+                        title: tText('connected_path_missing_title', '아직 이 순간과 이어진 트리 흐름은 보이지 않아요.'),
+                        description: tText('connected_path_missing_desc', '그래도 지금 보고 있는 장면 하나만으로도 이 러브트리의 분위기를 천천히 느껴볼 수 있어요.')
+                    })}
                 </div>
             `;
             return;
@@ -333,9 +385,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         } else {
             connectedFragments.innerHTML = `
-                <div style="text-align:center; padding:24px; color:var(--on-surface-variant); font-size:13px;">
-                    <span class="material-symbols-outlined" style="font-size:24px; opacity:0.5; margin-bottom:8px; display:block;">device_hub</span>
-                    ${tText('no_siblings_in_path', '같은 경로의 다른 순간이 없어요')}
+                <div style="display:grid;grid-template-columns:1fr;gap:24px;">
+                    ${buildConnectedEmptyMarkup()}
                 </div>
             `;
         }
@@ -458,7 +509,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         sourceContext,
         treeTitle: tree?.title,
         memoryTitleText: memory.title,
-        memoryCount: Array.isArray(memories) ? memories.length : 0
+        memoryCount: Array.isArray(memories) ? memories.length : 0,
+        memory
     });
 
     configureBackButton(sourceContext, treeId);
