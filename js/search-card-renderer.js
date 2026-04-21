@@ -1,6 +1,6 @@
 /**
  * LoveBud Search Card Renderer
- * v20260422-2
+ * v20260422-3
  * 
  * Rendering layer: tree cards, empty states.
  * DOM-agnostic - returns HTML strings.
@@ -62,8 +62,11 @@
     function getDisplayStageLabel(stage, memoryCount) {
         const raw = String(stage || '').trim();
         if (!raw || raw === 'empty') {
-            return Number(memoryCount || 0) > 0 ? '입덕' : '새로 열린 트리';
+            return Number(memoryCount || 0) > 0 ? '시작 순간 중심' : '새로 열린 트리';
         }
+        if (raw === '입덕') return '시작 순간 중심';
+        if (raw === '성장') return '이어진 감정';
+        if (raw === '최애') return '깊어진 마음';
         return raw;
     }
 
@@ -85,27 +88,12 @@
         return Number.isFinite(count) && count > 0 ? count : 0;
     }
 
-    function renderPathFallback() {
-        return '<div class="path-node-fallback">대표<br>순간 준비 중</div>';
-    }
-
-    function renderPathImage(src, alt) {
-        if (!src) {
-            return renderPathFallback();
-        }
-        return `
-            <img src="${src}" alt="${alt}" loading="lazy" onerror="this.hidden=true;this.nextElementSibling.hidden=false">
-            <div class="path-node-fallback" hidden>대표<br>순간 준비 중</div>
-        `;
-    }
-
     function renderMediaFallback(tree, titleText) {
         const safeTitle = escapeHtml(titleText || '러브트리');
         return `
-            <div class="tree-card-media-fallback" style="flex-direction:column;gap:8px;padding:20px;text-align:center;">
-                <span style="font-size:38px;line-height:1;">${escapeHtml(getTreeIcon(tree.stage))}</span>
+            <div class="tree-card-media-fallback" style="flex-direction:column;gap:8px;padding:20px;text-align:center;background:linear-gradient(135deg, rgba(250,242,243,0.96), rgba(255,255,255,0.96));">
+                <span style="font-size:34px;line-height:1;">${escapeHtml(getTreeIcon(tree.stage))}</span>
                 <div style="font-size:13px;font-weight:800;color:var(--on-surface);">${safeTitle}</div>
-                <div style="font-size:11px;font-weight:700;color:var(--on-surface-variant);">대표 순간을 다듬는 중</div>
             </div>
         `;
     }
@@ -120,85 +108,21 @@
         `;
     }
 
-     function renderPathPreview(memories) {
-         if (!memories || memories.length === 0) {
-             return renderEmptyTreePreview();
-         }
-
-         const previewCount = Math.min(memories.length, 3);
-         const previewMems = memories.slice(0, previewCount);
-
-         let html = '<div class="tree-path-preview">';
-
-         previewMems.forEach((mem, idx) => {
-             const safeTitle = escapeHtml(mem?.title || '');
-             const safeThumb = sanitizeUrl(mem?.thumbnail || '');
-
-             html += `
-                 <div class="path-node" title="${safeTitle}">
-                     ${renderPathImage(safeThumb, safeTitle)}
-                 </div>
-             `;
-             if (idx < previewCount - 1) {
-                 html += '<span class="path-arrow material-symbols-outlined">arrow_forward</span>';
-             }
-         });
-
-         if (memories.length > previewCount) {
-             html += `<div class="path-more">+${memories.length - previewCount}</div>`;
-         }
-
-         html += '</div>';
-         return html;
-     }
-
      function renderEmotionTags(tags) {
          const titleHelper = getSearchTitleHelper();
          const safeTags = (Array.isArray(tags) ? tags : [])
              .map(tag => titleHelper?.sanitizeBrowseLabel ? titleHelper.sanitizeBrowseLabel(tag) : String(tag || '').trim())
              .filter(Boolean)
              .filter(tag => tag !== '기록' && tag !== 'tag_record')
-             .slice(0, 3);
+             .slice(0, 1);
 
          if (!safeTags.length) return '';
          return safeTags.map(tag =>
-             `<span class="emotion-tag" style="background:var(--primary-container);color:var(--on-primary-container);font-weight:700;font-size:12px;padding:6px 12px;">#${escapeHtml(tag)}</span>`
+             `<span class="tree-meta-chip">#${escapeHtml(tag)}</span>`
          ).join('');
      }
 
-     function renderCardSectionHeading(icon, label) {
-         return `
-             <div style="font-size:11px;font-weight:800;color:var(--on-surface-variant);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px;">
-                 <span class="material-symbols-outlined" style="font-size:12px;vertical-align:middle;margin-right:4px;">${escapeHtml(icon)}</span>
-                 ${escapeHtml(label)}
-             </div>
-         `;
-     }
-
-     function renderCardMetaRow(memoryCount, timeRange, createdDate) {
-         const safeTimeRange = escapeHtml(getDisplayTimeRange(timeRange));
-         const count = getDisplayMemoryCount(memoryCount);
-         const countLabel = count > 0 ? `${count}개의 순간` : '대표 순간 준비 중';
-
-         return `
-             <div style="font-size:12px;color:var(--on-surface-variant);margin-top:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-                 <span class="material-symbols-outlined" style="font-size:14px;">account_tree</span>
-                 ${escapeHtml(countLabel)} · ${safeTimeRange}
-                 ${createdDate ? `<span style="margin-left:4px;padding-left:8px;border-left:1px solid var(--outline-variant);">${escapeHtml(createdDate)} 공개</span>` : ''}
-             </div>
-         `;
-     }
-
-     function renderCardFooterCta(text) {
-         return `
-             <div style="font-size:13px;color:var(--primary);font-weight:800;padding-top:14px;border-top:1px solid var(--outline-variant);display:flex;align-items:center;gap:6px;">
-                 <span class="material-symbols-outlined" style="font-size:16px;color:var(--primary);">play_circle</span>
-                 ${escapeHtml(text)}
-             </div>
-         `;
-     }
-
-     function renderRepresentativeMedia(tree, firstMem, isFeatured, titleText) {
+     function renderRepresentativeMedia(tree, firstMem, titleText) {
          const mediaUrl = sanitizeUrl(
              firstMem?.thumbnail ||
              tree.representativeThumbnail ||
@@ -206,26 +130,10 @@
              ''
          );
          const firstMoment = escapeHtml(firstMem?.title || '대표 순간 준비 중');
-         const label = isFeatured ? '먼저 열어볼 공개 러브트리' : '이 트리의 감상 장면';
-         const count = getDisplayMemoryCount(tree.memoryCount);
-         const countLabel = count > 0 ? `${count}개의 순간` : '대표 순간 준비 중';
 
          return `
              <div class="tree-card-media" aria-label="${firstMoment}">
                  ${renderRepresentativeImage(mediaUrl, firstMoment, tree, titleText)}
-                 <div class="tree-card-media-label">
-                     <span><span class="material-symbols-outlined" style="font-size:15px;">auto_stories</span>${escapeHtml(label)}</span>
-                     <span>${escapeHtml(countLabel)}</span>
-                 </div>
-             </div>
-         `;
-     }
-
-     function renderEmptyTreePreview() {
-         return `
-             <div class="tree-path-preview empty-tree-preview" style="display:flex;align-items:center;justify-content:center;gap:12px;padding:20px;background:linear-gradient(135deg,var(--surface-container-low),var(--surface-container));border-radius:12px;">
-                 <span class="material-symbols-outlined" style="font-size:32px;color:var(--primary-soft);">psychiatry</span>
-                 <span style="font-size:13px;color:var(--on-surface-variant);font-weight:500;">대표 순간은 아직 준비 중이에요. 이 트리를 고르면 감상 흐름이 먼저 열립니다.</span>
              </div>
          `;
      }
@@ -233,103 +141,56 @@
      function renderTreeCard(tree, index) {
          const memories = Array.isArray(tree.memories) ? tree.memories : [];
          const firstMem = memories[0];
-         const lastMem = memories[memories.length - 1];
          const titleHelper = getSearchTitleHelper();
-         const isFeatured = index === 0;
          const memoryCount = getDisplayMemoryCount(tree.memoryCount);
          const displayStage = getDisplayStageLabel(tree.stage, memoryCount);
          const displayTheme = getDisplayThemeLabel(tree.theme);
-        
-        const firstMomentRaw = titleHelper?.cleanMomentTitle
-            ? titleHelper.cleanMomentTitle(firstMem?.title || '')
-            : (firstMem?.title?.replace(/\s*-\s*.*/, '') || '첫 순간');
-        const lastMomentRaw = memories.length >= 2
-            ? (titleHelper?.cleanMomentTitle
-                ? titleHelper.cleanMomentTitle(lastMem?.title || '')
-                : lastMem?.title?.replace(/\s*-\s*.*/, ''))
-            : null;
-        
-        const safeFirstMoment = escapeHtml(firstMomentRaw || '첫 순간');
-        const safeLastMoment = lastMomentRaw ? escapeHtml(lastMomentRaw) : null;
-        const safeTreeId = escapeHtml(tree.id);
-        const safeStage = escapeHtml(displayStage);
+         const safeTreeId = escapeHtml(tree.id);
 
-        const displayTitleRaw = titleHelper?.getBrowseDisplayTitle
-            ? titleHelper.getBrowseDisplayTitle(tree)
-            : (String(tree.title || '').trim() || '러브트리');
-        const primaryTag = titleHelper?.getPrimaryBrowseTag ? titleHelper.getPrimaryBrowseTag(tree) : '';
+         const displayTitleRaw = titleHelper?.getBrowseDisplayTitle
+             ? titleHelper.getBrowseDisplayTitle(tree)
+             : (String(tree.title || '').trim() || '러브트리');
+         const primaryTag = titleHelper?.getPrimaryBrowseTag ? titleHelper.getPrimaryBrowseTag(tree) : '';
 
-        const createdDate = tree.createdAt
-            ? new Date(tree.createdAt).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })
-            : '';
+         const safeTitle = escapeHtml(displayTitleRaw);
+         const emotionTag = renderEmotionTags(tree.emotionTags);
+         const countLabel = memoryCount > 0 ? `${memoryCount}개의 순간` : '대표 순간 준비 중';
+         const softMoodLine = displayTheme
+             ? `${displayTheme}와 함께 시작된 마음`
+             : primaryTag
+                 ? `${primaryTag}의 결이 먼저 남겨진 트리`
+                 : memoryCount > 0
+                     ? '첫 순간에서 이어진 감정을 천천히 따라가 보세요.'
+                     : '이제 막 열리기 시작한 공개 러브트리예요.';
 
-        const safeTitle = escapeHtml(displayTitleRaw);
-         
-        let pathDesc;
-        if (safeLastMoment) {
-            pathDesc = `처음 <strong style="color:var(--primary);">${safeFirstMoment}</strong>의 감정이 <strong>${safeLastMoment}</strong>까지 이어졌어요`;
-        } else if (displayTheme) {
-            pathDesc = `<strong style="color:var(--primary);">${escapeHtml(displayTheme)}</strong>와 함께 시작된 공개 트리예요`;
-        } else if (primaryTag) {
-            pathDesc = `<strong style="color:var(--primary);">${escapeHtml(primaryTag)}</strong>의 감정 결이 먼저 남겨진 공개 트리예요`;
-        } else if (memoryCount === 0) {
-            pathDesc = `<strong style="color:var(--primary);">${safeTitle}</strong>의 첫 감상 흐름을 준비 중이에요`;
-        } else {
-            pathDesc = `<strong style="color:var(--primary);">${safeFirstMoment}</strong>에서 시작된 공개 트리예요`;
-        }
-
-         const emotionTagsHtml = renderEmotionTags(tree.emotionTags);
-         const cardId = `tree-card-${safeTreeId}`;
-         
-         const contextLabel = isFeatured
-             ? '오늘 먼저 열어볼 트리'
-             : (memoryCount > 1 ? '이어진 기억이 있는 트리' : memoryCount === 0 ? '이제 막 열린 트리' : '첫 순간이 남은 트리');
-         const startMomentLabel = displayTheme
-             ? `${displayTheme}에서 시작된 마음`
-             : memoryCount > 0
-                 ? `${firstMomentRaw || '첫 순간'}에서 시작된 마음`
-                 : '첫 감상 흐름을 기다리는 공개 트리';
-
-         let html = `
-             <div class="tree-card ${isFeatured ? 'tree-card-featured' : ''}" id="${cardId}" data-tree-id="${safeTreeId}" style="animation-delay: ${index * 0.05}s;">
-                 ${renderRepresentativeMedia(tree, firstMem, isFeatured, displayTitleRaw)}
+         return `
+             <div class="tree-card ${index === 0 ? 'tree-card-featured' : ''}" id="tree-card-${safeTreeId}" data-tree-id="${safeTreeId}" style="animation-delay: ${index * 0.05}s;">
+                 ${renderRepresentativeMedia(tree, firstMem, displayTitleRaw)}
                  <div class="tree-card-body">
-                 <div class="tree-context-pill">
-                     <span class="material-symbols-outlined" style="font-size:15px;">local_florist</span>
-                     ${escapeHtml(contextLabel)}
-                 </div>
-                 <div class="tree-header" style="margin-bottom:16px;">
-                     <div class="tree-icon" title="${safeStage}" style="width:48px;height:48px;border-radius:12px;font-size:24px;">${getTreeIcon(tree.stage)}</div>
-                     <div class="tree-title-group" style="flex:1;min-width:0;">
-                        <div class="tree-title" style="font-size:1.25rem;font-weight:800;line-height:1.3;">${safeTitle}</div>
-                        ${renderCardMetaRow(memoryCount, tree.timeRange, createdDate)}
-                    </div>
-                 </div>
-                 <div style="font-size:13px;color:var(--on-surface-variant);line-height:1.55;margin:-6px 0 14px;">
-                     ${escapeHtml(startMomentLabel)}
-                 </div>
-                 
-                 <div class="tree-path-section" style="background:var(--surface-container-low);border-radius:1rem;padding:16px;margin-bottom:16px;border:1px solid rgba(144,73,81,0.06);">
-                     ${renderCardSectionHeading('route', '이 트리의 감정 경로')}
-                     <div style="font-size:14px;line-height:1.5;color:var(--on-surface);">${pathDesc}</div>
-                     ${renderPathPreview(memories)}
-                 </div>
-                 
-                 ${emotionTagsHtml ? `<div class="tree-emotions" style="margin-bottom:12px;">${emotionTagsHtml}</div>` : ''}
-                 
-                 ${renderCardFooterCta(memoryCount > 0 ? '첫 순간부터 감상하기' : '이 트리 먼저 열어보기')}
+                     <div class="tree-title">${safeTitle}</div>
+                     <p class="tree-subtitle">${escapeHtml(softMoodLine)}</p>
+                     <div class="tree-meta-row">
+                         <div class="tree-meta-left">
+                             <span class="tree-meta-chip">
+                                 <span class="material-symbols-outlined">schedule</span>
+                                 ${escapeHtml(displayStage)}
+                             </span>
+                         </div>
+                         <div class="tree-meta-right">
+                             <span style="font-size:13px;color:var(--on-surface-variant);white-space:nowrap;">${escapeHtml(countLabel)}</span>
+                             ${emotionTag}
+                         </div>
+                     </div>
                  </div>
              </div>
          `;
-
-         return html;
      }
 
     function renderNoTreesState() {
         const basePath = getBasePath();
 
         return `
-            <div style="text-align: center; padding: 60px 24px; color: var(--on-surface-variant);">
+            <div style="grid-column:1 / -1;text-align: center; padding: 60px 24px; color: var(--on-surface-variant);">
                 <span class="material-symbols-outlined" style="font-size: 56px; color: var(--primary); opacity: 0.6; margin-bottom: 20px; display: block;">public</span>
                 <p style="font-size: 1.25rem; font-weight: 800; margin-bottom: 12px; color: var(--on-surface);">아직 공개된 러브트리가 없어요</p>
                 <p style="font-size: 0.95rem; opacity: 0.8; margin-bottom: 24px; line-height: 1.6;">
@@ -352,7 +213,7 @@
 
     function renderEmptySearchState() {
         return `
-            <div style="text-align: center; padding: 80px 24px; color: var(--on-surface-variant);">
+            <div style="grid-column:1 / -1;text-align: center; padding: 80px 24px; color: var(--on-surface-variant);">
                 <span class="material-symbols-outlined" style="font-size: 48px; opacity: 0.3; margin-bottom: 16px; display: block;">search_off</span>
                 <p style="font-size: 1.1rem; font-weight: 700; margin-bottom: 8px;">조건에 맞는 공개 러브트리가 아직 보이지 않아요</p>
                 <p style="font-size: 0.9rem; opacity: 0.7;">다른 이름이나 감정 결로 다시 좁혀보면 새로운 공개 트리를 만날 수 있어요.</p>
@@ -362,7 +223,7 @@
 
     function renderDemoBadge() {
         return `
-            <div style="background: var(--surface-container); border: 1px solid var(--outline-variant); color: var(--on-surface-variant); padding: 12px 20px; border-radius: 1rem; margin-bottom: 24px; font-size: 13px; text-align: center; font-style: italic;">
+            <div style="grid-column:1 / -1;background: var(--surface-container); border: 1px solid var(--outline-variant); color: var(--on-surface-variant); padding: 12px 20px; border-radius: 1rem; margin-bottom: 6px; font-size: 13px; text-align: center; font-style: italic;">
                 <span style="font-weight: 700;">🌸 샘플 러브트리</span> — 다른 팬들이 남긴 감정의 경로를 둘러보세요
             </div>
         `;
@@ -370,7 +231,7 @@
 
     function renderLoading() {
         return `
-            <div style="text-align: center; padding: 80px 24px; color: var(--on-surface-variant);">
+            <div style="grid-column:1 / -1;text-align: center; padding: 80px 24px; color: var(--on-surface-variant);">
                 <span class="material-symbols-outlined" style="font-size: 48px; opacity: 0.4; margin-bottom: 16px; display: block; animation: spin 1s linear infinite;">sync</span>
                 <p style="font-size: 1.1rem; font-weight: 500;">공개 러브트리를 불러오는 중...</p>
             </div>
@@ -421,10 +282,9 @@
         renderEmptySearchState: renderEmptySearchState,
         renderDemoBadge: renderDemoBadge,
         getTreeIcon: getTreeIcon,
-        renderPathPreview: renderPathPreview,
         renderEmotionTags: renderEmotionTags,
         getBasePath: getBasePath
     };
 
-     console.log('[LoveBudSearchCardRenderer] Search card renderer loaded v20260422-2');
+     console.log('[LoveBudSearchCardRenderer] Search card renderer loaded v20260422-3');
  })();
