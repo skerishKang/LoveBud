@@ -33,6 +33,7 @@
     setText('manageSelectedTreeName', 'myTrees.manage_none', '카드에서 트리를 하나 골라 관리해보세요');
     setText('manageSelectedTreeMeta', 'myTrees.manage_hint', '카드 아래 선택 버튼으로 빠르게 이름 변경과 삭제를 할 수 있어요.');
     setText('manageOpenBtn', 'myTrees.manage_open', '열기');
+    setText('manageVisibilityBtn', 'myTrees.manage_visibility', '공개 설정');
     setText('manageRenameBtn', 'myTrees.manage_rename', '이름 변경');
     setText('manageDeleteBtn', 'myTrees.manage_delete', '삭제');
 
@@ -58,8 +59,14 @@
     });
 
     document.querySelectorAll('.tree-card-dropdown').forEach(function(dropdown) {
+      var card = dropdown.closest('.tree-card');
+      var isPublic = !!card?.querySelector('.tree-card-visibility.public');
+      var visibilityItem = dropdown.querySelector('.dropdown-item.visibility');
       var renameItem = dropdown.querySelector('.dropdown-item.rename');
       var deleteItem = dropdown.querySelector('.dropdown-item.delete');
+      if (visibilityItem) {
+        visibilityItem.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px;">' + (isPublic ? 'lock' : 'public') + '</span>' + (isPublic ? tText('visibility_make_private', '비공개로 전환') : tText('visibility_make_public', '공개로 전환'));
+      }
       if (renameItem) {
         renameItem.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px;">edit</span>' + tText('rename', '이름 변경');
       }
