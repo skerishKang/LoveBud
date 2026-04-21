@@ -1,15 +1,17 @@
 /**
  * LoveBud - My Trees State
- * v20260420-1
+ * v20260421-1
  *
  * Responsibilities:
  * - sort tree collections
  * - keep lightweight lastTreesData state
+ * - keep lightweight selected tree state
  * - bind sort select change handler
  */
 
 (function() {
   var lastTreesData = [];
+  var selectedTreeId = null;
 
   function setLastTreesData(nextTrees) {
     lastTreesData = Array.isArray(nextTrees) ? nextTrees.slice() : [];
@@ -18,6 +20,20 @@
 
   function getLastTreesData() {
     return Array.isArray(lastTreesData) ? lastTreesData.slice() : [];
+  }
+
+  function setSelectedTreeId(nextTreeId) {
+    selectedTreeId = nextTreeId || null;
+    return selectedTreeId;
+  }
+
+  function getSelectedTreeId() {
+    return selectedTreeId || null;
+  }
+
+  function clearSelectedTreeId() {
+    selectedTreeId = null;
+    return selectedTreeId;
   }
 
   function sortTrees(trees, sortBy) {
@@ -69,6 +85,9 @@
   window.LoveBudMyTreesState = {
     setLastTreesData: setLastTreesData,
     getLastTreesData: getLastTreesData,
+    setSelectedTreeId: setSelectedTreeId,
+    getSelectedTreeId: getSelectedTreeId,
+    clearSelectedTreeId: clearSelectedTreeId,
     sortTrees: sortTrees,
     bindSortSelect: bindSortSelect
   };
