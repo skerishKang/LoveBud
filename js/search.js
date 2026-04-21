@@ -1,6 +1,6 @@
 /**
  * LoveBud Search Page Orchestrator
- * v20260418-1
+ * v20260421-1
  *
  * Search page orchestration:
  * - Data loading (cache → API → mock fallback)
@@ -190,6 +190,15 @@ const isMockFallbackEnabled = () =>
         PreviewRenderer.updatePreview(tree);
     };
 
+    const markActiveCard = (activeCard) => {
+        resultsList.querySelectorAll('.tree-card.is-active').forEach((card) => {
+            card.classList.remove('is-active');
+        });
+        if (activeCard) {
+            activeCard.classList.add('is-active');
+        }
+    };
+
     // Search input with debounce
     let searchInputTimer = null;
     searchInput.addEventListener('input', (e) => {
@@ -286,12 +295,14 @@ const isMockFallbackEnabled = () =>
             });
 
             card.addEventListener('mouseenter', () => {
+                markActiveCard(card);
                 showTreePreview(tree);
             });
         });
 
         // Auto-select first tree preview
         if (filtered.length > 0) {
+            markActiveCard(cards[0]);
             showTreePreview(filtered[0]);
         }
     };

@@ -1,6 +1,6 @@
 /**
  * LoveBud - i18n Intro Dictionary
- * v20260421-1
+ * v20260421-2
  *
  * 소개 페이지(intro.html) 번역 키
  */
@@ -15,20 +15,32 @@
       en: 'Where what you love keeps growing'
     },
     'intro.heroTitle': {
-      ko: '사랑하는 것들의',
-      en: 'The things you love'
-    },
-    'intro.heroTitleSpan': {
-      ko: '성장 과정을 기록하다',
-      en: 'Record their growth'
+      ko: '<span class="title-line">사랑하는 것들의</span><span class="title-line title-accent">모든 순간을</span><span class="title-line">하나의 나무로 남겨요</span>',
+      en: '<span class="title-line">Turn every moment</span><span class="title-line title-accent">of what you love</span><span class="title-line">into one tree</span>'
     },
     'intro.heroLead': {
-      ko: '러브트리는 좋아하는 대상의 입덕 순간부터 지금까지, 당신이 경험한 감정의 흐름을 하나의 나무로 기록하는 공간입니다. 오래 지나도 다시 꺼내 보고 싶은 마음의 장면들이 조용히 쌓여갑니다.',
-      en: 'LoveTree is a space where the emotional flow from your first fandom moment to now is recorded as a single tree. The scenes you want to revisit quietly gather over time.'
+      ko: '러브트리는 입덕의 첫 설렘부터 오래 남은 장면까지, 마음이 지나온 길을 하나의 트리로 기록하고 감상하는 공간입니다.',
+      en: 'LoveTree is a place to record and revisit the path your heart followed, from the first spark of fandom to the scenes that stayed with you.'
     },
     'intro.heroBrowseCta': {
       ko: '공개 트리 감상하기',
       en: 'Browse Public Trees'
+    },
+    'intro.sceneFirst': {
+      ko: '🌱 첫 설렘',
+      en: '🌱 First spark'
+    },
+    'intro.sceneSaved': {
+      ko: '💝 마음 메모',
+      en: '💝 Heart note'
+    },
+    'intro.sceneShared': {
+      ko: '✨ 공개 감상',
+      en: '✨ Public view'
+    },
+    'intro.sceneCaption': {
+      ko: '흩어진 장면들이 이어지면, 좋아하게 된 경로가 조용히 보입니다.',
+      en: 'When scattered scenes connect, the path of falling in love quietly appears.'
     },
 
     // What is 섹션
@@ -37,12 +49,12 @@
       en: 'What is LoveTree?'
     },
     'intro.whatIsDesc1': {
-      ko: '러브트리는 특정 인물이나 그룹(주로 가수, 배우, 캐릭터 등)에 대한 감정과 기억을 시각적으로 기록하는 팬 다이어리 서비스입니다. 단순한 텍스트 일기가 아니라, 당신이 좋아하는 영상이나 음악의 한 장면을 남기고 그 감정의 연결을 나무처럼 이어갑니다.',
-      en: 'LoveTree is a fan diary service that visually records emotions and memories for specific people or groups. More than a text diary, it saves a scene from a video or song you love and lets that emotional connection grow like a tree.'
+      ko: '러브트리는 좋아하게 된 첫 장면과 그 뒤로 이어진 마음을 하나의 나무로 남기는 팬 감정 스크랩북입니다.',
+      en: 'LoveTree is a fan emotion scrapbook that keeps the first scene you fell for and the feelings that followed as one growing tree.'
     },
     'intro.whatIsDesc2Fixed': {
-      ko: '시간이 지나도 그때 그 감정으로 돌아갈 수 있는 공간입니다.',
-      en: 'A space where you can return to those feelings even as time passes.'
+      ko: '영상, 음악, 장면, 메모가 가지처럼 이어지고, 시간이 지나도 그때의 감정으로 다시 돌아갈 수 있습니다.',
+      en: 'Videos, songs, scenes, and notes connect like branches, so you can return to those feelings even after time passes.'
     },
 
     // How to 섹션
@@ -51,8 +63,8 @@
       en: 'How do you begin?'
     },
     'intro.howToSubtitle': {
-      ko: '세 가지 흐름으로 당신만의 러브트리를 차분히 쌓아가세요.',
-      en: 'Build your LoveTree through three gentle steps.'
+      ko: '기능을 배우기보다, 첫 마음이 지나온 길을 천천히 남겨보세요.',
+      en: 'Rather than learning a tool, slowly leave the path your first feeling followed.'
     },
 
     // Step 1
@@ -77,22 +89,22 @@
 
     // Step 3
     'intro.step3Title': {
-      ko: '내 트리 바라보기',
-      en: 'Look back at your tree'
+      ko: '자라난 트리 감상하기',
+      en: 'Revisit the tree that grew'
     },
     'intro.step3DescFixed': {
-      ko: '기억들이 가지처럼 이어진 당신만의 러브트리를 바라보고, 완성되면 둘러보기에 조용히 나눠보세요.',
-      en: 'Look back at your LoveTree as memories branch out, and when it feels complete, quietly share it in Browse.'
+      ko: '가지처럼 이어진 장면들을 따라가며, 내가 어떻게 좋아하게 되었는지 다시 바라보세요.',
+      en: 'Follow the scenes branching out and look back at how your feelings grew.'
     },
 
     // 성장 과정
     'intro.visualizeGrowthTitle': {
-      ko: '성장 과정 한눈에 보기',
-      en: 'Visualize Your Growth'
+      ko: '좋아하게 된 경로를 따라가는 공간',
+      en: 'A space to follow the path of affection'
     },
     'intro.visualizeGrowthDesc': {
-      ko: '얼마나 좋아졌는지, 어떤 감정을 지나왔는지 한눈에 볼 수 있습니다.',
-      en: 'See at a glance how much you have grown and what emotions you have experienced.'
+      ko: '흩어진 순간들이 이어지며 마음의 방향과 흐름이 보입니다.',
+      en: 'Scattered moments connect, revealing the direction and flow of your heart.'
     },
 
     // Value 섹션
@@ -105,38 +117,42 @@
       en: 'What stays first'
     },
     'intro.value1Title': {
-      ko: '감정의 아카이브',
-      en: 'Emotion Archive'
+      ko: '입덕의 첫 순간을 오래 남기는 공간',
+      en: 'A space to keep the first fandom moment'
     },
     'intro.value1Desc': {
-      ko: '단순한 기록이 아니라, 특정 시점에 느낀 감정의 결을 남기는 공간입니다.',
-      en: 'Not just records, but a space to leave the texture of emotions felt at specific moments.'
+      ko: '처음 마음이 움직였던 장면과 그때의 감정을 함께 보관합니다.',
+      en: 'Keep the scene that first moved your heart together with the feeling from that moment.'
     },
     'intro.value2Title': {
-      ko: '함께 나누는 기쁨',
-      en: 'Shared Joy'
+      ko: '다른 팬의 마음을 감상하는 공간',
+      en: 'A space to view other fans feelings'
     },
     'intro.value2Desc': {
-      ko: '완성된 러브트리를 둘러보기에 올리면, 같은 취향의 다른 사람과 감정을 나눌 수 있습니다.',
-      en: 'Share your completed LoveTree to browse and connect with others who have similar tastes.'
+      ko: '공개된 러브트리를 따라가며 비슷한 설렘과 장면을 발견할 수 있습니다.',
+      en: 'Follow public LoveTrees and discover familiar sparks and scenes.'
     },
     'intro.value3Title': {
-      ko: '보물 같은 추억',
-      en: 'Treasured Memories'
+      ko: '오래 지나도 다시 꺼내보는 공간',
+      en: 'A space to return to later'
     },
     'intro.value3DescFixed': {
-      ko: '시간이 지나도 그때의 감정이 생생하게 남아 있습니다.',
-      en: 'Even as time passes, those feelings remain vivid.'
+      ko: '잊고 있던 장면도 트리 안에서는 그때의 온도로 다시 살아납니다.',
+      en: 'Even forgotten scenes come back with their old warmth inside the tree.'
     },
 
     // CTA
     'intro.ctaTitle': {
-      ko: '이제 당신의 러브트리를 시작하세요',
-      en: 'Start Your LoveTree Now'
+      ko: '첫 순간을 남길 준비가 되셨나요?',
+      en: 'Ready to leave your first moment?'
     },
     'intro.ctaDesc': {
-      ko: '좋아하는 것의 첫 번째 기억을 기록하는 그 순간을 놓치지 마세요.',
-      en: "Don't miss the moment to record the first memory of what you love."
+      ko: '좋아하는 마음이 시작된 장면부터 당신의 러브트리를 천천히 키워보세요.',
+      en: 'Start with the scene where your affection began, and slowly grow your LoveTree.'
+    },
+    'intro.ctaPrimary': {
+      ko: '첫 순간 남기러 가기',
+      en: 'Leave My First Moment'
     },
     'nav.myTrees': {
       ko: '내 러브트리 시작하기',

@@ -53,17 +53,17 @@
             color: var(--primary);
         }
 
-        .detail-hero {
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-            margin-bottom: 28px;
-            padding: 28px 32px;
-            border-radius: 2rem;
-            background: linear-gradient(135deg, rgba(255,255,255,0.92), rgba(249,245,242,0.94));
-            border: 1px solid rgba(144, 73, 81, 0.08);
-            box-shadow: 0 18px 45px rgba(75, 64, 57, 0.05);
-        }
+.detail-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 20px 24px;
+  border-radius: 1.5rem;
+  background: linear-gradient(135deg, rgba(255,255,255,0.92), rgba(249,245,242,0.94));
+  border: 1px solid rgba(144, 73, 81, 0.08);
+  box-shadow: 0 12px 30px rgba(75, 64, 57, 0.04);
+}
 
         .detail-hero-kicker {
             display: inline-flex;
@@ -135,6 +135,11 @@
         }
 
         .connected-section { margin-top: 72px; }
+.connected-section.is-empty .growth-visualization,
+.connected-section.is-empty .growth-line { display: none; }
+.connected-section.is-solo .moment-card { max-width: 480px; }
+.connected-section.is-solo .connected-summary { display: none; }
+.connected-section.is-threaded .moment-card { grid-column: span 1; }
 
         .connected-heading {
             display: flex;
@@ -202,15 +207,15 @@
             margin-top: 18px;
         }
 
-        .diary-container {
-            background: white;
-            padding: 56px;
-            border-radius: 3rem;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.03);
-            border: 1px solid rgba(0,0,0,0.02);
-            position: relative;
-            overflow: hidden;
-        }
+.diary-container {
+  background: white;
+  padding: 40px 48px;
+  border-radius: 2rem;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.04);
+  border: 1px solid rgba(144,73,81,0.06);
+  position: relative;
+  overflow: hidden;
+}
 
         .diary-container::before {
             content: "“";
@@ -320,7 +325,7 @@
             <section class="diary-section">
                 <div class="detail-side-intro">
                     <p id="detailSubtitle" class="detail-side-kicker">&nbsp;</p>
-                    <h1 class="headline" id="memoryTitle" style="font-size: 3.2rem; color: var(--on-surface); line-height: 1.1; margin-bottom: 24px;">&nbsp;</h1>
+                    <h1 class="headline" id="memoryTitle" style="font-size: clamp(2rem, 5vw, 2.8rem); color: var(--on-surface); line-height: 1.15; margin-bottom: 20px;">&nbsp;</h1>
                     <div style="display: flex; gap: 10px;">
                         <div class="tags-container" id="tagsContainer"></div>
                     </div>
@@ -346,22 +351,22 @@
 <script src="../js/utils/normalize.js?v=20260418-1"></script>
 <script src="../js/api/auth-policy.js?v=20260420-1"></script>
 <script src="../js/api/base-api-fetch.js?v=20260420-1"></script>
-<script src="../js/postgres-client.js?v=20260420-1"></script>
-<script src="../js/detail.js?v=20260421-6"></script>
+<script src="../js/postgres-client.js?v=20260421-1"></script>
+<script src="../js/detail.js?v=20260421-7"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 <script src="../js/firebase-config.js?v=20260417-31"></script>
-<script src="../js/i18n/i18n-core.js?v=20260419-2"></script>
-<script src="../js/i18n/i18n-shared.js?v=20260419-2"></script>
-<script src="../js/i18n/i18n-login.js?v=20260419-2"></script>
-<script src="../js/i18n/i18n-intro.js?v=20260419-2"></script>
-<script src="../js/i18n/i18n-search.js?v=20260419-2"></script>
-<script src="../js/i18n/i18n-detail.js?v=20260421-5"></script>
-<script src="../js/i18n/i18n-editor.js?v=20260419-2"></script>
-<script src="../js/i18n/i18n-my-trees.js?v=20260419-2"></script>
-<script src="../js/i18n/i18n-index.js?v=20260419-2"></script>
+<script src="../js/i18n/i18n-core.js?v=20260421-1"></script>
+<script src="../js/i18n/i18n-shared.js?v=20260421-2"></script>
+    <script src="../js/i18n/i18n-login.js?v=20260419-2"></script>
+    <script src="../js/i18n/i18n-intro.js?v=20260421-2"></script>
+    <script src="../js/i18n/i18n-search.js?v=20260421-1"></script>
+    <script src="../js/i18n/i18n-detail.js?v=20260421-5"></script>
+    <script src="../js/i18n/i18n-editor.js?v=20260421-5"></script>
+    <script src="../js/i18n/i18n-my-trees.js?v=20260421-5"></script>
+<script src="../js/i18n/i18n-index.js?v=20260421-1"></script>
 <script src="../js/i18n.js?v=20260419-2"></script>
-<script src="../js/shared-header.js?v=20260417-31"></script>
+<script src="../js/shared-header.js?v=20260421-2"></script>
 <script src="../js/auth/auth-state.js?v=20260417-31"></script>
 <script src="../js/auth/auth-callbacks.js?v=20260417-31"></script>
 <script src="../js/auth/auth-cache.js?v=20260417-31"></script>

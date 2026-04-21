@@ -46,15 +46,102 @@ function createEditorMemoryForm(deps) {
         addMemoryForm.style.left = '50%';
         addMemoryForm.style.top = '26px';
         addMemoryForm.style.transform = 'translateX(-50%)';
-        addMemoryForm.style.width = 'min(520px, calc(100% - 40px))';
-        addMemoryForm.style.maxWidth = '520px';
-        addMemoryForm.style.padding = '22px 22px 20px';
+        addMemoryForm.style.width = 'min(560px, calc(100% - 40px))';
+        addMemoryForm.style.maxWidth = '560px';
+        addMemoryForm.style.padding = '24px 24px 22px';
         addMemoryForm.style.borderRadius = '24px';
         addMemoryForm.style.background = 'linear-gradient(180deg, rgba(255,255,255,0.99), rgba(250,246,244,0.98))';
         addMemoryForm.style.boxShadow = '0 22px 50px rgba(75,64,57,0.14)';
         addMemoryForm.style.border = '1px solid rgba(144,73,81,0.12)';
         addMemoryForm.style.zIndex = '8';
         addMemoryForm.style.backdropFilter = 'blur(12px)';
+    }
+
+    function applyPreviewStyles() {
+        const preview = document.getElementById('memoryLinkPreview');
+        if (!preview) return;
+        preview.style.display = 'flex';
+        preview.style.alignItems = 'stretch';
+        preview.style.gap = '14px';
+        preview.style.padding = '14px';
+        preview.style.borderRadius = '16px';
+        preview.style.background = 'var(--surface-container-low, #f5f3f0)';
+        preview.style.border = '1px solid var(--outline-variant, #e0dcd8)';
+        preview.style.marginTop = '12px';
+        preview.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+
+        const thumbWrap = preview.querySelector('.memory-link-preview__thumb-wrap');
+        if (thumbWrap) {
+            thumbWrap.style.position = 'relative';
+            thumbWrap.style.width = '120px';
+            thumbWrap.style.minWidth = '120px';
+            thumbWrap.style.height = '68px';
+            thumbWrap.style.borderRadius = '10px';
+            thumbWrap.style.overflow = 'hidden';
+            thumbWrap.style.background = 'var(--surface-container, #ece9e5)';
+        }
+
+        const thumb = document.getElementById('memoryPreviewThumb');
+        if (thumb) {
+            thumb.style.width = '100%';
+            thumb.style.height = '100%';
+            thumb.style.objectFit = 'cover';
+        }
+
+        const playIcon = preview.querySelector('.memory-link-preview__play-icon');
+        if (playIcon) {
+            playIcon.style.position = 'absolute';
+            playIcon.style.top = '50%';
+            playIcon.style.left = '50%';
+            playIcon.style.transform = 'translate(-50%, -50%)';
+            playIcon.style.fontSize = '32px';
+            playIcon.style.color = '#fff';
+            playIcon.style.opacity = '0.9';
+            playIcon.style.textShadow = '0 2px 8px rgba(0,0,0,0.3)';
+        }
+
+        const body = preview.querySelector('.memory-link-preview__body');
+        if (body) {
+            body.style.flex = '1';
+            body.style.display = 'flex';
+            body.style.flexDirection = 'column';
+            body.style.gap = '4px';
+            body.style.minWidth = '0';
+        }
+
+        const badge = document.getElementById('memoryPreviewBadge');
+        if (badge) {
+            badge.style.display = 'inline-flex';
+            badge.style.alignItems = 'center';
+            badge.style.padding = '3px 8px';
+            badge.style.borderRadius = '6px';
+            badge.style.background = 'rgba(144, 73, 81, 0.1)';
+            badge.style.color = 'var(--primary, #904951)';
+            badge.style.fontSize = '10px';
+            badge.style.fontWeight = '700';
+            badge.style.letterSpacing = '0.03em';
+            badge.style.textTransform = 'uppercase';
+            badge.style.width = 'fit-content';
+        }
+
+        const title = document.getElementById('memoryPreviewTitle');
+        if (title) {
+            title.style.fontSize = '0.95rem';
+            title.style.fontWeight = '700';
+            title.style.color = 'var(--on-surface, #333)';
+            title.style.lineHeight = '1.4';
+            title.style.overflow = 'hidden';
+            title.style.textOverflow = 'ellipsis';
+            title.style.whiteSpace = 'nowrap';
+        }
+
+        const hint = document.getElementById('memoryPreviewHint');
+        if (hint) {
+            hint.style.fontSize = '0.8rem';
+            hint.style.color = 'var(--on-surface-variant, #666)';
+            hint.style.lineHeight = '1.5';
+            hint.style.margin = '0';
+        }
     }
 
     const focusTrap = (e) => {
@@ -82,6 +169,37 @@ function createEditorMemoryForm(deps) {
         applyFormOpenStyles();
         isFormOpen = true;
 
+        // Determine if this is first moment or next moment
+        const memories = getTreeMemories();
+        const isFirstMoment = !memories || memories.length === 0;
+
+        // Update form labels based on context
+        const formTitle = document.getElementById('addMemoryFormTitle');
+        const urlLabel = document.getElementById('memoryUrlLabel');
+        const titleLabel = document.getElementById('memoryTitleLabel');
+        const memoLabel = document.getElementById('memoryMemoLabel');
+        const confirmBtn = document.getElementById('confirmAddMemory');
+
+        if (formTitle) {
+            formTitle.textContent = isFirstMoment
+                ? (i18n('editor_add_first_memory_title') || '이 트리의 첫 순간을 심어볼까요?')
+                : (i18n('editor_add_next_memory_title') || '어떤 순간이 이어졌나요?');
+        }
+        if (urlLabel) {
+            urlLabel.textContent = i18n('editor_youtube_link') || 'YouTube 장면 링크';
+        }
+        if (titleLabel) {
+            titleLabel.textContent = i18n('editor_memory_title') || '순간 제목';
+        }
+        if (memoLabel) {
+            memoLabel.textContent = i18n('editor_memory_memo_optional') || '감정 메모';
+        }
+        if (confirmBtn) {
+            confirmBtn.textContent = isFirstMoment
+                ? (i18n('editor_confirm_add_first') || '첫 순간 심기')
+                : (i18n('editor_confirm_add_next') || '이 순간 이어가기');
+        }
+
         document.addEventListener('keydown', focusTrap);
         if (titleInput) titleInput.focus();
 
@@ -104,6 +222,73 @@ function createEditorMemoryForm(deps) {
         setTimeout(() => {
             document.addEventListener('click', outsideClickHandler, true);
         }, 0);
+
+        // URL input preview handler
+        let userHasEditedTitle = false;
+        if (titleInput) {
+            titleInput.addEventListener('input', function() {
+                userHasEditedTitle = true;
+            });
+        }
+
+        const updatePreview = function() {
+            const preview = document.getElementById('memoryLinkPreview');
+            if (!preview) return;
+
+            const url = urlInput ? urlInput.value.trim() : '';
+            let videoId = '';
+
+            if (window.LoveBudMedia?.extractYouTubeId) {
+                videoId = window.LoveBudMedia.extractYouTubeId(url) || '';
+            } else {
+                // Fallback YouTube ID extraction
+                try {
+                    if (!url) throw new Error('Empty URL');
+                    const parsed = new URL(url.trim());
+                    const host = parsed.hostname.replace(/^www\./, '');
+                    if (host === 'youtu.be') {
+                        videoId = parsed.pathname.split('/').filter(Boolean)[0] || '';
+                    } else if (host === 'youtube.com' || host === 'm.youtube.com') {
+                        if (parsed.pathname === '/watch') {
+                            videoId = parsed.searchParams.get('v') || '';
+                        } else {
+                            const parts = parsed.pathname.split('/').filter(Boolean);
+                            if (parts[0] === 'shorts' || parts[0] === 'embed') {
+                                videoId = parts[1] || '';
+                            }
+                        }
+                    }
+                } catch (e) {
+                    videoId = '';
+                }
+            }
+
+            if (videoId) {
+                // Show preview
+                preview.classList.remove('is-hidden');
+                applyPreviewStyles();
+
+                const thumb = document.getElementById('memoryPreviewThumb');
+                if (thumb) {
+                    thumb.src = `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
+                }
+
+                // Set default title if user hasn't edited it
+                if (!userHasEditedTitle && titleInput) {
+                    const defaultTitle = isFirstMoment
+                        ? (i18n('editor_default_first_title') || '첫 순간')
+                        : (i18n('editor_default_next_title') || '이어진 순간');
+                    titleInput.value = defaultTitle;
+                }
+            } else {
+                // Hide preview
+                preview.classList.add('is-hidden');
+            }
+        };
+
+        if (urlInput) {
+            urlInput.addEventListener('input', updatePreview);
+        }
     };
 
     const hideAddMemoryForm = () => {
@@ -157,7 +342,14 @@ function createEditorMemoryForm(deps) {
 
         const today = new Date();
         const dateStr = `${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, '0')}.${String(today.getDate()).padStart(2, '0')}`;
-        const title = (titleInput && titleInput.value.trim()) || '새 순간';
+
+        // Determine default title based on whether this is first moment
+        const memories = getTreeMemories();
+        const isFirstMoment = !memories || memories.length === 0;
+        const defaultTitle = isFirstMoment
+            ? (i18n('editor_default_first_title') || '첫 순간')
+            : (i18n('editor_default_next_title') || '이어진 순간');
+        const title = (titleInput && titleInput.value.trim()) || defaultTitle;
 
         const newMemoryData = {
             treeId,

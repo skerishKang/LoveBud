@@ -1,6 +1,6 @@
 /**
  * LoveBud Search Preview Renderer
- * v20260421-2
+ * v20260421-3
  * 
  * Rendering layer: preview sidebar panel.
  * DOM-agnostic - updates passed DOM elements.
@@ -269,6 +269,7 @@
                 `;
             } else {
                 const safeSourceUrl = sanitizeUrl(firstMem.sourceUrl || '');
+                const safeThumbnail = sanitizeUrl(firstMem.thumbnail || tree.representativeThumbnail || '');
                 const iframeSrc = safeSourceUrl
                     ? safeSourceUrl + (safeSourceUrl.includes('?') ? '&' : '?') + 'autoplay=0&mute=1'
                     : '';
@@ -286,7 +287,19 @@
                             <div style="font-size:12px;opacity:0.7;">${safeFirstMemTitle}</div>
                         </div>
                     </div>
-                ` : renderPlaceholder();
+                ` : (safeThumbnail ? `
+                    <div style="position:relative;width:100%;height:100%;border-radius:1rem;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.12);">
+                        <img src="${safeThumbnail}" alt="${safeFirstMemTitle}" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;">
+                        <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.72),rgba(0,0,0,0.04) 58%);"></div>
+                        <div style="position:absolute;left:18px;right:18px;bottom:18px;color:white;">
+                            <div style="display:inline-flex;align-items:center;gap:6px;min-height:28px;padding:0 10px;border-radius:999px;background:rgba(255,255,255,0.18);backdrop-filter:blur(10px);font-size:12px;font-weight:800;margin-bottom:10px;">
+                                <span class="material-symbols-outlined" style="font-size:14px;">play_circle</span>
+                                ${escapeHtml(getSearchCopy('search.previewStartFromFirstMoment', '첫 순간부터 감상하기', 'Start from the first moment'))}
+                            </div>
+                            <div style="font-size:14px;font-weight:800;line-height:1.4;">${safeFirstMemTitle}</div>
+                        </div>
+                    </div>
+                ` : renderPlaceholder());
             }
         }
 
@@ -319,7 +332,7 @@
 
                 _dom.previewDesc.innerHTML = `
                     <div style="background:var(--surface-container-low);padding:20px;border-radius:1rem;margin-bottom:16px;">
-                        ${renderSectionHeading('route', getSearchCopy('search.previewTimelineHeading', '어떻게 입덕했을까요?', 'How did this fandom begin?'))}
+                        ${renderSectionHeading('route', getSearchCopy('search.previewTimelineHeading', '이 마음은 어디서 시작됐을까요?', 'Where did this feeling begin?'))}
                         <div style="font-size:14px;line-height:1.7;color:var(--on-surface-variant);">
                             ${escapeHtml(getSearchCopy('search.previewTimelineEmpty', '아직 기록된 순간이 없어 감정 경로가 비어 있어요.', 'No moments have been recorded yet, so the emotional path is still empty.'))}<br>
                             ${escapeHtml(getSearchCopy('search.previewTimelineEmptyBody', '첫 순간이 추가되면 이 패널에서 흐름을 바로 미리 볼 수 있어요.', 'Once the first moment is added, you will be able to preview the flow in this panel.'))}
@@ -346,7 +359,7 @@
 
                 _dom.previewDesc.innerHTML = `
                     <div style="background:var(--surface-container-low);padding:20px;border-radius:1rem;margin-bottom:16px;">
-                        ${renderSectionHeading('route', getSearchCopy('search.previewTimelineHeading', '어떻게 입덕했을까요?', 'How did this fandom begin?'))}
+                        ${renderSectionHeading('route', getSearchCopy('search.previewTimelineHeading', '이 마음은 어디서 시작됐을까요?', 'Where did this feeling begin?'))}
                         <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;line-height:1.8;">
                             ${pathStages}
                         </div>
@@ -355,7 +368,7 @@
 
                     <div style="font-size:14px;color:var(--on-surface-variant);line-height:1.6;padding:0 4px;">
                         ${getPreviewSummaryCopy(tree, memories)}
-                        ${renderInfoCallout('favorite', `${firstMomentLabel}에서 시작해 ${lastMomentLabel}까지 이어진 ${moodText}의 흐름이에요`)}
+                        ${renderInfoCallout('favorite', `${firstMomentLabel}에서 시작해 ${lastMomentLabel}까지 이어진 ${moodText}의 러브트리예요`)}
                         ${renderInfoCallout('touch_app', getSearchCopy('search.previewJourneyCta', '카드를 클릭하여 감정 경로를 따라가보세요', 'Click a card to follow the emotional path.'), 'primary')}
                     </div>
                 `;
@@ -382,12 +395,12 @@
     function renderPlaceholder() {
         const lead = getSearchCopy(
             'search.previewEmptyLead',
-            '왼쪽 목록에서 공개 러브트리를 선택하면',
+            '왼쪽 목록에서 공개 러브트리를 스치면',
             'Choose a public LoveTree from the list to the left'
         );
         const body = getSearchCopy(
             'search.previewEmptyBody',
-            '해당 트리의 감정 흐름과 대표 순간을 여기서 미리 볼 수 있어요.',
+            '시작 순간과 이어진 감정이 이곳에 먼저 펼쳐집니다.',
             'and preview its emotional flow and featured moment here.'
         );
 
@@ -405,12 +418,12 @@
         const previewStats = getPreviewStatsElement();
         const placeholderTitle = getSearchCopy(
             'search.previewPlaceholder',
-            '트리를 선택하여 감상하기',
+            '트리를 골라 감상하기',
             'Select a tree to preview'
         );
         const placeholderDescription = getSearchCopy(
             'search.previewDescriptionPlaceholder',
-            '카드를 선택하면 감정의 흐름과 대표 순간을 미리 볼 수 있어요.',
+            '카드를 고르면 대표 순간과 감정 경로를 먼저 열어볼 수 있어요.',
             'Select a card to preview the emotional flow and featured moment.'
         );
         
@@ -452,5 +465,5 @@
         renderEmotionTags: renderEmotionTags
     };
 
-    console.log('[LoveBudSearchPreviewRenderer] Search preview renderer loaded v20260421-2');
+    console.log('[LoveBudSearchPreviewRenderer] Search preview renderer loaded v20260421-3');
 })();

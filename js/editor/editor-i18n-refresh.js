@@ -85,7 +85,7 @@
     setText('memoryMemoLabel', 'editor_memory_memo_optional', '감정 메모');
     setText('cancelAddMemory', 'editor_cancel', '취소');
     setText('confirmAddMemory', 'editor_confirm_add', '이 순간 심기');
-    setText('detailMoreBtn', 'more', '더보기');
+    setText('detailMoreBtn', 'editor_open_detail', '상세로 보기');
     setText('detailEmptyTitle', 'detail_empty_title', '첫 순간이 트리를 깨워요');
     setText('detailEmptyDesc', 'detail_empty_desc', '왼쪽의 "새 순간 이어가기"로 첫 장면을 심으면, 이 패널이 현재 순간 허브로 바뀝니다.');
     setText('detailCurrentMomentBadge', 'editor_current_moment_badge', '현재 순간');
@@ -107,7 +107,7 @@
 
     setAttr('renameTreeBtn', 'aria-label', 'rename_tree_prompt', '새 트리 제목을 입력해 주세요.');
     setAttr('renameTreeBtn', 'title', 'rename_tree_prompt', '새 트리 제목을 입력해 주세요.');
-    setAttr('detailMoreBtn', 'aria-label', 'more', '더보기');
+    setAttr('detailMoreBtn', 'aria-label', 'editor_open_detail', '상세로 보기');
 
     var playBtn = document.querySelector('.play-btn');
     if (playBtn) {

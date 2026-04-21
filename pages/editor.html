@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
@@ -6,6 +6,18 @@
     <title>러브트리 편집 | LoveTree</title>
     <link rel="stylesheet" href="../css/editor.css?v=20260420-1">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
+    <style>
+        .memory-inline-edit { display:inline-flex; align-items:center; }
+        .memory-inline-edit input { font-size:inherit; font-weight:inherit; font-family:inherit; color:inherit; width:100%; border:1px solid var(--outline); padding:4px 8px; border-radius:4px; box-sizing:border-box; }
+        .memory-edit-textarea { font-size:inherit; font-weight:inherit; font-family:inherit; color:inherit; width:100%; min-height:80px; border:1px solid var(--outline); padding:8px; border-radius:8px; box-sizing:border-box; margin-bottom:4px; resize:vertical; line-height:1.7; }
+        .memory-edit-button { border:none; background:transparent; cursor:pointer; font-size:0.8rem; color:var(--primary); padding:4px 8px; border-radius:4px; margin-left:8px; }
+        .memory-edit-button:hover { background:rgba(144,73,81,0.08); }
+        .memory-edit-actions { display:flex; gap:8px; margin-top:8px; }
+        .memory-edit-actions .btn-save { background:var(--primary); color:white; border:none; padding:4px 12px; border-radius:16px; font-size:0.85rem; cursor:pointer; }
+        .memory-edit-actions .btn-cancel { background:transparent; color:var(--on-surface-variant); border:1px solid var(--outline); padding:4px 12px; border-radius:16px; font-size:0.85rem; cursor:pointer; }
+        .memory-edit-error { color:var(--error); font-size:0.8rem; margin-top:4px; }
+        .memory-edit-hint { color:var(--on-surface-variant); font-size:0.8rem; margin-top:4px; }
+    </style>
 </head>
 <body class="editor-preload">
     <div class="noise-overlay"></div>
@@ -61,6 +73,17 @@
                     <label id="memoryUrlLabel" class="editor-form-label">...</label>
                     <input type="text" id="memoryUrlInput" placeholder="https://www.youtube.com/watch?v=..." class="editor-form-input">
                 </div>
+                <div class="memory-link-preview is-hidden" id="memoryLinkPreview" aria-live="polite">
+                    <div class="memory-link-preview__thumb-wrap">
+                        <img class="memory-link-preview__thumb" id="memoryPreviewThumb" alt="">
+                        <div class="memory-link-preview__play-icon material-symbols-outlined">play_circle</div>
+                    </div>
+                    <div class="memory-link-preview__body">
+                        <span class="memory-link-preview__badge" id="memoryPreviewBadge">YouTube</span>
+                        <strong class="memory-link-preview__title" id="memoryPreviewTitle">영상 링크가 확인됐어요</strong>
+                        <p class="memory-link-preview__hint" id="memoryPreviewHint">이 장면을 트리에 심기 전에 제목과 메모를 다듬어 주세요.</p>
+                    </div>
+                </div>
                 <div class="editor-form-field">
                     <label id="memoryTitleLabel" class="editor-form-label">...</label>
                     <input type="text" id="memoryTitleInput" placeholder="..." class="editor-form-input">
@@ -79,7 +102,7 @@
         <aside class="detail-panel memory-detail-section" id="detailPanel">
             <div class="panel-header">
                 <h3 class="headline editor-panel-headline"></h3>
-                <button type="button" class="icon-menu-btn editor-hidden-initial editor-detail-more-btn" aria-label="더보기" id="detailMoreBtn">더보기</button>
+                <button type="button" class="icon-menu-btn editor-hidden-initial editor-detail-more-btn" aria-label="상세로 보기" id="detailMoreBtn">상세로 보기</button>
             </div>
 
             <div class="detail-content" id="detailContent">
@@ -186,11 +209,11 @@
     <script src="../js/editor/editor-canvas-node.js?v=20260420-1"></script>
     <script src="../js/editor/editor-canvas-interaction.js?v=20260420-1"></script>
     <script src="../js/editor/editor-canvas-viewport.js?v=20260420-1"></script>
-    <script src="../js/editor/editor-canvas.js?v=20260421-3"></script>
+    <script src="../js/editor/editor-canvas.js?v=20260421-4"></script>
     <script src="../js/editor/editor-rename-ui.js?v=20260420-1"></script>
-    <script src="../js/editor/editor-detail-ui.js?v=20260421-3"></script>
+    <script src="../js/editor/editor-detail-ui.js?v=20260421-6"></script>
     <script src="../js/editor/editor-memory-actions.js?v=20260419-1"></script>
-    <script src="../js/editor/editor-memory-form.js?v=20260421-2"></script>
+    <script src="../js/editor/editor-memory-form.js?v=20260421-5"></script>
     <script src="../js/api/auth-policy.js?v=20260420-1"></script>
     <script src="../js/api/base-api-fetch.js?v=20260420-1"></script>
     <script src="../js/postgres-client.js?v=20260420-2"></script>
@@ -202,21 +225,21 @@
     <script src="../js/editor/editor-auth-helpers.js?v=20260420-1"></script>
     <script src="../js/editor/editor-data-loader.js?v=20260420-1"></script>
     <script src="../js/editor/editor-data-loader-fallbacks.js?v=20260420-1"></script>
-    <script src="../js/editor/editor-resolver-fallbacks.js?v=20260421-1"></script>
-    <script src="../js/editor.js?v=20260421-3"></script>
+    
+    <script src="../js/editor.js?v=20260421-7"></script>
     <script src="../js/editor/editor-i18n-refresh.js?v=20260421-1"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="../js/firebase-config.js?v=20260417-31"></script>
-    <script src="../js/i18n/i18n-core.js?v=20260419-2"></script>
-    <script src="../js/i18n/i18n-shared.js?v=20260419-2"></script>
+    <script src="../js/i18n/i18n-core.js?v=20260421-1"></script>
+    <script src="../js/i18n/i18n-shared.js?v=20260421-2"></script>
     <script src="../js/i18n/i18n-login.js?v=20260419-2"></script>
-    <script src="../js/i18n/i18n-intro.js?v=20260419-2"></script>
-    <script src="../js/i18n/i18n-search.js?v=20260419-2"></script>
-    <script src="../js/i18n/i18n-detail.js?v=20260419-2"></script>
-    <script src="../js/i18n/i18n-editor.js?v=20260421-2"></script>
-    <script src="../js/i18n/i18n-my-trees.js?v=20260419-2"></script>
-    <script src="../js/i18n/i18n-index.js?v=20260419-2"></script>
+    <script src="../js/i18n/i18n-intro.js?v=20260421-2"></script>
+    <script src="../js/i18n/i18n-search.js?v=20260421-1"></script>
+    <script src="../js/i18n/i18n-detail.js?v=20260421-5"></script>
+    <script src="../js/i18n/i18n-editor.js?v=20260421-7"></script>
+    <script src="../js/i18n/i18n-my-trees.js?v=20260421-5"></script>
+    <script src="../js/i18n/i18n-index.js?v=20260421-1"></script>
     <script src="../js/i18n.js?v=20260419-2"></script>
     <script src="../js/shared-header.js?v=20260421-2"></script>
     <script src="../js/auth/auth-state.js?v=20260417-31"></script>

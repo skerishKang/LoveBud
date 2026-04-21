@@ -14,10 +14,18 @@
     }
 
     .intro-hero {
-      padding: 112px 48px 72px;
-      max-width: 900px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 320px;
+      gap: 48px;
+      align-items: center;
+      padding: 96px 48px 72px;
+      max-width: 1120px;
       margin: 0 auto;
       width: 100%;
+    }
+
+    .intro-hero-copy {
+      min-width: 0;
     }
 
     .intro-hero-eyebrow {
@@ -35,16 +43,20 @@
     }
 
     .intro-hero h1 {
-      font-size: 3rem;
+      font-size: clamp(2.8rem, 5vw, 4.2rem);
       font-weight: 900;
       color: var(--on-surface);
       margin-bottom: 1.25rem;
-      line-height: 1.16;
-      letter-spacing: -0.03em;
+      line-height: 1.1;
+      letter-spacing: 0;
       max-width: 720px;
     }
 
-    .intro-hero h1 span {
+    .intro-hero h1 .title-line {
+      display: block;
+    }
+
+    .intro-hero h1 .title-accent {
       color: var(--primary);
     }
 
@@ -54,6 +66,108 @@
       line-height: 1.78;
       margin-bottom: 2.25rem;
       max-width: 760px;
+    }
+
+    .intro-hero-visual {
+      position: relative;
+      padding: 22px;
+      border-radius: 28px;
+      background: rgba(255, 255, 255, 0.78);
+      border: 1px solid rgba(144, 73, 81, 0.1);
+      box-shadow: 0 24px 70px rgba(75, 64, 57, 0.1);
+      backdrop-filter: blur(12px);
+    }
+
+    .intro-tree-scene {
+      position: relative;
+      min-height: 280px;
+      border-radius: 22px;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 50% 10%, rgba(255, 246, 247, 0.95), rgba(255, 255, 255, 0.5) 42%),
+        linear-gradient(180deg, rgba(255, 249, 245, 0.9), rgba(244, 248, 238, 0.96));
+      border: 1px solid rgba(144, 73, 81, 0.08);
+    }
+
+    .intro-tree-stem {
+      position: absolute;
+      left: 50%;
+      bottom: 44px;
+      width: 12px;
+      height: 142px;
+      transform: translateX(-50%);
+      border-radius: 999px;
+      background: linear-gradient(180deg, #c18b83, #904951);
+      box-shadow: 0 10px 24px rgba(144, 73, 81, 0.16);
+    }
+
+    .intro-tree-branch {
+      position: absolute;
+      left: 50%;
+      height: 5px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #c18b83, #aa646d);
+      transform-origin: left center;
+    }
+
+    .intro-tree-branch.one {
+      bottom: 154px;
+      width: 86px;
+      transform: translateX(4px) rotate(-30deg);
+    }
+
+    .intro-tree-branch.two {
+      bottom: 126px;
+      width: 80px;
+      transform: translateX(-6px) rotate(204deg);
+    }
+
+    .intro-tree-branch.three {
+      bottom: 104px;
+      width: 70px;
+      transform: translateX(4px) rotate(26deg);
+    }
+
+    .intro-tree-moment {
+      position: absolute;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 34px;
+      padding: 0 12px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid rgba(144, 73, 81, 0.1);
+      box-shadow: 0 12px 24px rgba(75, 64, 57, 0.08);
+      color: var(--on-surface);
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .intro-tree-moment.first {
+      left: 24px;
+      bottom: 74px;
+      color: var(--primary);
+    }
+
+    .intro-tree-moment.saved {
+      right: 18px;
+      top: 58px;
+    }
+
+    .intro-tree-moment.shared {
+      left: 36px;
+      top: 92px;
+      color: #667a55;
+    }
+
+    .intro-tree-caption {
+      margin: 14px 4px 0;
+      color: var(--on-surface-variant);
+      font-size: 0.86rem;
+      font-weight: 700;
+      line-height: 1.55;
     }
 
     .intro-hero-actions {
@@ -105,15 +219,20 @@
       transition: all 0.3s;
     }
 
+    .how-to-card:first-child {
+      border-color: rgba(144, 73, 81, 0.18);
+      box-shadow: 0 14px 34px rgba(144, 73, 81, 0.07);
+    }
+
     .how-to-card:hover {
       transform: translateY(-4px);
       box-shadow: 0 12px 32px rgba(144, 73, 81, 0.08);
     }
 
     .how-to-icon {
-      width: 52px;
-      height: 52px;
-      border-radius: 14px;
+      width: 58px;
+      height: 58px;
+      border-radius: 18px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -122,7 +241,7 @@
     }
 
     .how-to-icon .material-symbols-outlined {
-      font-size: 26px;
+      font-size: 30px;
       color: var(--primary);
     }
 
@@ -155,6 +274,7 @@
       background: white;
       border-radius: 1.2rem;
       border: 1px solid var(--outline-variant);
+      min-height: 132px;
     }
 
     .value-item-featured {
@@ -203,7 +323,7 @@
     }
 
     .cta-section h2 {
-      font-size: 1.8rem;
+      font-size: clamp(1.8rem, 3vw, 2.4rem);
       font-weight: 800;
       color: var(--on-surface);
       margin-bottom: 1rem;
@@ -222,12 +342,21 @@
     }
 
     @media (max-width: 768px) {
+      .intro-hero {
+        grid-template-columns: 1fr;
+        gap: 28px;
+      }
+
       .intro-hero, .intro-section, .cta-section {
         padding: 80px 24px 40px;
       }
 
       .intro-hero h1 {
-        font-size: 2.2rem;
+        font-size: clamp(2.25rem, 10vw, 3rem);
+      }
+
+      .intro-hero-visual {
+        padding: 16px;
       }
 
       .intro-hero .lead {
@@ -263,33 +392,47 @@
 
     <main>
       <!-- Hero -->
-      <section class="intro-hero">
-        <div class="intro-hero-eyebrow" data-i18n="intro.heroEyebrow">좋아하는 마음이 자라나는 곳</div>
-        <h1 data-i18n="intro.heroTitle">사랑하는 것들의<br><span data-i18n="intro.heroTitleSpan">성장 과정을 기록하다</span></h1>
-        <p class="lead" data-i18n="intro.heroLead">
-          Lovetree는 좋아하는 대상의 입덕 순간부터 지금까지, 당신이 경험한 감정의 전 과정을 하나의 나무로 기록하는 공간입니다. 벚꽃이 피고 열매 맺는 것처럼, 당신의 팬심도 하나의 나무로 자라납니다.
-        </p>
-        <div class="intro-hero-actions">
-          <a href="my-trees.html" class="btn-round btn-primary" style="text-decoration: none;" data-i18n="nav.myTrees">내 러브트리 시작하기</a>
-          <a href="search.html" class="btn-round btn-outline" style="text-decoration: none;" data-i18n="intro.heroBrowseCta">공개 트리 감상하기</a>
+<section class="intro-hero">
+        <div class="intro-hero-copy">
+          <div class="intro-hero-eyebrow" data-i18n="intro.heroEyebrow">좋아하는 마음이 자라나는 곳</div>
+          <h1 data-i18n="intro.heroTitle" data-i18n-html><span class="title-line">사랑하는 것들의</span><span class="title-line title-accent">모든 순간을</span><span class="title-line">하나의 나무로 남겨요</span></h1>
+          <p class="lead" data-i18n="intro.heroLead">
+            러브트리는 입덕의 첫 설렘부터 오래 남은 장면까지, 마음이 지나온 길을 하나의 트리로 기록하고 감상하는 공간입니다.
+          </p>
+          <div class="intro-hero-actions">
+            <a href="my-trees.html" class="btn-round btn-primary" style="text-decoration: none;" data-i18n="nav.myTrees">내 러브트리 시작하기</a>
+            <a href="search.html" class="btn-round btn-outline" style="text-decoration: none;" data-i18n="intro.heroBrowseCta">공개 트리 감상하기</a>
+          </div>
+        </div>
+        <div class="intro-hero-visual" aria-hidden="true">
+          <div class="intro-tree-scene">
+            <div class="intro-tree-stem"></div>
+            <div class="intro-tree-branch one"></div>
+            <div class="intro-tree-branch two"></div>
+            <div class="intro-tree-branch three"></div>
+            <div class="intro-tree-moment first" data-i18n="intro.sceneFirst">🌱 첫 설렘</div>
+            <div class="intro-tree-moment saved" data-i18n="intro.sceneSaved">💝 마음 메모</div>
+            <div class="intro-tree-moment shared" data-i18n="intro.sceneShared">✨ 공개 감상</div>
+          </div>
+          <p class="intro-tree-caption" data-i18n="intro.sceneCaption">흩어진 장면들이 이어지면, 좋아하게 된 경로가 조용히 보입니다.</p>
         </div>
       </section>
 
        <!-- What is Lovetree -->
        <section class="intro-section">
          <h2 data-i18n="intro.whatIs">Lovetree란?</h2>
-         <p data-i18n="intro.whatIsDesc1">
-           Lovetree는 특정 인물이나 그룹(주로 가수, 배우, 캐릭터 등)에 대한 감정과 기억을 시각적으로 기록하는 팬 다이어리 서비스입니다. 단순한 텍스트 일기가 아니라, 당신이 좋아하는 영상/음악의 한 장면을 기억에 남기고, 그 감정의 연결 고리를 나무 모양으로 시각화합니다.
+<p data-i18n="intro.whatIsDesc1">
+            러브트리는 좋아하게 된 첫 장면과 그 뒤로 이어진 마음을 하나의 나무로 남기는 팬 감정 스크랩북입니다.
+          </p>
+         <p data-i18n="intro.whatIsDesc2Fixed">
+           영상, 음악, 장면, 메모가 가지처럼 이어지고, 시간이 지나도 그때의 감정으로 다시 돌아갈 수 있습니다.
          </p>
-        <p data-i18n="intro.whatIsDesc2Fixed">
-          각 기억은 "입덕 순간", "최애 직캠", "성장 메모" 등 감정 태그와 함께 노드에 저장됩니다. 시간이 지나도 그때 그 감정으로 돌아갈 수 있는 공간입니다.
-        </p>
       </section>
 
       <!-- How to Use -->
       <section class="intro-section">
         <h2 data-i18n="intro.howToTitle">어떻게 쓰나요?</h2>
-        <p data-i18n="intro.howToSubtitle">세 가지 단계로 당신만의 Lovetree를 완성하세요.</p>
+        <p data-i18n="intro.howToSubtitle">기능을 배우기보다, 첫 마음이 지나온 길을 천천히 남겨보세요.</p>
         <div class="how-to-grid">
           <div class="how-to-card">
             <div class="how-to-icon">
@@ -309,8 +452,8 @@
             <div class="how-to-icon">
               <span class="material-symbols-outlined">account_tree</span>
             </div>
-            <h3 data-i18n="intro.step3Title">내 트리 바라보기</h3>
-            <p data-i18n="intro.step3DescFixed">기억들이 가지처럼 이어진 당신만의 러브트리를 바라보고, 완성되면 둘러보기에 조용히 나눠보세요.</p>
+            <h3 data-i18n="intro.step3Title">자라난 트리 감상하기</h3>
+            <p data-i18n="intro.step3DescFixed">가지처럼 이어진 장면들을 따라가며, 내가 어떻게 좋아하게 되었는지 다시 바라보세요.</p>
           </div>
         </div>
       </section>
@@ -323,29 +466,29 @@
             <span class="material-symbols-outlined">favorite</span>
             <div>
               <div class="value-item-eyebrow" data-i18n="intro.value1Eyebrow">가장 먼저 남는 것</div>
-              <h4 data-i18n="intro.value1Title">감정의 아카이브</h4>
-              <p data-i18n="intro.value1Desc">단순한 기록이 아니라, 특정 시점에 느낀 감정의 결을 남기는 공간입니다.</p>
+              <h4 data-i18n="intro.value1Title">입덕의 첫 순간을 오래 남기는 공간</h4>
+              <p data-i18n="intro.value1Desc">처음 마음이 움직였던 장면과 그때의 감정을 함께 보관합니다.</p>
             </div>
           </div>
           <div class="value-item">
             <span class="material-symbols-outlined">psychology</span>
             <div>
-              <h4 data-i18n="intro.visualizeGrowthTitle">성장 과정 한눈에 보기</h4>
-              <p data-i18n="intro.visualizeGrowthDesc">얼마나 좋아졌는지, 어떤 감정을 지나왔는지 한눈에 볼 수 있습니다.</p>
+              <h4 data-i18n="intro.visualizeGrowthTitle">좋아하게 된 경로를 따라가는 공간</h4>
+              <p data-i18n="intro.visualizeGrowthDesc">흩어진 순간들이 이어지며 마음의 방향과 흐름이 보입니다.</p>
             </div>
           </div>
           <div class="value-item">
             <span class="material-symbols-outlined">group</span>
             <div>
-              <h4 data-i18n="intro.value2Title">함께 나누는 기쁨</h4>
-              <p data-i18n="intro.value2Desc">완성된 Lovetree를 둘러보기에 올리면, 같은 취향의 다른 사람과 감정을 나눌 수 있습니다.</p>
+              <h4 data-i18n="intro.value2Title">다른 팬의 마음을 감상하는 공간</h4>
+              <p data-i18n="intro.value2Desc">공개된 러브트리를 따라가며 비슷한 설렘과 장면을 발견할 수 있습니다.</p>
             </div>
           </div>
           <div class="value-item">
             <span class="material-symbols-outlined">auto_awesome</span>
             <div>
-              <h4 data-i18n="intro.value3Title">보물 같은 추억</h4>
-              <p data-i18n="intro.value3DescFixed">시간이 지나도 그때의 감정이 생생하게 남아 있습니다.</p>
+              <h4 data-i18n="intro.value3Title">오래 지나도 다시 꺼내보는 공간</h4>
+              <p data-i18n="intro.value3DescFixed">잊고 있던 장면도 트리 안에서는 그때의 온도로 다시 살아납니다.</p>
             </div>
           </div>
         </div>
@@ -353,10 +496,10 @@
 
       <!-- CTA -->
       <section class="cta-section">
-        <h2 data-i18n="intro.ctaTitle">이제 당신의 Lovetree를 시작하세요</h2>
-        <p data-i18n="intro.ctaDesc">좋아하는 것의 첫 번째 기억을 기록하는 그 순간을 놓치지 마세요.</p>
+        <h2 data-i18n="intro.ctaTitle">첫 순간을 남길 준비가 되셨나요?</h2>
+        <p data-i18n="intro.ctaDesc">좋아하는 마음이 시작된 장면부터 당신의 러브트리를 천천히 키워보세요.</p>
         <div class="cta-buttons">
-          <a href="my-trees.html" class="btn-round btn-primary" style="text-decoration: none; padding: 14px 32px;" data-i18n="home.cta.start">내 러브트리 시작하기</a>
+          <a href="my-trees.html" class="btn-round btn-primary" style="text-decoration: none; padding: 14px 32px;" data-i18n="intro.ctaPrimary">첫 순간 남기러 가기</a>
           <a href="search.html" class="btn-round btn-outline" style="text-decoration: none; padding: 14px 32px;" data-i18n="intro.heroBrowseCta">공개 트리 감상하기</a>
         </div>
       </section>
@@ -366,17 +509,17 @@
    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
      <script src="../js/firebase-config.js?v=20260417-31"></script>
-     <script src="../js/i18n/i18n-core.js?v=20260419-2"></script>
-     <script src="../js/i18n/i18n-shared.js?v=20260419-2"></script>
-     <script src="../js/i18n/i18n-login.js?v=20260419-2"></script>
-     <script src="../js/i18n/i18n-intro.js?v=20260421-1"></script>
-     <script src="../js/i18n/i18n-search.js?v=20260419-2"></script>
-     <script src="../js/i18n/i18n-detail.js?v=20260419-2"></script>
-     <script src="../js/i18n/i18n-editor.js?v=20260419-2"></script>
-     <script src="../js/i18n/i18n-my-trees.js?v=20260419-2"></script>
-     <script src="../js/i18n/i18n-index.js?v=20260419-2"></script>
+     <script src="../js/i18n/i18n-core.js?v=20260421-1"></script>
+     <script src="../js/i18n/i18n-shared.js?v=20260421-2"></script>
+    <script src="../js/i18n/i18n-login.js?v=20260419-2"></script>
+    <script src="../js/i18n/i18n-intro.js?v=20260421-2"></script>
+    <script src="../js/i18n/i18n-search.js?v=20260421-1"></script>
+    <script src="../js/i18n/i18n-detail.js?v=20260421-5"></script>
+    <script src="../js/i18n/i18n-editor.js?v=20260421-5"></script>
+    <script src="../js/i18n/i18n-my-trees.js?v=20260421-5"></script>
+    <script src="../js/i18n/i18n-index.js?v=20260421-1"></script>
      <script src="../js/i18n.js?v=20260419-2"></script>
-     <script src="../js/shared-header.js?v=20260417-31"></script>
+     <script src="../js/shared-header.js?v=20260421-2"></script>
      <script src="../js/auth/auth-state.js?v=20260417-31"></script>
      <script src="../js/auth/auth-callbacks.js?v=20260417-31"></script>
      <script src="../js/auth/auth-cache.js?v=20260417-31"></script>

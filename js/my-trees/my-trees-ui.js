@@ -428,6 +428,10 @@
 
     trees.forEach(function (tree) {
       var card = buildTreeCardFn(tree, options);
+      if (!(card instanceof Node)) {
+        console.warn('[my-trees-ui] buildTreeCard returned a non-Node value:', card, tree);
+        return;
+      }
       grid.appendChild(card);
     });
 

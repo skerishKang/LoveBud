@@ -8,17 +8,17 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
     <style>
         .search-container {
-            max-width: 1280px;
+            max-width: 1360px;
             margin: 0 auto;
-            padding: 60px 48px;
+            padding: 56px 48px 72px;
             display: grid;
-            grid-template-columns: 1fr 400px;
-            gap: 64px;
+            grid-template-columns: minmax(0, 1fr) 460px;
+            gap: 56px;
         }
 
         .search-input-wrapper {
             position: relative;
-            margin-bottom: 32px;
+            margin-bottom: 18px;
         }
 
         .search-input {
@@ -64,19 +64,38 @@
             color: white;
         }
 
+        .search-intent-note {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 0 0 18px;
+            color: var(--primary);
+            font-size: 0.92rem;
+            font-weight: 800;
+            line-height: 1.5;
+        }
+
+        .filter-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 34px;
+            flex-wrap: wrap;
+        }
+
         /* Tree Card Styles - 감상 공간 느낌 강화 */
         .tree-card {
             display: flex;
             flex-direction: column;
             padding: 24px;
             background: white;
-            border-radius: 1.5rem;
+            border-radius: 1.65rem;
             border: 1px solid rgba(0,0,0,0.04);
-            margin-bottom: 20px;
+            margin-bottom: 22px;
             transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
             cursor: pointer;
             position: relative;
             overflow: hidden;
+            box-shadow: 0 12px 30px rgba(75, 64, 57, 0.035);
         }
 
         .tree-card::before {
@@ -95,6 +114,117 @@
             transform: translateY(-4px);
             border-color: var(--primary-soft);
             box-shadow: 0 20px 50px rgba(144, 73, 81, 0.08);
+        }
+
+        .tree-card.is-active {
+            border-color: rgba(144, 73, 81, 0.24);
+            box-shadow: 0 20px 50px rgba(144, 73, 81, 0.11);
+        }
+
+        .tree-card-featured {
+            padding: 0;
+            border-color: rgba(144, 73, 81, 0.16);
+            box-shadow: 0 24px 64px rgba(75, 64, 57, 0.1);
+        }
+
+        .tree-card-featured::before {
+            opacity: 1;
+        }
+
+        .tree-card-featured .tree-card-media {
+            min-height: 210px;
+        }
+
+        .tree-card-media {
+            position: relative;
+            min-height: 164px;
+            margin: -24px -24px 20px;
+            overflow: hidden;
+            background:
+                radial-gradient(circle at 20% 15%, rgba(255, 245, 246, 0.95), rgba(255,255,255,0.18) 46%),
+                linear-gradient(135deg, rgba(144, 73, 81, 0.13), rgba(122, 139, 110, 0.14));
+        }
+
+        .tree-card-featured .tree-card-media {
+            margin: 0 0 22px;
+        }
+
+        .tree-card-media img {
+            width: 100%;
+            height: 100%;
+            min-height: inherit;
+            object-fit: cover;
+            display: block;
+        }
+
+        .tree-card-media::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to top, rgba(50, 38, 35, 0.54), rgba(50, 38, 35, 0.06) 58%, rgba(255,255,255,0));
+            pointer-events: none;
+        }
+
+        .tree-card-media-fallback {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary);
+            font-size: 42px;
+            font-weight: 900;
+        }
+
+        .tree-card-media-label {
+            position: absolute;
+            left: 18px;
+            right: 18px;
+            bottom: 16px;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            color: white;
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        .tree-card-media-label span {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            min-height: 30px;
+            padding: 0 12px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.18);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .tree-card-body {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .tree-card-featured .tree-card-body {
+            padding: 0 24px 24px;
+        }
+
+        .tree-context-pill {
+            display: inline-flex;
+            align-items: center;
+            width: fit-content;
+            gap: 6px;
+            min-height: 30px;
+            padding: 0 12px;
+            margin-bottom: 12px;
+            border-radius: 999px;
+            background: rgba(144, 73, 81, 0.08);
+            color: var(--primary);
+            font-size: 12px;
+            font-weight: 900;
         }
 
         .tree-card:hover::before {
@@ -150,9 +280,10 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            margin-bottom: 16px;
+            margin-top: 14px;
+            margin-bottom: 0;
             padding: 16px;
-            background: var(--surface-container-low);
+            background: rgba(255,255,255,0.76);
             border-radius: 1rem;
         }
 
@@ -252,13 +383,15 @@
 
         .preview-sidebar {
             position: sticky;
-            top: 120px;
+            top: 104px;
             height: fit-content;
-            background: linear-gradient(135deg, white 0%, var(--surface-container-low) 100%);
-            padding: 32px;
-            border-radius: 2rem;
-            border: 1px solid var(--outline-variant);
-            box-shadow: var(--shadow-whisper);
+            background:
+                linear-gradient(180deg, rgba(255,255,255,0.98), rgba(255, 248, 249, 0.94)),
+                var(--surface);
+            padding: 28px;
+            border-radius: 2.1rem;
+            border: 1px solid rgba(144, 73, 81, 0.14);
+            box-shadow: 0 26px 70px rgba(75, 64, 57, 0.1);
         }
 
         .preview-sidebar h3 {
@@ -292,7 +425,7 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 20px;
+            margin-bottom: 18px;
         }
 
         .preview-panel-header h3 {
@@ -304,11 +437,18 @@
 
         .preview-badge {
             font-size: 12px;
-            font-weight: 700;
+            font-weight: 900;
             color: var(--primary);
-            background: var(--surface-container-low);
+            background: rgba(144, 73, 81, 0.08);
             padding: 6px 12px;
             border-radius: 99px;
+        }
+
+        .preview-kicker {
+            margin: -8px 0 18px;
+            color: var(--on-surface-variant);
+            font-size: 0.9rem;
+            line-height: 1.55;
         }
 
         .preview-empty-state {
@@ -329,7 +469,8 @@
 
         .tree-meta {
             display: flex;
-            gap: 16px;
+            gap: 12px;
+            flex-wrap: wrap;
             font-size: 12px;
             color: var(--on-surface-variant);
             padding: 12px 0;
@@ -359,10 +500,11 @@
         .video-container {
             width: 100%;
             aspect-ratio: 16/9;
-            background: #000;
+            background: linear-gradient(135deg, rgba(144, 73, 81, 0.1), rgba(122, 139, 110, 0.14));
             border-radius: 1.2rem;
             overflow: hidden;
             margin-bottom: 24px;
+            box-shadow: 0 18px 42px rgba(75, 64, 57, 0.09);
         }
 
         /* Tablet and below */
@@ -375,6 +517,11 @@
 
             .preview-sidebar {
                 position: static;
+            }
+
+            .tree-card-featured .tree-card-media,
+            .tree-card-media {
+                min-height: 190px;
             }
 
             .thumbnail-wrapper {
@@ -399,14 +546,22 @@
                 left: 20px;
             }
 
-            .result-card {
-                padding: 16px;
-                gap: 16px;
+            .tree-card {
+                padding: 18px;
+                border-radius: 1.35rem;
             }
 
-            .thumbnail-wrapper {
-                width: 140px;
-                height: 100px;
+            .tree-card-media {
+                margin: -18px -18px 16px;
+                min-height: 154px;
+            }
+
+            .tree-card-featured .tree-card-body {
+                padding: 0 18px 18px;
+            }
+
+            .tree-card-featured .tree-card-media {
+                min-height: 174px;
             }
 
             .preview-sidebar {
@@ -418,8 +573,8 @@
                 border-radius: 1rem;
             }
 
-            .result-card h3 {
-                font-size: 1.1rem !important;
+            .tree-title {
+                font-size: 1.12rem !important;
             }
 
             .tag-chip {
@@ -429,13 +584,9 @@
         }
 
         @media (max-width: 480px) {
-            .thumbnail-wrapper {
-                width: 100px;
-                height: 75px;
-            }
-
-            .result-card {
+            .tree-card-media-label {
                 flex-direction: column;
+                align-items: flex-start;
             }
         }
     </style>
@@ -450,19 +601,21 @@
             <section>
                 <div class="search-panel-header">
                     <h2 class="headline" data-i18n="search.title">공개 러브트리 둘러보기</h2>
-                    <p data-i18n="search.subtitle">다른 팬들이 정성껏 가꾼 공개 러브트리들을 둘러보고 함께 추억을 나누어 보세요.</p>
+                    <p data-i18n="search.subtitle">다른 팬이 남긴 첫 순간과 감정의 흐름을 조용히 따라가 보세요.</p>
                 </div>
 
             <div class="search-input-wrapper">
                 <span class="material-symbols-outlined search-icon">search</span>
-                <input type="text" id="searchInput" class="search-input" placeholder="예: 아티스트명 · 러브트리 주제 · 감정 태그" data-i18n-placeholder="search.placeholder" required>
+                <input type="text" id="searchInput" class="search-input" placeholder="예: 첫 설렘 · 아티스트명 · 감정 태그" data-i18n-placeholder="search.placeholder" required>
             </div>
 
-            <div style="display: flex; gap: 10px; margin-bottom: 48px;">
-<span class="tag-chip active" data-category="전체" data-i18n="search.filter.all">전체 경로</span>
-            <span class="tag-chip" data-category="입덕" data-i18n="search.filter.newbie">입덕 순간</span>
-            <span class="tag-chip" data-category="성장" data-i18n="search.filter.growing">성장 과정</span>
-            <span class="tag-chip" data-category="최애" data-i18n="search.filter.fan">최애 확정</span>
+            <p class="search-intent-note"><span class="material-symbols-outlined" style="font-size:18px;">auto_stories</span><span data-i18n="search.intentNote">목록을 고르는 순간, 오른쪽에서 그 트리의 감정 경로가 먼저 펼쳐집니다.</span></p>
+
+            <div class="filter-row">
+                <span class="tag-chip active" data-category="전체" data-i18n="search.filter.all">전체 경로</span>
+                <span class="tag-chip" data-category="입덕" data-i18n="search.filter.newbie">시작 순간 중심</span>
+                <span class="tag-chip" data-category="성장" data-i18n="search.filter.growing">이어진 감정</span>
+                <span class="tag-chip" data-category="최애" data-i18n="search.filter.fan">깊어진 마음</span>
             </div>
 
             <div id="resultsList">
@@ -472,9 +625,10 @@
 
         <aside class="preview-sidebar" id="previewSidebar">
             <div class="preview-panel-header">
-                <h3 data-i18n="search.previewTitle">러브트리 미리보기</h3>
-                <span class="preview-badge" data-i18n="search.previewBadge">대표 순간 보기</span>
+                <h3 data-i18n="search.previewTitle">감상 허브</h3>
+                <span class="preview-badge" data-i18n="search.previewBadge">선택한 트리</span>
             </div>
+            <p class="preview-kicker" data-i18n="search.previewKicker">카드를 스치면 이곳에서 시작 순간과 이어진 감정이 먼저 열립니다.</p>
             <div id="previewVideoContainer" class="video-container" style="margin-bottom: 24px;">
                 <div class="preview-empty-state" style="width:100%; height:100%; display:flex; flex-direction: column; align-items:center; justify-content:center; color: var(--on-surface-variant); font-size: 14px; text-align: center; padding: 20px;">
                     <p style="margin-bottom: 8px;" data-i18n="search.previewEmptyLead">왼쪽 목록에서 공개 러브트리를 선택하면</p>
@@ -514,27 +668,27 @@
 <script src="../js/api/auth-policy.js?v=20260420-1"></script>
 <script src="../js/api/base-api-fetch.js?v=20260420-1"></script>
 <script src="../js/api/public-tree-adapter.js?v=20260421-4"></script>
-<script src="../js/postgres-client.js?v=20260420-1"></script>
+<script src="../js/postgres-client.js?v=20260421-1"></script>
     <!-- Search modules -->
     <script src="../js/search-title-helper.js?v=20260421-2"></script>
     <script src="../js/search-data-adapter.js?v=20260418-1"></script>
-    <script src="../js/search-card-renderer.js?v=20260421-2"></script>
-    <script src="../js/search-preview-renderer.js?v=20260421-2"></script>
-    <script src="../js/search.js?v=20260418-1"></script>
+    <script src="../js/search-card-renderer.js?v=20260421-3"></script>
+    <script src="../js/search-preview-renderer.js?v=20260421-3"></script>
+    <script src="../js/search.js?v=20260421-1"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="../js/firebase-config.js?v=20260417-31"></script>
-    <script src="../js/i18n/i18n-core.js?v=20260419-2"></script>
-    <script src="../js/i18n/i18n-shared.js?v=20260419-2"></script>
+    <script src="../js/i18n/i18n-core.js?v=20260421-1"></script>
+    <script src="../js/i18n/i18n-shared.js?v=20260421-2"></script>
     <script src="../js/i18n/i18n-login.js?v=20260419-2"></script>
-    <script src="../js/i18n/i18n-intro.js?v=20260419-2"></script>
-    <script src="../js/i18n/i18n-search.js?v=20260420-4"></script>
-    <script src="../js/i18n/i18n-detail.js?v=20260419-2"></script>
-    <script src="../js/i18n/i18n-editor.js?v=20260419-2"></script>
-    <script src="../js/i18n/i18n-my-trees.js?v=20260419-2"></script>
-    <script src="../js/i18n/i18n-index.js?v=20260419-2"></script>
+    <script src="../js/i18n/i18n-intro.js?v=20260421-2"></script>
+    <script src="../js/i18n/i18n-search.js?v=20260421-1"></script>
+    <script src="../js/i18n/i18n-detail.js?v=20260421-5"></script>
+    <script src="../js/i18n/i18n-editor.js?v=20260421-5"></script>
+    <script src="../js/i18n/i18n-my-trees.js?v=20260421-5"></script>
+    <script src="../js/i18n/i18n-index.js?v=20260421-1"></script>
     <script src="../js/i18n.js?v=20260419-2"></script>
-    <script src="../js/shared-header.js?v=20260417-31"></script>
+    <script src="../js/shared-header.js?v=20260421-2"></script>
      <script src="../js/auth/auth-state.js?v=20260417-31"></script>
      <script src="../js/auth/auth-callbacks.js?v=20260417-31"></script>
      <script src="../js/auth/auth-cache.js?v=20260417-31"></script>

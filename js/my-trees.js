@@ -241,8 +241,8 @@
   }
 
   function updateManageSummary(trees, uiOptions) {
-    if (myTreesUI && typeof myTreesUI.updateManageSummary === 'function' && !uiOptions) {
-      return myTreesUI.updateManageSummary(trees, {
+    if (myTreesUI && typeof myTreesUI.updateManageSummary === 'function') {
+      return myTreesUI.updateManageSummary(trees, uiOptions || {
         setLastTreesData: function(value) { lastTreesData = value; },
         getSelectedTreeId: getSelectedTreeId,
         onNavigate: function(normalizedTree) {
@@ -257,8 +257,8 @@
   }
 
   function buildTreeCard(tree, uiOptions) {
-    if (myTreesUI && typeof myTreesUI.buildTreeCard === 'function' && !uiOptions) {
-      return myTreesUI.buildTreeCard(tree, {
+    if (myTreesUI && typeof myTreesUI.buildTreeCard === 'function') {
+      return myTreesUI.buildTreeCard(tree, uiOptions || {
         i18n: window.t || function(k) { return k; },
         normalizeTree: function(nextTree) { return window.LoveBudNormalize?.normalizeTree(nextTree); },
         onRename: renameTree,
