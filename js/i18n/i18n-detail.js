@@ -250,6 +250,26 @@
       ko: '그래도 지금 보고 있는 장면 하나만으로도 이 러브트리의 분위기를 천천히 느껴볼 수 있어요.',
       en: 'Even so, this single scene still lets you take in the mood of this LoveTree.'
     },
+    'connected_missing_cards_title': {
+      ko: '이 트리의 다른 순간은 아직 여기서 또렷하게 펼쳐지지 않았어요.',
+      en: 'The other moments in this tree are not fully unfolding here yet.'
+    },
+    'connected_missing_cards_desc_suffix': {
+      ko: '개의 순간이 이 트리에 남아 있지만, 지금은 현재 장면을 중심으로 감정의 흐름을 읽고 있어요.',
+      en: ' moments remain in this tree, but right now you are reading the flow around the current scene.'
+    },
+    'connected_relation_previous': {
+      ko: '이전에 남겨진 순간',
+      en: 'Earlier moment'
+    },
+    'connected_relation_next': {
+      ko: '이후에 이어진 순간',
+      en: 'Later connected moment'
+    },
+    'connected_relation_same_tree': {
+      ko: '같은 트리의 다른 순간',
+      en: 'Another moment in this tree'
+    },
     'video_unavailable_soft_title': {
       ko: '이 순간의 영상은 여기서 바로 열리지 않을 수 있어요.',
       en: 'This video may not open directly here.'
@@ -317,6 +337,14 @@
     'connected_flow_summary': {
       ko: '이 공개 러브트리 안에서 함께 이어지는 순간들을 천천히 따라가 보세요.',
       en: 'Gently follow the connected moments that continue within this public LoveTree.'
+    },
+    'connected_flow_count_suffix': {
+      ko: '개의 순간 가운데 지금 장면과 함께 읽히는 기억들을 이어서 감상해 보세요.',
+      en: ' moments are part of this tree. Continue through the memories that read together with the current scene.'
+    },
+    'connected_flow_count_pending_suffix': {
+      ko: '개의 순간이 이 트리에 남아 있어요. 지금은 현재 장면을 중심으로 감정의 흐름을 읽고 있어요.',
+      en: ' moments remain in this tree. Right now you are reading the emotional flow around the current scene.'
     },
     'public_tree_growth_label': {
       ko: '공개 트리 감상 중',
