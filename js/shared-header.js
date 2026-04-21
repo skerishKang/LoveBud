@@ -1,6 +1,6 @@
 /**
  * LoveBud - Shared Header Component
- * v20260421-1
+ * v20260421-2
  * 
  * 모든 페이지에 공통 헤더를 렌더링합니다.
  * - 현재 페이지에 맞는 active 메뉴 자동 표시
@@ -248,6 +248,18 @@
         }
         console.log('[shared-header] Rendered for:', getCurrentPage(), '| context:', getContextType());
     };
+
+    function bindSharedHeaderLangRefresh() {
+        if (window.__lovebudSharedHeaderLangBound) return;
+        window.__lovebudSharedHeaderLangBound = true;
+        window.addEventListener('lovebud-lang-change', function() {
+            if (typeof window.renderSharedHeader === 'function') {
+                window.renderSharedHeader();
+            }
+        });
+    }
+
+    bindSharedHeaderLangRefresh();
 
     // DOM 준비 완료 시 자동 렌더링 (선택적)
     if (document.readyState === 'loading') {
