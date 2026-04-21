@@ -1,6 +1,6 @@
 /**
  * LoveBud Search Preview Renderer
- * v20260421-3
+ * v20260421-4
  * 
  * Rendering layer: preview sidebar panel.
  * DOM-agnostic - updates passed DOM elements.
@@ -65,6 +65,38 @@
 
     function getPreviewStatsElement() {
         return _dom?.previewMemoriesCount?.closest?.('#previewTreeStats') || document.getElementById('previewTreeStats');
+    }
+
+    function getBasePath() {
+        if (window.LoveBudPath?.getBasePath) {
+            return window.LoveBudPath.getBasePath();
+        }
+        const path = window.location.pathname;
+        return path.indexOf('/pages/') !== -1 ? '' : 'pages/';
+    }
+
+    function getTreeDetailHref(tree) {
+        const memories = Array.isArray(tree?.memories) ? tree.memories : [];
+        const firstMemory = memories[0];
+        if (!tree?.id || !firstMemory?.id) return '';
+        const basePath = getBasePath();
+        return `${basePath}detail.html?id=${encodeURIComponent(firstMemory.id)}&tree=${encodeURIComponent(tree.id)}&from=browse`;
+    }
+
+    function renderPreviewActionButton(tree) {
+        const href = getTreeDetailHref(tree);
+        if (!href) return '';
+        const label = getSearchCopy(
+            'search.previewOpenTreeCta',
+            '이 트리 열기',
+            'Open this tree'
+        );
+        return `
+            <a href="${escapeHtml(href)}" class="btn-round btn-primary" style="width:100%;margin-top:18px;min-height:50px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;font-size:14px;font-weight:800;gap:8px;">
+                <span class="material-symbols-outlined" style="font-size:18px;">play_circle</span>
+                ${escapeHtml(label)}
+            </a>
+        `;
     }
 
     // ─────────────────────────────────────────────────────────
@@ -344,6 +376,7 @@
                         <span style="color:var(--primary);font-weight:700;">${noRecordsLine}</span>
                         ${renderInfoCallout('info', getSearchCopy('search.previewNewTreeInfo', '새로 시작된 공개 트리입니다', 'This is a newly started public tree.'))}
                     </div>
+                    ${renderPreviewActionButton(tree)}
                 `;
             } else {
                 const pathStages = memories.slice(0, 3).map((m, i) => {
@@ -369,8 +402,9 @@
                     <div style="font-size:14px;color:var(--on-surface-variant);line-height:1.6;padding:0 4px;">
                         ${getPreviewSummaryCopy(tree, memories)}
                         ${renderInfoCallout('favorite', `${firstMomentLabel}에서 시작해 ${lastMomentLabel}까지 이어진 ${moodText}의 러브트리예요`)}
-                        ${renderInfoCallout('touch_app', getSearchCopy('search.previewJourneyCta', '카드를 클릭하여 감정 경로를 따라가보세요', 'Click a card to follow the emotional path.'), 'primary')}
+                        ${renderInfoCallout('touch_app', getSearchCopy('search.previewJourneyCta', '오른쪽에서 감상 흐름을 확인하고, 버튼으로 바로 열어보세요.', 'Check the emotional flow here, then open the tree with the button.'), 'primary')}
                     </div>
+                    ${renderPreviewActionButton(tree)}
                 `;
             }
         }
@@ -395,12 +429,12 @@
     function renderPlaceholder() {
         const lead = getSearchCopy(
             'search.previewEmptyLead',
-            '왼쪽 목록에서 공개 러브트리를 스치면',
+            '왼쪽 목록에서 공개 러브트리를 선택하면',
             'Choose a public LoveTree from the list to the left'
         );
         const body = getSearchCopy(
             'search.previewEmptyBody',
-            '시작 순간과 이어진 감정이 이곳에 먼저 펼쳐집니다.',
+            '선택한 트리의 시작 순간과 이어진 감정이 이곳에 먼저 펼쳐집니다.',
             'and preview its emotional flow and featured moment here.'
         );
 
@@ -423,8 +457,8 @@
         );
         const placeholderDescription = getSearchCopy(
             'search.previewDescriptionPlaceholder',
-            '카드를 고르면 대표 순간과 감정 경로를 먼저 열어볼 수 있어요.',
-            'Select a card to preview the emotional flow and featured moment.'
+            '왼쪽에서 트리를 고르면 대표 순간과 감정 경로를 여기서 먼저 열어볼 수 있어요.',
+            'Choose a tree on the left to preview the emotional flow and featured moment here.'
         );
         
         if (_dom.previewContainer) {
@@ -465,5 +499,5 @@
         renderEmotionTags: renderEmotionTags
     };
 
-    console.log('[LoveBudSearchPreviewRenderer] Search preview renderer loaded v20260421-3');
+    console.log('[LoveBudSearchPreviewRenderer] Search preview renderer loaded v20260421-4');
 })();
