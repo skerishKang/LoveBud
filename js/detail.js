@@ -43,6 +43,77 @@ document.addEventListener('DOMContentLoaded', async () => {
         return translated;
     };
 
+    const escapeHtml = (value) => String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+
+    const prettifyTagLabel = (tag) => {
+        const raw = String(tag ?? '').trim();
+        if (!raw) return '';
+        const withoutPrefix = raw.replace(/^tag[_-]?/i, '');
+        const spaced = withoutPrefix.replace(/[_-]+/g, ' ').trim();
+        return spaced ? spaced.charAt(0).toUpperCase() + spaced.slice(1) : raw;
+    };
+
+    const getLocalizedTagLabel = (tag) => {
+        const raw = String(tag ?? '').trim();
+        if (!raw) return '';
+        return tText(raw, prettifyTagLabel(raw));
+    };
+
+    const normalizeVideoSourceUrl = (url) => {
+        if (typeof url !== 'string') return '';
+        const trimmed = url.trim();
+        if (!trimmed) return '';
+
+        try {
+            const parsed = new URL(trimmed, window.location.origin);
+            const host = parsed.hostname.toLowerCase();
+            const isYouTubeHost = host.includes('youtube.com') || host.includes('youtu.be');
+
+            if (isYouTubeHost) {
+                const videoId = parsed.searchParams.get('v')
+                    || (parsed.pathname.startsWith('/embed/') ? parsed.pathname.split('/embed/')[1].split('/')[0] : '')
+                    || (host.includes('youtu.be') ? parsed.pathname.replace(/^\//, '').split('/')[0] : '');
+
+                if (videoId) {
+                    return {
+                        embedUrl: `https://www.youtube.com/embed/${videoId}`,
+                        watchUrl: `https://www.youtube.com/watch?v=${videoId}`
+                    };
+                }
+            }
+
+            return { embedUrl: trimmed, watchUrl: trimmed };
+        } catch (error) {
+            return { embedUrl: trimmed, watchUrl: trimmed };
+        }
+    };
+
+    const buildVideoUnavailableMarkup = (memory) => {
+        const normalizedVideo = normalizeVideoSourceUrl(memory?.sourceUrl || memory?.videoUrl || memory?.originalUrl || '');
+        const watchUrl = normalizedVideo.watchUrl;
+        const title = escapeHtml(memory?.title || tText('tree_context_moment', '순간 상세'));
+        const hasWatchUrl = !!watchUrl;
+
+        return `
+            <div style="width:100%;height:100%;background:linear-gradient(180deg, rgba(35,28,29,0.82), rgba(62,45,48,0.92));display:flex;align-items:center;justify-content:center;padding:32px;">
+                <div style="max-width:420px;text-align:center;color:rgba(255,255,255,0.92);">
+                    <span class="material-symbols-outlined" style="font-size:34px;display:block;margin-bottom:14px;opacity:0.88;">play_circle</span>
+                    <div style="font-size:1.05rem;font-weight:800;line-height:1.5;margin-bottom:10px;">${tText('video_unavailable_soft_title', '이 순간의 영상은 여기서 바로 열리지 않을 수 있어요.')}</div>
+                    <p style="margin:0 0 18px;font-size:0.95rem;line-height:1.7;color:rgba(255,255,255,0.76);">${tText('video_unavailable_soft_desc', '재생이 열리지 않더라도 이 순간의 감상은 이어서 읽어볼 수 있어요.')}</p>
+                    ${hasWatchUrl ? `<a href="${escapeHtml(watchUrl)}" target="_blank" rel="noopener noreferrer" aria-label="${escapeHtml(title)}" style="display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:999px;background:rgba(255,255,255,0.14);border:1px solid rgba(255,255,255,0.18);color:#fff;text-decoration:none;font-size:13px;font-weight:700;backdrop-filter:blur(10px);">
+                        <span class="material-symbols-outlined" style="font-size:18px;">open_in_new</span>
+                        <span>${tText('video_embed_fallback_cta', '원본에서 감상 이어가기')}</span>
+                    </a>` : ''}
+                </div>
+            </div>
+        `;
+    };
+
     const applyViewingPageCopy = ({ sourceContext, treeTitle, memoryTitleText, memoryCount }) => {
         if (detailViewChipLabel) detailViewChipLabel.textContent = tText('public_tree_view_chip', '공개 러브트리 감상');
         if (detailHeroKicker) detailHeroKicker.textContent = tText('public_tree_kicker', '공개 러브트리');
@@ -106,20 +177,31 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const renderMemoryBase = (memory) => {
         if (videoMain) {
-            if (memory.sourceUrl) {
+            const normalizedVideo = normalizeVideoSourceUrl(memory.sourceUrl || memory.videoUrl || memory.originalUrl || '');
+            const embedUrl = normalizedVideo.embedUrl;
+            const watchUrl = normalizedVideo.watchUrl;
+            const iframeSrc = embedUrl ? `${embedUrl}${embedUrl.includes('?') ? '&' : '?'}autoplay=0` : '';
+
+            if (iframeSrc) {
                 videoMain.innerHTML = `
-                    <iframe width="100%" height="100%"
-                        src="${memory.sourceUrl}?autoplay=0"
-                        title="${memory.title || ''}" frameborder="0"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowfullscreen></iframe>
-                `;
-            } else {
-                videoMain.innerHTML = `
-                    <div style="width:100%;height:100%;background:var(--surface-container);display:flex;align-items:center;justify-content:center;color:var(--on-surface-variant);">
-                        ${tText('no_video', '비디오가 없습니다')}
+                    <div style="position:relative;width:100%;height:100%;">
+                        <iframe width="100%" height="100%"
+                            src="${iframeSrc}"
+                            title="${escapeHtml(memory.title || '')}" frameborder="0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            referrerpolicy="strict-origin-when-cross-origin"
+                            allowfullscreen></iframe>
+                        ${watchUrl ? `
+                            <a href="${escapeHtml(watchUrl)}" target="_blank" rel="noopener noreferrer"
+                               style="position:absolute;top:16px;right:16px;display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:999px;background:rgba(23,17,18,0.56);border:1px solid rgba(255,255,255,0.14);color:#fff;text-decoration:none;font-size:12px;font-weight:700;backdrop-filter:blur(10px);">
+                                <span class="material-symbols-outlined" style="font-size:16px;">open_in_new</span>
+                                <span>${tText('video_embed_fallback_cta', '원본에서 감상 이어가기')}</span>
+                            </a>
+                        ` : ''}
                     </div>
                 `;
+            } else {
+                videoMain.innerHTML = buildVideoUnavailableMarkup(memory);
             }
         }
 
@@ -129,7 +211,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (detailSubtitle) detailSubtitle.textContent = tText('current_moment_kicker', '지금 감상 중인 순간');
 
         if (tagsContainer && memory.emotionTags && memory.emotionTags.length > 0) {
-            tagsContainer.innerHTML = memory.emotionTags.map(tag => `<span class="tag-chip active">${tag}</span>`).join('');
+            tagsContainer.innerHTML = memory.emotionTags
+                .map(tag => getLocalizedTagLabel(tag))
+                .filter(Boolean)
+                .map(tag => `<span class="tag-chip active">${escapeHtml(tag)}</span>`)
+                .join('');
         }
 
         if (diaryQuote) diaryQuote.textContent = `"${memory.quote || memory.memo || ''}"`;
