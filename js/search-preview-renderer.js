@@ -1,6 +1,6 @@
 /**
  * LoveBud Search Preview Renderer
- * v20260421-4
+ * v20260422-1
  * 
  * Rendering layer: preview sidebar panel.
  * DOM-agnostic - updates passed DOM elements.
@@ -10,10 +10,6 @@
 
 (function() {
     'use strict';
-
-    // ─────────────────────────────────────────────────────────
-    // Security helpers (XSS prevention)
-    // ─────────────────────────────────────────────────────────
 
     function escapeHtml(value) {
         return String(value == null ? '' : value)
@@ -99,10 +95,6 @@
         `;
     }
 
-    // ─────────────────────────────────────────────────────────
-    // DOM References (cached on init)
-    // ─────────────────────────────────────────────────────────
-
     let _dom = null;
 
     function init(domRefs) {
@@ -110,7 +102,7 @@
     }
 
     function getTreeIcon(stage) {
-        const icons = { '입덕': '🌱', '성장': '🌿', '최애': '🌳' };
+        const icons = { '입덕': '🌱', '성장': '🌿', '최애': '🌳', '새 트리': '🌱' };
         return icons[stage] || '🌱';
     }
 
@@ -188,13 +180,7 @@
             : (String(tree?.title || '').trim() || getDefaultTreeName());
         const themeLabel = titleHelper?.getThemeLabel
             ? titleHelper.getThemeLabel(tree)
-            : (() => {
-                const themeRaw = String(tree?.theme || '').trim();
-                if (!themeRaw || themeRaw === 'LoveTree' || themeRaw === 'Mixed') {
-                    return '';
-                }
-                return themeRaw;
-            })();
+            : '';
         const timeRange = String(tree?.timeRange || getSearchCopy('search.previewUnknownRange', '기록 없음', 'No timeline yet')).trim();
         const memoryCount = Number(tree?.memoryCount || 0);
         const safeTitle = escapeHtml(displayTitle);
@@ -269,6 +255,48 @@
             '... 그리고 {count}개의 순간 더',
             '... and {count} more moments'
         );
+    }
+
+    function renderLoadingPreview(tree) {
+        if (!_dom) return;
+        const titleHelper = getSearchTitleHelper();
+        const previewDisplayTitle = titleHelper?.getBrowseDisplayTitle
+            ? titleHelper.getBrowseDisplayTitle(tree)
+            : (String(tree?.title || '').trim() || getDefaultTreeName());
+        const safeTreeTitle = escapeHtml(previewDisplayTitle);
+        const previewStats = getPreviewStatsElement();
+
+        if (_dom.previewContainer) {
+            _dom.previewContainer.innerHTML = `
+                <div style="width:100%;height:100%;border-radius:1rem;background:linear-gradient(135deg, rgba(255,248,249,0.95), rgba(255,255,255,0.98));display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;color:var(--on-surface-variant);">
+                    <span class="material-symbols-outlined" style="font-size:34px;color:var(--primary);margin-bottom:10px;animation:spin 1s linear infinite;">sync</span>
+                    <div style="font-size:14px;font-weight:800;color:var(--on-surface);margin-bottom:8px;">${safeTreeTitle}</div>
+                    <p style="margin:0;font-size:13px;line-height:1.6;">${escapeHtml(getSearchCopy('search.previewLoadingLead', '이 트리의 기억을 불러오는 중이에요.', 'Loading this tree now.'))}</p>
+                </div>
+            `;
+        }
+
+        if (_dom.previewTitle) {
+            _dom.previewTitle.innerHTML = `<div style="font-size:1.05rem;font-weight:800;color:var(--on-surface);">${safeTreeTitle}</div>`;
+        }
+
+        if (_dom.previewDesc) {
+            _dom.previewDesc.innerHTML = `
+                <div style="background:var(--surface-container-low);padding:20px;border-radius:1rem;">
+                    ${renderSectionHeading('auto_stories', getSearchCopy('search.previewLoadingHeading', '감상 흐름 준비 중', 'Preparing preview'))}
+                    <div style="font-size:14px;line-height:1.7;color:var(--on-surface-variant);">
+                        ${escapeHtml(getSearchCopy('search.previewLoadingBody', '선택한 트리의 시작 순간과 이어진 감정을 이곳에서 먼저 보여드릴게요.', 'The first moment and connected flow of this tree will appear here shortly.'))}
+                    </div>
+                </div>
+            `;
+        }
+
+        if (previewStats) {
+            previewStats.hidden = true;
+        }
+        if (_dom.previewEmotionTags) {
+            _dom.previewEmotionTags.innerHTML = '';
+        }
     }
 
     function updatePreview(tree) {
@@ -412,15 +440,12 @@
         if (previewStats) {
             previewStats.hidden = false;
         }
-        
         if (_dom.previewMemoriesCount) {
             _dom.previewMemoriesCount.textContent = tree.memoryCount;
         }
-
         if (_dom.previewTreeDuration) {
             _dom.previewTreeDuration.textContent = getTimelineLabel(tree, memories);
         }
-        
         if (_dom.previewEmotionTags) {
             _dom.previewEmotionTags.innerHTML = renderEmotionTags(tree.emotionTags);
         }
@@ -464,27 +489,21 @@
         if (_dom.previewContainer) {
             _dom.previewContainer.innerHTML = renderPlaceholder();
         }
-        
         if (_dom.previewTitle) {
             _dom.previewTitle.textContent = placeholderTitle;
         }
-        
         if (_dom.previewDesc) {
             _dom.previewDesc.innerHTML = `<p style="margin-bottom:16px;">${escapeHtml(placeholderDescription)}</p>`;
         }
-
         if (previewStats) {
             previewStats.hidden = true;
         }
-        
         if (_dom.previewMemoriesCount) {
             _dom.previewMemoriesCount.textContent = '0';
         }
-        
         if (_dom.previewTreeDuration) {
             _dom.previewTreeDuration.textContent = '';
         }
-        
         if (_dom.previewEmotionTags) {
             _dom.previewEmotionTags.innerHTML = '';
         }
@@ -495,9 +514,10 @@
         updatePreview: updatePreview,
         resetPreview: resetPreview,
         renderPlaceholder: renderPlaceholder,
+        renderLoadingPreview: renderLoadingPreview,
         getTreeIcon: getTreeIcon,
         renderEmotionTags: renderEmotionTags
     };
 
-    console.log('[LoveBudSearchPreviewRenderer] Search preview renderer loaded v20260421-4');
+    console.log('[LoveBudSearchPreviewRenderer] Search preview renderer loaded v20260422-1');
 })();
