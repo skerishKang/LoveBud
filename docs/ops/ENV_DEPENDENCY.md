@@ -3,6 +3,25 @@
 > 생성: 2026-04-16
 > 목적: 환경변수 누락 시 어떤 증상이 나는지 추적 가능하게
 
+## 0. Firebase 웹 클라이언트 config 운영 경계
+
+`js/firebase-config.js`의 Firebase 웹 클라이언트 설정값(`apiKey`, `authDomain`, `projectId` 등)은 **프론트에서 완전히 숨기는 비밀값이 아닙니다.** 현재 main도 이 값을 정적으로 로드합니다. fileciteturn224file0
+
+핵심 원칙:
+- 이 값 자체를 노출하지 않는 것이 보안의 핵심이 아님
+- 실제 보호는 **Firebase Console 설정**과 **Firestore/Storage/기타 Rules**, 그리고 필요 시 **App Check**에 의존함
+- 따라서 운영자는 코드 숨김보다 아래를 우선 점검해야 함
+  1. Authorized Domains
+  2. 실제 사용하는 로그인 제공업체만 활성화
+  3. Firestore/Storage/기타 Rules
+  4. App Check 검토
+  5. 로컬 개발용 localhost/127.0.0.1 유지 기준
+  6. 예전 도메인/스테이징 도메인 정리
+
+운영 분류:
+- **코드 레벨**: Firebase 웹 클라이언트 config 존재 여부만 확인
+- **운영 레벨**: Firebase Console 인증/도메인/Rules/App Check 상태 점검
+
 ## 1. 환경변수 → 엔드포인트 의존도
 
 ### NETLIFY_DATABASE_URL / DATABASE_URL
