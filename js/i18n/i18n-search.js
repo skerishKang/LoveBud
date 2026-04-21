@@ -1,6 +1,6 @@
 /**
  * LoveBud - i18n Search Dictionary
- * v20260420-4
+ * v20260421-1
  *
  * 검색/둘러보기 페이지(search.html) 번역 키
  */
@@ -15,34 +15,42 @@
       en: 'Browse Public LoveTrees'
     },
     'search.subtitle': {
-      ko: '다른 팬들이 정성껏 가꾼 공개 러브트리들을 둘러보고 함께 추억을 나누어 보세요.',
-      en: 'Explore public LoveTrees shared by other fans and connect through shared memories.'
+      ko: '다른 팬이 남긴 첫 순간과 감정의 흐름을 조용히 따라가 보세요.',
+      en: 'Quietly follow the first moments and emotional paths shared by other fans.'
+    },
+    'search.intentNote': {
+      ko: '목록을 고르는 순간, 오른쪽에서 그 트리의 감정 경로가 먼저 펼쳐집니다.',
+      en: 'Hover over a tree and its emotional path opens first on the right.'
     },
 
     // 미리보기
     'search.previewTitle': {
-      ko: '러브트리 미리보기',
-      en: 'LoveTree Preview'
+      ko: '감상 허브',
+      en: 'Viewing Hub'
     },
     'search.previewBadge': {
-      ko: '대표 순간 보기',
-      en: 'Featured Moment'
+      ko: '선택한 트리',
+      en: 'Selected Tree'
+    },
+    'search.previewKicker': {
+      ko: '카드를 스치면 이곳에서 시작 순간과 이어진 감정이 먼저 열립니다.',
+      en: 'Hover over a card to open its starting moment and emotional path here.'
     },
     'search.previewPlaceholder': {
-      ko: '트리를 선택하여 감상하기',
-      en: 'Select a tree to preview'
+      ko: '트리를 골라 감상하기',
+      en: 'Choose a tree to view'
     },
     'search.previewDescriptionPlaceholder': {
-      ko: '카드를 선택하면 감정의 흐름과 대표 순간을 미리 볼 수 있어요.',
-      en: 'Select a card to preview the emotional flow and featured moment.'
+      ko: '카드를 고르면 대표 순간과 감정 경로를 먼저 열어볼 수 있어요.',
+      en: 'Choose a card to open its featured moment and emotional path first.'
     },
     'search.previewEmptyLead': {
-      ko: '왼쪽 목록에서 공개 러브트리를 선택하면',
-      en: 'Choose a public LoveTree from the list to the left'
+      ko: '왼쪽 목록에서 공개 러브트리를 스치면',
+      en: 'Hover over a public LoveTree on the left'
     },
     'search.previewEmptyBody': {
-      ko: '해당 트리의 감정 흐름과 대표 순간을 여기서 미리 볼 수 있어요.',
-      en: 'and preview its emotional flow and featured moment here.'
+      ko: '시작 순간과 이어진 감정이 이곳에 먼저 펼쳐집니다.',
+      en: 'and its starting moment and emotional path will open here.'
     },
     'search.previewNoMomentTitle': {
       ko: '아직 대표 순간이 없어요.',
@@ -57,8 +65,8 @@
       en: 'Start from the first moment'
     },
     'search.previewTimelineHeading': {
-      ko: '어떻게 입덕했을까요?',
-      en: 'How did this fandom begin?'
+      ko: '이 마음은 어디서 시작됐을까요?',
+      en: 'Where did this feeling begin?'
     },
     'search.previewTimelineEmpty': {
       ko: '아직 기록된 순간이 없어 감정 경로가 비어 있어요.',
@@ -85,8 +93,8 @@
       en: 'This is a newly started public tree.'
     },
     'search.previewJourneyCta': {
-      ko: '카드를 클릭하여 감정 경로를 따라가보세요',
-      en: 'Click a card to follow the emotional path.'
+      ko: '카드를 열어 감정 경로를 따라가보세요',
+      en: 'Open the card to follow the emotional path.'
     },
     'search.previewMomentCountSuffix': {
       ko: '개 순간',
@@ -147,8 +155,8 @@
 
     // 검색 입력
     'search.placeholder': {
-      ko: '예: 아티스트명 · 러브트리 주제 · 감정 태그',
-      en: 'e.g., artist, theme, emotion tag'
+      ko: '예: 첫 설렘 · 아티스트명 · 감정 태그',
+      en: 'e.g., first spark, artist, emotion tag'
     },
 
     // 필터
@@ -157,16 +165,16 @@
       en: 'All Paths'
     },
     'search.filter.newbie': {
-      ko: '입덕 순간',
-      en: 'First Fandom'
+      ko: '시작 순간 중심',
+      en: 'Starting Moments'
     },
     'search.filter.growing': {
-      ko: '성장 과정',
-      en: 'Growing'
+      ko: '이어진 감정',
+      en: 'Connected Feelings'
     },
     'search.filter.fan': {
-      ko: '최애 확정',
-      en: 'Ultimate Fan'
+      ko: '깊어진 마음',
+      en: 'Deepened Affection'
     },
 
     // 기타

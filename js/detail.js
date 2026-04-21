@@ -309,8 +309,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         if (memoryTitle) memoryTitle.textContent = memory.title || tText('tree_context_moment', '순간 상세');
-        if (detailArtist) detailArtist.textContent = memory.artist || tText('unknown_artist', '아티스트 정보 없음');
-        if (detailDate) detailDate.textContent = (memory.timestamp || '') + (memory.source ? ' · ' + memory.source : '');
+if (detailArtist) {
+    if (memory.artist) {
+      detailArtist.textContent = memory.artist;
+      detailArtist.style.display = '';
+    } else {
+      detailArtist.style.display = 'none';
+    }
+  }
+  if (detailDate) {
+    const dateText = (memory.timestamp || '') + (memory.source ? ' · ' + memory.source : '');
+    if (dateText.trim()) {
+      detailDate.textContent = dateText;
+      detailDate.style.display = '';
+    } else {
+      detailDate.style.display = 'none';
+    }
+  }
         if (detailSubtitle) detailSubtitle.textContent = tText('current_moment_kicker', '지금 감상 중인 순간');
 
         if (tagsContainer) {
@@ -391,8 +406,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const buildDetailHref = (memoryId, treeId, sourceContext) => buildPageHref('detail', { id: memoryId, tree: treeId, from: sourceContext });
 
-    const renderConnectedFragments = ({ memory, memories, treeId, sourceContext, degradedReason, treeMomentCount }) => {
-        if (!connectedFragments) return;
+const renderConnectedFragments = ({ memory, memories, treeId, sourceContext, degradedReason, treeMomentCount }) => {
+  if (!connectedFragments) return;
+  const flowMoments = getConnectedFlowMoments({ memory, memories });
+  const connectedSection = connectedFragments.closest('.connected-section');
 
         if (degradedReason === 'missing-tree-id') {
             connectedFragments.innerHTML = `
@@ -405,12 +422,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     })}
                 </div>
             `;
-            return;
-        }
+return;
+  }
 
-        const flowMoments = getConnectedFlowMoments({ memory, memories });
-
-        if (flowMoments.length > 0) {
+  if (flowMoments.length > 0) {
             connectedFragments.innerHTML = flowMoments.map(moment => {
                 const href = buildDetailHref(moment.id, treeId, sourceContext);
                 const relationLabel = getConnectedRelationLabel(moment, memory);
@@ -445,15 +460,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                         navigate();
                     }
                 });
-            });
-        } else {
-            connectedFragments.innerHTML = `
-                <div style="display:grid;grid-template-columns:1fr;gap:24px;">
-                    ${buildConnectedEmptyMarkup({ treeMomentCount })}
-                </div>
-            `;
-        }
-    };
+});
+  connectedSection.classList.add(flowMoments.length >= 2 ? 'is-threaded' : 'is-solo');
+  } else {
+    connectedFragments.innerHTML = `
+  <div style="display:grid;grid-template-columns:1fr;gap:24px;">
+  ${buildConnectedEmptyMarkup({ treeMomentCount })}
+</div>
+`;
+    connectedSection.classList.add('is-empty');
+  }
+};
 
     const urlParams = new URLSearchParams(window.location.search);
     const memoryId = urlParams.get('id');

@@ -14,17 +14,18 @@
              flex-direction: column;
          }
 
-         .hero-section {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 120px 48px 80px;
-            background-image: url('assets/hero-bg.jpg');
-            background-size: cover;
-            background-position: center;
-            position: relative;
-        }
+.hero-section {
+             flex: 1;
+             display: flex;
+             align-items: center;
+             justify-content: center;
+             min-height: calc(100vh - 72px);
+             padding: 82px 48px 64px;
+             background-image: url('assets/hero-bg.jpg');
+             background-size: cover;
+             background-position: center;
+             position: relative;
+         }
 
         .hero-section::before {
             content: '';
@@ -39,46 +40,54 @@
             pointer-events: none;
         }
 
-         .hero-content {
-            max-width: 640px;
-            z-index: 2;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            position: relative;
-        }
+.hero-content {
+             max-width: 690px;
+             z-index: 2;
+             display: flex;
+             flex-direction: column;
+             align-items: flex-start;
+             gap: 16px;
+             position: relative;
+             margin-right: min(32vw, 420px);
+         }
 
          .hero-visual {
              position: absolute;
-             right: 6%;
+             right: 5%;
              top: 50%;
              transform: translateY(-50%);
-             width: 40%;
-             max-width: 440px;
+             width: 41%;
+             max-width: 500px;
              z-index: 1;
              pointer-events: none;
              user-select: none;
          }
 
-         .hero-title {
-            font-size: 3.5rem;
-            line-height: 1.15;
-            color: var(--on-surface);
-            font-family: var(--font-heading);
-            letter-spacing: -0.03em;
-            font-weight: 900;
-            text-shadow: 0 1px 10px rgba(255,255,255,0.2);
-        }
+.hero-title {
+             max-width: 720px;
+             font-size: clamp(3.15rem, 5.3vw, 4.8rem);
+             line-height: 1.08;
+             color: var(--on-surface);
+             font-family: var(--font-heading);
+             letter-spacing: 0;
+             font-weight: 900;
+             text-shadow: 0 1px 10px rgba(255,255,255,0.2);
+         }
 
-         .hero-title span {
+         .hero-title .title-line {
+             display: block;
+         }
+
+         .hero-title .title-accent {
              color: var(--primary);
          }
 
          .hero-desc {
+             max-width: 590px;
              font-size: 1.15rem;
              color: var(--on-surface-variant);
-             margin-bottom: 0.75rem;
-             line-height: 1.6;
+             margin: 0;
+             line-height: 1.62;
          }
 
          .memory-card-mini {
@@ -143,22 +152,32 @@
 
          .hero-badge {
              display: inline-block;
-             background: rgba(144, 73, 81, 0.08);
+             background: rgba(144, 73, 81, 0.07);
              color: var(--primary);
              padding: 6px 16px;
              border-radius: 99px;
              font-size: 12px;
              font-weight: 800;
-             margin-bottom: 24px;
+             margin-bottom: 4px;
              letter-spacing: 0.02em;
+         }
+
+         .hero-kicker {
+             margin: 0;
+             max-width: 560px;
+             font-size: 0.94rem;
+             line-height: 1.55;
+             color: var(--primary);
+             font-weight: 700;
          }
 
          .hero-cta-group {
              display: flex;
              flex-wrap: wrap;
-             justify-content: center;
+             justify-content: flex-start;
              gap: 16px;
              width: 100%;
+             margin-top: 2px;
          }
 
          .hero-cta-btn {
@@ -183,46 +202,42 @@
          .hero-flow {
              display: flex;
              flex-wrap: wrap;
-             justify-content: center;
+             justify-content: flex-start;
              gap: 10px;
-             margin: 0 0 0.5rem;
+             margin: 2px 0 0;
              width: 100%;
          }
 
          .hero-flow-step {
              display: inline-flex;
              align-items: center;
-             gap: 8px;
-             padding: 8px 14px;
+             padding: 7px 13px;
              border-radius: 999px;
-             background: rgba(255,255,255,0.8);
-             border: 1px solid rgba(144, 73, 81, 0.08);
+             background: rgba(255,255,255,0.62);
+             border: 1px solid rgba(144, 73, 81, 0.06);
              color: var(--on-surface-variant);
-             font-size: 0.84rem;
+             font-size: 0.82rem;
              font-weight: 700;
-         }
-
-         .hero-flow-step strong {
-             color: var(--primary);
-             opacity: 0.72;
-             font-size: 0.78rem;
+             box-shadow: 0 8px 20px rgba(75, 64, 57, 0.03);
          }
 
          .hero-support-copy {
-             margin-top: 4px;
-             max-width: 520px;
+             margin: 0;
+             max-width: 500px;
              font-size: 0.88rem;
              line-height: 1.6;
              color: var(--on-surface-variant);
          }
 
          .mini-tree-card {
-             top: 22%;
-             right: 8%;
-             padding: 14px;
+             top: 18%;
+             right: 5%;
+             width: 260px;
+             padding: 16px;
              border-radius: 1.5rem;
              background: rgba(255, 255, 255, 0.96);
              backdrop-filter: blur(10px);
+             box-shadow: 0 26px 70px rgba(75, 64, 57, 0.12);
          }
 
          .love-tree-svg {
@@ -235,7 +250,7 @@
 
          .mini-tree-canvas {
              position: relative;
-             height: 150px;
+             height: 180px;
              border-radius: 1rem;
              background: radial-gradient(circle at top, rgba(255,255,255,0.9), rgba(255,245,246,0.88) 44%, rgba(246, 249, 241, 0.96) 100%);
              border: 1px solid rgba(144, 73, 81, 0.08);
@@ -256,8 +271,8 @@
              position: absolute;
              left: 50%;
              bottom: 24px;
-             width: 12px;
-             height: 66px;
+             width: 13px;
+             height: 82px;
              transform: translateX(-50%);
              border-radius: 999px;
              background: linear-gradient(180deg, #c18b83, #904951);
@@ -273,23 +288,23 @@
          }
 
          .mini-tree-branch.branch-left-top {
-             width: 50px;
+             width: 62px;
              left: 50%;
-             bottom: 72px;
+             bottom: 88px;
              transform: translateX(-6px) rotate(-36deg);
          }
 
          .mini-tree-branch.branch-right-top {
-             width: 54px;
+             width: 68px;
              left: 50%;
-             bottom: 78px;
+             bottom: 96px;
              transform: translateX(4px) rotate(30deg);
          }
 
          .mini-tree-branch.branch-left-bottom {
-             width: 42px;
+             width: 54px;
              left: 50%;
-             bottom: 52px;
+             bottom: 64px;
              transform: translateX(-6px) rotate(-18deg);
          }
 
@@ -315,18 +330,44 @@
          }
 
          .mini-tree-node.node-left-top {
-             left: 56px;
-             top: 30px;
+             left: 58px;
+             top: 24px;
          }
 
          .mini-tree-node.node-right-top {
-             right: 44px;
-             top: 22px;
+             right: 40px;
+             top: 18px;
          }
 
          .mini-tree-node.node-left-bottom {
-             left: 36px;
+             left: 38px;
+             top: 88px;
+         }
+
+         .mini-tree-note {
+             position: absolute;
+             display: inline-flex;
+             align-items: center;
+             min-height: 24px;
+             padding: 0 9px;
+             border-radius: 999px;
+             background: rgba(255, 255, 255, 0.82);
+             border: 1px solid rgba(144, 73, 81, 0.08);
+             color: var(--primary);
+             font-size: 10px;
+             font-weight: 800;
+             box-shadow: 0 8px 18px rgba(75, 64, 57, 0.06);
+         }
+
+         .mini-tree-note.note-first {
+             left: 74px;
+             bottom: 18px;
+         }
+
+         .mini-tree-note.note-grow {
+             right: 18px;
              top: 76px;
+             color: #6b7f58;
          }
 
          .mini-tree-summary {
@@ -560,17 +601,17 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="js/firebase-config.js?v=20260417-31"></script>
-    <script src="js/i18n/i18n-core.js?v=20260420-4"></script>
-    <script src="js/i18n/i18n-shared.js?v=20260421-1"></script>
+    <script src="js/i18n/i18n-core.js?v=20260421-1"></script>
+    <script src="js/i18n/i18n-shared.js?v=20260421-2"></script>
     <script src="js/i18n/i18n-login.js?v=20260419-2"></script>
-    <script src="js/i18n/i18n-intro.js?v=20260419-2"></script>
-    <script src="js/i18n/i18n-search.js?v=20260419-2"></script>
-    <script src="js/i18n/i18n-detail.js?v=20260419-2"></script>
-    <script src="js/i18n/i18n-editor.js?v=20260419-2"></script>
-    <script src="js/i18n/i18n-my-trees.js?v=20260419-2"></script>
-    <script src="js/i18n/i18n-index.js?v=20260419-2"></script>
+    <script src="js/i18n/i18n-intro.js?v=20260421-2"></script>
+    <script src="js/i18n/i18n-search.js?v=20260421-1"></script>
+    <script src="js/i18n/i18n-detail.js?v=20260421-5"></script>
+    <script src="js/i18n/i18n-editor.js?v=20260421-5"></script>
+    <script src="js/i18n/i18n-my-trees.js?v=20260421-5"></script>
+    <script src="js/i18n/i18n-index.js?v=20260421-1"></script>
     <script src="js/i18n.js?v=20260419-2"></script>
-    <script src="js/shared-header.js?v=20260421-1"></script>
+    <script src="js/shared-header.js?v=20260421-2"></script>
      <script src="js/auth/auth-state.js?v=20260417-31"></script>
      <script src="js/auth/auth-callbacks.js?v=20260417-31"></script>
      <script src="js/auth/auth-cache.js?v=20260417-31"></script>

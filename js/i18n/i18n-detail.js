@@ -147,8 +147,12 @@
       en: 'LoveTree'
     },
     'unknown_artist': {
-      ko: '아티스트 정보 없음',
-      en: 'Artist information unavailable'
+      ko: '아티스트 정보는 아직 남겨지지 않았어요',
+      en: 'Artist info not yet recorded'
+    },
+    'video_embed_fallback_cta': {
+      ko: '원본에서 감상 이어가기',
+      en: 'Continue viewing on YouTube'
     },
     'back_to_home': {
       ko: '첫화면으로',

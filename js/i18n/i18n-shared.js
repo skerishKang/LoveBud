@@ -1,6 +1,6 @@
 /**
  * LoveBud - i18n Shared Dictionary
- * v20260421-1
+ * v20260421-2
  *
  * 공통 번역 키 (네비게이션, 버튼, 상태 메시지 등)
  */
@@ -45,36 +45,36 @@
       en: '💝 My LoveTree'
     },
     'home.heroTitle': {
-      ko: '사랑하는 것의<br><span>모든 순간이 하나의 나무가 된다</span>',
-      en: 'Every moment of what you love<br><span>becomes a single tree</span>'
+      ko: '<span class="title-line">사랑하는 것의</span><span class="title-line title-accent">모든 순간이</span><span class="title-line">하나의 나무가 된다</span>',
+      en: '<span class="title-line">Every moment</span><span class="title-line title-accent">of what you love</span><span class="title-line">becomes a single tree</span>'
     },
     'home.heroSubtitle': {
-      ko: '입덕의 첫 설렘, 가장 감동했던 그 장면, 그리고 지금 이 순간까지. 당신이 느낀 감정의 결을 남기고, 하나의 나무로 완성하세요.',
-      en: 'From the first spark of fandom to the most moving scene and this very moment. Capture the texture of your emotions and grow them into a single tree.'
+      ko: '입덕의 첫 설렘부터 오래 남은 장면까지. 마음이 지나온 길을 남기면, 나만의 트리로 자라납니다.',
+      en: 'From the first spark of fandom to the scenes that stayed with you. Leave the path your heart followed, and watch it grow into your own tree.'
     },
     'home.cta.start': {
-      ko: '나의 첫 러브트리 만들기',
-      en: 'Create My First LoveTree'
+      ko: '내 러브트리 시작하기',
+      en: 'Start My LoveTree'
     },
     'home.cta.browse': {
-      ko: '예시 트리 보기',
-      en: 'View Sample Trees'
+      ko: '공개 러브트리 감상하기',
+      en: 'Explore Public LoveTrees'
     },
     'home.flow.one': {
-      ko: '로그인하고',
-      en: 'Sign in'
+      ko: '첫 순간 남기기',
+      en: 'Save the first moment'
     },
     'home.flow.two': {
-      ko: '첫 순간 남기기',
-      en: 'Save your first moment'
+      ko: '마음 이어가기',
+      en: 'Follow the feeling'
     },
     'home.flow.three': {
-      ko: '내 트리로 이어가기',
-      en: 'Grow your tree'
+      ko: '내 트리 바라보기',
+      en: 'Watch my tree grow'
     },
     'home.supportCopy': {
-      ko: '로그인 후 바로 내 트리에서 시작할 수 있어요. 예시 트리는 둘러보기에서 먼저 볼 수 있어요.',
-      en: 'After signing in, you can start in your tree right away. You can browse sample trees first.'
+      ko: '혼자 간직한 장면도, 공개된 트리의 마음도 같은 결로 이어집니다.',
+      en: 'Private scenes and public trees can both carry the same emotional thread.'
     },
     'home.intro': {
       ko: '직접 만들어보기 전에 미리 둘러보고 싶다면',
@@ -167,6 +167,40 @@
     'action_coming_soon': {
       ko: '준비중',
       en: 'Coming soon'
+    },
+
+    // 설정 페이지
+    'settings.backToMyTrees': {
+      ko: '내 러브트리로 돌아가기',
+      en: 'Back to My Trees'
+    },
+    'settings.title': {
+      ko: '설정',
+      en: 'Settings'
+    },
+    'settings.subtitle': {
+      ko: '러브트리를 어떻게 공개할지 정합니다',
+      en: 'Choose how your LoveTrees are shared'
+    },
+    'settings.visibilityTitle': {
+      ko: '기본 공개 범위',
+      en: 'Default Visibility'
+    },
+    'settings.private': {
+      ko: '비공개',
+      en: 'Private'
+    },
+    'settings.privateDesc': {
+      ko: '새로 만드는 러브트리에 기본으로 적용돼요.',
+      en: 'This applies by default to new LoveTrees.'
+    },
+    'settings.public': {
+      ko: '공개',
+      en: 'Public'
+    },
+    'settings.publicDesc': {
+      ko: '다른 팬들과 내 러브트리를 공유할 수 있어요',
+      en: 'Share your LoveTrees with other fans'
     }
   };
 })();
