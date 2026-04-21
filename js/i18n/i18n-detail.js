@@ -206,6 +206,18 @@
       ko: '기록 저장 중 오류가 발생했습니다',
       en: 'Error occurred while saving the record'
     },
+    'video_unavailable_soft_title': {
+      ko: '이 순간의 영상은 여기서 바로 열리지 않을 수 있어요.',
+      en: 'This video may not open directly here.'
+    },
+    'video_unavailable_soft_desc': {
+      ko: '재생이 열리지 않더라도 이 순간의 감상은 이어서 읽어볼 수 있어요.',
+      en: 'Even if playback does not open, you can still continue with the feeling of this moment.'
+    },
+    'video_embed_fallback_cta': {
+      ko: '원본에서 감상 이어가기',
+      en: 'Continue with the original video'
+    },
     'public_tree_view_chip': {
       ko: '공개 러브트리 감상',
       en: 'Viewing a public LoveTree'
