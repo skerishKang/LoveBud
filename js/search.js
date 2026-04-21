@@ -1,6 +1,6 @@
 /**
  * LoveBud Search Page Orchestrator
- * v20260422-1
+ * v20260422-2
  *
  * Search page orchestration:
  * - Fast list-first loading for public trees
@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const Adapter = window.LoveBudSearchAdapter;
     const cache = window.LoveBudCache;
-    const PUBLIC_TREES_CACHE_KEY = 'public_trees_list';
+    const PUBLIC_TREES_CACHE_KEY = 'public_trees_summary_latest_3';
 
     let allTrees = [];
     let loadError = null;
@@ -112,7 +112,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         PreviewRenderer.renderLoadingPreview(tree);
 
         try {
-            const hydratedTree = previewCache.get(tree.id) || await window.apiClient.getPublicTreePreview(tree);
+            const hydratedTree = previewCache.get(tree.id) || await window.apiClient.getCommunityMemories({ treeId: tree.id }).then((memories) => {
+                return window.LoveTreePublicTreeAdapter.hydrateTreeWithPublicMemories(tree, memories);
+            });
             previewCache.set(tree.id, hydratedTree);
             allTrees = allTrees.map(item => item.id === hydratedTree.id ? hydratedTree : item);
 
@@ -221,7 +223,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     try {
         if (window.apiClient && window.apiClient.getPublicTrees) {
-            const apiTrees = await window.apiClient.getPublicTrees();
+            const apiTrees = await window.apiClient.getPublicTrees({ view: 'summary', sort: 'latest', limit: 3 });
             if (!Array.isArray(apiTrees)) {
                 throw new Error('API 응답 형식 오류');
             }
