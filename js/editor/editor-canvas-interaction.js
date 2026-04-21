@@ -59,6 +59,7 @@ window.LoveBudEditorCanvasInteraction = {
         viewportState.rafScheduled = false;
       }
 
+      let shouldRender = false;
       if (viewportState.isDraggingNode && viewportState.dragNodeId) {
         const draggedId = viewportState.dragNodeId;
         const moved = viewportState.dragMoved;
@@ -69,17 +70,23 @@ window.LoveBudEditorCanvasInteraction = {
         if (draggedEl && moved) {
           draggedEl.dataset.suppressClick = '1';
           draggedEl.style.cursor = 'grab';
+          shouldRender = true;
           if (typeof showMovedToast === 'function') {
             showMovedToast();
           }
         }
       }
 
+      if (viewportState.isPanning) {
+        shouldRender = true;
+      }
       viewportState.isPanning = false;
       canvas.classList.remove('panning');
       canvas.style.cursor = 'grab';
-      persistStoredPositions();
-      initCanvas();
+      if (shouldRender) {
+        persistStoredPositions();
+        initCanvas();
+      }
     });
   },
 

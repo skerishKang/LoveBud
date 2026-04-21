@@ -756,6 +756,7 @@ function createEditorCanvas(deps) {
                 viewportState.rafScheduled = false;
             }
 
+            let shouldRender = false;
             if (viewportState.isDraggingNode && viewportState.dragNodeId) {
                 const draggedId = viewportState.dragNodeId;
                 const moved = viewportState.dragMoved;
@@ -766,17 +767,23 @@ function createEditorCanvas(deps) {
                 if (draggedEl && moved) {
                     draggedEl.dataset.suppressClick = '1';
                     draggedEl.style.cursor = 'grab';
+                    shouldRender = true;
                     if (window.LoveBudUI?.showToast) {
                         window.LoveBudUI.showToast(i18n('node_position_adjusted') || '순간 위치를 조정했습니다', 'success', 1800);
                     }
                 }
             }
 
+            if (viewportState.isPanning) {
+                shouldRender = true;
+            }
             viewportState.isPanning = false;
             canvas.classList.remove('panning');
             canvas.style.cursor = 'grab';
-            persistStoredPositions();
-            initCanvas();
+            if (shouldRender) {
+                persistStoredPositions();
+                initCanvas();
+            }
         });
     };
 
