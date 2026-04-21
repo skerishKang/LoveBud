@@ -35,7 +35,14 @@
 
   function getTreeMomentCount(tree) {
     if (!tree) return 0;
-    var count = tree.memoryCount || tree.memory_count || 0;
+    var count =
+      tree.memoryCount ??
+      tree.memory_count ??
+      tree.nodeCount ??
+      tree.node_count ??
+      (Array.isArray(tree.memories) ? tree.memories.length : undefined) ??
+      (Array.isArray(tree.nodes) ? tree.nodes.length : undefined) ??
+      0;
     count = Number(count);
     return Number.isFinite(count) ? count : 0;
   }
@@ -118,6 +125,11 @@
     ].join('');
   }
 
+  function getRepresentativeThumbnail(tree) {
+    if (!tree) return '';
+    return tree.representativeThumbnail || tree.representative_thumbnail || tree.thumbnail || '';
+  }
+
   function buildTreeThumbVisual(tree, i18n) {
     var palette = getTreeMoodPalette(tree);
     var momentCount = getTreeMomentCount(tree);
@@ -126,12 +138,17 @@
     var moodLabel = momentCount > 1
       ? (i18n('myTrees.card_growing') || '차곡차곡 자라는 중')
       : (i18n('myTrees.card_waiting') || '첫 순간을 기다리는 중');
+    var thumbnail = getRepresentativeThumbnail(tree);
 
     return [
       '<div class="tree-card-thumb" style="background:' + palette.background + ';">',
         '<div class="tree-card-thumb-glow" style="background:' + palette.leafSoft + ';"></div>',
         '<div class="tree-card-thumb-initial" style="color:' + palette.accent + ';border-color:' + palette.leafSoft + ';">' + initial + '</div>',
-        '<div class="tree-card-thumb-art">' + buildMiniTreeSVG(tree) + '</div>',
+        '<div class="tree-card-thumb-art">',
+          thumbnail
+            ? '<img class="tree-card-thumb-image" src="' + escapeHtml(thumbnail) + '" alt="' + escapeHtml(title) + '">' 
+            : buildMiniTreeSVG(tree),
+        '</div>',
         '<div class="tree-card-thumb-topline">',
           '<span class="tree-card-moment-badge" data-count="' + momentCount + '">' + (i18n('myTrees.moment_count_compact') || '순간 {count}개').replace('{count}', String(momentCount)) + '</span>',
         '</div>',
@@ -264,8 +281,12 @@
         title: (tree && tree.title) || '나의 러브트리',
         visibility: (tree && tree.visibility) || 'public',
         updatedAt: (tree && (tree.updatedAt || tree.createdAt)) || null,
-        memoryCount: getTreeMomentCount(tree)
+        memoryCount: getTreeMomentCount(tree),
+        representativeThumbnail: getRepresentativeThumbnail(tree)
       };
+    } else {
+      normalizedTree.representativeThumbnail = normalizedTree.representativeThumbnail || getRepresentativeThumbnail(tree);
+      normalizedTree.memoryCount = getTreeMomentCount(tree || normalizedTree);
     }
 
     var momentCount = getTreeMomentCount(normalizedTree);
@@ -303,8 +324,9 @@
     });
 
     card.innerHTML = [
+      buildTreeThumbVisual(normalizedTree, i18n),
       '<button class="tree-card-menu" id="' + menuBtnId + '" type="button" aria-label="' + escapeHtml(i18n('myTrees.card_menu') || '트리 관리 열기') + '">',
-        '<span class="material-symbols-outlined" style="font-size:18px;color:#666;">more_vert</span>',
+        '<span class="material-symbols-outlined" style="font-size:20px;color:var(--on-surface);">more_vert</span>',
       '</button>',
       '<div class="tree-card-dropdown" id="' + dropdownId + '">',
         '<div class="dropdown-item visibility" data-action="visibility">',
@@ -320,7 +342,6 @@
           i18n('delete') || '삭제',
         '</div>',
       '</div>',
-      buildTreeThumbVisual(normalizedTree, i18n),
       '<div class="tree-card-info">',
         '<div class="tree-card-title-row">',
           '<div class="tree-card-title">' + escapeHtml(title) + '</div>',
