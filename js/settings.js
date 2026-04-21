@@ -1,6 +1,6 @@
 /**
  * LoveBud - Settings Module
- * v20260421-3
+ * v20260421-4
  * 
  * localStorage 기반 설정 관리
  * - 기본 공개 범위 (defaultVisibility)
@@ -12,21 +12,50 @@
     defaultVisibility: 'public'
   };
 
-  function getCloseHref() {
+  function isSafeReturnTarget(value) {
+    return /^\.?\/?[a-zA-Z0-9_\-/]+\.html(?:\?.*)?$/.test(value || '');
+  }
+
+  function getReturnToHref() {
     try {
       var params = new URLSearchParams(window.location.search || '');
       var returnTo = params.get('returnTo');
-      if (returnTo && /^\.?\/?[a-zA-Z0-9_\-/]+\.html(?:\?.*)?$/.test(returnTo)) {
+      if (returnTo && isSafeReturnTarget(returnTo)) {
         return returnTo;
       }
     } catch (e) {
       console.warn('[settings] Failed to parse returnTo:', e);
     }
-    return './my-trees.html';
+
+    try {
+      if (document.referrer) {
+        var refUrl = new URL(document.referrer, window.location.origin);
+        var sameOrigin = refUrl.origin === window.location.origin;
+        var isSettingsRef = /\/settings\.html(?:$|\?)/.test(refUrl.pathname);
+        if (sameOrigin && !isSettingsRef) {
+          return refUrl.pathname + refUrl.search + refUrl.hash;
+        }
+      }
+    } catch (e) {
+      console.warn('[settings] Failed to parse referrer:', e);
+    }
+
+    return '../index.html';
   }
 
   function closeSettings() {
-    window.location.href = getCloseHref();
+    var fallbackHref = getReturnToHref();
+
+    try {
+      if (window.history.length > 1 && document.referrer) {
+        window.history.back();
+        return;
+      }
+    } catch (e) {
+      console.warn('[settings] history.back failed:', e);
+    }
+
+    window.location.href = fallbackHref;
   }
 
   // 설정 불러오기
@@ -90,16 +119,7 @@
     var closeBtn = document.getElementById('settingsCloseBtn');
     if (closeBtn) {
       closeBtn.setAttribute('aria-label', safeText('close', '설정 닫기'));
-    }
-
-    // 뒤로 가기 링크
-    var backLinkText = document.getElementById('settingsBackLinkText');
-    var backLink = document.getElementById('settingsBackLink');
-    if (backLinkText) {
-      backLinkText.textContent = safeText('settings.backToMyTrees', '내 러브트리로 돌아가기');
-    }
-    if (backLink) {
-      backLink.setAttribute('href', getCloseHref());
+      closeBtn.setAttribute('title', safeText('close', '닫기'));
     }
     
     // 제목
@@ -112,6 +132,14 @@
     var subtitleEl = document.querySelector('.settings-subtitle');
     if (subtitleEl) {
       subtitleEl.textContent = safeText('settings.subtitle', '러브트리를 어떻게 공개할지 정합니다');
+    }
+
+    var scopeNoteEl = document.getElementById('settingsScopeNote');
+    if (scopeNoteEl) {
+      scopeNoteEl.textContent = safeText(
+        'settings.scopeNote',
+        '앞으로 새로 만드는 러브트리에 적용돼요. 기존 트리 공개 상태는 각 트리에서 바꿀 수 있어요.'
+      );
     }
     
     // 기본 공개 범위 제목
@@ -151,17 +179,9 @@
     var settingsContent = document.getElementById('settingsContent');
     var settingsCard = document.getElementById('settingsCard');
     var closeBtn = document.getElementById('settingsCloseBtn');
-    var backLink = document.getElementById('settingsBackLink');
 
     if (closeBtn) {
       closeBtn.addEventListener('click', function(e) {
-        e.preventDefault();
-        closeSettings();
-      });
-    }
-
-    if (backLink) {
-      backLink.addEventListener('click', function(e) {
         e.preventDefault();
         closeSettings();
       });
@@ -177,6 +197,7 @@
 
     document.addEventListener('keydown', function(e) {
       if (e.key === 'Escape') {
+        e.preventDefault();
         closeSettings();
       }
     });
