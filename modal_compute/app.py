@@ -60,6 +60,7 @@ def get_latest_browse_snapshot(
     memory=512,
     scaledown_window=60,
     min_containers=0,
+    secrets=[modal.Secret.from_name("lovebud-db")],
 )
 @modal.asgi_app()
 def fastapi_app():
