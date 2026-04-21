@@ -564,11 +564,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (loadPromises.length > 0) await Promise.all(loadPromises);
 
         if (!tree) {
-            const mockTrees = typeof getTrees === 'function' ? getTrees() : [];
-            tree = mockTrees.find(t => t.id === canonicalTreeId) || null;
-            if (!tree) degradedReason = 'tree-load-failed';
+            degradedReason = 'tree-load-failed';
         }
-        if (!memories) memories = typeof getMemoriesByTree === 'function' ? getMemoriesByTree(canonicalTreeId) : [];
+        if (!memories) memories = [];
     } else {
         tree = null;
         memories = [];

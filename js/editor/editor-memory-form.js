@@ -388,7 +388,7 @@ function createEditorMemoryForm(deps) {
                 throw new Error('createMemory API not available');
             }
         } catch (e) {
-            console.warn('[editor] API createMemory failed, fallback to mock:', e?.message || e);
+            console.warn('[editor] API createMemory failed, using local save:', e?.message || e);
 
             if (e?.message?.includes('401') || e?.message?.includes('403')) {
                 showToast(i18n('no_permission_local'), 'warn');

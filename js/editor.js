@@ -209,11 +209,6 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const renderTreeLoadError = editorPageHelpers.renderTreeLoadError || createInlineRenderTreeLoadErrorFallback();
-    const getFirstMockTree = editorTreeHelpers.getFirstMockTree || (() => {
-        const mockTrees = typeof getTrees === 'function' ? getTrees() : [];
-        return mockTrees[0] || null;
-    });
-
     const createInlineNormalizeMemoryFallback = dataLoaderFallbacks.createInlineNormalizeMemoryFallback || (() => (mem) => mem);
     const createInlineLoadInitialTreeFallback = dataLoaderFallbacks.createInlineLoadInitialTreeFallback || (() => async () => ({}));
     const createInlineLoadEditorMemoriesFallback = dataLoaderFallbacks.createInlineLoadEditorMemoriesFallback || (() => async () => ({}));
@@ -337,7 +332,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const treeLoadResult = await loadInitialTree({
             urlTreeId,
             apiClient: window.apiClient,
-            getFirstMockTree,
             createDefaultTreeTitle: () => safeI18nText(i18n, 'default_tree_title', '러브트리'),
             getConfirmedSessionUser
         });
@@ -387,7 +381,6 @@ document.addEventListener('DOMContentLoaded', () => {
             cache,
             cacheKey: MEMORIES_CACHE_KEY,
             apiClient: window.apiClient,
-            getMemoriesByTreeFallback: typeof getMemoriesByTree === 'function' ? getMemoriesByTree : null,
             showToast,
             i18n,
             normalizeMemory

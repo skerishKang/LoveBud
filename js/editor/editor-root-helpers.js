@@ -19,11 +19,11 @@
     'use strict';
 
     /**
-     * Root memory 식별 (UUID/ mock 호환)
+     * Root memory 식별
      * 
      * 규칙:
      * 1) parentId === null인 노드 중 createdAt이 가장 오래된 것 (진짜 root)
-     * 2) id === 'root' (legacy mock fallback)
+     * 2) id === 'root' (legacy root compatibility)
      * 
      * @param {Array} memories - memory 객체 배열
      * @returns {Object|null} - root memory 객체 또는 null
@@ -47,7 +47,7 @@
             return oldest;
         }
         
-        // 2순위: id === 'root' (legacy mock)
+        // 2순위: id === 'root' (legacy root compatibility)
         return memories.find(m => m.id === 'root');
     };
 
@@ -67,7 +67,7 @@
      * 
      * 규칙:
      * 1) parentId === null 우선
-     * 2) id === 'root' (legacy mock)
+     * 2) id === 'root' (legacy root compatibility)
      * 3) 없으면 'root' fallback
      * 
      * @param {Array} memories - memory 객체 배열
