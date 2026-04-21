@@ -29,6 +29,36 @@ function buildSummaryFromTreeRow(tree, memoryCount) {
   };
 }
 
+const MODAL_BASE_URL = process.env.MODAL_BASE_URL;
+
+/**
+ * Attempts to fetch browse summaries from the Modal compute layer.
+ * Returns null if not configured, or if the fetch fails/times out.
+ */
+async function fetchModalSummary(limit) {
+  if (!MODAL_BASE_URL) return null;
+
+  try {
+    const url = `${MODAL_BASE_URL}/modal/browse/latest?limit=${limit}`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 second short timeout
+
+    const response = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
+
+    if (response.ok) {
+      const data = await response.json();
+      if (Array.isArray(data) && data.length > 0) {
+        return data;
+      }
+    }
+    return null;
+  } catch (error) {
+    console.error('[community-trees] Modal summary fetch failed:', error.message);
+    return null;
+  }
+}
+
 exports.handler = async (event) => {
   const requestOrigin = event.headers?.origin || event.headers?.Origin || '';
 
@@ -46,29 +76,35 @@ exports.handler = async (event) => {
     const sort = String(params.sort || '').trim().toLowerCase() || 'latest';
     const limit = validateLimit(params.limit, 50, 100);
 
-    const treeFetchLimit = view === 'summary'
-      ? Math.min(Math.max(limit * SUMMARY_FETCH_MULTIPLIER, limit), 100)
-      : limit;
+    // ── Summary View Pathway ──────────────────────────────────────────────────
+    if (view === 'summary') {
+      // 1. Try Modal Compute Layer first (optimized & high quality)
+      const modalData = await fetchModalSummary(limit === 50 ? 3 : limit); // default browse limit is 3
+      if (modalData) {
+        return ok(modalData, null, requestOrigin);
+      }
+      
+      // 2. Fallback to existing Netlify summary logic
+      const treeFetchLimit = Math.min(Math.max(limit * SUMMARY_FETCH_MULTIPLIER, limit), 100);
+      const trees = await queryTrees({ visibility: 'public', limit: treeFetchLimit });
+      const treeIds = (Array.isArray(trees) ? trees : []).map((tree) => tree.id).filter(Boolean);
+      const memoryCounts = await queryPublicMemoryCounts(treeIds, BROWSE_MIN_MEMORY_COUNT);
+      const countMap = new Map(memoryCounts.map((row) => [row.tree_id, Number(row.memory_count || 0)]));
 
-    const trees = await queryTrees({ visibility: 'public', limit: treeFetchLimit });
+      let summaries = (Array.isArray(trees) ? trees : [])
+        .filter((tree) => countMap.has(tree.id))
+        .map((tree) => buildSummaryFromTreeRow(tree, countMap.get(tree.id)));
 
-    if (view !== 'summary') {
-      return ok(serializeTreeList(trees), null, requestOrigin);
+      if (sort === 'latest') {
+        summaries = summaries.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+      }
+
+      return ok(summaries.slice(0, limit), null, requestOrigin);
     }
 
-    const treeIds = (Array.isArray(trees) ? trees : []).map((tree) => tree.id).filter(Boolean);
-    const memoryCounts = await queryPublicMemoryCounts(treeIds, BROWSE_MIN_MEMORY_COUNT);
-    const countMap = new Map(memoryCounts.map((row) => [row.tree_id, Number(row.memory_count || 0)]));
-
-    let summaries = (Array.isArray(trees) ? trees : [])
-      .filter((tree) => countMap.has(tree.id))
-      .map((tree) => buildSummaryFromTreeRow(tree, countMap.get(tree.id)));
-
-    if (sort === 'latest') {
-      summaries = summaries.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-    }
-
-    return ok(summaries.slice(0, limit), null, requestOrigin);
+    // ── Default View Pathway ──────────────────────────────────────────────────
+    const trees = await queryTrees({ visibility: 'public', limit });
+    return ok(serializeTreeList(trees), null, requestOrigin);
   } catch (error) {
     return handleError('community-trees', error, requestOrigin);
   }
