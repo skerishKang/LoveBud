@@ -150,7 +150,7 @@ document.addEventListener('DOMContentLoaded', () => {
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
-        .replace(/\"/g, '&quot;')
+        .replace(/\\"/g, '&quot;')
         .replace(/'/g, '&#39;'));
 
     const inlineMediaResolvers = editorHelpers.safeUrl
@@ -240,7 +240,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         setText('backToMyTreesLabel', 'editor_back_to_my_trees', '내 러브트리로 돌아가기');
         setText('editorFlowHeading', 'sidebar_flow_heading', '트리 정보');
-        setText('editorFlowLead', 'sidebar_flow_lead', '지금 만든 러브트리의 제목과 공개 상태를 먼저 확인해 보세요.');
+        setText('editorFlowLead', 'sidebar_flow_lead', '트리 이름과 공개 상태를 여기서 정리하고, 가운데 캔버스에서는 흐름만 살펴보세요.');
+        setText('sidebarVisibilityToggleBtnLabel', 'editor_make_public', '이 트리 공개하기');
         setText('recenterCanvasBtnLabel', 'sidebar_recenter_tree', '트리 한눈에 보기');
         setText('addMemoryEyebrow', 'editor_add_memory_eyebrow', '다음 순간 심기');
         setText('addMemoryIntro', 'editor_add_memory_intro', '지금 마음이 머문 다음 장면을 이어 심어 보세요. 첫 순간이라면 여기서 러브트리가 시작됩니다.');
@@ -525,9 +526,29 @@ document.addEventListener('DOMContentLoaded', () => {
         const { setDetailEmptyState, updateFocusSelectedBtn, updateSidebarStatus: updateSidebarStatusBase, updateDetailPanel } = detailUI;
         window.updateDetailPanel = updateDetailPanel;
 
+        const updateSidebarTreeActions = () => {
+            const visibilityToggleBtn = document.getElementById('sidebarVisibilityToggleBtn');
+            const visibilityToggleLabel = document.getElementById('sidebarVisibilityToggleBtnLabel');
+            const visibilityToggleIcon = document.getElementById('sidebarVisibilityToggleBtnIcon');
+            if (!visibilityToggleBtn || !visibilityToggleLabel || !visibilityToggleIcon) return;
+
+            const visibility = (window.currentTreeData?.visibility || 'public');
+            const isPublic = visibility === 'public';
+            const nextActionLabel = isPublic
+                ? safeI18nText(i18n, 'editor_make_private', '이 트리 비공개로 전환')
+                : safeI18nText(i18n, 'editor_make_public', '이 트리 공개하기');
+
+            visibilityToggleLabel.textContent = nextActionLabel;
+            visibilityToggleIcon.textContent = isPublic ? 'lock' : 'public';
+            visibilityToggleBtn.setAttribute('aria-label', nextActionLabel);
+            visibilityToggleBtn.setAttribute('title', nextActionLabel);
+            visibilityToggleBtn.disabled = !treeId;
+        };
+
         const updateSidebarStatus = () => {
             updateSidebarStatusBase();
             updateCanvasEmptyGuide();
+            updateSidebarTreeActions();
         };
 
         editorCanvas = window.createEditorCanvas({
@@ -672,6 +693,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const { showAddMemoryForm, hideAddMemoryForm, addMemoryFromForm } = memoryForm;
         const { urlInput, titleInput, memoInput, cancelBtn, confirmBtn } = createEditorFormRefs();
+        const sidebarVisibilityToggleBtn = document.getElementById('sidebarVisibilityToggleBtn');
+        if (sidebarVisibilityToggleBtn && sidebarVisibilityToggleBtn.dataset.bound !== '1') {
+            sidebarVisibilityToggleBtn.dataset.bound = '1';
+            sidebarVisibilityToggleBtn.addEventListener('click', async () => {
+                if (!treeId) return;
+                const currentVisibility = window.currentTreeData?.visibility || 'public';
+                const isCurrentlyPublic = currentVisibility === 'public';
+                sidebarVisibilityToggleBtn.disabled = true;
+                try {
+                    await updateTreeVisibility(isCurrentlyPublic ? 'private' : 'public');
+                    showToast(
+                        isCurrentlyPublic
+                            ? (i18n('editor_visibility_updated_private') || '이 트리를 비공개로 전환했어요.')
+                            : (i18n('editor_visibility_updated_public') || '이 트리를 공개로 전환했어요.'),
+                        'success'
+                    );
+                } catch (error) {
+                    console.error('[editor] Failed to toggle sidebar visibility:', error);
+                    showToast(i18n('editor_visibility_update_failed') || '공개 상태를 바꾸지 못했어요.', 'error');
+                } finally {
+                    updateSidebarStatus();
+                }
+            });
+        }
 
         if (editorBindings.bindMemoryCreateControls) {
             editorBindings.bindMemoryCreateControls({ addBtn, cancelBtn, confirmBtn, urlInput, titleInput, memoInput, showAddMemoryForm, hideAddMemoryForm, addMemoryFromForm, updateSaveStatus, showToast, i18n });
