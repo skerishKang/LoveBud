@@ -268,6 +268,7 @@
       border: 1px solid rgba(144, 73, 81, 0.08);
       min-height: 124px;
       justify-content: space-between;
+      overflow: hidden;
     }
 
     .how-to-badge {
@@ -285,20 +286,199 @@
       text-transform: uppercase;
     }
 
-    .how-to-icon {
-      width: 56px;
-      height: 56px;
-      border-radius: 18px;
+    .how-to-scene {
+      position: relative;
+      min-height: 76px;
+      border-radius: 16px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(252,245,243,0.9));
+      border: 1px solid rgba(144, 73, 81, 0.08);
+      overflow: hidden;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.8);
+    }
+
+    .how-to-scene::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at top left, rgba(255, 243, 245, 0.8), transparent 55%);
+      pointer-events: none;
+    }
+
+    .how-to-scene-step1 .scene-video-card {
+      position: absolute;
+      inset: 14px 18px 14px 18px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, rgba(220, 190, 196, 0.95), rgba(245, 233, 228, 0.92));
+      overflow: hidden;
+      border: 1px solid rgba(144, 73, 81, 0.08);
+    }
+
+    .how-to-scene-step1 .scene-video-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to top, rgba(61, 43, 46, 0.2), rgba(255,255,255,0.06));
+    }
+
+    .how-to-scene-step1 .scene-play {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 38px;
+      height: 38px;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      background: rgba(255,255,255,0.92);
       display: flex;
       align-items: center;
       justify-content: center;
-      background: rgba(255,255,255,0.92);
-      border: 1px solid rgba(144, 73, 81, 0.1);
-      box-shadow: 0 10px 18px rgba(75, 64, 57, 0.06);
+      box-shadow: 0 10px 18px rgba(75, 64, 57, 0.12);
     }
 
-    .how-to-icon .material-symbols-outlined {
-      font-size: 28px;
+    .how-to-scene-step1 .scene-play .material-symbols-outlined {
+      font-size: 20px;
+      color: var(--primary);
+      margin-left: 2px;
+    }
+
+    .how-to-scene-step1 .scene-chip {
+      position: absolute;
+      left: 10px;
+      bottom: 10px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      min-height: 22px;
+      padding: 0 8px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.82);
+      color: var(--primary);
+      font-size: 10px;
+      font-weight: 800;
+    }
+
+    .how-to-scene-step1 .scene-sparkle {
+      position: absolute;
+      right: 12px;
+      top: 10px;
+      color: #c77c8a;
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 1px;
+    }
+
+    .how-to-scene-step2 .memo-card {
+      position: absolute;
+      left: 16px;
+      right: 16px;
+      top: 12px;
+      bottom: 12px;
+      border-radius: 16px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.97), rgba(255,249,247,0.94));
+      border: 1px solid rgba(144, 73, 81, 0.08);
+      box-shadow: 0 10px 18px rgba(75, 64, 57, 0.05);
+      padding: 12px 12px 10px;
+    }
+
+    .how-to-scene-step2 .memo-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .how-to-scene-step2 .memo-heart {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      border-radius: 10px;
+      background: rgba(144, 73, 81, 0.1);
+      color: var(--primary);
+      font-size: 13px;
+    }
+
+    .how-to-scene-step2 .memo-tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 20px;
+      padding: 0 8px;
+      border-radius: 999px;
+      background: rgba(122, 139, 110, 0.12);
+      color: #667a55;
+      font-size: 10px;
+      font-weight: 800;
+    }
+
+    .how-to-scene-step2 .memo-line {
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(144, 73, 81, 0.12);
+      margin-bottom: 8px;
+    }
+
+    .how-to-scene-step2 .memo-line.short {
+      width: 58%;
+      margin-bottom: 0;
+    }
+
+    .how-to-scene-step3 .tree-mini {
+      position: absolute;
+      inset: 10px 14px 12px;
+    }
+
+    .how-to-scene-step3 .mini-branch {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 44px;
+      height: 3px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #c18b83, #aa646d);
+      transform-origin: left center;
+    }
+
+    .how-to-scene-step3 .mini-branch.one {
+      transform: translate(-4px, -3px) rotate(-28deg);
+    }
+
+    .how-to-scene-step3 .mini-branch.two {
+      transform: translate(-4px, -1px) rotate(32deg);
+    }
+
+    .how-to-scene-step3 .mini-node {
+      position: absolute;
+      width: 28px;
+      height: 28px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.94);
+      border: 1px solid rgba(144, 73, 81, 0.1);
+      box-shadow: 0 8px 16px rgba(75, 64, 57, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary);
+    }
+
+    .how-to-scene-step3 .mini-node.center {
+      left: calc(50% - 14px);
+      top: calc(50% - 14px);
+      background: rgba(255, 247, 248, 0.98);
+    }
+
+    .how-to-scene-step3 .mini-node.left {
+      left: 18px;
+      bottom: 14px;
+    }
+
+    .how-to-scene-step3 .mini-node.right {
+      right: 18px;
+      top: 14px;
+    }
+
+    .how-to-scene-step3 .mini-node .material-symbols-outlined {
+      font-size: 16px;
       color: var(--primary);
     }
 
@@ -708,8 +888,11 @@
           <div class="how-to-card">
             <div class="how-to-visual">
               <div class="how-to-badge">01</div>
-              <div class="how-to-icon">
-                <span class="material-symbols-outlined">play_circle</span>
+              <div class="how-to-scene how-to-scene-step1" aria-hidden="true">
+                <div class="scene-video-card"></div>
+                <div class="scene-play"><span class="material-symbols-outlined">play_arrow</span></div>
+                <div class="scene-chip">첫 장면</div>
+                <div class="scene-sparkle">✦</div>
               </div>
             </div>
             <div class="how-to-card-copy">
@@ -721,8 +904,16 @@
           <div class="how-to-card">
             <div class="how-to-visual">
               <div class="how-to-badge">02</div>
-              <div class="how-to-icon">
-                <span class="material-symbols-outlined">edit_note</span>
+              <div class="how-to-scene how-to-scene-step2" aria-hidden="true">
+                <div class="memo-card">
+                  <div class="memo-top">
+                    <div class="memo-heart">♥</div>
+                    <div class="memo-tag">메모</div>
+                  </div>
+                  <div class="memo-line"></div>
+                  <div class="memo-line"></div>
+                  <div class="memo-line short"></div>
+                </div>
               </div>
             </div>
             <div class="how-to-card-copy">
@@ -734,8 +925,14 @@
           <div class="how-to-card">
             <div class="how-to-visual">
               <div class="how-to-badge">03</div>
-              <div class="how-to-icon">
-                <span class="material-symbols-outlined">account_tree</span>
+              <div class="how-to-scene how-to-scene-step3" aria-hidden="true">
+                <div class="tree-mini">
+                  <div class="mini-branch one"></div>
+                  <div class="mini-branch two"></div>
+                  <div class="mini-node center"><span class="material-symbols-outlined">favorite</span></div>
+                  <div class="mini-node left"><span class="material-symbols-outlined">play_circle</span></div>
+                  <div class="mini-node right"><span class="material-symbols-outlined">auto_awesome</span></div>
+                </div>
               </div>
             </div>
             <div class="how-to-card-copy">
