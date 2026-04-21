@@ -214,6 +214,7 @@
          .hero-flow-step {
              display: inline-flex;
              align-items: center;
+             gap: 8px;
              padding: 7px 13px;
              border-radius: 999px;
              background: rgba(255,255,255,0.62);
@@ -224,12 +225,55 @@
              box-shadow: 0 8px 20px rgba(75, 64, 57, 0.03);
          }
 
+         .hero-flow-step-index {
+             display: inline-flex;
+             align-items: center;
+             justify-content: center;
+             width: 22px;
+             height: 22px;
+             border-radius: 999px;
+             background: rgba(144, 73, 81, 0.1);
+             color: var(--primary);
+             font-size: 0.74rem;
+             font-weight: 900;
+             line-height: 1;
+             flex-shrink: 0;
+         }
+
+         .hero-flow-step-text {
+             display: inline-flex;
+             align-items: center;
+             line-height: 1.2;
+         }
+
          .hero-support-copy {
              margin: 0;
              max-width: 500px;
              font-size: 0.88rem;
              line-height: 1.6;
              color: var(--on-surface-variant);
+         }
+
+         .hero-support-note {
+             margin: -2px 0 2px;
+             display: inline-flex;
+             align-items: center;
+             gap: 8px;
+             min-height: 32px;
+             padding: 0 14px;
+             border-radius: 999px;
+             background: rgba(255,255,255,0.58);
+             border: 1px solid rgba(144, 73, 81, 0.08);
+             color: var(--primary);
+             font-size: 0.86rem;
+             font-weight: 700;
+             line-height: 1.4;
+             box-shadow: 0 8px 20px rgba(75, 64, 57, 0.03);
+         }
+
+         .hero-support-note-emoji {
+             font-size: 0.95rem;
+             line-height: 1;
          }
 
          .mini-tree-card {
@@ -406,6 +450,8 @@
 
               .hero-content {
                   max-width: 100%;
+                  margin-right: 0;
+                  align-items: center;
               }
 
               .hero-visual {
@@ -441,6 +487,16 @@
                   width: 100%;
                   max-width: 320px;
               }
+
+              .hero-flow,
+              .hero-cta-group {
+                  justify-content: center;
+              }
+
+              .hero-support-note {
+                  justify-content: center;
+                  text-align: center;
+              }
           }
      </style>
 </head>
@@ -460,14 +516,14 @@
                     입덕의 첫 설렘, 가장 감동했던 그 장면, 그리고 지금 이 순간까지.
                     당신이 느낀 감정의 결을 남기고, 하나의 나무로 완성하세요.
                 </p>
-                <!-- 첫 방문자용-microcopy + 가치제안 -->
-<p style="font-size: 0.9rem; color: var(--primary); margin-bottom: 0.25rem; font-weight: 600;">
-    🌱 러브트리는 좋아하는 것의 감정을 기록하는 공간입니다
-</p>
+                <p class="hero-support-note">
+                    <span class="hero-support-note-emoji" aria-hidden="true">🌱</span>
+                    <span>러브트리는 좋아하는 것의 감정을 기록하는 공간입니다</span>
+                </p>
                 <div class="hero-flow" aria-label="시작 흐름 안내">
-                    <span class="hero-flow-step"><strong>1</strong> <span data-i18n="home.flow.one">로그인하고</span></span>
-                    <span class="hero-flow-step"><strong>2</strong> <span data-i18n="home.flow.two">첫 순간 남기기</span></span>
-                    <span class="hero-flow-step"><strong>3</strong> <span data-i18n="home.flow.three">내 트리로 이어가기</span></span>
+                    <span class="hero-flow-step"><span class="hero-flow-step-index">1</span><span class="hero-flow-step-text" data-i18n="home.flow.one">로그인하고</span></span>
+                    <span class="hero-flow-step"><span class="hero-flow-step-index">2</span><span class="hero-flow-step-text" data-i18n="home.flow.two">첫 순간 남기기</span></span>
+                    <span class="hero-flow-step"><span class="hero-flow-step-index">3</span><span class="hero-flow-step-text" data-i18n="home.flow.three">내 트리로 이어가기</span></span>
                 </div>
                 <div class="hero-cta-group">
                     <a href="pages/login.html?redirect=my-trees.html" class="btn-round btn-primary hero-cta-btn" data-i18n="home.cta.start">나의 첫 러브트리 만들기</a>
