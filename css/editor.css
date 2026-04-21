@@ -257,7 +257,7 @@ body {
 .editor-add-intro {
     margin: 0;
     font-size: 13px;
-    line-height: 1.75;
+    line-height: 1.7;
     color: var(--on-surface-variant);
 }
 
@@ -918,6 +918,14 @@ body {
     .node-info-label {
         display: none;
     }
+
+    .editor-space-between-row {
+        align-items: flex-start;
+    }
+
+    .editor-status-card strong {
+        font-size: 1.1rem;
+    }
 }
 
 .editor-status-section,
@@ -927,7 +935,7 @@ body {
 
 .editor-status-section h3,
 .editor-add-section h3 {
-    margin: 0 0 12px;
+    margin: 0 0 10px;
     font-size: 13px;
     font-weight: 800;
     line-height: 1.4;
@@ -936,31 +944,83 @@ body {
 
 .editor-status-card {
     width: 100%;
-    padding: 16px;
-    border-radius: 16px;
-    background: var(--surface-container-low);
+    padding: 18px 16px 16px;
+    border-radius: 18px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,246,244,0.96));
     box-sizing: border-box;
+    box-shadow: 0 10px 24px rgba(75, 64, 57, 0.06);
+}
+
+.editor-space-between-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
 }
 
 .editor-status-card strong {
     display: block;
-    font-size: 14px;
-    font-weight: 800;
-    line-height: 1.5;
+    font-size: 1.55rem;
+    font-weight: 900;
+    line-height: 1.28;
     color: var(--on-surface);
+    white-space: normal;
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+    letter-spacing: -0.03em;
+}
+
+.editor-status-card p {
+    margin: 8px 0 0;
+    font-size: 13px;
+    line-height: 1.65;
+    color: var(--on-surface-variant);
     white-space: normal;
     word-break: keep-all;
     overflow-wrap: anywhere;
 }
 
-.editor-status-card p {
-    margin: 10px 0 0;
-    font-size: 14px;
-    line-height: 1.7;
-    color: var(--on-surface-variant);
-    white-space: normal;
-    word-break: keep-all;
-    overflow-wrap: anywhere;
+.editor-rename-btn {
+    flex: 0 0 auto;
+    min-height: 34px;
+    padding: 0 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(144, 73, 81, 0.14);
+    background: rgba(255,255,255,0.9);
+    color: var(--primary);
+    font-size: 12px;
+    font-weight: 800;
+    box-shadow: 0 6px 16px rgba(75,64,57,0.05);
+}
+
+.editor-tree-visibility-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: fit-content;
+    min-height: 28px;
+    padding: 0 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    margin-top: 10px;
+}
+
+.editor-tree-visibility-pill.is-public {
+    background: rgba(76,175,80,0.1);
+    color: #4caf50;
+    border: 1px solid rgba(76,175,80,0.22);
+}
+
+.editor-tree-visibility-pill.is-private {
+    background: rgba(144,73,81,0.08);
+    color: var(--primary);
+    border: 1px solid rgba(144,73,81,0.14);
+}
+
+.editor-flow-summary {
+    margin-top: 8px;
 }
 
 .editor-sidebar-actions {
@@ -1002,11 +1062,6 @@ body {
     content: '+';
     font-size: 16px;
     font-weight: 500;
-}
-
-.editor-sidebar-actions .secondary-btn:first-child::before {
-    content: '→';
-    font-size: 12px;
 }
 
 .editor-sidebar-actions .secondary-btn:last-child::before {
@@ -1073,13 +1128,12 @@ body {
 
 .editor-sidebar-meta {
     display: block;
-    margin-top: 14px;
+    margin-top: 12px;
     padding-top: 12px;
     border-top: 1px dashed var(--outline-variant);
     font-size: 12px;
     line-height: 1.6;
     color: var(--on-surface-variant);
-    font-style: italic;
 }
 
 .editor-status-card {
