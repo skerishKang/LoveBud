@@ -1,7 +1,3 @@
-fastapi[all]
-uvicorn[standard]
+fastapi==0.115.12
 modal
-psycopg2-binary
-python-dotenv
-pydantic
-pydantic-settings
+psycopg[binary]==3.2.9
