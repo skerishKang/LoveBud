@@ -174,12 +174,41 @@
       display: flex;
       gap: 16px;
       flex-wrap: wrap;
+      align-items: stretch;
+    }
+
+    .intro-cta-link {
+      text-decoration: none;
+      display: inline-flex;
       align-items: center;
     }
 
-    .intro-hero-actions .btn-round {
-      min-height: 52px;
-      padding: 0 26px;
+    .intro-hero-actions .btn-round,
+    .cta-buttons .btn-round {
+      min-height: 56px;
+      padding: 0 28px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      line-height: 1;
+      white-space: nowrap;
+      box-sizing: border-box;
+    }
+
+    .intro-cta-primary {
+      box-shadow: 0 14px 30px rgba(144, 73, 81, 0.16);
+    }
+
+    .intro-cta-secondary {
+      background: rgba(255,255,255,0.9);
+      border-color: rgba(144, 73, 81, 0.12);
+      color: var(--on-surface);
+    }
+
+    .intro-cta-secondary:hover {
+      border-color: rgba(144, 73, 81, 0.2);
+      background: rgba(255,255,255,0.98);
     }
 
     .intro-section {
@@ -212,44 +241,79 @@
     }
 
     .how-to-card {
-      background: white;
+      background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,246,244,0.96));
       border-radius: 1.5rem;
-      padding: 28px;
-      border: 1px solid var(--outline-variant);
+      padding: 24px;
+      border: 1px solid rgba(144, 73, 81, 0.08);
+      box-shadow: 0 12px 28px rgba(75, 64, 57, 0.04);
       transition: all 0.3s;
-    }
-
-    .how-to-card:first-child {
-      border-color: rgba(144, 73, 81, 0.18);
-      box-shadow: 0 14px 34px rgba(144, 73, 81, 0.07);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
     }
 
     .how-to-card:hover {
       transform: translateY(-4px);
-      box-shadow: 0 12px 32px rgba(144, 73, 81, 0.08);
+      box-shadow: 0 14px 32px rgba(144, 73, 81, 0.08);
+      border-color: rgba(144, 73, 81, 0.14);
+    }
+
+    .how-to-visual {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 16px;
+      border-radius: 20px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,247,244,0.92));
+      border: 1px solid rgba(144, 73, 81, 0.08);
+      min-height: 124px;
+      justify-content: space-between;
+    }
+
+    .how-to-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      width: fit-content;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(144, 73, 81, 0.08);
+      color: var(--primary);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
     }
 
     .how-to-icon {
-      width: 58px;
-      height: 58px;
+      width: 56px;
+      height: 56px;
       border-radius: 18px;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-bottom: 16px;
-      background: var(--surface-container-low);
+      background: rgba(255,255,255,0.92);
+      border: 1px solid rgba(144, 73, 81, 0.1);
+      box-shadow: 0 10px 18px rgba(75, 64, 57, 0.06);
     }
 
     .how-to-icon .material-symbols-outlined {
-      font-size: 30px;
+      font-size: 28px;
       color: var(--primary);
+    }
+
+    .how-to-card-copy {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-height: 132px;
     }
 
     .how-to-card h3 {
       font-size: 1rem;
       font-weight: 800;
       color: var(--on-surface);
-      margin-bottom: 8px;
+      margin: 0;
     }
 
     .how-to-card p {
@@ -257,6 +321,14 @@
       color: var(--on-surface-variant);
       line-height: 1.6;
       margin: 0;
+    }
+
+    .how-to-point {
+      font-size: 0.82rem;
+      line-height: 1.55;
+      color: var(--primary);
+      font-weight: 700;
+      margin-top: auto;
     }
 
     .value-grid {
@@ -270,17 +342,18 @@
       display: flex;
       align-items: flex-start;
       gap: 14px;
-      padding: 20px;
-      background: white;
-      border-radius: 1.2rem;
-      border: 1px solid var(--outline-variant);
-      min-height: 132px;
+      padding: 22px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,246,244,0.96));
+      border-radius: 1.25rem;
+      border: 1px solid rgba(144, 73, 81, 0.08);
+      min-height: 144px;
+      box-shadow: 0 10px 24px rgba(75, 64, 57, 0.04);
     }
 
     .value-item-featured {
-      background: linear-gradient(135deg, rgba(255,255,255,0.98), rgba(255, 245, 246, 0.96));
-      border-color: rgba(144, 73, 81, 0.16);
-      box-shadow: 0 14px 34px rgba(144, 73, 81, 0.08);
+      background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(255, 245, 246, 0.95));
+      border-color: rgba(144, 73, 81, 0.12);
+      box-shadow: 0 12px 28px rgba(144, 73, 81, 0.06);
     }
 
     .value-item .material-symbols-outlined {
@@ -303,13 +376,13 @@
       font-size: 0.95rem;
       font-weight: 800;
       color: var(--on-surface);
-      margin-bottom: 4px;
+      margin-bottom: 6px;
     }
 
     .value-item p {
       font-size: 0.85rem;
       color: var(--on-surface-variant);
-      line-height: 1.5;
+      line-height: 1.55;
       margin: 0;
     }
 
@@ -339,6 +412,8 @@
       display: flex;
       gap: 16px;
       justify-content: center;
+      align-items: stretch;
+      flex-wrap: wrap;
     }
 
     @media (max-width: 768px) {
@@ -368,6 +443,12 @@
         align-items: stretch;
       }
 
+      .intro-hero-actions .btn-round,
+      .cta-buttons .btn-round,
+      .intro-cta-link {
+        width: 100%;
+      }
+
       .how-to-grid {
         grid-template-columns: 1fr;
       }
@@ -378,7 +459,7 @@
 
       .cta-buttons {
         flex-direction: column;
-        align-items: center;
+        align-items: stretch;
       }
     }
   </style>
@@ -400,8 +481,8 @@
             러브트리는 입덕의 첫 설렘부터 오래 남은 장면까지, 마음이 지나온 길을 하나의 트리로 기록하고 감상하는 공간입니다.
           </p>
           <div class="intro-hero-actions">
-            <a href="my-trees.html" class="btn-round btn-primary" style="text-decoration: none;" data-i18n="nav.myTrees">내 러브트리 시작하기</a>
-            <a href="search.html" class="btn-round btn-outline" style="text-decoration: none;" data-i18n="intro.heroBrowseCta">공개 트리 감상하기</a>
+            <a href="my-trees.html" class="intro-cta-link" data-i18n="nav.myTrees"><span class="btn-round btn-primary intro-cta-primary">내 러브트리 시작하기</span></a>
+            <a href="search.html" class="intro-cta-link" data-i18n="intro.heroBrowseCta"><span class="btn-round btn-outline intro-cta-secondary">공개 트리 감상하기</span></a>
           </div>
         </div>
         <div class="intro-hero-visual" aria-hidden="true">
@@ -431,29 +512,47 @@
 
       <!-- How to Use -->
       <section class="intro-section">
-        <h2 data-i18n="intro.howToTitle">어떻게 쓰나요?</h2>
+        <h2 data-i18n="intro.howToTitle">어떻게 시작하나요?</h2>
         <p data-i18n="intro.howToSubtitle">기능을 배우기보다, 첫 마음이 지나온 길을 천천히 남겨보세요.</p>
         <div class="how-to-grid">
           <div class="how-to-card">
-            <div class="how-to-icon">
-              <span class="material-symbols-outlined">play_circle</span>
+            <div class="how-to-visual">
+              <div class="how-to-badge">01</div>
+              <div class="how-to-icon">
+                <span class="material-symbols-outlined">play_circle</span>
+              </div>
             </div>
-            <h3 data-i18n="intro.step1Title">첫 순간 담기</h3>
-            <p data-i18n="intro.step1Desc">좋아하게 된 영상이나 음악의 장면을 남겨보세요. 오래 기억하고 싶은 시작이 트리의 첫 가지가 됩니다.</p>
+            <div class="how-to-card-copy">
+              <h3 data-i18n="intro.step1Title">첫 순간 담기</h3>
+              <p data-i18n="intro.step1Desc">좋아하게 된 영상이나 음악의 장면을 남겨보세요. 오래 기억하고 싶은 시작이 트리의 첫 가지가 됩니다.</p>
+              <div class="how-to-point">첫 설렘이 트리의 시작이 됩니다.</div>
+            </div>
           </div>
           <div class="how-to-card">
-            <div class="how-to-icon">
-              <span class="material-symbols-outlined">edit_note</span>
+            <div class="how-to-visual">
+              <div class="how-to-badge">02</div>
+              <div class="how-to-icon">
+                <span class="material-symbols-outlined">edit_note</span>
+              </div>
             </div>
-            <h3 data-i18n="intro.step2Title">마음 남기기</h3>
-            <p data-i18n="intro.step2Desc">그 순간의 설렘과 마음을 짧은 메모와 태그로 남기세요. 감정의 결이 모여 러브트리가 자라납니다.</p>
+            <div class="how-to-card-copy">
+              <h3 data-i18n="intro.step2Title">마음 남기기</h3>
+              <p data-i18n="intro.step2Desc">그 순간의 설렘과 마음을 짧은 메모와 태그로 남기세요. 감정의 결이 모여 러브트리가 자라납니다.</p>
+              <div class="how-to-point">짧은 메모가 감정의 결을 남겨줍니다.</div>
+            </div>
           </div>
           <div class="how-to-card">
-            <div class="how-to-icon">
-              <span class="material-symbols-outlined">account_tree</span>
+            <div class="how-to-visual">
+              <div class="how-to-badge">03</div>
+              <div class="how-to-icon">
+                <span class="material-symbols-outlined">account_tree</span>
+              </div>
             </div>
-            <h3 data-i18n="intro.step3Title">자라난 트리 감상하기</h3>
-            <p data-i18n="intro.step3DescFixed">가지처럼 이어진 장면들을 따라가며, 내가 어떻게 좋아하게 되었는지 다시 바라보세요.</p>
+            <div class="how-to-card-copy">
+              <h3 data-i18n="intro.step3Title">자라난 트리 감상하기</h3>
+              <p data-i18n="intro.step3DescFixed">가지처럼 이어진 장면들을 따라가며, 내가 어떻게 좋아하게 되었는지 다시 바라보세요.</p>
+              <div class="how-to-point">이어진 장면이 좋아하게 된 경로를 보여줍니다.</div>
+            </div>
           </div>
         </div>
       </section>
@@ -473,6 +572,7 @@
           <div class="value-item">
             <span class="material-symbols-outlined">psychology</span>
             <div>
+              <div class="value-item-eyebrow">감정의 경로</div>
               <h4 data-i18n="intro.visualizeGrowthTitle">좋아하게 된 경로를 따라가는 공간</h4>
               <p data-i18n="intro.visualizeGrowthDesc">흩어진 순간들이 이어지며 마음의 방향과 흐름이 보입니다.</p>
             </div>
@@ -480,6 +580,7 @@
           <div class="value-item">
             <span class="material-symbols-outlined">group</span>
             <div>
+              <div class="value-item-eyebrow">공개 감상</div>
               <h4 data-i18n="intro.value2Title">다른 팬의 마음을 감상하는 공간</h4>
               <p data-i18n="intro.value2Desc">공개된 러브트리를 따라가며 비슷한 설렘과 장면을 발견할 수 있습니다.</p>
             </div>
@@ -487,6 +588,7 @@
           <div class="value-item">
             <span class="material-symbols-outlined">auto_awesome</span>
             <div>
+              <div class="value-item-eyebrow">오래 남는 장면</div>
               <h4 data-i18n="intro.value3Title">오래 지나도 다시 꺼내보는 공간</h4>
               <p data-i18n="intro.value3DescFixed">잊고 있던 장면도 트리 안에서는 그때의 온도로 다시 살아납니다.</p>
             </div>
@@ -499,8 +601,8 @@
         <h2 data-i18n="intro.ctaTitle">첫 순간을 남길 준비가 되셨나요?</h2>
         <p data-i18n="intro.ctaDesc">좋아하는 마음이 시작된 장면부터 당신의 러브트리를 천천히 키워보세요.</p>
         <div class="cta-buttons">
-          <a href="my-trees.html" class="btn-round btn-primary" style="text-decoration: none; padding: 14px 32px;" data-i18n="intro.ctaPrimary">첫 순간 남기러 가기</a>
-          <a href="search.html" class="btn-round btn-outline" style="text-decoration: none; padding: 14px 32px;" data-i18n="intro.heroBrowseCta">공개 트리 감상하기</a>
+          <a href="my-trees.html" class="intro-cta-link" data-i18n="intro.ctaPrimary"><span class="btn-round btn-primary intro-cta-primary">첫 순간 남기러 가기</span></a>
+          <a href="search.html" class="intro-cta-link" data-i18n="intro.heroBrowseCta"><span class="btn-round btn-outline intro-cta-secondary">공개 트리 감상하기</span></a>
         </div>
       </section>
     </main>
