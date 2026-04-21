@@ -49,6 +49,10 @@
       transition: all 0.2s ease;
       box-shadow: 0 10px 24px rgba(75, 64, 57, 0.08);
       z-index: 2;
+      font-size: 24px;
+      font-weight: 500;
+      line-height: 1;
+      padding: 0;
     }
 
     .settings-close-btn:hover {
@@ -58,9 +62,9 @@
       transform: translateY(-1px);
     }
 
-    .settings-close-btn .material-symbols-outlined {
-      font-size: 22px;
-      font-variation-settings: 'wght' 500;
+    .settings-close-glyph {
+      display: inline-block;
+      transform: translateY(-1px);
     }
 
     .settings-card h1 {
@@ -228,7 +232,7 @@
     <main class="settings-content" id="settingsContent">
       <div class="settings-card" id="settingsCard" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
         <button type="button" class="settings-close-btn" id="settingsCloseBtn" aria-label="설정 닫기" title="닫기">
-          <span class="material-symbols-outlined">close</span>
+          <span class="settings-close-glyph" aria-hidden="true">×</span>
         </button>
         <h1 id="settingsTitle">설정</h1>
         <p class="settings-subtitle">러브트리를 어떻게 공개할지 정합니다</p>
