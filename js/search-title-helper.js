@@ -1,6 +1,6 @@
 /**
  * LoveBud Search Title Helper
- * v20260421-1
+ * v20260421-2
  * 
  * Shared helper for browse/search title formatting.
  * Used by: search-card-renderer.js, search-preview-renderer.js
@@ -53,7 +53,9 @@
         const tags = Array.isArray(tree?.emotionTags) ? tree.emotionTags : [];
         for (const tag of tags) {
             const safeTag = sanitizeBrowseLabel(tag);
-            if (safeTag) return safeTag;
+            if (!safeTag) continue;
+            if (safeTag === '기록' || safeTag === 'tag_record') continue;
+            return safeTag;
         }
         return '';
     }
