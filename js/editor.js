@@ -482,7 +482,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (window.LoveBudCache) {
-                window.LoveBudCache.set(MEMORIES_CACHE_KEY, memories, 2 * 60 * 1000);
+                const cacheKey = 'memories_' + (treeId || 'default');
+                window.LoveBudCache.set(cacheKey, memories, 2 * 60 * 1000);
             }
 
             if (currentEditingMemory && currentEditingMemory.id === selectedNodeId) {
