@@ -57,14 +57,38 @@
       .replace(/'/g, "&#39;");
   }
 
+  function getLangLabel(lang) {
+    return lang === 'en' ? 'English' : '한국어';
+  }
+
+  function buildLangInlineOptions(currentLang) {
+    return [
+      '<div class="user-dropdown-meta" style="border-bottom:none;padding-bottom:6px;">언어 / Language</div>',
+      '<button type="button" class="user-dropdown-item lang-option' + (currentLang === 'ko' ? ' active' : '') + '" data-lang="ko">',
+      '<span class="material-symbols-outlined">check</span>한국어',
+      '</button>',
+      '<button type="button" class="user-dropdown-item lang-option' + (currentLang === 'en' ? ' active' : '') + '" data-lang="en">',
+      '<span class="material-symbols-outlined">check</span>English',
+      '</button>'
+    ].join('');
+  }
+
   function buildLoginButton() {
     var basePath = getBasePath();
     var loginHref = basePath + "login.html";
-    return (
-      '<a href="' +
-      loginHref +
-      '" class="btn-round btn-outline" style="text-decoration:none;padding:8px 20px;font-size:14px;">로그인</a>'
-    );
+    var currentLang = typeof window.getCurrentLang === 'function' ? window.getCurrentLang() : 'ko';
+    return [
+      '<div style="display:flex;align-items:center;gap:10px;">',
+      '<div class="lang-toggle">',
+      '<button type="button" class="btn-round btn-outline lang-menu-trigger" style="text-decoration:none;padding:8px 14px;font-size:13px;font-weight:600;">언어 / Language</button>',
+      '<div class="lang-dropdown" style="min-width:132px;">',
+      '<button type="button" class="lang-option' + (currentLang === 'ko' ? ' active' : '') + '" data-lang="ko">한국어</button>',
+      '<button type="button" class="lang-option' + (currentLang === 'en' ? ' active' : '') + '" data-lang="en">English</button>',
+      '</div>',
+      '</div>',
+      '<a href="' + loginHref + '" class="btn-round btn-outline" style="text-decoration:none;padding:8px 20px;font-size:14px;">로그인</a>',
+      '</div>'
+    ].join('');
   }
 
   function getUserAvatarInitial(user) {
@@ -87,6 +111,7 @@
     var myTreesHref = isPagesContext ? "my-trees.html" : "pages/my-trees.html";
     var settingsHref = isPagesContext ? "settings.html" : "pages/settings.html";
     var avatarInitial = getUserAvatarInitial(user);
+    var currentLang = typeof window.getCurrentLang === 'function' ? window.getCurrentLang() : 'ko';
 
     var avatarContent = hasPhoto
       ? '<img src="' +
@@ -113,6 +138,8 @@
       '<a href="' +
         settingsHref +
         '" class="user-dropdown-item"><span class="material-symbols-outlined">settings</span>설정</a>',
+      '<div class="dropdown-divider"></div>',
+      buildLangInlineOptions(currentLang),
       '<div class="dropdown-divider"></div>',
       '<button class="user-dropdown-item" onclick="signOut()"><span class="material-symbols-outlined">logout</span>로그아웃</button>',
       "</div>",
@@ -172,12 +199,57 @@
         document.querySelectorAll(".user-dropdown-menu.show").forEach(function (m) {
           if (m !== menu) m.classList.remove("show");
         });
+        document.querySelectorAll(".lang-dropdown.show").forEach(function (m) {
+          m.classList.remove("show");
+        });
         menu.classList.toggle("show");
         return;
       }
+
+      var langTrigger = e.target.closest('.lang-menu-trigger');
+      if (langTrigger) {
+        e.stopPropagation();
+        var langDropdown = langTrigger.parentElement && langTrigger.parentElement.querySelector('.lang-dropdown');
+        if (!langDropdown) return;
+        document.querySelectorAll('.lang-dropdown.show').forEach(function (m) {
+          if (m !== langDropdown) m.classList.remove('show');
+        });
+        langDropdown.classList.toggle('show');
+        return;
+      }
+
+      var langOption = e.target.closest('.lang-option[data-lang]');
+      if (langOption) {
+        e.stopPropagation();
+        var lang = langOption.getAttribute('data-lang');
+        if (lang === 'ko' || lang === 'en') {
+          if (typeof window.setCurrentLang === 'function') {
+            window.setCurrentLang(lang);
+          }
+          if (typeof window.applyI18n === 'function') {
+            window.applyI18n();
+          }
+          if (typeof window.triggerLangChange === 'function') {
+            window.triggerLangChange(lang);
+          }
+          document.querySelectorAll('.lang-option[data-lang]').forEach(function (node) {
+            node.classList.toggle('active', node.getAttribute('data-lang') === lang);
+          });
+        }
+        document.querySelectorAll('.lang-dropdown.show').forEach(function (m) {
+          m.classList.remove('show');
+        });
+        return;
+      }
+
       if (!e.target.closest(".user-dropdown")) {
         document.querySelectorAll(".user-dropdown-menu.show").forEach(function (m) {
           m.classList.remove("show");
+        });
+      }
+      if (!e.target.closest('.lang-toggle')) {
+        document.querySelectorAll('.lang-dropdown.show').forEach(function (m) {
+          m.classList.remove('show');
         });
       }
     });
@@ -193,5 +265,6 @@
     buildUserDropdown: buildUserDropdown,
     updateNavUI: updateNavUI,
     attachDropdownListener: attachDropdownListener,
+    getLangLabel: getLangLabel,
   };
 })();
