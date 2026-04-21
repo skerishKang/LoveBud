@@ -38,7 +38,7 @@ exports.handler = async (event) => {
 
   try {
     const params = event.queryStringParameters || {};
-    const limit = validateLimit(params.limit, 20, 50);
+    const limit = validateLimit(params.limit, 100, 200);
 
     debugLog('[community-memories] querying memories', { limit });
 
