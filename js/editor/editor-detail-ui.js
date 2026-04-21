@@ -39,13 +39,6 @@ function createEditorDetailUI(deps) {
         return icon;
     };
 
-    const createTextBlock = (tag, text, styleMap = null) => {
-        const el = document.createElement(tag);
-        el.textContent = text || '';
-        if (styleMap) Object.assign(el.style, styleMap);
-        return el;
-    };
-
     const getTreeState = () => {
         const canonicalRootId = getCanonicalRootId();
         const treeMemories = getTreeMemories();
@@ -80,14 +73,8 @@ function createEditorDetailUI(deps) {
             return trimmed;
         }).filter(Boolean);
 
-        if (normalizedTags.length > 0) {
-            return normalizedTags;
-        }
-
-        if (!isEmptyState && isRootSelected) {
-            return [formatI18nText('editor_root_emotion_tag', '첫 마음')];
-        }
-
+        if (normalizedTags.length > 0) return normalizedTags;
+        if (!isEmptyState && isRootSelected) return [formatI18nText('editor_root_emotion_tag', '첫 마음')];
         return [];
     };
 
@@ -102,41 +89,55 @@ function createEditorDetailUI(deps) {
         return formatI18nText('editor_selected_memo_fallback', '이 순간의 마음을 한 줄 남겨두면, 이어진 흐름을 다시 떠올리기 쉬워져요.');
     };
 
-    const createPillButton = ({ label, icon, tone = 'default' }) => {
+    const createPillButton = ({ label, icon, tone = 'soft' }) => {
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.style.display = 'inline-flex';
         btn.style.alignItems = 'center';
         btn.style.justifyContent = 'center';
         btn.style.gap = '6px';
+        btn.style.minHeight = '38px';
         btn.style.padding = tone === 'primary' ? '10px 15px' : '9px 13px';
         btn.style.borderRadius = '999px';
         btn.style.fontSize = '12px';
         btn.style.fontWeight = '800';
         btn.style.cursor = 'pointer';
-        btn.style.transition = 'transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease';
+        btn.style.transition = 'transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, border-color 0.18s ease';
         btn.style.border = '1px solid rgba(144,73,81,0.10)';
-        btn.style.background = tone === 'primary'
-            ? 'linear-gradient(180deg, rgba(144,73,81,0.98), rgba(144,73,81,0.90))'
-            : 'linear-gradient(180deg, rgba(255,255,255,0.98), rgba(247,242,239,0.96))';
-        btn.style.color = tone === 'primary' ? '#fff' : 'var(--primary)';
         btn.style.boxShadow = tone === 'primary'
             ? '0 10px 22px rgba(144, 73, 81, 0.18)'
             : '0 6px 16px rgba(75, 64, 57, 0.06)';
+        btn.style.background = tone === 'primary'
+            ? 'linear-gradient(180deg, rgba(144,73,81,0.98), rgba(144,73,81,0.90))'
+            : 'linear-gradient(180deg, rgba(255,255,255,0.98), rgba(247,242,239,0.96))';
+        btn.style.color = tone === 'primary'
+            ? '#fff'
+            : tone === 'ghost'
+                ? 'var(--on-surface-variant)'
+                : 'var(--primary)';
+
+        if (tone === 'ghost') {
+            btn.style.background = 'rgba(255,255,255,0.72)';
+            btn.style.borderColor = 'rgba(144,73,81,0.08)';
+        }
+
         if (icon) btn.appendChild(createInlineIcon(icon, '14px'));
         btn.appendChild(document.createTextNode(label));
+
         btn.addEventListener('mouseenter', () => {
             btn.style.transform = 'translateY(-1px)';
         });
         btn.addEventListener('mouseleave', () => {
             btn.style.transform = 'translateY(0)';
         });
+
         return btn;
     };
 
-    const createShareTreeButton = ({ shareLabel }) => createPillButton({
-        label: shareLabel,
-        icon: 'content_copy'
+    const createShareTreeButton = () => createPillButton({
+        label: formatI18nText('share_link', '링크 복사'),
+        icon: 'content_copy',
+        tone: 'soft'
     });
 
     const createVisibilityToggleButton = ({ isPublic }) => createPillButton({
@@ -144,13 +145,13 @@ function createEditorDetailUI(deps) {
             ? formatI18nText('editor_make_private', '이 트리 비공개로 전환')
             : formatI18nText('editor_make_public', '이 트리 공개하기'),
         icon: isPublic ? 'lock' : 'public',
-        tone: 'default'
+        tone: 'soft'
     });
 
     const createOpenDetailButton = () => createPillButton({
         label: formatI18nText('editor_open_detail', '상세로 보기'),
         icon: 'open_in_new',
-        tone: 'primary'
+        tone: 'ghost'
     });
 
     const bindShareButton = ({ btn, data, treeId, i18n, showToast }) => {
@@ -209,7 +210,7 @@ function createEditorDetailUI(deps) {
         visIcon,
         visLabel,
         visInfo,
-        visStyle,
+        isPublic,
         countLabel,
         shareButtonEl = null,
         visibilityToggleButtonEl = null,
@@ -238,30 +239,49 @@ function createEditorDetailUI(deps) {
         titleWrap.style.gap = '8px';
         titleWrap.style.flex = '1 1 220px';
 
-        titleWrap.appendChild(createTextBlock('div', formatI18nText('current_tree', '현재 트리'), {
-            fontSize: '11px',
-            fontWeight: '800',
-            letterSpacing: '.08em',
-            textTransform: 'uppercase',
-            color: 'var(--on-surface-variant)'
-        }));
+        const eyebrow = document.createElement('div');
+        eyebrow.textContent = formatI18nText('current_tree', '현재 트리');
+        eyebrow.style.fontSize = '11px';
+        eyebrow.style.fontWeight = '800';
+        eyebrow.style.letterSpacing = '.08em';
+        eyebrow.style.textTransform = 'uppercase';
+        eyebrow.style.color = 'var(--on-surface-variant)';
+        titleWrap.appendChild(eyebrow);
 
-        titleWrap.appendChild(createTextBlock('div', displayTreeTitle, {
-            fontSize: '22px',
-            fontWeight: '900',
-            color: 'var(--on-surface)',
-            lineHeight: '1.28',
-            letterSpacing: '-0.035em'
-        }));
+        const title = document.createElement('div');
+        title.textContent = displayTreeTitle;
+        title.style.fontSize = '24px';
+        title.style.fontWeight = '900';
+        title.style.color = 'var(--on-surface)';
+        title.style.lineHeight = '1.24';
+        title.style.letterSpacing = '-0.04em';
+        titleWrap.appendChild(title);
 
-        titleWrap.appendChild(createTextBlock('div', countLabel, {
-            fontSize: '12px',
-            color: 'var(--on-surface-variant)',
-            lineHeight: '1.75'
-        }));
+        const count = document.createElement('div');
+        count.textContent = countLabel;
+        count.style.fontSize = '12px';
+        count.style.color = 'var(--on-surface-variant)';
+        count.style.lineHeight = '1.75';
+        titleWrap.appendChild(count);
 
         const visBadge = document.createElement('span');
-        visBadge.style.cssText = `${visStyle}padding:6px 11px;border-radius:999px;display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;box-shadow:0 4px 12px rgba(75,64,57,0.05);`;
+        visBadge.style.padding = '6px 11px';
+        visBadge.style.borderRadius = '999px';
+        visBadge.style.display = 'inline-flex';
+        visBadge.style.alignItems = 'center';
+        visBadge.style.gap = '5px';
+        visBadge.style.fontSize = '12px';
+        visBadge.style.fontWeight = '700';
+        visBadge.style.boxShadow = '0 4px 12px rgba(75,64,57,0.05)';
+        if (isPublic) {
+            visBadge.style.background = 'rgba(76,175,80,0.1)';
+            visBadge.style.color = '#4caf50';
+            visBadge.style.border = '1px solid rgba(76,175,80,0.25)';
+        } else {
+            visBadge.style.background = 'rgba(158,158,158,0.1)';
+            visBadge.style.color = '#757575';
+            visBadge.style.border = '1px solid rgba(158,158,158,0.25)';
+        }
         visBadge.appendChild(createInlineIcon(visIcon, '12px'));
         visBadge.appendChild(document.createTextNode(visLabel));
 
@@ -270,11 +290,12 @@ function createEditorDetailUI(deps) {
         wrap.appendChild(topRow);
 
         if (visInfo) {
-            wrap.appendChild(createTextBlock('div', visInfo, {
-                fontSize: '12px',
-                color: 'var(--on-surface-variant)',
-                lineHeight: '1.75'
-            }));
+            const info = document.createElement('div');
+            info.textContent = visInfo;
+            info.style.fontSize = '12px';
+            info.style.color = 'var(--on-surface-variant)';
+            info.style.lineHeight = '1.75';
+            wrap.appendChild(info);
         }
 
         const actionsRow = document.createElement('div');
@@ -284,8 +305,8 @@ function createEditorDetailUI(deps) {
         actionsRow.style.flexWrap = 'wrap';
         actionsRow.style.paddingTop = '2px';
 
-        if (shareButtonEl) actionsRow.appendChild(shareButtonEl);
         if (visibilityToggleButtonEl) actionsRow.appendChild(visibilityToggleButtonEl);
+        if (shareButtonEl) actionsRow.appendChild(shareButtonEl);
         if (openDetailButtonEl) actionsRow.appendChild(openDetailButtonEl);
 
         if (actionsRow.children.length > 0) {
@@ -404,14 +425,14 @@ function createEditorDetailUI(deps) {
         }
         if (momentCountEl) {
             momentCountEl.textContent = treeState.hasMoments
-                ? formatI18nText('sidebar_moment_count', `순간 ${count}개가 이어지고 있어요`, { count })
-                : formatI18nText('sidebar_moment_count_empty', '아직 이어진 순간이 없어요');
+                ? formatI18nText('sidebar_moment_count', `순간 {count}개가 이어지고 있어요`, { count })
+                : formatI18nText('sidebar_moment_count_empty', '아직 남긴 순간이 없습니다');
         }
         if (flowSummaryEl) {
             flowSummaryEl.textContent = selected?.title
-                ? formatI18nText('sidebar_flow_summary_selected', `지금은 "${selected.title}" 순간에 마음이 머물러 있어요.`, { title: selected.title })
+                ? formatI18nText('sidebar_flow_summary_selected', `지금은 "{title}" 순간에 마음이 머물러 있어요.`, { title: selected.title })
                 : treeState.hasMoments
-                    ? formatI18nText('sidebar_flow_summary_connected', `${count}개의 순간이 하나의 러브트리로 차곡차곡 이어지고 있어요.`, { count })
+                    ? formatI18nText('sidebar_flow_summary_connected', `{count}개의 순간이 하나의 러브트리로 차곡차곡 이어지고 있어요.`, { count })
                     : formatI18nText('sidebar_flow_summary_empty', '첫 기억이 심어지면 이곳에 감정의 흐름이 차곡차곡 쌓여요.');
         }
         if (hintEl) {
@@ -435,9 +456,7 @@ function createEditorDetailUI(deps) {
                 : i18n('editor_add_next_memory');
         }
         if (addMemoryEyebrow) {
-            addMemoryEyebrow.textContent = isEmptyTree
-                ? i18n('editor_add_memory_eyebrow')
-                : i18n('editor_add_memory_eyebrow');
+            addMemoryEyebrow.textContent = i18n('editor_add_memory_eyebrow');
         }
         if (addMemoryIntro) {
             addMemoryIntro.textContent = isEmptyTree
@@ -456,9 +475,6 @@ function createEditorDetailUI(deps) {
         const visInfo = isPublic
             ? formatI18nText('editor_tree_public_info', '이 트리 전체가 공개되어 있어요. 링크가 있는 사람은 감상할 수 있습니다.')
             : formatI18nText('editor_tree_private_info', '이 트리 전체는 비공개예요. 지금은 나만 볼 수 있습니다.');
-        const visStyle = isPublic
-            ? 'background:rgba(76,175,80,0.1);color:#4caf50;border:1px solid rgba(76,175,80,0.25);'
-            : 'background:rgba(158,158,158,0.1);color:#757575;border:1px solid rgba(158,158,158,0.25);';
         const displayTreeTitle = resolveTreeTitleText(currentTree.title);
         const treeState = getTreeState();
         const canonicalRootId = treeState.canonicalRootId;
@@ -494,10 +510,8 @@ function createEditorDetailUI(deps) {
             let openDetailBtn = null;
 
             if (!isEmptyState && data?.id) {
-                shareBtn = createShareTreeButton({
-                    shareLabel: i18n('share_link') || '링크 복사'
-                });
                 visibilityToggleBtn = createVisibilityToggleButton({ isPublic });
+                shareBtn = createShareTreeButton();
                 openDetailBtn = createOpenDetailButton();
             }
 
@@ -506,7 +520,7 @@ function createEditorDetailUI(deps) {
                 visIcon,
                 visLabel,
                 visInfo,
-                visStyle,
+                isPublic,
                 countLabel: localBadgeText ? `${treeCountLabel} · ${localBadgeText}` : treeCountLabel,
                 shareButtonEl: shareBtn,
                 visibilityToggleButtonEl: visibilityToggleBtn,
@@ -665,7 +679,7 @@ function createEditorDetailUI(deps) {
             memoContainer.style.width = '100%';
 
             const memoBody = document.createElement('div');
-            memoBody.style.lineHeight = '1.7';
+            memoBody.style.lineHeight = '1.8';
             memoBody.style.fontSize = '0.95rem';
             memoBody.style.color = 'var(--on-surface)';
             memoBody.style.whiteSpace = 'pre-line';
@@ -677,7 +691,7 @@ function createEditorDetailUI(deps) {
             if (!isEmptyState && typeof updateSelectedMemoryFields === 'function') {
                 const editBtn = document.createElement('button');
                 editBtn.className = 'memory-edit-button';
-                editBtn.style.marginTop = '8px';
+                editBtn.style.marginTop = '10px';
                 editBtn.style.marginLeft = '0';
                 editBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;margin-right:2px;">edit</span>' + formatI18nText('editMemoryNote', '메모 수정');
                 editBtn.onclick = () => {
@@ -764,6 +778,7 @@ function createEditorDetailUI(deps) {
 
         if (memoryActions) {
             memoryActions.style.display = isEmptyState ? 'none' : 'flex';
+            memoryActions.style.marginTop = '4px';
         }
     };
 
