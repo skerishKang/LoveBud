@@ -104,6 +104,27 @@ async function queryTrees(filters = {}) {
   return r.rows;
 }
 
+async function queryPublicMemoryCounts(treeIds = [], minCount = 0) {
+  if (!Array.isArray(treeIds) || treeIds.length === 0) {
+    return [];
+  }
+
+  const r = await query(
+    `SELECT tree_id, COUNT(*)::int AS memory_count
+     FROM memories
+     WHERE visibility = 'public'
+       AND tree_id = ANY($1)
+     GROUP BY tree_id
+     HAVING COUNT(*) >= $2`,
+    [treeIds, Number(minCount) || 0]
+  );
+
+  return r.rows.map((row) => ({
+    tree_id: row.tree_id,
+    memory_count: Number(row.memory_count || 0),
+  }));
+}
+
 async function createTree(data) {
   const id = require('crypto').randomUUID();
   const title = data.title || '나의 Lovetree';
@@ -252,7 +273,7 @@ async function deleteMemory(memoryId) {
 }
 
 module.exports = {
-  getTree, queryTrees, createTree, updateTree, deleteTree,
+  getTree, queryTrees, queryPublicMemoryCounts, createTree, updateTree, deleteTree,
   getMemory, queryMemories, createMemory, updateMemory, deleteMemory,
   validateRequired, validateOptionalString, validateVisibility,
   validateSourceType, validateUuid, validateLimit
