@@ -14,8 +14,11 @@ const {
   validateUuid,
   validateVisibility,
   validateOptionalString,
+  getPublicMemoryCount,
 } = require('./_lib/doc-store');
 const { serializeTree, serializeMemoryList } = require('./_lib/serializers');
+
+const PUBLICATION_MIN_PUBLIC_MEMORIES = 3;
 
 exports.handler = async (event) => {
   const requestOrigin = event.headers?.origin || event.headers?.Origin || '';
@@ -85,6 +88,15 @@ exports.handler = async (event) => {
       }
       if (body.visibility !== undefined) {
         patch.visibility = validateVisibility(body.visibility, rawTree.visibility);
+        if (patch.visibility === 'public' && rawTree.visibility !== 'public') {
+          const publicMemoryCount = await getPublicMemoryCount(validatedTreeId);
+          if (publicMemoryCount < PUBLICATION_MIN_PUBLIC_MEMORIES) {
+            throw httpError(
+              409,
+              `이 러브트리는 공개 순간이 ${PUBLICATION_MIN_PUBLIC_MEMORIES}개 이상일 때만 공개할 수 있어요. 먼저 순간을 더 이어가 주세요.`
+            );
+          }
+        }
       }
 
       const updated = await updateTree(validatedTreeId, patch);
