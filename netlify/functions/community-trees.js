@@ -21,7 +21,7 @@ function buildSummaryFromTreeRow(tree) {
     memoryCount,
     emotionTags: [],
     stage: estimateStage(memoryCount),
-    theme: '',
+    theme: 'LoveTree',
     timeRange: ''
   };
 }
