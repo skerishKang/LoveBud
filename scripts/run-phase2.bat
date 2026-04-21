@@ -1,5 +1,6 @@
+REM Requires NETLIFY_DATABASE_URL or DATABASE_URL to be set before running.
 @echo off
+if not defined NETLIFY_DATABASE_URL if defined DATABASE_URL set NETLIFY_DATABASE_URL=%DATABASE_URL%
 cd /d G:\다른 컴퓨터\내 컴퓨터\LoveBud
 set SEED_STAGE=phase2
-set NETLIFY_DATABASE_URL=postgresql://neondb_owner:REDACTED@ep-little-poetry-a1vjyiim-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
 node scripts\seed-public-trees.js

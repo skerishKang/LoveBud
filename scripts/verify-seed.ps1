@@ -1,5 +1,4 @@
-$env:NETLIFY_DATABASE_URL = "postgresql://neondb_owner:REDACTED@ep-little-poetry-a1vjyiim-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
-$env:DATABASE_URL = "postgresql://neondb_owner:REDACTED@ep-little-poetry-a1vjyiim-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+# Requires NETLIFY_DATABASE_URL or DATABASE_URL to be set in the shell.
 
 # Get verification data
 $queryAll = "SELECT COUNT(*) as total FROM trees;"

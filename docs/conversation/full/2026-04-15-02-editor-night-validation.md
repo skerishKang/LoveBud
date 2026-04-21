@@ -2893,7 +2893,7 @@ authDomain|
   # 3. "Create database" → 이름: `lovebud`
   # 4. 연결 문자열 복사 (예시 형식):
   #
-  postgresql://[user]:[password]@[endpoint]/lovebud?sslmode=require
+  postgresql://REDACTED
   ```
 
   #### 단계 2: SQL 스키마 적용
@@ -3068,7 +3068,7 @@ authDomain|
   3. 왼쪽 메뉴 **"Connection"** 클릭 →
   **"PostgreSQL"** 탭 선택
   4. **"Connection string"** 복사 (형식:
-  `postgresql://.../lovebud?sslmode=require`)
+  `postgresql://REDACTED`)
 
   ---
 
@@ -3112,7 +3112,7 @@ authDomain|
   relovetree/.secrets/firebase-admin.json]
   (cci:7://file:///g:/Ddrive/BatangD/task/
   | `NETLIFY_DATABASE_URL` | Neon에서 복사한
-  `postgresql://.../lovebud?...` 연결 문자열 |
+  `postgresql://REDACTED` 연결 문자열 |
   | `CORS_ALLOWED_ORIGINS` | `https://
   lovebud.netlify.app` |
 
@@ -3162,7 +3162,7 @@ authDomain|
   4. DB 이름을 lovebud 로 생성합니다.
   5. Connection 메뉴에서 PostgreSQL 연결 문자열을
      복사합니다.
-      - postgresql://.../lovebud?sslmode=require
+      - postgresql://REDACTED
         형태여야 합니다.
 
   그다음 바로:
@@ -3197,7 +3197,7 @@ authDomain|
   neondb_owner
   Connection string
 
-  postgresql://neondb_owner:REDACTED@ep-little-poetry-a1vjyiim-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+  postgresql://REDACTED
   이걸로 니가 못하고?
 
 
@@ -3299,7 +3299,7 @@ bud_apply_schema.py <<'PY'
 from pathlib import Path
 import psycopg
 conninfo =
-"postgresql://neondb_owner:REDACTED@ep-little-poetry-a1vjyiim-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+"postgresql://REDACTED"
 ead_text()
 with psycopg.connect(conninfo, autocommit=True) as
 conn:
@@ -3798,7 +3798,7 @@ rRtXB53b1' timeout 15s netlify env:set --help | sed
 
   지금 가지고 계신 원본:
 
-  postgresql://neondb_owner:REDACTED@ep-little-poetry-a1vjyiim-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+  postgresql://REDACTED
 
   여기서 바꿀 것은 DB 이름 부분만입니다.
 
@@ -3807,7 +3807,7 @@ rRtXB53b1' timeout 15s netlify env:set --help | sed
 
   즉 넣을 값:
 
-  postgresql://neondb_owner:REDACTED@ep-little-poetry-a1vjyiim-pooler.ap-southeast-1.aws.neon.tech/lovebud?sslmode=require&channel_binding=require
+  postgresql://REDACTED
 
   주의:
 
@@ -4091,7 +4091,7 @@ rRtXB53b1' timeout 20s netlify help | sed -n
 -package=pg node - <<'NODE'
 const { Pool } = require('pg');
 const connectionString =
-'postgresql://neondb_owner:REDACTED@ep-little-poetry-a1vjyiim-pooler.ap-southeast-1.aws.neon.tech/lovebud?sslmode=require&channel_binding=require';
+'postgresql://REDACTED';
 (async () => {
   const pool = new Pool({ connectionString, ssl: {
 rejectUnauthorized: false } });
@@ -4547,7 +4547,7 @@ store.js,
   드리겠습니다.
 
 
-› postgresql://neondb_owner:REDACTED@ep-lit  이렇게 바꿈
+› postgresql://REDACTED  이렇게 바꿈
 
   channel_binding=require를 뺀 건 맞는 방향입니다.
 
@@ -4557,7 +4557,7 @@ store.js,
   적용한 대상은 neondb가 아니라 lovebud였습니다. 그
   러면 값은 이런 형태여야 합니다.
 
-  postgresql://neondb_owner:...@ep-little-poetry-a1vjyiim-pooler.ap-southeast-1.aws.neon.tech/lovebud?
+  postgresql://REDACTED
   - 503 Database is not configured면 env 반영 문제
   - 500 Internal error면 DB 연결 또는 테이블/쿼리
     문제
@@ -4789,7 +4789,7 @@ feedback` to report the issue.
   개를 지금 코드 기준으로 더 좁혀드리겠습니다.
 
 
-› postgresql://neondb_owner:REDACTED@ep-little-poetry-a1vjyiim-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require
+› postgresql://REDACTED
   이게 잘못된건가?
 
 
@@ -4803,7 +4803,7 @@ feedback` to report the issue.
   습니다. 그러면 Netlify에는 아래처럼 들어가야 맞습
   니다.
 
-  postgresql://neondb_owner:REDACTED@ep-little-poetry-a1vjyiim-pooler.ap-southeast-1.aws.neon.tech/lovebud?sslmode=require
+  postgresql://REDACTED
 
   즉 바뀌어야 하는 건 딱 이 부분입니다.
 
@@ -4833,7 +4833,7 @@ feedback` to report the issue.
 
 • 아래 값으로 넣으면 됩니다.
 
-  postgresql://neondb_owner:REDACTED@ep-little-poetry-a1vjyiim-pooler.ap-southeast-1.aws.neon.tech/lovebud?sslmode=require
+  postgresql://REDACTED
 
   바뀐 핵심은 DB 이름만 neondb → lovebud입니다.
 

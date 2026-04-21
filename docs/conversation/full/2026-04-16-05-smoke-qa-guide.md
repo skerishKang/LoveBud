@@ -3273,7 +3273,7 @@
   있는지, 아니면 전혀 다른 연결인지 보겠습니다.
 
 • Ran rg -n "DATABASE_URL|NETLIFY_DATABASE_URL|NEON|neon|
-  │ postgresql://|POSTGRES|VITE_|SUPABASE|FIREBASE" '/mnt/g/다른 컴
+  │ postgresql://REDACTED" '/mnt/g/다른 컴
   │ 퓨터/내 컴퓨터/LoveBud' 2>/dev/null | sed -n '1,240p'
   └ /mnt/g/다른 컴퓨터/내 컴퓨터/LoveBud/scripts/insert-memories.js:
     5:  connectionString:
@@ -3364,7 +3364,7 @@
 LoveBud' && node - <<'JS'
 const { Pool } = require('pg');
 const conn =
-'postgresql://neondb_owner:REDACTED@ep-little-poetry-a1vjyiim-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require';
+'postgresql://REDACTED';
 (async () => {
 horized: false } });
   const client = await pool.connect();
@@ -3415,7 +3415,7 @@ JS
 
   - 133-relovetree/.env의 DB 호스트와
   - LoveBud/scripts/insert-memories.js의 DB 호스트가 같습니다.
-  - 둘 다 같은 Neon 호스트 ep-little-poetry-a1vjyiim-pooler.ap-
+  - 둘 다 같은 Neon 호스트 REDACTED.neon.host
     southeast-1.aws.neon.tech / neondb를 가리킵니다.
 
   실제 DB 상태도 확인했습니다.
@@ -3782,7 +3782,7 @@ JS
   ```javascript
   // scripts/insert-memories.js (line 5)
   connectionString:
-  'postgresql://neondb_owner:...@ep-...neon.tech/...'
+  'postgresql://REDACTED'
   ```
 
   ### 해결안
@@ -3796,11 +3796,11 @@ JS
   workdiary/133-relovetree/.env:0:0-0:0) 또는 `.env.local`)
   ```bash
   # LoveBud DB (Neon)
-  NEON_DATABASE_URL=postgresql://neondb_owner:...@ep-...neon.tech/
+  NEON_DATABASE_URL=postgresql://REDACTED
   neondb?sslmode=require
 
   # 또는
-  DATABASE_URL=postgresql://...
+  DATABASE_URL=postgresql://REDACTED
   ```
 
   ### 로컬 실행 방법
@@ -4176,11 +4176,11 @@ JS
      2 +# Copy this file to `.env` for local script execution.
      3 +
      4 +# Preferred by Netlify Functions and local scripts
-     5 +NETLIFY_DATABASE_URL=postgresql://username:password@host/neon
+     5 +NETLIFY_DATABASE_URL=postgresql://REDACTED
         db?sslmode=require
      6 +
      7 +# Fallback key used by scripts
-     8 +DATABASE_URL=postgresql://username:password@host/neondb?sslmo
+     8 +DATABASE_URL=postgresql://REDACTED
         de=require
      9 +
     10 +# Optional script controls
@@ -4204,8 +4204,8 @@ JS
     13 +
     14  // Neon DB 연결
     15  const pool = new Pool({
-     5 -  connectionString: 'postgresql://neondb_owner:npg_5aH9oiPjWI
-        yJ@ep-little-poetry-a1vjyiim-pooler.ap-southeast-1.aws.neon.t
+     5 -  connectionString: 'postgresql://REDACTED
+        yJ@REDACTED.neon.hostsoutheast-1.aws.neon.t
         ech/neondb?sslmode=require',
     16 +  connectionString: DATABASE_URL,
     17    ssl: { rejectUnauthorized: false }
