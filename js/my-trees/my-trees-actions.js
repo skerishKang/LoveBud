@@ -1,10 +1,11 @@
 /**
  * LoveBud - My Trees Actions
- * v20260421-1
+ * v20260421-2
  *
  * Responsibilities:
  * - renameTree
  * - deleteTree
+ * - toggleTreeVisibility
  * - isTestPublicMode
  * - getDefaultVisibility
  * - createNewTree
@@ -66,6 +67,30 @@
     } catch (e) {
       console.error('[my-trees-actions] deleteTree failed:', e);
       options?.showToast?.(i18n('delete_fail') || '삭제에 실패했습니다.', 'error');
+    }
+  }
+
+  async function toggleTreeVisibility(treeId, currentVisibility, options) {
+    var i18n = getI18n(options);
+    var nextVisibility = currentVisibility === 'public' ? 'private' : 'public';
+
+    try {
+      if (window.apiClient && window.apiClient.updateTree) {
+        await window.apiClient.updateTree(treeId, { visibility: nextVisibility });
+        clearPersistentTreesCache();
+        options?.showToast?.(
+          nextVisibility === 'public'
+            ? (i18n('visibility_changed_public') || '이 트리가 공개로 전환되었습니다.')
+            : (i18n('visibility_changed_private') || '이 트리가 비공개로 전환되었습니다.'),
+          'success'
+        );
+        options?.reloadTrees?.();
+      } else {
+        options?.showToast?.(i18n('api_not_available') || 'API를 사용할 수 없습니다.', 'error');
+      }
+    } catch (e) {
+      console.error('[my-trees-actions] toggleTreeVisibility failed:', e);
+      options?.showToast?.(i18n('visibility_change_fail') || '공개 설정 변경에 실패했습니다.', 'error');
     }
   }
 
@@ -187,6 +212,7 @@
   window.LoveBudMyTreesActions = {
     renameTree: renameTree,
     deleteTree: deleteTree,
+    toggleTreeVisibility: toggleTreeVisibility,
     isTestPublicMode: isTestPublicMode,
     getDefaultVisibility: getDefaultVisibility,
     createNewTree: createNewTree
