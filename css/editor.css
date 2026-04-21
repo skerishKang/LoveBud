@@ -7,6 +7,15 @@
     --header-height: 80px;
 }
 
+/* 초기 표시 상태 제어 클래스 */
+.editor-hidden-initial {
+    display: none !important;
+}
+
+.editor-visible-initial {
+    display: block !important;
+}
+
 body {
     overflow: hidden;
     height: 100vh;
