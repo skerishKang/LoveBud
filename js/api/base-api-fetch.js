@@ -109,7 +109,10 @@
         const errorData = await response.json();
         errorMsg = errorData.error || errorMsg;
       } catch (e) {}
-      throw new Error(errorMsg);
+      const error = new Error(errorMsg);
+      error.status = response.status;
+      error.statusCode = response.status;
+      throw error;
     }
 
     return await response.json();
