@@ -1,6 +1,9 @@
 const { ok, preflight, httpError, handleError } = require('./_lib/http');
-const { queryTrees, validateLimit } = require('./_lib/doc-store');
+const { queryTrees, queryPublicMemoryCounts, validateLimit } = require('./_lib/doc-store');
 const { serializeTreeList } = require('./_lib/serializers');
+
+const BROWSE_MIN_MEMORY_COUNT = 3;
+const SUMMARY_FETCH_MULTIPLIER = 8;
 
 function estimateStage(memoryCount) {
   if (memoryCount <= 0) return 'empty';
@@ -9,8 +12,8 @@ function estimateStage(memoryCount) {
   return '최애';
 }
 
-function buildSummaryFromTreeRow(tree) {
-  const memoryCount = 0;
+function buildSummaryFromTreeRow(tree, memoryCount) {
+  const safeCount = Number(memoryCount || 0);
   return {
     id: tree.id,
     title: tree.title || '',
@@ -18,9 +21,9 @@ function buildSummaryFromTreeRow(tree) {
     createdAt: tree.created_at || null,
     updatedAt: tree.updated_at || null,
     representativeThumbnail: '',
-    memoryCount,
+    memoryCount: safeCount,
     emotionTags: [],
-    stage: estimateStage(memoryCount),
+    stage: estimateStage(safeCount),
     theme: 'LoveTree',
     timeRange: ''
   };
@@ -43,13 +46,23 @@ exports.handler = async (event) => {
     const sort = String(params.sort || '').trim().toLowerCase() || 'latest';
     const limit = validateLimit(params.limit, 50, 100);
 
-    const trees = await queryTrees({ visibility: 'public', limit });
+    const treeFetchLimit = view === 'summary'
+      ? Math.min(Math.max(limit * SUMMARY_FETCH_MULTIPLIER, limit), 100)
+      : limit;
+
+    const trees = await queryTrees({ visibility: 'public', limit: treeFetchLimit });
 
     if (view !== 'summary') {
       return ok(serializeTreeList(trees), null, requestOrigin);
     }
 
-    let summaries = (Array.isArray(trees) ? trees : []).map((tree) => buildSummaryFromTreeRow(tree));
+    const treeIds = (Array.isArray(trees) ? trees : []).map((tree) => tree.id).filter(Boolean);
+    const memoryCounts = await queryPublicMemoryCounts(treeIds, BROWSE_MIN_MEMORY_COUNT);
+    const countMap = new Map(memoryCounts.map((row) => [row.tree_id, Number(row.memory_count || 0)]));
+
+    let summaries = (Array.isArray(trees) ? trees : [])
+      .filter((tree) => countMap.has(tree.id))
+      .map((tree) => buildSummaryFromTreeRow(tree, countMap.get(tree.id)));
 
     if (sort === 'latest') {
       summaries = summaries.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
