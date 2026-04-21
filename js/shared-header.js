@@ -1,12 +1,11 @@
 /**
  * LoveBud - Shared Header Component
- * v20260416-2
+ * v20260421-1
  * 
  * 모든 페이지에 공통 헤더를 렌더링합니다.
  * - 현재 페이지에 맞는 active 메뉴 자동 표시
  * - 상대경로 차이 자동 처리 (root vs pages)
  * - auth.js가 붙을 #auth-nav 또는 #auth-nav-container 계약 유지
- * - 언어 드롭다운 (KR/EN) 지원
  * 
  * 사용법:
  * <script src="js/shared-header.js"></script>
@@ -110,7 +109,7 @@
         var displayName = cachedUser.displayName || cachedUser.email || 'User';
         var initial = displayName.charAt(0).toUpperCase();
         return [
-            '<div style="display:flex;align-items:center;gap:8px;cursor:pointer;" onclick="toggleUserDropdown()">',
+            '<div style="display:flex;align-items:center;gap:8px;">',
                 '<div style="width:32px;height:32px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;color:white;font-size:14px;font-weight:500;">',
                     initial,
                 '</div>',
@@ -181,19 +180,6 @@
         
         // 에디터 페이지에서는 "편집하기" 메뉴 숨김 (이미 편집 화면 안에 있음)
 
-        // 언어 드롭다운 HTML
-        var langDropdownHTML = [
-            '<div class="lang-toggle">',
-                '<button class="lang-toggle-btn" id="langToggleBtn" aria-label="언어 선택">',
-                    '<span class="material-symbols-outlined">language</span>',
-                '</button>',
-                '<div class="lang-dropdown" id="langDropdown">',
-                    '<button class="lang-option active" data-lang="KR">KR</button>',
-                    '<button class="lang-option" data-lang="EN">EN</button>',
-                '</div>',
-            '</div>'
-        ].join('');
-
         return [
             '<header class="nav-bar">',
                 '<div class="headline" style="font-size: 1.5rem; font-weight: 900; color: var(--on-surface); letter-spacing: -0.04em; cursor: pointer;" onclick="location.href=\'' + logoHref + '\'">LoveTree</div>',
@@ -206,49 +192,12 @@
                             navLinksHTML,
                         '</div>',
                         '<div class="nav-actions">',
-                            langDropdownHTML,
                             authHTML,
                         '</div>',
                     '</div>',
                 '</nav>',
-            '</header>'
+            '</header>',
         ].join('');
-    }
-
-    // 언어 토글 드롭다운 동작 설정
-    function setupLangDropdown() {
-        var toggleBtn = document.getElementById('langToggleBtn');
-        var dropdown = document.getElementById('langDropdown');
-        if (!toggleBtn || !dropdown) return;
-
-        toggleBtn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            dropdown.classList.toggle('show');
-        });
-
-        document.addEventListener('click', function(e) {
-            if (!dropdown.contains(e.target)) {
-                dropdown.classList.remove('show');
-            }
-        });
-
-        // 언어 옵션 클릭
-        var options = dropdown.querySelectorAll('.lang-option');
-        options.forEach(function(opt) {
-            opt.addEventListener('click', function(e) {
-                var lang = this.dataset.lang;
-                options.forEach(function(o) { o.classList.remove('active'); });
-                this.classList.add('active');
-                dropdown.classList.remove('show');
-                console.log('[shared-header] Language selected:', lang);
-                // i18n 모듈이 있으면 언어 변경 및 적용
-                if (window.setCurrentLang) {
-                    window.setCurrentLang(lang === 'KR' ? 'ko' : 'en');
-                    if (window.applyI18n) window.applyI18n();
-                    if (window.triggerLangChange) window.triggerLangChange(lang === 'KR' ? 'ko' : 'en');
-                }
-            });
-        });
     }
 
     function setupMobileNav() {
@@ -287,7 +236,6 @@
             return;
         }
         container.innerHTML = buildHeaderHTML();
-        setupLangDropdown(); // 언어 드롭다운 이벤트 설정
         setupMobileNav();
         // 헤더가 동적으로 렌더된 뒤 auth 컨테이너가 생기므로,
         // auth.js가 DOMContentLoaded 시점을 놓쳤더라도 다시 바인딩되게 한다.
