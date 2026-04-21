@@ -438,7 +438,7 @@ function createEditorCanvas(deps) {
         textWrap.style.display = 'flex';
         textWrap.style.flexDirection = 'column';
         textWrap.style.alignItems = 'flex-start';
-        textWrap.style.gap = '1px';
+        textWrap.style.gap = helperText ? '1px' : '0';
 
         const titleEl = document.createElement('span');
         titleEl.textContent = labelText;
@@ -447,16 +447,19 @@ function createEditorCanvas(deps) {
         titleEl.style.color = 'var(--on-surface)';
         titleEl.style.lineHeight = '1.25';
 
-        const hintEl = document.createElement('span');
-        hintEl.textContent = helperText;
-        hintEl.style.fontSize = '11px';
-        hintEl.style.fontWeight = '600';
-        hintEl.style.color = 'var(--on-surface-variant)';
-        hintEl.style.lineHeight = '1.25';
-        hintEl.style.opacity = '0.82';
-
         textWrap.appendChild(titleEl);
-        textWrap.appendChild(hintEl);
+
+        if (helperText) {
+            const hintEl = document.createElement('span');
+            hintEl.textContent = helperText;
+            hintEl.style.fontSize = '11px';
+            hintEl.style.fontWeight = '600';
+            hintEl.style.color = 'var(--on-surface-variant)';
+            hintEl.style.lineHeight = '1.25';
+            hintEl.style.opacity = '0.82';
+            textWrap.appendChild(hintEl);
+        }
+
         wrap.appendChild(plusBubble);
         wrap.appendChild(textWrap);
 
@@ -491,10 +494,10 @@ function createEditorCanvas(deps) {
     function renderGrowthAffordance(anchorMem, options) {
         if (!anchorMem) return;
         const opts = options || {};
-        const labelText = opts.labelText || (i18n('continue_moment') || '순간 이어가기');
-        const helperText = opts.helperText || (opts.isFirstStep
-            ? (i18n('growth_start_hint') || '여기서 다음 가지가 자라나요')
-            : (i18n('growth_continue_hint') || '선택한 순간 뒤로 감정이 이어져요'));
+        const labelText = opts.labelText || (i18n('editor_add_memory') || '새 순간 이어가기');
+        const helperText = opts.isFirstStep
+            ? ''
+            : (opts.helperText || i18n('growth_continue_hint') || '선택한 순간 뒤로 감정이 이어져요');
 
         createGrowthAffordanceElement(anchorMem, labelText, helperText);
     }
