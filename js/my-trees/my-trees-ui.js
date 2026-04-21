@@ -130,6 +130,40 @@
     return tree.representativeThumbnail || tree.representative_thumbnail || tree.thumbnail || '';
   }
 
+  function clipText(value, maxLength) {
+    var text = String(value || '').trim();
+    if (!text) return '';
+    if (text.length <= maxLength) return text;
+    return text.slice(0, maxLength).trim() + '…';
+  }
+
+  function getRepresentativeTextMeta(tree, i18n) {
+    if (!tree) return null;
+
+    var repTitle = clipText(tree.representativeTitle || tree.representative_title || '', 40);
+    var repMemo = clipText(tree.representativeMemo || tree.representative_memo || '', 82);
+
+    if (!repTitle && !repMemo) return null;
+
+    return {
+      title: repTitle || (i18n('editor_default_first_title') || '첫 순간'),
+      memo: repMemo || (i18n('myTrees.card_text_fallback') || '처음 남긴 마음이 이 트리의 시작이 되었어요.')
+    };
+  }
+
+  function buildRepresentativeTextVisual(tree, palette, i18n) {
+    var textMeta = getRepresentativeTextMeta(tree, i18n);
+    if (!textMeta) return '';
+
+    return [
+      '<div class="tree-card-text-visual" style="border-color:' + palette.leafSoft + ';background:rgba(255,255,255,0.84);">',
+        '<div class="tree-card-text-kicker" style="color:' + palette.accent + ';">' + escapeHtml(i18n('myTrees.card_first_moment') || '첫 순간 기록') + '</div>',
+        '<div class="tree-card-text-title">' + escapeHtml(textMeta.title) + '</div>',
+        '<div class="tree-card-text-memo">' + escapeHtml(textMeta.memo) + '</div>',
+      '</div>'
+    ].join('');
+  }
+
   function buildTreeThumbVisual(tree, i18n) {
     var palette = getTreeMoodPalette(tree);
     var momentCount = getTreeMomentCount(tree);
@@ -139,6 +173,7 @@
       ? (i18n('myTrees.card_growing') || '차곡차곡 자라는 중')
       : (i18n('myTrees.card_waiting') || '첫 순간을 기다리는 중');
     var thumbnail = getRepresentativeThumbnail(tree);
+    var textVisual = !thumbnail ? buildRepresentativeTextVisual(tree, palette, i18n) : '';
 
     return [
       '<div class="tree-card-thumb" style="background:' + palette.background + ';">',
@@ -147,7 +182,7 @@
         '<div class="tree-card-thumb-art">',
           thumbnail
             ? '<img class="tree-card-thumb-image" src="' + escapeHtml(thumbnail) + '" alt="' + escapeHtml(title) + '">' 
-            : buildMiniTreeSVG(tree),
+            : (textVisual || buildMiniTreeSVG(tree)),
         '</div>',
         '<div class="tree-card-thumb-topline">',
           '<span class="tree-card-moment-badge" data-count="' + momentCount + '">' + (i18n('myTrees.moment_count_compact') || '순간 {count}개').replace('{count}', String(momentCount)) + '</span>',
@@ -282,11 +317,15 @@
         visibility: (tree && tree.visibility) || 'public',
         updatedAt: (tree && (tree.updatedAt || tree.createdAt)) || null,
         memoryCount: getTreeMomentCount(tree),
-        representativeThumbnail: getRepresentativeThumbnail(tree)
+        representativeThumbnail: getRepresentativeThumbnail(tree),
+        representativeTitle: tree && (tree.representativeTitle || tree.representative_title || ''),
+        representativeMemo: tree && (tree.representativeMemo || tree.representative_memo || '')
       };
     } else {
       normalizedTree.representativeThumbnail = normalizedTree.representativeThumbnail || getRepresentativeThumbnail(tree);
       normalizedTree.memoryCount = getTreeMomentCount(tree || normalizedTree);
+      normalizedTree.representativeTitle = normalizedTree.representativeTitle || (tree && (tree.representativeTitle || tree.representative_title || ''));
+      normalizedTree.representativeMemo = normalizedTree.representativeMemo || (tree && (tree.representativeMemo || tree.representative_memo || ''));
     }
 
     var momentCount = getTreeMomentCount(normalizedTree);
