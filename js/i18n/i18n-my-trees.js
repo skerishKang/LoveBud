@@ -51,6 +51,19 @@
     'myTrees.card_menu': { ko: '트리 관리 열기', en: 'Open tree menu' },
     'myTrees.card_waiting': { ko: '첫 순간을 기다리는 중', en: 'Waiting for the first moment' },
     'myTrees.card_growing': { ko: '차곡차곡 자라는 중', en: 'Growing layer by layer' },
-    'myTrees.moment_count_compact': { ko: '순간 {count}개', en: '{count} moments' }
+    'myTrees.moment_count_compact': { ko: '순간 {count}개', en: '{count} moments' },
+    'myTrees.create_modal_kicker': { ko: '새 러브트리 시작', en: 'Start a new LoveTree' },
+    'myTrees.create_modal_title': { ko: '어떤 러브트리를 남길까요?', en: 'What kind of LoveTree would you like to start?' },
+    'myTrees.create_modal_desc': { ko: '트리 제목과 공개 범위를 먼저 정하면, 곧바로 첫 순간을 기록하러 이동해요.', en: 'Choose a title and visibility first, then move straight into recording your first moment.' },
+    'myTrees.create_modal_name_label': { ko: '트리 제목', en: 'Tree title' },
+    'myTrees.create_modal_name_help': { ko: '나중에 다시 바꿀 수 있어요. 지금은 마음이 가장 먼저 가는 제목이면 충분해요.', en: 'You can rename it later. For now, a title that feels right is enough.' },
+    'myTrees.create_modal_visibility_label': { ko: '공개 범위', en: 'Visibility' },
+    'myTrees.create_modal_visibility_private': { ko: '비공개', en: 'Private' },
+    'myTrees.create_modal_visibility_private_desc': { ko: '나만 보고 기록을 이어가고 싶을 때 적합해요.', en: 'Best when you want to keep recording privately for yourself.' },
+    'myTrees.create_modal_visibility_public': { ko: '공개', en: 'Public' },
+    'myTrees.create_modal_visibility_public_desc': { ko: '다른 사람도 이 러브트리를 감상할 수 있게 열어둘 수 있어요.', en: 'Allows other people to view this LoveTree too.' },
+    'myTrees.create_modal_cancel': { ko: '취소', en: 'Cancel' },
+    'myTrees.create_modal_submit': { ko: '이 트리로 시작하기', en: 'Start with this tree' },
+    'myTrees.create_modal_title_required': { ko: '트리 제목을 입력해 주세요.', en: 'Please enter a tree title.' }
   };
 })();
