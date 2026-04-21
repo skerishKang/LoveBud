@@ -1,6 +1,6 @@
 /**
  * LoveBud - My Trees UI Helpers
- * v20260421-1
+ * v20260421-2
  *
  * Tree card rendering and summary UI utilities
  */
@@ -127,7 +127,7 @@
         '<div class="tree-card-thumb-initial" style="color:' + palette.accent + ';border-color:' + palette.leafSoft + ';">' + initial + '</div>',
         '<div class="tree-card-thumb-art">' + buildMiniTreeSVG(tree) + '</div>',
         '<div class="tree-card-thumb-topline">',
-          '<span class="tree-card-moment-badge">' + (i18n('myTrees.moment_count_compact') || '순간 {count}개').replace('{count}', String(momentCount)) + '</span>',
+          '<span class="tree-card-moment-badge" data-count="' + momentCount + '">' + (i18n('myTrees.moment_count_compact') || '순간 {count}개').replace('{count}', String(momentCount)) + '</span>',
         '</div>',
         '<div class="tree-card-thumb-caption">' + moodLabel + '</div>',
       '</div>'
@@ -299,7 +299,7 @@
       '<div class="tree-card-info">',
         '<div class="tree-card-title-row">',
           '<div class="tree-card-title">' + escapeHtml(title) + '</div>',
-          '<span class="tree-card-count-pill">' + (i18n('myTrees.moment_count_compact') || '순간 {count}개').replace('{count}', String(momentCount)) + '</span>',
+          '<span class="tree-card-count-pill" data-count="' + momentCount + '">' + (i18n('myTrees.moment_count_compact') || '순간 {count}개').replace('{count}', String(momentCount)) + '</span>',
         '</div>',
         '<div class="tree-card-subcopy">' + metaMood + '</div>',
         '<div class="tree-card-meta">',
