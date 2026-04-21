@@ -1667,7 +1667,7 @@ myTrees\.create|
     # SEED_STAGE=phase1  # phase1 | phase2 | all
 
 • Explored
-  └ Search DATABASE_URL|NETLIFY_DATABASE_URL|neon|postgresql://|
+  └ Search DATABASE_URL|NETLIFY_DATABASE_URL|neon|postgresql://REDACTED
 ─────────────────────────────────────────────────────────────────────
 
 • 제가 “원래 알고 있는” 건 아닙니다. 비밀값은 세션에 주어지지 않으면
@@ -1746,7 +1746,7 @@ Something went wrong? Hit `/feedback` to report the issue.
 • Explored
   └ List 133-relovetree
     Search DATABASE_URL|NETLIFY_DATABASE_URL|NEON_DATABASE_URL|
-           postgresql://|postgres:// in .
+           postgresql://REDACTED in .
     Search test.*(email|id|password)|demo.*(email|id|password)|
            email.*password|password.*email|테스트.*계정|테스트.*아이
 디|비
@@ -1771,7 +1771,7 @@ Something went wrong? Hit `/feedback` to report the issue.
 
 • Explored
   └ Search DATABASE_URL|NETLIFY_DATABASE_URL|NEON_DATABASE_URL|
-           postgresql://|postgres:// in .
+           postgresql://REDACTED in .
 
 ─────────────────────────────────────────────────────────────────────
 
@@ -1824,19 +1824,19 @@ Something went wrong? Hit `/feedback` to report the issue.
      6  # ───────────────────────────────────────────────────────────
         ──────────────────
      7 -# Netlify에서 사용하는 변수명 (권장)
-     8 -NETLIFY_DATABASE_URL=postgresql://neondb_owner:YOUR_PASSWORD@
+     8 -NETLIFY_DATABASE_URL=postgresql://REDACTED
         ep-XXXX.ap-southeast-1.aws.neon.tech/neondb?sslmode=require
      7 +# 2026-04-16 source: G:\다른 컴퓨터\내 컴퓨터\133-relovetree\
         .env
-     8 +NETLIFY_DATABASE_URL=postgresql://neondb_owner:npg_5aH9oiPjWI
-        yJ@ep-little-poetry-a1vjyiim-pooler.ap-southeast-1.aws.neon.t
+     8 +NETLIFY_DATABASE_URL=postgresql://REDACTED
+        yJ@REDACTED.neon.hostsoutheast-1.aws.neon.t
         ech/neondb?sslmode=require&channel_binding=require
      9
     10 -# 또는 일반적인 DATABASE_URL도 지원
-    11 -# DATABASE_URL=postgresql://neondb_owner:YOUR_PASSWORD@ep-XXX
+    11 -# DATABASE_URL=postgresql://REDACTED
         X.ap-southeast-1.aws.neon.tech/neondb?sslmode=require
     10 +# 일반 DATABASE_URL도 동일 값으로 유지
-    11 +DATABASE_URL=postgresql://neondb_owner:npg_5aH9oiPjWIyJ@ep-li
+    11 +DATABASE_URL=postgresql://REDACTED
         ttle-poetry-a1vjyiim-pooler.ap-southeast-1.aws.neon.tech/neon
         db?sslmode=require&channel_binding=require
     12
@@ -2574,7 +2574,7 @@ Something went wrong? Hit `/feedback` to report the issue.
 
 › 결과 요약
   1. 실행 명령
-  SEED_STAGE=phase1 DATABASE_URL=postgresql://... node scripts/seed-
+  SEED_STAGE=phase1 DATABASE_URL=postgresql://REDACTED node scripts/seed-
   public-trees.js
   2. 실행 결과
   ✅ 시드 완료!
@@ -3188,8 +3188,8 @@ Something went wrong? Hit `/feedback` to report the issue.
   적용)
   3. 로컬 개발 환경 (.env 파일):
         # 현재 파일: G:\다른 컴퓨터\내 컴퓨터\LoveBud\.env
-     NETLIFY_DATABASE_URL=postgresql://...
-     DATABASE_URL=postgresql://...  # 동일 값 권장
+     NETLIFY_DATABASE_URL=postgresql://REDACTED
+     DATABASE_URL=postgresql://REDACTED  # 동일 값 권장
      FIREBASE_SERVICE_ACCOUNT_JSON={"type":"service_account",...}  #
   추가 필요
 
