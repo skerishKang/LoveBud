@@ -106,10 +106,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         PreviewRenderer.resetPreview();
     };
 
+    const renderPreviewLoadingState = (tree) => {
+        if (previewTitle) {
+            previewTitle.textContent = tree?.title || '러브트리';
+        }
+        if (previewDesc) {
+            previewDesc.innerHTML = '<p style="margin-bottom:16px;">선택한 트리의 대표 순간을 불러오는 중입니다.</p>';
+        }
+        if (previewContainer) {
+            previewContainer.innerHTML = '<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--on-surface-variant);font-size:14px;text-align:center;padding:20px;"><span class="material-symbols-outlined" style="font-size:40px;opacity:0.45;margin-bottom:12px;display:block;animation:spin 1s linear infinite;">progress_activity</span><p style="margin:0;line-height:1.5;">선택한 트리의 preview를 준비하고 있어요.</p></div>';
+        }
+    };
+
     const hydrateSelectedTreePreview = async (tree) => {
         if (!tree || !tree.id) return;
         const requestId = ++currentPreviewRequestId;
-        PreviewRenderer.renderLoadingPreview(tree);
+        renderPreviewLoadingState(tree);
 
         try {
             const hydratedTree = previewCache.get(tree.id) || await window.apiClient.getCommunityMemories({ treeId: tree.id }).then((memories) => {
