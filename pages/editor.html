@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>러브트리 편집 | LoveTree</title>
-    <link rel="stylesheet" href="../css/editor.css?v=20260421-3">
+    <link rel="stylesheet" href="../css/editor.css?v=20260421-4">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
     <style>
         .memory-inline-edit { display:inline-flex; align-items:center; }
@@ -72,12 +72,18 @@
 
         <main class="canvas-area" id="canvasArea">
             <svg class="canvas-svg" id="canvasSvg"></svg>
+            <div id="canvasEmptyGuide" class="editor-canvas-empty-guide editor-canvas-empty-guide-hidden" aria-live="polite">
+                <div class="editor-canvas-empty-guide__eyebrow" id="canvasEmptyGuideEyebrow">첫 순간 준비</div>
+                <h3 class="editor-canvas-empty-guide__title" id="canvasEmptyGuideTitle">이 장면에서 러브트리가 시작돼요</h3>
+                <p class="editor-canvas-empty-guide__desc" id="canvasEmptyGuideDesc">첫 순간을 심으면 이 공간에 감정의 흐름이 천천히 뻗어나갑니다.</p>
+                <button type="button" id="canvasEmptyStartBtn" class="btn-round btn-primary editor-canvas-empty-guide__cta">첫 순간 심기</button>
+            </div>
 
             <div id="addMemoryForm" class="memory-create-section editor-memory-form-modal" style="display:none;">
                 <div class="editor-modal-eyebrow" id="addMemoryFormEyebrow">첫 순간 시작</div>
                 <h3 class="headline editor-modal-title" id="addMemoryFormTitle">...</h3>
                 <p id="addMemoryFormIntro" class="editor-modal-intro">...</p>
-                <div class="editor-form-field">
+                <div class="editor-form-field editor-form-field-primary">
                     <label id="memoryUrlLabel" class="editor-form-label">...</label>
                     <input type="text" id="memoryUrlInput" placeholder="https://www.youtube.com/watch?v=..." class="editor-form-input">
                 </div>
@@ -93,13 +99,13 @@
                     </div>
                 </div>
                 <div class="editor-form-field editor-form-field-grid">
-                    <div class="editor-form-stack">
+                    <div class="editor-form-stack editor-form-stack-compact">
                         <label id="memoryTitleLabel" class="editor-form-label">...</label>
                         <input type="text" id="memoryTitleInput" placeholder="..." class="editor-form-input">
                     </div>
-                    <div class="editor-form-stack">
+                    <div class="editor-form-stack editor-form-stack-roomy">
                         <label id="memoryMemoLabel" class="editor-form-label">...</label>
-                        <textarea id="memoryMemoInput" placeholder="..." rows="4" class="editor-form-textarea"></textarea>
+                        <textarea id="memoryMemoInput" placeholder="..." rows="5" class="editor-form-textarea"></textarea>
                     </div>
                 </div>
                 <div class="editor-form-actions">
@@ -234,7 +240,7 @@
     <script src="../js/editor/editor-data-loader.js?v=20260420-1"></script>
     <script src="../js/editor/editor-data-loader-fallbacks.js?v=20260420-1"></script>
     
-    <script src="../js/editor.js?v=20260421-10"></script>
+    <script src="../js/editor.js?v=20260421-11"></script>
     <script src="../js/editor/editor-i18n-refresh.js?v=20260421-1"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
