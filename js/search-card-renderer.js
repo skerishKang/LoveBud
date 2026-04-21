@@ -1,6 +1,6 @@
 /**
  * LoveBud Search Card Renderer
- * v20260420-1
+ * v20260421-1
  * 
  * Rendering layer: tree cards, empty states.
  * DOM-agnostic - returns HTML strings.
@@ -127,8 +127,14 @@
      * @returns {string} HTML string
      */
      function renderEmotionTags(tags) {
-         if (!tags || !tags.length) return '';
-         return tags.slice(0, 3).map(tag =>
+         const titleHelper = getSearchTitleHelper();
+         const safeTags = (Array.isArray(tags) ? tags : [])
+             .map(tag => titleHelper?.sanitizeBrowseLabel ? titleHelper.sanitizeBrowseLabel(tag) : String(tag || '').trim())
+             .filter(Boolean)
+             .slice(0, 3);
+
+         if (!safeTags.length) return '';
+         return safeTags.map(tag =>
              `<span class="emotion-tag" style="background:var(--primary-container);color:var(--on-primary-container);font-weight:700;font-size:12px;padding:6px 12px;">#${escapeHtml(tag)}</span>`
          ).join('');
      }
@@ -182,24 +188,29 @@
      function renderTreeCard(tree, index) {
          const firstMem = tree.memories[0];
         const lastMem = tree.memories[tree.memories.length - 1];
+        const titleHelper = getSearchTitleHelper();
         
         // Clean titles
-        const firstMomentRaw = firstMem?.title?.replace(/\s*-\s*.*/, '') || '첫 순간';
+        const firstMomentRaw = titleHelper?.cleanMomentTitle
+            ? titleHelper.cleanMomentTitle(firstMem?.title || '')
+            : (firstMem?.title?.replace(/\s*-\s*.*/, '') || '첫 순간');
         const lastMomentRaw = tree.memories.length >= 2
-            ? lastMem?.title?.replace(/\s*-\s*.*/, '')
+            ? (titleHelper?.cleanMomentTitle
+                ? titleHelper.cleanMomentTitle(lastMem?.title || '')
+                : lastMem?.title?.replace(/\s*-\s*.*/, ''))
             : null;
         
-        const safeFirstMoment = escapeHtml(firstMomentRaw);
+        const safeFirstMoment = escapeHtml(firstMomentRaw || '첫 순간');
         const safeLastMoment = lastMomentRaw ? escapeHtml(lastMomentRaw) : null;
         const safeTreeId = escapeHtml(tree.id);
         const safeStage = escapeHtml(tree.stage);
-        const safeTimeRange = escapeHtml(tree.timeRange);
 
         // Helper로 display title 계산
-        const titleHelper = getSearchTitleHelper();
         const displayTitleRaw = titleHelper?.getBrowseDisplayTitle
             ? titleHelper.getBrowseDisplayTitle(tree)
             : (String(tree.title || '').trim() || '러브트리');
+        const themeLabel = titleHelper?.getThemeLabel ? titleHelper.getThemeLabel(tree) : '';
+        const primaryTag = titleHelper?.getPrimaryBrowseTag ? titleHelper.getPrimaryBrowseTag(tree) : '';
 
         // 생성일 기반 구분자 (제목 중복 시 구분용)
         const createdDate = tree.createdAt
@@ -208,12 +219,14 @@
 
         const safeTitle = escapeHtml(displayTitleRaw);
          
-         // Path description (memory 0개 트리용 문구 개선)
+         // Path description
         let pathDesc;
-        if (tree.memories.length === 0) {
-            pathDesc = `<span style="color:var(--on-surface-variant);">🌱 아직 첫 순간을 기록하지 않았어요</span>`;
-        } else if (safeLastMoment) {
+        if (safeLastMoment) {
             pathDesc = `처음 <strong style="color:var(--primary);">${safeFirstMoment}</strong>의 감정이 <strong>${safeLastMoment}</strong>까지 이어졌어요`;
+        } else if (themeLabel) {
+            pathDesc = `<strong style="color:var(--primary);">${escapeHtml(themeLabel)}</strong>와 함께 시작된 첫 감정의 순간이에요`;
+        } else if (primaryTag) {
+            pathDesc = `<strong style="color:var(--primary);">${escapeHtml(primaryTag)}</strong>의 마음이 처음 남겨진 순간이에요`;
         } else {
             pathDesc = `<strong style="color:var(--primary);">${safeFirstMoment}</strong> — 입덕의 첫 순간`;
         }
@@ -242,9 +255,7 @@
                  </div>
                  
                  <!-- 감정 태그 -->
-                 <div class="tree-emotions" style="margin-bottom:12px;">
-                     ${emotionTagsHtml}
-                 </div>
+                 ${emotionTagsHtml ? `<div class="tree-emotions" style="margin-bottom:12px;">${emotionTagsHtml}</div>` : ''}
                  
                  <!-- 감상 유도 문구 -->
                  ${renderCardFooterCta('첫 순간부터 감상하기')}
@@ -392,5 +403,5 @@
         getBasePath: getBasePath
     };
 
-     console.log('[LoveBudSearchCardRenderer] Search card renderer loaded v20260420-1');
+     console.log('[LoveBudSearchCardRenderer] Search card renderer loaded v20260421-1');
  })();
