@@ -83,7 +83,7 @@ function createEditorMemoryForm(deps) {
         isFormOpen = true;
 
         document.addEventListener('keydown', focusTrap);
-        if (urlInput) urlInput.focus();
+        if (titleInput) titleInput.focus();
 
         escHandler = (e) => {
             if (e.key === 'Escape') {
