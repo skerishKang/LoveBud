@@ -31,6 +31,7 @@ function createEditorMemoryForm(deps) {
     let isFormOpen = false;
     let escHandler = null;
     let outsideClickHandler = null;
+    let previewInputHandler = null;
 
     const addMemoryForm = document.getElementById('addMemoryForm');
     const urlInput = document.getElementById('memoryUrlInput');
@@ -42,17 +43,18 @@ function createEditorMemoryForm(deps) {
     function applyFormOpenStyles() {
         if (!addMemoryForm) return;
         addMemoryForm.style.display = 'block';
+        addMemoryForm.classList.add('is-open');
         addMemoryForm.style.position = 'absolute';
         addMemoryForm.style.left = '50%';
-        addMemoryForm.style.top = '32px';
+        addMemoryForm.style.top = '42px';
         addMemoryForm.style.transform = 'translateX(-50%)';
         addMemoryForm.style.width = 'min(620px, calc(100% - 48px))';
         addMemoryForm.style.maxWidth = '620px';
         addMemoryForm.style.padding = '28px 28px 24px';
-        addMemoryForm.style.borderRadius = '28px';
-        addMemoryForm.style.background = 'linear-gradient(180deg, rgba(255,255,255,0.99), rgba(250,246,244,0.98))';
-        addMemoryForm.style.boxShadow = '0 24px 56px rgba(75,64,57,0.16)';
-        addMemoryForm.style.border = '1px solid rgba(144,73,81,0.12)';
+        addMemoryForm.style.borderRadius = '30px';
+        addMemoryForm.style.background = 'linear-gradient(180deg, rgba(255,255,255,0.985), rgba(250,246,244,0.97))';
+        addMemoryForm.style.boxShadow = '0 24px 56px rgba(75,64,57,0.14)';
+        addMemoryForm.style.border = '1px solid rgba(144,73,81,0.10)';
         addMemoryForm.style.zIndex = '8';
         addMemoryForm.style.backdropFilter = 'blur(12px)';
     }
@@ -60,11 +62,12 @@ function createEditorMemoryForm(deps) {
     function applyPreviewStyles() {
         const preview = document.getElementById('memoryLinkPreview');
         if (!preview) return;
+        preview.classList.add('is-enhanced');
         preview.style.display = 'flex';
         preview.style.alignItems = 'stretch';
         preview.style.gap = '14px';
         preview.style.padding = '14px';
-        preview.style.borderRadius = '18px';
+        preview.style.borderRadius = '20px';
         preview.style.background = 'linear-gradient(180deg, rgba(245, 241, 238, 0.98), rgba(255,255,255,0.98))';
         preview.style.border = '1px solid rgba(144,73,81,0.10)';
         preview.style.marginTop = '8px';
@@ -76,9 +79,10 @@ function createEditorMemoryForm(deps) {
             thumbWrap.style.width = '136px';
             thumbWrap.style.minWidth = '136px';
             thumbWrap.style.height = '76px';
-            thumbWrap.style.borderRadius = '12px';
+            thumbWrap.style.borderRadius = '14px';
             thumbWrap.style.overflow = 'hidden';
             thumbWrap.style.background = 'var(--surface-container, #ece9e5)';
+            thumbWrap.style.boxShadow = '0 8px 20px rgba(75,64,57,0.08)';
         }
 
         const thumb = document.getElementById('memoryPreviewThumb');
@@ -96,7 +100,7 @@ function createEditorMemoryForm(deps) {
             playIcon.style.transform = 'translate(-50%, -50%)';
             playIcon.style.fontSize = '32px';
             playIcon.style.color = '#fff';
-            playIcon.style.opacity = '0.9';
+            playIcon.style.opacity = '0.92';
             playIcon.style.textShadow = '0 2px 8px rgba(0,0,0,0.3)';
         }
 
@@ -166,8 +170,13 @@ function createEditorMemoryForm(deps) {
         if (urlInput) urlInput.value = '';
         if (titleInput) titleInput.value = '';
         if (memoInput) memoInput.value = '';
+
         const preview = document.getElementById('memoryLinkPreview');
-        if (preview) preview.classList.add('is-hidden');
+        if (preview) {
+            preview.classList.add('is-hidden');
+            preview.classList.remove('is-enhanced');
+        }
+
         applyFormOpenStyles();
         isFormOpen = true;
 
@@ -197,15 +206,9 @@ function createEditorMemoryForm(deps) {
                 ? (i18n('editor_add_first_memory_intro') || '링크와 짧은 메모를 남기면 이 장면에서 러브트리가 시작돼요.')
                 : (i18n('editor_add_next_memory_intro') || '현재 마음에서 이어진 장면을 붙여 트리를 더 자라게 해보세요.');
         }
-        if (urlLabel) {
-            urlLabel.textContent = i18n('editor_youtube_link') || 'YouTube 장면 링크';
-        }
-        if (titleLabel) {
-            titleLabel.textContent = i18n('editor_memory_title') || '순간 제목';
-        }
-        if (memoLabel) {
-            memoLabel.textContent = i18n('editor_memory_memo_optional') || '감정 메모';
-        }
+        if (urlLabel) urlLabel.textContent = i18n('editor_youtube_link') || 'YouTube 장면 링크';
+        if (titleLabel) titleLabel.textContent = i18n('editor_memory_title') || '순간 제목';
+        if (memoLabel) memoLabel.textContent = i18n('editor_memory_memo_optional') || '감정 메모';
         if (confirmBtn) {
             confirmBtn.textContent = isFirstMoment
                 ? (i18n('editor_confirm_add_first') || '첫 순간 심기')
@@ -291,18 +294,21 @@ function createEditorMemoryForm(deps) {
                 }
             } else {
                 previewInner.classList.add('is-hidden');
+                previewInner.classList.remove('is-enhanced');
             }
         };
 
         if (urlInput) {
-            urlInput.removeEventListener('input', updatePreview);
-            urlInput.addEventListener('input', updatePreview);
+            if (previewInputHandler) urlInput.removeEventListener('input', previewInputHandler);
+            previewInputHandler = updatePreview;
+            urlInput.addEventListener('input', previewInputHandler);
         }
     };
 
     const hideAddMemoryForm = () => {
         if (!addMemoryForm) return;
         addMemoryForm.style.display = 'none';
+        addMemoryForm.classList.remove('is-open');
         isFormOpen = false;
 
         document.removeEventListener('keydown', focusTrap);
