@@ -104,13 +104,6 @@ async function queryTrees(filters = {}) {
     const r = await query(sql, p);
     return r.rows;
   } catch (e) {
-    const schema = await query(`
-      SELECT column_name
-      FROM information_schema.columns
-      WHERE table_name = 'trees'
-      ORDER BY ordinal_position
-    `);
-    console.error('Query failed. Current schema:', schema.rows);
     throw e;
   }
 }
