@@ -274,9 +274,9 @@
       ko: '누군가의 러브트리를 감상하고 있어요',
       en: 'You are viewing someone\'s LoveTree'
     },
-    'public_tree_fallback_title_with_artist': {
-      ko: '마음이 닿기 시작한 순간을 감상하고 있어요',
-      en: 'You are viewing a moment where a heart began to connect'
+    'public_tree_fallback_title_with_artist_suffix': {
+      ko: '에게 마음이 닿기 시작한 순간을 감상하고 있어요',
+      en: ' is the artist whose moment you are viewing as your heart begins to connect'
     },
     'public_tree_desc_join': {
       ko: ' 안에서',
@@ -286,9 +286,9 @@
       ko: '개의 순간으로 이어진 감정의 흐름을 따라가고 있어요. 지금 보고 있는 순간을 시작으로 이 트리를 천천히 감상해 보세요.',
       en: ' connected moments. Start with this moment and gently follow the emotional flow of the tree.'
     },
-    'public_tree_desc_fallback_with_memory': {
-      ko: '이 장면에서 시작된 마음을 따라가고 있어요. 연결된 순간이 많지 않아도, 이 순간만으로 남겨진 분위기를 천천히 감상해 보세요.',
-      en: 'You are following a feeling that began with this scene. Even without many connected moments, this one can still hold the mood.'
+    'public_tree_desc_fallback_with_memory_suffix': {
+      ko: '에서 시작된 마음을 따라가고 있어요. 연결된 순간이 많지 않아도, 이 장면만으로 남겨진 분위기를 천천히 감상해 보세요.',
+      en: ' is where this feeling began. Even without many connected moments, this scene still holds the mood.'
     },
     'public_tree_context_desc': {
       ko: '지금은 다른 사람이 공개한 러브트리 안에서 한 순간을 감상하고 있어요.',
