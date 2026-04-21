@@ -139,11 +139,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         description: tText('empty_memo_desc', '짧은 장면 하나만으로도 시작되는 감정이 있어요. 이 러브트리는 그 조용한 시작까지 함께 감상하는 공간이에요.')
     });
 
-    const buildConnectedEmptyMarkup = () => buildSoftPanelMarkup({
+    const buildConnectedEmptyMarkup = ({ treeMomentCount = 0 } = {}) => buildSoftPanelMarkup({
         icon: 'device_hub',
         kicker: tText('connected_empty_kicker', '이어질 다음 장면'),
-        title: tText('connected_empty_title', '지금은 이 순간이 가장 또렷하게 남아 있어요.'),
-        description: tText('connected_empty_desc', '아직 같은 흐름의 다른 순간은 보이지 않지만, 이 장면 하나만으로도 트리의 분위기를 천천히 느껴볼 수 있어요.')
+        title: treeMomentCount > 1
+            ? tText('connected_missing_cards_title', '이 트리의 다른 순간은 아직 여기서 또렷하게 펼쳐지지 않았어요.')
+            : tText('connected_empty_title', '지금은 이 순간이 가장 또렷하게 남아 있어요.'),
+        description: treeMomentCount > 1
+            ? `${treeMomentCount}${tText('connected_missing_cards_desc_suffix', '개의 순간이 이 트리에 남아 있지만, 지금은 현재 장면을 중심으로 감정의 흐름을 읽고 있어요.')}`
+            : tText('connected_empty_desc', '아직 같은 흐름의 다른 순간은 보이지 않지만, 이 장면 하나만으로도 트리의 분위기를 천천히 느껴볼 수 있어요.')
     });
 
     const getHeroFallbackTitle = (memory) => {
@@ -162,14 +166,57 @@ document.addEventListener('DOMContentLoaded', async () => {
         return `${baseCount}${tText('public_tree_desc_suffix', '개의 순간으로 이어진 감정의 흐름을 따라가고 있어요. 지금 보고 있는 순간을 시작으로 이 트리를 천천히 감상해 보세요.')}`;
     };
 
-    const applyViewingPageCopy = ({ sourceContext, treeTitle, memoryTitleText, memoryCount, memory }) => {
+    const parseMomentOrderValue = (memory) => {
+        const source = memory?.createdAt || memory?.timestamp || '';
+        const parsed = new Date(source).getTime();
+        return Number.isFinite(parsed) ? parsed : 0;
+    };
+
+    const isStructuralRootMemory = (memory) => {
+        if (!memory) return true;
+        const id = String(memory.id || '').trim().toLowerCase();
+        return id === 'root'
+            || memory.sourceType === 'system'
+            || (!memory.parentId && !memory.sourceUrl && !memory.thumbnail);
+    };
+
+    const mergeTreeMemories = (memories, currentMemory) => {
+        const list = Array.isArray(memories) ? memories.filter(Boolean) : [];
+        if (!currentMemory?.id) return list;
+        if (list.some(item => item && item.id === currentMemory.id)) return list;
+        return [...list, currentMemory];
+    };
+
+    const sortTreeMemories = (memories, currentMemory) => mergeTreeMemories(memories, currentMemory)
+        .sort((a, b) => parseMomentOrderValue(a) - parseMomentOrderValue(b));
+
+    const resolveTreeMomentCount = ({ tree, memories, currentMemory }) => {
+        const sortedMemories = sortTreeMemories(memories, currentMemory);
+        const listCount = sortedMemories.length;
+        const treeCount = Number(tree?.memoryCount) || 0;
+        return Math.max(listCount, treeCount, currentMemory?.treeId ? 1 : 0);
+    };
+
+    const getConnectedFlowMoments = ({ memory, memories }) => {
+        const sortedMemories = sortTreeMemories(memories, memory);
+        return sortedMemories.filter(item => item.id !== memory.id && !isStructuralRootMemory(item));
+    };
+
+    const getConnectedRelationLabel = (targetMemory, currentMemory) => {
+        if (!targetMemory || !currentMemory) return tText('connected_relation_same_tree', '같은 트리의 다른 순간');
+        if (targetMemory.id === currentMemory.parentId) return tText('connected_relation_previous', '이전에 남겨진 순간');
+        if (targetMemory.parentId === currentMemory.id) return tText('connected_relation_next', '이후에 이어진 순간');
+        return tText('connected_relation_same_tree', '같은 트리의 다른 순간');
+    };
+
+    const applyViewingPageCopy = ({ sourceContext, treeTitle, memoryTitleText, treeMomentCount, connectedCount, memory }) => {
         if (detailViewChipLabel) detailViewChipLabel.textContent = tText('public_tree_view_chip', '공개 러브트리 감상');
         if (detailHeroKicker) detailHeroKicker.textContent = tText('public_tree_kicker', '공개 러브트리');
         if (detailHeroTitle) {
             detailHeroTitle.textContent = treeTitle || getHeroFallbackTitle(memory);
         }
         if (detailHeroDesc) {
-            const baseCount = memoryCount > 0 ? memoryCount : 1;
+            const baseCount = treeMomentCount > 0 ? treeMomentCount : 1;
             detailHeroDesc.textContent = treeTitle
                 ? `${treeTitle}${tText('public_tree_desc_join', ' 안에서')} ${baseCount}${tText('public_tree_desc_suffix', '개의 순간으로 이어진 감정의 흐름을 따라가고 있어요. 지금 보고 있는 순간을 시작으로 이 트리를 천천히 감상해 보세요.')}`
                 : getHeroFallbackDesc({ memoryCount: baseCount, memoryTitleText });
@@ -181,7 +228,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         if (connectedKicker) connectedKicker.textContent = tText('connected_flow_kicker', '이어진 흐름');
         if (connectedTitle) connectedTitle.textContent = tText('connected_flow_title', '이 트리의 이어진 기억');
-        if (connectedSummary) connectedSummary.textContent = tText('connected_flow_summary', '이 공개 러브트리 안에서 함께 이어지는 순간들을 천천히 따라가 보세요.');
+        if (connectedSummary) {
+            if (treeMomentCount > 1 && connectedCount > 0) {
+                connectedSummary.textContent = `${treeMomentCount}${tText('connected_flow_count_suffix', '개의 순간 가운데 지금 장면과 함께 읽히는 기억들을 이어서 감상해 보세요.')}`;
+            } else if (treeMomentCount > 1) {
+                connectedSummary.textContent = `${treeMomentCount}${tText('connected_flow_count_pending_suffix', '개의 순간이 이 트리에 남아 있어요. 지금은 현재 장면을 중심으로 감정의 흐름을 읽고 있어요.')}`;
+            } else {
+                connectedSummary.textContent = tText('connected_flow_summary', '이 공개 러브트리 안에서 함께 이어지는 순간들을 천천히 따라가 보세요.');
+            }
+        }
 
         if (growthLabel) {
             const growthMap = {
@@ -283,7 +338,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
-    const renderTreeContext = ({ hasTreeContext, tree, memories, sourceContext, degradedReason }) => {
+    const renderTreeContext = ({ hasTreeContext, tree, memories, sourceContext, degradedReason, currentMemory }) => {
         if (!treeContextEl) return;
 
         if (degradedReason === 'missing-tree-id') {
@@ -301,55 +356,45 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
-        if (degradedReason === 'tree-load-failed') {
-            treeContextEl.innerHTML = `
-                <div style="display:flex; align-items:flex-start; gap:16px;">
-                    <div style="width:48px; height:48px; background:var(--surface-container); border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-                        <span class="material-symbols-outlined" style="color: var(--on-surface-variant); font-size:24px;">forest</span>
-                    </div>
-                    <div style="flex:1; min-width:0;">
-                        <div style="font-size:12px; font-weight:800; color:var(--on-surface-variant); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">${tText('tree_info_missing', '트리 정보 없음')}</div>
-                        <p style="margin:0; font-size:14px; color:var(--on-surface-variant); line-height:1.7;">${tText('tree_load_failed_desc_warm', '트리 전체 분위기는 아직 또렷하게 보이지 않지만, 지금 이 순간에 남겨진 장면과 마음은 계속 감상할 수 있어요.')}</p>
-                    </div>
-                </div>
-            `;
+        const treeMomentCount = resolveTreeMomentCount({ tree, memories, currentMemory });
+        if (!hasTreeContext || treeMomentCount <= 0) {
+            treeContextEl.innerHTML = '';
             return;
         }
 
-        if (hasTreeContext && tree) {
-            const memoryCount = Array.isArray(memories) ? memories.length : 0;
-            const treeTitle = tree.title || tText('lovetree_brand', '러브트리');
-            const contextMessages = {
-                browse: tText('public_tree_context_desc', '지금은 다른 사람이 공개한 러브트리 안에서 한 순간을 감상하고 있어요.'),
-                editor: tText('tree_context_editor_desc', '편집 중인 트리를 감상 모드로 보고 있어요'),
-                'my-trees': tText('tree_context_my_trees_desc', '내가 기록한 순간들을 다시 감상하고 있어요')
-            };
+        const treeTitle = tree?.title || tText('public_tree_fallback_title', '누군가의 러브트리를 감상하고 있어요');
+        const contextMessages = {
+            browse: degradedReason === 'tree-load-failed'
+                ? tText('tree_load_failed_desc_warm', '트리 전체 분위기는 아직 또렷하게 보이지 않지만, 지금 이 순간에 남겨진 장면과 마음은 계속 감상할 수 있어요.')
+                : tText('public_tree_context_desc', '지금은 다른 사람이 공개한 러브트리 안에서 한 순간을 감상하고 있어요.'),
+            editor: tText('tree_context_editor_desc', '편집 중인 트리를 감상 모드로 보고 있어요'),
+            'my-trees': tText('tree_context_my_trees_desc', '내가 기록한 순간들을 다시 감상하고 있어요')
+        };
 
-            treeContextEl.innerHTML = `
-                <div style="display:flex; align-items:flex-start; gap:16px;">
-                    <div style="width:48px; height:48px; background:var(--surface-container); border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-                        <span class="material-symbols-outlined" style="color: var(--primary); font-size:24px;">account_tree</span>
-                    </div>
-                    <div style="flex:1; min-width:0;">
-                        <div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-bottom:6px;">
-                            <span style="font-size:12px; font-weight:800; color:var(--primary); text-transform:uppercase; letter-spacing:1px;">${tText('current_tree', '현재 트리')}</span>
-                            <span style="color: var(--outline-variant);">·</span>
-                            <span style="font-size:12px; color:var(--on-surface-variant);">${memoryCount}${tText('tree_context_moment_count_short', '개 순간')}</span>
-                        </div>
-                        <div style="font-size:1.15rem; font-weight:800; color:var(--on-surface); line-height:1.4; margin-bottom:4px;">${treeTitle}</div>
-                        <p style="margin:0; font-size:14px; color:var(--on-surface-variant); line-height:1.7;">${contextMessages[sourceContext] || contextMessages.browse}</p>
-                    </div>
+        treeContextEl.innerHTML = `
+            <div style="display:flex; align-items:flex-start; gap:16px;">
+                <div style="width:48px; height:48px; background:var(--surface-container); border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                    <span class="material-symbols-outlined" style="color: var(--primary); font-size:24px;">account_tree</span>
                 </div>
-            `;
-        }
+                <div style="flex:1; min-width:0;">
+                    <div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-bottom:6px;">
+                        <span style="font-size:12px; font-weight:800; color:var(--primary); text-transform:uppercase; letter-spacing:1px;">${tText('current_tree', '현재 트리')}</span>
+                        <span style="color: var(--outline-variant);">·</span>
+                        <span style="font-size:12px; color:var(--on-surface-variant);">${treeMomentCount}${tText('tree_context_moment_count_short', '개 순간')}</span>
+                    </div>
+                    <div style="font-size:1.15rem; font-weight:800; color:var(--on-surface); line-height:1.4; margin-bottom:4px;">${escapeHtml(treeTitle)}</div>
+                    <p style="margin:0; font-size:14px; color:var(--on-surface-variant); line-height:1.7;">${contextMessages[sourceContext] || contextMessages.browse}</p>
+                </div>
+            </div>
+        `;
     };
 
     const buildDetailHref = (memoryId, treeId, sourceContext) => buildPageHref('detail', { id: memoryId, tree: treeId, from: sourceContext });
 
-    const renderConnectedFragments = ({ memory, memories, treeId, sourceContext, degradedReason }) => {
+    const renderConnectedFragments = ({ memory, memories, treeId, sourceContext, degradedReason, treeMomentCount }) => {
         if (!connectedFragments) return;
 
-        if (degradedReason === 'missing-tree-id' || degradedReason === 'tree-load-failed') {
+        if (degradedReason === 'missing-tree-id') {
             connectedFragments.innerHTML = `
                 <div style="display:grid;grid-template-columns:1fr;gap:24px;">
                     ${buildSoftPanelMarkup({
@@ -363,24 +408,30 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
-        if (!memories || memories.length === 0) {
-            connectedFragments.innerHTML = '';
-            return;
-        }
+        const flowMoments = getConnectedFlowMoments({ memory, memories });
 
-        const siblings = memories.filter(m => m.id !== memory.id && m.parentId === memory.parentId);
+        if (flowMoments.length > 0) {
+            connectedFragments.innerHTML = flowMoments.map(moment => {
+                const href = buildDetailHref(moment.id, treeId, sourceContext);
+                const relationLabel = getConnectedRelationLabel(moment, memory);
+                const thumbnailMarkup = moment.thumbnail
+                    ? `<img src="${escapeHtml(moment.thumbnail)}" alt="${escapeHtml(moment.title || '')}" style="width: 80px; height: 80px; border-radius: 1rem; object-fit: cover;">`
+                    : `<div style="width:80px;height:80px;border-radius:1rem;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg, rgba(250,246,243,0.98), rgba(255,255,255,0.98));border:1px solid rgba(144,73,81,0.08);color:var(--primary);flex-shrink:0;">
+                            <span class="material-symbols-outlined" style="font-size:28px;">favorite</span>
+                       </div>`;
 
-        if (siblings.length > 0) {
-            connectedFragments.innerHTML = siblings.map(sib => `
-                <div class="moment-card" data-detail-href="${buildDetailHref(sib.id, treeId, sourceContext)}" tabindex="0" role="link">
-                    <img src="${sib.thumbnail}" alt="${sib.title}" style="width: 80px; height: 80px; border-radius: 1rem; object-fit: cover;">
-                    <div>
-                        <div style="font-size: 11px; font-weight: 800; color: #aaa; text-transform: uppercase; margin-bottom: 4px;">${sib.timestamp}</div>
-                        <div style="font-weight: 800; color: var(--on-surface); font-size: 15px; margin-bottom: 6px;">${sib.title}</div>
-                        <div style="font-size: 12px; color: var(--on-surface-variant);">${sib.artist || ''}</div>
+                return `
+                    <div class="moment-card" data-detail-href="${href}" tabindex="0" role="link">
+                        ${thumbnailMarkup}
+                        <div style="min-width:0;">
+                            <div style="font-size: 11px; font-weight: 800; color: var(--primary); text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.06em;">${escapeHtml(relationLabel)}</div>
+                            <div style="font-size: 11px; font-weight: 800; color: #aaa; text-transform: uppercase; margin-bottom: 4px;">${escapeHtml(moment.timestamp || '')}</div>
+                            <div style="font-weight: 800; color: var(--on-surface); font-size: 15px; line-height:1.5; margin-bottom: 6px;">${escapeHtml(moment.title || tText('tree_context_moment', '순간 상세'))}</div>
+                            <div style="font-size: 12px; color: var(--on-surface-variant); line-height:1.6;">${escapeHtml(moment.artist || '')}</div>
+                        </div>
                     </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
 
             connectedFragments.querySelectorAll('.moment-card[data-detail-href]').forEach(card => {
                 const navigate = () => {
@@ -398,7 +449,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else {
             connectedFragments.innerHTML = `
                 <div style="display:grid;grid-template-columns:1fr;gap:24px;">
-                    ${buildConnectedEmptyMarkup()}
+                    ${buildConnectedEmptyMarkup({ treeMomentCount })}
                 </div>
             `;
         }
@@ -506,14 +557,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         memories = [];
     }
 
+    const treeMomentCount = resolveTreeMomentCount({ tree, memories, currentMemory: memory });
+    const connectedFlowMoments = getConnectedFlowMoments({ memory, memories });
+
     renderMemoryBase(memory);
-    renderTreeContext({ hasTreeContext, tree, memories, sourceContext, degradedReason });
-    renderConnectedFragments({ memory, memories, treeId, sourceContext, degradedReason });
+    renderTreeContext({ hasTreeContext, tree, memories, sourceContext, degradedReason, currentMemory: memory });
+    renderConnectedFragments({ memory, memories, treeId, sourceContext, degradedReason, treeMomentCount });
 
     const safeTitle = memory.title || tText('tree_context_moment', '순간 상세');
     const treeTitle = tree?.title || tText('lovetree_brand', '러브트리');
     const brandTitle = tText('lovetree_brand', '러브트리');
-    document.title = (hasTreeContext && tree && !degradedReason)
+    document.title = (hasTreeContext && treeMomentCount > 0)
         ? `${safeTitle} | ${treeTitle} — ${brandTitle}`
         : `${safeTitle} — ${brandTitle}`;
 
@@ -521,7 +575,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         sourceContext,
         treeTitle: tree?.title,
         memoryTitleText: memory.title,
-        memoryCount: Array.isArray(memories) ? memories.length : 0,
+        treeMomentCount,
+        connectedCount: connectedFlowMoments.length,
         memory
     });
 
