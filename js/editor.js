@@ -246,14 +246,16 @@ document.addEventListener('DOMContentLoaded', () => {
         setText('backToMyTreesLabel', 'editor_back_to_my_trees', '내 러브트리로 돌아가기');
         setText('editorFlowHeading', 'sidebar_flow_heading', '트리를 키워가요');
         setText('editorFlowLead', 'sidebar_flow_lead', '지금 마음이 머문 순간을 하나씩 이어 붙이며 나만의 흐름을 키워보세요.');
-        setText('focusSelectedBtnLabel', 'sidebar_focus_selected', '선택한 순간 보기');
+        setText('focusSelectedBtnLabel', 'editor_focus_current_moment', '현재 순간 위치 보기');
         setText('recenterCanvasBtnLabel', 'sidebar_recenter_tree', '트리 한눈에 보기');
         setText('addMemoryEyebrow', 'editor_add_memory_eyebrow', '다음 순간 심기');
         setText('addMemoryIntro', 'editor_add_memory_intro', '지금 선택한 순간 다음에 새로운 장면을 이어 심어 보세요. 첫 순간이라면 여기서 러브트리가 시작됩니다.');
-        // CTA text will be set dynamically after tree loads based on memory count
         setText('saveStatusText', 'save_saved', '저장됨');
         setText('detailMoreBtn', 'editor_open_detail', '상세로 보기');
+        setText('detailEmptyStartBtn', 'editor_add_first_memory', '첫 순간 심기');
+        setText('addMemoryFormEyebrow', 'editor_add_first_memory', '첫 순간 심기');
         setText('addMemoryFormTitle', 'editor_new_memory', '어떤 순간이 이어졌나요?');
+        setText('addMemoryFormIntro', 'editor_add_memory_intro', '지금 선택한 순간 다음에 새로운 장면을 이어 심어 보세요. 첫 순간이라면 여기서 러브트리가 시작됩니다.');
         setText('memoryUrlLabel', 'editor_youtube_link', 'YouTube 장면 링크');
         setText('memoryTitleLabel', 'editor_memory_title', '순간 제목');
         setText('memoryMemoLabel', 'editor_memory_memo_optional', '감정 메모');
@@ -267,7 +269,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setText('detailCurrentMomentTitle', 'editor_current_moment_title', '지금 마음이 머문 장면');
         setText('detailCurrentMomentHint', 'editor_current_moment_hint', '선택한 순간을 중심으로 감정 메모와 다음 행동이 정리됩니다.');
         setText('detailMomentInfoLabel', 'editor_moment_info_label', '순간 정보');
-        setText('detailActionLabel', 'editor_action_label', '이 순간에서 할 수 있는 일');
+        setText('detailTreeStatusLabel', 'current_tree', '현재 트리');
         setText('detailDateLabel', 'editor_date_label', '기억한 날');
         setText('detailTagsLabel', 'editor_tag_label', '감정 태그');
         setText('detailMemoLabel', 'editor_note_label', '감정 메모');
@@ -666,6 +668,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (editorBindings.bindMemoryCreateControls) {
             editorBindings.bindMemoryCreateControls({ addBtn, cancelBtn, confirmBtn, urlInput, titleInput, memoInput, showAddMemoryForm, hideAddMemoryForm, addMemoryFromForm, updateSaveStatus, showToast, i18n });
+        }
+
+        const detailEmptyStartBtn = document.getElementById('detailEmptyStartBtn');
+        if (detailEmptyStartBtn) {
+            detailEmptyStartBtn.addEventListener('click', () => {
+                showAddMemoryForm();
+            });
         }
 
         initCanvas();
