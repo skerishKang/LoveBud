@@ -1,6 +1,6 @@
 /**
  * LoveBud Search Preview Renderer
- * v20260421-1
+ * v20260421-2
  * 
  * Rendering layer: preview sidebar panel.
  * DOM-agnostic - updates passed DOM elements.
@@ -99,6 +99,7 @@
         const safeTags = (Array.isArray(tags) ? tags : [])
             .map(tag => titleHelper?.sanitizeBrowseLabel ? titleHelper.sanitizeBrowseLabel(tag) : String(tag || '').trim())
             .filter(Boolean)
+            .filter(tag => tag !== '기록' && tag !== 'tag_record')
             .slice(0, 4);
 
         if (!safeTags.length) return '';
@@ -451,5 +452,5 @@
         renderEmotionTags: renderEmotionTags
     };
 
-    console.log('[LoveBudSearchPreviewRenderer] Search preview renderer loaded v20260421-1');
+    console.log('[LoveBudSearchPreviewRenderer] Search preview renderer loaded v20260421-2');
 })();
