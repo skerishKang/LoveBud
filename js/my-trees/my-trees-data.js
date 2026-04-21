@@ -88,15 +88,6 @@
     }
   }
 
-  function getMockTreesFallback() {
-    if (typeof getTrees === 'function') {
-      var getterTrees = getTrees();
-      if (Array.isArray(getterTrees)) return getterTrees;
-    }
-    if (Array.isArray(window.trees)) return window.trees;
-    return [];
-  }
-
   async function loadTrees(options) {
     var cache = window.LoveBudCache;
     var i18n = getI18n(options);
@@ -125,7 +116,7 @@
       if (window.apiClient && window.apiClient.getTrees) {
         trees = await window.apiClient.getTrees();
       } else {
-        trees = typeof getTrees === 'function' ? getTrees() : [];
+        throw new Error('apiClient.getTrees is not available');
       }
 
       if (Array.isArray(trees)) {
@@ -146,8 +137,6 @@
         }
       }
     } catch (e) {
-      var mockTrees = getMockTreesFallback();
-
       if (cachedTrees && Array.isArray(cachedTrees)) {
         console.error('[my-trees-data] loadTrees error:', e);
         console.log('[my-trees-data] Showing cached trees after API error');
@@ -155,10 +144,6 @@
           renderTrees(cachedTrees);
         }
         showToast?.(i18n('myTrees.offline_mode') || '오프라인 모드 - 캐시된 데이터를 표시합니다', 'warn');
-      } else if (mockTrees.length && typeof renderTrees === 'function') {
-        console.warn('[my-trees-data] API failed, rendering mock trees fallback:', e.message);
-        renderTrees(mockTrees);
-        showToast?.(i18n('myTrees.offline_mode') || '오프라인 모드 - 데모 데이터를 표시합니다', 'warn');
       } else {
         console.error('[my-trees-data] loadTrees error:', e);
         if (typeof setState === 'function' && stateEnum?.ERROR) {

@@ -7,7 +7,7 @@
  * Transitional compatibility only:
  * - snake_case fields are still accepted during migration
  * - legacy response compatibility must not be treated as the long-term contract
- * - remove fallback paths after API, cache, and mock responses are fully aligned
+ * - remove fallback paths after API and cache responses are fully aligned
  *
  * Used by: detail.js, editor.js, and other pages handling memory/tree data.
  */
@@ -18,7 +18,7 @@
     /**
      * Normalize a memory object to standard flat camelCase shape.
      * 
-     * @param {Object} mem - Raw memory data from API, cache, or mock
+     * @param {Object} mem - Raw memory data from API or cache
      * @returns {Object|null} Normalized memory object or null if input is falsy
      */
     function normalizeMemory(mem) {
@@ -65,7 +65,7 @@
     /**
      * Normalize a tree object to standard flat camelCase shape.
      *
-     * @param {Object} tree - Raw tree data from API, cache, or mock
+     * @param {Object} tree - Raw tree data from API or cache
      * @returns {Object|null} Normalized tree object or null if input is falsy
      */
     function normalizeTree(tree) {

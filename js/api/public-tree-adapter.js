@@ -16,8 +16,7 @@
    * Remove these fallback paths after:
    * 1) /api/community/trees is camelCase-only
    * 2) /api/community/memories is camelCase-only
-   * 3) mock browse path is camelCase-only
-   * 4) contract tests stay green without legacy fixtures
+   * 3) contract tests stay green without legacy fixtures
    *
    * New code outside this adapter must not directly read snake_case fields.
    */

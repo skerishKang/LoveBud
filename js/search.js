@@ -3,13 +3,13 @@
  * v20260421-2
  *
  * Search page orchestration:
- * - Data loading (cache → API → mock fallback)
+ * - Data loading (cache → API)
  * - Filter state management
  * - Event binding
  * - Renderer coordination
  *
  * Dependencies (loaded before this):
- * - mock-data.js, cache-utils.js
+ * - cache-utils.js
  * - utils/normalize.js, utils/path.js, utils/ui.js
  * - search-data-adapter.js, search-card-renderer.js, search-preview-renderer.js
  * - postgres-client.js
@@ -59,21 +59,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     resultsList.innerHTML = CardRenderer.renderLoading();
 
     // ─────────────────────────────────────────────────────────
-    // Data Loading: Cache → API → Mock Fallback
+    // Data Loading: Cache → API
     // ─────────────────────────────────────────────────────────
 
     const cache = window.LoveBudCache;
     const PUBLIC_TREES_CACHE_KEY = 'public_trees_list';
     const MIN_LOADING_TIME = 400;
-    const isMockFallbackEnabled = () =>
-        window.LoveBudRuntimeFlags?.isMockFallbackEnabled
-            ? window.LoveBudRuntimeFlags.isMockFallbackEnabled()
-            : (
-                  window.location.hostname === 'localhost' ||
-                  window.location.hostname === '127.0.0.1' ||
-                  window.location.search.includes('mock=1') ||
-                  window.localStorage?.getItem('lovebud_force_mock') === '1'
-              );
 
     const startTime = Date.now();
     let allTrees = [];
@@ -135,23 +126,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     } catch (error) {
         loadError = error;
-        console.warn('[search] API 실패:', error.message);
-
-        const mockMemories = Array.isArray(window.memories)
-            ? window.memories
-            : (typeof memories !== 'undefined' && Array.isArray(memories) ? memories : null);
-        const mockTrees = Array.isArray(window.trees)
-            ? window.trees
-            : (typeof trees !== 'undefined' && Array.isArray(trees) ? trees : null);
-
-        if (
-            !cachedTrees &&
-            mockMemories &&
-            mockTrees
-        ) {
-            allTrees = Adapter.buildTreeData(mockMemories, mockTrees);
-            console.log('[search] mock 데이터 fallback:', allTrees.length, '개 트리');
-        } else if (!cachedTrees) {
+        console.warn('[search] API 로드 실패:', error.message);
+        if (!allTrees || allTrees.length === 0) {
             allTrees = [];
         }
     }
@@ -265,13 +241,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (filtered.length === 0) {
             const hasNoData = loadError === null && allTrees.length === 0;
-            const isApiFailureWithoutFallback =
+            const isApiFailure =
                 loadError !== null &&
                 !isFromCache &&
-                !isMockFallbackEnabled() &&
                 allTrees.length === 0;
 
-            if (isApiFailureWithoutFallback) {
+            if (isApiFailure) {
                 renderLoadErrorState();
             } else if (hasNoData) {
                 // 공개 트리가 0개인 상태 (API 정상, 데이터 없음)

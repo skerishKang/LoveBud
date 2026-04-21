@@ -37,7 +37,6 @@ window.LoveBudEditorDataLoaderFallbacks = {
         const opts = options || {};
         const requestedTreeId = opts.urlTreeId || '';
         const apiClient = opts.apiClient || null;
-        const getFirstMockTreeFallback = opts.getFirstMockTree || (() => null);
         const createDefaultTreeTitle = opts.createDefaultTreeTitle || (() => '러브트리');
         const getConfirmedSessionUserFallback = opts.getConfirmedSessionUser || (() => null);
 
@@ -102,7 +101,7 @@ window.LoveBudEditorDataLoaderFallbacks = {
             }
         } catch (e) {
             treeLoadErrorMessage = String(e?.message || '');
-            console.warn('[editor] API tree failed, fallback to mock:', e.message);
+            console.warn('[editor] API tree 로드 실패:', e.message);
             authRequired = /401|Authentication/i.test(treeLoadErrorMessage);
         }
 
@@ -114,10 +113,6 @@ window.LoveBudEditorDataLoaderFallbacks = {
                 treeLoadErrorMessage,
                 authRequired: true
             };
-        }
-
-        if (!tree) {
-            tree = getFirstMockTreeFallback();
         }
 
         return {
@@ -135,7 +130,6 @@ window.LoveBudEditorDataLoaderFallbacks = {
         const cache = opts.cache || null;
         const cacheKey = opts.cacheKey || 'memories_default';
         const apiClient = opts.apiClient || null;
-        const getMemoriesByTreeFallback = opts.getMemoriesByTreeFallback || null;
         const showToast = opts.showToast || function() {};
         const i18n = opts.i18n || function(key) { return key; };
         const normalizeMemory = opts.normalizeMemory || ((mem) => mem);
@@ -165,12 +159,6 @@ window.LoveBudEditorDataLoaderFallbacks = {
             if (e.message?.includes('401') || e.message?.includes('403')) {
                 showToast(i18n('data_load_fail_demo'), 'warn');
             }
-        }
-
-        if (memories.length === 0 && !cachedMemories) {
-            memories = typeof getMemoriesByTreeFallback === 'function'
-                ? (getMemoriesByTreeFallback(treeId) || [])
-                : [];
         }
 
         window.currentTreeMemories = memories.map(normalizeMemory).filter(Boolean);

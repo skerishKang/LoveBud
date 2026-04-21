@@ -44,7 +44,6 @@
         const opts = options || {};
         const urlTreeId = opts.urlTreeId || '';
         const apiClient = opts.apiClient || null;
-        const getFirstMockTree = opts.getFirstMockTree || function() { return null; };
         const createDefaultTreeTitle = opts.createDefaultTreeTitle || function() { return '러브트리'; };
         const getConfirmedSessionUser = opts.getConfirmedSessionUser || function() { return null; };
 
@@ -107,7 +106,7 @@
             }
         } catch (e) {
             treeLoadErrorMessage = String(e?.message || '');
-            console.warn('[editor] API tree failed, fallback to mock:', e.message);
+            console.warn('[editor] API tree load failed:', e.message);
             authRequired = /401|Authentication/i.test(treeLoadErrorMessage);
         }
 
@@ -119,10 +118,6 @@
                 treeLoadErrorMessage,
                 authRequired: true
             };
-        }
-
-        if (!tree) {
-            tree = typeof getFirstMockTree === 'function' ? getFirstMockTree() : null;
         }
 
         return {
@@ -140,7 +135,6 @@
         const cache = opts.cache || null;
         const cacheKey = opts.cacheKey || 'memories_default';
         const apiClient = opts.apiClient || null;
-        const getMemoriesByTreeFallback = opts.getMemoriesByTreeFallback || null;
         const showToast = opts.showToast || function() {};
         const i18n = opts.i18n || function(key) { return key; };
         const normalizeMemory = opts.normalizeMemory || createNormalizeMemory();
@@ -172,10 +166,6 @@
             if (e.message?.includes('401') || e.message?.includes('403')) {
                 showToast(i18n('data_load_fail_demo'), 'warn');
             }
-        }
-
-        if (memories.length === 0 && !cachedMemories && typeof getMemoriesByTreeFallback === 'function') {
-            memories = getMemoriesByTreeFallback(treeId) || [];
         }
 
         const normalizedMemories = memories.map(normalizeMemory).filter(Boolean);
