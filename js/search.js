@@ -137,7 +137,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         loadError = error;
         console.warn('[search] API 실패:', error.message);
 
-        // 개발/데모 모드에서만 mock fallback 허용
         const mockMemories = Array.isArray(window.memories)
             ? window.memories
             : (typeof memories !== 'undefined' && Array.isArray(memories) ? memories : null);
@@ -147,7 +146,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (
             !cachedTrees &&
-            isMockFallbackEnabled() &&
             mockMemories &&
             mockTrees
         ) {
