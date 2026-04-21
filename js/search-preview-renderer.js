@@ -1,6 +1,6 @@
 /**
  * LoveBud Search Preview Renderer
- * v20260422-2
+ * v20260422-3
  * 
  * Rendering layer: preview sidebar panel.
  * DOM-agnostic - updates passed DOM elements.
@@ -110,7 +110,7 @@
         return window.LoveBudSearchTitleHelper || null;
     }
 
-    function getMomentLabel(memory, fallbackKo = '첫 순간', fallbackEn = 'First moment') {
+    function getMomentLabel(memory, fallbackKo = '시작 순간', fallbackEn = 'Starting moment') {
         const helper = getSearchTitleHelper();
         const cleaned = helper?.cleanMomentTitle
             ? helper.cleanMomentTitle(memory?.title || '')
@@ -126,7 +126,14 @@
             .filter(tag => tag !== '기록' && tag !== 'tag_record')
             .slice(0, 4);
 
-        if (!safeTags.length) return '';
+        if (!safeTags.length) {
+            return `
+                <span style="padding:8px 14px;background:var(--surface-container-low);border-radius:99px;font-size:13px;font-weight:600;color:var(--on-surface-variant);border:1px solid var(--outline-variant);">
+                    ${escapeHtml(getSearchCopy('search.previewNoEmotionTags', '아직 또렷하게 남은 감정은 없어요.', 'There are no clearly saved emotions yet.'))}
+                </span>
+            `;
+        }
+
         return safeTags.map(tag =>
             `<span style="padding:8px 14px;background:var(--primary-container);border-radius:99px;font-size:13px;font-weight:700;color:var(--on-primary-container);border:1px solid var(--outline-variant);">#${escapeHtml(tag)}</span>`
         ).join('');
@@ -155,18 +162,18 @@
         const safeLast = formatDate(lastTimestamp);
 
         if (safeUpdated) {
-            return `${getSearchCopy('search.previewTimelineRecentUpdate', '최근 업데이트', 'Recently updated')} ${safeUpdated}`;
+            return `${getSearchCopy('search.previewTimelineRecentUpdate', '최근에 이어진 순간', 'Recently added moment')} ${safeUpdated}`;
         }
         if (safeLast) {
-            return `${getSearchCopy('search.previewTimelineLastMoment', '마지막 순간', 'Last moment')} ${safeLast}`;
+            return `${getSearchCopy('search.previewTimelineLastMoment', '마지막으로 남은 순간', 'Latest saved moment')} ${safeLast}`;
         }
         if (safeFirst && safeLast && safeFirst !== safeLast) {
             return `${safeFirst} ~ ${safeLast}`;
         }
         if (safeCreated) {
-            return `${safeCreated} ${getSearchCopy('search.previewTimelineCreated', '생성', 'Created')}`;
+            return `${getSearchCopy('search.previewTimelineCreated', '처음 남긴 날', 'First saved on')} ${safeCreated}`;
         }
-        return getSearchCopy('search.previewTimelineUnavailable', '업데이트 정보 없음', 'No update info');
+        return getSearchCopy('search.previewTimelineUnavailable', '아직 시작 순간을 기다리는 중이에요', 'Still waiting for the first moment');
     }
 
     function getDefaultTreeName() {
@@ -181,7 +188,7 @@
         const themeLabel = titleHelper?.getThemeLabel
             ? titleHelper.getThemeLabel(tree)
             : '';
-        const timeRange = String(tree?.timeRange || getSearchCopy('search.previewUnknownRange', '기록 없음', 'No timeline yet')).trim();
+        const timeRange = String(tree?.timeRange || getSearchCopy('search.previewUnknownRange', '아직 흐름이 또렷하지 않아요', 'The flow is not clear yet')).trim();
         const memoryCount = Number(tree?.memoryCount || 0);
         const safeTitle = escapeHtml(displayTitle);
         const safeTheme = escapeHtml(themeLabel);
@@ -192,8 +199,8 @@
                 return formatSearchCopy(
                     'search.previewSummaryThemeStart',
                     { title: safeTitle, theme: safeTheme },
-                    '<strong style="color:var(--on-surface);">{title}</strong>는 <strong style="color:var(--on-surface);">{theme}</strong> 테마로 시작된 공개 러브트리예요.',
-                    '<strong style="color:var(--on-surface);">{title}</strong> is a public LoveTree that began with the <strong style="color:var(--on-surface);">{theme}</strong> theme.'
+                    '<strong style="color:var(--on-surface);">{title}</strong>는 <strong style="color:var(--on-surface);">{theme}</strong>와 함께 막 시작된 공개 러브트리예요.',
+                    '<strong style="color:var(--on-surface);">{title}</strong> is a public LoveTree that has just begun with <strong style="color:var(--on-surface);">{theme}</strong>.'
                 );
             }
             return formatSearchCopy(
@@ -208,16 +215,16 @@
             return formatSearchCopy(
                 'search.previewSummaryThemeRange',
                 { theme: safeTheme, count: memoryCount, range: safeRange },
-                '<strong style="color:var(--on-surface);">{theme}</strong>와 함께한 <span style="color:var(--primary);font-weight:700;">{count}개의 감정 순간</span>이 <strong>{range}</strong> 동안 기록되었어요.',
-                '<strong style="color:var(--on-surface);">{count} emotional moments</strong> with <strong style="color:var(--on-surface);">{theme}</strong> were recorded across <strong>{range}</strong>.'
+                '<strong style="color:var(--on-surface);">{theme}</strong>와 함께한 <span style="color:var(--primary);font-weight:700;">{count}개의 순간</span>이 <strong>{range}</strong>에 걸쳐 이어졌어요.',
+                '<strong style="color:var(--on-surface);">{count} moments</strong> with <strong style="color:var(--on-surface);">{theme}</strong> continued across <strong>{range}</strong>.'
             );
         }
 
         return formatSearchCopy(
             'search.previewSummaryRange',
             { title: safeTitle, count: memoryCount, range: safeRange },
-            '<strong style="color:var(--on-surface);">{title}</strong>에 담긴 <span style="color:var(--primary);font-weight:700;">{count}개의 감정 순간</span>이 <strong>{range}</strong> 동안 기록되었어요.',
-            '<strong style="color:var(--on-surface);">{count} emotional moments</strong> in <strong style="color:var(--on-surface);">{title}</strong> were recorded across <strong>{range}</strong>.'
+            '<strong style="color:var(--on-surface);">{title}</strong>에 담긴 <span style="color:var(--primary);font-weight:700;">{count}개의 순간</span>이 <strong>{range}</strong>에 걸쳐 이어졌어요.',
+            '<strong style="color:var(--on-surface);">{count} moments</strong> in <strong style="color:var(--on-surface);">{title}</strong> continued across <strong>{range}</strong>.'
         );
     }
 
@@ -271,7 +278,7 @@
                 <div style="width:100%;height:100%;border-radius:1rem;background:linear-gradient(135deg, rgba(255,248,249,0.95), rgba(255,255,255,0.98));display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;color:var(--on-surface-variant);">
                     <span class="material-symbols-outlined" style="font-size:34px;color:var(--primary);margin-bottom:10px;animation:spin 1s linear infinite;">sync</span>
                     <div style="font-size:14px;font-weight:800;color:var(--on-surface);margin-bottom:8px;">${safeTreeTitle}</div>
-                    <p style="margin:0;font-size:13px;line-height:1.6;">${escapeHtml(getSearchCopy('search.previewLoadingLead', '이 트리의 첫 장면과 이어진 감정을 불러오는 중이에요.', 'Loading the first scene and connected flow of this tree.'))}</p>
+                    <p style="margin:0;font-size:13px;line-height:1.6;">${escapeHtml(getSearchCopy('search.previewLoadingLead', '이 트리의 대표 순간과 이어진 감정을 불러오는 중이에요.', 'Loading the featured moment and connected feelings of this tree.'))}</p>
                 </div>
             `;
         }
@@ -283,9 +290,9 @@
         if (_dom.previewDesc) {
             _dom.previewDesc.innerHTML = `
                 <div style="background:var(--surface-container-low);padding:20px;border-radius:1rem;">
-                    ${renderSectionHeading('auto_stories', getSearchCopy('search.previewLoadingHeading', '감상 흐름 준비 중', 'Preparing preview'))}
+                    ${renderSectionHeading('auto_stories', getSearchCopy('search.previewLoadingHeading', '감상 허브를 여는 중', 'Opening the preview hub'))}
                     <div style="font-size:14px;line-height:1.7;color:var(--on-surface-variant);">
-                        ${escapeHtml(getSearchCopy('search.previewLoadingBody', '선택한 트리의 시작 순간과 이어진 감정을 이곳에서 먼저 보여드릴게요.', 'The first moment and connected flow of this tree will appear here shortly.'))}
+                        ${escapeHtml(getSearchCopy('search.previewLoadingBody', '선택한 트리의 대표 순간과 이어진 감정을 이곳에서 먼저 보여드릴게요.', 'The featured moment and connected feelings of this tree will appear here first.'))}
                     </div>
                 </div>
             `;
@@ -295,7 +302,7 @@
             previewStats.hidden = true;
         }
         if (_dom.previewEmotionTags) {
-            _dom.previewEmotionTags.innerHTML = '';
+            _dom.previewEmotionTags.innerHTML = renderEmotionTags([]);
         }
     }
 
@@ -323,7 +330,7 @@
                         <div style="font-size:14px;font-weight:800;color:var(--on-surface);margin-bottom:8px;">${safeTreeTitle}</div>
                         <p style="margin:0;font-size:13px;line-height:1.6;">
                             ${escapeHtml(getSearchCopy('search.previewNoMomentTitle', '아직 대표 순간이 또렷하게 남아 있지 않아요.', 'There is no clearly featured moment yet.'))}<br>
-                            ${escapeHtml(getSearchCopy('search.previewNoMomentBody', '첫 순간이 기록되면 이 감상 허브에서 가장 먼저 미리 볼 수 있어요.', 'Once the first moment is recorded, you will be able to preview it here first.'))}
+                            ${escapeHtml(getSearchCopy('search.previewNoMomentBody', '시작 순간이 더해지면 이 감상 허브에서 가장 먼저 열어볼 수 있어요.', 'Once the starting moment is added, you will be able to open it here first.'))}
                         </p>
                     </div>
                 `;
@@ -343,7 +350,7 @@
                             allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                             allowfullscreen style="position:absolute;top:0;left:0;"></iframe>
                         <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top,rgba(0,0,0,0.8),transparent);padding:40px 20px 20px;color:white;text-align:center;">
-                            <div style="font-size:14px;font-weight:700;margin-bottom:8px;opacity:0.9;">${escapeHtml(getSearchCopy('search.previewStartFromFirstMoment', '첫 순간부터 감상하기', 'Start from the first moment'))}</div>
+                            <div style="font-size:14px;font-weight:700;margin-bottom:8px;opacity:0.9;">${escapeHtml(getSearchCopy('search.previewStartFromFirstMoment', '대표 순간부터 감상하기', 'Start from the featured moment'))}</div>
                             <div style="font-size:12px;opacity:0.7;">${safeFirstMemTitle}</div>
                         </div>
                     </div>
@@ -354,7 +361,7 @@
                         <div style="position:absolute;left:18px;right:18px;bottom:18px;color:white;">
                             <div style="display:inline-flex;align-items:center;gap:6px;min-height:28px;padding:0 10px;border-radius:999px;background:rgba(255,255,255,0.18);backdrop-filter:blur(10px);font-size:12px;font-weight:800;margin-bottom:10px;">
                                 <span class="material-symbols-outlined" style="font-size:14px;">play_circle</span>
-                                ${escapeHtml(getSearchCopy('search.previewStartFromFirstMoment', '첫 순간부터 감상하기', 'Start from the first moment'))}
+                                ${escapeHtml(getSearchCopy('search.previewStartFromFirstMoment', '대표 순간부터 감상하기', 'Start from the featured moment'))}
                             </div>
                             <div style="font-size:14px;font-weight:800;line-height:1.4;">${safeFirstMemTitle}</div>
                         </div>
@@ -364,15 +371,15 @@
         }
 
         if (_dom.previewTitle) {
-            const safeTimeRange = escapeHtml(String(tree?.timeRange || getSearchCopy('search.previewUnknownRange', '기록 없음', 'No timeline yet')).trim());
-            const memoryCountSuffix = getSearchCopy('search.previewMomentCountSuffix', '개 순간', 'moments');
+            const safeTimeRange = escapeHtml(String(tree?.timeRange || getSearchCopy('search.previewUnknownRange', '아직 흐름이 또렷하지 않아요', 'The flow is not clear yet')).trim());
+            const memoryCountSuffix = getSearchCopy('search.previewMomentCountSuffix', '개의 순간', 'moments');
 
             _dom.previewTitle.innerHTML = `
                 <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
                     <span style="font-size:2rem;background:var(--surface-container-low);width:48px;height:48px;display:flex;align-items:center;justify-content:center;border-radius:12px;">${getTreeIcon(tree.stage)}</span>
                     <div>
                         <div style="font-size:1.1rem;font-weight:800;color:var(--on-surface);line-height:1.3;">${safeTreeTitle}</div>
-                        <div style="font-size:12px;color:var(--on-surface-variant);margin-top:2px;">${tree.memoryCount} ${escapeHtml(memoryCountSuffix)} · ${safeTimeRange}</div>
+                        <div style="font-size:12px;color:var(--on-surface-variant);margin-top:2px;">${tree.memoryCount}${escapeHtml(memoryCountSuffix)} · ${safeTimeRange}</div>
                     </div>
                 </div>
             `;
@@ -383,44 +390,41 @@
                 const noRecordsLine = formatSearchCopy(
                     'search.previewNoRecordsLine',
                     {
-                        countLabel: escapeHtml(getSearchCopy('search.previewNoRecordsYet', '아직 기록은 0개', 'There are still 0 records')),
-                        followup: escapeHtml(getSearchCopy('search.previewNoRecordsFollowup', '다음 순간이 쌓이면 감정 경로가 여기서 채워집니다.', 'As new moments are added, the emotional path will fill in here.'))
+                        countLabel: escapeHtml(getSearchCopy('search.previewNoRecordsYet', '아직 남아 있는 순간은 없지만', 'There are no saved moments yet, but')),
+                        followup: escapeHtml(getSearchCopy('search.previewNoRecordsFollowup', '다음 순간이 이어지면 이곳에서 흐름이 함께 열려요.', 'when the next moment is added, the flow will open here together.'))
                     },
-                    '{countLabel}지만, {followup}',
-                    '{countLabel}, and {followup}'
+                    '{countLabel} {followup}',
+                    '{countLabel} {followup}'
                 );
 
                 _dom.previewDesc.innerHTML = `
                     <div style="background:var(--surface-container-low);padding:20px;border-radius:1rem;margin-bottom:16px;">
-                        ${renderSectionHeading('route', getSearchCopy('search.previewTimelineHeading', '이 마음은 어디서 시작됐을까요?', 'Where did this feeling begin?'))}
+                        ${renderSectionHeading('route', getSearchCopy('search.previewTimelineHeading', '이 트리는 어디서 시작될까요?', 'Where will this tree begin?'))}
                         <div style="font-size:14px;line-height:1.7;color:var(--on-surface-variant);">
-                            ${escapeHtml(getSearchCopy('search.previewTimelineEmpty', '아직 기록된 순간이 없어 감정 경로가 비어 있어요.', 'No moments have been recorded yet, so the emotional path is still empty.'))}<br>
-                            ${escapeHtml(getSearchCopy('search.previewTimelineEmptyBody', '첫 순간이 추가되면 이 패널에서 흐름을 바로 미리 볼 수 있어요.', 'Once the first moment is added, you will be able to preview the flow in this panel.'))}
+                            ${escapeHtml(getSearchCopy('search.previewTimelineEmpty', '아직 시작 순간이 남아 있지 않아 흐름이 비어 있어요.', 'The flow is still empty because the starting moment has not been saved yet.'))}<br>
+                            ${escapeHtml(getSearchCopy('search.previewTimelineEmptyBody', '첫 순간이 더해지면 이 패널에서 대표 순간과 흐름을 바로 볼 수 있어요.', 'Once the first moment is added, you will be able to see the featured moment and flow in this panel.'))}
                         </div>
                     </div>
 
                     <div style="font-size:14px;color:var(--on-surface-variant);line-height:1.6;padding:0 4px;">
                         ${getPreviewSummaryCopy(tree, memories)}
                         <span style="color:var(--primary);font-weight:700;">${noRecordsLine}</span>
-                        ${renderInfoCallout('info', getSearchCopy('search.previewNewTreeInfo', '새로 시작된 공개 트리입니다', 'This is a newly started public tree.'))}
+                        ${renderInfoCallout('info', getSearchCopy('search.previewNewTreeInfo', '이제 막 감상이 시작될 공개 러브트리예요.', 'This public LoveTree is just about to begin.'))}
                     </div>
                     ${renderPreviewActionButton(tree)}
                 `;
             } else {
                 const pathStages = memories.slice(0, 3).map((m, i) => {
-                    return renderPathStageBadge(i + 1, getMomentLabel(m, '순간', 'Moment'));
+                    return renderPathStageBadge(i + 1, getMomentLabel(m, '시작 순간', 'Starting moment'));
                 }).join('<span style="opacity:0.3;margin:0 4px;">→</span>');
 
                 const moreStages = renderMoreStagesText(memories.length - 3);
-                const firstMomentLabel = getMomentLabel(firstMem, '첫 순간', 'First moment');
-                const lastMomentLabel = getMomentLabel(memories[memories.length - 1], '최근 순간', 'Latest moment');
-                const themeLabel = titleHelper?.getThemeLabel ? titleHelper.getThemeLabel(tree) : '';
-                const primaryTag = titleHelper?.getPrimaryBrowseTag ? titleHelper.getPrimaryBrowseTag(tree) : '';
-                const moodText = themeLabel || primaryTag || getSearchCopy('search.previewMoodFallback', '팬의 마음', 'a fan heart');
+                const firstMomentLabel = getMomentLabel(firstMem, '시작 순간', 'Starting moment');
+                const lastMomentLabel = getMomentLabel(memories[memories.length - 1], '최근에 남은 순간', 'Latest saved moment');
 
                 _dom.previewDesc.innerHTML = `
                     <div style="background:var(--surface-container-low);padding:20px;border-radius:1rem;margin-bottom:16px;">
-                        ${renderSectionHeading('route', getSearchCopy('search.previewTimelineHeading', '이 마음은 어디서 시작됐을까요?', 'Where did this feeling begin?'))}
+                        ${renderSectionHeading('route', getSearchCopy('search.previewTimelineHeading', '대표 순간에서 이어진 흐름', 'Flow connected from the featured moment'))}
                         <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;line-height:1.8;">
                             ${pathStages}
                         </div>
@@ -429,8 +433,8 @@
 
                     <div style="font-size:14px;color:var(--on-surface-variant);line-height:1.6;padding:0 4px;">
                         ${getPreviewSummaryCopy(tree, memories)}
-                        ${renderInfoCallout('favorite', `${firstMomentLabel}에서 시작해 ${lastMomentLabel}까지 이어진 ${moodText}의 러브트리예요`)}
-                        ${renderInfoCallout('touch_app', getSearchCopy('search.previewJourneyCta', '이곳에서 흐름을 훑어보고, 마음이 머무는 순간에 바로 들어가 보세요.', 'Scan the flow here, then open the moment that draws you in.'), 'primary')}
+                        ${renderInfoCallout('favorite', `${firstMomentLabel}에서 시작해 ${lastMomentLabel}까지 이어진 감정의 흐름이에요.`)}
+                        ${renderInfoCallout('touch_app', getSearchCopy('search.previewJourneyCta', '이곳에서 대표 순간과 이어진 감정을 훑어보고, 마음이 머무는 순간으로 들어가 보세요.', 'Scan the featured moment and connected feelings here, then open the moment that draws you in.'), 'primary')}
                     </div>
                     ${renderPreviewActionButton(tree)}
                 `;
@@ -454,13 +458,13 @@
     function renderPlaceholder() {
         const lead = getSearchCopy(
             'search.previewEmptyLead',
-            '왼쪽 목록에서 공개 러브트리를 선택하면',
-            'Choose a public LoveTree from the list to the left'
+            '트리를 고르면',
+            'When you choose a tree,'
         );
         const body = getSearchCopy(
             'search.previewEmptyBody',
-            '선택한 트리의 시작 순간과 이어진 감정이 이곳에 먼저 펼쳐집니다.',
-            'and preview its emotional flow and featured moment here.'
+            '대표 순간과 이어진 감정이 이곳에 열립니다.',
+            'the featured moment and connected feelings open here.'
         );
 
         return `
@@ -482,8 +486,8 @@
         );
         const placeholderDescription = getSearchCopy(
             'search.previewDescriptionPlaceholder',
-            '왼쪽에서 트리를 고르면 대표 순간과 감정 경로를 여기서 먼저 열어볼 수 있어요.',
-            'Choose a tree on the left to preview the emotional flow and featured moment here.'
+            '트리를 고르면 대표 순간과 이어진 감정이 이곳에 열립니다.',
+            'Choose a tree to open the featured moment and connected feelings here.'
         );
         
         if (_dom.previewContainer) {
@@ -505,7 +509,7 @@
             _dom.previewTreeDuration.textContent = '';
         }
         if (_dom.previewEmotionTags) {
-            _dom.previewEmotionTags.innerHTML = '';
+            _dom.previewEmotionTags.innerHTML = renderEmotionTags([]);
         }
     }
 
@@ -519,5 +523,5 @@
         renderEmotionTags: renderEmotionTags
     };
 
-    console.log('[LoveBudSearchPreviewRenderer] Search preview renderer loaded v20260422-2');
+    console.log('[LoveBudSearchPreviewRenderer] Search preview renderer loaded v20260422-3');
 })();
