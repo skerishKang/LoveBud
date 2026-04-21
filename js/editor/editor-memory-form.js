@@ -23,7 +23,9 @@ function createEditorMemoryForm(deps) {
         selectNode,
         treeMemories,
         setCachedMemories,
-        canvasArea
+        canvasArea,
+        rerenderCanvas,
+        focusNodeById
     } = deps;
 
     let isFormOpen = false;
@@ -35,11 +37,29 @@ function createEditorMemoryForm(deps) {
     const titleInput = document.getElementById('memoryTitleInput');
     const memoInput = document.getElementById('memoryMemoInput');
 
-    const formInputs = [urlInput, titleInput, memoInput];
+    const formInputs = [urlInput, titleInput, memoInput].filter(Boolean);
+
+    function applyFormOpenStyles() {
+        if (!addMemoryForm) return;
+        addMemoryForm.style.display = 'block';
+        addMemoryForm.style.position = 'absolute';
+        addMemoryForm.style.left = '50%';
+        addMemoryForm.style.top = '26px';
+        addMemoryForm.style.transform = 'translateX(-50%)';
+        addMemoryForm.style.width = 'min(520px, calc(100% - 40px))';
+        addMemoryForm.style.maxWidth = '520px';
+        addMemoryForm.style.padding = '22px 22px 20px';
+        addMemoryForm.style.borderRadius = '24px';
+        addMemoryForm.style.background = 'linear-gradient(180deg, rgba(255,255,255,0.99), rgba(250,246,244,0.98))';
+        addMemoryForm.style.boxShadow = '0 22px 50px rgba(75,64,57,0.14)';
+        addMemoryForm.style.border = '1px solid rgba(144,73,81,0.12)';
+        addMemoryForm.style.zIndex = '8';
+        addMemoryForm.style.backdropFilter = 'blur(12px)';
+    }
 
     const focusTrap = (e) => {
         if (!isFormOpen) return;
-        if (e.key !== 'Tab') return;
+        if (e.key !== 'Tab' || formInputs.length === 0) return;
 
         const focused = document.activeElement;
         const lastInput = formInputs[formInputs.length - 1];
@@ -55,14 +75,15 @@ function createEditorMemoryForm(deps) {
     };
 
     const showAddMemoryForm = () => {
-        urlInput.value = '';
-        titleInput.value = '';
-        memoInput.value = '';
-        addMemoryForm.style.display = 'block';
+        if (!addMemoryForm) return;
+        if (urlInput) urlInput.value = '';
+        if (titleInput) titleInput.value = '';
+        if (memoInput) memoInput.value = '';
+        applyFormOpenStyles();
         isFormOpen = true;
 
         document.addEventListener('keydown', focusTrap);
-        urlInput.focus();
+        if (urlInput) urlInput.focus();
 
         escHandler = (e) => {
             if (e.key === 'Escape') {
@@ -76,6 +97,7 @@ function createEditorMemoryForm(deps) {
             const target = e.target;
             if (addMemoryForm.contains(target)) return;
             if (target.closest('#addMemoryBtn')) return;
+            if (target.closest('.memory-add-affordance')) return;
             hideAddMemoryForm();
         };
 
@@ -85,6 +107,7 @@ function createEditorMemoryForm(deps) {
     };
 
     const hideAddMemoryForm = () => {
+        if (!addMemoryForm) return;
         addMemoryForm.style.display = 'none';
         isFormOpen = false;
 
@@ -100,7 +123,7 @@ function createEditorMemoryForm(deps) {
     };
 
     const addMemoryFromForm = async () => {
-        const url = urlInput.value.trim();
+        const url = urlInput ? urlInput.value.trim() : '';
         if (!url) {
             showToast(i18n('enter_youtube'), 'warn');
             return;
@@ -134,12 +157,12 @@ function createEditorMemoryForm(deps) {
 
         const today = new Date();
         const dateStr = `${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, '0')}.${String(today.getDate()).padStart(2, '0')}`;
-        const title = titleInput.value.trim() || '새 순간';
+        const title = (titleInput && titleInput.value.trim()) || '새 순간';
 
         const newMemoryData = {
             treeId,
             title,
-            memo: memoInput.value.trim() || '',
+            memo: memoInput ? (memoInput.value.trim() || '') : '',
             timestamp: dateStr,
             sourceUrl: embedUrl,
             sourceType: 'youtube',
@@ -220,32 +243,23 @@ function createEditorMemoryForm(deps) {
             return;
         }
 
-        const emptyMsg = document.getElementById('emptyTreeMessage');
-        if (emptyMsg) {
-            emptyMsg.remove();
-            console.log('[editor] Removed emptyTreeMessage after first node added');
+        if (typeof rerenderCanvas === 'function') {
+            rerenderCanvas();
+        } else {
+            drawNode(normalizedMemory);
+            const effectiveParentId = normalizedMemory.parentId || getCanonicalRootId();
+            const parent = treeMemories().find((m) => m.id === effectiveParentId);
+            if (parent) drawBranch(calcPosition(parent), calcPosition(normalizedMemory));
         }
-
-        drawNode(normalizedMemory);
-        const effectiveParentId = normalizedMemory.parentId || getCanonicalRootId();
-        const parent = treeMemories().find((m) => m.id === effectiveParentId);
-        if (parent) drawBranch(calcPosition(parent), calcPosition(normalizedMemory));
 
         const el = document.querySelector(`.memory-node[data-memory-id="${normalizedMemory.id}"]`);
         if (el) {
             selectNode(el, normalizedMemory);
             el.classList.add('new-node-highlight');
             setTimeout(() => el.classList.remove('new-node-highlight'), 2000);
-
-            const nodeRect = el.getBoundingClientRect();
-            const canvasRect = canvasArea.getBoundingClientRect();
-            const scrollX = el.offsetLeft - canvasRect.width / 2 + nodeRect.width / 2;
-            const scrollY = el.offsetTop - canvasRect.height / 2 + nodeRect.height / 2;
-            canvasArea.scrollTo({
-                left: Math.max(0, scrollX),
-                top: Math.max(0, scrollY),
-                behavior: 'smooth'
-            });
+        }
+        if (typeof focusNodeById === 'function') {
+            focusNodeById(normalizedMemory.id);
         }
 
         if (useApi && didRefreshFromServer) {
@@ -267,7 +281,8 @@ function createEditorMemoryForm(deps) {
     return {
         showAddMemoryForm,
         hideAddMemoryForm,
-        addMemoryFromForm
+        addMemoryFromForm,
+        isFormOpen: () => isFormOpen
     };
 }
 
