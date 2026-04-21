@@ -47,7 +47,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
+        .replace(/\"/g, '&quot;')
         .replace(/'/g, '&#39;');
 
     const prettifyTagLabel = (tag) => {
@@ -58,9 +58,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         return spaced ? spaced.charAt(0).toUpperCase() + spaced.slice(1) : raw;
     };
 
+    const shouldHideEmotionTag = (tag) => {
+        const raw = String(tag ?? '').trim();
+        if (!raw) return true;
+        const normalized = raw.toLowerCase().replace(/\s+/g, '');
+        return normalized === 'tag_record'
+            || normalized === 'tag-record'
+            || normalized === '#기록';
+    };
+
     const getLocalizedTagLabel = (tag) => {
         const raw = String(tag ?? '').trim();
-        if (!raw) return '';
+        if (!raw || shouldHideEmotionTag(raw)) return '';
         return tText(raw, prettifyTagLabel(raw));
     };
 
@@ -140,14 +149,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const getHeroFallbackTitle = (memory) => {
         const artist = String(memory?.artist || '').trim();
         if (artist) {
-            return tText('public_tree_fallback_title_with_artist', `${artist}에게 마음이 닿기 시작한 순간을 감상하고 있어요`);
+            return `${artist}${tText('public_tree_fallback_title_with_artist_suffix', '에게 마음이 닿기 시작한 순간을 감상하고 있어요')}`;
         }
         return tText('public_tree_fallback_title', '누군가의 러브트리를 감상하고 있어요');
     };
 
     const getHeroFallbackDesc = ({ memoryCount, memoryTitleText }) => {
         if (memoryTitleText) {
-            return tText('public_tree_desc_fallback_with_memory', `“${memoryTitleText}”에서 시작된 마음을 따라가고 있어요. 연결된 순간이 많지 않아도, 이 장면만으로 남겨진 분위기를 천천히 감상해 보세요.`);
+            return `“${memoryTitleText}”${tText('public_tree_desc_fallback_with_memory_suffix', '에서 시작된 마음을 따라가고 있어요. 연결된 순간이 많지 않아도, 이 장면만으로 남겨진 분위기를 천천히 감상해 보세요.')}`;
         }
         const baseCount = memoryCount > 0 ? memoryCount : 1;
         return `${baseCount}${tText('public_tree_desc_suffix', '개의 순간으로 이어진 감정의 흐름을 따라가고 있어요. 지금 보고 있는 순간을 시작으로 이 트리를 천천히 감상해 보세요.')}`;
@@ -249,18 +258,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (detailDate) detailDate.textContent = (memory.timestamp || '') + (memory.source ? ' · ' + memory.source : '');
         if (detailSubtitle) detailSubtitle.textContent = tText('current_moment_kicker', '지금 감상 중인 순간');
 
-        if (tagsContainer && memory.emotionTags && memory.emotionTags.length > 0) {
-            tagsContainer.innerHTML = memory.emotionTags
-                .map(tag => getLocalizedTagLabel(tag))
-                .filter(Boolean)
-                .map(tag => `<span class="tag-chip active">${escapeHtml(tag)}</span>`)
-                .join('');
+        if (tagsContainer) {
+            const renderedTags = Array.isArray(memory.emotionTags)
+                ? memory.emotionTags
+                    .map(tag => getLocalizedTagLabel(tag))
+                    .filter(Boolean)
+                    .map(tag => `<span class="tag-chip active">${escapeHtml(tag)}</span>`)
+                    .join('')
+                : '';
+            tagsContainer.innerHTML = renderedTags;
         }
 
         const quoteText = String(memory.quote || '').trim();
         const memoText = String(memory.memo || '').trim();
         if (diaryQuote) {
-            diaryQuote.textContent = quoteText ? `"${quoteText}"` : tText('empty_memo_quote', '짧게 남은 장면 하나도 오래 머무는 마음이 될 수 있어요.');
+            diaryQuote.textContent = quoteText ? `\"${quoteText}\"` : tText('empty_memo_quote', '짧게 남은 장면 하나도 오래 머무는 마음이 될 수 있어요.');
         }
         if (diaryContent) {
             if (memoText) {
