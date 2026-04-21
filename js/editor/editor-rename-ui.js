@@ -66,9 +66,6 @@ function enhanceEditorSidebarHint() {
 
     const baseHint = hintEl.dataset.baseHintText || hintEl.textContent || (i18n('sidebar_first_moment_hint') || '첫 순간을 추가해 트리를 시작해 보세요.');
     hintEl.dataset.baseHintText = baseHint;
-    if (!hintEl.textContent.includes('드래그')) {
-        hintEl.textContent = `${baseHint} · ${(i18n('drag_pan_hint') || '빈 공간 드래그로 화면 이동, 순간 드래그로 위치 조정')}`;
-    }
 }
 
 function injectEditorRenameButton() {
