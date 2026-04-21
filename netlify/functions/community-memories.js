@@ -38,11 +38,15 @@ exports.handler = async (event) => {
 
   try {
     const params = event.queryStringParameters || {};
-    const limit = validateLimit(params.limit, 100, 200);
+    const limit = validateLimit(params.limit, params.treeId ? 100 : 100, 200);
+    const treeId = typeof params.treeId === 'string' && params.treeId.trim()
+      ? params.treeId.trim()
+      : null;
 
-    debugLog('[community-memories] querying memories', { limit });
+    debugLog('[community-memories] querying memories', { limit, treeId });
 
     const memories = await queryMemories({
+      treeId,
       visibility: 'public',
       limit,
     });
@@ -50,6 +54,7 @@ exports.handler = async (event) => {
     debugLog('[community-memories] handler success', {
       count: memories?.length || 0,
       limit,
+      treeId,
     });
 
     return ok(serializeMemoryList(memories), null, requestOrigin);
