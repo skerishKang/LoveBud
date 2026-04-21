@@ -118,6 +118,18 @@
       ko: '내가 기록한 순간들을 다시 감상하고 있어요',
       en: 'You are revisiting the moments you recorded.'
     },
+    'tree_context_missing_title_desc': {
+      ko: '트리 이름은 아직 보이지 않지만, 지금 남아 있는 이 순간부터 조용히 감상해 볼 수 있어요.',
+      en: 'The tree title is not visible yet, but you can still quietly start with the feeling left in this moment.'
+    },
+    'tree_context_missing_title_partial_desc': {
+      ko: '트리 이름은 아직 또렷하지 않지만, 지금 남아 있는 이 순간과 감정의 결부터 조용히 감상해 볼 수 있어요.',
+      en: 'The tree title is still unclear, but you can stay with the current moment and its emotional texture.'
+    },
+    'tree_context_missing_title_full_fail_desc': {
+      ko: '지금은 이 순간 하나가 가장 또렷하게 남아 있어요. 트리 전체 이름과 이어진 흐름은 잠시 후 다시 또렷해질 수 있어요.',
+      en: 'For now, this single moment is the clearest thing left. The tree name and connected flow may become clearer again later.'
+    },
     'memory_record_prefix': {
       ko: '기록 — ',
       en: 'Recorded — '
@@ -258,6 +270,14 @@
       ko: '아직 같은 흐름의 다른 순간은 보이지 않지만, 이 장면 하나만으로도 트리의 분위기를 천천히 느껴볼 수 있어요.',
       en: 'Other moments in the same flow may not appear yet, but this scene alone can still carry the mood of the tree.'
     },
+    'connected_single_moment_title': {
+      ko: '지금은 이 한 순간을 중심으로 감상하고 있어요.',
+      en: 'Right now, you are staying with this single moment.'
+    },
+    'connected_single_moment_desc': {
+      ko: '아직 트리 전체 흐름은 보이지 않지만, 이 장면 하나만으로도 남겨진 마음을 조용히 따라가 볼 수 있어요.',
+      en: 'The whole tree flow is not visible yet, but this one scene still lets you quietly follow the feeling left behind.'
+    },
     'connected_temporarily_unavailable_title': {
       ko: '이어진 다른 순간은 잠시 후 다시 또렷해질 거예요.',
       en: 'The connected moments may become clear again shortly.'
@@ -281,6 +301,14 @@
     'connected_missing_cards_desc_suffix': {
       ko: '개의 순간이 이 트리에 남아 있지만, 지금은 현재 장면을 중심으로 감정의 흐름을 읽고 있어요.',
       en: ' moments remain in this tree, but right now you are reading the flow around the current scene.'
+    },
+    'connected_partial_tree_title': {
+      ko: '지금은 이 순간 주변의 흐름만 조용히 감상하고 있어요.',
+      en: 'For now, you are quietly viewing only the flow around this moment.'
+    },
+    'connected_partial_tree_desc': {
+      ko: '트리 전체 맥락은 아직 흐릿하지만, 지금 보이는 장면과 이어질 감정의 여운은 차분히 따라가 볼 수 있어요.',
+      en: 'The full tree context is still blurred, but you can gently stay with the scene you have now and the feeling it leaves behind.'
     },
     'connected_relation_previous': {
       ko: '이전에 남겨진 순간',
@@ -310,9 +338,25 @@
       ko: '공개 러브트리 감상',
       en: 'Viewing a public LoveTree'
     },
+    'single_moment_view_chip': {
+      ko: '한 순간 감상',
+      en: 'Viewing a single moment'
+    },
+    'moment_centered_view_chip': {
+      ko: '지금은 이 순간 중심 감상',
+      en: 'Moment-centered viewing'
+    },
     'public_tree_kicker': {
       ko: '공개 러브트리',
       en: 'Public LoveTree'
+    },
+    'single_moment_kicker': {
+      ko: '남겨진 한 순간',
+      en: 'A single preserved moment'
+    },
+    'moment_centered_kicker': {
+      ko: '지금은 이 순간 중심 감상',
+      en: 'Staying with this moment'
     },
     'public_tree_fallback_title': {
       ko: '누군가의 러브트리를 감상하고 있어요',
@@ -321,6 +365,10 @@
     'public_tree_fallback_title_with_artist_suffix': {
       ko: '에게 마음이 닿기 시작한 순간을 감상하고 있어요',
       en: ' is the artist whose moment you are viewing as your heart begins to connect'
+    },
+    'single_moment_fallback_title': {
+      ko: '이 순간에 남겨진 마음을 감상하고 있어요',
+      en: 'You are staying with the feeling left in this moment'
     },
     'public_tree_desc_join': {
       ko: ' 안에서',
@@ -333,6 +381,18 @@
     'public_tree_desc_fallback_with_memory_suffix': {
       ko: '에서 시작된 마음을 따라가고 있어요. 연결된 순간이 많지 않아도, 이 장면만으로 남겨진 분위기를 천천히 감상해 보세요.',
       en: ' is where this feeling began. Even without many connected moments, this scene still holds the mood.'
+    },
+    'single_moment_hero_desc': {
+      ko: '하나에 남겨진 감정부터 천천히 읽고 있어요. 아직 트리 전체 흐름은 보이지 않지만, 이 장면만으로도 마음의 결을 따라가 볼 수 있어요.',
+      en: 'You are starting with the feeling left in this one moment. The whole tree may not be visible yet, but this scene still lets you follow its emotional texture.'
+    },
+    'single_moment_hero_desc_fallback': {
+      ko: '아직 트리 전체 흐름은 보이지 않지만, 지금 남아 있는 이 장면 하나만으로도 마음의 결을 천천히 따라가 볼 수 있어요.',
+      en: 'The whole tree may not be visible yet, but this one scene still lets you gently follow the feeling it leaves behind.'
+    },
+    'tree_partial_hero_desc': {
+      ko: '트리 전체 흐름은 아직 또렷하지 않지만, 지금 남아 있는 이 순간을 중심으로 감정의 결을 조용히 감상하고 있어요.',
+      en: 'The whole tree flow is still unclear, but you can quietly stay with the emotional texture of the current moment.'
     },
     'public_tree_context_desc': {
       ko: '지금은 다른 사람이 공개한 러브트리 안에서 한 순간을 감상하고 있어요.',
@@ -354,9 +414,17 @@
       ko: '이어진 흐름',
       en: 'Connected flow'
     },
+    'single_moment_connected_kicker': {
+      ko: '지금 머무는 장면',
+      en: 'The scene you are staying with'
+    },
     'connected_flow_title': {
       ko: '이 트리의 이어진 기억',
       en: 'More moments in this tree'
+    },
+    'single_moment_connected_title': {
+      ko: '지금은 이 순간을 중심으로 감상 중이에요',
+      en: 'Right now, you are staying with this moment'
     },
     'connected_flow_summary': {
       ko: '이 공개 러브트리 안에서 함께 이어지는 순간들을 천천히 따라가 보세요.',
@@ -370,6 +438,26 @@
       ko: '개의 순간이 이 트리에 남아 있어요. 지금은 현재 장면을 중심으로 감정의 흐름을 읽고 있어요.',
       en: ' moments remain in this tree. Right now you are reading the emotional flow around the current scene.'
     },
+    'connected_flow_empty_summary': {
+      ko: '지금은 이 순간이 가장 또렷하게 열려 있어요. 다른 장면은 아직 여기서 선명하게 이어지지 않지만, 현재의 여운부터 감상해 보세요.',
+      en: 'For now, this moment is what opens most clearly. The other scenes are not unfolding here yet, so begin with the afterglow of the current one.'
+    },
+    'connected_flow_single_summary': {
+      ko: '지금은 이 장면 하나를 중심으로 천천히 감상하고 있어요.',
+      en: 'For now, you are gently staying with this one scene.'
+    },
+    'single_moment_connected_summary': {
+      ko: '트리 전체 흐름이 아직 보이지 않아도, 지금 남아 있는 이 장면과 마음부터 조용히 따라가 볼 수 있어요.',
+      en: 'Even without the full tree flow, you can quietly begin with the scene and feeling that remain here.'
+    },
+    'connected_flow_temporarily_unavailable_summary': {
+      ko: '이어진 기억은 잠시 후 다시 또렷해질 수 있어요. 지금은 이 순간 하나를 중심으로 감정의 여운을 감상하고 있어요.',
+      en: 'The connected memories may become visible again later. For now, you are staying with the afterglow of this single moment.'
+    },
+    'connected_flow_partial_tree_summary': {
+      ko: '트리 전체 흐름은 아직 흐릿하지만, 지금 보이는 이 장면을 중심으로 감정의 결을 조용히 따라가고 있어요.',
+      en: 'The full tree flow is still blurred, but you can quietly follow the emotional texture around the scene you have now.'
+    },
     'public_tree_growth_label': {
       ko: '공개 트리 감상 중',
       en: 'Viewing public tree'
@@ -381,6 +469,14 @@
     'editor_tree_growth_label': {
       ko: '편집 트리를 감상 모드로 확인 중',
       en: 'Reviewing edited tree in view mode'
+    },
+    'single_moment_growth_label': {
+      ko: '한 순간 감상 중',
+      en: 'Viewing a single moment'
+    },
+    'moment_centered_growth_label': {
+      ko: '지금은 이 순간 중심 감상 중',
+      en: 'Moment-centered viewing'
     },
     'back_to_browse_soft': {
       ko: '둘러보기로 돌아가기',
