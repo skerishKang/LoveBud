@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>러브트리 편집 | LoveTree</title>
-    <link rel="stylesheet" href="../css/editor.css?v=20260420-1">
+    <link rel="stylesheet" href="../css/editor.css?v=20260420-2">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
 </head>
 <body class="editor-preload">
@@ -16,6 +16,7 @@
         <aside class="sidebar">
             <section class="editor-status-section">
                 <h3 id="editorFlowHeading">러브트리</h3>
+                <p id="editorFlowLead" style="margin:-6px 0 0;font-size:13px;line-height:1.7;color:var(--on-surface-variant);">...</p>
                 <div class="editor-status-card">
                     <div class="editor-space-between-row">
                         <strong id="sidebarTreeTitle">LoveTree</strong>
@@ -38,10 +39,16 @@
             </section>
 
             <section class="editor-add-section editor-add-section-bottom">
-                <button type="button" class="sidebar-btn sidebar-btn-primary" id="addMemoryBtn">
-                    <span class="btn-icon">+</span>
-                    <span class="btn-label" id="addMemoryBtnLabel">추가</span>
-                </button>
+                <div style="padding:14px 16px 16px;border-radius:18px;background:linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,246,244,0.96));box-shadow:0 10px 24px rgba(75,64,57,0.08);border:1px solid rgba(144,73,81,0.08);display:flex;flex-direction:column;gap:12px;">
+                    <div>
+                        <div id="addMemoryEyebrow" style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--primary);margin-bottom:8px;">...</div>
+                        <p id="addMemoryIntro" style="margin:0;font-size:13px;line-height:1.75;color:var(--on-surface-variant);">...</p>
+                    </div>
+                    <button type="button" class="sidebar-btn sidebar-btn-primary" id="addMemoryBtn">
+                        <span class="btn-icon">+</span>
+                        <span class="btn-label" id="addMemoryBtnLabel">추가</span>
+                    </button>
+                </div>
             </section>
         </aside>
 
@@ -85,37 +92,57 @@
                 </div>
 
                 <div id="detailViewMode" class="editor-hidden-initial">
-                    <div class="detail-video">
-                        <img id="detailImg" src="" alt="">
-                        <div class="memory-preview-overlay">
-                            <button type="button" class="play-btn" aria-label="재생">재생</button>
+                    <div style="padding:18px 18px 20px;border-radius:20px;background:linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,246,244,0.96));box-shadow:0 12px 30px rgba(75,64,57,0.08);border:1px solid rgba(144,73,81,0.08);display:flex;flex-direction:column;gap:16px;">
+                        <div>
+                            <div id="detailCurrentMomentBadge" style="display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;background:rgba(144,73,81,0.10);color:var(--primary);font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;">...</div>
+                            <h4 id="detailCurrentMomentTitle" style="margin:14px 0 8px;font-size:1.35rem;line-height:1.25;font-weight:900;letter-spacing:-0.03em;color:var(--on-surface);">&nbsp;</h4>
+                            <p id="detailCurrentMomentHint" style="margin:0;font-size:13px;line-height:1.7;color:var(--on-surface-variant);">&nbsp;</p>
+                        </div>
+
+                        <div class="detail-video">
+                            <img id="detailImg" src="" alt="">
+                            <div class="memory-preview-overlay">
+                                <button type="button" class="play-btn" aria-label="재생">재생</button>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="detail-info-group">
-                        <label id="detailDateLabel">...</label>
-                        <p id="detailDateText"></p>
+                    <div style="display:flex;flex-direction:column;gap:14px;">
+                        <div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--on-surface-variant);">트리 상태</div>
+                        <div id="detailTreeMetaMount"></div>
                     </div>
 
-                    <div class="detail-info-group">
-                        <label id="detailTagsLabel">...</label>
-                        <div class="tags-container" id="detailTags"></div>
+                    <div style="display:flex;flex-direction:column;gap:18px;padding:18px;border-radius:18px;background:var(--surface-container-low);border:1px solid rgba(144,73,81,0.06);">
+                        <div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--on-surface-variant);" id="detailMomentInfoLabel">...</div>
+
+                        <div class="detail-info-group">
+                            <label id="detailDateLabel">...</label>
+                            <p id="detailDateText"></p>
+                        </div>
+
+                        <div class="detail-info-group">
+                            <label id="detailTagsLabel">...</label>
+                            <div class="tags-container" id="detailTags"></div>
+                        </div>
+
+                        <div class="detail-info-group">
+                            <label id="detailMemoLabel">...</label>
+                            <div class="diary-note" id="detailMemo"></div>
+                        </div>
                     </div>
 
-                    <div class="detail-info-group">
-                        <label id="detailMemoLabel">...</label>
-                        <div class="diary-note" id="detailMemo"></div>
-                    </div>
+                    <div style="display:flex;flex-direction:column;gap:14px;padding:18px;border-radius:18px;background:linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,246,244,0.96));box-shadow:0 8px 22px rgba(75,64,57,0.06);border:1px solid rgba(144,73,81,0.08);">
+                        <div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--on-surface-variant);" id="detailActionLabel">...</div>
+                        <div class="memory-actions editor-memory-actions-row">
+                            <button id="editMemoryBtn" class="btn-round btn-outline editor-memory-action-btn">...</button>
+                            <button id="deleteMemoryBtn" class="btn-round btn-outline editor-memory-action-btn editor-memory-delete-btn">...</button>
+                        </div>
 
-                    <div class="memory-actions editor-memory-actions-row">
-                        <button id="editMemoryBtn" class="btn-round btn-outline editor-memory-action-btn">...</button>
-                        <button id="deleteMemoryBtn" class="btn-round btn-outline editor-memory-action-btn editor-memory-delete-btn">...</button>
-                    </div>
-
-                    <div id="saveStatusIndicator" class="save-status-indicator save-status editor-save-status-wrap" aria-live="polite">
-                        <span id="saveStatusIcon" class="editor-save-status-icon-hidden"></span>
-                        <span id="saveStatusText">저장됨</span>
-                        <span id="lastSavedTime" class="last-saved-time"></span>
+                        <div id="saveStatusIndicator" class="save-status-indicator save-status editor-save-status-wrap" aria-live="polite">
+                            <span id="saveStatusIcon" class="editor-save-status-icon-hidden"></span>
+                            <span id="saveStatusText">저장됨</span>
+                            <span id="lastSavedTime" class="last-saved-time"></span>
+                        </div>
                     </div>
                 </div>
 
@@ -161,7 +188,7 @@
     <script src="../js/editor/editor-canvas-viewport.js?v=20260420-1"></script>
     <script src="../js/editor/editor-canvas.js?v=20260420-6"></script>
     <script src="../js/editor/editor-rename-ui.js?v=20260420-1"></script>
-    <script src="../js/editor/editor-detail-ui.js?v=20260420-4"></script>
+    <script src="../js/editor/editor-detail-ui.js?v=20260421-1"></script>
     <script src="../js/editor/editor-memory-actions.js?v=20260419-1"></script>
     <script src="../js/editor/editor-memory-form.js?v=20260419-1"></script>
     <script src="../js/api/auth-policy.js?v=20260420-1"></script>
@@ -176,7 +203,7 @@
     <script src="../js/editor/editor-data-loader.js?v=20260420-1"></script>
     <script src="../js/editor/editor-data-loader-fallbacks.js?v=20260420-1"></script>
     <script src="../js/editor/editor-resolver-fallbacks.js?v=20260421-1"></script>
-    <script src="../js/editor.js?v=20260421-1"></script>
+    <script src="../js/editor.js?v=20260421-2"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="../js/firebase-config.js?v=20260417-31"></script>
@@ -186,7 +213,7 @@
     <script src="../js/i18n/i18n-intro.js?v=20260419-2"></script>
     <script src="../js/i18n/i18n-search.js?v=20260419-2"></script>
     <script src="../js/i18n/i18n-detail.js?v=20260419-2"></script>
-    <script src="../js/i18n/i18n-editor.js?v=20260420-3"></script>
+    <script src="../js/i18n/i18n-editor.js?v=20260421-1"></script>
     <script src="../js/i18n/i18n-my-trees.js?v=20260419-2"></script>
     <script src="../js/i18n/i18n-index.js?v=20260419-2"></script>
     <script src="../js/i18n.js?v=20260419-2"></script>
