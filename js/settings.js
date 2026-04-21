@@ -87,6 +87,12 @@
     if (publicDesc) {
       publicDesc.textContent = safeText('settings.publicDesc', '다른 팬들과 내 러브트리를 공유할 수 있어요');
     }
+    
+    // 로그아웃 버튼
+    var logoutBtn = document.querySelector('.logout-btn');
+    if (logoutBtn) {
+      logoutBtn.innerHTML = '<span class="material-symbols-outlined">logout</span>' + safeText('logout_btn', '로그아웃');
+    }
   }
 
   // UI 초기화
