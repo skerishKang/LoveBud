@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>러브트리 편집 | LoveTree</title>
-    <link rel="stylesheet" href="../css/editor.css?v=20260420-1">
+    <link rel="stylesheet" href="../css/editor.css?v=20260421-2">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
     <style>
         .memory-inline-edit { display:inline-flex; align-items:center; }
@@ -26,9 +26,9 @@
 
     <div class="editor-layout">
         <aside class="sidebar">
-            <div style="margin-bottom:14px;">
-                <a id="backToMyTreesLink" href="my-trees.html" style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;text-decoration:none;font-size:13px;font-weight:700;line-height:1.4;color:var(--primary);background:rgba(144,73,81,0.06);border:1px solid rgba(144,73,81,0.10);box-shadow:0 6px 18px rgba(75,64,57,0.04);transition:transform .18s ease, background .18s ease;">
-                    <span aria-hidden="true">←</span>
+            <div class="editor-sidebar-back-wrap">
+                <a id="backToMyTreesLink" href="my-trees.html" class="editor-sidebar-back-link">
+                    <span aria-hidden="true" class="editor-sidebar-back-icon">←</span>
                     <span id="backToMyTreesLabel">내 러브트리로 돌아가기</span>
                 </a>
             </div>
