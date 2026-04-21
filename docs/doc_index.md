@@ -23,6 +23,7 @@
 - [PRODUCT_BRIEF.md](./product/PRODUCT_BRIEF.md) - 현재 실행 기준 제품 개요
 - [PRODUCT_IDENTITY.md](./product/PRODUCT_IDENTITY.md) - 정체성/원칙
 - [BRAND_EXPERIENCE.md](./product/BRAND_EXPERIENCE.md) - 팬페이지 기반 감성 UX / 브랜드 경험 가이드
+- [UI_COPY_DIET_GUIDE.md](./product/UI_COPY_DIET_GUIDE.md) - 전역 UI 카피 다이어트 운영 기준
 - [MVP_SCOPE.md](./product/MVP_SCOPE.md) - MVP 정의
 - [USER_FLOW.md](./product/USER_FLOW.md) - 사용자 흐름
 - [DATA_NAMING_RULE.md](./product/DATA_NAMING_RULE.md) - 데이터 명명 규칙
