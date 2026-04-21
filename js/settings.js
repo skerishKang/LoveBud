@@ -1,6 +1,6 @@
 /**
  * LoveBud - Settings Module
- * v20260421-4
+ * v20260421-5
  * 
  * localStorage 기반 설정 관리
  * - 기본 공개 범위 (defaultVisibility)
@@ -190,7 +190,8 @@
     if (settingsContent && settingsCard) {
       settingsContent.addEventListener('click', function(e) {
         if (!settingsCard.contains(e.target)) {
-          closeSettings();
+          e.preventDefault();
+          e.stopPropagation();
         }
       });
     }
@@ -207,7 +208,6 @@
       if (!trigger) return;
       e.preventDefault();
       e.stopPropagation();
-      closeSettings();
     }, true);
   }
 
@@ -273,11 +273,9 @@
       window.signOut().then(function() {
         window.location.href = '../index.html';
       }).catch(function() {
-        // 실패해도 홈으로 이동
         window.location.href = '../index.html';
       });
     } else {
-      // auth.js가 로드되지 않은 경우 직접 Firebase 로그아웃 시도
       if (typeof firebase !== 'undefined' && firebase.auth) {
         firebase.auth().signOut().then(function() {
           window.location.href = '../index.html';
@@ -290,7 +288,6 @@
     }
   }
 
-  // 전역 노출
   window.initSettings = initSettings;
   window.handleLogout = handleLogout;
   window.getLoveBudSettings = loadSettings;
