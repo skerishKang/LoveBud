@@ -93,12 +93,14 @@ docs/test-scenarios/
 
 ---
 
-## 4. 추천 실행 순서
+## 4. 최근 제품 흐름 기준 추천 실행 순서
 
 ### 릴리스 전 최소 세트
 1. `core_newuser_001.md`
 2. `core_browse_001.md`
 3. `persistence_001.md`
+
+첫 진입, 공개 둘러보기, 저장 일관성까지 최소 축을 확인하는 세트입니다.
 
 ### 일반 수동 QA 기본 세트
 1. `core_newuser_001.md`
@@ -108,21 +110,60 @@ docs/test-scenarios/
 5. `persistence_001.md`
 6. `repeatability-node-creation-test.md` (회귀 확인 필요 시)
 
-### 인증/권한 변경 후
-1. `access_public_private_001.md`
-2. `core_newuser_001.md`
-3. `core_returning_001.md`
-4. `persistence_001.md`
+### 언어 변경 후 권장 세트
+1. `core_browse_001.md`
+2. `core_returning_001.md`
+3. `persistence_001.md`
 
-### 저장/캐시 변경 후
+search/detail의 공개 감상 흐름, my-trees/editor의 재진입 흐름, 언어 전환 뒤 저장된 상태 표시가 같이 읽히는지 확인하는 세트입니다.
+
+### 인증/권한 변경 후 세트
+1. `access_public_private_001.md`
+2. `core_browse_001.md`
+3. `core_newuser_001.md`
+4. `core_returning_001.md`
+5. `persistence_001.md`
+
+공개 트리 노출, 비로그인 상세 감상, 소유자/비소유자 경계, 로그인 후 내 트리 진입까지 한 번에 확인합니다.
+
+### 저장/캐시/지속성 변경 후 세트
 1. `core_newuser_001.md`
 2. `core_returning_001.md`
 3. `persistence_001.md`
 4. `repeatability-node-creation-test.md`
 
+첫 저장, 기존 트리 재편집, 새로고침/재진입, 반복 생성 회귀를 묶어서 확인하는 세트입니다.
+
 ---
 
-## 5. 결과 저장 규칙
+## 5. 어떤 상황에서 어떤 시나리오를 쓰는가
+
+### browse / detail 공개 흐름이 바뀌었을 때
+- `core_browse_001.md`
+- `access_public_private_001.md`
+
+### my-trees / editor 흐름이 바뀌었을 때
+- `core_newuser_001.md`
+- `core_returning_001.md`
+- `persistence_001.md`
+
+### 언어 전환이 바뀌었을 때
+- `core_browse_001.md`
+- `core_returning_001.md`
+- `persistence_001.md`
+
+### public / private 정책이 바뀌었을 때
+- `access_public_private_001.md`
+- `core_browse_001.md`
+- `core_returning_001.md`
+
+### 저장 방식이나 복구 흐름이 바뀌었을 때
+- `persistence_001.md`
+- `repeatability-node-creation-test.md`
+
+---
+
+## 6. 결과 저장 규칙
 
 결과는 계속 `docs/test-scenarios/results/` 아래에 저장합니다.
 
@@ -146,12 +187,14 @@ results/{scenario}-{group}-YYYY-MM-DD-HHMM/
     └── ...
 ```
 
-스크린샷은 필수가 아닙니다.
-다만 오류, 혼란, 화면 불일치, 권한 문제, 저장 유실이 보일 때는 남기는 것을 권장합니다.
+중요:
+- `test-result.md`는 필수입니다.
+- 스크린샷은 권장입니다.
+- 오류, 혼란, 화면 불일치, 권한 문제, 저장 유실이 보일 때는 반드시 남기는 쪽을 우선합니다.
 
 ---
 
-## 6. known blocker / 과거 이슈 취급 원칙
+## 7. known blocker / 과거 이슈 취급 원칙
 
 이 폴더에 과거 문제 설명이 남아 있더라도, 아래 원칙을 따릅니다.
 
@@ -164,7 +207,7 @@ results/{scenario}-{group}-YYYY-MM-DD-HHMM/
 
 ---
 
-## 7. 새 그룹 데이터 추가 방법
+## 8. 새 그룹 데이터 추가 방법
 
 1. `data/{group}-data.json` 생성
 2. 적절한 대표 시나리오 선택
@@ -173,7 +216,7 @@ results/{scenario}-{group}-YYYY-MM-DD-HHMM/
 
 ---
 
-## 8. 체크리스트
+## 9. 체크리스트
 
 테스트 시작 전:
 - [ ] `CURRENT_SCENARIOS.md`를 확인했는가
@@ -193,15 +236,16 @@ results/{scenario}-{group}-YYYY-MM-DD-HHMM/
 
 ---
 
-## 9. 현재 상태 요약
+## 10. 현재 상태 요약
 
 현재 폴더는 다음 상태를 목표로 운영합니다.
 
 - 대표 시나리오와 회귀 시나리오가 명확히 구분됨
 - 같은 폴더 안에서 어떤 문서를 먼저 써야 하는지 알 수 있음
-- 결과 템플릿이 새 시나리오 체계를 따라감
+- 최근 browse/detail/editor/my-trees/language/public-private/persistence 변경축을 기준으로 추천 세트를 고를 수 있음
+- 결과 템플릿이 대표 시나리오 체계를 따라감
 - 과거 이슈는 삭제보다 회귀 포인트로 관리됨
 
 ---
 
-*마지막 업데이트: 2026-04-20*
+*마지막 업데이트: 2026-04-21*
