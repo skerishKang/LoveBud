@@ -16,19 +16,88 @@
             gap: 56px;
         }
 
+        .browse-curation-shell {
+            margin-bottom: 28px;
+            padding: 28px 28px 24px;
+            border-radius: 1.9rem;
+            background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(255,248,249,0.94));
+            border: 1px solid rgba(144, 73, 81, 0.1);
+            box-shadow: 0 18px 48px rgba(75, 64, 57, 0.07);
+        }
+
+        .search-panel-header {
+            margin-bottom: 18px;
+        }
+
+        .search-panel-eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            min-height: 30px;
+            padding: 0 12px;
+            border-radius: 999px;
+            background: rgba(144, 73, 81, 0.08);
+            color: var(--primary);
+            font-size: 12px;
+            font-weight: 900;
+            margin-bottom: 14px;
+        }
+
+        .search-panel-header h2 {
+            font-size: 2.5rem;
+            margin-bottom: 12px;
+            line-height: 1.2;
+        }
+
+        .search-panel-header p {
+            color: var(--on-surface-variant);
+            font-size: 1.1rem;
+            font-weight: 400;
+            line-height: 1.6;
+        }
+
+        .browse-curation-note {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+            margin: 18px 0 0;
+        }
+
+        .browse-curation-note-card {
+            padding: 14px 14px 12px;
+            border-radius: 1rem;
+            background: rgba(255,255,255,0.88);
+            border: 1px solid rgba(144, 73, 81, 0.08);
+        }
+
+        .browse-curation-note-card strong {
+            display: block;
+            font-size: 13px;
+            font-weight: 800;
+            color: var(--on-surface);
+            margin-bottom: 6px;
+        }
+
+        .browse-curation-note-card p {
+            margin: 0;
+            font-size: 12px;
+            line-height: 1.55;
+            color: var(--on-surface-variant);
+        }
+
         .search-input-wrapper {
             position: relative;
-            margin-bottom: 18px;
+            margin-bottom: 12px;
         }
 
         .search-input {
             width: 100%;
-            padding: 28px 28px 28px 68px;
-            border-radius: 1.5rem;
-            border: 1px solid var(--outline-variant);
-            background: white;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.02);
-            font-size: 1.25rem;
+            padding: 18px 20px 18px 54px;
+            border-radius: 1.2rem;
+            border: 1px solid rgba(144, 73, 81, 0.12);
+            background: rgba(255,255,255,0.86);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.02);
+            font-size: 1rem;
             font-family: var(--font-body);
             outline: none;
             transition: all 0.3s;
@@ -36,50 +105,90 @@
 
         .search-input:focus {
             border-color: var(--primary);
-            box-shadow: 0 15px 40px rgba(141, 71, 79, 0.08);
+            box-shadow: 0 12px 32px rgba(141, 71, 79, 0.08);
         }
 
         .search-icon {
             position: absolute;
-            left: 28px;
+            left: 18px;
             top: 50%;
             transform: translateY(-50%);
             color: var(--primary);
-            font-size: 28px;
+            font-size: 22px;
+            opacity: 0.82;
         }
 
         .tag-chip {
-            padding: 8px 18px;
+            padding: 7px 14px;
             border-radius: 99px;
-            background: var(--surface-container-low);
+            background: rgba(255,255,255,0.72);
             color: var(--on-surface-variant);
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 700;
             cursor: pointer;
             transition: all 0.2s;
+            border: 1px solid rgba(144, 73, 81, 0.08);
         }
 
         .tag-chip.active {
-            background: var(--primary);
-            color: white;
+            background: rgba(144, 73, 81, 0.12);
+            color: var(--primary);
+            border-color: rgba(144, 73, 81, 0.18);
         }
 
         .search-intent-note {
             display: flex;
             align-items: center;
             gap: 8px;
-            margin: 0 0 18px;
-            color: var(--primary);
-            font-size: 0.92rem;
-            font-weight: 800;
+            margin: 0 0 10px;
+            color: var(--on-surface-variant);
+            font-size: 0.86rem;
+            font-weight: 700;
             line-height: 1.5;
         }
 
         .filter-row {
             display: flex;
-            gap: 10px;
-            margin-bottom: 34px;
+            gap: 8px;
+            margin-bottom: 16px;
             flex-wrap: wrap;
+        }
+
+        .browse-results-head {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .browse-results-head h3 {
+            margin: 0;
+            font-size: 1.22rem;
+            font-weight: 800;
+            color: var(--on-surface);
+        }
+
+        .browse-results-head p {
+            margin: 6px 0 0;
+            font-size: 0.92rem;
+            line-height: 1.6;
+            color: var(--on-surface-variant);
+        }
+
+        .browse-results-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            min-height: 30px;
+            padding: 0 12px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.88);
+            border: 1px solid rgba(144, 73, 81, 0.1);
+            color: var(--primary);
+            font-size: 12px;
+            font-weight: 900;
+            white-space: nowrap;
         }
 
         /* Tree Card Styles - 감상 공간 느낌 강화 */
@@ -231,7 +340,6 @@
             opacity: 1;
         }
 
-        /* 순차적 애니메이션 */
         @keyframes cardFadeIn {
             from { opacity: 0; transform: translateY(12px); }
             to { opacity: 1; transform: translateY(0); }
@@ -365,37 +473,6 @@
             color: var(--on-surface-variant);
         }
 
-        .result-card {
-            display: flex;
-            gap: 28px;
-            padding: 24px;
-            background: white;
-            border-radius: 2rem;
-            border: 1px solid rgba(0,0,0,0.03);
-            margin-bottom: 24px;
-            transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
-            cursor: pointer;
-        }
-
-        .result-card:hover {
-            transform: scale(1.02);
-            border-color: var(--outline-variant);
-            box-shadow: var(--shadow-whisper);
-        }
-
-        .thumbnail-wrapper {
-            width: 240px;
-            height: 140px;
-            border-radius: 1rem;
-            overflow: hidden;
-            background: #000;
-        }
-
-        .thumbnail-wrapper img {
-            width: 100%; height: 100%;
-            object-fit: cover;
-        }
-
         .preview-sidebar {
             position: sticky;
             top: 104px;
@@ -417,23 +494,6 @@
             display: flex;
             align-items: center;
             gap: 8px;
-        }
-
-        .search-panel-header {
-            margin-bottom: 40px;
-        }
-
-        .search-panel-header h2 {
-            font-size: 2.5rem;
-            margin-bottom: 12px;
-            line-height: 1.2;
-        }
-
-        .search-panel-header p {
-            color: var(--on-surface-variant);
-            font-size: 1.1rem;
-            font-weight: 400;
-            line-height: 1.6;
         }
 
         .preview-panel-header {
@@ -522,7 +582,6 @@
             box-shadow: 0 18px 42px rgba(75, 64, 57, 0.09);
         }
 
-        /* Tablet and below */
         @media (max-width: 1024px) {
             .search-container {
                 grid-template-columns: 1fr;
@@ -539,9 +598,8 @@
                 min-height: 190px;
             }
 
-            .thumbnail-wrapper {
-                width: 180px;
-                height: 120px;
+            .browse-curation-note {
+                grid-template-columns: 1fr;
             }
         }
 
@@ -551,14 +609,20 @@
                 gap: 32px;
             }
 
+            .browse-curation-shell {
+                padding: 22px 18px 18px;
+                border-radius: 1.45rem;
+                margin-bottom: 22px;
+            }
+
             .search-input {
-                font-size: 1rem;
-                padding: 20px 20px 20px 56px;
+                font-size: 0.95rem;
+                padding: 16px 18px 16px 48px;
             }
 
             .search-icon {
-                font-size: 24px;
-                left: 20px;
+                font-size: 20px;
+                left: 16px;
             }
 
             .tree-card {
@@ -594,7 +658,12 @@
 
             .tag-chip {
                 font-size: 12px;
-                padding: 6px 14px;
+                padding: 6px 12px;
+            }
+
+            .browse-results-head {
+                align-items: flex-start;
+                flex-direction: column;
             }
         }
 
@@ -614,24 +683,56 @@
 
         <main class="search-container">
             <section>
-                <div class="search-panel-header">
-                    <h2 class="headline" data-i18n="search.title">공개 러브트리 둘러보기</h2>
-                    <p data-i18n="search.subtitle">다른 팬이 남긴 첫 순간과 감정의 흐름을 조용히 따라가 보세요.</p>
+                <div class="browse-curation-shell">
+                    <div class="search-panel-header">
+                        <div class="search-panel-eyebrow">
+                            <span class="material-symbols-outlined" style="font-size:15px;">local_florist</span>
+                            오늘의 공개 감상 허브
+                        </div>
+                        <h2 class="headline" data-i18n="search.title">지금 먼저 열어볼 공개 러브트리</h2>
+                        <p data-i18n="search.subtitle">가장 최근에 공개된 세 개의 러브트리에서, 다른 팬이 남긴 첫 순간과 감정의 흐름을 조용히 따라가 보세요.</p>
+                    </div>
+
+                    <div class="search-input-wrapper">
+                        <span class="material-symbols-outlined search-icon">search</span>
+                        <input type="text" id="searchInput" class="search-input" placeholder="원하는 순간이나 감정 결을 가볍게 찾아보세요" data-i18n-placeholder="search.placeholder" required>
+                    </div>
+
+                    <p class="search-intent-note"><span class="material-symbols-outlined" style="font-size:16px;">auto_stories</span><span data-i18n="search.intentNote">검색은 보조 도구예요. 먼저 아래 공개 러브트리를 고르고, 오른쪽에서 감정 흐름을 열어보세요.</span></p>
+
+                    <div class="filter-row">
+                        <span class="tag-chip active" data-category="전체" data-i18n="search.filter.all">전체 감상</span>
+                        <span class="tag-chip" data-category="입덕" data-i18n="search.filter.newbie">시작 순간</span>
+                        <span class="tag-chip" data-category="성장" data-i18n="search.filter.growing">이어진 흐름</span>
+                        <span class="tag-chip" data-category="최애" data-i18n="search.filter.fan">깊어진 마음</span>
+                    </div>
+
+                    <div class="browse-curation-note">
+                        <div class="browse-curation-note-card">
+                            <strong>먼저 고르기</strong>
+                            <p>가장 최근에 공개된 트리 세 개를 먼저 보여드려요.</p>
+                        </div>
+                        <div class="browse-curation-note-card">
+                            <strong>오른쪽에서 미리 보기</strong>
+                            <p>카드를 누르면 대표 순간과 감정 경로가 바로 열립니다.</p>
+                        </div>
+                        <div class="browse-curation-note-card">
+                            <strong>가볍게 탐색하기</strong>
+                            <p>검색과 필터는 보고 싶은 결을 좁히는 보조 탐색입니다.</p>
+                        </div>
+                    </div>
                 </div>
 
-            <div class="search-input-wrapper">
-                <span class="material-symbols-outlined search-icon">search</span>
-                <input type="text" id="searchInput" class="search-input" placeholder="예: 첫 설렘 · 아티스트명 · 감정 태그" data-i18n-placeholder="search.placeholder" required>
-            </div>
-
-            <p class="search-intent-note"><span class="material-symbols-outlined" style="font-size:18px;">auto_stories</span><span data-i18n="search.intentNote">목록을 고르는 순간, 오른쪽에서 그 트리의 감정 경로가 먼저 펼쳐집니다.</span></p>
-
-            <div class="filter-row">
-                <span class="tag-chip active" data-category="전체" data-i18n="search.filter.all">전체 경로</span>
-                <span class="tag-chip" data-category="입덕" data-i18n="search.filter.newbie">시작 순간 중심</span>
-                <span class="tag-chip" data-category="성장" data-i18n="search.filter.growing">이어진 감정</span>
-                <span class="tag-chip" data-category="최애" data-i18n="search.filter.fan">깊어진 마음</span>
-            </div>
+                <div class="browse-results-head">
+                    <div>
+                        <h3>최근 공개된 러브트리</h3>
+                        <p>지금 감상하기 좋은 공개 러브트리부터 천천히 열어보세요.</p>
+                    </div>
+                    <div class="browse-results-badge">
+                        <span class="material-symbols-outlined" style="font-size:15px;">schedule</span>
+                        latest 3 curation
+                    </div>
+                </div>
 
             <div id="resultsList">
                 <!-- Populated by JS -->
@@ -643,7 +744,7 @@
                 <h3 data-i18n="search.previewTitle">감상 허브</h3>
                 <span class="preview-badge" data-i18n="search.previewBadge">선택한 트리</span>
             </div>
-            <p class="preview-kicker" data-i18n="search.previewKicker">카드를 선택하면 이곳에서 시작 순간과 이어진 감정이 먼저 열립니다.</p>
+            <p class="preview-kicker" data-i18n="search.previewKicker">목록에서 한 장면을 고르면, 이곳에서 대표 순간과 이어진 감정의 흐름이 먼저 펼쳐집니다.</p>
             <div id="previewVideoContainer" class="video-container" style="margin-bottom: 24px;">
                 <div class="preview-empty-state" style="width:100%; height:100%; display:flex; flex-direction: column; align-items:center; justify-content:center; color: var(--on-surface-variant); font-size: 14px; text-align: center; padding: 20px;">
                     <p style="margin-bottom: 8px;" data-i18n="search.previewEmptyLead">왼쪽 목록에서 공개 러브트리를 선택하면</p>
