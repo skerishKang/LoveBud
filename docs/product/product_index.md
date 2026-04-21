@@ -7,6 +7,7 @@
 - MVP 정의 및 사용자 여정
 - 브랜드 정체성 및 디자인 원칙
 - 팬페이지 기반 감성 UX / 페이지 경험 기준 정리
+- 전역 UI 카피 운영 기준 정리
 
 ## 파일 목록
 
@@ -14,6 +15,7 @@
 |--------|------|
 | [PRODUCT_IDENTITY.md](PRODUCT_IDENTITY.md) | LoveBud의 핵심 정체성과 가치 |
 | [BRAND_EXPERIENCE.md](BRAND_EXPERIENCE.md) | 팬 경험 중심 브랜드/UX 톤앤매너와 페이지별 감성 기준 |
+| [UI_COPY_DIET_GUIDE.md](UI_COPY_DIET_GUIDE.md) | 전역 UI 카피 다이어트 운영 기준 |
 | [MVP_SCOPE.md](MVP_SCOPE.md) | MVP 범위 및 포함/제외 항목 |
 | [USER_FLOW.md](USER_FLOW.md) | 주요 사용자 여정 및 플로우 |
 | [PRODUCT_BRIEF.md](PRODUCT_BRIEF.md) | 현재 실행 기준 제품 개요 |
@@ -35,10 +37,11 @@
 
 1. **PRODUCT_IDENTITY.md** — 제품 철학과 핵심 가치
 2. **BRAND_EXPERIENCE.md** — 팬 감성 UX / 톤앤매너 / 페이지별 표현 원칙
-3. **MVP_SCOPE.md** — MVP 범위와 In/Out of Scope
-4. **USER_FLOW.md** — 사용자 여정과 핵심 플로우
-5. **PRODUCT_BRIEF.md** — 현재 실행 기준 요약
-6. 필요시 DATA_NAMING_RULE.md, READONLY_SHARE_SCOPE.md
+3. **UI_COPY_DIET_GUIDE.md** — 전역 UI 카피 다이어트 기준
+4. **MVP_SCOPE.md** — MVP 범위와 In/Out of Scope
+5. **USER_FLOW.md** — 사용자 여정과 핵심 플로우
+6. **PRODUCT_BRIEF.md** — 현재 실행 기준 요약
+7. 필요시 DATA_NAMING_RULE.md, READONLY_SHARE_SCOPE.md
 
 ## 참조
 - 전체 문서 인덱스: `../doc_index.md`
