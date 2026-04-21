@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>러브트리 편집 | LoveTree</title>
-    <link rel="stylesheet" href="../css/editor.css?v=20260421-4">
+    <link rel="stylesheet" href="../css/editor.css?v=20260422-2">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
     <style>
         .memory-inline-edit { display:inline-flex; align-items:center; }
@@ -38,17 +38,14 @@
                 <div class="editor-status-card">
                     <div class="editor-space-between-row">
                         <strong id="sidebarTreeTitle">LoveTree</strong>
-                        <button type="button" id="renameTreeBtn" class="icon-menu-btn editor-rename-btn" aria-label="트리 제목 변경" title="트리 제목 변경">✎</button>
+                        <button type="button" id="renameTreeBtn" class="icon-menu-btn editor-rename-btn" aria-label="트리 제목 변경" title="트리 제목 변경">편집</button>
                     </div>
+                    <span id="sidebarTreeVisibility" class="editor-tree-visibility-pill is-private">비공개 러브트리</span>
                     <p id="sidebarMomentCount"></p>
                     <p id="sidebarFlowSummary" class="editor-flow-summary"></p>
                     <span id="sidebarSelectionHint" class="editor-sidebar-meta"></span>
                 </div>
                 <div class="editor-sidebar-actions">
-                    <button type="button" class="sidebar-btn editor-focus-btn is-disabled" id="focusSelectedBtn" disabled>
-                        <span class="btn-icon">⌖</span>
-                        <span class="btn-label" id="focusSelectedBtnLabel">현재 순간 위치 보기</span>
-                    </button>
                     <button type="button" class="sidebar-btn" id="recenterCanvasBtn">
                         <span class="btn-icon">⌂</span>
                         <span class="btn-label" id="recenterCanvasBtnLabel">트리 한눈에 보기</span>
@@ -225,7 +222,7 @@
     <script src="../js/editor/editor-canvas-viewport.js?v=20260420-1"></script>
     <script src="../js/editor/editor-canvas.js?v=20260421-5"></script>
     <script src="../js/editor/editor-rename-ui.js?v=20260420-1"></script>
-    <script src="../js/editor/editor-detail-ui.js?v=20260422-1"></script>
+    <script src="../js/editor/editor-detail-ui.js?v=20260422-2"></script>
     <script src="../js/editor/editor-memory-actions.js?v=20260419-1"></script>
     <script src="../js/editor/editor-memory-form.js?v=20260422-2"></script>
     <script src="../js/api/auth-policy.js?v=20260420-1"></script>
@@ -240,7 +237,7 @@
     <script src="../js/editor/editor-data-loader.js?v=20260422-1"></script>
     <script src="../js/editor/editor-data-loader-fallbacks.js?v=20260422-1"></script>
     
-    <script src="../js/editor.js?v=20260422-1"></script>
+    <script src="../js/editor.js?v=20260422-2"></script>
     <script src="../js/editor/editor-i18n-refresh.js?v=20260421-1"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
