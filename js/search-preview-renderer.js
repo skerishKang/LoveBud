@@ -1,6 +1,6 @@
 /**
  * LoveBud Search Preview Renderer
- * v20260420-5
+ * v20260421-1
  * 
  * Rendering layer: preview sidebar panel.
  * DOM-agnostic - updates passed DOM elements.
@@ -82,9 +82,27 @@
         return icons[stage] || '🌱';
     }
 
+    function getSearchTitleHelper() {
+        return window.LoveBudSearchTitleHelper || null;
+    }
+
+    function getMomentLabel(memory, fallbackKo = '첫 순간', fallbackEn = 'First moment') {
+        const helper = getSearchTitleHelper();
+        const cleaned = helper?.cleanMomentTitle
+            ? helper.cleanMomentTitle(memory?.title || '')
+            : String(memory?.title || '').trim().replace(/\s*-\s*.*/, '');
+        return cleaned || getSearchCopy('search.previewMomentFallback', fallbackKo, fallbackEn);
+    }
+
     function renderEmotionTags(tags) {
-        if (!tags || !tags.length) return '';
-        return tags.slice(0, 4).map(tag =>
+        const titleHelper = getSearchTitleHelper();
+        const safeTags = (Array.isArray(tags) ? tags : [])
+            .map(tag => titleHelper?.sanitizeBrowseLabel ? titleHelper.sanitizeBrowseLabel(tag) : String(tag || '').trim())
+            .filter(Boolean)
+            .slice(0, 4);
+
+        if (!safeTags.length) return '';
+        return safeTags.map(tag =>
             `<span style="padding:8px 14px;background:var(--primary-container);border-radius:99px;font-size:13px;font-weight:700;color:var(--on-primary-container);border:1px solid var(--outline-variant);">#${escapeHtml(tag)}</span>`
         ).join('');
     }
@@ -124,10 +142,6 @@
             return `${safeCreated} ${getSearchCopy('search.previewTimelineCreated', '생성', 'Created')}`;
         }
         return getSearchCopy('search.previewTimelineUnavailable', '업데이트 정보 없음', 'No update info');
-    }
-
-    function getSearchTitleHelper() {
-        return window.LoveBudSearchTitleHelper || null;
     }
 
     function getDefaultTreeName() {
@@ -234,14 +248,13 @@
         const firstMem = memories[0];
         const hasMemories = memories.length > 0;
         const previewStats = getPreviewStatsElement();
+        const titleHelper = getSearchTitleHelper();
+        const previewDisplayTitle = titleHelper?.getBrowseDisplayTitle
+            ? titleHelper.getBrowseDisplayTitle(tree)
+            : (String(tree?.title || '').trim() || getDefaultTreeName());
+        const safeTreeTitle = escapeHtml(previewDisplayTitle);
 
         if (_dom.previewContainer) {
-            const titleHelper = getSearchTitleHelper();
-            const previewDisplayTitle = titleHelper?.getBrowseDisplayTitle
-                ? titleHelper.getBrowseDisplayTitle(tree)
-                : (String(tree?.title || '').trim() || getDefaultTreeName());
-            const safeTreeTitle = escapeHtml(previewDisplayTitle);
-
             if (!hasMemories) {
                 _dom.previewContainer.innerHTML = `
                     <div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;background:linear-gradient(135deg,var(--surface-container-low),white);border-radius:1rem;color:var(--on-surface-variant);">
@@ -258,7 +271,7 @@
                 const iframeSrc = safeSourceUrl
                     ? safeSourceUrl + (safeSourceUrl.includes('?') ? '&' : '?') + 'autoplay=0&mute=1'
                     : '';
-                const safeFirstMemTitle = escapeHtml(firstMem.title || '');
+                const safeFirstMemTitle = escapeHtml(getMomentLabel(firstMem));
 
                 _dom.previewContainer.innerHTML = iframeSrc ? `
                     <div style="position:relative;width:100%;height:100%;border-radius:1rem;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.12);">
@@ -277,11 +290,6 @@
         }
 
         if (_dom.previewTitle) {
-            const titleHelper = getSearchTitleHelper();
-            const previewDisplayTitle = titleHelper?.getBrowseDisplayTitle
-                ? titleHelper.getBrowseDisplayTitle(tree)
-                : (String(tree?.title || '').trim() || getDefaultTreeName());
-            const safeTreeTitle = escapeHtml(previewDisplayTitle);
             const safeTimeRange = escapeHtml(String(tree?.timeRange || getSearchCopy('search.previewUnknownRange', '기록 없음', 'No timeline yet')).trim());
             const memoryCountSuffix = getSearchCopy('search.previewMomentCountSuffix', '개 순간', 'moments');
 
@@ -325,11 +333,15 @@
                 `;
             } else {
                 const pathStages = memories.slice(0, 3).map((m, i) => {
-                    const momentTitle = (m.title || '').replace(/\s*-\s*.*/, '');
-                    return renderPathStageBadge(i + 1, momentTitle);
+                    return renderPathStageBadge(i + 1, getMomentLabel(m, '순간', 'Moment'));
                 }).join('<span style="opacity:0.3;margin:0 4px;">→</span>');
 
                 const moreStages = renderMoreStagesText(memories.length - 3);
+                const firstMomentLabel = getMomentLabel(firstMem, '첫 순간', 'First moment');
+                const lastMomentLabel = getMomentLabel(memories[memories.length - 1], '최근 순간', 'Latest moment');
+                const themeLabel = titleHelper?.getThemeLabel ? titleHelper.getThemeLabel(tree) : '';
+                const primaryTag = titleHelper?.getPrimaryBrowseTag ? titleHelper.getPrimaryBrowseTag(tree) : '';
+                const moodText = themeLabel || primaryTag || getSearchCopy('search.previewMoodFallback', '팬의 마음', 'a fan heart');
 
                 _dom.previewDesc.innerHTML = `
                     <div style="background:var(--surface-container-low);padding:20px;border-radius:1rem;margin-bottom:16px;">
@@ -342,6 +354,7 @@
 
                     <div style="font-size:14px;color:var(--on-surface-variant);line-height:1.6;padding:0 4px;">
                         ${getPreviewSummaryCopy(tree, memories)}
+                        ${renderInfoCallout('favorite', `${firstMomentLabel}에서 시작해 ${lastMomentLabel}까지 이어진 ${moodText}의 흐름이에요`)}
                         ${renderInfoCallout('touch_app', getSearchCopy('search.previewJourneyCta', '카드를 클릭하여 감정 경로를 따라가보세요', 'Click a card to follow the emotional path.'), 'primary')}
                     </div>
                 `;
@@ -438,5 +451,5 @@
         renderEmotionTags: renderEmotionTags
     };
 
-    console.log('[LoveBudSearchPreviewRenderer] Search preview renderer loaded v20260420-5');
+    console.log('[LoveBudSearchPreviewRenderer] Search preview renderer loaded v20260421-1');
 })();
