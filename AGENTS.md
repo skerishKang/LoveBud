@@ -308,7 +308,7 @@ Codex는 기본적으로 CTO 역할을 수행합니다.
 
 1. **시나리오 테스트 (`docs/test-scenarios/`)**
    - **목적**: 실제 사용자 여정 검증, 제품 수준의 QA
-   - **환경**: 실운영 도메인 (`https://lovebud.netlify.app`)
+311:    - **환경**: 실운영 도메인 (`https://lovebud.vercel.app`)
    - **주의**: 시나리오 문서에 명시된 URL을 최우선으로 따름
 
 2. **개발 및 디버깅 테스트**
