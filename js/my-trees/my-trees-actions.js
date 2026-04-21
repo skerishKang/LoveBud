@@ -1,6 +1,6 @@
 /**
  * LoveBud - My Trees Actions
- * v20260420-1
+ * v20260421-1
  *
  * Responsibilities:
  * - renameTree
@@ -89,11 +89,38 @@
     return 'public';
   }
 
+  async function maybeRenameNewTree(treeId, currentTitle, options) {
+    var i18n = getI18n(options);
+    if (!treeId || !window.apiClient || !window.apiClient.updateTree) {
+      return currentTitle;
+    }
+
+    var promptedTitle = prompt(
+      i18n('new_tree_name_prompt') || '새 러브트리의 제목을 정해볼까요?',
+      currentTitle
+    );
+
+    if (!promptedTitle || promptedTitle.trim() === '' || promptedTitle.trim() === currentTitle) {
+      return currentTitle;
+    }
+
+    try {
+      await window.apiClient.updateTree(treeId, { title: promptedTitle.trim() });
+      clearPersistentTreesCache();
+      options?.showToast?.(i18n('rename_success') || '트리 이름이 변경되었습니다.', 'success');
+      return promptedTitle.trim();
+    } catch (e) {
+      console.error('[my-trees-actions] maybeRenameNewTree failed:', e);
+      options?.showToast?.(i18n('rename_fail') || '이름 변경에 실패했습니다.', 'error');
+      return currentTitle;
+    }
+  }
+
   async function createNewTree(options) {
     var i18n = getI18n(options);
     var headerBtn = document.getElementById('headerCreateTreeBtn');
     var emptyBtn = document.getElementById('createTreeBtn');
-    var restoreHeaderText = '<span class="material-symbols-outlined">add</span> 새 러브트리';
+    var restoreHeaderText = '<span class="material-symbols-outlined">add</span> ' + (i18n('myTrees.header_create') || '새 러브트리');
     var restoreEmptyText = '<span class="material-symbols-outlined" style="font-size:20px;">add_circle</span> ' + (i18n('create_tree_btn') || '새 러브트리 만들기');
 
     if (headerBtn) {
@@ -114,14 +141,16 @@
 
     try {
       var newTree;
+      var defaultTitle = i18n('default_tree_title') || '나의 첫 러브트리';
+
       if (window.apiClient && window.apiClient.createTree) {
         newTree = await window.apiClient.createTree({
-          title: i18n('default_tree_title') || '나의 첫 러브트리',
+          title: defaultTitle,
           visibility: defaultVisibility
         });
         console.log('[my-trees-actions] Tree created:', newTree);
       } else {
-        newTree = { id: 'tree-' + Date.now() };
+        newTree = { id: 'tree-' + Date.now(), title: defaultTitle };
         options?.showToast?.((window.t || function(k){ return k; })('demo_mode'), 'error');
       }
 
@@ -133,6 +162,7 @@
 
       var treeId = newTree?.id;
       if (treeId) {
+        await maybeRenameNewTree(treeId, newTree.title || defaultTitle, options);
         window.location.href = 'editor.html?treeId=' + encodeURIComponent(treeId);
       } else {
         window.location.href = 'editor.html';
