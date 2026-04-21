@@ -8,21 +8,20 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
     <style>
         .search-container {
-            max-width: 1360px;
+            max-width: 1440px;
             margin: 0 auto;
             padding: 56px 48px 72px;
             display: grid;
-            grid-template-columns: minmax(0, 1fr) 460px;
-            gap: 56px;
+            grid-template-columns: minmax(0, 1.45fr) 460px;
+            gap: 64px;
         }
 
         .browse-curation-shell {
-            margin-bottom: 28px;
-            padding: 28px 28px 24px;
-            border-radius: 1.9rem;
-            background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(255,248,249,0.94));
-            border: 1px solid rgba(144, 73, 81, 0.1);
-            box-shadow: 0 18px 48px rgba(75, 64, 57, 0.07);
+            margin-bottom: 34px;
+            padding: 0;
+            background: transparent;
+            border: 0;
+            box-shadow: none;
         }
 
         .search-panel-header {
@@ -32,71 +31,46 @@
         .search-panel-eyebrow {
             display: inline-flex;
             align-items: center;
-            gap: 6px;
-            min-height: 30px;
-            padding: 0 12px;
+            gap: 8px;
+            min-height: 36px;
+            padding: 0 16px;
             border-radius: 999px;
             background: rgba(144, 73, 81, 0.08);
             color: var(--primary);
-            font-size: 12px;
+            font-size: 13px;
             font-weight: 900;
-            margin-bottom: 14px;
+            margin-bottom: 18px;
         }
 
         .search-panel-header h2 {
-            font-size: 2.5rem;
-            margin-bottom: 12px;
-            line-height: 1.2;
+            font-size: clamp(2.7rem, 5vw, 4.2rem);
+            margin-bottom: 14px;
+            line-height: 1.08;
+            letter-spacing: -0.03em;
         }
 
         .search-panel-header p {
             color: var(--on-surface-variant);
-            font-size: 1.1rem;
+            font-size: 1.16rem;
             font-weight: 400;
-            line-height: 1.6;
-        }
-
-        .browse-curation-note {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 12px;
-            margin: 18px 0 0;
-        }
-
-        .browse-curation-note-card {
-            padding: 14px 14px 12px;
-            border-radius: 1rem;
-            background: rgba(255,255,255,0.88);
-            border: 1px solid rgba(144, 73, 81, 0.08);
-        }
-
-        .browse-curation-note-card strong {
-            display: block;
-            font-size: 13px;
-            font-weight: 800;
-            color: var(--on-surface);
-            margin-bottom: 6px;
-        }
-
-        .browse-curation-note-card p {
+            line-height: 1.68;
+            max-width: 760px;
             margin: 0;
-            font-size: 12px;
-            line-height: 1.55;
-            color: var(--on-surface-variant);
         }
 
         .search-input-wrapper {
             position: relative;
-            margin-bottom: 12px;
+            margin-bottom: 16px;
+            max-width: 760px;
         }
 
         .search-input {
             width: 100%;
             padding: 18px 20px 18px 54px;
-            border-radius: 1.2rem;
-            border: 1px solid rgba(144, 73, 81, 0.12);
-            background: rgba(255,255,255,0.86);
-            box-shadow: 0 8px 24px rgba(0,0,0,0.02);
+            border-radius: 999px;
+            border: 1px solid rgba(144, 73, 81, 0.1);
+            background: rgba(255,255,255,0.9);
+            box-shadow: 0 12px 28px rgba(0,0,0,0.025);
             font-size: 1rem;
             font-family: var(--font-body);
             outline: none;
@@ -104,8 +78,8 @@
         }
 
         .search-input:focus {
-            border-color: var(--primary);
-            box-shadow: 0 12px 32px rgba(141, 71, 79, 0.08);
+            border-color: rgba(144,73,81,0.22);
+            box-shadow: 0 14px 34px rgba(141, 71, 79, 0.08);
         }
 
         .search-icon {
@@ -115,15 +89,15 @@
             transform: translateY(-50%);
             color: var(--primary);
             font-size: 22px;
-            opacity: 0.82;
+            opacity: 0.78;
         }
 
         .tag-chip {
-            padding: 7px 14px;
+            padding: 8px 16px;
             border-radius: 99px;
-            background: rgba(255,255,255,0.72);
+            background: rgba(255,255,255,0.8);
             color: var(--on-surface-variant);
-            font-size: 12px;
+            font-size: 13px;
             font-weight: 700;
             cursor: pointer;
             transition: all 0.2s;
@@ -133,25 +107,46 @@
         .tag-chip.active {
             background: rgba(144, 73, 81, 0.12);
             color: var(--primary);
-            border-color: rgba(144, 73, 81, 0.18);
+            border-color: rgba(144, 73, 81, 0.16);
         }
 
         .search-intent-note {
             display: flex;
             align-items: center;
             gap: 8px;
-            margin: 0 0 10px;
+            margin: 0 0 12px;
             color: var(--on-surface-variant);
-            font-size: 0.86rem;
+            font-size: 0.92rem;
             font-weight: 700;
-            line-height: 1.5;
+            line-height: 1.55;
         }
 
         .filter-row {
             display: flex;
-            gap: 8px;
-            margin-bottom: 16px;
+            gap: 10px;
+            margin-bottom: 0;
             flex-wrap: wrap;
+        }
+
+        .browse-guidance-strip {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 18px;
+            padding: 14px 18px;
+            max-width: 760px;
+            border-radius: 1.15rem;
+            background: rgba(255,255,255,0.68);
+            border: 1px solid rgba(144,73,81,0.08);
+            color: var(--on-surface-variant);
+            font-size: 0.93rem;
+            line-height: 1.6;
+        }
+
+        .browse-guidance-strip .material-symbols-outlined {
+            font-size: 18px;
+            color: var(--primary);
+            flex-shrink: 0;
         }
 
         .browse-results-head {
@@ -159,20 +154,21 @@
             align-items: flex-end;
             justify-content: space-between;
             gap: 16px;
-            margin-bottom: 16px;
+            margin-bottom: 18px;
         }
 
         .browse-results-head h3 {
             margin: 0;
-            font-size: 1.22rem;
-            font-weight: 800;
+            font-size: 1.8rem;
+            font-weight: 900;
             color: var(--on-surface);
+            letter-spacing: -0.02em;
         }
 
         .browse-results-head p {
-            margin: 6px 0 0;
-            font-size: 0.92rem;
-            line-height: 1.6;
+            margin: 8px 0 0;
+            font-size: 0.98rem;
+            line-height: 1.62;
             color: var(--on-surface-variant);
         }
 
@@ -180,31 +176,38 @@
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            min-height: 30px;
-            padding: 0 12px;
+            min-height: 34px;
+            padding: 0 14px;
             border-radius: 999px;
             background: rgba(255,255,255,0.88);
-            border: 1px solid rgba(144, 73, 81, 0.1);
+            border: 1px solid rgba(144, 73, 81, 0.08);
             color: var(--primary);
-            font-size: 12px;
+            font-size: 13px;
             font-weight: 900;
             white-space: nowrap;
+            box-shadow: 0 10px 22px rgba(75,64,57,0.03);
         }
 
-        /* Tree Card Styles - 감상 공간 느낌 강화 */
+        #resultsList {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 18px;
+            align-items: stretch;
+        }
+
         .tree-card {
             display: flex;
             flex-direction: column;
-            padding: 24px;
-            background: white;
-            border-radius: 1.65rem;
-            border: 1px solid rgba(0,0,0,0.04);
-            margin-bottom: 22px;
+            padding: 12px;
+            background: rgba(255,255,255,0.94);
+            border-radius: 1.7rem;
+            border: 1px solid rgba(144,73,81,0.07);
+            margin-bottom: 0;
             transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
             cursor: pointer;
             position: relative;
             overflow: hidden;
-            box-shadow: 0 12px 30px rgba(75, 64, 57, 0.035);
+            box-shadow: 0 18px 36px rgba(75, 64, 57, 0.05);
         }
 
         .tree-card::before {
@@ -213,30 +216,25 @@
             top: 0;
             left: 0;
             right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, var(--primary-soft), var(--accent-rose));
+            height: 3px;
+            background: linear-gradient(90deg, rgba(200,116,128,0.6), rgba(240,193,198,0.6));
             opacity: 0;
             transition: opacity 0.3s;
         }
 
         .tree-card:hover {
             transform: translateY(-4px);
-            border-color: var(--primary-soft);
-            box-shadow: 0 20px 50px rgba(144, 73, 81, 0.08);
+            border-color: rgba(144,73,81,0.14);
+            box-shadow: 0 24px 44px rgba(144, 73, 81, 0.08);
         }
 
         .tree-card.is-active {
-            border-color: rgba(144, 73, 81, 0.24);
-            box-shadow: 0 20px 50px rgba(144, 73, 81, 0.11);
+            border-color: rgba(144, 73, 81, 0.18);
+            box-shadow: 0 24px 48px rgba(144, 73, 81, 0.12);
         }
 
-        .tree-card-featured {
-            padding: 0;
-            border-color: rgba(144, 73, 81, 0.16);
-            box-shadow: 0 24px 64px rgba(75, 64, 57, 0.1);
-        }
-
-        .tree-card-featured::before {
+        .tree-card:hover::before,
+        .tree-card.is-active::before {
             opacity: 1;
         }
 
@@ -246,16 +244,13 @@
 
         .tree-card-media {
             position: relative;
-            min-height: 164px;
-            margin: -24px -24px 20px;
+            min-height: 182px;
+            margin: 0 0 16px;
             overflow: hidden;
+            border-radius: 1.35rem;
             background:
                 radial-gradient(circle at 20% 15%, rgba(255, 245, 246, 0.95), rgba(255,255,255,0.18) 46%),
                 linear-gradient(135deg, rgba(144, 73, 81, 0.13), rgba(122, 139, 110, 0.14));
-        }
-
-        .tree-card-featured .tree-card-media {
-            margin: 0 0 22px;
         }
 
         .tree-card-media img {
@@ -270,7 +265,7 @@
             content: '';
             position: absolute;
             inset: 0;
-            background: linear-gradient(to top, rgba(50, 38, 35, 0.54), rgba(50, 38, 35, 0.06) 58%, rgba(255,255,255,0));
+            background: linear-gradient(to top, rgba(50, 38, 35, 0.22), rgba(50, 38, 35, 0.03) 58%, rgba(255,255,255,0));
             pointer-events: none;
         }
 
@@ -285,205 +280,75 @@
             font-weight: 900;
         }
 
-        .tree-card-media-label {
-            position: absolute;
-            left: 18px;
-            right: 18px;
-            bottom: 16px;
-            z-index: 2;
+        .tree-card-body {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding: 4px 6px 6px;
+            height: 100%;
+        }
+
+        .tree-title {
+            font-size: 1.52rem;
+            font-weight: 900;
+            line-height: 1.18;
+            letter-spacing: -0.02em;
+        }
+
+        .tree-subtitle {
+            font-size: 0.94rem;
+            color: var(--on-surface-variant);
+            line-height: 1.62;
+            margin: 0;
+        }
+
+        .tree-meta-row {
+            margin-top: auto;
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 12px;
-            color: white;
-            font-size: 12px;
-            font-weight: 800;
-        }
-
-        .tree-card-media-label span {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            min-height: 30px;
-            padding: 0 12px;
-            border-radius: 999px;
-            background: rgba(255,255,255,0.18);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255,255,255,0.2);
-        }
-
-        .tree-card-body {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .tree-card-featured .tree-card-body {
-            padding: 0 24px 24px;
-        }
-
-        .tree-context-pill {
-            display: inline-flex;
-            align-items: center;
-            width: fit-content;
-            gap: 6px;
-            min-height: 30px;
-            padding: 0 12px;
-            margin-bottom: 12px;
-            border-radius: 999px;
-            background: rgba(144, 73, 81, 0.08);
-            color: var(--primary);
-            font-size: 12px;
-            font-weight: 900;
-        }
-
-        .tree-card:hover::before {
-            opacity: 1;
-        }
-
-        @keyframes cardFadeIn {
-            from { opacity: 0; transform: translateY(12px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .tree-card {
-            animation: cardFadeIn 0.4s ease-out forwards;
-            opacity: 0;
-        }
-
-        .tree-header {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            margin-bottom: 20px;
-        }
-
-        .tree-icon {
-            width: 56px;
-            height: 56px;
-            border-radius: 16px;
-            background: linear-gradient(135deg, var(--primary-soft) 0%, var(--accent-rose) 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 28px;
-        }
-
-        .tree-title-group {
-            flex: 1;
-        }
-
-        .tree-title {
-            font-size: 1.3rem;
-            font-weight: 800;
-            margin-bottom: 4px;
-            color: var(--on-surface);
-        }
-
-        .tree-subtitle {
-            font-size: 0.85rem;
+            padding-top: 12px;
+            border-top: 1px solid rgba(144,73,81,0.08);
+            font-size: 13px;
             color: var(--on-surface-variant);
         }
 
-        .tree-path-preview {
+        .tree-meta-left,
+        .tree-meta-right {
             display: flex;
             align-items: center;
             gap: 8px;
-            margin-top: 14px;
-            margin-bottom: 0;
-            padding: 16px;
-            background: rgba(255,255,255,0.76);
-            border-radius: 1rem;
+            min-width: 0;
         }
 
-        .path-node {
-            width: 48px;
-            height: 48px;
-            border-radius: 8px;
-            overflow: hidden;
-            flex-shrink: 0;
-            border: 2px solid white;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-
-        .path-node img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .path-node-fallback {
-            width: 100%;
-            height: 100%;
-            display: flex;
+        .tree-meta-chip {
+            display: inline-flex;
             align-items: center;
-            justify-content: center;
-            background: linear-gradient(135deg, var(--surface-container), var(--surface-container-low));
-            color: var(--primary);
-            font-size: 11px;
-            font-weight: 800;
-            line-height: 1.3;
-            text-align: center;
-            padding: 4px;
-        }
-
-        .path-arrow {
-            color: var(--on-surface-variant);
-            opacity: 0.4;
-            font-size: 20px;
-        }
-
-        .path-more {
-            width: 48px;
-            height: 48px;
-            border-radius: 8px;
-            background: var(--surface-container);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-            font-weight: 700;
-            color: var(--on-surface-variant);
-            flex-shrink: 0;
-        }
-
-        .tree-meta {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 12px;
-            color: var(--on-surface-variant);
-        }
-
-        .tree-stats {
-            display: flex;
-            gap: 16px;
-        }
-
-        .tree-emotions {
-            display: flex;
             gap: 6px;
+            min-height: 28px;
+            padding: 0 10px;
+            border-radius: 999px;
+            background: rgba(250,244,245,0.92);
+            color: var(--primary);
+            font-size: 12px;
+            font-weight: 800;
+            white-space: nowrap;
         }
 
-        .emotion-tag {
-            padding: 4px 10px;
-            border-radius: 99px;
-            background: var(--surface-container-low);
-            font-size: 11px;
-            font-weight: 700;
-            color: var(--on-surface-variant);
+        .tree-meta-chip .material-symbols-outlined {
+            font-size: 14px;
         }
 
         .preview-sidebar {
             position: sticky;
             top: 104px;
             height: fit-content;
-            background:
-                linear-gradient(180deg, rgba(255,255,255,0.98), rgba(255, 248, 249, 0.94)),
-                var(--surface);
-            padding: 28px;
-            border-radius: 2.1rem;
-            border: 1px solid rgba(144, 73, 81, 0.14);
-            box-shadow: 0 26px 70px rgba(75, 64, 57, 0.1);
+            background: rgba(255,255,255,0.88);
+            padding: 32px 30px;
+            border-radius: 2.2rem;
+            border: 1px solid rgba(144, 73, 81, 0.12);
+            box-shadow: 0 24px 60px rgba(75, 64, 57, 0.08);
         }
 
         .preview-sidebar h3 {
@@ -500,14 +365,15 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 18px;
+            margin-bottom: 12px;
         }
 
         .preview-panel-header h3 {
-            font-size: 1.25rem;
-            font-weight: 800;
+            font-size: 1.92rem;
+            font-weight: 900;
             color: var(--on-surface);
             margin: 0;
+            letter-spacing: -0.02em;
         }
 
         .preview-badge {
@@ -520,10 +386,10 @@
         }
 
         .preview-kicker {
-            margin: -8px 0 18px;
+            margin: 0 0 18px;
             color: var(--on-surface-variant);
-            font-size: 0.9rem;
-            line-height: 1.55;
+            font-size: 0.98rem;
+            line-height: 1.7;
         }
 
         .preview-empty-state {
@@ -539,19 +405,19 @@
 
         .preview-empty-state p {
             margin: 0;
-            line-height: 1.5;
+            line-height: 1.7;
         }
 
         .tree-meta {
             display: flex;
             gap: 12px;
             flex-wrap: wrap;
-            font-size: 12px;
+            font-size: 13px;
             color: var(--on-surface-variant);
-            padding: 12px 0;
-            border-top: 1px solid var(--outline-variant);
-            border-bottom: 1px solid var(--outline-variant);
-            margin: 16px 0;
+            padding: 14px 0;
+            border-top: 1px solid rgba(144,73,81,0.08);
+            border-bottom: 1px solid rgba(144,73,81,0.08);
+            margin: 18px 0;
         }
 
         .tree-meta-item {
@@ -561,12 +427,12 @@
         }
 
         .emotion-tags-label {
-            font-size: 11px;
+            font-size: 12px;
             font-weight: 800;
             color: var(--on-surface-variant);
             margin-bottom: 12px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+            text-transform: none;
+            letter-spacing: 0;
             display: flex;
             align-items: center;
             gap: 4px;
@@ -574,45 +440,43 @@
 
         .video-container {
             width: 100%;
-            aspect-ratio: 16/9;
-            background: linear-gradient(135deg, rgba(144, 73, 81, 0.1), rgba(122, 139, 110, 0.14));
-            border-radius: 1.2rem;
+            aspect-ratio: 16/11;
+            background: linear-gradient(135deg, rgba(144, 73, 81, 0.08), rgba(122, 139, 110, 0.08));
+            border-radius: 1.7rem;
             overflow: hidden;
             margin-bottom: 24px;
-            box-shadow: 0 18px 42px rgba(75, 64, 57, 0.09);
+            border: 1px solid rgba(144,73,81,0.06);
+            box-shadow: none;
         }
 
-        @media (max-width: 1024px) {
+        @media (max-width: 1180px) {
             .search-container {
                 grid-template-columns: 1fr;
-                gap: 48px;
-                padding: 40px 24px;
+                gap: 44px;
+            }
+
+            #resultsList {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
             }
 
             .preview-sidebar {
                 position: static;
             }
-
-            .tree-card-featured .tree-card-media,
-            .tree-card-media {
-                min-height: 190px;
-            }
-
-            .browse-curation-note {
-                grid-template-columns: 1fr;
-            }
         }
 
         @media (max-width: 768px) {
             .search-container {
-                padding: 24px 16px;
-                gap: 32px;
+                padding: 24px 16px 40px;
+                gap: 28px;
             }
 
-            .browse-curation-shell {
-                padding: 22px 18px 18px;
-                border-radius: 1.45rem;
-                margin-bottom: 22px;
+            .search-panel-header h2 {
+                font-size: 2.25rem;
+                line-height: 1.14;
+            }
+
+            .search-panel-header p {
+                font-size: 1rem;
             }
 
             .search-input {
@@ -625,52 +489,37 @@
                 left: 16px;
             }
 
-            .tree-card {
-                padding: 18px;
-                border-radius: 1.35rem;
+            .browse-guidance-strip {
+                align-items: flex-start;
             }
 
-            .tree-card-media {
-                margin: -18px -18px 16px;
-                min-height: 154px;
-            }
-
-            .tree-card-featured .tree-card-body {
-                padding: 0 18px 18px;
-            }
-
-            .tree-card-featured .tree-card-media {
-                min-height: 174px;
+            #resultsList {
+                grid-template-columns: 1fr;
             }
 
             .preview-sidebar {
                 padding: 24px;
-                border-radius: 1.5rem;
+                border-radius: 1.6rem;
             }
 
-            .video-container {
-                border-radius: 1rem;
+            .preview-panel-header {
+                align-items: flex-start;
+                flex-direction: column;
+                gap: 10px;
             }
 
-            .tree-title {
-                font-size: 1.12rem !important;
+            .preview-panel-header h3 {
+                font-size: 1.65rem;
             }
 
             .tag-chip {
                 font-size: 12px;
-                padding: 6px 12px;
+                padding: 7px 12px;
             }
 
             .browse-results-head {
                 align-items: flex-start;
                 flex-direction: column;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .tree-card-media-label {
-                flex-direction: column;
-                align-items: flex-start;
             }
         }
     </style>
@@ -681,58 +530,46 @@
     <!-- Shared Header -->
     <div id="shared-header"></div>
 
-        <main class="search-container">
-            <section>
-                <div class="browse-curation-shell">
-                    <div class="search-panel-header">
-                        <div class="search-panel-eyebrow">
-                            <span class="material-symbols-outlined" style="font-size:15px;">local_florist</span>
-                            오늘의 공개 감상 허브
-                        </div>
-                        <h2 class="headline" data-i18n="search.title">지금 먼저 열어볼 공개 러브트리</h2>
-                        <p data-i18n="search.subtitle">가장 최근에 공개된 세 개의 러브트리에서, 다른 팬이 남긴 첫 순간과 감정의 흐름을 조용히 따라가 보세요.</p>
+    <main class="search-container">
+        <section>
+            <div class="browse-curation-shell">
+                <div class="search-panel-header">
+                    <div class="search-panel-eyebrow">
+                        <span class="material-symbols-outlined" style="font-size:16px;">favorite</span>
+                        오늘의 공개 감상
                     </div>
-
-                    <div class="search-input-wrapper">
-                        <span class="material-symbols-outlined search-icon">search</span>
-                        <input type="text" id="searchInput" class="search-input" placeholder="원하는 순간이나 감정 결을 가볍게 찾아보세요" data-i18n-placeholder="search.placeholder" required>
-                    </div>
-
-                    <p class="search-intent-note"><span class="material-symbols-outlined" style="font-size:16px;">auto_stories</span><span data-i18n="search.intentNote">검색은 보조 도구예요. 먼저 아래 공개 러브트리를 고르고, 오른쪽에서 감정 흐름을 열어보세요.</span></p>
-
-                    <div class="filter-row">
-                        <span class="tag-chip active" data-category="전체" data-i18n="search.filter.all">전체 감상</span>
-                        <span class="tag-chip" data-category="입덕" data-i18n="search.filter.newbie">시작 순간</span>
-                        <span class="tag-chip" data-category="성장" data-i18n="search.filter.growing">이어진 흐름</span>
-                        <span class="tag-chip" data-category="최애" data-i18n="search.filter.fan">깊어진 마음</span>
-                    </div>
-
-                    <div class="browse-curation-note">
-                        <div class="browse-curation-note-card">
-                            <strong>먼저 고르기</strong>
-                            <p>가장 최근에 공개된 트리 세 개를 먼저 보여드려요.</p>
-                        </div>
-                        <div class="browse-curation-note-card">
-                            <strong>오른쪽에서 미리 보기</strong>
-                            <p>카드를 누르면 대표 순간과 감정 경로가 바로 열립니다.</p>
-                        </div>
-                        <div class="browse-curation-note-card">
-                            <strong>가볍게 탐색하기</strong>
-                            <p>검색과 필터는 보고 싶은 결을 좁히는 보조 탐색입니다.</p>
-                        </div>
-                    </div>
+                    <h2 class="headline">공개 러브트리 둘러보기</h2>
+                    <p>다른 팬이 남긴 첫 순간과 감정의 흐름을 천천히 따라가 보세요.</p>
                 </div>
 
-                <div class="browse-results-head">
-                    <div>
-                        <h3>최근 공개된 러브트리</h3>
-                        <p>지금 감상하기 좋은 공개 러브트리부터 천천히 열어보세요.</p>
-                    </div>
-                    <div class="browse-results-badge">
-                        <span class="material-symbols-outlined" style="font-size:15px;">schedule</span>
-                        지금 먼저 볼 3개
-                    </div>
+                <div class="search-input-wrapper">
+                    <span class="material-symbols-outlined search-icon">search</span>
+                    <input type="text" id="searchInput" class="search-input" placeholder="예: 첫 설렘 · 아티스트명 · 감정 태그" required>
                 </div>
+
+                <div class="filter-row" aria-label="감상 보조 필터">
+                    <span class="tag-chip active" data-category="전체">전체</span>
+                    <span class="tag-chip" data-category="입덕">시작 순간 중심</span>
+                    <span class="tag-chip" data-category="성장">이어진 감정</span>
+                    <span class="tag-chip" data-category="최애">깊어진 마음</span>
+                </div>
+
+                <div class="browse-guidance-strip">
+                    <span class="material-symbols-outlined">auto_stories</span>
+                    <span>검색은 가볍게 좁히는 보조 도구예요. 먼저 아래 공개 러브트리를 고르고, 오른쪽에서 시작 순간과 이어진 감정을 열어보세요.</span>
+                </div>
+            </div>
+
+            <div class="browse-results-head">
+                <div>
+                    <h3>최근 공개된 러브트리</h3>
+                    <p>지금 감상하기 좋은 공개 러브트리부터 천천히 열어보세요.</p>
+                </div>
+                <div class="browse-results-badge">
+                    <span class="material-symbols-outlined" style="font-size:15px;">auto_awesome</span>
+                    지금 먼저 볼 3개
+                </div>
+            </div>
 
             <div id="resultsList">
                 <!-- Populated by JS -->
@@ -741,36 +578,36 @@
 
         <aside class="preview-sidebar" id="previewSidebar">
             <div class="preview-panel-header">
-                <h3 data-i18n="search.previewTitle">감상 허브</h3>
-                <span class="preview-badge" data-i18n="search.previewBadge">선택한 트리</span>
+                <h3>감상 허브</h3>
+                <span class="preview-badge">선택한 트리</span>
             </div>
-            <p class="preview-kicker" data-i18n="search.previewKicker">목록에서 한 장면을 고르면, 이곳에서 대표 순간과 이어진 감정의 흐름이 먼저 펼쳐집니다.</p>
+            <p class="preview-kicker">카드를 선택하면 시작 순간과 이어진 감정이 이곳에 펼쳐집니다.</p>
             <div id="previewVideoContainer" class="video-container" style="margin-bottom: 24px;">
                 <div class="preview-empty-state" style="width:100%; height:100%; display:flex; flex-direction: column; align-items:center; justify-content:center; color: var(--on-surface-variant); font-size: 14px; text-align: center; padding: 20px;">
-                    <p style="margin-bottom: 8px;" data-i18n="search.previewEmptyLead">왼쪽 목록에서 공개 러브트리를 선택하면</p>
-                    <p data-i18n="search.previewEmptyBody">해당 트리의 감정 흐름과 대표 순간을 여기서 미리 볼 수 있어요.</p>
+                    <p style="margin-bottom: 8px;">왼쪽 목록에서 공개 러브트리를 선택하면</p>
+                    <p>해당 트리의 감정 흐름과 대표 순간을 여기서 미리 볼 수 있어요.</p>
                 </div>
             </div>
             <div id="previewDetails">
-                <div id="previewTitle" class="headline" style="font-size: 1.1rem; margin-bottom: 12px; font-weight: 800; color: var(--on-surface);" data-i18n="search.previewPlaceholder">트리를 선택하여 감상하기</div>
-                <div id="previewDesc" style="color: var(--on-surface-variant); font-size: 14px; line-height: 1.5;">
-                    <p style="margin-bottom: 16px;" data-i18n="search.previewDescriptionPlaceholder">카드를 선택하면 감정의 흐름과 대표 순간을 미리 볼 수 있어요.</p>
+                <div id="previewTitle" class="headline" style="font-size: 1.18rem; margin-bottom: 12px; font-weight: 800; color: var(--on-surface);">트리를 골라 감상하기</div>
+                <div id="previewDesc" style="color: var(--on-surface-variant); font-size: 14px; line-height: 1.6;">
+                    <p style="margin-bottom: 16px;">카드를 고르면 대표 순간과 감정 경로를 먼저 열어볼 수 있어요.</p>
                 </div>
                 <div id="previewTreeStats" class="tree-meta" hidden>
                     <span class="tree-meta-item">
                         <span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle;">account_tree</span>
                         <span id="previewMemoriesCount">0</span>
-                        <span data-i18n="search.previewMomentCountSuffix">개 순간</span>
+                        <span>개 순간</span>
                     </span>
                     <span class="tree-meta-item">
                         <span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle;">schedule</span>
-                        <span id="previewTreeDuration" data-i18n="search.previewDurationPending">업데이트 정보 준비 중</span>
+                        <span id="previewTreeDuration">업데이트 정보 준비 중</span>
                     </span>
                 </div>
                 <div>
                     <div class="emotion-tags-label">
                         <span class="material-symbols-outlined" style="font-size: 14px;">tag</span>
-                        <span data-i18n="search.previewEmotionTagsLabel">감정 태그</span>
+                        <span>감정 태그</span>
                     </div>
                     <div id="previewEmotionTags" style="display: flex; flex-wrap: wrap; gap: 8px;">
                         <!-- Populated by JS -->
