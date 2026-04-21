@@ -10,7 +10,8 @@ function createEditorCanvas(deps) {
         setDetailEmptyState,
         updateFocusSelectedBtn,
         createInitialMemory,
-        onNodeClick
+        onNodeClick,
+        openAddMoment
     } = deps;
 
     const i18n = window.t || function(key) { return key; };
@@ -67,6 +68,8 @@ function createEditorCanvas(deps) {
         dragMoved: false,
         controlsBound: false,
         globalsBound: false,
+        resizeBound: false,
+        resizeTimer: null,
         positions: storedLayout.positions,
         rafScheduled: false,
         rafFrame: null
@@ -194,6 +197,44 @@ function createEditorCanvas(deps) {
             y: world.y + viewportState.offsetY
         };
     };
+
+    function isNodeWithinSafeViewport(pos) {
+        const metrics = getMetrics();
+        const padding = 96;
+        return pos.x >= padding && pos.x <= metrics.width - padding && pos.y >= padding && pos.y <= metrics.height - padding;
+    }
+
+    function keepSelectionVisible() {
+        const selectedId = document.querySelector('.memory-node.selected')?.dataset?.memoryId;
+        if (selectedId) {
+            const target = getTreeMemories().find((memory) => memory.id === selectedId);
+            if (target) {
+                const currentPos = calcPosition(target);
+                if (!isNodeWithinSafeViewport(currentPos)) {
+                    focusNodeById(selectedId);
+                    return;
+                }
+                initCanvas();
+                return;
+            }
+        }
+        recenterViewport();
+    }
+
+    function bindResizeHandling() {
+        if (viewportState.resizeBound) return;
+        viewportState.resizeBound = true;
+
+        window.addEventListener('resize', () => {
+            if (viewportState.resizeTimer) {
+                clearTimeout(viewportState.resizeTimer);
+            }
+            viewportState.resizeTimer = setTimeout(() => {
+                keepSelectionVisible();
+                persistStoredPositions();
+            }, 120);
+        });
+    }
 
     const drawBranch = (startPos, endPos) => {
         if (typeof canvasViewport.drawBranch === 'function') {
@@ -351,6 +392,11 @@ function createEditorCanvas(deps) {
     }
 
     function openAddMomentFromCanvas() {
+        if (typeof openAddMoment === 'function') {
+            openAddMoment();
+            return;
+        }
+
         const addBtn = document.getElementById('addMemoryBtn');
         if (addBtn) {
             addBtn.click();
@@ -548,6 +594,7 @@ function createEditorCanvas(deps) {
 
         bindCanvasPan();
         bindViewportControls();
+        bindResizeHandling();
         viewportState.initialized = true;
     };
 
@@ -751,7 +798,8 @@ function createEditorCanvas(deps) {
         bindCanvasPan,
         viewportState,
         focusNodeById,
-        recenterViewport
+        recenterViewport,
+        keepSelectionVisible
     };
 }
 
