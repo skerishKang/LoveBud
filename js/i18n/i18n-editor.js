@@ -44,5 +44,11 @@ Object.assign(window.i18nEditor, {
     continue_moment: { ko: '순간 이어가기', en: 'Continue this moment' },
     growth_start_hint: { ko: '여기서 다음 가지가 자라나요', en: 'The next branch grows from here' },
     growth_continue_hint: { ko: '선택한 순간 뒤로 감정이 이어져요', en: 'The feeling continues from the selected moment' },
-    detail_empty_desc: { ko: '왼쪽의 "새 순간 이어가기"로 첫 장면을 심으면, 이 패널이 현재 순간 허브로 바뀝니다.', en: 'Plant the first scene with “Plant the next moment” on the left, and this panel will become your current moment hub.' }
+    detail_empty_desc: { ko: '왼쪽의 "새 순간 이어가기"로 첫 장면을 심으면, 이 패널이 현재 순간 허브로 바뀝니다.', en: 'Plant the first scene with “Plant the next moment” on the left, and this panel will become your current moment hub.' },
+    editor_make_private: { ko: '비공개로 전환', en: 'Make private' },
+    editor_make_public: { ko: '공개로 전환', en: 'Make public' },
+    editor_open_detail: { ko: '상세로 보기', en: 'View details' },
+    editor_visibility_updated_private: { ko: '이 트리를 비공개로 전환했어요.', en: 'This tree has been set to private.' },
+    editor_visibility_updated_public: { ko: '이 트리를 공개로 전환했어요.', en: 'This tree has been set to public.' },
+    editor_visibility_update_failed: { ko: '공개 상태를 바꾸지 못했어요.', en: 'Failed to update visibility.' }
 });
