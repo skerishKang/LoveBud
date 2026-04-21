@@ -34,20 +34,59 @@
         };
     }
 
+    function enrichBrowseSummaryTree(rawTree, fallbackTree) {
+        const tree = (fallbackTree && typeof fallbackTree === 'object') ? { ...fallbackTree } : {};
+        const source = rawTree?.data || rawTree || {};
+
+        const rawEmotionTags = Array.isArray(source.emotionTags)
+            ? source.emotionTags
+            : (Array.isArray(source.emotion_tags) ? source.emotion_tags : []);
+
+        return {
+            ...tree,
+            representativeThumbnail: source.representativeThumbnail || source.representative_thumbnail || source.thumbnail || tree.representativeThumbnail || '',
+            emotionTags: rawEmotionTags.filter(Boolean).slice(0, 4),
+            timeRange: source.timeRange || source.time_range || tree.timeRange || '기록 없음',
+            theme: source.theme || tree.theme || '',
+            stage: source.stage || tree.stage || '',
+            memoryCount: Number.isFinite(Number(source.memoryCount || source.memory_count))
+                ? Number(source.memoryCount || source.memory_count)
+                : Number(tree.memoryCount || 0)
+        };
+    }
+
     function createCommunityApi() {
         let publicMemoriesCache = null;
+        const publicMemoriesByTreeCache = new Map();
 
-        async function getCommunityMemories() {
-            const memories = await BaseApiFetch.apiFetch('/community/memories');
-            publicMemoriesCache = Array.isArray(memories) ? memories : [];
-            return publicMemoriesCache;
+        async function getCommunityMemories(options = {}) {
+            const params = new URLSearchParams();
+            if (options.treeId) params.set('treeId', options.treeId);
+            if (options.limit) params.set('limit', options.limit);
+            const query = params.toString();
+            const endpoint = '/community/memories' + (query ? `?${query}` : '');
+            const memories = await BaseApiFetch.apiFetch(endpoint);
+            const safeMemories = Array.isArray(memories) ? memories : [];
+
+            if (options.treeId) {
+                publicMemoriesByTreeCache.set(options.treeId, safeMemories);
+            } else {
+                publicMemoriesCache = safeMemories;
+            }
+            return safeMemories;
         }
 
-        async function getCachedCommunityMemories() {
+        async function getCachedCommunityMemories(options = {}) {
+            if (options.treeId) {
+                if (publicMemoriesByTreeCache.has(options.treeId)) {
+                    return publicMemoriesByTreeCache.get(options.treeId);
+                }
+                return getCommunityMemories({ treeId: options.treeId, limit: options.limit || 100 });
+            }
             if (Array.isArray(publicMemoriesCache)) {
                 return publicMemoriesCache;
             }
-            return getCommunityMemories();
+            return getCommunityMemories(options);
         }
 
         return {
@@ -62,24 +101,25 @@
                 if (!PublicTreeAdapter) {
                     throw new Error('LoveTreePublicTreeAdapter not loaded');
                 }
-                
+
                 let endpoint = '/community/trees';
                 const params = new URLSearchParams();
                 if (options.view) params.append('view', options.view);
                 if (options.sort) params.append('sort', options.sort);
                 if (options.limit) params.append('limit', options.limit);
-                
+
                 const qs = params.toString();
                 if (qs) endpoint += '?' + qs;
 
                 const apiTrees = await BaseApiFetch.apiFetch(endpoint);
-                return PublicTreeAdapter.buildPublicTreeSummaryModels(apiTrees);
+                const baseModels = PublicTreeAdapter.buildPublicTreeSummaryModels(apiTrees);
+                return baseModels.map((tree, index) => enrichBrowseSummaryTree(apiTrees[index], tree));
             },
             getPublicTreePreview: async (tree) => {
                 if (!PublicTreeAdapter) {
                     throw new Error('LoveTreePublicTreeAdapter not loaded');
                 }
-                const apiMemories = await communityApi.getCachedCommunityMemories();
+                const apiMemories = await communityApi.getCachedCommunityMemories({ treeId: tree?.id, limit: 100 });
                 return PublicTreeAdapter.hydrateTreeWithPublicMemories(tree, apiMemories);
             }
         };
