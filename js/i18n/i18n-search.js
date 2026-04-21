@@ -109,15 +109,15 @@
       en: 'Connected Feelings'
     },
     'search.previewNoEmotionTags': {
-      ko: '아직 또렷하게 남은 감정은 없어요.',
+      ko: '아직 이어진 감정은 없어요.',
       en: 'There are no clearly saved emotions yet.'
     },
     'search.previewTimelineRecentUpdate': {
-      ko: '최근에 이어진 순간',
+      ko: '최근에 이어진 감정',
       en: 'Recently added moment'
     },
     'search.previewTimelineLastMoment': {
-      ko: '마지막으로 남은 순간',
+      ko: '가장 최근에 남은 순간',
       en: 'Latest saved moment'
     },
     'search.previewTimelineCreated': {
