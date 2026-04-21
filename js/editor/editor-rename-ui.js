@@ -70,6 +70,7 @@ function enhanceEditorSidebarHint() {
 
 function injectEditorRenameButton() {
     bindEditorRenameButton(document.getElementById('renameTreeBtn'));
+    bindEditorRenameButton(document.getElementById('sidebarTitleEditBtn'));
     enhanceEditorSidebarHint();
 }
 
