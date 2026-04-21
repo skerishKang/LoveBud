@@ -13,6 +13,8 @@ const {
 } = require('./_lib/doc-store');
 const { serializeTree, serializeTreeList } = require('./_lib/serializers');
 
+const PUBLICATION_MIN_PUBLIC_MEMORIES = 3;
+
 exports.handler = async (event) => {
   const requestOrigin = event.headers?.origin || event.headers?.Origin || '';
 
@@ -38,6 +40,13 @@ exports.handler = async (event) => {
 
       const title = validateOptionalString(body.title, 200) || '나의 Lovetree';
       const visibility = validateVisibility(body.visibility, 'private');
+
+      if (visibility === 'public') {
+        throw httpError(
+          409,
+          `공개 러브트리는 공개 순간이 최소 ${PUBLICATION_MIN_PUBLIC_MEMORIES}개 이상 있어야 만들 수 있어요. 먼저 비공개로 시작해 주세요.`
+        );
+      }
 
       const tree = await createTree({
         ownerId: user.uid,
