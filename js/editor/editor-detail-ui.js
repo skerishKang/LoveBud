@@ -281,8 +281,8 @@ function createEditorDetailUI(deps) {
         const visIcon = isPublic ? 'public' : 'lock';
         const visLabel = isPublic ? i18n('visibility_public') : i18n('visibility_private');
         const visInfo = isPublic
-            ? resolveInfoText(i18n('share_info'), 'share_info', '링크가 있는 사람은 이 트리를 볼 수 있습니다')
-            : resolveInfoText(currentTree.info || i18n('private_info'), 'private_info', '나만 볼 수 있는 트리입니다');
+            ? formatI18nText('share_info', '링크가 있는 사람은 이 트리를 볼 수 있습니다')
+            : formatI18nText('private_info', '나만 볼 수 있는 트리입니다');
         const visStyle = isPublic
             ? 'background:rgba(76,175,80,0.1);color:#4caf50;border:1px solid rgba(76,175,80,0.25);'
             : 'background:rgba(158,158,158,0.1);color:#757575;border:1px solid rgba(158,158,158,0.25);';
