@@ -25,9 +25,16 @@
     setText('summaryTotalSuffix', 'myTrees.summary_total_suffix', '개의 트리');
     setText('summaryPublicLabel', 'myTrees.summary_public', '공개');
     setText('summaryPrivateLabel', 'myTrees.summary_private', '비공개');
+    setText('summaryMomentsSuffix', 'myTrees.summary_moments_suffix', '개의 순간');
     setText('sortRecentOption', 'myTrees.sort_recent', '최근 수정순');
     setText('sortOldestOption', 'myTrees.sort_oldest', '생성순');
     setText('sortNameOption', 'myTrees.sort_name', '이름순');
+    setText('manageSelectedTreeLabel', 'myTrees.manage_label', '선택한 트리 관리');
+    setText('manageSelectedTreeName', 'myTrees.manage_none', '카드에서 트리를 하나 골라 관리해보세요');
+    setText('manageSelectedTreeMeta', 'myTrees.manage_hint', '카드 아래 선택 버튼으로 빠르게 이름 변경과 삭제를 할 수 있어요.');
+    setText('manageOpenBtn', 'myTrees.manage_open', '열기');
+    setText('manageRenameBtn', 'myTrees.manage_rename', '이름 변경');
+    setText('manageDeleteBtn', 'myTrees.manage_delete', '삭제');
 
     var retryBtn = document.getElementById('retryLoadBtn');
     if (retryBtn) retryBtn.textContent = tText('myTrees.retry', '다시 시도');
@@ -59,6 +66,23 @@
       if (deleteItem) {
         deleteItem.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px;">delete</span>' + tText('delete', '삭제');
       }
+    });
+
+    document.querySelectorAll('.tree-card-count-pill, .tree-card-moment-badge').forEach(function(el) {
+      var count = el.getAttribute('data-count');
+      if (count !== null) {
+        el.textContent = tText('myTrees.moment_count_compact', '순간 {count}개').replace('{count}', count);
+      }
+    });
+
+    document.querySelectorAll('.tree-card-select-btn').forEach(function(el) {
+      el.textContent = el.closest('.tree-card') && el.closest('.tree-card').classList.contains('is-selected')
+        ? tText('myTrees.card_selected', '선택됨')
+        : tText('myTrees.card_select', '선택');
+    });
+
+    document.querySelectorAll('.tree-card-open-btn').forEach(function(el) {
+      el.textContent = tText('myTrees.card_open', '열어보기');
     });
   }
 
