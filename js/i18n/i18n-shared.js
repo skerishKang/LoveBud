@@ -49,8 +49,8 @@
       en: '<span class="title-line">Every moment</span><span class="title-line title-accent">of what you love</span><span class="title-line">becomes a single tree</span>'
     },
     'home.heroSubtitle': {
-      ko: '입덕의 첫 설렘부터 오래 남은 장면까지. 마음이 지나온 길을 남기면, 나만의 트리로 자라납니다.',
-      en: 'From the first spark of fandom to the scenes that stayed with you. Leave the path your heart followed, and watch it grow into your own tree.'
+      ko: '좋아하게 된 순간들을 남기면, 내 러브트리로 이어집니다.',
+      en: 'Save the moments that stayed with you, and let them grow into your LoveTree.'
     },
     'home.cta.start': {
       ko: '내 러브트리 시작하기',
@@ -73,8 +73,8 @@
       en: 'Watch my tree grow'
     },
     'home.supportCopy': {
-      ko: '혼자 간직한 장면도, 공개된 트리의 마음도 같은 결로 이어집니다.',
-      en: 'Private scenes and public trees can both carry the same emotional thread.'
+      ko: '바로 시작하거나 먼저 감상해보세요.',
+      en: 'Start right away, or browse first.'
     },
     'home.intro': {
       ko: '직접 만들어보기 전에 미리 둘러보고 싶다면',
