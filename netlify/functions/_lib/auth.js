@@ -9,43 +9,38 @@
 const admin = require('firebase-admin');
 const { httpError } = require('./http');
 
-let adminInitialized = false;
-
 function getAdmin() {
-  if (adminInitialized) return admin;
+  if (admin.apps && admin.apps.length) return admin;
 
-  if (!admin.apps || !admin.apps.length) {
-    const raw =
-      process.env.FIREBASE_SERVICE_ACCOUNT_JSON ||
-      process.env.FIREBASE_SERVICE_ACCOUNT;
+  const raw =
+    process.env.FIREBASE_SERVICE_ACCOUNT_JSON ||
+    process.env.FIREBASE_SERVICE_ACCOUNT;
 
-    if (!raw) {
-      const err = new Error(
-        'Missing Firebase service account: FIREBASE_SERVICE_ACCOUNT_JSON or FIREBASE_SERVICE_ACCOUNT'
-      );
-      err.status = 503;
-      console.error('[auth] Firebase service account env missing. Set FIREBASE_SERVICE_ACCOUNT_JSON in Netlify env.');
-      throw err;
-    }
-
-    try {
-      console.log('[auth] Parsing Firebase service account JSON...');
-      const serviceAccount = JSON.parse(raw);
-      console.log('[auth] Initializing Firebase Admin for project:', serviceAccount.project_id);
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
-      });
-    } catch (parseError) {
-      const err = new Error(
-        'Invalid Firebase service account JSON: ' + parseError.message
-      );
-      err.status = 503;
-      console.error('[auth] CRITICAL: Firebase Admin init failed:', parseError.message, parseError.stack);
-      throw err;
-    }
+  if (!raw) {
+    const err = new Error(
+      'Missing Firebase service account: FIREBASE_SERVICE_ACCOUNT_JSON or FIREBASE_SERVICE_ACCOUNT'
+    );
+    err.status = 503;
+    console.error('[auth] Firebase service account env missing. Set FIREBASE_SERVICE_ACCOUNT_JSON in Netlify env.');
+    throw err;
   }
 
-  adminInitialized = true;
+  try {
+    console.log('[auth] Parsing Firebase service account JSON...');
+    const serviceAccount = JSON.parse(raw);
+    console.log('[auth] Initializing Firebase Admin for project:', serviceAccount.project_id);
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+    });
+  } catch (parseError) {
+    const err = new Error(
+      'Invalid Firebase service account JSON: ' + parseError.message
+    );
+    err.status = 503;
+    console.error('[auth] CRITICAL: Firebase Admin init failed:', parseError.message, parseError.stack);
+    throw err;
+  }
+
   return admin;
 }
 
