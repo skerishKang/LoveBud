@@ -141,15 +141,16 @@ function createEditorDetailUI(deps) {
 
     const createVisibilityToggleButton = ({ isPublic }) => createPillButton({
         label: isPublic
-            ? formatI18nText('editor_make_private', '비공개로 전환')
-            : formatI18nText('editor_make_public', '공개로 전환'),
+            ? formatI18nText('editor_make_private', '이 트리 비공개로 전환')
+            : formatI18nText('editor_make_public', '이 트리 공개하기'),
         icon: isPublic ? 'lock' : 'public',
-        tone: isPublic ? 'default' : 'primary'
+        tone: 'default'
     });
 
     const createOpenDetailButton = () => createPillButton({
         label: formatI18nText('editor_open_detail', '상세로 보기'),
-        icon: 'open_in_new'
+        icon: 'open_in_new',
+        tone: 'primary'
     });
 
     const bindShareButton = ({ btn, data, treeId, i18n, showToast }) => {
@@ -215,42 +216,52 @@ function createEditorDetailUI(deps) {
         openDetailButtonEl = null
     }) => {
         const wrap = document.createElement('div');
-        wrap.style.padding = '16px 18px';
-        wrap.style.borderRadius = '18px';
+        wrap.style.padding = '18px 18px 18px';
+        wrap.style.borderRadius = '20px';
         wrap.style.background = 'linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,246,244,0.96))';
         wrap.style.boxShadow = '0 10px 26px rgba(75, 64, 57, 0.06)';
         wrap.style.border = '1px solid rgba(144,73,81,0.08)';
         wrap.style.display = 'flex';
         wrap.style.flexDirection = 'column';
-        wrap.style.gap = '12px';
+        wrap.style.gap = '14px';
 
         const topRow = document.createElement('div');
         topRow.style.display = 'flex';
-        topRow.style.alignItems = 'center';
+        topRow.style.alignItems = 'flex-start';
         topRow.style.justifyContent = 'space-between';
-        topRow.style.gap = '10px';
+        topRow.style.gap = '12px';
         topRow.style.flexWrap = 'wrap';
 
         const titleWrap = document.createElement('div');
         titleWrap.style.display = 'flex';
         titleWrap.style.flexDirection = 'column';
-        titleWrap.style.gap = '6px';
+        titleWrap.style.gap = '8px';
+        titleWrap.style.flex = '1 1 220px';
+
+        titleWrap.appendChild(createTextBlock('div', formatI18nText('current_tree', '현재 트리'), {
+            fontSize: '11px',
+            fontWeight: '800',
+            letterSpacing: '.08em',
+            textTransform: 'uppercase',
+            color: 'var(--on-surface-variant)'
+        }));
 
         titleWrap.appendChild(createTextBlock('div', displayTreeTitle, {
-            fontSize: '15px',
-            fontWeight: '800',
+            fontSize: '18px',
+            fontWeight: '900',
             color: 'var(--on-surface)',
-            lineHeight: '1.45'
+            lineHeight: '1.35',
+            letterSpacing: '-0.02em'
         }));
 
         titleWrap.appendChild(createTextBlock('div', countLabel, {
             fontSize: '12px',
             color: 'var(--on-surface-variant)',
-            lineHeight: '1.6'
+            lineHeight: '1.7'
         }));
 
         const visBadge = document.createElement('span');
-        visBadge.style.cssText = `${visStyle}padding:5px 10px;border-radius:999px;display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;`;
+        visBadge.style.cssText = `${visStyle}padding:6px 11px;border-radius:999px;display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;`;
         visBadge.appendChild(createInlineIcon(visIcon, '12px'));
         visBadge.appendChild(document.createTextNode(visLabel));
 
@@ -412,7 +423,6 @@ function createEditorDetailUI(deps) {
             hintEl.style.color = 'var(--on-surface-variant)';
         }
 
-        // Update CTA button text based on tree state
         const addMemoryBtnLabel = document.getElementById('addMemoryBtnLabel');
         const addMemoryEyebrow = document.getElementById('addMemoryEyebrow');
         const addMemoryIntro = document.getElementById('addMemoryIntro');
@@ -443,8 +453,8 @@ function createEditorDetailUI(deps) {
         const visIcon = isPublic ? 'public' : 'lock';
         const visLabel = isPublic ? i18n('visibility_public') : i18n('visibility_private');
         const visInfo = isPublic
-            ? formatI18nText('share_info', '링크가 있는 사람은 이 트리를 볼 수 있습니다')
-            : formatI18nText('private_info', '나만 볼 수 있는 트리입니다');
+            ? formatI18nText('editor_tree_public_info', '이 트리 전체가 공개되어 있어요. 링크가 있는 사람은 감상할 수 있습니다.')
+            : formatI18nText('editor_tree_private_info', '이 트리 전체는 비공개예요. 지금은 나만 볼 수 있습니다.');
         const visStyle = isPublic
             ? 'background:rgba(76,175,80,0.1);color:#4caf50;border:1px solid rgba(76,175,80,0.25);'
             : 'background:rgba(158,158,158,0.1);color:#757575;border:1px solid rgba(158,158,158,0.25);';
@@ -527,61 +537,61 @@ function createEditorDetailUI(deps) {
 
         if (titleEl) {
             titleEl.innerHTML = '';
-            
+
             const titleContainer = document.createElement('div');
             titleContainer.className = 'memory-inline-edit';
             titleContainer.style.width = '100%';
             titleContainer.style.display = 'flex';
             titleContainer.style.alignItems = 'flex-start';
-            
+
             const titleText = document.createElement('span');
             titleText.style.flex = '1';
             titleText.textContent = isEmptyState
                 ? formatI18nText('editor_current_moment_empty_title', '이 트리의 첫 장면을 심어 보세요')
                 : (data.title || formatI18nText('editor_current_moment_title', '지금 마음이 머문 장면'));
-            
+
             titleContainer.appendChild(titleText);
-            
+
             if (!isEmptyState && typeof updateSelectedMemoryFields === 'function') {
                 const editBtn = document.createElement('button');
                 editBtn.className = 'memory-edit-button';
                 editBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;margin-right:2px;">edit</span>' + formatI18nText('editMemoryTitle', '제목 수정');
-                
+
                 editBtn.onclick = () => {
                     titleContainer.innerHTML = '';
-                    
+
                     const input = document.createElement('input');
                     input.type = 'text';
                     input.value = data.title || '';
-                    
+
                     const actions = document.createElement('div');
                     actions.className = 'memory-edit-actions';
-                    
+
                     const saveBtn = document.createElement('button');
                     saveBtn.className = 'btn-save';
                     saveBtn.textContent = formatI18nText('saveMemoryTitle', '저장');
-                    
+
                     const cancelBtn = document.createElement('button');
                     cancelBtn.className = 'btn-cancel';
                     cancelBtn.textContent = formatI18nText('cancelMemoryTitle', '취소');
-                    
+
                     const errorMsg = document.createElement('div');
                     errorMsg.className = 'memory-edit-error';
-                    
+
                     actions.appendChild(cancelBtn);
                     actions.appendChild(saveBtn);
-                    
+
                     const wrap = document.createElement('div');
                     wrap.style.width = '100%';
                     wrap.appendChild(input);
                     wrap.appendChild(errorMsg);
                     wrap.appendChild(actions);
                     titleContainer.appendChild(wrap);
-                    
+
                     input.focus();
-                    
+
                     const endEdit = () => { updateDetailPanel(data); };
-                    
+
                     const saveEdit = async () => {
                         const newTitle = input.value.trim();
                         if (!newTitle) {
@@ -600,10 +610,10 @@ function createEditorDetailUI(deps) {
                             cancelBtn.disabled = false;
                         }
                     };
-                    
+
                     cancelBtn.onclick = endEdit;
                     saveBtn.onclick = saveEdit;
-                    
+
                     input.addEventListener('keydown', (e) => {
                         if (e.key === 'Enter') { e.preventDefault(); saveEdit(); }
                         if (e.key === 'Escape') { e.preventDefault(); endEdit(); }
@@ -611,7 +621,7 @@ function createEditorDetailUI(deps) {
                 };
                 titleContainer.appendChild(editBtn);
             }
-            
+
             titleEl.appendChild(titleContainer);
         }
 
@@ -649,7 +659,7 @@ function createEditorDetailUI(deps) {
 
         if (noteEl) {
             noteEl.innerHTML = '';
-            
+
             const memoContainer = document.createElement('div');
             memoContainer.style.width = '100%';
 
@@ -671,37 +681,37 @@ function createEditorDetailUI(deps) {
                 editBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;margin-right:2px;">edit</span>' + formatI18nText('editMemoryNote', '메모 수정');
                 editBtn.onclick = () => {
                     memoContainer.innerHTML = '';
-                    
+
                     const textarea = document.createElement('textarea');
                     textarea.className = 'memory-edit-textarea';
                     textarea.value = data.memo || '';
-                    
+
                     const hintDiv = document.createElement('div');
                     hintDiv.className = 'memory-edit-hint';
                     hintDiv.textContent = formatI18nText('noteSaveHint', 'Ctrl+Enter로 저장할 수 있어요.');
-                    
+
                     const actions = document.createElement('div');
                     actions.className = 'memory-edit-actions';
-                    
+
                     const saveBtn = document.createElement('button');
                     saveBtn.className = 'btn-save';
                     saveBtn.textContent = formatI18nText('saveMemoryNote', '메모 저장');
-                    
+
                     const cancelBtn = document.createElement('button');
                     cancelBtn.className = 'btn-cancel';
                     cancelBtn.textContent = formatI18nText('cancelMemoryNote', '취소');
-                    
+
                     actions.appendChild(cancelBtn);
                     actions.appendChild(saveBtn);
-                    
+
                     memoContainer.appendChild(textarea);
                     memoContainer.appendChild(hintDiv);
                     memoContainer.appendChild(actions);
-                    
+
                     textarea.focus();
-                    
+
                     const endEdit = () => { updateDetailPanel(data); };
-                    
+
                     const saveEdit = async () => {
                         const newMemo = textarea.value.trim();
                         saveBtn.disabled = true;
@@ -715,10 +725,10 @@ function createEditorDetailUI(deps) {
                             cancelBtn.disabled = false;
                         }
                     };
-                    
+
                     cancelBtn.onclick = endEdit;
                     saveBtn.onclick = saveEdit;
-                    
+
                     textarea.addEventListener('keydown', (e) => {
                         if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); saveEdit(); }
                         if (e.key === 'Escape') { e.preventDefault(); endEdit(); }
@@ -726,7 +736,7 @@ function createEditorDetailUI(deps) {
                 };
                 memoContainer.appendChild(editBtn);
             }
-            
+
             noteEl.appendChild(memoContainer);
 
             if (!isEmptyState) {
