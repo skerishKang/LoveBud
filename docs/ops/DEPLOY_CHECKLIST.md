@@ -1,7 +1,7 @@
 # LoveBud 배포 체크리스트
 
 > 생성: 2026-04-16
-> 갱신: 2026-04-16 (pre-deploy 자동화 추가)
+> 갱신: 2026-04-22 (Firebase Console 운영 체크리스트 추가)
 > 목적: 배포 전후 502/런타임 장애 재발 방지
 
 ## 0. 빠른 자동 검증 (1분)
@@ -71,6 +71,52 @@ node -e "require('./netlify/functions/_lib/db.js')"
   ```bash
   node -e "JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON || '{}'); console.log('OK')"
   ```
+
+### 1-5. Firebase Console 운영/보안 체크리스트
+
+> 중요: `js/firebase-config.js`의 Firebase 웹 클라이언트 설정값은 **완전히 숨기는 비밀값이 아닙니다.**
+> 실제 보호는 Firebase Console의 Authorized Domains, 로그인 제공업체 설정, Rules, App Check에 의존합니다.
+
+#### A. Authorized Domains 점검
+- Firebase Console → Authentication → Settings → Authorized domains 확인
+- 현재 실제 운영 도메인만 유지
+- 꼭 필요한 경우만 아래 로컬 개발 도메인 유지
+  - `localhost`
+  - `127.0.0.1`
+- 예전 실도메인, 임시 스테이징, 더 이상 쓰지 않는 preview 도메인 삭제 검토
+- 도메인 정리 기준:
+  - 현재 실제 로그인 진입에 쓰는가?
+  - 지금도 배포/검증에 필요한가?
+  - 소유가 불명확한 도메인은 남겨두지 않는가?
+
+#### B. 로그인 제공업체 최소화
+- Firebase Console → Authentication → Sign-in method 확인
+- 실제로 사용하는 제공업체만 활성화
+- 사용하지 않는 OAuth provider는 비활성화
+- 테스트용/과거 실험용 provider가 남아 있지 않은지 점검
+
+#### C. Firestore / Storage / 기타 Rules 점검
+- Firestore 사용 시 Rules가 `allow read, write: if true;` 같은 공개 전체 허용 상태가 아닌지 점검
+- Storage 사용 시 Rules가 무제한 공개 쓰기 상태가 아닌지 점검
+- 현재 LoveBud에서 Firebase는 주로 인증용이지만, 추가 제품 확장 전에 Rules 기본값을 다시 확인
+- “안 쓰는 서비스라도 기본 공개 상태로 열려 있지 않은지” 확인
+
+#### D. App Check 검토
+- Firebase Console → App Check 활성화 가능성 검토
+- 지금 당장 강제 적용이 어려워도, 최소한 웹앱 대상 적용 여부를 검토하고 운영 메모 남기기
+- 추후 abuse/스크래핑/무단 호출 우려가 커질 경우 우선순위 상향
+
+#### E. 로컬 개발 허용 기준
+- `localhost`, `127.0.0.1`은 실제 로컬 개발/검증에 필요하면 유지 가능
+- 단, 그 외 임시 사설 IP/과거 개인 도메인은 원칙적으로 제거 검토
+- 로컬 개발이 끝났다고 해서 `localhost`를 무조건 제거할 필요는 없지만, 운영 도메인과 혼동되지 않게 관리
+
+#### F. 예전 도메인 / 스테이징 도메인 정리 기준
+- 아래 중 하나라도 아니면 제거 검토
+  1. 현재 운영 중인 실도메인
+  2. 현재 활성 배포 검증에 실제 사용하는 도메인
+  3. 현재 팀이 명확히 관리하는 staging 도메인
+- 오래된 Netlify preview, 과거 캠페인 도메인, 개인 테스트 도메인은 정리 우선순위 높음
 
 ## 2. 배포 후 확인 (Push 후 Netlify 배포 완료 대기)
 
@@ -153,3 +199,4 @@ netlify functions:log trees
 - 주 1회: `netlify env:list` 로 환경변수 존재 확인
 - 배포마다: 2-1, 2-2 체크리스트 실행
 - 월 1회: Neon 연결 상태 확인 (`psql` 또는 Neon Console)
+- 월 1회: Firebase Authorized Domains / Sign-in method / Rules / App Check 검토
