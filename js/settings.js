@@ -1,6 +1,6 @@
 /**
  * LoveBud - Settings Module
- * v20260421-2
+ * v20260421-3
  * 
  * localStorage 기반 설정 관리
  * - 기본 공개 범위 (defaultVisibility)
@@ -11,6 +11,23 @@
   var DEFAULT_SETTINGS = {
     defaultVisibility: 'public'
   };
+
+  function getCloseHref() {
+    try {
+      var params = new URLSearchParams(window.location.search || '');
+      var returnTo = params.get('returnTo');
+      if (returnTo && /^\.?\/?[a-zA-Z0-9_\-/]+\.html(?:\?.*)?$/.test(returnTo)) {
+        return returnTo;
+      }
+    } catch (e) {
+      console.warn('[settings] Failed to parse returnTo:', e);
+    }
+    return './my-trees.html';
+  }
+
+  function closeSettings() {
+    window.location.href = getCloseHref();
+  }
 
   // 설정 불러오기
   function loadSettings() {
@@ -36,6 +53,29 @@
     }
   }
 
+  function applyHeaderNavFallbacks() {
+    var t = window.t || function(key) { return key; };
+    var navMap = [
+      { href: 'index.html', key: 'nav.home', fallback: '첫화면' },
+      { href: 'intro.html', key: 'nav.intro', fallback: '소개' },
+      { href: 'search.html', key: 'nav.search', fallback: '둘러보기' },
+      { href: 'my-trees.html', key: 'nav.myTrees', fallback: '내 러브트리' }
+    ];
+
+    document.querySelectorAll('.nav-links a').forEach(function(link) {
+      var rawText = (link.textContent || '').trim();
+      var href = link.getAttribute('href') || '';
+      var match = navMap.find(function(item) {
+        return href.indexOf(item.href) !== -1;
+      });
+      if (!match) return;
+      if (rawText === match.key || /^nav\./.test(rawText)) {
+        var translated = t(match.key);
+        link.textContent = translated && translated !== match.key ? translated : match.fallback;
+      }
+    });
+  }
+
   // i18n 텍스트 적용
   function applyI18nText() {
     var t = window.t || function(key) { return key; };
@@ -44,10 +84,22 @@
       var translated = t(key);
       return translated && translated !== key ? translated : fallback;
     }
+
+    applyHeaderNavFallbacks();
+
+    var closeBtn = document.getElementById('settingsCloseBtn');
+    if (closeBtn) {
+      closeBtn.setAttribute('aria-label', safeText('close', '설정 닫기'));
+    }
+
     // 뒤로 가기 링크
     var backLinkText = document.getElementById('settingsBackLinkText');
+    var backLink = document.getElementById('settingsBackLink');
     if (backLinkText) {
       backLinkText.textContent = safeText('settings.backToMyTrees', '내 러브트리로 돌아가기');
+    }
+    if (backLink) {
+      backLink.setAttribute('href', getCloseHref());
     }
     
     // 제목
@@ -95,12 +147,63 @@
     }
   }
 
+  function bindCloseInteractions() {
+    var settingsContent = document.getElementById('settingsContent');
+    var settingsCard = document.getElementById('settingsCard');
+    var closeBtn = document.getElementById('settingsCloseBtn');
+    var backLink = document.getElementById('settingsBackLink');
+
+    if (closeBtn) {
+      closeBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        closeSettings();
+      });
+    }
+
+    if (backLink) {
+      backLink.addEventListener('click', function(e) {
+        e.preventDefault();
+        closeSettings();
+      });
+    }
+
+    if (settingsContent && settingsCard) {
+      settingsContent.addEventListener('click', function(e) {
+        if (!settingsCard.contains(e.target)) {
+          closeSettings();
+        }
+      });
+    }
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        closeSettings();
+      }
+    });
+
+    document.addEventListener('click', function(e) {
+      var trigger = e.target.closest('.user-dropdown-trigger');
+      if (!trigger) return;
+      e.preventDefault();
+      e.stopPropagation();
+      closeSettings();
+    }, true);
+  }
+
   // UI 초기화
   function initSettings() {
     var settings = loadSettings();
+
+    bindCloseInteractions();
     
     // i18n 텍스트 적용 (renderSharedHeader 후 호출되어야 하므로 지연)
-    setTimeout(applyI18nText, 0);
+    setTimeout(function() {
+      applyI18nText();
+      if (typeof window.applyI18n === 'function') {
+        window.applyI18n();
+      }
+      applyHeaderNavFallbacks();
+    }, 0);
     
     // 라디오 버튼 상태 설정
     var radioPrivate = document.querySelector('#radio-private input[value="private"]');
