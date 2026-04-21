@@ -14,16 +14,16 @@
 
 ---
 
-## 2. 어떤 테스트를 해야 하나
+## 2. 지금 뭘 테스트해야 하나
 
 | 내가 확인하고 싶은 것 | 먼저 열 문서 |
 |----------------------|-------------|
-| 처음 온 사용자가 바로 시작 가능한지 | `core_newuser_001.md` |
-| 기존 사용자가 계속 쓸 수 있는지 | `core_returning_001.md` |
-| 공개 탐색 흐름이 자연스러운지 | `core_browse_001.md` |
-| 공개/비공개와 권한이 안 깨졌는지 | `access_public_private_001.md` |
-| 저장 후 새로고침/재진입이 안정적인지 | `persistence_001.md` |
-| 과거 반복 생성/새로고침 이슈가 다시 생겼는지 | `repeatability-node-creation-test.md` |
+| 처음 온 사용자가 login → my-trees → editor로 바로 시작 가능한지 | `core_newuser_001.md` |
+| 기존 사용자가 my-trees / editor를 오가며 계속 쓸 수 있는지 | `core_returning_001.md` |
+| 공개 트리 둘러보기와 detail 감상 흐름이 자연스러운지 | `core_browse_001.md` |
+| 공개/비공개와 권한 경계가 안 깨졌는지 | `access_public_private_001.md` |
+| 저장 후 새로고침/재진입/뒤로가기 일관성이 유지되는지 | `persistence_001.md` |
+| 과거 반복 생성/새로고침/로그인 가드 이슈가 다시 생겼는지 | `repeatability-node-creation-test.md` |
 
 ---
 
@@ -41,7 +41,22 @@
 - `access_public_private_001.md`
 - `persistence_001.md`
 
-### 저장/캐시 변경 후
+### 둘러보기 / 공개 트리 변경 후
+- `core_browse_001.md`
+- `access_public_private_001.md`
+- `persistence_001.md`
+
+### my-trees / editor 변경 후
+- `core_newuser_001.md`
+- `core_returning_001.md`
+- `persistence_001.md`
+
+### 언어 변경 후
+- `core_browse_001.md`
+- `core_returning_001.md`
+- `persistence_001.md`
+
+### 저장/캐시/지속성 변경 후
 - `core_newuser_001.md`
 - `core_returning_001.md`
 - `persistence_001.md`
@@ -49,6 +64,7 @@
 
 ### 인증/권한 변경 후
 - `access_public_private_001.md`
+- `core_browse_001.md`
 - `core_newuser_001.md`
 - `core_returning_001.md`
 - `persistence_001.md`
@@ -93,24 +109,31 @@
 
 ---
 
-## 6. 지원하는 그룹 데이터
+## 6. 최근 변경축 기준 빠른 선택
 
-현재 README 기준으로 등록되어 있는 데이터 예시는 아래와 같습니다.
+### search / detail 공개 감상 흐름이 걱정된다
+→ `core_browse_001.md`
 
-- IVE
-- BTS
-- hearts2hearts
-- RIIZE
-- TWS
-- ZEROBASEONE
-- ILLIT
-- MEOVV
-- KickFlip
-- KATSEYE
-- Cortiz
-- Santos Bravos
+### my-trees / editor 재진입 흐름이 걱정된다
+→ `core_returning_001.md`
 
-실제 사용 시에는 `docs/test-scenarios/data/` 아래의 JSON 파일 존재 여부를 기준으로 판단합니다.
+### 언어 전환 후 문맥이 어긋나는지 보고 싶다
+→ `core_browse_001.md` + `core_returning_001.md` + `persistence_001.md`
+
+### public / private 경계가 의심된다
+→ `access_public_private_001.md` + `core_browse_001.md`
+
+### 저장 후 유실이나 상태 불일치가 의심된다
+→ `persistence_001.md` + `repeatability-node-creation-test.md`
+
+---
+
+## 7. 데이터 파일 선택
+
+기본 원칙:
+- 실제 사용 시에는 `docs/test-scenarios/data/` 아래의 JSON 파일 존재 여부를 기준으로 판단합니다.
+- 신규 사용자 흐름과 기존 사용자 흐름은 가능한 한 서로 다른 데이터셋으로 분리해 기록합니다.
+- 공개 둘러보기 흐름은 공개 감상 문맥이 잘 읽히는 그룹 데이터를 우선 사용합니다.
 
 새 그룹이 필요하면:
 1. `data/{group}-data.json` 생성
@@ -119,7 +142,7 @@
 
 ---
 
-## 7. 결과 파일 위치
+## 8. 결과 파일 위치
 
 ```text
 docs/test-scenarios/results/
@@ -134,26 +157,28 @@ docs/test-scenarios/results/
 - `results/persistence-001-bts-2026-04-20-2140/test-result.md`
 
 스크린샷 규칙:
-- 필수 아님
-- 오류, 권한 문제, 저장 유실, 상태 불일치, UX 혼란 화면은 권장
+- `test-result.md`는 필수
+- 스크린샷은 권장
+- 오류, 권한 문제, 저장 유실, 상태 불일치, UX 혼란 화면은 반드시 남기는 쪽을 우선
 
 ---
 
-## 8. 결과 기록 최소 항목
+## 9. 결과 기록 최소 항목
 
-최소한 아래 항목은 남기는 것을 권장합니다.
+최소한 아래 항목은 남깁니다.
 
-- 테스트한 시나리오 문서명
+- 사용한 시나리오 문서
 - 사용한 데이터 파일
 - 단계별 결과 요약
-- 가장 큰 문제 1개
+- 주요 상태 불일치
+- 언어/권한/저장 관련 특이사항
 - 최종 판정: 통과 / 조건부 통과 / 실패
 
 자세한 형식은 `results/common-test-TEMPLATE.md`를 사용합니다.
 
 ---
 
-## 9. 문제 해결
+## 10. 문제 해결
 
 ### 어떤 문서를 먼저 써야 할지 모르겠다
 → `CURRENT_SCENARIOS.md` 먼저 확인
@@ -178,7 +203,7 @@ docs/test-scenarios/results/
 
 ---
 
-## 10. 더 읽을 문서
+## 11. 더 읽을 문서
 
 | 문서 | 설명 |
 |------|------|
