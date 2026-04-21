@@ -100,12 +100,8 @@ async function queryTrees(filters = {}) {
     sql += ` LIMIT $${p.length}`;
   }
 
-  try {
-    const r = await query(sql, p);
-    return r.rows;
-  } catch (e) {
-    throw e;
-  }
+  const r = await query(sql, p);
+  return r.rows;
 }
 
 async function createTree(data) {
