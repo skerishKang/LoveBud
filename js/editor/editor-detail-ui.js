@@ -140,14 +140,6 @@ function createEditorDetailUI(deps) {
         tone: 'soft'
     });
 
-    const createVisibilityToggleButton = ({ isPublic }) => createPillButton({
-        label: isPublic
-            ? formatI18nText('editor_make_private', '이 트리 비공개로 전환')
-            : formatI18nText('editor_make_public', '이 트리 공개하기'),
-        icon: isPublic ? 'lock' : 'public',
-        tone: 'soft'
-    });
-
     const createOpenDetailButton = () => createPillButton({
         label: formatI18nText('editor_open_detail', '상세로 보기'),
         icon: 'open_in_new',
@@ -171,31 +163,6 @@ function createEditorDetailUI(deps) {
         });
     };
 
-    const bindVisibilityToggleButton = ({ btn, isPublic, showToast }) => {
-        if (!btn || typeof updateTreeVisibility !== 'function') return;
-        if (btn.dataset.visibilityBound === '1') return;
-        btn.dataset.visibilityBound = '1';
-        btn.addEventListener('click', async () => {
-            btn.disabled = true;
-            btn.style.opacity = '0.7';
-            try {
-                await updateTreeVisibility(isPublic ? 'private' : 'public');
-                showToast(
-                    isPublic
-                        ? formatI18nText('editor_visibility_updated_private', '이 트리를 비공개로 전환했어요.')
-                        : formatI18nText('editor_visibility_updated_public', '이 트리를 공개로 전환했어요.'),
-                    'success'
-                );
-            } catch (error) {
-                console.error('[editor] Failed to toggle visibility:', error);
-                showToast(formatI18nText('editor_visibility_update_failed', '공개 상태를 바꾸지 못했어요.'), 'error');
-            } finally {
-                btn.disabled = false;
-                btn.style.opacity = '1';
-            }
-        });
-    };
-
     const bindOpenDetailButton = (btn) => {
         if (!btn || typeof openCurrentMomentDetail !== 'function') return;
         if (btn.dataset.openDetailBound === '1') return;
@@ -213,7 +180,6 @@ function createEditorDetailUI(deps) {
         isPublic,
         countLabel,
         shareButtonEl = null,
-        visibilityToggleButtonEl = null,
         openDetailButtonEl = null
     }) => {
         const wrap = document.createElement('div');
@@ -305,7 +271,6 @@ function createEditorDetailUI(deps) {
         actionsRow.style.flexWrap = 'wrap';
         actionsRow.style.paddingTop = '2px';
 
-        if (visibilityToggleButtonEl) actionsRow.appendChild(visibilityToggleButtonEl);
         if (shareButtonEl) actionsRow.appendChild(shareButtonEl);
         if (openDetailButtonEl) actionsRow.appendChild(openDetailButtonEl);
 
@@ -516,11 +481,9 @@ function createEditorDetailUI(deps) {
         if (treeMetaMount) {
             treeMetaMount.innerHTML = '';
             let shareBtn = null;
-            let visibilityToggleBtn = null;
             let openDetailBtn = null;
 
             if (!isEmptyState && data?.id) {
-                visibilityToggleBtn = createVisibilityToggleButton({ isPublic });
                 shareBtn = createShareTreeButton();
                 openDetailBtn = createOpenDetailButton();
             }
@@ -533,7 +496,6 @@ function createEditorDetailUI(deps) {
                 isPublic,
                 countLabel: localBadgeText ? `${treeCountLabel} · ${localBadgeText}` : treeCountLabel,
                 shareButtonEl: shareBtn,
-                visibilityToggleButtonEl: visibilityToggleBtn,
                 openDetailButtonEl: openDetailBtn
             }));
 
@@ -542,11 +504,6 @@ function createEditorDetailUI(deps) {
                 data,
                 treeId,
                 i18n,
-                showToast
-            });
-            bindVisibilityToggleButton({
-                btn: visibilityToggleBtn,
-                isPublic,
                 showToast
             });
             bindOpenDetailButton(openDetailBtn);
