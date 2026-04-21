@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import os
+
 import modal
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 
-from services.browse_latest import fetch_latest_public_tree_snapshots
+from browse_latest import fetch_latest_public_tree_snapshots
 
 
 app = modal.App("lovebud-browse-snapshot")
@@ -29,7 +30,7 @@ def _allowed_origins() -> list[str]:
         "CORS_ALLOWED_ORIGINS",
         "https://lovebud.netlify.app,https://lovebud.vercel.app",
     )
-    return [v.strip() for v in raw.split(",") if v.strip()]
+    return [value.strip() for value in raw.split(",") if value.strip()]
 
 
 web_app.add_middleware(
@@ -42,8 +43,8 @@ web_app.add_middleware(
 
 
 @web_app.get("/modal/health")
-def modal_health() -> dict[str, str]:
-    return {"ok": "true"}
+def modal_health() -> dict[str, bool]:
+    return {"ok": True}
 
 
 @web_app.get("/modal/browse/latest")
