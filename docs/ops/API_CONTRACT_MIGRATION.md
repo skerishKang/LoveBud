@@ -120,6 +120,152 @@
 - snapshot 도입 직후에도 browse adapter는 기존 hydrate 경로를 fallback으로 유지
 - snapshot이 테스트와 문서 기준으로 고정되기 전에는 기존 hydrate 경로 제거 금지
 
+### 4) HOT / 추천 / 좋아요 확장 migration split (예정 계약)
+
+#### 4-1) Summary에 바로 붙일 수 있는 최소 additive fields
+
+**summary additive field 후보**
+- `badgeLabel?: 'HOT' | '추천' | null`
+- `hotScore?: number | null`
+- `likeCount?: number | null`
+- `bookmarkCount?: number | null`
+- `reactionCount?: number | null`
+
+**지금 바로 필요한 필드**
+- `badgeLabel`
+- `hotScore`
+- `likeCount`
+
+**후순위 필드**
+- `bookmarkCount`
+- `reactionCount`
+
+**rule**
+- summary에는 카드 정렬, 배지, 작은 수치 노출에 직접 필요한 aggregate만 허용
+- 개인화/설명형 필드는 금지
+
+#### 4-2) HOT ranking 필드
+
+**ranking field 후보**
+- `hotScore`
+- `recentViewCount7d`
+- `recentLikeCount7d`
+- `recentBookmarkCount7d`
+- `trendingWindow`
+
+**지금 바로 필요한 필드**
+- `hotScore`
+
+**후순위 필드**
+- `recentViewCount7d`
+- `recentLikeCount7d`
+- `recentBookmarkCount7d`
+- `trendingWindow`
+
+**rule**
+- summary에는 `hotScore`까지만 허용 가능
+- 세부 ranking 근거 수치는 snapshot 또는 별도 ranking endpoint로 분리
+
+#### 4-3) 추천 필드
+
+**추천 field 후보**
+- `recommendationKey`
+- `recommendationReasonCode`
+- `recommendationScore`
+
+**지금 바로 필요한 필드**
+- 없음
+
+**후순위 필드**
+- `recommendationReasonCode`
+- `recommendationScore`
+- `recommendationKey`
+
+**rule**
+- 추천은 summary 기본 계약보다 query/endpoint 축으로 분리
+- 추천 이유는 summary에 넣지 않고 snapshot 또는 recommendation endpoint로 이동
+
+#### 4-4) 좋아요 / 북마크 / 반응 필드
+
+**aggregate field 후보**
+- `likeCount`
+- `bookmarkCount`
+- `reactionCount`
+
+**user-state field 후보**
+- `likedByMe`
+- `bookmarkedByMe`
+- `reactedByMe`
+
+**지금 바로 필요한 필드**
+- aggregate: `likeCount`
+
+**후순위 필드**
+- aggregate: `bookmarkCount`, `reactionCount`
+- user-state: `likedByMe`, `bookmarkedByMe`, `reactedByMe`
+
+**rule**
+- aggregate는 summary additive field 허용 가능
+- user-state는 summary 금지, snapshot 또는 viewer-state endpoint로만 허용
+
+#### 4-5) Snapshot 전용 필드
+
+**snapshot 전용 후보**
+- `recommendedReasonText`
+- `socialProofText`
+- `reactionBreakdown`
+- `likedByMe`
+- `bookmarkedByMe`
+
+**rule**
+- 추천 이유 설명, 반응 분해, 개인화 상태는 snapshot 전용
+- browse first paint summary에는 올리지 않음
+
+#### 4-6) 별도 endpoint 방향
+
+**ranking / recommendation query 방향**
+- `GET /api/community/trees?view=summary&sort=hot`
+- `GET /api/community/trees?view=summary&sort=recommended`
+
+**user-state 방향**
+- `GET /api/community/trees/<treeId>/viewer-state`
+- 또는 snapshot 응답에 인증 사용자 상태 조건부 포함
+
+**reaction write 방향**
+- `POST /api/community/trees/<treeId>/like`
+- `POST /api/community/trees/<treeId>/bookmark`
+- `POST /api/community/trees/<treeId>/reactions`
+
+#### 4-7) backward compatibility rule
+
+- 기존 summary 필드는 유지
+- HOT / 추천 / 반응 필드는 additive optional field만 허용
+- browse adapter와 기존 browse renderer는 새 필드가 없어도 그대로 동작해야 함
+- detail 계약에 HOT / 추천 / user-state 필드를 강제로 밀어 넣지 않음
+
+#### 4-8) rollout direction
+
+**Phase 1**
+- summary additive fields
+  - `badgeLabel`
+  - `hotScore`
+  - `likeCount`
+
+**Phase 2**
+- query 확장
+  - `sort=hot`
+  - `sort=recommended`
+
+**Phase 3**
+- snapshot 확장
+  - `recommendedReasonText`
+  - `socialProofText`
+  - `likedByMe`
+  - `bookmarkedByMe`
+
+**Phase 4**
+- viewer-state / reaction write endpoint
+
 ---
 
 ## fallback 제거 조건
@@ -128,6 +274,7 @@
 3. mock browse 경로도 camelCase-only로 정리
 4. 계약 테스트가 camelCase 기준으로 green 유지
 5. Modal snapshot 도입 시 snapshot contract 테스트가 별도로 green 유지
+6. HOT / 추천 / 반응 필드가 additive optional shape로 테스트 고정
 
 ## 제거 순서
 1. 서버 응답 계약 확정
@@ -135,6 +282,7 @@
 3. adapter fallback 제거
 4. transitional helper 테스트 축소 또는 삭제
 5. snapshot 도입 후 summary / hydrate / snapshot 경계 재점검
+6. reaction / recommendation user-state를 summary 바깥으로 고정
 
 ## 제거 대상
 - `{ data }` wrapper
@@ -148,3 +296,5 @@
 - browse Modal에 detail/tree payload 계약을 그대로 재사용하지 않음
 - summary 응답에 memories 전체를 다시 넣지 않음
 - snapshot 도입 전까지 현재 browse 구현의 first paint 성능 특성을 깨지 않음
+- HOT / 추천 / user-state를 한 번에 summary에 넣지 않음
+- `likedByMe` 같은 개인화 필드는 인증 없는 browse summary 기본 계약에 넣지 않음
