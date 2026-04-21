@@ -8,7 +8,6 @@
 
 // 1. /api/community/trees camelCase-only
 // 2. /api/community/memories camelCase-only
-// 3. mock browse camelCase-only
 
 (function() {
     'use strict';
@@ -108,8 +107,8 @@
     /**
      * Builds tree view models from raw memories and trees
      * 
-     * @param {Array} memories - Raw memories from API/mock
-     * @param {Array} trees - Raw trees from API/mock
+     * @param {Array} memories - Raw memories from API
+     * @param {Array} trees - Raw trees from API
      * @returns {Array} Array of tree view models ready for rendering
      */
     function buildTreeData(memories, trees) {

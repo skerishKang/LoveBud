@@ -72,13 +72,6 @@
         };
     }
 
-    if (!treeHelpers.getFirstMockTree) {
-        treeHelpers.getFirstMockTree = function getFirstMockTree() {
-            var mockTrees = typeof getTrees === 'function' ? getTrees() : [];
-            return mockTrees[0] || null;
-        };
-    }
-
     if (!treeHelpers.nextMemoryIdFromMemories) {
         treeHelpers.nextMemoryIdFromMemories = function nextMemoryIdFromMemories(memories) {
             var max = 0;
