@@ -50,6 +50,10 @@
       ko: '트리 정보를 불러오지 못했어요. 순간 감상은 계속할 수 있어요.',
       en: 'Could not load tree info. You can still view this moment.'
     },
+    'tree_load_failed_desc_warm': {
+      ko: '트리 전체 분위기는 아직 또렷하게 보이지 않지만, 지금 이 순간에 남겨진 장면과 마음은 계속 감상할 수 있어요.',
+      en: 'The full tree may not be visible yet, but you can still stay with the feeling left in this moment.'
+    },
     'tree_path_missing': {
       ko: '트리 경로 정보가 없어요',
       en: 'No tree path information'
@@ -81,6 +85,10 @@
     'tree_context_solo_view': {
       ko: '이 순간만 단독으로 감상하고 있어요.',
       en: 'You are viewing just this moment on its own.'
+    },
+    'tree_context_solo_view_warm': {
+      ko: '아직 연결된 트리 정보는 보이지 않지만, 이 순간만으로도 남겨진 마음을 천천히 따라가 볼 수 있어요.',
+      en: 'Even without the connected tree around it, this moment still leaves a feeling you can quietly follow.'
     },
     'tree_context_moment_count_desc': {
       ko: '개의 순간이 이어진 감정 경로를 따라가고 있어요',
@@ -206,6 +214,42 @@
       ko: '기록 저장 중 오류가 발생했습니다',
       en: 'Error occurred while saving the record'
     },
+    'empty_memo_kicker': {
+      ko: '남겨진 마음',
+      en: 'Feeling left behind'
+    },
+    'empty_memo_quote': {
+      ko: '짧게 남은 장면 하나도 오래 머무는 마음이 될 수 있어요.',
+      en: 'Even a brief scene can become a feeling that stays for a long time.'
+    },
+    'empty_memo_title': {
+      ko: '아직 길게 남겨진 메모는 없지만, 이 순간의 여운은 그대로 머물러 있어요.',
+      en: 'There may not be a long memo yet, but the afterglow of this moment still remains.'
+    },
+    'empty_memo_desc': {
+      ko: '짧은 장면 하나만으로도 시작되는 감정이 있어요. 이 러브트리는 그 조용한 시작까지 함께 감상하는 공간이에요.',
+      en: 'Some feelings begin with just a brief scene. This LoveTree is also a space for staying with that quiet beginning.'
+    },
+    'connected_empty_kicker': {
+      ko: '이어질 다음 장면',
+      en: 'The next scene to follow'
+    },
+    'connected_empty_title': {
+      ko: '지금은 이 순간이 가장 또렷하게 남아 있어요.',
+      en: 'For now, this is the moment that remains most clearly.'
+    },
+    'connected_empty_desc': {
+      ko: '아직 같은 흐름의 다른 순간은 보이지 않지만, 이 장면 하나만으로도 트리의 분위기를 천천히 느껴볼 수 있어요.',
+      en: 'Other moments in the same flow may not appear yet, but this scene alone can still carry the mood of the tree.'
+    },
+    'connected_path_missing_title': {
+      ko: '아직 이 순간과 이어진 트리 흐름은 보이지 않아요.',
+      en: 'The tree flow connected to this moment is not visible yet.'
+    },
+    'connected_path_missing_desc': {
+      ko: '그래도 지금 보고 있는 장면 하나만으로도 이 러브트리의 분위기를 천천히 느껴볼 수 있어요.',
+      en: 'Even so, this single scene still lets you take in the mood of this LoveTree.'
+    },
     'video_unavailable_soft_title': {
       ko: '이 순간의 영상은 여기서 바로 열리지 않을 수 있어요.',
       en: 'This video may not open directly here.'
@@ -230,6 +274,10 @@
       ko: '누군가의 러브트리를 감상하고 있어요',
       en: 'You are viewing someone\'s LoveTree'
     },
+    'public_tree_fallback_title_with_artist': {
+      ko: '마음이 닿기 시작한 순간을 감상하고 있어요',
+      en: 'You are viewing a moment where a heart began to connect'
+    },
     'public_tree_desc_join': {
       ko: ' 안에서',
       en: ' contains '
@@ -237,6 +285,10 @@
     'public_tree_desc_suffix': {
       ko: '개의 순간으로 이어진 감정의 흐름을 따라가고 있어요. 지금 보고 있는 순간을 시작으로 이 트리를 천천히 감상해 보세요.',
       en: ' connected moments. Start with this moment and gently follow the emotional flow of the tree.'
+    },
+    'public_tree_desc_fallback_with_memory': {
+      ko: '이 장면에서 시작된 마음을 따라가고 있어요. 연결된 순간이 많지 않아도, 이 순간만으로 남겨진 분위기를 천천히 감상해 보세요.',
+      en: 'You are following a feeling that began with this scene. Even without many connected moments, this one can still hold the mood.'
     },
     'public_tree_context_desc': {
       ko: '지금은 다른 사람이 공개한 러브트리 안에서 한 순간을 감상하고 있어요.',
