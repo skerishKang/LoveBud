@@ -63,6 +63,10 @@ Thumbs.db
 .windsurf/
 .kilo/
 nul
+memories_check.json
+trees_check.json
+temp-commit-message.txt
+temp-files-to-commit.txt
 
 # Screenshots
 # Ignore only test resulting screenshots to save repo space
