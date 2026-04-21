@@ -120,27 +120,32 @@ function createEditorDetailUI(deps) {
 
         topRow.appendChild(titleWrap);
         topRow.appendChild(visBadge);
+        wrap.appendChild(topRow);
 
-        const infoRow = document.createElement('div');
-        infoRow.style.display = 'flex';
-        infoRow.style.alignItems = 'center';
-        infoRow.style.justifyContent = 'space-between';
-        infoRow.style.gap = '10px';
-        infoRow.style.flexWrap = 'wrap';
+        if (visInfo || shareButtonEl) {
+            const infoRow = document.createElement('div');
+            infoRow.style.display = 'flex';
+            infoRow.style.alignItems = 'center';
+            infoRow.style.justifyContent = 'space-between';
+            infoRow.style.gap = '10px';
+            infoRow.style.flexWrap = 'wrap';
 
-        infoRow.appendChild(createTextBlock('div', visInfo, {
-            fontSize: '12px',
-            color: 'var(--on-surface-variant)',
-            lineHeight: '1.7',
-            flex: '1 1 220px'
-        }));
+            if (visInfo) {
+                infoRow.appendChild(createTextBlock('div', visInfo, {
+                    fontSize: '12px',
+                    color: 'var(--on-surface-variant)',
+                    lineHeight: '1.7',
+                    flex: '1 1 220px'
+                }));
+            }
 
-        if (shareButtonEl) {
-            infoRow.appendChild(shareButtonEl);
+            if (shareButtonEl) {
+                infoRow.appendChild(shareButtonEl);
+            }
+
+            wrap.appendChild(infoRow);
         }
 
-        wrap.appendChild(topRow);
-        wrap.appendChild(infoRow);
         return wrap;
     };
 
@@ -281,7 +286,7 @@ function createEditorDetailUI(deps) {
         const visIcon = isPublic ? 'public' : 'lock';
         const visLabel = isPublic ? i18n('visibility_public') : i18n('visibility_private');
         const visInfo = isPublic
-            ? formatI18nText('share_info', '링크가 있는 사람은 이 트리를 볼 수 있습니다')
+            ? ''
             : formatI18nText('private_info', '나만 볼 수 있는 트리입니다');
         const visStyle = isPublic
             ? 'background:rgba(76,175,80,0.1);color:#4caf50;border:1px solid rgba(76,175,80,0.25);'
