@@ -33,6 +33,45 @@ body {
     overflow-y: auto;
 }
 
+.editor-sidebar-back-wrap {
+    margin-bottom: 14px;
+}
+
+.editor-sidebar-back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.4;
+    color: var(--primary);
+    background: rgba(144, 73, 81, 0.06);
+    border: 1px solid rgba(144, 73, 81, 0.10);
+    box-shadow: 0 6px 18px rgba(75, 64, 57, 0.04);
+    transition: transform .18s ease, background .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+
+.editor-sidebar-back-link:hover {
+    transform: translateY(-1px);
+    background: rgba(144, 73, 81, 0.09);
+    border-color: rgba(144, 73, 81, 0.16);
+    box-shadow: 0 10px 22px rgba(75, 64, 57, 0.06);
+}
+
+.editor-sidebar-back-link:focus-visible {
+    outline: 2px solid rgba(144, 73, 81, 0.35);
+    outline-offset: 2px;
+}
+
+.editor-sidebar-back-icon {
+    flex: 0 0 auto;
+    font-size: 14px;
+    line-height: 1;
+}
+
 .tool-group {
     display: flex;
     flex-direction: column;
@@ -413,6 +452,10 @@ body {
         overflow: visible;
     }
 
+    .editor-sidebar-back-wrap {
+        margin-bottom: 4px;
+    }
+
     .editor-status-section,
     .editor-add-section {
         width: 100%;
@@ -490,6 +533,11 @@ body {
 
     .sidebar {
         height: auto;
+    }
+
+    .editor-sidebar-back-link {
+        width: 100%;
+        justify-content: center;
     }
 
     .tool-group {
