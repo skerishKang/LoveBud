@@ -42,6 +42,62 @@ function createEditorDetailUI(deps) {
         return el;
     };
 
+    const getTreeState = () => {
+        const canonicalRootId = getCanonicalRootId();
+        const treeMemories = getTreeMemories();
+        const rootMemory = treeMemories.find((memory) => isRootMemory(memory, canonicalRootId)) || null;
+        const nonRootMemories = treeMemories.filter((memory) => !isRootMemory(memory, canonicalRootId));
+        const totalMomentCount = treeMemories.length;
+        const visibleMomentCount = nonRootMemories.length > 0 ? nonRootMemories.length : (rootMemory ? 1 : 0);
+
+        return {
+            canonicalRootId,
+            treeMemories,
+            rootMemory,
+            nonRootMemories,
+            totalMomentCount,
+            visibleMomentCount,
+            hasMoments: totalMomentCount > 0,
+            hasVisibleMoments: visibleMomentCount > 0
+        };
+    };
+
+    const getDisplayEmotionTags = (data, options = {}) => {
+        const opts = options || {};
+        const isRootSelected = !!opts.isRootSelected;
+        const isEmptyState = !!opts.isEmptyState;
+        const rawTags = Array.isArray(data?.emotionTags) ? data.emotionTags.filter(Boolean) : [];
+        const normalizedTags = rawTags.map((tag) => {
+            const trimmed = String(tag || '').trim();
+            if (!trimmed) return '';
+            if (trimmed === '기록') {
+                return formatI18nText('editor_root_emotion_tag', '첫 마음');
+            }
+            return trimmed;
+        }).filter(Boolean);
+
+        if (normalizedTags.length > 0) {
+            return normalizedTags;
+        }
+
+        if (!isEmptyState && isRootSelected) {
+            return [formatI18nText('editor_root_emotion_tag', '첫 마음')];
+        }
+
+        return [];
+    };
+
+    const getMemoFallbackText = (options = {}) => {
+        const opts = options || {};
+        if (opts.isEmptyState) {
+            return formatI18nText('empty_tree_memo', '아직 비어 있는 자리예요. 첫 순간을 심으면 이 트리가 당신의 흐름으로 자라나기 시작해요.');
+        }
+        if (opts.isRootSelected) {
+            return formatI18nText('editor_root_memo_fallback', '이 장면이 왜 시작이 되었는지 남겨두면, 다음 순간들이 더 자연스럽게 이어져요.');
+        }
+        return formatI18nText('editor_selected_memo_fallback', '이 순간의 마음을 한 줄 남겨두면, 이어진 흐름을 다시 떠올리기 쉬워져요.');
+    };
+
     const createShareTreeButton = ({ visStyle, shareLabel }) => {
         const btn = document.createElement('button');
         btn.id = 'shareTreeBtn';
@@ -249,21 +305,22 @@ function createEditorDetailUI(deps) {
         const hintEl = document.getElementById('sidebarSelectionHint');
         const currentTreeData = getCurrentTreeData();
         const selectedNodeId = getSelectedNodeId();
-        const treeMemories = getTreeMemories();
-        const canonicalRootId = getCanonicalRootId();
-        const count = treeMemories.filter(m => !isRootMemory(m, canonicalRootId)).length;
-        const selected = treeMemories.find(m => m.id === selectedNodeId);
+        const treeState = getTreeState();
+        const count = treeState.totalMomentCount;
+        const selected = treeState.treeMemories.find(m => m.id === selectedNodeId);
 
         if (treeTitleEl) {
             treeTitleEl.textContent = resolveTreeTitleText(currentTreeData?.title);
         }
         if (momentCountEl) {
-            momentCountEl.textContent = formatI18nText('sidebar_moment_count', `순간 ${count}개가 이어지고 있어요`, { count });
+            momentCountEl.textContent = treeState.hasMoments
+                ? formatI18nText('sidebar_moment_count', `순간 ${count}개가 이어지고 있어요`, { count })
+                : formatI18nText('sidebar_moment_count_empty', '아직 이어진 순간이 없어요');
         }
         if (flowSummaryEl) {
             flowSummaryEl.textContent = selected?.title
                 ? formatI18nText('sidebar_flow_summary_selected', `지금은 "${selected.title}" 순간에 마음이 머물러 있어요.`, { title: selected.title })
-                : count > 0
+                : treeState.hasMoments
                     ? formatI18nText('sidebar_flow_summary_connected', `${count}개의 순간이 하나의 러브트리로 차곡차곡 이어지고 있어요.`, { count })
                     : formatI18nText('sidebar_flow_summary_empty', '첫 기억이 심어지면 이곳에 감정의 흐름이 차곡차곡 쌓여요.');
         }
@@ -286,17 +343,17 @@ function createEditorDetailUI(deps) {
         const visIcon = isPublic ? 'public' : 'lock';
         const visLabel = isPublic ? i18n('visibility_public') : i18n('visibility_private');
         const visInfo = isPublic
-            ? ''
+            ? formatI18nText('share_info', '링크가 있는 사람은 이 트리를 볼 수 있습니다')
             : formatI18nText('private_info', '나만 볼 수 있는 트리입니다');
         const visStyle = isPublic
             ? 'background:rgba(76,175,80,0.1);color:#4caf50;border:1px solid rgba(76,175,80,0.25);'
             : 'background:rgba(158,158,158,0.1);color:#757575;border:1px solid rgba(158,158,158,0.25);';
         const displayTreeTitle = resolveTreeTitleText(currentTree.title);
-        const canonicalRootId = getCanonicalRootId();
-        const isEmptyState = !!data?.isNewTree;
+        const treeState = getTreeState();
+        const canonicalRootId = treeState.canonicalRootId;
+        const isEmptyState = !!data?.isNewTree && !treeState.hasMoments;
         const isRootSelected = !isEmptyState && isRootMemory(data, canonicalRootId);
         const localSaveMode = getLocalSaveMode();
-        const realMemoriesCount = getTreeMemories().filter(m => !isRootMemory(m, canonicalRootId)).length;
 
         const headerEl = detailPanel.querySelector('h3');
         if (headerEl) {
@@ -314,8 +371,9 @@ function createEditorDetailUI(deps) {
         const memoryActions = detailPanel.querySelector('.memory-actions');
 
         const localBadgeText = localSaveMode ? (i18n('local_save_badge') || '로컬 저장') : '';
-        const treeCountLabel = realMemoriesCount > 0
-            ? formatI18nText('editor_tree_status_count', `{count}개의 순간이 이 트리 안에서 이어지고 있어요.`, { count: realMemoriesCount })
+        const countForLabel = treeState.totalMomentCount;
+        const treeCountLabel = treeState.hasMoments
+            ? formatI18nText('editor_tree_status_count', `{count}개의 순간이 이 트리 안에서 이어지고 있어요.`, { count: countForLabel })
             : formatI18nText('editor_tree_status_empty', '아직 첫 순간을 기다리고 있어요.');
 
         if (treeMetaMount) {
@@ -384,14 +442,13 @@ function createEditorDetailUI(deps) {
 
         if (tagsContainer) {
             tagsContainer.innerHTML = '';
-            if (!isEmptyState && Array.isArray(data.emotionTags)) {
-                data.emotionTags.forEach((tag) => {
-                    const tagEl = document.createElement('span');
-                    tagEl.className = 'tag tag-primary';
-                    tagEl.textContent = tag;
-                    tagsContainer.appendChild(tagEl);
-                });
-            }
+            const displayTags = getDisplayEmotionTags(data, { isRootSelected, isEmptyState });
+            displayTags.forEach((tag) => {
+                const tagEl = document.createElement('span');
+                tagEl.className = 'tag tag-primary';
+                tagEl.textContent = tag;
+                tagsContainer.appendChild(tagEl);
+            });
         }
 
         if (noteEl) {
@@ -402,8 +459,8 @@ function createEditorDetailUI(deps) {
             memoBody.style.fontSize = '0.95rem';
             memoBody.style.color = 'var(--on-surface)';
             memoBody.textContent = isEmptyState
-                ? formatI18nText('empty_tree_memo', '아직 비어 있는 자리예요. 첫 순간을 심으면 이 트리가 당신의 흐름으로 자라나기 시작해요.')
-                : (data.memo || '');
+                ? getMemoFallbackText({ isEmptyState: true })
+                : (data.memo || getMemoFallbackText({ isRootSelected }));
             noteEl.appendChild(memoBody);
 
             if (!isEmptyState) {
