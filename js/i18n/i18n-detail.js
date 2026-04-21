@@ -54,6 +54,18 @@
       ko: '트리 전체 분위기는 아직 또렷하게 보이지 않지만, 지금 이 순간에 남겨진 장면과 마음은 계속 감상할 수 있어요.',
       en: 'The full tree may not be visible yet, but you can still stay with the feeling left in this moment.'
     },
+    'tree_partial_context_desc': {
+      ko: '트리의 전체 윤곽은 잠시 흐릿하지만, 지금 이 순간을 중심으로 감정의 분위기는 계속 따라가 볼 수 있어요.',
+      en: 'The full outline of the tree is faint for now, but you can still follow the feeling through this moment.'
+    },
+    'memories_load_failed_desc_warm': {
+      ko: '현재 순간은 또렷하게 남아 있어요. 이어진 다른 순간은 잠시 후 다시 불러올 수 있을 거예요.',
+      en: 'The current moment is still here clearly. The connected moments may return shortly.'
+    },
+    'tree_and_memories_load_failed_desc_warm': {
+      ko: '지금은 현재 순간 하나가 가장 또렷하게 남아 있어요. 연결된 트리 흐름은 잠시 후 다시 이어서 볼 수 있을 거예요.',
+      en: 'For now, this single moment is what remains most clearly. The connected tree flow may return shortly.'
+    },
     'tree_path_missing': {
       ko: '트리 경로 정보가 없어요',
       en: 'No tree path information'
@@ -245,6 +257,14 @@
     'connected_empty_desc': {
       ko: '아직 같은 흐름의 다른 순간은 보이지 않지만, 이 장면 하나만으로도 트리의 분위기를 천천히 느껴볼 수 있어요.',
       en: 'Other moments in the same flow may not appear yet, but this scene alone can still carry the mood of the tree.'
+    },
+    'connected_temporarily_unavailable_title': {
+      ko: '이어진 다른 순간은 잠시 후 다시 또렷해질 거예요.',
+      en: 'The connected moments may become clear again shortly.'
+    },
+    'connected_temporarily_unavailable_desc': {
+      ko: '지금은 현재 장면을 중심으로 감상하고 있어요. 연결된 흐름은 잠시 후 다시 이어서 볼 수 있을 거예요.',
+      en: 'For now, stay with the current scene. The connected flow should return shortly.'
     },
     'connected_path_missing_title': {
       ko: '아직 이 순간과 이어진 트리 흐름은 보이지 않아요.',
