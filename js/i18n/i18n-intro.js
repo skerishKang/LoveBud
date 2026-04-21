@@ -1,6 +1,6 @@
 /**
  * LoveBud - i18n Intro Dictionary
- * v20260421-2
+ * v20260421-3
  *
  * 소개 페이지(intro.html) 번역 키
  */
@@ -76,6 +76,10 @@
       ko: '좋아하게 된 영상이나 음악의 장면을 남겨보세요. 오래 기억하고 싶은 시작이 트리의 첫 가지가 됩니다.',
       en: 'Save the scene from a video or song that drew you in. The beginning you want to remember becomes the first branch of your tree.'
     },
+    'intro.step1Point': {
+      ko: '첫 설렘이 트리의 시작이 됩니다.',
+      en: 'Your first spark becomes the start of the tree.'
+    },
 
     // Step 2
     'intro.step2Title': {
@@ -86,6 +90,10 @@
       ko: '그 순간의 설렘과 마음을 짧은 메모와 태그로 남기세요. 감정의 결이 모여 러브트리가 자라납니다.',
       en: 'Leave the excitement of that moment with a short memo and tags. The texture of your feelings helps the tree grow.'
     },
+    'intro.step2Point': {
+      ko: '짧은 메모가 감정의 결을 남겨줍니다.',
+      en: 'A short note preserves the texture of your feelings.'
+    },
 
     // Step 3
     'intro.step3Title': {
@@ -95,6 +103,10 @@
     'intro.step3DescFixed': {
       ko: '가지처럼 이어진 장면들을 따라가며, 내가 어떻게 좋아하게 되었는지 다시 바라보세요.',
       en: 'Follow the scenes branching out and look back at how your feelings grew.'
+    },
+    'intro.step3Point': {
+      ko: '이어진 장면이 좋아하게 된 경로를 보여줍니다.',
+      en: 'Connected scenes reveal the path of how you came to love it.'
     },
 
     // 성장 과정
@@ -124,13 +136,21 @@
       ko: '처음 마음이 움직였던 장면과 그때의 감정을 함께 보관합니다.',
       en: 'Keep the scene that first moved your heart together with the feeling from that moment.'
     },
+    'intro.value2Eyebrow': {
+      ko: '감정의 경로',
+      en: 'Path of feeling'
+    },
     'intro.value2Title': {
       ko: '다른 팬의 마음을 감상하는 공간',
-      en: 'A space to view other fans feelings'
+      en: 'A space to view other fans’ feelings'
     },
     'intro.value2Desc': {
       ko: '공개된 러브트리를 따라가며 비슷한 설렘과 장면을 발견할 수 있습니다.',
       en: 'Follow public LoveTrees and discover familiar sparks and scenes.'
+    },
+    'intro.value3Eyebrow': {
+      ko: '공개 감상',
+      en: 'Public viewing'
     },
     'intro.value3Title': {
       ko: '오래 지나도 다시 꺼내보는 공간',
@@ -139,6 +159,10 @@
     'intro.value3DescFixed': {
       ko: '잊고 있던 장면도 트리 안에서는 그때의 온도로 다시 살아납니다.',
       en: 'Even forgotten scenes come back with their old warmth inside the tree.'
+    },
+    'intro.value4Eyebrow': {
+      ko: '오래 남는 장면',
+      en: 'Scenes that stay'
     },
 
     // CTA
@@ -156,7 +180,7 @@
     },
     'nav.myTrees': {
       ko: '내 러브트리 시작하기',
-      en: 'Start My LoveTrees'
+      en: 'Start My LoveTree'
     },
     'nav.intro': {
       ko: 'LoveTree 소개 보기',
