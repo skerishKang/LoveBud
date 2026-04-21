@@ -101,6 +101,20 @@
     }
   }
 
+  function normalizeTreeRecord(tree) {
+    if (window.LoveBudNormalize && typeof window.LoveBudNormalize.normalizeTree === 'function') {
+      return window.LoveBudNormalize.normalizeTree(tree);
+    }
+    return tree;
+  }
+
+  function normalizeMemoryRecord(memory) {
+    if (window.LoveBudNormalize && typeof window.LoveBudNormalize.normalizeMemory === 'function') {
+      return window.LoveBudNormalize.normalizeMemory(memory);
+    }
+    return memory;
+  }
+
   function sortMemoriesByFirstMoment(memories) {
     return (Array.isArray(memories) ? memories.slice() : []).sort(function(a, b) {
       var left = new Date((a && (a.createdAt || a.created_at || a.timestamp)) || 0).getTime();
@@ -110,44 +124,51 @@
   }
 
   function deriveTreeMemoryMeta(tree, memories) {
-    var ordered = sortMemoriesByFirstMoment(memories);
+    var normalizedTree = normalizeTreeRecord(tree) || tree || {};
+    var ordered = sortMemoriesByFirstMoment((Array.isArray(memories) ? memories : []).map(function(memory) {
+      return normalizeMemoryRecord(memory) || memory;
+    }));
     var firstMoment = ordered[0] || null;
+
     return {
       memoryCount: ordered.length,
-      representativeThumbnail: (firstMoment && firstMoment.thumbnail) || '',
-      representativeTitle: (firstMoment && firstMoment.title) || '',
-      representativeMemo: (firstMoment && firstMoment.memo) || ''
+      representativeThumbnail: normalizedTree.representativeThumbnail || normalizedTree.representative_thumbnail || (firstMoment && (firstMoment.thumbnail || firstMoment.sourceUrl)) || '',
+      representativeTitle: normalizedTree.representativeTitle || normalizedTree.representative_title || (firstMoment && firstMoment.title) || '',
+      representativeMemo: normalizedTree.representativeMemo || normalizedTree.representative_memo || (firstMoment && firstMoment.memo) || ''
     };
   }
 
   async function enrichTreesWithMemoryMeta(trees) {
     if (!Array.isArray(trees) || trees.length === 0 || !window.apiClient || !window.apiClient.getMemoriesByTree) {
-      return Array.isArray(trees) ? trees : [];
+      return Array.isArray(trees) ? trees.map(function(tree) {
+        return Object.assign({}, normalizeTreeRecord(tree) || tree);
+      }) : [];
     }
 
     var enriched = await Promise.all(trees.map(async function(tree) {
-      if (!tree || !tree.id) return tree;
+      var normalizedTree = normalizeTreeRecord(tree) || tree;
+      if (!normalizedTree || !normalizedTree.id) return normalizedTree;
 
-      var cachedMemories = readTreeMemoriesCache(tree.id);
+      var cachedMemories = readTreeMemoriesCache(normalizedTree.id);
       var memories = cachedMemories;
 
       if (!Array.isArray(memories)) {
         try {
-          memories = await window.apiClient.getMemoriesByTree(tree.id);
+          memories = await window.apiClient.getMemoriesByTree(normalizedTree.id);
           if (Array.isArray(memories)) {
-            localStorage.setItem(TREE_MEMORIES_CACHE_KEY + tree.id, JSON.stringify({
+            localStorage.setItem(TREE_MEMORIES_CACHE_KEY + normalizedTree.id, JSON.stringify({
               data: memories,
               timestamp: Date.now()
             }));
           }
         } catch (e) {
-          console.warn('[my-trees-data] Failed to fetch memories for tree:', tree.id, e.message);
+          console.warn('[my-trees-data] Failed to fetch memories for tree:', normalizedTree.id, e.message);
           memories = [];
         }
       }
 
-      var meta = deriveTreeMemoryMeta(tree, memories);
-      return Object.assign({}, tree, meta);
+      var meta = deriveTreeMemoryMeta(normalizedTree, memories);
+      return Object.assign({}, normalizedTree, meta);
     }));
 
     return enriched;
