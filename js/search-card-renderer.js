@@ -81,6 +81,34 @@
         return icons[stage] || '🌱';
     }
 
+    function renderPathFallback() {
+        return '<div class="path-node-fallback">기록<br>준비중</div>';
+    }
+
+    function renderPathImage(src, alt) {
+        if (!src) {
+            return renderPathFallback();
+        }
+        return `
+            <img src="${src}" alt="${alt}" loading="lazy" onerror="this.hidden=true;this.nextElementSibling.hidden=false">
+            <div class="path-node-fallback" hidden>기록<br>준비중</div>
+        `;
+    }
+
+    function renderMediaFallback(tree) {
+        return `<div class="tree-card-media-fallback">${escapeHtml(getTreeIcon(tree.stage))}</div>`;
+    }
+
+    function renderRepresentativeImage(src, alt, tree) {
+        if (!src) {
+            return renderMediaFallback(tree);
+        }
+        return `
+            <img src="${src}" alt="${alt}" loading="lazy" onerror="this.hidden=true;this.nextElementSibling.hidden=false">
+            <div class="tree-card-media-fallback" hidden>${escapeHtml(getTreeIcon(tree.stage))}</div>
+        `;
+    }
+
     /**
      * Renders path preview (thumbnail row)
      * @param {Array} memories - Tree memories
@@ -103,9 +131,7 @@
 
              html += `
                  <div class="path-node" title="${safeTitle}">
-                     ${safeThumb
-                         ? `<img src="${safeThumb}" alt="${safeTitle}" loading="lazy">`
-                         : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--surface-container),var(--surface-container-low));color:var(--primary);font-size:11px;font-weight:800;line-height:1.3;text-align:center;padding:4px;">기록<br>준비중</div>`}
+                     ${renderPathImage(safeThumb, safeTitle)}
                  </div>
              `;
              if (idx < previewCount - 1) {
@@ -183,9 +209,7 @@
 
          return `
              <div class="tree-card-media" aria-label="${firstMoment}">
-                 ${mediaUrl
-                     ? `<img src="${mediaUrl}" alt="${firstMoment}" loading="lazy">`
-                     : `<div class="tree-card-media-fallback">${escapeHtml(getTreeIcon(tree.stage))}</div>`}
+                 ${renderRepresentativeImage(mediaUrl, firstMoment, tree)}
                  <div class="tree-card-media-label">
                      <span><span class="material-symbols-outlined" style="font-size:15px;">auto_stories</span>${escapeHtml(label)}</span>
                      <span>${count}개의 순간</span>
