@@ -88,6 +88,71 @@
     }
   }
 
+  function readTreeMemoriesCache(treeId) {
+    try {
+      var raw = localStorage.getItem(TREE_MEMORIES_CACHE_KEY + treeId);
+      if (!raw) return null;
+      var parsed = JSON.parse(raw);
+      if (!parsed || !Array.isArray(parsed.data)) return null;
+      return parsed.data;
+    } catch (e) {
+      console.warn('[my-trees-data] Failed to read tree memories cache:', e);
+      return null;
+    }
+  }
+
+  function sortMemoriesByFirstMoment(memories) {
+    return (Array.isArray(memories) ? memories.slice() : []).sort(function(a, b) {
+      var left = new Date((a && (a.createdAt || a.created_at || a.timestamp)) || 0).getTime();
+      var right = new Date((b && (b.createdAt || b.created_at || b.timestamp)) || 0).getTime();
+      return left - right;
+    });
+  }
+
+  function deriveTreeMemoryMeta(tree, memories) {
+    var ordered = sortMemoriesByFirstMoment(memories);
+    var firstMoment = ordered[0] || null;
+    return {
+      memoryCount: ordered.length,
+      representativeThumbnail: (firstMoment && firstMoment.thumbnail) || '',
+      representativeTitle: (firstMoment && firstMoment.title) || '',
+      representativeMemo: (firstMoment && firstMoment.memo) || ''
+    };
+  }
+
+  async function enrichTreesWithMemoryMeta(trees) {
+    if (!Array.isArray(trees) || trees.length === 0 || !window.apiClient || !window.apiClient.getMemoriesByTree) {
+      return Array.isArray(trees) ? trees : [];
+    }
+
+    var enriched = await Promise.all(trees.map(async function(tree) {
+      if (!tree || !tree.id) return tree;
+
+      var cachedMemories = readTreeMemoriesCache(tree.id);
+      var memories = cachedMemories;
+
+      if (!Array.isArray(memories)) {
+        try {
+          memories = await window.apiClient.getMemoriesByTree(tree.id);
+          if (Array.isArray(memories)) {
+            localStorage.setItem(TREE_MEMORIES_CACHE_KEY + tree.id, JSON.stringify({
+              data: memories,
+              timestamp: Date.now()
+            }));
+          }
+        } catch (e) {
+          console.warn('[my-trees-data] Failed to fetch memories for tree:', tree.id, e.message);
+          memories = [];
+        }
+      }
+
+      var meta = deriveTreeMemoryMeta(tree, memories);
+      return Object.assign({}, tree, meta);
+    }));
+
+    return enriched;
+  }
+
   async function loadTrees(options) {
     var cache = window.LoveBudCache;
     var i18n = getI18n(options);
@@ -120,6 +185,8 @@
       }
 
       if (Array.isArray(trees)) {
+        trees = await enrichTreesWithMemoryMeta(trees);
+
         if (cache) {
           cache.set(TREES_CACHE_KEY, trees, 3 * 60 * 1000);
         }
