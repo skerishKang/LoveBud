@@ -7,709 +7,105 @@
   <link rel="stylesheet" href="../css/global.css?v=20260415-10">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
   <style>
-    /* my-trees page layout */
-    .my-trees-layout {
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .my-trees-content {
-      flex: 1;
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 60px 48px;
-      width: 100%;
-    }
-
-    /* Page header */
-    .my-trees-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 24px;
-      margin-bottom: 40px;
-    }
-
-    .my-trees-header h1 {
-      font-size: 2.2rem;
-      font-weight: 900;
-      color: var(--on-surface);
-      margin-bottom: 8px;
-      letter-spacing: -0.03em;
-    }
-
-    .my-trees-header p {
-      color: var(--on-surface-variant);
-      font-size: 1rem;
-      line-height: 1.6;
-    }
-
-    /* Tree cards grid */
-    .trees-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 24px;
-    }
-
-    .tree-card {
-      display: block;
-      position: relative;
-      background: white;
-      border-radius: 2rem;
-      padding: 0;
-      box-shadow: var(--shadow-whisper);
-      border: 1px solid var(--outline-variant);
-      overflow: hidden;
-      cursor: pointer;
-      transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
-      text-decoration: none;
-      color: inherit;
-    }
-
-    .tree-card:hover {
-      transform: translateY(-6px);
-      box-shadow: 0 20px 50px rgba(144, 73, 81, 0.12);
-      border-color: var(--primary-soft);
-    }
-
-    .tree-card.is-selected {
-      border-color: rgba(144, 73, 81, 0.42);
-      box-shadow: 0 18px 44px rgba(144, 73, 81, 0.16);
-    }
-
-    .tree-card-thumb {
-      width: 100%;
-      height: 184px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      position: relative;
-      overflow: hidden;
-      padding: 18px;
-    }
-
-    .tree-card-thumb-glow {
-      position: absolute;
-      inset: auto auto 18px 18px;
-      width: 128px;
-      height: 128px;
-      border-radius: 50%;
-      filter: blur(10px);
-    }
-
-    .tree-card-thumb-initial {
-      position: absolute;
-      top: 16px;
-      left: 16px;
-      width: 42px;
-      height: 42px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 17px;
-      font-weight: 800;
-      background: rgba(255,255,255,0.72);
-      border: 1px solid rgba(255,255,255,0.55);
-      backdrop-filter: blur(6px);
-      z-index: 2;
-    }
-
-    .tree-card-thumb-topline {
-      position: absolute;
-      top: 16px;
-      right: 16px;
-      z-index: 2;
-    }
-
-    .tree-card-thumb-art {
-      width: 100%;
-      height: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .tree-card-thumb svg {
-      width: 84%;
-      height: 84%;
-      opacity: 0.95;
-    }
-
-    .tree-card-thumb-caption {
-      position: absolute;
-      left: 16px;
-      right: 16px;
-      bottom: 14px;
-      padding: 10px 12px;
-      border-radius: 999px;
-      background: rgba(255,255,255,0.78);
-      backdrop-filter: blur(8px);
-      font-size: 12px;
-      font-weight: 700;
-      color: var(--on-surface);
-      text-align: center;
-    }
-
-    .tree-card-info {
-      padding: 20px 20px 22px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-
-    .tree-card-title-row {
-      display: flex;
-      align-items: flex-start;
-      gap: 12px;
-      justify-content: space-between;
-    }
-
-    .tree-card-title {
-      font-size: 1.1rem;
-      font-weight: 700;
-      color: var(--on-surface);
-      line-height: 1.3;
-      flex: 1;
-    }
-
-    .tree-card-count-pill,
-    .tree-card-moment-badge {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 6px 10px;
-      border-radius: 999px;
-      background: rgba(144, 73, 81, 0.10);
-      color: var(--primary);
-      font-size: 12px;
-      font-weight: 800;
-      white-space: nowrap;
-    }
-
-    .tree-card-subcopy {
-      font-size: 13px;
-      color: var(--on-surface-variant);
-      line-height: 1.5;
-    }
-
-    .tree-card-meta {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-      font-size: 0.85rem;
-      color: var(--on-surface-variant);
-    }
-
-    .tree-card-date {
-      font-size: 12px;
-    }
-
-    .tree-card-visibility {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      font-size: 12px;
-      padding: 4px 10px;
-      border-radius: 99px;
-      background: var(--surface-container-low);
-    }
-
-    .tree-card-visibility.public {
-      background: rgba(122, 139, 110, 0.1);
-      color: var(--secondary);
-    }
-
-    .tree-card-visibility.private {
-      background: rgba(144, 73, 81, 0.08);
-      color: var(--primary);
-    }
-
-    .tree-card-manage-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-top: 4px;
-    }
-
-    .tree-card-manage-btn {
-      border: none;
-      border-radius: 999px;
-      padding: 10px 14px;
-      font-size: 13px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: all 0.18s ease;
-    }
-
-    .tree-card-select-btn {
-      background: rgba(144, 73, 81, 0.08);
-      color: var(--primary);
-    }
-
-    .tree-card-select-btn:hover {
-      background: rgba(144, 73, 81, 0.14);
-    }
-
-    .tree-card-open-btn {
-      background: var(--surface-container-low);
-      color: var(--on-surface);
-      margin-left: auto;
-    }
-
-    .tree-card-open-btn:hover {
-      background: var(--surface-container);
-    }
-
-    /* Empty state - centered compact design */
-    .empty-state {
-      text-align: center;
-      padding: 64px 32px;
-      background: white;
-      border-radius: 2rem;
-      border: 1px solid var(--outline-variant);
-      box-shadow: var(--shadow-whisper);
-      max-width: 480px;
-      margin: 0 auto;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-
-    .empty-state-icon {
-      font-size: 64px;
-      margin-bottom: 24px;
-      display: block;
-    }
-
-    .empty-state h2 {
-      font-size: 1.5rem;
-      font-weight: 800;
-      color: var(--on-surface);
-      margin-bottom: 12px;
-    }
-
-    .empty-state p {
-      color: var(--on-surface-variant);
-      font-size: 1rem;
-      line-height: 1.6;
-      margin-bottom: 32px;
-      max-width: 400px;
-      margin-left: auto;
-      margin-right: auto;
-    }
-
-    /* Create button */
-    .btn-create-tree {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 14px 32px;
-      background: var(--primary);
-      color: white;
-      border-radius: 99px;
-      font-weight: 700;
-      font-size: 15px;
-      font-family: var(--font-heading);
-      text-decoration: none;
-      border: none;
-      cursor: pointer;
-      box-shadow: 0 4px 12px rgba(144, 73, 81, 0.2);
-      transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
-    }
-
-    .btn-create-tree:hover {
-      background: var(--primary-vibrant);
-      transform: translateY(-2px);
-      box-shadow: 0 8px 20px rgba(144, 73, 81, 0.3);
-    }
-
-    /* Loading skeleton */
-    .tree-card-skeleton {
-      background: white;
-      border-radius: 2rem;
-      overflow: hidden;
-      border: 1px solid var(--outline-variant);
-    }
-
-    .skeleton-thumb {
-      width: 100%;
-      height: 160px;
-      background: linear-gradient(90deg, var(--surface-container-low) 25%, var(--surface-container) 50%, var(--surface-container-low) 75%);
-      background-size: 200% 100%;
-      animation: shimmer 1.5s infinite;
-    }
-
-    .skeleton-info {
-      padding: 24px;
-    }
-
-    .skeleton-line {
-      height: 16px;
-      border-radius: 8px;
-      background: linear-gradient(90deg, var(--surface-container-low) 25%, var(--surface-container) 50%, var(--surface-container-low) 75%);
-      background-size: 200% 100%;
-      animation: shimmer 1.5s infinite;
-      margin-bottom: 12px;
-    }
-
-    .skeleton-line.short {
-      width: 60%;
-      height: 12px;
-    }
-
-    @keyframes shimmer {
-      0% { background-position: 200% 0; }
-      100% { background-position: -200% 0; }
-    }
-
-     /* Error state */
-     .error-state {
-       text-align: center;
-       padding: 80px 40px;
-       background: white;
-       border-radius: 2rem;
-       border: 1px solid rgba(198, 40, 40, 0.2);
-       box-shadow: var(--shadow-whisper);
-       display: flex;
-       flex-direction: column;
-       align-items: center;
-       gap: 16px;
-     }
-
-     .error-state-icon {
-       font-size: 64px;
-       margin-bottom: 8px;
-       display: block;
-       color: #c62828;
-     }
-
-     .error-state h2 {
-       font-size: 1.5rem;
-       font-weight: 800;
-       color: var(--on-surface);
-       margin-bottom: 8px;
-     }
-
-     .error-state p {
-       color: var(--on-surface-variant);
-       font-size: 1rem;
-       line-height: 1.6;
-       margin-bottom: 24px;
-       max-width: 400px;
-       margin-left: auto;
-       margin-right: auto;
-     }
-
-     /* Button disabled state */
-     .btn-header-create:disabled,
-     .manage-action-btn:disabled {
-       opacity: 0.6;
-       cursor: not-allowed;
-       transform: none;
-       box-shadow: none;
-     }
-
-     /* Toast */
-    .toast {
-      position: fixed;
-      bottom: 24px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: var(--on-surface);
-      color: white;
-      padding: 12px 24px;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: 500;
-      z-index: 9999;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-      animation: fadeInUp 0.3s ease;
-    }
-
-    .toast.error {
-      background: #c62828;
-    }
-
-    @keyframes fadeInUp {
-      from { opacity: 0; transform: translate(-50%, 10px); }
-      to { opacity: 1; transform: translate(-50%, 0); }
-    }
-
-    /* Header Create Button */
-    .btn-header-create {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 12px 20px;
-      background: linear-gradient(135deg, #ff6b9d 0%, #e85a7a 100%);
-      color: white;
-      border: none;
-      border-radius: 24px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      box-shadow: 0 2px 8px rgba(232, 90, 122, 0.3);
-      white-space: nowrap;
-    }
-
-    .btn-header-create:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(232, 90, 122, 0.4);
-    }
-
-    .btn-header-create:active {
-      transform: translateY(0);
-    }
-
-    .manage-summary-bar {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      margin-bottom: 24px;
-      padding: 18px 24px;
-      background: white;
-      border-radius: 20px;
-      border: 1px solid var(--outline-variant);
-      box-shadow: var(--shadow-whisper);
-    }
-
-    .manage-summary-main {
-      display: flex;
-      align-items: center;
-      gap: 24px;
-      flex-wrap: wrap;
-      font-size: 14px;
-    }
-
-    .manage-summary-selected {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 18px;
-      padding-top: 14px;
-      border-top: 1px dashed rgba(144, 73, 81, 0.16);
-      flex-wrap: wrap;
-    }
-
-    .manage-selected-copy {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      min-width: 240px;
-      flex: 1;
-    }
-
-    .manage-selected-label {
-      font-size: 11px;
-      font-weight: 800;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: var(--primary);
-    }
-
-    .manage-selected-title {
-      font-size: 1rem;
-      font-weight: 800;
-      color: var(--on-surface);
-    }
-
-    .manage-selected-meta {
-      font-size: 13px;
-      line-height: 1.5;
-      color: var(--on-surface-variant);
-    }
-
-    .manage-selected-actions {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
-    .manage-action-btn {
-      border: none;
-      border-radius: 999px;
-      padding: 10px 16px;
-      font-size: 13px;
-      font-weight: 800;
-      cursor: pointer;
-      transition: all 0.18s ease;
-    }
-
-    .manage-action-btn.primary {
-      background: rgba(144, 73, 81, 0.12);
-      color: var(--primary);
-    }
-
-    .manage-action-btn.secondary {
-      background: var(--surface-container-low);
-      color: var(--on-surface);
-    }
-
-    .manage-action-btn.danger {
-      background: rgba(198, 40, 40, 0.08);
-      color: #b71c1c;
-    }
-
-    /* Tree Card Menu Button */
-    .tree-card-menu {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      width: 34px;
-      height: 34px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: rgba(255, 255, 255, 0.92);
-      border: none;
-      border-radius: 50%;
-      cursor: pointer;
-      opacity: 0.88;
-      transition: opacity 0.2s ease, background 0.2s ease, transform 0.2s ease;
-      z-index: 10;
-    }
-
-    .tree-card:hover .tree-card-menu {
-      opacity: 1;
-      transform: translateY(-1px);
-    }
-
-    .tree-card-menu:hover {
-      background: rgba(255, 255, 255, 1);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    }
-
-    /* Dropdown Menu */
-    .tree-card-dropdown {
-      position: absolute;
-      top: 48px;
-      right: 10px;
-      background: white;
-      border-radius: 12px;
-      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16);
-      min-width: 148px;
-      padding: 6px 0;
-      z-index: 20;
-      display: none;
-    }
-
-    .tree-card-dropdown.show {
-      display: block;
-    }
-
-    .dropdown-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 16px;
-      font-size: 13px;
-      color: var(--on-surface);
-      cursor: pointer;
-      transition: background 0.15s ease;
-    }
-
-    .dropdown-item:hover {
-      background: var(--surface-variant);
-    }
-
-    .dropdown-item.delete {
-      color: #c62828;
-    }
-
-    /* Responsive */
+    .my-trees-layout { min-height: 100vh; display: flex; flex-direction: column; }
+    .my-trees-content { flex: 1; max-width: 1200px; margin: 0 auto; padding: 60px 48px; width: 100%; }
+    .my-trees-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; margin-bottom: 40px; }
+    .my-trees-header h1 { font-size: 2.2rem; font-weight: 900; color: var(--on-surface); margin-bottom: 8px; letter-spacing: -0.03em; }
+    .my-trees-header p { color: var(--on-surface-variant); font-size: 1rem; line-height: 1.6; }
+    .trees-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px; }
+    .tree-card { display: block; position: relative; background: white; border-radius: 2rem; padding: 0; box-shadow: var(--shadow-whisper); border: 1px solid var(--outline-variant); overflow: hidden; cursor: pointer; transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1); text-decoration: none; color: inherit; }
+    .tree-card:hover { transform: translateY(-6px); box-shadow: 0 20px 50px rgba(144, 73, 81, 0.12); border-color: var(--primary-soft); }
+    .tree-card.is-selected { border-color: rgba(144, 73, 81, 0.42); box-shadow: 0 18px 44px rgba(144, 73, 81, 0.16); }
+    .tree-card-thumb { width: 100%; height: 184px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; padding: 18px; }
+    .tree-card-thumb-glow { position: absolute; inset: auto auto 18px 18px; width: 128px; height: 128px; border-radius: 50%; filter: blur(10px); }
+    .tree-card-thumb-initial { position: absolute; top: 16px; left: 16px; width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 17px; font-weight: 800; background: rgba(255,255,255,0.72); border: 1px solid rgba(255,255,255,0.55); backdrop-filter: blur(6px); z-index: 2; }
+    .tree-card-thumb-topline { position: absolute; top: 16px; right: 16px; z-index: 2; }
+    .tree-card-thumb-art { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+    .tree-card-thumb svg { width: 84%; height: 84%; opacity: 0.95; }
+    .tree-card-thumb-caption { position: absolute; left: 16px; right: 16px; bottom: 14px; padding: 10px 12px; border-radius: 999px; background: rgba(255,255,255,0.78); backdrop-filter: blur(8px); font-size: 12px; font-weight: 700; color: var(--on-surface); text-align: center; }
+    .tree-card-info { padding: 20px 20px 22px; display: flex; flex-direction: column; gap: 10px; }
+    .tree-card-title-row { display: flex; align-items: flex-start; gap: 12px; justify-content: space-between; }
+    .tree-card-title { font-size: 1.1rem; font-weight: 700; color: var(--on-surface); line-height: 1.3; flex: 1; }
+    .tree-card-count-pill, .tree-card-moment-badge { display: inline-flex; align-items: center; justify-content: center; padding: 6px 10px; border-radius: 999px; background: rgba(144, 73, 81, 0.10); color: var(--primary); font-size: 12px; font-weight: 800; white-space: nowrap; }
+    .tree-card-subcopy { font-size: 13px; color: var(--on-surface-variant); line-height: 1.5; }
+    .tree-card-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 0.85rem; color: var(--on-surface-variant); }
+    .tree-card-date { font-size: 12px; }
+    .tree-card-visibility { display: flex; align-items: center; gap: 4px; font-size: 12px; padding: 4px 10px; border-radius: 99px; background: var(--surface-container-low); }
+    .tree-card-visibility.public { background: rgba(122, 139, 110, 0.1); color: var(--secondary); }
+    .tree-card-visibility.private { background: rgba(144, 73, 81, 0.08); color: var(--primary); }
+    .tree-card-manage-row { display: flex; align-items: center; gap: 10px; margin-top: 4px; }
+    .tree-card-manage-btn { border: none; border-radius: 999px; padding: 10px 14px; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.18s ease; }
+    .tree-card-select-btn { background: rgba(144, 73, 81, 0.08); color: var(--primary); }
+    .tree-card-select-btn:hover { background: rgba(144, 73, 81, 0.14); }
+    .tree-card-open-btn { background: var(--surface-container-low); color: var(--on-surface); margin-left: auto; }
+    .tree-card-open-btn:hover { background: var(--surface-container); }
+    .empty-state { text-align: center; padding: 64px 32px; background: white; border-radius: 2rem; border: 1px solid var(--outline-variant); box-shadow: var(--shadow-whisper); max-width: 480px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; }
+    .empty-state-icon { font-size: 64px; margin-bottom: 24px; display: block; }
+    .empty-state h2 { font-size: 1.5rem; font-weight: 800; color: var(--on-surface); margin-bottom: 12px; }
+    .empty-state p { color: var(--on-surface-variant); font-size: 1rem; line-height: 1.6; margin-bottom: 32px; max-width: 400px; margin-left: auto; margin-right: auto; }
+    .btn-create-tree { display: inline-flex; align-items: center; gap: 8px; padding: 14px 32px; background: var(--primary); color: white; border-radius: 99px; font-weight: 700; font-size: 15px; font-family: var(--font-heading); text-decoration: none; border: none; cursor: pointer; box-shadow: 0 4px 12px rgba(144, 73, 81, 0.2); transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1); }
+    .btn-create-tree:hover { background: var(--primary-vibrant); transform: translateY(-2px); box-shadow: 0 8px 20px rgba(144, 73, 81, 0.3); }
+    .error-state { text-align: center; padding: 80px 40px; background: white; border-radius: 2rem; border: 1px solid rgba(198, 40, 40, 0.2); box-shadow: var(--shadow-whisper); display: flex; flex-direction: column; align-items: center; gap: 16px; }
+    .error-state-icon { font-size: 64px; margin-bottom: 8px; display: block; color: #c62828; }
+    .error-state h2 { font-size: 1.5rem; font-weight: 800; color: var(--on-surface); margin-bottom: 8px; }
+    .error-state p { color: var(--on-surface-variant); font-size: 1rem; line-height: 1.6; margin-bottom: 24px; max-width: 400px; margin-left: auto; margin-right: auto; }
+    .btn-header-create:disabled, .manage-action-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
+    .btn-header-create { display: flex; align-items: center; gap: 8px; padding: 12px 20px; background: linear-gradient(135deg, #ff6b9d 0%, #e85a7a 100%); color: white; border: none; border-radius: 24px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 2px 8px rgba(232, 90, 122, 0.3); white-space: nowrap; }
+    .btn-header-create:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(232, 90, 122, 0.4); }
+    .btn-header-create:active { transform: translateY(0); }
+    .manage-summary-bar { display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px; padding: 18px 24px; background: white; border-radius: 20px; border: 1px solid var(--outline-variant); box-shadow: var(--shadow-whisper); }
+    .manage-summary-main { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; font-size: 14px; }
+    .manage-summary-selected { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding-top: 14px; border-top: 1px dashed rgba(144, 73, 81, 0.16); flex-wrap: wrap; }
+    .manage-selected-copy { display: flex; flex-direction: column; gap: 4px; min-width: 240px; flex: 1; }
+    .manage-selected-label { font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--primary); }
+    .manage-selected-title { font-size: 1rem; font-weight: 800; color: var(--on-surface); }
+    .manage-selected-meta { font-size: 13px; line-height: 1.5; color: var(--on-surface-variant); }
+    .manage-selected-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .manage-action-btn { border: none; border-radius: 999px; padding: 10px 16px; font-size: 13px; font-weight: 800; cursor: pointer; transition: all 0.18s ease; }
+    .manage-action-btn.primary { background: rgba(144, 73, 81, 0.12); color: var(--primary); }
+    .manage-action-btn.secondary { background: var(--surface-container-low); color: var(--on-surface); }
+    .manage-action-btn.danger { background: rgba(198, 40, 40, 0.08); color: #b71c1c; }
+    .tree-card-menu { position: absolute; top: 10px; right: 10px; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, 0.92); border: none; border-radius: 50%; cursor: pointer; opacity: 0.88; transition: opacity 0.2s ease, background 0.2s ease, transform 0.2s ease; z-index: 10; }
+    .tree-card:hover .tree-card-menu { opacity: 1; transform: translateY(-1px); }
+    .tree-card-menu:hover { background: rgba(255, 255, 255, 1); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); }
+    .tree-card-dropdown { position: absolute; top: 48px; right: 10px; background: white; border-radius: 12px; box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16); min-width: 148px; padding: 6px 0; z-index: 20; display: none; }
+    .tree-card-dropdown.show { display: block; }
+    .dropdown-item { display: flex; align-items: center; gap: 8px; padding: 10px 16px; font-size: 13px; color: var(--on-surface); cursor: pointer; transition: background 0.15s ease; }
+    .dropdown-item:hover { background: var(--surface-variant); }
+    .dropdown-item.delete { color: #c62828; }
     @media (max-width: 768px) {
-      .my-trees-content {
-        padding: 40px 24px;
-      }
-
-      .my-trees-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 16px;
-      }
-
-      .btn-header-create {
-        width: 100%;
-        justify-content: center;
-      }
-
-      .my-trees-header h1 {
-        font-size: 1.8rem;
-      }
-
-      .trees-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .empty-state {
-        padding: 60px 24px;
-      }
-
-      .tree-card-menu {
-        opacity: 1;
-      }
-
-      .manage-summary-selected {
-        align-items: stretch;
-      }
-
-      .manage-selected-actions {
-        width: 100%;
-      }
-
-      .manage-action-btn {
-        flex: 1;
-        justify-content: center;
-      }
+      .my-trees-content { padding: 40px 24px; }
+      .my-trees-header { flex-direction: column; align-items: flex-start; gap: 16px; }
+      .btn-header-create { width: 100%; justify-content: center; }
+      .my-trees-header h1 { font-size: 1.8rem; }
+      .trees-grid { grid-template-columns: 1fr; }
+      .empty-state { padding: 60px 24px; }
+      .tree-card-menu { opacity: 1; }
+      .manage-summary-selected { align-items: stretch; }
+      .manage-selected-actions { width: 100%; }
+      .manage-action-btn { flex: 1; justify-content: center; }
     }
   </style>
 </head>
 <body class="bokeh-bg">
   <div class="noise-overlay"></div>
-
   <div class="my-trees-layout">
-    <!-- Shared Header -->
     <div id="shared-header"></div>
-
-    <!-- Main content -->
     <main class="my-trees-content">
-      <!-- Header -->
       <div class="my-trees-header">
         <div class="header-content">
           <h1 id="myTreesPageTitle">🌳 내 러브트리</h1>
           <p id="myTreesPageDesc">내가 기록한 사랑의 순간들을 모아둔 공간입니다.<br>트리를 선택하여 기억을 추가하거나, 새로운 러브트리를 시작해보세요.</p>
         </div>
-        <button class="btn-header-create" id="headerCreateTreeBtn">
-          <span class="material-symbols-outlined">add</span>
-          <span id="headerCreateTreeBtnLabel">새 러브트리</span>
-        </button>
+        <button class="btn-header-create" id="headerCreateTreeBtn"><span class="material-symbols-outlined">add</span><span id="headerCreateTreeBtnLabel">새 러브트리</span></button>
       </div>
-
-      <!-- 📌 관리 요약 바 -->
       <div class="manage-summary-bar" id="manageSummaryBar" style="display:none;">
         <div class="manage-summary-main">
-          <div style="display:flex;align-items:center;gap:8px;">
-            <span class="material-symbols-outlined" style="color:var(--primary);font-size:20px;">account_tree</span>
-            <span style="font-weight:700;color:var(--on-surface);"><span id="totalTreesCount">0</span><span id="summaryTotalSuffix">개의 트리</span></span>
-          </div>
+          <div style="display:flex;align-items:center;gap:8px;"><span class="material-symbols-outlined" style="color:var(--primary);font-size:20px;">account_tree</span><span style="font-weight:700;color:var(--on-surface);"><span id="totalTreesCount">0</span><span id="summaryTotalSuffix">개의 트리</span></span></div>
           <div style="width:1px;height:20px;background:var(--outline-variant);"></div>
-          <div style="display:flex;align-items:center;gap:6px;">
-            <span class="material-symbols-outlined" style="color:#4caf50;font-size:16px;">public</span>
-            <span id="publicTreesCount" style="color:var(--on-surface-variant);">0</span> <span id="summaryPublicLabel">공개</span>
-          </div>
-          <div style="display:flex;align-items:center;gap:6px;">
-            <span class="material-symbols-outlined" style="color:#757575;font-size:16px;">lock</span>
-            <span id="privateTreesCount" style="color:var(--on-surface-variant);">0</span> <span id="summaryPrivateLabel">비공개</span>
-          </div>
-          <div style="display:flex;align-items:center;gap:6px;">
-            <span class="material-symbols-outlined" style="color:var(--primary-soft);font-size:16px;">favorite</span>
-            <span id="totalMomentsCount" style="color:var(--on-surface-variant);">0</span> <span id="summaryMomentsSuffix">개의 순간</span>
-          </div>
+          <div style="display:flex;align-items:center;gap:6px;"><span class="material-symbols-outlined" style="color:#4caf50;font-size:16px;">public</span><span id="publicTreesCount" style="color:var(--on-surface-variant);">0</span> <span id="summaryPublicLabel">공개</span></div>
+          <div style="display:flex;align-items:center;gap:6px;"><span class="material-symbols-outlined" style="color:#757575;font-size:16px;">lock</span><span id="privateTreesCount" style="color:var(--on-surface-variant);">0</span> <span id="summaryPrivateLabel">비공개</span></div>
+          <div style="display:flex;align-items:center;gap:6px;"><span class="material-symbols-outlined" style="color:var(--primary-soft);font-size:16px;">favorite</span><span id="totalMomentsCount" style="color:var(--on-surface-variant);">0</span> <span id="summaryMomentsSuffix">개의 순간</span></div>
           <div style="width:1px;height:20px;background:var(--outline-variant);"></div>
           <select id="sortTreesSelect" style="padding:8px 12px;border-radius:8px;border:1px solid var(--outline-variant);font-size:13px;cursor:pointer;background:white;">
             <option id="sortRecentOption" value="recent">최근 수정순</option>
@@ -725,85 +121,57 @@
           </div>
           <div class="manage-selected-actions">
             <button class="manage-action-btn secondary" id="manageOpenBtn" disabled>열기</button>
+            <button class="manage-action-btn secondary" id="manageVisibilityBtn" disabled>공개 설정</button>
             <button class="manage-action-btn primary" id="manageRenameBtn" disabled>이름 변경</button>
             <button class="manage-action-btn danger" id="manageDeleteBtn" disabled>삭제</button>
           </div>
         </div>
       </div>
-
-       <!-- Trees container -->
-       <div id="treesContainer">
-         <!-- State: Loading (default initial state) -->
-         <div id="state-loading" class="trees-loading" style="display: flex;">
-           <div class="spinner"></div>
-           <span class="loading-text" data-i18n="myTrees.loading">러브트리 목록을 불러오는 중...</span>
-         </div>
-
-         <!-- State: Error -->
-         <div id="state-error" class="error-state" style="display: none;">
-           <span class="material-symbols-outlined error-state-icon">error</span>
-           <h2 data-i18n="myTrees.error_title">불러오기에 실패했습니다</h2>
-           <p data-i18n="myTrees.error_desc">네트워크 연결을 확인하고 다시 시도해주세요.</p>
-           <button class="btn-round btn-primary" id="retryLoadBtn" data-i18n="myTrees.retry">다시 시도</button>
-         </div>
-
-          <!-- State: Empty (no trees) -->
-          <div id="state-empty" class="empty-state" style="display: none;">
-            <span class="material-symbols-outlined empty-state-icon">account_tree</span>
-            <h2 data-i18n="empty_state_title">아직 러브트리가 없어요</h2>
-            <p data-i18n="empty_state_desc">첫 번째 러브트리를 만들어 감정의 나무를 키워보세요.</p>
-            <button class="btn-create-tree" id="createTreeBtn">
-              <span class="material-symbols-outlined" style="font-size:20px;">add_circle</span>
-              <span data-i18n="create_tree_btn">새 러브트리 만들기</span>
-            </button>
-          </div>
-
-         <!-- State: Loaded (trees grid will be injected here) -->
-         <div id="state-loaded" style="display: none;">
-           <!-- Trees grid rendered by JS -->
-         </div>
-       </div>
+      <div id="treesContainer">
+        <div id="state-loading" class="trees-loading" style="display: flex;"><div class="spinner"></div><span class="loading-text" data-i18n="myTrees.loading">러브트리 목록을 불러오는 중...</span></div>
+        <div id="state-error" class="error-state" style="display: none;"><span class="material-symbols-outlined error-state-icon">error</span><h2 data-i18n="myTrees.error_title">불러오기에 실패했습니다</h2><p data-i18n="myTrees.error_desc">네트워크 연결을 확인하고 다시 시도해주세요.</p><button class="btn-round btn-primary" id="retryLoadBtn" data-i18n="myTrees.retry">다시 시도</button></div>
+        <div id="state-empty" class="empty-state" style="display: none;"><span class="material-symbols-outlined empty-state-icon">account_tree</span><h2 data-i18n="empty_state_title">아직 러브트리가 없어요</h2><p data-i18n="empty_state_desc">첫 번째 러브트리를 만들어 감정의 나무를 키워보세요.</p><button class="btn-create-tree" id="createTreeBtn"><span class="material-symbols-outlined" style="font-size:20px;">add_circle</span><span data-i18n="create_tree_btn">새 러브트리 만들기</span></button></div>
+        <div id="state-loaded" style="display: none;"></div>
+      </div>
     </main>
   </div>
-
-  <!-- Scripts -->
-    <script src="../js/mock-data.js?v=20260417-31"></script>
-<script src="../js/cache-utils.js?v=20260417-31"></script>
-<script src="../js/utils/normalize.js?v=20260418-1"></script>
-<script src="../js/utils/path.js?v=20260418-1"></script>
-<script src="../js/utils/ui.js?v=20260418-1"></script>
-<script src="../js/api/auth-policy.js?v=20260420-1"></script>
-<script src="../js/api/base-api-fetch.js?v=20260420-1"></script>
-<script src="../js/postgres-client.js?v=20260420-1"></script>
-    <script src="../js/my-trees/my-trees-ui.js?v=20260421-4"></script>
-    <script src="../js/my-trees/my-trees-actions.js?v=20260421-4"></script>
-    <script src="../js/my-trees/my-trees-data.js?v=20260420-2"></script>
-    <script src="../js/my-trees/my-trees-state.js?v=20260421-4"></script>
-    <script src="../js/my-trees/my-trees-page.js?v=20260420-1"></script>
-    <script src="../js/my-trees.js?v=20260421-4"></script>
-    <script src="../js/my-trees/my-trees-i18n-refresh.js?v=20260421-4"></script>
+  <script src="../js/mock-data.js?v=20260417-31"></script>
+  <script src="../js/cache-utils.js?v=20260417-31"></script>
+  <script src="../js/utils/normalize.js?v=20260418-1"></script>
+  <script src="../js/utils/path.js?v=20260418-1"></script>
+  <script src="../js/utils/ui.js?v=20260418-1"></script>
+  <script src="../js/api/auth-policy.js?v=20260420-1"></script>
+  <script src="../js/api/base-api-fetch.js?v=20260420-1"></script>
+  <script src="../js/postgres-client.js?v=20260420-1"></script>
+  <script src="../js/my-trees/my-trees-ui.js?v=20260421-5"></script>
+  <script src="../js/my-trees/my-trees-actions.js?v=20260421-5"></script>
+  <script src="../js/my-trees/my-trees-data.js?v=20260420-2"></script>
+  <script src="../js/my-trees/my-trees-state.js?v=20260421-4"></script>
+  <script src="../js/my-trees/my-trees-page.js?v=20260420-1"></script>
+  <script src="../js/my-trees.js?v=20260421-5"></script>
+  <script src="../js/my-trees/my-trees-i18n-refresh.js?v=20260421-5"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-    <script src="../js/firebase-config.js?v=20260417-31"></script>
-    <script src="../js/i18n/i18n-core.js?v=20260419-2"></script>
-    <script src="../js/i18n/i18n-shared.js?v=20260419-2"></script>
-    <script src="../js/i18n/i18n-login.js?v=20260419-2"></script>
-    <script src="../js/i18n/i18n-intro.js?v=20260419-2"></script>
-    <script src="../js/i18n/i18n-search.js?v=20260419-2"></script>
-    <script src="../js/i18n/i18n-detail.js?v=20260419-2"></script>
-    <script src="../js/i18n/i18n-editor.js?v=20260419-2"></script>
-    <script src="../js/i18n/i18n-my-trees.js?v=20260421-4"></script>
-    <script src="../js/i18n/i18n-index.js?v=20260419-2"></script>
-    <script src="../js/i18n.js?v=20260419-2"></script>
-    <script src="../js/shared-header.js?v=20260421-2"></script>
-     <script src="../js/auth/auth-state.js?v=20260417-31"></script>
-     <script src="../js/auth/auth-callbacks.js?v=20260417-31"></script>
-     <script src="../js/auth/auth-cache.js?v=20260417-31"></script>
-     <script src="../js/auth/auth-ui.js?v=20260421-1"></script>
-     <script src="../js/auth/auth-session.js?v=20260417-31"></script>
-      <script src="../js/auth/auth-firebase.js?v=20260420-1"></script>
-      <script src="../js/auth/auth-login-page.js?v=20260420-1"></script>
-      <script src="../js/auth.js?v=20260417-31"></script>
+  <script src="../js/firebase-config.js?v=20260417-31"></script>
+  <script src="../js/i18n/i18n-core.js?v=20260419-2"></script>
+  <script src="../js/i18n/i18n-shared.js?v=20260419-2"></script>
+  <script src="../js/i18n/i18n-login.js?v=20260419-2"></script>
+  <script src="../js/i18n/i18n-intro.js?v=20260419-2"></script>
+  <script src="../js/i18n/i18n-search.js?v=20260419-2"></script>
+  <script src="../js/i18n/i18n-detail.js?v=20260419-2"></script>
+  <script src="../js/i18n/i18n-editor.js?v=20260419-2"></script>
+  <script src="../js/i18n/i18n-my-trees.js?v=20260421-5"></script>
+  <script src="../js/i18n/i18n-index.js?v=20260419-2"></script>
+  <script src="../js/i18n.js?v=20260419-2"></script>
+  <script src="../js/shared-header.js?v=20260421-2"></script>
+  <script src="../js/auth/auth-state.js?v=20260417-31"></script>
+  <script src="../js/auth/auth-callbacks.js?v=20260417-31"></script>
+  <script src="../js/auth/auth-cache.js?v=20260417-31"></script>
+  <script src="../js/auth/auth-ui.js?v=20260421-1"></script>
+  <script src="../js/auth/auth-session.js?v=20260417-31"></script>
+  <script src="../js/auth/auth-firebase.js?v=20260420-1"></script>
+  <script src="../js/auth/auth-login-page.js?v=20260420-1"></script>
+  <script src="../js/auth.js?v=20260417-31"></script>
   <script>renderSharedHeader();</script>
 </body>
 </html>
