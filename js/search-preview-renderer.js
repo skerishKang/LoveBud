@@ -16,7 +16,7 @@
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;')
-            .replace(/\"/g, '&quot;')
+            .replace(/\\"/g, '&quot;')
             .replace(/'/g, '&#39;');
     }
 
@@ -129,7 +129,7 @@
         if (!safeTags.length) {
             return `
                 <span style="padding:8px 14px;background:var(--surface-container-low);border-radius:99px;font-size:13px;font-weight:600;color:var(--on-surface-variant);border:1px solid var(--outline-variant);">
-                    ${escapeHtml(getSearchCopy('search.previewNoEmotionTags', '아직 또렷하게 남은 감정은 없어요.', 'There are no clearly saved emotions yet.'))}
+                    ${escapeHtml(getSearchCopy('search.previewNoEmotionTags', '아직 이어진 감정은 없어요.', 'There are no clearly saved emotions yet.'))}
                 </span>
             `;
         }
@@ -162,10 +162,10 @@
         const safeLast = formatDate(lastTimestamp);
 
         if (safeUpdated) {
-            return `${getSearchCopy('search.previewTimelineRecentUpdate', '최근에 이어진 순간', 'Recently added moment')} ${safeUpdated}`;
+            return `${getSearchCopy('search.previewTimelineRecentUpdate', '최근에 이어진 감정', 'Recently added moment')} ${safeUpdated}`;
         }
         if (safeLast) {
-            return `${getSearchCopy('search.previewTimelineLastMoment', '마지막으로 남은 순간', 'Latest saved moment')} ${safeLast}`;
+            return `${getSearchCopy('search.previewTimelineLastMoment', '가장 최근에 남은 순간', 'Latest saved moment')} ${safeLast}`;
         }
         if (safeFirst && safeLast && safeFirst !== safeLast) {
             return `${safeFirst} ~ ${safeLast}`;
