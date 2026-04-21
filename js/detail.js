@@ -150,6 +150,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             : tText('connected_empty_desc', '아직 같은 흐름의 다른 순간은 보이지 않지만, 이 장면 하나만으로도 트리의 분위기를 천천히 느껴볼 수 있어요.')
     });
 
+    const buildTemporarilyUnavailableMarkup = () => buildSoftPanelMarkup({
+        icon: 'schedule',
+        kicker: tText('connected_empty_kicker', '이어질 다음 장면'),
+        title: tText('connected_temporarily_unavailable_title', '이어진 다른 순간은 잠시 후 다시 또렷해질 거예요.'),
+        description: tText('connected_temporarily_unavailable_desc', '지금은 현재 장면을 중심으로 감상하고 있어요. 연결된 흐름은 잠시 후 다시 이어서 볼 수 있을 거예요.')
+    });
+
     const getHeroFallbackTitle = (memory) => {
         const artist = String(memory?.artist || '').trim();
         if (artist) {
@@ -287,6 +294,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (hasValue) valueEl.textContent = value;
     };
 
+    const inferTreeContext = ({ treeId, currentMemory, mergedMemories }) => {
+        if (!treeId) return null;
+        const explicitTitle = String(currentMemory?.treeTitle || '').trim();
+        const artistTitle = String(currentMemory?.artist || '').trim();
+        const memoryCount = Math.max(mergedMemories.length, currentMemory?.treeId ? 1 : 0);
+        return {
+            id: treeId,
+            title: explicitTitle || artistTitle || '',
+            memoryCount
+        };
+    };
+
     const renderMemoryBase = (memory) => {
         if (videoMain) {
             const normalizedVideo = normalizeVideoSourceUrl(memory.sourceUrl || memory.videoUrl || memory.originalUrl || '');
@@ -374,9 +393,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const treeTitle = tree?.title || tText('public_tree_fallback_title', '누군가의 러브트리를 감상하고 있어요');
         const contextMessages = {
-            browse: degradedReason === 'tree-load-failed'
-                ? tText('tree_load_failed_desc_warm', '트리 전체 분위기는 아직 또렷하게 보이지 않지만, 지금 이 순간에 남겨진 장면과 마음은 계속 감상할 수 있어요.')
-                : tText('public_tree_context_desc', '지금은 다른 사람이 공개한 러브트리 안에서 한 순간을 감상하고 있어요.'),
+            browse: degradedReason === 'tree-and-memories-load-failed'
+                ? tText('tree_and_memories_load_failed_desc_warm', '지금은 현재 순간 하나가 가장 또렷하게 남아 있어요. 연결된 트리 흐름은 잠시 후 다시 이어서 볼 수 있을 거예요.')
+                : degradedReason === 'tree-load-partial'
+                    ? tText('tree_partial_context_desc', '트리의 전체 윤곽은 잠시 흐릿하지만, 지금 이 순간을 중심으로 감정의 분위기는 계속 따라가 볼 수 있어요.')
+                    : degradedReason === 'memories-load-failed'
+                        ? tText('memories_load_failed_desc_warm', '현재 순간은 또렷하게 남아 있어요. 이어진 다른 순간은 잠시 후 다시 불러올 수 있을 거예요.')
+                        : tText('public_tree_context_desc', '지금은 다른 사람이 공개한 러브트리 안에서 한 순간을 감상하고 있어요.'),
             editor: tText('tree_context_editor_desc', '편집 중인 트리를 감상 모드로 보고 있어요'),
             'my-trees': tText('tree_context_my_trees_desc', '내가 기록한 순간들을 다시 감상하고 있어요')
         };
@@ -405,6 +428,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (!connectedFragments) return;
       const flowMoments = getConnectedFlowMoments({ memory, memories });
       const connectedSection = connectedFragments.closest('.connected-section');
+      connectedSection.classList.remove('is-empty', 'is-solo', 'is-threaded');
 
       if (degradedReason === 'missing-tree-id') {
             connectedFragments.innerHTML = `
@@ -417,6 +441,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                     })}
                 </div>
             `;
+            return;
+      }
+
+      if (degradedReason === 'memories-load-failed' || degradedReason === 'tree-and-memories-load-failed') {
+            connectedFragments.innerHTML = `
+                <div style="display:grid;grid-template-columns:1fr;gap:24px;">
+                    ${buildTemporarilyUnavailableMarkup()}
+                </div>
+            `;
+            connectedSection.classList.add('is-empty');
             return;
       }
 
@@ -542,57 +576,76 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     let tree = hasTreeContext && cache ? cache.get(TREE_CACHE_KEY(canonicalTreeId)) : null;
     let memories = hasTreeContext && cache ? cache.get(MEMORIES_CACHE_KEY(canonicalTreeId)) : null;
+    let treeFetchState = tree ? 'cache' : 'idle';
+    let memoriesFetchState = Array.isArray(memories) ? 'cache' : 'idle';
     const loadPromises = [];
 
     if (hasTreeContext) {
         if (!tree && window.apiClient && window.apiClient.getTree) {
+            treeFetchState = 'loading';
             loadPromises.push(window.apiClient.getTree(canonicalTreeId)
                 .then(apiTree => {
                     if (apiTree) {
                         tree = apiTree;
+                        treeFetchState = 'loaded';
                         if (cache) cache.set(TREE_CACHE_KEY(canonicalTreeId), apiTree, 5 * 60 * 1000);
+                    } else {
+                        treeFetchState = 'empty';
                     }
                 })
-                .catch(() => {}));
+                .catch(() => {
+                    treeFetchState = 'failed';
+                }));
         }
 
-        if (!memories && window.apiClient && window.apiClient.getMemoriesByTree) {
+        if (!Array.isArray(memories) && window.apiClient && window.apiClient.getMemoriesByTree) {
+            memoriesFetchState = 'loading';
             loadPromises.push(window.apiClient.getMemoriesByTree(canonicalTreeId)
                 .then(apiMemories => {
                     if (Array.isArray(apiMemories)) {
                         memories = apiMemories;
+                        memoriesFetchState = 'loaded';
                         if (cache) cache.set(MEMORIES_CACHE_KEY(canonicalTreeId), apiMemories, 3 * 60 * 1000);
+                    } else {
+                        memories = [];
+                        memoriesFetchState = 'empty';
                     }
                 })
-                .catch(() => {}));
+                .catch(() => {
+                    memories = [];
+                    memoriesFetchState = 'failed';
+                }));
         }
 
         if (loadPromises.length > 0) await Promise.all(loadPromises);
 
-        if (!tree) {
-            degradedReason = 'tree-load-failed';
-        }
-        if (!memories) memories = [];
+        if (!Array.isArray(memories)) memories = [];
     } else {
         tree = null;
         memories = [];
     }
 
     const mergedMemories = sortTreeMemories(memories, memory);
-    const memoryExistsInTreeFlow = mergedMemories.some(item => item && item.id === memory.id);
-    if (hasTreeContext && !memoryExistsInTreeFlow) {
-        degradedReason = 'tree-load-failed';
-    }
-
-    const treeMomentCount = resolveTreeMomentCount({ tree, memories: mergedMemories, currentMemory: memory });
+    const displayTree = tree || inferTreeContext({ treeId: canonicalTreeId, currentMemory: memory, mergedMemories });
+    const treeMomentCount = resolveTreeMomentCount({ tree: displayTree, memories: mergedMemories, currentMemory: memory });
     const connectedFlowMoments = getConnectedFlowMoments({ memory, memories: mergedMemories });
 
+    if (hasTreeContext) {
+        if (treeFetchState === 'failed' && memoriesFetchState === 'failed') {
+            degradedReason = 'tree-and-memories-load-failed';
+        } else if (memoriesFetchState === 'failed') {
+            degradedReason = 'memories-load-failed';
+        } else if (treeFetchState === 'failed') {
+            degradedReason = 'tree-load-partial';
+        }
+    }
+
     renderMemoryBase(memory);
-    renderTreeContext({ hasTreeContext, tree, memories: mergedMemories, sourceContext, degradedReason, currentMemory: memory });
+    renderTreeContext({ hasTreeContext, tree: displayTree, memories: mergedMemories, sourceContext, degradedReason, currentMemory: memory });
     renderConnectedFragments({ memory, memories: mergedMemories, treeId: canonicalTreeId, sourceContext, degradedReason, treeMomentCount });
 
     const safeTitle = memory.title || tText('tree_context_moment', '순간 상세');
-    const treeTitle = tree?.title || tText('lovetree_brand', '러브트리');
+    const treeTitle = displayTree?.title || tText('lovetree_brand', '러브트리');
     const brandTitle = tText('lovetree_brand', '러브트리');
     document.title = (hasTreeContext && treeMomentCount > 0)
         ? `${safeTitle} | ${treeTitle} — ${brandTitle}`
@@ -600,7 +653,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     applyViewingPageCopy({
         sourceContext,
-        treeTitle: tree?.title,
+        treeTitle: displayTree?.title,
         memoryTitleText: memory.title,
         treeMomentCount,
         connectedCount: connectedFlowMoments.length,
