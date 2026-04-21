@@ -1,11 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // Load editor data loader fallbacks
     const dataLoaderFallbacks = window.LoveBudEditorDataLoaderFallbacks || {};
-    // Load editor resolver fallbacks
     const resolverFallbacks = window.LoveBudEditorResolverFallbacks || {};
 
-    // Root memory helpers
-    // Prefer editor-root-helpers.js and keep a local fallback.
     let rootHelperWarningShown = false;
     const rootUtils = window.LoveBudEditorUtils || {};
     const editorHelpers = window.LoveBudEditorHelpers || {};
@@ -86,8 +82,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // Auth guard bootstrapping via onAuthReady callback
-    // Shared toast utility wrapper
     const showToast = editorHelpers.createToast
         ? editorHelpers.createToast({ warningKey: '__editorToastWarningShown' })
         : createInlineShowToastFallback();
@@ -150,8 +144,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const getMyTreesHref = editorPageHelpers.getMyTreesHref || (() => getEditorBasePath() + 'my-trees.html');
-
-const createInlineMediaResolversFallbacks = resolverFallbacks.createInlineMediaResolversFallbacks || (() => ({}));
+    const createInlineMediaResolversFallbacks = resolverFallbacks.createInlineMediaResolversFallbacks || (() => ({}));
 
     const escapeHtml = editorHelpers.escapeHtml || ((value) => String(value ?? '')
         .replace(/&/g, '&amp;')
@@ -164,35 +157,18 @@ const createInlineMediaResolversFallbacks = resolverFallbacks.createInlineMediaR
         ? editorHelpers
         : createInlineMediaResolversFallbacks();
 
-    const safeUrl = editorHelpers.safeUrl || inlineMediaResolvers.safeUrl;
-    const extractYouTubeIdFallback = editorHelpers.extractYouTubeIdFallback || inlineMediaResolvers.extractYouTubeIdFallback;
     const resolveMemoryThumbnail = editorHelpers.resolveMemoryThumbnail || inlineMediaResolvers.resolveMemoryThumbnail;
-    const getThumbnailFallbackChain = editorHelpers.getThumbnailFallbackChain || inlineMediaResolvers.getThumbnailFallbackChain;
 
     const getYouTubeInputErrorMessage = editorHelpers.getYouTubeInputErrorMessage || ((rawUrl) => {
         const value = String(rawUrl || '').trim();
-
-        if (!value) {
-            return i18n('enter_youtube') || 'YouTube 링크를 입력해 주세요.';
-        }
-
+        if (!value) return i18n('enter_youtube') || 'YouTube 링크를 입력해 주세요.';
         const looksLikeUrl = /^(https?:\/\/|www\.)/i.test(value);
         const hasYouTubeHint = /(youtube\.com|youtu\.be|youtube\.com\/shorts\/)/i.test(value);
         const idLikeMatch = value.match(/(?:v=|\/|youtu\.be\/|shorts\/)([0-9A-Za-z_-]+)/i);
         const candidateId = idLikeMatch ? idLikeMatch[1] : '';
-
-        if (!looksLikeUrl) {
-            return i18n('invalid_youtube_format') || '전체 YouTube 링크를 붙여 넣어 주세요.';
-        }
-
-        if (!hasYouTubeHint) {
-            return i18n('invalid_youtube_unsupported') || 'YouTube 링크만 지원합니다. youtube.com 또는 youtu.be 링크를 사용해 주세요.';
-        }
-
-        if (candidateId && candidateId.length !== 11) {
-            return i18n('invalid_youtube_id_length') || '링크가 중간에 잘린 것 같아요. 전체 YouTube 링크를 다시 복사해 주세요.';
-        }
-
+        if (!looksLikeUrl) return i18n('invalid_youtube_format') || '전체 YouTube 링크를 붙여 넣어 주세요.';
+        if (!hasYouTubeHint) return i18n('invalid_youtube_unsupported') || 'YouTube 링크만 지원합니다. youtube.com 또는 youtu.be 링크를 사용해 주세요.';
+        if (candidateId && candidateId.length !== 11) return i18n('invalid_youtube_id_length') || '링크가 중간에 잘린 것 같아요. 전체 YouTube 링크를 다시 복사해 주세요.';
         return i18n('invalid_youtube') || '유효한 YouTube 링크를 입력해 주세요.';
     });
 
@@ -228,15 +204,11 @@ const createInlineMediaResolversFallbacks = resolverFallbacks.createInlineMediaR
         }
 
         const retryBtn = document.getElementById('retryOpenTreeBtn');
-        if (retryBtn) {
-            retryBtn.addEventListener('click', () => window.location.reload());
-        }
-
+        if (retryBtn) retryBtn.addEventListener('click', () => window.location.reload());
         if (addBtn) addBtn.disabled = true;
     };
 
     const renderTreeLoadError = editorPageHelpers.renderTreeLoadError || createInlineRenderTreeLoadErrorFallback();
-
     const getFirstMockTree = editorTreeHelpers.getFirstMockTree || (() => {
         const mockTrees = typeof getTrees === 'function' ? getTrees() : [];
         return mockTrees[0] || null;
@@ -248,10 +220,8 @@ const createInlineMediaResolversFallbacks = resolverFallbacks.createInlineMediaR
     const createInlineCreateInitialMemoryFallback = dataLoaderFallbacks.createInlineCreateInitialMemoryFallback || ((options) => () => ({}));
     const createInlineNextMemoryIdFallback = dataLoaderFallbacks.createInlineNextMemoryIdFallback || ((options) => () => 'm1');
     const createInlineRefreshMemoriesFallback = dataLoaderFallbacks.createInlineRefreshMemoriesFallback || ((options) => async () => {});
-
     const createInlineFormatTimeAgoFallback = () => (date) => {
         if (!date) return '';
-
         const diff = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
         if (diff < 60) return '방금';
         if (diff < 3600) return `${Math.floor(diff / 60)}분 전`;
@@ -259,9 +229,7 @@ const createInlineMediaResolversFallbacks = resolverFallbacks.createInlineMediaR
         return `${Math.floor(diff / 86400)}일 전`;
     };
 
-    const markEditorReady = () => {
-        document.body?.classList.remove('editor-preload');
-    };
+    const markEditorReady = () => document.body?.classList.remove('editor-preload');
 
     const applyEditorShellCopy = () => {
         const setText = (id, key, fallback) => {
@@ -269,7 +237,6 @@ const createInlineMediaResolversFallbacks = resolverFallbacks.createInlineMediaR
             if (!el) return;
             el.textContent = safeI18nText(i18n, key, fallback);
         };
-
         const setPlaceholder = (id, key, fallback) => {
             const el = document.getElementById(id);
             if (!el) return;
@@ -285,17 +252,14 @@ const createInlineMediaResolversFallbacks = resolverFallbacks.createInlineMediaR
         setText('addMemoryBtnLabel', 'editor_add_memory', '새 순간 이어가기');
         setText('saveStatusText', 'save_saved', '저장됨');
         setText('detailMoreBtn', 'more', '더보기');
-
         setText('addMemoryFormTitle', 'editor_new_memory', '어떤 순간이 이어졌나요?');
         setText('memoryUrlLabel', 'editor_youtube_link', 'YouTube 장면 링크');
         setText('memoryTitleLabel', 'editor_memory_title', '순간 제목');
         setText('memoryMemoLabel', 'editor_memory_memo_optional', '감정 메모');
         setText('cancelAddMemory', 'editor_cancel', '취소');
         setText('confirmAddMemory', 'editor_confirm_add', '이 순간 심기');
-
         setPlaceholder('memoryTitleInput', 'editor_memory_title_placeholder', '이 순간을 어떻게 기억하고 싶은지 적어보세요');
         setPlaceholder('memoryMemoInput', 'editor_memory_memo_placeholder', '왜 이 장면이 이어졌는지, 지금 마음을 남겨보세요...');
-
         setText('detailEmptyTitle', 'detail_empty_title', '첫 순간이 트리를 깨워요');
         setText('detailEmptyDesc', 'detail_empty_desc', '왼쪽의 "새 순간 이어가기"로 첫 장면을 심으면, 이 패널이 현재 순간 허브로 바뀝니다.');
         setText('detailCurrentMomentBadge', 'editor_current_moment_badge', '현재 순간');
@@ -303,22 +267,17 @@ const createInlineMediaResolversFallbacks = resolverFallbacks.createInlineMediaR
         setText('detailCurrentMomentHint', 'editor_current_moment_hint', '선택한 순간을 중심으로 감정 메모와 다음 행동이 정리됩니다.');
         setText('detailMomentInfoLabel', 'editor_moment_info_label', '순간 정보');
         setText('detailActionLabel', 'editor_action_label', '이 순간에서 할 수 있는 일');
-
         setText('detailDateLabel', 'editor_date_label', '기억한 날');
         setText('detailTagsLabel', 'editor_tag_label', '감정 태그');
         setText('detailMemoLabel', 'editor_note_label', '감정 메모');
-
         setText('editMemoryBtn', 'editor_edit', '순간 수정');
         setText('deleteMemoryBtn', 'editor_delete', '순간 삭제');
-
         setText('editTitleLabel', 'editor_memory_title', '제목');
         setText('editMemoLabel', 'editor_note_label', '감정 메모');
         setText('editTagsLabel', 'editor_edit_tag_label', '감정 태그 (쉼표로 구분)');
-
         setPlaceholder('editTitleInput', 'editor_edit_title_placeholder', '순간의 제목을 입력하세요');
         setPlaceholder('editMemoInput', 'editor_memory_memo_placeholder', '이 순간의 감정을 남겨보세요...');
         setPlaceholder('editTagsInput', 'editor_edit_tag_placeholder', '#감동, #행복, #그리움');
-
         setText('cancelEditBtn', 'editor_cancel', '취소');
         setText('saveEditBtn', 'editor_save', '저장하기');
         setText('detailSubmitBtn', 'editor_record_submit', '내 러브트리에 기록하기');
@@ -343,11 +302,9 @@ const createInlineMediaResolversFallbacks = resolverFallbacks.createInlineMediaR
 
     const prepareEditorShell = () => {
         applyEditorShellCopy();
-
         const detailEmptyState = document.getElementById('detailEmptyState');
         const detailViewMode = document.getElementById('detailViewMode');
         const detailEditMode = document.getElementById('detailEditMode');
-
         if (detailEmptyState) detailEmptyState.style.display = 'block';
         if (detailViewMode) detailViewMode.style.display = 'none';
         if (detailEditMode) detailEditMode.style.display = 'none';
@@ -357,17 +314,14 @@ const createInlineMediaResolversFallbacks = resolverFallbacks.createInlineMediaR
         const { canvas, svg, detailPanel, addBtn } = createEditorDomRefs();
         const urlParams = new URLSearchParams(window.location.search);
         const urlTreeId = urlParams.get('treeId');
-        console.log('[editor] URL treeId:', urlTreeId);
 
         prepareEditorShell();
 
         const cache = window.LoveBudCache || null;
-        let TREE_CACHE_KEY = 'tree_default';
         let MEMORIES_CACHE_KEY = 'memories_default';
         let isLocalSaveMode = false;
 
         const loadInitialTree = editorDataLoader.loadInitialEditorTree || createInlineLoadInitialTreeFallback();
-
         const treeLoadResult = await loadInitialTree({
             urlTreeId,
             apiClient: window.apiClient,
@@ -377,70 +331,47 @@ const createInlineMediaResolversFallbacks = resolverFallbacks.createInlineMediaR
         });
 
         let tree = treeLoadResult.tree || null;
-
         if (!tree) {
             if (treeLoadResult.authRequired) {
                 showToast(i18n('need_login'), 'error');
                 redirectToEditorLogin(2000);
                 return;
             }
-
             if (urlTreeId) {
                 const treeLoadStatus = treeLoadResult.treeLoadStatus || 'not_found';
                 const treeLoadErrorMessage = treeLoadResult.treeLoadErrorMessage || '';
-
-                const errorTitle =
-                    treeLoadStatus === 'api_unavailable'
-                        ? (i18n('tree_load_fail_title') || '트리를 불러올 수 없어요')
-                        : /Access denied/i.test(treeLoadErrorMessage)
-                            ? (i18n('tree_access_denied_title') || '이 러브트리를 열 권한이 없어요')
-                            : treeLoadStatus === 'error'
-                                ? (i18n('tree_load_error_title') || '트리를 여는 중 문제가 발생했어요')
-                                : (i18n('tree_not_found_title') || '트리를 찾을 수 없어요');
-
-                const errorDesc =
-                    treeLoadStatus === 'api_unavailable'
-                        ? (i18n('tree_load_api_unavailable') || '트리 조회 API를 사용할 수 없는 상태입니다. 잠시 후 다시 시도해 주세요.')
-                        : /Access denied/i.test(treeLoadErrorMessage)
-                            ? (i18n('tree_access_denied_desc') || '비공개 러브트리이거나 내 계정에 권한이 없어요. 다시 확인하거나 다른 계정으로 로그인해 보세요.')
-                            : treeLoadStatus === 'error'
-                                ? (i18n('tree_load_error_desc') || '일시적인 서버 문제 또는 접근 권한 문제일 수 있습니다. 다시 시도하거나 트리 목록으로 돌아가 주세요.')
-                                : (i18n('tree_load_not_found_desc') || '잘못된 링크이거나 접근 권한이 없는 트리입니다.');
-
-                renderTreeLoadError({
-                    canvas,
-                    addBtn,
-                    errorTitle,
-                    errorDesc,
-                    i18n,
-                    escapeHtml,
-                    setDetailEmptyState: null
-                });
+                const errorTitle = treeLoadStatus === 'api_unavailable'
+                    ? (i18n('tree_load_fail_title') || '트리를 불러올 수 없어요')
+                    : /Access denied/i.test(treeLoadErrorMessage)
+                        ? (i18n('tree_access_denied_title') || '이 러브트리를 열 권한이 없어요')
+                        : treeLoadStatus === 'error'
+                            ? (i18n('tree_load_error_title') || '트리를 여는 중 문제가 발생했어요')
+                            : (i18n('tree_not_found_title') || '트리를 찾을 수 없어요');
+                const errorDesc = treeLoadStatus === 'api_unavailable'
+                    ? (i18n('tree_load_api_unavailable') || '트리 조회 API를 사용할 수 없는 상태입니다. 잠시 후 다시 시도해 주세요.')
+                    : /Access denied/i.test(treeLoadErrorMessage)
+                        ? (i18n('tree_access_denied_desc') || '비공개 러브트리이거나 내 계정에 권한이 없어요. 다시 확인하거나 다른 계정으로 로그인해 보세요.')
+                        : treeLoadStatus === 'error'
+                            ? (i18n('tree_load_error_desc') || '일시적인 서버 문제 또는 접근 권한 문제일 수 있습니다. 다시 시도하거나 트리 목록으로 돌아가 주세요.')
+                            : (i18n('tree_load_not_found_desc') || '잘못된 링크이거나 접근 권한이 없는 트리입니다.');
+                renderTreeLoadError({ canvas, addBtn, errorTitle, errorDesc, i18n, escapeHtml, setDetailEmptyState: null });
                 markEditorReady();
                 return;
             }
-
-            console.warn('Tree data not found.');
             markEditorReady();
             return;
         }
 
         syncCurrentTreeData(tree);
-
         const treeId = tree.id || null;
-        TREE_CACHE_KEY = 'tree_' + (treeId || 'default');
         MEMORIES_CACHE_KEY = 'memories_' + (treeId || 'default');
 
         const normalizeMemory = editorDataLoader.createNormalizeMemory
-            ? editorDataLoader.createNormalizeMemory({
-                sharedNormalize: window.LoveBudNormalize?.normalizeMemory
-            })
+            ? editorDataLoader.createNormalizeMemory({ sharedNormalize: window.LoveBudNormalize?.normalizeMemory })
             : (window.LoveBudNormalize?.normalizeMemory || createInlineNormalizeMemoryFallback());
 
-        const loadEditorMemoriesFallback =
-            editorDataLoader.loadEditorMemories || createInlineLoadEditorMemoriesFallback();
-
-        const memoryLoadResult = await loadEditorMemoriesFallback({
+        const loadEditorMemoriesFallback = editorDataLoader.loadEditorMemories || createInlineLoadEditorMemoriesFallback();
+        await loadEditorMemoriesFallback({
             treeId,
             cache,
             cacheKey: MEMORIES_CACHE_KEY,
@@ -451,52 +382,65 @@ const createInlineMediaResolversFallbacks = resolverFallbacks.createInlineMediaR
             normalizeMemory
         });
 
-        let memories = memoryLoadResult.memories || [];
-
-        const handleMemoriesUpdated = () => {
-            if (typeof initCanvas === 'function') initCanvas();
-            if (typeof updateSidebarStatus === 'function') updateSidebarStatus();
-        };
-
-        const refreshMemories = editorDataLoader.createRefreshMemories
-            ? editorDataLoader.createRefreshMemories({
-                treeId,
-                apiClient: window.apiClient,
-                normalizeMemory,
-                onMemoriesUpdated: handleMemoriesUpdated
-            })
-            : createInlineRefreshMemoriesFallback({
-                treeId,
-                apiClient: window.apiClient,
-                normalizeMemory,
-                onMemoriesUpdated: handleMemoriesUpdated
-            });
-
-        window.refreshMemories = refreshMemories;
-
-        const createInitialMemory = editorTreeHelpers.createInitialMemory
-            ? () => editorTreeHelpers.createInitialMemory({
-                getTreeMemories: () => treeMemories(),
-                findRootMemory,
-                canonicalRootId,
-                treeId,
-                i18n
-            })
-            : createInlineCreateInitialMemoryFallback({
-                treeMemories,
-                findRootMemory,
-                canonicalRootId,
-                treeId,
-                i18n
-            });
-
-        const treeMemories = () => (window.currentTreeMemories || []).map(normalizeMemory);
+        const treeMemories = () => (window.currentTreeMemories || []).map(normalizeMemory).filter(Boolean);
         const canonicalRootId = getCanonicalRootId(treeMemories());
         let selectedNodeId = canonicalRootId;
+        let currentEditingMemory = null;
+        let editorCanvas = null;
+
+        const createInitialMemory = editorTreeHelpers.createInitialMemory
+            ? () => editorTreeHelpers.createInitialMemory({ getTreeMemories: () => treeMemories(), findRootMemory, canonicalRootId, treeId, i18n })
+            : createInlineCreateInitialMemoryFallback({ treeMemories, findRootMemory, canonicalRootId, treeId, i18n });
 
         const nextMemoryId = editorTreeHelpers.nextMemoryIdFromMemories
             ? () => editorTreeHelpers.nextMemoryIdFromMemories(treeMemories())
             : createInlineNextMemoryIdFallback({ treeMemories });
+
+        const selectNode = (el, data) => {
+            if (!data) return;
+            selectedNodeId = data.id;
+            currentEditingMemory = data;
+            document.querySelectorAll('.memory-node').forEach(n => n.classList.remove('selected'));
+            if (el) el.classList.add('selected');
+
+            const indicator = document.getElementById('saveStatusIndicator');
+            if (indicator && saveStatusData.timer) {
+                clearTimeout(saveStatusData.timer);
+                saveStatusData.timer = null;
+            }
+            if (indicator) indicator.style.display = 'none';
+
+            updateDetailPanel(data);
+            updateFocusSelectedBtn();
+            setDetailEmptyState(false);
+        };
+
+        const focusSelectedMoment = () => {
+            if (editorCanvas && typeof editorCanvas.focusNodeById === 'function' && selectedNodeId) {
+                editorCanvas.focusNodeById(selectedNodeId);
+            }
+        };
+
+        const openCurrentMomentDetail = () => {
+            const activeMemory = currentEditingMemory || treeMemories().find((m) => m.id === selectedNodeId) || createInitialMemory();
+            if (!activeMemory || !activeMemory.id || !treeId) return;
+            const detailHref = getEditorBasePath() + 'detail.html?id=' + encodeURIComponent(activeMemory.id) + '&tree=' + encodeURIComponent(treeId) + '&from=editor';
+            window.location.href = detailHref;
+        };
+
+        const updateTreeVisibility = async (nextVisibility) => {
+            if (!treeId || !window.apiClient || typeof window.apiClient.updateTree !== 'function') {
+                throw new Error('updateTree not available');
+            }
+            const updatedTree = await window.apiClient.updateTree(treeId, { visibility: nextVisibility });
+            window.currentTreeData = {
+                ...(window.currentTreeData || {}),
+                ...(updatedTree || {}),
+                visibility: updatedTree?.visibility || nextVisibility
+            };
+            updateSidebarStatus();
+            if (currentEditingMemory) updateDetailPanel(currentEditingMemory);
+        };
 
         const detailUI = window.createEditorDetailUI({
             detailPanel,
@@ -512,54 +456,16 @@ const createInlineMediaResolversFallbacks = resolverFallbacks.createInlineMediaR
             getTreeMemories: () => treeMemories(),
             getCurrentTreeData: () => window.currentTreeData || {},
             getLocalSaveMode: () => isLocalSaveMode,
-            showToast
+            showToast,
+            updateTreeVisibility,
+            openCurrentMomentDetail,
+            focusSelectedMoment
         });
 
-        const {
-            setDetailEmptyState,
-            updateFocusSelectedBtn,
-            updateSidebarStatus,
-            updateDetailPanel
-        } = detailUI;
-
+        const { setDetailEmptyState, updateFocusSelectedBtn, updateSidebarStatus, updateDetailPanel } = detailUI;
         window.updateDetailPanel = updateDetailPanel;
 
-        let currentEditingMemory = null;
-
-        const selectNode = (el, data) => {
-            selectedNodeId = data.id;
-            document.querySelectorAll('.memory-node').forEach(n => n.classList.remove('selected'));
-            el.classList.add('selected');
-
-            const indicator = document.getElementById('saveStatusIndicator');
-            if (indicator) {
-                indicator.style.display = 'none';
-                if (saveStatusData.timer) {
-                    clearTimeout(saveStatusData.timer);
-                    saveStatusData.timer = null;
-                }
-            }
-
-            updateDetailPanel(data);
-            currentEditingMemory = data;
-            updateFocusSelectedBtn();
-            setDetailEmptyState(false);
-        };
-
-        const selectNodeById = (id) => {
-            const node = treeMemories().find(m => m.id === id);
-            if (!node) return;
-            selectedNodeId = id;
-            if (isRootMemory(node, canonicalRootId)) {
-                document.querySelectorAll('.memory-node').forEach(n => n.classList.remove('selected'));
-                updateDetailPanel(node);
-                return;
-            }
-            const el = document.querySelector(`.memory-node[data-memory-id="${id}"]`);
-            if (el) selectNode(el, node);
-        };
-
-        const editorCanvas = window.createEditorCanvas({
+        editorCanvas = window.createEditorCanvas({
             canvas,
             svg,
             getTreeMemories: () => treeMemories(),
@@ -570,16 +476,28 @@ const createInlineMediaResolversFallbacks = resolverFallbacks.createInlineMediaR
             setDetailEmptyState,
             updateFocusSelectedBtn,
             createInitialMemory,
-            onNodeClick: selectNode
+            onNodeClick: selectNode,
+            openAddMoment: () => showAddMemoryForm()
         });
 
-        const {
-            calcPosition,
-            drawBranch,
-            drawNode,
-            initCanvas,
-            bindCanvasPan
-        } = editorCanvas;
+        const { calcPosition, drawBranch, drawNode, initCanvas } = editorCanvas;
+
+        const handleMemoriesUpdated = () => {
+            initCanvas();
+            updateSidebarStatus();
+            if (currentEditingMemory) {
+                const refreshedEditingMemory = treeMemories().find((memory) => memory.id === currentEditingMemory.id);
+                if (refreshedEditingMemory) {
+                    currentEditingMemory = refreshedEditingMemory;
+                    updateDetailPanel(refreshedEditingMemory);
+                }
+            }
+        };
+
+        const refreshMemories = editorDataLoader.createRefreshMemories
+            ? editorDataLoader.createRefreshMemories({ treeId, apiClient: window.apiClient, normalizeMemory, onMemoriesUpdated: handleMemoriesUpdated })
+            : createInlineRefreshMemoriesFallback({ treeId, apiClient: window.apiClient, normalizeMemory, onMemoriesUpdated: handleMemoriesUpdated });
+        window.refreshMemories = refreshMemories;
 
         let saveStatusData = editorSaveStatus.createSaveStatusState
             ? editorSaveStatus.createSaveStatusState()
@@ -587,34 +505,22 @@ const createInlineMediaResolversFallbacks = resolverFallbacks.createInlineMediaR
 
         function updateSaveStatus(status, message) {
             if (editorSaveStatus.updateSaveStatus) {
-                saveStatusData = editorSaveStatus.updateSaveStatus(saveStatusData, {
-                    status,
-                    message,
-                    i18n
-                }) || saveStatusData;
+                saveStatusData = editorSaveStatus.updateSaveStatus(saveStatusData, { status, message, i18n }) || saveStatusData;
                 return;
             }
-
             const indicator = document.getElementById('saveStatusIndicator');
             const iconEl = document.getElementById('saveStatusIcon');
             const textEl = document.getElementById('saveStatusText');
             const timeEl = document.getElementById('lastSavedTime');
-
             if (!indicator || !iconEl || !textEl) return;
-
             if (saveStatusData.timer) {
                 clearTimeout(saveStatusData.timer);
                 saveStatusData.timer = null;
             }
-
             saveStatusData.status = status;
-
             const hideLater = (ms) => {
-                saveStatusData.timer = setTimeout(() => {
-                    indicator.style.display = 'none';
-                }, ms);
+                saveStatusData.timer = setTimeout(() => { indicator.style.display = 'none'; }, ms);
             };
-
             if (status === 'saving') {
                 iconEl.textContent = 'hourglass_empty';
                 textEl.textContent = message || i18n('save_saving');
@@ -623,7 +529,6 @@ const createInlineMediaResolversFallbacks = resolverFallbacks.createInlineMediaR
                 if (timeEl) timeEl.style.display = 'none';
                 return;
             }
-
             if (status === 'saved') {
                 iconEl.textContent = 'check_circle';
                 textEl.textContent = message || i18n('save_saved');
@@ -636,7 +541,6 @@ const createInlineMediaResolversFallbacks = resolverFallbacks.createInlineMediaR
                 hideLater(3000);
                 return;
             }
-
             if (status === 'failed') {
                 iconEl.textContent = 'error';
                 textEl.textContent = message || i18n('save_failed');
@@ -655,31 +559,22 @@ const createInlineMediaResolversFallbacks = resolverFallbacks.createInlineMediaR
             updateSidebarStatus,
             showToast,
             getCurrentEditingMemory: () => currentEditingMemory,
-            setCurrentEditingMemory: (value) => {
-                currentEditingMemory = value;
-            },
+            setCurrentEditingMemory: (value) => { currentEditingMemory = value; },
             getTreeMemories: () => window.currentTreeMemories || [],
-            setTreeMemories: (value) => {
-                window.currentTreeMemories = value;
-            },
+            setTreeMemories: (value) => { window.currentTreeMemories = value; },
             getSelectedNodeId: () => selectedNodeId,
-            setSelectedNodeId: (value) => {
-                selectedNodeId = value;
-            },
+            setSelectedNodeId: (value) => { selectedNodeId = value; },
             getCanonicalRootId: () => canonicalRootId,
             isRootMemory,
             findRootMemory,
             detailPanel,
             svg,
-            calcPosition
+            calcPosition,
+            setDetailEmptyState,
+            rerenderCanvas: () => initCanvas()
         });
 
-        const {
-            enterEditMode,
-            exitEditMode,
-            saveMemoryEdit,
-            deleteMemory
-        } = memoryActions;
+        const { enterEditMode, exitEditMode, saveMemoryEdit, deleteMemory } = memoryActions;
 
         const memoryForm = window.createEditorMemoryForm({
             i18n,
@@ -687,18 +582,14 @@ const createInlineMediaResolversFallbacks = resolverFallbacks.createInlineMediaR
             getSelectedNodeId: () => selectedNodeId,
             getCanonicalRootId: () => canonicalRootId,
             resolveParentIdForCreate,
-             updateSaveStatus,
-             showToast,
-             getYouTubeInputErrorMessage: (rawUrl) => getYouTubeInputErrorMessage(i18n, rawUrl),
-             nextMemoryId,
+            updateSaveStatus,
+            showToast,
+            getYouTubeInputErrorMessage: (rawUrl) => getYouTubeInputErrorMessage(i18n, rawUrl),
+            nextMemoryId,
             normalizeMemory,
             getTreeMemories: () => window.currentTreeMemories || [],
-            setTreeMemories: (value) => {
-                window.currentTreeMemories = value;
-            },
-            setLocalSaveMode: (value) => {
-                isLocalSaveMode = value;
-            },
+            setTreeMemories: (value) => { window.currentTreeMemories = value; },
+            setLocalSaveMode: (value) => { isLocalSaveMode = value; },
             getLocalSaveMode: () => isLocalSaveMode,
             drawNode,
             drawBranch,
@@ -709,110 +600,31 @@ const createInlineMediaResolversFallbacks = resolverFallbacks.createInlineMediaR
             selectNode,
             treeMemories,
             setCachedMemories: window.setCachedMemories,
-            canvasArea: canvas
+            canvasArea: canvas,
+            rerenderCanvas: () => initCanvas(),
+            focusNodeById: (id) => editorCanvas.focusNodeById(id)
         });
 
-        const {
-            showAddMemoryForm,
-            hideAddMemoryForm,
-            addMemoryFromForm
-        } = memoryForm;
-
-        const {
-            urlInput,
-            titleInput,
-            memoInput,
-            cancelBtn,
-            confirmBtn
-        } = createEditorFormRefs();
+        const { showAddMemoryForm, hideAddMemoryForm, addMemoryFromForm } = memoryForm;
+        const { urlInput, titleInput, memoInput, cancelBtn, confirmBtn } = createEditorFormRefs();
 
         if (editorBindings.bindMemoryCreateControls) {
-            editorBindings.bindMemoryCreateControls({
-                addBtn,
-                cancelBtn,
-                confirmBtn,
-                urlInput,
-                titleInput,
-                memoInput,
-                showAddMemoryForm,
-                hideAddMemoryForm,
-                addMemoryFromForm,
-                updateSaveStatus,
-                showToast,
-                i18n
-            });
-        } else {
-            if (addBtn) {
-                addBtn.disabled = false;
-                addBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    showAddMemoryForm();
-                });
-            }
-            if (cancelBtn) cancelBtn.addEventListener('click', hideAddMemoryForm);
-            if (confirmBtn) {
-                 confirmBtn.addEventListener('click', (e) => {
-                     e.preventDefault();
-                     addMemoryFromForm().catch(err => {
-                         console.error('[editor] Failed to add memory:', err);
-                         updateSaveStatus('failed', i18n('save_failed'));
-                         showToast(i18n('record_error') || '기록 중 오류가 발생했습니다', 'error');
-                     });
-                 });
-            }
-
-            if (urlInput) {
-                urlInput.addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') titleInput.focus();
-                });
-            }
-            if (titleInput) {
-                titleInput.addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') memoInput.focus();
-                });
-            }
-            if (memoInput) {
-                memoInput.addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        addMemoryFromForm();
-                    }
-                });
-            }
+            editorBindings.bindMemoryCreateControls({ addBtn, cancelBtn, confirmBtn, urlInput, titleInput, memoInput, showAddMemoryForm, hideAddMemoryForm, addMemoryFromForm, updateSaveStatus, showToast, i18n });
         }
 
-        const hideUnimplementedButtons = editorBindings.hideUnimplementedButtons || ((panel) => {
-            const moreBtn = panel.querySelector('.icon-btn');
-            const footerBtn = panel.querySelector('.panel-footer');
-            if (moreBtn) moreBtn.style.display = 'none';
-            if (footerBtn) footerBtn.style.display = 'none';
-        });
-        hideUnimplementedButtons(detailPanel);
-
         initCanvas();
+        const initialSelection = treeMemories().find((memory) => memory.id === selectedNodeId) || createInitialMemory();
+        if (initialSelection) {
+            currentEditingMemory = initialSelection;
+            updateDetailPanel(initialSelection);
+        }
 
         const editMemoryBtn = document.getElementById('editMemoryBtn');
         const deleteMemoryBtn = document.getElementById('deleteMemoryBtn');
         const cancelEditBtn = document.getElementById('cancelEditBtn');
         const saveEditBtn = document.getElementById('saveEditBtn');
-
         if (editorBindings.bindDetailActionButtons) {
-            editorBindings.bindDetailActionButtons({
-                editMemoryBtn,
-                deleteMemoryBtn,
-                cancelEditBtn,
-                saveEditBtn,
-                enterEditMode,
-                deleteMemory,
-                exitEditMode,
-                saveMemoryEdit
-            });
-        } else {
-            if (editMemoryBtn) editMemoryBtn.addEventListener('click', enterEditMode);
-            if (deleteMemoryBtn) deleteMemoryBtn.addEventListener('click', deleteMemory);
-            if (cancelEditBtn) cancelEditBtn.addEventListener('click', exitEditMode);
-            if (saveEditBtn) saveEditBtn.addEventListener('click', saveMemoryEdit);
+            editorBindings.bindDetailActionButtons({ editMemoryBtn, deleteMemoryBtn, cancelEditBtn, saveEditBtn, enterEditMode, deleteMemory, exitEditMode, saveMemoryEdit });
         }
 
         console.log('[editor] Ready for tree:', treeId, 'memories:', treeMemories().length);
@@ -821,45 +633,33 @@ const createInlineMediaResolversFallbacks = resolverFallbacks.createInlineMediaR
     };
 
     var editorStarted = false;
-
     const getConfirmedSessionUser = editorAuthHelpers.getConfirmedSessionUser || function() {
-      try {
-        if (window.getConfirmedAuthUser) {
-          return window.getConfirmedAuthUser();
-        }
-      } catch (e) {}
-      return readConfirmedAuthCache();
+        try {
+            if (window.getConfirmedAuthUser) return window.getConfirmedAuthUser();
+        } catch (e) {}
+        return readConfirmedAuthCache();
     };
 
     function tryStartEditor(user) {
         if (editorStarted) {
             if (user && (!window.currentTreeMemories || window.currentTreeMemories.length <= 1)) {
-                console.log('[editor] Real user detected late, re-fetching data...');
                 if (window.refreshMemories) window.refreshMemories();
             }
             return;
         }
-
         if (!user) {
             var cachedUser = readConfirmedAuthCache();
-
             if (!cachedUser || !cachedUser.uid) {
                 redirectToEditorLogin();
                 return;
             }
         }
-
         editorStarted = true;
-        console.log('[editor] Auth confirmed, starting editor (user source: ' + (user ? 'firebase' : 'cache') + ')');
         startEditor();
     }
 
     var cachedUser = getConfirmedSessionUser();
-    if (cachedUser) {
-        console.log('[editor] Booting immediately from confirmed session cache');
-        tryStartEditor(cachedUser);
-    }
-
+    if (cachedUser) tryStartEditor(cachedUser);
     if (typeof window.registerOnAuthReady === 'function') {
         window.registerOnAuthReady(tryStartEditor);
     } else {
