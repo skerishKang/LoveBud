@@ -58,11 +58,21 @@
 
     function createBrowseApi(communityApi) {
         return {
-            getPublicTrees: async () => {
+            getPublicTrees: async (options = {}) => {
                 if (!PublicTreeAdapter) {
                     throw new Error('LoveTreePublicTreeAdapter not loaded');
                 }
-                const apiTrees = await BaseApiFetch.apiFetch('/community/trees');
+                
+                let endpoint = '/community/trees';
+                const params = new URLSearchParams();
+                if (options.view) params.append('view', options.view);
+                if (options.sort) params.append('sort', options.sort);
+                if (options.limit) params.append('limit', options.limit);
+                
+                const qs = params.toString();
+                if (qs) endpoint += '?' + qs;
+
+                const apiTrees = await BaseApiFetch.apiFetch(endpoint);
                 return PublicTreeAdapter.buildPublicTreeSummaryModels(apiTrees);
             },
             getPublicTreePreview: async (tree) => {
