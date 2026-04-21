@@ -5,20 +5,6 @@
    * Canonical namespace: LoveTreePublicTreeAdapter
    *
    * Transitional compatibility only for public browse paths.
-   *
-   * Migration-only fallback scope:
-   * - legacy `{ data }` wrapper
-   * - `tree_id`
-   * - `created_at`
-   * - `owner_id`
-   * - `emotion_tags`
-   *
-   * Remove these fallback paths after:
-   * 1) /api/community/trees is camelCase-only
-   * 2) /api/community/memories is camelCase-only
-   * 3) contract tests stay green without legacy fixtures
-   *
-   * New code outside this adapter must not directly read snake_case fields.
    */
 
   function unwrapTreeRecord(tree) {
@@ -40,7 +26,12 @@
       title: tree.title || '',
       visibility: tree.visibility || 'private',
       createdAt: tree.createdAt || tree.created_at || null,
+      updatedAt: tree.updatedAt || tree.updated_at || null,
       ownerId: tree.ownerId || tree.owner_id || null,
+      representativeThumbnail: tree.representativeThumbnail || tree.representative_thumbnail || tree.thumbnail || '',
+      memoryCount: Number(tree.memoryCount || tree.memory_count || 0),
+      theme: tree.theme || '',
+      stage: tree.stage || ''
     };
   }
 
@@ -62,67 +53,82 @@
     };
   }
 
-  function buildPublicTreeViewModels(apiTrees, apiMemories) {
-    const validTrees = (Array.isArray(apiTrees) ? apiTrees : [])
+  function estimateStage(count) {
+    if (count <= 0) return '새 트리';
+    if (count <= 2) return '입덕';
+    if (count <= 4) return '성장';
+    return '최애';
+  }
+
+  function buildPublicTreeSummaryModels(apiTrees) {
+    return (Array.isArray(apiTrees) ? apiTrees : [])
       .map((rawTree) => normalizeBrowseTreeRecord(rawTree))
-      .filter((tree) => tree.visibility === 'public');
-
-    if (validTrees.length === 0) {
-      return [];
-    }
-
-    const grouped = {};
-    (Array.isArray(apiMemories) ? apiMemories : []).forEach((rawMemory) => {
-      const memory = normalizeBrowseMemoryRecord(rawMemory);
-      if (!memory.treeId) return;
-      if (!grouped[memory.treeId]) grouped[memory.treeId] = [];
-      grouped[memory.treeId].push(memory);
-    });
-
-    return validTrees.map((tree) => {
-      const mems = grouped[tree.id] || [];
-      const sortedMems = [...mems].sort((a, b) =>
-        new Date(a.createdAt || a.timestamp || 0) -
-        new Date(b.createdAt || b.timestamp || 0)
-      );
-
-      const allTags = sortedMems.flatMap((m) => m.emotionTags).filter(Boolean);
-      const uniqueTags = [...new Set(allTags)].slice(0, 3);
-      const timestamps = sortedMems.map((m) => m.timestamp).filter(Boolean);
-      const timeRange = timestamps.length >= 2
-        ? `${timestamps[0]} ~ ${timestamps[timestamps.length - 1]}`
-        : (timestamps[0] || '');
-
-      return {
+      .filter((tree) => tree.visibility === 'public')
+      .map((tree) => ({
         id: tree.id,
         title: tree.title,
         visibility: tree.visibility,
         createdAt: tree.createdAt,
+        updatedAt: tree.updatedAt,
         ownerId: tree.ownerId,
-        memories: sortedMems,
-        memoryCount: sortedMems.length,
-        emotionTags: uniqueTags,
-        timeRange: timeRange || '기록 없음',
-        representativeThumbnail: sortedMems[0]?.thumbnail || '',
-        theme: sortedMems[0]?.artist || 'LoveTree',
-        stage: sortedMems.length === 0
-          ? '새 트리'
-          : (sortedMems.length <= 2 ? '입덕' : (sortedMems.length <= 4 ? '성장' : '최애'))
-      };
-    });
+        memories: [],
+        memoryCount: Number.isFinite(tree.memoryCount) ? tree.memoryCount : 0,
+        emotionTags: [],
+        timeRange: '기록 없음',
+        representativeThumbnail: tree.representativeThumbnail || '',
+        theme: tree.theme || '',
+        stage: tree.stage || estimateStage(tree.memoryCount)
+      }));
   }
 
-  // Expose as LoveTreePublicTreeAdapter
+  function hydrateTreeWithPublicMemories(tree, apiMemories) {
+    const safeTree = tree || {};
+    const treeId = safeTree.id;
+    const mems = (Array.isArray(apiMemories) ? apiMemories : [])
+      .map((rawMemory) => normalizeBrowseMemoryRecord(rawMemory))
+      .filter((memory) => memory.treeId && memory.treeId === treeId)
+      .sort((a, b) =>
+        new Date(a.createdAt || a.timestamp || 0) -
+        new Date(b.createdAt || b.timestamp || 0)
+      );
+
+    const allTags = mems.flatMap((m) => m.emotionTags).filter(Boolean);
+    const uniqueTags = [...new Set(allTags)].slice(0, 3);
+    const timestamps = mems.map((m) => m.timestamp).filter(Boolean);
+    const timeRange = timestamps.length >= 2
+      ? `${timestamps[0]} ~ ${timestamps[timestamps.length - 1]}`
+      : (timestamps[0] || '기록 없음');
+    const representativeThumbnail = mems[0]?.thumbnail || safeTree.representativeThumbnail || '';
+    const theme = mems[0]?.artist || safeTree.theme || 'LoveTree';
+    const memoryCount = Math.max(mems.length, Number(safeTree.memoryCount || 0));
+
+    return {
+      ...safeTree,
+      memories: mems,
+      memoryCount,
+      emotionTags: uniqueTags,
+      timeRange,
+      representativeThumbnail,
+      theme,
+      stage: safeTree.stage || estimateStage(memoryCount)
+    };
+  }
+
+  function buildPublicTreeViewModels(apiTrees, apiMemories) {
+    return buildPublicTreeSummaryModels(apiTrees).map((tree) => hydrateTreeWithPublicMemories(tree, apiMemories));
+  }
+
   window.LoveTreePublicTreeAdapter = {
     unwrapTreeRecord,
     unwrapMemoryRecord,
     getRecordTreeId,
     normalizeBrowseTreeRecord,
     normalizeBrowseMemoryRecord,
+    buildPublicTreeSummaryModels,
+    hydrateTreeWithPublicMemories,
     buildPublicTreeViewModels,
   };
 
-  // Also expose via __LoveBudApiClientInternals for backward compatibility with tests
   if (typeof window !== 'undefined' && window.__LoveBudApiClientInternals) {
     Object.assign(window.__LoveBudApiClientInternals, {
       unwrapTreeRecord,
