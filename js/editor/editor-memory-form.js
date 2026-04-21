@@ -44,14 +44,14 @@ function createEditorMemoryForm(deps) {
         addMemoryForm.style.display = 'block';
         addMemoryForm.style.position = 'absolute';
         addMemoryForm.style.left = '50%';
-        addMemoryForm.style.top = '26px';
+        addMemoryForm.style.top = '32px';
         addMemoryForm.style.transform = 'translateX(-50%)';
-        addMemoryForm.style.width = 'min(560px, calc(100% - 40px))';
-        addMemoryForm.style.maxWidth = '560px';
-        addMemoryForm.style.padding = '24px 24px 22px';
-        addMemoryForm.style.borderRadius = '24px';
+        addMemoryForm.style.width = 'min(620px, calc(100% - 48px))';
+        addMemoryForm.style.maxWidth = '620px';
+        addMemoryForm.style.padding = '28px 28px 24px';
+        addMemoryForm.style.borderRadius = '28px';
         addMemoryForm.style.background = 'linear-gradient(180deg, rgba(255,255,255,0.99), rgba(250,246,244,0.98))';
-        addMemoryForm.style.boxShadow = '0 22px 50px rgba(75,64,57,0.14)';
+        addMemoryForm.style.boxShadow = '0 24px 56px rgba(75,64,57,0.16)';
         addMemoryForm.style.border = '1px solid rgba(144,73,81,0.12)';
         addMemoryForm.style.zIndex = '8';
         addMemoryForm.style.backdropFilter = 'blur(12px)';
@@ -64,19 +64,19 @@ function createEditorMemoryForm(deps) {
         preview.style.alignItems = 'stretch';
         preview.style.gap = '14px';
         preview.style.padding = '14px';
-        preview.style.borderRadius = '16px';
-        preview.style.background = 'var(--surface-container-low, #f5f3f0)';
-        preview.style.border = '1px solid var(--outline-variant, #e0dcd8)';
-        preview.style.marginTop = '12px';
+        preview.style.borderRadius = '18px';
+        preview.style.background = 'linear-gradient(180deg, rgba(245, 241, 238, 0.98), rgba(255,255,255,0.98))';
+        preview.style.border = '1px solid rgba(144,73,81,0.10)';
+        preview.style.marginTop = '8px';
         preview.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
 
         const thumbWrap = preview.querySelector('.memory-link-preview__thumb-wrap');
         if (thumbWrap) {
             thumbWrap.style.position = 'relative';
-            thumbWrap.style.width = '120px';
-            thumbWrap.style.minWidth = '120px';
-            thumbWrap.style.height = '68px';
-            thumbWrap.style.borderRadius = '10px';
+            thumbWrap.style.width = '136px';
+            thumbWrap.style.minWidth = '136px';
+            thumbWrap.style.height = '76px';
+            thumbWrap.style.borderRadius = '12px';
             thumbWrap.style.overflow = 'hidden';
             thumbWrap.style.background = 'var(--surface-container, #ece9e5)';
         }
@@ -105,7 +105,7 @@ function createEditorMemoryForm(deps) {
             body.style.flex = '1';
             body.style.display = 'flex';
             body.style.flexDirection = 'column';
-            body.style.gap = '4px';
+            body.style.gap = '6px';
             body.style.minWidth = '0';
         }
 
@@ -113,8 +113,8 @@ function createEditorMemoryForm(deps) {
         if (badge) {
             badge.style.display = 'inline-flex';
             badge.style.alignItems = 'center';
-            badge.style.padding = '3px 8px';
-            badge.style.borderRadius = '6px';
+            badge.style.padding = '4px 9px';
+            badge.style.borderRadius = '999px';
             badge.style.background = 'rgba(144, 73, 81, 0.1)';
             badge.style.color = 'var(--primary, #904951)';
             badge.style.fontSize = '10px';
@@ -139,7 +139,7 @@ function createEditorMemoryForm(deps) {
         if (hint) {
             hint.style.fontSize = '0.8rem';
             hint.style.color = 'var(--on-surface-variant, #666)';
-            hint.style.lineHeight = '1.5';
+            hint.style.lineHeight = '1.6';
             hint.style.margin = '0';
         }
     }
@@ -166,24 +166,36 @@ function createEditorMemoryForm(deps) {
         if (urlInput) urlInput.value = '';
         if (titleInput) titleInput.value = '';
         if (memoInput) memoInput.value = '';
+        const preview = document.getElementById('memoryLinkPreview');
+        if (preview) preview.classList.add('is-hidden');
         applyFormOpenStyles();
         isFormOpen = true;
 
-        // Determine if this is first moment or next moment
         const memories = getTreeMemories();
         const isFirstMoment = !memories || memories.length === 0;
 
-        // Update form labels based on context
+        const formEyebrow = document.getElementById('addMemoryFormEyebrow');
         const formTitle = document.getElementById('addMemoryFormTitle');
+        const formIntro = document.getElementById('addMemoryFormIntro');
         const urlLabel = document.getElementById('memoryUrlLabel');
         const titleLabel = document.getElementById('memoryTitleLabel');
         const memoLabel = document.getElementById('memoryMemoLabel');
         const confirmBtn = document.getElementById('confirmAddMemory');
 
+        if (formEyebrow) {
+            formEyebrow.textContent = isFirstMoment
+                ? (i18n('editor_add_first_memory') || '첫 순간 심기')
+                : (i18n('editor_add_next_memory') || '새 순간 이어가기');
+        }
         if (formTitle) {
             formTitle.textContent = isFirstMoment
                 ? (i18n('editor_add_first_memory_title') || '이 트리의 첫 순간을 심어볼까요?')
                 : (i18n('editor_add_next_memory_title') || '어떤 순간이 이어졌나요?');
+        }
+        if (formIntro) {
+            formIntro.textContent = isFirstMoment
+                ? (i18n('editor_add_first_memory_intro') || '링크와 짧은 메모를 남기면 이 장면에서 러브트리가 시작돼요.')
+                : (i18n('editor_add_next_memory_intro') || '현재 마음에서 이어진 장면을 붙여 트리를 더 자라게 해보세요.');
         }
         if (urlLabel) {
             urlLabel.textContent = i18n('editor_youtube_link') || 'YouTube 장면 링크';
@@ -201,7 +213,7 @@ function createEditorMemoryForm(deps) {
         }
 
         document.addEventListener('keydown', focusTrap);
-        if (titleInput) titleInput.focus();
+        if (urlInput) urlInput.focus();
 
         escHandler = (e) => {
             if (e.key === 'Escape') {
@@ -216,6 +228,7 @@ function createEditorMemoryForm(deps) {
             if (addMemoryForm.contains(target)) return;
             if (target.closest('#addMemoryBtn')) return;
             if (target.closest('.memory-add-affordance')) return;
+            if (target.closest('#detailEmptyStartBtn')) return;
             hideAddMemoryForm();
         };
 
@@ -223,17 +236,16 @@ function createEditorMemoryForm(deps) {
             document.addEventListener('click', outsideClickHandler, true);
         }, 0);
 
-        // URL input preview handler
         let userHasEditedTitle = false;
         if (titleInput) {
             titleInput.addEventListener('input', function() {
                 userHasEditedTitle = true;
-            });
+            }, { once: true });
         }
 
         const updatePreview = function() {
-            const preview = document.getElementById('memoryLinkPreview');
-            if (!preview) return;
+            const previewInner = document.getElementById('memoryLinkPreview');
+            if (!previewInner) return;
 
             const url = urlInput ? urlInput.value.trim() : '';
             let videoId = '';
@@ -241,7 +253,6 @@ function createEditorMemoryForm(deps) {
             if (window.LoveBudMedia?.extractYouTubeId) {
                 videoId = window.LoveBudMedia.extractYouTubeId(url) || '';
             } else {
-                // Fallback YouTube ID extraction
                 try {
                     if (!url) throw new Error('Empty URL');
                     const parsed = new URL(url.trim());
@@ -264,8 +275,7 @@ function createEditorMemoryForm(deps) {
             }
 
             if (videoId) {
-                // Show preview
-                preview.classList.remove('is-hidden');
+                previewInner.classList.remove('is-hidden');
                 applyPreviewStyles();
 
                 const thumb = document.getElementById('memoryPreviewThumb');
@@ -273,7 +283,6 @@ function createEditorMemoryForm(deps) {
                     thumb.src = `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
                 }
 
-                // Set default title if user hasn't edited it
                 if (!userHasEditedTitle && titleInput) {
                     const defaultTitle = isFirstMoment
                         ? (i18n('editor_default_first_title') || '첫 순간')
@@ -281,12 +290,12 @@ function createEditorMemoryForm(deps) {
                     titleInput.value = defaultTitle;
                 }
             } else {
-                // Hide preview
-                preview.classList.add('is-hidden');
+                previewInner.classList.add('is-hidden');
             }
         };
 
         if (urlInput) {
+            urlInput.removeEventListener('input', updatePreview);
             urlInput.addEventListener('input', updatePreview);
         }
     };
@@ -343,7 +352,6 @@ function createEditorMemoryForm(deps) {
         const today = new Date();
         const dateStr = `${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, '0')}.${String(today.getDate()).padStart(2, '0')}`;
 
-        // Determine default title based on whether this is first moment
         const memories = getTreeMemories();
         const isFirstMoment = !memories || memories.length === 0;
         const defaultTitle = isFirstMoment
