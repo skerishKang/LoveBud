@@ -1,6 +1,6 @@
 /**
  * LoveBud Search Page Orchestrator
- * v20260421-1
+ * v20260421-2
  *
  * Search page orchestration:
  * - Data loading (cache → API → mock fallback)
@@ -65,20 +65,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     const cache = window.LoveBudCache;
     const PUBLIC_TREES_CACHE_KEY = 'public_trees_list';
     const MIN_LOADING_TIME = 400;
-const isMockFallbackEnabled = () =>
-    window.LoveBudRuntimeFlags?.isMockFallbackEnabled
-        ? window.LoveBudRuntimeFlags.isMockFallbackEnabled()
-        : (
-              window.location.hostname === 'localhost' ||
-              window.location.hostname === '127.0.0.1' ||
-              window.location.search.includes('mock=1') ||
-              window.localStorage?.getItem('lovebud_force_mock') === '1'
-          );
+    const isMockFallbackEnabled = () =>
+        window.LoveBudRuntimeFlags?.isMockFallbackEnabled
+            ? window.LoveBudRuntimeFlags.isMockFallbackEnabled()
+            : (
+                  window.location.hostname === 'localhost' ||
+                  window.location.hostname === '127.0.0.1' ||
+                  window.location.search.includes('mock=1') ||
+                  window.localStorage?.getItem('lovebud_force_mock') === '1'
+              );
 
     const startTime = Date.now();
     let allTrees = [];
     let loadError = null;
     let isFromCache = false;
+    let selectedTreeId = null;
 
     // Shallow comparison helper to avoid unnecessary re-renders
     const areTreesEffectivelySame = (prevTrees, nextTrees) => {
@@ -170,19 +171,21 @@ const isMockFallbackEnabled = () =>
         return Adapter.filterTrees(allTrees, currentQuery, currentCategory);
     };
 
+    const getSelectedTree = (filteredTrees) => {
+        if (!Array.isArray(filteredTrees) || filteredTrees.length === 0) return null;
+        const matched = filteredTrees.find(tree => tree.id === selectedTreeId);
+        return matched || filteredTrees[0];
+    };
+
     // ─────────────────────────────────────────────────────────
     // Event Handlers
     // ─────────────────────────────────────────────────────────
 
-    const navigateToTreeDetail = (tree) => {
-        if (!tree?.memories || tree.memories.length === 0) return;
-
-        const basePath = window.LoveBudPath?.getBasePath
-            ? window.LoveBudPath.getBasePath()
-            : (window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/');
-
-        const firstMemory = tree.memories[0];
-        window.location.href = `${basePath}detail.html?id=${firstMemory.id}&tree=${tree.id}&from=browse`;
+    const selectTree = (tree, activeCard) => {
+        if (!tree) return;
+        selectedTreeId = tree.id;
+        markActiveCard(activeCard);
+        showTreePreview(tree);
     };
 
     const showTreePreview = (tree) => {
@@ -193,9 +196,11 @@ const isMockFallbackEnabled = () =>
     const markActiveCard = (activeCard) => {
         resultsList.querySelectorAll('.tree-card.is-active').forEach((card) => {
             card.classList.remove('is-active');
+            card.setAttribute('aria-pressed', 'false');
         });
         if (activeCard) {
             activeCard.classList.add('is-active');
+            activeCard.setAttribute('aria-pressed', 'true');
         }
     };
 
@@ -276,6 +281,11 @@ const isMockFallbackEnabled = () =>
             return;
         }
 
+        const selectedTree = getSelectedTree(filtered);
+        if (selectedTree) {
+            selectedTreeId = selectedTree.id;
+        }
+
         // Render cards (no event handlers passed)
         const html = CardRenderer.renderResults(filtered, {
             isDemo: !apiTreesLoaded && !loadError
@@ -290,21 +300,25 @@ const isMockFallbackEnabled = () =>
             const tree = filtered.find(t => t.id === treeId);
             if (!tree) return;
 
+            card.setAttribute('tabindex', '0');
+            card.setAttribute('role', 'button');
+            card.setAttribute('aria-pressed', tree.id === selectedTreeId ? 'true' : 'false');
+
             card.addEventListener('click', () => {
-                navigateToTreeDetail(tree);
+                selectTree(tree, card);
             });
 
-            card.addEventListener('mouseenter', () => {
-                markActiveCard(card);
-                showTreePreview(tree);
+            card.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    selectTree(tree, card);
+                }
             });
         });
 
-        // Auto-select first tree preview
-        if (filtered.length > 0) {
-            markActiveCard(cards[0]);
-            showTreePreview(filtered[0]);
-        }
+        const activeCard = Array.from(cards).find(card => card.dataset.treeId === selectedTreeId) || cards[0];
+        markActiveCard(activeCard);
+        showTreePreview(selectedTree || filtered[0]);
     };
 
     // ─────────────────────────────────────────────────────────
