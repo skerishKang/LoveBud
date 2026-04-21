@@ -10,7 +10,6 @@
     { "source": "/search.html", "destination": "/pages/search.html" },
     { "source": "/detail.html", "destination": "/pages/detail.html" },
     { "source": "/editor.html", "destination": "/pages/editor.html" },
-    { "source": "/my-trees.html", "destination": "/pages/my-trees.html" },
-    { "source": "/api/:path*", "destination": "https://lovebud.netlify.app/api/:path*" }
+    { "source": "/my-trees.html", "destination": "/pages/my-trees.html" }
   ]
 }
