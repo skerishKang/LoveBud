@@ -1,6 +1,6 @@
 /**
  * LoveBud - My Trees UI Helpers
- * v20260421-2
+ * v20260421-4
  *
  * Tree card rendering and summary UI utilities
  */
@@ -38,6 +38,12 @@
     var count = tree.memoryCount || tree.memory_count || 0;
     count = Number(count);
     return Number.isFinite(count) ? count : 0;
+  }
+
+  function getVisibilityActionLabel(tree, i18n) {
+    return tree && tree.visibility === 'public'
+      ? (i18n('visibility_make_private') || '비공개로 전환')
+      : (i18n('visibility_make_public') || '공개로 전환');
   }
 
   function getTreeMoodPalette(tree) {
@@ -162,6 +168,7 @@
     var openBtn = document.getElementById('manageOpenBtn');
     var renameBtn = document.getElementById('manageRenameBtn');
     var deleteBtn = document.getElementById('manageDeleteBtn');
+    var visibilityBtn = document.getElementById('manageVisibilityBtn');
 
     if (totalEl) totalEl.textContent = total;
     if (publicEl) publicEl.textContent = publicCount;
@@ -187,9 +194,15 @@
       }
     }
 
-    [openBtn, renameBtn, deleteBtn].forEach(function(btn) {
+    [openBtn, renameBtn, deleteBtn, visibilityBtn].forEach(function(btn) {
       if (btn) btn.disabled = !selectedTree;
     });
+
+    if (visibilityBtn) {
+      visibilityBtn.textContent = selectedTree
+        ? getVisibilityActionLabel(selectedTree, i18n)
+        : (i18n('myTrees.manage_visibility') || '공개 설정');
+    }
 
     if (openBtn) {
       openBtn.onclick = function() {
@@ -214,6 +227,13 @@
       };
     }
 
+    if (visibilityBtn) {
+      visibilityBtn.onclick = function() {
+        if (!selectedTree || typeof options?.onToggleVisibility !== 'function') return;
+        options.onToggleVisibility(selectedTree.id, selectedTree.visibility);
+      };
+    }
+
     summaryBar.style.display = 'flex';
 
     if (options && typeof options.setLastTreesData === 'function') {
@@ -228,6 +248,7 @@
     var normalizeTree = options && options.normalizeTree;
     var onRename = options && options.onRename;
     var onDelete = options && options.onDelete;
+    var onToggleVisibility = options && options.onToggleVisibility;
     var onNavigate = options && options.onNavigate;
     var onSelect = options && options.onSelect;
     var isSelected = options && options.isSelected;
@@ -286,6 +307,10 @@
         '<span class="material-symbols-outlined" style="font-size:18px;color:#666;">more_vert</span>',
       '</button>',
       '<div class="tree-card-dropdown" id="' + dropdownId + '">',
+        '<div class="dropdown-item visibility" data-action="visibility">',
+          '<span class="material-symbols-outlined" style="font-size:16px;">' + (normalizedTree.visibility === 'public' ? 'lock' : 'public') + '</span>',
+          getVisibilityActionLabel(normalizedTree, i18n),
+        '</div>',
         '<div class="dropdown-item rename" data-action="rename">',
           '<span class="material-symbols-outlined" style="font-size:16px;">edit</span>',
           i18n('rename') || '이름 변경',
@@ -343,7 +368,9 @@
             }
 
             var action = this.getAttribute('data-action');
-            if (action === 'rename' && typeof onRename === 'function') {
+            if (action === 'visibility' && typeof onToggleVisibility === 'function') {
+              onToggleVisibility(normalizedTree.id, normalizedTree.visibility);
+            } else if (action === 'rename' && typeof onRename === 'function') {
               onRename(normalizedTree.id, title);
             } else if (action === 'delete' && typeof onDelete === 'function') {
               onDelete(normalizedTree.id, title);
