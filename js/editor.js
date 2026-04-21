@@ -243,6 +243,7 @@ document.addEventListener('DOMContentLoaded', () => {
             el.setAttribute('placeholder', safeI18nText(i18n, key, fallback));
         };
 
+        setText('backToMyTreesLabel', 'editor_back_to_my_trees', '내 러브트리로 돌아가기');
         setText('editorFlowHeading', 'sidebar_flow_heading', '트리를 키워가요');
         setText('editorFlowLead', 'sidebar_flow_lead', '지금 마음이 머문 순간을 하나씩 이어 붙이며 나만의 흐름을 키워보세요.');
         setText('focusSelectedBtnLabel', 'sidebar_focus_selected', '선택한 순간 보기');
@@ -302,6 +303,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const prepareEditorShell = () => {
         applyEditorShellCopy();
+        const backToMyTreesLink = document.getElementById('backToMyTreesLink');
+        if (backToMyTreesLink) {
+            backToMyTreesLink.setAttribute('href', getMyTreesHref());
+            backToMyTreesLink.setAttribute('aria-label', safeI18nText(i18n, 'editor_back_to_my_trees', '내 러브트리로 돌아가기'));
+        }
         const detailEmptyState = document.getElementById('detailEmptyState');
         const detailViewMode = document.getElementById('detailViewMode');
         const detailEditMode = document.getElementById('detailEditMode');
