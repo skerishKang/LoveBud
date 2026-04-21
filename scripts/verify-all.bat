@@ -1,4 +1,12 @@
 @echo off
 cd /d G:\다른 컴퓨터\내 컴퓨터\LoveBud
-set NETLIFY_DATABASE_URL=postgresql://neondb_owner:npg_5aH9oiPjWIyJ@ep-little-poetry-a1vjyiim-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+
+if "%NETLIFY_DATABASE_URL%"=="" if "%DATABASE_URL%"=="" (
+  echo [ERROR] NETLIFY_DATABASE_URL 또는 DATABASE_URL 환경변수가 필요합니다.
+  echo [HINT] set NETLIFY_DATABASE_URL=postgresql://...
+  exit /b 1
+)
+
+if "%NETLIFY_DATABASE_URL%"=="" set NETLIFY_DATABASE_URL=%DATABASE_URL%
+
 node scripts\verify-db.js
