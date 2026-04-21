@@ -158,7 +158,7 @@ web_app = FastAPI(
 def _allowed_origins() -> list[str]:
     raw = os.getenv(
         "CORS_ALLOWED_ORIGINS",
-        "https://lovebud.netlify.app,https://lovebud.vercel.app",
+        "https://lovebud.vercel.app,https://lovebud.netlify.app",
     )
     return [value.strip() for value in raw.split(",") if value.strip()]
 
