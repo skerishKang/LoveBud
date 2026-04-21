@@ -2,18 +2,19 @@ const { Pool } = require('pg');
 const fs = require('fs');
 const path = require('path');
 
-// .env 파일 로드
+// .env 파일 로드 (선택적)
 const envPath = path.resolve(__dirname, '.env');
-let env = {};
+let env = process.env;
 try {
-  const content = fs.readFileSync(envPath, 'utf-8');
-  content.split('\n').forEach(line => {
-    const m = line.match(/^([A-Za-z_]+)=(.+)$/);
-    if (m) env[m[1]] = m[2].trim();
-  });
+  if (fs.existsSync(envPath)) {
+    const content = fs.readFileSync(envPath, 'utf-8');
+    content.split('\n').forEach(line => {
+      const m = line.match(/^([A-Za-z_]+)=(.+)$/);
+      if (m) env[m[1]] = m[2].trim();
+    });
+  }
 } catch (e) {
-  console.error('❌ .env 파일을 읽을 수 없습니다:', e.message);
-  process.exit(1);
+  console.warn('⚠️ .env 파일을 읽을 수 없습니다 (환경변수 직접 사용):', e.message);
 }
 
 const connStr = env.NETLIFY_DATABASE_URL || env.DATABASE_URL;
