@@ -1,6 +1,6 @@
 /**
  * LoveBud - My Trees Actions
- * v20260422-1
+ * v20260422-2
  *
  * Responsibilities:
  * - renameTree
@@ -177,6 +177,18 @@
     }
 
     return new Promise(function(resolve) {
+      var defaultVisibility = 'private';
+      if (options && typeof options.getDefaultVisibility === 'function') {
+        try {
+          defaultVisibility = options.getDefaultVisibility();
+        } catch (e) {
+          defaultVisibility = 'private';
+        }
+      }
+      if (defaultVisibility !== 'public' && defaultVisibility !== 'private') {
+        defaultVisibility = 'private';
+      }
+
       modal.resolve = resolve;
       modal.lastFocusedEl = document.activeElement;
       modal.backdrop.classList.add('show');
@@ -184,7 +196,7 @@
       document.body.style.overflow = 'hidden';
       modal.titleInput.value = i18n('default_tree_title') || '나의 첫 러브트리';
       modal.visibilityInputs.forEach(function(input) {
-        input.checked = input.value === 'private';
+        input.checked = input.value === defaultVisibility;
       });
       modal.setError('');
       modal.setSubmitting(false, i18n);
@@ -289,7 +301,7 @@
       console.log('[my-trees-actions] Test public mode: defaulting to public');
       return 'public';
     }
-    return 'public';
+    return 'private';
   }
 
   async function createNewTree(options) {
