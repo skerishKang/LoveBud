@@ -1,6 +1,6 @@
 /**
  * LoveBud Search Card Renderer
- * v20260420-1
+ * v20260421-2
  * 
  * Rendering layer: tree cards, empty states.
  * DOM-agnostic - returns HTML strings.
@@ -128,7 +128,8 @@
      */
      function renderEmotionTags(tags) {
          if (!tags || !tags.length) return '';
-         return tags.slice(0, 3).map(tag =>
+         const filteredTags = tags.filter(t => t && t !== '기록' && t !== 'tag_record');
+         return filteredTags.slice(0, 3).map(tag =>
              `<span class="emotion-tag" style="background:var(--primary-container);color:var(--on-primary-container);font-weight:700;font-size:12px;padding:6px 12px;">#${escapeHtml(tag)}</span>`
          ).join('');
      }

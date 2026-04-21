@@ -1,6 +1,6 @@
 /**
  * LoveBud Search Preview Renderer
- * v20260420-5
+ * v20260421-2
  * 
  * Rendering layer: preview sidebar panel.
  * DOM-agnostic - updates passed DOM elements.
@@ -84,7 +84,8 @@
 
     function renderEmotionTags(tags) {
         if (!tags || !tags.length) return '';
-        return tags.slice(0, 4).map(tag =>
+        const filteredTags = tags.filter(t => t && t !== '기록' && t !== 'tag_record');
+        return filteredTags.slice(0, 4).map(tag =>
             `<span style="padding:8px 14px;background:var(--primary-container);border-radius:99px;font-size:13px;font-weight:700;color:var(--on-primary-container);border:1px solid var(--outline-variant);">#${escapeHtml(tag)}</span>`
         ).join('');
     }

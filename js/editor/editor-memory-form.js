@@ -143,7 +143,7 @@ function createEditorMemoryForm(deps) {
             timestamp: dateStr,
             sourceUrl: embedUrl,
             sourceType: 'youtube',
-            emotionTags: [i18n('tag_record') || '기록'],
+            emotionTags: [],
             parentId: resolveParentIdForCreate(getSelectedNodeId(), getCanonicalRootId()),
             thumbnail: thumbnailUrl,
             artist: '',

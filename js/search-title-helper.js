@@ -1,6 +1,6 @@
 /**
  * LoveBud Search Title Helper
- * v20260420-1
+ * v20260421-2
  * 
  * Shared helper for browse/search title formatting.
  * Used by: search-card-renderer.js, search-preview-renderer.js
@@ -28,9 +28,9 @@
 
     function getBrowseDisplayTitle(tree) {
         const rawTitle = String(tree?.title || '').trim();
-        const firstTagRaw = Array.isArray(tree?.emotionTags) && tree.emotionTags.length
-            ? String(tree.emotionTags[0] || '').trim()
-            : '';
+        const filteredTags = (Array.isArray(tree?.emotionTags) ? tree.emotionTags : [])
+            .filter(t => t && t !== '기록' && t !== 'tag_record');
+        const firstTagRaw = filteredTags.length > 0 ? filteredTags[0].trim() : '';
         const themeRaw = getThemeLabel(tree);
         const createdDate = formatShortDate(tree?.createdAt || '');
         const isDefaultTitle = rawTitle === '새 러브트리' || rawTitle === '나의 첫 러브트리';
