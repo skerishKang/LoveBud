@@ -1,6 +1,6 @@
 /**
  * LoveBud Search Page Orchestrator
- * v20260422-2
+ * v20260422-3
  *
  * Search page orchestration:
  * - Fast list-first loading for public trees
@@ -107,6 +107,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     const renderPreviewLoadingState = (tree) => {
+        if (typeof PreviewRenderer.renderLoadingPreview === 'function') {
+            PreviewRenderer.renderLoadingPreview(tree);
+            return;
+        }
         if (previewTitle) {
             previewTitle.textContent = tree?.title || '러브트리';
         }
@@ -124,9 +128,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderPreviewLoadingState(tree);
 
         try {
-            const hydratedTree = previewCache.get(tree.id) || await window.LoveTreeBaseApiFetch.apiFetch(`/community/memories?treeId=${encodeURIComponent(tree.id)}`).then((memories) => {
-                return window.LoveTreePublicTreeAdapter.hydrateTreeWithPublicMemories(tree, memories);
-            });
+            const hydratedTree = previewCache.get(tree.id) || await window.apiClient.getPublicTreePreview(tree);
             previewCache.set(tree.id, hydratedTree);
             allTrees = allTrees.map(item => item.id === hydratedTree.id ? hydratedTree : item);
 
