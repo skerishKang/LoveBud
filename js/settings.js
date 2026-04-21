@@ -1,6 +1,6 @@
 /**
  * LoveBud - Settings Module
- * v20260416-1
+ * v20260421-2
  * 
  * localStorage 기반 설정 관리
  * - 기본 공개 범위 (defaultVisibility)
@@ -36,9 +36,65 @@
     }
   }
 
+  // i18n 텍스트 적용
+  function applyI18nText() {
+    var t = window.t || function(key) { return key; };
+
+    function safeText(key, fallback) {
+      var translated = t(key);
+      return translated && translated !== key ? translated : fallback;
+    }
+    // 뒤로 가기 링크
+    var backLinkText = document.getElementById('settingsBackLinkText');
+    if (backLinkText) {
+      backLinkText.textContent = safeText('settings.backToMyTrees', '내 러브트리로 돌아가기');
+    }
+    
+    // 제목
+    var titleEl = document.querySelector('.settings-card h1');
+    if (titleEl) {
+      titleEl.textContent = safeText('settings.title', '설정');
+    }
+    
+    // 부제목
+    var subtitleEl = document.querySelector('.settings-subtitle');
+    if (subtitleEl) {
+      subtitleEl.textContent = safeText('settings.subtitle', '러브트리를 어떻게 공개할지 정합니다');
+    }
+    
+    // 기본 공개 범위 제목
+    var visibilityTitleEl = document.querySelector('.settings-section-title');
+    if (visibilityTitleEl) {
+      visibilityTitleEl.innerHTML = '<span class="material-symbols-outlined">visibility</span>' + (safeText('settings.visibilityTitle', '기본 공개 범위'));
+    }
+    
+    // 비공개 옵션
+    var privateLabel = document.querySelector('#radio-private .radio-label');
+    var privateDesc = document.querySelector('#radio-private .radio-description');
+    if (privateLabel) {
+      privateLabel.textContent = safeText('settings.private', '비공개');
+    }
+    if (privateDesc) {
+      privateDesc.textContent = safeText('settings.privateDesc', '새로 만드는 러브트리에 기본으로 적용돼요.');
+    }
+    
+    // 공개 옵션
+    var publicLabel = document.querySelector('#radio-public .radio-label');
+    var publicDesc = document.querySelector('#radio-public .radio-description');
+    if (publicLabel) {
+      publicLabel.textContent = safeText('settings.public', '공개');
+    }
+    if (publicDesc) {
+      publicDesc.textContent = safeText('settings.publicDesc', '다른 팬들과 내 러브트리를 공유할 수 있어요');
+    }
+  }
+
   // UI 초기화
   function initSettings() {
     var settings = loadSettings();
+    
+    // i18n 텍스트 적용 (renderSharedHeader 후 호출되어야 하므로 지연)
+    setTimeout(applyI18nText, 0);
     
     // 라디오 버튼 상태 설정
     var radioPrivate = document.querySelector('#radio-private input[value="private"]');

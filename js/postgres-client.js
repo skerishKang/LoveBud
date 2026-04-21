@@ -260,14 +260,14 @@ window.apiClient = apiClient;
 
 if (typeof window !== 'undefined') {
 window.__LoveBudApiClientInternals = {
-endpointLikelyRequiresAuth: AuthPolicy.endpointLikelyRequiresAuth,
-getAuthWaitAttempts: AuthPolicy.getAuthWaitAttempts,
-hasConfirmedAuthSession: AuthPolicy.hasConfirmedAuthSession,
-unwrapTreeRecord: PublicTreeAdapter.unwrapTreeRecord,
-unwrapMemoryRecord: PublicTreeAdapter.unwrapMemoryRecord,
-getRecordTreeId: PublicTreeAdapter.getRecordTreeId,
-normalizeBrowseTreeRecord: PublicTreeAdapter.normalizeBrowseTreeRecord,
-normalizeBrowseMemoryRecord: PublicTreeAdapter.normalizeBrowseMemoryRecord,
+endpointLikelyRequiresAuth: AuthPolicy?.endpointLikelyRequiresAuth,
+getAuthWaitAttempts: AuthPolicy?.getAuthWaitAttempts,
+hasConfirmedAuthSession: AuthPolicy?.hasConfirmedAuthSession,
+unwrapTreeRecord: PublicTreeAdapter?.unwrapTreeRecord,
+unwrapMemoryRecord: PublicTreeAdapter?.unwrapMemoryRecord,
+getRecordTreeId: PublicTreeAdapter?.getRecordTreeId,
+normalizeBrowseTreeRecord: PublicTreeAdapter?.normalizeBrowseTreeRecord,
+normalizeBrowseMemoryRecord: PublicTreeAdapter?.normalizeBrowseMemoryRecord,
 };
 }
 

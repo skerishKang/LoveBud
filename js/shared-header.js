@@ -108,13 +108,21 @@
         if (!cachedUser) return '';
         var displayName = cachedUser.displayName || cachedUser.email || 'User';
         var initial = displayName.charAt(0).toUpperCase();
+        
+        // 현재 페이지가 설정 페이지면 내 트리로 링크, 아니면 설정으로 링크
+        var currentPage = getCurrentPage();
+        var avatarHref = currentPage === 'settings.html' 
+            ? (getContextType() === 'root' ? 'pages/my-trees.html' : './my-trees.html')
+            : (getContextType() === 'root' ? 'pages/settings.html' : './settings.html');
+        var avatarLabel = currentPage === 'settings.html' ? '내 러브트리로 돌아가기' : '설정 열기';
+        
         return [
-            '<div style="display:flex;align-items:center;gap:8px;">',
+            '<a href="' + avatarHref + '" title="' + avatarLabel + '" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:inherit;cursor:pointer;">',
                 '<div style="width:32px;height:32px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;color:white;font-size:14px;font-weight:500;">',
                     initial,
                 '</div>',
                 '<span style="font-size:14px;color:var(--on-surface);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + displayName + '</span>',
-            '</div>'
+            '</a>'
         ].join('');
     }
 

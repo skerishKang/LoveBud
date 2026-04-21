@@ -1,6 +1,6 @@
 /**
  * LoveBud Search Card Renderer
- * v20260421-2
+ * v20260421-3
  * 
  * Rendering layer: tree cards, empty states.
  * DOM-agnostic - returns HTML strings.
@@ -163,9 +163,33 @@
 
      function renderCardFooterCta(text) {
          return `
-             <div style="font-size:13px;color:var(--on-surface-variant);font-style:italic;padding-top:12px;border-top:1px solid var(--outline-variant);display:flex;align-items:center;gap:6px;">
+             <div style="font-size:13px;color:var(--primary);font-weight:800;padding-top:14px;border-top:1px solid var(--outline-variant);display:flex;align-items:center;gap:6px;">
                  <span class="material-symbols-outlined" style="font-size:16px;color:var(--primary);">play_circle</span>
                  ${escapeHtml(text)}
+             </div>
+         `;
+     }
+
+     function renderRepresentativeMedia(tree, firstMem, isFeatured) {
+         const mediaUrl = sanitizeUrl(
+             firstMem?.thumbnail ||
+             tree.representativeThumbnail ||
+             tree.thumbnail ||
+             ''
+         );
+         const firstMoment = escapeHtml(firstMem?.title || '첫 순간');
+         const label = isFeatured ? '먼저 감상할 공개 러브트리' : '이 트리의 시작 장면';
+         const count = Number(tree.memoryCount || 0);
+
+         return `
+             <div class="tree-card-media" aria-label="${firstMoment}">
+                 ${mediaUrl
+                     ? `<img src="${mediaUrl}" alt="${firstMoment}" loading="lazy">`
+                     : `<div class="tree-card-media-fallback">${escapeHtml(getTreeIcon(tree.stage))}</div>`}
+                 <div class="tree-card-media-label">
+                     <span><span class="material-symbols-outlined" style="font-size:15px;">auto_stories</span>${escapeHtml(label)}</span>
+                     <span>${count}개의 순간</span>
+                 </div>
              </div>
          `;
      }
@@ -190,6 +214,7 @@
          const firstMem = tree.memories[0];
         const lastMem = tree.memories[tree.memories.length - 1];
         const titleHelper = getSearchTitleHelper();
+        const isFeatured = index === 0;
         
         // Clean titles
         const firstMomentRaw = titleHelper?.cleanMomentTitle
@@ -237,8 +262,19 @@
          // Default click handler (navigate to first memory)
          const cardId = `tree-card-${safeTreeId}`;
          
+         const contextLabel = isFeatured ? '오늘 먼저 열어볼 트리' : (tree.memoryCount > 1 ? '이어진 기억이 있는 트리' : '첫 순간이 남은 트리');
+         const startMomentLabel = themeLabel
+             ? `${themeLabel}에서 시작된 마음`
+             : `${firstMomentRaw || '첫 순간'}에서 시작된 마음`;
+
          let html = `
-             <div class="tree-card" id="${cardId}" data-tree-id="${safeTreeId}" style="animation-delay: ${index * 0.05}s;">
+             <div class="tree-card ${isFeatured ? 'tree-card-featured' : ''}" id="${cardId}" data-tree-id="${safeTreeId}" style="animation-delay: ${index * 0.05}s;">
+                 ${renderRepresentativeMedia(tree, firstMem, isFeatured)}
+                 <div class="tree-card-body">
+                 <div class="tree-context-pill">
+                     <span class="material-symbols-outlined" style="font-size:15px;">local_florist</span>
+                     ${escapeHtml(contextLabel)}
+                 </div>
                  <!-- 트리 헤더: 제목 + 단계 아이콘 -->
                  <div class="tree-header" style="margin-bottom:16px;">
                      <div class="tree-icon" title="${safeStage} 단계" style="width:48px;height:48px;border-radius:12px;font-size:24px;">${getTreeIcon(tree.stage)}</div>
@@ -247,10 +283,13 @@
                         ${renderCardMetaRow(tree.memoryCount, tree.timeRange, createdDate)}
                     </div>
                  </div>
+                 <div style="font-size:13px;color:var(--on-surface-variant);line-height:1.55;margin:-6px 0 14px;">
+                     ${escapeHtml(startMomentLabel)}
+                 </div>
                  
                  <!-- 감정 경로 미리보기 (시각적 중심) -->
-                 <div class="tree-path-section" style="background:var(--surface-container-low);border-radius:1rem;padding:16px;margin-bottom:16px;">
-                     ${renderCardSectionHeading('route', '감정 경로')}
+                 <div class="tree-path-section" style="background:var(--surface-container-low);border-radius:1rem;padding:16px;margin-bottom:16px;border:1px solid rgba(144,73,81,0.06);">
+                     ${renderCardSectionHeading('route', '이 트리의 감정 경로')}
                      <div style="font-size:14px;line-height:1.5;color:var(--on-surface);">${pathDesc}</div>
                      ${renderPathPreview(tree.memories)}
                  </div>
@@ -260,6 +299,7 @@
                  
                  <!-- 감상 유도 문구 -->
                  ${renderCardFooterCta('첫 순간부터 감상하기')}
+                 </div>
              </div>
          `;
 
@@ -404,5 +444,5 @@
         getBasePath: getBasePath
     };
 
-     console.log('[LoveBudSearchCardRenderer] Search card renderer loaded v20260421-2');
+     console.log('[LoveBudSearchCardRenderer] Search card renderer loaded v20260421-3');
  })();

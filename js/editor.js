@@ -249,9 +249,9 @@ document.addEventListener('DOMContentLoaded', () => {
         setText('recenterCanvasBtnLabel', 'sidebar_recenter_tree', '트리 한눈에 보기');
         setText('addMemoryEyebrow', 'editor_add_memory_eyebrow', '다음 순간 심기');
         setText('addMemoryIntro', 'editor_add_memory_intro', '지금 선택한 순간 다음에 새로운 장면을 이어 심어 보세요. 첫 순간이라면 여기서 러브트리가 시작됩니다.');
-        setText('addMemoryBtnLabel', 'editor_add_memory', '새 순간 이어가기');
+        // CTA text will be set dynamically after tree loads based on memory count
         setText('saveStatusText', 'save_saved', '저장됨');
-        setText('detailMoreBtn', 'more', '더보기');
+        setText('detailMoreBtn', 'editor_open_detail', '상세로 보기');
         setText('addMemoryFormTitle', 'editor_new_memory', '어떤 순간이 이어졌나요?');
         setText('memoryUrlLabel', 'editor_youtube_link', 'YouTube 장면 링크');
         setText('memoryTitleLabel', 'editor_memory_title', '순간 제목');
@@ -442,6 +442,54 @@ document.addEventListener('DOMContentLoaded', () => {
             if (currentEditingMemory) updateDetailPanel(currentEditingMemory);
         };
 
+        const updateSelectedMemoryFields = async (updates) => {
+            if (!selectedNodeId) return false;
+            const allowedUpdates = {};
+            if (Object.prototype.hasOwnProperty.call(updates || {}, 'title')) allowedUpdates.title = updates.title;
+            if (Object.prototype.hasOwnProperty.call(updates || {}, 'memo')) allowedUpdates.memo = updates.memo;
+            if (Object.keys(allowedUpdates).length === 0) return false;
+
+            const memories = window.currentTreeMemories || [];
+            const idx = memories.findIndex(m => m.id === selectedNodeId);
+            if (idx === -1) return false;
+
+            if (window.apiClient && typeof window.apiClient.updateMemory === 'function' && !isLocalSaveMode) {
+                updateSaveStatus('saving', i18n('save_saving'));
+                try {
+                    await window.apiClient.updateMemory(selectedNodeId, allowedUpdates);
+                } catch (error) {
+                    console.error('[editor] Failed to update selected memory:', error);
+                    updateSaveStatus('failed', i18n('save_failed'));
+                    return false;
+                }
+            }
+
+            if (Object.prototype.hasOwnProperty.call(allowedUpdates, 'title')) memories[idx].title = allowedUpdates.title;
+            if (Object.prototype.hasOwnProperty.call(allowedUpdates, 'memo')) memories[idx].memo = allowedUpdates.memo;
+
+            if (window.currentTreeData && window.currentTreeData.memories) {
+                const dataIdx = window.currentTreeData.memories.findIndex(m => m.id === selectedNodeId);
+                if (dataIdx !== -1) {
+                    if (Object.prototype.hasOwnProperty.call(allowedUpdates, 'title')) window.currentTreeData.memories[dataIdx].title = allowedUpdates.title;
+                    if (Object.prototype.hasOwnProperty.call(allowedUpdates, 'memo')) window.currentTreeData.memories[dataIdx].memo = allowedUpdates.memo;
+                }
+            }
+
+            if (window.setCachedMemories && treeId) {
+                window.setCachedMemories(treeId, memories);
+            }
+
+            if (currentEditingMemory && currentEditingMemory.id === selectedNodeId) {
+                if (Object.prototype.hasOwnProperty.call(allowedUpdates, 'title')) currentEditingMemory.title = allowedUpdates.title;
+                if (Object.prototype.hasOwnProperty.call(allowedUpdates, 'memo')) currentEditingMemory.memo = allowedUpdates.memo;
+            }
+
+            if (typeof initCanvas === 'function') initCanvas();
+            if (typeof updateSidebarStatus === 'function') updateSidebarStatus();
+            updateSaveStatus('saved', i18n('save_saved'));
+            return true;
+        };
+
         const detailUI = window.createEditorDetailUI({
             detailPanel,
             i18n,
@@ -459,7 +507,8 @@ document.addEventListener('DOMContentLoaded', () => {
             showToast,
             updateTreeVisibility,
             openCurrentMomentDetail,
-            focusSelectedMoment
+            focusSelectedMoment,
+            updateSelectedMemoryFields
         });
 
         const { setDetailEmptyState, updateFocusSelectedBtn, updateSidebarStatus, updateDetailPanel } = detailUI;
