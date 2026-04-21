@@ -2,6 +2,7 @@
 
 Object.assign(window.i18nEditor, {
     more: { ko: '상세로 보기', en: 'View details' },
+    editor_back_to_my_trees: { ko: '내 러브트리로 돌아가기', en: 'Back to my LoveTrees' },
     editor_add_memory: { ko: '새 순간 이어가기', en: 'Plant the next moment' },
     editor_add_first_memory: { ko: '첫 순간 심기', en: 'Plant first moment' },
     editor_add_next_memory: { ko: '새 순간 이어가기', en: 'Add next moment' },
