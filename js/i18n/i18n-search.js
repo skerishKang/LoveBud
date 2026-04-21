@@ -15,12 +15,12 @@
       en: 'Browse Public LoveTrees'
     },
     'search.subtitle': {
-      ko: '다른 팬이 남긴 첫 순간과 감정의 흐름을 조용히 따라가 보세요.',
-      en: 'Quietly follow the first moments and emotional paths shared by other fans.'
+      ko: '다른 팬이 남긴 순간과 흐름을 따라가 보세요.',
+      en: 'Follow the moments and paths shared by other fans.'
     },
     'search.intentNote': {
-      ko: '목록을 고르는 순간, 오른쪽에서 그 트리의 감정 경로가 먼저 펼쳐집니다.',
-      en: 'Hover over a tree and its emotional path opens first on the right.'
+      ko: '트리를 고르면 감상 허브가 바로 열립니다.',
+      en: 'Choose a tree to open the viewing hub.'
     },
 
     // 미리보기
@@ -33,56 +33,56 @@
       en: 'Selected Tree'
     },
     'search.previewKicker': {
-      ko: '카드를 스치면 이곳에서 시작 순간과 이어진 감정이 먼저 열립니다.',
-      en: 'Hover over a card to open its starting moment and emotional path here.'
+      ko: '카드를 고르면 이곳에서 바로 감상할 수 있어요.',
+      en: 'Choose a card to open it here.'
     },
     'search.previewPlaceholder': {
       ko: '트리를 골라 감상하기',
       en: 'Choose a tree to view'
     },
     'search.previewDescriptionPlaceholder': {
-      ko: '카드를 고르면 대표 순간과 감정 경로를 먼저 열어볼 수 있어요.',
-      en: 'Choose a card to open its featured moment and emotional path first.'
+      ko: '대표 순간과 흐름이 이곳에 열립니다.',
+      en: 'Its featured moment and flow will open here.'
     },
     'search.previewEmptyLead': {
-      ko: '왼쪽 목록에서 공개 러브트리를 스치면',
-      en: 'Hover over a public LoveTree on the left'
+      ko: '트리를 고르면',
+      en: 'Choose a tree'
     },
     'search.previewEmptyBody': {
-      ko: '시작 순간과 이어진 감정이 이곳에 먼저 펼쳐집니다.',
-      en: 'and its starting moment and emotional path will open here.'
+      ko: '대표 순간과 흐름이 이곳에 열립니다.',
+      en: 'and its featured moment and path will open here.'
     },
     'search.previewNoMomentTitle': {
       ko: '아직 대표 순간이 없어요.',
       en: 'There is no featured moment yet.'
     },
     'search.previewNoMomentBody': {
-      ko: '첫 입덕 순간이 기록되면 여기에서 바로 미리 볼 수 있어요.',
-      en: 'Once the first fandom moment is recorded, you will be able to preview it here.'
+      ko: '첫 순간이 기록되면 여기서 볼 수 있어요.',
+      en: 'Once the first moment is recorded, you can view it here.'
     },
     'search.previewStartFromFirstMoment': {
       ko: '첫 순간부터 감상하기',
       en: 'Start from the first moment'
     },
     'search.previewTimelineHeading': {
-      ko: '이 마음은 어디서 시작됐을까요?',
-      en: 'Where did this feeling begin?'
+      ko: '어디서 시작됐을까요?',
+      en: 'Where did it begin?'
     },
     'search.previewTimelineEmpty': {
-      ko: '아직 기록된 순간이 없어 감정 경로가 비어 있어요.',
-      en: 'No moments have been recorded yet, so the emotional path is still empty.'
+      ko: '아직 기록된 순간이 없어요.',
+      en: 'No moments have been recorded yet.'
     },
     'search.previewTimelineEmptyBody': {
-      ko: '첫 순간이 추가되면 이 패널에서 흐름을 바로 미리 볼 수 있어요.',
-      en: 'Once the first moment is added, you will be able to preview the flow in this panel.'
+      ko: '첫 순간이 추가되면 이곳에 흐름이 보여요.',
+      en: 'Once the first moment is added, the flow will appear here.'
     },
     'search.previewNoRecordsYet': {
       ko: '아직 기록은 0개',
       en: 'There are still 0 records'
     },
     'search.previewNoRecordsFollowup': {
-      ko: '다음 순간이 쌓이면 감정 경로가 여기서 채워집니다.',
-      en: 'As new moments are added, the emotional path will fill in here.'
+      ko: '순간이 쌓이면 흐름이 채워집니다.',
+      en: 'As moments are added, the path will fill in.'
     },
     'search.previewNoRecordsLine': {
       ko: '{countLabel}지만, {followup}',
@@ -93,8 +93,8 @@
       en: 'This is a newly started public tree.'
     },
     'search.previewJourneyCta': {
-      ko: '카드를 열어 감정 경로를 따라가보세요',
-      en: 'Open the card to follow the emotional path.'
+      ko: '카드를 열어 감상해보세요',
+      en: 'Open the card to follow the path.'
     },
     'search.previewMomentCountSuffix': {
       ko: '개 순간',
