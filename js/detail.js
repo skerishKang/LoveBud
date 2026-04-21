@@ -278,6 +278,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
+    const setMetaPillVisibility = (valueEl, value) => {
+        if (!valueEl) return;
+        const pill = valueEl.closest('.detail-meta-pill');
+        const hasValue = typeof value === 'string' ? value.trim().length > 0 : !!value;
+        if (pill) pill.style.display = hasValue ? '' : 'none';
+        valueEl.style.display = hasValue ? '' : 'none';
+        if (hasValue) valueEl.textContent = value;
+    };
+
     const renderMemoryBase = (memory) => {
         if (videoMain) {
             const normalizedVideo = normalizeVideoSourceUrl(memory.sourceUrl || memory.videoUrl || memory.originalUrl || '');
@@ -309,23 +318,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         if (memoryTitle) memoryTitle.textContent = memory.title || tText('tree_context_moment', '순간 상세');
-        if (detailArtist) {
-            if (memory.artist) {
-              detailArtist.textContent = memory.artist;
-              detailArtist.style.display = '';
-            } else {
-              detailArtist.style.display = 'none';
-            }
-        }
-        if (detailDate) {
-          const dateText = (memory.timestamp || '') + (memory.source ? ' · ' + memory.source : '');
-          if (dateText.trim()) {
-            detailDate.textContent = dateText;
-            detailDate.style.display = '';
-          } else {
-            detailDate.style.display = 'none';
-          }
-        }
+        setMetaPillVisibility(detailArtist, memory.artist || '');
+        const dateText = (memory.timestamp || '') + (memory.source ? ' · ' + memory.source : '');
+        setMetaPillVisibility(detailDate, dateText);
         if (detailSubtitle) detailSubtitle.textContent = tText('current_moment_kicker', '지금 감상 중인 순간');
 
         if (tagsContainer) {
@@ -472,6 +467,33 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     };
 
+    const renderMissingMemoryState = () => {
+        const detailTopbar = document.querySelector('.detail-topbar');
+        const detailHero = document.getElementById('detailHero');
+        const mainLayout = document.querySelector('.detail-layout');
+        const contentSlot = document.querySelector('.detail-main') || document.querySelector('.detail-content') || mainLayout;
+
+        if (detailTopbar) detailTopbar.style.display = 'none';
+        if (detailHero) detailHero.style.display = 'none';
+        if (mainLayout) mainLayout.style.display = 'block';
+
+        const fallbackHTML = `
+            <div style="max-width: 600px; margin: 80px auto; text-align: center; padding: 48px;">
+                <span class="material-symbols-outlined" style="font-size: 64px; color: var(--on-surface-variant); opacity: 0.5; margin-bottom: 24px; display: block;">sentiment_dissatisfied</span>
+                <h2 class="headline" style="font-size: 1.8rem; margin-bottom: 16px; color: var(--on-surface);">${tText('memory_not_found_title', '기억을 찾지 못했어요')}</h2>
+                <p style="color: var(--on-surface-variant); margin-bottom: 32px; line-height: 1.6;">
+                    ${tText('memory_not_found_desc', '요청하신 기억이 존재하지 않거나 접근할 수 없는 상태입니다.').replace('.', '<br>')}
+                </p>
+                <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+                    <a href="${homeHref}" class="btn-round btn-outline" style="text-decoration: none;">${tText('back_to_home', '홈으로')}</a>
+                    <a href="${searchHref}" class="btn-round btn-outline" style="text-decoration: none;">${tText('browse_lovetrees', '러브트리 둘러보기')}</a>
+                </div>
+            </div>
+        `;
+
+        if (contentSlot) contentSlot.innerHTML = fallbackHTML;
+    };
+
     const urlParams = new URLSearchParams(window.location.search);
     const memoryId = urlParams.get('id');
     if (!memoryId) {
@@ -509,23 +531,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     if (!memory) {
-        const fallbackHTML = `
-            <div style="max-width: 600px; margin: 80px auto; text-align: center; padding: 48px;">
-                <span class="material-symbols-outlined" style="font-size: 64px; color: var(--on-surface-variant); opacity: 0.5; margin-bottom: 24px; display: block;">sentiment_dissatisfied</span>
-                <h2 class="headline" style="font-size: 1.8rem; margin-bottom: 16px; color: var(--on-surface);">${tText('memory_not_found_title', '기억을 찾지 못했어요')}</h2>
-                <p style="color: var(--on-surface-variant); margin-bottom: 32px; line-height: 1.6;">
-                    ${tText('memory_not_found_desc', '요청하신 기억이 존재하지 않거나 접근할 수 없는 상태입니다.').replace('.', '<br>')}
-                </p>
-                <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
-                    <a href="${homeHref}" class="btn-round btn-outline" style="text-decoration: none;">${tText('back_to_home', '홈으로')}</a>
-                    <a href="${searchHref}" class="btn-round btn-outline" style="text-decoration: none;">${tText('browse_lovetrees', '러브트리 둘러보기')}</a>
-                </div>
-            </div>
-        `;
-        const mainLayout = document.querySelector('.detail-layout');
-        const contentSlot = document.querySelector('.detail-main') || document.querySelector('.detail-content') || mainLayout;
-        if (contentSlot) contentSlot.innerHTML = fallbackHTML;
-        if (mainLayout) mainLayout.style.display = 'block';
+        renderMissingMemoryState();
         return;
     }
 
