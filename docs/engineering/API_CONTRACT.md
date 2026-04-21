@@ -1,6 +1,6 @@
 # LoveBud API 응답 계약
 
-> **버전:** 1.2  
+> **버전:** 1.3  
 > **최종 갱신:** 2026-04-22  
 > **관련 커밋:** `0230475`, `bb9741b`, `bb9e663`
 
@@ -295,6 +295,179 @@ interface BrowseTreeSnapshot {
 - snapshot 도입 초기에도 browse adapter는 기존 summary/hydrate 경로를 fallback으로 유지해야 합니다.
 - snapshot 계약이 고정되기 전에는 기존 `/community/memories?treeId=` 경로를 제거하지 않습니다.
 
+### 3.4 HOT / 추천 / 좋아요 확장 계약 (예정)
+
+> 이 계약도 **예정 상태**입니다. 현재 main에는 구현되어 있지 않습니다.
+> 목적은 browse/detail 구조를 깨지 않고, HOT / 추천 / 반응 확장을 위한 최소 필드만 선고정하는 것입니다.
+
+#### 3.4.1 Browse summary에 바로 붙일 수 있는 최소 후보 필드
+
+```typescript
+interface BrowseTreeSummaryExtension {
+  badgeLabel?: 'HOT' | '추천' | null;
+  hotScore?: number | null;
+  likeCount?: number | null;
+  bookmarkCount?: number | null;
+  reactionCount?: number | null;
+}
+```
+
+**지금 바로 필요한 필드**
+- `badgeLabel?`
+- `hotScore?`
+- `likeCount?`
+
+**후순위 필드**
+- `bookmarkCount?`
+- `reactionCount?`
+
+**summary 포함 원칙**
+- summary에는 **카드 정렬/배지/간단 수치 노출에 직접 필요한 aggregate 필드만** 허용
+- `likedByMe`, `recommendedReason`, `reactionBreakdown` 같은 개인화/설명형 필드는 summary에 넣지 않음
+
+#### 3.4.2 HOT용 최소 필드
+
+```typescript
+interface HotRankingFields {
+  hotScore: number;
+  recentViewCount7d?: number | null;
+  recentLikeCount7d?: number | null;
+  recentBookmarkCount7d?: number | null;
+  trendingWindow?: '24h' | '7d' | '30d' | null;
+}
+```
+
+**지금 바로 필요한 필드**
+- `hotScore`
+
+**후순위 필드**
+- `recentViewCount7d`
+- `recentLikeCount7d`
+- `recentBookmarkCount7d`
+- `trendingWindow`
+
+**배치 원칙**
+- HOT 정렬/배지 판단용으로는 `hotScore`만 summary에 붙일 수 있음
+- 세부 근거 수치는 snapshot 또는 ranking 전용 endpoint로 분리
+
+#### 3.4.3 추천용 최소 필드
+
+```typescript
+interface RecommendationFields {
+  recommendationKey?: string | null;
+  recommendationReasonCode?:
+    | 'similar_theme'
+    | 'similar_emotion'
+    | 'similar_artist'
+    | 'popular_with_similar_taste'
+    | null;
+  recommendationScore?: number | null;
+}
+```
+
+**지금 바로 필요한 필드**
+- 없음
+- 추천은 summary에 바로 붙이기보다 **별도 query 또는 snapshot 확장**으로 시작하는 것을 기본값으로 둠
+
+**후순위 필드**
+- `recommendationReasonCode`
+- `recommendationScore`
+- `recommendationKey`
+
+**배치 원칙**
+- 추천 결과 목록이 필요하면 endpoint query 수준에서 분리
+  - 예: `GET /api/community/trees?view=summary&sort=recommended`
+- 추천 이유 문구는 summary가 아니라 snapshot 또는 별도 recommendation endpoint에서 제공
+
+#### 3.4.4 좋아요 / 북마크 / 반응용 최소 필드
+
+```typescript
+interface ReactionAggregateFields {
+  likeCount?: number | null;
+  bookmarkCount?: number | null;
+  reactionCount?: number | null;
+}
+
+interface ReactionUserStateFields {
+  likedByMe?: boolean | null;
+  bookmarkedByMe?: boolean | null;
+  reactedByMe?: boolean | null;
+}
+```
+
+**지금 바로 필요한 필드**
+- aggregate: `likeCount`
+
+**후순위 필드**
+- aggregate: `bookmarkCount`, `reactionCount`
+- user-state: `likedByMe`, `bookmarkedByMe`, `reactedByMe`
+
+**배치 원칙**
+- aggregate 수치는 summary에 붙일 수 있음
+- user-state 필드는 인증/개인화가 필요하므로 summary 기본 계약에 넣지 않음
+- `likedByMe` 류는 snapshot 또는 별도 user-state endpoint에서만 허용
+
+#### 3.4.5 snapshot 전용 필드
+
+```typescript
+interface BrowseTreeSnapshotExtension {
+  recommendedReasonText?: string | null;
+  reactionBreakdown?: Record<string, number> | null;
+  socialProofText?: string | null;
+  likedByMe?: boolean | null;
+  bookmarkedByMe?: boolean | null;
+}
+```
+
+**snapshot 전용 원칙**
+- 추천 이유 설명
+- 반응 세부 분해
+- 개인화 상태
+- social proof 문구
+는 summary가 아니라 snapshot 또는 별도 endpoint로 분리
+
+#### 3.4.6 별도 endpoint 방향
+
+**ranking 전용 방향**
+- `GET /api/community/trees?view=summary&sort=hot`
+- `GET /api/community/trees?view=summary&sort=recommended`
+
+**user-state 전용 방향**
+- `GET /api/community/trees/<treeId>/viewer-state`
+- 또는 snapshot 응답에 인증 사용자 상태를 조건부 포함
+
+**reaction write 방향 (후순위)**
+- `POST /api/community/trees/<treeId>/like`
+- `POST /api/community/trees/<treeId>/bookmark`
+- `POST /api/community/trees/<treeId>/reactions`
+
+> 쓰기 endpoint는 이번 문서 범위에서 shape만 예고하며, 현재 구현 계약에는 포함하지 않음
+
+#### 3.4.7 backward compatibility rule
+
+- 기존 browse summary 필드는 유지
+- HOT / 추천 / 반응 확장 필드는 **optional additive fields**로만 추가
+- 현재 `js/api/public-tree-adapter.js`와 browse renderer는 새 필드가 없어도 동작해야 함
+- snapshot 도입 전에는 개인화 필드(`likedByMe`)를 summary 기본 계약에 넣지 않음
+- detail 계약에는 HOT/추천용 필드를 강제로 주입하지 않음
+
+#### 3.4.8 단계별 rollout 방향
+
+1. **Phase 1 — summary additive fields**
+   - `hotScore?`
+   - `badgeLabel?`
+   - `likeCount?`
+2. **Phase 2 — hot/recommended sort query**
+   - `sort=hot`
+   - `sort=recommended`
+3. **Phase 3 — snapshot extension**
+   - `recommendedReasonText`
+   - `socialProofText`
+   - `likedByMe`
+   - `bookmarkedByMe`
+4. **Phase 4 — reaction write / viewer-state**
+   - 별도 write endpoint 또는 viewer-state endpoint
+
 ---
 
 ## 4. 프론트엔드 원칙
@@ -438,6 +611,17 @@ const response = serializeTree(internal);
 3. snapshot response shape 테스트 추가
 4. Modal snapshot 도입 후 hydrate fallback 범위 재정의
 
+### 7.4 HOT / 추천 / 반응 필드 고정
+
+**현재:** 관련 필드 없음
+**목표:** additive optional field로만 확장
+
+**완료 기준:**
+1. summary용 최소 aggregate field 고정
+2. snapshot/user-state 전용 field 분리
+3. hot / recommended sort query 방향 고정
+4. reaction write 계약 방향 별도 분리
+
 ---
 
 ## 8. 위반 시 대응
@@ -449,6 +633,7 @@ const response = serializeTree(internal);
 | snake_case 필드 노출 | 버그로 처리, serializers 보강 |
 | 프론트에서 직접 snake_case 보정 | normalize.js로 이관 후 제거 |
 | browse snapshot 없이 detail/tree payload를 Modal에 재사용 | 계약 위반으로 처리 |
+| user-state 필드를 summary 기본 계약에 직접 주입 | 계약 위반으로 처리 |
 
 ---
 
