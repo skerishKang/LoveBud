@@ -6,21 +6,25 @@
  * Provides consistent CORS headers and response builders.
  */
 
+const DEFAULT_ALLOWED_ORIGINS = [
+  'https://lovebud.netlify.app',
+  'https://lovebud.vercel.app',
+];
+
 function getAllowedOrigins() {
-  const raw =
-    process.env.CORS_ALLOWED_ORIGINS ||
-    process.env.URL ||
-    'https://lovebud.netlify.app';
-  return String(raw)
+  const raw = process.env.CORS_ALLOWED_ORIGINS || process.env.URL || '';
+  const configured = String(raw)
     .split(',')
     .map((v) => v.trim())
     .filter(Boolean);
+
+  return configured.length ? configured : DEFAULT_ALLOWED_ORIGINS;
 }
 
 function resolveCorsOrigin(requestOrigin) {
   const allowed = getAllowedOrigins();
   if (requestOrigin && allowed.includes(requestOrigin)) return requestOrigin;
-  return allowed[0] || '*';
+  return allowed[0];
 }
 
 function getCorsHeaders(requestOrigin, extraHeaders) {
@@ -102,7 +106,7 @@ function handleError(scope, error, requestOrigin) {
     error: 'Internal error', 
     message: error?.message || 'Unknown error',
     details: error?.details || null,
-    stack: process.env.NODE_ENV === 'production' ? null : error?.stack // Stack only if not production (safe debug)
+    stack: process.env.NODE_ENV === 'production' ? null : error?.stack
   }, headers, requestOrigin);
 }
 
