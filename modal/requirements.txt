@@ -1,0 +1,7 @@
+fastapi[all]
+uvicorn[standard]
+modal
+psycopg2-binary
+python-dotenv
+pydantic
+pydantic-settings
