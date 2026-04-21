@@ -1,6 +1,6 @@
 /**
  * LoveBud - i18n Shared Dictionary
- * v20260419-1
+ * v20260421-1
  *
  * 공통 번역 키 (네비게이션, 버튼, 상태 메시지 등)
  */
@@ -57,8 +57,24 @@
       en: 'Create My First LoveTree'
     },
     'home.cta.browse': {
-      ko: '예시 트리 먼저 보기',
-      en: 'Browse Sample Trees First'
+      ko: '예시 트리 보기',
+      en: 'View Sample Trees'
+    },
+    'home.flow.one': {
+      ko: '로그인하고',
+      en: 'Sign in'
+    },
+    'home.flow.two': {
+      ko: '첫 순간 남기기',
+      en: 'Save your first moment'
+    },
+    'home.flow.three': {
+      ko: '내 트리로 이어가기',
+      en: 'Grow your tree'
+    },
+    'home.supportCopy': {
+      ko: '로그인 후 바로 내 트리에서 시작할 수 있어요. 예시 트리는 둘러보기에서 먼저 볼 수 있어요.',
+      en: 'After signing in, you can start in your tree right away. You can browse sample trees first.'
     },
     'home.intro': {
       ko: '직접 만들어보기 전에 미리 둘러보고 싶다면',
