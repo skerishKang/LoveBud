@@ -55,7 +55,7 @@
     .btn-header-create:active { transform: translateY(0); }
     .manage-summary-bar { display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px; padding: 18px 24px; background: white; border-radius: 20px; border: 1px solid var(--outline-variant); box-shadow: var(--shadow-whisper); }
     .manage-summary-main { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; font-size: 14px; }
-    .manage-summary-selected { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding-top: 14px; border-top: 1px dashed rgba(144, 73, 81, 0.16); flex-wrap: wrap; }
+    .manage-summary-selected { display: flex; align-items: center; gap: 18px; padding-top: 14px; border-top: 1px dashed rgba(144, 73, 81, 0.16); flex-wrap: wrap; }
     .manage-selected-copy { display: flex; flex-direction: column; gap: 4px; min-width: 240px; flex: 1; }
     .manage-selected-label { font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--primary); }
     .manage-selected-title { font-size: 1rem; font-weight: 800; color: var(--on-surface); }
@@ -73,6 +73,36 @@
     .dropdown-item { display: flex; align-items: center; gap: 8px; padding: 10px 16px; font-size: 13px; color: var(--on-surface); cursor: pointer; transition: background 0.15s ease; }
     .dropdown-item:hover { background: var(--surface-variant); }
     .dropdown-item.delete { color: #c62828; }
+    .create-tree-modal-backdrop { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; padding: 24px; background: rgba(53, 40, 38, 0.34); backdrop-filter: blur(8px); z-index: 1200; }
+    .create-tree-modal-backdrop.show { display: flex; }
+    .create-tree-modal { width: min(100%, 520px); background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(255,248,249,0.98)); border: 1px solid rgba(144, 73, 81, 0.12); border-radius: 28px; box-shadow: 0 30px 70px rgba(75, 64, 57, 0.18); padding: 28px; }
+    .create-tree-modal-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
+    .create-tree-modal-kicker { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 0 12px; border-radius: 999px; background: rgba(144, 73, 81, 0.08); color: var(--primary); font-size: 12px; font-weight: 900; margin-bottom: 12px; }
+    .create-tree-modal-title { font-size: 1.5rem; font-weight: 900; line-height: 1.2; color: var(--on-surface); letter-spacing: -0.02em; margin: 0 0 8px; }
+    .create-tree-modal-desc { margin: 0; color: var(--on-surface-variant); font-size: 0.95rem; line-height: 1.6; }
+    .create-tree-modal-close { width: 40px; height: 40px; border: none; border-radius: 50%; background: rgba(255,255,255,0.84); color: var(--on-surface-variant); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.18s ease; }
+    .create-tree-modal-close:hover { background: white; color: var(--on-surface); }
+    .create-tree-modal-form { display: flex; flex-direction: column; gap: 18px; }
+    .create-tree-field { display: flex; flex-direction: column; gap: 10px; }
+    .create-tree-label { font-size: 13px; font-weight: 800; color: var(--on-surface); }
+    .create-tree-input { width: 100%; border: 1px solid rgba(144, 73, 81, 0.14); border-radius: 18px; padding: 15px 16px; font-size: 15px; font-family: var(--font-body); background: rgba(255,255,255,0.94); color: var(--on-surface); outline: none; transition: border-color 0.18s ease, box-shadow 0.18s ease; }
+    .create-tree-input:focus { border-color: rgba(144, 73, 81, 0.28); box-shadow: 0 0 0 4px rgba(144, 73, 81, 0.08); }
+    .create-tree-input[aria-invalid="true"] { border-color: rgba(198, 40, 40, 0.42); }
+    .create-tree-help { font-size: 12px; color: var(--on-surface-variant); line-height: 1.5; }
+    .create-tree-error { min-height: 18px; font-size: 12px; color: #b71c1c; }
+    .create-tree-visibility { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .create-tree-visibility-option { position: relative; }
+    .create-tree-visibility-option input { position: absolute; opacity: 0; pointer-events: none; }
+    .create-tree-visibility-card { display: flex; flex-direction: column; gap: 8px; padding: 16px 16px 14px; border-radius: 20px; border: 1px solid rgba(144, 73, 81, 0.12); background: rgba(255,255,255,0.88); cursor: pointer; transition: all 0.18s ease; min-height: 112px; }
+    .create-tree-visibility-card:hover { border-color: rgba(144, 73, 81, 0.2); transform: translateY(-1px); }
+    .create-tree-visibility-option input:checked + .create-tree-visibility-card { border-color: rgba(144, 73, 81, 0.28); background: rgba(255, 246, 247, 0.98); box-shadow: 0 10px 24px rgba(144, 73, 81, 0.08); }
+    .create-tree-visibility-top { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 800; color: var(--on-surface); }
+    .create-tree-visibility-desc { font-size: 12px; line-height: 1.55; color: var(--on-surface-variant); }
+    .create-tree-modal-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-top: 4px; }
+    .create-tree-modal-btn { border: none; border-radius: 999px; padding: 12px 18px; font-size: 14px; font-weight: 800; cursor: pointer; transition: all 0.18s ease; }
+    .create-tree-modal-btn.secondary { background: rgba(255,255,255,0.86); color: var(--on-surface); border: 1px solid rgba(144, 73, 81, 0.1); }
+    .create-tree-modal-btn.primary { background: linear-gradient(135deg, #ff6b9d 0%, #e85a7a 100%); color: white; box-shadow: 0 10px 24px rgba(232, 90, 122, 0.24); }
+    .create-tree-modal-btn:disabled { opacity: 0.65; cursor: not-allowed; transform: none; box-shadow: none; }
     @media (max-width: 768px) {
       .my-trees-content { padding: 40px 24px; }
       .my-trees-header { flex-direction: column; align-items: flex-start; gap: 16px; }
@@ -84,6 +114,11 @@
       .manage-summary-selected { align-items: stretch; }
       .manage-selected-actions { width: 100%; }
       .manage-action-btn { flex: 1; justify-content: center; }
+      .create-tree-modal-backdrop { padding: 16px; }
+      .create-tree-modal { padding: 22px 20px; border-radius: 24px; }
+      .create-tree-visibility { grid-template-columns: 1fr; }
+      .create-tree-modal-actions { flex-direction: column-reverse; }
+      .create-tree-modal-btn { width: 100%; justify-content: center; }
     }
   </style>
 </head>
@@ -134,6 +169,51 @@
         <div id="state-loaded" style="display: none;"></div>
       </div>
     </main>
+  </div>
+  <div class="create-tree-modal-backdrop" id="createTreeModalBackdrop" aria-hidden="true">
+    <div class="create-tree-modal" role="dialog" aria-modal="true" aria-labelledby="createTreeModalTitle">
+      <div class="create-tree-modal-header">
+        <div>
+          <div class="create-tree-modal-kicker"><span class="material-symbols-outlined" style="font-size:14px;">favorite</span><span data-i18n="myTrees.create_modal_kicker">새 러브트리 시작</span></div>
+          <h2 class="create-tree-modal-title" id="createTreeModalTitle" data-i18n="myTrees.create_modal_title">어떤 러브트리를 남길까요?</h2>
+          <p class="create-tree-modal-desc" data-i18n="myTrees.create_modal_desc">트리 제목과 공개 범위를 먼저 정하면, 곧바로 첫 순간을 기록하러 이동해요.</p>
+        </div>
+        <button type="button" class="create-tree-modal-close" id="createTreeModalCloseBtn" aria-label="닫기">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <form class="create-tree-modal-form" id="createTreeModalForm">
+        <div class="create-tree-field">
+          <label class="create-tree-label" for="createTreeTitleInput" data-i18n="myTrees.create_modal_name_label">트리 제목</label>
+          <input class="create-tree-input" id="createTreeTitleInput" type="text" maxlength="200" placeholder="예: 사랑하게 된 모든 순간" aria-describedby="createTreeTitleHelp createTreeModalError" />
+          <div class="create-tree-help" id="createTreeTitleHelp" data-i18n="myTrees.create_modal_name_help">나중에 다시 바꿀 수 있어요. 지금은 마음이 가장 먼저 가는 제목이면 충분해요.</div>
+          <div class="create-tree-error" id="createTreeModalError" aria-live="polite"></div>
+        </div>
+        <div class="create-tree-field">
+          <div class="create-tree-label" data-i18n="myTrees.create_modal_visibility_label">공개 범위</div>
+          <div class="create-tree-visibility">
+            <label class="create-tree-visibility-option">
+              <input type="radio" name="createTreeVisibility" value="private" checked />
+              <span class="create-tree-visibility-card">
+                <span class="create-tree-visibility-top"><span class="material-symbols-outlined" style="font-size:18px;">lock</span><span data-i18n="myTrees.create_modal_visibility_private">비공개</span></span>
+                <span class="create-tree-visibility-desc" data-i18n="myTrees.create_modal_visibility_private_desc">나만 보고 기록을 이어가고 싶을 때 적합해요.</span>
+              </span>
+            </label>
+            <label class="create-tree-visibility-option">
+              <input type="radio" name="createTreeVisibility" value="public" />
+              <span class="create-tree-visibility-card">
+                <span class="create-tree-visibility-top"><span class="material-symbols-outlined" style="font-size:18px;">public</span><span data-i18n="myTrees.create_modal_visibility_public">공개</span></span>
+                <span class="create-tree-visibility-desc" data-i18n="myTrees.create_modal_visibility_public_desc">다른 사람도 이 러브트리를 감상할 수 있게 열어둘 수 있어요.</span>
+              </span>
+            </label>
+          </div>
+        </div>
+        <div class="create-tree-modal-actions">
+          <button type="button" class="create-tree-modal-btn secondary" id="createTreeModalCancelBtn" data-i18n="myTrees.create_modal_cancel">취소</button>
+          <button type="submit" class="create-tree-modal-btn primary" id="createTreeModalSubmitBtn" data-i18n="myTrees.create_modal_submit">이 트리로 시작하기</button>
+        </div>
+      </form>
+    </div>
   </div>
 
   <script src="../js/cache-utils.js?v=20260417-31"></script>
