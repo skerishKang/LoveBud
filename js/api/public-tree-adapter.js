@@ -53,6 +53,9 @@
       createdAt: memory.createdAt || memory.created_at || null,
       timestamp: memory.timestamp || '',
       thumbnail: memory.thumbnail || '',
+      sourceUrl: memory.sourceUrl || memory.source_url || '',
+      title: memory.title || '',
+      memo: memory.memo || '',
       artist: memory.artist || '',
       emotionTags: Array.isArray(memory.emotionTags)
         ? memory.emotionTags
