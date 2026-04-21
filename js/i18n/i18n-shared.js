@@ -1,6 +1,6 @@
 /**
  * LoveBud - i18n Shared Dictionary
- * v20260421-2
+ * v20260421-3
  *
  * 공통 번역 키 (네비게이션, 버튼, 상태 메시지 등)
  */
@@ -201,6 +201,10 @@
     'settings.publicDesc': {
       ko: '다른 팬들과 내 러브트리를 공유할 수 있어요',
       en: 'Share your LoveTrees with other fans'
+    },
+    'logout_btn': {
+      ko: '로그아웃',
+      en: 'Logout'
     }
   };
 })();

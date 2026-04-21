@@ -475,8 +475,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            if (window.setCachedMemories && treeId) {
-                window.setCachedMemories(treeId, memories);
+            if (window.LoveBudCache) {
+                window.LoveBudCache.set(MEMORIES_CACHE_KEY, memories, 2 * 60 * 1000);
             }
 
             if (currentEditingMemory && currentEditingMemory.id === selectedNodeId) {
