@@ -124,7 +124,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderPreviewLoadingState(tree);
 
         try {
-            const hydratedTree = previewCache.get(tree.id) || await window.apiClient.getCommunityMemories({ treeId: tree.id }).then((memories) => {
+            const hydratedTree = previewCache.get(tree.id) || await window.LoveTreeBaseApiFetch.apiFetch(`/community/memories?treeId=${encodeURIComponent(tree.id)}`).then((memories) => {
                 return window.LoveTreePublicTreeAdapter.hydrateTreeWithPublicMemories(tree, memories);
             });
             previewCache.set(tree.id, hydratedTree);
