@@ -18,6 +18,10 @@ yarn-error.log*
 .parcel-cache/
 .vite/
 .eslintcache
+__pycache__/
+*.py[cod]
+*$py.class
+
 
 # Coverage
 coverage/
