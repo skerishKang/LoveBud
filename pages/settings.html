@@ -34,29 +34,33 @@
 
     .settings-close-btn {
       position: absolute;
-      top: 20px;
-      right: 20px;
-      width: 40px;
-      height: 40px;
+      top: 18px;
+      right: 18px;
+      width: 44px;
+      height: 44px;
       border-radius: 999px;
-      border: 1px solid var(--outline-variant);
-      background: var(--surface);
-      color: var(--on-surface-variant);
+      border: 1px solid rgba(144, 73, 81, 0.18);
+      background: rgba(255, 255, 255, 0.96);
+      color: var(--on-surface);
       display: inline-flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
       transition: all 0.2s ease;
+      box-shadow: 0 10px 24px rgba(75, 64, 57, 0.08);
+      z-index: 2;
     }
 
     .settings-close-btn:hover {
       border-color: var(--primary-soft);
       color: var(--primary);
       background: var(--surface-container-low);
+      transform: translateY(-1px);
     }
 
     .settings-close-btn .material-symbols-outlined {
-      font-size: 20px;
+      font-size: 22px;
+      font-variation-settings: 'wght' 500;
     }
 
     .settings-card h1 {
@@ -72,6 +76,7 @@
       font-size: 0.95rem;
       margin-bottom: 40px;
       line-height: 1.5;
+      max-width: 320px;
     }
 
     .settings-section {
@@ -95,6 +100,16 @@
     .settings-section-title .material-symbols-outlined {
       font-size: 20px;
       color: var(--primary);
+    }
+
+    .settings-scope-note {
+      margin: -6px 0 16px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: var(--surface-container-low);
+      color: var(--on-surface-variant);
+      font-size: 13px;
+      line-height: 1.55;
     }
 
     .radio-group {
@@ -198,8 +213,8 @@
       }
 
       .settings-close-btn {
-        top: 16px;
-        right: 16px;
+        top: 14px;
+        right: 14px;
       }
     }
   </style>
@@ -212,13 +227,9 @@
     
     <main class="settings-content" id="settingsContent">
       <div class="settings-card" id="settingsCard" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
-        <button type="button" class="settings-close-btn" id="settingsCloseBtn" aria-label="설정 닫기">
+        <button type="button" class="settings-close-btn" id="settingsCloseBtn" aria-label="설정 닫기" title="닫기">
           <span class="material-symbols-outlined">close</span>
         </button>
-        <a href="./my-trees.html" class="settings-back-link" id="settingsBackLink" style="display:inline-flex;align-items:center;gap:6px;margin-bottom:24px;color:var(--on-surface-variant);font-size:14px;text-decoration:none;font-weight:500;">
-          <span class="material-symbols-outlined" style="font-size:18px;">arrow_back</span>
-          <span id="settingsBackLinkText">내 러브트리로 돌아가기</span>
-        </a>
         <h1 id="settingsTitle">설정</h1>
         <p class="settings-subtitle">러브트리를 어떻게 공개할지 정합니다</p>
         
@@ -226,6 +237,9 @@
           <div class="settings-section-title">
             <span class="material-symbols-outlined">visibility</span>
             기본 공개 범위
+          </div>
+          <div class="settings-scope-note" id="settingsScopeNote">
+            앞으로 새로 만드는 러브트리에 적용돼요. 기존 트리 공개 상태는 각 트리에서 바꿀 수 있어요.
           </div>
           
           <div class="radio-group">
@@ -271,7 +285,7 @@
      <script src="../js/auth/auth-session.js?v=20260417-31"></script>
      <script src="../js/auth/auth-firebase.js?v=20260420-1"></script>
      <script src="../js/auth.js?v=20260417-31"></script>
-    <script src="../js/settings.js?v=20260421-3"></script>
+    <script src="../js/settings.js?v=20260421-4"></script>
   <script>
     renderSharedHeader();
     initSettings();
