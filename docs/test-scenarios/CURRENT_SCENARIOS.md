@@ -1,8 +1,8 @@
 # 현재 대표 테스트 시나리오 목록
 
 > **목적**: `docs/test-scenarios/` 폴더 안에서 지금 시점에 어떤 시나리오를 먼저 사용해야 하는지 명확히 정리합니다.
-> 
-> 이 문서는 **현재 대표 시나리오**와 **회귀/레거시 시나리오**를 구분하기 위한 안내 문서입니다.  
+>
+> 이 문서는 **현재 대표 시나리오**와 **회귀/레거시 시나리오**를 구분하기 위한 안내 문서입니다.
 > 기존 문서를 버리지 않고 같은 폴더 안에서 역할을 재분류하는 것을 원칙으로 합니다.
 
 ---
@@ -31,13 +31,13 @@
 
 ### A. 현재 대표 시나리오 (우선 실행)
 
-| 시나리오 ID | 파일명 | 핵심 질문 | 우선순위 |
+| 시나리오 ID | 파일명 | 핵심 목적 | 우선순위 |
 |-------------|--------|-----------|----------|
-| CORE-NEWUSER-001 | `CORE-NEWUSER-001.md` | 처음 온 사용자가 회원가입/로그인 후 첫 트리와 첫 메모리를 무리 없이 만들 수 있는가? | 매우 높음 |
-| CORE-RETURNING-001 | `CORE-RETURNING-001.md` | 기존 사용자가 내 트리에 다시 들어와 수정/추가/이동을 자연스럽게 수행할 수 있는가? | 매우 높음 |
-| CORE-BROWSE-001 | `CORE-BROWSE-001.md` | 공개 트리 둘러보기에서 상세 보기로 이어지는 감상 흐름이 자연스러운가? | 높음 |
-| ACCESS-PUBLIC-PRIVATE-001 | `ACCESS-PUBLIC-PRIVATE-001.md` | 공개/비공개 경계와 소유자 권한이 기대대로 동작하는가? | 매우 높음 |
-| PERSISTENCE-001 | `PERSISTENCE-001.md` | 저장 후 새로고침/재진입/뒤로가기를 거쳐도 데이터와 상태가 일관되게 유지되는가? | 매우 높음 |
+| CORE-NEWUSER-001 | `core_newuser_001.md` | 로그인 이후 my-trees → editor로 자연스럽게 들어가 첫 트리와 첫 기록을 남길 수 있는지 확인 | 매우 높음 |
+| CORE-RETURNING-001 | `core_returning_001.md` | 기존 사용자가 my-trees와 editor를 오가며 기존 트리를 다시 읽고 이어서 수정/추가할 수 있는지 확인 | 매우 높음 |
+| CORE-BROWSE-001 | `core_browse_001.md` | search → detail 공개 감상 흐름이 최근 browse/detail 구조 기준으로 자연스럽게 이어지는지 확인 | 높음 |
+| ACCESS-PUBLIC-PRIVATE-001 | `access_public_private_001.md` | 공개/비공개 범위, 소유자와 비소유자 권한, 공개 트리 접근 경계가 기대대로 동작하는지 확인 | 매우 높음 |
+| PERSISTENCE-001 | `persistence_001.md` | 저장 후 새로고침/재진입/뒤로가기 이후에도 my-trees/editor/detail 상태가 일관되게 유지되는지 확인 | 매우 높음 |
 
 ### B. 유지해야 하는 회귀 시나리오
 
@@ -53,59 +53,72 @@
 
 ### 3.1 릴리스 전 최소 세트
 
-릴리스 직전에는 아래 3개를 최소 세트로 권장합니다.
+1. `core_newuser_001.md`
+2. `core_browse_001.md`
+3. `persistence_001.md`
 
-1. `CORE-NEWUSER-001.md`
-2. `CORE-BROWSE-001.md`
-3. `PERSISTENCE-001.md`
-
-이 3개만 통과해도 사용자 입장에서 가장 중요한 첫 사용/탐색/저장 안정성 축을 점검할 수 있습니다.
+첫 사용, 공개 감상, 저장 일관성이라는 현재 핵심 축을 가장 짧게 확인하는 세트입니다.
 
 ### 3.2 일반 수동 QA 기본 세트
 
-1. `CORE-NEWUSER-001.md`
-2. `CORE-RETURNING-001.md`
-3. `CORE-BROWSE-001.md`
-4. `ACCESS-PUBLIC-PRIVATE-001.md`
-5. `PERSISTENCE-001.md`
+1. `core_newuser_001.md`
+2. `core_returning_001.md`
+3. `core_browse_001.md`
+4. `access_public_private_001.md`
+5. `persistence_001.md`
 6. `repeatability-node-creation-test.md` (회귀 확인 필요 시)
 
-### 3.3 인증/권한 변경 후 필수 세트
+### 3.3 언어 변경 후 권장 세트
 
-인증 로직, 세션 대기 정책, 공개/비공개 정책, API 계약 변경이 있었을 때는 아래 순서를 권장합니다.
+1. `core_browse_001.md`
+2. `core_returning_001.md`
+3. `persistence_001.md`
 
-1. `ACCESS-PUBLIC-PRIVATE-001.md`
-2. `CORE-NEWUSER-001.md`
-3. `CORE-RETURNING-001.md`
-4. `PERSISTENCE-001.md`
+둘러보기 공개 카피, detail 감상 문맥, my-trees/editor 재진입과 저장 상태 문구가 함께 어긋나지 않는지 확인하는 세트입니다.
 
-### 3.4 에디터 저장 관련 변경 후 필수 세트
+### 3.4 인증/권한 변경 후 필수 세트
 
-에디터, 저장 API, 캐시, 새로고침 동작, 트리/메모리 직렬화가 바뀌었을 때는 아래 순서를 권장합니다.
+1. `access_public_private_001.md`
+2. `core_browse_001.md`
+3. `core_newuser_001.md`
+4. `core_returning_001.md`
+5. `persistence_001.md`
 
-1. `CORE-NEWUSER-001.md`
-2. `CORE-RETURNING-001.md`
-3. `PERSISTENCE-001.md`
+공개 트리 노출, 비로그인 접근, 소유자/비소유자 경계, 로그인 후 내 트리 복귀까지 한 번에 확인합니다.
+
+### 3.5 저장/지속성 변경 후 필수 세트
+
+1. `core_newuser_001.md`
+2. `core_returning_001.md`
+3. `persistence_001.md`
 4. `repeatability-node-creation-test.md`
+
+첫 저장, 기존 트리 재편집, 새로고침/재진입, 반복 생성 회귀를 묶어서 확인합니다.
 
 ---
 
 ## 4. 테스트 목적별 문서 선택 기준
 
 ### 목적 1: “처음 써도 되는 서비스인지” 확인하고 싶다
-- `CORE-NEWUSER-001.md`
-- `CORE-BROWSE-001.md`
+- `core_newuser_001.md`
+- `core_browse_001.md`
 
 ### 목적 2: “기존 사용자가 계속 쓸 수 있는지” 확인하고 싶다
-- `CORE-RETURNING-001.md`
-- `PERSISTENCE-001.md`
+- `core_returning_001.md`
+- `persistence_001.md`
 
 ### 목적 3: “권한/공개 범위가 안 깨졌는지” 확인하고 싶다
-- `ACCESS-PUBLIC-PRIVATE-001.md`
+- `access_public_private_001.md`
+- `core_browse_001.md`
 
-### 목적 4: “예전에 깨졌던 저장/반복 생성 문제가 다시 생겼는지” 확인하고 싶다
+### 목적 4: “언어 전환 뒤 browse/detail/editor/my-trees 문맥이 맞는지” 확인하고 싶다
+- `core_browse_001.md`
+- `core_returning_001.md`
+- `persistence_001.md`
+
+### 목적 5: “예전에 깨졌던 저장/반복 생성 문제가 다시 생겼는지” 확인하고 싶다
 - `repeatability-node-creation-test.md`
-- `PERSISTENCE-001.md`
+- `persistence_001.md`
 
 ---
 
@@ -136,11 +149,11 @@
 문서명과 결과 폴더명이 너무 다르면 추적이 어려워집니다.
 
 좋은 예:
-- 문서: `CORE-NEWUSER-001.md`
+- 문서: `core_newuser_001.md`
 - 결과: `core-newuser-001-ive-2026-04-20-1930/`
 
 나쁜 예:
-- 문서: `CORE-NEWUSER-001.md`
+- 문서: `core_newuser_001.md`
 - 결과: `ive-random-final-test-last/`
 
 ---
@@ -148,16 +161,14 @@
 ## 6. TODO
 
 ### 즉시 해야 할 일
-- [ ] `README.md`를 최신 구조에 맞게 읽는 순서 중심으로 정리
-- [ ] `QUICKSTART.md`의 그룹 목록/실행 예시 최신화
-- [ ] `repeatability-node-creation-test.md` 상단에 회귀 시나리오 성격 명시
-- [ ] 대표 시나리오 5종 초안 작성 완료
+- [ ] 대표 시나리오 5종 본문과 운영 문서 표현이 어긋나는지 수시 점검
+- [ ] 회귀 시나리오 상단에 회귀 전용 성격이 분명한지 점검
+- [ ] 결과 예시 폴더가 실제 대표 시나리오 명명 규칙과 맞는지 점검
 
 ### 다음 단계
-- [ ] 결과 템플릿을 대표 시나리오 기준으로 재정의
-- [ ] 권한/저장/둘러보기 결과 폴더 예시 추가
-- [ ] 오래된 known blocker 설명을 “현재도 재현되면 유지, 아니면 히스토리 섹션으로 이동” 원칙으로 재정리
-- [ ] 필요 시 `MANUAL_TEST_CHECKLIST.md`와 본 폴더 문서의 역할 경계 문서화
+- [ ] 언어 전환 전용 회귀 체크리스트가 필요해지면 대표 시나리오를 건드리지 않고 운영 가이드 문서에서 먼저 보강
+- [ ] 권한/저장/둘러보기 결과 폴더 예시를 더 축적
+- [ ] 오래된 known blocker 설명을 “현재도 재현되면 유지, 아니면 히스토리 섹션으로 이동” 원칙으로 정리
 
 ---
 
@@ -173,4 +184,4 @@
 
 ---
 
-*마지막 업데이트: 2026-04-20*
+*마지막 업데이트: 2026-04-21*
