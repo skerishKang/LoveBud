@@ -325,6 +325,11 @@ Codex는 기본적으로 CTO 역할을 수행합니다.
    - **클린 스타트 (Clean Start)**: 신규 사용자 및 권한 관련 테스트 시, 에이전트는 반드시 기존 세션을 로그아웃하고 브라우저 저장소(LocalStorage, IndexedDB)를 초기화하여 '순수 신규 상태'임을 보장해야 한다. 가급적 인코그니토 모드를 사용한다.
    - **용어 일치 (Terminology Match)**: 시나리오 문서와 테스트 보고서는 반드시 실제 UI에 표시된 텍스트를 정확히 사용해야 하며, 임의의 요약 표현을 금지한다.
 
+5. **테스트 결과 구조화 및 인덱싱 원칙**
+   - **날짜별 그룹화 (Date-based Grouping)**: 모든 시나리오 테스트 결과는 `docs/test-scenarios/results/{YYYY-MM-DD}/{task-name}/` 내에 저장한다. (예: `2026-04-21/browse-audit-0830/`)
+   - **통합 인덱스 갱신 (Mandatory Indexing)**: 테스트를 성공적으로 마친 에이전트는 반드시 `docs/test-scenarios/results/RESULTS_INDEX.md` 파일 상단에 해당 테스트의 날짜, 테스크명, PASS/FAIL 상태, 주요 요약을 기록해야 한다.
+   - **폴더명 최적화**: 날짜 폴더 하위에 위치하는 {task-name} 폴더명에서는 중복된 날짜 문자열을 가급적 제거하여 경로 길이를 최적화한다.
+
 ---
 
 ## Netlify Dev 로컬 테스트

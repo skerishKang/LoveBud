@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>러브트리 편집 | LoveTree</title>
-    <link rel="stylesheet" href="../css/editor.css?v=20260420-2">
+    <title>?�브?�리 ?�집 | LoveTree</title>
+    <link rel="stylesheet" href="../css/editor.css?v=20260421-final">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
 </head>
 <body class="editor-preload">
@@ -15,12 +15,12 @@
     <div class="editor-layout">
         <aside class="sidebar">
             <section class="editor-status-section">
-                <h3 id="editorFlowHeading">러브트리</h3>
+                <h3 id="editorFlowHeading">?�브?�리</h3>
                 <p id="editorFlowLead" style="margin:-6px 0 0;font-size:13px;line-height:1.7;color:var(--on-surface-variant);">...</p>
                 <div class="editor-status-card">
                     <div class="editor-space-between-row">
                         <strong id="sidebarTreeTitle">LoveTree</strong>
-                        <button type="button" id="renameTreeBtn" class="icon-menu-btn editor-rename-btn" aria-label="트리 제목 변경" title="트리 제목 변경">✎</button>
+                        <button type="button" id="renameTreeBtn" class="icon-menu-btn editor-rename-btn" aria-label="?�리 ?�목 변�? title="?�리 ?�목 변�?>??/button>
                     </div>
                     <p id="sidebarMomentCount"></p>
                     <p id="sidebarFlowSummary" class="editor-flow-summary"></p>
@@ -28,12 +28,12 @@
                 </div>
                 <div class="editor-sidebar-actions">
 <button type="button" class="sidebar-btn editor-focus-btn is-disabled" id="focusSelectedBtn" disabled>
-<span class="btn-icon">→</span>
-<span class="btn-label" id="focusSelectedBtnLabel">선택</span>
+<span class="btn-icon">??/span>
+<span class="btn-label" id="focusSelectedBtnLabel">?�택</span>
 </button>
                     <button type="button" class="sidebar-btn" id="recenterCanvasBtn">
-                        <span class="btn-icon">⌂</span>
-                        <span class="btn-label" id="recenterCanvasBtnLabel">트리</span>
+                        <span class="btn-icon">??/span>
+                        <span class="btn-label" id="recenterCanvasBtnLabel">?�리</span>
                     </button>
                 </div>
             </section>
@@ -46,7 +46,7 @@
                     </div>
                     <button type="button" class="sidebar-btn sidebar-btn-primary" id="addMemoryBtn">
                         <span class="btn-icon">+</span>
-                        <span class="btn-label" id="addMemoryBtnLabel">추가</span>
+                        <span class="btn-label" id="addMemoryBtnLabel">추�?</span>
                     </button>
                 </div>
             </section>
@@ -59,7 +59,7 @@
                 <h3 class="headline editor-modal-title" id="addMemoryFormTitle">...</h3>
                 <div class="editor-form-field">
                     <label id="memoryUrlLabel" class="editor-form-label">...</label>
-                    <input type="text" id="memoryUrlInput" placeholder="https://www.youtube.com/watch?v=..." class="editor-form-input">
+                    <input type="text" id="memoryUrlInput" placeholder="https://www.youtube.com/watch?v=20260421-final..." class="editor-form-input">
                 </div>
                 <div class="editor-form-field">
                     <label id="memoryTitleLabel" class="editor-form-label">...</label>
@@ -79,7 +79,7 @@
         <aside class="detail-panel memory-detail-section" id="detailPanel">
             <div class="panel-header">
                 <h3 class="headline editor-panel-headline"></h3>
-                <button type="button" class="icon-menu-btn editor-hidden-initial editor-detail-more-btn" aria-label="더보기" id="detailMoreBtn">더보기</button>
+                <button type="button" class="icon-menu-btn editor-hidden-initial editor-detail-more-btn" aria-label="?�보�? id="detailMoreBtn">?�보�?/button>
             </div>
 
             <div class="detail-content" id="detailContent">
@@ -102,13 +102,13 @@
                         <div class="detail-video">
                             <img id="detailImg" src="" alt="">
                             <div class="memory-preview-overlay">
-                                <button type="button" class="play-btn" aria-label="재생">재생</button>
+                                <button type="button" class="play-btn" aria-label="?�생">?�생</button>
                             </div>
                         </div>
                     </div>
 
                     <div style="display:flex;flex-direction:column;gap:14px;">
-                        <div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--on-surface-variant);">트리 상태</div>
+                        <div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--on-surface-variant);">?�리 ?�태</div>
                         <div id="detailTreeMetaMount"></div>
                     </div>
 
@@ -140,7 +140,7 @@
 
                         <div id="saveStatusIndicator" class="save-status-indicator save-status editor-save-status-wrap" aria-live="polite">
                             <span id="saveStatusIcon" class="editor-save-status-icon-hidden"></span>
-                            <span id="saveStatusText">저장됨</span>
+                            <span id="saveStatusText">?�?�됨</span>
                             <span id="lastSavedTime" class="last-saved-time"></span>
                         </div>
                     </div>
@@ -175,56 +175,56 @@
         </aside>
     </div>
 
-    <script src="../js/mock-data.js?v=20260418-1"></script>
-    <script src="../js/cache-utils.js?v=20260418-1"></script>
-    <script src="../js/utils/normalize.js?v=20260418-1"></script>
-    <script src="../js/utils/path.js?v=20260418-1"></script>
-    <script src="../js/utils/ui.js?v=20260418-1"></script>
-    <script src="../js/utils/media.js?v=20260418-1"></script>
-    <script src="../js/editor/editor-root-helpers.js?v=20260418-1"></script>
-    <script src="../js/editor/editor-canvas-layout.js?v=20260420-1"></script>
-    <script src="../js/editor/editor-canvas-node.js?v=20260420-1"></script>
-    <script src="../js/editor/editor-canvas-interaction.js?v=20260420-1"></script>
-    <script src="../js/editor/editor-canvas-viewport.js?v=20260420-1"></script>
-    <script src="../js/editor/editor-canvas.js?v=20260420-6"></script>
-    <script src="../js/editor/editor-rename-ui.js?v=20260420-1"></script>
-    <script src="../js/editor/editor-detail-ui.js?v=20260421-1"></script>
-    <script src="../js/editor/editor-memory-actions.js?v=20260419-1"></script>
-    <script src="../js/editor/editor-memory-form.js?v=20260421-2"></script>
-    <script src="../js/api/auth-policy.js?v=20260420-1"></script>
-    <script src="../js/api/base-api-fetch.js?v=20260420-1"></script>
-    <script src="../js/postgres-client.js?v=20260420-2"></script>
-    <script src="../js/editor/editor-helpers.js?v=20260420-1"></script>
-    <script src="../js/editor/editor-save-status.js?v=20260420-1"></script>
-    <script src="../js/editor/editor-page-helpers.js?v=20260420-1"></script>
-    <script src="../js/editor/editor-tree-helpers.js?v=20260420-1"></script>
-    <script src="../js/editor/editor-bindings.js?v=20260420-1"></script>
-    <script src="../js/editor/editor-auth-helpers.js?v=20260420-1"></script>
-    <script src="../js/editor/editor-data-loader.js?v=20260420-1"></script>
-    <script src="../js/editor/editor-data-loader-fallbacks.js?v=20260420-1"></script>
-    <script src="../js/editor/editor-resolver-fallbacks.js?v=20260421-1"></script>
-    <script src="../js/editor.js?v=20260421-2"></script>
+    <script src="../js/mock-data.js?v=20260421-final"></script>
+    <script src="../js/cache-utils.js?v=20260421-final"></script>
+    <script src="../js/utils/normalize.js?v=20260421-final"></script>
+    <script src="../js/utils/path.js?v=20260421-final"></script>
+    <script src="../js/utils/ui.js?v=20260421-final"></script>
+    <script src="../js/utils/media.js?v=20260421-final"></script>
+    <script src="../js/editor/editor-root-helpers.js?v=20260421-final"></script>
+    <script src="../js/editor/editor-canvas-layout.js?v=20260421-final"></script>
+    <script src="../js/editor/editor-canvas-node.js?v=20260421-final"></script>
+    <script src="../js/editor/editor-canvas-interaction.js?v=20260421-final"></script>
+    <script src="../js/editor/editor-canvas-viewport.js?v=20260421-final"></script>
+    <script src="../js/editor/editor-canvas.js?v=20260421-final"></script>
+    <script src="../js/editor/editor-rename-ui.js?v=20260421-final"></script>
+    <script src="../js/editor/editor-detail-ui.js?v=20260421-final"></script>
+    <script src="../js/editor/editor-memory-actions.js?v=20260421-final"></script>
+    <script src="../js/editor/editor-memory-form.js?v=20260421-final"></script>
+    <script src="../js/api/auth-policy.js?v=20260421-final"></script>
+    <script src="../js/api/base-api-fetch.js?v=20260421-final"></script>
+    <script src="../js/postgres-client.js?v=20260421-final"></script>
+    <script src="../js/editor/editor-helpers.js?v=20260421-final"></script>
+    <script src="../js/editor/editor-save-status.js?v=20260421-final"></script>
+    <script src="../js/editor/editor-page-helpers.js?v=20260421-final"></script>
+    <script src="../js/editor/editor-tree-helpers.js?v=20260421-final"></script>
+    <script src="../js/editor/editor-bindings.js?v=20260421-final"></script>
+    <script src="../js/editor/editor-auth-helpers.js?v=20260421-final"></script>
+    <script src="../js/editor/editor-data-loader.js?v=20260421-final"></script>
+    <script src="../js/editor/editor-data-loader-fallbacks.js?v=20260421-final"></script>
+    <script src="../js/editor/editor-resolver-fallbacks.js?v=20260421-final"></script>
+    <script src="../js/editor.js?v=20260421-final"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-    <script src="../js/firebase-config.js?v=20260417-31"></script>
-    <script src="../js/i18n/i18n-core.js?v=20260419-2"></script>
-    <script src="../js/i18n/i18n-shared.js?v=20260419-2"></script>
-    <script src="../js/i18n/i18n-login.js?v=20260419-2"></script>
-    <script src="../js/i18n/i18n-intro.js?v=20260419-2"></script>
-    <script src="../js/i18n/i18n-search.js?v=20260419-2"></script>
-    <script src="../js/i18n/i18n-detail.js?v=20260419-2"></script>
-    <script src="../js/i18n/i18n-editor.js?v=20260421-1"></script>
-    <script src="../js/i18n/i18n-my-trees.js?v=20260419-2"></script>
-    <script src="../js/i18n/i18n-index.js?v=20260419-2"></script>
-    <script src="../js/i18n.js?v=20260419-2"></script>
-    <script src="../js/shared-header.js?v=20260417-31"></script>
-    <script src="../js/auth/auth-state.js?v=20260417-31"></script>
-    <script src="../js/auth/auth-callbacks.js?v=20260417-31"></script>
-    <script src="../js/auth/auth-cache.js?v=20260417-31"></script>
-    <script src="../js/auth/auth-ui.js?v=20260417-31"></script>
-    <script src="../js/auth/auth-session.js?v=20260417-31"></script>
-    <script src="../js/auth/auth-firebase.js?v=20260420-1"></script>
-    <script src="../js/auth.js?v=20260417-31"></script>
+    <script src="../js/firebase-config.js?v=20260421-final"></script>
+    <script src="../js/i18n/i18n-core.js?v=20260421-final"></script>
+    <script src="../js/i18n/i18n-shared.js?v=20260421-final"></script>
+    <script src="../js/i18n/i18n-login.js?v=20260421-final"></script>
+    <script src="../js/i18n/i18n-intro.js?v=20260421-final"></script>
+    <script src="../js/i18n/i18n-search.js?v=20260421-final"></script>
+    <script src="../js/i18n/i18n-detail.js?v=20260421-final"></script>
+    <script src="../js/i18n/i18n-editor.js?v=20260421-final"></script>
+    <script src="../js/i18n/i18n-my-trees.js?v=20260421-final"></script>
+    <script src="../js/i18n/i18n-index.js?v=20260421-final"></script>
+    <script src="../js/i18n.js?v=20260421-final"></script>
+    <script src="../js/shared-header.js?v=20260421-final"></script>
+    <script src="../js/auth/auth-state.js?v=20260421-final"></script>
+    <script src="../js/auth/auth-callbacks.js?v=20260421-final"></script>
+    <script src="../js/auth/auth-cache.js?v=20260421-final"></script>
+    <script src="../js/auth/auth-ui.js?v=20260421-final"></script>
+    <script src="../js/auth/auth-session.js?v=20260421-final"></script>
+    <script src="../js/auth/auth-firebase.js?v=20260421-final"></script>
+    <script src="../js/auth.js?v=20260421-final"></script>
     <script>renderSharedHeader();</script>
 </body>
 </html>

@@ -491,10 +491,16 @@ function createEditorCanvas(deps) {
     function renderGrowthAffordance(anchorMem, options) {
         if (!anchorMem) return;
         const opts = options || {};
-        const labelText = opts.labelText || (i18n('continue_moment') || '순간 이어가기');
+        
+        const getSafeT = (key, fallback) => {
+            const val = i18n(key);
+            return (!val || val === key) ? fallback : val;
+        };
+
+        const labelText = opts.labelText || getSafeT('continue_moment', '순간 이어가기');
         const helperText = opts.helperText || (opts.isFirstStep
-            ? (i18n('growth_start_hint') || '여기서 다음 가지가 자라나요')
-            : (i18n('growth_continue_hint') || '선택한 순간 뒤로 감정이 이어져요'));
+            ? getSafeT('growth_start_hint', '여기서 다음 가지가 자라나요')
+            : getSafeT('growth_continue_hint', '선택한 순간 뒤로 감정이 이어져요'));
 
         createGrowthAffordanceElement(anchorMem, labelText, helperText);
     }
