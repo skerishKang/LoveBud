@@ -1,25 +1,15 @@
 /**
  * LoveBud Search Page Orchestrator
- * v20260421-2
+ * v20260422-1
  *
  * Search page orchestration:
- * - Data loading (cache → API)
+ * - Fast list-first loading for public trees
  * - Filter state management
  * - Event binding
- * - Renderer coordination
- *
- * Dependencies (loaded before this):
- * - cache-utils.js
- * - utils/normalize.js, utils/path.js, utils/ui.js
- * - search-data-adapter.js, search-card-renderer.js, search-preview-renderer.js
- * - postgres-client.js
+ * - Lazy preview hydration on tree selection
  */
 
 document.addEventListener('DOMContentLoaded', async () => {
-    // ─────────────────────────────────────────────────────────
-    // DOM References
-    // ─────────────────────────────────────────────────────────
-
     const resultsList = document.getElementById('resultsList');
     const previewContainer = document.getElementById('previewVideoContainer');
     const previewTitle = document.getElementById('previewTitle');
@@ -30,15 +20,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const searchInput = document.getElementById('searchInput');
     const tagChips = document.querySelectorAll('.tag-chip');
 
-    // ─────────────────────────────────────────────────────────
-    // Initialize Renderers
-    // ─────────────────────────────────────────────────────────
-
-    // Card renderer
     const CardRenderer = window.LoveBudSearchCardRenderer;
     CardRenderer.init(resultsList);
 
-    // Preview renderer
     const PreviewRenderer = window.LoveBudSearchPreviewRenderer;
     PreviewRenderer.init({
         previewContainer,
@@ -49,30 +33,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         previewEmotionTags
     });
 
-    // Adapter (data layer)
     const Adapter = window.LoveBudSearchAdapter;
-
-    // ─────────────────────────────────────────────────────────
-    // Show Loading
-    // ─────────────────────────────────────────────────────────
-
-    resultsList.innerHTML = CardRenderer.renderLoading();
-
-    // ─────────────────────────────────────────────────────────
-    // Data Loading: Cache → API
-    // ─────────────────────────────────────────────────────────
-
     const cache = window.LoveBudCache;
     const PUBLIC_TREES_CACHE_KEY = 'public_trees_list';
-    const MIN_LOADING_TIME = 400;
 
-    const startTime = Date.now();
     let allTrees = [];
     let loadError = null;
     let isFromCache = false;
+    let apiTreesLoaded = false;
     let selectedTreeId = null;
+    const previewCache = new Map();
+    let currentPreviewRequestId = 0;
 
-    // Shallow comparison helper to avoid unnecessary re-renders
+    let currentQuery = '';
+    let currentCategory = '전체';
+
     const areTreesEffectivelySame = (prevTrees, nextTrees) => {
         if (!Array.isArray(prevTrees) || !Array.isArray(nextTrees)) return false;
         if (prevTrees.length !== nextTrees.length) return false;
@@ -80,99 +55,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         return prevTrees.every((prevTree, index) => {
             const nextTree = nextTrees[index];
             if (!nextTree) return false;
-
             const prevStamp = prevTree.updatedAt || prevTree.createdAt || prevTree.memoryCount || 0;
             const nextStamp = nextTree.updatedAt || nextTree.createdAt || nextTree.memoryCount || 0;
-
             return prevTree.id === nextTree.id && prevStamp === nextStamp;
         });
     };
 
-    // 1. Try cache first
-    let cachedTrees = null;
-    if (cache) {
-        cachedTrees = cache.get(PUBLIC_TREES_CACHE_KEY);
-        if (cachedTrees && Array.isArray(cachedTrees) && cachedTrees.length > 0) {
-            console.log('[search] 캐시된 public trees 사용:', cachedTrees.length, '개');
-            allTrees = cachedTrees;
-            isFromCache = true;
-        }
-    }
-
-    // 2. Fetch from API in background
-    let apiTreesLoaded = false;
-    try {
-        if (window.apiClient && window.apiClient.getPublicTrees) {
-            const apiTrees = await window.apiClient.getPublicTrees();
-            if (Array.isArray(apiTrees)) {
-                console.log('[search] API public trees 로드:', apiTrees.length, '개');
-
-                // Update cache
-                if (cache) {
-                    cache.set(PUBLIC_TREES_CACHE_KEY, apiTrees, 5 * 60 * 1000); // 5분 TTL
-                }
-
-                // Use API data (replace cache)
-                if (!areTreesEffectivelySame(allTrees, apiTrees)) {
-                    allTrees = apiTrees;
-                }
-
-                apiTreesLoaded = true;
-            } else {
-                throw new Error('API 응답 형식 오류');
-            }
-        } else {
-            throw new Error('tree API 사용 불가');
-        }
-    } catch (error) {
-        loadError = error;
-        console.warn('[search] API 로드 실패:', error.message);
-        if (!allTrees || allTrees.length === 0) {
-            allTrees = [];
-        }
-    }
-
-    // 4. Ensure minimum loading time (prevents flash)
-    const elapsed = Date.now() - startTime;
-    if (elapsed < MIN_LOADING_TIME) {
-        await new Promise(resolve => setTimeout(resolve, MIN_LOADING_TIME - elapsed));
-    }
-
-    // ─────────────────────────────────────────────────────────
-    // Filter State
-    // ─────────────────────────────────────────────────────────
-
-    let currentQuery = '';
-    let currentCategory = '전체';
-
-    /**
-     * Gets filtered trees
-     */
-    const getFilteredTrees = () => {
-        return Adapter.filterTrees(allTrees, currentQuery, currentCategory);
-    };
-
-    const getSelectedTree = (filteredTrees) => {
-        if (!Array.isArray(filteredTrees) || filteredTrees.length === 0) return null;
-        const matched = filteredTrees.find(tree => tree.id === selectedTreeId);
-        return matched || filteredTrees[0];
-    };
-
-    // ─────────────────────────────────────────────────────────
-    // Event Handlers
-    // ─────────────────────────────────────────────────────────
-
-    const selectTree = (tree, activeCard) => {
-        if (!tree) return;
-        selectedTreeId = tree.id;
-        markActiveCard(activeCard);
-        showTreePreview(tree);
-    };
-
-    const showTreePreview = (tree) => {
-        if (!tree) return;
-        PreviewRenderer.updatePreview(tree);
-    };
+    const getFilteredTrees = () => Adapter.filterTrees(allTrees, currentQuery, currentCategory);
 
     const markActiveCard = (activeCard) => {
         resultsList.querySelectorAll('.tree-card.is-active').forEach((card) => {
@@ -185,33 +74,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
-    // Search input with debounce
-    let searchInputTimer = null;
-    searchInput.addEventListener('input', (e) => {
-        currentQuery = e.target.value.trim();
+    const syncActiveCard = () => {
+        const cards = resultsList.querySelectorAll('.tree-card');
+        const activeCard = Array.from(cards).find(card => card.dataset.treeId === selectedTreeId);
+        markActiveCard(activeCard || null);
+    };
 
-        if (searchInputTimer) {
-            clearTimeout(searchInputTimer);
-        }
+    const getSelectedTreeFromFiltered = (filteredTrees) => {
+        if (!Array.isArray(filteredTrees) || filteredTrees.length === 0) return null;
+        return filteredTrees.find(tree => tree.id === selectedTreeId) || null;
+    };
 
-        searchInputTimer = setTimeout(() => {
-            renderResults();
-        }, 200);
-    });
-
-    // Filter chips
-    tagChips.forEach(chip => {
-        chip.addEventListener('click', () => {
-            tagChips.forEach(c => c.classList.remove('active'));
-            chip.classList.add('active');
-            currentCategory = chip.dataset.category || chip.textContent.trim();
-            renderResults();
-        });
-    });
-
-    /**
-     * Renders empty/error state when data load fails
-     */
     const renderLoadErrorState = () => {
         resultsList.innerHTML = `
             <div class="empty-state" style="padding:60px 24px; text-align:center; color: var(--on-surface-variant);">
@@ -233,47 +106,44 @@ document.addEventListener('DOMContentLoaded', async () => {
         PreviewRenderer.resetPreview();
     };
 
-    /**
-     * Renders results to DOM
-     */
-    const renderResults = () => {
-        const filtered = getFilteredTrees();
+    const hydrateSelectedTreePreview = async (tree) => {
+        if (!tree || !tree.id) return;
+        const requestId = ++currentPreviewRequestId;
+        PreviewRenderer.renderLoadingPreview(tree);
 
-        if (filtered.length === 0) {
-            const hasNoData = loadError === null && allTrees.length === 0;
-            const isApiFailure =
-                loadError !== null &&
-                !isFromCache &&
-                allTrees.length === 0;
+        try {
+            const hydratedTree = previewCache.get(tree.id) || await window.apiClient.getPublicTreePreview(tree);
+            previewCache.set(tree.id, hydratedTree);
+            allTrees = allTrees.map(item => item.id === hydratedTree.id ? hydratedTree : item);
 
-            if (isApiFailure) {
-                renderLoadErrorState();
-            } else if (hasNoData) {
-                // 공개 트리가 0개인 상태 (API 정상, 데이터 없음)
-                resultsList.innerHTML = CardRenderer.renderNoTreesState();
-                PreviewRenderer.resetPreview();
-            } else {
-                // 검색 결과 없음 (필터링 결과 0개)
-                resultsList.innerHTML = CardRenderer.renderEmptySearchState();
-                PreviewRenderer.resetPreview();
+            if (requestId !== currentPreviewRequestId || selectedTreeId !== tree.id) {
+                return;
             }
+            PreviewRenderer.updatePreview(hydratedTree);
+            renderResults(false);
+        } catch (error) {
+            console.warn('[search] preview hydration failed:', error.message);
+            if (requestId !== currentPreviewRequestId || selectedTreeId !== tree.id) {
+                return;
+            }
+            PreviewRenderer.resetPreview();
+        }
+    };
 
+    const selectTree = (tree, activeCard) => {
+        if (!tree) return;
+        selectedTreeId = tree.id;
+        markActiveCard(activeCard);
+
+        if (Array.isArray(tree.memories) && tree.memories.length > 0) {
+            PreviewRenderer.updatePreview(tree);
             return;
         }
 
-        const selectedTree = getSelectedTree(filtered);
-        if (selectedTree) {
-            selectedTreeId = selectedTree.id;
-        }
+        hydrateSelectedTreePreview(tree);
+    };
 
-        // Render cards (no event handlers passed)
-        const html = CardRenderer.renderResults(filtered, {
-            isDemo: !apiTreesLoaded && !loadError
-        });
-
-        resultsList.innerHTML = html;
-
-        // Attach events to cards
+    const attachCardEvents = (filtered) => {
         const cards = resultsList.querySelectorAll('.tree-card');
         cards.forEach((card) => {
             const treeId = card.dataset.treeId;
@@ -295,17 +165,102 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             });
         });
-
-        const activeCard = Array.from(cards).find(card => card.dataset.treeId === selectedTreeId) || cards[0];
-        markActiveCard(activeCard);
-        showTreePreview(selectedTree || filtered[0]);
     };
 
-    // ─────────────────────────────────────────────────────────
-    // Initial Render
-    // ─────────────────────────────────────────────────────────
+    function renderResults(resetPreviewWhenNoSelection = true) {
+        const filtered = getFilteredTrees();
 
-    renderResults();
+        if (filtered.length === 0) {
+            const hasNoData = loadError === null && allTrees.length === 0;
+            const isApiFailure = loadError !== null && !isFromCache && allTrees.length === 0;
+
+            if (isApiFailure) {
+                renderLoadErrorState();
+            } else if (hasNoData) {
+                resultsList.innerHTML = CardRenderer.renderNoTreesState();
+                PreviewRenderer.resetPreview();
+            } else {
+                resultsList.innerHTML = CardRenderer.renderEmptySearchState();
+                PreviewRenderer.resetPreview();
+            }
+            return;
+        }
+
+        const html = CardRenderer.renderResults(filtered, {
+            isDemo: !apiTreesLoaded && !loadError
+        });
+        resultsList.innerHTML = html;
+        attachCardEvents(filtered);
+        syncActiveCard();
+
+        const selectedTree = getSelectedTreeFromFiltered(filtered);
+        if (!selectedTreeId && resetPreviewWhenNoSelection) {
+            PreviewRenderer.resetPreview();
+            return;
+        }
+
+        if (selectedTree && Array.isArray(selectedTree.memories) && selectedTree.memories.length > 0) {
+            PreviewRenderer.updatePreview(selectedTree);
+        } else if (!selectedTree && resetPreviewWhenNoSelection) {
+            PreviewRenderer.resetPreview();
+        }
+    }
+
+    resultsList.innerHTML = CardRenderer.renderLoading();
+    PreviewRenderer.resetPreview();
+
+    let cachedTrees = null;
+    if (cache) {
+        cachedTrees = cache.get(PUBLIC_TREES_CACHE_KEY);
+        if (cachedTrees && Array.isArray(cachedTrees) && cachedTrees.length > 0) {
+            allTrees = cachedTrees;
+            isFromCache = true;
+            renderResults();
+        }
+    }
+
+    try {
+        if (window.apiClient && window.apiClient.getPublicTrees) {
+            const apiTrees = await window.apiClient.getPublicTrees();
+            if (!Array.isArray(apiTrees)) {
+                throw new Error('API 응답 형식 오류');
+            }
+
+            if (cache) {
+                cache.set(PUBLIC_TREES_CACHE_KEY, apiTrees, 5 * 60 * 1000);
+            }
+            if (!areTreesEffectivelySame(allTrees, apiTrees)) {
+                allTrees = apiTrees;
+            }
+            apiTreesLoaded = true;
+            renderResults();
+        } else {
+            throw new Error('tree API 사용 불가');
+        }
+    } catch (error) {
+        loadError = error;
+        console.warn('[search] API 로드 실패:', error.message);
+        if (!allTrees || allTrees.length === 0) {
+            allTrees = [];
+        }
+        renderResults();
+    }
+
+    let searchInputTimer = null;
+    searchInput.addEventListener('input', (e) => {
+        currentQuery = e.target.value.trim();
+        if (searchInputTimer) clearTimeout(searchInputTimer);
+        searchInputTimer = setTimeout(() => {
+            renderResults(false);
+        }, 180);
+    });
+
+    tagChips.forEach(chip => {
+        chip.addEventListener('click', () => {
+            tagChips.forEach(c => c.classList.remove('active'));
+            chip.classList.add('active');
+            currentCategory = chip.dataset.category || chip.textContent.trim();
+            renderResults(false);
+        });
+    });
 });
-
-// End of search.js orchestrator
