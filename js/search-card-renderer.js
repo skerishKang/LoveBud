@@ -1,6 +1,6 @@
 /**
  * LoveBud Search Card Renderer
- * v20260421-1
+ * v20260421-2
  * 
  * Rendering layer: tree cards, empty states.
  * DOM-agnostic - returns HTML strings.
@@ -131,6 +131,7 @@
          const safeTags = (Array.isArray(tags) ? tags : [])
              .map(tag => titleHelper?.sanitizeBrowseLabel ? titleHelper.sanitizeBrowseLabel(tag) : String(tag || '').trim())
              .filter(Boolean)
+             .filter(tag => tag !== '기록' && tag !== 'tag_record')
              .slice(0, 3);
 
          if (!safeTags.length) return '';
@@ -403,5 +404,5 @@
         getBasePath: getBasePath
     };
 
-     console.log('[LoveBudSearchCardRenderer] Search card renderer loaded v20260421-1');
+     console.log('[LoveBudSearchCardRenderer] Search card renderer loaded v20260421-2');
  })();
