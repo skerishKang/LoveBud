@@ -1,6 +1,6 @@
 /**
  * LoveBud Search Card Renderer
- * v20260422-1
+ * v20260422-2
  * 
  * Rendering layer: tree cards, empty states.
  * DOM-agnostic - returns HTML strings.
@@ -86,7 +86,7 @@
     }
 
     function renderPathFallback() {
-        return '<div class="path-node-fallback">감상<br>준비중</div>';
+        return '<div class="path-node-fallback">대표<br>순간 준비 중</div>';
     }
 
     function renderPathImage(src, alt) {
@@ -95,7 +95,7 @@
         }
         return `
             <img src="${src}" alt="${alt}" loading="lazy" onerror="this.hidden=true;this.nextElementSibling.hidden=false">
-            <div class="path-node-fallback" hidden>감상<br>준비중</div>
+            <div class="path-node-fallback" hidden>대표<br>순간 준비 중</div>
         `;
     }
 
@@ -105,7 +105,7 @@
             <div class="tree-card-media-fallback" style="flex-direction:column;gap:8px;padding:20px;text-align:center;">
                 <span style="font-size:38px;line-height:1;">${escapeHtml(getTreeIcon(tree.stage))}</span>
                 <div style="font-size:13px;font-weight:800;color:var(--on-surface);">${safeTitle}</div>
-                <div style="font-size:11px;font-weight:700;color:var(--on-surface-variant);">대표 장면 준비 중</div>
+                <div style="font-size:11px;font-weight:700;color:var(--on-surface-variant);">대표 순간을 다듬는 중</div>
             </div>
         `;
     }
@@ -225,7 +225,7 @@
          return `
              <div class="tree-path-preview empty-tree-preview" style="display:flex;align-items:center;justify-content:center;gap:12px;padding:20px;background:linear-gradient(135deg,var(--surface-container-low),var(--surface-container));border-radius:12px;">
                  <span class="material-symbols-outlined" style="font-size:32px;color:var(--primary-soft);">psychiatry</span>
-                 <span style="font-size:13px;color:var(--on-surface-variant);font-weight:500;">대표 순간은 아직 준비 중이에요. 먼저 고르고 감상 흐름을 열어보세요.</span>
+                 <span style="font-size:13px;color:var(--on-surface-variant);font-weight:500;">대표 순간은 아직 준비 중이에요. 이 트리를 고르면 감상 흐름이 먼저 열립니다.</span>
              </div>
          `;
      }
@@ -333,8 +333,8 @@
                 <span class="material-symbols-outlined" style="font-size: 56px; color: var(--primary); opacity: 0.6; margin-bottom: 20px; display: block;">public</span>
                 <p style="font-size: 1.25rem; font-weight: 800; margin-bottom: 12px; color: var(--on-surface);">아직 공개된 러브트리가 없어요</p>
                 <p style="font-size: 0.95rem; opacity: 0.8; margin-bottom: 24px; line-height: 1.6;">
-                    다른 사람의 공개 트리가 생기면 여기서 둘러볼 수 있어요.<br>
-                    지금은 둘러볼 공개 러브트리가 아직 없는 상태입니다.
+                    다른 팬이 공개한 러브트리가 생기면 이곳이 감상 허브가 됩니다.<br>
+                    지금은 첫 공개 러브트리를 기다리는 중이에요.
                 </p>
                 <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
                     <a href="${basePath}my-trees.html" class="btn-round btn-primary" style="text-decoration: none; font-size: 14px; padding: 10px 20px;">
@@ -354,8 +354,8 @@
         return `
             <div style="text-align: center; padding: 80px 24px; color: var(--on-surface-variant);">
                 <span class="material-symbols-outlined" style="font-size: 48px; opacity: 0.3; margin-bottom: 16px; display: block;">search_off</span>
-                <p style="font-size: 1.1rem; font-weight: 700; margin-bottom: 8px;">조건에 맞는 공개 트리가 없네요</p>
-                <p style="font-size: 0.9rem; opacity: 0.7;">다른 키워드나 태그로 공개된 러브트리를 찾아보세요.</p>
+                <p style="font-size: 1.1rem; font-weight: 700; margin-bottom: 8px;">조건에 맞는 공개 러브트리가 아직 보이지 않아요</p>
+                <p style="font-size: 0.9rem; opacity: 0.7;">다른 이름이나 감정 결로 다시 좁혀보면 새로운 공개 트리를 만날 수 있어요.</p>
             </div>
         `;
     }
@@ -426,5 +426,5 @@
         getBasePath: getBasePath
     };
 
-     console.log('[LoveBudSearchCardRenderer] Search card renderer loaded v20260422-1');
+     console.log('[LoveBudSearchCardRenderer] Search card renderer loaded v20260422-2');
  })();
