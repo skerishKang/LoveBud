@@ -60,6 +60,7 @@ return Array.isArray(trees) ? trees : [];
 }
 
 function getMockMemories() {
+if (Array.isArray(window.memories)) return window.memories;
 return typeof memories !== 'undefined' && Array.isArray(memories) ? memories : [];
 }
 

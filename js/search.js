@@ -138,13 +138,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.warn('[search] API 실패:', error.message);
 
         // 개발/데모 모드에서만 mock fallback 허용
+        const mockMemories = Array.isArray(window.memories)
+            ? window.memories
+            : (typeof memories !== 'undefined' && Array.isArray(memories) ? memories : null);
+        const mockTrees = Array.isArray(window.trees)
+            ? window.trees
+            : (typeof trees !== 'undefined' && Array.isArray(trees) ? trees : null);
+
         if (
             !cachedTrees &&
             isMockFallbackEnabled() &&
-            typeof memories !== 'undefined' &&
-            typeof trees !== 'undefined'
+            mockMemories &&
+            mockTrees
         ) {
-            allTrees = Adapter.buildTreeData(memories, trees);
+            allTrees = Adapter.buildTreeData(mockMemories, mockTrees);
             console.log('[search] mock 데이터 fallback:', allTrees.length, '개 트리');
         } else if (!cachedTrees) {
             allTrees = [];
