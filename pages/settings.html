@@ -29,6 +29,34 @@
       border: 1px solid var(--outline-variant);
       box-shadow: var(--shadow-whisper);
       padding: 48px;
+      position: relative;
+    }
+
+    .settings-close-btn {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      width: 40px;
+      height: 40px;
+      border-radius: 999px;
+      border: 1px solid var(--outline-variant);
+      background: var(--surface);
+      color: var(--on-surface-variant);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .settings-close-btn:hover {
+      border-color: var(--primary-soft);
+      color: var(--primary);
+      background: var(--surface-container-low);
+    }
+
+    .settings-close-btn .material-symbols-outlined {
+      font-size: 20px;
     }
 
     .settings-card h1 {
@@ -168,6 +196,11 @@
       .settings-card h1 {
         font-size: 1.5rem;
       }
+
+      .settings-close-btn {
+        top: 16px;
+        right: 16px;
+      }
     }
   </style>
 </head>
@@ -177,13 +210,16 @@
   <div class="settings-layout">
     <div id="shared-header"></div>
     
-    <main class="settings-content">
-      <div class="settings-card">
+    <main class="settings-content" id="settingsContent">
+      <div class="settings-card" id="settingsCard" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+        <button type="button" class="settings-close-btn" id="settingsCloseBtn" aria-label="설정 닫기">
+          <span class="material-symbols-outlined">close</span>
+        </button>
         <a href="./my-trees.html" class="settings-back-link" id="settingsBackLink" style="display:inline-flex;align-items:center;gap:6px;margin-bottom:24px;color:var(--on-surface-variant);font-size:14px;text-decoration:none;font-weight:500;">
           <span class="material-symbols-outlined" style="font-size:18px;">arrow_back</span>
           <span id="settingsBackLinkText">내 러브트리로 돌아가기</span>
         </a>
-        <h1>설정</h1>
+        <h1 id="settingsTitle">설정</h1>
         <p class="settings-subtitle">러브트리를 어떻게 공개할지 정합니다</p>
         
         <div class="settings-section">
@@ -235,7 +271,7 @@
      <script src="../js/auth/auth-session.js?v=20260417-31"></script>
      <script src="../js/auth/auth-firebase.js?v=20260420-1"></script>
      <script src="../js/auth.js?v=20260417-31"></script>
-    <script src="../js/settings.js?v=20260421-2"></script>
+    <script src="../js/settings.js?v=20260421-3"></script>
   <script>
     renderSharedHeader();
     initSettings();
