@@ -60,6 +60,7 @@ async function fetchModalSummary(limit) {
 }
 
 exports.handler = async (event) => {
+  const handlerStart = Date.now();
   const requestOrigin = event.headers?.origin || event.headers?.Origin || '';
 
   if (event.httpMethod === 'OPTIONS') {
@@ -78,17 +79,34 @@ exports.handler = async (event) => {
 
     // ── Summary View Pathway ──────────────────────────────────────────────────
     if (view === 'summary') {
-      // 1. Try Modal Compute Layer first (optimized & high quality)
-      const modalData = await fetchModalSummary(limit === 50 ? 3 : limit); // default browse limit is 3
+      console.log(`[community-trees][perf] Start summary view (limit: ${limit})`);
+      
+      // 1. Try Modal Compute Layer first
+      const modalStart = Date.now();
+      const modalData = await fetchModalSummary(limit === 50 ? 3 : limit);
+      const modalDuration = Date.now() - modalStart;
+      
       if (modalData) {
+        console.log(`[community-trees][perf] Modal SUCCESS: ${modalDuration}ms`);
+        console.log(`[community-trees][perf] TOTAL (Modal path): ${Date.now() - handlerStart}ms`);
         return ok(modalData, null, requestOrigin);
       }
+      console.log(`[community-trees][perf] Modal FAILED/MISSING: ${modalDuration}ms (Moving to fallback)`);
       
       // 2. Fallback to existing Netlify summary logic
+      const fallbackStart = Date.now();
       const treeFetchLimit = Math.min(Math.max(limit * SUMMARY_FETCH_MULTIPLIER, limit), 100);
+      
+      const qTreesStart = Date.now();
       const trees = await queryTrees({ visibility: 'public', limit: treeFetchLimit });
+      console.log(`[community-trees][perf] DB queryTrees: ${Date.now() - qTreesStart}ms`);
+
       const treeIds = (Array.isArray(trees) ? trees : []).map((tree) => tree.id).filter(Boolean);
+      
+      const qCountsStart = Date.now();
       const memoryCounts = await queryPublicMemoryCounts(treeIds, BROWSE_MIN_MEMORY_COUNT);
+      console.log(`[community-trees][perf] DB queryPublicMemoryCounts: ${Date.now() - qCountsStart}ms`);
+
       const countMap = new Map(memoryCounts.map((row) => [row.tree_id, Number(row.memory_count || 0)]));
 
       let summaries = (Array.isArray(trees) ? trees : [])
@@ -99,6 +117,8 @@ exports.handler = async (event) => {
         summaries = summaries.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
       }
 
+      console.log(`[community-trees][perf] Fallback processing: ${Date.now() - fallbackStart}ms`);
+      console.log(`[community-trees][perf] TOTAL (Fallback path): ${Date.now() - handlerStart}ms`);
       return ok(summaries.slice(0, limit), null, requestOrigin);
     }
 
@@ -106,6 +126,7 @@ exports.handler = async (event) => {
     const trees = await queryTrees({ visibility: 'public', limit });
     return ok(serializeTreeList(trees), null, requestOrigin);
   } catch (error) {
+    console.error(`[community-trees][perf] ERROR after ${Date.now() - handlerStart}ms:`, error.message);
     return handleError('community-trees', error, requestOrigin);
   }
 };
