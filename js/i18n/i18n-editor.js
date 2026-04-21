@@ -54,6 +54,8 @@ Object.assign(window.i18nEditor, {
     editor_action_label: { ko: '이 순간에서 할 수 있는 일', en: 'What you can do here' },
     editor_tree_status_count: { ko: '{count}개의 순간이 이 트리 안에서 이어지고 있어요.', en: '{count} moments are connected inside this tree.' },
     editor_tree_status_empty: { ko: '아직 첫 순간을 기다리고 있어요.', en: 'It is still waiting for the first moment.' },
+    editor_tree_public_info: { ko: '이 트리 전체가 공개되어 있어요. 링크가 있는 사람은 감상할 수 있습니다.', en: 'This whole tree is public. Anyone with the link can view it.' },
+    editor_tree_private_info: { ko: '이 트리 전체는 비공개예요. 지금은 나만 볼 수 있습니다.', en: 'This whole tree is private. Only you can view it right now.' },
     continue_moment: { ko: '순간 이어가기', en: 'Continue this moment' },
     growth_start_hint: { ko: '여기서 다음 가지가 자라나요', en: 'The next branch grows from here' },
     growth_continue_hint: { ko: '선택한 순간 뒤로 감정이 이어져요', en: 'The feeling continues from the selected moment' },
@@ -61,6 +63,7 @@ Object.assign(window.i18nEditor, {
     editor_make_private: { ko: '이 트리 비공개로 전환', en: 'Make this tree private' },
     editor_make_public: { ko: '이 트리 공개하기', en: 'Make this tree public' },
     editor_open_detail: { ko: '상세로 보기', en: 'View details' },
+    editor_focus_current_moment: { ko: '현재 순간 위치 보기', en: 'Locate current moment' },
     editor_visibility_updated_private: { ko: '이 트리를 비공개로 전환했어요.', en: 'This tree has been set to private.' },
     editor_visibility_updated_public: { ko: '이 트리를 공개로 전환했어요.', en: 'This tree has been set to public.' },
     editor_visibility_update_failed: { ko: '공개 상태를 바꾸지 못했어요.', en: 'Failed to update visibility.' },
@@ -69,14 +72,11 @@ Object.assign(window.i18nEditor, {
     editor_root_emotion_tag: { ko: '첫 마음', en: 'First feeling' },
     editor_root_memo_fallback: { ko: '이 장면이 왜 시작이 되었는지 남겨두면, 다음 순간들이 더 자연스럽게 이어져요.', en: 'Leave why this scene became the beginning, and the next moments will connect more naturally.' },
     editor_selected_memo_fallback: { ko: '이 순간의 마음을 한 줄 남겨두면, 이어진 흐름을 다시 떠올리기 쉬워져요.', en: 'Leave one line about this moment, and it will be easier to remember the connected flow.' },
-
-    // Memory Link Preview
     memoryPreviewBadge: { ko: 'YouTube', en: 'YouTube' },
     memoryPreviewTitle: { ko: '영상 링크가 확인됐어요', en: 'Video link detected' },
     memoryPreviewHint: { ko: '이 장면을 트리에 심기 전에 제목과 메모를 다듬어 주세요.', en: 'Refine the title and note before planting this scene.' },
     memoryPreviewUnsupported: { ko: '지원되는 영상 링크를 붙여넣으면 미리보기가 표시돼요.', en: 'Paste a supported video link to see a preview.' },
     memoryUrlLabel: { ko: '영상 또는 장면 링크', en: 'Video or scene link' },
-
     editMemoryTitle: { ko: '제목 수정', en: 'Edit title' },
     saveMemoryTitle: { ko: '저장', en: 'Save' },
     cancelMemoryTitle: { ko: '취소', en: 'Cancel' },
