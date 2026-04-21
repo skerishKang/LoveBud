@@ -376,7 +376,7 @@ function createEditorDetailUI(deps) {
         if (!emptyState) {
             emptyState = document.createElement('div');
             emptyState.id = 'detailEmptyState';
-            emptyState.innerHTML = '<div style="text-align:center;padding:40px 24px;color:var(--on-surface-variant);"><span class="material-symbols-outlined" style="font-size:48px;opacity:0.4;margin-bottom:16px;display:block;">sentiment_satisfied</span><p style="font-size:1rem;font-weight:700;margin-bottom:8px;color:var(--on-surface);">' + formatI18nText('detail_empty_title', '첫 순간이 트리를 깨워요') + '</p><p style="font-size:0.9rem;opacity:0.78;line-height:1.6;">' + formatI18nText('detail_empty_desc', '왼쪽의 "새 순간 이어가기"로 첫 장면을 심으면, 이 패널이 현재 순간 허브로 바뀝니다.') + '</p></div>';
+            emptyState.innerHTML = '<div style="text-align:center;padding:40px 24px;color:var(--on-surface-variant);"><span class="material-symbols-outlined" style="font-size:48px;opacity:0.4;margin-bottom:16px;display:block;">sentiment_satisfied</span><p style="font-size:1rem;font-weight:700;margin-bottom:8px;color:var(--on-surface);">' + formatI18nText('detail_empty_title', '첫 순간이 트리를 깨워요') + '</p><p style="font-size:0.9rem;opacity:0.78;line-height:1.6;">' + formatI18nText('detail_empty_desc', '첫 순간을 심으면 이 패널이 현재 순간 허브로 바뀝니다.') + '</p></div>';
             detailContent.appendChild(emptyState);
         }
 
@@ -411,44 +411,52 @@ function createEditorDetailUI(deps) {
 
     const updateSidebarStatus = () => {
         const treeTitleEl = document.getElementById('sidebarTreeTitle');
+        const visibilityEl = document.getElementById('sidebarTreeVisibility');
         const momentCountEl = document.getElementById('sidebarMomentCount');
         const flowSummaryEl = document.getElementById('sidebarFlowSummary');
         const hintEl = document.getElementById('sidebarSelectionHint');
         const currentTreeData = getCurrentTreeData();
         const selectedNodeId = getSelectedNodeId();
         const treeState = getTreeState();
-        const count = treeState.totalMomentCount;
+        const count = treeState.visibleMomentCount;
         const selected = treeState.treeMemories.find(m => m.id === selectedNodeId);
+        const visibility = currentTreeData?.visibility || 'public';
+        const isPublic = visibility === 'public';
 
         if (treeTitleEl) {
             treeTitleEl.textContent = resolveTreeTitleText(currentTreeData?.title);
         }
+        if (visibilityEl) {
+            visibilityEl.textContent = isPublic
+                ? formatI18nText('editor_sidebar_public_tree', '공개 러브트리')
+                : formatI18nText('editor_sidebar_private_tree', '비공개 러브트리');
+            visibilityEl.classList.toggle('is-public', isPublic);
+            visibilityEl.classList.toggle('is-private', !isPublic);
+        }
         if (momentCountEl) {
-            momentCountEl.textContent = treeState.hasMoments
-                ? formatI18nText('sidebar_moment_count', `순간 {count}개가 이어지고 있어요`, { count })
-                : formatI18nText('sidebar_moment_count_empty', '아직 남긴 순간이 없습니다');
+            momentCountEl.textContent = treeState.hasVisibleMoments
+                ? formatI18nText('sidebar_moment_count_short', `총 ${count}개의 순간`, { count })
+                : formatI18nText('sidebar_moment_count_empty_short', '첫 순간 준비 중');
         }
         if (flowSummaryEl) {
             flowSummaryEl.textContent = selected?.title
-                ? formatI18nText('sidebar_flow_summary_selected', `지금은 "{title}" 순간에 마음이 머물러 있어요.`, { title: selected.title })
-                : treeState.hasMoments
-                    ? formatI18nText('sidebar_flow_summary_connected', `{count}개의 순간이 하나의 러브트리로 차곡차곡 이어지고 있어요.`, { count })
-                    : formatI18nText('sidebar_flow_summary_empty', '첫 기억이 심어지면 이곳에 감정의 흐름이 차곡차곡 쌓여요.');
+                ? formatI18nText('sidebar_flow_summary_selected_short', `지금은 "{title}"에 마음이 머물러 있어요.`, { title: selected.title })
+                : treeState.hasVisibleMoments
+                    ? formatI18nText('sidebar_flow_summary_connected_short', `이 트리에 {count}개의 순간이 이어져 있어요.`, { count })
+                    : formatI18nText('sidebar_flow_summary_empty_short', '첫 순간을 심으면 감정의 흐름이 여기서 시작됩니다.');
         }
         if (hintEl) {
-            const currentSelectionLabel = i18n('sidebar_current_selection') || '현재 선택';
-            const firstMomentHint = i18n('sidebar_first_moment_hint') || '첫 순간을 추가해 트리를 시작해 보세요.';
             hintEl.textContent = selected?.title
-                ? `${currentSelectionLabel}: ${selected.title}`
-                : firstMomentHint;
-            hintEl.style.fontStyle = 'italic';
+                ? formatI18nText('sidebar_canvas_hint_selected', '빈 공간을 드래그해 이동하고, “트리 한눈에 보기”로 전체 흐름을 다시 볼 수 있어요.')
+                : formatI18nText('sidebar_canvas_hint_empty', '트리가 화면 밖으로 밀리면 “트리 한눈에 보기”로 다시 가운데에 맞출 수 있어요.');
+            hintEl.style.fontStyle = 'normal';
             hintEl.style.color = 'var(--on-surface-variant)';
         }
 
         const addMemoryBtnLabel = document.getElementById('addMemoryBtnLabel');
         const addMemoryEyebrow = document.getElementById('addMemoryEyebrow');
         const addMemoryIntro = document.getElementById('addMemoryIntro');
-        const isEmptyTree = !treeState.hasMoments;
+        const isEmptyTree = !treeState.hasVisibleMoments;
 
         if (addMemoryBtnLabel) {
             addMemoryBtnLabel.textContent = isEmptyTree
@@ -456,12 +464,14 @@ function createEditorDetailUI(deps) {
                 : i18n('editor_add_next_memory');
         }
         if (addMemoryEyebrow) {
-            addMemoryEyebrow.textContent = i18n('editor_add_memory_eyebrow');
+            addMemoryEyebrow.textContent = isEmptyTree
+                ? formatI18nText('editor_add_first_memory_eyebrow', '첫 순간 심기')
+                : i18n('editor_add_memory_eyebrow');
         }
         if (addMemoryIntro) {
             addMemoryIntro.textContent = isEmptyTree
-                ? i18n('editor_empty_tree_hint')
-                : i18n('editor_next_memory_hint');
+                ? formatI18nText('editor_empty_tree_hint_short', '이 트리의 첫 장면을 남기면 가운데 캔버스에 감정의 흐름이 열립니다.')
+                : formatI18nText('editor_next_memory_hint_short', '지금 머문 장면 다음에 새로운 순간을 이어 심어 보세요.');
         }
     };
 
@@ -494,7 +504,7 @@ function createEditorDetailUI(deps) {
         const imgEl = detailPanel.querySelector('.detail-video img');
         const dateEl = document.getElementById('detailDateText');
         const tagsContainer = detailPanel.querySelector('.tags-container');
-        const noteEl = detailPanel.querySelector('.diary-note');
+        const noteEl = document.querySelector('.diary-note');
         const memoryActions = detailPanel.querySelector('.memory-actions');
 
         const localBadgeText = localSaveMode ? (i18n('local_save_badge') || '로컬 저장') : '';
