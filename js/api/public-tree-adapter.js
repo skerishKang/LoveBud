@@ -107,7 +107,7 @@
           ? '새 트리'
           : (sortedMems.length <= 2 ? '입덕' : (sortedMems.length <= 4 ? '성장' : '최애'))
       };
-    });
+    }).filter((tree) => tree.memoryCount > 0);
   }
 
   // Expose as LoveTreePublicTreeAdapter
