@@ -14,7 +14,7 @@ exports.handler = async (event) => {
       throw httpError(405, 'Method not allowed');
     }
 
-    const trees = await queryTrees({ visibility: 'public', limit: 20 });
+    const trees = await queryTrees({ visibility: 'public', limit: 50 });
 
     return ok(serializeTreeList(trees), null, requestOrigin);
   } catch (error) {
