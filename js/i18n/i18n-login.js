@@ -1,6 +1,6 @@
 /**
  * LoveBud - i18n Login Dictionary
- * v20260420-1
+ * v20260422-1
  *
  * 로그인/회원가입 페이지 번역 키
  */
@@ -35,8 +35,8 @@
       en: 'Continue with Google'
     },
     'google_signup': {
-      ko: 'Google로 계속하기',
-      en: 'Continue with Google'
+      ko: 'Google로 바로 시작하기',
+      en: 'Start with Google'
     },
 
     // 구분선
@@ -47,6 +47,28 @@
     'email_login': {
       ko: '이메일로 시작하기',
       en: 'Continue with email'
+    },
+
+    // 회원가입 섹션 안내
+    'signup_intro_badge': {
+      ko: '처음 오셨나요?',
+      en: 'New here?'
+    },
+    'signup_intro_title': {
+      ko: '계정만 만들면 바로 첫 순간을 남길 수 있어요',
+      en: 'Create an account and save your first moment right away'
+    },
+    'signup_intro_desc': {
+      ko: '아래에서 Google 또는 이메일로 바로 시작해보세요',
+      en: 'Start right away with Google or email below'
+    },
+    'google_signup_helper': {
+      ko: 'Google 계정으로 로그인만 하면 별도 가입 없이 바로 시작됩니다',
+      en: 'Sign in with Google and start right away without a separate sign-up step'
+    },
+    'or_create_with_email': {
+      ko: '또는 이메일로 계정 만들기',
+      en: 'Or create an account with email'
     },
 
     // 이메일 인증 모달
