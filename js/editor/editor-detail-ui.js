@@ -109,20 +109,20 @@ function createEditorDetailUI(deps) {
         btn.style.alignItems = 'center';
         btn.style.justifyContent = 'center';
         btn.style.gap = '6px';
-        btn.style.padding = '9px 13px';
+        btn.style.padding = tone === 'primary' ? '10px 15px' : '9px 13px';
         btn.style.borderRadius = '999px';
         btn.style.fontSize = '12px';
-        btn.style.fontWeight = '700';
+        btn.style.fontWeight = '800';
         btn.style.cursor = 'pointer';
         btn.style.transition = 'transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease';
         btn.style.border = '1px solid rgba(144,73,81,0.10)';
         btn.style.background = tone === 'primary'
             ? 'linear-gradient(180deg, rgba(144,73,81,0.98), rgba(144,73,81,0.90))'
-            : 'rgba(247, 242, 239, 0.92)';
+            : 'linear-gradient(180deg, rgba(255,255,255,0.98), rgba(247,242,239,0.96))';
         btn.style.color = tone === 'primary' ? '#fff' : 'var(--primary)';
         btn.style.boxShadow = tone === 'primary'
-            ? '0 8px 20px rgba(144, 73, 81, 0.16)'
-            : 'none';
+            ? '0 10px 22px rgba(144, 73, 81, 0.18)'
+            : '0 6px 16px rgba(75, 64, 57, 0.06)';
         if (icon) btn.appendChild(createInlineIcon(icon, '14px'));
         btn.appendChild(document.createTextNode(label));
         btn.addEventListener('mouseenter', () => {
@@ -216,11 +216,11 @@ function createEditorDetailUI(deps) {
         openDetailButtonEl = null
     }) => {
         const wrap = document.createElement('div');
-        wrap.style.padding = '18px 18px 18px';
-        wrap.style.borderRadius = '20px';
-        wrap.style.background = 'linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,246,244,0.96))';
-        wrap.style.boxShadow = '0 10px 26px rgba(75, 64, 57, 0.06)';
-        wrap.style.border = '1px solid rgba(144,73,81,0.08)';
+        wrap.style.padding = '20px 20px 18px';
+        wrap.style.borderRadius = '22px';
+        wrap.style.background = 'linear-gradient(180deg, rgba(255,255,255,0.99), rgba(250,246,244,0.97))';
+        wrap.style.boxShadow = '0 14px 30px rgba(75, 64, 57, 0.08)';
+        wrap.style.border = '1px solid rgba(144,73,81,0.10)';
         wrap.style.display = 'flex';
         wrap.style.flexDirection = 'column';
         wrap.style.gap = '14px';
@@ -247,21 +247,21 @@ function createEditorDetailUI(deps) {
         }));
 
         titleWrap.appendChild(createTextBlock('div', displayTreeTitle, {
-            fontSize: '18px',
+            fontSize: '22px',
             fontWeight: '900',
             color: 'var(--on-surface)',
-            lineHeight: '1.35',
-            letterSpacing: '-0.02em'
+            lineHeight: '1.28',
+            letterSpacing: '-0.035em'
         }));
 
         titleWrap.appendChild(createTextBlock('div', countLabel, {
             fontSize: '12px',
             color: 'var(--on-surface-variant)',
-            lineHeight: '1.7'
+            lineHeight: '1.75'
         }));
 
         const visBadge = document.createElement('span');
-        visBadge.style.cssText = `${visStyle}padding:6px 11px;border-radius:999px;display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;`;
+        visBadge.style.cssText = `${visStyle}padding:6px 11px;border-radius:999px;display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;box-shadow:0 4px 12px rgba(75,64,57,0.05);`;
         visBadge.appendChild(createInlineIcon(visIcon, '12px'));
         visBadge.appendChild(document.createTextNode(visLabel));
 
@@ -273,7 +273,7 @@ function createEditorDetailUI(deps) {
             wrap.appendChild(createTextBlock('div', visInfo, {
                 fontSize: '12px',
                 color: 'var(--on-surface-variant)',
-                lineHeight: '1.7'
+                lineHeight: '1.75'
             }));
         }
 
@@ -282,6 +282,7 @@ function createEditorDetailUI(deps) {
         actionsRow.style.alignItems = 'center';
         actionsRow.style.gap = '8px';
         actionsRow.style.flexWrap = 'wrap';
+        actionsRow.style.paddingTop = '2px';
 
         if (shareButtonEl) actionsRow.appendChild(shareButtonEl);
         if (visibilityToggleButtonEl) actionsRow.appendChild(visibilityToggleButtonEl);
