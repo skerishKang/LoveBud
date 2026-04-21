@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>러브트리 편집 | LoveTree</title>
-    <link rel="stylesheet" href="../css/editor.css?v=20260422-2">
+    <link rel="stylesheet" href="../css/editor.css?v=20260422-3">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
     <style>
         .memory-inline-edit { display:inline-flex; align-items:center; }
@@ -48,15 +48,21 @@
                         <button type="button" id="renameTreeBtn" class="icon-menu-btn editor-rename-btn" aria-label="트리 제목 변경" title="트리 제목 변경">편집</button>
                     </div>
                     <span id="sidebarTreeVisibility" class="editor-tree-visibility-pill is-private">비공개 러브트리</span>
+                    <div class="editor-title-settings-panel" aria-label="트리 핵심 설정">
+                        <button type="button" class="editor-mini-setting-btn" id="sidebarTitleEditBtn">
+                            <span class="material-symbols-outlined" aria-hidden="true">edit</span>
+                            <span id="sidebarTitleEditBtnLabel">제목 수정</span>
+                        </button>
+                        <button type="button" class="editor-mini-setting-btn" id="sidebarVisibilityToggleBtn">
+                            <span class="material-symbols-outlined" id="sidebarVisibilityToggleBtnIcon" aria-hidden="true">public</span>
+                            <span id="sidebarVisibilityToggleBtnLabel">이 트리 공개하기</span>
+                        </button>
+                    </div>
                     <p id="sidebarMomentCount"></p>
                     <p id="sidebarFlowSummary" class="editor-flow-summary"></p>
                     <span id="sidebarSelectionHint" class="editor-sidebar-meta"></span>
                 </div>
                 <div class="editor-sidebar-actions">
-                    <button type="button" class="sidebar-btn" id="sidebarVisibilityToggleBtn">
-                        <span class="btn-icon material-symbols-outlined" id="sidebarVisibilityToggleBtnIcon" aria-hidden="true">public</span>
-                        <span class="btn-label" id="sidebarVisibilityToggleBtnLabel">이 트리 공개하기</span>
-                    </button>
                     <button type="button" class="sidebar-btn" id="recenterCanvasBtn">
                         <span class="btn-icon">⌂</span>
                         <span class="btn-label" id="recenterCanvasBtnLabel">트리 한눈에 보기</span>
