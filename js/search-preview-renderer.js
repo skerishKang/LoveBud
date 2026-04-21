@@ -1,6 +1,6 @@
 /**
  * LoveBud Search Preview Renderer
- * v20260422-1
+ * v20260422-2
  * 
  * Rendering layer: preview sidebar panel.
  * DOM-agnostic - updates passed DOM elements.
@@ -271,7 +271,7 @@
                 <div style="width:100%;height:100%;border-radius:1rem;background:linear-gradient(135deg, rgba(255,248,249,0.95), rgba(255,255,255,0.98));display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;color:var(--on-surface-variant);">
                     <span class="material-symbols-outlined" style="font-size:34px;color:var(--primary);margin-bottom:10px;animation:spin 1s linear infinite;">sync</span>
                     <div style="font-size:14px;font-weight:800;color:var(--on-surface);margin-bottom:8px;">${safeTreeTitle}</div>
-                    <p style="margin:0;font-size:13px;line-height:1.6;">${escapeHtml(getSearchCopy('search.previewLoadingLead', '이 트리의 기억을 불러오는 중이에요.', 'Loading this tree now.'))}</p>
+                    <p style="margin:0;font-size:13px;line-height:1.6;">${escapeHtml(getSearchCopy('search.previewLoadingLead', '이 트리의 첫 장면과 이어진 감정을 불러오는 중이에요.', 'Loading the first scene and connected flow of this tree.'))}</p>
                 </div>
             `;
         }
@@ -322,8 +322,8 @@
                         <span class="material-symbols-outlined" style="font-size:36px;color:var(--primary);margin-bottom:12px;">psychiatry</span>
                         <div style="font-size:14px;font-weight:800;color:var(--on-surface);margin-bottom:8px;">${safeTreeTitle}</div>
                         <p style="margin:0;font-size:13px;line-height:1.6;">
-                            ${escapeHtml(getSearchCopy('search.previewNoMomentTitle', '아직 대표 순간이 없어요.', 'There is no featured moment yet.'))}<br>
-                            ${escapeHtml(getSearchCopy('search.previewNoMomentBody', '첫 입덕 순간이 기록되면 여기에서 바로 미리 볼 수 있어요.', 'Once the first fandom moment is recorded, you will be able to preview it here.'))}
+                            ${escapeHtml(getSearchCopy('search.previewNoMomentTitle', '아직 대표 순간이 또렷하게 남아 있지 않아요.', 'There is no clearly featured moment yet.'))}<br>
+                            ${escapeHtml(getSearchCopy('search.previewNoMomentBody', '첫 순간이 기록되면 이 감상 허브에서 가장 먼저 미리 볼 수 있어요.', 'Once the first moment is recorded, you will be able to preview it here first.'))}
                         </p>
                     </div>
                 `;
@@ -430,7 +430,7 @@
                     <div style="font-size:14px;color:var(--on-surface-variant);line-height:1.6;padding:0 4px;">
                         ${getPreviewSummaryCopy(tree, memories)}
                         ${renderInfoCallout('favorite', `${firstMomentLabel}에서 시작해 ${lastMomentLabel}까지 이어진 ${moodText}의 러브트리예요`)}
-                        ${renderInfoCallout('touch_app', getSearchCopy('search.previewJourneyCta', '오른쪽에서 감상 흐름을 확인하고, 버튼으로 바로 열어보세요.', 'Check the emotional flow here, then open the tree with the button.'), 'primary')}
+                        ${renderInfoCallout('touch_app', getSearchCopy('search.previewJourneyCta', '이곳에서 흐름을 훑어보고, 마음이 머무는 순간에 바로 들어가 보세요.', 'Scan the flow here, then open the moment that draws you in.'), 'primary')}
                     </div>
                     ${renderPreviewActionButton(tree)}
                 `;
@@ -519,5 +519,5 @@
         renderEmotionTags: renderEmotionTags
     };
 
-    console.log('[LoveBudSearchPreviewRenderer] Search preview renderer loaded v20260422-1');
+    console.log('[LoveBudSearchPreviewRenderer] Search preview renderer loaded v20260422-2');
 })();
