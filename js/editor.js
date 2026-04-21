@@ -157,7 +157,7 @@ const createInlineMediaResolversFallbacks = resolverFallbacks.createInlineMediaR
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
+        .replace(/\"/g, '&quot;')
         .replace(/'/g, '&#39;'));
 
     const inlineMediaResolvers = editorHelpers.safeUrl
@@ -276,25 +276,33 @@ const createInlineMediaResolversFallbacks = resolverFallbacks.createInlineMediaR
             el.setAttribute('placeholder', safeI18nText(i18n, key, fallback));
         };
 
-        setText('editorFlowHeading', 'sidebar_flow_heading', '흐름');
+        setText('editorFlowHeading', 'sidebar_flow_heading', '트리를 키워가요');
+        setText('editorFlowLead', 'sidebar_flow_lead', '지금 마음이 머문 순간을 하나씩 이어 붙이며 나만의 흐름을 키워보세요.');
         setText('focusSelectedBtnLabel', 'sidebar_focus_selected', '선택한 순간 보기');
         setText('recenterCanvasBtnLabel', 'sidebar_recenter_tree', '트리 한눈에 보기');
-        setText('addMemoryBtnLabel', 'editor_add_memory', '순간 추가');
+        setText('addMemoryEyebrow', 'editor_add_memory_eyebrow', '다음 순간 심기');
+        setText('addMemoryIntro', 'editor_add_memory_intro', '지금 선택한 순간 다음에 새로운 장면을 이어 심어 보세요. 첫 순간이라면 여기서 러브트리가 시작됩니다.');
+        setText('addMemoryBtnLabel', 'editor_add_memory', '새 순간 이어가기');
         setText('saveStatusText', 'save_saved', '저장됨');
         setText('detailMoreBtn', 'more', '더보기');
 
-        setText('addMemoryFormTitle', 'editor_new_memory', '새 기억 추가');
-        setText('memoryUrlLabel', 'editor_youtube_link', 'YouTube 링크');
-        setText('memoryTitleLabel', 'editor_memory_title', '제목');
-        setText('memoryMemoLabel', 'editor_memory_memo_optional', '메모 (선택)');
+        setText('addMemoryFormTitle', 'editor_new_memory', '어떤 순간이 이어졌나요?');
+        setText('memoryUrlLabel', 'editor_youtube_link', 'YouTube 장면 링크');
+        setText('memoryTitleLabel', 'editor_memory_title', '순간 제목');
+        setText('memoryMemoLabel', 'editor_memory_memo_optional', '감정 메모');
         setText('cancelAddMemory', 'editor_cancel', '취소');
-        setText('confirmAddMemory', 'editor_confirm_add', '추가하기');
+        setText('confirmAddMemory', 'editor_confirm_add', '이 순간 심기');
 
-        setPlaceholder('memoryTitleInput', 'editor_memory_title_placeholder', '이 기억의 제목을 입력하세요');
-        setPlaceholder('memoryMemoInput', 'editor_memory_memo_placeholder', '이 순간의 감정을 남겨보세요...');
+        setPlaceholder('memoryTitleInput', 'editor_memory_title_placeholder', '이 순간을 어떻게 기억하고 싶은지 적어보세요');
+        setPlaceholder('memoryMemoInput', 'editor_memory_memo_placeholder', '왜 이 장면이 이어졌는지, 지금 마음을 남겨보세요...');
 
         setText('detailEmptyTitle', 'detail_empty_title', '첫 순간이 트리를 깨워요');
-        setText('detailEmptyDesc', 'detail_empty_desc', '왼쪽 아래의 "순간 추가" 버튼으로 당신의 첫 기억을 심어보세요.');
+        setText('detailEmptyDesc', 'detail_empty_desc', '왼쪽의 "새 순간 이어가기"로 첫 장면을 심으면, 이 패널이 현재 순간 허브로 바뀝니다.');
+        setText('detailCurrentMomentBadge', 'editor_current_moment_badge', '현재 순간');
+        setText('detailCurrentMomentTitle', 'editor_current_moment_title', '지금 마음이 머문 장면');
+        setText('detailCurrentMomentHint', 'editor_current_moment_hint', '선택한 순간을 중심으로 감정 메모와 다음 행동이 정리됩니다.');
+        setText('detailMomentInfoLabel', 'editor_moment_info_label', '순간 정보');
+        setText('detailActionLabel', 'editor_action_label', '이 순간에서 할 수 있는 일');
 
         setText('detailDateLabel', 'editor_date_label', '기억한 날');
         setText('detailTagsLabel', 'editor_tag_label', '감정 태그');
