@@ -5,7 +5,7 @@
 
 ## 0. Firebase 웹 클라이언트 config 운영 경계
 
-`js/firebase-config.js`의 Firebase 웹 클라이언트 설정값(`apiKey`, `authDomain`, `projectId` 등)은 **프론트에서 완전히 숨기는 비밀값이 아닙니다.** 현재 main도 이 값을 정적으로 로드합니다. fileciteturn224file0
+`js/firebase-config.js`의 Firebase 웹 클라이언트 설정값(`apiKey`, `authDomain`, `projectId` 등)은 **프론트에서 완전히 숨기는 비밀값이 아닙니다.** 현재 main도 이 값을 정적으로 로드합니다.
 
 핵심 원칙:
 - 이 값 자체를 노출하지 않는 것이 보안의 핵심이 아님
