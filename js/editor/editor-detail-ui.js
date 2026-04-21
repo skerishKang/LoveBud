@@ -42,111 +42,11 @@ function createEditorDetailUI(deps) {
         return el;
     };
 
-    const createTreeMetaBlock = ({
-        displayTreeTitle,
-        visIcon,
-        visLabel,
-        visInfo,
-        visStyle,
-        i18n
-    }) => {
-        const wrap = document.createElement('div');
-        wrap.style.marginTop = '10px';
-        wrap.style.padding = '12px 14px';
-        wrap.style.borderRadius = '12px';
-        wrap.style.background = 'var(--surface-container)';
-        wrap.style.display = 'flex';
-        wrap.style.flexDirection = 'column';
-        wrap.style.gap = '8px';
-
-        wrap.appendChild(createTextBlock('div', i18n('current_tree') || '현재 트리', {
-            fontSize: '11px',
-            fontWeight: '800',
-            letterSpacing: '.06em',
-            color: 'var(--on-surface-variant)',
-            textTransform: 'uppercase'
-        }));
-
-        const topRow = document.createElement('div');
-        topRow.style.display = 'flex';
-        topRow.style.alignItems = 'center';
-        topRow.style.justifyContent = 'space-between';
-        topRow.style.gap = '8px';
-        topRow.style.flexWrap = 'wrap';
-
-        const titleEl = document.createElement('div');
-        titleEl.className = 'tree-title-text';
-        titleEl.style.fontSize = '14px';
-        titleEl.style.fontWeight = '700';
-        titleEl.style.color = 'var(--on-surface)';
-        titleEl.textContent = displayTreeTitle;
-
-        const visBadge = document.createElement('span');
-        visBadge.style.cssText = `${visStyle}padding:4px 10px;border-radius:99px;display:inline-flex;align-items:center;gap:4px;font-size:12px;`;
-        visBadge.appendChild(createInlineIcon(visIcon, '12px'));
-        visBadge.appendChild(document.createTextNode(visLabel));
-
-        topRow.appendChild(titleEl);
-        topRow.appendChild(visBadge);
-
-        wrap.appendChild(topRow);
-        wrap.appendChild(createTextBlock('div', visInfo, {
-            fontSize: '11px',
-            color: 'var(--on-surface-variant)'
-        }));
-
-        return wrap;
-    };
-
-    const createHeaderTitleRow = ({ titleText, localBadgeText, shareButtonEl = null }) => {
-        const row = document.createElement('div');
-        row.style.display = 'flex';
-        row.style.alignItems = 'center';
-        row.style.gap = '8px';
-        row.style.justifyContent = 'space-between';
-
-        const left = document.createElement('div');
-        left.style.display = 'flex';
-        left.style.alignItems = 'center';
-        left.style.gap = '8px';
-        left.style.flexWrap = 'wrap';
-
-        const title = document.createElement('span');
-        title.style.fontSize = '1.4rem';
-        title.style.lineHeight = '1.2';
-        title.style.fontWeight = '900';
-        title.style.letterSpacing = '-0.03em';
-        title.style.color = 'var(--on-surface)';
-        title.textContent = titleText || '';
-
-        left.appendChild(title);
-
-        if (localBadgeText) {
-            const badge = document.createElement('span');
-            badge.style.fontSize = '11px';
-            badge.style.padding = '2px 8px';
-            badge.style.background = 'rgba(239,108,0,0.1)';
-            badge.style.color = '#ef6c00';
-            badge.style.borderRadius = '99px';
-            badge.style.fontWeight = '600';
-            badge.textContent = localBadgeText;
-            left.appendChild(badge);
-        }
-
-        row.appendChild(left);
-
-        if (shareButtonEl) {
-            row.appendChild(shareButtonEl);
-        }
-
-        return row;
-    };
-
     const createShareTreeButton = ({ visStyle, shareLabel }) => {
         const btn = document.createElement('button');
         btn.id = 'shareTreeBtn';
         btn.type = 'button';
-        btn.style.cssText = `${visStyle}font-size:12px;padding:6px 12px;border-radius:99px;cursor:pointer;border:none;font-weight:600;display:flex;align-items:center;gap:4px;`;
+        btn.style.cssText = `${visStyle}font-size:12px;padding:8px 12px;border-radius:999px;cursor:pointer;border:none;font-weight:700;display:flex;align-items:center;gap:6px;white-space:nowrap;`;
         btn.appendChild(createInlineIcon('content_copy', '14px'));
         btn.appendChild(document.createTextNode(shareLabel));
         return btn;
@@ -169,10 +69,85 @@ function createEditorDetailUI(deps) {
         });
     };
 
+    const createTreeMetaBlock = ({
+        displayTreeTitle,
+        visIcon,
+        visLabel,
+        visInfo,
+        visStyle,
+        countLabel,
+        shareButtonEl = null
+    }) => {
+        const wrap = document.createElement('div');
+        wrap.style.padding = '16px 18px';
+        wrap.style.borderRadius = '18px';
+        wrap.style.background = 'linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,246,244,0.96))';
+        wrap.style.boxShadow = '0 10px 26px rgba(75, 64, 57, 0.06)';
+        wrap.style.border = '1px solid rgba(144,73,81,0.08)';
+        wrap.style.display = 'flex';
+        wrap.style.flexDirection = 'column';
+        wrap.style.gap = '12px';
+
+        const topRow = document.createElement('div');
+        topRow.style.display = 'flex';
+        topRow.style.alignItems = 'center';
+        topRow.style.justifyContent = 'space-between';
+        topRow.style.gap = '10px';
+        topRow.style.flexWrap = 'wrap';
+
+        const titleWrap = document.createElement('div');
+        titleWrap.style.display = 'flex';
+        titleWrap.style.flexDirection = 'column';
+        titleWrap.style.gap = '6px';
+
+        titleWrap.appendChild(createTextBlock('div', displayTreeTitle, {
+            fontSize: '15px',
+            fontWeight: '800',
+            color: 'var(--on-surface)',
+            lineHeight: '1.45'
+        }));
+
+        titleWrap.appendChild(createTextBlock('div', countLabel, {
+            fontSize: '12px',
+            color: 'var(--on-surface-variant)',
+            lineHeight: '1.6'
+        }));
+
+        const visBadge = document.createElement('span');
+        visBadge.style.cssText = `${visStyle}padding:5px 10px;border-radius:999px;display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;`;
+        visBadge.appendChild(createInlineIcon(visIcon, '12px'));
+        visBadge.appendChild(document.createTextNode(visLabel));
+
+        topRow.appendChild(titleWrap);
+        topRow.appendChild(visBadge);
+
+        const infoRow = document.createElement('div');
+        infoRow.style.display = 'flex';
+        infoRow.style.alignItems = 'center';
+        infoRow.style.justifyContent = 'space-between';
+        infoRow.style.gap = '10px';
+        infoRow.style.flexWrap = 'wrap';
+
+        infoRow.appendChild(createTextBlock('div', visInfo, {
+            fontSize: '12px',
+            color: 'var(--on-surface-variant)',
+            lineHeight: '1.7',
+            flex: '1 1 220px'
+        }));
+
+        if (shareButtonEl) {
+            infoRow.appendChild(shareButtonEl);
+        }
+
+        wrap.appendChild(topRow);
+        wrap.appendChild(infoRow);
+        return wrap;
+    };
+
     const resetDetailViewState = () => {
         const headerEl = detailPanel.querySelector('h3');
         if (headerEl) {
-            headerEl.innerHTML = '';
+            headerEl.textContent = formatI18nText('editor_current_hub_heading', '현재 순간 허브');
         }
 
         const imgEl = detailPanel.querySelector('.detail-video img');
@@ -181,6 +156,9 @@ function createEditorDetailUI(deps) {
             imgEl.src = '';
             imgEl.alt = '';
         }
+
+        const treeMetaMount = document.getElementById('detailTreeMetaMount');
+        if (treeMetaMount) treeMetaMount.innerHTML = '';
 
         const dateEl = document.getElementById('detailDateText');
         if (dateEl) {
@@ -226,7 +204,7 @@ function createEditorDetailUI(deps) {
         if (!emptyState) {
             emptyState = document.createElement('div');
             emptyState.id = 'detailEmptyState';
-            emptyState.innerHTML = '<div style="text-align:center;padding:40px 24px;color:var(--on-surface-variant);"><span class="material-symbols-outlined" style="font-size:48px;opacity:0.4;margin-bottom:16px;display:block;">sentiment_satisfied</span><p style="font-size:1rem;font-weight:700;margin-bottom:8px;color:var(--on-surface);">' + formatI18nText('detail_empty_title', '첫 순간이 트리를 깨워요') + '</p><p style="font-size:0.9rem;opacity:0.78;line-height:1.6;">' + formatI18nText('detail_empty_desc', '왼쪽 아래의 "순간 추가" 버튼으로 당신의 첫 기억을 심어보세요.') + '</p></div>';
+            emptyState.innerHTML = '<div style="text-align:center;padding:40px 24px;color:var(--on-surface-variant);"><span class="material-symbols-outlined" style="font-size:48px;opacity:0.4;margin-bottom:16px;display:block;">sentiment_satisfied</span><p style="font-size:1rem;font-weight:700;margin-bottom:8px;color:var(--on-surface);">' + formatI18nText('detail_empty_title', '첫 순간이 트리를 깨워요') + '</p><p style="font-size:0.9rem;opacity:0.78;line-height:1.6;">' + formatI18nText('detail_empty_desc', '왼쪽의 "새 순간 이어가기"로 첫 장면을 심으면, 이 패널이 현재 순간 허브로 바뀝니다.') + '</p></div>';
             detailContent.appendChild(emptyState);
         }
 
@@ -239,25 +217,25 @@ function createEditorDetailUI(deps) {
             resetDetailViewState();
         }
 
-if (emptyState) emptyState.style.display = isEmpty ? 'block' : 'none';
-  if (viewMode) viewMode.style.display = isEmpty ? 'none' : 'block';
-  if (editMode) editMode.style.display = 'none';
-  if (actions) actions.style.display = isEmpty ? 'none' : 'flex';
-  if (indicator && isEmpty) indicator.style.display = 'none';
-  const footer = document.getElementById('detailPanelFooter');
-  if (footer) {
-    footer.style.display = 'none';
-  }
-};
+        if (emptyState) emptyState.style.display = isEmpty ? 'block' : 'none';
+        if (viewMode) viewMode.style.display = isEmpty ? 'none' : 'block';
+        if (editMode) editMode.style.display = 'none';
+        if (actions) actions.style.display = isEmpty ? 'none' : 'flex';
+        if (indicator && isEmpty) indicator.style.display = 'none';
+        const footer = document.getElementById('detailPanelFooter');
+        if (footer) {
+            footer.style.display = 'none';
+        }
+    };
 
-const updateFocusSelectedBtn = () => {
-  const btn = document.getElementById('focusSelectedBtn');
-  if (!btn) return;
+    const updateFocusSelectedBtn = () => {
+        const btn = document.getElementById('focusSelectedBtn');
+        if (!btn) return;
 
-  const hasSelection = !!getSelectedNodeId();
-  btn.disabled = !hasSelection;
-  btn.classList.toggle('is-disabled', !hasSelection);
-};
+        const hasSelection = !!getSelectedNodeId();
+        btn.disabled = !hasSelection;
+        btn.classList.toggle('is-disabled', !hasSelection);
+    };
 
     const updateSidebarStatus = () => {
         const treeTitleEl = document.getElementById('sidebarTreeTitle');
@@ -306,101 +284,91 @@ const updateFocusSelectedBtn = () => {
             ? resolveInfoText(i18n('share_info'), 'share_info', '링크가 있는 사람은 이 트리를 볼 수 있습니다')
             : resolveInfoText(currentTree.info || i18n('private_info'), 'private_info', '나만 볼 수 있는 트리입니다');
         const visStyle = isPublic
-            ? 'background:rgba(76,175,80,0.1);color:#4caf50;border:1px solid rgba(76,175,80,0.3);'
-            : 'background:rgba(158,158,158,0.1);color:#757575;border:1px solid rgba(158,158,158,0.3);';
+            ? 'background:rgba(76,175,80,0.1);color:#4caf50;border:1px solid rgba(76,175,80,0.25);'
+            : 'background:rgba(158,158,158,0.1);color:#757575;border:1px solid rgba(158,158,158,0.25);';
         const displayTreeTitle = resolveTreeTitleText(currentTree.title);
         const canonicalRootId = getCanonicalRootId();
         const isEmptyState = !!data?.isNewTree;
         const isRootSelected = !isEmptyState && isRootMemory(data, canonicalRootId);
         const localSaveMode = getLocalSaveMode();
+        const realMemoriesCount = getTreeMemories().filter(m => !isRootMemory(m, canonicalRootId)).length;
 
         const headerEl = detailPanel.querySelector('h3');
         if (headerEl) {
-            headerEl.innerHTML = '';
+            headerEl.textContent = formatI18nText('editor_current_hub_heading', '현재 순간 허브');
+        }
 
-            const localBadgeText = localSaveMode
-                ? (i18n('local_save_badge') || '로컬 저장')
-                : '';
+        const badgeEl = document.getElementById('detailCurrentMomentBadge');
+        const titleEl = document.getElementById('detailCurrentMomentTitle');
+        const hintEl = document.getElementById('detailCurrentMomentHint');
+        const treeMetaMount = document.getElementById('detailTreeMetaMount');
+        const imgEl = detailPanel.querySelector('.detail-video img');
+        const dateEl = document.getElementById('detailDateText');
+        const tagsContainer = detailPanel.querySelector('.tags-container');
+        const noteEl = detailPanel.querySelector('.diary-note');
+        const memoryActions = detailPanel.querySelector('.memory-actions');
 
-            const treeMetaBlock = createTreeMetaBlock({
+        const localBadgeText = localSaveMode ? (i18n('local_save_badge') || '로컬 저장') : '';
+        const treeCountLabel = realMemoriesCount > 0
+            ? formatI18nText('editor_tree_status_count', `{count}개의 순간이 이 트리 안에서 이어지고 있어요.`, { count: realMemoriesCount })
+            : formatI18nText('editor_tree_status_empty', '아직 첫 순간을 기다리고 있어요.');
+
+        if (treeMetaMount) {
+            treeMetaMount.innerHTML = '';
+            let shareBtn = null;
+            if (isPublic && !isEmptyState && data?.id) {
+                shareBtn = createShareTreeButton({
+                    visStyle,
+                    shareLabel: i18n('share_link') || '링크 복사'
+                });
+            }
+
+            treeMetaMount.appendChild(createTreeMetaBlock({
                 displayTreeTitle,
                 visIcon,
                 visLabel,
                 visInfo,
                 visStyle,
-                i18n
+                countLabel: localBadgeText ? `${treeCountLabel} · ${localBadgeText}` : treeCountLabel,
+                shareButtonEl: shareBtn
+            }));
+
+            bindShareButton({
+                btn: shareBtn,
+                data,
+                treeId,
+                i18n,
+                showToast
             });
-
-            const headerWrap = document.createElement('div');
-            headerWrap.style.display = 'flex';
-            headerWrap.style.flexDirection = 'column';
-            headerWrap.style.gap = '8px';
-
-            if (isEmptyState) {
-                headerWrap.appendChild(createHeaderTitleRow({
-                    titleText: formatI18nText('waiting_first_moment', '첫 순간을 기다리고 있어요'),
-                    localBadgeText
-                }));
-
-                headerWrap.appendChild(createTextBlock(
-                    'div',
-                    resolveHintText(i18n('empty_panel_hint_short'), 'empty_panel_hint_short', '첫 순간이 심어지면 여기에 따뜻하게 펼쳐집니다.'),
-                    {
-                        fontSize: '13px',
-                        color: 'var(--on-surface-variant)',
-                        lineHeight: '1.6'
-                    }
-                ));
-
-                headerWrap.appendChild(treeMetaBlock);
-                headerEl.appendChild(headerWrap);
-            } else {
-                const sectionLabel = isRootSelected
-                    ? (i18n('start_moment') || '시작 순간')
-                    : (i18n('selected_moment') || '선택된 순간');
-
-                const sectionEl = createTextBlock('div', sectionLabel, {
-                    fontSize: '11px',
-                    fontWeight: '800',
-                    letterSpacing: '.06em',
-                    color: 'var(--primary)',
-                    textTransform: 'uppercase'
-                });
-
-                let shareBtn = null;
-                if (isPublic && data?.id) {
-                    shareBtn = createShareTreeButton({
-                        visStyle,
-                        shareLabel: i18n('share_link')
-                    });
-                }
-
-                headerWrap.appendChild(sectionEl);
-                headerWrap.appendChild(createHeaderTitleRow({
-                    titleText: data.title || '',
-                    localBadgeText,
-                    shareButtonEl: shareBtn
-                }));
-                headerWrap.appendChild(treeMetaBlock);
-
-                headerEl.appendChild(headerWrap);
-
-                bindShareButton({
-                    btn: shareBtn,
-                    data,
-                    treeId,
-                    i18n,
-                    showToast
-                });
-            }
         }
 
-        const imgEl = detailPanel.querySelector('.detail-video img');
+        if (badgeEl) {
+            badgeEl.textContent = isEmptyState
+                ? formatI18nText('waiting_first_moment', '첫 순간을 기다리고 있어요')
+                : isRootSelected
+                    ? formatI18nText('start_moment', '시작 순간')
+                    : formatI18nText('selected_moment', '선택된 순간');
+        }
+
+        if (titleEl) {
+            titleEl.textContent = isEmptyState
+                ? formatI18nText('editor_current_moment_empty_title', '이 트리의 첫 장면을 심어 보세요')
+                : (data.title || formatI18nText('editor_current_moment_title', '지금 마음이 머문 장면'));
+        }
+
+        if (hintEl) {
+            hintEl.textContent = isEmptyState
+                ? formatI18nText('editor_current_moment_empty_hint', '첫 순간이 심어지면 여기서 감정 메모와 다음 행동이 자연스럽게 이어집니다.')
+                : isRootSelected
+                    ? formatI18nText('editor_current_moment_root_hint', '이 순간은 트리의 시작점이에요. 다음 장면을 이어 심으며 감정의 흐름을 키워보세요.')
+                    : formatI18nText('editor_current_moment_selected_hint', '지금 선택한 순간을 중심으로 메모를 읽고, 수정하거나 다음 장면을 이어갈 수 있어요.');
+        }
+
         if (imgEl) {
             imgEl.src = resolveMemoryThumbnail(data);
+            imgEl.alt = isEmptyState ? '' : (data.title || '');
         }
 
-        const dateEl = document.getElementById('detailDateText');
         if (dateEl) {
             dateEl.textContent = isEmptyState ? '' : (data?.timestamp || '');
             dateEl.style.fontSize = '0.85rem';
@@ -409,7 +377,6 @@ const updateFocusSelectedBtn = () => {
             dateEl.style.fontWeight = '500';
         }
 
-        const tagsContainer = detailPanel.querySelector('.tags-container');
         if (tagsContainer) {
             tagsContainer.innerHTML = '';
             if (!isEmptyState && Array.isArray(data.emotionTags)) {
@@ -422,7 +389,6 @@ const updateFocusSelectedBtn = () => {
             }
         }
 
-        const noteEl = detailPanel.querySelector('.diary-note');
         if (noteEl) {
             noteEl.innerHTML = '';
 
@@ -436,27 +402,27 @@ const updateFocusSelectedBtn = () => {
             noteEl.appendChild(memoBody);
 
             if (!isEmptyState) {
-                const hintEl = document.createElement('div');
-                hintEl.style.marginTop = '12px';
-                hintEl.style.fontSize = '12px';
+                const memoHint = document.createElement('div');
+                memoHint.style.marginTop = '12px';
+                memoHint.style.fontSize = '12px';
+                memoHint.style.lineHeight = '1.65';
 
                 if (isRootSelected) {
-                    hintEl.style.color = 'var(--primary)';
-                    hintEl.innerHTML = `<span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;margin-right:4px;">star</span> ${formatI18nText('root_moment_hint', '이 순간은 현재 트리의 시작점입니다')}`;
+                    memoHint.style.color = 'var(--primary)';
+                    memoHint.innerHTML = `<span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;margin-right:4px;">star</span> ${formatI18nText('root_moment_hint', '이 순간은 현재 트리의 시작점입니다')}`;
                 } else if (data.parentId) {
-                    hintEl.style.paddingTop = '12px';
-                    hintEl.style.borderTop = '1px solid var(--outline-variant)';
-                    hintEl.style.color = 'var(--on-surface-variant)';
-                    hintEl.innerHTML = `<span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;margin-right:4px;">account_tree</span> ${formatI18nText('path_moment_hint', '이 순간은 감정 경로 안에 연결되어 있습니다')}`;
+                    memoHint.style.paddingTop = '12px';
+                    memoHint.style.borderTop = '1px solid var(--outline-variant)';
+                    memoHint.style.color = 'var(--on-surface-variant)';
+                    memoHint.innerHTML = `<span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;margin-right:4px;">account_tree</span> ${formatI18nText('path_moment_hint', '이 순간은 감정 경로 안에 연결되어 있습니다')}`;
                 }
 
-                if (hintEl.innerHTML) {
-                    noteEl.appendChild(hintEl);
+                if (memoHint.innerHTML) {
+                    noteEl.appendChild(memoHint);
                 }
             }
         }
 
-        const memoryActions = detailPanel.querySelector('.memory-actions');
         if (memoryActions) {
             memoryActions.style.display = isEmptyState ? 'none' : 'flex';
         }
