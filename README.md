@@ -2,7 +2,7 @@
 
 LoveBud는 팬이 사랑에 빠진 첫 순간부터 이어진 감정의 흐름을 기록하고, 감상하고, 트리처럼 키워가는 서비스입니다.
 
-실서비스 프론트 주소는 `https://lovebud.vercel.app/` 입니다.
+실서비스 프론트 주소는 `https://lovebud.pages.dev/` 입니다.
 
 ---
 
@@ -41,13 +41,15 @@ LoveBud / LoveTree는 일반 북마크 정리 앱이나 관리자 도구가 아�
 현재 운영 기준 인프라 우선순위는 아래와 같습니다.
 
 1. **Modal** — browse summary, 복합 계산, read-heavy compute 우선
-2. **Vercel** — 실서비스 프론트, same-origin `/api`, 배포 진입점
-3. **Netlify** — fallback 또는 단계적 제거 대상 레거시 경로
+2. **Cloudflare Pages** — 실서비스 프론트, same-origin `/api`, 공식 배포 진입점
+3. **Vercel** — upstream / secondary entry / proxy fallback 계층
+4. **Netlify** — legacy fallback 또는 단계적 제거 대상 레거시 경로
 
 핵심 원칙:
 
 - 사용자 브라우저는 가능하면 **same-origin `/api`**만 사용합니다.
-- Netlify는 주경로가 아니라 **fallback / migration 대상**입니다.
+- 공식 사용자-facing 주소는 **`lovebud.pages.dev`** 기준으로 봅니다.
+- Vercel과 Netlify는 현재 보조 계층 또는 전이기 계층으로 설명합니다.
 - browse display filter와 publication guard는 **다른 개념**으로 취급합니다.
 
 운영 상세는 아래 문서를 먼저 봅니다.
@@ -91,7 +93,7 @@ LoveBud는 저장소 구조와 운영 계약에 프로젝트 고유 전제가 �
 - `pages/my-trees.html`
 - `pages/login.html`
 
-Vercel에서는 위 경로가 rewrite 되어 아래 사용자-facing 주소로 노출될 수 있습니다.
+Cloudflare Pages에서는 위 경로가 사용자-facing 주소로 노출됩니다.
 
 - `/intro.html`
 - `/search.html`
@@ -106,9 +108,10 @@ Vercel에서는 위 경로가 rewrite 되어 아래 사용자-facing 주소로 �
 
 ### 현재 배포 구조
 
-- **Vercel**: 프론트 및 `/api` 엔트리
+- **Cloudflare Pages**: 프론트 및 `/api` 엔트리
 - **Modal**: browse / summary 가속 및 compute
-- **Netlify**: 일부 레거시 CRUD upstream fallback
+- **Vercel**: upstream / proxy fallback / 전이기 보조 계층
+- **Netlify**: 일부 legacy CRUD fallback
 
 ---
 
