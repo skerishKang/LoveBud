@@ -40,9 +40,11 @@ function buildModalUrl(request, env) {
   const target = new URL(modalBaseUrl);
 
   if (path === '/api/community/trees' && sourceUrl.searchParams.get('view') === 'summary') {
-    const limit = Math.min(Math.max(Number(sourceUrl.searchParams.get('limit') || 12) || 12, 1), 24);
+    const limit = Math.min(Math.max(Number(sourceUrl.searchParams.get('limit') || 12) || 12, 1), 60);
+    const sort = sourceUrl.searchParams.get('sort') === 'popular' ? 'popular' : 'latest';
     target.pathname = '/modal/browse/latest';
     target.searchParams.set('limit', String(limit));
+    target.searchParams.set('sort', sort);
     return target;
   }
 

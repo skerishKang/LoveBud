@@ -1,7 +1,7 @@
 (function () {
   const AUTH_CONFIRMED_KEY = 'lovebud_auth_confirmed';
   const AUTH_CACHE_KEY = 'lovebud_auth_cache';
-  const AUTH_WAIT_MS = typeof window.__LOVEBUD_AUTH_WAIT_MS === 'number' && window.__LOVEBUD_AUTH_WAIT_MS > 0 ? window.__LOVEBUD_AUTH_WAIT_MS : 2000;
+  const AUTH_WAIT_MS = typeof window.__LOVEBUD_AUTH_WAIT_MS === 'number' && window.__LOVEBUD_AUTH_WAIT_MS > 0 ? window.__LOVEBUD_AUTH_WAIT_MS : 800;
   const AUTH_POLL_INTERVAL_MS = 100;
 
   function getCachedAuthUser() {

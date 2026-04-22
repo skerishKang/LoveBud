@@ -4,79 +4,162 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>소개 | LoveTree v3</title>
-    <!-- Premium Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../../css/gemini-v3/index.css">
-    <link rel="stylesheet" href="../../css/gemini-v3/intro.css">
+    <style>
+        .intro-v3-container {
+            padding: 80px 60px;
+        }
+
+        .intro-hero {
+            text-align: center;
+            margin-bottom: 100px;
+        }
+
+        .intro-hero h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 52px;
+            font-weight: 900;
+            margin-bottom: 25px;
+        }
+
+        .step-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 40px;
+            margin-bottom: 120px;
+        }
+
+        .step-card {
+            background: white;
+            padding: 60px 40px;
+            border-radius: 40px;
+            text-align: center;
+            box-shadow: var(--gv3-shadow-paper);
+            position: relative;
+            border: 1px solid rgba(179, 126, 111, 0.05);
+            transition: transform 0.4s var(--gv3-ease-out);
+        }
+
+        .step-card:hover { transform: translateY(-15px); box-shadow: var(--gv3-shadow-deep); }
+
+        .step-num {
+            font-family: 'Playfair Display', serif;
+            font-size: 80px;
+            color: var(--gv3-primary);
+            opacity: 0.1;
+            position: absolute;
+            top: 20px;
+            left: 40px;
+        }
+
+        .step-icon { font-size: 50px; margin-bottom: 30px; }
+        .step-title { font-size: 24px; font-weight: 900; margin-bottom: 20px; }
+        .step-desc { font-size: 15px; color: var(--gv3-text-muted); line-height: 1.8; }
+
+        .identity-block {
+            background: #FDF9F5;
+            border-radius: 60px;
+            padding: 100px 80px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 80px;
+            align-items: center;
+        }
+
+        .id-visual {
+            height: 400px;
+            background: white;
+            border-radius: 40px;
+            box-shadow: var(--gv3-shadow-paper);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 100px;
+            position: relative;
+        }
+
+        .id-content h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 42px;
+            font-weight: 900;
+            margin-bottom: 30px;
+        }
+
+        .id-content p {
+            font-size: 18px;
+            line-height: 2;
+            color: var(--gv3-text-muted);
+        }
+    </style>
 </head>
 <body>
-    <div class="v3-canvas v3-intro-container">
-        <header class="v3-header">
-            <a href="index.html" class="v3-logo">LoveTree</a>
-            <nav class="v3-nav">
+    <div class="silk-bg silk-left"></div>
+    <div class="silk-bg silk-right"></div>
+
+    <div class="canvas-v3" style="overflow-y: auto;">
+        <header class="header-v3">
+            <a href="index.html" class="logo-v3">러브트리 <span style="font-size: 14px; font-style: normal; opacity: 0.4; margin-left: 5px;">LoveTree</span></a>
+            <nav class="nav-v3">
                 <a href="index.html" class="v3-nav-link">첫 화면</a>
-                <a href="intro.html" class="v3-nav-link">LoveTree 소개</a>
                 <a href="search.html" class="v3-nav-link">둘러보기</a>
-                <a href="../my-trees.html" class="v3-nav-link">나의 트리</a>
+                <a href="../my-trees.html" class="v3-nav-link">내 트리</a>
             </nav>
-            <div class="v3-header-actions">
-                <a href="../login.html" class="v3-btn-pill v3-btn-outline">로그인</a>
-            </div>
+            <a href="../login.html" class="btn-v3 btn-primary" style="padding: 10px 30px; font-size: 14px;">시작하기</a>
         </header>
 
-        <section class="v3-intro-hero">
-            <span class="eyebrow" style="color: var(--v3-gold-soft);">MEMORIES GROW HERE</span>
-            <h1 class="v3-intro-title">어떻게 시작하나요?</h1>
-            <p class="subtitle">당신의 소중한 덕질 순간이 빛나는 나무로 자라나는 과정을 소개합니다.</p>
-        </section>
+        <div class="intro-v3-container">
+            <section class="intro-hero">
+                <span class="eyebrow-v3">HOW IT WORKS</span>
+                <h1>사랑의 기록이 자라나는 법</h1>
+                <p class="subtitle-v3" style="margin: 0 auto; max-width: 600px;">당신의 소중한 덕질 순간이 하나의 빛나는 나무가 되어가는 과정을 소개합니다.</p>
+            </section>
 
-        <section class="v3-process-board">
-            <article class="v3-step-card">
-                <span class="v3-step-num">01</span>
-                <div class="v3-step-icon">📎</div>
-                <h3 class="v3-step-title">순간 수집하기</h3>
-                <p class="v3-step-desc">유튜브 영상이나 SNS 링크를 가져오세요. 반했던 바로 그 장면의 시간을 체크해 저장합니다.</p>
-                <span class="v3-step-tag">CAPTURE THE MOMENT</span>
-            </article>
+            <section class="step-row">
+                <article class="step-card">
+                    <span class="step-num">01</span>
+                    <div class="step-icon">📸</div>
+                    <h3 class="step-title">순간 수집하기</h3>
+                    <p class="step-desc">유튜브 영상이나 음악 링크를 공유해 보세요. 반했던 바로 그 장면의 시간이 체크되어 저장됩니다.</p>
+                </article>
 
-            <article class="v3-step-card">
-                <span class="v3-step-num">02</span>
-                <div class="v3-step-icon">🕯️</div>
-                <h3 class="v3-step-title">마음 기록하기</h3>
-                <p class="v3-step-desc">그때 느꼈던 감정을 따뜻한 메모와 함께 남겨보세요. 당신만의 이야기가 조용히 쌓여갑니다.</p>
-                <span class="v3-step-tag">WRITE YOUR HEART</span>
-            </article>
+                <article class="step-card">
+                    <span class="step-num">02</span>
+                    <div class="step-icon">✍️</div>
+                    <h3 class="step-title">마음 기록하기</h3>
+                    <p class="step-desc">그때 느꼈던 솔직한 감정을 짧은 메모와 태그로 남겨보세요. 당신만의 일기가 조용히 쌓여갑니다.</p>
+                </article>
 
-            <article class="v3-step-card">
-                <span class="v3-step-num">03</span>
-                <div class="v3-step-icon">🌷</div>
-                <h3 class="v3-step-title">트리 감상하기</h3>
-                <p class="v3-step-desc">순간들이 이어져 하나의 빛나는 경로가 된 모습을 확인해 보세요. 사랑의 발자취가 지도가 됩니다.</p>
-                <span class="v3-step-tag">WATCH IT GROW</span>
-            </article>
-        </section>
+                <article class="step-card">
+                    <span class="step-num">03</span>
+                    <div class="step-icon">🌳</div>
+                    <h3 class="step-title">트리 감상하기</h3>
+                    <p class="step-desc">순간들이 이어져 하나의 흐름이 된 모습을 확인해 보세요. 사랑의 발자취가 지도가 됩니다.</p>
+                </article>
+            </section>
 
-        <section class="v3-identity-showcase">
-            <div class="v3-showcase-visual">🦋</div>
-            <div class="v3-showcase-content">
-                <span class="eyebrow">OUR IDENTITY</span>
-                <h2>가장 아름다운 사랑의 기록</h2>
-                <p>
-                    러브트리는 당신이 누군가를 사랑하게 된 <strong>첫 설렘</strong>부터, <br>
-                    그 마음이 어떻게 커지고 깊어졌는지 <strong>사랑의 흔적</strong>을 보관하는 공간입니다.<br><br>
-                    작은 꽃 한 송이가 나무가 되듯, <br>
-                    당신의 순간 하나하나가 모여 세상에 단 하나뿐인 러브트리가 됩니다.
-                </p>
-                <div style="margin-top: 60px;">
-                    <a href="../my-trees.html" class="v3-btn-pill v3-btn-primary" style="padding: 16px 40px;">지금 첫 순간 기록하기</a>
+            <section class="identity-block">
+                <div class="id-visual">
+                    <div class="prop-clip"></div>
+                    🌱
                 </div>
-            </div>
-        </section>
+                <div class="id-content">
+                    <span class="eyebrow-v3">IDENTITY</span>
+                    <h2>가장 아름다운 사랑의 기록</h2>
+                    <p>
+                        러브트리는 단순히 영상을 저장하는 곳이 아닙니다.<br>
+                        당신이 누군가를 사랑하게 된 <strong>첫 설렘</strong>부터,<br>
+                        그 마음이 어떻게 커지고 깊어졌는지 <strong>사랑의 흔적</strong>을 보관하는 공간입니다.<br><br>
+                        작게 시작해도 괜찮습니다. 좋아하는 장면 하나, 짧은 문장 하나로도 당신만의 러브트리는 충분히 자라기 시작합니다.
+                    </p>
+                    <div style="margin-top: 50px;">
+                        <a href="../my-trees.html" class="btn-v3 btn-primary">지금 첫 순간 기록하기</a>
+                    </div>
+                </div>
+            </section>
+        </div>
 
-        <footer style="padding: 60px; text-align: center; font-size: 13px; color: var(--v3-text-muted); background: rgba(179, 126, 111, 0.05);">
-            <p>사랑의 감정을 보관하는 비밀 공간, LoveTree v3</p>
+        <footer style="padding: 60px; text-align: center; font-size: 13px; color: var(--gv3-text-muted); opacity: 0.6;">
+            <p>© 2026 LoveTree gemini-v3 · Premium Archive for Fans</p>
         </footer>
     </div>
 </body>

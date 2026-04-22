@@ -502,29 +502,10 @@ function createEditorMemoryForm(deps) {
         }
 
         const normalizedNew = normalizeMemory(createdMemory);
-        let didRefreshFromServer = false;
-
-        try {
-            if (useApi && window.apiClient && typeof window.apiClient.getMemoriesByTree === 'function') {
-                const refreshed = await window.apiClient.getMemoriesByTree(treeId);
-                if (Array.isArray(refreshed)) {
-                    setTreeMemories(refreshed.map(normalizeMemory).filter(Boolean));
-                    didRefreshFromServer = true;
-                }
-            }
-
-            if (!didRefreshFromServer) {
-                const nextMemories = Array.isArray(getTreeMemories()) ? getTreeMemories().slice() : [];
-                const exists = nextMemories.some((m) => m.id === normalizedNew?.id);
-                if (!exists && normalizedNew) nextMemories.push(normalizedNew);
-                setTreeMemories(nextMemories);
-            }
-        } catch (e) {
-            const nextMemories = Array.isArray(getTreeMemories()) ? getTreeMemories().slice() : [];
-            const exists = nextMemories.some((m) => m.id === normalizedNew?.id);
-            if (!exists && normalizedNew) nextMemories.push(normalizedNew);
-            setTreeMemories(nextMemories);
-        }
+        const nextMemories = Array.isArray(getTreeMemories()) ? getTreeMemories().slice() : [];
+        const exists = nextMemories.some((m) => m.id === normalizedNew?.id);
+        if (!exists && normalizedNew) nextMemories.push(normalizedNew);
+        setTreeMemories(nextMemories);
 
         const normalizedMemory = normalizeMemory(createdMemory);
         if (!normalizedMemory) {
@@ -552,7 +533,7 @@ function createEditorMemoryForm(deps) {
             focusNodeById(normalizedMemory.id);
         }
 
-        if (useApi && didRefreshFromServer) {
+        if (useApi) {
             updateSaveStatus('saved', i18n('save_saved'));
         } else {
             updateSaveStatus('saved', i18n('save_saved_local') || '로컬 저장됨');
