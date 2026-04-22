@@ -1041,7 +1041,11 @@
                 .then(selectHeroTrees)
                 .then((trees) => {
                     trees.forEach((tree, index) => {
-                        const thumbnail = getThumbnail(tree);
+                        let thumbnail = getThumbnail(tree);
+                        // Fix for missing dummy YouTube thumbnail (404)
+                        if (thumbnail && thumbnail.includes('7uSjZp8kZog')) {
+                            thumbnail = thumbnail.replace('7uSjZp8kZog', '5T1s4w9f_Hw');
+                        }
                         if (!thumbnail || !cards[index]) return;
                         cards[index].style.setProperty('--moment-image', `url("${thumbnail.replace(/"/g, '%22')}")`);
                         cards[index].classList.add('has-hero-thumbnail');
