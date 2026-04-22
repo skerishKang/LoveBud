@@ -854,3 +854,20 @@ html:not(.material-symbols-ready) .mobile-nav-toggle .material-symbols-outlined 
 html.material-symbols-ready .material-symbols-outlined {
   opacity: 1;
 }
+
+/* -----------------------------------------------------------------
+   Shared Header Layout Shift prevention
+   Reserve height before JS renders #shared-header to reduce CLS.
+   Measured: desktop .nav-bar = 81px / mobile (<=768px) = 65px
+   ----------------------------------------------------------------- */
+#shared-header {
+    min-height: 81px;
+    contain-intrinsic-size: 0 81px;
+}
+
+@media (max-width: 768px) {
+    #shared-header {
+        min-height: 65px;
+        contain-intrinsic-size: 0 65px;
+    }
+}
