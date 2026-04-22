@@ -35,6 +35,27 @@ var DROPDOWN_LISTENER_ATTACHED = __authStateModule
   ? __authStateModule.isDropdownListenerAttached()
   : false;
 
+if (!window.__lovebudAuthBootstrapPromise) {
+  window.__lovebudAuthBootstrapPromise = new Promise(function(resolve) {
+    window.__resolveLovebudAuthBootstrap = function(user) {
+      if (window.__lovebudAuthBootstrapResolved) return;
+      window.__lovebudAuthBootstrapResolved = true;
+      window.__lovebudAuthBootstrapUser = user || null;
+      resolve(user || null);
+    };
+  });
+}
+
+function resolveAuthBootstrap(user) {
+  if (typeof window.__resolveLovebudAuthBootstrap === 'function') {
+    window.__resolveLovebudAuthBootstrap(user || null);
+  }
+}
+
+window.getAuthBootstrapPromise = function() {
+  return window.__lovebudAuthBootstrapPromise || Promise.resolve(window.__lovebudAuthBootstrapUser || null);
+};
+
 // 인증 캐시 키 정책:
 // - lovebud_auth_cache: {uid, displayName, email} - 사용자 기본 정보 (로그아웃 시 삭제)
 // - lovebud_auth_confirmed: 'true' 문자열 - 인증 확인 플래그 (로그아웃 시 삭제)
@@ -407,6 +428,7 @@ function initAuth() {
       persistConfirmedAuthSession: persistConfirmedAuthSession,
       updateNavUI: updateNavUI,
       fireAuthReadyCallbacks: fireAuthReadyCallbacks,
+      resolveAuthBootstrap: resolveAuthBootstrap,
       isInvalidAuthSessionError: isInvalidAuthSessionError,
       clearStaleFirebaseAuthState: clearStaleFirebaseAuthState,
       clearConfirmedAuthCache: clearConfirmedAuthCache,
@@ -477,6 +499,7 @@ function initAuth() {
           await firebase.auth().signOut().catch(function () {});
           clearStaleFirebaseAuthState();
           clearConfirmedAuthCache();
+          resolveAuthBootstrap(null);
           return;
         }
       }
@@ -485,6 +508,7 @@ function initAuth() {
     await persistConfirmedAuthSession(user);
     markAuthReady();
     updateNavUI(user);
+    resolveAuthBootstrap(user);
 
     // 배열 콜백 패턴으로 모든 등록된 콜백 실행
     fireAuthReadyCallbacks(user);
@@ -504,17 +528,18 @@ function initOfflineAuth() {
       markAuthReady: markAuthReady,
       updateNavUI: updateNavUI,
       getCachedAuthUser: getCachedAuthUser,
+      resolveAuthBootstrap: resolveAuthBootstrap,
       fireAuthReadyCallbacks: fireAuthReadyCallbacks
     });
     return;
   }
-  var isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
   var cachedUser = getCachedAuthUser();
   // Offline 모드에서도 ready 상태로 전환 후 UI 표시
   // 순서 중요: markAuthReady 먼저, updateNavUI 나중
   markAuthReady();
-  var user = isLoggedIn ? (cachedUser || { uid: 'offline', email: 'offline@example.com' }) : null;
+  var user = cachedUser && cachedUser.uid ? cachedUser : null;
   updateNavUI(user);
+  resolveAuthBootstrap(user);
   // Offline 모드에서도 콜백 실행
   fireAuthReadyCallbacks(user);
 }
