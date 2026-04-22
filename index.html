@@ -119,17 +119,13 @@
 
         .home-v3-note {
             margin-top: 18px;
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            padding: 11px 18px;
-            border-radius: 999px;
-            background: rgba(255,255,255,0.56);
-            border: 1px solid rgba(144, 73, 81, 0.10);
-            color: #7c5f60;
-            font-size: 0.9rem;
-            font-weight: 700;
-            box-shadow: 0 14px 30px rgba(102, 75, 70, 0.08);
+            padding-left: 12px;
+            border-left: 2px solid rgba(144, 73, 81, 0.22);
+            color: #9c8080;
+            font-size: 0.87rem;
+            font-weight: 400;
+            font-style: italic;
+            line-height: 1.6;
         }
 
         .home-v3-actions {
@@ -847,23 +843,31 @@
         }
 
         .home-intro-entry {
-            color: rgba(108, 89, 83, 0.65);
-            font-size: 0.92rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            color: var(--primary);
+            font-size: 0.94rem;
+            font-weight: 700;
             text-decoration: underline;
-            text-decoration-color: rgba(108, 89, 83, 0.25);
+            text-decoration-color: rgba(144, 73, 81, 0.35);
             text-underline-offset: 4px;
             transition: color 0.2s ease, text-decoration-color 0.2s ease;
         }
 
+        .home-intro-entry::after {
+            content: "→";
+            font-size: 0.88em;
+            font-style: normal;
+            transition: transform 0.2s ease;
+        }
+
         .home-intro-entry:hover {
-            color: var(--primary);
             text-decoration-color: var(--primary);
         }
 
-        body[data-home-density="explain"] .home-intro-entry {
-            color: var(--primary);
-            font-weight: 700;
-            text-decoration-color: var(--primary);
+        .home-intro-entry:hover::after {
+            transform: translateX(4px);
         }
     </style>
 </head>
