@@ -1,26 +1,66 @@
-﻿# Vercel & Modal Migration Status (구현 현황)
+# Vercel & Modal Migration Status
 
-본 문서는 Netlify 중심 인프라에서 Vercel(Front/Route) 및 Modal(Compute) 중심으로의 전환 경과를 기록합니다.
+본 문서는 Netlify 중심 구조에서 **Modal > Vercel > Netlify** 운영 구조로 전환된 현재 상태를 정리합니다.
 
-## 1. 완료된 작업 (Done)
-- **Same-Origin API 라우터 구축**: Vercel api/ 폴더 내에 Node.js 기반 프록시 및 전용 핸들러 구축 완료.
-- **Browse 가속 연동**: api/community/trees.js에서 view=summary 요청 시 Modal을 최우선으로 호출하는 로직 반영 완료.
-- **Catch-all Proxy**: 특정되지 않은 /api/* 요청을 Netlify로 전달하는 api/[...path].js 구현 완료.
-- **Frontend 업데이트**: base-api-fetch.js 및 postgres-client.js가 상대 경로(/api/...)를 사용하여 Vercel 도메인 내에서 통신하도록 수정 완료.
+## 1. 현재 기준
 
-## 2. 운영 계층 (Hierarchy)
-구현팀은 아래 순서에 따라 데이터와 트래픽을 처리합니다:
-1. **Modal**: 브라우즈 요약 정보, 대량 데이터 복합 쿼리 (Primary Read)
-2. **Vercel**: API 라우팅, 인증 미들웨어, 정적 자산 서빙 (Entry)
-3. **Netlify**: 원천 데이터 CRUD, 레거시 인증 로직 (Storage/Write Fallback)
+- 공식 서비스 주소: `https://lovebud.vercel.app/`
+- Vercel은 공식 진입점입니다.
+- Modal은 browse summary / read-heavy aggregation의 1순위 계층입니다.
+- Netlify는 fallback / legacy 계층입니다.
 
-## 3. 향후 과제 (Next Steps)
-- [ ] **Netlify 의존성 제거**: netlify/functions에 남아있는 모든 로직을 Vercel api/ 폴더로 100% 이관하여 Netlify 503 리스크 원천 차단.
-- [ ] **Firebase 도메인 승인**: Vercel 프로덕션 도메인에 대한 Firebase Auth 도메인 등록 상태 상시 유지.
-- [ ] **Modal Cache Policy**: Modal 응답에 따른 Vercel Edge Cache 설정 최적화.
+## 2. 현재까지 완료된 것
 
-## 4. 환경 변수 동기화 Checklist (Vercel)
-- MODAL_BASE_URL
-- NETLIFY_API_BASE_URL (Proxy 타겟)
-- DATABASE_URL (Neon)
-- FIREBASE_SERVICE_ACCOUNT_JSON
+- Vercel `api/` 폴더 기반 same-origin API entry 구축
+- `api/community/trees.js`에서 summary 요청 시 Modal 우선 호출 반영
+- `api/community/memories.js`와 `api/[...path].js`를 통한 Netlify upstream 유지
+- 프런트 상대 경로(`/api/...`) 기준 통신 정리
+- 실서비스 주소를 Vercel 기준으로 운영
+
+## 3. 현재 계층 구조
+
+1. **Modal**
+   - browse summary
+   - public read aggregation
+   - representative snapshot 계산
+2. **Vercel**
+   - 공식 프런트 엔트리
+   - same-origin API router
+3. **Netlify**
+   - fallback / legacy upstream
+   - 일부 기존 read/write 유지
+
+## 4. 남아 있는 전이기 구조
+
+아직 완전 제거되지 않은 항목:
+
+- browse preview hydrate는 여전히 Netlify upstream 사용
+- catch-all `/api/*`는 Netlify upstream 사용
+- 일부 기존 CRUD와 auth-required legacy 경로는 Netlify 의존이 남아 있음
+
+즉, 현재 상태는 **Modal + Vercel이 앞단을 잡고, Netlify가 뒤에서 받치는 전이기 구조**입니다.
+
+## 5. 운영에서 헷갈리면 안 되는 기준
+
+- Netlify를 주서비스처럼 설명하지 않는다.
+- `lovebud.netlify.app`는 공식 주소가 아니다.
+- browse summary의 1순위는 Modal이다.
+- Vercel은 단순 정적 호스팅이 아니라 same-origin API entry이다.
+
+## 6. 환경 변수 기준
+
+### Vercel
+- `MODAL_BASE_URL`
+- `NETLIFY_API_BASE_URL`
+- `LOVEBUD_UPSTREAM_API_BASE`
+
+### Modal
+- `DATABASE_URL` (Modal secret)
+- `CORS_ALLOWED_ORIGINS` (필요 시)
+
+## 7. 다음 단계
+
+- Netlify read 의존 범위를 더 줄일 수 있는지 검토
+- Modal browse summary 응답 품질(`theme`, `timeRange`, representative visual`) 지속 보완
+- 운영 문서에서 Netlify 주경로 설명 제거 유지
+- fallback은 남기되, 주경로 설명은 Modal/Vercel 기준으로 고정

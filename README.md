@@ -12,7 +12,7 @@ LoveBud / LoveTree는 일반 북마크 정리 앱이나 관리자 도구가 아�
 
 이 저장소는 아래 경험을 현재 기준 제품 루프로 다룹니다.
 
-- 공개 러브트리 감상
+- 공개 러브트리 둘러보기
 - 내 러브트리 관리
 - 첫 순간 생성 및 다음 순간 이어가기
 - 감정 메모와 트리 흐름 편집
@@ -22,6 +22,17 @@ LoveBud / LoveTree는 일반 북마크 정리 앱이나 관리자 도구가 아�
 - `docs/product/PRODUCT_IDENTITY.md`
 - `docs/product/BRAND_EXPERIENCE.md`
 - `docs/design/UI_DESIGN_SYSTEM.md`
+
+---
+
+## 이름과 용어 기준
+
+- **LoveBud**: 현재 저장소명과 운영 프로젝트명
+- **LoveTree**: 사용자-facing 제품/브랜드 경험명으로 함께 사용 가능
+- **search**: 현재 실제 파일/페이지 경로명 (`pages/search.html`)
+- **browse / 둘러보기**: 사용자-facing 제품 경험 표현
+
+즉, 구현 경로명은 `search`를 유지할 수 있지만, 제품 카피와 문서 설명에서는 `browse`, `둘러보기`, `감상 허브` 계열 표현을 우선합니다.
 
 ---
 
@@ -35,9 +46,9 @@ LoveBud / LoveTree는 일반 북마크 정리 앱이나 관리자 도구가 아�
 
 핵심 원칙:
 
-- 사용자 브라우저는 가능하면 **same-origin `/api`** 만 사용합니다.
+- 사용자 브라우저는 가능하면 **same-origin `/api`**만 사용합니다.
 - Netlify는 주경로가 아니라 **fallback / migration 대상**입니다.
-- browse의 display filter와 publication guard는 **다른 개념**으로 취급합니다.
+- browse display filter와 publication guard는 **다른 개념**으로 취급합니다.
 
 운영 상세는 아래 문서를 먼저 봅니다.
 
@@ -51,14 +62,24 @@ LoveBud / LoveTree는 일반 북마크 정리 앱이나 관리자 도구가 아�
 
 ### 서비스 진입점
 
+문서의 페이지 경로 표기는 실제 저장소 파일 경로를 기준으로 합니다.
+
+- `index.html`
+- `pages/intro.html`
+- `pages/search.html`
+- `pages/detail.html`
+- `pages/editor.html`
+- `pages/my-trees.html`
+- `pages/login.html`
+
+Vercel에서는 위 경로가 rewrite 되어 아래 사용자-facing 주소로 노출될 수 있습니다.
+
 - `/intro.html`
 - `/search.html`
 - `/detail.html`
 - `/editor.html`
 - `/my-trees.html`
 - `/login.html`
-
-Vercel에서는 위 경로가 `pages/*.html`로 rewrite 됩니다.
 
 ### 프론트 API 원칙
 
