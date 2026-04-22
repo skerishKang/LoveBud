@@ -585,7 +585,10 @@ async def post_private_tree(
     authorization: str | None = Header(default=None),
 ) -> dict:
     user = require_firebase_user(authorization)
-    payload = await request.json()
+    try:
+        payload = await request.json()
+    except json.JSONDecodeError as error:
+        raise HTTPException(status_code=400, detail="Invalid JSON body") from error
     return create_owner_tree(user["uid"], payload if isinstance(payload, dict) else {})
 
 
@@ -617,7 +620,10 @@ async def post_private_memory(
     authorization: str | None = Header(default=None),
 ) -> dict:
     user = require_firebase_user(authorization)
-    payload = await request.json()
+    try:
+        payload = await request.json()
+    except json.JSONDecodeError as error:
+        raise HTTPException(status_code=400, detail="Invalid JSON body") from error
     return create_owner_memory(user["uid"], payload if isinstance(payload, dict) else {})
 
 

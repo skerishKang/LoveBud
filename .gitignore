@@ -90,3 +90,5 @@ docs/*codex*.txt
 
 # SSH backup (private keys - never commit)
 .ssh-backup/
+
+.vercel
