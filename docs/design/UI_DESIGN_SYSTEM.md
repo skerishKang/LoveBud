@@ -195,7 +195,7 @@ Lovetree의 디자인은 차가운 IT 관리 도구의 인상을 지우고, 사�
 **규칙**
 - hero headline이 화면의 1순위여야 한다.
 - CTA는 hero 설명 바로 아래에 둔다.
-- 기능 목록은 hero를 보조하는 수준까지만 허용한다.
+- 기능 목록과 상세 설명은 홈에 두지 않고 `pages/intro.html` 또는 행동 직전 화면으로 위임한다.
 - 첫 화면에서 관리성 문구를 쓰지 않는다.
 
 ### 7.2 Appreciation Hub Page
