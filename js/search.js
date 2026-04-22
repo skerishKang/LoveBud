@@ -19,6 +19,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const previewEmotionTags = document.getElementById('previewEmotionTags');
     const searchInput = document.getElementById('searchInput');
     const tagChips = document.querySelectorAll('.tag-chip');
+    const resultsHead = document.querySelector('.browse-results-head');
+    const resultsTitle = resultsHead?.querySelector('h3');
+    const resultsBadge = resultsHead?.querySelector('.browse-results-badge');
 
     const CardRenderer = window.LoveBudSearchCardRenderer;
     CardRenderer.init(resultsList);
@@ -46,6 +49,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentPreviewRequestId = 0;
 
     let currentQuery = '';
+    let currentSort = 'latest';
+    let currentLimit = 12;
     let currentCategory = '전체';
 
     const areTreesEffectivelySame = (prevTrees, nextTrees) => {

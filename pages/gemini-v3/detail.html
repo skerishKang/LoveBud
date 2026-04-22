@@ -6,56 +6,173 @@
     <title>순간의 기록 | LoveTree v3</title>
     <link rel="stylesheet" href="../../css/gemini-v3/index.css">
     <link rel="stylesheet" href="../../css/gemini-v3/detail.css">
+    <style>
+        /* Detail Specific Iteration 2 */
+        .detail-v3-layout {
+            display: flex;
+            flex-direction: column;
+            height: calc(850px - 90px);
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .media-v3-stage {
+            width: calc(100% - 120px);
+            max-width: 900px;
+            margin: 60px auto;
+            aspect-ratio: 16/9;
+            background: #1a1a1a;
+            border-radius: 40px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: var(--gv3-shadow-deep);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .media-v3-stage img { width: 100%; height: 100%; object-fit: cover; opacity: 0.85; }
+
+        .narrative-container {
+            max-width: 800px;
+            margin: 0 auto 150px;
+            padding: 0 20px;
+        }
+
+        .meta-v3-header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .date-badge {
+            font-family: 'Playfair Display', serif;
+            font-style: italic;
+            font-size: 22px;
+            color: var(--gv3-gold);
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        .moment-v3-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 54px;
+            font-weight: 900;
+            letter-spacing: -1.5px;
+            line-height: 1.1;
+        }
+
+        /* Scrapbook Diary Page */
+        .diary-page {
+            background: white;
+            padding: 80px 60px;
+            border-radius: 40px;
+            box-shadow: var(--gv3-shadow-soft);
+            position: relative;
+            border: 1px solid rgba(179, 126, 111, 0.05);
+        }
+
+        .diary-page::before {
+            content: '';
+            position: absolute;
+            left: 40px; top: 0; bottom: 0;
+            width: 2px; background: rgba(179, 126, 111, 0.1);
+            box-shadow: 2px 0 0 white, 4px 0 0 rgba(179, 126, 111, 0.1);
+        }
+
+        .diary-text {
+            font-size: 22px;
+            line-height: 2.4;
+            color: var(--gv3-text-dark);
+            background-image: linear-gradient(#F5F0EE 1.5px, transparent 1.5px);
+            background-size: 100% 2.4em;
+            padding-left: 20px;
+            font-weight: 400;
+        }
+
+        /* Bottom Floating Hub */
+        .floating-action-hub {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(25px);
+            padding: 20px 60px;
+            border-radius: 100px;
+            display: flex;
+            gap: 60px;
+            box-shadow: 0 30px 60px rgba(61, 52, 49, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            z-index: 1000;
+        }
+
+        .action-v3-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            color: var(--gv3-text-muted);
+            font-size: 12px;
+            font-weight: 800;
+            transition: all 0.3s ease;
+        }
+
+        .action-v3-btn:hover { color: var(--gv3-primary); transform: translateY(-3px); }
+        .action-v3-btn span:first-child { font-size: 26px; }
+    </style>
 </head>
 <body>
     <div class="canvas-v3">
         <header class="header-v3">
             <a href="index.html" class="logo-v3">LoveTree</a>
             <nav class="nav-v3">
-                <a href="index.html" class="nav-link-v3">첫 화면</a>
-                <a href="intro.html" class="nav-link-v3">LoveTree 소개</a>
-                <a href="search.html" class="nav-link-v3">둘러보기</a>
-                <a href="../my-trees.html" class="nav-link-v3">나의 트리</a>
+                <a href="index.html" class="v3-nav-link">첫 화면</a>
+                <a href="search.html" class="v3-nav-link">둘러보기</a>
+                <a href="my-trees.html" class="v3-nav-link">나의 트리</a>
             </nav>
-            <a href="../login.html" class="btn-v3" style="padding: 10px 24px; border: 1.5px solid #B37E6F; color: #B37E6F;">로그인</a>
+            <a href="../login.html" class="btn-v3 btn-primary" style="padding: 10px 30px; font-size: 14px;">로그인</a>
         </header>
 
         <div class="detail-v3-layout">
-            <nav style="padding: 20px 55px;">
-                <a href="search.html" style="text-decoration: none; color: var(--gv3-text-muted); font-size: 14px; font-weight: 700;">← 감상 허브로 돌아가기</a>
+            <nav style="padding: 30px 60px;">
+                <a href="search.html" style="text-decoration: none; color: var(--gv3-text-muted); font-size: 15px; font-weight: 800;">← 감상 허브로 돌아가기</a>
             </nav>
 
             <section class="media-v3-stage">
-                <img src="https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&q=80&w=1200" alt="Moment">
-                <div class="play-v3-btn">▶</div>
+                <img src="https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&q=80&w=1200" alt="Memory">
+                <div class="play-v3-btn" style="width: 120px; height: 120px; font-size: 48px;">▶</div>
             </section>
 
-            <main class="narrative-v3">
-                <header class="meta-v3-info">
-                    <span class="date-v3-label">April 12, 2026</span>
-                    <h1 class="moment-v3-title">이름도 모르던 그 영상</h1>
+            <main class="narrative-container">
+                <header class="meta-v3-header">
+                    <span class="date-badge">April 12, 2026</span>
+                    <h1 class="moment-v3-title">이름도 모르던 그날의 영상</h1>
                 </header>
 
-                <article class="memo-v3-paper">
-                    <div class="memo-v3-text">
-                        처음엔 그냥 유튜브 알고리즘에 떠서 우연히 클릭했어요. <br>
-                        무대 위에서 저렇게 행복하게 웃는 사람이 누구지? 하는 호기심이 생겼던 순간입니다. <br>
-                        그 웃음 하나가 제 일상의 풍경을 이렇게나 바꿀 줄은 몰랐어요. <br>
-                        앞으로 이 트리가 어떻게 자라날지, 저도 참 기대가 됩니다.
+                <article class="diary-page">
+                    <div class="prop-clip"></div>
+                    <div class="diary-text">
+                        유튜브 알고리즘이 나에게 준 가장 큰 선물이었을까요? <br>
+                        우연히 클릭한 영상 속에서 환하게 웃는 그 모습을 보고 <br>
+                        심장이 내려앉는 것 같은 기분을 느꼈습니다. <br>
+                        그날 이후로 제 플레이리스트는 온통 당신의 목소리로 가득 찼고, <br>
+                        매일 밤 당신의 웃는 얼굴을 보며 하루를 마무리하는 것이 <br>
+                        제 유일한 위로가 되었습니다.
                     </div>
                 </article>
             </main>
 
-            <section style="padding: 0 55px 120px; text-align: center;">
-                <span class="eyebrow-v3" style="margin-bottom: 40px;">Connected Memories</span>
-                <div style="display: flex; gap: 30px; justify-content: center;">
-                    <div class="node-v3" style="position: relative; left: 0; top: 0; transform: rotate(-2deg);">
-                        <div class="tape-v3"></div>
+            <section style="padding: 0 60px 150px; text-align: center;">
+                <span class="eyebrow-v3" style="margin-bottom: 50px; display: block;">RELATED MOMENTS</span>
+                <div style="display: flex; gap: 40px; justify-content: center;">
+                    <div class="node-v3" style="position: relative; transform: rotate(-3deg);">
+                        <div class="prop-tape"></div>
                         <div class="node-img-v3" style="background-image: url('https://images.unsplash.com/photo-1493225255756-d9584f8606e9?auto=format&fit=crop&q=80&w=200'); background-size: cover;"></div>
                         <div class="node-cap-v3">첫 설렘의 순간</div>
                     </div>
-                    <div class="node-v3" style="position: relative; left: 0; top: 0; transform: rotate(3deg);">
-                        <div class="tape-v3" style="transform: translateX(-50%) rotate(2deg);"></div>
+                    <div class="node-v3" style="position: relative; transform: rotate(4deg);">
+                        <div class="prop-tape"></div>
                         <div class="node-img-v3" style="background-image: url('https://images.unsplash.com/photo-1514525253361-bee8718a340b?auto=format&fit=crop&q=80&w=200'); background-size: cover;"></div>
                         <div class="node-cap-v3">밤새 보던 직캠</div>
                     </div>
@@ -63,18 +180,18 @@
             </section>
         </div>
 
-        <div class="action-v3-hub">
-            <a href="#" class="action-v3-item">
-                <span class="action-v3-icon">🕊️</span>
+        <div class="floating-action-hub">
+            <a href="#" class="action-v3-btn">
+                <span>🕊️</span>
                 <span>공감하기</span>
             </a>
-            <a href="#" class="action-v3-item">
-                <span class="action-v3-icon">🌙</span>
+            <a href="#" class="action-v3-btn">
+                <span>🌙</span>
                 <span>감상평</span>
             </a>
-            <a href="#" class="action-v3-item">
-                <span class="action-v3-icon">✨</span>
-                <span>공유</span>
+            <a href="#" class="action-v3-btn">
+                <span>✨</span>
+                <span>공유하기</span>
             </a>
         </div>
     </div>

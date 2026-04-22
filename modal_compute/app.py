@@ -230,8 +230,12 @@ def normalize_row(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def fetch_latest_public_tree_snapshots(limit: int = 3) -> list[dict[str, Any]]:
+def fetch_latest_public_tree_snapshots(limit: int = 12, sort: str = "latest") -> list[dict[str, Any]]:
     """Fetch the latest public tree snapshots using a robust join-lateral query."""
+
+    order_clause = "t.created_at DESC"
+    if sort == "popular":
+        order_clause = "c.memory_count DESC, t.created_at DESC"
 
     query = """
         SELECT 
@@ -263,9 +267,9 @@ def fetch_latest_public_tree_snapshots(limit: int = 3) -> list[dict[str, Any]]:
             LIMIT 1
         ) m ON TRUE
         WHERE t.visibility = 'public'
-        ORDER BY t.created_at DESC
+        ORDER BY {order_clause}
         LIMIT %s;
-    """
+    """.format(order_clause=order_clause)
 
     with get_db_connection() as conn:
         with conn.cursor() as cur:
@@ -556,9 +560,11 @@ def modal_health() -> dict[str, bool]:
 
 @web_app.get("/modal/browse/latest")
 def get_latest_browse_snapshot(
-    limit: int = Query(default=12, ge=1, le=24),
+    limit: int = Query(default=12, ge=1, le=60),
+    sort: str = Query(default="latest"),
 ) -> list[dict]:
-    return fetch_latest_public_tree_snapshots(limit=limit)
+    safe_sort = sort if sort in {"latest", "popular"} else "latest"
+    return fetch_latest_public_tree_snapshots(limit=limit, sort=safe_sort)
 
 
 @web_app.get("/modal/community/memories")
