@@ -1,26 +1,7 @@
-/* LoveTree Kimi-v2 Intro Page CSS */
+/* LoveTree Kimi-v2 Intro Page CSS - Light Theme */
 
-/* CSS Variables */
-:root {
-  --bg-dark: #1a1a2e;
-  --bg-darker: #16162a;
-  --bg-card: #252542;
-  --text-primary: #ffffff;
-  --text-secondary: #a0a0b8;
-  --accent-purple: #a855f7;
-  --accent-pink: #e879f9;
-  --accent-light: #c084fc;
-  --accent-rose: #f0abfc;
-  --btn-primary: #a855f7;
-  --btn-primary-hover: #9333ea;
-  --btn-secondary-bg: transparent;
-  --btn-secondary-border: #a855f7;
-  
-  --font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
+@import '_variables.css';
 
-/* Reset & Base */
 * {
   margin: 0;
   padding: 0;
@@ -30,22 +11,21 @@
 html, body {
   height: 100%;
   font-family: var(--font-family);
-  background: var(--bg-dark);
+  background: var(--bg-primary);
   color: var(--text-primary);
   overflow: hidden;
 }
 
-/* Container */
 .intro-container {
   position: relative;
   width: 100%;
   height: 100vh;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  background: var(--bg-primary);
 }
 
-/* Background Effects */
+/* Background */
 .bg-gradient {
   position: fixed;
   top: 0;
@@ -53,36 +33,10 @@ html, body {
   width: 100%;
   height: 100%;
   background: 
-    radial-gradient(ellipse at 20% 80%, rgba(168, 85, 247, 0.15) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 20%, rgba(232, 121, 249, 0.1) 0%, transparent 40%),
-    radial-gradient(ellipse at 50% 50%, rgba(192, 132, 252, 0.05) 0%, transparent 70%),
-    var(--bg-dark);
+    radial-gradient(ellipse at 20% 80%, rgba(244, 114, 182, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(168, 85, 247, 0.05) 0%, transparent 40%),
+    var(--bg-primary);
   z-index: 0;
-}
-
-.bg-particles {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 1;
-  pointer-events: none;
-  background-image: 
-    radial-gradient(circle at 20% 30%, rgba(168, 85, 247, 0.3) 0.5px, transparent 0.5px),
-    radial-gradient(circle at 80% 70%, rgba(232, 121, 249, 0.3) 0.5px, transparent 0.5px),
-    radial-gradient(circle at 40% 80%, rgba(192, 132, 252, 0.2) 0.5px, transparent 0.5px),
-    radial-gradient(circle at 60% 20%, rgba(240, 171, 252, 0.2) 0.5px, transparent 0.5px),
-    radial-gradient(circle at 10% 60%, rgba(168, 85, 247, 0.2) 0.5px, transparent 0.5px),
-    radial-gradient(circle at 90% 40%, rgba(232, 121, 249, 0.3) 0.5px, transparent 0.5px);
-  background-size: 200px 200px;
-  animation: particleFloat 20s linear infinite;
-}
-
-@keyframes particleFloat {
-  0% { transform: translateY(0) translateX(0); }
-  50% { transform: translateY(-10px) translateX(5px); }
-  100% { transform: translateY(0) translateX(0); }
 }
 
 /* Main Content */
@@ -95,7 +49,7 @@ html, body {
   align-items: center;
   justify-content: center;
   padding: 40px 24px;
-  gap: 32px;
+  gap: 40px;
 }
 
 /* Logo Section */
@@ -104,9 +58,9 @@ html, body {
 }
 
 .logo {
-  font-size: 2.5rem;
+  font-size: var(--text-3xl);
   font-weight: 700;
-  background: linear-gradient(135deg, var(--accent-purple), var(--accent-pink));
+  background: var(--brand-gradient);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -115,13 +69,13 @@ html, body {
 }
 
 .tagline {
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
   color: var(--text-secondary);
   font-weight: 400;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.05em;
 }
 
-/* Tree Stage Container */
+/* Tree Stage */
 .tree-stage-container {
   display: flex;
   flex-direction: column;
@@ -131,8 +85,8 @@ html, body {
 
 .tree-wrapper {
   position: relative;
-  width: 280px;
-  height: 280px;
+  width: 260px;
+  height: 260px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -143,10 +97,10 @@ html, body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   opacity: 0;
   transform: scale(0.8) translateY(20px);
-  transition: var(--transition-smooth);
+  transition: var(--transition-slow);
   pointer-events: none;
 }
 
@@ -157,79 +111,74 @@ html, body {
 }
 
 .tree-visual {
-  width: 200px;
-  height: 240px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  width: 180px;
+  height: 200px;
 }
 
 .tree-svg {
   width: 100%;
   height: 100%;
-  filter: drop-shadow(0 0 30px rgba(168, 85, 247, 0.3));
+  filter: drop-shadow(0 8px 24px rgba(168, 85, 247, 0.2));
 }
 
 .stage-label {
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   color: var(--text-secondary);
   font-weight: 500;
-  letter-spacing: 0.05em;
-  text-align: center;
+  letter-spacing: 0.02em;
 }
 
 .tree-stage.active .stage-label {
-  color: var(--accent-light);
+  color: var(--brand-purple);
 }
 
-/* Stage Indicators */
+/* Indicators */
 .stage-indicators {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   align-items: center;
 }
 
 .indicator {
   width: 8px;
   height: 8px;
-  border-radius: 50%;
-  background: rgba(168, 85, 247, 0.3);
+  border-radius: var(--radius-full);
+  background: var(--border-medium);
   cursor: pointer;
-  transition: var(--transition-smooth);
+  transition: var(--transition-base);
 }
 
 .indicator.active {
   width: 24px;
   border-radius: 4px;
-  background: var(--accent-purple);
-  box-shadow: 0 0 10px rgba(168, 85, 247, 0.5);
+  background: var(--brand-purple);
 }
 
 .indicator:hover {
-  background: var(--accent-light);
+  background: var(--brand-pink);
 }
 
-/* Description Section */
+/* Description */
 .description-section {
   text-align: center;
   max-width: 320px;
 }
 
 .main-title {
-  font-size: 1.5rem;
-  font-weight: 600;
+  font-size: var(--text-xl);
+  font-weight: 700;
   line-height: 1.4;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   color: var(--text-primary);
 }
 
 .sub-description {
-  font-size: 0.95rem;
+  font-size: var(--text-base);
   color: var(--text-secondary);
   line-height: 1.6;
 }
 
-/* Footer / CTA */
+/* Footer */
 .intro-footer {
   position: relative;
   z-index: 2;
@@ -239,68 +188,14 @@ html, body {
   gap: 12px;
 }
 
-/* Buttons */
-.btn-primary,
-.btn-secondary {
+.btn-primary, .btn-secondary {
   width: 100%;
-  padding: 16px 24px;
-  border-radius: 12px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: var(--transition-smooth);
-  border: none;
-  outline: none;
-  font-family: inherit;
-}
-
-.btn-primary {
-  background: linear-gradient(135deg, var(--accent-purple), var(--accent-pink));
-  color: white;
-  box-shadow: 0 4px 20px rgba(168, 85, 247, 0.4);
-}
-
-.btn-primary:hover {
-  background: linear-gradient(135deg, var(--btn-primary-hover), #db2777);
-  box-shadow: 0 6px 25px rgba(168, 85, 247, 0.5);
-  transform: translateY(-2px);
-}
-
-.btn-primary:active {
-  transform: translateY(0);
-}
-
-.btn-secondary {
-  background: var(--btn-secondary-bg);
-  color: var(--accent-light);
-  border: 1.5px solid var(--btn-secondary-border);
-}
-
-.btn-secondary:hover {
-  background: rgba(168, 85, 247, 0.1);
-  border-color: var(--accent-pink);
-  color: var(--accent-pink);
 }
 
 /* Animations */
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 @keyframes pulse {
-  0%, 100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.02);
-  }
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); }
 }
 
 .tree-stage.active .tree-visual {
@@ -309,46 +204,13 @@ html, body {
 
 /* Responsive */
 @media (max-height: 700px) {
-  .intro-main {
-    gap: 20px;
-    padding: 24px;
-  }
-  
-  .tree-wrapper {
-    width: 220px;
-    height: 220px;
-  }
-  
-  .tree-visual {
-    width: 160px;
-    height: 200px;
-  }
-  
-  .logo {
-    font-size: 2rem;
-  }
-  
-  .main-title {
-    font-size: 1.25rem;
-  }
+  .intro-main { gap: 24px; padding: 20px; }
+  .tree-wrapper { width: 200px; height: 200px; }
+  .tree-visual { width: 140px; height: 160px; }
+  .logo { font-size: var(--text-2xl); }
+  .main-title { font-size: var(--text-lg); }
 }
 
 @media (max-width: 360px) {
-  .tree-wrapper {
-    width: 240px;
-    height: 240px;
-  }
-  
-  .btn-primary,
-  .btn-secondary {
-    padding: 14px 20px;
-    font-size: 0.95rem;
-  }
-}
-
-/* Dark mode optimization */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg-dark: #0f0f1a;
-  }
+  .tree-wrapper { width: 220px; height: 220px; }
 }
