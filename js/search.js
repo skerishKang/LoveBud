@@ -1,6 +1,6 @@
 /**
  * LoveBud Search Page Orchestrator
- * v20260422-5
+ * v20260423-1
  *
  * Search page orchestration:
  * - Fast list-first loading for public trees
@@ -140,7 +140,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const previewKicker = document.querySelector('.preview-kicker');
         if (previewKicker) {
-            previewKicker.textContent = getSearchCopy('search.previewKicker', '카드를 고르면 이곳에서 바로 감상할 수 있어요.', 'Choose a card to open it here.');
+            previewKicker.textContent = getSearchCopy('search.previewKicker', '대표 순간과 이어진 감정을 먼저 살펴보세요.', 'Begin with the featured moment and connected feelings.');
         }
 
         const previewStatsPending = document.querySelector('#previewTreeStats .tree-meta-item:first-child span:last-child');
@@ -154,7 +154,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         if (previewEmotionTags && !previewEmotionTags.children.length) {
-            previewEmotionTags.textContent = getSearchCopy('search.previewNoEmotionTags', '아직 이어진 감정은 없어요.', 'There are no clearly saved emotions yet.');
+            previewEmotionTags.textContent = getSearchCopy('search.previewNoEmotionTags', '아직 또렷한 감정의 결은 놓이지 않았어요.', 'No clear emotional thread has settled yet.');
         }
     };
 
@@ -284,10 +284,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             previewTitle.textContent = tree?.title || getSearchCopy('search.previewDefaultTreeName', '러브트리', 'LoveTree');
         }
         if (previewDesc) {
-            previewDesc.innerHTML = `<p style="margin-bottom:16px;">${getCurrentLocale() === 'en' ? 'Loading the featured moment of this tree.' : '선택한 트리의 대표 순간을 불러오는 중입니다.'}</p>`;
+            previewDesc.innerHTML = `<p style="margin-bottom:16px;">${getCurrentLocale() === 'en' ? 'Loading the featured moment of this tree.' : '대표 순간을 불러오는 중이에요.'}</p>`;
         }
         if (previewContainer) {
-            previewContainer.innerHTML = `<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--on-surface-variant);font-size:14px;text-align:center;padding:20px;"><span class="material-symbols-outlined" style="font-size:40px;opacity:0.45;margin-bottom:12px;display:block;animation:spin 1s linear infinite;">progress_activity</span><p style="margin:0;line-height:1.5;">${getCurrentLocale() === 'en' ? 'Preparing the preview for this tree.' : '선택한 트리의 preview를 준비하고 있어요.'}</p></div>`;
+            previewContainer.innerHTML = `<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--on-surface-variant);font-size:14px;text-align:center;padding:20px;"><span class="material-symbols-outlined" style="font-size:40px;opacity:0.45;margin-bottom:12px;display:block;animation:spin 1s linear infinite;">progress_activity</span><p style="margin:0;line-height:1.5;">${getCurrentLocale() === 'en' ? 'Preparing the featured moment.' : '대표 순간을 준비하고 있어요.'}</p></div>`;
         }
     };
 
