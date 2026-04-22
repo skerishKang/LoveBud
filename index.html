@@ -1043,7 +1043,7 @@
                     trees.forEach((tree, index) => {
                         const thumbnail = getThumbnail(tree);
                         if (!thumbnail || !cards[index]) return;
-                        
+
                         const img = new Image();
                         img.onload = () => {
                             cards[index].style.setProperty('--moment-image', `url("${thumbnail.replace(/"/g, '%22')}")`);
