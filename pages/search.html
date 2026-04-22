@@ -8,16 +8,16 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
     <style>
         .search-container {
-            max-width: 1440px;
+            max-width: 1520px;
             margin: 0 auto;
-            padding: 56px 48px 72px;
+            padding: 30px 40px 60px;
             display: grid;
-            grid-template-columns: minmax(0, 1.45fr) 460px;
-            gap: 64px;
+            grid-template-columns: minmax(0, 1.62fr) 420px;
+            gap: 36px;
         }
 
         .browse-curation-shell {
-            margin-bottom: 34px;
+            margin-bottom: 24px;
             padding: 0;
             background: transparent;
             border: 0;
@@ -25,79 +25,79 @@
         }
 
         .search-panel-header {
-            margin-bottom: 18px;
+            margin-bottom: 14px;
         }
 
         .search-panel-eyebrow {
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            min-height: 36px;
-            padding: 0 16px;
+            min-height: 34px;
+            padding: 0 14px;
             border-radius: 999px;
             background: rgba(144, 73, 81, 0.08);
             color: var(--primary);
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 900;
-            margin-bottom: 18px;
+            margin-bottom: 14px;
         }
 
         .search-panel-header h2 {
-            font-size: clamp(2.7rem, 5vw, 4.2rem);
-            margin-bottom: 14px;
-            line-height: 1.08;
-            letter-spacing: -0.03em;
+            font-size: clamp(2.4rem, 4.4vw, 3.55rem);
+            margin-bottom: 10px;
+            line-height: 1.04;
+            letter-spacing: -0.035em;
         }
 
         .search-panel-header p {
             color: var(--on-surface-variant);
-            font-size: 1.16rem;
+            font-size: 1rem;
             font-weight: 400;
-            line-height: 1.68;
-            max-width: 760px;
+            line-height: 1.7;
+            max-width: 540px;
             margin: 0;
         }
 
         .search-input-wrapper {
             position: relative;
-            margin-bottom: 16px;
-            max-width: 760px;
+            margin-bottom: 12px;
+            max-width: 520px;
         }
 
         .search-input {
             width: 100%;
-            padding: 18px 20px 18px 54px;
+            padding: 15px 18px 15px 48px;
             border-radius: 999px;
-            border: 1px solid rgba(144, 73, 81, 0.1);
-            background: rgba(255,255,255,0.9);
-            box-shadow: 0 12px 28px rgba(0,0,0,0.025);
-            font-size: 1rem;
+            border: 1px solid rgba(144, 73, 81, 0.09);
+            background: rgba(255,255,255,0.82);
+            box-shadow: 0 10px 22px rgba(0,0,0,0.022);
+            font-size: 0.96rem;
             font-family: var(--font-body);
             outline: none;
             transition: all 0.3s;
         }
 
         .search-input:focus {
-            border-color: rgba(144,73,81,0.22);
-            box-shadow: 0 14px 34px rgba(141, 71, 79, 0.08);
+            border-color: rgba(144,73,81,0.18);
+            box-shadow: 0 12px 28px rgba(141, 71, 79, 0.06);
         }
 
         .search-icon {
             position: absolute;
-            left: 18px;
+            left: 16px;
             top: 50%;
             transform: translateY(-50%);
             color: var(--primary);
-            font-size: 22px;
-            opacity: 0.78;
+            font-size: 20px;
+            opacity: 0.72;
         }
 
         .tag-chip {
-            padding: 8px 16px;
+            padding: 8px 14px;
             border-radius: 99px;
-            background: rgba(255,255,255,0.8);
+            background: rgba(255,255,255,0.76);
             color: var(--on-surface-variant);
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 700;
             cursor: pointer;
             transition: all 0.2s;
@@ -123,30 +123,13 @@
 
         .filter-row {
             display: flex;
-            gap: 10px;
+            gap: 8px;
             margin-bottom: 0;
             flex-wrap: wrap;
         }
 
         .browse-guidance-strip {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-top: 18px;
-            padding: 14px 18px;
-            max-width: 760px;
-            border-radius: 1.15rem;
-            background: rgba(255,255,255,0.68);
-            border: 1px solid rgba(144,73,81,0.08);
-            color: var(--on-surface-variant);
-            font-size: 0.93rem;
-            line-height: 1.6;
-        }
-
-        .browse-guidance-strip .material-symbols-outlined {
-            font-size: 18px;
-            color: var(--primary);
-            flex-shrink: 0;
+            display: none;
         }
 
         .browse-results-head {
@@ -159,7 +142,7 @@
 
         .browse-results-head h3 {
             margin: 0;
-            font-size: 1.8rem;
+            font-size: 1.7rem;
             font-weight: 900;
             color: var(--on-surface);
             letter-spacing: -0.02em;
@@ -167,8 +150,8 @@
 
         .browse-results-head p {
             margin: 8px 0 0;
-            font-size: 0.98rem;
-            line-height: 1.62;
+            font-size: 0.95rem;
+            line-height: 1.58;
             color: var(--on-surface-variant);
         }
 
@@ -176,16 +159,16 @@
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            min-height: 34px;
-            padding: 0 14px;
+            min-height: 32px;
+            padding: 0 12px;
             border-radius: 999px;
-            background: rgba(255,255,255,0.88);
+            background: rgba(255,255,255,0.86);
             border: 1px solid rgba(144, 73, 81, 0.08);
             color: var(--primary);
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 900;
             white-space: nowrap;
-            box-shadow: 0 10px 22px rgba(75,64,57,0.03);
+            box-shadow: 0 8px 18px rgba(75,64,57,0.03);
         }
 
         #resultsList {
@@ -289,16 +272,16 @@
         }
 
         .tree-title {
-            font-size: 1.52rem;
+            font-size: 1.46rem;
             font-weight: 900;
             line-height: 1.18;
             letter-spacing: -0.02em;
         }
 
         .tree-subtitle {
-            font-size: 0.94rem;
+            font-size: 0.92rem;
             color: var(--on-surface-variant);
-            line-height: 1.62;
+            line-height: 1.58;
             margin: 0;
         }
 
@@ -342,13 +325,13 @@
 
         .preview-sidebar {
             position: sticky;
-            top: 104px;
+            top: 96px;
             height: fit-content;
-            background: rgba(255,255,255,0.88);
-            padding: 32px 30px;
-            border-radius: 2.2rem;
-            border: 1px solid rgba(144, 73, 81, 0.12);
-            box-shadow: 0 24px 60px rgba(75, 64, 57, 0.08);
+            background: rgba(255,255,255,0.9);
+            padding: 28px 24px;
+            border-radius: 2rem;
+            border: 1px solid rgba(144, 73, 81, 0.10);
+            box-shadow: 0 22px 54px rgba(75, 64, 57, 0.08);
         }
 
         .preview-sidebar h3 {
@@ -365,11 +348,11 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
         }
 
         .preview-panel-header h3 {
-            font-size: 1.92rem;
+            font-size: 1.76rem;
             font-weight: 900;
             color: var(--on-surface);
             margin: 0;
@@ -377,19 +360,19 @@
         }
 
         .preview-badge {
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 900;
             color: var(--primary);
             background: rgba(144, 73, 81, 0.08);
-            padding: 6px 12px;
+            padding: 6px 11px;
             border-radius: 99px;
         }
 
         .preview-kicker {
-            margin: 0 0 18px;
+            margin: 0 0 14px;
             color: var(--on-surface-variant);
-            font-size: 0.98rem;
-            line-height: 1.7;
+            font-size: 0.92rem;
+            line-height: 1.62;
         }
 
         .preview-empty-state {
@@ -442,9 +425,9 @@
             width: 100%;
             aspect-ratio: 16/11;
             background: linear-gradient(135deg, rgba(144, 73, 81, 0.08), rgba(122, 139, 110, 0.08));
-            border-radius: 1.7rem;
+            border-radius: 1.55rem;
             overflow: hidden;
-            margin-bottom: 24px;
+            margin-bottom: 20px;
             border: 1px solid rgba(144,73,81,0.06);
             box-shadow: none;
         }
@@ -452,7 +435,8 @@
         @media (max-width: 1180px) {
             .search-container {
                 grid-template-columns: 1fr;
-                gap: 44px;
+                gap: 26px;
+                padding: 24px 24px 48px;
             }
 
             #resultsList {
@@ -466,31 +450,33 @@
 
         @media (max-width: 768px) {
             .search-container {
-                padding: 24px 16px 40px;
-                gap: 28px;
+                padding: 20px 16px 36px;
+                gap: 22px;
+            }
+
+            .browse-curation-shell {
+                margin-bottom: 18px;
             }
 
             .search-panel-header h2 {
-                font-size: 2.25rem;
-                line-height: 1.14;
+                font-size: 2.05rem;
+                line-height: 1.08;
+                margin-bottom: 8px;
             }
 
             .search-panel-header p {
-                font-size: 1rem;
+                font-size: 0.95rem;
+                max-width: 100%;
             }
 
             .search-input {
-                font-size: 0.95rem;
-                padding: 16px 18px 16px 48px;
+                font-size: 0.94rem;
+                padding: 14px 16px 14px 44px;
             }
 
             .search-icon {
-                font-size: 20px;
-                left: 16px;
-            }
-
-            .browse-guidance-strip {
-                align-items: flex-start;
+                font-size: 18px;
+                left: 14px;
             }
 
             #resultsList {
@@ -498,28 +484,37 @@
             }
 
             .preview-sidebar {
-                padding: 24px;
-                border-radius: 1.6rem;
+                padding: 22px 18px;
+                border-radius: 1.5rem;
             }
 
             .preview-panel-header {
                 align-items: flex-start;
-                flex-direction: column;
-                gap: 10px;
+                gap: 8px;
             }
 
             .preview-panel-header h3 {
-                font-size: 1.65rem;
+                font-size: 1.45rem;
+            }
+
+            .preview-kicker {
+                font-size: 0.88rem;
+                margin-bottom: 12px;
             }
 
             .tag-chip {
-                font-size: 12px;
-                padding: 7px 12px;
+                font-size: 11px;
+                padding: 7px 11px;
             }
 
             .browse-results-head {
                 align-items: flex-start;
                 flex-direction: column;
+                gap: 10px;
+            }
+
+            .browse-results-head h3 {
+                font-size: 1.45rem;
             }
         }
     </style>
@@ -539,7 +534,7 @@
                         오늘의 공개 감상
                     </div>
                     <h2 class="headline">공개 러브트리 둘러보기</h2>
-                    <p>다른 팬이 남긴 순간과 흐름을 따라가 보세요.</p>
+                    <p>다른 팬이 남긴 첫 순간과 이어진 감정을 살펴보세요.</p>
                 </div>
 
                 <div class="search-input-wrapper">
@@ -552,11 +547,6 @@
                     <span class="tag-chip" data-category="입덕">시작 순간 중심</span>
                     <span class="tag-chip" data-category="성장">이어진 감정</span>
                     <span class="tag-chip" data-category="최애">깊어진 마음</span>
-                </div>
-
-                <div class="browse-guidance-strip">
-                    <span class="material-symbols-outlined">auto_stories</span>
-                    <span>트리를 고르면 감상 허브가 바로 열립니다.</span>
                 </div>
             </div>
 
@@ -580,17 +570,17 @@
                 <h3>감상 허브</h3>
                 <span class="preview-badge">선택한 트리</span>
             </div>
-            <p class="preview-kicker">카드를 선택하면 이곳에서 바로 감상할 수 있어요.</p>
+            <p class="preview-kicker">대표 순간과 이어진 감정을 먼저 살펴보세요.</p>
             <div id="previewVideoContainer" class="video-container" style="margin-bottom: 24px;">
                 <div class="preview-empty-state" style="width:100%; height:100%; display:flex; flex-direction: column; align-items:center; justify-content:center; color: var(--on-surface-variant); font-size: 14px; text-align: center; padding: 20px;">
-                    <p style="margin-bottom: 8px;">트리를 고르면</p>
-                    <p>대표 순간과 이어진 감정이 이곳에 열립니다.</p>
+                    <p style="margin-bottom: 8px;">아직 마음이 머무는 트리를 고르는 중이에요.</p>
+                    <p>대표 순간과 이어진 감정이 차분히 놓일 거예요.</p>
                 </div>
             </div>
             <div id="previewDetails">
                 <div id="previewTitle" class="headline" style="font-size: 1.18rem; margin-bottom: 12px; font-weight: 800; color: var(--on-surface);">시작 순간을 고르는 중</div>
                 <div id="previewDesc" style="color: var(--on-surface-variant); font-size: 14px; line-height: 1.6;">
-                    <p style="margin-bottom: 16px;">대표 순간과 이어진 감정을 조용히 먼저 감상할 수 있어요.</p>
+                    <p style="margin-bottom: 16px;">대표 순간과 이어진 감정을 차분히 먼저 살펴보세요.</p>
                 </div>
                 <div id="previewTreeStats" class="tree-meta" hidden>
                     <span class="tree-meta-item">
