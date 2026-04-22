@@ -36,21 +36,24 @@
 ## 3. 현재 서비스 / 인프라 기준
 
 ### 실서비스 주소
-- `https://lovebud.vercel.app/`
+- `https://lovebud.pages.dev/`
 
 ### 인프라 우선순위
 1. **Modal**
-2. **Vercel**
-3. **Netlify**
+2. **Cloudflare Pages**
+3. **Vercel**
+4. **Netlify**
 
 ### 운영 해석 원칙
 - Modal은 browse summary, compute, read-heavy 처리의 최우선 계층입니다.
-- Vercel은 실서비스 프론트 및 same-origin `/api` 진입점입니다.
+- Cloudflare Pages는 실서비스 프론트 및 same-origin `/api` 진입점입니다.
+- Vercel은 upstream / secondary entry / 전이기 보조 계층입니다.
 - Netlify는 주경로가 아니라 fallback 또는 단계적 제거 대상입니다.
 
 ### 브라우저 API 원칙
 - 사용자 브라우저는 가능하면 **same-origin `/api`**만 사용합니다.
 - 프론트는 직접 특정 외부 호스트를 기본값으로 가정하지 않습니다.
+- 공식 사용자-facing 주소는 `pages.dev` 기준으로 설명합니다.
 
 ---
 
@@ -125,7 +128,7 @@ LoveBud / LoveTree는 다음과 같은 서비스가 아닙니다.
 - 보통은 Firebase Console 설정 점검 항목으로 분리합니다.
 
 ### `vercel.json`
-- 현재 `vercel.json`은 공식 엔트리와 rewrite 계약의 일부입니다.
+- 현재 `vercel.json`은 Vercel secondary entry / rewrite 계약의 일부입니다.
 - 자동 삭제 후보나 단순 정리 대상으로 분류하지 않습니다.
 
 ### 파일 크기 / 번들러 / 컴포넌트화
@@ -153,7 +156,7 @@ LoveBud / LoveTree는 다음과 같은 서비스가 아닙니다.
 - `pages/my-trees.html`
 - `pages/login.html`
 
-실서비스 주소에서는 위 경로가 Vercel rewrite를 통해 `/intro.html`, `/search.html`, `/detail.html`, `/editor.html`, `/my-trees.html`, `/login.html`로 노출될 수 있습니다.
+실서비스 주소에서는 위 경로가 Cloudflare Pages를 통해 `/intro.html`, `/search.html`, `/detail.html`, `/editor.html`, `/my-trees.html`, `/login.html`로 노출될 수 있습니다.
 
 ---
 
