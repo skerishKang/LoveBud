@@ -1,6 +1,6 @@
 /**
  * LoveBud - My Trees Page
- * v20260421-2
+ * v20260422-1
  *
  * Responsibilities:
  * - Auth guard: redirect to login if not authenticated
@@ -147,22 +147,19 @@
      }
    }
 
-   function startMyTrees(user) {
-     if (!user) {
-       var cachedUser = null;
-       try {
-         if (localStorage.getItem('lovebud_auth_confirmed') === 'true') {
-           var raw = localStorage.getItem('lovebud_auth_cache');
-           if (raw && raw !== 'null') {
-             cachedUser = JSON.parse(raw);
-           }
-         }
-       } catch (e) {}
+   function getLoginRedirectUrl() {
+     var basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
+     return basePath + 'login.html?redirect=' + basePath + 'my-trees.html';
+   }
 
-       if (!cachedUser || !cachedUser.uid) {
-         window.location.href = 'login.html?redirect=my-trees.html';
-         return;
-       }
+   function redirectToLogin() {
+     window.location.href = getLoginRedirectUrl();
+   }
+
+   function startMyTrees(user) {
+     if (!user || !user.uid) {
+       redirectToLogin();
+       return;
      }
 
      setupHeaderCreateButton();
@@ -342,31 +339,49 @@
     }
   }
 
-  document.addEventListener('DOMContentLoaded', function() {
+  document.addEventListener('DOMContentLoaded', async function() {
     var cachedUser = getConfirmedSessionUser();
+    var bootedFromCache = false;
+
     if (cachedUser && !myTreesStarted) {
       bootMyTrees(cachedUser);
+      bootedFromCache = true;
     }
-  }, { once: true });
 
-  if (typeof window.registerOnAuthReady === 'function') {
-    window.registerOnAuthReady(bootMyTrees);
-  } else {
-    window.onAuthReady = bootMyTrees;
-  }
+    if (window.LoveBudAuthBootstrap && typeof window.LoveBudAuthBootstrap.whenReady === 'function') {
+      var user = await window.LoveBudAuthBootstrap.whenReady();
 
-  window.addEventListener('load', function() {
-    setTimeout(function() {
-      if (myTreesStarted) return;
-      var cachedUser = getConfirmedSessionUser();
-      var isFirebaseReady = typeof firebase !== 'undefined' && firebase.auth && firebase.apps && firebase.apps.length > 0;
-      if (!isFirebaseReady && !cachedUser) {
-        var basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
-        window.location.href = basePath + 'login.html?redirect=' + basePath + 'my-trees.html';
+      if (!user || !user.uid) {
+        if (bootedFromCache || myTreesStarted) {
+          redirectToLogin();
+          return;
+        }
+        bootMyTrees(null);
         return;
       }
-      bootMyTrees(cachedUser);
-    }, 700);
+
+      if (!myTreesStarted) {
+        bootMyTrees(user);
+      }
+      return;
+    }
+
+    if (!myTreesStarted && typeof window.registerOnAuthReady === 'function') {
+      window.registerOnAuthReady(function(user) {
+        if (!user || !user.uid) {
+          redirectToLogin();
+          return;
+        }
+        if (!myTreesStarted) {
+          bootMyTrees(user);
+        }
+      });
+      return;
+    }
+
+    if (!myTreesStarted) {
+      bootMyTrees(cachedUser || null);
+    }
   }, { once: true });
 
 })();
