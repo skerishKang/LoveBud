@@ -1,6 +1,6 @@
 /**
  * LoveBud - i18n Search Dictionary
- * v20260422-2
+ * v20260422-3
  *
  * 검색/둘러보기 페이지(search.html) 번역 키
  */
@@ -10,6 +10,10 @@
 
   window.i18nSearch = {
     // 페이지 제목
+    'search.eyebrow': {
+      ko: '오늘의 공개 감상',
+      en: 'Today\'s Public Picks'
+    },
     'search.title': {
       ko: '공개 러브트리 둘러보기',
       en: 'Browse Public LoveTrees'
@@ -21,6 +25,14 @@
     'search.intentNote': {
       ko: '트리를 고르면 감상 허브가 바로 열립니다.',
       en: 'Choose a tree to open the viewing hub.'
+    },
+    'search.resultsHeading': {
+      ko: '최근 공개된 러브트리',
+      en: 'Recently Shared LoveTrees'
+    },
+    'search.resultsBadge': {
+      ko: '지금 먼저 볼 3개',
+      en: '3 to start with'
     },
 
     // 미리보기
@@ -104,6 +116,10 @@
       ko: '시작 순간을 기다리는 중',
       en: 'Waiting for the first moment'
     },
+    'search.previewStatsPending': {
+      ko: '대표 순간이 열리면 함께 보여드릴게요',
+      en: 'This will appear once the featured moment opens.'
+    },
     'search.previewEmotionTagsLabel': {
       ko: '이어진 감정',
       en: 'Connected Feelings'
@@ -139,6 +155,10 @@
     'search.previewMoreMoments': {
       ko: '... 그리고 {count}개의 순간 더',
       en: '... and {count} more moments'
+    },
+    'search.previewOpenTreeCta': {
+      ko: '이 트리 열기',
+      en: 'Open this tree'
     },
     'search.previewSummaryThemeStart': {
       ko: '<strong style="color:var(--on-surface);">{title}</strong>는 <strong style="color:var(--on-surface);">{theme}</strong>와 함께 막 시작된 공개 러브트리예요.',
