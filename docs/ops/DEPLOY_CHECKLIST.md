@@ -1,10 +1,10 @@
-# LoveBud 배포 체크리스트 (Vercel & Modal 중심)
+# LoveBud 배포 체크리스트
 
 이 문서는 현재 운영 기준인 **Modal > Vercel > Netlify** 구조에서 배포 전후 확인 항목을 정리합니다.
 
-- 실서비스 프론트 주소: `https://lovebud.vercel.app/`
+- 공식 서비스 주소: `https://lovebud.vercel.app/`
 - 브라우저 API 기준: same-origin `/api/...`
-- Netlify 역할: browse summary fallback 또는 일부 upstream fallback
+- Netlify 역할: fallback / legacy
 
 ## 0. 빠른 엔드포인트 검증 (1분)
 
@@ -15,59 +15,95 @@ curl -s -o /dev/null -w "%{http_code}" "https://lovebud.vercel.app/api/community
 ```
 
 추가 점검:
-- 응답이 200이어도 Modal 직응답인지 Netlify fallback인지는 Vercel 로그로 함께 확인합니다.
-- browse summary는 display filter이고, publication guard와 혼동하지 않습니다.
+
+```bash
+curl -s "https://<MODAL_BASE_URL>/modal/health"
+curl -s "https://<MODAL_BASE_URL>/modal/browse/latest?limit=3"
+```
+
+주의:
+- browse summary는 Modal 우선 read path입니다.
+- Netlify는 fallback 입니다.
+- browse display filter와 publication guard를 혼동하지 않습니다.
 
 ## 1. Firebase Authorized Domains 점검
 
-Firebase Console > Authentication > Settings > Authorized Domains에서 아래 도메인을 확인합니다.
+Firebase Console > Authentication > Settings > Authorized Domains
 
-- [ ] `lovebud.vercel.app` (Primary)
-- [ ] `lovebud.netlify.app` (Fallback / legacy)
+- [ ] `lovebud.vercel.app`
+- [ ] `lovebud.netlify.app`
 - [ ] `localhost`
 - [ ] `127.0.0.1`
 
-## 2. 환경 변수 동기화 (Vercel Dashboard)
+## 2. Vercel 환경 변수
 
-Vercel 프로젝트에 아래 환경 변수가 설정되어 있어야 합니다.
+아래 값이 Vercel에 설정되어 있어야 합니다.
 
 - [ ] `MODAL_BASE_URL`
 - [ ] `NETLIFY_API_BASE_URL`
-- [ ] `DATABASE_URL`
-- [ ] `FIREBASE_SERVICE_ACCOUNT_JSON`
+- [ ] `LOVEBUD_UPSTREAM_API_BASE`
+
+권장값 메모:
+- `NETLIFY_API_BASE_URL=https://lovebud.netlify.app/api`
+- `LOVEBUD_UPSTREAM_API_BASE=https://lovebud.netlify.app/api`
+- `MODAL_BASE_URL=https://<live-modal-domain>`
 
 설명:
-- `MODAL_BASE_URL`: browse summary read path의 1순위 upstream
-- `NETLIFY_API_BASE_URL`: Vercel `/api` route의 fallback / upstream 대상
+- `MODAL_BASE_URL`: browse summary의 1순위 upstream
+- `NETLIFY_API_BASE_URL`: `/api/community/trees`, `/api/community/memories` fallback / upstream 대상
+- `LOVEBUD_UPSTREAM_API_BASE`: catch-all `/api/*` upstream base
 
-## 3. 배포 후 핵심 플로우 확인
+## 3. Modal 환경 변수 / secret
+
+- [ ] `DATABASE_URL`가 Modal secret `lovebud-db`로 주입되는지 확인
+- [ ] `CORS_ALLOWED_ORIGINS`가 필요 시 운영값으로 설정되어 있는지 확인
+- [ ] `/modal/health` 200 확인
+- [ ] `/modal/browse/latest?limit=3` 배열 응답 확인
+
+## 4. 배포 후 핵심 플로우 확인
 
 | 플로우 | URL | 확인 사항 |
 | :--- | :--- | :--- |
-| 홈 | `/` | 정상 로드 |
-| 둘러보기 | `/search.html` | `/api/community/trees?view=summary&sort=latest&limit=3` 성공, 카드/preview 정상 렌더 |
-| 로그인 | `/login.html` | Vercel 도메인에서 인증 성공 여부 |
-| 에디터 | `/editor.html` | 저장 및 visibility 전환 정합성 |
+| 홈 | `https://lovebud.vercel.app/` | 정상 로드 |
+| 둘러보기 | `https://lovebud.vercel.app/search.html` | summary 카드 정상 로드 |
+| browse api | `/api/community/trees?view=summary&sort=latest&limit=3` | 200 + JSON |
+| preview hydrate | `/api/community/memories?treeId=<id>` | 200 + JSON |
+| 로그인 | `https://lovebud.vercel.app/login.html` | Firebase 도메인 오류 없음 |
+| 에디터 | `https://lovebud.vercel.app/editor.html` | 기본 진입 정상 |
 
-## 4. 장애 대응 우선순위
+## 5. fallback 점검
+
+- [ ] Modal 차단 시 browse summary가 Netlify fallback으로 계속 응답하는지 확인
+- [ ] `api/community/memories.js`가 Netlify upstream으로 정상 응답하는지 확인
+- [ ] catch-all `/api/*`가 `LOVEBUD_UPSTREAM_API_BASE` 기준으로 정상 proxy 되는지 확인
+
+## 6. 장애 대응 우선순위
 
 1. **Vercel `/api/community/trees` 실패**
    - Vercel 로그에서 `api/community/trees.js` 오류 확인
-   - `MODAL_BASE_URL`, `NETLIFY_API_BASE_URL` 환경 변수 확인
+   - `MODAL_BASE_URL`, `NETLIFY_API_BASE_URL` 확인
 
-2. **Auth Domain Error**
-   - Firebase Console 승인 도메인 확인
+2. **Modal Timeout / Modal 장애**
+   - `/modal/health` 와 `/modal/browse/latest?limit=3` 확인
+   - Modal 실패 시 Netlify fallback으로 계속 응답하는지 확인
 
-3. **Modal Timeout**
-   - `api/community/trees.js`는 summary 요청에서 Modal을 먼저 시도하고, 실패 시 Netlify fallback으로 내려갑니다.
-   - 즉 전체 browse 차단이 아니라 성능 저하 가능성으로 해석합니다.
-
-4. **Netlify Usage Exceeded / Upstream 장애**
+3. **Netlify Upstream 장애**
    - `NETLIFY_API_BASE_URL` 대상 상태 확인
+   - `LOVEBUD_UPSTREAM_API_BASE` 대상 상태 확인
    - fallback 계층이므로 browse summary 또는 hydrate 일부에 영향 가능
 
-## 5. 검증 메모
+4. **Auth Domain Error**
+   - Firebase Console 승인 도메인 확인
 
-- browse display filter는 **무엇을 보여줄지**에 대한 read/display 기준입니다.
-- publication guard는 **무엇을 public으로 전환할 수 있는지**에 대한 write 정책입니다.
-- 배포 체크 시 두 개념을 같은 항목으로 보고하지 않습니다.
+## 7. 오래된 설명 제거 기준
+
+배포/운영 문서에서 아래 표현은 사용하지 않습니다.
+
+- `lovebud.netlify.app`를 주서비스처럼 설명하는 문장
+- Netlify를 primary runtime으로 설명하는 문장
+- Vercel을 단순 정적 호스팅만 하는 것처럼 설명하는 문장
+
+현재 기준 문장:
+- **공식 주소는 Vercel**
+- **browse summary의 1순위는 Modal**
+- **Netlify는 fallback / legacy**
