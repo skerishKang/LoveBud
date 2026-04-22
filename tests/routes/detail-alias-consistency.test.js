@@ -16,6 +16,6 @@ test('detail route alias exists in netlify.toml', () => {
 });
 
 test('search page navigation still targets detail.html alias path', () => {
-  const searchJs = read('js/search.js');
-  assert.match(searchJs, /detail\.html\?id=/);
+  const previewRendererJs = read('js/search-preview-renderer.js');
+  assert.match(previewRendererJs, /detail\.html\?id=/);
 });
