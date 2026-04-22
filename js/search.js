@@ -1,6 +1,6 @@
 /**
  * LoveBud Search Page Orchestrator
- * v20260422-3
+ * v20260422-4
  *
  * Search page orchestration:
  * - Fast list-first loading for public trees
@@ -319,7 +319,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (window.apiClient && window.apiClient.getPublicTrees) {
                 const apiTrees = await window.apiClient.getPublicTrees({ view: 'summary', sort: currentSort, limit: currentLimit });
                 if (!Array.isArray(apiTrees)) {
-                    throw new Error('API ?묐떟 ?뺤떇 ?ㅻ쪟');
+                    throw new Error('API 응답 형식 오류');
                 }
 
                 if (cache) {
@@ -332,11 +332,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 apiTreesLoaded = true;
                 renderResults();
             } else {
-                throw new Error('tree API ?ъ슜 遺덇?');
+                throw new Error('tree API 사용 불가');
             }
         } catch (error) {
             loadError = error;
-            console.warn('[search] API 濡쒕뱶 ?ㅽ뙣:', error.message);
+            console.warn('[search] API 로드 실패:', error.message);
             if (!allTrees || allTrees.length === 0) {
                 allTrees = [];
             }
@@ -348,47 +348,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     resultsList.innerHTML = CardRenderer.renderLoading();
     PreviewRenderer.resetPreview();
     await loadPublicTrees({ resetSelection: true });
-
-    if (false) {
-    let cachedTrees = null;
-    if (cache) {
-        cachedTrees = cache.get(PUBLIC_TREES_CACHE_KEY);
-        if (cachedTrees && Array.isArray(cachedTrees) && cachedTrees.length > 0) {
-            allTrees = cachedTrees;
-            isFromCache = true;
-            renderResults();
-        }
-    }
-    }
-
-    if (false) {
-    try {
-        if (window.apiClient && window.apiClient.getPublicTrees) {
-            const apiTrees = await window.apiClient.getPublicTrees({ view: 'summary', sort: 'latest', limit: 12 });
-            if (!Array.isArray(apiTrees)) {
-                throw new Error('API 응답 형식 오류');
-            }
-
-            if (cache) {
-                cache.set(PUBLIC_TREES_CACHE_KEY, apiTrees, 5 * 60 * 1000);
-            }
-            if (!areTreesEffectivelySame(allTrees, apiTrees)) {
-                allTrees = apiTrees;
-            }
-            apiTreesLoaded = true;
-            renderResults();
-        } else {
-            throw new Error('tree API 사용 불가');
-        }
-    } catch (error) {
-        loadError = error;
-        console.warn('[search] API 로드 실패:', error.message);
-        if (!allTrees || allTrees.length === 0) {
-            allTrees = [];
-        }
-        renderResults();
-    }
-    }
 
     let searchInputTimer = null;
     searchInput.addEventListener('input', (e) => {
