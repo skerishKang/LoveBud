@@ -21,6 +21,8 @@ from psycopg.rows import dict_row
 
 _firebase_cert_cache: dict[str, Any] = {"expires_at": 0, "certs": {}}
 _db_pool: ConnectionPool | None = None
+PRIVATE_READ_MAX_ATTEMPTS = 3
+PRIVATE_READ_RETRY_DELAY_SECONDS = 0.2
 
 def get_db_pool() -> ConnectionPool:
     global _db_pool
@@ -42,6 +44,29 @@ def get_db_pool() -> ConnectionPool:
 def get_db_connection():
     """Return a pooled psycopg3 connection context."""
     return get_db_pool().connection()
+
+
+def reset_db_pool() -> None:
+    global _db_pool
+    if _db_pool is not None and not _db_pool.closed:
+        _db_pool.close()
+    _db_pool = None
+
+
+def run_db_with_retry(operation, *, max_attempts: int = PRIVATE_READ_MAX_ATTEMPTS):
+    last_error: psycopg.OperationalError | None = None
+    for attempt in range(max_attempts):
+        try:
+            return operation()
+        except psycopg.OperationalError as error:
+            last_error = error
+            reset_db_pool()
+            if attempt == max_attempts - 1:
+                raise
+            time.sleep(PRIVATE_READ_RETRY_DELAY_SECONDS * (attempt + 1))
+    if last_error is not None:
+        raise last_error
+    raise RuntimeError("run_db_with_retry failed without capturing an error")
 
 
 def get_firebase_project_id() -> str:
@@ -361,17 +386,13 @@ def fetch_user_trees(owner_id: str, limit: int = 100) -> list[dict[str, Any]]:
         LIMIT %s;
     """
 
-    for attempt in range(2):
-        try:
-            with get_db_connection() as conn:
-                with conn.cursor() as cur:
-                    cur.execute(query, (owner_id, limit))
-                    rows = cur.fetchall()
-            break
-        except psycopg.OperationalError:
-            if attempt == 0:
-                continue
-            raise
+    def operation():
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(query, (owner_id, limit))
+                return cur.fetchall()
+
+    rows = run_db_with_retry(operation)
 
     return [normalize_tree_row(row, row.get("memory_count")) for row in rows]
 
@@ -389,17 +410,13 @@ def fetch_owner_tree(tree_id: str, owner_id: str) -> dict[str, Any] | None:
         LIMIT 1;
     """
 
-    for attempt in range(2):
-        try:
-            with get_db_connection() as conn:
-                with conn.cursor() as cur:
-                    cur.execute(query, (tree_id, owner_id))
-                    row = cur.fetchone()
-            break
-        except psycopg.OperationalError:
-            if attempt == 0:
-                continue
-            raise
+    def operation():
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(query, (tree_id, owner_id))
+                return cur.fetchone()
+
+    row = run_db_with_retry(operation)
 
     return normalize_tree_row(row, row.get("memory_count")) if row else None
 
@@ -425,17 +442,13 @@ def fetch_owner_memories(owner_id: str, tree_id: str | None = None, limit: int =
         LIMIT %s;
     """
 
-    for attempt in range(2):
-        try:
-            with get_db_connection() as conn:
-                with conn.cursor() as cur:
-                    cur.execute(query, tuple(params))
-                    rows = cur.fetchall()
-            break
-        except psycopg.OperationalError:
-            if attempt == 0:
-                continue
-            raise
+    def operation():
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(query, tuple(params))
+                return cur.fetchall()
+
+    rows = run_db_with_retry(operation)
 
     return [normalize_memory_row(row) for row in rows]
 
@@ -466,6 +479,12 @@ def validate_required_uuid(value: Any, name: str) -> str:
         return str(uuid.UUID(value.strip()))
     except ValueError as error:
         raise HTTPException(status_code=400, detail=f"Invalid {name}") from error
+
+
+def validate_optional_uuid(value: Any, name: str) -> str | None:
+    if value is None or value == "":
+        return None
+    return validate_required_uuid(value, name)
 
 
 def create_owner_tree(owner_id: str, payload: dict[str, Any]) -> dict[str, Any]:
@@ -594,12 +613,14 @@ def get_public_community_memories(
     treeId: str | None = None,
     limit: int = Query(default=100, ge=1, le=200),
 ) -> list[dict]:
-    return fetch_public_memories(tree_id=treeId, limit=limit)
+    safe_tree_id = validate_optional_uuid(treeId, "treeId")
+    return fetch_public_memories(tree_id=safe_tree_id, limit=limit)
 
 
 @web_app.get("/modal/memories/{memory_id}")
 def get_public_memory_detail(memory_id: str) -> dict:
-    memory = fetch_public_memory(memory_id)
+    safe_memory_id = validate_required_uuid(memory_id, "memoryId")
+    memory = fetch_public_memory(safe_memory_id)
     if not memory:
         raise HTTPException(status_code=404, detail="Memory not found")
     return memory
@@ -607,7 +628,8 @@ def get_public_memory_detail(memory_id: str) -> dict:
 
 @web_app.get("/modal/trees/{tree_id}")
 def get_public_tree_detail(tree_id: str) -> dict:
-    tree = fetch_public_tree(tree_id)
+    safe_tree_id = validate_required_uuid(tree_id, "treeId")
+    tree = fetch_public_tree(safe_tree_id)
     if not tree:
         raise HTTPException(status_code=404, detail="Tree not found")
     return tree
@@ -641,7 +663,8 @@ def get_private_tree_detail(
     authorization: str | None = Header(default=None),
 ) -> dict:
     user = require_firebase_user(authorization)
-    tree = fetch_owner_tree(tree_id, user["uid"])
+    safe_tree_id = validate_required_uuid(tree_id, "treeId")
+    tree = fetch_owner_tree(safe_tree_id, user["uid"])
     if not tree:
         raise HTTPException(status_code=404, detail="Tree not found")
     return tree
@@ -654,7 +677,8 @@ def get_private_memories(
     authorization: str | None = Header(default=None),
 ) -> list[dict]:
     user = require_firebase_user(authorization)
-    return fetch_owner_memories(user["uid"], tree_id=treeId, limit=limit)
+    safe_tree_id = validate_optional_uuid(treeId, "treeId")
+    return fetch_owner_memories(user["uid"], tree_id=safe_tree_id, limit=limit)
 
 
 @web_app.post("/modal/private/memories")
