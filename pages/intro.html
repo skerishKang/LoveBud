@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>소개 | 러브트리</title>
+  <link rel="icon" href="/assets/favicon/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/favicon.ico" sizes="32x32">
   <link rel="stylesheet" href="../css/global.css?v=20260415-10">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
   <style>
@@ -1050,11 +1052,11 @@
      <script src="../js/auth.js?v=20260417-31"></script>
    <script>
      renderSharedHeader();
-     
+
      // i18n 초기화
      document.addEventListener('DOMContentLoaded', function() {
        if (window.applyI18n) window.applyI18n();
-       
+
        // 저장된 언어로 드롭다운 상태 동기화
        var currentLang = window.getCurrentLang ? window.getCurrentLang() : 'ko';
        var langBtn = document.querySelector('.lang-option[data-lang="' + (currentLang === 'ko' ? 'KR' : 'EN') + '"]');
@@ -1063,7 +1065,7 @@
          langBtn.classList.add('active');
        }
      });
-     
+
      // 언어 변경 시 재적용
      if (window.onLangChange) {
        window.onLangChange(function(lang) {
