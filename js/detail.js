@@ -196,10 +196,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const getHeroFallbackDesc = ({ memoryCount, memoryTitleText }) => {
         if (memoryTitleText) {
-            return `“${memoryTitleText}”${tText('public_tree_desc_fallback_with_memory_suffix', '에서 시작된 마음을 따라가고 있어요. 연결된 순간이 많지 않아도, 이 장면만으로 남겨진 분위기를 천천히 감상해 보세요.')}`;
+            return `“${memoryTitleText}”${tText('public_tree_desc_fallback_with_memory_suffix', '에서 시작된 마음을 따라가고 있어요.')}`;
         }
         const baseCount = memoryCount > 0 ? memoryCount : 1;
-        return `${baseCount}${tText('public_tree_desc_suffix', '개의 순간으로 이어진 감정의 흐름을 따라가고 있어요. 지금 보고 있는 순간을 시작으로 이 트리를 천천히 감상해 보세요.')}`;
+        return `${baseCount}${tText('public_tree_desc_suffix', '개의 순간으로 이어진 감정의 흐름을 따라가고 있어요.')}`;
     };
 
     const parseMomentOrderValue = (memory) => {
@@ -272,13 +272,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             const baseCount = treeMomentCount > 0 ? treeMomentCount : 1;
             if (isMissingTreeId) {
                 detailHeroDesc.textContent = memoryTitleText
-                    ? `“${memoryTitleText}” ${tText('single_moment_hero_desc', '하나에 남겨진 감정부터 천천히 읽고 있어요. 아직 트리 전체 흐름은 보이지 않지만, 이 장면만으로도 마음의 결을 따라가 볼 수 있어요.')}`
-                    : tText('single_moment_hero_desc_fallback', '아직 트리 전체 흐름은 보이지 않지만, 지금 남아 있는 이 장면 하나만으로도 마음의 결을 천천히 따라가 볼 수 있어요.');
+                    ? `“${memoryTitleText}” ${tText('single_moment_hero_desc', '하나에 남겨진 감정을 따라가고 있어요.')}`
+                    : tText('single_moment_hero_desc_fallback', '지금 남아 있는 이 장면 하나를 중심으로 감상하고 있어요.');
             } else if (isTreeDegraded) {
-                detailHeroDesc.textContent = tText('tree_partial_hero_desc', '트리 전체 흐름은 아직 또렷하지 않지만, 지금 남아 있는 이 순간을 중심으로 감정의 결을 조용히 감상하고 있어요.');
+                detailHeroDesc.textContent = tText('tree_partial_hero_desc', '지금 남아 있는 이 순간을 중심으로 감정의 결을 보고 있어요.');
             } else {
                 detailHeroDesc.textContent = treeTitle
-                    ? `${treeTitle}${tText('public_tree_desc_join', ' 안에서')} ${baseCount}${tText('public_tree_desc_suffix', '개의 순간으로 이어진 감정의 흐름을 따라가고 있어요. 지금 보고 있는 순간을 시작으로 이 트리를 천천히 감상해 보세요.')}`
+                    ? `${treeTitle}${tText('public_tree_desc_join', ' 안에서')} ${baseCount}${tText('public_tree_desc_suffix', '개의 순간으로 이어진 감정의 흐름을 따라가고 있어요.')}`
                     : getHeroFallbackDesc({ memoryCount: baseCount, memoryTitleText });
             }
         }
@@ -299,19 +299,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         if (connectedSummary) {
             if (isMissingTreeId) {
-                connectedSummary.textContent = tText('single_moment_connected_summary', '트리 전체 흐름이 아직 보이지 않아도, 지금 남아 있는 이 장면과 마음부터 조용히 따라가 볼 수 있어요.');
+                connectedSummary.textContent = tText('single_moment_connected_summary', '지금 남아 있는 이 장면과 마음부터 따라가 볼 수 있어요.');
             } else if (connectedCount > 0) {
                 connectedSummary.textContent = treeMomentCount > 1
-                    ? `${treeMomentCount}${tText('connected_flow_count_suffix', '개의 순간 가운데 지금 장면과 함께 읽히는 기억들을 이어서 감상해 보세요.')}`
-                    : tText('connected_flow_summary', '이 공개 러브트리 안에서 함께 이어지는 순간들을 천천히 따라가 보세요.');
+                    ? `${treeMomentCount}${tText('connected_flow_count_suffix', '개의 순간 가운데 지금 장면과 함께 읽히는 기억을 이어서 살펴보세요.')}`
+                    : tText('connected_flow_summary', '이 공개 러브트리 안에서 함께 이어지는 순간을 따라가 보세요.');
             } else if (degradedReason === 'memories-load-failed' || degradedReason === 'tree-and-memories-load-failed') {
-                connectedSummary.textContent = tText('connected_flow_temporarily_unavailable_summary', '이어진 기억은 잠시 후 다시 또렷해질 수 있어요. 지금은 이 순간 하나를 중심으로 감정의 여운을 감상하고 있어요.');
+                connectedSummary.textContent = tText('connected_flow_temporarily_unavailable_summary', '지금은 이 순간 하나를 중심으로 감상하고 있어요.');
             } else if (isTreeDegraded) {
-                connectedSummary.textContent = tText('connected_flow_partial_tree_summary', '트리 전체 흐름은 아직 흐릿하지만, 지금 보이는 이 장면을 중심으로 감정의 결을 조용히 따라가고 있어요.');
+                connectedSummary.textContent = tText('connected_flow_partial_tree_summary', '지금 보이는 이 장면을 중심으로 감정의 결을 따라가고 있어요.');
             } else if (treeMomentCount > 1) {
-                connectedSummary.textContent = tText('connected_flow_empty_summary', '지금은 이 순간이 가장 또렷하게 열려 있어요. 다른 장면은 아직 여기서 선명하게 이어지지 않지만, 현재의 여운부터 감상해 보세요.');
+                connectedSummary.textContent = tText('connected_flow_empty_summary', '지금은 이 순간이 가장 먼저 또렷하게 열려 있어요.');
             } else {
-                connectedSummary.textContent = tText('connected_flow_single_summary', '지금은 이 장면 하나를 중심으로 천천히 감상하고 있어요.');
+                connectedSummary.textContent = tText('connected_flow_single_summary', '지금은 이 장면 하나를 중심으로 감상하고 있어요.');
             }
         }
 
@@ -449,13 +449,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (degradedReason === 'missing-tree-id') {
             treeContextEl.innerHTML = `
-                <div style="display:flex; align-items:flex-start; gap:16px;">
-                    <div style="width:48px; height:48px; background:var(--surface-container); border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-                        <span class="material-symbols-outlined" style="color: var(--primary); font-size:24px;">favorite</span>
+                <div style="display:flex; align-items:flex-start; gap:14px;">
+                    <div style="width:44px; height:44px; background:var(--surface-container); border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                        <span class="material-symbols-outlined" style="color: var(--primary); font-size:22px;">favorite</span>
                     </div>
                     <div style="flex:1; min-width:0;">
-                        <div style="font-size:12px; font-weight:800; color:var(--primary); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">${tText('tree_context_viewing', '감상 중')}</div>
-                        <p style="margin:0; font-size:14px; color:var(--on-surface-variant); line-height:1.7;">${tText('tree_context_solo_view_warm', '아직 연결된 트리 정보는 보이지 않지만, 이 순간만으로도 남겨진 마음을 천천히 따라가 볼 수 있어요.')}</p>
+                        <div style="font-size:11px; font-weight:800; color:var(--primary); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:4px;">${tText('tree_context_viewing', '감상 중')}</div>
+                        <p style="margin:0; font-size:13px; color:var(--on-surface-variant); line-height:1.6;">${tText('tree_context_solo_view_warm', '아직 연결된 트리 정보는 보이지 않지만, 이 순간만으로도 남겨진 마음을 천천히 따라가 볼 수 있어요.')}</p>
                     </div>
                 </div>
             `;
@@ -477,17 +477,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                     : tText('tree_context_missing_title_desc', '트리 이름은 아직 보이지 않지만, 지금 남아 있는 이 순간부터 조용히 감상해 볼 수 있어요.');
 
             treeContextEl.innerHTML = `
-                <div style="display:flex; align-items:flex-start; gap:16px;">
-                    <div style="width:48px; height:48px; background:var(--surface-container); border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-                        <span class="material-symbols-outlined" style="color: var(--primary); font-size:24px;">favorite</span>
+                <div style="display:flex; align-items:flex-start; gap:14px;">
+                    <div style="width:44px; height:44px; background:var(--surface-container); border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                        <span class="material-symbols-outlined" style="color: var(--primary); font-size:22px;">favorite</span>
                     </div>
                     <div style="flex:1; min-width:0;">
-                        <div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-bottom:6px;">
-                            <span style="font-size:12px; font-weight:800; color:var(--primary); text-transform:uppercase; letter-spacing:1px;">${tText('tree_context_viewing', '감상 중')}</span>
+                        <div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-bottom:4px;">
+                            <span style="font-size:11px; font-weight:800; color:var(--primary); text-transform:uppercase; letter-spacing:0.08em;">${tText('tree_context_viewing', '감상 중')}</span>
                             <span style="color: var(--outline-variant);">·</span>
-                            <span style="font-size:12px; color:var(--on-surface-variant);">${treeMomentCount}${tText('tree_context_moment_count_short', '개 순간')}</span>
+                            <span style="font-size:11px; color:var(--on-surface-variant);">${treeMomentCount}${tText('tree_context_moment_count_short', '개 순간')}</span>
                         </div>
-                        <p style="margin:0; font-size:14px; color:var(--on-surface-variant); line-height:1.7;">${contextDescription}</p>
+                        <p style="margin:0; font-size:13px; color:var(--on-surface-variant); line-height:1.6;">${contextDescription}</p>
                     </div>
                 </div>
             `;
@@ -501,24 +501,24 @@ document.addEventListener('DOMContentLoaded', async () => {
                     ? tText('tree_partial_context_desc', '트리의 전체 윤곽은 잠시 흐릿하지만, 지금 이 순간을 중심으로 감정의 분위기는 계속 따라가 볼 수 있어요.')
                     : degradedReason === 'memories-load-failed'
                         ? tText('memories_load_failed_desc_warm', '현재 순간은 또렷하게 남아 있어요. 이어진 다른 순간은 잠시 후 다시 불러올 수 있을 거예요.')
-                        : tText('public_tree_context_desc', '지금은 다른 사람이 공개한 러브트리 안에서 한 순간을 감상하고 있어요.'),
+                        : tText('public_tree_context_desc', '이 트리 안에서 남겨진 순간을 감상하고 있어요.'),
             editor: tText('tree_context_editor_desc', '편집 중인 트리를 감상 모드로 보고 있어요'),
             'my-trees': tText('tree_context_my_trees_desc', '내가 기록한 순간들을 다시 감상하고 있어요')
         };
 
         treeContextEl.innerHTML = `
-            <div style="display:flex; align-items:flex-start; gap:16px;">
-                <div style="width:48px; height:48px; background:var(--surface-container); border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-                    <span class="material-symbols-outlined" style="color: var(--primary); font-size:24px;">account_tree</span>
+            <div style="display:flex; align-items:flex-start; gap:14px;">
+                <div style="width:44px; height:44px; background:var(--surface-container); border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                    <span class="material-symbols-outlined" style="color: var(--primary); font-size:22px;">account_tree</span>
                 </div>
                 <div style="flex:1; min-width:0;">
-                    <div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-bottom:6px;">
-                        <span style="font-size:12px; font-weight:800; color:var(--primary); text-transform:uppercase; letter-spacing:1px;">${tText('current_tree', '현재 트리')}</span>
+                    <div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-bottom:4px;">
+                        <span style="font-size:11px; font-weight:800; color:var(--primary); text-transform:uppercase; letter-spacing:0.08em;">${tText('current_tree', '현재 트리')}</span>
                         <span style="color: var(--outline-variant);">·</span>
-                        <span style="font-size:12px; color:var(--on-surface-variant);">${treeMomentCount}${tText('tree_context_moment_count_short', '개 순간')}</span>
+                        <span style="font-size:11px; color:var(--on-surface-variant);">${treeMomentCount}${tText('tree_context_moment_count_short', '개 순간')}</span>
                     </div>
-                    <div style="font-size:1.15rem; font-weight:800; color:var(--on-surface); line-height:1.4; margin-bottom:4px;">${escapeHtml(treeTitle)}</div>
-                    <p style="margin:0; font-size:14px; color:var(--on-surface-variant); line-height:1.7;">${contextMessages[sourceContext] || contextMessages.browse}</p>
+                    <div style="font-size:1.05rem; font-weight:800; color:var(--on-surface); line-height:1.36; margin-bottom:3px;">${escapeHtml(treeTitle)}</div>
+                    <p style="margin:0; font-size:13px; color:var(--on-surface-variant); line-height:1.6;">${contextMessages[sourceContext] || contextMessages.browse}</p>
                 </div>
             </div>
         `;
@@ -557,8 +557,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const href = buildDetailHref(moment.id, treeId, sourceContext);
                 const relationLabel = getConnectedRelationLabel(moment, memory);
                 const thumbnailMarkup = moment.thumbnail
-                    ? `<img src="${escapeHtml(moment.thumbnail)}" alt="${escapeHtml(moment.title || '')}" style="width: 80px; height: 80px; border-radius: 1rem; object-fit: cover;">`
-                    : `<div style="width:80px;height:80px;border-radius:1rem;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg, rgba(250,246,243,0.98), rgba(255,255,255,0.98));border:1px solid rgba(144,73,81,0.08);color:var(--primary);flex-shrink:0;">
+                    ? `<img src="${escapeHtml(moment.thumbnail)}" alt="${escapeHtml(moment.title || '')}" style="width: 76px; height: 76px; border-radius: 1rem; object-fit: cover;">`
+                    : `<div style="width:76px;height:76px;border-radius:1rem;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg, rgba(250,246,243,0.98), rgba(255,255,255,0.98));border:1px solid rgba(144,73,81,0.08);color:var(--primary);flex-shrink:0;">
                             <span class="material-symbols-outlined" style="font-size:28px;">favorite</span>
                        </div>`;
 
@@ -568,8 +568,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <div style="min-width:0;">
                             <div style="font-size: 11px; font-weight: 800; color: var(--primary); text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.06em;">${escapeHtml(relationLabel)}</div>
                             <div style="font-size: 11px; font-weight: 800; color: #aaa; text-transform: uppercase; margin-bottom: 4px;">${escapeHtml(moment.timestamp || '')}</div>
-                            <div style="font-weight: 800; color: var(--on-surface); font-size: 15px; line-height:1.5; margin-bottom: 6px;">${escapeHtml(moment.title || tText('tree_context_moment', '순간 상세'))}</div>
-                            <div style="font-size: 12px; color: var(--on-surface-variant); line-height:1.6;">${escapeHtml(moment.artist || '')}</div>
+                            <div style="font-weight: 800; color: var(--on-surface); font-size: 15px; line-height:1.45; margin-bottom: 4px;">${escapeHtml(moment.title || tText('tree_context_moment', '순간 상세'))}</div>
+                            <div style="font-size: 12px; color: var(--on-surface-variant); line-height:1.5;">${escapeHtml(moment.artist || '')}</div>
                         </div>
                     </div>
                 `;
