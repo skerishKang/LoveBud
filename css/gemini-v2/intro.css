@@ -1,0 +1,112 @@
+/* gemini-v2: Intro Page High Fidelity */
+@import url('home.css');
+
+.intro-canvas {
+    overflow-y: auto;
+}
+
+.intro-hero {
+    text-align: center;
+    padding: 80px 50px;
+    background: linear-gradient(180deg, #FDF9F5 0%, #FFFFFF 100%);
+}
+
+.intro-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 42px;
+    margin-bottom: 25px;
+}
+
+.process-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 30px;
+    padding: 0 50px 80px;
+}
+
+.process-card {
+    background: white;
+    padding: 50px 30px;
+    border-radius: 30px;
+    border: 1px solid #F5F0EE;
+    text-align: center;
+    transition: transform 0.3s ease;
+}
+
+.process-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 20px 40px rgba(61, 52, 49, 0.05);
+}
+
+.process-num {
+    font-family: 'Playfair Display', serif;
+    font-size: 60px;
+    color: var(--gv2-primary);
+    opacity: 0.15;
+    margin-bottom: -15px;
+    display: block;
+}
+
+.process-icon {
+    font-size: 44px;
+    margin-bottom: 25px;
+}
+
+.process-title {
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 15px;
+}
+
+.process-desc {
+    font-size: 15px;
+    color: var(--gv2-text-light);
+    line-height: 1.7;
+    margin-bottom: 25px;
+}
+
+.process-quote {
+    padding-top: 20px;
+    border-top: 1px solid #F5F0EE;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--gv2-accent);
+}
+
+/* Big Quote Section */
+.identity-highlight {
+    padding: 100px 50px;
+    background: #FDF9F5;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 80px;
+    align-items: center;
+}
+
+.identity-content h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 36px;
+    margin-bottom: 30px;
+}
+
+.identity-content p {
+    font-size: 17px;
+    color: var(--gv2-text-light);
+    line-height: 1.9;
+}
+
+.identity-visual {
+    width: 100%;
+    aspect-ratio: 1;
+    background: white;
+    border-radius: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 100px;
+    box-shadow: inset 0 0 50px rgba(179, 126, 111, 0.05);
+}
+
+@media (max-width: 900px) {
+    .process-grid, .identity-highlight { grid-template-columns: 1fr; padding: 40px 20px; }
+}

@@ -1,0 +1,176 @@
+/* Detail Page Specific Styles */
+.v2-detail-layout {
+    display: flex;
+    flex-direction: column;
+    height: calc(800px - 100px);
+    overflow-y: auto;
+    background: var(--v2-canvas-bg);
+}
+
+/* Media Section */
+.v2-media-stage {
+    width: 100%;
+    aspect-ratio: 16/9;
+    background: #000;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--v2-white);
+}
+
+.v2-play-btn {
+    width: 80px;
+    height: 80px;
+    background: rgba(179, 126, 111, 0.9);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+}
+
+.v2-play-btn:hover {
+    transform: scale(1.1);
+}
+
+/* Narrative Section */
+.v2-narrative-container {
+    padding: 60px 100px;
+}
+
+.v2-moment-header {
+    margin-bottom: 40px;
+}
+
+.v2-moment-date {
+    display: block;
+    font-size: 14px;
+    color: var(--v2-primary);
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.v2-moment-title {
+    font-size: 32px;
+    color: var(--v2-text-main);
+}
+
+.v2-memo-paper {
+    background: #FFF;
+    padding: 40px;
+    border-radius: var(--v2-radius-md);
+    box-shadow: 0 10px 30px rgba(61, 52, 49, 0.04);
+    position: relative;
+    border: 1px solid #F5F0EE;
+}
+
+/* Lined Paper Effect */
+.v2-memo-content {
+    font-size: 18px;
+    color: var(--v2-text-main);
+    line-height: 2;
+    background-image: linear-gradient(#F5F0EE 1px, transparent 1px);
+    background-size: 100% 2em;
+    padding-top: 0.5em;
+    font-family: 'Noto Sans KR', serif;
+}
+
+/* Bottom Navigation (Connected Nodes) */
+.v2-connected-section {
+    padding: 60px 100px;
+    background: #FDF9F5;
+}
+
+.v2-connected-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--v2-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 24px;
+}
+
+.v2-connected-scroll {
+    display: flex;
+    gap: 20px;
+    overflow-x: auto;
+    padding-bottom: 20px;
+}
+
+.v2-node-card {
+    flex: 0 0 180px;
+    background: var(--v2-white);
+    padding: 12px;
+    border-radius: var(--v2-radius-md);
+    box-shadow: 0 5px 15px rgba(61, 52, 49, 0.03);
+    border: 1px solid #F5F0EE;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+}
+
+.v2-node-card:hover {
+    transform: translateY(-5px);
+    border-color: var(--v2-primary);
+}
+
+.v2-node-thumb {
+    width: 100%;
+    aspect-ratio: 16/9;
+    background: #eee;
+    border-radius: 8px;
+    margin-bottom: 12px;
+}
+
+.v2-node-title {
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Action Bar */
+.v2-action-bar {
+    position: sticky;
+    bottom: 0;
+    width: 100%;
+    background: var(--v2-white);
+    padding: 16px 60px;
+    display: flex;
+    justify-content: center;
+    gap: 32px;
+    border-top: 1px solid #F5F0EE;
+    box-shadow: 0 -10px 30px rgba(61, 52, 49, 0.02);
+}
+
+.v2-action-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    color: var(--v2-text-muted);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.v2-action-item:hover {
+    color: var(--v2-primary);
+}
+
+.v2-action-icon {
+    font-size: 20px;
+}
+
+@media (max-width: 768px) {
+    .v2-narrative-container, .v2-connected-section {
+        padding: 40px 20px;
+    }
+    .v2-moment-title {
+        font-size: 24px;
+    }
+}

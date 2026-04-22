@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>둘러보기 | LoveTree v3</title>
+    <!-- Premium Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../css/v3/index.css">
+    <link rel="stylesheet" href="../../css/v3/search.css">
+</head>
+<body>
+    <div class="v3-canvas">
+        <header class="v3-header" style="border-bottom: 1px solid rgba(179, 126, 111, 0.05);">
+            <a href="index.html" class="v3-logo">LoveTree</a>
+            <nav class="v3-nav">
+                <a href="index.html" class="v3-nav-link">첫 화면</a>
+                <a href="intro.html" class="v3-nav-link">LoveTree 소개</a>
+                <a href="search.html" class="v3-nav-link">둘러보기</a>
+                <a href="../my-trees.html" class="v3-nav-link">나의 트리</a>
+            </nav>
+            <div class="v3-header-actions">
+                <a href="../login.html" class="v3-btn-pill v3-btn-outline">로그인</a>
+            </div>
+        </header>
+
+        <div class="v3-search-layout">
+            <main class="v3-search-main">
+                <header>
+                    <h1 class="v3-search-title">감상의 조각들</h1>
+                    <div class="v3-search-bar">
+                        <input type="text" class="v3-search-input" placeholder="어떤 기억을 찾고 계신가요?">
+                    </div>
+                </header>
+
+                <div class="v3-filters">
+                    <button class="v3-filter-pill active">전체</button>
+                    <button class="v3-filter-pill">실시간 인기</button>
+                    <button class="v3-filter-pill">입덕 타임라인</button>
+                    <button class="v3-filter-pill">최애 무대 모음</button>
+                    <button class="v3-filter-pill">최근 추가된 트리</button>
+                </div>
+
+                <div class="v3-tree-grid">
+                    <article class="v3-exhibition-card" onclick="location.href='detail.html'">
+                        <div class="v3-card-visual">🌳</div>
+                        <h3 class="v3-card-title">보랏빛으로 남은 순간들</h3>
+                        <p class="v3-card-desc">이름도 모르던 그날의 직캠부터 시작된, 나의 7년이 담긴 보랏빛 지도입니다.</p>
+                        <div class="v3-card-footer">
+                            <span class="v3-tag">#BTS</span>
+                            <span style="font-size: 11px; opacity: 0.5;">12 MEMORIES</span>
+                        </div>
+                    </article>
+
+                    <article class="v3-exhibition-card">
+                        <div class="v3-card-visual">🌸</div>
+                        <h3 class="v3-card-title">우리가 사랑한 새로운 계절</h3>
+                        <p class="v3-card-desc">새로운 계절처럼 다가온 그녀들의 첫 데뷔 무대를 기록합니다.</p>
+                        <div class="v3-card-footer">
+                            <span class="v3-tag">#NEWJEANS</span>
+                            <span style="font-size: 11px; opacity: 0.5;">8 MEMORIES</span>
+                        </div>
+                    </article>
+
+                    <article class="v3-exhibition-card">
+                        <div class="v3-card-visual">💎</div>
+                        <h3 class="v3-card-title">완성형 아이돌의 서사</h3>
+                        <p class="v3-card-desc">완벽함 속에서도 빛나는 노력의 흔적들을 하나하나 모았습니다.</p>
+                        <div class="v3-card-footer">
+                            <span class="v3-tag">#IVE</span>
+                            <span style="font-size: 11px; opacity: 0.5;">15 MEMORIES</span>
+                        </div>
+                    </article>
+                </div>
+            </main>
+
+            <aside class="v3-hub-sidebar">
+                <div class="v3-hub-empty">
+                    <div class="v3-hub-icon">✨</div>
+                    <h2 class="v3-hub-title">감상 허브</h2>
+                    <p>트리를 선택하여 그 안에 담긴<br>반짝이는 순간들을 만나보세요.</p>
+                </div>
+            </aside>
+        </div>
+    </div>
+</body>
+</html>
