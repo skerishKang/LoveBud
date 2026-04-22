@@ -361,6 +361,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     }
 
+    if (false) {
     try {
         if (window.apiClient && window.apiClient.getPublicTrees) {
             const apiTrees = await window.apiClient.getPublicTrees({ view: 'summary', sort: 'latest', limit: 12 });
@@ -386,6 +387,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             allTrees = [];
         }
         renderResults();
+    }
     }
 
     let searchInputTimer = null;
