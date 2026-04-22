@@ -8,16 +8,8 @@
     <link rel="icon" href="/favicon.ico" sizes="32x32">
     <link rel="stylesheet" href="css/global.css?v=20260417-31">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
-    <style>
-        body.bokeh-bg {
-            background:
-                radial-gradient(circle at 12% 12%, rgba(255, 222, 211, 0.72), transparent 22%),
-                radial-gradient(circle at 84% 10%, rgba(239, 206, 215, 0.58), transparent 20%),
-                radial-gradient(circle at 76% 66%, rgba(236, 231, 212, 0.42), transparent 24%),
-                linear-gradient(180deg, #fff9f4 0%, #f9f0ea 42%, #f7efe9 100%);
-            color: var(--on-surface);
-        }
 
+    <style>
         .home-v3-shell {
             position: relative;
             overflow: hidden;
@@ -376,17 +368,27 @@
             transition: opacity 1.2s ease;
         }
 
-        /* 비디오 활성화 상태 스타일 */
-        .home-v3-growth-stage.is-video-active .growth-stage-video {
-            opacity: 0.95;
+        /* 비디오 활성화 상태 스타일 - 기존 비주얼 요소들과의 겹침 방지 */
+        .home-v3-collage.is-video-active .growth-stage-video {
+            opacity: 1;
+            z-index: 20;
+            pointer-events: auto;
         }
 
-        .home-v3-growth-stage.is-video-active .growth-tree-svg,
-        .home-v3-growth-stage.is-video-active .growth-stage-card,
-        .home-v3-growth-stage.is-video-active .growth-stage-caption {
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.8s ease;
+        /* 비디오 재생 중 숨길 요소들 (SVG, 캡션, 성장 카드, 배경 카드, 가지 등) */
+        .home-v3-collage.is-video-active .growth-tree-svg,
+        .home-v3-collage.is-video-active .growth-stage-card,
+        .home-v3-collage.is-video-active .growth-stage-caption,
+        .home-v3-collage.is-video-active .home-v3-card,
+        .home-v3-collage.is-video-active .home-v3-branch,
+        .home-v3-collage.is-video-active .home-v3-note-paper,
+        .home-v3-collage.is-video-active .home-v3-word,
+        .home-v3-collage.is-video-active .home-v3-dots,
+        .home-v3-collage.is-video-active .home-v3-halo {
+            opacity: 0 !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
+            transition: opacity 0.6s ease, visibility 0.6s ease;
         }
 
         .growth-tree-svg, .growth-stage-card, .growth-stage-caption {
@@ -1138,9 +1140,9 @@
                 return;
             }
 
-            const stage = video.closest('.home-v3-growth-stage');
-            const activateVideoUI = () => stage?.classList.add('is-video-active');
-            const deactivateVideoUI = () => stage?.classList.remove('is-video-active');
+            const collage = video.closest('.home-v3-collage');
+            const activateVideoUI = () => collage?.classList.add('is-video-active');
+            const deactivateVideoUI = () => collage?.classList.remove('is-video-active');
 
             video.addEventListener('playing', activateVideoUI);
 

@@ -11,11 +11,11 @@
   window.i18nShared = {
     // 네비게이션 (nav.*)
     'nav.home': {
-      ko: '첫화면',
+      ko: '처음으로',
       en: 'Home'
     },
     'nav.intro': {
-      ko: '소개',
+      ko: '러브트리',
       en: 'About'
     },
     'nav.search': {
@@ -23,7 +23,7 @@
       en: 'Browse'
     },
     'nav.myTrees': {
-      ko: '내 러브트리',
+      ko: '나의트리',
       en: 'My Trees'
     },
     'nav.editor': {
