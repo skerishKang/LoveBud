@@ -4,9 +4,10 @@
 
 현재 운영 기준은 아래와 같습니다.
 
-- 실서비스 프론트: `https://lovebud.vercel.app/`
-- 인프라 우선순위: **Modal > Vercel > Netlify**
+- 실서비스 프론트: `https://lovebud.pages.dev/`
+- 인프라 우선순위: **Modal > Cloudflare Pages > Vercel > Netlify**
 - 브라우저 호출 원칙: 가능하면 **same-origin `/api`** 만 사용
+- Vercel은 upstream / secondary entry / 전이기 보조 계층
 - Netlify는 주경로가 아니라 fallback 또는 단계적 제거 대상
 
 ---
@@ -42,7 +43,7 @@
 | [FLOW_A_QA_CHECKLIST.md](FLOW_A_QA_CHECKLIST.md) | QA 체크리스트 |
 | [PR_CHECKLIST.md](PR_CHECKLIST.md) | PR 점검 기준 |
 | [QA_CREDENTIALS.txt](QA_CREDENTIALS.txt) | QA 테스트 계정 |
-| [../migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md](../migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md) | Vercel / Modal 전환 문서 |
+| [../migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md](../migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md) | Cloudflare Pages / Modal 전환 문서 |
 
 ## 정책 / 아키텍처 (Architecture)
 
