@@ -54,9 +54,12 @@ LoveBud의 현재 운영 우선순위는 아래와 같습니다.
 
 1. 브라우저 → `https://lovebud.vercel.app/api/community/memories?treeId=<id>`
 2. Vercel `api/community/memories.js`
-3. Netlify `/community/memories`
+3. `treeId`가 있으면 Modal `/modal/browse/latest`에서 representative preview를 먼저 시도
+4. Modal preview를 만들 수 없으면 Netlify `/community/memories` fallback
+5. preview 경로에서 upstream 오류가 나면 degraded preview(`[]`)를 반환할 수 있음
 
-즉, memories hydrate는 아직 Modal 직결이 아니라 **Vercel entry + Netlify upstream** 구조입니다.
+즉, memories hydrate는 더 이상 단순한 `Vercel entry + Netlify upstream only` 구조가 아니라,
+**Vercel entry + Modal representative preview 우선 + Netlify fallback** 구조입니다.
 
 ### 3.3 기타 `/api/*`
 
@@ -72,9 +75,9 @@ LoveBud의 현재 운영 우선순위는 아래와 같습니다.
 현재 Vercel 라우터가 직접 참조하는 핵심 변수:
 
 - `MODAL_BASE_URL`
-  - browse summary Modal 우선 호출용
+  - browse summary 및 preview representative 생성용 Modal upstream
 - `NETLIFY_API_BASE_URL`
-  - `/api/community/trees`, `/api/community/memories`의 Netlify upstream
+  - `/api/community/trees`, `/api/community/memories`의 Netlify upstream fallback
 - `LOVEBUD_UPSTREAM_API_BASE`
   - catch-all `/api/[...path]` upstream base
 
@@ -104,6 +107,7 @@ Netlify는 현재 legacy/fallback 역할을 유지하므로 DB 및 인증 관련
 
 - Modal browse summary가 실패해도 browse 전체가 멈추면 안 된다.
 - 이 경우 Vercel `api/community/trees.js`가 Netlify fallback을 수행한다.
+- preview hydrate도 Modal representative preview를 만들 수 없으면 Netlify fallback으로 이어진다.
 - fallback은 유지하되, 성능 및 요약 품질 기준은 Modal이 우선이다.
 - 점진적 제거 대상은 “Netlify 주경로 설명”이지, fallback 자체가 아니다.
 
@@ -116,9 +120,10 @@ Netlify는 현재 legacy/fallback 역할을 유지하므로 DB 및 인증 관련
 정리 순서:
 1. 실서비스 주소는 Vercel로 고정
 2. browse summary는 Modal 우선으로 고정
-3. Vercel은 same-origin entry로 유지
-4. Netlify는 fallback + legacy write로 축소
-5. 이후 Netlify read 경로를 점진적으로 더 줄인다
+3. preview hydrate도 Modal representative preview를 우선 시도
+4. Vercel은 same-origin entry로 유지
+5. Netlify는 fallback + legacy write로 축소
+6. 이후 Netlify read 경로를 점진적으로 더 줄인다
 
 ---
 
@@ -126,6 +131,7 @@ Netlify는 현재 legacy/fallback 역할을 유지하므로 DB 및 인증 관련
 
 - `https://lovebud.vercel.app/`가 공식 주소로 안내되고 있는가
 - browse summary 요청이 `/api/community/trees?view=summary`를 통해 나가는가
+- preview hydrate 요청이 `/api/community/memories?treeId=...`를 통해 나가는가
 - Vercel env에 `MODAL_BASE_URL`, `NETLIFY_API_BASE_URL`, `LOVEBUD_UPSTREAM_API_BASE`가 설정되어 있는가
 - Modal `/modal/health`가 정상 응답하는가
 - Modal `/modal/browse/latest?limit=3`가 정상 응답하는가
