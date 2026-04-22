@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LoveTree - 당신의 순간을 나무에 새기다</title>
+  <link rel="stylesheet" href="../../assets/css/kimi-v2/intro.css">
+</head>
+<body>
+  <div class="intro-container">
+    <!-- 배경 효과 -->
+    <div class="bg-gradient"></div>
+    <div class="bg-particles"></div>
+    
+    <!-- 메인 콘텐츠 -->
+    <main class="intro-main">
+      <!-- 로고 -->
+      <div class="logo-section">
+        <h1 class="logo">LoveTree</h1>
+        <p class="tagline">당신의 순간을 나무에 새기다</p>
+      </div>
+      
+      <!-- 트리 성장 단계 시각화 -->
+      <div class="tree-stage-container">
+        <div class="tree-wrapper">
+          <!-- 트리 단계 1: 새싹 -->
+          <div class="tree-stage stage-1 active">
+            <div class="tree-visual">
+              <svg viewBox="0 0 200 240" class="tree-svg">
+                <!-- 땅 -->
+                <ellipse cx="100" cy="220" rx="60" ry="15" fill="#2d2d44"/>
+                <!-- 줄기 -->
+                <rect x="95" y="180" width="10" height="40" fill="#4a4a6a" rx="2"/>
+                <!-- 새싹 -->
+                <ellipse cx="100" cy="175" rx="8" ry="12" fill="#a855f7"/>
+                <ellipse cx="92" cy="178" rx="6" ry="9" fill="#c084fc"/>
+                <ellipse cx="108" cy="178" rx="6" ry="9" fill="#c084fc"/>
+              </svg>
+            </div>
+            <p class="stage-label">첫 순간</p>
+          </div>
+          
+          <!-- 트리 단계 2: 성장 -->
+          <div class="tree-stage stage-2">
+            <div class="tree-visual">
+              <svg viewBox="0 0 200 240" class="tree-svg">
+                <ellipse cx="100" cy="220" rx="70" ry="18" fill="#2d2d44"/>
+                <rect x="94" y="160" width="12" height="60" fill="#4a4a6a" rx="3"/>
+                <!-- 가지 -->
+                <path d="M100 170 L70 140" stroke="#4a4a6a" stroke-width="4" stroke-linecap="round"/>
+                <path d="M100 160 L130 130" stroke="#4a4a6a" stroke-width="4" stroke-linecap="round"/>
+                <!-- 잎사귀 -->
+                <ellipse cx="70" cy="135" rx="12" ry="18" fill="#a855f7"/>
+                <ellipse cx="130" cy="125" rx="14" ry="20" fill="#c084fc"/>
+                <ellipse cx="100" cy="100" rx="18" ry="25" fill="#e879f9"/>
+                <ellipse cx="85" cy="115" rx="10" ry="15" fill="#a855f7"/>
+                <ellipse cx="115" cy="110" rx="11" ry="16" fill="#c084fc"/>
+              </svg>
+            </div>
+            <p class="stage-label">이어진 기억</p>
+          </div>
+          
+          <!-- 트리 단계 3: 만개 -->
+          <div class="tree-stage stage-3">
+            <div class="tree-visual">
+              <svg viewBox="0 0 200 260" class="tree-svg">
+                <ellipse cx="100" cy="240" rx="80" ry="20" fill="#2d2d44"/>
+                <rect x="92" y="140" width="16" height="100" fill="#4a4a6a" rx="4"/>
+                <!-- 가지들 -->
+                <path d="M100 180 L50 130" stroke="#4a4a6a" stroke-width="5" stroke-linecap="round"/>
+                <path d="M100 160 L150 110" stroke="#4a4a6a" stroke-width="5" stroke-linecap="round"/>
+                <path d="M100 150 L80 90" stroke="#4a4a6a" stroke-width="4" stroke-linecap="round"/>
+                <path d="M100 140 L120 80" stroke="#4a4a6a" stroke-width="4" stroke-linecap="round"/>
+                <!-- 잎사귀 클러스터 -->
+                <ellipse cx="50" cy="120" rx="18" ry="25" fill="#a855f7"/>
+                <ellipse cx="150" cy="100" rx="20" ry="28" fill="#c084fc"/>
+                <ellipse cx="80" cy="70" rx="22" ry="30" fill="#e879f9"/>
+                <ellipse cx="120" cy="60" rx="20" ry="28" fill="#f0abfc"/>
+                <ellipse cx="100" cy="40" rx="25" ry="35" fill="#e879f9"/>
+                <ellipse cx="70" cy="90" rx="15" ry="20" fill="#c084fc"/>
+                <ellipse cx="130" cy="85" rx="16" ry="22" fill="#a855f7"/>
+                <ellipse cx="35" cy="135" rx="12" ry="18" fill="#f0abfc"/>
+                <ellipse cx="165" cy="115" rx="14" ry="20" fill="#e879f9"/>
+                <!-- 꽃잎 효과 -->
+                <circle cx="60" cy="110" r="4" fill="#fbcfe8" opacity="0.8"/>
+                <circle cx="140" cy="90" r="5" fill="#fbcfe8" opacity="0.8"/>
+                <circle cx="90" cy="55" r="4" fill="#fbcfe8" opacity="0.8"/>
+                <circle cx="110" cy="50" r="5" fill="#fbcfe8" opacity="0.9"/>
+              </svg>
+            </div>
+            <p class="stage-label">러브트리 완성</p>
+          </div>
+        </div>
+        
+        <!-- 단계 인디케이터 -->
+        <div class="stage-indicators">
+          <span class="indicator active" data-stage="1"></span>
+          <span class="indicator" data-stage="2"></span>
+          <span class="indicator" data-stage="3"></span>
+        </div>
+      </div>
+      
+      <!-- 설명 텍스트 -->
+      <div class="description-section">
+        <h2 class="main-title">순간이 모여<br>나무가 됩니다</h2>
+        <p class="sub-description">
+          당신의 소중한 순간들을<br>
+          하나의 이야기로 엮어보세요
+        </p>
+      </div>
+    </main>
+    
+    <!-- 하단 CTA -->
+    <footer class="intro-footer">
+      <button class="btn-primary" onclick="location.href='login.html'">
+        시작하기
+      </button>
+      <button class="btn-secondary" onclick="location.href='home.html'">
+        둘러보기
+      </button>
+    </footer>
+  </div>
+  
+  <script src="../../assets/js/kimi-v2/intro.js"></script>
+</body>
+</html>

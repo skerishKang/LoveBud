@@ -1,0 +1,149 @@
+/* v3 Detail Page Specific */
+.v3-detail-layout {
+    display: flex;
+    flex-direction: column;
+    height: calc(850px - 100px);
+    overflow-y: auto;
+}
+
+.v3-media-section {
+    width: 100%;
+    aspect-ratio: 16/9;
+    max-width: 900px;
+    margin: 40px auto 60px;
+    background: #000;
+    border-radius: 40px;
+    position: relative;
+    box-shadow: var(--v3-shadow-deep);
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.v3-play-trigger {
+    width: 100px;
+    height: 100px;
+    background: rgba(179, 126, 111, 0.9);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 40px;
+    cursor: pointer;
+    box-shadow: 0 0 30px rgba(179, 126, 111, 0.3);
+    transition: transform 0.3s var(--v3-ease-out);
+}
+
+.v3-play-trigger:hover { transform: scale(1.1); }
+
+/* Diary Narrative v3 */
+.v3-narrative {
+    max-width: 800px;
+    margin: 0 auto 100px;
+}
+
+.v3-detail-header {
+    margin-bottom: 40px;
+    text-align: center;
+}
+
+.v3-detail-date {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    color: var(--v3-gold-soft);
+    font-size: 20px;
+    margin-bottom: 10px;
+    display: block;
+}
+
+.v3-detail-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 44px;
+    color: var(--v3-text-main);
+}
+
+.v3-diary-paper {
+    background: white;
+    padding: 60px;
+    border-radius: 40px;
+    box-shadow: var(--v3-shadow-soft);
+    position: relative;
+    border: 1px solid rgba(179, 126, 111, 0.05);
+}
+
+/* Scrapbook Lined Effect v3 */
+.v3-diary-text {
+    font-size: 20px;
+    line-height: 2.2;
+    color: var(--v3-text-main);
+    background-image: linear-gradient(#F5F0EE 1.5px, transparent 1.5px);
+    background-size: 100% 2.2em;
+    padding-left: 10px;
+    font-family: 'Noto Sans KR', serif;
+}
+
+.v3-diary-paper::after {
+    content: '🔖';
+    position: absolute;
+    top: -20px;
+    right: 50px;
+    font-size: 40px;
+}
+
+/* Connected Flow v3 */
+.v3-flow-section {
+    padding: 80px 60px;
+    background: #FDF9F5;
+}
+
+.v3-flow-title {
+    text-align: center;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--v3-text-muted);
+    letter-spacing: 2px;
+    margin-bottom: 50px;
+}
+
+.v3-polaroid-scroll {
+    display: flex;
+    gap: 30px;
+    justify-content: center;
+    padding: 20px;
+    overflow-x: auto;
+}
+
+/* Sticky Action Hub v3 */
+.v3-action-hub {
+    position: fixed;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(20px);
+    padding: 18px 50px;
+    border-radius: 100px;
+    display: flex;
+    gap: 50px;
+    box-shadow: var(--v3-shadow-deep);
+    border: 1px solid rgba(255,255,255,0.5);
+    z-index: 1000;
+}
+
+.v3-action-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    color: var(--v3-text-muted);
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.v3-action-item:hover { color: var(--v3-dusty-rose); transform: translateY(-2px); }
+
+.v3-action-icon { font-size: 24px; }

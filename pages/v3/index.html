@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LoveTree v3 | 기억이 자라는 밤</title>
+    <!-- Premium Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../css/v3/index.css">
+    <style>
+        /* v3 Home Specific */
+        .v3-home-hero {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 480px 1fr;
+            padding: 0 60px 60px;
+            align-items: center;
+        }
+
+        .v3-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 54px;
+            line-height: 1.2;
+            margin-bottom: 24px;
+            color: var(--v3-text-main);
+        }
+
+        .v3-title span {
+            color: var(--v3-gold-soft);
+            text-shadow: 0 0 10px rgba(212, 175, 55, 0.2);
+        }
+
+        .v3-desc {
+            font-size: 17px;
+            color: var(--v3-text-muted);
+            margin-bottom: 48px;
+            line-height: 1.8;
+            word-break: keep-all;
+        }
+
+        .v3-actions {
+            display: flex;
+            gap: 16px;
+        }
+
+        /* Particle: Cherry Blossom */
+        .v3-petal {
+            position: absolute;
+            width: 15px;
+            height: 10px;
+            background: #FFD1D1;
+            border-radius: 150% 0 150% 0;
+            opacity: 0.6;
+            pointer-events: none;
+            animation: fall 10s linear infinite;
+        }
+
+        @keyframes fall {
+            0% { transform: translate(0, -10px) rotate(0deg); opacity: 0; }
+            10% { opacity: 0.6; }
+            100% { transform: translate(100px, 800px) rotate(360deg); opacity: 0; }
+        }
+
+        /* Positions for v3 visual nodes */
+        .v3-node-1 { left: 5%; top: 45%; transform: rotate(-3deg); }
+        .v3-node-2 { left: 45%; top: 15%; transform: rotate(4deg); }
+        .v3-node-3 { left: 45%; top: 70%; transform: rotate(-2deg); }
+        .v3-node-4 { left: 85%; top: 45%; transform: rotate(3deg); }
+    </style>
+</head>
+<body>
+    <div class="v3-canvas">
+        <!-- Floating Petals -->
+        <div class="v3-petal" style="left: 10%; animation-delay: 0s;"></div>
+        <div class="v3-petal" style="left: 30%; animation-delay: 2s;"></div>
+        <div class="v3-petal" style="left: 60%; animation-delay: 4s;"></div>
+        <div class="v3-petal" style="left: 80%; animation-delay: 1s;"></div>
+
+        <header class="v3-header">
+            <a href="index.html" class="v3-logo">LoveTree</a>
+            <nav class="v3-nav">
+                <a href="index.html" class="v3-nav-link">첫 화면</a>
+                <a href="intro.html" class="v3-nav-link">LoveTree 소개</a>
+                <a href="search.html" class="v3-nav-link">둘러보기</a>
+                <a href="../my-trees.html" class="v3-nav-link">나의 트리</a>
+            </nav>
+            <div class="v3-header-actions">
+                <a href="../login.html" class="v3-btn-pill v3-btn-outline">로그인</a>
+            </div>
+        </header>
+
+        <main class="v3-home-hero">
+            <div class="v3-hero-copy">
+                <span class="eyebrow" style="color: var(--v3-gold-soft);">THE JOURNEY OF LOVE</span>
+                <h1 class="v3-title">
+                    기억의 조각들이<br>
+                    <span>빛나는 트리</span>가 되어<br>
+                    자라납니다
+                </h1>
+                <p class="v3-desc">
+                    당신이 누군가에게 반했던 그 찰나의 순간부터,<br>
+                    서서히 깊어진 마음의 발자취를 하나의 아름다운 지도로 남겨보세요.
+                </p>
+                <div class="v3-actions">
+                    <a href="../my-trees.html" class="v3-btn-pill v3-btn-primary">트리 시작하기</a>
+                    <a href="search.html" class="v3-btn-pill v3-btn-outline">공개 트리 구경하기</a>
+                </div>
+            </div>
+
+            <div class="v3-tree-container">
+                <!-- Glowing SVG Tree -->
+                <svg class="v3-tree-visual" viewBox="0 0 800 600" fill="none" xmlns="http://www.w3.org/2000/svg" style="position: absolute; width: 100%; height: 100%;">
+                    <path class="v3-glow-line" d="M100 300 C 250 300, 300 150, 400 150" />
+                    <path class="v3-glow-line" d="M100 300 C 250 300, 300 450, 400 450" />
+                    <path class="v3-glow-line" d="M400 150 C 550 150, 650 300, 800 300" />
+                    <path class="v3-glow-line" d="M400 450 C 550 450, 650 300, 800 300" />
+                </svg>
+
+                <!-- Sparkles -->
+                <span class="v3-sparkle" style="left: 20%; top: 30%;">✨</span>
+                <span class="v3-sparkle" style="left: 70%; top: 20%;">✨</span>
+                <span class="v3-sparkle" style="left: 50%; top: 80%;">✨</span>
+
+                <!-- Polaroid Nodes -->
+                <article class="v3-polaroid v3-node-1">
+                    <div class="v3-tape"></div>
+                    <div class="v3-pol-img" style="background: #FDF1F0;"></div>
+                    <div class="v3-pol-cap">첫 눈에 반한 날</div>
+                </article>
+
+                <article class="v3-polaroid v3-node-2">
+                    <div class="v3-pol-img" style="background: #F5F7FA;"></div>
+                    <div class="v3-pol-cap">함께한 첫 콘서트</div>
+                </article>
+
+                <article class="v3-polaroid v3-node-3">
+                    <div class="v3-pol-img" style="background: #F0F4F0;"></div>
+                    <div class="v3-pol-cap">위로가 된 가사들</div>
+                </article>
+
+                <article class="v3-polaroid v3-node-4">
+                    <div class="v3-pol-img" style="background: #F8F0F5;"></div>
+                    <div class="v3-pol-cap">영원할 우리의 기록</div>
+                </article>
+            </div>
+        </main>
+
+        <footer style="padding: 30px 60px; text-align: center; font-size: 12px; color: var(--v3-text-muted); border-top: 1px solid rgba(179, 126, 111, 0.1);">
+            <p>© 2026 LoveTree v3 · Premium Archive for Fans</p>
+        </footer>
+    </div>
+</body>
+</html>
