@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>트리 상세 - LoveTree</title>
+  <link rel="stylesheet" href="../../assets/css/kimi-v2/detail.css">
+</head>
+<body>
+  <div class="detail-container">
+    <!-- 헤더 -->
+    <header class="detail-header">
+      <button class="btn-back" onclick="history.back()">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M19 12H5M5 12L12 19M5 12L12 5"/>
+        </svg>
+      </button>
+      <div class="header-actions">
+        <button class="btn-icon" title="좋아요">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+          </svg>
+        </button>
+        <button class="btn-icon" title="공유">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="18" cy="5" r="3"/>
+            <circle cx="6" cy="12" r="3"/>
+            <circle cx="18" cy="19" r="3"/>
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+          </svg>
+        </button>
+        <button class="btn-icon" title="더보기">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="1"/>
+            <circle cx="19" cy="12" r="1"/>
+            <circle cx="5" cy="12" r="1"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+    
+    <!-- 히어로 영역 -->
+    <section class="detail-hero">
+      <div class="hero-visual">
+        <svg viewBox="0 0 200 220" class="detail-tree">
+          <ellipse cx="100" cy="200" rx="70" ry="15" fill="#2d2d44"/>
+          <rect x="94" y="140" width="12" height="60" fill="#4a4a6a" rx="3"/>
+          <ellipse cx="70" cy="120" rx="20" ry="28" fill="#a855f7"/>
+          <ellipse cx="130" cy="110" rx="22" ry="30" fill="#c084fc"/>
+          <ellipse cx="100" cy="80" rx="25" ry="35" fill="#e879f9"/>
+          <ellipse cx="85" cy="100" rx="15" ry="22" fill="#f0abfc"/>
+          <ellipse cx="115" cy="95" rx="16" ry="24" fill="#a855f7"/>
+          <circle cx="75" cy="105" r="4" fill="#fbcfe8" opacity="0.8"/>
+          <circle cx="125" cy="95" r="5" fill="#fbcfe8" opacity="0.8"/>
+        </svg>
+      </div>
+      <div class="hero-info">
+        <h1 class="detail-title">우리의 1년</h1>
+        <p class="detail-author">by LoveUser • 2024년 1월</p>
+        <div class="detail-tags">
+          <span class="tag">#연애</span>
+          <span class="tag">#추억</span>
+          <span class="tag">#1주년</span>
+        </div>
+        <div class="detail-stats">
+          <span class="stat">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+            1.2k 조회
+          </span>
+          <span class="stat">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+            86 좋아요
+          </span>
+        </div>
+      </div>
+    </section>
+    
+    <!-- 순간 타임라인 -->
+    <section class="detail-content">
+      <h2 class="section-title">순간들 <span class="count">(24)</span></h2>
+      
+      <div class="timeline">
+        <div class="memory-card">
+          <div class="memory-thumb"></div>
+          <div class="memory-info">
+            <h3 class="memory-title">첫 만남</h3>
+            <p class="memory-date">2023년 1월 15일</p>
+            <p class="memory-desc">카페에서 처음 만난 그날...</p>
+          </div>
+        </div>
+        
+        <div class="timeline-connector"></div>
+        
+        <div class="memory-card">
+          <div class="memory-thumb"></div>
+          <div class="memory-info">
+            <h3 class="memory-title">첫 데이트</h3>
+            <p class="memory-date">2023년 1월 20일</p>
+            <p class="memory-desc">영화관에서의 설렘...</p>
+          </div>
+        </div>
+        
+        <div class="timeline-connector"></div>
+        
+        <div class="memory-card">
+          <div class="memory-thumb"></div>
+          <div class="memory-info">
+            <h3 class="memory-title">100일 기념</h3>
+            <p class="memory-date">2023년 4월 25일</p>
+            <p class="memory-desc">한강에서의 밤 피크닉...</p>
+          </div>
+        </div>
+        
+        <div class="timeline-connector"></div>
+        
+        <div class="memory-card">
+          <div class="memory-thumb"></div>
+          <div class="memory-info">
+            <h3 class="memory-title">제주 여행</h3>
+            <p class="memory-date">2023년 7월 10일</p>
+            <p class="memory-desc">함께한 첫 여행...</p>
+          </div>
+        </div>
+      </div>
+    </section>
+    
+    <!-- 하단 CTA -->
+    <footer class="detail-footer">
+      <button class="btn-primary">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+          <path d="M2 17l10 5 10-5"/>
+          <path d="M2 12l10 5 10-5"/>
+        </svg>
+        내 컬렉션에 추가
+      </button>
+    </footer>
+  </div>
+</body>
+</html>
