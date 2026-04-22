@@ -4,6 +4,7 @@ import os
 import json
 import time
 import urllib.request
+import uuid
 from datetime import datetime
 from typing import Any
 
@@ -11,7 +12,7 @@ import jwt
 import modal
 import psycopg
 from cryptography import x509
-from fastapi import FastAPI, Header, HTTPException, Query
+from fastapi import FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from psycopg.rows import dict_row
 
@@ -398,6 +399,105 @@ def fetch_owner_memories(owner_id: str, tree_id: str | None = None, limit: int =
     return [normalize_memory_row(row) for row in rows]
 
 
+def validate_visibility(value: Any, default: str = "private") -> str:
+    if value is None:
+        return default
+    if value not in {"public", "private"}:
+        raise HTTPException(status_code=400, detail="visibility: public, private")
+    return value
+
+
+def validate_optional_string(value: Any, max_length: int = 5000) -> str:
+    if value is None:
+        return ""
+    if not isinstance(value, str):
+        return ""
+    text = value.strip()
+    if len(text) > max_length:
+        raise HTTPException(status_code=400, detail=f"Field exceeds max {max_length}")
+    return text
+
+
+def validate_required_uuid(value: Any, name: str) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise HTTPException(status_code=400, detail=f"{name} is required")
+    try:
+        return str(uuid.UUID(value.strip()))
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=f"Invalid {name}") from error
+
+
+def create_owner_tree(owner_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    title = validate_optional_string(payload.get("title"), 200) or "My LoveTree"
+    visibility = validate_visibility(payload.get("visibility"), "private")
+    if visibility == "public":
+        raise HTTPException(status_code=409, detail="Start new trees as private before publishing.")
+
+    query = """
+        INSERT INTO trees (id, owner_id, title, visibility, created_at, updated_at)
+        VALUES (%s, %s, %s, %s, NOW(), NOW())
+        RETURNING id, owner_id, title, visibility, created_at, updated_at;
+    """
+
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(query, (str(uuid.uuid4()), owner_id, title, visibility))
+            row = cur.fetchone()
+        conn.commit()
+
+    return normalize_tree_row(row, 0)
+
+
+def create_owner_memory(owner_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    tree_id = validate_required_uuid(payload.get("treeId"), "treeId")
+    tree = fetch_owner_tree(tree_id, owner_id)
+    if not tree:
+        raise HTTPException(status_code=403, detail="Access denied: not your tree")
+
+    parent_id = None
+    if payload.get("parentId"):
+        parent_id = validate_required_uuid(payload.get("parentId"), "parentId")
+
+    emotion_tags = payload.get("emotionTags") if isinstance(payload.get("emotionTags"), list) else []
+    if len(emotion_tags) > 20:
+        raise HTTPException(status_code=400, detail="emotionTags exceeds maximum of 20 items")
+
+    query = """
+        INSERT INTO memories (
+            id, tree_id, parent_id, title, memo, artist, source, source_url,
+            source_type, thumbnail, emotion_tags, timestamp, visibility,
+            created_at, updated_at
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
+        RETURNING id, tree_id, parent_id, title, memo, artist, source, source_url,
+                  source_type, thumbnail, emotion_tags, timestamp, visibility,
+                  created_at, updated_at;
+    """
+    params = (
+        str(uuid.uuid4()),
+        tree_id,
+        parent_id,
+        validate_optional_string(payload.get("title"), 200),
+        validate_optional_string(payload.get("memo"), 5000),
+        validate_optional_string(payload.get("artist"), 100),
+        validate_optional_string(payload.get("source"), 200),
+        validate_optional_string(payload.get("sourceUrl"), 1000),
+        validate_optional_string(payload.get("sourceType"), 50) or "youtube",
+        validate_optional_string(payload.get("thumbnail"), 500),
+        json.dumps([str(tag).strip() for tag in emotion_tags if str(tag).strip()]),
+        validate_optional_string(payload.get("timestamp"), 100),
+        validate_visibility(payload.get("visibility"), "private"),
+    )
+
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(query, params)
+            row = cur.fetchone()
+        conn.commit()
+
+    return normalize_memory_row(row)
+
+
 # --- Modal App Setup ---
 
 app = modal.App("lovebud-browse-snapshot")
@@ -429,7 +529,7 @@ web_app.add_middleware(
     CORSMiddleware,
     allow_origins=_allowed_origins(),
     allow_credentials=False,
-    allow_methods=["GET", "OPTIONS"],
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -479,6 +579,16 @@ def get_private_trees(
     return fetch_user_trees(user["uid"], limit=limit)
 
 
+@web_app.post("/modal/private/trees")
+async def post_private_tree(
+    request: Request,
+    authorization: str | None = Header(default=None),
+) -> dict:
+    user = require_firebase_user(authorization)
+    payload = await request.json()
+    return create_owner_tree(user["uid"], payload if isinstance(payload, dict) else {})
+
+
 @web_app.get("/modal/private/trees/{tree_id}")
 def get_private_tree_detail(
     tree_id: str,
@@ -499,6 +609,16 @@ def get_private_memories(
 ) -> list[dict]:
     user = require_firebase_user(authorization)
     return fetch_owner_memories(user["uid"], tree_id=treeId, limit=limit)
+
+
+@web_app.post("/modal/private/memories")
+async def post_private_memory(
+    request: Request,
+    authorization: str | None = Header(default=None),
+) -> dict:
+    user = require_firebase_user(authorization)
+    payload = await request.json()
+    return create_owner_memory(user["uid"], payload if isinstance(payload, dict) else {})
 
 
 @app.function(
