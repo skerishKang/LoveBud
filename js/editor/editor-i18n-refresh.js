@@ -72,8 +72,8 @@
 
     document.title = tText('nav.editor', '러브트리 편집') + ' | LoveTree';
 
-    setText('editorFlowHeading', 'sidebar_flow_heading', '트리를 키워가요');
-    setText('editorFlowLead', 'sidebar_flow_lead', '지금 마음이 머문 순간을 하나씩 이어 붙이며 나만의 흐름을 키워보세요.');
+    setText('editorFlowHeading', 'sidebar_flow_heading', '트리 정보');
+    setText('editorFlowLead', 'sidebar_flow_lead', '트리 이름과 공개 범위를 이곳에서 가볍게 다듬고, 가운데에서는 감정의 흐름만 따라가 보세요.');
     setText('focusSelectedBtnLabel', 'sidebar_focus_selected', '선택한 순간 보기');
     setText('recenterCanvasBtnLabel', 'sidebar_recenter_tree', '트리 한눈에 보기');
     setText('addMemoryEyebrow', 'editor_add_memory_eyebrow', '다음 순간 심기');
@@ -87,10 +87,10 @@
     setText('confirmAddMemory', 'editor_confirm_add', '이 순간 심기');
     setText('detailMoreBtn', 'editor_open_detail', '상세로 보기');
     setText('detailEmptyTitle', 'detail_empty_title', '첫 순간이 트리를 깨워요');
-    setText('detailEmptyDesc', 'detail_empty_desc', '왼쪽의 "새 순간 이어가기"로 첫 장면을 심으면, 이 패널이 현재 순간 허브로 바뀝니다.');
+    setText('detailEmptyDesc', 'detail_empty_desc', '왼쪽 아래 버튼으로 첫 장면을 심으면, 이 패널이 현재 순간 허브로 바뀝니다.');
     setText('detailCurrentMomentBadge', 'editor_current_moment_badge', '현재 순간');
     setText('detailCurrentMomentHint', 'editor_current_moment_hint', '선택한 순간을 중심으로 감정 메모와 다음 행동이 정리됩니다.');
-    setText('detailTreeStatusLabel', 'current_tree', '트리 상태');
+    setText('detailTreeStatusLabel', 'current_tree', '현재 트리');
     setText('detailMomentInfoLabel', 'editor_moment_info_label', '순간 정보');
     setText('detailDateLabel', 'editor_date_label', '기억한 날');
     setText('detailTagsLabel', 'editor_tag_label', '감정 태그');
@@ -98,7 +98,7 @@
     setText('detailActionLabel', 'editor_action_label', '이 순간에서 할 수 있는 일');
     setText('editMemoryBtn', 'editor_edit', '순간 수정');
     setText('deleteMemoryBtn', 'editor_delete', '순간 삭제');
-    setText('editTitleLabel', 'editor_memory_title', '제목');
+    setText('editTitleLabel', 'editor_memory_title', '순간 제목');
     setText('editMemoLabel', 'editor_note_label', '감정 메모');
     setText('editTagsLabel', 'editor_edit_tag_label', '감정 태그 (쉼표로 구분)');
     setText('cancelEditBtn', 'editor_cancel', '취소');
