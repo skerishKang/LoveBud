@@ -297,10 +297,13 @@ def fetch_latest_public_tree_snapshots(limit: int = 12, sort: str = "latest") ->
         LIMIT %s;
     """.format(order_clause=order_clause)
 
-    with get_db_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(query, (limit,))
-            rows = cur.fetchall()
+    def operation() -> list[dict[str, Any]]:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(query, (limit,))
+                return cur.fetchall()
+
+    rows = run_db_with_retry(operation)
 
     return [normalize_row(row) for row in rows]
 
