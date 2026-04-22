@@ -45,6 +45,14 @@
     return null;
   }
 
+  function clearConfirmedSessionUser() {
+    try {
+      localStorage.removeItem('lovebud_auth_cache');
+      localStorage.removeItem('lovebud_auth_confirmed');
+      localStorage.removeItem('lovebud_auth_token');
+    } catch (e) {}
+  }
+
    var STATE = myTreesPage?.STATE || {
      LOADING: 'loading',
      LOADED: 'loaded',
@@ -312,11 +320,13 @@
    }
 
   var myTreesStarted = false;
+  var myTreesBootedFromCache = false;
   var lastTreesData = [];
 
-  function bootMyTrees(user) {
+  function bootMyTrees(user, options) {
     if (myTreesStarted) return;
     myTreesStarted = true;
+    myTreesBootedFromCache = !!(options && options.fromCache);
     startMyTrees(user);
 
     var sortSelect = document.getElementById('sortTreesSelect');
@@ -339,48 +349,51 @@
     }
   }
 
+  function reconcileBootstrapUser(user) {
+    if (user && user.uid) {
+      if (!myTreesStarted) {
+        bootMyTrees(user, { fromCache: false });
+      }
+      return;
+    }
+
+    if (myTreesBootedFromCache) {
+      clearConfirmedSessionUser();
+      redirectToLogin();
+      return;
+    }
+
+    if (!myTreesStarted) {
+      bootMyTrees(null, { fromCache: false });
+    }
+  }
+
   document.addEventListener('DOMContentLoaded', async function() {
     var cachedUser = getConfirmedSessionUser();
-    var bootedFromCache = false;
 
-    if (cachedUser && !myTreesStarted) {
-      bootMyTrees(cachedUser);
-      bootedFromCache = true;
+    if (cachedUser && cachedUser.uid && !myTreesStarted) {
+      bootMyTrees(cachedUser, { fromCache: true });
     }
 
     if (window.LoveBudAuthBootstrap && typeof window.LoveBudAuthBootstrap.whenReady === 'function') {
-      var user = await window.LoveBudAuthBootstrap.whenReady();
-
-      if (!user || !user.uid) {
-        if (bootedFromCache || myTreesStarted) {
-          redirectToLogin();
-          return;
-        }
-        bootMyTrees(null);
-        return;
-      }
-
-      if (!myTreesStarted) {
-        bootMyTrees(user);
+      try {
+        var user = await window.LoveBudAuthBootstrap.whenReady();
+        reconcileBootstrapUser(user);
+      } catch (e) {
+        reconcileBootstrapUser(null);
       }
       return;
     }
 
     if (!myTreesStarted && typeof window.registerOnAuthReady === 'function') {
       window.registerOnAuthReady(function(user) {
-        if (!user || !user.uid) {
-          redirectToLogin();
-          return;
-        }
-        if (!myTreesStarted) {
-          bootMyTrees(user);
-        }
+        reconcileBootstrapUser(user || null);
       });
       return;
     }
 
     if (!myTreesStarted) {
-      bootMyTrees(cachedUser || null);
+      bootMyTrees(cachedUser || null, { fromCache: !!(cachedUser && cachedUser.uid) });
     }
   }, { once: true });
 
