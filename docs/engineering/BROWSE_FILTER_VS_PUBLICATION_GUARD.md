@@ -58,17 +58,20 @@ LoveBud의 browse 노출 정책은 **same-origin browse read path**와 **server-
 
 현재 main 구현:
 1. **Vercel same-origin API**가 요청을 받음
-2. `treeId` 기준으로 **Netlify** `/community/memories?...`로 proxy
-3. 응답을 그대로 반환
+2. `treeId`가 있으면 **Modal** `/modal/browse/latest`를 먼저 조회
+3. 해당 treeId에 맞는 representative preview memory를 만들 수 있으면 바로 반환
+4. Modal preview를 만들 수 없으면 **Netlify** `/community/memories?...`로 fallback
+5. treeId preview 경로에서 upstream 오류가 나면 degraded preview(`[]`)를 반환할 수 있음
 
 즉, preview hydrate의 현재 우선순위는:
 
-**브라우저 → Vercel `/api/community/memories` → Netlify**
+**브라우저 → Vercel `/api/community/memories` → Modal representative preview 우선 → Netlify fallback**
 
 중요:
 - browse 전체를 한 줄로 `Modal > Vercel > Netlify`라고만 쓰면 과장될 수 있습니다.
-- **현재 main에서 Modal 우선이 적용되는 browse 경로는 summary list 경로**입니다.
-- preview hydrate는 아직 Modal 우선 read path가 아닙니다.
+- **summary list와 preview hydrate 모두 Modal 우선 시도를 가지지만, 방식은 다릅니다.**
+- summary list는 Modal browse list를 직접 사용하고,
+- preview hydrate는 Modal summary에서 representative preview를 구성한 뒤 fallback 합니다.
 
 ---
 
@@ -106,7 +109,7 @@ Browse Display Filter는 공개 가능 여부를 결정하지 않습니다.
 
 - browse에서 어떤 공개 트리를 먼저 보여줄지 결정
 - summary 카드에 필요한 최소 정보만 빠르게 공급
-- 대표 썸네일, 감정 태그, memoryCount 같은 browse summary 품질을 보정
+- representative thumbnail, emotion tags, memoryCount 같은 browse summary 품질을 보정
 - browse 첫 화면을 감상 허브처럼 유지
 
 현재 main 기준 browse display filter는 아래 두 층에서 작동합니다.
@@ -131,12 +134,13 @@ Browse Display Filter는 공개 가능 여부를 결정하지 않습니다.
 - "browse 전체가 Modal 직통 read path다"
 - "3개 이상 규칙은 browse 화면 display filter일 뿐이다"
 - "publication guard는 아직 없다"
+- "preview hydrate는 Vercel → Netlify만 탄다"
 
 현재 main 기준 더 정확한 설명은 아래입니다.
 
 - browse 클라이언트는 **same-origin `/api`**만 호출한다
 - summary browse list는 **Modal 우선, Netlify fallback**이다
-- preview hydrate는 **Vercel same-origin → Netlify** 경로다
+- preview hydrate는 **Modal representative preview 우선, Netlify fallback**이다
 - `3개 이상 공개 순간`은 **publication guard**이며 browse display filter와 별개다
 
 ---
