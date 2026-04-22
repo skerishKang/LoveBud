@@ -475,9 +475,21 @@
             border-radius: 20px;
             margin-bottom: 14px;
             background:
+                var(--moment-image, linear-gradient(transparent, transparent)),
                 radial-gradient(circle at 30% 22%, rgba(255, 230, 220, 0.92), transparent 24%),
                 radial-gradient(circle at 74% 28%, rgba(226, 190, 204, 0.86), transparent 26%),
                 linear-gradient(145deg, rgba(187, 154, 143, 0.82), rgba(149, 169, 142, 0.64));
+            background-size: cover;
+            background-position: center;
+        }
+
+        .growth-stage-card.has-hero-thumbnail::before {
+            background:
+                linear-gradient(180deg, rgba(255,255,255,0.05), rgba(62, 52, 47, 0.18)),
+                var(--moment-image),
+                linear-gradient(145deg, rgba(187, 154, 143, 0.82), rgba(149, 169, 142, 0.64));
+            background-size: cover;
+            background-position: center;
         }
 
         .growth-stage-card strong {
@@ -1138,6 +1150,54 @@
     <script src="js/auth/auth-firebase.js?v=20260420-1"></script>
     <script src="js/auth.js?v=20260417-31"></script>
     <script src="js/page-shell.js?v=20260419-1"></script>
+    <script>
+        (function() {
+            const cards = Array.from(document.querySelectorAll('.growth-stage-card'));
+            if (!cards.length || typeof fetch !== 'function') return;
+
+            const normalizeText = (value) => String(value || '').toLowerCase();
+            const getThumbnail = (tree) => String(
+                tree?.representativeThumbnail
+                || tree?.representative_thumbnail
+                || tree?.thumbnail
+                || ''
+            ).trim();
+            const isBtsTree = (tree) => normalizeText(`${tree?.title || ''} ${tree?.id || ''}`).includes('bts');
+            const hasSameTree = (list, tree) => list.some((item) => item && tree && item.id === tree.id);
+            const selectHeroTrees = (trees) => {
+                const usable = Array.isArray(trees)
+                    ? trees.filter((tree) => tree && getThumbnail(tree))
+                    : [];
+                const selected = [];
+                const btsTree = usable.find(isBtsTree);
+                if (btsTree) selected.push(btsTree);
+                usable.forEach((tree) => {
+                    if (selected.length >= cards.length) return;
+                    if (!hasSameTree(selected, tree)) selected.push(tree);
+                });
+                return selected.slice(0, cards.length);
+            };
+            const fetchTrees = (sort) => fetch(`/api/community/trees?view=summary&sort=${sort}&limit=8`, {
+                headers: { Accept: 'application/json' }
+            }).then((response) => {
+                if (!response.ok) throw new Error(`Hero trees ${sort} failed: ${response.status}`);
+                return response.json();
+            });
+
+            fetchTrees('popular')
+                .catch(() => fetchTrees('latest'))
+                .then(selectHeroTrees)
+                .then((trees) => {
+                    trees.forEach((tree, index) => {
+                        const thumbnail = getThumbnail(tree);
+                        if (!thumbnail || !cards[index]) return;
+                        cards[index].style.setProperty('--moment-image', `url("${thumbnail.replace(/"/g, '%22')}")`);
+                        cards[index].classList.add('has-hero-thumbnail');
+                    });
+                })
+                .catch(() => {});
+        })();
+    </script>
     <script>
         window.LovetreePageShell.initSharedPage({
             renderHeader: true,
