@@ -1,12 +1,12 @@
 /**
  * LoveBud - Shared Header Component
  * v20260421-2
- * 
+ *
  * 모든 페이지에 공통 헤더를 렌더링합니다.
  * - 현재 페이지에 맞는 active 메뉴 자동 표시
  * - 상대경로 차이 자동 처리 (root vs pages)
  * - auth.js가 붙을 #auth-nav 또는 #auth-nav-container 계약 유지
- * 
+ *
  * 사용법:
  * <script src="js/shared-header.js"></script>
  * <div id="shared-header"></div>
@@ -142,14 +142,14 @@
         if (!cachedUser) return '';
         var displayName = cachedUser.displayName || cachedUser.email || 'User';
         var initial = displayName.charAt(0).toUpperCase();
-        
+
         // 현재 페이지가 설정 페이지면 내 트리로 링크, 아니면 설정으로 링크
         var currentPage = getCurrentPage();
-        var avatarHref = currentPage === 'settings.html' 
+        var avatarHref = currentPage === 'settings.html'
             ? (getContextType() === 'root' ? 'pages/my-trees.html' : './my-trees.html')
             : (getContextType() === 'root' ? 'pages/settings.html' : './settings.html');
         var avatarLabel = currentPage === 'settings.html' ? '내 러브트리로 돌아가기' : '설정 열기';
-        
+
         return [
             '<a href="' + avatarHref + '" title="' + avatarLabel + '" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:inherit;cursor:pointer;">',
                 '<div style="width:32px;height:32px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;color:white;font-size:14px;font-weight:500;">',
@@ -165,11 +165,10 @@
         return getCurrentPage() === 'login.html';
     }
 
-    // 언어 선택 버튼 생성
     function buildLangToggleHTML() {
         return [
             '<div class="lang-toggle">',
-                '<button type="button" class="btn-round btn-outline lang-menu-trigger" style="text-decoration:none; display:flex; align-items:center; gap:4px; padding: 6px 12px; height: 36px; font-size: 14px; font-weight: 500;">',
+                '<button type="button" class="btn-round btn-outline lang-menu-trigger" style="text-decoration:none;display:flex;align-items:center;gap:4px;padding:6px 12px;height:36px;font-size:14px;font-weight:500;">',
                     '<span class="material-symbols-outlined" style="font-size:18px;">language</span>',
                     '<span>언어</span>',
                 '</button>',
@@ -187,14 +186,14 @@
         var currentPage = getCurrentPage();
         var activeKey = PAGE_ACTIVE_MAP[currentPage] || null;
         var menuConfig = MENU_CONFIG[contextType];
-        
+
         // auth 영역: login 페이지면 #auth-nav-container, 아니면 #auth-nav
         var authContainerId = isLoginPage() ? 'auth-nav-container' : 'auth-nav';
-        
+
         // auth 영역 초기 HTML - confirmed session 있으면 즉시 프로필 표시
         var cachedUser = !isLoginPage() ? getConfirmedSessionUser() : null;
         var authHTML;
-        
+
         if (isLoginPage()) {
             authHTML = '<div id="auth-nav-container"></div>';
         } else if (cachedUser) {
@@ -211,21 +210,34 @@
 
         // 메뉴 링크 생성
         var navLinksHTML = '';
-        
-        function buildNavLink(config, key) {
-            if (!config) return '';
-            var classes = [];
-            if (activeKey === key) classes.push('active');
-            if (config.highlight) classes.push('nav-highlight');
-            
-            var classStr = classes.length > 0 ? ' class="' + classes.join(' ') + '"' : '';
-            return '<a href="' + config.href + '"' + classStr + '>' + t(config.textKey) + '</a>';
+
+        // 첫화면
+        if (menuConfig.home) {
+            var activeClass = activeKey === 'home' ? ' class="active"' : '';
+            navLinksHTML += '<a href="' + menuConfig.home.href + '"' + activeClass + '>' + t(menuConfig.home.textKey) + '</a>';
         }
 
-        if (menuConfig.home) navLinksHTML += buildNavLink(menuConfig.home, 'home');
-        if (menuConfig.intro) navLinksHTML += buildNavLink(menuConfig.intro, 'intro');
-        if (menuConfig.search) navLinksHTML += buildNavLink(menuConfig.search, 'search');
-        if (menuConfig.myTrees && !isEditorPage()) navLinksHTML += buildNavLink(menuConfig.myTrees, 'myTrees');
+        // 소개
+        if (menuConfig.intro) {
+            var activeClass = activeKey === 'intro' ? ' class="active"' : '';
+            navLinksHTML += '<a href="' + menuConfig.intro.href + '"' + activeClass + '>' + t(menuConfig.intro.textKey) + '</a>';
+        }
+
+        // 둘러보기
+        if (menuConfig.search) {
+            var activeClass = activeKey === 'search' ? ' class="active"' : '';
+            navLinksHTML += '<a href="' + menuConfig.search.href + '"' + activeClass + '>' + t(menuConfig.search.textKey) + '</a>';
+        }
+
+        // 내 러브트리 (에디터 페이지에서는 숨김)
+        if (menuConfig.myTrees && !isEditorPage()) {
+            var myTreesClasses = ['nav-highlight'];
+            if (activeKey === 'myTrees') myTreesClasses.unshift('active');
+            var activeClass = ' class="' + myTreesClasses.join(' ') + '"';
+            navLinksHTML += '<a href="' + menuConfig.myTrees.href + '"' + activeClass + '>' + t(menuConfig.myTrees.textKey) + '</a>';
+        }
+
+        // 에디터 페이지에서는 "편집하기" 메뉴 숨김 (이미 편집 화면 안에 있음)
 
         return [
             '<header class="nav-bar">',
@@ -276,6 +288,7 @@
         });
     }
 
+    // 언어 드롭다운 연결
     function setupLangToggle() {
         var trigger = document.querySelector('.lang-menu-trigger');
         var dropdown = document.querySelector('.lang-dropdown');
@@ -290,17 +303,17 @@
             dropdown.classList.remove('show');
         });
 
-        dropdown.querySelectorAll('.lang-option').forEach(function(btn) {
+        dropdown.querySelectorAll('.lang-option[data-lang]').forEach(function(btn) {
             btn.addEventListener('click', function() {
                 var lang = btn.getAttribute('data-lang');
                 if (typeof window.setCurrentLang === 'function') {
                     window.setCurrentLang(lang);
                 }
-                if (typeof window.triggerLangChange === 'function') {
-                    window.triggerLangChange(lang);
-                }
                 if (typeof window.applyI18n === 'function') {
                     window.applyI18n();
+                }
+                if (typeof window.triggerLangChange === 'function') {
+                    window.triggerLangChange(lang);
                 }
                 dropdown.classList.remove('show');
             });

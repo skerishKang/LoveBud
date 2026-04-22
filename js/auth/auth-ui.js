@@ -71,7 +71,7 @@
 
   function buildLangInlineOptions(currentLang) {
     return [
-      '<div class="user-dropdown-meta" style="border-bottom:none;padding-bottom:6px;">언어 / Language</div>',
+      '<div class="user-dropdown-meta" style="border-bottom:none;padding-bottom:6px;">언어</div>',
       '<button type="button" class="user-dropdown-item lang-option' + (currentLang === 'ko' ? ' active' : '') + '" data-lang="ko">',
       '<span class="material-symbols-outlined">check</span>한국어',
       '</button>',
@@ -84,16 +84,8 @@
   function buildLoginButton() {
     var basePath = getBasePath();
     var loginHref = basePath + "login.html";
-    var currentLang = typeof window.getCurrentLang === 'function' ? window.getCurrentLang() : 'ko';
     return [
       '<div style="display:flex;align-items:center;gap:10px;">',
-      '<div class="lang-toggle">',
-      '<button type="button" class="btn-round btn-outline lang-menu-trigger" style="text-decoration:none;padding:8px 14px;font-size:13px;font-weight:600;">언어 / Language</button>',
-      '<div class="lang-dropdown" style="min-width:132px;">',
-      '<button type="button" class="lang-option' + (currentLang === 'ko' ? ' active' : '') + '" data-lang="ko">한국어</button>',
-      '<button type="button" class="lang-option' + (currentLang === 'en' ? ' active' : '') + '" data-lang="en">English</button>',
-      '</div>',
-      '</div>',
       '<a href="' + loginHref + '" class="btn-round btn-outline" style="text-decoration:none;padding:8px 20px;font-size:14px;">' + tText('login_btn', '로그인') + '</a>',
       '</div>'
     ].join('');
