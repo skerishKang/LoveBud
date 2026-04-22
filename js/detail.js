@@ -717,8 +717,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         if (!Array.isArray(memories) && window.apiClient && window.apiClient.getMemoriesByTree) {
+            const loadTreeMemories = sourceContext === 'browse' && window.apiClient.getCommunityMemories
+                ? () => window.apiClient.getCommunityMemories({ treeId: canonicalTreeId, limit: 100 })
+                : () => window.apiClient.getMemoriesByTree(canonicalTreeId);
             memoriesFetchState = 'loading';
-            loadPromises.push(window.apiClient.getMemoriesByTree(canonicalTreeId)
+            loadPromises.push(loadTreeMemories()
                 .then(apiMemories => {
                     if (Array.isArray(apiMemories)) {
                         memories = apiMemories;
