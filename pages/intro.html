@@ -97,10 +97,16 @@
       bottom: 42px;
       width: 12px;
       height: 136px;
-      transform: translateX(-50%);
+      transform-origin: bottom center;
       border-radius: 999px;
       background: linear-gradient(180deg, #c18b83, #904951);
       box-shadow: 0 10px 24px rgba(144, 73, 81, 0.16);
+      animation: introStemGrow 0.7s cubic-bezier(0.34, 1.3, 0.64, 1) 0.15s both;
+    }
+
+    @keyframes introStemGrow {
+      from { transform: translateX(-50%) scaleY(0); opacity: 0.3; }
+      to   { transform: translateX(-50%) scaleY(1); opacity: 1; }
     }
 
     .intro-tree-branch {
@@ -110,24 +116,33 @@
       border-radius: 999px;
       background: linear-gradient(90deg, #c18b83, #aa646d);
       transform-origin: left center;
+      animation: introBranchIn 0.45s ease both;
     }
 
     .intro-tree-branch.one {
       bottom: 148px;
       width: 84px;
       transform: translateX(4px) rotate(-30deg);
+      animation-delay: 0.75s;
     }
 
     .intro-tree-branch.two {
       bottom: 122px;
       width: 78px;
       transform: translateX(-6px) rotate(204deg);
+      animation-delay: 1.0s;
     }
 
     .intro-tree-branch.three {
       bottom: 102px;
       width: 68px;
       transform: translateX(4px) rotate(26deg);
+      animation-delay: 1.25s;
+    }
+
+    @keyframes introBranchIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
     }
 
     .intro-tree-moment {
@@ -145,23 +160,32 @@
       font-size: 12px;
       font-weight: 800;
       white-space: nowrap;
+      animation: introMomentIn 0.4s ease both;
+    }
+
+    @keyframes introMomentIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
     }
 
     .intro-tree-moment.first {
       left: 20px;
       bottom: 70px;
       color: var(--primary);
+      animation-delay: 1.5s;
     }
 
     .intro-tree-moment.saved {
       right: 16px;
       top: 54px;
+      animation-delay: 1.75s;
     }
 
     .intro-tree-moment.shared {
       left: 30px;
       top: 86px;
       color: #667a55;
+      animation-delay: 2.0s;
     }
 
     .intro-tree-caption {
@@ -170,6 +194,7 @@
       font-size: 0.84rem;
       font-weight: 700;
       line-height: 1.5;
+      word-break: keep-all;
     }
 
     .intro-hero-actions {
@@ -240,6 +265,82 @@
       max-width: 620px;
     }
 
+    /* 러브트리란 섹션 강화 */
+    .intro-what-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      margin-bottom: 14px;
+      border-radius: 999px;
+      background: rgba(144, 73, 81, 0.08);
+      color: var(--primary);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .intro-section.intro-what-is h2 {
+      font-size: 2rem;
+      letter-spacing: -0.02em;
+    }
+
+    .intro-what-lead {
+      font-size: 1.05rem !important;
+      color: var(--on-surface-variant);
+      line-height: 1.7 !important;
+      margin-bottom: 1.5rem !important;
+    }
+
+    .intro-what-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: grid;
+      gap: 14px;
+    }
+
+    .intro-what-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 18px 20px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,246,244,0.96));
+      border-radius: 18px;
+      border: 1px solid rgba(144, 73, 81, 0.08);
+      box-shadow: 0 8px 20px rgba(75, 64, 57, 0.04);
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .intro-what-item:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 14px 28px rgba(144, 73, 81, 0.08);
+    }
+
+    .intro-what-icon {
+      font-size: 1.4rem;
+      line-height: 1;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .intro-what-item strong {
+      display: block;
+      font-size: 0.97rem;
+      font-weight: 800;
+      color: var(--on-surface);
+      margin-bottom: 4px;
+    }
+
+    .intro-what-item p {
+      font-size: 0.87rem !important;
+      color: var(--on-surface-variant);
+      line-height: 1.55 !important;
+      margin: 0 !important;
+      max-width: none !important;
+    }
+
     .how-to-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -263,6 +364,51 @@
       transform: translateY(-4px);
       box-shadow: 0 14px 32px rgba(144, 73, 81, 0.08);
       border-color: rgba(144, 73, 81, 0.14);
+    }
+
+    /* how-to 카드 씬 애니메이션 */
+    .how-to-scene-step1 .scene-play {
+      animation: howToPlayPulse 2.2s ease-in-out infinite;
+    }
+
+    @keyframes howToPlayPulse {
+      0%, 100% { transform: translate(-50%, -50%) scale(1); box-shadow: 0 10px 18px rgba(75,64,57,0.12); }
+      50%       { transform: translate(-50%, -50%) scale(1.1); box-shadow: 0 14px 24px rgba(75,64,57,0.2); }
+    }
+
+    .how-to-scene-step1 .scene-sparkle {
+      animation: howToSparkle 3s ease-in-out infinite;
+    }
+
+    @keyframes howToSparkle {
+      0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.6; }
+      50%       { transform: translateY(-5px) rotate(20deg); opacity: 1; }
+    }
+
+    .how-to-scene-step2 .memo-line {
+      transform-origin: left center;
+      animation: howToLineBreath 2s ease-in-out infinite;
+    }
+
+    .how-to-scene-step2 .memo-line:nth-child(2) { animation-delay: 0.35s; }
+    .how-to-scene-step2 .memo-line:nth-child(3) { animation-delay: 0.7s; }
+    .how-to-scene-step2 .memo-line.short       { animation-delay: 1.05s; }
+
+    @keyframes howToLineBreath {
+      0%, 100% { opacity: 0.45; transform: scaleX(0.72); }
+      60%       { opacity: 1;    transform: scaleX(1); }
+    }
+
+    .how-to-scene-step3 .mini-node {
+      animation: howToNodePulse 2.6s ease-in-out infinite;
+    }
+
+    .how-to-scene-step3 .mini-node.left  { animation-delay: 0.55s; }
+    .how-to-scene-step3 .mini-node.right { animation-delay: 1.1s; }
+
+    @keyframes howToNodePulse {
+      0%, 100% { transform: scale(1);    box-shadow: 0 8px 16px rgba(75,64,57,0.08); }
+      50%       { transform: scale(1.13); box-shadow: 0 12px 22px rgba(144,73,81,0.14); }
     }
 
     .how-to-visual {
@@ -884,11 +1030,35 @@
       </section>
 
       <!-- What is Lovetree -->
-      <section class="intro-section">
+      <section class="intro-section intro-what-is">
+        <div class="intro-what-eyebrow">서비스 소개</div>
         <h2 data-i18n="intro.whatIs">러브트리란?</h2>
-        <p data-i18n="intro.whatIsDesc1">
+        <p class="intro-what-lead" data-i18n="intro.whatIsDesc1">
           좋아하게 된 첫 장면과 이어진 마음을 하나의 트리로 남기는 공간입니다.
         </p>
+        <ul class="intro-what-list">
+          <li class="intro-what-item">
+            <span class="intro-what-icon">🌱</span>
+            <div>
+              <strong>첫 순간이 트리의 시작</strong>
+              <p>입덕의 그 장면, 처음 마음이 움직인 순간을 뿌리로 남겨요.</p>
+            </div>
+          </li>
+          <li class="intro-what-item">
+            <span class="intro-what-icon">🌿</span>
+            <div>
+              <strong>감정이 가지로 이어져요</strong>
+              <p>좋아하게 된 순간들을 하나씩 이어 붙이면, 나만의 감정 흐름이 보여요.</p>
+            </div>
+          </li>
+          <li class="intro-what-item">
+            <span class="intro-what-icon">🔒</span>
+            <div>
+              <strong>비공개로 시작해요</strong>
+              <p>처음엔 나만 보는 공간으로 시작하고, 준비되면 공개할 수 있어요.</p>
+            </div>
+          </li>
+        </ul>
       </section>
 
       <!-- How to Use -->
