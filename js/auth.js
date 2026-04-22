@@ -55,6 +55,14 @@ function resolveAuthBootstrap(user) {
 window.getAuthBootstrapPromise = function() {
   return window.__lovebudAuthBootstrapPromise || Promise.resolve(window.__lovebudAuthBootstrapUser || null);
 };
+window.LoveBudAuthBootstrap = window.LoveBudAuthBootstrap || {
+  whenReady: function() {
+    return window.getAuthBootstrapPromise();
+  },
+  getResolvedUser: function() {
+    return window.__lovebudAuthBootstrapUser || null;
+  }
+};
 
 // 인증 캐시 키 정책:
 // - lovebud_auth_cache: {uid, displayName, email} - 사용자 기본 정보 (로그아웃 시 삭제)
