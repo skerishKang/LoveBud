@@ -70,12 +70,7 @@ h1, h2, h3, h4, .headline {
 
 .bokeh-bg {
     min-height: 100vh;
-    /* Premium Multi-layer Bokeh Background */
-    background: 
-        radial-gradient(circle at 12% 12%, rgba(255, 222, 211, 0.72), transparent 22%),
-        radial-gradient(circle at 84% 10%, rgba(239, 206, 215, 0.58), transparent 20%),
-        radial-gradient(circle at 76% 66%, rgba(236, 231, 212, 0.42), transparent 24%),
-        linear-gradient(180deg, #fff9f4 0%, #f9f0ea 42%, #f7efe9 100%);
+    background: linear-gradient(135deg, #c2938c 0%, #e8d5c4 35%, #f6f1e9 50%, #9da98f 100%);
     background-attachment: fixed;
     background-repeat: no-repeat;
     background-size: cover;
