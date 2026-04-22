@@ -10,6 +10,7 @@ from typing import Any
 import jwt
 import modal
 import psycopg
+from cryptography import x509
 from fastapi import FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from psycopg.rows import dict_row
@@ -72,9 +73,10 @@ def require_firebase_user(authorization: str | None) -> dict[str, Any]:
             raise HTTPException(status_code=401, detail="Invalid ID token")
 
         project_id = get_firebase_project_id()
+        public_key = x509.load_pem_x509_certificate(cert.encode("utf-8")).public_key()
         decoded = jwt.decode(
             token,
-            cert,
+            public_key,
             algorithms=["RS256"],
             audience=project_id,
             issuer=f"https://securetoken.google.com/{project_id}",
