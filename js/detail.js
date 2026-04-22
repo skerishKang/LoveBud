@@ -648,6 +648,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (cachedMemory) memory = cachedMemory;
 
     const normalize = window.LoveBudNormalize?.normalizeMemory || ((m) => m);
+    const findPublicMemoryInTree = async () => {
+        if (!requestedTreeId || !window.apiClient || !window.apiClient.getCommunityMemories) return null;
+        const publicMemories = await window.apiClient.getCommunityMemories({ treeId: requestedTreeId, limit: 100 });
+        if (!Array.isArray(publicMemories)) return null;
+        return publicMemories
+            .map(item => normalize(item))
+            .find(item => item && item.id === memoryId) || null;
+    };
 
     try {
         if (window.apiClient && window.apiClient.getMemory) {
@@ -660,6 +668,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     } catch (e) {
         if (!memory && typeof getMemory === 'function') memory = normalize(getMemory(memoryId));
+    }
+
+    if (!memory && sourceContext === 'browse') {
+        try {
+            const publicMemory = await findPublicMemoryInTree();
+            if (publicMemory) {
+                memory = publicMemory;
+                if (cache) cache.set(MEMORY_CACHE_KEY, publicMemory, 3 * 60 * 1000);
+            }
+        } catch (e) {
+            console.warn('[LoveBudDetail] public browse memory fallback failed', e);
+        }
     }
 
     if (!memory) {
