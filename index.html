@@ -55,30 +55,22 @@
             z-index: 1;
             width: min(1280px, calc(100% - 48px));
             margin: 0 auto;
-            padding: 34px 0 110px;
+            padding: 28px 0 110px;
         }
 
         .home-v3-hero {
             position: relative;
             display: grid;
             grid-template-columns: minmax(0, 1.02fr) minmax(420px, 0.98fr);
-            gap: 42px;
+            gap: 34px;
             align-items: center;
-            min-height: calc(100vh - 120px);
-            padding: 46px 0 32px;
+            min-height: min(860px, calc(100vh - 104px));
+            padding: 24px 0 20px;
         }
 
         .home-v3-copy {
-            max-width: 620px;
-            padding: 18px 0 28px;
-        }
-
-        .home-v3-copy > :not(.home-v3-identity-copy) {
-            display: none;
-        }
-
-        .home-v3-identity-copy {
-            display: block;
+            max-width: 600px;
+            padding: 8px 0 16px;
         }
 
         .home-v3-eyebrow {
@@ -98,8 +90,8 @@
         }
 
         .home-v3-title {
-            margin: 24px 0 18px;
-            font-size: clamp(3.55rem, 6vw, 5.7rem);
+            margin: 20px 0 14px;
+            font-size: clamp(3.55rem, 6vw, 5.4rem);
             line-height: 0.98;
             letter-spacing: -0.055em;
             color: #483934;
@@ -118,14 +110,14 @@
 
         .home-v3-desc {
             margin: 0;
-            max-width: 560px;
-            font-size: 1.08rem;
-            line-height: 1.88;
+            max-width: 520px;
+            font-size: 1.02rem;
+            line-height: 1.8;
             color: #6c5953;
         }
 
         .home-v3-note {
-            margin-top: 20px;
+            margin-top: 18px;
             display: inline-flex;
             align-items: center;
             gap: 10px;
@@ -134,7 +126,7 @@
             background: rgba(255,255,255,0.56);
             border: 1px solid rgba(144, 73, 81, 0.10);
             color: #7c5f60;
-            font-size: 0.93rem;
+            font-size: 0.9rem;
             font-weight: 700;
             box-shadow: 0 14px 30px rgba(102, 75, 70, 0.08);
         }
@@ -143,11 +135,11 @@
             display: flex;
             flex-wrap: wrap;
             gap: 14px;
-            margin-top: 28px;
+            margin-top: 24px;
         }
 
         .home-v3-actions .btn-round {
-            min-height: 58px;
+            min-height: 56px;
             padding-inline: 30px;
             text-decoration: none;
             display: inline-flex;
@@ -162,55 +154,14 @@
             backdrop-filter: blur(12px);
         }
 
-        .home-v3-flow {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-top: 22px;
-        }
-
-        .home-v3-flow-chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 9px 14px;
-            border-radius: 999px;
-            background: rgba(255,255,255,0.64);
-            border: 1px solid rgba(144, 73, 81, 0.10);
-            color: #6d5954;
-            font-size: 0.84rem;
-            font-weight: 700;
-            box-shadow: 0 12px 22px rgba(102, 75, 70, 0.05);
-        }
-
-        .home-v3-flow-chip strong {
-            width: 22px;
-            height: 22px;
-            border-radius: 50%;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            background: rgba(144, 73, 81, 0.10);
-            color: var(--primary);
-            font-size: 0.72rem;
-        }
-
-        .home-v3-support {
-            margin-top: 22px;
-            max-width: 530px;
-            font-size: 0.92rem;
-            line-height: 1.75;
-            color: #7b6a64;
-        }
-
         .home-v3-collage {
             position: relative;
-            min-height: 760px;
+            min-height: 680px;
         }
 
         .home-v3-halo {
             position: absolute;
-            inset: 90px 70px 140px 70px;
+            inset: 76px 70px 120px 70px;
             border-radius: 48px;
             background:
                 radial-gradient(circle at 28% 30%, rgba(255,255,255,0.92), transparent 25%),
@@ -402,13 +353,9 @@
             box-shadow: 0 0 0 6px rgba(255,255,255,0.26), 0 0 18px rgba(255,251,247,0.92);
         }
 
-        .home-v3-collage > :not(.home-v3-growth-stage) {
-            display: none;
-        }
-
         .home-v3-growth-stage {
             position: relative;
-            min-height: 700px;
+            min-height: 620px;
             border-radius: 46px;
             background:
                 radial-gradient(circle at 22% 20%, rgba(255, 255, 255, 0.94), transparent 28%),
@@ -564,13 +511,6 @@
 
         .home-v3-section {
             margin-top: 28px;
-        }
-
-        .home-v3-feature-grid {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 18px;
-            margin-top: 18px;
         }
 
         .home-v3-feature-grid {
@@ -756,39 +696,42 @@
             .home-v3-hero {
                 grid-template-columns: 1fr;
                 min-height: auto;
-                padding-top: 24px;
+                padding-top: 18px;
             }
 
             .home-v3-copy {
-                max-width: 720px;
+                max-width: 680px;
             }
 
             .home-v3-collage {
-                min-height: 760px;
+                min-height: 620px;
             }
         }
 
         @media (max-width: 920px) {
             .home-v3-title {
-                font-size: clamp(2.95rem, 10vw, 4.6rem);
+                font-size: clamp(2.95rem, 10vw, 4.3rem);
+            }
+
+            .home-v3-note {
+                display: none;
             }
 
             .home-v3-growth-stage {
-                min-height: 620px;
+                min-height: 560px;
             }
 
             .growth-stage-card {
                 width: 190px;
             }
 
-            .home-v3-feature-grid,
             .home-v3-preview-grid,
             .home-v3-preview-row {
                 grid-template-columns: 1fr;
             }
 
             .home-v3-collage {
-                min-height: 660px;
+                min-height: 600px;
             }
 
             .home-v3-halo {
@@ -808,44 +751,48 @@
         @media (max-width: 640px) {
             .home-v3-main {
                 width: min(100%, calc(100% - 24px));
-                padding-bottom: 80px;
+                padding-bottom: 72px;
             }
 
             .home-v3-hero {
-                gap: 28px;
+                gap: 22px;
+                padding: 12px 0 8px;
             }
 
-            .home-v3-desc,
-            .home-v3-support {
-                font-size: 0.97rem;
+            .home-v3-copy {
+                padding-bottom: 4px;
+            }
+
+            .home-v3-desc {
+                font-size: 0.96rem;
+                line-height: 1.72;
+                max-width: 100%;
             }
 
             .home-v3-title {
-                margin-top: 18px;
-                font-size: clamp(2.35rem, 10.5vw, 2.95rem);
+                margin-top: 16px;
+                font-size: clamp(2.25rem, 10vw, 2.8rem);
                 line-height: 1.04;
                 max-width: 100%;
                 overflow-wrap: anywhere;
             }
 
-            .home-v3-note {
-                display: none;
-            }
-
             .home-v3-actions {
                 flex-direction: column;
+                margin-top: 20px;
             }
 
             .home-v3-actions .btn-round {
                 width: 100%;
+                min-height: 54px;
             }
 
             .home-v3-collage {
-                min-height: 620px;
+                min-height: 520px;
             }
 
             .home-v3-growth-stage {
-                min-height: 600px;
+                min-height: 500px;
                 border-radius: 34px;
             }
 
@@ -853,44 +800,44 @@
                 left: 18px;
                 top: 20px;
                 max-width: calc(100% - 36px);
-                font-size: 0.78rem;
+                font-size: 0.76rem;
             }
 
             .growth-stage-card {
-                width: 172px;
-                padding: 13px;
+                width: 154px;
+                padding: 12px;
                 border-radius: 23px;
             }
 
             .growth-stage-card::before {
-                height: 82px;
+                height: 72px;
                 border-radius: 17px;
+                margin-bottom: 12px;
+            }
+
+            .growth-stage-card strong {
+                font-size: 0.9rem;
+            }
+
+            .growth-stage-card span {
+                font-size: 0.74rem;
+                line-height: 1.5;
             }
 
             .growth-stage-card.one {
-                left: 4%;
-                top: 48%;
+                left: 3%;
+                top: 50%;
             }
 
             .growth-stage-card.two {
-                right: 5%;
+                right: 4%;
                 top: 18%;
             }
 
             .growth-stage-card.three {
-                right: 7%;
-                bottom: 9%;
+                right: 6%;
+                bottom: 8%;
             }
-
-            .home-v3-card {
-                width: min(100%, 224px) !important;
-            }
-
-            .card-root { left: 0; top: 368px; }
-            .card-side-top { top: 164px; }
-            .card-center { top: 302px; }
-            .card-side-bottom { top: 514px; }
-            .card-bottom { top: 668px; }
         }
     </style>
 </head>
@@ -904,14 +851,13 @@
             <section class="home-v3-hero">
                 <div class="home-v3-copy reveal">
                     <div class="home-v3-identity-copy">
-                        <div class="home-v3-eyebrow">입덕의 첫 순간부터, 오래 남는 장면까지</div>
+                        <div class="home-v3-eyebrow">팬 감정 러브트리 · 따뜻한 디지털 스크랩북</div>
                         <h1 class="home-v3-title">
-                            <span class="soft">처음 반했던 순간이</span>
-                            <span class="accent">하나의 러브트리로 자라나요</span>
+                            <span class="soft">입덕의 첫 순간이</span>
+                            <span class="accent">하나의 러브트리로 이어져요</span>
                         </h1>
                         <p class="home-v3-desc">
-                            무대, 장면, 다시 꺼내 보는 한 문장까지.
-                            좋아하게 된 마음의 흐름을 천천히 이어 보세요.
+                            반했던 장면과 오래 남은 마음을, 감정이 이어진 경로로 천천히 남겨 보세요.
                         </p>
                         <div class="home-v3-actions">
                             <a href="pages/login.html?redirect=my-trees.html" class="btn-round btn-primary">내 러브트리 시작하기</a>
@@ -919,33 +865,6 @@
                         </div>
                         <div class="home-v3-note">처음에는 단 하나의 순간만 있어도 충분해요.</div>
                     </div>
-                    <div class="home-v3-eyebrow">공개되지 않아도, 마음은 천천히 자라나요</div>
-                    <h1 class="home-v3-title">
-                        <span class="soft">좋아하는 순간이</span>
-                        <span class="accent">하나의 러브트리로 자라나요</span>
-                    </h1>
-                    <p class="home-v3-desc">
-                        좋아하는 장면, 오래 남은 한 문장, 다시 듣게 되는 노래와 그날의 감정까지.
-                        흩어져 있던 마음의 조각을 부드럽게 이어 붙여
-                        나만의 흐름이 머무는 러브트리로 남겨보세요.
-                    </p>
-                    <div class="home-v3-note">🌱 처음에는 단 하나의 순간만 있어도 충분해요</div>
-
-                    <div class="home-v3-actions">
-                        <a href="pages/login.html?redirect=my-trees.html" class="btn-round btn-primary">내 트리 시작하기</a>
-                        <a href="pages/search.html" class="btn-round btn-outline">공개 트리 둘러보기</a>
-                    </div>
-
-                    <div class="home-v3-flow" aria-label="러브트리 시작 흐름">
-                        <span class="home-v3-flow-chip"><strong>1</strong> 제목을 정해요</span>
-                        <span class="home-v3-flow-chip"><strong>2</strong> 첫 순간을 남겨요</span>
-                        <span class="home-v3-flow-chip"><strong>3</strong> 천천히 가지를 이어가요</span>
-                    </div>
-
-                    <p class="home-v3-support">
-                        러브트리는 기록 도구보다 조금 더 감정적인 공간입니다.
-                        검색창이나 관리 화면보다, 오래 보고 싶은 기억이 자연스럽게 쌓이는 한 권의 스크랩북처럼 느껴지도록 시작점을 다시 구성했습니다.
-                    </p>
                 </div>
 
                 <div class="home-v3-collage reveal" aria-hidden="true">
