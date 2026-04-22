@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Cream background -->
+  <rect width="64" height="64" rx="14" fill="#fff4ee"/>
+  <!-- Brown ground mound -->
+  <ellipse cx="32" cy="54" rx="12" ry="4.5" fill="#b08860"/>
+  <!-- Trunk -->
+  <line x1="32" y1="50" x2="32" y2="36" stroke="#7a9a50" stroke-width="4" stroke-linecap="round"/>
+  <!-- Left branch -->
+  <path d="M32 38 Q25 32 18 26" stroke="#7a9a50" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+  <!-- Right branch -->
+  <path d="M32 38 Q39 32 46 26" stroke="#7a9a50" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+  <!-- Pink heart-leaf (left): two rounded lobes at top, tapers to branch tip -->
+  <path d="M18 28 C10 28 4 20 8 12 C10 6 16 6 18 14 C18 10 20 6 22 10 C26 16 22 24 18 28 Z" fill="#e8776a"/>
+  <!-- Olive green heart-leaf (right): mirrored -->
+  <path d="M46 28 C54 28 60 20 56 12 C54 6 48 6 46 14 C46 10 44 6 42 10 C38 16 42 24 46 28 Z" fill="#6b8c4e"/>
+</svg>
