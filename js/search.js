@@ -38,7 +38,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const Adapter = window.LoveBudSearchAdapter;
     const cache = window.LoveBudCache;
-    const PUBLIC_TREES_CACHE_KEY = 'public_trees_summary_latest_12';
+    const PUBLIC_TREES_CACHE_KEY = 'public_trees_summary_latest_10';
     const PREVIEW_CACHE_TTL_MS = 5 * 60 * 1000;
     const getPreviewCacheKey = (treeId) => `public_tree_preview_${treeId}`;
 
@@ -52,7 +52,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     let currentQuery = '';
     let currentSort = 'latest';
-    let currentLimit = 12;
+    let currentLimit = 10;
     let currentCategory = '전체';
 
     function getCurrentLocale() {
@@ -202,7 +202,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const nextSort = button.dataset.browseSort || 'latest';
                 if (nextSort === currentSort) return;
                 currentSort = nextSort;
-                currentLimit = 12;
+                currentLimit = 10;
                 controls.querySelectorAll('[data-browse-sort]').forEach((chip) => {
                     chip.classList.toggle('active', chip.dataset.browseSort === currentSort);
                 });
@@ -211,7 +211,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         controls.querySelector('#browseLoadMoreBtn')?.addEventListener('click', async () => {
-            currentLimit = Math.min(currentLimit + 12, 60);
+            currentLimit = Math.min(currentLimit + 10, 60);
             await loadPublicTrees({ resetSelection: false });
         });
     };
