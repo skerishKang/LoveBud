@@ -21,7 +21,8 @@
 
 ### Fallback / Legacy
 - Modal browse summary 실패 시 Netlify `/community/trees`로 fallback 합니다.
-- browse preview hydrate(`/api/community/memories`)와 catch-all `/api/*`는 아직 Netlify upstream을 사용합니다.
+- browse preview hydrate(`/api/community/memories`)도 representative preview를 위해 Modal을 먼저 시도하고, 필요 시 Netlify upstream으로 fallback 합니다.
+- catch-all `/api/*`는 아직 Netlify upstream을 사용합니다.
 
 ## 3. 배포 절차
 
@@ -67,9 +68,11 @@
 
 ### `/api/community/memories` 실패
 확인 순서:
-1. `NETLIFY_API_BASE_URL` 설정 확인
-2. Netlify `/community/memories` 상태 확인
-3. Vercel logs 확인
+1. `MODAL_BASE_URL` 설정 확인
+2. Modal representative preview가 생성되는지 확인
+3. `NETLIFY_API_BASE_URL` 설정 확인
+4. Netlify `/community/memories` 상태 확인
+5. Vercel logs 확인
 
 ### catch-all `/api/*` 실패
 확인 순서:
@@ -104,13 +107,15 @@
 1. `https://lovebud.vercel.app/` 로드
 2. `https://lovebud.vercel.app/search.html` 로드
 3. `/api/community/trees?view=summary&sort=latest&limit=3` 응답 확인
-4. Modal `/modal/health` 응답 확인
-5. Modal `/modal/browse/latest?limit=3` 응답 확인
-6. Modal 차단 시 Netlify fallback이 계속 browse를 살리는지 확인
-7. `https://lovebud.vercel.app/login.html`에서 Firebase 도메인 오류가 없는지 확인
+4. `/api/community/memories?treeId=<id>` 응답 확인
+5. Modal `/modal/health` 응답 확인
+6. Modal `/modal/browse/latest?limit=3` 응답 확인
+7. Modal 차단 시 Netlify fallback이 계속 browse를 살리는지 확인
+8. `https://lovebud.vercel.app/login.html`에서 Firebase 도메인 오류가 없는지 확인
 
 ## 7. 운영 원칙 한 줄 요약
 
 - 공식 주소는 Vercel
 - browse summary의 1순위는 Modal
+- preview hydrate도 Modal representative preview를 먼저 시도
 - Netlify는 fallback / legacy
