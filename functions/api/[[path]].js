@@ -31,6 +31,24 @@ function buildForwardHeaders(request) {
   return headers;
 }
 
+function isBrowseSummaryRequest(request) {
+  const url = new URL(request.url);
+  const path = url.pathname.replace(/\/+$/, '');
+  return path === '/api/community/trees' && url.searchParams.get('view') === 'summary';
+}
+
+function buildBrowseCacheRequest(request) {
+  const url = new URL(request.url);
+  const sort = url.searchParams.get('sort') === 'popular' ? 'popular' : 'latest';
+  const limit = Math.min(Math.max(Number(url.searchParams.get('limit') || 12) || 12, 1), 60);
+  const cacheUrl = new URL(url.origin);
+  cacheUrl.pathname = '/__cache/community/trees';
+  cacheUrl.searchParams.set('view', 'summary');
+  cacheUrl.searchParams.set('sort', sort);
+  cacheUrl.searchParams.set('limit', String(limit));
+  return new Request(cacheUrl.toString(), { method: 'GET' });
+}
+
 function buildModalUrl(request, env) {
   const modalBaseUrl = stripTrailingSlash(env.MODAL_BASE_URL);
   if (!modalBaseUrl) return null;
@@ -138,11 +156,33 @@ export async function onRequest(context) {
   const upstreamUrl = buildUpstreamUrl(request, env || {});
   const method = request.method.toUpperCase();
 
-  try {
-    const modalResponse = await tryModalRead(request, env || {});
-    if (modalResponse) return modalResponse;
-  } catch (error) {
-    console.warn('[LoveBudCloudflareProxy] Modal read failed before response, falling back to Vercel', error);
+  if (isBrowseSummaryRequest(request)) {
+    const cache = caches.default;
+    const cacheKey = buildBrowseCacheRequest(request);
+    const cachedResponse = await cache.match(cacheKey);
+    if (cachedResponse) {
+      return withUpstreamHeader(cachedResponse, 'modal');
+    }
+
+    try {
+      const modalResponse = await tryModalRead(request, env || {});
+      if (modalResponse && modalResponse.ok) {
+        const cacheableResponse = new Response(modalResponse.body, modalResponse);
+        cacheableResponse.headers.set('Cache-Control', 'public, max-age=300');
+        await cache.put(cacheKey, cacheableResponse.clone());
+        return withUpstreamHeader(cacheableResponse, 'modal');
+      }
+      if (modalResponse) return modalResponse;
+    } catch (error) {
+      console.warn('[LoveBudCloudflareProxy] Modal read failed before response, falling back to Vercel', error);
+    }
+  } else {
+    try {
+      const modalResponse = await tryModalRead(request, env || {});
+      if (modalResponse) return modalResponse;
+    } catch (error) {
+      console.warn('[LoveBudCloudflareProxy] Modal read failed before response, falling back to Vercel', error);
+    }
   }
 
   const response = await fetch(upstreamUrl.toString(), {
