@@ -2,16 +2,21 @@ from __future__ import annotations
 
 import os
 import json
+import time
+import urllib.request
 from datetime import datetime
 from typing import Any
 
+import jwt
 import modal
 import psycopg
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from psycopg.rows import dict_row
 
 # --- DB Logic (formerly browse_latest.py) ---
+
+_firebase_cert_cache: dict[str, Any] = {"expires_at": 0, "certs": {}}
 
 def get_db_connection() -> psycopg.Connection:
     """Create a psycopg3 connection for snapshot reads."""
@@ -19,6 +24,71 @@ def get_db_connection() -> psycopg.Connection:
     if not db_url:
         raise RuntimeError("DATABASE_URL is not configured")
     return psycopg.connect(db_url, row_factory=dict_row)
+
+
+def get_firebase_project_id() -> str:
+    return os.getenv("FIREBASE_PROJECT_ID", "relovetree")
+
+
+def get_firebase_certs() -> dict[str, str]:
+    now = time.time()
+    if _firebase_cert_cache["expires_at"] > now and _firebase_cert_cache["certs"]:
+        return _firebase_cert_cache["certs"]
+
+    with urllib.request.urlopen(
+        "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com",
+        timeout=5,
+    ) as response:
+        raw = response.read().decode("utf-8")
+        cache_control = response.headers.get("cache-control", "")
+
+    max_age = 300
+    for part in cache_control.split(","):
+        part = part.strip()
+        if part.startswith("max-age="):
+            try:
+                max_age = int(part.split("=", 1)[1])
+            except ValueError:
+                max_age = 300
+
+    certs = json.loads(raw)
+    _firebase_cert_cache["certs"] = certs
+    _firebase_cert_cache["expires_at"] = now + max_age
+    return certs
+
+
+def require_firebase_user(authorization: str | None) -> dict[str, Any]:
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    token = authorization[7:].strip()
+    if not token:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    try:
+        header = jwt.get_unverified_header(token)
+        cert = get_firebase_certs().get(header.get("kid"))
+        if not cert:
+            raise HTTPException(status_code=401, detail="Invalid ID token")
+
+        project_id = get_firebase_project_id()
+        decoded = jwt.decode(
+            token,
+            cert,
+            algorithms=["RS256"],
+            audience=project_id,
+            issuer=f"https://securetoken.google.com/{project_id}",
+        )
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(status_code=401, detail="Invalid ID token") from error
+
+    uid = decoded.get("uid") or decoded.get("sub")
+    if not uid:
+        raise HTTPException(status_code=401, detail="Invalid ID token")
+
+    return {"uid": uid, "email": decoded.get("email") or "", "decoded": decoded}
 
 
 def _to_isoformat(value: Any) -> str | None:
@@ -255,6 +325,77 @@ def fetch_public_tree(tree_id: str) -> dict[str, Any] | None:
     return normalize_tree_row(row, row.get("memory_count")) if row else None
 
 
+def fetch_user_trees(owner_id: str, limit: int = 100) -> list[dict[str, Any]]:
+    query = """
+        SELECT t.id, t.owner_id, t.title, t.visibility, t.created_at, t.updated_at,
+               COUNT(m.id)::int AS memory_count
+        FROM trees t
+        LEFT JOIN memories m
+          ON m.tree_id = t.id
+        WHERE t.owner_id = %s
+        GROUP BY t.id, t.owner_id, t.title, t.visibility, t.created_at, t.updated_at
+        ORDER BY t.created_at DESC
+        LIMIT %s;
+    """
+
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(query, (owner_id, limit))
+            rows = cur.fetchall()
+
+    return [normalize_tree_row(row, row.get("memory_count")) for row in rows]
+
+
+def fetch_owner_tree(tree_id: str, owner_id: str) -> dict[str, Any] | None:
+    query = """
+        SELECT t.id, t.owner_id, t.title, t.visibility, t.created_at, t.updated_at,
+               COUNT(m.id)::int AS memory_count
+        FROM trees t
+        LEFT JOIN memories m
+          ON m.tree_id = t.id
+        WHERE t.id = %s
+          AND t.owner_id = %s
+        GROUP BY t.id, t.owner_id, t.title, t.visibility, t.created_at, t.updated_at
+        LIMIT 1;
+    """
+
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(query, (tree_id, owner_id))
+            row = cur.fetchone()
+
+    return normalize_tree_row(row, row.get("memory_count")) if row else None
+
+
+def fetch_owner_memories(owner_id: str, tree_id: str | None = None, limit: int = 100) -> list[dict[str, Any]]:
+    params: list[Any] = [owner_id]
+    filters = ["t.owner_id = %s"]
+
+    if tree_id:
+        params.append(tree_id)
+        filters.append("m.tree_id = %s")
+
+    params.append(limit)
+    query = f"""
+        SELECT m.id, m.tree_id, m.parent_id, m.title, m.memo, m.artist, m.source, m.source_url,
+               m.source_type, m.thumbnail, m.emotion_tags, m.timestamp, m.visibility,
+               m.created_at, m.updated_at
+        FROM memories m
+        INNER JOIN trees t
+          ON t.id = m.tree_id
+        WHERE {' AND '.join(filters)}
+        ORDER BY m.created_at DESC
+        LIMIT %s;
+    """
+
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(query, tuple(params))
+            rows = cur.fetchall()
+
+    return [normalize_memory_row(row) for row in rows]
+
+
 # --- Modal App Setup ---
 
 app = modal.App("lovebud-browse-snapshot")
@@ -263,6 +404,7 @@ image = (
     modal.Image.debian_slim(python_version="3.11")
     .pip_install(
         "fastapi==0.115.12",
+        "PyJWT[crypto]==2.10.1",
         "psycopg[binary]==3.2.9",
     )
 )
@@ -324,6 +466,37 @@ def get_public_tree_detail(tree_id: str) -> dict:
     if not tree:
         raise HTTPException(status_code=404, detail="Tree not found")
     return tree
+
+
+@web_app.get("/modal/private/trees")
+def get_private_trees(
+    limit: int = Query(default=100, ge=1, le=200),
+    authorization: str | None = Header(default=None),
+) -> list[dict]:
+    user = require_firebase_user(authorization)
+    return fetch_user_trees(user["uid"], limit=limit)
+
+
+@web_app.get("/modal/private/trees/{tree_id}")
+def get_private_tree_detail(
+    tree_id: str,
+    authorization: str | None = Header(default=None),
+) -> dict:
+    user = require_firebase_user(authorization)
+    tree = fetch_owner_tree(tree_id, user["uid"])
+    if not tree:
+        raise HTTPException(status_code=404, detail="Tree not found")
+    return tree
+
+
+@web_app.get("/modal/private/memories")
+def get_private_memories(
+    treeId: str | None = None,
+    limit: int = Query(default=100, ge=1, le=200),
+    authorization: str | None = Header(default=None),
+) -> list[dict]:
+    user = require_firebase_user(authorization)
+    return fetch_owner_memories(user["uid"], tree_id=treeId, limit=limit)
 
 
 @app.function(
