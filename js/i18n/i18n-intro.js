@@ -1,6 +1,6 @@
 /**
  * LoveBud - i18n Intro Dictionary
- * v20260421-3
+ * v20260423-1
  *
  * 소개 페이지(intro.html) 번역 키
  */
@@ -15,12 +15,12 @@
       en: 'Where what you love keeps growing'
     },
     'intro.heroTitle': {
-      ko: '<span class="title-line">사랑하는 것들의</span><span class="title-line title-accent">모든 순간을</span><span class="title-line">하나의 나무로 남겨요</span>',
-      en: '<span class="title-line">Turn every moment</span><span class="title-line title-accent">of what you love</span><span class="title-line">into one tree</span>'
+      ko: '<span class="title-line">사랑하는 순간을</span><span class="title-line title-accent">하나의 나무로</span><span class="title-line">남겨요</span>',
+      en: '<span class="title-line">Turn the moment</span><span class="title-line title-accent">you loved</span><span class="title-line">into one tree</span>'
     },
     'intro.heroLead': {
-      ko: '좋아하게 된 순간들을 하나의 트리로 남기고 감상하는 공간입니다.',
-      en: 'A space to save and revisit the moments that became one tree.'
+      ko: '좋아하게 된 순간과 이어진 마음을 한 트리로 남겨보세요.',
+      en: 'Keep the moment you loved and what followed in one tree.'
     },
     'intro.heroBrowseCta': {
       ko: '공개 트리 감상하기',
@@ -59,8 +59,8 @@
 
     // How to 섹션
     'intro.howToTitle': {
-      ko: '어떻게 시작하나요?',
-      en: 'How do you begin?'
+      ko: '처음은 이렇게 남겨요',
+      en: 'Start like this'
     },
     'intro.howToSubtitle': {
       ko: '첫 마음이 지나온 길부터 남겨보세요.',
@@ -87,8 +87,8 @@
       en: 'Leave your feelings'
     },
     'intro.step2Desc': {
-      ko: '짧은 메모와 태그로 그 순간의 마음을 남기세요.',
-      en: 'Leave the feeling of that moment with a short note and tags.'
+      ko: '짧은 메모로 그 순간의 마음을 남기세요.',
+      en: 'Leave the feeling of that moment with a short note.'
     },
     'intro.step2Point': {
       ko: '짧은 메모가 감정의 결을 남겨줍니다.',
@@ -97,8 +97,8 @@
 
     // Step 3
     'intro.step3Title': {
-      ko: '자라난 트리 감상하기',
-      en: 'Revisit the tree that grew'
+      ko: '다시 감상하기',
+      en: 'Revisit it again'
     },
     'intro.step3DescFixed': {
       ko: '이어진 장면을 따라가며 좋아하게 된 흐름을 다시 바라보세요.',
@@ -121,8 +121,8 @@
 
     // Value 섹션
     'intro.valueTitle': {
-      ko: '이건 어떤 공간인가요?',
-      en: 'What is this space?'
+      ko: '이런 순간이 남아요',
+      en: 'These moments stay'
     },
     'intro.value1Eyebrow': {
       ko: '가장 먼저 남는 것',
