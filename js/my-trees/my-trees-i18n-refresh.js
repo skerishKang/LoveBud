@@ -20,7 +20,7 @@
   function applyMyTreesShellCopy() {
     document.title = tText('nav.myTrees', '내 러브트리') + ' | LoveTree';
     setText('myTreesPageTitle', 'myTrees.page_title', '🌳 내 러브트리');
-    setText('myTreesPageDesc', 'myTrees.page_desc', '내가 기록한 사랑의 순간들을 모아둔 공간입니다. 트리를 선택하여 기억을 추가하거나, 새로운 러브트리를 시작해보세요.');
+    setText('myTreesPageDesc', 'myTrees.page_desc', '내가 남긴 순간들을 다시 감상하고, 다음 장면을 이어가는 곳입니다.');
     setText('headerCreateTreeBtnLabel', 'myTrees.header_create', '새 러브트리');
     setText('summaryTotalSuffix', 'myTrees.summary_total_suffix', '개의 트리');
     setText('summaryPublicLabel', 'myTrees.summary_public', '공개');
@@ -29,12 +29,12 @@
     setText('sortRecentOption', 'myTrees.sort_recent', '최근 수정순');
     setText('sortOldestOption', 'myTrees.sort_oldest', '생성순');
     setText('sortNameOption', 'myTrees.sort_name', '이름순');
-    setText('manageSelectedTreeLabel', 'myTrees.manage_label', '선택한 트리 관리');
-    setText('manageSelectedTreeName', 'myTrees.manage_none', '카드에서 트리를 하나 골라 관리해보세요');
-    setText('manageSelectedTreeMeta', 'myTrees.manage_hint', '카드 아래 선택 버튼으로 빠르게 이름 변경과 삭제를 할 수 있어요.');
-    setText('manageOpenBtn', 'myTrees.manage_open', '열기');
-    setText('manageVisibilityBtn', 'myTrees.manage_visibility', '공개 설정');
-    setText('manageRenameBtn', 'myTrees.manage_rename', '이름 변경');
+    setText('manageSelectedTreeLabel', 'myTrees.manage_label', '지금 돌보는 트리');
+    setText('manageSelectedTreeName', 'myTrees.manage_none', '카드에서 트리를 하나 골라 보세요');
+    setText('manageSelectedTreeMeta', 'myTrees.manage_hint', '선택한 트리를 여기서 바로 이어가거나 다듬을 수 있어요.');
+    setText('manageOpenBtn', 'myTrees.manage_open', '이어보기');
+    setText('manageVisibilityBtn', 'myTrees.manage_visibility', '공개 범위');
+    setText('manageRenameBtn', 'myTrees.manage_rename', '이름 다듬기');
     setText('manageDeleteBtn', 'myTrees.manage_delete', '삭제');
 
     var retryBtn = document.getElementById('retryLoadBtn');
@@ -84,12 +84,12 @@
 
     document.querySelectorAll('.tree-card-select-btn').forEach(function(el) {
       el.textContent = el.closest('.tree-card') && el.closest('.tree-card').classList.contains('is-selected')
-        ? tText('myTrees.card_selected', '선택됨')
-        : tText('myTrees.card_select', '선택');
+        ? tText('myTrees.card_selected', '보고 있는 트리')
+        : tText('myTrees.card_select', '고르기');
     });
 
     document.querySelectorAll('.tree-card-open-btn').forEach(function(el) {
-      el.textContent = tText('myTrees.card_open', '열어보기');
+      el.textContent = tText('myTrees.card_open', '트리 열기');
     });
   }
 
