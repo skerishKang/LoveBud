@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LoveTree | Quiet Home Desktop</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%23fff4ee'/%3E%3Cpath d='M32 49V25' stroke='%23904951' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M32 29c-9-1-16-7-17-16 9 1 16 7 17 16Z' fill='%23e58a96'/%3E%3Cpath d='M32 29c9-1 16-7 17-16-9 1-16 7-17 16Z' fill='%2397c978'/%3E%3Ccircle cx='32' cy='18' r='5' fill='%23f2c36b'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="../css/global.css?v=20260417-31">
+    <style>
+        body.quiet-desktop-bg {
+            margin: 0;
+            min-height: 100vh;
+            background:
+                radial-gradient(circle at 10% 12%, rgba(255, 225, 214, 0.72), transparent 22%),
+                radial-gradient(circle at 86% 10%, rgba(238, 206, 216, 0.58), transparent 20%),
+                radial-gradient(circle at 76% 78%, rgba(224, 232, 208, 0.42), transparent 20%),
+                linear-gradient(180deg, #fff9f4 0%, #f8efe8 45%, #f7efe9 100%);
+            color: var(--on-surface);
+        }
+
+        .quiet-desktop-shell {
+            width: min(1280px, calc(100% - 64px));
+            margin: 0 auto;
+            min-height: 100vh;
+            padding: 28px 0 44px;
+            position: relative;
+        }
+
+        .quiet-desktop-topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .quiet-desktop-brand {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            min-height: 46px;
+            padding: 0 16px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.74);
+            border: 1px solid rgba(144, 73, 81, 0.10);
+            box-shadow: 0 14px 28px rgba(96, 72, 68, 0.08);
+            color: #6d5751;
+            font-size: 0.95rem;
+            font-weight: 800;
+        }
+
+        .quiet-desktop-nav {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .quiet-desktop-nav a,
+        .quiet-desktop-nav button {
+            min-height: 44px;
+            padding: 0 16px;
+            border-radius: 999px;
+            border: 1px solid rgba(144, 73, 81, 0.10);
+            background: rgba(255,255,255,0.72);
+            box-shadow: 0 14px 28px rgba(96, 72, 68, 0.08);
+            color: #735d57;
+            font-size: 0.92rem;
+            font-weight: 700;
+            text-decoration: none;
+        }
+
+        .quiet-desktop-hero {
+            display: grid;
+            grid-template-columns: minmax(0, 0.9fr) minmax(520px, 1.1fr);
+            gap: 40px;
+            align-items: center;
+            min-height: calc(100vh - 120px);
+            padding: 26px 0 18px;
+        }
+
+        .quiet-desktop-copy {
+            max-width: 520px;
+            padding-left: 8px;
+        }
+
+        .quiet-desktop-kicker {
+            display: inline-flex;
+            align-items: center;
+            min-height: 38px;
+            padding: 0 16px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.66);
+            border: 1px solid rgba(144, 73, 81, 0.10);
+            color: var(--primary);
+            font-size: 0.82rem;
+            font-weight: 800;
+            letter-spacing: 0.01em;
+        }
+
+        .quiet-desktop-title {
+            margin: 22px 0 0;
+            font-size: clamp(4rem, 6vw, 6rem);
+            line-height: 0.97;
+            letter-spacing: -0.06em;
+            color: #4a3934;
+        }
+
+        .quiet-desktop-title .soft {
+            display: block;
+            color: #765a5d;
+            font-weight: 700;
+        }
+
+        .quiet-desktop-title .accent {
+            display: block;
+            color: var(--primary);
+            font-weight: 800;
+        }
+
+        .quiet-desktop-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 28px;
+        }
+
+        .quiet-desktop-actions .btn-round {
+            min-height: 58px;
+            padding: 0 28px;
+            border-radius: 999px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.98rem;
+            font-weight: 700;
+        }
+
+        .quiet-desktop-actions .btn-outline {
+            background: rgba(255,255,255,0.72);
+            border: 1px solid rgba(144, 73, 81, 0.12);
+            color: #6d5651;
+        }
+
+        .quiet-desktop-stage {
+            position: relative;
+            min-height: 760px;
+            border-radius: 46px;
+            background:
+                radial-gradient(circle at 22% 20%, rgba(255,255,255,0.94), transparent 26%),
+                radial-gradient(circle at 78% 24%, rgba(241, 210, 219, 0.72), transparent 22%),
+                radial-gradient(circle at 54% 82%, rgba(220, 231, 206, 0.55), transparent 26%),
+                linear-gradient(160deg, rgba(255,255,255,0.62), rgba(251, 236, 231, 0.84));
+            border: 1px solid rgba(144, 73, 81, 0.10);
+            box-shadow: 0 34px 90px rgba(96, 72, 68, 0.12);
+            overflow: hidden;
+        }
+
+        .quiet-desktop-stage::before {
+            content: "";
+            position: absolute;
+            inset: 72px 56px 92px 56px;
+            border-radius: 40px;
+            background: linear-gradient(160deg, rgba(255,255,255,0.24), rgba(255,255,255,0));
+            border: 1px solid rgba(255,255,255,0.28);
+            pointer-events: none;
+        }
+
+        .quiet-desktop-tree {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .quiet-desktop-tree path {
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            stroke-dasharray: 1;
+            stroke-dashoffset: 1;
+            animation: quietDesktopDraw 4.2s ease-in-out infinite;
+        }
+
+        .quiet-desktop-tree .trunk {
+            stroke: rgba(144, 73, 81, 0.72);
+            stroke-width: 10;
+        }
+
+        .quiet-desktop-tree .branch {
+            stroke: rgba(126, 143, 114, 0.58);
+            stroke-width: 6;
+        }
+
+        .quiet-desktop-tree .branch.two { animation-delay: 0.35s; }
+        .quiet-desktop-tree .branch.three { animation-delay: 0.7s; }
+
+        .quiet-desktop-card {
+            position: absolute;
+            width: 220px;
+            border-radius: 28px;
+            padding: 16px;
+            background: rgba(255,255,255,0.86);
+            border: 1px solid rgba(144, 73, 81, 0.10);
+            box-shadow: 0 22px 46px rgba(88, 66, 62, 0.13);
+            backdrop-filter: blur(16px);
+            opacity: 0;
+            transform: translateY(20px) scale(0.96);
+            animation: quietDesktopCard 4.2s ease-in-out infinite;
+        }
+
+        .quiet-desktop-card::before {
+            content: "";
+            display: block;
+            height: 112px;
+            border-radius: 22px;
+            margin-bottom: 14px;
+            background:
+                radial-gradient(circle at 30% 22%, rgba(255, 232, 223, 0.92), transparent 24%),
+                radial-gradient(circle at 74% 28%, rgba(226, 190, 204, 0.84), transparent 24%),
+                linear-gradient(145deg, rgba(189, 157, 147, 0.82), rgba(149, 169, 142, 0.64));
+        }
+
+        .quiet-desktop-card strong {
+            display: block;
+            color: #4f3f39;
+            font-size: 1rem;
+            letter-spacing: -0.03em;
+            line-height: 1.34;
+        }
+
+        .quiet-desktop-card.one {
+            left: 7%;
+            top: 52%;
+            transform: rotate(-5deg);
+            animation-delay: 0.1s;
+        }
+
+        .quiet-desktop-card.two {
+            right: 9%;
+            top: 14%;
+            transform: rotate(5deg);
+            animation-delay: 0.9s;
+        }
+
+        .quiet-desktop-card.three {
+            right: 12%;
+            bottom: 10%;
+            transform: rotate(-3deg);
+            animation-delay: 1.7s;
+        }
+
+        .quiet-desktop-card.four {
+            left: 24%;
+            top: 10%;
+            transform: rotate(-3deg);
+            animation-delay: 2.3s;
+        }
+
+        .quiet-desktop-floating {
+            position: absolute;
+            display: inline-flex;
+            align-items: center;
+            min-height: 34px;
+            padding: 0 14px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.68);
+            border: 1px solid rgba(144, 73, 81, 0.09);
+            box-shadow: 0 12px 24px rgba(96, 72, 68, 0.06);
+            color: #8d7069;
+            font-size: 0.8rem;
+            font-weight: 700;
+        }
+
+        .quiet-desktop-floating.a { left: 33%; top: 18%; }
+        .quiet-desktop-floating.b { left: 61%; top: 30%; }
+        .quiet-desktop-floating.c { left: 58%; bottom: 18%; }
+
+        .quiet-desktop-bottom {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin-top: 22px;
+        }
+
+        .quiet-desktop-bottom-nav {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .quiet-desktop-bottom-nav a {
+            min-height: 44px;
+            padding: 0 16px;
+            border-radius: 18px;
+            border: 1px solid rgba(144, 73, 81, 0.10);
+            background: rgba(255,255,255,0.72);
+            box-shadow: 0 14px 28px rgba(96, 72, 68, 0.08);
+            color: #725953;
+            font-size: 0.86rem;
+            font-weight: 700;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        @keyframes quietDesktopDraw {
+            0%, 12% { stroke-dashoffset: 1; opacity: 0.2; }
+            46%, 78% { stroke-dashoffset: 0; opacity: 1; }
+            100% { stroke-dashoffset: 0; opacity: 0.35; }
+        }
+
+        @keyframes quietDesktopCard {
+            0%, 20% { opacity: 0; transform: translateY(20px) scale(0.96); }
+            36%, 78% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0.72; transform: translateY(0) scale(1); }
+        }
+
+        @media (max-width: 1100px) {
+            .quiet-desktop-shell {
+                width: min(100%, calc(100% - 32px));
+            }
+
+            .quiet-desktop-hero {
+                grid-template-columns: 1fr;
+                min-height: auto;
+            }
+
+            .quiet-desktop-copy {
+                max-width: 720px;
+            }
+        }
+
+        @media (max-width: 720px) {
+            .quiet-desktop-shell {
+                width: min(100%, calc(100% - 24px));
+                padding-top: 20px;
+            }
+
+            .quiet-desktop-topbar,
+            .quiet-desktop-bottom {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .quiet-desktop-nav,
+            .quiet-desktop-bottom-nav {
+                justify-content: space-between;
+            }
+
+            .quiet-desktop-nav a,
+            .quiet-desktop-nav button,
+            .quiet-desktop-bottom-nav a {
+                flex: 1;
+                justify-content: center;
+            }
+
+            .quiet-desktop-title {
+                font-size: clamp(2.8rem, 10vw, 4rem);
+            }
+
+            .quiet-desktop-stage {
+                min-height: 620px;
+            }
+
+            .quiet-desktop-card {
+                width: 176px;
+                padding: 13px;
+            }
+
+            .quiet-desktop-card::before {
+                height: 86px;
+                border-radius: 18px;
+            }
+
+            .quiet-desktop-card.one { left: 4%; top: 52%; }
+            .quiet-desktop-card.two { right: 4%; top: 14%; }
+            .quiet-desktop-card.three { right: 8%; bottom: 8%; }
+            .quiet-desktop-card.four { left: 24%; top: 14%; }
+        }
+    </style>
+</head>
+<body class="quiet-desktop-bg">
+    <main class="quiet-desktop-shell">
+        <header class="quiet-desktop-topbar">
+            <div class="quiet-desktop-brand">LoveTree</div>
+            <nav class="quiet-desktop-nav" aria-label="조용한 홈 상단 메뉴">
+                <a href="../pages/search.html">둘러보기</a>
+                <a href="../pages/login.html?redirect=my-trees.html">내 트리</a>
+                <button type="button" onclick="location.href='../pages/login.html?redirect=my-trees.html'">시작하기</button>
+            </nav>
+        </header>
+
+        <section class="quiet-desktop-hero">
+            <div class="quiet-desktop-copy">
+                <span class="quiet-desktop-kicker">입덕의 첫 순간</span>
+                <h1 class="quiet-desktop-title">
+                    <span class="soft">좋아하게 된 순간이</span>
+                    <span class="accent">하나의 러브트리로</span>
+                    <span class="accent">이어져요</span>
+                </h1>
+
+                <div class="quiet-desktop-actions">
+                    <a href="../pages/login.html?redirect=my-trees.html" class="btn-round btn-primary">첫 순간 남기기</a>
+                    <a href="../pages/search.html" class="btn-round btn-outline">공개 트리 감상하기</a>
+                </div>
+            </div>
+
+            <section class="quiet-desktop-stage" aria-hidden="true">
+                <svg class="quiet-desktop-tree" viewBox="0 0 760 760" role="img" aria-label="순간이 이어져 러브트리가 되는 장면">
+                    <path class="trunk" pathLength="1" d="M372 646 C368 556 374 470 370 372 C366 282 388 220 432 154" />
+                    <path class="branch one" pathLength="1" d="M370 394 C286 372 206 342 118 286" />
+                    <path class="branch two" pathLength="1" d="M396 308 C488 280 560 224 620 124" />
+                    <path class="branch three" pathLength="1" d="M378 494 C474 498 566 544 660 632" />
+                </svg>
+
+                <article class="quiet-desktop-card one">
+                    <strong>처음 반한 무대</strong>
+                </article>
+                <article class="quiet-desktop-card two">
+                    <strong>다시 듣게 된 노래</strong>
+                </article>
+                <article class="quiet-desktop-card three">
+                    <strong>오래 남은 한 문장</strong>
+                </article>
+                <article class="quiet-desktop-card four">
+                    <strong>계속 생각나는 장면</strong>
+                </article>
+
+                <span class="quiet-desktop-floating a">순간</span>
+                <span class="quiet-desktop-floating b">감정</span>
+                <span class="quiet-desktop-floating c">기억</span>
+            </section>
+        </section>
+
+        <footer class="quiet-desktop-bottom">
+            <nav class="quiet-desktop-bottom-nav" aria-label="조용한 홈 빠른 이동">
+                <a href="../pages/search.html">둘러보기</a>
+                <a href="../pages/login.html?redirect=my-trees.html">내 트리</a>
+                <a href="../pages/login.html?redirect=my-trees.html">시작하기</a>
+            </nav>
+        </footer>
+    </main>
+</body>
+</html>
