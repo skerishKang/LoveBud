@@ -1,139 +1,177 @@
 # LoveBud 환경변수 의존성 맵
 
-> 생성: 2026-04-16
-> 목적: 환경변수 누락 시 어떤 증상이 나는지 추적 가능하게
+> 목적: 현재 운영 구조(Modal > Vercel > Netlify)에서 어떤 환경변수가 어느 계층에 필요한지 빠르게 추적하기 위한 문서
 
-## 0. Firebase 웹 클라이언트 config 운영 경계
+## 0. 현재 운영 기준
 
-`js/firebase-config.js`의 Firebase 웹 클라이언트 설정값(`apiKey`, `authDomain`, `projectId` 등)은 **프론트에서 완전히 숨기는 비밀값이 아닙니다.** 현재 main도 이 값을 정적으로 로드합니다.
+- 공식 서비스 주소: `https://lovebud.vercel.app/`
+- 운영 우선순위: `Modal > Vercel > Netlify`
+- browse summary는 Modal을 먼저 보고, 실패 시 Netlify fallback으로 내려갑니다.
+- Netlify는 아직 남아 있지만 주서비스 런타임으로 설명하지 않습니다.
 
-핵심 원칙:
-- 이 값 자체를 노출하지 않는 것이 보안의 핵심이 아님
-- 실제 보호는 **Firebase Console 설정**과 **Firestore/Storage/기타 Rules**, 그리고 필요 시 **App Check**에 의존함
-- 따라서 운영자는 코드 숨김보다 아래를 우선 점검해야 함
-  1. Authorized Domains
-  2. 실제 사용하는 로그인 제공업체만 활성화
-  3. Firestore/Storage/기타 Rules
-  4. App Check 검토
-  5. 로컬 개발용 localhost/127.0.0.1 유지 기준
-  6. 예전 도메인/스테이징 도메인 정리
+---
 
-운영 분류:
-- **코드 레벨**: Firebase 웹 클라이언트 config 존재 여부만 확인
-- **운영 레벨**: Firebase Console 인증/도메인/Rules/App Check 상태 점검
+## 1. Vercel 환경 변수
 
-## 1. 환경변수 → 엔드포인트 의존도
+Vercel은 정적 프런트 + same-origin `/api/*` entry 역할을 합니다.
 
-### NETLIFY_DATABASE_URL / DATABASE_URL
+### MODAL_BASE_URL
 
-**우선순위**: `NETLIFY_DATABASE_URL` → `DATABASE_URL` → `POSTGRES_URL` (db.js:13-19)
+**직접 의존 파일**
+- `api/community/trees.js`
 
-**의존 엔드포인트** (간접: db.js → doc-store.js → 각 함수):
+**용도**
+- browse summary 요청에서 Modal `/modal/browse/latest`를 1순위로 호출
 
-| 엔드포인트 | 메서드 | 인증 | 영향 |
-|-----------|--------|------|------|
-| `/api/trees` | GET | 선택 | 공개/사용자 트리 목록 조회 불가 → 503 |
-| `/api/trees` | POST | 필수 | 트리 생성 불가 → 503 |
-| `/api/trees/:treeId` | GET | 선택 | 트리 상세 조회 불가 → 503 |
-| `/api/memories` | GET | 필수 | 메모리 목록 조회 불가 → 503 |
-| `/api/memories` | POST | 필수 | 메모리 생성 불가 → 503 |
-| `/api/memories/:memoryId` | GET | 필수 | 메모리 상세 조회 불가 → 503 |
-| `/api/memories/:memoryId` | PATCH | 필수 | 메모리 수정 불가 → 503 |
-| `/api/memories/:memoryId` | DELETE | 필수 | 메모리 삭제 불가 → 503 |
-| `/api/community/memories` | GET | 없음 | 커뮤니티 메모리 조회 불가 → 503 |
+**누락 시 증상**
+- Modal 우선 경로를 사용하지 못함
+- `/api/community/trees?view=summary`는 Netlify fallback으로만 동작
+- 기능이 완전히 멈추기보다 성능/요약 품질이 낮아질 수 있음
 
-**누락 시 증상**:
-- 에러 메시지: `"Database is not configured"` (status 503)
-- 세부 정보: `"Missing Postgres connection string (NETLIFY_DATABASE_URL or DATABASE_URL)"`
-- 클라이언트 영향: 모든 데이터 관련 기능 동작 불가
-- editor.js: API 실패 → mock fallback 동작 (데이터 저장 안됨)
+### NETLIFY_API_BASE_URL
+
+**직접 의존 파일**
+- `api/community/trees.js`
+- `api/community/memories.js`
+
+**용도**
+- Modal 실패 시 `/community/trees` fallback upstream
+- `/community/memories` upstream
+
+**누락 시 증상**
+- `/api/community/memories` 즉시 실패
+- `/api/community/trees?view=summary`는 Modal 실패 시 fallback 불가
+- Vercel API에서 500/502 가능
+
+### LOVEBUD_UPSTREAM_API_BASE
+
+**직접 의존 파일**
+- `api/[...path].js`
+
+**용도**
+- catch-all `/api/*` upstream base 지정
+
+**기본값**
+- `https://lovebud.netlify.app/api`
+
+**누락 시 증상**
+- 기본값으로 동작 가능
+- 다만 운영자가 upstream을 명시적으로 제어하지 못함
+
+---
+
+## 2. Modal 환경 변수 / secret
+
+Modal은 browse summary와 read-heavy aggregation의 1순위 계층입니다.
+
+### DATABASE_URL
+
+**직접 의존 파일**
+- `modal_compute/app.py`
+
+**용도**
+- Neon Postgres snapshot read
+- `/modal/browse/latest` 계산
+
+**누락 시 증상**
+- Modal browse latest 실패
+- `/modal/health`는 살아 있어도 실제 browse summary 계산은 실패 가능
+- Vercel browse summary는 Netlify fallback으로 내려감
+
+**운영 원칙**
+- Modal secret `lovebud-db`에서 주입
+
+### CORS_ALLOWED_ORIGINS
+
+**직접 의존 파일**
+- `modal_compute/app.py`
+
+**기본값**
+- `https://lovebud.vercel.app,https://lovebud.netlify.app`
+
+**용도**
+- Modal 직접 호출 또는 운영 점검 시 origin 허용 목록 제어
+
+**누락 시 증상**
+- 기본값으로는 현재 두 운영 도메인 허용
+- 추가 도메인이 필요하면 명시 설정 필요
+
+---
+
+## 3. Netlify 환경 변수
+
+Netlify는 현재 fallback / legacy 계층입니다.
+
+### DATABASE_URL / NETLIFY_DATABASE_URL / POSTGRES_URL
+
+**직접 의존 범위**
+- `netlify/functions/_lib/db.js`
+- 그 위의 doc-store / community / trees / memories 계열 함수
+
+**용도**
+- legacy CRUD
+- community fallback read
+
+**누락 시 증상**
+- Netlify fallback 전체 실패
+- Vercel catch-all `/api/*` upstream 실패 가능
 
 ### FIREBASE_SERVICE_ACCOUNT_JSON
 
-**대체 가능**: `FIREBASE_SERVICE_ACCOUNT` (auth.js:19-20)
+**직접 의존 범위**
+- Netlify auth-required function 계열
 
-**의존 엔드포인트** (직접: auth.js → requireUser/getUserFromEvent):
+**용도**
+- 레거시 쓰기/권한 확인 경로
 
-| 엔드포인트 | 메서드 | 인증 | 누락 시 동작 |
-|-----------|--------|------|------------|
-| `/api/trees` | GET | 선택 | 인증 실패해도 공개 트리로 fallback → 정상 동작 |
-| `/api/trees` | POST | 필수 | 503 에러 |
-| `/api/trees/:treeId` | GET | 선택 | 공개 트리는 정상, 비공개는 403 대신 503 가능성 |
-| `/api/memories` | GET | 필수 | 503 에러 |
-| `/api/memories` | POST | 필수 | 503 에러 |
-| `/api/memories/:memoryId` | GET/PATCH/DELETE | 필수 | 503 에러 |
-| `/api/community/memories` | GET | 없음 | 정상 (인증 불필요) |
+**누락 시 증상**
+- 인증 필요한 legacy API 실패
+- 공개 browse summary 자체의 1차 read 경로는 Modal/Vercel 기준으로는 부분 생존 가능
 
-**누락 시 증상**:
-- 에러 메시지: `"Missing Firebase service account: FIREBASE_SERVICE_ACCOUNT_JSON or FIREBASE_SERVICE_ACCOUNT"` (status 503)
-- 클라이언트 영향: 로그인한 사용자의 모든 쓰기/권한 필요 동작 불가
-- 읽기 전용(공개 트리)은 영향 없음
+---
 
-**JSON 파싱 실패 시**:
-- 에러 메시지: `"Invalid Firebase service account JSON: <parse error>"` (status 503)
-- 원인: 따옴표 이스케이프 오류, 잘린 JSON, 잘못된 타입 등
+## 4. Firebase 운영 의존성
 
-## 2. 엔드포인트 → 인증 필요 여부
+코드 env와 별개로 운영 콘솔에서 반드시 확인해야 하는 항목:
 
-| 엔드포인트 | GET | POST | PATCH | DELETE |
-|-----------|-----|------|-------|--------|
-| `/api/trees` | 선택 (공개 fallback) | 필수 | - | - |
-| `/api/trees/:treeId` | 선택 (공개=OK, 비공개=owner) | - | - | - |
-| `/api/memories` | 필수 | 필수 | - | - |
-| `/api/memories/:memoryId` | 필수 | - | owner만 | owner만 |
-| `/api/community/memories` | 불필요 | - | - | - |
+- Authorized Domains
+  - `lovebud.vercel.app`
+  - `lovebud.netlify.app`
+  - `localhost`
+  - `127.0.0.1`
 
-### 인증 "선택" 의미
+주의:
+- Firebase 웹 config는 프런트에 공개되어도 되는 client config입니다.
+- 실제 보호는 Authorized Domains, provider 설정, Rules, App Check 검토에 달려 있습니다.
 
-- `GET /api/trees`: Authorization 헤더 없어도 200 반환 (공개 트리만)
-- `GET /api/trees/:treeId`: 공개 트리는 인증 없이 조회 가능
-- 인증이 있으면 사용자 소유 트리 추가 노출
+---
 
-## 3. Local Fallback 의도와 한계
+## 5. 장애 해석 기준
 
-### editor.js
+### browse summary만 느리다
+우선 확인:
+1. `MODAL_BASE_URL`
+2. Modal `/modal/health`
+3. Modal `/modal/browse/latest?limit=3`
+4. Vercel logs
+5. Netlify fallback 동작 여부
 
-| 시나리오 | 동작 | 한계 |
-|---------|------|------|
-| API 정상 | API 데이터 우선, 캐시 갱신 | 없음 |
-| API 실패 + 캐시 있음 | 캐시된 데이터로 UI 렌더링 | 캐시 만료 시 오래된 데이터 |
-| API 실패 + 캐시 없음 | mock 함수(getTrees, getMemoriesByTree) 사용 | mock 데이터는 서버에 저장 안됨 |
-| Firebase 로드 실패 + cached auth 있음 | 5초 대기 후 재시도, 실패 시 토스트 | API 호출 안함 (안전 장치) |
-| Firebase 로드 실패 + cached auth 없음 | login.html로 리다이렉트 | editor 진입 불가 |
+### `/api/community/memories`만 실패한다
+우선 확인:
+1. `NETLIFY_API_BASE_URL`
+2. Netlify `/community/memories`
+3. Vercel logs
 
-### my-trees.js
+### catch-all `/api/*`만 실패한다
+우선 확인:
+1. `LOVEBUD_UPSTREAM_API_BASE`
+2. Netlify upstream 상태
+3. Vercel logs
 
-| 시나리오 | 동작 | 한계 |
-|---------|------|------|
-| API 정상 | 사용자 트리 목록 표시 | 없음 |
-| API 실패 + 캐시 있음 | 캐시 트리 표시 | 오래된 데이터일 수 있음 |
-| API 실패 + 캐시 없음 | 빈 배열 → 빈 상태 UI | 사용자가 트리가 없는 것으로 보임 |
+---
 
-### 핵심 원칙
+## 6. 운영 원칙 한 줄 정리
 
-1. **API 우선**: 항상 API를 먼저 시도
-2. **캐시 차선**: API 실패 시 캐시 사용 (TTL: 트리 3분, 메모리 2분)
-3. **Mock 최후**: 캐시도 없으면 mock 데이터 (데이터 저장 안됨)
-4. **인증 가드**: Firebase 없으면 API 호출 차단 (안전)
-
-## 4. 502 에러 원인 분석 가이드
-
-502 = Netlify Functions가 응답을 반환하지 못함
-
-### 체크 순서
-
-1. **함수 로드 실패**: `require('firebase-admin')` 또는 `require('pg')` 실패
-   - 확인: Netlify deploy log에서 "Cannot find module" 검색
-   - 해결: `npm install` 후 재배포
-
-2. **환경변수 누락**: 모듈 로드는 성공하지만 초기화 시 throw
-   - 확인: Functions 로그에서 "Missing" 또는 "not configured" 검색
-   - 해결: Netlify Dashboard에서 환경변수 설정
-
-3. **초기화 에러**: firebase-admin.initializeApp() 실패
-   - 확인: Functions 로그에서 "Invalid Firebase service account" 검색
-   - 해결: JSON 포맷 확인 (이스케이프, 따옴표)
-
-4. **DB 연결 타임아웃**: Pool 생성 후 쿼리 타임아웃
-   - 확인: Functions 로그에서 "timeout" 또는 "ECONNREFUSED" 검색
-   - 해결: Neon 상태 확인, 연결 문자열 확인
+- **Modal**: browse summary 1순위
+- **Vercel**: 공식 진입점 + same-origin API entry
+- **Netlify**: fallback / legacy
