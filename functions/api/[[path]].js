@@ -55,6 +55,22 @@ function buildModalUrl(request, env) {
     return target;
   }
 
+  if (path === '/api/trees') {
+    target.pathname = '/modal/private/trees';
+    const limit = Math.min(Math.max(Number(sourceUrl.searchParams.get('limit') || 100) || 100, 1), 200);
+    target.searchParams.set('limit', String(limit));
+    return target;
+  }
+
+  if (path === '/api/memories') {
+    target.pathname = '/modal/private/memories';
+    const treeId = sourceUrl.searchParams.get('treeId');
+    const limit = Math.min(Math.max(Number(sourceUrl.searchParams.get('limit') || 100) || 100, 1), 200);
+    if (treeId) target.searchParams.set('treeId', treeId);
+    target.searchParams.set('limit', String(limit));
+    return target;
+  }
+
   const memoryMatch = path.match(/^\/api\/memories\/([^/]+)$/);
   if (memoryMatch) {
     target.pathname = `/modal/memories/${encodeURIComponent(decodeURIComponent(memoryMatch[1]))}`;
@@ -63,7 +79,10 @@ function buildModalUrl(request, env) {
 
   const treeMatch = path.match(/^\/api\/trees\/([^/]+)$/);
   if (treeMatch) {
-    target.pathname = `/modal/trees/${encodeURIComponent(decodeURIComponent(treeMatch[1]))}`;
+    const authHeader = request.headers.get('authorization') || request.headers.get('Authorization');
+    target.pathname = authHeader
+      ? `/modal/private/trees/${encodeURIComponent(decodeURIComponent(treeMatch[1]))}`
+      : `/modal/trees/${encodeURIComponent(decodeURIComponent(treeMatch[1]))}`;
     return target;
   }
 
@@ -87,7 +106,12 @@ async function tryModalRead(request, env) {
   if (!modalUrl) return null;
 
   const response = await fetch(modalUrl.toString(), {
-    headers: { accept: 'application/json' }
+    headers: {
+      accept: 'application/json',
+      ...(request.headers.get('authorization')
+        ? { authorization: request.headers.get('authorization') }
+        : {})
+    }
   });
 
   if (!response.ok) {
