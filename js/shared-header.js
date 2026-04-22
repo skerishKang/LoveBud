@@ -63,7 +63,7 @@
             home: { textKey: 'nav.home', href: 'index.html', active: true },
             intro: { textKey: 'nav.intro', href: 'pages/intro.html' },
             search: { textKey: 'nav.search', href: 'pages/search.html' },
-            myTrees: { textKey: 'nav.myTrees', href: 'pages/my-trees.html' },
+            myTrees: { textKey: 'nav.myTrees', href: 'pages/my-trees.html', highlight: true },
             settings: { textKey: 'nav.settings', href: 'pages/settings.html' },
             editor: null // root에서는 에디터 숨김
         },
@@ -72,7 +72,7 @@
             home: { textKey: 'nav.home', href: '../index.html' },
             intro: { textKey: 'nav.intro', href: 'intro.html' },
             search: { textKey: 'nav.search', href: 'search.html' },
-            myTrees: { textKey: 'nav.myTrees', href: 'my-trees.html' },
+            myTrees: { textKey: 'nav.myTrees', href: 'my-trees.html', highlight: true },
             settings: { textKey: 'nav.settings', href: 'settings.html' },
             editor: { textKey: 'nav.editor', href: 'editor.html' }
         }
@@ -165,6 +165,22 @@
         return getCurrentPage() === 'login.html';
     }
 
+    // 언어 선택 버튼 생성
+    function buildLangToggleHTML() {
+        return [
+            '<div class="lang-toggle">',
+                '<button type="button" class="btn-round btn-outline lang-menu-trigger" style="text-decoration:none; display:flex; align-items:center; gap:4px; padding: 6px 12px; height: 36px; font-size: 14px; font-weight: 500;">',
+                    '<span class="material-symbols-outlined" style="font-size:18px;">language</span>',
+                    '<span>언어</span>',
+                '</button>',
+                '<div class="lang-dropdown">',
+                    '<button type="button" class="lang-option" data-lang="ko">한국어</button>',
+                    '<button type="button" class="lang-option" data-lang="en">English</button>',
+                '</div>',
+            '</div>'
+        ].join('');
+    }
+
     // 헤더 HTML 생성
     function buildHeaderHTML() {
         var contextType = getContextType();
@@ -196,31 +212,20 @@
         // 메뉴 링크 생성
         var navLinksHTML = '';
         
-        // 첫화면
-        if (menuConfig.home) {
-            var activeClass = activeKey === 'home' ? ' class="active"' : '';
-            navLinksHTML += '<a href="' + menuConfig.home.href + '"' + activeClass + '>' + t(menuConfig.home.textKey) + '</a>';
+        function buildNavLink(config, key) {
+            if (!config) return '';
+            var classes = [];
+            if (activeKey === key) classes.push('active');
+            if (config.highlight) classes.push('nav-highlight');
+            
+            var classStr = classes.length > 0 ? ' class="' + classes.join(' ') + '"' : '';
+            return '<a href="' + config.href + '"' + classStr + '>' + t(config.textKey) + '</a>';
         }
-        
-        // 소개
-        if (menuConfig.intro) {
-            var activeClass = activeKey === 'intro' ? ' class="active"' : '';
-            navLinksHTML += '<a href="' + menuConfig.intro.href + '"' + activeClass + '>' + t(menuConfig.intro.textKey) + '</a>';
-        }
-        
-        // 둘러보기
-        if (menuConfig.search) {
-            var activeClass = activeKey === 'search' ? ' class="active"' : '';
-            navLinksHTML += '<a href="' + menuConfig.search.href + '"' + activeClass + '>' + t(menuConfig.search.textKey) + '</a>';
-        }
-        
-        // 내 러브트리 (에디터 페이지에서는 숨김)
-        if (menuConfig.myTrees && !isEditorPage()) {
-            var activeClass = activeKey === 'myTrees' ? ' class="active"' : '';
-            navLinksHTML += '<a href="' + menuConfig.myTrees.href + '"' + activeClass + '>' + t(menuConfig.myTrees.textKey) + '</a>';
-        }
-        
-        // 에디터 페이지에서는 "편집하기" 메뉴 숨김 (이미 편집 화면 안에 있음)
+
+        if (menuConfig.home) navLinksHTML += buildNavLink(menuConfig.home, 'home');
+        if (menuConfig.intro) navLinksHTML += buildNavLink(menuConfig.intro, 'intro');
+        if (menuConfig.search) navLinksHTML += buildNavLink(menuConfig.search, 'search');
+        if (menuConfig.myTrees && !isEditorPage()) navLinksHTML += buildNavLink(menuConfig.myTrees, 'myTrees');
 
         return [
             '<header class="nav-bar">',
@@ -234,6 +239,7 @@
                             navLinksHTML,
                         '</div>',
                         '<div class="nav-actions">',
+                            buildLangToggleHTML(),
                             authHTML,
                         '</div>',
                     '</div>',
@@ -270,6 +276,37 @@
         });
     }
 
+    function setupLangToggle() {
+        var trigger = document.querySelector('.lang-menu-trigger');
+        var dropdown = document.querySelector('.lang-dropdown');
+        if (!trigger || !dropdown) return;
+
+        trigger.addEventListener('click', function(e) {
+            e.stopPropagation();
+            dropdown.classList.toggle('show');
+        });
+
+        document.addEventListener('click', function() {
+            dropdown.classList.remove('show');
+        });
+
+        dropdown.querySelectorAll('.lang-option').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var lang = btn.getAttribute('data-lang');
+                if (typeof window.setCurrentLang === 'function') {
+                    window.setCurrentLang(lang);
+                }
+                if (typeof window.triggerLangChange === 'function') {
+                    window.triggerLangChange(lang);
+                }
+                if (typeof window.applyI18n === 'function') {
+                    window.applyI18n();
+                }
+                dropdown.classList.remove('show');
+            });
+        });
+    }
+
     // 공통 헤더 렌더링
     window.renderSharedHeader = function() {
         var container = document.getElementById('shared-header');
@@ -279,6 +316,7 @@
         }
         container.innerHTML = buildHeaderHTML();
         setupMobileNav();
+        setupLangToggle();
         // 헤더가 동적으로 렌더된 뒤 auth 컨테이너가 생기므로,
         // auth.js가 DOMContentLoaded 시점을 놓쳤더라도 다시 바인딩되게 한다.
         if (typeof window.initAuth === 'function') {
