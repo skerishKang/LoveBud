@@ -1,6 +1,6 @@
 /**
  * LoveBud - Authentication Module (Firebase Auth)
- * v20260416-16
+ * v20260422-3
  *
  * Auth state observer updates #auth-nav (non-login pages) or
  * #auth-nav-container (login.html) using innerHTML container pattern.
@@ -8,7 +8,7 @@
  * Loading state: show confirmed cached auth UI immediately when available,
  * otherwise fall back to a neutral skeleton until Firebase confirms auth.
  *
- * Version: ?v=20260416-16
+ * Version: ?v=20260422-3
  */
 
 var __authStateModule = window.LoveBudAuthState || null;
@@ -35,34 +35,59 @@ var DROPDOWN_LISTENER_ATTACHED = __authStateModule
   ? __authStateModule.isDropdownListenerAttached()
   : false;
 
-if (!window.__lovebudAuthBootstrapPromise) {
-  window.__lovebudAuthBootstrapPromise = new Promise(function(resolve) {
-    window.__resolveLovebudAuthBootstrap = function(user) {
-      if (window.__lovebudAuthBootstrapResolved) return;
-      window.__lovebudAuthBootstrapResolved = true;
-      window.__lovebudAuthBootstrapUser = user || null;
-      resolve(user || null);
+window.LoveBudAuthBootstrap = window.LoveBudAuthBootstrap || (function() {
+  var resolved = false;
+  var lastUser = null;
+  var waiters = [];
+
+  function flush(user) {
+    var pending = waiters.splice(0, waiters.length);
+    pending.forEach(function(fn) {
+      try {
+        fn(user);
+      } catch (error) {
+        console.error('[auth] Bootstrap waiter error:', error);
+      }
+    });
+  }
+
+  function resolve(user) {
+    if (resolved) return;
+    resolved = true;
+    lastUser = user || null;
+    flush(lastUser);
+  }
+
+  function whenReady() {
+    if (resolved) return Promise.resolve(lastUser);
+    return new Promise(function(resolveFn) {
+      waiters.push(resolveFn);
+    });
+  }
+
+  function getSnapshot() {
+    return {
+      ready: resolved,
+      user: lastUser
     };
-  });
-}
+  }
+
+  return {
+    resolve: resolve,
+    whenReady: whenReady,
+    getSnapshot: getSnapshot,
+    getResolvedUser: function() {
+      return lastUser;
+    }
+  };
+})();
 
 function resolveAuthBootstrap(user) {
-  if (typeof window.__resolveLovebudAuthBootstrap === 'function') {
-    window.__resolveLovebudAuthBootstrap(user || null);
+  if (!window.LoveBudAuthBootstrap || typeof window.LoveBudAuthBootstrap.resolve !== 'function') {
+    return;
   }
+  window.LoveBudAuthBootstrap.resolve(user || null);
 }
-
-window.getAuthBootstrapPromise = function() {
-  return window.__lovebudAuthBootstrapPromise || Promise.resolve(window.__lovebudAuthBootstrapUser || null);
-};
-window.LoveBudAuthBootstrap = window.LoveBudAuthBootstrap || {
-  whenReady: function() {
-    return window.getAuthBootstrapPromise();
-  },
-  getResolvedUser: function() {
-    return window.__lovebudAuthBootstrapUser || null;
-  }
-};
 
 // 인증 캐시 키 정책:
 // - lovebud_auth_cache: {uid, displayName, email} - 사용자 기본 정보 (로그아웃 시 삭제)
