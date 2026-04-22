@@ -58,6 +58,25 @@ LoveBud / LoveTree는 일반 북마크 정리 앱이나 관리자 도구가 아�
 
 ---
 
+## 리뷰 시 주의할 점
+
+LoveBud는 저장소 구조와 운영 계약에 프로젝트 고유 전제가 많습니다.
+
+따라서 리뷰 시에는 아래를 먼저 확인해야 합니다.
+
+- `AGENTS.md`
+- `docs/doc_index.md`
+- `docs/engineering/REVIEW_GUARDRAILS.md`
+
+특히 아래 항목은 generic 지적을 자동으로 반복하지 않도록 주의합니다.
+
+- Firebase Web `apiKey`는 즉시 blocker로 단정하지 않기
+- `vercel.json`을 자동 삭제 후보로 보지 않기
+- browse / search, display filter / publication guard 혼동하지 않기
+- 파일 크기나 번들러 부재만으로 심각 판정하지 않기
+
+---
+
 ## 개발 / 배포 진입점
 
 ### 서비스 진입점
@@ -109,11 +128,12 @@ Vercel에서는 위 경로가 rewrite 되어 아래 사용자-facing 주소로 �
 7. `docs/migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md`
 8. `docs/engineering/API_CONTRACT.md`
 9. `docs/engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md`
+10. `docs/engineering/REVIEW_GUARDRAILS.md`
 
 ### 대화 복원이 필요할 때
 
-10. `docs/conversation/summary/summary_index.md`
-11. 최신 summary 문서
+11. `docs/conversation/summary/summary_index.md`
+12. 최신 summary 문서
 
 ---
 
