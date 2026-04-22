@@ -14,18 +14,33 @@ import psycopg
 from cryptography import x509
 from fastapi import FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
+from psycopg_pool import ConnectionPool
 from psycopg.rows import dict_row
 
 # --- DB Logic (formerly browse_latest.py) ---
 
 _firebase_cert_cache: dict[str, Any] = {"expires_at": 0, "certs": {}}
+_db_pool: ConnectionPool | None = None
 
-def get_db_connection() -> psycopg.Connection:
-    """Create a psycopg3 connection for snapshot reads."""
+def get_db_pool() -> ConnectionPool:
+    global _db_pool
     db_url = os.getenv("DATABASE_URL")
     if not db_url:
         raise RuntimeError("DATABASE_URL is not configured")
-    return psycopg.connect(db_url, row_factory=dict_row)
+
+    if _db_pool is None or _db_pool.closed:
+        _db_pool = ConnectionPool(
+            conninfo=db_url,
+            min_size=1,
+            max_size=4,
+            kwargs={"row_factory": dict_row},
+        )
+    return _db_pool
+
+
+def get_db_connection():
+    """Return a pooled psycopg3 connection context."""
+    return get_db_pool().connection()
 
 
 def get_firebase_project_id() -> str:
@@ -507,7 +522,7 @@ image = (
     .pip_install(
         "fastapi==0.115.12",
         "PyJWT[crypto]==2.10.1",
-        "psycopg[binary]==3.2.9",
+        "psycopg[binary,pool]==3.2.9",
     )
 )
 
@@ -541,7 +556,7 @@ def modal_health() -> dict[str, bool]:
 
 @web_app.get("/modal/browse/latest")
 def get_latest_browse_snapshot(
-    limit: int = Query(default=3, ge=1, le=3),
+    limit: int = Query(default=12, ge=1, le=24),
 ) -> list[dict]:
     return fetch_latest_public_tree_snapshots(limit=limit)
 
@@ -631,8 +646,8 @@ async def post_private_memory(
     image=image,
     cpu=1,
     memory=512,
-    scaledown_window=60,
-    min_containers=0,
+    scaledown_window=300,
+    min_containers=1,
     secrets=[modal.Secret.from_name("lovebud-db")],
 )
 @modal.asgi_app()
