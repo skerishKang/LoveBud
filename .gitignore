@@ -92,3 +92,9 @@ docs/*codex*.txt
 .ssh-backup/
 
 .vercel
+
+# Windows System Cache (Accidental)
+%SystemDrive%/
+**/Caches/*.db
+**/Caches/*.ver*
+
