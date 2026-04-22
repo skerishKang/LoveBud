@@ -4,13 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>로그인 | 러브트리</title>
+    <link rel="icon" href="/assets/favicon/favicon.svg" type="image/svg+xml">
+    <link rel="icon" href="/favicon.ico" sizes="32x32">
     <link rel="stylesheet" href="../css/global.css?v=20260415-10">
     <link rel="stylesheet" href="../css/login.css?v=20260419-1">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
 </head>
 <body class="bokeh-bg">
     <div class="noise-overlay"></div>
-    
+
     <!-- Shared Header -->
     <div id="shared-header"></div>
 
@@ -26,7 +28,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <div class="serif" style="font-size: 2.2rem; font-weight: 950; color: var(--on-surface); margin-bottom: 12px; font-family: var(--font-heading); letter-spacing: -0.05em;">러브트리</div>
             <h1 class="headline" style="font-size: 1.5rem; color: var(--primary); margin-bottom: 16px; font-weight: 800;" data-i18n="login_title">당신의 감정 나무를 시작하세요</h1>
             <p style="color: var(--on-surface-variant); margin-bottom: 40px; font-size: 1rem; line-height: 1.6; font-weight: 400;" data-i18n="login_desc">
@@ -64,7 +66,7 @@
                         아래에서 Google 또는 이메일로 바로 시작해보세요
                     </p>
                 </div>
-                
+
                 <!-- Google 회원가입 -->
                 <button id="signup-btn-google" class="login-btn-google" style="margin-bottom: 12px; box-shadow:0 10px 24px rgba(75,64,57,0.04);">
                     <svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" style="width: 20px; height: 20px;">
@@ -75,15 +77,15 @@
                     </svg>
                     <span data-i18n="google_signup">Google로 바로 시작하기</span>
                 </button>
-                
+
                 <p style="text-align: center; color: var(--on-surface-variant); font-size: 12px; margin: 8px 0 0; font-weight: 700; line-height:1.55;" data-i18n="google_signup_helper">
                     Google 계정으로 로그인만 하면 별도 가입 없이 바로 시작됩니다
                 </p>
-                
+
                 <div class="login-divider" style="margin: 18px 0 16px;">
                     <span style="font-size: 12px;" data-i18n="or_create_with_email">또는 이메일로 계정 만들기</span>
                 </div>
-                
+
                 <!-- 이메일 회원가입 폼 -->
                 <form id="signup-form" style="text-align: left;" novalidate>
                     <div style="margin-bottom: 12px;">
@@ -101,7 +103,7 @@
                     </div>
                     <div style="margin-bottom: 12px;">
                         <label for="signup-email" style="display: block; margin-bottom: 6px; font-weight: 700; font-size: 0.85rem;" data-i18n="email_label">이메일</label>
-                        <input type="email" id="signup-email" name="email" required placeholder="your@email.com" 
+                        <input type="email" id="signup-email" name="email" required placeholder="your@email.com"
                             style="width: 100%; padding: 12px; border: 1px solid var(--outline-variant); border-radius: 0.75rem; font-size: 1rem;">
                     </div>
                     <div style="margin-bottom: 16px;">
@@ -109,7 +111,7 @@
                         <input type="password" id="signup-password" name="password" required placeholder="8자 이상 입력" minlength="8"
                             style="width: 100%; padding: 12px; border: 1px solid var(--outline-variant); border-radius: 0.75rem; font-size: 1rem;">
                     </div>
-                    <button type="submit" id="signup-submit" 
+                    <button type="submit" id="signup-submit"
                         style="width: 100%; padding: 14px; background: var(--secondary); color: white; border: none; border-radius: 1rem; font-weight: 700; font-size: 1rem; cursor: pointer;"
                         data-i18n="signup_btn">
                         회원가입 완료
