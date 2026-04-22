@@ -1,6 +1,6 @@
 /**
  * LoveBud Search Preview Renderer
- * v20260422-3
+ * v20260422-4
  * 
  * Rendering layer: preview sidebar panel.
  * DOM-agnostic - updates passed DOM elements.
@@ -116,6 +116,12 @@
             ? helper.cleanMomentTitle(memory?.title || '')
             : String(memory?.title || '').trim().replace(/\s*-\s*.*/, '');
         return cleaned || getSearchCopy('search.previewMomentFallback', fallbackKo, fallbackEn);
+    }
+
+    function getPreviewMediaMemory(memories) {
+        return (Array.isArray(memories) ? memories : []).find(memory => {
+            return sanitizeUrl(memory?.sourceUrl || '') || sanitizeUrl(memory?.thumbnail || '');
+        }) || null;
     }
 
     function renderEmotionTags(tags) {
@@ -335,12 +341,13 @@
                     </div>
                 `;
             } else {
-                const safeSourceUrl = sanitizeUrl(firstMem.sourceUrl || '');
-                const safeThumbnail = sanitizeUrl(firstMem.thumbnail || tree.representativeThumbnail || '');
+                const mediaMem = getPreviewMediaMemory(memories);
+                const safeSourceUrl = sanitizeUrl(mediaMem?.sourceUrl || '');
+                const safeThumbnail = sanitizeUrl(mediaMem?.thumbnail || '');
                 const iframeSrc = safeSourceUrl
                     ? safeSourceUrl + (safeSourceUrl.includes('?') ? '&' : '?') + 'autoplay=0&mute=1'
                     : '';
-                const safeFirstMemTitle = escapeHtml(getMomentLabel(firstMem));
+                const safeMediaMemTitle = escapeHtml(getMomentLabel(mediaMem || firstMem));
 
                 _dom.previewContainer.innerHTML = iframeSrc ? `
                     <div style="position:relative;width:100%;height:100%;border-radius:1rem;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.12);">
@@ -351,19 +358,19 @@
                             allowfullscreen style="position:absolute;top:0;left:0;"></iframe>
                         <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top,rgba(0,0,0,0.8),transparent);padding:40px 20px 20px;color:white;text-align:center;">
                             <div style="font-size:14px;font-weight:700;margin-bottom:8px;opacity:0.9;">${escapeHtml(getSearchCopy('search.previewStartFromFirstMoment', '대표 순간부터 감상하기', 'Start from the featured moment'))}</div>
-                            <div style="font-size:12px;opacity:0.7;">${safeFirstMemTitle}</div>
+                            <div style="font-size:12px;opacity:0.7;">${safeMediaMemTitle}</div>
                         </div>
                     </div>
                 ` : (safeThumbnail ? `
                     <div style="position:relative;width:100%;height:100%;border-radius:1rem;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.12);">
-                        <img src="${safeThumbnail}" alt="${safeFirstMemTitle}" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;">
+                        <img src="${safeThumbnail}" alt="${safeMediaMemTitle}" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;">
                         <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.72),rgba(0,0,0,0.04) 58%);"></div>
                         <div style="position:absolute;left:18px;right:18px;bottom:18px;color:white;">
                             <div style="display:inline-flex;align-items:center;gap:6px;min-height:28px;padding:0 10px;border-radius:999px;background:rgba(255,255,255,0.18);backdrop-filter:blur(10px);font-size:12px;font-weight:800;margin-bottom:10px;">
                                 <span class="material-symbols-outlined" style="font-size:14px;">play_circle</span>
                                 ${escapeHtml(getSearchCopy('search.previewStartFromFirstMoment', '대표 순간부터 감상하기', 'Start from the featured moment'))}
                             </div>
-                            <div style="font-size:14px;font-weight:800;line-height:1.4;">${safeFirstMemTitle}</div>
+                            <div style="font-size:14px;font-weight:800;line-height:1.4;">${safeMediaMemTitle}</div>
                         </div>
                     </div>
                 ` : renderPlaceholder());
@@ -523,5 +530,5 @@
         renderEmotionTags: renderEmotionTags
     };
 
-    console.log('[LoveBudSearchPreviewRenderer] Search preview renderer loaded v20260422-3');
+    console.log('[LoveBudSearchPreviewRenderer] Search preview renderer loaded v20260422-4');
 })();
