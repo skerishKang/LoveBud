@@ -6,164 +6,51 @@
     <title>LoveTree v3 | 좋아하는 순간이 자라나는 밤</title>
     <link rel="stylesheet" href="../../css/gemini-v3/index.css">
     <style>
-        /* Home Specific Iteration 2 */
-        .home-v3-content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .hero-v3 {
-            display: grid;
-            grid-template-columns: 480px 1fr;
-            padding: 40px 60px 80px;
-            align-items: center;
-        }
-
-        .hero-title-v3 {
-            font-family: 'Playfair Display', serif;
-            font-size: 56px;
-            font-weight: 900;
-            line-height: 1.15;
-            margin-bottom: 35px;
-            letter-spacing: -1px;
-            color: var(--gv3-text-dark);
-        }
-
-        /* Center Board Iteration 2 */
-        .center-board-wrapper {
-            position: relative;
-            width: 340px;
-            height: 480px;
-            margin: 0 auto;
-            transform: rotate(-1.5deg);
-        }
-
-        .center-board {
-            width: 100%;
-            height: 100%;
-            padding: 60px 40px;
-        }
-
-        .quote-text {
-            font-family: 'Playfair Display', serif;
-            font-size: 21px;
-            font-style: italic;
-            line-height: 1.9;
-            text-align: center;
-            color: var(--gv3-text-dark);
-            margin-bottom: 50px;
-            font-weight: 700;
-        }
-
-        /* Bottom Section Iteration 2 */
-        .bottom-v3 {
-            padding: 60px 60px 80px;
-            background: linear-gradient(180deg, rgba(253,249,245,0.3) 0%, rgba(253,249,245,0.8) 100%);
-            border-top: 1px solid rgba(179, 126, 111, 0.08);
-        }
-
-        .feature-row {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 50px;
-            margin-bottom: 80px;
-        }
-
-        .feature-item {
-            display: flex;
-            align-items: flex-start;
-            gap: 20px;
-        }
-
-        .feature-icon {
-            width: 48px;
-            height: 48px;
-            background: white;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.03);
-            flex-shrink: 0;
-        }
-
-        .feature-info h4 { font-size: 16px; margin-bottom: 8px; font-weight: 900; }
-        .feature-info p { font-size: 13.5px; color: var(--gv3-text-muted); line-height: 1.6; }
-
-        /* Gallery Iteration 2 */
-        .gallery-v3 {
-            display: flex;
-            gap: 30px;
-            padding-bottom: 10px;
-        }
-
-        .tree-card-v3 {
-            flex: 1;
-            background: white;
-            padding: 24px;
-            border-radius: 24px;
-            border: 1px solid #F5F0EE;
-            transition: all 0.4s var(--gv3-ease-out);
-            position: relative;
-        }
-
-        .tree-card-v3:hover { transform: translateY(-10px); box-shadow: var(--gv3-shadow-paper); }
-
-        .card-img-v3 {
-            width: 100%;
-            aspect-ratio: 1.6;
-            background: #FDF9F5;
-            border-radius: 16px;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 44px;
-        }
-
-        .card-heart {
-            position: absolute;
-            top: 35px;
-            right: 35px;
-            font-size: 14px;
-            color: var(--gv3-accent);
-        }
+        .home-v3-content { flex: 1; display: flex; flex-direction: column; }
+        .hero-v3 { display: grid; grid-template-columns: 500px 1fr; padding: 60px 80px; align-items: center; }
+        .hero-title-v3 { font-family: 'Playfair Display', serif; font-size: 62px; font-weight: 900; line-height: 1.1; margin-bottom: 35px; letter-spacing: -2px; }
+        .center-board-wrapper { position: relative; width: 360px; height: 500px; margin: 0 auto; transform: rotate(-2deg); }
+        .center-board { width: 100%; height: 100%; padding: 70px 45px; }
+        .quote-text { font-family: 'Playfair Display', serif; font-size: 22px; font-style: italic; line-height: 1.9; text-align: center; font-weight: 800; margin-bottom: 50px; }
+        .bottom-v3 { padding: 80px 80px 100px; background: linear-gradient(180deg, rgba(253,249,245,0.4) 0%, rgba(253,249,245,0.9) 100%); border-top: 1px solid rgba(179, 126, 111, 0.1); }
+        .feature-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 60px; margin-bottom: 90px; }
+        .gallery-v3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 35px; }
+        .tree-card-v3 { background: white; padding: 25px; border-radius: 28px; border: 1px solid rgba(179, 126, 111, 0.05); transition: all 0.4s var(--gv3-ease-out); position: relative; }
+        .tree-card-v3:hover { transform: translateY(-12px); box-shadow: var(--gv3-shadow-deep); border-color: var(--gv3-primary-soft); }
+        .card-img-v3 { width: 100%; aspect-ratio: 1.6; border-radius: 18px; margin-bottom: 22px; overflow: hidden; }
+        .card-img-v3 img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.6s ease; }
+        .tree-card-v3:hover .card-img-v3 img { transform: scale(1.1); }
     </style>
 </head>
 <body>
-    <!-- Floating Silk Layers -->
-    <div class="silk-bg silk-left" style="background: radial-gradient(circle, #E2E8E4 0%, transparent 70%);"></div>
-    <div class="silk-bg silk-right" style="background: radial-gradient(circle, #F3EAE2 0%, transparent 70%);"></div>
-
     <div class="canvas-v3">
-        <header class="header-v3">
-            <a href="index.html" class="logo-v3">러브트리 <span style="font-size: 14px; font-style: normal; opacity: 0.4; margin-left: 5px;">LoveTree</span></a>
-            <nav class="nav-v3">
+        <header class="header-v3" style="padding: 40px 80px;">
+            <a href="index.html" class="logo-v3" style="font-size: 32px;">LoveTree</a>
+            <nav class="nav-v3" style="gap: 50px;">
                 <a href="search.html" class="v3-nav-link">둘러보기</a>
-                <a href="../my-trees.html" class="v3-nav-link">내 트리</a>
+                <a href="my-trees.html" class="v3-nav-link">내 트리</a>
                 <a href="../login.html" class="v3-nav-link">로그인</a>
             </nav>
-            <a href="../login.html" class="btn-v3 btn-primary" style="padding: 10px 30px; font-size: 14px;">시작하기</a>
+            <a href="../login.html" class="btn-v3 btn-primary" style="padding: 12px 35px; font-size: 15px;">시작하기</a>
         </header>
 
         <div class="home-v3-content">
             <main class="hero-v3">
                 <div class="hero-copy-v3">
+                    <span class="eyebrow-v3" style="font-size: 11px; margin-bottom: 20px; display: block; letter-spacing: 4px; color: var(--gv3-gold);">SINCE 2026</span>
                     <h1 class="hero-title-v3">
                         좋아하는 순간을,<br>
                         <span style="color: var(--gv3-primary);">러브트리</span>로 키워보세요
                     </h1>
-                    <p class="subtitle-v3">
+                    <p class="subtitle-v3" style="font-size: 17px; margin-bottom: 50px; line-height: 1.9;">
                         사랑한 장면과 노래, 기억과 감정을 차곡차곡 모아 두면,<br>
                         서로의 선이 이어져 하나의 트리로 자라납니다.<br>
                         러브트리는 마음속 순간들을 오래 간직하고<br>
                         천천히 돌볼 수 있는 감정의 정원입니다.
                     </p>
-                    <div style="display: flex; gap: 20px; align-items: center;">
-                        <a href="../my-trees.html" class="btn-v3 btn-primary">내 트리 시작하기 <span>✨</span></a>
-                        <a href="search.html" class="v3-nav-link" style="font-size: 14px; font-weight: 700; opacity: 0.6; text-decoration: none;">6개 트리 둘러보기 →</a>
+                    <div style="display: flex; gap: 25px; align-items: center;">
+                        <a href="my-trees.html" class="btn-v3 btn-primary">내 트리 시작하기 ✨</a>
+                        <a href="search.html" class="v3-nav-link" style="opacity: 0.8;">6개 트리 둘러보기 →</a>
                     </div>
                 </div>
 
@@ -171,7 +58,7 @@
                     <div class="center-board-wrapper">
                         <article class="paper-card lined center-board">
                             <div class="prop-clip"></div>
-                            <div class="prop-flower" style="right: 25px; top: 75px; font-size: 55px; transform: rotate(10deg);">🥀</div>
+                            <div class="prop-flower" style="right: 20px; top: 70px; font-size: 60px; transform: rotate(15deg);">🥀</div>
                             
                             <div class="quote-text">
                                 그날의 열정이<br>
@@ -181,38 +68,35 @@
                                 고마워. ♡
                             </div>
 
-                            <!-- Iteration 2 Music Player -->
                             <div class="mini-player">
                                 <div class="player-info">
-                                    <div class="player-disc" style="width: 36px; height: 36px;"></div>
+                                    <div class="player-disc" style="width: 40px; height: 40px; background: #222;"></div>
                                     <div style="flex: 1;">
-                                        <div style="font-size: 11.5px; font-weight: 900;">추억의 선율에 지나다</div>
-                                        <div style="font-size: 10px; opacity: 0.5;">LoveTree OST</div>
+                                        <div style="font-size: 12px; font-weight: 900;">추억의 선율에 지나다</div>
+                                        <div style="font-size: 10px; opacity: 0.5;">LoveTree Official Soundtrack</div>
                                     </div>
                                 </div>
                                 <div class="player-progress">
                                     <div class="progress-bar"></div>
                                 </div>
                                 <div class="player-controls">
-                                    <span>⏮️</span>
-                                    <span>⏯️</span>
-                                    <span>⏭️</span>
+                                    <span>⏮</span> <span>⏯</span> <span>⏭</span>
                                 </div>
                             </div>
                         </article>
                     </div>
 
-                    <!-- Polaroids with Rotation -->
-                    <div class="node-v3" style="left: -10px; top: 100px; transform: rotate(-6deg);">
+                    <!-- Refined Polaroids -->
+                    <div class="node-v3" style="left: -20px; top: 120px; transform: rotate(-8deg); width: 170px; padding: 10px 10px 30px; background: white; box-shadow: 0 15px 35px rgba(0,0,0,0.06);">
                         <div class="prop-tape"></div>
-                        <div class="node-img-v3" style="background: #E5E9F2;"></div>
-                        <div class="node-cap-v3">첫 설렘의 순간</div>
+                        <div class="node-img-v3" style="background-image: url('https://images.unsplash.com/photo-1493225255756-d9584f8606e9?auto=format&fit=crop&q=80&w=200'); background-size: cover; aspect-ratio: 1; margin-bottom: 12px;"></div>
+                        <div class="node-cap-v3" style="font-family: 'Playfair Display', serif; font-style: italic; font-size: 12px; text-align: center; color: var(--gv3-text-muted);">첫 설렘의 순간</div>
                     </div>
 
-                    <div class="node-v3" style="right: -30px; top: 70px; transform: rotate(5deg);">
+                    <div class="node-v3" style="right: -40px; top: 80px; transform: rotate(6deg); width: 170px; padding: 10px 10px 30px; background: white; box-shadow: 0 15px 35px rgba(0,0,0,0.06);">
                         <div class="prop-tape" style="transform: translateX(-50%) rotate(2deg);"></div>
-                        <div class="node-img-v3" style="background: #F8F0F5;"></div>
-                        <div class="node-cap-v3">함께한 첫 무대</div>
+                        <div class="node-img-v3" style="background-image: url('https://images.unsplash.com/photo-1514525253361-bee8718a340b?auto=format&fit=crop&q=80&w=200'); background-size: cover; aspect-ratio: 1; margin-bottom: 12px;"></div>
+                        <div class="node-cap-v3" style="font-family: 'Playfair Display', serif; font-style: italic; font-size: 12px; text-align: center; color: var(--gv3-text-muted);">함께한 첫 무대</div>
                     </div>
                 </div>
             </main>
@@ -242,29 +126,55 @@
                     </div>
                 </div>
 
-                <div style="margin-bottom: 30px; display: flex; justify-content: space-between; align-items: flex-end;">
-                    <h3 style="font-size: 20px; font-weight: 900;">마음이 담긴 트리들 <span>💕</span></h3>
-                    <a href="search.html" style="font-size: 13px; color: var(--gv3-text-muted); text-decoration: none; font-weight: 700;">모두 보기 →</a>
+                <div style="margin-bottom: 40px; display: flex; justify-content: space-between; align-items: flex-end;">
+                    <h3 style="font-size: 24px; font-weight: 900; font-family: 'Playfair Display', serif;">마음이 담긴 트리들 <span style="font-style: normal; font-size: 18px;">💕</span></h3>
+                    <a href="search.html" style="font-size: 14px; color: var(--gv3-text-muted); text-decoration: none; font-weight: 800;">모두 보기 →</a>
                 </div>
 
                 <div class="gallery-v3">
                     <article class="tree-card-v3">
-                        <span class="card-heart">❤️</span>
-                        <div class="card-img-v3">💜</div>
-                        <div style="font-size: 15px; font-weight: 900; margin-bottom: 6px;">보랏빛 순간</div>
-                        <div style="font-size: 12px; color: var(--gv3-text-muted); line-height: 1.4;">함께 만든 기억의 조각들, 그 안의 빛나는 이야기</div>
+                        <div class="card-img-v3">
+                            <img src="https://images.unsplash.com/photo-1542332213-9b5a5a3fad35?auto=format&fit=crop&q=80&w=400" alt="Tree">
+                        </div>
+                        <div style="font-size: 17px; font-weight: 900; margin-bottom: 8px;">보랏빛 순간</div>
+                        <div style="font-size: 13px; color: var(--gv3-text-muted); line-height: 1.6;">함께 만든 기억의 조각들, 그 안의 빛나는 이야기</div>
+                        <div class="v3-card-footer">
+                            <span style="font-size: 11px; font-weight: 900; color: var(--gv3-primary); letter-spacing: 1px;">#BTS</span>
+                            <div class="v3-card-meta">
+                                <div class="meta-item">❤️ 1,624</div>
+                                <div class="meta-item">💬 328</div>
+                            </div>
+                        </div>
                     </article>
+
                     <article class="tree-card-v3">
-                        <span class="card-heart">❤️</span>
-                        <div class="card-img-v3">🌟</div>
-                        <div style="font-size: 15px; font-weight: 900; margin-bottom: 6px;">빛나던 무대</div>
-                        <div style="font-size: 12px; color: var(--gv3-text-muted); line-height: 1.4;">우리가 빛나던 그 계절, 잊지 못할 함성 소리</div>
+                        <div class="card-img-v3">
+                            <img src="https://images.unsplash.com/photo-1490750967868-88aa4486c946?auto=format&fit=crop&q=80&w=400" alt="Tree">
+                        </div>
+                        <div style="font-size: 17px; font-weight: 900; margin-bottom: 8px;">빛나던 무대</div>
+                        <div style="font-size: 13px; color: var(--gv3-text-muted); line-height: 1.6;">우리가 빛나던 그 계절, 잊지 못할 함성 소리</div>
+                        <div class="v3-card-footer">
+                            <span style="font-size: 11px; font-weight: 900; color: var(--gv3-primary); letter-spacing: 1px;">#SEVENTEEN</span>
+                            <div class="v3-card-meta">
+                                <div class="meta-item">❤️ 2,150</div>
+                                <div class="meta-item">💬 412</div>
+                            </div>
+                        </div>
                     </article>
+
                     <article class="tree-card-v3">
-                        <span class="card-heart">❤️</span>
-                        <div class="card-img-v3">🌸</div>
-                        <div style="font-size: 15px; font-weight: 900; margin-bottom: 6px;">우리가 사랑한 계절</div>
-                        <div style="font-size: 12px; color: var(--gv3-text-muted); line-height: 1.4;">봄, 여름, 가을, 그리고 너. 사계절의 기록</div>
+                        <div class="card-img-v3">
+                            <img src="https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&q=80&w=400" alt="Tree">
+                        </div>
+                        <div style="font-size: 17px; font-weight: 900; margin-bottom: 8px;">우리가 사랑한 계절</div>
+                        <div style="font-size: 13px; color: var(--gv3-text-muted); line-height: 1.6;">봄, 여름, 가을, 그리고 너. 사계절의 기록</div>
+                        <div class="v3-card-footer">
+                            <span style="font-size: 11px; font-weight: 900; color: var(--gv3-primary); letter-spacing: 1px;">#IVE</span>
+                            <div class="v3-card-meta">
+                                <div class="meta-item">❤️ 987</div>
+                                <div class="meta-item">💬 156</div>
+                            </div>
+                        </div>
                     </article>
                 </div>
             </section>
