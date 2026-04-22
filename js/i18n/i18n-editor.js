@@ -84,6 +84,8 @@ Object.assign(window.i18nEditor, {
     editor_visibility_update_failed: { ko: '공개 상태를 바꾸지 못했어요.', en: 'Failed to update visibility.' },
     play: { ko: '재생', en: 'Play' },
     sidebar_moment_count_empty: { ko: '아직 남긴 순간이 없습니다', en: 'No moments yet' },
+    sidebar_moment_count_short: { ko: '총 {count}개의 순간', en: '{count} moments total' },
+    sidebar_moment_count_empty_short: { ko: '첫 순간 준비 중', en: 'Ready for first moment' },
     editor_root_emotion_tag: { ko: '첫 마음', en: 'First feeling' },
     editor_root_memo_fallback: { ko: '이 장면이 왜 시작이 되었는지 남겨두면, 다음 순간들이 더 자연스럽게 이어져요.', en: 'Leave why this scene became the beginning, and the next moments will connect more naturally.' },
     editor_selected_memo_fallback: { ko: '이 순간의 마음을 한 줄 남겨두면, 이어진 흐름을 다시 떠올리기 쉬워져요.', en: 'Leave one line about this moment, and it will be easier to remember the connected flow.' },
