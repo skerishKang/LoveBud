@@ -1,70 +1,50 @@
 # LoveBud Engineering 문서 인덱스
 
-> **버전:** 1.2  
-> **갱신:** 2026-04-18 (search/detail 마감 완료)
+이 문서는 LoveBud 엔지니어링 문서의 현재 기준 읽기 순서를 정리합니다.
+
+현재 운영 전제는 아래와 같습니다.
+
+- 실서비스 프론트: `https://lovebud.vercel.app/`
+- 인프라 우선순위: **Modal > Vercel > Netlify**
+- 브라우저는 가능하면 **same-origin `/api`** 만 사용
+- browse display filter 와 publication guard 는 다른 문제로 다룸
 
 ---
 
-## 현재 상태 요약
+## 먼저 읽기
 
-| 작업 | 코드 | 브라우저 검증 | 상태 |
-|------|------|-------------|------|
-| detail.js 분리 | ✅ 완료 | ✅ 사용자 승인으로 생략 | **마감 완료** |
-| search.js 분리 | ✅ 완료 | ✅ 사용자 승인으로 생략 | **마감 완료** |
-| editor.js 분리 | ✅ 완료 | ⏳ 검증 대기 | 검증 대기 |
-| media.js 생성 | ✅ 완료 | 🔄 미배선 | 미배선 |
-
-**핵심:** search/detail 리팩터링 완료, ** бра라우저 검증은 사용자 요청으로 생략됨**
-
----
-
-## 읽기 순서 (권장)
-
-1. **처음 방문:** 이 인덱스 (현재 문서)
-2. **RECENT_REFACTORING.md** - 전체 리팩터링 기록 (必 읽)
-3. **UTIL_USAGE_POLICY.md** - 공통 유틸 사용 정책
-4. **COMMON_CODE_CANDIDATES.md** - 다음Candidate 개선
-
----
-
-## utility 문서
-
-| 문서 | 설명 | 우선순위 | 상태 |
-|------|------|----------|------|
-| [UTIL_USAGE_POLICY.md](./UTIL_USAGE_POLICY.md) | 공통 유틸 사용 정책 | 🟡 권장 | ✅ 완료 |
+1. [API_CONTRACT.md](./API_CONTRACT.md) - API 응답 계약 (flat camelCase)
+2. [BROWSE_FILTER_VS_PUBLICATION_GUARD.md](./BROWSE_FILTER_VS_PUBLICATION_GUARD.md) - browse filter / publication guard 구분
+3. [RECENT_REFACTORING.md](./RECENT_REFACTORING.md) - 최근 리팩터링 기록
 
 ---
 
 ## 핵심 문서
 
-| 문서 | 설명 | 우선순위 | 상태 |
-|------|------|----------|------|
-| [RECENT_REFACTORING.md](./RECENT_REFACTORING.md) | 전체 리팩터링 기록 | 🔴 필수 | ✅ 완료 (search/detail 마감) |
-| [API_CONTRACT.md](./API_CONTRACT.md) | API 응답 계약 (flat camelCase) | 🔴 필수 | ✅ 완료 |
-| [CTO_REPORT_20260418.md](./CTO_REPORT_20260418.md) | 스프린트 A+B+C 요약 | 🟡 권장 | ✅ 완료 |
-| [COMMON_CODE_CANDIDATES.md](./COMMON_CODE_CANDIDATES.md) | 공통화 후보 | 🟡 권장 | 🔄 미배선 |
-| [UTIL_USAGE_POLICY.md](./UTIL_USAGE_POLICY.md) | 공통 유틸 사용 정책 | 🟡 권장 | ✅ 완료 |
+| 문서 | 설명 |
+|------|------|
+| [API_CONTRACT.md](./API_CONTRACT.md) | 프론트와 API가 따르는 flat camelCase 계약 |
+| [BROWSE_FILTER_VS_PUBLICATION_GUARD.md](./BROWSE_FILTER_VS_PUBLICATION_GUARD.md) | browse 표시 정책과 publication guard 분리 기준 |
+| [RECENT_REFACTORING.md](./RECENT_REFACTORING.md) | 최근 코드 구조 정리 내역 |
+| [UTIL_USAGE_POLICY.md](./UTIL_USAGE_POLICY.md) | 공통 유틸 사용 정책 |
+| [COMMON_CODE_CANDIDATES.md](./COMMON_CODE_CANDIDATES.md) | 공통화 후보 |
+| [CTO_REPORT_20260418.md](./CTO_REPORT_20260418.md) | 특정 시점 엔지니어링 요약 |
 
-### 검증 상태
+---
 
-| 페이지 | 검증 필요 | 우선순위 | 상태 |
-|--------|----------|----------|------|
-| **search.js** | ✅ 사용자 승인으로 생략 | - | **마감 완료** |
-| **detail.js** | ✅ 사용자 승인으로 생략 | - | **마감 완료** |
-| **editor.js** | ⏳ 검증 대기 | 高 | 검증 대기 |
+## 읽을 때 주의할 점
+
+- 이 폴더는 제품 철학 문서의 대체물이 아닙니다.
+- 제품 / 브랜드 / UI 판단은 먼저 아래 문서를 봅니다.
+  - `../product/PRODUCT_IDENTITY.md`
+  - `../product/BRAND_EXPERIENCE.md`
+  - `../design/UI_DESIGN_SYSTEM.md`
+- 엔지니어링 문서는 현재 계약, 구조, 분리 기준, 전환 원칙을 설명하는 용도로 사용합니다.
 
 ---
 
 ## 작성 규칙
 
-1. **새로운 기술 문서는 이 폴더에 생성**
-2. **생성 후 `doc_index.md`에도 추가**
-3. **API/구조 변경 시 관련 문서 동시 갱신**
-
----
-
-## 관련 외부 문서
-
-- [Backend](../backend/backend_index.md) - 백엔드 구현 상세
-- [Ops](../ops/ops_index.md) - 운영 가이드
-- [Product](../product/product_index.md) - 제품 정의
+1. 새로운 기술 문서는 이 폴더에 생성합니다.
+2. 생성 후 `docs/doc_index.md`에도 추가합니다.
+3. API 계약이나 경로 전략이 바뀌면 관련 운영 문서와 함께 갱신합니다.
