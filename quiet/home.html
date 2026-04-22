@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LoveTree | Quiet Home</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%23fff4ee'/%3E%3Cpath d='M32 49V25' stroke='%23904951' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M32 29c-9-1-16-7-17-16 9 1 16 7 17 16Z' fill='%23e58a96'/%3E%3Cpath d='M32 29c9-1 16-7 17-16-9 1-16 7-17 16Z' fill='%2397c978'/%3E%3Ccircle cx='32' cy='18' r='5' fill='%23f2c36b'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="../css/global.css?v=20260417-31">
+    <style>
+        body.quiet-bg {
+            margin: 0;
+            background:
+                radial-gradient(circle at 18% 18%, rgba(255, 226, 214, 0.72), transparent 20%),
+                radial-gradient(circle at 82% 12%, rgba(239, 210, 219, 0.56), transparent 18%),
+                radial-gradient(circle at 74% 82%, rgba(226, 234, 212, 0.46), transparent 18%),
+                linear-gradient(180deg, #fff9f4 0%, #f8efe8 48%, #f7efe9 100%);
+            color: var(--on-surface);
+            min-height: 100vh;
+        }
+
+        .quiet-shell {
+            width: min(100%, 480px);
+            margin: 0 auto;
+            min-height: 100vh;
+            padding: 22px 18px 40px;
+            display: flex;
+            flex-direction: column;
+            gap: 22px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .quiet-topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .quiet-brand {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            min-height: 42px;
+            padding: 0 14px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.72);
+            border: 1px solid rgba(144, 73, 81, 0.10);
+            box-shadow: 0 14px 28px rgba(96, 72, 68, 0.08);
+            color: #6f5651;
+            font-size: 0.92rem;
+            font-weight: 800;
+            letter-spacing: -0.01em;
+        }
+
+        .quiet-menu {
+            min-height: 42px;
+            padding: 0 14px;
+            border: 0;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.72);
+            border: 1px solid rgba(144, 73, 81, 0.10);
+            box-shadow: 0 14px 28px rgba(96, 72, 68, 0.08);
+            color: #785e58;
+            font-size: 0.9rem;
+            font-weight: 700;
+        }
+
+        .quiet-hero {
+            padding-top: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .quiet-kicker {
+            display: inline-flex;
+            align-items: center;
+            align-self: flex-start;
+            min-height: 34px;
+            padding: 0 14px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.64);
+            border: 1px solid rgba(144, 73, 81, 0.10);
+            color: var(--primary);
+            font-size: 0.78rem;
+            font-weight: 800;
+            letter-spacing: 0.01em;
+        }
+
+        .quiet-title {
+            margin: 0;
+            font-size: clamp(2.3rem, 10vw, 3.2rem);
+            line-height: 1.02;
+            letter-spacing: -0.055em;
+            color: #4a3a35;
+        }
+
+        .quiet-title .soft {
+            display: block;
+            color: #74585b;
+            font-weight: 700;
+        }
+
+        .quiet-title .accent {
+            display: block;
+            color: var(--primary);
+            font-weight: 800;
+        }
+
+        .quiet-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 4px;
+        }
+
+        .quiet-actions .btn-round {
+            width: 100%;
+            min-height: 54px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 999px;
+            font-size: 0.98rem;
+            font-weight: 700;
+        }
+
+        .quiet-actions .btn-outline {
+            background: rgba(255,255,255,0.72);
+            border: 1px solid rgba(144, 73, 81, 0.12);
+            color: #6f5651;
+        }
+
+        .quiet-tree-stage {
+            position: relative;
+            margin-top: 8px;
+            min-height: 420px;
+            border-radius: 34px;
+            background:
+                radial-gradient(circle at 20% 18%, rgba(255,255,255,0.94), transparent 24%),
+                radial-gradient(circle at 78% 24%, rgba(241, 210, 219, 0.72), transparent 22%),
+                radial-gradient(circle at 54% 82%, rgba(220, 231, 206, 0.55), transparent 26%),
+                linear-gradient(160deg, rgba(255,255,255,0.62), rgba(251, 236, 231, 0.84));
+            border: 1px solid rgba(144, 73, 81, 0.10);
+            box-shadow: 0 28px 66px rgba(96, 72, 68, 0.11);
+            overflow: hidden;
+        }
+
+        .quiet-tree-svg {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .quiet-tree-svg path {
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            stroke-dasharray: 1;
+            stroke-dashoffset: 1;
+            animation: quietDraw 3.8s ease-in-out infinite;
+        }
+
+        .quiet-tree-svg .trunk {
+            stroke: rgba(144, 73, 81, 0.70);
+            stroke-width: 8;
+        }
+
+        .quiet-tree-svg .branch {
+            stroke: rgba(126, 143, 114, 0.56);
+            stroke-width: 5;
+        }
+
+        .quiet-card {
+            position: absolute;
+            width: 164px;
+            border-radius: 24px;
+            padding: 14px;
+            background: rgba(255,255,255,0.84);
+            border: 1px solid rgba(144, 73, 81, 0.10);
+            box-shadow: 0 18px 36px rgba(88, 66, 62, 0.12);
+            backdrop-filter: blur(14px);
+            opacity: 0;
+            transform: translateY(18px) scale(0.96);
+            animation: quietCard 3.8s ease-in-out infinite;
+        }
+
+        .quiet-card::before {
+            content: "";
+            display: block;
+            height: 86px;
+            border-radius: 18px;
+            margin-bottom: 12px;
+            background:
+                radial-gradient(circle at 28% 22%, rgba(255, 232, 223, 0.92), transparent 24%),
+                radial-gradient(circle at 74% 28%, rgba(226, 190, 204, 0.84), transparent 24%),
+                linear-gradient(145deg, rgba(189, 157, 147, 0.82), rgba(149, 169, 142, 0.64));
+        }
+
+        .quiet-card strong {
+            display: block;
+            color: #4f3f39;
+            font-size: 0.95rem;
+            letter-spacing: -0.03em;
+            line-height: 1.34;
+        }
+
+        .quiet-card.one {
+            left: 4%;
+            top: 46%;
+            transform: rotate(-5deg);
+            animation-delay: 0.1s;
+        }
+
+        .quiet-card.two {
+            right: 5%;
+            top: 15%;
+            transform: rotate(5deg);
+            animation-delay: 0.85s;
+        }
+
+        .quiet-card.three {
+            right: 8%;
+            bottom: 8%;
+            transform: rotate(-4deg);
+            animation-delay: 1.55s;
+        }
+
+        .quiet-footer-nav {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: auto;
+            padding-top: 8px;
+        }
+
+        .quiet-nav-btn {
+            min-height: 46px;
+            border-radius: 18px;
+            border: 1px solid rgba(144, 73, 81, 0.10);
+            background: rgba(255,255,255,0.72);
+            box-shadow: 0 14px 28px rgba(96, 72, 68, 0.08);
+            color: #725953;
+            font-size: 0.84rem;
+            font-weight: 700;
+        }
+
+        @keyframes quietDraw {
+            0%, 12% { stroke-dashoffset: 1; opacity: 0.2; }
+            46%, 78% { stroke-dashoffset: 0; opacity: 1; }
+            100% { stroke-dashoffset: 0; opacity: 0.35; }
+        }
+
+        @keyframes quietCard {
+            0%, 20% { opacity: 0; transform: translateY(18px) scale(0.96); }
+            36%, 78% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0.72; transform: translateY(0) scale(1); }
+        }
+    </style>
+</head>
+<body class="quiet-bg">
+    <main class="quiet-shell">
+        <header class="quiet-topbar">
+            <div class="quiet-brand">LoveTree</div>
+            <button class="quiet-menu" type="button">둘러보기</button>
+        </header>
+
+        <section class="quiet-hero">
+            <span class="quiet-kicker">입덕의 첫 순간</span>
+            <h1 class="quiet-title">
+                <span class="soft">좋아하게 된 순간이</span>
+                <span class="accent">하나의 러브트리로</span>
+                <span class="accent">이어져요</span>
+            </h1>
+
+            <div class="quiet-actions">
+                <a href="../pages/login.html?redirect=my-trees.html" class="btn-round btn-primary">첫 순간 남기기</a>
+                <a href="../pages/search.html" class="btn-round btn-outline">공개 트리 감상하기</a>
+            </div>
+        </section>
+
+        <section class="quiet-tree-stage" aria-hidden="true">
+            <svg class="quiet-tree-svg" viewBox="0 0 420 420" role="img" aria-label="순간이 이어져 러브트리가 되는 장면">
+                <path class="trunk" pathLength="1" d="M208 360 C206 310 210 268 208 220 C206 174 218 142 244 104" />
+                <path class="branch" pathLength="1" d="M208 232 C158 218 114 198 74 170" />
+                <path class="branch" pathLength="1" d="M224 184 C276 168 312 134 344 88" />
+                <path class="branch" pathLength="1" d="M212 284 C268 288 312 312 362 350" />
+            </svg>
+
+            <article class="quiet-card one">
+                <strong>처음 반한 무대</strong>
+            </article>
+            <article class="quiet-card two">
+                <strong>다시 듣게 된 노래</strong>
+            </article>
+            <article class="quiet-card three">
+                <strong>오래 남은 한 문장</strong>
+            </article>
+        </section>
+
+        <nav class="quiet-footer-nav" aria-label="조용한 홈 빠른 이동">
+            <button class="quiet-nav-btn" type="button" onclick="location.href='../pages/search.html'">둘러보기</button>
+            <button class="quiet-nav-btn" type="button" onclick="location.href='../pages/login.html?redirect=my-trees.html'">내 트리</button>
+            <button class="quiet-nav-btn" type="button" onclick="location.href='../pages/login.html?redirect=my-trees.html'">시작하기</button>
+        </nav>
+    </main>
+</body>
+</html>
