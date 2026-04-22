@@ -49,13 +49,24 @@
 - Netlify는 주경로가 아니라 fallback 또는 단계적 제거 대상입니다.
 
 ### 브라우저 API 원칙
-- 사용자 브라우저는 가능하면 **same-origin `/api`** 만 사용합니다.
+- 사용자 브라우저는 가능하면 **same-origin `/api`**만 사용합니다.
 - 프론트는 직접 특정 외부 호스트를 기본값으로 가정하지 않습니다.
 
 ---
 
-## 4. 제품 해석 가드레일
+## 4. 제품 / 용어 해석 가드레일
 
+### LoveBud vs LoveTree
+- **LoveBud**는 현재 저장소명과 운영 프로젝트명입니다.
+- **LoveTree**는 사용자-facing 브랜드 경험과 서비스 맥락에서 함께 쓰일 수 있는 이름입니다.
+- 문서와 보고에서는 두 이름을 섞어 쓰더라도, 저장소/운영 맥락인지 제품/브랜드 맥락인지 구분해서 씁니다.
+
+### browse vs search
+- 파일/페이지 경로명은 현재 실제 파일 기준으로 `pages/search.html`을 사용합니다.
+- 사용자-facing 표현은 가능하면 `둘러보기`, `browse`, `감상 허브` 계열을 우선합니다.
+- 즉, **search는 구현 경로명**, **browse는 제품 경험명**으로 다룹니다.
+
+### 제품 해석 금지 대상
 LoveBud / LoveTree는 다음과 같은 서비스가 아닙니다.
 
 - 관리자 대시보드
@@ -84,7 +95,7 @@ LoveBud / LoveTree는 다음과 같은 서비스가 아닙니다.
 
 ---
 
-## 5. browse filter vs publication guard
+## 5. browse display filter vs publication guard
 
 이 둘은 같은 개념으로 취급하지 않습니다.
 
@@ -97,14 +108,30 @@ LoveBud / LoveTree는 다음과 같은 서비스가 아닙니다.
 - 예: 공개 순간 수 부족으로 409를 반환하는 정책
 
 즉:
-- browse filter는 **read/display 문제**
-- publication guard는 **write/state transition 문제**
+- browse display filter는 **read / display 문제**
+- publication guard는 **write / state transition 문제**
 
 관련 판단은 `docs/engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md`를 따릅니다.
 
 ---
 
-## 6. 세션 시작 프로토콜
+## 6. 현재 페이지 / 경로 기준
+
+문서의 페이지 경로 표기는 실제 저장소 파일 경로를 기준으로 합니다.
+
+- `index.html`
+- `pages/intro.html`
+- `pages/search.html`
+- `pages/detail.html`
+- `pages/editor.html`
+- `pages/my-trees.html`
+- `pages/login.html`
+
+실서비스 주소에서는 위 경로가 Vercel rewrite를 통해 `/intro.html`, `/search.html`, `/detail.html`, `/editor.html`, `/my-trees.html`, `/login.html`로 노출될 수 있습니다.
+
+---
+
+## 7. 세션 시작 프로토콜
 
 새 작업을 시작할 때 기본 순서는 아래와 같습니다.
 
@@ -129,7 +156,7 @@ LoveBud / LoveTree는 다음과 같은 서비스가 아닙니다.
 
 ---
 
-## 7. 작업 방식
+## 8. 작업 방식
 
 ### 공통 원칙
 - 항상 현재 파일 내용을 먼저 확인합니다.
@@ -149,7 +176,7 @@ LoveBud / LoveTree는 다음과 같은 서비스가 아닙니다.
 
 ---
 
-## 8. 병렬 작업 안전 규칙
+## 9. 병렬 작업 안전 규칙
 
 - 다른 에이전트가 동시에 같은 파일을 수정할 수 있습니다.
 - 현재 `main`을 읽은 뒤에도 SHA 충돌이 나면, 다시 읽고 최소 범위로 재적용합니다.
@@ -158,7 +185,7 @@ LoveBud / LoveTree는 다음과 같은 서비스가 아닙니다.
 
 ---
 
-## 9. 변경 / 검증 / 완료 기준
+## 10. 변경 / 검증 / 완료 기준
 
 ### 변경 규칙
 - 최소 수정 선호
@@ -183,7 +210,7 @@ LoveBud / LoveTree는 다음과 같은 서비스가 아닙니다.
 
 ---
 
-## 10. 참고 문서
+## 11. 참고 문서
 
 ### 문서 인덱스
 - `docs/doc_index.md`
@@ -207,6 +234,6 @@ LoveBud / LoveTree는 다음과 같은 서비스가 아닙니다.
 
 ---
 
-## 11. 한 줄 요약
+## 12. 한 줄 요약
 
 LoveBud 작업은 항상 **현재 `main` 확인 → source of truth 확인 → 최소 수정 → 범위 내 검증 → 직접 수정/기존 반영 구분 보고** 순서로 진행합니다.
