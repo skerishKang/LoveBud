@@ -23,15 +23,22 @@ export async function onRequestGet(context) {
 
   const treeId = context.params?.id;
   const authHeader = context.request.headers.get('authorization');
-  const path = authHeader ? `/modal/private/trees/${treeId}` : `/modal/trees/${treeId}`;
-  const target = new URL(path, modalBaseUrl);
-
-  const response = await fetch(target.toString(), {
+  const primaryTarget = new URL(authHeader ? `/modal/private/trees/${treeId}` : `/modal/trees/${treeId}`, modalBaseUrl);
+  let response = await fetch(primaryTarget.toString(), {
     headers: {
       accept: 'application/json',
       ...(authHeader ? { authorization: authHeader } : {})
     }
   });
+
+  if (authHeader && response.status === 404) {
+    const publicTarget = new URL(`/modal/trees/${treeId}`, modalBaseUrl);
+    response = await fetch(publicTarget.toString(), {
+      headers: {
+        accept: 'application/json'
+      }
+    });
+  }
 
   return withModalHeader(response);
 }

@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const Adapter = window.LoveBudSearchAdapter;
     const cache = window.LoveBudCache;
-    const PUBLIC_TREES_CACHE_KEY = 'public_trees_summary_latest_3';
+    const PUBLIC_TREES_CACHE_KEY = 'public_trees_summary_latest_12';
 
     let allTrees = [];
     let loadError = null;
@@ -237,7 +237,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     try {
         if (window.apiClient && window.apiClient.getPublicTrees) {
-            const apiTrees = await window.apiClient.getPublicTrees({ view: 'summary', sort: 'latest', limit: 3 });
+            const apiTrees = await window.apiClient.getPublicTrees({ view: 'summary', sort: 'latest', limit: 12 });
             if (!Array.isArray(apiTrees)) {
                 throw new Error('API 응답 형식 오류');
             }

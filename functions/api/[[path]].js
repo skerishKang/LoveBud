@@ -40,7 +40,7 @@ function buildModalUrl(request, env) {
   const target = new URL(modalBaseUrl);
 
   if (path === '/api/community/trees' && sourceUrl.searchParams.get('view') === 'summary') {
-    const limit = Math.min(Math.max(Number(sourceUrl.searchParams.get('limit') || 3) || 3, 1), 3);
+    const limit = Math.min(Math.max(Number(sourceUrl.searchParams.get('limit') || 12) || 12, 1), 24);
     target.pathname = '/modal/browse/latest';
     target.searchParams.set('limit', String(limit));
     return target;
@@ -113,6 +113,20 @@ async function tryModalRead(request, env) {
         : {})
     }
   });
+
+  const sourceUrl = new URL(request.url);
+  const path = sourceUrl.pathname.replace(/\/+$/, '');
+  const treeMatch = path.match(/^\/api\/trees\/([^/]+)$/);
+  if (treeMatch && response.status === 404 && request.headers.get('authorization')) {
+    const publicTarget = new URL(stripTrailingSlash(env.MODAL_BASE_URL));
+    publicTarget.pathname = `/modal/trees/${encodeURIComponent(decodeURIComponent(treeMatch[1]))}`;
+    const publicResponse = await fetch(publicTarget.toString(), {
+      headers: {
+        accept: 'application/json'
+      }
+    });
+    return withUpstreamHeader(publicResponse, 'modal');
+  }
 
   return withUpstreamHeader(response, 'modal');
 }

@@ -88,6 +88,12 @@
     }
   }
 
+  function normalizeTreesForList(trees) {
+    return (Array.isArray(trees) ? trees : []).map(function(tree) {
+      return Object.assign({}, normalizeTreeRecord(tree) || tree);
+    });
+  }
+
   function readTreeMemoriesCache(treeId) {
     try {
       var raw = localStorage.getItem(TREE_MEMORIES_CACHE_KEY + treeId);
@@ -206,7 +212,7 @@
       }
 
       if (Array.isArray(trees)) {
-        trees = await enrichTreesWithMemoryMeta(trees);
+        trees = normalizeTreesForList(trees);
 
         if (cache) {
           cache.set(TREES_CACHE_KEY, trees, 3 * 60 * 1000);
