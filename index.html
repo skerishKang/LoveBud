@@ -73,6 +73,14 @@
             padding: 18px 0 28px;
         }
 
+        .home-v3-copy > :not(.home-v3-identity-copy) {
+            display: none;
+        }
+
+        .home-v3-identity-copy {
+            display: block;
+        }
+
         .home-v3-eyebrow {
             display: inline-flex;
             align-items: center;
@@ -394,6 +402,148 @@
             box-shadow: 0 0 0 6px rgba(255,255,255,0.26), 0 0 18px rgba(255,251,247,0.92);
         }
 
+        .home-v3-collage > :not(.home-v3-growth-stage) {
+            display: none;
+        }
+
+        .home-v3-growth-stage {
+            position: relative;
+            min-height: 700px;
+            border-radius: 46px;
+            background:
+                radial-gradient(circle at 22% 20%, rgba(255, 255, 255, 0.94), transparent 28%),
+                radial-gradient(circle at 78% 30%, rgba(241, 209, 218, 0.72), transparent 22%),
+                radial-gradient(circle at 52% 78%, rgba(218, 228, 202, 0.58), transparent 26%),
+                linear-gradient(160deg, rgba(255,255,255,0.62), rgba(251, 236, 231, 0.82));
+            border: 1px solid rgba(144, 73, 81, 0.10);
+            box-shadow: 0 34px 90px rgba(96, 72, 68, 0.12);
+            overflow: hidden;
+        }
+
+        .growth-tree-svg {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .growth-tree-svg path {
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            stroke-dasharray: 1;
+            stroke-dashoffset: 1;
+            animation: drawTreePath 3.8s ease-in-out infinite;
+        }
+
+        .growth-tree-svg .trunk {
+            stroke: rgba(144, 73, 81, 0.74);
+            stroke-width: 9;
+        }
+
+        .growth-tree-svg .branch {
+            stroke: rgba(122, 139, 110, 0.62);
+            stroke-width: 6;
+        }
+
+        .growth-tree-svg .branch.two {
+            animation-delay: 0.35s;
+        }
+
+        .growth-tree-svg .branch.three {
+            animation-delay: 0.7s;
+        }
+
+        .growth-stage-card {
+            position: absolute;
+            width: 210px;
+            border-radius: 28px;
+            padding: 16px;
+            background: rgba(255,255,255,0.86);
+            border: 1px solid rgba(144, 73, 81, 0.10);
+            box-shadow: 0 22px 46px rgba(80, 61, 58, 0.14);
+            backdrop-filter: blur(16px);
+            opacity: 0;
+            transform: translateY(18px) scale(0.96);
+            animation: growMomentCard 3.8s ease-in-out infinite;
+        }
+
+        .growth-stage-card::before {
+            content: "";
+            display: block;
+            height: 104px;
+            border-radius: 20px;
+            margin-bottom: 14px;
+            background:
+                radial-gradient(circle at 30% 22%, rgba(255, 230, 220, 0.92), transparent 24%),
+                radial-gradient(circle at 74% 28%, rgba(226, 190, 204, 0.86), transparent 26%),
+                linear-gradient(145deg, rgba(187, 154, 143, 0.82), rgba(149, 169, 142, 0.64));
+        }
+
+        .growth-stage-card strong {
+            display: block;
+            color: #4e3d38;
+            font-size: 0.98rem;
+            letter-spacing: -0.03em;
+            line-height: 1.35;
+        }
+
+        .growth-stage-card span {
+            display: block;
+            margin-top: 8px;
+            color: #7a6862;
+            font-size: 0.78rem;
+            line-height: 1.6;
+        }
+
+        .growth-stage-card.one {
+            left: 8%;
+            top: 50%;
+            transform: rotate(-5deg);
+            animation-delay: 0.1s;
+        }
+
+        .growth-stage-card.two {
+            right: 9%;
+            top: 18%;
+            transform: rotate(5deg);
+            animation-delay: 0.85s;
+        }
+
+        .growth-stage-card.three {
+            right: 13%;
+            bottom: 10%;
+            transform: rotate(-3deg);
+            animation-delay: 1.55s;
+        }
+
+        .growth-stage-caption {
+            position: absolute;
+            left: 34px;
+            top: 32px;
+            max-width: 260px;
+            padding: 14px 18px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.72);
+            border: 1px solid rgba(144, 73, 81, 0.10);
+            color: #83565d;
+            font-size: 0.86rem;
+            font-weight: 800;
+            box-shadow: 0 18px 34px rgba(96, 72, 68, 0.08);
+        }
+
+        @keyframes drawTreePath {
+            0%, 12% { stroke-dashoffset: 1; opacity: 0.2; }
+            46%, 78% { stroke-dashoffset: 0; opacity: 1; }
+            100% { stroke-dashoffset: 0; opacity: 0.35; }
+        }
+
+        @keyframes growMomentCard {
+            0%, 20% { opacity: 0; transform: translateY(18px) scale(0.96); }
+            36%, 78% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0.72; transform: translateY(0) scale(1); }
+        }
+
         .dot-a { left: 488px; top: 154px; }
         .dot-b { left: 596px; top: 232px; }
         .dot-c { left: 724px; top: 224px; }
@@ -409,6 +559,14 @@
             grid-template-columns: repeat(3, minmax(0, 1fr));
             gap: 18px;
             margin-top: 18px;
+        }
+
+        .home-v3-feature-grid {
+            display: none;
+        }
+
+        .home-v3-section:has(.home-v3-feature-grid) {
+            display: none;
         }
 
         .home-v3-feature {
@@ -603,6 +761,14 @@
                 font-size: clamp(2.95rem, 10vw, 4.6rem);
             }
 
+            .home-v3-growth-stage {
+                min-height: 620px;
+            }
+
+            .growth-stage-card {
+                width: 190px;
+            }
+
             .home-v3-feature-grid,
             .home-v3-preview-grid,
             .home-v3-preview-row {
@@ -610,7 +776,7 @@
             }
 
             .home-v3-collage {
-                min-height: 980px;
+                min-height: 660px;
             }
 
             .home-v3-halo {
@@ -642,6 +808,18 @@
                 font-size: 0.97rem;
             }
 
+            .home-v3-title {
+                margin-top: 18px;
+                font-size: clamp(2.35rem, 10.5vw, 2.95rem);
+                line-height: 1.04;
+                max-width: 100%;
+                overflow-wrap: anywhere;
+            }
+
+            .home-v3-note {
+                display: none;
+            }
+
             .home-v3-actions {
                 flex-direction: column;
             }
@@ -651,7 +829,45 @@
             }
 
             .home-v3-collage {
-                min-height: 900px;
+                min-height: 620px;
+            }
+
+            .home-v3-growth-stage {
+                min-height: 600px;
+                border-radius: 34px;
+            }
+
+            .growth-stage-caption {
+                left: 18px;
+                top: 20px;
+                max-width: calc(100% - 36px);
+                font-size: 0.78rem;
+            }
+
+            .growth-stage-card {
+                width: 172px;
+                padding: 13px;
+                border-radius: 23px;
+            }
+
+            .growth-stage-card::before {
+                height: 82px;
+                border-radius: 17px;
+            }
+
+            .growth-stage-card.one {
+                left: 4%;
+                top: 48%;
+            }
+
+            .growth-stage-card.two {
+                right: 5%;
+                top: 18%;
+            }
+
+            .growth-stage-card.three {
+                right: 7%;
+                bottom: 9%;
             }
 
             .home-v3-card {
@@ -675,6 +891,22 @@
         <main class="home-v3-main">
             <section class="home-v3-hero">
                 <div class="home-v3-copy reveal">
+                    <div class="home-v3-identity-copy">
+                        <div class="home-v3-eyebrow">입덕의 첫 순간부터, 오래 남는 장면까지</div>
+                        <h1 class="home-v3-title">
+                            <span class="soft">좋아하게 된<br>첫 순간이</span>
+                            <span class="accent">하나의 러브트리로<br>이어져요</span>
+                        </h1>
+                        <p class="home-v3-desc">
+                            무대, 장면, 다시 듣는 노래와 그때의 마음을 차곡차곡 이어
+                            내가 왜 좋아하게 되었는지 하나의 흐름으로 남겨보세요.
+                        </p>
+                        <div class="home-v3-actions">
+                            <a href="pages/login.html?redirect=my-trees.html" class="btn-round btn-primary">첫 순간 남기기</a>
+                            <a href="pages/search.html" class="btn-round btn-outline">공개 트리 감상하기</a>
+                        </div>
+                        <div class="home-v3-note">처음에는 단 하나의 순간만 있어도 충분해요.</div>
+                    </div>
                     <div class="home-v3-eyebrow">공개되지 않아도, 마음은 천천히 자라나요</div>
                     <h1 class="home-v3-title">
                         <span class="soft">좋아하는 순간이</span>
@@ -705,6 +937,27 @@
                 </div>
 
                 <div class="home-v3-collage reveal" aria-hidden="true">
+                    <div class="home-v3-growth-stage">
+                        <div class="growth-stage-caption">순간 하나가 이어지고, 감정의 가지가 자라나요</div>
+                        <svg class="growth-tree-svg" viewBox="0 0 640 700" role="img" aria-label="러브트리가 자라는 애니메이션">
+                            <path class="trunk" pathLength="1" d="M320 600 C318 520 322 450 320 360 C318 285 330 232 360 178" />
+                            <path class="branch one" pathLength="1" d="M320 380 C250 360 188 336 126 292" />
+                            <path class="branch two" pathLength="1" d="M340 302 C414 278 462 230 506 154" />
+                            <path class="branch three" pathLength="1" d="M326 452 C402 456 468 488 540 548" />
+                        </svg>
+                        <article class="growth-stage-card one">
+                            <strong>처음 마음이 움직인 무대</strong>
+                            <span>그날의 장면과 이유를 첫 순간으로 남겨요.</span>
+                        </article>
+                        <article class="growth-stage-card two">
+                            <strong>다시 듣게 된 노래</strong>
+                            <span>계속 좋아하게 된 감정을 이어 붙여요.</span>
+                        </article>
+                        <article class="growth-stage-card three">
+                            <strong>오래 남은 한 문장</strong>
+                            <span>흩어진 기억이 하나의 러브트리가 돼요.</span>
+                        </article>
+                    </div>
                     <div class="home-v3-halo"></div>
 
                     <div class="home-v3-branch branch-a"></div>
