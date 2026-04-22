@@ -11,6 +11,9 @@
 모든 화면은 기능 노출보다 감정 위계를 우선한다.  
 구현 전에는 “무엇을 먼저 느끼게 할 것인가”를 먼저 정하고, 구현 중에는 “무엇이 먼저 보이는가”를 계속 검수한다.
 
+실서비스 공식 기준 주소는 `https://lovebud.pages.dev/` 이다.  
+화면 QA와 레이아웃 점검은 이 주소에 실제 배포되는 경험을 기준으로 판단한다.
+
 ---
 
 ## 2. UI Principles & Keywords
@@ -75,9 +78,107 @@ Lovetree의 디자인은 차가운 IT 관리 도구의 인상을 지우고, 사�
 
 ---
 
-## 6. Page Types
+## 6. Shared Screen Canvas & Responsive Baseline
 
-### 6.1 Landing Page
+이 섹션은 LoveBud 전 페이지가 공통으로 따를 화면 캔버스 기준선이다.  
+페이지별 예외를 만들더라도 아래 해상도와 밀도 원칙을 먼저 통과해야 한다.
+
+### 6.1 Required Canvas Set
+
+#### Desktop
+- **Desktop master:** `1920x1080`
+- **Desktop check:** `1536x864`
+- **Desktop check:** `1366x768`
+
+#### Tablet
+- **Tablet check:** `768x1024`
+
+#### Mobile
+- **Mobile master:** `390x844`
+- **Mobile check:** `414x896`
+- **Mobile check:** `360x800`
+
+### 6.2 Shared Width Rules
+- 데스크탑 기준 페이지 최대 콘텐츠 폭은 `1280px`를 상한으로 한다.
+- 일반 리스트 / detail / browse / my-trees 본문은 `1120px ~ 1200px` 안에서 설계한다.
+- hero가 넓게 펼쳐지는 랜딩형 화면도 실제 읽기 콘텐츠 폭은 `1280px`를 넘기지 않는다.
+- `1920px` 화면이라고 해서 콘텐츠를 화면 전체 폭으로 늘리지 않는다.
+- `1366x768`에서도 첫 화면 주요 정보가 첫 스크롤 안에서 끊기지 않게 한다.
+
+### 6.3 Hero Ratio Rules
+- 데스크탑 hero는 기본적으로 **좌 5 : 우 5** 또는 **좌 6 : 우 4** 비율 안에서 설계한다.
+- 좌측은 정체성/대표 카피, 우측은 대표 비주얼/preview/대표 카드 용도로만 쓴다.
+- 우측 영역이 비어 있으면 좌측 폭만 넓히는 것이 아니라, hero 자체 밀도를 다시 줄인다.
+- hero를 설명 박스처럼 길게 쓰지 않는다.
+
+### 6.4 Mobile Hero Rules
+- 모바일 hero 제목은 **최대 2줄**만 허용한다.
+- 모바일 hero 보조문장은 **최대 1문장**, **최대 32자 내외**를 기본값으로 한다.
+- 모바일 hero에서 강한 CTA는 **최대 1개**, 보조 CTA 포함 **최대 2개**까지만 허용한다.
+- 모바일에서는 hero 아래 장식 카드/보조 설명/구조 안내를 연쇄적으로 두지 않는다.
+
+### 6.5 Copy Density Rules
+- hero 보조문장은 데스크탑 기준 **최대 1문장**, **최대 55자 내외**를 원칙으로 한다.
+- 일반 섹션 보조문장은 **최대 1문장**, **최대 45자 내외**를 원칙으로 한다.
+- 카드 내부 보조문장은 기본 `1~2줄`만 허용한다.
+- 화면이 구조를 설명하는 문구는 기본 금지한다.
+- `왼쪽에서 고르고 오른쪽에서 본다`, `여기서 ~ 할 수 있다`, `이 페이지는 ~ 하는 공간이다` 같은 구조 설명 문구를 쓰지 않는다.
+- 설명형 랜딩은 금지한다. 랜딩은 기능 설명보다 정체성이 먼저 읽혀야 한다.
+
+### 6.6 CTA Density Rules
+- hero 영역의 CTA는 **강한 primary 1개**를 기본값으로 한다.
+- 같은 시야 안에서 CTA는 **최대 2개**까지만 허용한다.
+- 3개 이상의 동등한 CTA 군집은 금지한다.
+- 데스크탑에서도 CTA가 너무 멀리 떨어져 보이면 안 된다.
+- 랜딩/intro/browse hero에서 CTA 아래 추가 안내 문장은 원칙적으로 생략한다.
+
+### 6.7 Card Meta Density Rules
+- 카드 메타는 **최대 2개**까지만 노출한다.
+- 메타는 한 줄을 넘기지 않는 것을 원칙으로 한다.
+- 제목, 대표 순간, 감정 설명보다 메타가 먼저 읽히면 안 된다.
+- `개수 + 날짜 + 상태 + 태그`를 한 카드에 동시에 다 싣지 않는다.
+- 모바일 카드에서는 메타 2개도 과하면 1개로 줄인다.
+
+### 6.8 Mobile Hide Rules
+모바일에서는 아래 요소를 우선적으로 숨기거나 약화한다.
+
+- 구조 설명용 가이드 스트립
+- 중복 보조문장
+- 데스크탑 전용 보조 패널의 중복 제목
+- 카드의 2차 메타
+- decorative badge / 과한 분류 chip
+- 현재 행동과 직접 관련 없는 보조 CTA
+- 의미 없는 상태 라벨 반복
+
+단, 핵심 감정 단위(대표 순간, 첫 순간, 현재 트리, 이어진 감정)는 숨기지 않는다.
+
+### 6.9 Desktop Density Guardrails
+- 데스크탑에서 좌우 여백이 과도하게 커져 콘텐츠가 가운데 좁은 기둥처럼 보이면 안 된다.
+- `1920x1080`에서 hero와 첫 섹션 사이가 과하게 비어 보이면 안 된다.
+- `1536x864`, `1366x768`에서 첫 화면 아래 핵심 카드/preview가 접히지 않도록 수직 밀도를 조절한다.
+- 넓은 화면에서 빈 공간을 장식으로만 메우지 않는다. 빈 공간이 크면 카피와 블록 수를 다시 줄인다.
+
+### 6.10 Identity-first Rules
+- 설명형 랜딩 금지, 정체성 우선.
+- 모든 첫 화면은 “무엇을 할 수 있는가”보다 “이 서비스가 무엇을 느끼게 하는가”가 먼저 보여야 한다.
+- 게시판형/대시보드형/관리툴형 화면 인상은 공통 금지한다.
+- 대표 순간 / 첫 순간 / 이어진 감정 / 현재 트리 같은 감정 단위가 수치 / 상태 / 관리 액션보다 먼저 와야 한다.
+
+### 6.11 Required QA Pass
+모든 신규 화면 또는 주요 개편 화면은 아래 순서로 확인한다.
+
+1. `1920x1080`에서 여백 과잉 없이 정체성이 먼저 읽히는가
+2. `1536x864`에서 hero와 첫 행동이 첫 화면 안에 들어오는가
+3. `1366x768`에서 주요 CTA와 대표 카드가 접히지 않는가
+4. `768x1024`에서 2열 구조가 무너지며 정보가 과밀해지지 않는가
+5. `390x844`에서 hero 제목이 2줄을 넘지 않는가
+6. `414x896`, `360x800`에서 보조문장/메타/가이드가 과밀하지 않은가
+
+---
+
+## 7. Page Types
+
+### 7.1 Landing Page
 **목적**  
 제품 정체성을 전달하고 첫 진입 행동을 유도한다.
 
@@ -97,7 +198,7 @@ Lovetree의 디자인은 차가운 IT 관리 도구의 인상을 지우고, 사�
 - 기능 목록은 hero를 보조하는 수준까지만 허용한다.
 - 첫 화면에서 관리성 문구를 쓰지 않는다.
 
-### 6.2 Appreciation Hub Page
+### 7.2 Appreciation Hub Page
 **목적**  
 공개 트리를 검색 결과가 아니라 감상 허브로 경험하게 만든다.
 
@@ -119,7 +220,7 @@ Lovetree의 디자인은 차가운 IT 관리 도구의 인상을 지우고, 사�
 - 기본 상태에서도 감상형 문구를 유지한다.
 - `0개`, `준비 중`, `없음`은 정적 기본값으로 두지 않는다.
 
-### 6.3 Detail Appreciation Page
+### 7.3 Detail Appreciation Page
 **목적**  
 하나의 순간과 감정 흐름을 깊게 감상하게 만든다.
 
@@ -140,7 +241,7 @@ Lovetree의 디자인은 차가운 IT 관리 도구의 인상을 지우고, 사�
 - 관련 순간은 추천 목록보다 감정 경로처럼 보여야 한다.
 - 메타가 제목보다 먼저 시선을 잡으면 안 된다.
 
-### 6.4 Editor Page
+### 7.4 Editor Page
 **목적**  
 순간 생성과 감정 흐름 편집을 자연스럽게 만든다.
 
@@ -161,7 +262,7 @@ Lovetree의 디자인은 차가운 IT 관리 도구의 인상을 지우고, 사�
 - 첫 순간과 다음 순간의 의미를 문구로 구분한다.
 - 현재 지원하지 않는 입력 타입은 지원하는 것처럼 안내하지 않는다.
 
-### 6.5 Management Page
+### 7.5 Management Page
 **목적**  
 내 트리를 다시 열고 최소한으로 관리하게 만든다.
 
@@ -182,9 +283,9 @@ Lovetree의 디자인은 차가운 IT 관리 도구의 인상을 지우고, 사�
 
 ---
 
-## 7. Card Types
+## 8. Card Types
 
-### 7.1 Public Tree Card
+### 8.1 Public Tree Card
 **사용 위치**  
 browse / search hub
 
@@ -200,7 +301,7 @@ browse / search hub
 - 메타는 한 줄 또는 두 개 이하로 제한한다.
 - 카드 hover는 선택 의도만 강화하고 기능성을 과장하지 않는다.
 
-### 7.2 My Tree Card
+### 8.2 My Tree Card
 **사용 위치**  
 my-trees
 
@@ -219,7 +320,7 @@ my-trees
   2. 첫 순간 title/memo 기반 텍스트 카드
   3. 트리 fallback 비주얼
 
-### 7.3 Moment Preview Card
+### 8.3 Moment Preview Card
 **사용 위치**  
 browse preview, detail related path
 
@@ -235,7 +336,7 @@ browse preview, detail related path
 - 메타는 제목과 설명보다 약해야 한다.
 - preview가 목록처럼 보이면 안 된다.
 
-### 7.4 Text Hero Card
+### 8.4 Text Hero Card
 **사용 위치**  
 썸네일이 없는 대표 순간
 
@@ -252,9 +353,9 @@ browse preview, detail related path
 
 ---
 
-## 8. Navigation Intensity
+## 9. Navigation Intensity
 
-### 8.1 Core Navigation
+### 9.1 Core Navigation
 **대상**  
 홈, browse, my-trees, editor 진입, detail 진입
 
@@ -263,7 +364,7 @@ browse preview, detail related path
 - 현재 페이지는 배경과 톤으로만 구분한다.
 - navigation이 hero나 대표 순간보다 강하면 안 된다.
 
-### 8.2 Context Navigation
+### 9.2 Context Navigation
 **대상**  
 카드 선택, preview 전환, 현재 순간으로 이동, 트리 열기
 
@@ -272,7 +373,7 @@ browse preview, detail related path
 - 본문보다 크거나 화려하면 안 된다.
 - 선택 상태는 명확해야 하지만 관리 액션처럼 보이면 안 된다.
 
-### 8.3 Management Navigation
+### 9.3 Management Navigation
 **대상**  
 수정, 삭제, 공개 전환, 설정
 
@@ -283,19 +384,19 @@ browse preview, detail related path
 
 ---
 
-## 9. Empty States
+## 10. Empty States
 
-### 9.1 Empty State Principle
+### 10.1 Empty State Principle
 빈 상태는 “데이터 없음”을 알리는 시스템 패널이 아니라, 다음 감정 행동을 자연스럽게 안내하는 장면이어야 한다.
 
-### 9.2 Rules
+### 10.2 Rules
 - `0개`, `없음`, `준비 중`, `비어 있음`을 단독 문장으로 쓰지 않는다.
 - 제목은 감정 행동 중심으로 쓴다.
 - 설명은 1~2문장으로 짧게 유지한다.
 - CTA는 하나만 둔다.
 - 아이콘은 부드러운 감정 톤을 사용한다.
 
-### 9.3 Writing Pattern
+### 10.3 Writing Pattern
 **좋은 예**
 - `이 장면에서 러브트리가 시작돼요`
 - `대표 순간과 이어진 감정이 이곳에 놓여요`
@@ -309,9 +410,9 @@ browse preview, detail related path
 
 ---
 
-## 10. Editor States
+## 11. Editor States
 
-### 10.1 No Tree Selected
+### 11.1 No Tree Selected
 **보여야 하는 것**
 - 현재 맥락 설명
 - 다음 행동 CTA
@@ -324,7 +425,7 @@ browse preview, detail related path
 - CTA는 하나만 노출한다.
 - 빈 상태도 감정 문맥 안에서 설명한다.
 
-### 10.2 First Moment Creation
+### 11.2 First Moment Creation
 **보여야 하는 것**
 - 첫 순간이라는 의미
 - 링크로 시작 / 텍스트로 시작
@@ -341,7 +442,7 @@ browse preview, detail related path
 - YouTube 링크만 지원하면 그렇게 명시한다.
 - 링크가 없어도 텍스트-only 저장 가능하면 분명히 적는다.
 
-### 10.3 Next Moment Creation
+### 11.3 Next Moment Creation
 **보여야 하는 것**
 - 현재 순간에서 이어진다는 맥락
 - 다음 감정을 적는 필드
@@ -354,7 +455,7 @@ browse preview, detail related path
 - “무엇이 이어지는가”가 먼저 보여야 한다.
 - 이전 순간과의 연결감을 문구로 보조한다.
 
-### 10.4 Selected Moment View
+### 11.4 Selected Moment View
 **보여야 하는 것**
 - 현재 순간
 - 제목
@@ -369,7 +470,7 @@ browse preview, detail related path
 - 현재 순간이 패널의 1순위여야 한다.
 - 메타보다 제목과 메모가 먼저 읽혀야 한다.
 
-### 10.5 Edit State
+### 11.5 Edit State
 **보여야 하는 것**
 - 현재 수정 중인 내용
 - 저장
@@ -386,31 +487,31 @@ browse preview, detail related path
 
 ---
 
-## 11. CTA Placement
+## 12. CTA Placement
 
-### 11.1 Primary CTA
+### 12.1 Primary CTA
 **규칙**
 - 한 화면에 강한 primary CTA는 1개만 둔다.
 - hero 또는 empty state 바로 아래에 둔다.
 - 본문을 끊지 않는 위치에 둔다.
 
-### 11.2 Secondary CTA
+### 12.2 Secondary CTA
 **규칙**
 - primary CTA 옆 또는 아래에 둔다.
 - 시각 강도는 primary보다 확실히 약하게 유지한다.
 
-### 11.3 Destructive CTA
+### 12.3 Destructive CTA
 **규칙**
 - 삭제, 초기화, 영구 전환은 카드 기본면에 두지 않는다.
 - 점메뉴 또는 확인 단계 뒤에 둔다.
 
-### 11.4 Browse CTA
+### 12.4 Browse CTA
 **규칙**
 - 검색보다 카드 선택이 먼저 행동으로 읽혀야 한다.
 - preview에서 detail로 가는 CTA는 감상 흐름 안에 둔다.
 - CTA가 필터보다 먼저 눈에 들어오게 한다.
 
-### 11.5 Editor CTA
+### 12.5 Editor CTA
 **규칙**
 - 첫 순간 저장 CTA는 입력 흐름의 마지막에 둔다.
 - `저장`보다 `첫 순간 심기`, `이 순간 이어가기` 같은 의미형 문구를 우선한다.
@@ -418,9 +519,9 @@ browse preview, detail related path
 
 ---
 
-## 12. Typography Hierarchy
+## 13. Typography Hierarchy
 
-### 12.1 H1
+### 13.1 H1
 **사용 위치**  
 landing hero, browse hero, detail 대표 제목
 
@@ -428,7 +529,7 @@ landing hero, browse hero, detail 대표 제목
 - 한 페이지에 1개만 둔다.
 - 감정 정체성을 가장 먼저 전달하는 문장에 사용한다.
 
-### 12.2 H2
+### 13.2 H2
 **사용 위치**  
 섹션 제목, page major section
 
@@ -436,7 +537,7 @@ landing hero, browse hero, detail 대표 제목
 - card title보다 확실히 커야 한다.
 - 기능 설명보다 감정 문장을 우선 배치한다.
 
-### 12.3 H3 / Card Title
+### 13.3 H3 / Card Title
 **사용 위치**  
 카드 제목, preview 제목, editor 현재 순간 제목
 
@@ -444,7 +545,7 @@ landing hero, browse hero, detail 대표 제목
 - 메타보다 확실히 강해야 한다.
 - 2줄 이내를 기본으로 한다.
 
-### 12.4 Body Primary
+### 13.4 Body Primary
 **사용 위치**  
 메모, 설명 문단, hero 설명
 
@@ -452,7 +553,7 @@ landing hero, browse hero, detail 대표 제목
 - line-height를 충분히 확보한다.
 - 지나치게 작은 크기를 기본값으로 쓰지 않는다.
 
-### 12.5 Body Secondary
+### 13.5 Body Secondary
 **사용 위치**  
 보조 설명, 상태 안내, preview hint
 
@@ -461,7 +562,7 @@ landing hero, browse hero, detail 대표 제목
 - 문장은 짧고 명확하게 유지한다.
 - 색만 흐리게 처리하고 문장을 방치하지 않는다.
 
-### 12.6 Meta / Label
+### 13.6 Meta / Label
 **사용 위치**  
 날짜, 공개 상태, 개수, 태그 레이블
 
@@ -472,7 +573,7 @@ landing hero, browse hero, detail 대표 제목
 
 ---
 
-## 13. Component Rules
+## 14. Component Rules
 
 | 요소 | 기본 가이드라인 | 구현 규격 |
 | :--- | :--- | :--- |
@@ -489,7 +590,7 @@ landing hero, browse hero, detail 대표 제목
 
 ---
 
-## 14. Prohibitions
+## 15. Prohibitions
 
 1. 순수 블랙(`#000`)과 화이트(`#FFF`) 배경을 기본값으로 사용하지 않는다.
 2. 날카로운 직각 모서리(`radius: 0`)를 기본값으로 사용하지 않는다.
@@ -501,45 +602,55 @@ landing hero, browse hero, detail 대표 제목
 8. 단순 텍스트 리스트를 기본 카드 대체물로 쓰지 않는다.
 9. 과도하게 두꺼운 폰트 웨이트를 남용하지 않는다.
 10. 모바일에서 요소를 화면 가장자리에 붙이지 않는다.
+11. 구조 설명 문구를 화면 기본 카피로 두지 않는다.
+12. 설명형 랜딩을 기본 구조로 두지 않는다.
+13. 카드 메타를 제목/대표 장면보다 강하게 노출하지 않는다.
+14. 데스크탑에서 과잉 여백으로 콘텐츠를 빈약하게 보이게 하지 않는다.
 
 ---
 
-## 15. Implementation Checklist
+## 16. Implementation Checklist
 
-### 15.1 Page Structure
+### 16.1 Page Structure
 - [ ] 이 페이지의 1차 목적이 명확한가
 - [ ] 먼저 느껴야 하는 감정이 정의되어 있는가
 - [ ] 가장 먼저 보여야 하는 요소가 실제로 첫 시선에 들어오는가
 
-### 15.2 Copy
+### 16.2 Copy
 - [ ] placeholder가 시스템 문구처럼 보이지 않는가
 - [ ] `0개`, `준비 중`, `없음`을 정적 기본값으로 두지 않았는가
 - [ ] 감상형 문구가 기능형 문구보다 앞서는가
 - [ ] 현재 실제 지원 계약을 넘는 표현을 쓰지 않았는가
+- [ ] 구조 설명 문구가 남아 있지 않은가
+- [ ] hero 보조문장이 길어지지 않았는가
 
-### 15.3 Layout
+### 16.3 Layout
 - [ ] 카드, preview, hero가 검색이나 필터보다 먼저 읽히는가
 - [ ] 관리 버튼이 대표 콘텐츠보다 강하지 않은가
 - [ ] destructive action이 후순위 배치되어 있는가
+- [ ] `1920x1080`, `1536x864`, `1366x768`에서 과잉 여백이 없는가
+- [ ] `390x844`, `414x896`, `360x800`에서 hero와 CTA가 과밀하지 않은가
 
-### 15.4 Cards
+### 16.4 Cards
 - [ ] 대표 카드에 실제 감정 단위가 반영되는가
 - [ ] 대표 비주얼 우선순위가 정의되어 있는가
 - [ ] 썸네일이 없을 때 fallback이 관리형 placeholder가 아닌가
+- [ ] 카드 메타가 최대 2개를 넘지 않는가
 
-### 15.5 Empty States
+### 16.5 Empty States
 - [ ] empty state 제목이 감정 행동 중심인가
 - [ ] 설명이 짧고 자연스러운가
 - [ ] CTA가 하나로 정리되어 있는가
 
-### 15.6 Editor
+### 16.6 Editor
 - [ ] 첫 순간/다음 순간 문맥이 구분되는가
 - [ ] 입력 방식이 현재 지원 범위와 일치하는가
 - [ ] URL, 제목, 메모의 위계가 적절한가
 - [ ] 저장 CTA 문구가 의미형인가
 
-### 15.7 Final QA
+### 16.7 Final QA
 - [ ] 게시판처럼 보이지 않는가
 - [ ] 관리툴처럼 보이지 않는가
 - [ ] 감정 단위가 수치와 시스템 정보보다 먼저 읽히는가
 - [ ] 각 페이지가 같은 브랜드 톤 안에 있는가
+- [ ] 화면 캔버스 기준 해상도 세트를 모두 통과하는가
