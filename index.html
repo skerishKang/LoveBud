@@ -7,653 +7,859 @@
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%23fff4ee'/%3E%3Cpath d='M32 49V25' stroke='%23904951' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M32 29c-9-1-16-7-17-16 9 1 16 7 17 16Z' fill='%23e58a96'/%3E%3Cpath d='M32 29c9-1 16-7 17-16-9 1-16 7-17 16Z' fill='%2397c978'/%3E%3Ccircle cx='32' cy='18' r='5' fill='%23f2c36b'/%3E%3C/svg%3E">
     <link rel="stylesheet" href="css/global.css?v=20260417-31">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
-     <style>
-         /* Remove .app-container card styling - use open layout like app pages */
-         .landing-wrapper {
-             min-height: 100vh;
-             display: flex;
-             flex-direction: column;
-         }
+    <style>
+        body.bokeh-bg {
+            background:
+                radial-gradient(circle at 12% 12%, rgba(255, 222, 211, 0.72), transparent 22%),
+                radial-gradient(circle at 84% 10%, rgba(239, 206, 215, 0.58), transparent 20%),
+                radial-gradient(circle at 76% 66%, rgba(236, 231, 212, 0.42), transparent 24%),
+                linear-gradient(180deg, #fff9f4 0%, #f9f0ea 42%, #f7efe9 100%);
+            color: var(--on-surface);
+        }
 
-.hero-section {
-             flex: 1;
-             display: flex;
-             align-items: center;
-             justify-content: center;
-             min-height: calc(100vh - 72px);
-             padding: 82px 48px 64px;
-             background: radial-gradient(circle at 18% 18%, rgba(255, 214, 194, 0.72), transparent 32%),
-                         radial-gradient(circle at 76% 24%, rgba(244, 185, 195, 0.46), transparent 30%),
-                         linear-gradient(135deg, #fff7f0 0%, #fff1ea 46%, #f9e7e3 100%);
-             background-size: cover;
-             background-position: center;
-             position: relative;
-         }
+        .home-v3-shell {
+            position: relative;
+            overflow: hidden;
+        }
 
-        .hero-section::before {
-            content: '';
+        .home-v3-shell::before,
+        .home-v3-shell::after {
+            content: "";
+            position: fixed;
+            inset: auto;
+            pointer-events: none;
+            z-index: 0;
+            border-radius: 999px;
+            filter: blur(6px);
+            opacity: 0.7;
+        }
+
+        .home-v3-shell::before {
+            top: 110px;
+            right: -120px;
+            width: 340px;
+            height: 340px;
+            background: radial-gradient(circle, rgba(241, 208, 216, 0.72), rgba(241, 208, 216, 0));
+        }
+
+        .home-v3-shell::after {
+            left: -120px;
+            bottom: 120px;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(236, 216, 200, 0.82), rgba(236, 216, 200, 0));
+        }
+
+        .home-v3-main {
+            position: relative;
+            z-index: 1;
+            width: min(1280px, calc(100% - 48px));
+            margin: 0 auto;
+            padding: 34px 0 110px;
+        }
+
+        .home-v3-hero {
+            position: relative;
+            display: grid;
+            grid-template-columns: minmax(0, 1.02fr) minmax(420px, 0.98fr);
+            gap: 42px;
+            align-items: center;
+            min-height: calc(100vh - 120px);
+            padding: 46px 0 32px;
+        }
+
+        .home-v3-copy {
+            max-width: 620px;
+            padding: 18px 0 28px;
+        }
+
+        .home-v3-eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 38px;
+            padding: 0 18px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.72);
+            border: 1px solid rgba(144, 73, 81, 0.10);
+            box-shadow: 0 16px 32px rgba(102, 75, 70, 0.08);
+            color: var(--primary);
+            font-size: 0.83rem;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+        }
+
+        .home-v3-title {
+            margin: 24px 0 18px;
+            font-size: clamp(3.55rem, 6vw, 5.7rem);
+            line-height: 0.98;
+            letter-spacing: -0.055em;
+            color: #483934;
+        }
+
+        .home-v3-title .soft {
+            display: block;
+            color: #7f5d5f;
+            font-weight: 700;
+        }
+
+        .home-v3-title .accent {
+            display: block;
+            color: var(--primary);
+        }
+
+        .home-v3-desc {
+            margin: 0;
+            max-width: 560px;
+            font-size: 1.08rem;
+            line-height: 1.88;
+            color: #6c5953;
+        }
+
+        .home-v3-note {
+            margin-top: 20px;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 11px 18px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.56);
+            border: 1px solid rgba(144, 73, 81, 0.10);
+            color: #7c5f60;
+            font-size: 0.93rem;
+            font-weight: 700;
+            box-shadow: 0 14px 30px rgba(102, 75, 70, 0.08);
+        }
+
+        .home-v3-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            margin-top: 28px;
+        }
+
+        .home-v3-actions .btn-round {
+            min-height: 58px;
+            padding-inline: 30px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 999px;
+            font-size: 1rem;
+        }
+
+        .home-v3-actions .btn-outline {
+            background: rgba(255,255,255,0.72);
+            backdrop-filter: blur(12px);
+        }
+
+        .home-v3-flow {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 22px;
+        }
+
+        .home-v3-flow-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 9px 14px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.64);
+            border: 1px solid rgba(144, 73, 81, 0.10);
+            color: #6d5954;
+            font-size: 0.84rem;
+            font-weight: 700;
+            box-shadow: 0 12px 22px rgba(102, 75, 70, 0.05);
+        }
+
+        .home-v3-flow-chip strong {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(144, 73, 81, 0.10);
+            color: var(--primary);
+            font-size: 0.72rem;
+        }
+
+        .home-v3-support {
+            margin-top: 22px;
+            max-width: 530px;
+            font-size: 0.92rem;
+            line-height: 1.75;
+            color: #7b6a64;
+        }
+
+        .home-v3-collage {
+            position: relative;
+            min-height: 760px;
+        }
+
+        .home-v3-halo {
+            position: absolute;
+            inset: 90px 70px 140px 70px;
+            border-radius: 48px;
+            background:
+                radial-gradient(circle at 28% 30%, rgba(255,255,255,0.92), transparent 25%),
+                radial-gradient(circle at 76% 22%, rgba(242, 212, 220, 0.82), transparent 18%),
+                radial-gradient(circle at 50% 70%, rgba(243, 226, 209, 0.72), transparent 22%),
+                linear-gradient(160deg, rgba(255,255,255,0.52), rgba(250, 235, 229, 0.74));
+            border: 1px solid rgba(144, 73, 81, 0.08);
+            box-shadow: 0 28px 80px rgba(101, 75, 71, 0.12);
+        }
+
+        .home-v3-branch {
+            position: absolute;
+            height: 7px;
+            border-radius: 999px;
+            background: linear-gradient(90deg, rgba(198, 154, 137, 0.28), rgba(157, 173, 147, 0.45));
+            transform-origin: left center;
+            opacity: 0.8;
+        }
+
+        .branch-a { left: 124px; top: 424px; width: 236px; transform: rotate(-15deg); }
+        .branch-b { left: 338px; top: 334px; width: 188px; transform: rotate(7deg); }
+        .branch-c { left: 340px; top: 338px; width: 218px; transform: rotate(-55deg); }
+        .branch-d { left: 346px; top: 344px; width: 204px; transform: rotate(53deg); }
+        .branch-e { left: 188px; top: 514px; width: 198px; transform: rotate(-40deg); }
+        .branch-f { left: 434px; top: 410px; width: 164px; transform: rotate(-29deg); }
+
+        .home-v3-card {
+            position: absolute;
+            border-radius: 30px;
+            background: rgba(255,255,255,0.84);
+            border: 1px solid rgba(144, 73, 81, 0.10);
+            box-shadow: 0 24px 44px rgba(94, 72, 69, 0.13);
+            backdrop-filter: blur(14px);
+            overflow: hidden;
+        }
+
+        .home-v3-card::before {
+            content: "";
             position: absolute;
             inset: 0;
-            background: linear-gradient(
-                to bottom,
-                rgba(255,255,255,0.16) 0%,
-                rgba(255,255,255,0.08) 40%,
-                rgba(255,255,255,0.02) 100%
-            );
+            background: linear-gradient(180deg, rgba(255,255,255,0.28), rgba(255,255,255,0));
             pointer-events: none;
         }
 
-.hero-content {
-             max-width: 690px;
-             z-index: 2;
-             display: flex;
-             flex-direction: column;
-             align-items: flex-start;
-             gap: 16px;
-             position: relative;
-             margin-right: min(32vw, 420px);
-         }
+        .home-v3-card-inner {
+            position: relative;
+            z-index: 1;
+            padding: 16px;
+        }
 
-         .hero-visual {
-             position: absolute;
-             right: 5%;
-             top: 50%;
-             transform: translateY(-50%);
-             width: 41%;
-             max-width: 500px;
-             z-index: 1;
-             pointer-events: none;
-             user-select: none;
-         }
+        .home-v3-photo {
+            height: 138px;
+            border-radius: 22px;
+            position: relative;
+            overflow: hidden;
+            background:
+                linear-gradient(180deg, rgba(255,255,255,0.16), rgba(255,255,255,0.02)),
+                radial-gradient(circle at 30% 25%, rgba(255, 229, 220, 0.88), transparent 26%),
+                radial-gradient(circle at 78% 22%, rgba(226, 190, 204, 0.88), transparent 24%),
+                linear-gradient(145deg, rgba(197, 165, 152, 0.92), rgba(152, 170, 145, 0.62));
+        }
 
-.hero-title {
-             max-width: 720px;
-             font-size: clamp(3.15rem, 5.3vw, 4.8rem);
-             line-height: 1.08;
-             color: var(--on-surface);
-             font-family: var(--font-heading);
-             letter-spacing: 0;
-             font-weight: 900;
-             text-shadow: 0 1px 10px rgba(255,255,255,0.2);
-         }
+        .home-v3-photo::after {
+            content: "";
+            position: absolute;
+            left: 14px;
+            right: 14px;
+            bottom: 14px;
+            height: 24px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.24);
+            backdrop-filter: blur(4px);
+        }
 
-         .hero-title .title-line {
-             display: block;
-         }
+        .home-v3-card-label {
+            margin-top: 13px;
+            color: #5a4843;
+            font-size: 1rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+        }
 
-         .hero-title .title-accent {
-             color: var(--primary);
-         }
+        .home-v3-card-copy {
+            margin-top: 7px;
+            color: #7b6761;
+            font-size: 0.83rem;
+            line-height: 1.7;
+        }
 
-         .hero-desc {
-             max-width: 590px;
-             font-size: 1.15rem;
-             color: var(--on-surface-variant);
-             margin: 0;
-             line-height: 1.62;
-         }
+        .home-v3-card-meta {
+            margin-top: 10px;
+            color: #99837d;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.01em;
+        }
 
-         .memory-card-mini {
-             background: white;
-             border-radius: 1.2rem;
-             padding: 12px;
-             box-shadow: 0 20px 50px rgba(0,0,0,0.08);
-             width: 220px;
-             position: absolute;
-             z-index: 20;
-             transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-             pointer-events: none;
-         }
+        .home-v3-chipline {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+        }
 
-         .memory-card-mini:hover {
-             transform: scale(1.04) rotate(1deg);
-             box-shadow: 0 30px 60px rgba(0,0,0,0.12);
-         }
+        .home-v3-chipline span {
+            display: inline-flex;
+            align-items: center;
+            min-height: 26px;
+            padding: 0 11px;
+            border-radius: 999px;
+            background: rgba(250, 240, 236, 0.95);
+            color: #93646a;
+            font-size: 0.73rem;
+            font-weight: 700;
+            border: 1px solid rgba(144, 73, 81, 0.08);
+        }
 
-         /* Feature cards section - use same spacing as app */
-         .features-section {
-             padding: 80px 48px;
-             max-width: 1280px;
-             margin: 0 auto;
-             width: 100%;
-         }
+        .card-root { left: 12px; top: 320px; width: 244px; transform: rotate(-5deg); }
+        .card-top { left: 258px; top: 72px; width: 226px; transform: rotate(4deg); }
+        .card-center { left: 466px; top: 262px; width: 238px; transform: rotate(2deg); }
+        .card-bottom { left: 278px; top: 492px; width: 232px; transform: rotate(-4deg); }
+        .card-side-top { right: 4px; top: 120px; width: 196px; transform: rotate(7deg); }
+        .card-side-bottom { right: 22px; top: 448px; width: 188px; transform: rotate(-7deg); }
 
-         .features-grid {
-             display: grid;
-             grid-template-columns: repeat(4, 1fr);
-             gap: 24px;
-         }
+        .home-v3-note-paper {
+            position: absolute;
+            left: 80px;
+            top: 120px;
+            width: 152px;
+            padding: 18px 16px 16px;
+            border-radius: 22px;
+            background: rgba(255, 248, 241, 0.88);
+            border: 1px solid rgba(177, 143, 135, 0.18);
+            box-shadow: 0 18px 34px rgba(100, 73, 68, 0.10);
+            transform: rotate(-7deg);
+            color: #7e6159;
+        }
 
-         .feature-card {
-             background: white;
-             padding: 2rem;
-             border-radius: 2.5rem;
-             display: flex;
-             align-items: center;
-             gap: 20px;
-             border: 1px solid rgba(0,0,0,0.03);
-             box-shadow: 0 10px 30px rgba(0,0,0,0.02);
-             transition: all 0.3s;
-         }
+        .home-v3-note-paper::before {
+            content: "";
+            position: absolute;
+            top: -12px;
+            left: 18px;
+            width: 52px;
+            height: 22px;
+            border-radius: 999px;
+            background: rgba(226, 189, 165, 0.42);
+        }
 
-         .feature-card:hover {
-             transform: translateY(-8px);
-             box-shadow: 0 20px 40px rgba(144, 73, 81, 0.08);
-             border-color: var(--outline-variant);
-         }
+        .home-v3-note-paper strong {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.78rem;
+            color: #8d6365;
+        }
 
-         .feature-icon {
-             width: 56px;
-             height: 56px;
-             border-radius: 16px;
-             display: flex;
-             align-items: center;
-             justify-content: center;
-             font-size: 24px;
-             flex-shrink: 0;
-         }
+        .home-v3-note-paper p {
+            margin: 0;
+            font-size: 0.8rem;
+            line-height: 1.7;
+        }
 
-         .hero-badge {
-             display: inline-block;
-             background: rgba(144, 73, 81, 0.07);
-             color: var(--primary);
-             padding: 6px 16px;
-             border-radius: 99px;
-             font-size: 12px;
-             font-weight: 800;
-             margin-bottom: 4px;
-             letter-spacing: 0.02em;
-         }
+        .home-v3-word {
+            position: absolute;
+            display: inline-flex;
+            align-items: center;
+            min-height: 28px;
+            padding: 0 13px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.64);
+            border: 1px solid rgba(144, 73, 81, 0.08);
+            box-shadow: 0 12px 22px rgba(102, 75, 70, 0.05);
+            color: #9b7d75;
+            font-size: 0.8rem;
+            font-weight: 700;
+        }
 
-         .hero-kicker {
-             margin: 0;
-             max-width: 560px;
-             font-size: 0.94rem;
-             line-height: 1.55;
-             color: var(--primary);
-             font-weight: 700;
-         }
+        .word-a { left: 498px; top: 176px; }
+        .word-b { left: 610px; top: 246px; }
+        .word-c { left: 506px; top: 442px; }
+        .word-d { left: 594px; top: 560px; }
 
-         .hero-cta-group {
-             display: flex;
-             flex-wrap: wrap;
-             justify-content: flex-start;
-             gap: 16px;
-             width: 100%;
-             margin-top: 2px;
-         }
+        .home-v3-dots span {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: rgba(255, 248, 244, 0.95);
+            box-shadow: 0 0 0 6px rgba(255,255,255,0.26), 0 0 18px rgba(255,251,247,0.92);
+        }
 
-         .hero-cta-btn {
-             min-height: 56px;
-             padding: 0 32px;
-             border-radius: 999px;
-             display: inline-flex;
-             align-items: center;
-             justify-content: center;
-             text-decoration: none;
-             font-size: 1rem;
-             font-weight: 700;
-             line-height: 1;
-             white-space: nowrap;
-             text-align: center;
-         }
+        .dot-a { left: 488px; top: 154px; }
+        .dot-b { left: 596px; top: 232px; }
+        .dot-c { left: 724px; top: 224px; }
+        .dot-d { left: 726px; top: 342px; }
+        .dot-e { left: 614px; top: 520px; }
 
-         .hero-cta-btn.btn-outline {
-             opacity: 1;
-         }
+        .home-v3-section {
+            margin-top: 28px;
+        }
 
-         .hero-flow {
-             display: flex;
-             flex-wrap: wrap;
-             justify-content: flex-start;
-             gap: 10px;
-             margin: 2px 0 0;
-             width: 100%;
-         }
+        .home-v3-feature-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 18px;
+            margin-top: 18px;
+        }
 
-         .hero-flow-step {
-             display: inline-flex;
-             align-items: center;
-             gap: 8px;
-             padding: 7px 13px;
-             border-radius: 999px;
-             background: rgba(255,255,255,0.62);
-             border: 1px solid rgba(144, 73, 81, 0.06);
-             color: var(--on-surface-variant);
-             font-size: 0.82rem;
-             font-weight: 700;
-             box-shadow: 0 8px 20px rgba(75, 64, 57, 0.03);
-         }
+        .home-v3-feature {
+            position: relative;
+            border-radius: 30px;
+            padding: 26px 24px 24px;
+            border: 1px solid rgba(144, 73, 81, 0.08);
+            box-shadow: 0 18px 36px rgba(96, 74, 70, 0.07);
+            overflow: hidden;
+        }
 
-         .hero-flow-step-index {
-             display: inline-flex;
-             align-items: center;
-             justify-content: center;
-             width: 22px;
-             height: 22px;
-             border-radius: 999px;
-             background: rgba(144, 73, 81, 0.1);
-             color: var(--primary);
-             font-size: 0.74rem;
-             font-weight: 900;
-             line-height: 1;
-             flex-shrink: 0;
-         }
+        .tone-rose { background: linear-gradient(180deg, rgba(251, 239, 239, 0.98), rgba(248, 242, 242, 0.92)); }
+        .tone-sage { background: linear-gradient(180deg, rgba(239, 245, 238, 0.98), rgba(234, 242, 237, 0.92)); }
+        .tone-cream { background: linear-gradient(180deg, rgba(250, 246, 239, 0.98), rgba(248, 244, 238, 0.92)); }
 
-         .hero-flow-step-text {
-             display: inline-flex;
-             align-items: center;
-             line-height: 1.2;
-         }
+        .home-v3-feature-icon {
+            width: 72px;
+            height: 72px;
+            border-radius: 24px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255,255,255,0.72);
+            border: 1px solid rgba(144, 73, 81, 0.08);
+            font-size: 1.7rem;
+            box-shadow: 0 12px 24px rgba(96, 74, 70, 0.06);
+        }
 
-         .hero-support-copy {
-             margin: 0;
-             max-width: 500px;
-             font-size: 0.88rem;
-             line-height: 1.6;
-             color: var(--on-surface-variant);
-         }
+        .home-v3-feature h3 {
+            margin: 18px 0 8px;
+            font-size: 1.45rem;
+            letter-spacing: -0.03em;
+            color: #503f3a;
+        }
 
-         .hero-support-note {
-             margin: -2px 0 2px;
-             display: inline-flex;
-             align-items: center;
-             gap: 8px;
-             min-height: 32px;
-             padding: 0 14px;
-             border-radius: 999px;
-             background: rgba(255,255,255,0.58);
-             border: 1px solid rgba(144, 73, 81, 0.08);
-             color: var(--primary);
-             font-size: 0.86rem;
-             font-weight: 700;
-             line-height: 1.4;
-             box-shadow: 0 8px 20px rgba(75, 64, 57, 0.03);
-         }
+        .home-v3-feature p {
+            margin: 0;
+            color: #75635e;
+            line-height: 1.78;
+            font-size: 0.95rem;
+        }
 
-         .hero-support-note-emoji {
-             font-size: 0.95rem;
-             line-height: 1;
-         }
+        .home-v3-preview-row {
+            display: grid;
+            grid-template-columns: minmax(0, 1.15fr) minmax(300px, 0.85fr);
+            gap: 22px;
+            margin-top: 28px;
+        }
 
-         .mini-tree-card {
-             top: 18%;
-             right: 5%;
-             width: 260px;
-             padding: 16px;
-             border-radius: 1.5rem;
-             background: rgba(255, 255, 255, 0.96);
-             backdrop-filter: blur(10px);
-             box-shadow: 0 26px 70px rgba(75, 64, 57, 0.12);
-         }
+        .home-v3-preview-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 16px;
+        }
 
-         .love-tree-svg {
-             position: absolute;
-             width: 100%;
-             height: 100%;
-             overflow: visible;
-             opacity: 0.9;
-         }
+        .home-v3-preview-card,
+        .home-v3-preview-side {
+            border-radius: 30px;
+            border: 1px solid rgba(144, 73, 81, 0.08);
+            box-shadow: 0 22px 40px rgba(96, 74, 70, 0.08);
+            overflow: hidden;
+            position: relative;
+        }
 
-         .mini-tree-canvas {
-             position: relative;
-             height: 180px;
-             border-radius: 1rem;
-             background: radial-gradient(circle at top, rgba(255,255,255,0.9), rgba(255,245,246,0.88) 44%, rgba(246, 249, 241, 0.96) 100%);
-             border: 1px solid rgba(144, 73, 81, 0.08);
-             overflow: hidden;
-         }
+        .home-v3-preview-card {
+            min-height: 238px;
+            display: flex;
+            align-items: end;
+            padding: 18px;
+            background:
+                linear-gradient(180deg, rgba(255,255,255,0.05), rgba(71, 52, 52, 0.22)),
+                radial-gradient(circle at 24% 18%, rgba(255,224,218,0.76), transparent 22%),
+                linear-gradient(150deg, rgba(198,174,162,0.82), rgba(153,171,146,0.56));
+        }
 
-         .mini-tree-ground {
-             position: absolute;
-             left: 16px;
-             right: 16px;
-             bottom: 14px;
-             height: 18px;
-             border-radius: 999px;
-             background: linear-gradient(90deg, rgba(147, 175, 126, 0.2), rgba(122, 139, 110, 0.38), rgba(147, 175, 126, 0.2));
-         }
+        .home-v3-preview-card > div {
+            position: relative;
+            z-index: 1;
+        }
 
-         .mini-tree-trunk {
-             position: absolute;
-             left: 50%;
-             bottom: 24px;
-             width: 13px;
-             height: 82px;
-             transform: translateX(-50%);
-             border-radius: 999px;
-             background: linear-gradient(180deg, #c18b83, #904951);
-             box-shadow: 0 8px 18px rgba(144, 73, 81, 0.18);
-         }
+        .home-v3-preview-card::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg, rgba(255,255,255,0), rgba(73,58,58,0.28));
+        }
 
-         .mini-tree-branch {
-             position: absolute;
-             height: 5px;
-             border-radius: 999px;
-             background: linear-gradient(90deg, #c18b83, #aa646d);
-             transform-origin: left center;
-         }
+        .home-v3-preview-card h4 {
+            margin: 0 0 6px;
+            color: #fff9f7;
+            font-size: 1.2rem;
+            letter-spacing: -0.02em;
+        }
 
-         .mini-tree-branch.branch-left-top {
-             width: 62px;
-             left: 50%;
-             bottom: 88px;
-             transform: translateX(-6px) rotate(-36deg);
-         }
+        .home-v3-preview-card p,
+        .home-v3-preview-card span {
+            margin: 0;
+            color: rgba(255, 249, 247, 0.88);
+            line-height: 1.68;
+            font-size: 0.86rem;
+        }
 
-         .mini-tree-branch.branch-right-top {
-             width: 68px;
-             left: 50%;
-             bottom: 96px;
-             transform: translateX(4px) rotate(30deg);
-         }
+        .home-v3-preview-side {
+            padding: 26px;
+            background: rgba(255,255,255,0.70);
+            backdrop-filter: blur(12px);
+        }
 
-         .mini-tree-branch.branch-left-bottom {
-             width: 54px;
-             left: 50%;
-             bottom: 64px;
-             transform: translateX(-6px) rotate(-18deg);
-         }
+        .home-v3-preview-side .label {
+            display: inline-flex;
+            align-items: center;
+            min-height: 32px;
+            padding: 0 14px;
+            border-radius: 999px;
+            background: rgba(144, 73, 81, 0.08);
+            color: var(--primary);
+            font-size: 0.8rem;
+            font-weight: 700;
+        }
 
-         .mini-tree-node {
-             position: absolute;
-             width: 34px;
-             height: 34px;
-             border-radius: 50%;
-             display: flex;
-             align-items: center;
-             justify-content: center;
-             font-size: 16px;
-             background: rgba(255, 255, 255, 0.95);
-             border: 1px solid rgba(144, 73, 81, 0.12);
-             box-shadow: 0 10px 20px rgba(75, 64, 57, 0.08);
-         }
+        .home-v3-preview-side h3 {
+            margin: 18px 0 12px;
+            font-size: 2rem;
+            line-height: 1.12;
+            letter-spacing: -0.04em;
+            color: #4d3e39;
+        }
 
-         .mini-tree-node.node-root {
-             left: 50%;
-             bottom: 16px;
-             transform: translateX(-50%);
-             background: linear-gradient(135deg, #fff1f2, #ffffff);
-         }
+        .home-v3-preview-side p {
+            margin: 0;
+            color: #786661;
+            line-height: 1.82;
+            font-size: 0.95rem;
+        }
 
-         .mini-tree-node.node-left-top {
-             left: 58px;
-             top: 24px;
-         }
+        .home-v3-preview-side ul {
+            list-style: none;
+            padding: 0;
+            margin: 20px 0 0;
+            display: grid;
+            gap: 12px;
+        }
 
-         .mini-tree-node.node-right-top {
-             right: 40px;
-             top: 18px;
-         }
+        .home-v3-preview-side li {
+            display: flex;
+            align-items: start;
+            gap: 10px;
+            color: #6c5b56;
+            font-size: 0.9rem;
+            line-height: 1.7;
+        }
 
-         .mini-tree-node.node-left-bottom {
-             left: 38px;
-             top: 88px;
-         }
+        .home-v3-preview-side li::before {
+            content: "✦";
+            color: #b27a82;
+            margin-top: 1px;
+        }
 
-         .mini-tree-note {
-             position: absolute;
-             display: inline-flex;
-             align-items: center;
-             min-height: 24px;
-             padding: 0 9px;
-             border-radius: 999px;
-             background: rgba(255, 255, 255, 0.82);
-             border: 1px solid rgba(144, 73, 81, 0.08);
-             color: var(--primary);
-             font-size: 10px;
-             font-weight: 800;
-             box-shadow: 0 8px 18px rgba(75, 64, 57, 0.06);
-         }
+        .reveal {
+            opacity: 0;
+            transform: translateY(22px);
+            transition: opacity 0.8s ease, transform 0.8s ease;
+        }
 
-         .mini-tree-note.note-first {
-             left: 74px;
-             bottom: 18px;
-         }
+        .reveal.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
 
-         .mini-tree-note.note-grow {
-             right: 18px;
-             top: 76px;
-             color: #6b7f58;
-         }
+        @media (max-width: 1220px) {
+            .home-v3-main {
+                width: min(1120px, calc(100% - 40px));
+            }
 
-         .mini-tree-summary {
-             display: flex;
-             justify-content: space-between;
-             align-items: center;
-             margin-top: 12px;
-             font-size: 11px;
-             color: var(--on-surface-variant);
-             font-weight: 700;
-         }
+            .home-v3-hero {
+                grid-template-columns: 1fr;
+                min-height: auto;
+                padding-top: 24px;
+            }
 
-         .mini-tree-tag {
-             padding: 5px 10px;
-             border-radius: 999px;
-             background: rgba(144, 73, 81, 0.08);
-             color: var(--primary);
-         }
+            .home-v3-copy {
+                max-width: 720px;
+            }
 
-          /* Mobile adjustments */
-          @media (max-width: 1024px) {
-              .features-grid {
-                  grid-template-columns: repeat(2, 1fr);
-              }
-          }
+            .home-v3-collage {
+                min-height: 760px;
+            }
+        }
 
-          @media (max-width: 768px) {
-              .hero-section {
-                  flex-direction: column;
-                  padding: 100px 24px 60px;
-                  text-align: center;
-              }
+        @media (max-width: 920px) {
+            .home-v3-title {
+                font-size: clamp(2.95rem, 10vw, 4.6rem);
+            }
 
-              .hero-content {
-                  max-width: 100%;
-                  margin-right: 0;
-                  align-items: center;
-              }
+            .home-v3-feature-grid,
+            .home-v3-preview-grid,
+            .home-v3-preview-row {
+                grid-template-columns: 1fr;
+            }
 
-              .hero-visual {
-                  position: relative;
-                  right: auto;
-                  top: auto;
-                  transform: none;
-                  width: 100%;
-                  max-width: 400px;
-                  margin-top: 28px;
-              }
+            .home-v3-collage {
+                min-height: 980px;
+            }
 
-              .hero-title {
-                  font-size: 2.5rem;
-              }
+            .home-v3-halo {
+                inset: 40px 0 80px;
+            }
 
-              .features-grid {
-                  grid-template-columns: 1fr;
-              }
+            .card-root { left: 6px; top: 386px; }
+            .card-top { left: 50%; top: 44px; transform: translateX(-50%) rotate(3deg); }
+            .card-center { left: 50%; top: 286px; transform: translateX(-50%) rotate(2deg); }
+            .card-bottom { left: 50%; top: 616px; transform: translateX(-50%) rotate(-3deg); }
+            .card-side-top { right: 14px; top: 170px; }
+            .card-side-bottom { right: 14px; top: 532px; }
+            .home-v3-note-paper { left: 20px; top: 152px; }
+            .branch-a, .branch-b, .branch-c, .branch-d, .branch-e, .branch-f, .home-v3-dots, .home-v3-word { display: none; }
+        }
 
-              .love-tree-svg {
-                  max-height: 350px;
-              }
+        @media (max-width: 640px) {
+            .home-v3-main {
+                width: min(100%, calc(100% - 24px));
+                padding-bottom: 80px;
+            }
 
-              .hero-visual .memory-card-mini {
-                  left: 50% !important;
-                  right: auto !important;
-                  top: 12% !important;
-                  transform: translateX(-50%) !important;
-              }
+            .home-v3-hero {
+                gap: 28px;
+            }
 
-              .hero-cta-btn {
-                  width: 100%;
-                  max-width: 320px;
-              }
+            .home-v3-desc,
+            .home-v3-support {
+                font-size: 0.97rem;
+            }
 
-              .hero-flow,
-              .hero-cta-group {
-                  justify-content: center;
-              }
+            .home-v3-actions {
+                flex-direction: column;
+            }
 
-              .hero-support-note {
-                  justify-content: center;
-                  text-align: center;
-              }
-          }
-     </style>
+            .home-v3-actions .btn-round {
+                width: 100%;
+            }
+
+            .home-v3-collage {
+                min-height: 900px;
+            }
+
+            .home-v3-card {
+                width: min(100%, 224px) !important;
+            }
+
+            .card-root { left: 0; top: 368px; }
+            .card-side-top { top: 164px; }
+            .card-center { top: 302px; }
+            .card-side-bottom { top: 514px; }
+            .card-bottom { top: 668px; }
+        }
+    </style>
 </head>
 <body class="bokeh-bg">
     <div class="noise-overlay"></div>
-    
-    <div class="landing-wrapper">
-        <!-- Shared Header -->
+
+    <div class="home-v3-shell">
         <div id="shared-header"></div>
 
-        <!-- Main Hero Section -->
-        <section class="hero-section">
-            <div class="hero-content">
-                <div class="hero-badge" data-i18n="home.badge">💝 나만의 러브트리</div>
-                <h1 class="hero-title" data-i18n="home.heroTitle" data-i18n-html>사랑하는 것의<br><span>모든 순간이 하나의 나무가 된다</span></h1>
-                <p class="hero-desc" data-i18n="home.heroSubtitle">
-                    입덕의 첫 설렘, 가장 감동했던 그 장면, 그리고 지금 이 순간까지.
-                    당신이 느낀 감정의 결을 남기고, 하나의 나무로 완성하세요.
-                </p>
-                <p class="hero-support-note">
-                    <span class="hero-support-note-emoji" aria-hidden="true">🌱</span>
-                    <span>러브트리는 좋아하는 것의 감정을 기록하는 공간입니다</span>
-                </p>
-                <div class="hero-flow" aria-label="시작 흐름 안내">
-                    <span class="hero-flow-step"><span class="hero-flow-step-index">1</span><span class="hero-flow-step-text" data-i18n="home.flow.one">로그인하고</span></span>
-                    <span class="hero-flow-step"><span class="hero-flow-step-index">2</span><span class="hero-flow-step-text" data-i18n="home.flow.two">첫 순간 남기기</span></span>
-                    <span class="hero-flow-step"><span class="hero-flow-step-index">3</span><span class="hero-flow-step-text" data-i18n="home.flow.three">내 트리로 이어가기</span></span>
-                </div>
-                <div class="hero-cta-group">
-                    <a href="pages/login.html?redirect=my-trees.html" class="btn-round btn-primary hero-cta-btn" data-i18n="home.cta.start">나의 첫 러브트리 만들기</a>
-                    <a href="pages/search.html" class="btn-round btn-outline hero-cta-btn" data-i18n="home.cta.browse">예시 트리 보기</a>
-                </div>
-                <p class="hero-support-copy" data-i18n="home.supportCopy">
-                    로그인 후 바로 내 트리에서 시작할 수 있어요. 예시 트리는 둘러보기에서 먼저 볼 수 있어요.
-                </p>
-            </div>
+        <main class="home-v3-main">
+            <section class="home-v3-hero">
+                <div class="home-v3-copy reveal">
+                    <div class="home-v3-eyebrow">공개되지 않아도, 마음은 천천히 자라나요</div>
+                    <h1 class="home-v3-title">
+                        <span class="soft">좋아하는 순간이</span>
+                        <span class="accent">하나의 러브트리로 자라나요</span>
+                    </h1>
+                    <p class="home-v3-desc">
+                        좋아하는 장면, 오래 남은 한 문장, 다시 듣게 되는 노래와 그날의 감정까지.
+                        흩어져 있던 마음의 조각을 부드럽게 이어 붙여
+                        나만의 흐름이 머무는 러브트리로 남겨보세요.
+                    </p>
+                    <div class="home-v3-note">🌱 처음에는 단 하나의 순간만 있어도 충분해요</div>
 
-            <div class="hero-visual" aria-hidden="true">
-                <!-- 러브트리 성장 시각화 -->
-                <svg class="love-tree-svg" viewBox="0 0 500 600">
-                    <!-- 정의: 그라데이션 및 필터 -->
-                    <defs>
-                        <linearGradient id="trunkGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                            <stop offset="0%" style="stop-color:#904951;stop-opacity:1" />
-                            <stop offset="50%" style="stop-color:#b86b73;stop-opacity:1" />
-                            <stop offset="100%" style="stop-color:#904951;stop-opacity:1" />
-                        </linearGradient>
-                        <linearGradient id="branchGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" style="stop-color:#c97b83;stop-opacity:0.9" />
-                            <stop offset="100%" style="stop-color:#904951;stop-opacity:0.7" />
-                        </linearGradient>
-                        <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-                            <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
-                            <feMerge>
-                                <feMergeNode in="coloredBlur"/>
-                                <feMergeNode in="SourceGraphic"/>
-                            </feMerge>
-                        </filter>
-                        <filter id="softShadow" x="-50%" y="-50%" width="200%" height="200%">
-                            <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#904951" flood-opacity="0.15"/>
-                        </filter>
-                    </defs>
-
-                    <!-- 메인 줄기 (성장하는 중앙 줄기) -->
-                    <path d="M 250 580 Q 245 450 250 380 Q 255 300 240 220 Q 235 180 250 140" 
-                          stroke="url(#trunkGradient)" stroke-width="12" fill="none" stroke-linecap="round"/>
-                    
-                    <!-- 곡선 가지들 -->
-                    <path d="M 250 380 Q 180 350 140 300 Q 110 260 120 220" 
-                          stroke="url(#branchGradient)" stroke-width="6" fill="none" stroke-linecap="round" opacity="0.9"/>
-                    <path d="M 250 320 Q 320 290 360 250 Q 390 220 380 180" 
-                          stroke="url(#branchGradient)" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.85"/>
-                    <path d="M 240 260 Q 190 240 160 200 Q 140 170 150 140" 
-                          stroke="url(#branchGradient)" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.8"/>
-                    <path d="M 250 200 Q 300 180 340 160 Q 370 140 360 110" 
-                          stroke="url(#branchGradient)" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.8"/>
-                    <path d="M 245 160 Q 210 140 190 110 Q 175 85 185 60" 
-                          stroke="url(#branchGradient)" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.75"/>
-
-                    <!-- 기억 노드 (메모리 카드 아이콘) -->
-                    <g filter="url(#softShadow)">
-                        <rect x="200" y="420" width="60" height="45" rx="8" fill="white" stroke="#e8e0e0" stroke-width="1"/>
-                        <rect x="205" y="425" width="50" height="30" rx="4" fill="#fff0f1"/>
-                        <circle cx="230" cy="440" r="8" fill="#904951" opacity="0.3"/>
-                        <text x="230" y="444" text-anchor="middle" fill="#904951" font-size="8">▶</text>
-
-                        <rect x="100" y="200" width="55" height="40" rx="7" fill="white" stroke="#e8e0e0" stroke-width="1"/>
-                        <rect x="104" y="204" width="47" height="25" rx="3" fill="#f0f4ff"/>
-                        <circle cx="127" cy="216" r="6" fill="#6b7db8" opacity="0.4"/>
-
-                        <rect x="360" y="160" width="55" height="40" rx="7" fill="white" stroke="#e8e0e0" stroke-width="1"/>
-                        <rect x="364" y="164" width="47" height="25" rx="3" fill="#f0fff4"/>
-                        <circle cx="387" cy="176" r="6" fill="#6bb88a" opacity="0.4"/>
-
-                        <rect x="165" y="50" width="50" height="38" rx="6" fill="white" stroke="#e8e0e0" stroke-width="1"/>
-                        <rect x="169" y="54" width="42" height="22" rx="3" fill="#fff9f0"/>
-                        <circle cx="190" cy="65" r="5" fill="#b89a6b" opacity="0.4"/>
-                    </g>
-
-                    <g opacity="0.9">
-                        <rect x="280" y="280" width="50" height="22" rx="11" fill="#fff0f1" stroke="#e8d0d3" stroke-width="1"/>
-                        <text x="305" y="294" text-anchor="middle" fill="#904951" font-size="10" font-weight="600">행복</text>
-
-                        <rect x="130" y="320" width="45" height="20" rx="10" fill="#f0f4ff" stroke="#d0d8e8" stroke-width="1"/>
-                        <text x="152" y="334" text-anchor="middle" fill="#6b7db8" font-size="9" font-weight="600">설렘</text>
-
-                        <rect x="320" y="380" width="55" height="22" rx="11" fill="#f0fff4" stroke="#d0e8d5" stroke-width="1"/>
-                        <text x="347" y="394" text-anchor="middle" fill="#6bb88a" font-size="10" font-weight="600">성장</text>
-
-                        <rect x="70" y="150" width="48" height="20" rx="10" fill="#fff9f0" stroke="#e8e0d0" stroke-width="1"/>
-                        <text x="94" y="164" text-anchor="middle" fill="#8a7d6b" font-size="9" font-weight="600">추억</text>
-                    </g>
-
-                    <g filter="url(#glow)">
-                        <ellipse cx="250" cy="125" rx="12" ry="18" fill="#90c97b" opacity="0.6"/>
-                        <ellipse cx="250" cy="120" rx="8" ry="12" fill="#a8d98f" opacity="0.8"/>
-                        <ellipse cx="185" cy="60" rx="6" ry="10" fill="#90c97b" opacity="0.5" transform="rotate(-30 185 60)"/>
-                        <ellipse cx="360" cy="110" rx="5" ry="8" fill="#90c97b" opacity="0.5" transform="rotate(30 360 110)"/>
-                        <ellipse cx="150" cy="140" rx="5" ry="8" fill="#90c97b" opacity="0.4" transform="rotate(-20 150 140)"/>
-                    </g>
-
-                    <path d="M 230 420 Q 230 400 240 380" stroke="#d0c0c0" stroke-width="1" stroke-dasharray="3,3" opacity="0.6"/>
-                    <path d="M 127 240 Q 130 230 140 220" stroke="#d0c0c0" stroke-width="1" stroke-dasharray="3,3" opacity="0.6"/>
-                    <path d="M 387 200 Q 385 190 380 180" stroke="#d0c0c0" stroke-width="1" stroke-dasharray="3,3" opacity="0.6"/>
-                    <path d="M 190 88 Q 188 75 185 60" stroke="#d0c0c0" stroke-width="1" stroke-dasharray="3,3" opacity="0.6"/>
-
-                    <ellipse cx="250" cy="560" rx="40" ry="15" fill="none" stroke="#904951" stroke-width="1" opacity="0.2" stroke-dasharray="5,5"/>
-                </svg>
-
-                <div class="memory-card-mini mini-tree-card hero-float-card" style="animation: float 6s ease-in-out infinite;">
-                    <div class="mini-tree-canvas">
-                        <div class="mini-tree-ground"></div>
-                        <div class="mini-tree-trunk"></div>
-                        <div class="mini-tree-branch branch-left-top"></div>
-                        <div class="mini-tree-branch branch-right-top"></div>
-                        <div class="mini-tree-branch branch-left-bottom"></div>
-                        <div class="mini-tree-node node-left-top">💝</div>
-                        <div class="mini-tree-node node-right-top">✨</div>
-                        <div class="mini-tree-node node-left-bottom">🌿</div>
-                        <div class="mini-tree-node node-root">🌱</div>
+                    <div class="home-v3-actions">
+                        <a href="pages/login.html?redirect=my-trees.html" class="btn-round btn-primary">내 트리 시작하기</a>
+                        <a href="pages/search.html" class="btn-round btn-outline">공개 트리 둘러보기</a>
                     </div>
-                    <div class="mini-tree-summary">
-                        <span class="mini-tree-tag">감정 4개</span>
-                        <span>나만의 트리</span>
+
+                    <div class="home-v3-flow" aria-label="러브트리 시작 흐름">
+                        <span class="home-v3-flow-chip"><strong>1</strong> 제목을 정해요</span>
+                        <span class="home-v3-flow-chip"><strong>2</strong> 첫 순간을 남겨요</span>
+                        <span class="home-v3-flow-chip"><strong>3</strong> 천천히 가지를 이어가요</span>
+                    </div>
+
+                    <p class="home-v3-support">
+                        러브트리는 기록 도구보다 조금 더 감정적인 공간입니다.
+                        검색창이나 관리 화면보다, 오래 보고 싶은 기억이 자연스럽게 쌓이는 한 권의 스크랩북처럼 느껴지도록 시작점을 다시 구성했습니다.
+                    </p>
+                </div>
+
+                <div class="home-v3-collage reveal" aria-hidden="true">
+                    <div class="home-v3-halo"></div>
+
+                    <div class="home-v3-branch branch-a"></div>
+                    <div class="home-v3-branch branch-b"></div>
+                    <div class="home-v3-branch branch-c"></div>
+                    <div class="home-v3-branch branch-d"></div>
+                    <div class="home-v3-branch branch-e"></div>
+                    <div class="home-v3-branch branch-f"></div>
+
+                    <div class="home-v3-note-paper">
+                        <strong>첫 문장</strong>
+                        <p>그날의 떨림은 오래 남아서, 지금도 다시 꺼내 보고 싶어요.</p>
+                    </div>
+
+                    <div class="home-v3-card card-root">
+                        <div class="home-v3-card-inner">
+                            <div class="home-v3-photo"></div>
+                            <div class="home-v3-card-label">처음 사랑하게 된 무대</div>
+                            <div class="home-v3-card-copy">선명한 조명보다 내 마음이 먼저 흔들렸던 밤의 기록</div>
+                            <div class="home-v3-chipline"><span>대표 순간</span><span>설렘</span></div>
+                            <div class="home-v3-card-meta">첫 시작 · 기억 1</div>
+                        </div>
+                    </div>
+
+                    <div class="home-v3-card card-top">
+                        <div class="home-v3-card-inner">
+                            <div class="home-v3-photo"></div>
+                            <div class="home-v3-card-label">문득 다시 듣게 되는 노래</div>
+                            <div class="home-v3-card-copy">지금의 마음을 조용히 껴안아 주는 장면 같은 멜로디</div>
+                            <div class="home-v3-chipline"><span>노래</span><span>여운</span></div>
+                            <div class="home-v3-card-meta">기억 2 · 이어진 감정</div>
+                        </div>
+                    </div>
+
+                    <div class="home-v3-card card-center">
+                        <div class="home-v3-card-inner">
+                            <div class="home-v3-photo"></div>
+                            <div class="home-v3-card-label">오늘도 위로가 된 순간</div>
+                            <div class="home-v3-card-copy">복잡했던 하루를 지나 다시 머무르게 되는 한 장면</div>
+                            <div class="home-v3-chipline"><span>위로</span><span>흐름</span></div>
+                            <div class="home-v3-card-meta">기억 3 · 감정의 가지</div>
+                        </div>
+                    </div>
+
+                    <div class="home-v3-card card-bottom">
+                        <div class="home-v3-card-inner">
+                            <div class="home-v3-photo"></div>
+                            <div class="home-v3-card-label">오래 남은 한 문장</div>
+                            <div class="home-v3-card-copy">지나간 계절까지 불러오는 짧은 말 한 줄의 잔상</div>
+                            <div class="home-v3-chipline"><span>문장</span><span>추억</span></div>
+                            <div class="home-v3-card-meta">기억 4 · 조용한 메모</div>
+                        </div>
+                    </div>
+
+                    <div class="home-v3-card card-side-top">
+                        <div class="home-v3-card-inner">
+                            <div class="home-v3-photo" style="height:112px;"></div>
+                            <div class="home-v3-card-label">반짝이던 응원봉의 바다</div>
+                            <div class="home-v3-card-meta">빛나는 기억</div>
+                        </div>
+                    </div>
+
+                    <div class="home-v3-card card-side-bottom">
+                        <div class="home-v3-card-inner">
+                            <div class="home-v3-photo" style="height:108px;"></div>
+                            <div class="home-v3-card-label">다시 보고 싶은 계절</div>
+                            <div class="home-v3-card-meta">조용한 여운</div>
+                        </div>
+                    </div>
+
+                    <div class="home-v3-word word-a">순간</div>
+                    <div class="home-v3-word word-b">감정</div>
+                    <div class="home-v3-word word-c">기억</div>
+                    <div class="home-v3-word word-d">흐름</div>
+
+                    <div class="home-v3-dots">
+                        <span class="dot-a"></span>
+                        <span class="dot-b"></span>
+                        <span class="dot-c"></span>
+                        <span class="dot-d"></span>
+                        <span class="dot-e"></span>
                     </div>
                 </div>
+            </section>
 
-                <style>
-                    @keyframes float {
-                        0%, 100% { transform: translateY(0) rotate(0deg); }
-                        50% { transform: translateY(-10px) rotate(0deg); }
-                    }
-                </style>
-            </div>
-        </section>
+            <section class="home-v3-section reveal">
+                <div class="home-v3-feature-grid">
+                    <article class="home-v3-feature tone-rose">
+                        <div class="home-v3-feature-icon">💗</div>
+                        <h3>대표 순간</h3>
+                        <p>좋아하게 된 장면과 감정을 가장 먼저 붙잡아, 트리의 시작점으로 남겨요.</p>
+                    </article>
+                    <article class="home-v3-feature tone-sage">
+                        <div class="home-v3-feature-icon">🌿</div>
+                        <h3>이어진 감정</h3>
+                        <p>다른 날의 노래와 메모, 위로의 순간이 부드럽게 연결되며 하나의 흐름이 됩니다.</p>
+                    </article>
+                    <article class="home-v3-feature tone-cream">
+                        <div class="home-v3-feature-icon">📔</div>
+                        <h3>나만의 러브트리</h3>
+                        <p>흩어진 스크린샷과 문장 대신, 오래 머무는 감정의 구조를 한곳에서 조용히 키워가요.</p>
+                    </article>
+                </div>
+            </section>
+
+            <section class="home-v3-section reveal">
+                <div class="home-v3-preview-row">
+                    <div class="home-v3-preview-grid">
+                        <article class="home-v3-preview-card">
+                            <div>
+                                <h4>BTS · 함께 쌓인 보랏빛 순간</h4>
+                                <p>공연과 계절, 오래 남은 문장을 한 흐름으로 정리한 공개 러브트리</p>
+                                <span>순간 14 · 설렘 · 응원</span>
+                            </div>
+                        </article>
+                        <article class="home-v3-preview-card" style="background:
+                            linear-gradient(180deg, rgba(255,255,255,0.05), rgba(71, 52, 52, 0.22)),
+                            radial-gradient(circle at 24% 18%, rgba(255,233,222,0.76), transparent 22%),
+                            linear-gradient(150deg, rgba(209,184,173,0.82), rgba(180,160,146,0.56));">
+                            <div>
+                                <h4>IVE · 완성형 아이돌의 서사</h4>
+                                <p>무대와 표정, 다시 꺼내 본 장면들이 전시처럼 이어진 감상 카드</p>
+                                <span>순간 9 · 벅참 · 반짝임</span>
+                            </div>
+                        </article>
+                        <article class="home-v3-preview-card" style="background:
+                            linear-gradient(180deg, rgba(255,255,255,0.05), rgba(71, 52, 52, 0.22)),
+                            radial-gradient(circle at 24% 18%, rgba(255,240,222,0.76), transparent 22%),
+                            linear-gradient(150deg, rgba(193,176,156,0.82), rgba(156,175,162,0.56));">
+                            <div>
+                                <h4>NewJeans · 우리가 사랑한 새로운 계절</h4>
+                                <p>계절감과 분위기를 따라, 감정이 천천히 자라나는 공개 러브트리</p>
+                                <span>순간 11 · 추억 · 계절</span>
+                            </div>
+                        </article>
+                    </div>
+
+                    <aside class="home-v3-preview-side">
+                        <span class="label">감상 허브 미리보기</span>
+                        <h3>둘러보기는 검색보다 먼저,<br>천천히 감상하는 공간이어야 합니다</h3>
+                        <p>
+                            공개 러브트리는 게시글 목록처럼 소비되는 화면이 아니라,
+                            누군가 정성껏 이어 둔 감정의 흐름을 조용히 들여다보는 전시형 공간에 더 가깝습니다.
+                            홈에서도 그 무드를 미리 느낄 수 있도록 큐레이션 카드 레이어를 남겼습니다.
+                        </p>
+                        <ul>
+                            <li>차갑고 균등한 SaaS 카드 반복 대신, 비대칭 콜라주와 전시형 레이어를 우선했습니다.</li>
+                            <li>직설적인 기능 설명보다 감정의 시작, 흐름, 머무름이 먼저 보이도록 위계를 다시 잡았습니다.</li>
+                            <li>공개 트리 예고 영역도 데이터 카드가 아니라 감상용 쇼케이스처럼 보이게 정리했습니다.</li>
+                        </ul>
+                    </aside>
+                </div>
+            </section>
+        </main>
     </div>
-
 
     <script src="js/index.js?v=20260417-31"></script>
     <script src="js/material-symbols-guard.js?v=20260419-1"></script>
@@ -671,13 +877,13 @@
     <script src="js/i18n/i18n-index.js?v=20260421-1"></script>
     <script src="js/i18n.js?v=20260419-2"></script>
     <script src="js/shared-header.js?v=20260421-2"></script>
-     <script src="js/auth/auth-state.js?v=20260417-31"></script>
-     <script src="js/auth/auth-callbacks.js?v=20260417-31"></script>
-     <script src="js/auth/auth-cache.js?v=20260417-31"></script>
-     <script src="js/auth/auth-ui.js?v=20260421-2"></script>
-     <script src="js/auth/auth-session.js?v=20260417-31"></script>
-     <script src="js/auth/auth-firebase.js?v=20260420-1"></script>
-     <script src="js/auth.js?v=20260417-31"></script>
+    <script src="js/auth/auth-state.js?v=20260417-31"></script>
+    <script src="js/auth/auth-callbacks.js?v=20260417-31"></script>
+    <script src="js/auth/auth-cache.js?v=20260417-31"></script>
+    <script src="js/auth/auth-ui.js?v=20260421-2"></script>
+    <script src="js/auth/auth-session.js?v=20260417-31"></script>
+    <script src="js/auth/auth-firebase.js?v=20260420-1"></script>
+    <script src="js/auth.js?v=20260417-31"></script>
     <script src="js/page-shell.js?v=20260419-1"></script>
     <script>
         window.LovetreePageShell.initSharedPage({
