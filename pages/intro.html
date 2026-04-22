@@ -15,11 +15,11 @@
 
     .intro-hero {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 320px;
-      gap: 48px;
+      grid-template-columns: minmax(0, 1.05fr) 300px;
+      gap: 40px;
       align-items: center;
-      padding: 96px 48px 72px;
-      max-width: 1120px;
+      padding: 84px 40px 56px;
+      max-width: 1080px;
       margin: 0 auto;
       width: 100%;
     }
@@ -33,7 +33,7 @@
       align-items: center;
       gap: 6px;
       padding: 8px 14px;
-      margin-bottom: 18px;
+      margin-bottom: 16px;
       border-radius: 999px;
       background: rgba(144, 73, 81, 0.08);
       color: var(--primary);
@@ -43,13 +43,13 @@
     }
 
     .intro-hero h1 {
-      font-size: clamp(2.8rem, 5vw, 4.2rem);
+      font-size: clamp(2.7rem, 4.6vw, 3.9rem);
       font-weight: 900;
       color: var(--on-surface);
-      margin-bottom: 1.25rem;
-      line-height: 1.1;
+      margin-bottom: 1rem;
+      line-height: 1.08;
       letter-spacing: 0;
-      max-width: 720px;
+      max-width: 620px;
     }
 
     .intro-hero h1 .title-line {
@@ -61,16 +61,16 @@
     }
 
     .intro-hero .lead {
-      font-size: 1.14rem;
+      font-size: 1.08rem;
       color: var(--on-surface-variant);
-      line-height: 1.78;
-      margin-bottom: 2.25rem;
-      max-width: 760px;
+      line-height: 1.68;
+      margin-bottom: 1.75rem;
+      max-width: 520px;
     }
 
     .intro-hero-visual {
       position: relative;
-      padding: 22px;
+      padding: 20px;
       border-radius: 28px;
       background: rgba(255, 255, 255, 0.78);
       border: 1px solid rgba(144, 73, 81, 0.1);
@@ -80,7 +80,7 @@
 
     .intro-tree-scene {
       position: relative;
-      min-height: 280px;
+      min-height: 264px;
       border-radius: 22px;
       overflow: hidden;
       background:
@@ -92,9 +92,9 @@
     .intro-tree-stem {
       position: absolute;
       left: 50%;
-      bottom: 44px;
+      bottom: 42px;
       width: 12px;
-      height: 142px;
+      height: 136px;
       transform: translateX(-50%);
       border-radius: 999px;
       background: linear-gradient(180deg, #c18b83, #904951);
@@ -111,20 +111,20 @@
     }
 
     .intro-tree-branch.one {
-      bottom: 154px;
-      width: 86px;
+      bottom: 148px;
+      width: 84px;
       transform: translateX(4px) rotate(-30deg);
     }
 
     .intro-tree-branch.two {
-      bottom: 126px;
-      width: 80px;
+      bottom: 122px;
+      width: 78px;
       transform: translateX(-6px) rotate(204deg);
     }
 
     .intro-tree-branch.three {
-      bottom: 104px;
-      width: 70px;
+      bottom: 102px;
+      width: 68px;
       transform: translateX(4px) rotate(26deg);
     }
 
@@ -146,33 +146,33 @@
     }
 
     .intro-tree-moment.first {
-      left: 24px;
-      bottom: 74px;
+      left: 20px;
+      bottom: 70px;
       color: var(--primary);
     }
 
     .intro-tree-moment.saved {
-      right: 18px;
-      top: 58px;
+      right: 16px;
+      top: 54px;
     }
 
     .intro-tree-moment.shared {
-      left: 36px;
-      top: 92px;
+      left: 30px;
+      top: 86px;
       color: #667a55;
     }
 
     .intro-tree-caption {
-      margin: 14px 4px 0;
+      margin: 12px 4px 0;
       color: var(--on-surface-variant);
-      font-size: 0.86rem;
+      font-size: 0.84rem;
       font-weight: 700;
-      line-height: 1.55;
+      line-height: 1.5;
     }
 
     .intro-hero-actions {
       display: flex;
-      gap: 16px;
+      gap: 14px;
       flex-wrap: wrap;
       align-items: stretch;
     }
@@ -185,8 +185,8 @@
 
     .intro-hero-actions .btn-round,
     .cta-buttons .btn-round {
-      min-height: 56px;
-      padding: 0 28px;
+      min-height: 54px;
+      padding: 0 26px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -212,44 +212,49 @@
     }
 
     .intro-section {
-      padding: 60px 48px;
-      max-width: 900px;
+      padding: 44px 40px;
+      max-width: 860px;
       margin: 0 auto;
       width: 100%;
       border-top: 1px solid var(--outline-variant);
     }
 
+    .intro-section.intro-section-wide {
+      max-width: 1080px;
+    }
+
     .intro-section h2 {
-      font-size: 1.8rem;
+      font-size: 1.65rem;
       font-weight: 800;
       color: var(--on-surface);
-      margin-bottom: 1.5rem;
+      margin-bottom: 1rem;
     }
 
     .intro-section p {
-      font-size: 1.05rem;
+      font-size: 1rem;
       color: var(--on-surface-variant);
-      line-height: 1.7;
-      margin-bottom: 1rem;
+      line-height: 1.65;
+      margin-bottom: 0;
+      max-width: 620px;
     }
 
     .how-to-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 24px;
-      margin-top: 2rem;
+      gap: 18px;
+      margin-top: 1.5rem;
     }
 
     .how-to-card {
       background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,246,244,0.96));
-      border-radius: 1.5rem;
-      padding: 24px;
+      border-radius: 1.35rem;
+      padding: 20px;
       border: 1px solid rgba(144, 73, 81, 0.08);
       box-shadow: 0 12px 28px rgba(75, 64, 57, 0.04);
       transition: all 0.3s;
       display: flex;
       flex-direction: column;
-      gap: 14px;
+      gap: 12px;
     }
 
     .how-to-card:hover {
@@ -261,12 +266,12 @@
     .how-to-visual {
       display: flex;
       flex-direction: column;
-      gap: 12px;
-      padding: 16px;
+      gap: 10px;
+      padding: 14px;
       border-radius: 20px;
       background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,247,244,0.92));
       border: 1px solid rgba(144, 73, 81, 0.08);
-      min-height: 124px;
+      min-height: 114px;
       justify-content: space-between;
       overflow: hidden;
     }
@@ -288,7 +293,7 @@
 
     .how-to-scene {
       position: relative;
-      min-height: 76px;
+      min-height: 72px;
       border-radius: 16px;
       background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(252,245,243,0.9));
       border: 1px solid rgba(144, 73, 81, 0.08);
@@ -485,48 +490,41 @@
     .how-to-card-copy {
       display: flex;
       flex-direction: column;
-      gap: 8px;
-      min-height: 132px;
+      gap: 6px;
+      min-height: 94px;
     }
 
     .how-to-card h3 {
-      font-size: 1rem;
+      font-size: 0.98rem;
       font-weight: 800;
       color: var(--on-surface);
       margin: 0;
     }
 
     .how-to-card p {
-      font-size: 0.88rem;
+      font-size: 0.86rem;
       color: var(--on-surface-variant);
-      line-height: 1.6;
-      margin: 0;
-    }
-
-    .how-to-point {
-      font-size: 0.82rem;
       line-height: 1.55;
-      color: var(--primary);
-      font-weight: 700;
-      margin-top: auto;
+      margin: 0;
+      max-width: none;
     }
 
     .value-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
-      gap: 20px;
-      margin-top: 1.5rem;
+      gap: 18px;
+      margin-top: 1.25rem;
     }
 
     .value-item {
       display: flex;
       align-items: flex-start;
       gap: 16px;
-      padding: 22px;
+      padding: 20px;
       background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,246,244,0.96));
-      border-radius: 1.25rem;
+      border-radius: 1.2rem;
       border: 1px solid rgba(144, 73, 81, 0.08);
-      min-height: 164px;
+      min-height: 148px;
       box-shadow: 0 10px 24px rgba(75, 64, 57, 0.04);
     }
 
@@ -544,10 +542,10 @@
 
     .value-item-visual {
       flex-shrink: 0;
-      width: 116px;
-      min-height: 108px;
+      width: 108px;
+      min-height: 100px;
       border-radius: 1rem;
-      padding: 14px;
+      padding: 12px;
       background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(255,247,244,0.92));
       border: 1px solid rgba(144, 73, 81, 0.08);
       box-shadow: 0 12px 20px rgba(75, 64, 57, 0.04);
@@ -734,22 +732,23 @@
     }
 
     .value-item h4 {
-      font-size: 0.95rem;
+      font-size: 0.94rem;
       font-weight: 800;
       color: var(--on-surface);
       margin-bottom: 6px;
     }
 
     .value-item p {
-      font-size: 0.85rem;
+      font-size: 0.84rem;
       color: var(--on-surface-variant);
-      line-height: 1.55;
+      line-height: 1.5;
       margin: 0;
+      max-width: none;
     }
 
     .cta-section {
-      padding: 60px 48px 80px;
-      max-width: 900px;
+      padding: 48px 40px 72px;
+      max-width: 860px;
       margin: 0 auto;
       width: 100%;
       text-align: center;
@@ -757,21 +756,24 @@
     }
 
     .cta-section h2 {
-      font-size: clamp(1.8rem, 3vw, 2.4rem);
+      font-size: clamp(1.7rem, 3vw, 2.2rem);
       font-weight: 800;
       color: var(--on-surface);
-      margin-bottom: 1rem;
+      margin-bottom: 0.75rem;
     }
 
     .cta-section p {
-      font-size: 1.05rem;
+      font-size: 1rem;
       color: var(--on-surface-variant);
-      margin-bottom: 2rem;
+      margin-bottom: 1.5rem;
+      max-width: 520px;
+      margin-left: auto;
+      margin-right: auto;
     }
 
     .cta-buttons {
       display: flex;
-      gap: 16px;
+      gap: 14px;
       justify-content: center;
       align-items: stretch;
       flex-wrap: wrap;
@@ -780,23 +782,30 @@
     @media (max-width: 768px) {
       .intro-hero {
         grid-template-columns: 1fr;
-        gap: 28px;
+        gap: 24px;
       }
 
       .intro-hero, .intro-section, .cta-section {
-        padding: 80px 24px 40px;
+        padding: 64px 22px 36px;
       }
 
       .intro-hero h1 {
-        font-size: clamp(2.25rem, 10vw, 3rem);
+        font-size: clamp(2.2rem, 9.2vw, 2.8rem);
+        max-width: 100%;
       }
 
       .intro-hero-visual {
-        padding: 16px;
+        padding: 14px;
+      }
+
+      .intro-tree-scene {
+        min-height: 236px;
       }
 
       .intro-hero .lead {
-        font-size: 1.02rem;
+        font-size: 0.98rem;
+        max-width: 100%;
+        margin-bottom: 1.4rem;
       }
 
       .intro-hero-actions {
@@ -812,19 +821,22 @@
 
       .how-to-grid {
         grid-template-columns: 1fr;
+        gap: 14px;
       }
 
       .value-grid {
         grid-template-columns: 1fr;
+        gap: 14px;
       }
 
       .value-item {
         flex-direction: column;
+        min-height: 0;
       }
 
       .value-item-visual {
         width: 100%;
-        min-height: 96px;
+        min-height: 92px;
       }
 
       .cta-buttons {
@@ -843,12 +855,12 @@
 
     <main>
       <!-- Hero -->
-<section class="intro-hero">
+      <section class="intro-hero">
         <div class="intro-hero-copy">
           <div class="intro-hero-eyebrow" data-i18n="intro.heroEyebrow">좋아하는 마음이 자라나는 곳</div>
-          <h1 data-i18n="intro.heroTitle" data-i18n-html><span class="title-line">사랑하는 것들의</span><span class="title-line title-accent">모든 순간을</span><span class="title-line">하나의 나무로 남겨요</span></h1>
+          <h1 data-i18n="intro.heroTitle" data-i18n-html><span class="title-line">사랑하는 순간을</span><span class="title-line title-accent">하나의 나무로</span><span class="title-line">남겨요</span></h1>
           <p class="lead" data-i18n="intro.heroLead">
-            러브트리는 입덕의 첫 설렘부터 오래 남은 장면까지, 마음이 지나온 길을 하나의 트리로 기록하고 감상하는 공간입니다.
+            좋아하게 된 순간과 이어진 마음을 한 트리로 남겨보세요.
           </p>
           <div class="intro-hero-actions">
             <a href="my-trees.html" class="intro-cta-link"><span class="btn-round btn-primary intro-cta-primary" data-i18n="nav.myTrees">내 러브트리 시작하기</span></a>
@@ -862,28 +874,24 @@
             <div class="intro-tree-branch two"></div>
             <div class="intro-tree-branch three"></div>
             <div class="intro-tree-moment first" data-i18n="intro.sceneFirst">🌱 첫 설렘</div>
-            <div class="intro-tree-moment saved" data-i18n="intro.sceneSaved">💝 마음 메모</div>
-            <div class="intro-tree-moment shared" data-i18n="intro.sceneShared">✨ 공개 감상</div>
+            <div class="intro-tree-moment.saved" data-i18n="intro.sceneSaved">💝 마음 메모</div>
+            <div class="intro-tree-moment.shared" data-i18n="intro.sceneShared">✨ 공개 감상</div>
           </div>
-          <p class="intro-tree-caption" data-i18n="intro.sceneCaption">흩어진 장면들이 이어지면, 좋아하게 된 경로가 조용히 보입니다.</p>
+          <p class="intro-tree-caption" data-i18n="intro.sceneCaption">순간이 이어지면, 좋아하게 된 흐름이 보입니다.</p>
         </div>
       </section>
 
-       <!-- What is Lovetree -->
-       <section class="intro-section">
-         <h2 data-i18n="intro.whatIs">Lovetree란?</h2>
-<p data-i18n="intro.whatIsDesc1">
-            러브트리는 좋아하게 된 첫 장면과 그 뒤로 이어진 마음을 하나의 나무로 남기는 팬 감정 스크랩북입니다.
-          </p>
-         <p data-i18n="intro.whatIsDesc2Fixed">
-           영상, 음악, 장면, 메모가 가지처럼 이어지고, 시간이 지나도 그때의 감정으로 다시 돌아갈 수 있습니다.
-         </p>
+      <!-- What is Lovetree -->
+      <section class="intro-section">
+        <h2 data-i18n="intro.whatIs">러브트리란?</h2>
+        <p data-i18n="intro.whatIsDesc1">
+          좋아하게 된 첫 장면과 이어진 마음을 하나의 트리로 남기는 공간입니다.
+        </p>
       </section>
 
       <!-- How to Use -->
-      <section class="intro-section">
-        <h2 data-i18n="intro.howToTitle">어떻게 시작하나요?</h2>
-        <p data-i18n="intro.howToSubtitle">기능을 배우기보다, 첫 마음이 지나온 길을 천천히 남겨보세요.</p>
+      <section class="intro-section intro-section-wide">
+        <h2 data-i18n="intro.howToTitle">처음은 이렇게 남겨요</h2>
         <div class="how-to-grid">
           <div class="how-to-card">
             <div class="how-to-visual">
@@ -897,8 +905,7 @@
             </div>
             <div class="how-to-card-copy">
               <h3 data-i18n="intro.step1Title">첫 순간 담기</h3>
-              <p data-i18n="intro.step1Desc">좋아하게 된 영상이나 음악의 장면을 남겨보세요. 오래 기억하고 싶은 시작이 트리의 첫 가지가 됩니다.</p>
-              <div class="how-to-point" data-i18n="intro.step1Point">첫 설렘이 트리의 시작이 됩니다.</div>
+              <p data-i18n="intro.step1Desc">좋아하게 된 장면을 남겨보세요. 그 시작이 트리의 첫 가지가 됩니다.</p>
             </div>
           </div>
           <div class="how-to-card">
@@ -918,8 +925,7 @@
             </div>
             <div class="how-to-card-copy">
               <h3 data-i18n="intro.step2Title">마음 남기기</h3>
-              <p data-i18n="intro.step2Desc">그 순간의 설렘과 마음을 짧은 메모와 태그로 남기세요. 감정의 결이 모여 러브트리가 자라납니다.</p>
-              <div class="how-to-point" data-i18n="intro.step2Point">짧은 메모가 감정의 결을 남겨줍니다.</div>
+              <p data-i18n="intro.step2Desc">짧은 메모로 그 순간의 마음을 남기세요.</p>
             </div>
           </div>
           <div class="how-to-card">
@@ -936,17 +942,16 @@
               </div>
             </div>
             <div class="how-to-card-copy">
-              <h3 data-i18n="intro.step3Title">자라난 트리 감상하기</h3>
-              <p data-i18n="intro.step3DescFixed">가지처럼 이어진 장면들을 따라가며, 내가 어떻게 좋아하게 되었는지 다시 바라보세요.</p>
-              <div class="how-to-point" data-i18n="intro.step3Point">이어진 장면이 좋아하게 된 경로를 보여줍니다.</div>
+              <h3 data-i18n="intro.step3Title">다시 감상하기</h3>
+              <p data-i18n="intro.step3DescFixed">이어진 장면을 따라가며 좋아하게 된 흐름을 다시 바라보세요.</p>
             </div>
           </div>
         </div>
       </section>
 
       <!-- Value -->
-      <section class="intro-section">
-        <h2 data-i18n="intro.valueTitle">이건 어떤 공간인가요?</h2>
+      <section class="intro-section intro-section-wide">
+        <h2 data-i18n="intro.valueTitle">이런 순간이 남아요</h2>
         <div class="value-grid">
           <div class="value-item value-item-featured">
             <div class="value-item-visual" aria-hidden="true">
@@ -960,7 +965,7 @@
             <div class="value-item-copy">
               <div class="value-item-eyebrow" data-i18n="intro.value1Eyebrow">가장 먼저 남는 것</div>
               <h4 data-i18n="intro.value1Title">입덕의 첫 순간을 오래 남기는 공간</h4>
-              <p data-i18n="intro.value1Desc">처음 마음이 움직였던 장면과 그때의 감정을 함께 보관합니다.</p>
+              <p data-i18n="intro.value1Desc">처음 마음이 움직였던 장면과 감정을 함께 남깁니다.</p>
             </div>
           </div>
           <div class="value-item">
@@ -975,7 +980,7 @@
             <div class="value-item-copy">
               <div class="value-item-eyebrow" data-i18n="intro.value2Eyebrow">감정의 경로</div>
               <h4 data-i18n="intro.visualizeGrowthTitle">좋아하게 된 경로를 따라가는 공간</h4>
-              <p data-i18n="intro.visualizeGrowthDesc">흩어진 순간들이 이어지며 마음의 방향과 흐름이 보입니다.</p>
+              <p data-i18n="intro.visualizeGrowthDesc">흩어진 순간이 이어지며 감정의 흐름이 보입니다.</p>
             </div>
           </div>
           <div class="value-item">
@@ -990,7 +995,7 @@
             <div class="value-item-copy">
               <div class="value-item-eyebrow" data-i18n="intro.value3Eyebrow">공개 감상</div>
               <h4 data-i18n="intro.value2Title">다른 팬의 마음을 감상하는 공간</h4>
-              <p data-i18n="intro.value2Desc">공개된 러브트리를 따라가며 비슷한 설렘과 장면을 발견할 수 있습니다.</p>
+              <p data-i18n="intro.value2Desc">공개된 러브트리를 따라가며 비슷한 장면을 만날 수 있습니다.</p>
             </div>
           </div>
           <div class="value-item">
@@ -1004,7 +1009,7 @@
             <div class="value-item-copy">
               <div class="value-item-eyebrow" data-i18n="intro.value4Eyebrow">오래 남는 장면</div>
               <h4 data-i18n="intro.value3Title">오래 지나도 다시 꺼내보는 공간</h4>
-              <p data-i18n="intro.value3DescFixed">잊고 있던 장면도 트리 안에서는 그때의 온도로 다시 살아납니다.</p>
+              <p data-i18n="intro.value3DescFixed">트리 안에서는 그때의 장면을 다시 꺼내볼 수 있습니다.</p>
             </div>
           </div>
         </div>
@@ -1013,7 +1018,7 @@
       <!-- CTA -->
       <section class="cta-section">
         <h2 data-i18n="intro.ctaTitle">첫 순간을 남길 준비가 되셨나요?</h2>
-        <p data-i18n="intro.ctaDesc">좋아하는 마음이 시작된 장면부터 당신의 러브트리를 천천히 키워보세요.</p>
+        <p data-i18n="intro.ctaDesc">시작된 장면부터 당신의 러브트리를 남겨보세요.</p>
         <div class="cta-buttons">
           <a href="my-trees.html" class="intro-cta-link"><span class="btn-round btn-primary intro-cta-primary" data-i18n="intro.ctaPrimary">첫 순간 남기러 가기</span></a>
           <a href="search.html" class="intro-cta-link"><span class="btn-round btn-outline intro-cta-secondary" data-i18n="intro.heroBrowseCta">공개 트리 감상하기</span></a>
@@ -1028,7 +1033,7 @@
      <script src="../js/i18n/i18n-core.js?v=20260421-1"></script>
      <script src="../js/i18n/i18n-shared.js?v=20260421-4"></script>
     <script src="../js/i18n/i18n-login.js?v=20260419-2"></script>
-    <script src="../js/i18n/i18n-intro.js?v=20260421-3"></script>
+    <script src="../js/i18n/i18n-intro.js?v=20260423-1"></script>
     <script src="../js/i18n/i18n-search.js?v=20260421-1"></script>
     <script src="../js/i18n/i18n-detail.js?v=20260421-5"></script>
     <script src="../js/i18n/i18n-editor.js?v=20260421-9"></script>
