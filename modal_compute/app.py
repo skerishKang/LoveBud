@@ -644,7 +644,7 @@ async def post_private_memory(
 
 @app.function(
     image=image,
-    cpu=1,
+    cpu=0.25,
     memory=512,
     scaledown_window=300,
     min_containers=1,
