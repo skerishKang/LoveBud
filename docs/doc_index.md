@@ -2,10 +2,12 @@
 
 이 문서는 LoveBud 프로젝트의 문서 구조와 읽기 순서를 정리한 최상위 인덱스입니다.
 
-실서비스 프론트 주소는 `https://lovebud.vercel.app/` 이며, 현재 운영 기준 인프라 우선순위는 **Modal > Vercel > Netlify** 입니다.
+실서비스 프론트 주소는 `https://lovebud.pages.dev/` 이며, 현재 운영 기준 인프라 우선순위는 **Modal > Cloudflare Pages > Vercel > Netlify** 입니다.
 
 중요:
 - 브라우저는 가능하면 **same-origin `/api`** 만 사용합니다.
+- 공식 사용자-facing 주소는 `pages.dev` 기준으로 설명합니다.
+- Vercel은 upstream / secondary entry / 전이기 보조 계층입니다.
 - Netlify는 주경로가 아니라 fallback 또는 단계적 제거 대상입니다.
 - `PRODUCT_IDENTITY / BRAND_EXPERIENCE / UI_DESIGN_SYSTEM` 은 제품/브랜드/UI 판단의 source of truth 입니다.
 - browse display filter 와 publication guard 는 다른 개념입니다.
@@ -82,7 +84,7 @@
 
 마이그레이션 관련 문서는 `docs/migration/` 아래에 정리됩니다.
 
-- [VERCEL_MODAL_MIGRATION_RUNBOOK.md](./migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md) - Vercel / Modal 전환 현황과 남은 과제
+- [VERCEL_MODAL_MIGRATION_RUNBOOK.md](./migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md) - Cloudflare Pages / Modal 전환 현황과 남은 과제
 
 ## pages 문서군
 
