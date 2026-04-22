@@ -14,6 +14,40 @@
  */
 
 (function() {
+    function ensureMaterialSymbolsReady() {
+        var READY_CLASS = 'material-symbols-ready';
+        var root = document.documentElement;
+        if (!root || root.classList.contains(READY_CLASS)) return;
+
+        function markReady() {
+            root.classList.add(READY_CLASS);
+        }
+
+        if (!(document.fonts && document.fonts.check && document.fonts.load)) {
+            markReady();
+            return;
+        }
+
+        try {
+            if (document.fonts.check('16px "Material Symbols Outlined"')) {
+                markReady();
+                return;
+            }
+        } catch (e) {}
+
+        Promise.race([
+            document.fonts.load('16px "Material Symbols Outlined"'),
+            new Promise(function(resolve) {
+                setTimeout(resolve, 1500);
+            })
+        ]).then(function() {
+            markReady();
+        }).catch(function() {
+            markReady();
+        });
+    }
+
+    ensureMaterialSymbolsReady();
     // i18n 헬퍼 ( fallback: 키 반환)
     function t(key) {
         if (window.t && typeof window.t === 'function') {
