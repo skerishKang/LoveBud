@@ -8,9 +8,9 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
     <style>
         .detail-page-shell {
-            max-width: 1400px;
+            max-width: 1480px;
             margin: 0 auto;
-            padding: 28px 48px 60px;
+            padding: 22px 40px 56px;
         }
 
         .detail-topbar {
@@ -18,7 +18,7 @@
             align-items: center;
             justify-content: space-between;
             gap: 16px;
-            margin-bottom: 18px;
+            margin-bottom: 14px;
         }
 
         .detail-back-link {
@@ -53,23 +53,23 @@
             color: var(--primary);
         }
 
-.detail-hero {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-bottom: 20px;
-  padding: 20px 24px;
-  border-radius: 1.5rem;
-  background: linear-gradient(135deg, rgba(255,255,255,0.92), rgba(249,245,242,0.94));
-  border: 1px solid rgba(144, 73, 81, 0.08);
-  box-shadow: 0 12px 30px rgba(75, 64, 57, 0.04);
-}
+        .detail-hero {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 16px;
+            padding: 18px 22px;
+            border-radius: 1.35rem;
+            background: linear-gradient(135deg, rgba(255,255,255,0.92), rgba(249,245,242,0.94));
+            border: 1px solid rgba(144, 73, 81, 0.08);
+            box-shadow: 0 10px 24px rgba(75, 64, 57, 0.04);
+        }
 
         .detail-hero-kicker {
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 800;
             letter-spacing: 0.08em;
             text-transform: uppercase;
@@ -78,44 +78,83 @@
 
         .detail-hero-title {
             margin: 0;
-            font-size: 2.2rem;
-            line-height: 1.2;
+            font-size: 1.95rem;
+            line-height: 1.15;
             color: var(--on-surface);
         }
 
         .detail-hero-desc {
             margin: 0;
-            max-width: 760px;
-            font-size: 1rem;
-            line-height: 1.7;
+            max-width: 680px;
+            font-size: 0.94rem;
+            line-height: 1.62;
             color: var(--on-surface-variant);
         }
 
         .detail-layout {
-            max-width: 1400px;
+            max-width: 1480px;
             margin: 0 auto;
             display: grid;
-            grid-template-columns: 3fr 2fr;
-            gap: 72px;
+            grid-template-columns: minmax(0, 1.28fr) minmax(340px, 0.72fr);
+            gap: 36px;
+            align-items: start;
         }
 
-        .detail-main-media { margin-bottom: 28px; }
+        .detail-primary-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            min-width: 0;
+        }
+
+        .detail-title-block {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding: 6px 0 0;
+        }
+
+        .detail-side-kicker {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--primary);
+            font-weight: 900;
+            margin: 0;
+        }
+
+        .detail-title-main {
+            margin: 0;
+            font-size: clamp(2rem, 4vw, 2.8rem);
+            color: var(--on-surface);
+            line-height: 1.12;
+        }
+
+        .detail-tag-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .detail-main-media {
+            margin-bottom: 0;
+        }
 
         .video-main {
             width: 100%;
             aspect-ratio: 16/9;
             background: #000;
-            border-radius: 2.5rem;
+            border-radius: 2rem;
             overflow: hidden;
-            box-shadow: 0 40px 100px -20px rgba(0,0,0,0.2);
-            margin-bottom: 24px;
+            box-shadow: 0 28px 72px -20px rgba(0,0,0,0.18);
+            margin-bottom: 16px;
         }
 
         .detail-memory-meta {
             display: flex;
             flex-wrap: wrap;
-            gap: 12px;
-            font-size: 13px;
+            gap: 10px;
+            font-size: 12px;
             color: var(--on-surface-variant);
         }
 
@@ -123,29 +162,58 @@
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            padding: 8px 12px;
+            padding: 7px 11px;
             border-radius: 999px;
-            background: rgba(255,255,255,0.78);
-            border: 1px solid rgba(144, 73, 81, 0.08);
+            background: rgba(255,255,255,0.72);
+            border: 1px solid rgba(144, 73, 81, 0.07);
         }
 
         .detail-meta-pill .material-symbols-outlined {
-            font-size: 16px;
+            font-size: 15px;
             color: var(--primary);
         }
 
-        .connected-section { margin-top: 72px; }
-.connected-section.is-empty .growth-visualization,
-.connected-section.is-empty .growth-line { display: none; }
-.connected-section.is-solo .moment-card { max-width: 480px; }
-.connected-section.is-solo .connected-summary { display: none; }
-.connected-section.is-threaded .moment-card { grid-column: span 1; }
+        .diary-section {
+            min-width: 0;
+        }
+
+        .diary-container {
+            background: white;
+            padding: 34px 38px;
+            border-radius: 1.8rem;
+            box-shadow: 0 14px 40px rgba(0,0,0,0.04);
+            border: 1px solid rgba(144,73,81,0.06);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .diary-container::before {
+            content: "“";
+            position: absolute;
+            top: 16px;
+            left: 24px;
+            font-size: 104px;
+            font-family: var(--font-heading);
+            color: var(--primary);
+            opacity: 0.05;
+            line-height: 1;
+        }
+
+        .connected-section {
+            margin-top: 10px;
+        }
+
+        .connected-section.is-empty .growth-visualization,
+        .connected-section.is-empty .growth-line { display: none; }
+        .connected-section.is-solo .moment-card { max-width: 520px; }
+        .connected-section.is-solo .connected-summary { display: none; }
+        .connected-section.is-threaded .moment-card { grid-column: span 1; }
 
         .connected-heading {
             display: flex;
             flex-direction: column;
-            gap: 8px;
-            margin-bottom: 24px;
+            gap: 6px;
+            margin-bottom: 18px;
         }
 
         .connected-kicker {
@@ -158,27 +226,29 @@
 
         .connected-section h3 {
             margin: 0;
-            font-size: 1.8rem;
+            font-size: 1.6rem;
             font-weight: 800;
+            line-height: 1.18;
         }
 
         .connected-summary {
             margin: 0;
             color: var(--on-surface-variant);
-            font-size: 0.96rem;
-            line-height: 1.6;
+            font-size: 0.92rem;
+            line-height: 1.55;
+            max-width: 620px;
         }
 
         .moment-card {
             background: white;
-            padding: 24px;
-            border-radius: 2rem;
+            padding: 18px;
+            border-radius: 1.55rem;
             border: 1px solid rgba(0,0,0,0.03);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.02);
+            box-shadow: 0 10px 28px rgba(0,0,0,0.02);
             display: flex;
-            gap: 20px;
+            gap: 18px;
             align-items: center;
-            margin-bottom: 20px;
+            margin-bottom: 16px;
             transition: all 0.3s;
             cursor: pointer;
         }
@@ -189,89 +259,51 @@
             box-shadow: var(--shadow-whisper);
         }
 
-        .detail-side-intro { margin-bottom: 28px; }
-
-        .detail-side-kicker {
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            color: var(--primary);
-            font-weight: 900;
-            margin-bottom: 12px;
-        }
-
-        .detail-side-summary {
-            font-size: 0.98rem;
-            color: var(--on-surface-variant);
-            line-height: 1.7;
-            margin-top: 18px;
-        }
-
-.diary-container {
-  background: white;
-  padding: 40px 48px;
-  border-radius: 2rem;
-  box-shadow: 0 16px 48px rgba(0,0,0,0.04);
-  border: 1px solid rgba(144,73,81,0.06);
-  position: relative;
-  overflow: hidden;
-}
-
-        .diary-container::before {
-            content: "“";
-            position: absolute;
-            top: 20px;
-            left: 30px;
-            font-size: 120px;
-            font-family: var(--font-heading);
-            color: var(--primary);
-            opacity: 0.05;
-            line-height: 1;
-        }
-
         .growth-visualization {
             display: flex;
             flex-direction: column;
             align-items: center;
-            margin-top: 48px;
+            margin-top: 30px;
         }
 
         .growth-line {
-            width: 4px; height: 60px;
+            width: 4px; height: 48px;
             background: linear-gradient(to bottom, var(--primary), var(--secondary));
-            opacity: 0.2;
+            opacity: 0.18;
             border-radius: 99px;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
         }
 
         .growth-dot {
-            width: 20px; height: 20px;
+            width: 18px; height: 18px;
             background: var(--primary);
             border-radius: 50%;
-            box-shadow: 0 0 0 8px rgba(144, 73, 81, 0.1);
+            box-shadow: 0 0 0 8px rgba(144, 73, 81, 0.08);
         }
 
-        @media (max-width: 1024px) {
-            .detail-page-shell { padding: 24px 24px 40px; }
-            .detail-layout { grid-template-columns: 1fr; gap: 48px; }
-            .connected-section { margin-top: 48px; }
-            .diary-container { padding: 48px; }
-            #memoryTitle { font-size: 2.5rem !important; }
+        @media (max-width: 1180px) {
+            .detail-page-shell { padding: 22px 24px 40px; }
+            .detail-layout { grid-template-columns: 1fr; gap: 28px; }
+            .connected-section { margin-top: 0; }
+            .diary-container { padding: 32px 30px; }
+            .detail-title-main { font-size: 2.25rem; }
         }
 
         @media (max-width: 768px) {
-            .detail-page-shell { padding: 18px 16px 32px; }
-            .detail-topbar { align-items: flex-start; flex-direction: column; margin-bottom: 14px; }
-            .detail-hero { padding: 22px 20px; border-radius: 1.5rem; margin-bottom: 24px; }
-            .detail-hero-title { font-size: 1.8rem; line-height: 1.25; }
-            .detail-layout { gap: 32px; }
-            .video-main { border-radius: 1.5rem; margin-bottom: 20px; }
-            .diary-container { padding: 32px 24px; border-radius: 2rem; }
-            #memoryTitle { font-size: 2rem !important; line-height: 1.2; }
-            .moment-card { padding: 16px; gap: 16px; }
+            .detail-page-shell { padding: 16px 16px 30px; }
+            .detail-topbar { align-items: flex-start; flex-direction: column; margin-bottom: 12px; }
+            .detail-hero { padding: 16px 16px; border-radius: 1.2rem; margin-bottom: 14px; gap: 8px; }
+            .detail-hero-title { font-size: 1.55rem; line-height: 1.2; }
+            .detail-hero-desc { font-size: 0.9rem; line-height: 1.55; }
+            .detail-layout { gap: 22px; }
+            .detail-title-block { gap: 10px; }
+            .detail-title-main { font-size: 1.85rem; line-height: 1.16; }
+            .video-main { border-radius: 1.3rem; margin-bottom: 14px; }
+            .diary-container { padding: 26px 20px; border-radius: 1.5rem; }
+            .moment-card { padding: 14px; gap: 14px; }
             .moment-card img { width: 60px !important; height: 60px !important; }
-            .growth-visualization { margin-top: 40px; }
-            #connectedFragments { grid-template-columns: 1fr !important; }
+            .growth-visualization { margin-top: 24px; }
+            #connectedFragments { grid-template-columns: 1fr !important; gap: 14px !important; }
         }
     </style>
 </head>
@@ -299,53 +331,55 @@
         </section>
 
         <main class="detail-layout">
-            <section class="detail-main-media">
-                <div id="videoMain" class="video-main"></div>
-                <div class="detail-memory-meta">
-                    <span class="detail-meta-pill">
-                        <span class="material-symbols-outlined">artist</span>
-                        <span id="detailArtist">&nbsp;</span>
-                    </span>
-                    <span class="detail-meta-pill">
-                        <span class="material-symbols-outlined">calendar_today</span>
-                        <span id="detailDate">&nbsp;</span>
-                    </span>
-                </div>
+            <section class="detail-primary-stack">
+                <section class="detail-main-media">
+                    <div id="videoMain" class="video-main"></div>
+                    <div class="detail-memory-meta">
+                        <span class="detail-meta-pill">
+                            <span class="material-symbols-outlined">artist</span>
+                            <span id="detailArtist">&nbsp;</span>
+                        </span>
+                        <span class="detail-meta-pill">
+                            <span class="material-symbols-outlined">calendar_today</span>
+                            <span id="detailDate">&nbsp;</span>
+                        </span>
+                    </div>
+                </section>
 
+                <section class="diary-section">
+                    <div class="detail-title-block">
+                        <p id="detailSubtitle" class="detail-side-kicker">&nbsp;</p>
+                        <h1 class="headline detail-title-main" id="memoryTitle">&nbsp;</h1>
+                        <div class="detail-tag-row">
+                            <div class="tags-container" id="tagsContainer"></div>
+                        </div>
+                    </div>
+
+                    <div class="diary-container">
+                        <p id="diaryQuote" style="font-size: 1.18rem; color: var(--on-surface); font-weight: 500; font-style: italic; line-height: 1.55; margin-bottom: 24px;">&nbsp;</p>
+                        <div id="diaryContent" style="line-height: 1.9; color: var(--on-surface-variant); font-size: 1rem;">&nbsp;</div>
+                    </div>
+                </section>
+            </section>
+
+            <aside class="detail-secondary-stack">
                 <div class="connected-section">
                     <div class="connected-heading">
                         <span id="connectedKicker" class="connected-kicker">&nbsp;</span>
                         <h3 id="connectedTitle" class="headline">&nbsp;</h3>
                         <p id="connectedSummary" class="connected-summary">&nbsp;</p>
                     </div>
-                    <div id="connectedFragments" style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;"></div>
-                </div>
-            </section>
-
-            <section class="diary-section">
-                <div class="detail-side-intro">
-                    <p id="detailSubtitle" class="detail-side-kicker">&nbsp;</p>
-                    <h1 class="headline" id="memoryTitle" style="font-size: clamp(2rem, 5vw, 2.8rem); color: var(--on-surface); line-height: 1.15; margin-bottom: 20px;">&nbsp;</h1>
-                    <div style="display: flex; gap: 10px;">
-                        <div class="tags-container" id="tagsContainer"></div>
-                    </div>
-                    <p id="detailSideSummary" class="detail-side-summary">&nbsp;</p>
-                </div>
-
-                <div class="diary-container">
-                    <p id="diaryQuote" style="font-size: 1.25rem; color: var(--on-surface); font-weight: 500; font-style: italic; line-height: 1.6; margin-bottom: 32px;">&nbsp;</p>
-                    <div id="diaryContent" style="line-height: 2; color: var(--on-surface-variant); font-size: 1.05rem;">&nbsp;</div>
+                    <div id="connectedFragments" style="display: grid; grid-template-columns: 1fr; gap: 16px;"></div>
                 </div>
 
                 <div class="growth-visualization">
                     <div class="growth-line"></div>
                     <div class="growth-dot"></div>
-                    <p id="growthLabel" style="margin-top: 16px; font-weight: 800; color: var(--primary); font-size: 12px; text-transform: uppercase; letter-spacing: 2px;">&nbsp;</p>
+                    <p id="growthLabel" style="margin-top: 14px; font-weight: 800; color: var(--primary); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;">&nbsp;</p>
                 </div>
-            </section>
+            </aside>
         </main>
     </div>
-
 
 <script src="../js/cache-utils.js?v=20260418-1"></script>
 <script src="../js/utils/normalize.js?v=20260422-1"></script>
