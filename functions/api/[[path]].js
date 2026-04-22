@@ -114,10 +114,6 @@ async function tryModalRead(request, env) {
     }
   });
 
-  if (!response.ok) {
-    throw new Error(`modal-${response.status}`);
-  }
-
   return withUpstreamHeader(response, 'modal');
 }
 
@@ -130,7 +126,7 @@ export async function onRequest(context) {
     const modalResponse = await tryModalRead(request, env || {});
     if (modalResponse) return modalResponse;
   } catch (error) {
-    console.warn('[LoveBudCloudflareProxy] Modal read failed, falling back to Vercel', error);
+    console.warn('[LoveBudCloudflareProxy] Modal read failed before response, falling back to Vercel', error);
   }
 
   const response = await fetch(upstreamUrl.toString(), {
