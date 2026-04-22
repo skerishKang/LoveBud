@@ -541,6 +541,21 @@ h1, h2, h3, h4, .headline {
     font-size: 20px;
 }
 
+.mobile-nav-toggle::before {
+    content: "☰";
+    font-size: 20px;
+    line-height: 1;
+    font-weight: 700;
+}
+
+html.material-symbols-ready .mobile-nav-toggle::before {
+    display: none;
+}
+
+html:not(.material-symbols-ready) .mobile-nav-toggle .material-symbols-outlined {
+    display: none;
+}
+
 /* Mobile-first responsive overrides */
 @media (max-width: 768px) {
     .nav-bar {
