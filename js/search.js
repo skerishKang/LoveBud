@@ -1,6 +1,6 @@
 /**
  * LoveBud Search Page Orchestrator
- * v20260422-4
+ * v20260422-5
  *
  * Search page orchestration:
  * - Fast list-first loading for public trees
@@ -39,6 +39,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const Adapter = window.LoveBudSearchAdapter;
     const cache = window.LoveBudCache;
     const PUBLIC_TREES_CACHE_KEY = 'public_trees_summary_latest_12';
+    const PREVIEW_CACHE_TTL_MS = 5 * 60 * 1000;
+    const getPreviewCacheKey = (treeId) => `public_tree_preview_${treeId}`;
 
     let allTrees = [];
     let loadError = null;
@@ -65,6 +67,40 @@ document.addEventListener('DOMContentLoaded', async () => {
             return dict[locale] || dict.ko || dict.en || fallbackKo;
         }
         return locale === 'en' ? fallbackEn : fallbackKo;
+    }
+
+    function readPreviewCache(treeId) {
+        if (!treeId) return null;
+
+        if (previewCache.has(treeId)) {
+            return previewCache.get(treeId);
+        }
+
+        if (!cache || typeof cache.get !== 'function') {
+            return null;
+        }
+
+        const cachedPreview = cache.get(getPreviewCacheKey(treeId));
+        if (cachedPreview && typeof cachedPreview === 'object') {
+            previewCache.set(treeId, cachedPreview);
+            return cachedPreview;
+        }
+
+        return null;
+    }
+
+    function writePreviewCache(treeId, hydratedTree) {
+        if (!treeId || !hydratedTree || typeof hydratedTree !== 'object') return;
+
+        previewCache.set(treeId, hydratedTree);
+        if (cache && typeof cache.set === 'function') {
+            cache.set(getPreviewCacheKey(treeId), hydratedTree, PREVIEW_CACHE_TTL_MS);
+        }
+    }
+
+    function mergeHydratedTree(hydratedTree) {
+        if (!hydratedTree || !hydratedTree.id) return;
+        allTrees = allTrees.map(item => item.id === hydratedTree.id ? hydratedTree : item);
     }
 
     const SORT_COPY = {
@@ -261,9 +297,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderPreviewLoadingState(tree);
 
         try {
-            const hydratedTree = previewCache.get(tree.id) || await window.apiClient.getPublicTreePreview(tree);
-            previewCache.set(tree.id, hydratedTree);
-            allTrees = allTrees.map(item => item.id === hydratedTree.id ? hydratedTree : item);
+            const cachedPreview = readPreviewCache(tree.id);
+            const hydratedTree = cachedPreview || await window.apiClient.getPublicTreePreview(tree);
+
+            writePreviewCache(tree.id, hydratedTree);
+            mergeHydratedTree(hydratedTree);
 
             if (requestId !== currentPreviewRequestId || selectedTreeId !== tree.id) {
                 return;
@@ -285,6 +323,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         markActiveCard(activeCard);
 
         if (Array.isArray(tree.memories) && tree.memories.length > 0) {
+            writePreviewCache(tree.id, tree);
             PreviewRenderer.updatePreview(tree);
             return;
         }
@@ -349,6 +388,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         if (selectedTree && Array.isArray(selectedTree.memories) && selectedTree.memories.length > 0) {
+            writePreviewCache(selectedTree.id, selectedTree);
             PreviewRenderer.updatePreview(selectedTree);
         } else if (!selectedTree && resetPreviewWhenNoSelection) {
             PreviewRenderer.resetPreview();
