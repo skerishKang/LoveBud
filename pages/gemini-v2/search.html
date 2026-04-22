@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>둘러보기 | LoveTree</title>
+    <!-- Premium Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../css/gemini-v2/search.css">
+</head>
+<body>
+    <div class="canvas">
+        <header class="topbar" style="border-bottom: 1px solid #F5F0EE;">
+            <a href="index.html" class="logo">LoveTree</a>
+            <nav class="nav">
+                <a href="index.html" class="nav-link">첫 화면</a>
+                <a href="intro.html" class="nav-link">소개</a>
+                <a href="search.html" class="nav-link">둘러보기</a>
+                <a href="../my-trees.html" class="nav-link">내 러브트리</a>
+            </nav>
+            <a href="../login.html" class="btn-login">로그인</a>
+        </header>
+
+        <div class="search-layout">
+            <main class="browse-area">
+                <header class="search-header">
+                    <h1 class="search-title">감상의 기록들</h1>
+                    <div class="search-bar">
+                        <input type="text" class="search-input" placeholder="어떤 순간을 찾고 계신가요?">
+                    </div>
+                </header>
+
+                <div class="filters">
+                    <button class="filter-pill active">전체</button>
+                    <button class="filter-pill">K-Pop</button>
+                    <button class="filter-pill">입덕의 시작</button>
+                    <button class="filter-pill">최애의 조각들</button>
+                    <button class="filter-pill">최근 추가순</button>
+                </div>
+
+                <div class="tree-grid">
+                    <article class="tree-card" onclick="location.href='detail.html'">
+                        <div class="card-visual">🌳</div>
+                        <h3 class="card-title">보랏빛으로 남은 순간들</h3>
+                        <p class="card-desc">이름도 모르던 그날의 직캠부터 시작된, 나의 7년이 담긴 보랏빛 지도입니다.</p>
+                        <div class="card-footer">
+                            <span class="tag">#BTS</span>
+                            <span class="stats">12 MOMENTS</span>
+                        </div>
+                    </article>
+
+                    <article class="tree-card">
+                        <div class="card-visual">🌸</div>
+                        <h3 class="card-title">우리가 사랑한 새로운 계절</h3>
+                        <p class="card-desc">새로운 계절처럼 다가온 그녀들의 첫 데뷔 무대를 기록합니다.</p>
+                        <div class="card-footer">
+                            <span class="tag">#NEWJEANS</span>
+                            <span class="stats">8 MOMENTS</span>
+                        </div>
+                    </article>
+
+                    <article class="tree-card">
+                        <div class="card-visual">💎</div>
+                        <h3 class="card-title">완성형 아이돌의 서사</h3>
+                        <p class="card-desc">완벽함 속에서도 빛나는 노력의 흔적들을 하나하나 모았습니다.</p>
+                        <div class="card-footer">
+                            <span class="tag">#IVE</span>
+                            <span class="stats">15 MOMENTS</span>
+                        </div>
+                    </article>
+
+                    <article class="tree-card">
+                        <div class="card-visual">🦋</div>
+                        <h3 class="card-title">푸른 물결이 이어진 밤</h3>
+                        <p class="card-desc">가장 위로가 되었던 목소리가 내 안에서 어떻게 자랐는지 보여드릴게요.</p>
+                        <div class="card-footer">
+                            <span class="tag">#IU</span>
+                            <span class="stats">21 MOMENTS</span>
+                        </div>
+                    </article>
+                </div>
+            </main>
+
+            <aside class="hub-area">
+                <div class="hub-content">
+                    <div class="hub-icon">✨</div>
+                    <h2 class="hub-title">감상 허브</h2>
+                    <p class="hub-desc">왼쪽에서 트리를 선택해 보세요.<br>대표 순간과 감정의 경로가 이곳에 열립니다.</p>
+                </div>
+            </aside>
+        </div>
+    </div>
+</body>
+</html>

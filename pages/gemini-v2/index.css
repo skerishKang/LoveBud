@@ -1,0 +1,298 @@
+/* gemini-v2 Design System */
+:root {
+    /* Color Palette */
+    --v2-bg-gradient: linear-gradient(135deg, #e2e8e4 0%, #f7e9e9 50%, #fcf3e8 100%); /* Sage, Rose, Peach */
+    --v2-canvas-bg: #FCF9F5;
+    --v2-primary: #B37E6F; /* Terracotta / Coral Brown */
+    --v2-primary-hover: #9c6a5d;
+    --v2-text-main: #3D3431; /* Dark Cocoa */
+    --v2-text-muted: #7A6F6C;
+    --v2-accent-rose: #D4A5A5;
+    --v2-accent-sage: #A8B5A2;
+    --v2-white: #FFFFFF;
+    
+    /* Spacing & Radius */
+    --v2-radius-xl: 60px;
+    --v2-radius-lg: 32px;
+    --v2-radius-md: 16px;
+    --v2-radius-pill: 100px;
+    --v2-page-max-width: 1280px;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Noto Sans KR', 'Pretendard', -apple-system, sans-serif;
+    color: var(--v2-text-main);
+    background: var(--v2-bg-gradient);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    line-height: 1.6;
+}
+
+/* Typography */
+h1, h2, h3, .serif-brand {
+    font-family: 'Outfit', 'Playfair Display', serif; /* Serif for emotional weight */
+    font-weight: 700;
+}
+
+/* Main Container (The Floating Canvas) */
+.gemini-v2-container {
+    width: 100%;
+    max-width: var(--v2-page-max-width);
+    background: var(--v2-canvas-bg);
+    border-radius: var(--v2-radius-xl);
+    box-shadow: 0 40px 100px rgba(61, 52, 49, 0.08);
+    overflow: hidden;
+    position: relative;
+    min-height: 800px;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Header */
+.v2-header {
+    padding: 40px 60px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 10;
+}
+
+.v2-logo {
+    font-size: 24px;
+    color: var(--v2-primary);
+    text-decoration: none;
+    letter-spacing: -0.5px;
+}
+
+.v2-nav {
+    display: flex;
+    gap: 40px;
+}
+
+.v2-nav-link {
+    text-decoration: none;
+    color: var(--v2-text-main);
+    font-weight: 500;
+    font-size: 15px;
+    transition: color 0.3s ease;
+}
+
+.v2-nav-link:hover {
+    color: var(--v2-primary);
+}
+
+/* Hero Section */
+.v2-hero {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    padding: 20px 60px 60px;
+    align-items: center;
+    gap: 40px;
+}
+
+.v2-hero-content {
+    max-width: 520px;
+}
+
+.v2-hero-eyebrow {
+    display: block;
+    font-size: 14px;
+    color: var(--v2-primary);
+    margin-bottom: 16px;
+    font-weight: 600;
+    letter-spacing: 1px;
+}
+
+.v2-hero-title {
+    font-size: 52px;
+    line-height: 1.2;
+    margin-bottom: 24px;
+    color: var(--v2-text-main);
+}
+
+.v2-hero-title span.accent {
+    color: var(--v2-primary);
+    font-style: italic;
+}
+
+.v2-hero-desc {
+    font-size: 18px;
+    color: var(--v2-text-muted);
+    margin-bottom: 40px;
+    word-break: keep-all;
+}
+
+.v2-hero-actions {
+    display: flex;
+    gap: 16px;
+}
+
+/* Buttons */
+.v2-btn {
+    padding: 16px 32px;
+    border-radius: var(--v2-radius-pill);
+    font-size: 16px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.v2-btn-primary {
+    background: var(--v2-primary);
+    color: var(--v2-white);
+}
+
+.v2-btn-primary:hover {
+    background: var(--v2-primary-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(179, 126, 111, 0.2);
+}
+
+.v2-btn-outline {
+    border: 1.5px solid var(--v2-primary);
+    color: var(--v2-primary);
+}
+
+.v2-btn-outline:hover {
+    background: rgba(179, 126, 111, 0.05);
+    transform: translateY(-2px);
+}
+
+/* Tree Visual Area */
+.v2-hero-visual {
+    position: relative;
+    height: 100%;
+    min-height: 500px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Organic Tree Line (Simplified) */
+.v2-tree-svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    pointer-events: none;
+}
+
+/* Moment Cards */
+.v2-moment-card {
+    position: absolute;
+    width: 200px;
+    background: var(--v2-white);
+    border-radius: var(--v2-radius-md);
+    padding: 10px;
+    box-shadow: 0 20px 40px rgba(61, 52, 49, 0.06);
+    z-index: 2;
+    transition: transform 0.4s ease;
+}
+
+.v2-moment-card:hover {
+    transform: translateY(-10px) scale(1.02);
+}
+
+.v2-card-thumb {
+    width: 100%;
+    aspect-ratio: 16/9;
+    background: #eee;
+    border-radius: 10px;
+    margin-bottom: 12px;
+    position: relative;
+    overflow: hidden;
+}
+
+.v2-card-thumb::after {
+    content: '▶';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 24px;
+    opacity: 0.8;
+}
+
+.v2-card-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.v2-card-date {
+    font-size: 10px;
+    color: var(--v2-text-muted);
+    font-weight: 500;
+}
+
+.v2-card-tag {
+    font-size: 10px;
+    padding: 2px 8px;
+    background: #FDF1F0;
+    color: #E58A8A;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+.v2-card-title {
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Positioning cards to form a tree */
+.card-1 { left: 10%; top: 45%; }
+.card-2 { left: 45%; top: 20%; }
+.card-3 { left: 45%; top: 70%; }
+.card-4 { left: 80%; top: 45%; }
+
+/* Background Decoration */
+.v2-deco-star {
+    position: absolute;
+    color: var(--v2-primary);
+    opacity: 0.3;
+    font-size: 24px;
+}
+
+.star-1 { bottom: 60px; right: 100px; }
+.star-2 { top: 100px; left: 40%; }
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .v2-hero {
+        grid-template-columns: 1fr;
+        padding: 40px;
+    }
+    .v2-hero-content {
+        max-width: 100%;
+        text-align: center;
+    }
+    .v2-hero-actions {
+        justify-content: center;
+    }
+    .v2-hero-visual {
+        min-height: 400px;
+    }
+    .v2-header {
+        padding: 20px 40px;
+    }
+}
