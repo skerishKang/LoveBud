@@ -4,41 +4,40 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>순간의 기록 | LoveTree v3</title>
-    <!-- Premium Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../../css/gemini-v3/index.css">
     <link rel="stylesheet" href="../../css/gemini-v3/detail.css">
 </head>
 <body>
-    <div class="v3-canvas">
-        <header class="v3-header">
-            <a href="index.html" class="v3-logo">LoveTree</a>
-            <nav class="v3-nav">
-                <a href="index.html" class="v3-nav-link">첫 화면</a>
-                <a href="intro.html" class="v3-nav-link">LoveTree 소개</a>
-                <a href="search.html" class="v3-nav-link">둘러보기</a>
-                <a href="../my-trees.html" class="v3-nav-link">나의 트리</a>
+    <div class="canvas-v3">
+        <header class="header-v3">
+            <a href="index.html" class="logo-v3">LoveTree</a>
+            <nav class="nav-v3">
+                <a href="index.html" class="nav-link-v3">첫 화면</a>
+                <a href="intro.html" class="nav-link-v3">LoveTree 소개</a>
+                <a href="search.html" class="nav-link-v3">둘러보기</a>
+                <a href="../my-trees.html" class="nav-link-v3">나의 트리</a>
             </nav>
-            <div class="v3-header-actions">
-                <a href="../login.html" class="v3-btn-pill v3-btn-outline">로그인</a>
-            </div>
+            <a href="../login.html" class="btn-v3" style="padding: 10px 24px; border: 1.5px solid #B37E6F; color: #B37E6F;">로그인</a>
         </header>
 
-        <div class="v3-detail-layout">
-            <section class="v3-media-section">
-                <div class="v3-play-trigger">▶</div>
+        <div class="detail-v3-layout">
+            <nav style="padding: 20px 55px;">
+                <a href="search.html" style="text-decoration: none; color: var(--gv3-text-muted); font-size: 14px; font-weight: 700;">← 감상 허브로 돌아가기</a>
+            </nav>
+
+            <section class="media-v3-stage">
+                <img src="https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&q=80&w=1200" alt="Moment">
+                <div class="play-v3-btn">▶</div>
             </section>
 
-            <main class="v3-narrative">
-                <header class="v3-detail-header">
-                    <span class="v3-detail-date">April 12, 2026</span>
-                    <h1 class="v3-detail-title">이름도 모르던 그 영상</h1>
+            <main class="narrative-v3">
+                <header class="meta-v3-info">
+                    <span class="date-v3-label">April 12, 2026</span>
+                    <h1 class="moment-v3-title">이름도 모르던 그 영상</h1>
                 </header>
 
-                <article class="v3-diary-paper">
-                    <div class="v3-diary-text">
+                <article class="memo-v3-paper">
+                    <div class="memo-v3-text">
                         처음엔 그냥 유튜브 알고리즘에 떠서 우연히 클릭했어요. <br>
                         무대 위에서 저렇게 행복하게 웃는 사람이 누구지? 하는 호기심이 생겼던 순간입니다. <br>
                         그 웃음 하나가 제 일상의 풍경을 이렇게나 바꿀 줄은 몰랐어요. <br>
@@ -47,36 +46,34 @@
                 </article>
             </main>
 
-            <section class="v3-flow-section">
-                <h3 class="v3-flow-title">이어진 마음의 조각들</h3>
-                <div class="v3-polaroid-scroll">
-                    <article class="v3-polaroid" style="position: relative; left: 0; top: 0; transform: rotate(-2deg);">
-                        <div class="v3-pol-img" style="background: #FDF1F0;"></div>
-                        <div class="v3-pol-cap">첫 설렘의 순간</div>
-                    </article>
-                    <article class="v3-polaroid" style="position: relative; left: 0; top: 0; transform: rotate(3deg);">
-                        <div class="v3-pol-img" style="background: #F5F7FA;"></div>
-                        <div class="v3-pol-cap">밤새 보던 직캠</div>
-                    </article>
-                    <article class="v3-polaroid" style="position: relative; left: 0; top: 0; transform: rotate(-1deg);">
-                        <div class="v3-pol-img" style="background: #F0F4F0;"></div>
-                        <div class="v3-pol-cap">잊지 못할 가사</div>
-                    </article>
+            <section style="padding: 0 55px 120px; text-align: center;">
+                <span class="eyebrow-v3" style="margin-bottom: 40px;">Connected Memories</span>
+                <div style="display: flex; gap: 30px; justify-content: center;">
+                    <div class="node-v3" style="position: relative; left: 0; top: 0; transform: rotate(-2deg);">
+                        <div class="tape-v3"></div>
+                        <div class="node-img-v3" style="background-image: url('https://images.unsplash.com/photo-1493225255756-d9584f8606e9?auto=format&fit=crop&q=80&w=200'); background-size: cover;"></div>
+                        <div class="node-cap-v3">첫 설렘의 순간</div>
+                    </div>
+                    <div class="node-v3" style="position: relative; left: 0; top: 0; transform: rotate(3deg);">
+                        <div class="tape-v3" style="transform: translateX(-50%) rotate(2deg);"></div>
+                        <div class="node-img-v3" style="background-image: url('https://images.unsplash.com/photo-1514525253361-bee8718a340b?auto=format&fit=crop&q=80&w=200'); background-size: cover;"></div>
+                        <div class="node-cap-v3">밤새 보던 직캠</div>
+                    </div>
                 </div>
             </section>
         </div>
 
-        <div class="v3-action-hub">
-            <a href="#" class="v3-action-item">
-                <span class="v3-action-icon">🕊️</span>
-                <span>공감</span>
+        <div class="action-v3-hub">
+            <a href="#" class="action-v3-item">
+                <span class="action-v3-icon">🕊️</span>
+                <span>공감하기</span>
             </a>
-            <a href="#" class="v3-action-item">
-                <span class="v3-action-icon">🌙</span>
+            <a href="#" class="action-v3-item">
+                <span class="action-v3-icon">🌙</span>
                 <span>감상평</span>
             </a>
-            <a href="#" class="v3-action-item">
-                <span class="v3-action-icon">✨</span>
+            <a href="#" class="action-v3-item">
+                <span class="action-v3-icon">✨</span>
                 <span>공유</span>
             </a>
         </div>
