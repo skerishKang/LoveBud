@@ -347,7 +347,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     ensureBrowseControls();
     resultsList.innerHTML = CardRenderer.renderLoading();
     PreviewRenderer.resetPreview();
+    await loadPublicTrees({ resetSelection: true });
 
+    if (false) {
     let cachedTrees = null;
     if (cache) {
         cachedTrees = cache.get(PUBLIC_TREES_CACHE_KEY);
@@ -356,6 +358,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             isFromCache = true;
             renderResults();
         }
+    }
     }
 
     try {
