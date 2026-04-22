@@ -28,7 +28,7 @@
 | 엔드포인트 | 처리 핸들러 | 현재 우선순위 / 동작 |
 | :--- | :--- | :--- |
 | `/api/community/trees` | `api/community/trees.js` | **Modal (summary)** -> Netlify fallback |
-| `/api/community/memories` | `api/community/memories.js` | Vercel entry -> Netlify upstream |
+| `/api/community/memories` | `api/community/memories.js` | **Modal representative preview 우선** -> Netlify fallback |
 | `/api/trees/*` | `api/[...path].js` | Vercel catch-all -> `LOVEBUD_UPSTREAM_API_BASE` |
 | `/api/memories/*` | `api/[...path].js` | Vercel catch-all -> `LOVEBUD_UPSTREAM_API_BASE` |
 
@@ -37,7 +37,7 @@
 ### Modal
 - browse summary
 - public read aggregation
-- representative snapshot 계산
+- representative snapshot / preview 계산
 
 ### Vercel
 - 공식 프런트 엔트리
@@ -63,4 +63,5 @@
 
 - 공식 주소는 Vercel
 - browse summary 1순위는 Modal
+- preview hydrate도 Modal representative preview를 먼저 시도
 - Netlify는 fallback / legacy
