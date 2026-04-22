@@ -16,8 +16,9 @@
 1. [OPERATIONS.md](OPERATIONS.md) - 현재 운영 전략과 계층 정의
 2. [DEPLOY_CHECKLIST.md](DEPLOY_CHECKLIST.md) - 배포 전/후 체크리스트
 3. [RUNBOOK.md](RUNBOOK.md) - 운영 / 장애 대응 기준
-4. [../migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md](../migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md) - 전환 현황과 남은 과제
-5. [../engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md](../engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md) - browse filter / publication guard 구분
+4. [MODAL_BROWSE_RUNTIME.md](MODAL_BROWSE_RUNTIME.md) - browse summary의 Modal 우선 read path 기준
+5. [../migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md](../migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md) - 전환 현황과 남은 과제
+6. [../engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md](../engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md) - browse filter / publication guard 구분
 
 ---
 
@@ -37,6 +38,7 @@
 |--------|------|
 | [DEPLOY_CHECKLIST.md](DEPLOY_CHECKLIST.md) | 배포 전/후 검증 체크리스트 |
 | [RUNBOOK.md](RUNBOOK.md) | 운영 및 장애 대응 런북 |
+| [MODAL_BROWSE_RUNTIME.md](MODAL_BROWSE_RUNTIME.md) | browse summary의 Modal 우선 경로와 fallback 기준 |
 | [FLOW_A_QA_CHECKLIST.md](FLOW_A_QA_CHECKLIST.md) | QA 체크리스트 |
 | [PR_CHECKLIST.md](PR_CHECKLIST.md) | PR 점검 기준 |
 | [QA_CREDENTIALS.txt](QA_CREDENTIALS.txt) | QA 테스트 계정 |
