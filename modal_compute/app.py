@@ -33,6 +33,7 @@ def get_db_pool() -> ConnectionPool:
             conninfo=db_url,
             min_size=1,
             max_size=4,
+            max_idle=300,
             kwargs={"row_factory": dict_row},
         )
     return _db_pool
@@ -360,10 +361,17 @@ def fetch_user_trees(owner_id: str, limit: int = 100) -> list[dict[str, Any]]:
         LIMIT %s;
     """
 
-    with get_db_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(query, (owner_id, limit))
-            rows = cur.fetchall()
+    for attempt in range(2):
+        try:
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(query, (owner_id, limit))
+                    rows = cur.fetchall()
+            break
+        except psycopg.OperationalError:
+            if attempt == 0:
+                continue
+            raise
 
     return [normalize_tree_row(row, row.get("memory_count")) for row in rows]
 
@@ -381,10 +389,17 @@ def fetch_owner_tree(tree_id: str, owner_id: str) -> dict[str, Any] | None:
         LIMIT 1;
     """
 
-    with get_db_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(query, (tree_id, owner_id))
-            row = cur.fetchone()
+    for attempt in range(2):
+        try:
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(query, (tree_id, owner_id))
+                    row = cur.fetchone()
+            break
+        except psycopg.OperationalError:
+            if attempt == 0:
+                continue
+            raise
 
     return normalize_tree_row(row, row.get("memory_count")) if row else None
 
@@ -410,10 +425,17 @@ def fetch_owner_memories(owner_id: str, tree_id: str | None = None, limit: int =
         LIMIT %s;
     """
 
-    with get_db_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(query, tuple(params))
-            rows = cur.fetchall()
+    for attempt in range(2):
+        try:
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(query, tuple(params))
+                    rows = cur.fetchall()
+            break
+        except psycopg.OperationalError:
+            if attempt == 0:
+                continue
+            raise
 
     return [normalize_memory_row(row) for row in rows]
 
