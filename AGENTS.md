@@ -115,7 +115,33 @@ LoveBud / LoveTree는 다음과 같은 서비스가 아닙니다.
 
 ---
 
-## 6. 현재 페이지 / 경로 기준
+## 6. 리뷰 가드레일
+
+반복 오판이 많은 항목은 아래 기준을 먼저 적용합니다.
+
+### Firebase Web `apiKey`
+- `js/firebase-config.js`의 Firebase Web config는 브라우저 초기화용 설정입니다.
+- 값이 코드에 보인다는 사실만으로 **즉시 blocker**로 분류하지 않습니다.
+- 보통은 Firebase Console 설정 점검 항목으로 분리합니다.
+
+### `vercel.json`
+- 현재 `vercel.json`은 공식 엔트리와 rewrite 계약의 일부입니다.
+- 자동 삭제 후보나 단순 정리 대상으로 분류하지 않습니다.
+
+### 파일 크기 / 번들러 / 컴포넌트화
+- 실제 현재 증상과 연결되지 않으면 높은 우선순위로 분류하지 않습니다.
+- generic 프론트엔드 교과서식 리뷰를 우선 과제로 올리지 않습니다.
+
+### 이름만 보고 위험 단정 금지
+- 파일명만 보고 DB direct access, secret leakage, inactive config를 단정하지 않습니다.
+- 반드시 현재 파일 내용과 실제 호출 구조를 확인합니다.
+
+### 참고 문서
+- 반복 false positive와 리뷰 규칙은 `docs/engineering/REVIEW_GUARDRAILS.md`를 함께 봅니다.
+
+---
+
+## 7. 현재 페이지 / 경로 기준
 
 문서의 페이지 경로 표기는 실제 저장소 파일 경로를 기준으로 합니다.
 
@@ -131,7 +157,7 @@ LoveBud / LoveTree는 다음과 같은 서비스가 아닙니다.
 
 ---
 
-## 7. 세션 시작 프로토콜
+## 8. 세션 시작 프로토콜
 
 새 작업을 시작할 때 기본 순서는 아래와 같습니다.
 
@@ -156,7 +182,7 @@ LoveBud / LoveTree는 다음과 같은 서비스가 아닙니다.
 
 ---
 
-## 8. 작업 방식
+## 9. 작업 방식
 
 ### 공통 원칙
 - 항상 현재 파일 내용을 먼저 확인합니다.
@@ -176,7 +202,7 @@ LoveBud / LoveTree는 다음과 같은 서비스가 아닙니다.
 
 ---
 
-## 9. 병렬 작업 안전 규칙
+## 10. 병렬 작업 안전 규칙
 
 - 다른 에이전트가 동시에 같은 파일을 수정할 수 있습니다.
 - 현재 `main`을 읽은 뒤에도 SHA 충돌이 나면, 다시 읽고 최소 범위로 재적용합니다.
@@ -185,7 +211,7 @@ LoveBud / LoveTree는 다음과 같은 서비스가 아닙니다.
 
 ---
 
-## 10. 변경 / 검증 / 완료 기준
+## 11. 변경 / 검증 / 완료 기준
 
 ### 변경 규칙
 - 최소 수정 선호
@@ -210,7 +236,7 @@ LoveBud / LoveTree는 다음과 같은 서비스가 아닙니다.
 
 ---
 
-## 11. 참고 문서
+## 12. 참고 문서
 
 ### 문서 인덱스
 - `docs/doc_index.md`
@@ -226,6 +252,7 @@ LoveBud / LoveTree는 다음과 같은 서비스가 아닙니다.
 ### 엔지니어링
 - `docs/engineering/API_CONTRACT.md`
 - `docs/engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md`
+- `docs/engineering/REVIEW_GUARDRAILS.md`
 
 ### 문서 작업 흐름
 - `docs/ops/DOC_WORKFLOW.md`
@@ -234,6 +261,6 @@ LoveBud / LoveTree는 다음과 같은 서비스가 아닙니다.
 
 ---
 
-## 12. 한 줄 요약
+## 13. 한 줄 요약
 
 LoveBud 작업은 항상 **현재 `main` 확인 → source of truth 확인 → 최소 수정 → 범위 내 검증 → 직접 수정/기존 반영 구분 보고** 순서로 진행합니다.
