@@ -1,17 +1,7 @@
-/* LoveTree Kimi-v2 Detail Page CSS */
+/* LoveTree Kimi-v2 Detail Page CSS - Light Theme */
 
-:root {
-  --bg-dark: #1a1a2e;
-  --bg-card: #252542;
-  --bg-input: #1e1e36;
-  --text-primary: #ffffff;
-  --text-secondary: #a0a0b8;
-  --accent-purple: #a855f7;
-  --accent-pink: #e879f9;
-  --accent-light: #c084fc;
-  --border: #3a3a5c;
-  --font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
-}
+@import '_variables.css';
+@import '_components.css';
 
 * {
   margin: 0;
@@ -21,7 +11,7 @@
 
 body {
   font-family: var(--font-family);
-  background: var(--bg-dark);
+  background: var(--bg-primary);
   color: var(--text-primary);
   min-height: 100vh;
   padding-bottom: 100px;
@@ -35,7 +25,7 @@ body {
   padding: 16px 20px;
   position: sticky;
   top: 0;
-  background: linear-gradient(180deg, var(--bg-dark) 0%, transparent 100%);
+  background: linear-gradient(180deg, var(--bg-primary) 0%, transparent 100%);
   z-index: 10;
 }
 
@@ -43,8 +33,8 @@ body {
   width: 40px;
   height: 40px;
   border: none;
-  background: rgba(255,255,255,0.05);
-  border-radius: 50%;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-full);
   color: var(--text-secondary);
   cursor: pointer;
   display: flex;
@@ -54,7 +44,7 @@ body {
 }
 
 .btn-back:hover {
-  background: rgba(255,255,255,0.1);
+  background: var(--border-light);
   color: var(--text-primary);
 }
 
@@ -67,18 +57,18 @@ body {
   width: 40px;
   height: 40px;
   border: none;
-  background: rgba(255,255,255,0.05);
-  border-radius: 50%;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-full);
   color: var(--text-secondary);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
+  transition: var(--transition-base);
 }
 
 .btn-icon:hover {
-  background: rgba(255,255,255,0.1);
+  background: var(--border-light);
   color: var(--text-primary);
 }
 
@@ -97,7 +87,7 @@ body {
 .detail-tree {
   width: 100%;
   height: 100%;
-  filter: drop-shadow(0 0 30px rgba(168,85,247,0.3));
+  filter: drop-shadow(0 8px 24px rgba(168,85,247,0.2));
 }
 
 .hero-info {
@@ -127,10 +117,10 @@ body {
 
 .tag {
   padding: 6px 14px;
-  background: rgba(168,85,247,0.15);
-  border-radius: 20px;
-  font-size: 0.8rem;
-  color: var(--accent-light);
+  background: var(--brand-light);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  color: var(--brand-purple);
 }
 
 .detail-stats {
@@ -153,7 +143,7 @@ body {
 }
 
 .section-title {
-  font-size: 1.1rem;
+  font-size: var(--text-lg);
   font-weight: 600;
   margin-bottom: 20px;
   display: flex;
@@ -177,15 +167,16 @@ body {
   display: flex;
   gap: 16px;
   background: var(--bg-card);
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   padding: 16px;
+  box-shadow: var(--shadow-sm);
 }
 
 .memory-thumb {
   width: 80px;
   height: 80px;
-  background: linear-gradient(135deg, rgba(168,85,247,0.3) 0%, rgba(232,121,249,0.2) 100%);
-  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(168,85,247,0.2) 0%, rgba(232,121,249,0.15) 100%);
+  border-radius: var(--radius-md);
   flex-shrink: 0;
 }
 

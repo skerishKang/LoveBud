@@ -1,18 +1,6 @@
-/* LoveTree Kimi-v2 Editor Page CSS */
+/* LoveTree Kimi-v2 Editor Page CSS - Light Theme */
 
-:root {
-  --bg-dark: #1a1a2e;
-  --bg-darker: #131324;
-  --bg-card: #252542;
-  --bg-panel: #1e1e36;
-  --text-primary: #ffffff;
-  --text-secondary: #a0a0b8;
-  --accent-purple: #a855f7;
-  --accent-pink: #e879f9;
-  --accent-light: #c084fc;
-  --border: #3a3a5c;
-  --font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
-}
+@import '_variables.css';
 
 * {
   margin: 0;
@@ -22,7 +10,7 @@
 
 body {
   font-family: var(--font-family);
-  background: var(--bg-darker);
+  background: var(--bg-secondary);
   color: var(--text-primary);
   height: 100vh;
   overflow: hidden;
@@ -40,8 +28,8 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 12px 20px;
-  background: var(--bg-dark);
-  border-bottom: 1px solid var(--border);
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border-light);
 }
 
 .header-left {
@@ -65,7 +53,7 @@ body {
 }
 
 .btn-back:hover {
-  background: rgba(255,255,255,0.05);
+  background: var(--bg-hover);
   color: var(--text-primary);
 }
 
@@ -73,17 +61,17 @@ body {
   background: transparent;
   border: none;
   color: var(--text-primary);
-  font-size: 1.1rem;
+  font-size: var(--text-lg);
   font-weight: 600;
   padding: 8px 12px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   min-width: 200px;
   font-family: inherit;
 }
 
 .tree-title-input:focus {
   outline: none;
-  background: var(--bg-panel);
+  background: var(--bg-hover);
 }
 
 .tree-title-input::placeholder {
@@ -111,17 +99,17 @@ body {
 }
 
 .btn-icon:hover {
-  background: rgba(255,255,255,0.05);
+  background: var(--bg-hover);
   color: var(--text-primary);
 }
 
 .btn-save {
   padding: 8px 20px;
-  background: linear-gradient(135deg, var(--accent-purple), var(--accent-pink));
+  background: var(--brand-gradient);
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   color: white;
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
   font-weight: 600;
   cursor: pointer;
   margin-left: 8px;
@@ -142,8 +130,8 @@ body {
 /* Sidebar */
 .editor-sidebar {
   width: 280px;
-  background: var(--bg-dark);
-  border-right: 1px solid var(--border);
+  background: var(--bg-primary);
+  border-right: 1px solid var(--border-light);
   display: flex;
   flex-direction: column;
 }
@@ -153,11 +141,11 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-light);
 }
 
 .sidebar-header h3 {
-  font-size: 0.95rem;
+  font-size: var(--text-sm);
   font-weight: 600;
 }
 
@@ -165,18 +153,18 @@ body {
   width: 32px;
   height: 32px;
   border: none;
-  background: rgba(168,85,247,0.2);
-  color: var(--accent-light);
-  border-radius: 8px;
+  background: var(--brand-light);
+  color: var(--brand-purple);
+  border-radius: var(--radius-sm);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
+  transition: var(--transition-base);
 }
 
 .btn-add-node:hover {
-  background: rgba(168,85,247,0.3);
+  background: rgba(244,114,182,0.2);
 }
 
 .node-list {
@@ -196,36 +184,36 @@ body {
 }
 
 .empty-icon {
-  color: var(--accent-light);
+  color: var(--brand-purple);
   margin-bottom: 16px;
   opacity: 0.5;
 }
 
 .empty-state p {
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
   margin-bottom: 20px;
 }
 
 .btn-empty-action {
   padding: 12px 24px;
-  background: rgba(168,85,247,0.2);
-  border: 1px solid var(--accent-purple);
-  border-radius: 10px;
-  color: var(--accent-light);
-  font-size: 0.9rem;
+  background: var(--brand-light);
+  border: 1px solid var(--brand-pink);
+  border-radius: var(--radius-md);
+  color: var(--brand-purple);
+  font-size: var(--text-sm);
   font-weight: 500;
   cursor: pointer;
   font-family: inherit;
 }
 
 .btn-empty-action:hover {
-  background: rgba(168,85,247,0.3);
+  background: rgba(244,114,182,0.2);
 }
 
 /* Canvas */
 .editor-canvas {
   flex: 1;
-  background: var(--bg-darker);
+  background: var(--bg-secondary);
   position: relative;
   overflow: auto;
 }
@@ -253,22 +241,22 @@ body {
 
 .canvas-hint {
   color: var(--text-secondary);
-  font-size: 0.95rem;
+  font-size: var(--text-base);
   line-height: 1.6;
 }
 
 /* Right Panel */
 .editor-panel {
   width: 300px;
-  background: var(--bg-dark);
-  border-left: 1px solid var(--border);
+  background: var(--bg-primary);
+  border-left: 1px solid var(--border-light);
   display: flex;
   flex-direction: column;
 }
 
 .panel-tabs {
   display: flex;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-light);
 }
 
 .tab {
@@ -277,21 +265,21 @@ body {
   background: transparent;
   border: none;
   color: var(--text-secondary);
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
   cursor: pointer;
   font-family: inherit;
   border-bottom: 2px solid transparent;
-  transition: all 0.2s;
+  transition: var(--transition-base);
 }
 
 .tab.active {
-  color: var(--accent-light);
-  border-bottom-color: var(--accent-purple);
+  color: var(--brand-purple);
+  border-bottom-color: var(--brand-purple);
 }
 
 .tab:hover:not(.active) {
   color: var(--text-primary);
-  background: rgba(255,255,255,0.02);
+  background: var(--bg-hover);
 }
 
 .panel-content {
@@ -307,7 +295,7 @@ body {
   height: 100%;
   text-align: center;
   color: var(--text-secondary);
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
   line-height: 1.6;
 }
 
@@ -317,8 +305,8 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 12px 20px;
-  background: var(--bg-dark);
-  border-top: 1px solid var(--border);
+  background: var(--bg-primary);
+  border-top: 1px solid var(--border-light);
 }
 
 .toolbar-left {
@@ -342,22 +330,22 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
-  transition: all 0.2s;
+  border-radius: var(--radius-sm);
+  transition: var(--transition-base);
 }
 
 .tool-btn:hover {
-  background: rgba(255,255,255,0.05);
+  background: var(--bg-hover);
   color: var(--text-primary);
 }
 
 .tool-btn.active {
-  background: rgba(168,85,247,0.2);
-  color: var(--accent-light);
+  background: var(--brand-light);
+  color: var(--brand-purple);
 }
 
 .zoom-level {
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   color: var(--text-secondary);
   min-width: 40px;
   text-align: center;
