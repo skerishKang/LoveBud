@@ -1,4 +1,4 @@
-/* LoveTree gemini-v3: Master Design System (Ultra High Fidelity) */
+/* LoveTree gemini-v3: Master Design System (Ultra High Fidelity - Iteration 3) */
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700;1,900&family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap');
 
 :root {
@@ -12,7 +12,6 @@
     --gv3-text-muted: #7A6F6C;
     --gv3-white: #FFFFFF;
     
-    /* Advanced Shadows - Much softer for v3 */
     --gv3-shadow-paper: 0 10px 30px rgba(61, 52, 49, 0.04), 0 2px 5px rgba(61, 52, 49, 0.08);
     --gv3-shadow-deep: 0 40px 100px rgba(61, 52, 49, 0.12), 0 10px 40px rgba(61, 52, 49, 0.06);
     
@@ -31,32 +30,35 @@ body {
     justify-content: center;
     padding: 20px;
     overflow-x: hidden;
+    position: relative;
 }
 
-/* Silk/Cloth Background Effect - Iteration 2: More Layered */
-.silk-bg {
+/* Silk/Cloth Background - Iteration 3: Multi-layered Draping */
+body::before, body::after {
+    content: '';
     position: fixed;
-    width: 600px;
+    width: 800px;
     height: 120%;
-    filter: blur(80px);
-    opacity: 0.45;
+    filter: blur(100px);
+    opacity: 0.55;
     z-index: 1;
     pointer-events: none;
-    border-radius: 50%;
 }
-.silk-left { 
-    left: -200px; top: -10%;
-    background: radial-gradient(circle, #F3EAE2 0%, transparent 70%);
+body::before {
+    left: -300px; top: -10%;
+    background: radial-gradient(circle, #F3EAE2 0%, #F8F4F0 70%);
+    transform: rotate(-15deg);
 }
-.silk-right { 
-    right: -200px; bottom: -10%;
-    background: radial-gradient(circle, #F7E9E9 0%, transparent 70%);
+body::after {
+    right: -300px; bottom: -10%;
+    background: radial-gradient(circle, #F7E9E9 0%, #F8F4F0 70%);
+    transform: rotate(15deg);
 }
 
 .canvas-v3 {
     width: 100%;
     max-width: 1200px;
-    height: 850px;
+    height: 880px;
     background: var(--gv3-bg-canvas);
     border-radius: 40px;
     box-shadow: var(--gv3-shadow-deep);
@@ -65,17 +67,16 @@ body {
     overflow-x: hidden;
     display: flex;
     flex-direction: column;
-    z-index: 5;
-    border: 1px solid rgba(255, 255, 255, 0.9);
+    z-index: 10;
+    border: 1px solid rgba(255, 255, 255, 0.95);
 }
 
-/* Paper Texture - Slightly more visible */
 .canvas-v3::before {
     content: '';
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
     background-image: url('https://www.transparenttextures.com/patterns/natural-paper.png');
-    opacity: 0.3;
+    opacity: 0.35;
     pointer-events: none;
     z-index: 100;
 }
@@ -84,102 +85,99 @@ body {
 .prop-tape {
     width: 75px;
     height: 30px;
-    background: rgba(212, 175, 55, 0.15);
-    backdrop-filter: blur(3px);
+    background: rgba(212, 175, 55, 0.12);
+    backdrop-filter: blur(4px);
     position: absolute;
     top: -15px;
     left: 50%;
     transform: translateX(-50%) rotate(-3deg);
     z-index: 50;
-    border-left: 1px solid rgba(212, 175, 55, 0.05);
-    border-right: 1px solid rgba(212, 175, 55, 0.05);
 }
 
 .prop-clip {
     width: 35px;
     height: 45px;
-    background: linear-gradient(135deg, #E2E8F0 0%, #CBD5E1 100%);
+    background: linear-gradient(135deg, #F1F5F9 0%, #CBD5E1 100%);
     border-radius: 4px;
     position: absolute;
     top: -10px;
     left: 40px;
     z-index: 60;
-    box-shadow: 2px 2px 10px rgba(0,0,0,0.05);
-}
-.prop-clip::after {
-    content: '';
-    position: absolute;
-    width: 15px; height: 2px;
-    background: rgba(0,0,0,0.1);
-    top: 10px; left: 10px;
+    box-shadow: 2px 4px 12px rgba(0,0,0,0.08);
 }
 
-/* Lined Paper Card */
 .paper-card {
     background: white;
     padding: 30px;
     border-radius: 4px;
     box-shadow: var(--gv3-shadow-paper);
     position: relative;
-    border: 1px solid #F8F4F2;
 }
 .paper-card.lined {
     background-image: linear-gradient(#F5F0EE 1.1px, transparent 1.1px);
     background-size: 100% 2.2em;
 }
 
-/* Music Player UI - Iteration 2 */
+/* Music Player - Iteration 3: Refined UI */
 .mini-player {
     background: white;
     padding: 15px 20px;
-    border-radius: 16px;
+    border-radius: 18px;
     display: flex;
     flex-direction: column;
     gap: 12px;
-    box-shadow: 0 10px 25px rgba(61, 52, 49, 0.05);
-    border: 1px solid #F5F0EE;
+    box-shadow: 0 15px 35px rgba(61, 52, 49, 0.08);
+    border: 1px solid rgba(179, 126, 111, 0.05);
 }
 .player-info { display: flex; align-items: center; gap: 15px; }
 .player-progress {
-    height: 2px;
-    background: #F0EAE8;
+    height: 3px;
+    background: #F1E9E6;
+    border-radius: 10px;
     width: 100%;
     position: relative;
 }
 .progress-bar {
     position: absolute;
     left: 0; top: 0; height: 100%;
-    width: 35%; background: var(--gv3-primary);
+    width: 42%; background: var(--gv3-primary);
+    border-radius: 10px;
 }
 .player-controls {
     display: flex;
     justify-content: center;
-    gap: 20px;
-    font-size: 16px;
+    gap: 25px;
+    font-size: 18px;
     color: var(--gv3-text-dark);
+    opacity: 0.8;
 }
 
-/* BUTTONS */
-.btn-v3 {
-    padding: 18px 40px;
-    border-radius: 100px;
-    font-family: 'Noto Sans KR', sans-serif;
-    font-weight: 800;
-    font-size: 15px;
-    text-decoration: none;
-    transition: all 0.5s var(--gv3-ease-out);
-    display: inline-flex;
+/* Gallery Card - Iteration 3: Metadata Icons */
+.v3-card-footer {
+    display: flex;
+    justify-content: space-between;
     align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    border: none;
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid rgba(179, 126, 111, 0.08);
 }
-.btn-primary {
-    background: var(--gv3-primary);
-    color: white;
-    box-shadow: 0 15px 35px rgba(179, 126, 111, 0.2);
+.v3-card-meta {
+    display: flex;
+    gap: 12px;
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--gv3-text-muted);
 }
-.btn-primary:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 20px 45px rgba(179, 126, 111, 0.35);
+.meta-item { display: flex; align-items: center; gap: 4px; }
+.meta-item i { color: var(--gv3-accent); font-size: 10px; }
+
+/* NAVIGATION */
+.v3-nav-link {
+    text-decoration: none;
+    color: var(--gv3-text-dark);
+    font-size: 14px;
+    font-weight: 800;
+    opacity: 0.5;
+    transition: all 0.3s ease;
 }
+.v3-nav-link:hover, .v3-nav-link.active { opacity: 1; color: var(--gv3-primary); }

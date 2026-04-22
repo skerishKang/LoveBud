@@ -53,6 +53,73 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentLimit = 12;
     let currentCategory = '전체';
 
+    const SORT_COPY = {
+        latest: {
+            title: '최근 공개된 러브트리',
+            badge: (count) => `지금 먼저 볼 ${count}개`
+        },
+        popular: {
+            title: '인기 많은 공개 러브트리',
+            badge: (count) => `지금 반응이 큰 ${count}개`
+        }
+    };
+
+    const syncBrowseHead = () => {
+        const copy = SORT_COPY[currentSort] || SORT_COPY.latest;
+        if (resultsTitle) {
+            resultsTitle.textContent = copy.title;
+        }
+        if (resultsBadge) {
+            resultsBadge.innerHTML = `
+                <span class="material-symbols-outlined" style="font-size:15px;">auto_awesome</span>
+                ${copy.badge(Math.min(currentLimit, 60))}
+            `;
+        }
+        const loadMoreBtn = document.getElementById('browseLoadMoreBtn');
+        if (loadMoreBtn) {
+            loadMoreBtn.disabled = currentLimit >= 60;
+            loadMoreBtn.textContent = currentLimit >= 60 ? '최대 60개' : '더 보기';
+        }
+    };
+
+    const ensureBrowseControls = () => {
+        if (!resultsHead || document.getElementById('browseSortControls')) return;
+
+        const controls = document.createElement('div');
+        controls.id = 'browseSortControls';
+        controls.style.display = 'flex';
+        controls.style.flexWrap = 'wrap';
+        controls.style.alignItems = 'center';
+        controls.style.justifyContent = 'flex-end';
+        controls.style.gap = '10px';
+        controls.innerHTML = `
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button type="button" class="tag-chip active" data-browse-sort="latest">최신순</button>
+                <button type="button" class="tag-chip" data-browse-sort="popular">인기순</button>
+            </div>
+            <button type="button" id="browseLoadMoreBtn" class="tag-chip">더 보기</button>
+        `;
+        resultsHead.appendChild(controls);
+
+        controls.querySelectorAll('[data-browse-sort]').forEach((button) => {
+            button.addEventListener('click', async () => {
+                const nextSort = button.dataset.browseSort || 'latest';
+                if (nextSort === currentSort) return;
+                currentSort = nextSort;
+                currentLimit = 12;
+                controls.querySelectorAll('[data-browse-sort]').forEach((chip) => {
+                    chip.classList.toggle('active', chip.dataset.browseSort === currentSort);
+                });
+                await loadPublicTrees({ resetSelection: true });
+            });
+        });
+
+        controls.querySelector('#browseLoadMoreBtn')?.addEventListener('click', async () => {
+            currentLimit = Math.min(currentLimit + 12, 60);
+            await loadPublicTrees({ resetSelection: false });
+        });
+    };
+
     const areTreesEffectivelySame = (prevTrees, nextTrees) => {
         if (!Array.isArray(prevTrees) || !Array.isArray(nextTrees)) return false;
         if (prevTrees.length !== nextTrees.length) return false;
@@ -227,6 +294,57 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    async function loadPublicTrees(options = {}) {
+        const { resetSelection = false } = options;
+        const cacheKey = `${PUBLIC_TREES_CACHE_KEY}_${currentSort}_${currentLimit}`;
+
+        syncBrowseHead();
+
+        if (resetSelection) {
+            selectedTreeId = null;
+            PreviewRenderer.resetPreview();
+        }
+
+        let cachedTrees = null;
+        if (cache) {
+            cachedTrees = cache.get(cacheKey);
+            if (cachedTrees && Array.isArray(cachedTrees) && cachedTrees.length > 0) {
+                allTrees = cachedTrees;
+                isFromCache = true;
+                renderResults();
+            }
+        }
+
+        try {
+            if (window.apiClient && window.apiClient.getPublicTrees) {
+                const apiTrees = await window.apiClient.getPublicTrees({ view: 'summary', sort: currentSort, limit: currentLimit });
+                if (!Array.isArray(apiTrees)) {
+                    throw new Error('API ?묐떟 ?뺤떇 ?ㅻ쪟');
+                }
+
+                if (cache) {
+                    cache.set(cacheKey, apiTrees, 5 * 60 * 1000);
+                }
+                if (!areTreesEffectivelySame(allTrees, apiTrees)) {
+                    allTrees = apiTrees;
+                }
+                loadError = null;
+                apiTreesLoaded = true;
+                renderResults();
+            } else {
+                throw new Error('tree API ?ъ슜 遺덇?');
+            }
+        } catch (error) {
+            loadError = error;
+            console.warn('[search] API 濡쒕뱶 ?ㅽ뙣:', error.message);
+            if (!allTrees || allTrees.length === 0) {
+                allTrees = [];
+            }
+            renderResults();
+        }
+    }
+
+    ensureBrowseControls();
     resultsList.innerHTML = CardRenderer.renderLoading();
     PreviewRenderer.resetPreview();
 
