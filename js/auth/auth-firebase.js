@@ -101,17 +101,19 @@
     var updateNavUI = options && options.updateNavUI;
     var getCachedAuthUser = options && options.getCachedAuthUser;
     var fireAuthReadyCallbacks = options && options.fireAuthReadyCallbacks;
+    var resolveAuthBootstrap = options && options.resolveAuthBootstrap;
 
-var cachedUser = typeof getCachedAuthUser === 'function' ? getCachedAuthUser() : null;
+    var cachedUser = typeof getCachedAuthUser === 'function' ? getCachedAuthUser() : null;
+    var user = cachedUser && cachedUser.uid ? cachedUser : null;
+
     if (typeof markAuthReady === 'function') {
       markAuthReady();
     }
-    // Do not fabricate a logged-in user from localStorage.isLoggedIn.
-    // Offline mode may use a previously confirmed cached user only.
-    var user = cachedUser && cachedUser.uid ? cachedUser : null;
-
     if (typeof updateNavUI === 'function') {
       updateNavUI(user);
+    }
+    if (typeof resolveAuthBootstrap === 'function') {
+      resolveAuthBootstrap(user);
     }
     if (typeof fireAuthReadyCallbacks === 'function') {
       fireAuthReadyCallbacks(user);
@@ -227,6 +229,7 @@ var cachedUser = typeof getCachedAuthUser === 'function' ? getCachedAuthUser() :
     var persistConfirmedAuthSession = options && options.persistConfirmedAuthSession;
     var updateNavUI = options && options.updateNavUI;
     var fireAuthReadyCallbacks = options && options.fireAuthReadyCallbacks;
+    var resolveAuthBootstrap = options && options.resolveAuthBootstrap;
     var isInvalidAuthSessionError = options && options.isInvalidAuthSessionError;
     var clearStaleFirebaseAuthState = options && options.clearStaleFirebaseAuthState;
     var clearConfirmedAuthCache = options && options.clearConfirmedAuthCache;
@@ -315,6 +318,9 @@ var cachedUser = typeof getCachedAuthUser === 'function' ? getCachedAuthUser() :
             if (typeof clearConfirmedAuthCache === 'function') {
               clearConfirmedAuthCache();
             }
+            if (typeof resolveAuthBootstrap === 'function') {
+              resolveAuthBootstrap(null);
+            }
             return;
           }
         }
@@ -328,6 +334,9 @@ var cachedUser = typeof getCachedAuthUser === 'function' ? getCachedAuthUser() :
       }
       if (typeof updateNavUI === 'function') {
         updateNavUI(user);
+      }
+      if (typeof resolveAuthBootstrap === 'function') {
+        resolveAuthBootstrap(user);
       }
       if (typeof fireAuthReadyCallbacks === 'function') {
         fireAuthReadyCallbacks(user);
