@@ -1,27 +1,148 @@
-﻿# Browse Display Filter vs. Publication Guard
+# Browse Display Filter vs. Publication Guard
 
-LoveBud의 데이터 노출 정책은 보안과 UX 성능을 동시에 만족시키기 위해 두 계층으로 분리하여 관리합니다.
+LoveBud의 browse 노출 정책은 **same-origin browse read path**와 **server-side publication guard**를 서로 다른 책임으로 분리해 관리합니다.
 
-## 1. Publication Guard (보안 계층)
-- **위치**: 데이터베이스(Neon) / Netlify API 서버 가드
-- **정의**: 데이터의 원천적인 가시성을 결정하는 "Hard Boundary".
-- **동작**:
-  - visibility = 'public'인 레코드만 비로그인 사용자에게 노출.
-  - visibility = 'private'인 경우 소유권(Ownership) 확인 후 차단 또는 허용.
-- **목적**: 권한이 없는 사용자가 데이터에 접근하지 못하도록 보장하는 **보안(Security)** 목적.
+이 문서는 아래 두 개념을 혼동하지 않기 위해 작성합니다.
 
-## 2. Browse Display Filter (UX 계층)
-- **위치**: Modal 가속 레이어 / Vercel API 어댑터 (api/community/trees.js)
-- **정의**: 공개된 데이터 중 사용자에게 어떤 것을 우선적으로, 어떤 품질로 보여줄지 결정하는 "Soft Filtering".
-- **예시 구현 (api/community/trees.js)**:
-  - view=summary인 요청에 대해 Modal 가속 레이어 우선 호출.
-  - Modal 반환 데이터가 없을 경우 Netlify 일반 API로 Fallback.
-  - Modal은 요약 정보(Representative Thumbnail, Memory Count 등)가 포함된 정제된 데이터만 반환.
-- **목적**: 검색 및 둘러보기 경험의 품질을 높이고, 정제된 데이터를 빠르게 공급하는 **성능 및 품질(Discovery & Quality)** 목적.
+- **Browse Display Filter**: 공개된 트리 중 무엇을 browse에서 먼저, 어떤 품질 기준으로 보여줄지 정하는 read-path 품질 필터
+- **Publication Guard**: 트리를 공개 상태로 만들 수 있는지, 비공개 데이터를 읽을 수 있는지 정하는 server-side 보안/정책 가드
 
 ---
 
-## 구현 팀 참고사항
-- **데이터 보안(삭제/비공개)**: Publication Guard 레벨에서 처리해야 하며, 이는 원천 DB인 Neon에서 보장됩니다.
-- **브라우즈 품질 개선**: Modal 가속 레이어의 쿼리 로직(app.py) 또는 Vercel의 디스플레이 어댑터를 수정하여 Display Filter를 조정합니다.
-- **아키텍처 인지**: Vercel의 api/community/trees.js는 이 두 개념이 교차하는 지점으로, 보안 가드가 적용된 데이터를 Modal에서 먼저 가져오되 실패 시 원천 데이터를 가져오는 흐름을 유지합니다.
+## 1. 현재 browse read path (main 기준)
+
+현재 browse 페이지의 클라이언트는 외부 호스트를 직접 호출하지 않습니다.
+
+- `js/search.js`
+  - browse 리스트는 `window.apiClient.getPublicTrees({ view: 'summary', sort: 'latest', limit: 3 })`로 로드
+  - 카드 선택 후 preview hydrate는 `window.apiClient.getPublicTreePreview(tree)`로 로드
+- `js/postgres-client.js`
+  - browse summary list는 `/community/trees`
+  - preview hydrate는 `/community/memories`
+- `js/api/base-api-fetch.js`
+  - 실제 fetch는 항상 `fetch(`/api${endpoint}`)` 형태의 **same-origin `/api`** 호출
+
+즉, 브라우저 기준 browse read path는 아래와 같습니다.
+
+### summary list
+`search.js` → `window.apiClient.getPublicTrees()` → `/api/community/trees?view=summary&sort=latest&limit=3`
+
+### preview hydrate
+`search.js` → `window.apiClient.getPublicTreePreview()` → `/api/community/memories?treeId=...`
+
+중요:
+- **오래된 Netlify 직접 호출 설명은 더 이상 현재 main 설명이 아닙니다.**
+- 클라이언트는 `lovebud.vercel.app` 같은 현재 origin 안에서 `/api/...`만 호출합니다.
+
+---
+
+## 2. Modal > Vercel > Netlify 우선순위가 browse에서 실제로 어떻게 적용되는가
+
+계층 자체는 `Modal > Vercel > Netlify`가 맞지만, browse의 모든 read path가 동일한 우선순위를 쓰는 것은 아닙니다.
+
+### 2.1 browse summary list (`/api/community/trees?view=summary`)
+위치: `api/community/trees.js`
+
+현재 main 구현:
+1. **Vercel same-origin API**가 요청을 받음
+2. `view=summary`이면 **Modal** `/modal/browse/latest`를 먼저 호출
+3. Modal 데이터가 있으면 그대로 반환
+4. Modal 실패 또는 빈 응답이면 **Netlify** `/community/trees?...`로 fallback
+
+즉, summary browse list의 실제 우선순위는:
+
+**브라우저 → Vercel `/api/community/trees` → Modal 우선 → Netlify fallback**
+
+### 2.2 preview hydrate (`/api/community/memories`)
+위치: `api/community/memories.js`
+
+현재 main 구현:
+1. **Vercel same-origin API**가 요청을 받음
+2. `treeId` 기준으로 **Netlify** `/community/memories?...`로 proxy
+3. 응답을 그대로 반환
+
+즉, preview hydrate의 현재 우선순위는:
+
+**브라우저 → Vercel `/api/community/memories` → Netlify**
+
+중요:
+- browse 전체를 한 줄로 `Modal > Vercel > Netlify`라고만 쓰면 과장될 수 있습니다.
+- **현재 main에서 Modal 우선이 적용되는 browse 경로는 summary list 경로**입니다.
+- preview hydrate는 아직 Modal 우선 read path가 아닙니다.
+
+---
+
+## 3. Publication Guard (보안/정책 계층)
+
+Publication Guard는 browse 카드 품질 필터가 아니라 **server-side policy**입니다.
+
+### 3.1 read guard
+위치: `netlify/functions/tree-detail.js`
+
+- 공개 트리는 누구나 읽을 수 있음
+- 비공개 트리는 owner만 읽을 수 있음
+- 비공개 트리의 memories도 owner가 아니면 읽을 수 없음
+
+즉, visibility 자체는 server-side에서 강제됩니다.
+
+### 3.2 write/publication guard
+위치:
+- `netlify/functions/trees.js` POST
+- `netlify/functions/tree-detail.js` PUT
+
+현재 main 구현:
+- 새 트리를 처음부터 `public`으로 만드는 것은 차단됨
+- 비공개 트리를 공개로 전환할 때는 **공개 순간(public memories) 3개 이상**이 필요함
+
+즉, `3개 이상 공개 순간` 규칙은 browse 카드 정렬용 힌트가 아니라 **공개 전환 정책 가드**입니다.
+
+---
+
+## 4. Browse Display Filter (read-path 품질 계층)
+
+Browse Display Filter는 공개 가능 여부를 결정하지 않습니다.
+
+역할은 아래와 같습니다.
+
+- browse에서 어떤 공개 트리를 먼저 보여줄지 결정
+- summary 카드에 필요한 최소 정보만 빠르게 공급
+- 대표 썸네일, 감정 태그, memoryCount 같은 browse summary 품질을 보정
+- browse 첫 화면을 감상 허브처럼 유지
+
+현재 main 기준 browse display filter는 아래 두 층에서 작동합니다.
+
+1. **Modal summary browse query**
+   - `view=summary` 경로에서 browse 후보를 먼저 정제
+2. **Vercel adapter / client summary enrichment**
+   - `api/community/trees.js`와 `js/postgres-client.js` summary adapter에서 browse 카드용 필드를 정리
+
+중요:
+- Display Filter는 **browse에 무엇을 보여줄지** 결정합니다.
+- Publication Guard는 **무엇을 공개 상태로 만들 수 있는지 / 누가 읽을 수 있는지**를 결정합니다.
+- 둘은 서로 대체하지 않습니다.
+
+---
+
+## 5. 운영/문서 작성 시 금지할 설명
+
+아래 설명은 현재 main 기준으로 부정확합니다.
+
+- "브라우저가 Netlify API를 직접 호출한다"
+- "browse 전체가 Modal 직통 read path다"
+- "3개 이상 규칙은 browse 화면 display filter일 뿐이다"
+- "publication guard는 아직 없다"
+
+현재 main 기준 더 정확한 설명은 아래입니다.
+
+- browse 클라이언트는 **same-origin `/api`**만 호출한다
+- summary browse list는 **Modal 우선, Netlify fallback**이다
+- preview hydrate는 **Vercel same-origin → Netlify** 경로다
+- `3개 이상 공개 순간`은 **publication guard**이며 browse display filter와 별개다
+
+---
+
+## 6. 한 줄 요약
+
+- **Browse Display Filter**: browse read-path 품질과 카드 정제를 담당하는 soft filter
+- **Publication Guard**: 공개 가능 여부와 읽기 권한을 강제하는 server-side hard guard
+- **same-origin browse 구조**: 브라우저는 직접 Netlify를 호출하지 않고, 항상 Vercel `/api`를 통해 읽는다
