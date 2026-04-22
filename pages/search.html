@@ -580,35 +580,36 @@
                 <h3>감상 허브</h3>
                 <span class="preview-badge">선택한 트리</span>
             </div>
-            <p class="preview-kicker">카드를 고르면 이곳에서 바로 감상할 수 있어요.</p>
+            <p class="preview-kicker">카드를 선택하면 이곳에서 바로 감상할 수 있어요.</p>
             <div id="previewVideoContainer" class="video-container" style="margin-bottom: 24px;">
                 <div class="preview-empty-state" style="width:100%; height:100%; display:flex; flex-direction: column; align-items:center; justify-content:center; color: var(--on-surface-variant); font-size: 14px; text-align: center; padding: 20px;">
-                    <p>트리를 고르면 대표 순간과 이어진 감정이 이곳에 열립니다.</p>
+                    <p style="margin-bottom: 8px;">트리를 고르면</p>
+                    <p>대표 순간과 이어진 감정이 이곳에 열립니다.</p>
                 </div>
             </div>
             <div id="previewDetails">
-                <div id="previewTitle" class="headline" style="font-size: 1.18rem; margin-bottom: 12px; font-weight: 800; color: var(--on-surface);">트리를 골라 감상하기</div>
+                <div id="previewTitle" class="headline" style="font-size: 1.18rem; margin-bottom: 12px; font-weight: 800; color: var(--on-surface);">시작 순간을 고르는 중</div>
                 <div id="previewDesc" style="color: var(--on-surface-variant); font-size: 14px; line-height: 1.6;">
-                    <p style="margin-bottom: 16px;">대표 순간과 이어진 감정이 이곳에 열립니다.</p>
+                    <p style="margin-bottom: 16px;">대표 순간과 이어진 감정을 조용히 먼저 감상할 수 있어요.</p>
                 </div>
                 <div id="previewTreeStats" class="tree-meta" hidden>
                     <span class="tree-meta-item">
                         <span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle;">account_tree</span>
-                        <span id="previewMemoriesCount">0</span>
-                        <span>개의 순간</span>
+                        <span id="previewMemoriesCount"></span>
+                        <span>대표 순간이 열리면 함께 보여드릴게요</span>
                     </span>
                     <span class="tree-meta-item">
                         <span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle;">schedule</span>
-                        <span id="previewTreeDuration">시작 순간을 기다리는 중</span>
+                        <span id="previewTreeDuration"></span>
                     </span>
                 </div>
                 <div>
                     <div class="emotion-tags-label">
-                        <span class="material-symbols-outlined" style="font-size: 14px;">tag</span>
+                        <span class="material-symbols-outlined" style="font-size: 14px;">favorite</span>
                         <span>이어진 감정</span>
                     </div>
-                    <div id="previewEmotionTags" style="display: flex; flex-wrap: wrap; gap: 8px;">
-                        <!-- Populated by JS -->
+                    <div id="previewEmotionTags" style="display: flex; flex-wrap: wrap; gap: 8px; color: var(--on-surface-variant); font-size: 13px; line-height: 1.6;">
+                        감정의 결은 트리를 고르면 이곳에 놓여요.
                     </div>
                 </div>
             </div>
