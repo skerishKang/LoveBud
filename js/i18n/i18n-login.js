@@ -1,13 +1,11 @@
 /**
  * LoveBud - i18n Login Dictionary
- * v20260422-1
+ * v20260423-1
  *
  * 로그인/회원가입 페이지 번역 키
  */
-
 (function() {
   'use strict';
-
   window.i18nLogin = {
     // 리다이렉트 알림
     'redirect_notice_title': {
@@ -129,6 +127,20 @@
     'switch_to_login': {
       ko: '이미 계정이 있나요? 로그인으로 전환',
       en: 'Already have an account? Switch to login'
+    },
+
+    // 배지 (login.html .badge-group)
+    'badge_first_moment': {
+      ko: '첫 순간 기록',
+      en: 'First moment'
+    },
+    'badge_tree_grow': {
+      ko: '감정 나무 성장',
+      en: 'Tree grows'
+    },
+    'badge_safe': {
+      ko: '안전한 보관',
+      en: 'Safe storage'
     }
   };
 })();
