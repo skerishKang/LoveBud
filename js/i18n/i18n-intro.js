@@ -178,13 +178,6 @@
       ko: '첫 순간 남기러 가기',
       en: 'Leave My First Moment'
     },
-    'nav.myTrees': {
-      ko: '내 러브트리 시작하기',
-      en: 'Start My LoveTree'
-    },
-    'nav.intro': {
-      ko: 'LoveTree 소개 보기',
-      en: 'About LoveTree'
     }
   };
 })();
