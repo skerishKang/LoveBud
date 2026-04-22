@@ -12,6 +12,10 @@
 # same-origin browse summary 경로 확인
 curl -s -o /dev/null -w "%{http_code}" "https://lovebud.vercel.app/api/community/trees?view=summary&sort=latest&limit=3"
 # 기대: 200
+
+# same-origin preview hydrate 경로 확인
+curl -s -o /dev/null -w "%{http_code}" "https://lovebud.vercel.app/api/community/memories?treeId=<treeId>"
+# 기대: 200
 ```
 
 추가 점검:
@@ -23,6 +27,7 @@ curl -s "https://<MODAL_BASE_URL>/modal/browse/latest?limit=3"
 
 주의:
 - browse summary는 Modal 우선 read path입니다.
+- preview hydrate도 representative preview 기준으로 Modal 우선 시도를 가집니다.
 - Netlify는 fallback 입니다.
 - browse display filter와 publication guard를 혼동하지 않습니다.
 
@@ -49,7 +54,7 @@ Firebase Console > Authentication > Settings > Authorized Domains
 - `MODAL_BASE_URL=https://<live-modal-domain>`
 
 설명:
-- `MODAL_BASE_URL`: browse summary의 1순위 upstream
+- `MODAL_BASE_URL`: browse summary와 preview representative의 1순위 upstream
 - `NETLIFY_API_BASE_URL`: `/api/community/trees`, `/api/community/memories` fallback / upstream 대상
 - `LOVEBUD_UPSTREAM_API_BASE`: catch-all `/api/*` upstream base
 
@@ -74,7 +79,7 @@ Firebase Console > Authentication > Settings > Authorized Domains
 ## 5. fallback 점검
 
 - [ ] Modal 차단 시 browse summary가 Netlify fallback으로 계속 응답하는지 확인
-- [ ] `api/community/memories.js`가 Netlify upstream으로 정상 응답하는지 확인
+- [ ] preview representative를 Modal에서 만들 수 없을 때 `api/community/memories.js`가 Netlify upstream으로 정상 응답하는지 확인
 - [ ] catch-all `/api/*`가 `LOVEBUD_UPSTREAM_API_BASE` 기준으로 정상 proxy 되는지 확인
 
 ## 6. 장애 대응 우선순위
@@ -83,16 +88,21 @@ Firebase Console > Authentication > Settings > Authorized Domains
    - Vercel 로그에서 `api/community/trees.js` 오류 확인
    - `MODAL_BASE_URL`, `NETLIFY_API_BASE_URL` 확인
 
-2. **Modal Timeout / Modal 장애**
+2. **Vercel `/api/community/memories` 실패**
+   - `MODAL_BASE_URL` 확인
+   - representative preview 생성 여부 확인
+   - `NETLIFY_API_BASE_URL` 확인
+
+3. **Modal Timeout / Modal 장애**
    - `/modal/health` 와 `/modal/browse/latest?limit=3` 확인
    - Modal 실패 시 Netlify fallback으로 계속 응답하는지 확인
 
-3. **Netlify Upstream 장애**
+4. **Netlify Upstream 장애**
    - `NETLIFY_API_BASE_URL` 대상 상태 확인
    - `LOVEBUD_UPSTREAM_API_BASE` 대상 상태 확인
    - fallback 계층이므로 browse summary 또는 hydrate 일부에 영향 가능
 
-4. **Auth Domain Error**
+5. **Auth Domain Error**
    - Firebase Console 승인 도메인 확인
 
 ## 7. 오래된 설명 제거 기준
@@ -102,8 +112,10 @@ Firebase Console > Authentication > Settings > Authorized Domains
 - `lovebud.netlify.app`를 주서비스처럼 설명하는 문장
 - Netlify를 primary runtime으로 설명하는 문장
 - Vercel을 단순 정적 호스팅만 하는 것처럼 설명하는 문장
+- preview hydrate가 Netlify only 경로라고 단정하는 문장
 
 현재 기준 문장:
 - **공식 주소는 Vercel**
 - **browse summary의 1순위는 Modal**
+- **preview hydrate도 Modal representative preview를 먼저 시도하고, 필요 시 Netlify fallback을 탄다**
 - **Netlify는 fallback / legacy**
