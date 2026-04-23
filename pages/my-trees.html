@@ -10,12 +10,28 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
   <style>
     .my-trees-layout { min-height: 100vh; display: flex; flex-direction: column; }
-    .my-trees-content { flex: 1; max-width: 1160px; margin: 0 auto; padding: 48px 40px 64px; width: 100%; }
-    .my-trees-header { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; margin-bottom: 24px; }
+    .my-trees-content { flex: 1; width: 100%; max-width: 1440px; margin: 0 auto; padding: 48px 48px 64px; }
+    
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 48px;
+      align-items: start;
+    }
+
+    .dashboard-sidebar {
+      position: sticky;
+      top: 100px;
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+    }
+
+    .my-trees-header { display: flex; flex-direction: column; gap: 12px; }
     .header-content { flex: 1; min-width: 0; max-width: 440px; }
     .my-trees-header h1 { font-size: 2.2rem; font-weight: 900; color: var(--on-surface); margin-bottom: 6px; letter-spacing: -0.03em; }
     .my-trees-header p { color: var(--on-surface-variant); max-width: 420px; margin: 0; font-size: 0.95rem; line-height: 1.5; }
-    .trees-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+    .trees-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
     .tree-card { display: block; position: relative; background: white; border-radius: 28px; padding: 0; box-shadow: var(--shadow-whisper); border: 1px solid var(--outline-variant); overflow: hidden; cursor: pointer; transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1); text-decoration: none; color: inherit; }
     .tree-card:hover { transform: translateY(-6px); box-shadow: 0 20px 50px rgba(144, 73, 81, 0.12); border-color: var(--primary-soft); }
     .tree-card.is-selected { border-color: rgba(144, 73, 81, 0.42); box-shadow: 0 18px 44px rgba(144, 73, 81, 0.16); }
@@ -61,10 +77,10 @@
     .btn-header-create { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 16px; background: linear-gradient(135deg, #ff6b9d 0%, #e85a7a 100%); color: white; border: none; border-radius: 999px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 2px 8px rgba(232, 90, 122, 0.3); white-space: nowrap; flex-shrink: 0; }
     .btn-header-create:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(232, 90, 122, 0.4); }
     .btn-header-create:active { transform: translateY(0); }
-    .manage-summary-bar { display: flex; flex-direction: column; gap: 12px; margin-bottom: 18px; padding: 14px 18px; background: white; border-radius: 24px; border: 1px solid var(--outline-variant); box-shadow: var(--shadow-whisper); }
-    .manage-summary-main { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; font-size: 14px; }
-    .summary-separator { opacity: 0.42; }
-    .summary-sort-control { margin-left: auto; }
+    .manage-summary-bar { display: flex; flex-direction: column; gap: 24px; padding: 24px; background: white; border-radius: 24px; border: 1px solid var(--outline-variant); box-shadow: var(--shadow-whisper); }
+    .manage-summary-main { display: flex; flex-direction: column; gap: 16px; font-size: 14px; }
+    .summary-separator { display: none; }
+    .summary-sort-control { width: 100%; margin-top: 8px; }
     .manage-summary-selected { display: flex; align-items: center; gap: 14px; padding-top: 12px; border-top: 1px dashed rgba(144, 73, 81, 0.16); flex-wrap: wrap; }
     .manage-selected-copy { display: flex; flex-direction: column; gap: 4px; min-width: 240px; flex: 1; }
     .manage-selected-label { font-size: 10px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--primary); }
@@ -158,46 +174,59 @@
   <div class="my-trees-layout">
     <div id="shared-header"></div>
     <main class="my-trees-content">
-      <div class="my-trees-header">
-        <div class="header-content">
-          <h1 id="myTreesPageTitle">🌳 내 러브트리</h1>
-          <p id="myTreesPageDesc">다시 열고 이어가는 내 러브트리</p>
-        </div>
-        <button class="btn-header-create" id="headerCreateTreeBtn"><span class="material-symbols-outlined">add</span><span id="headerCreateTreeBtnLabel">새 트리</span></button>
-      </div>
-      <div class="manage-summary-bar" id="manageSummaryBar" style="display:none;">
-        <div class="manage-summary-main">
-          <div class="summary-primary-stat" style="display:flex;align-items:center;gap:8px;"><span class="material-symbols-outlined" style="color:var(--primary);font-size:20px;">account_tree</span><span style="font-weight:700;color:var(--on-surface);"><span id="totalTreesCount">0</span><span id="summaryTotalSuffix">개의 트리</span></span></div>
-          <div class="summary-separator" style="width:1px;height:20px;background:var(--outline-variant);"></div>
-          <div class="summary-aux-item" style="display:flex;align-items:center;gap:6px;"><span class="material-symbols-outlined" style="color:#4caf50;font-size:16px;">public</span><span id="publicTreesCount" style="color:var(--on-surface-variant);">0</span> <span id="summaryPublicLabel">공개</span></div>
-          <div class="summary-aux-item" style="display:flex;align-items:center;gap:6px;"><span class="material-symbols-outlined" style="color:#757575;font-size:16px;">lock</span><span id="privateTreesCount" style="color:var(--on-surface-variant);">0</span> <span id="summaryPrivateLabel">비공개</span></div>
-          <div class="summary-aux-item" style="display:flex;align-items:center;gap:6px;"><span class="material-symbols-outlined" style="color:var(--primary-soft);font-size:16px;">favorite</span><span id="totalMomentsCount" style="color:var(--on-surface-variant);">0</span> <span id="summaryMomentsSuffix">개의 순간</span></div>
-          <div class="summary-separator" style="width:1px;height:20px;background:var(--outline-variant);"></div>
-          <select id="sortTreesSelect" class="summary-sort-control" style="padding:8px 12px;border-radius:8px;border:1px solid var(--outline-variant);font-size:13px;cursor:pointer;background:white;">
-            <option id="sortRecentOption" value="recent">최근 수정순</option>
-            <option id="sortOldestOption" value="oldest">생성순</option>
-            <option id="sortNameOption" value="name">이름순</option>
-          </select>
-        </div>
-        <div class="manage-summary-selected">
-          <div class="manage-selected-copy">
-            <div class="manage-selected-label" id="manageSelectedTreeLabel">현재 트리</div>
-            <div class="manage-selected-title" id="manageSelectedTreeName">열고 싶은 트리를 골라 보세요</div>
-            <div class="manage-selected-meta" id="manageSelectedTreeMeta"></div>
+      <div class="dashboard-grid">
+        <aside class="dashboard-sidebar">
+          <div class="my-trees-header">
+            <div class="header-content">
+              <h1 id="myTreesPageTitle">🌳 내 러브트리</h1>
+              <p id="myTreesPageDesc">다시 열고 이어가는 내 러브트리</p>
+            </div>
+            <button class="btn-header-create" id="headerCreateTreeBtn" style="width: 100%; margin-top: 12px;"><span class="material-symbols-outlined">add</span><span id="headerCreateTreeBtnLabel">새 트리</span></button>
           </div>
-          <div class="manage-selected-actions">
-            <button class="manage-action-btn secondary" id="manageOpenBtn" disabled>다시 열기</button>
-            <button class="manage-action-btn secondary" id="manageVisibilityBtn" disabled>공개 설정</button>
-            <button class="manage-action-btn primary" id="manageRenameBtn" disabled>이름 변경</button>
-            <button class="manage-action-btn danger" id="manageDeleteBtn" disabled>삭제</button>
+
+          <div class="manage-summary-bar" id="manageSummaryBar" style="display:none;">
+            <div class="manage-summary-main">
+              <div class="summary-primary-stat" style="display:flex;align-items:center;gap:8px;"><span class="material-symbols-outlined" style="color:var(--primary);font-size:20px;">account_tree</span><span style="font-weight:700;color:var(--on-surface);"><span id="totalTreesCount">0</span><span id="summaryTotalSuffix">개의 트리</span></span></div>
+              <div class="summary-aux-item" style="display:flex;align-items:center;gap:10px;"><span class="material-symbols-outlined" style="color:#4caf50;font-size:18px;">public</span><span id="publicTreesCount" style="color:var(--on-surface-variant); font-weight: 600;">0</span> <span id="summaryPublicLabel" style="font-size: 12px; opacity: 0.8;">공개</span></div>
+              <div class="summary-aux-item" style="display:flex;align-items:center;gap:10px;"><span class="material-symbols-outlined" style="color:#757575;font-size:18px;">lock</span><span id="privateTreesCount" style="color:var(--on-surface-variant); font-weight: 600;">0</span> <span id="summaryPrivateLabel" style="font-size: 12px; opacity: 0.8;">비공개</span></div>
+              <div class="summary-aux-item" style="display:flex;align-items:center;gap:10px;"><span class="material-symbols-outlined" style="color:var(--primary-soft);font-size:18px;">favorite</span><span id="totalMomentsCount" style="color:var(--on-surface-variant); font-weight: 600;">0</span> <span id="summaryMomentsSuffix" style="font-size: 12px; opacity: 0.8;">순간들</span></div>
+              
+              <div style="margin-top: 8px; border-top: 1px solid var(--outline-variant); padding-top: 16px;">
+                <label style="font-size: 11px; font-weight: 800; color: var(--primary); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 8px;">정렬 설정</label>
+                <select id="sortTreesSelect" class="summary-sort-control" style="padding:10px 12px;border-radius:12px;border:1px solid var(--outline-variant);font-size:13px;cursor:pointer;background:white;width:100%;">
+                  <option id="sortRecentOption" value="recent">최근 수정순</option>
+                  <option id="sortOldestOption" value="oldest">생성순</option>
+                  <option id="sortNameOption" value="name">이름순</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="manage-summary-selected" style="margin-top: 12px;">
+              <div class="manage-selected-copy">
+                <div class="manage-selected-label" id="manageSelectedTreeLabel">선택된 트리</div>
+                <div class="manage-selected-title" id="manageSelectedTreeName" style="font-size: 0.9rem;">트리를 골라보세요</div>
+                <div class="manage-selected-meta" id="manageSelectedTreeMeta"></div>
+              </div>
+              <div class="manage-selected-actions" style="display: grid; grid-template-columns: 1fr; gap: 8px; width: 100%;">
+                <button class="manage-action-btn secondary" id="manageOpenBtn" disabled>다시 열기</button>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                  <button class="manage-action-btn secondary" id="manageVisibilityBtn" disabled>공개 설정</button>
+                  <button class="manage-action-btn primary" id="manageRenameBtn" disabled>이름 변경</button>
+                </div>
+                <button class="manage-action-btn danger" id="manageDeleteBtn" disabled>트리 삭제</button>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
-      <div id="treesContainer">
-        <div id="state-loading" class="trees-loading" style="display: flex;"><div class="spinner"></div><span class="loading-text" data-i18n="myTrees.loading">러브트리 목록을 불러오는 중...</span></div>
-        <div id="state-error" class="error-state" style="display: none;"><span class="material-symbols-outlined error-state-icon">error</span><h2 data-i18n="myTrees.error_title">불러오기에 실패했습니다</h2><p data-i18n="myTrees.error_desc">네트워크 연결을 확인하고 다시 시도해주세요.</p><button class="btn-round btn-primary" id="retryLoadBtn" data-i18n="myTrees.retry">다시 시도</button></div>
-        <div id="state-empty" class="empty-state" style="display: none;"><span class="material-symbols-outlined empty-state-icon">account_tree</span><h2 data-i18n="empty_state_title">아직 러브트리가 없어요</h2><p data-i18n="empty_state_desc">첫 러브트리를 만들어 시작해보세요.</p><button class="btn-create-tree" id="createTreeBtn"><span class="material-symbols-outlined" style="font-size:20px;">add_circle</span><span data-i18n="create_tree_btn">새 러브트리 만들기</span></button></div>
-        <div id="state-loaded" style="display: none;"></div>
+        </aside>
+
+        <section class="dashboard-main">
+          <div id="treesContainer">
+            <div id="state-loading" class="trees-loading" style="display: flex;"><div class="spinner"></div><span class="loading-text" data-i18n="myTrees.loading">러브트리 목록을 불러오는 중...</span></div>
+            <div id="state-error" class="error-state" style="display: none;"><span class="material-symbols-outlined error-state-icon">error</span><h2 data-i18n="myTrees.error_title">불러오기에 실패했습니다</h2><p data-i18n="myTrees.error_desc">네트워크 연결을 확인하고 다시 시도해주세요.</p><button class="btn-round btn-primary" id="retryLoadBtn" data-i18n="myTrees.retry">다시 시도</button></div>
+            <div id="state-empty" class="empty-state" style="display: none;"><span class="material-symbols-outlined empty-state-icon">account_tree</span><h2 data-i18n="empty_state_title">아직 러브트리가 없어요</h2><p data-i18n="empty_state_desc">첫 러브트리를 만들어 시작해보세요.</p><button class="btn-create-tree" id="createTreeBtn"><span class="material-symbols-outlined" style="font-size:20px;">add_circle</span><span data-i18n="create_tree_btn">새 러브트리 만들기</span></button></div>
+            <div id="state-loaded" style="display: none;"></div>
+          </div>
+        </section>
       </div>
     </main>
   </div>
