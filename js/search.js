@@ -1,6 +1,6 @@
 /**
  * LoveBud Search Page Orchestrator
- * v20260423-1
+ * v20260423-2
  *
  * Search page orchestration:
  * - Fast list-first loading for public trees
@@ -11,6 +11,8 @@
 
 document.addEventListener('DOMContentLoaded', async () => {
     const resultsList = document.getElementById('resultsList');
+    const previewSidebar = document.getElementById('previewSidebar');
+    const previewMobileClose = document.getElementById('previewMobileClose');
     const previewContainer = document.getElementById('previewVideoContainer');
     const previewTitle = document.getElementById('previewTitle');
     const previewDesc = document.getElementById('previewDesc');
@@ -22,6 +24,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const resultsHead = document.querySelector('.browse-results-head');
     const resultsTitle = resultsHead?.querySelector('h3');
     const resultsBadge = resultsHead?.querySelector('.browse-results-badge');
+    const mobilePreviewMediaQuery = window.matchMedia('(max-width: 768px)');
 
     const CardRenderer = window.LoveBudSearchCardRenderer;
     CardRenderer.init(resultsList);
@@ -58,6 +61,45 @@ document.addEventListener('DOMContentLoaded', async () => {
     function getCurrentLocale() {
         const locale = window.i18n?.currentLang || window.getCurrentLang?.() || document.documentElement?.lang || 'ko';
         return String(locale).toLowerCase().startsWith('en') ? 'en' : 'ko';
+    }
+
+    function isMobilePreviewMode() {
+        return Boolean(mobilePreviewMediaQuery?.matches);
+    }
+
+    function setMobilePreviewOpen(isOpen, options = {}) {
+        if (!previewSidebar || !isMobilePreviewMode()) return;
+        const { scrollIntoView = false } = options;
+        previewSidebar.classList.toggle('is-open', Boolean(isOpen));
+
+        if (isOpen && scrollIntoView) {
+            window.requestAnimationFrame(() => {
+                previewSidebar.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            });
+        }
+    }
+
+    function syncPreviewVisibility() {
+        if (!previewSidebar) return;
+        if (isMobilePreviewMode()) {
+            setMobilePreviewOpen(Boolean(selectedTreeId));
+            return;
+        }
+        previewSidebar.classList.remove('is-open');
+    }
+
+    function clearSelectedPreview(options = {}) {
+        const { preserveOpenState = false } = options;
+        selectedTreeId = null;
+        currentPreviewRequestId += 1;
+        markActiveCard(null);
+        PreviewRenderer.resetPreview();
+        if (!preserveOpenState && isMobilePreviewMode()) {
+            setMobilePreviewOpen(false);
+        }
     }
 
     function getSearchCopy(key, fallbackKo, fallbackEn) {
@@ -136,6 +178,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         const previewBadge = document.querySelector('.preview-badge');
         if (previewBadge) {
             previewBadge.textContent = getSearchCopy('search.previewBadge', '선택한 트리', 'Selected Tree');
+        }
+
+        if (previewMobileClose) {
+            previewMobileClose.setAttribute(
+                'aria-label',
+                getSearchCopy('search.previewClose', '감상 닫기', 'Close preview')
+            );
         }
 
         const previewKicker = document.querySelector('.preview-kicker');
@@ -272,7 +321,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             retryBtn.addEventListener('click', () => window.location.reload());
         }
 
-        PreviewRenderer.resetPreview();
+        clearSelectedPreview();
     };
 
     const renderPreviewLoadingState = (tree) => {
@@ -313,7 +362,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (requestId !== currentPreviewRequestId || selectedTreeId !== tree.id) {
                 return;
             }
-            PreviewRenderer.resetPreview();
+            clearSelectedPreview({ preserveOpenState: false });
         }
     };
 
@@ -321,6 +370,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!tree) return;
         selectedTreeId = tree.id;
         markActiveCard(activeCard);
+
+        if (isMobilePreviewMode()) {
+            setMobilePreviewOpen(true, { scrollIntoView: true });
+        }
 
         if (Array.isArray(tree.memories) && tree.memories.length > 0) {
             writePreviewCache(tree.id, tree);
@@ -366,10 +419,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 renderLoadErrorState();
             } else if (hasNoData) {
                 resultsList.innerHTML = CardRenderer.renderNoTreesState();
-                PreviewRenderer.resetPreview();
+                clearSelectedPreview();
             } else {
                 resultsList.innerHTML = CardRenderer.renderEmptySearchState();
-                PreviewRenderer.resetPreview();
+                clearSelectedPreview();
             }
             return;
         }
@@ -383,15 +436,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const selectedTree = getSelectedTreeFromFiltered(filtered);
         if (!selectedTreeId && resetPreviewWhenNoSelection) {
-            PreviewRenderer.resetPreview();
+            clearSelectedPreview();
             return;
         }
 
         if (selectedTree && Array.isArray(selectedTree.memories) && selectedTree.memories.length > 0) {
             writePreviewCache(selectedTree.id, selectedTree);
             PreviewRenderer.updatePreview(selectedTree);
+            syncPreviewVisibility();
         } else if (!selectedTree && resetPreviewWhenNoSelection) {
-            PreviewRenderer.resetPreview();
+            clearSelectedPreview();
         }
     }
 
@@ -402,8 +456,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         syncBrowseHead();
 
         if (resetSelection) {
-            selectedTreeId = null;
-            PreviewRenderer.resetPreview();
+            clearSelectedPreview();
         }
 
         let cachedTrees = null;
@@ -445,8 +498,25 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    if (previewMobileClose) {
+        previewMobileClose.addEventListener('click', () => {
+            clearSelectedPreview();
+        });
+    }
+
+    if (mobilePreviewMediaQuery?.addEventListener) {
+        mobilePreviewMediaQuery.addEventListener('change', () => {
+            syncPreviewVisibility();
+        });
+    } else if (mobilePreviewMediaQuery?.addListener) {
+        mobilePreviewMediaQuery.addListener(() => {
+            syncPreviewVisibility();
+        });
+    }
+
     ensureBrowseControls();
     syncStaticBrowseCopy();
+    syncPreviewVisibility();
     if (typeof window.onLangChange === 'function') {
         window.onLangChange(() => {
             syncStaticBrowseCopy();
@@ -455,7 +525,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     resultsList.innerHTML = CardRenderer.renderLoading();
-    PreviewRenderer.resetPreview();
+    clearSelectedPreview();
     await loadPublicTrees({ resetSelection: true });
 
     let searchInputTimer = null;
