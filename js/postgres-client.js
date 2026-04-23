@@ -48,9 +48,14 @@
             ? source.emotionTags
             : (Array.isArray(source.emotion_tags) ? source.emotion_tags : []);
 
+        const rawThumb = source.representativeThumbnail || source.representative_thumbnail || source.thumbnail || tree.representativeThumbnail || '';
+        const rawSource = source.sourceUrl || source.source_url || '';
+
         return {
             ...tree,
-            representativeThumbnail: source.representativeThumbnail || source.representative_thumbnail || source.thumbnail || tree.representativeThumbnail || '',
+            representativeThumbnail: PublicTreeAdapter 
+                ? PublicTreeAdapter.canonicalizeYouTubeThumbnailUrl(rawThumb, rawSource)
+                : rawThumb,
             emotionTags: rawEmotionTags.filter(Boolean).slice(0, 4),
             timeRange: source.timeRange || source.time_range || tree.timeRange || '기록 없음',
             theme: source.theme || tree.theme || '',
