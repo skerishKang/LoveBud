@@ -942,7 +942,7 @@
 
                 <div class="home-v3-collage reveal" aria-hidden="true">
                     <div class="home-v3-growth-stage">
-                        <video id="hero-growth-video" class="growth-stage-video" autoplay muted playsinline preload="metadata" src="/docs/movie/home-hero-01-first-memory.mp4"></video>
+                        <video id="hero-growth-video" class="growth-stage-video" autoplay muted playsinline loop preload="metadata" src="/docs/video/home-hero.mp4"></video>
                         <div class="growth-stage-caption">순간 하나가 이어지고, 감정의 가지가 자라나요</div>
                         <svg class="growth-tree-svg" viewBox="0 0 640 700" role="img" aria-label="러브트리가 자라는 애니메이션">
                             <path class="trunk" pathLength="1" d="M320 600 C318 520 322 450 320 360 C318 285 330 232 360 178" />
@@ -1136,12 +1136,6 @@
         (function() {
             const video = document.getElementById('hero-growth-video');
             if (!video) return;
-            const sources = [
-                '/docs/movie/home-hero-01-first-memory.mp4',
-                '/docs/movie/home-hero-02-card-moment.mp4',
-                '/docs/movie/home-hero-03-idol-request.mp4'
-            ];
-            let currentIndex = 0;
             const checkReducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
             if (checkReducedMotion()) {
                 video.style.display = 'none';
@@ -1154,15 +1148,6 @@
             const deactivateVideoUI = () => collage?.classList.remove('is-video-active');
 
             video.addEventListener('playing', activateVideoUI);
-
-            video.addEventListener('ended', function() {
-                currentIndex = (currentIndex + 1) % sources.length;
-                video.src = sources[currentIndex];
-                video.play().catch(() => {
-                    deactivateVideoUI();
-                    video.style.display = 'none';
-                });
-            });
 
             video.addEventListener('error', function() {
                 deactivateVideoUI();
