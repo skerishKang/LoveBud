@@ -9,14 +9,9 @@
   'use strict';
 
   window.i18nSearch = {
-    // 페이지 제목
-    'search.eyebrow': {
-      ko: '오늘의 공개 감상',
-      en: 'Today\'s Public Picks'
-    },
     'search.title': {
-      ko: '공개 러브트리 둘러보기',
-      en: 'Browse Public LoveTrees'
+      ko: '러브트리 둘러보기',
+      en: 'Browse LoveTrees'
     },
     'search.subtitle': {
       ko: '다른 팬이 남긴 순간과 흐름을 따라가 보세요.',
@@ -25,14 +20,6 @@
     'search.intentNote': {
       ko: '트리를 고르면 감상 허브가 바로 열립니다.',
       en: 'Choose a tree to open the viewing hub.'
-    },
-    'search.resultsHeading': {
-      ko: '최근 공개된 러브트리',
-      en: 'Recently Shared LoveTrees'
-    },
-    'search.resultsBadge': {
-      ko: '지금 먼저 볼 3개',
-      en: '3 to start with'
     },
 
     // 미리보기

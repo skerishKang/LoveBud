@@ -165,6 +165,11 @@
         return getCurrentPage() === 'login.html';
     }
 
+    function getLoginRedirectHref(targetHref) {
+        var loginHref = getContextType() === 'root' ? 'pages/login.html' : 'login.html';
+        return loginHref + '?redirect=' + encodeURIComponent(targetHref);
+    }
+
     function buildLangToggleHTML() {
         return [
             '<div class="lang-toggle">',
@@ -234,7 +239,8 @@
             var myTreesClasses = ['nav-highlight'];
             if (activeKey === 'myTrees') myTreesClasses.unshift('active');
             var activeClass = ' class="' + myTreesClasses.join(' ') + '"';
-            navLinksHTML += '<a href="' + menuConfig.myTrees.href + '"' + activeClass + '>' + t(menuConfig.myTrees.textKey) + '</a>';
+            var myTreesHref = cachedUser ? menuConfig.myTrees.href : getLoginRedirectHref(menuConfig.myTrees.href);
+            navLinksHTML += '<a href="' + myTreesHref + '"' + activeClass + '>' + t(menuConfig.myTrees.textKey) + '</a>';
         }
 
         // 에디터 페이지에서는 "편집하기" 메뉴 숨김 (이미 편집 화면 안에 있음)
