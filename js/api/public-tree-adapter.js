@@ -7,6 +7,72 @@
    * Transitional compatibility only for public browse paths.
    */
 
+  function sanitizeUrl(url) {
+    if (!url) return '';
+    try {
+      const u = new URL(url.startsWith('http') ? url : `https://${url}`);
+      return u.toString();
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function isValidYouTubeVideoId(id) {
+    return typeof id === 'string' && /^[a-zA-Z0-9_-]{11}$/.test(id);
+  }
+
+  function extractYouTubeVideoId(url) {
+    if (!url) return null;
+    const s = String(url);
+    
+    // Standard watch URL or any URL with v= parameter
+    const vMatch = s.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
+    if (vMatch) return vMatch[1];
+    
+    // youtu.be/ID, shorts/ID, embed/ID, live/ID, v/ID
+    const pathMatch = s.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|shorts\/|live\/))([a-zA-Z0-9_-]{11})/);
+    if (pathMatch) return pathMatch[1];
+
+    return null;
+  }
+
+  function extractYouTubeVideoIdFromThumbnail(url) {
+    if (!url) return null;
+    const s = String(url);
+    // img.youtube.com/vi/ID/..., i.ytimg.com/vi/ID/...
+    const match = s.match(/(?:img\.youtube\.com|i\.ytimg\.com)\/vi\/([a-zA-Z0-9_-]{11})/);
+    return match ? match[1] : null;
+  }
+
+  function buildCanonicalYouTubeThumbnailUrl(videoId) {
+    if (!isValidYouTubeVideoId(videoId)) return '';
+    return `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`;
+  }
+
+  function buildCanonicalYouTubeEmbedUrl(videoId) {
+    if (!isValidYouTubeVideoId(videoId)) return '';
+    return `https://www.youtube.com/embed/${videoId}`;
+  }
+
+  function canonicalizeYouTubeSourceUrl(url) {
+    const videoId = extractYouTubeVideoId(url);
+    if (videoId) return buildCanonicalYouTubeEmbedUrl(videoId);
+    return sanitizeUrl(url);
+  }
+
+  function canonicalizeYouTubeThumbnailUrl(url, fallbackSourceUrl) {
+    let videoId = extractYouTubeVideoIdFromThumbnail(url);
+    if (!videoId) {
+      videoId = extractYouTubeVideoId(url) || extractYouTubeVideoId(fallbackSourceUrl);
+    }
+    
+    if (videoId && isValidYouTubeVideoId(videoId)) {
+      return buildCanonicalYouTubeThumbnailUrl(videoId);
+    }
+    
+    return sanitizeUrl(url);
+  }
+
   function unwrapTreeRecord(tree) {
     return tree?.data || tree || {};
   }
@@ -21,6 +87,8 @@
 
   function normalizeBrowseTreeRecord(rawTree) {
     const tree = unwrapTreeRecord(rawTree);
+    const rawThumb = tree.representativeThumbnail || tree.representative_thumbnail || tree.thumbnail || '';
+    
     return {
       id: tree.id || rawTree?.id || null,
       title: tree.title || '',
@@ -28,7 +96,7 @@
       createdAt: tree.createdAt || tree.created_at || null,
       updatedAt: tree.updatedAt || tree.updated_at || null,
       ownerId: tree.ownerId || tree.owner_id || null,
-      representativeThumbnail: tree.representativeThumbnail || tree.representative_thumbnail || tree.thumbnail || '',
+      representativeThumbnail: canonicalizeYouTubeThumbnailUrl(rawThumb),
       memoryCount: Number(tree.memoryCount || tree.memory_count || 0),
       theme: tree.theme || '',
       stage: tree.stage || ''
@@ -37,13 +105,16 @@
 
   function normalizeBrowseMemoryRecord(rawMemory) {
     const memory = unwrapMemoryRecord(rawMemory);
+    const rawSource = memory.sourceUrl || memory.source_url || '';
+    const rawThumb = memory.thumbnail || '';
+
     return {
       id: memory.id || null,
       treeId: memory.treeId || memory.tree_id || null,
       createdAt: memory.createdAt || memory.created_at || null,
       timestamp: memory.timestamp || '',
-      thumbnail: memory.thumbnail || '',
-      sourceUrl: memory.sourceUrl || memory.source_url || '',
+      thumbnail: canonicalizeYouTubeThumbnailUrl(rawThumb, rawSource),
+      sourceUrl: canonicalizeYouTubeSourceUrl(rawSource),
       title: memory.title || '',
       memo: memory.memo || '',
       artist: memory.artist || '',
@@ -127,6 +198,15 @@
     buildPublicTreeSummaryModels,
     hydrateTreeWithPublicMemories,
     buildPublicTreeViewModels,
+    // Utils
+    sanitizeUrl,
+    isValidYouTubeVideoId,
+    extractYouTubeVideoId,
+    extractYouTubeVideoIdFromThumbnail,
+    buildCanonicalYouTubeThumbnailUrl,
+    buildCanonicalYouTubeEmbedUrl,
+    canonicalizeYouTubeSourceUrl,
+    canonicalizeYouTubeThumbnailUrl
   };
 
   if (typeof window !== 'undefined' && window.__LoveBudApiClientInternals) {
@@ -136,6 +216,8 @@
       getRecordTreeId,
       normalizeBrowseTreeRecord,
       normalizeBrowseMemoryRecord,
+      canonicalizeYouTubeSourceUrl,
+      canonicalizeYouTubeThumbnailUrl
     });
   }
 
