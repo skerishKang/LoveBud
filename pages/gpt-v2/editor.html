@@ -5,6 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>LoveTree - GPT v2 Editor</title>
   <link rel="stylesheet" href="../../css/gpt-v2/common.css" />
+  <style>
+    .editor-page{display:grid;grid-template-columns:320px 1fr 360px;gap:18px;align-items:start}
+    .left-panel,.center-panel,.right-panel{background:rgba(255,255,255,.42);border:1px solid rgba(255,255,255,.82);box-shadow:var(--shadow-md);backdrop-filter:blur(8px);border-radius:30px;padding:22px}
+    .left-panel{min-height:860px}.center-panel{min-height:860px;position:relative;overflow:hidden}.right-panel{min-height:860px}
+    .status-pill{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;background:rgba(255,245,242,.9);border:1px solid rgba(231,212,201,.92);color:#b06767;font-weight:700;margin-top:8px}
+    .left-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}.soft-btn{min-height:46px;border-radius:999px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.7);border:1px solid rgba(226,207,196,.92);color:#8f6d65;font-weight:700}.side-note{margin-top:18px;padding-top:18px;border-top:1px dashed rgba(200,165,145,.28);color:#8c7468;line-height:1.7}.count{margin-top:18px;font-family:Georgia,serif;font-size:36px;color:#c96f70}.center-title{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px}.tree-area{position:relative;min-height:740px}
+    .branch{position:absolute;left:50%;top:138px;transform:translateX(-50%);width:420px;height:430px;border-radius:50%;border:2px solid rgba(208,171,152,.28);border-color:rgba(208,171,152,.08) rgba(208,171,152,.28) rgba(208,171,152,.14) rgba(208,171,152,.26)}
+    .branch:before,.branch:after{content:"";position:absolute;inset:36px;border-radius:50%;border:2px solid rgba(220,185,167,.22)}.branch:after{inset:84px 68px 78px 70px}
+    .memory-card,.quote-card{position:absolute;background:rgba(255,251,247,.96);border:1px solid rgba(233,218,208,.92);box-shadow:var(--shadow-md);border-radius:22px;padding:14px}.memory-card{width:240px}.memory-thumb{height:156px;border-radius:16px;background-size:cover;background-position:center;margin-bottom:12px}.memory-card h4{margin:0 0 8px;color:#654c40;font-size:22px;letter-spacing:-.03em}.memory-card p{margin:0;color:#8c7569;font-size:15px;line-height:1.65}.quote-card{width:210px;padding:22px 18px;font-family:"Nanum Myeongjo",Georgia,serif;color:#785f52;line-height:1.8}.chipline{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}.chipline span{padding:8px 12px;border-radius:999px;background:rgba(249,240,232,.9);border:1px solid rgba(229,212,201,.92);color:#af8876;font-size:13px;font-weight:700}.bottom-cta{position:absolute;left:50%;bottom:18px;transform:translateX(-50%)}
+    .tabs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0 16px}.tab{min-height:48px;border-radius:999px;display:grid;place-items:center;font-weight:700;background:rgba(255,255,255,.7);border:1px solid rgba(226,207,196,.92);color:#8f6d65}.tab.active{color:var(--primary-deep);border-color:rgba(221,143,141,.42);box-shadow:inset 0 0 0 1px rgba(221,143,141,.22)}.field{display:grid;gap:8px;margin-top:14px}.field label{font-size:14px;font-weight:700;color:#7f6457}.choice-preview{display:grid;grid-template-columns:116px 1fr;gap:14px;align-items:center;padding:12px;border-radius:18px;background:rgba(255,255,255,.72);border:1px solid rgba(255,255,255,.84)}.preview-thumb{min-height:84px;border-radius:14px;background-size:cover;background-position:center}.tag-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px}@media (max-width:1280px){.editor-page{grid-template-columns:1fr}.left-panel,.center-panel,.right-panel{min-height:auto}}@media (max-width:860px){.tree-area{min-height:auto}.memory-card,.quote-card{position:relative!important;left:auto!important;right:auto!important;top:auto!important;bottom:auto!important;transform:none!important;width:100%!important;margin-bottom:16px}.branch{display:none}}
+  </style>
 </head>
 <body>
   <div class="site-shell">
@@ -19,40 +30,90 @@
       <div class="user-pill"><div class="avatar"></div><span>우리의 하루</span></div>
     </header>
 
-    <main class="grid-editor">
-      <aside class="sidebar">
+    <main class="editor-page">
+      <aside class="left-panel">
         <div class="eyebrow">✿ Our LoveTree</div>
-        <h2 class="display" style="font-size:28px;">우리의 러브트리 ♡</h2>
-        <p class="lead" style="font-size:16px;">비공개 러브트리 초안입니다.</p>
-        <a href="#" class="btn btn-secondary" style="margin-top:16px;">트리 한눈에 보기</a>
+        <h1 class="display" style="font-size:34px;margin-top:6px">우리의 러브트리 ♡</h1>
+        <div class="status-pill">🔒 비공개 러브트리</div>
+        <div class="left-actions">
+          <a href="#" class="soft-btn">✎ 제목 수정</a>
+          <a href="#" class="soft-btn">🔒 공개/비공개</a>
+        </div>
+        <div class="side-note">러브트리의 제목과 공개 상태를 여기에서 관리할 수 있어요.</div>
+        <div class="count">12개</div>
+        <div class="side-note" style="margin-top:8px;padding-top:0;border-top:none">서로의 마음이 쌓여 하나의 나무가 되고 있어요.</div>
+        <a href="#" class="btn btn-secondary" style="width:100%;margin-top:18px">트리 한눈에 보기</a>
       </aside>
 
-      <section class="canvas tree-canvas">
-        <div class="tree-trunk"></div>
-        <article class="tree-memory" style="left:170px; top:70px;">
-          <div class="photo photo-couple"></div>
-          <h4>처음 사랑하게 된 무대</h4>
-          <p>우리의 이야기가 시작된 그 순간.</p>
-        </article>
-        <article class="tree-memory" style="right:140px; top:90px; width:220px; transform:rotate(-2deg);">
-          <div class="photo photo-home-2" style="height:138px;"></div>
-          <h4 style="font-size:18px;">다시 듣게 되는 노래</h4>
-          <p>이 노래만 들으면 그때가 떠올라.</p>
-        </article>
-        <article class="tree-memory" style="left:430px; top:476px; width:220px;">
-          <div class="photo photo-room" style="height:150px;"></div>
-          <h4 style="font-size:18px;">오늘도 위로가 된 장면</h4>
-          <p>지친 하루 끝에 따뜻했던 장면.</p>
-        </article>
+      <section class="center-panel">
+        <div class="center-title">
+          <div>
+            <div class="eyebrow">✿ 순간을 이어가는 중</div>
+            <h2 class="display" style="font-size:30px">순간을 이어가는 중</h2>
+          </div>
+        </div>
+        <div class="tree-area">
+          <div class="branch"></div>
+          <article class="memory-card" style="left:148px;top:32px">
+            <div class="memory-thumb photo-couple"></div>
+            <h4>처음 사랑하게 된 무대</h4>
+            <p>우리의 이야기가 시작된 그 순간을 기억해.</p>
+          </article>
+          <article class="memory-card" style="right:116px;top:54px;width:220px;transform:rotate(-1deg)">
+            <div class="memory-thumb photo-home-2" style="height:138px"></div>
+            <h4 style="font-size:18px">다시 듣게 되는 노래</h4>
+            <p>이 노래만 들으면 그때가 자연스럽게 떠올라.</p>
+          </article>
+          <article class="quote-card" style="left:72px;top:404px">오래 남은 한 문장<br><br>“넌 나에게 참 좋은 사람이야.”<div class="chipline"><span>여운</span></div></article>
+          <article class="memory-card" style="left:308px;top:420px;width:214px">
+            <div class="memory-thumb photo-room" style="height:142px"></div>
+            <h4 style="font-size:18px">오늘도 위로가 된 장면</h4>
+            <p>지친 하루 끝에 함께 본 그 장면이 참 따뜻했어.</p>
+          </article>
+          <article class="memory-card" style="right:88px;top:392px;width:226px;transform:rotate(-1deg)">
+            <div class="memory-thumb photo-spring" style="height:164px"></div>
+            <h4 style="font-size:18px">문득 생각나는 순간</h4>
+            <p>문득 떠오르지만 또 보고 싶어지는 순간들.</p>
+          </article>
+          <div class="bottom-cta"><a href="#" class="btn btn-secondary">⊕ 순간 이어가기</a></div>
+        </div>
       </section>
 
-      <aside class="composer">
-        <div class="section-title">지금 이어가는 순간</div>
-        <div class="input">YouTube 링크를 붙여넣어 주세요</div>
-        <div class="textarea" style="margin-top:14px;">이 순간에 대한 간단한 메모를 남겨보세요</div>
-        <div class="btn-row">
-          <a href="#" class="btn btn-primary">이 순간 저장하기</a>
+      <aside class="right-panel">
+        <h3 class="section-title" style="font-size:28px">지금 이어가는 순간 ♡</h3>
+        <div class="tabs">
+          <div class="tab active">🔗 링크로 남기기</div>
+          <div class="tab">✎ 글로 남기기</div>
         </div>
+        <div class="field">
+          <label>링크 주소</label>
+          <div class="input">YouTube 링크를 붙여넣어 주세요</div>
+        </div>
+        <div class="field">
+          <label>선택된 링크</label>
+          <div class="choice-preview">
+            <div class="preview-thumb photo-home-2"></div>
+            <div><strong style="display:block;color:#684f44;margin-bottom:6px">널 생각하며 듣는 노래</strong><div style="color:#a18a7d;line-height:1.6">(도시의 밤)<br>youtu.be/abcd1234</div></div>
+          </div>
+        </div>
+        <div class="field">
+          <label>메모 한 줄</label>
+          <div class="textarea">이 순간에 대한 간단한 메모를 남겨보세요</div>
+        </div>
+        <div class="field">
+          <label>지금의 감정</label>
+          <div class="tag-grid">
+            <div class="chip rose">♡ 설렘</div>
+            <div class="chip blue">☁ 위로</div>
+            <div class="chip gold">✨ 벅참</div>
+            <div class="chip green">🌿 추억</div>
+            <div class="chip purple">☾ 여운</div>
+            <div class="chip gold">✦ 반짝임</div>
+          </div>
+        </div>
+        <a href="#" class="btn btn-primary" style="width:100%;margin-top:18px">이 순간 저장하기 ♡</a>
+        <a href="#" class="btn btn-secondary" style="width:100%;margin-top:12px">다음에 이어갈게요</a>
+        <div style="margin-top:18px;color:#a0887d;line-height:1.7;text-align:center">처음에는 하나의 순간만 남겨도 충분해요. 좋아하는 마음은 천천히 가지를 만들어요.</div>
       </aside>
     </main>
   </div>
