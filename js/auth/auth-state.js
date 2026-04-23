@@ -35,6 +35,7 @@
     var path = window.location.pathname || "";
     return (
       path.indexOf("/pages/login.html") !== -1 ||
+      path.indexOf("/pages/login") !== -1 ||
       path.indexOf("login.html") !== -1
     );
   }

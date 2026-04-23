@@ -101,7 +101,9 @@ var AUTH_TOKEN_KEY = __authStateModule ? __authStateModule.AUTH_TOKEN_KEY : 'lov
 function isLoginPage() {
   if (__authStateModule) return __authStateModule.isLoginPage();
   var path = window.location.pathname || '';
-  return path.indexOf('/pages/login.html') !== -1 || path.indexOf('login.html') !== -1;
+  return path.indexOf('/pages/login.html') !== -1 ||
+         path.indexOf('/pages/login') !== -1 ||
+         path.indexOf('login.html') !== -1;
 }
 
 function resolveEmailAuthMode() {
@@ -427,7 +429,9 @@ function applyCachedAuthState() {
     });
   }
   var path = window.location.pathname;
-  var isLoginPage = path.indexOf('/pages/login.html') !== -1 || path.indexOf('login.html') !== -1;
+  var isLoginPage = path.indexOf('/pages/login.html') !== -1 ||
+                    path.indexOf('/pages/login') !== -1 ||
+                    path.indexOf('login.html') !== -1;
   if (isLoginPage) return false;
 
   var authNav = document.getElementById('auth-nav');
