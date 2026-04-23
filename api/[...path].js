@@ -1,4 +1,14 @@
-const DEFAULT_UPSTREAM_BASE = 'https://lovebud.netlify.app/api';
+// Transitional Vercel catch-all API adapter
+//
+// Current production truth:
+// - Primary frontend/runtime: Cloudflare Pages (`lovebud.pages.dev` or mapped custom domain)
+// - Transitional adapter: Vercel `/api/[...path]`
+// - Legacy fallback: Netlify functions
+//
+// Therefore the default upstream for this adapter must not point to Netlify.
+// Netlify can still be used explicitly by setting LOVEBUD_UPSTREAM_API_BASE.
+
+const DEFAULT_UPSTREAM_BASE = 'https://lovebud.vercel.app/api';
 
 function buildUpstreamUrl(pathSegments, queryString) {
   const normalizedBase = String(process.env.LOVEBUD_UPSTREAM_API_BASE || DEFAULT_UPSTREAM_BASE || '').replace(/\/$/, '');
