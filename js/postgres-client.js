@@ -1,9 +1,15 @@
 /**
  * postgres-client.js
- * Client wrapper for LoveTree Netlify Functions (Neon PostgreSQL).
- * Exposes window.apiClient for fetching data from /api endpoints.
+ * Browser-side API client for LoveBud.
  *
- * STRICT API-ONLY VERSION
+ * Current runtime truth:
+ * - official frontend entry: Cloudflare Pages (`lovebud.pages.dev`)
+ * - browser contract: call same-origin `/api/*`
+ * - routing behind `/api/*` may hit Cloudflare Pages functions directly,
+ *   or pass through transitional adapters such as Vercel / Netlify during fallback
+ * - direct browser-to-database access remains disabled
+ *
+ * The browser should stay deployment-agnostic and only rely on same-origin `/api/*`.
  */
 (function() {
     const PublicTreeAdapter = window.LoveTreePublicTreeAdapter;
