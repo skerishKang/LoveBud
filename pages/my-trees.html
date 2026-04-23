@@ -10,7 +10,8 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
   <style>
     .my-trees-layout { min-height: 100vh; display: flex; flex-direction: column; }
-    .my-trees-content { flex: 1; width: 100%; max-width: 1440px; margin: 0 auto; padding: 48px 48px 64px; }
+    body.my-trees-auth-pending .my-trees-content { visibility: hidden; }
+    .my-trees-content { flex: 1; width: 100%; max-width: var(--page-work-max); margin: 0 auto; padding: 48px 48px 64px; }
     
     .dashboard-grid {
       display: grid;
@@ -32,9 +33,8 @@
     .my-trees-header h1 { font-size: 2.2rem; font-weight: 900; color: var(--on-surface); margin-bottom: 6px; letter-spacing: -0.03em; }
     .my-trees-header p { color: var(--on-surface-variant); max-width: 420px; margin: 0; font-size: 0.95rem; line-height: 1.5; }
     .trees-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
-    .tree-card { display: block; position: relative; background: white; border-radius: 28px; padding: 0; box-shadow: var(--shadow-whisper); border: 1px solid var(--outline-variant); overflow: hidden; cursor: pointer; transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1); text-decoration: none; color: inherit; }
-    .tree-card:hover { transform: translateY(-6px); box-shadow: 0 20px 50px rgba(144, 73, 81, 0.12); border-color: var(--primary-soft); }
-    .tree-card.is-selected { border-color: rgba(144, 73, 81, 0.42); box-shadow: 0 18px 44px rgba(144, 73, 81, 0.16); }
+    .tree-card { display: block; position: relative; background: white; border-radius: 28px; padding: 0; box-shadow: var(--shadow-whisper); border: 1px solid var(--outline-variant); overflow: hidden; cursor: pointer; transition: border-color 0.12s ease, box-shadow 0.12s ease; text-decoration: none; color: inherit; }
+    .tree-card:hover { box-shadow: 0 20px 50px rgba(144, 73, 81, 0.12); border-color: var(--primary-soft); }
     .tree-card-thumb { width: 100%; height: 184px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; padding: 18px; }
     .tree-card-thumb-glow { position: absolute; inset: auto auto 18px 18px; width: 128px; height: 128px; border-radius: 50%; filter: blur(10px); }
     .tree-card-thumb-initial { position: absolute; top: 16px; left: 16px; width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 17px; font-weight: 800; background: rgba(255,255,255,0.72); border: 1px solid rgba(255,255,255,0.55); backdrop-filter: blur(6px); z-index: 2; }
@@ -57,12 +57,6 @@
     .tree-card-visibility { display: flex; align-items: center; gap: 4px; font-size: 12px; padding: 4px 10px; border-radius: 99px; background: var(--surface-container-low); }
     .tree-card-visibility.public { background: rgba(122, 139, 110, 0.1); color: var(--secondary); }
     .tree-card-visibility.private { background: rgba(144, 73, 81, 0.08); color: var(--primary); }
-    .tree-card-manage-row { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
-    .tree-card-manage-btn { border: none; border-radius: 999px; padding: 9px 12px; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.18s ease; }
-    .tree-card-select-btn { background: transparent; border: 1px solid rgba(62,52,47,0.12); color: var(--on-surface-variant); }
-    .tree-card-select-btn:hover { background: rgba(144,73,81,0.06); color: var(--on-surface); }
-    .tree-card-open-btn { background: rgba(144,73,81,0.1); color: var(--primary); margin-left: auto; }
-    .tree-card-open-btn:hover { background: rgba(144, 73, 81, 0.14); }
     .empty-state { text-align: center; padding: 64px 32px; background: white; border-radius: 2rem; border: 1px solid var(--outline-variant); box-shadow: var(--shadow-whisper); max-width: 480px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; }
     .empty-state-icon { font-size: 64px; margin-bottom: 24px; display: block; }
     .empty-state h2 { font-size: 1.5rem; font-weight: 800; color: var(--on-surface); margin-bottom: 12px; }
@@ -73,7 +67,7 @@
     .error-state-icon { font-size: 64px; margin-bottom: 8px; display: block; color: #c62828; }
     .error-state h2 { font-size: 1.5rem; font-weight: 800; color: var(--on-surface); margin-bottom: 8px; }
     .error-state p { color: var(--on-surface-variant); font-size: 1rem; line-height: 1.6; margin-bottom: 24px; max-width: 400px; margin-left: auto; margin-right: auto; }
-    .btn-header-create:disabled, .manage-action-btn:disabled, .manage-action-btn.secondary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
+    .btn-header-create:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
     .btn-header-create { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 16px; background: linear-gradient(135deg, #ff6b9d 0%, #e85a7a 100%); color: white; border: none; border-radius: 999px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 2px 8px rgba(232, 90, 122, 0.3); white-space: nowrap; flex-shrink: 0; }
     .btn-header-create:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(232, 90, 122, 0.4); }
     .btn-header-create:active { transform: translateY(0); }
@@ -81,17 +75,8 @@
     .manage-summary-main { display: flex; flex-direction: column; gap: 16px; font-size: 14px; }
     .summary-separator { display: none; }
     .summary-sort-control { width: 100%; margin-top: 8px; }
-    .manage-summary-selected { display: flex; align-items: center; gap: 14px; padding-top: 12px; border-top: 1px dashed rgba(144, 73, 81, 0.16); flex-wrap: wrap; }
-    .manage-selected-copy { display: flex; flex-direction: column; gap: 4px; min-width: 240px; flex: 1; }
-    .manage-selected-label { font-size: 10px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--primary); }
-    .manage-selected-title { font-size: 0.98rem; font-weight: 800; color: var(--on-surface); line-height: 1.3; }
-    .manage-selected-meta { font-size: 12px; line-height: 1.45; color: var(--on-surface-variant); }
-    .manage-selected-meta:empty { display: none; }
-    .manage-selected-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-    .manage-action-btn { border: none; border-radius: 999px; padding: 10px 14px; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.18s ease; }
-    .manage-action-btn.primary { background: var(--primary); color: white; box-shadow: 0 8px 18px rgba(144,73,81,0.18); }
-    .manage-action-btn.secondary { background: rgba(144,73,81,0.08); color: var(--primary); }
-    .manage-action-btn.danger { background: transparent; color: #b71c1c; border: 1px solid rgba(198,40,40,0.18); }
+    .manage-summary-selected,
+    .tree-card-manage-row { display: none !important; }
     .tree-card-menu { position: absolute; right: 14px; bottom: 14px; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, 0.98); border: 1px solid rgba(62, 52, 47, 0.08); border-radius: 50%; cursor: pointer; opacity: 1; transition: opacity 0.2s ease, background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease; z-index: 10; box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08); }
     .tree-card:hover .tree-card-menu { transform: translateY(-1px); }
     .tree-card-menu:hover { background: rgba(255, 255, 255, 1); box-shadow: 0 10px 20px rgba(0, 0, 0, 0.12); }
@@ -148,14 +133,7 @@
       .manage-summary-main { gap: 10px; align-items: center; }
       .summary-separator, .summary-aux-item { display: none !important; }
       #sortTreesSelect.summary-sort-control { margin-left: auto; max-width: 132px; }
-      .manage-summary-selected { align-items: stretch; }
-      .manage-selected-copy { min-width: 0; }
-      .manage-selected-actions { width: 100%; display: grid; grid-template-columns: 1fr 1fr; }
-      .manage-action-btn { width: 100%; justify-content: center; }
-      .manage-action-btn.danger { grid-column: span 2; }
       .tree-card-thumb { height: 176px; }
-      .tree-card-manage-row { display: grid; grid-template-columns: auto 1fr; }
-      .tree-card-open-btn { width: 100%; justify-content: center; }
       .create-tree-modal-backdrop { padding: 16px; }
       .create-tree-modal { padding: 22px 20px; border-radius: 24px; }
       .create-tree-visibility { grid-template-columns: 1fr; }
@@ -163,13 +141,11 @@
       .create-tree-modal-btn { width: 100%; justify-content: center; }
     }
     @media (max-width: 420px) {
-      .manage-selected-actions { grid-template-columns: 1fr; }
-      .manage-action-btn.danger { grid-column: auto; }
       .tree-card-date { display: none; }
     }
   </style>
 </head>
-<body class="bokeh-bg">
+<body class="bokeh-bg my-trees-auth-pending">
   <div class="noise-overlay"></div>
   <div class="my-trees-layout">
     <div id="shared-header"></div>
