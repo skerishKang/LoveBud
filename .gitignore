@@ -7,6 +7,11 @@ build/
 .output/
 deno.lock
 
+# Local video source/work files
+movie/
+docs/movie/home-hero72024/
+docs/movie/low/
+
 # Logs
 *.log
 npm-debug.log*
