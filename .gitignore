@@ -103,3 +103,6 @@ docs/*codex*.txt
 **/Caches/*.db
 **/Caches/*.ver*
 
+# Git Sync Conflicts & Backups
+.git (1)/
+.git-backup-*/
