@@ -5,6 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>LoveTree - GPT v2 Browse</title>
   <link rel="stylesheet" href="../../css/gpt-v2/common.css" />
+  <style>
+    .browse-wrap{display:grid;grid-template-columns:.94fr 1.02fr;gap:18px;align-items:start}
+    .browse-hero .display{font-size:clamp(40px,4.5vw,62px);line-height:1.18}
+    .soft-panel{background:rgba(255,255,255,.44);border:1px solid rgba(255,255,255,.82);box-shadow:var(--shadow-md);backdrop-filter:blur(8px);border-radius:30px;padding:18px}
+    .search-grid{display:grid;grid-template-columns:minmax(0,1.5fr) repeat(6,auto);gap:10px;align-items:center}
+    .result-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:14px}
+    .result-card{display:grid;grid-template-columns:168px 1fr;gap:14px;padding:12px;border-radius:22px;background:rgba(255,255,255,.46);border:1px solid rgba(255,255,255,.82);box-shadow:var(--shadow-sm)}
+    .result-thumb{height:156px;border-radius:16px;background-size:cover;background-position:center}
+    .result-card h4{margin:4px 0 8px;color:#664d42;font-size:18px}.result-card p{margin:0;color:#92796d;line-height:1.6}
+    .tiny-tags{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.tiny-tags span{padding:7px 10px;border-radius:999px;background:rgba(249,240,232,.9);color:#af8876;font-size:12px;font-weight:700;border:1px solid rgba(229,212,201,.92)}
+    .hub{padding:24px}.hub .display{font-size:28px}.hub-collage{position:relative;min-height:560px;margin-top:16px;border-radius:28px;background:linear-gradient(180deg,rgba(255,250,246,.3),rgba(255,248,243,.16));overflow:hidden}.hub-collage .vine{inset:34px 18px 20px}.sticky-note,.hub-photo{position:absolute;background:rgba(255,251,247,.96);border:1px solid rgba(233,218,208,.92);box-shadow:var(--shadow-md);border-radius:18px}.sticky-note{padding:16px}.hub-photo{padding:14px}.hub-photo .photo{height:170px}.hub-foot{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:18px}.count{font-family:Georgia,serif;font-size:20px;color:#7c655b}@media (max-width:1280px){.browse-wrap{grid-template-columns:1fr}.result-grid{grid-template-columns:1fr}}@media (max-width:860px){.search-grid,.result-card{grid-template-columns:1fr}.hub-collage{min-height:auto}.sticky-note,.hub-photo{position:relative!important;left:auto!important;right:auto!important;top:auto!important;bottom:auto!important;transform:none!important;width:100%!important;margin-bottom:16px}.hub-collage .vine{display:none}}
+  </style>
 </head>
 <body>
   <div class="site-shell">
@@ -19,43 +31,52 @@
       <div class="user-pill"><div class="avatar"></div><span>오늘도 빛나는 하루</span></div>
     </header>
 
-    <section class="grid-browse">
-      <div>
-        <article class="hero-copy">
+    <main class="browse-wrap">
+      <section>
+        <article class="hero-copy browse-hero">
           <div class="eyebrow">✿ 공개 러브트리 둘러보기</div>
           <h1 class="display">마음이 머무는 <span class="text-accent">순간들</span>을 천천히 감상해보세요</h1>
           <p class="lead">다른 팬들이 정성껏 이어간 순간과 감정을 둘러보며, 마음이 닿는 러브트리를 천천히 만나보세요.</p>
         </article>
 
-        <article class="panel" style="margin-top:18px;">
-          <div class="search-row">
+        <article class="soft-panel" style="margin-top:18px">
+          <div class="search-grid">
             <div class="search-bar">🔍 아티스트나 감정으로 찾아보세요</div>
             <div class="chip rose">전체</div>
             <div class="chip">설렘</div>
+            <div class="chip">위로</div>
             <div class="chip">추억</div>
             <div class="chip">응원</div>
+            <div class="chip">최근 공개순 ▾</div>
           </div>
 
-          <div class="browse-list" style="margin-top:14px;">
-            <article class="browse-card"><div class="browse-thumb photo-home-2"></div><div><h4>레드와 벨벳 사이</h4><p>무대와 객석, 우리의 마음이 차분히 붉은 기록</p><div class="tiny-tags"><span>설렘</span><span>추억</span></div><div class="card-meta"><span>순간 24개</span><span>2023–2024</span></div></div></article>
-            <article class="browse-card"><div class="browse-thumb photo-soft-1"></div><div><h4>새로운 계절</h4><p>계절을 선물처럼 건네준 너와 함께한 순간들</p><div class="tiny-tags"><span>계절</span><span>설렘</span></div><div class="card-meta"><span>순간 23개</span><span>2024 봄</span></div></div></article>
-            <article class="browse-card"><div class="browse-thumb photo-home-1"></div><div><h4>보랏빛 순간</h4><p>오랜 응원과 위로가 쌓인 기억</p><div class="tiny-tags"><span>위로</span><span>응원</span></div><div class="card-meta"><span>순간 24개</span><span>2021–2024</span></div></div></article>
-            <article class="browse-card"><div class="browse-thumb photo-notebook"></div><div><h4>오래 곁에 남은 문장들</h4><p>노래와 순간이 남긴 마음의 문장</p><div class="tiny-tags"><span>위로</span><span>문장</span></div><div class="card-meta"><span>순간 18개</span><span>2020–2024</span></div></div></article>
+          <div class="result-grid">
+            <article class="result-card"><div class="result-thumb photo-home-2"></div><div><h4>레드와 벨벳 사이</h4><p>무대와 객석, 우리의 마음이 차분히 붉은 기록</p><div class="tiny-tags"><span>설렘</span><span>추억</span><span>무대</span></div><div class="card-meta"><span>순간 24개</span><span>2023–2024</span></div></div></article>
+            <article class="result-card"><div class="result-thumb photo-home-2"></div><div><h4>완성형 아이돌의 서사</h4><p>성장과 약속의 시간을 함께 눈부신 순간들</p><div class="tiny-tags"><span>응원</span><span>설렘</span><span>성장</span></div><div class="card-meta"><span>순간 28개</span><span>2022–2024</span></div></div></article>
+            <article class="result-card"><div class="result-thumb photo-soft-1"></div><div><h4>우리가 사랑하는 새로운 계절</h4><p>계절을 선물처럼 건네준 너와 함께한 순간들</p><div class="tiny-tags"><span>계절</span><span>설렘</span><span>추억</span></div><div class="card-meta"><span>순간 23개</span><span>2024 봄</span></div></div></article>
+            <article class="result-card"><div class="result-thumb photo-home-1"></div><div><h4>함께 쌓인 보랏빛 순간</h4><p>오랜 응원과 위로가 다양한 기억으로 남은 트리</p><div class="tiny-tags"><span>위로</span><span>응원</span><span>추억</span></div><div class="card-meta"><span>순간 24개</span><span>2021–2024</span></div></div></article>
+            <article class="result-card"><div class="result-thumb photo-home-3"></div><div><h4>반짝이는 우리의 청춘 기록</h4><p>추억과 설렘이 반짝이던 시간의 조각들</p><div class="tiny-tags"><span>청춘</span><span>추억</span><span>설렘</span></div><div class="card-meta"><span>순간 21개</span><span>2022–2023</span></div></div></article>
+            <article class="result-card"><div class="result-thumb photo-notebook"></div><div><h4>오래 곁에 남은 문장들</h4><p>노래와 순간이 남긴 마음의 문장</p><div class="tiny-tags"><span>문장</span><span>위로</span><span>추억</span></div><div class="card-meta"><span>순간 18개</span><span>2020–2024</span></div></div></article>
           </div>
         </article>
-      </div>
+      </section>
 
-      <aside class="panel">
+      <aside class="soft-panel hub">
         <div class="eyebrow">✿ 감상 허브</div>
-        <h2 class="display" style="font-size:28px;">함께 쌓인 보랏빛 순간</h2>
-        <p class="lead" style="font-size:16px;">서로의 응원과 위로가 오랜 시간 차곡차곡 쌓여 만들어진 보랏빛 순간들입니다.</p>
-        <div class="collage" style="min-height:420px; margin-top:16px; border-radius:24px;">
-          <div class="photo-card" style="left:24px; top:24px; width:210px;"><div class="photo photo-home-1" style="height:200px;"></div></div>
-          <div class="note" style="right:24px; top:40px; width:220px; padding:16px;"><div class="paper-text">네가 있어 준 날이 내게는 언제나 빛이 되었어.</div></div>
-          <div class="note" style="left:42px; bottom:28px; width:180px; padding:16px;"><div class="label">기억</div><div class="paper-text">그날의 떨림이 지금의 나를 만들어줘서 고마워.</div></div>
+        <h2 class="display"><span style="color:#8e63b7">함께 쌓인 보랏빛 순간</span></h2>
+        <p class="lead" style="font-size:16px">서로의 응원과 위로가 오랜 시간 차곡차곡 쌓여 만들어진 보랏빛 순간들입니다. 흔들리던 밤의 말들, 작은 위로까지 모두 다정한 기억으로 남아 있어요.</p>
+        <div class="hub-collage">
+          <div class="vine"></div>
+          <div class="sticky-note" style="left:0;top:92px;width:172px"><div class="label">감정</div><div class="paper-text">고마움<br>설렘<br>따뜻함<br>위로</div></div>
+          <div class="hub-photo" style="left:174px;top:24px;width:234px;transform:rotate(6deg)"><div class="photo photo-home-1" style="height:228px"></div></div>
+          <div class="sticky-note" style="right:0;top:56px;width:194px;transform:rotate(3deg)"><div class="paper-text">네가 있어 준 날이 내게는 언제나 빛이 되었어. 고마워, 정말로. ♡</div></div>
+          <div class="sticky-note" style="left:30px;bottom:124px;width:176px"><div class="label">기억</div><div class="paper-text">그날의 떨림이 지금의 나를 만들어줘서 고마워.</div></div>
+          <div class="hub-photo" style="left:214px;bottom:102px;width:196px;transform:rotate(-2deg)"><div class="label">순간</div><div class="photo photo-home-1" style="height:160px"></div><div class="caption">우리가 함께한 봄의 밤<small>2021.04.22</small></div></div>
+          <div class="sticky-note" style="right:8px;bottom:112px;width:252px"><div class="label">흐름</div><div class="paper-text">처음의 설렘에서<br>오래 남는 위로까지</div><div class="tiny-tags"><span>♡</span><span>☾</span><span>✦</span></div></div>
         </div>
+        <div class="hub-foot"><div class="count">✿ 대표 순간 24개</div><a class="btn btn-primary" href="#">이 트리 열기 ✿</a></div>
       </aside>
-    </section>
+    </main>
   </div>
 </body>
 </html>
