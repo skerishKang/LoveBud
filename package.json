@@ -2,7 +2,7 @@
   "name": "lovebud-mvp",
   "version": "1.0.0",
   "private": true,
-  "description": "LoveBud MVP — Netlify static site + Functions",
+  "description": "LoveBud — Cloudflare Pages frontend + same-origin API entry with Modal/Vercel/Netlify transitional layers",
   "scripts": {
     "lint": "node scripts/lint-static.js",
     "build": "node scripts/build-static.js",
