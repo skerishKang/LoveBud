@@ -15,8 +15,8 @@
       en: 'Today\'s Public Picks'
     },
     'search.title': {
-      ko: '공개 러브트리 둘러보기',
-      en: 'Browse Public LoveTrees'
+      ko: '러브트리 둘러보기',
+      en: 'Browse LoveTrees'
     },
     'search.subtitle': {
       ko: '다른 팬이 남긴 순간과 흐름을 따라가 보세요.',
