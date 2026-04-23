@@ -385,6 +385,15 @@
         }
 
         /* 비디오 재생 중 숨길 요소들 (SVG, 캡션, 성장 카드, 배경 카드, 가지 등) */
+        .home-v3-collage.is-video-pending .growth-tree-svg,
+        .home-v3-collage.is-video-pending .growth-stage-card,
+        .home-v3-collage.is-video-pending .growth-stage-caption,
+        .home-v3-collage.is-video-pending .home-v3-card,
+        .home-v3-collage.is-video-pending .home-v3-branch,
+        .home-v3-collage.is-video-pending .home-v3-note-paper,
+        .home-v3-collage.is-video-pending .home-v3-word,
+        .home-v3-collage.is-video-pending .home-v3-dots,
+        .home-v3-collage.is-video-pending .home-v3-halo,
         .home-v3-collage.is-video-active .growth-tree-svg,
         .home-v3-collage.is-video-active .growth-stage-card,
         .home-v3-collage.is-video-active .growth-stage-caption,
@@ -940,7 +949,7 @@
                     </div>
                 </div>
 
-                <div class="home-v3-collage reveal" aria-hidden="true">
+                <div class="home-v3-collage reveal is-video-pending" aria-hidden="true">
                     <div class="home-v3-growth-stage">
                         <video id="hero-growth-video" class="growth-stage-video" autoplay muted playsinline loop preload="metadata" src="/docs/video/home-hero.mp4"></video>
                         <div class="growth-stage-caption">순간 하나가 이어지고, 감정의 가지가 자라나요</div>
@@ -1136,16 +1145,22 @@
         (function() {
             const video = document.getElementById('hero-growth-video');
             if (!video) return;
+            const collage = video.closest('.home-v3-collage');
+            const activateVideoUI = () => {
+                collage?.classList.remove('is-video-pending');
+                collage?.classList.add('is-video-active');
+            };
+            const deactivateVideoUI = () => {
+                collage?.classList.remove('is-video-pending');
+                collage?.classList.remove('is-video-active');
+            };
             const checkReducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
             if (checkReducedMotion()) {
+                deactivateVideoUI();
                 video.style.display = 'none';
                 video.pause();
                 return;
             }
-
-            const collage = video.closest('.home-v3-collage');
-            const activateVideoUI = () => collage?.classList.add('is-video-active');
-            const deactivateVideoUI = () => collage?.classList.remove('is-video-active');
 
             video.addEventListener('playing', activateVideoUI);
 
