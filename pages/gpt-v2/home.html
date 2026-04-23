@@ -5,10 +5,34 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>LoveTree - GPT v2 Home</title>
   <link rel="stylesheet" href="../../css/gpt-v2/common.css" />
+  <style>
+    .home-shell{display:grid;gap:18px}
+    .home-topbar .brand-copy strong{font-size:26px;letter-spacing:-.05em}
+    .home-topbar .brand-copy span{font-size:16px}
+    .home-topbar .main-nav{gap:24px}.home-topbar .main-nav a{background:transparent;padding:10px 0}
+    .home-hero{display:grid;grid-template-columns:.96fr 1.04fr;gap:20px;align-items:stretch}
+    .home-copy,.home-collage,.home-features,.home-curation{background:rgba(255,255,255,.44);border:1px solid rgba(255,255,255,.82);box-shadow:var(--shadow-md);backdrop-filter:blur(8px);border-radius:34px}
+    .home-copy{padding:48px 38px 34px;min-height:658px}.home-copy .display{font-size:clamp(54px,5vw,82px);line-height:1.12;letter-spacing:-.06em;max-width:520px}.home-copy .lead{font-size:18px;line-height:1.75;max-width:510px;margin-top:26px}.home-copy .btn-row{margin-top:36px}
+    .home-collage{position:relative;min-height:658px;overflow:hidden;background:linear-gradient(180deg,rgba(255,251,246,.48),rgba(255,247,242,.22))}
+    .home-collage::before,.home-collage::after{content:"";position:absolute;border-radius:999px;border:2px solid rgba(214,173,152,.28);pointer-events:none}.home-collage::before{width:560px;height:420px;left:68px;top:86px;border-color:rgba(214,173,152,.06) rgba(214,173,152,.34) rgba(214,173,152,.16) rgba(214,173,152,.3)}.home-collage::after{width:650px;height:470px;left:10px;top:52px;border-color:rgba(227,188,166,.08) rgba(227,188,166,.2) rgba(227,188,166,.12) rgba(227,188,166,.24)}
+    .branch-line{position:absolute;left:84px;right:56px;top:90px;bottom:88px;pointer-events:none}.branch-line span{position:absolute;display:block;border-top:2px solid rgba(213,161,145,.48);box-shadow:0 0 16px rgba(255,215,174,.35)}.branch-line .l1{left:122px;top:130px;width:228px;transform:rotate(8deg)}.branch-line .l2{left:210px;top:265px;width:170px;transform:rotate(-22deg)}.branch-line .l3{left:340px;top:178px;width:188px;transform:rotate(-12deg)}.branch-line .l4{left:365px;top:352px;width:162px;transform:rotate(12deg)}
+    .petal{position:absolute;width:16px;height:10px;border-radius:999px 999px 999px 70px;background:linear-gradient(145deg,rgba(255,236,231,.98),rgba(245,198,192,.82));box-shadow:0 8px 16px rgba(223,166,154,.12)}
+    .p1{left:110px;top:302px;transform:rotate(-18deg)}.p2{left:212px;top:208px;transform:rotate(28deg)}.p3{right:36px;top:110px;transform:rotate(12deg)}.p4{right:88px;bottom:112px;transform:rotate(-24deg)}.p5{left:306px;bottom:134px;transform:rotate(8deg)}.p6{left:34px;bottom:96px;transform:rotate(-10deg)}
+    .home-card,.home-note,.home-paper,.mini-player{position:absolute;background:rgba(255,251,247,.96);border:1px solid rgba(233,218,208,.92);box-shadow:var(--shadow-md)}
+    .home-card{width:188px;padding:14px;border-radius:18px}.home-card .photo{height:188px}.home-note{padding:18px 18px 16px;border-radius:18px}.home-paper{width:308px;min-height:438px;padding:34px 28px 108px;border-radius:30px;background:linear-gradient(180deg,rgba(252,246,240,.97),rgba(246,236,226,.98))}.home-paper:before{content:"";position:absolute;top:16px;right:26px;width:82px;height:24px;border-radius:4px;background:rgba(229,190,183,.52);transform:rotate(16deg)}.home-paper:after{content:"";position:absolute;top:14px;right:28px;width:16px;height:16px;border-radius:50%;background:#9e6e57;box-shadow:0 2px 6px rgba(71,39,24,.24)}
+    .tag{position:absolute;top:-12px;left:16px;padding:5px 10px;border-radius:8px;background:#e9d2b1;color:#8b6d5d;font-size:12px;font-weight:800}
+    .home-paper .paper-text{font-size:18px;line-height:1.82}.flower{position:absolute;right:62px;top:126px;width:44px;height:164px}.flower:before,.flower:after{content:"";position:absolute}.flower:before{left:20px;top:10px;width:2px;height:132px;background:linear-gradient(180deg,#8ea17e,#6d8760);transform:rotate(8deg);border-radius:2px}.flower:after{inset:0;background:radial-gradient(circle at 14px 16px,#e7aab0 0 10px,transparent 11px),radial-gradient(circle at 28px 26px,#f1b8c0 0 9px,transparent 10px),radial-gradient(circle at 11px 36px,#e9afb6 0 8px,transparent 9px),radial-gradient(circle at 32px 48px,#f2c1ca 0 8px,transparent 9px),radial-gradient(circle at 15px 54px,#efb5bf 0 7px,transparent 8px)}
+    .mini-player{left:30px;right:30px;bottom:26px;min-height:86px;border-radius:18px;padding:16px;display:flex;gap:14px;align-items:center;background:rgba(255,255,255,.74)}
+    .mini-player .album{width:52px;height:52px;border-radius:10px;background-size:cover;background-position:center}.mini-player .track{font-size:13px;color:#81685d}.mini-player .track strong{display:block;font-size:14px;margin-bottom:4px}.mini-player .play-icons{margin-left:auto;display:flex;gap:12px;color:#7b665c;font-size:14px}
+    .home-feature-row{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}.feature-box{display:flex;align-items:center;gap:16px;padding:22px;border-radius:24px;background:rgba(255,255,255,.42);border:1px solid rgba(255,255,255,.82);box-shadow:var(--shadow-sm)}.feature-ico{width:76px;height:76px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:30px;flex:0 0 auto}.ico-gold{background:linear-gradient(180deg,#e1bc8a,#cb9f68)}.ico-rose{background:linear-gradient(180deg,#ebb0ad,#db8a87)}.ico-tree{background:linear-gradient(180deg,#dfc39e,#d2a975)}.feature-box h3{margin:0 0 8px;font-size:28px;letter-spacing:-.04em;color:#6b5246}.feature-box p{margin:0;color:#8a7368;line-height:1.6}
+    .home-curation{padding:24px 24px 22px}.curation-grid{display:grid;grid-template-columns:280px 1fr;gap:22px;align-items:start}.curation-copy{padding:16px 8px 0 6px}.curation-copy h2{margin:0 0 12px;font-size:40px;letter-spacing:-.05em;color:#60473d}.curation-copy p{margin:0;color:#91796d;line-height:1.75}.tree-row{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.tree-card{overflow:hidden;border-radius:24px;background:rgba(255,255,255,.52);border:1px solid rgba(255,255,255,.84);box-shadow:var(--shadow-sm);position:relative}.tree-thumb{height:154px;background-size:cover;background-position:center}.tree-body{padding:18px 20px 18px;background:rgba(255,255,255,.8)}.tree-body h4{margin:0 0 6px;color:#684f44;font-size:20px}.tree-body p{margin:0;color:#947d71;line-height:1.55}.tree-meta{display:flex;gap:14px;color:#b09284;font-size:13px;margin-top:12px}.round-badge{position:absolute;right:16px;top:132px;width:52px;height:52px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:22px;box-shadow:0 10px 18px rgba(188,146,123,.16)}.rb-lav{background:linear-gradient(180deg,#b791d4,#9a73bf)}.rb-gold{background:linear-gradient(180deg,#e1bc8a,#cb9f68)}.rb-rose{background:linear-gradient(180deg,#ebb0ad,#db8a87)}
+    @media (max-width:1280px){.home-hero,.curation-grid{grid-template-columns:1fr}.home-feature-row,.tree-row{grid-template-columns:1fr 1fr}.home-copy{min-height:auto}.home-collage{min-height:720px}}
+    @media (max-width:860px){.home-feature-row,.tree-row{grid-template-columns:1fr}.home-collage{min-height:auto}.home-card,.home-note,.home-paper{position:relative!important;left:auto!important;right:auto!important;top:auto!important;bottom:auto!important;transform:none!important;width:100%!important;margin-bottom:16px}.mini-player,.branch-line,.home-collage:before,.home-collage:after,.petal{display:none}.home-copy .display{font-size:46px}}
+  </style>
 </head>
 <body>
-  <div class="site-shell">
-    <header class="topbar">
+  <div class="site-shell home-shell">
+    <header class="topbar home-topbar">
       <div class="brand"><div class="brand-mark">❀</div><div class="brand-copy"><strong>러브트리</strong><span>LoveTree</span></div></div>
       <nav class="main-nav">
         <a href="./home.html" class="active">첫 화면</a>
@@ -19,53 +43,45 @@
       <div class="user-pill"><div class="avatar"></div><span>오늘도 빛나는 하루</span></div>
     </header>
 
-    <main class="grid-hero">
-      <section class="hero-copy">
-        <div class="eyebrow">✿ 러브트리 첫 화면</div>
+    <main class="home-hero">
+      <section class="home-copy">
         <h1 class="display">좋아하는 순간을,<br><span class="text-accent">러브트리</span>로 키워보세요</h1>
-        <p class="lead">사랑한 장면과 노래, 기억과 감정을 차곡차곡 모아 두면 서로의 결이 이어져 하나의 트리로 자라납니다. 러브트리는 마음속 순간들을 오래 간직하고 천천히 돌볼 수 있는 감정의 정원입니다.</p>
+        <p class="lead">사랑한 장면과 노래, 기억과 감정을 차곡차곡 모아 두면,<br>서로의 결이 이어져 하나의 트리로 자라납니다.<br>러브트리는 마음속 순간들을 오래 간직하고<br>천천히 돌볼 수 있는 감정의 정원입니다.</p>
         <div class="btn-row">
           <a class="btn btn-primary" href="./start.html">내 트리 시작하기 ✿</a>
           <a class="btn btn-secondary" href="./browse.html">공개 트리 둘러보기 →</a>
         </div>
       </section>
 
-      <section class="panel collage">
-        <div class="vine"></div>
-        <div class="photo-card" style="left:34px; top:52px; transform:rotate(-7deg);">
-          <div class="label">감정</div>
-          <div class="photo photo-home-1"></div>
-          <div class="caption">심장이 뛰던 그 순간<small>2024.04.20</small></div>
-        </div>
-        <div class="paper" style="left:248px; top:34px;">
-          <div class="paper-text">오늘의 한 줄 ♡<br><br>그날의 떨림이<br>지금의 나를<br>따뜻하게<br>만들어줘서<br>고마워.</div>
-          <div class="music-bar">
-            <div class="album photo-home-1"></div>
-            <div class="track"><strong>우리의 계절이 지나도</strong>LoveTree 플레이리스트</div>
-            <div class="play-icons"><span>◀</span><span>⏸</span><span>▶</span><span>♡</span></div>
-          </div>
-        </div>
-        <div class="photo-card" style="right:24px; top:48px; transform:rotate(7deg);">
-          <div class="label">순간</div>
-          <div class="photo photo-home-2"></div>
-          <div class="caption">빛이 가장 가까웠던 날<small>2024.06.15</small></div>
-        </div>
-        <div class="note" style="left:96px; bottom:74px; width:182px; padding:16px;">
-          <div class="label">기억</div>
-          <div class="paper-text">너의 노래가<br>내 하루의 위로가<br>되어줘서<br>정말 고마워.</div>
-        </div>
-        <div class="photo-card" style="right:36px; bottom:34px; transform:rotate(-3deg);">
-          <div class="label">호흡</div>
-          <div class="photo photo-home-3"></div>
-          <div class="caption">우리가 함께한 모든 시간</div>
-        </div>
+      <section class="home-collage">
+        <div class="branch-line"><span class="l1"></span><span class="l2"></span><span class="l3"></span><span class="l4"></span></div>
+        <span class="petal p1"></span><span class="petal p2"></span><span class="petal p3"></span><span class="petal p4"></span><span class="petal p5"></span><span class="petal p6"></span>
+        <article class="home-card" style="left:40px;top:64px;transform:rotate(-7deg)"><div class="tag">감정</div><div class="photo photo-home-1"></div><div class="caption">심장이 뛰던 그 순간<small>2024.04.20</small></div></article>
+        <article class="home-paper" style="left:238px;top:34px"><div class="paper-text">오늘의 한 줄 ♡<br><br>그날의 떨림이<br>지금의 나를<br>따뜻하게<br>만들어줘서<br>고마워.</div><div class="flower"></div><div class="mini-player"><div class="album photo-home-1"></div><div class="track"><strong>우리의 계절이 지나도</strong>LoveTree 플레이리스트</div><div class="play-icons"><span>◀</span><span>⏸</span><span>▶</span><span>♡</span></div></div></article>
+        <article class="home-card" style="right:30px;top:52px;transform:rotate(6deg)"><div class="tag">순간</div><div class="photo photo-home-2"></div><div class="caption">빛이 가장 가까웠던 날<small>2024.06.15</small></div></article>
+        <article class="home-note" style="left:124px;bottom:92px;width:188px;transform:rotate(2deg)"><div class="tag">기억</div><div class="paper-text" style="font-size:16px;line-height:1.75">너의 노래가<br>내 하루의 위로가<br>되어줘서<br>정말 고마워.</div></article>
+        <article class="home-card" style="right:52px;bottom:46px;transform:rotate(-2deg);width:198px"><div class="tag">호흡</div><div class="photo photo-home-3"></div><div class="caption">우리가 함께한 모든 시간</div></article>
       </section>
     </main>
 
-    <section class="grid-3" style="margin-top:18px;">
-      <article class="card"><h3>대표 순간</h3><p>좋아하는 장면과 감정을 가장 먼저 남겨요</p></article>
-      <article class="card"><h3>이어진 감정</h3><p>순간과 순간이 감정의 흐름으로 연결돼요</p></article>
-      <article class="card"><h3>나만의 트리</h3><p>좋아하는 기억을 하나의 러브트리로 키워가요</p></article>
+    <section class="home-feature-row">
+      <article class="feature-box"><div class="feature-ico ico-gold">✶</div><div><h3>대표 순간</h3><p>좋아하는 장면과 감정을 가장 먼저 남겨요</p></div></article>
+      <article class="feature-box"><div class="feature-ico ico-rose">♡</div><div><h3>이어진 감정</h3><p>순간과 순간이 감정의 흐름으로 연결돼요</p></div></article>
+      <article class="feature-box"><div class="feature-ico ico-tree">✺</div><div><h3>나만의 트리</h3><p>좋아하는 기억을 하나의 러브트리로 키워가요</p></div></article>
+    </section>
+
+    <section class="home-curation">
+      <div class="curation-grid">
+        <div class="curation-copy">
+          <h2 class="display">마음이 닿은 트리들</h2>
+          <p>다른 팬들이 가꾼 따뜻한 트리를 만나보세요.</p>
+        </div>
+        <div class="tree-row">
+          <article class="tree-card"><div class="tree-thumb photo-home-1"></div><div class="round-badge rb-lav">✿</div><div class="tree-body"><h4>보랏빛 순간</h4><p>함께 만든 기억의 조각들</p><div class="tree-meta"><span>♡ 1,024</span><span>◌ 128</span></div></div></article>
+          <article class="tree-card"><div class="tree-thumb photo-home-2"></div><div class="round-badge rb-gold">✦</div><div class="tree-body"><h4>빛나던 무대</h4><p>우리가 빛났던 그 계절</p><div class="tree-meta"><span>♡ 2,318</span><span>◌ 256</span></div></div></article>
+          <article class="tree-card"><div class="tree-thumb photo-soft-1"></div><div class="round-badge rb-rose">❀</div><div class="tree-body"><h4>우리가 사랑한 계절</h4><p>봄, 여름, 가을, 그리고 너</p><div class="tree-meta"><span>♡ 1,587</span><span>◌ 172</span></div></div></article>
+        </div>
+      </div>
     </section>
   </div>
 </body>
