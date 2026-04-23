@@ -375,6 +375,32 @@
             letter-spacing: -0.02em;
         }
 
+        .preview-panel-title-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .preview-mobile-close {
+            display: none;
+            appearance: none;
+            border: 1px solid rgba(144, 73, 81, 0.10);
+            background: rgba(255,255,255,0.92);
+            color: var(--primary);
+            width: 40px;
+            height: 40px;
+            border-radius: 999px;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 18px rgba(75,64,57,0.05);
+            cursor: pointer;
+            flex: 0 0 auto;
+        }
+
+        .preview-mobile-close .material-symbols-outlined {
+            font-size: 20px;
+        }
+
         .preview-badge {
             font-size: 11px;
             font-weight: 900;
@@ -503,8 +529,13 @@
 
             .preview-sidebar {
                 order: -1;
+                display: none;
                 padding: 22px 18px;
                 border-radius: 1.5rem;
+            }
+
+            .preview-sidebar.is-open {
+                display: block;
             }
 
             .preview-panel-header {
@@ -512,8 +543,17 @@
                 gap: 8px;
             }
 
+            .preview-panel-title-group {
+                min-width: 0;
+                flex: 1 1 auto;
+            }
+
             .preview-panel-header h3 {
                 font-size: 1.45rem;
+            }
+
+            .preview-mobile-close {
+                display: inline-flex;
             }
 
             .tag-chip {
@@ -588,8 +628,13 @@
 
         <aside class="preview-sidebar" id="previewSidebar">
             <div class="preview-panel-header">
-                <h3>감상 허브</h3>
-                <span class="preview-badge">선택한 트리</span>
+                <div class="preview-panel-title-group">
+                    <h3>감상 허브</h3>
+                    <span class="preview-badge">선택한 트리</span>
+                </div>
+                <button type="button" class="preview-mobile-close" id="previewMobileClose" aria-label="감상 닫기">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
             </div>
             <div id="previewVideoContainer" class="video-container" style="margin-bottom: 24px;">
                 <div class="preview-empty-state" style="width:100%; height:100%; display:flex; flex-direction: column; align-items:center; justify-content:center; color: var(--on-surface-variant); font-size: 14px; text-align: center; padding: 20px;">
@@ -636,7 +681,7 @@
     <script src="../js/search-data-adapter.js?v=20260422-1"></script>
     <script src="../js/search-card-renderer.js?v=20260422-1"></script>
     <script src="../js/search-preview-renderer.js?v=20260422-4"></script>
-    <script src="../js/search.js?v=20260422-4"></script>
+    <script src="../js/search.js?v=20260423-2"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="../js/firebase-config.js?v=20260417-31"></script>
