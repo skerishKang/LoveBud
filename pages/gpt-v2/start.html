@@ -1,34 +1,57 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="ko">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>GPT v2 Start</title>
-  <link rel="stylesheet" href="../../css/gpt-v2/common.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LoveTree - GPT v2 Start</title>
+  <link rel="stylesheet" href="../../css/gpt-v2/common.css" />
 </head>
 <body>
   <div class="site-shell">
     <header class="topbar">
-      <div class="brand"><div class="brand-mark">*</div><div class="brand-copy"><strong>LoveTree</strong><span>GPT v2</span></div></div>
+      <div class="brand"><div class="brand-mark">❀</div><div class="brand-copy"><strong>러브트리</strong><span>LoveTree</span></div></div>
       <nav class="main-nav">
-        <a href="./home.html">Home</a>
-        <a href="./intro.html">Intro</a>
-        <a href="./browse.html">Browse</a>
-        <a href="./start.html" class="active">Start</a>
+        <a href="./home.html">첫 화면</a>
+        <a href="./intro.html">LoveTree 소개 보기</a>
+        <a href="./browse.html">둘러보기</a>
+        <a href="./start.html" class="active">내 러브트리 시작하기</a>
       </nav>
-      <div class="user-pill"><div class="avatar"></div><span>Draft</span></div>
+      <div class="user-pill"><div class="avatar"></div><span>오늘도 빛나는 하루</span></div>
     </header>
-    <section class="grid-2">
-      <article class="hero-copy">
-        <div class="eyebrow">Start</div>
-        <h1 class="display">Start page</h1>
-        <p class="lead">Scaffold page for GPT v2.</p>
-      </article>
-      <article class="card">
-        <h3>Setup</h3>
-        <p>Placeholder content.</p>
-      </article>
-    </section>
+
+    <main class="grid-hero">
+      <section>
+        <article class="hero-copy" style="margin-bottom:18px;">
+          <div class="eyebrow">✿ 내 러브트리 시작하기</div>
+          <h1 class="display">오래 품고 싶은 순간을,<br><span class="text-accent">러브트리</span>로 시작해보세요</h1>
+          <p class="lead">거창하지 않아도 괜찮아요. 좋아하는 장면, 노래, 감정 하나만 있어도 러브트리는 충분히 시작될 수 있어요.</p>
+        </article>
+
+        <article class="panel">
+          <h3 class="section-title">러브트리 제목</h3>
+          <div class="input">예: 보랏빛으로 남은 순간들</div>
+          <h3 class="section-title" style="margin-top:22px;">공개 범위</h3>
+          <div class="grid-3" style="margin-top:12px;">
+            <article class="card"><h4>비공개로 시작하기</h4><p>나만 볼 수 있어요</p></article>
+            <article class="card"><h4>나중에 공개할게요</h4><p>준비되면 열어볼게요</p></article>
+            <article class="card"><h4>공개 러브트리로 이어가기</h4><p>다른 사람과 나눌 수 있어요</p></article>
+          </div>
+          <div class="btn-row">
+            <a class="btn btn-primary" href="./editor.html">내 러브트리 만들기 ✿</a>
+            <a class="btn btn-secondary" href="./browse.html">공개 트리 먼저 둘러보기</a>
+          </div>
+        </article>
+      </section>
+
+      <section class="panel collage" style="min-height:680px;">
+        <div class="vine"></div>
+        <div class="note" style="left:68px; top:88px; width:210px; padding:16px;"><div class="label">시작</div><div class="paper-text">이 마음의<br>시작을<br>남겨둘게. ♡</div></div>
+        <div class="paper" style="left:296px; top:42px; width:244px; min-height:250px; padding:34px 20px 20px;"><div class="label">첫 순간</div></div>
+        <div class="note" style="right:30px; top:182px; width:164px; padding:16px;"><div class="label">순간</div><div class="paper-text">작은 순간 하나로도 충분해. ♡</div></div>
+        <div class="photo-card" style="left:168px; bottom:108px; width:232px; transform:rotate(-6deg);"><div class="photo photo-soft-2" style="height:220px;"></div><div class="caption">처음의 설렘이 오래 머물 수 있도록.</div></div>
+        <div class="note" style="right:96px; bottom:56px; width:184px; padding:16px;"><div class="label">기억</div><div class="paper-text">지금 이 장면이 훗날의 위로가 되기를.</div></div>
+      </section>
+    </main>
   </div>
 </body>
 </html>
