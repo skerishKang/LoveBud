@@ -16,8 +16,10 @@
     --background: #fdfbf7;        /* 종이 질감 베이지 (완전 화이트 금지) */
     --on-background: #3e342f;     /* 다크 브라운 텍스트 (완전 블랙 금지) */
     --surface: #fdfbf7;
-    --on-surface: #3e342f;
-    --on-surface-variant: #6b5d54; /* 뮤트 브라운 - 보조 텍스트 */
+    --on-surface: #483934;        /* 다크 브라운 - 메인 텍스트 (Premium) */
+    --on-surface-variant: #6c5953; /* 뮤트 브라운 - 보조 텍스트 (Premium) */
+    --on-surface-soft: #7f5d5f;    /* 뮤트 로즈 브라운 - 부드러운 강조 */
+    --on-surface-note: #9c8080;    /* 연한 로즈 그레이 - 각주/노트 */
 
     --surface-container-low: #f8f5f0;
     --surface-container: #f2efe9;
@@ -70,10 +72,15 @@ h1, h2, h3, h4, .headline {
 
 .bokeh-bg {
     min-height: 100vh;
-    background: linear-gradient(135deg, #c2938c 0%, #e8d5c4 35%, #f6f1e9 50%, #9da98f 100%);
+    background: 
+        radial-gradient(circle at 12% 12%, rgba(255, 222, 211, 0.72), transparent 22%),
+        radial-gradient(circle at 84% 10%, rgba(239, 206, 215, 0.58), transparent 20%),
+        radial-gradient(circle at 76% 66%, rgba(236, 231, 212, 0.42), transparent 24%),
+        linear-gradient(180deg, #fff9f4 0%, #f9f0ea 42%, #f7efe9 100%);
     background-attachment: fixed;
     background-repeat: no-repeat;
     background-size: cover;
+    color: var(--on-surface);
 }
 
 /* Header Refinement */

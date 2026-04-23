@@ -260,9 +260,20 @@
     .intro-section p {
       font-size: 1rem;
       color: var(--on-surface-variant);
-      line-height: 1.65;
+      line-height: 1.75;
       margin-bottom: 0;
-      max-width: 620px;
+    }
+
+    .intro-grid-layout {
+      display: grid;
+      grid-template-columns: 1fr 1.2fr;
+      gap: 64px;
+      align-items: start;
+    }
+
+    .intro-section-text {
+      position: sticky;
+      top: 120px;
     }
 
     /* 러브트리란 섹션 강화 */
@@ -991,6 +1002,15 @@
         flex-direction: column;
         align-items: stretch;
       }
+
+      .intro-grid-layout {
+        grid-template-columns: 1fr;
+        gap: 32px;
+      }
+
+      .intro-section-text {
+        position: static;
+      }
     }
   </style>
 </head>
@@ -1030,41 +1050,57 @@
       </section>
 
       <!-- What is Lovetree -->
-      <section class="intro-section intro-what-is">
-        <div class="intro-what-eyebrow">서비스 소개</div>
-        <h2 data-i18n="intro.whatIs">러브트리란?</h2>
-        <p class="intro-what-lead" data-i18n="intro.whatIsDesc1">
-          좋아하게 된 첫 장면과 이어진 마음을 하나의 트리로 남기는 공간입니다.
-        </p>
-        <ul class="intro-what-list">
-          <li class="intro-what-item">
-            <span class="intro-what-icon">🌱</span>
-            <div>
-              <strong>첫 순간이 트리의 시작</strong>
-              <p>입덕의 그 장면, 처음 마음이 움직인 순간을 뿌리로 남겨요.</p>
-            </div>
-          </li>
-          <li class="intro-what-item">
-            <span class="intro-what-icon">🌿</span>
-            <div>
-              <strong>감정이 가지로 이어져요</strong>
-              <p>좋아하게 된 순간들을 하나씩 이어 붙이면, 나만의 감정 흐름이 보여요.</p>
-            </div>
-          </li>
-          <li class="intro-what-item">
-            <span class="intro-what-icon">🔒</span>
-            <div>
-              <strong>비공개로 시작해요</strong>
-              <p>처음엔 나만 보는 공간으로 시작하고, 준비되면 공개할 수 있어요.</p>
-            </div>
-          </li>
-        </ul>
+      <section class="intro-section intro-section-wide intro-what-is">
+        <div class="intro-grid-layout">
+          <div class="intro-section-text">
+            <div class="intro-what-eyebrow">서비스 소개</div>
+            <h2 data-i18n="intro.whatIs">러브트리란?</h2>
+            <p class="intro-what-lead" data-i18n="intro.whatIsDesc1">
+              좋아하게 된 첫 장면과 이어진 마음을 하나의 트리로 남기는 공간입니다.
+            </p>
+            <p data-i18n="intro.whatIsDesc2" style="margin-top: 1rem; font-size: 0.95rem; opacity: 0.85;">
+              단순한 아카이빙을 넘어, 나의 감정이 어디서 시작되어 어떻게 깊어졌는지 한눈에 확인할 수 있는 디지털 감정 정원입니다.
+            </p>
+          </div>
+          <div class="intro-section-visual">
+            <ul class="intro-what-list">
+              <li class="intro-what-item">
+                <span class="intro-what-icon">🌱</span>
+                <div>
+                  <strong>첫 순간이 트리의 시작</strong>
+                  <p>입덕의 그 장면, 처음 마음이 움직인 순간을 뿌리로 남겨요.</p>
+                </div>
+              </li>
+              <li class="intro-what-item">
+                <span class="intro-what-icon">🌿</span>
+                <div>
+                  <strong>감정이 가지로 이어져요</strong>
+                  <p>좋아하게 된 순간들을 하나씩 이어 붙이면, 나만의 감정 흐름이 보여요.</p>
+                </div>
+              </li>
+              <li class="intro-what-item">
+                <span class="intro-what-icon">🔒</span>
+                <div>
+                  <strong>비공개로 시작해요</strong>
+                  <p>처음엔 나만 보는 공간으로 시작하고, 준비되면 공개할 수 있어요.</p>
+                </div>
+              </li>
+            </ul>
+          </div>
+        </div>
       </section>
 
       <!-- How to Use -->
       <section class="intro-section intro-section-wide">
-        <h2 data-i18n="intro.howToTitle">처음은 이렇게 남겨요</h2>
-        <div class="how-to-grid">
+        <div class="intro-grid-layout">
+          <div class="intro-section-text">
+            <h2 data-i18n="intro.howToTitle">처음은 이렇게 남겨요</h2>
+            <p data-i18n="intro.howToDesc" style="margin-top: 1rem;">
+              복잡한 과정 없이, 당신의 소중한 순간들을 세 단계를 통해 하나의 트리로 피워낼 수 있습니다.
+            </p>
+          </div>
+          <div class="intro-section-visual">
+            <div class="how-to-grid" style="grid-template-columns: 1fr;">
           <div class="how-to-card">
             <div class="how-to-visual">
               <div class="how-to-badge">01</div>
@@ -1117,71 +1153,81 @@
               <h3 data-i18n="intro.step3Title">다시 감상하기</h3>
               <p data-i18n="intro.step3DescFixed">이어진 장면을 따라가며 좋아하게 된 흐름을 다시 바라보세요.</p>
             </div>
+            </div>
           </div>
         </div>
       </section>
 
       <!-- Value -->
       <section class="intro-section intro-section-wide">
-        <h2 data-i18n="intro.valueTitle">이런 순간이 남아요</h2>
-        <div class="value-grid">
-          <div class="value-item value-item-featured">
-            <div class="value-item-visual" aria-hidden="true">
-              <div class="value-mini-chip">첫 장면</div>
-              <div class="value-mini-card first-moment">
-                <div class="value-mini-play"><span class="material-symbols-outlined" style="font-size:18px;">play_arrow</span></div>
-                <div class="value-mini-line"></div>
-                <div class="value-mini-line short"></div>
-              </div>
-            </div>
-            <div class="value-item-copy">
-              <div class="value-item-eyebrow" data-i18n="intro.value1Eyebrow">가장 먼저 남는 것</div>
-              <h4 data-i18n="intro.value1Title">입덕의 첫 순간을 오래 남기는 공간</h4>
-              <p data-i18n="intro.value1Desc">처음 마음이 움직였던 장면과 감정을 함께 남깁니다.</p>
-            </div>
+        <div class="intro-grid-layout">
+          <div class="intro-section-text">
+            <h2 data-i18n="intro.valueTitle">이런 순간이 남아요</h2>
+            <p data-i18n="intro.valueDesc" style="margin-top: 1rem;">
+              러브트리는 단순히 보관하는 기능을 넘어, 당신의 사랑이 어떤 의미를 갖는지 보여주는 거울이 됩니다.
+            </p>
           </div>
-          <div class="value-item">
-            <div class="value-item-visual" aria-hidden="true">
-              <div class="value-mini-chip">감정 흐름</div>
-              <div class="value-mini-branch">
-                <span class="value-mini-node one"></span>
-                <span class="value-mini-node two"></span>
-                <span class="value-mini-node three"></span>
+          <div class="intro-section-visual">
+            <div class="value-grid" style="grid-template-columns: 1fr;">
+              <div class="value-item value-item-featured">
+                <div class="value-item-visual" aria-hidden="true">
+                  <div class="value-mini-chip">첫 장면</div>
+                  <div class="value-mini-card first-moment">
+                    <div class="value-mini-play"><span class="material-symbols-outlined" style="font-size:18px;">play_arrow</span></div>
+                    <div class="value-mini-line"></div>
+                    <div class="value-mini-line short"></div>
+                  </div>
+                </div>
+                <div class="value-item-copy">
+                  <div class="value-item-eyebrow" data-i18n="intro.value1Eyebrow">가장 먼저 남는 것</div>
+                  <h4 data-i18n="intro.value1Title">입덕의 첫 순간을 오래 남기는 공간</h4>
+                  <p data-i18n="intro.value1Desc">처음 마음이 움직였던 장면과 감정을 함께 남깁니다.</p>
+                </div>
               </div>
-            </div>
-            <div class="value-item-copy">
-              <div class="value-item-eyebrow" data-i18n="intro.value2Eyebrow">감정의 경로</div>
-              <h4 data-i18n="intro.visualizeGrowthTitle">좋아하게 된 경로를 따라가는 공간</h4>
-              <p data-i18n="intro.visualizeGrowthDesc">흩어진 순간이 이어지며 감정의 흐름이 보입니다.</p>
-            </div>
-          </div>
-          <div class="value-item">
-            <div class="value-item-visual" aria-hidden="true">
-              <div class="value-mini-chip">공개 감상</div>
-              <div class="value-mini-stack">
-                <div class="value-mini-bubble one">💬 설렘</div>
-                <div class="value-mini-bubble two">✨ 공감</div>
-                <div class="value-mini-bubble three">💝 장면</div>
+              <div class="value-item">
+                <div class="value-item-visual" aria-hidden="true">
+                  <div class="value-mini-chip">감정 흐름</div>
+                  <div class="value-mini-branch">
+                    <span class="value-mini-node one"></span>
+                    <span class="value-mini-node two"></span>
+                    <span class="value-mini-node three"></span>
+                  </div>
+                </div>
+                <div class="value-item-copy">
+                  <div class="value-item-eyebrow" data-i18n="intro.value2Eyebrow">감정의 경로</div>
+                  <h4 data-i18n="intro.visualizeGrowthTitle">좋아하게 된 경로를 따라가는 공간</h4>
+                  <p data-i18n="intro.visualizeGrowthDesc">흩어진 순간이 이어지며 감정의 흐름이 보입니다.</p>
+                </div>
               </div>
-            </div>
-            <div class="value-item-copy">
-              <div class="value-item-eyebrow" data-i18n="intro.value3Eyebrow">공개 감상</div>
-              <h4 data-i18n="intro.value2Title">다른 팬의 마음을 감상하는 공간</h4>
-              <p data-i18n="intro.value2Desc">공개된 러브트리를 따라가며 비슷한 장면을 만날 수 있습니다.</p>
-            </div>
-          </div>
-          <div class="value-item">
-            <div class="value-item-visual" aria-hidden="true">
-              <div class="value-mini-chip">오래 남는 장면</div>
-              <div class="value-mini-card value-mini-frame">
-                <div class="value-mini-star-row"><span>✦</span><span>✧</span><span>✦</span></div>
-                <div class="value-mini-photo"></div>
+              <div class="value-item">
+                <div class="value-item-visual" aria-hidden="true">
+                  <div class="value-mini-chip">공개 감상</div>
+                  <div class="value-mini-stack">
+                    <div class="value-mini-bubble one">💬 설렘</div>
+                    <div class="value-mini-bubble two">✨ 공감</div>
+                    <div class="value-mini-bubble three">💝 장면</div>
+                  </div>
+                </div>
+                <div class="value-item-copy">
+                  <div class="value-item-eyebrow" data-i18n="intro.value3Eyebrow">공개 감상</div>
+                  <h4 data-i18n="intro.value2Title">다른 팬의 마음을 감상하는 공간</h4>
+                  <p data-i18n="intro.value2Desc">공개된 러브트리를 따라가며 비슷한 장면을 만날 수 있습니다.</p>
+                </div>
               </div>
-            </div>
-            <div class="value-item-copy">
-              <div class="value-item-eyebrow" data-i18n="intro.value4Eyebrow">오래 남는 장면</div>
-              <h4 data-i18n="intro.value3Title">오래 지나도 다시 꺼내보는 공간</h4>
-              <p data-i18n="intro.value3DescFixed">트리 안에서는 그때의 장면을 다시 꺼내볼 수 있습니다.</p>
+              <div class="value-item">
+                <div class="value-item-visual" aria-hidden="true">
+                  <div class="value-mini-chip">오래 남는 장면</div>
+                  <div class="value-mini-card value-mini-frame">
+                    <div class="value-mini-star-row"><span>✦</span><span>✧</span><span>✦</span></div>
+                    <div class="value-mini-photo"></div>
+                  </div>
+                </div>
+                <div class="value-item-copy">
+                  <div class="value-item-eyebrow" data-i18n="intro.value4Eyebrow">오래 남는 장면</div>
+                  <h4 data-i18n="intro.value3Title">오래 지나도 다시 꺼내보는 공간</h4>
+                  <p data-i18n="intro.value3DescFixed">트리 안에서는 그때의 장면을 다시 꺼내볼 수 있습니다.</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
