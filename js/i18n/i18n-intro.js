@@ -177,7 +177,6 @@
     'intro.ctaPrimary': {
       ko: '첫 순간 남기러 가기',
       en: 'Leave My First Moment'
-    },
     }
   };
 })();
