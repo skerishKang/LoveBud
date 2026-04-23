@@ -120,7 +120,7 @@ h1, h2, h3, h4, .headline {
     padding: 8px 16px;
     border-radius: 20px;
     opacity: 0.65;
-    transition: all 0.25s ease;
+    transition: color 0.12s ease, background-color 0.12s ease, opacity 0.12s ease;
     white-space: nowrap;
 }
 
@@ -635,6 +635,7 @@ html:not(.material-symbols-ready) .mobile-nav-toggle .material-symbols-outlined 
         padding: 12px 14px;
         font-size: 14px;
         border-radius: 14px;
+        transition: none;
     }
 
     .nav-actions {
