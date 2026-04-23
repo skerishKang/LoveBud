@@ -36,6 +36,26 @@
          }
      }
 
+    function isSuspiciousYouTubeThumbnailImage(img) {
+        if (!img || !img.currentSrc) return false;
+        const src = String(img.currentSrc || img.src || '');
+        const isYouTubeThumb = src.includes('ytimg.com/vi/') || src.includes('img.youtube.com/vi/');
+        if (!isYouTubeThumb) return false;
+
+        const width = Number(img.naturalWidth || 0);
+        const height = Number(img.naturalHeight || 0);
+        return width > 0 && height > 0 && width <= 120 && height <= 90;
+    }
+
+    function showImageFallback(img) {
+        if (!img) return;
+        img.hidden = true;
+        const fallback = img.nextElementSibling;
+        if (fallback) {
+            fallback.hidden = false;
+        }
+    }
+
     let _resultsList = null;
 
     function init(resultsListEl) {
@@ -103,7 +123,7 @@
             return renderMediaFallback(tree, titleText);
         }
         return `
-            <img src="${src}" alt="${alt}" loading="lazy" onerror="this.hidden=true;this.nextElementSibling.hidden=false">
+            <img src="${src}" alt="${alt}" loading="lazy" onerror="window.LoveBudSearchCardRenderer?.showImageFallback?.(this)" onload="window.LoveBudSearchCardRenderer?.handleImageLoad?.(this)">
             <div class="tree-card-media-fallback" hidden>${renderMediaFallback(tree, titleText)}</div>
         `;
     }
@@ -283,7 +303,13 @@
         renderDemoBadge: renderDemoBadge,
         getTreeIcon: getTreeIcon,
         renderEmotionTags: renderEmotionTags,
-        getBasePath: getBasePath
+        getBasePath: getBasePath,
+        showImageFallback: showImageFallback,
+        handleImageLoad: (img) => {
+            if (isSuspiciousYouTubeThumbnailImage(img)) {
+                showImageFallback(img);
+            }
+        }
     };
 
      console.log('[LoveBudSearchCardRenderer] Search card renderer loaded v20260422-3');
