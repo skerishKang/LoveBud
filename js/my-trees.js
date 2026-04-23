@@ -207,36 +207,165 @@
   }
 
   function closeAllDropdowns() {
-    if (myTreesUI && typeof myTreesUI.closeAllDropdowns === 'function') {
-      return myTreesUI.closeAllDropdowns();
-    }
     document.querySelectorAll('.tree-card-dropdown').forEach(function(dd) {
       dd.classList.remove('show');
     });
   }
 
-  function renderTrees(trees) {
-    if (myTreesUI && typeof myTreesUI.renderTrees === 'function') {
-      return myTreesUI.renderTrees(trees, {
-        setState: setState,
-        stateEnum: STATE,
-        setLastTreesData: function(value) { lastTreesData = value; },
-        updateManageSummary: function(nextTrees, uiOptions) { return updateManageSummary(nextTrees, uiOptions); },
-        buildTreeCard: function(tree, uiOptions) { return buildTreeCard(tree, uiOptions); },
-        normalizeTree: function(tree) { return window.LoveBudNormalize?.normalizeTree(tree); },
-        onRename: renameTree,
-        onDelete: deleteTree,
-        onToggleVisibility: toggleTreeVisibility,
-        onNavigate: function(normalizedTree) {
-          window.location.href = 'editor.html?treeId=' + encodeURIComponent(normalizedTree.id);
-        },
-        onSelect: applyTreeSelection,
-        getSelectedTreeId: getSelectedTreeId,
-        isSelected: function(treeId) { return getSelectedTreeId() === treeId; },
-        closeAllDropdowns: closeAllDropdowns,
-        i18n: window.t || function(k) { return k; }
-      });
+  function setupGlobalListeners() {
+    // Esc key to close dropdowns
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        closeAllDropdowns();
+      }
+    });
+
+    // Outside click to close dropdowns
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('.tree-card-menu') && !e.target.closest('.tree-card-dropdown')) {
+        closeAllDropdowns();
+      }
+    });
+  }
+
+  function buildTreeCard(tree, uiOptions) {
+    var i18n = window.t || function(k) { return k; };
+    var normalizeTree = window.LoveBudNormalize?.normalizeTree;
+    var normalizedTree = typeof normalizeTree === 'function' ? normalizeTree(tree) : tree;
+    
+    // Ensure we have normalized data
+    if (!normalizedTree.id) normalizedTree.id = tree.id;
+    if (!normalizedTree.title) normalizedTree.title = tree.title || i18n('default_tree_title') || '나의 러브트리';
+    if (!normalizedTree.visibility) normalizedTree.visibility = tree.visibility || 'public';
+    
+    var momentCount = (myTreesUI && typeof myTreesUI.getTreeMomentCount === 'function') 
+      ? myTreesUI.getTreeMomentCount(normalizedTree) 
+      : 0;
+    
+    var visClass = normalizedTree.visibility === 'public' ? 'public' : 'private';
+    var visLabel = normalizedTree.visibility === 'public'
+      ? (i18n('myTrees.summary_public') || '공개')
+      : (i18n('myTrees.summary_private') || '비공개');
+    
+    var date = normalizedTree.updatedAt || normalizedTree.createdAt || '';
+    if (date) {
+      date = date.slice(0, 10).replace(/-/g, '.');
     }
+
+    var menuBtnId = 'menuBtn_' + normalizedTree.id;
+    var dropdownId = 'dropdown_' + normalizedTree.id;
+
+    var card = document.createElement('div');
+    card.className = 'tree-card';
+    card.setAttribute('role', 'button');
+    card.setAttribute('tabindex', '0');
+    card.setAttribute('aria-label', normalizedTree.title);
+
+    // Main navigation on card click
+    card.addEventListener('click', function() {
+      window.location.href = 'editor.html?treeId=' + encodeURIComponent(normalizedTree.id);
+    });
+
+    // Accessibility: Enter/Space to navigate
+    card.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        window.location.href = 'editor.html?treeId=' + encodeURIComponent(normalizedTree.id);
+      }
+    });
+
+    var thumbHtml = (myTreesUI && typeof myTreesUI.buildTreeThumbVisual === 'function')
+      ? myTreesUI.buildTreeThumbVisual(normalizedTree, i18n)
+      : '<div class="tree-card-thumb"></div>';
+
+    card.innerHTML = [
+      thumbHtml,
+      '<button class="tree-card-menu" id="' + menuBtnId + '" type="button" aria-label="' + (i18n('myTrees.card_menu') || '트리 관리 열기') + '">',
+        '<span class="material-symbols-outlined" style="font-size:20px;color:var(--on-surface);">more_vert</span>',
+      '</button>',
+      '<div class="tree-card-dropdown" id="' + dropdownId + '">',
+        '<div class="dropdown-item visibility" data-action="visibility">',
+          '<span class="material-symbols-outlined" style="font-size:16px;">' + (normalizedTree.visibility === 'public' ? 'lock' : 'public') + '</span>',
+          (normalizedTree.visibility === 'public' ? (i18n('visibility_make_private') || '비공개로 전환') : (i18n('visibility_make_public') || '공개로 전환')),
+        '</div>',
+        '<div class="dropdown-item rename" data-action="rename">',
+          '<span class="material-symbols-outlined" style="font-size:16px;">edit</span>',
+          i18n('rename') || '이름 변경',
+        '</div>',
+        '<div class="dropdown-item delete" data-action="delete">',
+          '<span class="material-symbols-outlined" style="font-size:16px;">delete</span>',
+          i18n('delete') || '삭제',
+        '</div>',
+      '</div>',
+      '<div class="tree-card-info">',
+        '<div class="tree-card-title-row">',
+          '<div class="tree-card-title">' + (myTreesUI?.escapeHtml ? myTreesUI.escapeHtml(normalizedTree.title) : normalizedTree.title) + '</div>',
+          '<span class="tree-card-count-pill" data-count="' + momentCount + '">' + (i18n('myTrees.moment_count_compact') || '순간 {count}개').replace('{count}', String(momentCount)) + '</span>',
+        '</div>',
+        '<div class="tree-card-meta">',
+          '<span class="tree-card-visibility ' + visClass + '">',
+            '<span class="material-symbols-outlined" style="font-size:12px;">' + (visClass === 'public' ? 'public' : 'lock') + '</span>',
+            visLabel,
+          '</span>',
+          date ? '<span class="tree-card-date">' + date + '</span>' : '',
+        '</div>',
+      '</div>'
+    ].join('');
+
+    // Set up menu events
+    setTimeout(function() {
+      var menuBtn = document.getElementById(menuBtnId);
+      var dropdown = document.getElementById(dropdownId);
+      if (!menuBtn || !dropdown) return;
+
+      menuBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var wasShown = dropdown.classList.contains('show');
+        closeAllDropdowns();
+        if (!wasShown) dropdown.classList.add('show');
+      });
+
+      dropdown.querySelectorAll('.dropdown-item').forEach(function(item) {
+        item.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          var action = this.getAttribute('data-action');
+          if (action === 'visibility') {
+            toggleTreeVisibility(normalizedTree.id, normalizedTree.visibility);
+          } else if (action === 'rename') {
+            renameTree(normalizedTree.id, normalizedTree.title);
+          } else if (action === 'delete') {
+            deleteTree(normalizedTree.id, normalizedTree.title);
+          }
+          closeAllDropdowns();
+        });
+      });
+    }, 0);
+
+    return card;
+  }
+
+  function renderTrees(trees) {
+    var container = document.getElementById('state-loaded');
+    if (!container) return;
+
+    if (!trees || trees.length === 0) {
+      setState(STATE.EMPTY);
+      return;
+    }
+
+    var grid = document.createElement('div');
+    grid.className = 'trees-grid';
+
+    trees.forEach(function(tree) {
+      var card = buildTreeCard(tree);
+      grid.appendChild(card);
+    });
+
+    container.innerHTML = '';
+    container.appendChild(grid);
+    setState(STATE.LOADED);
   }
 
   function sortTrees(trees, sortBy) {
@@ -246,39 +375,11 @@
     return Array.isArray(trees) ? trees.slice() : [];
   }
 
-  function updateManageSummary(trees, uiOptions) {
-    if (myTreesUI && typeof myTreesUI.updateManageSummary === 'function') {
-      return myTreesUI.updateManageSummary(trees, uiOptions || {
-        setLastTreesData: function(value) { lastTreesData = value; },
-        getSelectedTreeId: getSelectedTreeId,
-        onNavigate: function(normalizedTree) {
-          window.location.href = 'editor.html?treeId=' + encodeURIComponent(normalizedTree.id);
-        },
-        onRename: renameTree,
-        onDelete: deleteTree,
-        onToggleVisibility: toggleTreeVisibility,
-        i18n: window.t || function(k) { return k; }
-      });
-    }
-  }
-
-  function buildTreeCard(tree, uiOptions) {
-    if (myTreesUI && typeof myTreesUI.buildTreeCard === 'function') {
-      return myTreesUI.buildTreeCard(tree, uiOptions || {
-        i18n: window.t || function(k) { return k; },
-        normalizeTree: function(nextTree) { return window.LoveBudNormalize?.normalizeTree(nextTree); },
-        onRename: renameTree,
-        onDelete: deleteTree,
-        onToggleVisibility: toggleTreeVisibility,
-        onNavigate: function(normalizedTree) {
-          window.location.href = 'editor.html?treeId=' + encodeURIComponent(normalizedTree.id);
-        },
-        onSelect: applyTreeSelection,
-        getSelectedTreeId: getSelectedTreeId,
-        isSelected: function(treeId) { return getSelectedTreeId() === treeId; },
-        closeAllDropdowns: closeAllDropdowns
-      });
-    }
+  function updateManageSummary(trees) {
+    // Sidebar removed, no summary bar to update
+    // But we still store the data
+    lastTreesData = trees;
+    return trees;
   }
 
   function isTestPublicMode() {
@@ -331,19 +432,10 @@
     startMyTrees(user);
     if (!user || !user.uid) return;
 
+    setupGlobalListeners();
+
     var sortSelect = document.getElementById('sortTreesSelect');
-    if (myTreesState && typeof myTreesState.bindSortSelect === 'function') {
-      myTreesState.bindSortSelect({
-        select: sortSelect,
-        renderTrees: renderTrees,
-        getLastTreesData: function() {
-          if (myTreesState && typeof myTreesState.getLastTreesData === 'function') {
-            return myTreesState.getLastTreesData();
-          }
-          return lastTreesData;
-        }
-      });
-    } else if (sortSelect) {
+    if (sortSelect) {
       sortSelect.addEventListener('change', function() {
         var sorted = sortTrees(lastTreesData, this.value);
         renderTrees(sorted);
