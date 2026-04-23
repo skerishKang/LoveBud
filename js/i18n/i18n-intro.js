@@ -1,6 +1,6 @@
 /**
  * LoveBud - i18n Intro Dictionary
- * v20260423-1
+ * v20260423-2
  *
  * 소개 페이지(intro.html) 번역 키
  */
@@ -21,6 +21,14 @@
     'intro.heroLead': {
       ko: '좋아하게 된 순간과 이어진 마음을 한 트리로 남겨보세요.',
       en: 'Keep the moment you loved and what followed in one tree.'
+    },
+    'intro.heroPrimaryCta': {
+      ko: '나의트리',
+      en: 'My Tree'
+    },
+    'intro.ctaSecondary': {
+      ko: '공개 트리 감상하기',
+      en: 'Browse Public Trees'
     },
     'intro.heroBrowseCta': {
       ko: '공개 트리 감상하기',

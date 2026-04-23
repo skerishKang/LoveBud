@@ -161,7 +161,7 @@
   }
 
   function redirectToLogin() {
-    window.location.href = getLoginRedirectUrl();
+    window.location.replace(getLoginRedirectUrl());
   }
 
   function startMyTrees(user) {
@@ -170,6 +170,7 @@
       return;
     }
 
+    document.body.classList.remove('my-trees-auth-pending');
     setupHeaderCreateButton();
     setupRetryButton();
     loadTrees();
@@ -328,6 +329,7 @@
     myTreesStarted = true;
     myTreesBootedFromCache = !!(options && options.fromCache);
     startMyTrees(user);
+    if (!user || !user.uid) return;
 
     var sortSelect = document.getElementById('sortTreesSelect');
     if (myTreesState && typeof myTreesState.bindSortSelect === 'function') {

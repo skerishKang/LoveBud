@@ -21,7 +21,7 @@
       gap: 40px;
       align-items: center;
       padding: 84px 40px 56px;
-      max-width: 1080px;
+      max-width: var(--page-brand-max);
       margin: 0 auto;
       width: 100%;
     }
@@ -58,8 +58,16 @@
       display: block;
     }
 
+    .intro-hero h1 .title-line:nth-child(1) {
+      color: var(--on-surface);
+    }
+
     .intro-hero h1 .title-accent {
       color: var(--primary);
+    }
+
+    .intro-hero h1 .title-line:nth-child(3) {
+      color: #5f504a;
     }
 
     .intro-hero .lead {
@@ -212,8 +220,9 @@
 
     .intro-hero-actions .btn-round,
     .cta-buttons .btn-round {
-      min-height: 54px;
-      padding: 0 26px;
+      min-height: 56px;
+      padding: 0 30px;
+      border-radius: 999px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -221,40 +230,64 @@
       line-height: 1;
       white-space: nowrap;
       box-sizing: border-box;
+      font-size: 1rem;
+      font-weight: 800;
     }
 
     .intro-cta-primary {
-      box-shadow: 0 14px 30px rgba(144, 73, 81, 0.16);
+      box-shadow: 0 16px 34px rgba(144, 73, 81, 0.24);
     }
 
     .intro-cta-secondary {
-      background: rgba(255,255,255,0.9);
-      border-color: rgba(144, 73, 81, 0.12);
+      position: relative;
+      overflow: visible;
+      background: rgba(255,255,255,0.72);
+      border-color: rgba(144, 73, 81, 0.18);
       color: var(--on-surface);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 14px 34px rgba(75, 64, 57, 0.08);
+    }
+
+    .intro-cta-secondary::after {
+      content: "";
+      position: absolute;
+      inset: -10px -14px;
+      border-radius: inherit;
+      background: radial-gradient(circle, rgba(255, 219, 224, 0.54), rgba(255, 219, 224, 0) 68%);
+      opacity: 0.5;
+      z-index: -1;
+      pointer-events: none;
     }
 
     .intro-cta-secondary:hover {
-      border-color: rgba(144, 73, 81, 0.2);
-      background: rgba(255,255,255,0.98);
+      border-color: rgba(144, 73, 81, 0.28);
+      background: rgba(255,255,255,0.94);
+      box-shadow: 0 18px 42px rgba(144, 73, 81, 0.16);
+    }
+
+    .intro-cta-secondary:hover::after {
+      opacity: 0.9;
     }
 
     .intro-section {
       padding: 44px 40px;
-      max-width: 860px;
+      max-width: var(--page-brand-max);
       margin: 0 auto;
       width: 100%;
       border-top: 1px solid var(--outline-variant);
     }
 
     .intro-section.intro-section-wide {
-      max-width: 1080px;
+      max-width: var(--page-brand-max);
     }
 
     .intro-section h2 {
-      font-size: 1.65rem;
-      font-weight: 800;
-      color: var(--on-surface);
+      font-size: clamp(2rem, 3.2vw, 2.8rem);
+      font-weight: 900;
+      color: var(--primary);
       margin-bottom: 1rem;
+      line-height: 1.1;
+      letter-spacing: 0;
     }
 
     .intro-section p {
@@ -907,7 +940,7 @@
 
     .cta-section {
       padding: 48px 40px 72px;
-      max-width: 860px;
+      max-width: var(--page-brand-max);
       margin: 0 auto;
       width: 100%;
       text-align: center;
@@ -1031,8 +1064,8 @@
             좋아하게 된 순간과 이어진 마음을 한 트리로 남겨보세요.
           </p>
           <div class="intro-hero-actions">
-            <a href="my-trees.html" class="intro-cta-link"><span class="btn-round btn-primary intro-cta-primary" data-i18n="nav.myTrees">내 러브트리 시작하기</span></a>
-            <a href="search.html" class="intro-cta-link"><span class="btn-round btn-outline intro-cta-secondary" data-i18n="intro.heroBrowseCta">공개 트리 감상하기</span></a>
+            <a href="my-trees.html" class="intro-cta-link"><span class="btn-round btn-primary intro-cta-primary" data-i18n="intro.heroPrimaryCta">내 러브트리 시작하기</span></a>
+            <a href="search.html" class="intro-cta-link"><span class="btn-round btn-outline intro-cta-secondary" data-i18n="intro.ctaSecondary">공개 트리 감상하기</span></a>
           </div>
         </div>
         <div class="intro-hero-visual" aria-hidden="true">
@@ -1239,7 +1272,7 @@
         <p data-i18n="intro.ctaDesc">시작된 장면부터 당신의 러브트리를 남겨보세요.</p>
         <div class="cta-buttons">
           <a href="my-trees.html" class="intro-cta-link"><span class="btn-round btn-primary intro-cta-primary" data-i18n="intro.ctaPrimary">첫 순간 남기러 가기</span></a>
-          <a href="search.html" class="intro-cta-link"><span class="btn-round btn-outline intro-cta-secondary" data-i18n="intro.heroBrowseCta">공개 트리 감상하기</span></a>
+          <a href="search.html" class="intro-cta-link"><span class="btn-round btn-outline intro-cta-secondary" data-i18n="intro.ctaSecondary">공개 트리 감상하기</span></a>
         </div>
       </section>
     </main>
@@ -1251,7 +1284,7 @@
      <script src="../js/i18n/i18n-core.js?v=20260421-1"></script>
      <script src="../js/i18n/i18n-shared.js?v=20260421-4"></script>
     <script src="../js/i18n/i18n-login.js?v=20260419-2"></script>
-    <script src="../js/i18n/i18n-intro.js?v=20260423-1"></script>
+    <script src="../js/i18n/i18n-intro.js?v=20260423-2"></script>
     <script src="../js/i18n/i18n-search.js?v=20260421-1"></script>
     <script src="../js/i18n/i18n-detail.js?v=20260421-5"></script>
     <script src="../js/i18n/i18n-editor.js?v=20260421-9"></script>

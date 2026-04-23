@@ -31,6 +31,10 @@
     --radius-default: 1rem;
     --radius-lg: 2rem;
     --radius-full: 9999px;
+
+    /* Page width rhythm */
+    --page-brand-max: 1280px;
+    --page-work-max: 1440px;
     
     /* Typography Constants */
     --font-heading: 'Outfit', sans-serif;
@@ -120,7 +124,7 @@ h1, h2, h3, h4, .headline {
     padding: 8px 16px;
     border-radius: 20px;
     opacity: 0.65;
-    transition: color 0.12s ease, background-color 0.12s ease, opacity 0.12s ease;
+    transition: none;
     white-space: nowrap;
 }
 
@@ -359,7 +363,7 @@ h1, h2, h3, h4, .headline {
     border-radius: 20px;
     padding: 6px 14px;
     margin: 0 4px;
-    transition: all 0.2s ease;
+    transition: none;
 }
 
 .nav-links a.nav-highlight:hover {
@@ -696,7 +700,7 @@ html:not(.material-symbols-ready) .mobile-nav-toggle .material-symbols-outlined 
 
 /* Auth nav loading state - smooth transition */
 #auth-nav, #auth-nav-container {
-  transition: opacity 0.2s ease;
+  transition: none;
 }
 
 /* Material Symbols font loading: hide icons until font loads to prevent FOUC */
@@ -707,7 +711,7 @@ html:not(.material-symbols-ready) .mobile-nav-toggle .material-symbols-outlined 
 .user-dropdown-menu .material-symbols-outlined,
 #auth-nav .material-symbols-outlined {
   opacity: 0;
-  transition: opacity 0.25s ease;
+  transition: none;
 }
 
 /* When fonts are ready, show icons */
@@ -875,7 +879,7 @@ html:not(.material-symbols-ready) .mobile-nav-toggle .material-symbols-outlined 
    폰트가 준비되기 전에는 raw icon name(search, tag 등)을 숨긴다. */
 .material-symbols-outlined {
   opacity: 0;
-  transition: opacity 0.15s ease;
+  transition: none;
 }
 
 html.material-symbols-ready .material-symbols-outlined {
