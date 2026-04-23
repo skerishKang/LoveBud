@@ -6,23 +6,92 @@
   <title>LoveTree - GPT v2 Home</title>
   <link rel="stylesheet" href="../../css/gpt-v2/common.css" />
   <style>
-    .home-shell{display:grid;gap:18px}
-    .home-topbar .brand-copy strong{font-size:26px;letter-spacing:-.05em}
-    .home-topbar .brand-copy span{font-size:16px}
-    .home-topbar .main-nav{gap:24px}.home-topbar .main-nav a{background:transparent;padding:10px 0}
-    .home-hero{display:grid;grid-template-columns:.96fr 1.04fr;gap:20px;align-items:stretch}
-    .home-copy,.home-collage,.home-features,.home-curation{background:rgba(255,255,255,.44);border:1px solid rgba(255,255,255,.82);box-shadow:var(--shadow-md);backdrop-filter:blur(8px);border-radius:34px}
-    .home-copy{padding:48px 38px 34px;min-height:658px}.home-copy .display{font-size:clamp(54px,5vw,82px);line-height:1.12;letter-spacing:-.06em;max-width:520px}.home-copy .lead{font-size:18px;line-height:1.75;max-width:510px;margin-top:26px}.home-copy .btn-row{margin-top:36px}
-    .home-collage{position:relative;min-height:658px;overflow:hidden;background:linear-gradient(180deg,rgba(255,251,246,.48),rgba(255,247,242,.22))}
-    .home-collage::before,.home-collage::after{content:"";position:absolute;border-radius:999px;border:2px solid rgba(214,173,152,.28);pointer-events:none}.home-collage::before{width:560px;height:420px;left:68px;top:86px;border-color:rgba(214,173,152,.06) rgba(214,173,152,.34) rgba(214,173,152,.16) rgba(214,173,152,.3)}.home-collage::after{width:650px;height:470px;left:10px;top:52px;border-color:rgba(227,188,166,.08) rgba(227,188,166,.2) rgba(227,188,166,.12) rgba(227,188,166,.24)}
-    .branch-line{position:absolute;left:84px;right:56px;top:90px;bottom:88px;pointer-events:none}.branch-line span{position:absolute;display:block;border-top:2px solid rgba(213,161,145,.48);box-shadow:0 0 16px rgba(255,215,174,.35)}.branch-line .l1{left:122px;top:130px;width:228px;transform:rotate(8deg)}.branch-line .l2{left:210px;top:265px;width:170px;transform:rotate(-22deg)}.branch-line .l3{left:340px;top:178px;width:188px;transform:rotate(-12deg)}.branch-line .l4{left:365px;top:352px;width:162px;transform:rotate(12deg)}
-    .petal{position:absolute;width:16px;height:10px;border-radius:999px 999px 999px 70px;background:linear-gradient(145deg,rgba(255,236,231,.98),rgba(245,198,192,.82));box-shadow:0 8px 16px rgba(223,166,154,.12)}
-    .p1{left:110px;top:302px;transform:rotate(-18deg)}.p2{left:212px;top:208px;transform:rotate(28deg)}.p3{right:36px;top:110px;transform:rotate(12deg)}.p4{right:88px;bottom:112px;transform:rotate(-24deg)}.p5{left:306px;bottom:134px;transform:rotate(8deg)}.p6{left:34px;bottom:96px;transform:rotate(-10deg)}
-    .home-card,.home-note,.home-paper,.mini-player{position:absolute;background:rgba(255,251,247,.96);border:1px solid rgba(233,218,208,.92);box-shadow:var(--shadow-md)}
-    .home-card{width:188px;padding:14px;border-radius:18px}.home-card .photo{height:188px}.home-note{padding:18px 18px 16px;border-radius:18px}.home-paper{width:308px;min-height:438px;padding:34px 28px 108px;border-radius:30px;background:linear-gradient(180deg,rgba(252,246,240,.97),rgba(246,236,226,.98))}.home-paper:before{content:"";position:absolute;top:16px;right:26px;width:82px;height:24px;border-radius:4px;background:rgba(229,190,183,.52);transform:rotate(16deg)}.home-paper:after{content:"";position:absolute;top:14px;right:28px;width:16px;height:16px;border-radius:50%;background:#9e6e57;box-shadow:0 2px 6px rgba(71,39,24,.24)}
-    .tag{position:absolute;top:-12px;left:16px;padding:5px 10px;border-radius:8px;background:#e9d2b1;color:#8b6d5d;font-size:12px;font-weight:800}
-    .home-paper .paper-text{font-size:18px;line-height:1.82}.flower{position:absolute;right:62px;top:126px;width:44px;height:164px}.flower:before,.flower:after{content:"";position:absolute}.flower:before{left:20px;top:10px;width:2px;height:132px;background:linear-gradient(180deg,#8ea17e,#6d8760);transform:rotate(8deg);border-radius:2px}.flower:after{inset:0;background:radial-gradient(circle at 14px 16px,#e7aab0 0 10px,transparent 11px),radial-gradient(circle at 28px 26px,#f1b8c0 0 9px,transparent 10px),radial-gradient(circle at 11px 36px,#e9afb6 0 8px,transparent 9px),radial-gradient(circle at 32px 48px,#f2c1ca 0 8px,transparent 9px),radial-gradient(circle at 15px 54px,#efb5bf 0 7px,transparent 8px)}
-    .mini-player{left:30px;right:30px;bottom:26px;min-height:86px;border-radius:18px;padding:16px;display:flex;gap:14px;align-items:center;background:rgba(255,255,255,.74)}
+    .home-shell{display:grid;gap:18px;position:relative;z-index:1}
+    body::before {
+      content: ""; position: fixed; inset: 0;
+      background: 
+        radial-gradient(circle at 20% 30%, rgba(255, 235, 225, 0.4), transparent 40%),
+        radial-gradient(circle at 80% 70%, rgba(255, 245, 235, 0.4), transparent 40%);
+      pointer-events: none; z-index: -1;
+    }
+    .bg-texture {
+      position: fixed; inset: 0; opacity: 0.03; pointer-events: none; z-index: -1;
+      background-image: url("https://www.transparenttextures.com/patterns/natural-paper.png");
+    }
+    .glimmer {
+      position: absolute; width: 4px; height: 4px; background: #fff; border-radius: 50%;
+      box-shadow: 0 0 10px 2px rgba(255, 255, 255, 0.8);
+      animation: glimmer-anim 4s infinite ease-in-out; opacity: 0;
+    }
+    @keyframes glimmer-anim { 0%, 100% { opacity: 0; transform: scale(0.5); } 50% { opacity: 0.8; transform: scale(1.2); } }
+
+    .home-topbar { background: rgba(255,255,255,0.2); border-color: rgba(255,255,255,0.4); box-shadow: none; backdrop-filter: blur(4px); }
+    
+    .home-hero{display:grid;grid-template-columns:.9fr 1.1fr;gap:0;align-items:center;min-height:720px;padding:20px 0}
+    .home-copy,.home-collage{background:transparent;border:none;box-shadow:none;backdrop-filter:none;border-radius:0}
+    
+    .home-copy{padding:40px 20px;display:flex;flex-direction:column;justify-content:center}
+    .home-copy .display{font-family: "Nanum Myeongjo", serif; font-size:clamp(54px, 5.5vw, 86px); line-height:1.15; letter-spacing:-.04em; color: #4a342a;}
+    .home-copy .lead{font-size:19px; line-height:1.8; color:#7a6256; margin-top:32px; font-weight: 500;}
+    .btn-secondary { background: rgba(255,255,255,0.4); border-color: rgba(255,255,255,0.6); }
+
+    .home-collage{position:relative;min-height:680px;perspective: 1000px;}
+    
+    /* Tape Props */
+    .tape {
+      position: absolute; top: -14px; left: 50%; width: 80px; height: 26px;
+      background: rgba(235, 195, 185, 0.45); transform: translateX(-50%) rotate(-2deg);
+      border-radius: 2px; backdrop-filter: blur(1px); pointer-events: none;
+      box-shadow: inset 0 0 4px rgba(255,255,255,0.4);
+    }
+    .tape::after { content: ""; position: absolute; inset: 0; border-left: 2px solid rgba(0,0,0,0.05); border-right: 2px solid rgba(0,0,0,0.05); }
+
+    .home-card, .home-note, .home-paper {
+      transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      box-shadow: 0 20px 40px rgba(130, 100, 80, 0.12);
+    }
+    .home-card:hover, .home-note:hover, .home-paper:hover { transform: scale(1.03) rotate(0deg) !important; z-index: 10; }
+
+    .home-card{width:200px;padding:12px;border-radius:4px;background:#fff;}
+    .home-card .photo{height:180px;border-radius:2px;}
+    .home-card .caption { font-family: "Nanum Myeongjo", serif; font-size: 15px; margin-top: 14px; }
+    
+    .home-paper{width:320px;min-height:460px;padding:40px 32px;border-radius:4px;background:#fdfcfb;box-shadow: 2px 5px 15px rgba(0,0,0,0.05);}
+    .home-paper .paper-text { font-family: "Nanum Myeongjo", serif; font-size: 19px; line-height: 1.9; }
+    
+    /* Music Player Redesign */
+    .mini-player{
+      left: 24px; right: 24px; bottom: 28px; height: 90px; border-radius: 45px;
+      padding: 8px 24px 8px 8px; background: rgba(255,255,255,0.85); border: 1px solid rgba(255,255,255,0.5);
+      display: flex; gap: 18px; align-items: center; box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+    }
+    .mini-player .album-container {
+      width: 74px; height: 74px; border-radius: 50%; background: #222;
+      position: relative; display: flex; align-items: center; justify-content: center;
+      animation: rotate-lp 10s linear infinite;
+    }
+    @keyframes rotate-lp { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    .mini-player .album { width: 70px; height: 70px; border-radius: 50%; border: 4px solid #333; }
+    .mini-player .album::after {
+      content: ""; position: absolute; inset: 0; border-radius: 50%;
+      background: repeating-radial-gradient(circle, transparent 0, transparent 4px, rgba(255,255,255,0.05) 5px);
+    }
+    .mini-player .track strong { font-size: 15px; color: #4a342a; }
+    
+    /* Vined Connections */
+    .branch-line { left: -100px; right: -100px; top: -50px; bottom: -50px; }
+    .branch-line span { border-color: rgba(213, 161, 145, 0.25); border-width: 1.5px; border-radius: 50%; border-style: solid; border-top: none; border-left: none; }
+    .branch-line .l1 { left: 10%; top: 20%; width: 40%; height: 30%; transform: rotate(15deg); }
+    .branch-line .l2 { left: 30%; top: 40%; width: 50%; height: 40%; transform: rotate(-10deg); }
+    .branch-line .l3 { right: 10%; top: 15%; width: 35%; height: 45%; transform: rotate(-20deg); }
+
+    .home-feature-row, .home-curation { border-radius: 40px; }
+    
+    @media (max-width:1280px){
+      .home-hero{grid-template-columns:1fr; gap: 40px;}
+      .home-copy{text-align: center; align-items: center;}
+      .home-copy .display{max-width: none;}
+    }
     .mini-player .album{width:52px;height:52px;border-radius:10px;background-size:cover;background-position:center}.mini-player .track{font-size:13px;color:#81685d}.mini-player .track strong{display:block;font-size:14px;margin-bottom:4px}.mini-player .play-icons{margin-left:auto;display:flex;gap:12px;color:#7b665c;font-size:14px}
     .home-feature-row{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}.feature-box{display:flex;align-items:center;gap:16px;padding:22px;border-radius:24px;background:rgba(255,255,255,.42);border:1px solid rgba(255,255,255,.82);box-shadow:var(--shadow-sm)}.feature-ico{width:76px;height:76px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:30px;flex:0 0 auto}.ico-gold{background:linear-gradient(180deg,#e1bc8a,#cb9f68)}.ico-rose{background:linear-gradient(180deg,#ebb0ad,#db8a87)}.ico-tree{background:linear-gradient(180deg,#dfc39e,#d2a975)}.feature-box h3{margin:0 0 8px;font-size:28px;letter-spacing:-.04em;color:#6b5246}.feature-box p{margin:0;color:#8a7368;line-height:1.6}
     .home-curation{padding:24px 24px 22px}.curation-grid{display:grid;grid-template-columns:280px 1fr;gap:22px;align-items:start}.curation-copy{padding:16px 8px 0 6px}.curation-copy h2{margin:0 0 12px;font-size:40px;letter-spacing:-.05em;color:#60473d}.curation-copy p{margin:0;color:#91796d;line-height:1.75}.tree-row{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.tree-card{overflow:hidden;border-radius:24px;background:rgba(255,255,255,.52);border:1px solid rgba(255,255,255,.84);box-shadow:var(--shadow-sm);position:relative}.tree-thumb{height:154px;background-size:cover;background-position:center}.tree-body{padding:18px 20px 18px;background:rgba(255,255,255,.8)}.tree-body h4{margin:0 0 6px;color:#684f44;font-size:20px}.tree-body p{margin:0;color:#947d71;line-height:1.55}.tree-meta{display:flex;gap:14px;color:#b09284;font-size:13px;margin-top:12px}.round-badge{position:absolute;right:16px;top:132px;width:52px;height:52px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:22px;box-shadow:0 10px 18px rgba(188,146,123,.16)}.rb-lav{background:linear-gradient(180deg,#b791d4,#9a73bf)}.rb-gold{background:linear-gradient(180deg,#e1bc8a,#cb9f68)}.rb-rose{background:linear-gradient(180deg,#ebb0ad,#db8a87)}
@@ -31,7 +100,13 @@
   </style>
 </head>
 <body>
-  <div class="site-shell home-shell">
+    <div class="bg-texture"></div>
+    <div class="glimmer" style="left:15%;top:20%;animation-delay:0s"></div>
+    <div class="glimmer" style="left:85%;top:15%;animation-delay:1s"></div>
+    <div class="glimmer" style="left:50%;top:40%;animation-delay:2s"></div>
+    <div class="glimmer" style="left:20%;bottom:30%;animation-delay:0.5s"></div>
+    <div class="glimmer" style="right:10%;bottom:20%;animation-delay:1.5s"></div>
+
     <header class="topbar home-topbar">
       <div class="brand"><div class="brand-mark">❀</div><div class="brand-copy"><strong>러브트리</strong><span>LoveTree</span></div></div>
       <nav class="main-nav">
@@ -54,13 +129,48 @@
       </section>
 
       <section class="home-collage">
-        <div class="branch-line"><span class="l1"></span><span class="l2"></span><span class="l3"></span><span class="l4"></span></div>
+        <div class="branch-line"><span class="l1"></span><span class="l2"></span><span class="l3"></span></div>
         <span class="petal p1"></span><span class="petal p2"></span><span class="petal p3"></span><span class="petal p4"></span><span class="petal p5"></span><span class="petal p6"></span>
-        <article class="home-card" style="left:40px;top:64px;transform:rotate(-7deg)"><div class="tag">감정</div><div class="photo photo-home-1"></div><div class="caption">심장이 뛰던 그 순간<small>2024.04.20</small></div></article>
-        <article class="home-paper" style="left:238px;top:34px"><div class="paper-text">오늘의 한 줄 ♡<br><br>그날의 떨림이<br>지금의 나를<br>따뜻하게<br>만들어줘서<br>고마워.</div><div class="flower"></div><div class="mini-player"><div class="album photo-home-1"></div><div class="track"><strong>우리의 계절이 지나도</strong>LoveTree 플레이리스트</div><div class="play-icons"><span>◀</span><span>⏸</span><span>▶</span><span>♡</span></div></div></article>
-        <article class="home-card" style="right:30px;top:52px;transform:rotate(6deg)"><div class="tag">순간</div><div class="photo photo-home-2"></div><div class="caption">빛이 가장 가까웠던 날<small>2024.06.15</small></div></article>
-        <article class="home-note" style="left:124px;bottom:92px;width:188px;transform:rotate(2deg)"><div class="tag">기억</div><div class="paper-text" style="font-size:16px;line-height:1.75">너의 노래가<br>내 하루의 위로가<br>되어줘서<br>정말 고마워.</div></article>
-        <article class="home-card" style="right:52px;bottom:46px;transform:rotate(-2deg);width:198px"><div class="tag">호흡</div><div class="photo photo-home-3"></div><div class="caption">우리가 함께한 모든 시간</div></article>
+        
+        <article class="home-card" style="left:20px;top:60px;transform:rotate(-8deg)">
+          <div class="tape"></div>
+          <div class="tag">감정</div>
+          <div class="photo photo-home-1"></div>
+          <div class="caption">심장이 뛰던 그 순간<small>2024.04.20</small></div>
+        </article>
+
+        <article class="home-paper" style="left:240px;top:20px;transform:rotate(2deg)">
+          <div class="tape" style="width:100px;top:-16px"></div>
+          <div class="paper-text">오늘의 한 줄 ♡<br><br>그날의 떨림이<br>지금의 나를<br>따뜻하게<br>만들어줘서<br>고마워.</div>
+          <div class="flower"></div>
+          <div class="mini-player">
+            <div class="album-container">
+              <div class="album photo-home-1"></div>
+            </div>
+            <div class="track"><strong>우리의 계절이 지나도</strong>LoveTree 플레이리스트</div>
+            <div class="play-icons"><span>⏸</span><span>♡</span></div>
+          </div>
+        </article>
+
+        <article class="home-card" style="right:20px;top:40px;transform:rotate(5deg)">
+          <div class="tape"></div>
+          <div class="tag">순간</div>
+          <div class="photo photo-home-2"></div>
+          <div class="caption">빛이 가장 가까웠던 날<small>2024.06.15</small></div>
+        </article>
+
+        <article class="home-note" style="left:110px;bottom:80px;width:190px;padding:24px;background:#fff;border-radius:4px;transform:rotate(-3deg)">
+          <div class="tape" style="width:60px"></div>
+          <div class="tag">기억</div>
+          <div class="paper-text" style="font-size:17px;line-height:1.8">너의 노래가<br>내 하루의 위로가<br>되어줘서<br>정말 고마워.</div>
+        </article>
+
+        <article class="home-card" style="right:40px;bottom:30px;transform:rotate(3deg);width:210px">
+          <div class="tape"></div>
+          <div class="tag">호흡</div>
+          <div class="photo photo-home-3"></div>
+          <div class="caption">우리가 함께한 모든 시간</div>
+        </article>
       </section>
     </main>
 
