@@ -21,6 +21,17 @@
     return typeof id === 'string' && /^[a-zA-Z0-9_-]{11}$/.test(id);
   }
 
+  function isYouTubeHost(url) {
+    if (!url) return false;
+    try {
+      const parsed = new URL(url.startsWith('http') ? url : `https://${url}`);
+      const host = parsed.hostname.toLowerCase();
+      return host.includes('youtube.com') || host.includes('youtu.be') || host.includes('ytimg.com');
+    } catch (e) {
+      return false;
+    }
+  }
+
   function extractYouTubeVideoId(url) {
     if (!url) return null;
     const s = String(url);
@@ -46,7 +57,7 @@
 
   function buildCanonicalYouTubeThumbnailUrl(videoId) {
     if (!isValidYouTubeVideoId(videoId)) return '';
-    return `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`;
+    return `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
   }
 
   function buildCanonicalYouTubeEmbedUrl(videoId) {
@@ -61,16 +72,23 @@
   }
 
   function canonicalizeYouTubeThumbnailUrl(url, fallbackSourceUrl) {
-    let videoId = extractYouTubeVideoIdFromThumbnail(url);
+    const safeUrl = sanitizeUrl(url);
+    const safeFallbackSourceUrl = sanitizeUrl(fallbackSourceUrl);
+
+    let videoId = extractYouTubeVideoIdFromThumbnail(safeUrl);
     if (!videoId) {
-      videoId = extractYouTubeVideoId(url) || extractYouTubeVideoId(fallbackSourceUrl);
+      videoId = extractYouTubeVideoId(safeUrl) || extractYouTubeVideoId(safeFallbackSourceUrl);
     }
     
     if (videoId && isValidYouTubeVideoId(videoId)) {
       return buildCanonicalYouTubeThumbnailUrl(videoId);
     }
-    
-    return sanitizeUrl(url);
+
+    if (safeUrl && !isYouTubeHost(safeUrl)) {
+      return safeUrl;
+    }
+
+    return '';
   }
 
   function unwrapTreeRecord(tree) {
@@ -88,6 +106,7 @@
   function normalizeBrowseTreeRecord(rawTree) {
     const tree = unwrapTreeRecord(rawTree);
     const rawThumb = tree.representativeThumbnail || tree.representative_thumbnail || tree.thumbnail || '';
+    const rawSource = tree.representativeMemorySourceUrl || tree.representative_memory_source_url || tree.sourceUrl || tree.source_url || '';
     
     return {
       id: tree.id || rawTree?.id || null,
@@ -96,7 +115,7 @@
       createdAt: tree.createdAt || tree.created_at || null,
       updatedAt: tree.updatedAt || tree.updated_at || null,
       ownerId: tree.ownerId || tree.owner_id || null,
-      representativeThumbnail: canonicalizeYouTubeThumbnailUrl(rawThumb),
+      representativeThumbnail: canonicalizeYouTubeThumbnailUrl(rawThumb, rawSource),
       memoryCount: Number(tree.memoryCount || tree.memory_count || 0),
       theme: tree.theme || '',
       stage: tree.stage || ''
@@ -201,6 +220,7 @@
     // Utils
     sanitizeUrl,
     isValidYouTubeVideoId,
+    isYouTubeHost,
     extractYouTubeVideoId,
     extractYouTubeVideoIdFromThumbnail,
     buildCanonicalYouTubeThumbnailUrl,
