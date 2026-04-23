@@ -52,9 +52,9 @@
       ko: '좋아하게 된 첫 장면과 이어진 마음을 하나의 트리로 남기는 공간입니다.',
       en: 'A space that keeps the first scene you loved and the feelings that followed as one tree.'
     },
-    'intro.whatIsDesc2Fixed': {
-      ko: '영상, 음악, 장면, 메모가 가지처럼 이어집니다.',
-      en: 'Videos, songs, scenes, and notes connect like branches.'
+    'intro.whatIsDesc2': {
+      ko: '단순한 아카이빙을 넘어, 나의 감정이 어디서 시작되어 어떻게 깊어졌는지 한눈에 확인할 수 있는 디지털 감정 정원입니다.',
+      en: 'Beyond simple archiving, it is a digital emotion garden where you can see at a glance where your feelings started and how they deepened.'
     },
 
     // How to 섹션
@@ -65,6 +65,10 @@
     'intro.howToSubtitle': {
       ko: '첫 마음이 지나온 길부터 남겨보세요.',
       en: 'Start with the path your first feeling followed.'
+    },
+    'intro.howToDesc': {
+      ko: '복잡한 과정 없이, 당신의 소중한 순간들을 세 단계를 통해 하나의 트리로 피워낼 수 있습니다.',
+      en: 'Without complex processes, you can bloom your precious moments into a single tree through three simple steps.'
     },
 
     // Step 1
@@ -123,6 +127,10 @@
     'intro.valueTitle': {
       ko: '이런 순간이 남아요',
       en: 'These moments stay'
+    },
+    'intro.valueDesc': {
+      ko: '러브트리는 단순히 보관하는 기능을 넘어, 당신의 사랑이 어떤 의미를 갖는지 보여주는 거울이 됩니다.',
+      en: 'LoveTree is more than just storage; it becomes a mirror that shows what meaning your love holds.'
     },
     'intro.value1Eyebrow': {
       ko: '가장 먼저 남는 것',
