@@ -130,6 +130,26 @@ function withUpstreamHeader(response, upstream) {
   });
 }
 
+function isModalOwnedGetRoute(request, env) {
+  if (request.method.toUpperCase() !== 'GET') return false;
+  const modalUrl = buildModalUrl(request, env || {});
+  return modalUrl !== null;
+}
+
+function buildModalUnavailableResponse() {
+  return new Response(
+    JSON.stringify({ error: 'Modal backend unavailable' }),
+    {
+      status: 503,
+      headers: {
+        'content-type': 'application/json; charset=utf-8',
+        'x-lovebud-upstream': 'modal',
+        'x-lovebud-degraded': 'modal-unavailable'
+      }
+    }
+  );
+}
+
 async function tryModalRead(request, env) {
   if (request.method.toUpperCase() !== 'GET') return null;
 
@@ -166,6 +186,7 @@ export async function onRequest(context) {
   const { request, env } = context;
   const upstreamUrl = buildUpstreamUrl(request, env || {});
   const method = request.method.toUpperCase();
+  const isModalOwned = isModalOwnedGetRoute(request, env || {});
 
   if (isBrowseSummaryRequest(request)) {
     const cache = caches.default;
@@ -185,6 +206,10 @@ export async function onRequest(context) {
       }
       if (modalResponse) return modalResponse;
     } catch (error) {
+      if (isModalOwned) {
+        console.warn('[LoveBudCloudflareProxy] Modal read failed, returning 503', error);
+        return buildModalUnavailableResponse();
+      }
       console.warn('[LoveBudCloudflareProxy] Modal read failed before response, falling back to Vercel', error);
     }
   } else {
@@ -192,6 +217,10 @@ export async function onRequest(context) {
       const modalResponse = await tryModalRead(request, env || {});
       if (modalResponse) return modalResponse;
     } catch (error) {
+      if (isModalOwned) {
+        console.warn('[LoveBudCloudflareProxy] Modal read failed, returning 503', error);
+        return buildModalUnavailableResponse();
+      }
       console.warn('[LoveBudCloudflareProxy] Modal read failed before response, falling back to Vercel', error);
     }
   }
