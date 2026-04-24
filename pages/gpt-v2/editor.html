@@ -6,114 +6,155 @@
   <title>LoveTree - GPT v2 Editor</title>
   <link rel="stylesheet" href="../../css/gpt-v2/common.css" />
   <style>
-    .editor-page{display:grid;grid-template-columns:320px 1fr 360px;gap:18px;align-items:start}
-    .left-panel,.center-panel,.right-panel{background:rgba(255,255,255,.42);border:1px solid rgba(255,255,255,.82);box-shadow:var(--shadow-md);backdrop-filter:blur(8px);border-radius:30px;padding:22px}
-    .left-panel{min-height:860px}.center-panel{min-height:860px;position:relative;overflow:hidden}.right-panel{min-height:860px}
-    .status-pill{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;background:rgba(255,245,242,.9);border:1px solid rgba(231,212,201,.92);color:#b06767;font-weight:700;margin-top:8px}
-    .left-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}.soft-btn{min-height:46px;border-radius:999px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.7);border:1px solid rgba(226,207,196,.92);color:#8f6d65;font-weight:700}.side-note{margin-top:18px;padding-top:18px;border-top:1px dashed rgba(200,165,145,.28);color:#8c7468;line-height:1.7}.count{margin-top:18px;font-family:Georgia,serif;font-size:36px;color:#c96f70}.center-title{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px}.tree-area{position:relative;min-height:740px}
-    .branch{position:absolute;left:50%;top:138px;transform:translateX(-50%);width:420px;height:430px;border-radius:50%;border:2px solid rgba(208,171,152,.28);border-color:rgba(208,171,152,.08) rgba(208,171,152,.28) rgba(208,171,152,.14) rgba(208,171,152,.26)}
-    .branch:before,.branch:after{content:"";position:absolute;inset:36px;border-radius:50%;border:2px solid rgba(220,185,167,.22)}.branch:after{inset:84px 68px 78px 70px}
-    .memory-card,.quote-card{position:absolute;background:rgba(255,251,247,.96);border:1px solid rgba(233,218,208,.92);box-shadow:var(--shadow-md);border-radius:22px;padding:14px}.memory-card{width:240px}.memory-thumb{height:156px;border-radius:16px;background-size:cover;background-position:center;margin-bottom:12px}.memory-card h4{margin:0 0 8px;color:#654c40;font-size:22px;letter-spacing:-.03em}.memory-card p{margin:0;color:#8c7569;font-size:15px;line-height:1.65}.quote-card{width:210px;padding:22px 18px;font-family:"Nanum Myeongjo",Georgia,serif;color:#785f52;line-height:1.8}.chipline{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}.chipline span{padding:8px 12px;border-radius:999px;background:rgba(249,240,232,.9);border:1px solid rgba(229,212,201,.92);color:#af8876;font-size:13px;font-weight:700}.bottom-cta{position:absolute;left:50%;bottom:18px;transform:translateX(-50%)}
-    .tabs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0 16px}.tab{min-height:48px;border-radius:999px;display:grid;place-items:center;font-weight:700;background:rgba(255,255,255,.7);border:1px solid rgba(226,207,196,.92);color:#8f6d65}.tab.active{color:var(--primary-deep);border-color:rgba(221,143,141,.42);box-shadow:inset 0 0 0 1px rgba(221,143,141,.22)}.field{display:grid;gap:8px;margin-top:14px}.field label{font-size:14px;font-weight:700;color:#7f6457}.choice-preview{display:grid;grid-template-columns:116px 1fr;gap:14px;align-items:center;padding:12px;border-radius:18px;background:rgba(255,255,255,.72);border:1px solid rgba(255,255,255,.84)}.preview-thumb{min-height:84px;border-radius:14px;background-size:cover;background-position:center}.tag-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px}@media (max-width:1280px){.editor-page{grid-template-columns:1fr}.left-panel,.center-panel,.right-panel{min-height:auto}}@media (max-width:860px){.tree-area{min-height:auto}.memory-card,.quote-card{position:relative!important;left:auto!important;right:auto!important;top:auto!important;bottom:auto!important;transform:none!important;width:100%!important;margin-bottom:16px}.branch{display:none}}
+    body{
+      min-height:100vh;
+      background:
+        radial-gradient(circle at 8% 14%, rgba(255,225,215,.86), transparent 18%),
+        radial-gradient(circle at 92% 18%, rgba(255,242,219,.74), transparent 22%),
+        radial-gradient(circle at 22% 88%, rgba(231,203,184,.46), transparent 24%),
+        linear-gradient(180deg,#fff8f0 0%,#f8ede2 44%,#f5e6dc 100%);
+    }
+    body:before{
+      content:"";
+      position:fixed;
+      inset:0;
+      pointer-events:none;
+      opacity:.34;
+      background-image:
+        radial-gradient(circle at 20px 20px, rgba(154,103,90,.12) 1px, transparent 1px),
+        linear-gradient(120deg, rgba(255,255,255,.38), transparent 28%, rgba(194,146,124,.06));
+      background-size:34px 34px,100% 100%;
+      mix-blend-mode:multiply;
+    }
+    .site-shell{max-width:1540px;padding:18px 18px 52px}
+    .topbar{
+      min-height:74px;
+      padding:14px 22px;
+      border-radius:32px;
+      background:rgba(255,250,244,.78);
+      border:1px solid rgba(255,255,255,.9);
+      box-shadow:0 18px 40px rgba(161,119,96,.11);
+    }
+    .brand-mark{
+      width:42px;height:42px;border-radius:50%;
+      background:linear-gradient(180deg,#fff8f0,#f4d7cf);
+      border:1px solid rgba(215,169,151,.34);
+      box-shadow:0 10px 20px rgba(200,134,122,.14);
+    }
+    .main-nav a{position:relative;background:transparent}
+    .main-nav a.active{background:rgba(255,255,255,.66)}
+    .main-nav a.active:after{
+      content:"";position:absolute;left:20px;right:20px;bottom:4px;height:3px;border-radius:999px;
+      background:linear-gradient(90deg,#d98787,#efbeb6);
+    }
+    .user-pill{
+      padding:7px 12px 7px 8px;border-radius:999px;background:rgba(255,255,255,.62);
+      border:1px solid rgba(230,207,194,.68);
+    }
+    .avatar{
+      background:radial-gradient(circle at 45% 28%,#fff4ee 0 13%,transparent 14%),linear-gradient(135deg,#d98e88,#f2cfc2);
+    }
+
+    .editor-page{
+      position:relative;display:grid;grid-template-columns:minmax(260px,320px) minmax(560px,1fr) minmax(300px,360px);
+      gap:22px;align-items:start;
+    }
+    .editor-page:before,.editor-page:after{content:"";position:absolute;pointer-events:none;z-index:0;border-radius:999px;opacity:.5}
+    .editor-page:before{width:270px;height:270px;left:-96px;top:120px;background:radial-gradient(circle,rgba(242,179,172,.24),transparent 65%)}
+    .editor-page:after{width:310px;height:310px;right:-140px;bottom:80px;background:radial-gradient(circle,rgba(214,175,139,.18),transparent 66%)}
+    .left-panel,.center-panel,.right-panel{
+      position:relative;z-index:1;min-height:860px;border-radius:36px;
+      background:linear-gradient(180deg,rgba(255,253,249,.82),rgba(255,247,239,.58)),rgba(255,255,255,.34);
+      border:1px solid rgba(255,255,255,.88);box-shadow:0 24px 62px rgba(156,116,94,.13);backdrop-filter:blur(10px);
+    }
+    .left-panel,.right-panel{padding:26px}
+    .center-panel{
+      padding:26px;overflow:hidden;
+      background:radial-gradient(circle at 50% 26%,rgba(255,244,232,.86),transparent 34%),linear-gradient(180deg,rgba(255,252,248,.82),rgba(250,238,226,.54));
+    }
+    .panel-flower{position:absolute;width:86px;height:86px;right:18px;top:18px;opacity:.42;pointer-events:none;background:radial-gradient(circle at 50% 50%,#d88988 0 9%,transparent 10%),radial-gradient(ellipse at 50% 18%,#f0c7bd 0 20%,transparent 21%),radial-gradient(ellipse at 82% 50%,#f0c7bd 0 20%,transparent 21%),radial-gradient(ellipse at 50% 82%,#f0c7bd 0 20%,transparent 21%),radial-gradient(ellipse at 18% 50%,#f0c7bd 0 20%,transparent 21%)}
+    .paper-kicker{display:inline-flex;align-items:center;gap:8px;min-height:34px;padding:0 13px;border-radius:999px;background:rgba(255,248,242,.9);border:1px solid rgba(233,213,199,.86);color:#a36b62;font-size:13px;font-weight:800;letter-spacing:.01em}
+    .panel-title{margin:16px 0 0;font-family:Georgia,"Times New Roman",serif;font-size:34px;line-height:1.13;letter-spacing:-.05em;color:#583f35}
+    .privacy-pill{display:inline-flex;align-items:center;gap:8px;margin-top:14px;min-height:38px;padding:0 15px;border-radius:999px;background:#fff2ee;border:1px solid rgba(218,165,153,.34);color:#b76363;font-size:14px;font-weight:900}
+    .mock-action-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:20px}
+    .mock-action{min-height:52px;border-radius:999px;display:flex;align-items:center;justify-content:center;gap:6px;background:rgba(255,255,255,.68);border:1px solid rgba(221,198,184,.84);color:#7f6258;font-size:14px;font-weight:850;box-shadow:0 8px 16px rgba(165,124,101,.06)}
+    .dashed-note{margin-top:22px;padding-top:20px;border-top:1px dashed rgba(190,147,127,.38);color:#897166;line-height:1.72;font-size:15px}
+    .count-block{margin-top:22px;padding:20px 18px;border-radius:24px;background:rgba(255,255,255,.54);border:1px solid rgba(232,211,199,.72)}
+    .count-number{font-family:Georgia,"Times New Roman",serif;font-size:48px;color:#c66f70;line-height:1}
+    .count-label{margin-top:8px;color:#9a8277;font-size:14px;line-height:1.55}
+    .side-cta{width:100%;margin-top:20px;box-shadow:0 16px 28px rgba(197,124,113,.12)}
+
+    .center-title{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:14px;position:relative;z-index:3}
+    .center-title h2{margin:10px 0 0;font-family:Georgia,"Times New Roman",serif;font-size:34px;line-height:1.1;letter-spacing:-.05em;color:#553f35}
+    .canvas-caption{color:#9a8175;font-size:14px;line-height:1.65;max-width:360px;text-align:right;padding-top:8px}
+    .tree-area{position:relative;min-height:760px;overflow:hidden;border-radius:32px;background:radial-gradient(circle at 50% 28%,rgba(255,255,255,.54),transparent 28%),linear-gradient(180deg,rgba(255,251,246,.28),rgba(245,225,211,.24));border:1px solid rgba(255,255,255,.46)}
+    .tree-area:before{content:"";position:absolute;left:50%;top:102px;width:12px;height:548px;transform:translateX(-50%) rotate(2deg);border-radius:999px;background:linear-gradient(180deg,rgba(187,130,103,.08),rgba(154,101,76,.44),rgba(136,86,65,.28));box-shadow:0 0 0 5px rgba(255,244,236,.18);z-index:0}
+    .branch{position:absolute;inset:98px 52px 94px;border:0;transform:none;pointer-events:none;z-index:0}
+    .branch:before,.branch:after,.tree-area .branch-line{content:"";position:absolute;height:3px;border-radius:999px;background:linear-gradient(90deg,rgba(133,91,70,.08),rgba(150,98,76,.44),rgba(133,91,70,.08));transform-origin:center;box-shadow:0 8px 20px rgba(116,76,60,.07)}
+    .branch:before{width:52%;left:7%;top:35%;transform:rotate(-17deg)}
+    .branch:after{width:49%;right:6%;top:31%;transform:rotate(18deg)}
+    .tree-area .branch-line.one{width:42%;left:13%;top:60%;transform:rotate(15deg)}
+    .tree-area .branch-line.two{width:44%;right:11%;top:62%;transform:rotate(-16deg)}
+    .leaf{position:absolute;width:24px;height:13px;border-radius:999px 999px 999px 0;background:rgba(155,175,120,.46);transform:rotate(-28deg);z-index:1}
+    .petal{position:absolute;width:16px;height:12px;border-radius:80% 20% 70% 30%;background:rgba(232,159,154,.48);z-index:1}
+    .memory-card,.quote-card{position:absolute;background:linear-gradient(180deg,#fffdf9,#fff7ef);border:1px solid rgba(233,215,201,.92);box-shadow:0 20px 44px rgba(139,101,82,.14);border-radius:22px;z-index:2}
+    .memory-card:before,.quote-card:before{content:"";position:absolute;left:50%;top:-13px;width:72px;height:24px;transform:translateX(-50%) rotate(-2deg);border-radius:6px;background:rgba(229,195,158,.72);box-shadow:0 4px 8px rgba(141,100,76,.08)}
+    .memory-card:after{content:"";position:absolute;right:18px;top:16px;width:11px;height:11px;border-radius:50%;background:#d88988;box-shadow:0 0 0 4px rgba(216,137,136,.14)}
+    .memory-card{width:228px;padding:13px}.memory-card.featured{width:276px;padding:15px;border-radius:26px;box-shadow:0 28px 56px rgba(139,101,82,.18)}
+    .memory-thumb{height:142px;border-radius:16px;background-size:cover;background-position:center;margin-bottom:12px;box-shadow:inset 0 -34px 44px rgba(63,43,34,.18)}
+    .memory-card.featured .memory-thumb{height:172px;border-radius:18px}
+    .memory-card h4{margin:0 0 7px;color:#61483d;font-size:18px;line-height:1.24;letter-spacing:-.035em}.memory-card.featured h4{font-size:22px}.memory-card p{margin:0;color:#8f776c;font-size:14px;line-height:1.58}
+    .quote-card{width:214px;padding:28px 20px 20px;font-family:"Nanum Myeongjo",Georgia,serif;color:#765f54;line-height:1.85;transform:rotate(-2deg)}.quote-card:after{content:"♡";position:absolute;right:18px;bottom:14px;color:#d88988;font-size:18px}
+    .chipline{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;font-family:"Pretendard","Noto Sans KR",sans-serif}.chipline span{padding:7px 11px;border-radius:999px;background:rgba(249,240,232,.92);border:1px solid rgba(229,212,201,.92);color:#af8876;font-size:12px;font-weight:800}
+    .bottom-cta{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);z-index:4}
+
+    .right-panel .section-title{margin:0;font-family:Georgia,"Times New Roman",serif;font-size:30px;line-height:1.16;letter-spacing:-.045em;color:#573f35}.right-intro{margin:10px 0 18px;color:#967d72;line-height:1.65;font-size:14px}
+    .tabs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0 18px}.tab{min-height:50px;border-radius:999px;display:grid;place-items:center;font-weight:850;background:rgba(255,255,255,.62);border:1px solid rgba(226,207,196,.92);color:#8f6d65}.tab.active{color:#bd6969;background:#fff6f2;border-color:rgba(221,143,141,.42);box-shadow:inset 0 0 0 1px rgba(221,143,141,.18)}
+    .field{display:grid;gap:8px;margin-top:15px}.field label{font-size:13px;font-weight:900;color:#7d6257}.input,.textarea{background:rgba(255,255,255,.78);border-color:rgba(219,198,186,.9)}
+    .choice-preview{display:grid;grid-template-columns:108px 1fr;gap:13px;align-items:center;padding:12px;border-radius:20px;background:rgba(255,255,255,.72);border:1px solid rgba(226,207,196,.78);box-shadow:0 12px 22px rgba(165,124,101,.06)}
+    .preview-thumb{min-height:82px;border-radius:15px;background-size:cover;background-position:center}.tag-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-top:4px}.right-panel .chip{min-height:40px;padding:0 10px;font-size:14px;white-space:nowrap}
+    .helper-note{margin-top:18px;padding:15px 14px;border-radius:20px;background:rgba(255,248,242,.58);border:1px dashed rgba(197,154,132,.34);color:#9a8378;line-height:1.7;text-align:center;font-size:14px}
+
+    @media (max-width:1280px){.editor-page{grid-template-columns:1fr}.left-panel,.center-panel,.right-panel{min-height:auto}.tree-area{min-height:720px}.canvas-caption{text-align:left}}
+    @media (max-width:860px){.site-shell{padding:10px 10px 34px}.topbar{border-radius:24px;padding:14px}.editor-page{gap:14px}.left-panel,.center-panel,.right-panel{padding:18px;border-radius:28px}.mock-action-grid,.tabs,.tag-grid{grid-template-columns:1fr}.tree-area{min-height:auto;padding-top:8px;border-radius:24px}.tree-area:before,.branch,.leaf,.petal{display:none}.memory-card,.quote-card{position:relative!important;left:auto!important;right:auto!important;top:auto!important;bottom:auto!important;transform:none!important;width:100%!important;margin-bottom:16px}.memory-card.featured{width:100%!important}.bottom-cta{position:relative;left:auto;bottom:auto;transform:none;display:flex;justify-content:center;margin-top:4px}.center-title{flex-direction:column}.choice-preview{grid-template-columns:1fr}.preview-thumb{min-height:140px}}
+    @media (max-width:420px){.panel-title,.center-title h2,.right-panel .section-title{font-size:27px}.count-number{font-size:42px}.btn{width:100%;padding:0 18px}.memory-thumb,.memory-card.featured .memory-thumb{height:150px}}
   </style>
 </head>
 <body>
   <div class="site-shell">
-    <header class="topbar">
+    <header class="topbar" aria-label="LoveTree prototype navigation">
       <div class="brand"><div class="brand-mark">❀</div><div class="brand-copy"><strong>러브트리</strong><span>LoveTree</span></div></div>
-      <nav class="main-nav">
-        <a href="./home.html">첫 화면</a>
-        <a href="./intro.html">LoveTree 소개 보기</a>
-        <a href="./browse.html">둘러보기</a>
-        <a href="./start.html" class="active">내 러브트리 시작하기</a>
-      </nav>
+      <nav class="main-nav" aria-label="prototype navigation"><a href="./home.html">첫 화면</a><a href="./intro.html">LoveTree 소개 보기</a><a href="./browse.html">둘러보기</a><a href="./start.html" class="active">내 러브트리 시작하기</a></nav>
       <div class="user-pill"><div class="avatar"></div><span>우리의 하루</span></div>
     </header>
-
     <main class="editor-page">
-      <aside class="left-panel">
-        <div class="eyebrow">✿ Our LoveTree</div>
-        <h1 class="display" style="font-size:34px;margin-top:6px">우리의 러브트리 ♡</h1>
-        <div class="status-pill">🔒 비공개 러브트리</div>
-        <div class="left-actions">
-          <a href="#" class="soft-btn">✎ 제목 수정</a>
-          <a href="#" class="soft-btn">🔒 공개/비공개</a>
-        </div>
-        <div class="side-note">러브트리의 제목과 공개 상태를 여기에서 관리할 수 있어요.</div>
-        <div class="count">12개</div>
-        <div class="side-note" style="margin-top:8px;padding-top:0;border-top:none">서로의 마음이 쌓여 하나의 나무가 되고 있어요.</div>
-        <a href="#" class="btn btn-secondary" style="width:100%;margin-top:18px">트리 한눈에 보기</a>
+      <aside class="left-panel" aria-label="러브트리 관리 mock panel">
+        <div class="panel-flower"></div><div class="paper-kicker">✿ Our LoveTree</div><h1 class="panel-title">우리의 러브트리 ♡</h1><div class="privacy-pill">🔒 비공개 러브트리</div>
+        <div class="mock-action-grid"><a href="#" class="mock-action">✎ 제목 수정</a><a href="#" class="mock-action">🔒 공개/비공개</a></div>
+        <div class="dashed-note">러브트리의 제목과 공개 상태를 여기에서 관리할 수 있어요. 지금 화면은 prototype이라 실제 상태는 바뀌지 않아요.</div>
+        <div class="count-block"><div class="count-number">12개</div><div class="count-label">서로의 마음이 쌓여 하나의 나무가 되고 있어요.</div></div>
+        <div class="dashed-note" style="margin-top:18px">나중에는 이곳에서 공개 여부와 트리 정보를 정리하게 됩니다.</div>
+        <a href="#" class="btn btn-secondary side-cta">트리 한눈에 보기</a>
       </aside>
-
-      <section class="center-panel">
-        <div class="center-title">
-          <div>
-            <div class="eyebrow">✿ 순간을 이어가는 중</div>
-            <h2 class="display" style="font-size:30px">순간을 이어가는 중</h2>
-          </div>
-        </div>
-        <div class="tree-area">
-          <div class="branch"></div>
-          <article class="memory-card" style="left:148px;top:32px">
-            <div class="memory-thumb photo-couple"></div>
-            <h4>처음 사랑하게 된 무대</h4>
-            <p>우리의 이야기가 시작된 그 순간을 기억해.</p>
-          </article>
-          <article class="memory-card" style="right:116px;top:54px;width:220px;transform:rotate(-1deg)">
-            <div class="memory-thumb photo-home-2" style="height:138px"></div>
-            <h4 style="font-size:18px">다시 듣게 되는 노래</h4>
-            <p>이 노래만 들으면 그때가 자연스럽게 떠올라.</p>
-          </article>
-          <article class="quote-card" style="left:72px;top:404px">오래 남은 한 문장<br><br>“넌 나에게 참 좋은 사람이야.”<div class="chipline"><span>여운</span></div></article>
-          <article class="memory-card" style="left:308px;top:420px;width:214px">
-            <div class="memory-thumb photo-room" style="height:142px"></div>
-            <h4 style="font-size:18px">오늘도 위로가 된 장면</h4>
-            <p>지친 하루 끝에 함께 본 그 장면이 참 따뜻했어.</p>
-          </article>
-          <article class="memory-card" style="right:88px;top:392px;width:226px;transform:rotate(-1deg)">
-            <div class="memory-thumb photo-spring" style="height:164px"></div>
-            <h4 style="font-size:18px">문득 생각나는 순간</h4>
-            <p>문득 떠오르지만 또 보고 싶어지는 순간들.</p>
-          </article>
+      <section class="center-panel" aria-label="러브트리 캔버스 mock panel">
+        <div class="center-title"><div><div class="paper-kicker">✿ 순간을 이어가는 중</div><h2>순간을 이어가는 중</h2></div><p class="canvas-caption">종이 조각처럼 남겨둔 순간들이 가지 위에 천천히 붙어가는 화면입니다.</p></div>
+        <div class="tree-area"><div class="branch"></div><i class="branch-line one"></i><i class="branch-line two"></i><i class="leaf" style="left:30%;top:238px"></i><i class="leaf" style="right:28%;top:228px;transform:rotate(34deg)"></i><i class="leaf" style="left:43%;top:502px;transform:rotate(22deg)"></i><i class="petal" style="left:18%;top:86px;transform:rotate(-16deg)"></i><i class="petal" style="right:17%;top:142px;transform:rotate(24deg)"></i><i class="petal" style="right:28%;bottom:126px;transform:rotate(-12deg)"></i>
+          <article class="memory-card featured" style="left:108px;top:40px;transform:rotate(-1.5deg)"><div class="memory-thumb photo-couple"></div><h4>처음 사랑하게 된 무대</h4><p>우리의 이야기가 시작된 그 순간을 기억해.</p><div class="chipline"><span>첫순간</span><span>설렘</span></div></article>
+          <article class="memory-card" style="right:102px;top:76px;transform:rotate(2deg)"><div class="memory-thumb photo-home-2" style="height:134px"></div><h4>다시 듣게 되는 노래</h4><p>이 노래만 들으면 그때가 자연스럽게 떠올라.</p></article>
+          <article class="quote-card" style="left:64px;top:408px">오래 남은 한 문장<br><br>“넌 나에게 참 좋은 사람이야.”<div class="chipline"><span>여운</span></div></article>
+          <article class="memory-card" style="left:310px;top:420px;transform:rotate(1.2deg)"><div class="memory-thumb photo-room" style="height:138px"></div><h4>오늘도 위로가 된 장면</h4><p>지친 하루 끝에 함께 본 그 장면이 참 따뜻했어.</p></article>
+          <article class="memory-card" style="right:74px;top:392px;transform:rotate(-2deg)"><div class="memory-thumb photo-spring" style="height:156px"></div><h4>문득 생각나는 순간</h4><p>문득 떠오르지만 또 보고 싶어지는 순간들.</p></article>
           <div class="bottom-cta"><a href="#" class="btn btn-secondary">⊕ 순간 이어가기</a></div>
         </div>
       </section>
-
-      <aside class="right-panel">
-        <h3 class="section-title" style="font-size:28px">지금 이어가는 순간 ♡</h3>
-        <div class="tabs">
-          <div class="tab active">🔗 링크로 남기기</div>
-          <div class="tab">✎ 글로 남기기</div>
-        </div>
-        <div class="field">
-          <label>링크 주소</label>
-          <div class="input">YouTube 링크를 붙여넣어 주세요</div>
-        </div>
-        <div class="field">
-          <label>선택된 링크</label>
-          <div class="choice-preview">
-            <div class="preview-thumb photo-home-2"></div>
-            <div><strong style="display:block;color:#684f44;margin-bottom:6px">널 생각하며 듣는 노래</strong><div style="color:#a18a7d;line-height:1.6">(도시의 밤)<br>youtu.be/abcd1234</div></div>
-          </div>
-        </div>
-        <div class="field">
-          <label>메모 한 줄</label>
-          <div class="textarea">이 순간에 대한 간단한 메모를 남겨보세요</div>
-        </div>
-        <div class="field">
-          <label>지금의 감정</label>
-          <div class="tag-grid">
-            <div class="chip rose">♡ 설렘</div>
-            <div class="chip blue">☁ 위로</div>
-            <div class="chip gold">✨ 벅참</div>
-            <div class="chip green">🌿 추억</div>
-            <div class="chip purple">☾ 여운</div>
-            <div class="chip gold">✦ 반짝임</div>
-          </div>
-        </div>
-        <a href="#" class="btn btn-primary" style="width:100%;margin-top:18px">이 순간 저장하기 ♡</a>
-        <a href="#" class="btn btn-secondary" style="width:100%;margin-top:12px">다음에 이어갈게요</a>
-        <div style="margin-top:18px;color:#a0887d;line-height:1.7;text-align:center">처음에는 하나의 순간만 남겨도 충분해요. 좋아하는 마음은 천천히 가지를 만들어요.</div>
+      <aside class="right-panel" aria-label="순간 입력 mock panel">
+        <div class="paper-kicker">✎ Moment Composer</div><h3 class="section-title">지금 이어가는 순간 ♡</h3><p class="right-intro">링크와 짧은 메모만으로도 오늘의 마음을 러브트리에 붙여둘 수 있어요.</p>
+        <div class="tabs"><div class="tab active">🔗 링크로 남기기</div><div class="tab">✎ 글로 남기기</div></div>
+        <div class="field"><label>링크 주소</label><div class="input">YouTube 링크를 붙여넣어 주세요</div></div>
+        <div class="field"><label>선택된 링크</label><div class="choice-preview"><div class="preview-thumb photo-home-2"></div><div><strong style="display:block;color:#684f44;margin-bottom:6px">널 생각하며 듣는 노래</strong><div style="color:#a18a7d;line-height:1.6">(도시의 밤)<br>youtu.be/abcd1234</div></div></div></div>
+        <div class="field"><label>메모 한 줄</label><div class="textarea">이 순간에 대한 간단한 메모를 남겨보세요</div></div>
+        <div class="field"><label>지금의 감정</label><div class="tag-grid"><div class="chip rose">♡ 설렘</div><div class="chip blue">☁ 위로</div><div class="chip gold">✨ 벅참</div><div class="chip green">🌿 추억</div><div class="chip purple">☾ 여운</div><div class="chip gold">✦ 반짝임</div></div></div>
+        <a href="#" class="btn btn-primary" style="width:100%;margin-top:18px">이 순간 저장하기 ♡</a><a href="#" class="btn btn-secondary" style="width:100%;margin-top:12px">다음에 이어갈게요 ♡</a><div class="helper-note">처음에는 하나의 순간만 남겨도 충분해요. 좋아하는 마음은 천천히 가지를 만들어요.</div>
       </aside>
     </main>
   </div>
