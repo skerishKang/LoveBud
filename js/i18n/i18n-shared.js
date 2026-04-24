@@ -1,6 +1,6 @@
 /**
  * LoveBud - i18n Shared Dictionary
- * v20260421-4
+ * v20260425-1
  *
  * 공통 번역 키 (네비게이션, 버튼, 상태 메시지 등)
  */
@@ -183,8 +183,28 @@
       en: 'Settings'
     },
     'settings.subtitle': {
-      ko: '러브트리를 어떻게 공개할지 정합니다',
-      en: 'Choose how your LoveTrees are shared'
+      ko: '러브트리를 어떻게 소개할지 살펴봅니다',
+      en: 'Review how your LoveTree can be introduced'
+    },
+    'settings.browseIntroTitle': {
+      ko: '둘러보기 소개',
+      en: 'Browse introduction'
+    },
+    'settings.browseIntroCardTitle': {
+      ko: '둘러보기에 소개될 트리로 키우기',
+      en: 'Grow this tree toward Browse introduction'
+    },
+    'settings.browseIntroDesc': {
+      ko: '좋아하는 순간을 3개 이상 남기면 이 트리를 둘러보기에 소개할 수 있어요. 소개 여부는 각 러브트리에서 조건을 채운 뒤 선택할 수 있어요.',
+      en: 'Save 3 or more favorite moments, and this tree can be introduced in Browse. You can choose introduction after each LoveTree meets the condition.'
+    },
+    'settings.privateStorageTitle': {
+      ko: '프라이빗 보관',
+      en: 'Private storage'
+    },
+    'settings.privateStorageDesc': {
+      ko: '나만 보는 러브트리를 조용히 보관하는 기능은 Plus에서 준비 중이에요.',
+      en: 'Quiet storage for LoveTrees only you can see is being prepared for Plus.'
     },
     'settings.visibilityTitle': {
       ko: '기본 공개 범위',
