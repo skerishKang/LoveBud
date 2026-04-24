@@ -108,20 +108,11 @@
         return `${minutes}:${String(rest).padStart(2, '0')}`;
     }
 
-    function getEditorStartInputSeconds() {
-        if (typeof document === 'undefined') return null;
-        const input = document.getElementById('memoryStartTimeInput');
-        if (!input) return null;
-        return parseYouTubeTimeToSeconds(input.value);
-    }
-
     function resolveStartSeconds(sourceUrl, options = {}) {
-        const hasExplicitOption = options && Object.prototype.hasOwnProperty.call(options, 'startSeconds');
-        if (hasExplicitOption) return parseYouTubeTimeToSeconds(options.startSeconds);
-
-        const editorInputSeconds = getEditorStartInputSeconds();
-        if (editorStartTimeUserEdited) return editorInputSeconds;
-        return editorInputSeconds || extractYouTubeStartSeconds(sourceUrl);
+        if (options && Object.prototype.hasOwnProperty.call(options, 'startSeconds')) {
+            return parseYouTubeTimeToSeconds(options.startSeconds);
+        }
+        return extractYouTubeStartSeconds(sourceUrl);
     }
 
     /**
@@ -188,100 +179,6 @@
         return 'unknown';
     }
 
-    function updateEditorStartPreview(seconds) {
-        if (typeof document === 'undefined') return;
-        const hint = document.getElementById('memoryPreviewHint');
-        const startHint = document.getElementById('memoryStartTimeHint');
-        const formatted = formatYouTubeStartTime(seconds);
-        if (startHint) {
-            startHint.textContent = formatted
-                ? `${formatted}부터 재생돼요. 유튜브 공유에서 “시작 시간”을 체크한 링크도 자동으로 잡혀요.`
-                : '유튜브 공유에서 “시작 시간”을 체크한 링크를 붙이면 자동으로 잡혀요.';
-        }
-        if (hint && formatted) {
-            hint.textContent = `${formatted}부터 재생돼요. 제목과 메모를 다듬어 트리에 심어 주세요.`;
-        } else if (hint) {
-            hint.textContent = '이 장면을 트리에 심기 전에 제목과 메모를 다듬어 주세요.';
-        }
-    }
-
-    function ensureEditorStartTimeInput() {
-        if (typeof document === 'undefined') return;
-        const urlField = document.getElementById('memoryUrlField');
-        const urlInput = document.getElementById('memoryUrlInput');
-        if (!urlField || !urlInput || document.getElementById('memoryStartTimeInput')) return;
-
-        const field = document.createElement('div');
-        field.className = 'editor-form-field editor-form-field-start-time';
-        field.id = 'memoryStartTimeField';
-        field.style.marginTop = '10px';
-
-        const label = document.createElement('label');
-        label.id = 'memoryStartTimeLabel';
-        label.className = 'editor-form-label';
-        label.setAttribute('for', 'memoryStartTimeInput');
-        label.textContent = '입덕 순간 시간';
-
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.id = 'memoryStartTimeInput';
-        input.className = 'editor-form-input';
-        input.placeholder = '예: 1:23 또는 83초';
-        input.setAttribute('inputmode', 'text');
-
-        const hint = document.createElement('p');
-        hint.id = 'memoryStartTimeHint';
-        hint.className = 'editor-form-help';
-        hint.style.margin = '6px 0 0';
-        hint.style.fontSize = '12px';
-        hint.style.lineHeight = '1.6';
-        hint.style.color = 'var(--on-surface-variant)';
-        hint.textContent = '유튜브 공유에서 “시작 시간”을 체크한 링크를 붙이면 자동으로 잡혀요.';
-
-        field.appendChild(label);
-        field.appendChild(input);
-        field.appendChild(hint);
-        urlField.insertAdjacentElement('afterend', field);
-
-        const resetStartState = () => {
-            editorStartTimeUserEdited = false;
-            lastKnownEditorStartSeconds = null;
-            input.value = '';
-            updateEditorStartPreview(null);
-        };
-
-        const syncFromUrl = () => {
-            const fromUrl = extractYouTubeStartSeconds(urlInput.value);
-            if (fromUrl && !editorStartTimeUserEdited) {
-                lastKnownEditorStartSeconds = fromUrl;
-                input.value = formatYouTubeStartTime(fromUrl);
-            } else if (!fromUrl && !editorStartTimeUserEdited) {
-                lastKnownEditorStartSeconds = null;
-                input.value = '';
-            }
-            updateEditorStartPreview(parseYouTubeTimeToSeconds(input.value) || fromUrl);
-        };
-
-        urlInput.addEventListener('input', syncFromUrl);
-        input.addEventListener('input', () => {
-            editorStartTimeUserEdited = true;
-            lastKnownEditorStartSeconds = parseYouTubeTimeToSeconds(input.value);
-            updateEditorStartPreview(lastKnownEditorStartSeconds);
-        });
-
-        const form = document.getElementById('addMemoryForm');
-        if (form && typeof MutationObserver !== 'undefined') {
-            const observer = new MutationObserver(() => {
-                if (form.classList.contains('is-open')) resetStartState();
-            });
-            observer.observe(form, { attributes: true, attributeFilter: ['class'] });
-        }
-    }
-
-    function initEditorStartTimeEnhancement() {
-        ensureEditorStartTimeInput();
-    }
-
     // 전역 노출
     window.LoveBudMedia = {
         extractYouTubeId,
@@ -294,13 +191,5 @@
         detectSourceType
     };
 
-    if (typeof document !== 'undefined') {
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initEditorStartTimeEnhancement);
-        } else {
-            initEditorStartTimeEnhancement();
-        }
-    }
-
-    console.log('[LoveBudMedia] Media utilities loaded v20260424-2');
+    console.log('[LoveBudMedia] Media utilities loaded v20260424-3 (pure)');
 })();

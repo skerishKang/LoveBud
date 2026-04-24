@@ -33,6 +33,8 @@ function createEditorMemoryForm(deps) {
     let outsideClickHandler = null;
     let previewInputHandler = null;
     let currentInputMode = 'link';
+    let userHasEditedStartTime = false;
+
 
     const addMemoryForm = document.getElementById('addMemoryForm');
     const urlInput = document.getElementById('memoryUrlInput');
@@ -42,8 +44,12 @@ function createEditorMemoryForm(deps) {
     const modeLinkBtn = document.getElementById('memoryModeLinkBtn');
     const modeTextBtn = document.getElementById('memoryModeTextBtn');
     const supportNoteText = document.getElementById('memoryFormSupportNoteText');
+    const startTimeField = document.getElementById('memoryStartTimeField');
+    const startTimeInput = document.getElementById('memoryStartTimeInput');
+    const startTimeHint = document.getElementById('memoryStartTimeHint');
 
-    const formInputs = [urlInput, titleInput, memoInput].filter(Boolean);
+
+    const formInputs = [urlInput, startTimeInput, titleInput, memoInput].filter(Boolean);
 
     function applyFormOpenStyles() {
         if (!addMemoryForm) return;
@@ -168,6 +174,8 @@ function createEditorMemoryForm(deps) {
         if (modeLinkBtn) modeLinkBtn.classList.toggle('is-active', linkMode);
         if (modeTextBtn) modeTextBtn.classList.toggle('is-active', !linkMode);
         if (urlField) urlField.classList.toggle('is-deemphasized', !linkMode);
+        if (startTimeField) startTimeField.style.display = linkMode ? 'block' : 'none';
+
 
         const urlLabel = document.getElementById('memoryUrlLabel');
         const formIntro = document.getElementById('addMemoryFormIntro');
@@ -240,6 +248,9 @@ function createEditorMemoryForm(deps) {
     const showAddMemoryForm = () => {
         if (!addMemoryForm) return;
         if (urlInput) urlInput.value = '';
+        if (startTimeInput) startTimeInput.value = '';
+        userHasEditedStartTime = false;
+
         if (titleInput) titleInput.value = '';
         if (memoInput) memoInput.value = '';
 
@@ -325,26 +336,6 @@ function createEditorMemoryForm(deps) {
 
             if (window.LoveBudMedia?.extractYouTubeId) {
                 videoId = window.LoveBudMedia.extractYouTubeId(url) || '';
-            } else {
-                try {
-                    if (!url) throw new Error('Empty URL');
-                    const parsed = new URL(url.trim());
-                    const host = parsed.hostname.replace(/^www\./, '');
-                    if (host === 'youtu.be') {
-                        videoId = parsed.pathname.split('/').filter(Boolean)[0] || '';
-                    } else if (host === 'youtube.com' || host === 'm.youtube.com') {
-                        if (parsed.pathname === '/watch') {
-                            videoId = parsed.searchParams.get('v') || '';
-                        } else {
-                            const parts = parsed.pathname.split('/').filter(Boolean);
-                            if (parts[0] === 'shorts' || parts[0] === 'embed') {
-                                videoId = parts[1] || '';
-                            }
-                        }
-                    }
-                } catch (e) {
-                    videoId = '';
-                }
             }
 
             if (videoId) {
@@ -353,7 +344,7 @@ function createEditorMemoryForm(deps) {
 
                 const thumb = document.getElementById('memoryPreviewThumb');
                 if (thumb) {
-                    thumb.src = `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
+                    thumb.src = window.LoveBudMedia?.getThumbnailUrl(url) || `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
                 }
 
                 if (!userHasEditedTitle && titleInput) {
@@ -362,6 +353,24 @@ function createEditorMemoryForm(deps) {
                         : (i18n('editor_default_next_title') || '이어진 순간');
                     titleInput.value = defaultTitle;
                 }
+
+                // 시작 시간 힌트 업데이트
+                const hint = document.getElementById('memoryPreviewHint');
+                const startSeconds = window.LoveBudMedia?.parseYouTubeTimeToSeconds(startTimeInput?.value) ||
+                                   window.LoveBudMedia?.extractYouTubeStartSeconds(url);
+                const formatted = window.LoveBudMedia?.formatYouTubeStartTime(startSeconds);
+
+                if (hint && formatted) {
+                    hint.textContent = `${formatted}부터 재생돼요. 제목과 메모를 다듬어 트리에 심어 주세요.`;
+                } else if (hint) {
+                    hint.textContent = i18n('editor_preview_hint') || '이 장면을 트리에 심기 전에 제목과 메모를 다듬어 주세요.';
+                }
+
+                if (startTimeHint) {
+                    startTimeHint.textContent = formatted
+                        ? `${formatted}부터 재생돼요. 유튜브 공유에서 “시작 시간”을 체크한 링크도 자동으로 잡혀요.`
+                        : '유튜브 공유에서 “시작 시간”을 체크한 링크를 붙이면 자동으로 잡혀요.';
+                }
             } else {
                 hideLinkPreview();
             }
@@ -369,8 +378,26 @@ function createEditorMemoryForm(deps) {
 
         if (urlInput) {
             if (previewInputHandler) urlInput.removeEventListener('input', previewInputHandler);
-            previewInputHandler = updatePreview;
+            previewInputHandler = () => {
+                const url = urlInput.value.trim();
+                if (!userHasEditedStartTime && window.LoveBudMedia) {
+                    const fromUrl = window.LoveBudMedia.extractYouTubeStartSeconds(url);
+                    if (fromUrl) {
+                        startTimeInput.value = window.LoveBudMedia.formatYouTubeStartTime(fromUrl);
+                    } else {
+                        startTimeInput.value = '';
+                    }
+                }
+                updatePreview();
+            };
             urlInput.addEventListener('input', previewInputHandler);
+        }
+
+        if (startTimeInput) {
+            startTimeInput.addEventListener('input', () => {
+                userHasEditedStartTime = true;
+                updatePreview();
+            });
         }
     };
 
@@ -420,7 +447,10 @@ function createEditorMemoryForm(deps) {
                     showToast(getYouTubeInputErrorMessage(rawUrl), 'error');
                     return;
                 }
-                embedUrl = window.LoveBudMedia.getEmbedUrl(rawUrl, 'youtube');
+                const startSeconds = window.LoveBudMedia.parseYouTubeTimeToSeconds(startTimeInput?.value) ||
+                                   window.LoveBudMedia.extractYouTubeStartSeconds(rawUrl);
+                embedUrl = window.LoveBudMedia.getEmbedUrl(rawUrl, 'youtube', { startSeconds });
+
                 thumbnailUrl = window.LoveBudMedia.getThumbnailUrl(rawUrl, 'youtube', 'mqdefault');
             } else {
                 console.warn('[editor] LoveBudMedia not loaded, using fallback YouTube parsing');
