@@ -24,6 +24,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const resultsHead = document.querySelector('.browse-results-head');
     const resultsTitle = resultsHead?.querySelector('h3');
     const resultsBadge = resultsHead?.querySelector('.browse-results-badge');
+    const growingSection = document.getElementById('growingTreesSection');
+    const growingList = document.getElementById('growingTreesList');
     const mobilePreviewMediaQuery = window.matchMedia('(max-width: 768px)');
 
     const CardRenderer = window.LoveBudSearchCardRenderer;
@@ -46,6 +48,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const getPreviewCacheKey = (treeId) => `public_tree_preview_${treeId}`;
 
     let allTrees = [];
+    let growingTrees = [];
     let loadError = null;
     let isFromCache = false;
     let apiTreesLoaded = false;
@@ -281,9 +284,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const getFilteredTrees = () => Adapter.filterTrees(allTrees, currentQuery, currentCategory);
 
     const markActiveCard = (activeCard) => {
-        resultsList.querySelectorAll('.tree-card.is-active').forEach((card) => {
-            card.classList.remove('is-active');
-            card.setAttribute('aria-pressed', 'false');
+        const allCardContainers = [resultsList, growingList].filter(Boolean);
+        allCardContainers.forEach(container => {
+            container.querySelectorAll('.tree-card.is-active').forEach((card) => {
+                card.classList.remove('is-active');
+                card.setAttribute('aria-pressed', 'false');
+            });
         });
         if (activeCard) {
             activeCard.classList.add('is-active');
@@ -292,8 +298,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     const syncActiveCard = () => {
-        const cards = resultsList.querySelectorAll('.tree-card');
-        const activeCard = Array.from(cards).find(card => card.dataset.treeId === selectedTreeId);
+        const allCardContainers = [resultsList, growingList].filter(Boolean);
+        let activeCard = null;
+        for (const container of allCardContainers) {
+            const cards = container.querySelectorAll('.tree-card');
+            activeCard = Array.from(cards).find(card => card.dataset.treeId === selectedTreeId);
+            if (activeCard) break;
+        }
         markActiveCard(activeCard || null);
     };
 
@@ -384,11 +395,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         hydrateSelectedTreePreview(tree);
     };
 
-    const attachCardEvents = (filtered) => {
-        const cards = resultsList.querySelectorAll('.tree-card');
+    const attachCardEvents = (listElement, trees) => {
+        if (!listElement) return;
+        const cards = listElement.querySelectorAll('.tree-card');
         cards.forEach((card) => {
             const treeId = card.dataset.treeId;
-            const tree = filtered.find(t => t.id === treeId);
+            const tree = trees.find(t => t.id === treeId);
             if (!tree) return;
 
             card.setAttribute('tabindex', '0');
@@ -431,7 +443,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             isDemo: !apiTreesLoaded && !loadError
         });
         resultsList.innerHTML = html;
-        attachCardEvents(filtered);
+        attachCardEvents(resultsList, filtered);
         syncActiveCard();
 
         const selectedTree = getSelectedTreeFromFiltered(filtered);
@@ -498,6 +510,53 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    function renderGrowingResults() {
+        if (!growingSection || !growingList) return;
+
+        if (!growingTrees || growingTrees.length === 0) {
+            growingSection.hidden = true;
+            growingList.innerHTML = '';
+            return;
+        }
+
+        growingSection.hidden = false;
+        // Use CardRenderer.renderTreeCard with index + 1 to prevent "featured" styling
+        growingList.innerHTML = growingTrees
+            .slice(0, 3)
+            .map((tree, index) => CardRenderer.renderTreeCard(tree, index + 1))
+            .join('');
+
+        attachCardEvents(growingList, growingTrees);
+        syncActiveCard();
+    }
+
+    async function loadGrowingTrees() {
+        if (!window.LoveTreeBaseApiFetch || typeof window.LoveTreeBaseApiFetch.apiFetch !== 'function') return;
+
+        try {
+            // Use established base API layer for public community endpoints
+            const apiResponse = await window.LoveTreeBaseApiFetch.apiFetch('/community/growing-trees?limit=3');
+            const rawTrees = Array.isArray(apiResponse) ? apiResponse : (apiResponse?.data || []);
+            
+            // Normalize and enrich models
+            const baseModels = window.LoveTreePublicTreeAdapter.buildPublicTreeSummaryModels(rawTrees);
+            growingTrees = baseModels.map((tree, index) => {
+                const raw = rawTrees[index]?.data || rawTrees[index] || {};
+                const rawEmotionTags = Array.isArray(raw.emotionTags) ? raw.emotionTags : (Array.isArray(raw.emotion_tags) ? raw.emotion_tags : []);
+                return {
+                    ...tree,
+                    emotionTags: rawEmotionTags.filter(Boolean).slice(0, 3),
+                    timeRange: raw.timeRange || raw.time_range || tree.timeRange
+                };
+            });
+            
+            renderGrowingResults();
+        } catch (error) {
+            console.warn('[search] growing trees load failed:', error.message);
+            if (growingSection) growingSection.style.display = 'none';
+        }
+    }
+
     if (previewMobileClose) {
         previewMobileClose.addEventListener('click', () => {
             clearSelectedPreview();
@@ -526,7 +585,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     resultsList.innerHTML = CardRenderer.renderLoading();
     clearSelectedPreview();
-    await loadPublicTrees({ resetSelection: true });
+    await Promise.allSettled([
+        loadPublicTrees({ resetSelection: true }),
+        loadGrowingTrees()
+    ]);
 
     let searchInputTimer = null;
     searchInput.addEventListener('input', (e) => {
