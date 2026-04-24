@@ -737,14 +737,29 @@ function buildUserDropdown(user) {
 
 // ── Auth State → Nav UI ───────────────────────────────────────────────────────
 
-/**
+/**/**
  * Update right-side nav area based on auth state.
- * Container #auth-nav / #auth-nav-container is never destroyed —
+ * Container #auth-nav / #auth-nav-container is never destroyed -
  * only its innerHTML is replaced.
- *
+ * 
  * Called by onAuthStateChanged whenever Firebase auth state changes.
  */
+function updateHeaderLangToggleVisibility(isLoggedIn) {
+    var headerLangToggle = document.querySelector('.header-lang-toggle');
+    if (!headerLangToggle) return;
+    
+    if (isLoggedIn) {
+          headerLangToggle.hidden = true;
+          headerLangToggle.style.setProperty('display', 'none', 'important');
+    } else {
+          headerLangToggle.hidden = false;
+          headerLangToggle.style.removeProperty('display');
+    }
+}
+
 function updateNavUI(user) {
+    updateHeaderLangToggleVisibility(!!user);
+  
   if (__authUiModule) {
     __authUiModule.updateNavUI({
       user: user,
