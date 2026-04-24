@@ -42,6 +42,7 @@
 - [PRODUCT_BRIEF.md](./product/PRODUCT_BRIEF.md) - 현재 실행 기준 제품 개요
 - [PRODUCT_IDENTITY.md](./product/PRODUCT_IDENTITY.md) - 제품 정체성 source of truth
 - [BRAND_EXPERIENCE.md](./product/BRAND_EXPERIENCE.md) - 브랜드 감성 / UX 표현 원칙 source of truth
+- [PUBLICATION_AND_PRIVACY_UX_POLICY.md](./product/PUBLICATION_AND_PRIVACY_UX_POLICY.md) - 공개/비공개/둘러보기 소개 UX 정책
 - [UI_COPY_DIET_GUIDE.md](./product/UI_COPY_DIET_GUIDE.md) - UI 카피 다이어트 운영 기준
 - [MVP_SCOPE.md](./product/MVP_SCOPE.md) - MVP 범위
 - [USER_FLOW.md](./product/USER_FLOW.md) - 사용자 흐름
