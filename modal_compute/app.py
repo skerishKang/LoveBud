@@ -228,11 +228,11 @@ def normalize_tree_row(row: dict[str, Any], memory_count: int | None = None) -> 
     }
 
 
-def normalize_row(row: dict[str, Any]) -> dict[str, Any]:
+def normalize_row(row: dict[str, Any], *, stage_override: str | None = None) -> dict[str, Any]:
     """Normalize a combined DB row into a browse-friendly snapshot."""
     memory_count = row.get("memory_count", 0) or 0
     emotion_tags = parse_tags(row.get("all_tags"))
-    
+
     raw_thumbnail = row.get("raw_thumbnail")
     raw_source_url = row.get("raw_source_url")
     representative_thumbnail = raw_thumbnail or raw_source_url or ""
@@ -249,7 +249,7 @@ def normalize_row(row: dict[str, Any]) -> dict[str, Any]:
         "representativeThumbnail": representative_thumbnail,
         "memoryCount": memory_count,
         "emotionTags": emotion_tags,
-        "stage": estimate_stage(memory_count),
+        "stage": stage_override or estimate_stage(memory_count),
         "theme": "LoveTree",
         "timeRange": "",
         "representativeMemorySourceUrl": raw_source_url or "",
@@ -264,7 +264,7 @@ def fetch_latest_public_tree_snapshots(limit: int = 12, sort: str = "latest") ->
         order_clause = "c.memory_count DESC, t.created_at DESC"
 
     query = """
-        SELECT 
+        SELECT
             t.id, t.title, t.visibility, t.created_at, t.updated_at,
             c.memory_count,
             c.all_tags,
@@ -273,7 +273,7 @@ def fetch_latest_public_tree_snapshots(limit: int = 12, sort: str = "latest") ->
         FROM trees t
         INNER JOIN (
             -- Quality Filter: Only trees with 3+ public memories
-            SELECT 
+            SELECT
                 tree_id,
                 count(*) as memory_count,
                 ARRAY_AGG(emotion_tags) as all_tags
@@ -286,7 +286,7 @@ def fetch_latest_public_tree_snapshots(limit: int = 12, sort: str = "latest") ->
             -- Representative Snapshot: Latest memory with visual data
             SELECT thumbnail, source_url
             FROM memories
-            WHERE tree_id = t.id 
+            WHERE tree_id = t.id
               AND visibility = 'public'
               AND (NULLIF(thumbnail, '') IS NOT NULL OR NULLIF(source_url, '') IS NOT NULL)
             ORDER BY created_at DESC
@@ -306,6 +306,52 @@ def fetch_latest_public_tree_snapshots(limit: int = 12, sort: str = "latest") ->
     rows = run_db_with_retry(operation)
 
     return [normalize_row(row) for row in rows]
+
+
+def fetch_growing_public_tree_snapshots(limit: int = 6) -> list[dict[str, Any]]:
+    """Fetch growing public tree snapshots for trees with 1-2 public memories."""
+
+    query = """
+        SELECT
+            t.id, t.title, t.visibility, t.created_at, t.updated_at,
+            c.memory_count,
+            c.all_tags,
+            m.thumbnail as raw_thumbnail,
+            m.source_url as raw_source_url
+        FROM trees t
+        INNER JOIN (
+            SELECT
+                tree_id,
+                count(*) as memory_count,
+                ARRAY_AGG(emotion_tags) as all_tags
+            FROM memories
+            WHERE visibility = 'public'
+            GROUP BY tree_id
+            HAVING count(*) BETWEEN 1 AND 2
+        ) c ON t.id = c.tree_id
+        LEFT JOIN LATERAL (
+            SELECT thumbnail, source_url
+            FROM memories
+            WHERE tree_id = t.id
+              AND visibility = 'public'
+              AND (NULLIF(thumbnail, '') IS NOT NULL OR NULLIF(source_url, '') IS NOT NULL)
+            ORDER BY created_at DESC
+            LIMIT 1
+        ) m ON TRUE
+        WHERE t.visibility = 'public'
+        ORDER BY t.updated_at DESC NULLS LAST, t.created_at DESC NULLS LAST
+        LIMIT %s;
+    """
+
+    def operation() -> list[dict[str, Any]]:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(query, (limit,))
+                return cur.fetchall()
+
+    rows = run_db_with_retry(operation)
+
+    return [normalize_row(row, stage_override="growing") for row in rows]
 
 
 def fetch_public_memories(tree_id: str | None = None, limit: int = 100) -> list[dict[str, Any]]:
@@ -609,6 +655,13 @@ def get_latest_browse_snapshot(
 ) -> list[dict]:
     safe_sort = sort if sort in {"latest", "popular"} else "latest"
     return fetch_latest_public_tree_snapshots(limit=limit, sort=safe_sort)
+
+
+@web_app.get("/modal/browse/growing")
+def get_growing_browse_snapshot(
+    limit: int = Query(default=6, ge=3, le=12),
+) -> list[dict]:
+    return fetch_growing_public_tree_snapshots(limit=limit)
 
 
 @web_app.get("/modal/community/memories")
