@@ -32,8 +32,9 @@
                                 <stop offset="100%" stop-color="#d76d72"/>
                             </linearGradient>
                             <radialGradient id="nodeGlow" cx="50%" cy="50%" r="50%">
-                                <stop offset="0%" stop-color="#fff7df"/>
-                                <stop offset="100%" stop-color="#f4b9a7"/>
+                                <stop offset="0%" stop-color="#fffdf0"/>
+                                <stop offset="58%" stop-color="#ffe8c8"/>
+                                <stop offset="100%" stop-color="#f0a58e"/>
                             </radialGradient>
                             <filter id="softGlow" x="-60%" y="-60%" width="220%" height="220%">
                                 <feGaussianBlur stdDeviation="5" result="blur"/>
@@ -41,6 +42,9 @@
                                     <feMergeNode in="blur"/>
                                     <feMergeNode in="SourceGraphic"/>
                                 </feMerge>
+                            </filter>
+                            <filter id="nodeShadow" x="-80%" y="-80%" width="260%" height="260%">
+                                <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#ffd6a4" flood-opacity="0.78"/>
                             </filter>
                         </defs>
 
@@ -53,24 +57,24 @@
                         <path class="tree-line branch small" d="M258 184 C226 162 208 134 198 98"/>
 
                         <g class="node-layer" aria-label="순간 노드 목록">
-                            <button class="tree-node" data-moment-id="first-stage" style="--x: 130px; --y: 430px;" aria-label="첫 무대 기억 선택">
-                                <span>첫</span>
-                            </button>
-                            <button class="tree-node" data-moment-id="concert-light" style="--x: 142px; --y: 340px;" aria-label="콘서트 조명 선택">
-                                <span>빛</span>
-                            </button>
-                            <button class="tree-node" data-moment-id="comeback-day" style="--x: 382px; --y: 292px;" aria-label="컴백날 선택">
-                                <span>컴</span>
-                            </button>
-                            <button class="tree-node" data-moment-id="friend-chat" style="--x: 160px; --y: 198px;" aria-label="친구와 나눈 말 선택">
-                                <span>말</span>
-                            </button>
-                            <button class="tree-node" data-moment-id="favorite-clip" style="--x: 372px; --y: 136px;" aria-label="최애 클립 선택">
-                                <span>컷</span>
-                            </button>
-                            <button class="tree-node" data-moment-id="saved-ticket" style="--x: 198px; --y: 98px;" aria-label="간직한 티켓 선택">
-                                <span>표</span>
-                            </button>
+                            <g class="tree-node" data-moment-id="first-stage" tabindex="0" role="button" aria-pressed="false" aria-label="첫 무대 기억 선택" transform="translate(130 430)">
+                                <circle r="22"></circle><text y="5">첫</text>
+                            </g>
+                            <g class="tree-node" data-moment-id="concert-light" tabindex="0" role="button" aria-pressed="false" aria-label="콘서트 조명 선택" transform="translate(142 340)">
+                                <circle r="22"></circle><text y="5">빛</text>
+                            </g>
+                            <g class="tree-node" data-moment-id="comeback-day" tabindex="0" role="button" aria-pressed="false" aria-label="컴백날 선택" transform="translate(382 292)">
+                                <circle r="22"></circle><text y="5">컴</text>
+                            </g>
+                            <g class="tree-node" data-moment-id="friend-chat" tabindex="0" role="button" aria-pressed="false" aria-label="친구와 나눈 말 선택" transform="translate(160 198)">
+                                <circle r="22"></circle><text y="5">말</text>
+                            </g>
+                            <g class="tree-node" data-moment-id="favorite-clip" tabindex="0" role="button" aria-pressed="false" aria-label="최애 클립 선택" transform="translate(372 136)">
+                                <circle r="22"></circle><text y="5">컷</text>
+                            </g>
+                            <g class="tree-node" data-moment-id="saved-ticket" tabindex="0" role="button" aria-pressed="false" aria-label="간직한 티켓 선택" transform="translate(198 98)">
+                                <circle r="22"></circle><text y="5">표</text>
+                            </g>
                         </g>
                     </svg>
                 </div>
