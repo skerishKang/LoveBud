@@ -764,6 +764,10 @@ function updateNavUI(user) {
   }
 
   persistConfirmedAuthSession(user);
+  
+  // 상단 nav 언어 버튼 동적 표시/숨김 (로그인 상태에서 숨김)
+  var isLoggedIn = !!user;
+  updateHeaderLangToggleVisibility(isLoggedIn);
 
   if (user) {
     var html = buildUserDropdown(user);
@@ -774,6 +778,16 @@ function updateNavUI(user) {
     if (authNav) authNav.innerHTML = html;
     // authContainer stays empty on login page (has its own form)
   }
+}
+
+/**
+ * 상단 nav 언어 버튼 표시/숨김 업데이트
+ * @param {boolean} isLoggedIn - 로그인 여부
+ */
+function updateHeaderLangToggleVisibility(isLoggedIn) {
+  var headerLangToggle = document.querySelector('.header-lang-toggle');
+  if (!headerLangToggle) return;
+  headerLangToggle.hidden = !!isLoggedIn;
 }
 
 // ── Dropdown (event delegation — attached once) ─────────────────────────────

@@ -170,9 +170,10 @@
         return loginHref + '?redirect=' + encodeURIComponent(targetHref);
     }
 
-    function buildLangToggleHTML() {
+    function buildLangToggleHTML(isHidden) {
+        var hiddenAttr = isHidden ? ' hidden' : '';
         return [
-            '<div class="lang-toggle">',
+            '<div class="lang-toggle header-lang-toggle"' + hiddenAttr + '>',
                 '<button type="button" class="btn-round btn-outline lang-menu-trigger" style="text-decoration:none;display:flex;align-items:center;gap:4px;padding:6px 12px;height:36px;font-size:14px;font-weight:500;">',
                     '<span class="material-symbols-outlined" style="font-size:18px;">language</span>',
                     '<span>언어</span>',
@@ -197,6 +198,7 @@
 
         // auth 영역 초기 HTML - confirmed session 있으면 즉시 프로필 표시
         var cachedUser = !isLoginPage() ? getConfirmedSessionUser() : null;
+        var isLoggedIn = !!cachedUser;
         var authHTML;
 
         if (isLoginPage()) {
@@ -257,7 +259,8 @@
                             navLinksHTML,
                         '</div>',
                         '<div class="nav-actions">',
-                            buildLangToggleHTML(),
+                            // 로그인 상태에서 상단 nav 언어 버튼 숨김 (계정 드롭다운에서만 노출)
+                            buildLangToggleHTML(isLoggedIn),
                             authHTML,
                         '</div>',
                     '</div>',
