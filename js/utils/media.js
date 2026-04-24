@@ -10,8 +10,6 @@
 
     const MAX_YOUTUBE_START_SECONDS = 12 * 60 * 60;
 
-    let editorStartTimeUserEdited = false;
-    let lastKnownEditorStartSeconds = null;
 
     /**
      * YouTube URL에서 비디오 ID 추출

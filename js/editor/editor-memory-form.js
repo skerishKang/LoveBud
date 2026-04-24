@@ -32,6 +32,7 @@ function createEditorMemoryForm(deps) {
     let escHandler = null;
     let outsideClickHandler = null;
     let previewInputHandler = null;
+    let startTimeInputHandler = null;
     let currentInputMode = 'link';
     let userHasEditedStartTime = false;
 
@@ -356,8 +357,15 @@ function createEditorMemoryForm(deps) {
 
                 // 시작 시간 힌트 업데이트
                 const hint = document.getElementById('memoryPreviewHint');
-                const startSeconds = window.LoveBudMedia?.parseYouTubeTimeToSeconds(startTimeInput?.value) ||
-                                   window.LoveBudMedia?.extractYouTubeStartSeconds(url);
+
+                // Fix 3 Policy: userHasEditedStartTime === true 이면 수동 입력값만 우선
+                let startSeconds = null;
+                if (userHasEditedStartTime) {
+                    startSeconds = window.LoveBudMedia?.parseYouTubeTimeToSeconds(startTimeInput?.value);
+                } else {
+                    startSeconds = window.LoveBudMedia?.extractYouTubeStartSeconds(url);
+                }
+
                 const formatted = window.LoveBudMedia?.formatYouTubeStartTime(startSeconds);
 
                 if (hint && formatted) {
@@ -394,10 +402,12 @@ function createEditorMemoryForm(deps) {
         }
 
         if (startTimeInput) {
-            startTimeInput.addEventListener('input', () => {
+            if (startTimeInputHandler) startTimeInput.removeEventListener('input', startTimeInputHandler);
+            startTimeInputHandler = () => {
                 userHasEditedStartTime = true;
                 updatePreview();
-            });
+            };
+            startTimeInput.addEventListener('input', startTimeInputHandler);
         }
     };
 
@@ -415,6 +425,12 @@ function createEditorMemoryForm(deps) {
         if (outsideClickHandler) {
             document.removeEventListener('click', outsideClickHandler, true);
             outsideClickHandler = null;
+        }
+        if (urlInput && previewInputHandler) {
+            urlInput.removeEventListener('input', previewInputHandler);
+        }
+        if (startTimeInput && startTimeInputHandler) {
+            startTimeInput.removeEventListener('input', startTimeInputHandler);
         }
     };
 
@@ -447,8 +463,15 @@ function createEditorMemoryForm(deps) {
                     showToast(getYouTubeInputErrorMessage(rawUrl), 'error');
                     return;
                 }
-                const startSeconds = window.LoveBudMedia.parseYouTubeTimeToSeconds(startTimeInput?.value) ||
-                                   window.LoveBudMedia.extractYouTubeStartSeconds(rawUrl);
+
+                // Fix 3 Policy
+                let startSeconds = null;
+                if (userHasEditedStartTime) {
+                    startSeconds = window.LoveBudMedia.parseYouTubeTimeToSeconds(startTimeInput?.value);
+                } else {
+                    startSeconds = window.LoveBudMedia.extractYouTubeStartSeconds(rawUrl);
+                }
+
                 embedUrl = window.LoveBudMedia.getEmbedUrl(rawUrl, 'youtube', { startSeconds });
 
                 thumbnailUrl = window.LoveBudMedia.getThumbnailUrl(rawUrl, 'youtube', 'mqdefault');
