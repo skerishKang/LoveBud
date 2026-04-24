@@ -5,8 +5,8 @@
 ## 1. 루트 주소
 
 - **공식 주소**: `https://lovebud.pages.dev/`
-- **보조/Upstream 주소**: `https://lovebud.vercel.app/`
-- **보조/Fallback 주소**: `https://lovebud.netlify.app/`
+- **Deprecated transitional fallback under audit**: `https://lovebud.vercel.app/`
+- **Legacy fallback pending audit**: `https://lovebud.netlify.app/`
 
 주의:
 - 문서와 운영 안내에서 `lovebud.vercel.app`, `lovebud.netlify.app`를 주서비스처럼 설명하지 않습니다.
@@ -28,10 +28,13 @@
 
 | 엔드포인트 | 처리 핸들러 | 현재 우선순위 / 동작 |
 | :--- | :--- | :--- |
-| `/api/community/trees` | `functions/api/[[path]].js` | **Modal (summary)** -> Vercel fallback |
-| `/api/community/memories` | `functions/api/[[path]].js` | **Modal 우선** -> Vercel fallback |
-| `/api/trees/*` | `functions/api/[[path]].js` | Cloudflare Pages catch-all -> Modal private read / Vercel fallback |
-| `/api/memories/*` | `functions/api/[[path]].js` | Cloudflare Pages catch-all -> Modal private read / Vercel fallback |
+| `/api/trees` | `functions/api/trees.js` | Route-specific Cloudflare Function -> `GET`/`POST` -> Modal `/modal/private/trees`; response marker `x-lovebud-upstream: modal` |
+| `/api/memories` | `functions/api/memories.js` | Route-specific Cloudflare Function -> `GET`/`POST` -> Modal `/modal/private/memories`; response marker `x-lovebud-upstream: modal` |
+| `/api/community/trees` | `functions/api/[[path]].js` | Catch-all fallback; 일부 Modal read route 가능 -> Vercel deprecated transitional fallback under audit |
+| `/api/community/memories` | `functions/api/[[path]].js` | Catch-all fallback; 일부 Modal read route 가능 -> Vercel deprecated transitional fallback under audit |
+| `/api/trees/*` | `functions/api/trees/[id].js` 또는 `functions/api/[[path]].js` | `GET` detail route 일부 확인; non-GET/PATCH/DELETE는 production route matrix pending |
+| `/api/memories/*` | `functions/api/[[path]].js` | detail route 및 non-GET/PATCH/DELETE는 production route matrix pending |
+| 기타 `/api/*` | `functions/api/[[path]].js` | route-specific function이 없는 요청의 catch-all fallback; Vercel deprecated transitional fallback 위험 audit 중 |
 
 ## 4. 계층 역할 요약
 
@@ -46,12 +49,13 @@
 - same-origin API router
 
 ### Vercel
-- upstream / secondary entry
-- fallback origin
+- deprecated transitional fallback under audit
+- primary production runtime으로 취급하지 않음
+- production route matrix가 의존성 없음 또는 대체 경로 확정을 증명하기 전 제거 금지
 
 ### Netlify
-- fallback / legacy upstream
-- 일부 기존 CRUD / legacy 경로 유지
+- legacy fallback pending audit
+- 일부 기존 CRUD / legacy 경로 보존/폐기 판단 필요
 
 ## 5. 실제 자산 로드 기준
 
@@ -67,7 +71,9 @@
 현재 구조는 완전 제거 상태가 아니라 전이기 구조입니다.
 
 - 공식 주소는 Cloudflare Pages
-- browse summary 1순위는 Modal
+- `/api/trees`, `/api/memories`의 `GET`/`POST`는 route-specific Cloudflare Function을 통해 Modal private endpoint로 전달
 - same-origin entry는 Cloudflare Pages
-- Vercel은 upstream / secondary entry
-- Netlify는 fallback / legacy
+- `functions/api/[[path]].js`는 route-specific function이 없는 `/api/*` 요청의 catch-all fallback
+- Vercel은 deprecated transitional fallback under audit
+- Netlify는 legacy fallback pending audit
+- detail route, community route, PATCH/DELETE 계열은 production route matrix 완료 전까지 pending
