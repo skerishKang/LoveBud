@@ -259,7 +259,7 @@
     }
 
     function renderResults(trees, options = {}) {
-        const { isDemo = false } = options;
+        const { isDemo = false, disableFeatured = false } = options;
 
         _addAnimations();
 
@@ -274,7 +274,8 @@
         }
 
         trees.forEach((tree, index) => {
-            html += renderTreeCard(tree, index);
+            const cardIndex = disableFeatured ? (index + 1) : index;
+            html += renderTreeCard(tree, cardIndex);
         });
 
         return html;
