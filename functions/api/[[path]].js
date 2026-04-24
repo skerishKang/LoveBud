@@ -49,6 +49,10 @@ function buildBrowseCacheRequest(request) {
   return new Request(cacheUrl.toString(), { method: 'GET' });
 }
 
+function normalizeGrowingTreesLimit(rawLimit) {
+  return Math.min(Math.max(Number(rawLimit || 6) || 6, 3), 12);
+}
+
 function buildModalUrl(request, env) {
   const modalBaseUrl = stripTrailingSlash(env.MODAL_BASE_URL);
   if (!modalBaseUrl) return null;
@@ -63,6 +67,13 @@ function buildModalUrl(request, env) {
     target.pathname = '/modal/browse/latest';
     target.searchParams.set('limit', String(limit));
     target.searchParams.set('sort', sort);
+    return target;
+  }
+
+  if (path === '/api/community/growing-trees') {
+    const limit = normalizeGrowingTreesLimit(sourceUrl.searchParams.get('limit'));
+    target.pathname = '/modal/browse/growing';
+    target.searchParams.set('limit', String(limit));
     return target;
   }
 
