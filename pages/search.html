@@ -488,7 +488,10 @@
             }
 
             .preview-sidebar {
-                position: static;
+                position: sticky;
+                top: 96px;
+                z-index: 5;
+                align-self: start;
             }
         }
 
@@ -530,6 +533,8 @@
             .preview-sidebar {
                 order: -1;
                 display: none;
+                position: static;
+                z-index: auto;
                 padding: 22px 18px;
                 border-radius: 1.5rem;
             }
