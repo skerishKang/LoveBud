@@ -514,17 +514,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!growingSection || !growingList) return;
 
         if (!growingTrees || growingTrees.length === 0) {
-            growingSection.style.display = 'none';
+            growingSection.hidden = true;
+            growingList.innerHTML = '';
             return;
         }
 
-        growingSection.style.display = 'block';
-        // Pass disableFeatured: true for secondary growing section
-        const html = CardRenderer.renderResults(growingTrees, { 
-            isDemo: false,
-            disableFeatured: true 
-        });
-        growingList.innerHTML = html;
+        growingSection.hidden = false;
+        // Use CardRenderer.renderTreeCard with index + 1 to prevent "featured" styling
+        growingList.innerHTML = growingTrees
+            .slice(0, 3)
+            .map((tree, index) => CardRenderer.renderTreeCard(tree, index + 1))
+            .join('');
+
         attachCardEvents(growingList, growingTrees);
         syncActiveCard();
     }
