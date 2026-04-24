@@ -168,7 +168,7 @@ export async function onRequest(context) {
       const modalResponse = await tryModalRead(request, env || {});
       if (modalResponse && modalResponse.ok) {
         const cacheableResponse = new Response(modalResponse.body, modalResponse);
-        cacheableResponse.headers.set('Cache-Control', 'public, max-age=300');
+        cacheableResponse.headers.set('Cache-Control', 'public, max-age=420, stale-while-revalidate=120');
         await cache.put(cacheKey, cacheableResponse.clone());
         return withUpstreamHeader(cacheableResponse, 'modal');
       }
