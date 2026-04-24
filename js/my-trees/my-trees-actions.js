@@ -1,6 +1,6 @@
 /**
  * LoveBud - My Trees Actions
- * v20260422-2
+ * v20260425-1
  *
  * Responsibilities:
  * - renameTree
@@ -22,7 +22,6 @@
     cancelBtn: null,
     closeBtn: null,
     submitBtn: null,
-    visibilityInputs: [],
     lastFocusedEl: null,
     resolve: null,
     isSubmitting: false,
@@ -33,12 +32,54 @@
     return options?.i18n || window.t || function(k) { return k; };
   }
 
+  function safeText(i18n, key, fallback) {
+    var translated = typeof i18n === 'function' ? i18n(key) : '';
+    return translated && translated !== key ? translated : fallback;
+  }
+
   function clearPersistentTreesCache() {
     try {
       localStorage.removeItem(PERSISTENT_TREES_CACHE_KEY);
     } catch (e) {
       console.warn('[my-trees-actions] Failed to clear persistent trees cache:', e);
     }
+  }
+
+  function renderCreationGoalCard(form, i18n) {
+    var visibilityGrid = form.querySelector('.create-tree-visibility');
+    var visibilityField = visibilityGrid ? visibilityGrid.closest('.create-tree-field') : null;
+    if (!visibilityField) return;
+
+    visibilityField.innerHTML = [
+      '<div class="create-tree-label">',
+        safeText(i18n, 'myTrees.create_modal_goal_label', '시작 목표'),
+      '</div>',
+      '<div class="create-tree-visibility-card" style="cursor:default;min-height:auto;background:rgba(255,246,247,0.98);border-color:rgba(144,73,81,0.20);box-shadow:0 10px 24px rgba(144,73,81,0.08);">',
+        '<div class="create-tree-visibility-top" style="justify-content:space-between;align-items:flex-start;">',
+          '<span style="display:inline-flex;align-items:center;gap:8px;">',
+            '<span class="material-symbols-outlined" style="font-size:18px;color:var(--primary);">psychiatry</span>',
+            '<span>', safeText(i18n, 'myTrees.create_modal_goal_title', '둘러보기에 소개될 트리로 키우기'), '</span>',
+          '</span>',
+          '<span style="display:inline-flex;align-items:center;justify-content:center;padding:4px 9px;border-radius:999px;background:rgba(144,73,81,0.10);color:var(--primary);font-size:11px;font-weight:900;white-space:nowrap;">',
+            safeText(i18n, 'myTrees.create_modal_goal_badge', '추천'),
+          '</span>',
+        '</div>',
+        '<div class="create-tree-visibility-desc" style="font-size:13px;line-height:1.65;">',
+          safeText(
+            i18n,
+            'myTrees.create_modal_goal_desc',
+            '좋아하는 순간을 3개 이상 남기면 둘러보기에 소개될 수 있어요. 첫 순간부터 차근차근 채워보세요.'
+          ),
+        '</div>',
+      '</div>',
+      '<div class="create-tree-help">',
+        safeText(
+          i18n,
+          'myTrees.create_modal_goal_help',
+          '처음에는 제목만 정하고 시작해도 괜찮아요. 좋아하는 순간을 3개 이상 남기면 둘러보기에 소개될 수 있어요.'
+        ),
+      '</div>'
+    ].join('');
   }
 
   function setupCreateTreeModal(options) {
@@ -54,11 +95,12 @@
     var cancelBtn = document.getElementById('createTreeModalCancelBtn');
     var closeBtn = document.getElementById('createTreeModalCloseBtn');
     var submitBtn = document.getElementById('createTreeModalSubmitBtn');
-    var visibilityInputs = Array.prototype.slice.call(document.querySelectorAll('input[name="createTreeVisibility"]'));
 
-    if (!backdrop || !form || !titleInput || !errorEl || !cancelBtn || !closeBtn || !submitBtn || !visibilityInputs.length) {
+    if (!backdrop || !form || !titleInput || !errorEl || !cancelBtn || !closeBtn || !submitBtn) {
       return null;
     }
+
+    renderCreationGoalCard(form, i18n);
 
     createTreeModalState.backdrop = backdrop;
     createTreeModalState.form = form;
@@ -67,7 +109,6 @@
     createTreeModalState.cancelBtn = cancelBtn;
     createTreeModalState.closeBtn = closeBtn;
     createTreeModalState.submitBtn = submitBtn;
-    createTreeModalState.visibilityInputs = visibilityInputs;
 
     function setError(message) {
       createTreeModalState.errorEl.textContent = message || '';
@@ -81,12 +122,9 @@
       createTreeModalState.cancelBtn.disabled = !!isSubmitting;
       createTreeModalState.closeBtn.disabled = !!isSubmitting;
       createTreeModalState.submitBtn.disabled = !!isSubmitting;
-      createTreeModalState.visibilityInputs.forEach(function(input) {
-        input.disabled = !!isSubmitting;
-      });
       createTreeModalState.submitBtn.textContent = isSubmitting
-        ? (t('creating') || '만드는 중...')
-        : (t('myTrees.create_modal_submit') || '이 트리로 시작하기');
+        ? safeText(t, 'creating', '만드는 중...')
+        : safeText(t, 'myTrees.create_modal_submit', '이 트리로 시작하기');
     }
 
     function cleanupAndResolve(payload) {
@@ -146,17 +184,15 @@
       if (createTreeModalState.isSubmitting) return;
 
       var nextTitle = String(titleInput.value || '').trim();
-      var checkedVisibility = visibilityInputs.find(function(input) { return input.checked; });
-      var nextVisibility = checkedVisibility ? checkedVisibility.value : 'private';
 
       if (!nextTitle) {
-        setError(i18n('myTrees.create_modal_title_required') || '트리 제목을 입력해 주세요.');
+        setError(safeText(i18n, 'myTrees.create_modal_title_required', '트리 제목을 입력해 주세요.'));
         titleInput.focus();
         return;
       }
 
       setError('');
-      cleanupAndResolve({ title: nextTitle, visibility: nextVisibility });
+      cleanupAndResolve({ title: nextTitle, visibility: 'private' });
     });
 
     titleInput.addEventListener('input', function() {
@@ -177,27 +213,12 @@
     }
 
     return new Promise(function(resolve) {
-      var defaultVisibility = 'private';
-      if (options && typeof options.getDefaultVisibility === 'function') {
-        try {
-          defaultVisibility = options.getDefaultVisibility();
-        } catch (e) {
-          defaultVisibility = 'private';
-        }
-      }
-      if (defaultVisibility !== 'public' && defaultVisibility !== 'private') {
-        defaultVisibility = 'private';
-      }
-
       modal.resolve = resolve;
       modal.lastFocusedEl = document.activeElement;
       modal.backdrop.classList.add('show');
       modal.backdrop.setAttribute('aria-hidden', 'false');
       document.body.style.overflow = 'hidden';
-      modal.titleInput.value = i18n('default_tree_title') || '나의 첫 러브트리';
-      modal.visibilityInputs.forEach(function(input) {
-        input.checked = input.value === defaultVisibility;
-      });
+      modal.titleInput.value = safeText(i18n, 'default_tree_title', '나의 첫 러브트리');
       modal.setError('');
       modal.setSubmitting(false, i18n);
 
@@ -218,7 +239,7 @@
 
   async function renameTree(treeId, currentTitle, options) {
     var i18n = getI18n(options);
-    var newTitle = prompt(i18n('rename_tree_prompt') || '트리 이름을 입력하세요:', currentTitle);
+    var newTitle = prompt(safeText(i18n, 'rename_tree_prompt', '트리 이름을 입력하세요:'), currentTitle);
 
     if (!newTitle || newTitle.trim() === '' || newTitle === currentTitle) {
       return;
@@ -228,20 +249,20 @@
       if (window.apiClient && window.apiClient.updateTree) {
         await window.apiClient.updateTree(treeId, { title: newTitle.trim() });
         clearPersistentTreesCache();
-        options?.showToast?.(i18n('rename_success') || '트리 이름이 변경되었습니다.', 'success');
+        options?.showToast?.(safeText(i18n, 'rename_success', '트리 이름이 변경되었습니다.'), 'success');
         options?.reloadTrees?.();
       } else {
-        options?.showToast?.(i18n('api_not_available') || 'API를 사용할 수 없습니다.', 'error');
+        options?.showToast?.(safeText(i18n, 'api_not_available', 'API를 사용할 수 없습니다.'), 'error');
       }
     } catch (e) {
       console.error('[my-trees-actions] renameTree failed:', e);
-      options?.showToast?.(i18n('rename_fail') || '이름 변경에 실패했습니다.', 'error');
+      options?.showToast?.(safeText(i18n, 'rename_fail', '이름 변경에 실패했습니다.'), 'error');
     }
   }
 
   async function deleteTree(treeId, treeTitle, options) {
     var i18n = getI18n(options);
-    var confirmed = confirm((i18n('delete_tree_confirm') || '정말 "{title}" 트리를 삭제하시겠습니까?').replace('{title}', treeTitle));
+    var confirmed = confirm(safeText(i18n, 'delete_tree_confirm', '정말 "{title}" 트리를 삭제하시겠습니까?').replace('{title}', treeTitle));
 
     if (!confirmed) return;
 
@@ -249,14 +270,14 @@
       if (window.apiClient && window.apiClient.deleteTree) {
         await window.apiClient.deleteTree(treeId);
         clearPersistentTreesCache();
-        options?.showToast?.(i18n('delete_success') || '트리가 삭제되었습니다.', 'success');
+        options?.showToast?.(safeText(i18n, 'delete_success', '트리가 삭제되었습니다.'), 'success');
         options?.reloadTrees?.();
       } else {
-        options?.showToast?.(i18n('api_not_available') || 'API를 사용할 수 없습니다.', 'error');
+        options?.showToast?.(safeText(i18n, 'api_not_available', 'API를 사용할 수 없습니다.'), 'error');
       }
     } catch (e) {
       console.error('[my-trees-actions] deleteTree failed:', e);
-      options?.showToast?.(i18n('delete_fail') || '삭제에 실패했습니다.', 'error');
+      options?.showToast?.(safeText(i18n, 'delete_fail', '삭제에 실패했습니다.'), 'error');
     }
   }
 
@@ -270,17 +291,17 @@
         clearPersistentTreesCache();
         options?.showToast?.(
           nextVisibility === 'public'
-            ? (i18n('visibility_changed_public') || '이 트리가 공개로 전환되었습니다.')
-            : (i18n('visibility_changed_private') || '이 트리가 비공개로 전환되었습니다.'),
+            ? safeText(i18n, 'visibility_changed_public', '이 트리가 공개로 전환되었습니다.')
+            : safeText(i18n, 'visibility_changed_private', '이 트리가 비공개로 전환되었습니다.'),
           'success'
         );
         options?.reloadTrees?.();
       } else {
-        options?.showToast?.(i18n('api_not_available') || 'API를 사용할 수 없습니다.', 'error');
+        options?.showToast?.(safeText(i18n, 'api_not_available', 'API를 사용할 수 없습니다.'), 'error');
       }
     } catch (e) {
       console.error('[my-trees-actions] toggleTreeVisibility failed:', e);
-      options?.showToast?.(i18n('visibility_change_fail') || '공개 설정 변경에 실패했습니다.', 'error');
+      options?.showToast?.(safeText(i18n, 'visibility_change_fail', '공개 설정 변경에 실패했습니다.'), 'error');
     }
   }
 
@@ -294,12 +315,9 @@
     return false;
   }
 
-  function getDefaultVisibility(options) {
-    var checkTestPublicMode = options?.isTestPublicMode || isTestPublicMode;
-
-    if (checkTestPublicMode()) {
-      console.log('[my-trees-actions] Test public mode: defaulting to public');
-      return 'public';
+  function getDefaultVisibility() {
+    if (isTestPublicMode()) {
+      console.log('[my-trees-actions] Test public mode ignored: new trees always start private');
     }
     return 'private';
   }
@@ -308,8 +326,8 @@
     var i18n = getI18n(options);
     var headerBtn = document.getElementById('headerCreateTreeBtn');
     var emptyBtn = document.getElementById('createTreeBtn');
-    var restoreHeaderText = '<span class="material-symbols-outlined">add</span> ' + (i18n('myTrees.header_create') || '새 러브트리');
-    var restoreEmptyText = '<span class="material-symbols-outlined" style="font-size:20px;">add_circle</span> ' + (i18n('create_tree_btn') || '새 러브트리 만들기');
+    var restoreHeaderText = '<span class="material-symbols-outlined">add</span> ' + safeText(i18n, 'myTrees.header_create', '새 러브트리');
+    var restoreEmptyText = '<span class="material-symbols-outlined" style="font-size:20px;">add_circle</span> ' + safeText(i18n, 'create_tree_btn', '새 러브트리 만들기');
     var modal = setupCreateTreeModal(options);
 
     var modalResult = await openCreateTreeModal(options);
@@ -319,19 +337,19 @@
 
     if (headerBtn) {
       headerBtn.disabled = true;
-      headerBtn.innerHTML = '<span class="material-symbols-outlined">hourglass_empty</span> ' + (i18n('creating') || '생성 중...');
+      headerBtn.innerHTML = '<span class="material-symbols-outlined">hourglass_empty</span> ' + safeText(i18n, 'creating', '생성 중...');
     }
 
     if (emptyBtn) {
       emptyBtn.disabled = true;
-      emptyBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:20px;">hourglass_empty</span> ' + (i18n('creating') || '생성 중...');
+      emptyBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:20px;">hourglass_empty</span> ' + safeText(i18n, 'creating', '생성 중...');
     }
 
     if (modal && typeof modal.setSubmitting === 'function') {
       modal.setSubmitting(true, i18n);
     }
 
-    console.log('[my-trees-actions] Creating tree with visibility:', modalResult.visibility);
+    console.log('[my-trees-actions] Creating tree with visibility: private');
 
     try {
       var newTree;
@@ -339,12 +357,12 @@
       if (window.apiClient && window.apiClient.createTree) {
         newTree = await window.apiClient.createTree({
           title: modalResult.title,
-          visibility: modalResult.visibility
+          visibility: 'private'
         });
         console.log('[my-trees-actions] Tree created:', newTree);
       } else {
-        newTree = { id: 'tree-' + Date.now(), title: modalResult.title, visibility: modalResult.visibility };
-        options?.showToast?.((window.t || function(k){ return k; })('demo_mode'), 'error');
+        newTree = { id: 'tree-' + Date.now(), title: modalResult.title, visibility: 'private' };
+        options?.showToast?.(safeText(i18n, 'demo_mode', '데모 모드입니다. 실제 트리는 생성되지 않습니다.'), 'error');
       }
 
       if (window.LoveBudCache && options?.cacheKey) {
@@ -378,10 +396,10 @@
 
       if (modal) {
         modal.setSubmitting(false, i18n);
-        modal.setError(i18n('create_tree_fail') || '트리 생성에 실패했습니다');
+        modal.setError(safeText(i18n, 'create_tree_fail', '트리 생성에 실패했습니다'));
       }
 
-      options?.showToast?.(i18n('create_tree_fail') || '트리 생성에 실패했습니다', 'error');
+      options?.showToast?.(safeText(i18n, 'create_tree_fail', '트리 생성에 실패했습니다'), 'error');
     }
   }
 
