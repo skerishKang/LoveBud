@@ -185,10 +185,10 @@ LoveBud / LoveTree는 다음과 같은 서비스가 아닙니다.
 
 상세한 project 운영 기준은 아래 문서를 따릅니다.
 
-- `docs/project/PROJECT_OPERATING_MODEL.md`
-- `docs/project/REPORTING_CHAIN.md`
-- `docs/project/BRANCHING_AND_REVIEW.md`
-- `docs/project/TASK_STATUS.md`
+- [docs/project/PROJECT_OPERATING_MODEL.md](docs/project/PROJECT_OPERATING_MODEL.md)
+- [docs/project/REPORTING_CHAIN.md](docs/project/REPORTING_CHAIN.md)
+- [docs/project/BRANCHING_AND_REVIEW.md](docs/project/BRANCHING_AND_REVIEW.md)
+- [docs/project/TASK_STATUS.md](docs/project/TASK_STATUS.md)
 
 문서 TF 내부 역할선은 `CTO → Document Lead → Document Web`로만 해석합니다.
 
