@@ -737,7 +737,7 @@ function buildUserDropdown(user) {
 
 // ── Auth State → Nav UI ───────────────────────────────────────────────────────
 
-/**/**
+/**
  * Update right-side nav area based on auth state.
  * Container #auth-nav / #auth-nav-container is never destroyed -
  * only its innerHTML is replaced.
