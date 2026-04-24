@@ -50,8 +50,9 @@ function renderMoment(momentId) {
     if (!moment) return;
 
     nodes.forEach((node) => {
-        node.classList.toggle("is-active", node.dataset.momentId === momentId);
-        node.setAttribute("aria-pressed", String(node.dataset.momentId === momentId));
+        const selected = node.dataset.momentId === momentId;
+        node.classList.toggle("is-active", selected);
+        node.setAttribute("aria-pressed", String(selected));
     });
 
     emptyState.hidden = true;
@@ -70,4 +71,9 @@ function renderMoment(momentId) {
 nodes.forEach((node) => {
     node.setAttribute("aria-pressed", "false");
     node.addEventListener("click", () => renderMoment(node.dataset.momentId));
+    node.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        renderMoment(node.dataset.momentId);
+    });
 });
