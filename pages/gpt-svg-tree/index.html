@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LoveTree SVG Tree Prototype</title>
+    <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+    <main class="prototype-shell" aria-labelledby="prototype-title">
+        <section class="prototype-hero">
+            <p class="eyebrow">CTO Prototype · SVG Tree Interaction</p>
+            <h1 id="prototype-title">클릭하면 순간이 열리는 러브트리</h1>
+            <p class="hero-copy">
+                중앙 SVG 트리 위에 순간 노드를 배치하고, 선택한 순간의 감정 기록이 옆 패널에 열리는지 검증하는 독립 테스트 페이지입니다.
+            </p>
+        </section>
+
+        <section class="prototype-workspace" aria-label="SVG 러브트리 프로토타입">
+            <div class="featured-tree-card" aria-label="Featured LoveTree mock card">
+                <div class="featured-card-head">Featured LoveTree</div>
+
+                <div class="tree-frame">
+                    <svg class="love-tree-svg" viewBox="0 0 520 720" role="img" aria-labelledby="tree-title tree-desc">
+                        <title id="tree-title">순간 노드가 배치된 SVG 러브트리</title>
+                        <desc id="tree-desc">어두운 카드 안에 빛나는 줄기와 가지, 클릭 가능한 순간 노드 여섯 개가 배치된 트리입니다.</desc>
+
+                        <defs>
+                            <linearGradient id="trunkGlow" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="#fff7db"/>
+                                <stop offset="46%" stop-color="#f1c8a1"/>
+                                <stop offset="100%" stop-color="#d76d72"/>
+                            </linearGradient>
+                            <radialGradient id="nodeGlow" cx="50%" cy="50%" r="50%">
+                                <stop offset="0%" stop-color="#fff7df"/>
+                                <stop offset="100%" stop-color="#f4b9a7"/>
+                            </radialGradient>
+                            <filter id="softGlow" x="-60%" y="-60%" width="220%" height="220%">
+                                <feGaussianBlur stdDeviation="5" result="blur"/>
+                                <feMerge>
+                                    <feMergeNode in="blur"/>
+                                    <feMergeNode in="SourceGraphic"/>
+                                </feMerge>
+                            </filter>
+                        </defs>
+
+                        <path class="tree-line trunk" d="M260 650 C252 590 261 520 255 460 C250 402 250 344 259 292 C269 236 260 174 258 96"/>
+                        <path class="tree-line branch" d="M257 520 C208 496 172 472 130 430"/>
+                        <path class="tree-line branch" d="M256 463 C206 430 176 388 142 340"/>
+                        <path class="tree-line branch" d="M258 395 C307 374 348 339 382 292"/>
+                        <path class="tree-line branch" d="M259 324 C211 293 181 250 160 198"/>
+                        <path class="tree-line branch" d="M260 264 C316 230 347 190 372 136"/>
+                        <path class="tree-line branch small" d="M258 184 C226 162 208 134 198 98"/>
+
+                        <g class="node-layer" aria-label="순간 노드 목록">
+                            <button class="tree-node" data-moment-id="first-stage" style="--x: 130px; --y: 430px;" aria-label="첫 무대 기억 선택">
+                                <span>첫</span>
+                            </button>
+                            <button class="tree-node" data-moment-id="concert-light" style="--x: 142px; --y: 340px;" aria-label="콘서트 조명 선택">
+                                <span>빛</span>
+                            </button>
+                            <button class="tree-node" data-moment-id="comeback-day" style="--x: 382px; --y: 292px;" aria-label="컴백날 선택">
+                                <span>컴</span>
+                            </button>
+                            <button class="tree-node" data-moment-id="friend-chat" style="--x: 160px; --y: 198px;" aria-label="친구와 나눈 말 선택">
+                                <span>말</span>
+                            </button>
+                            <button class="tree-node" data-moment-id="favorite-clip" style="--x: 372px; --y: 136px;" aria-label="최애 클립 선택">
+                                <span>컷</span>
+                            </button>
+                            <button class="tree-node" data-moment-id="saved-ticket" style="--x: 198px; --y: 98px;" aria-label="간직한 티켓 선택">
+                                <span>표</span>
+                            </button>
+                        </g>
+                    </svg>
+                </div>
+
+                <div class="featured-card-foot">
+                    <strong>OUR JOURNEY WITH LOVE TREE</strong>
+                    <span>연결된 순간 노드를 눌러보기</span>
+                </div>
+            </div>
+
+            <aside class="moment-panel" aria-live="polite" aria-label="선택된 순간 정보">
+                <div class="panel-empty" data-empty-state>
+                    <p class="panel-kicker">Moment Preview</p>
+                    <h2>순간을 선택하면 정보가 열립니다</h2>
+                    <p>트리 위의 작은 노드를 눌러 제목, 감정 태그, 대표 미디어 자리를 확인합니다.</p>
+                </div>
+
+                <div class="panel-content" data-panel-content hidden>
+                    <div class="media-placeholder" data-media-label>대표 미디어</div>
+                    <p class="panel-kicker" data-panel-kicker>Selected Moment</p>
+                    <h2 data-panel-title></h2>
+                    <p class="panel-description" data-panel-description></p>
+                    <div class="tag-row" data-panel-tags></div>
+                </div>
+            </aside>
+        </section>
+    </main>
+
+    <script src="./script.js"></script>
+</body>
+</html>
