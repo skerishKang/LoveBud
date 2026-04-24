@@ -19,6 +19,7 @@
 3. [BRANCHING_AND_REVIEW.md](./BRANCHING_AND_REVIEW.md)
 4. [LOCAL_MODEL_WORKFLOW.md](./LOCAL_MODEL_WORKFLOW.md)
 5. [TASK_STATUS.md](./TASK_STATUS.md)
+6. [VERIFICATION_AND_EVIDENCE.md](./VERIFICATION_AND_EVIDENCE.md)
 
 ## 하위 문서 안내
 
@@ -36,6 +37,9 @@
 
 - [TASK_STATUS.md](./TASK_STATUS.md)  
   작업 상태를 추적하기 위한 상태 필드, 템플릿, 항목 관리 기준을 제공합니다.
+
+- [VERIFICATION_AND_EVIDENCE.md](./VERIFICATION_AND_EVIDENCE.md)  
+  검증 및 증빙 기준, 실도메인 우선 원칙, 보고서 작성 기준을 정리합니다.
 
 ## 관련 허브 문서
 
