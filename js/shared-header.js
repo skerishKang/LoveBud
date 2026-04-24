@@ -260,7 +260,7 @@
                             navLinksHTML,
                         '</div>',
                         '<div class="nav-actions">',
-                            buildLangToggleHTML(isLoggedIn && isEditorPage()),
+                            buildLangToggleHTML(isLoggedIn),
                             authHTML,
                         '</div>',
                     '</div>',
