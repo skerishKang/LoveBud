@@ -10,6 +10,8 @@
 - Vercel은 upstream / secondary entry / 전이기 보조 계층입니다.
 - Netlify는 주경로가 아니라 fallback 또는 단계적 제거 대상입니다.
 - `PRODUCT_IDENTITY / BRAND_EXPERIENCE / UI_DESIGN_SYSTEM` 은 제품/브랜드/UI 판단의 source of truth 입니다.
+- prototype/reference 폴더는 repo hygiene에서 자동 삭제/이동/ignore 대상으로 분류하지 않습니다.
+- `pages/gpt-v2/`, `assets/gpt-v2/`, `pages/gpt-svg-tree/` 및 PR #7 관련 prototype은 보존합니다.
 - 신규 tree의 정책상 기본 visibility는 `public`입니다.
 - private storage는 Plus entitlement가 필요합니다.
 - memory visibility가 생략되면 parent tree visibility를 상속합니다.
@@ -39,6 +41,10 @@ Visibility, private storage, anonymous public exposure, Browse/Search eligibilit
 
 - `./product/PUBLICATION_AND_PRIVACY_UX_POLICY.md`
 - `./engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md`
+
+Prototype/reference 폴더 정리, 보존, repo hygiene 판단이 필요하면 아래를 추가로 읽습니다.
+
+- `./design/PROTOTYPE_REFERENCE_POLICY.md`
 
 운영/배포 판단이 필요하면 아래를 추가로 읽습니다.
 
@@ -70,6 +76,7 @@ Visibility, private storage, anonymous public exposure, Browse/Search eligibilit
 
 - **index**: [design_index.md](./design/design_index.md)
 - [UI_DESIGN_SYSTEM.md](./design/UI_DESIGN_SYSTEM.md) - UI 구조 / 감정 위계 / 컴포넌트 규칙 source of truth
+- [PROTOTYPE_REFERENCE_POLICY.md](./design/PROTOTYPE_REFERENCE_POLICY.md) - prototype/reference 폴더 보존 정책
 - [prompts/image-generation-prompts.md](./design/prompts/image-generation-prompts.md) - 이미지 생성 프롬프트 모음
 - [prompts/home-hero-slide-prompts.txt](./design/prompts/home-hero-slide-prompts.txt) - 홈 히어로 슬라이드 프롬프트
 
