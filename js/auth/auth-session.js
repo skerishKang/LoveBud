@@ -30,35 +30,44 @@
             }));
             logger.log('[auth] Preloaded my-trees cache:', trees.length, 'trees');
 
-            if ((isEditorTarget || isMyTreesTarget) && trees[0]) {
+            // Optimization: Only preload detail for editor target. 
+            // my-trees target will handle its own (deferred) preload to avoid redundant blocking.
+            if (isEditorTarget && trees[0]) {
               var firstTreeId = trees[0].id || trees[0];
               if (firstTreeId) {
-                Promise.all([
-                  apiClient.getTree ? apiClient.getTree(firstTreeId).catch(function () {}) : Promise.resolve(),
-                  apiClient.getMemoriesByTree ? apiClient.getMemoriesByTree(firstTreeId).catch(function () {}) : Promise.resolve()
-                ]).then(function (results) {
-                  var treeDetail = results[0];
-                  var memories = results[1];
-                  if (treeDetail) {
-                    localStorage.setItem('tree_detail_' + firstTreeId, JSON.stringify({
-                      data: treeDetail,
-                      timestamp: Date.now()
-                    }));
+                // 1. Fetch tree detail immediately (smaller payload, higher priority for editor)
+                if (apiClient.getTree) {
+                  apiClient.getTree(firstTreeId).then(function (treeDetail) {
+                    if (treeDetail) {
+                      localStorage.setItem('tree_detail_' + firstTreeId, JSON.stringify({
+                        data: treeDetail,
+                        timestamp: Date.now()
+                      }));
+                    }
+                  }).catch(function () {});
+                }
+
+                // 2. Defer memories fetch (heavy payload) to background
+                var runWhenIdle = function (cb) {
+                  if (window.requestIdleCallback) {
+                    window.requestIdleCallback(cb, { timeout: 2000 });
+                  } else {
+                    setTimeout(cb, 1000);
                   }
-                  if (memories && Array.isArray(memories)) {
-                    localStorage.setItem('tree_memories_' + firstTreeId, JSON.stringify({
-                      data: memories,
-                      timestamp: Date.now()
-                    }));
+                };
+
+                runWhenIdle(function () {
+                  if (apiClient.getMemoriesByTree) {
+                    apiClient.getMemoriesByTree(firstTreeId).then(function (memories) {
+                      if (memories && Array.isArray(memories)) {
+                        localStorage.setItem('tree_memories_' + firstTreeId, JSON.stringify({
+                          data: memories,
+                          timestamp: Date.now()
+                        }));
+                        logger.log('[auth] Background preloaded memories:', firstTreeId, memories.length);
+                      }
+                    }).catch(function () {});
                   }
-                  logger.log(
-                    '[auth] Preloaded first tree detail for editor:',
-                    firstTreeId,
-                    'memories:',
-                    memories ? memories.length : 0
-                  );
-                }).catch(function (err) {
-                  logger.warn('[auth] Preload first tree detail failed:', err && err.message);
                 });
               }
             }
