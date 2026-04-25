@@ -23,6 +23,7 @@
 | [PRODUCT_BRIEF.md](PRODUCT_BRIEF.md) | 현재 실행 기준 제품 개요 |
 | [DATA_NAMING_RULE.md](DATA_NAMING_RULE.md) | 데이터 명명 규칙 |
 | [READONLY_SHARE_SCOPE.md](READONLY_SHARE_SCOPE.md) | 읽기 전용 공유 범위 |
+| [VISIBILITY_AND_PRIVATE_STORAGE_POLICY_REVIEW.md](VISIBILITY_AND_PRIVATE_STORAGE_POLICY_REVIEW.md) | visibility/private storage 정책 검토 |
 
 ## 원천 자료 (Identity Source)
 
