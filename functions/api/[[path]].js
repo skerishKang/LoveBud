@@ -3,6 +3,7 @@ function stripTrailingSlash(value) {
 }
 
 function isBrowseSummaryRequest(request) {
+  if (request.method.toUpperCase() !== 'GET') return false;
   const url = new URL(request.url);
   const path = url.pathname.replace(/\/+$/, '');
   return path === '/api/community/trees' && url.searchParams.get('view') === 'summary';
