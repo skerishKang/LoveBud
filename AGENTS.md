@@ -55,6 +55,42 @@
 - 프론트는 직접 특정 외부 호스트를 기본값으로 가정하지 않습니다.
 - 공식 사용자-facing 주소는 `pages.dev` 기준으로 설명합니다.
 
+### UI 검증 환경 우선순위
+
+LoveBud UI 작업에서는 로컬 정적 서버를 최종 검증 환경으로 자동 가정하지 않습니다.
+
+PR 병합 전 UI 검증 우선순위는 아래와 같습니다.
+
+1. **Cloudflare Pages PR Preview URL**
+2. **해당 작업을 위해 이미 확보한 테스트/프리뷰 페이지 URL**
+3. **로컬 서버** — 정적 레이아웃 참고용 fallback
+
+중요:
+- `https://lovebud.pages.dev/`는 병합 전 PR 검증 기준이 아닙니다. production 도메인은 현재 `main`을 반영하므로, 아직 병합되지 않은 PR branch의 source of truth가 될 수 없습니다.
+- production 도메인 검증은 PR이 `main`에 병합되고 배포된 뒤 수행합니다.
+
+아래 화면/흐름은 로컬 정적 서버 단독으로 최종 판단하지 않습니다.
+
+- Browse / Search 페이지
+- Editor 페이지
+- My Trees 페이지
+- Auth-gated 페이지
+- `/api/*`를 호출하는 모든 페이지
+- Cloudflare Pages Functions에 의존하는 페이지
+- Modal upstream에 의존하는 페이지
+- Firebase authentication 또는 session state에 의존하는 페이지
+
+이런 화면에서는 로컬 서버 결과를 참고로만 사용하고, 병합 전 최종 판단은 Cloudflare Preview 또는 준비된 테스트/프리뷰 URL 기준으로 수행합니다.
+
+UI 검증 프롬프트를 작성하기 전 반드시 아래를 먼저 판단하고 명시합니다.
+
+- 정적-only 페이지인가?
+- `/api/*`를 호출하는가?
+- 인증 또는 세션 상태가 필요한가?
+- Cloudflare Functions 또는 Modal에 의존하는가?
+- 이미 확보한 테스트/프리뷰 URL이 있는가?
+- Cloudflare PR Preview URL이 있는가?
+
 ---
 
 ## 4. 제품 / 용어 해석 가드레일
@@ -273,6 +309,8 @@ LoveBud / LoveTree는 다음과 같은 서비스가 아닙니다.
 3. 수정 파일이 요청 범위 안에 있는가
 4. 검증한 것과 검증하지 못한 것이 분리되어 있는가
 5. 제품 감성과 페이지 역할을 해치지 않았는가
+
+UI 검증 환경은 `## 3. 현재 서비스 / 인프라 기준`의 **UI 검증 환경 우선순위**를 반드시 따릅니다. 특히 Browse/Search/Editor/Auth/API 관련 화면은 로컬 서버 단독 결과로 최종 PASS/BLOCKER를 판단하지 않습니다.
 
 ### 완료 정의
 - 요청된 결과가 반영되었거나 블로커가 명확함
