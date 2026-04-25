@@ -26,6 +26,24 @@
         .editor-form-support-note { margin:-4px 0 2px; display:flex; align-items:flex-start; gap:8px; padding:12px 14px; border-radius:16px; background:rgba(255,255,255,0.68); border:1px solid rgba(144,73,81,0.08); color:var(--on-surface-variant); font-size:12px; line-height:1.6; }
         .editor-form-support-note .material-symbols-outlined { font-size:16px; color:var(--primary); margin-top:1px; }
         .editor-form-field.is-deemphasized { opacity:0.72; }
+        .editor-status-section > h3,
+        .editor-flow-lead,
+        #sidebarMomentCount,
+        #sidebarFlowSummary,
+        #sidebarSelectionHint,
+        .editor-add-section-bottom,
+        .editor-tree-meta-section,
+        #detailEmptyStartBtn {
+            display: none !important;
+        }
+        .editor-status-card {
+            margin-top: 0;
+        }
+        .editor-canvas-empty-guide__desc {
+            max-width: 260px;
+            margin-left: auto;
+            margin-right: auto;
+        }
     </style>
 </head>
 <body class="editor-preload">
@@ -49,7 +67,7 @@
                         <strong id="sidebarTreeTitle">LoveTree</strong>
                         <button type="button" id="renameTreeBtn" class="icon-menu-btn editor-rename-btn" aria-label="트리 제목 변경" title="트리 제목 변경">편집</button>
                     </div>
-                    <span id="sidebarTreeVisibility" class="editor-tree-visibility-pill is-private">비공개 러브트리</span>
+                    <span id="sidebarTreeVisibility" class="editor-tree-visibility-pill is-private">비공개</span>
                     <div class="editor-title-settings-panel" aria-label="트리 핵심 설정">
                         <button type="button" class="editor-mini-setting-btn" id="sidebarTitleEditBtn">
                             <span class="material-symbols-outlined" aria-hidden="true">edit</span>
@@ -72,13 +90,13 @@
                 </div>
             </section>
 
-            <section class="editor-add-section editor-add-section-bottom">
+            <section class="editor-add-section editor-add-section-bottom" aria-hidden="true">
                 <div class="editor-add-card">
                     <div>
                         <div id="addMemoryEyebrow" class="editor-add-eyebrow">...</div>
                         <p id="addMemoryIntro" class="editor-add-intro">...</p>
                     </div>
-                    <button type="button" class="sidebar-btn sidebar-btn-primary" id="addMemoryBtn">
+                    <button type="button" class="sidebar-btn sidebar-btn-primary" id="addMemoryBtn" tabindex="-1">
                         <span class="btn-icon">+</span>
                         <span class="btn-label" id="addMemoryBtnLabel">추가</span>
                     </button>
@@ -90,8 +108,8 @@
             <svg class="canvas-svg" id="canvasSvg"></svg>
             <div id="canvasEmptyGuide" class="editor-canvas-empty-guide editor-canvas-empty-guide-hidden" aria-live="polite">
                 <div class="editor-canvas-empty-guide__eyebrow" id="canvasEmptyGuideEyebrow">첫 순간 준비</div>
-                <h3 class="editor-canvas-empty-guide__title" id="canvasEmptyGuideTitle">이 장면에서 러브트리가 시작돼요</h3>
-                <p class="editor-canvas-empty-guide__desc" id="canvasEmptyGuideDesc">첫 순간을 심으면 이 공간에 감정의 흐름이 천천히 뻗어나갑니다.</p>
+                <h3 class="editor-canvas-empty-guide__title" id="canvasEmptyGuideTitle">첫 장면에서 러브트리가 시작돼요</h3>
+                <p class="editor-canvas-empty-guide__desc" id="canvasEmptyGuideDesc">첫 순간은 이곳에서 시작합니다.</p>
                 <button type="button" id="canvasEmptyStartBtn" class="btn-round btn-primary editor-canvas-empty-guide__cta">첫 순간 심기</button>
             </div>
 
@@ -162,12 +180,12 @@
                         <span class="material-symbols-outlined editor-empty-state-icon">sentiment_satisfied</span>
                         <p id="detailEmptyTitle" class="editor-empty-state-title"></p>
                         <p id="detailEmptyDesc" class="editor-empty-state-desc"></p>
-                        <button type="button" id="detailEmptyStartBtn" class="btn-round btn-primary editor-empty-state-cta">첫 순간 심기</button>
+                        <button type="button" id="detailEmptyStartBtn" class="btn-round btn-primary editor-empty-state-cta" tabindex="-1">첫 순간 심기</button>
                     </div>
                 </div>
 
                 <div id="detailViewMode" class="editor-hidden-initial">
-                    <div class="editor-tree-meta-section">
+                    <div class="editor-tree-meta-section" aria-hidden="true">
                         <div class="editor-section-eyebrow" id="detailTreeStatusLabel">현재 트리</div>
                         <div id="detailTreeMetaMount"></div>
                     </div>
@@ -287,6 +305,16 @@
     <script src="../js/i18n/i18n-search.js?v=20260421-1"></script>
     <script src="../js/i18n/i18n-detail.js?v=20260421-5"></script>
     <script src="../js/i18n/i18n-editor.js?v=20260423-1"></script>
+    <script>
+        window.i18nEditor = Object.assign(window.i18nEditor || {}, {
+            editor_sidebar_public_tree: { ko: '공개', en: 'Public' },
+            editor_sidebar_private_tree: { ko: '비공개', en: 'Private' },
+            detail_empty_title: { ko: '선택한 순간이 여기에 열려요', en: 'Selected moments open here.' },
+            detail_empty_desc: { ko: '첫 순간은 가운데에서 시작하세요.', en: 'Start the first moment from the canvas.' },
+            editor_current_moment_empty_title: { ko: '선택한 순간이 여기에 열려요', en: 'Selected moments open here.' },
+            editor_current_moment_empty_hint: { ko: '첫 순간은 가운데 캔버스에서 시작하세요.', en: 'Start the first moment from the center canvas.' }
+        });
+    </script>
     <script src="../js/i18n/i18n-my-trees.js?v=20260421-5"></script>
     <script src="../js/i18n/i18n-index.js?v=20260421-1"></script>
     <script src="../js/i18n.js?v=20260419-2"></script>
