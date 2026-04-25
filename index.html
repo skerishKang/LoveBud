@@ -47,7 +47,7 @@
         .home-v3-main {
             position: relative;
             z-index: 1;
-            width: min(var(--page-brand-max), calc(100% - 48px));
+            width: min(var(--page-shell-max), calc(100% - (var(--page-pad-desktop) * 2)));
             margin: 0 auto;
             padding: 28px 0 110px;
         }
@@ -56,7 +56,7 @@
             position: relative;
             display: grid;
             grid-template-columns: minmax(0, 1.02fr) minmax(420px, 0.98fr);
-            gap: 34px;
+            gap: var(--hero-gap);
             align-items: center;
             min-height: min(860px, calc(100vh - 104px));
             padding: 24px 0 20px;

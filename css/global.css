@@ -35,6 +35,16 @@
     /* Page width rhythm */
     --page-brand-max: 1280px;
     --page-work-max: 1440px;
+
+    /* Layout Spacing Tokens (PR1) */
+    --page-shell-max: 1280px;
+    --page-pad-desktop: 24px;
+    --page-pad-tablet: 24px;
+    --page-pad-mobile: 16px;
+    --hero-gap: 34px;
+    --section-gap: 56px;
+    --section-gap-compact: 40px;
+    --divider-margin: 48px;
     
     /* Typography Constants */
     --font-heading: 'Outfit', sans-serif;
