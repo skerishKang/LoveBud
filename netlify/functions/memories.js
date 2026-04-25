@@ -1,12 +1,12 @@
 /**
  * GET /api/memories         → list memories (auth required, own trees only)
- * POST /api/memories        → create memory (auth required)
+ * POST /api/memories        → create memory (auth required, visibility inherits parent tree, private requires Plus)
  *
  * Query params for GET:
  *   ?treeId=<treeId>   — filter by tree
  *   ?parentId=<id>     — filter by parent memory (null = root-level)
  */
-const { requireUser } = require('./_lib/auth');
+const { requireUser, requirePlusEntitlement } = require('./_lib/auth');
 const { ok, created, preflight, httpError, handleError } = require('./_lib/http');
 const {
   queryMemories,
@@ -44,6 +44,12 @@ exports.handler = async (event) => {
       validateRequired(body.treeId, 'treeId');
       const treeId = validateUuid(body.treeId, 'treeId');
 
+      // 트리 먼저 조회 (owner 확인 및 visibility 상속용)
+      const targetTree = await getTree(treeId);
+      if (!targetTree || targetTree.owner_id !== user.uid) {
+        throw httpError(403, 'Access denied: not your tree');
+      }
+
       const title = validateOptionalString(body.title, 200);
       const memo = validateOptionalString(body.memo, 5000);
       const artist = validateOptionalString(body.artist, 100);
@@ -52,7 +58,19 @@ exports.handler = async (event) => {
       const sourceType = validateSourceType(body.sourceType, 'youtube');
       const thumbnail = validateOptionalString(body.thumbnail, 500);
       const timestamp = validateOptionalString(body.timestamp, 100);
-      const visibility = validateVisibility(body.visibility, 'private');
+
+      // visibility omitted 시 parent tree visibility 상속
+      let visibility;
+      if (body.visibility === undefined || body.visibility === null) {
+        visibility = targetTree.visibility || 'public';
+      } else {
+        visibility = validateVisibility(body.visibility, targetTree.visibility || 'public');
+      }
+
+      // private memory 생성은 Plus entitlement 필요
+      if (visibility === 'private') {
+        await requirePlusEntitlement(user.uid);
+      }
 
       let emotionTags = [];
       if (body.emotionTags !== undefined) {
@@ -73,11 +91,6 @@ exports.handler = async (event) => {
       let parentId = null;
       if (body.parentId !== undefined && body.parentId !== null && body.parentId !== '') {
         parentId = validateUuid(body.parentId, 'parentId');
-      }
-
-      const targetTree = await getTree(treeId);
-      if (!targetTree || targetTree.owner_id !== user.uid) {
-        throw httpError(403, 'Access denied: not your tree');
       }
 
       const memory = await createMemory({

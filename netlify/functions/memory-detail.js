@@ -1,12 +1,12 @@
 /**
- * PATCH /api/memories/:memoryId  → update memory
+ * PATCH /api/memories/:memoryId  → update memory (public→private: Plus required)
  * DELETE /api/memories/:memoryId → delete memory
  * GET    /api/memories/:memoryId → get single memory
  *
  * GET: public memory는 비로그인도 허용
  * PATCH/PUT/DELETE: owner only
  */
-const { requireUser, getUserFromEvent } = require('./_lib/auth');
+const { requireUser, getUserFromEvent, requirePlusEntitlement } = require('./_lib/auth');
 const { ok, noContent, preflight, httpError, handleError } = require('./_lib/http');
 const {
   getMemory,
@@ -91,11 +91,21 @@ exports.handler = async (event) => {
 
       const allowedPatch = {};
 
+      // visibility 변경 시 public → private 체크용
+      const originalVisibility = existingFlat.visibility;
+
       for (const field of ALLOWED_MEMORY_FIELDS) {
         if (body[field] === undefined) continue;
 
         if (field === 'visibility') {
-          allowedPatch[field] = validateVisibility(body[field], 'private');
+          const newVisibility = validateVisibility(body[field], originalVisibility);
+
+          // public → private 변경은 Plus entitlement 필요
+          if (newVisibility === 'private' && originalVisibility === 'public') {
+            await requirePlusEntitlement(user.uid);
+          }
+
+          allowedPatch[field] = newVisibility;
         } else if (field === 'sourceType') {
           allowedPatch[field] = validateSourceType(body[field], 'youtube');
         } else if (field === 'emotionTags') {

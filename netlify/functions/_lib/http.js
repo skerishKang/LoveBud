@@ -87,6 +87,7 @@ function handleError(scope, error, requestOrigin) {
     message: error?.message || 'Unknown error',
     status: error?.status || 500,
   };
+  if (error.code) errorInfo.code = error.code;
   if (error.details) errorInfo.details = error.details;
 
   console.error(`${scope} error:`, errorInfo);
@@ -95,6 +96,15 @@ function handleError(scope, error, requestOrigin) {
   });
 
   if (error && typeof error.status === 'number') {
+    // Plus entitlement error - return flat error body
+    if (error.code === 'PLUS_REQUIRED_PRIVATE_STORAGE' && error.details) {
+      return buildResponse(
+        error.status,
+        error.details,
+        headers,
+        requestOrigin
+      );
+    }
     return buildResponse(
       error.status,
       { error: error.message || 'Error', details: error.details || null },
@@ -102,8 +112,8 @@ function handleError(scope, error, requestOrigin) {
       requestOrigin
     );
   }
-  return buildResponse(500, { 
-    error: 'Internal error', 
+  return buildResponse(500, {
+    error: 'Internal error',
     message: error?.message || 'Unknown error',
     details: error?.details || null,
     stack: process.env.NODE_ENV === 'production' ? null : error?.stack

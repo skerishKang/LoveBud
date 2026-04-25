@@ -1,9 +1,9 @@
 /**
  * /api/trees
  * GET  → list user's trees
- * POST → create new tree
+ * POST → create new tree (public-first, private requires Plus)
  */
-const { requireUser } = require('./_lib/auth');
+const { requireUser, requirePlusEntitlement } = require('./_lib/auth');
 const { ok, created, preflight, httpError, handleError } = require('./_lib/http');
 const {
   queryTrees,
@@ -12,8 +12,6 @@ const {
   validateOptionalString,
 } = require('./_lib/doc-store');
 const { serializeTree, serializeTreeList } = require('./_lib/serializers');
-
-const PUBLICATION_MIN_PUBLIC_MEMORIES = 3;
 
 exports.handler = async (event) => {
   const requestOrigin = event.headers?.origin || event.headers?.Origin || '';
@@ -39,13 +37,12 @@ exports.handler = async (event) => {
       }
 
       const title = validateOptionalString(body.title, 200) || '나의 Lovetree';
-      const visibility = validateVisibility(body.visibility, 'private');
+      // public-first: 기본값을 'public'으로 변경
+      const visibility = validateVisibility(body.visibility, 'public');
 
-      if (visibility === 'public') {
-        throw httpError(
-          409,
-          `공개 러브트리는 공개 순간이 최소 ${PUBLICATION_MIN_PUBLIC_MEMORIES}개 이상 있어야 만들 수 있어요. 먼저 비공개로 시작해 주세요.`
-        );
+      // private tree 생성은 Plus entitlement 필요
+      if (visibility === 'private') {
+        await requirePlusEntitlement(user.uid);
       }
 
       const tree = await createTree({

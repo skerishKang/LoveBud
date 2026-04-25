@@ -1,10 +1,10 @@
 /**
  * /api/trees/:treeId
  * GET    → tree metadata + memories
- * PUT    → update tree
+ * PUT    → update tree (private→public: owner only, public→private: Plus required)
  * DELETE → delete tree
  */
-const { getUserFromEvent, requireUser } = require('./_lib/auth');
+const { getUserFromEvent, requireUser, requirePlusEntitlement } = require('./_lib/auth');
 const { ok, preflight, httpError, handleError } = require('./_lib/http');
 const {
   getTree,
@@ -14,11 +14,8 @@ const {
   validateUuid,
   validateVisibility,
   validateOptionalString,
-  getPublicMemoryCount,
 } = require('./_lib/doc-store');
 const { serializeTree, serializeMemoryList } = require('./_lib/serializers');
-
-const PUBLICATION_MIN_PUBLIC_MEMORIES = 3;
 
 exports.handler = async (event) => {
   const requestOrigin = event.headers?.origin || event.headers?.Origin || '';
@@ -87,16 +84,16 @@ exports.handler = async (event) => {
         patch.title = validateOptionalString(body.title, 200) || rawTree.title;
       }
       if (body.visibility !== undefined) {
-        patch.visibility = validateVisibility(body.visibility, rawTree.visibility);
-        if (patch.visibility === 'public' && rawTree.visibility !== 'public') {
-          const publicMemoryCount = await getPublicMemoryCount(validatedTreeId);
-          if (publicMemoryCount < PUBLICATION_MIN_PUBLIC_MEMORIES) {
-            throw httpError(
-              409,
-              `이 러브트리는 공개 순간이 ${PUBLICATION_MIN_PUBLIC_MEMORIES}개 이상일 때만 공개할 수 있어요. 먼저 순간을 더 이어가 주세요.`
-            );
-          }
+        const newVisibility = validateVisibility(body.visibility, rawTree.visibility);
+
+        // public → private 전환은 Plus entitlement 필요
+        if (newVisibility === 'private' && rawTree.visibility === 'public') {
+          await requirePlusEntitlement(user.uid);
         }
+        // private → public 전환은 owner이면 허용, 3-memory guard 제거
+        // (별도 체크 불필요, 이미 owner 확인 완료)
+
+        patch.visibility = newVisibility;
       }
 
       const updated = await updateTree(validatedTreeId, patch);
