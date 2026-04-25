@@ -2,258 +2,379 @@
 
 **Status:** Active  
 **Owner:** CTO / Ops Lead  
-**Last Updated:** 2026-04-25  
-**Branch:** docs/test-preview-slots
+**Last Updated:** 2026-04-26  
+**Branch:** docs/test-preview-slot-branch-rules
 
 ---
 
-## 1. ¸ñÀû
+## 1. ëª©ì 
 
-PRº° Cloudflare Preview URLÀº Firebase Auth domain, login redirect, runtime/API °ËÁõ °úÁ¤¿¡¼­ ¹İº¹ÀûÀÎ Á¦ÇÑÀÌ ¹ß»ıÇÒ ¼ö ÀÖ½À´Ï´Ù. Fixed Test Preview Slots´Â °ËÁõÀÌ ÇÊ¿äÇÑ ºê·£Ä¡¿¡ ´ëÇØ °íÁ¤µÈ µµ¸ŞÀÎÀ» ¹Ì¸® ÇÒ´çÇÏ¿©, ¾Æ·¡ °ËÁõÀ» ¾ÈÁ¤ÀûÀ¸·Î ¼öÇàÇÏ±â À§ÇÑ ¿î¿µ Ã¼°èÀÔ´Ï´Ù.
+PRë³„ Cloudflare Preview URLì€ Firebase Auth domain, login redirect, runtime/API ê²€ì¦ ê³¼ì •ì—ì„œ ë°˜ë³µì ì¸ ì œí•œì´ ë°œìƒí•  ìˆ˜ ìˆìŠµë‹ˆë‹¤. Fixed Test Preview SlotsëŠ” ê²€ì¦ì´ í•„ìš”í•œ ë¸Œëœì¹˜ì— ëŒ€í•´ ê³ ì •ëœ ë„ë©”ì¸ì„ ë¯¸ë¦¬ í• ë‹¹í•˜ì—¬, ì•„ë˜ ê²€ì¦ì„ ì•ˆì •ì ìœ¼ë¡œ ìˆ˜í–‰í•˜ê¸° ìœ„í•œ ìš´ì˜ ì²´ê³„ì…ë‹ˆë‹¤.
 
-- ·Î±×ÀÎÀÌ ÇÊ¿äÇÑ È­¸é °ËÁõ: editor/, my-trees/, settings/ µî ÀÎÁõÀÌ ÇÊ¿äÇÑ ÆäÀÌÁö
-- API/backend/runtime °æ·Î È®ÀÎ: /api/, /runtime/ °æ·ÎÀÇ smoke test
-- DB read °ËÁõ: µ¥ÀÌÅÍ Á¶È¸ µ¿ÀÛ °ËÁõ
-- UI production-like preview: ½ÇÁ¦ ÇÁ·Î´ö¼Ç°ú À¯»çÇÑ È¯°æ¿¡¼­ÀÇ UI/UX °ËÁõ
-- PRº° Preview URL ´ëÃ¼: Auth/domain ¹®Á¦·Î PR Preview°¡ Á¤»ó µ¿ÀÛÇÏÁö ¾ÊÀ» ¶§ÀÇ ´ëÃ¼ °ËÁõ ¼ö´Ü
+- ë¡œê·¸ì¸ì´ í•„ìš”í•œ í™”ë©´ ê²€ì¦: `editor/`, `my-trees/`, `settings/` ë“± ì¸ì¦ì´ í•„ìš”í•œ í˜ì´ì§€
+- API/backend/runtime ê²½ë¡œ í™•ì¸: `/api/*`, `/runtime/*` ê²½ë¡œì˜ smoke test
+- DB read ê²€ì¦: ë°ì´í„° ì¡°íšŒ ë™ì‘ ê²€ì¦
+- UI production-like preview: ì‹¤ì œ í”„ë¡œë•ì…˜ê³¼ ìœ ì‚¬í•œ í™˜ê²½ì—ì„œì˜ UI/UX ê²€ì¦
+- PRë³„ Preview URL ëŒ€ì²´: Auth/domain ë¬¸ì œë¡œ PR Previewê°€ ì •ìƒ ë™ì‘í•˜ì§€ ì•Šì„ ë•Œì˜ ëŒ€ì²´ ê²€ì¦ ìˆ˜ë‹¨
 
 ---
 
 ## 2. Fixed Test Preview Slots
 
-| Slots | Domain | ¿ëµµ |
-|-------|--------|------|
-| test1 | https://test1.lovebud.pages.dev | UI PR °ËÁõ |
-| test2 | https://test2.lovebud.pages.dev | runtime/backend route °ËÁõ |
-| test3 | https://test3.lovebud.pages.dev | policy/visibility °ËÁõ |
-| test4 | https://test4.lovebud.pages.dev | QA CRUD (disposable data) °ËÁõ |
-| test5 | https://test5.lovebud.pages.dev | ¿¹ºñ/´ëÃ¼ ½½·Ô |
+| Slot | Domain | Default use |
+|------|--------|-------------|
+| test1 | https://test1.lovebud.pages.dev | UI PR ê²€ì¦ |
+| test2 | https://test2.lovebud.pages.dev | runtime/backend route ê²€ì¦ |
+| test3 | https://test3.lovebud.pages.dev | policy/visibility ê²€ì¦ |
+| test4 | https://test4.lovebud.pages.dev | QA CRUD disposable data ê²€ì¦ |
+| test5 | https://test5.lovebud.pages.dev | ì˜ˆë¹„/ëŒ€ì²´ ìŠ¬ë¡¯ |
+| test6 | https://test6.lovebud.pages.dev | ì„ì‹œ/ì˜ˆì™¸ ê²€ì¦ ìŠ¬ë¡¯ |
 
-> ?? Cloudflare Pages¿¡ ¿¬°áµÈ °íÁ¤ µµ¸ŞÀÎÀ¸·Î, °¢ ½½·ÔÀº Æ¯Á¤ ºê·£Ä¡¸¦ ¹Ù¶óº¸µµ·Ï ¼³Á¤µË´Ï´Ù.
-
----
-
-## 3. »ç¿ë ¹üÀ§
-
-´ÙÀ½ °ËÁõ ÀÛ¾÷¿¡ Fixed Test Preview Slots¸¦ »ç¿ëÇÕ´Ï´Ù:
-
-### 3.1 ·Î±×ÀÎ ÇÊ¿ä È­¸é
-- editor/ ? ÆíÁı±â ÆäÀÌÁö ÀÎÁõ Èå¸§
-- my-trees/ ? ³» Æ®¸® ÆäÀÌÁö
-- settings/ ? ¼³Á¤ ÆäÀÌÁö
-
-### 3.2 API/backend/runtime
-- /api/* ¿£µåÆ÷ÀÎÆ® smoke test
-- /runtime/* °æ·Î µ¿ÀÛ È®ÀÎ
-- Firebase Functions (Modal) ¿¬µ¿ °£Á¢ °ËÁõ
-
-### 3.3 DB read °ËÁõ
-- Æ®¸® ¸ñ·Ï Á¶È¸
-- Æ®¸® »ó¼¼ Á¶È¸
-- °ø°³ ¹üÀ§(public/private)¿¡ µû¸¥ Ç¥½Ã ÇÊÅÍ¸µ
-
-### 3.4 UI ¹İÀÀÇü °ËÁõ
-- Desktop/Tablet/Mobile breakpoint
-- ºê¶ó¿ìÀú °³¹ßÀÚ µµ±¸¿Í ½ÇÁ¦ µğ¹ÙÀÌ½º È¯°æ
-
-### 3.5 ´ëÃ¼ °ËÁõ
-- PRº° Cloudflare Preview URLÀÌ Firebase Auth domain ¹®Á¦·Î Á¤»ó µ¿ÀÛÇÏÁö ¾ÊÀ» ¶§
-- login redirect loop, domain mismatch ¿À·ù ¹ß»ı ½Ã
+ê° slot domainì€ Cloudflare Pagesì— ì—°ê²°ëœ ê³ ì • ë„ë©”ì¸ì…ë‹ˆë‹¤. ì‹¤ì œ ë°°ì •ì€ CTO ë˜ëŠ” ë‹´ë‹¹ Leadê°€ ì‘ì—… ì§€ì‹œì— ëª…ì‹œí•©ë‹ˆë‹¤.
 
 ---
 
-## 4. »ç¿ë ±İÁö / Á¦ÇÑ
+## 3. test1 branch source of truth
 
-### 4.1 Àı´ë ±İÁö
-- production write µ¿ÀÛ (save/edit/delete/PUT/PATCH/DELETE) ? º°µµ ½ÂÀÎ Àü ±İÁö
-- ±âÁ¸ »ç¿ëÀÚ µ¥ÀÌÅÍ ¼öÁ¤/»èÁ¦ ? ½ÇÁ¦ À¯Àú µ¥ÀÌÅÍ´Â °ÇµéÁö ¾ÊÀ½
-- token/password/cookie ¿ø¹® ±â·Ï ? ·Î±×¿¡ ¹Î°¨ Á¤º¸ ³²±â±â ±İÁö
-- main Á÷Á¢ ¼öÁ¤ ? main ºê·£Ä¡¿¡ Á÷Á¢ commit ±İÁö
-- main Á÷Á¢ push ? main ºê·£Ä¡¿¡ Á÷Á¢ push ±İÁö
-- force push ? ¾î¶² ºê·£Ä¡¿¡µµ force push ±İÁö
-- ÀÓÀÇ slot branch »ı¼º/push ? ¹Ì¸® ½ÂÀÎµÈ slot ºê·£Ä¡¸¸ »ç¿ë
+### 3.1 test1 ê¸°ë³¸ ìš´ì˜ branch
 
-### 4.2 Á¦ÇÑÀûÇã¿ë
-- write Å×½ºÆ®: test4 ½½·Ô¿¡¼­ QA disposable data (ÀÏÈ¸¼º Å×½ºÆ® µ¥ÀÌÅÍ)·Î¸¸ ¼öÇà
-- api write Å×½ºÆ®: Å×½ºÆ® °èÈ¹¿¡ ¸í½ÃµÈ °æ¿ì¿¡¸¸ ¼öÇà
-- cache invalidation: Cloudflare Pages Ä³½Ã ¹«È¿È­´Â CTO ½ÂÀÎ ÈÄ ¼öÇà
+`https://test1.lovebud.pages.dev`ëŠ” ê¸°ë³¸ì ìœ¼ë¡œ GitHub remote branch `origin/test1`ì„ ê¸°ì¤€ìœ¼ë¡œ ìš´ì˜í•©ë‹ˆë‹¤.
+
+PR preview/test ê²€ì¦ì—ì„œ test1 slotì„ ê°±ì‹ í•´ì•¼ í•  ë•Œì˜ ê¸°ë³¸ ì—…ë°ì´íŠ¸ ëŒ€ìƒì€ ì•„ë˜ì…ë‹ˆë‹¤.
+
+```text
+origin/test1
+```
+
+### 3.2 `origin/slot/test1` ì‚¬ìš© ê¸ˆì§€ ì›ì¹™
+
+`origin/slot/test1`ì€ í˜¼ì„ ì„ ì¤„ì´ê¸° ìœ„í•´ ê¸°ë³¸ ì—…ë°ì´íŠ¸ ëŒ€ìƒì´ ì•„ë‹™ë‹ˆë‹¤.
+
+íŠ¹ë³„í•œ CTO ì§€ì‹œ ì—†ì´ ì•„ë˜ branchë¥¼ ê°±ì‹ í•˜ì§€ ì•ŠìŠµë‹ˆë‹¤.
+
+```text
+origin/slot/test1
+```
+
+PR ê²€ì¦ ë³´ê³ ì„œë‚˜ ì‹¤í–‰ ì§€ì‹œì—ì„œ `test1`ì´ ì–¸ê¸‰ë˜ë©´, ë³„ë„ ì§€ì‹œê°€ ì—†ëŠ” í•œ `origin/test1`ì„ ì˜ë¯¸í•©ë‹ˆë‹¤.
+
+### 3.3 í˜¼ì„  ë°©ì§€ ê·œì¹™
+
+- `test1.lovebud.pages.dev` ê²€ì¦ ì§€ì‹œì—ëŠ” ë°˜ë“œì‹œ ëŒ€ìƒ branchë¥¼ ì ìŠµë‹ˆë‹¤.
+- ê¸°ë³¸ê°’ì€ `origin/test1`ì…ë‹ˆë‹¤.
+- `origin/slot/test1`ì„ ì‚¬ìš©í•´ì•¼ í•˜ëŠ” ì˜ˆì™¸ ìƒí™©ì€ CTOê°€ ëª…ì‹œí•´ì•¼ í•©ë‹ˆë‹¤.
+- PR #49 ê²€ì¦ ë•Œ ë°œìƒí•œ `origin/test1` / `origin/slot/test1` í˜¼ìš©ì„ ë°˜ë³µí•˜ì§€ ì•ŠìŠµë‹ˆë‹¤.
 
 ---
 
-## 5. ½½·Ô ¹èÁ¤ ±ÔÄ¢
+## 4. PR preview/test slot ê²€ì¦ ì ˆì°¨
 
-| ½½·Ô | ±âº» ¿ëµµ | ¿¹½Ã |
+test1 slotì„ PR branch ê²€ì¦ì— ì‚¬ìš©í•  ë•ŒëŠ” ì•„ë˜ ìˆœì„œë¥¼ ë”°ë¦…ë‹ˆë‹¤.
+
+1. PR ë²ˆí˜¸ì™€ PR head branchë¥¼ í™•ì¸í•©ë‹ˆë‹¤.
+2. PR head SHAë¥¼ í™•ì¸í•˜ê³  ë³´ê³ ì— ê¸°ë¡í•©ë‹ˆë‹¤.
+3. `origin/test1`ì„ PR head SHAë¡œ ì—…ë°ì´íŠ¸í•©ë‹ˆë‹¤.
+4. Cloudflare Pages deploy ì™„ë£Œë¥¼ ê¸°ë‹¤ë¦½ë‹ˆë‹¤.
+5. `https://test1.lovebud.pages.dev`ì—ì„œ deploy token/source ë˜ëŠ” í™”ë©´ ë°˜ì˜ì„ í™•ì¸í•©ë‹ˆë‹¤.
+6. í•„ìš”í•œ viewportë¥¼ í™•ì¸í•©ë‹ˆë‹¤. ê¸°ë³¸ UI ê²€ì¦ì€ 1440px / 1024px / 375pxì„ ìš°ì„ í•©ë‹ˆë‹¤.
+7. Network/Consoleì„ í™•ì¸í•©ë‹ˆë‹¤.
+8. ê²€ì¦ ê²°ê³¼ì™€ ë¯¸ê²€ì¦ í•­ëª©ì„ ë¶„ë¦¬í•´ ë³´ê³ í•©ë‹ˆë‹¤.
+9. production ê²€ì¦ì´ í•„ìš”í•œ ê²½ìš°, PRì´ `main`ì— mergeë˜ê³  production deployê°€ ëë‚œ ë’¤ ë³„ë„ë¡œ ìˆ˜í–‰í•©ë‹ˆë‹¤.
+
+### 4.1 ê¶Œì¥ ì‹¤í–‰ íë¦„
+
+ì•„ë˜ íë¦„ì€ Local Slot Ops ë˜ëŠ” ì§€ì •ëœ ì‹¤í–‰ìê°€ ìˆ˜í–‰í•©ë‹ˆë‹¤.
+
+```bash
+git fetch origin
+git rev-parse origin/main
+git rev-parse origin/<pr-head-branch>
+git rev-parse origin/test1
+
+# CTOê°€ ìŠ¹ì¸í•œ PR head SHAë¡œ test1ì„ ë§ì¶˜ë‹¤.
+git checkout test1
+git reset --hard <pr-head-sha>
+git push --force-with-lease origin test1
+```
+
+`<pr-head-sha>`ëŠ” ë°˜ë“œì‹œ PR metadataì—ì„œ í™•ì¸í•œ ê°’ì´ì–´ì•¼ í•©ë‹ˆë‹¤. ì¶”ì •í•˜ê±°ë‚˜ ë¡œì»¬ branch ì´ë¦„ë§Œ ë¯¿ì§€ ì•ŠìŠµë‹ˆë‹¤.
+
+---
+
+## 5. force-with-lease ì‚¬ìš© ì¡°ê±´
+
+test slot branchëŠ” ê²€ì¦ ëŒ€ìƒ PR branchë¥¼ ê³ ì • ë„ë©”ì¸ì— ì„ì‹œ ë°°í¬í•˜ê¸° ìœ„í•´ ê°•ì œë¡œ ì´ë™í•  ìˆ˜ ìˆìŠµë‹ˆë‹¤. ë‹¤ë§Œ force updateëŠ” ì•„ë˜ ì¡°ê±´ì„ ëª¨ë‘ ë§Œì¡±í•  ë•Œë§Œ í—ˆìš©í•©ë‹ˆë‹¤.
+
+- CTO ë˜ëŠ” ë‹´ë‹¹ Leadê°€ í•´ë‹¹ slot ì‚¬ìš©ì„ ìŠ¹ì¸í–ˆìŠµë‹ˆë‹¤.
+- ëŒ€ìƒ slotì´ ëª…ì‹œë˜ì—ˆìŠµë‹ˆë‹¤.
+- ëŒ€ìƒ remote branchê°€ ëª…ì‹œë˜ì—ˆìŠµë‹ˆë‹¤. test1 ê¸°ë³¸ê°’ì€ `origin/test1`ì…ë‹ˆë‹¤.
+- PR head SHAë¥¼ í™•ì¸í–ˆìŠµë‹ˆë‹¤.
+- í˜„ì¬ slot ì ìœ ìê°€ ì—†ê±°ë‚˜, ì ìœ  í•´ì œê°€ í™•ì¸ë˜ì—ˆìŠµë‹ˆë‹¤.
+- `git push --force-with-lease`ë¥¼ ì‚¬ìš©í•©ë‹ˆë‹¤.
+- `--force` ë‹¨ë… ì‚¬ìš©ì€ ê¸ˆì§€í•©ë‹ˆë‹¤.
+
+ì˜ˆì™¸ ì—†ì´ `main`ì—ëŠ” force pushí•˜ì§€ ì•ŠìŠµë‹ˆë‹¤.
+
+---
+
+## 6. ë¸Œëœì¹˜ ìš´ì˜ ê¸ˆì§€ì„ 
+
+### 6.1 main ì§ì ‘ push ê¸ˆì§€
+
+`main`ì€ PR merge ê²½ë¡œë¡œë§Œ ë³€ê²½í•©ë‹ˆë‹¤.
+
+- main ì§ì ‘ commit ê¸ˆì§€
+- main ì§ì ‘ push ê¸ˆì§€
+- main force push ê¸ˆì§€
+- screenshot-only ë³€ê²½ë„ main ì§ì ‘ push ê¸ˆì§€
+
+### 6.2 PR branch ìˆ˜ì • ê¸ˆì§€
+
+test slot ê²€ì¦ì„ ìœ„í•´ PR branch ìì²´ë¥¼ ìˆ˜ì •í•˜ì§€ ì•ŠìŠµë‹ˆë‹¤.
+
+- PR head branchì— ì¶”ê°€ commit ê¸ˆì§€
+- PR head branch force push ê¸ˆì§€
+- PR branch rebase ê¸ˆì§€
+- PR branchë¥¼ test slot ì •ë¦¬ ëª©ì ìœ¼ë¡œ ë³€ê²½ ê¸ˆì§€
+
+ê²€ì¦ slotì€ PR branchë¥¼ ë°”ê¾¸ëŠ” ë„êµ¬ê°€ ì•„ë‹™ë‹ˆë‹¤. PR branchì˜ íŠ¹ì • head SHAë¥¼ `origin/test1` ê°™ì€ slot branchì— ë°˜ì˜í•˜ëŠ” ë„êµ¬ì…ë‹ˆë‹¤.
+
+### 6.3 production ê²€ì¦ ë¶„ë¦¬
+
+Test slot ê²€ì¦ì€ PR merge ì „ ê²€ì¦ì…ë‹ˆë‹¤. Production ê²€ì¦ì€ PRì´ `main`ì— mergeë˜ê³  `https://lovebud.pages.dev/`ì— ë°°í¬ëœ ë’¤ ë³„ë„ë¡œ ìˆ˜í–‰í•©ë‹ˆë‹¤.
+
+PR merge ì „ì—ëŠ” production ë„ë©”ì¸ì„ í•´ë‹¹ PR branchì˜ source of truthë¡œ ì‚¬ìš©í•˜ì§€ ì•ŠìŠµë‹ˆë‹¤.
+
+---
+
+## 7. ì‚¬ìš© ë²”ìœ„
+
+ë‹¤ìŒ ê²€ì¦ ì‘ì—…ì— Fixed Test Preview Slotsë¥¼ ì‚¬ìš©í•©ë‹ˆë‹¤.
+
+### 7.1 ë¡œê·¸ì¸ í•„ìš” í™”ë©´
+
+- `editor/` í¸ì§‘ê¸° í˜ì´ì§€ ì¸ì¦ íë¦„
+- `my-trees/` ë‚´ íŠ¸ë¦¬ í˜ì´ì§€
+- `settings/` ì„¤ì • í˜ì´ì§€
+
+### 7.2 API/backend/runtime
+
+- `/api/*` ì—”ë“œí¬ì¸íŠ¸ smoke test
+- `/runtime/*` ê²½ë¡œ ë™ì‘ í™•ì¸
+- Cloudflare Pages Functions â†’ Modal ì—°ë™ ê°„ì ‘ ê²€ì¦
+
+### 7.3 DB read ê²€ì¦
+
+- íŠ¸ë¦¬ ëª©ë¡ ì¡°íšŒ
+- íŠ¸ë¦¬ ìƒì„¸ ì¡°íšŒ
+- ê³µê°œ ë²”ìœ„ì— ë”°ë¥¸ í‘œì‹œ í•„í„°ë§
+
+### 7.4 UI ë°˜ì‘í˜• ê²€ì¦
+
+- Desktop / Tablet / Mobile breakpoint
+- Browser DevTools ê¸°ë°˜ viewport/network í™•ì¸
+
+### 7.5 ëŒ€ì²´ ê²€ì¦
+
+- PRë³„ Cloudflare Preview URLì´ Firebase Auth domain ë¬¸ì œë¡œ ì •ìƒ ë™ì‘í•˜ì§€ ì•Šì„ ë•Œ
+- login redirect loop ë˜ëŠ” domain mismatch ì˜¤ë¥˜ê°€ ë°œìƒí•  ë•Œ
+
+---
+
+## 8. ì‚¬ìš© ê¸ˆì§€ / ì œí•œ
+
+### 8.1 ì ˆëŒ€ ê¸ˆì§€
+
+- production write ë™ì‘: save/edit/delete/PUT/PATCH/DELETEëŠ” ë³„ë„ ìŠ¹ì¸ ì „ ê¸ˆì§€
+- ê¸°ì¡´ ì‚¬ìš©ì ë°ì´í„° ìˆ˜ì •/ì‚­ì œ ê¸ˆì§€
+- token/password/cookie ì›ë¬¸ ê¸°ë¡ ê¸ˆì§€
+- main ì§ì ‘ ìˆ˜ì • ê¸ˆì§€
+- main ì§ì ‘ push ê¸ˆì§€
+- `--force` ë‹¨ë… push ê¸ˆì§€
+- ì„ì˜ slot branch ìƒì„±/push ê¸ˆì§€
+- PR branch ìˆ˜ì • ê¸ˆì§€
+
+### 8.2 ì œí•œì  í—ˆìš©
+
+- write í…ŒìŠ¤íŠ¸: test4 ìŠ¬ë¡¯ì—ì„œ QA disposable dataë¡œë§Œ ìˆ˜í–‰
+- api write í…ŒìŠ¤íŠ¸: í…ŒìŠ¤íŠ¸ ê³„íšì— ëª…ì‹œëœ ê²½ìš°ì—ë§Œ ìˆ˜í–‰
+- cache invalidation: Cloudflare Pages ìºì‹œ ë¬´íš¨í™”ëŠ” CTO ìŠ¹ì¸ í›„ ìˆ˜í–‰
+- force-with-lease: Section 5 ì¡°ê±´ì„ ëª¨ë‘ ë§Œì¡±í•  ë•Œë§Œ slot branchì— í•œì •í•´ ìˆ˜í–‰
+
+---
+
+## 9. ìŠ¬ë¡¯ ë°°ì • ê·œì¹™
+
+| Slot | ê¸°ë³¸ ìš©ë„ | ì˜ˆì‹œ |
 |------|-----------|------|
-| test1 | UI PR °ËÁõ | PR#123 ¹ø UI º¯°æ »çÇ× ÇÁ¸®ºä |
-| test2 | runtime/backend route °ËÁõ | /api/health, /runtime/check smoke test |
-| test3 | policy/visibility °ËÁõ | °ø°³/ºñ°ø°³ Ç¥½Ã ÇÊÅÍ °ËÁõ |
-| test4 | QA CRUD disposable data °ËÁõ | Å×½ºÆ® µ¥ÀÌÅÍ create/read/update/delete |
-| test5 | ¿¹ºñ/´ëÃ¼ ½½·Ô | ±ä±Ş ´ëÃ¼ ¶Ç´Â Ãß°¡ °ËÁõ ÇÊ¿ä ½Ã |
+| test1 | UI PR ê²€ì¦ | PR UI ë³€ê²½ ì‚¬í•­ í”„ë¦¬ë·° |
+| test2 | runtime/backend route ê²€ì¦ | `/api/health`, route winner smoke |
+| test3 | policy/visibility ê²€ì¦ | ê³µê°œ/ë¹„ê³µê°œ í‘œì‹œ í•„í„° ê²€ì¦ |
+| test4 | QA CRUD disposable data ê²€ì¦ | í…ŒìŠ¤íŠ¸ ë°ì´í„° create/read/update/delete |
+| test5 | ì˜ˆë¹„/ëŒ€ì²´ ìŠ¬ë¡¯ | ê¸´ê¸‰ ëŒ€ì²´ ë˜ëŠ” ì¶”ê°€ ê²€ì¦ |
+| test6 | ì„ì‹œ/ì˜ˆì™¸ ê²€ì¦ ìŠ¬ë¡¯ | CTOê°€ ì§€ì •í•œ ë‹¨ê¸° ê²€ì¦ |
 
-> ?? ½ÇÁ¦ ¹èÁ¤Àº CTO ¶Ç´Â ´ã´ç Lead°¡ º¸°í¼­¿¡ ¸í½ÃÇØ¾ß ÇÕ´Ï´Ù. º» ±ÔÄ¢Àº ±âº» °¡ÀÌµåÀÌ¸ç, »óÈ²¿¡ µû¶ó Á¶Á¤ °¡´ÉÇÕ´Ï´Ù.
-
----
-
-## 6. ºê·£Ä¡ ¿î¿µ ±ÔÄ¢
-
-### 6.1 ½½·Ô ºê·£Ä¡ ³×ÀÌ¹Ö
-slot/test1
-slot/test2
-slot/test3
-slot/test4
-slot/test5
-
-### 6.2 µ¿ÀÛ ¹æ½Ä
-°¢ ½½·Ô ºê·£Ä¡´Â mainÀ» Á÷Á¢ ¼öÁ¤ÇÏ´Â °ÍÀÌ ¾Æ´Õ´Ï´Ù. °ËÁõ ´ë»ó ºê·£Ä¡ÀÇ º¯°æÀ» ÀÓ½Ã·Î ¹İ¿µÇÏ¿© Cloudflare Pages°¡ °íÁ¤ µµ¸ŞÀÎ¿¡ ¹èÆ÷ÇÏµµ·Ï »ç¿ëÇÕ´Ï´Ù.
-
-ÀıÂ÷:
-1. °ËÁõ ´ë»ó ºê·£Ä¡ (¿¹: feature/editor-auth-fix) È®ÀÎ
-2. ÇØ´ç ºê·£Ä¡¸¦ slot/testX¿¡ merge/rebase ÇÏ¿© ÀÓ½Ã ¹İ¿µ
-3. Cloudflare Pages°¡ testX.lovebud.pages.dev¿¡ ÀÚµ¿ ¹èÆ÷
-4. °ËÁõ ¿Ï·á ÈÄ slot/testX ºê·£Ä¡¸¦ ¿øº¹ (reset to main) ¶Ç´Â »èÁ¦
-
-### 6.3 ºê·£Ä¡ °ü¸® ¿øÄ¢
-- slot/* ºê·£Ä¡´Â °ËÁõ ½½·Ô °»½Å ¿ëµµ·Î¸¸ »ç¿ë
-- Àå±â ¿î¿µ ºê·£Ä¡·Î »ç¿ë ±İÁö
-- »ç¿ë ÈÄ Áï½Ã mainÀ¸·Î revert ¶Ç´Â »èÁ¦
-- µ¿½Ã »ç¿ë ½Ã Ãæµ¹ ¹æÁö¸¦ À§ÇØ ÇÑ ½½·Ô´ç ÇÑ ºê·£Ä¡¸¸ ¹èÁ¤
+ì‹¤ì œ ë°°ì •ì€ CTO ë˜ëŠ” ë‹´ë‹¹ Leadê°€ ë³´ê³ ì„œì— ëª…ì‹œí•©ë‹ˆë‹¤. í•œ slotì€ í•œ PR ë˜ëŠ” í•œ ê²€ì¦ ëª©ì ì—ë§Œ ë°°ì •í•©ë‹ˆë‹¤.
 
 ---
 
-## 7. Firebase/Auth Ã¼Å©¸®½ºÆ®
+## 10. Firebase/Auth ì²´í¬ë¦¬ìŠ¤íŠ¸
 
-½½·Ô »ç¿ë Àü ¹İµå½Ã È®ÀÎ:
+ìŠ¬ë¡¯ ì‚¬ìš© ì „ í•„ìš”í•œ ë²”ìœ„ì—ì„œ í™•ì¸í•©ë‹ˆë‹¤.
 
-### 7.1 Firebase Authorized Domains
-- [ ] test1.lovebud.pages.dev°¡ Firebase Console ¡æ Authentication ¡æ Settings ¡æ Authorized domains¿¡ µî·Ï
-- [ ] test2.lovebud.pages.dev µî·Ï È®ÀÎ
-- [ ] test3.lovebud.pages.dev µî·Ï È®ÀÎ
-- [ ] test4.lovebud.pages.dev µî·Ï È®ÀÎ
-- [ ] test5.lovebud.pages.dev µî·Ï È®ÀÎ
+### 10.1 Firebase Authorized Domains
 
-### 7.2 Google Login Redirect
-- [ ] Google OAuth consent screenÀÇ Authorized redirect URIs¿¡ °¢ test slot URL Æ÷ÇÔ
-  - https://test1.lovebud.pages.dev/__/auth/handler
-  - https://test2.lovebud.pages.dev/__/auth/handler
-  - (³ª¸ÓÁö ½½·Ô µ¿ÀÏ)
-- [ ] Firebase Auth popup/redirect ¹æ½Ä Á¤»ó µ¿ÀÛ
+- [ ] `test1.lovebud.pages.dev` ë“±ë¡ í™•ì¸
+- [ ] `test2.lovebud.pages.dev` ë“±ë¡ í™•ì¸
+- [ ] `test3.lovebud.pages.dev` ë“±ë¡ í™•ì¸
+- [ ] `test4.lovebud.pages.dev` ë“±ë¡ í™•ì¸
+- [ ] `test5.lovebud.pages.dev` ë“±ë¡ í™•ì¸
+- [ ] `test6.lovebud.pages.dev` ë“±ë¡ í™•ì¸
 
-### 7.3 ·Î±×ÀÎ ¼¼¼Ç À¯Áö
-- [ ] ·Î±×ÀÎ ÈÄ redirect targetÀÌ À¯ÁöµÇ´ÂÁö (ÇöÀç ½½·Ô µµ¸ŞÀÎÀ¸·Î À¯Áö)
-- [ ] logout ¡æ login ¹İº¹ ½Ã cookie/session Ãæµ¹ ¾øÀ½
-- [ ] ¿©·¯ ºê¶ó¿ìÀú ÅÇ¿¡¼­ µ¿½Ã ·Î±×ÀÎ/·Î±×¾Æ¿ô ¹®Á¦ ¾øÀ½
+### 10.2 Google Login Redirect
 
----
+- [ ] Google OAuth consent screenì˜ Authorized redirect URIsì— ëŒ€ìƒ test slot URL í¬í•¨
+- [ ] Firebase Auth popup/redirect ë°©ì‹ ì •ìƒ ë™ì‘
 
-## 8. Cloudflare Ã¼Å©¸®½ºÆ®
+### 10.3 ë¡œê·¸ì¸ ì„¸ì…˜ ìœ ì§€
 
-½½·Ô ¹èÁ¤ Àü È®ÀÎ:
-
-### 8.1 µµ¸ŞÀÎ ¿¬°á »óÅÂ
-- [ ] Cloudflare Pages ÇÁ·ÎÁ§Æ®¿¡ test1.lovebud.pages.dev Ä¿½ºÅÒ µµ¸ŞÀÎ ¿¬°á ¿Ï·á
-- [ ] DNS ¼³Á¤ÀÌ Pages ÇÁ·ÎÁ§Æ®¸¦ °¡¸®Å°´ÂÁö È®ÀÎ
-- [ ] SSL/TLS ÀÎÁõ¼­ ¹ß±Ş ¿Ï·á (Always HTTPS)
-
-### 8.2 ºê·£Ä¡ ¹Ù¶óº¸´Â »óÅÂ
-- [ ] test1 ½½·ÔÀÌ ÇöÀç ¾î¶² git ºê·£Ä¡¸¦ ¹èÆ÷ ÁßÀÎÁö È®ÀÎ
-- [ ] slot/test1 ºê·£Ä¡°¡ ÃÖ½ÅÀÎÁö È®ÀÎ
-- [ ] ¹èÆ÷µÈ commit SHA ±â·Ï
-
-### 8.3 ¹èÆ÷ »óÅÂ
-- [ ] Cloudflare Pages ¹èÆ÷ »óÅÂ: Success/Failed
-- [ ] ÃÖ½Å deploy ½Ã°£ È®ÀÎ
-- [ ] ¹èÆ÷ ·Î±× È®ÀÎ (¿À·ù ¾øÀ½)
-
-### 8.4 Ä³½Ã ¹«È¿È­ (ÇÊ¿ä ½Ã)
-- [ ] Cloudflare Pages Ä³½Ã ¹«È¿È­ ÇÊ¿ä ¿©ºÎ ÆÇ´Ü
-- [ ] ¹«È¿È­ ½ÇÇà (CTO ½ÂÀÎ ÈÄ)
-- [ ] ¹«È¿È­ ÈÄ Àç¹èÆ÷ ´ë±â
+- [ ] ë¡œê·¸ì¸ í›„ redirect targetì´ í˜„ì¬ ìŠ¬ë¡¯ ë„ë©”ì¸ìœ¼ë¡œ ìœ ì§€ë˜ëŠ”ì§€ í™•ì¸
+- [ ] logout â†’ login ë°˜ë³µ ì‹œ cookie/session ì¶©ëŒ ì—†ìŒ
+- [ ] ì—¬ëŸ¬ ë¸Œë¼ìš°ì € íƒ­ì—ì„œ ë™ì‹œ ë¡œê·¸ì¸/ë¡œê·¸ì•„ì›ƒ ë¬¸ì œ ì—†ìŒ
 
 ---
 
-## 9. °ËÁõ º¸°í ÅÛÇÃ¸´
+## 11. Cloudflare ì²´í¬ë¦¬ìŠ¤íŠ¸
 
+### 11.1 ë„ë©”ì¸ ì—°ê²° ìƒíƒœ
+
+- [ ] Cloudflare Pages í”„ë¡œì íŠ¸ì— ëŒ€ìƒ test slot custom domain ì—°ê²° ì™„ë£Œ
+- [ ] DNS ì„¤ì •ì´ Pages í”„ë¡œì íŠ¸ë¥¼ ê°€ë¦¬í‚¤ëŠ”ì§€ í™•ì¸
+- [ ] SSL/TLS ì¸ì¦ì„œ ë°œê¸‰ ì™„ë£Œ
+
+### 11.2 ë¸Œëœì¹˜ ë°”ë¼ë³´ëŠ” ìƒíƒœ
+
+- [ ] ëŒ€ìƒ slotì´ í˜„ì¬ ì–´ë–¤ git branchë¥¼ ë°°í¬ ì¤‘ì¸ì§€ í™•ì¸
+- [ ] test1ì€ ê¸°ë³¸ì ìœ¼ë¡œ `origin/test1`ì„ í™•ì¸
+- [ ] `origin/slot/test1`ì€ ê¸°ë³¸ ì—…ë°ì´íŠ¸ ëŒ€ìƒì´ ì•„ë‹˜ì„ í™•ì¸
+- [ ] ë°°í¬ëœ commit SHA ê¸°ë¡
+
+### 11.3 ë°°í¬ ìƒíƒœ
+
+- [ ] Cloudflare Pages ë°°í¬ ìƒíƒœ: Success/Failed
+- [ ] ìµœì‹  deploy ì‹œê°„ í™•ì¸
+- [ ] ë°°í¬ ë¡œê·¸ í™•ì¸
+- [ ] test URLì—ì„œ token/source ë˜ëŠ” í™”ë©´ ë°˜ì˜ í™•ì¸
+
+### 11.4 ìºì‹œ ë¬´íš¨í™”
+
+- [ ] Cloudflare Pages ìºì‹œ ë¬´íš¨í™” í•„ìš” ì—¬ë¶€ íŒë‹¨
+- [ ] ë¬´íš¨í™” ì‹¤í–‰ì€ CTO ìŠ¹ì¸ í›„ ìˆ˜í–‰
+- [ ] ë¬´íš¨í™” í›„ ì¬ë°°í¬ ëŒ€ê¸°
+
+---
+
+## 12. ê²€ì¦ ë³´ê³  í…œí”Œë¦¿
+
+```text
 [Slot Verification Report]
 - Slot:
-- Branch:
-- Commit:
-- Purpose:
-- Pages URL:
+- Slot URL:
+- Target branch:
+- Target SHA:
+- Slot branch updated:
+- Slot branch SHA after update:
+- Cloudflare deploy status:
+- Token/source reflected:
+- Viewports checked:
+- Network result:
+- Console result:
 - Firebase Auth result:
 - API result:
 - UI result:
-- Console/network:
 - Data mutation performed: yes/no
 - Cleanup required: yes/no
+- Production verification required after merge: yes/no
 - Final judgment:
+```
 
 ---
 
-## 10. À§Çè °ü¸®
+## 13. ìœ„í—˜ ê´€ë¦¬
 
-### 10.1 µ¥ÀÌÅÍ À§Çè
-- test slotÀº production-like È¯°æÀÌ¹Ç·Î ½ÇÁ¦ ¿î¿µ µ¥ÀÌÅÍ º¯°æ °¡´É¼ºÀÌ ÀÖÀ½
-- write/delete ÀÛ¾÷Àº test4¿¡¼­ disposable data·Î¸¸ ¼öÇà
-- Å×½ºÆ® µ¥ÀÌÅÍ´Â »çÈÄ »èÁ¦ ¶Ç´Â °İ¸® »óÅÂ À¯Áö
+### 13.1 ë°ì´í„° ìœ„í—˜
 
-### 10.2 º¸¾È À§Çè
-- ½½·Ô µµ¸ŞÀÎ¿¡¼­ÀÇ ÀÎÁõ token/cookie´Â ·Î±× ±â·Ï ±İÁö
-- Å×½ºÆ® °èÁ¤ »ç¿ë (½ÇÁ¦ °èÁ¤ ¾Æ´Ô)
-- ¿ÜºÎ °øÀ¯ ±İÁö (slack/issue °ø°³ ±İÁö)
+- test slotì€ production-like í™˜ê²½ì´ë¯€ë¡œ ì‹¤ì œ ìš´ì˜ ë°ì´í„° ë³€ê²½ ê°€ëŠ¥ì„±ì´ ìˆìŠµë‹ˆë‹¤.
+- write/delete ì‘ì—…ì€ test4ì—ì„œ disposable dataë¡œë§Œ ìˆ˜í–‰í•©ë‹ˆë‹¤.
+- í…ŒìŠ¤íŠ¸ ë°ì´í„°ëŠ” ì‚¬í›„ ì‚­ì œ ë˜ëŠ” ê²©ë¦¬ ìƒíƒœë¥¼ ìœ ì§€í•©ë‹ˆë‹¤.
 
-### 10.3 ¿î¿µ À§Çè
-- slot »ç¿ë ÈÄ ¹İµå½Ã ¹èÁ¤ ÇØÁ¦ ¹× ½½·Ô ºê·£Ä¡ ¿øº¹
-- ½½·Ô Á¡À¯ ½Ã°£ ÃÖ¼ÒÈ­ (ÇÊ¿ä ÀÌ»óÀ¸·Î ¿À·¡ À¯Áö ±İÁö)
-- ¿©·¯ ¿¡ÀÌÀüÆ®/ÀÛ¾÷ÀÚ °£ Ãæµ¹ ¹æÁö: slot »ç¿ë ¿©ºÎ °øÀ¯
+### 13.2 ë³´ì•ˆ ìœ„í—˜
 
-### 10.4 ¸ğ´ÏÅÍ¸µ
-- Cloudflare Pages ¹èÆ÷ ½ÇÆĞ ¾Ë¸²
-- Firebase Auth error rate ¸ğ´ÏÅÍ¸µ
-- slot »ç¿ë ·Î±× (´©°¡, ¾ğÁ¦, ¾î¶² ½½·Ô »ç¿ëÇß´ÂÁö) ±â·Ï
+- ìŠ¬ë¡¯ ë„ë©”ì¸ì—ì„œì˜ ì¸ì¦ token/cookieëŠ” ë¡œê·¸ ê¸°ë¡ ê¸ˆì§€
+- í…ŒìŠ¤íŠ¸ ê³„ì • ì‚¬ìš©
+- ì™¸ë¶€ ê³µìœ  ê¸ˆì§€
 
----
+### 13.3 ìš´ì˜ ìœ„í—˜
 
-## 11. ½ÂÀÎ ¹× º¸°í ÀıÂ÷
+- slot ì‚¬ìš© í›„ ë°˜ë“œì‹œ ë°°ì • í•´ì œ ë˜ëŠ” main ê¸°ì¤€ìœ¼ë¡œ ë³µêµ¬ ê³„íšì„ ë³´ê³ í•©ë‹ˆë‹¤.
+- ìŠ¬ë¡¯ ì ìœ  ì‹œê°„ ìµœì†Œí™”
+- ì—¬ëŸ¬ ì‘ì—…ì ê°„ ì¶©ëŒ ë°©ì§€: slot ì‚¬ìš© ì—¬ë¶€ ê³µìœ 
 
-### 11.1 slot »ç¿ë ¿äÃ»
-1. °ËÁõ ÇÊ¿ä ºê·£Ä¡¿Í ¸ñÀûÀ» ±âÀçÇÏ¿© CTO ¶Ç´Â Ops Lead¿¡°Ô ¿äÃ»
-2. slot ÇÒ´ç ¹Ş±â (test1~5 Áß ÇÏ³ª)
-3. ½½·Ô ºê·£Ä¡ »ı¼º/°»½Å ±ÇÇÑ ºÎ¿© ¹Ş±â
+### 13.4 ëª¨ë‹ˆí„°ë§
 
-### 11.2 °ËÁõ ¼öÇà
-1. Firebase/Auth, Cloudflare Ã¼Å©¸®½ºÆ® ½ÇÇà
-2. °ËÁõ º¸°í¼­ ÀÛ¼º (Section 9 ÅÛÇÃ¸´)
-3. ¹®Á¦ ¹ß°ß ½Ã Áï½Ã Áß´Ü ¹× º¸°í
-
-### 11.3 »ç¿ë ÈÄ Ã³¸®
-1. slot ºê·£Ä¡¸¦ mainÀ¸·Î revert ¶Ç´Â »èÁ¦
-2. °ËÁõ º¸°í¼­ ¿Ï·áº»À» CTO/Ops Lead¿¡°Ô Á¦Ãâ
-3. slot ÇØÁ¦ ¹× ´ÙÀ½ »ç¿ëÀÚ¿¡°Ô ¾çµµ
+- Cloudflare Pages ë°°í¬ ì‹¤íŒ¨ ì•Œë¦¼
+- Firebase Auth error rate ëª¨ë‹ˆí„°ë§
+- slot ì‚¬ìš© ë¡œê·¸ ê¸°ë¡
 
 ---
 
-## 12. ±İÁö¼± ¿ä¾à (Àı´ë À§¹İ ±İÁö)
+## 14. ìŠ¹ì¸ ë° ë³´ê³  ì ˆì°¨
 
-- ? ½ÇÁ¦ Cloudflare/Firebase ¼³Á¤ º¯°æ (µµ¸ŞÀÎ µî·Ï, OAuth URI Ãß°¡ µî)
-- ? API/backend ÄÚµå ¼öÁ¤ (°ËÁõ¸¸ ¼öÇà)
-- ? main ºê·£Ä¡ Á÷Á¢ ¼öÁ¤/push
-- ? force push
-- ? ÀÓÀÇ slot branch »ı¼º/push (¹Ì¸® ½ÂÀÎµÈ slot¸¸)
-- ? production µ¥ÀÌÅÍ write/delete
-- ? token/password/cookie ¿øº» ±â·Ï
-- ? ½½·Ô Á¡À¯ ½Ã°£ ÃÊ°ú (ÇÊ¿ä ÀÌ»óÀ¸·Î ¿À·¡ »ç¿ë)
+### 14.1 slot ì‚¬ìš© ìš”ì²­
+
+1. ê²€ì¦ í•„ìš” PR, branch, ëª©ì ì„ ê¸°ì¬í•˜ì—¬ CTO ë˜ëŠ” Ops Leadì—ê²Œ ìš”ì²­
+2. slot í• ë‹¹ ë°›ê¸°
+3. ëŒ€ìƒ remote branchì™€ target SHAë¥¼ í™•ì¸
+4. slot branch ê°±ì‹  ê¶Œí•œì„ í™•ì¸
+
+### 14.2 ê²€ì¦ ìˆ˜í–‰
+
+1. Firebase/Auth, Cloudflare ì²´í¬ë¦¬ìŠ¤íŠ¸ ì‹¤í–‰
+2. ê²€ì¦ ë³´ê³ ì„œ ì‘ì„±
+3. ë¬¸ì œ ë°œê²¬ ì‹œ ì¦‰ì‹œ ì¤‘ë‹¨ ë° ë³´ê³ 
+
+### 14.3 ì‚¬ìš© í›„ ì²˜ë¦¬
+
+1. slot branchë¥¼ main ê¸°ì¤€ìœ¼ë¡œ ë˜ëŒë¦´ì§€ ìœ ì§€í• ì§€ CTO í™•ì¸
+2. ê²€ì¦ ë³´ê³ ì„œ ì™„ë£Œë³¸ ì œì¶œ
+3. slot í•´ì œ ë° ë‹¤ìŒ ì‚¬ìš©ìì—ê²Œ ì–‘ë„
 
 ---
 
-## 13. Âü°í ¹®¼­
+## 15. ê¸ˆì§€ì„  ìš”ì•½
 
-- docs/ops/OPERATIONS.md ? ÀÏ¹İ ¿î¿µ ¿øÄ¢
-- docs/ops/DEPLOY_CHECKLIST.md ? ¹èÆ÷ °ËÁõ Ã¼Å©¸®½ºÆ®
-- docs/ops/RUNBOOK.md ? Àå¾Ö ´ëÀÀ ½ÇÇà¼­
-- docs/engineering/API_CONTRACT.md ? API °è¾à
-- docs/product/PRODUCT_IDENTITY.md ? Á¦Ç° Á¤Ã¼¼º (UI/UX ÆÇ´Ü ±âÁØ)
+- ì‹¤ì œ Cloudflare/Firebase ì„¤ì • ë³€ê²½ ê¸ˆì§€. ë‹¨, CTOê°€ ë³„ë„ ìŠ¹ì¸í•œ ê²½ìš° ì œì™¸
+- API/backend ì½”ë“œ ìˆ˜ì • ê¸ˆì§€
+- main branch ì§ì ‘ ìˆ˜ì •/push ê¸ˆì§€
+- `--force` ë‹¨ë… push ê¸ˆì§€
+- PR branch ìˆ˜ì • ê¸ˆì§€
+- ì„ì˜ slot branch ìƒì„±/push ê¸ˆì§€
+- production ë°ì´í„° write/delete ê¸ˆì§€
+- token/password/cookie ì›ë¬¸ ê¸°ë¡ ê¸ˆì§€
+- ìŠ¬ë¡¯ ì ìœ  ì‹œê°„ ì´ˆê³¼ ê¸ˆì§€
 
 ---
 
-¹®¼­ ¹öÀü: 1.0  
-´ÙÀ½ ¸®ºä: CTO ½ÂÀÎ ÈÄ
+## 16. ì°¸ê³  ë¬¸ì„œ
+
+- [OPERATIONS.md](OPERATIONS.md) - ì¼ë°˜ ìš´ì˜ ì›ì¹™
+- [DEPLOY_CHECKLIST.md](DEPLOY_CHECKLIST.md) - ë°°í¬ ê²€ì¦ ì²´í¬ë¦¬ìŠ¤íŠ¸
+- [RUNBOOK.md](RUNBOOK.md) - ì¥ì•  ëŒ€ì‘ ì‹¤í–‰ì„œ
+- [PR_CHECKLIST.md](PR_CHECKLIST.md) - PR ì ê²€ ê¸°ì¤€
+- [../engineering/API_CONTRACT.md](../engineering/API_CONTRACT.md) - API ê³„ì•½
+- [../product/PRODUCT_IDENTITY.md](../product/PRODUCT_IDENTITY.md) - ì œí’ˆ ì •ì²´ì„±
+
+---
+
+ë¬¸ì„œ ë²„ì „: 1.1  
+ë‹¤ìŒ ë¦¬ë·°: CTO ìŠ¹ì¸ í›„
