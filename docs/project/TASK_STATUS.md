@@ -23,15 +23,17 @@
 ## 현재 상태 스냅샷
 
 - 기준일: 2026-04-26
-- 기준 main 커밋: `3542a82c539805cc5c67556447339cba79f1280f`
+- 기준 main 커밋: `bbc988041e248d171a8560419dc739394ba4e23f`
 
 | 구분 | 상태 | 기준/대상 | 현재 기록 |
 |------|------|-----------|-----------|
-| 문서 TF | 완료 | PR #8, PR #10, PR #32, PR #33, PR #50 | project 운영 문서, 검증 기준, public-first 정책, Tree/Memory/Visibility/Delete QA matrix, UI verification environment rules main 반영 완료 |
+| 문서 TF | 완료 | PR #8, PR #10, PR #32, PR #33, PR #50, PR #52 | project 운영 문서, 검증 기준, public-first 정책, Tree/Memory/Visibility/Delete QA matrix, UI verification environment rules, test preview slot branch rules main 반영 완료 |
 | Runtime routing truth | 진행 중 | production/test slot route matrix | `/api/trees`, `/api/memories`는 Cloudflare Pages Functions → Modal 경로로 실측. Netlify Functions 호출 흔적 없음. Netlify legacy deprecation 문서 정리 진행 중 |
 | Public layout UI | 완료 | PR #49 `ui(layout): align landing browse rails` | main 병합 완료. production verification PASS. Merge SHA: `dfb158a843932edeaaf7c859d0fa3e2d06c9be08` |
 | UI verification rules | 완료 | PR #50 `docs(project): clarify UI verification environment rules` | main 병합 완료. main HEAD: `3542a82c539805cc5c67556447339cba79f1280f` |
+| Test preview slot rules | 완료 | PR #52 `docs(ops): test preview slot branch rules` | merged / closed. Changed file: `docs/ops/TEST_PREVIEW_SLOTS.md` only. Merge SHA and current main HEAD: `bbc988041e248d171a8560419dc739394ba4e23f` |
 | Typography / accent hierarchy | 진행 중 | PR #51 `ui(style): align typography accent hierarchy` | open. test1 배포 트리거 완료. Gemini Local Verifier test1 검증 대기. PR #51 파일 수정 금지 |
+| Local generated artifact ignore | 보류 | PR #53 `chore: ignore local generated artifacts` | open. 현재 contaminated 상태. Changed files가 `.gitignore` 1개가 아니라 5개로 확인됨. 오염 파일: `css/global.css`, `index.html`, `pages/intro.html`, `pages/search.html`. merge 금지. clean branch 복구 필요. 목표는 `.gitignore` only PR로 복구 |
 | 기능 TF | 완료 | `feature/search-growing-trees-api` | main과 동일 상태 (Identical). PR 생성 불필요. `/api/community/growing-trees` 운영 quick check 통과. 기능 TF 종료 |
 | SVG Tree Prototype | 진행 중 | PR #7 `experiment: SVG tree prototype` | open / draft. 보존 대상. merged 아님. 정식 기능 아님. close 금지. navigation 연결 금지 |
 
@@ -51,6 +53,7 @@
 | 작업 | 상태 | 메모 |
 |------|------|------|
 | PR2 typography/accent 검증 | 진행 중 | PR #51 test1 검증 대기. Gemini Local Verifier 확인 후 merge 판단 |
+| PR #53 clean branch 복구 | 진행 중 | contaminated 상태 해소 필요. `.gitignore` only PR로 복구 후 재검토 |
 | PR3 button/badge/chip | 대기 | PR #51 검증/병합 후 별도 UI PR로 진행 |
 | PR4 intro hero visual/whitespace | 대기 | PR3 이후 별도 UI PR로 진행 |
 | PR5 browse card/hub panel | 대기 | PR4 이후 별도 UI PR로 진행 |
@@ -65,6 +68,8 @@
 
 ## 작업 이력 (Task History)
 
+- 2026-04-26: PR #53 `chore: ignore local generated artifacts` open. 현재 contaminated 상태로 기록. Changed files 5개이며 `.gitignore` 외 `css/global.css`, `index.html`, `pages/intro.html`, `pages/search.html` 오염 확인. merge 금지 및 clean branch 복구 필요
+- 2026-04-26: PR #52 `docs(ops): test preview slot branch rules` merged / closed. Changed file `docs/ops/TEST_PREVIEW_SLOTS.md` only. Merge SHA 및 main HEAD `bbc988041e248d171a8560419dc739394ba4e23f`
 - 2026-04-26: PR #50 `docs(project): clarify UI verification environment rules` main 병합 완료. main HEAD `3542a82c539805cc5c67556447339cba79f1280f`
 - 2026-04-26: PR #49 `ui(layout): align landing browse rails` main 병합 및 production verification PASS. Merge SHA `dfb158a843932edeaaf7c859d0fa3e2d06c9be08`
 - 2026-04-26: PR #51 `ui(style): align typography accent hierarchy` open. test1 배포 트리거 완료, Gemini Local Verifier test1 검증 대기
