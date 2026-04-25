@@ -26,6 +26,28 @@
         .editor-form-support-note { margin:-4px 0 2px; display:flex; align-items:flex-start; gap:8px; padding:12px 14px; border-radius:16px; background:rgba(255,255,255,0.68); border:1px solid rgba(144,73,81,0.08); color:var(--on-surface-variant); font-size:12px; line-height:1.6; }
         .editor-form-support-note .material-symbols-outlined { font-size:16px; color:var(--primary); margin-top:1px; }
         .editor-form-field.is-deemphasized { opacity:0.72; }
+        .editor-layout { background:linear-gradient(180deg,#fff8f0 0%,#f8ede2 52%,#f5e6dc 100%); gap:18px; padding:18px; box-sizing:border-box; }
+        .sidebar, .detail-panel { border:1px solid rgba(255,255,255,0.86); border-radius:32px; background:linear-gradient(180deg,rgba(255,253,249,0.88),rgba(255,247,239,0.66)); box-shadow:0 24px 62px rgba(156,116,94,0.13); }
+        .sidebar { border-right:1px solid rgba(255,255,255,0.86); }
+        .detail-panel { border-left:1px solid rgba(255,255,255,0.86); }
+        .canvas-area { border-radius:34px; background:radial-gradient(circle at 50% 26%,rgba(255,244,232,0.86),transparent 34%),linear-gradient(180deg,rgba(255,252,248,0.82),rgba(250,238,226,0.54)); border:1px solid rgba(255,255,255,0.56); box-shadow:0 24px 62px rgba(156,116,94,0.10); }
+        .canvas-area::before { content:''; position:absolute; inset:72px 28px 28px; border-radius:30px; border:1px solid rgba(255,255,255,0.42); background:radial-gradient(circle at 50% 28%,rgba(255,255,255,0.36),transparent 34%); pointer-events:none; z-index:0; }
+        .canvas-svg, .memory-node, #canvasEmptyGuide, #addMemoryForm { z-index:2; }
+        .editor-reference-kicker { display:inline-flex; align-items:center; gap:8px; width:max-content; max-width:100%; min-height:30px; padding:0 12px; border-radius:999px; background:rgba(255,248,242,0.90); border:1px solid rgba(233,213,199,0.86); color:#a36b62; font-size:12px; font-weight:800; letter-spacing:0.01em; }
+        .editor-status-card { position:relative; padding:24px 20px 20px; border-radius:28px; background:linear-gradient(180deg,rgba(255,253,249,0.96),rgba(255,246,239,0.88)); border:1px solid rgba(233,215,201,0.82); box-shadow:0 18px 40px rgba(161,119,96,0.10); }
+        .editor-status-card .editor-reference-kicker { margin-bottom:14px; }
+        .editor-status-card strong { font-size:1.62rem; color:#583f35; }
+        .editor-rename-btn { display:none !important; }
+        .editor-tree-visibility-pill { min-height:34px; padding:0 14px; margin-top:14px; font-size:12px; border-radius:999px; }
+        .editor-title-settings-panel { gap:10px; margin-top:20px; }
+        .editor-mini-setting-btn { min-height:48px; border-radius:999px; background:rgba(255,255,255,0.70); border-color:rgba(221,198,184,0.84); color:#7f6258; font-weight:800; box-shadow:0 8px 16px rgba(165,124,101,0.06); }
+        .editor-tree-quiet-note { margin:20px 0 0; padding-top:18px; border-top:1px dashed rgba(190,147,127,0.36); color:#8f776c; font-size:13px; line-height:1.7; text-align:center; }
+        .editor-canvas-topbar { position:absolute; top:22px; left:24px; right:24px; z-index:7; display:flex; align-items:flex-start; justify-content:space-between; gap:18px; pointer-events:none; }
+        .editor-canvas-topbar > * { pointer-events:auto; }
+        .editor-canvas-title h2 { margin:10px 0 0; font-size:1.76rem; line-height:1.12; letter-spacing:-0.05em; color:#553f35; }
+        .editor-canvas-caption { margin:7px 0 0; max-width:360px; color:#9a8175; font-size:13px; line-height:1.6; }
+        .editor-canvas-toolbar { display:flex; align-items:center; gap:8px; padding:8px; border-radius:999px; background:rgba(255,250,244,0.82); border:1px solid rgba(230,207,194,0.78); box-shadow:0 14px 30px rgba(161,119,96,0.10); backdrop-filter:blur(8px); }
+        .editor-canvas-toolbar .sidebar-btn { min-height:38px; padding:0 14px; border-radius:999px; background:rgba(255,255,255,0.74); border:1px solid rgba(221,198,184,0.84); color:#7f6258; box-shadow:none; }
         .editor-status-section > h3,
         .editor-flow-lead,
         #sidebarMomentCount,
@@ -33,17 +55,11 @@
         #sidebarSelectionHint,
         .editor-add-section-bottom,
         .editor-tree-meta-section,
-        #detailEmptyStartBtn {
-            display: none !important;
-        }
-        .editor-status-card {
-            margin-top: 0;
-        }
-        .editor-canvas-empty-guide__desc {
-            max-width: 260px;
-            margin-left: auto;
-            margin-right: auto;
-        }
+        #detailEmptyStartBtn { display: none !important; }
+        .editor-status-card { margin-top: 0; }
+        .editor-canvas-empty-guide__desc { max-width: 260px; margin-left: auto; margin-right: auto; }
+        @media (max-width:1024px) { .editor-layout { padding:12px; gap:12px; } .sidebar, .detail-panel, .canvas-area { border-radius:24px; } .editor-canvas-topbar { position:absolute; top:14px; left:14px; right:14px; flex-direction:column; } .editor-canvas-title h2 { font-size:1.42rem; } }
+        @media (max-width:768px) { .editor-canvas-caption { display:none; } .editor-canvas-toolbar { width:100%; justify-content:center; box-sizing:border-box; } .editor-status-card { padding:18px 16px; } }
     </style>
 </head>
 <body class="editor-preload">
@@ -63,6 +79,7 @@
                 <h3 id="editorFlowHeading">러브트리</h3>
                 <p id="editorFlowLead" class="editor-flow-lead" style="margin:-6px 0 0;font-size:13px;line-height:1.7;color:var(--on-surface-variant);">...</p>
                 <div class="editor-status-card">
+                    <div class="editor-reference-kicker" aria-hidden="true">✿ Our LoveTree</div>
                     <div class="editor-space-between-row">
                         <strong id="sidebarTreeTitle">LoveTree</strong>
                         <button type="button" id="renameTreeBtn" class="icon-menu-btn editor-rename-btn" aria-label="트리 제목 변경" title="트리 제목 변경">편집</button>
@@ -78,15 +95,10 @@
                             <span id="sidebarVisibilityToggleBtnLabel">이 트리 공개하기</span>
                         </button>
                     </div>
+                    <p class="editor-tree-quiet-note">러브트리의 제목과 공개 상태를 여기에서 조용히 관리할 수 있어요.</p>
                     <p id="sidebarMomentCount"></p>
                     <p id="sidebarFlowSummary" class="editor-flow-summary"></p>
                     <span id="sidebarSelectionHint" class="editor-sidebar-meta"></span>
-                </div>
-                <div class="editor-sidebar-actions">
-                    <button type="button" class="sidebar-btn" id="recenterCanvasBtn">
-                        <span class="btn-icon">⌂</span>
-                        <span class="btn-label" id="recenterCanvasBtnLabel">트리 한눈에 보기</span>
-                    </button>
                 </div>
             </section>
 
@@ -105,6 +117,19 @@
         </aside>
 
         <main class="canvas-area" id="canvasArea">
+            <div class="editor-canvas-topbar" aria-label="러브트리 캔버스 도구">
+                <div class="editor-canvas-title">
+                    <div class="editor-reference-kicker">✿ 순간을 이어가는 중</div>
+                    <h2>순간을 이어가는 중</h2>
+                    <p class="editor-canvas-caption">좋아하는 순간들이 가지 위에 천천히 붙어가는 작업 공간입니다.</p>
+                </div>
+                <div class="editor-canvas-toolbar">
+                    <button type="button" class="sidebar-btn" id="recenterCanvasBtn" onmousedown="event.stopPropagation()">
+                        <span class="btn-icon">⌂</span>
+                        <span class="btn-label" id="recenterCanvasBtnLabel">트리 한눈에 보기</span>
+                    </button>
+                </div>
+            </div>
             <svg class="canvas-svg" id="canvasSvg"></svg>
             <div id="canvasEmptyGuide" class="editor-canvas-empty-guide editor-canvas-empty-guide-hidden" aria-live="polite">
                 <div class="editor-canvas-empty-guide__eyebrow" id="canvasEmptyGuideEyebrow">첫 순간 준비</div>
