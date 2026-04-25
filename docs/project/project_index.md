@@ -9,6 +9,7 @@
 - 브랜치 / 리뷰 / 완료 보고 원칙
 - 3TF 구조, TF별 보고선, project 운영 문서 진입 경로
 - 상태 추적 문서 위치
+- 검증 warning / blocker 분류 기준
 
 장문 정책 본문은 이 인덱스에 두지 않습니다. 상세 기준은 아래 하위 문서로 이동합니다.
 
@@ -20,6 +21,7 @@
 4. [LOCAL_MODEL_WORKFLOW.md](./LOCAL_MODEL_WORKFLOW.md)
 5. [TASK_STATUS.md](./TASK_STATUS.md)
 6. [VERIFICATION_AND_EVIDENCE.md](./VERIFICATION_AND_EVIDENCE.md)
+7. [VERIFICATION_WARNING_CATALOG.md](./VERIFICATION_WARNING_CATALOG.md)
 
 ## 하위 문서 안내
 
@@ -40,6 +42,9 @@
 
 - [VERIFICATION_AND_EVIDENCE.md](./VERIFICATION_AND_EVIDENCE.md)  
   검증 및 증빙 기준, 실도메인 우선 원칙, 보고서 작성 기준을 정리합니다.
+
+- [VERIFICATION_WARNING_CATALOG.md](./VERIFICATION_WARNING_CATALOG.md)  
+  UI/production/test preview 검증 중 반복 관찰되는 warning과 blocker의 분류 기준, 보고 형식, 환경 원칙을 정리합니다.
 
 ## 관련 허브 문서
 
