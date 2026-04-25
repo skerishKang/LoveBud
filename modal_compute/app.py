@@ -430,21 +430,23 @@ def fetch_growing_public_tree_snapshots(limit: int = 6) -> list[dict[str, Any]]:
 
 
 def fetch_public_memories(tree_id: str | None = None, limit: int = 100) -> list[dict[str, Any]]:
-    filters = ["visibility = 'public'"]
+    filters = ["m.visibility = 'public'", "t.visibility = 'public'"]
     params: list[Any] = []
 
     if tree_id:
         params.append(tree_id)
-        filters.append(f"tree_id = %s")
+        filters.append("m.tree_id = %s")
 
     params.append(limit)
     query = f"""
-        SELECT id, tree_id, parent_id, title, memo, artist, source, source_url,
-               source_type, thumbnail, emotion_tags, timestamp, visibility,
-               created_at, updated_at
-        FROM memories
+        SELECT m.id, m.tree_id, m.parent_id, m.title, m.memo, m.artist, m.source, m.source_url,
+               m.source_type, m.thumbnail, m.emotion_tags, m.timestamp, m.visibility,
+               m.created_at, m.updated_at
+        FROM memories m
+        INNER JOIN trees t
+          ON t.id = m.tree_id
         WHERE {' AND '.join(filters)}
-        ORDER BY created_at DESC
+        ORDER BY m.created_at DESC
         LIMIT %s;
     """
 
@@ -458,12 +460,15 @@ def fetch_public_memories(tree_id: str | None = None, limit: int = 100) -> list[
 
 def fetch_public_memory(memory_id: str) -> dict[str, Any] | None:
     query = """
-        SELECT id, tree_id, parent_id, title, memo, artist, source, source_url,
-               source_type, thumbnail, emotion_tags, timestamp, visibility,
-               created_at, updated_at
-        FROM memories
-        WHERE id = %s
-          AND visibility = 'public'
+        SELECT m.id, m.tree_id, m.parent_id, m.title, m.memo, m.artist, m.source, m.source_url,
+               m.source_type, m.thumbnail, m.emotion_tags, m.timestamp, m.visibility,
+               m.created_at, m.updated_at
+        FROM memories m
+        INNER JOIN trees t
+          ON t.id = m.tree_id
+        WHERE m.id = %s
+          AND m.visibility = 'public'
+          AND t.visibility = 'public'
         LIMIT 1;
     """
 
