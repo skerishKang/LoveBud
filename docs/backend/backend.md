@@ -17,15 +17,16 @@ Auth: Firebase ID Token verified in each protected function via `requireUser(eve
 netlify/
 ├── functions/
 │   ├── _lib/
-│   │   ├── auth.js       ← Firebase token verification (from 133)
-│   │   ├── db.js         ← Neon PostgreSQL Pool (from 133)
-│   │   ├── http.js       ← CORS / response helpers (from 133)
-│   │   └── doc-store.js  ← LoveBud data access layer (NEW)
+│   │   ├── auth.js       ← Firebase token verification
+│   │   ├── db.js         ← Neon PostgreSQL Pool
+│   │   ├── http.js       ← CORS / response helpers
+│   │   └── doc-store.js  ← LoveBud data access layer
 │   ├── trees.js          ← GET/POST  /api/trees
-│   ├── tree-detail.js    ← GET       /api/trees/:treeId
+│   ├── tree-detail.js    ← GET/PUT/DELETE /api/trees/:treeId
 │   ├── memories.js       ← GET/POST  /api/memories
 │   ├── memory-detail.js  ← GET/PATCH/DELETE /api/memories/:memoryId
-│   └── community-memories.js ← GET   /api/community/memories
+│   ├── community-trees.js ← GET /api/community/trees
+│   └── community-memories.js ← GET /api/community/memories
 ├── sql/
 │   └── 001_initial_schema.sql
 └── toml (netlify.toml routes /api/* → function files)
@@ -35,24 +36,26 @@ netlify/
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | /api/trees | optional | List user's trees (auth) or public trees (anon) |
+| GET | /api/trees | required | List user's trees |
 | POST | /api/trees | required | Create a new tree |
 | GET | /api/trees/:treeId | required* | Get tree + memories (*private requires owner) |
-| GET | /api/community/memories | none | Public memories from all trees (no auth required) |
+| PUT | /api/trees/:treeId | required | Update tree metadata / visibility |
+| DELETE | /api/trees/:treeId | required | Delete tree |
+| GET | /api/community/trees | none | Browse public tree summaries |
+| GET | /api/community/memories | none | Public memories by treeId or community scope |
 | GET | /api/memories | required | List memories (filter by treeId, parentId) |
 | POST | /api/memories | required | Create a new memory |
-| GET | /api/memories/:memoryId | required | Get single memory |
+| GET | /api/memories/:memoryId | required* | Get single memory (*public anyone / private owner) |
 | PATCH | /api/memories/:memoryId | required | Update memory fields |
 | DELETE | /api/memories/:memoryId | required | Delete memory |
 
-## Auth Pattern (per-function)
+## Auth Pattern
 ```javascript
 const { requireUser } = require('./_lib/auth');
-// In handler:
-const user = await requireUser(event); // throws 401 if not authenticated
+const user = await requireUser(event);
 ```
 
-## Environment Variables (Netlify)
+## Environment Variables
 
 | Variable | Required | Description |
 |----------|----------|-------------|
@@ -64,77 +67,190 @@ const user = await requireUser(event); // throws 401 if not authenticated
 
 | Package | Version | Why |
 |---------|---------|-----|
-| `firebase-admin` | ^12.0.0 | `_lib/auth.js` calls `require('firebase-admin')` to verify ID tokens in protected functions |
-| `pg` | ^8.12.0 | `_lib/db.js` calls `require('pg')` for Neon PostgreSQL connection pool |
+| `firebase-admin` | ^12.0.0 | Firebase ID token verification |
+| `pg` | ^8.12.0 | Neon PostgreSQL connection pool |
 
-Both are **server-side only** (Netlify Functions) — never bundled into the browser.
-Netlify auto-installs `package.json` dependencies during build.
+Both are server-side only.
 
-## Netlify 배포 설정
+---
 
-**package.json**: 루트에 위치하며 Netlify Functions 빌드 시 의존성 자동 설치  
-**netlify.toml**: `[functions]` 섹션으로 Functions 디렉토리 지정, `[[redirects]]` 순서는 `/api/*` → `/*` (SPA fallback은 항상 마지막)  
-빌드 에러 시 확인: Functions 로그에서 "Cannot find module" 오류 → package.json 의존성 누락 확인
+## Visibility / private storage policy
+
+### Current implementation
+
+Current main implementation remains private-first.
+
+- `POST /api/trees` defaults new tree visibility to `private`.
+- `POST /api/trees` rejects `visibility: 'public'` with 409.
+- `PUT /api/trees/:treeId` allows owner visibility update.
+- private → public currently requires at least 3 public memories.
+- public → private currently has no Plus entitlement guard.
+- Existing private trees are stored as ordinary `visibility: 'private'` rows.
+
+### Target policy
+
+CTO-approved direction is public-first + Plus private.
+
+- New trees should transition to public-first.
+- Existing private trees must not be automatically made public.
+- Existing private trees are grandfathered private.
+- Private creation and public → private transition require Plus entitlement after the entitlement source is defined.
+- Public visibility and browse display eligibility are separate concepts.
+- Netlify and Modal policy must be changed together.
+
+### Create tree policy
+
+Current:
+
+- Backend accepts `title` and optional `visibility`.
+- Default visibility is `private`.
+- `visibility: 'public'` is rejected.
+
+Target:
+
+- Default visibility becomes `public`.
+- `visibility: 'private'` requires Plus entitlement.
+- Entitlement source is not yet defined, so this is not implementable yet.
+- Frontend create payload must not be changed alone.
+
+Decision-needed:
+
+- User plan source of truth
+- DB schema or provider for entitlement
+- Error status and response body for Plus-required private creation
+- Grandfathered private marking strategy, if needed beyond existing visibility value
+
+### Toggle visibility policy
+
+Current:
+
+- Owner can request visibility update through `/api/trees/:treeId`.
+- private → public has a 3-public-memory publication guard.
+- public → private is allowed for owner without plan check.
+
+Target:
+
+- public → private requires Plus entitlement unless the tree is grandfathered private or another CTO-approved exception applies.
+- private → public should be treated as publishing or grandfathered-private release.
+- Browse display eligibility remains separate from visibility.
+
+Recommended target behavior:
+
+| Transition | Target backend behavior |
+|------------|--------------------------|
+| public → private | require Plus entitlement |
+| private → public | allow owner, then evaluate browse eligibility separately |
+| grandfathered private → private | keep allowed for owner |
+| grandfathered private → public | allow owner, no automatic re-private without entitlement unless approved |
+
+### Browse display filter
+
+Browse summary should not become a raw list of all public trees.
+
+Recommended browse summary conditions:
+
+- tree visibility is `public`
+- public memory count meets display threshold, currently 3+
+- browse quality filter passes
+
+Public visibility means accessible public state. Browse display means curated/eligible for browse surfaces.
+
+---
 
 ## Current Status
 
 **Implemented:**
-- Browser-side fetch client (js/postgres-client.js) — API-first with mock fallback
-- `_lib/` (auth, db, http, doc-store) — full CRUD scaffold
+- Browser-side fetch client (`js/postgres-client.js`) — API-first with fallback
+- `_lib/` auth, db, http, doc-store
 - `trees.js` — GET/POST with auth
-- `tree-detail.js` — GET with access control
+- `tree-detail.js` — GET/PUT/DELETE with access control and visibility update
 - `memories.js` — GET/POST with auth + ownership enforcement
 - `memory-detail.js` — GET/PATCH/DELETE with ownership check
-- `community-memories.js` — public read (no auth)
-- SQL schema (netlify/sql/001_initial_schema.sql)
+- `community-trees.js` — browse public summaries
+- `community-memories.js` — public read path
+- SQL schema scaffold
 
-**GET 정책 (모두 인증 필수):**
-- `/api/memories` GET: 인증된 사용자의 own trees 메모리만 조회 (treeId 지정 시 해당 tree 소유권 검증)
-- `/api/memories/:memoryId` GET: 인증 필수. public memory는 anyone이 조회 가능, private memory는 owner만 조회 가능
+**GET 정책:**
+- `/api/memories` GET: authenticated user's own tree memories only
+- `/api/memories/:memoryId` GET: public memory can be viewed publicly; private memory requires owner
+- `/api/trees/:treeId` GET: public tree can be viewed; private tree requires owner
 
-**Ownership 검증 완료:**
-- memories.js GET: 사용자가 소유한 트리의 메모리만 반환
-- memories.js POST: body.treeId가 본인 소유 트리인지 검증 후 생성
+**Ownership 검증:**
+- memories.js GET: returns memories for user's own trees
+- memories.js POST: verifies body.treeId ownership before creation
 - memory-detail.js GET: public anyone / private owner only
-- memory-detail.js PATCH/DELETE: memory가 속한 tree의 owner만 수정/삭제 가능
+- memory-detail.js PATCH/DELETE: owner only
+- tree-detail.js PUT/DELETE: owner only
 
 **입력값 검증 규칙:**
-- 필수 필드(treeId 등) 누락 → 400 error
-- 빈 문자열/공백 → trim 후 빈 값이면 400 error  
-- UUID 파라미터(treeId, memoryId, parentId) → UUID 형식 검증
-- limit 파라미터 → 1~100 범위로 제한 (기본 20)
-- visibility → 'public' 또는 'private'만 허용
-- sourceType → 'youtube', 'soundcloud', 'bandcamp', 'spotify', 'apple', 'other'
-- 문자열 필드 길이 제한: title(200), memo(5000), artist(100), source(200), sourceUrl(1000), thumbnail(500), timestamp(100)
-- emotionTags → 배열, 최대 20개, 빈 문자열不允许
+- 필수 필드 누락 → 400
+- UUID 파라미터 → UUID 형식 검증
+- limit 파라미터 → bounded range
+- visibility → `public` 또는 `private`만 허용
+- sourceType → `youtube`, `soundcloud`, `bandcamp`, `spotify`, `apple`, `other`
+- 문자열 필드 길이 제한 적용
+- emotionTags → 배열, 최대 20개
 
-**Frontend 연결 상태:**
-- `search.html` — `window.apiClient.getCommunityMemories()` API 우선 + mock fallback 적용 완료
-- `js/postgres-client.js` — 모든 메서드 API 우선, 실패 시 mock fallback
+---
 
-**Not yet implemented:**
-- Neon PostgreSQL actual database + schema run
-- detail.html API 연결 (postgres-client.js는 준비됨)
-- editor.html API 연결 — createMemory, getMemoriesByTree 구현 완료
+## Public-first transition TODO
 
-**Next step:**
-1. Run `001_initial_schema.sql` against Neon PostgreSQL
-2. Run `002_seed_demo_data.sql` for demo content (optional but recommended for public browsing)
-3. Update Netlify environment variables (`FIREBASE_SERVICE_ACCOUNT_JSON`, `NETLIFY_DATABASE_URL`)
+Before code changes:
 
-**시드 데이터 (Verified Seed Data):**
-- `002_seed_demo_data.sql` — **실제 공식 YouTube 채널에서 확인 가능한 공개 콘텐츠만** 포함
-- 2개 public trees (BTS, Hearts2Hearts 샘플)
-- **5개 검증된 public memories**
-  - BTS: 봄날, Dynamite, Butter, Permission to Dance (4개 — BTS Official YouTube)
-  - Hearts2Hearts: The Chase MV (1개 — @hearts2hearts.official 공식 채널, 2025.02.24 데뷔)
-- `ON CONFLICT` 구문으로 재실행 시 업데이트 가능 (단, owner_id는 유지됨)
-- Neon 콘솔 또는 `psql`로 실행: `\i netlify/sql/002_seed_demo_data.sql`
+1. Update API contract and tests.
+2. Define Plus entitlement source.
+3. Define grandfathered private behavior.
+4. Update Netlify and Modal policy together.
+5. Separate visibility change from browse display eligibility.
+6. Prepare frontend UX copy and error handling.
 
-**참고**: Hearts2Hearts 공식 채널(@hearts2hearts.official)에 Butterflies, RUDE!, STYLE 등 추가 콘텐츠가 있으며, 확인 후 확장 가능합니다.
+Implementation split:
 
-**Detail 화면 API 연결 방법:**
-- `apiClient.getMemory(memoryId)` — GET `/api/memories/:memoryId` 직접 호출
-- `apiClient.getMemoriesByTree(treeId)` — GET `/api/memories?treeId=...` 호출
-- `apiClient.getFirstTree()` — GET `/api/trees` 후 첫 번째 선택
-- 모든 메서드는 API 실패 시 자동으로 mock-data.js fallback
+### Backend workstream
+
+- Change `POST /api/trees` default visibility to public.
+- Remove public-create 409 only when Modal equivalent is ready.
+- Add entitlement guard for private creation.
+- Add entitlement guard for public → private toggle.
+- Preserve grandfathered private owner access.
+- Keep browse summary filter separate.
+
+### Modal workstream
+
+- Mirror create tree policy.
+- Mirror private endpoint entitlement policy.
+- Keep browse latest/growing filters public-only.
+
+### Frontend workstream
+
+- Do not change createTree payload until backend/Modal are ready.
+- Update My Trees create modal after API policy is ready.
+- Update Editor visibility badge and toggle copy.
+- Add Plus-required UX only after error contract is fixed.
+
+---
+
+## Not yet implemented / decision-needed
+
+- Public-first create tree implementation
+- Plus entitlement source
+- Plus private backend guard
+- Grandfathered private metadata strategy
+- Entitlement error code/status contract
+- User-facing copy for Plus private after payment policy is confirmed
+
+---
+
+## Seed data note
+
+Seed/demo data remains public sample content and is not a private storage policy reference.
+
+---
+
+## Detail/API integration note
+
+- `apiClient.getMemory(memoryId)` — GET `/api/memories/:memoryId`
+- `apiClient.getMemoriesByTree(treeId)` — GET `/api/memories?treeId=...`
+- `apiClient.getFirstTree()` — GET `/api/trees` then first item
+
+Visibility policy changes must update the API client only after backend and Modal contracts are aligned.
