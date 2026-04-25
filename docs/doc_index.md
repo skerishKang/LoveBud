@@ -49,6 +49,7 @@ Prototype/reference 폴더 정리, 보존, repo hygiene 판단이 필요하면 �
 운영/배포 판단이 필요하면 아래를 추가로 읽습니다.
 
 - `./ops/OPERATIONS.md`
+- `./ops/KNOWN_CI_E2E_BLOCKERS.md`
 - `./migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md`
 - `./engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md`
 - `./engineering/REVIEW_GUARDRAILS.md`
@@ -102,6 +103,7 @@ Prototype/reference 폴더 정리, 보존, repo hygiene 판단이 필요하면 �
 - [DOC_WORKFLOW.md](./ops/DOC_WORKFLOW.md) - 문서 작업 흐름
 - [SKILL_REGISTRY.md](./ops/SKILL_REGISTRY.md) - 스킬 레지스트리
 - [AI_REQUEST_PATTERNS.md](./ops/AI_REQUEST_PATTERNS.md) - 요청 패턴 해석
+- [KNOWN_CI_E2E_BLOCKERS.md](./ops/KNOWN_CI_E2E_BLOCKERS.md) - 반복 CI/E2E blocker 원인 분리 및 exception merge 판단 기준
 - [TEST_PREVIEW_SLOTS.md](./ops/TEST_PREVIEW_SLOTS.md) - 고정 테스트 Preview 슬롯 운영 기준
 - [EDITOR_ARCHITECTURE.md](./ops/EDITOR_ARCHITECTURE.md) - editor 구조 설명
 
