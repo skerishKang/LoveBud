@@ -997,3 +997,169 @@ body .search-panel-header p {
         contain-intrinsic-size: 0 65px;
     }
 }
+
+
+/* -----------------------------------------------------------------
+   UI PR3 Button Badge Chip Tone Unification
+   PR3: Align button / badge / chip tone across Home / Intro / Browse
+   Home CTA baseline preserved
+   Based on docs/design/BUTTON_BADGE_CHIP_BASELINE.md
+   ----------------------------------------------------------------- */
+
+:root {
+    /* PR3 Control Tokens - reusing existing tokens where possible */
+    --control-primary: var(--primary);
+    --control-primary-hover: var(--primary-vibrant);
+    --control-primary-text: var(--on-primary);
+    --control-secondary-bg: var(--surface-container-lowest, #ffffff);
+    --control-secondary-text: var(--on-surface);
+    --control-secondary-border: var(--outline-variant);
+    --control-chip-bg: rgba(255, 255, 255, 0.76);
+    --control-chip-text: var(--on-surface-variant);
+    --control-chip-border: rgba(144, 73, 81, 0.08);
+    --control-chip-active-bg: rgba(144, 73, 81, 0.12);
+    --control-chip-active-text: var(--primary);
+    --control-chip-active-border: rgba(144, 73, 81, 0.16);
+    --control-focus-ring: rgba(144, 73, 81, 0.42);
+}
+
+/* Primary CTA unification */
+body .btn-round,
+body .btn-primary,
+body .cta-appreciation {
+    font-family: var(--font-heading);
+    font-weight: 700;
+    border-radius: var(--radius-full, 9999px);
+    transition: background-color 0.25s ease, box-shadow 0.25s ease, color 0.25s ease;
+}
+
+/* Primary CTA - maintain Home baseline */
+body .btn-primary,
+body .cta-appreciation {
+    background: var(--control-primary);
+    color: var(--control-primary-text);
+    box-shadow: 0 4px 12px rgba(144, 73, 81, 0.2);
+}
+
+body .btn-primary:hover,
+body .cta-appreciation:hover {
+    background: var(--control-primary-hover);
+    /* transform maintained in baseline CSS */
+    box-shadow: 0 6px 16px rgba(144, 73, 81, 0.28);
+}
+
+/* Secondary / outline CTA - match Home secondary tone */
+body .btn-outline {
+    background: var(--control-secondary-bg);
+    color: var(--control-secondary-text);
+    border: 1px solid var(--control-secondary-border);
+    transition: background-color 0.25s ease, border-color 0.25s ease;
+}
+
+body .btn-outline:hover {
+    background: var(--surface-container, #f8f5f0);
+    border-color: rgba(144, 73, 81, 0.22);
+}
+
+/* Intro CTA alignment with Home baseline */
+body .intro-cta-primary {
+    background: var(--control-primary);
+    color: var(--control-primary-text);
+    box-shadow: 0 4px 12px rgba(144, 73, 81, 0.2);
+}
+
+body .intro-cta-primary:hover {
+    background: var(--control-primary-hover);
+    box-shadow: 0 6px 16px rgba(144, 73, 81, 0.28);
+}
+
+body .intro-cta-secondary {
+    background: var(--control-secondary-bg);
+    color: var(--control-secondary-text);
+    border: 1px solid rgba(144, 73, 81, 0.16);
+}
+
+body .intro-cta-secondary:hover {
+    background: var(--surface-container, #f8f5f0);
+    border-color: rgba(144, 73, 81, 0.28);
+}
+
+/* Eyebrow - warm rose tone per baseline */
+body .intro-hero-eyebrow,
+body .intro-what-eyebrow {
+    color: var(--eyebrow-color, var(--primary));
+}
+
+/* Filter chip - Browse filter unification */
+body .tag-chip {
+    background: var(--control-chip-bg);
+    color: var(--control-chip-text);
+    border: 1px solid var(--control-chip-border);
+    border-radius: var(--radius-full, 9999px);
+    font-weight: 700;
+    font-size: 12px;
+    padding: 8px 14px;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+    cursor: pointer;
+}
+
+body .tag-chip:hover {
+    background: rgba(144, 73, 81, 0.06);
+    border-color: rgba(144, 73, 81, 0.18);
+}
+
+body .tag-chip.active {
+    background: var(--control-chip-active-bg);
+    color: var(--control-chip-active-text);
+    border-color: var(--control-chip-active-border);
+}
+
+body .tag-chip:focus-visible {
+    outline: 2px solid var(--control-focus-ring);
+    outline-offset: 2px;
+}
+
+/* Badge - low contrast warm tone */
+body .preview-badge,
+body .growing-trees-badge,
+body .browse-results-badge,
+body .how-to-badge {
+    background: rgba(144, 73, 81, 0.06);
+    color: var(--on-surface-variant, #6c5953);
+    border: 1px solid rgba(144, 73, 81, 0.1);
+    border-radius: var(--radius-full, 9999px);
+    font-weight: 600;
+    font-size: 11px;
+    padding: 4px 10px;
+}
+
+/* Emotion tag */
+body .emotion-tag-refined {
+    background: rgba(144, 73, 81, 0.08);
+    color: var(--primary);
+    border: 1px solid rgba(144, 73, 81, 0.12);
+}
+
+/* Focus-visible for all interactive elements */
+body .btn-round:focus-visible,
+body .btn-primary:focus-visible,
+body .btn-outline:focus-visible,
+body .cta-appreciation:focus-visible,
+body .tag-chip:focus-visible {
+    outline: 2px solid var(--control-focus-ring);
+    outline-offset: 2px;
+}
+
+@media (max-width: 768px) {
+    body .tag-chip {
+        font-size: 11px;
+        padding: 7px 12px;
+    }
+
+    body .preview-badge,
+    body .growing-trees-badge,
+    body .browse-results-badge {
+        font-size: 10px;
+        padding: 3px 8px;
+    }
+}
