@@ -1,283 +1,367 @@
 # Publication and Privacy UX Policy
 
-이 문서는 LoveBud / LoveTree의 공개, 비공개, 둘러보기 소개 UX 정책을 정리합니다.
+이 문서는 LoveBud / LoveTree의 공개, 비공개, memory visibility, anonymous public exposure, Browse/Search 소개 UX 정책을 정리합니다.
 
-현재 CTO 결정에 따라 제품 방향은 **public-first + Plus private**으로 전환합니다. 단, 코드 수정 전 단계에서는 기존 private-first 구현을 즉시 변경하지 않고, 문서상 목표 정책과 전환 가드레일을 먼저 고정합니다.
+현재 CTO 확정 정책은 **public-first visibility + Plus private storage + separate browse eligibility + parent visibility public-read guard**입니다. 이 문서는 제품/UX 정책의 canonical source이며, 코드 구현은 별도 frontend/backend 작업으로 분리합니다.
 
-이 문서는 UX/제품 정책 문서입니다. 결제, 권한, backend, API, DB 변경을 직접 구현하거나 확정하지 않습니다. 실제 구현은 별도 frontend/backend 작업으로 분리합니다.
-
----
-
-## 1. 확정 정책 요약
-
-1. 신규 tree는 장기적으로 `public-first` 방향으로 전환합니다.
-2. 기존 private tree는 자동 public 전환하지 않고 **grandfathered private**으로 유지합니다.
-3. private 생성/전환은 Plus entitlement source가 확정된 뒤 backend에서 검증합니다.
-4. `public visibility`와 `browse 노출 조건`은 분리합니다.
-5. createTree payload만 단독으로 `public` 변경하는 것은 금지합니다.
-6. Netlify와 Modal visibility 정책은 반드시 동기화합니다.
-7. 결제/권한 로직 확정 전에는 Plus private을 확정 기능처럼 과도하게 노출하지 않습니다.
+중요: 이 문서는 현재 main 코드가 이미 public-first로 동작한다는 의미가 아닙니다. 코드 변경 전에는 현재 구현 상태를 별도로 확인해야 합니다.
 
 ---
 
-## 2. 현재 구현 상태
+## 1. Canonical policy summary
 
-현재 main 구현은 아직 private-first입니다.
+1. **New trees default to public.**
+   - 신규 tree의 정책상 기본 visibility는 `public`입니다.
+   - frontend payload만 단독으로 바꾸지 않고, frontend/backend/runtime 정책을 함께 전환합니다.
 
-- My Trees 생성 모달은 `visibility: private` payload를 보냅니다.
-- backend create tree API는 public 생성 요청을 차단합니다.
-- Editor의 visibility toggle은 public/private 전환을 허용하지만 Plus 권한 검증은 없습니다.
-- Settings의 `프라이빗 보관` 문구는 `Plus에서 준비 중` 수준의 보조 안내입니다.
+2. **Private storage requires Plus entitlement.**
+   - private tree 생성, public tree의 private 전환, 신규 private memory/storage 사용은 Plus entitlement가 필요합니다.
+   - canonical entitlement field는 `users/{uid}.privateStorageEnabled`입니다.
 
-따라서 본 문서는 목표 정책을 정의하되, 현재 코드 동작과 혼동하지 않도록 다음을 명시합니다.
+3. **Memory visibility omitted inherits parent tree visibility.**
+   - memory create/update payload에서 visibility가 생략되면 parent tree visibility를 상속합니다.
 
-> 코드 전환은 frontend 단독으로 진행하지 않습니다. create tree, toggle visibility, Netlify, Modal, 권한 검증 정책을 함께 설계한 뒤 단계적으로 반영합니다.
+4. **Explicit memory visibility may override inheritance when backend policy allows it.**
+   - 명시적 memory visibility는 backend policy가 허용하는 범위에서만 상속값을 override할 수 있습니다.
+   - backend policy가 허용하면 private tree 아래에도 explicit public memory가 저장될 수 있습니다.
+   - override가 허용되더라도 parent tree 접근 권한, anonymous public exposure guard, private storage guard를 우회할 수 없습니다.
+
+5. **Stored memory visibility and anonymous public exposure are separate.**
+   - memory가 `visibility: public`으로 저장될 수 있다는 것과 anonymous public read path에서 공개 노출될 수 있다는 것은 별개입니다.
+   - anonymous public read는 `memory.visibility = public`만으로 충분하지 않습니다.
+   - anonymous public read path는 `memory.visibility = public`과 `parent tree.visibility = public`을 모두 요구해야 합니다.
+
+6. **Public visibility and Browse/Search eligibility are separate.**
+   - `visibility: public`은 공개 접근 가능 상태입니다.
+   - Browse/Search 소개 가능 여부는 별도 eligibility 조건입니다.
+
+7. **Browse/Search introduction requires `publicMomentCount >= 3`.**
+   - public tree라도 공개 순간 수가 3개 미만이면 Browse/Search 소개 대상이 아닙니다.
+   - 직접 링크/공개 접근 가능성과 Browse/Search 소개는 같은 뜻이 아닙니다.
+
+8. **Parent tree visibility is required for anonymous public exposure.**
+   - parent tree가 private이면 child memory가 public으로 저장되어 있더라도 anonymous public exposure/read는 허용하지 않습니다.
+   - parent tree visibility guard는 Browse/Search introduction, community memories list, public memory detail read 경로에 모두 필요합니다.
+
+9. **Owner/private read remains allowed according to private access policy.**
+   - owner/private read path는 기존대로 private tree 아래 public/private memory를 조회할 수 있습니다.
+   - 이 권한은 anonymous public read와 분리합니다.
 
 ---
 
-## 3. 제품 해석
+## 2. Current implementation note
 
-LoveBud / LoveTree의 공개 정책은 다음 두 개념을 분리해야 합니다.
+현재 main 구현은 정책 전환 중간 상태일 수 있습니다. 문서의 canonical policy와 실제 코드 동작이 다를 수 있으므로 구현 작업 전에는 관련 frontend/backend/runtime 파일을 다시 확인해야 합니다.
 
-### 3.1. public visibility
+기존 확인 기준:
 
-`public visibility`는 해당 tree 또는 memory가 링크/공개 접근 가능한 상태인지 나타내는 저장 상태입니다.
+- My Trees 생성 모달은 과거 private-first payload를 사용했습니다.
+- backend create tree guard는 과거 public 생성 요청을 제한했습니다.
+- Editor visibility toggle은 public/private 전환 UI를 제공하되 Plus entitlement guard가 완전히 연결되지 않았을 수 있습니다.
+- Settings의 private storage 문구는 정책/결제 구현 상태에 따라 별도 조정이 필요합니다.
 
-public-first 전환 후 신규 tree는 기본적으로 public visibility를 갖는 방향입니다.
+정책 전환은 다음을 함께 맞춘 뒤 진행합니다.
 
-### 3.2. browse 노출 조건
-
-`browse 노출`은 둘러보기 화면에 소개될 수 있는 표시 조건입니다.
-
-public tree라고 해서 즉시 둘러보기에 노출되는 것은 아닙니다. 둘러보기 노출은 품질/성장 조건을 별도로 따릅니다.
-
-권장 기본 조건:
-
-- tree visibility가 `public`
-- public memory가 최소 3개 이상
-- browse summary/display filter를 통과
-
-이 분리는 사용자가 `공개 = 바로 둘러보기 노출`로 오해하지 않게 하기 위한 핵심 정책입니다.
+- tree create payload / API contract
+- Cloudflare Pages Functions route policy
+- Modal backend visibility policy
+- entitlement check
+- memory visibility inheritance
+- stored memory visibility vs anonymous public exposure 분리
+- parent tree visibility guard for public read paths
+- existing private tree grandfathering
+- Browse/Search eligibility filter
 
 ---
 
-## 4. 기존 private tree grandfathering
+## 3. Visibility and exposure model
+
+### 3.1. Tree visibility
+
+Tree visibility는 해당 tree 자체가 공개 접근 가능한지 결정하는 저장 상태입니다.
+
+정책:
+
+- 신규 tree 기본값은 `public`입니다.
+- 기존 private tree는 자동 public 전환하지 않습니다.
+- `public -> private` 전환은 Plus private storage entitlement가 필요합니다.
+- `private -> public` 전환은 사용자의 명시적 publish/visibility action으로 처리합니다.
+
+### 3.2. Memory visibility inheritance
+
+Memory visibility는 다음 순서로 결정합니다.
+
+1. payload에 explicit visibility가 있고 backend policy가 허용하면 그 값을 사용합니다.
+2. payload visibility가 생략되면 parent tree visibility를 상속합니다.
+3. parent tree access policy, anonymous public exposure policy, private storage policy를 우회하는 explicit override는 허용하지 않습니다.
+
+예시:
+
+```text
+parent tree visibility = public
+memory visibility omitted
+=> stored/effective memory visibility = public
+```
+
+```text
+parent tree visibility = private
+memory visibility omitted
+=> stored/effective memory visibility = private
+```
+
+```text
+parent tree visibility = private
+memory visibility = public
+=> backend policy가 허용한 경우 public memory로 저장될 수 있음
+=> anonymous public read는 불가
+=> Browse/Search 소개 대상도 아님
+=> owner/private read는 private access policy에 따라 가능
+```
+
+### 3.3. Stored visibility vs anonymous public exposure
+
+Canonical 문구:
+
+```text
+Stored memory visibility and anonymous public exposure are separate. A memory may be stored as public under a private tree when backend policy allows it, but anonymous public read paths must require both memory.visibility = public and parent tree.visibility = public.
+```
+
+정책 해석:
+
+- `memory.visibility = public`은 memory 자체의 저장 visibility입니다.
+- anonymous public exposure/read는 public read path에서 외부 사용자에게 노출 가능한지 여부입니다.
+- anonymous public read는 `memory.visibility = public` alone으로 허용하지 않습니다.
+- anonymous public read는 `memory.visibility = public` AND `parent tree.visibility = public`을 모두 만족해야 합니다.
+- owner/private read는 이 anonymous exposure 조건과 별개로 private access policy를 따릅니다.
+
+---
+
+## 4. Public read path guards
+
+parent tree visibility guard는 아래 public/anonymous 경로에 모두 필요합니다.
+
+| 경로 | 요구 조건 |
+|------|----------|
+| Browse/Search introduction | `parent tree.visibility = public` AND `publicMomentCount >= 3` AND browse guard pass |
+| community memories list | `memory.visibility = public` AND `parent tree.visibility = public` |
+| public memory detail read | `memory.visibility = public` AND `parent tree.visibility = public` |
+
+중요:
+
+- private tree 아래 explicit public memory가 저장되어 있더라도 community memories list에 anonymous로 노출하지 않습니다.
+- private tree 아래 explicit public memory가 저장되어 있더라도 public memory detail read를 anonymous에게 허용하지 않습니다.
+- parent tree가 private이면 Browse/Search introduction도 허용하지 않습니다.
+
+---
+
+## 5. Browse/Search eligibility
+
+Browse/Search eligibility는 공개 접근 가능 여부가 아니라 **소개 가능 여부**입니다.
+
+Browse/Search introduction 조건:
+
+- parent tree visibility가 `public`
+- `publicMomentCount >= 3`
+- Browse/Search display filter 또는 quality filter를 통과
+
+따라서 다음을 명확히 구분합니다.
+
+| 상태 | 의미 |
+|------|------|
+| public visibility | stored visibility 또는 access policy상 public 상태 |
+| anonymous public exposure | anonymous public read path에서 실제 노출 가능한 상태 |
+| browse/search eligible | Browse/Search 화면에서 소개될 수 있는 상태 |
+| publicMomentCount | Browse/Search 소개 기준으로 계산된 공개 순간 수 |
+
+중요 원칙:
+
+- public tree라고 해서 즉시 Browse/Search에 노출되지 않습니다.
+- `publicMomentCount >= 3`은 Browse/Search introduction guard입니다.
+- `publicMomentCount >= 3`을 tree visibility 전환 조건으로 사용하지 않습니다.
+- private tree 아래 public memory가 있더라도 parent tree가 private이면 Browse/Search에 노출하지 않습니다.
+
+---
+
+## 6. Existing private tree grandfathering
 
 기존 private tree는 자동으로 public 전환하지 않습니다.
 
 이유:
 
-1. 기존 사용자는 private-first UX 아래에서 tree를 만들었습니다.
+1. 기존 사용자는 private-first UX 아래에서 tree를 만들었을 수 있습니다.
 2. 자동 public 전환은 사용자 기대와 신뢰를 훼손할 수 있습니다.
 3. production 데이터 visibility 일괄 변경은 별도 승인 없이 금지합니다.
 
-권장 처리:
+정책:
 
 - 기존 private tree는 owner에게 계속 private으로 보입니다.
-- 기존 private tree는 `grandfathered private` 상태로 유지합니다.
-- 사용자가 명시적으로 public 전환할 수 있는 UX는 별도 승인 후 제공합니다.
-- free user가 기존 private tree를 public으로 전환하는 것은 허용 가능 후보입니다.
-- free user가 public tree를 private으로 전환하는 것은 Plus entitlement 확정 후 제한합니다.
+- 기존 private tree는 grandfathered private으로 유지할 수 있습니다.
+- non-Plus grandfathered owner는 기존 private content를 열람/수정할 수 있습니다.
+- non-Plus grandfathered owner의 신규 private storage 사용은 Plus entitlement가 필요합니다.
+- grandfathered private tree를 public으로 전환하는 UX는 별도 승인 후 제공합니다.
 
 ---
 
-## 5. UX 원칙
+## 7. UX copy guidance
 
-### 5.1. 신규 tree 생성
+사용자-facing 문구는 공개 접근과 Browse/Search 소개를 혼동시키지 않아야 합니다.
 
-목표 정책은 public-first입니다.
+권장 문구:
 
-다만 구현 전환 전까지는 현재 private-first payload를 단독으로 바꾸면 안 됩니다. public-first 전환은 다음이 함께 준비된 뒤 진행합니다.
+> 새 러브트리는 공개 상태로 시작해요.
 
-- frontend 생성 UX
-- Netlify create tree 정책
-- Modal create tree 정책
-- browse display filter 정합성
-- Plus entitlement source
-- 기존 private tree grandfathering 처리
+> 공개 상태여도 바로 둘러보기에 소개되지는 않아요.
 
-전환 후 권장 생성 UX:
-
-- 기본 안내: `새 러브트리는 공개 상태로 시작해요.`
-- 보조 안내: `둘러보기에는 충분히 자란 뒤 소개돼요.`
-- private 선택지는 Plus private storage로 분리하되, 결제/권한 확정 전에는 강한 판매 문구를 쓰지 않습니다.
-
-### 5.2. 무료 사용자의 private 선택
-
-Plus entitlement source가 확정되기 전:
-
-- private 선택을 확정 기능처럼 노출하지 않습니다.
-- `프라이빗 보관은 Plus에서 준비 중이에요.` 수준으로 안내합니다.
-
-Plus entitlement source가 확정된 뒤:
-
-- 무료 사용자가 private 생성/전환을 선택하면 Plus 필요 안내를 보여줍니다.
-- frontend 안내와 backend 권한 검증을 함께 적용합니다.
-
-권장 문구 후보:
+> 공개된 순간이 3개 이상 쌓이면 둘러보기에서 소개될 수 있어요.
 
 > 비공개 보관은 Plus에서 사용할 수 있어요.
 
-> 지금은 공개 상태로 시작하고, 둘러보기 소개 여부는 조건을 채운 뒤 따로 정리할 수 있어요.
+> 순간의 공개 범위를 따로 고르지 않으면, 러브트리의 공개 상태를 따라가요.
 
-### 5.3. Editor badge
+> 순간이 공개로 저장되어도, 비공개 러브트리 안에 있으면 공개 감상 공간에는 보이지 않아요.
 
-현재 Editor의 `비공개 러브트리` badge는 단순 visibility 상태입니다.
+> 공개는 링크로 볼 수 있는 상태이고, 둘러보기 소개는 충분히 자란 러브트리를 조용히 보여주는 기준이에요.
 
-public-first 전환 후에는 다음 의미를 분리해야 합니다.
+짧은 UI label 후보:
+
+- 공개로 시작
+- 둘러보기 소개 준비 중
+- 공개 순간 3개부터 소개 가능
+- 비공개 보관은 Plus 기능
+- 비공개 트리 안의 순간은 공개 감상에 노출되지 않음
+
+---
+
+## 8. Editor / My Trees state labels
+
+Visibility badge와 Browse/Search eligibility badge는 분리합니다.
 
 | 상태 | 의미 |
 |------|------|
-| 공개 러브트리 | public visibility 상태 |
-| 둘러보기 준비 중 | public이지만 browse 노출 조건 미충족 |
-| 둘러보기 소개 가능 | public이며 browse 노출 조건 충족 |
+| 공개 러브트리 | tree visibility가 public |
+| 둘러보기 준비 중 | public이지만 `publicMomentCount < 3` |
+| 둘러보기 소개 가능 | public이고 `publicMomentCount >= 3` |
 | 비공개 보관 | Plus private 또는 grandfathered private |
 
-### 5.4. 공개/비공개 전환 버튼 위치
-
-공개/비공개 전환은 기본 작업 흐름을 방해하지 않는 위치에 둡니다.
-
-권장 위치:
-
-- Editor sidebar의 접힌 설정 패널
-- My Trees card overflow menu
-
-기본 Editor 작업 화면에 visibility 설명을 과도하게 노출하지 않습니다.
-
-### 5.5. Settings
-
-Settings에서 기본 공개 범위 설정을 즉시 부활시키는 것은 보류합니다.
-
-권장 방향:
-
-- Settings는 정책 설명과 private storage 안내 중심으로 유지합니다.
-- `기본 공개 범위` 라디오는 Plus entitlement와 backend enforcement가 준비된 뒤 재검토합니다.
-- 사용자가 바꿀 수 없는 정책값을 설정처럼 노출하지 않습니다.
+기본 Editor 작업 화면에는 visibility 설명을 과도하게 노출하지 않습니다. 공개/비공개 전환은 설정 패널, My Trees card menu 등 기본 감정 흐름을 방해하지 않는 위치에 둡니다.
 
 ---
 
-## 6. API/backend 정합성 원칙
+## 9. Engineering handoff policy
 
-### 6.1. create tree
-
-목표 정책:
-
-- 신규 tree는 public-first 방향으로 전환합니다.
-- 단, frontend payload만 단독 변경하지 않습니다.
-- Netlify와 Modal create 정책을 동시에 동기화합니다.
-
-현재 구현:
-
-- Netlify create tree는 public 생성 요청을 차단합니다.
-- Modal create tree도 public 생성 요청을 차단합니다.
-
-전환 조건:
-
-- API 계약 문서 개정
-- backend create guard 개정
-- Modal create guard 개정
-- frontend 생성 UX 개정
-- entitlement 미확정 상태에서 private 선택지를 어떻게 처리할지 결정
-
-### 6.2. toggle visibility
-
-목표 정책:
-
-- public → private 전환은 Plus private 기능으로 잠급니다.
-- private → public 전환은 grandfathered private 해제 또는 publish 흐름으로 취급합니다.
-- Plus entitlement source가 확정되기 전에는 backend enforcement를 구현하지 않습니다.
-
-현재 구현:
-
-- private → public 전환은 공개 memory 3개 이상 조건을 요구합니다.
-- public → private 전환에는 Plus 권한 검증이 없습니다.
-
-전환 시 재정의 필요:
-
-- public-first 이후에도 private → public 전환에 공개 memory 3개 조건을 둘지
-- 또는 visibility 전환과 browse 소개 조건을 완전히 분리할지
-
-권장 방향:
-
-- visibility 전환과 browse 노출 조건은 분리합니다.
-- public 전환 자체는 접근성/공개 상태입니다.
-- browse 노출은 public memory 3개 이상 display filter로 관리합니다.
-
----
-
-## 7. Plus entitlement decision-needed
-
-아래 항목은 아직 미확정입니다.
-
-- Plus entitlement source of truth
-- plan 정보를 저장할 DB 위치
-- free/plus 판정 API
-- frontend에서 Plus 상태를 읽는 방식
-- backend에서 private 생성/전환을 차단할 때 사용할 HTTP status/code
-- 기존 grandfathered private tree를 Plus 없이 계속 private 유지할 기간
-- 결제 UX 도입 시점
-
-권장 API error code 후보:
+개발자-facing canonical 문구:
 
 ```text
-PLUS_REQUIRED_PRIVATE_STORAGE
+Policy: New trees default to public.
+
+Newly created trees should use `visibility: public` as the default product policy. This must be implemented through coordinated frontend and backend changes, not by changing frontend payloads alone.
 ```
 
-권장 사용자 문구 후보:
+```text
+Policy: Private storage requires Plus entitlement.
 
-> 비공개 보관은 Plus에서 사용할 수 있어요.
+Creating a private tree, switching a public tree to private, or using private storage for new private content requires `users/{uid}.privateStorageEnabled === true`.
+```
+
+```text
+Policy: Omitted memory visibility inherits parent tree visibility.
+
+When memory visibility is omitted in a create/update payload, the effective memory visibility inherits the parent tree visibility.
+```
+
+```text
+Policy: Explicit memory visibility may override inheritance when backend policy allows it.
+
+Explicit memory visibility may override inherited visibility only within backend-approved policy boundaries. A private tree may contain an explicitly public memory when backend policy allows storage, but this does not grant anonymous public exposure.
+```
+
+```text
+Policy: Stored memory visibility and anonymous public exposure are separate.
+
+A memory may be stored as public under a private tree when backend policy allows it, but anonymous public read paths must require both `memory.visibility = public` and `parent tree.visibility = public`.
+```
+
+```text
+Policy: Public visibility and Browse/Search eligibility are separate.
+
+`visibility: public` means the tree or memory is publicly accessible according to read policy. It does not automatically mean the tree is eligible for Browse/Search introduction.
+```
+
+```text
+Policy: Browse/Search introduction requires publicMomentCount >= 3.
+
+A public tree becomes eligible for Browse/Search introduction only when `publicMomentCount >= 3`. Trees below this threshold may remain public and directly accessible, but should not be introduced in Browse/Search surfaces.
+```
+
+```text
+Policy: Parent tree visibility remains an anonymous public read guard.
+
+`memory.visibility = public` alone is not sufficient for anonymous public read. Browse/Search introduction, community memories list, and public memory detail read must require parent tree visibility to be public. Owner/private read paths may continue to read public/private memories under private trees according to private access policy.
+```
 
 ---
 
-## 8. 금지 사항
+## 10. Prohibited implementation shortcuts
 
 - createTree payload만 단독으로 `public`으로 바꾸지 않습니다.
-- Netlify만 바꾸고 Modal을 방치하지 않습니다.
-- Modal만 바꾸고 Netlify를 방치하지 않습니다.
+- frontend-only lock으로 Plus private enforcement 완료를 선언하지 않습니다.
+- backend guard 없이 private storage를 UI에서만 제한하지 않습니다.
+- `publicMomentCount >= 3`을 visibility publication guard로 재사용하지 않습니다.
+- `memory.visibility = public`만으로 anonymous public read를 허용하지 않습니다.
+- public memory가 존재한다는 이유만으로 private parent tree를 Browse/Search, community memories list, public memory detail에 노출하지 않습니다.
 - 기존 private tree를 자동 public 전환하지 않습니다.
-- Plus entitlement 없이 frontend-only lock으로 정책 완료를 선언하지 않습니다.
-- 결제/권한 로직 확정 전 Plus private을 확정 기능처럼 과도하게 홍보하지 않습니다.
+- 결제/권한 로직 확정 전 Plus private을 과도하게 홍보하지 않습니다.
 
 ---
 
-## 9. 이후 구현 분리
+## 11. Implementation split
 
-### Frontend 작업
+### Frontend
 
-- My Trees 생성 모달 public-first copy/IA
+- My Trees 생성 UX public-first copy/IA
 - private 선택 Plus 안내
-- Editor badge 상태 분리
-- Editor/My Trees visibility action 재배치
+- memory visibility omitted/inherited copy 정리
+- stored visibility와 anonymous public exposure의 UX 문구 분리
+- Editor badge: visibility와 Browse/Search eligibility 분리
 - Settings private storage 안내 조정
 - i18n key 정리
 
-### Backend 작업
+### Backend / runtime
 
-- Netlify create tree policy 전환
-- Netlify toggle visibility entitlement guard
-- Modal create tree policy 전환
-- Modal private endpoint entitlement guard
-- API error contract 고정
-- grandfathered private 처리 정책 반영
+- create tree default visibility policy 반영
+- private storage entitlement guard
+- memory visibility inheritance 처리
+- explicit memory visibility override policy guard
+- anonymous public read path에서 parent tree visibility guard 적용
+- community memories list에서 parent tree visibility guard 적용
+- public memory detail read에서 parent tree visibility guard 적용
+- Browse/Search eligibility query에서 `publicMomentCount >= 3` 반영
+- parent tree visibility + browse guard 동시 적용
 
-### Docs 작업
+### Docs
 
 - API contract update
-- backend.md update
-- Modal runtime update
-- browse filter/public visibility 용어 정리
+- backend docs update
+- Modal runtime docs update
+- Browse/Search eligibility 용어 정리
+- anonymous public exposure guard 용어 정리
 
 ---
 
-## 10. 현재 문서의 적용 상태
+## 12. Application status
 
-이 문서는 정책 전환 기준 문서입니다.
+이 문서는 canonical policy를 고정합니다.
 
-현재 main 코드가 이미 public-first로 바뀌었다는 의미가 아닙니다. 코드 반영 전에는 다음 현재 구현 사실을 유지합니다.
+현재 main 코드가 이미 다음을 모두 구현했다는 뜻은 아닙니다.
 
-- createTree payload는 private-first입니다.
-- backend create guard는 public 생성 요청을 차단합니다.
-- Modal create guard도 public 생성 요청을 차단합니다.
-- Plus entitlement enforcement는 없습니다.
+- 신규 tree public default
+- Plus private storage guard
+- memory visibility inheritance
+- explicit memory visibility override guard
+- stored memory visibility vs anonymous public exposure 분리
+- community memories list parent visibility guard
+- public memory detail read parent visibility guard
+- Browse/Search `publicMomentCount >= 3` eligibility
+- private parent tree + public child memory browse guard
 
-CTO 승인 후 별도 frontend/backend 작업에서 public-first 전환을 구현합니다.
+실제 구현은 별도 PR에서 진행합니다.

@@ -10,7 +10,17 @@
 - Vercel은 upstream / secondary entry / 전이기 보조 계층입니다.
 - Netlify는 주경로가 아니라 fallback 또는 단계적 제거 대상입니다.
 - `PRODUCT_IDENTITY / BRAND_EXPERIENCE / UI_DESIGN_SYSTEM` 은 제품/브랜드/UI 판단의 source of truth 입니다.
-- browse display filter 와 publication guard 는 다른 개념입니다.
+- 신규 tree의 정책상 기본 visibility는 `public`입니다.
+- private storage는 Plus entitlement가 필요합니다.
+- memory visibility가 생략되면 parent tree visibility를 상속합니다.
+- explicit memory visibility는 backend policy가 허용하는 범위에서만 상속값을 override할 수 있습니다.
+- private tree 아래 explicit public memory는 저장될 수 있습니다.
+- stored memory visibility 와 anonymous public exposure 는 다른 개념입니다.
+- anonymous public read 는 `memory.visibility = public` 과 `parent tree.visibility = public` 을 모두 요구합니다.
+- public visibility 와 Browse/Search eligibility 는 다른 개념입니다.
+- Browse/Search introduction 은 `publicMomentCount >= 3` 이 필요합니다.
+- Browse/Search introduction, community memories list, public memory detail read 는 parent tree visibility guard 를 함께 확인해야 합니다.
+- owner/private read 는 private access policy 에 따라 private tree 아래 public/private memory 를 조회할 수 있습니다.
 
 ---
 
@@ -24,6 +34,11 @@
 4. `./product/BRAND_EXPERIENCE.md`
 5. `./design/UI_DESIGN_SYSTEM.md`
 6. 요청 범위에 맞는 문서군 인덱스
+
+Visibility, private storage, anonymous public exposure, Browse/Search eligibility 판단이 필요하면 아래를 추가로 읽습니다.
+
+- `./product/PUBLICATION_AND_PRIVACY_UX_POLICY.md`
+- `./engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md`
 
 운영/배포 판단이 필요하면 아래를 추가로 읽습니다.
 
@@ -40,9 +55,9 @@
 
 - **index**: [product_index.md](./product/product_index.md)
 - [PRODUCT_BRIEF.md](./product/PRODUCT_BRIEF.md) - 현재 실행 기준 제품 개요
-- [PRODUCT_IDENTITY.md](./product/PRODUCT_IDENTITY.md) - 제품 정체성 source of truth
+- [PRODUCT_IDENTITY.md](./product/PRODUCT_IDENTITY.md) - 제품 정체성 source of truth 및 public-first 감상 공간 원칙
 - [BRAND_EXPERIENCE.md](./product/BRAND_EXPERIENCE.md) - 브랜드 감성 / UX 표현 원칙 source of truth
-- [PUBLICATION_AND_PRIVACY_UX_POLICY.md](./product/PUBLICATION_AND_PRIVACY_UX_POLICY.md) - 공개/비공개/둘러보기 소개 UX 정책
+- [PUBLICATION_AND_PRIVACY_UX_POLICY.md](./product/PUBLICATION_AND_PRIVACY_UX_POLICY.md) - public-first visibility, Plus private storage, memory visibility inheritance, anonymous public exposure, Browse/Search eligibility 정책
 - [UI_COPY_DIET_GUIDE.md](./product/UI_COPY_DIET_GUIDE.md) - UI 카피 다이어트 운영 기준
 - [MVP_SCOPE.md](./product/MVP_SCOPE.md) - MVP 범위
 - [USER_FLOW.md](./product/USER_FLOW.md) - 사용자 흐름
@@ -64,7 +79,7 @@
 
 - **index**: [engineering_index.md](./engineering/engineering_index.md)
 - [API_CONTRACT.md](./engineering/API_CONTRACT.md) - flat camelCase API 계약
-- [BROWSE_FILTER_VS_PUBLICATION_GUARD.md](./engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md) - browse filter / publication guard 개념 분리
+- [BROWSE_FILTER_VS_PUBLICATION_GUARD.md](./engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md) - stored visibility, anonymous public exposure, Browse/Search eligibility, Browse display filter 개념 분리
 - [SUPABASE_FREE_POC_PLAN.md](./engineering/SUPABASE_FREE_POC_PLAN.md) - Supabase Free PoC 기반 장기 backend 구조 단순화 검증 계획
 - [REVIEW_GUARDRAILS.md](./engineering/REVIEW_GUARDRAILS.md) - 반복 false positive 방지 규칙
 - [RECENT_REFACTORING.md](./engineering/RECENT_REFACTORING.md) - 최근 리팩터링 기록
