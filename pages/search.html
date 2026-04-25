@@ -10,12 +10,12 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" />
     <style>
         .search-container {
-            max-width: var(--page-work-max);
+            max-width: var(--page-shell-max);
             margin: 0 auto;
-            padding: 28px 40px 58px;
+            padding: 28px var(--page-pad-desktop) 58px;
             display: grid;
             grid-template-columns: minmax(0, 1.62fr) 420px;
-            gap: 34px;
+            gap: var(--hero-gap);
         }
 
         .search-container .material-symbols-outlined {
@@ -612,7 +612,7 @@
             .search-container {
                 grid-template-columns: 1fr;
                 gap: 26px;
-                padding: 24px 24px 48px;
+                padding: 24px var(--page-pad-tablet) 48px;
             }
 
             .browse-utility-row {
@@ -639,7 +639,7 @@
 
         @media (max-width: 768px) {
             .search-container {
-                padding: 20px 16px 36px;
+                padding: 20px var(--page-pad-mobile) 36px;
                 gap: 22px;
             }
 
