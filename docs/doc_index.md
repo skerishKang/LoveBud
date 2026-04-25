@@ -58,6 +58,10 @@ UI polish 단계 분리, PR3/PR4/PR5 범위 판단이 필요하면 아래를 추
 - `./engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md`
 - `./engineering/REVIEW_GUARDRAILS.md`
 
+검증 warning / blocker 분류가 필요하면 아래를 추가로 읽습니다.
+
+- `./project/VERIFICATION_WARNING_CATALOG.md`
+
 ---
 
 ## product 문서군
@@ -111,6 +115,13 @@ UI polish 단계 분리, PR3/PR4/PR5 범위 판단이 필요하면 아래를 추
 - [KNOWN_CI_E2E_BLOCKERS.md](./ops/KNOWN_CI_E2E_BLOCKERS.md) - 반복 CI/E2E blocker 원인 분리 및 exception merge 판단 기준
 - [TEST_PREVIEW_SLOTS.md](./ops/TEST_PREVIEW_SLOTS.md) - 고정 테스트 Preview 슬롯 운영 기준
 - [EDITOR_ARCHITECTURE.md](./ops/EDITOR_ARCHITECTURE.md) - editor 구조 설명
+
+## project 문서군
+
+프로젝트 운영 문서는 `docs/project/` 아래에 정리됩니다.
+
+- **index**: [project_index.md](./project/project_index.md)
+- [VERIFICATION_WARNING_CATALOG.md](./project/VERIFICATION_WARNING_CATALOG.md) - UI/production/test preview 검증 warning과 blocker 분류 기준
 
 ## migration 문서군
 
