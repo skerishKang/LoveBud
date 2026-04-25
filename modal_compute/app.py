@@ -11,9 +11,12 @@ from typing import Any
 import jwt
 import modal
 import psycopg
+import firebase_admin
+from firebase_admin import credentials, firestore
 from cryptography import x509
 from fastapi import FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from psycopg_pool import ConnectionPool
 from psycopg.rows import dict_row
 
@@ -21,8 +24,14 @@ from psycopg.rows import dict_row
 
 _firebase_cert_cache: dict[str, Any] = {"expires_at": 0, "certs": {}}
 _db_pool: ConnectionPool | None = None
+_firebase_admin_app: firebase_admin.App | None = None
+_firestore_client: Any | None = None
 PRIVATE_READ_MAX_ATTEMPTS = 3
 PRIVATE_READ_RETRY_DELAY_SECONDS = 0.2
+
+
+class PlusRequiredError(Exception):
+    pass
 
 def get_db_pool() -> ConnectionPool:
     global _db_pool
@@ -67,6 +76,72 @@ def run_db_with_retry(operation, *, max_attempts: int = PRIVATE_READ_MAX_ATTEMPT
     if last_error is not None:
         raise last_error
     raise RuntimeError("run_db_with_retry failed without capturing an error")
+
+
+def get_firebase_admin_app() -> firebase_admin.App:
+    global _firebase_admin_app
+    if _firebase_admin_app is not None:
+        return _firebase_admin_app
+
+    raw_service_account = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON")
+    if not raw_service_account:
+        raise RuntimeError("FIREBASE_SERVICE_ACCOUNT_JSON is not configured")
+
+    service_account_info = json.loads(raw_service_account)
+    project_id = service_account_info.get("project_id")
+    if project_id != get_firebase_project_id():
+        raise RuntimeError("Firebase Admin project_id mismatch")
+
+    _firebase_admin_app = firebase_admin.initialize_app(
+        credentials.Certificate(service_account_info),
+        name="lovebud-modal-admin",
+    )
+    return _firebase_admin_app
+
+
+def get_firestore_client() -> Any:
+    global _firestore_client
+    if _firestore_client is None:
+        _firestore_client = firestore.client(app=get_firebase_admin_app())
+    return _firestore_client
+
+
+def is_entitlement_truthy(value: Any) -> bool:
+    if value is True:
+        return True
+    if isinstance(value, int) and value == 1:
+        return True
+    if isinstance(value, str) and value.strip().lower() in {"true", "1"}:
+        return True
+    return False
+
+
+def user_has_plus_entitlement(uid: str) -> bool:
+    try:
+        snapshot = get_firestore_client().collection("users").document(uid).get()
+        if not snapshot.exists:
+            return False
+        profile = snapshot.to_dict() or {}
+    except Exception:
+        return False
+
+    if is_entitlement_truthy(profile.get("privateStorageEnabled")):
+        return True
+    if str(profile.get("plan") or "").strip().lower() in {"plus", "admin"}:
+        return True
+    if is_entitlement_truthy(profile.get("plus")):
+        return True
+
+    entitlements = profile.get("entitlements")
+    if isinstance(entitlements, dict) and is_entitlement_truthy(entitlements.get("privateStorage")):
+        return True
+
+    return False
+
+
+def require_plus_for_private_storage(uid: str, visibility: str) -> None:
+    if visibility == "private" and not user_has_plus_entitlement(uid):
+        raise PlusRequiredError()
 
 
 def get_firebase_project_id() -> str:
@@ -538,9 +613,8 @@ def validate_optional_uuid(value: Any, name: str) -> str | None:
 
 def create_owner_tree(owner_id: str, payload: dict[str, Any]) -> dict[str, Any]:
     title = validate_optional_string(payload.get("title"), 200) or "My LoveTree"
-    visibility = validate_visibility(payload.get("visibility"), "private")
-    if visibility == "public":
-        raise HTTPException(status_code=409, detail="Start new trees as private before publishing.")
+    visibility = validate_visibility(payload.get("visibility"), "public")
+    require_plus_for_private_storage(owner_id, visibility)
 
     query = """
         INSERT INTO trees (id, owner_id, title, visibility, created_at, updated_at)
@@ -562,6 +636,8 @@ def create_owner_memory(owner_id: str, payload: dict[str, Any]) -> dict[str, Any
     tree = fetch_owner_tree(tree_id, owner_id)
     if not tree:
         raise HTTPException(status_code=403, detail="Access denied: not your tree")
+    visibility = validate_visibility(payload.get("visibility"), tree.get("visibility") or "public")
+    require_plus_for_private_storage(owner_id, visibility)
 
     parent_id = None
     if payload.get("parentId"):
@@ -595,7 +671,7 @@ def create_owner_memory(owner_id: str, payload: dict[str, Any]) -> dict[str, Any
         validate_optional_string(payload.get("thumbnail"), 500),
         json.dumps([str(tag).strip() for tag in emotion_tags if str(tag).strip()]),
         validate_optional_string(payload.get("timestamp"), 100),
-        validate_visibility(payload.get("visibility"), "private"),
+        visibility,
     )
 
     with get_db_connection() as conn:
@@ -615,6 +691,7 @@ image = (
     modal.Image.debian_slim(python_version="3.11")
     .pip_install(
         "fastapi==0.115.12",
+        "firebase-admin==6.5.0",
         "PyJWT[crypto]==2.10.1",
         "psycopg[binary,pool]==3.2.9",
     )
@@ -624,6 +701,18 @@ web_app = FastAPI(
     title="LoveBud Modal Compute Layer",
     version="1.0.0",
 )
+
+
+@web_app.exception_handler(PlusRequiredError)
+async def plus_required_exception_handler(request: Request, exc: PlusRequiredError) -> JSONResponse:
+    return JSONResponse(
+        status_code=403,
+        content={
+            "error": "Private storage requires Plus.",
+            "code": "PLUS_REQUIRED_PRIVATE_STORAGE",
+            "upgradeRequired": True,
+        },
+    )
 
 
 def _allowed_origins() -> list[str]:
@@ -756,7 +845,10 @@ async def post_private_memory(
     memory=512,
     scaledown_window=300,
     min_containers=1,
-    secrets=[modal.Secret.from_name("lovebud-db")],
+    secrets=[
+        modal.Secret.from_name("lovebud-db"),
+        modal.Secret.from_name("lovebud-firebase-admin"),
+    ],
 )
 @modal.asgi_app()
 def fastapi_app():
