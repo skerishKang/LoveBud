@@ -1,8 +1,35 @@
 # LoveBud API 응답 계약
 
-> **버전:** 1.4  
+> **버전:** 1.5  
 > **최종 갱신:** 2026-04-25  
 > **관련 커밋:** `0230475`, `bb9741b`, `bb9e663`
+
+---
+
+## 0. Runtime source of truth
+
+Current production/test slot API runtime is:
+
+```text
+Cloudflare Pages same-origin /api/*
+→ Cloudflare Pages Functions under functions/api/*
+→ Modal
+```
+
+Production / test1 / test2 / test3 route matrix observation:
+
+- `/api/trees`: `x-lovebud-upstream: modal`
+- `/api/memories`: `x-lovebud-upstream: modal`
+- `modal-function-call-id` exists
+- `server: cloudflare`
+- `cf-cache-status: DYNAMIC`
+- No Netlify Functions invocation evidence was observed
+
+`netlify/functions/*` is a legacy artifact only. It is not the current production backend for `lovebud.pages.dev`. Do not implement new backend policy in `netlify/functions/*` unless CTO explicitly reactivates Netlify runtime.
+
+PR #38 was closed because it targeted legacy `netlify/functions/*` rather than the active Cloudflare/Modal runtime.
+
+Archive is not performed by this documentation update. Archive requires tests/docs reference transition first.
 
 ---
 
@@ -54,7 +81,14 @@
 
 ### 2.1 Memory 단건
 
-**파일:** `netlify/functions/_lib/serializers.js:serializeMemory`
+Active runtime contract source:
+
+- Cloudflare Pages Functions under `functions/api/*`
+- Modal `/modal/*` endpoints
+
+Legacy reference only:
+
+- `netlify/functions/_lib/serializers.js:serializeMemory`
 
 ```typescript
 interface Memory {
@@ -121,15 +155,17 @@ interface TreeDetail extends Tree {
 
 ## 3. Visibility / private storage 전환 계약
 
-### 3.1 현재 구현 계약
+### 3.1 현재 active runtime 계약
 
-현재 main 구현은 아직 private-first입니다.
+Current active runtime is Cloudflare Pages Functions → Modal.
 
-- `POST /api/trees`는 새 tree 생성 시 `visibility` 기본값을 `private`으로 처리합니다.
-- `POST /api/trees`에 `visibility: 'public'`이 들어오면 현재 구현은 409를 반환합니다.
-- `PUT /api/trees/:treeId`는 private → public 전환 시 공개 memory 3개 이상 조건을 확인합니다.
-- public → private 전환에 Plus entitlement 검증은 아직 없습니다.
-- Modal private tree 생성도 동일하게 private-first이며 public 생성 요청을 차단합니다.
+Current production behavior must be verified against that active route, not `netlify/functions/*`.
+
+Current document baseline:
+
+- `POST /api/trees` and `GET /api/trees` route through `functions/api/trees.js` to Modal `/modal/private/trees`.
+- `POST /api/memories` and `GET /api/memories` route through `functions/api/memories.js` to Modal `/modal/private/memories`.
+- `netlify/functions/*` may still contain older private-first code, but it is not authoritative for `lovebud.pages.dev` production/test slots.
 
 ### 3.2 목표 정책 계약
 
@@ -140,7 +176,8 @@ CTO 결정 기준 목표 정책은 **public-first + Plus private**입니다.
 - private 생성/전환은 Plus entitlement source 확정 후 backend에서 검증합니다.
 - `public visibility`와 `browse 노출 조건`은 분리합니다.
 - createTree payload만 단독으로 public 변경하는 것은 금지합니다.
-- Netlify와 Modal create/toggle 정책은 반드시 동기화합니다.
+- Cloudflare Pages Functions와 Modal create/toggle 정책은 반드시 동기화합니다.
+- `netlify/functions/*`에는 신규 backend 정책을 구현하지 않습니다. Netlify runtime 재활성화가 명시 승인된 경우만 예외입니다.
 
 ### 3.3 public visibility와 browse 노출 분리
 
@@ -166,13 +203,12 @@ interface VisibilityPolicyState {
 
 ### 3.4 create tree 전환 계약
 
-현재:
+현재 active path:
 
-```typescript
-interface CreateTreeRequestCurrent {
-  title?: string;
-  visibility?: 'private';
-}
+```text
+/api/trees
+→ functions/api/trees.js
+→ Modal /modal/private/trees
 ```
 
 목표:
@@ -190,6 +226,7 @@ interface CreateTreeRequestTarget {
 - `visibility: 'private'` 생성은 Plus entitlement 필요 대상입니다.
 - entitlement source 확정 전에는 private 생성 허용/차단을 구현하지 않습니다.
 - frontend만 먼저 public payload로 바꾸지 않습니다.
+- Cloudflare/Modal path가 함께 준비되어야 합니다.
 
 ### 3.5 toggle visibility 전환 계약
 
@@ -243,6 +280,10 @@ HTTP status 후보:
 **Endpoint**
 - `GET /api/community/trees?view=summary&sort=latest&limit=3`
 
+**Active route**
+- Cloudflare Pages `functions/api/[[path]].js`
+- Modal `/modal/browse/latest`
+
 **Response shape**
 
 ```typescript
@@ -272,6 +313,10 @@ type BrowseTreeSummaryList = BrowseTreeSummary[];
 
 **Endpoint**
 - `GET /api/community/memories?treeId=<treeId>`
+
+**Active route**
+- Cloudflare Pages `functions/api/[[path]].js`
+- Modal `/modal/community/memories`
 
 ```typescript
 type BrowseHydrationMemoryList = Memory[];
@@ -359,14 +404,15 @@ const normalized = window.LoveBudNormalize.normalizeMemory(apiResponse);
 
 ### 7.1 직렬화기 사용 의무
 
-모든 API 응답은 반드시 serializers를 거칩니다.
+모든 API 응답은 active Cloudflare/Modal runtime에서 flat camelCase contract를 유지해야 합니다.
 
 ### 7.2 visibility guard 원칙
 
-- create tree 정책은 Netlify와 Modal에서 동기화해야 합니다.
-- private 생성/전환 guard는 entitlement source 확정 후 backend에서 강제해야 합니다.
+- create tree 정책은 Cloudflare Pages Functions와 Modal에서 동기화해야 합니다.
+- private 생성/전환 guard는 entitlement source 확정 후 active backend에서 강제해야 합니다.
 - 기존 private tree grandfathering을 고려해야 합니다.
 - browse display filter는 public visibility와 별도로 유지합니다.
+- `netlify/functions/*`에 신규 visibility/private-storage 정책을 구현하지 않습니다.
 
 ---
 
@@ -374,14 +420,14 @@ const normalized = window.LoveBudNormalize.normalizeMemory(apiResponse);
 
 | 파일 | 역할 |
 |------|------|
-| `netlify/functions/_lib/serializers.js` | API 응답 직렬화기 |
-| `netlify/functions/trees.js` | create tree / list trees |
-| `netlify/functions/tree-detail.js` | tree detail / visibility update |
-| `netlify/functions/community-trees.js` | browse summary 서버 계약 |
-| `netlify/functions/community-memories.js` | browse hydration 서버 계약 |
-| `modal_compute/app.py` | Modal public/private tree 계약 |
+| `functions/api/trees.js` | active `/api/trees` Cloudflare route-specific handler |
+| `functions/api/memories.js` | active `/api/memories` Cloudflare route-specific handler |
+| `functions/api/trees/[id].js` | active tree detail Cloudflare handler where applicable |
+| `functions/api/[[path]].js` | active Cloudflare catch-all handler for recognized read/community routes |
+| `modal_compute/app.py` | active Modal API/backend target |
 | `js/utils/normalize.js` | 프론트 정규화 유틸 |
 | `js/api/public-tree-adapter.js` | browse summary/hydrate adapter |
+| `netlify/functions/*` | legacy artifact only, not current production backend |
 
 ---
 
@@ -389,8 +435,7 @@ const normalized = window.LoveBudNormalize.normalizeMemory(apiResponse);
 
 ### 9.1 public-first backend 전환
 
-- Netlify create tree public-first 전환
-- Modal create tree public-first 전환
+- Cloudflare/Modal create tree public-first 전환
 - create payload 단독 변경 금지 원칙 유지
 - API 계약 테스트 추가
 
@@ -398,7 +443,7 @@ const normalized = window.LoveBudNormalize.normalizeMemory(apiResponse);
 
 - entitlement source of truth 확정
 - plan 저장 위치 확정
-- backend guard 추가
+- active backend guard 추가
 - frontend 안내와 API error 처리 동기화
 
 ### 9.3 browse 노출 조건 고정
@@ -407,6 +452,12 @@ const normalized = window.LoveBudNormalize.normalizeMemory(apiResponse);
 - public memory 3개 이상 조건 유지 여부 최종 확인
 - snapshot 계약에 browseEligibility metadata 포함 여부 검토
 
+### 9.4 Netlify legacy transition
+
+- tests/docs reference transition
+- `netlify.toml` treatment decision
+- archive decision after CTO approval
+
 ---
 
 ## 10. 위반 시 대응
@@ -414,12 +465,13 @@ const normalized = window.LoveBudNormalize.normalizeMemory(apiResponse);
 | 위반 유형 | 대응 |
 |-----------|------|
 | 새 코드에 `{id, data}` 접근 | PR reject |
-| API 응답에 직렬화기 미사용 | PR reject |
+| active API 응답에 flat camelCase 계약 미준수 | PR reject |
 | createTree payload만 public으로 단독 변경 | PR reject |
-| Netlify와 Modal visibility 정책 불일치 | PR reject |
+| Cloudflare와 Modal visibility 정책 불일치 | PR reject |
 | Plus private을 frontend-only로 잠금 | PR reject |
 | 기존 private tree 자동 public 전환 | PR reject |
 | public visibility를 browse 노출로 설명 | 정책 위반으로 수정 |
+| 신규 backend policy를 `netlify/functions/*`에 구현 | PR reject unless Netlify runtime is explicitly reactivated |
 
 ---
 

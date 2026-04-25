@@ -4,20 +4,20 @@
 
 LoveBud의 현재 운영 우선순위는 아래와 같습니다.
 
-> **Hierarchy: Modal > Cloudflare Pages > Vercel > Netlify**
+> **Hierarchy: Cloudflare Pages Entry + Modal Runtime > Vercel Transitional Fallback > Netlify Legacy Artifact**
 
 | 계층 | 역할 | 현재 책임 범위 | 상태 |
 | :--- | :--- | :--- | :--- |
-| **Modal** | **Primary Read / Compute Layer** | browse summary, public read aggregation, 대표 카드 계산, read-heavy snapshot 계산 | 1순위 |
-| **Cloudflare Pages** | **Primary Entry Layer** | 실서비스 진입점, 정적 프런트 서빙, same-origin `/api/*` 라우팅 | 1순위 |
-| **Vercel** | **Secondary Upstream Layer** | upstream origin, proxy fallback, 전이기 보조 계층 | 보조 |
-| **Netlify** | **Legacy Write / Fallback Layer** | 기존 Functions 유지, 일부 CRUD / legacy fallback | 보조 |
+| **Cloudflare Pages** | **Primary Entry / API Router** | 실서비스 진입점, 정적 프런트 서빙, same-origin `/api/*` 라우팅, `functions/api/*` 실행 | 1순위 |
+| **Modal** | **Active API / Backend Target** | `/api/trees`, `/api/memories`, browse/community/private read/write target, 대표 카드 계산 | 1순위 |
+| **Vercel** | **Deprecated Transitional Fallback** | 일부 fallback / 전이기 보조 계층 | audit 중 |
+| **Netlify** | **Legacy Artifact Only** | `netlify/functions/*`, `netlify.toml` legacy reference. 현재 `lovebud.pages.dev` production/test slot active backend 아님 | 신규 구현 금지 |
 
 핵심 원칙:
 - 실서비스 주소는 **반드시 `https://lovebud.pages.dev/`** 기준으로 본다.
-- browse summary 계열은 **Modal을 먼저** 본다.
-- Cloudflare Pages는 공식 사용자-facing entry 이다.
-- Vercel과 Netlify는 보조 / 전이기 계층으로 본다.
+- browser-facing API entry는 **Cloudflare Pages same-origin `/api/*`** 기준으로 본다.
+- active backend target은 **Cloudflare Pages Functions → Modal** 경로 기준으로 본다.
+- `netlify/functions/*`는 현재 active production backend가 아니며, Netlify runtime 재활성화가 명시 승인되지 않는 한 신규 backend 정책 구현 대상이 아니다.
 
 ---
 
@@ -26,46 +26,60 @@ LoveBud의 현재 운영 우선순위는 아래와 같습니다.
 - **공식 서비스 주소**: `https://lovebud.pages.dev/`
 - **Cloudflare Pages 프로젝트(운영 기준)**: `lovebud.pages.dev`
 - **Modal 앱**: `lovebud-browse-snapshot`
-- **Vercel 주소(보조/Upstream)**: `https://lovebud.vercel.app/`
-- **Netlify 주소(보조/Fallback)**: `https://lovebud.netlify.app/`
+- **Vercel 주소(Deprecated transitional fallback)**: `https://lovebud.vercel.app/`
+- **Netlify 주소 / Functions(Legacy artifact only)**: `https://lovebud.netlify.app/`, `netlify/functions/*`
 
 주의:
 - Vercel과 Netlify 주소는 현재 공식 사용자-facing 대표 주소가 아닙니다.
 - 운영 문서에서 `lovebud.vercel.app`, `lovebud.netlify.app`를 주서비스처럼 설명하지 않습니다.
+- Netlify Functions를 현재 `lovebud.pages.dev` production/test slot backend처럼 설명하지 않습니다.
 
 ---
 
 ## 3. 실제 요청 경로
 
-### 3.1 브라우즈 summary
+### 3.1 `/api/trees`
+
+현재 production/test slot route matrix 실측 기준:
+
+1. 브라우저 → `https://lovebud.pages.dev/api/trees`
+2. Cloudflare Pages `functions/api/trees.js`
+3. Modal `/modal/private/trees`
+4. 응답 marker: `x-lovebud-upstream: modal`
+5. `modal-function-call-id` 존재
+6. `server: cloudflare`, `cf-cache-status: DYNAMIC`
+
+### 3.2 `/api/memories`
+
+현재 production/test slot route matrix 실측 기준:
+
+1. 브라우저 → `https://lovebud.pages.dev/api/memories`
+2. Cloudflare Pages `functions/api/memories.js`
+3. Modal `/modal/private/memories`
+4. 응답 marker: `x-lovebud-upstream: modal`
+5. `modal-function-call-id` 존재
+6. `server: cloudflare`, `cf-cache-status: DYNAMIC`
+
+### 3.3 브라우즈 summary
 
 현재 browse summary의 주경로는 아래입니다.
 
 1. 브라우저 → `https://lovebud.pages.dev/api/community/trees?view=summary&sort=latest&limit=3`
 2. Cloudflare Pages `functions/api/[[path]].js`
 3. `MODAL_BASE_URL` 기준 Modal `/modal/browse/latest?limit=3` 우선 호출
-4. Modal 실패 시 Vercel upstream fallback
-5. 필요 시 그 뒤의 legacy 계층이 보조적으로 관여 가능
+4. recognized route는 Modal 응답을 기준으로 처리
 
-즉, browse summary의 운영 우선순위는 아래와 같습니다.
-
-- **Modal first**
-- **Cloudflare Pages entry**
-- **Vercel fallback second**
-
-### 3.2 브라우즈 memories hydrate
+### 3.4 브라우즈 memories hydrate
 
 현재 preview hydrate 경로는 아래입니다.
 
 1. 브라우저 → `https://lovebud.pages.dev/api/community/memories?treeId=<id>`
 2. Cloudflare Pages `functions/api/[[path]].js`
 3. Modal `/modal/community/memories` 우선 호출
-4. Modal 실패 시 Vercel upstream fallback
 
-### 3.3 기타 `/api/*`
+### 3.5 기타 `/api/*`
 
-기타 `/api/*` 경로는 Cloudflare Pages `functions/api/[[path]].js`가 `LOVEBUD_UPSTREAM_ORIGIN`를 기준으로 upstream proxy를 수행합니다.
-기본값은 `https://lovebud.vercel.app` 입니다.
+기타 `/api/*` 경로는 Cloudflare Pages `functions/api/[[path]].js`가 recognized route를 Modal로 전달하거나, unhandled route에 대해 Cloudflare 404/405 계열 응답을 반환합니다.
 
 ---
 
@@ -76,13 +90,13 @@ LoveBud의 현재 운영 우선순위는 아래와 같습니다.
 현재 Cloudflare Pages 라우터가 직접 참조하는 핵심 변수:
 
 - `MODAL_BASE_URL`
-  - browse summary 및 private/community read 계열 Modal upstream
+  - browse summary 및 private/community read/write 계열 Modal upstream
 - `LOVEBUD_UPSTREAM_ORIGIN`
-  - fallback upstream origin
+  - deprecated fallback 계층 audit 중인 origin
 
 기본 원칙:
 - `MODAL_BASE_URL`는 **반드시 실제 live Modal 배포 주소**를 가리켜야 한다.
-- `LOVEBUD_UPSTREAM_ORIGIN`은 현재 전이기 구조에서는 `https://lovebud.vercel.app`를 가리킬 수 있다.
+- `/api/trees`, `/api/memories` active path는 Cloudflare Pages Functions가 Modal로 전달한다.
 
 ### 4.2 Modal
 
@@ -96,18 +110,19 @@ Modal runtime 핵심 변수:
 
 ### 4.3 Vercel / Netlify
 
-Vercel은 현재 upstream / fallback 보조 계층입니다.
-Netlify는 현재 legacy/fallback 계층입니다.
-다만 운영 설명에서는 두 계층 모두 **주경로**로 표현하지 않습니다.
+Vercel은 deprecated transitional fallback입니다.
+Netlify Functions는 legacy artifact입니다.
+
+운영 설명에서는 두 계층 모두 **주경로**로 표현하지 않습니다.
 
 ---
 
 ## 5. fallback 운영 원칙
 
 - Modal browse summary가 실패해도 browse 전체가 멈추면 안 된다.
-- 이 경우 Cloudflare Pages `functions/api/[[path]].js`가 Vercel upstream fallback을 수행한다.
 - fallback은 유지하되, 성능 및 요약 품질 기준은 Modal이 우선이다.
-- 점진적 제거 대상은 “Vercel/Netlify 주경로 설명”이지, fallback 자체가 아니다.
+- 점진적 제거 대상은 “Vercel/Netlify 주경로 설명”이지, 모든 fallback 문구의 즉시 삭제가 아니다.
+- Netlify Functions는 현재 active fallback으로 확인되지 않았으므로 legacy artifact로만 표기한다.
 
 ---
 
@@ -117,27 +132,42 @@ Netlify는 현재 legacy/fallback 계층입니다.
 
 정리 순서:
 1. 실서비스 주소는 Cloudflare Pages로 고정
-2. browse summary는 Modal 우선으로 고정
-3. Cloudflare Pages는 same-origin entry로 유지
-4. Vercel은 upstream / 보조 entry로 유지
-5. Netlify는 legacy fallback / write로 축소
-6. 이후 Vercel / Netlify 의존 범위를 점진적으로 더 줄인다
+2. Cloudflare Pages same-origin `/api/*`를 runtime entry로 고정
+3. `/api/trees`, `/api/memories`는 Cloudflare Pages Functions → Modal로 고정
+4. browse summary는 Modal 우선으로 고정
+5. Vercel은 deprecated transitional fallback으로 축소
+6. Netlify Functions는 legacy artifact로 축소
+7. tests/docs reference transition 완료 후 Netlify archive 여부를 별도 승인한다
 
 ---
 
-## 7. 운영 체크포인트
+## 7. PR #38 운영 기록
+
+PR #38은 active runtime이 아닌 `netlify/functions/*`에 backend 정책을 구현했기 때문에 close되었습니다.
+
+해당 판단은 다음 기준을 따른다.
+
+- active production/test slot runtime: Cloudflare Pages Functions → Modal
+- legacy artifact: `netlify/functions/*`
+- archive: 이번 문서 정리 PR에서 수행하지 않음
+- Netlify runtime 재활성화가 명시 승인되지 않는 한 신규 backend policy를 `netlify/functions/*`에 구현하지 않음
+
+---
+
+## 8. 운영 체크포인트
 
 - `https://lovebud.pages.dev/`가 공식 주소로 안내되고 있는가
-- browse summary 요청이 `/api/community/trees?view=summary`를 통해 나가는가
-- preview hydrate 요청이 `/api/community/memories?treeId=...`를 통해 나가는가
-- Cloudflare Pages env에 `MODAL_BASE_URL`, `LOVEBUD_UPSTREAM_ORIGIN`이 설정되어 있는가
+- `/api/trees` 응답에 `x-lovebud-upstream: modal`이 있는가
+- `/api/memories` 응답에 `x-lovebud-upstream: modal`이 있는가
+- Modal 응답에 `modal-function-call-id`가 있는가
+- 응답 server가 Cloudflare인지 확인했는가
+- Cloudflare Pages env에 `MODAL_BASE_URL`이 설정되어 있는가
 - Modal `/modal/health`가 정상 응답하는가
-- Modal `/modal/browse/latest?limit=3`가 정상 응답하는가
-- Modal 실패 시 Vercel fallback이 동작하는가
+- `netlify/functions/*`를 새 backend 구현 대상으로 오해하지 않았는가
 
 ---
 
-## 8. 관리자 운영 메모
+## 9. 관리자 운영 메모
 
 확인용 핵심 URL:
 - 메인: `https://lovebud.pages.dev/`
