@@ -223,7 +223,16 @@
           renderTrees(trees);
         }
 
-        preloadFirstTreeDetail(trees);
+        // Optimization: Defer preloading detail/memories to background to ensure TTI is not blocked
+        if (window.requestIdleCallback) {
+          window.requestIdleCallback(function() {
+            preloadFirstTreeDetail(trees);
+          }, { timeout: 2000 });
+        } else {
+          setTimeout(function() {
+            preloadFirstTreeDetail(trees);
+          }, 1000);
+        }
       } else {
         console.error('[my-trees-data] Invalid trees response:', trees);
         if (!cachedTrees && typeof setState === 'function' && stateEnum?.ERROR) {
