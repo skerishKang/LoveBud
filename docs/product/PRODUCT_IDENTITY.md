@@ -27,36 +27,47 @@ LoveTree는 아래 조건에 해당하는 팬을 위해 설계되었습니다:
 1. **First Moment First**: "입덕"의 그 순간, 가장 강렬했던 첫 기억을 가장 소중하게 다룹니다.
 2. **Connected Love Path**: 순간들을 파편화하지 않고, 나뭇가지처럼 유기적으로 흐르는 경로(Path)로 연결합니다.
 3. **Emotion Over Archive**: 단순한 저장보다는 '왜 이 시점이 좋았는지'에 대한 감정 메모를 핵심 콘텐츠로 처리합니다.
-4. **Private First, Share Second**: 나의 소중한 공간으로서의 가치를 먼저 확립한 뒤, 선택적으로 공유하여 팬덤 내에서 긍정적인 영향력을 전파합니다.
+4. **Public-first, Carefully Introduced**: 새 러브트리는 공개 상태로 시작하지만, 둘러보기에는 충분한 공개 순간이 쌓인 뒤 조용히 소개됩니다.
 
-## 5. UX Direction
+## 5. Visibility and Community Principle
+LoveTree는 감정을 숨기는 도구가 아니라, 감정의 경로가 자연스럽게 공유될 수 있는 조용한 공개 공간을 지향합니다.
+
+- 신규 LoveTree는 정책상 `public`으로 시작합니다.
+- 비공개 보관은 Plus private storage 기능으로 분리합니다.
+- memory visibility가 생략되면 parent tree visibility를 상속합니다.
+- public visibility와 Browse/Search 소개 가능 여부는 별개입니다.
+- Browse/Search 소개는 `publicMomentCount >= 3`을 기준으로 합니다.
+- private tree 아래 public memory가 있더라도 parent tree가 private이면 Browse/Search에 소개하지 않습니다.
+
+## 6. UX Direction
 * **Warm & Organic**: 나뭇가지 같은 곡선, 부드러운 그림자, 따뜻한 색감을 사용하여 사용자의 감정을 보호합니다.
 * **Tactile Experience**: 디지털 공간이지만 아날로그 다이어리를 꾸미는 듯한 종이 질감과 여백의 미를 추구합니다.
 * **Emotional Flow**: 기술적인 플로우차트 스타일을 배격하고, 감정의 흐름을 닮은 자연스러운 인터페이스를 제공합니다.
 
-## 6. Mobile vs Desktop Role
+## 7. Mobile vs Desktop Role
 | 환경 | 주요 역할 | 사용자 경험 (UX) |
 | :--- | :--- | :--- |
 | **Mobile** | **빠른 기록 & 감상** | 이동 중에도 영상의 특정 시점과 짧은 감정 메모를 즉시 남기는 'Snap' 경험. |
 | **Desktop** | **연결 구조 & 편집** | 넓은 화면에서 기억들의 관계를 정립하고 트리 구조를 재배치하는 'Curation' 경험. |
 
-## 7. Decision Checklist (의사결정 기준)
+## 8. Decision Checklist (의사결정 기준)
 새로운 기능이나 디자인을 제안할 때 아래 질문에 답할 수 있어야 합니다.
 1. 이 기능이 팬의 **첫 순간**을 기록하는 데 도움이 되는가?
 2. 이 디자인이 **따뜻한 스크랩북**의 느낌을 유지하고 있는가?
 3. 이것이 데이터의 나열인가, 아니면 **감정의 흐름**인가?
 4. IT 관리 툴(Admin)처럼 차갑게 느껴지지는 않는가?
+5. 공개 상태와 Browse/Search 소개 가능 여부를 혼동시키지는 않는가?
 
-## 8. Community Principle (커뮤니티 원칙)
+## 9. Community Principle (커뮤니티 원칙)
 LoveTree는 팬덤 커뮤니티의 **감정 공유 공간**으로서 가치를 합니다.
 
-- **입덕 경로의 가이딩**: 완성된 LoveTree를 공유하여, 다른 팬들에게 "이렇게 입덕할 수 있다"는 길을 제시합니다.
+- **입덕 경로의 가이딩**: 충분히 자란 LoveTree를 공유하여, 다른 팬들에게 "이렇게 입덕할 수 있다"는 길을 제시합니다.
 - **Positive Energy Only**: 비판이나 부정보다 각자의 감정과 경험을 존중하는 분위기를 유지합니다.
 - **돌봄의 연쇄**: 하나의 감정 기록이 다른 팬에게 감동이 되고, 그 감동이 또 다른 기록의 이유가 됩니다.
 
 > LoveTree의 커뮤니티는 **"게시판"이 아니라 "러브트리 감상 공간"**입니다.
 
-## 9. Design Guardrails
+## 10. Design Guardrails
 - **No Hard Edges**: 모든 컴포넌트에 부드러운 곡선을 적용하여 따뜻한 느낌을 유지합니다.
 - **No Cold Palette**: 차가운 색상 대비를 지양하고, 감정을 보호하는 웜톤 톤을 기본으로 합니다.
 - **No Mechanical Flow**: 노드 간의 연결은 자연스러운 감정의 흐름을 반영합니다.
@@ -78,6 +89,9 @@ LoveTree/LoveBud는 정보를 정리하는 서비스가 아니라, 감정의 흐
 공개 영역은 피드, 게시판, 검색 결과 화면처럼 보이면 안 된다.  
 LoveTree의 browse 경험은 누군가의 첫 순간과 이어진 감정을 조용히 따라가는 감상 허브여야 한다.
 
+공개 상태와 browse 소개는 같은 뜻이 아니다.  
+새 러브트리는 공개 상태로 시작할 수 있지만, browse/search에는 공개 순간이 충분히 쌓인 뒤 조용히 소개되어야 한다.
+
 편집 경험도 일반 생산성 도구의 어조를 그대로 가져오면 안 된다.  
 editor는 입력 폼을 채우는 곳이 아니라, 첫 순간을 심고 다음 순간을 이어 붙이는 공간이어야 한다.
 
@@ -94,6 +108,7 @@ LoveTree/LoveBud의 모든 화면은 아래 원칙을 공유한다.
 3. 수치, 상태, 설정, 관리 액션은 감상 흐름을 해치지 않는 수준으로만 노출한다.
 4. placeholder와 빈 상태 문구도 제품 톤 안에서 작성한다.
 5. 게시판, 관리툴, 대시보드처럼 보이는 표현은 기본값으로 두지 않는다.
+6. 공개 여부와 Browse/Search 소개 가능 여부를 같은 상태처럼 표현하지 않는다.
 
 ---
 
