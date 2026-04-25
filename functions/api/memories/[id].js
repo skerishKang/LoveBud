@@ -21,24 +21,16 @@ export async function onRequestGet(context) {
     });
   }
 
-  const treeId = context.params?.id;
-  const authHeader = context.request.headers.get('authorization');
-  const primaryTarget = new URL(authHeader ? `/modal/private/trees/${treeId}` : `/modal/trees/${treeId}`, modalBaseUrl);
-  let response = await fetch(primaryTarget.toString(), {
+  const memoryId = context.params?.id;
+  const target = new URL(`/modal/memories/${memoryId}`, modalBaseUrl);
+  const response = await fetch(target.toString(), {
     headers: {
       accept: 'application/json',
-      ...(authHeader ? { authorization: authHeader } : {})
+      ...(context.request.headers.get('authorization')
+        ? { authorization: context.request.headers.get('authorization') }
+        : {})
     }
   });
-
-  if (authHeader && response.status === 404) {
-    const publicTarget = new URL(`/modal/trees/${treeId}`, modalBaseUrl);
-    response = await fetch(publicTarget.toString(), {
-      headers: {
-        accept: 'application/json'
-      }
-    });
-  }
 
   return withModalHeader(response);
 }
@@ -52,8 +44,8 @@ export async function onRequestPut(context) {
     });
   }
 
-  const treeId = context.params?.id;
-  const target = new URL(`/modal/private/trees/${treeId}`, modalBaseUrl);
+  const memoryId = context.params?.id;
+  const target = new URL(`/modal/private/memories/${memoryId}`, modalBaseUrl);
   const response = await fetch(target.toString(), {
     method: 'PUT',
     headers: {
@@ -78,8 +70,8 @@ export async function onRequestPatch(context) {
     });
   }
 
-  const treeId = context.params?.id;
-  const target = new URL(`/modal/private/trees/${treeId}`, modalBaseUrl);
+  const memoryId = context.params?.id;
+  const target = new URL(`/modal/private/memories/${memoryId}`, modalBaseUrl);
   const response = await fetch(target.toString(), {
     method: 'PATCH',
     headers: {
@@ -104,8 +96,8 @@ export async function onRequestDelete(context) {
     });
   }
 
-  const treeId = context.params?.id;
-  const target = new URL(`/modal/private/trees/${treeId}`, modalBaseUrl);
+  const memoryId = context.params?.id;
+  const target = new URL(`/modal/private/memories/${memoryId}`, modalBaseUrl);
   const response = await fetch(target.toString(), {
     method: 'DELETE',
     headers: {
