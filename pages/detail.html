@@ -43,7 +43,7 @@
             gap: 6px;
             padding: 8px 14px;
             border-radius: 999px;
-            background: rgba(255,255,255,0.78);
+            background: rgba(255,255,255,0.74);
             border: 1px solid rgba(144, 73, 81, 0.08);
             color: var(--on-surface-variant);
             font-size: 12px;
@@ -58,13 +58,13 @@
         .detail-hero {
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 8px;
             margin-bottom: 16px;
-            padding: 18px 22px;
-            border-radius: 1.35rem;
-            background: linear-gradient(135deg, rgba(255,255,255,0.92), rgba(249,245,242,0.94));
-            border: 1px solid rgba(144, 73, 81, 0.08);
-            box-shadow: 0 10px 24px rgba(75, 64, 57, 0.04);
+            padding: 16px 20px;
+            border-radius: 1.3rem;
+            background: linear-gradient(135deg, rgba(255,255,255,0.88), rgba(249,245,242,0.9));
+            border: 1px solid rgba(144, 73, 81, 0.07);
+            box-shadow: 0 8px 18px rgba(75, 64, 57, 0.035);
         }
 
         .detail-hero-kicker {
@@ -80,16 +80,16 @@
 
         .detail-hero-title {
             margin: 0;
-            font-size: 1.95rem;
+            font-size: 1.9rem;
             line-height: 1.15;
             color: var(--on-surface);
         }
 
         .detail-hero-desc {
             margin: 0;
-            max-width: 680px;
-            font-size: 0.94rem;
-            line-height: 1.62;
+            max-width: 620px;
+            font-size: 0.93rem;
+            line-height: 1.5;
             color: var(--on-surface-variant);
         }
 
@@ -114,6 +114,7 @@
             flex-direction: column;
             gap: 12px;
             padding: 6px 0 0;
+            min-width: 0;
         }
 
         .detail-side-kicker {
@@ -140,6 +141,7 @@
 
         .detail-main-media {
             margin-bottom: 0;
+            min-width: 0;
         }
 
         .video-main {
@@ -148,7 +150,7 @@
             background: #000;
             border-radius: 2rem;
             overflow: hidden;
-            box-shadow: 0 28px 72px -20px rgba(0,0,0,0.18);
+            box-shadow: 0 22px 54px -22px rgba(0,0,0,0.16);
             margin-bottom: 16px;
         }
 
@@ -180,10 +182,10 @@
         }
 
         .diary-container {
-            background: white;
-            padding: 34px 38px;
+            background: rgba(255,255,255,0.94);
+            padding: 32px 36px;
             border-radius: 1.8rem;
-            box-shadow: 0 14px 40px rgba(0,0,0,0.04);
+            box-shadow: 0 12px 32px rgba(0,0,0,0.035);
             border: 1px solid rgba(144,73,81,0.06);
             position: relative;
             overflow: hidden;
@@ -194,15 +196,16 @@
             position: absolute;
             top: 16px;
             left: 24px;
-            font-size: 104px;
+            font-size: 88px;
             font-family: var(--font-heading);
             color: var(--primary);
-            opacity: 0.05;
+            opacity: 0.04;
             line-height: 1;
         }
 
         .connected-section {
             margin-top: 10px;
+            min-width: 0;
         }
 
         .connected-section.is-empty .growth-visualization,
@@ -228,7 +231,7 @@
 
         .connected-section h3 {
             margin: 0;
-            font-size: 1.6rem;
+            font-size: 1.55rem;
             font-weight: 800;
             line-height: 1.18;
         }
@@ -236,27 +239,28 @@
         .connected-summary {
             margin: 0;
             color: var(--on-surface-variant);
-            font-size: 0.92rem;
-            line-height: 1.55;
-            max-width: 620px;
+            font-size: 0.9rem;
+            line-height: 1.48;
+            max-width: 560px;
         }
 
         .moment-card {
-            background: white;
+            background: rgba(255,255,255,0.94);
             padding: 18px;
             border-radius: 1.55rem;
             border: 1px solid rgba(0,0,0,0.03);
-            box-shadow: 0 10px 28px rgba(0,0,0,0.02);
+            box-shadow: 0 9px 24px rgba(0,0,0,0.018);
             display: flex;
             gap: 18px;
             align-items: center;
             margin-bottom: 16px;
             transition: all 0.3s;
             cursor: pointer;
+            min-width: 0;
         }
 
         .moment-card:hover {
-            transform: translateY(-4px);
+            transform: translateY(-2px);
             border-color: var(--outline-variant);
             box-shadow: var(--shadow-whisper);
         }
@@ -265,13 +269,13 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            margin-top: 30px;
+            margin-top: 28px;
         }
 
         .growth-line {
-            width: 4px; height: 48px;
+            width: 4px; height: 44px;
             background: linear-gradient(to bottom, var(--primary), var(--secondary));
-            opacity: 0.18;
+            opacity: 0.16;
             border-radius: 99px;
             margin-bottom: 10px;
         }
@@ -294,9 +298,9 @@
         @media (max-width: 768px) {
             .detail-page-shell { padding: 16px 16px 30px; }
             .detail-topbar { align-items: flex-start; flex-direction: column; margin-bottom: 12px; }
-            .detail-hero { padding: 16px 16px; border-radius: 1.2rem; margin-bottom: 14px; gap: 8px; }
-            .detail-hero-title { font-size: 1.55rem; line-height: 1.2; }
-            .detail-hero-desc { font-size: 0.9rem; line-height: 1.55; }
+            .detail-hero { padding: 15px 16px; border-radius: 1.2rem; margin-bottom: 14px; gap: 7px; }
+            .detail-hero-title { font-size: 1.5rem; line-height: 1.2; }
+            .detail-hero-desc { font-size: 0.88rem; line-height: 1.5; }
             .detail-layout { gap: 22px; }
             .detail-title-block { gap: 10px; }
             .detail-title-main { font-size: 1.85rem; line-height: 1.16; }
@@ -305,7 +309,7 @@
             .moment-card { padding: 14px; gap: 14px; }
             .moment-card img { width: 60px !important; height: 60px !important; }
             .growth-visualization { margin-top: 24px; }
-            #connectedFragments { grid-template-columns: 1fr !important; gap: 14px !important; }
+            #connectedFragments { grid-template-columns: 1fr !important; gap: 14px !important; min-width: 0; }
         }
     </style>
 </head>
@@ -327,8 +331,8 @@
 
         <section id="detailHero" class="detail-hero">
             <div id="detailHeroKicker" class="detail-hero-kicker">&nbsp;</div>
-            <h2 id="detailHeroTitle" class="headline detail-hero-title">...</h2>
-            <p id="detailHeroDesc" class="detail-hero-desc">...</p>
+            <h2 id="detailHeroTitle" class="headline detail-hero-title">이 순간에서 시작된 마음</h2>
+            <p id="detailHeroDesc" class="detail-hero-desc">이어진 장면들</p>
             <div id="treeContext"></div>
         </section>
 
@@ -350,7 +354,7 @@
 
                 <section class="diary-section">
                     <div class="detail-title-block">
-                        <p id="detailSubtitle" class="detail-side-kicker">&nbsp;</p>
+                        <p id="detailSubtitle" class="detail-side-kicker">그때의 마음</p>
                         <h1 class="headline detail-title-main" id="memoryTitle">&nbsp;</h1>
                         <div class="detail-tag-row">
                             <div class="tags-container" id="tagsContainer"></div>
@@ -368,7 +372,7 @@
                 <div class="connected-section">
                     <div class="connected-heading">
                         <span id="connectedKicker" class="connected-kicker">&nbsp;</span>
-                        <h3 id="connectedTitle" class="headline">&nbsp;</h3>
+                        <h3 id="connectedTitle" class="headline">이어진 순간들</h3>
                         <p id="connectedSummary" class="connected-summary">&nbsp;</p>
                     </div>
                     <div id="connectedFragments" style="display: grid; grid-template-columns: 1fr; gap: 16px;"></div>
@@ -377,7 +381,7 @@
                 <div class="growth-visualization">
                     <div class="growth-line"></div>
                     <div class="growth-dot"></div>
-                    <p id="growthLabel" style="margin-top: 14px; font-weight: 800; color: var(--primary); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;">&nbsp;</p>
+                    <p id="growthLabel" style="margin-top: 14px; font-weight: 800; color: var(--primary); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;">감정이 자라는 중</p>
                 </div>
             </aside>
         </main>
