@@ -1,16 +1,19 @@
 # Browse Display Filter vs. Publication Guard
 
-LoveBud의 공개 정책은 **visibility/access policy**와 **Browse/Search introduction eligibility**를 분리해 관리합니다.
+LoveBud의 공개 정책은 **visibility/access policy**, **stored memory visibility**, **anonymous public exposure**, **Browse/Search introduction eligibility**를 분리해 관리합니다.
 
 이 문서는 아래 개념을 혼동하지 않기 위해 작성합니다.
 
-- **Visibility / Access Policy**: tree 또는 memory가 public/private 중 어떤 공개 상태를 갖는지, 누가 읽을 수 있는지, private storage가 Plus entitlement를 요구하는지 결정하는 server-side hard policy
-- **Browse/Search Introduction Eligibility**: 이미 public인 tree 중 무엇을 Browse/Search 화면에서 소개할 수 있는지 결정하는 read-path eligibility policy
+- **Stored Visibility**: tree 또는 memory row에 저장되는 visibility 값
+- **Visibility / Access Policy**: 누가 tree 또는 memory를 읽을 수 있는지, private storage가 Plus entitlement를 요구하는지 결정하는 server-side hard policy
+- **Anonymous Public Exposure**: 비로그인/anonymous public read path에서 실제로 외부에 노출 가능한지 결정하는 public read guard
+- **Browse/Search Introduction Eligibility**: 이미 public exposure 가능한 tree 중 무엇을 Browse/Search 화면에서 소개할 수 있는지 결정하는 read-path eligibility policy
 - **Browse Display Filter**: eligible tree를 어떤 정렬, summary, quality 기준으로 보여줄지 정하는 read-path display filter
 
 핵심 원칙:
 
 ```text
+stored memory visibility != anonymous public exposure
 public visibility != Browse/Search eligibility
 ```
 
@@ -38,25 +41,52 @@ canonical entitlement field:
 users/{uid}.privateStorageEnabled
 ```
 
-### 1.3 Memory visibility inheritance
+### 1.3 Memory visibility inheritance and explicit override
 
 Memory visibility가 payload에서 생략되면 parent tree visibility를 상속합니다.
 
 ```text
 parent tree visibility = public
 memory visibility omitted
-=> effective memory visibility = public
+=> stored/effective memory visibility = public
 ```
 
 ```text
 parent tree visibility = private
 memory visibility omitted
-=> effective memory visibility = private
+=> stored/effective memory visibility = private
 ```
 
-명시적 memory visibility는 backend policy가 허용하는 경우에만 상속값을 override할 수 있습니다. 이 override는 parent tree access policy 또는 Plus private storage guard를 우회하지 못합니다.
+명시적 memory visibility는 backend policy가 허용하는 경우에만 상속값을 override할 수 있습니다. backend policy가 허용하면 private tree 아래에 explicit public memory가 저장될 수 있습니다.
 
-### 1.4 Browse/Search introduction requires publicMomentCount >= 3
+그러나 stored memory visibility와 anonymous public exposure는 별개입니다.
+
+Canonical 문구:
+
+```text
+Stored memory visibility and anonymous public exposure are separate. A memory may be stored as public under a private tree when backend policy allows it, but anonymous public read paths must require both memory.visibility = public and parent tree.visibility = public.
+```
+
+### 1.4 Anonymous public read requires parent tree public visibility
+
+Anonymous public read path는 다음을 모두 요구해야 합니다.
+
+```text
+memory.visibility === 'public'
+AND parentTree.visibility === 'public'
+```
+
+따라서 `memory.visibility = public` alone은 anonymous public read에 충분하지 않습니다.
+
+parent tree visibility guard가 필요한 경로:
+
+- Browse/Search introduction
+- community memories list
+- public memory detail read
+
+Owner/private read path는 기존 private access policy를 따릅니다. owner는 private tree 아래 public/private memory를 조회할 수 있습니다.
+
+### 1.5 Browse/Search introduction requires publicMomentCount >= 3
 
 Browse/Search 소개 조건은 visibility 저장 조건과 다릅니다.
 
@@ -69,20 +99,6 @@ AND browse/search display guard passes
 ```
 
 따라서 public tree라도 `publicMomentCount < 3`이면 직접 공개 접근은 가능할 수 있지만 Browse/Search 소개 대상은 아닙니다.
-
-### 1.5 Private parent tree remains a browse/search blocker
-
-private tree 아래에 public memory가 가능한 정책/구현이 있더라도, child memory visibility만으로 Browse/Search 노출을 허용하지 않습니다.
-
-Browse/Search 노출은 반드시 함께 확인합니다.
-
-```text
-parent tree visibility
-AND publicMomentCount
-AND browse/search guard
-```
-
-parent tree가 private이면 public child memory가 있더라도 Browse/Search introduction 대상이 아닙니다.
 
 ---
 
@@ -130,9 +146,11 @@ Visibility / Access Policy는 Browse card 품질 필터가 아니라 server-side
 역할:
 
 - tree visibility 저장값 결정
-- memory effective visibility 결정
+- memory stored/effective visibility 결정
+- explicit memory visibility override 허용 여부 결정
 - private tree/storage Plus entitlement 검증
 - public/private read access 검증
+- anonymous public exposure guard 적용
 - existing private tree grandfathering 처리
 
 정책 기준:
@@ -141,6 +159,7 @@ Visibility / Access Policy는 Browse card 품질 필터가 아니라 server-side
 - private storage는 Plus entitlement 필요
 - memory visibility omitted 시 parent tree visibility 상속
 - explicit memory visibility override는 backend policy가 허용한 경우에만 가능
+- explicit public memory가 private tree 아래 저장될 수 있어도 anonymous public exposure는 parent tree public 여부를 함께 확인
 - 기존 private tree는 자동 public 전환하지 않음
 
 Visibility / Access Policy가 하지 않는 것:
@@ -151,7 +170,36 @@ Visibility / Access Policy가 하지 않는 것:
 
 ---
 
-## 4. Browse/Search Introduction Eligibility
+## 4. Anonymous Public Exposure Guard
+
+Anonymous Public Exposure Guard는 비로그인/anonymous public read path에서 memory 또는 tree가 외부 사용자에게 실제로 노출될 수 있는지 결정합니다.
+
+memory anonymous public read 조건:
+
+```text
+canAnonymousReadMemory(memory, parentTree) =
+  memory.visibility === 'public'
+  && parentTree.visibility === 'public'
+```
+
+경로별 적용:
+
+| 경로 | parent tree visibility guard |
+|------|------------------------------|
+| Browse/Search introduction | 필요 |
+| community memories list | 필요 |
+| public memory detail read | 필요 |
+
+중요:
+
+- private tree 아래 explicit public memory는 저장될 수 있습니다.
+- 그러나 parent tree가 private이면 anonymous public read에서 노출하지 않습니다.
+- `memory.visibility = public` alone은 anonymous public read 조건이 아닙니다.
+- owner/private read는 이 guard와 별개로 기존 private access policy를 따릅니다.
+
+---
+
+## 5. Browse/Search Introduction Eligibility
 
 Browse/Search Introduction Eligibility는 public tree 중 Browse/Search에서 소개할 수 있는 tree를 고릅니다.
 
@@ -176,10 +224,11 @@ isBrowseSearchEligible(tree) =
 - `publicMomentCount >= 3`은 Browse/Search introduction eligibility입니다.
 - 이 기준을 public visibility 전환 guard로 재사용하지 않습니다.
 - public visibility와 Browse/Search introduction은 사용자-facing copy에서도 분리합니다.
+- private tree 아래 public memory가 있더라도 parent tree가 private이면 Browse/Search introduction 대상이 아닙니다.
 
 ---
 
-## 5. Browse Display Filter
+## 6. Browse Display Filter
 
 Browse Display Filter는 eligible tree를 어떻게 보여줄지 정하는 read-path 품질 계층입니다.
 
@@ -196,10 +245,11 @@ Display Filter는 다음을 결정하지 않습니다.
 - private storage를 사용할 수 있는지
 - private tree owner가 누구인지
 - memory visibility inheritance가 어떻게 계산되는지
+- anonymous public read에서 parent tree visibility를 생략해도 되는지
 
 ---
 
-## 6. Correct examples
+## 7. Correct examples
 
 ### Example A: public tree, 2 public moments
 
@@ -211,7 +261,7 @@ publicMomentCount = 2
 결과:
 
 ```text
-public read 가능 후보
+anonymous public read 가능 후보
 Browse/Search introduction 불가
 ```
 
@@ -225,7 +275,7 @@ publicMomentCount = 3
 결과:
 
 ```text
-public read 가능 후보
+anonymous public read 가능 후보
 Browse/Search introduction 가능 후보
 ```
 
@@ -242,10 +292,14 @@ publicMomentCount >= 3
 결과:
 
 ```text
-parent tree가 private이므로 Browse/Search introduction 불가
+stored child memory visibility는 public일 수 있음
+anonymous community memories list 노출 불가
+anonymous public memory detail read 불가
+Browse/Search introduction 불가
+owner/private read 가능
 ```
 
-child memory visibility만으로 parent tree browse/search eligibility를 만들 수 없습니다.
+child memory visibility만으로 anonymous public exposure 또는 parent tree browse/search eligibility를 만들 수 없습니다.
 
 ### Example D: memory visibility omitted
 
@@ -257,7 +311,7 @@ memory visibility omitted
 결과:
 
 ```text
-memory effective visibility = public
+memory stored/effective visibility = public
 ```
 
 ```text
@@ -268,12 +322,12 @@ memory visibility omitted
 결과:
 
 ```text
-memory effective visibility = private
+memory stored/effective visibility = private
 ```
 
 ---
 
-## 7. Documentation guardrails
+## 8. Documentation guardrails
 
 금지할 설명:
 
@@ -281,6 +335,8 @@ memory effective visibility = private
 - "3개 이상 공개 순간은 public 전환 조건이다"
 - "publicMomentCount는 visibility guard다"
 - "private tree 아래 public memory가 있으면 browse에 소개할 수 있다"
+- "private tree 아래 public memory가 있으면 community memories list에 anonymous 노출할 수 있다"
+- "memory.visibility = public이면 anonymous public detail read가 가능하다"
 - "memory visibility 생략은 항상 public이다"
 - "private storage는 frontend UI lock만으로 충분하다"
 - "브라우저가 Netlify API를 직접 호출한다"
@@ -291,15 +347,18 @@ memory effective visibility = private
 - private storage는 Plus entitlement가 필요하다.
 - memory visibility 생략 시 parent tree visibility를 상속한다.
 - explicit memory visibility override는 backend policy가 허용할 때만 가능하다.
-- public visibility와 Browse/Search introduction eligibility는 별개다.
+- private tree 아래 explicit public memory는 저장될 수 있다.
+- stored memory visibility와 anonymous public exposure는 별개다.
+- anonymous public read는 `memory.visibility = public`과 `parent tree.visibility = public`을 모두 요구한다.
 - Browse/Search introduction은 `publicMomentCount >= 3`이 필요하다.
-- private parent tree는 public child memory가 있어도 Browse/Search introduction 대상이 아니다.
+- parent tree가 private이면 public child memory가 있어도 Browse/Search, community memories list, public memory detail read에 anonymous 노출하지 않는다.
+- owner/private read는 private access policy에 따라 private tree 아래 public/private memory를 조회할 수 있다.
 - 브라우저는 same-origin `/api/*`를 호출한다.
 
 ---
 
-## 8. One-line summary
+## 9. One-line summary
 
 ```text
-Visibility decides who can access a tree or memory; Browse/Search eligibility decides whether a public tree is mature enough to be introduced.
+Stored visibility decides what is saved; anonymous public exposure decides what public readers can see; Browse/Search eligibility decides whether a public tree is mature enough to be introduced.
 ```
