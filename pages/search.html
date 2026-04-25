@@ -7,7 +7,7 @@
     <link rel="icon" href="/assets/favicon/favicon.svg" type="image/svg+xml">
     <link rel="icon" href="/favicon.ico" sizes="32x32">
     <link rel="stylesheet" href="../css/global.css?v=20260415-10">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" />
     <style>
         .search-container {
             max-width: var(--page-work-max);
@@ -16,6 +16,27 @@
             display: grid;
             grid-template-columns: minmax(0, 1.62fr) 420px;
             gap: 34px;
+        }
+
+        .search-container .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 1em;
+            min-width: 1em;
+            overflow: hidden;
         }
 
         .browse-curation-shell {
@@ -300,6 +321,7 @@
             background:
                 radial-gradient(circle at 20% 15%, rgba(255, 245, 246, 0.95), rgba(255,255,255,0.18) 46%),
                 linear-gradient(135deg, rgba(144, 73, 81, 0.13), rgba(122, 139, 110, 0.14));
+            isolation: isolate;
         }
 
         .tree-card-media img {
@@ -325,8 +347,11 @@
             align-items: center;
             justify-content: center;
             color: var(--primary);
-            font-size: 42px;
+            font-size: 34px;
             font-weight: 900;
+            background:
+                radial-gradient(circle at 18% 16%, rgba(255, 245, 246, 0.96), rgba(255,255,255,0.18) 48%),
+                linear-gradient(135deg, rgba(144, 73, 81, 0.11), rgba(122, 139, 110, 0.13));
         }
 
         .tree-card-media-fallback[hidden] {
