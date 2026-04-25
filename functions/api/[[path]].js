@@ -1,34 +1,5 @@
-const DEFAULT_UPSTREAM_ORIGIN = 'https://lovebud.vercel.app';
-
-const HOP_BY_HOP_HEADERS = [
-  'connection',
-  'host',
-  'keep-alive',
-  'proxy-authenticate',
-  'proxy-authorization',
-  'te',
-  'trailer',
-  'transfer-encoding',
-  'upgrade'
-];
-
 function stripTrailingSlash(value) {
   return String(value || '').replace(/\/$/, '');
-}
-
-function buildUpstreamUrl(request, env) {
-  const sourceUrl = new URL(request.url);
-  const upstreamOrigin = stripTrailingSlash(env.LOVEBUD_UPSTREAM_ORIGIN || DEFAULT_UPSTREAM_ORIGIN);
-  return new URL(`${sourceUrl.pathname}${sourceUrl.search}`, upstreamOrigin);
-}
-
-function buildForwardHeaders(request) {
-  const headers = new Headers(request.headers);
-
-  HOP_BY_HOP_HEADERS.forEach((header) => headers.delete(header));
-  headers.set('x-lovebud-proxy', 'cloudflare-pages');
-
-  return headers;
 }
 
 function isBrowseSummaryRequest(request) {
@@ -136,6 +107,35 @@ function isModalOwnedGetRoute(request, env) {
   return modalUrl !== null;
 }
 
+function buildNotFoundResponse() {
+  return new Response(
+    JSON.stringify({ error: 'Route not found' }),
+    {
+      status: 404,
+      headers: {
+        'content-type': 'application/json; charset=utf-8',
+        'x-lovebud-upstream': 'cloudflare',
+        'x-lovebud-route-status': 'unhandled'
+      }
+    }
+  );
+}
+
+function buildMethodNotAllowedResponse() {
+  return new Response(
+    JSON.stringify({ error: 'Method not allowed' }),
+    {
+      status: 405,
+      headers: {
+        'content-type': 'application/json; charset=utf-8',
+        'x-lovebud-upstream': 'cloudflare',
+        'x-lovebud-route-status': 'method-not-allowed',
+        'allow': 'GET'
+      }
+    }
+  );
+}
+
 function buildModalUnavailableResponse() {
   return new Response(
     JSON.stringify({ error: 'Modal backend unavailable' }),
@@ -184,8 +184,6 @@ async function tryModalRead(request, env) {
 
 export async function onRequest(context) {
   const { request, env } = context;
-  const upstreamUrl = buildUpstreamUrl(request, env || {});
-  const method = request.method.toUpperCase();
   const isModalOwned = isModalOwnedGetRoute(request, env || {});
 
   if (isBrowseSummaryRequest(request)) {
@@ -210,7 +208,6 @@ export async function onRequest(context) {
         console.warn('[LoveBudCloudflareProxy] Modal read failed, returning 503', error);
         return buildModalUnavailableResponse();
       }
-      console.warn('[LoveBudCloudflareProxy] Modal read failed before response, falling back to Vercel', error);
     }
   } else {
     try {
@@ -221,16 +218,13 @@ export async function onRequest(context) {
         console.warn('[LoveBudCloudflareProxy] Modal read failed, returning 503', error);
         return buildModalUnavailableResponse();
       }
-      console.warn('[LoveBudCloudflareProxy] Modal read failed before response, falling back to Vercel', error);
     }
   }
 
-  const response = await fetch(upstreamUrl.toString(), {
-    method,
-    headers: buildForwardHeaders(request),
-    body: method === 'GET' || method === 'HEAD' ? undefined : request.body,
-    redirect: 'follow'
-  });
+  const modalUrl = buildModalUrl(request, env || {});
+  if (modalUrl) {
+    return buildMethodNotAllowedResponse();
+  }
 
-  return withUpstreamHeader(response, 'vercel');
+  return buildNotFoundResponse();
 }
