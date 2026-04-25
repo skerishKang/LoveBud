@@ -1243,3 +1243,138 @@ body {
 .memory-node * {
     user-select: none;
 }
+
+/* ==========================================================================
+   Editor paper tone pass 3
+   Goal: Scrapbook/Paper texture unification & tone polish
+   ========================================================================== */
+
+/* 1. Base Layout & Backgrounds */
+body .editor-layout {
+    background: #fdfcfb;
+    background-image: linear-gradient(180deg, #fffcf9 0%, #f9f5f0 100%);
+}
+
+body .sidebar, 
+body .detail-panel {
+    background: rgba(255, 253, 249, 0.94);
+    border: 1px solid rgba(144, 73, 81, 0.1);
+    box-shadow: 0 12px 40px rgba(75, 64, 57, 0.08);
+}
+
+body .canvas-area {
+    background-color: #faf8f6;
+    background-image: radial-gradient(rgba(144, 73, 81, 0.05) 1px, transparent 1px);
+    border: 1px solid rgba(144, 73, 81, 0.12);
+    box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.02);
+}
+
+body .canvas-area::before {
+    border-color: rgba(144, 73, 81, 0.08);
+}
+
+/* 2. Left Status Card (Scrapbook Cover/Paper) */
+body .editor-status-card {
+    background: #ffffff;
+    background-image: linear-gradient(165deg, #ffffff 0%, #fdfbf9 100%);
+    border: 1px solid rgba(144, 73, 81, 0.16);
+    box-shadow: 0 8px 24px rgba(75, 64, 57, 0.06), 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+body .editor-status-card strong {
+    color: #4a372e;
+}
+
+body .editor-tree-quiet-note {
+    color: #8f776c;
+    border-top: 1px dashed rgba(190, 147, 127, 0.24);
+}
+
+/* 3. Node Card (Paper Scrap) */
+body .node-card {
+    background: #ffffff;
+    border: 1px solid rgba(144, 73, 81, 0.14);
+    box-shadow: 2px 2px 8px rgba(75, 64, 57, 0.08);
+    border-radius: 8px;
+    transition: box-shadow 0.24s ease, border-color 0.24s ease, background-color 0.24s ease;
+}
+
+body .memory-node:hover .node-card,
+body .memory-node.selected .node-card {
+    border-color: rgba(144, 73, 81, 0.35);
+    box-shadow: 0 12px 32px rgba(144, 73, 81, 0.12);
+}
+
+body .node-img-wrapper {
+    background: #f8f6f4;
+    border-radius: 4px;
+}
+
+/* 4. Right Detail Cards (Surface Unification) */
+body .editor-current-moment-card,
+body .editor-moment-info-card,
+body .editor-save-status-card {
+    background: #ffffff;
+    border: 1px solid rgba(144, 73, 81, 0.1);
+    box-shadow: 0 4px 12px rgba(75, 64, 57, 0.04);
+}
+
+body .editor-moment-info-card {
+    background: rgba(255, 255, 255, 0.6);
+}
+
+body .diary-note {
+    background: rgba(253, 252, 251, 0.8);
+    border-left: 4px solid rgba(144, 73, 81, 0.15);
+    color: #55443d;
+}
+
+/* 5. Button/Chip/Pill Tone */
+body .editor-tree-visibility-pill.is-private {
+    background: rgba(144, 73, 81, 0.06);
+    color: #904951;
+    border: 1px solid rgba(144, 73, 81, 0.12);
+}
+
+body .editor-mini-setting-btn {
+    background: rgba(255, 255, 255, 0.86);
+    border-color: rgba(144, 73, 81, 0.14);
+    color: #6d544b;
+}
+
+body .editor-memory-mode-chip {
+    background: #ffffff;
+    border-color: rgba(144, 73, 81, 0.12);
+}
+
+body .editor-memory-mode-chip.is-active {
+    background: rgba(144, 73, 81, 0.08);
+    border-color: rgba(144, 73, 81, 0.24);
+    color: #904951;
+}
+
+/* 6. Mobile Polish (375px) */
+@media (max-width: 375px) {
+    body .editor-layout {
+        padding: 10px;
+        gap: 10px;
+    }
+    
+    body .sidebar, 
+    body .detail-panel, 
+    body .canvas-area {
+        border-radius: 20px;
+    }
+    
+    body .editor-status-card {
+        padding: 18px 14px;
+    }
+    
+    body .editor-status-card strong {
+        font-size: 1.35rem;
+    }
+    
+    body .editor-canvas-title h2 {
+        font-size: 1.3rem;
+    }
+}
