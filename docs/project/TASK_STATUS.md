@@ -22,16 +22,18 @@
 
 ## 현재 상태 스냅샷
 
-- 기준일: 2026-04-25
-- 기준 main 커밋: `440b3de75e9c567aa5128ec7e34fc844e94eefb7`
+- 기준일: 2026-04-26
+- 기준 main 커밋: `3542a82c539805cc5c67556447339cba79f1280f`
 
 | 구분 | 상태 | 기준/대상 | 현재 기록 |
 |------|------|-----------|-----------|
-| 문서 TF | 완료 | PR #8, PR #10, PR #32, PR #33 | project 운영 문서, 검증 기준, public-first 정책, Tree/Memory/Visibility/Delete QA matrix main 반영 완료 |
-| Runtime routing truth | 진행 중 | production/test1/test2/test3 route matrix | `/api/trees`, `/api/memories`는 Cloudflare Pages Functions → Modal 경로로 실측. Netlify Functions 호출 흔적 없음. Netlify legacy deprecation 문서 정리 진행 중 |
-| UI TF | 완료 | PR #9 `ui: polish public search and detail copy` | main 병합 완료 (Commit: `d5eee446`). production 검증 완료. UI TF 종료 승인 |
+| 문서 TF | 완료 | PR #8, PR #10, PR #32, PR #33, PR #50 | project 운영 문서, 검증 기준, public-first 정책, Tree/Memory/Visibility/Delete QA matrix, UI verification environment rules main 반영 완료 |
+| Runtime routing truth | 진행 중 | production/test slot route matrix | `/api/trees`, `/api/memories`는 Cloudflare Pages Functions → Modal 경로로 실측. Netlify Functions 호출 흔적 없음. Netlify legacy deprecation 문서 정리 진행 중 |
+| Public layout UI | 완료 | PR #49 `ui(layout): align landing browse rails` | main 병합 완료. production verification PASS. Merge SHA: `dfb158a843932edeaaf7c859d0fa3e2d06c9be08` |
+| UI verification rules | 완료 | PR #50 `docs(project): clarify UI verification environment rules` | main 병합 완료. main HEAD: `3542a82c539805cc5c67556447339cba79f1280f` |
+| Typography / accent hierarchy | 진행 중 | PR #51 `ui(style): align typography accent hierarchy` | open. test1 배포 트리거 완료. Gemini Local Verifier test1 검증 대기. PR #51 파일 수정 금지 |
 | 기능 TF | 완료 | `feature/search-growing-trees-api` | main과 동일 상태 (Identical). PR 생성 불필요. `/api/community/growing-trees` 운영 quick check 통과. 기능 TF 종료 |
-| SVG Tree Prototype | 진행 중 | PR #7 `experiment: SVG tree prototype` | open / draft. merged 아님. 정식 기능 아님. navigation 연결 금지. 최신 main 반영 가능성 확인 필요 |
+| SVG Tree Prototype | 진행 중 | PR #7 `experiment: SVG tree prototype` | open / draft. 보존 대상. merged 아님. 정식 기능 아님. close 금지. navigation 연결 금지 |
 
 ---
 
@@ -48,6 +50,10 @@
 
 | 작업 | 상태 | 메모 |
 |------|------|------|
+| PR2 typography/accent 검증 | 진행 중 | PR #51 test1 검증 대기. Gemini Local Verifier 확인 후 merge 판단 |
+| PR3 button/badge/chip | 대기 | PR #51 검증/병합 후 별도 UI PR로 진행 |
+| PR4 intro hero visual/whitespace | 대기 | PR3 이후 별도 UI PR로 진행 |
+| PR5 browse card/hub panel | 대기 | PR4 이후 별도 UI PR로 진행 |
 | Netlify Functions legacy deprecation 문서 PR | 진행 중 | active runtime truth 고정. 코드 이동/삭제 없음 |
 | Active Cloudflare/Modal public-first backend 설계 | 대기 | Netlify legacy deprecation 정리 후 별도 브랜치 필요 |
 | PR #36 / #38 계열 backend 방향 재정렬 | 대기 | 신규 backend policy는 `netlify/functions/*`가 아닌 active Cloudflare/Modal runtime 대상으로 재설계 필요 |
@@ -59,6 +65,10 @@
 
 ## 작업 이력 (Task History)
 
+- 2026-04-26: PR #50 `docs(project): clarify UI verification environment rules` main 병합 완료. main HEAD `3542a82c539805cc5c67556447339cba79f1280f`
+- 2026-04-26: PR #49 `ui(layout): align landing browse rails` main 병합 및 production verification PASS. Merge SHA `dfb158a843932edeaaf7c859d0fa3e2d06c9be08`
+- 2026-04-26: PR #51 `ui(style): align typography accent hierarchy` open. test1 배포 트리거 완료, Gemini Local Verifier test1 검증 대기
+- 2026-04-26: PR #7 `experiment: SVG tree prototype` open/draft 상태 보존. close 금지
 - 2026-04-25: production/test1/test2/test3 route matrix 기준 `/api/trees`, `/api/memories` active upstream이 Modal임을 확인. Netlify Functions는 legacy artifact로 정리 필요
 - 2026-04-25: PR #32 public-first + Plus private policy direction 문서 반영 완료
 - 2026-04-25: PR #33 Tree / Memory / Visibility / Delete QA Matrix 문서 반영 완료
