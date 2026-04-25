@@ -43,6 +43,7 @@
 | [FLOW_A_QA_CHECKLIST.md](FLOW_A_QA_CHECKLIST.md) | QA 체크리스트 |
 | [PR_CHECKLIST.md](PR_CHECKLIST.md) | PR 점검 기준 |
 | [QA_CREDENTIALS.txt](QA_CREDENTIALS.txt) | QA 테스트 계정 |
+| [TEST_PREVIEW_SLOTS.md](TEST_PREVIEW_SLOTS.md) | 고정 테스트 Preview 슬롯 운영 기준 |
 | [../migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md](../migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md) | Cloudflare Pages / Modal 전환 문서 |
 
 ## 정책 / 아키텍처 (Architecture)
