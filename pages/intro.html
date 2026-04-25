@@ -17,10 +17,10 @@
 
     .intro-hero {
       display: grid;
-      grid-template-columns: minmax(0, 1.05fr) 300px;
+      grid-template-columns: minmax(0, 1.05fr) minmax(300px, 0.72fr);
       gap: var(--hero-gap);
       align-items: center;
-      padding: 84px var(--page-pad-desktop) 56px;
+      padding: 72px var(--page-pad-desktop) 56px;
       max-width: var(--page-shell-max);
       margin: 0 auto;
       width: 100%;
@@ -85,23 +85,27 @@
 
     .intro-hero-visual {
       position: relative;
-      padding: 20px;
-      border-radius: 28px;
-      background: rgba(255, 255, 255, 0.78);
-      border: 1px solid rgba(144, 73, 81, 0.1);
-      box-shadow: 0 24px 70px rgba(75, 64, 57, 0.1);
-      backdrop-filter: blur(12px);
+      padding: 22px;
+      border-radius: 32px;
+      background:
+        radial-gradient(circle at 30% 20%, rgba(255, 248, 245, 0.92), transparent 52%),
+        rgba(255, 255, 255, 0.82);
+      border: 1px solid rgba(144, 73, 81, 0.09);
+      box-shadow: 0 28px 72px rgba(75, 64, 57, 0.12), 0 0 0 1px rgba(255, 255, 255, 0.62) inset;
+      backdrop-filter: blur(14px);
     }
 
     .intro-tree-scene {
       position: relative;
-      min-height: 264px;
-      border-radius: 22px;
+      min-height: 340px;
+      border-radius: 24px;
       overflow: hidden;
       background:
-        radial-gradient(circle at 50% 10%, rgba(255, 246, 247, 0.95), rgba(255, 255, 255, 0.5) 42%),
-        linear-gradient(180deg, rgba(255, 249, 245, 0.9), rgba(244, 248, 238, 0.96));
-      border: 1px solid rgba(144, 73, 81, 0.08);
+        radial-gradient(circle at 28% 12%, rgba(255, 248, 246, 0.96), transparent 38%),
+        radial-gradient(circle at 80% 22%, rgba(242, 234, 228, 0.72), transparent 28%),
+        linear-gradient(180deg, rgba(255, 249, 245, 0.92), rgba(244, 248, 238, 0.96));
+      border: 1px solid rgba(144, 73, 81, 0.07);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
     }
 
     .intro-tree-stem {
@@ -987,6 +991,18 @@
       flex-wrap: wrap;
     }
 
+    @media (max-width: 1080px) and (min-width: 769px) {
+      .intro-hero {
+        grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.6fr);
+        gap: 28px;
+        padding: 60px var(--page-pad-desktop) 48px;
+      }
+
+      .intro-tree-scene {
+        min-height: 296px;
+      }
+    }
+
     @media (max-width: 768px) {
       .intro-hero {
         grid-template-columns: 1fr;
@@ -994,7 +1010,7 @@
       }
 
       .intro-hero, .intro-section, .cta-section {
-        padding: 64px var(--page-pad-mobile) 36px;
+        padding: 60px var(--page-pad-mobile) 36px;
       }
 
       .intro-hero h1 {
@@ -1003,11 +1019,11 @@
       }
 
       .intro-hero-visual {
-        padding: 14px;
+        padding: 16px;
       }
 
       .intro-tree-scene {
-        min-height: 236px;
+        min-height: 240px;
       }
 
       .intro-hero .lead {
