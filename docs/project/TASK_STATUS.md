@@ -23,20 +23,25 @@
 ## 현재 상태 스냅샷
 
 - 기준일: 2026-04-26
-- 기준 main 커밋: `1f1c0758d9307e8e090386d21b21a265e5fe257b`
+- 기준 main 커밋: `7e221b8829500c26a7542481bea1585d916fb14a`
 
 | 구분 | 상태 | 기준/대상 | 현재 기록 |
 |------|------|-----------|-----------|
-| 문서 TF | 완료 | PR #8, PR #10, PR #32, PR #33, PR #50, PR #52, PR #55 | project 운영 문서, 검증 기준, public-first 정책, Tree/Memory/Visibility/Delete QA matrix, UI verification environment rules, test preview slot branch rules, prototype/reference preservation policy main 반영 완료 |
+| 문서 TF | 완료 | PR #8, PR #10, PR #32, PR #33, PR #50, PR #52, PR #54, PR #55, PR #56, PR #57, PR #58 | project 운영 문서, 검증 기준, public-first 정책, Tree/Memory/Visibility/Delete QA matrix, UI verification environment rules, test preview slot branch rules, TASK_STATUS, prototype/reference preservation policy, known CI/E2E blockers, UI polish roadmap, verification warning catalog main 반영 완료 |
 | Runtime routing truth | 진행 중 | production/test slot route matrix | `/api/trees`, `/api/memories`는 Cloudflare Pages Functions → Modal 경로로 실측. Netlify Functions 호출 흔적 없음. Netlify legacy deprecation 문서 정리 진행 중 |
-| Public layout UI | 완료 | PR #49 `ui(layout): align landing browse rails` | main 병합 완료. production verification PASS. Merge SHA: `dfb158a843932edeaaf7c859d0fa3e2d06c9be08` |
-| UI verification rules | 완료 | PR #50 `docs(project): clarify UI verification environment rules` | main 병합 완료. main HEAD: `3542a82c539805cc5c67556447339cba79f1280f` |
-| Test preview slot rules | 완료 | PR #52 `docs(ops): test preview slot branch rules` | merged / closed. Changed file: `docs/ops/TEST_PREVIEW_SLOTS.md` only. Merge SHA: `bbc988041e248d171a8560419dc739394ba4e23f` |
-| Local generated artifact ignore | 완료 | PR #53 `chore: ignore local generated artifacts` | repaired. merged / closed. Changed file: `.gitignore` only. Merge SHA: `5f8d185cde4b1d46df75a8c4382fd71a4a671ca8`. prototype/reference 보존 대상 침범 없음 |
-| Prototype reference preservation | 완료 | PR #55 `docs(design): preserve prototype reference folders` | merged / closed. docs-only. Changed files: `docs/design/PROTOTYPE_REFERENCE_POLICY.md`, `docs/design/design_index.md`, `docs/doc_index.md`. PR #7 보존 정책 문서화 완료. Merge SHA: `1f1c0758d9307e8e090386d21b21a265e5fe257b` |
-| Typography / accent hierarchy | 진행 중 | PR #51 `ui(style): align typography accent hierarchy` | open. test1 배포 트리거 완료. Gemini Local Verifier test1 검증 대기. merge 전 test1 visual verification 필요. PR #51 파일 수정 금지 |
+| Public layout UI | 완료 | PR #49 `ui(layout): align landing browse rails` | layout rail / container / spacing 통일 완료. production verification PASS. Merge SHA: `dfb158a843932edeaaf7c859d0fa3e2d06c9be08` |
+| Typography / accent hierarchy | 완료 | PR #51 `ui(style): align typography accent hierarchy` | typography / accent hierarchy 통일 완료. production verification PASS. Merge SHA: `99af8a69fbe1cf61ac23017b938027164a213b3a` |
+| UI verification rules | 완료 | PR #50 `docs(project): clarify UI verification environment rules` | UI verification environment rules 문서화 완료 |
+| Test preview slot rules | 완료 | PR #52 `docs(ops): test preview slot branch rules` | test preview slot branch rules 문서화 완료. Merge SHA: `bbc988041e248d171a8560419dc739394ba4e23f` |
+| Local generated artifact ignore | 완료 | PR #53 `chore: ignore local generated artifacts` | local generated artifacts `.gitignore` 정리 완료. Merge SHA: `5f8d185cde4b1d46df75a8c4382fd71a4a671ca8`. prototype/reference 보존 대상 침범 없음 |
+| Task status tracking | 완료 | PR #54 `docs(project): update task status after PR49 and PR50` | TASK_STATUS 이전 최신화 완료. Merge SHA: `0a5386eea7e6c7921164c956e8946f06ca25fe37` |
+| Prototype reference preservation | 완료 | PR #55 `docs(design): preserve prototype reference folders` | prototype/reference preservation policy 문서화 완료. PR #7 보존 정책 문서화 완료. Merge SHA: `1f1c0758d9307e8e090386d21b21a265e5fe257b` |
+| Known CI/E2E blockers | 완료 | PR #56 `docs(ops): document known CI and E2E blockers` | known CI/E2E blockers 문서화 완료. Merge SHA: `c67956a23f61ea26dfb47e64813d340d960985ba` |
+| UI polish roadmap | 완료 | PR #57 `docs(project): add UI polish roadmap after PR51` | UI polish roadmap after PR51 문서화 완료. Merge SHA: `aaf31fe72298ddc510db29728ca8c35b2a808a5e` |
+| Verification warning catalog | 완료 | PR #58 `docs(project): add verification warning catalog` | verification warning catalog 문서화 완료. Merge SHA: `7e221b8829500c26a7542481bea1585d916fb14a` |
+| PR3 button / badge / chip tone | 진행 중 | 예정 브랜치 `ui/button-badge-chip-tone-unification` | PR3 준비 중. Home 기준 유지. button / badge / chip tone unification만 대상으로 함. merge 전 test/preview 검증 필요. layout width/spacing, JS/API, card/hub panel, intro hero visual 수정 금지 |
 | 기능 TF | 완료 | `feature/search-growing-trees-api` | main과 동일 상태 (Identical). PR 생성 불필요. `/api/community/growing-trees` 운영 quick check 통과. 기능 TF 종료 |
-| SVG Tree Prototype | 진행 중 | PR #7 `experiment: SVG tree prototype` | open / draft. prototype/reference 보존 대상. merged 아님. 정식 기능 아님. close 금지. branch 삭제 금지. navigation 연결 금지 |
+| SVG Tree Prototype | 진행 중 | PR #7 `experiment: SVG tree prototype` | open / draft. SVG tree prototype. prototype/reference 보존 대상. merged 아님. 정식 기능 아님. close 금지. branch 삭제 금지. navigation 연결 금지 |
 
 ---
 
@@ -53,8 +58,7 @@
 
 | 작업 | 상태 | 메모 |
 |------|------|------|
-| PR2 typography/accent 검증 | 진행 중 | PR #51 test1 검증 대기. Gemini Local Verifier 확인 후 merge 판단 |
-| PR3 button/badge/chip | 대기 | PR #51 검증/병합 후 별도 UI PR로 진행 |
+| PR3 button/badge/chip tone unification | 진행 중 | 예정 브랜치 `ui/button-badge-chip-tone-unification`. Home 기준 유지. merge 전 test/preview 검증 필요. layout width/spacing, JS/API, card/hub panel, intro hero visual 수정 금지 |
 | PR4 intro hero visual/whitespace | 대기 | PR3 이후 별도 UI PR로 진행 |
 | PR5 browse card/hub panel | 대기 | PR4 이후 별도 UI PR로 진행 |
 | Netlify Functions legacy deprecation 문서 PR | 진행 중 | active runtime truth 고정. 코드 이동/삭제 없음 |
@@ -68,13 +72,18 @@
 
 ## 작업 이력 (Task History)
 
+- 2026-04-26: PR #58 `docs(project): add verification warning catalog` merged / closed. Verification warning catalog 문서화 완료. Merge SHA `7e221b8829500c26a7542481bea1585d916fb14a`
+- 2026-04-26: PR #57 `docs(project): add UI polish roadmap after PR51` merged / closed. UI polish roadmap after PR51 문서화 완료. Merge SHA `aaf31fe72298ddc510db29728ca8c35b2a808a5e`
+- 2026-04-26: PR #56 `docs(ops): document known CI and E2E blockers` merged / closed. Known CI/E2E blockers 문서화 완료. Merge SHA `c67956a23f61ea26dfb47e64813d340d960985ba`
 - 2026-04-26: PR #55 `docs(design): preserve prototype reference folders` merged / closed. docs-only. PR #7 보존 정책 문서화 완료. Merge SHA `1f1c0758d9307e8e090386d21b21a265e5fe257b`
+- 2026-04-26: PR #54 `docs(project): update task status after PR49 and PR50` merged / closed. TASK_STATUS 이전 최신화 완료. Merge SHA `0a5386eea7e6c7921164c956e8946f06ca25fe37`
 - 2026-04-26: PR #53 `chore: ignore local generated artifacts` repaired 후 merged / closed. Changed file `.gitignore` only. Merge SHA `5f8d185cde4b1d46df75a8c4382fd71a4a671ca8`. prototype/reference 보존 대상 침범 없음
 - 2026-04-26: PR #52 `docs(ops): test preview slot branch rules` merged / closed. Changed file `docs/ops/TEST_PREVIEW_SLOTS.md` only. Merge SHA `bbc988041e248d171a8560419dc739394ba4e23f`
-- 2026-04-26: PR #50 `docs(project): clarify UI verification environment rules` main 병합 완료. main HEAD `3542a82c539805cc5c67556447339cba79f1280f`
+- 2026-04-26: PR #51 `ui(style): align typography accent hierarchy` merged / closed. typography / accent hierarchy 통일 완료. production verification PASS. Merge SHA `99af8a69fbe1cf61ac23017b938027164a213b3a`
+- 2026-04-26: PR #50 `docs(project): clarify UI verification environment rules` main 병합 완료. UI verification environment rules 문서화 완료
 - 2026-04-26: PR #49 `ui(layout): align landing browse rails` main 병합 및 production verification PASS. Merge SHA `dfb158a843932edeaaf7c859d0fa3e2d06c9be08`
-- 2026-04-26: PR #51 `ui(style): align typography accent hierarchy` open. test1 배포 트리거 완료, Gemini Local Verifier test1 검증 대기. merge 전 test1 visual verification 필요
-- 2026-04-26: PR #7 `experiment: SVG tree prototype` open/draft 상태 보존. close 금지, branch 삭제 금지
+- 2026-04-26: PR3 button / badge / chip tone unification 준비 중. 예정 브랜치 `ui/button-badge-chip-tone-unification`. merge 전 test/preview 검증 필요
+- 2026-04-26: PR #7 `experiment: SVG tree prototype` open/draft 상태 보존. close 금지, branch 삭제 금지, navigation 연결 금지
 - 2026-04-25: production/test1/test2/test3 route matrix 기준 `/api/trees`, `/api/memories` active upstream이 Modal임을 확인. Netlify Functions는 legacy artifact로 정리 필요
 - 2026-04-25: PR #32 public-first + Plus private policy direction 문서 반영 완료
 - 2026-04-25: PR #33 Tree / Memory / Visibility / Delete QA Matrix 문서 반영 완료
