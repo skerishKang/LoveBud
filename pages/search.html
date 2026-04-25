@@ -7,7 +7,7 @@
     <link rel="icon" href="/assets/favicon/favicon.svg" type="image/svg+xml">
     <link rel="icon" href="/favicon.ico" sizes="32x32">
     <link rel="stylesheet" href="../css/global.css?v=20260415-10">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" />
     <style>
         .search-container {
             max-width: var(--page-work-max);
@@ -16,6 +16,27 @@
             display: grid;
             grid-template-columns: minmax(0, 1.62fr) 420px;
             gap: 34px;
+        }
+
+        .search-container .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 1em;
+            min-width: 1em;
+            overflow: hidden;
         }
 
         .browse-curation-shell {
@@ -196,6 +217,63 @@
             min-width: 0;
         }
 
+        .search-skeleton-card {
+            pointer-events: none;
+            cursor: default;
+            box-shadow: 0 16px 32px rgba(75, 64, 57, 0.035);
+        }
+
+        .search-skeleton-card::before {
+            opacity: 0;
+        }
+
+        .search-skeleton-block,
+        .search-skeleton-line,
+        .search-skeleton-chip {
+            display: block;
+            border-radius: 999px;
+            background: linear-gradient(90deg, rgba(144,73,81,0.07), rgba(255,255,255,0.72), rgba(122,139,110,0.07));
+            background-size: 220% 100%;
+            animation: searchSkeletonPulse 1.35s ease-in-out infinite;
+        }
+
+        .search-skeleton-block {
+            border-radius: 1.35rem;
+            width: 100%;
+        }
+
+        .search-skeleton-title {
+            width: 72%;
+            height: 18px;
+        }
+
+        .search-skeleton-copy {
+            width: 92%;
+            height: 13px;
+            opacity: 0.75;
+        }
+
+        .search-skeleton-chip {
+            width: 96px;
+            height: 28px;
+        }
+
+        .search-skeleton-count {
+            width: 82px;
+            height: 13px;
+        }
+
+        @keyframes searchSkeletonPulse {
+            0%, 100% { opacity: 0.58; }
+            50% { opacity: 1; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .search-skeleton-block,
+            .search-skeleton-line,
+            .search-skeleton-chip { animation: none; }
+        }
+
         /* Growing Trees Section */
         .growing-trees-section {
             margin-top: 50px;
@@ -300,6 +378,7 @@
             background:
                 radial-gradient(circle at 20% 15%, rgba(255, 245, 246, 0.95), rgba(255,255,255,0.18) 46%),
                 linear-gradient(135deg, rgba(144, 73, 81, 0.13), rgba(122, 139, 110, 0.14));
+            isolation: isolate;
         }
 
         .tree-card-media img {
@@ -325,8 +404,11 @@
             align-items: center;
             justify-content: center;
             color: var(--primary);
-            font-size: 42px;
+            font-size: 34px;
             font-weight: 900;
+            background:
+                radial-gradient(circle at 18% 16%, rgba(255, 245, 246, 0.96), rgba(255,255,255,0.18) 48%),
+                linear-gradient(135deg, rgba(144, 73, 81, 0.11), rgba(122, 139, 110, 0.13));
         }
 
         .tree-card-media-fallback[hidden] {
@@ -672,7 +754,39 @@
             </div>
 
             <div id="resultsList">
-                <!-- Populated by JS -->
+                <div class="tree-card tree-card-featured search-skeleton-card" aria-hidden="true">
+                    <div class="tree-card-media search-skeleton-block" style="min-height:210px;"></div>
+                    <div class="tree-card-body">
+                        <div class="search-skeleton-line search-skeleton-title"></div>
+                        <div class="search-skeleton-line search-skeleton-copy"></div>
+                        <div class="tree-meta-row">
+                            <div class="tree-meta-left"><span class="tree-meta-chip search-skeleton-chip"></span></div>
+                            <div class="tree-meta-right"><span class="search-skeleton-line search-skeleton-count"></span></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="tree-card search-skeleton-card" aria-hidden="true">
+                    <div class="tree-card-media search-skeleton-block"></div>
+                    <div class="tree-card-body">
+                        <div class="search-skeleton-line search-skeleton-title"></div>
+                        <div class="search-skeleton-line search-skeleton-copy"></div>
+                        <div class="tree-meta-row">
+                            <div class="tree-meta-left"><span class="tree-meta-chip search-skeleton-chip"></span></div>
+                            <div class="tree-meta-right"><span class="search-skeleton-line search-skeleton-count"></span></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="tree-card search-skeleton-card" aria-hidden="true">
+                    <div class="tree-card-media search-skeleton-block"></div>
+                    <div class="tree-card-body">
+                        <div class="search-skeleton-line search-skeleton-title"></div>
+                        <div class="search-skeleton-line search-skeleton-copy"></div>
+                        <div class="tree-meta-row">
+                            <div class="tree-meta-left"><span class="tree-meta-chip search-skeleton-chip"></span></div>
+                            <div class="tree-meta-right"><span class="search-skeleton-line search-skeleton-count"></span></div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- 새로 자라는 러브트리 섹션 -->
