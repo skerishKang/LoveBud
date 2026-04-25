@@ -50,6 +50,10 @@ UI polish 단계 분리, PR3/PR4/PR5 범위 판단이 필요하면 아래를 추
 
 - `./design/UI_POLISH_ROADMAP.md`
 
+PR3 button / badge / chip tone 기준 판단이 필요하면 아래를 추가로 읽습니다.
+
+- `./design/BUTTON_BADGE_CHIP_BASELINE.md`
+
 운영/배포 판단이 필요하면 아래를 추가로 읽습니다.
 
 - `./ops/OPERATIONS.md`
@@ -87,6 +91,7 @@ UI polish 단계 분리, PR3/PR4/PR5 범위 판단이 필요하면 아래를 추
 - **index**: [design_index.md](./design/design_index.md)
 - [UI_DESIGN_SYSTEM.md](./design/UI_DESIGN_SYSTEM.md) - UI 구조 / 감정 위계 / 컴포넌트 규칙 source of truth
 - [UI_POLISH_ROADMAP.md](./design/UI_POLISH_ROADMAP.md) - PR #49, PR #51 이후 public UI polish 후속 PR3/PR4/PR5 범위 분리 기준
+- [BUTTON_BADGE_CHIP_BASELINE.md](./design/BUTTON_BADGE_CHIP_BASELINE.md) - PR3 button / badge / chip tone 통일 기준
 - [PROTOTYPE_REFERENCE_POLICY.md](./design/PROTOTYPE_REFERENCE_POLICY.md) - prototype/reference 폴더 보존 정책
 - [prompts/image-generation-prompts.md](./design/prompts/image-generation-prompts.md) - 이미지 생성 프롬프트 모음
 - [prompts/home-hero-slide-prompts.txt](./design/prompts/home-hero-slide-prompts.txt) - 홈 히어로 슬라이드 프롬프트
