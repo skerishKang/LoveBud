@@ -105,13 +105,25 @@
 
     if (!response.ok) {
       let errorMsg = `HTTP Error ${response.status}`;
+      let errorData = null;
       try {
-        const errorData = await response.json();
-        errorMsg = errorData.error || errorMsg;
+        errorData = await response.json();
+        if (errorData) {
+          errorMsg = errorData.error || errorMsg;
+        }
       } catch (e) {}
+
       const error = new Error(errorMsg);
       error.status = response.status;
       error.statusCode = response.status;
+
+      if (errorData) {
+        error.data = errorData;
+        if (errorData.code) {
+          error.code = errorData.code;
+        }
+      }
+
       throw error;
     }
 
