@@ -65,6 +65,7 @@
 - **index**: [engineering_index.md](./engineering/engineering_index.md)
 - [API_CONTRACT.md](./engineering/API_CONTRACT.md) - flat camelCase API 계약
 - [BROWSE_FILTER_VS_PUBLICATION_GUARD.md](./engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md) - browse filter / publication guard 개념 분리
+- [SUPABASE_FREE_POC_PLAN.md](./engineering/SUPABASE_FREE_POC_PLAN.md) - Supabase Free PoC 기반 장기 backend 구조 단순화 검증 계획
 - [REVIEW_GUARDRAILS.md](./engineering/REVIEW_GUARDRAILS.md) - 반복 false positive 방지 규칙
 - [RECENT_REFACTORING.md](./engineering/RECENT_REFACTORING.md) - 최근 리팩터링 기록
 
