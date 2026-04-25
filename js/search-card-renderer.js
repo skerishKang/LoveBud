@@ -1,6 +1,6 @@
 /**
  * LoveBud Search Card Renderer
- * v20260422-3
+ * v20260422-4
  * 
  * Rendering layer: tree cards, empty states.
  * DOM-agnostic - returns HTML strings.
@@ -249,13 +249,34 @@
         `;
     }
 
-    function renderLoading() {
+    function renderSkeletonCard(index) {
         return `
-            <div style="grid-column:1 / -1;text-align: center; padding: 80px 24px; color: var(--on-surface-variant);">
-                <span class="material-symbols-outlined" style="font-size: 48px; opacity: 0.4; margin-bottom: 16px; display: block; animation: spin 1s linear infinite;">sync</span>
-                <p style="font-size: 1.1rem; font-weight: 500;">공개 러브트리를 불러오는 중...</p>
+            <div class="tree-card search-skeleton-card" aria-hidden="true" style="animation-delay:${index * 0.04}s;pointer-events:none;">
+                <div class="tree-card-media search-skeleton-block" style="min-height:${index === 0 ? 210 : 182}px;"></div>
+                <div class="tree-card-body">
+                    <div class="search-skeleton-line search-skeleton-title"></div>
+                    <div class="search-skeleton-line search-skeleton-copy"></div>
+                    <div class="tree-meta-row">
+                        <div class="tree-meta-left">
+                            <span class="tree-meta-chip search-skeleton-chip"></span>
+                        </div>
+                        <div class="tree-meta-right">
+                            <span class="search-skeleton-line search-skeleton-count"></span>
+                        </div>
+                    </div>
+                </div>
             </div>
         `;
+    }
+
+    function renderSkeletonGrid(options = {}) {
+        _addAnimations();
+        const count = Math.max(1, Math.min(Number(options.count || 6), 8));
+        return Array.from({ length: count }, (_, index) => renderSkeletonCard(index)).join('');
+    }
+
+    function renderLoading(options = {}) {
+        return renderSkeletonGrid(options);
     }
 
     function renderResults(trees, options = {}) {
@@ -288,7 +309,29 @@
         style.textContent = `
             @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
             @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+            @keyframes searchSkeletonPulse { 0%, 100% { opacity: 0.58; } 50% { opacity: 1; } }
             .results-fade-in { animation: fadeIn 0.3s ease-out; }
+            .search-skeleton-card { cursor: default; box-shadow: 0 16px 32px rgba(75, 64, 57, 0.035); }
+            .search-skeleton-card::before { opacity: 0; }
+            .search-skeleton-block,
+            .search-skeleton-line,
+            .search-skeleton-chip {
+                display: block;
+                border-radius: 999px;
+                background: linear-gradient(90deg, rgba(144,73,81,0.07), rgba(255,255,255,0.72), rgba(122,139,110,0.07));
+                background-size: 220% 100%;
+                animation: searchSkeletonPulse 1.35s ease-in-out infinite;
+            }
+            .search-skeleton-block { border-radius: 1.35rem; width: 100%; }
+            .search-skeleton-title { width: 72%; height: 18px; }
+            .search-skeleton-copy { width: 92%; height: 13px; opacity: 0.75; }
+            .search-skeleton-chip { width: 96px; height: 28px; }
+            .search-skeleton-count { width: 82px; height: 13px; }
+            @media (prefers-reduced-motion: reduce) {
+                .search-skeleton-block,
+                .search-skeleton-line,
+                .search-skeleton-chip { animation: none; }
+            }
         `;
         document.head.appendChild(style);
     }
@@ -298,6 +341,7 @@
         renderTreeCard: renderTreeCard,
         renderResults: renderResults,
         renderLoading: renderLoading,
+        renderSkeletonGrid: renderSkeletonGrid,
         renderNoTreesState: renderNoTreesState,
         renderEmptySearchState: renderEmptySearchState,
         renderDemoBadge: renderDemoBadge,
@@ -312,5 +356,5 @@
         }
     };
 
-     console.log('[LoveBudSearchCardRenderer] Search card renderer loaded v20260422-3');
+     console.log('[LoveBudSearchCardRenderer] Search card renderer loaded v20260422-4');
  })();

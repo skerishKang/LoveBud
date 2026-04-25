@@ -112,8 +112,8 @@
       en: 'Connected Feelings'
     },
     'search.previewNoEmotionTags': {
-      ko: '아직 이어진 감정은 없어요.',
-      en: 'No saved emotions yet.'
+      ko: '감정의 결이 이곳에 놓여요.',
+      en: 'The feeling tone appears here.'
     },
     'search.previewTimelineRecentUpdate': {
       ko: '최근에 이어진 감정',
