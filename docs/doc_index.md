@@ -48,7 +48,6 @@
 - [USER_FLOW.md](./product/USER_FLOW.md) - 사용자 흐름
 - [DATA_NAMING_RULE.md](./product/DATA_NAMING_RULE.md) - 데이터 명명 규칙
 - [READONLY_SHARE_SCOPE.md](./product/READONLY_SHARE_SCOPE.md) - 읽기 전용 공유 범위
-- [VISIBILITY_AND_PRIVATE_STORAGE_POLICY_REVIEW.md](./product/VISIBILITY_AND_PRIVATE_STORAGE_POLICY_REVIEW.md) - visibility/private storage 정책 검토
 
 ## design 문서군
 
@@ -81,6 +80,7 @@
 - [DOC_WORKFLOW.md](./ops/DOC_WORKFLOW.md) - 문서 작업 흐름
 - [SKILL_REGISTRY.md](./ops/SKILL_REGISTRY.md) - 스킬 레지스트리
 - [AI_REQUEST_PATTERNS.md](./ops/AI_REQUEST_PATTERNS.md) - 요청 패턴 해석
+- [TEST_PREVIEW_SLOTS.md](./ops/TEST_PREVIEW_SLOTS.md) - 고정 테스트 Preview 슬롯 운영 기준
 - [EDITOR_ARCHITECTURE.md](./ops/EDITOR_ARCHITECTURE.md) - editor 구조 설명
 
 ## migration 문서군
