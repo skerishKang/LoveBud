@@ -49,6 +49,19 @@
     /* Typography Constants */
     --font-heading: 'Outfit', sans-serif;
     --font-body: 'Noto Sans KR', sans-serif;
+
+    /* Typography / Accent Tokens (PR2) */
+    --hero-title-size: clamp(3.55rem, 6vw, 5.4rem);
+    --hero-title-line-height: 0.98;
+    --hero-title-letter-spacing: -0.055em;
+    --section-title-size: clamp(2.9rem, 4.6vw, 4rem);
+    --hero-accent-color: var(--primary-vibrant);
+    --hero-warm-color: var(--primary);
+    --hero-soft-color: var(--on-surface-variant);
+    --eyebrow-color: var(--primary);
+    --eyebrow-line-color: rgba(144, 73, 81, 0.42);
+    --body-muted-color: var(--on-surface-variant);
+    --body-note-color: var(--on-surface-note);
 }
 
 * {
@@ -894,6 +907,78 @@ html:not(.material-symbols-ready) .mobile-nav-toggle .material-symbols-outlined 
 
 html.material-symbols-ready .material-symbols-outlined {
   opacity: 1;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   UI PR2 Typography Accent Unification
+   Home remains the visual source of truth. These overrides align
+   Intro and Browse title/accent hierarchy without changing layout.
+   ───────────────────────────────────────────────────────────── */
+
+body .intro-hero-eyebrow,
+body .search-panel-eyebrow {
+    gap: 8px;
+    min-height: 24px;
+    padding: 0;
+    border-radius: 0;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    color: var(--eyebrow-color);
+    font-size: 0.83rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+body .intro-hero-eyebrow::before,
+body .search-panel-eyebrow::before {
+    content: "";
+    width: 28px;
+    height: 1px;
+    flex: 0 0 auto;
+    background: var(--eyebrow-line-color);
+}
+
+body .intro-hero h1 {
+    font-size: var(--hero-title-size);
+    line-height: var(--hero-title-line-height);
+    letter-spacing: var(--hero-title-letter-spacing);
+}
+
+body .intro-hero h1 .title-line:nth-child(1) {
+    color: var(--hero-soft-color);
+    font-weight: 700;
+    opacity: 1;
+}
+
+body .intro-hero h1 .title-accent {
+    color: var(--hero-warm-color);
+    font-weight: 780;
+    letter-spacing: inherit;
+}
+
+body .intro-hero h1 .title-line:nth-child(3) {
+    color: var(--hero-accent-color);
+    font-weight: 900;
+}
+
+body .intro-hero .lead {
+    font-size: 1.05rem;
+    line-height: 1.78;
+    color: var(--body-muted-color);
+}
+
+body .search-panel-header h2 {
+    font-size: var(--section-title-size);
+    line-height: 1.02;
+    letter-spacing: -0.045em;
+    color: var(--on-surface);
+}
+
+body .search-panel-header p {
+    color: var(--body-muted-color);
+    font-size: 1rem;
+    line-height: 1.72;
 }
 
 /* -----------------------------------------------------------------
