@@ -54,6 +54,7 @@ UI polish 단계 분리, PR3/PR4/PR5 범위 판단이 필요하면 아래를 추
 
 - `./ops/OPERATIONS.md`
 - `./ops/KNOWN_CI_E2E_BLOCKERS.md`
+- `./ops/BRANCH_CLEANUP_PLAN.md`
 - `./migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md`
 - `./engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md`
 - `./engineering/REVIEW_GUARDRAILS.md`
@@ -113,6 +114,7 @@ UI polish 단계 분리, PR3/PR4/PR5 범위 판단이 필요하면 아래를 추
 - [SKILL_REGISTRY.md](./ops/SKILL_REGISTRY.md) - 스킬 레지스트리
 - [AI_REQUEST_PATTERNS.md](./ops/AI_REQUEST_PATTERNS.md) - 요청 패턴 해석
 - [KNOWN_CI_E2E_BLOCKERS.md](./ops/KNOWN_CI_E2E_BLOCKERS.md) - 반복 CI/E2E blocker 원인 분리 및 exception merge 판단 기준
+- [BRANCH_CLEANUP_PLAN.md](./ops/BRANCH_CLEANUP_PLAN.md) - PR #49~#58 이후 merged/stale branch cleanup 후보와 보존 branch 분류 기준
 - [TEST_PREVIEW_SLOTS.md](./ops/TEST_PREVIEW_SLOTS.md) - 고정 테스트 Preview 슬롯 운영 기준
 - [EDITOR_ARCHITECTURE.md](./ops/EDITOR_ARCHITECTURE.md) - editor 구조 설명
 
