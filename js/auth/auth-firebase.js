@@ -96,6 +96,11 @@
     return false;
   }
 
+  function isProtectedRoute() {
+    var path = window.location.pathname || '';
+    return /\/pages\/(my-trees|editor|settings)(?:\.html)?$/.test(path);
+  }
+
   function initOfflineAuth(options) {
     var markAuthReady = options && options.markAuthReady;
     var updateNavUI = options && options.updateNavUI;
@@ -104,7 +109,7 @@
     var resolveAuthBootstrap = options && options.resolveAuthBootstrap;
 
     var cachedUser = typeof getCachedAuthUser === 'function' ? getCachedAuthUser() : null;
-    var user = cachedUser && cachedUser.uid ? cachedUser : null;
+    var user = !isProtectedRoute() && cachedUser && cachedUser.uid ? cachedUser : null;
 
     if (typeof markAuthReady === 'function') {
       markAuthReady();
