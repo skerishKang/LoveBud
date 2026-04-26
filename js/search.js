@@ -242,6 +242,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function restoreStateFromUrl() {
+        console.log('[URL State] Restoring state from URL');
         // Make functions globally available for debugging
         window.readUrlState = readUrlState;
         window.updateUrlState = updateUrlState;
