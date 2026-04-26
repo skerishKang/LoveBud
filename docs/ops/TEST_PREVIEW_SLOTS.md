@@ -3,18 +3,19 @@
 **Status:** Active  
 **Owner:** CTO / Ops Lead  
 **Last Updated:** 2026-04-26  
-**Branch:** docs/preview-slot-verification-rules
+**Branch:** docs/fixed-preview-slots-10-clean
 
 ---
 
 ## 1. Purpose
 
-Fixed Test Preview Slots provide stable Cloudflare Pages domains for verification when a PR Preview is insufficient. They are used to separate product/code failures from preview infrastructure, Firebase Auth domain, login redirect, or test data availability issues.
+Fixed Test Preview Slots provide stable Cloudflare Pages domains for verification when a PR Preview is insufficient or unsuitable. They are used to separate product/code failures from preview infrastructure, Firebase Auth domain, login redirect, API routing, or test data availability issues.
 
 Use this document as the source of truth for:
 
 - Browser / Web / Local role boundaries
 - PR Preview vs fixed slot decision rules
+- fixed slot assignment rules
 - slot access failure and partial verification reporting
 - evidence hygiene for screenshots, console logs, and network logs
 - slot release / restore procedure
@@ -31,24 +32,41 @@ Use this document as the source of truth for:
 | test4 | https://test4.lovebud.pages.dev | QA CRUD disposable data verification |
 | test5 | https://test5.lovebud.pages.dev | spare / fallback slot |
 | test6 | https://test6.lovebud.pages.dev | temporary / exceptional verification slot |
+| test7 | https://test7.lovebud.pages.dev | parallel UI/API verification |
+| test8 | https://test8.lovebud.pages.dev | parallel UI/API verification |
+| test9 | https://test9.lovebud.pages.dev | parallel UI/API verification |
+| test10 | https://test10.lovebud.pages.dev | parallel UI/API verification |
 
 Each slot domain is a fixed Cloudflare Pages domain. Actual assignment must be stated by the CTO or responsible Lead.
+
+Fixed slot assignment must be explicit. Available fixed slots are `test1` through `test10`. Executors must not assume `test1` when a slot is not explicitly assigned.
 
 ---
 
 ## 3. Branch source of truth
 
-### 3.1 test1 default branch
+### 3.1 Default fixed slot branches
 
-`https://test1.lovebud.pages.dev` is operated from the GitHub remote branch below unless CTO explicitly says otherwise.
+The default fixed slot branches are `origin/test1` through `origin/test10`, subject to actual branch existence and CTO assignment.
+
+`https://test1.lovebud.pages.dev` is operated from `origin/test1` unless CTO explicitly says otherwise. The same pattern applies to the other fixed slots:
 
 ```text
 origin/test1
+origin/test2
+origin/test3
+origin/test4
+origin/test5
+origin/test6
+origin/test7
+origin/test8
+origin/test9
+origin/test10
 ```
 
-### 3.2 `origin/slot/test1` is not the default
+### 3.2 `origin/slot/*` branches are not the default
 
-`origin/slot/test1` is not the default update target. Do not update it unless CTO explicitly names it.
+`origin/slot/test1` and similarly named `origin/slot/*` branches are not the default update targets. Do not update them unless CTO explicitly names them.
 
 ### 3.3 Required identifiers
 
@@ -75,7 +93,7 @@ The Browser verifier uses a real browser, DevTools, MCP, Playwright, or equivale
 
 Allowed:
 
-- open PR Preview, branch preview, fixed slot, or production URL
+- open PR Preview, branch preview, fixed slot, or production URL when assigned
 - verify login gate and actual page access
 - check 1440 / 1024 / 375 viewports unless the task narrows scope
 - inspect console and network
@@ -136,18 +154,11 @@ Forbidden:
 
 ## 5. PR Preview vs fixed slot decision rules
 
-### 5.1 Use PR Preview first when all are true
+### 5.1 PR Preview may be used only for preliminary checks
 
-- The page is public or does not require Firebase login.
-- The change is mostly static UI/docs and does not require an account-specific state.
-- Cloudflare PR Preview URL is created for the target head SHA.
-- Browser verifier can reach the actual page and inspect console/network.
+Cloudflare PR Preview URLs are useful for deployment existence checks, static page smoke checks, docs/static metadata observation, and early visual sanity checks when no auth/API/stable-domain dependency exists.
 
-Examples:
-
-- public landing page UI
-- public Browse page visual-only change
-- docs-only preview check, if a rendered page is not required
+A PR Preview must not be treated as final PASS when the required user flow depends on login, Firebase Auth, OAuth redirects, API routing, stable test data, clipboard/deep-link verification for merge approval, or shared app state.
 
 ### 5.2 Use fixed slot when any are true
 
@@ -155,22 +166,27 @@ Examples:
 - Firebase Authorized Domain, OAuth redirect, popup, or redirect-loop risk is expected.
 - PR Preview opens but cannot reach the actual authenticated page.
 - API/runtime route verification needs a stable domain.
-- CTO explicitly assigns `test1` through `test6`.
+- Browse/Search verification depends on API/data load and needs stable domain behavior.
+- Clipboard/deep-link verification is being used for merge approval.
+- CTO explicitly assigns `test1` through `test10`.
+
+PR Preview URLs are not sufficient for final PASS on login/auth/API/domain-sensitive UI flows. Browser/UI verification should use a CTO-assigned fixed test preview slot when stable domain behavior matters.
 
 ### 5.3 Decision matrix
 
 | Work type | Preferred target | Notes |
 |-----------|------------------|-------|
-| Public static UI | PR Preview | fixed slot optional if preview is unavailable |
-| Browse/Search with API/data load | PR Preview or assigned slot | local static server alone is not PASS |
-| Login-required UI | fixed slot | PR Preview may be metadata-only if auth domain blocks access |
+| Public static smoke check | PR Preview or assigned slot | PR Preview can be preliminary only |
+| Browse/Search with API/data load | CTO-assigned fixed slot | local static server alone is not PASS |
+| Clipboard/deep-link merge verification | CTO-assigned fixed slot | record copied URL and opened URL |
+| Login-required UI | CTO-assigned fixed slot | PR Preview may be metadata-only if auth domain blocks access |
 | Runtime/API route smoke | fixed slot or production-equivalent preview | record endpoint, status, and response class |
 | Production regression after merge | production URL | only after merge + deploy complete |
 | Docs-only | GitHub metadata may be enough | rendered site verification not required unless docs are served |
 
 ### 5.4 Fallback rules
 
-- If PR Preview fails due to auth/domain issues, switch to fixed slot.
+- If PR Preview fails due to auth/domain issues, switch to a CTO-assigned fixed slot.
 - If fixed slot also fails, classify the failure instead of blaming code by default.
 - If PR Preview and fixed slot disagree, report both URL, target SHA, deploy status, and observed behavior.
 - If target SHA reflection is unclear, mark PARTIAL.
@@ -185,20 +201,22 @@ The default flow is Local/Ops only.
 git fetch origin
 git rev-parse origin/main
 git rev-parse origin/<pr-head-branch>
-git rev-parse origin/test1
+git rev-parse origin/<assigned-slot>
 
-git checkout test1
+git checkout -B <assigned-slot> origin/<assigned-slot>
 git reset --hard <approved-pr-head-sha>
-git push --force-with-lease origin test1
+git push --force-with-lease origin <assigned-slot>
 ```
 
 Rules:
 
 - `<approved-pr-head-sha>` must come from PR metadata or CTO instruction.
+- Replace `<assigned-slot>` with the CTO-assigned slot branch, for example `test1` or `test7`.
 - Use the assigned slot branch only.
 - Use `--force-with-lease`, never plain `--force`.
 - Do not modify the PR branch.
 - Do not modify `main`.
+- Never update `test1` by habit when CTO assigned a different slot or did not assign any fixed slot.
 
 ---
 
@@ -299,6 +317,10 @@ Slot domains to check as needed:
 - `test4.lovebud.pages.dev`
 - `test5.lovebud.pages.dev`
 - `test6.lovebud.pages.dev`
+- `test7.lovebud.pages.dev`
+- `test8.lovebud.pages.dev`
+- `test9.lovebud.pages.dev`
+- `test10.lovebud.pages.dev`
 
 ---
 
@@ -350,6 +372,11 @@ Cache invalidation requires CTO approval.
 - main direct commit/push/force-push is prohibited.
 - PR branch modification is prohibited during slot verification.
 - plain `--force` is prohibited.
+- Fixed slot assignment must be explicit.
+- Available fixed slots are `test1` through `test10`.
+- PR Preview URLs are not sufficient for final PASS on login/auth/API/domain-sensitive UI flows.
+- A verifier must not silently choose a slot when no slot has been assigned.
+- A verifier must not claim final UI PASS from PR Preview when the CTO requested fixed slot verification.
 - production data write/delete is prohibited unless separately approved.
 - token/password/cookie/raw credential logging is prohibited.
 - PR #7 prototype and prototype/reference/demo folders are not slot cleanup targets.
@@ -368,5 +395,5 @@ Cache invalidation requires CTO approval.
 
 ---
 
-Document version: 1.3  
+Document version: 1.4  
 Next review: CTO approval after next fixed-slot verification cycle
