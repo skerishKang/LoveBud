@@ -260,6 +260,14 @@
     backdrop-filter: blur(4px);
 }
 
+.home-v3-photo-side-top {
+    height: 112px;
+}
+
+.home-v3-photo-side-bottom {
+    height: 108px;
+}
+
 .home-v3-card-label {
     margin-top: 13px;
     color: #5a4843;
