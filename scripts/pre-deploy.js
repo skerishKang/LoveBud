@@ -106,18 +106,38 @@ function verifyI18nKeys() {
   console.log('\n=== i18n key 정합성 검사 ===');
 
   const i18nPath = path.join(ROOT, 'js/i18n.js');
-  if (!fs.existsSync(i18nPath)) {
-    check('i18n.js 존재', false, 'js/i18n.js 없음');
+  const i18nDir = path.join(ROOT, 'js/i18n');
+  
+  const i18nFiles = [];
+  if (fs.existsSync(i18nPath)) i18nFiles.push(i18nPath);
+  if (fs.existsSync(i18nDir)) {
+    const entries = fs.readdirSync(i18nDir);
+    for (const name of entries) {
+      if (name.endsWith('.js')) i18nFiles.push(path.join(i18nDir, name));
+    }
+  }
+
+  if (i18nFiles.length === 0) {
+    check('i18n 파일 존재', false, 'js/i18n.js 또는 js/i18n/*.js 없음');
     return;
   }
-  check('i18n.js 존재', true);
+  check('i18n 파일 스캔', true, `${i18nFiles.length}개 파일`);
 
-  const i18nSrc = fs.readFileSync(i18nPath, 'utf8');
   const dictKeys = new Set();
-  const keyRegex = /^\s*'([^']+)'\s*:\s*\{/gm;
-  let m;
-  while ((m = keyRegex.exec(i18nSrc)) !== null) {
-    dictKeys.add(m[1]);
+  // 정합성 검사용 키 추출 정규식: 'key': { 또는 key: { 구조 매칭
+  // 그룹 1: 싱글 따옴표, 그룹 2: 더블 따옴표, 그룹 3: 따옴표 없음
+  const keyRegex = /(?:'([^']+)'|"([^"]+)"|([a-zA-Z0-9_$]+))\s*:\s*\{/g;
+  
+  for (const file of i18nFiles) {
+    const src = fs.readFileSync(file, 'utf8');
+    let m;
+    while ((m = keyRegex.exec(src)) !== null) {
+      const key = m[1] || m[2] || m[3];
+      // ko, en 등 언어 코드는 딕셔너리 키가 아니므로 제외
+      if (key && key !== 'ko' && key !== 'en' && key !== 'ja' && key !== 'zh') {
+        dictKeys.add(key);
+      }
+    }
   }
   check('dictionary key 수', dictKeys.size > 0, `${dictKeys.size}개`);
 
