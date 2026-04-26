@@ -104,5 +104,9 @@ Object.assign(window.i18nEditor, {
     emptyMemoryNote: { ko: '아직 메모가 남겨지지 않았어요', en: 'No note has been added yet.' },
     noteSaveHint: { ko: 'Ctrl+Enter로 저장할 수 있어요.', en: 'Press Ctrl+Enter to save.' },
     memoryUpdateSaved: { ko: '순간을 수정했어요.', en: 'Moment updated.' },
-    memoryUpdateFailed: { ko: '순간을 수정하지 못했어요.', en: 'Could not update the moment.' }
+    memoryUpdateFailed: { ko: '순간을 수정하지 못했어요.', en: 'Could not update the moment.' },
+    sidebar_flow_summary_empty_short: { ko: '첫 순간 준비 중', en: 'Ready for first moment' },
+    sidebar_canvas_hint_empty: { ko: '첫 순간을 심으면 감정이 여기서 시작돼요.', en: 'Plant the first moment and the feeling begins here.' },
+    editor_add_first_memory_eyebrow: { ko: '첫 순간에서', en: 'From first moment' },
+    editor_empty_tree_hint_short: { ko: '첫 순간이 여기에 시작돼요.', en: 'The first moment starts here.' }
 });
