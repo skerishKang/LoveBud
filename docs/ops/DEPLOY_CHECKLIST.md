@@ -85,12 +85,19 @@ Firebase Console > Authentication > Settings > Authorized Domains
 - UI/layout PR은 Cloudflare PR Preview 또는 지정 test slot URL에서 확인합니다.
 - post-merge 확인은 Cloudflare Pages production URL에서 진행합니다.
 
-### Test slot verification note
+### Test slot verification pointer
 
+세부 판정 기준은 [TEST_PREVIEW_SLOTS.md](TEST_PREVIEW_SLOTS.md)를 따릅니다.
+
+요약:
+- public 화면은 Cloudflare PR Preview를 우선 사용합니다.
 - 로그인 필요 화면(`editor`, `my-trees`, `settings`)은 PR Preview에서 auth/domain 문제가 있으면 fixed test slot을 사용합니다.
 - test1은 기본적으로 UI PR 검증용이며 `origin/test1` 기준으로 운영합니다.
-- test slot URL 접근 불가 또는 DNS 실패는 code failure로 단정하지 말고 slot infra blocker로 분리합니다.
-- Browser / Web / Local 역할 구분, PARTIAL/BLOCKED 판정, release/restore 절차는 [TEST_PREVIEW_SLOTS.md](TEST_PREVIEW_SLOTS.md)를 따릅니다.
+- Browser verifier는 실제 화면/console/network를 확인합니다.
+- Web verifier는 GitHub metadata를 확인하며, browser-only 검증을 수행한 것처럼 보고하지 않습니다.
+- Local/Ops slot executor만 slot branch reset/push를 수행합니다.
+- test slot URL 접근 불가, DNS 실패, target SHA 불명확, login gate까지만 확인된 경우는 PASS가 아니라 BLOCKED 또는 PARTIAL로 분리합니다.
+- screenshot, console, network evidence에는 token/password/cookie/private content 원문을 남기지 않습니다.
 
 ## 5. fallback / legacy 점검
 
@@ -130,6 +137,7 @@ Firebase Console > Authentication > Settings > Authorized Domains
 
 6. **Auth Domain Error**
    - Firebase Console 승인 도메인 확인
+   - PR Preview에서만 재현되면 fixed test slot으로 전환하고 `PARTIAL` 또는 `BLOCKED`로 분리 보고
 
 ## 7. 오래된 설명 제거 기준
 
