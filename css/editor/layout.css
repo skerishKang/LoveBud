@@ -1,0 +1,6 @@
+.editor-layout {
+    display: flex;
+    height: calc(100vh - var(--header-height));
+    position: relative;
+    background: var(--background);
+}
