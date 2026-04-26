@@ -31,8 +31,14 @@ Use this document as the source of truth for:
 | test4 | https://test4.lovebud.pages.dev | QA CRUD disposable data verification |
 | test5 | https://test5.lovebud.pages.dev | spare / fallback slot |
 | test6 | https://test6.lovebud.pages.dev | temporary / exceptional verification slot |
+| test7 | https://test7.lovebud.pages.dev | parallel UI/API verification |
+| test8 | https://test8.lovebud.pages.dev | parallel UI/API verification |
+| test9 | https://test9.lovebud.pages.dev | parallel UI/API verification |
+| test10 | https://test10.lovebud.pages.dev | parallel UI/API verification |
 
 Each slot domain is a fixed Cloudflare Pages domain. Actual assignment must be stated by the CTO or responsible Lead.
+
+Fixed slot assignment must be explicit. Available fixed slots are test1 through test10. Executors must not assume test1 when a slot is not explicitly assigned.
 
 ---
 
@@ -155,7 +161,9 @@ Examples:
 - Firebase Authorized Domain, OAuth redirect, popup, or redirect-loop risk is expected.
 - PR Preview opens but cannot reach the actual authenticated page.
 - API/runtime route verification needs a stable domain.
-- CTO explicitly assigns `test1` through `test6`.
+- CTO explicitly assigns `test1` through `test10`.
+
+PR Preview URLs are not sufficient for final PASS on login/auth/API/domain-sensitive UI flows. Browser/UI verification should use a CTO-assigned fixed test preview slot when stable domain behavior matters.
 
 ### 5.3 Decision matrix
 
@@ -299,6 +307,10 @@ Slot domains to check as needed:
 - `test4.lovebud.pages.dev`
 - `test5.lovebud.pages.dev`
 - `test6.lovebud.pages.dev`
+- `test7.lovebud.pages.dev`
+- `test8.lovebud.pages.dev`
+- `test9.lovebud.pages.dev`
+- `test10.lovebud.pages.dev`
 
 ---
 
