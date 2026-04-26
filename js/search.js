@@ -685,4 +685,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderResults(false);
         syncBrowseHead();
     });
+
+    // Initial URL state restoration after all scripts are loaded
+    restoreStateFromUrl();
 });
