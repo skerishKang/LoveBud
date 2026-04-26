@@ -21,9 +21,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const previewEmotionTags = document.getElementById('previewEmotionTags');
     const searchInput = document.getElementById('searchInput');
     const tagChips = document.querySelectorAll('.tag-chip');
-    const resultsHead = document.querySelector('.browse-results-head');
-    const resultsTitle = resultsHead?.querySelector('h3');
-    const resultsBadge = resultsHead?.querySelector('.browse-results-badge');
+    let resultsHead = document.querySelector('.browse-results-head');
+    let resultsTitle = resultsHead?.querySelector('h3');
+    let resultsBadge = resultsHead?.querySelector('.browse-results-badge');
     const growingSection = document.getElementById('growingTreesSection');
     const growingList = document.getElementById('growingTreesList');
     const mobilePreviewMediaQuery = window.matchMedia('(max-width: 768px)');
@@ -210,6 +210,76 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
+    let isRestoringUrlState = false;
+
+    function readUrlState() {
+        try {
+            const params = new URLSearchParams(window.location.search);
+            return {
+                query: params.get('q') || '',
+                category: params.get('category') || '',
+                sort: params.get('sort') || '',
+                limit: params.get('limit') || ''
+            };
+        } catch {
+            return { query: '', category: '', sort: '', limit: '' };
+        }
+    }
+
+    function updateUrlState() {
+        if (isRestoringUrlState) return;
+        try {
+            const params = new URLSearchParams();
+            if (currentQuery) params.set('q', currentQuery);
+            if (currentCategory && currentCategory !== '전체') params.set('category', currentCategory);
+            if (currentSort && currentSort !== 'latest') params.set('sort', currentSort);
+            if (currentLimit && currentLimit !== 10) params.set('limit', String(currentLimit));
+            const newSearch = params.toString();
+            const newUrl = newSearch ? `${window.location.pathname}?${newSearch}` : window.location.pathname;
+            if (newUrl !== (window.location.pathname + window.location.search)) {
+                history.pushState(null, '', newUrl);
+            }
+        } catch { /* ignore */ }
+    }
+
+    function restoreStateFromUrl() {
+        console.log('[URL State] Restoring state from URL');
+        // Make functions globally available for debugging
+        window.readUrlState = readUrlState;
+        window.updateUrlState = updateUrlState;
+        window.restoreStateFromUrl = restoreStateFromUrl;
+        const { query, category, sort, limit } = readUrlState();
+        isRestoringUrlState = true;
+        if (query) currentQuery = query;
+        if (category) currentCategory = category;
+        if (sort === 'latest' || sort === 'popular') currentSort = sort;
+        if (limit) {
+            const parsedLimit = parseInt(limit, 10);
+            if (!isNaN(parsedLimit) && parsedLimit >= 1 && parsedLimit <= 60) {
+                currentLimit = parsedLimit;
+            }
+        }
+        if (query && searchInput) searchInput.value = query;
+        if (category) {
+            tagChips.forEach(chip => {
+                const chipCategory = chip.dataset.category || chip.textContent.trim();
+                chip.classList.toggle('active', chipCategory === currentCategory);
+            });
+        }
+        if (sort) {
+            if (typeof syncControlsFromState === 'function') {
+                syncControlsFromState();
+            } else {
+                const sortBtn = document.querySelector(`[data-browse-sort="${currentSort}"]`);
+                if (sortBtn) {
+                    document.querySelectorAll('[data-browse-sort]').forEach(b => b.classList.remove('active'));
+                    sortBtn.classList.add('active');
+                }
+            }
+        }
+        isRestoringUrlState = false;
+    }
+
     const syncBrowseHead = () => {
         const copy = SORT_COPY[currentSort] || SORT_COPY.latest;
         if (resultsTitle) {
@@ -230,8 +300,45 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
+    const ensureResultsHead = () => {
+        if (resultsHead) return;
+        resultsHead = document.createElement('div');
+        resultsHead.className = 'browse-results-head';
+
+        const titleDiv = document.createElement('div');
+        resultsTitle = document.createElement('h3');
+        const descP = document.createElement('p');
+
+        resultsBadge = document.createElement('span');
+        resultsBadge.className = 'browse-results-badge';
+
+        titleDiv.appendChild(resultsTitle);
+        titleDiv.appendChild(descP);
+        resultsHead.appendChild(titleDiv);
+        resultsHead.appendChild(resultsBadge);
+
+        if (resultsList && resultsList.parentNode) {
+            resultsList.parentNode.insertBefore(resultsHead, resultsList);
+        }
+    };
+
+    function syncControlsFromState() {
+        const controls = document.getElementById('browseSortControls');
+        if (!controls) return;
+
+        controls.querySelectorAll('[data-browse-sort]').forEach((chip) => {
+            chip.classList.toggle('active', chip.dataset.browseSort === currentSort);
+        });
+
+        const loadMoreBtn = controls.querySelector('#browseLoadMoreBtn');
+        if (loadMoreBtn) {
+            loadMoreBtn.style.display = (currentLimit >= 60) ? 'none' : 'inline-flex';
+        }
+    }
+
     const ensureBrowseControls = () => {
-        if (!resultsHead || document.getElementById('browseSortControls')) return;
+        ensureResultsHead();
+        if (document.getElementById('browseSortControls')) return;
 
         const controls = document.createElement('div');
         controls.id = 'browseSortControls';
@@ -242,12 +349,28 @@ document.addEventListener('DOMContentLoaded', async () => {
         controls.style.gap = '10px';
         controls.innerHTML = `
             <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                <button type="button" class="tag-chip active" data-browse-sort="latest">${getCurrentLocale() === 'en' ? 'Latest' : '최신순'}</button>
+                <button type="button" class="tag-chip" data-browse-sort="latest">${getCurrentLocale() === 'en' ? 'Latest' : '최신순'}</button>
                 <button type="button" class="tag-chip" data-browse-sort="popular">${getCurrentLocale() === 'en' ? 'Popular' : '인기순'}</button>
             </div>
             <button type="button" id="browseLoadMoreBtn" class="tag-chip">${getCurrentLocale() === 'en' ? 'Load more' : '더 보기'}</button>
         `;
-        resultsHead.appendChild(controls);
+
+        let rightGroup = resultsHead.querySelector('.browse-head-right');
+        if (!rightGroup) {
+            rightGroup = document.createElement('div');
+            rightGroup.className = 'browse-head-right';
+            rightGroup.style.display = 'flex';
+            rightGroup.style.flexDirection = 'column';
+            rightGroup.style.alignItems = 'flex-end';
+            rightGroup.style.gap = '12px';
+
+            if (resultsBadge && resultsBadge.parentNode === resultsHead) {
+                resultsHead.removeChild(resultsBadge);
+                rightGroup.appendChild(resultsBadge);
+            }
+            resultsHead.appendChild(rightGroup);
+        }
+        rightGroup.appendChild(controls);
 
         controls.querySelectorAll('[data-browse-sort]').forEach((button) => {
             button.addEventListener('click', async () => {
@@ -255,17 +378,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (nextSort === currentSort) return;
                 currentSort = nextSort;
                 currentLimit = 10;
-                controls.querySelectorAll('[data-browse-sort]').forEach((chip) => {
-                    chip.classList.toggle('active', chip.dataset.browseSort === currentSort);
-                });
+                syncControlsFromState();
+                updateUrlState();
                 await loadPublicTrees({ resetSelection: true });
             });
         });
 
         controls.querySelector('#browseLoadMoreBtn')?.addEventListener('click', async () => {
             currentLimit = Math.min(currentLimit + 10, 60);
+            syncControlsFromState();
+            updateUrlState();
             await loadPublicTrees({ resetSelection: false });
         });
+
+        syncControlsFromState();
     };
 
     const areTreesEffectivelySame = (prevTrees, nextTrees) => {
@@ -580,6 +706,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.onLangChange(() => {
             syncStaticBrowseCopy();
             syncBrowseHead();
+            if (typeof syncControlsFromState === 'function') {
+                syncControlsFromState();
+            }
         });
     }
 
@@ -590,12 +719,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         loadGrowingTrees()
     ]);
 
+    // Apply URL state after initial load
+    restoreStateFromUrl();
+
     let searchInputTimer = null;
     searchInput.addEventListener('input', (e) => {
         currentQuery = e.target.value.trim();
         if (searchInputTimer) clearTimeout(searchInputTimer);
         searchInputTimer = setTimeout(() => {
             renderResults(false);
+            updateUrlState();
         }, 180);
     });
 
@@ -605,6 +738,22 @@ document.addEventListener('DOMContentLoaded', async () => {
             chip.classList.add('active');
             currentCategory = chip.dataset.category || chip.textContent.trim();
             renderResults(false);
+            updateUrlState();
         });
     });
+
+    window.addEventListener('popstate', async () => {
+        const previousSort = currentSort;
+        const previousLimit = currentLimit;
+        restoreStateFromUrl();
+        if (previousSort !== currentSort || previousLimit !== currentLimit) {
+            await loadPublicTrees({ resetSelection: true });
+        } else {
+            renderResults(false);
+        }
+        syncBrowseHead();
+    });
+
+    // Initial URL state restoration after all scripts are loaded
+    restoreStateFromUrl();
 });
