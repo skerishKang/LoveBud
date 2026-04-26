@@ -106,6 +106,21 @@
         `;
     }
 
+    function renderShareButton(tree) {
+        if (!tree?.id) return '';
+        const label = getSearchCopy(
+            'search.previewShareLink',
+            '감상 링크 복사',
+            'Copy view link'
+        );
+        return `
+            <button type="button" data-share-tree-link="${escapeHtml(tree.id)}" class="btn-round" style="width:100%;margin-top:12px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;gap:6px;background:var(--surface-container);color:var(--on-surface-variant);border:1px solid var(--outline-variant);">
+                <span class="material-symbols-outlined" style="font-size:16px;">link</span>
+                ${escapeHtml(label)}
+            </button>
+        `;
+    }
+
     let _dom = null;
 
     function init(domRefs) {
@@ -463,6 +478,7 @@
                         ${renderInfoCallout('info', getSearchCopy('search.previewNewTreeInfo', '이제 막 감상이 시작될 공개 러브트리예요.', 'This public LoveTree is just about to begin.'))}
                     </div>
                     ${renderPreviewActionButton(tree)}
+                    ${renderShareButton(tree)}
                 `;
             } else {
                 const pathStages = memories.slice(0, 3).map((m, i) => {
@@ -488,6 +504,7 @@
                         ${renderInfoCallout('touch_app', getSearchCopy('search.previewJourneyCta', '이곳에서 대표 순간과 이어진 감정을 훑어보고, 마음이 머무는 순간으로 들어가 보세요.', 'Scan the featured moment and connected feelings here, then open the moment that draws you in.'), 'primary')}
                     </div>
                     ${renderPreviewActionButton(tree)}
+                    ${renderShareButton(tree)}
                 `;
             }
         }
