@@ -460,50 +460,6 @@ h1, h2, h3, h4, .headline {
     margin: 4px 0;
 }
 
-/* Page-specific responsive overrides */
-
-/* Detail page */
-@media (max-width: 1024px) {
-    .detail-layout {
-        grid-template-columns: 1fr;
-        gap: 40px;
-        padding: 40px 24px;
-    }
-
-    .diary-section {
-        margin-top: 0;
-    }
-
-    .connected-section {
-        margin-top: 40px;
-    }
-
-    .diary-container {
-        padding: 40px;
-    }
-}
-
-@media (max-width: 768px) {
-    .detail-layout {
-        padding: 24px 16px;
-        gap: 32px;
-    }
-
-    .video-main {
-        border-radius: 1.5rem;
-        margin-bottom: 24px;
-    }
-
-    .diary-container {
-        padding: 32px 24px;
-        border-radius: 2rem;
-    }
-
-    .moment-card {
-        padding: 16px;
-    }
-}
-
 /* Mobile optimizations */
 @media (max-width: 480px) {
     .thumbnail-wrapper {
