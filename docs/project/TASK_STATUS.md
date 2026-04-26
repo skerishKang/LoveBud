@@ -23,35 +23,26 @@
 ## 현재 상태 스냅샷
 
 - 기준일: 2026-04-26
-- 기준 main 커밋: `0da436d57c9628e1e72d960d9d814844f4079d98`
+- 기준 main 커밋: `d48b9fd6f49724255c85bb423145c6e2a6846008`
 
 | 구분 | 상태 | 기준/대상 | 현재 기록 |
 |------|------|-----------|-----------|
-| 문서 TF | 완료 | PR #8, #10, #32, #33, #50, #52, #54~#58, #61, #70, #76, #77 | project/ops/design 문서, 검증 기준, public-first 정책, QA matrix, warning catalog, branch cleanup plan, runtime active/legacy clarification, 문서 인덱스/preview slot rules 정리 main 반영 완료 |
-| Runtime routing truth | 완료 | PR #70 `docs(runtime): clarify active and legacy runtime paths` | Cloudflare Pages 공식 사용자-facing entry, Modal active compute/runtime 우선 경로, Netlify legacy/fallback/artifact 기준 문서화 완료. Merge SHA: `1833aaf2c779bd593bda2687d5ee0df0e4197bfd` |
-| Public layout UI | 완료 | PR #49 `ui(layout): align landing browse rails` | layout rail / container / spacing 통일 완료. production verification PASS. Merge SHA: `dfb158a843932edeaaf7c859d0fa3e2d06c9be08` |
-| Typography / accent hierarchy | 완료 | PR #51 `ui(style): align typography accent hierarchy` | typography / accent hierarchy 통일 완료. production verification PASS. Merge SHA: `99af8a69fbe1cf61ac23017b938027164a213b3a` |
-| Button / badge / chip tone | 완료 | PR #62 `ui(style): align button badge chip tone` | Home / Intro / Browse button, badge, chip tone 통일 완료. production verification PASS. Merge SHA: `ae5ac03a2e9582c6c5cef6a965d6600ec6fa8e44` |
-| Intro hero visual / whitespace | 완료 | PR #63 `ui(intro): balance hero visual whitespace` | Intro hero visual column, tree scene height, tablet breakpoint, warm scrapbook tone 개선 완료. production verification PASS. Merge SHA: `7e287bb6e77e91d9a1c33681e7308f2e54f7022d` |
-| Browse card / hub panel surface | 완료 | PR #66 `ui(search): unify browse card and hub surfaces` | Browse/Search card, preview sidebar, growing section, placeholder tone 정리 완료. production smoke 기준 main 반영 완료 |
-| Search URL state | 완료 | PR #67 상당 직접 squash commit | `q`, `category`, `sort`, `limit` URL state sync main 반영 완료. Current main history includes `01408fbb87805083b08e77974351c9fa17c0d0f9`; PR #67은 중복 merge 방지를 위해 closed / unmerged 처리됨 |
-| YouTube thumbnail fallback | 완료 | PR #69 `fix(search): harden YouTube thumbnail fallback` | failed card thumbnails hide broken image and show fallback surface; preview fallback overlay obstruction removed. Merge SHA: `5f0708c82c6a909f11dbe4fc31776adfd0504778` |
-| Search inline style reduction pass 1 | 완료 | PR #80 `ui(search): reduce preview inline styles` | `pages/search.html` only. Cloudflare Preview verification PASS. Production verification pending. Issue #65는 open 유지 |
-| CI/E2E Playwright dependency stabilization | 완료 | PR #68 상당 직접 squash commit | `playwright` dev dependency, lockfile, CI E2E smoke `npm ci` 변경 main 반영 완료. PR #68은 중복 merge 방지를 위해 closed / unmerged 처리됨 |
-| UI verification rules | 완료 | PR #50 `docs(project): clarify UI verification environment rules` | UI verification environment rules 문서화 완료 |
-| Test preview slot rules | 완료 | PR #52, PR #77 | test preview slot branch rules 및 post-merge preview slot verification rules 문서화 완료. PR #52 Merge SHA: `bbc988041e248d171a8560419dc739394ba4e23f`; PR #77 Merge SHA: `6fe90fbef24f7348a1f6b247891e62ba871a5c3b` |
-| Local generated artifact ignore | 완료 | PR #53 `chore: ignore local generated artifacts` | local generated artifacts `.gitignore` 정리 완료. Merge SHA: `5f8d185cde4b1d46df75a8c4382fd71a4a671ca8`. prototype/reference 보존 대상 침범 없음 |
-| Task status tracking | 완료 | PR #76 `docs(project): align document indexes and runtime truth` | docs-only 7 files 정합성 cleanup 완료. Merge SHA: `e447cb903f671afbccb5623a02a71d965a4c58f8` |
-| Prototype reference preservation | 완료 | PR #55 `docs(design): preserve prototype reference folders` | prototype/reference preservation policy 문서화 완료. PR #7 보존 정책 문서화 완료. Merge SHA: `1f1c0758d9307e8e090386d21b21a265e5fe257b` |
-| Known CI/E2E blockers | 완료 | PR #56 `docs(ops): document known CI and E2E blockers` | known CI/E2E blockers 문서화 완료. Merge SHA: `c67956a23f61ea26dfb47e64813d340d960985ba` |
-| UI polish roadmap | 완료 | `docs/design/UI_POLISH_ROADMAP.md` | PR #69 / PR #70 이후 남은 Issue #65 backlog와 Search 후속 범위 분리 완료 |
-| Verification warning catalog | 완료 | PR #58 `docs(project): add verification warning catalog` | verification warning catalog 문서화 완료. Merge SHA: `7e221b8829500c26a7542481bea1585d916fb14a` |
-| 기능 TF | 완료 | `feature/search-growing-trees-api` | main과 동일 상태 (Identical). PR 생성 불필요. `/api/community/growing-trees` 운영 quick check 통과. 기능 TF 종료 |
-| SVG Tree Prototype | 진행 중 | PR #7 `experiment: SVG tree prototype` | open / draft. SVG tree prototype. prototype/reference 보존 대상. merged 아님. 정식 기능 아님. close 금지. branch 삭제 금지. navigation 연결 금지 |
+| 문서 TF | 진행 중 | PR #127 이후 status/CI/screenshot refresh | PR #127 runtime guardrail 문서 병합 완료. 본 문서 refresh는 별도 docs-only PR에서 진행 |
+| Runtime routing truth | 진행 중 | PR #70, PR #127, Issue #119 | Cloudflare Pages + Modal active runtime 기준은 문서화됨. Netlify는 Legacy Artifact Only / Removal Candidate로 정리됨. 최종 route 제거/보존 판단은 Issue #119 audit 이후 |
+| CI / contract test baseline | 완료 | PR #111 | stale contract tests와 i18n scan 범위 정리 완료. `npm test`, `npm run verify`, `npm run ci` green baseline 보고됨. 과거 `56/61` 기준은 현행 기준 아님 |
+| Screenshot evidence tooling | 완료 | PR #115 | `test:screenshots:xg`가 cross-platform `--prefix` 방식으로 정리됨 |
+| Accessibility micro-fix | 완료 | PR #110 | Editor title edit button aria-label 추가 완료 |
+| Detail CSS ownership cleanup | 완료 | PR #112, PR #120 | detail page-specific CSS ownership 정리. global 중복/잔여 detail rule 축소 완료 |
+| Login CSS cleanup | 완료 | PR #113 | login inline style refactor 완료. JS-controlled display styles preserved |
+| i18n production key cleanup | 완료 | PR #114 | production verification 중 발견된 editor/detail i18n missing keys 추가 완료 |
+| Search URL state cleanup | 완료 | PR #121 | orphan debug log와 duplicate restore call 제거. URL state behavior 변경 없음 |
+| Dependency classification audit | 완료 | Issue #117 | `dotenv`/`playwright`는 devDependencies 유지, `firebase-admin`/`pg`는 dependencies 유지. package change / PR 불필요 결론 |
+| API client namespace audit | 진행 중 | Issue #116 | `window.apiClient`와 `__LoveBudApiClientInternals` 노출 범위 audit open. 구현/문서 확정은 audit 이후 |
+| Cache lifecycle audit | 완료 | Issue #118 | cache-utils lifecycle / serialization audit completed. 구현 변경 여부는 별도 CTO 판단 필요 |
+| Runtime routing transitional layers audit | 진행 중 | Issue #119 | Cloudflare/Vercel/Netlify transitional route ownership audit open. runtime routing 문서 본문 변경은 audit 이후 |
+| SVG Tree Prototype | 진행 중 | PR #7 `experiment: SVG tree prototype` | open / draft. prototype/reference 보존 대상. merged 아님. 정식 기능 아님. close 금지. branch 삭제 금지. navigation 연결 금지 |
 | JS architecture cleanup | 보류 | Issue #72 / PR #73 | Issue #72는 open이며 current status는 paused. PR #73은 closed / unmerged. file-move refactor는 clean worktree와 단일 executor 조건 충족 전 재개 금지 |
-| Auth architecture/security audit | 진행 중 | Issue #78 | Auth architecture, global exports, token cache cleanup audit open. 구현 승인 아님. 향후 docs-only audit note 또는 token cache security PR 후보 |
-| Runtime ownership guardrails | 진행 중 | Issue #79 | Runtime ownership and legacy folder guardrails open. active/legacy runtime marker docs 후보 |
-| Editor UI polish | 완료 | PR #74 `ui(editor): polish editor surface and empty states` | merged / closed. Editor surface polish와 i18n key 보강 main 반영 완료. Merge SHA: `90933a4961b240df2caa7f04b737322b22200f26` |
+| Issue #65 Search backlog | 진행 중 | Issue #65 | Selected tree deep link, Search JS responsibility split, broader Search CSS extraction은 backlog/open 상태 유지 |
 
 ---
 
@@ -60,9 +51,10 @@
 - Current production/test slot runtime: `Cloudflare Pages same-origin /api/* → Cloudflare Pages Functions → Modal`.
 - Cloudflare Pages는 공식 사용자-facing production / preview entry입니다.
 - Modal은 active compute/runtime 우선 경로입니다.
-- `netlify/functions/*`는 legacy / fallback / artifact 성격으로 남아 있으며 현재 `lovebud.pages.dev` production/test slot active backend가 아닙니다.
-- CI/E2E에서 `netlify dev`가 쓰이는 경우에도 이는 local harness이며 production runtime truth가 Netlify라는 뜻이 아닙니다.
-- Netlify archive는 즉시 수행하지 않습니다. tests/docs reference transition 후 별도 승인 필요합니다.
+- Vercel은 deprecated transitional fallback / audit 대상입니다.
+- `netlify/functions/*`는 Legacy Artifact Only / Removal Candidate이며 현재 `lovebud.pages.dev` production/test slot active backend 또는 active fallback이 아닙니다.
+- Netlify route gap은 즉시 구현 blocker가 아니며 Issue #119 runtime routing audit에서 제거/보존 여부를 판단합니다.
+- Netlify archive는 즉시 수행하지 않습니다. tests/docs reference transition 및 audit 후 별도 승인 필요합니다.
 
 ---
 
@@ -74,7 +66,18 @@ Issue #65는 open backlog tracker이며, 현재 미완료 항목은 아래 3개�
 |------|------|------|
 | Selected tree deep link | 진행 중 | `?tree=<treeId>` 직접 진입 시 공개 tree preview 선택. desktop / mobile preview 동작 확인 필요. 별도 feature branch에서 구현/검증 후 판단 |
 | Search JS responsibility split | 보류 | JS architecture cleanup paused 상태. Search file-move 재개 전 clean worktree / 단일 executor / Preview 검증 조건 필요 |
-| Search CSS extraction / inline style reduction | 진행 중 | PR #80으로 static inline style reduction pass 1 완료. 더 넓은 CSS extraction은 대기. Search JS refactor와 혼합 금지 |
+| Search CSS extraction / inline style reduction | 진행 중 | PR #80 이후 여러 CSS extraction/cleanup PR이 진행됨. 더 넓은 Search JS refactor와 혼합 금지 |
+
+---
+
+## Audit 상태
+
+| Issue | 상태 | 문서 반영 판단 |
+|------|------|----------------|
+| #116 API client global namespace exposure | 진행 중 | `window.apiClient` / `__LoveBudApiClientInternals` browser namespace contract는 audit 이후 문서화 |
+| #117 dependency classification | 완료 | package 변경 없음. 상태 기록만 유지 |
+| #118 cache-utils lifecycle and serialization behavior | 완료 | audit completed. 후속 구현/문서화는 별도 CTO 판단 필요 |
+| #119 runtime routing transitional layers | 진행 중 | runtime routing 본문 문서는 audit 이후 갱신 |
 
 ---
 
@@ -90,6 +93,19 @@ Issue #65는 open backlog tracker이며, 현재 미완료 항목은 아래 3개�
 
 ## 작업 이력 (Task History)
 
+- 2026-04-26: PR #127 `docs(runtime): clarify Netlify legacy removal guardrails` merged / closed. OPERATIONS / REVIEW_GUARDRAILS에 Netlify Legacy Artifact Only / Removal Candidate 기준 반영. Merge SHA `d48b9fd6f49724255c85bb423145c6e2a6846008`
+- 2026-04-26: PR #121 `cleanup(search): remove orphan debug comment and duplicate restore call` merged / closed. Search URL state cleanup 완료
+- 2026-04-26: PR #120 `cleanup(detail): move memory title mobile rule to detail css` merged / closed. detail #memoryTitle mobile rule ownership 이동 완료
+- 2026-04-26: Issue #119 `Audit: runtime routing transitional layers` opened. Cloudflare/Vercel/Netlify transitional route ownership audit tracker
+- 2026-04-26: Issue #118 `Audit: cache-utils lifecycle and serialization behavior` completed. cache lifecycle / serialization audit 종료
+- 2026-04-26: Issue #117 `Audit: dependency classification for server and tooling packages` closed. dependency classification 현 상태 유지 결론
+- 2026-04-26: Issue #116 `Audit: API client global namespace exposure` opened. browser API namespace exposure audit tracker
+- 2026-04-26: PR #115 `chore(scripts): make screenshot script cross-platform` merged / closed. `test:screenshots:xg`를 `--prefix xg-test` 방식으로 정리
+- 2026-04-26: PR #114 `fix(i18n): add missing production keys` merged / closed. editor/detail missing production i18n keys 추가
+- 2026-04-26: PR #113 `cleanup(login): refactor inline styles to css classes while preserving encoding` merged / closed. login CSS refactor 완료
+- 2026-04-26: PR #112 `cleanup(detail): remove redundant moment card image rule from global css` merged / closed. detail/global 중복 CSS rule 정리
+- 2026-04-26: PR #111 `fix: resolve CI known failures in contract tests (stale string matches)` merged / closed. contract tests / pre-deploy i18n scan / missing keys 정리. green baseline 보고
+- 2026-04-26: PR #110 `fix(editor): add aria-label to sidebarTitleEditBtn` merged / closed. editor accessibility micro-fix 완료
 - 2026-04-26: PR #80 `ui(search): reduce preview inline styles` squash merged / closed. Search inline style reduction pass 1 main 반영 완료. Merge SHA `0da436d57c9628e1e72d960d9d814844f4079d98`. Cloudflare Preview verification PASS. Production verification pending
 - 2026-04-26: Issue #79 `Audit: Runtime ownership and legacy folder guardrails` opened. active/legacy runtime marker docs 후보로 추적
 - 2026-04-26: Issue #78 `Audit: Auth architecture, global exports, and token cache cleanup` opened. Auth architecture/security audit tracker로 추적
