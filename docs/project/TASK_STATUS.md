@@ -42,7 +42,7 @@
 | Runtime routing transitional layers audit | 진행 중 | Issue #119 | Cloudflare/Vercel/Netlify transitional route ownership audit open. runtime routing 문서 본문 변경은 audit 이후 |
 | SVG Tree Prototype | 진행 중 | PR #7 `experiment: SVG tree prototype` | open / draft. prototype/reference 보존 대상. merged 아님. 정식 기능 아님. close 금지. branch 삭제 금지. navigation 연결 금지 |
 | JS architecture cleanup | 보류 | Issue #72 / PR #73 | Issue #72는 open이며 current status는 paused. PR #73은 closed / unmerged. file-move refactor는 clean worktree와 단일 executor 조건 충족 전 재개 금지 |
-| Issue #65 Search backlog | 진행 중 | Issue #65 | Selected tree deep link, Search JS responsibility split, broader Search CSS extraction은 backlog/open 상태 유지 |
+| Issue #65 Search backlog | 진행 중 | Issue #65 | Search JS responsibility split, broader Search CSS extraction은 backlog/open 상태 유지. Selected tree deep link는 PR #83에서 merged 완료 |
 
 ---
 
@@ -60,11 +60,10 @@
 
 ## 다음 예정 작업 / Issue #65 Backlog
 
-Issue #65는 open backlog tracker이며, 현재 미완료 항목은 아래 3개입니다.
+Issue #65는 open backlog tracker이며, 현재 미완료 항목은 아래 2개입니다.
 
 | 작업 | 상태 | 메모 |
 |------|------|------|
-| Selected tree deep link | 진행 중 | `?tree=<treeId>` 직접 진입 시 공개 tree preview 선택. desktop / mobile preview 동작 확인 필요. 별도 feature branch에서 구현/검증 후 판단 |
 | Search JS responsibility split | 보류 | JS architecture cleanup paused 상태. Search file-move 재개 전 clean worktree / 단일 executor / Preview 검증 조건 필요 |
 | Search CSS extraction / inline style reduction | 진행 중 | PR #80 이후 여러 CSS extraction/cleanup PR이 진행됨. 더 넓은 Search JS refactor와 혼합 금지 |
 
@@ -94,6 +93,7 @@ Issue #65는 open backlog tracker이며, 현재 미완료 항목은 아래 3개�
 ## 작업 이력 (Task History)
 
 - 2026-04-26: PR #128 `cleanup(editor): move presentation inline styles to editor css` merged / closed. Editor presentation-only inline styles를 `css/editor.css`로 이동. Merge SHA `07efce659ec13b2342d116ac0b43af9181cded3b`
+- 2026-04-26: PR #83 `feat(search): support selected tree deep link` merged / closed. `/pages/search.html?tree=<treeId>` 직접 진입 시 공개 tree preview 선택 지원. Merge SHA `48b1a5ebd62ac8ddabbdc9c0622a4de2a5123bd5`
 - 2026-04-26: PR #127 `docs(runtime): clarify Netlify legacy removal guardrails` merged / closed. OPERATIONS / REVIEW_GUARDRAILS에 Netlify Legacy Artifact Only / Removal Candidate 기준 반영. Merge SHA `d48b9fd6f49724255c85bb423145c6e2a6846008`
 - 2026-04-26: PR #121 `cleanup(search): remove orphan debug comment and duplicate restore call` merged / closed. Search URL state cleanup 완료
 - 2026-04-26: PR #120 `cleanup(detail): move memory title mobile rule to detail css` merged / closed. detail #memoryTitle mobile rule ownership 이동 완료
