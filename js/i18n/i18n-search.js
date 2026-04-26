@@ -91,6 +91,10 @@
       ko: '가져오지 못했어요',
       en: 'Copy failed'
     },
+    'search.previewOpenCopiedTree': {
+      ko: '복사된 트리 열기',
+      en: 'Open copied tree'
+    },
     'search.previewNoRecordsYet': {
       ko: '아직 남은 순간은 없지만',
       en: 'There are no saved moments yet, but'
