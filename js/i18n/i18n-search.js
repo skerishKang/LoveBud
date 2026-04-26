@@ -226,4 +226,20 @@
       en: 'Unknown'
     }
   };
+
+  function loadSearchCopyUi() {
+    if (!/\/pages\/search\.html$/.test(window.location.pathname)) return;
+    if (document.querySelector('script[data-lovebud-search-copy-ui]')) return;
+    const script = document.createElement('script');
+    script.src = '../js/search-copy-ui.js?v=20260426-1';
+    script.defer = true;
+    script.dataset.lovebudSearchCopyUi = 'true';
+    document.head.appendChild(script);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadSearchCopyUi, { once: true });
+  } else {
+    loadSearchCopyUi();
+  }
 })();
