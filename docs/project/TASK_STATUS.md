@@ -23,7 +23,7 @@
 ## 현재 상태 스냅샷
 
 - 기준일: 2026-04-26
-- 기준 main 커밋: `d48b9fd6f49724255c85bb423145c6e2a6846008`
+- 기준 main 커밋: `07efce659ec13b2342d116ac0b43af9181cded3b`
 
 | 구분 | 상태 | 기준/대상 | 현재 기록 |
 |------|------|-----------|-----------|
@@ -93,6 +93,7 @@ Issue #65는 open backlog tracker이며, 현재 미완료 항목은 아래 3개�
 
 ## 작업 이력 (Task History)
 
+- 2026-04-26: PR #128 `cleanup(editor): move presentation inline styles to editor css` merged / closed. Editor presentation-only inline styles를 `css/editor.css`로 이동. Merge SHA `07efce659ec13b2342d116ac0b43af9181cded3b`
 - 2026-04-26: PR #127 `docs(runtime): clarify Netlify legacy removal guardrails` merged / closed. OPERATIONS / REVIEW_GUARDRAILS에 Netlify Legacy Artifact Only / Removal Candidate 기준 반영. Merge SHA `d48b9fd6f49724255c85bb423145c6e2a6846008`
 - 2026-04-26: PR #121 `cleanup(search): remove orphan debug comment and duplicate restore call` merged / closed. Search URL state cleanup 완료
 - 2026-04-26: PR #120 `cleanup(detail): move memory title mobile rule to detail css` merged / closed. detail #memoryTitle mobile rule ownership 이동 완료
