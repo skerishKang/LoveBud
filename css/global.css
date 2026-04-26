@@ -514,51 +514,6 @@ h1, h2, h3, h4, .headline {
     }
 }
 
-/* Search page */
-@media (max-width: 1024px) {
-    .search-container {
-        grid-template-columns: 1fr;
-        gap: 40px;
-        padding: 40px 24px;
-    }
-
-    .preview-sidebar {
-        position: static;
-    }
-}
-
-@media (max-width: 768px) {
-    .search-container {
-        padding: 24px 16px;
-        gap: 32px;
-    }
-
-    .search-input {
-        font-size: 1rem;
-        padding: 20px 20px 20px 56px;
-    }
-
-    .result-card {
-        padding: 16px;
-        gap: 16px;
-    }
-
-    .thumbnail-wrapper {
-        width: 120px;
-        height: 90px;
-        flex-shrink: 0;
-    }
-
-    .preview-sidebar {
-        padding: 24px;
-        border-radius: 1.5rem;
-    }
-
-    .video-container {
-        border-radius: 1rem;
-    }
-}
-
 /* Mobile optimizations */
 @media (max-width: 480px) {
     .thumbnail-wrapper {
