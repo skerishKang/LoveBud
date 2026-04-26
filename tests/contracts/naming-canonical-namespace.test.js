@@ -67,8 +67,9 @@ test('postgres-client exposes legacy test hook', () => {
   };
   vm.createContext(sandbox);
 
-  // Note: postgres-client depends on public-tree-adapter, so load in order
+  // Note: postgres-client depends on public-tree-adapter and auth-policy, so load in order
   runScript('js/api/public-tree-adapter.js', sandbox);
+  runScript('js/api/auth-policy.js', sandbox);
   runScript('js/postgres-client.js', sandbox);
 
   assert.ok(sandbox.window.__LoveBudApiClientInternals, '__LoveBudApiClientInternals should exist');

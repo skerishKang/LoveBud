@@ -21,10 +21,14 @@ test('public tree adapter documents transitional fallback scope explicitly', () 
   assert.match(src, /New code outside this adapter must not directly read snake_case fields/);
 });
 
-test('snake_case and wrapper fallback stay isolated to the public tree adapter', () => {
-  const searchHtml = read('pages/search.html');
-  const searchJs = read('js/search.js');
-  const searchDataAdapter = read('js/search-data-adapter.js');
+test('snake_case and wrapper fallback stay isolated to standard pages', () => {
+  const filesToCheck = [
+    'pages/search.html',
+    'js/detail.js',
+    'js/my-trees.js',
+    'js/editor.js',
+    'js/search-data-adapter.js',
+  ];
 
   const forbiddenPatterns = [
     /tree_id/,
@@ -34,9 +38,10 @@ test('snake_case and wrapper fallback stay isolated to the public tree adapter',
     /\.data\s*\|\|/,
   ];
 
-  for (const pattern of forbiddenPatterns) {
-    assert.doesNotMatch(searchHtml, pattern);
-    assert.doesNotMatch(searchJs, pattern);
-    assert.doesNotMatch(searchDataAdapter, pattern);
+  for (const file of filesToCheck) {
+    const src = read(file);
+    for (const pattern of forbiddenPatterns) {
+      assert.doesNotMatch(src, pattern, `File ${file} contains forbidden pattern ${pattern}`);
+    }
   }
 });
