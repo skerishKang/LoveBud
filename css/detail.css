@@ -282,6 +282,38 @@
     box-shadow: 0 0 0 8px rgba(144, 73, 81, 0.08);
 }
 
+/* Inline styles moved to classes */
+.detail-diary-quote {
+    margin-bottom: 24px;
+    color: var(--on-surface);
+    font-size: 1.18rem;
+    font-weight: 500;
+    font-style: italic;
+    line-height: 1.55;
+}
+
+.detail-diary-content {
+    color: var(--on-surface-variant);
+    font-size: 1rem;
+    line-height: 1.9;
+}
+
+.connected-fragments-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+}
+
+.growth-label {
+    margin-top: 14px;
+    color: var(--primary);
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1.4;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
 @media (max-width: 1180px) {
     .detail-page-shell { padding: 22px 24px 40px; }
     .detail-layout { grid-template-columns: 1fr; gap: 28px; }
