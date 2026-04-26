@@ -45,6 +45,7 @@ Visibility, private storage, anonymous public exposure, Browse/Search eligibilit
 Prototype/reference 폴더 정리, 보존, repo hygiene 판단이 필요하면 아래를 추가로 읽습니다.
 
 - `./design/PROTOTYPE_REFERENCE_POLICY.md`
+- `./reference/PROTOTYPE_INDEX.md` - reference only: prototype / variant 경로 목록과 active production route 아님을 명시한 인덱스
 
 UI polish 단계 분리, PR3/PR4/PR5 범위 판단이 필요하면 아래를 추가로 읽습니다.
 
@@ -96,6 +97,12 @@ PR3 button / badge / chip tone 기준 판단이 필요하면 아래를 추가로
 - [prompts/image-generation-prompts.md](./design/prompts/image-generation-prompts.md) - 이미지 생성 프롬프트 모음
 - [prompts/home-hero-slide-prompts.txt](./design/prompts/home-hero-slide-prompts.txt) - 홈 히어로 슬라이드 프롬프트
 - [stitch_image_to_website/DESIGN.md](./design/stitch_image_to_website/DESIGN.md) - Stitch image-to-website reference design note. 현재 active UI polish source of truth는 아님
+
+## reference 문서군
+
+Reference 문서는 `docs/reference/` 아래에 정리됩니다.
+
+- [PROTOTYPE_INDEX.md](./reference/PROTOTYPE_INDEX.md) - reference only: prototype / variant 경로 목록과 운영 편입 금지 기준
 
 ## engineering 문서군
 
