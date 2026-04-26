@@ -1,0 +1,31 @@
+/* LoveBud Search page styles. Page-specific only. */
+
+.search-container {
+    max-width: var(--page-shell-max);
+    margin: 0 auto;
+    padding: 28px var(--page-pad-desktop) 58px;
+    display: grid;
+    grid-template-columns: minmax(0, 1.62fr) 420px;
+    gap: var(--hero-gap);
+}
+
+.search-container .material-symbols-outlined {
+    font-family: 'Material Symbols Outlined';
+    font-weight: normal;
+    font-style: normal;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    -webkit-font-feature-settings: 'liga';
+    font-feature-settings: 'liga';
+    -webkit-font-smoothing: antialiased;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1em;
+    min-width: 1em;
+    overflow: hidden;
+}
