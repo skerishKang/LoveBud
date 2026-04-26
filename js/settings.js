@@ -195,13 +195,25 @@
     }, true);
   }
 
-  // UI 초기화
-  function initSettings() {
+  var settingsInitialized = false;
+
+  function getSettingsLoginHref() {
+    var redirect = 'settings.html' + (window.location.search || '');
+    return 'login.html?redirect=' + encodeURIComponent(redirect);
+  }
+
+  function redirectToLogin() {
+    window.location.replace(getSettingsLoginHref());
+  }
+
+  function startSettings() {
+    if (settingsInitialized) return;
+    settingsInitialized = true;
+
     var settings = loadSettings();
 
     bindCloseInteractions();
-    
-    // i18n 텍스트 적용 (renderSharedHeader 후 호출되어야 하므로 지연)
+
     setTimeout(function() {
       applyI18nText();
       if (typeof window.applyI18n === 'function') {
@@ -211,6 +223,38 @@
     }, 0);
 
     console.log('[settings] Initialized with browse introduction guidance:', settings);
+  }
+
+  function handleSettingsAuthUser(user) {
+    if (!user || !user.uid) {
+      redirectToLogin();
+      return;
+    }
+    startSettings();
+  }
+
+  // UI 초기화 (auth gate)
+  function initSettings() {
+    if (
+      window.LoveBudAuthBootstrap &&
+      typeof window.LoveBudAuthBootstrap.whenReady === 'function'
+    ) {
+      window.LoveBudAuthBootstrap.whenReady()
+        .then(handleSettingsAuthUser)
+        .catch(function() {
+          redirectToLogin();
+        });
+      return;
+    }
+
+    if (typeof window.registerOnAuthReady === 'function') {
+      window.registerOnAuthReady(function(user) {
+        handleSettingsAuthUser(user || null);
+      });
+      return;
+    }
+
+    redirectToLogin();
   }
 
   // 로그아웃 처리
