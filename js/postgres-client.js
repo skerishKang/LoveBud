@@ -100,9 +100,15 @@
             return getCommunityMemories(options);
         }
 
+        function clearCommunityCaches() {
+            publicMemoriesCache = null;
+            publicMemoriesByTreeCache.clear();
+        }
+
         return {
             getCommunityMemories,
-            getCachedCommunityMemories
+            getCachedCommunityMemories,
+            clearCommunityCaches
         };
     }
 
