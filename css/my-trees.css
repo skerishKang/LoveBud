@@ -153,6 +153,58 @@ body.my-trees-auth-pending .my-trees-content { visibility: hidden; }
   .create-tree-modal-actions { flex-direction: column-reverse; }
   .create-tree-modal-btn { width: 100%; justify-content: center; }
 }
+
+/* Inline styles moved to classes */
+.my-trees-create-icon {
+  font-size: 20px;
+}
+
+.create-tree-modal-kicker-icon {
+  font-size: 14px;
+}
+
+.create-tree-goal-card {
+  min-height: auto;
+  cursor: default;
+  background: rgba(255, 246, 247, 0.98);
+  border-color: rgba(144, 73, 81, 0.20);
+  box-shadow: 0 10px 24px rgba(144, 73, 81, 0.08);
+}
+
+.create-tree-goal-top {
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.create-tree-goal-title-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.create-tree-goal-icon {
+  color: var(--primary);
+  font-size: 18px;
+}
+
+.create-tree-goal-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: rgba(144, 73, 81, 0.10);
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.create-tree-goal-desc {
+  font-size: 13px;
+  line-height: 1.65;
+}
+
 @media (max-width: 420px) {
   .tree-card-date { display: none; }
 }
