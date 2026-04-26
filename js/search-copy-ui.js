@@ -34,7 +34,7 @@
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
+            .replace(new RegExp(String.fromCharCode(34), 'g'), '&quot;')
             .replace(/'/g, '&#39;');
     }
 
