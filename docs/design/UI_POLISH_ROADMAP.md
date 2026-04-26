@@ -1,8 +1,8 @@
-# UI Polish Roadmap after PR70
+# UI Polish Roadmap after PR83
 
 ## 목적
 
-이 문서는 PR #49, #51, #62, #63, #66, #67, #69, #70 이후 남은 public UI polish와 Search 후속 작업을 분리하기 위한 디자인 실행 로드맵입니다.
+이 문서는 PR #49, #51, #62, #63, #66, #67, #69, #70, #83 이후 남은 public UI polish와 Search 후속 작업을 분리하기 위한 디자인 실행 로드맵입니다.
 
 이 문서는 구현 지시서가 아니라 **범위 분리 기준**입니다. 실제 CSS/HTML/JS/API 변경은 각 PR에서 별도 승인 후 진행합니다.
 
@@ -18,18 +18,20 @@
 | PR #67 상당 변경 | 완료 | Search URL state | `q`, `category`, `sort`, `limit` query sync main 반영 완료. PR #67은 중복 merge 방지를 위해 closed / unmerged 처리됨 |
 | PR #69 `fix(search): harden YouTube thumbnail fallback` | 완료 | thumbnail fallback hardening | broken thumbnail image를 숨기고 fallback surface를 노출. preview fallback overlay obstruction 제거 완료 |
 | PR #70 `docs(runtime): clarify active and legacy runtime paths` | 완료 | runtime truth clarification | Cloudflare Pages / Modal / Netlify 역할 분리 문서화 완료 |
+| PR #83 `feat(search): support selected tree deep link` | 완료 | Selected tree deep link | `?tree=<treeId>` 직접 진입 시 공개 tree preview 선택 지원. Search URL state 유지, CSS/API/runtime 변경 없음 |
 
 ## 현재 남은 Issue #65 Backlog
 
-Issue #65는 open backlog tracker입니다. 현재 미완료 항목은 아래 3개뿐입니다.
+Issue #65는 open backlog tracker입니다. 현재 미완료 항목은 아래 2개입니다.
 
-1. **Selected tree deep link**
-2. **Search JS responsibility split**
-3. **Search CSS extraction / inline style reduction**
+1. **Search JS responsibility split**
+2. **Search CSS extraction / inline style reduction**
 
 ---
 
-## Selected tree deep link
+## Selected tree deep link — 완료
+
+PR #83으로 merged 완료되었습니다. 이 섹션은 구현 지시가 아니라 완료된 범위와 검증 포인트 기록입니다. Production verification이 별도로 필요하면 후속 검증 항목으로 분리합니다.
 
 ### 목표
 
@@ -150,7 +152,7 @@ PR #66 이후 남은 `pages/search.html` 내부 style과 JS-rendered inline styl
 
 - 공식 사용자-facing production / preview entry는 Cloudflare Pages입니다.
 - Modal은 active compute/runtime 우선 경로입니다.
-- Netlify 관련 파일과 `netlify/functions/*`는 legacy / fallback / artifact 성격으로 남아 있으며 현재 active production backend로 설명하지 않습니다.
+- Netlify는 Legacy Artifact Only / Removal Candidate이며, active production backend 또는 active fallback으로 설명하지 않습니다.
 - CI/E2E에서 `netlify dev`가 쓰이는 경우에도 이는 local harness이며 production runtime truth가 Netlify라는 뜻이 아닙니다.
 
 ## Prototype / reference 보존 기준
@@ -176,7 +178,7 @@ Prototype/reference 폴더는 cleanup 대상이 아니라 보존 대상입니다
 
 ## 운영 메모
 
-- 현재 남은 Issue #65 작업은 3개입니다.
-- 한 PR에서 selected tree deep link, JS responsibility split, CSS extraction을 동시에 처리하지 않습니다.
+- 현재 남은 Issue #65 작업은 2개입니다.
+- 한 PR에서 JS responsibility split, CSS extraction을 동시에 처리하지 않습니다.
 - PR #64는 stale docs PR로 closed / unmerged 처리되었습니다.
 - 현재 열린 PR #7은 보존 prototype PR이며 main 병합 대상이 아닙니다.
