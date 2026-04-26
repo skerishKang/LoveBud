@@ -1,0 +1,65 @@
+#resultsList,
+#growingTreesList {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 20px;
+    align-items: stretch;
+    min-width: 0;
+}
+
+.search-skeleton-card {
+    pointer-events: none;
+    cursor: default;
+    box-shadow: 0 16px 32px rgba(75, 64, 57, 0.035);
+}
+
+.search-skeleton-card::before {
+    opacity: 0;
+}
+
+.search-skeleton-block,
+.search-skeleton-line,
+.search-skeleton-chip {
+    display: block;
+    border-radius: 999px;
+    background: linear-gradient(90deg, rgba(144,73,81,0.07), rgba(255,255,255,0.72), rgba(122,139,110,0.07));
+    background-size: 220% 100%;
+    animation: searchSkeletonPulse 1.35s ease-in-out infinite;
+}
+
+.search-skeleton-block {
+    border-radius: 1.35rem;
+    width: 100%;
+}
+
+.search-skeleton-title {
+    width: 72%;
+    height: 18px;
+}
+
+.search-skeleton-copy {
+    width: 92%;
+    height: 13px;
+    opacity: 0.75;
+}
+
+.search-skeleton-chip {
+    width: 96px;
+    height: 28px;
+}
+
+.search-skeleton-count {
+    width: 82px;
+    height: 13px;
+}
+
+@keyframes searchSkeletonPulse {
+    0%, 100% { opacity: 0.58; }
+    50% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .search-skeleton-block,
+    .search-skeleton-line,
+    .search-skeleton-chip { animation: none; }
+}
