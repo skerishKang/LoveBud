@@ -71,9 +71,25 @@
       ko: '아직 이어진 순간이 없어요.',
       en: 'No connected moments yet.'
     },
-    'search.previewTimelineEmptyBody': {
-      ko: '첫 순간이 더해지면 놓여요.',
-      en: 'The flow appears once the first moment is added.'
+'search.previewTimelineEmptyBody': {
+      ko: '아직 이어진 순간이 없어요.',
+      en: 'No connected moments yet.'
+    },
+    'search.previewCopyToMyTrees': {
+      ko: '내 러브트리로 가져오기',
+      en: 'Copy to my LoveTrees'
+    },
+    'search.previewCopyingToMyTrees': {
+      ko: '가져오는 중이에요',
+      en: 'Copying...'
+    },
+    'search.previewCopyToMyTreesDone': {
+      ko: '내 러브트리로 복사됐어요',
+      en: 'Copied to my LoveTrees'
+    },
+    'search.previewCopyToMyTreesFailed': {
+      ko: '가져오지 못했어요',
+      en: 'Copy failed'
     },
     'search.previewNoRecordsYet': {
       ko: '아직 남은 순간은 없지만',
