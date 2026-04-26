@@ -312,7 +312,23 @@ docs/verification/YYYY-MM-DD/
 - `2026-04-24_search-page_mobile-375.png`
 - `2026-04-24_detail-cards_11-loaded.png`
 
-### 9.3. screenshot-only Branch 분리 원칙
+### 9.3. screenshot script 사용 예시
+
+로컬 스크린샷 캡처가 필요한 경우 현재 cross-platform script는 prefix 인자를 사용할 수 있습니다.
+
+```bash
+node scripts/capture-screenshots.js --prefix xg-test
+```
+
+동일한 npm script는 아래와 같습니다.
+
+```bash
+npm run test:screenshots:xg
+```
+
+이 명령은 증빙 저장 원칙을 대체하지 않습니다. 산출물은 여전히 날짜별 경로와 파일 naming 표준에 맞춰 PR 증빙으로 정리합니다.
+
+### 9.4. screenshot-only Branch 분리 원칙
 
 스크린샷만 추가하는 브랜치는 다음 규칙을 따릅니다.
 
@@ -320,7 +336,7 @@ docs/verification/YYYY-MM-DD/
 2. **용도**: 스크린샷 또는 캡처 증빙 전용
 3. **main 직접 Push 금지**: 항상 별도 PR로 병합
 
-### 9.4. screenshot-only의 main 직접 Push 금지
+### 9.5. screenshot-only의 main 직접 Push 금지
 
  다음과 같은 경우 main에 직접 Push하지 않습니다.
 
