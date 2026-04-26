@@ -571,6 +571,8 @@
         }
 
         .preview-empty-state {
+            width: 100%;
+            height: 100%;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -579,6 +581,7 @@
             color: var(--on-surface-variant);
             font-size: 14px;
             padding: 20px;
+            background: radial-gradient(circle at 50% 50%, rgba(255, 248, 245, 0.42), transparent 70%);
         }
 
         .preview-empty-state p {
@@ -616,15 +619,55 @@
             gap: 4px;
         }
 
+        .emotion-tags-label .preview-panel-icon {
+            vertical-align: baseline;
+        }
+
         .video-container {
             width: 100%;
             aspect-ratio: 16/9;
             background: linear-gradient(135deg, rgba(144, 73, 81, 0.08), rgba(122, 139, 110, 0.08));
             border-radius: 1.55rem;
             overflow: hidden;
-            margin-bottom: 20px;
+            margin-bottom: 24px;
             border: 1px solid rgba(144,73,81,0.06);
             box-shadow: none;
+        }
+
+        .preview-panel-title {
+            font-size: 1.18rem;
+            margin-bottom: 12px;
+            font-weight: 800;
+            color: var(--on-surface);
+        }
+
+        .preview-panel-desc {
+            color: var(--on-surface-variant);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .preview-panel-desc p {
+            margin-bottom: 16px;
+        }
+
+        .preview-panel-icon {
+            font-size: 14px;
+            vertical-align: middle;
+        }
+
+        .preview-panel-icon-baseline {
+            font-size: 14px;
+            vertical-align: baseline;
+        }
+
+        .preview-panel-emotion-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            color: var(--on-surface-variant);
+            font-size: 13px;
+            line-height: 1.6;
         }
 
         @media (max-width: 1240px) {
@@ -773,7 +816,7 @@
 
             <div id="resultsList">
                 <div class="tree-card tree-card-featured search-skeleton-card" aria-hidden="true">
-                    <div class="tree-card-media search-skeleton-block" style="min-height:210px;"></div>
+                    <div class="tree-card-media search-skeleton-block"></div>
                     <div class="tree-card-body">
                         <div class="search-skeleton-line search-skeleton-title"></div>
                         <div class="search-skeleton-line search-skeleton-copy"></div>
@@ -846,33 +889,33 @@
                     <span class="material-symbols-outlined">close</span>
                 </button>
             </div>
-            <div id="previewVideoContainer" class="video-container" style="margin-bottom: 24px;">
-                <div class="preview-empty-state" style="width:100%; height:100%; display:flex; flex-direction: column; align-items:center; justify-content:center; color: var(--on-surface-variant); font-size: 14px; text-align: center; padding: 20px; background: radial-gradient(circle at 50% 50%, rgba(255, 248, 245, 0.42), transparent 70%);">
+            <div id="previewVideoContainer" class="video-container">
+                <div class="preview-empty-state">
                     <p>마음이 닿는 트리를 골라보세요.</p>
                 </div>
             </div>
             <div id="previewDetails">
-                <div id="previewTitle" class="headline" style="font-size: 1.18rem; margin-bottom: 12px; font-weight: 800; color: var(--on-surface);">아직 선택한 러브트리가 없어요.</div>
-                <div id="previewDesc" style="color: var(--on-surface-variant); font-size: 14px; line-height: 1.6;">
-                    <p style="margin-bottom: 16px;">마음이 닿는 트리를 골라보세요.</p>
+                <div id="previewTitle" class="headline preview-panel-title">아직 선택한 러브트리가 없어요.</div>
+                <div id="previewDesc" class="preview-panel-desc">
+                    <p>마음이 닿는 트리를 골라보세요.</p>
                 </div>
                 <div id="previewTreeStats" class="tree-meta" hidden>
                     <span class="tree-meta-item">
-                        <span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle;">account_tree</span>
+                        <span class="material-symbols-outlined preview-panel-icon">account_tree</span>
                         <span id="previewMemoriesCount"></span>
                         <span>이어진 순간들</span>
                     </span>
                     <span class="tree-meta-item">
-                        <span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle;">schedule</span>
+                        <span class="material-symbols-outlined preview-panel-icon">schedule</span>
                         <span id="previewTreeDuration"></span>
                     </span>
                 </div>
                 <div>
                     <div class="emotion-tags-label">
-                        <span class="material-symbols-outlined" style="font-size: 14px;">favorite</span>
+                        <span class="material-symbols-outlined preview-panel-icon">favorite</span>
                         <span>이어진 감정</span>
                     </div>
-                    <div id="previewEmotionTags" style="display: flex; flex-wrap: wrap; gap: 8px; color: var(--on-surface-variant); font-size: 13px; line-height: 1.6;">
+                    <div id="previewEmotionTags" class="preview-panel-emotion-tags">
                         감정의 결이 이곳에 놓여요.
                     </div>
                 </div>
