@@ -23,7 +23,7 @@
 ## 현재 상태 스냅샷
 
 - 기준일: 2026-04-26
-- 기준 main 커밋: `c8b96c126d5552aa03fc782abcf4e173420ecc8d`
+- 기준 main 커밋: `90933a4961b240df2caa7f04b737322b22200f26`
 
 | 구분 | 상태 | 기준/대상 | 현재 기록 |
 |------|------|-----------|-----------|
@@ -40,7 +40,7 @@
 | UI verification rules | 완료 | PR #50 `docs(project): clarify UI verification environment rules` | UI verification environment rules 문서화 완료 |
 | Test preview slot rules | 완료 | PR #52 `docs(ops): test preview slot branch rules` | test preview slot branch rules 문서화 완료. Merge SHA: `bbc988041e248d171a8560419dc739394ba4e23f` |
 | Local generated artifact ignore | 완료 | PR #53 `chore: ignore local generated artifacts` | local generated artifacts `.gitignore` 정리 완료. Merge SHA: `5f8d185cde4b1d46df75a8c4382fd71a4a671ca8`. prototype/reference 보존 대상 침범 없음 |
-| Task status tracking | 진행 중 | current docs cleanup branch | PR #64는 stale close됨. 현재 문서는 PR #69 / #70 이후 main 기준과 open PR 현황을 맞추는 중 |
+| Task status tracking | 진행 중 | PR #76 `docs(project): align document indexes and runtime truth` | docs-only 정합성 cleanup 진행 중. 현재 PR은 merge 전 검토 대상이며 완료로 기록하지 않음 |
 | Prototype reference preservation | 완료 | PR #55 `docs(design): preserve prototype reference folders` | prototype/reference preservation policy 문서화 완료. PR #7 보존 정책 문서화 완료. Merge SHA: `1f1c0758d9307e8e090386d21b21a265e5fe257b` |
 | Known CI/E2E blockers | 완료 | PR #56 `docs(ops): document known CI and E2E blockers` | known CI/E2E blockers 문서화 완료. Merge SHA: `c67956a23f61ea26dfb47e64813d340d960985ba` |
 | UI polish roadmap | 완료 | `docs/design/UI_POLISH_ROADMAP.md` | PR #69 / PR #70 이후 남은 Issue #65 backlog 3개와 Search 후속 범위 분리 완료 |
@@ -48,7 +48,7 @@
 | 기능 TF | 완료 | `feature/search-growing-trees-api` | main과 동일 상태 (Identical). PR 생성 불필요. `/api/community/growing-trees` 운영 quick check 통과. 기능 TF 종료 |
 | SVG Tree Prototype | 진행 중 | PR #7 `experiment: SVG tree prototype` | open / draft. SVG tree prototype. prototype/reference 보존 대상. merged 아님. 정식 기능 아님. close 금지. branch 삭제 금지. navigation 연결 금지 |
 | JS architecture cleanup | 보류 | Issue #72 / PR #73 | Issue #72는 open이며 current status는 paused. PR #73은 closed / unmerged. file-move refactor는 clean worktree와 단일 executor 조건 충족 전 재개 금지 |
-| Editor UI polish | 진행 중 | PR #74 `ui(editor): polish editor surface and empty states` | open / non-draft. `css/editor.css` + `js/i18n/i18n-editor.js` 변경. Cloudflare Preview 배포는 성공했으나 Preview verification pending 및 `git diff --check` trailing whitespace warning 확인 필요. 완료로 기록하지 않음 |
+| Editor UI polish | 완료 | PR #74 `ui(editor): polish editor surface and empty states` | merged / closed. Editor surface polish와 i18n key 보강 main 반영 완료. Merge SHA: `90933a4961b240df2caa7f04b737322b22200f26` |
 
 ---
 
@@ -87,7 +87,8 @@ Issue #65는 open backlog tracker이며, 현재 미완료 항목은 아래 3개�
 
 ## 작업 이력 (Task History)
 
-- 2026-04-26: PR #74 `ui(editor): polish editor surface and empty states` opened. Editor UI polish 진행 중. 완료 아님. Preview verification pending
+- 2026-04-26: PR #76 `docs(project): align document indexes and runtime truth` opened. docs-only cleanup 진행 중. 완료 아님
+- 2026-04-26: PR #74 `ui(editor): polish editor surface and empty states` merged / closed. Editor surface polish main 반영 완료. Merge SHA `90933a4961b240df2caa7f04b737322b22200f26`
 - 2026-04-26: Issue #72 `JS Architecture Cleanup Tracker` updated. JS architecture cleanup paused. PR #73 closed / unmerged
 - 2026-04-26: PR #70 `docs(runtime): clarify active and legacy runtime paths` merged / closed. Cloudflare Pages / Modal / Netlify active/legacy runtime truth 문서화 완료. Merge SHA `1833aaf2c779bd593bda2687d5ee0df0e4197bfd`
 - 2026-04-26: PR #69 `fix(search): harden YouTube thumbnail fallback` merged / closed. YouTube thumbnail fallback hardening 완료. Merge SHA `5f0708c82c6a909f11dbe4fc31776adfd0504778`
