@@ -10,6 +10,25 @@
   flex-direction: column;
 }
 
+/* Inline styles moved to classes */
+.intro-what-desc-secondary {
+  margin-top: 1rem;
+  font-size: 0.95rem;
+  opacity: 0.85;
+}
+
+.intro-section-desc {
+  margin-top: 1rem;
+}
+
+.intro-single-column {
+  grid-template-columns: 1fr;
+}
+
+.intro-icon-small {
+  font-size: 18px;
+}
+
 .intro-hero {
   display: grid;
   grid-template-columns: minmax(0, 1.05fr) minmax(300px, 0.72fr);
