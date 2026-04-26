@@ -136,17 +136,40 @@
         };
     }
 
+    function mergeApiGroupsWithCollisionWarning(groups) {
+        const merged = {};
+        const owners = {};
+
+        groups.forEach((group) => {
+            const groupName = group.name;
+            const api = group.api || {};
+
+            Object.keys(api).forEach((key) => {
+                if (Object.prototype.hasOwnProperty.call(merged, key) && typeof console !== 'undefined' && console.warn) {
+                    console.warn(
+                        `[apiClient] Duplicate API method "${key}" from ${owners[key]} overwritten by ${groupName}.`
+                    );
+                }
+
+                merged[key] = api[key];
+                owners[key] = groupName;
+            });
+        });
+
+        return merged;
+    }
+
     const treeApi = createTreeApi();
     const memoryApi = createMemoryApi();
     const communityApi = createCommunityApi();
     const browseApi = createBrowseApi(communityApi);
 
-    const apiClient = {
-        ...treeApi,
-        ...memoryApi,
-        ...communityApi,
-        ...browseApi
-    };
+    const apiClient = mergeApiGroupsWithCollisionWarning([
+        { name: 'treeApi', api: treeApi },
+        { name: 'memoryApi', api: memoryApi },
+        { name: 'communityApi', api: communityApi },
+        { name: 'browseApi', api: browseApi }
+    ]);
 
     window.apiClient = apiClient;
 
