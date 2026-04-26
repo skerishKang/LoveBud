@@ -2,6 +2,8 @@
 
 이 문서는 LoveBud 저장소의 prototype / reference 폴더를 repo cleanup 과정에서 자동 삭제하거나 이동하지 않기 위한 보존 정책입니다.
 
+Detailed prototype / variant path inventory is maintained in [`docs/reference/PROTOTYPE_INDEX.md`](../reference/PROTOTYPE_INDEX.md) as reference only.
+
 ## 1. Policy summary
 
 Prototype / reference 폴더는 현재 production flow에 직접 연결되어 있지 않더라도 삭제 후보로 단정하지 않습니다.
