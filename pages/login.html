@@ -19,25 +19,25 @@
     <div class="login-shell">
         <div class="login-card">
             <!-- Redirect notice: shown when user came from auth-gated page -->
-            <div id="redirect-notice" style="display:none; background:rgba(144,73,81,0.05); border:1px solid rgba(144,73,81,0.1); border-radius:1rem; padding:14px 16px; margin-bottom:20px; text-align:left; box-shadow:0 8px 20px rgba(75,64,57,0.03);">
-                <div style="display:flex; align-items:center; gap:10px;">
-                    <span class="material-symbols-outlined" style="font-size:18px; color:var(--primary); flex-shrink:0;">lock</span>
-                    <div style="min-width:0;">
-                        <div style="font-weight:800; color:var(--on-surface); font-size:13px; margin-bottom:2px; line-height:1.5;" data-i18n="redirect_notice_title">내 러브트리를 이용하려면 로그인이 필요합니다</div>
-                        <div style="color:var(--on-surface-variant); font-size:12px; line-height:1.45;" data-i18n="redirect_notice_desc">로그인 후 자동으로 이동합니다</div>
+            <div id="redirect-notice" class="login-redirect-notice" style="display:none;">
+                <div class="login-redirect-notice-row">
+                    <span class="material-symbols-outlined login-redirect-icon">lock</span>
+                    <div class="login-redirect-content">
+                        <div class="login-redirect-title" data-i18n="redirect_notice_title">내 러브트리를 이용하려면 로그인이 필요합니다</div>
+                        <div class="login-redirect-desc" data-i18n="redirect_notice_desc">로그인 후 자동으로 이동합니다</div>
                     </div>
                 </div>
             </div>
 
-            <div class="serif" style="font-size: 2.2rem; font-weight: 950; color: var(--on-surface); margin-bottom: 12px; font-family: var(--font-heading); letter-spacing: -0.05em;">러브트리</div>
-            <h1 class="headline" style="font-size: 1.5rem; color: var(--primary); margin-bottom: 16px; font-weight: 800;" data-i18n="login_title">당신의 감정 나무를 시작하세요</h1>
-            <p style="color: var(--on-surface-variant); margin-bottom: 40px; font-size: 1rem; line-height: 1.6; font-weight: 400;" data-i18n="login_desc">
+            <div class="serif login-brand-title">러브트리</div>
+            <h1 class="headline login-headline" data-i18n="login_title">당신의 감정 나무를 시작하세요</h1>
+            <p class="login-desc" data-i18n="login_desc">
                 처음 사랑에 빠진 순간부터, 팬이 되어가는 모든 경로를<br>
                 영상과 메모로 연결해 기록하세요.
             </p>
 
             <button id="login-btn-google" class="login-btn-google">
-                <svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" style="width: 20px; height: 20px;">
+                <svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" class="login-google-icon">
                     <path fill="#4285F4" d="M45.12,24.5c0-2.46-0.2-4.84-0.64-7.12l-14.54,0c0.24,1.08,0.4,2.2,0.4,3.4c0,5.6-3.8,10.8-10.8,10.8l-8.72,0c-6.48,0-11.76-5.28-11.76-11.76c0-6.4,5.2-11.64,11.64-11.64c2.96,0,5.56,1.12,7.6,2.96l6.24-6.16C29.32,6.56,24.36,5.72,19.04,5.72c-9.36,0-17.52,6.76-17.52,16.08c0,9.28,8.16,16.08,17.52,16.08c6.8,0,11.52-3.28,14.36-7.96c0.76,0.08,1.56,0.12,2.4,0.12C42.4,29.92,45.12,27.56,45.12,24.5z"/>
                     <path fill="#34A853" d="M19.12,44.36c6.56,0,12.16-2.44,16.24-6.56l-7.68-5.92C25.24,34.8,22.52,36,19.12,36c-6.08,0-10.8-4.16-12.48-9.76l-7.76,0C3.48,31.96,10.64,44.36,19.12,44.36z"/>
                     <path fill="#FBBC05" d="M9.84,26.68c-1.56-2.92-2.4-6.08-2.4-9.48c0-3.4,0.84-6.56,2.4-9.48L3.2,12.08C1.24,16.52,0.04,21.48,0.04,26.32C0.04,31.16,1.24,36.12,3.2,40.56L9.84,26.68z"/>
@@ -48,28 +48,28 @@
 
             <div class="login-divider" data-i18n="or_email">또는 이메일로 시작하기</div>
 
-            <button id="login-btn-email" class="btn-round btn-outline" style="width: 100%; border-radius: 1.25rem; padding: 16px; font-size: 15px;" data-i18n="email_login">
+            <button id="login-btn-email" class="btn-round btn-outline login-email-button" data-i18n="email_login">
                 이메일로 시작하기
             </button>
 
             <!-- 회원가입 섹션 -->
-            <div class="signup-section" style="margin-top: 28px; padding: 24px 20px 0; border-top: 1px solid var(--outline-variant); background:linear-gradient(180deg, rgba(255,255,255,0), rgba(255,247,244,0.36)); border-radius:1.5rem;">
-                <div style="display:flex; flex-direction:column; align-items:center; gap:10px; margin-bottom:18px; text-align:center;">
-                    <span style="display:inline-flex; align-items:center; gap:6px; min-height:30px; padding:0 12px; border-radius:999px; background:rgba(144,73,81,0.08); color:var(--primary); font-size:12px; font-weight:800;" data-i18n="signup_intro_badge">
-                        <span class="material-symbols-outlined" style="font-size:16px;">sparkles</span>
+            <div class="signup-section login-signup-section">
+                <div class="login-signup-intro">
+                    <span class="login-signup-badge" data-i18n="signup_intro_badge">
+                        <span class="material-symbols-outlined login-signup-badge-icon">sparkles</span>
                         처음 오셨나요?
                     </span>
-                    <p style="margin:0; color: var(--on-surface); font-size: 15px; font-weight: 700; line-height: 1.55;" data-i18n="signup_intro_title">
+                    <p class="login-signup-title" data-i18n="signup_intro_title">
                         계정만 만들면 바로 첫 순간을 남길 수 있어요
                     </p>
-                    <p style="margin:0; color: var(--primary); font-size: 13px; font-weight: 800; line-height: 1.5;" data-i18n="signup_intro_desc">
+                    <p class="login-signup-desc" data-i18n="signup_intro_desc">
                         아래에서 Google 또는 이메일로 바로 시작해보세요
                     </p>
                 </div>
 
                 <!-- Google 회원가입 -->
-                <button id="signup-btn-google" class="login-btn-google" style="margin-bottom: 12px; box-shadow:0 10px 24px rgba(75,64,57,0.04);">
-                    <svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" style="width: 20px; height: 20px;">
+                <button id="signup-btn-google" class="login-btn-google login-signup-google-btn">
+                    <svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" class="login-google-icon">
                         <path fill="#4285F4" d="M45.12,24.5c0-2.46-0.2-4.84-0.64-7.12l-14.54,0c0.24,1.08,0.4,2.2,0.4,3.4c0,5.6-3.8,10.8-10.8,10.8l-8.72,0c-6.48,0-11.76-5.28-11.76-11.76c0-6.4,5.2-11.64,11.64-11.64c2.96,0,5.56,1.12,7.6,2.96l6.24-6.16C29.32,6.56,24.36,5.72,19.04,5.72c-9.36,0-17.52,6.76-17.52,16.08c0,9.28,8.16,16.08,17.52,16.08c6.8,0,11.52-3.28,14.36-7.96c0.76,0.08,1.56,0.12,2.4,0.12C42.4,29.92,45.12,27.56,45.12,24.5z"/>
                         <path fill="#34A853" d="M19.12,44.36c6.56,0,12.16-2.44,16.24-6.56l-7.68-5.92C25.24,34.8,22.52,36,19.12,36c-6.08,0-10.8-4.16-12.48-9.76l-7.76,0C3.48,31.96,10.64,44.36,19.12,44.36z"/>
                         <path fill="#FBBC05" d="M9.84,26.68c-1.56-2.92-2.4-6.08-2.4-9.48c0-3.4,0.84-6.56,2.4-9.48L3.2,12.08C1.24,16.52,0.04,21.48,0.04,26.32C0.04,31.16,1.24,36.12,3.2,40.56L9.84,26.68z"/>
@@ -78,18 +78,18 @@
                     <span data-i18n="google_signup">Google로 바로 시작하기</span>
                 </button>
 
-                <p style="text-align: center; color: var(--on-surface-variant); font-size: 12px; margin: 8px 0 0; font-weight: 700; line-height:1.55;" data-i18n="google_signup_helper">
+                <p class="login-signup-helper" data-i18n="google_signup_helper">
                     Google 계정으로 로그인만 하면 별도 가입 없이 바로 시작됩니다
                 </p>
 
-                <div class="login-divider" style="margin: 18px 0 16px;">
-                    <span style="font-size: 12px;" data-i18n="or_create_with_email">또는 이메일로 계정 만들기</span>
+                <div class="login-divider login-signup-divider">
+                    <span class="login-signup-divider-text" data-i18n="or_create_with_email">또는 이메일로 계정 만들기</span>
                 </div>
 
                 <!-- 이메일 회원가입 폼 -->
-                <form id="signup-form" style="text-align: left;" novalidate>
-                    <div style="margin-bottom: 12px;">
-                        <label for="signup-display-name" style="display: block; margin-bottom: 6px; font-weight: 700; font-size: 0.85rem;" data-i18n="display_name_label">닉네임</label>
+                <form id="signup-form" class="login-form" novalidate>
+                    <div class="login-form-group">
+                        <label for="signup-display-name" class="login-form-label" data-i18n="display_name_label">닉네임</label>
                         <input
                             type="text"
                             id="signup-display-name"
@@ -98,22 +98,20 @@
                             maxlength="30"
                             placeholder="예: XG Alpha"
                             data-i18n-placeholder="display_name_placeholder"
-                            style="width: 100%; padding: 12px; border: 1px solid var(--outline-variant); border-radius: 0.75rem; font-size: 1rem;"
+                            class="login-form-input"
                         >
                     </div>
-                    <div style="margin-bottom: 12px;">
-                        <label for="signup-email" style="display: block; margin-bottom: 6px; font-weight: 700; font-size: 0.85rem;" data-i18n="email_label">이메일</label>
+                    <div class="login-form-group">
+                        <label for="signup-email" class="login-form-label" data-i18n="email_label">이메일</label>
                         <input type="email" id="signup-email" name="email" required placeholder="your@email.com"
-                            style="width: 100%; padding: 12px; border: 1px solid var(--outline-variant); border-radius: 0.75rem; font-size: 1rem;">
+                            class="login-form-input">
                     </div>
-                    <div style="margin-bottom: 16px;">
-                        <label for="signup-password" style="display: block; margin-bottom: 6px; font-weight: 700; font-size: 0.85rem;" data-i18n="password_label">비밀번호</label>
+                    <div class="login-form-group-large">
+                        <label for="signup-password" class="login-form-label" data-i18n="password_label">비밀번호</label>
                         <input type="password" id="signup-password" name="password" required placeholder="8자 이상 입력" minlength="8"
-                            style="width: 100%; padding: 12px; border: 1px solid var(--outline-variant); border-radius: 0.75rem; font-size: 1rem;">
+                            class="login-form-input">
                     </div>
-                    <button type="submit" id="signup-submit"
-                        style="width: 100%; padding: 14px; background: var(--secondary); color: white; border: none; border-radius: 1rem; font-weight: 700; font-size: 1rem; cursor: pointer;"
-                        data-i18n="signup_btn">
+                    <button type="submit" id="signup-submit" class="login-submit-button" data-i18n="signup_btn">
                         회원가입 완료
                     </button>
                 </form>
@@ -125,7 +123,7 @@
                 <span class="badge" data-i18n="badge_safe">안전한 보관</span>
             </div>
 
-            <a href="../index.html" style="display: block; margin-top: 40px; color: var(--on-surface-variant); font-size: 13px; text-decoration: none; font-weight: 700; opacity: 0.6; transition: opacity 0.3s;" data-i18n="later">
+            <a href="../index.html" class="login-later-link" data-i18n="later">
                 나중에 시작하기
             </a>
         </div>
@@ -137,38 +135,38 @@
 <script src="../js/firebase-config.js?v=20260417-31"></script>
 
     <!-- Email Auth Modal -->
-    <div id="email-auth-modal" role="dialog" aria-modal="true" aria-labelledby="email-auth-title" aria-describedby="email-auth-helper" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:9999;align-items:center;justify-content:center;">
-    <div style="background:white;border-radius:2rem;padding:48px;max-width:420px;width:90%;text-align:center;position:relative;">
-    <button id="email-auth-close" aria-label="모달 닫기" style="position:absolute;top:16px;right:20px;background:none;border:none;font-size:24px;cursor:pointer;color:var(--on-surface-variant);opacity:0.6;">&times;</button>
+    <div id="email-auth-modal" role="dialog" aria-modal="true" aria-labelledby="email-auth-title" aria-describedby="email-auth-helper" class="login-email-modal" style="display:none;">
+    <div class="login-email-modal-card">
+    <button id="email-auth-close" aria-label="모달 닫기" class="login-email-close">&times;</button>
 <!-- 모드 표시 -->
-<div id="auth-mode-badge" style="display:inline-block; background:var(--primary); color:white; font-size:11px; font-weight:800; padding:4px 12px; border-radius:99px; margin-bottom:12px;">
+<div id="auth-mode-badge" class="login-auth-mode-badge">
     로그인
 </div>
-<h2 id="email-auth-title" style="font-size:1.4rem;font-weight:900;margin-bottom:8px;" data-i18n="email_modal_title_login">이메일로 로그인</h2>
-<p id="email-auth-helper" style="color:var(--on-surface-variant);margin-bottom:24px;font-size:0.9rem;" data-i18n="email_modal_desc_login">이미 만든 이메일 계정으로 로그인합니다</p>
- <form id="email-auth-form" style="text-align:left;" novalidate>
- <div data-auth-display-name-wrap style="margin-bottom:16px; display:none;">
-     <label for="email-auth-display-name" style="display:block;margin-bottom:6px;font-weight:700;font-size:0.85rem;" data-i18n="display_name_label">닉네임</label>
+<h2 id="email-auth-title" class="login-email-title" data-i18n="email_modal_title_login">이메일로 로그인</h2>
+<p id="email-auth-helper" class="login-email-helper" data-i18n="email_modal_desc_login">이미 만든 이메일 계정으로 로그인합니다</p>
+ <form id="email-auth-form" class="login-form" novalidate>
+ <div data-auth-display-name-wrap class="login-form-group-large" style="display:none;">
+     <label for="email-auth-display-name" class="login-form-label" data-i18n="display_name_label">닉네임</label>
      <input
          type="text"
          id="email-auth-display-name"
          maxlength="30"
          placeholder="예: XG Alpha"
          data-i18n-placeholder="display_name_placeholder"
-         style="width:100%;padding:12px;border:1px solid var(--outline-variant);border-radius:0.75rem;font-size:1rem;"
+         class="login-form-input"
      >
  </div>
- <div style="margin-bottom:16px;">
-     <label for="email-auth-email" style="display:block;margin-bottom:6px;font-weight:700;font-size:0.85rem;" data-i18n="email_label">이메일</label>
-     <input type="email" id="email-auth-email" required style="width:100%;padding:12px;border:1px solid var(--outline-variant);border-radius:0.75rem;font-size:1rem;">
+ <div class="login-form-group-large">
+     <label for="email-auth-email" class="login-form-label" data-i18n="email_label">이메일</label>
+     <input type="email" id="email-auth-email" required class="login-form-input">
  </div>
-<div style="margin-bottom:20px;">
-    <label for="email-auth-password" style="display:block;margin-bottom:6px;font-weight:700;font-size:0.85rem;" data-i18n="password_label">비밀번호</label>
-    <input type="password" id="email-auth-password" required style="width:100%;padding:12px;border:1px solid var(--outline-variant);border-radius:0.75rem;font-size:1rem;">
+<div class="login-form-group-xl">
+    <label for="email-auth-password" class="login-form-label" data-i18n="password_label">비밀번호</label>
+    <input type="password" id="email-auth-password" required class="login-form-input">
 </div>
-<button type="submit" id="email-auth-submit" style="width:100%;padding:14px;background:var(--primary);color:white;border:none;border-radius:1rem;font-weight:700;font-size:1rem;cursor:pointer;" data-i18n="login_btn">로그인</button>
+<button type="submit" id="email-auth-submit" class="login-submit-button login-submit-button-primary" data-i18n="login_btn">로그인</button>
 </form>
-<button id="email-auth-toggle" style="margin-top:20px;background:none;border:none;color:var(--primary);font-weight:700;font-size:0.9rem;cursor:pointer;text-decoration:underline;" data-i18n="switch_to_signup">계정이 없나요? 회원가입으로 전환</button>
+<button id="email-auth-toggle" class="login-email-toggle" data-i18n="switch_to_signup">계정이 없나요? 회원가입으로 전환</button>
 </div>
 </div>
 
