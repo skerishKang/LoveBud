@@ -45,6 +45,11 @@
         return window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
     }
 
+    function buildCopiedTreeHref(treeId) {
+        const basePath = getBasePath();
+        return `${basePath}detail.html?id=${encodeURIComponent(treeId)}`;
+    }
+
     function buildLoginHref(treeId) {
         const basePath = getBasePath();
         const redirect = `search.html?tree=${encodeURIComponent(treeId)}`;
@@ -184,6 +189,12 @@
         if (!button) return;
         event.preventDefault();
 
+        const copiedTreeId = button.dataset.copiedTreeId;
+        if (copiedTreeId) {
+            window.location.href = buildCopiedTreeHref(copiedTreeId);
+            return;
+        }
+
         const treeId = button.dataset.copyPublicTree || getSelectedTreeIdFromPreview();
         if (!treeId) return;
 
@@ -194,8 +205,14 @@
 
         setButtonState(button, 'search.previewCopyingToMyTrees', '가져오는 중이에요', 'Copying...', true);
         try {
-            await copyPublicTree(treeId);
-            setButtonState(button, 'search.previewCopyToMyTreesDone', '내 러브트리로 복사됐어요', 'Copied to my LoveTrees', true);
+            const result = await copyPublicTree(treeId);
+            const newTreeId = result?.tree?.id;
+            if (newTreeId) {
+                button.dataset.copiedTreeId = newTreeId;
+                setButtonState(button, 'search.previewOpenCopiedTree', '복사된 트리 열기', 'Open copied tree', false);
+            } else {
+                setButtonState(button, 'search.previewCopyToMyTreesDone', '내 러브트리로 복사됐어요', 'Copied to my LoveTrees', true);
+            }
         } catch (error) {
             console.warn('[search-copy-ui] public tree copy failed:', error.message);
             setButtonState(button, 'search.previewCopyToMyTreesFailed', '가져오지 못했어요', 'Copy failed', false);
