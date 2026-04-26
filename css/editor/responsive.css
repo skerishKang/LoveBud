@@ -1,0 +1,219 @@
+@media (max-width: 1024px) {
+    .editor-layout {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        width: 100%;
+        height: auto;
+        flex-direction: column;
+        padding: 12px 14px;
+        border-right: none;
+        border-bottom: 1px solid var(--outline-variant);
+        gap: 10px;
+        overflow: visible;
+    }
+
+    .editor-sidebar-back-wrap {
+        margin-bottom: 2px;
+    }
+
+    .editor-status-section,
+    .editor-add-section {
+        width: 100%;
+    }
+
+    .editor-add-section {
+        position: static;
+        margin-top: 0;
+        padding-top: 6px;
+        background: none;
+    }
+
+    .tool-group {
+        flex-direction: row;
+        gap: 8px;
+    }
+
+    .tool-group h3 {
+        display: none;
+    }
+
+    .tool-item {
+        width: auto;
+        flex-direction: row;
+        gap: 4px;
+        padding: 8px 12px;
+        background: var(--surface-container-low);
+        border-radius: 99px;
+    }
+
+    .tool-item .material-symbols-outlined {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+    }
+
+    .tool-item span:not(.material-symbols-outlined) {
+        font-size: 12px;
+    }
+
+    .detail-panel {
+        position: fixed;
+        right: 0;
+        top: 0;
+        height: 100vh;
+        width: 90%;
+        max-width: 400px;
+        z-index: 2000;
+        transform: translateX(100%);
+        transition: transform 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+        border-left: 1px solid var(--outline-variant);
+    }
+
+    .detail-panel.open {
+        transform: translateX(0);
+    }
+
+    .canvas-area {
+        height: 50vh;
+        min-height: 320px;
+    }
+
+    .editor-canvas-empty-guide {
+        top: 50%;
+    }
+
+    .node-card {
+        padding: 4px;
+    }
+
+    .node-img-wrapper {
+        width: 70px;
+        height: 70px;
+    }
+}
+
+@media (max-width: 768px) {
+    .editor-layout {
+        height: calc(100vh - 60px);
+    }
+
+    .sidebar {
+        height: auto;
+    }
+
+    .editor-sidebar-back-link {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .tool-group {
+        flex-direction: row;
+    }
+
+    .tool-item {
+        width: auto;
+        padding: 4px 12px;
+        gap: 2px;
+    }
+
+    .tool-item .material-symbols-outlined {
+        width: 36px;
+        height: 36px;
+        font-size: 20px;
+    }
+
+    .tool-item span:not(.material-symbols-outlined) {
+        display: none;
+    }
+
+    .tool-group h3 {
+        display: none;
+    }
+
+    .canvas-area {
+        height: auto;
+    }
+
+    .editor-canvas-empty-guide {
+        width: min(342px, calc(100% - 24px));
+        padding: 18px 16px;
+    }
+
+    .detail-panel {
+        width: 100%;
+        max-width: none;
+        border-radius: 0;
+    }
+
+    .detail-content {
+        padding: 18px 16px 20px;
+    }
+
+    .editor-tree-meta-section,
+    .editor-current-moment-card,
+    .editor-moment-info-card,
+    .editor-save-status-card {
+        padding: 14px;
+        border-radius: 16px;
+    }
+
+    .editor-form-stack {
+        padding: 10px;
+    }
+
+    .editor-form-actions {
+        flex-direction: column-reverse;
+    }
+
+    .editor-form-action-btn {
+        width: 100%;
+    }
+
+    .editor-memory-form-modal {
+        gap: 12px;
+    }
+
+    .node-card {
+        padding: 3px;
+    }
+
+    .node-img-wrapper {
+        width: 60px;
+        height: 60px;
+    }
+
+    .node-info-label {
+        display: none;
+    }
+
+    .editor-space-between-row {
+        align-items: flex-start;
+    }
+
+    .editor-status-card strong {
+        font-size: 1.04rem;
+    }
+
+    .editor-title-settings-panel {
+        grid-template-columns: 1fr;
+    }
+
+    .editor-flow-summary,
+    .editor-sidebar-meta {
+        display: none;
+    }
+
+    .editor-add-card {
+        gap: 10px;
+    }
+
+    .editor-add-intro,
+    .editor-current-moment-hint,
+    .editor-canvas-empty-guide__desc,
+    .editor-modal-intro {
+        font-size: 11.5px;
+        line-height: 1.52;
+    }
+}
