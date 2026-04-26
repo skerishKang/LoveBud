@@ -28,7 +28,23 @@
 
 ## 반복 false positive 금지 항목
 
-### 1. `vercel.json`
+### 1. Firebase Web `apiKey`
+
+- `js/firebase-config.js`의 Firebase Web config는 브라우저 초기화용 설정입니다.
+- 값이 코드에 보인다는 사실만으로 **즉시 blocker**로 분류하지 않습니다.
+- 이 항목은 보통 **운영 점검 항목**으로 분리합니다.
+
+점검 방향:
+- Firebase authorized domains
+- Auth provider 설정
+- Security Rules
+- abuse 방지 설정
+
+금지:
+- "apiKey가 보이므로 즉시 배포 불가" 식의 단정
+- 서버 secret과 동일한 성격으로 취급
+
+### 2. `vercel.json`
 
 - 현재 `vercel.json`은 deprecated transitional fallback / audit 대상입니다.
 - 공식 사용자-facing entry는 Cloudflare Pages `https://lovebud.pages.dev/` 기준입니다.
@@ -38,7 +54,7 @@
 - “Netlify가 있으니 Vercel 설정은 불필요” 식의 추정
 - Vercel을 현재 공식 프론트 엔트리로 단정
 
-### 2. Netlify route gap
+### 3. Netlify route gap
 
 - Netlify route gaps are not automatic blockers for Cloudflare production.
 - Netlify is Legacy Artifact Only / Removal Candidate, not an active fallback implementation target.
@@ -75,7 +91,7 @@
 - 실제 현재 증상과 연결 없이 “파일이 크니 심각” 판정
 - generic 프론트엔드 교과서식 리뷰를 최우선 이슈로 분류
 
-### 6. 이름만 보고 위험 단정
+### 7. 이름만 보고 위험 단정
 
 - 파일명만 보고 runtime 구조를 단정하지 않습니다.
 - 반드시 현재 파일 내용과 실제 호출 구조를 확인합니다.
@@ -111,6 +127,7 @@
 - “vercel.json은 혼란스럽다 → 삭제”
 - “Netlify route gap이 있다 → active fallback parity 구현 필요”
 - “번들러가 없으니 지금 당장 도입 필요”
+- “Firebase apiKey가 보인다 → 즉시 blocker”
 
 ---
 
