@@ -90,11 +90,12 @@ PR3 button / badge / chip tone 기준 판단이 필요하면 아래를 추가로
 
 - **index**: [design_index.md](./design/design_index.md)
 - [UI_DESIGN_SYSTEM.md](./design/UI_DESIGN_SYSTEM.md) - UI 구조 / 감정 위계 / 컴포넌트 규칙 source of truth
-- [UI_POLISH_ROADMAP.md](./design/UI_POLISH_ROADMAP.md) - PR #49, PR #51 이후 public UI polish 후속 PR3/PR4/PR5 범위 분리 기준
-- [BUTTON_BADGE_CHIP_BASELINE.md](./design/BUTTON_BADGE_CHIP_BASELINE.md) - PR3 button / badge / chip tone 통일 기준
+- [UI_POLISH_ROADMAP.md](./design/UI_POLISH_ROADMAP.md) - PR #49, #51, #62, #63, #66, #67, #69, #70 이후 public UI polish와 Search 후속 작업 범위 분리 기준
+- [BUTTON_BADGE_CHIP_BASELINE.md](./design/BUTTON_BADGE_CHIP_BASELINE.md) - button / badge / chip tone 통일 기준
 - [PROTOTYPE_REFERENCE_POLICY.md](./design/PROTOTYPE_REFERENCE_POLICY.md) - prototype/reference 폴더 보존 정책
 - [prompts/image-generation-prompts.md](./design/prompts/image-generation-prompts.md) - 이미지 생성 프롬프트 모음
 - [prompts/home-hero-slide-prompts.txt](./design/prompts/home-hero-slide-prompts.txt) - 홈 히어로 슬라이드 프롬프트
+- [stitch_image_to_website/DESIGN.md](./design/stitch_image_to_website/DESIGN.md) - Stitch image-to-website reference design note. 현재 active UI polish source of truth는 아님
 
 ## engineering 문서군
 
@@ -128,6 +129,12 @@ PR3 button / badge / chip tone 기준 판단이 필요하면 아래를 추가로
 프로젝트 운영 문서는 `docs/project/` 아래에 정리됩니다.
 
 - **index**: [project_index.md](./project/project_index.md)
+- [REPORTING_CHAIN.md](./project/REPORTING_CHAIN.md) - 3TF 구조, TF별 Lead, 실행 모델, 보고선
+- [PROJECT_OPERATING_MODEL.md](./project/PROJECT_OPERATING_MODEL.md) - 역할, 책임, 승인권, 세션 시작 프로토콜
+- [BRANCHING_AND_REVIEW.md](./project/BRANCHING_AND_REVIEW.md) - main 우선 확인, 브랜치 작업, 리뷰/검증/완료 보고 원칙
+- [LOCAL_MODEL_WORKFLOW.md](./project/LOCAL_MODEL_WORKFLOW.md) - 로컬 실행 모델 작업 기준
+- [TASK_STATUS.md](./project/TASK_STATUS.md) - 작업 상태 추적 문서
+- [VERIFICATION_AND_EVIDENCE.md](./project/VERIFICATION_AND_EVIDENCE.md) - 검증 및 증빙 기준
 - [VERIFICATION_WARNING_CATALOG.md](./project/VERIFICATION_WARNING_CATALOG.md) - UI/production/test preview 검증 warning과 blocker 분류 기준
 
 ## migration 문서군

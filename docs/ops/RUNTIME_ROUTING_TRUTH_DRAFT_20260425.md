@@ -1,5 +1,14 @@
 # LoveBud Runtime Routing Truth Draft - 2026-04-25
 
+> **SUPERSEDED**
+>
+> This draft is preserved as investigation history only. Current runtime truth is documented in:
+>
+> - `docs/ops/OPERATIONS.md`
+> - `docs/migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md`
+>
+> Do not use this draft as the current production source of truth without checking those documents first.
+
 This draft records the confirmed route precedence for the production `/api/trees`
 path before updating the canonical deployed-entry documentation.
 

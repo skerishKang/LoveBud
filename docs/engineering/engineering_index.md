@@ -4,10 +4,14 @@
 
 현재 운영 전제는 아래와 같습니다.
 
-- 실서비스 프론트: `https://lovebud.vercel.app/`
-- 인프라 우선순위: **Modal > Vercel > Netlify**
-- 브라우저는 가능하면 **same-origin `/api`** 만 사용
-- browse display filter 와 publication guard 는 다른 문제로 다룸
+- 실서비스 프론트: `https://lovebud.pages.dev/`
+- 인프라 우선순위: **Modal > Cloudflare Pages > Vercel > Netlify**
+- Cloudflare Pages는 공식 user-facing entry이자 same-origin `/api` router입니다.
+- Modal은 active compute/runtime 우선 경로입니다.
+- Vercel은 upstream / secondary / transitional fallback 계층입니다.
+- Netlify는 legacy / fallback / artifact 계층입니다.
+- 브라우저는 가능하면 **same-origin `/api`** 만 사용합니다.
+- browse display filter 와 publication guard 는 다른 문제로 다룹니다.
 
 ---
 
@@ -43,6 +47,7 @@
   - `../product/BRAND_EXPERIENCE.md`
   - `../design/UI_DESIGN_SYSTEM.md`
 - 엔지니어링 문서는 현재 계약, 구조, 분리 기준, 전환 원칙을 설명하는 용도로 사용합니다.
+- 런타임 / 배포 판단은 `../ops/OPERATIONS.md`와 `../migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md`의 현재 기준을 우선합니다.
 - 반복되는 오판 방지는 `REVIEW_GUARDRAILS.md`를 기준으로 합니다.
 
 ---

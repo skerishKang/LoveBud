@@ -23,7 +23,7 @@
 ## 현재 상태 스냅샷
 
 - 기준일: 2026-04-26
-- 기준 main 커밋: `1833aaf2c779bd593bda2687d5ee0df0e4197bfd`
+- 기준 main 커밋: `90933a4961b240df2caa7f04b737322b22200f26`
 
 | 구분 | 상태 | 기준/대상 | 현재 기록 |
 |------|------|-----------|-----------|
@@ -40,13 +40,15 @@
 | UI verification rules | 완료 | PR #50 `docs(project): clarify UI verification environment rules` | UI verification environment rules 문서화 완료 |
 | Test preview slot rules | 완료 | PR #52 `docs(ops): test preview slot branch rules` | test preview slot branch rules 문서화 완료. Merge SHA: `bbc988041e248d171a8560419dc739394ba4e23f` |
 | Local generated artifact ignore | 완료 | PR #53 `chore: ignore local generated artifacts` | local generated artifacts `.gitignore` 정리 완료. Merge SHA: `5f8d185cde4b1d46df75a8c4382fd71a4a671ca8`. prototype/reference 보존 대상 침범 없음 |
-| Task status tracking | 진행 중 | PR #64 closed / this update | PR #64는 PR #63 직후 기준이라 stale close됨. 현재 문서는 PR #69 / #70 이후 상태 기준으로 최신화 중 |
+| Task status tracking | 진행 중 | PR #76 `docs(project): align document indexes and runtime truth` | docs-only 정합성 cleanup 진행 중. 현재 PR은 merge 전 검토 대상이며 완료로 기록하지 않음 |
 | Prototype reference preservation | 완료 | PR #55 `docs(design): preserve prototype reference folders` | prototype/reference preservation policy 문서화 완료. PR #7 보존 정책 문서화 완료. Merge SHA: `1f1c0758d9307e8e090386d21b21a265e5fe257b` |
 | Known CI/E2E blockers | 완료 | PR #56 `docs(ops): document known CI and E2E blockers` | known CI/E2E blockers 문서화 완료. Merge SHA: `c67956a23f61ea26dfb47e64813d340d960985ba` |
-| UI polish roadmap | 진행 중 | `docs/design/UI_POLISH_ROADMAP.md` | PR #69 / PR #70 이후 남은 Issue #65 backlog 3개와 맞추는 최신화 진행 중 |
+| UI polish roadmap | 완료 | `docs/design/UI_POLISH_ROADMAP.md` | PR #69 / PR #70 이후 남은 Issue #65 backlog 3개와 Search 후속 범위 분리 완료 |
 | Verification warning catalog | 완료 | PR #58 `docs(project): add verification warning catalog` | verification warning catalog 문서화 완료. Merge SHA: `7e221b8829500c26a7542481bea1585d916fb14a` |
 | 기능 TF | 완료 | `feature/search-growing-trees-api` | main과 동일 상태 (Identical). PR 생성 불필요. `/api/community/growing-trees` 운영 quick check 통과. 기능 TF 종료 |
 | SVG Tree Prototype | 진행 중 | PR #7 `experiment: SVG tree prototype` | open / draft. SVG tree prototype. prototype/reference 보존 대상. merged 아님. 정식 기능 아님. close 금지. branch 삭제 금지. navigation 연결 금지 |
+| JS architecture cleanup | 보류 | Issue #72 / PR #73 | Issue #72는 open이며 current status는 paused. PR #73은 closed / unmerged. file-move refactor는 clean worktree와 단일 executor 조건 충족 전 재개 금지 |
+| Editor UI polish | 완료 | PR #74 `ui(editor): polish editor surface and empty states` | merged / closed. Editor surface polish와 i18n key 보강 main 반영 완료. Merge SHA: `90933a4961b240df2caa7f04b737322b22200f26` |
 
 ---
 
@@ -68,21 +70,26 @@ Issue #65는 open backlog tracker이며, 현재 미완료 항목은 아래 3개�
 | 작업 | 상태 | 메모 |
 |------|------|------|
 | Selected tree deep link | 대기 | `?tree=<treeId>` 직접 진입 시 공개 tree preview 선택. desktop / mobile preview 동작 확인 필요 |
-| Search JS responsibility split | 대기 | URL state / controls, browse data loading, preview controller 책임 분리. 기능 변경 없이 단계적 refactor 필요 |
-| Search CSS extraction / inline style reduction | 대기 | PR5 이후 `pages/search.html` 내부 style 및 inline style 단계적 정리 |
+| Search JS responsibility split | 보류 | JS architecture cleanup paused 상태. Search file-move 재개 전 clean worktree / 단일 executor / Preview 검증 조건 필요 |
+| Search CSS extraction / inline style reduction | 대기 | PR5 이후 `pages/search.html` 내부 style 및 inline style 단계적 정리. Search JS refactor와 혼합 금지 |
 
 ---
 
-## PR #64 stale close 기록
+## PR #64 / PR #73 정리 기록
 
 - PR #64 `docs(project): update backlog after PR63`는 docs-only 범위 자체는 안전했으나 PR #63 직후 기준으로 작성되어 현재 main / Issue #65와 불일치했습니다.
 - PR #69 / PR #70 이후 완료 상태를 반영하지 못하므로 stale 사유로 closed / unmerged 처리되었습니다.
 - PR #64 head branch는 삭제하지 않았습니다.
+- PR #73 `refactor(search): group search page scripts`는 closed / unmerged 처리되었습니다.
+- PR #73은 preview behavior 검증은 있었으나 branch pollution / merge conflict / operational risk 때문에 병합하지 않았고, JS architecture cleanup은 Issue #72 기준 paused 상태입니다.
 
 ---
 
 ## 작업 이력 (Task History)
 
+- 2026-04-26: PR #76 `docs(project): align document indexes and runtime truth` opened. docs-only cleanup 진행 중. 완료 아님
+- 2026-04-26: PR #74 `ui(editor): polish editor surface and empty states` merged / closed. Editor surface polish main 반영 완료. Merge SHA `90933a4961b240df2caa7f04b737322b22200f26`
+- 2026-04-26: Issue #72 `JS Architecture Cleanup Tracker` updated. JS architecture cleanup paused. PR #73 closed / unmerged
 - 2026-04-26: PR #70 `docs(runtime): clarify active and legacy runtime paths` merged / closed. Cloudflare Pages / Modal / Netlify active/legacy runtime truth 문서화 완료. Merge SHA `1833aaf2c779bd593bda2687d5ee0df0e4197bfd`
 - 2026-04-26: PR #69 `fix(search): harden YouTube thumbnail fallback` merged / closed. YouTube thumbnail fallback hardening 완료. Merge SHA `5f0708c82c6a909f11dbe4fc31776adfd0504778`
 - 2026-04-26: PR #68 `chore(ci): stabilize Playwright E2E dependency` 상당 변경 main 직접 squash 반영 후 PR closed / unmerged. Playwright dependency blocker 정리 완료
