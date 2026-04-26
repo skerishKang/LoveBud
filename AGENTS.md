@@ -280,7 +280,7 @@ LoveBud 작업에는 배포, API 접근, 테스트 계정, 외부 서비스 연�
 
 작업에 secret이 필요하면 에이전트는 값을 요구하거나 출력하지 말고, 필요한 secret name만 말합니다. 실제 값 주입은 사용자가 로컬 환경, provider dashboard, GitHub Actions Secrets, Cloudflare/Vercel/Netlify dashboard 등 적절한 secret store를 통해 처리합니다.
 
-**금지금:**
+**금지 예시:**
 
 - `.secrets/` 내부 파일 내용을 읽어서 보고서에 붙여넣기
 - `.env` 값을 issue/PR/comment에 복사하기
@@ -288,14 +288,14 @@ LoveBud 작업에는 배포, API 접근, 테스트 계정, 외부 서비스 연�
 - token의 일부 또는 마지막 8자리를 문서화하기
 - 테스트 계정 비밀번호를 AGENTS.md나 docs에 기록하기
 
-**허용:**
+**허용 예시:**
 
 - "`.secrets/`는 로컬 전용이며 gitignored 상태여야 한다"고 안내
 - "`VERCEL_TOKEN`이 필요하다"고 secret name만 안내
 - "Firebase Admin SDK key file은 `.secrets/` 아래 로컬에만 둔다"고 위치 정책만 안내
 - "secret 값은 provider dashboard에서 rotate한다"고 절차만 안내
 
-`.secrets/` 또는 `.env*` 파일이 git 추적 대상에 올라온 정항이 있으면 즉시 작업을 중단하고 보고합니다.
+`.secrets/` 또는 `.env*` 파일이 git 추적 대상에 올라온 정황이 있으면 즉시 작업을 중단하고 보고합니다.
 
 #### 로컬 저장소 / 클론 / 프로세스 정리
 
