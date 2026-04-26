@@ -8,8 +8,10 @@
 
 ## 먼저 확인할 전제
 
-- 실서비스 프론트 주소: `https://lovebud.vercel.app/`
-- 인프라 우선순위: **Modal > Vercel > Netlify**
+- 공식 사용자-facing 주소: `https://lovebud.pages.dev/`
+- active runtime: **Cloudflare Pages + Modal**
+- Vercel: deprecated transitional fallback / audit 중
+- Netlify: Legacy Artifact Only / Removal Candidate / Issue #119 runtime routing audit 대상
 - 브라우저는 가능하면 **same-origin `/api`** 만 사용
 - `PRODUCT_IDENTITY / BRAND_EXPERIENCE / UI_DESIGN_SYSTEM` 은 source of truth
 - browse display filter 와 publication guard 는 다른 문제
@@ -26,30 +28,26 @@
 
 ## 반복 false positive 금지 항목
 
-### 1. Firebase Web `apiKey`
+### 1. `vercel.json`
 
-- `js/firebase-config.js`의 Firebase Web config는 브라우저 초기화용 설정입니다.
-- 값이 코드에 보인다는 사실만으로 **즉시 blocker**로 분류하지 않습니다.
-- 이 항목은 보통 **운영 점검 항목**으로 분리합니다.
-
-점검 방향:
-- Firebase authorized domains
-- Auth provider 설정
-- Security Rules
-- abuse 방지 설정
-
-금지:
-- “apiKey가 보이므로 즉시 배포 불가” 식의 단정
-- 서버 secret과 동일한 성격으로 취급
-
-### 2. `vercel.json`
-
-- 현재 `vercel.json`은 공식 엔트리 계약과 rewrite 규칙의 일부입니다.
-- Vercel은 현재 문서 기준 공식 프론트 엔트리 계층입니다.
+- 현재 `vercel.json`은 deprecated transitional fallback / audit 대상입니다.
+- 공식 사용자-facing entry는 Cloudflare Pages `https://lovebud.pages.dev/` 기준입니다.
 
 금지:
 - `vercel.json`을 자동으로 삭제/정리 후보로 분류
 - “Netlify가 있으니 Vercel 설정은 불필요” 식의 추정
+- Vercel을 현재 공식 프론트 엔트리로 단정
+
+### 2. Netlify route gap
+
+- Netlify route gaps are not automatic blockers for Cloudflare production.
+- Netlify is Legacy Artifact Only / Removal Candidate, not an active fallback implementation target.
+- Route gaps in `netlify.toml` or `netlify/functions/*` should be routed to Issue #119 runtime routing audit unless CTO explicitly reactivates Netlify runtime.
+
+금지:
+- CTO 승인 없이 Netlify route parity를 맞추기 위해 신규 API route 추가
+- 신규 backend policy를 `netlify/functions/*`에 구현
+- Cloudflare production route gap과 Netlify legacy route gap을 같은 문제로 취급
 
 ### 3. browse vs search
 
@@ -77,9 +75,9 @@
 - 실제 현재 증상과 연결 없이 “파일이 크니 심각” 판정
 - generic 프론트엔드 교과서식 리뷰를 최우선 이슈로 분류
 
-### 6. 이름만 보고 보안 위험 단정
+### 6. 이름만 보고 위험 단정
 
-- 파일명만 보고 DB direct access, secret leakage, inactive config를 단정하지 않습니다.
+- 파일명만 보고 runtime 구조를 단정하지 않습니다.
 - 반드시 현재 파일 내용과 실제 호출 구조를 확인합니다.
 
 금지:
@@ -103,15 +101,15 @@
 
 ## 좋은 리뷰 예시
 
-- my-trees 첫 진입 지연을 `700ms fallback`, auth polling, boot 중복과 연결해서 설명
-- browse 느림을 summary read path, 캐시 miss, fallback query 구조와 연결해서 설명
+- my-trees 첫 진입 지연을 auth polling, boot 중복과 연결해서 설명
+- browse 느림을 summary read path, 캐시 miss, degraded response 구조와 연결해서 설명
 - editor/my-trees write path가 same-origin `/api` 계약을 지키는지 점검
 
 ## 나쁜 리뷰 예시
 
 - “파일이 크다 → 심각”
-- “Firebase apiKey가 보인다 → 즉시 blocker”
 - “vercel.json은 혼란스럽다 → 삭제”
+- “Netlify route gap이 있다 → active fallback parity 구현 필요”
 - “번들러가 없으니 지금 당장 도입 필요”
 
 ---
