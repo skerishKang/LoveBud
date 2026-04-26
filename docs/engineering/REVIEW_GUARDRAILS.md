@@ -65,7 +65,7 @@
 - 신규 backend policy를 `netlify/functions/*`에 구현
 - Cloudflare production route gap과 Netlify legacy route gap을 같은 문제로 취급
 
-### 3. browse vs search
+### 4. browse vs search
 
 - `pages/search.html`은 구현 경로명입니다.
 - `browse`, `둘러보기`, `감상 허브`는 제품 경험 표현입니다.
@@ -74,7 +74,7 @@
 - search와 browse를 같은 층위 개념으로 혼동
 - 경로명만 보고 제품 카피가 틀렸다고 단정
 
-### 4. browse display filter vs publication guard
+### 5. browse display filter vs publication guard
 
 - browse display filter: read/display 정책
 - publication guard: write/state transition 정책
@@ -82,7 +82,7 @@
 금지:
 - 둘을 같은 기능 또는 같은 버그 범주로 취급
 
-### 5. 파일 크기 / 번들러 / 컴포넌트화
+### 6. 파일 크기 / 번들러 / 컴포넌트화
 
 - 파일이 크다는 사실만으로 현재 blocker라고 단정하지 않습니다.
 - 번들러 도입, 전면 컴포넌트화, monolith 제거는 장기 과제일 수 있습니다.
