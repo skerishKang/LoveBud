@@ -1,0 +1,162 @@
+.tree-card {
+    display: flex;
+    flex-direction: column;
+    padding: 14px;
+    background:
+        radial-gradient(circle at 30% 20%, rgba(255, 248, 245, 0.92), transparent 52%),
+        rgba(255, 255, 255, 0.82);
+    border-radius: 1.85rem;
+    border: 1px solid rgba(144, 73, 81, 0.08);
+    margin-bottom: 0;
+    transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    box-shadow:
+        0 20px 48px rgba(75, 64, 57, 0.1),
+        0 0 0 1px rgba(255, 255, 255, 0.62) inset;
+    min-width: 0;
+}
+
+.tree-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, rgba(200,116,128,0.6), rgba(240,193,198,0.6));
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.tree-card:hover {
+    transform: translateY(-3px);
+    border-color: rgba(144,73,81,0.16);
+    box-shadow:
+        0 24px 56px rgba(75, 64, 57, 0.14),
+        0 0 0 1px rgba(255, 255, 255, 0.82) inset;
+}
+
+.tree-card.is-active {
+    border-color: rgba(144, 73, 81, 0.22);
+    box-shadow:
+        0 26px 60px rgba(144, 73, 81, 0.12),
+        0 0 0 1px rgba(255, 255, 255, 0.42) inset;
+}
+
+.tree-card:hover::before,
+.tree-card.is-active::before {
+    opacity: 1;
+}
+
+.tree-card-featured .tree-card-media {
+    min-height: 210px;
+}
+
+.tree-card-media {
+    position: relative;
+    min-height: 182px;
+    margin: 0 0 16px;
+    overflow: hidden;
+    border-radius: 1.45rem;
+    background:
+        radial-gradient(circle at 20% 15%, rgba(255, 245, 246, 0.95), rgba(255,255,255,0.18) 46%),
+        linear-gradient(135deg, rgba(144, 73, 81, 0.12), rgba(122, 139, 110, 0.12));
+    isolation: isolate;
+}
+
+.tree-card-media img {
+    width: 100%;
+    height: 100%;
+    min-height: inherit;
+    object-fit: cover;
+    display: block;
+}
+
+.tree-card-media::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(50, 38, 35, 0.22), rgba(50, 38, 35, 0.03) 58%, rgba(255,255,255,0));
+    pointer-events: none;
+}
+
+.tree-card-media-fallback {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary);
+    font-size: 34px;
+    font-weight: 900;
+    background:
+        radial-gradient(circle at 18% 16%, rgba(255, 245, 246, 0.92), rgba(255,255,255,0.12) 48%),
+        linear-gradient(135deg, rgba(144, 73, 81, 0.09), rgba(122, 139, 110, 0.11));
+}
+
+.tree-card-media-fallback[hidden] {
+    display: none !important;
+}
+
+.tree-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 4px 6px 6px;
+    height: 100%;
+    min-width: 0;
+}
+
+.tree-title {
+    font-size: 1.46rem;
+    font-weight: 900;
+    line-height: 1.18;
+    letter-spacing: -0.02em;
+}
+
+.tree-subtitle {
+    font-size: 0.92rem;
+    color: var(--on-surface-variant);
+    line-height: 1.58;
+    margin: 0;
+}
+
+.tree-meta-row {
+    margin-top: auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(144,73,81,0.08);
+    font-size: 13px;
+    color: var(--on-surface-variant);
+}
+
+.tree-meta-left,
+.tree-meta-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.tree-meta-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 28px;
+    padding: 0 10px;
+    border-radius: 999px;
+    background: rgba(250,244,245,0.92);
+    color: var(--primary);
+    font-size: 12px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.tree-meta-chip .material-symbols-outlined {
+    font-size: 14px;
+}
