@@ -230,7 +230,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             const params = new URLSearchParams();
             if (currentQuery) params.set('q', currentQuery);
-            if (currentCategory && currentCategory !== '?„ì²´') params.set('category', currentCategory);
+            if (currentCategory && currentCategory !== '??') params.set('category', currentCategory);
             if (currentSort && currentSort !== 'latest') params.set('sort', currentSort);
             if (currentLimit && currentLimit !== 10) params.set('limit', String(currentLimit));
             const newSearch = params.toString();
