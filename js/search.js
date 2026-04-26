@@ -211,6 +211,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     let isRestoringUrlState = false;
+    let initialTreeDeepLinkApplied = false;
 
     function readUrlState() {
         try {
@@ -219,10 +220,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 query: params.get('q') || '',
                 category: params.get('category') || '',
                 sort: params.get('sort') || '',
-                limit: params.get('limit') || ''
+                limit: params.get('limit') || '',
+                tree: params.get('tree') || ''
             };
         } catch {
-            return { query: '', category: '', sort: '', limit: '' };
+            return { query: '', category: '', sort: '', limit: '', tree: '' };
         }
     }
 
@@ -278,6 +280,32 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
         isRestoringUrlState = false;
+    }
+
+    function applySelectedTreeFromUrl() {
+        if (initialTreeDeepLinkApplied) return;
+        const state = readUrlState();
+        if (!state.tree) return;
+
+        const targetTree = allTrees.find(t => t.id === state.tree) || growingTrees.find(t => t.id === state.tree);
+        if (!targetTree) return;
+
+        let activeCard = null;
+        let selector = '';
+        try {
+            selector = `.tree-card[data-tree-id="${CSS.escape(state.tree)}"]`;
+        } catch (e) {
+            selector = `.tree-card[data-tree-id="${state.tree.replace(/"/g, '\\"')}"]`;
+        }
+
+        const allCardContainers = [resultsList, growingList].filter(Boolean);
+        for (const container of allCardContainers) {
+            activeCard = container.querySelector(selector);
+            if (activeCard) break;
+        }
+
+        selectTree(targetTree, activeCard);
+        initialTreeDeepLinkApplied = true;
     }
 
     const syncBrowseHead = () => {
@@ -721,6 +749,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Apply URL state after initial load
     restoreStateFromUrl();
+    applySelectedTreeFromUrl();
 
     let searchInputTimer = null;
     searchInput.addEventListener('input', (e) => {
@@ -756,4 +785,5 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Initial URL state restoration after all scripts are loaded
     restoreStateFromUrl();
+    applySelectedTreeFromUrl();
 });
