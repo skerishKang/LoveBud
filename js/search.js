@@ -242,6 +242,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function restoreStateFromUrl() {
+        // Make functions globally available for debugging
+        window.readUrlState = readUrlState;
+        window.updateUrlState = updateUrlState;
+        window.restoreStateFromUrl = restoreStateFromUrl;
         const { query, category, sort, limit } = readUrlState();
         isRestoringUrlState = true;
         if (query) currentQuery = query;
@@ -652,6 +656,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         loadGrowingTrees()
     ]);
 
+    // Apply URL state after initial load
+    restoreStateFromUrl();
+
     let searchInputTimer = null;
     searchInput.addEventListener('input', (e) => {
         currentQuery = e.target.value.trim();
@@ -677,6 +684,4 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderResults(false);
         syncBrowseHead();
     });
-
-    restoreStateFromUrl();
 });
