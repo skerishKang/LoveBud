@@ -59,7 +59,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentQuery = '';
     let currentSort = 'latest';
     let currentLimit = 10;
-    let currentCategory = '전체';
+    let currentCategory = '?�체';
+    let isRestoringUrlState = false;
 
     function getCurrentLocale() {
         const locale = window.i18n?.currentLang || window.getCurrentLang?.() || document.documentElement?.lang || 'ko';
@@ -150,12 +151,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const SORT_COPY = {
         latest: {
-            title: () => getSearchCopy('search.resultsHeading', '최근 공개된 러브트리', 'Recently Shared LoveTrees'),
-            badge: (count) => getCurrentLocale() === 'en' ? `${count} to start with` : `지금 먼저 볼 ${count}개`
+            title: () => getSearchCopy('search.resultsHeading', '최근 공개???�브?�리', 'Recently Shared LoveTrees'),
+            badge: (count) => getCurrentLocale() === 'en' ? `${count} to start with` : `지�?먼�? �?${count}�?
         },
         popular: {
-            title: () => getCurrentLocale() === 'en' ? 'Popular Public LoveTrees' : '인기 많은 공개 러브트리',
-            badge: (count) => getCurrentLocale() === 'en' ? `${count} trending now` : `지금 반응이 큰 ${count}개`
+            title: () => getCurrentLocale() === 'en' ? 'Popular Public LoveTrees' : '?�기 많�? 공개 ?�브?�리',
+            badge: (count) => getCurrentLocale() === 'en' ? `${count} trending now` : `지�?반응????${count}�?
         }
     };
 
@@ -166,49 +167,108 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const eyebrow = document.querySelector('.search-panel-eyebrow span:last-child');
         if (eyebrow) {
-            eyebrow.textContent = getSearchCopy('search.eyebrow', '오늘의 공개 감상', 'Today\'s Public Picks');
+            eyebrow.textContent = getSearchCopy('search.eyebrow', '?�늘??공개 감상', 'Today\'s Public Picks');
         }
 
         if (searchInput) {
-            searchInput.placeholder = getSearchCopy('search.placeholder', '예: 첫 설렘 · 아티스트명 · 감정 태그', 'e.g., first spark, artist, emotion tag');
+            searchInput.placeholder = getSearchCopy('search.placeholder', '?? �??�렘 · ?�티?�트�?· 감정 ?�그', 'e.g., first spark, artist, emotion tag');
         }
 
         const previewHeading = document.querySelector('.preview-panel-header h3');
         if (previewHeading) {
-            previewHeading.textContent = getSearchCopy('search.previewTitle', '감상 허브', 'Viewing Hub');
+            previewHeading.textContent = getSearchCopy('search.previewTitle', '감상 ?�브', 'Viewing Hub');
         }
 
         const previewBadge = document.querySelector('.preview-badge');
         if (previewBadge) {
-            previewBadge.textContent = getSearchCopy('search.previewBadge', '선택한 트리', 'Selected Tree');
+            previewBadge.textContent = getSearchCopy('search.previewBadge', '?�택???�리', 'Selected Tree');
         }
 
         if (previewMobileClose) {
             previewMobileClose.setAttribute(
                 'aria-label',
-                getSearchCopy('search.previewClose', '감상 닫기', 'Close preview')
+                getSearchCopy('search.previewClose', '감상 ?�기', 'Close preview')
             );
         }
 
         const previewKicker = document.querySelector('.preview-kicker');
         if (previewKicker) {
-            previewKicker.textContent = getSearchCopy('search.previewKicker', '대표 순간과 이어진 감정을 먼저 살펴보세요.', 'Begin with the featured moment and connected feelings.');
+            previewKicker.textContent = getSearchCopy('search.previewKicker', '?�???�간�??�어�?감정??먼�? ?�펴보세??', 'Begin with the featured moment and connected feelings.');
         }
 
         const previewStatsPending = document.querySelector('#previewTreeStats .tree-meta-item:first-child span:last-child');
         if (previewStatsPending) {
-            previewStatsPending.textContent = getSearchCopy('search.previewStatsPending', '대표 순간이 열리면 함께 보여드릴게요', 'This will appear once the featured moment opens.');
+            previewStatsPending.textContent = getSearchCopy('search.previewStatsPending', '?�???�간???�리�??�께 보여?�릴게요', 'This will appear once the featured moment opens.');
         }
 
         const emotionLabel = document.querySelector('.emotion-tags-label span:last-child');
         if (emotionLabel) {
-            emotionLabel.textContent = getSearchCopy('search.previewEmotionTagsLabel', '이어진 감정', 'Connected Feelings');
+            emotionLabel.textContent = getSearchCopy('search.previewEmotionTagsLabel', '?�어�?감정', 'Connected Feelings');
         }
 
         if (previewEmotionTags && !previewEmotionTags.children.length) {
-            previewEmotionTags.textContent = getSearchCopy('search.previewNoEmotionTags', '아직 또렷한 감정의 결은 놓이지 않았어요.', 'No clear emotional thread has settled yet.');
+            previewEmotionTags.textContent = getSearchCopy('search.previewNoEmotionTags', '?�직 ?�렷??감정??결�? ?�이지 ?�았?�요.', 'No clear emotional thread has settled yet.');
         }
     };
+
+    function readUrlState() {
+        try {
+            const params = new URLSearchParams(window.location.search);
+            return {
+                query: params.get('q') || '',
+                category: params.get('category') || '',
+                sort: params.get('sort') || '',
+                limit: params.get('limit') || ''
+            };
+        } catch {
+            return { query: '', category: '', sort: '', limit: '' };
+        }
+    }
+
+    function updateUrlState() {
+        if (isRestoringUrlState) return;
+        try {
+            const params = new URLSearchParams();
+            if (currentQuery) params.set('q', currentQuery);
+            if (currentCategory && currentCategory !== '?�체') params.set('category', currentCategory);
+            if (currentSort && currentSort !== 'latest') params.set('sort', currentSort);
+            if (currentLimit && currentLimit !== 10) params.set('limit', String(currentLimit));
+            const newSearch = params.toString();
+            const newUrl = newSearch ? `${window.location.pathname}?${newSearch}` : window.location.pathname;
+            if (newUrl !== (window.location.pathname + window.location.search)) {
+                history.pushState(null, '', newUrl);
+            }
+        } catch { /* ignore */ }
+    }
+
+    function restoreStateFromUrl() {
+        const { query, category, sort, limit } = readUrlState();
+        isRestoringUrlState = true;
+        if (query) currentQuery = query;
+        if (category) currentCategory = category;
+        if (sort === 'latest' || sort === 'popular') currentSort = sort;
+        if (limit) {
+            const parsedLimit = parseInt(limit, 10);
+            if (!isNaN(parsedLimit) && parsedLimit >= 1 && parsedLimit <= 60) {
+                currentLimit = parsedLimit;
+            }
+        }
+        if (query && searchInput) searchInput.value = query;
+        if (category) {
+            tagChips.forEach(chip => {
+                const chipCategory = chip.dataset.category || chip.textContent.trim();
+                chip.classList.toggle('active', chipCategory === currentCategory);
+            });
+        }
+        if (sort) {
+            const sortBtn = document.querySelector(`[data-browse-sort="${currentSort}"]`);
+            if (sortBtn) {
+                document.querySelectorAll('[data-browse-sort]').forEach(b => b.classList.remove('active'));
+                sortBtn.classList.add('active');
+            }
+        }
+        isRestoringUrlState = false;
+    }
 
     const syncBrowseHead = () => {
         const copy = SORT_COPY[currentSort] || SORT_COPY.latest;
@@ -225,8 +285,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (loadMoreBtn) {
             loadMoreBtn.disabled = currentLimit >= 60;
             loadMoreBtn.textContent = currentLimit >= 60
-                ? (getCurrentLocale() === 'en' ? 'Max 60' : '최대 60개')
-                : (getCurrentLocale() === 'en' ? 'Load more' : '더 보기');
+                ? (getCurrentLocale() === 'en' ? 'Max 60' : '최�? 60�?)
+                : (getCurrentLocale() === 'en' ? 'Load more' : '??보기');
         }
     };
 
@@ -242,10 +302,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         controls.style.gap = '10px';
         controls.innerHTML = `
             <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                <button type="button" class="tag-chip active" data-browse-sort="latest">${getCurrentLocale() === 'en' ? 'Latest' : '최신순'}</button>
-                <button type="button" class="tag-chip" data-browse-sort="popular">${getCurrentLocale() === 'en' ? 'Popular' : '인기순'}</button>
+                <button type="button" class="tag-chip active" data-browse-sort="latest">${getCurrentLocale() === 'en' ? 'Latest' : '최신??}</button>
+                <button type="button" class="tag-chip" data-browse-sort="popular">${getCurrentLocale() === 'en' ? 'Popular' : '?�기??}</button>
             </div>
-            <button type="button" id="browseLoadMoreBtn" class="tag-chip">${getCurrentLocale() === 'en' ? 'Load more' : '더 보기'}</button>
+            <button type="button" id="browseLoadMoreBtn" class="tag-chip">${getCurrentLocale() === 'en' ? 'Load more' : '??보기'}</button>
         `;
         resultsHead.appendChild(controls);
 
@@ -259,12 +319,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                     chip.classList.toggle('active', chip.dataset.browseSort === currentSort);
                 });
                 await loadPublicTrees({ resetSelection: true });
+                updateUrlState();
             });
         });
 
         controls.querySelector('#browseLoadMoreBtn')?.addEventListener('click', async () => {
             currentLimit = Math.min(currentLimit + 10, 60);
             await loadPublicTrees({ resetSelection: false });
+            updateUrlState();
         });
     };
 
@@ -317,13 +379,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         resultsList.innerHTML = `
             <div class="empty-state" style="padding:60px 24px; text-align:center; color: var(--on-surface-variant);">
                 <span class="material-symbols-outlined" style="font-size: 56px; color: var(--error); opacity: 0.6; margin-bottom: 20px; display: block;">cloud_off</span>
-                <h3 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 12px; color: var(--on-surface);">${getCurrentLocale() === 'en' ? 'Failed to load' : '불러오기 실패'}</h3>
+                <h3 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 12px; color: var(--on-surface);">${getCurrentLocale() === 'en' ? 'Failed to load' : '불러?�기 ?�패'}</h3>
                 <p style="font-size: 0.95rem; opacity: 0.8; margin-bottom: 24px; line-height: 1.6;">
                     ${getCurrentLocale() === 'en'
                         ? 'There was a problem reaching the server.<br>Please check your network and try again in a moment.'
-                        : '서버 연결에 문제가 발생했습니다.<br>네트워크 상태를 확인하고 잠시 후 다시 시도해 주세요.'}
+                        : '?�버 ?�결??문제가 발생?�습?�다.<br>?�트?�크 ?�태�??�인?�고 ?�시 ???�시 ?�도??주세??'}
                 </p>
-                <button type="button" id="retryLoadBtn" class="btn-round btn-primary" style="padding: 10px 24px;">${getCurrentLocale() === 'en' ? 'Try again' : '다시 시도'}</button>
+                <button type="button" id="retryLoadBtn" class="btn-round btn-primary" style="padding: 10px 24px;">${getCurrentLocale() === 'en' ? 'Try again' : '?�시 ?�도'}</button>
             </div>
         `;
 
@@ -341,13 +403,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
         if (previewTitle) {
-            previewTitle.textContent = tree?.title || getSearchCopy('search.previewDefaultTreeName', '러브트리', 'LoveTree');
+            previewTitle.textContent = tree?.title || getSearchCopy('search.previewDefaultTreeName', '?�브?�리', 'LoveTree');
         }
         if (previewDesc) {
-            previewDesc.innerHTML = `<p style="margin-bottom:16px;">${getCurrentLocale() === 'en' ? 'Loading the featured moment of this tree.' : '대표 순간을 불러오는 중이에요.'}</p>`;
+            previewDesc.innerHTML = `<p style="margin-bottom:16px;">${getCurrentLocale() === 'en' ? 'Loading the featured moment of this tree.' : '?�???�간??불러?�는 중이?�요.'}</p>`;
         }
         if (previewContainer) {
-            previewContainer.innerHTML = `<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--on-surface-variant);font-size:14px;text-align:center;padding:20px;"><span class="material-symbols-outlined" style="font-size:40px;opacity:0.45;margin-bottom:12px;display:block;animation:spin 1s linear infinite;">progress_activity</span><p style="margin:0;line-height:1.5;">${getCurrentLocale() === 'en' ? 'Preparing the featured moment.' : '대표 순간을 준비하고 있어요.'}</p></div>`;
+            previewContainer.innerHTML = `<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--on-surface-variant);font-size:14px;text-align:center;padding:20px;"><span class="material-symbols-outlined" style="font-size:40px;opacity:0.45;margin-bottom:12px;display:block;animation:spin 1s linear infinite;">progress_activity</span><p style="margin:0;line-height:1.5;">${getCurrentLocale() === 'en' ? 'Preparing the featured moment.' : '?�???�간??준비하�??�어??'}</p></div>`;
         }
     };
 
@@ -485,7 +547,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (window.apiClient && window.apiClient.getPublicTrees) {
                 const apiTrees = await window.apiClient.getPublicTrees({ view: 'summary', sort: currentSort, limit: currentLimit });
                 if (!Array.isArray(apiTrees)) {
-                    throw new Error(getCurrentLocale() === 'en' ? 'Invalid API response format' : 'API 응답 형식 오류');
+                    throw new Error(getCurrentLocale() === 'en' ? 'Invalid API response format' : 'API ?�답 ?�식 ?�류');
                 }
 
                 if (cache) {
@@ -498,11 +560,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 apiTreesLoaded = true;
                 renderResults();
             } else {
-                throw new Error(getCurrentLocale() === 'en' ? 'Tree API unavailable' : 'tree API 사용 불가');
+                throw new Error(getCurrentLocale() === 'en' ? 'Tree API unavailable' : 'tree API ?�용 불�?');
             }
         } catch (error) {
             loadError = error;
-            console.warn('[search] API 로드 실패:', error.message);
+            console.warn('[search] API 로드 ?�패:', error.message);
             if (!allTrees || allTrees.length === 0) {
                 allTrees = [];
             }
@@ -596,6 +658,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (searchInputTimer) clearTimeout(searchInputTimer);
         searchInputTimer = setTimeout(() => {
             renderResults(false);
+            updateUrlState();
         }, 180);
     });
 
@@ -605,6 +668,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             chip.classList.add('active');
             currentCategory = chip.dataset.category || chip.textContent.trim();
             renderResults(false);
+            updateUrlState();
         });
     });
+
+    window.addEventListener('popstate', () => {
+        restoreStateFromUrl();
+        renderResults(false);
+        syncBrowseHead();
+    });
+
+    restoreStateFromUrl();
 });
