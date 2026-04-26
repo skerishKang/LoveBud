@@ -49,7 +49,7 @@
 
     function showImageFallback(img) {
         if (!img) return;
-        img.hidden = true;
+        img.style.display = 'none';
         const fallback = img.nextElementSibling;
         if (fallback) {
             fallback.hidden = false;
@@ -111,7 +111,7 @@
     function renderMediaFallback(tree, titleText) {
         const safeTitle = escapeHtml(titleText || '러브트리');
         return `
-            <div class="tree-card-media-fallback" style="flex-direction:column;gap:8px;padding:20px;text-align:center;background:linear-gradient(135deg, rgba(250,242,243,0.96), rgba(255,255,255,0.96));">
+            <div class="tree-card-media-fallback" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:20px;text-align:center;background:linear-gradient(135deg, rgba(250,242,243,0.96), rgba(255,255,255,0.96));width:100%;height:100%;">
                 <span style="font-size:34px;line-height:1;">${escapeHtml(getTreeIcon(tree.stage))}</span>
                 <div style="font-size:13px;font-weight:800;color:var(--on-surface);">${safeTitle}</div>
             </div>
@@ -123,8 +123,10 @@
             return renderMediaFallback(tree, titleText);
         }
         return `
-            <img src="${src}" alt="${alt}" loading="lazy" onerror="window.LoveBudSearchCardRenderer?.showImageFallback?.(this)" onload="window.LoveBudSearchCardRenderer?.handleImageLoad?.(this)">
-            <div class="tree-card-media-fallback" hidden>${renderMediaFallback(tree, titleText)}</div>
+            <img src="${src}" alt="${alt}" loading="lazy" onerror="window.LoveBudSearchCardRenderer?.showImageFallback?.(this)" onload="window.LoveBudSearchCardRenderer?.handleImageLoad?.(this)" style="width:100%;height:100%;object-fit:cover;">
+            <div data-fallback-container hidden style="width:100%;height:100%;position:absolute;inset:0;">
+                ${renderMediaFallback(tree, titleText)}
+            </div>
         `;
     }
 
@@ -152,7 +154,7 @@
          const firstMoment = escapeHtml(firstMem?.title || '대표 순간 준비 중');
 
          return `
-             <div class="tree-card-media" aria-label="${firstMoment}">
+             <div class="tree-card-media" aria-label="${firstMoment}" style="position:relative;overflow:hidden;">
                  ${renderRepresentativeImage(mediaUrl, firstMoment, tree, titleText)}
              </div>
          `;
