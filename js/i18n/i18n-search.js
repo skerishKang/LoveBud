@@ -21,6 +21,18 @@
       ko: '트리를 고르면 열려요.',
       en: 'Choose a tree to open it.'
     },
+    'search.growingTreesTitle': {
+      ko: '새로 자라는 러브트리',
+      en: 'Newly Growing LoveTrees'
+    },
+    'search.growingTreesSubtitle': {
+      ko: '막 자라기 시작한 마음들',
+      en: 'Feelings just beginning to grow'
+    },
+    'search.growingTreesBadge': {
+      ko: '자라는 중',
+      en: 'Growing'
+    },
 
     // 미리보기
     'search.previewTitle': {
