@@ -9,11 +9,15 @@ function read(file) {
   return fs.readFileSync(path.join(ROOT, file), 'utf8');
 }
 
+// Note: endpointLikelyRequiresAuth was historically defined inline in
+// postgres-client.js but has since been extracted to js/api/auth-policy.js.
+// postgres-client.js now imports AuthPolicy from window.LoveTreeAuthPolicy.
 test('postgres client keeps community endpoints outside auth-required classification', () => {
-  const client = read('js/postgres-client.js');
+  const authPolicy = read('js/api/auth-policy.js');
 
-  assert.match(client, /function endpointLikelyRequiresAuth\(endpoint\)/);
-  assert.match(client, /startsWith\('\/community\/'\)/);
+  // The auth policy module defines the endpoint classification function
+  assert.match(authPolicy, /function endpointLikelyRequiresAuth\(endpoint\)/);
+  assert.match(authPolicy, /startsWith\('\/community\/'\)/);
 });
 
 test('private api usage remains present for trees and memories flows', () => {
