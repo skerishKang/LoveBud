@@ -175,6 +175,18 @@
       ko: '대표 순간이 열려요.',
       en: 'The featured moment opens here.'
     },
+    'search.previewShareLink': {
+      ko: '감상 링크 복사',
+      en: 'Copy view link'
+    },
+    'search.previewShareLinkCopied': {
+      ko: '링크가 복사됐어요',
+      en: 'Link copied'
+    },
+    'search.previewShareLinkFailed': {
+      ko: '복사하지 못했어요',
+      en: 'Copy failed'
+    },
 
     // 검색 입력
     'search.placeholder': {
