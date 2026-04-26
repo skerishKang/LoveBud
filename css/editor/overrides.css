@@ -1,0 +1,461 @@
+.editor-status-section,
+.editor-add-section {
+    width: 100%;
+}
+
+.editor-status-section h3,
+.editor-add-section h3 {
+    margin: 0 0 6px;
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1.4;
+    color: var(--on-surface);
+}
+
+.editor-status-card {
+    width: 100%;
+    padding: 16px 14px 14px;
+    border-radius: 18px;
+    background: white;
+    box-sizing: border-box;
+    border: 1px solid rgba(144, 73, 81, 0.05);
+    box-shadow: 0 4px 12px rgba(75, 64, 57, 0.03);
+}
+
+.editor-space-between-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.editor-status-card strong {
+    display: block;
+    font-size: 1.42rem;
+    font-weight: 900;
+    line-height: 1.24;
+    color: var(--on-surface);
+    white-space: normal;
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+    letter-spacing: -0.03em;
+}
+
+.editor-status-card p {
+    margin: 6px 0 0;
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--on-surface-variant);
+    white-space: normal;
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+}
+
+.editor-rename-btn {
+    flex: 0 0 auto;
+    min-height: 34px;
+    padding: 0 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(144, 73, 81, 0.14);
+    background: rgba(255,255,255,0.9);
+    color: var(--primary);
+    font-size: 12px;
+    font-weight: 800;
+    box-shadow: 0 6px 16px rgba(75,64,57,0.05);
+}
+
+.editor-tree-visibility-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: fit-content;
+    min-height: 26px;
+    padding: 0 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    margin-top: 8px;
+}
+
+.editor-tree-visibility-pill.is-public {
+    background: rgba(76,175,80,0.06);
+    color: #6ab06a;
+    border: 1px solid rgba(76,175,80,0.12);
+}
+
+.editor-tree-visibility-pill.is-private {
+    background: rgba(144,73,81,0.04);
+    color: #a36b62;
+    border: 1px solid rgba(144,73,81,0.08);
+}
+
+.editor-title-settings-panel {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.editor-mini-setting-btn {
+    min-height: 36px;
+    padding: 7px 10px;
+    border-radius: 12px;
+    border: 1px solid rgba(144,73,81,0.06);
+    background: rgba(255,253,249,0.62);
+    color: var(--on-surface-variant);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.35;
+    text-align: center;
+    cursor: pointer;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+
+.editor-mini-setting-btn .material-symbols-outlined {
+    font-size: 14px;
+    flex: 0 0 auto;
+    color: var(--primary);
+    opacity: 0.7;
+}
+
+.editor-mini-setting-btn:hover {
+    transform: translateY(-1px);
+    background: rgba(255,253,249,0.82);
+    border-color: rgba(144,73,81,0.12);
+}
+
+.editor-flow-summary {
+    margin-top: 6px;
+}
+
+.editor-sidebar-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.editor-add-section .secondary-btn,
+.editor-sidebar-actions .secondary-btn {
+    width: 100%;
+    min-height: 44px;
+    padding: 12px 16px;
+    border-radius: 12px;
+    border: 1px solid var(--outline-variant);
+    background: white;
+    color: var(--on-surface);
+    font-weight: 600;
+    font-size: 13px;
+    white-space: nowrap;
+    line-height: 1.4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.editor-add-section .secondary-btn:hover,
+.editor-sidebar-actions .secondary-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(144, 73, 81, 0.12);
+    border-color: rgba(144, 73, 81, 0.3);
+    background: white;
+}
+
+.editor-add-section .secondary-btn::before {
+    content: '+';
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.editor-sidebar-actions .secondary-btn:last-child::before {
+    content: '⌂';
+    font-size: 12px;
+}
+
+.sidebar-btn {
+    width: 100%;
+    min-height: 42px;
+    padding: 10px 16px;
+    border-radius: 999px;
+    border: 1px solid rgba(144, 73, 81, 0.1);
+    background: white;
+    color: var(--on-surface);
+    font-weight: 600;
+    font-size: 13px;
+    line-height: 1.35;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(75, 64, 57, 0.03);
+    text-align: left;
+}
+
+.sidebar-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(144, 73, 81, 0.15);
+    border-color: rgba(144, 73, 81, 0.25);
+    background: white;
+}
+
+.sidebar-btn-primary {
+    background: var(--primary);
+    color: white;
+    border-color: transparent;
+    font-weight: 700;
+    box-shadow: 0 4px 12px rgba(144, 73, 81, 0.12);
+    opacity: 0.96;
+}
+
+.sidebar-btn-primary:hover {
+    background: #7d3f46;
+    box-shadow: 0 4px 16px rgba(144, 73, 81, 0.16);
+    opacity: 1;
+}
+
+.btn-icon {
+    font-size: 14px;
+    line-height: 1;
+    flex: 0 0 auto;
+}
+
+.btn-label {
+    font-size: 13px;
+    flex: 1 1 auto;
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: keep-all;
+    line-height: 1.35;
+}
+
+.editor-sidebar-meta {
+    display: block;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--outline-variant);
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--on-surface-variant);
+}
+
+.editor-status-card {
+    background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,246,244,0.96));
+    box-shadow: 0 8px 20px rgba(75, 64, 57, 0.05);
+}
+
+.editor-status-card,
+.editor-status-card strong,
+.editor-status-card p,
+.editor-sidebar-meta,
+.detail-panel h3,
+.detail-panel label,
+.detail-panel p,
+.detail-panel .tag,
+.detail-panel .diary-note,
+.detail-panel .diary-note *,
+.detail-panel input,
+.detail-panel textarea {
+    -webkit-user-select: text;
+    user-select: text;
+}
+
+.memory-node,
+.memory-node * {
+    user-select: none;
+}
+
+/* ==========================================================================
+   Editor paper tone pass 3
+   Goal: Scrapbook/Paper texture unification & tone polish
+   ========================================================================== */
+
+/* 1. Base Layout & Backgrounds */
+body .editor-layout {
+    background: #fdfcfb;
+    background-image: linear-gradient(180deg, #fffcf9 0%, #f9f5f0 100%);
+}
+
+body .sidebar,
+body .detail-panel {
+    background: rgba(255, 253, 249, 0.94);
+    border: 1px solid rgba(144, 73, 81, 0.1);
+    box-shadow: 0 12px 40px rgba(75, 64, 57, 0.08);
+}
+
+body .canvas-area {
+    background-color: #faf8f6;
+    background-image: radial-gradient(rgba(144, 73, 81, 0.03) 1px, transparent 1px);
+    border: 1px solid rgba(144, 73, 81, 0.08);
+    box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.015);
+}
+
+body .canvas-area::before {
+    border-color: rgba(144, 73, 81, 0.08);
+}
+
+/* 2. Left Status Card (Scrapbook Cover/Paper) */
+body .editor-status-card {
+    background: #ffffff;
+    background-image: linear-gradient(165deg, #ffffff 0%, #fdfbf9 100%);
+    border: 1px solid rgba(144, 73, 81, 0.16);
+    box-shadow: 0 8px 24px rgba(75, 64, 57, 0.06), 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+body .editor-status-card strong {
+    color: #4a372e;
+}
+
+body .editor-tree-quiet-note {
+    color: #8f776c;
+    border-top: 1px dashed rgba(190, 147, 127, 0.24);
+}
+
+/* 3. Node Card (Paper Scrap) */
+body .node-card {
+    background: #ffffff;
+    border: 1px solid rgba(144, 73, 81, 0.08);
+    box-shadow: 1px 2px 6px rgba(75, 64, 57, 0.05);
+    border-radius: 6px;
+    transition: box-shadow 0.24s ease, border-color 0.24s ease, background-color 0.24s ease;
+}
+
+body .memory-node:hover .node-card,
+body .memory-node.selected .node-card {
+    border-color: rgba(144, 73, 81, 0.35);
+    box-shadow: 0 12px 32px rgba(144, 73, 81, 0.12);
+}
+
+body .node-img-wrapper {
+    background: #f8f6f4;
+    border-radius: 4px;
+}
+
+/* 4. Right Detail Cards (Surface Unification) */
+body .editor-current-moment-card,
+body .editor-moment-info-card,
+body .editor-save-status-card {
+    background: rgba(255,253,249,0.56);
+    border: 1px solid rgba(144, 73, 81, 0.06);
+    box-shadow: 0 2px 8px rgba(75, 64, 57, 0.02);
+}
+
+body .editor-moment-info-card {
+    background: rgba(255, 255, 255, 0.6);
+}
+
+body .diary-note {
+    background: rgba(253, 252, 251, 0.8);
+    border-left: 4px solid rgba(144, 73, 81, 0.15);
+    color: #55443d;
+}
+
+/* 5. Button/Chip/Pill Tone */
+body .editor-tree-visibility-pill.is-private {
+    background: rgba(144, 73, 81, 0.06);
+    color: #904951;
+    border: 1px solid rgba(144, 73, 81, 0.12);
+}
+
+body .editor-mini-setting-btn {
+    background: rgba(255, 255, 255, 0.86);
+    border-color: rgba(144, 73, 81, 0.14);
+    color: #6d544b;
+}
+
+body .editor-memory-mode-chip {
+    background: #ffffff;
+    border-color: rgba(144, 73, 81, 0.12);
+}
+
+body .editor-memory-mode-chip.is-active {
+    background: rgba(144, 73, 81, 0.08);
+    border-color: rgba(144, 73, 81, 0.24);
+    color: #904951;
+}
+
+/* 6. Mobile Polish (375px) */
+@media (max-width: 375px) {
+    body .editor-layout {
+        padding: 10px;
+        gap: 10px;
+    }
+
+    body .sidebar,
+    body .detail-panel,
+    body .canvas-area {
+        border-radius: 20px;
+    }
+
+    body .editor-status-card {
+        padding: 18px 14px;
+    }
+
+    body .editor-status-card strong {
+        font-size: 1.35rem;
+    }
+
+body .editor-canvas-title h2 {
+        font-size: 1.3rem;
+    }
+}
+
+/* Editor page presentation overrides extracted from pages/editor.html */
+.memory-inline-edit { display:inline-flex; align-items:center; }
+.memory-inline-edit input { font-size:inherit; font-weight:inherit; font-family:inherit; color:inherit; width:100%; border:1px solid var(--outline); padding:4px 8px; border-radius:4px; box-sizing:border-box; }
+.memory-edit-textarea { font-size:inherit; font-weight:inherit; font-family:inherit; color:inherit; width:100%; min-height:80px; border:1px solid var(--outline); padding:8px; border-radius:8px; box-sizing:border-box; margin-bottom:4px; resize:vertical; line-height:1.7; }
+.memory-edit-button { border:none; background:transparent; cursor:pointer; font-size:0.8rem; color:var(--primary); padding:4px 8px; border-radius:4px; margin-left:8px; }
+.memory-edit-button:hover { background:rgba(144,73,81,0.08); }
+.memory-edit-actions { display:flex; gap:8px; margin-top:8px; }
+.memory-edit-actions .btn-save { background:var(--primary); color:white; border:none; padding:4px 12px; border-radius:16px; font-size:0.85rem; cursor:pointer; }
+.memory-edit-actions .btn-cancel { background:transparent; color:var(--on-surface-variant); border:1px solid var(--outline); padding:4px 12px; border-radius:16px; font-size:0.85rem; cursor:pointer; }
+.memory-edit-error { color:var(--error); font-size:0.8rem; margin-top:4px; }
+.memory-edit-hint { color:var(--on-surface-variant); font-size:0.8rem; margin-top:4px; }
+.editor-memory-mode-group { display:flex; gap:10px; flex-wrap:wrap; margin:4px 0 2px; }
+.editor-memory-mode-chip { display:inline-flex; align-items:center; gap:8px; min-height:40px; padding:0 14px; border-radius:999px; border:1px solid rgba(144,73,81,0.12); background:rgba(255,255,255,0.84); color:var(--on-surface-variant); font-size:13px; font-weight:700; cursor:pointer; transition:all 0.18s ease; }
+.editor-memory-mode-chip.is-active { color:var(--primary); border-color:rgba(144,73,81,0.22); background:rgba(144,73,81,0.08); box-shadow:0 8px 20px rgba(75,64,57,0.05); }
+.editor-memory-mode-chip .material-symbols-outlined { font-size:18px; }
+.editor-form-support-note { margin:-4px 0 2px; display:flex; align-items:flex-start; gap:8px; padding:12px 14px; border-radius:16px; background:rgba(255,255,255,0.68); border:1px solid rgba(144,73,81,0.08); color:var(--on-surface-variant); font-size:12px; line-height:1.6; }
+.editor-form-support-note .material-symbols-outlined { font-size:16px; color:var(--primary); margin-top:1px; }
+.editor-form-field.is-deemphasized { opacity:0.72; }
+.editor-layout { background:linear-gradient(180deg,#fff8f0 0%,#f8ede2 52%,#f5e6dc 100%); gap:18px; padding:18px; box-sizing:border-box; }
+.sidebar, .detail-panel { border:1px solid rgba(255,255,255,0.86); border-radius:32px; background:linear-gradient(180deg,rgba(255,253,249,0.88),rgba(255,247,239,0.66)); box-shadow:0 24px 62px rgba(156,116,94,0.13); }
+.sidebar { border-right:1px solid rgba(255,255,255,0.86); }
+.detail-panel { border-left:1px solid rgba(255,255,255,0.86); }
+.canvas-area { border-radius:34px; background:radial-gradient(circle at 50% 26%,rgba(255,244,232,0.86),transparent 34%),linear-gradient(180deg,rgba(255,252,248,0.82),rgba(250,238,226,0.54)); border:1px solid rgba(255,255,255,0.56); box-shadow:0 24px 62px rgba(156,116,94,0.10); }
+.canvas-area::before { content:''; position:absolute; inset:72px 28px 28px; border-radius:30px; border:1px solid rgba(255,255,255,0.42); background:radial-gradient(circle at 50% 28%,rgba(255,255,255,0.36),transparent 34%); pointer-events:none; z-index:0; }
+.canvas-svg, .memory-node, #canvasEmptyGuide, #addMemoryForm { z-index:2; }
+.editor-reference-kicker { display:inline-flex; align-items:center; gap:8px; width:max-content; max-width:100%; min-height:30px; padding:0 12px; border-radius:999px; background:rgba(255,248,242,0.90); border:1px solid rgba(233,213,199,0.86); color:#a36b62; font-size:12px; font-weight:800; letter-spacing:0.01em; }
+.editor-status-card { position:relative; padding:24px 20px 20px; border-radius:28px; background:linear-gradient(180deg,rgba(255,253,249,0.96),rgba(255,246,239,0.88)); border:1px solid rgba(233,215,201,0.82); box-shadow:0 18px 40px rgba(161,119,96,0.10); }
+.editor-status-card .editor-reference-kicker { margin-bottom:14px; }
+.editor-status-card strong { font-size:1.62rem; color:#583f35; }
+.editor-rename-btn { display:none !important; }
+.editor-tree-visibility-pill { min-height:34px; padding:0 14px; margin-top:14px; font-size:12px; border-radius:999px; }
+.editor-title-settings-panel { gap:10px; margin-top:20px; }
+.editor-mini-setting-btn { min-height:48px; border-radius:999px; background:rgba(255,255,255,0.70); border-color:rgba(221,198,184,0.84); color:#7f6258; font-weight:800; box-shadow:0 8px 16px rgba(165,124,101,0.06); }
+.editor-tree-quiet-note { margin:20px 0 0; padding-top:18px; border-top:1px dashed rgba(190,147,127,0.36); color:#8f776c; font-size:13px; line-height:1.7; text-align:center; }
+.editor-canvas-topbar { position:absolute; top:22px; left:24px; right:24px; z-index:7; display:flex; align-items:flex-start; justify-content:space-between; gap:18px; pointer-events:none; }
+.editor-canvas-topbar > * { pointer-events:auto; }
+.editor-canvas-title h2 { margin:10px 0 0; font-size:1.76rem; line-height:1.12; letter-spacing:-0.05em; color:#553f35; }
+.editor-canvas-caption { margin:7px 0 0; max-width:360px; color:#9a8175; font-size:13px; line-height:1.6; }
+.editor-canvas-toolbar { display:flex; align-items:center; gap:8px; padding:8px; border-radius:999px; background:rgba(255,250,244,0.82); border:1px solid rgba(230,207,194,0.78); box-shadow:0 14px 30px rgba(161,119,96,0.10); backdrop-filter:blur(8px); }
+.editor-canvas-toolbar .sidebar-btn { min-height:38px; padding:0 14px; border-radius:999px; background:rgba(255,255,255,0.74); border:1px solid rgba(221,198,184,0.84); color:#7f6258; box-shadow:none; }
+.editor-status-section > h3,
+.editor-flow-lead,
+#sidebarMomentCount,
+#sidebarFlowSummary,
+#sidebarSelectionHint,
+.editor-add-section-bottom,
+.editor-tree-meta-section,
+#detailEmptyStartBtn { display: none !important; }
+.editor-status-card { margin-top: 0; }
+.editor-canvas-empty-guide__desc { max-width: 260px; margin-left: auto; margin-right: auto; }
