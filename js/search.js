@@ -727,7 +727,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         const treeId = shareButton.dataset.shareTreeLink;
         if (!treeId) return;
 
-        const originalText = shareButton.textContent;
+        const labelSpan = shareButton.querySelector('[data-share-tree-link-label]');
+        if (!labelSpan) return;
+
+        const originalText = labelSpan.textContent;
         const copiedText = getSearchCopy('search.previewShareLinkCopied', '링크가 복사됐어요', 'Link copied');
         const failedText = getSearchCopy('search.previewShareLinkFailed', '복사하지 못했어요', 'Copy failed');
 
@@ -735,15 +738,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             const url = new URL('/pages/search.html', window.location.origin);
             url.searchParams.set('tree', treeId);
             await navigator.clipboard.writeText(url.toString());
-            shareButton.textContent = copiedText;
+            labelSpan.textContent = copiedText;
             setTimeout(() => {
-                shareButton.textContent = originalText;
+                labelSpan.textContent = originalText;
             }, 1500);
         } catch (error) {
             console.warn('[search] clipboard copy failed:', error.message);
-            shareButton.textContent = failedText;
+            labelSpan.textContent = failedText;
             setTimeout(() => {
-                shareButton.textContent = originalText;
+                labelSpan.textContent = originalText;
             }, 1500);
         }
     });

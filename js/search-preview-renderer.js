@@ -116,7 +116,7 @@
         return `
             <button type="button" data-share-tree-link="${escapeHtml(tree.id)}" class="btn-round" style="width:100%;margin-top:12px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;gap:6px;background:var(--surface-container);color:var(--on-surface-variant);border:1px solid var(--outline-variant);">
                 <span class="material-symbols-outlined" style="font-size:16px;">link</span>
-                ${escapeHtml(label)}
+                <span data-share-tree-link-label>${escapeHtml(label)}</span>
             </button>
         `;
     }
