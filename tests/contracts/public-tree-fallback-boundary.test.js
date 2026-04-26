@@ -21,15 +21,15 @@ test('public tree adapter documents transitional fallback scope explicitly', () 
   assert.match(src, /New code outside this adapter must not directly read snake_case fields/);
 });
 
-test('snake_case and wrapper fallback stay isolated to the public tree adapter', () => {
-  const searchHtml = read('pages/search.html');
-  const searchDataAdapter = read('js/search-data-adapter.js');
+test('snake_case and wrapper fallback stay isolated to standard pages', () => {
+  const filesToCheck = [
+    'pages/search.html',
+    'js/detail.js',
+    'js/my-trees.js',
+    'js/editor.js',
+    'js/search-data-adapter.js',
+  ];
 
-  // Note: js/search.js contains an enrichBrowseSummaryTree helper that
-  // intentionally retains transitional snake_case fallbacks (emotion_tags,
-  // .data ||) until the enrichment path is fully delegated to the adapter.
-  // That cleanup is tracked separately and is not in scope for this PR.
-  // search.html and search-data-adapter.js must remain snake_case-free.
   const forbiddenPatterns = [
     /tree_id/,
     /emotion_tags/,
@@ -38,8 +38,10 @@ test('snake_case and wrapper fallback stay isolated to the public tree adapter',
     /\.data\s*\|\|/,
   ];
 
-  for (const pattern of forbiddenPatterns) {
-    assert.doesNotMatch(searchHtml, pattern);
-    assert.doesNotMatch(searchDataAdapter, pattern);
+  for (const file of filesToCheck) {
+    const src = read(file);
+    for (const pattern of forbiddenPatterns) {
+      assert.doesNotMatch(src, pattern, `File ${file} contains forbidden pattern ${pattern}`);
+    }
   }
 });

@@ -5,14 +5,8 @@
    * Canonical namespace: LoveTreePublicTreeAdapter
    *
    * Transitional compatibility only for public browse paths.
-   * Handles legacy `{ data }` wrapper and snake_case fields from older API responses:
-   *   - `tree_id`
-   *   - `created_at`
-   *   - `owner_id`
-   *   - `emotion_tags`
-   *
+   * Handles legacy `{ data }` wrapper and `tree_id`, `created_at`, `owner_id`, `emotion_tags`.
    * New code outside this adapter must not directly read snake_case fields.
-   * All callers outside this file must use the normalized camelCase output only.
    */
 
   function sanitizeUrl(url) {
