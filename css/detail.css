@@ -336,4 +336,8 @@
     .moment-card img { width: 60px !important; height: 60px !important; }
     .growth-visualization { margin-top: 24px; }
     #connectedFragments { grid-template-columns: 1fr !important; gap: 14px !important; min-width: 0; }
+    #memoryTitle {
+        font-size: 2.2rem !important;
+        line-height: 1.2;
+    }
 }
