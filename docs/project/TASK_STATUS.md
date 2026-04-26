@@ -23,11 +23,11 @@
 ## 현재 상태 스냅샷
 
 - 기준일: 2026-04-26
-- 기준 main 커밋: `90933a4961b240df2caa7f04b737322b22200f26`
+- 기준 main 커밋: `0da436d57c9628e1e72d960d9d814844f4079d98`
 
 | 구분 | 상태 | 기준/대상 | 현재 기록 |
 |------|------|-----------|-----------|
-| 문서 TF | 완료 | PR #8, #10, #32, #33, #50, #52, #54~#58, #61, #70 | project/ops/design 문서, 검증 기준, public-first 정책, QA matrix, warning catalog, branch cleanup plan, runtime active/legacy clarification main 반영 완료 |
+| 문서 TF | 완료 | PR #8, #10, #32, #33, #50, #52, #54~#58, #61, #70, #76, #77 | project/ops/design 문서, 검증 기준, public-first 정책, QA matrix, warning catalog, branch cleanup plan, runtime active/legacy clarification, 문서 인덱스/preview slot rules 정리 main 반영 완료 |
 | Runtime routing truth | 완료 | PR #70 `docs(runtime): clarify active and legacy runtime paths` | Cloudflare Pages 공식 사용자-facing entry, Modal active compute/runtime 우선 경로, Netlify legacy/fallback/artifact 기준 문서화 완료. Merge SHA: `1833aaf2c779bd593bda2687d5ee0df0e4197bfd` |
 | Public layout UI | 완료 | PR #49 `ui(layout): align landing browse rails` | layout rail / container / spacing 통일 완료. production verification PASS. Merge SHA: `dfb158a843932edeaaf7c859d0fa3e2d06c9be08` |
 | Typography / accent hierarchy | 완료 | PR #51 `ui(style): align typography accent hierarchy` | typography / accent hierarchy 통일 완료. production verification PASS. Merge SHA: `99af8a69fbe1cf61ac23017b938027164a213b3a` |
@@ -36,18 +36,21 @@
 | Browse card / hub panel surface | 완료 | PR #66 `ui(search): unify browse card and hub surfaces` | Browse/Search card, preview sidebar, growing section, placeholder tone 정리 완료. production smoke 기준 main 반영 완료 |
 | Search URL state | 완료 | PR #67 상당 직접 squash commit | `q`, `category`, `sort`, `limit` URL state sync main 반영 완료. Current main history includes `01408fbb87805083b08e77974351c9fa17c0d0f9`; PR #67은 중복 merge 방지를 위해 closed / unmerged 처리됨 |
 | YouTube thumbnail fallback | 완료 | PR #69 `fix(search): harden YouTube thumbnail fallback` | failed card thumbnails hide broken image and show fallback surface; preview fallback overlay obstruction removed. Merge SHA: `5f0708c82c6a909f11dbe4fc31776adfd0504778` |
+| Search inline style reduction pass 1 | 완료 | PR #80 `ui(search): reduce preview inline styles` | `pages/search.html` only. Cloudflare Preview verification PASS. Production verification pending. Issue #65는 open 유지 |
 | CI/E2E Playwright dependency stabilization | 완료 | PR #68 상당 직접 squash commit | `playwright` dev dependency, lockfile, CI E2E smoke `npm ci` 변경 main 반영 완료. PR #68은 중복 merge 방지를 위해 closed / unmerged 처리됨 |
 | UI verification rules | 완료 | PR #50 `docs(project): clarify UI verification environment rules` | UI verification environment rules 문서화 완료 |
-| Test preview slot rules | 완료 | PR #52 `docs(ops): test preview slot branch rules` | test preview slot branch rules 문서화 완료. Merge SHA: `bbc988041e248d171a8560419dc739394ba4e23f` |
+| Test preview slot rules | 완료 | PR #52, PR #77 | test preview slot branch rules 및 post-merge preview slot verification rules 문서화 완료. PR #52 Merge SHA: `bbc988041e248d171a8560419dc739394ba4e23f`; PR #77 Merge SHA: `6fe90fbef24f7348a1f6b247891e62ba871a5c3b` |
 | Local generated artifact ignore | 완료 | PR #53 `chore: ignore local generated artifacts` | local generated artifacts `.gitignore` 정리 완료. Merge SHA: `5f8d185cde4b1d46df75a8c4382fd71a4a671ca8`. prototype/reference 보존 대상 침범 없음 |
-| Task status tracking | 진행 중 | PR #76 `docs(project): align document indexes and runtime truth` | docs-only 정합성 cleanup 진행 중. 현재 PR은 merge 전 검토 대상이며 완료로 기록하지 않음 |
+| Task status tracking | 완료 | PR #76 `docs(project): align document indexes and runtime truth` | docs-only 7 files 정합성 cleanup 완료. Merge SHA: `e447cb903f671afbccb5623a02a71d965a4c58f8` |
 | Prototype reference preservation | 완료 | PR #55 `docs(design): preserve prototype reference folders` | prototype/reference preservation policy 문서화 완료. PR #7 보존 정책 문서화 완료. Merge SHA: `1f1c0758d9307e8e090386d21b21a265e5fe257b` |
 | Known CI/E2E blockers | 완료 | PR #56 `docs(ops): document known CI and E2E blockers` | known CI/E2E blockers 문서화 완료. Merge SHA: `c67956a23f61ea26dfb47e64813d340d960985ba` |
-| UI polish roadmap | 완료 | `docs/design/UI_POLISH_ROADMAP.md` | PR #69 / PR #70 이후 남은 Issue #65 backlog 3개와 Search 후속 범위 분리 완료 |
+| UI polish roadmap | 완료 | `docs/design/UI_POLISH_ROADMAP.md` | PR #69 / PR #70 이후 남은 Issue #65 backlog와 Search 후속 범위 분리 완료 |
 | Verification warning catalog | 완료 | PR #58 `docs(project): add verification warning catalog` | verification warning catalog 문서화 완료. Merge SHA: `7e221b8829500c26a7542481bea1585d916fb14a` |
 | 기능 TF | 완료 | `feature/search-growing-trees-api` | main과 동일 상태 (Identical). PR 생성 불필요. `/api/community/growing-trees` 운영 quick check 통과. 기능 TF 종료 |
 | SVG Tree Prototype | 진행 중 | PR #7 `experiment: SVG tree prototype` | open / draft. SVG tree prototype. prototype/reference 보존 대상. merged 아님. 정식 기능 아님. close 금지. branch 삭제 금지. navigation 연결 금지 |
 | JS architecture cleanup | 보류 | Issue #72 / PR #73 | Issue #72는 open이며 current status는 paused. PR #73은 closed / unmerged. file-move refactor는 clean worktree와 단일 executor 조건 충족 전 재개 금지 |
+| Auth architecture/security audit | 진행 중 | Issue #78 | Auth architecture, global exports, token cache cleanup audit open. 구현 승인 아님. 향후 docs-only audit note 또는 token cache security PR 후보 |
+| Runtime ownership guardrails | 진행 중 | Issue #79 | Runtime ownership and legacy folder guardrails open. active/legacy runtime marker docs 후보 |
 | Editor UI polish | 완료 | PR #74 `ui(editor): polish editor surface and empty states` | merged / closed. Editor surface polish와 i18n key 보강 main 반영 완료. Merge SHA: `90933a4961b240df2caa7f04b737322b22200f26` |
 
 ---
@@ -69,9 +72,9 @@ Issue #65는 open backlog tracker이며, 현재 미완료 항목은 아래 3개�
 
 | 작업 | 상태 | 메모 |
 |------|------|------|
-| Selected tree deep link | 대기 | `?tree=<treeId>` 직접 진입 시 공개 tree preview 선택. desktop / mobile preview 동작 확인 필요 |
+| Selected tree deep link | 진행 중 | `?tree=<treeId>` 직접 진입 시 공개 tree preview 선택. desktop / mobile preview 동작 확인 필요. 별도 feature branch에서 구현/검증 후 판단 |
 | Search JS responsibility split | 보류 | JS architecture cleanup paused 상태. Search file-move 재개 전 clean worktree / 단일 executor / Preview 검증 조건 필요 |
-| Search CSS extraction / inline style reduction | 대기 | PR5 이후 `pages/search.html` 내부 style 및 inline style 단계적 정리. Search JS refactor와 혼합 금지 |
+| Search CSS extraction / inline style reduction | 진행 중 | PR #80으로 static inline style reduction pass 1 완료. 더 넓은 CSS extraction은 대기. Search JS refactor와 혼합 금지 |
 
 ---
 
@@ -87,7 +90,11 @@ Issue #65는 open backlog tracker이며, 현재 미완료 항목은 아래 3개�
 
 ## 작업 이력 (Task History)
 
-- 2026-04-26: PR #76 `docs(project): align document indexes and runtime truth` opened. docs-only cleanup 진행 중. 완료 아님
+- 2026-04-26: PR #80 `ui(search): reduce preview inline styles` squash merged / closed. Search inline style reduction pass 1 main 반영 완료. Merge SHA `0da436d57c9628e1e72d960d9d814844f4079d98`. Cloudflare Preview verification PASS. Production verification pending
+- 2026-04-26: Issue #79 `Audit: Runtime ownership and legacy folder guardrails` opened. active/legacy runtime marker docs 후보로 추적
+- 2026-04-26: Issue #78 `Audit: Auth architecture, global exports, and token cache cleanup` opened. Auth architecture/security audit tracker로 추적
+- 2026-04-26: PR #77 `docs(ops): clarify preview slot verification rules` merged / closed. docs/ops 3 files 반영 완료. Merge SHA `6fe90fbef24f7348a1f6b247891e62ba871a5c3b`
+- 2026-04-26: PR #76 `docs(project): align document indexes and runtime truth` merged / closed. docs-only 7 files cleanup 완료. Merge SHA `e447cb903f671afbccb5623a02a71d965a4c58f8`
 - 2026-04-26: PR #74 `ui(editor): polish editor surface and empty states` merged / closed. Editor surface polish main 반영 완료. Merge SHA `90933a4961b240df2caa7f04b737322b22200f26`
 - 2026-04-26: Issue #72 `JS Architecture Cleanup Tracker` updated. JS architecture cleanup paused. PR #73 closed / unmerged
 - 2026-04-26: PR #70 `docs(runtime): clarify active and legacy runtime paths` merged / closed. Cloudflare Pages / Modal / Netlify active/legacy runtime truth 문서화 완료. Merge SHA `1833aaf2c779bd593bda2687d5ee0df0e4197bfd`
@@ -105,7 +112,7 @@ Issue #65는 open backlog tracker이며, 현재 미완료 항목은 아래 3개�
 - 2026-04-26: PR #57 `docs(project): add UI polish roadmap after PR51` merged / closed. UI polish roadmap after PR51 문서화 완료. Merge SHA `aaf31fe72298ddc510db29728ca8c35b2a808a5e`
 - 2026-04-26: PR #56 `docs(ops): document known CI and E2E blockers` merged / closed. Known CI/E2E blockers 문서화 완료. Merge SHA `c67956a23f61ea26dfb47e64813d340d960985ba`
 - 2026-04-26: PR #55 `docs(design): preserve prototype reference folders` merged / closed. docs-only. PR #7 보존 정책 문서화 완료. Merge SHA `1f1c0758d9307e8e090386d21b21a265e5fe257b`
-- 2026-04-26: PR #54 `docs(project): update task status after PR49 and PR50` merged / closed. TASK_STATUS 이전 최신화 완료. Merge SHA `0a5386eea7e6c7921164c956e8946f06ca25fe37`
+- 2026-04-26: PR #54 `docs/project): update task status after PR49 and PR50` merged / closed. TASK_STATUS 이전 최신화 완료. Merge SHA `0a5386eea7e6c7921164c956e8946f06ca25fe37`
 - 2026-04-26: PR #53 `chore: ignore local generated artifacts` repaired 후 merged / closed. Changed file `.gitignore` only. Merge SHA `5f8d185cde4b1d46df75a8c4382fd71a4a671ca8`. prototype/reference 보존 대상 침범 없음
 - 2026-04-26: PR #52 `docs(ops): test preview slot branch rules` merged / closed. Changed file `docs/ops/TEST_PREVIEW_SLOTS.md` only. Merge SHA `bbc988041e248d171a8560419dc739394ba4e23f`
 - 2026-04-26: PR #51 `ui(style): align typography accent hierarchy` merged / closed. typography / accent hierarchy 통일 완료. production verification PASS. Merge SHA `99af8a69fbe1cf61ac23017b938027164a213b3a`
