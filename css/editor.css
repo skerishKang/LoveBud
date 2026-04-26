@@ -134,7 +134,7 @@ body {
     flex: 1;
     position: relative;
     background-color: #faf8f6;
-    background-image: radial-gradient(rgba(144, 73, 81, 0.06) 1px, transparent 1px);
+    background-image: radial-gradient(rgba(144, 73, 81, 0.035) 1px, transparent 1px);
     background-size: 34px 34px;
     overflow: hidden;
     cursor: grab;
@@ -472,6 +472,9 @@ body {
 
 .editor-current-moment-card {
     gap: 9px;
+    background: #ffffff;
+    border: 1px solid rgba(144, 73, 81, 0.12);
+    box-shadow: 0 6px 16px rgba(75, 64, 57, 0.05);
 }
 
 .editor-section-eyebrow {
@@ -536,9 +539,9 @@ body {
 }
 
 .editor-memory-delete-btn {
-    color: #9e5158;
-    border-color: rgba(158,81,88,0.16);
-    background: rgba(255,255,255,0.9);
+    color: #a87b80;
+    border-color: rgba(158,81,88,0.08);
+    background: rgba(255,253,249,0.62);
 }
 
 .detail-video {
@@ -608,9 +611,11 @@ body {
 }
 
 .editor-empty-state-cta {
-    margin-top: 8px;
+    margin-top: 6px;
     align-self: center;
-    min-width: 180px;
+    min-width: 160px;
+    padding: 8px 16px;
+    font-size: 12px;
 }
 
 .editor-memory-form-modal {
@@ -828,11 +833,12 @@ body {
     }
 
     .canvas-area {
-        height: auto;
+        height: 50vh;
+        min-height: 320px;
     }
 
     .editor-canvas-empty-guide {
-        top: 46%;
+        top: 50%;
     }
 
     .node-card {
@@ -1040,25 +1046,25 @@ body {
     align-items: center;
     justify-content: center;
     width: fit-content;
-    min-height: 28px;
-    padding: 0 10px;
+    min-height: 26px;
+    padding: 0 8px;
     border-radius: 999px;
-    font-size: 11px;
-    font-weight: 800;
+    font-size: 10px;
+    font-weight: 600;
     letter-spacing: 0.02em;
-    margin-top: 10px;
+    margin-top: 8px;
 }
 
 .editor-tree-visibility-pill.is-public {
-    background: rgba(76,175,80,0.1);
-    color: #4caf50;
-    border: 1px solid rgba(76,175,80,0.22);
+    background: rgba(76,175,80,0.06);
+    color: #6ab06a;
+    border: 1px solid rgba(76,175,80,0.12);
 }
 
 .editor-tree-visibility-pill.is-private {
-    background: rgba(144,73,81,0.08);
-    color: var(--primary);
-    border: 1px solid rgba(144,73,81,0.14);
+    background: rgba(144,73,81,0.04);
+    color: #a36b62;
+    border: 1px solid rgba(144,73,81,0.08);
 }
 
 .editor-title-settings-panel {
@@ -1069,36 +1075,35 @@ body {
 }
 
 .editor-mini-setting-btn {
-    min-height: 38px;
-    padding: 9px 11px;
-    border-radius: 14px;
-    border: 1px solid rgba(144,73,81,0.10);
-    background: rgba(255,255,255,0.78);
-    color: var(--on-surface);
+    min-height: 36px;
+    padding: 7px 10px;
+    border-radius: 12px;
+    border: 1px solid rgba(144,73,81,0.06);
+    background: rgba(255,253,249,0.62);
+    color: var(--on-surface-variant);
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    font-size: 12px;
-    font-weight: 700;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 600;
     line-height: 1.35;
     text-align: center;
     cursor: pointer;
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.55);
     transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
 }
 
 .editor-mini-setting-btn .material-symbols-outlined {
-    font-size: 15px;
+    font-size: 14px;
     flex: 0 0 auto;
     color: var(--primary);
+    opacity: 0.7;
 }
 
 .editor-mini-setting-btn:hover {
     transform: translateY(-1px);
-    background: rgba(255,255,255,0.96);
-    border-color: rgba(144,73,81,0.18);
-    box-shadow: 0 8px 18px rgba(75,64,57,0.06);
+    background: rgba(255,253,249,0.82);
+    border-color: rgba(144,73,81,0.12);
 }
 
 .editor-flow-summary {
@@ -1185,11 +1190,13 @@ body {
     border-color: transparent;
     font-weight: 700;
     box-shadow: 0 4px 12px rgba(144, 73, 81, 0.12);
+    opacity: 0.96;
 }
 
 .sidebar-btn-primary:hover {
-    background: #7d3f46; /* Slightly darker variant of --primary */
+    background: #7d3f46;
     box-shadow: 0 4px 16px rgba(144, 73, 81, 0.16);
+    opacity: 1;
 }
 
 .btn-icon {
@@ -1264,9 +1271,9 @@ body .detail-panel {
 
 body .canvas-area {
     background-color: #faf8f6;
-    background-image: radial-gradient(rgba(144, 73, 81, 0.05) 1px, transparent 1px);
-    border: 1px solid rgba(144, 73, 81, 0.12);
-    box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.02);
+    background-image: radial-gradient(rgba(144, 73, 81, 0.03) 1px, transparent 1px);
+    border: 1px solid rgba(144, 73, 81, 0.08);
+    box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.015);
 }
 
 body .canvas-area::before {
@@ -1293,9 +1300,9 @@ body .editor-tree-quiet-note {
 /* 3. Node Card (Paper Scrap) */
 body .node-card {
     background: #ffffff;
-    border: 1px solid rgba(144, 73, 81, 0.14);
-    box-shadow: 2px 2px 8px rgba(75, 64, 57, 0.08);
-    border-radius: 8px;
+    border: 1px solid rgba(144, 73, 81, 0.08);
+    box-shadow: 1px 2px 6px rgba(75, 64, 57, 0.05);
+    border-radius: 6px;
     transition: box-shadow 0.24s ease, border-color 0.24s ease, background-color 0.24s ease;
 }
 
@@ -1314,9 +1321,9 @@ body .node-img-wrapper {
 body .editor-current-moment-card,
 body .editor-moment-info-card,
 body .editor-save-status-card {
-    background: #ffffff;
-    border: 1px solid rgba(144, 73, 81, 0.1);
-    box-shadow: 0 4px 12px rgba(75, 64, 57, 0.04);
+    background: rgba(255,253,249,0.56);
+    border: 1px solid rgba(144, 73, 81, 0.06);
+    box-shadow: 0 2px 8px rgba(75, 64, 57, 0.02);
 }
 
 body .editor-moment-info-card {
