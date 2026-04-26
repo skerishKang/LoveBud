@@ -25,11 +25,11 @@
 ## 주요 비밀값 출처 (2026-04-16 기준)
 
 ### DB 연결
-- **DB URL source**: `G:\다른 컴퓨터\내 컴퓨터\133-relovetree\.env`
+- **DB URL source**: `<LOCAL_LEGACY_REPO>/.env`
 - `.env`에서 확인: `NETLIFY_DATABASE_URL` 또는 `DATABASE_URL`
 
 ### 테스트 계정
-- **테스트 계정 source**: `G:\다른 컴퓨터\내 컴퓨터\133-relovetree\scripts\create-test-accounts.js`
+- **테스트 계정 source**: `<LOCAL_LEGACY_REPO>/scripts/create-test-accounts.js`
 - 테스트 계정 기본값은 보통 `.local/test-accounts.json`에서 확인합니다.
 
 ---
