@@ -85,6 +85,13 @@ Firebase Console > Authentication > Settings > Authorized Domains
 - UI/layout PR은 Cloudflare PR Preview 또는 지정 test slot URL에서 확인합니다.
 - post-merge 확인은 Cloudflare Pages production URL에서 진행합니다.
 
+### Test slot verification note
+
+- 로그인 필요 화면(`editor`, `my-trees`, `settings`)은 PR Preview에서 auth/domain 문제가 있으면 fixed test slot을 사용합니다.
+- test1은 기본적으로 UI PR 검증용이며 `origin/test1` 기준으로 운영합니다.
+- test slot URL 접근 불가 또는 DNS 실패는 code failure로 단정하지 말고 slot infra blocker로 분리합니다.
+- Browser / Web / Local 역할 구분, PARTIAL/BLOCKED 판정, release/restore 절차는 [TEST_PREVIEW_SLOTS.md](TEST_PREVIEW_SLOTS.md)를 따릅니다.
+
 ## 5. fallback / legacy 점검
 
 - [ ] Modal 차단 시 browse summary가 Vercel upstream fallback으로 계속 응답하는지 확인
