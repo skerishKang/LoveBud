@@ -115,6 +115,12 @@ Reference 문서는 `docs/reference/` 아래에 정리됩니다.
 - [REVIEW_GUARDRAILS.md](./engineering/REVIEW_GUARDRAILS.md) - 반복 false positive 방지 규칙
 - [RECENT_REFACTORING.md](./engineering/RECENT_REFACTORING.md) - 최근 리팩터링 기록
 
+## security 문서군
+
+보안 관련 문서는 `docs/security/` 아래에 정리됩니다.
+
+- [FIREBASE_CLIENT_CONFIG_POLICY.md](./security/FIREBASE_CLIENT_CONFIG_POLICY.md) - Firebase 클라이언트 설정 노출 정책 및 보안 모델
+
 ## ops 문서군
 
 운영 문서는 `docs/ops/` 아래에 정리됩니다.
