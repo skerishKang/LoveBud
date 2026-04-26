@@ -101,6 +101,152 @@ git push --force-with-lease origin test1
 
 ---
 
+## Role split: Browser / Web / Local
+
+Fixed slot 검증은 역할별 권한과 금지선을 분리합니다.
+
+### Browser verifier
+
+Browser verifier는 실제 브라우저, DevTools, MCP, Playwright 등으로 화면과 런타임 상태를 확인합니다.
+
+허용 범위:
+- slot URL 접근 확인
+- login gate / actual page 내부 접근 여부 확인
+- viewport 확인: 기본 1440px / 1024px / 375px
+- console / network 확인
+- screenshot 또는 짧은 관찰 로그 작성
+- UI 상태, horizontal overflow, runtime warning/blocker 분류
+
+금지 범위:
+- 코드 수정 금지
+- PR 수정 / merge / close 금지
+- Issue 수정 금지
+- branch update / reset / push 금지
+- 운영 데이터 create / edit / delete 금지
+- memory 생성/수정/삭제 금지
+- tree title / visibility 변경 금지
+- token/password/cookie 원문 기록 금지
+
+### Web verifier / GitHub executor
+
+Web verifier는 GitHub PR, Issue, docs metadata를 확인합니다. 브라우저 실측을 수행하지 않는 경우 그 한계를 보고에 명시합니다.
+
+허용 범위:
+- PR 상태, draft 여부, head SHA, changed files 확인
+- PR body의 issue hygiene 확인
+- Issue open/closed 상태 확인
+- docs-only 또는 scope guard 검증
+- Cloudflare/Preview URL 존재 여부 확인
+
+금지 범위:
+- 별도 지시 없는 코드/문서 수정 금지
+- 별도 지시 없는 PR close / merge 금지
+- 별도 지시 없는 Issue update 금지
+- branch reset / force push 금지
+- browser-only 검증을 수행한 것처럼 보고 금지
+
+### Local / Ops slot executor
+
+Local/Ops는 clean clone 또는 clean worktree에서 slot branch를 target SHA로 맞춥니다.
+
+허용 범위:
+- `origin/test1` 현재 SHA 확인
+- PR head SHA 확인
+- CTO가 지정한 target SHA로 `origin/test1` 업데이트
+- `git push --force-with-lease origin test1` 사용
+- Cloudflare deploy 상태 확인
+
+금지 범위:
+- PR branch 수정 금지
+- main 수정 / push / force push 금지
+- `--force` 단독 사용 금지
+- target SHA 추정 금지
+- slot branch를 임의로 main 또는 다른 PR로 reset 금지
+
+---
+
+## PR Preview vs fixed slot decision rules
+
+### PR Preview를 우선 사용할 수 있는 경우
+
+- public page 변경이며 로그인 또는 Firebase Auth domain 영향을 받지 않는 경우
+- 정적 UI 변경이 대부분이고 actual account state가 필요 없는 경우
+- Cloudflare PR Preview URL이 정상 생성되고 target SHA 반영이 확인되는 경우
+
+### fixed slot을 우선 사용하거나 CTO 지정 slot을 따르는 경우
+
+- `editor`, `my-trees`, `settings`처럼 로그인 필요 화면을 검증하는 경우
+- Firebase Auth domain, login redirect, popup/redirect origin 이슈가 예상되는 경우
+- PR Preview가 auth domain mismatch 또는 redirect loop로 actual page 내부 검증에 실패하는 경우
+- CTO가 test1/test2/test3 등 고정 slot을 명시한 경우
+
+### fallback 판정
+
+- PR Preview가 auth/domain 문제로 실패하면 fixed slot으로 전환합니다.
+- fixed slot도 실패하면 code failure로 단정하지 않고 infra/DNS/Auth blocker로 분리합니다.
+- fixed slot이 접근 가능하지만 target SHA 반영이 불명확하면 PARTIAL로 보고합니다.
+- PR Preview와 fixed slot 결과가 다르면 URL, target SHA, deploy status를 함께 기록합니다.
+
+---
+
+## Slot access failure and partial verification
+
+검증 판정은 확인 가능한 증거 기준으로만 작성합니다.
+
+| 상황 | 판정 | 보고 기준 |
+|------|------|-----------|
+| test slot URL 접근 불가 / DNS 실패 | BLOCKED | code/UI 결과가 아니라 slot infra/DNS blocker로 분리 |
+| slot URL은 접근되지만 target SHA 반영 불명확 | PARTIAL | URL, 확인한 asset/source/network 근거, 미확인 항목 기록 |
+| login gate까지만 확인되고 actual page 내부 미확인 | PARTIAL | auth gate 확인과 actual UI 미검증을 분리 |
+| actual page 내부 접근 가능하나 test account/test tree 여부 불명확 | PARTIAL + no mutation | 데이터 변경 없이 시각 상태만 기록 |
+| viewport / console / network 모두 확인 | PASS 후보 | blocker/warning 구분 후 merge 가능 여부 별도 판단 |
+| 신규 console exception 또는 API 5xx가 PR 변경과 관련됨 | 수정 요청 또는 BLOCKED | endpoint/status/screenshot/viewport 근거 포함 |
+
+주의:
+- `BLOCKED`는 PR 코드가 틀렸다는 뜻이 아닐 수 있습니다.
+- `PARTIAL`은 확인된 항목과 미확인 항목을 모두 적어야 합니다.
+- Browser verifier가 slot에 접근할 수 없으면 Web verifier의 GitHub metadata 확인만으로 UI PASS를 선언하지 않습니다.
+
+---
+
+## Slot release / restore procedure
+
+검증 후 slot branch 처리도 별도 운영 대상입니다.
+
+1. 검증 보고서에 slot URL, target branch, target SHA, slot branch SHA, Cloudflare deploy status를 기록합니다.
+2. 검증이 끝난 뒤 slot을 main으로 돌릴지, 현재 PR SHA로 유지할지 CTO에게 확인합니다.
+3. 다음 사용자에게 넘기기 전 아래를 기록합니다.
+   - 현재 slot URL
+   - 현재 slot branch
+   - 현재 slot branch SHA
+   - Cloudflare deploy status
+   - 점유 중인 PR/작업명
+4. 검증 실패 시 원인을 분리합니다.
+   - code/UI failure
+   - slot infra/DNS failure
+   - Cloudflare deploy failure
+   - Firebase/Auth/domain failure
+   - test account/data availability failure
+5. 임의로 slot branch를 reset하지 않습니다.
+6. slot branch restore도 `--force-with-lease` 조건을 만족할 때만 수행합니다.
+
+---
+
+## Evidence hygiene: screenshots, console, network logs
+
+검증 증거는 필요한 최소 정보만 기록합니다.
+
+- token/password/cookie 원문 기록 금지
+- screenshot에 계정명, email, token, private content, 운영 데이터가 보이면 redaction 후 공유
+- console log 공유 시 auth token, Firebase credential, cookie 값 제거
+- network/HAR 공유 시 request/response headers의 `Authorization`, `Cookie`, session token, API key 원문 제거
+- test account 식별자는 필요한 최소 수준으로만 기록
+- 운영 데이터의 tree title, private note, memory content는 원문을 장문 인용하지 않음
+- mutation이 없었으면 `NO MUTATIONS`를 명시
+- mutation이 필요한 검증은 test4 + disposable data + 별도 승인 기준을 사용
+
+---
+
 ## 5. force-with-lease 사용 조건
 
 test slot branch는 검증 대상 PR branch를 고정 도메인에 임시 배포하기 위해 강제로 이동할 수 있습니다. 다만 force update는 아래 조건을 모두 만족할 때만 허용합니다.
@@ -376,5 +522,5 @@ PR merge 전에는 production 도메인을 해당 PR branch의 source of truth�
 
 ---
 
-문서 버전: 1.1  
+문서 버전: 1.2  
 다음 리뷰: CTO 승인 후
