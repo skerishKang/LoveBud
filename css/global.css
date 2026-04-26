@@ -507,11 +507,6 @@ h1, h2, h3, h4, .headline {
     .moment-card {
         padding: 16px;
     }
-
-    .moment-card img {
-        width: 60px !important;
-        height: 60px !important;
-    }
 }
 
 /* Mobile optimizations */
