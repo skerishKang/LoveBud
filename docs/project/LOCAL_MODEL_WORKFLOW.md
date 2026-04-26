@@ -11,6 +11,30 @@
 - 브랜치 기반 작업
 - 검증 수행 및 구분 보고
 
+## 작업 시작 전 브랜치 확정 절차
+
+로컬 실행 모델은 CTO 지시문에 브랜치명 예시가 있더라도 이를 확정값으로 간주하지 않습니다. 병렬 모델이 동시에 작업할 수 있으므로, 실제 브랜치명은 로컬 모델이 최신 원격 상태를 확인한 뒤 확정합니다.
+
+작업 시작 전 반드시 아래 절차를 수행합니다.
+
+1. `git fetch origin --prune`
+2. `git checkout main`
+3. `git pull origin main`
+4. `gh pr list --state open --limit 100` 또는 동등한 PR 조회
+5. `git branch -r`로 원격 브랜치 충돌 확인
+6. 작업 성격에 맞는 고유 브랜치명 확정
+7. 확정한 브랜치명을 첫 보고에 포함
+
+브랜치명 충돌이 있으면 작업을 중단하지 말고 고유 suffix를 붙여 새 브랜치를 선택합니다.
+
+예:
+
+- `cleanup/editor-presentation-inline-styles-v2`
+- `refactor/editor-css-split-entrypoint-20260427`
+- `docs/runtime-guardrails-followup-v1`
+
+단, 기존 브랜치 재사용, force push, PR source branch 갱신은 CTO가 명시적으로 승인한 경우에만 수행합니다.
+
 ## 로컬 검증의 위치
 
 로컬 모델은 코드 수정, 구문 확인, 정적 레이아웃 참고, diff 확인, 테스트 실행에 유용합니다.
