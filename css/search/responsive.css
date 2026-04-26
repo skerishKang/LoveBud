@@ -1,0 +1,127 @@
+@media (max-width: 1240px) {
+    .search-container {
+        grid-template-columns: minmax(0, 1fr) 380px;
+        gap: 24px;
+        padding: 24px var(--page-pad-tablet) 48px;
+    }
+
+    #resultsList,
+    #growingTreesList {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+    }
+}
+
+@media (max-width: 1024px) {
+    .search-container {
+        grid-template-columns: 1fr;
+        gap: 32px;
+    }
+
+    .preview-sidebar {
+        position: sticky;
+        top: 92px;
+        z-index: 5;
+        align-self: start;
+    }
+}
+
+@media (max-width: 768px) {
+    .search-container {
+        padding: 20px var(--page-pad-mobile) 36px;
+        gap: 22px;
+    }
+
+    .browse-curation-shell {
+        margin-bottom: 16px;
+    }
+
+    .search-panel-header h2 {
+        font-size: 2.0rem;
+        line-height: 1.08;
+        margin-bottom: 7px;
+    }
+
+    .search-panel-header p {
+        font-size: 0.94rem;
+        max-width: 100%;
+    }
+
+    .search-input {
+        font-size: 0.94rem;
+        padding: 14px 16px 14px 44px;
+    }
+
+    .search-icon {
+        font-size: 18px;
+        left: 14px;
+    }
+
+    #resultsList,
+    #growingTreesList {
+        grid-template-columns: 1fr;
+    }
+
+    .growing-trees-section {
+        padding: 22px 16px;
+        margin-top: 40px;
+        border-radius: 1.6rem;
+    }
+
+    .growing-trees-head {
+        flex-direction: column;
+        margin-bottom: 18px;
+        gap: 10px;
+    }
+
+    .preview-sidebar {
+        order: -1;
+        display: none;
+        position: static;
+        z-index: auto;
+        padding: 22px 18px;
+        border-radius: 1.5rem;
+    }
+
+    .preview-sidebar.is-open {
+        display: block;
+    }
+
+    .preview-panel-header {
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .preview-panel-title-group {
+        min-width: 0;
+        flex: 1 1 auto;
+    }
+
+    .preview-panel-header h3 {
+        font-size: 1.42rem;
+    }
+
+    .preview-mobile-close {
+        display: inline-flex;
+    }
+
+    .tag-chip {
+        font-size: 11px;
+        padding: 7px 11px;
+    }
+
+    .browse-results-head {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .browse-results-head h3 {
+        font-size: 1.45rem;
+    }
+
+    .browse-utility-row {
+        gap: 10px;
+        margin-top: 14px;
+    }
+}
