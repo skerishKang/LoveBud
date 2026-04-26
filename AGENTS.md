@@ -253,6 +253,50 @@ LoveBud / LoveTree는 다음과 같은 서비스가 아닙니다.
 
 ### 에이전트 실행 위생 규칙
 
+#### Secrets / credentials 취급 규칙
+
+LoveBud 작업에는 배포, API 접근, 테스트 계정, 외부 서비스 연동을 위한 로컬 전용 secrets가 존재할 수 있습니다.
+
+로컬 전용 경로는 아래 repo-relative path로만 언급합니다.
+
+- `.secrets/`
+- `.env`
+- `.env.*`
+
+이 경로들은 로컬 전용이며, 저장소에 커밋하거나 PR, issue, 문서, 로그, 스크린샷, 보고서에 값을 노출하지 않습니다.
+
+에이전트는 필요한 secret의 **이름이나 위치 정책**은 언급할 수 있지만, 아래 값은 절대 출력하거나 요약하거나 복사하지 않습니다.
+
+- raw token values
+- passwords
+- private keys
+- Firebase Admin SDK JSON contents
+- service account JSON contents
+- Authorization headers
+- cookies
+- session tokens
+- provider access tokens
+- 마지막 8자리 등 token 식별 정보
+
+작업에 secret이 필요하면 에이전트는 값을 요구하거나 출력하지 말고, 필요한 secret name만 말합니다. 실제 값 주입은 사용자가 로컬 환경, provider dashboard, GitHub Actions Secrets, Cloudflare/Vercel/Netlify dashboard 등 적절한 secret store를 통해 처리합니다.
+
+**금지 예시:**
+
+- `.secrets/` 내부 파일 내용을 읽어서 보고서에 붙여넣기
+- `.env` 값을 issue/PR/comment에 복사하기
+- Firebase Admin SDK JSON 내용을 요약하기
+- token의 일부 또는 마지막 8자리를 문서화하기
+- 테스트 계정 비밀번호를 AGENTS.md나 docs에 기록하기
+
+**허용 예시:**
+
+- "`.secrets/`는 로컬 전용이며 gitignored 상태여야 한다"고 안내
+- "`VERCEL_TOKEN`이 필요하다"고 secret name만 안내
+- "Firebase Admin SDK key file은 `.secrets/` 아래 로컬에만 둔다"고 위치 정책만 안내
+- "secret 값은 provider dashboard에서 rotate한다"고 절차만 안내
+
+`.secrets/` 또는 `.env*` 파일이 git 추적 대상에 올라온 정황이 있으면 즉시 작업을 중단하고 보고합니다.
+
 #### 로컬 저장소 / 클론 / 프로세스 정리
 
 - 조사만 필요한 작업은 우선 GitHub API, 파일 조회, 검색 기능으로 확인합니다.
