@@ -120,7 +120,9 @@ LoveBud / LoveTree는 다음과 같은 서비스가 아닙니다.
 - 따뜻한 디지털 스크랩북
 - 입덕의 첫 순간 우선
 - 감정이 이어진 경로
-- 비공개 우선, 공유는 그 다음
+- public-first visibility와 Plus private storage
+- public visibility와 Browse/Search eligibility 분리
+- Browse/Search 노출은 `publicMomentCount` 등 별도 소개 기준을 따름
 
 카피와 UI는 가능하면 아래 표현을 선호합니다.
 
