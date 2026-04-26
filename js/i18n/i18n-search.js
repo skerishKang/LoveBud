@@ -244,7 +244,7 @@
   };
 
   function loadSearchCopyUi() {
-    if (!/\/pages\/search\.html$/.test(window.location.pathname)) return;
+    if (!/\/pages\/search(?:\.html)?$/.test(window.location.pathname)) return;
     if (document.querySelector('script[data-lovebud-search-copy-ui]')) return;
     const script = document.createElement('script');
     script.src = '../js/search-copy-ui.js?v=20260426-1';
