@@ -229,6 +229,16 @@
     'logout_btn': {
       ko: '로그아웃',
       en: 'Logout'
+    },
+
+    // 감정 태그 (emotion tags)
+    '예술': {
+      ko: '예술',
+      en: 'Art'
+    },
+    '컨셉': {
+      ko: '컨셉',
+      en: 'Concept'
     }
   };
 })();
