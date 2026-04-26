@@ -106,6 +106,9 @@ Object.assign(window.i18nEditor, {
     memoryUpdateSaved: { ko: '순간을 수정했어요.', en: 'Moment updated.' },
     memoryUpdateFailed: { ko: '순간을 수정하지 못했어요.', en: 'Could not update the moment.' },
     sidebar_flow_summary_empty_short: { ko: '첫 순간 준비 중', en: 'Ready for first moment' },
+    sidebar_flow_summary_selected_short: { ko: '선택한 순간을 보고 있어요', en: 'Viewing the selected moment' },
+    sidebar_canvas_hint_selected: { ko: '선택한 순간을 중심으로 트리를 살펴보세요', en: 'Explore the tree around the selected moment' },
+    editor_next_memory_hint_short: { ko: '다음 순간을 이어가 보세요', en: 'Add the next moment' },
     sidebar_canvas_hint_empty: { ko: '첫 순간을 심으면 감정이 여기서 시작돼요.', en: 'Plant the first moment and the feeling begins here.' },
     editor_add_first_memory_eyebrow: { ko: '첫 순간에서', en: 'From first moment' },
     editor_empty_tree_hint_short: { ko: '첫 순간이 여기에 시작돼요.', en: 'The first moment starts here.' }
