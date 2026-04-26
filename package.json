@@ -31,6 +31,7 @@
     "pg": "^8.12.0"
   },
   "devDependencies": {
-    "dotenv": "^17.4.2"
+    "dotenv": "^17.4.2",
+    "playwright": "^1.59.1"
   }
 }
