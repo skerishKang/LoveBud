@@ -29,6 +29,15 @@
         return locale === 'en' ? fallbackEn : fallbackKo;
     }
 
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
     function getBasePath() {
         if (window.LoveBudPath?.getBasePath) {
             return window.LoveBudPath.getBasePath();
@@ -135,10 +144,12 @@
 
     function renderCopyButton(treeId) {
         const label = getCopy('search.previewCopyToMyTrees', '내 러브트리로 가져오기', 'Copy to my LoveTrees');
+        const safeTreeId = escapeHtml(treeId);
+        const safeLabel = escapeHtml(label);
         return `
-            <button type="button" data-copy-public-tree="${treeId}" class="btn-round" style="width:100%;margin-top:10px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;gap:6px;background:var(--primary-container);color:var(--on-primary-container);border:1px solid var(--outline-variant);">
+            <button type="button" data-copy-public-tree="${safeTreeId}" class="btn-round" style="width:100%;margin-top:10px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;gap:6px;background:var(--primary-container);color:var(--on-primary-container);border:1px solid var(--outline-variant);">
                 <span class="material-symbols-outlined" style="font-size:16px;">content_copy</span>
-                <span data-copy-public-tree-label>${label}</span>
+                <span data-copy-public-tree-label>${safeLabel}</span>
             </button>
         `;
     }
