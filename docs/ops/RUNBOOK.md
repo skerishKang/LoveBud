@@ -102,6 +102,14 @@
 3. Netlify dev의 `DATABASE_URL` / `NETLIFY_DATABASE_URL` 누락으로 발생하는 503은 production Cloudflare/Modal runtime truth와 분리해서 봅니다.
 4. CI/E2E blocker를 이유로 `netlify/functions/*`를 active runtime처럼 수정하지 않습니다.
 
+### Fixed test slot access failure
+해석 기준:
+1. `test1.lovebud.pages.dev` 같은 fixed slot URL 접근 불가 또는 DNS 실패는 code/UI failure로 단정하지 않습니다.
+2. slot URL 접근 실패, Cloudflare deploy failure, Firebase/Auth/domain failure, actual page runtime failure를 분리해 보고합니다.
+3. fixed slot이 열리지만 target SHA 반영이 불명확하면 PARTIAL로 보고합니다.
+4. Browser verifier가 실제 화면에 접근하지 못한 경우 Web/GitHub metadata 확인만으로 UI PASS를 선언하지 않습니다.
+5. 세부 역할, 판정, release/restore 기준은 [TEST_PREVIEW_SLOTS.md](TEST_PREVIEW_SLOTS.md)를 따릅니다.
+
 ## 5. 운영 환경 변수 체크리스트
 
 ### Cloudflare Pages 필수
