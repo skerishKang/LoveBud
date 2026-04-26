@@ -42,6 +42,7 @@
   - `https://lovebud.pages.dev/`
   - Cloudflare PR Preview URL
   - Cloudflare branch preview URL
+  - fixed test slot URL when auth/runtime verification requires stable domain
 
 ### Modal
 - 코드 위치: `modal_compute/app.py`
@@ -108,7 +109,9 @@
 2. slot URL 접근 실패, Cloudflare deploy failure, Firebase/Auth/domain failure, actual page runtime failure를 분리해 보고합니다.
 3. fixed slot이 열리지만 target SHA 반영이 불명확하면 PARTIAL로 보고합니다.
 4. Browser verifier가 실제 화면에 접근하지 못한 경우 Web/GitHub metadata 확인만으로 UI PASS를 선언하지 않습니다.
-5. 세부 역할, 판정, release/restore 기준은 [TEST_PREVIEW_SLOTS.md](TEST_PREVIEW_SLOTS.md)를 따릅니다.
+5. slot branch update/push는 Local/Ops executor만 수행합니다.
+6. evidence에는 screenshot, console, network log의 token/password/cookie/private content 원문을 남기지 않습니다.
+7. 세부 역할, PR Preview vs fixed slot decision rules, PARTIAL/BLOCKED 판정, evidence hygiene, release/restore 기준은 [TEST_PREVIEW_SLOTS.md](TEST_PREVIEW_SLOTS.md)를 따릅니다.
 
 ## 5. 운영 환경 변수 체크리스트
 
@@ -150,3 +153,4 @@
 - Cloudflare Pages가 same-origin `/api/*` entry
 - Vercel은 deprecated transitional fallback / upstream under audit
 - Netlify는 legacy / fallback / artifact이며 `netlify/functions/*`는 현재 active production backend가 아님
+- fixed test slot 검증의 역할/판정/evidence 기준은 `docs/ops/TEST_PREVIEW_SLOTS.md`가 canonical입니다
