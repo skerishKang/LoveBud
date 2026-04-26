@@ -343,8 +343,8 @@
             <div style="position:relative;width:100%;height:100%;border-radius:1rem;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.12);">
                 <img src="${thumbnailUrl}" alt="${mediaTitle}" loading="lazy" onerror="window.LoveBudSearchPreviewRenderer?.showPreviewImageFallback?.(this)" onload="window.LoveBudSearchPreviewRenderer?.handlePreviewImageLoad?.(this)" style="width:100%;height:100%;object-fit:cover;display:block;">
                 <div data-preview-thumbnail-fallback hidden style="position:absolute;inset:0;">${fallbackHtml}</div>
-                <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.72),rgba(0,0,0,0.04) 58%);"></div>
-                <div style="position:absolute;left:18px;right:18px;bottom:18px;color:white;">
+                <div data-preview-overlay style="position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.72),rgba(0,0,0,0.04) 58%);"></div>
+                <div data-preview-overlay style="position:absolute;left:18px;right:18px;bottom:18px;color:white;">
                     <div style="display:inline-flex;align-items:center;gap:6px;min-height:28px;padding:0 10px;border-radius:999px;background:rgba(255,255,255,0.18);backdrop-filter:blur(10px);font-size:12px;font-weight:800;margin-bottom:10px;">
                         <span class="material-symbols-outlined" style="font-size:14px;">play_circle</span>
                         ${escapeHtml(getSearchCopy('search.previewStartFromFirstMoment', '대표 순간부터 감상하기', 'Start from the featured moment'))}
@@ -364,6 +364,8 @@
         if (fallback) {
             fallback.hidden = false;
         }
+        const overlays = wrapper.querySelectorAll('[data-preview-overlay]');
+        overlays.forEach(overlay => overlay.style.display = 'none');
     }
 
     function updatePreview(tree) {
