@@ -1,0 +1,97 @@
+/*
+ * LoveBud Intro page styles - Responsive
+ * Extracted from css/intro.css.
+ * Page-specific only. Do not move these rules into global.css.
+ */
+
+@media (max-width: 1080px) and (min-width: 769px) {
+  .intro-hero {
+    grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.6fr);
+    gap: 28px;
+    padding: 60px var(--page-pad-desktop) 48px;
+  }
+
+  .intro-tree-scene {
+    min-height: 296px;
+  }
+}
+
+@media (max-width: 768px) {
+  .intro-hero {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .intro-hero, .intro-section, .cta-section {
+    padding: 60px var(--page-pad-mobile) 36px;
+  }
+
+  .intro-hero h1 {
+    font-size: clamp(2.2rem, 9.2vw, 2.8rem);
+    max-width: 100%;
+  }
+
+  .intro-hero-visual {
+    padding: 16px;
+  }
+
+  .intro-tree-scene {
+    min-height: 240px;
+  }
+
+  .intro-hero .lead {
+    font-size: 0.98rem;
+    max-width: 100%;
+    margin-bottom: 1.4rem;
+  }
+
+  .intro-hero-actions {
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
+  }
+
+  .pc-only {
+    display: none !important;
+  }
+
+  .intro-hero-actions .btn-round,
+  .cta-buttons .btn-round,
+  .intro-cta-link {
+    width: 100%;
+  }
+
+  .how-to-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .value-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .value-item {
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .value-item-visual {
+    width: 100%;
+    min-height: 92px;
+  }
+
+  .cta-buttons {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .intro-grid-layout {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+
+  .intro-section-text {
+    position: static;
+  }
+}
