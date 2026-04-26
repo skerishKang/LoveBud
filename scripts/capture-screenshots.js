@@ -3,6 +3,7 @@
  * 
  * 사용법: node scripts/capture-screenshots.js [결과폴더명]
  * 예시: node scripts/capture-screenshots.js xg-test-2026-04-18-1100
+ * 예시: node scripts/capture-screenshots.js --prefix xg-test
  */
 
 const { chromium } = require('playwright');
@@ -11,8 +12,21 @@ const path = require('path');
 
 const BASE_URL = process.env.LOVEBUD_URL || 'http://localhost:8888';
 
+function createTimestamp() {
+  return new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
+}
+
+function getFolderName(argv) {
+  if (argv[0] === '--prefix' || argv[0] === '-p') {
+    const prefix = argv[1] || 'test';
+    return `${prefix}-${createTimestamp()}`;
+  }
+
+  return argv[0] || `test-${createTimestamp()}`;
+}
+
 async function main() {
-  const folderName = process.argv[2] || `test-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-')}`;
+  const folderName = getFolderName(process.argv.slice(2));
   
   // 결과 폴더 생성
   const resultDir = path.join(__dirname, '..', 'docs', 'test-scenarios', 'results', folderName);
