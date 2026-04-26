@@ -277,6 +277,13 @@ body {
     display: none !important;
 }
 
+.editor-flow-lead {
+    margin: -6px 0 0;
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--on-surface-variant);
+}
+
 .memory-node {
     position: absolute;
     z-index: 2;
@@ -659,6 +666,17 @@ body {
     display: flex;
     flex-direction: column;
     gap: 10px;
+}
+
+#memoryStartTimeField {
+    margin-top: 10px;
+}
+
+.editor-form-help {
+    margin: 6px 0 0;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--on-surface-variant);
 }
 
 .editor-form-field-primary {
