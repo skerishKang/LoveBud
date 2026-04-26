@@ -8,59 +8,6 @@
     <link rel="icon" href="/favicon.ico" sizes="32x32">
     <link rel="stylesheet" href="../css/editor.css?v=20260423-1">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
-    <style>
-        .memory-inline-edit { display:inline-flex; align-items:center; }
-        .memory-inline-edit input { font-size:inherit; font-weight:inherit; font-family:inherit; color:inherit; width:100%; border:1px solid var(--outline); padding:4px 8px; border-radius:4px; box-sizing:border-box; }
-        .memory-edit-textarea { font-size:inherit; font-weight:inherit; font-family:inherit; color:inherit; width:100%; min-height:80px; border:1px solid var(--outline); padding:8px; border-radius:8px; box-sizing:border-box; margin-bottom:4px; resize:vertical; line-height:1.7; }
-        .memory-edit-button { border:none; background:transparent; cursor:pointer; font-size:0.8rem; color:var(--primary); padding:4px 8px; border-radius:4px; margin-left:8px; }
-        .memory-edit-button:hover { background:rgba(144,73,81,0.08); }
-        .memory-edit-actions { display:flex; gap:8px; margin-top:8px; }
-        .memory-edit-actions .btn-save { background:var(--primary); color:white; border:none; padding:4px 12px; border-radius:16px; font-size:0.85rem; cursor:pointer; }
-        .memory-edit-actions .btn-cancel { background:transparent; color:var(--on-surface-variant); border:1px solid var(--outline); padding:4px 12px; border-radius:16px; font-size:0.85rem; cursor:pointer; }
-        .memory-edit-error { color:var(--error); font-size:0.8rem; margin-top:4px; }
-        .memory-edit-hint { color:var(--on-surface-variant); font-size:0.8rem; margin-top:4px; }
-        .editor-memory-mode-group { display:flex; gap:10px; flex-wrap:wrap; margin:4px 0 2px; }
-        .editor-memory-mode-chip { display:inline-flex; align-items:center; gap:8px; min-height:40px; padding:0 14px; border-radius:999px; border:1px solid rgba(144,73,81,0.12); background:rgba(255,255,255,0.84); color:var(--on-surface-variant); font-size:13px; font-weight:700; cursor:pointer; transition:all 0.18s ease; }
-        .editor-memory-mode-chip.is-active { color:var(--primary); border-color:rgba(144,73,81,0.22); background:rgba(144,73,81,0.08); box-shadow:0 8px 20px rgba(75,64,57,0.05); }
-        .editor-memory-mode-chip .material-symbols-outlined { font-size:18px; }
-        .editor-form-support-note { margin:-4px 0 2px; display:flex; align-items:flex-start; gap:8px; padding:12px 14px; border-radius:16px; background:rgba(255,255,255,0.68); border:1px solid rgba(144,73,81,0.08); color:var(--on-surface-variant); font-size:12px; line-height:1.6; }
-        .editor-form-support-note .material-symbols-outlined { font-size:16px; color:var(--primary); margin-top:1px; }
-        .editor-form-field.is-deemphasized { opacity:0.72; }
-        .editor-layout { background:linear-gradient(180deg,#fff8f0 0%,#f8ede2 52%,#f5e6dc 100%); gap:18px; padding:18px; box-sizing:border-box; }
-        .sidebar, .detail-panel { border:1px solid rgba(255,255,255,0.86); border-radius:32px; background:linear-gradient(180deg,rgba(255,253,249,0.88),rgba(255,247,239,0.66)); box-shadow:0 24px 62px rgba(156,116,94,0.13); }
-        .sidebar { border-right:1px solid rgba(255,255,255,0.86); }
-        .detail-panel { border-left:1px solid rgba(255,255,255,0.86); }
-        .canvas-area { border-radius:34px; background:radial-gradient(circle at 50% 26%,rgba(255,244,232,0.86),transparent 34%),linear-gradient(180deg,rgba(255,252,248,0.82),rgba(250,238,226,0.54)); border:1px solid rgba(255,255,255,0.56); box-shadow:0 24px 62px rgba(156,116,94,0.10); }
-        .canvas-area::before { content:''; position:absolute; inset:72px 28px 28px; border-radius:30px; border:1px solid rgba(255,255,255,0.42); background:radial-gradient(circle at 50% 28%,rgba(255,255,255,0.36),transparent 34%); pointer-events:none; z-index:0; }
-        .canvas-svg, .memory-node, #canvasEmptyGuide, #addMemoryForm { z-index:2; }
-        .editor-reference-kicker { display:inline-flex; align-items:center; gap:8px; width:max-content; max-width:100%; min-height:30px; padding:0 12px; border-radius:999px; background:rgba(255,248,242,0.90); border:1px solid rgba(233,213,199,0.86); color:#a36b62; font-size:12px; font-weight:800; letter-spacing:0.01em; }
-        .editor-status-card { position:relative; padding:24px 20px 20px; border-radius:28px; background:linear-gradient(180deg,rgba(255,253,249,0.96),rgba(255,246,239,0.88)); border:1px solid rgba(233,215,201,0.82); box-shadow:0 18px 40px rgba(161,119,96,0.10); }
-        .editor-status-card .editor-reference-kicker { margin-bottom:14px; }
-        .editor-status-card strong { font-size:1.62rem; color:#583f35; }
-        .editor-rename-btn { display:none !important; }
-        .editor-tree-visibility-pill { min-height:34px; padding:0 14px; margin-top:14px; font-size:12px; border-radius:999px; }
-        .editor-title-settings-panel { gap:10px; margin-top:20px; }
-        .editor-mini-setting-btn { min-height:48px; border-radius:999px; background:rgba(255,255,255,0.70); border-color:rgba(221,198,184,0.84); color:#7f6258; font-weight:800; box-shadow:0 8px 16px rgba(165,124,101,0.06); }
-        .editor-tree-quiet-note { margin:20px 0 0; padding-top:18px; border-top:1px dashed rgba(190,147,127,0.36); color:#8f776c; font-size:13px; line-height:1.7; text-align:center; }
-        .editor-canvas-topbar { position:absolute; top:22px; left:24px; right:24px; z-index:7; display:flex; align-items:flex-start; justify-content:space-between; gap:18px; pointer-events:none; }
-        .editor-canvas-topbar > * { pointer-events:auto; }
-        .editor-canvas-title h2 { margin:10px 0 0; font-size:1.76rem; line-height:1.12; letter-spacing:-0.05em; color:#553f35; }
-        .editor-canvas-caption { margin:7px 0 0; max-width:360px; color:#9a8175; font-size:13px; line-height:1.6; }
-        .editor-canvas-toolbar { display:flex; align-items:center; gap:8px; padding:8px; border-radius:999px; background:rgba(255,250,244,0.82); border:1px solid rgba(230,207,194,0.78); box-shadow:0 14px 30px rgba(161,119,96,0.10); backdrop-filter:blur(8px); }
-        .editor-canvas-toolbar .sidebar-btn { min-height:38px; padding:0 14px; border-radius:999px; background:rgba(255,255,255,0.74); border:1px solid rgba(221,198,184,0.84); color:#7f6258; box-shadow:none; }
-        .editor-status-section > h3,
-        .editor-flow-lead,
-        #sidebarMomentCount,
-        #sidebarFlowSummary,
-        #sidebarSelectionHint,
-        .editor-add-section-bottom,
-        .editor-tree-meta-section,
-        #detailEmptyStartBtn { display: none !important; }
-        .editor-status-card { margin-top: 0; }
-        .editor-canvas-empty-guide__desc { max-width: 260px; margin-left: auto; margin-right: auto; }
-        @media (max-width:1024px) { .editor-layout { padding:12px; gap:12px; } .sidebar, .detail-panel, .canvas-area { border-radius:24px; } .editor-canvas-topbar { position:absolute; top:14px; left:14px; right:14px; flex-direction:column; } .editor-canvas-title h2 { font-size:1.42rem; } }
-        @media (max-width:768px) { .editor-canvas-caption { display:none; } .editor-canvas-toolbar { width:100%; justify-content:center; box-sizing:border-box; } .editor-status-card { padding:18px 16px; } }
-    </style>
 </head>
 <body class="editor-preload">
     <div class="noise-overlay"></div>
