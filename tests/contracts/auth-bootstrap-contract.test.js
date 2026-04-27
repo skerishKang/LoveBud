@@ -93,7 +93,6 @@ test('login page preserves firebase/config/i18n/shared-header before auth submod
     'js/shared-header.js',
     ...LOGIN_CONTROLLER_LOAD_ORDER,
     'js/auth.js',
-    'js/login-page.js',
   ]);
 });
 

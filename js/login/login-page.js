@@ -222,7 +222,85 @@
     }
   }
 
+  function syncLanguageUi() {
+    var currentLang = global.getCurrentLang ? global.getCurrentLang() : 'ko';
+    var langCode = currentLang === 'ko' ? 'KR' : 'EN';
+    var langBtn = query('.lang-option[data-lang="' + langCode + '"]');
+
+    if (!langBtn) return;
+
+    global.document.querySelectorAll('.lang-option').forEach(function (option) {
+      option.classList.remove('active');
+    });
+
+    langBtn.classList.add('active');
+  }
+
+  function setupEmailAuthInlineError(root) {
+    var elements = getLoginElements(root);
+    var form = elements.emailAuthForm || byId(getSelector('emailAuthForm') || 'email-auth-form', root);
+    var errorEl = byId('email-auth-error', root);
+
+    if (!form || !errorEl) return;
+
+    function show(message) {
+      var text = String(message || '').trim();
+      if (!text) return;
+      errorEl.textContent = text;
+      errorEl.hidden = false;
+      errorEl.setAttribute('aria-hidden', 'false');
+    }
+
+    function hide() {
+      errorEl.textContent = '';
+      errorEl.hidden = true;
+      errorEl.setAttribute('aria-hidden', 'true');
+    }
+
+    global.LoveBudLoginPageAuthError = {
+      show: show,
+      hide: hide
+    };
+
+    form.addEventListener('submit', hide, true);
+    form.addEventListener('input', hide);
+  }
+
+  /**
+   * Initialize login page UI components
+   */
+  function init() {
+    // 1. Render shared header
+    if (typeof global.renderSharedHeader === 'function') {
+      global.renderSharedHeader();
+    }
+
+    // 2. Initial i18n apply
+    if (typeof global.applyI18n === 'function') {
+      global.applyI18n();
+    }
+
+    // 3. Sync language UI state
+    syncLanguageUi();
+
+    // 4. Setup inline error handling for email auth
+    setupEmailAuthInlineError();
+
+    // 5. Register language change listener
+    if (typeof global.onLangChange === 'function') {
+      global.onLangChange(function () {
+        if (typeof global.applyI18n === 'function') {
+          global.applyI18n();
+        }
+        syncLanguageUi();
+      });
+    }
+
+    console.log('[LoginPage] Controller initialized');
+  }
+
   var LoginPageController = Object.freeze({
+    init: init,
     syncEmailAuthModeUi: syncEmailAuthModeUi,
     setupLoginPageAuthUi: setupLoginPageAuthUi,
     setupGoogleBtn: setupGoogleBtn,

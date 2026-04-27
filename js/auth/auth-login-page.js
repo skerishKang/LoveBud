@@ -1,114 +1,61 @@
-(function () {
-  if (window.LoveBudAuthLoginPage) return;
+(function (global) {
+  'use strict';
 
+  if (global.LoveBudAuthLoginPage) return;
+
+  function getDom() {
+    return global.LoveBudLoginDom || null;
+  }
+
+  function getController() {
+    return global.LoveBudLoginPageController || null;
+  }
+
+  /**
+   * Delegates UI sync to the controller
+   */
   function syncEmailAuthModeUi(options) {
-    var emailAuthMode = options && options.emailAuthMode;
-    var titleEl = options && options.titleEl;
-    var helperEl = options && options.helperEl;
-    var submitBtn = options && options.submitBtn;
-    var toggleBtn = options && options.toggleBtn;
-    var badgeEl = options && options.badgeEl;
-    var applyI18n = options && options.applyI18n;
-
-    var isSignup = emailAuthMode === 'signup';
-
-    if (badgeEl) {
-      badgeEl.textContent = isSignup ? '회원가입' : '로그인';
-      badgeEl.style.background = isSignup ? 'var(--secondary)' : 'var(--primary)';
-    }
-
-    if (titleEl) {
-      titleEl.textContent = isSignup ? '이메일로 회원가입' : '이메일로 로그인';
-      titleEl.setAttribute('data-i18n', isSignup ? 'email_modal_title_signup' : 'email_modal_title_login');
-    }
-
-    if (helperEl) {
-      helperEl.textContent = isSignup
-        ? '새 이메일 계정을 만들고 로그인합니다.'
-        : '이미 만든 이메일 계정으로 로그인합니다.';
-      helperEl.setAttribute('data-i18n', isSignup ? 'email_modal_desc_signup' : 'email_modal_desc_login');
-    }
-
-    if (submitBtn) {
-      submitBtn.textContent = isSignup ? '회원가입' : '로그인';
-      submitBtn.setAttribute('data-i18n', isSignup ? 'signup_btn' : 'login_btn');
-    }
-
-    if (toggleBtn) {
-      toggleBtn.textContent = isSignup
-        ? '이미 계정이 있나요? 로그인으로 전환'
-        : '계정이 없나요? 회원가입으로 전환';
-      toggleBtn.setAttribute('data-i18n', isSignup ? 'switch_to_login' : 'switch_to_signup');
-    }
-
-    if (typeof applyI18n === 'function') {
-      applyI18n();
+    var controller = getController();
+    if (controller && typeof controller.syncEmailAuthModeUi === 'function') {
+      controller.syncEmailAuthModeUi(options);
     }
   }
 
+
+  /**
+   * Delegates Auth UI setup to the controller
+   */
   function setupLoginPageAuthUi(options) {
-    var isLoginPage = options && options.isLoginPage;
-    var resolveEmailAuthMode = options && options.resolveEmailAuthMode;
-    var setEmailAuthMode = options && options.setEmailAuthMode;
-    var syncEmailAuthModeUiFn = options && options.syncEmailAuthModeUi;
-
-    if (typeof isLoginPage === 'function' && !isLoginPage()) return;
-
-    var emailAuthMode = typeof resolveEmailAuthMode === 'function'
-      ? resolveEmailAuthMode()
-      : 'login';
-
-    if (typeof setEmailAuthMode === 'function') {
-      setEmailAuthMode(emailAuthMode);
-    }
-
-    var params = new URLSearchParams(window.location.search);
-    var redirect = params.get('redirect');
-    var noticeEl = document.getElementById('redirect-notice');
-    if (noticeEl) {
-      noticeEl.style.display = redirect ? 'block' : 'none';
-    }
-
-    if (typeof syncEmailAuthModeUiFn === 'function') {
-      syncEmailAuthModeUiFn({
-        emailAuthMode: emailAuthMode,
-        titleEl: document.getElementById('email-auth-title'),
-        helperEl: document.getElementById('email-auth-helper'),
-        submitBtn: document.getElementById('email-auth-submit'),
-        toggleBtn: document.getElementById('email-auth-toggle'),
-        badgeEl: document.getElementById('auth-mode-badge')
-      });
+    var controller = getController();
+    if (controller && typeof controller.setupLoginPageAuthUi === 'function') {
+      controller.setupLoginPageAuthUi(options);
     }
   }
 
+  /**
+   * Delegates Google button setup to the controller
+   */
   function setupGoogleBtn(options) {
-    var signInWithGoogle = options && options.signInWithGoogle;
-    var googleBtn = document.getElementById('login-btn-google');
-    if (!googleBtn) return;
-
-    googleBtn.onclick = null;
-    googleBtn.addEventListener('click', function (e) {
-      e.preventDefault();
-      if (typeof signInWithGoogle === 'function') {
-        signInWithGoogle();
-      }
-    });
+    var controller = getController();
+    if (controller && typeof controller.setupGoogleBtn === 'function') {
+      controller.setupGoogleBtn(options);
+    }
   }
 
+  /**
+   * Delegates Signup Google button setup to the controller
+   */
   function setupSignupGoogleBtn(options) {
-    var signUpWithGoogle = options && options.signUpWithGoogle;
-    var signupGoogleBtn = document.getElementById('signup-btn-google');
-    if (!signupGoogleBtn) return;
-
-    signupGoogleBtn.onclick = null;
-    signupGoogleBtn.addEventListener('click', function (e) {
-      e.preventDefault();
-      if (typeof signUpWithGoogle === 'function') {
-        signUpWithGoogle();
-      }
-    });
+    var controller = getController();
+    if (controller && typeof controller.setupSignupGoogleBtn === 'function') {
+      controller.setupSignupGoogleBtn(options);
+    }
   }
 
+  /**
+   * Sets up the email auth form. 
+   * This remains here as it's heavily tied to Firebase/Auth logic.
+   */
   function setupEmailAuthForm(options) {
     var firebaseRef = options && options.firebase;
     var initFirebase = options && options.initFirebase;
@@ -116,83 +63,29 @@
     var getFriendlyErrorMessage = options && options.getFriendlyErrorMessage;
     var getEmailAuthMode = options && options.getEmailAuthMode;
     var setEmailAuthMode = options && options.setEmailAuthMode;
-    var syncEmailAuthModeUiFn = options && options.syncEmailAuthModeUi;
     var persistConfirmedAuthSession = options && options.persistConfirmedAuthSession;
     var preloadRedirectTargetData = options && options.preloadRedirectTargetData;
     var getRedirectTarget = options && options.getRedirectTarget;
     var isInvalidAuthSessionError = options && options.isInvalidAuthSessionError;
     var clearStaleFirebaseAuthState = options && options.clearStaleFirebaseAuthState;
 
-    var form = document.getElementById('email-auth-form');
+    var dom = getDom();
+    var elements = dom && typeof dom.getLoginElements === 'function' ? dom.getLoginElements() : {};
+    var form = elements.emailAuthForm || document.getElementById('email-auth-form');
+
     if (!form) return;
     if (typeof firebaseRef === 'undefined' || !firebaseRef.auth) return;
 
-    var emailInput = document.getElementById('email-auth-email');
-    var passwordInput = document.getElementById('email-auth-password');
-    var displayNameInput = document.getElementById('email-auth-display-name');
-    var submitBtn = document.getElementById('email-auth-submit');
-    var toggleBtn = document.getElementById('email-auth-toggle');
-    var modal = document.getElementById('email-auth-modal');
-    var titleEl = document.getElementById('email-auth-title');
-    var helperEl = document.getElementById('email-auth-helper');
-
-    function updateModeUi() {
-      if (typeof syncEmailAuthModeUiFn !== 'function') return;
-      syncEmailAuthModeUiFn({
-        emailAuthMode: typeof getEmailAuthMode === 'function' ? getEmailAuthMode() : 'login',
-        titleEl: titleEl,
-        helperEl: helperEl,
-        submitBtn: submitBtn,
-        toggleBtn: toggleBtn,
-        badgeEl: document.getElementById('auth-mode-badge')
-      });
+    var controller = getController();
+    if (controller && typeof controller.setupEmailAuthForm === 'function') {
+      // Setup UI parts (modal, toggle, display name visibility) via controller
+      controller.setupEmailAuthForm(options);
     }
 
-    function syncDisplayNameVisibility() {
-      if (!displayNameInput) return;
-      var wrapper = displayNameInput.closest('[data-auth-display-name-wrap]');
-      if (!wrapper) return;
-      var isSignup = (typeof getEmailAuthMode === 'function' ? getEmailAuthMode() : 'login') === 'signup';
-      wrapper.style.display = isSignup ? 'block' : 'none';
-      displayNameInput.required = isSignup;
-    }
-
-    updateModeUi();
-    syncDisplayNameVisibility();
-
-    if (toggleBtn) {
-      toggleBtn.addEventListener('click', function () {
-        var nextMode = (typeof getEmailAuthMode === 'function' ? getEmailAuthMode() : 'login') === 'login'
-          ? 'signup'
-          : 'login';
-        if (typeof setEmailAuthMode === 'function') {
-          setEmailAuthMode(nextMode);
-        }
-        updateModeUi();
-        syncDisplayNameVisibility();
-      });
-    }
-
-    var emailBtn = document.getElementById('login-btn-email');
-    if (emailBtn) {
-      emailBtn.addEventListener('click', function (e) {
-        e.preventDefault();
-        if (modal) modal.style.display = 'flex';
-      });
-    }
-
-    var closeBtn = document.getElementById('email-auth-close');
-    if (closeBtn) {
-      closeBtn.addEventListener('click', function () {
-        if (modal) modal.style.display = 'none';
-      });
-    }
-
-    if (modal) {
-      modal.addEventListener('click', function (e) {
-        if (e.target === modal) modal.style.display = 'none';
-      });
-    }
+    var emailInput = elements.emailAuthEmail || document.getElementById('email-auth-email');
+    var passwordInput = elements.emailAuthPassword || document.getElementById('email-auth-password');
+    var displayNameInput = elements.emailAuthDisplayName || document.getElementById('email-auth-display-name');
+    var submitBtn = elements.emailAuthSubmit || document.getElementById('email-auth-submit');
 
     form.addEventListener('submit', async function (e) {
       e.preventDefault();
@@ -278,6 +171,9 @@
     });
   }
 
+  /**
+   * Sets up the signup form (deprecated/rarely used in current flow but kept for compatibility)
+   */
   function setupSignupForm(options) {
     var firebaseRef = options && options.firebase;
     var initFirebase = options && options.initFirebase;
@@ -363,7 +259,7 @@
     });
   }
 
-  window.LoveBudAuthLoginPage = {
+  global.LoveBudAuthLoginPage = {
     syncEmailAuthModeUi: syncEmailAuthModeUi,
     setupLoginPageAuthUi: setupLoginPageAuthUi,
     setupGoogleBtn: setupGoogleBtn,
@@ -371,4 +267,4 @@
     setupEmailAuthForm: setupEmailAuthForm,
     setupSignupForm: setupSignupForm
   };
-})();
+})(window);
