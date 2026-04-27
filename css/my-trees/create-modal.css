@@ -1,0 +1,37 @@
+.create-tree-modal-backdrop { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; padding: 24px; background: rgba(53, 40, 38, 0.34); backdrop-filter: blur(8px); z-index: 1200; }
+.create-tree-modal-backdrop.show { display: flex; }
+.create-tree-modal { width: min(100%, 520px); background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(255,248,249,0.98)); border: 1px solid rgba(144, 73, 81, 0.12); border-radius: 28px; box-shadow: 0 30px 70px rgba(75, 64, 57, 0.18); padding: 28px; }
+.create-tree-modal-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
+.create-tree-modal-kicker { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 0 12px; border-radius: 999px; background: rgba(144, 73, 81, 0.08); color: var(--primary); font-size: 12px; font-weight: 900; margin-bottom: 12px; }
+.create-tree-modal-title { font-size: 1.5rem; font-weight: 900; line-height: 1.2; color: var(--on-surface); letter-spacing: -0.02em; margin: 0 0 8px; }
+.create-tree-modal-desc { margin: 0; color: var(--on-surface-variant); font-size: 0.95rem; line-height: 1.6; }
+.create-tree-modal-close { width: 40px; height: 40px; border: none; border-radius: 50%; background: rgba(255,255,255,0.84); color: var(--on-surface-variant); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.18s ease; }
+.create-tree-modal-close:hover { background: white; color: var(--on-surface); }
+.create-tree-modal-form { display: flex; flex-direction: column; gap: 18px; }
+.create-tree-field { display: flex; flex-direction: column; gap: 10px; }
+.create-tree-label { font-size: 13px; font-weight: 800; color: var(--on-surface); }
+.create-tree-input { width: 100%; border: 1px solid rgba(144, 73, 81, 0.14); border-radius: 18px; padding: 15px 16px; font-size: 15px; font-family: var(--font-body); background: rgba(255,255,255,0.94); color: var(--on-surface); outline: none; transition: border-color 0.18s ease, box-shadow 0.18s ease; }
+.create-tree-input:focus { border-color: rgba(144, 73, 81, 0.28); box-shadow: 0 0 0 4px rgba(144, 73, 81, 0.08); }
+.create-tree-input[aria-invalid="true"] { border-color: rgba(198, 40, 40, 0.42); }
+.create-tree-help { font-size: 12px; color: var(--on-surface-variant); line-height: 1.5; }
+.create-tree-error { min-height: 18px; font-size: 12px; color: #b71c1c; }
+.create-tree-visibility { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.create-tree-visibility-option { position: relative; }
+.create-tree-visibility-option input { position: absolute; opacity: 0; pointer-events: none; }
+.create-tree-visibility-card { display: flex; flex-direction: column; gap: 8px; padding: 16px 16px 14px; border-radius: 20px; border: 1px solid rgba(144, 73, 81, 0.12); background: rgba(255,255,255,0.88); cursor: pointer; transition: all 0.18s ease; min-height: 112px; }
+.create-tree-visibility-card:hover { border-color: rgba(144, 73, 81, 0.2); transform: translateY(-1px); }
+.create-tree-visibility-option input:checked + .create-tree-visibility-card { border-color: rgba(144, 73, 81, 0.28); background: rgba(255, 246, 247, 0.98); box-shadow: 0 10px 24px rgba(144, 73, 81, 0.08); }
+.create-tree-visibility-top { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 800; color: var(--on-surface); }
+.create-tree-visibility-desc { font-size: 12px; line-height: 1.55; color: var(--on-surface-variant); }
+.create-tree-modal-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-top: 4px; }
+.create-tree-modal-btn { border: none; border-radius: 999px; padding: 12px 18px; font-size: 14px; font-weight: 800; cursor: pointer; transition: all 0.18s ease; }
+.create-tree-modal-btn.secondary { background: rgba(255,255,255,0.86); color: var(--on-surface); border: 1px solid rgba(144, 73, 81, 0.1); }
+.create-tree-modal-btn.primary { background: linear-gradient(135deg, #ff6b9d 0%, #e85a7a 100%); color: white; box-shadow: 0 10px 24px rgba(232, 90, 122, 0.24); }
+.create-tree-modal-btn:disabled { opacity: 0.65; cursor: not-allowed; transform: none; box-shadow: none; }
+.create-tree-modal-kicker-icon { font-size: 14px; }
+.create-tree-goal-card { min-height: auto; cursor: default; background: rgba(255, 246, 247, 0.98); border-color: rgba(144, 73, 81, 0.20); box-shadow: 0 10px 24px rgba(144, 73, 81, 0.08); }
+.create-tree-goal-top { align-items: flex-start; justify-content: space-between; }
+.create-tree-goal-title-wrap { display: inline-flex; align-items: center; gap: 8px; }
+.create-tree-goal-icon { color: var(--primary); font-size: 18px; }
+.create-tree-goal-badge { display: inline-flex; align-items: center; justify-content: center; padding: 4px 9px; border-radius: 999px; background: rgba(144, 73, 81, 0.10); color: var(--primary); font-size: 11px; font-weight: 900; white-space: nowrap; }
+.create-tree-goal-desc { font-size: 13px; line-height: 1.65; }
