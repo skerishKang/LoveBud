@@ -7,7 +7,7 @@
     <link rel="icon" href="/assets/favicon/favicon.svg" type="image/svg+xml">
     <link rel="icon" href="/favicon.ico" sizes="32x32">
     <link rel="stylesheet" href="../css/global.css?v=20260415-10">
-    <link rel="stylesheet" href="../css/login.css?v=20260419-1">
+    <link rel="stylesheet" href="../css/login.css?v=20260427-1">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
 </head>
 <body class="bokeh-bg">
@@ -158,12 +158,13 @@
  </div>
  <div class="login-form-group-large">
      <label for="email-auth-email" class="login-form-label" data-i18n="email_label">이메일</label>
-     <input type="email" id="email-auth-email" required class="login-form-input">
+     <input type="email" id="email-auth-email" required class="login-form-input" aria-describedby="email-auth-error">
  </div>
 <div class="login-form-group-xl">
     <label for="email-auth-password" class="login-form-label" data-i18n="password_label">비밀번호</label>
-    <input type="password" id="email-auth-password" required class="login-form-input">
+    <input type="password" id="email-auth-password" required class="login-form-input" aria-describedby="email-auth-error">
 </div>
+<p id="email-auth-error" class="login-form-error" role="alert" aria-live="polite" aria-hidden="true" hidden></p>
 <button type="submit" id="email-auth-submit" class="login-submit-button login-submit-button-primary" data-i18n="login_btn">로그인</button>
 </form>
 <button id="email-auth-toggle" class="login-email-toggle" data-i18n="switch_to_signup">계정이 없나요? 회원가입으로 전환</button>
@@ -187,7 +188,7 @@
      <script src="../js/auth/auth-ui.js?v=20260421-2"></script>
      <script src="../js/auth/auth-session.js?v=20260417-31"></script>
      <script src="../js/auth/auth-firebase.js?v=20260420-2"></script>
-     <script src="../js/auth.js?v=20260417-31"></script>
-    <script src="../js/login-page.js?v=20260419-1"></script>
+     <script src="../js/auth.js?v=20260427-1"></script>
+    <script src="../js/login-page.js?v=20260427-1"></script>
 </body>
 </html>
