@@ -15,13 +15,14 @@
 ## 먼저 읽기
 
 1. [OPERATIONS.md](OPERATIONS.md) - 현재 운영 전략과 계층 정의
-2. [DEPLOY_CHECKLIST.md](DEPLOY_CHECKLIST.md) - 배포 전/후 체크리스트
-3. [RUNBOOK.md](RUNBOOK.md) - 운영 / 장애 대응 기준
-4. [MODAL_BROWSE_RUNTIME.md](MODAL_BROWSE_RUNTIME.md) - browse summary의 Modal 우선 read path 기준
-5. [KNOWN_CI_E2E_BLOCKERS.md](KNOWN_CI_E2E_BLOCKERS.md) - 반복 CI/E2E blocker 원인 분리 및 exception merge 판단 기준
-6. [BRANCH_CLEANUP_PLAN.md](BRANCH_CLEANUP_PLAN.md) - merged/stale branch cleanup 후보와 보존 branch 분류 기준
-7. [../migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md](../migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md) - 전환 현황과 남은 과제
-8. [../engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md](../engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md) - browse filter / publication guard 구분
+2. [PARALLEL_WORKTREE_AGENT_POLICY.md](PARALLEL_WORKTREE_AGENT_POLICY.md) - 병렬 모델/worktree/검증 모델 운영 기준
+3. [DEPLOY_CHECKLIST.md](DEPLOY_CHECKLIST.md) - 배포 전/후 체크리스트
+4. [RUNBOOK.md](RUNBOOK.md) - 운영 / 장애 대응 기준
+5. [MODAL_BROWSE_RUNTIME.md](MODAL_BROWSE_RUNTIME.md) - browse summary의 Modal 우선 read path 기준
+6. [KNOWN_CI_E2E_BLOCKERS.md](KNOWN_CI_E2E_BLOCKERS.md) - 반복 CI/E2E blocker 원인 분리 및 exception merge 판단 기준
+7. [BRANCH_CLEANUP_PLAN.md](BRANCH_CLEANUP_PLAN.md) - merged/stale branch cleanup 후보와 보존 branch 분류 기준
+8. [../migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md](../migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md) - 전환 현황과 남은 과제
+9. [../engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md](../engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md) - browse filter / publication guard 구분
 
 ---
 
@@ -30,6 +31,7 @@
 | 파일명 | 설명 |
 |--------|------|
 | [DOC_WORKFLOW.md](DOC_WORKFLOW.md) | 문서 작업 흐름 및 문서군 역할 정의 |
+| [PARALLEL_WORKTREE_AGENT_POLICY.md](PARALLEL_WORKTREE_AGENT_POLICY.md) | 병렬 모델, worktree, 검증 모델, PR 통합 운영 기준 |
 | [PATHS_AND_SHELLS.md](PATHS_AND_SHELLS.md) | 경로 / 셸 기준 |
 | [REMOTE_ACCESS_AND_WSL.md](REMOTE_ACCESS_AND_WSL.md) | 원격 접근 / WSL 기준 |
 | [GIT_SSH_SETUP.md](GIT_SSH_SETUP.md) | Git / SSH 설정 |
