@@ -450,10 +450,13 @@ def fetch_public_memories(tree_id: str | None = None, limit: int = 100) -> list[
         LIMIT %s;
     """
 
-    with get_db_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(query, tuple(params))
-            rows = cur.fetchall()
+    def operation():
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(query, tuple(params))
+                return cur.fetchall()
+
+    rows = run_db_with_retry(operation)
 
     return [normalize_memory_row(row) for row in rows]
 
@@ -472,10 +475,13 @@ def fetch_public_memory(memory_id: str) -> dict[str, Any] | None:
         LIMIT 1;
     """
 
-    with get_db_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(query, (memory_id,))
-            row = cur.fetchone()
+    def operation():
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(query, (memory_id,))
+                return cur.fetchone()
+
+    row = run_db_with_retry(operation)
 
     return normalize_memory_row(row) if row else None
 
@@ -494,10 +500,13 @@ def fetch_public_tree(tree_id: str) -> dict[str, Any] | None:
         LIMIT 1;
     """
 
-    with get_db_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(query, (tree_id,))
-            row = cur.fetchone()
+    def operation():
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(query, (tree_id,))
+                return cur.fetchone()
+
+    row = run_db_with_retry(operation)
 
     return normalize_tree_row(row, row.get("memory_count")) if row else None
 
