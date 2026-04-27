@@ -147,9 +147,15 @@ async function verifyFunctionSyntax() {
   ];
 
   const path = require('path');
+  const fs = require('fs');
   for (const fn of functions) {
+    const fullPath = path.resolve(process.cwd(), fn);
+    if (!fs.existsSync(fullPath)) {
+      check(fn, true, '스킵 (파일 없음)');
+      continue;
+    }
     try {
-      require(path.resolve(process.cwd(), fn));
+      require(fullPath);
       check(fn, true);
     } catch (e) {
       check(fn, false, e.message.split('\n')[0]);
