@@ -5,7 +5,7 @@
  */
 
 .cta-section {
-  padding: 48px 40px 72px;
+  padding: 40px var(--page-pad-desktop) 64px;
   max-width: var(--page-brand-max);
   margin: 0 auto;
   width: 100%;
@@ -47,4 +47,24 @@
   color: var(--primary);
   border-color: rgba(144, 73, 81, 0.18);
   background: rgba(255, 255, 255, 0.76);
+}
+
+/* Mobile consistency */
+@media (max-width: 640px) {
+  .cta-section {
+    padding: 32px var(--page-pad-mobile, 16px) 48px;
+  }
+
+  .cta-section h2 {
+    font-size: clamp(1.5rem, 6vw, 1.9rem);
+  }
+
+  .cta-buttons {
+    flex-direction: column;
+  }
+
+  .cta-buttons .btn-round {
+    width: 100%;
+    min-height: 54px;
+  }
 }
