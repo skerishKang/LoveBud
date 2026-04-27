@@ -49,6 +49,8 @@
 
     function showImageFallback(img) {
         if (!img) return;
+        if (img.dataset.fallbackTriggered) return;
+        img.dataset.fallbackTriggered = 'true';
         img.style.display = 'none';
         const fallback = img.nextElementSibling;
         if (fallback) {
