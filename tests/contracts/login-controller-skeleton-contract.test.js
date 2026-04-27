@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const path = require('node:path');
+const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 
@@ -9,11 +9,11 @@ function readRepoFile(relativePath) {
   return fs.readFileSync(path.join(ROOT, relativePath), 'utf8');
 }
 
-test('login controller skeleton defines the LoveBudAuthLoginPage-compatible method shape without runtime wiring', () => {
+test('login controller defines LoveBudLoginPageController as active boundary for UI methods', () => {
   const source = readRepoFile('js/login/login-page.js');
 
-  assert.match(source, /LoveBudLoginPageController/, 'skeleton must expose the isolated login page controller namespace');
-  assert.doesNotMatch(source, /LoveBudAuthLoginPage\s*=/, 'skeleton must not replace the active auth-login-page provider before wiring is approved');
+  assert.match(source, /LoveBudLoginPageController/, 'controller must expose LoveBudLoginPageController as active boundary');
+  assert.doesNotMatch(source, /LoveBudAuthLoginPage\s*=/, 'controller must not assign LoveBudAuthLoginPage (it is compatibility/fallback only)');
 
   for (const methodName of [
     'syncEmailAuthModeUi',
@@ -23,10 +23,11 @@ test('login controller skeleton defines the LoveBudAuthLoginPage-compatible meth
     'setupEmailAuthForm',
     'setupSignupForm',
   ]) {
-    assert.match(source, new RegExp(`${methodName}\\s*:`), `skeleton must define ${methodName}`);
+    assert.match(source, new RegExp(`${methodName}\\s*:`), `controller must define ${methodName}`);
   }
 
-  assert.match(source, /setupSignupForm\s*:\s*noop/, 'controller signup form auth execution must remain noop');
+  assert.match(source, /setupSignupForm\s*:\s*noop/, 'controller signup form auth execution must remain noop (auth execution handled by LoveBudAuthLoginPage via method-aware provider selection)');
+  assert.match(source, /setupEmailAuthForm\s*:/, 'controller must define setupEmailAuthForm for UI wiring (modal open/close/toggle/mode sync; auth execution is handled by LoveBudAuthLoginPage)');
 });
 
 test('login controller remains isolated from auth core and redirect/session policy', () => {
