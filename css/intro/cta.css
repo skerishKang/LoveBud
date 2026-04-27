@@ -37,18 +37,6 @@
   flex-wrap: wrap;
 }
 
-.cta-buttons .intro-cta-primary {
-  color: #fff;
-  background: linear-gradient(180deg, rgba(144, 73, 81, 0.98), rgba(125, 63, 70, 0.98));
-  border-color: transparent;
-}
-
-.cta-buttons .intro-cta-secondary {
-  color: var(--primary);
-  border-color: rgba(144, 73, 81, 0.18);
-  background: rgba(255, 255, 255, 0.76);
-}
-
 /* Mobile consistency */
 @media (max-width: 640px) {
   .cta-section {
