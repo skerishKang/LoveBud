@@ -2,7 +2,7 @@
 
 This document records the runtime contract for the LoveBud public Search/Browse page. It exists to prevent future Search/Browse grouping, split, extraction, or loader work from breaking page boot, global dependency order, preview hydration, URL state, mobile preview behavior, and language refresh behavior.
 
-Status: active runtime contract  
+Status: active runtime contract
 Last synced for: PR #175 Search/Browse runtime module split
 
 ---

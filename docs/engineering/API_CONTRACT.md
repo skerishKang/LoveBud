@@ -1,7 +1,7 @@
 # LoveBud API 응답 계약
 
-> **버전:** 1.6  
-> **최종 갱신:** 2026-04-27  
+> **버전:** 1.6
+> **최종 갱신:** 2026-04-27
 > **관련 커밋:** `0230475`, `bb9741b`, `bb9e663`, `10b3d9d`
 
 ---
@@ -36,10 +36,10 @@ Archive is not performed by this documentation update. Archive requires tests/do
 ## 1. 개요
 
 > ⚠️ **이행기(Migration) 상태 안내**
-> 
+>
 > 현재 표준 응답 계약은 **flat camelCase**로 확정되었습니다.
 > 다만 클라이언트 런타임에는 snake_case 및 legacy `{id, data}` 형태를 수용하는 이행기 호환용 fallback이 일부 남아 있습니다.
-> 
+>
 > - 신규 API, 문서, 테스트는 flat camelCase만 정식 계약으로 간주합니다.
 > - fallback 제거 전에는 관련 엔드포인트 응답 스냅샷 또는 계약 테스트를 먼저 고정해야 합니다.
 > - 목표: `/community/trees`, `/community/memories` 및 주요 API가 flat camelCase만 반환하면 클라이언트 fallback 제거
