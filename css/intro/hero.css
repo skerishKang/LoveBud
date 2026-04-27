@@ -9,11 +9,11 @@
   grid-template-columns: minmax(0, 1.05fr) minmax(300px, 0.72fr);
   gap: var(--hero-gap);
   align-items: center;
-  padding: 32px var(--page-pad-desktop) 28px;
+  padding: 52px var(--page-pad-desktop) 32px;
   max-width: var(--page-shell-max);
   margin: 0 auto;
   width: 100%;
-  min-height: min(780px, calc(100vh - 100px));
+  min-height: min(820px, calc(100vh - 108px));
 }
 
 .intro-hero-copy {
@@ -45,12 +45,12 @@
 }
 
 .intro-hero h1 {
-  font-size: clamp(3.2rem, 5.6vw, 4.8rem);
+  font-size: clamp(3.45rem, 5.8vw, 5.15rem);
   font-weight: 900;
   color: var(--on-surface);
-  margin: 18px 0 14px;
-  line-height: 1.0;
-  letter-spacing: -0.045em;
+  margin: 20px 0 14px;
+  line-height: 0.99;
+  letter-spacing: -0.052em;
   max-width: 720px;
 }
 
@@ -67,7 +67,7 @@
 .intro-hero h1 .title-accent {
   color: var(--primary);
   font-weight: 900;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
 }
 
 .intro-hero h1 .title-line:nth-child(3) {
@@ -76,10 +76,10 @@
 }
 
 .intro-hero .lead {
-  font-size: 1.05rem;
+  font-size: 1.02rem;
   color: var(--on-surface-variant);
-  line-height: 1.75;
-  margin: 0 0 1.5rem;
+  line-height: 1.78;
+  margin: 0 0 1.45rem;
   max-width: 520px;
 }
 
@@ -219,7 +219,7 @@
   gap: 14px;
   flex-wrap: wrap;
   align-items: stretch;
-  margin-top: 20px;
+  margin-top: 24px;
 }
 
 .intro-cta-link {
@@ -307,37 +307,38 @@
   .intro-hero {
     grid-template-columns: 1fr;
     min-height: auto;
-    padding-top: 22px;
+    padding-top: 36px;
   }
 }
 
 @media (max-width: 920px) {
   .intro-hero h1 {
-    font-size: clamp(2.8rem, 9vw, 4rem);
+    font-size: clamp(2.95rem, 10vw, 4.3rem);
   }
 }
 
 @media (max-width: 640px) {
   .intro-hero {
-    padding: 14px var(--page-pad-mobile, 16px) 12px;
+    padding: 24px var(--page-pad-mobile, 16px) 12px;
   }
 
   .intro-hero h1 {
-    margin-top: 14px;
-    font-size: clamp(2.2rem, 10vw, 2.6rem);
-    line-height: 1.05;
+    margin-top: 16px;
+    font-size: clamp(2.25rem, 10vw, 2.8rem);
+    line-height: 1.04;
     max-width: 100%;
+    overflow-wrap: anywhere;
   }
 
   .intro-hero .lead {
     font-size: 0.96rem;
-    line-height: 1.7;
+    line-height: 1.72;
     max-width: 100%;
   }
 
   .intro-hero-actions {
     flex-direction: column;
-    margin-top: 16px;
+    margin-top: 20px;
   }
 
   .intro-hero-actions .btn-round {
