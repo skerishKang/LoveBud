@@ -8,7 +8,7 @@
 - 브라우저는 가능하면 **same-origin `/api`** 만 사용합니다.
 - 공식 사용자-facing 주소는 `pages.dev` 기준으로 설명합니다.
 - Vercel은 upstream / secondary entry / 전이기 보조 계층입니다.
-- Netlify는 주경로가 아니라 fallback 또는 단계적 제거 대상입니다.
+- Netlify는 legacy artifact / removal candidate입니다. active production fallback이 아닙니다.
 - `PRODUCT_IDENTITY / BRAND_EXPERIENCE / UI_DESIGN_SYSTEM` 은 제품/브랜드/UI 판단의 source of truth 입니다.
 - prototype/reference 폴더는 repo hygiene에서 자동 삭제/이동/ignore 대상으로 분류하지 않습니다.
 - `pages/gpt-v2/`, `assets/gpt-v2/`, `pages/gpt-svg-tree/` 및 PR #7 관련 prototype은 보존합니다.

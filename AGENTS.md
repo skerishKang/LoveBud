@@ -48,7 +48,7 @@
 - Modal은 browse summary, compute, read-heavy 처리의 최우선 계층입니다.
 - Cloudflare Pages는 실서비스 프론트 및 same-origin `/api` 진입점입니다.
 - Vercel은 upstream / secondary entry / 전이기 보조 계층입니다.
-- Netlify는 주경로가 아니라 fallback 또는 단계적 제거 대상입니다.
+- Netlify는 legacy artifact / removal candidate입니다. active production fallback이 아닙니다.
 
 ### 브라우저 API 원칙
 - 사용자 브라우저는 가능하면 **same-origin `/api`**만 사용합니다.
