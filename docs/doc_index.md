@@ -60,6 +60,7 @@ PR3 button / badge / chip tone 기준 판단이 필요하면 아래를 추가로
 
 - `./ops/OPERATIONS.md`
 - `./ops/PARALLEL_WORKTREE_AGENT_POLICY.md`
+- `./ops/BROWSER_VERIFICATION_URL_POLICY.md`
 - `./ops/KNOWN_CI_E2E_BLOCKERS.md`
 - `./ops/BRANCH_CLEANUP_PLAN.md`
 - `./migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md`
@@ -131,6 +132,7 @@ Reference 문서는 `docs/reference/` 아래에 정리됩니다.
 - **index**: [ops_index.md](./ops/ops_index.md)
 - [OPERATIONS.md](./ops/OPERATIONS.md) - 현재 운영 전략 및 인프라 우선순위
 - [PARALLEL_WORKTREE_AGENT_POLICY.md](./ops/PARALLEL_WORKTREE_AGENT_POLICY.md) - 병렬 모델, worktree, 검증 모델, PR 통합 운영 기준
+- [BROWSER_VERIFICATION_URL_POLICY.md](./ops/BROWSER_VERIFICATION_URL_POLICY.md) - 브라우저 smoke URL provenance, PR Preview, Branch Preview, fixed test slot 검증 기준
 - [DEPLOY_CHECKLIST.md](./ops/DEPLOY_CHECKLIST.md) - 배포 체크리스트
 - [RUNBOOK.md](./ops/RUNBOOK.md) - 운영 / 장애 대응 런북
 - [DOC_WORKFLOW.md](./ops/DOC_WORKFLOW.md) - 문서 작업 흐름
