@@ -216,6 +216,10 @@
       window.clearPrivateCaches();
     }
 
+    if (window.apiClient && typeof window.apiClient.clearCommunityCaches === 'function') {
+      window.apiClient.clearCommunityCaches();
+    }
+
     if (typeof clearConfirmedAuthCache === 'function') {
       clearConfirmedAuthCache();
     }
