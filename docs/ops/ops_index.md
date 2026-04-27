@@ -7,8 +7,8 @@
 - 실서비스 프론트: `https://lovebud.pages.dev/`
 - 인프라 우선순위: **Modal > Cloudflare Pages > Vercel > Netlify**
 - 브라우저 호출 원칙: 가능하면 **same-origin `/api`** 만 사용
-- Vercel은 upstream / secondary entry / 전이기 보조 계층
-- Netlify는 주경로가 아니라 fallback 또는 단계적 제거 대상
+- Vercel은 upstream / secondary / transitional 계층
+- Netlify는 legacy artifact / removal candidate입니다. active production fallback이 아닙니다.
 
 ---
 
@@ -45,7 +45,7 @@
 | [DEPLOY_CHECKLIST.md](DEPLOY_CHECKLIST.md) | 배포 전/후 검증 체크리스트 |
 | [RUNBOOK.md](RUNBOOK.md) | 운영 및 장애 대응 런북 |
 | [BROWSER_VERIFICATION_URL_POLICY.md](BROWSER_VERIFICATION_URL_POLICY.md) | 브라우저 smoke URL provenance, PR Preview, Branch Preview, fixed test slot 검증 기준 |
-| [MODAL_BROWSE_RUNTIME.md](MODAL_BROWSE_RUNTIME.md) | browse summary의 Modal 우선 경로와 fallback 기준 |
+| [MODAL_BROWSE_RUNTIME.md](MODAL_BROWSE_RUNTIME.md) | browse summary의 Modal 우선 경로와 Modal security contract 기준 |
 | [KNOWN_CI_E2E_BLOCKERS.md](KNOWN_CI_E2E_BLOCKERS.md) | 반복 CI/E2E 실패의 원인 분리 및 exception merge 판단 기준 |
 | [BRANCH_CLEANUP_PLAN.md](BRANCH_CLEANUP_PLAN.md) | PR #49~#58 이후 merged/stale branch cleanup 후보와 보존 branch 분류 기준 |
 | [FLOW_A_QA_CHECKLIST.md](FLOW_A_QA_CHECKLIST.md) | QA 체크리스트 |

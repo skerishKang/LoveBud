@@ -1,6 +1,11 @@
 # Search Runtime Dependency Contract
 
-This document records the runtime contract for the LoveBud public Search/Browse page. It exists to prevent future `search.js` grouping, split, or extraction work from breaking the page boot sequence, global dependency order, preview hydration, URL state, and language refresh behavior.
+This document records the runtime contract for the LoveBud public Search/Browse page. It exists to prevent future Search/Browse grouping, split, extraction, or loader work from breaking page boot, global dependency order, preview hydration, URL state, mobile preview behavior, and language refresh behavior.
+
+Status: active runtime contract
+Last synced for: PR #175 Search/Browse runtime module split
+
+---
 
 ## 1. Current active Search runtime purpose
 
@@ -18,11 +23,21 @@ Current orchestrator:
 js/search.js
 ```
 
+Current Search submodules that load before the orchestrator:
+
+```text
+js/search/search-preview-cache.js
+js/search/search-ui.js
+js/search/search-url-state.js
+```
+
 The page is intentionally public-first. Public tree loading must not depend on Firebase Auth readiness. Auth modules load later for shared navigation state, but Search/Browse public data should remain available through same-origin public `/api/community/*` routes.
+
+---
 
 ## 2. Script loading order
 
-`pages/search.html` must preserve this runtime order:
+`pages/search.html` must preserve this runtime order.
 
 ```text
 1.  js/page-shell.js
@@ -36,19 +51,22 @@ The page is intentionally public-first. Public tree loading must not depend on F
 8.  js/search-data-adapter.js
 9.  js/search-card-renderer.js
 10. js/search-preview-renderer.js
-11. js/search.js
+11. js/search/search-preview-cache.js
+12. js/search/search-ui.js
+13. js/search/search-url-state.js
+14. js/search.js
 
-12. Firebase SDK
-13. js/firebase-config.js
+15. Firebase SDK
+16. js/firebase-config.js
 
-14. i18n dictionaries/core stack
-15. js/i18n.js
-16. js/shared-header.js
+17. i18n dictionaries/core stack
+18. js/i18n.js
+19. js/shared-header.js
 
-17. auth modules
-18. js/auth.js
+20. auth modules
+21. js/auth.js
 
-19. inline LoveTreePageShell.initSharedPage({ renderHeader: true, applyI18n: true })
+22. inline LoveTreePageShell.initSharedPage({ renderHeader: true, applyI18n: true })
 ```
 
 The critical pre-`search.js` chain is:
@@ -63,8 +81,15 @@ cache-utils
 → search-data-adapter
 → search-card-renderer
 → search-preview-renderer
+→ search/search-preview-cache
+→ search/search-ui
+→ search/search-url-state
 → search.js
 ```
+
+`search.js` remains the runtime orchestrator. The Search submodules are not optional helpers; they are part of the page boot contract.
+
+---
 
 ## 3. Required globals before `search.js`
 
@@ -92,6 +117,23 @@ Required contracts:
 - `LoveBudSearchPreviewRenderer.renderLoadingPreview(tree)` should exist.
 - `LoveBudSearchPreviewRenderer.updatePreview(tree)` must exist.
 - `LoveBudSearchAdapter.filterTrees(trees, query, category)` must exist.
+
+### Search runtime submodule globals
+
+```text
+window.LoveBudSearchPreviewCache
+window.LoveBudSearchUI
+window.LoveBudSearchUrlState
+```
+
+Required contracts:
+
+- `LoveBudSearchPreviewCache.createPreviewCache(options)` must exist.
+- The preview cache module owns preview cache key reads/writes and hydrated tree merge helpers.
+- `LoveBudSearchUI.createSearchUI(options)` must exist.
+- The UI module owns dynamic browse copy, browse head/controls, mobile preview open/close state, active card state, no-data/error states, and preview loading state.
+- `LoveBudSearchUrlState.createSearchUrlState(options)` must exist.
+- The URL state module owns query/category/sort/limit/tree parameter read/restore/update behavior and popstate coordination.
 
 ### API/cache globals
 
@@ -122,11 +164,13 @@ window.applyI18n
 window.onLangChange
 ```
 
-`applyI18n()` alone is not enough for Search/Browse because several dynamic labels are generated outside static `data-i18n` markup. Search also refreshes labels through its own static/dynamic copy sync functions.
+`applyI18n()` alone is not enough for Search/Browse because several dynamic labels are generated outside static `data-i18n` markup. Search also refreshes labels through Search-specific dynamic copy sync functions.
 
-## 4. Globals exposed by `search.js`
+---
 
-`search.js` exposes these debug helpers when URL state restore is initialized:
+## 4. Globals exposed by Search runtime
+
+The URL state submodule exposes these debug helpers when URL state restore is initialized:
 
 ```text
 window.readUrlState
@@ -143,48 +187,118 @@ window.LoveBudSearchTitleHelper
 window.LoveBudSearchAdapter
 window.LoveBudSearchCardRenderer
 window.LoveBudSearchPreviewRenderer
+window.LoveBudSearchPreviewCache
+window.LoveBudSearchUI
+window.LoveBudSearchUrlState
 ```
 
-## 5. Public tree initial load flow
+---
+
+## 5. Orchestrator and submodule ownership boundaries
+
+### `js/search.js`
+
+`js/search.js` owns orchestration and submodule wiring. It should not be described as directly owning every UI, cache, and URL state detail after the PR #175 split.
+
+It coordinates:
+
+- DOM reference collection
+- shared state object creation
+- renderer initialization
+- submodule initialization
+- public tree load
+- growing tree load
+- preview hydration flow
+- event binding
+- top-level language refresh coordination
+- top-level URL/deep-link application flow
+
+### `js/search/search-preview-cache.js`
+
+Owns preview cache helpers:
+
+- read preview cache
+- write preview cache
+- merge hydrated tree into the current state
+- preserve the preview cache TTL/key behavior expected by `js/search.js`
+
+### `js/search/search-ui.js`
+
+Owns dynamic UI helpers:
+
+- static Search/Browse copy sync
+- browse heading and badge sync
+- browse sort/load-more controls
+- load/error/empty state rendering
+- active card state
+- mobile preview panel open/close/sync
+- preview loading state
+- clearing selected preview
+
+### `js/search/search-url-state.js`
+
+Owns URL state helpers:
+
+- read `q`, `category`, `sort`, `limit`, and `tree` params
+- restore state from URL before user-driven URL writes
+- update URL from runtime state after user actions
+- apply selected tree from deep-link after data load
+- expose compatibility debug helpers
+
+### Existing helper/renderer modules
+
+- `js/search-title-helper.js` owns title, tag, and date cleanup helpers.
+- `js/search-data-adapter.js` owns UI-agnostic tree filtering and legacy data build helpers.
+- `js/search-card-renderer.js` owns card HTML and list-state HTML.
+- `js/search-preview-renderer.js` owns preview panel DOM rendering.
+- `js/postgres-client.js` owns browser API facade and captures API dependencies at load time.
+
+---
+
+## 6. Public tree initial load flow
 
 Initial boot flow:
 
 ```text
 DOMContentLoaded
-→ collect DOM references
+→ collect DOM references into refs
 → LoveBudSearchCardRenderer.init(resultsList)
 → LoveBudSearchPreviewRenderer.init(preview refs)
-→ ensureBrowseControls()
-→ syncStaticBrowseCopy()
-→ syncPreviewVisibility()
+→ create shared Search state
+→ LoveBudSearchUI.createSearchUI(...)
+→ LoveBudSearchPreviewCache.createPreviewCache(...)
+→ LoveBudSearchUrlState.createSearchUrlState(...)
+→ UI sync for static copy / controls / preview visibility
 → resultsList.innerHTML = CardRenderer.renderLoading()
-→ clearSelectedPreview()
+→ clear selected preview
 → Promise.allSettled([
     loadPublicTrees({ resetSelection: true }),
     loadGrowingTrees()
   ])
 → restoreStateFromUrl()
 → applySelectedTreeFromUrl()
-→ bind search input / tag chips / popstate handlers
+→ bind search input / tag chips / popstate / language handlers
 ```
 
 `loadPublicTrees()` flow:
 
 ```text
-cache key = public_trees_summary_latest_10 + sort + limit
-→ syncBrowseHead()
-→ optional clearSelectedPreview()
+cache key = public tree summary + sort + limit
+→ sync browse head
+→ optional clear selected preview
 → read LoveBudCache
 → render cached trees if available
 → apiClient.getPublicTrees({ view: 'summary', sort, limit })
 → cache API response
-→ update allTrees
+→ update state.allTrees
 → renderResults()
 ```
 
 The public tree summary path must remain public and must not require Firebase Auth readiness.
 
-## 6. Growing trees load flow
+---
+
+## 7. Growing trees load flow
 
 Growing trees are loaded through the base API layer directly, not through `apiClient`.
 
@@ -200,15 +314,17 @@ loadGrowingTrees()
 
 If this request fails, the growing section may be hidden. It should not block public tree summary rendering.
 
-## 7. Preview hydrate flow
+---
+
+## 8. Preview hydrate flow
 
 Tree selection flow:
 
 ```text
 card click / Enter / Space
 → selectTree(tree, card)
-→ selectedTreeId = tree.id
-→ markActiveCard(card)
+→ state.selectedTreeId = tree.id
+→ UI marks active card
 → mobile: open preview panel
 → if tree.memories exists: write preview cache + update preview
 → else hydrateSelectedTreePreview(tree)
@@ -218,33 +334,37 @@ Lazy hydration flow:
 
 ```text
 hydrateSelectedTreePreview(tree)
-→ currentPreviewRequestId increments
-→ render preview loading state
-→ read preview cache
+→ state.currentPreviewRequestId increments
+→ UI renders preview loading state
+→ read preview cache through LoveBudSearchPreviewCache
 → if no cache: apiClient.getPublicTreePreview(tree)
 → write preview cache
-→ merge hydrated tree into allTrees
+→ merge hydrated tree into state.allTrees
 → if stale request or changed selection: return
 → PreviewRenderer.updatePreview(hydratedTree)
 → renderResults(false)
 ```
 
-The `currentPreviewRequestId` race guard is required. It prevents an older preview request from overwriting the currently selected tree.
+The preview request race guard is required. It prevents an older preview request from overwriting the currently selected tree.
 
-## 8. Sort / filter / load-more flow
+---
 
-Search dynamically creates sort and load-more controls through `ensureBrowseControls()`.
+## 9. Sort / filter / load-more flow
+
+Search dynamically creates sort and load-more controls through the UI submodule.
 
 Contracts:
 
 - Sort controls use `data-browse-sort="latest"` and `data-browse-sort="popular"`.
-- Sort change resets `currentLimit` to `10`, updates URL state, and reloads public trees.
-- Load more increments `currentLimit` by `10`, max `60`, updates URL state, and reloads public trees without clearing selection by default.
-- Search input updates `currentQuery` and filters after a short debounce.
-- Tag chips update `currentCategory` and re-render filtered results.
-- Filtering boundary is `LoveBudSearchAdapter.filterTrees(allTrees, currentQuery, currentCategory)`.
+- Sort change resets `state.currentLimit` to `10`, updates URL state, and reloads public trees.
+- Load more increments `state.currentLimit` by `10`, max `60`, updates URL state, and reloads public trees without clearing selection by default.
+- Search input updates `state.currentQuery` and filters after a short debounce.
+- Tag chips update `state.currentCategory` and re-render filtered results.
+- Filtering boundary is `LoveBudSearchAdapter.filterTrees(state.allTrees, state.currentQuery, state.currentCategory)`.
 
-## 9. Mobile preview open / close flow
+---
+
+## 10. Mobile preview open / close flow
 
 Mobile contract:
 
@@ -255,9 +375,8 @@ mobilePreviewMediaQuery = window.matchMedia('(max-width: 768px)')
 Behavior:
 
 - On mobile, selecting a tree adds `.is-open` to `#previewSidebar` and scrolls it into view.
-- `#previewMobileClose` calls `clearSelectedPreview()`.
-- `syncPreviewVisibility()` reconciles preview open state when the media query changes.
-- Desktop mode must remove `.is-open` and rely on the normal sidebar layout.
+- `#previewMobileClose` clears selection and closes the preview panel.
+- Desktop/mobile resize does not leave the preview stuck open.
 
 Required DOM IDs:
 
@@ -266,9 +385,11 @@ previewSidebar
 previewMobileClose
 ```
 
-## 10. Share link copy flow
+---
 
-Preview renderer owns the share button markup. Search orchestrator owns the click behavior.
+## 11. Share link copy flow
+
+Preview renderer owns the share button markup. Search orchestrator owns the delegated click behavior.
 
 Markup contract:
 
@@ -290,103 +411,43 @@ document click delegation
 
 Do not rename or remove these data attributes in Search refactors.
 
-## 11. Language switch refresh flow
+---
+
+## 12. Language switch refresh flow
 
 Language refresh uses both static i18n and Search-specific dynamic copy refresh.
 
 Flow:
 
 ```text
-syncStaticBrowseCopy()
+Search UI copy sync
 → applyI18n(), if available
 → manually refresh dynamic Search labels/placeholders/aria labels
 
 onLangChange(callback)
-→ syncStaticBrowseCopy()
-→ syncBrowseHead()
-→ syncControlsFromState()
+→ Search UI copy sync
+→ browse head sync
+→ controls sync
 ```
 
-`i18n-search.js` also injects `search-copy-ui.js` on the Search route. Search code must not assume that injected script has loaded before `search.js`.
+`i18n-search.js` may also inject Search copy helpers on the Search route. Search code must not assume that injected script has loaded before `search.js`.
 
-## 12. Renderer / data / helper / orchestrator boundaries
-
-### `js/search.js`
-
-Owns orchestration:
-
-- DOM references
-- page state
-- public tree load
-- growing tree load
-- preview hydration
-- event binding
-- mobile preview state
-- URL state
-- cache read/write calls
-- language refresh coordination
-
-### `js/search-title-helper.js`
-
-Owns title, tag, and date cleanup helpers. Exports:
-
-```text
-window.LoveBudSearchTitleHelper
-```
-
-### `js/search-data-adapter.js`
-
-Owns UI-agnostic tree filtering and legacy data build helpers. Exports:
-
-```text
-window.LoveBudSearchAdapter
-```
-
-Current orchestrator boundary primarily depends on `filterTrees()`.
-
-### `js/search-card-renderer.js`
-
-Owns card HTML and list-state HTML. Exports:
-
-```text
-window.LoveBudSearchCardRenderer
-```
-
-It also owns card image fallback handlers used by inline `onerror` / `onload` in generated card markup.
-
-### `js/search-preview-renderer.js`
-
-Owns preview panel DOM rendering. Exports:
-
-```text
-window.LoveBudSearchPreviewRenderer
-```
-
-It owns preview CTA/share markup and preview media fallback handlers.
-
-### `js/postgres-client.js`
-
-Owns browser API facade:
-
-```text
-window.apiClient.getPublicTrees()
-window.apiClient.getPublicTreePreview()
-```
-
-`postgres-client.js` captures API dependencies at load time, so the API adapter/base fetch scripts must load before it.
+---
 
 ## 13. Fragile points
 
 1. `search.js` currently loads before Firebase SDK, i18n stack, shared header, and auth modules. This is intentional. Public Search/Browse load must not wait for Firebase Auth.
 2. `api/public-tree-adapter.js` must load before `postgres-client.js` because `postgres-client.js` captures `window.LoveTreePublicTreeAdapter` at module evaluation time.
 3. `api/base-api-fetch.js` must load before `postgres-client.js` and before `loadGrowingTrees()`.
-4. Search renderer globals are hard dependencies. Missing `LoveBudSearchCardRenderer` or `LoveBudSearchPreviewRenderer` can break page boot.
+4. Search renderer and submodule globals are hard dependencies. Missing `LoveBudSearchCardRenderer`, `LoveBudSearchPreviewRenderer`, `LoveBudSearchPreviewCache`, `LoveBudSearchUI`, or `LoveBudSearchUrlState` can break page boot.
 5. DOM IDs are runtime contract. Renaming IDs in `pages/search.html` requires coordinated Search JS changes and smoke verification.
-6. `currentPreviewRequestId` is required to avoid stale preview hydration overwrites.
-7. `applySelectedTreeFromUrl()` must run after initial data load has settled, because it selects from rendered/loaded tree data.
+6. The preview request race guard is required to avoid stale preview hydration overwrites.
+7. URL tree deep-link selection must run after initial data load has settled, because it selects from rendered/loaded tree data.
 8. Share link copy depends on preview renderer data attributes.
 9. Language refresh is partially manual and must not be reduced to `applyI18n()` only.
-10. `search-copy-ui.js` injection from i18n is asynchronous relative to Search boot.
+10. Search copy injection from i18n can be asynchronous relative to Search boot.
+
+---
 
 ## 14. Forbidden changes
 
@@ -401,6 +462,9 @@ Do not move `search.js` before:
 - `search-data-adapter.js`
 - `search-card-renderer.js`
 - `search-preview-renderer.js`
+- `search/search-preview-cache.js`
+- `search/search-ui.js`
+- `search/search-url-state.js`
 
 Additional hard rules:
 
@@ -413,9 +477,11 @@ Additional hard rules:
 - Do not replace `LoveTreeBaseApiFetch.apiFetch('/community/growing-trees?limit=3')` without preserving response shape handling.
 - Do not remove Search debug globals without a dedicated compatibility cleanup decision.
 
+---
+
 ## 15. Minimum smoke checklist
 
-Run this checklist for any Search/Browse script order change, `search.js` split, renderer extraction, or data-flow refactor.
+Run this checklist for any Search/Browse script order change, `search.js` split, renderer extraction, data-flow refactor, or Search submodule wiring change.
 
 ### Page boot
 
@@ -481,21 +547,26 @@ Run this checklist for any Search/Browse script order change, `search.js` split,
 - No new blocking JS errors.
 - Expected backend/API warnings are documented when backend data is unavailable.
 
+---
+
 ## 16. Recommended safe follow-up
 
-Recommended next step before any Search JS extraction:
+Recommended next step before any additional Search JS extraction:
 
 ```text
-Add a docs/test guard that asserts Search script order and runtime global contracts.
+Keep or add contract tests that assert Search script order and runtime global contracts.
 ```
 
 Safe guard targets:
 
 - `api/public-tree-adapter.js` before `postgres-client.js`
 - `postgres-client.js` before `search.js`
-- `search-title-helper.js` before `search-card-renderer.js` and `search-preview-renderer.js`
+- `search-title-helper.js` before renderers and `search.js`
 - `search-data-adapter.js` before `search.js`
 - `search-card-renderer.js` before `search.js`
 - `search-preview-renderer.js` before `search.js`
+- `search/search-preview-cache.js` before `search.js`
+- `search/search-ui.js` before `search.js`
+- `search/search-url-state.js` before `search.js`
 
-Do not immediately extract `search.js`. The first follow-up should be a no-move documentation or contract-test guard. After that, extraction should happen one seam at a time, preserving existing globals and script order.
+Do not immediately perform another extraction without preserving existing globals and script order.

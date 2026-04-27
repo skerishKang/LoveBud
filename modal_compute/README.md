@@ -22,6 +22,13 @@ Browse/community/private read-heavy route는 기본적으로 Modal 우선:
 - Memory detail (`/api/memories/{id}`)
 - Tree detail (`/api/trees/{id}`)
 
+## Runtime / security contract
+
+상세 정책은 이 README에 중복 서술하지 않습니다. Active Modal runtime 및 security contract는 아래 문서를 기준으로 확인합니다.
+
+- `../docs/engineering/API_CONTRACT.md`
+- `../docs/ops/MODAL_BROWSE_RUNTIME.md`
+
 ## Deploy 가이드
 
 Modal deploy는 별도 승인 필요:
@@ -32,5 +39,7 @@ Modal deploy는 별도 승인 필요:
 
 ## 관련 문서
 
-- `docs/ops/OPERATIONS.md`
-- `docs/migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md`
+- `../docs/engineering/API_CONTRACT.md`
+- `../docs/ops/MODAL_BROWSE_RUNTIME.md`
+- `../docs/ops/OPERATIONS.md`
+- `../docs/migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md`
