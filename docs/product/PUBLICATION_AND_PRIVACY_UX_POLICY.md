@@ -4,7 +4,7 @@
 
 현재 CTO 확정 정책은 **public-first visibility + Plus private storage + separate browse eligibility + parent visibility public-read guard**입니다. 이 문서는 제품/UX 정책의 canonical source이며, 코드 구현은 별도 frontend/backend 작업으로 분리합니다.
 
-중요: 이 문서는 현재 main 코드가 이미 public-first로 동작한다는 의미가 아닙니다. 코드 변경 전에는 현재 구현 상태를 별도로 확인해야 합니다.
+중요: 이 문서는 현재 main 코드가 canonical policy의 모든 세부 항목을 구현했다는 의미가 아닙니다. 코드 변경 또는 정책 판단 전에는 현재 구현 상태를 별도로 확인해야 합니다.
 
 ---
 
@@ -51,14 +51,26 @@
 
 ## 2. Current implementation note
 
-현재 main 구현은 정책 전환 중간 상태일 수 있습니다. 문서의 canonical policy와 실제 코드 동작이 다를 수 있으므로 구현 작업 전에는 관련 frontend/backend/runtime 파일을 다시 확인해야 합니다.
+현재 main 구현은 canonical policy의 일부를 이미 반영했지만, 모든 UX/contract 세부사항이 확정된 것은 아닙니다. 문서의 canonical policy와 실제 코드 동작이 다를 수 있으므로 구현 작업 전에는 관련 frontend/backend/runtime 파일을 다시 확인해야 합니다.
 
-기존 확인 기준:
+현재 main 확인 기준:
 
-- My Trees 생성 모달은 과거 private-first payload를 사용했습니다.
-- backend create tree guard는 과거 public 생성 요청을 제한했습니다.
-- Editor visibility toggle은 public/private 전환 UI를 제공하되 Plus entitlement guard가 완전히 연결되지 않았을 수 있습니다.
+- My Trees 생성 모달은 `visibility: public` payload를 명시합니다.
+- Modal create tree path는 visibility 생략 시 `public`을 기본값으로 사용합니다.
+- Modal private tree/memory create 및 private visibility update path는 private storage entitlement guard를 호출합니다.
+- public read path는 parent tree visibility guard를 유지합니다.
+- Editor visibility toggle은 public/private 전환 UI를 제공하지만, Plus-required 실패 UX와 i18n 문구는 별도 점검이 필요합니다.
 - Settings의 private storage 문구는 정책/결제 구현 상태에 따라 별도 조정이 필요합니다.
+
+정책/계약으로 아직 독단 확정하지 않을 항목:
+
+- Plus-required HTTP status: `403` vs `402`
+- final error body shape
+- frontend toast/i18n mapping
+- compatibility entitlement fields의 장기 지원 여부
+- grandfathered private 세부 UX
+- Settings/결제 UX
+- Browse/Search threshold의 장기 정책화 여부
 
 정책 전환은 다음을 함께 맞춘 뒤 진행합니다.
 
@@ -303,13 +315,13 @@ Policy: Parent tree visibility remains an anonymous public read guard.
 
 ## 10. Prohibited implementation shortcuts
 
-- createTree payload만 단독으로 `public`으로 바꾸지 않습니다.
 - frontend-only lock으로 Plus private enforcement 완료를 선언하지 않습니다.
 - backend guard 없이 private storage를 UI에서만 제한하지 않습니다.
 - `publicMomentCount >= 3`을 visibility publication guard로 재사용하지 않습니다.
 - `memory.visibility = public`만으로 anonymous public read를 허용하지 않습니다.
 - public memory가 존재한다는 이유만으로 private parent tree를 Browse/Search, community memories list, public memory detail에 노출하지 않습니다.
 - 기존 private tree를 자동 public 전환하지 않습니다.
+- Plus-required HTTP status/body shape를 독단 확정하지 않습니다.
 - 결제/권한 로직 확정 전 Plus private을 과도하게 홍보하지 않습니다.
 
 ---
@@ -328,8 +340,9 @@ Policy: Parent tree visibility remains an anonymous public read guard.
 
 ### Backend / runtime
 
-- create tree default visibility policy 반영
-- private storage entitlement guard
+- Plus-required error status/body contract 고정
+- compatibility entitlement fields의 장기 지원 여부 결정
+- grandfathered private 세부 UX와 backend 예외 처리 정리
 - memory visibility inheritance 처리
 - explicit memory visibility override policy guard
 - anonymous public read path에서 parent tree visibility guard 적용
@@ -352,16 +365,21 @@ Policy: Parent tree visibility remains an anonymous public read guard.
 
 이 문서는 canonical policy를 고정합니다.
 
-현재 main 코드가 이미 다음을 모두 구현했다는 뜻은 아닙니다.
+현재 main 코드는 다음 runtime 상태를 반영합니다.
 
-- 신규 tree public default
-- Plus private storage guard
-- memory visibility inheritance
-- explicit memory visibility override guard
-- stored memory visibility vs anonymous public exposure 분리
-- community memories list parent visibility guard
-- public memory detail read parent visibility guard
-- Browse/Search `publicMomentCount >= 3` eligibility
-- private parent tree + public child memory browse guard
+- My Trees 생성 payload는 `visibility: public`을 명시함
+- Modal create tree path는 visibility 생략 시 `public`을 기본값으로 사용함
+- Modal private tree/memory create 및 private visibility update path는 private storage entitlement guard를 호출함
+- public read path는 parent tree visibility guard를 유지함
+- public visibility와 Browse/Search 자동 노출은 별개임
 
-실제 구현은 별도 PR에서 진행합니다.
+현재 main 코드가 이미 다음을 모두 최종 계약으로 확정했다는 뜻은 아닙니다.
+
+- Plus-required HTTP status/body shape
+- frontend toast/i18n mapping
+- compatibility entitlement fields의 장기 지원 여부
+- grandfathered private 세부 UX
+- Settings/결제 UX
+- Browse/Search threshold의 장기 정책화 여부
+
+실제 구현 및 contract 확정은 별도 PR에서 진행합니다.
