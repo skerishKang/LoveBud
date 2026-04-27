@@ -2,11 +2,13 @@
 
 이 문서는 LoveBud 프로젝트의 문서 구조와 읽기 순서를 정리한 최상위 인덱스입니다.
 
-실서비스 프론트 주소는 `https://lovebud.pages.dev/` 이며, 현재 운영 기준 인프라 우선순위는 **Modal > Cloudflare Pages > Vercel > Netlify** 입니다.
+실서비스 프론트 주소는 `https://lovebud.pages.dev/` 이며, 현재 운영 기준 인프라 우선순위는 **Cloudflare Pages Entry + Modal Runtime > Vercel > Netlify** 입니다.
 
 중요:
 - 브라우저는 가능하면 **same-origin `/api`** 만 사용합니다.
 - 공식 사용자-facing 주소는 `pages.dev` 기준으로 설명합니다.
+- active runtime entry: Cloudflare Pages (same-origin `/api/*` router + 정적 프런트)
+- active backend target: Modal (browse summary, private/community read/write compute)
 - Vercel은 upstream / secondary entry / 전이기 보조 계층입니다.
 - Netlify는 legacy artifact / removal candidate입니다. active production fallback이 아닙니다.
 - `PRODUCT_IDENTITY / BRAND_EXPERIENCE / UI_DESIGN_SYSTEM` 은 제품/브랜드/UI 판단의 source of truth 입니다.
@@ -59,6 +61,7 @@ PR3 button / badge / chip tone 기준 판단이 필요하면 아래를 추가로
 운영/배포 판단이 필요하면 아래를 추가로 읽습니다.
 
 - `./ops/OPERATIONS.md`
+- `./ops/NETLIFY_LEGACY_ARTIFACT_AUDIT.md`
 - `./ops/PARALLEL_WORKTREE_AGENT_POLICY.md`
 - `./ops/BROWSER_VERIFICATION_URL_POLICY.md`
 - `./ops/KNOWN_CI_E2E_BLOCKERS.md`
@@ -133,6 +136,7 @@ Reference 문서는 `docs/reference/` 아래에 정리됩니다.
 
 - **index**: [ops_index.md](./ops/ops_index.md)
 - [OPERATIONS.md](./ops/OPERATIONS.md) - 현재 운영 전략 및 인프라 우선순위
+- [NETLIFY_LEGACY_ARTIFACT_AUDIT.md](./ops/NETLIFY_LEGACY_ARTIFACT_AUDIT.md) - Netlify legacy artifact / removal candidate 감사 기준 및 현황. `netlify/functions/*`, `netlify.toml` removal audit 진행 상태
 - [PARALLEL_WORKTREE_AGENT_POLICY.md](./ops/PARALLEL_WORKTREE_AGENT_POLICY.md) - 병렬 모델, worktree, 검증 모델, PR 통합 운영 기준
 - [BROWSER_VERIFICATION_URL_POLICY.md](./ops/BROWSER_VERIFICATION_URL_POLICY.md) - 브라우저 smoke URL provenance, PR Preview, Branch Preview, fixed test slot 검증 기준
 - [DEPLOY_CHECKLIST.md](./ops/DEPLOY_CHECKLIST.md) - 배포 체크리스트
