@@ -121,6 +121,7 @@ function resolveEmailAuthMode() {
 }
 
 function getLoginPageModule() {
+  if (window.LoveBudLoginPageController) return window.LoveBudLoginPageController;
   return window.LoveBudAuthLoginPage || null;
 }
 

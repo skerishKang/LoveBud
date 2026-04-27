@@ -9,11 +9,11 @@ function readRepoFile(relativePath) {
   return fs.readFileSync(path.join(ROOT, relativePath), 'utf8');
 }
 
-test('login controller skeleton defines the LoveBudAuthLoginPage-compatible method shape without runtime wiring', () => {
+test('login controller defines LoveBudLoginPageController as active boundary with LoveBudAuthLoginPage-compatible method shape', () => {
   const source = readRepoFile('js/login/login-page.js');
 
-  assert.match(source, /LoveBudLoginPageController/, 'skeleton must expose the isolated login page controller namespace');
-  assert.doesNotMatch(source, /LoveBudAuthLoginPage\s*=/, 'skeleton must not replace the active auth-login-page provider before wiring is approved');
+  assert.match(source, /LoveBudLoginPageController/, 'controller must expose LoveBudLoginPageController as active boundary');
+  assert.doesNotMatch(source, /LoveBudAuthLoginPage\s*=/, 'controller must not assign LoveBudAuthLoginPage (it is compatibility/fallback only)');
 
   for (const methodName of [
     'syncEmailAuthModeUi',
@@ -23,10 +23,10 @@ test('login controller skeleton defines the LoveBudAuthLoginPage-compatible meth
     'setupEmailAuthForm',
     'setupSignupForm',
   ]) {
-    assert.match(source, new RegExp(`${methodName}\\s*:`), `skeleton must define ${methodName}`);
+    assert.match(source, new RegExp(`${methodName}\\s*:`), `controller must define ${methodName}`);
   }
 
-  assert.match(source, /setupSignupForm\s*:\s*noop/, 'controller signup form auth execution must remain noop');
+  assert.match(source, /setupSignupForm\s*:\s*noop/, 'controller signup form auth execution must remain noop (auth execution delegated to auth.js via injected callbacks)');
 });
 
 test('login controller remains isolated from auth core and redirect/session policy', () => {

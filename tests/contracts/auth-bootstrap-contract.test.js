@@ -170,12 +170,14 @@ test('root auth bootstrap exposes compatibility window APIs and flags', () => {
   }
 });
 
-test('root auth delegates login page helpers through the auth-login-page namespace when available', () => {
+test('root auth delegates login page helpers through the active login page namespace with LoveBudLoginPageController as primary', () => {
   const source = readRepoFile('js/auth.js');
 
-  assert.match(source, /window\.LoveBudAuthLoginPage/, 'root auth must reference the login page helper namespace');
+  assert.match(source, /window\.LoveBudLoginPageController/, 'root auth must reference LoveBudLoginPageController as primary active provider');
+  assert.match(source, /window\.LoveBudAuthLoginPage/, 'root auth must keep LoveBudAuthLoginPage as compatibility/fallback namespace');
   assert.match(source, /function\s+getLoginPageModule\s*\(/, 'root auth must keep a thin login page module lookup helper');
   assert.match(source, /function\s+callLoginPageModule\s*\(/, 'root auth must keep a thin login page module call helper');
+  assert.match(source, /LoveBudLoginPageController[\s\S]*LoveBudAuthLoginPage/, 'getLoginPageModule must check LoveBudLoginPageController first, then fallback to LoveBudAuthLoginPage');
 
   for (const methodName of [
     'syncEmailAuthModeUi',
@@ -188,7 +190,7 @@ test('root auth delegates login page helpers through the auth-login-page namespa
     assert.match(
       source,
       new RegExp(`callLoginPageModule\\(\\s*['"]${methodName}['"]`),
-      `root auth must delegate ${methodName} when LoveBudAuthLoginPage exposes it`
+      `root auth must delegate ${methodName} when active login page module exposes it`
     );
   }
 });
