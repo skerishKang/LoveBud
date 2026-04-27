@@ -38,6 +38,15 @@
     return {};
   }
 
+  function replaceEventListener(element, handlerKey, eventName, handler) {
+    if (!element || typeof element.addEventListener !== 'function') return;
+    if (element[handlerKey] && typeof element.removeEventListener === 'function') {
+      element.removeEventListener(eventName, element[handlerKey]);
+    }
+    element[handlerKey] = handler;
+    element.addEventListener(eventName, handler);
+  }
+
   function syncEmailAuthModeUi(options) {
     var emailAuthMode = options && options.emailAuthMode;
     var titleEl = options && options.titleEl;
@@ -100,9 +109,17 @@
       setEmailAuthMode(emailAuthMode);
     }
 
+    var redirect = '';
+    try {
+      var params = new URLSearchParams(global.location ? global.location.search : '');
+      redirect = params.get('redirect') || '';
+    } catch (error) {
+      redirect = '';
+    }
+
     var noticeEl = byId(getSelector('redirectNotice') || 'redirect-notice', root);
     if (noticeEl) {
-      noticeEl.style.display = global.location && global.location.search ? 'block' : 'none';
+      noticeEl.style.display = redirect ? 'block' : 'none';
     }
 
     if (typeof syncEmailAuthModeUiFn === 'function') {
@@ -123,7 +140,7 @@
     var googleBtn = byId(getSelector('loginGoogleButton') || 'login-btn-google', root);
     if (!googleBtn) return;
 
-    googleBtn.addEventListener('click', function (event) {
+    replaceEventListener(googleBtn, '__lovebudLoginControllerGoogleClick', 'click', function (event) {
       event.preventDefault();
       if (typeof signInWithGoogle === 'function') {
         signInWithGoogle();
@@ -132,12 +149,12 @@
   }
 
   function setupSignupGoogleBtn(options) {
-    var signUpWithGoogle = options && options.signUpWithGoogle;
+    var signUpWithGoogle = options && (options.signUpWithGoogle || options.fallbackSignUpWithGoogle);
     var root = options && options.root;
     var signupGoogleBtn = byId(getSelector('signupGoogleButton') || 'signup-btn-google', root);
     if (!signupGoogleBtn) return;
 
-    signupGoogleBtn.addEventListener('click', function (event) {
+    replaceEventListener(signupGoogleBtn, '__lovebudLoginControllerSignupGoogleClick', 'click', function (event) {
       event.preventDefault();
       if (typeof signUpWithGoogle === 'function') {
         signUpWithGoogle();
@@ -192,7 +209,7 @@
     syncDisplayNameVisibility();
 
     if (toggleBtn) {
-      toggleBtn.addEventListener('click', function () {
+      replaceEventListener(toggleBtn, '__lovebudLoginControllerEmailToggleClick', 'click', function () {
         var nextMode = getMode() === 'login' ? 'signup' : 'login';
         if (typeof setEmailAuthMode === 'function') {
           setEmailAuthMode(nextMode);
@@ -203,20 +220,20 @@
     }
 
     if (emailBtn) {
-      emailBtn.addEventListener('click', function (event) {
+      replaceEventListener(emailBtn, '__lovebudLoginControllerEmailOpenClick', 'click', function (event) {
         event.preventDefault();
         if (modal) modal.style.display = 'flex';
       });
     }
 
     if (closeBtn) {
-      closeBtn.addEventListener('click', function () {
+      replaceEventListener(closeBtn, '__lovebudLoginControllerEmailCloseClick', 'click', function () {
         if (modal) modal.style.display = 'none';
       });
     }
 
     if (modal) {
-      modal.addEventListener('click', function (event) {
+      replaceEventListener(modal, '__lovebudLoginControllerEmailBackdropClick', 'click', function (event) {
         if (event.target === modal) modal.style.display = 'none';
       });
     }
