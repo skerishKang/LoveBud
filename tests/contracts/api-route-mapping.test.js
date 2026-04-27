@@ -21,11 +21,18 @@ function hasRegex(content, pattern) {
 const TREES_JS = path.join(ROOT, 'functions/api/trees.js');
 const MEMORIES_JS = path.join(ROOT, 'functions/api/memories.js');
 const CATCHALL_JS = path.join(ROOT, 'functions/api/[[path]].js');
+const TREE_DETAIL_JS = path.join(ROOT, 'functions/api/trees/[id].js');
+const MEMORY_DETAIL_JS = path.join(ROOT, 'functions/api/memories/[id].js');
 
 test('cloudflare api functions files exist', () => {
   assert.ok(fs.existsSync(TREES_JS), 'functions/api/trees.js should exist');
   assert.ok(fs.existsSync(MEMORIES_JS), 'functions/api/memories.js should exist');
   assert.ok(fs.existsSync(CATCHALL_JS), 'functions/api/[[path]].js should exist');
+});
+
+test('cloudflare dynamic private detail route files exist', () => {
+  assert.ok(fs.existsSync(TREE_DETAIL_JS), 'functions/api/trees/[id].js should exist');
+  assert.ok(fs.existsSync(MEMORY_DETAIL_JS), 'functions/api/memories/[id].js should exist');
 });
 
 test('cloudflare api trees.js routes to modal/private/trees', () => {
@@ -51,6 +58,90 @@ test('cloudflare api memories.js routes to modal/private/memories', () => {
   assert.ok(
     hasString(content, 'treeId'),
     'memories.js should handle treeId query parameter'
+  );
+});
+
+test('cloudflare api tree detail route exports private write handlers', () => {
+  const content = readFileContent(TREE_DETAIL_JS);
+
+  assert.ok(
+    hasRegex(content, /export\s+async\s+function\s+onRequestPut\s*\(/),
+    'tree detail route should export onRequestPut'
+  );
+  assert.ok(
+    hasRegex(content, /export\s+async\s+function\s+onRequestPatch\s*\(/),
+    'tree detail route should export onRequestPatch'
+  );
+  assert.ok(
+    hasRegex(content, /export\s+async\s+function\s+onRequestDelete\s*\(/),
+    'tree detail route should export onRequestDelete'
+  );
+});
+
+test('cloudflare api tree detail route forwards writes to modal private trees with authorization', () => {
+  const content = readFileContent(TREE_DETAIL_JS);
+
+  assert.ok(
+    hasString(content, '/modal/private/trees/'),
+    'tree detail route should forward writes to /modal/private/trees/'
+  );
+  assert.ok(
+    hasRegex(content, /method:\s*'PUT'/),
+    'tree detail route should forward PUT method'
+  );
+  assert.ok(
+    hasRegex(content, /method:\s*'PATCH'/),
+    'tree detail route should forward PATCH method'
+  );
+  assert.ok(
+    hasRegex(content, /method:\s*'DELETE'/),
+    'tree detail route should forward DELETE method'
+  );
+  assert.ok(
+    hasRegex(content, /context\.request\.headers\.get\('authorization'\)/),
+    'tree detail route should read and forward the authorization header'
+  );
+});
+
+test('cloudflare api memory detail route exports private write handlers', () => {
+  const content = readFileContent(MEMORY_DETAIL_JS);
+
+  assert.ok(
+    hasRegex(content, /export\s+async\s+function\s+onRequestPut\s*\(/),
+    'memory detail route should export onRequestPut'
+  );
+  assert.ok(
+    hasRegex(content, /export\s+async\s+function\s+onRequestPatch\s*\(/),
+    'memory detail route should export onRequestPatch'
+  );
+  assert.ok(
+    hasRegex(content, /export\s+async\s+function\s+onRequestDelete\s*\(/),
+    'memory detail route should export onRequestDelete'
+  );
+});
+
+test('cloudflare api memory detail route forwards writes to modal private memories with authorization', () => {
+  const content = readFileContent(MEMORY_DETAIL_JS);
+
+  assert.ok(
+    hasString(content, '/modal/private/memories/'),
+    'memory detail route should forward writes to /modal/private/memories/'
+  );
+  assert.ok(
+    hasRegex(content, /method:\s*'PUT'/),
+    'memory detail route should forward PUT method'
+  );
+  assert.ok(
+    hasRegex(content, /method:\s*'PATCH'/),
+    'memory detail route should forward PATCH method'
+  );
+  assert.ok(
+    hasRegex(content, /method:\s*'DELETE'/),
+    'memory detail route should forward DELETE method'
+  );
+  assert.ok(
+    hasRegex(content, /context\.request\.headers\.get\('authorization'\)/),
+    'memory detail route should read and forward the authorization header'
   );
 });
 
