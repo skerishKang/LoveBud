@@ -1,6 +1,6 @@
 /**
  * LoveBud Search Page Orchestrator
- * v20260423-2
+ * v20260427-1
  *
  * Search page orchestration:
  * - Fast list-first loading for public trees
@@ -10,35 +10,37 @@
  */
 
 document.addEventListener('DOMContentLoaded', async () => {
-    const resultsList = document.getElementById('resultsList');
-    const previewSidebar = document.getElementById('previewSidebar');
-    const previewMobileClose = document.getElementById('previewMobileClose');
-    const previewContainer = document.getElementById('previewVideoContainer');
-    const previewTitle = document.getElementById('previewTitle');
-    const previewDesc = document.getElementById('previewDesc');
-    const previewMemoriesCount = document.getElementById('previewMemoriesCount');
-    const previewTreeDuration = document.getElementById('previewTreeDuration');
-    const previewEmotionTags = document.getElementById('previewEmotionTags');
-    const searchInput = document.getElementById('searchInput');
-    const tagChips = document.querySelectorAll('.tag-chip');
-    let resultsHead = document.querySelector('.browse-results-head');
-    let resultsTitle = resultsHead?.querySelector('h3');
-    let resultsBadge = resultsHead?.querySelector('.browse-results-badge');
-    const growingSection = document.getElementById('growingTreesSection');
-    const growingList = document.getElementById('growingTreesList');
-    const mobilePreviewMediaQuery = window.matchMedia('(max-width: 768px)');
+    const refs = {
+        resultsList: document.getElementById('resultsList'),
+        previewSidebar: document.getElementById('previewSidebar'),
+        previewMobileClose: document.getElementById('previewMobileClose'),
+        previewContainer: document.getElementById('previewVideoContainer'),
+        previewTitle: document.getElementById('previewTitle'),
+        previewDesc: document.getElementById('previewDesc'),
+        previewMemoriesCount: document.getElementById('previewMemoriesCount'),
+        previewTreeDuration: document.getElementById('previewTreeDuration'),
+        previewEmotionTags: document.getElementById('previewEmotionTags'),
+        searchInput: document.getElementById('searchInput'),
+        tagChips: document.querySelectorAll('.tag-chip'),
+        resultsHead: document.querySelector('.browse-results-head'),
+        growingSection: document.getElementById('growingTreesSection'),
+        growingList: document.getElementById('growingTreesList'),
+        mobilePreviewMediaQuery: window.matchMedia('(max-width: 768px)')
+    };
+    refs.resultsTitle = refs.resultsHead?.querySelector('h3');
+    refs.resultsBadge = refs.resultsHead?.querySelector('.browse-results-badge');
 
     const CardRenderer = window.LoveBudSearchCardRenderer;
-    CardRenderer.init(resultsList);
+    CardRenderer.init(refs.resultsList);
 
     const PreviewRenderer = window.LoveBudSearchPreviewRenderer;
     PreviewRenderer.init({
-        previewContainer,
-        previewTitle,
-        previewDesc,
-        previewMemoriesCount,
-        previewTreeDuration,
-        previewEmotionTags
+        previewContainer: refs.previewContainer,
+        previewTitle: refs.previewTitle,
+        previewDesc: refs.previewDesc,
+        previewMemoriesCount: refs.previewMemoriesCount,
+        previewTreeDuration: refs.previewTreeDuration,
+        previewEmotionTags: refs.previewEmotionTags
     });
 
     const Adapter = window.LoveBudSearchAdapter;
@@ -47,500 +49,89 @@ document.addEventListener('DOMContentLoaded', async () => {
     const PREVIEW_CACHE_TTL_MS = 5 * 60 * 1000;
     const getPreviewCacheKey = (treeId) => `public_tree_preview_${treeId}`;
 
-    let allTrees = [];
-    let growingTrees = [];
-    let loadError = null;
-    let isFromCache = false;
-    let apiTreesLoaded = false;
-    let selectedTreeId = null;
+    const state = {
+        allTrees: [],
+        growingTrees: [],
+        loadError: null,
+        isFromCache: false,
+        apiTreesLoaded: false,
+        selectedTreeId: null,
+        currentPreviewRequestId: 0,
+        currentQuery: '',
+        currentSort: 'latest',
+        currentLimit: 10,
+        currentCategory: '전체',
+        isRestoringUrlState: false,
+        urlStateReady: false,
+        initialTreeDeepLinkApplied: false
+    };
     const previewCache = new Map();
-    let currentPreviewRequestId = 0;
+    const callbacks = {};
 
-    let currentQuery = '';
-    let currentSort = 'latest';
-    let currentLimit = 10;
-    let currentCategory = '전체';
+    const ui = window.LoveBudSearchUI.createSearchUI({
+        refs,
+        state,
+        renderers: { PreviewRenderer },
+        callbacks
+    });
+    const previewCacheApi = window.LoveBudSearchPreviewCache.createPreviewCache({
+        cache,
+        previewCache,
+        previewCacheTtlMs: PREVIEW_CACHE_TTL_MS,
+        getPreviewCacheKey,
+        state
+    });
+    const urlState = window.LoveBudSearchUrlState.createSearchUrlState({
+        refs,
+        state,
+        callbacks,
+        ui
+    });
 
-    function getCurrentLocale() {
-        const locale = window.i18n?.currentLang || window.getCurrentLang?.() || document.documentElement?.lang || 'ko';
-        return String(locale).toLowerCase().startsWith('en') ? 'en' : 'ko';
-    }
-
-    function isMobilePreviewMode() {
-        return Boolean(mobilePreviewMediaQuery?.matches);
-    }
-
-    function setMobilePreviewOpen(isOpen, options = {}) {
-        if (!previewSidebar || !isMobilePreviewMode()) return;
-        const { scrollIntoView = false } = options;
-        previewSidebar.classList.toggle('is-open', Boolean(isOpen));
-
-        if (isOpen && scrollIntoView) {
-            window.requestAnimationFrame(() => {
-                previewSidebar.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'start'
-                });
-            });
-        }
-    }
-
-    function syncPreviewVisibility() {
-        if (!previewSidebar) return;
-        if (isMobilePreviewMode()) {
-            setMobilePreviewOpen(Boolean(selectedTreeId));
-            return;
-        }
-        previewSidebar.classList.remove('is-open');
-    }
-
-    function clearSelectedPreview(options = {}) {
-        const { preserveOpenState = false } = options;
-        selectedTreeId = null;
-        currentPreviewRequestId += 1;
-        markActiveCard(null);
-        PreviewRenderer.resetPreview();
-        if (!preserveOpenState && isMobilePreviewMode()) {
-            setMobilePreviewOpen(false);
-        }
-    }
-
-    function getSearchCopy(key, fallbackKo, fallbackEn) {
-        const locale = getCurrentLocale();
-        const dict = window.i18nSearch?.[key];
-        if (dict && typeof dict === 'object') {
-            return dict[locale] || dict.ko || dict.en || fallbackKo;
-        }
-        return locale === 'en' ? fallbackEn : fallbackKo;
-    }
-
-    function readPreviewCache(treeId) {
-        if (!treeId) return null;
-
-        if (previewCache.has(treeId)) {
-            return previewCache.get(treeId);
-        }
-
-        if (!cache || typeof cache.get !== 'function') {
-            return null;
-        }
-
-        const cachedPreview = cache.get(getPreviewCacheKey(treeId));
-        if (cachedPreview && typeof cachedPreview === 'object') {
-            previewCache.set(treeId, cachedPreview);
-            return cachedPreview;
-        }
-
-        return null;
-    }
-
-    function writePreviewCache(treeId, hydratedTree) {
-        if (!treeId || !hydratedTree || typeof hydratedTree !== 'object') return;
-
-        previewCache.set(treeId, hydratedTree);
-        if (cache && typeof cache.set === 'function') {
-            cache.set(getPreviewCacheKey(treeId), hydratedTree, PREVIEW_CACHE_TTL_MS);
-        }
-    }
-
-    function mergeHydratedTree(hydratedTree) {
-        if (!hydratedTree || !hydratedTree.id) return;
-        allTrees = allTrees.map(item => item.id === hydratedTree.id ? hydratedTree : item);
-    }
-
-    const SORT_COPY = {
-        latest: {
-            title: () => getSearchCopy('search.resultsHeading', '최근 공개된 러브트리', 'Recently Shared LoveTrees'),
-            badge: (count) => getCurrentLocale() === 'en' ? `${count} to start with` : `지금 먼저 볼 ${count}개`
-        },
-        popular: {
-            title: () => getCurrentLocale() === 'en' ? 'Popular Public LoveTrees' : '인기 많은 공개 러브트리',
-            badge: (count) => getCurrentLocale() === 'en' ? `${count} trending now` : `지금 반응이 큰 ${count}개`
-        }
-    };
-
-    const syncStaticBrowseCopy = () => {
-        if (typeof window.applyI18n === 'function') {
-            window.applyI18n();
-        }
-
-        const eyebrow = document.querySelector('.search-panel-eyebrow span:last-child');
-        if (eyebrow) {
-            eyebrow.textContent = getSearchCopy('search.eyebrow', '오늘의 공개 감상', 'Today\'s Public Picks');
-        }
-
-        if (searchInput) {
-            searchInput.placeholder = getSearchCopy('search.placeholder', '예: 첫 설렘 · 아티스트명 · 감정 태그', 'e.g., first spark, artist, emotion tag');
-        }
-
-        const previewHeading = document.querySelector('.preview-panel-header h3');
-        if (previewHeading) {
-            previewHeading.textContent = getSearchCopy('search.previewTitle', '감상 허브', 'Viewing Hub');
-        }
-
-        const previewBadge = document.querySelector('.preview-badge');
-        if (previewBadge) {
-            previewBadge.textContent = getSearchCopy('search.previewBadge', '선택한 트리', 'Selected Tree');
-        }
-
-        if (previewMobileClose) {
-            previewMobileClose.setAttribute(
-                'aria-label',
-                getSearchCopy('search.previewClose', '감상 닫기', 'Close preview')
-            );
-        }
-
-        const previewKicker = document.querySelector('.preview-kicker');
-        if (previewKicker) {
-            previewKicker.textContent = getSearchCopy('search.previewKicker', '대표 순간과 이어진 감정을 먼저 살펴보세요.', 'Begin with the featured moment and connected feelings.');
-        }
-
-        const previewStatsPending = document.querySelector('#previewTreeStats .tree-meta-item:first-child span:last-child');
-        if (previewStatsPending) {
-            previewStatsPending.textContent = getSearchCopy('search.previewStatsPending', '대표 순간이 열리면 함께 보여드릴게요', 'This will appear once the featured moment opens.');
-        }
-
-        const emotionLabel = document.querySelector('.emotion-tags-label span:last-child');
-        if (emotionLabel) {
-            emotionLabel.textContent = getSearchCopy('search.previewEmotionTagsLabel', '이어진 감정', 'Connected Feelings');
-        }
-
-        if (previewEmotionTags && !previewEmotionTags.children.length) {
-            previewEmotionTags.textContent = getSearchCopy('search.previewNoEmotionTags', '아직 또렷한 감정의 결은 놓이지 않았어요.', 'No clear emotional thread has settled yet.');
-        }
-    };
-
-    let isRestoringUrlState = false;
-    let initialTreeDeepLinkApplied = false;
-
-    function readUrlState() {
-        try {
-            const params = new URLSearchParams(window.location.search);
-            return {
-                query: params.get('q') || '',
-                category: params.get('category') || '',
-                sort: params.get('sort') || '',
-                limit: params.get('limit') || '',
-                tree: params.get('tree') || ''
-            };
-        } catch {
-            return { query: '', category: '', sort: '', limit: '', tree: '' };
-        }
-    }
-
-    function updateUrlState() {
-        if (isRestoringUrlState) return;
-        try {
-            const params = new URLSearchParams();
-            if (currentQuery) params.set('q', currentQuery);
-            if (currentCategory && currentCategory !== '전체') params.set('category', currentCategory);
-            if (currentSort && currentSort !== 'latest') params.set('sort', currentSort);
-            if (currentLimit && currentLimit !== 10) params.set('limit', String(currentLimit));
-            const newSearch = params.toString();
-            const newUrl = newSearch ? `${window.location.pathname}?${newSearch}` : window.location.pathname;
-            if (newUrl !== (window.location.pathname + window.location.search)) {
-                history.pushState(null, '', newUrl);
-            }
-        } catch { /* ignore */ }
-    }
-
-    function restoreStateFromUrl() {
-        // Make functions globally available for debugging
-        window.readUrlState = readUrlState;
-        window.updateUrlState = updateUrlState;
-        window.restoreStateFromUrl = restoreStateFromUrl;
-        const { query, category, sort, limit } = readUrlState();
-        isRestoringUrlState = true;
-        if (query) currentQuery = query;
-        if (category) currentCategory = category;
-        if (sort === 'latest' || sort === 'popular') currentSort = sort;
-        if (limit) {
-            const parsedLimit = parseInt(limit, 10);
-            if (!isNaN(parsedLimit) && parsedLimit >= 1 && parsedLimit <= 60) {
-                currentLimit = parsedLimit;
-            }
-        }
-        if (query && searchInput) searchInput.value = query;
-        if (category) {
-            tagChips.forEach(chip => {
-                const chipCategory = chip.dataset.category || chip.textContent.trim();
-                chip.classList.toggle('active', chipCategory === currentCategory);
-            });
-        }
-        if (sort) {
-            if (typeof syncControlsFromState === 'function') {
-                syncControlsFromState();
-            } else {
-                const sortBtn = document.querySelector(`[data-browse-sort="${currentSort}"]`);
-                if (sortBtn) {
-                    document.querySelectorAll('[data-browse-sort]').forEach(b => b.classList.remove('active'));
-                    sortBtn.classList.add('active');
-                }
-            }
-        }
-        isRestoringUrlState = false;
-    }
-
-    function applySelectedTreeFromUrl() {
-        if (initialTreeDeepLinkApplied) return;
-        const state = readUrlState();
-        if (!state.tree) return;
-
-        const targetTree = allTrees.find(t => t.id === state.tree) || growingTrees.find(t => t.id === state.tree);
-        if (!targetTree) return;
-
-        let activeCard = null;
-        let selector = '';
-        try {
-            selector = `.tree-card[data-tree-id="${CSS.escape(state.tree)}"]`;
-        } catch (e) {
-            selector = `.tree-card[data-tree-id="${state.tree.replace(/"/g, '\\"')}"]`;
-        }
-
-        const allCardContainers = [resultsList, growingList].filter(Boolean);
-        for (const container of allCardContainers) {
-            activeCard = container.querySelector(selector);
-            if (activeCard) break;
-        }
-
-        selectTree(targetTree, activeCard);
-        initialTreeDeepLinkApplied = true;
-    }
-
-    const syncBrowseHead = () => {
-        const copy = SORT_COPY[currentSort] || SORT_COPY.latest;
-        if (resultsTitle) {
-            resultsTitle.textContent = typeof copy.title === 'function' ? copy.title() : copy.title;
-        }
-        if (resultsBadge) {
-            resultsBadge.innerHTML = `
-                <span class="material-symbols-outlined" style="font-size:15px;">auto_awesome</span>
-                ${copy.badge(Math.min(currentLimit, 60))}
-            `;
-        }
-        const loadMoreBtn = document.getElementById('browseLoadMoreBtn');
-        if (loadMoreBtn) {
-            loadMoreBtn.disabled = currentLimit >= 60;
-            loadMoreBtn.textContent = currentLimit >= 60
-                ? (getCurrentLocale() === 'en' ? 'Max 60' : '최대 60개')
-                : (getCurrentLocale() === 'en' ? 'Load more' : '더 보기');
-        }
-    };
-
-    const ensureResultsHead = () => {
-        if (resultsHead) return;
-        resultsHead = document.createElement('div');
-        resultsHead.className = 'browse-results-head';
-
-        const titleDiv = document.createElement('div');
-        resultsTitle = document.createElement('h3');
-        const descP = document.createElement('p');
-
-        resultsBadge = document.createElement('span');
-        resultsBadge.className = 'browse-results-badge';
-
-        titleDiv.appendChild(resultsTitle);
-        titleDiv.appendChild(descP);
-        resultsHead.appendChild(titleDiv);
-        resultsHead.appendChild(resultsBadge);
-
-        if (resultsList && resultsList.parentNode) {
-            resultsList.parentNode.insertBefore(resultsHead, resultsList);
-        }
-    };
-
-    function syncControlsFromState() {
-        const controls = document.getElementById('browseSortControls');
-        if (!controls) return;
-
-        controls.querySelectorAll('[data-browse-sort]').forEach((chip) => {
-            chip.classList.toggle('active', chip.dataset.browseSort === currentSort);
-        });
-
-        const loadMoreBtn = controls.querySelector('#browseLoadMoreBtn');
-        if (loadMoreBtn) {
-            loadMoreBtn.style.display = (currentLimit >= 60) ? 'none' : 'inline-flex';
-        }
-    }
-
-    const ensureBrowseControls = () => {
-        ensureResultsHead();
-        if (document.getElementById('browseSortControls')) return;
-
-        const controls = document.createElement('div');
-        controls.id = 'browseSortControls';
-        controls.style.display = 'flex';
-        controls.style.flexWrap = 'wrap';
-        controls.style.alignItems = 'center';
-        controls.style.justifyContent = 'flex-end';
-        controls.style.gap = '10px';
-        controls.innerHTML = `
-            <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                <button type="button" class="tag-chip" data-browse-sort="latest">${getCurrentLocale() === 'en' ? 'Latest' : '최신순'}</button>
-                <button type="button" class="tag-chip" data-browse-sort="popular">${getCurrentLocale() === 'en' ? 'Popular' : '인기순'}</button>
-            </div>
-            <button type="button" id="browseLoadMoreBtn" class="tag-chip">${getCurrentLocale() === 'en' ? 'Load more' : '더 보기'}</button>
-        `;
-
-        let rightGroup = resultsHead.querySelector('.browse-head-right');
-        if (!rightGroup) {
-            rightGroup = document.createElement('div');
-            rightGroup.className = 'browse-head-right';
-            rightGroup.style.display = 'flex';
-            rightGroup.style.flexDirection = 'column';
-            rightGroup.style.alignItems = 'flex-end';
-            rightGroup.style.gap = '12px';
-
-            if (resultsBadge && resultsBadge.parentNode === resultsHead) {
-                resultsHead.removeChild(resultsBadge);
-                rightGroup.appendChild(resultsBadge);
-            }
-            resultsHead.appendChild(rightGroup);
-        }
-        rightGroup.appendChild(controls);
-
-        controls.querySelectorAll('[data-browse-sort]').forEach((button) => {
-            button.addEventListener('click', async () => {
-                const nextSort = button.dataset.browseSort || 'latest';
-                if (nextSort === currentSort) return;
-                currentSort = nextSort;
-                currentLimit = 10;
-                syncControlsFromState();
-                updateUrlState();
-                await loadPublicTrees({ resetSelection: true });
-            });
-        });
-
-        controls.querySelector('#browseLoadMoreBtn')?.addEventListener('click', async () => {
-            currentLimit = Math.min(currentLimit + 10, 60);
-            syncControlsFromState();
-            updateUrlState();
-            await loadPublicTrees({ resetSelection: false });
-        });
-
-        syncControlsFromState();
-    };
-
-    const areTreesEffectivelySame = (prevTrees, nextTrees) => {
-        if (!Array.isArray(prevTrees) || !Array.isArray(nextTrees)) return false;
-        if (prevTrees.length !== nextTrees.length) return false;
-
-        return prevTrees.every((prevTree, index) => {
-            const nextTree = nextTrees[index];
-            if (!nextTree) return false;
-            const prevStamp = prevTree.updatedAt || prevTree.createdAt || prevTree.memoryCount || 0;
-            const nextStamp = nextTree.updatedAt || nextTree.createdAt || nextTree.memoryCount || 0;
-            return prevTree.id === nextTree.id && prevStamp === nextStamp;
-        });
-    };
-
-    const getFilteredTrees = () => Adapter.filterTrees(allTrees, currentQuery, currentCategory);
-
-    const markActiveCard = (activeCard) => {
-        const allCardContainers = [resultsList, growingList].filter(Boolean);
-        allCardContainers.forEach(container => {
-            container.querySelectorAll('.tree-card.is-active').forEach((card) => {
-                card.classList.remove('is-active');
-                card.setAttribute('aria-pressed', 'false');
-            });
-        });
-        if (activeCard) {
-            activeCard.classList.add('is-active');
-            activeCard.setAttribute('aria-pressed', 'true');
-        }
-    };
-
-    const syncActiveCard = () => {
-        const allCardContainers = [resultsList, growingList].filter(Boolean);
-        let activeCard = null;
-        for (const container of allCardContainers) {
-            const cards = container.querySelectorAll('.tree-card');
-            activeCard = Array.from(cards).find(card => card.dataset.treeId === selectedTreeId);
-            if (activeCard) break;
-        }
-        markActiveCard(activeCard || null);
-    };
+    const getFilteredTrees = () => Adapter.filterTrees(state.allTrees, state.currentQuery, state.currentCategory);
 
     const getSelectedTreeFromFiltered = (filteredTrees) => {
         if (!Array.isArray(filteredTrees) || filteredTrees.length === 0) return null;
-        return filteredTrees.find(tree => tree.id === selectedTreeId) || null;
-    };
-
-    const renderLoadErrorState = () => {
-        resultsList.innerHTML = `
-            <div class="empty-state" style="padding:60px 24px; text-align:center; color: var(--on-surface-variant);">
-                <span class="material-symbols-outlined" style="font-size: 56px; color: var(--error); opacity: 0.6; margin-bottom: 20px; display: block;">cloud_off</span>
-                <h3 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 12px; color: var(--on-surface);">${getCurrentLocale() === 'en' ? 'Failed to load' : '불러오기 실패'}</h3>
-                <p style="font-size: 0.95rem; opacity: 0.8; margin-bottom: 24px; line-height: 1.6;">
-                    ${getCurrentLocale() === 'en'
-                        ? 'There was a problem reaching the server.<br>Please check your network and try again in a moment.'
-                        : '서버 연결에 문제가 발생했습니다.<br>네트워크 상태를 확인하고 잠시 후 다시 시도해 주세요.'}
-                </p>
-                <button type="button" id="retryLoadBtn" class="btn-round btn-primary" style="padding: 10px 24px;">${getCurrentLocale() === 'en' ? 'Try again' : '다시 시도'}</button>
-            </div>
-        `;
-
-        const retryBtn = document.getElementById('retryLoadBtn');
-        if (retryBtn) {
-            retryBtn.addEventListener('click', () => window.location.reload());
-        }
-
-        clearSelectedPreview();
-    };
-
-    const renderPreviewLoadingState = (tree) => {
-        if (typeof PreviewRenderer.renderLoadingPreview === 'function') {
-            PreviewRenderer.renderLoadingPreview(tree);
-            return;
-        }
-        if (previewTitle) {
-            previewTitle.textContent = tree?.title || getSearchCopy('search.previewDefaultTreeName', '러브트리', 'LoveTree');
-        }
-        if (previewDesc) {
-            previewDesc.innerHTML = `<p style="margin-bottom:16px;">${getCurrentLocale() === 'en' ? 'Loading the featured moment of this tree.' : '대표 순간을 불러오는 중이에요.'}</p>`;
-        }
-        if (previewContainer) {
-            previewContainer.innerHTML = `<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--on-surface-variant);font-size:14px;text-align:center;padding:20px;"><span class="material-symbols-outlined" style="font-size:40px;opacity:0.45;margin-bottom:12px;display:block;animation:spin 1s linear infinite;">progress_activity</span><p style="margin:0;line-height:1.5;">${getCurrentLocale() === 'en' ? 'Preparing the featured moment.' : '대표 순간을 준비하고 있어요.'}</p></div>`;
-        }
+        return filteredTrees.find(tree => tree.id === state.selectedTreeId) || null;
     };
 
     const hydrateSelectedTreePreview = async (tree) => {
         if (!tree || !tree.id) return;
-        const requestId = ++currentPreviewRequestId;
-        renderPreviewLoadingState(tree);
+        const requestId = ++state.currentPreviewRequestId;
+        ui.renderPreviewLoadingState(tree);
 
         try {
-            const cachedPreview = readPreviewCache(tree.id);
+            const cachedPreview = previewCacheApi.readPreviewCache(tree.id);
             const hydratedTree = cachedPreview || await window.apiClient.getPublicTreePreview(tree);
 
-            writePreviewCache(tree.id, hydratedTree);
-            mergeHydratedTree(hydratedTree);
+            previewCacheApi.writePreviewCache(tree.id, hydratedTree);
+            previewCacheApi.mergeHydratedTree(hydratedTree);
 
-            if (requestId !== currentPreviewRequestId || selectedTreeId !== tree.id) {
+            if (requestId !== state.currentPreviewRequestId || state.selectedTreeId !== tree.id) {
                 return;
             }
             PreviewRenderer.updatePreview(hydratedTree);
             renderResults(false);
         } catch (error) {
             console.warn('[search] preview hydration failed:', error.message);
-            if (requestId !== currentPreviewRequestId || selectedTreeId !== tree.id) {
+            if (requestId !== state.currentPreviewRequestId || state.selectedTreeId !== tree.id) {
                 return;
             }
-            clearSelectedPreview({ preserveOpenState: false });
+            ui.clearSelectedPreview({ preserveOpenState: false });
         }
     };
 
     const selectTree = (tree, activeCard) => {
         if (!tree) return;
-        selectedTreeId = tree.id;
-        markActiveCard(activeCard);
+        state.selectedTreeId = tree.id;
+        ui.markActiveCard(activeCard);
 
-        if (isMobilePreviewMode()) {
-            setMobilePreviewOpen(true, { scrollIntoView: true });
+        if (ui.isMobilePreviewMode()) {
+            ui.setMobilePreviewOpen(true, { scrollIntoView: true });
         }
 
         if (Array.isArray(tree.memories) && tree.memories.length > 0) {
-            writePreviewCache(tree.id, tree);
+            previewCacheApi.writePreviewCache(tree.id, tree);
             PreviewRenderer.updatePreview(tree);
             return;
         }
@@ -548,152 +139,127 @@ document.addEventListener('DOMContentLoaded', async () => {
         hydrateSelectedTreePreview(tree);
     };
 
-    const attachCardEvents = (listElement, trees) => {
-        if (!listElement) return;
-        const cards = listElement.querySelectorAll('.tree-card');
-        cards.forEach((card) => {
-            const treeId = card.dataset.treeId;
-            const tree = trees.find(t => t.id === treeId);
-            if (!tree) return;
-
-            card.setAttribute('tabindex', '0');
-            card.setAttribute('role', 'button');
-            card.setAttribute('aria-pressed', tree.id === selectedTreeId ? 'true' : 'false');
-
-            card.addEventListener('click', () => {
-                selectTree(tree, card);
-            });
-
-            card.addEventListener('keydown', (event) => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    selectTree(tree, card);
-                }
-            });
-        });
-    };
-
     function renderResults(resetPreviewWhenNoSelection = true) {
         const filtered = getFilteredTrees();
 
         if (filtered.length === 0) {
-            const hasNoData = loadError === null && allTrees.length === 0;
-            const isApiFailure = loadError !== null && !isFromCache && allTrees.length === 0;
+            const hasNoData = state.loadError === null && state.allTrees.length === 0;
+            const isApiFailure = state.loadError !== null && !state.isFromCache && state.allTrees.length === 0;
 
             if (isApiFailure) {
-                renderLoadErrorState();
+                ui.renderLoadErrorState();
             } else if (hasNoData) {
-                resultsList.innerHTML = CardRenderer.renderNoTreesState();
-                clearSelectedPreview();
+                refs.resultsList.innerHTML = CardRenderer.renderNoTreesState();
+                ui.clearSelectedPreview();
             } else {
-                resultsList.innerHTML = CardRenderer.renderEmptySearchState();
-                clearSelectedPreview();
+                refs.resultsList.innerHTML = CardRenderer.renderEmptySearchState();
+                ui.clearSelectedPreview();
             }
             return;
         }
 
         const html = CardRenderer.renderResults(filtered, {
-            isDemo: !apiTreesLoaded && !loadError
+            isDemo: !state.apiTreesLoaded && !state.loadError
         });
-        resultsList.innerHTML = html;
-        attachCardEvents(resultsList, filtered);
-        syncActiveCard();
+        refs.resultsList.innerHTML = html;
+        ui.attachCardEvents(refs.resultsList, filtered);
+        ui.syncActiveCard();
 
         const selectedTree = getSelectedTreeFromFiltered(filtered);
-        if (!selectedTreeId && resetPreviewWhenNoSelection) {
-            clearSelectedPreview();
+        if (!state.selectedTreeId && resetPreviewWhenNoSelection) {
+            ui.clearSelectedPreview();
             return;
         }
 
         if (selectedTree && Array.isArray(selectedTree.memories) && selectedTree.memories.length > 0) {
-            writePreviewCache(selectedTree.id, selectedTree);
+            previewCacheApi.writePreviewCache(selectedTree.id, selectedTree);
             PreviewRenderer.updatePreview(selectedTree);
-            syncPreviewVisibility();
+            ui.syncPreviewVisibility();
         } else if (!selectedTree && resetPreviewWhenNoSelection) {
-            clearSelectedPreview();
+            ui.clearSelectedPreview();
         }
     }
 
     async function loadPublicTrees(options = {}) {
         const { resetSelection = false } = options;
-        const cacheKey = `${PUBLIC_TREES_CACHE_KEY}_${currentSort}_${currentLimit}`;
+        const cacheKey = `${PUBLIC_TREES_CACHE_KEY}_${state.currentSort}_${state.currentLimit}`;
 
-        syncBrowseHead();
+        ui.syncBrowseHead();
 
         if (resetSelection) {
-            clearSelectedPreview();
+            ui.clearSelectedPreview();
         }
 
         let cachedTrees = null;
         if (cache) {
             cachedTrees = cache.get(cacheKey);
             if (cachedTrees && Array.isArray(cachedTrees) && cachedTrees.length > 0) {
-                allTrees = cachedTrees;
-                isFromCache = true;
+                state.allTrees = cachedTrees;
+                state.isFromCache = true;
                 renderResults();
             }
         }
 
         try {
             if (window.apiClient && window.apiClient.getPublicTrees) {
-                const apiTrees = await window.apiClient.getPublicTrees({ view: 'summary', sort: currentSort, limit: currentLimit });
+                const apiTrees = await window.apiClient.getPublicTrees({
+                    view: 'summary',
+                    sort: state.currentSort,
+                    limit: state.currentLimit
+                });
                 if (!Array.isArray(apiTrees)) {
-                    throw new Error(getCurrentLocale() === 'en' ? 'Invalid API response format' : 'API 응답 형식 오류');
+                    throw new Error(ui.getCurrentLocale() === 'en' ? 'Invalid API response format' : 'API 응답 형식 오류');
                 }
 
                 if (cache) {
                     cache.set(cacheKey, apiTrees, 5 * 60 * 1000);
                 }
-                if (!areTreesEffectivelySame(allTrees, apiTrees)) {
-                    allTrees = apiTrees;
+                if (!previewCacheApi.areTreesEffectivelySame(state.allTrees, apiTrees)) {
+                    state.allTrees = apiTrees;
                 }
-                loadError = null;
-                apiTreesLoaded = true;
+                state.loadError = null;
+                state.apiTreesLoaded = true;
                 renderResults();
             } else {
-                throw new Error(getCurrentLocale() === 'en' ? 'Tree API unavailable' : 'tree API 사용 불가');
+                throw new Error(ui.getCurrentLocale() === 'en' ? 'Tree API unavailable' : 'tree API 사용 불가');
             }
         } catch (error) {
-            loadError = error;
+            state.loadError = error;
             console.warn('[search] API 로드 실패:', error.message);
-            if (!allTrees || allTrees.length === 0) {
-                allTrees = [];
+            if (!state.allTrees || state.allTrees.length === 0) {
+                state.allTrees = [];
             }
             renderResults();
         }
     }
 
     function renderGrowingResults() {
-        if (!growingSection || !growingList) return;
+        if (!refs.growingSection || !refs.growingList) return;
 
-        if (!growingTrees || growingTrees.length === 0) {
-            growingSection.hidden = true;
-            growingList.innerHTML = '';
+        if (!state.growingTrees || state.growingTrees.length === 0) {
+            refs.growingSection.hidden = true;
+            refs.growingList.innerHTML = '';
             return;
         }
 
-        growingSection.hidden = false;
-        // Use CardRenderer.renderTreeCard with index + 1 to prevent "featured" styling
-        growingList.innerHTML = growingTrees
+        refs.growingSection.hidden = false;
+        refs.growingList.innerHTML = state.growingTrees
             .slice(0, 3)
             .map((tree, index) => CardRenderer.renderTreeCard(tree, index + 1))
             .join('');
 
-        attachCardEvents(growingList, growingTrees);
-        syncActiveCard();
+        ui.attachCardEvents(refs.growingList, state.growingTrees);
+        ui.syncActiveCard();
     }
 
     async function loadGrowingTrees() {
         if (!window.LoveTreeBaseApiFetch || typeof window.LoveTreeBaseApiFetch.apiFetch !== 'function') return;
 
         try {
-            // Use established base API layer for public community endpoints
             const apiResponse = await window.LoveTreeBaseApiFetch.apiFetch('/community/growing-trees?limit=3');
             const rawTrees = Array.isArray(apiResponse) ? apiResponse : (apiResponse?.data || []);
-            
-            // Normalize and enrich models
             const baseModels = window.LoveTreePublicTreeAdapter.buildPublicTreeSummaryModels(rawTrees);
-            growingTrees = baseModels.map((tree, index) => {
+            state.growingTrees = baseModels.map((tree, index) => {
                 const raw = rawTrees[index]?.data || rawTrees[index] || {};
                 const rawEmotionTags = Array.isArray(raw.emotionTags) ? raw.emotionTags : (Array.isArray(raw.emotion_tags) ? raw.emotion_tags : []);
                 return {
@@ -702,117 +268,73 @@ document.addEventListener('DOMContentLoaded', async () => {
                     timeRange: raw.timeRange || raw.time_range || tree.timeRange
                 };
             });
-            
+
             renderGrowingResults();
         } catch (error) {
             console.warn('[search] growing trees load failed:', error.message);
-            if (growingSection) growingSection.style.display = 'none';
+            if (refs.growingSection) refs.growingSection.style.display = 'none';
         }
     }
 
-    if (previewMobileClose) {
-        previewMobileClose.addEventListener('click', () => {
-            clearSelectedPreview();
-        });
-    }
+    callbacks.selectTree = selectTree;
+    callbacks.loadPublicTrees = loadPublicTrees;
+    callbacks.renderResults = renderResults;
+    callbacks.updateUrlState = urlState.updateUrlState;
 
-    // 감상 링크 복사 버튼 event delegation
-    document.addEventListener('click', async (event) => {
-        const shareButton = event.target.closest('[data-share-tree-link]');
-        if (!shareButton) return;
+    ui.bindMobilePreviewHandlers();
+    ui.bindShareCopyHandler();
 
-        event.preventDefault();
-
-        const treeId = shareButton.dataset.shareTreeLink;
-        if (!treeId) return;
-
-        const labelSpan = shareButton.querySelector('[data-share-tree-link-label]');
-        if (!labelSpan) return;
-
-        const originalText = labelSpan.textContent;
-        const copiedText = getSearchCopy('search.previewShareLinkCopied', '링크가 복사됐어요', 'Link copied');
-        const failedText = getSearchCopy('search.previewShareLinkFailed', '복사하지 못했어요', 'Copy failed');
-
-        try {
-            const url = new URL('/pages/search.html', window.location.origin);
-            url.searchParams.set('tree', treeId);
-            await navigator.clipboard.writeText(url.toString());
-            labelSpan.textContent = copiedText;
-            setTimeout(() => {
-                labelSpan.textContent = originalText;
-            }, 1500);
-        } catch (error) {
-            console.warn('[search] clipboard copy failed:', error.message);
-            labelSpan.textContent = failedText;
-            setTimeout(() => {
-                labelSpan.textContent = originalText;
-            }, 1500);
-        }
-    });
-
-    if (mobilePreviewMediaQuery?.addEventListener) {
-        mobilePreviewMediaQuery.addEventListener('change', () => {
-            syncPreviewVisibility();
-        });
-    } else if (mobilePreviewMediaQuery?.addListener) {
-        mobilePreviewMediaQuery.addListener(() => {
-            syncPreviewVisibility();
-        });
-    }
-
-    ensureBrowseControls();
-    syncStaticBrowseCopy();
-    syncPreviewVisibility();
+    ui.ensureBrowseControls();
+    ui.syncStaticBrowseCopy();
+    ui.syncPreviewVisibility();
     if (typeof window.onLangChange === 'function') {
         window.onLangChange(() => {
-            syncStaticBrowseCopy();
-            syncBrowseHead();
-            if (typeof syncControlsFromState === 'function') {
-                syncControlsFromState();
-            }
+            ui.syncStaticBrowseCopy();
+            ui.syncBrowseHead();
+            ui.syncControlsFromState();
         });
     }
 
-    resultsList.innerHTML = CardRenderer.renderLoading();
-    clearSelectedPreview();
+    refs.resultsList.innerHTML = CardRenderer.renderLoading();
+    ui.clearSelectedPreview();
     await Promise.allSettled([
         loadPublicTrees({ resetSelection: true }),
         loadGrowingTrees()
     ]);
 
-    // Apply URL state after initial load
-    restoreStateFromUrl();
-    applySelectedTreeFromUrl();
+    urlState.restoreStateFromUrl();
+    urlState.applySelectedTreeFromUrl();
+    state.urlStateReady = true;
 
     let searchInputTimer = null;
-    searchInput.addEventListener('input', (e) => {
-        currentQuery = e.target.value.trim();
+    refs.searchInput.addEventListener('input', (e) => {
+        state.currentQuery = e.target.value.trim();
         if (searchInputTimer) clearTimeout(searchInputTimer);
         searchInputTimer = setTimeout(() => {
             renderResults(false);
-            updateUrlState();
+            urlState.updateUrlState();
         }, 180);
     });
 
-    tagChips.forEach(chip => {
+    refs.tagChips.forEach(chip => {
         chip.addEventListener('click', () => {
-            tagChips.forEach(c => c.classList.remove('active'));
+            refs.tagChips.forEach(c => c.classList.remove('active'));
             chip.classList.add('active');
-            currentCategory = chip.dataset.category || chip.textContent.trim();
+            state.currentCategory = chip.dataset.category || chip.textContent.trim();
             renderResults(false);
-            updateUrlState();
+            urlState.updateUrlState();
         });
     });
 
     window.addEventListener('popstate', async () => {
-        const previousSort = currentSort;
-        const previousLimit = currentLimit;
-        restoreStateFromUrl();
-        if (previousSort !== currentSort || previousLimit !== currentLimit) {
+        const previousSort = state.currentSort;
+        const previousLimit = state.currentLimit;
+        urlState.restoreStateFromUrl();
+        if (previousSort !== state.currentSort || previousLimit !== state.currentLimit) {
             await loadPublicTrees({ resetSelection: true });
         } else {
             renderResults(false);
         }
-        syncBrowseHead();
+        ui.syncBrowseHead();
     });
 });
