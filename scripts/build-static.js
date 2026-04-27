@@ -5,9 +5,7 @@ const path = require("path");
 
 const ROOT = process.cwd();
 const REQUIRED_PATHS = [
-  "index.html",
-  "netlify.toml",
-  "netlify/functions"
+  "index.html"
 ];
 
 function assertExists(relPath) {

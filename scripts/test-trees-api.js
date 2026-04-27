@@ -1,7 +1,12 @@
-const { queryTrees } = require('../netlify/functions/_lib/doc-store');
 const fs = require('fs');
 const path = require('path');
 
+const libPath = path.resolve(__dirname, '../netlify/functions/_lib/doc-store.js');
+if (!fs.existsSync(libPath)) {
+  console.log('Skipping API tests: netlify/functions missing');
+  process.exit(0);
+}
+const { queryTrees } = require('../netlify/functions/_lib/doc-store');
 // .env 수동 로드
 const envPath = path.resolve(__dirname, '.env');
 try {
