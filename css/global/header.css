@@ -474,6 +474,11 @@ html:not(.material-symbols-ready) .mobile-nav-toggle .material-symbols-outlined 
 .ms-fonts-loaded .lang-toggle-btn .material-symbols-outlined,
 .ms-fonts-loaded .user-avatar-shell .material-symbols-outlined,
 .ms-fonts-loaded .user-dropdown-menu .material-symbols-outlined,
+.material-symbols-ready .nav-bar .material-symbols-outlined,
+.material-symbols-ready .lang-toggle-btn .material-symbols-outlined,
+.material-symbols-ready .user-avatar-shell .material-symbols-outlined,
+.material-symbols-ready .user-dropdown-menu .material-symbols-outlined,
+.material-symbols-ready #auth-nav .material-symbols-outlined,
 .ms-fonts-loaded #auth-nav .material-symbols-outlined,
 .material-symbols-outlined.ms-ready {
   opacity: 1;
@@ -495,3 +500,160 @@ html:not(.material-symbols-ready) .mobile-nav-toggle .material-symbols-outlined 
         min-height: 65px;
         contain-intrinsic-size: 0 65px;
     }
+}
+
+/* Profile dropdown polish */
+.user-dropdown-trigger-icon {
+    position: relative;
+    width: 44px;
+    height: 44px;
+    border-color: rgba(144, 73, 81, 0.16);
+    background:
+        radial-gradient(circle at 35% 28%, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0) 42%),
+        linear-gradient(135deg, rgba(144, 73, 81, 0.12), rgba(122, 139, 110, 0.14));
+}
+
+.user-dropdown-trigger-icon::after {
+    content: "";
+    position: absolute;
+    right: 5px;
+    bottom: 5px;
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: var(--primary);
+    border: 2px solid rgba(255, 255, 255, 0.96);
+    box-shadow: 0 0 0 1px rgba(144, 73, 81, 0.12);
+}
+
+.user-avatar-shell {
+    background: linear-gradient(135deg, rgba(144, 73, 81, 0.16), rgba(244, 231, 226, 0.94));
+    box-shadow: inset 0 0 0 1px rgba(144, 73, 81, 0.08);
+}
+
+.user-avatar-initial {
+    color: var(--primary);
+    font-weight: 900;
+    letter-spacing: -0.02em;
+}
+
+.user-dropdown-menu {
+    min-width: 224px;
+    padding: 8px;
+    border-radius: 20px;
+    border-color: rgba(144, 73, 81, 0.10);
+    box-shadow: 0 18px 46px rgba(75, 64, 57, 0.14);
+}
+
+.user-dropdown-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 42px;
+    padding: 10px 12px 12px;
+    border-bottom: 1px solid rgba(144, 73, 81, 0.08);
+    border-radius: 14px 14px 10px 10px;
+    color: var(--on-surface);
+    font-size: 13px;
+    font-weight: 800;
+    background: linear-gradient(180deg, rgba(251, 246, 241, 0.92), rgba(255, 255, 255, 0.86));
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.user-dropdown-meta::before {
+    content: "account_circle";
+    font-family: "Material Symbols Outlined";
+    font-size: 18px;
+    line-height: 1;
+    color: var(--primary);
+    font-variation-settings: 'FILL' 1;
+}
+
+.user-admin-badge,
+.user-role-admin,
+.user-dropdown-meta[data-role="admin"]::after {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 20px;
+    padding: 0 8px;
+    border-radius: 999px;
+    background: rgba(144, 73, 81, 0.10);
+    color: var(--primary);
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 0.02em;
+}
+
+.user-dropdown-meta[data-role="admin"]::after {
+    content: "관리자";
+    margin-left: auto;
+}
+
+.user-dropdown-item {
+    min-height: 42px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    font-weight: 700;
+    gap: 11px;
+}
+
+.user-dropdown-item:hover:not(:disabled),
+.user-dropdown-item:focus-visible {
+    background: rgba(144, 73, 81, 0.07);
+    color: var(--primary);
+    outline: none;
+}
+
+.user-dropdown-item:focus-visible {
+    box-shadow: 0 0 0 2px rgba(144, 73, 81, 0.26);
+}
+
+.user-dropdown-item .material-symbols-outlined {
+    width: 20px;
+    color: var(--primary);
+    opacity: 0.82;
+}
+
+.user-dropdown-menu .lang-option.active {
+    background: transparent;
+    color: var(--on-surface-variant);
+}
+
+.user-dropdown-menu .lang-option.active .material-symbols-outlined {
+    opacity: 0.38;
+}
+
+.user-dropdown-menu .lang-option:not(.active) .material-symbols-outlined {
+    opacity: 0;
+}
+
+.user-dropdown-menu .dropdown-divider {
+    margin: 6px 4px;
+    background: rgba(144, 73, 81, 0.08);
+}
+
+@media (max-width: 768px) {
+    .user-dropdown {
+        margin-left: auto;
+    }
+
+    .user-dropdown-menu {
+        right: 0;
+        min-width: min(280px, calc(100vw - 48px));
+    }
+}
+
+@media (max-width: 480px) {
+    .user-dropdown-trigger-icon {
+        width: 42px;
+        height: 42px;
+    }
+
+    .user-dropdown-menu {
+        min-width: min(260px, calc(100vw - 36px));
+        padding: 7px;
+    }
+}
