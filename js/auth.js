@@ -120,7 +120,37 @@ function resolveEmailAuthMode() {
   }
 }
 
+function getLoginPageModule() {
+  return window.LoveBudAuthLoginPage || null;
+}
+
+function callLoginPageModule(methodName, args) {
+  var loginPageModule = getLoginPageModule();
+  if (!loginPageModule || typeof loginPageModule[methodName] !== 'function') {
+    return false;
+  }
+  loginPageModule[methodName].apply(loginPageModule, args || []);
+  return true;
+}
+
+function setEmailAuthMode(emailAuthMode) {
+  EMAIL_AUTH_MODE = emailAuthMode === 'signup' ? 'signup' : 'login';
+  if (__authStateModule) __authStateModule.setEmailAuthMode(EMAIL_AUTH_MODE);
+}
+
 function syncEmailAuthModeUi(options) {
+  if (callLoginPageModule('syncEmailAuthModeUi', [{
+    emailAuthMode: EMAIL_AUTH_MODE,
+    titleEl: options && options.titleEl,
+    helperEl: options && options.helperEl,
+    submitBtn: options && options.submitBtn,
+    toggleBtn: options && options.toggleBtn,
+    badgeEl: options && options.badgeEl,
+    applyI18n: window.applyI18n
+  }])) {
+    return;
+  }
+
   var titleEl = options && options.titleEl;
   var helperEl = options && options.helperEl;
   var submitBtn = options && options.submitBtn;
@@ -164,6 +194,15 @@ function syncEmailAuthModeUi(options) {
 }
 
 function setupLoginPageAuthUi() {
+  if (callLoginPageModule('setupLoginPageAuthUi', [{
+    isLoginPage: isLoginPage,
+    resolveEmailAuthMode: resolveEmailAuthMode,
+    setEmailAuthMode: setEmailAuthMode,
+    syncEmailAuthModeUi: syncEmailAuthModeUi
+  }])) {
+    return;
+  }
+
   if (!isLoginPage()) return;
 
   EMAIL_AUTH_MODE = resolveEmailAuthMode();
@@ -1054,6 +1093,12 @@ async function signOut() {
 // ── Google Btn (login.html) ───────────────────────────────────────────────────
 
 function setupGoogleBtn() {
+  if (callLoginPageModule('setupGoogleBtn', [{
+    signInWithGoogle: signInWithGoogle
+  }])) {
+    return;
+  }
+
   var googleBtn = document.getElementById('login-btn-google');
   if (!googleBtn) return;
   googleBtn.onclick = null;
@@ -1069,6 +1114,12 @@ async function signUpWithGoogle() {
 }
 
 function setupSignupGoogleBtn() {
+  if (callLoginPageModule('setupSignupGoogleBtn', [{
+    signUpWithGoogle: signUpWithGoogle
+  }])) {
+    return;
+  }
+
   var signupGoogleBtn = document.getElementById('signup-btn-google');
   if (!signupGoogleBtn) return;
   signupGoogleBtn.onclick = null;
@@ -1081,6 +1132,23 @@ function setupSignupGoogleBtn() {
 // ── Email Auth Form ───────────────────────────────────────────────────────────
 
 function setupEmailAuthForm() {
+  if (callLoginPageModule('setupEmailAuthForm', [{
+    firebase: typeof firebase !== 'undefined' ? firebase : undefined,
+    initFirebase: initFirebase,
+    getEnvironmentCheckError: getEnvironmentCheckError,
+    getFriendlyErrorMessage: getFriendlyErrorMessage,
+    getEmailAuthMode: function () { return EMAIL_AUTH_MODE; },
+    setEmailAuthMode: setEmailAuthMode,
+    syncEmailAuthModeUi: syncEmailAuthModeUi,
+    persistConfirmedAuthSession: persistConfirmedAuthSession,
+    preloadRedirectTargetData: preloadRedirectTargetData,
+    getRedirectTarget: getRedirectTarget,
+    isInvalidAuthSessionError: isInvalidAuthSessionError,
+    clearStaleFirebaseAuthState: clearStaleFirebaseAuthState
+  }])) {
+    return;
+  }
+
   var form = document.getElementById('email-auth-form');
   if (!form) return;
   if (typeof firebase === 'undefined' || !firebase.auth) return;
@@ -1216,6 +1284,18 @@ form.addEventListener('submit', async function (e) {
 }
 
 function setupSignupForm() {
+  if (callLoginPageModule('setupSignupForm', [{
+    firebase: typeof firebase !== 'undefined' ? firebase : undefined,
+    initFirebase: initFirebase,
+    getEnvironmentCheckError: getEnvironmentCheckError,
+    getFriendlyErrorMessage: getFriendlyErrorMessage,
+    persistConfirmedAuthSession: persistConfirmedAuthSession,
+    preloadRedirectTargetData: preloadRedirectTargetData,
+    getRedirectTarget: getRedirectTarget
+  }])) {
+    return;
+  }
+
   var signupForm = document.getElementById('signup-form');
   if (!signupForm) return;
   if (typeof firebase === 'undefined' || !firebase.auth) return;
