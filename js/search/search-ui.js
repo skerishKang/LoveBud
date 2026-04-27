@@ -69,11 +69,11 @@
 
         const SORT_COPY = {
             latest: {
-                title: () => getSearchCopy('search.resultsHeading', '최근 공개된 러브트리', 'Recently Shared LoveTrees'),
+                title: () => getSearchCopy('search.resultsHeading', '최근 러브트리', 'Recent LoveTrees'),
                 badge: (count) => getCurrentLocale() === 'en' ? `${count} to start with` : `지금 먼저 볼 ${count}개`
             },
             popular: {
-                title: () => getCurrentLocale() === 'en' ? 'Popular Public LoveTrees' : '인기 많은 공개 러브트리',
+                title: () => getCurrentLocale() === 'en' ? 'Popular LoveTrees' : '인기 많은 러브트리',
                 badge: (count) => getCurrentLocale() === 'en' ? `${count} trending now` : `지금 반응 좋은 ${count}개`
             }
         };
