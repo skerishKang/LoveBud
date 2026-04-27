@@ -16,13 +16,14 @@
 
 1. [OPERATIONS.md](OPERATIONS.md) - 현재 운영 전략과 계층 정의
 2. [PARALLEL_WORKTREE_AGENT_POLICY.md](PARALLEL_WORKTREE_AGENT_POLICY.md) - 병렬 모델/worktree/검증 모델 운영 기준
-3. [DEPLOY_CHECKLIST.md](DEPLOY_CHECKLIST.md) - 배포 전/후 체크리스트
-4. [RUNBOOK.md](RUNBOOK.md) - 운영 / 장애 대응 기준
-5. [MODAL_BROWSE_RUNTIME.md](MODAL_BROWSE_RUNTIME.md) - browse summary의 Modal 우선 read path 기준
-6. [KNOWN_CI_E2E_BLOCKERS.md](KNOWN_CI_E2E_BLOCKERS.md) - 반복 CI/E2E blocker 원인 분리 및 exception merge 판단 기준
-7. [BRANCH_CLEANUP_PLAN.md](BRANCH_CLEANUP_PLAN.md) - merged/stale branch cleanup 후보와 보존 branch 분류 기준
-8. [../migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md](../migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md) - 전환 현황과 남은 과제
-9. [../engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md](../engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md) - browse filter / publication guard 구분
+3. [BROWSER_VERIFICATION_URL_POLICY.md](BROWSER_VERIFICATION_URL_POLICY.md) - 브라우저 검증 URL 출처, PR Preview, fixed test slot 사용 기준
+4. [DEPLOY_CHECKLIST.md](DEPLOY_CHECKLIST.md) - 배포 전/후 체크리스트
+5. [RUNBOOK.md](RUNBOOK.md) - 운영 / 장애 대응 기준
+6. [MODAL_BROWSE_RUNTIME.md](MODAL_BROWSE_RUNTIME.md) - browse summary의 Modal 우선 read path 기준
+7. [KNOWN_CI_E2E_BLOCKERS.md](KNOWN_CI_E2E_BLOCKERS.md) - 반복 CI/E2E blocker 원인 분리 및 exception merge 판단 기준
+8. [BRANCH_CLEANUP_PLAN.md](BRANCH_CLEANUP_PLAN.md) - merged/stale branch cleanup 후보와 보존 branch 분류 기준
+9. [../migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md](../migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md) - 전환 현황과 남은 과제
+10. [../engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md](../engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md) - browse filter / publication guard 구분
 
 ---
 
@@ -43,6 +44,7 @@
 |--------|------|
 | [DEPLOY_CHECKLIST.md](DEPLOY_CHECKLIST.md) | 배포 전/후 검증 체크리스트 |
 | [RUNBOOK.md](RUNBOOK.md) | 운영 및 장애 대응 런북 |
+| [BROWSER_VERIFICATION_URL_POLICY.md](BROWSER_VERIFICATION_URL_POLICY.md) | 브라우저 smoke URL provenance, PR Preview, Branch Preview, fixed test slot 검증 기준 |
 | [MODAL_BROWSE_RUNTIME.md](MODAL_BROWSE_RUNTIME.md) | browse summary의 Modal 우선 경로와 fallback 기준 |
 | [KNOWN_CI_E2E_BLOCKERS.md](KNOWN_CI_E2E_BLOCKERS.md) | 반복 CI/E2E 실패의 원인 분리 및 exception merge 판단 기준 |
 | [BRANCH_CLEANUP_PLAN.md](BRANCH_CLEANUP_PLAN.md) | PR #49~#58 이후 merged/stale branch cleanup 후보와 보존 branch 분류 기준 |
