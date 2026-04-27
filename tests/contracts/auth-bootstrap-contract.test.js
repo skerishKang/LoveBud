@@ -69,10 +69,9 @@ const AUTH_MODULE_ORDER_WITH_LOGIN_PAGE = [
 ];
 
 // auth-login-page.js is loaded as a side-effect-free namespace helper;
-// auth.js delegation/shrink is intentionally out of scope.
+// root auth.js explicitly delegates login-page setup helpers when available.
 //
 // Non-goals for this contract change:
-// - No auth.js delegation
 // - No root auth.js shrink
 // - No login behavior change intended
 // - No duplicate listener behavior change
@@ -161,6 +160,29 @@ test('root auth bootstrap exposes compatibility window APIs and flags', () => {
 
   for (const contract of contracts) {
     assertIncludesAny(source, contract.label, contract.needles);
+  }
+});
+
+test('root auth delegates login page helpers through the auth-login-page namespace when available', () => {
+  const source = readRepoFile('js/auth.js');
+
+  assert.match(source, /window\.LoveBudAuthLoginPage/, 'root auth must reference the login page helper namespace');
+  assert.match(source, /function\s+getLoginPageModule\s*\(/, 'root auth must keep a thin login page module lookup helper');
+  assert.match(source, /function\s+callLoginPageModule\s*\(/, 'root auth must keep a thin login page module call helper');
+
+  for (const methodName of [
+    'syncEmailAuthModeUi',
+    'setupLoginPageAuthUi',
+    'setupGoogleBtn',
+    'setupEmailAuthForm',
+    'setupSignupForm',
+    'setupSignupGoogleBtn',
+  ]) {
+    assert.match(
+      source,
+      new RegExp(`callLoginPageModule\\(\\s*['"]${methodName}['"]`),
+      `root auth must delegate ${methodName} when LoveBudAuthLoginPage exposes it`
+    );
   }
 });
 
