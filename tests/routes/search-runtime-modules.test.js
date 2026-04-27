@@ -47,3 +47,20 @@ test('search UI module preserves orchestrator contract methods', () => {
     assert.match(uiModule, new RegExp(`\\b${method}\\b`));
   }
 });
+
+test('search UI module implements card accessibility and event delegation', () => {
+  const uiModule = read('js/search/search-ui.js');
+  
+  // Verify accessibility attributes are set
+  assert.match(uiModule, /card\.setAttribute\(['"]tabindex['"],\s*['"]0['"]\)/);
+  assert.match(uiModule, /card\.setAttribute\(['"]role['"],\s*['"]button['"]\)/);
+  
+  // Verify event delegation pattern
+  assert.match(uiModule, /container\.addEventListener\(['"]click['"]/);
+  assert.match(uiModule, /container\.addEventListener\(['"]keydown['"]/);
+  assert.match(uiModule, /event\.target\.closest\(['"]\.tree-card['"]\)/);
+  
+  // Verify URL state sync on selection
+  assert.match(uiModule, /callbacks\.updateUrlState\?\.\(\)/);
+});
+

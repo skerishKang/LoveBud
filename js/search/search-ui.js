@@ -13,6 +13,8 @@
             mobilePreviewMediaQuery
         } = refs;
         const { PreviewRenderer } = renderers;
+        const treeDataMap = new WeakMap();
+        let _isDelegationBound = false;
 
         function getCurrentLocale() {
             const locale = window.i18n?.currentLang || window.getCurrentLang?.() || document.documentElement?.lang || 'ko';
@@ -56,6 +58,7 @@
             if (!preserveOpenState && isMobilePreviewMode()) {
                 setMobilePreviewOpen(false);
             }
+            callbacks.updateUrlState?.();
         }
 
         function getSearchCopy(key, fallbackKo, fallbackEn) {
@@ -304,6 +307,47 @@
             }
         }
 
+        function bindDelegatedCardEvents() {
+            if (_isDelegationBound) return;
+            _isDelegationBound = true;
+
+            const containers = [resultsList, growingList].filter(Boolean);
+            containers.forEach(container => {
+                container.addEventListener('click', (event) => {
+                    const card = event.target.closest('.tree-card');
+                    if (!card) return;
+
+                    // Ignore clicks on nested interactive elements (links, buttons, etc.)
+                    const interactiveChild = event.target.closest('a, button, input, textarea, [role="button"]');
+                    if (interactiveChild && interactiveChild !== card) return;
+
+                    const tree = treeDataMap.get(card);
+                    if (tree) {
+                        callbacks.selectTree(tree, card);
+                        callbacks.updateUrlState?.();
+                    }
+                });
+
+                container.addEventListener('keydown', (event) => {
+                    if (event.key !== 'Enter' && event.key !== ' ') return;
+
+                    const card = event.target.closest('.tree-card');
+                    if (!card) return;
+
+                    // Ignore events on nested interactive elements if target is not the card itself
+                    const interactiveChild = event.target.closest('a, button, input, textarea, [role="button"]');
+                    if (interactiveChild && interactiveChild !== card) return;
+
+                    event.preventDefault();
+                    const tree = treeDataMap.get(card);
+                    if (tree) {
+                        callbacks.selectTree(tree, card);
+                        callbacks.updateUrlState?.();
+                    }
+                });
+            });
+        }
+
         function attachCardEvents(listElement, trees) {
             if (!listElement) return;
             const cards = listElement.querySelectorAll('.tree-card');
@@ -312,21 +356,19 @@
                 const tree = trees.find(t => t.id === treeId);
                 if (!tree) return;
 
+                // Set accessibility attributes for delegation
                 card.setAttribute('tabindex', '0');
                 card.setAttribute('role', 'button');
+
+                // Sync initial aria-pressed state
                 card.setAttribute('aria-pressed', tree.id === state.selectedTreeId ? 'true' : 'false');
-
-                card.addEventListener('click', () => {
-                    callbacks.selectTree(tree, card);
-                });
-
-                card.addEventListener('keydown', (event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault();
-                        callbacks.selectTree(tree, card);
-                    }
-                });
+                
+                // Map tree data for delegated event handler
+                treeDataMap.set(card, tree);
             });
+            
+            // Ensure container listeners are bound
+            bindDelegatedCardEvents();
         }
 
         function bindShareCopyHandler() {
