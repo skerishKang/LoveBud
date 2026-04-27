@@ -192,7 +192,7 @@
       }
 
       setError('');
-      cleanupAndResolve({ title: nextTitle, visibility: 'private' });
+      cleanupAndResolve({ title: nextTitle, visibility: 'public' });
     });
 
     titleInput.addEventListener('input', function() {
@@ -317,9 +317,9 @@
 
   function getDefaultVisibility() {
     if (isTestPublicMode()) {
-      console.log('[my-trees-actions] Test public mode ignored: new trees always start private');
+      console.log('[my-trees-actions] Test public mode ignored: new trees always start public');
     }
-    return 'private';
+    return 'public';
   }
 
   async function createNewTree(options) {
@@ -349,7 +349,7 @@
       modal.setSubmitting(true, i18n);
     }
 
-    console.log('[my-trees-actions] Creating tree with visibility: private');
+    console.log('[my-trees-actions] Creating tree with visibility: public');
 
     try {
       var newTree;
@@ -357,11 +357,11 @@
       if (window.apiClient && window.apiClient.createTree) {
         newTree = await window.apiClient.createTree({
           title: modalResult.title,
-          visibility: 'private'
+          visibility: 'public'
         });
         console.log('[my-trees-actions] Tree created:', newTree);
       } else {
-        newTree = { id: 'tree-' + Date.now(), title: modalResult.title, visibility: 'private' };
+        newTree = { id: 'tree-' + Date.now(), title: modalResult.title, visibility: 'public' };
         options?.showToast?.(safeText(i18n, 'demo_mode', '데모 모드입니다. 실제 트리는 생성되지 않습니다.'), 'error');
       }
 
