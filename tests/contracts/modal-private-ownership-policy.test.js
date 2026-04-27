@@ -20,6 +20,34 @@ function getFunctionBody(source, functionName) {
   return match[0];
 }
 
+function assertMemoryWriteOwnerGuard(body, label) {
+  const normalized = compact(body);
+
+  assert.match(
+    normalized,
+    /exists\(\s*select1fromtreest/i,
+    `${label} must guard the write with a trees EXISTS subquery`
+  );
+
+  assert.match(
+    normalized,
+    /t\.id=memories\.tree_id/i,
+    `${label} owner guard must join trees to the target memory tree_id`
+  );
+
+  assert.match(
+    normalized,
+    /t\.owner_id=%s/i,
+    `${label} owner guard must constrain trees.owner_id`
+  );
+
+  assert.match(
+    normalized,
+    /safe_memory_id,owner_id/i,
+    `${label} write query parameters must include owner_id`
+  );
+}
+
 test('create_owner_memory calls fetch_owner_tree with tree_id and owner_id', () => {
   const source = readModalApp();
   const body = getFunctionBody(source, 'create_owner_memory');
@@ -176,6 +204,20 @@ test('update_owner_memory calls require_memory_owner', () => {
   );
 });
 
+test('update_owner_memory SQL write includes tree owner guard', () => {
+  const source = readModalApp();
+  const body = getFunctionBody(source, 'update_owner_memory');
+  const normalized = compact(body);
+
+  assert.match(
+    normalized,
+    /updatememoriesset/i,
+    'update_owner_memory must update memories table'
+  );
+
+  assertMemoryWriteOwnerGuard(body, 'update_owner_memory');
+});
+
 test('delete_owner_memory calls require_memory_owner', () => {
   const source = readModalApp();
   const body = getFunctionBody(source, 'delete_owner_memory');
@@ -186,4 +228,18 @@ test('delete_owner_memory calls require_memory_owner', () => {
     /require_memory_owner\(/,
     'delete_owner_memory must call require_memory_owner'
   );
+});
+
+test('delete_owner_memory SQL write includes tree owner guard', () => {
+  const source = readModalApp();
+  const body = getFunctionBody(source, 'delete_owner_memory');
+  const normalized = compact(body);
+
+  assert.match(
+    normalized,
+    /deletefrommemorieswhere/i,
+    'delete_owner_memory must delete from memories table'
+  );
+
+  assertMemoryWriteOwnerGuard(body, 'delete_owner_memory');
 });
