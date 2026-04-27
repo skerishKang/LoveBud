@@ -98,7 +98,7 @@
 
   function isProtectedRoute() {
     var path = window.location.pathname || '';
-    return /\/pages\/(my-trees|editor|settings)(?:\.html)?$/.test(path);
+    return /^\/(?:pages\/)?(?:my-trees|editor|settings)(?:\.html)?$/.test(path);
   }
 
   function initOfflineAuth(options) {
