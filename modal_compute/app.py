@@ -843,6 +843,12 @@ def update_owner_memory(owner_id: str, memory_id: str, payload: dict[str, Any]) 
         UPDATE memories
         SET {', '.join(updates)}, updated_at = NOW()
         WHERE id = %s
+          AND EXISTS (
+              SELECT 1
+              FROM trees t
+              WHERE t.id = memories.tree_id
+                AND t.owner_id = %s
+          )
         RETURNING id, tree_id, parent_id, title, memo, artist, source, source_url,
                   source_type, thumbnail, emotion_tags, timestamp, visibility,
                   created_at, updated_at;
@@ -850,7 +856,7 @@ def update_owner_memory(owner_id: str, memory_id: str, payload: dict[str, Any]) 
 
     with get_db_connection() as conn:
         with conn.cursor() as cur:
-            cur.execute(query, tuple(params + [safe_memory_id]))
+            cur.execute(query, tuple(params + [safe_memory_id, owner_id]))
             row = cur.fetchone()
         conn.commit()
 
@@ -870,7 +876,20 @@ def delete_owner_memory(owner_id: str, memory_id: str) -> dict[str, Any]:
                 "UPDATE memories SET parent_id = NULL WHERE tree_id = %s AND parent_id = %s;",
                 (tree_id, safe_memory_id),
             )
-            cur.execute("DELETE FROM memories WHERE id = %s RETURNING id;", (safe_memory_id,))
+            cur.execute(
+                """
+                DELETE FROM memories
+                WHERE id = %s
+                  AND EXISTS (
+                      SELECT 1
+                      FROM trees t
+                      WHERE t.id = memories.tree_id
+                        AND t.owner_id = %s
+                  )
+                RETURNING id;
+                """,
+                (safe_memory_id, owner_id),
+            )
             row = cur.fetchone()
         conn.commit()
 
