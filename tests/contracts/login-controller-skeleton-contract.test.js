@@ -25,6 +25,8 @@ test('login controller skeleton defines the LoveBudAuthLoginPage-compatible meth
   ]) {
     assert.match(source, new RegExp(`${methodName}\\s*:`), `skeleton must define ${methodName}`);
   }
+
+  assert.match(source, /setupSignupForm\s*:\s*noop/, 'controller signup form auth execution must remain noop');
 });
 
 test('login controller remains isolated from auth core and redirect/session policy', () => {
@@ -32,7 +34,10 @@ test('login controller remains isolated from auth core and redirect/session poli
 
   assert.doesNotMatch(source, /LoveBudLoginPageController\s*=\s*[^;]*LoveBudAuthLoginPage/, 'inactive controller must not alias the active provider');
   assert.doesNotMatch(source, /LoveBudAuthLoginPage\s*=/, 'inactive controller must not assign the active provider');
+  assert.doesNotMatch(source, /firebase\.auth\(\)/, 'inactive controller must not call Firebase auth directly');
   assert.doesNotMatch(source, /firebase\.auth\(\)\.onAuthStateChanged/, 'inactive controller must not install auth state listeners');
+  assert.doesNotMatch(source, /signInWithEmailAndPassword|createUserWithEmailAndPassword|updateProfile/, 'inactive controller must not implement email auth execution');
+  assert.doesNotMatch(source, /persistConfirmedAuthSession|preloadRedirectTargetData|getRedirectTarget/, 'inactive controller must not move session or redirect execution');
   assert.doesNotMatch(source, /localStorage|sessionStorage/, 'inactive controller must not touch auth/session cache');
   assert.doesNotMatch(source, /lovebud_auth_cache|lovebud_auth_confirmed|lovebud_auth_token/, 'inactive controller must not reference auth cache keys');
   assert.doesNotMatch(source, /location\.href|location\.assign|location\.replace/, 'inactive controller must not perform redirects');
@@ -60,6 +65,33 @@ test('login controller inactive parity covers UI selectors and i18n contracts', 
     'authModeBadge',
   ]) {
     assert.match(source, new RegExp(token), `inactive controller must include ${token}`);
+  }
+});
+
+test('login controller redirect notice is gated by explicit redirect query param', () => {
+  const source = readRepoFile('js/login/login-page.js');
+
+  assert.match(source, /new URLSearchParams\(global\.location \? global\.location\.search : ''\)/, 'controller must parse query params without performing navigation');
+  assert.match(source, /params\.get\('redirect'\)/, 'redirect notice must use the explicit redirect query param');
+  assert.match(source, /noticeEl\.style\.display\s*=\s*redirect \? 'block' : 'none'/, 'redirect notice display must depend on redirect param only');
+  assert.doesNotMatch(source, /noticeEl\.style\.display\s*=\s*global\.location\s*&&\s*global\.location\.search/, 'redirect notice must not depend on any query string presence');
+});
+
+test('login controller uses idempotent binding guards for UI-only listeners', () => {
+  const source = readRepoFile('js/login/login-page.js');
+
+  assert.match(source, /function\s+replaceEventListener\s*\(/, 'controller must centralize idempotent listener replacement');
+  assert.match(source, /removeEventListener\(eventName, element\[handlerKey\]\)/, 'controller must remove prior listener before re-binding');
+
+  for (const key of [
+    '__lovebudLoginControllerGoogleClick',
+    '__lovebudLoginControllerSignupGoogleClick',
+    '__lovebudLoginControllerEmailToggleClick',
+    '__lovebudLoginControllerEmailOpenClick',
+    '__lovebudLoginControllerEmailCloseClick',
+    '__lovebudLoginControllerEmailBackdropClick',
+  ]) {
+    assert.match(source, new RegExp(key), `controller must keep idempotent binding guard ${key}`);
   }
 });
 
