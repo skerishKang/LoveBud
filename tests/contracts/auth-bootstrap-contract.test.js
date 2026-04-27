@@ -68,6 +68,15 @@ const AUTH_MODULE_ORDER_WITH_LOGIN_PAGE = [
   'js/auth/auth-login-page.js',
 ];
 
+// auth-login-page.js is loaded as a side-effect-free namespace helper;
+// auth.js delegation/shrink is intentionally out of scope.
+//
+// Non-goals for this contract change:
+// - No auth.js delegation
+// - No root auth.js shrink
+// - No login behavior change intended
+// - No duplicate listener behavior change
+// - No Firebase/Auth policy changes
 test('login page preserves firebase/config/i18n/shared-header before auth submodules and root auth.js', () => {
   assertOrderedScripts('pages/login.html', [
     'firebase-app.js',
@@ -76,17 +85,10 @@ test('login page preserves firebase/config/i18n/shared-header before auth submod
     'js/i18n/i18n-core.js',
     'js/i18n.js',
     'js/shared-header.js',
-    ...AUTH_MODULE_ORDER,
+    ...AUTH_MODULE_ORDER_WITH_LOGIN_PAGE,
     'js/auth.js',
     'js/login-page.js',
   ]);
-
-  const scripts = getScriptSrcs('pages/login.html');
-  assert.equal(
-    scripts.some((src) => src === 'js/auth/auth-login-page.js' || src.endsWith('js/auth/auth-login-page.js')),
-    false,
-    'login.html currently does not load js/auth/auth-login-page.js; keep this documented until intentionally changed'
-  );
 });
 
 test('my-trees page preserves auth submodule bootstrap order', () => {
