@@ -22,13 +22,23 @@ function getScriptSrcs(htmlRelativePath) {
     .map((match) => normalizeScriptSrc(match[1]));
 }
 
+function findScriptIndex(scripts, expected) {
+  const normalizedExpected = normalizeScriptSrc(expected);
+  return scripts.findIndex((src) => src === normalizedExpected || src.endsWith(normalizedExpected));
+}
+
+function assertHasScript(scripts, htmlRelativePath, expected) {
+  const index = findScriptIndex(scripts, expected);
+  assert.notEqual(index, -1, `${htmlRelativePath} must load ${expected}`);
+  return index;
+}
+
 function assertOrderedScripts(htmlRelativePath, expectedScripts) {
   const scripts = getScriptSrcs(htmlRelativePath);
   let previousIndex = -1;
 
   for (const expected of expectedScripts) {
-    const index = scripts.findIndex((src) => src === expected || src.endsWith(expected));
-    assert.notEqual(index, -1, `${htmlRelativePath} must load ${expected}`);
+    const index = assertHasScript(scripts, htmlRelativePath, expected);
     assert.ok(
       index > previousIndex,
       `${htmlRelativePath} must load ${expected} after ${scripts[previousIndex] || 'the previous auth dependency'}`
@@ -53,30 +63,19 @@ const AUTH_MODULE_ORDER = [
   'js/auth/auth-firebase.js',
 ];
 
-test('my-trees page preserves auth submodule bootstrap order', () => {
-  assertOrderedScripts('pages/my-trees.html', [
-    ...AUTH_MODULE_ORDER,
-    'js/auth/auth-login-page.js',
-    'js/auth.js',
-  ]);
-});
+const AUTH_MODULE_ORDER_WITH_LOGIN_PAGE = [
+  ...AUTH_MODULE_ORDER,
+  'js/auth/auth-login-page.js',
+];
 
-test('editor page preserves auth submodule bootstrap order', () => {
-  assertOrderedScripts('pages/editor.html', [
-    ...AUTH_MODULE_ORDER,
-    'js/auth.js',
-  ]);
-});
-
-test('settings page preserves auth submodule bootstrap order', () => {
-  assertOrderedScripts('pages/settings.html', [
-    ...AUTH_MODULE_ORDER,
-    'js/auth.js',
-  ]);
-});
-
-test('login page preserves current auth bootstrap order without auth-login-page module', () => {
+test('login page preserves firebase/config/i18n/shared-header before auth submodules and root auth.js', () => {
   assertOrderedScripts('pages/login.html', [
+    'firebase-app.js',
+    'firebase-auth.js',
+    'js/firebase-config.js',
+    'js/i18n/i18n-core.js',
+    'js/i18n.js',
+    'js/shared-header.js',
     ...AUTH_MODULE_ORDER,
     'js/auth.js',
     'js/login-page.js',
@@ -90,11 +89,53 @@ test('login page preserves current auth bootstrap order without auth-login-page 
   );
 });
 
-test('shared header keeps auth container and idempotent initAuth contracts', () => {
+test('my-trees page preserves auth submodule bootstrap order', () => {
+  assertOrderedScripts('pages/my-trees.html', [
+    'js/shared-header.js',
+    ...AUTH_MODULE_ORDER_WITH_LOGIN_PAGE,
+    'js/auth.js',
+  ]);
+});
+
+test('editor page preserves auth submodule bootstrap order and current editor-before-auth boundary', () => {
+  const scripts = getScriptSrcs('pages/editor.html');
+  const editorRuntimeIndex = assertHasScript(scripts, 'pages/editor.html', 'js/editor.js');
+  const firstAuthModuleIndex = assertHasScript(scripts, 'pages/editor.html', 'js/auth/auth-state.js');
+
+  assert.ok(
+    editorRuntimeIndex < firstAuthModuleIndex,
+    'pages/editor.html currently loads editor runtime before auth bootstrap; keep this boundary explicit until intentionally redesigned'
+  );
+
+  assertOrderedScripts('pages/editor.html', [
+    'js/shared-header.js',
+    ...AUTH_MODULE_ORDER,
+    'js/auth.js',
+  ]);
+});
+
+test('settings page preserves auth submodules, root auth.js, then settings.js order', () => {
+  assertOrderedScripts('pages/settings.html', [
+    'js/shared-header.js',
+    ...AUTH_MODULE_ORDER,
+    'js/auth.js',
+    'js/settings.js',
+  ]);
+
+  const source = readRepoFile('pages/settings.html');
+  assert.match(
+    source,
+    /onclick\s*=\s*["']handleLogout\s*\(\s*\)["']/i,
+    'settings.html currently has inline handleLogout(); observe only and do not clean it up in this auth contract PR'
+  );
+});
+
+test('shared header keeps optional/idempotent initAuth handoff after dynamic auth container render', () => {
   const source = readRepoFile('js/shared-header.js');
 
   assert.match(source, /typeof\s+window\.initAuth\s*===\s*["']function["']/, 'shared header must guard initAuth as optional');
   assert.match(source, /window\.initAuth\s*\(\s*\)/, 'shared header must call initAuth after dynamic render when available');
+  assert.match(source, /try\s*{[\s\S]*window\.initAuth\s*\(\s*\)[\s\S]*}\s*catch\s*\(/, 'shared header initAuth handoff must not hard-fail the page on auth bootstrap error');
   assert.match(source, /auth-nav-container/, 'shared header must preserve login-page auth container contract');
   assert.match(source, /auth-nav/, 'shared header must preserve non-login auth nav container contract');
   assert.match(source, /lovebud_auth_cache/, 'shared header must keep confirmed cached avatar key');
@@ -135,22 +176,10 @@ test('auth firebase fallback keeps protected-route-aware offline behavior', () =
   assert.match(source, /initOfflineAuth/, 'auth-firebase must keep offline auth fallback logic');
 });
 
-test('auth UI logout uses delegated data attribute and no inline signOut onclick', () => {
+test('auth UI logout uses delegated data attribute and blocks inline signOut onclick regression', () => {
   const source = readRepoFile('js/auth/auth-ui.js');
 
-  assert.match(source, /data-auth-action=["']logout["']/, 'logout control must keep delegated data-auth-action contract');
-  assert.doesNotMatch(source, /onclick\s*=\s*["']signOut\s*\(\s*\)["']/i, 'auth-ui must not reintroduce inline onclick="signOut()"');
-});
-
-test('settings inline logout is documented as a non-blocking follow-up cleanup candidate', () => {
-  const source = readRepoFile('pages/settings.html');
-  const hasInlineSettingsLogout = /onclick\s*=\s*["']handleLogout\s*\(\s*\)["']/i.test(source);
-
-  // Current main may still keep a page-local inline handleLogout in settings.html.
-  // That is a follow-up CSP cleanup candidate, not an auth bootstrap blocker.
-  if (hasInlineSettingsLogout) {
-    assert.match(source, /js\/settings\.js/, 'settings inline logout should remain page-local while it exists');
-  } else {
-    assert.equal(hasInlineSettingsLogout, false);
-  }
+  assert.match(source, /data-auth-action=\\?["']logout\\?["']/, 'logout control must keep delegated data-auth-action contract');
+  assert.match(source, /closest\(\s*["']\[data-auth-action=\\?["']logout\\?["']\]["']\s*\)/, 'auth-ui must keep delegated logout click handling');
+  assert.doesNotMatch(source, /onclick\s*=\s*\\?["']signOut\s*\(\s*\)\\?["']/i, 'auth-ui must not reintroduce inline onclick="signOut()"');
 });
