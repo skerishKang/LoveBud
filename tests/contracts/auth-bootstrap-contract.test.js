@@ -63,6 +63,13 @@ const AUTH_MODULE_ORDER = [
   'js/auth/auth-firebase.js',
 ];
 
+const LOGIN_CONTROLLER_LOAD_ORDER = [
+  ...AUTH_MODULE_ORDER,
+  'js/login/login-dom.js',
+  'js/login/login-page.js',
+  'js/auth/auth-login-page.js',
+];
+
 const AUTH_MODULE_ORDER_WITH_LOGIN_PAGE = [
   ...AUTH_MODULE_ORDER,
   'js/auth/auth-login-page.js',
@@ -84,7 +91,7 @@ test('login page preserves firebase/config/i18n/shared-header before auth submod
     'js/i18n/i18n-core.js',
     'js/i18n.js',
     'js/shared-header.js',
-    ...AUTH_MODULE_ORDER_WITH_LOGIN_PAGE,
+    ...LOGIN_CONTROLLER_LOAD_ORDER,
     'js/auth.js',
     'js/login-page.js',
   ]);
