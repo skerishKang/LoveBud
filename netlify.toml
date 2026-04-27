@@ -1,3 +1,10 @@
+# LEGACY ARTIFACT - NOT ACTIVE RUNTIME
+# This file is retained for historical Netlify Functions reference only.
+# Current active runtime: Cloudflare Pages Functions -> Modal.
+# Official production entry: https://lovebud.pages.dev/
+# Do not add new backend routes or feature policy here unless Netlify runtime is explicitly reactivated by CTO.
+# See docs/ops/OPERATIONS.md for the current runtime hierarchy.
+
 [build]
 command = ""
 publish = "."
