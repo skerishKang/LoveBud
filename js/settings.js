@@ -257,25 +257,44 @@
     redirectToLogin();
   }
 
+  function redirectAfterLogout() {
+    window.location.href = '../index.html';
+  }
+
+  function getCanonicalLogoutOptions() {
+    return {
+      clearStaleFirebaseAuthState: function() {
+        if (window.LoveBudAuthCache && typeof window.LoveBudAuthCache.clearStaleFirebaseAuthState === 'function') {
+          window.LoveBudAuthCache.clearStaleFirebaseAuthState();
+        }
+      },
+      clearConfirmedAuthCache: function() {
+        if (window.LoveBudAuthCache && typeof window.LoveBudAuthCache.clearConfirmedAuthCache === 'function') {
+          window.LoveBudAuthCache.clearConfirmedAuthCache('lovebud_auth_cache', 'lovebud_auth_confirmed', 'lovebud_auth_token');
+        }
+      }
+    };
+  }
+
   // 로그아웃 처리
   function handleLogout() {
-    if (typeof window.signOut === 'function') {
-      window.signOut().then(function() {
-        window.location.href = '../index.html';
-      }).catch(function() {
-        window.location.href = '../index.html';
-      });
-    } else {
-      if (typeof firebase !== 'undefined' && firebase.auth) {
-        firebase.auth().signOut().then(function() {
-          window.location.href = '../index.html';
-        }).catch(function() {
-          window.location.href = '../index.html';
-        });
-      } else {
-        window.location.href = '../index.html';
-      }
+    if (window.LoveBudAuthFirebase && typeof window.LoveBudAuthFirebase.signOut === 'function') {
+      Promise.resolve(window.LoveBudAuthFirebase.signOut(getCanonicalLogoutOptions()))
+        .catch(redirectAfterLogout);
+      return;
     }
+
+    if (typeof window.signOut === 'function') {
+      window.signOut().then(redirectAfterLogout).catch(redirectAfterLogout);
+      return;
+    }
+
+    if (typeof firebase !== 'undefined' && firebase.auth) {
+      firebase.auth().signOut().then(redirectAfterLogout).catch(redirectAfterLogout);
+      return;
+    }
+
+    redirectAfterLogout();
   }
 
   window.initSettings = initSettings;
