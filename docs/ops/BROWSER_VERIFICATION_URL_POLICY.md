@@ -150,6 +150,31 @@ production: https://lovebud.pages.dev/
 
 Production에서 직접 검증할 때도 변경 PR과 production 배포 상태를 혼동하지 않도록 보고해야 합니다.
 
+### 5.4 CSS split / stylesheet import verification
+
+CSS split, stylesheet import hub, or shared stylesheet changes are visual verification tasks and must still follow the URL provenance rules in this document.
+
+For CSS split PRs, browser verification should include:
+
+```text
+- Network check: no CSS import returns 404.
+- global styles 변경 시 css/global.css import order 보존 확인.
+- css/global/header.css 변경 시 shared header smoke:
+  - desktop header
+  - mobile nav toggle
+  - language dropdown
+  - auth/user dropdown visual state where applicable
+- page stylesheet hub 변경 시 page-specific smoke:
+  - css/my-trees.css 변경 시 /pages/my-trees.html desktop/mobile layout 확인
+- invented preview URL로 visual PASS 보고 금지.
+```
+
+Notes:
+
+- `css/global.css` is the global import hub. Its import order is documented in `../engineering/CSS_ARCHITECTURE.md`.
+- `css/my-trees.css` is a page-specific import hub. A change there requires My Trees page smoke rather than unrelated page smoke.
+- If no CTO-provided URL or confirmed current PR Preview URL is available, report browser verification as `not run` or `BLOCKED`, not PASS.
+
 ---
 
 ## 6. 필수 보고 형식
