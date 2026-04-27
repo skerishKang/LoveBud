@@ -1,8 +1,8 @@
 # LoveBud API 응답 계약
 
 > **버전:** 1.5  
-> **최종 갱신:** 2026-04-25  
-> **관련 커밋:** `0230475`, `bb9741b`, `bb9e663`
+> **최종 갱신:** 2026-04-27  
+> **관련 커밋:** `0230475`, `bb9741b`, `bb9e663`, `10b3d9d`
 
 ---
 
@@ -167,15 +167,22 @@ Current document baseline:
 - `POST /api/memories` and `GET /api/memories` route through `functions/api/memories.js` to Modal `/modal/private/memories`.
 - `netlify/functions/*` may still contain older private-first code, but it is not authoritative for `lovebud.pages.dev` production/test slots.
 
+Current main runtime state:
+
+- My Trees create payload explicitly sends `visibility: 'public'`.
+- Modal create tree path defaults omitted visibility to `public`.
+- Modal private tree/memory create and private visibility update paths call the private storage entitlement guard.
+- Public read paths retain parent tree visibility guards.
+- Public visibility remains separate from Browse/Search eligibility.
+
 ### 3.2 목표 정책 계약
 
 CTO 결정 기준 목표 정책은 **public-first + Plus private**입니다.
 
-- 신규 tree는 public-first 방향으로 전환합니다.
+- 신규 tree는 public-first 정책입니다.
 - 기존 private tree는 자동 public 전환하지 않고 grandfathered private으로 유지합니다.
-- private 생성/전환은 Plus entitlement source 확정 후 backend에서 검증합니다.
+- private 생성/전환은 Plus entitlement guard 대상입니다.
 - `public visibility`와 `browse 노출 조건`은 분리합니다.
-- createTree payload만 단독으로 public 변경하는 것은 금지합니다.
 - Cloudflare Pages Functions와 Modal create/toggle 정책은 반드시 동기화합니다.
 - `netlify/functions/*`에는 신규 backend 정책을 구현하지 않습니다. Netlify runtime 재활성화가 명시 승인된 경우만 예외입니다.
 
@@ -201,7 +208,7 @@ interface VisibilityPolicyState {
 
 따라서 public tree라도 public memory가 3개 미만이면 public 접근은 가능하지만 browse summary에는 노출되지 않을 수 있습니다.
 
-### 3.4 create tree 전환 계약
+### 3.4 create tree runtime 계약
 
 현재 active path:
 
@@ -211,7 +218,7 @@ interface VisibilityPolicyState {
 → Modal /modal/private/trees
 ```
 
-목표:
+Request target:
 
 ```typescript
 interface CreateTreeRequestTarget {
@@ -220,13 +227,14 @@ interface CreateTreeRequestTarget {
 }
 ```
 
-목표 정책:
+현재 main runtime 상태:
 
 - visibility 생략 시 신규 tree는 `public`으로 생성합니다.
-- `visibility: 'private'` 생성은 Plus entitlement 필요 대상입니다.
-- entitlement source 확정 전에는 private 생성 허용/차단을 구현하지 않습니다.
-- frontend만 먼저 public payload로 바꾸지 않습니다.
-- Cloudflare/Modal path가 함께 준비되어야 합니다.
+- My Trees 생성 payload는 `visibility: 'public'`을 명시합니다.
+- `visibility: 'private'` 생성은 Plus entitlement guard 대상입니다.
+- 현재 Modal 구현은 private visibility 요청에 대해 Firestore user profile 기반 entitlement guard를 호출합니다.
+- canonical entitlement field는 `users/{uid}.privateStorageEnabled`입니다.
+- 현재 구현은 compatibility 목적으로 `plan`, `plus`, `entitlements.privateStorage`도 확인하지만, 장기 API 계약으로 고정할지는 별도 결정이 필요합니다.
 
 ### 3.5 toggle visibility 전환 계약
 
@@ -245,11 +253,11 @@ interface UpdateTreeVisibilityRequest {
 - `private -> public` 시 browse 노출 조건은 별도 판단
 - public 전환 자체와 browse summary 노출을 같은 guard로 묶지 않습니다.
 
-### 3.6 decision-needed: entitlement error contract
+### 3.6 implemented guard / contract-needed: entitlement error contract
 
-아직 미확정입니다.
+Modal main에는 private storage entitlement guard가 구현되어 있습니다.
 
-후보:
+Contract-needed 후보:
 
 ```typescript
 interface PlusRequiredError {
@@ -264,11 +272,12 @@ HTTP status 후보:
 - `403`: 현재 auth/permission 계열과 일관됨
 - `402`: 의미상 결제 필요에 가깝지만 운영 관행이 불균일함
 
-결정 필요:
+아직 고정하지 말 것:
 
-- Plus entitlement source of truth
-- status code
-- error body shape
+- 최종 status code
+- 최종 error body shape
+- frontend toast/i18n mapping
+- compatibility entitlement fields의 장기 지원 여부
 - grandfathered private 예외 처리
 
 ---
@@ -306,7 +315,7 @@ type BrowseTreeSummaryList = BrowseTreeSummary[];
 
 **현재 구현 의미**
 - summary는 tree 목록 자체가 아니라, public tree와 public memory를 합쳐 만든 browse 카드 요약 모델입니다.
-- public-first 전환 후에도 browse summary는 `browseEligible` 조건을 통과한 public tree만 반환해야 합니다.
+- public-first create 이후에도 browse summary는 `browseEligible` 조건을 통과한 public tree만 반환해야 합니다.
 - visibility가 public이어도 memory/quality 조건이 부족하면 summary에서 제외될 수 있습니다.
 
 ### 4.2 Preview Hydration Contract
@@ -394,9 +403,9 @@ const normalized = window.LoveBudNormalize.normalizeMemory(apiResponse);
 
 ### 6.3 visibility 정책 관련 금지
 
-- frontend만 createTree payload를 public으로 변경하지 않습니다.
 - frontend-only Plus lock으로 정책 완료를 선언하지 않습니다.
 - public visibility를 browse 노출과 같은 의미로 표시하지 않습니다.
+- Plus-required HTTP status/body shape를 확정 전제하고 UI 처리를 고정하지 않습니다.
 
 ---
 
@@ -409,7 +418,9 @@ const normalized = window.LoveBudNormalize.normalizeMemory(apiResponse);
 ### 7.2 visibility guard 원칙
 
 - create tree 정책은 Cloudflare Pages Functions와 Modal에서 동기화해야 합니다.
-- private 생성/전환 guard는 entitlement source 확정 후 active backend에서 강제해야 합니다.
+- private 생성/전환 guard는 active backend에서 강제해야 합니다.
+- canonical entitlement field는 `users/{uid}.privateStorageEnabled`입니다.
+- compatibility entitlement fields의 장기 지원 여부는 별도 contract-needed 항목입니다.
 - 기존 private tree grandfathering을 고려해야 합니다.
 - browse display filter는 public visibility와 별도로 유지합니다.
 - `netlify/functions/*`에 신규 visibility/private-storage 정책을 구현하지 않습니다.
@@ -425,6 +436,7 @@ const normalized = window.LoveBudNormalize.normalizeMemory(apiResponse);
 | `functions/api/trees/[id].js` | active tree detail Cloudflare handler where applicable |
 | `functions/api/[[path]].js` | active Cloudflare catch-all handler for recognized read/community routes |
 | `modal_compute/app.py` | active Modal API/backend target |
+| `js/my-trees/my-trees-actions.js` | My Trees create payload source |
 | `js/utils/normalize.js` | 프론트 정규화 유틸 |
 | `js/api/public-tree-adapter.js` | browse summary/hydrate adapter |
 | `netlify/functions/*` | legacy artifact only, not current production backend |
@@ -433,17 +445,17 @@ const normalized = window.LoveBudNormalize.normalizeMemory(apiResponse);
 
 ## 9. 장기 TODO
 
-### 9.1 public-first backend 전환
+### 9.1 public-first runtime drift watch
 
-- Cloudflare/Modal create tree public-first 전환
-- create payload 단독 변경 금지 원칙 유지
+- Cloudflare/Modal create tree public-first 상태 유지
 - API 계약 테스트 추가
+- existing private tree 자동 public 전환 금지 유지
 
 ### 9.2 Plus private entitlement
 
-- entitlement source of truth 확정
-- plan 저장 위치 확정
-- active backend guard 추가
+- final entitlement source of truth 확정
+- compatibility entitlement fields 장기 지원 여부 결정
+- Plus-required status/body contract 확정
 - frontend 안내와 API error 처리 동기화
 
 ### 9.3 browse 노출 조건 고정
@@ -466,11 +478,11 @@ const normalized = window.LoveBudNormalize.normalizeMemory(apiResponse);
 |-----------|------|
 | 새 코드에 `{id, data}` 접근 | PR reject |
 | active API 응답에 flat camelCase 계약 미준수 | PR reject |
-| createTree payload만 public으로 단독 변경 | PR reject |
 | Cloudflare와 Modal visibility 정책 불일치 | PR reject |
 | Plus private을 frontend-only로 잠금 | PR reject |
 | 기존 private tree 자동 public 전환 | PR reject |
 | public visibility를 browse 노출로 설명 | 정책 위반으로 수정 |
+| Plus-required HTTP status/body shape를 독단 확정 | contract-needed로 되돌림 |
 | 신규 backend policy를 `netlify/functions/*`에 구현 | PR reject unless Netlify runtime is explicitly reactivated |
 
 ---
