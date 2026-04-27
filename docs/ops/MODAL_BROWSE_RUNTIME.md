@@ -39,8 +39,12 @@ LoveBud browse/public summary 경로에서 Modal을 1순위 읽기/계산 계층
 - `GET /modal/private/trees`
 - `POST /modal/private/trees`
 - `GET /modal/private/trees/{tree_id}`
+- `PUT /modal/private/trees/{tree_id}`
+- `DELETE /modal/private/trees/{tree_id}`
 - `GET /modal/private/memories`
 - `POST /modal/private/memories`
+- `PUT /modal/private/memories/{memory_id}`
+- `DELETE /modal/private/memories/{memory_id}`
 
 Modal browse summary는 아래 key를 flat camelCase로 반환합니다.
 
@@ -63,48 +67,46 @@ Modal browse summary는 아래 key를 flat camelCase로 반환합니다.
 
 ### 3.1 현재 Modal 구현
 
-현재 Modal private owner write path는 private-first입니다.
+현재 main 기준 Modal owner write path는 **public-first create + Plus private guard** 상태입니다.
 
-- `/modal/private/trees` POST는 tree visibility 기본값을 `private`으로 처리합니다.
-- `/modal/private/trees` POST에 `visibility: public`이 들어오면 현재 구현은 409를 반환합니다.
-- `/modal/private/memories` POST는 memory visibility 기본값을 `private`으로 처리합니다.
-- Plus entitlement 검증은 아직 없습니다.
+- `/modal/private/trees` POST는 tree visibility 기본값을 `public`으로 처리합니다.
+- My Trees 생성 payload도 `visibility: public`을 명시합니다.
+- `/modal/private/trees` POST에 `visibility: private`이 들어오면 Modal은 private storage entitlement를 확인합니다.
+- `/modal/private/memories` POST에서 memory visibility가 생략되면 parent tree visibility를 상속합니다.
+- tree 또는 memory visibility를 `private`으로 생성하거나 전환하는 path는 private storage entitlement guard를 탑니다.
+- 기존 private tree를 자동 public 전환하지 않습니다.
 
-### 3.2 목표 정책
+### 3.2 현재 정책 상태
 
-CTO 결정 기준 목표 정책은 **public-first + Plus private**입니다.
+CTO 기준 정책인 **public-first + Plus private**은 현재 main의 Modal/My Trees create path에 부분 반영되어 있습니다.
 
-- 신규 tree는 public-first 방향으로 전환합니다.
-- 기존 private tree는 자동 public 전환하지 않고 grandfathered private으로 유지합니다.
-- private 생성/전환은 Plus entitlement source 확정 후 backend에서 검증합니다.
-- public visibility와 browse 노출 조건은 분리합니다.
-- createTree payload만 단독으로 public 변경하는 것은 금지합니다.
-- Netlify와 Modal 정책은 반드시 동기화합니다.
+현재 반영됨:
 
-### 3.3 Modal 전환 원칙
+- 신규 tree create 기본값은 `public`
+- My Trees 생성 payload는 `visibility: public` 명시
+- private tree/memory 생성 또는 private 전환 시 Plus entitlement guard 호출
+- 기존 private tree 자동 public 전환 금지
+- public visibility와 Browse/Search eligibility 분리
+- anonymous public read path에서 parent tree visibility guard 유지
 
-Modal은 Netlify/API 정책과 동시에 바뀌어야 합니다.
+계속 분리해서 봐야 할 항목:
 
-금지:
+- public tree가 곧바로 Browse/Search에 소개되는 것은 아님
+- Browse/Search summary는 public memory count / quality filter를 통과한 tree만 반환
+- grandfathered private tree의 기존 사용자 경험은 별도 정책으로 유지
 
-- Netlify는 public-first인데 Modal은 private-first로 남기는 상태
-- Modal은 public-first인데 Netlify는 private-first로 남기는 상태
-- Cloudflare route가 Modal/Netlify 차이를 숨기도록 방치하는 상태
-- Plus entitlement 없이 Modal private write만 frontend에서 숨기는 상태
+### 3.3 Modal runtime contract-needed 항목
 
-전환 시 필요한 항목:
+현재 Modal은 active runtime 기준으로 public-first create와 private entitlement guard를 수행합니다. 다만 다음 항목은 아직 정책/계약으로 독단 확정하지 않습니다.
 
-- `/modal/private/trees` POST default visibility 변경 여부
-- private 생성 시 entitlement check
-- public → private toggle endpoint가 Modal에 추가될 경우 동일 entitlement check
-- grandfathered private owner read 유지
-- public browse filters 유지
+Contract-needed:
 
-Decision-needed:
-
-- Modal이 user plan을 직접 조회할지, upstream/API layer에서 검증할지
-- Modal secret/env로 entitlement source에 접근할지
-- Modal private endpoint의 Plus-required error contract
+- `users/{uid}.privateStorageEnabled` 외 compatibility entitlement fields를 장기 계약으로 유지할지 여부
+- Plus-required HTTP status와 error body shape를 API contract로 고정할지 여부
+- grandfathered private owner의 신규 private storage 제한/허용 UX
+- private 전환 실패 시 frontend toast/i18n 문구
+- Settings/결제 UX와 private storage 안내 문구
+- Browse/Search threshold의 장기 정책화 여부
 
 ---
 
@@ -121,10 +123,10 @@ Modal summary SQL은 browse summary 품질을 위해 아래 조건을 직접 강
 
 - 이 조건은 **browse summary display filter / quality filter**입니다.
 - `visibility: public` 자체와 같은 의미가 아닙니다.
-- public-first 전환 후에도 public tree가 곧바로 browse에 노출되는 것은 아닙니다.
+- public-first create 상태에서도 public tree가 곧바로 browse에 노출되는 것은 아닙니다.
 - publication/visibility 전환 guard와 browse display filter를 혼동하지 않습니다.
 
-전환 후 권장 해석:
+현재 해석:
 
 | 개념 | 의미 | Modal browse 영향 |
 |------|------|-------------------|
@@ -161,6 +163,10 @@ Modal summary SQL은 browse summary 품질을 위해 아래 조건을 직접 강
 
 - `DATABASE_URL`
   - Modal secret `lovebud-db`에서 주입
+- `FIREBASE_SERVICE_ACCOUNT_JSON`
+  - private storage entitlement lookup에 필요한 Firebase Admin service account JSON
+- `FIREBASE_PROJECT_ID`
+  - Firebase ID token verification 및 Admin project 검증에 사용
 
 ### Optional
 
@@ -168,12 +174,12 @@ Modal summary SQL은 browse summary 품질을 위해 아래 조건을 직접 강
   - 콤마 구분 문자열
   - 기본값이 있더라도 운영에서는 명시 설정 권장
 
-### Decision-needed for Plus private
+### Contract-needed for Plus private
 
-- Plus entitlement source env/secret
-- plan lookup endpoint or DB table
+- canonical 외 compatibility entitlement fields의 장기 지원 여부
 - entitlement cache policy
 - Plus-required error code/status
+- Plus-required response body shape
 
 ---
 
@@ -185,9 +191,10 @@ Modal summary SQL은 browse summary 품질을 위해 아래 조건을 직접 강
 4. `/modal/browse/latest?limit=3`가 배열을 반환하는지 확인
 5. 각 item에 browse 카드가 기대하는 key가 모두 있는지 확인
 6. Modal 장애 시 Cloudflare Pages route가 Vercel fallback으로 계속 browse를 살리는지 확인
-7. public-first 전환 시 Netlify와 Modal create policy가 같은지 확인
-8. Plus private 적용 시 Modal private write path가 entitlement를 검증하는지 확인
-9. grandfathered private tree가 browse에 노출되지 않는지 확인
+7. tree create에서 visibility 생략 시 `public`으로 생성되는지 확인
+8. My Trees create payload가 `visibility: public`을 명시하는지 확인
+9. private tree/memory create 또는 private 전환 시 Modal private write path가 entitlement를 검증하는지 확인
+10. grandfathered private tree가 browse에 노출되지 않는지 확인
 
 ---
 
@@ -207,23 +214,25 @@ Modal summary SQL은 browse summary 품질을 위해 아래 조건을 직접 강
 
 ## 9. 역할 분리
 
-- Modal: browse summary 읽기/집계 1순위 계층
+- Modal: browse summary 읽기/집계 1순위 계층 + active private owner write target
 - Cloudflare Pages: same-origin entry + API 라우터
 - Vercel: upstream / secondary entry 유지
 - Netlify: fallback / legacy 유지
 
-Visibility 정책 전환 후에도 프런트가 직접 Modal URL이나 Vercel/Netlify URL에 강결합되지 않도록 현재 구조를 기본값으로 둡니다.
+Visibility 정책 이후에도 프런트가 직접 Modal URL이나 Vercel/Netlify URL에 강결합되지 않도록 현재 구조를 기본값으로 둡니다.
 
 ---
 
-## 10. public-first 전환 전 금지 사항
+## 10. 구현 상태와 금지 사항
 
-- createTree payload만 public으로 변경
-- Modal만 public-first로 변경
-- Netlify만 public-first로 변경
+현재 main은 public-first create와 Plus private guard를 일부 반영했습니다. 다음 shortcut은 여전히 금지합니다.
+
 - 기존 private tree 자동 public 전환
-- Plus entitlement 없이 private write를 정책상 완료로 선언
+- public visibility를 Browse/Search 자동 노출로 설명
+- Plus entitlement guard를 frontend-only로 간주
+- Plus-required HTTP status/body shape를 문서에서 독단 확정
 - browse latest filter에서 public memory threshold를 암묵적으로 제거
+- Netlify legacy artifact에 신규 backend 정책을 구현
 
 ---
 
@@ -231,11 +240,10 @@ Visibility 정책 전환 후에도 프런트가 직접 Modal URL이나 Vercel/Ne
 
 ### Modal/backend 작업
 
-- public-first create policy 반영
-- private create entitlement guard
-- public/private visibility transition 정책 반영
-- grandfathered private 유지
-- browse summary filter 유지
+- Plus-required error status/body contract 고정
+- compatibility entitlement fields의 장기 지원 여부 결정
+- grandfathered private 세부 UX와 backend 예외 처리 정리
+- browse summary filter 유지 여부의 장기 정책화
 
 ### Cloudflare/API routing 작업
 
@@ -244,8 +252,8 @@ Visibility 정책 전환 후에도 프런트가 직접 Modal URL이나 Vercel/Ne
 
 ### Frontend 작업
 
-- public-first UX copy
-- Plus private 안내
+- Plus-required 실패 toast/i18n 문구
+- Settings/결제 UX와 private storage 안내
 - browse 노출 조건 설명
 
-이 문서는 코드 변경 지시가 아니라 운영/정책 정합성 기준입니다.
+이 문서는 코드 변경 지시가 아니라 현재 main runtime 상태와 남은 계약 필요 항목을 동기화한 운영 문서입니다.
