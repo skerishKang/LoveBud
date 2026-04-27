@@ -1,4 +1,4 @@
-/**
+﻿/**
  * LoveBud - Authentication Module (Firebase Auth)
  * v20260422-3
  *
@@ -729,7 +729,7 @@ function buildUserDropdown(user) {
     '<a href="' + myTreesHref + '" class="user-dropdown-item"><span class="material-symbols-outlined">account_tree</span>내 러브트리</a>',
     '<button class="user-dropdown-item" disabled style="cursor:default;opacity:0.6;"><span class="material-symbols-outlined">settings</span>설정</button>',
     '<div class="dropdown-divider"></div>',
-    '<button class="user-dropdown-item" onclick="signOut()"><span class="material-symbols-outlined">logout</span>로그아웃</button>',
+    '<button type="button" class="user-dropdown-item" data-auth-action="logout"><span class="material-symbols-outlined">logout</span>로그아웃</button>',
     '</div>',
     '</div>'
   ].join('');
@@ -827,6 +827,18 @@ function attachDropdownListener() {
         if (m !== menu) m.classList.remove('show');
       });
       menu.classList.toggle('show');
+      return;
+    }
+    var logoutButton = e.target.closest('[data-auth-action="logout"]');
+    if (logoutButton) {
+      e.preventDefault();
+      e.stopPropagation();
+      document.querySelectorAll('.user-dropdown-menu.show').forEach(function (m) {
+        m.classList.remove('show');
+      });
+      if (typeof signOut === 'function') {
+        signOut();
+      }
       return;
     }
     if (!e.target.closest('.user-dropdown')) {
