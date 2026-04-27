@@ -1187,7 +1187,15 @@ form.addEventListener('submit', async function (e) {
         clearStaleFirebaseAuthState();
       }
       var friendlyMessage = getFriendlyErrorMessage(error, false);
-      alert(friendlyMessage || '인증 중 오류가 발생했습니다.');
+      var fallbackMessage = friendlyMessage || '인증 중 오류가 발생했습니다.';
+      if (
+        window.LoveBudLoginPageAuthError &&
+        typeof window.LoveBudLoginPageAuthError.show === 'function'
+      ) {
+        window.LoveBudLoginPageAuthError.show(fallbackMessage);
+      } else {
+        alert(fallbackMessage);
+      }
     } finally {
       submitBtn.disabled = false;
       submitBtn.textContent = originalText;
