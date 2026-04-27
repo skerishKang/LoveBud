@@ -246,6 +246,25 @@ LoveBud / LoveTree는 다음과 같은 서비스가 아닙니다.
 - 요청 범위 밖 파일 수정 금지
 - 코드 로직 변경이 필요하면 관련 문서 기준과 충돌하지 않는지 먼저 확인
 
+### Module size / thin entrypoint policy
+
+LoveBud 신규 코드 작업은 `docs/engineering/CODE_ARCHITECTURE.md`를 따릅니다.
+
+핵심 원칙:
+- 신규 파일은 가능한 한 500줄 이하로 유지합니다.
+- 500줄을 넘을 가능성이 있는 기능은 설계 단계부터 모듈 분리합니다.
+- entry file은 thin entrypoint / orchestration shell로 유지합니다.
+- 실제 로직은 feature별 helper/module 파일로 분리합니다.
+- 한 파일에 UI, API, state, cache, validation, rendering, auth, fallback 책임을 누적하지 않습니다.
+- reusable logic은 focused helper module로 이동합니다.
+- 기존 프로젝트 loading model을 보존합니다.
+- ES module `import/export` 또는 `type="module"` 전환은 명시 승인 없이는 하지 않습니다.
+- 현재 HTML script 기반 구조에서는 browser-global module split 방식을 우선 사용합니다.
+
+표준 문구:
+
+> Do not grow a single file into a large fallback bundle. Keep entrypoint files thin: orchestration only. Move reusable logic into focused helper modules. Preserve the current project loading model; do not convert to `type="module"` unless the task explicitly authorizes it.
+
 ### 파일 크기 / 분리 기준
 
 LoveBud는 여러 에이전트가 동시에 검토하고 작업할 수 있도록 작고 검토 가능한 파일을 지향합니다.
