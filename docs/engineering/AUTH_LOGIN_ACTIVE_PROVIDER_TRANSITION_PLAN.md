@@ -17,10 +17,11 @@ Related PR context:
 ```text
 PR #201: Auth/Login inactive controller parity merged
 PR #202: active login/provider transition closed as out-of-scope
-PR #203: inactive login controller binding hardening, open
+PR #203: inactive login controller binding hardening, merged
+PR #203 merge commit: 31cfccdd07f459e939109c4686fb07407b46fe2e
 ```
 
-This plan treats PR #203 as a preparatory hardening PR only. It is not an active provider transition.
+This plan treats PR #203 as a completed preparatory hardening prerequisite only. It is not an active provider transition.
 
 ---
 
@@ -317,7 +318,7 @@ Allowed scope should be narrower than Phase 2 and should not include new behavio
 Recommended sequence:
 
 ```text
-1. Complete/review PR #203 as preparatory hardening.
+1. Confirm PR #203 merge commit is present in current main.
 2. Create a docs/design PR for this Phase 3 plan.
 3. Create a separate implementation PR for active provider transition.
 4. Verify implementation on a fixed test slot.
@@ -334,7 +335,7 @@ Before coding:
 
 ```text
 - fetch latest origin/main
-- confirm PR #203 status and whether its changes are merged
+- confirm PR #203 merge commit is present in current main
 - branch from current main only
 - confirm no other Auth/Login active transition PR is open
 - confirm test slot availability
