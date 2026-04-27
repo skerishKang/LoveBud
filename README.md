@@ -40,21 +40,25 @@ LoveBud / LoveTree는 일반 북마크 정리 앱이나 관리자 도구가 아�
 
 현재 운영 기준 인프라 우선순위는 아래와 같습니다.
 
-1. **Modal** — browse summary, 복합 계산, read-heavy compute 우선
-2. **Cloudflare Pages** — 실서비스 프론트, same-origin `/api`, 공식 배포 진입점
-3. **Vercel** — upstream / secondary entry / proxy fallback 계층
-4. **Netlify** — legacy fallback 또는 단계적 제거 대상 레거시 경로
+1. **Cloudflare Pages** — 실서비스 프론트, same-origin `/api`, 공식 사용자-facing 배포 진입점
+2. **Modal** — active API/backend target, browse summary, private/community read/write compute
+3. **Vercel** — deprecated transitional upstream fallback / audit 중인 보조 계층
+4. **Netlify** — legacy artifact / tests-docs transition 이후 removal candidate
 
 핵심 원칙:
 
 - 사용자 브라우저는 가능하면 **same-origin `/api`**만 사용합니다.
 - 공식 사용자-facing 주소는 **`lovebud.pages.dev`** 기준으로 봅니다.
-- Vercel과 Netlify는 현재 보조 계층 또는 전이기 계층으로 설명합니다.
+- active API path는 **browser → same-origin `/api/*` → Cloudflare Pages Functions → Modal → Neon** 입니다.
+- Vercel은 deprecated transitional fallback / upstream under audit입니다.
+- Netlify는 **active production fallback이 아닙니다.** `netlify.toml`과 `netlify/functions/**`는 legacy artifact이며, tests/docs transition 전까지 삭제하지 않는 removal candidate입니다.
+- 새 backend feature/policy work는 Netlify가 아니라 Cloudflare Pages Functions와 Modal 기준으로만 수행합니다.
 - browse display filter와 publication guard는 **다른 개념**으로 취급합니다.
 
 운영 상세는 아래 문서를 먼저 봅니다.
 
 - `docs/ops/OPERATIONS.md`
+- `docs/ops/NETLIFY_LEGACY_ARTIFACT_AUDIT.md`
 - `docs/migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md`
 - `docs/engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md`
 
@@ -76,6 +80,7 @@ LoveBud는 저장소 구조와 운영 계약에 프로젝트 고유 전제가 �
 - `vercel.json`을 자동 삭제 후보로 보지 않기
 - browse / search, display filter / publication guard 혼동하지 않기
 - 파일 크기나 번들러 부재만으로 심각 판정하지 않기
+- `netlify/functions/**`를 active backend 구현 위치로 보지 않기
 
 ---
 
@@ -108,10 +113,10 @@ Cloudflare Pages에서는 위 경로가 사용자-facing 주소로 노출됩니�
 
 ### 현재 배포 구조
 
-- **Cloudflare Pages**: 프론트 및 `/api` 엔트리
-- **Modal**: browse / summary 가속 및 compute
-- **Vercel**: upstream / proxy fallback / 전이기 보조 계층
-- **Netlify**: 일부 legacy CRUD fallback
+- **Cloudflare Pages**: 공식 프론트 및 same-origin `/api` 엔트리
+- **Modal**: active backend/API target, browse / summary / private-community compute
+- **Vercel**: deprecated transitional upstream fallback / 전이기 보조 계층
+- **Netlify**: legacy artifact / removal candidate. active production fallback이 아니며 신규 backend 정책 구현 대상이 아님
 
 ---
 
@@ -128,15 +133,16 @@ Cloudflare Pages에서는 위 경로가 사용자-facing 주소로 노출됩니�
 ### 구현 / 운영 판단이 필요할 때
 
 6. `docs/ops/OPERATIONS.md`
-7. `docs/migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md`
-8. `docs/engineering/API_CONTRACT.md`
-9. `docs/engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md`
-10. `docs/engineering/REVIEW_GUARDRAILS.md`
+7. `docs/ops/NETLIFY_LEGACY_ARTIFACT_AUDIT.md`
+8. `docs/migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md`
+9. `docs/engineering/API_CONTRACT.md`
+10. `docs/engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md`
+11. `docs/engineering/REVIEW_GUARDRAILS.md`
 
 ### 대화 복원이 필요할 때
 
-11. `docs/conversation/summary/summary_index.md`
-12. 최신 summary 문서
+12. `docs/conversation/summary/summary_index.md`
+13. 최신 summary 문서
 
 ---
 
