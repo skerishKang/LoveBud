@@ -138,7 +138,18 @@ Modal summary SQL은 browse summary 품질을 위해 아래 조건을 직접 강
 
 ---
 
-## 5. CORS 기준
+## 5. Owner/private write 보안 메모
+
+Owner/private write paths are part of the active Modal runtime security boundary. This section documents ownership responsibilities only; it does not change route paths, SQL implementation, or response shape.
+
+- Tree update/delete must keep the target tree bound to the authenticated owner at the write boundary.
+- Memory update/delete must keep both a parent-tree ownership pre-check and a write-boundary owner guard.
+- If the write-boundary owner guard does not match a row, the runtime must not mutate the memory and must keep the existing not-found/denied fallback behavior.
+- Child memory cleanup or parent cleanup must not be interpreted as authority to bypass the owner guard.
+
+---
+
+## 6. CORS 기준
 
 `modal_compute/app.py` 기본 허용 origin 예시:
 
@@ -150,7 +161,7 @@ Modal summary SQL은 browse summary 품질을 위해 아래 조건을 직접 강
 
 ---
 
-## 6. 필수 운영 환경 변수
+## 7. 필수 운영 환경 변수
 
 ### Cloudflare Pages
 
@@ -183,7 +194,7 @@ Modal summary SQL은 browse summary 품질을 위해 아래 조건을 직접 강
 
 ---
 
-## 7. 운영 체크리스트
+## 8. 운영 체크리스트
 
 1. Cloudflare Pages 운영 환경에 `MODAL_BASE_URL`가 설정되어 있는지 확인
 2. Cloudflare Pages 운영 환경에 `LOVEBUD_UPSTREAM_ORIGIN`가 설정되어 있는지 확인
@@ -194,11 +205,12 @@ Modal summary SQL은 browse summary 품질을 위해 아래 조건을 직접 강
 7. tree create에서 visibility 생략 시 `public`으로 생성되는지 확인
 8. My Trees create payload가 `visibility: public`을 명시하는지 확인
 9. private tree/memory create 또는 private 전환 시 Modal private write path가 entitlement를 검증하는지 확인
-10. grandfathered private tree가 browse에 노출되지 않는지 확인
+10. memory update/delete owner guard가 write boundary에서 유지되는지 확인
+11. grandfathered private tree가 browse에 노출되지 않는지 확인
 
 ---
 
-## 8. 데이터 shape 메모
+## 9. 데이터 shape 메모
 
 현재 main 기준으로 browse 첫 렌더에 꼭 필요한 shape는 충족합니다.
 
@@ -212,7 +224,7 @@ Modal summary SQL은 browse summary 품질을 위해 아래 조건을 직접 강
 
 ---
 
-## 9. 역할 분리
+## 10. 역할 분리
 
 - Modal: browse summary 읽기/집계 1순위 계층 + active private owner write target
 - Cloudflare Pages: same-origin entry + API 라우터
@@ -223,7 +235,7 @@ Visibility 정책 이후에도 프런트가 직접 Modal URL이나 Vercel/Netlif
 
 ---
 
-## 10. 구현 상태와 금지 사항
+## 11. 구현 상태와 금지 사항
 
 현재 main은 public-first create와 Plus private guard를 일부 반영했습니다. 다음 shortcut은 여전히 금지합니다.
 
@@ -233,10 +245,11 @@ Visibility 정책 이후에도 프런트가 직접 Modal URL이나 Vercel/Netlif
 - Plus-required HTTP status/body shape를 문서에서 독단 확정
 - browse latest filter에서 public memory threshold를 암묵적으로 제거
 - Netlify legacy artifact에 신규 backend 정책을 구현
+- memory update/delete owner guard를 제거하거나 우회
 
 ---
 
-## 11. 이후 작업 분리
+## 12. 이후 작업 분리
 
 ### Modal/backend 작업
 
@@ -244,6 +257,7 @@ Visibility 정책 이후에도 프런트가 직접 Modal URL이나 Vercel/Netlif
 - compatibility entitlement fields의 장기 지원 여부 결정
 - grandfathered private 세부 UX와 backend 예외 처리 정리
 - browse summary filter 유지 여부의 장기 정책화
+- memory update/delete owner guard 유지 검증
 
 ### Cloudflare/API routing 작업
 
