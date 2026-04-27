@@ -141,7 +141,7 @@
       '<div class="dropdown-divider"></div>',
       buildLangInlineOptions(currentLang),
       '<div class="dropdown-divider"></div>',
-      '<button class="user-dropdown-item" onclick="signOut()"><span class="material-symbols-outlined">logout</span>' + tText('logout_btn', '로그아웃') + '</button>',
+      '<button type="button" class="user-dropdown-item" data-auth-action="logout"><span class="material-symbols-outlined">logout</span>' + tText('logout_btn', '로그아웃') + '</button>',
       "</div>",
       "</div>",
     ].join("");

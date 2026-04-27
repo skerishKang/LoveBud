@@ -250,7 +250,7 @@
 
         return [
             '<header class="nav-bar">',
-                '<div class="headline" style="font-size: 1.5rem; font-weight: 900; color: var(--on-surface); letter-spacing: -0.04em; cursor: pointer;" onclick="location.href=\'' + logoHref + '\'">LoveTree</div>',
+                '<a href="' + logoHref + '" class="headline" style="font-size: 1.5rem; font-weight: 900; color: var(--on-surface); letter-spacing: -0.04em; text-decoration: none; cursor: pointer;" aria-label="LoveTree 홈으로 이동">LoveTree</a>',
                 '<button class="mobile-nav-toggle" id="mobileNavToggle" type="button" aria-label="메뉴 열기" aria-expanded="false">',
                     '<span class="material-symbols-outlined">menu</span>',
                 '</button>',
