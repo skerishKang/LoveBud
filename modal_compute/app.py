@@ -20,6 +20,9 @@ from fastapi.responses import JSONResponse
 from psycopg_pool import ConnectionPool
 from psycopg.rows import dict_row
 
+from modal_compute.config import _allowed_origins as _config_allowed_origins
+from modal_compute.config import get_firebase_project_id
+
 # --- DB Logic (formerly browse_latest.py) ---
 
 _firebase_cert_cache: dict[str, Any] = {"expires_at": 0, "certs": {}}
@@ -142,10 +145,6 @@ def user_has_plus_entitlement(uid: str) -> bool:
 def require_plus_for_private_storage(uid: str, visibility: str) -> None:
     if visibility == "private" and not user_has_plus_entitlement(uid):
         raise PlusRequiredError()
-
-
-def get_firebase_project_id() -> str:
-    return os.getenv("FIREBASE_PROJECT_ID", "relovetree")
 
 
 def get_firebase_certs() -> dict[str, str]:
@@ -907,6 +906,10 @@ def delete_owner_memory(owner_id: str, memory_id: str) -> dict[str, Any]:
     return {"deleted": True, "id": str(row["id"])}
 
 
+def _allowed_origins() -> list[str]:
+    return _config_allowed_origins()
+
+
 # --- Modal App Setup ---
 
 app = modal.App("lovebud-browse-snapshot")
@@ -937,14 +940,6 @@ async def plus_required_exception_handler(request: Request, exc: PlusRequiredErr
             "upgradeRequired": True,
         },
     )
-
-
-def _allowed_origins() -> list[str]:
-    raw = os.getenv(
-        "CORS_ALLOWED_ORIGINS",
-        "https://lovebud.vercel.app,https://lovebud.pages.dev,https://lovebud.netlify.app",
-    )
-    return [value.strip() for value in raw.split(",") if value.strip()]
 
 
 web_app.add_middleware(
