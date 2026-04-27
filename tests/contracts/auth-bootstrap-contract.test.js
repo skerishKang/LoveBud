@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const path = require('node:path');
+const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 
@@ -75,14 +75,6 @@ const AUTH_MODULE_ORDER_WITH_LOGIN_PAGE = [
   'js/auth/auth-login-page.js',
 ];
 
-// auth-login-page.js is loaded as a side-effect-free namespace helper;
-// root auth.js explicitly delegates login-page setup helpers when available.
-//
-// Non-goals for this contract change:
-// - No root auth.js shrink
-// - No login behavior change intended
-// - No duplicate listener behavior change
-// - No Firebase/Auth policy changes
 test('login page preserves firebase/config/i18n/shared-header before auth submodules and root auth.js', () => {
   assertOrderedScripts('pages/login.html', [
     'firebase-app.js',
@@ -170,14 +162,15 @@ test('root auth bootstrap exposes compatibility window APIs and flags', () => {
   }
 });
 
-test('root auth delegates login page helpers through the active login page namespace with LoveBudLoginPageController as primary', () => {
+test('root auth delegates login page helpers through method-aware provider selection', () => {
   const source = readRepoFile('js/auth.js');
 
   assert.match(source, /window\.LoveBudLoginPageController/, 'root auth must reference LoveBudLoginPageController as primary active provider');
   assert.match(source, /window\.LoveBudAuthLoginPage/, 'root auth must keep LoveBudAuthLoginPage as compatibility/fallback namespace');
   assert.match(source, /function\s+getLoginPageModule\s*\(/, 'root auth must keep a thin login page module lookup helper');
   assert.match(source, /function\s+callLoginPageModule\s*\(/, 'root auth must keep a thin login page module call helper');
-  assert.match(source, /LoveBudLoginPageController[\s\S]*LoveBudAuthLoginPage/, 'getLoginPageModule must check LoveBudLoginPageController first, then fallback to LoveBudAuthLoginPage');
+  assert.match(source, /EMAIL_AUTH_EXECUTION_METHODS/, 'root auth must define method-to-auth-provider mapping for method-aware selection');
+  assert.match(source, /setupEmailAuthForm[\s\S]*setupSignupForm|setupSignupForm[\s\S]*setupEmailAuthForm/, 'method mapping must include setupEmailAuthForm and setupSignupForm');
 
   for (const methodName of [
     'syncEmailAuthModeUi',
@@ -191,6 +184,48 @@ test('root auth delegates login page helpers through the active login page names
       source,
       new RegExp(`callLoginPageModule\\(\\s*['"]${methodName}['"]`),
       `root auth must delegate ${methodName} when active login page module exposes it`
+    );
+  }
+});
+
+test('root auth uses LoveBudAuthLoginPage directly for email auth execution methods', () => {
+  const source = readRepoFile('js/auth.js');
+
+  assert.match(
+    source,
+    /EMAIL_AUTH_EXECUTION_METHODS\s*=\s*\{[\s\S]*setupEmailAuthForm[\s\S]*\}/,
+    'setupEmailAuthForm must be in the email auth execution methods map'
+  );
+  assert.match(
+    source,
+    /EMAIL_AUTH_EXECUTION_METHODS\s*=\s*\{[\s\S]*setupSignupForm[\s\S]*\}/,
+    'setupSignupForm must be in the email auth execution methods map'
+  );
+  assert.match(
+    source,
+    /getLoginPageModule\(methodName\)[\s\S]*EMAIL_AUTH_EXECUTION_METHODS\[methodName\][\s\S]*LoveBudAuthLoginPage/,
+    'auth execution methods must bypass LoveBudLoginPageController and use LoveBudAuthLoginPage directly'
+  );
+  assert.match(
+    source,
+    /EMAIL_AUTH_EXECUTION_METHODS\[methodName\][\s\S]*LoveBudLoginPageController/,
+    'UI methods must use LoveBudLoginPageController when available'
+  );
+});
+
+test('root auth preserves LoveBudLoginPageController as primary for UI-only methods', () => {
+  const source = readRepoFile('js/auth.js');
+
+  for (const methodName of [
+    'syncEmailAuthModeUi',
+    'setupLoginPageAuthUi',
+    'setupGoogleBtn',
+    'setupSignupGoogleBtn',
+  ]) {
+    assert.match(
+      source,
+      new RegExp(`'${methodName}'`),
+      `root auth must reference ${methodName} in login page delegation`
     );
   }
 });

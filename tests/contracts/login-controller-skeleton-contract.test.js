@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const path = require('node:path');
+const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 
@@ -9,7 +9,7 @@ function readRepoFile(relativePath) {
   return fs.readFileSync(path.join(ROOT, relativePath), 'utf8');
 }
 
-test('login controller defines LoveBudLoginPageController as active boundary with LoveBudAuthLoginPage-compatible method shape', () => {
+test('login controller defines LoveBudLoginPageController as active boundary for UI methods', () => {
   const source = readRepoFile('js/login/login-page.js');
 
   assert.match(source, /LoveBudLoginPageController/, 'controller must expose LoveBudLoginPageController as active boundary');
@@ -26,7 +26,8 @@ test('login controller defines LoveBudLoginPageController as active boundary wit
     assert.match(source, new RegExp(`${methodName}\\s*:`), `controller must define ${methodName}`);
   }
 
-  assert.match(source, /setupSignupForm\s*:\s*noop/, 'controller signup form auth execution must remain noop (auth execution delegated to auth.js via injected callbacks)');
+  assert.match(source, /setupSignupForm\s*:\s*noop/, 'controller signup form auth execution must remain noop (auth execution handled by LoveBudAuthLoginPage via method-aware provider selection)');
+  assert.match(source, /setupEmailAuthForm\s*:/, 'controller must define setupEmailAuthForm for UI wiring (modal open/close/toggle/mode sync; auth execution is handled by LoveBudAuthLoginPage)');
 });
 
 test('login controller remains isolated from auth core and redirect/session policy', () => {

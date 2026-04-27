@@ -120,13 +120,22 @@ function resolveEmailAuthMode() {
   }
 }
 
-function getLoginPageModule() {
+var EMAIL_AUTH_EXECUTION_METHODS = {
+  setupEmailAuthForm: true,
+  setupSignupForm: true
+};
+
+function getLoginPageModule(methodName) {
+  if (methodName && EMAIL_AUTH_EXECUTION_METHODS[methodName]) {
+    if (window.LoveBudAuthLoginPage) return window.LoveBudAuthLoginPage;
+    return null;
+  }
   if (window.LoveBudLoginPageController) return window.LoveBudLoginPageController;
   return window.LoveBudAuthLoginPage || null;
 }
 
 function callLoginPageModule(methodName, args) {
-  var loginPageModule = getLoginPageModule();
+  var loginPageModule = getLoginPageModule(methodName);
   if (!loginPageModule || typeof loginPageModule[methodName] !== 'function') {
     return false;
   }
@@ -566,7 +575,7 @@ function initAuth() {
 
   firebase.auth().onAuthStateChanged(async function (user) {
     clearTimeout(authTimeout); // 정상 응답 - 타임아웃 취소
-    
+
     if (user) {
       try {
         if (typeof user.reload === 'function') await user.reload();
@@ -781,13 +790,13 @@ function buildUserDropdown(user) {
  * Update right-side nav area based on auth state.
  * Container #auth-nav / #auth-nav-container is never destroyed -
  * only its innerHTML is replaced.
- * 
+ *
  * Called by onAuthStateChanged whenever Firebase auth state changes.
  */
 function updateHeaderLangToggleVisibility(isLoggedIn) {
     var headerLangToggle = document.querySelector('.header-lang-toggle');
     if (!headerLangToggle) return;
-    
+
     if (isLoggedIn) {
           headerLangToggle.hidden = true;
           headerLangToggle.style.setProperty('display', 'none', 'important');
@@ -799,7 +808,7 @@ function updateHeaderLangToggleVisibility(isLoggedIn) {
 
 function updateNavUI(user) {
     updateHeaderLangToggleVisibility(!!user);
-  
+
   if (__authUiModule) {
     __authUiModule.updateNavUI({
       user: user,
@@ -940,7 +949,7 @@ function getFriendlyErrorMessage(error, isGoogleLogin) {
   var message = error.message || '';
   // Log full error for devs
   console.error('Auth error (developer only):', error);
-  
+
   // Environment-related errors
   if (message.indexOf('location.protocol') !== -1 || message.indexOf('not supported in the environment') !== -1) {
     return '이 브라우저 환경에서는 로그인할 수 없습니다. http:// 또는 https:// 주소(localhost 가능)에서 다시 시도해 주세요.';
@@ -948,7 +957,7 @@ function getFriendlyErrorMessage(error, isGoogleLogin) {
   if (message.indexOf('web storage') !== -1 || message.indexOf('storage') !== -1) {
     return '브라우저 저장소(storage)가 비활성화되어 있습니다. 쿠키와 저장소를 허용한 후 다시 시도해 주세요.';
   }
-   
+
    // Common auth errors
    switch (code) {
      case 'auth/popup-closed-by-user':
@@ -1215,14 +1224,14 @@ function setupEmailAuthForm() {
 
 form.addEventListener('submit', async function (e) {
     e.preventDefault();
-    
+
     // Environment check
     var envError = getEnvironmentCheckError();
     if (envError) {
       alert(envError);
       return;
     }
-    
+
     if (!emailInput || !passwordInput || !submitBtn) return;
 
      var email = String(emailInput.value || '').trim();
