@@ -140,38 +140,4 @@
         entryFallbacks,
         window.LoveBudEditorEntryFallbacks || {}
     );
-
-    window.LoveBudEditorHelpers = window.LoveBudEditorHelpers || {};
-    if (typeof window.LoveBudEditorHelpers.createToast !== 'function') {
-        window.LoveBudEditorHelpers.createToast = function() {
-            return createInlineShowToastFallback();
-        };
-    }
-
-    window.LoveBudEditorPageHelpers = window.LoveBudEditorPageHelpers || {};
-    if (typeof window.LoveBudEditorPageHelpers.getEditorBasePath !== 'function') {
-        window.LoveBudEditorPageHelpers.getEditorBasePath = getEditorBasePath;
-    }
-    if (typeof window.LoveBudEditorPageHelpers.buildEditorRedirectTarget !== 'function') {
-        window.LoveBudEditorPageHelpers.buildEditorRedirectTarget = buildEditorRedirectTarget;
-    }
-    if (typeof window.LoveBudEditorPageHelpers.getMyTreesHref !== 'function') {
-        window.LoveBudEditorPageHelpers.getMyTreesHref = getMyTreesHref;
-    }
-    if (typeof window.LoveBudEditorPageHelpers.redirectToEditorLogin !== 'function') {
-        window.LoveBudEditorPageHelpers.redirectToEditorLogin = createInlineRedirectToEditorLoginFallback({
-            getEditorBasePath: window.LoveBudEditorPageHelpers.getEditorBasePath,
-            buildEditorRedirectTarget: window.LoveBudEditorPageHelpers.buildEditorRedirectTarget
-        });
-    }
-    if (typeof window.LoveBudEditorPageHelpers.renderTreeLoadError !== 'function') {
-        window.LoveBudEditorPageHelpers.renderTreeLoadError = createInlineRenderTreeLoadErrorFallback({
-            getMyTreesHref: window.LoveBudEditorPageHelpers.getMyTreesHref
-        });
-    }
-
-    window.LoveBudEditorSaveStatus = window.LoveBudEditorSaveStatus || {};
-    if (typeof window.LoveBudEditorSaveStatus.formatTimeAgo !== 'function') {
-        window.LoveBudEditorSaveStatus.formatTimeAgo = createInlineFormatTimeAgoFallback();
-    }
 })();
