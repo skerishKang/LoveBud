@@ -34,6 +34,36 @@
       en: 'Growing'
     },
 
+    // 빈 상태 / 오류 상태
+    'search.noTreesHeading': {
+      ko: '아직 공개된 러브트리가 없어요',
+      en: 'No public LoveTrees yet'
+    },
+    'search.noTreesBody': {
+      ko: '다른 팬이 공개한 러브트리가 생기면 이곳에서 만날 수 있어요.',
+      en: 'Public LoveTrees will appear here once someone shares one.'
+    },
+    'search.emptySearchHeading': {
+      ko: '조건에 맞는 트리가 없어요',
+      en: 'No matches found'
+    },
+    'search.emptySearchBody': {
+      ko: '다른 키워드나 필터로 다시 찾아보세요.',
+      en: 'Try a different keyword or filter.'
+    },
+    'search.errorHeading': {
+      ko: '불러오지 못했어요',
+      en: 'Could not load'
+    },
+    'search.errorBody': {
+      ko: '네트워크 상태를 확인하고 다시 시도해 주세요.',
+      en: 'Check your connection and try again.'
+    },
+    'search.retryButton': {
+      ko: '다시 시도',
+      en: 'Retry'
+    },
+
     // 미리보기
     'search.previewTitle': {
       ko: '감상 허브',
