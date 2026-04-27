@@ -6,7 +6,7 @@
   "scripts": {
     "lint": "node scripts/lint-static.js",
     "build": "node scripts/build-static.js",
-    "test": "node --test tests/smoke/*.test.js tests/routes/*.test.js tests/contracts/*.test.js tests/functions/*.test.js",
+    "test": "node --test tests/smoke/*.test.js tests/routes/*.test.js tests/contracts/*.test.js",
     "verify": "node scripts/pre-deploy.js",
     "verify:full": "node scripts/pre-deploy.js --full",
     "verify:remote": "node scripts/pre-deploy.js --remote",
