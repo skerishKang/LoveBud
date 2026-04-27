@@ -1,6 +1,6 @@
 # LoveBud API 응답 계약
 
-> **버전:** 1.5  
+> **버전:** 1.6  
 > **최종 갱신:** 2026-04-27  
 > **관련 커밋:** `0230475`, `bb9741b`, `bb9e663`, `10b3d9d`
 
@@ -127,6 +127,7 @@ interface Tree {
   createdAt: string | null;
   updatedAt: string | null;
   nodeCount: number;
+  memoryCount?: number;
   payload: {
     description?: string;
     coverImage?: string;
@@ -384,16 +385,37 @@ interface BrowseTreeSummaryExtension {
 
 ---
 
-## 6. 프론트엔드 원칙
+## 6. Private owner write security contract
 
-### 6.1 절대 금지
+Private owner write paths are part of the active Cloudflare/Modal runtime security contract. This section documents ownership boundaries only; it does not change route paths, SQL implementation, or response shape.
+
+### 6.1 Tree owner write guard
+
+Private owner tree update/delete must keep the tree id and authenticated owner id bound together at the write boundary.
+
+### 6.2 Memory owner write guard
+
+Private memory update/delete must keep a two-step owner boundary:
+
+1. pre-check that the memory belongs to the authenticated owner through its parent tree; and
+2. write-boundary guard that keeps the target memory tied to a tree whose owner is the authenticated owner.
+
+### 6.3 Guard failure behavior
+
+If the write-boundary owner guard does not match a row, the runtime must not mutate the memory. The existing not-found/denied fallback behavior and existing API response shape remain unchanged.
+
+---
+
+## 7. 프론트엔드 원칙
+
+### 7.1 절대 금지
 
 ```javascript
 const title = memory.data?.title;
 const treeId = memory.data?.tree_id;
 ```
 
-### 6.2 필수 사용
+### 7.2 필수 사용
 
 ```javascript
 const title = memory.title;
@@ -401,7 +423,7 @@ const treeId = memory.treeId;
 const normalized = window.LoveBudNormalize.normalizeMemory(apiResponse);
 ```
 
-### 6.3 visibility 정책 관련 금지
+### 7.3 visibility 정책 관련 금지
 
 - frontend-only Plus lock으로 정책 완료를 선언하지 않습니다.
 - public visibility를 browse 노출과 같은 의미로 표시하지 않습니다.
@@ -409,13 +431,13 @@ const normalized = window.LoveBudNormalize.normalizeMemory(apiResponse);
 
 ---
 
-## 7. 백엔드 원칙
+## 8. 백엔드 원칙
 
-### 7.1 직렬화기 사용 의무
+### 8.1 직렬화기 사용 의무
 
 모든 API 응답은 active Cloudflare/Modal runtime에서 flat camelCase contract를 유지해야 합니다.
 
-### 7.2 visibility guard 원칙
+### 8.2 visibility guard 원칙
 
 - create tree 정책은 Cloudflare Pages Functions와 Modal에서 동기화해야 합니다.
 - private 생성/전환 guard는 active backend에서 강제해야 합니다.
@@ -425,9 +447,16 @@ const normalized = window.LoveBudNormalize.normalizeMemory(apiResponse);
 - browse display filter는 public visibility와 별도로 유지합니다.
 - `netlify/functions/*`에 신규 visibility/private-storage 정책을 구현하지 않습니다.
 
+### 8.3 owner write guard 원칙
+
+- owner/private read/write는 authenticated user id를 기준으로 합니다.
+- tree update/delete는 write boundary에서 owner id를 함께 제약합니다.
+- memory update/delete는 pre-check와 write-boundary owner guard를 모두 유지합니다.
+- child memory cleanup 또는 parent cleanup은 owner guard를 우회하는 권한으로 해석하지 않습니다.
+
 ---
 
-## 8. 관련 파일
+## 9. 관련 파일
 
 | 파일 | 역할 |
 |------|------|
@@ -443,28 +472,28 @@ const normalized = window.LoveBudNormalize.normalizeMemory(apiResponse);
 
 ---
 
-## 9. 장기 TODO
+## 10. 장기 TODO
 
-### 9.1 public-first runtime drift watch
+### 10.1 public-first runtime drift watch
 
 - Cloudflare/Modal create tree public-first 상태 유지
 - API 계약 테스트 추가
 - existing private tree 자동 public 전환 금지 유지
 
-### 9.2 Plus private entitlement
+### 10.2 Plus private entitlement
 
 - final entitlement source of truth 확정
 - compatibility entitlement fields 장기 지원 여부 결정
 - Plus-required status/body contract 확정
 - frontend 안내와 API error 처리 동기화
 
-### 9.3 browse 노출 조건 고정
+### 10.3 browse 노출 조건 고정
 
 - public visibility와 browseEligible 분리
 - public memory 3개 이상 조건 유지 여부 최종 확인
 - snapshot 계약에 browseEligibility metadata 포함 여부 검토
 
-### 9.4 Netlify legacy transition
+### 10.4 Netlify legacy transition
 
 - tests/docs reference transition
 - `netlify.toml` treatment decision
@@ -472,7 +501,7 @@ const normalized = window.LoveBudNormalize.normalizeMemory(apiResponse);
 
 ---
 
-## 10. 위반 시 대응
+## 11. 위반 시 대응
 
 | 위반 유형 | 대응 |
 |-----------|------|
@@ -483,8 +512,9 @@ const normalized = window.LoveBudNormalize.normalizeMemory(apiResponse);
 | 기존 private tree 자동 public 전환 | PR reject |
 | public visibility를 browse 노출로 설명 | 정책 위반으로 수정 |
 | Plus-required HTTP status/body shape를 독단 확정 | contract-needed로 되돌림 |
+| memory update/delete에서 owner write guard 제거 | PR reject |
 | 신규 backend policy를 `netlify/functions/*`에 구현 | PR reject unless Netlify runtime is explicitly reactivated |
 
 ---
 
-**문서 유지보수:** API 응답 구조 또는 visibility 정책 변경 시 이 문서를 반드시 갱신할 것
+**문서 유지보수:** API 응답 구조, visibility 정책, owner write security guard가 바뀌면 이 문서를 반드시 갱신할 것
