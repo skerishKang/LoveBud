@@ -5,8 +5,10 @@
 현재 운영 기준은 아래와 같습니다.
 
 - 실서비스 프론트: `https://lovebud.pages.dev/`
-- 인프라 우선순위: **Modal > Cloudflare Pages > Vercel > Netlify**
+- 인프라 우선순위: **Cloudflare Pages Entry + Modal Runtime > Vercel > Netlify**
 - 브라우저 호출 원칙: 가능하면 **same-origin `/api`** 만 사용
+- active runtime entry: **Cloudflare Pages** (same-origin `/api/*` router + 정적 프런트)
+- active backend target: **Modal** (browse summary, private/community read/write compute)
 - Vercel은 upstream / secondary / transitional 계층
 - Netlify는 legacy artifact / removal candidate입니다. active production fallback이 아닙니다.
 
@@ -64,6 +66,12 @@
 | [ENV_DEPENDENCY.md](ENV_DEPENDENCY.md) | 환경 변수 의존성 |
 | [FILE_BASELINE.md](FILE_BASELINE.md) | 파일 분류 기준 |
 | [../engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md](../engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md) | browse 표시 정책과 publication guard 구분 |
+
+## Netlify Legacy Artifact 감사
+
+| 파일명 | 설명 |
+|--------|------|
+| [NETLIFY_LEGACY_ARTIFACT_AUDIT.md](NETLIFY_LEGACY_ARTIFACT_AUDIT.md) | Netlify legacy artifact / removal candidate 감사 기준 및 현황. `netlify/functions/*`, `netlify.toml`의 removal audit 진행 상태와 보존/제거 판단 기준 |
 
 ## 문서 / 스킬 운영
 
