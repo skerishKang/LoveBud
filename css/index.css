@@ -42,22 +42,22 @@
     z-index: 1;
     width: min(var(--page-shell-max), calc(100% - (var(--page-pad-desktop) * 2)));
     margin: 0 auto;
-    padding: 28px 0 110px;
+    padding: 44px 0 110px;
 }
 
 .home-v3-hero {
     position: relative;
     display: grid;
-    grid-template-columns: minmax(0, 1.02fr) minmax(420px, 0.98fr);
+    grid-template-columns: minmax(0, 1.05fr) minmax(420px, 0.95fr);
     gap: var(--hero-gap);
     align-items: center;
-    min-height: min(860px, calc(100vh - 104px));
-    padding: 24px 0 20px;
+    min-height: min(820px, calc(100vh - 108px));
+    padding: 28px 0 24px;
 }
 
 .home-v3-copy {
     max-width: 600px;
-    padding: 8px 0 16px;
+    padding: 0 0 16px;
 }
 
 .home-v3-eyebrow {
@@ -349,8 +349,8 @@
 
 .reveal {
     opacity: 0;
-    transform: translateY(22px);
-    transition: opacity 0.8s ease, transform 0.8s ease;
+    transform: translateY(12px);
+    transition: opacity 0.45s ease, transform 0.45s ease;
 }
 
 .reveal.active {
@@ -361,6 +361,7 @@
 @media (max-width: 1220px) {
     .home-v3-main {
         width: min(1120px, calc(100% - 40px));
+        padding-top: 36px;
     }
 
     .home-v3-hero {
@@ -394,7 +395,7 @@
 @media (max-width: 640px) {
     .home-v3-main {
         width: min(100%, calc(100% - 24px));
-        padding-bottom: 72px;
+        padding: 24px 0 72px;
     }
 
     .home-v3-hero {
