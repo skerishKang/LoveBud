@@ -211,36 +211,31 @@
      }
 
     function renderNoTreesState() {
-        const basePath = getBasePath();
+        const locale = window.i18n?.currentLang || window.getCurrentLang?.() || document.documentElement?.lang || 'ko';
+        const isEnglish = String(locale).toLowerCase().startsWith('en');
+        const heading = window.i18nSearch?.['search.noTreesHeading']?.[isEnglish ? 'en' : 'ko'] || (isEnglish ? 'No public LoveTrees yet' : '아직 공개된 러브트리가 없어요');
+        const body = window.i18nSearch?.['search.noTreesBody']?.[isEnglish ? 'en' : 'ko'] || (isEnglish ? 'Public LoveTrees will appear here once someone shares one.' : '다른 팬이 공개한 러브트리가 생기면 이곳에서 만날 수 있어요.');
 
         return `
-            <div style="grid-column:1 / -1;text-align: center; padding: 60px 24px; color: var(--on-surface-variant);">
-                <span class="material-symbols-outlined" style="font-size: 56px; color: var(--primary); opacity: 0.6; margin-bottom: 20px; display: block;">public</span>
-                <p style="font-size: 1.25rem; font-weight: 800; margin-bottom: 12px; color: var(--on-surface);">아직 공개된 러브트리가 없어요</p>
-                <p style="font-size: 0.95rem; opacity: 0.8; margin-bottom: 24px; line-height: 1.6;">
-                    다른 팬이 공개한 러브트리가 생기면 이곳이 감상 허브가 됩니다.<br>
-                    지금은 첫 공개 러브트리를 기다리는 중이에요.
-                </p>
-                <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
-                    <a href="${basePath}my-trees.html" class="btn-round btn-primary" style="text-decoration: none; font-size: 14px; padding: 10px 20px;">
-                        <span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle; margin-right: 4px;">account_tree</span>
-                        내 러브트리 시작하기
-                    </a>
-                    <a href="${basePath}index.html" class="btn-round btn-outline" style="text-decoration: none; font-size: 14px; padding: 10px 20px;">
-                        <span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle; margin-right: 4px;">home</span>
-                        소개 보기
-                    </a>
-                </div>
+            <div class="search-empty-state">
+                <span class="material-symbols-outlined search-empty-icon" aria-hidden="true">public</span>
+                <h3 class="search-empty-heading">${escapeHtml(heading)}</h3>
+                <p class="search-empty-body">${escapeHtml(body)}</p>
             </div>
         `;
     }
 
     function renderEmptySearchState() {
+        const locale = window.i18n?.currentLang || window.getCurrentLang?.() || document.documentElement?.lang || 'ko';
+        const isEnglish = String(locale).toLowerCase().startsWith('en');
+        const heading = window.i18nSearch?.['search.emptySearchHeading']?.[isEnglish ? 'en' : 'ko'] || (isEnglish ? 'No matches found' : '조건에 맞는 트리가 없어요');
+        const body = window.i18nSearch?.['search.emptySearchBody']?.[isEnglish ? 'en' : 'ko'] || (isEnglish ? 'Try a different keyword or filter.' : '다른 키워드나 필터로 다시 찾아보세요.');
+
         return `
-            <div style="grid-column:1 / -1;text-align: center; padding: 80px 24px; color: var(--on-surface-variant);">
-                <span class="material-symbols-outlined" style="font-size: 48px; opacity: 0.3; margin-bottom: 16px; display: block;">search_off</span>
-                <p style="font-size: 1.1rem; font-weight: 700; margin-bottom: 8px;">조건에 맞는 공개 러브트리가 아직 보이지 않아요</p>
-                <p style="font-size: 0.9rem; opacity: 0.7;">다른 이름이나 감정 결로 다시 좁혀보면 새로운 공개 트리를 만날 수 있어요.</p>
+            <div class="search-empty-state">
+                <span class="material-symbols-outlined search-empty-icon" aria-hidden="true">search_off</span>
+                <h3 class="search-empty-heading">${escapeHtml(heading)}</h3>
+                <p class="search-empty-body">${escapeHtml(body)}</p>
             </div>
         `;
     }
