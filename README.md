@@ -38,21 +38,25 @@ LoveBud / LoveTree는 일반 북마크 정리 앱이나 관리자 도구가 아�
 
 ## 현재 인프라 우선순위
 
-현재 운영 기준 인프라 우선순위는 아래와 같습니다.
+현재 운영 기준 인프라는 **Cloudflare Pages + Modal**입니다.
 
 1. **Cloudflare Pages** — 실서비스 프론트, same-origin `/api`, 공식 사용자-facing 배포 진입점
 2. **Modal** — active API/backend target, browse summary, private/community read/write compute
-3. **Vercel** — deprecated transitional upstream fallback / audit 중인 보조 계층
-4. **Netlify** — legacy artifact / tests-docs transition 이후 removal candidate
+3. **Firebase** — Auth 및 client bootstrap 용도
+4. **Vercel / Netlify** — 현재 active deployment 또는 active fallback이 아님. 남아 있는 설정과 코드는 legacy artifact / removal audit 대상
 
 핵심 원칙:
 
 - 사용자 브라우저는 가능하면 **same-origin `/api`**만 사용합니다.
-- 공식 사용자-facing 주소는 **`lovebud.pages.dev`** 기준으로 봅니다.
+- 공식 사용자-facing 주소는 **`https://lovebud.pages.dev/`** 입니다.
+- active runtime은 **Cloudflare Pages + Modal** 입니다.
 - active API path는 **browser → same-origin `/api/*` → Cloudflare Pages Functions → Modal → Neon** 입니다.
-- Vercel은 deprecated transitional fallback / upstream under audit입니다.
-- Netlify는 **active production fallback이 아닙니다.** `netlify.toml`과 `netlify/functions/**`는 legacy artifact이며, tests/docs transition 전까지 삭제하지 않는 removal candidate입니다.
-- 새 backend feature/policy work는 Netlify가 아니라 Cloudflare Pages Functions와 Modal 기준으로만 수행합니다.
+- Firebase는 Auth 및 client bootstrap 용도입니다.
+- Vercel은 현재 active deployment 또는 active fallback이 아닙니다. `vercel.json`은 legacy artifact / removal audit 대상으로만 봅니다.
+- Netlify는 현재 active deployment 또는 active fallback이 아닙니다. `netlify.toml`과 `netlify/functions/**`는 legacy artifact / removal audit 대상으로만 봅니다.
+- `_redirects`는 Cloudflare Pages에서도 사용할 수 있으므로 Netlify 전용 파일로 단정하지 않습니다.
+- 이번 문서 정리는 설정 파일 삭제를 포함하지 않습니다. `netlify.toml`, `vercel.json`, `_redirects`, `netlify/functions/**`는 이 PR에서 삭제하지 않습니다.
+- 신규 backend/API 구현은 **Cloudflare Pages Functions + Modal** 기준으로만 진행합니다.
 - browse display filter와 publication guard는 **다른 개념**으로 취급합니다.
 
 운영 상세는 아래 문서를 먼저 봅니다.
@@ -78,6 +82,7 @@ LoveBud는 저장소 구조와 운영 계약에 프로젝트 고유 전제가 �
 
 - Firebase Web `apiKey`는 즉시 blocker로 단정하지 않기
 - `vercel.json`을 자동 삭제 후보로 보지 않기
+- `_redirects`를 Netlify 전용 파일로 단정하지 않기
 - browse / search, display filter / publication guard 혼동하지 않기
 - 파일 크기나 번들러 부재만으로 심각 판정하지 않기
 - `netlify/functions/**`를 active backend 구현 위치로 보지 않기
@@ -114,9 +119,14 @@ Cloudflare Pages에서는 위 경로가 사용자-facing 주소로 노출됩니�
 ### 현재 배포 구조
 
 - **Cloudflare Pages**: 공식 프론트 및 same-origin `/api` 엔트리
+- **Cloudflare Pages Functions**: browser-facing `/api/*` gateway
 - **Modal**: active backend/API target, browse / summary / private-community compute
-- **Vercel**: deprecated transitional upstream fallback / 전이기 보조 계층
-- **Netlify**: legacy artifact / removal candidate. active production fallback이 아니며 신규 backend 정책 구현 대상이 아님
+- **Neon**: active database target behind Modal
+- **Firebase**: Auth 및 client bootstrap 용도
+- **Vercel**: 현재 active deployment/fallback이 아니며, 남은 설정은 legacy artifact / removal audit 대상
+- **Netlify**: 현재 active deployment/fallback이 아니며, 남은 설정과 `netlify/functions/**`는 legacy artifact / removal audit 대상
+
+신규 backend/API 구현은 Cloudflare Pages Functions + Modal 기준으로만 진행합니다. Vercel/Netlify 설정 파일 삭제는 별도 audit와 CTO 승인 후에만 다룹니다.
 
 ---
 
