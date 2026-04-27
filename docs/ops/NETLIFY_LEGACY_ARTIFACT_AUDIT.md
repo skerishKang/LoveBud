@@ -38,20 +38,13 @@ netlify/functions/community-memories.js
 netlify/functions/_lib/**
 ```
 
-Netlify-targeting tests도 남아 있습니다.
-
-```text
-tests/functions/**
-tests/contracts/** where they import or assert netlify/functions behavior
-```
-
 ## 3. Why they remain
 
-Netlify files remain for three reasons.
+Netlify files remain for historical reference and pending artifact deletion.
 
-1. Some tests still import or assert legacy `netlify/functions/**` behavior.
-2. Some docs still describe historical route behavior and need transition context.
-3. Removal must not happen before Cloudflare/Modal route parity and CI independence are confirmed.
+1. Tests transition completed (PR #161, #162, #163) - no tests now import or assert `netlify/functions/**` behavior.
+2. Docs transition in progress (this PR) - marking Netlify as historical-only / removal-ready.
+3. Removal must not happen before docs transition is complete and CTO approval for artifact deletion.
 
 Their presence does not mean Netlify is the active production runtime.
 
