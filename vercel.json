@@ -1,5 +1,10 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "x-lovebud-runtime-note": "Deprecated transitional fallback only. Active user-facing runtime is Cloudflare Pages with same-origin /api/* to Cloudflare Pages Functions and Modal. This config is not active for production.",
+  "x-lovebud-runtime-docs": [
+    "docs/ops/OPERATIONS.md",
+    "docs/migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md"
+  ],
   "framework": null,
   "buildCommand": null,
   "installCommand": null,
