@@ -1,0 +1,13 @@
+diff --git a/pages/intro.html b/pages/intro.html
+index 5de97e2..2b93e14 100644
+--- a/pages/intro.html
++++ b/pages/intro.html
+@@ -24,7 +24,7 @@
+           <div class="intro-hero-eyebrow" data-i18n="intro.heroEyebrow">醫뗭븘?섎뒗 留덉쓬???먮씪?섎뒗 怨?/div>
+           <h1 data-i18n="intro.heroTitle" data-i18n-html><span class="title-line">?щ옉?섎뒗 ?쒓컙??/span><span class="title-line title-accent">?섎굹???щ툕?몃━濡?/span><span class="title-line">?④꺼??/span></h1>
+           <p class="lead" data-i18n="intro.heroLead" data-i18n-html>
+-            醫뗭븘?섍쾶 ???쒓컙怨??댁뼱吏?留덉쓬???섎굹???щ툕?몃━濡??④꺼蹂댁꽭??
++            ?щ옉??鍮좎쭊 泥??쒓컙遺??李④끝李④끝 ?볦씤 留덉쓬源뚯?,<br class="pc-only">?뱀떊留뚯쓽 媛먯젙 寃쎈줈瑜??섎굹???щ툕?몃━濡??쇱썙?댁꽭??
+           </p>
+           <div class="intro-hero-actions">
+             <a href="my-trees.html" class="intro-cta-link"><span class="btn-round btn-primary intro-cta-primary" data-i18n="intro.heroPrimaryCta">???щ툕?몃━ ?쒖옉?섍린</span></a>

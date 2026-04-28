@@ -1,0 +1,289 @@
+1:<!DOCTYPE html>
+2:<html lang="ko">
+3:<head>
+4:  <meta charset="UTF-8">
+5:  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+6:  <title>소개 | 러브트리</title>
+7:  <link rel="icon" href="/assets/favicon/favicon.svg" type="image/svg+xml">
+8:  <link rel="icon" href="/favicon.ico" sizes="32x32">
+9:  <link rel="stylesheet" href="../css/global.css?v=20260415-10">
+10:  <link rel="stylesheet" href="../css/intro.css?v=20260426-1">
+11:  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
+12:</head>
+13:<body class="bokeh-bg">
+14:  <div class="noise-overlay"></div>
+15:
+16:  <div class="intro-wrapper">
+17:    <!-- Shared Header -->
+18:    <div id="shared-header"></div>
+19:
+20:    <main>
+21:      <!-- Hero -->
+22:      <section class="intro-hero">
+23:        <div class="intro-hero-copy">
+24:          <div class="intro-hero-eyebrow" data-i18n="intro.heroEyebrow">좋아하는 마음이 자라나는 곳</div>
+25:          <h1 data-i18n="intro.heroTitle" data-i18n-html><span class="title-line">사랑하는 순간을</span><span class="title-line title-accent">하나의 러브트리로</span><span class="title-line">남겨요</span></h1>
+26:          <p class="lead" data-i18n="intro.heroLead" data-i18n-html>
+27:            좋아하게 된 순간과 이어진 마음을 하나의 러브트리로 남겨보세요.
+28:          </p>
+29:          <div class="intro-hero-actions">
+30:            <a href="my-trees.html" class="intro-cta-link"><span class="btn-round btn-primary intro-cta-primary" data-i18n="intro.heroPrimaryCta">내 러브트리 시작하기</span></a>
+31:            <a href="search.html" class="intro-cta-link"><span class="btn-round btn-outline intro-cta-secondary" data-i18n="intro.ctaSecondary">다른 트리 둘러보기</span></a>
+32:          </div>
+33:        </div>
+34:        <div class="intro-hero-visual" aria-hidden="true">
+35:          <div class="intro-tree-scene">
+36:            <div class="intro-tree-stem"></div>
+37:            <div class="intro-tree-branch one"></div>
+38:            <div class="intro-tree-branch two"></div>
+39:            <div class="intro-tree-branch three"></div>
+40:            <div class="intro-tree-moment first" data-i18n="intro.sceneFirst">🌱 첫 설렘</div>
+41:            <div class="intro-tree-moment saved" data-i18n="intro.sceneSaved">💝 마음 메모</div>
+42:            <div class="intro-tree-moment shared" data-i18n="intro.sceneShared">✨ 공개 감상</div>
+43:          </div>
+44:          <p class="intro-tree-caption" data-i18n="intro.sceneCaption">순간이 이어지면, 좋아하게 된 흐름이 보입니다.</p>
+45:        </div>
+46:      </section>
+47:
+48:      <!-- What is Lovetree -->
+49:      <section class="intro-section intro-section-wide intro-what-is">
+50:        <div class="intro-grid-layout">
+51:          <div class="intro-section-text">
+52:            <div class="intro-what-eyebrow">서비스 소개</div>
+53:            <h2 data-i18n="intro.whatIs">러브트리란?</h2>
+54:            <p class="intro-what-lead" data-i18n="intro.whatIsDesc1">
+55:              좋아하게 된 첫 장면과 이어진 마음을 하나의 트리로 남기는 공간입니다.
+56:            </p>
+57:            <p data-i18n="intro.whatIsDesc2" class="intro-what-desc-secondary">
+58:              단순한 아카이빙을 넘어, 나의 감정이 어디서 시작되어 어떻게 깊어졌는지 한눈에 확인할 수 있는 디지털 감정 정원입니다.
+59:            </p>
+60:          </div>
+61:          <div class="intro-section-visual">
+62:            <ul class="intro-what-list">
+63:              <li class="intro-what-item">
+64:                <span class="intro-what-icon">🌱</span>
+65:                <div>
+66:                  <strong>첫 순간이 트리의 시작</strong>
+67:                  <p>입덕의 그 장면, 처음 마음이 움직인 순간을 뿌리로 남겨요.</p>
+68:                </div>
+69:              </li>
+70:              <li class="intro-what-item">
+71:                <span class="intro-what-icon">🌿</span>
+72:                <div>
+73:                  <strong>감정이 가지로 이어져요</strong>
+74:                  <p>좋아하게 된 순간들을 하나씩 이어 붙이면, 나만의 감정 흐름이 보여요.</p>
+75:                </div>
+76:              </li>
+77:              <li class="intro-what-item">
+78:                <span class="intro-what-icon">🔒</span>
+79:                <div>
+80:                  <strong>비공개로 시작해요</strong>
+81:                  <p>처음엔 나만 보는 공간으로 시작하고, 준비되면 공개할 수 있어요.</p>
+82:                </div>
+83:              </li>
+84:            </ul>
+85:          </div>
+86:        </div>
+87:      </section>
+88:
+89:      <!-- How to Use -->
+90:      <section class="intro-section intro-section-wide">
+91:        <div class="intro-grid-layout">
+92:          <div class="intro-section-text">
+93:            <h2 data-i18n="intro.howToTitle">처음은 이렇게 남겨요</h2>
+94:            <p data-i18n="intro.howToDesc" class="intro-section-desc">
+95:              복잡한 과정 없이, 당신의 소중한 순간들을 세 단계를 통해 하나의 트리로 피워낼 수 있습니다.
+96:            </p>
+97:          </div>
+98:          <div class="intro-section-visual">
+99:            <div class="how-to-grid intro-single-column">
+100:          <div class="how-to-card">
+101:            <div class="how-to-visual">
+102:              <div class="how-to-badge">01</div>
+103:              <div class="how-to-scene how-to-scene-step1" aria-hidden="true">
+104:                <div class="scene-video-card"></div>
+105:                <div class="scene-play"><span class="material-symbols-outlined">play_arrow</span></div>
+106:                <div class="scene-chip">첫 장면</div>
+107:                <div class="scene-sparkle">✦</div>
+108:              </div>
+109:            </div>
+110:            <div class="how-to-card-copy">
+111:              <h3 data-i18n="intro.step1Title">첫 순간 담기</h3>
+112:              <p data-i18n="intro.step1Desc">좋아하게 된 장면을 남겨보세요. 그 시작이 트리의 첫 가지가 됩니다.</p>
+113:            </div>
+114:          </div>
+115:          <div class="how-to-card">
+116:            <div class="how-to-visual">
+117:              <div class="how-to-badge">02</div>
+118:              <div class="how-to-scene how-to-scene-step2" aria-hidden="true">
+119:                <div class="memo-card">
+120:                  <div class="memo-top">
+121:                    <div class="memo-heart">♥</div>
+122:                    <div class="memo-tag">메모</div>
+123:                  </div>
+124:                  <div class="memo-line"></div>
+125:                  <div class="memo-line"></div>
+126:                  <div class="memo-line short"></div>
+127:                </div>
+128:              </div>
+129:            </div>
+130:            <div class="how-to-card-copy">
+131:              <h3 data-i18n="intro.step2Title">마음 남기기</h3>
+132:              <p data-i18n="intro.step2Desc">짧은 메모로 그 순간의 마음을 남기세요.</p>
+133:            </div>
+134:          </div>
+135:          <div class="how-to-card">
+136:            <div class="how-to-visual">
+137:              <div class="how-to-badge">03</div>
+138:              <div class="how-to-scene how-to-scene-step3" aria-hidden="true">
+139:                <div class="tree-mini">
+140:                  <div class="mini-branch one"></div>
+141:                  <div class="mini-branch two"></div>
+142:                  <div class="mini-node center"><span class="material-symbols-outlined">favorite</span></div>
+143:                  <div class="mini-node left"><span class="material-symbols-outlined">play_circle</span></div>
+144:                  <div class="mini-node right"><span class="material-symbols-outlined">auto_awesome</span></div>
+145:                </div>
+146:              </div>
+147:            </div>
+148:            <div class="how-to-card-copy">
+149:              <h3 data-i18n="intro.step3Title">다시 감상하기</h3>
+150:              <p data-i18n="intro.step3DescFixed">이어진 장면을 따라가며 좋아하게 된 흐름을 다시 바라보세요.</p>
+151:            </div>
+152:            </div>
+153:          </div>
+154:        </div>
+155:      </section>
+156:
+157:      <!-- Value -->
+158:      <section class="intro-section intro-section-wide">
+159:        <div class="intro-grid-layout">
+160:          <div class="intro-section-text">
+161:            <h2 data-i18n="intro.valueTitle">이런 순간이 남아요</h2>
+162:            <p data-i18n="intro.valueDesc" class="intro-section-desc">
+163:              러브트리는 단순히 보관하는 기능을 넘어, 당신의 사랑이 어떤 의미를 갖는지 보여주는 거울이 됩니다.
+164:            </p>
+165:          </div>
+166:          <div class="intro-section-visual">
+167:            <div class="value-grid intro-single-column">
+168:              <div class="value-item value-item-featured">
+169:                <div class="value-item-visual" aria-hidden="true">
+170:                  <div class="value-mini-chip">첫 장면</div>
+171:                  <div class="value-mini-card first-moment">
+172:                    <div class="value-mini-play"><span class="material-symbols-outlined intro-icon-small">play_arrow</span></div>
+173:                    <div class="value-mini-line"></div>
+174:                    <div class="value-mini-line short"></div>
+175:                  </div>
+176:                </div>
+177:                <div class="value-item-copy">
+178:                  <div class="value-item-eyebrow" data-i18n="intro.value1Eyebrow">가장 먼저 남는 것</div>
+179:                  <h4 data-i18n="intro.value1Title">입덕의 첫 순간을 오래 남기는 공간</h4>
+180:                  <p data-i18n="intro.value1Desc">처음 마음이 움직였던 장면과 감정을 함께 남깁니다.</p>
+181:                </div>
+182:              </div>
+183:              <div class="value-item">
+184:                <div class="value-item-visual" aria-hidden="true">
+185:                  <div class="value-mini-chip">감정 흐름</div>
+186:                  <div class="value-mini-branch">
+187:                    <span class="value-mini-node one"></span>
+188:                    <span class="value-mini-node two"></span>
+189:                    <span class="value-mini-node three"></span>
+190:                  </div>
+191:                </div>
+192:                <div class="value-item-copy">
+193:                  <div class="value-item-eyebrow" data-i18n="intro.value2Eyebrow">감정의 경로</div>
+194:                  <h4 data-i18n="intro.visualizeGrowthTitle">좋아하게 된 경로를 따라가는 공간</h4>
+195:                  <p data-i18n="intro.visualizeGrowthDesc">흩어진 순간이 이어지며 감정의 흐름이 보입니다.</p>
+196:                </div>
+197:              </div>
+198:              <div class="value-item">
+199:                <div class="value-item-visual" aria-hidden="true">
+200:                  <div class="value-mini-chip">공개 감상</div>
+201:                  <div class="value-mini-stack">
+202:                    <div class="value-mini-bubble one">💬 설렘</div>
+203:                    <div class="value-mini-bubble two">✨ 공감</div>
+204:                    <div class="value-mini-bubble three">💝 장면</div>
+205:                  </div>
+206:                </div>
+207:                <div class="value-item-copy">
+208:                  <div class="value-item-eyebrow" data-i18n="intro.value3Eyebrow">공개 감상</div>
+209:                  <h4 data-i18n="intro.value2Title">다른 팬의 마음을 감상하는 공간</h4>
+210:                  <p data-i18n="intro.value2Desc">공개된 러브트리를 따라가며 비슷한 장면을 만날 수 있습니다.</p>
+211:                </div>
+212:              </div>
+213:              <div class="value-item">
+214:                <div class="value-item-visual" aria-hidden="true">
+215:                  <div class="value-mini-chip">오래 남는 장면</div>
+216:                  <div class="value-mini-card value-mini-frame">
+217:                    <div class="value-mini-star-row"><span>✦</span><span>✧</span><span>✦</span></div>
+218:                    <div class="value-mini-photo"></div>
+219:                  </div>
+220:                </div>
+221:                <div class="value-item-copy">
+222:                  <div class="value-item-eyebrow" data-i18n="intro.value4Eyebrow">오래 남는 장면</div>
+223:                  <h4 data-i18n="intro.value3Title">오래 지나도 다시 꺼내보는 공간</h4>
+224:                  <p data-i18n="intro.value3DescFixed">트리 안에서는 그때의 장면을 다시 꺼내볼 수 있습니다.</p>
+225:                </div>
+226:              </div>
+227:            </div>
+228:          </div>
+229:        </div>
+230:      </section>
+231:
+232:      <!-- CTA -->
+233:      <section class="cta-section">
+234:        <h2 data-i18n="intro.ctaTitle">첫 순간을 남길 준비가 되셨나요?</h2>
+235:        <p data-i18n="intro.ctaDesc">시작된 장면부터 당신의 러브트리를 남겨보세요.</p>
+236:        <div class="cta-buttons">
+237:          <a href="my-trees.html" class="intro-cta-link"><span class="btn-round btn-primary intro-cta-primary" data-i18n="intro.ctaPrimary">첫 순간 남기러 가기</span></a>
+238:          <a href="search.html" class="intro-cta-link"><span class="btn-round btn-outline intro-cta-secondary" data-i18n="intro.ctaSecondary">다른 트리 둘러보기</span></a>
+239:        </div>
+240:      </section>
+241:    </main>
+242:  </div>
+243:
+244:   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+245:   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+246:     <script src="../js/firebase-config.js?v=20260417-31"></script>
+247:     <script src="../js/i18n/i18n-core.js?v=20260421-1"></script>
+248:     <script src="../js/i18n/i18n-shared.js?v=20260421-4"></script>
+249:    <script src="../js/i18n/i18n-login.js?v=20260419-2"></script>
+250:    <script src="../js/i18n/i18n-intro.js?v=20260423-2"></script>
+251:    <script src="../js/i18n/i18n-search.js?v=20260421-1"></script>
+252:    <script src="../js/i18n/i18n-detail.js?v=20260421-5"></script>
+253:    <script src="../js/i18n/i18n-editor.js?v=20260421-9"></script>
+254:    <script src="../js/i18n/i18n-my-trees.js?v=20260421-5"></script>
+255:    <script src="../js/i18n/i18n-index.js?v=20260421-1"></script>
+256:     <script src="../js/i18n.js?v=20260419-2"></script>
+257:     <script src="../js/shared-header.js?v=20260421-2"></script>
+258:     <script src="../js/auth/auth-state.js?v=20260417-31"></script>
+259:     <script src="../js/auth/auth-callbacks.js?v=20260417-31"></script>
+260:     <script src="../js/auth/auth-cache.js?v=20260417-31"></script>
+261:     <script src="../js/auth/auth-ui.js?v=20260421-2"></script>
+262:     <script src="../js/auth/auth-session.js?v=20260417-31"></script>
+263:     <script src="../js/auth/auth-firebase.js?v=20260420-1"></script>
+264:     <script src="../js/auth.js?v=20260417-31"></script>
+265:   <script>
+266:     renderSharedHeader();
+267:
+268:     // i18n 초기화
+269:     document.addEventListener('DOMContentLoaded', function() {
+270:       if (window.applyI18n) window.applyI18n();
+271:
+272:       // 저장된 언어로 드롭다운 상태 동기화
+273:       var currentLang = window.getCurrentLang ? window.getCurrentLang() : 'ko';
+274:       var langBtn = document.querySelector('.lang-option[data-lang="' + (currentLang === 'ko' ? 'KR' : 'EN') + '"]');
+275:       if (langBtn) {
+276:         document.querySelectorAll('.lang-option').forEach(function(o) { o.classList.remove('active'); });
+277:         langBtn.classList.add('active');
+278:       }
+279:     });
+280:
+281:     // 언어 변경 시 재적용
+282:     if (window.onLangChange) {
+283:       window.onLangChange(function(lang) {
+284:         if (window.applyI18n) window.applyI18n();
+285:       });
+286:     }
+287:   </script>
+288:</body>
+289:</html>
