@@ -232,6 +232,38 @@
     line-height: 1;
 }
 
+/* Cached Avatar Styles (shared-header) */
+.cached-avatar-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    color: inherit;
+    cursor: pointer;
+}
+
+.cached-avatar-initial {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.cached-avatar-name {
+    font-size: 14px;
+    color: var(--on-surface);
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .nav-links a.active {
     color: var(--primary);
     font-weight: 700;
