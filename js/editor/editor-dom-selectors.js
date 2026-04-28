@@ -1,10 +1,10 @@
 /**
  * LoveBud - Editor DOM Selector Registry
- * 
+ *
  * Scaffold for centralizing editor DOM element selectors.
  * This file provides constants and helper functions for DOM element access
  * to support future editor module extraction and refactoring.
- * 
+ *
  * Runtime behavior is unchanged - this is a registry scaffold only.
  */
 
@@ -29,13 +29,13 @@
         sidebarMomentCount: 'sidebarMomentCount',
         sidebarFlowSummary: 'sidebarFlowSummary',
         sidebarSelectionHint: 'sidebarSelectionHint',
-        
+
         // Add memory section
         addMemoryEyebrow: 'addMemoryEyebrow',
         addMemoryIntro: 'addMemoryIntro',
         addMemoryBtn: 'addMemoryBtn',
         addMemoryBtnLabel: 'addMemoryBtnLabel',
-        
+
         // Canvas area
         canvasArea: 'canvasArea',
         canvasSvg: 'canvasSvg',
@@ -46,7 +46,7 @@
         canvasEmptyStartBtn: 'canvasEmptyStartBtn',
         recenterCanvasBtn: 'recenterCanvasBtn',
         recenterCanvasBtnLabel: 'recenterCanvasBtnLabel',
-        
+
         // Memory form
         addMemoryForm: 'addMemoryForm',
         addMemoryFormEyebrow: 'addMemoryFormEyebrow',
@@ -75,7 +75,7 @@
         memoryMemoInput: 'memoryMemoInput',
         cancelAddMemory: 'cancelAddMemory',
         confirmAddMemory: 'confirmAddMemory',
-        
+
         // Detail panel
         detailPanel: 'detailPanel',
         detailMoreBtn: 'detailMoreBtn',
@@ -110,7 +110,7 @@
         saveEditBtn: 'saveEditBtn',
         detailPanelFooter: 'detailPanelFooter',
         detailSubmitBtn: 'detailSubmitBtn',
-        
+
         // Save status
         saveStatusIndicator: 'saveStatusIndicator',
         saveStatusIcon: 'saveStatusIcon',
