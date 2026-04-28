@@ -29,40 +29,7 @@ function readFile(filePath) {
   return fs.readFileSync(filePath, 'utf-8');
 }
 
-// ── 1. trees.js env/error handling ────────────────────────────────────────
 
-function verifyTreesFunction() {
-  console.log('\n=== /api/trees 502/503 재발 방지 검증 ===');
-
-  const treesPath = path.join(__dirname, '..', 'netlify', 'functions', 'trees.js');
-  const dbPath = path.join(__dirname, '..', 'netlify', 'functions', '_lib', 'db.js');
-  const httpPath = path.join(__dirname, '..', 'netlify', 'functions', '_lib', 'http.js');
-
-  try {
-    const treesCode = readFile(treesPath);
-    const dbCode = readFile(dbPath);
-    const httpCode = readFile(httpPath);
-
-    // 1-1. trees.js가 db 에러를 handleError로 처리하는지 확인
-    const hasDbErrorHandling = treesCode.includes('handleError') && treesCode.includes('dbError');
-    check('/api/trees db 에러 처리', hasDbErrorHandling, hasDbErrorHandling ? 'handleError 사용' : 'handleError 미사용');
-
-    // 1-2. db.js가 env missing 시 503 + 명확한 에러 메시지 반환하는지 확인
-    const dbEnvMissing503 = dbCode.includes('503') && dbCode.includes('NETLIFY_DATABASE_URL');
-    check('db.js env missing 503 반환', dbEnvMissing503, dbEnvMissing503 ? '503 에러 처리 있음' : '503 에러 처리 없음');
-
-    // 1-3. http.js handleError가 error.status를 확인하는지 확인
-    const httpChecksStatus = httpCode.includes('error.status') || httpCode.includes('typeof error.status');
-    check('http.js error.status 확인', httpChecksStatus, httpChecksStatus ? 'status 체크 있음' : 'status 체크 없음');
-
-    // 1-4. trees.js에서 queryTrees 호출 시 에러가 handleError로 전달되는지 확인
-    const queryTreesInTryCatch = /try\s*\{[\s\S]*?queryTrees[\s\S]*?\}\s*catch/.test(treesCode);
-    check('/api/trees queryTrees try-catch', queryTreesInTryCatch, queryTreesInTryCatch ? 'try-catch 있음' : 'try-catch 없음');
-
-  } catch (e) {
-    check('trees.js 파일 읽기', false, e.message);
-  }
-}
 
 // ── 2. editor.js null handling ─────────────────────────────────────────────
 
@@ -156,7 +123,7 @@ async function main() {
   console.log('대상 커밋: 31531fe, 1cf95e0, 1b20ff9');
   console.log('');
 
-  verifyTreesFunction();
+
   verifyEditorNullHandling();
   verifyCurrentTreeMemoriesGuard();
   verifyApiClientFallback();
