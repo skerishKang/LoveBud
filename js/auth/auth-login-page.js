@@ -220,8 +220,8 @@
         alert('닉네임을 입력해 주세요.');
         return;
       }
-      if (password.length < 6) {
-        alert('비밀번호는 최소 6자 이상이어야 합니다.');
+      if (password.length < 8) {
+        alert('비밀번호는 최소 8자 이상이어야 합니다.');
         return;
       }
 
@@ -315,8 +315,8 @@
         alert('닉네임, 이메일, 비밀번호를 입력해주세요.');
         return;
       }
-      if (password.length < 6) {
-        alert('비밀번호는 최소 6자 이상이어야 합니다.');
+      if (password.length < 8) {
+        alert('비밀번호는 최소 8자 이상이어야 합니다.');
         return;
       }
 
