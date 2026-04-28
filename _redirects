@@ -1,3 +1,8 @@
+# LoveBud runtime marker:
+# Cloudflare Pages static rewrite aliases — KEEP FOR NOW.
+# This file does not define /api/* routing.
+# Do not remove during Netlify legacy cleanup without explicit CTO approval.
+
 /intro.html /pages/intro.html 200
 /login.html /pages/login.html 200
 /search.html /pages/search.html 200
