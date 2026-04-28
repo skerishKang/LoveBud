@@ -203,8 +203,8 @@
         var hiddenStyle = isHidden ? ' style="display:none !important;"' : '';
         return [
             '<div class="lang-toggle header-lang-toggle"' + hiddenAttr + hiddenStyle + '>',
-                '<button type="button" class="btn-round btn-outline lang-menu-trigger" style="text-decoration:none;display:flex;align-items:center;gap:4px;padding:6px 12px;height:36px;font-size:14px;font-weight:500;">',
-                    '<span class="material-symbols-outlined" style="font-size:18px;">language</span>',
+                '<button type="button" class="btn-round btn-outline lang-menu-trigger">',
+                    '<span class="material-symbols-outlined">language</span>',
                     '<span>언어</span>',
                 '</button>',
                 '<div class="lang-dropdown">',
@@ -278,7 +278,7 @@
 
         return [
             '<header class="nav-bar">',
-                '<a href="' + logoHref + '" class="headline" aria-label="LoveTree 홈으로 이동" style="font-size: 1.5rem; font-weight: 900; color: var(--on-surface); letter-spacing: -0.04em; cursor: pointer; text-decoration:none;">LoveTree</a>',
+                '<a href="' + logoHref + '" class="headline header-logo" aria-label="LoveTree 홈으로 이동">LoveTree</a>',
                 '<button class="mobile-nav-toggle" id="mobileNavToggle" type="button" aria-label="메뉴 열기" aria-expanded="false">',
                     '<span class="material-symbols-outlined">menu</span>',
                 '</button>',
