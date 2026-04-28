@@ -65,22 +65,7 @@ function checkJsSyntaxFile(file) {
 function verifyJSSyntax() {
   console.log('\n=== JS 구문 검사 ===');
 
-  // 백엔드 함수 (CommonJS)
-  const backendDir = path.join(ROOT, 'netlify/functions');
-  if (fs.existsSync(backendDir)) {
-    const backendFiles = [];
-    collectJsFiles(backendDir, backendFiles);
-    for (const file of backendFiles) {
-      const rel = relPath(file);
-      try {
-        checkJsSyntaxFile(file);
-        check(`syntax: ${rel}`, true);
-      } catch (e) {
-        const msg = String(e.message || e).split('\n')[0];
-        check(`syntax: ${rel}`, false, msg);
-      }
-    }
-  }
+
 
   // 프론트엔드 JS (IIFE/ES 모듈 혼합)
   const frontendDir = path.join(ROOT, 'js');
@@ -212,40 +197,22 @@ function verifyI18nKeys() {
   }
 }
 
-// ── 3. netlify.toml 라우트 ↔ 함수 파일 존재 확인 ─────────────────────────────
+// ── 3. Cloudflare Pages Functions API routes 확인 ─────────────────────────────
 
 function verifyRoutesAndFunctions() {
-  console.log('\n=== netlify.toml 라우트 ↔ 함수 파일 확인 ===');
+  console.log('\n=== Cloudflare Pages Functions API routes 확인 ===');
 
-  const tomlPath = path.join(ROOT, 'netlify.toml');
-  if (!fs.existsSync(tomlPath)) {
-    check('netlify.toml 존재', true, '파일 없음 (스킵)');
+  const apiDir = path.join(ROOT, 'functions', 'api');
+  if (!fs.existsSync(apiDir)) {
+    check('functions/api 디렉토리', false, '존재하지 않음');
     return;
   }
-  check('netlify.toml 존재', true);
+  check('functions/api 디렉토리', true);
 
-  const tomlSrc = fs.readFileSync(tomlPath, 'utf8');
-  const routeRegex = /from\s*=\s*"\/api\/[^"]*"\s*\n\s*to\s*=\s*"\/\.netlify\/functions\/([^"]+)"/g;
-  let match;
-  const routes = [];
-  while ((match = routeRegex.exec(tomlSrc)) !== null) {
-    routes.push({ fnName: match[1] });
-  }
-
-  const fnDir = path.join(ROOT, 'netlify/functions');
-  for (const route of routes) {
-    const fnFile = path.join(fnDir, route.fnName + '.js');
-    const exists = fs.existsSync(fnFile);
-    check(`route → ${route.fnName}.js`, exists, exists ? '존재' : '파일 없음');
-  }
-
-  if (fs.existsSync(fnDir)) {
-    const allFns = fs.readdirSync(fnDir).filter(f => f.endsWith('.js')).map(f => f.replace('.js', ''));
-    const routedNames = new Set(routes.map(r => r.fnName));
-    const orphanFns = allFns.filter(f => !routedNames.has(f) && !f.startsWith('_'));
-    if (orphanFns.length > 0) {
-      console.log(`  ℹ 라우트 없는 함수 (직접 호출 전용 가능): ${orphanFns.join(', ')}`);
-    }
+  const requiredFiles = ['trees.js', 'memories.js', '[[path]].js'];
+  for (const file of requiredFiles) {
+    const exists = fs.existsSync(path.join(apiDir, file));
+    check(`API file: ${file}`, exists, exists ? '존재' : '없음');
   }
 }
 
