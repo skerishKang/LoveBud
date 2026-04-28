@@ -108,3 +108,52 @@
     text-align: center;
     word-break: keep-all;
 }
+
+/* Quiet-first tree summary card polish.
+   Keep existing editor logic and element IDs intact while reducing visual action noise. */
+.editor-status-card .editor-tree-visibility-pill,
+.editor-status-card #sidebarVisibilityToggleBtn {
+    display: none !important;
+}
+
+.editor-status-card .editor-title-settings-panel {
+    display: flex !important;
+    grid-template-columns: none !important;
+    width: auto !important;
+    margin-top: 12px !important;
+    gap: 0 !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    pointer-events: none;
+}
+
+.editor-status-card #sidebarTitleEditBtn.editor-mini-setting-btn {
+    min-height: 32px !important;
+    width: auto !important;
+    padding: 0 10px !important;
+    border-radius: 999px !important;
+    background: rgba(255, 255, 255, 0.72) !important;
+    border-color: rgba(144, 73, 81, 0.10) !important;
+    color: var(--primary) !important;
+    box-shadow: none !important;
+    font-size: 11px !important;
+    font-weight: 800 !important;
+    pointer-events: auto;
+}
+
+.editor-status-card #sidebarTitleEditBtn.editor-mini-setting-btn .material-symbols-outlined {
+    font-size: 13px !important;
+    opacity: 0.76 !important;
+}
+
+.editor-status-card .editor-tree-quiet-note {
+    display: none !important;
+}
+
+@media (max-width: 480px) {
+    .editor-status-card #sidebarTitleEditBtn.editor-mini-setting-btn {
+        min-height: 30px !important;
+        padding: 0 8px !important;
+        font-size: 10px !important;
+    }
+}
