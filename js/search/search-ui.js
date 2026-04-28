@@ -61,11 +61,14 @@
             document.body.classList.remove('preview-sheet-open');
             document.body.style.top = '';
 
-            // Restore original scroll position
+            // Restore original scroll position using requestAnimationFrame for better timing
             const restoreY = savedScrollY;
             savedScrollY = 0;
             if (restoreY > 0) {
-                window.scrollTo(0, restoreY);
+                // Use requestAnimationFrame to ensure DOM updates complete before scroll
+                window.requestAnimationFrame(() => {
+                    window.scrollTo(0, restoreY);
+                });
             }
         }
 
