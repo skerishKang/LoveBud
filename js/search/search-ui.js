@@ -16,8 +16,9 @@
         const treeDataMap = new WeakMap();
         const boundContainers = new WeakSet();
 
-        // overlay element reference
+        // overlay element reference + saved scroll position for lock/restore
         let sheetOverlay = null;
+        let savedScrollY = 0;
 
         function getCurrentLocale() {
             const locale = window.i18n?.currentLang || window.getCurrentLang?.() || document.documentElement?.lang || 'ko';
@@ -29,7 +30,17 @@
         }
 
         function _showSheetOverlay() {
+            // Guard: already open — do not re-lock or re-save scrollY
             if (sheetOverlay) return;
+
+            // Save current scroll position BEFORE applying position:fixed
+            savedScrollY = window.scrollY || window.pageYOffset || 0;
+
+            // Apply scroll lock: position:fixed is set by CSS body.preview-sheet-open;
+            // we set top so the viewport stays visually in place (iOS Safari pattern)
+            document.body.style.top = '-' + savedScrollY + 'px';
+            document.body.classList.add('preview-sheet-open');
+
             sheetOverlay = document.createElement('div');
             sheetOverlay.className = 'preview-sheet-overlay';
             sheetOverlay.setAttribute('aria-hidden', 'true');
@@ -37,15 +48,25 @@
                 clearSelectedPreview();
             });
             document.body.appendChild(sheetOverlay);
-            document.body.classList.add('preview-sheet-open');
         }
 
         function _hideSheetOverlay() {
+            // Remove overlay DOM
             if (sheetOverlay) {
                 sheetOverlay.remove();
                 sheetOverlay = null;
             }
+
+            // Release scroll lock: clear class and inline top BEFORE scrollTo
             document.body.classList.remove('preview-sheet-open');
+            document.body.style.top = '';
+
+            // Restore original scroll position
+            const restoreY = savedScrollY;
+            savedScrollY = 0;
+            if (restoreY > 0) {
+                window.scrollTo(0, restoreY);
+            }
         }
 
         function setMobilePreviewOpen(isOpen, options = {}) {
@@ -60,7 +81,7 @@
             }
 
             // scrollIntoView intentionally kept but never triggered from search.js
-            // (search.js always passes scrollIntoView: false since this fix)
+            // (search.js always passes scrollIntoView: false since PR #247)
             if (isOpen && scrollIntoView) {
                 window.requestAnimationFrame(() => {
                     previewSidebar.scrollIntoView({
@@ -77,7 +98,7 @@
                 setMobilePreviewOpen(Boolean(state.selectedTreeId));
                 return;
             }
-            // Desktop: ensure overlay is cleaned up in case of resize from mobile
+            // Desktop / resize from mobile: clean up overlay + scroll lock safely
             _hideSheetOverlay();
             previewSidebar.classList.remove('is-open');
         }
@@ -124,7 +145,7 @@
             }
 
             if (refs.searchInput) {
-                refs.searchInput.placeholder = getSearchCopy('search.placeholder', '예: 첫 설렘 · 아티스트명 · 감정 태그', 'e.g., first spark, artist, emotion tag');
+                refs.searchInput.placeholder = getSearchCopy('search.placeholder', '예: 첫 설레마 · 아티스트명 · 감정 태그', 'e.g., first spark, artist, emotion tag');
             }
 
             const previewHeading = document.querySelector('.preview-panel-header h3');
@@ -392,11 +413,11 @@
 
                 // Sync initial aria-pressed state
                 card.setAttribute('aria-pressed', tree.id === state.selectedTreeId ? 'true' : 'false');
-                
+
                 // Map tree data for delegated event handler
                 treeDataMap.set(card, tree);
             });
-            
+
             // Ensure container listener is bound
             bindDelegatedCardEvents(listElement);
         }
