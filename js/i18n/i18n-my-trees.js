@@ -25,6 +25,7 @@
     'myTrees.loading': { ko: '러브트리 목록을 불러오는 중...', en: 'Loading your LoveTrees...' },
     'myTrees.error_title': { ko: '불러오기에 실패했습니다', en: 'Failed to load' },
     'myTrees.error_desc': { ko: '네트워크 연결을 확인하고 다시 시도해주세요.', en: 'Please check your network connection and try again.' },
+    'myTrees.error_action_unavailable': { ko: '일시적으로 기능을 사용할 수 없습니다.', en: 'This feature is temporarily unavailable.' },
     'myTrees.retry': { ko: '다시 시도', en: 'Retry' },
     'myTrees.offline_mode': { ko: '오프라인 모드 - 캐시된 데이터를 표시합니다', en: 'Offline mode - Showing cached data' },
     'myTrees.load_failed': { ko: '트리 목록을 불러오는데 실패했습니다', en: 'Failed to load trees' },
