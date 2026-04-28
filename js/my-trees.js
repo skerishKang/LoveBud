@@ -30,6 +30,16 @@
     }
   }
 
+  function warnMissingModule(moduleName, actionName) {
+    console.warn('[my-trees] Missing module/action:', moduleName, actionName);
+  }
+
+  function showMissingActionError(actionLabel) {
+    var i18n = window.t || function(k) { return k; };
+    var msg = i18n('myTrees.error_action_unavailable') || '일시적으로 기능을 사용할 수 없습니다.';
+    showToast(msg, 'error');
+  }
+
   function getConfirmedSessionUser() {
     try {
       if (window.getConfirmedAuthUser) {
@@ -176,35 +186,47 @@
     loadTrees();
   }
 
-  async function renameTree(treeId, currentTitle) {
-    if (myTreesActions && typeof myTreesActions.renameTree === 'function') {
-      return myTreesActions.renameTree(treeId, currentTitle, {
-        showToast: showToast,
-        reloadTrees: loadTrees,
-        i18n: window.t || function(k) { return k; }
-      });
-    }
-  }
+   async function renameTree(treeId, currentTitle) {
+     if (myTreesActions && typeof myTreesActions.renameTree === 'function') {
+       return myTreesActions.renameTree(treeId, currentTitle, {
+         showToast: showToast,
+         reloadTrees: loadTrees,
+         i18n: window.t || function(k) { return k; }
+       });
+     }
 
-  async function deleteTree(treeId, treeTitle) {
-    if (myTreesActions && typeof myTreesActions.deleteTree === 'function') {
-      return myTreesActions.deleteTree(treeId, treeTitle, {
-        showToast: showToast,
-        reloadTrees: loadTrees,
-        i18n: window.t || function(k) { return k; }
-      });
-    }
-  }
+     // Fail-safe: missing renameTree action
+     warnMissingModule('LoveBudMyTreesActions', 'renameTree');
+     showMissingActionError('renameTree');
+   }
 
-  async function toggleTreeVisibility(treeId, currentVisibility) {
-    if (myTreesActions && typeof myTreesActions.toggleTreeVisibility === 'function') {
-      return myTreesActions.toggleTreeVisibility(treeId, currentVisibility, {
-        showToast: showToast,
-        reloadTrees: loadTrees,
-        i18n: window.t || function(k) { return k; }
-      });
-    }
-  }
+   async function deleteTree(treeId, treeTitle) {
+     if (myTreesActions && typeof myTreesActions.deleteTree === 'function') {
+       return myTreesActions.deleteTree(treeId, treeTitle, {
+         showToast: showToast,
+         reloadTrees: loadTrees,
+         i18n: window.t || function(k) { return k; }
+       });
+     }
+
+     // Fail-safe: missing deleteTree action
+     warnMissingModule('LoveBudMyTreesActions', 'deleteTree');
+     showMissingActionError('deleteTree');
+   }
+
+   async function toggleTreeVisibility(treeId, currentVisibility) {
+     if (myTreesActions && typeof myTreesActions.toggleTreeVisibility === 'function') {
+       return myTreesActions.toggleTreeVisibility(treeId, currentVisibility, {
+         showToast: showToast,
+         reloadTrees: loadTrees,
+         i18n: window.t || function(k) { return k; }
+       });
+     }
+
+     // Fail-safe: missing toggleTreeVisibility action
+     warnMissingModule('LoveBudMyTreesActions', 'toggleTreeVisibility');
+     showMissingActionError('toggleTreeVisibility');
+   }
 
   function closeAllDropdowns() {
     document.querySelectorAll('.tree-card-dropdown').forEach(function(dd) {
@@ -394,30 +416,39 @@
     return 'public';
   }
 
-  async function createNewTree() {
-    if (myTreesActions && typeof myTreesActions.createNewTree === 'function') {
-      return myTreesActions.createNewTree({
-        getDefaultVisibility: getDefaultVisibility,
-        showToast: showToast,
-        cacheKey: TREES_CACHE_KEY,
-        i18n: window.t || function(k) { return k; }
-      });
-    }
-  }
+   async function createNewTree() {
+     if (myTreesActions && typeof myTreesActions.createNewTree === 'function') {
+       return myTreesActions.createNewTree({
+         getDefaultVisibility: getDefaultVisibility,
+         showToast: showToast,
+         cacheKey: TREES_CACHE_KEY,
+         i18n: window.t || function(k) { return k; }
+       });
+     }
+
+     // Fail-safe: missing createNewTree action
+     warnMissingModule('LoveBudMyTreesActions', 'createNewTree');
+     showMissingActionError('createNewTree');
+   }
 
   var TREES_CACHE_KEY = myTreesData?.TREES_CACHE_KEY || 'my_trees_list';
 
-  async function loadTrees() {
-    if (myTreesData && typeof myTreesData.loadTrees === 'function') {
-      return myTreesData.loadTrees({
-        setState: setState,
-        stateEnum: STATE,
-        renderTrees: renderTrees,
-        showToast: showToast,
-        i18n: window.t || function(k) { return k; }
-      });
-    }
-  }
+   async function loadTrees() {
+     if (myTreesData && typeof myTreesData.loadTrees === 'function') {
+       return myTreesData.loadTrees({
+         setState: setState,
+         stateEnum: STATE,
+         renderTrees: renderTrees,
+         showToast: showToast,
+         i18n: window.t || function(k) { return k; }
+       });
+     }
+
+     // Fail-safe: missing loadTrees module
+     warnMissingModule('LoveBudMyTreesData', 'loadTrees');
+     showMissingActionError('loadTrees');
+     setState(STATE.ERROR);
+   }
 
   var myTreesStarted = false;
   var myTreesBootedFromCache = false;
