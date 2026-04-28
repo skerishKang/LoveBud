@@ -102,6 +102,7 @@ PR3 button / badge / chip tone 기준 판단이 필요하면 아래를 추가로
 - [BUTTON_BADGE_CHIP_BASELINE.md](./design/BUTTON_BADGE_CHIP_BASELINE.md) - button / badge / chip tone 통일 기준
 - [PRIMARY_COLOR_TOKEN_CLEANUP_PLAN.md](./design/PRIMARY_COLOR_TOKEN_CLEANUP_PLAN.md) - `rgba(144, 73, 81, X)` 반복을 `--primary-rgb` token 기반으로 단계 정리하기 위한 계획
 - [PROTOTYPE_REFERENCE_POLICY.md](./design/PROTOTYPE_REFERENCE_POLICY.md) - prototype/reference/demo/variant 폴더 보존 정책
+- [PAGE_TRANSITION_REVEAL_COVERAGE.md](./ux/PAGE_TRANSITION_REVEAL_COVERAGE.md) - 페이지 전환 및 reveal 효과 커버리지 맵
 - [prompts/image-generation-prompts.md](./design/prompts/image-generation-prompts.md) - 이미지 생성 프롬프트 모음
 - [prompts/home-hero-slide-prompts.txt](./design/prompts/home-hero-slide-prompts.txt) - 홈 히어로 슬라이드 프롬프트
 - [stitch_image_to_website/DESIGN.md](./design/stitch_image_to_website/DESIGN.md) - Stitch image-to-website reference design note. 현재 active UI polish source of truth는 아님
