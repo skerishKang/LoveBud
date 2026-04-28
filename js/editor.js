@@ -154,7 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const resolveMemoryThumbnail = editorHelpers.resolveMemoryThumbnail || inlineMediaResolvers.resolveMemoryThumbnail;
 
-    const getYouTubeInputErrorMessage = editorHelpers.getYouTubeInputErrorMessage || ((rawUrl) => shellHelpers.getYouTubeInputErrorMessage(rawUrl, i18n)) || ((rawUrl) => {
+    const getYouTubeInputErrorMessage = editorHelpers.getYouTubeInputErrorMessage || ((rawUrl) => {
         const value = String(rawUrl || '').trim();
         if (!value) return i18n('enter_youtube') || 'YouTube 링크를 입력해 주세요.';
         const looksLikeUrl = /^(https?:\/\/|www\.)/i.test(value);
@@ -210,14 +210,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const createInlineCreateInitialMemoryFallback = dataLoaderFallbacks.createInlineCreateInitialMemoryFallback || ((options) => () => ({}));
     const createInlineNextMemoryIdFallback = dataLoaderFallbacks.createInlineNextMemoryIdFallback || ((options) => () => 'm1');
     const createInlineRefreshMemoriesFallback = dataLoaderFallbacks.createInlineRefreshMemoriesFallback || ((options) => async () => {});
-    const createInlineFormatTimeAgoFallback = shellHelpers.createInlineFormatTimeAgoFallback || (() => (date) => {
+    const createInlineFormatTimeAgoFallback = () => (date) => {
         if (!date) return '';
         const diff = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
         if (diff < 60) return '방금';
         if (diff < 3600) return `${Math.floor(diff / 60)}분 전`;
         if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`;
         return `${Math.floor(diff / 86400)}일 전`;
-    });
+    };
 
     const markEditorReady = () => document.body?.classList.remove('editor-preload');
 
@@ -280,7 +280,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setText('detailSubmitBtn', 'editor_record_submit', '내 러브트리에 기록하기');
     };
 
-    applyEditorShellCopy();
+        applyEditorShellCopy(safeI18nText, i18n);
 
     const createEditorDomRefs = () => ({
         canvas: document.getElementById('canvasArea'),
@@ -298,7 +298,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const prepareEditorShell = () => {
-        applyEditorShellCopy();
+    applyEditorShellCopy(safeI18nText, i18n);
         const backToMyTreesLink = document.getElementById('backToMyTreesLink');
         if (backToMyTreesLink) {
             backToMyTreesLink.setAttribute('href', getMyTreesHref());
