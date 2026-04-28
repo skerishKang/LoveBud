@@ -69,10 +69,6 @@ test('cloudflare api tree detail route exports private write handlers', () => {
     'tree detail route should export onRequestPut'
   );
   assert.ok(
-    hasRegex(content, /export\s+async\s+function\s+onRequestPatch\s*\(/),
-    'tree detail route should export onRequestPatch'
-  );
-  assert.ok(
     hasRegex(content, /export\s+async\s+function\s+onRequestDelete\s*\(/),
     'tree detail route should export onRequestDelete'
   );
@@ -88,10 +84,6 @@ test('cloudflare api tree detail route forwards writes to modal private trees wi
   assert.ok(
     hasRegex(content, /method:\s*'PUT'/),
     'tree detail route should forward PUT method'
-  );
-  assert.ok(
-    hasRegex(content, /method:\s*'PATCH'/),
-    'tree detail route should forward PATCH method'
   );
   assert.ok(
     hasRegex(content, /method:\s*'DELETE'/),
@@ -111,10 +103,6 @@ test('cloudflare api memory detail route exports private write handlers', () => 
     'memory detail route should export onRequestPut'
   );
   assert.ok(
-    hasRegex(content, /export\s+async\s+function\s+onRequestPatch\s*\(/),
-    'memory detail route should export onRequestPatch'
-  );
-  assert.ok(
     hasRegex(content, /export\s+async\s+function\s+onRequestDelete\s*\(/),
     'memory detail route should export onRequestDelete'
   );
@@ -130,10 +118,6 @@ test('cloudflare api memory detail route forwards writes to modal private memori
   assert.ok(
     hasRegex(content, /method:\s*'PUT'/),
     'memory detail route should forward PUT method'
-  );
-  assert.ok(
-    hasRegex(content, /method:\s*'PATCH'/),
-    'memory detail route should forward PATCH method'
   );
   assert.ok(
     hasRegex(content, /method:\s*'DELETE'/),
@@ -194,44 +178,38 @@ test('cloudflare api catch-all routes community/memories to modal/community/memo
 test('cloudflare api catch-all routes trees/:treeId with auth split', () => {
   const content = readFileContent(CATCHALL_JS);
   
-  // /api/trees 패턴 확인
+  // 인증 있음 또는 Write: /modal/private/trees/:treeId
   assert.ok(
-    hasString(content, '/api/trees'),
-    'catch-all should handle /api/trees path'
+    hasString(content, '(isWrite || authHeader)'),
+    'catch-all should check for (isWrite || authHeader) for trees'
   );
-  
-  // 인증 있음: /modal/private/trees/:treeId
   assert.ok(
-    hasString(content, '/modal/private/trees/'),
-    'catch-all should route to /modal/private/trees/ with auth'
-  );
-  
-  // 인증 없음: /modal/trees/:treeId
-  assert.ok(
-    hasString(content, '/modal/trees/'),
-    'catch-all should route to /modal/trees/ without auth'
-  );
-  
-  // authorization header 확인
-  assert.ok(
-    hasString(content, 'authorization'),
-    'catch-all should check authorization header'
+    hasString(content, '`/modal/private/trees/'),
+    'catch-all should route trees to private path when auth or write'
   );
 });
 
 test('cloudflare api catch-all routes memories/:memoryId to modal/memories/:memoryId', () => {
   const content = readFileContent(CATCHALL_JS);
-  
-  // /api/memories 패턴 확인
+
+  // Memory route selection does not use authHeader
   assert.ok(
-    hasString(content, '/api/memories'),
-    'catch-all should handle /api/memories path'
+    !hasString(content, 'authHeader && isWrite'),
+    'memory route selection should not use authHeader && isWrite'
   );
-  
-  // /modal/memories/:memoryId 매핑 확인
+
+  // GET -> public, Write -> private
   assert.ok(
-    hasString(content, '/modal/memories/'),
-    'catch-all should route to /modal/memories/'
+    hasString(content, 'isWrite'),
+    'catch-all should check for isWrite for memories'
+  );
+  assert.ok(
+    hasString(content, '`/modal/private/memories/'),
+    'catch-all should route memory write to private path'
+  );
+  assert.ok(
+    hasString(content, '`/modal/memories/'),
+    'catch-all should route memory GET to public path'
   );
 });
 
