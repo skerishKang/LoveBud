@@ -14,7 +14,7 @@
         } = refs;
         const { PreviewRenderer } = renderers;
         const treeDataMap = new WeakMap();
-        let _isDelegationBound = false;
+        const boundContainers = new WeakSet();
 
         function getCurrentLocale() {
             const locale = window.i18n?.currentLang || window.getCurrentLang?.() || document.documentElement?.lang || 'ko';
@@ -58,7 +58,6 @@
             if (!preserveOpenState && isMobilePreviewMode()) {
                 setMobilePreviewOpen(false);
             }
-            callbacks.updateUrlState?.();
         }
 
         function getSearchCopy(key, fallbackKo, fallbackEn) {
@@ -307,44 +306,42 @@
             }
         }
 
-        function bindDelegatedCardEvents() {
-            if (_isDelegationBound) return;
-            _isDelegationBound = true;
+        function bindDelegatedCardEvents(container) {
+            if (!container || boundContainers.has(container)) return;
+            boundContainers.add(container);
 
-            const containers = [resultsList, growingList].filter(Boolean);
-            containers.forEach(container => {
-                container.addEventListener('click', (event) => {
-                    const card = event.target.closest('.tree-card');
-                    if (!card) return;
+            container.addEventListener('click', (event) => {
+                if (event.defaultPrevented) return;
 
-                    // Ignore clicks on nested interactive elements (links, buttons, etc.)
-                    const interactiveChild = event.target.closest('a, button, input, textarea, [role="button"]');
-                    if (interactiveChild && interactiveChild !== card) return;
+                const card = event.target.closest('.tree-card[data-tree-id]');
+                if (!card || !container.contains(card)) return;
 
-                    const tree = treeDataMap.get(card);
-                    if (tree) {
-                        callbacks.selectTree(tree, card);
-                        callbacks.updateUrlState?.();
-                    }
-                });
+                // Ignore clicks on nested interactive elements
+                const interactiveSelector = 'a, button, input, select, textarea, [data-share-tree-link], [data-action], [role="button"]';
+                const interactiveChild = event.target.closest(interactiveSelector);
+                if (interactiveChild && interactiveChild !== card) return;
 
-                container.addEventListener('keydown', (event) => {
-                    if (event.key !== 'Enter' && event.key !== ' ') return;
+                const tree = treeDataMap.get(card);
+                if (tree) {
+                    callbacks.selectTree(tree, card);
+                }
+            });
 
-                    const card = event.target.closest('.tree-card');
-                    if (!card) return;
+            container.addEventListener('keydown', (event) => {
+                if (event.defaultPrevented || (event.key !== 'Enter' && event.key !== ' ')) return;
 
-                    // Ignore events on nested interactive elements if target is not the card itself
-                    const interactiveChild = event.target.closest('a, button, input, textarea, [role="button"]');
-                    if (interactiveChild && interactiveChild !== card) return;
+                const card = event.target.closest('.tree-card[data-tree-id]');
+                if (!card || !container.contains(card)) return;
 
-                    event.preventDefault();
-                    const tree = treeDataMap.get(card);
-                    if (tree) {
-                        callbacks.selectTree(tree, card);
-                        callbacks.updateUrlState?.();
-                    }
-                });
+                const interactiveSelector = 'a, button, input, select, textarea, [data-share-tree-link], [data-action], [role="button"]';
+                const interactiveChild = event.target.closest(interactiveSelector);
+                if (interactiveChild && interactiveChild !== card) return;
+
+                event.preventDefault();
+                const tree = treeDataMap.get(card);
+                if (tree) {
+                    callbacks.selectTree(tree, card);
+                }
             });
         }
 
@@ -367,8 +364,8 @@
                 treeDataMap.set(card, tree);
             });
             
-            // Ensure container listeners are bound
-            bindDelegatedCardEvents();
+            // Ensure container listener is bound
+            bindDelegatedCardEvents(listElement);
         }
 
         function bindShareCopyHandler() {

@@ -58,9 +58,5 @@ test('search UI module implements card accessibility and event delegation', () =
   // Verify event delegation pattern
   assert.match(uiModule, /container\.addEventListener\(['"]click['"]/);
   assert.match(uiModule, /container\.addEventListener\(['"]keydown['"]/);
-  assert.match(uiModule, /event\.target\.closest\(['"]\.tree-card['"]\)/);
-  
-  // Verify URL state sync on selection
-  assert.match(uiModule, /callbacks\.updateUrlState\?\.\(\)/);
+  assert.match(uiModule, /event\.target\.closest\(['"]\.tree-card\[data-tree-id\]['"]\)/);
 });
-
