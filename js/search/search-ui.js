@@ -41,13 +41,9 @@
             document.body.style.top = '-' + savedScrollY + 'px';
             document.body.classList.add('preview-sheet-open');
 
-            // CRITICAL: Immediately restore scroll position after DOM updates
-            // This prevents scrollY from being reset to 0 on mobile
-            requestAnimationFrame(() => {
-                if (savedScrollY > 0) {
-                    window.scrollTo(0, savedScrollY);
-                }
-            });
+            // NOTE: No scroll restoration during open phase
+            // position:fixed + top:-savedScrollY maintains visual position
+            // Scroll restoration only happens in close phase
 
             sheetOverlay = document.createElement('div');
             sheetOverlay.className = 'preview-sheet-overlay';
