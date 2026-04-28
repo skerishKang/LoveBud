@@ -41,6 +41,14 @@
             document.body.style.top = '-' + savedScrollY + 'px';
             document.body.classList.add('preview-sheet-open');
 
+            // CRITICAL: Immediately restore scroll position after DOM updates
+            // This prevents scrollY from being reset to 0 on mobile
+            requestAnimationFrame(() => {
+                if (savedScrollY > 0) {
+                    window.scrollTo(0, savedScrollY);
+                }
+            });
+
             sheetOverlay = document.createElement('div');
             sheetOverlay.className = 'preview-sheet-overlay';
             sheetOverlay.setAttribute('aria-hidden', 'true');
