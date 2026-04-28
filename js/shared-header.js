@@ -137,6 +137,32 @@
         return null;
     }
 
+    function isSettingsPath(pathname) {
+        return /(?:^|\/)settings(?:\.html)?$/.test(pathname || '');
+    }
+
+    function getCurrentReturnToTarget() {
+        try {
+            var pathname = window.location.pathname || '';
+            if (isSettingsPath(pathname)) return '';
+            var target = pathname + (window.location.search || '') + (window.location.hash || '');
+            return target || '/';
+        } catch (e) {
+            return '';
+        }
+    }
+
+    function appendSettingsReturnTo(settingsHref) {
+        var returnTo = getCurrentReturnToTarget();
+        if (!returnTo) return settingsHref;
+        try {
+            var url = new URL(settingsHref, window.location.href);
+            if (url.searchParams.get('returnTo')) return settingsHref;
+        } catch (e) {}
+        var separator = settingsHref.indexOf('?') === -1 ? '?' : '&';
+        return settingsHref + separator + 'returnTo=' + encodeURIComponent(returnTo);
+    }
+
     // 캐시된 유저 정보로부터 아바타 HTML 생성
     function buildCachedUserAvatar(cachedUser) {
         if (!cachedUser) return '';
@@ -145,9 +171,11 @@
 
         // 현재 페이지가 설정 페이지면 내 트리로 링크, 아니면 설정으로 링크
         var currentPage = getCurrentPage();
+        var myTreesHref = getContextType() === 'root' ? 'pages/my-trees.html' : './my-trees.html';
+        var settingsHref = appendSettingsReturnTo(getContextType() === 'root' ? 'pages/settings.html' : './settings.html');
         var avatarHref = currentPage === 'settings.html'
-            ? (getContextType() === 'root' ? 'pages/my-trees.html' : './my-trees.html')
-            : (getContextType() === 'root' ? 'pages/settings.html' : './settings.html');
+            ? myTreesHref
+            : settingsHref;
         var avatarLabel = currentPage === 'settings.html' ? '내 러브트리로 돌아가기' : '설정 열기';
 
         return [
@@ -351,6 +379,27 @@
         console.log('[shared-header] Rendered for:', getCurrentPage(), '| context:', getContextType());
     };
 
+    function bindSettingsReturnLinkCapture() {
+        if (window.__lovebudSettingsReturnLinkBound) return;
+        window.__lovebudSettingsReturnLinkBound = true;
+
+        document.addEventListener('click', function(e) {
+            var link = e.target.closest && e.target.closest('a[href]');
+            if (!link) return;
+            var href = link.getAttribute('href') || '';
+            try {
+                var url = new URL(href, window.location.href);
+                if (!isSettingsPath(url.pathname)) return;
+            } catch (error) {
+                return;
+            }
+            var nextHref = appendSettingsReturnTo(href);
+            if (nextHref !== href) {
+                link.setAttribute('href', nextHref);
+            }
+        }, true);
+    }
+
     function bindSharedHeaderLangRefresh() {
         if (window.__lovebudSharedHeaderLangBound) return;
         window.__lovebudSharedHeaderLangBound = true;
@@ -361,6 +410,7 @@
         });
     }
 
+    bindSettingsReturnLinkCapture();
     bindSharedHeaderLangRefresh();
 
     // DOM 준비 완료 시 자동 렌더링 (선택적)
