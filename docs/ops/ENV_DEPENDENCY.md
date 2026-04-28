@@ -107,7 +107,7 @@ Vercel은 deprecated transitional fallback / upstream under audit입니다.
 
 ### Netlify
 
-Netlify는 legacy / fallback / artifact 성격으로 남아 있습니다.
+Netlify는 **legacy artifact**입니다. 현재 active production runtime이 아니며, local 또는 CI harness에서만 참고용으로 사용됩니다. CTO 승인 없이 삭제/이동/재활성화 금지.
 
 ### DATABASE_URL / NETLIFY_DATABASE_URL / POSTGRES_URL
 
@@ -197,4 +197,4 @@ Netlify는 legacy / fallback / artifact 성격으로 남아 있습니다.
 - **Cloudflare Pages**: 공식 사용자-facing production / preview entry + same-origin API entry
 - **Modal**: active compute/runtime 우선 경로
 - **Vercel**: deprecated transitional fallback / upstream under audit
-- **Netlify**: legacy / fallback / artifact. `netlify/functions/*`는 현재 active production backend가 아님
+- **Netlify**: legacy artifact. `netlify/functions/*`는 현재 active production backend가 아니며, local/CI harness only unless explicitly reactivated by CTO.

@@ -6,7 +6,7 @@
 
 ## 상태
 
-- **Legacy/fallback/artifact**
+- **Legacy artifact; not active production fallback unless explicitly reactivated by CTO**
 - 현재 Cloudflare Pages + Modal 구조로 migration 완료
 - CTO 승인 없이 삭제/이동/재활성화 금지
 
