@@ -7,6 +7,7 @@
  */
 
 const DEFAULT_ALLOWED_ORIGINS = [
+  'https://lovebud.pages.dev',
   'https://lovebud.netlify.app',
   'https://lovebud.vercel.app',
 ];
