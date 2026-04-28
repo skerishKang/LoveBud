@@ -435,3 +435,34 @@ UI 검증 환경은 `## 3. 현재 서비스 / 인프라 기준`의 **UI 검증 �
 ## 13. 한 줄 요약
 
 LoveBud 작업은 항상 **현재 `main` 확인 → source of truth 확인 → 최소 수정 → 범위 내 검증 → 직접 수정/기존 반영 구분 보고** 순서로 진행합니다.
+
+## 14. Kilo Code 에이전트 안전 규칙
+
+다음은 Kilo Code 에이전트를 위한 공통 운영 규칙입니다. 이 규칙들은 `.kilocode/rules/00-lovebud-global.md`에도 동일하게 정의되어 있습니다.
+
+### Git Workflow
+- `main` 브랜치를 직접 수정하지 않습니다.
+- `main` 브랜치에 직접 푸시하지 않습니다.
+- `main` 브랜치를 merge하지 않습니다.
+- 한 작업은 하나의 브랜치에서 수행합니다.
+- PR은 기본적으로 draft로 생성합니다.
+
+### PR 보존
+- #7 번호 또는 prototype/reference/demo/variant 라벨이 있는 PR은 보존하며 임의로 닫거나 브랜치를 삭제하지 않습니다.
+- 임의의 PR preview URL을 추측하여 접근하지 않습니다.
+
+### 인프라 & 런타임
+- active runtime: Cloudflare Pages (프론트) + Modal (compute/back-end)
+- Netlify는 legacy artifact이며 제거 후보입니다.
+- 운영 사이트 `https://lovebud.pages.dev/`는 PR 병합 전 검증에 사용할 수 없습니다.
+
+### API 경로
+- 클라이언트 → 동일-origin `/api/*` → Cloudflare Functions `functions/api/**` → Modal → Neon
+
+### 검증
+- 최종 browser PASS는 실제 Cloudflare Preview URL 또는 할당된 test slot에서만 수행합니다.
+- Search/Browse/Editor/My Trees/Auth-gated 등 동적 데이터를 사용하는 페이지는 로컬 정적 서버만으로 최종 PASS할 수 없습니다.
+
+### 보안
+- 자격 증명, 토큰, 쿠키, 세션, Firebase/Cloudflare/Modal/Neon secret 값을 절대 기록하거나 노출하지 않습니다.
+- 필요한 secret은 이름과 위치 정책만 언급하며, 실제 값은 절대 포함하지 않습니다.
