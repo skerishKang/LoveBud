@@ -167,7 +167,8 @@ document.addEventListener('DOMContentLoaded', () => {
         return i18n('invalid_youtube') || '유효한 YouTube 링크를 입력해 주세요.';
     });
 
-    const createInlineRenderTreeLoadErrorFallback = () => ({
+    // Tree load error renderer: primary = editorPageHelpers.renderTreeLoadError, fallback = inline minimal UI
+    const createRenderTreeLoadErrorFallback = () => ({
         canvas,
         addBtn,
         errorTitle,
@@ -203,7 +204,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (addBtn) addBtn.disabled = true;
     };
 
-    const renderTreeLoadError = editorPageHelpers.renderTreeLoadError || createInlineRenderTreeLoadErrorFallback();
+    const renderTreeLoadError = editorPageHelpers.renderTreeLoadError || createRenderTreeLoadErrorFallback();
     const createInlineNormalizeMemoryFallback = dataLoaderFallbacks.createInlineNormalizeMemoryFallback || (() => (mem) => mem);
     const createInlineLoadInitialTreeFallback = dataLoaderFallbacks.createInlineLoadInitialTreeFallback || (() => async () => ({}));
     const createInlineLoadEditorMemoriesFallback = dataLoaderFallbacks.createInlineLoadEditorMemoriesFallback || (() => async () => ({}));
