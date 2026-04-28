@@ -71,14 +71,14 @@ test('data-loader fallback boundary is explicitly mounted before editor entry', 
   assertLoadedBefore(sources, 'js/editor/editor-data-loader-fallbacks.js', 'js/editor.js');
 });
 
-test('entry and resolver fallback modules remain explicit audit gaps', () => {
+test('entry fallback boundary is explicitly mounted before editor entry', () => {
   const sources = scriptSources(editorHtml());
 
-  assert.equal(
-    sourceIndex(sources, 'js/editor/editor-entry-fallbacks.js'),
-    -1,
-    'editor-entry-fallbacks.js exists but is not currently mounted by pages/editor.html'
-  );
+  assertLoadedBefore(sources, 'js/editor/editor-entry-fallbacks.js', 'js/editor.js');
+});
+
+test('resolver fallback module remains explicit audit gap', () => {
+  const sources = scriptSources(editorHtml());
 
   assert.equal(
     sourceIndex(sources, 'js/editor/editor-resolver-fallbacks.js'),
