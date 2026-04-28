@@ -81,20 +81,21 @@ function buildModalUrl(request, env) {
 
   const memoryMatch = path.match(/^\/api\/memories\/([^/]+)$/);
   if (memoryMatch) {
-    const authHeader = request.headers.get('authorization') || request.headers.get('Authorization');
-    // For memories, only use private path for write operations (PUT, DELETE).
-    // GET always uses public route as there is no private detail route in backend.
+    const memoryId = encodeURIComponent(decodeURIComponent(memoryMatch[1]));
     const isWrite = ['PUT', 'DELETE'].includes(method);
-    target.pathname = (authHeader && isWrite)
-      ? `/modal/private/memories/${encodeURIComponent(decodeURIComponent(memoryMatch[1]))}`
-      : `/modal/memories/${encodeURIComponent(decodeURIComponent(memoryMatch[1]))}`;
+    target.pathname = isWrite
+      ? `/modal/private/memories/${memoryId}`
+      : `/modal/memories/${memoryId}`;
     return target;
   }
 
   const treeMatch = path.match(/^\/api\/trees\/([^/]+)$/);
   if (treeMatch) {
     const authHeader = request.headers.get('authorization') || request.headers.get('Authorization');
-    target.pathname = authHeader
+    const isWrite = ['PUT', 'DELETE'].includes(method);
+    // GET: uses private path ONLY IF auth exists (for owner view), else public.
+    // PUT/DELETE: always uses private path (auth failure handled by backend).
+    target.pathname = (isWrite || authHeader)
       ? `/modal/private/trees/${encodeURIComponent(decodeURIComponent(treeMatch[1]))}`
       : `/modal/trees/${encodeURIComponent(decodeURIComponent(treeMatch[1]))}`;
     return target;

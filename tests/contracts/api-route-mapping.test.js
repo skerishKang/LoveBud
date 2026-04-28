@@ -178,56 +178,38 @@ test('cloudflare api catch-all routes community/memories to modal/community/memo
 test('cloudflare api catch-all routes trees/:treeId with auth split', () => {
   const content = readFileContent(CATCHALL_JS);
   
-  // /api/trees 패턴 확인
+  // 인증 있음 또는 Write: /modal/private/trees/:treeId
   assert.ok(
-    hasString(content, '/api/trees'),
-    'catch-all should handle /api/trees path'
+    hasString(content, '(isWrite || authHeader)'),
+    'catch-all should check for (isWrite || authHeader) for trees'
   );
-  
-  // 인증 있음: /modal/private/trees/:treeId
   assert.ok(
-    hasString(content, '/modal/private/trees/'),
-    'catch-all should route to /modal/private/trees/ with auth'
-  );
-  
-  // 인증 없음: /modal/trees/:treeId
-  assert.ok(
-    hasString(content, '/modal/trees/'),
-    'catch-all should route to /modal/trees/ without auth'
-  );
-  
-  // authorization header 확인
-  assert.ok(
-    hasString(content, 'authorization'),
-    'catch-all should check authorization header'
+    hasString(content, '`/modal/private/trees/'),
+    'catch-all should route trees to private path when auth or write'
   );
 });
 
 test('cloudflare api catch-all routes memories/:memoryId to modal/memories/:memoryId', () => {
   const content = readFileContent(CATCHALL_JS);
-  
-  // /api/memories 패턴 확인
+
+  // Memory route selection does not use authHeader
   assert.ok(
-    hasString(content, '/api/memories'),
-    'catch-all should handle /api/memories path'
+    !hasString(content, 'authHeader && isWrite'),
+    'memory route selection should not use authHeader && isWrite'
   );
-  
-  // GET /api/memories/:id (with/without auth) -> /modal/memories/:id
+
+  // GET -> public, Write -> private
   assert.ok(
-    hasString(content, '/modal/memories/'),
-    'catch-all should route memory GET to /modal/memories/'
+    hasString(content, 'isWrite'),
+    'catch-all should check for isWrite for memories'
   );
-  
-  // PUT/DELETE /api/memories/:id -> /modal/private/memories/:id
   assert.ok(
-    hasString(content, '/modal/private/memories/'),
-    'catch-all should route memory PUT/DELETE to /modal/private/memories/'
+    hasString(content, '`/modal/private/memories/'),
+    'catch-all should route memory write to private path'
   );
-  
-  // Method check for memories
   assert.ok(
-    hasString(content, "['PUT', 'DELETE'].includes(method)"),
-    'catch-all should check for PUT/DELETE method for memories'
+    hasString(content, '`/modal/memories/'),
+    'catch-all should route memory GET to public path'
   );
 });
 
