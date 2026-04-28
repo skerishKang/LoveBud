@@ -58,6 +58,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const editorDataLoader = window.LoveBudEditorDataLoader || {};
     const editorAuthHelpers = window.LoveBudEditorAuthHelpers || {};
 
+    const getHttpStatus = (error) => Number(error?.status || error?.statusCode || error?.response?.status || 0);
+
     const readConfirmedAuthCache = editorAuthHelpers.readConfirmedAuthCache || function() {
         try {
             if (localStorage.getItem('lovebud_auth_confirmed') === 'true') {
@@ -728,7 +730,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     );
                 } catch (error) {
                     console.error('[editor] Failed to toggle sidebar visibility:', error);
-                    const status = Number(error?.status || error?.statusCode || error?.response?.status || 0);
+                    const status = getHttpStatus(error);
                     const message = String(error?.message || '');
                     const isPublicationGuard = status === 409 || /공개 순간이|at least 3 public moments/i.test(message);
                     showToast(
