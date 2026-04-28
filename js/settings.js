@@ -219,6 +219,7 @@
   }
 
   var settingsInitialized = false;
+  var settingsBootedFromCache = false;
 
   function getSettingsLoginHref() {
     var redirect = 'settings.html' + (window.location.search || '');
@@ -248,36 +249,98 @@
     console.log('[settings] Initialized with browse introduction guidance:', settings);
   }
 
+  function getConfirmedSessionUser() {
+    try {
+      if (window.getConfirmedAuthUser) {
+        return window.getConfirmedAuthUser();
+      }
+      if (localStorage.getItem('lovebud_auth_confirmed') === 'true') {
+        var raw = localStorage.getItem('lovebud_auth_cache');
+        if (raw && raw !== 'null') {
+          return JSON.parse(raw);
+        }
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  function clearConfirmedSessionUser() {
+    try {
+      localStorage.removeItem('lovebud_auth_cache');
+      localStorage.removeItem('lovebud_auth_confirmed');
+      localStorage.removeItem('lovebud_auth_token');
+    } catch (e) {}
+  }
+
+  function bootSettings(user, options) {
+    if (settingsInitialized) return;
+    settingsInitialized = true;
+    settingsBootedFromCache = !!(options && options.fromCache);
+    handleSettingsAuthUser(user);
+  }
+
+  function reconcileSettingsUser(user) {
+    if (user && user.uid) {
+      if (!settingsInitialized) {
+        bootSettings(user, { fromCache: false });
+      }
+      return;
+    }
+
+    if (settingsBootedFromCache) {
+      clearConfirmedSessionUser();
+      redirectToLogin();
+      return;
+    }
+
+    if (!settingsInitialized) {
+      bootSettings(null, { fromCache: false });
+    }
+  }
+
   function handleSettingsAuthUser(user) {
     if (!user || !user.uid) {
       redirectToLogin();
       return;
     }
+    document.body.classList.remove('settings-auth-pending');
     startSettings();
   }
 
   // UI 초기화 (auth gate)
   function initSettings() {
+    var cachedUser = getConfirmedSessionUser();
+
+    if (cachedUser && cachedUser.uid && !settingsInitialized) {
+      bootSettings(cachedUser, { fromCache: true });
+    }
+
     if (
       window.LoveBudAuthBootstrap &&
       typeof window.LoveBudAuthBootstrap.whenReady === 'function'
     ) {
-      window.LoveBudAuthBootstrap.whenReady()
-        .then(handleSettingsAuthUser)
-        .catch(function() {
-          redirectToLogin();
-        });
+      try {
+        window.LoveBudAuthBootstrap.whenReady()
+          .then(reconcileSettingsUser)
+          .catch(function() {
+            reconcileSettingsUser(null);
+          });
+      } catch (e) {
+        reconcileSettingsUser(null);
+      }
       return;
     }
 
     if (typeof window.registerOnAuthReady === 'function') {
       window.registerOnAuthReady(function(user) {
-        handleSettingsAuthUser(user || null);
+        reconcileSettingsUser(user || null);
       });
       return;
     }
 
-    redirectToLogin();
+    if (!settingsInitialized) {
+      bootSettings(cachedUser || null, { fromCache: !!(cachedUser && cachedUser.uid) });
+    }
   }
 
   function redirectAfterLogout() {
