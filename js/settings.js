@@ -1,6 +1,6 @@
 /**
  * LoveBud - Settings Module
- * v20260425-1
+ * v20260428-1
  * 
  * localStorage 기반 설정 관리
  * - 설정 화면 닫기 / 로그아웃
@@ -70,7 +70,6 @@
       return;
     }
 
-    // history.back()은 최후의 수단으로만 사용
     try {
       if (window.history.length > 1 && document.referrer && !document.referrer.includes('settings.html')) {
         window.history.back();
@@ -83,7 +82,6 @@
     window.location.href = '../index.html';
   }
 
-  // 설정 불러오기
   function loadSettings() {
     try {
       var stored = localStorage.getItem(SETTINGS_KEY);
@@ -119,7 +117,6 @@
     });
   }
 
-  // i18n 텍스트 적용
   function applyI18nText() {
     var t = window.t || function(key) { return key; };
 
@@ -219,8 +216,8 @@
     }, true);
   }
 
-  var settingsInitialized = false;
-  var settingsBootedFromCache = false;
+  var settingsStarted = false;
+  var settingsRedirected = false;
 
   function getSettingsLoginHref() {
     var returnTo = '';
@@ -238,12 +235,15 @@
   }
 
   function redirectToLogin() {
+    if (settingsRedirected) return;
+    settingsRedirected = true;
     window.location.replace(getSettingsLoginHref());
   }
 
   function startSettings() {
-    if (settingsInitialized) return;
-    settingsInitialized = true;
+    if (settingsStarted) return;
+    settingsStarted = true;
+    document.body.classList.remove('settings-auth-pending');
 
     var settings = loadSettings();
 
@@ -268,111 +268,41 @@
       if (localStorage.getItem('lovebud_auth_confirmed') === 'true') {
         var raw = localStorage.getItem('lovebud_auth_cache');
         if (raw && raw !== 'null') {
-          return JSON.parse(raw);
+          var parsed = JSON.parse(raw);
+          return parsed && parsed.uid ? parsed : null;
         }
       }
     } catch (e) {}
     return null;
   }
 
-  function clearConfirmedSessionUser() {
-    try {
-      localStorage.removeItem('lovebud_auth_cache');
-      localStorage.removeItem('lovebud_auth_confirmed');
-      localStorage.removeItem('lovebud_auth_token');
-    } catch (e) {}
-  }
-
-  function bootSettings(user, options) {
-    if (settingsInitialized) return;
-    settingsInitialized = true;
-    settingsBootedFromCache = !!(options && options.fromCache);
-    handleSettingsAuthUser(user);
-  }
-
-  function reconcileSettingsUser(user) {
-    if (user && user.uid) {
-      if (!settingsInitialized) {
-        bootSettings(user, { fromCache: false });
-      }
-      return;
-    }
-
-    if (settingsBootedFromCache) {
-      clearConfirmedSessionUser();
-      redirectToLogin();
-      return;
-    }
-
-    if (!settingsInitialized) {
-      bootSettings(null, { fromCache: false });
-    }
-  }
-
-  function getConfirmedSessionUser() {
-    try {
-      if (window.getConfirmedAuthUser) {
-        return window.getConfirmedAuthUser();
-      }
-      if (localStorage.getItem('lovebud_auth_confirmed') === 'true') {
-        var raw = localStorage.getItem('lovebud_auth_cache');
-        if (raw && raw !== 'null') {
-          return JSON.parse(raw);
-        }
-      }
-    } catch (e) {}
+  function normalizeAuthUser(result) {
+    if (result && result.uid) return result;
+    if (result && result.user && result.user.uid) return result.user;
     return null;
   }
 
-  function clearConfirmedSessionUser() {
-    try {
-      localStorage.removeItem('lovebud_auth_cache');
-      localStorage.removeItem('lovebud_auth_confirmed');
-      localStorage.removeItem('lovebud_auth_token');
-    } catch (e) {}
-  }
+  function handleSettingsAuthUser(result) {
+    var user = normalizeAuthUser(result);
 
-  function bootSettings(user, options) {
-    if (settingsInitialized) return;
-    settingsInitialized = true;
-    settingsBootedFromCache = !!(options && options.fromCache);
-    handleSettingsAuthUser(user);
-  }
-
-  function reconcileSettingsUser(user) {
-    if (user && user.uid) {
-      if (!settingsInitialized) {
-        bootSettings(user, { fromCache: false });
-      }
+    if (user) {
+      startSettings();
       return;
     }
 
-    if (settingsBootedFromCache) {
-      clearConfirmedSessionUser();
+    if (!getConfirmedSessionUser()) {
       redirectToLogin();
       return;
     }
 
-    if (!settingsInitialized) {
-      bootSettings(null, { fromCache: false });
-    }
-  }
-
-  function handleSettingsAuthUser(user) {
-    if (!user || !user.uid) {
-      redirectToLogin();
-      return;
-    }
-    document.body.classList.remove('settings-auth-pending');
     startSettings();
   }
 
-  // UI 초기화 (auth gate)
   function initSettings() {
     var cachedUser = getConfirmedSessionUser();
 
-    if (cachedUser && cachedUser.uid && !settingsInitialized) {
-      bootSettings(cachedUser, { fromCache: true });
+    if (cachedUser) {
+      startSettings();
     }
 
     if (
@@ -381,26 +311,31 @@
     ) {
       try {
         window.LoveBudAuthBootstrap.whenReady()
-          .then(reconcileSettingsUser)
+          .then(handleSettingsAuthUser)
           .catch(function() {
-            reconcileSettingsUser(null);
+            if (!cachedUser) {
+              redirectToLogin();
+            }
           });
       } catch (e) {
-        reconcileSettingsUser(null);
+        if (!cachedUser) {
+          redirectToLogin();
+        }
       }
       return;
     }
 
     if (typeof window.registerOnAuthReady === 'function') {
-      window.registerOnAuthReady(function(user) {
-        reconcileSettingsUser(user || null);
-      });
+      window.registerOnAuthReady(handleSettingsAuthUser);
       return;
     }
 
-    if (!settingsInitialized) {
-      bootSettings(cachedUser || null, { fromCache: !!(cachedUser && cachedUser.uid) });
+    if (cachedUser) {
+      startSettings();
+      return;
     }
+
+    redirectToLogin();
   }
 
   function redirectAfterLogout() {
@@ -422,7 +357,6 @@
     };
   }
 
-  // 로그아웃 처리
   function handleLogout() {
     if (window.LoveBudAuthFirebase && typeof window.LoveBudAuthFirebase.signOut === 'function') {
       Promise.resolve(window.LoveBudAuthFirebase.signOut(getCanonicalLogoutOptions()))
