@@ -1,6 +1,6 @@
 /**
  * LoveBud - Settings Module
- * v20260425-1
+ * v20260428-1
  * 
  * localStorage 기반 설정 관리
  * - 설정 화면 닫기 / 로그아웃
@@ -71,7 +71,7 @@
     }
 
     try {
-      if (window.history.length > 1 && document.referrer) {
+      if (window.history.length > 1 && document.referrer && !document.referrer.includes('settings.html')) {
         window.history.back();
         return;
       }
@@ -82,7 +82,6 @@
     window.location.href = '../index.html';
   }
 
-  // 설정 불러오기
   function loadSettings() {
     try {
       var stored = localStorage.getItem(SETTINGS_KEY);
@@ -118,7 +117,6 @@
     });
   }
 
-  // i18n 텍스트 적용
   function applyI18nText() {
     var t = window.t || function(key) { return key; };
 
@@ -218,20 +216,34 @@
     }, true);
   }
 
-  var settingsInitialized = false;
+  var settingsStarted = false;
+  var settingsRedirected = false;
 
   function getSettingsLoginHref() {
-    var redirect = 'settings.html' + (window.location.search || '');
+    var returnTo = '';
+    try {
+      var params = new URLSearchParams(window.location.search || '');
+      returnTo = params.get('returnTo') || '';
+    } catch (e) {}
+    var redirect = 'settings.html';
+    if (returnTo) {
+      redirect += '?returnTo=' + encodeURIComponent(returnTo);
+    } else if (window.location.search) {
+      redirect += window.location.search;
+    }
     return 'login.html?redirect=' + encodeURIComponent(redirect);
   }
 
   function redirectToLogin() {
+    if (settingsRedirected) return;
+    settingsRedirected = true;
     window.location.replace(getSettingsLoginHref());
   }
 
   function startSettings() {
-    if (settingsInitialized) return;
-    settingsInitialized = true;
+    if (settingsStarted) return;
+    settingsStarted = true;
+    document.body.classList.remove('settings-auth-pending');
 
     var settings = loadSettings();
 
@@ -248,32 +260,78 @@
     console.log('[settings] Initialized with browse introduction guidance:', settings);
   }
 
-  function handleSettingsAuthUser(user) {
-    if (!user || !user.uid) {
+  function getConfirmedSessionUser() {
+    try {
+      if (window.getConfirmedAuthUser) {
+        return window.getConfirmedAuthUser();
+      }
+      if (localStorage.getItem('lovebud_auth_confirmed') === 'true') {
+        var raw = localStorage.getItem('lovebud_auth_cache');
+        if (raw && raw !== 'null') {
+          var parsed = JSON.parse(raw);
+          return parsed && parsed.uid ? parsed : null;
+        }
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  function normalizeAuthUser(result) {
+    if (result && result.uid) return result;
+    if (result && result.user && result.user.uid) return result.user;
+    return null;
+  }
+
+  function handleSettingsAuthUser(result) {
+    var user = normalizeAuthUser(result);
+
+    if (user) {
+      startSettings();
+      return;
+    }
+
+    if (!getConfirmedSessionUser()) {
       redirectToLogin();
       return;
     }
+
     startSettings();
   }
 
-  // UI 초기화 (auth gate)
   function initSettings() {
+    var cachedUser = getConfirmedSessionUser();
+
+    if (cachedUser) {
+      startSettings();
+    }
+
     if (
       window.LoveBudAuthBootstrap &&
       typeof window.LoveBudAuthBootstrap.whenReady === 'function'
     ) {
-      window.LoveBudAuthBootstrap.whenReady()
-        .then(handleSettingsAuthUser)
-        .catch(function() {
+      try {
+        window.LoveBudAuthBootstrap.whenReady()
+          .then(handleSettingsAuthUser)
+          .catch(function() {
+            if (!cachedUser) {
+              redirectToLogin();
+            }
+          });
+      } catch (e) {
+        if (!cachedUser) {
           redirectToLogin();
-        });
+        }
+      }
       return;
     }
 
     if (typeof window.registerOnAuthReady === 'function') {
-      window.registerOnAuthReady(function(user) {
-        handleSettingsAuthUser(user || null);
-      });
+      window.registerOnAuthReady(handleSettingsAuthUser);
+      return;
+    }
+
+    if (cachedUser) {
+      startSettings();
       return;
     }
 
@@ -299,7 +357,6 @@
     };
   }
 
-  // 로그아웃 처리
   function handleLogout() {
     if (window.LoveBudAuthFirebase && typeof window.LoveBudAuthFirebase.signOut === 'function') {
       Promise.resolve(window.LoveBudAuthFirebase.signOut(getCanonicalLogoutOptions()))
