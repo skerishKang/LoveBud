@@ -313,35 +313,33 @@
     ].join('');
 
     // Set up menu events
-    setTimeout(function() {
-      var menuBtn = document.getElementById(menuBtnId);
-      var dropdown = document.getElementById(dropdownId);
-      if (!menuBtn || !dropdown) return;
+    var menuBtn = card.querySelector('.tree-card-menu');
+    var dropdown = card.querySelector('.tree-card-dropdown');
+    if (!menuBtn || !dropdown) return;
 
-      menuBtn.addEventListener('click', function(e) {
+    menuBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      var wasShown = dropdown.classList.contains('show');
+      closeAllDropdowns();
+      if (!wasShown) dropdown.classList.add('show');
+    });
+
+    dropdown.querySelectorAll('.dropdown-item').forEach(function(item) {
+      item.addEventListener('click', function(e) {
         e.preventDefault();
         e.stopPropagation();
-        var wasShown = dropdown.classList.contains('show');
+        var action = this.getAttribute('data-action');
+        if (action === 'visibility') {
+          toggleTreeVisibility(normalizedTree.id, normalizedTree.visibility);
+        } else if (action === 'rename') {
+          renameTree(normalizedTree.id, normalizedTree.title);
+        } else if (action === 'delete') {
+          deleteTree(normalizedTree.id, normalizedTree.title);
+        }
         closeAllDropdowns();
-        if (!wasShown) dropdown.classList.add('show');
       });
-
-      dropdown.querySelectorAll('.dropdown-item').forEach(function(item) {
-        item.addEventListener('click', function(e) {
-          e.preventDefault();
-          e.stopPropagation();
-          var action = this.getAttribute('data-action');
-          if (action === 'visibility') {
-            toggleTreeVisibility(normalizedTree.id, normalizedTree.visibility);
-          } else if (action === 'rename') {
-            renameTree(normalizedTree.id, normalizedTree.title);
-          } else if (action === 'delete') {
-            deleteTree(normalizedTree.id, normalizedTree.title);
-          }
-          closeAllDropdowns();
-        });
-      });
-    }, 0);
+    });
 
     return card;
   }
