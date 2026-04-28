@@ -1,42 +1,58 @@
 /**
  * LoveBud Search Card Renderer
- * v20260422-4
+ * v20260428-1
  * 
  * Rendering layer: tree cards, empty states.
  * DOM-agnostic - returns HTML strings.
  * 
- * Dependencies: LoveBudPath (for navigation)
+ * Dependencies: LoveBudPath (for navigation), LoveBudSearchSharedUtils (for shared utilities)
  */
 
- (function() {
-     'use strict';
+(function() {
+    'use strict';
 
-     function escapeHtml(value) {
-         return String(value == null ? '' : value)
-             .replace(/&/g, '&amp;')
-             .replace(/</g, '&lt;')
-             .replace(/>/g, '&gt;')
-             .replace(/\"/g, '&quot;')
-             .replace(/'/g, '&#39;');
-     }
+    function getSharedUtils() {
+        return window.LoveBudSearchSharedUtils || null;
+    }
 
-     function sanitizeUrl(value) {
-         if (!value) return '';
-         const raw = String(value).trim();
-         if (!raw) return '';
-         try {
-             const parsed = new URL(raw, window.location.origin);
-             const protocol = parsed.protocol;
-             if (protocol === 'http:' || protocol === 'https:') {
-                 return parsed.href;
-             }
-             return '';
-         } catch (e) {
-             return '';
-         }
-     }
+    function escapeHtml(value) {
+        const utils = getSharedUtils();
+        if (utils?.escapeHtml) {
+            return utils.escapeHtml(value);
+        }
+        return String(value == null ? '' : value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/\"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function sanitizeUrl(value) {
+        const utils = getSharedUtils();
+        if (utils?.sanitizeUrl) {
+            return utils.sanitizeUrl(value);
+        }
+        if (!value) return '';
+        const raw = String(value).trim();
+        if (!raw) return '';
+        try {
+            const parsed = new URL(raw, window.location.origin);
+            const protocol = parsed.protocol;
+            if (protocol === 'http:' || protocol === 'https:') {
+                return parsed.href;
+            }
+            return '';
+        } catch (e) {
+            return '';
+        }
+    }
 
     function isSuspiciousYouTubeThumbnailImage(img) {
+        const utils = getSharedUtils();
+        if (utils?.isSuspiciousYouTubeThumbnailImage) {
+            return utils.isSuspiciousYouTubeThumbnailImage(img);
+        }
         if (!img || !img.currentSrc) return false;
         const src = String(img.currentSrc || img.src || '');
         const isYouTubeThumb = src.includes('ytimg.com/vi/') || src.includes('img.youtube.com/vi/');
@@ -65,6 +81,10 @@
     }
 
     function getBasePath() {
+        const utils = getSharedUtils();
+        if (utils?.getBasePath) {
+            return utils.getBasePath();
+        }
         if (window.LoveBudPath?.getBasePath) {
             return window.LoveBudPath.getBasePath();
         }
@@ -355,5 +375,5 @@
         }
     };
 
-     console.log('[LoveBudSearchCardRenderer] Search card renderer loaded v20260422-4');
+     console.log('[LoveBudSearchCardRenderer] Search card renderer loaded v20260428-1');
  })();
