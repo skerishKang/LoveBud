@@ -15,24 +15,24 @@
       en: 'Where what you love keeps growing'
     },
     'intro.heroTitle': {
-      ko: '<span class="title-line">사랑하는 순간을</span><span class="title-line title-accent">하나의 나무로</span><span class="title-line">남겨요</span>',
-      en: '<span class="title-line">Turn the moment</span><span class="title-line title-accent">you loved</span><span class="title-line">into one tree</span>'
+      ko: '<span class="title-line">사랑하는 순간을</span><span class="title-line title-accent">하나의 러브트리로</span><span class="title-line">남겨요</span>',
+      en: '<span class="title-line">Turn the moment</span><span class="title-line title-accent">you loved</span><span class="title-line">into one LoveTree</span>'
     },
     'intro.heroLead': {
-      ko: '사랑에 빠진 첫 순간부터 차곡차곡 쌓인 마음까지,<br class="pc-only">당신만의 감정 경로를 하나의 나무로 피워내세요.',
-      en: 'From the first moment you fell in love to the feelings that followed,<br class="pc-only">bloom your own emotional path into a single tree.'
+      ko: '사랑에 빠진 첫 순간부터 차곡차곡 쌓인 마음까지,<br class="pc-only">당신만의 감정 경로를 하나의 러브트리로 피워내세요.',
+      en: 'From the first moment you fell in love to the feelings that followed,<br class="pc-only">bloom your own emotional path into a LoveTree.'
     },
     'intro.heroPrimaryCta': {
       ko: '내 러브트리 만들기',
       en: 'Create My LoveTree'
     },
     'intro.ctaSecondary': {
-      ko: '공개 트리 둘러보기',
-      en: 'Browse Public Trees'
+      ko: '다른 트리 둘러보기',
+      en: 'Browse Other Trees'
     },
     'intro.heroBrowseCta': {
-      ko: '공개 트리 둘러보기',
-      en: 'Browse Public Trees'
+      ko: '다른 트리 둘러보기',
+      en: 'Browse Other Trees'
     },
     'intro.sceneFirst': {
       ko: '🌱 첫 설렘',
