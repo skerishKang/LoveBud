@@ -82,7 +82,10 @@ function buildModalUrl(request, env) {
   const memoryMatch = path.match(/^\/api\/memories\/([^/]+)$/);
   if (memoryMatch) {
     const authHeader = request.headers.get('authorization') || request.headers.get('Authorization');
-    target.pathname = authHeader
+    // For memories, only use private path for write operations (PUT, DELETE).
+    // GET always uses public route as there is no private detail route in backend.
+    const isWrite = ['PUT', 'DELETE'].includes(method);
+    target.pathname = (authHeader && isWrite)
       ? `/modal/private/memories/${encodeURIComponent(decodeURIComponent(memoryMatch[1]))}`
       : `/modal/memories/${encodeURIComponent(decodeURIComponent(memoryMatch[1]))}`;
     return target;

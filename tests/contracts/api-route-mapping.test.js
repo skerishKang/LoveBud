@@ -212,10 +212,22 @@ test('cloudflare api catch-all routes memories/:memoryId to modal/memories/:memo
     'catch-all should handle /api/memories path'
   );
   
-  // /modal/memories/:memoryId 매핑 확인
+  // GET /api/memories/:id (with/without auth) -> /modal/memories/:id
   assert.ok(
     hasString(content, '/modal/memories/'),
-    'catch-all should route to /modal/memories/'
+    'catch-all should route memory GET to /modal/memories/'
+  );
+  
+  // PUT/DELETE /api/memories/:id -> /modal/private/memories/:id
+  assert.ok(
+    hasString(content, '/modal/private/memories/'),
+    'catch-all should route memory PUT/DELETE to /modal/private/memories/'
+  );
+  
+  // Method check for memories
+  assert.ok(
+    hasString(content, "['PUT', 'DELETE'].includes(method)"),
+    'catch-all should check for PUT/DELETE method for memories'
   );
 });
 
