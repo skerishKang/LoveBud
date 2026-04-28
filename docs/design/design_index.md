@@ -27,6 +27,7 @@ design/
 | [UI_POLISH_ROADMAP.md](UI_POLISH_ROADMAP.md) | PR #49, #51, #62, #63, #66, #67, #69, #70 이후 public UI polish와 Search 후속 작업 범위 분리 기준 |
 | [BUTTON_BADGE_CHIP_BASELINE.md](BUTTON_BADGE_CHIP_BASELINE.md) | button / badge / chip tone 통일 기준 |
 | [BUTTON_BASELINE_CONSOLIDATION_PLAN.md](BUTTON_BASELINE_CONSOLIDATION_PLAN.md) | global.css button baseline 중복 정의 정리 계획 |
+| [PRIMARY_COLOR_TOKEN_CLEANUP_PLAN.md](PRIMARY_COLOR_TOKEN_CLEANUP_PLAN.md) | `rgba(144, 73, 81, X)` 반복을 `--primary-rgb` token 기반으로 단계 정리하기 위한 계획 |
 | [PROTOTYPE_REFERENCE_POLICY.md](PROTOTYPE_REFERENCE_POLICY.md) | pages/assets/css 및 top-level prototype/reference/demo/variant 폴더 보존 정책 |
 
 ### 프롬프트 (Prompts)
