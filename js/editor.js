@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    const findRootMemory = rootUtils.findRootMemory || shellHelpers.findRootMemory || function(memories) {
+    const findRootMemory = rootUtils.findRootMemory || function(memories) {
         warnRootHelperFallback();
         if (!Array.isArray(memories)) return null;
 
@@ -35,19 +35,19 @@ document.addEventListener('DOMContentLoaded', () => {
         return memories.find(m => m.id === 'root') || null;
     };
 
-    const getRootId = rootUtils.getRootId || shellHelpers.getRootId || function(memories) {
+    const getRootId = rootUtils.getRootId || function(memories) {
         warnRootHelperFallback();
         const root = findRootMemory(memories);
         return root ? root.id : 'root';
     };
 
-    const getCanonicalRootId = rootUtils.getCanonicalRootId || shellHelpers.getCanonicalRootId || function(memories) {
+    const getCanonicalRootId = rootUtils.getCanonicalRootId || function(memories) {
         warnRootHelperFallback();
         const root = findRootMemory(memories);
         return root ? root.id : 'root';
     };
 
-    const isRootMemory = rootUtils.isRootMemory || shellHelpers.isRootMemory || function(mem, rootId) {
+    const isRootMemory = rootUtils.isRootMemory || function(mem, rootId) {
         warnRootHelperFallback();
         return !!(mem && rootId && mem.id === rootId);
     };
@@ -90,7 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const buildEditorRedirectTarget = shellHelpers.buildEditorRedirectTarget || (() =>
         getEditorBasePath() + 'editor.html' + (window.location.search || ''));
 
-    const createInlineRedirectToEditorLoginFallback = shellHelpers.createInlineRedirectToEditorLoginFallback || ((options) => (delayMs = 0) => {
+    const createInlineRedirectToEditorLoginFallback = (options) => (delayMs = 0) => {
         const opts = options || {};
         const getEditorBasePath = opts.getEditorBasePath || (() => '');
         const buildEditorRedirectTarget = opts.buildEditorRedirectTarget || (() => 'editor.html');
@@ -106,7 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         window.location.href = loginUrl;
-    });
+    };
 
     const redirectToEditorLogin = editorPageHelpers.redirectToEditorLogin || createInlineRedirectToEditorLoginFallback({
         getEditorBasePath,
@@ -141,7 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const getMyTreesHref = editorPageHelpers.getMyTreesHref || (() => getEditorBasePath() + 'my-trees.html');
     const createInlineMediaResolversFallbacks = resolverFallbacks.createInlineMediaResolversFallbacks || (() => ({}));
 
-    const escapeHtml = editorHelpers.escapeHtml || shellHelpers.escapeHtml || ((value) => String(value ?? '')
+    const escapeHtml = editorHelpers.escapeHtml || ((value) => String(value ?? '')
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
