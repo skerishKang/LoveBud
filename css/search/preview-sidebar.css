@@ -178,3 +178,11 @@
     font-size: 13px;
     line-height: 1.6;
 }
+
+/* Mobile bottom sheet: body scroll lock when sheet is open */
+body.preview-sheet-open {
+    overflow: hidden;
+    /* prevent iOS bounce scroll on body */
+    position: fixed;
+    width: 100%;
+}
