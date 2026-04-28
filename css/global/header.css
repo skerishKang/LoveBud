@@ -1,1 +1,120 @@
-...patched lang-menu-trigger...
+/* Header Refinement */
+.nav-bar {
+    position: sticky;
+    top: 0;
+    width: 100%;
+    background: rgba(251, 249, 245, 0.9);
+    backdrop-filter: blur(20px);
+    z-index: 1000;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 48px;
+    border-bottom: 1px solid var(--outline-variant);
+}
+
+.nav-bar .headline {
+    font-size: 1.5rem;
+    font-weight: 900;
+    color: var(--on-surface);
+    letter-spacing: -0.04em;
+    cursor: pointer;
+    margin: 0;
+}
+
+.nav-links {
+    display: flex;
+    gap: 8px;
+}
+
+.nav-links a {
+    text-decoration: none;
+    color: var(--on-surface);
+    font-weight: 600;
+    font-size: 13px;
+    padding: 8px 16px;
+    border-radius: 20px;
+    opacity: 0.65;
+    transition: none;
+    white-space: nowrap;
+}
+
+.nav-links a:hover, .nav-links a.active {
+    opacity: 1;
+    color: var(--primary);
+    background: rgba(144, 73, 81, 0.08);
+}
+
+.nav-links a.active {
+    background: rgba(144, 73, 81, 0.12);
+    font-weight: 700;
+}
+
+/* Main nav layout (replaces inline styles) */
+.main-nav {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.main-nav-panel {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.lang-toggle {
+    position: relative;
+    display: inline-block;
+}
+
+.lang-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--on-surface-variant);
+}
+
+.lang-toggle-btn:hover {
+    background: var(--surface-container-low);
+    color: var(--primary);
+}
+
+.lang-toggle-btn .material-symbols-outlined {
+    font-size: 18px;
+}
+
+.lang-menu-trigger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 40px;
+    padding: 0 16px !important;
+    border-radius: 999px !important;
+    border: 1px solid var(--outline-variant) !important;
+    background: linear-gradient(180deg, rgba(255,255,255,0.94), rgba(248,245,240,0.92)) !important;
+    color: var(--on-surface-variant);
+    box-shadow: 0 8px 18px rgba(75, 64, 57, 0.06);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+}
+
+.lang-menu-trigger:hover {
+    transform: translateY(-1px);
+    color: var(--primary);
+    border-color: rgba(144, 73, 81, 0.2) !important;
+    background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,246,242,0.96)) !important;
+    box-shadow: 0 12px 24px rgba(75, 64, 57, 0.09);
+}
