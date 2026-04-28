@@ -77,6 +77,12 @@ test('entry fallback boundary is explicitly mounted before editor entry', () => 
   assertLoadedBefore(sources, 'js/editor/editor-entry-fallbacks.js', 'js/editor.js');
 });
 
+test('shell helpers are explicitly mounted before editor entry', () => {
+  const sources = scriptSources(editorHtml());
+
+  assertLoadedBefore(sources, 'js/editor/editor-shell-helpers.js', 'js/editor.js');
+});
+
 test('resolver fallback module remains explicit audit gap', () => {
   const sources = scriptSources(editorHtml());
 

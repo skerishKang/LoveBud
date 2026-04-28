@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     const dataLoaderFallbacks = window.LoveBudEditorDataLoaderFallbacks || {};
     const resolverFallbacks = window.LoveBudEditorResolverFallbacks || {};
+    const shellHelpers = window.LoveBudEditorShellHelpers || {};
 
     let rootHelperWarningShown = false;
     const rootUtils = window.LoveBudEditorUtils || {};
@@ -60,27 +61,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const getHttpStatus = (error) => Number(error?.status || error?.statusCode || error?.response?.status || 0);
 
-    const readConfirmedAuthCache = editorAuthHelpers.readConfirmedAuthCache || function() {
-        try {
-            if (localStorage.getItem('lovebud_auth_confirmed') === 'true') {
-                var raw = localStorage.getItem('lovebud_auth_cache');
-                if (raw && raw !== 'null') {
-                    return JSON.parse(raw);
-                }
-            }
-        } catch (e) {}
-        return null;
-    };
 
-    const createInlineShowToastFallback = () => (message, type = 'info') => {
+
+    const createInlineShowToastFallback = shellHelpers.createInlineShowToastFallback || function() {
         if (window.LoveBudUI?.showToast) {
-            window.LoveBudUI.showToast(message, type, 3000);
+            return (message, type = 'info') => window.LoveBudUI.showToast(message, type, 3000);
         } else {
-            if (!window.__editorToastWarningShown) {
-                console.warn('[editor] LoveBudUI not loaded, toast degraded to console');
-                window.__editorToastWarningShown = true;
-            }
-            console.log(`[Toast ${type}] ${message}`);
+            return (message, type = 'info') => {
+                if (!window.__editorToastWarningShown) {
+                    console.warn('[editor] LoveBudUI not loaded, toast degraded to console');
+                    window.__editorToastWarningShown = true;
+                }
+                console.log(`[Toast ${type}] ${message}`);
+            };
         }
     };
 
@@ -88,13 +81,13 @@ document.addEventListener('DOMContentLoaded', () => {
         ? editorHelpers.createToast({ warningKey: '__editorToastWarningShown' })
         : createInlineShowToastFallback();
 
-    const getI18n = editorHelpers.getI18n || (() => window.t || ((k) => k));
+    const getI18n = shellHelpers.getI18n || (() => window.t || ((k) => k));
     const i18n = getI18n();
 
-    const getEditorBasePath = editorPageHelpers.getEditorBasePath || (() =>
+    const getEditorBasePath = shellHelpers.getEditorBasePath || (() =>
         window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/');
 
-    const buildEditorRedirectTarget = editorPageHelpers.buildEditorRedirectTarget || (() =>
+    const buildEditorRedirectTarget = shellHelpers.buildEditorRedirectTarget || (() =>
         getEditorBasePath() + 'editor.html' + (window.location.search || ''));
 
     const createInlineRedirectToEditorLoginFallback = (options) => (delayMs = 0) => {
@@ -152,7 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
-        .replace(/\\"/g, '&quot;')
+        .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;'));
 
     const inlineMediaResolvers = editorHelpers.safeUrl
@@ -228,7 +221,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const markEditorReady = () => document.body?.classList.remove('editor-preload');
 
-    const applyEditorShellCopy = () => {
+    const applyEditorShellCopy = shellHelpers.applyEditorShellCopy || function() {
         const setText = (id, key, fallback) => {
             const el = document.getElementById(id);
             if (!el) return;
@@ -287,7 +280,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setText('detailSubmitBtn', 'editor_record_submit', '내 러브트리에 기록하기');
     };
 
-    applyEditorShellCopy();
+    applyEditorShellCopy(safeI18nText, i18n);
 
     const createEditorDomRefs = () => ({
         canvas: document.getElementById('canvasArea'),
@@ -305,7 +298,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const prepareEditorShell = () => {
-        applyEditorShellCopy();
+        applyEditorShellCopy(safeI18nText, i18n);
         const backToMyTreesLink = document.getElementById('backToMyTreesLink');
         if (backToMyTreesLink) {
             backToMyTreesLink.setAttribute('href', getMyTreesHref());
