@@ -41,6 +41,10 @@
             document.body.style.top = '-' + savedScrollY + 'px';
             document.body.classList.add('preview-sheet-open');
 
+            // NOTE: No scroll restoration during open phase
+            // position:fixed + top:-savedScrollY maintains visual position
+            // Scroll restoration only happens in close phase
+
             sheetOverlay = document.createElement('div');
             sheetOverlay.className = 'preview-sheet-overlay';
             sheetOverlay.setAttribute('aria-hidden', 'true');
@@ -61,17 +65,19 @@
             document.body.classList.remove('preview-sheet-open');
             document.body.style.top = '';
 
-            // Restore original scroll position
+            // Restore original scroll position using requestAnimationFrame for better timing
             const restoreY = savedScrollY;
             savedScrollY = 0;
             if (restoreY > 0) {
-                window.scrollTo(0, restoreY);
+                // Use requestAnimationFrame to ensure DOM updates complete before scroll
+                window.requestAnimationFrame(() => {
+                    window.scrollTo(0, restoreY);
+                });
             }
         }
 
-        function setMobilePreviewOpen(isOpen, options = {}) {
+        function setMobilePreviewOpen(isOpen) {
             if (!previewSidebar || !isMobilePreviewMode()) return;
-            const { scrollIntoView = false } = options;
             previewSidebar.classList.toggle('is-open', Boolean(isOpen));
 
             if (isOpen) {
@@ -80,16 +86,8 @@
                 _hideSheetOverlay();
             }
 
-            // scrollIntoView intentionally kept but never triggered from search.js
-            // (search.js always passes scrollIntoView: false since PR #247)
-            if (isOpen && scrollIntoView) {
-                window.requestAnimationFrame(() => {
-                    previewSidebar.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'start'
-                    });
-                });
-            }
+            // scrollIntoView completely disabled for mobile to prevent scroll hijack
+            // Preview opens as fixed bottom sheet without scrolling page to top
         }
 
         function syncPreviewVisibility() {
