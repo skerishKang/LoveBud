@@ -449,55 +449,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (currentEditingMemory) updateDetailPanel(currentEditingMemory);
         };
 
-        const updateSelectedMemoryFields = async (updates) => {
-            if (!selectedNodeId) return false;
-            const allowedUpdates = {};
-            if (Object.prototype.hasOwnProperty.call(updates || {}, 'title')) allowedUpdates.title = updates.title;
-            if (Object.prototype.hasOwnProperty.call(updates || {}, 'memo')) allowedUpdates.memo = updates.memo;
-            if (Object.keys(allowedUpdates).length === 0) return false;
-
-            const memories = window.currentTreeMemories || [];
-            const idx = memories.findIndex(m => m.id === selectedNodeId);
-            if (idx === -1) return false;
-
-            if (window.apiClient && typeof window.apiClient.updateMemory === 'function' && !isLocalSaveMode) {
-                updateSaveStatus('saving', i18n('save_saving'));
-                try {
-                    await window.apiClient.updateMemory(selectedNodeId, allowedUpdates);
-                } catch (error) {
-                    console.error('[editor] Failed to update selected memory:', error);
-                    updateSaveStatus('failed', i18n('save_failed'));
-                    return false;
-                }
-            }
-
-            if (Object.prototype.hasOwnProperty.call(allowedUpdates, 'title')) memories[idx].title = allowedUpdates.title;
-            if (Object.prototype.hasOwnProperty.call(allowedUpdates, 'memo')) memories[idx].memo = allowedUpdates.memo;
-
-            if (window.currentTreeData && window.currentTreeData.memories) {
-                const dataIdx = window.currentTreeData.memories.findIndex(m => m.id === selectedNodeId);
-                if (dataIdx !== -1) {
-                    if (Object.prototype.hasOwnProperty.call(allowedUpdates, 'title')) window.currentTreeData.memories[dataIdx].title = allowedUpdates.title;
-                    if (Object.prototype.hasOwnProperty.call(allowedUpdates, 'memo')) window.currentTreeData.memories[dataIdx].memo = allowedUpdates.memo;
-                }
-            }
-
-            if (window.LoveBudCache) {
-                const cacheKey = 'memories_' + (treeId || 'default');
-                window.LoveBudCache.set(cacheKey, memories, 2 * 60 * 1000);
-            }
-
-            if (currentEditingMemory && currentEditingMemory.id === selectedNodeId) {
-                if (Object.prototype.hasOwnProperty.call(allowedUpdates, 'title')) currentEditingMemory.title = allowedUpdates.title;
-                if (Object.prototype.hasOwnProperty.call(allowedUpdates, 'memo')) currentEditingMemory.memo = allowedUpdates.memo;
-            }
-
-            if (typeof initCanvas === 'function') initCanvas();
-            if (typeof updateSidebarStatus === 'function') updateSidebarStatus();
-            updateSaveStatus('saved', i18n('save_saved'));
-            return true;
-        };
-
         const detailUI = window.createEditorDetailUI({
             detailPanel,
             i18n,
@@ -657,10 +608,12 @@ document.addEventListener('DOMContentLoaded', () => {
             svg,
             calcPosition,
             setDetailEmptyState,
-            rerenderCanvas: () => initCanvas()
+            rerenderCanvas: () => initCanvas(),
+            getCurrentTreeData: () => window.currentTreeData || {},
+            isLocalSaveMode: () => isLocalSaveMode
         });
 
-        const { enterEditMode, exitEditMode, saveMemoryEdit, deleteMemory } = memoryActions;
+        const { enterEditMode, exitEditMode, saveMemoryEdit, updateSelectedMemoryFields, deleteMemory } = memoryActions;
 
         const memoryForm = window.createEditorMemoryForm({
             i18n,
