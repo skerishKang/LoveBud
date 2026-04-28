@@ -466,3 +466,11 @@ LoveBud 작업은 항상 **현재 `main` 확인 → source of truth 확인 → �
 ### 보안
 - 자격 증명, 토큰, 쿠키, 세션, Firebase/Cloudflare/Modal/Neon secret 값을 절대 기록하거나 노출하지 않습니다.
 - 필요한 secret은 이름과 위치 정책만 언급하며, 실제 값은 절대 포함하지 않습니다.
+
+### Local Artifact Hygiene
+- repo 내부에 `local-backup/`, `work/`, screenshots, report JSON 파일을 만들지 않습니다.
+- 로컬 검증 산출물(screenshots, reports, backup files)은 repo 밖 `local-backup/`로 이동합니다.
+- PR 생성 전 반드시 `git status --short`와 `git diff --name-only origin/main...HEAD`를 확인합니다.
+- 예상 외 파일이 포함되어 있으면 즉시 중단하고 scope를 정리합니다.
+- git clean, git reset --hard, git stash는 명시 승인 없이 실행하지 않습니다.
+- dirty worktree 상태에서는 작업을 중단하고 clean 환경을 준비합니다.
