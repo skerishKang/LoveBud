@@ -20,6 +20,7 @@
     letter-spacing: -0.04em;
     cursor: pointer;
     margin: 0;
+    text-decoration: none;
 }
 
 .nav-links {
@@ -102,15 +103,20 @@
 .lang-menu-trigger {
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    min-height: 40px;
-    padding: 0 16px !important;
+    gap: 4px;
+    padding: 6px 12px;
+    height: 36px;
+    font-size: 14px;
+    font-weight: 500;
     border-radius: 999px !important;
     border: 1px solid var(--outline-variant) !important;
     background: linear-gradient(180deg, rgba(255,255,255,0.94), rgba(248,245,240,0.92)) !important;
     color: var(--on-surface-variant);
     box-shadow: 0 8px 18px rgba(75, 64, 57, 0.06);
     transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+    text-decoration: none;
+    min-height: auto;
+    justify-content: flex-start;
 }
 
 .lang-menu-trigger:hover {
