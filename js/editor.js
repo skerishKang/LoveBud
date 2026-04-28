@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     const dataLoaderFallbacks = window.LoveBudEditorDataLoaderFallbacks || {};
     const resolverFallbacks = window.LoveBudEditorResolverFallbacks || {};
+    const shellHelpers = window.LoveBudEditorShellHelpers || {};
 
     let rootHelperWarningShown = false;
     const rootUtils = window.LoveBudEditorUtils || {};
@@ -13,7 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    const findRootMemory = rootUtils.findRootMemory || function(memories) {
+    const findRootMemory = rootUtils.findRootMemory || shellHelpers.findRootMemory || function(memories) {
         warnRootHelperFallback();
         if (!Array.isArray(memories)) return null;
 
@@ -34,19 +35,19 @@ document.addEventListener('DOMContentLoaded', () => {
         return memories.find(m => m.id === 'root') || null;
     };
 
-    const getRootId = rootUtils.getRootId || function(memories) {
+    const getRootId = rootUtils.getRootId || shellHelpers.getRootId || function(memories) {
         warnRootHelperFallback();
         const root = findRootMemory(memories);
         return root ? root.id : 'root';
     };
 
-    const getCanonicalRootId = rootUtils.getCanonicalRootId || function(memories) {
+    const getCanonicalRootId = rootUtils.getCanonicalRootId || shellHelpers.getCanonicalRootId || function(memories) {
         warnRootHelperFallback();
         const root = findRootMemory(memories);
         return root ? root.id : 'root';
     };
 
-    const isRootMemory = rootUtils.isRootMemory || function(mem, rootId) {
+    const isRootMemory = rootUtils.isRootMemory || shellHelpers.isRootMemory || function(mem, rootId) {
         warnRootHelperFallback();
         return !!(mem && rootId && mem.id === rootId);
     };
@@ -60,27 +61,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const getHttpStatus = (error) => Number(error?.status || error?.statusCode || error?.response?.status || 0);
 
-    const readConfirmedAuthCache = editorAuthHelpers.readConfirmedAuthCache || function() {
-        try {
-            if (localStorage.getItem('lovebud_auth_confirmed') === 'true') {
-                var raw = localStorage.getItem('lovebud_auth_cache');
-                if (raw && raw !== 'null') {
-                    return JSON.parse(raw);
-                }
-            }
-        } catch (e) {}
-        return null;
-    };
 
-    const createInlineShowToastFallback = () => (message, type = 'info') => {
+
+    const createInlineShowToastFallback = shellHelpers.createInlineShowToastFallback || function() {
         if (window.LoveBudUI?.showToast) {
-            window.LoveBudUI.showToast(message, type, 3000);
+            return (message, type = 'info') => window.LoveBudUI.showToast(message, type, 3000);
         } else {
-            if (!window.__editorToastWarningShown) {
-                console.warn('[editor] LoveBudUI not loaded, toast degraded to console');
-                window.__editorToastWarningShown = true;
-            }
-            console.log(`[Toast ${type}] ${message}`);
+            return (message, type = 'info') => {
+                if (!window.__editorToastWarningShown) {
+                    console.warn('[editor] LoveBudUI not loaded, toast degraded to console');
+                    window.__editorToastWarningShown = true;
+                }
+                console.log(`[Toast ${type}] ${message}`);
+            };
         }
     };
 
@@ -88,16 +81,16 @@ document.addEventListener('DOMContentLoaded', () => {
         ? editorHelpers.createToast({ warningKey: '__editorToastWarningShown' })
         : createInlineShowToastFallback();
 
-    const getI18n = editorHelpers.getI18n || (() => window.t || ((k) => k));
+    const getI18n = shellHelpers.getI18n || (() => window.t || ((k) => k));
     const i18n = getI18n();
 
-    const getEditorBasePath = editorPageHelpers.getEditorBasePath || (() =>
+    const getEditorBasePath = shellHelpers.getEditorBasePath || (() =>
         window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/');
 
-    const buildEditorRedirectTarget = editorPageHelpers.buildEditorRedirectTarget || (() =>
+    const buildEditorRedirectTarget = shellHelpers.buildEditorRedirectTarget || (() =>
         getEditorBasePath() + 'editor.html' + (window.location.search || ''));
 
-    const createInlineRedirectToEditorLoginFallback = (options) => (delayMs = 0) => {
+    const createInlineRedirectToEditorLoginFallback = shellHelpers.createInlineRedirectToEditorLoginFallback || ((options) => (delayMs = 0) => {
         const opts = options || {};
         const getEditorBasePath = opts.getEditorBasePath || (() => '');
         const buildEditorRedirectTarget = opts.buildEditorRedirectTarget || (() => 'editor.html');
@@ -113,7 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         window.location.href = loginUrl;
-    };
+    });
 
     const redirectToEditorLogin = editorPageHelpers.redirectToEditorLogin || createInlineRedirectToEditorLoginFallback({
         getEditorBasePath,
@@ -148,11 +141,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const getMyTreesHref = editorPageHelpers.getMyTreesHref || (() => getEditorBasePath() + 'my-trees.html');
     const createInlineMediaResolversFallbacks = resolverFallbacks.createInlineMediaResolversFallbacks || (() => ({}));
 
-    const escapeHtml = editorHelpers.escapeHtml || ((value) => String(value ?? '')
+    const escapeHtml = editorHelpers.escapeHtml || shellHelpers.escapeHtml || ((value) => String(value ?? '')
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
-        .replace(/\\"/g, '&quot;')
+        .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;'));
 
     const inlineMediaResolvers = editorHelpers.safeUrl
@@ -161,7 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const resolveMemoryThumbnail = editorHelpers.resolveMemoryThumbnail || inlineMediaResolvers.resolveMemoryThumbnail;
 
-    const getYouTubeInputErrorMessage = editorHelpers.getYouTubeInputErrorMessage || ((rawUrl) => {
+    const getYouTubeInputErrorMessage = editorHelpers.getYouTubeInputErrorMessage || ((rawUrl) => shellHelpers.getYouTubeInputErrorMessage(rawUrl, i18n)) || ((rawUrl) => {
         const value = String(rawUrl || '').trim();
         if (!value) return i18n('enter_youtube') || 'YouTube 링크를 입력해 주세요.';
         const looksLikeUrl = /^(https?:\/\/|www\.)/i.test(value);
@@ -217,18 +210,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const createInlineCreateInitialMemoryFallback = dataLoaderFallbacks.createInlineCreateInitialMemoryFallback || ((options) => () => ({}));
     const createInlineNextMemoryIdFallback = dataLoaderFallbacks.createInlineNextMemoryIdFallback || ((options) => () => 'm1');
     const createInlineRefreshMemoriesFallback = dataLoaderFallbacks.createInlineRefreshMemoriesFallback || ((options) => async () => {});
-    const createInlineFormatTimeAgoFallback = () => (date) => {
+    const createInlineFormatTimeAgoFallback = shellHelpers.createInlineFormatTimeAgoFallback || (() => (date) => {
         if (!date) return '';
         const diff = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
         if (diff < 60) return '방금';
         if (diff < 3600) return `${Math.floor(diff / 60)}분 전`;
         if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`;
         return `${Math.floor(diff / 86400)}일 전`;
-    };
+    });
 
     const markEditorReady = () => document.body?.classList.remove('editor-preload');
 
-    const applyEditorShellCopy = () => {
+    const applyEditorShellCopy = shellHelpers.applyEditorShellCopy || function() {
         const setText = (id, key, fallback) => {
             const el = document.getElementById(id);
             if (!el) return;

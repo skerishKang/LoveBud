@@ -2,44 +2,18 @@
 // Provides fallbacks and utilities for editor initialization without affecting runtime behavior
 
 window.LoveBudEditorShellHelpers = {
-    // Root memory utilities
-    findRootMemory: function(memories) {
-        if (!Array.isArray(memories)) return null;
-
-        const parentNullNodes = memories.filter(m => m.parentId === null || m.parentId === undefined);
-        if (parentNullNodes.length === 1) {
-            return parentNullNodes[0];
-        }
-        if (parentNullNodes.length > 1) {
-            const oldest = parentNullNodes.sort((a, b) => {
-                const aTime = a.createdAt || a.timestamp || '9999';
-                const bTime = b.createdAt || b.timestamp || '9999';
-                return new Date(aTime) - new Date(bTime);
-            })[0];
-            console.log('[editor] Multiple parentId=null nodes found, using oldest as root:', oldest.id);
-            return oldest;
-        }
-
-        return memories.find(m => m.id === 'root') || null;
+    // i18n utility
+    getI18n: function() {
+        return window.t || ((k) => k);
     },
 
-    getRootId: function(memories) {
-        const root = this.findRootMemory(memories);
-        return root ? root.id : 'root';
+    // Editor base path utilities
+    getEditorBasePath: function() {
+        return window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
     },
 
-    getCanonicalRootId: function(memories) {
-        const root = this.findRootMemory(memories);
-        return root ? root.id : 'root';
-    },
-
-    isRootMemory: function(mem, rootId) {
-        return !!(mem && rootId && mem.id === rootId);
-    },
-
-    // HTTP status extractor
-    getHttpStatus: function(error) {
-        return Number(error?.status || error?.statusCode || error?.response?.status || 0);
+    buildEditorRedirectTarget: function() {
+        return this.getEditorBasePath() + 'editor.html' + (window.location.search || '');
     },
 
     // Toast fallback
@@ -54,76 +28,6 @@ window.LoveBudEditorShellHelpers = {
                 }
                 console.log(`[Toast ${type}] ${message}`);
             }
-        };
-    },
-
-    // Editor base path utilities
-    getEditorBasePath: function() {
-        return window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
-    },
-
-    buildEditorRedirectTarget: function() {
-        return this.getEditorBasePath() + 'editor.html' + (window.location.search || '');
-    },
-
-    // Login redirect fallback
-    createInlineRedirectToEditorLoginFallback: function(options) {
-        const opts = options || {};
-        const getEditorBasePath = opts.getEditorBasePath || (() => '');
-        const buildEditorRedirectTarget = opts.buildEditorRedirectTarget || (() => 'editor.html');
-
-        return (delayMs = 0) => {
-            const loginUrl = getEditorBasePath() + 'login.html?redirect=' + encodeURIComponent(buildEditorRedirectTarget());
-
-            if (delayMs > 0) {
-                setTimeout(() => {
-                    window.location.href = loginUrl;
-                }, delayMs);
-                return;
-            }
-
-            window.location.href = loginUrl;
-        };
-    },
-
-    // i18n utility
-    getI18n: function() {
-        return window.t || ((k) => k);
-    },
-
-    // HTML escaping
-    escapeHtml: function(value) {
-        return String(value ?? '')
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-    },
-
-    // YouTube validation
-    getYouTubeInputErrorMessage: function(rawUrl, i18n) {
-        const value = String(rawUrl || '').trim();
-        if (!value) return i18n('enter_youtube') || 'YouTube 링크를 입력해 주세요.';
-        const looksLikeUrl = /^(https?:\/\/|www\.)/i.test(value);
-        const hasYouTubeHint = /(youtube\.com|youtu\.be|youtube\.com\/shorts\/)/i.test(value);
-        const idLikeMatch = value.match(/(?:v=|\/|youtu\.be\/|shorts\/)([0-9A-Za-z_-]+)/i);
-        const candidateId = idLikeMatch ? idLikeMatch[1] : '';
-        if (!looksLikeUrl) return i18n('invalid_youtube_format') || '전체 YouTube 링크를 붙여 넣어 주세요.';
-        if (!hasYouTubeHint) return i18n('invalid_youtube_unsupported') || 'YouTube 링크만 지원합니다. youtube.com 또는 youtu.be 링크를 사용해 주세요.';
-        if (candidateId && candidateId.length !== 11) return i18n('invalid_youtube_id_length') || '링크가 중간에 잘린 것 같아요. 전체 YouTube 링크를 다시 복사해 주세요.';
-        return i18n('invalid_youtube') || '유효한 YouTube 링크를 입력해 주세요.';
-    },
-
-    // Time formatting fallback
-    createInlineFormatTimeAgoFallback: function() {
-        return (date) => {
-            if (!date) return '';
-            const diff = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
-            if (diff < 60) return '방금';
-            if (diff < 3600) return `${Math.floor(diff / 60)}분 전`;
-            if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`;
-            return `${Math.floor(diff / 86400)}일 전`;
         };
     },
 
