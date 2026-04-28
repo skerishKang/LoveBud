@@ -80,7 +80,7 @@
     content: "";
     width: 28px;
     height: 1px;
-    background: rgba(144, 73, 81, 0.42);
+    background: var(--eyebrow-line-color);
 }
 
 .home-v3-title {
