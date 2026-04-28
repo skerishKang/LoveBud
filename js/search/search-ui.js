@@ -145,7 +145,7 @@
             }
 
             if (refs.searchInput) {
-                refs.searchInput.placeholder = getSearchCopy('search.placeholder', '예: 첫 설레마 · 아티스트명 · 감정 태그', 'e.g., first spark, artist, emotion tag');
+                refs.searchInput.placeholder = getSearchCopy('search.placeholder', '예: 첫 설렘 · 아티스트명 · 감정 태그', 'e.g., first spark, artist, emotion tag');
             }
 
             const previewHeading = document.querySelector('.preview-panel-header h3');
