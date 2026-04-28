@@ -324,11 +324,11 @@ body .search-panel-header p {
     --control-secondary-border: var(--outline-variant);
     --control-chip-bg: rgba(255, 255, 255, 0.76);
     --control-chip-text: var(--on-surface-variant);
-    --control-chip-border: rgba(144, 73, 81, 0.08);
-    --control-chip-active-bg: rgba(144, 73, 81, 0.12);
+    --control-chip-border: rgba(var(--primary-rgb), 0.08);
+    --control-chip-active-bg: rgba(var(--primary-rgb), 0.12);
     --control-chip-active-text: var(--primary);
-    --control-chip-active-border: rgba(144, 73, 81, 0.16);
-    --control-focus-ring: rgba(144, 73, 81, 0.42);
+    --control-chip-active-border: rgba(var(--primary-rgb), 0.16);
+    --control-focus-ring: rgba(var(--primary-rgb), 0.42);
 }
 
 /* Primary CTA unification */

@@ -3,6 +3,7 @@
 :root {
     /* Premium Modern Palette - Warm Scrapbook Tone */
     --primary: #904951;           /* 뮤트 로즈 - 메인 브랜드 */
+    --primary-rgb: 144, 73, 81;
     --primary-vibrant: #b85c66;   /* 채도 낮춘 로즈 - hover accent (원색 금지) */
     --primary-soft: #d4a5a9;      /* 소프트 로즈 - 감정 태그용 */
     --on-primary: #ffffff;
