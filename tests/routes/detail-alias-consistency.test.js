@@ -9,15 +9,9 @@ function read(file) {
   return fs.readFileSync(path.join(ROOT, file), 'utf8');
 }
 
-test('detail route alias exists in netlify.toml', (t) => {
-  const tomlPath = path.join(ROOT, 'netlify.toml');
-  if (!fs.existsSync(tomlPath)) {
-    t.skip('netlify.toml not found');
-    return;
-  }
-  const toml = read('netlify.toml');
-  assert.match(toml, /from\s*=\s*"\/detail\.html"/);
-  assert.match(toml, /to\s*=\s*"\/pages\/detail\.html"/);
+test('detail route target page exists', () => {
+  const detailPath = path.join(ROOT, 'pages', 'detail.html');
+  assert.ok(fs.existsSync(detailPath), 'pages/detail.html should exist');
 });
 
 test('search page navigation still targets detail.html alias path', () => {

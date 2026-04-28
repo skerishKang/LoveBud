@@ -9,25 +9,20 @@ function read(relPath) {
   return fs.readFileSync(path.join(ROOT, relPath), "utf8");
 }
 
-test("netlify.toml keeps API redirects and does not use global SPA fallback", (t) => {
-  const tomlPath = path.join(ROOT, "netlify.toml");
-  if (!fs.existsSync(tomlPath)) {
-    t.skip("netlify.toml not found, skipping");
-    return;
+test("Cloudflare Pages Functions API routes exist", (t) => {
+  const apiDir = path.join(ROOT, "functions", "api");
+  assert.ok(fs.existsSync(apiDir), "functions/api directory should exist");
+
+  const requiredFiles = [
+    "trees.js",
+    "memories.js",
+    "[[path]].js",
+  ];
+
+  for (const file of requiredFiles) {
+    const filePath = path.join(apiDir, file);
+    assert.ok(fs.existsSync(filePath), `Missing API route file: ${file}`);
   }
-  const netlifyToml = read("netlify.toml");
-
-  assert.notEqual(
-    netlifyToml.indexOf('from = "/api/trees"'),
-    -1,
-    "API redirect missing"
-  );
-
-  assert.equal(
-    netlifyToml.indexOf('from = "/*"'),
-    -1,
-    "Global SPA fallback should not exist in static multipage mode"
-  );
 });
 
 test("package.json has baseline stability scripts", () => {
