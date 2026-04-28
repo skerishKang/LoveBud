@@ -28,3 +28,11 @@ These rules apply to all agents working on the LoveBud project, especially code-
 ## Security
 - Never log, record, or expose credentials, tokens, cookies, sessions, or secrets (Firebase, Cloudflare, Modal, Neon, etc.).
 - Only reference secret names/locations; never include values.
+
+## Local Artifact Hygiene
+- Do not create `local-backup/`, `work/`, screenshots, or report JSON files inside the repo.
+- Move local verification artifacts (screenshots, reports, backup files) outside the repo to `local-backup/`.
+- Before creating a PR, always check `git status --short` and `git diff --name-only origin/main...HEAD`.
+- If unexpected files are included, stop immediately and clean up the scope.
+- Do not run git clean, git reset --hard, or git stash without explicit approval.
+- Stop work in a dirty worktree and prepare a clean environment.
