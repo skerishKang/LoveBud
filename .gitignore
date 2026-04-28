@@ -44,7 +44,6 @@ coverage/
 # Local agent docs / notes (ignored from public repo)
 AGENT.md
 LOCAL_AGENT.md
-AGENTS.md
 
 # App pages and project reports are real repo assets and must stay trackable.
 # Do not ignore `pages/` or `docs/reports/`.
@@ -121,3 +120,15 @@ firebase-debug*.log
 # Git Sync Conflicts & Backups
 .git (1)/
 .git-backup-*/
+
+# Local verification artifacts and work folders
+local-backup/
+work/
+ops/inbox/
+ops/reports/
+ops/screenshots/
+ops/slots/
+
+# Root-level screenshots (desktop/mobile verification)
+*.png
+!*.svg
