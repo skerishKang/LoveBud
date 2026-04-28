@@ -13,8 +13,27 @@
     defaultVisibility: 'private'
   };
 
+  function isSettingsPath(pathname) {
+    return /(?:^|\/)settings(?:\.html)?$/.test(pathname || '');
+  }
+
+  function normalizeReturnTarget(value) {
+    var url = new URL(value || '/', window.location.origin);
+    return url.pathname + url.search + url.hash;
+  }
+
   function isSafeReturnTarget(value) {
-    return /^\.?\/?[a-zA-Z0-9_\-/]+\.html(?:\?.*)?$/.test(value || '');
+    if (!value || typeof value !== 'string') return false;
+    if (/^\s*(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(value)) return false;
+
+    try {
+      var url = new URL(value, window.location.origin);
+      var sameOrigin = url.origin === window.location.origin;
+      if (!sameOrigin || isSettingsPath(url.pathname)) return false;
+      return url.pathname === '/' || /\/[a-zA-Z0-9_-]+\.html$/.test(url.pathname);
+    } catch (e) {
+      return false;
+    }
   }
 
   function getReturnToHref() {
@@ -22,7 +41,7 @@
       var params = new URLSearchParams(window.location.search || '');
       var returnTo = params.get('returnTo');
       if (returnTo && isSafeReturnTarget(returnTo)) {
-        return returnTo;
+        return normalizeReturnTarget(returnTo);
       }
     } catch (e) {
       console.warn('[settings] Failed to parse returnTo:', e);
@@ -31,10 +50,9 @@
     try {
       if (document.referrer) {
         var refUrl = new URL(document.referrer, window.location.origin);
-        var sameOrigin = refUrl.origin === window.location.origin;
-        var isSettingsRef = /\/settings\.html(?:$|\?)/.test(refUrl.pathname);
-        if (sameOrigin && !isSettingsRef) {
-          return refUrl.pathname + refUrl.search + refUrl.hash;
+        var refTarget = refUrl.pathname + refUrl.search + refUrl.hash;
+        if (isSafeReturnTarget(refTarget)) {
+          return refTarget;
         }
       }
     } catch (e) {
@@ -47,6 +65,11 @@
   function closeSettings() {
     var fallbackHref = getReturnToHref();
 
+    if (fallbackHref) {
+      window.location.href = fallbackHref;
+      return;
+    }
+
     try {
       if (window.history.length > 1 && document.referrer) {
         window.history.back();
@@ -56,7 +79,7 @@
       console.warn('[settings] history.back failed:', e);
     }
 
-    window.location.href = fallbackHref;
+    window.location.href = '../index.html';
   }
 
   // 설정 불러오기
