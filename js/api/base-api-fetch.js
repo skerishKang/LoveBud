@@ -1,5 +1,6 @@
 (function () {
-  const AUTH_TOKEN_KEY = 'lovebud_auth_token';
+  // auth-state.js의 AUTH_TOKEN_KEY 상수를 재사용, fallback으로 기존 문자열 유지
+  const AUTH_TOKEN_KEY = (window.LoveBudAuthState && window.LoveBudAuthState.AUTH_TOKEN_KEY) || 'lovebud_auth_token';
 
   function getCachedTokenRecord() {
     try {
