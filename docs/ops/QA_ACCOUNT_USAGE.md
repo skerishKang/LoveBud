@@ -186,7 +186,7 @@ QA 계정: Internal QA User
 
 2. **Fixed Test Slot** (fallback)
    - Cloudflare Preview URL이 없거나 확인 불가능한 경우에만 사용
-   - test1~test5 중 하나의 slot을 배정받아 사용
+    - test1~test10 중 하나의 slot을 배정받아 사용
 
 ### 검증 범위별 허용 환경
 
@@ -221,6 +221,11 @@ QA 계정: Internal QA User
 | test3 | `https://test3.lovebud.pages.dev/` |
 | test4 | `https://test4.lovebud.pages.dev/` |
 | test5 | `https://test5.lovebud.pages.dev/` |
+| test6 | `https://test6.lovebud.pages.dev/` |
+| test7 | `https://test7.lovebud.pages.dev/` |
+| test8 | `https://test8.lovebud.pages.dev/` |
+| test9 | `https://test9.lovebud.pages.dev/` |
+| test10 | `https://test10.lovebud.pages.dev/` |
 
 ### 사용 흐름
 
