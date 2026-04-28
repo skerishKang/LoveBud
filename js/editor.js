@@ -280,7 +280,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setText('detailSubmitBtn', 'editor_record_submit', '내 러브트리에 기록하기');
     };
 
-        applyEditorShellCopy(safeI18nText, i18n);
+    applyEditorShellCopy(safeI18nText, i18n);
 
     const createEditorDomRefs = () => ({
         canvas: document.getElementById('canvasArea'),
@@ -298,7 +298,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const prepareEditorShell = () => {
-    applyEditorShellCopy(safeI18nText, i18n);
+        applyEditorShellCopy(safeI18nText, i18n);
         const backToMyTreesLink = document.getElementById('backToMyTreesLink');
         if (backToMyTreesLink) {
             backToMyTreesLink.setAttribute('href', getMyTreesHref());
