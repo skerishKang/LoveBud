@@ -138,6 +138,22 @@
     box-shadow: 0 6px 14px rgba(75,64,57,0.05);
 }
 
+.editor-current-moment-title .memory-edit-button {
+    display: none !important;
+}
+
+.editor-edit-actions-row .editor-edit-danger-action {
+    margin-right: auto;
+    color: #a05a63;
+    border-color: rgba(158,81,88,0.18);
+    background: rgba(255,253,249,0.72);
+    box-shadow: none;
+}
+
+.editor-edit-actions-row .editor-edit-danger-action:hover {
+    background: rgba(158,81,88,0.08);
+}
+
 .editor-memory-delete-btn {
     color: #a87b80;
     border-color: rgba(158,81,88,0.08);
