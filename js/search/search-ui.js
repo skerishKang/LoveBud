@@ -69,9 +69,8 @@
             }
         }
 
-        function setMobilePreviewOpen(isOpen, options = {}) {
+        function setMobilePreviewOpen(isOpen) {
             if (!previewSidebar || !isMobilePreviewMode()) return;
-            const { scrollIntoView = false } = options;
             previewSidebar.classList.toggle('is-open', Boolean(isOpen));
 
             if (isOpen) {
@@ -80,16 +79,8 @@
                 _hideSheetOverlay();
             }
 
-            // scrollIntoView intentionally kept but never triggered from search.js
-            // (search.js always passes scrollIntoView: false since PR #247)
-            if (isOpen && scrollIntoView) {
-                window.requestAnimationFrame(() => {
-                    previewSidebar.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'start'
-                    });
-                });
-            }
+            // scrollIntoView completely disabled for mobile to prevent scroll hijack
+            // Preview opens as fixed bottom sheet without scrolling page to top
         }
 
         function syncPreviewVisibility() {
