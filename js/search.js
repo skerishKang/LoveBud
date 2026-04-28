@@ -127,8 +127,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         ui.markActiveCard(activeCard);
 
         if (ui.isMobilePreviewMode()) {
-            // scrollIntoView: false — 목록 scrollY를 유지하고 bottom sheet만 열림
-            ui.setMobilePreviewOpen(true, { scrollIntoView: false });
+            // Mobile preview opens as fixed bottom sheet without scroll hijack
+            ui.setMobilePreviewOpen(true);
         }
 
         if (Array.isArray(tree.memories) && tree.memories.length > 0) {
