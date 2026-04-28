@@ -81,7 +81,10 @@ function buildModalUrl(request, env) {
 
   const memoryMatch = path.match(/^\/api\/memories\/([^/]+)$/);
   if (memoryMatch) {
-    target.pathname = `/modal/memories/${encodeURIComponent(decodeURIComponent(memoryMatch[1]))}`;
+    const authHeader = request.headers.get('authorization') || request.headers.get('Authorization');
+    target.pathname = authHeader
+      ? `/modal/private/memories/${encodeURIComponent(decodeURIComponent(memoryMatch[1]))}`
+      : `/modal/memories/${encodeURIComponent(decodeURIComponent(memoryMatch[1]))}`;
     return target;
   }
 
@@ -114,12 +117,24 @@ function isModalOwnedGetRoute(request, env) {
 }
 
 function isModalOwnedWriteRoute(request, env) {
-  if (request.method.toUpperCase() !== 'POST') return false;
+  const method = request.method.toUpperCase();
+  if (!['POST', 'PUT', 'DELETE'].includes(method)) return false;
+
   const url = new URL(request.url);
   const path = url.pathname.replace(/\/+$/, '');
-  if (!['/api/trees', '/api/memories'].includes(path)) return false;
-  const modalUrl = buildModalUrl(request, env || {});
-  return modalUrl !== null;
+
+  // POST is for collection paths
+  if (method === 'POST' && ['/api/trees', '/api/memories'].includes(path)) {
+    return buildModalUrl(request, env || {}) !== null;
+  }
+
+  // PUT/DELETE are for detail paths
+  const isDetail = path.match(/^\/api\/(trees|memories)\/[^/]+$/);
+  if (['PUT', 'DELETE'].includes(method) && isDetail) {
+    return buildModalUrl(request, env || {}) !== null;
+  }
+
+  return false;
 }
 
 function buildNotFoundResponse() {
@@ -198,7 +213,8 @@ async function tryModalRead(request, env) {
 }
 
 async function tryModalWrite(request, env) {
-  if (request.method.toUpperCase() !== 'POST') return null;
+  const method = request.method.toUpperCase();
+  if (!['POST', 'PUT', 'DELETE'].includes(method)) return null;
   if (!isModalOwnedWriteRoute(request, env || {})) return null;
 
   const modalUrl = buildModalUrl(request, env || {});
@@ -213,9 +229,9 @@ async function tryModalWrite(request, env) {
   };
 
   const response = await fetch(modalUrl.toString(), {
-    method: 'POST',
+    method,
     headers,
-    body: request.body
+    body: method !== 'DELETE' ? request.body : null
   });
 
   return withUpstreamHeader(response, 'modal');
@@ -275,7 +291,9 @@ export async function onRequest(context) {
   if (modalUrl) {
     const url = new URL(request.url);
     const path = url.pathname.replace(/\/+$/, '');
-    const allow = ['/api/trees', '/api/memories'].includes(path) ? 'GET, POST' : 'GET';
+    const isCollection = ['/api/trees', '/api/memories'].includes(path);
+    const isDetail = path.match(/^\/api\/(trees|memories)\/[^/]+$/);
+    const allow = isCollection ? 'GET, POST' : (isDetail ? 'GET, PUT, DELETE' : 'GET');
     return buildMethodNotAllowedResponse(allow);
   }
 

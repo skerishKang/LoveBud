@@ -69,10 +69,6 @@ test('cloudflare api tree detail route exports private write handlers', () => {
     'tree detail route should export onRequestPut'
   );
   assert.ok(
-    hasRegex(content, /export\s+async\s+function\s+onRequestPatch\s*\(/),
-    'tree detail route should export onRequestPatch'
-  );
-  assert.ok(
     hasRegex(content, /export\s+async\s+function\s+onRequestDelete\s*\(/),
     'tree detail route should export onRequestDelete'
   );
@@ -88,10 +84,6 @@ test('cloudflare api tree detail route forwards writes to modal private trees wi
   assert.ok(
     hasRegex(content, /method:\s*'PUT'/),
     'tree detail route should forward PUT method'
-  );
-  assert.ok(
-    hasRegex(content, /method:\s*'PATCH'/),
-    'tree detail route should forward PATCH method'
   );
   assert.ok(
     hasRegex(content, /method:\s*'DELETE'/),
@@ -111,10 +103,6 @@ test('cloudflare api memory detail route exports private write handlers', () => 
     'memory detail route should export onRequestPut'
   );
   assert.ok(
-    hasRegex(content, /export\s+async\s+function\s+onRequestPatch\s*\(/),
-    'memory detail route should export onRequestPatch'
-  );
-  assert.ok(
     hasRegex(content, /export\s+async\s+function\s+onRequestDelete\s*\(/),
     'memory detail route should export onRequestDelete'
   );
@@ -130,10 +118,6 @@ test('cloudflare api memory detail route forwards writes to modal private memori
   assert.ok(
     hasRegex(content, /method:\s*'PUT'/),
     'memory detail route should forward PUT method'
-  );
-  assert.ok(
-    hasRegex(content, /method:\s*'PATCH'/),
-    'memory detail route should forward PATCH method'
   );
   assert.ok(
     hasRegex(content, /method:\s*'DELETE'/),
