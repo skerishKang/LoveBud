@@ -2,15 +2,29 @@
  * LoveBud - Shared Header Component
  * v20260421-2
  *
- * 모든 페이지에 공통 헤더를 렌더링합니다.
+ * 책임 경계:
+ * - shared-header는 실제 header markup과 header-specific behavior를 소유합니다.
+ * - page-shell과의 협업:
+ *   * page-shell은 renderSharedHeader() 호출을 조정합니다.
+ *   * shared-header은 markup 생성과 헤더 동작을 구현합니다.
+ *
+ * 소유하는 header behavior:
  * - 현재 페이지에 맞는 active 메뉴 자동 표시
  * - 상대경로 차이 자동 처리 (root vs pages)
  * - auth.js가 붙을 #auth-nav 또는 #auth-nav-container 계약 유지
+ * - 언어 토글
+ * - 모바일 네비게이션
+ * - 헤더 rerender hooks
  *
  * 사용법:
  * <script src="js/shared-header.js"></script>
  * <div id="shared-header"></div>
  * <script>renderSharedHeader();</script>
+ *
+ * 노트:
+ * - shared-header은 header markup과 header-specific behavior만 소유합니다.
+ * - page-shell과의 협업으로 전체 페이지 초기화를 완성합니다.
+ * - general page boot orchestrator가 아닙니다.
  */
 
 (function() {
