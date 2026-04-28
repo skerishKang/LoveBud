@@ -16,6 +16,9 @@
         const treeDataMap = new WeakMap();
         const boundContainers = new WeakSet();
 
+        // overlay element reference
+        let sheetOverlay = null;
+
         function getCurrentLocale() {
             const locale = window.i18n?.currentLang || window.getCurrentLang?.() || document.documentElement?.lang || 'ko';
             return String(locale).toLowerCase().startsWith('en') ? 'en' : 'ko';
@@ -25,11 +28,39 @@
             return Boolean(mobilePreviewMediaQuery?.matches);
         }
 
+        function _showSheetOverlay() {
+            if (sheetOverlay) return;
+            sheetOverlay = document.createElement('div');
+            sheetOverlay.className = 'preview-sheet-overlay';
+            sheetOverlay.setAttribute('aria-hidden', 'true');
+            sheetOverlay.addEventListener('click', () => {
+                clearSelectedPreview();
+            });
+            document.body.appendChild(sheetOverlay);
+            document.body.classList.add('preview-sheet-open');
+        }
+
+        function _hideSheetOverlay() {
+            if (sheetOverlay) {
+                sheetOverlay.remove();
+                sheetOverlay = null;
+            }
+            document.body.classList.remove('preview-sheet-open');
+        }
+
         function setMobilePreviewOpen(isOpen, options = {}) {
             if (!previewSidebar || !isMobilePreviewMode()) return;
             const { scrollIntoView = false } = options;
             previewSidebar.classList.toggle('is-open', Boolean(isOpen));
 
+            if (isOpen) {
+                _showSheetOverlay();
+            } else {
+                _hideSheetOverlay();
+            }
+
+            // scrollIntoView intentionally kept but never triggered from search.js
+            // (search.js always passes scrollIntoView: false since this fix)
             if (isOpen && scrollIntoView) {
                 window.requestAnimationFrame(() => {
                     previewSidebar.scrollIntoView({
@@ -46,6 +77,8 @@
                 setMobilePreviewOpen(Boolean(state.selectedTreeId));
                 return;
             }
+            // Desktop: ensure overlay is cleaned up in case of resize from mobile
+            _hideSheetOverlay();
             previewSidebar.classList.remove('is-open');
         }
 
