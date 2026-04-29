@@ -1,7 +1,7 @@
 # Auth Token Cache Dependency Audit
 
-> **Status:** AUDIT_CAPTURED  
-> **Source:** Issue #78 item 3  
+> **Status:** AUDIT_CAPTURED
+> **Source:** Issue #78 item 3
 > **Type:** Docs-only — no JS or runtime changes in this document
 
 ---
