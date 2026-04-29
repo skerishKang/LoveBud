@@ -1,155 +1,211 @@
 # Active Page UX Consistency Roadmap
 
-이 문서는 LoveBud active production page의 UX consistency 개선을 PR 단위로 분리하기 위한 roadmap입니다.
-
 ## Purpose
 
-- active page UX consistency 개선 범위를 copy, hierarchy, motion, browser smoke로 분리합니다.
-- 한 PR에 copy, CSS hierarchy, runtime motion, route behavior를 섞지 않도록 합니다.
-- Cloudflare Pages + Modal active runtime을 기준으로 검증 순서를 명확히 합니다.
-- Search mobile selected preview / scroll issue, Settings route flicker, Editor smoke는 별도 트랙으로 유지합니다.
+This document records the active-page UX consistency roadmap for Issue #239 before implementation begins.
 
-## Target active pages
+The goal is to align heading hierarchy, hero/header treatment, page copy, and motion/reveal behavior across operating pages without mixing documentation, copy, CSS, motion, or runtime changes in one PR.
 
-이번 roadmap의 active page 범위는 다음 파일입니다.
+This roadmap is planning-only. It does not approve direct implementation, page edits, CSS changes, JavaScript changes, runtime changes, or prototype/reference/demo cleanup.
 
-```text
-index.html
-pages/intro.html
-pages/search.html
-pages/my-trees.html
-pages/detail.html
-pages/login.html
-pages/settings.html
-```
+## Page Scope
 
-## Excluded paths and workstreams
+The active-page scope for this roadmap is:
 
-다음 항목은 이 roadmap의 직접 구현 대상이 아닙니다.
+- `index.html`
+- `pages/intro.html`
+- `pages/search.html`
+- `pages/my-trees.html`
+- `pages/detail.html`
+- `pages/login.html`
+- `pages/settings.html` classification only
 
-```text
-pages/editor.html
-PR #7
-prototype/reference/demo/variant paths
-quiet/
-hotspot-prototype/
-scrapbook-demo/
-pages/gpt-v2/
-css/gpt-v2/
-assets/gpt-v2/
-pages/gemini-v2/
-css/gemini-v2/
-pages/gemini-v3/
-css/gemini-v3/
-pages/v2/
-css/v2/
-pages/kimi-v2/
-assets/css/kimi-v2/
-assets/js/kimi-v2/
-pages/gpt-svg-tree/
-```
+`pages/settings.html` is included for classification so future card/modal entry behavior can be aligned, but it should not be treated as a broad first-phase implementation target without a separate plan.
 
-## Related separate tracks
+## Excluded Scope
 
-- `#204` Editor smoke는 별도입니다.
-- `#243` Settings route flicker / return navigation은 별도입니다.
-- Search mobile selected preview / scroll issue는 별도 UX bug로 분리합니다.
-- Search runtime 작업은 open PR `#217` Search event delegation과 충돌 가능성을 확인해야 합니다.
+The following are explicitly excluded from this roadmap's implementation phases unless a separate CTO-approved task says otherwise:
 
-## Recommended sequence
+- `pages/editor.html`
+- PR #7
+- prototype/reference/demo/variant paths
+- quiet/hotspot/scrapbook demo/reference assets
+- editor-specific quiet-first work
+- runtime, data loading, auth, API, Modal, or database behavior
 
-1. Docs roadmap
-   - 이 문서와 인덱스 링크만 추가합니다.
-   - runtime, HTML, CSS, JS 변경은 금지합니다.
+## Page Type Classification
 
-2. Search / MyTrees / Login copy-only pass
-   - Home / Intro와 용어, CTA, 안내 문구 흐름을 맞춥니다.
-   - CSS 수정은 금지합니다.
-   - layout, motion, routing 변경은 금지합니다.
+| Page type | Pages | Primary UX role | Notes |
+| --- | --- | --- | --- |
+| Brand Hero | `index.html`, `pages/intro.html` | Brand entry, first impression, product positioning | Copy and hero rhythm should feel aligned without duplicating the exact layout. |
+| Browse Header | `pages/search.html` | Discovery/browse entry | Must not interfere with search skeletons, result loading, preview behavior, or API-driven state. |
+| Workspace Header | `pages/my-trees.html` | Authenticated owner workspace entry | Must preserve auth-pending behavior, loading/error/empty/loaded states, and create-tree flows. |
+| Detail Hero | `pages/detail.html` | Public tree detail entry | Must preserve placeholder and hydrate behavior. |
+| Auth Card Entry | `pages/login.html` | Authentication entry | Must preserve redirect target handling and auth boot behavior. |
+| Settings Modal/Card Entry | `pages/settings.html` | Account/settings control surface | Classification only until a dedicated settings pass is approved. |
 
-3. Heading / CSS hierarchy pass
-   - active page heading scale, section rhythm, CTA hierarchy를 비교합니다.
-   - runtime JS 변경은 금지합니다.
-   - broad global CSS injection은 금지합니다.
+## Work Breakdown
 
-4. Shared opt-in transition / reveal primitive
-   - 공통 transition 또는 reveal primitive가 필요하면 opt-in 구조로 설계합니다.
-   - `prefers-reduced-motion` 대응은 필수입니다.
-   - global default animation 주입은 금지합니다.
+### 1. Docs/design roadmap
 
-5. Home / Intro / Search opt-in
-   - 공개 진입 흐름의 motion consistency만 제한적으로 적용합니다.
-   - Browse/Search data loading, preview placement, API behavior와 섞지 않습니다.
+Create this roadmap as the planning baseline for Issue #239.
 
-6. Login / Detail / MyTrees opt-in
-   - page-specific smoke가 가능한 단위로 분리합니다.
-   - Auth/session behavior, Detail data read, MyTrees owner flow 변경과 섞지 않습니다.
+Scope:
 
-7. Settings navigation / flicker
-   - `#243` 별도 트랙에서 진행합니다.
-   - 이 roadmap PR과 병합하지 않습니다.
+- Document active page types.
+- Separate implementation phases.
+- Define guardrails for future copy, CSS, and motion work.
+
+Non-goals:
+
+- No page HTML changes.
+- No CSS changes.
+- No JavaScript changes.
+- No runtime behavior changes.
+
+### 2. Copy-only Intro brand alignment
+
+Recommended future PR type: copy-only.
+
+Scope:
+
+- Align `index.html` and `pages/intro.html` brand positioning.
+- Keep layout and runtime unchanged.
+- Avoid broad hero redesign.
+
+Validation:
+
+- Changed files limited to relevant page copy only.
+- No CSS/JS/runtime changes.
+- Browser smoke for landing and intro pages.
+
+### 3. Copy-only Search/My Trees/Login heading refinement
+
+Recommended future PR type: copy-only and page-specific.
+
+Scope:
+
+- Refine heading/subheading language for:
+  - `pages/search.html`
+  - `pages/my-trees.html`
+  - `pages/login.html`
+- Preserve current state containers, auth behavior, redirect behavior, and API/data loading.
+
+Validation:
+
+- No selector changes.
+- No CSS/JS changes.
+- Search and my-trees state behavior smoke required after copy changes.
+
+### 4. Heading token/CSS hierarchy
+
+Recommended future PR type: CSS-only after copy baseline is reviewed.
+
+Scope:
+
+- Define narrow heading hierarchy rules for active pages.
+- Prefer page-scoped CSS over broad global rules.
+- Avoid `css/global.css` motion or heading rewrites unless explicitly approved.
+
+Validation:
+
+- Changed files limited to approved page CSS files.
+- Desktop and mobile visual smoke for each opted-in page.
+- No runtime/API/Auth changes.
+
+### 5. Shared transition/reveal asset PR
+
+Recommended future PR type: asset-only.
+
+Scope:
+
+- Add shared transition/reveal assets only.
+- Keep assets inert unless a page explicitly opts in.
+- Respect `prefers-reduced-motion`.
+- Avoid overlays and pointer-event blocking.
+
+Relation:
+
+- This is tracked primarily under Issue #242.
+- PR #294 is the asset-only transition work and must not close Issue #239.
+
+### 6. Low-risk page opt-in
+
+Recommended future PR type: page-specific opt-in after shared assets exist.
+
+Candidate pages:
+
+- `index.html`
+- `pages/intro.html`
+
+Scope:
+
+- Opt in only low-risk static/brand pages first.
+- Avoid Search, My Trees, Detail, Login, and Settings until static pages pass smoke.
+
+Validation:
+
+- Desktop/mobile visual smoke.
+- Reduced-motion behavior check.
+- No click-blocking or delayed interaction.
+
+### 7. Auth/data-sensitive page opt-in after smoke validation
+
+Recommended future PR type: one page or one page group at a time.
+
+Candidate pages:
+
+- `pages/search.html`
+- `pages/my-trees.html`
+- `pages/detail.html`
+- `pages/login.html`
+- `pages/settings.html` only after dedicated settings approval
+
+Required guardrail:
+
+- Do not mask loading, auth-pending, skeleton, placeholder, error, empty, or loaded states.
+- Do not delay API/data/auth execution.
+- Do not add blocking overlays.
+- Do not alter route, redirect, or event behavior.
 
 ## Guardrails
 
-- copy-only PR은 CSS 수정 금지입니다.
-- CSS hierarchy PR은 runtime JS 수정 금지입니다.
-- motion PR은 broad global injection 금지입니다.
-- motion PR은 `prefers-reduced-motion` 대응이 필수입니다.
-- Search runtime 작업은 PR `#217` 및 모바일 selected preview / scroll issue와 충돌 가능성을 먼저 확인합니다.
-- Editor, PR #7, prototype/reference/demo/variant 경로는 수정하지 않습니다.
-- active runtime source of truth는 Cloudflare Pages + same-origin `/api/*` + Modal 기준입니다.
-- Netlify/Vercel legacy artifact 정리는 별도 audit 이후에만 진행합니다.
+- No broad CSS changes.
+- No runtime changes.
+- No `css/global.css` motion implementation without explicit approval.
+- No editor changes.
+- No prototype/reference/demo/variant changes.
+- No PR #7 changes.
+- Split copy, CSS, motion, and runtime work into separate PRs.
+- Keep each page opt-in small and independently verifiable.
+- Do not mix Issue #239 UX consistency work with Issue #242 transition coverage implementation unless explicitly approved.
+- Do not mix this work with Search/Auth/MyTrees/Editor/API/Modal implementation changes.
 
-## Browser smoke checklist
+## Relation to Issue #242
 
-각 implementation PR은 범위에 맞게 아래 항목 중 필요한 smoke를 선택합니다.
+Issue #242 handles page transition/reveal coverage and the motion asset/application sequence.
 
-### Common active page smoke
+Issue #239 remains the parent UX consistency tracker for active-page heading, hero, copy, and visual rhythm alignment.
 
-- 대상 page가 Cloudflare Preview 또는 fixed test slot에서 로드됩니다.
-- fatal console error가 없습니다.
-- horizontal overflow가 없습니다.
-- desktop 1440px, tablet 1024px, mobile 375px 또는 390px에서 핵심 heading과 CTA가 보입니다.
-- keyboard focus가 새로 깨지지 않습니다.
-- `prefers-reduced-motion` 환경에서 motion이 과도하게 동작하지 않습니다.
+Therefore:
 
-### Copy-only smoke
+- #242 documentation and motion asset PRs should not close #239.
+- PR #294 should not close #239.
+- Future #242 page opt-in phases should be referenced from #239 only when they materially affect active-page UX consistency.
+- #239 implementation should still split copy, heading hierarchy, and page motion adoption into separate PRs.
 
-- 변경된 문구가 Korean / English i18n에서 누락 없이 반영됩니다.
-- CTA href는 변경되지 않습니다.
-- layout shift나 overflow가 발생하지 않습니다.
+## Open Implementation Queue
 
-### CSS hierarchy smoke
+Recommended order:
 
-- header, hero, primary CTA, secondary CTA hierarchy가 active page 간 일관됩니다.
-- 기존 component owner CSS 범위를 벗어난 override가 없습니다.
-- mobile viewport에서 button/card overflow가 없습니다.
+1. Merge docs-only roadmap after review.
+2. Complete shared transition/reveal asset work under #242.
+3. Run copy-only brand alignment for `index.html` and `pages/intro.html`.
+4. Run copy-only heading refinements for Search/My Trees/Login.
+5. Add narrow heading hierarchy CSS after copy settles.
+6. Opt in static Brand Hero pages to shared reveal assets.
+7. Opt in data/auth-sensitive pages only after smoke validation.
 
-### Motion smoke
+## Non-Closure Note
 
-- initial load reveal이 content visibility를 막지 않습니다.
-- user interaction 후 focus 위치가 유지됩니다.
-- Search/Browse list scroll position을 불필요하게 변경하지 않습니다.
-- reduced motion 환경에서 animation이 축소됩니다.
-
-### Search-specific caution
-
-- card click / keyboard select behavior는 PR `#217`과 충돌 여부를 먼저 확인합니다.
-- mobile selected preview placement와 scroll behavior는 별도 UX bug로 처리합니다.
-- Search preview, URL state, API data loading 변경은 copy/hierarchy/motion PR에 포함하지 않습니다.
-
-## Non-goals
-
-- Editor UI/JS 개선
-- PR #7 prototype 처리
-- prototype/reference/demo/variant 정리
-- Search mobile selected preview / scroll behavior 수정
-- Settings route flicker 수정
-- Auth/API/Modal behavior 변경
-- broad global CSS or JS restructuring
-
-## One-line rule
-
-```text
-Active page UX consistency work must stay staged: copy first, hierarchy second, motion last, with Search mobile preview and Settings navigation tracked separately.
-```
+Issue #239 should remain open after this document lands because the implementation phases are still pending.
