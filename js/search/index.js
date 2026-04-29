@@ -6,7 +6,7 @@
  * - Fast list-first loading for public trees
  * - Delegates q/category/sort/limit URL state to js/search/url-state.js
  * - Delegates search/filter/sort/limit controls binding to js/search/controls.js
- * - Delegates preview selection/deep-link orchestration to js/search/preview-controller.js
+ * - Delegates preview selection/deep-link orchestration to js/search/preview-controller.js when loaded
  */
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -101,14 +101,79 @@ document.addEventListener('DOMContentLoaded', async () => {
         getPreviewCacheKey
     });
 
-    const previewController = window.LoveBudSearchPreviewController.createSearchPreviewController({
-        refs,
-        state,
-        ui,
-        previewCacheApi,
-        dataApi,
-        PreviewRenderer
-    });
+    const createInlinePreviewController = () => {
+        const getSelectedTreeFromFiltered = (filteredTrees) => {
+            if (!Array.isArray(filteredTrees) || filteredTrees.length === 0) return null;
+            return filteredTrees.find(tree => tree.id === state.selectedTreeId) || null;
+        };
+
+        const readSelectedTreeFromUrl = () => {
+            try {
+                return new URLSearchParams(window.location.search).get('tree') || '';
+            } catch {
+                return '';
+            }
+        };
+
+        const findRenderedTreeCard = (treeId) => {
+            let selector = '';
+            try {
+                selector = `.tree-card[data-tree-id="${CSS.escape(treeId)}"]`;
+            } catch (e) {
+                selector = `.tree-card[data-tree-id="${treeId.replace(/"/g, '\\"')}"]`;
+            }
+
+            const allCardContainers = [refs.resultsList, refs.growingList].filter(Boolean);
+            for (const container of allCardContainers) {
+                const activeCard = container.querySelector(selector);
+                if (activeCard) return activeCard;
+            }
+            return null;
+        };
+
+        const selectTree = (tree, activeCard) => {
+            if (!tree) return;
+            state.selectedTreeId = tree.id;
+            ui.markActiveCard(activeCard);
+
+            if (ui.isMobilePreviewMode()) {
+                ui.setMobilePreviewOpen(true);
+            }
+
+            if (Array.isArray(tree.memories) && tree.memories.length > 0) {
+                previewCacheApi.writePreviewCache(tree.id, tree);
+                PreviewRenderer.updatePreview(tree);
+                return;
+            }
+
+            dataApi.hydrateSelectedTreePreview(tree);
+        };
+
+        const applySelectedTreeFromUrl = () => {
+            if (state.initialTreeDeepLinkApplied) return;
+            const treeId = readSelectedTreeFromUrl();
+            if (!treeId) return;
+
+            const targetTree = state.allTrees.find(t => t.id === treeId) || state.growingTrees.find(t => t.id === treeId);
+            if (!targetTree) return;
+
+            selectTree(targetTree, findRenderedTreeCard(treeId));
+            state.initialTreeDeepLinkApplied = true;
+        };
+
+        return { getSelectedTreeFromFiltered, selectTree, applySelectedTreeFromUrl };
+    };
+
+    const previewController = window.LoveBudSearchPreviewController?.createSearchPreviewController
+        ? window.LoveBudSearchPreviewController.createSearchPreviewController({
+            refs,
+            state,
+            ui,
+            previewCacheApi,
+            dataApi,
+            PreviewRenderer
+        })
+        : createInlinePreviewController();
 
     const getFilteredTrees = () => Adapter.filterTrees(state.allTrees, state.currentQuery, state.currentCategory);
 
