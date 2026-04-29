@@ -1,7 +1,7 @@
 # Local Browser Verification Startup
 
-**Status:** Active startup runbook  
-**Owner:** CTO / Ops Lead  
+**Status:** Active startup runbook
+**Owner:** CTO / Ops Lead
 **Scope:** Local browser verification, browser smoke, PR Preview checks, fixed test slot checks, and local-only visual checks
 
 ---
