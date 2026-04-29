@@ -93,6 +93,8 @@ UI 검증 프롬프트를 작성하기 전 반드시 아래를 먼저 판단하�
 
 브라우저/Auth/API/data-loaded 검증 작업자는 `docs/ops/AGENTS_BROWSER_VERIFICATION_ENTRYPOINT.md`를 먼저 읽고, 그 다음 `docs/ops/LOCAL_BROWSER_VERIFICATION_STARTUP.md`, `docs/ops/BROWSER_VERIFICATION_URL_POLICY.md`, `docs/ops/TEST_PREVIEW_SLOTS.md` 및 PR별 `Browser verification entrypoint` comment를 따릅니다.
 
+브라우저/Auth/API/data-loaded 자동 검증 작업자는 `docs/ops/AGENTS_BROWSER_VERIFICATION_ENTRYPOINT.md` 이후 `docs/ops/LOCAL_AUTO_BROWSER_VERIFICATION_RUNBOOK.md`를 읽고, PR별 Browser verification entrypoint comment의 assigned URL·credential source·account selection 지시를 따른다.
+
 ---
 
 ## 4. 제품 / 용어 해석 가드레일
@@ -362,18 +364,18 @@ GitHub CLI, browser login, connector-backed GitHub access, or token-backed local
 #### 붙여넣은 보고서 / 로그 / 대화 처리
 
 - 사용자가 다른 모델의 보고서, 로그, 명령 실행 결과, 대화 내용을 붙여넣으면 단순 요약하지 않습니다.
-- 사용자가 “요약해줘”라고 명시하지 않는 한 요약으로 끝내지 않습니다.
+- 사용자가 "요약해줘"라고 명시하지 않는 한 요약으로 끝내지 않습니다.
 - 현재 역할 기준으로 즉시 판단합니다.
 - CTO 역할이면 접수, 승인/반려/보류, 근거, 다음 실행 프롬프트, 금지 사항을 제시합니다.
 - UI Lead 역할이면 구현 범위, 영향 파일, 검증 항목, UI Web/UI Local 분배를 제시합니다.
 - 실행 모델 역할이면 보고서 내용을 현재 작업 결과로 간주할 수 있는지 확인하고, 다음 작업을 수행하거나 금지 단계라면 중단 보고합니다.
-- “보고”, “작업 완료”, “검증 완료”, “조사 완료” 같은 내용은 다음 판단을 요구하는 입력으로 봅니다.
+- "보고", "작업 완료", "검증 완료", "조사 완료" 같은 내용은 다음 판단을 요구하는 입력으로 봅니다.
 - 첨부파일 형태의 마크다운, 로그, 코드도 사용자 메시지 일부로 취급합니다.
 
 #### 이미지 생성 금지
 
-- LoveBud 작업 중 사용자가 “이미지”, “화면”, “레퍼런스”, “캡처”, “디자인”이라는 말을 했다고 해서 이미지 생성을 실행하지 않습니다.
-- 사용자가 명시적으로 “이미지를 생성해줘”, “그림을 만들어줘”, “시안을 이미지로 뽑아줘”라고 요청한 경우에만 이미지 생성을 고려합니다.
+- LoveBud 작업 중 사용자가 "이미지", "화면", "레퍼런스", "캡처", "디자인"이라는 말을 했다고 해서 이미지 생성을 실행하지 않습니다.
+- 사용자가 명시적으로 "이미지를 생성해줘", "그림을 만들어줘", "시안을 이미지로 뽑아줘"라고 요청한 경우에만 이미지 생성을 고려합니다.
 - 기본값은 이미지 생성이 아니라 분석, 구조화, 구현 범위 판단, 프롬프트 작성입니다.
 - 사용자가 이미지를 첨부하면 생성 요청이 아니라 분석 자료로 취급합니다.
 - 이미지 기반 요청에서는 화면 구조 분석, 현재 구현과 비교, 빠진 기능/디자인 요소 식별, 구현 우선순위 제안, 작업 프롬프트 작성을 우선합니다.
