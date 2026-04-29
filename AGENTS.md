@@ -91,6 +91,8 @@ UI 검증 프롬프트를 작성하기 전 반드시 아래를 먼저 판단하�
 - 이미 확보한 테스트/프리뷰 URL이 있는가?
 - Cloudflare PR Preview URL이 있는가?
 
+브라우저/Auth/API/data-loaded 검증 작업자는 `docs/ops/AGENTS_BROWSER_VERIFICATION_ENTRYPOINT.md`를 먼저 읽고, 그 다음 `docs/ops/LOCAL_BROWSER_VERIFICATION_STARTUP.md`, `docs/ops/BROWSER_VERIFICATION_URL_POLICY.md`, `docs/ops/TEST_PREVIEW_SLOTS.md` 및 PR별 `Browser verification entrypoint` comment를 따릅니다.
+
 ---
 
 ## 4. 제품 / 용어 해석 가드레일
@@ -211,10 +213,16 @@ LoveBud / LoveTree는 다음과 같은 서비스가 아닙니다.
    - `docs/design/UI_DESIGN_SYSTEM.md`
 5. 운영 판단이 필요하면:
    - `docs/ops/OPERATIONS.md`
+   - `docs/ops/AGENTS_BROWSER_VERIFICATION_ENTRYPOINT.md`
+   - `docs/ops/LOCAL_BROWSER_VERIFICATION_STARTUP.md`
+   - `docs/ops/GITHUB_AUTH_TOKEN_USAGE.md`
+   - `docs/ops/BROWSER_VERIFICATION_URL_POLICY.md`
+   - `docs/ops/TEST_PREVIEW_SLOTS.md`
    - `docs/migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md`
-6. 구현 판단이 필요하면:
-   - `docs/engineering/API_CONTRACT.md`
-   - 관련 페이지/ops/engineering 문서
+
+GitHub CLI, browser login, connector-backed GitHub access, or token-backed local access를 사용하는 작업자는 `docs/ops/GITHUB_AUTH_TOKEN_USAGE.md`를 함께 따릅니다.
+
+브라우저/Auth/API/data-loaded 검증 작업자는 `docs/ops/AGENTS_BROWSER_VERIFICATION_ENTRYPOINT.md`를 먼저 읽고, 그 다음 `docs/ops/LOCAL_BROWSER_VERIFICATION_STARTUP.md`를 먼저 따릅니다.
 
 대화 복원이 필요하면 아래를 추가로 읽습니다.
 
@@ -319,6 +327,8 @@ LoveBud 작업에는 배포, API 접근, 테스트 계정, 외부 서비스 연�
 - provider access tokens
 - 마지막 8자리 등 token 식별 정보
 
+GitHub CLI, browser login, connector-backed GitHub access, or token-backed local access를 사용하는 경우 `docs/ops/GITHUB_AUTH_TOKEN_USAGE.md`를 함께 따릅니다.
+
 작업에 secret이 필요하면 에이전트는 값을 요구하거나 출력하지 말고, 필요한 secret name만 말합니다. 실제 값 주입은 사용자가 로컬 환경, provider dashboard, GitHub Actions Secrets, Cloudflare/Vercel/Netlify dashboard 등 적절한 secret store를 통해 처리합니다.
 
 **금지 예시:**
@@ -416,6 +426,10 @@ UI 검증 환경은 `## 3. 현재 서비스 / 인프라 기준`의 **UI 검증 �
 
 ### 운영 / 배포
 - `docs/ops/OPERATIONS.md`
+- `docs/ops/LOCAL_BROWSER_VERIFICATION_STARTUP.md`
+- `docs/ops/GITHUB_AUTH_TOKEN_USAGE.md`
+- `docs/ops/BROWSER_VERIFICATION_URL_POLICY.md`
+- `docs/ops/TEST_PREVIEW_SLOTS.md`
 - `docs/ops/DEPLOY_CHECKLIST.md`
 - `docs/ops/RUNBOOK.md`
 - `docs/migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md`
@@ -465,6 +479,7 @@ LoveBud 작업은 항상 **현재 `main` 확인 → source of truth 확인 → �
 
 ### 보안
 - 자격 증명, 토큰, 쿠키, 세션, Firebase/Cloudflare/Modal/Neon secret 값을 절대 기록하거나 노출하지 않습니다.
+- GitHub CLI/browser login/connector/token-backed local access는 `docs/ops/GITHUB_AUTH_TOKEN_USAGE.md`를 함께 따릅니다.
 - 필요한 secret은 이름과 위치 정책만 언급하며, 실제 값은 절대 포함하지 않습니다.
 
 ### Local Artifact Hygiene
