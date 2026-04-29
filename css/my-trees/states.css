@@ -9,3 +9,9 @@
 .error-state h2 { font-size: 1.5rem; font-weight: 800; color: var(--on-surface); margin-bottom: 8px; }
 .error-state p { color: var(--on-surface-variant); font-size: 1rem; line-height: 1.6; margin-bottom: 24px; max-width: 400px; margin-left: auto; margin-right: auto; }
 .my-trees-create-icon { font-size: 20px; }
+
+/* Initial display states for my-trees page */
+#state-loading { display: flex; }
+#state-error { display: none; }
+#state-empty { display: none; }
+#state-loaded { display: none; }
