@@ -33,8 +33,9 @@
                 if (requestId !== state.currentPreviewRequestId || state.selectedTreeId !== tree.id) {
                     return;
                 }
-                PreviewRenderer.updatePreview(hydratedTree);
-                callbacks.renderResults(false);
+                 PreviewRenderer.updatePreview(hydratedTree);
+                 ui.syncPreviewVisibility();
+                 callbacks.renderResults(false);
             } catch (error) {
                 console.warn('[search/data] preview hydration failed:', error.message);
                 if (requestId !== state.currentPreviewRequestId || state.selectedTreeId !== tree.id) {
