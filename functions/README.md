@@ -1,38 +1,30 @@
-# LoveBud Cloudflare Pages Functions
+# functions/ — Cloudflare Pages Functions (Active Runtime Entry)
 
-> **Runtime Ownership**: Cloudflare Pages Functions  
-> **Status**: Active same-origin API gateway
+## Role
 
-## Overview
+`functions/api/[[path]].js` is the **active same-origin `/api/*` entry point** for this project, served via Cloudflare Pages Functions.
 
-This directory contains Cloudflare Pages Functions that serve as the **active same-origin API gateway** for LoveBud.
-
-## API Flow
+## Request Flow
 
 ```
-browser → /api/* → functions/api/** → Modal → Neon
+browser → same-origin /api/* → Cloudflare Pages Functions → Modal compute
 ```
 
-- Browser makes requests to same-origin `/api/*` paths
-- Cloudflare Pages Functions handle routing and proxying
-- Modal compute layer handles business logic
-- Neon PostgreSQL for data persistence
+All browser API requests route through this entry. Modal compute handles the backend execution.
 
-## Structure
+## Ownership Rules
 
-- `functions/api/` - API route handlers and proxy logic
-- `functions/api/memories/` - Memory-related endpoints
-- `functions/api/trees/` - Tree-related endpoints
+- **Do not modify `functions/api/[[path]].js`** without CTO approval and accompanying contract tests.
+- **Route additions** require CTO approval and contract tests before merge.
+- **Do not output or commit secrets/env values** anywhere in this folder.
+- **Do not change direct runtime behavior** (routing logic, auth, response shape) without explicit approval.
 
-## Important Notes
+## Active Production Path
 
-- **Do not replace** this Cloudflare Pages Functions setup with Netlify or Vercel fallback behavior
-- This is the primary production API gateway
-- All new backend policy implementations should target this layer
-- See `docs/ops/OPERATIONS.md` for detailed infrastructure documentation
+`lovebud.pages.dev` production path:
 
-## Related
+```
+Cloudflare Pages (this folder) → Modal compute (modal_compute/)
+```
 
-- `docs/ops/OPERATIONS.md` - Infrastructure and deployment details
-- `modal_compute/` - Modal compute layer (upstream)
-- `netlify/` - Legacy artifact (see netlify/README.md)
+Netlify Functions are **not** the active production backend. See `netlify/README.md`.
