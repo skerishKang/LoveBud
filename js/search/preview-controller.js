@@ -49,13 +49,25 @@
             dataApi.hydrateSelectedTreePreview(tree);
         }
 
-        function applySelectedTreeFromUrl() {
+        async function applySelectedTreeFromUrl() {
             if (state.initialTreeDeepLinkApplied) return;
             const treeId = readSelectedTreeFromUrl();
             if (!treeId) return;
 
-            const targetTree = state.allTrees.find(t => t.id === treeId) || state.growingTrees.find(t => t.id === treeId);
-            if (!targetTree) return;
+            let targetTree = state.allTrees.find(t => t.id === treeId) || state.growingTrees.find(t => t.id === treeId);
+
+            if (!targetTree && window.apiClient && window.apiClient.getPublicTreePreview) {
+                try {
+                    targetTree = await window.apiClient.getPublicTreePreview({ id: treeId });
+                } catch (error) {
+                    console.warn('[preview-controller] deep link fetch failed:', error.message);
+                }
+            }
+
+            if (!targetTree) {
+                state.initialTreeDeepLinkApplied = true;
+                return;
+            }
 
             selectTree(targetTree, findRenderedTreeCard(treeId));
             state.initialTreeDeepLinkApplied = true;

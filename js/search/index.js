@@ -275,7 +275,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         dataApi.loadGrowingTrees()
     ]);
 
-    previewController.applySelectedTreeFromUrl();
+    await previewController.applySelectedTreeFromUrl();
     state.urlStateReady = true;
 
     window.addEventListener('popstate', async () => {
