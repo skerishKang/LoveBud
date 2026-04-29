@@ -1,26 +1,18 @@
-# Netlify SQL (Legacy Schema)
+# netlify/sql/ — Legacy Schema / Seed Artifacts
 
-## 역할
+## Role
 
-이 폴더는 legacy schema/seed artifact입니다.
+Files in `netlify/sql/` are **legacy schema and seed artifacts**.
 
-## 상태
+This folder is **not** the active migration source of truth.
 
-- **Active migration source of truth가 아님**
-- 현재 Modal PostgreSQL을 사용 중
-- CTO 승인 없이 삭제/이동/재활성화 금지
+## Ownership Rules
 
-## 기존 구조
+- **Do not use these files as the basis for new schema or migrations.** Active schema/migration work requires a separate approved process.
+- **Schema and migration changes require separate CTO approval** before any modification.
+- **Do not delete or move** any file in this folder without CTO approval.
+- These files are preserved for historical reference only.
 
-- `001_initial_schema.sql`: Initial database schema (legacy)
-- `002_add_payload_columns.sql`: Payload columns migration (legacy)
-- `002_seed_demo_data.sql`: Demo data seed (legacy)
+## Active Migration Source of Truth
 
-## Migration 상태
-
-데이터베이스는 현재 Modal PostgreSQL로 migration 완료되었습니다.
-
-## 관련 문서
-
-- `docs/ops/OPERATIONS.md`
-- `docs/migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md`
+Refer to project-level documentation or CTO-designated migration tooling for the current schema management process.

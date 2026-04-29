@@ -1,36 +1,27 @@
-# Modal Compute Runtime
+# modal_compute/ — Modal Compute (Active Runtime Priority)
 
-## 역할
+## Role
 
-이 폴더는 LoveBud의 현재 active compute/runtime priority 계층입니다.
+`modal_compute/` is the **active compute and runtime priority** for this project.
 
-## 핵심 구조
+All backend execution for production routes runs here via Modal deployment.
 
-- `app.py`: Modal FastAPI application (main entry)
-- `browse_latest.py`: Browse summary cache handler
-- `requirements.txt`: Python dependencies
+## Route Targeting
 
-## Runtime Priority
+- **Browse, community, and private read-heavy routes** are routed to Modal by default.
+- Route contract must stay in sync with the Cloudflare Pages Functions router (`functions/api/[[path]].js`).
 
-Browse/community/private read-heavy route는 기본적으로 Modal 우선:
+## Ownership Rules
 
-- Browse summary (`/api/community/trees?view=summary`)
-- Growing trees (`/api/community/growing-trees`)
-- Community memories (`/api/community/memories`)
-- Private trees (`/api/trees`)
-- Private memories (`/api/memories`)
-- Memory detail (`/api/memories/{id}`)
-- Tree detail (`/api/trees/{id}`)
+- **Modal deploy requires separate CTO approval** before any deployment to production.
+- **Do not output or commit Modal secrets** anywhere in this folder or the repository.
+- **Do not modify route contracts** without updating `functions/api/[[path]].js` and running contract tests.
+- **Do not add new routes** without CTO approval and contract test coverage.
 
-## Deploy 가이드
+## Active Production Path
 
-Modal deploy는 별도 승인 필요:
+```
+browser → /api/* → Cloudflare Pages Functions → Modal compute (this folder)
+```
 
-1. CTO 승인 후 deploy
-2. Secrets 출력/커밋 금지
-3. Production deploy 전 staging test
-
-## 관련 문서
-
-- `docs/ops/OPERATIONS.md`
-- `docs/migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md`
+Netlify Functions are **not** part of the active production compute path. See `netlify/README.md`.
