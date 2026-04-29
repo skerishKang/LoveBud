@@ -1,17 +1,12 @@
 /**
  * LoveBud Search Page Orchestrator
- * v20260429-2
+ * v20260429-1
  *
- * Thin orchestrator — delegates data loading to window.LoveBudSearchData.
- * Data loading behavior is unchanged; only the module boundary has moved.
- *
- * Delegation map:
- *   loadPublicTrees          → window.LoveBudSearchData
- *   loadGrowingTrees         → window.LoveBudSearchData
- *   hydrateSelectedTreePreview → window.LoveBudSearchData
- *   UI / preview / card events → window.LoveBudSearchUI
- *   URL state                → window.LoveBudSearchUrlState
- *   Preview cache            → window.LoveBudSearchPreviewCache
+ * Search page orchestration:
+ * - Fast list-first loading for public trees
+ * - Delegates q/category/sort/limit URL state to js/search/url-state.js
+ * - Delegates search/filter/sort/limit controls binding to js/search/controls.js
+ * - Lazy preview hydration on tree selection
  */
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -89,12 +84,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const urlState = window.LoveBudSearchUrlState.createSearchUrlState({
         refs,
         state,
-        callbacks,
         ui
     });
 
-    // ── Data module (split from this file) ─────────────────────────────────────
-    const searchData = window.LoveBudSearchData.createSearchData({
+    const dataApi = window.LoveBudSearchData.createSearchData({
         refs,
         state,
         previewCacheApi,
@@ -108,12 +101,45 @@ document.addEventListener('DOMContentLoaded', async () => {
         getPreviewCacheKey
     });
 
-    // ── Local helpers (orchestrator-level only) ────────────────────────────────
     const getFilteredTrees = () => Adapter.filterTrees(state.allTrees, state.currentQuery, state.currentCategory);
 
     const getSelectedTreeFromFiltered = (filteredTrees) => {
         if (!Array.isArray(filteredTrees) || filteredTrees.length === 0) return null;
         return filteredTrees.find(tree => tree.id === state.selectedTreeId) || null;
+    };
+
+    const readSelectedTreeFromUrl = () => {
+        try {
+            return new URLSearchParams(window.location.search).get('tree') || '';
+        } catch {
+            return '';
+        }
+    };
+
+    const applySelectedTreeFromUrl = () => {
+        if (state.initialTreeDeepLinkApplied) return;
+        const treeId = readSelectedTreeFromUrl();
+        if (!treeId) return;
+
+        const targetTree = state.allTrees.find(t => t.id === treeId) || state.growingTrees.find(t => t.id === treeId);
+        if (!targetTree) return;
+
+        let activeCard = null;
+        let selector = '';
+        try {
+            selector = `.tree-card[data-tree-id="${CSS.escape(treeId)}"]`;
+        } catch (e) {
+            selector = `.tree-card[data-tree-id="${treeId.replace(/"/g, '\\"')}"]`;
+        }
+
+        const allCardContainers = [refs.resultsList, refs.growingList].filter(Boolean);
+        for (const container of allCardContainers) {
+            activeCard = container.querySelector(selector);
+            if (activeCard) break;
+        }
+
+        callbacks.selectTree(targetTree, activeCard);
+        state.initialTreeDeepLinkApplied = true;
     };
 
     const selectTree = (tree, activeCard) => {
@@ -131,7 +157,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
-        searchData.hydrateSelectedTreePreview(tree);
+        dataApi.hydrateSelectedTreePreview(tree);
     };
 
     function renderResults(resetPreviewWhenNoSelection = true) {
@@ -175,6 +201,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+
     function renderGrowingResults() {
         if (!refs.growingSection || !refs.growingList) return;
 
@@ -194,65 +221,52 @@ document.addEventListener('DOMContentLoaded', async () => {
         ui.syncActiveCard();
     }
 
-    // ── Wire callbacks ─────────────────────────────────────────────────────────
     callbacks.selectTree = selectTree;
-    callbacks.loadPublicTrees = searchData.loadPublicTrees;
+    callbacks.loadPublicTrees = dataApi.loadPublicTrees;
     callbacks.renderResults = renderResults;
     callbacks.renderGrowingResults = renderGrowingResults;
     callbacks.updateUrlState = urlState.updateUrlState;
 
-    // ── Init ───────────────────────────────────────────────────────────────────
+    const controls = window.LoveBudSearchControls.createSearchControls({
+        refs,
+        state,
+        callbacks,
+        ui
+    });
+
     ui.bindMobilePreviewHandlers();
     ui.bindShareCopyHandler();
 
-    ui.ensureBrowseControls();
+    controls.bind();
     ui.syncStaticBrowseCopy();
     ui.syncPreviewVisibility();
     if (typeof window.onLangChange === 'function') {
         window.onLangChange(() => {
             ui.syncStaticBrowseCopy();
             ui.syncBrowseHead();
-            ui.syncControlsFromState();
+            controls.syncControlsFromState();
         });
     }
 
     refs.resultsList.innerHTML = CardRenderer.renderLoading();
     ui.clearSelectedPreview();
+    
+    urlState.restoreStateFromUrl();
+    
     await Promise.allSettled([
-        searchData.loadPublicTrees({ resetSelection: true }),
-        searchData.loadGrowingTrees()
+        dataApi.loadPublicTrees({ resetSelection: true }),
+        dataApi.loadGrowingTrees()
     ]);
 
-    urlState.restoreStateFromUrl();
-    urlState.applySelectedTreeFromUrl();
+    applySelectedTreeFromUrl();
     state.urlStateReady = true;
-
-    let searchInputTimer = null;
-    refs.searchInput.addEventListener('input', (e) => {
-        state.currentQuery = e.target.value.trim();
-        if (searchInputTimer) clearTimeout(searchInputTimer);
-        searchInputTimer = setTimeout(() => {
-            renderResults(false);
-            urlState.updateUrlState();
-        }, 180);
-    });
-
-    refs.tagChips.forEach(chip => {
-        chip.addEventListener('click', () => {
-            refs.tagChips.forEach(c => c.classList.remove('active'));
-            chip.classList.add('active');
-            state.currentCategory = chip.dataset.category || chip.textContent.trim();
-            renderResults(false);
-            urlState.updateUrlState();
-        });
-    });
 
     window.addEventListener('popstate', async () => {
         const previousSort = state.currentSort;
         const previousLimit = state.currentLimit;
         urlState.restoreStateFromUrl();
         if (previousSort !== state.currentSort || previousLimit !== state.currentLimit) {
-            await searchData.loadPublicTrees({ resetSelection: true });
+            await dataApi.loadPublicTrees({ resetSelection: true });
         } else {
             renderResults(false);
         }
