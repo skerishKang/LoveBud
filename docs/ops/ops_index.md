@@ -32,6 +32,24 @@
 
 ---
 
+## 먼저 읽기
+
+1. [OPERATIONS.md](OPERATIONS.md) - 현재 운영 전략과 계층 정의
+2. [PARALLEL_WORKTREE_AGENT_POLICY.md](PARALLEL_WORKTREE_AGENT_POLICY.md) - 병렬 모델/worktree/검증 모델 운영 기준
+3. [LOCAL_BROWSER_VERIFICATION_STARTUP.md](LOCAL_BROWSER_VERIFICATION_STARTUP.md) - 로컬/브라우저 검증 시작 전 공통 preflight, URL provenance, evidence, PR checklist 기준
+4. [GITHUB_AUTH_TOKEN_USAGE.md](GITHUB_AUTH_TOKEN_USAGE.md) - GitHub CLI/browser login/connector 인증 및 token/credential 취급 기준
+5. [BROWSER_VERIFICATION_URL_POLICY.md](BROWSER_VERIFICATION_URL_POLICY.md) - 브라우저 검증 URL 출처, PR Preview, fixed test slot 사용 기준
+6. [TEST_PREVIEW_SLOTS.md](TEST_PREVIEW_SLOTS.md) - 고정 테스트 Preview 슬롯 운영 기준
+7. [DEPLOY_CHECKLIST.md](DEPLOY_CHECKLIST.md) - 배포 전/후 체크리스트
+8. [RUNBOOK.md](RUNBOOK.md) - 운영 / 장애 대응 기준
+9. [MODAL_BROWSE_RUNTIME.md](MODAL_BROWSE_RUNTIME.md) - browse summary의 Modal 우선 read path 기준
+10. [KNOWN_CI_E2E_BLOCKERS.md](KNOWN_CI_E2E_BLOCKERS.md) - 반복 CI/E2E blocker 원인 분리 및 exception merge 판단 기준
+11. [BRANCH_CLEANUP_PLAN.md](BRANCH_CLEANUP_PLAN.md) - merged/stale branch cleanup 후보와 보존 branch 분류 기준
+12. [../migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md](../migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md) - 전환 현황과 남은 과제
+13. [../engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md](../engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md) - browse filter / publication guard 구분
+
+---
+
 ## 작업 환경 (Core)
 
 | 파일명 | 설명 |
@@ -88,3 +106,9 @@
 | [DOC_WORKFLOW.md](DOC_WORKFLOW.md) | 대화 → 문서 → 구현 흐름 |
 | [SKILL_REGISTRY.md](SKILL_REGISTRY.md) | 로컬 스킬 목록 |
 | [AI_REQUEST_PATTERNS.md](AI_REQUEST_PATTERNS.md) | 자연어 요청 패턴 |
+
+## Workflow Coverage Inventory (Issue #136)
+
+| 파일명 | 설명 |
+|--------|------|
+| [ISSUE_136_WORKFLOW_COVERAGE_INVENTORY.md](ISSUE_136_WORKFLOW_COVERAGE_INVENTORY.md) | Production browser exploration 결과 기반 smoke coverage 후보 인벤토리. Issue #136 추적용. |
