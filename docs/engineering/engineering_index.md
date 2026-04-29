@@ -1,87 +1,89 @@
-# LoveBud Engineering 문서 인덱스
+﻿# LoveBud Engineering 臾몄꽌 ?몃뜳??
+??臾몄꽌??LoveBud ?붿??덉뼱留?臾몄꽌???꾩옱 湲곗? ?쎄린 ?쒖꽌瑜??뺣━?⑸땲??
 
-이 문서는 LoveBud 엔지니어링 문서의 현재 기준 읽기 순서를 정리합니다.
+?꾩옱 ?댁쁺 ?꾩젣???꾨옒? 媛숈뒿?덈떎.
 
-현재 운영 전제는 아래와 같습니다.
-
-- 실서비스 프론트: `https://lovebud.pages.dev/`
-- 인프라 우선순위: **Modal > Cloudflare Pages > Vercel > Netlify**
-- Cloudflare Pages는 공식 user-facing entry이자 same-origin `/api` router입니다.
-- Modal은 active compute/runtime 우선 경로입니다.
-- Vercel은 upstream / secondary / transitional fallback 계층입니다.
-- Netlify는 legacy artifact / removal candidate입니다. active production fallback이 아닙니다.
-- 브라우저는 가능하면 **same-origin `/api`** 만 사용합니다.
-- browse display filter 와 publication guard 는 다른 문제로 다룹니다.
+- ?ㅼ꽌鍮꾩뒪 ?꾨줎?? `https://lovebud.pages.dev/`
+- ?명봽???곗꽑?쒖쐞: **Modal > Cloudflare Pages > Vercel > Netlify**
+- Cloudflare Pages??怨듭떇 user-facing entry?댁옄 same-origin `/api` router?낅땲??
+- Modal? active compute/runtime ?곗꽑 寃쎈줈?낅땲??
+- Vercel? upstream / secondary / transitional fallback 怨꾩링?낅땲??
+- Netlify??legacy artifact / removal candidate?낅땲?? active production fallback???꾨떃?덈떎.
+- 釉뚮씪?곗???媛?ν븯硫?**same-origin `/api`** 留??ъ슜?⑸땲??
+- browse display filter ? publication guard ???ㅻⅨ 臾몄젣濡??ㅻ９?덈떎.
 
 ---
 
-## 먼저 읽기
+## 癒쇱? ?쎄린
 
-1. [API_CONTRACT.md](./API_CONTRACT.md) - API 응답 계약 (flat camelCase)
-2. [BROWSE_FILTER_VS_PUBLICATION_GUARD.md](./BROWSE_FILTER_VS_PUBLICATION_GUARD.md) - browse filter / publication guard 구분
+1. [API_CONTRACT.md](./API_CONTRACT.md) - API ?묐떟 怨꾩빟 (flat camelCase)
+2. [BROWSE_FILTER_VS_PUBLICATION_GUARD.md](./BROWSE_FILTER_VS_PUBLICATION_GUARD.md) - browse filter / publication guard 援щ텇
 3. [CODE_ARCHITECTURE.md](./CODE_ARCHITECTURE.md) - module size, thin entrypoint, browser-global split, large file refactor safety policy
-4. [CSS_ARCHITECTURE.md](./CSS_ARCHITECTURE.md) - stylesheet import hub, split ownership, visual verification 기준
+4. [CSS_ARCHITECTURE.md](./CSS_ARCHITECTURE.md) - stylesheet import hub, split ownership, visual verification 湲곗?
 5. [SCRIPT_LOAD_ORDER.md](./SCRIPT_LOAD_ORDER.md) - pages/*.html script order runtime contract, Auth/Login dependency order, reorder checklist
 6. [SEARCH_RUNTIME_CONTRACT.md](./SEARCH_RUNTIME_CONTRACT.md) - Search/Browse runtime script order, globals, submodule boundary
-7. [AUTH_LOGIN_ACTIVE_PROVIDER_TRANSITION_PLAN.md](./AUTH_LOGIN_ACTIVE_PROVIDER_TRANSITION_PLAN.md) - Auth/Login active provider transition 단계, 금지 조합, fixed test slot 검증 기준
-8. [REPOSITORY_STRUCTURE_FOLLOWUP_STATUS_MAP.md](./REPOSITORY_STRUCTURE_FOLLOWUP_STATUS_MAP.md) - #223 repository structure follow-up disposition/status map
-9. [EDITOR_FALLBACK_GLOBAL_STATE_AUDIT.md](./EDITOR_FALLBACK_GLOBAL_STATE_AUDIT.md) - Editor fallback factories와 global state cleanup path 감사 계획
-10. [AUTH_EDITOR_FALLBACK_CHECKLIST_MAPPING.md](./AUTH_EDITOR_FALLBACK_CHECKLIST_MAPPING.md) - #224 Auth/Editor fallback findings의 #78/#223/#225 ownership mapping
-11. [SHARED_HEADER_CONFIG_HELPER_DECISION.md](./SHARED_HEADER_CONFIG_HELPER_DECISION.md) - Shared header config/helper extraction defer 결정과 follow-up trigger
-12. [REVIEW_GUARDRAILS.md](./REVIEW_GUARDRAILS.md) - 반복 false positive 방지 규칙
-13. [RECENT_REFACTORING.md](./RECENT_REFACTORING.md) - 최근 리팩터링 기록
+7. [AUTH_LOGIN_ACTIVE_PROVIDER_TRANSITION_PLAN.md](./AUTH_LOGIN_ACTIVE_PROVIDER_TRANSITION_PLAN.md) - Auth/Login active provider transition ?④퀎, 湲덉? 議고빀, fixed test slot 寃利?湲곗?
+8. [CSS_HTML_CLEANUP_STATUS_MAP.md](./CSS_HTML_CLEANUP_STATUS_MAP.md) - #137 CSS/HTML cleanup backlog ?곹깭? ?⑥? ?묒뾽 ?쒖꽌
+9. [EDITOR_FALLBACK_GLOBAL_STATE_AUDIT.md](./EDITOR_FALLBACK_GLOBAL_STATE_AUDIT.md) - Editor fallback factories? global state cleanup path 媛먯궗 怨꾪쉷
+10. [AUTH_EDITOR_FALLBACK_CHECKLIST_MAPPING.md](./AUTH_EDITOR_FALLBACK_CHECKLIST_MAPPING.md) - #224 Auth/Editor fallback findings??#78/#223/#225 ownership mapping
+11. [SHARED_HEADER_CONFIG_HELPER_DECISION.md](./SHARED_HEADER_CONFIG_HELPER_DECISION.md) - Shared header config/helper extraction defer 寃곗젙怨?follow-up trigger
+12. [REVIEW_GUARDRAILS.md](./REVIEW_GUARDRAILS.md) - 諛섎났 false positive 諛⑹? 洹쒖튃
+13. [RECENT_REFACTORING.md](./RECENT_REFACTORING.md) - 理쒓렐 由ы뙥?곕쭅 湲곕줉
+14. [EDITOR_OVERRIDES_RELOCATION_AUDIT.md](./EDITOR_OVERRIDES_RELOCATION_AUDIT.md) - css/editor/overrides.css role-based relocation ?꾨낫 audit (援ы쁽 ?놁쓬, #137 ?꾩냽)
 
 ---
 
-## 핵심 문서
+## ?듭떖 臾몄꽌
 
-| 문서 | 설명 |
+| 臾몄꽌 | ?ㅻ챸 |
 |------|------|
-| [API_CONTRACT.md](./API_CONTRACT.md) | 프론트와 API가 따르는 flat camelCase 계약 |
-| [BROWSE_FILTER_VS_PUBLICATION_GUARD.md](./BROWSE_FILTER_VS_PUBLICATION_GUARD.md) | browse 표시 정책과 publication guard 분리 기준 |
-| [CODE_ARCHITECTURE.md](./CODE_ARCHITECTURE.md) | 파일 크기, thin entrypoint, browser-global module split, 대형 파일 리팩터링 안전 순서 |
-| [CSS_ARCHITECTURE.md](./CSS_ARCHITECTURE.md) | CSS import hub, split ownership, import order, visual verification 기준 |
+| [API_CONTRACT.md](./API_CONTRACT.md) | ?꾨줎?몄? API媛 ?곕Ⅴ??flat camelCase 怨꾩빟 |
+| [BROWSE_FILTER_VS_PUBLICATION_GUARD.md](./BROWSE_FILTER_VS_PUBLICATION_GUARD.md) | browse ?쒖떆 ?뺤콉怨?publication guard 遺꾨━ 湲곗? |
+| [CODE_ARCHITECTURE.md](./CODE_ARCHITECTURE.md) | ?뚯씪 ?ш린, thin entrypoint, browser-global module split, ????뚯씪 由ы뙥?곕쭅 ?덉쟾 ?쒖꽌 |
+| [CSS_ARCHITECTURE.md](./CSS_ARCHITECTURE.md) | CSS import hub, split ownership, import order, visual verification 湲곗? |
 | [SCRIPT_LOAD_ORDER.md](./SCRIPT_LOAD_ORDER.md) | pages/*.html script load order runtime contract, Auth/Login dependency order, reorder checklist |
 | [SEARCH_RUNTIME_CONTRACT.md](./SEARCH_RUNTIME_CONTRACT.md) | Search/Browse runtime script order, globals, submodule boundary, smoke checklist |
-| [AUTH_LOGIN_ACTIVE_PROVIDER_TRANSITION_PLAN.md](./AUTH_LOGIN_ACTIVE_PROVIDER_TRANSITION_PLAN.md) | Auth/Login active provider transition 단계, file ownership, forbidden combinations, fixed slot smoke 기준 |
+| [SEARCH_PREVIEW_CONTROLLER_SPLIT_AUDIT.md](./SEARCH_PREVIEW_CONTROLLER_SPLIT_AUDIT.md) | Search/Browse preview controller split 以鍮?audit? ?꾩냽 援ы쁽 guardrail |
+| [AUTH_LOGIN_ACTIVE_PROVIDER_TRANSITION_PLAN.md](./AUTH_LOGIN_ACTIVE_PROVIDER_TRANSITION_PLAN.md) | Auth/Login active provider transition ?④퀎, file ownership, forbidden combinations, fixed slot smoke 湲곗? |
 | [REPOSITORY_STRUCTURE_FOLLOWUP_STATUS_MAP.md](./REPOSITORY_STRUCTURE_FOLLOWUP_STATUS_MAP.md) | Issue #223 repository structure follow-up bucket disposition, active blockers, and closure conditions |
-| [EDITOR_FALLBACK_GLOBAL_STATE_AUDIT.md](./EDITOR_FALLBACK_GLOBAL_STATE_AUDIT.md) | Editor fallback factories, `window.currentTreeMemories`, `window.currentTreeData`, compatibility aliases, future store migration 기준 |
+| [EDITOR_FALLBACK_GLOBAL_STATE_AUDIT.md](./EDITOR_FALLBACK_GLOBAL_STATE_AUDIT.md) | Editor fallback factories, `window.currentTreeMemories`, `window.currentTreeData`, compatibility aliases, future store migration 湲곗? |
 | [AUTH_EDITOR_FALLBACK_CHECKLIST_MAPPING.md](./AUTH_EDITOR_FALLBACK_CHECKLIST_MAPPING.md) | Auth fallback cleanup, Editor fallback factories, and `window.currentTreeMemories/currentTreeData` ownership mapping for #224/#78/#223/#225 |
-| [SHARED_HEADER_CONFIG_HELPER_DECISION.md](./SHARED_HEADER_CONFIG_HELPER_DECISION.md) | Shared header render/mobile nav/language/Auth/path helper 책임과 config/helper extraction defer 기준 |
-| [SUPABASE_FREE_POC_PLAN.md](./SUPABASE_FREE_POC_PLAN.md) | Supabase Free PoC 기반 장기 backend 구조 단순화 검증 계획 |
-| [REVIEW_GUARDRAILS.md](./REVIEW_GUARDRAILS.md) | 반복 false positive 방지와 리뷰 규칙 |
-| [RECENT_REFACTORING.md](./RECENT_REFACTORING.md) | 최근 코드 구조 정리 내역 |
-| [UTIL_USAGE_POLICY.md](./UTIL_USAGE_POLICY.md) | 공통 유틸 사용 정책 |
-| [COMMON_CODE_CANDIDATES.md](./COMMON_CODE_CANDIDATES.md) | 공통화 후보 |
+| [SHARED_HEADER_CONFIG_HELPER_DECISION.md](./SHARED_HEADER_CONFIG_HELPER_DECISION.md) | Shared header render/mobile nav/language/Auth/path helper 梨낆엫怨?config/helper extraction defer 湲곗? |
+| [EDITOR_OVERRIDES_RELOCATION_AUDIT.md](./EDITOR_OVERRIDES_RELOCATION_AUDIT.md) | `css/editor/overrides.css` role-based relocation ?꾨낫 audit ??援ы쁽 ?놁쓬, cascade ?꾪뿕 臾몄꽌?? future PR split 怨꾪쉷 (#137 ?꾩냽) |
+| [SUPABASE_FREE_POC_PLAN.md](./SUPABASE_FREE_POC_PLAN.md) | Supabase Free PoC 湲곕컲 ?κ린 backend 援ъ“ ?⑥닚??寃利?怨꾪쉷 |
+| [REVIEW_GUARDRAILS.md](./REVIEW_GUARDRAILS.md) | 諛섎났 false positive 諛⑹?? 由щ럭 洹쒖튃 |
+| [RECENT_REFACTORING.md](./RECENT_REFACTORING.md) | 理쒓렐 肄붾뱶 援ъ“ ?뺣━ ?댁뿭 |
+| [UTIL_USAGE_POLICY.md](./UTIL_USAGE_POLICY.md) | 怨듯넻 ?좏떥 ?ъ슜 ?뺤콉 |
+| [COMMON_CODE_CANDIDATES.md](./COMMON_CODE_CANDIDATES.md) | 怨듯넻???꾨낫 |
 | [FIREBASE_CONFIG_GLOBAL_MIGRATION_STRATEGY.md](./FIREBASE_CONFIG_GLOBAL_MIGRATION_STRATEGY.md) | Firebase config/global migration staged strategy |
 | [FIREBASE_CONFIG_CONTRACT.md](./FIREBASE_CONFIG_CONTRACT.md) | Firebase config/init global contract |
-| [CTO_REPORT_20260418.md](./CTO_REPORT_20260418.md) | 특정 시점 엔지니어링 요약 |
+| [CTO_REPORT_20260418.md](./CTO_REPORT_20260418.md) | ?뱀젙 ?쒖젏 ?붿??덉뼱留??붿빟 |
 
 ---
 
-## 읽을 때 주의할 점
-
-- 이 폴더는 제품 철학 문서의 대체물이 아닙니다.
-- 제품 / 브랜드 / UI 판단은 먼저 아래 문서를 봅니다.
+## ?쎌쓣 ??二쇱쓽????
+- ???대뜑???쒗뭹 泥좏븰 臾몄꽌???泥대Ъ???꾨떃?덈떎.
+- ?쒗뭹 / 釉뚮옖??/ UI ?먮떒? 癒쇱? ?꾨옒 臾몄꽌瑜?遊낅땲??
   - `../product/PRODUCT_IDENTITY.md`
   - `../product/BRAND_EXPERIENCE.md`
   - `../design/UI_DESIGN_SYSTEM.md`
-- 엔지니어링 문서는 현재 계약, 구조, 분리 기준, 전환 원칙을 설명하는 용도로 사용합니다.
-- 런타임 / 배포 판단은 `../ops/OPERATIONS.md`와 `../migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md`의 현재 기준을 우선합니다.
-- 반복되는 오판 방지는 `REVIEW_GUARDRAILS.md`를 기준으로 합니다.
-- 신규 코드 구조, thin entrypoint, browser-global split, 대형 파일 리팩터링 순서는 `CODE_ARCHITECTURE.md`를 기준으로 합니다.
-- pages/*.html script order 변경 판단은 `SCRIPT_LOAD_ORDER.md`를 먼저 보고, Auth/Login active provider 전환은 `AUTH_LOGIN_ACTIVE_PROVIDER_TRANSITION_PLAN.md`와 함께 봅니다.
-- Auth/Login active provider 전환은 `AUTH_LOGIN_ACTIVE_PROVIDER_TRANSITION_PLAN.md`의 phase gate와 금지 조합을 기준으로 합니다.
-- CSS import hub, split ownership, visual verification 판단은 `CSS_ARCHITECTURE.md`와 `../ops/BROWSER_VERIFICATION_URL_POLICY.md`를 함께 봅니다.
-- #223 repository structure follow-up closure 판단은 `REPOSITORY_STRUCTURE_FOLLOWUP_STATUS_MAP.md`에서 active blockers and closure conditions를 먼저 확인합니다.
-- Editor fallback factory, `window.currentTreeMemories`, `window.currentTreeData`, compatibility alias 정리는 `EDITOR_FALLBACK_GLOBAL_STATE_AUDIT.md`의 audit gate를 먼저 통과해야 합니다.
-- #224 Auth/Editor fallback checklist 판단은 `AUTH_EDITOR_FALLBACK_CHECKLIST_MAPPING.md`에서 #78/#223/#225 ownership mapping을 먼저 확인합니다.
-- Shared header config/path helper extraction 판단은 `SHARED_HEADER_CONFIG_HELPER_DECISION.md`의 defer 조건과 follow-up trigger를 먼저 확인합니다.
+- ?붿??덉뼱留?臾몄꽌???꾩옱 怨꾩빟, 援ъ“, 遺꾨━ 湲곗?, ?꾪솚 ?먯튃???ㅻ챸?섎뒗 ?⑸룄濡??ъ슜?⑸땲??
+- ?고???/ 諛고룷 ?먮떒? `../ops/OPERATIONS.md`? `../migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md`???꾩옱 湲곗????곗꽑?⑸땲??
+- 諛섎났?섎뒗 ?ㅽ뙋 諛⑹???`REVIEW_GUARDRAILS.md`瑜?湲곗??쇰줈 ?⑸땲??
+- ?좉퇋 肄붾뱶 援ъ“, thin entrypoint, browser-global split, ????뚯씪 由ы뙥?곕쭅 ?쒖꽌??`CODE_ARCHITECTURE.md`瑜?湲곗??쇰줈 ?⑸땲??
+- pages/*.html script order 蹂寃??먮떒? `SCRIPT_LOAD_ORDER.md`瑜?癒쇱? 蹂닿퀬, Auth/Login active provider ?꾪솚? `AUTH_LOGIN_ACTIVE_PROVIDER_TRANSITION_PLAN.md`? ?④퍡 遊낅땲??
+- Auth/Login active provider ?꾪솚? `AUTH_LOGIN_ACTIVE_PROVIDER_TRANSITION_PLAN.md`??phase gate? 湲덉? 議고빀??湲곗??쇰줈 ?⑸땲??
+- CSS import hub, split ownership, visual verification ?먮떒? `CSS_ARCHITECTURE.md`? `../ops/BROWSER_VERIFICATION_URL_POLICY.md`瑜??④퍡 遊낅땲??
+- #223 repository structure follow-up closure ?먮떒? `REPOSITORY_STRUCTURE_FOLLOWUP_STATUS_MAP.md`?먯꽌 active blockers and closure conditions瑜?癒쇱? ?뺤씤?⑸땲??
+- Editor fallback factory, `window.currentTreeMemories`, `window.currentTreeData`, compatibility alias ?뺣━??`EDITOR_FALLBACK_GLOBAL_STATE_AUDIT.md`??audit gate瑜?癒쇱? ?듦낵?댁빞 ?⑸땲??
+- #224 Auth/Editor fallback checklist ?먮떒? `AUTH_EDITOR_FALLBACK_CHECKLIST_MAPPING.md`?먯꽌 #78/#223/#225 ownership mapping??癒쇱? ?뺤씤?⑸땲??
+- Shared header config/path helper extraction ?먮떒? `SHARED_HEADER_CONFIG_HELPER_DECISION.md`??defer 議곌굔怨?follow-up trigger瑜?癒쇱? ?뺤씤?⑸땲??
+- `css/editor/overrides.css` relocation ?먮떒? `EDITOR_OVERRIDES_RELOCATION_AUDIT.md`??cascade risk 諛?future implementation gate瑜?癒쇱? ?뺤씤?⑸땲??
 
 ---
 
-## 작성 규칙
+## ?묒꽦 洹쒖튃
 
-1. 새로운 기술 문서는 이 폴더에 생성합니다.
-2. 생성 후 `docs/doc_index.md`에도 추가합니다.
-3. API 계약이나 경로 전략이 바뀌면 관련 운영 문서와 함께 갱신합니다.
+1. ?덈줈??湲곗닠 臾몄꽌?????대뜑???앹꽦?⑸땲??
+2. ?앹꽦 ??`docs/doc_index.md`?먮룄 異붽??⑸땲??
+3. API 怨꾩빟?대굹 寃쎈줈 ?꾨왂??諛붾뚮㈃ 愿???댁쁺 臾몄꽌? ?④퍡 媛깆떊?⑸땲??
