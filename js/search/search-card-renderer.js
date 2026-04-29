@@ -24,7 +24,7 @@
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
+            .replace(/\"/g, '&quot;')
             .replace(/'/g, '&#39;');
     }
 
@@ -214,56 +214,145 @@
                      <div class="tree-title">${safeTitle}</div>
                      <p class="tree-subtitle">${escapeHtml(softMoodLine)}</p>
                      <div class="tree-meta-row">
-                         <div class="tree-meta-left">${emotionTag}</div>
-                         <div class="tree-meta-right"><span class="tree-meta-count">${escapeHtml(countLabel)}</span></div>
+                         <div class="tree-meta-left">
+                             <span class="tree-meta-chip">
+                                 <span class="material-symbols-outlined">schedule</span>
+                                 ${escapeHtml(displayStage)}
+                             </span>
+                         </div>
+                         <div class="tree-meta-right">
+                             <span style="font-size:13px;color:var(--on-surface-variant);white-space:nowrap;">${escapeHtml(countLabel)}</span>
+                             ${emotionTag}
+                         </div>
                      </div>
                  </div>
              </div>
          `;
      }
 
-    function renderResults(trees, options = {}) {
-        const { isDemo = false } = options;
-        if (!Array.isArray(trees) || trees.length === 0) {
-            return renderEmptySearchState();
-        }
-        return trees.map((tree, index) => renderTreeCard(tree, index)).join('');
+    function renderNoTreesState() {
+        const locale = window.i18n?.currentLang || window.getCurrentLang?.() || document.documentElement?.lang || 'ko';
+        const isEnglish = String(locale).toLowerCase().startsWith('en');
+        const heading = window.i18nSearch?.['search.noTreesHeading']?.[isEnglish ? 'en' : 'ko'] || (isEnglish ? 'No public LoveTrees yet' : '아직 공개된 러브트리가 없어요');
+        const body = window.i18nSearch?.['search.noTreesBody']?.[isEnglish ? 'en' : 'ko'] || (isEnglish ? 'Public LoveTrees will appear here once someone shares one.' : '다른 팬이 공개한 러브트리가 생기면 이곳에서 만날 수 있어요.');
+
+        return `
+            <div class="search-empty-state">
+                <span class="material-symbols-outlined search-empty-icon" aria-hidden="true">public</span>
+                <h3 class="search-empty-heading">${escapeHtml(heading)}</h3>
+                <p class="search-empty-body">${escapeHtml(body)}</p>
+            </div>
+        `;
     }
 
-    function renderLoading() {
-        return Array.from({ length: 3 }, (_, i) => `
-            <div class="tree-card ${i === 0 ? 'tree-card-featured' : ''} search-skeleton-card" aria-hidden="true">
-                <div class="tree-card-media search-skeleton-block"></div>
+    function renderEmptySearchState() {
+        const locale = window.i18n?.currentLang || window.getCurrentLang?.() || document.documentElement?.lang || 'ko';
+        const isEnglish = String(locale).toLowerCase().startsWith('en');
+        const heading = window.i18nSearch?.['search.emptySearchHeading']?.[isEnglish ? 'en' : 'ko'] || (isEnglish ? 'No matches found' : '조건에 맞는 트리가 없어요');
+        const body = window.i18nSearch?.['search.emptySearchBody']?.[isEnglish ? 'en' : 'ko'] || (isEnglish ? 'Try a different keyword or filter.' : '다른 키워드나 필터로 다시 찾아보세요.');
+
+        return `
+            <div class="search-empty-state">
+                <span class="material-symbols-outlined search-empty-icon" aria-hidden="true">search_off</span>
+                <h3 class="search-empty-heading">${escapeHtml(heading)}</h3>
+                <p class="search-empty-body">${escapeHtml(body)}</p>
+            </div>
+        `;
+    }
+
+    function renderDemoBadge() {
+        return `
+            <div style="grid-column:1 / -1;background: var(--surface-container); border: 1px solid var(--outline-variant); color: var(--on-surface-variant); padding: 12px 20px; border-radius: 1rem; margin-bottom: 6px; font-size: 13px; text-align: center; font-style: italic;">
+                <span style="font-weight: 700;">🌸 샘플 러브트리</span> — 다른 팬들이 남긴 감정의 경로를 둘러보세요
+            </div>
+        `;
+    }
+
+    function renderSkeletonCard(index) {
+        return `
+            <div class="tree-card search-skeleton-card" aria-hidden="true" style="animation-delay:${index * 0.04}s;pointer-events:none;">
+                <div class="tree-card-media search-skeleton-block" style="min-height:${index === 0 ? 210 : 182}px;"></div>
                 <div class="tree-card-body">
                     <div class="search-skeleton-line search-skeleton-title"></div>
                     <div class="search-skeleton-line search-skeleton-copy"></div>
                     <div class="tree-meta-row">
-                        <div class="tree-meta-left"><span class="tree-meta-chip search-skeleton-chip"></span></div>
-                        <div class="tree-meta-right"><span class="search-skeleton-line search-skeleton-count"></span></div>
+                        <div class="tree-meta-left">
+                            <span class="tree-meta-chip search-skeleton-chip"></span>
+                        </div>
+                        <div class="tree-meta-right">
+                            <span class="search-skeleton-line search-skeleton-count"></span>
+                        </div>
                     </div>
                 </div>
             </div>
-        `).join('');
-    }
-
-    function renderEmptySearchState() {
-        return `
-            <div style="text-align:center;padding:60px 20px;color:var(--on-surface-variant);">
-                <span class="material-symbols-outlined" style="font-size:48px;margin-bottom:16px;display:block;">search_off</span>
-                <p style="font-size:15px;font-weight:700;">검색 결과가 없어요.</p>
-                <p style="font-size:13px;margin-top:8px;">다른 키워드나 필터로 찾아보세요.</p>
-            </div>
         `;
     }
 
-    function renderNoTreesState() {
-        return `
-            <div style="text-align:center;padding:60px 20px;color:var(--on-surface-variant);">
-                <span class="material-symbols-outlined" style="font-size:48px;margin-bottom:16px;display:block;">forest</span>
-                <p style="font-size:15px;font-weight:700;">아직 공개된 러브트리가 없어요.</p>
-                <p style="font-size:13px;margin-top:8px;">첫 번째 러브트리를 만들어 보세요.</p>
-            </div>
+    function renderSkeletonGrid(options = {}) {
+        _addAnimations();
+        const count = Math.max(1, Math.min(Number(options.count || 6), 8));
+        return Array.from({ length: count }, (_, index) => renderSkeletonCard(index)).join('');
+    }
+
+    function renderLoading(options = {}) {
+        return renderSkeletonGrid(options);
+    }
+
+    function renderResults(trees, options = {}) {
+        const { isDemo = false } = options;
+
+        _addAnimations();
+
+        if (trees.length === 0) {
+            return renderEmptySearchState();
+        }
+
+        let html = '';
+
+        if (isDemo) {
+            html += renderDemoBadge();
+        }
+
+        trees.forEach((tree, index) => {
+            html += renderTreeCard(tree, index);
+        });
+
+        return html;
+    }
+
+    function _addAnimations() {
+        if (document.getElementById('search-card-anim-style')) return;
+        
+        const style = document.createElement('style');
+        style.id = 'search-card-anim-style';
+        style.textContent = `
+            @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+            @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+            @keyframes searchSkeletonPulse { 0%, 100% { opacity: 0.58; } 50% { opacity: 1; } }
+            .results-fade-in { animation: fadeIn 0.3s ease-out; }
+            .search-skeleton-card { cursor: default; box-shadow: 0 16px 32px rgba(75, 64, 57, 0.035); }
+            .search-skeleton-card::before { opacity: 0; }
+            .search-skeleton-block,
+            .search-skeleton-line,
+            .search-skeleton-chip {
+                display: block;
+                border-radius: 999px;
+                background: linear-gradient(90deg, rgba(144,73,81,0.07), rgba(255,255,255,0.72), rgba(122,139,110,0.07));
+                background-size: 220% 100%;
+                animation: searchSkeletonPulse 1.35s ease-in-out infinite;
+            }
+            .search-skeleton-block { border-radius: 1.35rem; width: 100%; }
+            .search-skeleton-title { width: 72%; height: 18px; }
+            .search-skeleton-copy { width: 92%; height: 13px; opacity: 0.75; }
+            .search-skeleton-chip { width: 96px; height: 28px; }
+            .search-skeleton-count { width: 82px; height: 13px; }
+            @media (prefers-reduced-motion: reduce) {
+                .search-skeleton-block,
+                .search-skeleton-line,
+                .search-skeleton-chip { animation: none; }
+            }
         `;
+        document.head.appendChild(style);
     }
 
     window.LoveBudSearchCardRenderer = {
@@ -271,8 +360,13 @@
         renderTreeCard: renderTreeCard,
         renderResults: renderResults,
         renderLoading: renderLoading,
-        renderEmptySearchState: renderEmptySearchState,
+        renderSkeletonGrid: renderSkeletonGrid,
         renderNoTreesState: renderNoTreesState,
+        renderEmptySearchState: renderEmptySearchState,
+        renderDemoBadge: renderDemoBadge,
+        getTreeIcon: getTreeIcon,
+        renderEmotionTags: renderEmotionTags,
+        getBasePath: getBasePath,
         showImageFallback: showImageFallback,
         handleImageLoad: (img) => {
             if (isSuspiciousYouTubeThumbnailImage(img)) {
@@ -281,5 +375,5 @@
         }
     };
 
-    console.log('[LoveBudSearchCardRenderer] Search card renderer loaded v20260428-1');
-})();
+     console.log('[LoveBudSearchCardRenderer] Search card renderer loaded v20260428-1');
+ })();
