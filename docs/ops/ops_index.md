@@ -29,6 +29,7 @@
 11. [BRANCH_CLEANUP_PLAN.md](BRANCH_CLEANUP_PLAN.md) - merged/stale branch cleanup 후보와 보존 branch 분류 기준
 12. [../migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md](../migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md) - 전환 현황과 남은 과제
 13. [../engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md](../engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md) - browse filter / publication guard 구분
+14. [LOCAL_AUTO_BROWSER_VERIFICATION_RUNBOOK.md](LOCAL_AUTO_BROWSER_VERIFICATION_RUNBOOK.md) - 새 로컬 세션의 자동 브라우저 검증 절차 런북 (fixed test slot SHA/provenance, credential schema, login automation, report format)
 
 ---
 
@@ -50,6 +51,7 @@
 | [DEPLOY_CHECKLIST.md](DEPLOY_CHECKLIST.md) | 배포 전/후 검증 체크리스트 |
 | [RUNBOOK.md](RUNBOOK.md) | 운영 및 장애 대응 런북 |
 | [LOCAL_BROWSER_VERIFICATION_STARTUP.md](LOCAL_BROWSER_VERIFICATION_STARTUP.md) | 로컬/브라우저 검증 시작 전 공통 preflight, URL provenance, evidence, PR checklist 기준 |
+| [LOCAL_AUTO_BROWSER_VERIFICATION_RUNBOOK.md](LOCAL_AUTO_BROWSER_VERIFICATION_RUNBOOK.md) | 새 로컬 세션의 자동 브라우저 검증 절차 런북 |
 | [GITHUB_AUTH_TOKEN_USAGE.md](GITHUB_AUTH_TOKEN_USAGE.md) | GitHub CLI/browser login/connector 인증 및 token/credential 취급 기준 |
 | [BROWSER_VERIFICATION_URL_POLICY.md](BROWSER_VERIFICATION_URL_POLICY.md) | 브라우저 smoke URL provenance, PR Preview, Branch Preview, fixed test slot 검증 기준 |
 | [TEST_PREVIEW_SLOTS.md](TEST_PREVIEW_SLOTS.md) | 고정 테스트 Preview 슬롯 운영 기준 |
