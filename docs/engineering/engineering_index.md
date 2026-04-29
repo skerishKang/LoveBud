@@ -84,11 +84,8 @@
 - Editor fallback factory, `window.currentTreeMemories`, `window.currentTreeData`, compatibility alias ?뺣━??`EDITOR_FALLBACK_GLOBAL_STATE_AUDIT.md`??audit gate瑜?癒쇱? ?듦낵?댁빞 ?⑸땲??
 - #224 Auth/Editor fallback checklist ?먮떒? `AUTH_EDITOR_FALLBACK_CHECKLIST_MAPPING.md`?먯꽌 #78/#223/#225 ownership mapping??癒쇱? ?뺤씤?⑸땲??
 - Shared header config/path helper extraction ?먮떒? `SHARED_HEADER_CONFIG_HELPER_DECISION.md`??defer 議곌굔怨?follow-up trigger瑜?癒쇱? ?뺤씤?⑸땲??
-<<<<<<< HEAD
-- CSS 踰꾩쟾/prototype ?대뜑 媛먯궗 湲곗?? `CSS_VERSION_PROTOTYPE_FOLDER_MAP.md`瑜?癒쇱? 遊낅땲??
-=======
-- `css/editor/overrides.css` relocation ?먮떒? `EDITOR_OVERRIDES_RELOCATION_AUDIT.md`??cascade risk 諛?future implementation gate瑜?癒쇱? ?뺤씤?⑸땲??
->>>>>>> origin/main
+- CSS 踰꾩쟾/prototype ?대뜑 媛먯궗 湲곗?? CSS_VERSION_PROTOTYPE_FOLDER_MAP.md瑜?癒쇱? 遊낅땲??
+- css/editor/overrides.css relocation ?먮떒? EDITOR_OVERRIDES_RELOCATION_AUDIT.md??cascade risk 諛?future implementation gate瑜?癒쇱? ?뺤씤?⑸땲??
 
 ---
 
