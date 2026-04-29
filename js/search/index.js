@@ -87,6 +87,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         ui
     });
 
+    const dataApi = window.LoveBudSearchData.createSearchData({
+        refs,
+        state,
+        previewCacheApi,
+        ui,
+        CardRenderer,
+        PreviewRenderer,
+        callbacks,
+        cache,
+        PUBLIC_TREES_CACHE_KEY,
+        PREVIEW_CACHE_TTL_MS,
+        getPreviewCacheKey
+    });
+
     const getFilteredTrees = () => Adapter.filterTrees(state.allTrees, state.currentQuery, state.currentCategory);
 
     const getSelectedTreeFromFiltered = (filteredTrees) => {
@@ -128,32 +142,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         state.initialTreeDeepLinkApplied = true;
     };
 
-    const hydrateSelectedTreePreview = async (tree) => {
-        if (!tree || !tree.id) return;
-        const requestId = ++state.currentPreviewRequestId;
-        ui.renderPreviewLoadingState(tree);
-
-        try {
-            const cachedPreview = previewCacheApi.readPreviewCache(tree.id);
-            const hydratedTree = cachedPreview || await window.apiClient.getPublicTreePreview(tree);
-
-            previewCacheApi.writePreviewCache(tree.id, hydratedTree);
-            previewCacheApi.mergeHydratedTree(hydratedTree);
-
-            if (requestId !== state.currentPreviewRequestId || state.selectedTreeId !== tree.id) {
-                return;
-            }
-            PreviewRenderer.updatePreview(hydratedTree);
-            renderResults(false);
-        } catch (error) {
-            console.warn('[search] preview hydration failed:', error.message);
-            if (requestId !== state.currentPreviewRequestId || state.selectedTreeId !== tree.id) {
-                return;
-            }
-            ui.clearSelectedPreview({ preserveOpenState: false });
-        }
-    };
-
     const selectTree = (tree, activeCard) => {
         if (!tree) return;
         state.selectedTreeId = tree.id;
@@ -169,7 +157,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
-        hydrateSelectedTreePreview(tree);
+        dataApi.hydrateSelectedTreePreview(tree);
     };
 
     function renderResults(resetPreviewWhenNoSelection = true) {
@@ -213,58 +201,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    async function loadPublicTrees(options = {}) {
-        const { resetSelection = false } = options;
-        const cacheKey = `${PUBLIC_TREES_CACHE_KEY}_${state.currentSort}_${state.currentLimit}`;
-
-        ui.syncBrowseHead();
-
-        if (resetSelection) {
-            ui.clearSelectedPreview();
-        }
-
-        let cachedTrees = null;
-        if (cache) {
-            cachedTrees = cache.get(cacheKey);
-            if (cachedTrees && Array.isArray(cachedTrees) && cachedTrees.length > 0) {
-                state.allTrees = cachedTrees;
-                state.isFromCache = true;
-                renderResults();
-            }
-        }
-
-        try {
-            if (window.apiClient && window.apiClient.getPublicTrees) {
-                const apiTrees = await window.apiClient.getPublicTrees({
-                    view: 'summary',
-                    sort: state.currentSort,
-                    limit: state.currentLimit
-                });
-                if (!Array.isArray(apiTrees)) {
-                    throw new Error(ui.getCurrentLocale() === 'en' ? 'Invalid API response format' : 'API 응답 형식 오류');
-                }
-
-                if (cache) {
-                    cache.set(cacheKey, apiTrees, 5 * 60 * 1000);
-                }
-                if (!previewCacheApi.areTreesEffectivelySame(state.allTrees, apiTrees)) {
-                    state.allTrees = apiTrees;
-                }
-                state.loadError = null;
-                state.apiTreesLoaded = true;
-                renderResults();
-            } else {
-                throw new Error(ui.getCurrentLocale() === 'en' ? 'Tree API unavailable' : 'tree API 사용 불가');
-            }
-        } catch (error) {
-            state.loadError = error;
-            console.warn('[search] API 로드 실패:', error.message);
-            if (!state.allTrees || state.allTrees.length === 0) {
-                state.allTrees = [];
-            }
-            renderResults();
-        }
-    }
 
     function renderGrowingResults() {
         if (!refs.growingSection || !refs.growingList) return;
@@ -285,33 +221,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         ui.syncActiveCard();
     }
 
-    async function loadGrowingTrees() {
-        if (!window.LoveTreeBaseApiFetch || typeof window.LoveTreeBaseApiFetch.apiFetch !== 'function') return;
-
-        try {
-            const apiResponse = await window.LoveTreeBaseApiFetch.apiFetch('/community/growing-trees?limit=3');
-            const rawTrees = Array.isArray(apiResponse) ? apiResponse : (apiResponse?.data || []);
-            const baseModels = window.LoveTreePublicTreeAdapter.buildPublicTreeSummaryModels(rawTrees);
-            state.growingTrees = baseModels.map((tree, index) => {
-                const raw = rawTrees[index]?.data || rawTrees[index] || {};
-                const rawEmotionTags = Array.isArray(raw.emotionTags) ? raw.emotionTags : (Array.isArray(raw.emotion_tags) ? raw.emotion_tags : []);
-                return {
-                    ...tree,
-                    emotionTags: rawEmotionTags.filter(Boolean).slice(0, 3),
-                    timeRange: raw.timeRange || raw.time_range || tree.timeRange
-                };
-            });
-
-            renderGrowingResults();
-        } catch (error) {
-            console.warn('[search] growing trees load failed:', error.message);
-            if (refs.growingSection) refs.growingSection.style.display = 'none';
-        }
-    }
-
     callbacks.selectTree = selectTree;
-    callbacks.loadPublicTrees = loadPublicTrees;
+    callbacks.loadPublicTrees = dataApi.loadPublicTrees;
     callbacks.renderResults = renderResults;
+    callbacks.renderGrowingResults = renderGrowingResults;
     callbacks.updateUrlState = urlState.updateUrlState;
 
     const controls = window.LoveBudSearchControls.createSearchControls({
@@ -338,8 +251,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     refs.resultsList.innerHTML = CardRenderer.renderLoading();
     ui.clearSelectedPreview();
     await Promise.allSettled([
-        loadPublicTrees({ resetSelection: true }),
-        loadGrowingTrees()
+        dataApi.loadPublicTrees({ resetSelection: true }),
+        dataApi.loadGrowingTrees()
     ]);
 
     urlState.restoreStateFromUrl();
@@ -351,7 +264,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const previousLimit = state.currentLimit;
         urlState.restoreStateFromUrl();
         if (previousSort !== state.currentSort || previousLimit !== state.currentLimit) {
-            await loadPublicTrees({ resetSelection: true });
+            await dataApi.loadPublicTrees({ resetSelection: true });
         } else {
             renderResults(false);
         }
