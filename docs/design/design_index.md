@@ -25,6 +25,7 @@ design/
 |--------|------|
 | [UI_DESIGN_SYSTEM.md](UI_DESIGN_SYSTEM.md) | LoveBud UI/UX 디자인 시스템과 화면 기준 |
 | [UI_POLISH_ROADMAP.md](UI_POLISH_ROADMAP.md) | PR #49, #51, #62, #63, #66, #67, #69, #70 이후 public UI polish와 Search 후속 작업 범위 분리 기준 |
+| [PAGE_TRANSITION_REVEAL_COVERAGE.md](PAGE_TRANSITION_REVEAL_COVERAGE.md) | active page transition / upward reveal coverage, risk levels, and future opt-in smoke criteria |
 | [BUTTON_BADGE_CHIP_BASELINE.md](BUTTON_BADGE_CHIP_BASELINE.md) | button / badge / chip tone 통일 기준 |
 | [BUTTON_BASELINE_CONSOLIDATION_PLAN.md](BUTTON_BASELINE_CONSOLIDATION_PLAN.md) | global.css button baseline 중복 정의 정리 계획 |
 | [PRIMARY_COLOR_TOKEN_CLEANUP_PLAN.md](PRIMARY_COLOR_TOKEN_CLEANUP_PLAN.md) | `rgba(144, 73, 81, X)` 반복을 `--primary-rgb` token 기반으로 단계 정리하기 위한 계획 |
