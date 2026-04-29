@@ -4,6 +4,8 @@
 
 `functions/api/[[path]].js` is the **active same-origin `/api/*` entry point** for this project, served via Cloudflare Pages Functions.
 
+> **Runtime Ownership Marker** - This folder contains the active production API entry point.
+
 ## Request Flow
 
 ```
