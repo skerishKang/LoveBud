@@ -1,6 +1,6 @@
 /**
  * LoveBud - My Trees Data
- * v20260420-1
+ * v20260429-2
  *
  * Responsibilities:
  * - cache keys
@@ -180,6 +180,32 @@
     return enriched;
   }
 
+  /**
+   * Extract a numeric HTTP status from an error object.
+   * Supports: error.status, error.statusCode, error.response?.status.
+   * Returns 0 if no status is extractable.
+   */
+  function extractHttpStatus(error) {
+    if (!error) return 0;
+    var status = error.status || error.statusCode || (error.response && error.response.status) || 0;
+    return Number(status) || 0;
+  }
+
+  /**
+   * Classify an API error into one of: 'auth', 'server', 'network', 'generic'.
+   * - auth   : HTTP 401 or 403
+   * - server : HTTP 5xx
+   * - network: no HTTP status (fetch/network failure, offline)
+   * - generic: anything else (4xx other than 401/403, unknown)
+   */
+  function classifyLoadError(error) {
+    var status = extractHttpStatus(error);
+    if (status === 401 || status === 403) return 'auth';
+    if (status >= 500 && status < 600) return 'server';
+    if (status === 0) return 'network';
+    return 'generic';
+  }
+
   async function loadTrees(options) {
     var cache = window.LoveBudCache;
     var i18n = getI18n(options);
@@ -236,25 +262,87 @@
       } else {
         console.error('[my-trees-data] Invalid trees response:', trees);
         if (!cachedTrees && typeof setState === 'function' && stateEnum?.ERROR) {
-          setState(stateEnum.ERROR);
+          setState(stateEnum.ERROR, { errorType: 'generic' });
         }
       }
     } catch (e) {
+      var errorType = classifyLoadError(e);
+      console.error('[my-trees-data] loadTrees error (type=' + errorType + '):', e);
+
+      // auth errors (401/403): do not silently keep stale cache.
+      // Show auth error state regardless of cache presence.
+      if (errorType === 'auth') {
+        if (typeof setState === 'function' && stateEnum?.ERROR) {
+          setState(stateEnum.ERROR, { errorType: 'auth' });
+        } else {
+          // setState not injected — DOM fallback
+          _domFallbackErrorState('auth');
+        }
+        return;
+      }
+
+      // server / network / generic: keep cached fallback if available
       if (cachedTrees && Array.isArray(cachedTrees)) {
-        console.error('[my-trees-data] loadTrees error:', e);
-        console.log('[my-trees-data] Showing cached trees after API error');
+        console.log('[my-trees-data] Showing cached trees after ' + errorType + ' error');
         if (typeof renderTrees === 'function') {
           renderTrees(cachedTrees);
         }
-        showToast?.(i18n('myTrees.offline_mode') || '오프라인 모드 - 캐시된 데이터를 표시합니다', 'warn');
+        var warnKey = errorType === 'server'
+          ? (i18n('myTrees.server_error_cached') || '서버 오류가 발생했습니다. 저장된 목록을 표시합니다.')
+          : (i18n('myTrees.offline_mode') || '오프라인 모드 - 캐시된 데이터를 표시합니다');
+        showToast?.(warnKey, 'warn');
       } else {
-        console.error('[my-trees-data] loadTrees error:', e);
+        // No cache: transition to error state
         if (typeof setState === 'function' && stateEnum?.ERROR) {
-          setState(stateEnum.ERROR);
+          setState(stateEnum.ERROR, { errorType: errorType });
+        } else {
+          _domFallbackErrorState(errorType);
         }
-        showToast?.(i18n('myTrees.load_failed') || '트리 목록을 불러오는데 실패했습니다', 'error');
+        var failKey = errorType === 'server'
+          ? (i18n('myTrees.server_load_failed') || '서버 오류로 트리 목록을 불러오지 못했습니다')
+          : (i18n('myTrees.load_failed') || '트리 목록을 불러오는데 실패했습니다');
+        showToast?.(failKey, 'error');
       }
     }
+  }
+
+  /**
+   * DOM fallback for error state when setState is not injected.
+   * Hides loading, shows state-error with appropriate message.
+   */
+  function _domFallbackErrorState(errorType) {
+    var loading = document.getElementById('state-loading');
+    var error = document.getElementById('state-error');
+    var empty = document.getElementById('state-empty');
+    var loaded = document.getElementById('state-loaded');
+    if (loading) loading.style.display = 'none';
+    if (empty) empty.style.display = 'none';
+    if (loaded) loaded.style.display = 'none';
+    if (error) {
+      error.style.display = 'flex';
+      _updateErrorStateMessage(error, errorType);
+    }
+  }
+
+  /**
+   * Update error state DOM message elements based on errorType.
+   * Targets h2[data-i18n] and p[data-i18n] inside the error container.
+   */
+  function _updateErrorStateMessage(errorEl, errorType) {
+    if (!errorEl) return;
+    var h2 = errorEl.querySelector('h2');
+    var p = errorEl.querySelector('p');
+    if (errorType === 'auth') {
+      if (h2) h2.textContent = '로그인이 필요합니다';
+      if (p) p.textContent = '세션이 만료되었거나 인증이 필요합니다. 다시 로그인해 주세요.';
+    } else if (errorType === 'server') {
+      if (h2) h2.textContent = '서버 오류가 발생했습니다';
+      if (p) p.textContent = '잠시 후 다시 시도해 주세요.';
+    } else if (errorType === 'network') {
+      if (h2) h2.textContent = '불러오기에 실패했습니다';
+      if (p) p.textContent = '네트워크 연결을 확인하고 다시 시도해주세요.';
+    }
+    // generic: leave default HTML as-is
   }
 
   window.LoveBudMyTreesData = {
