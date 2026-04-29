@@ -507,7 +507,7 @@
     }
   }
 
-  window.LoveBudMyTreesUI = {
+  var api = {
     escapeHtml: escapeHtml,
     closeAllDropdowns: closeAllDropdowns,
     buildMiniTreeSVG: buildMiniTreeSVG,
@@ -517,4 +517,8 @@
     buildTreeCard: buildTreeCard,
     renderTrees: renderTrees
   };
+
+  // Backward-compat: older page scripts referenced "LoveTree*" namespaces.
+  window.LoveBudMyTreesUI = api;
+  window.LoveTreeMyTreesUI = api;
 })();
