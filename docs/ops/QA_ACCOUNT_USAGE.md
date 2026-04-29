@@ -14,7 +14,7 @@
 ## 2. Account Types
 
 | 타입 | 이메일 | 용도 | 상태 |
-|------|--------|------|------|
+|------|--------|------|
 | Internal QA Admin | `admin.test@lovetree.dev` | 관리 기능 검증 | 활성 |
 | Internal QA User | `user.test@lovetree.dev` | 일반 사용자 흐름 검증 | 활성 |
 | Public Demo | 미정 | 외부 데모용 | **미활성** |
@@ -161,11 +161,14 @@ QA 계정: Internal QA User
 - [ ] 컴2 local `.local/test-accounts.json` 준비
 - [ ] `.local/` gitignore 확인
 
-### PR Template
+### PR Preflight Scope Check (추가)
 
-- [ ] PR smoke request에 QA account role 필드 추가
+PR 생성 전 반드시 아래를 확인합니다. (#277 대응)
 
----
+- [ ] `git diff --name-only origin/main...HEAD` 실행
+- [ ] 예상 외 파일(screenshots, ops/inbox/reports/slots, work/, local-backup/)이 포함되어 있으면 즉시 중단
+- [ ] root-level `*.png`, `*.jpg`, `*.jpeg`, `*.gif`, `*.webp` 파일이 staged되어 있으면 제거
+- [ ] PR scope가 의도한 파일만 포함하는지 확인 후 push
 
 ---
 
@@ -186,7 +189,7 @@ QA 계정: Internal QA User
 
 2. **Fixed Test Slot** (fallback)
    - Cloudflare Preview URL이 없거나 확인 불가능한 경우에만 사용
-    - test1~test10 중 하나의 slot을 배정받아 사용
+   - test1~test10 중 하나의 slot을 배정받아 사용
 
 ### 검증 범위별 허용 환경
 
@@ -273,10 +276,9 @@ D:\LoveBud-triage\ops\slots\test-slot-status.md
 
 ## 관련 문서
 
-- [QA_CREDENTIALS.txt](./QA_CREDENTIALS.txt) - QA 계정 정보 위치 안내
 - [TEST_PREVIEW_SLOTS.md](./TEST_PREVIEW_SLOTS.md) - 고정 테스트 Preview 슬롯 운영 기준
 - [BROWSER_VERIFICATION_URL_POLICY.md](./BROWSER_VERIFICATION_URL_POLICY.md) - 브라우저 검증 URL 정책
 
 ---
 
-Last updated: 2026-04-28
+Last updated: 2026-04-29
