@@ -1,6 +1,6 @@
 # Auth & Data Cache Key Inventory
 
-Status: active documentation  
+Status: active documentation
 Last synced for: Issue #78 cache key audit
 
 ---
