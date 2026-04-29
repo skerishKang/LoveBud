@@ -98,7 +98,7 @@ test('modal growing snapshot query keeps public memory count and growing stage c
 
   const normalizedSource = source.replace(/\r\n/g, '\n');
   const functionMatch = normalizedSource.match(
-    /def\s+fetch_growing_public_tree_snapshots\s*\(\s*limit:\s*int\s*=\s*6\s*\)[\s\S]*?(?=\n\ndef\s+)/
+    /def\s+fetch_growing_public_tree_snapshots\s*\(\s*limit:\s*int\s*=\s*6\s*\)[\s\S]*?(?=\n\n+def\s+)/
   );
   assert.ok(functionMatch, 'missing fetch_growing_public_tree_snapshots function body');
 
