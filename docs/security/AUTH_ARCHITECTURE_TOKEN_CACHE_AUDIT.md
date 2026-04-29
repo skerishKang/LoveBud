@@ -1,6 +1,6 @@
 # Auth Architecture and Token Cache Audit
 
-> **Status:** AUDIT_ONLY  
+> **Status:** AUDIT_ONLY
 > **Source:** Issue #78  
 > **Type:** Docs-only — no Auth runtime or token/cache behavior changes
 
