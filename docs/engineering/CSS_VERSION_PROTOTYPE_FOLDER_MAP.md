@@ -111,7 +111,7 @@
 - Issue #224
 - `docs/engineering/CSS_ARCHITECTURE.md` — active CSS import hub
 - `docs/engineering/EDITOR_OVERRIDES_RELOCATION_AUDIT.md` — editor overrides 별도 감사
-- `docs/engineering/GLOBAL_CSS_RGBA_AUDIT.md` — global.css RGBA token 감사 (별도 문서)
+- `docs/engineering/GLOBAL_CSS_RGBA_TOKEN_AUDIT.md` — global.css RGBA token 감사 (별도 문서)
 
 ---
 
