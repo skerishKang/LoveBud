@@ -32,24 +32,6 @@
 
 ---
 
-## 먼저 읽기
-
-1. [OPERATIONS.md](OPERATIONS.md) - 현재 운영 전략과 계층 정의
-2. [PARALLEL_WORKTREE_AGENT_POLICY.md](PARALLEL_WORKTREE_AGENT_POLICY.md) - 병렬 모델/worktree/검증 모델 운영 기준
-3. [LOCAL_BROWSER_VERIFICATION_STARTUP.md](LOCAL_BROWSER_VERIFICATION_STARTUP.md) - 로컬/브라우저 검증 시작 전 공통 preflight, URL provenance, evidence, PR checklist 기준
-4. [GITHUB_AUTH_TOKEN_USAGE.md](GITHUB_AUTH_TOKEN_USAGE.md) - GitHub CLI/browser login/connector 인증 및 token/credential 취급 기준
-5. [BROWSER_VERIFICATION_URL_POLICY.md](BROWSER_VERIFICATION_URL_POLICY.md) - 브라우저 검증 URL 출처, PR Preview, fixed test slot 사용 기준
-6. [TEST_PREVIEW_SLOTS.md](TEST_PREVIEW_SLOTS.md) - 고정 테스트 Preview 슬롯 운영 기준
-7. [DEPLOY_CHECKLIST.md](DEPLOY_CHECKLIST.md) - 배포 전/후 체크리스트
-8. [RUNBOOK.md](RUNBOOK.md) - 운영 / 장애 대응 기준
-9. [MODAL_BROWSE_RUNTIME.md](MODAL_BROWSE_RUNTIME.md) - browse summary의 Modal 우선 read path 기준
-10. [KNOWN_CI_E2E_BLOCKERS.md](KNOWN_CI_E2E_BLOCKERS.md) - 반복 CI/E2E blocker 원인 분리 및 exception merge 판단 기준
-11. [BRANCH_CLEANUP_PLAN.md](BRANCH_CLEANUP_PLAN.md) - merged/stale branch cleanup 후보와 보존 branch 분류 기준
-12. [../migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md](../migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md) - 전환 현황과 남은 과제
-13. [../engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md](../engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md) - browse filter / publication guard 구분
-
----
-
 ## 작업 환경 (Core)
 
 | 파일명 | 설명 |
@@ -72,6 +54,7 @@
 | [BROWSER_VERIFICATION_URL_POLICY.md](BROWSER_VERIFICATION_URL_POLICY.md) | 브라우저 smoke URL provenance, PR Preview, Branch Preview, fixed test slot 검증 기준 |
 | [TEST_PREVIEW_SLOTS.md](TEST_PREVIEW_SLOTS.md) | 고정 테스트 Preview 슬롯 운영 기준 |
 | [FIXED_SLOT_MANUAL_E2E_GATE.md](FIXED_SLOT_MANUAL_E2E_GATE.md) | Fixed slot 수동 E2E gate 런북 — slot 배정·SHA provenance·evidence 양식·page 분류·제한 사항 (Issue #136 manual gate 단계) |
+| [CLOUDFLARE_PAGES_E2E_SMOKE_REPLACEMENT.md](CLOUDFLARE_PAGES_E2E_SMOKE_REPLACEMENT.md) | Cloudflare Pages + Modal 기반 E2E smoke replacement 제안 — Phase 1 supplied URL smoke, Phase 2 manual workflow, Phase 3 preview URL discovery 기준 |
 | [MODAL_BROWSE_RUNTIME.md](MODAL_BROWSE_RUNTIME.md) | browse summary의 Modal 우선 경로와 Modal security contract 기준 |
 | [KNOWN_CI_E2E_BLOCKERS.md](KNOWN_CI_E2E_BLOCKERS.md) | 반복 CI/E2E 실패의 원인 분리 및 exception merge 판단 기준 |
 | [BRANCH_CLEANUP_PLAN.md](BRANCH_CLEANUP_PLAN.md) | PR #49~#58 이후 merged/stale branch cleanup 후보와 보존 branch 분류 기준 |
