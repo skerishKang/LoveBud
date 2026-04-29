@@ -1,0 +1,87 @@
+/*
+ * LoveBud shared page transition and reveal assets.
+ *
+ * Asset-only: this file is inert until a page explicitly opts in by adding
+ * the classes below. Do not attach these classes globally.
+ */
+
+.page-transition-ready,
+.page-transition-enter,
+.reveal-up,
+.reveal-fade,
+.reveal-scale {
+    pointer-events: auto;
+}
+
+.page-transition-ready {
+    opacity: 1;
+}
+
+.page-transition-enter {
+    opacity: 0;
+    transform: translateY(10px);
+}
+
+.page-transition-enter.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 260ms ease, transform 260ms ease;
+}
+
+.reveal-up {
+    opacity: 0;
+    transform: translateY(14px);
+}
+
+.reveal-up.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 280ms ease, transform 280ms ease;
+}
+
+.reveal-fade {
+    opacity: 0;
+}
+
+.reveal-fade.is-visible {
+    opacity: 1;
+    transition: opacity 240ms ease;
+}
+
+.reveal-scale {
+    opacity: 0;
+    transform: scale(0.98);
+}
+
+.reveal-scale.is-visible {
+    opacity: 1;
+    transform: scale(1);
+    transition: opacity 260ms ease, transform 260ms ease;
+}
+
+.page-transition-stagger > .reveal-up,
+.page-transition-stagger > .reveal-fade,
+.page-transition-stagger > .reveal-scale {
+    transition-delay: calc(var(--reveal-index, 0) * 45ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .page-transition-enter,
+    .page-transition-enter.is-visible,
+    .reveal-up,
+    .reveal-up.is-visible,
+    .reveal-fade,
+    .reveal-fade.is-visible,
+    .reveal-scale,
+    .reveal-scale.is-visible {
+        opacity: 1;
+        transform: none;
+        transition: none;
+    }
+
+    .page-transition-stagger > .reveal-up,
+    .page-transition-stagger > .reveal-fade,
+    .page-transition-stagger > .reveal-scale {
+        transition-delay: 0ms;
+    }
+}
