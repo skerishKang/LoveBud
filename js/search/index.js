@@ -250,12 +250,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     refs.resultsList.innerHTML = CardRenderer.renderLoading();
     ui.clearSelectedPreview();
+    
+    urlState.restoreStateFromUrl();
+    
     await Promise.allSettled([
         dataApi.loadPublicTrees({ resetSelection: true }),
         dataApi.loadGrowingTrees()
     ]);
 
-    urlState.restoreStateFromUrl();
     applySelectedTreeFromUrl();
     state.urlStateReady = true;
 
