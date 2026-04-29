@@ -29,6 +29,8 @@
 10. [SHARED_HEADER_CONFIG_HELPER_DECISION.md](./SHARED_HEADER_CONFIG_HELPER_DECISION.md) - Shared header config/helper extraction defer 결정과 follow-up trigger
 11. [REVIEW_GUARDRAILS.md](./REVIEW_GUARDRAILS.md) - 반복 false positive 방지 규칙
 12. [RECENT_REFACTORING.md](./RECENT_REFACTORING.md) - 최근 리팩터링 기록
+13. [EDITOR_OVERRIDES_RELOCATION_AUDIT.md](./EDITOR_OVERRIDES_RELOCATION_AUDIT.md) - css/editor/overrides.css role-based relocation 후보 감사
+14. [CSS_VERSION_PROTOTYPE_FOLDER_MAP.md](./CSS_VERSION_PROTOTYPE_FOLDER_MAP.md) - CSS 버전/prototype/reference/demo/variant 경로 감사 기준 및 분류 정책
 
 ---
 
@@ -53,6 +55,8 @@
 | [COMMON_CODE_CANDIDATES.md](./COMMON_CODE_CANDIDATES.md) | 공통화 후보 |
 | [FIREBASE_CONFIG_GLOBAL_MIGRATION_STRATEGY.md](./FIREBASE_CONFIG_GLOBAL_MIGRATION_STRATEGY.md) | Firebase config/global migration staged strategy |
 | [FIREBASE_CONFIG_CONTRACT.md](./FIREBASE_CONFIG_CONTRACT.md) | Firebase config/init global contract |
+| [EDITOR_OVERRIDES_RELOCATION_AUDIT.md](./EDITOR_OVERRIDES_RELOCATION_AUDIT.md) | css/editor/overrides.css role-based relocation 후보 감사 (구현 없음) |
+| [CSS_VERSION_PROTOTYPE_FOLDER_MAP.md](./CSS_VERSION_PROTOTYPE_FOLDER_MAP.md) | CSS 버전/prototype/reference/demo/variant 경로 감사 기준, 분류 정책, future gate |
 | [CTO_REPORT_20260418.md](./CTO_REPORT_20260418.md) | 특정 시점 엔지니어링 요약 |
 
 ---
@@ -74,6 +78,7 @@
 - Editor fallback factory, `window.currentTreeMemories`, `window.currentTreeData`, compatibility alias 정리는 `EDITOR_FALLBACK_GLOBAL_STATE_AUDIT.md`의 audit gate를 먼저 통과해야 합니다.
 - #224 Auth/Editor fallback checklist 판단은 `AUTH_EDITOR_FALLBACK_CHECKLIST_MAPPING.md`에서 #78/#223/#225 ownership mapping을 먼저 확인합니다.
 - Shared header config/path helper extraction 판단은 `SHARED_HEADER_CONFIG_HELPER_DECISION.md`의 defer 조건과 follow-up trigger를 먼저 확인합니다.
+- CSS 버전/prototype 폴더 감사 기준은 `CSS_VERSION_PROTOTYPE_FOLDER_MAP.md`를 먼저 봅니다.
 
 ---
 
