@@ -195,7 +195,10 @@
   function updateManageSummary(trees, options) {
     var summaryBar = document.getElementById('manageSummaryBar');
     if (!summaryBar || !trees || trees.length === 0) {
-      if (summaryBar) summaryBar.style.display = 'none';
+      if (summaryBar) {
+        summaryBar.classList.remove('manage-summary-visible');
+        summaryBar.classList.add('manage-summary-hidden');
+      }
       return trees || [];
     }
 
@@ -286,7 +289,8 @@
       };
     }
 
-    summaryBar.style.display = 'flex';
+    summaryBar.classList.remove('manage-summary-hidden');
+    summaryBar.classList.add('manage-summary-visible');
 
     if (options && typeof options.setLastTreesData === 'function') {
       options.setLastTreesData(trees);
