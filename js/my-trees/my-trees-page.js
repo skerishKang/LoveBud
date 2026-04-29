@@ -108,11 +108,15 @@
     });
   }
 
-  window.LoveBudMyTreesPage = {
+  var api = {
     STATE: STATE,
     showToast: showToast,
     setState: setState,
     setupHeaderCreateButton: setupHeaderCreateButton,
     setupRetryButton: setupRetryButton
   };
+
+  // Backward-compat: older page scripts referenced "LoveTree*" namespaces.
+  window.LoveBudMyTreesPage = api;
+  window.LoveTreeMyTreesPage = api;
 })();
