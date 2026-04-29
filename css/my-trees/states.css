@@ -10,6 +10,11 @@
 .error-state p { color: var(--on-surface-variant); font-size: 1rem; line-height: 1.6; margin-bottom: 24px; max-width: 400px; margin-left: auto; margin-right: auto; }
 .my-trees-create-icon { font-size: 20px; }
 
+/* Display state classes for my-trees page */
+.state-visible { display: flex; }
+.state-visible-block { display: block; }
+.state-hidden { display: none; }
+
 /* Initial display states for my-trees page */
 #state-loading { display: flex; }
 #state-error { display: none; }
@@ -20,3 +25,7 @@
 #treesContainer .state-hidden { display: none; }
 #treesContainer .state-visible { display: flex; }
 #treesContainer .state-visible-block { display: block; }
+
+/* Manage summary bar display state */
+.manage-summary-visible { display: flex; }
+.manage-summary-hidden { display: none; }
