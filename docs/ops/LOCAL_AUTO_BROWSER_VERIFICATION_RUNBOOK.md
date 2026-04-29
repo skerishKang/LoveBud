@@ -86,7 +86,9 @@ assigned URL이 `https://testN.lovebud.pages.dev` 형태인 경우:
 
 ## 6. Credential Metadata and Schema
 
-`.local/test-accounts.json` 파일의 schema shape (값 없음, placeholder 예시만):
+`.local/test-accounts.json` 파일의 schema shape은 아래 두 형태 중 하나일 수 있습니다 (값 없음, placeholder 예시만):
+
+**형태 A — top-level array:**
 
 ```json
 [
@@ -100,6 +102,24 @@ assigned URL이 `https://testN.lovebud.pages.dev` 형태인 경우:
 ]
 ```
 
+**형태 B — `{ "accounts": [...] }` wrapper:**
+
+```json
+{
+  "accounts": [
+    {
+      "label": "<계정 식별 레이블>",
+      "type": "<계정 유형 (예: Internal QA User)>",
+      "active": true,
+      "email": "<이메일 placeholder>",
+      "password": "<비밀번호 placeholder>"
+    }
+  ]
+}
+```
+
+> 실제 파일이 어느 형태인지는 로컬에서 직접 확인합니다.  
+> 어느 형태든 계정 선택 규칙 적용 방식은 동일합니다.  
 > 실제 값은 로컬 파일에서만 읽습니다. 이 문서에 기재하지 않습니다.
 
 ### Account Selection Rules
@@ -127,9 +147,17 @@ assigned URL이 `https://testN.lovebud.pages.dev` 형태인 경우:
 | submit | `button[type="submit"]`, `#loginButton`, `[data-testid="login-submit"]` |
 
 4. submit 후 대상 페이지 접근 확인.
-5. selector가 없거나 로그인 실패 시:
-   - selector 없음 → **BLOCKED** 보고 또는 manual fallback
-   - 로그인 실패 → **BLOCKED** 보고, credential 값 노출 금지
+5. 실패 구분:
+
+| 상황 | 판정 | 처리 |
+|------|------|------|
+| selector를 찾지 못함 (DOM에 없음) | **selector/tool issue** — app FAIL로 단정하지 않음 | manual fallback 시도 또는 BLOCKED 보고 |
+| selector는 있으나 automation tool이 interact 실패 | **selector/tool issue** — app FAIL로 단정하지 않음 | manual fallback 시도 또는 BLOCKED 보고 |
+| selector로 submit 완료 후 로그인 실패 (앱이 reject) | **app login FAIL** | FAIL/BLOCKED 보고, credential 값 노출 금지 |
+
+> **manual fallback은 assigned URL에서만 가능합니다.**  
+> production 도메인(`https://lovebud.pages.dev/`) 또는 다른 URL로 전환하지 않습니다.  
+> assigned URL 외 URL에서 manual 시도는 검증 결과로 인정되지 않습니다.
 
 ---
 
@@ -181,7 +209,7 @@ Browser Verification Report
 | 상태 | 의미 | 행동 |
 |------|------|------|
 | `BLOCKED` | 필수 입력 누락, SHA 불일치, 계정 없음, selector 없음 | 진행 중단, CTO에 보고, 파일 수정/ready/merge 금지 |
-| `FAIL` | 검증 실패 (로그인 실패, 페이지 오류, console fatal 등) | 진행 중단, CTO에 보고 |
+| `FAIL` | 검증 실패 (앱 로그인 실패, 페이지 오류, console fatal 등) | 진행 중단, CTO에 보고 |
 | `PARTIAL` | 일부 항목만 확인됨 | 미확인 항목 명시, CTO에 보고 |
 | `PASS` | 전 항목 통과, SHA/provenance 확인 완료 | 보고 후 대기, ready/merge는 CTO 지시에 따름 |
 
@@ -191,7 +219,7 @@ Browser Verification Report
 
 새 세션 또는 새 브라우저 검증 에이전트에게 줄 수 있는 최소 프롬프트:
 
-> "PR #\<number\>의 Browser verification entrypoint comment와 AGENTS.md 기준으로 assigned URL에서 자동 브라우저 검증을 수행하세요. 파일 수정, ready 전환, merge, issue close는 하지 마세요. Auth가 필요하면 로컬 `.local/test-accounts.json`에서 comment의 account type/account selection rule에 맞는 계정만 사용하세요. 결과는 runbook report format으로 보고하세요."
+> "PR #\<number\>의 Browser verification entrypoint comment와 AGENTS.md 기준으로 assigned URL에서 자동 브라우저 검증을 수행하세요. 파일 수정, ready 전환, merge, issue close는 하지 마세요. Auth가 필요하면 로컬 `.local/test-accounts.json`에서 comment의 account type/account selection rule에 맞는 계정만 사용하세요. selector 실패는 즉시 app FAIL로 단정하지 말고 manual fallback을 assigned URL에서 시도하거나 BLOCKED로 보고하세요. 결과는 runbook report format으로 보고하세요."
 
 ---
 
