@@ -18,7 +18,7 @@ After PR #108 removed Netlify-dev-based E2E smoke, the repository has a CI cover
 - Cloudflare Pages + Modal: **official verification direction**.
 - Automated Cloudflare Pages E2E smoke: **not yet implemented**.
 
-Until automated E2E smoke is available, this runbook defines the **manual gate** using fixed test slots (`test1`–`test5`).
+Until automated E2E smoke is available, this runbook defines the **manual gate** using fixed test slots (`test1`–`test10`).
 
 > **This is NOT a reintroduction of Netlify dev.**
 > Netlify remains a legacy artifact / removal candidate and must not be used as a verification target.
@@ -29,20 +29,45 @@ Until automated E2E smoke is available, this runbook defines the **manual gate**
 
 ### Permitted Slots
 
+The current fixed slot pool is `test1` through `test10`.
+
 | Slot | Cloudflare Pages Branch | Status |
 |------|------------------------|--------|
-| test1 | `test/slot-1` | Available for assignment |
-| test2 | `test/slot-2` | Available for assignment |
-| test3 | `test/slot-3` | Available for assignment |
-| test4 | `test/slot-4` | Available for assignment |
-| test5 | `test/slot-5` | Available for assignment |
+| test1 | `test/slot-1` | Available for assignment when no active assignment exists |
+| test2 | `test/slot-2` | Available for assignment when no active assignment exists |
+| test3 | `test/slot-3` | Available for assignment when no active assignment exists |
+| test4 | `test/slot-4` | Available for assignment when no active assignment exists |
+| test5 | `test/slot-5` | Available for assignment when no active assignment exists |
+| test6 | `test/slot-6` | Available for assignment when no active assignment exists |
+| test7 | `test/slot-7` | Available for assignment when no active assignment exists |
+| test8 | `test/slot-8` | Available for assignment when no active assignment exists |
+| test9 | `test/slot-9` | Available for assignment when no active assignment exists |
+| test10 | `test/slot-10` | Available for assignment when no active assignment exists |
 
 ### Slot Assignment Rules
 
 - **One slot = one PR at a time.** A slot may not be shared across multiple PRs simultaneously.
 - **No unilateral use.** A slot must be explicitly assigned before verification begins.
+- **No active slot overwrite.** Do not overwrite, reset, redeploy, or repoint a slot that has an active assignment.
 - **No arbitrary URL use.** Using a slot URL without a recorded assignment is prohibited.
 - Slot assignment is tracked in the [Assignment Record](#4-assignment-record) below and in the PR-specific `Browser verification entrypoint` comment.
+
+### New Browser Verification Assignment Procedure
+
+When assigning a new browser verification slot:
+
+1. Check the current assignment status for `test1` through `test10`.
+2. Select the first slot with no active assignment.
+3. Record the assignment before verification begins.
+4. Deploy or point the selected slot only after assignment is recorded and the task explicitly allows slot update.
+5. Confirm SHA provenance before reporting final PASS.
+
+If every slot is occupied:
+
+1. Report the occupied list to the CTO.
+2. Include each occupied slot, PR number, branch, head SHA, and release condition when available.
+3. Do not overwrite any occupied slot.
+4. Wait for the CTO or slot custodian to decide which slot can be released.
 
 ---
 
@@ -52,7 +77,7 @@ Before reporting any E2E result against a fixed slot, the verifier **must** conf
 
 ### SHA Check Procedure
 
-```
+```text
 1. Identify the slot's current branch head SHA:
    - Check the Cloudflare Pages deployment dashboard, OR
    - Check the slot branch tip: git log test/slot-N --oneline -1
@@ -100,7 +125,7 @@ Record all slot assignments here. Update this table when a slot is assigned or r
 
 Every manual E2E gate result must be reported using this evidence format.
 
-```
+```text
 URL:                   <full Cloudflare Pages URL for the slot>
 Page path:             <e.g., /, /search.html, /intro.html>
 Viewport:              <e.g., 1280x800, 390x844 (mobile)>
@@ -158,6 +183,7 @@ which pages are valid for a given slot/environment.
 | Production URL (`lovebud.pages.dev`) pre-merge | ❌ NOT final PASS; production must not be used as pre-merge verification target |
 | Stale slot (slot SHA ≠ PR head SHA) | ❌ NOT final PASS |
 | Slot with no assignment record | ❌ NOT final PASS |
+| Occupied slot overwritten without release decision | ❌ NOT final PASS |
 
 ### Output Prohibitions
 
