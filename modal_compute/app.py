@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import uuid
 from datetime import datetime
 from typing import Any
@@ -577,6 +578,122 @@ def delete_owner_memory(owner_id: str, memory_id: str) -> dict[str, Any]:
     return {"deleted": True, "id": str(row["id"])}
 
 
+def fork_public_tree(owner_id: str, source_tree_id: str) -> dict[str, Any]:
+    """Copy a public LoveTree and its public memories into a new tree owned by owner_id."""
+    safe_source_id = validate_required_uuid(source_tree_id, "sourceTreeId")
+
+    # Fetch source tree — must exist and be public
+    source_tree = fetch_tree_for_owner_check(safe_source_id)
+    if not source_tree:
+        raise HTTPException(status_code=404, detail="Source tree not found")
+    if str(source_tree.get("visibility") or "") != "public":
+        raise HTTPException(
+            status_code=403,
+            detail="Only public trees can be forked",
+        )
+
+    # Idempotency guard: if authenticated user already forked this tree, return existing copy
+    existing_fork_query = """
+        SELECT id FROM trees
+        WHERE owner_id = %s
+          AND forked_from_tree_id = %s
+        ORDER BY created_at DESC
+        LIMIT 1;
+    """
+
+    def check_existing():
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(existing_fork_query, (owner_id, safe_source_id))
+                return cur.fetchone()
+
+    existing = run_db_with_retry(check_existing)
+    if existing:
+        existing_id = str(existing["id"])
+        forked_tree = fetch_owner_tree(existing_id, owner_id)
+        if forked_tree:
+            return {**forked_tree, "forked": False, "duplicate": True}
+
+    # Build new tree title with suffix
+    source_title = str(source_tree.get("title") or "LoveTree")
+    new_title_raw = f"{source_title} (복사본)"
+    new_title = new_title_raw[:200]
+
+    new_tree_id = str(uuid.uuid4())
+
+    insert_tree_query = """
+        INSERT INTO trees (id, owner_id, title, visibility, forked_from_tree_id, created_at, updated_at)
+        VALUES (%s, %s, %s, 'public', %s, NOW(), NOW())
+        RETURNING id, owner_id, title, visibility, forked_from_tree_id, created_at, updated_at;
+    """
+
+    # Fetch public memories from source tree
+    fetch_source_memories_query = """
+        SELECT id, parent_id, title, memo, artist, source, source_url, source_type,
+               thumbnail, emotion_tags, timestamp
+        FROM memories
+        WHERE tree_id = %s
+          AND visibility = 'public'
+        ORDER BY created_at ASC
+        LIMIT 200;
+    """
+
+    insert_memory_query = """
+        INSERT INTO memories (
+            id, tree_id, parent_id, title, memo, artist, source, source_url,
+            source_type, thumbnail, emotion_tags, timestamp, visibility,
+            created_at, updated_at
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'public', NOW(), NOW());
+    """
+
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            # Insert new tree
+            cur.execute(insert_tree_query, (new_tree_id, owner_id, new_title, safe_source_id))
+            new_tree_row = cur.fetchone()
+
+            # Fetch source memories
+            cur.execute(fetch_source_memories_query, (safe_source_id,))
+            source_memories = cur.fetchall()
+
+            # Build old->new memory id map for parent_id rewriting
+            id_map: dict[str, str] = {}
+            for mem in source_memories:
+                id_map[str(mem["id"])] = str(uuid.uuid4())
+
+            # Insert copied memories with rewritten tree_id and parent_id
+            for mem in source_memories:
+                new_mem_id = id_map[str(mem["id"])]
+                old_parent_id = str(mem["parent_id"]) if mem["parent_id"] else None
+                new_parent_id = id_map.get(old_parent_id) if old_parent_id else None
+                cur.execute(
+                    insert_memory_query,
+                    (
+                        new_mem_id,
+                        new_tree_id,
+                        new_parent_id,
+                        mem["title"],
+                        mem["memo"],
+                        mem["artist"],
+                        mem["source"],
+                        mem["source_url"],
+                        mem["source_type"],
+                        mem["thumbnail"],
+                        mem["emotion_tags"],
+                        mem["timestamp"],
+                    ),
+                )
+        conn.commit()
+
+    memory_count = len(source_memories)
+    new_tree = normalize_tree_row(new_tree_row, memory_count)
+    new_tree["forkedFromTreeId"] = safe_source_id
+    new_tree["forked"] = True
+    new_tree["duplicate"] = False
+    return new_tree
+
+
 def _allowed_origins() -> list[str]:
     return _config_allowed_origins()
 
@@ -703,6 +820,15 @@ def get_private_tree_detail(
     if not tree:
         raise HTTPException(status_code=404, detail="Tree not found")
     return tree
+
+
+@web_app.post("/modal/private/trees/{tree_id}/fork")
+def post_fork_tree(
+    tree_id: str,
+    authorization: str | None = Header(default=None),
+) -> dict:
+    user = require_firebase_user(authorization)
+    return fork_public_tree(user["uid"], tree_id)
 
 
 @web_app.put("/modal/private/trees/{tree_id}")
