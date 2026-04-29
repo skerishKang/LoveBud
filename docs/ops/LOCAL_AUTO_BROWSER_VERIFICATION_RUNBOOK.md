@@ -84,7 +84,86 @@ assigned URL이 `https://testN.lovebud.pages.dev` 형태인 경우:
 
 ---
 
-## 6. Credential Metadata and Schema
+## 6. Fixed Test Slot Allocation Policy
+
+고정 test slot은 공유 리소스입니다. 단일 slot을 기본값처럼 hard-code하지 않습니다.
+
+1. CTO가 명시적으로 `test6`를 지정한 경우를 제외하고 `test6`를 hard-code하지 않습니다.
+2. `test1`부터 `test10`까지를 shared fixed slot pool로 취급합니다.
+3. slot을 배정하기 전에 현재 slot occupancy를 확인합니다.
+4. `test1` → `test10` 순서로 확인하고, active assignment가 없는 첫 번째 free slot을 우선합니다.
+5. 하나의 slot은 동시에 하나의 PR에만 배정할 수 있습니다.
+6. active assignment가 있는 slot은 건너뜁니다.
+7. stale로 보이는 slot도 CTO 승인 없이 overwrite하지 않습니다.
+8. active slot을 덮어쓰려면 명시적인 CTO 승인과 대상 slot 이름이 필요합니다.
+9. 빈 slot이 없으면 occupied slot list를 보고하고 **BLOCKED**로 중단합니다.
+10. 검증 완료 후에는 release recommendation을 보고합니다.
+
+### Slot Occupancy Check
+
+slot 배정 전 확인 순서:
+
+1. `test1` through `test10` branch 또는 deployment 상태를 확인합니다.
+2. 각 slot의 branch SHA와 배정 대상 PR head SHA를 비교합니다.
+3. PR Conversation의 `Browser verification entrypoint` comment 또는 CTO assignment comment에서 active assignment가 있는지 확인합니다.
+4. active assignment가 있으면 해당 slot을 skip합니다.
+5. assignment가 없고 overwrite가 필요 없는 slot을 free slot 후보로 봅니다.
+6. free slot이 확인되면 해당 slot을 assigned URL로 사용합니다.
+
+### PR Comment Assignment Record
+
+빈 slot을 찾으면 PR `Browser verification entrypoint` comment에 최소한 아래 값을 기록합니다:
+
+- assigned slot
+- assigned URL
+- PR number
+- PR branch
+- PR head SHA
+- credential source state
+- account type
+- account selection rule
+- release condition
+
+예시 구조:
+
+```text
+Assigned slot: testN
+Assigned URL: https://testN.lovebud.pages.dev
+PR: #<number>
+Branch: <branch>
+Head SHA: <sha>
+Credential source state: <not needed | pre-existing local .local/test-accounts.json | restored from handoff/bundle>
+Account type: <Internal QA User | Internal QA Admin | not needed>
+Account selection rule: <first active matching account type | specific local slot label | not needed>
+Release condition: releasable after verification report is accepted or CTO releases the slot
+```
+
+값은 운영 metadata만 기록합니다. credential, token, cookie, session 값은 기록하지 않습니다.
+
+### Release Recommendation
+
+검증 완료 보고에는 다음을 포함합니다:
+
+- slot name
+- URL
+- verified PR number
+- verified PR head SHA
+- final status
+- slot release recommendation: `release recommended` / `keep reserved` / `blocked, do not release`
+
+slot release는 권고만 보고합니다. CTO 승인 없이 active slot branch를 덮어쓰거나 삭제하지 않습니다.
+
+### Final PASS Environment Rule
+
+Auth/API/data-loaded page의 final PASS는 local static server만으로 인정하지 않습니다.
+
+- final PASS는 assigned Cloudflare PR Preview 또는 fixed test slot에서 수행합니다.
+- local static server는 partial smoke로만 보고합니다.
+- assigned URL이 없거나 slot provenance가 불명확하면 **BLOCKED**입니다.
+
+---
+
+## 7. Credential Metadata and Schema
 
 `.local/test-accounts.json` 파일의 schema shape은 아래 두 형태 중 하나일 수 있습니다 (값 없음, placeholder 예시만):
 
@@ -134,7 +213,7 @@ assigned URL이 `https://testN.lovebud.pages.dev` 형태인 경우:
 
 ---
 
-## 7. Login Automation Procedure
+## 8. Login Automation Procedure
 
 1. assigned URL을 브라우저로 엽니다.
 2. 로그인 페이지로 redirect되면 선택된 계정의 email/password를 입력합니다.
@@ -161,7 +240,7 @@ assigned URL이 `https://testN.lovebud.pages.dev` 형태인 경우:
 
 ---
 
-## 8. Standard Verification Checklist
+## 9. Standard Verification Checklist
 
 | 항목 | 확인 |
 |------|------|
@@ -177,7 +256,7 @@ assigned URL이 `https://testN.lovebud.pages.dev` 형태인 경우:
 
 ---
 
-## 9. Standard Report Format
+## 10. Standard Report Format
 
 ```
 Browser Verification Report
@@ -199,27 +278,28 @@ Browser Verification Report
 16. network/API blockers:
 17. horizontal overflow:
 18. credential values reported: NO
-19. final status: PASS / PARTIAL / BLOCKED / FAIL
+19. slot release recommendation:
+20. final status: PASS / PARTIAL / BLOCKED / FAIL
 ```
 
 ---
 
-## 10. BLOCKED / FAIL Escalation
+## 11. BLOCKED / FAIL Escalation
 
 | 상태 | 의미 | 행동 |
 |------|------|------|
-| `BLOCKED` | 필수 입력 누락, SHA 불일치, 계정 없음, selector 없음 | 진행 중단, CTO에 보고, 파일 수정/ready/merge 금지 |
+| `BLOCKED` | 필수 입력 누락, SHA 불일치, 계정 없음, selector 없음, free slot 없음 | 진행 중단, CTO에 보고, 파일 수정/ready/merge 금지 |
 | `FAIL` | 검증 실패 (앱 로그인 실패, 페이지 오류, console fatal 등) | 진행 중단, CTO에 보고 |
 | `PARTIAL` | 일부 항목만 확인됨 | 미확인 항목 명시, CTO에 보고 |
 | `PASS` | 전 항목 통과, SHA/provenance 확인 완료 | 보고 후 대기, ready/merge는 CTO 지시에 따름 |
 
 ---
 
-## 11. Minimal Prompt Template
+## 12. Minimal Prompt Template
 
 새 세션 또는 새 브라우저 검증 에이전트에게 줄 수 있는 최소 프롬프트:
 
-> "PR #\<number\>의 Browser verification entrypoint comment와 AGENTS.md 기준으로 assigned URL에서 자동 브라우저 검증을 수행하세요. 파일 수정, ready 전환, merge, issue close는 하지 마세요. Auth가 필요하면 로컬 `.local/test-accounts.json`에서 comment의 account type/account selection rule에 맞는 계정만 사용하세요. selector 실패는 즉시 app FAIL로 단정하지 말고 manual fallback을 assigned URL에서 시도하거나 BLOCKED로 보고하세요. 결과는 runbook report format으로 보고하세요."
+> "PR #\<number\>의 Browser verification entrypoint comment와 AGENTS.md 기준으로 assigned URL에서 자동 브라우저 검증을 수행하세요. 파일 수정, ready 전환, merge, issue close는 하지 마세요. Auth가 필요하면 로컬 `.local/test-accounts.json`에서 comment의 account type/account selection rule에 맞는 계정만 사용하세요. test1~test10 fixed slot pool에서 active assignment가 없는 첫 번째 slot을 찾아 assigned URL로 사용하세요. active slot은 CTO 승인 없이 덮어쓰지 마세요. 빈 slot이 없으면 occupied slot list를 보고하고 BLOCKED로 중단하세요. selector 실패는 즉시 app FAIL로 단정하지 말고 manual fallback을 assigned URL에서 시도하거나 BLOCKED로 보고하세요. 결과는 runbook report format으로 보고하세요."
 
 ---
 
