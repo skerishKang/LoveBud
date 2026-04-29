@@ -19,7 +19,6 @@
 | [PUBLICATION_AND_PRIVACY_UX_POLICY.md](PUBLICATION_AND_PRIVACY_UX_POLICY.md) | public-first visibility, Plus private storage, memory visibility inheritance, anonymous public exposure, Browse/Search eligibility 정책 |
 | [MOMENT_TIMELINE_PLAN.md](MOMENT_TIMELINE_PLAN.md) | cue-based YouTube Moment Timeline 제품/기술 계획 |
 | [YOUTUBE_SEGMENT_PLAYER_POC_SCOPE.md](YOUTUBE_SEGMENT_PLAYER_POC_SCOPE.md) | cue-based YouTube segment player PoC 범위와 Go/No-Go 기준 |
-| [MOMENT_TIMELINE_PLAN.md](MOMENT_TIMELINE_PLAN.md) | cue-based YouTube Moment Timeline 제품/기술 계획 |
 | [UI_COPY_DIET_GUIDE.md](UI_COPY_DIET_GUIDE.md) | 전역 UI 카피 다이어트 운영 기준 |
 | [MVP_SCOPE.md](MVP_SCOPE.md) | MVP 범위 및 포함/제외 항목 |
 | [USER_FLOW.md](USER_FLOW.md) | 주요 사용자 여정 및 플로우 |
