@@ -89,6 +89,14 @@ function buildModalUrl(request, env) {
     return target;
   }
 
+  // POST /api/trees/:id/fork → /modal/private/trees/:id/fork
+  const treeForkMatch = path.match(/^\/api\/trees\/([^/]+)\/fork$/);
+  if (treeForkMatch && method === 'POST') {
+    const treeId = encodeURIComponent(decodeURIComponent(treeForkMatch[1]));
+    target.pathname = `/modal/private/trees/${treeId}/fork`;
+    return target;
+  }
+
   const treeMatch = path.match(/^\/api\/trees\/([^/]+)$/);
   if (treeMatch) {
     const authHeader = request.headers.get('authorization') || request.headers.get('Authorization');
@@ -126,6 +134,11 @@ function isModalOwnedWriteRoute(request, env) {
 
   const url = new URL(request.url);
   const path = url.pathname.replace(/\/+$/, '');
+
+  // POST /api/trees/:id/fork
+  if (method === 'POST' && path.match(/^\/api\/trees\/[^/]+\/fork$/)) {
+    return buildModalUrl(request, env || {}) !== null;
+  }
 
   // POST is for collection paths
   if (method === 'POST' && ['/api/trees', '/api/memories'].includes(path)) {
@@ -295,9 +308,10 @@ export async function onRequest(context) {
   if (modalUrl) {
     const url = new URL(request.url);
     const path = url.pathname.replace(/\/+$/, '');
+    const isForkPath = path.match(/^\/api\/trees\/[^/]+\/fork$/);
     const isCollection = ['/api/trees', '/api/memories'].includes(path);
     const isDetail = path.match(/^\/api\/(trees|memories)\/[^/]+$/);
-    const allow = isCollection ? 'GET, POST' : (isDetail ? 'GET, PUT, DELETE' : 'GET');
+    const allow = isForkPath ? 'POST' : (isCollection ? 'GET, POST' : (isDetail ? 'GET, PUT, DELETE' : 'GET'));
     return buildMethodNotAllowedResponse(allow);
   }
 
