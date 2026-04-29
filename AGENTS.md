@@ -91,7 +91,7 @@ UI 검증 프롬프트를 작성하기 전 반드시 아래를 먼저 판단하�
 - 이미 확보한 테스트/프리뷰 URL이 있는가?
 - Cloudflare PR Preview URL이 있는가?
 
-브라우저/로컬 검증 작업자는 추가로 `docs/ops/LOCAL_BROWSER_VERIFICATION_STARTUP.md`를 먼저 읽고, URL 출처·fixed slot·evidence 규칙은 `docs/ops/BROWSER_VERIFICATION_URL_POLICY.md`와 `docs/ops/TEST_PREVIEW_SLOTS.md`를 따릅니다.
+브라우저/Auth/API/data-loaded 검증 작업자는 `docs/ops/AGENTS_BROWSER_VERIFICATION_ENTRYPOINT.md`를 먼저 읽고, 그 다음 `docs/ops/LOCAL_BROWSER_VERIFICATION_STARTUP.md`, `docs/ops/BROWSER_VERIFICATION_URL_POLICY.md`, `docs/ops/TEST_PREVIEW_SLOTS.md` 및 PR별 `Browser verification entrypoint` comment를 따릅니다.
 
 ---
 
@@ -213,18 +213,16 @@ LoveBud / LoveTree는 다음과 같은 서비스가 아닙니다.
    - `docs/design/UI_DESIGN_SYSTEM.md`
 5. 운영 판단이 필요하면:
    - `docs/ops/OPERATIONS.md`
+   - `docs/ops/AGENTS_BROWSER_VERIFICATION_ENTRYPOINT.md`
    - `docs/ops/LOCAL_BROWSER_VERIFICATION_STARTUP.md`
    - `docs/ops/GITHUB_AUTH_TOKEN_USAGE.md`
    - `docs/ops/BROWSER_VERIFICATION_URL_POLICY.md`
    - `docs/ops/TEST_PREVIEW_SLOTS.md`
    - `docs/migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md`
-6. 구현 판단이 필요하면:
-   - `docs/engineering/API_CONTRACT.md`
-   - 관련 페이지/ops/engineering 문서
 
 GitHub CLI, browser login, connector-backed GitHub access, or token-backed local access를 사용하는 작업자는 `docs/ops/GITHUB_AUTH_TOKEN_USAGE.md`를 함께 따릅니다.
 
-브라우저/로컬 검증 작업자는 `docs/ops/LOCAL_BROWSER_VERIFICATION_STARTUP.md`를 먼저 따릅니다.
+브라우저/Auth/API/data-loaded 검증 작업자는 `docs/ops/AGENTS_BROWSER_VERIFICATION_ENTRYPOINT.md`를 먼저 읽고, 그 다음 `docs/ops/LOCAL_BROWSER_VERIFICATION_STARTUP.md`를 먼저 따릅니다.
 
 대화 복원이 필요하면 아래를 추가로 읽습니다.
 
