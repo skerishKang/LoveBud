@@ -20,6 +20,7 @@
 | [MOMENT_TIMELINE_PLAN.md](MOMENT_TIMELINE_PLAN.md) | cue-based YouTube Moment Timeline product/technical plan |
 | [YOUTUBE_SEGMENT_PLAYER_POC_SCOPE.md](YOUTUBE_SEGMENT_PLAYER_POC_SCOPE.md) | cue-based YouTube segment player PoC scope and Go/No-Go criteria |
 | [MOMENT_CAPTURE_UI_DESIGN.md](MOMENT_CAPTURE_UI_DESIGN.md) | Moment capture UI flow design |
+| [MOMENT_TIMELINE_PLAN.md](MOMENT_TIMELINE_PLAN.md) | cue-based YouTube Moment Timeline 제품/기술 계획 |
 | [UI_COPY_DIET_GUIDE.md](UI_COPY_DIET_GUIDE.md) | 전역 UI 카피 다이어트 운영 기준 |
 | [MVP_SCOPE.md](MVP_SCOPE.md) | MVP 범위 및 포함/제외 항목 |
 | [USER_FLOW.md](USER_FLOW.md) | 주요 사용자 여정 및 플로우 |
@@ -60,6 +61,7 @@
 1. **PRODUCT_IDENTITY.md** — 제품 철학과 핵심 가치
 2. **BRAND_EXPERIENCE.md** — 팬 감성 UX / 톤앤매너 / 페이지별 표현 원칙
 3. **PUBLICATION_AND_PRIVACY_UX_POLICY.md** — public-first visibility / Plus private storage / anonymous public exposure / Browse/Search eligibility 정책
+<<<<<<< HEAD
 4. **MOMENT_TIMELINE_PLAN.md** - cue-based Moment Timeline plan
 5. **YOUTUBE_SEGMENT_PLAYER_POC_SCOPE.md** - YouTube segment player PoC scope and verification criteria
 6. **MOMENT_CAPTURE_UI_DESIGN.md** - Moment capture UI flow design
@@ -68,6 +70,15 @@
 9. **USER_FLOW.md** - user journey and key flows
 10. **PRODUCT_BRIEF.md** - current execution-based summary
 11. If needed, DATA_NAMING_RULE.md, READONLY_SHARE_SCOPE.md
+=======
+4. **MOMENT_CAPTURE_UI_DESIGN.md** — Moment capture UI flow 설계
+5. **MOMENT_TIMELINE_PLAN.md** — cue-based Moment Timeline 계획
+6. **UI_COPY_DIET_GUIDE.md** — 전역 UI 카피 다이어트 기준
+7. **MVP_SCOPE.md** — MVP 범위 및 In/Out of Scope
+8. **USER_FLOW.md** — 사용자 여정 및 핵심 플로우
+9. **PRODUCT_BRIEF.md** — 현재 실행 기준 요약
+10. 필요시 DATA_NAMING_RULE.md, READONLY_SHARE_SCOPE.md
+>>>>>>> 30955f0 (Reconcile product_index.md: include both MOMENT_CAPTURE_UI_DESIGN.md and MOMENT_TIMELINE_PLAN.md)
 
 ## 참조
 - 전체 문서 인덱스: `../doc_index.md`
