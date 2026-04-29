@@ -59,12 +59,14 @@ PR3 button / badge / chip tone 기준 판단이 필요하면 아래를 추가로
 
 - `./design/BUTTON_BADGE_CHIP_BASELINE.md`
 
-운영/배포 판단이 필요하면 아래를 추가로 읽습니다.
+운영/배포/브라우저 검증 판단이 필요하면 아래를 추가로 읽습니다.
 
 - `./ops/OPERATIONS.md`
+- `./ops/LOCAL_BROWSER_VERIFICATION_STARTUP.md`
 - `./ops/NETLIFY_LEGACY_ARTIFACT_AUDIT.md`
 - `./ops/PARALLEL_WORKTREE_AGENT_POLICY.md`
 - `./ops/BROWSER_VERIFICATION_URL_POLICY.md`
+- `./ops/TEST_PREVIEW_SLOTS.md`
 - `./ops/KNOWN_CI_E2E_BLOCKERS.md`
 - `./ops/BRANCH_CLEANUP_PLAN.md`
 - `./migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md`
@@ -143,7 +145,9 @@ Reference 문서는 `docs/reference/` 아래에 정리됩니다.
 - [OPERATIONS.md](./ops/OPERATIONS.md) - 현재 운영 전략 및 인프라 우선순위
 - [NETLIFY_LEGACY_ARTIFACT_AUDIT.md](./ops/NETLIFY_LEGACY_ARTIFACT_AUDIT.md) - Netlify legacy artifact / removal candidate 감사 기준 및 현황. `netlify/functions/*`, `netlify.toml` removal audit 진행 상태
 - [PARALLEL_WORKTREE_AGENT_POLICY.md](./ops/PARALLEL_WORKTREE_AGENT_POLICY.md) - 병렬 모델, worktree, 검증 모델, PR 통합 운영 기준
+- [LOCAL_BROWSER_VERIFICATION_STARTUP.md](./ops/LOCAL_BROWSER_VERIFICATION_STARTUP.md) - 로컬/브라우저 검증 시작 전 공통 preflight, URL provenance, evidence, PR checklist 기준
 - [BROWSER_VERIFICATION_URL_POLICY.md](./ops/BROWSER_VERIFICATION_URL_POLICY.md) - 브라우저 smoke URL provenance, PR Preview, Branch Preview, fixed test slot 검증 기준
+- [TEST_PREVIEW_SLOTS.md](./ops/TEST_PREVIEW_SLOTS.md) - 고정 테스트 Preview 슬롯 운영 기준
 - [DEPLOY_CHECKLIST.md](./ops/DEPLOY_CHECKLIST.md) - 배포 체크리스트
 - [RUNBOOK.md](./ops/RUNBOOK.md) - 운영 / 장애 대응 런북
 - [DOC_WORKFLOW.md](./ops/DOC_WORKFLOW.md) - 문서 작업 흐름
@@ -151,7 +155,6 @@ Reference 문서는 `docs/reference/` 아래에 정리됩니다.
 - [AI_REQUEST_PATTERNS.md](./ops/AI_REQUEST_PATTERNS.md) - 요청 패턴 해석
 - [KNOWN_CI_E2E_BLOCKERS.md](./ops/KNOWN_CI_E2E_BLOCKERS.md) - 반복 CI/E2E blocker 원인 분리 및 exception merge 판단 기준
 - [BRANCH_CLEANUP_PLAN.md](./ops/BRANCH_CLEANUP_PLAN.md) - PR #49~#58 이후 merged/stale branch cleanup 후보와 보존 branch 분류 기준
-- [TEST_PREVIEW_SLOTS.md](./ops/TEST_PREVIEW_SLOTS.md) - 고정 테스트 Preview 슬롯 운영 기준
 - [EDITOR_ARCHITECTURE.md](./ops/EDITOR_ARCHITECTURE.md) - editor 구조 설명
 
 ## project 문서군
