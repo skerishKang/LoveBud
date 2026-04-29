@@ -16,7 +16,7 @@ function compact(value) {
 
 function getFunctionBody(source, functionName) {
   const normalizedSource = source.replace(/\r\n/g, '\n');
-  const match = normalizedSource.match(new RegExp(`def\\s+${functionName}\\s*\\([\\s\\S]*?(?=\\n\\ndef\\s+)`));
+  const match = normalizedSource.match(new RegExp(`def\\s+${functionName}\\s*\\([\\s\\S]*?(?=\\n\\n+def\\s+)`));
   assert.ok(match, `missing ${functionName}`);
   return match[0];
 }
