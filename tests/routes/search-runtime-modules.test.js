@@ -14,13 +14,13 @@ test('search runtime submodules load after existing search helpers and before se
   const scripts = [...html.matchAll(/<script src="([^"]+)"/g)].map((match) => match[1]);
   const indexOf = (needle) => scripts.findIndex((src) => src.includes(needle));
 
-  const previewRendererIndex = indexOf('../js/search-preview-renderer.js');
-  const searchEntrypointIndex = indexOf('../js/search.js');
-  const expectedModules = [
-    '../js/search/search-preview-cache.js',
-    '../js/search/search-ui.js',
-    '../js/search/search-url-state.js',
-  ];
+   const previewRendererIndex = indexOf('../js/search/search-preview-renderer.js');
+   const searchEntrypointIndex = indexOf('../js/search/index.js');
+   const expectedModules = [
+     '../js/search/search-preview-cache.js',
+     '../js/search/search-ui.js',
+     '../js/search/url-state.js',
+   ];
   const moduleIndexes = expectedModules.map(indexOf);
 
   assert.ok(previewRendererIndex >= 0);
