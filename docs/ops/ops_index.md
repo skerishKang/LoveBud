@@ -53,12 +53,15 @@
 | [GITHUB_AUTH_TOKEN_USAGE.md](GITHUB_AUTH_TOKEN_USAGE.md) | GitHub CLI/browser login/connector 인증 및 token/credential 취급 기준 |
 | [BROWSER_VERIFICATION_URL_POLICY.md](BROWSER_VERIFICATION_URL_POLICY.md) | 브라우저 smoke URL provenance, PR Preview, Branch Preview, fixed test slot 검증 기준 |
 | [TEST_PREVIEW_SLOTS.md](TEST_PREVIEW_SLOTS.md) | 고정 테스트 Preview 슬롯 운영 기준 |
+| [FIXED_SLOT_MANUAL_E2E_GATE.md](FIXED_SLOT_MANUAL_E2E_GATE.md) | Fixed slot 수동 E2E gate 런북 — slot 배정·SHA provenance·evidence 양식·page 분류·제한 사항 (Issue #136 manual gate 단계) |
 | [MODAL_BROWSE_RUNTIME.md](MODAL_BROWSE_RUNTIME.md) | browse summary의 Modal 우선 경로와 Modal security contract 기준 |
 | [KNOWN_CI_E2E_BLOCKERS.md](KNOWN_CI_E2E_BLOCKERS.md) | 반복 CI/E2E 실패의 원인 분리 및 exception merge 판단 기준 |
 | [BRANCH_CLEANUP_PLAN.md](BRANCH_CLEANUP_PLAN.md) | PR #49~#58 이후 merged/stale branch cleanup 후보와 보존 branch 분류 기준 |
 | [FLOW_A_QA_CHECKLIST.md](FLOW_A_QA_CHECKLIST.md) | QA 체크리스트 |
 | [PR_CHECKLIST.md](PR_CHECKLIST.md) | PR 점검 기준 |
-| [QA_CREDENTIALS.txt](QA_CREDENTIALS.txt) | QA 테스트 계정 |
+| [QA_CREDENTIALS.md](QA_CREDENTIALS.md) | QA credentials — persistent bundle workflow (⛔ bundle not yet committed; use Issue #351 temporary handoff) |
+| [QA_CREDENTIALS.txt](QA_CREDENTIALS.txt) | QA credentials 한국어 요약 및 현재 상태 |
+| [qa-credential-bundle/README.md](qa-credential-bundle/README.md) | Persistent encrypted bundle commit status and path |
 | [../migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md](../migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md) | Cloudflare Pages / Modal 전환 문서 |
 
 ## 정책 / 아키텍처 (Architecture)
@@ -70,7 +73,7 @@
 | [CACHE_POLICY.md](CACHE_POLICY.md) | 캐시 정책 |
 | [ENV_DEPENDENCY.md](ENV_DEPENDENCY.md) | 환경 변수 의존성 |
 | [FILE_BASELINE.md](FILE_BASELINE.md) | 파일 분류 기준 |
-| [../engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md](../engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md) | browse 표시 정책과 publication guard 구분 |
+| [../engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md](../engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md) | browse filter / publication guard 구분 |
 
 ## Netlify Legacy Artifact 감사
 
