@@ -1,6 +1,6 @@
 # LoveTree Copy / Fork Contract
 
-> **Status:** CONTRACT_PLANNING  
+> **Status:** CONTRACT_PLANNING
 > **Source:** Issue #84  
 > **Type:** Docs-only audit and API contract planning — no implementation in this document
 
