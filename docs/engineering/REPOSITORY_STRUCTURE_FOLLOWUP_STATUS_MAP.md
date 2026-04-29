@@ -1,7 +1,7 @@
 # Repository Structure Follow-up Status Map
 
-> Status: disposition map only  
-> Related: #223  
+> Status: disposition map only
+> Related: #223
 > Runtime impact: none
 
 ## 1. Purpose
