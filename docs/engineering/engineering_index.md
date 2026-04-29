@@ -24,11 +24,12 @@
 5. [SCRIPT_LOAD_ORDER.md](./SCRIPT_LOAD_ORDER.md) - pages/*.html script order runtime contract, Auth/Login dependency order, reorder checklist
 6. [SEARCH_RUNTIME_CONTRACT.md](./SEARCH_RUNTIME_CONTRACT.md) - Search/Browse runtime script order, globals, submodule boundary
 7. [AUTH_LOGIN_ACTIVE_PROVIDER_TRANSITION_PLAN.md](./AUTH_LOGIN_ACTIVE_PROVIDER_TRANSITION_PLAN.md) - Auth/Login active provider transition 단계, 금지 조합, fixed test slot 검증 기준
-8. [EDITOR_FALLBACK_GLOBAL_STATE_AUDIT.md](./EDITOR_FALLBACK_GLOBAL_STATE_AUDIT.md) - Editor fallback factories와 global state cleanup path 감사 계획
-9. [AUTH_EDITOR_FALLBACK_CHECKLIST_MAPPING.md](./AUTH_EDITOR_FALLBACK_CHECKLIST_MAPPING.md) - #224 Auth/Editor fallback findings의 #78/#223/#225 ownership mapping
-10. [SHARED_HEADER_CONFIG_HELPER_DECISION.md](./SHARED_HEADER_CONFIG_HELPER_DECISION.md) - Shared header config/helper extraction defer 결정과 follow-up trigger
-11. [REVIEW_GUARDRAILS.md](./REVIEW_GUARDRAILS.md) - 반복 false positive 방지 규칙
-12. [RECENT_REFACTORING.md](./RECENT_REFACTORING.md) - 최근 리팩터링 기록
+8. [STAGED_RUNTIME_CLEANUP_DISPOSITION.md](./STAGED_RUNTIME_CLEANUP_DISPOSITION.md) - #225 staged runtime cleanup disposition map
+9. [EDITOR_FALLBACK_GLOBAL_STATE_AUDIT.md](./EDITOR_FALLBACK_GLOBAL_STATE_AUDIT.md) - Editor fallback factories와 global state cleanup path 감사 계획
+10. [AUTH_EDITOR_FALLBACK_CHECKLIST_MAPPING.md](./AUTH_EDITOR_FALLBACK_CHECKLIST_MAPPING.md) - #224 Auth/Editor fallback findings의 #78/#223/#225 ownership mapping
+11. [SHARED_HEADER_CONFIG_HELPER_DECISION.md](./SHARED_HEADER_CONFIG_HELPER_DECISION.md) - Shared header config/helper extraction defer 결정과 follow-up trigger
+12. [REVIEW_GUARDRAILS.md](./REVIEW_GUARDRAILS.md) - 반복 false positive 방지 규칙
+13. [RECENT_REFACTORING.md](./RECENT_REFACTORING.md) - 최근 리팩터링 기록
 
 ---
 
@@ -43,6 +44,7 @@
 | [SCRIPT_LOAD_ORDER.md](./SCRIPT_LOAD_ORDER.md) | pages/*.html script load order runtime contract, Auth/Login dependency order, reorder checklist |
 | [SEARCH_RUNTIME_CONTRACT.md](./SEARCH_RUNTIME_CONTRACT.md) | Search/Browse runtime script order, globals, submodule boundary, smoke checklist |
 | [AUTH_LOGIN_ACTIVE_PROVIDER_TRANSITION_PLAN.md](./AUTH_LOGIN_ACTIVE_PROVIDER_TRANSITION_PLAN.md) | Auth/Login active provider transition 단계, file ownership, forbidden combinations, fixed slot smoke 기준 |
+| [STAGED_RUNTIME_CLEANUP_DISPOSITION.md](./STAGED_RUNTIME_CLEANUP_DISPOSITION.md) | Issue #225 staged runtime cleanup owners, deferred implementation gates, and closure conditions |
 | [EDITOR_FALLBACK_GLOBAL_STATE_AUDIT.md](./EDITOR_FALLBACK_GLOBAL_STATE_AUDIT.md) | Editor fallback factories, `window.currentTreeMemories`, `window.currentTreeData`, compatibility aliases, future store migration 기준 |
 | [AUTH_EDITOR_FALLBACK_CHECKLIST_MAPPING.md](./AUTH_EDITOR_FALLBACK_CHECKLIST_MAPPING.md) | Auth fallback cleanup, Editor fallback factories, and `window.currentTreeMemories/currentTreeData` ownership mapping for #224/#78/#223/#225 |
 | [SHARED_HEADER_CONFIG_HELPER_DECISION.md](./SHARED_HEADER_CONFIG_HELPER_DECISION.md) | Shared header render/mobile nav/language/Auth/path helper 책임과 config/helper extraction defer 기준 |
@@ -71,6 +73,7 @@
 - pages/*.html script order 변경 판단은 `SCRIPT_LOAD_ORDER.md`를 먼저 보고, Auth/Login active provider 전환은 `AUTH_LOGIN_ACTIVE_PROVIDER_TRANSITION_PLAN.md`와 함께 봅니다.
 - Auth/Login active provider 전환은 `AUTH_LOGIN_ACTIVE_PROVIDER_TRANSITION_PLAN.md`의 phase gate와 금지 조합을 기준으로 합니다.
 - CSS import hub, split ownership, visual verification 판단은 `CSS_ARCHITECTURE.md`와 `../ops/BROWSER_VERIFICATION_URL_POLICY.md`를 함께 봅니다.
+- #225 staged runtime cleanup 판단은 `STAGED_RUNTIME_CLEANUP_DISPOSITION.md`에서 owner split and deferred implementation gates를 먼저 확인합니다.
 - Editor fallback factory, `window.currentTreeMemories`, `window.currentTreeData`, compatibility alias 정리는 `EDITOR_FALLBACK_GLOBAL_STATE_AUDIT.md`의 audit gate를 먼저 통과해야 합니다.
 - #224 Auth/Editor fallback checklist 판단은 `AUTH_EDITOR_FALLBACK_CHECKLIST_MAPPING.md`에서 #78/#223/#225 ownership mapping을 먼저 확인합니다.
 - Shared header config/path helper extraction 판단은 `SHARED_HEADER_CONFIG_HELPER_DECISION.md`의 defer 조건과 follow-up trigger를 먼저 확인합니다.
