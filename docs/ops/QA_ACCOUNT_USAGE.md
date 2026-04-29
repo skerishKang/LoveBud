@@ -14,7 +14,7 @@
 ## 2. Account Types
 
 | 타입 | 이메일 | 용도 | 상태 |
-|------|--------|------|------|
+|------|--------|------|
 | Internal QA Admin | `admin.test@lovetree.dev` | 관리 기능 검증 | 활성 |
 | Internal QA User | `user.test@lovetree.dev` | 일반 사용자 흐름 검증 | 활성 |
 | Public Demo | 미정 | 외부 데모용 | **미활성** |
