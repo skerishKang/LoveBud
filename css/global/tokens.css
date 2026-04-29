@@ -1,0 +1,66 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap');
+
+:root {
+    /* Premium Modern Palette - Warm Scrapbook Tone */
+    --primary: #904951;           /* 뮤트 로즈 - 메인 브랜드 */
+    --primary-rgb: 144, 73, 81;
+    --primary-vibrant: #b85c66;   /* 채도 낮춘 로즈 - hover accent (원색 금지) */
+    --primary-soft: #d4a5a9;      /* 소프트 로즈 - 감정 태그용 */
+    --on-primary: #ffffff;
+
+    --secondary: #7a8b6e;         /* 웜 그린 - 자연/성장 */
+    --on-secondary: #ffffff;
+    
+    --accent-warm: #c9a87c;       /* 웜 베이지 - 감정적 하이라이트 */
+    --accent-rose: #e8c4c8;       /* 로즈 베이지 - 부드러운 강조 */
+    
+    --background: #fdfbf7;        /* 종이 질감 베이지 (완전 화이트 금지) */
+    --on-background: #3e342f;     /* 다크 브라운 텍스트 (완전 블랙 금지) */
+    --surface: #fdfbf7;
+    --on-surface: #483934;        /* 다크 브라운 - 메인 텍스트 (Premium) */
+    --on-surface-variant: #6c5953; /* 뮤트 브라운 - 보조 텍스트 (Premium) */
+    --on-surface-soft: #7f5d5f;    /* 뮤트 로즈 브라운 - 부드러운 강조 */
+    --on-surface-note: #9c8080;    /* 연한 로즈 그레이 - 각주/노트 */
+
+    --surface-container-low: #f8f5f0;
+    --surface-container: #f2efe9;
+    --surface-container-lowest: #ffffff;
+    
+    --outline-variant: rgba(144, 73, 81, 0.12);
+    --shadow-whisper: 0 12px 40px rgba(75, 64, 57, 0.06);
+
+    --radius-default: 1rem;
+    --radius-lg: 2rem;
+    --radius-full: 9999px;
+
+    /* Page width rhythm */
+    --page-brand-max: 1280px;
+    --page-work-max: 1440px;
+
+    /* Layout Spacing Tokens (PR1) */
+    --page-shell-max: 1280px;
+    --page-pad-desktop: 24px;
+    --page-pad-tablet: 24px;
+    --page-pad-mobile: 16px;
+    --hero-gap: 34px;
+    --section-gap: 56px;
+    --section-gap-compact: 40px;
+    --divider-margin: 48px;
+    
+    /* Typography Constants */
+    --font-heading: 'Outfit', sans-serif;
+    --font-body: 'Noto Sans KR', sans-serif;
+
+    /* Typography / Accent Tokens (PR2) */
+    --hero-title-size: clamp(3.55rem, 6vw, 5.4rem);
+    --hero-title-line-height: 0.98;
+    --hero-title-letter-spacing: -0.055em;
+    --section-title-size: clamp(2.9rem, 4.6vw, 4rem);
+    --hero-accent-color: var(--primary-vibrant);
+    --hero-warm-color: var(--primary);
+    --hero-soft-color: var(--on-surface-variant);
+    --eyebrow-color: var(--primary);
+    --eyebrow-line-color: rgba(144, 73, 81, 0.42);
+    --body-muted-color: var(--on-surface-variant);
+    --body-note-color: var(--on-surface-note);
+}

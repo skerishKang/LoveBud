@@ -100,9 +100,15 @@
             return getCommunityMemories(options);
         }
 
+        function clearCommunityCaches() {
+            publicMemoriesCache = null;
+            publicMemoriesByTreeCache.clear();
+        }
+
         return {
             getCommunityMemories,
-            getCachedCommunityMemories
+            getCachedCommunityMemories,
+            clearCommunityCaches
         };
     }
 
@@ -159,6 +165,12 @@
         return merged;
     }
 
+    function shouldExposeApiClientInternals() {
+        if (typeof window === 'undefined' || !window.location) return false;
+        const hostname = window.location.hostname || '';
+        return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]';
+    }
+
     const treeApi = createTreeApi();
     const memoryApi = createMemoryApi();
     const communityApi = createCommunityApi();
@@ -173,7 +185,7 @@
 
     window.apiClient = apiClient;
 
-    if (typeof window !== 'undefined') {
+    if (shouldExposeApiClientInternals()) {
         window.__LoveBudApiClientInternals = {
             endpointLikelyRequiresAuth: AuthPolicy?.endpointLikelyRequiresAuth,
             getAuthWaitAttempts: AuthPolicy?.getAuthWaitAttempts,

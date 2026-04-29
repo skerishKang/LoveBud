@@ -173,6 +173,300 @@ input[type="password"]:focus {
     margin: 4px 0;
 }
 
+/* Login Page Specific Classes - Refactored from inline styles */
+
+.login-redirect-notice {
+    background: rgba(144, 73, 81, 0.05);
+    border: 1px solid rgba(144, 73, 81, 0.1);
+    border-radius: 1rem;
+    padding: 14px 16px;
+    margin-bottom: 20px;
+    text-align: left;
+    box-shadow: 0 8px 20px rgba(75, 64, 57, 0.03);
+}
+
+.login-redirect-notice-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.login-redirect-icon {
+    font-size: 18px;
+    color: var(--primary);
+    flex-shrink: 0;
+}
+
+.login-redirect-content {
+    min-width: 0;
+}
+
+.login-redirect-title {
+    font-weight: 800;
+    color: var(--on-surface);
+    font-size: 13px;
+    margin-bottom: 2px;
+    line-height: 1.5;
+}
+
+.login-redirect-desc {
+    color: var(--on-surface-variant);
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.login-brand-title {
+    font-size: 2.2rem;
+    font-weight: 950;
+    color: var(--on-surface);
+    margin-bottom: 12px;
+    font-family: var(--font-heading);
+    letter-spacing: -0.05em;
+}
+
+.login-headline {
+    font-size: 1.5rem;
+    color: var(--primary);
+    margin-bottom: 16px;
+    font-weight: 800;
+}
+
+.login-desc {
+    color: var(--on-surface-variant);
+    margin-bottom: 40px;
+    font-size: 1rem;
+    line-height: 1.6;
+    font-weight: 400;
+}
+
+.login-google-icon {
+    width: 20px;
+    height: 20px;
+}
+
+.login-email-button {
+    width: 100%;
+    border-radius: 1.25rem;
+    padding: 16px;
+    font-size: 15px;
+}
+
+.login-signup-section {
+    margin-top: 28px;
+    padding: 24px 20px 0;
+    border-top: 1px solid var(--outline-variant);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0), rgba(255, 247, 244, 0.36));
+    border-radius: 1.5rem;
+}
+
+.login-signup-intro {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 18px;
+    text-align: center;
+}
+
+.login-signup-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 30px;
+    padding: 0 12px;
+    border-radius: 999px;
+    background: rgba(144, 73, 81, 0.08);
+    color: var(--primary);
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.login-signup-badge-icon {
+    font-size: 16px;
+}
+
+.login-signup-title {
+    margin: 0;
+    color: var(--on-surface);
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.55;
+}
+
+.login-signup-desc {
+    margin: 0;
+    color: var(--primary);
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1.5;
+}
+
+.login-signup-google-btn {
+    margin-bottom: 12px;
+    box-shadow: 0 10px 24px rgba(75, 64, 57, 0.04);
+}
+
+.login-signup-helper {
+    text-align: center;
+    color: var(--on-surface-variant);
+    font-size: 12px;
+    margin: 8px 0 0;
+    font-weight: 700;
+    line-height: 1.55;
+}
+
+.login-signup-divider {
+    margin: 18px 0 16px;
+}
+
+.login-signup-divider-text {
+    font-size: 12px;
+}
+
+.login-form {
+    text-align: left;
+}
+
+.login-form-group {
+    margin-bottom: 12px;
+}
+
+.login-form-group-large {
+    margin-bottom: 16px;
+}
+
+.login-form-group-xl {
+    margin-bottom: 20px;
+}
+
+.login-form-label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 700;
+    font-size: 0.85rem;
+}
+
+.login-form-input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--outline-variant);
+    border-radius: 0.75rem;
+    font-size: 1rem;
+}
+
+.login-form-error {
+    margin: -4px 0 14px;
+    padding: 10px 12px;
+    border: 1px solid rgba(144, 73, 81, 0.18);
+    border-radius: 0.9rem;
+    background: rgba(144, 73, 81, 0.07);
+    color: var(--primary);
+    font-size: 0.86rem;
+    font-weight: 700;
+    line-height: 1.45;
+    text-align: left;
+}
+
+.login-form-error[hidden] {
+    display: none;
+}
+
+.login-submit-button {
+    width: 100%;
+    padding: 14px;
+    background: var(--secondary);
+    color: white;
+    border: none;
+    border-radius: 1rem;
+    font-weight: 700;
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+.login-submit-button-primary {
+    background: var(--primary);
+}
+
+.login-later-link {
+    display: block;
+    margin-top: 40px;
+    color: var(--on-surface-variant);
+    font-size: 13px;
+    text-decoration: none;
+    font-weight: 700;
+    opacity: 0.6;
+    transition: opacity 0.3s;
+}
+
+.login-later-link:hover {
+    opacity: 1;
+}
+
+.login-email-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+}
+
+.login-email-modal-card {
+    background: white;
+    border-radius: 2rem;
+    padding: 48px;
+    max-width: 420px;
+    width: 90%;
+    text-align: center;
+    position: relative;
+}
+
+.login-email-close {
+    position: absolute;
+    top: 16px;
+    right: 20px;
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: var(--on-surface-variant);
+    opacity: 0.6;
+}
+
+.login-auth-mode-badge {
+    display: inline-block;
+    background: var(--primary);
+    color: white;
+    font-size: 11px;
+    font-weight: 800;
+    padding: 4px 12px;
+    border-radius: 99px;
+    margin-bottom: 12px;
+}
+
+.login-email-title {
+    font-size: 1.4rem;
+    font-weight: 900;
+    margin-bottom: 8px;
+}
+
+.login-email-helper {
+    color: var(--on-surface-variant);
+    margin-bottom: 24px;
+    font-size: 0.9rem;
+}
+
+.login-email-toggle {
+    margin-top: 20px;
+    background: none;
+    border: none;
+    color: var(--primary);
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+    text-decoration: underline;
+}
+
 @media (max-width: 768px) {
     .login-shell {
         padding: 24px;

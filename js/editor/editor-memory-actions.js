@@ -18,7 +18,9 @@ function createEditorMemoryActions(deps) {
         svg,
         calcPosition,
         setDetailEmptyState,
-        rerenderCanvas
+        rerenderCanvas,
+        getCurrentTreeData,
+        isLocalSaveMode
     } = deps;
 
     let isEditMode = false;
@@ -100,6 +102,61 @@ function createEditorMemoryActions(deps) {
         }
     };
 
+    const updateSelectedMemoryFields = async (updates) => {
+        const selectedNodeId = getSelectedNodeId();
+        if (!selectedNodeId) return false;
+        const allowedUpdates = {};
+        if (Object.prototype.hasOwnProperty.call(updates || {}, 'title')) allowedUpdates.title = updates.title;
+        if (Object.prototype.hasOwnProperty.call(updates || {}, 'memo')) allowedUpdates.memo = updates.memo;
+        if (Object.keys(allowedUpdates).length === 0) return false;
+
+        const memories = getTreeMemories();
+        const idx = memories.findIndex(m => m.id === selectedNodeId);
+        if (idx === -1) return false;
+
+        if (window.apiClient && typeof window.apiClient.updateMemory === 'function' && !isLocalSaveMode()) {
+            updateSaveStatus('saving', i18n('save_saving'));
+            try {
+                await window.apiClient.updateMemory(selectedNodeId, allowedUpdates);
+            } catch (error) {
+                console.error('[editor] Failed to update selected memory:', error);
+                updateSaveStatus('failed', i18n('save_failed'));
+                return false;
+            }
+        }
+
+        if (Object.prototype.hasOwnProperty.call(allowedUpdates, 'title')) memories[idx].title = allowedUpdates.title;
+        if (Object.prototype.hasOwnProperty.call(allowedUpdates, 'memo')) memories[idx].memo = allowedUpdates.memo;
+
+        const currentTreeData = getCurrentTreeData();
+        if (currentTreeData && currentTreeData.memories) {
+            const dataIdx = currentTreeData.memories.findIndex(m => m.id === selectedNodeId);
+            if (dataIdx !== -1) {
+                if (Object.prototype.hasOwnProperty.call(allowedUpdates, 'title')) currentTreeData.memories[dataIdx].title = allowedUpdates.title;
+                if (Object.prototype.hasOwnProperty.call(allowedUpdates, 'memo')) currentTreeData.memories[dataIdx].memo = allowedUpdates.memo;
+            }
+        }
+
+        if (window.LoveBudCache) {
+            const treeId = (currentTreeData && currentTreeData.id) ? currentTreeData.id : 'default';
+            const cacheKey = 'memories_' + treeId;
+            window.LoveBudCache.set(cacheKey, memories, 2 * 60 * 1000);
+        }
+
+        const currentEditingMemory = getCurrentEditingMemory();
+        if (currentEditingMemory && currentEditingMemory.id === selectedNodeId) {
+            const updatedMemory = { ...currentEditingMemory };
+            if (Object.prototype.hasOwnProperty.call(allowedUpdates, 'title')) updatedMemory.title = allowedUpdates.title;
+            if (Object.prototype.hasOwnProperty.call(allowedUpdates, 'memo')) updatedMemory.memo = allowedUpdates.memo;
+            setCurrentEditingMemory(updatedMemory);
+        }
+
+        if (typeof rerenderCanvas === 'function') rerenderCanvas();
+        if (typeof updateSidebarStatus === 'function') updateSidebarStatus();
+        updateSaveStatus('saved', i18n('save_saved'));
+        return true;
+    };
+
     const deleteMemory = async () => {
         const currentEditingMemory = getCurrentEditingMemory();
         if (!currentEditingMemory) return;
@@ -145,6 +202,7 @@ function createEditorMemoryActions(deps) {
         enterEditMode,
         exitEditMode,
         saveMemoryEdit,
+        updateSelectedMemoryFields,
         deleteMemory,
         getCurrentEditingMemory,
         setCurrentEditingMemory,

@@ -48,7 +48,7 @@
 - Modal은 browse summary, compute, read-heavy 처리의 최우선 계층입니다.
 - Cloudflare Pages는 실서비스 프론트 및 same-origin `/api` 진입점입니다.
 - Vercel은 upstream / secondary entry / 전이기 보조 계층입니다.
-- Netlify는 주경로가 아니라 fallback 또는 단계적 제거 대상입니다.
+- Netlify는 legacy artifact / removal candidate입니다. active production fallback이 아닙니다.
 
 ### 브라우저 API 원칙
 - 사용자 브라우저는 가능하면 **same-origin `/api`**만 사용합니다.
@@ -246,12 +246,97 @@ LoveBud / LoveTree는 다음과 같은 서비스가 아닙니다.
 - 요청 범위 밖 파일 수정 금지
 - 코드 로직 변경이 필요하면 관련 문서 기준과 충돌하지 않는지 먼저 확인
 
+### Module size / thin entrypoint policy
+
+LoveBud 신규 코드 작업은 `docs/engineering/CODE_ARCHITECTURE.md`를 따릅니다.
+
+핵심 원칙:
+- 신규 파일은 가능한 한 500줄 이하로 유지합니다.
+- 500줄을 넘을 가능성이 있는 기능은 설계 단계부터 모듈 분리합니다.
+- entry file은 thin entrypoint / orchestration shell로 유지합니다.
+- 실제 로직은 feature별 helper/module 파일로 분리합니다.
+- 한 파일에 UI, API, state, cache, validation, rendering, auth, fallback 책임을 누적하지 않습니다.
+- reusable logic은 focused helper module로 이동합니다.
+- 기존 프로젝트 loading model을 보존합니다.
+- ES module `import/export` 또는 `type="module"` 전환은 명시 승인 없이는 하지 않습니다.
+- 현재 HTML script 기반 구조에서는 browser-global module split 방식을 우선 사용합니다.
+
+표준 문구:
+
+> Do not grow a single file into a large fallback bundle. Keep entrypoint files thin: orchestration only. Move reusable logic into focused helper modules. Preserve the current project loading model; do not convert to `type="module"` unless the task explicitly authorizes it.
+
+### 파일 크기 / 분리 기준
+
+LoveBud는 여러 에이전트가 동시에 검토하고 작업할 수 있도록 작고 검토 가능한 파일을 지향합니다.
+
+권장 목표:
+- HTML 파일은 가능하면 500줄 이하로 유지합니다.
+- 페이지 전용 CSS 파일은 가능하면 500줄 이하로 유지합니다.
+- 공통 CSS 파일은 공통 토큰, 공통 컴포넌트, 공통 레이아웃 기반만 담고 page-specific 스타일을 넣지 않습니다.
+
+주의 기준:
+- 500줄을 넘는 HTML/CSS 파일은 다음 작업 전에 분리 가능성을 검토합니다.
+- 800줄 이상 파일은 extraction candidate로 분류합니다.
+- 1,000줄 이상 파일은 GitHub API / 에이전트 출력이 잘릴 수 있으므로 직접 전체 덮어쓰기나 광범위 수정 대상으로 삼지 않습니다.
+
+분리 원칙:
+- 페이지 전용 CSS는 `css/<page>.css`로 분리합니다.
+- 공통 스타일만 `css/global.css`에 둡니다.
+- inline `<style>` 블록은 가능한 한 페이지 전용 CSS 파일로 이동합니다.
+- inline `style="..."` 제거는 style block extraction과 별도 PR로 진행합니다.
+- 줄 수를 줄이기 위해 무의미하게 파일을 쪼개지 않습니다. 소유권과 역할이 명확할 때만 분리합니다.
+- JS 파일 이동이나 책임 분리는 Issue #72 기준에 따라 별도 audit/승인 후 진행합니다.
+
 ### 문서 작업
 - 문서 체계, 운영 설명, 읽기 순서, source of truth를 우선 정리
 - 오래된 도메인/운영 문구/폐기 경로는 최신 구조로 갱신
 - 깨진 문자나 이상한 인코딩 흔적이 보이면 우선 수정 후보로 분류
 
 ### 에이전트 실행 위생 규칙
+
+#### Secrets / credentials 취급 규칙
+
+LoveBud 작업에는 배포, API 접근, 테스트 계정, 외부 서비스 연동을 위한 로컬 전용 secrets가 존재할 수 있습니다.
+
+로컬 전용 경로는 아래 repo-relative path로만 언급합니다.
+
+- `.secrets/`
+- `.env`
+- `.env.*`
+
+이 경로들은 로컬 전용이며, 저장소에 커밋하거나 PR, issue, 문서, 로그, 스크린샷, 보고서에 값을 노출하지 않습니다.
+
+에이전트는 필요한 secret의 **이름이나 위치 정책**은 언급할 수 있지만, 아래 값은 절대 출력하거나 요약하거나 복사하지 않습니다.
+
+- raw token values
+- passwords
+- private keys
+- Firebase Admin SDK JSON contents
+- service account JSON contents
+- Authorization headers
+- cookies
+- session tokens
+- provider access tokens
+- 마지막 8자리 등 token 식별 정보
+
+작업에 secret이 필요하면 에이전트는 값을 요구하거나 출력하지 말고, 필요한 secret name만 말합니다. 실제 값 주입은 사용자가 로컬 환경, provider dashboard, GitHub Actions Secrets, Cloudflare/Vercel/Netlify dashboard 등 적절한 secret store를 통해 처리합니다.
+
+**금지 예시:**
+
+- `.secrets/` 내부 파일 내용을 읽어서 보고서에 붙여넣기
+- `.env` 값을 issue/PR/comment에 복사하기
+- Firebase Admin SDK JSON 내용을 요약하기
+- token의 일부 또는 마지막 8자리를 문서화하기
+- 테스트 계정 비밀번호를 AGENTS.md나 docs에 기록하기
+
+**허용 예시:**
+
+- "`.secrets/`는 로컬 전용이며 gitignored 상태여야 한다"고 안내
+- "`VERCEL_TOKEN`이 필요하다"고 secret name만 안내
+- "Firebase Admin SDK key file은 `.secrets/` 아래 로컬에만 둔다"고 위치 정책만 안내
+- "secret 값은 provider dashboard에서 rotate한다"고 절차만 안내
+
+`.secrets/` 또는 `.env*` 파일이 git 추적 대상에 올라온 정황이 있으면 즉시 작업을 중단하고 보고합니다.
 
 #### 로컬 저장소 / 클론 / 프로세스 정리
 
@@ -350,3 +435,42 @@ UI 검증 환경은 `## 3. 현재 서비스 / 인프라 기준`의 **UI 검증 �
 ## 13. 한 줄 요약
 
 LoveBud 작업은 항상 **현재 `main` 확인 → source of truth 확인 → 최소 수정 → 범위 내 검증 → 직접 수정/기존 반영 구분 보고** 순서로 진행합니다.
+
+## 14. Kilo Code 에이전트 안전 규칙
+
+다음은 Kilo Code 에이전트를 위한 공통 운영 규칙입니다. 이 규칙들은 `.kilocode/rules/00-lovebud-global.md`에도 동일하게 정의되어 있습니다.
+
+### Git Workflow
+- `main` 브랜치를 직접 수정하지 않습니다.
+- `main` 브랜치에 직접 푸시하지 않습니다.
+- `main` 브랜치를 merge하지 않습니다.
+- 한 작업은 하나의 브랜치에서 수행합니다.
+- PR은 기본적으로 draft로 생성합니다.
+
+### PR 보존
+- #7 번호 또는 prototype/reference/demo/variant 라벨이 있는 PR은 보존하며 임의로 닫거나 브랜치를 삭제하지 않습니다.
+- 임의의 PR preview URL을 추측하여 접근하지 않습니다.
+
+### 인프라 & 런타임
+- active runtime: Cloudflare Pages (프론트) + Modal (compute/back-end)
+- Netlify는 legacy artifact이며 제거 후보입니다.
+- 운영 사이트 `https://lovebud.pages.dev/`는 PR 병합 전 검증에 사용할 수 없습니다.
+
+### API 경로
+- 클라이언트 → 동일-origin `/api/*` → Cloudflare Functions `functions/api/**` → Modal → Neon
+
+### 검증
+- 최종 browser PASS는 실제 Cloudflare Preview URL 또는 할당된 test slot에서만 수행합니다.
+- Search/Browse/Editor/My Trees/Auth-gated 등 동적 데이터를 사용하는 페이지는 로컬 정적 서버만으로 최종 PASS할 수 없습니다.
+
+### 보안
+- 자격 증명, 토큰, 쿠키, 세션, Firebase/Cloudflare/Modal/Neon secret 값을 절대 기록하거나 노출하지 않습니다.
+- 필요한 secret은 이름과 위치 정책만 언급하며, 실제 값은 절대 포함하지 않습니다.
+
+### Local Artifact Hygiene
+- repo 내부에 `local-backup/`, `work/`, screenshots, report JSON 파일을 만들지 않습니다.
+- 로컬 검증 산출물(screenshots, reports, backup files)은 repo 밖 `local-backup/`로 이동합니다.
+- PR 생성 전 반드시 `git status --short`와 `git diff --name-only origin/main...HEAD`를 확인합니다.
+- 예상 외 파일이 포함되어 있으면 즉시 중단하고 scope를 정리합니다.
+- git clean, git reset --hard, git stash는 명시 승인 없이 실행하지 않습니다.
+- dirty worktree 상태에서는 작업을 중단하고 clean 환경을 준비합니다.

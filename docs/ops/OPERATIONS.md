@@ -4,20 +4,21 @@
 
 LoveBud의 현재 운영 우선순위는 아래와 같습니다.
 
-> **Hierarchy: Cloudflare Pages Entry + Modal Runtime > Vercel Transitional Fallback > Netlify Legacy Artifact**
+> **Hierarchy: Cloudflare Pages Entry + Modal Runtime > Vercel Transitional Fallback > Netlify Removed Legacy Artifacts**
 
 | 계층 | 역할 | 현재 책임 범위 | 상태 |
 | :--- | :--- | :--- | :--- |
 | **Cloudflare Pages** | **Primary Entry / API Router** | 실서비스 진입점, 정적 프런트 서빙, same-origin `/api/*` 라우팅, `functions/api/*` 실행 | 1순위 |
 | **Modal** | **Active API / Backend Target** | `/api/trees`, `/api/memories`, browse/community/private read/write target, 대표 카드 계산 | 1순위 |
 | **Vercel** | **Deprecated Transitional Fallback** | 일부 fallback / 전이기 보조 계층 | audit 중 |
-| **Netlify** | **Legacy Artifact Only** | `netlify/functions/*`, `netlify.toml` legacy reference. 현재 `lovebud.pages.dev` production/test slot active backend 아님 | 신규 구현 금지 |
+| **Netlify** | **Removed Legacy Artifact Layer** | PR #291로 repository residual artifacts 제거 완료. 현재 `lovebud.pages.dev` production/test slot active backend 또는 active fallback 아님 | 신규 구현 금지 |
 
 핵심 원칙:
 - 실서비스 주소는 **반드시 `https://lovebud.pages.dev/`** 기준으로 본다.
 - browser-facing API entry는 **Cloudflare Pages same-origin `/api/*`** 기준으로 본다.
 - active backend target은 **Cloudflare Pages Functions → Modal** 경로 기준으로 본다.
-- `netlify/functions/*`는 현재 active production backend가 아니며, Netlify runtime 재활성화가 명시 승인되지 않는 한 신규 backend 정책 구현 대상이 아니다.
+- Netlify residual repository artifacts는 PR #291로 제거되었으며, Netlify runtime 재활성화가 명시 승인되지 않는 한 신규 backend 정책 구현 대상이 아니다.
+- Netlify route gap은 즉시 blocker가 아니며, Issue #119 runtime routing audit에서 외부 deploy target 보존 여부를 판단한다.
 
 ---
 
@@ -27,12 +28,12 @@ LoveBud의 현재 운영 우선순위는 아래와 같습니다.
 - **Cloudflare Pages 프로젝트(운영 기준)**: `lovebud.pages.dev`
 - **Modal 앱**: `lovebud-browse-snapshot`
 - **Vercel 주소(Deprecated transitional fallback)**: `https://lovebud.vercel.app/`
-- **Netlify 주소 / Functions(Legacy artifact only)**: `https://lovebud.netlify.app/`, `netlify/functions/*`
+- **Netlify 주소(removed legacy external reference)**: `https://lovebud.netlify.app/`
 
 주의:
 - Vercel과 Netlify 주소는 현재 공식 사용자-facing 대표 주소가 아닙니다.
 - 운영 문서에서 `lovebud.vercel.app`, `lovebud.netlify.app`를 주서비스처럼 설명하지 않습니다.
-- Netlify Functions를 현재 `lovebud.pages.dev` production/test slot backend처럼 설명하지 않습니다.
+- Netlify residual repository artifacts were removed by PR #291; Netlify를 현재 `lovebud.pages.dev` production/test slot backend나 active fallback처럼 설명하지 않습니다.
 
 ---
 
@@ -111,18 +112,21 @@ Modal runtime 핵심 변수:
 ### 4.3 Vercel / Netlify
 
 Vercel은 deprecated transitional fallback입니다.
-Netlify Functions는 legacy artifact입니다.
+Netlify residual repository artifacts were removed by PR #291.
 
 운영 설명에서는 두 계층 모두 **주경로**로 표현하지 않습니다.
+Netlify는 active fallback 구현 대상이 아니며, repo artifact 재도입이나 external deploy target 재활성화는 별도 CTO 승인 없이는 수행하지 않습니다.
 
 ---
 
-## 5. fallback 운영 원칙
+## 5. Degraded response / transitional fallback 운영 원칙
 
 - Modal browse summary가 실패해도 browse 전체가 멈추면 안 된다.
-- fallback은 유지하되, 성능 및 요약 품질 기준은 Modal이 우선이다.
-- 점진적 제거 대상은 “Vercel/Netlify 주경로 설명”이지, 모든 fallback 문구의 즉시 삭제가 아니다.
-- Netlify Functions는 현재 active fallback으로 확인되지 않았으므로 legacy artifact로만 표기한다.
+- fallback이라는 표현은 Vercel deprecated transitional fallback 또는 Modal 실패 시 degraded response에 한정한다.
+- Netlify is not an active fallback.
+- Netlify residual repository artifacts were removed by PR #291.
+- CTO가 Netlify runtime 재활성화를 명시 승인하지 않는 한, Netlify artifacts를 재생성하거나 신규 route parity, backend policy, feature parity를 추가하지 않는다.
+- Netlify route gap은 고쳐서 유지할 문제가 아니라 Issue #119 runtime routing audit에서 외부 deploy target 보존 여부를 판단한다.
 
 ---
 
@@ -136,8 +140,8 @@ Netlify Functions는 legacy artifact입니다.
 3. `/api/trees`, `/api/memories`는 Cloudflare Pages Functions → Modal로 고정
 4. browse summary는 Modal 우선으로 고정
 5. Vercel은 deprecated transitional fallback으로 축소
-6. Netlify Functions는 legacy artifact로 축소
-7. tests/docs reference transition 완료 후 Netlify archive 여부를 별도 승인한다
+6. Netlify residual repository artifacts were removed by PR #291
+7. tests/docs reference transition 완료 후 Issue #119 audit에서 Netlify external deploy target archive 여부를 별도 승인한다
 
 ---
 
@@ -148,9 +152,9 @@ PR #38은 active runtime이 아닌 `netlify/functions/*`에 backend 정책을 �
 해당 판단은 다음 기준을 따른다.
 
 - active production/test slot runtime: Cloudflare Pages Functions → Modal
-- legacy artifact: `netlify/functions/*`
+- removed legacy artifact layer: Netlify residual repository artifacts were removed by PR #291
 - archive: 이번 문서 정리 PR에서 수행하지 않음
-- Netlify runtime 재활성화가 명시 승인되지 않는 한 신규 backend policy를 `netlify/functions/*`에 구현하지 않음
+- Netlify runtime 재활성화가 명시 승인되지 않는 한 신규 backend policy를 Netlify artifacts로 재도입하지 않음
 
 ---
 
@@ -163,7 +167,8 @@ PR #38은 active runtime이 아닌 `netlify/functions/*`에 backend 정책을 �
 - 응답 server가 Cloudflare인지 확인했는가
 - Cloudflare Pages env에 `MODAL_BASE_URL`이 설정되어 있는가
 - Modal `/modal/health`가 정상 응답하는가
-- `netlify/functions/*`를 새 backend 구현 대상으로 오해하지 않았는가
+- Netlify를 새 backend 구현 대상이나 active fallback 구현 대상으로 오해하지 않았는가
+- Netlify route gap을 Issue #119 audit 대상으로 분리했는가
 
 ---
 

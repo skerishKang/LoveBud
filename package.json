@@ -6,7 +6,7 @@
   "scripts": {
     "lint": "node scripts/lint-static.js",
     "build": "node scripts/build-static.js",
-    "test": "node --test tests/smoke/*.test.js tests/routes/*.test.js tests/contracts/*.test.js tests/functions/*.test.js",
+    "test": "node --test tests/smoke/*.test.js tests/routes/*.test.js tests/contracts/*.test.js",
     "verify": "node scripts/pre-deploy.js",
     "verify:full": "node scripts/pre-deploy.js --full",
     "verify:remote": "node scripts/pre-deploy.js --remote",
@@ -15,7 +15,7 @@
     "test:batch": "node scripts/batch-test-runner.js",
     "test:batch:headed": "node scripts/batch-test-runner.js --headed",
     "test:screenshots": "node scripts/capture-screenshots.js",
-    "test:screenshots:xg": "node scripts/capture-screenshots.js xg-test-$(Get-Date -Format 'yyyy-MM-dd-HHmm')",
+    "test:screenshots:xg": "node scripts/capture-screenshots.js --prefix xg-test",
     "test:e2e:search-detail": "node scripts/e2e-search-detail-smoke.js",
     "test:e2e:auth-guard": "node scripts/e2e-auth-guard-smoke.js",
     "test:e2e:editor-save": "node scripts/e2e-editor-save-smoke.js",

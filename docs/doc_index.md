@@ -2,16 +2,19 @@
 
 이 문서는 LoveBud 프로젝트의 문서 구조와 읽기 순서를 정리한 최상위 인덱스입니다.
 
-실서비스 프론트 주소는 `https://lovebud.pages.dev/` 이며, 현재 운영 기준 인프라 우선순위는 **Modal > Cloudflare Pages > Vercel > Netlify** 입니다.
+실서비스 프론트 주소는 `https://lovebud.pages.dev/` 이며, 현재 운영 기준 인프라 우선순위는 **Cloudflare Pages Entry + Modal Runtime > Vercel > Netlify** 입니다.
 
 중요:
 - 브라우저는 가능하면 **same-origin `/api`** 만 사용합니다.
 - 공식 사용자-facing 주소는 `pages.dev` 기준으로 설명합니다.
+- active runtime entry: Cloudflare Pages (same-origin `/api/*` router + 정적 프런트)
+- active backend target: Modal (browse summary, private/community read/write compute)
 - Vercel은 upstream / secondary entry / 전이기 보조 계층입니다.
-- Netlify는 주경로가 아니라 fallback 또는 단계적 제거 대상입니다.
+- Netlify는 legacy artifact / removal candidate입니다. active production fallback이 아닙니다.
 - `PRODUCT_IDENTITY / BRAND_EXPERIENCE / UI_DESIGN_SYSTEM` 은 제품/브랜드/UI 판단의 source of truth 입니다.
-- prototype/reference 폴더는 repo hygiene에서 자동 삭제/이동/ignore 대상으로 분류하지 않습니다.
-- `pages/gpt-v2/`, `assets/gpt-v2/`, `pages/gpt-svg-tree/` 및 PR #7 관련 prototype은 보존합니다.
+- prototype/reference/demo/variant 폴더는 repo hygiene에서 자동 cleanup 대상으로 분류하지 않습니다.
+- `pages/gpt-v2/`, `css/gpt-v2/`, `assets/gpt-v2/`, `pages/gemini-v2/`, `css/gemini-v2/`, `pages/gemini-v3/`, `css/gemini-v3/`, `pages/v2/`, `css/v2/`, `pages/kimi-v2/`, `assets/css/kimi-v2/`, `assets/js/kimi-v2/`, `hotspot-prototype/`, `scrapbook-demo/`, `quiet/`, `pages/gpt-svg-tree/` 및 PR #7 관련 prototype은 보존합니다.
+- prototype/reference/demo/variant의 canonical inventory는 `docs/reference/PROTOTYPE_INDEX.md`입니다.
 - 신규 tree의 정책상 기본 visibility는 `public`입니다.
 - private storage는 Plus entitlement가 필요합니다.
 - memory visibility가 생략되면 parent tree visibility를 상속합니다.
@@ -32,19 +35,21 @@
 
 1. `../AGENTS.md`
 2. `./doc_index.md`
-3. `./product/PRODUCT_IDENTITY.md`
-4. `./product/BRAND_EXPERIENCE.md`
-5. `./design/UI_DESIGN_SYSTEM.md`
-6. 요청 범위에 맞는 문서군 인덱스
+3. `./ops/PARALLEL_WORKTREE_AGENT_POLICY.md`
+4. `./product/PRODUCT_IDENTITY.md`
+5. `./product/BRAND_EXPERIENCE.md`
+6. `./design/UI_DESIGN_SYSTEM.md`
+7. 요청 범위에 맞는 문서군 인덱스
 
 Visibility, private storage, anonymous public exposure, Browse/Search eligibility 판단이 필요하면 아래를 추가로 읽습니다.
 
 - `./product/PUBLICATION_AND_PRIVACY_UX_POLICY.md`
 - `./engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md`
 
-Prototype/reference 폴더 정리, 보존, repo hygiene 판단이 필요하면 아래를 추가로 읽습니다.
+Prototype/reference/demo/variant 폴더 정리, 보존, repo hygiene 판단이 필요하면 아래를 추가로 읽습니다.
 
 - `./design/PROTOTYPE_REFERENCE_POLICY.md`
+- `./reference/PROTOTYPE_INDEX.md` - reference only: prototype / variant / demo / reference 경로 목록과 active production route 아님을 명시한 canonical inventory
 
 UI polish 단계 분리, PR3/PR4/PR5 범위 판단이 필요하면 아래를 추가로 읽습니다.
 
@@ -54,9 +59,14 @@ PR3 button / badge / chip tone 기준 판단이 필요하면 아래를 추가로
 
 - `./design/BUTTON_BADGE_CHIP_BASELINE.md`
 
-운영/배포 판단이 필요하면 아래를 추가로 읽습니다.
+운영/배포/브라우저 검증 판단이 필요하면 아래를 추가로 읽습니다.
 
 - `./ops/OPERATIONS.md`
+- `./ops/LOCAL_BROWSER_VERIFICATION_STARTUP.md`
+- `./ops/NETLIFY_LEGACY_ARTIFACT_AUDIT.md`
+- `./ops/PARALLEL_WORKTREE_AGENT_POLICY.md`
+- `./ops/BROWSER_VERIFICATION_URL_POLICY.md`
+- `./ops/TEST_PREVIEW_SLOTS.md`
 - `./ops/KNOWN_CI_E2E_BLOCKERS.md`
 - `./ops/BRANCH_CLEANUP_PLAN.md`
 - `./migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md`
@@ -92,10 +102,18 @@ PR3 button / badge / chip tone 기준 판단이 필요하면 아래를 추가로
 - [UI_DESIGN_SYSTEM.md](./design/UI_DESIGN_SYSTEM.md) - UI 구조 / 감정 위계 / 컴포넌트 규칙 source of truth
 - [UI_POLISH_ROADMAP.md](./design/UI_POLISH_ROADMAP.md) - PR #49, #51, #62, #63, #66, #67, #69, #70 이후 public UI polish와 Search 후속 작업 범위 분리 기준
 - [BUTTON_BADGE_CHIP_BASELINE.md](./design/BUTTON_BADGE_CHIP_BASELINE.md) - button / badge / chip tone 통일 기준
-- [PROTOTYPE_REFERENCE_POLICY.md](./design/PROTOTYPE_REFERENCE_POLICY.md) - prototype/reference 폴더 보존 정책
+- [PRIMARY_COLOR_TOKEN_CLEANUP_PLAN.md](./design/PRIMARY_COLOR_TOKEN_CLEANUP_PLAN.md) - `rgba(144, 73, 81, X)` 반복을 `--primary-rgb` token 기반으로 단계 정리하기 위한 계획
+- [PROTOTYPE_REFERENCE_POLICY.md](./design/PROTOTYPE_REFERENCE_POLICY.md) - prototype/reference/demo/variant 폴더 보존 정책
+- [PAGE_TRANSITION_REVEAL_COVERAGE.md](./ux/PAGE_TRANSITION_REVEAL_COVERAGE.md) - 페이지 전환 및 reveal 효과 커버리지 맵
 - [prompts/image-generation-prompts.md](./design/prompts/image-generation-prompts.md) - 이미지 생성 프롬프트 모음
 - [prompts/home-hero-slide-prompts.txt](./design/prompts/home-hero-slide-prompts.txt) - 홈 히어로 슬라이드 프롬프트
 - [stitch_image_to_website/DESIGN.md](./design/stitch_image_to_website/DESIGN.md) - Stitch image-to-website reference design note. 현재 active UI polish source of truth는 아님
+
+## reference 문서군
+
+Reference 문서는 `docs/reference/` 아래에 정리됩니다.
+
+- [PROTOTYPE_INDEX.md](./reference/PROTOTYPE_INDEX.md) - reference only: prototype / variant / demo / reference 경로 목록과 운영 편입 금지 기준
 
 ## engineering 문서군
 
@@ -104,9 +122,20 @@ PR3 button / badge / chip tone 기준 판단이 필요하면 아래를 추가로
 - **index**: [engineering_index.md](./engineering/engineering_index.md)
 - [API_CONTRACT.md](./engineering/API_CONTRACT.md) - flat camelCase API 계약
 - [BROWSE_FILTER_VS_PUBLICATION_GUARD.md](./engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md) - stored visibility, anonymous public exposure, Browse/Search eligibility, Browse display filter 개념 분리
+- [CSS_ARCHITECTURE.md](./engineering/CSS_ARCHITECTURE.md) - CSS import hub, split ownership, import order, visual verification 기준
+- [CODE_ARCHITECTURE.md](./engineering/CODE_ARCHITECTURE.md) - module size, thin entrypoint, browser-global split, large file refactor safety policy
+- [SCRIPT_LOAD_ORDER.md](./engineering/SCRIPT_LOAD_ORDER.md) - pages/*.html script load order runtime contract, Auth/Login dependency order, reorder checklist
+- [SEARCH_RUNTIME_CONTRACT.md](./engineering/SEARCH_RUNTIME_CONTRACT.md) - Search/Browse runtime script order, globals, forbidden changes, smoke checklist
+- [AUTH_LOGIN_ACTIVE_PROVIDER_TRANSITION_PLAN.md](./engineering/AUTH_LOGIN_ACTIVE_PROVIDER_TRANSITION_PLAN.md) - Auth/Login active provider transition 단계, file ownership, 금지 조합, fixed test slot 검증 기준
 - [SUPABASE_FREE_POC_PLAN.md](./engineering/SUPABASE_FREE_POC_PLAN.md) - Supabase Free PoC 기반 장기 backend 구조 단순화 검증 계획
 - [REVIEW_GUARDRAILS.md](./engineering/REVIEW_GUARDRAILS.md) - 반복 false positive 방지 규칙
 - [RECENT_REFACTORING.md](./engineering/RECENT_REFACTORING.md) - 최근 리팩터링 기록
+
+## security 문서군
+
+보안 관련 문서는 `docs/security/` 아래에 정리됩니다.
+
+- [FIREBASE_CLIENT_CONFIG_POLICY.md](./security/FIREBASE_CLIENT_CONFIG_POLICY.md) - Firebase 클라이언트 설정 노출 정책 및 보안 모델
 
 ## ops 문서군
 
@@ -114,6 +143,11 @@ PR3 button / badge / chip tone 기준 판단이 필요하면 아래를 추가로
 
 - **index**: [ops_index.md](./ops/ops_index.md)
 - [OPERATIONS.md](./ops/OPERATIONS.md) - 현재 운영 전략 및 인프라 우선순위
+- [NETLIFY_LEGACY_ARTIFACT_AUDIT.md](./ops/NETLIFY_LEGACY_ARTIFACT_AUDIT.md) - Netlify legacy artifact / removal candidate 감사 기준 및 현황. `netlify/functions/*`, `netlify.toml` removal audit 진행 상태
+- [PARALLEL_WORKTREE_AGENT_POLICY.md](./ops/PARALLEL_WORKTREE_AGENT_POLICY.md) - 병렬 모델, worktree, 검증 모델, PR 통합 운영 기준
+- [LOCAL_BROWSER_VERIFICATION_STARTUP.md](./ops/LOCAL_BROWSER_VERIFICATION_STARTUP.md) - 로컬/브라우저 검증 시작 전 공통 preflight, URL provenance, evidence, PR checklist 기준
+- [BROWSER_VERIFICATION_URL_POLICY.md](./ops/BROWSER_VERIFICATION_URL_POLICY.md) - 브라우저 smoke URL provenance, PR Preview, Branch Preview, fixed test slot 검증 기준
+- [TEST_PREVIEW_SLOTS.md](./ops/TEST_PREVIEW_SLOTS.md) - 고정 테스트 Preview 슬롯 운영 기준
 - [DEPLOY_CHECKLIST.md](./ops/DEPLOY_CHECKLIST.md) - 배포 체크리스트
 - [RUNBOOK.md](./ops/RUNBOOK.md) - 운영 / 장애 대응 런북
 - [DOC_WORKFLOW.md](./ops/DOC_WORKFLOW.md) - 문서 작업 흐름
@@ -121,7 +155,6 @@ PR3 button / badge / chip tone 기준 판단이 필요하면 아래를 추가로
 - [AI_REQUEST_PATTERNS.md](./ops/AI_REQUEST_PATTERNS.md) - 요청 패턴 해석
 - [KNOWN_CI_E2E_BLOCKERS.md](./ops/KNOWN_CI_E2E_BLOCKERS.md) - 반복 CI/E2E blocker 원인 분리 및 exception merge 판단 기준
 - [BRANCH_CLEANUP_PLAN.md](./ops/BRANCH_CLEANUP_PLAN.md) - PR #49~#58 이후 merged/stale branch cleanup 후보와 보존 branch 분류 기준
-- [TEST_PREVIEW_SLOTS.md](./ops/TEST_PREVIEW_SLOTS.md) - 고정 테스트 Preview 슬롯 운영 기준
 - [EDITOR_ARCHITECTURE.md](./ops/EDITOR_ARCHITECTURE.md) - editor 구조 설명
 
 ## project 문서군

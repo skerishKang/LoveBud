@@ -65,22 +65,7 @@ function checkJsSyntaxFile(file) {
 function verifyJSSyntax() {
   console.log('\n=== JS 구문 검사 ===');
 
-  // 백엔드 함수 (CommonJS)
-  const backendDir = path.join(ROOT, 'netlify/functions');
-  if (fs.existsSync(backendDir)) {
-    const backendFiles = [];
-    collectJsFiles(backendDir, backendFiles);
-    for (const file of backendFiles) {
-      const rel = relPath(file);
-      try {
-        checkJsSyntaxFile(file);
-        check(`syntax: ${rel}`, true);
-      } catch (e) {
-        const msg = String(e.message || e).split('\n')[0];
-        check(`syntax: ${rel}`, false, msg);
-      }
-    }
-  }
+
 
   // 프론트엔드 JS (IIFE/ES 모듈 혼합)
   const frontendDir = path.join(ROOT, 'js');
@@ -106,18 +91,38 @@ function verifyI18nKeys() {
   console.log('\n=== i18n key 정합성 검사 ===');
 
   const i18nPath = path.join(ROOT, 'js/i18n.js');
-  if (!fs.existsSync(i18nPath)) {
-    check('i18n.js 존재', false, 'js/i18n.js 없음');
+  const i18nDir = path.join(ROOT, 'js/i18n');
+  
+  const i18nFiles = [];
+  if (fs.existsSync(i18nPath)) i18nFiles.push(i18nPath);
+  if (fs.existsSync(i18nDir)) {
+    const entries = fs.readdirSync(i18nDir);
+    for (const name of entries) {
+      if (name.endsWith('.js')) i18nFiles.push(path.join(i18nDir, name));
+    }
+  }
+
+  if (i18nFiles.length === 0) {
+    check('i18n 파일 존재', false, 'js/i18n.js 또는 js/i18n/*.js 없음');
     return;
   }
-  check('i18n.js 존재', true);
+  check('i18n 파일 스캔', true, `${i18nFiles.length}개 파일`);
 
-  const i18nSrc = fs.readFileSync(i18nPath, 'utf8');
   const dictKeys = new Set();
-  const keyRegex = /^\s*'([^']+)'\s*:\s*\{/gm;
-  let m;
-  while ((m = keyRegex.exec(i18nSrc)) !== null) {
-    dictKeys.add(m[1]);
+  // 정합성 검사용 키 추출 정규식: 'key': { 또는 key: { 구조 매칭
+  // 그룹 1: 싱글 따옴표, 그룹 2: 더블 따옴표, 그룹 3: 따옴표 없음
+  const keyRegex = /(?:'([^']+)'|"([^"]+)"|([a-zA-Z0-9_$]+))\s*:\s*\{/g;
+  
+  for (const file of i18nFiles) {
+    const src = fs.readFileSync(file, 'utf8');
+    let m;
+    while ((m = keyRegex.exec(src)) !== null) {
+      const key = m[1] || m[2] || m[3];
+      // ko, en 등 언어 코드는 딕셔너리 키가 아니므로 제외
+      if (key && key !== 'ko' && key !== 'en' && key !== 'ja' && key !== 'zh') {
+        dictKeys.add(key);
+      }
+    }
   }
   check('dictionary key 수', dictKeys.size > 0, `${dictKeys.size}개`);
 
@@ -192,40 +197,22 @@ function verifyI18nKeys() {
   }
 }
 
-// ── 3. netlify.toml 라우트 ↔ 함수 파일 존재 확인 ─────────────────────────────
+// ── 3. Cloudflare Pages Functions API routes 확인 ─────────────────────────────
 
 function verifyRoutesAndFunctions() {
-  console.log('\n=== netlify.toml 라우트 ↔ 함수 파일 확인 ===');
+  console.log('\n=== Cloudflare Pages Functions API routes 확인 ===');
 
-  const tomlPath = path.join(ROOT, 'netlify.toml');
-  if (!fs.existsSync(tomlPath)) {
-    check('netlify.toml 존재', false, '파일 없음');
+  const apiDir = path.join(ROOT, 'functions', 'api');
+  if (!fs.existsSync(apiDir)) {
+    check('functions/api 디렉토리', false, '존재하지 않음');
     return;
   }
-  check('netlify.toml 존재', true);
+  check('functions/api 디렉토리', true);
 
-  const tomlSrc = fs.readFileSync(tomlPath, 'utf8');
-  const routeRegex = /from\s*=\s*"\/api\/[^"]*"\s*\n\s*to\s*=\s*"\/\.netlify\/functions\/([^"]+)"/g;
-  let match;
-  const routes = [];
-  while ((match = routeRegex.exec(tomlSrc)) !== null) {
-    routes.push({ fnName: match[1] });
-  }
-
-  const fnDir = path.join(ROOT, 'netlify/functions');
-  for (const route of routes) {
-    const fnFile = path.join(fnDir, route.fnName + '.js');
-    const exists = fs.existsSync(fnFile);
-    check(`route → ${route.fnName}.js`, exists, exists ? '존재' : '파일 없음');
-  }
-
-  if (fs.existsSync(fnDir)) {
-    const allFns = fs.readdirSync(fnDir).filter(f => f.endsWith('.js')).map(f => f.replace('.js', ''));
-    const routedNames = new Set(routes.map(r => r.fnName));
-    const orphanFns = allFns.filter(f => !routedNames.has(f) && !f.startsWith('_'));
-    if (orphanFns.length > 0) {
-      console.log(`  ℹ 라우트 없는 함수 (직접 호출 전용 가능): ${orphanFns.join(', ')}`);
-    }
+  const requiredFiles = ['trees.js', 'memories.js', '[[path]].js'];
+  for (const file of requiredFiles) {
+    const exists = fs.existsSync(path.join(apiDir, file));
+    check(`API file: ${file}`, exists, exists ? '존재' : '없음');
   }
 }
 
@@ -279,7 +266,6 @@ function verifyRequiredFiles() {
     'js/shared-header.js',
     'js/firebase-config.js',
     'css/global.css',
-    'netlify.toml',
     'package.json',
   ];
 

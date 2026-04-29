@@ -1,0 +1,364 @@
+/*
+ * LoveBud Intro page styles - Hero
+ * Extracted from css/intro.css.
+ * Page-specific only. Do not move these rules into global.css.
+ */
+
+.intro-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(300px, 0.72fr);
+  gap: var(--hero-gap);
+  align-items: center;
+  padding: 52px var(--page-pad-desktop) 32px;
+  max-width: var(--page-shell-max);
+  margin: 0 auto;
+  width: 100%;
+  min-height: min(820px, calc(100vh - 108px));
+}
+
+.intro-hero-copy {
+  min-width: 0;
+}
+
+.intro-hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 24px;
+  padding: 0;
+  margin-bottom: 16px;
+  border-radius: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  color: var(--primary);
+  font-size: 0.83rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.intro-hero-eyebrow::before {
+  content: "";
+  width: 28px;
+  height: 1px;
+  background: rgba(144, 73, 81, 0.42);
+}
+
+.intro-hero h1 {
+  font-size: clamp(3.45rem, 5.8vw, 5.15rem);
+  font-weight: 900;
+  color: var(--on-surface);
+  margin: 20px 0 14px;
+  line-height: 0.99;
+  letter-spacing: -0.052em;
+  max-width: 720px;
+}
+
+.intro-hero h1 .title-line {
+  display: block;
+}
+
+.intro-hero h1 .title-line:nth-child(1) {
+  color: var(--on-surface-variant);
+  font-weight: 700;
+  opacity: 0.9;
+}
+
+.intro-hero h1 .title-accent {
+  color: var(--primary);
+  font-weight: 900;
+  letter-spacing: -0.03em;
+}
+
+.intro-hero h1 .title-line:nth-child(3) {
+  color: #5f504a;
+  font-weight: 800;
+}
+
+.intro-hero .lead {
+  font-size: 1.02rem;
+  color: var(--on-surface-variant);
+  line-height: 1.78;
+  margin: 0 0 1.45rem;
+  max-width: 520px;
+}
+
+.intro-hero-visual {
+  position: relative;
+  padding: 22px;
+  border-radius: 32px;
+  background:
+    radial-gradient(circle at 30% 20%, rgba(255, 248, 245, 0.92), transparent 52%),
+    rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(144, 73, 81, 0.09);
+  box-shadow: 0 28px 72px rgba(75, 64, 57, 0.12), 0 0 0 1px rgba(255, 255, 255, 0.62) inset;
+  backdrop-filter: blur(14px);
+}
+
+.intro-tree-scene {
+  position: relative;
+  min-height: 340px;
+  border-radius: 24px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 28% 12%, rgba(255, 248, 246, 0.96), transparent 38%),
+    radial-gradient(circle at 80% 22%, rgba(242, 234, 228, 0.72), transparent 28%),
+    linear-gradient(180deg, rgba(255, 249, 245, 0.92), rgba(244, 248, 238, 0.96));
+  border: 1px solid rgba(144, 73, 81, 0.07);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.intro-tree-stem {
+  position: absolute;
+  left: 50%;
+  bottom: 42px;
+  width: 12px;
+  height: 136px;
+  transform-origin: bottom center;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #c18b83, #904951);
+  box-shadow: 0 10px 24px rgba(144, 73, 81, 0.16);
+  animation: introStemGrow 0.7s cubic-bezier(0.34, 1.3, 0.64, 1) 0.15s both;
+}
+
+@keyframes introStemGrow {
+  from { transform: translateX(-50%) scaleY(0); opacity: 0.3; }
+  to   { transform: translateX(-50%) scaleY(1); opacity: 1; }
+}
+
+.intro-tree-branch {
+  position: absolute;
+  left: 50%;
+  height: 5px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #c18b83, #aa646d);
+  transform-origin: left center;
+  animation: introBranchIn 0.45s ease both;
+}
+
+.intro-tree-branch.one {
+  bottom: 148px;
+  width: 84px;
+  transform: translateX(4px) rotate(-30deg);
+  animation-delay: 0.75s;
+}
+
+.intro-tree-branch.two {
+  bottom: 122px;
+  width: 78px;
+  transform: translateX(-6px) rotate(204deg);
+  animation-delay: 1.0s;
+}
+
+.intro-tree-branch.three {
+  bottom: 102px;
+  width: 68px;
+  transform: translateX(4px) rotate(26deg);
+  animation-delay: 1.25s;
+}
+
+@keyframes introBranchIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.intro-tree-moment {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(144, 73, 81, 0.1);
+  box-shadow: 0 12px 24px rgba(75, 64, 57, 0.08);
+  color: var(--on-surface);
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+  animation: introMomentIn 0.4s ease both;
+}
+
+@keyframes introMomentIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.intro-tree-moment.first {
+  left: 20px;
+  bottom: 70px;
+  color: var(--primary);
+  animation-delay: 1.5s;
+}
+
+.intro-tree-moment.saved {
+  right: 16px;
+  top: 54px;
+  animation-delay: 1.75s;
+}
+
+.intro-tree-moment.shared {
+  left: 30px;
+  top: 86px;
+  color: #667a55;
+  animation-delay: 2.0s;
+}
+
+.intro-tree-caption {
+  margin: 12px 4px 0;
+  color: var(--on-surface-variant);
+  font-size: 0.84rem;
+  font-weight: 700;
+  line-height: 1.5;
+  word-break: keep-all;
+}
+
+.intro-hero-actions {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  align-items: stretch;
+  margin-top: 24px;
+}
+
+.intro-cta-link,
+.intro-cta-link:link,
+.intro-cta-link:visited,
+.intro-cta-link:hover,
+.intro-cta-link:focus {
+  color: inherit;
+  text-decoration: none;
+}
+
+.intro-cta-link {
+  display: inline-flex;
+  align-items: center;
+}
+
+.intro-hero-actions .btn-round,
+.cta-buttons .btn-round {
+  min-height: 56px;
+  padding: 0 30px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  line-height: 1;
+  white-space: nowrap;
+  box-sizing: border-box;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.intro-cta-primary {
+  color: #fff;
+  background: linear-gradient(180deg, rgba(144, 73, 81, 0.98), rgba(125, 63, 70, 0.98));
+  border-color: transparent;
+  box-shadow: 0 16px 34px rgba(144, 73, 81, 0.24);
+  transition: all 0.25s ease;
+}
+
+.intro-cta-primary:hover,
+.intro-cta-link:hover .intro-cta-primary,
+.intro-cta-link:focus-visible .intro-cta-primary {
+  color: #fff;
+  background: linear-gradient(180deg, rgba(154, 82, 90, 1), rgba(125, 63, 70, 1));
+  transform: translateY(-2px);
+  box-shadow: 0 20px 42px rgba(144, 73, 81, 0.32);
+}
+
+.intro-cta-primary:focus-visible,
+.intro-cta-secondary:focus-visible,
+.intro-cta-link:focus-visible .intro-cta-primary,
+.intro-cta-link:focus-visible .intro-cta-secondary {
+  outline: 2px solid rgba(144, 73, 81, 0.38);
+  outline-offset: 3px;
+}
+
+.intro-cta-secondary {
+  position: relative;
+  overflow: visible;
+  background: rgba(255, 255, 255, 0.72);
+  border-color: rgba(144, 73, 81, 0.18);
+  color: var(--primary);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 14px 34px rgba(75, 64, 57, 0.08);
+  transition: all 0.25s ease;
+}
+
+.intro-cta-secondary::after {
+  content: "";
+  position: absolute;
+  inset: -12px -16px;
+  border-radius: inherit;
+  background: radial-gradient(circle at 50% 50%, rgba(255, 217, 211, 0.78), rgba(255, 232, 224, 0.28) 42%, transparent 72%);
+  filter: blur(8px);
+  opacity: 0.5;
+  z-index: -1;
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.intro-cta-secondary:hover,
+.intro-cta-link:hover .intro-cta-secondary,
+.intro-cta-link:focus-visible .intro-cta-secondary {
+  color: var(--primary);
+  border-color: rgba(144, 73, 81, 0.28);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 20px 52px rgba(144, 73, 81, 0.18), 0 0 46px rgba(255, 214, 206, 0.82);
+  transform: translateY(-2px);
+}
+
+.intro-cta-secondary:hover::after,
+.intro-cta-link:hover .intro-cta-secondary::after,
+.intro-cta-link:focus-visible .intro-cta-secondary::after {
+  opacity: 1;
+  transform: scale(1.08);
+}
+
+/* Mobile consistency with landing */
+@media (max-width: 1220px) {
+  .intro-hero {
+    grid-template-columns: 1fr;
+    min-height: auto;
+    padding-top: 36px;
+  }
+}
+
+@media (max-width: 920px) {
+  .intro-hero h1 {
+    font-size: clamp(2.95rem, 10vw, 4.3rem);
+  }
+}
+
+@media (max-width: 640px) {
+  .intro-hero {
+    padding: 24px var(--page-pad-mobile, 16px) 12px;
+  }
+
+  .intro-hero h1 {
+    margin-top: 16px;
+    font-size: clamp(2.25rem, 10vw, 2.8rem);
+    line-height: 1.04;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  .intro-hero .lead {
+    font-size: 0.96rem;
+    line-height: 1.72;
+    max-width: 100%;
+  }
+
+  .intro-hero-actions {
+    flex-direction: column;
+    margin-top: 20px;
+  }
+
+  .intro-hero-actions .btn-round {
+    width: 100%;
+    min-height: 54px;
+  }
+}

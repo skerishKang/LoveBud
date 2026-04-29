@@ -1,334 +1,38 @@
 from __future__ import annotations
 
-import os
-import json
-import time
-import urllib.request
 import uuid
 from datetime import datetime
 from typing import Any
 
-import jwt
 import modal
-import psycopg
-import firebase_admin
-from firebase_admin import credentials, firestore
-from cryptography import x509
 from fastapi import FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from psycopg_pool import ConnectionPool
-from psycopg.rows import dict_row
 
-# --- DB Logic (formerly browse_latest.py) ---
-
-_firebase_cert_cache: dict[str, Any] = {"expires_at": 0, "certs": {}}
-_db_pool: ConnectionPool | None = None
-_firebase_admin_app: firebase_admin.App | None = None
-_firestore_client: Any | None = None
-PRIVATE_READ_MAX_ATTEMPTS = 3
-PRIVATE_READ_RETRY_DELAY_SECONDS = 0.2
-
-
-class PlusRequiredError(Exception):
-    pass
-
-def get_db_pool() -> ConnectionPool:
-    global _db_pool
-    db_url = os.getenv("DATABASE_URL")
-    if not db_url:
-        raise RuntimeError("DATABASE_URL is not configured")
-
-    if _db_pool is None or _db_pool.closed:
-        _db_pool = ConnectionPool(
-            conninfo=db_url,
-            min_size=1,
-            max_size=4,
-            max_idle=300,
-            kwargs={"row_factory": dict_row},
-        )
-    return _db_pool
-
-
-def get_db_connection():
-    """Return a pooled psycopg3 connection context."""
-    return get_db_pool().connection()
-
-
-def reset_db_pool() -> None:
-    global _db_pool
-    if _db_pool is not None and not _db_pool.closed:
-        _db_pool.close()
-    _db_pool = None
-
-
-def run_db_with_retry(operation, *, max_attempts: int = PRIVATE_READ_MAX_ATTEMPTS):
-    last_error: psycopg.OperationalError | None = None
-    for attempt in range(max_attempts):
-        try:
-            return operation()
-        except psycopg.OperationalError as error:
-            last_error = error
-            reset_db_pool()
-            if attempt == max_attempts - 1:
-                raise
-            time.sleep(PRIVATE_READ_RETRY_DELAY_SECONDS * (attempt + 1))
-    if last_error is not None:
-        raise last_error
-    raise RuntimeError("run_db_with_retry failed without capturing an error")
-
-
-def get_firebase_admin_app() -> firebase_admin.App:
-    global _firebase_admin_app
-    if _firebase_admin_app is not None:
-        return _firebase_admin_app
-
-    raw_service_account = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON")
-    if not raw_service_account:
-        raise RuntimeError("FIREBASE_SERVICE_ACCOUNT_JSON is not configured")
-
-    service_account_info = json.loads(raw_service_account)
-    project_id = service_account_info.get("project_id")
-    if project_id != get_firebase_project_id():
-        raise RuntimeError("Firebase Admin project_id mismatch")
-
-    _firebase_admin_app = firebase_admin.initialize_app(
-        credentials.Certificate(service_account_info),
-        name="lovebud-modal-admin",
-    )
-    return _firebase_admin_app
-
-
-def get_firestore_client() -> Any:
-    global _firestore_client
-    if _firestore_client is None:
-        _firestore_client = firestore.client(app=get_firebase_admin_app())
-    return _firestore_client
-
-
-def is_entitlement_truthy(value: Any) -> bool:
-    if value is True:
-        return True
-    if isinstance(value, int) and value == 1:
-        return True
-    if isinstance(value, str) and value.strip().lower() in {"true", "1"}:
-        return True
-    return False
-
-
-def user_has_plus_entitlement(uid: str) -> bool:
-    try:
-        snapshot = get_firestore_client().collection("users").document(uid).get()
-        if not snapshot.exists:
-            return False
-        profile = snapshot.to_dict() or {}
-    except Exception:
-        return False
-
-    if is_entitlement_truthy(profile.get("privateStorageEnabled")):
-        return True
-    if str(profile.get("plan") or "").strip().lower() in {"plus", "admin"}:
-        return True
-    if is_entitlement_truthy(profile.get("plus")):
-        return True
-
-    entitlements = profile.get("entitlements")
-    if isinstance(entitlements, dict) and is_entitlement_truthy(entitlements.get("privateStorage")):
-        return True
-
-    return False
-
-
-def require_plus_for_private_storage(uid: str, visibility: str) -> None:
-    if visibility == "private" and not user_has_plus_entitlement(uid):
-        raise PlusRequiredError()
-
-
-def get_firebase_project_id() -> str:
-    return os.getenv("FIREBASE_PROJECT_ID", "relovetree")
-
-
-def get_firebase_certs() -> dict[str, str]:
-    now = time.time()
-    if _firebase_cert_cache["expires_at"] > now and _firebase_cert_cache["certs"]:
-        return _firebase_cert_cache["certs"]
-
-    with urllib.request.urlopen(
-        "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com",
-        timeout=5,
-    ) as response:
-        raw = response.read().decode("utf-8")
-        cache_control = response.headers.get("cache-control", "")
-
-    max_age = 300
-    for part in cache_control.split(","):
-        part = part.strip()
-        if part.startswith("max-age="):
-            try:
-                max_age = int(part.split("=", 1)[1])
-            except ValueError:
-                max_age = 300
-
-    certs = json.loads(raw)
-    _firebase_cert_cache["certs"] = certs
-    _firebase_cert_cache["expires_at"] = now + max_age
-    return certs
-
-
-def require_firebase_user(authorization: str | None) -> dict[str, Any]:
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Authentication required")
-
-    token = authorization[7:].strip()
-    if not token:
-        raise HTTPException(status_code=401, detail="Authentication required")
-
-    try:
-        header = jwt.get_unverified_header(token)
-        cert = get_firebase_certs().get(header.get("kid"))
-        if not cert:
-            raise HTTPException(status_code=401, detail="Invalid ID token")
-
-        project_id = get_firebase_project_id()
-        public_key = x509.load_pem_x509_certificate(cert.encode("utf-8")).public_key()
-        decoded = jwt.decode(
-            token,
-            public_key,
-            algorithms=["RS256"],
-            audience=project_id,
-            issuer=f"https://securetoken.google.com/{project_id}",
-        )
-    except HTTPException:
-        raise
-    except Exception as error:
-        raise HTTPException(status_code=401, detail="Invalid ID token") from error
-
-    uid = decoded.get("uid") or decoded.get("sub")
-    if not uid:
-        raise HTTPException(status_code=401, detail="Invalid ID token")
-
-    return {"uid": uid, "email": decoded.get("email") or "", "decoded": decoded}
-
-
-def _to_isoformat(value: Any) -> str | None:
-    if isinstance(value, datetime):
-        return value.isoformat()
-    if value is None:
-        return None
-    return str(value)
-
-
-def estimate_stage(memory_count: int) -> str:
-    """Matches netlify/functions/community-trees.js logic."""
-    if memory_count <= 0:
-        return "empty"
-    if memory_count <= 2:
-        return "입덕"
-    if memory_count <= 4:
-        return "성장"
-    return "최애"
-
-
-def parse_tags(all_tags_raw: list[Any] | None) -> list[str]:
-    """Parse and flatten emotion tags from multiple memory rows."""
-    if not all_tags_raw:
-        return []
-
-    unique_tags = set()
-    for raw in all_tags_raw:
-        if not raw:
-            continue
-        try:
-            if isinstance(raw, (list, dict)):
-                tags = raw
-            else:
-                tags = json.loads(raw)
-
-            if isinstance(tags, list):
-                for t in tags:
-                    if t:
-                        unique_tags.add(str(t))
-        except (json.JSONDecodeError, TypeError):
-            if isinstance(raw, str):
-                unique_tags.add(raw)
-
-    return sorted(list(unique_tags))[:5]
-
-
-def normalize_tags(raw: Any) -> list[str]:
-    """Normalize a single memory emotion_tags value."""
-    if not raw:
-        return []
-    if isinstance(raw, list):
-        return [str(tag) for tag in raw if tag]
-    if isinstance(raw, str):
-        try:
-            parsed = json.loads(raw)
-        except json.JSONDecodeError:
-            return [raw] if raw else []
-        if isinstance(parsed, list):
-            return [str(tag) for tag in parsed if tag]
-    return []
-
-
-def normalize_memory_row(row: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "id": str(row["id"]),
-        "treeId": str(row["tree_id"]) if row.get("tree_id") else None,
-        "parentId": str(row["parent_id"]) if row.get("parent_id") else None,
-        "title": row.get("title") or "",
-        "memo": row.get("memo") or "",
-        "artist": row.get("artist") or "",
-        "source": row.get("source") or "",
-        "sourceUrl": row.get("source_url") or "",
-        "sourceType": row.get("source_type") or "youtube",
-        "thumbnail": row.get("thumbnail") or "",
-        "emotionTags": normalize_tags(row.get("emotion_tags")),
-        "timestamp": row.get("timestamp") or "",
-        "visibility": row.get("visibility") or "public",
-        "createdAt": _to_isoformat(row.get("created_at")),
-        "updatedAt": _to_isoformat(row.get("updated_at")),
-    }
-
-
-def normalize_tree_row(row: dict[str, Any], memory_count: int | None = None) -> dict[str, Any]:
-    return {
-        "id": str(row["id"]),
-        "ownerId": str(row["owner_id"]) if row.get("owner_id") else None,
-        "title": row.get("title") or "",
-        "visibility": row.get("visibility") or "public",
-        "createdAt": _to_isoformat(row.get("created_at")),
-        "updatedAt": _to_isoformat(row.get("updated_at")),
-        "memoryCount": int(memory_count or 0),
-    }
-
-
-def normalize_row(row: dict[str, Any], *, stage_override: str | None = None) -> dict[str, Any]:
-    """Normalize a combined DB row into a browse-friendly snapshot."""
-    memory_count = row.get("memory_count", 0) or 0
-    emotion_tags = parse_tags(row.get("all_tags"))
-
-    raw_thumbnail = row.get("raw_thumbnail")
-    raw_source_url = row.get("raw_source_url")
-    representative_thumbnail = raw_thumbnail or raw_source_url or ""
-
-    created_at = _to_isoformat(row.get("created_at"))
-    updated_at = _to_isoformat(row.get("updated_at"))
-
-    return {
-        "id": str(row["id"]),
-        "title": row.get("title") or "나의 Lovetree",
-        "visibility": row.get("visibility") or "public",
-        "createdAt": created_at,
-        "updatedAt": updated_at,
-        "representativeThumbnail": representative_thumbnail,
-        "memoryCount": memory_count,
-        "emotionTags": emotion_tags,
-        "stage": stage_override or estimate_stage(memory_count),
-        "theme": "LoveTree",
-        "timeRange": "",
-        "representativeMemorySourceUrl": raw_source_url or "",
-    }
+from modal_compute.auth import (
+    PlusRequiredError,
+    get_firebase_certs,
+    require_firebase_user,
+    require_plus_for_private_storage,
+)
+from modal_compute.config import _allowed_origins as _config_allowed_origins
+from modal_compute.db import (
+    get_db_connection,
+    run_db_with_retry,
+)
+from modal_compute.validation import (
+    _to_isoformat,
+    estimate_stage,
+    parse_tags,
+    normalize_tags,
+    normalize_memory_row,
+    normalize_tree_row,
+    normalize_row,
+    validate_visibility,
+    validate_optional_string,
+    validate_required_uuid,
+    validate_optional_uuid,
+)
 
 
 def fetch_latest_public_tree_snapshots(limit: int = 12, sort: str = "latest") -> list[dict[str, Any]]:
@@ -450,10 +154,13 @@ def fetch_public_memories(tree_id: str | None = None, limit: int = 100) -> list[
         LIMIT %s;
     """
 
-    with get_db_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(query, tuple(params))
-            rows = cur.fetchall()
+    def operation():
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(query, tuple(params))
+                return cur.fetchall()
+
+    rows = run_db_with_retry(operation)
 
     return [normalize_memory_row(row) for row in rows]
 
@@ -472,10 +179,13 @@ def fetch_public_memory(memory_id: str) -> dict[str, Any] | None:
         LIMIT 1;
     """
 
-    with get_db_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(query, (memory_id,))
-            row = cur.fetchone()
+    def operation():
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(query, (memory_id,))
+                return cur.fetchone()
+
+    row = run_db_with_retry(operation)
 
     return normalize_memory_row(row) if row else None
 
@@ -494,10 +204,13 @@ def fetch_public_tree(tree_id: str) -> dict[str, Any] | None:
         LIMIT 1;
     """
 
-    with get_db_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(query, (tree_id,))
-            row = cur.fetchone()
+    def operation():
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(query, (tree_id,))
+                return cur.fetchone()
+
+    row = run_db_with_retry(operation)
 
     return normalize_tree_row(row, row.get("memory_count")) if row else None
 
@@ -582,40 +295,6 @@ def fetch_owner_memories(owner_id: str, tree_id: str | None = None, limit: int =
     return [normalize_memory_row(row) for row in rows]
 
 
-def validate_visibility(value: Any, default: str = "private") -> str:
-    if value is None:
-        return default
-    if value not in {"public", "private"}:
-        raise HTTPException(status_code=400, detail="visibility: public, private")
-    return value
-
-
-def validate_optional_string(value: Any, max_length: int = 5000) -> str:
-    if value is None:
-        return ""
-    if not isinstance(value, str):
-        return ""
-    text = value.strip()
-    if len(text) > max_length:
-        raise HTTPException(status_code=400, detail=f"Field exceeds max {max_length}")
-    return text
-
-
-def validate_required_uuid(value: Any, name: str) -> str:
-    if not isinstance(value, str) or not value.strip():
-        raise HTTPException(status_code=400, detail=f"{name} is required")
-    try:
-        return str(uuid.UUID(value.strip()))
-    except ValueError as error:
-        raise HTTPException(status_code=400, detail=f"Invalid {name}") from error
-
-
-def validate_optional_uuid(value: Any, name: str) -> str | None:
-    if value is None or value == "":
-        return None
-    return validate_required_uuid(value, name)
-
-
 def create_owner_tree(owner_id: str, payload: dict[str, Any]) -> dict[str, Any]:
     title = validate_optional_string(payload.get("title"), 200) or "My LoveTree"
     visibility = validate_visibility(payload.get("visibility"), "public")
@@ -688,6 +367,220 @@ def create_owner_memory(owner_id: str, payload: dict[str, Any]) -> dict[str, Any
     return normalize_memory_row(row)
 
 
+def fetch_tree_for_owner_check(tree_id: str) -> dict[str, Any] | None:
+    query = """
+        SELECT id, owner_id, title, visibility, created_at, updated_at
+        FROM trees
+        WHERE id = %s
+        LIMIT 1;
+    """
+
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(query, (tree_id,))
+            return cur.fetchone()
+
+
+def require_tree_owner(tree_id: str, owner_id: str) -> dict[str, Any]:
+    tree = fetch_tree_for_owner_check(tree_id)
+    if not tree:
+        raise HTTPException(status_code=404, detail="Tree not found")
+    if str(tree.get("owner_id") or "") != owner_id:
+        raise HTTPException(status_code=403, detail="Access denied: not your tree")
+    return tree
+
+
+def fetch_memory_for_owner_check(memory_id: str) -> dict[str, Any] | None:
+    query = """
+        SELECT m.id, m.tree_id, m.parent_id, m.title, m.memo, m.artist, m.source, m.source_url,
+               m.source_type, m.thumbnail, m.emotion_tags, m.timestamp, m.visibility,
+               m.created_at, m.updated_at, t.owner_id AS tree_owner_id
+        FROM memories m
+        INNER JOIN trees t
+          ON t.id = m.tree_id
+        WHERE m.id = %s
+        LIMIT 1;
+    """
+
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(query, (memory_id,))
+            return cur.fetchone()
+
+
+def require_memory_owner(memory_id: str, owner_id: str) -> dict[str, Any]:
+    memory = fetch_memory_for_owner_check(memory_id)
+    if not memory:
+        raise HTTPException(status_code=404, detail="Memory not found")
+    if str(memory.get("tree_owner_id") or "") != owner_id:
+        raise HTTPException(status_code=403, detail="Access denied: not your memory")
+    return memory
+
+
+def update_owner_tree(owner_id: str, tree_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    safe_tree_id = validate_required_uuid(tree_id, "treeId")
+    require_tree_owner(safe_tree_id, owner_id)
+
+    updates: list[str] = []
+    params: list[Any] = []
+
+    if "title" in payload:
+        updates.append("title = %s")
+        params.append(validate_optional_string(payload.get("title"), 200))
+
+    if "visibility" in payload:
+        visibility = validate_visibility(payload.get("visibility"), "public")
+        require_plus_for_private_storage(owner_id, visibility)
+        updates.append("visibility = %s")
+        params.append(visibility)
+
+    if not updates:
+        tree = fetch_owner_tree(safe_tree_id, owner_id)
+        if not tree:
+            raise HTTPException(status_code=404, detail="Tree not found")
+        return tree
+
+    query = f"""
+        UPDATE trees
+        SET {', '.join(updates)}, updated_at = NOW()
+        WHERE id = %s
+          AND owner_id = %s
+        RETURNING id;
+    """
+
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(query, tuple(params + [safe_tree_id, owner_id]))
+            row = cur.fetchone()
+        conn.commit()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="Tree not found")
+
+    tree = fetch_owner_tree(safe_tree_id, owner_id)
+    if not tree:
+        raise HTTPException(status_code=404, detail="Tree not found")
+    return tree
+
+
+def delete_owner_tree(owner_id: str, tree_id: str) -> dict[str, Any]:
+    safe_tree_id = validate_required_uuid(tree_id, "treeId")
+    require_tree_owner(safe_tree_id, owner_id)
+
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE memories SET parent_id = NULL WHERE tree_id = %s AND parent_id IS NOT NULL;",
+                (safe_tree_id,),
+            )
+            cur.execute("DELETE FROM memories WHERE tree_id = %s;", (safe_tree_id,))
+            cur.execute(
+                "DELETE FROM trees WHERE id = %s AND owner_id = %s RETURNING id;",
+                (safe_tree_id, owner_id),
+            )
+            row = cur.fetchone()
+        conn.commit()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="Tree not found")
+    return {"deleted": True, "id": str(row["id"])}
+
+
+def update_owner_memory(owner_id: str, memory_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    safe_memory_id = validate_required_uuid(memory_id, "memoryId")
+    require_memory_owner(safe_memory_id, owner_id)
+
+    updates: list[str] = []
+    params: list[Any] = []
+
+    if "title" in payload:
+        updates.append("title = %s")
+        params.append(validate_optional_string(payload.get("title"), 200))
+
+    if "memo" in payload:
+        updates.append("memo = %s")
+        params.append(validate_optional_string(payload.get("memo"), 5000))
+
+    if "emotionTags" in payload:
+        emotion_tags = payload.get("emotionTags") if isinstance(payload.get("emotionTags"), list) else []
+        if len(emotion_tags) > 20:
+            raise HTTPException(status_code=400, detail="emotionTags exceeds maximum of 20 items")
+        updates.append("emotion_tags = %s")
+        params.append(json.dumps([str(tag).strip() for tag in emotion_tags if str(tag).strip()]))
+
+    if "visibility" in payload:
+        visibility = validate_visibility(payload.get("visibility"), "public")
+        require_plus_for_private_storage(owner_id, visibility)
+        updates.append("visibility = %s")
+        params.append(visibility)
+
+    if not updates:
+        memory = require_memory_owner(safe_memory_id, owner_id)
+        return normalize_memory_row(memory)
+
+    query = f"""
+        UPDATE memories
+        SET {', '.join(updates)}, updated_at = NOW()
+        WHERE id = %s
+          AND EXISTS (
+              SELECT 1
+              FROM trees t
+              WHERE t.id = memories.tree_id
+                AND t.owner_id = %s
+          )
+        RETURNING id, tree_id, parent_id, title, memo, artist, source, source_url,
+                  source_type, thumbnail, emotion_tags, timestamp, visibility,
+                  created_at, updated_at;
+    """
+
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(query, tuple(params + [safe_memory_id, owner_id]))
+            row = cur.fetchone()
+        conn.commit()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="Memory not found")
+    return normalize_memory_row(row)
+
+
+def delete_owner_memory(owner_id: str, memory_id: str) -> dict[str, Any]:
+    safe_memory_id = validate_required_uuid(memory_id, "memoryId")
+    memory = require_memory_owner(safe_memory_id, owner_id)
+    tree_id = str(memory["tree_id"])
+
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE memories SET parent_id = NULL WHERE tree_id = %s AND parent_id = %s;",
+                (tree_id, safe_memory_id),
+            )
+            cur.execute(
+                """
+                DELETE FROM memories
+                WHERE id = %s
+                  AND EXISTS (
+                      SELECT 1
+                      FROM trees t
+                      WHERE t.id = memories.tree_id
+                        AND t.owner_id = %s
+                  )
+                RETURNING id;
+                """,
+                (safe_memory_id, owner_id),
+            )
+            row = cur.fetchone()
+        conn.commit()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="Memory not found")
+    return {"deleted": True, "id": str(row["id"])}
+
+
+def _allowed_origins() -> list[str]:
+    return _config_allowed_origins()
+
+
 # --- Modal App Setup ---
 
 app = modal.App("lovebud-browse-snapshot")
@@ -720,19 +613,11 @@ async def plus_required_exception_handler(request: Request, exc: PlusRequiredErr
     )
 
 
-def _allowed_origins() -> list[str]:
-    raw = os.getenv(
-        "CORS_ALLOWED_ORIGINS",
-        "https://lovebud.vercel.app,https://lovebud.pages.dev,https://lovebud.netlify.app",
-    )
-    return [value.strip() for value in raw.split(",") if value.strip()]
-
-
 web_app.add_middleware(
     CORSMiddleware,
     allow_origins=_allowed_origins(),
     allow_credentials=False,
-    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -820,6 +705,29 @@ def get_private_tree_detail(
     return tree
 
 
+@web_app.put("/modal/private/trees/{tree_id}")
+async def put_private_tree(
+    tree_id: str,
+    request: Request,
+    authorization: str | None = Header(default=None),
+) -> dict:
+    user = require_firebase_user(authorization)
+    try:
+        payload = await request.json()
+    except json.JSONDecodeError as error:
+        raise HTTPException(status_code=400, detail="Invalid JSON body") from error
+    return update_owner_tree(user["uid"], tree_id, payload if isinstance(payload, dict) else {})
+
+
+@web_app.delete("/modal/private/trees/{tree_id}")
+def delete_private_tree(
+    tree_id: str,
+    authorization: str | None = Header(default=None),
+) -> dict:
+    user = require_firebase_user(authorization)
+    return delete_owner_tree(user["uid"], tree_id)
+
+
 @web_app.get("/modal/private/memories")
 def get_private_memories(
     treeId: str | None = None,
@@ -842,6 +750,29 @@ async def post_private_memory(
     except json.JSONDecodeError as error:
         raise HTTPException(status_code=400, detail="Invalid JSON body") from error
     return create_owner_memory(user["uid"], payload if isinstance(payload, dict) else {})
+
+
+@web_app.put("/modal/private/memories/{memory_id}")
+async def put_private_memory(
+    memory_id: str,
+    request: Request,
+    authorization: str | None = Header(default=None),
+) -> dict:
+    user = require_firebase_user(authorization)
+    try:
+        payload = await request.json()
+    except json.JSONDecodeError as error:
+        raise HTTPException(status_code=400, detail="Invalid JSON body") from error
+    return update_owner_memory(user["uid"], memory_id, payload if isinstance(payload, dict) else {})
+
+
+@web_app.delete("/modal/private/memories/{memory_id}")
+def delete_private_memory(
+    memory_id: str,
+    authorization: str | None = Header(default=None),
+) -> dict:
+    user = require_firebase_user(authorization)
+    return delete_owner_memory(user["uid"], memory_id)
 
 
 @app.function(

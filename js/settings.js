@@ -1,6 +1,6 @@
 /**
  * LoveBud - Settings Module
- * v20260425-1
+ * v20260428-1
  * 
  * localStorage 기반 설정 관리
  * - 설정 화면 닫기 / 로그아웃
@@ -13,8 +13,27 @@
     defaultVisibility: 'private'
   };
 
+  function isSettingsPath(pathname) {
+    return /(?:^|\/)settings(?:\.html)?$/.test(pathname || '');
+  }
+
+  function normalizeReturnTarget(value) {
+    var url = new URL(value || '/', window.location.origin);
+    return url.pathname + url.search + url.hash;
+  }
+
   function isSafeReturnTarget(value) {
-    return /^\.?\/?[a-zA-Z0-9_\-/]+\.html(?:\?.*)?$/.test(value || '');
+    if (!value || typeof value !== 'string') return false;
+    if (/^\s*(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(value)) return false;
+
+    try {
+      var url = new URL(value, window.location.origin);
+      var sameOrigin = url.origin === window.location.origin;
+      if (!sameOrigin || isSettingsPath(url.pathname)) return false;
+      return url.pathname === '/' || /\/[a-zA-Z0-9_-]+\.html$/.test(url.pathname);
+    } catch (e) {
+      return false;
+    }
   }
 
   function getReturnToHref() {
@@ -22,7 +41,7 @@
       var params = new URLSearchParams(window.location.search || '');
       var returnTo = params.get('returnTo');
       if (returnTo && isSafeReturnTarget(returnTo)) {
-        return returnTo;
+        return normalizeReturnTarget(returnTo);
       }
     } catch (e) {
       console.warn('[settings] Failed to parse returnTo:', e);
@@ -31,10 +50,9 @@
     try {
       if (document.referrer) {
         var refUrl = new URL(document.referrer, window.location.origin);
-        var sameOrigin = refUrl.origin === window.location.origin;
-        var isSettingsRef = /\/settings\.html(?:$|\?)/.test(refUrl.pathname);
-        if (sameOrigin && !isSettingsRef) {
-          return refUrl.pathname + refUrl.search + refUrl.hash;
+        var refTarget = refUrl.pathname + refUrl.search + refUrl.hash;
+        if (isSafeReturnTarget(refTarget)) {
+          return refTarget;
         }
       }
     } catch (e) {
@@ -47,8 +65,13 @@
   function closeSettings() {
     var fallbackHref = getReturnToHref();
 
+    if (fallbackHref) {
+      window.location.href = fallbackHref;
+      return;
+    }
+
     try {
-      if (window.history.length > 1 && document.referrer) {
+      if (window.history.length > 1 && document.referrer && !document.referrer.includes('settings.html')) {
         window.history.back();
         return;
       }
@@ -56,10 +79,9 @@
       console.warn('[settings] history.back failed:', e);
     }
 
-    window.location.href = fallbackHref;
+    window.location.href = '../index.html';
   }
 
-  // 설정 불러오기
   function loadSettings() {
     try {
       var stored = localStorage.getItem(SETTINGS_KEY);
@@ -95,7 +117,6 @@
     });
   }
 
-  // i18n 텍스트 적용
   function applyI18nText() {
     var t = window.t || function(key) { return key; };
 
@@ -195,13 +216,39 @@
     }, true);
   }
 
-  // UI 초기화
-  function initSettings() {
+  var settingsStarted = false;
+  var settingsRedirected = false;
+
+  function getSettingsLoginHref() {
+    var returnTo = '';
+    try {
+      var params = new URLSearchParams(window.location.search || '');
+      returnTo = params.get('returnTo') || '';
+    } catch (e) {}
+    var redirect = 'settings.html';
+    if (returnTo) {
+      redirect += '?returnTo=' + encodeURIComponent(returnTo);
+    } else if (window.location.search) {
+      redirect += window.location.search;
+    }
+    return 'login.html?redirect=' + encodeURIComponent(redirect);
+  }
+
+  function redirectToLogin() {
+    if (settingsRedirected) return;
+    settingsRedirected = true;
+    window.location.replace(getSettingsLoginHref());
+  }
+
+  function startSettings() {
+    if (settingsStarted) return;
+    settingsStarted = true;
+    document.body.classList.remove('settings-auth-pending');
+
     var settings = loadSettings();
 
     bindCloseInteractions();
-    
-    // i18n 텍스트 적용 (renderSharedHeader 후 호출되어야 하므로 지연)
+
     setTimeout(function() {
       applyI18nText();
       if (typeof window.applyI18n === 'function') {
@@ -213,25 +260,121 @@
     console.log('[settings] Initialized with browse introduction guidance:', settings);
   }
 
-  // 로그아웃 처리
-  function handleLogout() {
-    if (typeof window.signOut === 'function') {
-      window.signOut().then(function() {
-        window.location.href = '../index.html';
-      }).catch(function() {
-        window.location.href = '../index.html';
-      });
-    } else {
-      if (typeof firebase !== 'undefined' && firebase.auth) {
-        firebase.auth().signOut().then(function() {
-          window.location.href = '../index.html';
-        }).catch(function() {
-          window.location.href = '../index.html';
-        });
-      } else {
-        window.location.href = '../index.html';
+  function getConfirmedSessionUser() {
+    try {
+      if (window.getConfirmedAuthUser) {
+        return window.getConfirmedAuthUser();
       }
+      if (localStorage.getItem('lovebud_auth_confirmed') === 'true') {
+        var raw = localStorage.getItem('lovebud_auth_cache');
+        if (raw && raw !== 'null') {
+          var parsed = JSON.parse(raw);
+          return parsed && parsed.uid ? parsed : null;
+        }
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  function normalizeAuthUser(result) {
+    if (result && result.uid) return result;
+    if (result && result.user && result.user.uid) return result.user;
+    return null;
+  }
+
+  function handleSettingsAuthUser(result) {
+    var user = normalizeAuthUser(result);
+
+    if (user) {
+      startSettings();
+      return;
     }
+
+    if (!getConfirmedSessionUser()) {
+      redirectToLogin();
+      return;
+    }
+
+    startSettings();
+  }
+
+  function initSettings() {
+    var cachedUser = getConfirmedSessionUser();
+
+    if (cachedUser) {
+      startSettings();
+    }
+
+    if (
+      window.LoveBudAuthBootstrap &&
+      typeof window.LoveBudAuthBootstrap.whenReady === 'function'
+    ) {
+      try {
+        window.LoveBudAuthBootstrap.whenReady()
+          .then(handleSettingsAuthUser)
+          .catch(function() {
+            if (!cachedUser) {
+              redirectToLogin();
+            }
+          });
+      } catch (e) {
+        if (!cachedUser) {
+          redirectToLogin();
+        }
+      }
+      return;
+    }
+
+    if (typeof window.registerOnAuthReady === 'function') {
+      window.registerOnAuthReady(handleSettingsAuthUser);
+      return;
+    }
+
+    if (cachedUser) {
+      startSettings();
+      return;
+    }
+
+    redirectToLogin();
+  }
+
+  function redirectAfterLogout() {
+    window.location.href = '../index.html';
+  }
+
+  function getCanonicalLogoutOptions() {
+    return {
+      clearStaleFirebaseAuthState: function() {
+        if (window.LoveBudAuthCache && typeof window.LoveBudAuthCache.clearStaleFirebaseAuthState === 'function') {
+          window.LoveBudAuthCache.clearStaleFirebaseAuthState();
+        }
+      },
+      clearConfirmedAuthCache: function() {
+        if (window.LoveBudAuthCache && typeof window.LoveBudAuthCache.clearConfirmedAuthCache === 'function') {
+          window.LoveBudAuthCache.clearConfirmedAuthCache('lovebud_auth_cache', 'lovebud_auth_confirmed', 'lovebud_auth_token');
+        }
+      }
+    };
+  }
+
+  function handleLogout() {
+    if (window.LoveBudAuthFirebase && typeof window.LoveBudAuthFirebase.signOut === 'function') {
+      Promise.resolve(window.LoveBudAuthFirebase.signOut(getCanonicalLogoutOptions()))
+        .catch(redirectAfterLogout);
+      return;
+    }
+
+    if (typeof window.signOut === 'function') {
+      window.signOut().then(redirectAfterLogout).catch(redirectAfterLogout);
+      return;
+    }
+
+    if (typeof firebase !== 'undefined' && firebase.auth) {
+      firebase.auth().signOut().then(redirectAfterLogout).catch(redirectAfterLogout);
+      return;
+    }
+
+    redirectAfterLogout();
   }
 
   window.initSettings = initSettings;

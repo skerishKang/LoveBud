@@ -2,15 +2,29 @@
  * LoveBud - Shared Header Component
  * v20260421-2
  *
- * 모든 페이지에 공통 헤더를 렌더링합니다.
+ * 책임 경계:
+ * - shared-header는 실제 header markup과 header-specific behavior를 소유합니다.
+ * - page-shell과의 협업:
+ *   * page-shell은 renderSharedHeader() 호출을 조정합니다.
+ *   * shared-header은 markup 생성과 헤더 동작을 구현합니다.
+ *
+ * 소유하는 header behavior:
  * - 현재 페이지에 맞는 active 메뉴 자동 표시
  * - 상대경로 차이 자동 처리 (root vs pages)
  * - auth.js가 붙을 #auth-nav 또는 #auth-nav-container 계약 유지
+ * - 언어 토글
+ * - 모바일 네비게이션
+ * - 헤더 rerender hooks
  *
  * 사용법:
  * <script src="js/shared-header.js"></script>
  * <div id="shared-header"></div>
  * <script>renderSharedHeader();</script>
+ *
+ * 노트:
+ * - shared-header은 header markup과 header-specific behavior만 소유합니다.
+ * - page-shell과의 협업으로 전체 페이지 초기화를 완성합니다.
+ * - general page boot orchestrator가 아닙니다.
  */
 
 (function() {
@@ -137,6 +151,32 @@
         return null;
     }
 
+    function isSettingsPath(pathname) {
+        return /(?:^|\/)settings(?:\.html)?$/.test(pathname || '');
+    }
+
+    function getCurrentReturnToTarget() {
+        try {
+            var pathname = window.location.pathname || '';
+            if (isSettingsPath(pathname)) return '';
+            var target = pathname + (window.location.search || '') + (window.location.hash || '');
+            return target || '/';
+        } catch (e) {
+            return '';
+        }
+    }
+
+    function appendSettingsReturnTo(settingsHref) {
+        var returnTo = getCurrentReturnToTarget();
+        if (!returnTo) return settingsHref;
+        try {
+            var url = new URL(settingsHref, window.location.href);
+            if (url.searchParams.get('returnTo')) return settingsHref;
+        } catch (e) {}
+        var separator = settingsHref.indexOf('?') === -1 ? '?' : '&';
+        return settingsHref + separator + 'returnTo=' + encodeURIComponent(returnTo);
+    }
+
     // 캐시된 유저 정보로부터 아바타 HTML 생성
     function buildCachedUserAvatar(cachedUser) {
         if (!cachedUser) return '';
@@ -145,17 +185,19 @@
 
         // 현재 페이지가 설정 페이지면 내 트리로 링크, 아니면 설정으로 링크
         var currentPage = getCurrentPage();
+        var myTreesHref = getContextType() === 'root' ? 'pages/my-trees.html' : './my-trees.html';
+        var settingsHref = appendSettingsReturnTo(getContextType() === 'root' ? 'pages/settings.html' : './settings.html');
         var avatarHref = currentPage === 'settings.html'
-            ? (getContextType() === 'root' ? 'pages/my-trees.html' : './my-trees.html')
-            : (getContextType() === 'root' ? 'pages/settings.html' : './settings.html');
+            ? myTreesHref
+            : settingsHref;
         var avatarLabel = currentPage === 'settings.html' ? '내 러브트리로 돌아가기' : '설정 열기';
 
         return [
-            '<a href="' + avatarHref + '" title="' + avatarLabel + '" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:inherit;cursor:pointer;">',
-                '<div style="width:32px;height:32px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;color:white;font-size:14px;font-weight:500;">',
+            '<a href="' + avatarHref + '" title="' + avatarLabel + '" class="cached-avatar-link">',
+                '<div class="cached-avatar-initial">',
                     initial,
                 '</div>',
-                '<span style="font-size:14px;color:var(--on-surface);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + displayName + '</span>',
+                '<span class="cached-avatar-name">' + displayName + '</span>',
             '</a>'
         ].join('');
     }
@@ -175,8 +217,8 @@
         var hiddenStyle = isHidden ? ' style="display:none !important;"' : '';
         return [
             '<div class="lang-toggle header-lang-toggle"' + hiddenAttr + hiddenStyle + '>',
-                '<button type="button" class="btn-round btn-outline lang-menu-trigger" style="text-decoration:none;display:flex;align-items:center;gap:4px;padding:6px 12px;height:36px;font-size:14px;font-weight:500;">',
-                    '<span class="material-symbols-outlined" style="font-size:18px;">language</span>',
+                '<button type="button" class="btn-round btn-outline lang-menu-trigger">',
+                    '<span class="material-symbols-outlined">language</span>',
                     '<span>언어</span>',
                 '</button>',
                 '<div class="lang-dropdown">',
@@ -250,7 +292,7 @@
 
         return [
             '<header class="nav-bar">',
-                '<div class="headline" style="font-size: 1.5rem; font-weight: 900; color: var(--on-surface); letter-spacing: -0.04em; cursor: pointer;" onclick="location.href=\'' + logoHref + '\'">LoveTree</div>',
+                '<a href="' + logoHref + '" class="headline header-logo" aria-label="LoveTree 홈으로 이동">LoveTree</a>',
                 '<button class="mobile-nav-toggle" id="mobileNavToggle" type="button" aria-label="메뉴 열기" aria-expanded="false">',
                     '<span class="material-symbols-outlined">menu</span>',
                 '</button>',
@@ -351,6 +393,27 @@
         console.log('[shared-header] Rendered for:', getCurrentPage(), '| context:', getContextType());
     };
 
+    function bindSettingsReturnLinkCapture() {
+        if (window.__lovebudSettingsReturnLinkBound) return;
+        window.__lovebudSettingsReturnLinkBound = true;
+
+        document.addEventListener('click', function(e) {
+            var link = e.target.closest && e.target.closest('a[href]');
+            if (!link) return;
+            var href = link.getAttribute('href') || '';
+            try {
+                var url = new URL(href, window.location.href);
+                if (!isSettingsPath(url.pathname)) return;
+            } catch (error) {
+                return;
+            }
+            var nextHref = appendSettingsReturnTo(href);
+            if (nextHref !== href) {
+                link.setAttribute('href', nextHref);
+            }
+        }, true);
+    }
+
     function bindSharedHeaderLangRefresh() {
         if (window.__lovebudSharedHeaderLangBound) return;
         window.__lovebudSharedHeaderLangBound = true;
@@ -361,6 +424,7 @@
         });
     }
 
+    bindSettingsReturnLinkCapture();
     bindSharedHeaderLangRefresh();
 
     // DOM 준비 완료 시 자동 렌더링 (선택적)

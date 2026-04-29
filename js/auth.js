@@ -1,4 +1,4 @@
-/**
+﻿/**
  * LoveBud - Authentication Module (Firebase Auth)
  * v20260422-3
  *
@@ -120,7 +120,47 @@ function resolveEmailAuthMode() {
   }
 }
 
+var EMAIL_AUTH_EXECUTION_METHODS = {
+  setupEmailAuthForm: true,
+  setupSignupForm: true
+};
+
+function getLoginPageModule(methodName) {
+  if (methodName && EMAIL_AUTH_EXECUTION_METHODS[methodName]) {
+    if (window.LoveBudAuthLoginPage) return window.LoveBudAuthLoginPage;
+    return null;
+  }
+  if (window.LoveBudLoginPageController) return window.LoveBudLoginPageController;
+  return window.LoveBudAuthLoginPage || null;
+}
+
+function callLoginPageModule(methodName, args) {
+  var loginPageModule = getLoginPageModule(methodName);
+  if (!loginPageModule || typeof loginPageModule[methodName] !== 'function') {
+    return false;
+  }
+  loginPageModule[methodName].apply(loginPageModule, args || []);
+  return true;
+}
+
+function setEmailAuthMode(emailAuthMode) {
+  EMAIL_AUTH_MODE = emailAuthMode === 'signup' ? 'signup' : 'login';
+  if (__authStateModule) __authStateModule.setEmailAuthMode(EMAIL_AUTH_MODE);
+}
+
 function syncEmailAuthModeUi(options) {
+  if (callLoginPageModule('syncEmailAuthModeUi', [{
+    emailAuthMode: EMAIL_AUTH_MODE,
+    titleEl: options && options.titleEl,
+    helperEl: options && options.helperEl,
+    submitBtn: options && options.submitBtn,
+    toggleBtn: options && options.toggleBtn,
+    badgeEl: options && options.badgeEl,
+    applyI18n: window.applyI18n
+  }])) {
+    return;
+  }
+
   var titleEl = options && options.titleEl;
   var helperEl = options && options.helperEl;
   var submitBtn = options && options.submitBtn;
@@ -164,6 +204,15 @@ function syncEmailAuthModeUi(options) {
 }
 
 function setupLoginPageAuthUi() {
+  if (callLoginPageModule('setupLoginPageAuthUi', [{
+    isLoginPage: isLoginPage,
+    resolveEmailAuthMode: resolveEmailAuthMode,
+    setEmailAuthMode: setEmailAuthMode,
+    syncEmailAuthModeUi: syncEmailAuthModeUi
+  }])) {
+    return;
+  }
+
   if (!isLoginPage()) return;
 
   EMAIL_AUTH_MODE = resolveEmailAuthMode();
@@ -526,7 +575,7 @@ function initAuth() {
 
   firebase.auth().onAuthStateChanged(async function (user) {
     clearTimeout(authTimeout); // 정상 응답 - 타임아웃 취소
-    
+
     if (user) {
       try {
         if (typeof user.reload === 'function') await user.reload();
@@ -729,7 +778,7 @@ function buildUserDropdown(user) {
     '<a href="' + myTreesHref + '" class="user-dropdown-item"><span class="material-symbols-outlined">account_tree</span>내 러브트리</a>',
     '<button class="user-dropdown-item" disabled style="cursor:default;opacity:0.6;"><span class="material-symbols-outlined">settings</span>설정</button>',
     '<div class="dropdown-divider"></div>',
-    '<button class="user-dropdown-item" onclick="signOut()"><span class="material-symbols-outlined">logout</span>로그아웃</button>',
+    '<button type="button" class="user-dropdown-item" data-auth-action="logout"><span class="material-symbols-outlined">logout</span>로그아웃</button>',
     '</div>',
     '</div>'
   ].join('');
@@ -741,13 +790,13 @@ function buildUserDropdown(user) {
  * Update right-side nav area based on auth state.
  * Container #auth-nav / #auth-nav-container is never destroyed -
  * only its innerHTML is replaced.
- * 
+ *
  * Called by onAuthStateChanged whenever Firebase auth state changes.
  */
 function updateHeaderLangToggleVisibility(isLoggedIn) {
     var headerLangToggle = document.querySelector('.header-lang-toggle');
     if (!headerLangToggle) return;
-    
+
     if (isLoggedIn) {
           headerLangToggle.hidden = true;
           headerLangToggle.style.setProperty('display', 'none', 'important');
@@ -759,7 +808,7 @@ function updateHeaderLangToggleVisibility(isLoggedIn) {
 
 function updateNavUI(user) {
     updateHeaderLangToggleVisibility(!!user);
-  
+
   if (__authUiModule) {
     __authUiModule.updateNavUI({
       user: user,
@@ -829,6 +878,18 @@ function attachDropdownListener() {
       menu.classList.toggle('show');
       return;
     }
+    var logoutButton = e.target.closest('[data-auth-action="logout"]');
+    if (logoutButton) {
+      e.preventDefault();
+      e.stopPropagation();
+      document.querySelectorAll('.user-dropdown-menu.show').forEach(function (m) {
+        m.classList.remove('show');
+      });
+      if (typeof signOut === 'function') {
+        signOut();
+      }
+      return;
+    }
     if (!e.target.closest('.user-dropdown')) {
       document.querySelectorAll('.user-dropdown-menu.show').forEach(function (m) {
         m.classList.remove('show');
@@ -888,7 +949,7 @@ function getFriendlyErrorMessage(error, isGoogleLogin) {
   var message = error.message || '';
   // Log full error for devs
   console.error('Auth error (developer only):', error);
-  
+
   // Environment-related errors
   if (message.indexOf('location.protocol') !== -1 || message.indexOf('not supported in the environment') !== -1) {
     return '이 브라우저 환경에서는 로그인할 수 없습니다. http:// 또는 https:// 주소(localhost 가능)에서 다시 시도해 주세요.';
@@ -896,7 +957,7 @@ function getFriendlyErrorMessage(error, isGoogleLogin) {
   if (message.indexOf('web storage') !== -1 || message.indexOf('storage') !== -1) {
     return '브라우저 저장소(storage)가 비활성화되어 있습니다. 쿠키와 저장소를 허용한 후 다시 시도해 주세요.';
   }
-   
+
    // Common auth errors
    switch (code) {
      case 'auth/popup-closed-by-user':
@@ -1042,6 +1103,12 @@ async function signOut() {
 // ── Google Btn (login.html) ───────────────────────────────────────────────────
 
 function setupGoogleBtn() {
+  if (callLoginPageModule('setupGoogleBtn', [{
+    signInWithGoogle: signInWithGoogle
+  }])) {
+    return;
+  }
+
   var googleBtn = document.getElementById('login-btn-google');
   if (!googleBtn) return;
   googleBtn.onclick = null;
@@ -1057,6 +1124,12 @@ async function signUpWithGoogle() {
 }
 
 function setupSignupGoogleBtn() {
+  if (callLoginPageModule('setupSignupGoogleBtn', [{
+    signUpWithGoogle: signUpWithGoogle
+  }])) {
+    return;
+  }
+
   var signupGoogleBtn = document.getElementById('signup-btn-google');
   if (!signupGoogleBtn) return;
   signupGoogleBtn.onclick = null;
@@ -1069,6 +1142,23 @@ function setupSignupGoogleBtn() {
 // ── Email Auth Form ───────────────────────────────────────────────────────────
 
 function setupEmailAuthForm() {
+  if (callLoginPageModule('setupEmailAuthForm', [{
+    firebase: typeof firebase !== 'undefined' ? firebase : undefined,
+    initFirebase: initFirebase,
+    getEnvironmentCheckError: getEnvironmentCheckError,
+    getFriendlyErrorMessage: getFriendlyErrorMessage,
+    getEmailAuthMode: function () { return EMAIL_AUTH_MODE; },
+    setEmailAuthMode: setEmailAuthMode,
+    syncEmailAuthModeUi: syncEmailAuthModeUi,
+    persistConfirmedAuthSession: persistConfirmedAuthSession,
+    preloadRedirectTargetData: preloadRedirectTargetData,
+    getRedirectTarget: getRedirectTarget,
+    isInvalidAuthSessionError: isInvalidAuthSessionError,
+    clearStaleFirebaseAuthState: clearStaleFirebaseAuthState
+  }])) {
+    return;
+  }
+
   var form = document.getElementById('email-auth-form');
   if (!form) return;
   if (typeof firebase === 'undefined' || !firebase.auth) return;
@@ -1134,14 +1224,14 @@ function setupEmailAuthForm() {
 
 form.addEventListener('submit', async function (e) {
     e.preventDefault();
-    
+
     // Environment check
     var envError = getEnvironmentCheckError();
     if (envError) {
       alert(envError);
       return;
     }
-    
+
     if (!emailInput || !passwordInput || !submitBtn) return;
 
      var email = String(emailInput.value || '').trim();
@@ -1187,7 +1277,15 @@ form.addEventListener('submit', async function (e) {
         clearStaleFirebaseAuthState();
       }
       var friendlyMessage = getFriendlyErrorMessage(error, false);
-      alert(friendlyMessage || '인증 중 오류가 발생했습니다.');
+      var fallbackMessage = friendlyMessage || '인증 중 오류가 발생했습니다.';
+      if (
+        window.LoveBudLoginPageAuthError &&
+        typeof window.LoveBudLoginPageAuthError.show === 'function'
+      ) {
+        window.LoveBudLoginPageAuthError.show(fallbackMessage);
+      } else {
+        alert(fallbackMessage);
+      }
     } finally {
       submitBtn.disabled = false;
       submitBtn.textContent = originalText;
@@ -1196,6 +1294,18 @@ form.addEventListener('submit', async function (e) {
 }
 
 function setupSignupForm() {
+  if (callLoginPageModule('setupSignupForm', [{
+    firebase: typeof firebase !== 'undefined' ? firebase : undefined,
+    initFirebase: initFirebase,
+    getEnvironmentCheckError: getEnvironmentCheckError,
+    getFriendlyErrorMessage: getFriendlyErrorMessage,
+    persistConfirmedAuthSession: persistConfirmedAuthSession,
+    preloadRedirectTargetData: preloadRedirectTargetData,
+    getRedirectTarget: getRedirectTarget
+  }])) {
+    return;
+  }
+
   var signupForm = document.getElementById('signup-form');
   if (!signupForm) return;
   if (typeof firebase === 'undefined' || !firebase.auth) return;

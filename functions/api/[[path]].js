@@ -30,6 +30,7 @@ function buildModalUrl(request, env) {
   if (!modalBaseUrl) return null;
 
   const sourceUrl = new URL(request.url);
+  const method = request.method.toUpperCase();
   const path = sourceUrl.pathname.replace(/\/+$/, '');
   const target = new URL(modalBaseUrl);
 
@@ -60,30 +61,41 @@ function buildModalUrl(request, env) {
 
   if (path === '/api/trees') {
     target.pathname = '/modal/private/trees';
-    const limit = Math.min(Math.max(Number(sourceUrl.searchParams.get('limit') || 100) || 100, 1), 200);
-    target.searchParams.set('limit', String(limit));
+    if (method === 'GET') {
+      const limit = Math.min(Math.max(Number(sourceUrl.searchParams.get('limit') || 100) || 100, 1), 200);
+      target.searchParams.set('limit', String(limit));
+    }
     return target;
   }
 
   if (path === '/api/memories') {
     target.pathname = '/modal/private/memories';
-    const treeId = sourceUrl.searchParams.get('treeId');
-    const limit = Math.min(Math.max(Number(sourceUrl.searchParams.get('limit') || 100) || 100, 1), 200);
-    if (treeId) target.searchParams.set('treeId', treeId);
-    target.searchParams.set('limit', String(limit));
+    if (method === 'GET') {
+      const treeId = sourceUrl.searchParams.get('treeId');
+      const limit = Math.min(Math.max(Number(sourceUrl.searchParams.get('limit') || 100) || 100, 1), 200);
+      if (treeId) target.searchParams.set('treeId', treeId);
+      target.searchParams.set('limit', String(limit));
+    }
     return target;
   }
 
   const memoryMatch = path.match(/^\/api\/memories\/([^/]+)$/);
   if (memoryMatch) {
-    target.pathname = `/modal/memories/${encodeURIComponent(decodeURIComponent(memoryMatch[1]))}`;
+    const memoryId = encodeURIComponent(decodeURIComponent(memoryMatch[1]));
+    const isWrite = ['PUT', 'DELETE'].includes(method);
+    target.pathname = isWrite
+      ? `/modal/private/memories/${memoryId}`
+      : `/modal/memories/${memoryId}`;
     return target;
   }
 
   const treeMatch = path.match(/^\/api\/trees\/([^/]+)$/);
   if (treeMatch) {
     const authHeader = request.headers.get('authorization') || request.headers.get('Authorization');
-    target.pathname = authHeader
+    const isWrite = ['PUT', 'DELETE'].includes(method);
+    // GET: uses private path ONLY IF auth exists (for owner view), else public.
+    // PUT/DELETE: always uses private path (auth failure handled by backend).
+    target.pathname = (isWrite || authHeader)
       ? `/modal/private/trees/${encodeURIComponent(decodeURIComponent(treeMatch[1]))}`
       : `/modal/trees/${encodeURIComponent(decodeURIComponent(treeMatch[1]))}`;
     return target;
@@ -108,6 +120,27 @@ function isModalOwnedGetRoute(request, env) {
   return modalUrl !== null;
 }
 
+function isModalOwnedWriteRoute(request, env) {
+  const method = request.method.toUpperCase();
+  if (!['POST', 'PUT', 'DELETE'].includes(method)) return false;
+
+  const url = new URL(request.url);
+  const path = url.pathname.replace(/\/+$/, '');
+
+  // POST is for collection paths
+  if (method === 'POST' && ['/api/trees', '/api/memories'].includes(path)) {
+    return buildModalUrl(request, env || {}) !== null;
+  }
+
+  // PUT/DELETE are for detail paths
+  const isDetail = path.match(/^\/api\/(trees|memories)\/[^/]+$/);
+  if (['PUT', 'DELETE'].includes(method) && isDetail) {
+    return buildModalUrl(request, env || {}) !== null;
+  }
+
+  return false;
+}
+
 function buildNotFoundResponse() {
   return new Response(
     JSON.stringify({ error: 'Route not found' }),
@@ -122,7 +155,7 @@ function buildNotFoundResponse() {
   );
 }
 
-function buildMethodNotAllowedResponse() {
+function buildMethodNotAllowedResponse(allow = 'GET') {
   return new Response(
     JSON.stringify({ error: 'Method not allowed' }),
     {
@@ -131,7 +164,7 @@ function buildMethodNotAllowedResponse() {
         'content-type': 'application/json; charset=utf-8',
         'x-lovebud-upstream': 'cloudflare',
         'x-lovebud-route-status': 'method-not-allowed',
-        'allow': 'GET'
+        'allow': allow
       }
     }
   );
@@ -183,9 +216,45 @@ async function tryModalRead(request, env) {
   return withUpstreamHeader(response, 'modal');
 }
 
+async function tryModalWrite(request, env) {
+  const method = request.method.toUpperCase();
+  if (!['POST', 'PUT', 'DELETE'].includes(method)) return null;
+  if (!isModalOwnedWriteRoute(request, env || {})) return null;
+
+  const modalUrl = buildModalUrl(request, env || {});
+  if (!modalUrl) return null;
+
+  const headers = {
+    accept: 'application/json',
+    'content-type': request.headers.get('content-type') || 'application/json',
+    ...(request.headers.get('authorization')
+      ? { authorization: request.headers.get('authorization') }
+      : {})
+  };
+
+  const response = await fetch(modalUrl.toString(), {
+    method,
+    headers,
+    body: method !== 'DELETE' ? request.body : null
+  });
+
+  return withUpstreamHeader(response, 'modal');
+}
+
 export async function onRequest(context) {
   const { request, env } = context;
   const isModalOwned = isModalOwnedGetRoute(request, env || {});
+  const isModalOwnedWrite = isModalOwnedWriteRoute(request, env || {});
+
+  if (isModalOwnedWrite) {
+    try {
+      const modalResponse = await tryModalWrite(request, env || {});
+      if (modalResponse) return modalResponse;
+    } catch (error) {
+      console.warn('[LoveBudCloudflareProxy] Modal write failed, returning 503', error);
+      return buildModalUnavailableResponse();
+    }
+  }
 
   if (isBrowseSummaryRequest(request)) {
     const cache = caches.default;
@@ -224,7 +293,12 @@ export async function onRequest(context) {
 
   const modalUrl = buildModalUrl(request, env || {});
   if (modalUrl) {
-    return buildMethodNotAllowedResponse();
+    const url = new URL(request.url);
+    const path = url.pathname.replace(/\/+$/, '');
+    const isCollection = ['/api/trees', '/api/memories'].includes(path);
+    const isDetail = path.match(/^\/api\/(trees|memories)\/[^/]+$/);
+    const allow = isCollection ? 'GET, POST' : (isDetail ? 'GET, PUT, DELETE' : 'GET');
+    return buildMethodNotAllowedResponse(allow);
   }
 
   return buildNotFoundResponse();

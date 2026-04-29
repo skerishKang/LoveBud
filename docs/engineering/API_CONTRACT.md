@@ -1,8 +1,8 @@
 # LoveBud API 응답 계약
 
-> **버전:** 1.5  
-> **최종 갱신:** 2026-04-25  
-> **관련 커밋:** `0230475`, `bb9741b`, `bb9e663`
+> **버전:** 1.6
+> **최종 갱신:** 2026-04-27
+> **관련 커밋:** `0230475`, `bb9741b`, `bb9e663`, `10b3d9d`
 
 ---
 
@@ -36,10 +36,10 @@ Archive is not performed by this documentation update. Archive requires tests/do
 ## 1. 개요
 
 > ⚠️ **이행기(Migration) 상태 안내**
-> 
+>
 > 현재 표준 응답 계약은 **flat camelCase**로 확정되었습니다.
 > 다만 클라이언트 런타임에는 snake_case 및 legacy `{id, data}` 형태를 수용하는 이행기 호환용 fallback이 일부 남아 있습니다.
-> 
+>
 > - 신규 API, 문서, 테스트는 flat camelCase만 정식 계약으로 간주합니다.
 > - fallback 제거 전에는 관련 엔드포인트 응답 스냅샷 또는 계약 테스트를 먼저 고정해야 합니다.
 > - 목표: `/community/trees`, `/community/memories` 및 주요 API가 flat camelCase만 반환하면 클라이언트 fallback 제거
@@ -127,6 +127,7 @@ interface Tree {
   createdAt: string | null;
   updatedAt: string | null;
   nodeCount: number;
+  memoryCount?: number;
   payload: {
     description?: string;
     coverImage?: string;
@@ -167,15 +168,22 @@ Current document baseline:
 - `POST /api/memories` and `GET /api/memories` route through `functions/api/memories.js` to Modal `/modal/private/memories`.
 - `netlify/functions/*` may still contain older private-first code, but it is not authoritative for `lovebud.pages.dev` production/test slots.
 
+Current main runtime state:
+
+- My Trees create payload explicitly sends `visibility: 'public'`.
+- Modal create tree path defaults omitted visibility to `public`.
+- Modal private tree/memory create and private visibility update paths call the private storage entitlement guard.
+- Public read paths retain parent tree visibility guards.
+- Public visibility remains separate from Browse/Search eligibility.
+
 ### 3.2 목표 정책 계약
 
 CTO 결정 기준 목표 정책은 **public-first + Plus private**입니다.
 
-- 신규 tree는 public-first 방향으로 전환합니다.
+- 신규 tree는 public-first 정책입니다.
 - 기존 private tree는 자동 public 전환하지 않고 grandfathered private으로 유지합니다.
-- private 생성/전환은 Plus entitlement source 확정 후 backend에서 검증합니다.
+- private 생성/전환은 Plus entitlement guard 대상입니다.
 - `public visibility`와 `browse 노출 조건`은 분리합니다.
-- createTree payload만 단독으로 public 변경하는 것은 금지합니다.
 - Cloudflare Pages Functions와 Modal create/toggle 정책은 반드시 동기화합니다.
 - `netlify/functions/*`에는 신규 backend 정책을 구현하지 않습니다. Netlify runtime 재활성화가 명시 승인된 경우만 예외입니다.
 
@@ -201,7 +209,7 @@ interface VisibilityPolicyState {
 
 따라서 public tree라도 public memory가 3개 미만이면 public 접근은 가능하지만 browse summary에는 노출되지 않을 수 있습니다.
 
-### 3.4 create tree 전환 계약
+### 3.4 create tree runtime 계약
 
 현재 active path:
 
@@ -211,7 +219,7 @@ interface VisibilityPolicyState {
 → Modal /modal/private/trees
 ```
 
-목표:
+Request target:
 
 ```typescript
 interface CreateTreeRequestTarget {
@@ -220,13 +228,14 @@ interface CreateTreeRequestTarget {
 }
 ```
 
-목표 정책:
+현재 main runtime 상태:
 
 - visibility 생략 시 신규 tree는 `public`으로 생성합니다.
-- `visibility: 'private'` 생성은 Plus entitlement 필요 대상입니다.
-- entitlement source 확정 전에는 private 생성 허용/차단을 구현하지 않습니다.
-- frontend만 먼저 public payload로 바꾸지 않습니다.
-- Cloudflare/Modal path가 함께 준비되어야 합니다.
+- My Trees 생성 payload는 `visibility: 'public'`을 명시합니다.
+- `visibility: 'private'` 생성은 Plus entitlement guard 대상입니다.
+- 현재 Modal 구현은 private visibility 요청에 대해 Firestore user profile 기반 entitlement guard를 호출합니다.
+- canonical entitlement field는 `users/{uid}.privateStorageEnabled`입니다.
+- 현재 구현은 compatibility 목적으로 `plan`, `plus`, `entitlements.privateStorage`도 확인하지만, 장기 API 계약으로 고정할지는 별도 결정이 필요합니다.
 
 ### 3.5 toggle visibility 전환 계약
 
@@ -245,11 +254,11 @@ interface UpdateTreeVisibilityRequest {
 - `private -> public` 시 browse 노출 조건은 별도 판단
 - public 전환 자체와 browse summary 노출을 같은 guard로 묶지 않습니다.
 
-### 3.6 decision-needed: entitlement error contract
+### 3.6 implemented guard / contract-needed: entitlement error contract
 
-아직 미확정입니다.
+Modal main에는 private storage entitlement guard가 구현되어 있습니다.
 
-후보:
+Contract-needed 후보:
 
 ```typescript
 interface PlusRequiredError {
@@ -264,11 +273,12 @@ HTTP status 후보:
 - `403`: 현재 auth/permission 계열과 일관됨
 - `402`: 의미상 결제 필요에 가깝지만 운영 관행이 불균일함
 
-결정 필요:
+아직 고정하지 말 것:
 
-- Plus entitlement source of truth
-- status code
-- error body shape
+- 최종 status code
+- 최종 error body shape
+- frontend toast/i18n mapping
+- compatibility entitlement fields의 장기 지원 여부
 - grandfathered private 예외 처리
 
 ---
@@ -306,7 +316,7 @@ type BrowseTreeSummaryList = BrowseTreeSummary[];
 
 **현재 구현 의미**
 - summary는 tree 목록 자체가 아니라, public tree와 public memory를 합쳐 만든 browse 카드 요약 모델입니다.
-- public-first 전환 후에도 browse summary는 `browseEligible` 조건을 통과한 public tree만 반환해야 합니다.
+- public-first create 이후에도 browse summary는 `browseEligible` 조건을 통과한 public tree만 반환해야 합니다.
 - visibility가 public이어도 memory/quality 조건이 부족하면 summary에서 제외될 수 있습니다.
 
 ### 4.2 Preview Hydration Contract
@@ -375,16 +385,37 @@ interface BrowseTreeSummaryExtension {
 
 ---
 
-## 6. 프론트엔드 원칙
+## 6. Private owner write security contract
 
-### 6.1 절대 금지
+Private owner write paths are part of the active Cloudflare/Modal runtime security contract. This section documents ownership boundaries only; it does not change route paths, SQL implementation, or response shape.
+
+### 6.1 Tree owner write guard
+
+Private owner tree update/delete must keep the tree id and authenticated owner id bound together at the write boundary.
+
+### 6.2 Memory owner write guard
+
+Private memory update/delete must keep a two-step owner boundary:
+
+1. pre-check that the memory belongs to the authenticated owner through its parent tree; and
+2. write-boundary guard that keeps the target memory tied to a tree whose owner is the authenticated owner.
+
+### 6.3 Guard failure behavior
+
+If the write-boundary owner guard does not match a row, the runtime must not mutate the memory. The existing not-found/denied fallback behavior and existing API response shape remain unchanged.
+
+---
+
+## 7. 프론트엔드 원칙
+
+### 7.1 절대 금지
 
 ```javascript
 const title = memory.data?.title;
 const treeId = memory.data?.tree_id;
 ```
 
-### 6.2 필수 사용
+### 7.2 필수 사용
 
 ```javascript
 const title = memory.title;
@@ -392,31 +423,40 @@ const treeId = memory.treeId;
 const normalized = window.LoveBudNormalize.normalizeMemory(apiResponse);
 ```
 
-### 6.3 visibility 정책 관련 금지
+### 7.3 visibility 정책 관련 금지
 
-- frontend만 createTree payload를 public으로 변경하지 않습니다.
 - frontend-only Plus lock으로 정책 완료를 선언하지 않습니다.
 - public visibility를 browse 노출과 같은 의미로 표시하지 않습니다.
+- Plus-required HTTP status/body shape를 확정 전제하고 UI 처리를 고정하지 않습니다.
 
 ---
 
-## 7. 백엔드 원칙
+## 8. 백엔드 원칙
 
-### 7.1 직렬화기 사용 의무
+### 8.1 직렬화기 사용 의무
 
 모든 API 응답은 active Cloudflare/Modal runtime에서 flat camelCase contract를 유지해야 합니다.
 
-### 7.2 visibility guard 원칙
+### 8.2 visibility guard 원칙
 
 - create tree 정책은 Cloudflare Pages Functions와 Modal에서 동기화해야 합니다.
-- private 생성/전환 guard는 entitlement source 확정 후 active backend에서 강제해야 합니다.
+- private 생성/전환 guard는 active backend에서 강제해야 합니다.
+- canonical entitlement field는 `users/{uid}.privateStorageEnabled`입니다.
+- compatibility entitlement fields의 장기 지원 여부는 별도 contract-needed 항목입니다.
 - 기존 private tree grandfathering을 고려해야 합니다.
 - browse display filter는 public visibility와 별도로 유지합니다.
 - `netlify/functions/*`에 신규 visibility/private-storage 정책을 구현하지 않습니다.
 
+### 8.3 owner write guard 원칙
+
+- owner/private read/write는 authenticated user id를 기준으로 합니다.
+- tree update/delete는 write boundary에서 owner id를 함께 제약합니다.
+- memory update/delete는 pre-check와 write-boundary owner guard를 모두 유지합니다.
+- child memory cleanup 또는 parent cleanup은 owner guard를 우회하는 권한으로 해석하지 않습니다.
+
 ---
 
-## 8. 관련 파일
+## 9. 관련 파일
 
 | 파일 | 역할 |
 |------|------|
@@ -425,34 +465,35 @@ const normalized = window.LoveBudNormalize.normalizeMemory(apiResponse);
 | `functions/api/trees/[id].js` | active tree detail Cloudflare handler where applicable |
 | `functions/api/[[path]].js` | active Cloudflare catch-all handler for recognized read/community routes |
 | `modal_compute/app.py` | active Modal API/backend target |
+| `js/my-trees/my-trees-actions.js` | My Trees create payload source |
 | `js/utils/normalize.js` | 프론트 정규화 유틸 |
 | `js/api/public-tree-adapter.js` | browse summary/hydrate adapter |
 | `netlify/functions/*` | legacy artifact only, not current production backend |
 
 ---
 
-## 9. 장기 TODO
+## 10. 장기 TODO
 
-### 9.1 public-first backend 전환
+### 10.1 public-first runtime drift watch
 
-- Cloudflare/Modal create tree public-first 전환
-- create payload 단독 변경 금지 원칙 유지
+- Cloudflare/Modal create tree public-first 상태 유지
 - API 계약 테스트 추가
+- existing private tree 자동 public 전환 금지 유지
 
-### 9.2 Plus private entitlement
+### 10.2 Plus private entitlement
 
-- entitlement source of truth 확정
-- plan 저장 위치 확정
-- active backend guard 추가
+- final entitlement source of truth 확정
+- compatibility entitlement fields 장기 지원 여부 결정
+- Plus-required status/body contract 확정
 - frontend 안내와 API error 처리 동기화
 
-### 9.3 browse 노출 조건 고정
+### 10.3 browse 노출 조건 고정
 
 - public visibility와 browseEligible 분리
 - public memory 3개 이상 조건 유지 여부 최종 확인
 - snapshot 계약에 browseEligibility metadata 포함 여부 검토
 
-### 9.4 Netlify legacy transition
+### 10.4 Netlify legacy transition
 
 - tests/docs reference transition
 - `netlify.toml` treatment decision
@@ -460,19 +501,20 @@ const normalized = window.LoveBudNormalize.normalizeMemory(apiResponse);
 
 ---
 
-## 10. 위반 시 대응
+## 11. 위반 시 대응
 
 | 위반 유형 | 대응 |
 |-----------|------|
 | 새 코드에 `{id, data}` 접근 | PR reject |
 | active API 응답에 flat camelCase 계약 미준수 | PR reject |
-| createTree payload만 public으로 단독 변경 | PR reject |
 | Cloudflare와 Modal visibility 정책 불일치 | PR reject |
 | Plus private을 frontend-only로 잠금 | PR reject |
 | 기존 private tree 자동 public 전환 | PR reject |
 | public visibility를 browse 노출로 설명 | 정책 위반으로 수정 |
+| Plus-required HTTP status/body shape를 독단 확정 | contract-needed로 되돌림 |
+| memory update/delete에서 owner write guard 제거 | PR reject |
 | 신규 backend policy를 `netlify/functions/*`에 구현 | PR reject unless Netlify runtime is explicitly reactivated |
 
 ---
 
-**문서 유지보수:** API 응답 구조 또는 visibility 정책 변경 시 이 문서를 반드시 갱신할 것
+**문서 유지보수:** API 응답 구조, visibility 정책, owner write security guard가 바뀌면 이 문서를 반드시 갱신할 것

@@ -3,11 +3,11 @@
 ## 1. 프로젝트 주요 정보
 
 - 공식 서비스 URL: `https://lovebud.pages.dev/`
-- 운영 기준: `Cloudflare Pages Entry + Modal Active Runtime > Vercel Transitional Fallback > Netlify Legacy Artifact`
+- 운영 기준: `Cloudflare Pages Entry + Modal Active Runtime > Vercel Transitional Fallback > Netlify Removed Legacy Artifacts`
 - Cloudflare Pages 역할: 공식 사용자-facing production / preview entry, 정적 프런트, same-origin `/api/*` entry
 - Modal 역할: active compute/runtime 우선 경로, browse summary 및 private/community read/write target
 - Vercel 역할: deprecated transitional fallback / upstream under audit
-- Netlify 역할: legacy / fallback / artifact. `netlify/functions/*`는 현재 `lovebud.pages.dev` production backend가 아님
+- Netlify 역할: PR #291로 repository residual artifacts가 제거된 legacy layer. 현재 `lovebud.pages.dev` production backend 또는 active production fallback이 아님
 
 ## 2. 현재 운영 구조
 
@@ -28,8 +28,9 @@
 ### Fallback / Legacy
 - Modal read 실패 시 Cloudflare Pages가 Vercel upstream으로 fallback 할 수 있습니다.
 - catch-all `/api/*`의 기본 fallback upstream origin은 현재 Vercel입니다.
-- Netlify 관련 파일과 `netlify/functions/*`는 legacy / fallback / artifact 성격으로 남아 있습니다.
-- Netlify 코드는 삭제 대상이라고 단정하지 않습니다. 별도 승인 없이 이동, archive, 삭제하지 않습니다.
+- Netlify residual repository artifacts were removed by PR #291.
+- Netlify는 active production fallback이 아니며, 새 backend feature/policy work의 대상이 아닙니다.
+- Netlify 관련 재도입, external deploy target 재활성화, 또는 historical reference 복원은 별도 CTO 승인 없이는 수행하지 않습니다.
 
 ## 3. 배포 절차
 
@@ -59,10 +60,12 @@
 - 공식 사용자-facing 주소가 아니라 보조 계층으로 취급
 
 ### Netlify
-- 역할: legacy / fallback / artifact
-- 주서비스 주소가 아니라 보조 계층 또는 과거 산출물로 취급
-- `netlify/functions/*`는 현재 active runtime 구현 위치로 보지 않습니다.
-- Netlify runtime 재활성화, 코드 이동, 삭제, archive는 별도 CTO 승인 전 수행하지 않습니다.
+- 역할: removed legacy artifact layer after PR #291
+- 주서비스 주소, active runtime, active production fallback으로 취급하지 않습니다.
+- `netlify.toml`, `netlify/functions/**`, `netlify/sql/**` residual repository artifacts는 PR #291로 제거되었습니다.
+- Netlify는 현재 active runtime 구현 위치가 아닙니다.
+- Netlify runtime 재활성화, artifact 재생성, archive 복원은 별도 CTO 승인 전 수행하지 않습니다.
+- 과거 기준은 [NETLIFY_LEGACY_ARTIFACT_AUDIT.md](NETLIFY_LEGACY_ARTIFACT_AUDIT.md)를 따르되, 현재 repository residual artifact 상태는 PR #291 이후 기준으로 봅니다.
 
 ## 4. 장애 대응
 
@@ -99,9 +102,10 @@
 ### CI/E2E에서 Netlify dev가 실패할 때
 해석 기준:
 1. CI/E2E smoke workflow가 `netlify dev`를 사용할 수 있습니다.
-2. 이 경로는 CI 로컬 실행 harness이며, production active runtime이 Netlify라는 뜻이 아닙니다.
+2. 이 경로는 CI 로컬 실행 harness이며, production active runtime 또는 active production fallback이 Netlify라는 뜻이 아닙니다.
 3. Netlify dev의 `DATABASE_URL` / `NETLIFY_DATABASE_URL` 누락으로 발생하는 503은 production Cloudflare/Modal runtime truth와 분리해서 봅니다.
-4. CI/E2E blocker를 이유로 `netlify/functions/*`를 active runtime처럼 수정하지 않습니다.
+4. CI/E2E blocker를 이유로 Netlify runtime artifact를 재생성하거나 active runtime처럼 수정하지 않습니다.
+5. Netlify-targeting tests는 Cloudflare/Modal parity 확인 후 별도 migration/delete 승인 대상입니다.
 
 ### Fixed test slot access failure
 해석 기준:
@@ -152,5 +156,6 @@
 - browse summary와 API compute의 1순위는 Modal
 - Cloudflare Pages가 same-origin `/api/*` entry
 - Vercel은 deprecated transitional fallback / upstream under audit
-- Netlify는 legacy / fallback / artifact이며 `netlify/functions/*`는 현재 active production backend가 아님
+- Netlify residual repository artifacts were removed by PR #291; Netlify is not an active production fallback or new backend implementation target.
+- Netlify-related reintroduction or external deploy target reactivation requires separate CTO approval after Cloudflare/Modal route parity, Netlify-targeting test migration/deletion, CI import review, production/test slot route matrix confirmation, and active Netlify deploy target review.
 - fixed test slot 검증의 역할/판정/evidence 기준은 `docs/ops/TEST_PREVIEW_SLOTS.md`가 canonical입니다

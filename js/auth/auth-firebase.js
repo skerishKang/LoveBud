@@ -96,6 +96,11 @@
     return false;
   }
 
+  function isProtectedRoute() {
+    var path = window.location.pathname || '';
+    return /^\/(?:pages\/)?(?:my-trees|editor|settings)(?:\.html)?$/.test(path);
+  }
+
   function initOfflineAuth(options) {
     var markAuthReady = options && options.markAuthReady;
     var updateNavUI = options && options.updateNavUI;
@@ -104,7 +109,7 @@
     var resolveAuthBootstrap = options && options.resolveAuthBootstrap;
 
     var cachedUser = typeof getCachedAuthUser === 'function' ? getCachedAuthUser() : null;
-    var user = cachedUser && cachedUser.uid ? cachedUser : null;
+    var user = !isProtectedRoute() && cachedUser && cachedUser.uid ? cachedUser : null;
 
     if (typeof markAuthReady === 'function') {
       markAuthReady();
@@ -187,6 +192,42 @@
     }
   }
 
+  function clearAuthDependentCaches(options) {
+    var clearFirebaseState = !!(options && options.clearFirebaseState);
+    var clearStaleFirebaseAuthState = options && options.clearStaleFirebaseAuthState;
+    var clearConfirmedAuthCache = options && options.clearConfirmedAuthCache;
+
+    if (clearFirebaseState) {
+      try {
+        if (typeof clearStaleFirebaseAuthState === 'function') {
+          clearStaleFirebaseAuthState();
+        }
+      } catch (e) {}
+    }
+
+    try {
+      localStorage.removeItem('isLoggedIn');
+    } catch (e) {}
+
+    try {
+      if (window.clearPrivateCaches) {
+        window.clearPrivateCaches();
+      }
+    } catch (e) {}
+
+    try {
+      if (window.apiClient && typeof window.apiClient.clearCommunityCaches === 'function') {
+        window.apiClient.clearCommunityCaches();
+      }
+    } catch (e) {}
+
+    try {
+      if (typeof clearConfirmedAuthCache === 'function') {
+        clearConfirmedAuthCache();
+      }
+    } catch (e) {}
+  }
+
   async function signOut(options) {
     var clearStaleFirebaseAuthState = options && options.clearStaleFirebaseAuthState;
     var clearConfirmedAuthCache = options && options.clearConfirmedAuthCache;
@@ -199,21 +240,11 @@
       console.error('Logout failed:', error);
     }
 
-    if (typeof clearStaleFirebaseAuthState === 'function') {
-      clearStaleFirebaseAuthState();
-    }
-
-    try {
-      localStorage.removeItem('isLoggedIn');
-    } catch (e) {}
-
-    if (window.clearPrivateCaches) {
-      window.clearPrivateCaches();
-    }
-
-    if (typeof clearConfirmedAuthCache === 'function') {
-      clearConfirmedAuthCache();
-    }
+    clearAuthDependentCaches({
+      clearFirebaseState: true,
+      clearStaleFirebaseAuthState: clearStaleFirebaseAuthState,
+      clearConfirmedAuthCache: clearConfirmedAuthCache
+    });
 
     window.location.reload();
   }
@@ -312,18 +343,21 @@
           if (typeof isInvalidAuthSessionError === 'function' && isInvalidAuthSessionError(error)) {
             console.warn('Invalid Firebase session detected. Signing out.');
             await firebase.auth().signOut().catch(function() {});
-            if (typeof clearStaleFirebaseAuthState === 'function') {
-              clearStaleFirebaseAuthState();
-            }
-            if (typeof clearConfirmedAuthCache === 'function') {
-              clearConfirmedAuthCache();
-            }
+            clearAuthDependentCaches({
+              clearFirebaseState: true,
+              clearStaleFirebaseAuthState: clearStaleFirebaseAuthState,
+              clearConfirmedAuthCache: clearConfirmedAuthCache
+            });
             if (typeof resolveAuthBootstrap === 'function') {
               resolveAuthBootstrap(null);
             }
             return;
           }
         }
+      } else {
+        clearAuthDependentCaches({
+          clearConfirmedAuthCache: clearConfirmedAuthCache
+        });
       }
 
       if (typeof persistConfirmedAuthSession === 'function') {

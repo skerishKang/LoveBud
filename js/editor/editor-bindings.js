@@ -75,6 +75,68 @@
     }
   }
 
+  function moveDeleteButtonIntoEditMode(deleteMemoryBtn) {
+    if (!deleteMemoryBtn) return;
+
+    var editMode = document.getElementById('detailEditMode');
+    var editActions = editMode ? editMode.querySelector('.editor-edit-actions-row') : null;
+    if (!editActions) return;
+
+    deleteMemoryBtn.classList.add('editor-edit-danger-action');
+    deleteMemoryBtn.setAttribute('aria-label', deleteMemoryBtn.textContent || '순간 삭제');
+    deleteMemoryBtn.style.removeProperty('display');
+
+    if (deleteMemoryBtn.parentElement !== editActions) {
+      editActions.insertBefore(deleteMemoryBtn, editActions.firstChild);
+    }
+  }
+
+  function hideCurrentMemoryViewModeSecondaryActions(detailPanel, deleteMemoryBtn) {
+    if (!detailPanel) return;
+
+    var titleEditButtons = detailPanel.querySelectorAll('#detailViewMode #detailCurrentMomentTitle .memory-edit-button');
+    titleEditButtons.forEach(function(btn) {
+      btn.style.setProperty('display', 'none', 'important');
+      btn.setAttribute('aria-hidden', 'true');
+      btn.tabIndex = -1;
+    });
+
+    if (!deleteMemoryBtn) return;
+    var viewMode = document.getElementById('detailViewMode');
+    var editMode = document.getElementById('detailEditMode');
+    var isInsideViewMode = !!(viewMode && viewMode.contains(deleteMemoryBtn));
+    var isInsideEditMode = !!(editMode && editMode.contains(deleteMemoryBtn));
+
+    if (isInsideViewMode && !isInsideEditMode) {
+      deleteMemoryBtn.style.setProperty('display', 'none', 'important');
+      deleteMemoryBtn.setAttribute('aria-hidden', 'true');
+      deleteMemoryBtn.tabIndex = -1;
+    } else if (isInsideEditMode) {
+      deleteMemoryBtn.style.removeProperty('display');
+      deleteMemoryBtn.removeAttribute('aria-hidden');
+      deleteMemoryBtn.removeAttribute('tabindex');
+    }
+  }
+
+  function watchCurrentMemoryViewModeActions(detailPanel, deleteMemoryBtn) {
+    if (!detailPanel || detailPanel.dataset.currentMemoryActionWatchBound === '1') return;
+    detailPanel.dataset.currentMemoryActionWatchBound = '1';
+
+    hideCurrentMemoryViewModeSecondaryActions(detailPanel, deleteMemoryBtn);
+
+    if (typeof MutationObserver !== 'function') return;
+
+    var observer = new MutationObserver(function() {
+      moveDeleteButtonIntoEditMode(deleteMemoryBtn);
+      hideCurrentMemoryViewModeSecondaryActions(detailPanel, deleteMemoryBtn);
+    });
+
+    observer.observe(detailPanel, {
+      childList: true,
+      subtree: true
+    });
+  }
+
   function bindDetailActionButtons(options) {
     var editMemoryBtn = options && options.editMemoryBtn;
     var deleteMemoryBtn = options && options.deleteMemoryBtn;
@@ -84,9 +146,17 @@
     var deleteMemory = options && options.deleteMemory;
     var exitEditMode = options && options.exitEditMode;
     var saveMemoryEdit = options && options.saveMemoryEdit;
+    var detailPanel = document.getElementById('detailPanel');
+
+    moveDeleteButtonIntoEditMode(deleteMemoryBtn);
+    watchCurrentMemoryViewModeActions(detailPanel, deleteMemoryBtn);
 
     if (editMemoryBtn && typeof enterEditMode === 'function') {
-      editMemoryBtn.addEventListener('click', enterEditMode);
+      editMemoryBtn.addEventListener('click', function(e) {
+        moveDeleteButtonIntoEditMode(deleteMemoryBtn);
+        hideCurrentMemoryViewModeSecondaryActions(detailPanel, deleteMemoryBtn);
+        enterEditMode(e);
+      });
     }
     if (deleteMemoryBtn && typeof deleteMemory === 'function') {
       deleteMemoryBtn.addEventListener('click', deleteMemory);

@@ -1,0 +1,159 @@
+.sidebar {
+    width: var(--sidebar-width);
+    min-width: var(--sidebar-width);
+    background: #fdfcfb; /* Warm paper tone */
+    border-right: 1px solid rgba(144, 73, 81, 0.08);
+    display: flex;
+    flex-direction: column;
+    padding: 18px 18px 14px;
+    gap: 16px;
+    overflow-y: auto;
+}
+
+.editor-sidebar-back-wrap {
+    margin-bottom: 8px;
+}
+
+.editor-sidebar-back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.4;
+    color: var(--primary);
+    background: rgba(144, 73, 81, 0.06);
+    border: 1px solid rgba(144, 73, 81, 0.10);
+    box-shadow: 0 6px 18px rgba(75, 64, 57, 0.04);
+    transition: transform .18s ease, background .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+
+.editor-sidebar-back-link:hover {
+    transform: translateY(-1px);
+    background: rgba(144, 73, 81, 0.09);
+    border-color: rgba(144, 73, 81, 0.16);
+    box-shadow: 0 10px 22px rgba(75, 64, 57, 0.06);
+}
+
+.editor-sidebar-back-link:focus-visible {
+    outline: 2px solid rgba(144, 73, 81, 0.35);
+    outline-offset: 2px;
+}
+
+.editor-sidebar-back-icon {
+    flex: 0 0 auto;
+    font-size: 14px;
+    line-height: 1;
+}
+
+.tool-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+
+.tool-group h3 {
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    color: #aaa;
+    line-height: 1.4;
+    max-width: 100%;
+    text-align: center;
+    word-break: keep-all;
+}
+
+.tool-item {
+    width: 80px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: all 0.3s;
+    padding: 4px 2px;
+}
+
+.tool-item .material-symbols-outlined {
+    width: 48px;
+    height: 48px;
+    background: var(--surface-container-low);
+    color: var(--on-surface-variant);
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+}
+
+.tool-item:hover .material-symbols-outlined,
+.tool-item.active .material-symbols-outlined {
+    background: var(--primary);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(144, 73, 81, 0.2);
+}
+
+.tool-item span:not(.material-symbols-outlined) {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--on-surface-variant);
+    line-height: 1.3;
+    max-width: 100%;
+    text-align: center;
+    word-break: keep-all;
+}
+
+/* Quiet-first tree summary card polish.
+   Keep existing editor logic and element IDs intact while reducing visual action noise. */
+.editor-status-card .editor-tree-visibility-pill,
+.editor-status-card #sidebarVisibilityToggleBtn {
+    display: none !important;
+}
+
+.editor-status-card .editor-title-settings-panel {
+    display: flex !important;
+    grid-template-columns: none !important;
+    width: auto !important;
+    margin-top: 12px !important;
+    gap: 0 !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    pointer-events: none;
+}
+
+.editor-status-card #sidebarTitleEditBtn.editor-mini-setting-btn {
+    min-height: 32px !important;
+    width: auto !important;
+    padding: 0 10px !important;
+    border-radius: 999px !important;
+    background: rgba(255, 255, 255, 0.72) !important;
+    border-color: rgba(144, 73, 81, 0.10) !important;
+    color: var(--primary) !important;
+    box-shadow: none !important;
+    font-size: 11px !important;
+    font-weight: 800 !important;
+    pointer-events: auto;
+}
+
+.editor-status-card #sidebarTitleEditBtn.editor-mini-setting-btn .material-symbols-outlined {
+    font-size: 13px !important;
+    opacity: 0.76 !important;
+}
+
+.editor-status-card .editor-tree-quiet-note {
+    display: none !important;
+}
+
+@media (max-width: 480px) {
+    .editor-status-card #sidebarTitleEditBtn.editor-mini-setting-btn {
+        min-height: 30px !important;
+        padding: 0 8px !important;
+        font-size: 10px !important;
+    }
+}

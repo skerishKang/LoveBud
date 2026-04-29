@@ -15,24 +15,24 @@
       en: 'Where what you love keeps growing'
     },
     'intro.heroTitle': {
-      ko: '<span class="title-line">사랑하는 순간을</span><span class="title-line title-accent">하나의 나무로</span><span class="title-line">남겨요</span>',
-      en: '<span class="title-line">Turn the moment</span><span class="title-line title-accent">you loved</span><span class="title-line">into one tree</span>'
+      ko: '<span class="title-line">사랑하는 순간을</span><span class="title-line title-accent">하나의 러브트리로</span><span class="title-line">남겨요</span>',
+      en: '<span class="title-line">Turn the moment</span><span class="title-line title-accent">you loved</span><span class="title-line">into one LoveTree</span>'
     },
     'intro.heroLead': {
-      ko: '사랑에 빠진 첫 순간부터 차곡차곡 쌓인 마음까지,<br class="pc-only">당신만의 감정 경로를 하나의 나무로 피워내세요.',
-      en: 'From the first moment you fell in love to the feelings that followed,<br class="pc-only">bloom your own emotional path into a single tree.'
+      ko: '사랑에 빠진 첫 순간부터 차곡차곡 쌓인 마음까지,<br class="pc-only">당신만의 감정 경로를 하나의 러브트리로 피워내세요.',
+      en: 'From the first moment you fell in love to the feelings that followed,<br class="pc-only">bloom your own emotional path into a LoveTree.'
     },
     'intro.heroPrimaryCta': {
       ko: '내 러브트리 만들기',
       en: 'Create My LoveTree'
     },
     'intro.ctaSecondary': {
-      ko: '공개 트리 둘러보기',
-      en: 'Browse Public Trees'
+      ko: '다른 트리 둘러보기',
+      en: 'Browse Other Trees'
     },
     'intro.heroBrowseCta': {
-      ko: '공개 트리 둘러보기',
-      en: 'Browse Public Trees'
+      ko: '다른 트리 둘러보기',
+      en: 'Browse Other Trees'
     },
     'intro.sceneFirst': {
       ko: '🌱 첫 설렘',
@@ -57,11 +57,11 @@
       en: 'What is LoveTree?'
     },
     'intro.whatIsDesc1': {
-      ko: '좋아하게 된 첫 장면과 이어진 마음을 하나의 나무로 남기는 공간입니다.',
+      ko: '좋아하게 된 첫 장면과 이어진 마음을 하나의 러브트리로 남기는 공간입니다.',
       en: 'A space that keeps the first scene you loved and the feelings that followed as one tree.'
     },
     'intro.whatIsDesc2': {
-      ko: '단순한 기록을 넘어, 내 감정이 어디서 시작되어 어떤 경로로 깊어졌는지 한눈에 마주하는 디지털 감정 정원입니다.',
+      ko: '단순한 기록을 넘어, 당신의 감정이 어디서 시작되어 어떤 경로로 깊어졌는지 한눈에 마주하는 디지털 감성 정원입니다.',
       en: 'Beyond simple records, it is a digital emotion garden where you can see at a glance where your feelings started and how they deepened.'
     },
 
@@ -173,7 +173,7 @@
       en: 'A space that stays even as time passes'
     },
     'intro.value3DescFixed': {
-      ko: '나무의 가지를 따라가며 그때의 기억을 언제든 다시 꺼내볼 수 있습니다.',
+      ko: '러브트리 가지를 따라가며 그때의 기억을 언제든 다시 꺼내볼 수 있습니다.',
       en: 'Follow the branches of the tree and revisit those memories anytime.'
     },
     'intro.value4Eyebrow': {

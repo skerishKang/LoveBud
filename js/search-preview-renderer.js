@@ -1,17 +1,25 @@
 /**
  * LoveBud Search Preview Renderer
- * v20260422-4
+ * v20260428-1
  * 
  * Rendering layer: preview sidebar panel.
  * DOM-agnostic - updates passed DOM elements.
  * 
- * Dependencies: LoveBudPath (for navigation)
+ * Dependencies: LoveBudPath (for navigation), LoveBudSearchSharedUtils (for shared utilities)
  */
 
 (function() {
     'use strict';
 
+    function getSharedUtils() {
+        return window.LoveBudSearchSharedUtils || null;
+    }
+
     function escapeHtml(value) {
+        const utils = getSharedUtils();
+        if (utils?.escapeHtml) {
+            return utils.escapeHtml(value);
+        }
         return String(value == null ? '' : value)
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
@@ -21,6 +29,10 @@
     }
 
     function sanitizeUrl(value) {
+        const utils = getSharedUtils();
+        if (utils?.sanitizeUrl) {
+            return utils.sanitizeUrl(value);
+        }
         if (!value) return '';
         const raw = String(value).trim();
         if (!raw) return '';
@@ -37,6 +49,10 @@
     }
 
     function isSuspiciousYouTubeThumbnailImage(img) {
+        const utils = getSharedUtils();
+        if (utils?.isSuspiciousYouTubeThumbnailImage) {
+            return utils.isSuspiciousYouTubeThumbnailImage(img);
+        }
         if (!img || !img.currentSrc) return false;
         const src = String(img.currentSrc || img.src || '');
         const isYouTubeThumb = src.includes('ytimg.com/vi/') || src.includes('img.youtube.com/vi/');
@@ -75,6 +91,10 @@
     }
 
     function getBasePath() {
+        const utils = getSharedUtils();
+        if (utils?.getBasePath) {
+            return utils.getBasePath();
+        }
         if (window.LoveBudPath?.getBasePath) {
             return window.LoveBudPath.getBasePath();
         }
@@ -103,6 +123,21 @@
                 <span class="material-symbols-outlined" style="font-size:18px;">play_circle</span>
                 ${escapeHtml(label)}
             </a>
+        `;
+    }
+
+    function renderShareButton(tree) {
+        if (!tree?.id) return '';
+        const label = getSearchCopy(
+            'search.previewShareLink',
+            '감상 링크 복사',
+            'Copy view link'
+        );
+        return `
+            <button type="button" data-share-tree-link="${escapeHtml(tree.id)}" class="btn-round" style="width:100%;margin-top:12px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;gap:6px;background:var(--surface-container);color:var(--on-surface-variant);border:1px solid var(--outline-variant);">
+                <span class="material-symbols-outlined" style="font-size:16px;">link</span>
+                <span data-share-tree-link-label>${escapeHtml(label)}</span>
+            </button>
         `;
     }
 
@@ -357,6 +392,8 @@
 
     function showPreviewImageFallback(img) {
         if (!img) return;
+        if (img.dataset.fallbackTriggered) return;
+        img.dataset.fallbackTriggered = 'true';
         img.style.display = 'none';
         const wrapper = img.parentElement;
         if (!wrapper) return;
@@ -463,6 +500,7 @@
                         ${renderInfoCallout('info', getSearchCopy('search.previewNewTreeInfo', '이제 막 감상이 시작될 공개 러브트리예요.', 'This public LoveTree is just about to begin.'))}
                     </div>
                     ${renderPreviewActionButton(tree)}
+                    ${renderShareButton(tree)}
                 `;
             } else {
                 const pathStages = memories.slice(0, 3).map((m, i) => {
@@ -488,6 +526,7 @@
                         ${renderInfoCallout('touch_app', getSearchCopy('search.previewJourneyCta', '이곳에서 대표 순간과 이어진 감정을 훑어보고, 마음이 머무는 순간으로 들어가 보세요.', 'Scan the featured moment and connected feelings here, then open the moment that draws you in.'), 'primary')}
                     </div>
                     ${renderPreviewActionButton(tree)}
+                    ${renderShareButton(tree)}
                 `;
             }
         }
@@ -580,5 +619,5 @@
         }
     };
 
-    console.log('[LoveBudSearchPreviewRenderer] Search preview renderer loaded v20260422-4');
+    console.log('[LoveBudSearchPreviewRenderer] Search preview renderer loaded v20260428-1');
 })();

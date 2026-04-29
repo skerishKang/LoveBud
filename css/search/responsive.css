@@ -1,0 +1,189 @@
+@media (max-width: 1240px) {
+    .search-container {
+        grid-template-columns: minmax(0, 1fr) 380px;
+        gap: 24px;
+        padding: 24px var(--page-pad-tablet) 48px;
+    }
+
+    #resultsList,
+    #growingTreesList {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+    }
+}
+
+@media (max-width: 1024px) {
+    .search-container {
+        grid-template-columns: 1fr;
+        gap: 32px;
+    }
+
+    .preview-sidebar {
+        position: sticky;
+        top: 92px;
+        z-index: 5;
+        align-self: start;
+    }
+}
+
+@media (max-width: 768px) {
+    .search-container {
+        padding: 20px var(--page-pad-mobile) 36px;
+        gap: 22px;
+    }
+
+    .browse-curation-shell {
+        margin-bottom: 16px;
+    }
+
+    .search-panel-header h2 {
+        font-size: 2.0rem;
+        line-height: 1.08;
+        margin-bottom: 7px;
+    }
+
+    .search-panel-header p {
+        font-size: 0.94rem;
+        max-width: 100%;
+    }
+
+    .search-input {
+        font-size: 0.94rem;
+        padding: 14px 16px 14px 44px;
+    }
+
+    .search-icon {
+        font-size: 18px;
+        left: 14px;
+    }
+
+    #resultsList,
+    #growingTreesList {
+        grid-template-columns: 1fr;
+    }
+
+    .growing-trees-section {
+        padding: 22px 16px;
+        margin-top: 40px;
+        border-radius: 1.6rem;
+    }
+
+    .growing-trees-head {
+        flex-direction: column;
+        margin-bottom: 18px;
+        gap: 10px;
+    }
+
+    /* --- Mobile bottom sheet preview --- */
+    /* Hidden state: out of flow entirely, not order:-1 at top */
+    .preview-sidebar {
+        /* Remove from grid flow */
+        position: fixed;
+        inset-inline: 0;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 300;
+        /* Hidden by default */
+        display: none;
+        max-height: 92dvh;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        /* Appearance */
+        border-radius: 2rem 2rem 0 0;
+        padding: 22px 18px env(safe-area-inset-bottom, 0px);
+        /* Preserve desktop gradient bg from preview-sidebar.css — override position only */
+        /* Reset sticky/grid props from tablet breakpoint */
+        align-self: auto;
+        top: auto;
+    }
+
+    /* Open state: slide up */
+    .preview-sidebar.is-open {
+        display: block;
+        animation: mobile-sheet-slide-up 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    @keyframes mobile-sheet-slide-up {
+        from {
+            transform: translateY(100%);
+            opacity: 0.6;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+
+    /* Backdrop overlay — injected by bindMobilePreviewHandlers via CSS */
+    .preview-sheet-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 299;
+        background: rgba(0, 0, 0, 0.38);
+        animation: overlay-fade-in 220ms ease both;
+    }
+
+    @keyframes overlay-fade-in {
+        from { opacity: 0; }
+        to   { opacity: 1; }
+    }
+
+    /* Drag handle indicator */
+    .preview-sidebar.is-open::before {
+        content: '';
+        display: block;
+        width: 40px;
+        height: 4px;
+        background: rgba(144, 73, 81, 0.20);
+        border-radius: 2px;
+        margin: 0 auto 16px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .preview-sidebar.is-open {
+            animation: none;
+        }
+        .preview-sheet-overlay {
+            animation: none;
+        }
+    }
+
+    .preview-panel-header {
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .preview-panel-title-group {
+        min-width: 0;
+        flex: 1 1 auto;
+    }
+
+    .preview-panel-header h3 {
+        font-size: 1.42rem;
+    }
+
+    .preview-mobile-close {
+        display: inline-flex;
+    }
+
+    .tag-chip {
+        font-size: 11px;
+        padding: 7px 11px;
+    }
+
+    .browse-results-head {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .browse-results-head h3 {
+        font-size: 1.45rem;
+    }
+
+    .browse-utility-row {
+        gap: 10px;
+        margin-top: 14px;
+    }
+}

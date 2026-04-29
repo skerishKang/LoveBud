@@ -4,6 +4,13 @@
  * Config sourced from 133-relovetree (shared-utils.js).
  * This is the SINGLE source of truth for Firebase config in LoveBud.
  * All pages that need Firebase must load this file AFTER the Firebase SDK scripts.
+ * 
+ * SECURITY NOTE:
+ * Firebase Web config is intentionally client-visible.
+ * Do not treat apiKey as a server secret.
+ * Security must be enforced through Firebase Authorized Domains,
+ * Firestore/Storage Security Rules, App Check, and API key restrictions.
+ * See docs/security/FIREBASE_CLIENT_CONFIG_POLICY.md for details.
  */
 
 var FIREBASE_CONFIG = {

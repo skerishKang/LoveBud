@@ -67,6 +67,10 @@ window.LoveBudEditorCanvasViewport = {
     }
 
     if (recenterBtn) {
+      recenterBtn.addEventListener('mousedown', (event) => {
+        event.stopPropagation();
+      });
+
       recenterBtn.addEventListener('click', () => {
         recenterViewport();
       });
