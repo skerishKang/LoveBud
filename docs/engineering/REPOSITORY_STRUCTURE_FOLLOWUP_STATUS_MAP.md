@@ -25,7 +25,7 @@ Large redesign is not required. The remaining work should continue as small PRs 
 | #223 bucket | Current disposition | Evidence / related PRs | Next action |
 |---|---|---|---|
 | Editor detail UI stabilization | Audit completed / implementation follow-ups remain | PR #321 documents `editor-detail-ui` responsibility boundaries | Create small implementation PRs only after explicit approval |
-| Cloudflare API route mapping contract | In progress | PR #297 documents audit; PR #345 adds contract test coverage and is still open/draft | Complete and verify PR #345 before helper extraction |
+| Cloudflare API route mapping contract | Completed | PR #297 documents audit; PR #345 (merged) added contract test coverage | Contract tests now in place, helper extraction can proceed with approval |
 | Modal repository/query split planning | Planning documented | PR #326 documents repository/query split boundaries | Keep implementation deferred until backend contract tests are approved |
 | Search preview renderer helper extraction | Audit completed / implementation follow-ups remain | PR #323 documents media/copy/CTA helper candidates | Create focused helper extraction PRs one at a time after browser smoke plan |
 | Shared header config helper extraction | Deferred by decision | PR #343 records defer decision and trigger conditions | No immediate implementation unless triggers appear |
@@ -34,20 +34,18 @@ Large redesign is not required. The remaining work should continue as small PRs 
 
 ## 4. Open blocker for #223 closure
 
-The main active blocker is PR #345:
+PR #345 (Cloudflare API route mapping contract test coverage) has been merged. The main remaining blockers are:
 
-- `test(api): lock Cloudflare Modal route mapping contract`
-- It is test-only and should be verified with `node --test` and repository test commands before ready/merge consideration.
-- No API runtime behavior should change in that PR.
+- Implementation follow-ups for remaining #223 buckets (Editor detail UI, Search preview helpers, etc.)
+- Decision on whether to split remaining work into separate owner issues
 
-Until PR #345 is resolved, #223 should remain open.
+#223 should remain open until all checklist buckets have explicit disposition (completed, deferred, or not applicable).
 
 ## 5. Safe next sequence
 
-1. Verify and resolve PR #345.
-2. Add or update issue comment on #223 linking this disposition map.
-3. Decide which remaining implementation follow-ups move to separate issues.
-4. Keep #223 open until open blockers are resolved or split out.
+1. Add or update issue comment on #223 linking this disposition map.
+2. Decide which remaining implementation follow-ups move to separate issues.
+3. Keep #223 open until all checklist buckets have explicit disposition.
 
 ## 6. Non-goals
 
@@ -62,6 +60,6 @@ Until PR #345 is resolved, #223 should remain open.
 
 #223 can be considered for closure only after:
 
-- PR #345 is completed or its work is moved to a dedicated follow-up issue;
+- All checklist buckets have explicit disposition (completed, deferred, or not applicable);
 - remaining implementation follow-ups are split into explicit owner issues; and
 - the #223 issue body or final comment records the disposition of every checklist bucket.
