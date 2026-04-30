@@ -1,6 +1,6 @@
 /**
  * LoveBud - My Trees Page Helpers
- * v20260420-1
+ * v20260429-2
  *
  * Responsibilities:
  * - page state constants
@@ -50,7 +50,51 @@
     el.removeAttribute('aria-hidden');
   }
 
-  function setState(newState) {
+  /**
+   * Update the visible text inside #state-error based on errorType.
+   * errorType: 'auth' | 'server' | 'network' | 'generic' | undefined
+   */
+  function _applyErrorStateMessage(errorType) {
+    var errorEl = document.getElementById('state-error');
+    if (!errorEl) return;
+    var h2 = errorEl.querySelector('h2');
+    var p = errorEl.querySelector('p');
+    if (!h2 || !p) return;
+
+    switch (errorType) {
+      case 'auth':
+        h2.removeAttribute('data-i18n');
+        p.removeAttribute('data-i18n');
+        h2.textContent = '로그인이 필요합니다';
+        p.textContent = '세션이 만료되었거나 인증이 필요합니다. 다시 로그인해 주세요.';
+        break;
+      case 'server':
+        h2.removeAttribute('data-i18n');
+        p.removeAttribute('data-i18n');
+        h2.textContent = '서버 오류가 발생했습니다';
+        p.textContent = '잠시 후 다시 시도해 주세요.';
+        break;
+      case 'network':
+        h2.removeAttribute('data-i18n');
+        p.removeAttribute('data-i18n');
+        h2.textContent = '불러오기에 실패했습니다';
+        p.textContent = '네트워크 연결을 확인하고 다시 시도해주세요.';
+        break;
+      default:
+        // generic or undefined: restore default attributes for i18n
+        h2.setAttribute('data-i18n', 'myTrees.error_title');
+        p.setAttribute('data-i18n', 'myTrees.error_desc');
+        // Let i18n library or default HTML content take over
+        break;
+    }
+  }
+
+  /**
+   * @param {string} newState - one of STATE.*
+   * @param {object} [meta] - optional metadata
+   * @param {string} [meta.errorType] - 'auth'|'server'|'network'|'generic'
+   */
+  function setState(newState, meta) { // Added meta argument
     var container = document.getElementById('treesContainer');
     if (!container) return;
 
@@ -68,7 +112,10 @@
         showStateSection(sections.loading, 'loading');
         break;
       case STATE.ERROR:
-        showStateSection(sections.error, 'error');
+        if (sections.error) {
+          showStateSection(sections.error, 'error');
+          _applyErrorStateMessage(meta && meta.errorType);
+        }
         break;
       case STATE.EMPTY:
         showStateSection(sections.empty, 'empty');
@@ -108,15 +155,11 @@
     });
   }
 
-  var api = {
+  window.LoveBudMyTreesPage = {
     STATE: STATE,
     showToast: showToast,
     setState: setState,
     setupHeaderCreateButton: setupHeaderCreateButton,
     setupRetryButton: setupRetryButton
   };
-
-  // Backward-compat: older page scripts referenced "LoveTree*" namespaces.
-  window.LoveBudMyTreesPage = api;
-  window.LoveTreeMyTreesPage = api;
 })();
