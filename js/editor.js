@@ -388,6 +388,15 @@ document.addEventListener('DOMContentLoaded', () => {
         let currentEditingMemory = null;
         let editorCanvas = null;
 
+        let memoryActions = null;
+        const updateSelectedMemoryFields = async (...args) => {
+            if (!memoryActions || typeof memoryActions.updateSelectedMemoryFields !== 'function') {
+                console.warn('[editor] updateSelectedMemoryFields called before memory actions are ready');
+                return false;
+            }
+            return memoryActions.updateSelectedMemoryFields(...args);
+        };
+
         const createInitialMemory = editorTreeHelpers.createInitialMemory
             ? () => editorTreeHelpers.createInitialMemory({ getTreeMemories: () => treeMemories(), findRootMemory, canonicalRootId, treeId, i18n })
             : createInlineCreateInitialMemoryFallback({ treeMemories, findRootMemory, canonicalRootId, treeId, i18n });
@@ -589,7 +598,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const formatTimeAgo = editorSaveStatus.formatTimeAgo || createInlineFormatTimeAgoFallback();
 
-        const memoryActions = window.createEditorMemoryActions({
+        memoryActions = window.createEditorMemoryActions({
             i18n,
             updateSaveStatus,
             updateDetailPanel,
@@ -613,7 +622,7 @@ document.addEventListener('DOMContentLoaded', () => {
             isLocalSaveMode: () => isLocalSaveMode
         });
 
-        const { enterEditMode, exitEditMode, saveMemoryEdit, updateSelectedMemoryFields, deleteMemory } = memoryActions;
+        const { enterEditMode, exitEditMode, saveMemoryEdit, deleteMemory } = memoryActions;
 
         const memoryForm = window.createEditorMemoryForm({
             i18n,
