@@ -85,7 +85,7 @@
    * @param {object} [meta] - optional metadata
    * @param {string} [meta.errorType] - 'auth'|'server'|'network'|'generic'
    */
-  function setState(newState, meta) {
+  function setState(newState, meta) { // Added meta argument
     var container = document.getElementById('treesContainer');
     if (!container) return;
 
