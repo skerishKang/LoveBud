@@ -82,7 +82,7 @@ Issue #266 remains open until the remaining gaps are either:
 - Linked to dedicated follow-up issues (e.g., separate issues for API key restrictions, secret rotation, domain cleanup), or
 - Explicitly accepted by CTO as tracked elsewhere.
 
-Use `Refs #266` only. Do **not** use `close`, `closes`, `closed`, `fix`, `fixes`, `fixed`, `resolve`, `resolves`, or `resolved` keywords in any related PR bodies.
+Use `Refs #266` only. Use non-completing issue reference wording in related PR bodies unless CTO explicitly approves issue completion.
 
 ## Non-Goals
 
