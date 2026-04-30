@@ -72,11 +72,11 @@
 
   var currentState = STATE.LOADING;
 
-  function setState(newState) {
+  function setState(newState, meta) {
     currentState = newState;
 
     if (myTreesPage && typeof myTreesPage.setState === 'function') {
-      return myTreesPage.setState(newState);
+      return myTreesPage.setState(newState, meta);
     }
 
     var container = document.getElementById('treesContainer');
