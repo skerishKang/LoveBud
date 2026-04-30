@@ -20,6 +20,7 @@
 | [MOMENT_TIMELINE_PLAN.md](MOMENT_TIMELINE_PLAN.md) | cue-based YouTube Moment Timeline 제품/기술 계획 |
 | [YOUTUBE_SEGMENT_PLAYER_POC_SCOPE.md](YOUTUBE_SEGMENT_PLAYER_POC_SCOPE.md) | cue-based YouTube segment player PoC scope and Go/No-Go criteria |
 | [YOUTUBE_SEGMENT_PLAYER_POC_TEST_MATRIX.md](YOUTUBE_SEGMENT_PLAYER_POC_TEST_MATRIX.md) | YouTube segment player PoC test matrix and browser verification requirements |
+| [YOUTUBE_SEGMENT_PLAYER_POC_RUNTIME_NOTES.md](YOUTUBE_SEGMENT_PLAYER_POC_RUNTIME_NOTES.md) | Runtime observations and limitations from PoC implementation |
 | [MOMENT_CAPTURE_UI_DESIGN.md](MOMENT_CAPTURE_UI_DESIGN.md) | Moment capture UI flow design |
 | [MOMENT_TIMELINE_REORDER_DESIGN.md](MOMENT_TIMELINE_REORDER_DESIGN.md) | Moment Timeline reorder / sequence editor design |
 | [UI_COPY_DIET_GUIDE.md](UI_COPY_DIET_GUIDE.md) | 전역 UI 카피 다이어트 운영 기준 |
@@ -65,13 +66,14 @@
 4.  **MOMENT_TIMELINE_PLAN.md** — cue-based Moment Timeline 계획
 5.  **YOUTUBE_SEGMENT_PLAYER_POC_SCOPE.md** — YouTube segment player PoC scope and verification criteria
 6.  **YOUTUBE_SEGMENT_PLAYER_POC_TEST_MATRIX.md** — YouTube segment player PoC test matrix and browser verification requirements
-7.  **MOMENT_CAPTURE_UI_DESIGN.md** — Moment capture UI flow 설계
-8.  **MOMENT_TIMELINE_REORDER_DESIGN.md** — Moment Timeline reorder / sequence editor 설계
-8. **UI_COPY_DIET_GUIDE.md** — 전역 UI 카피 다이어트 기준
-9. **MVP_SCOPE.md** — MVP 범위 및 In/Out of Scope
-10. **USER_FLOW.md** — 사용자 여정 및 핵심 플로우
-11. **PRODUCT_BRIEF.md** — 현재 실행 기준 요약
-12. 필요시 DATA_NAMING_RULE.md, READONLY_SHARE_SCOPE.md
+7.  **YOUTUBE_SEGMENT_PLAYER_POC_RUNTIME_NOTES.md** — YouTube segment player PoC runtime observations and limitations
+8.  **MOMENT_CAPTURE_UI_DESIGN.md** — Moment capture UI flow 설계
+9.  **MOMENT_TIMELINE_REORDER_DESIGN.md** — Moment Timeline reorder / sequence editor 설계
+10. **UI_COPY_DIET_GUIDE.md** — 전역 UI 카피 다이어트 기준
+11. **MVP_SCOPE.md** — MVP 범위 및 In/Out of Scope
+12. **USER_FLOW.md** — 사용자 여정 및 핵심 플로우
+13. **PRODUCT_BRIEF.md** — 현재 실행 기준 요약
+14. 필요시 DATA_NAMING_RULE.md, READONLY_SHARE_SCOPE.md
 
 ## 참조
 - 전체 문서 인덱스: `../doc_index.md`
