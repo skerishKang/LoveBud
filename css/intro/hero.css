@@ -157,9 +157,80 @@
   animation-delay: 1.25s;
 }
 
+.intro-tree-branch.four {
+  bottom: 78px;
+  width: 62px;
+  transform: translateX(-8px) rotate(198deg);
+  animation-delay: 1.5s;
+}
+
+.intro-tree-branch.five {
+  bottom: 58px;
+  width: 56px;
+  transform: translateX(6px) rotate(22deg);
+  animation-delay: 1.75s;
+}
+
 @keyframes introBranchIn {
   from { opacity: 0; }
   to   { opacity: 1; }
+}
+
+.intro-tree-node {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #e8c4b8, #c18b83);
+  box-shadow: 0 4px 12px rgba(144, 73, 81, 0.2);
+  animation: introNodeIn 0.3s ease both;
+}
+
+@keyframes introNodeIn {
+  from { opacity: 0; transform: scale(0); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.intro-tree-node.node-1 {
+  left: 58px;
+  bottom: 156px;
+  animation-delay: 1.8s;
+}
+
+.intro-tree-node.node-2 {
+  right: 52px;
+  bottom: 130px;
+  animation-delay: 1.95s;
+}
+
+.intro-tree-node.node-3 {
+  left: 62px;
+  bottom: 110px;
+  animation-delay: 2.1s;
+}
+
+.intro-tree-node.node-4 {
+  right: 48px;
+  bottom: 86px;
+  animation-delay: 2.25s;
+}
+
+.intro-tree-node.node-5 {
+  left: 66px;
+  bottom: 66px;
+  animation-delay: 2.4s;
+}
+
+.intro-tree-node.node-6 {
+  right: 44px;
+  bottom: 46px;
+  animation-delay: 2.55s;
+}
+
+.intro-tree-node.node-7 {
+  left: 70px;
+  bottom: 30px;
+  animation-delay: 2.7s;
 }
 
 .intro-tree-moment {
@@ -199,10 +270,24 @@
 }
 
 .intro-tree-moment.shared {
-  left: 30px;
-  top: 86px;
+  left: 24px;
+  top: 78px;
   color: #667a55;
   animation-delay: 2.0s;
+}
+
+.intro-tree-moment.revisit {
+  right: 20px;
+  bottom: 92px;
+  color: #8b7355;
+  animation-delay: 2.25s;
+}
+
+.intro-tree-moment.lasting {
+  left: 28px;
+  top: 42px;
+  color: #a67c52;
+  animation-delay: 2.5s;
 }
 
 .intro-tree-caption {
@@ -360,5 +445,49 @@
   .intro-hero-actions .btn-round {
     width: 100%;
     min-height: 54px;
+  }
+
+  /* Mobile: simplify tree visual */
+  .intro-tree-scene {
+    min-height: 280px;
+  }
+
+  .intro-tree-stem {
+    height: 100px;
+    bottom: 32px;
+  }
+
+  .intro-tree-branch.four,
+  .intro-tree-branch.five {
+    display: none;
+  }
+
+  .intro-tree-node.node-5,
+  .intro-tree-node.node-6,
+  .intro-tree-node.node-7 {
+    display: none;
+  }
+
+  .intro-tree-moment.revisit,
+  .intro-tree-moment.lasting {
+    display: none;
+  }
+
+  .intro-tree-moment.first {
+    left: 12px;
+    bottom: 48px;
+    font-size: 11px;
+  }
+
+  .intro-tree-moment.saved {
+    right: 10px;
+    top: 38px;
+    font-size: 11px;
+  }
+
+  .intro-tree-moment.shared {
+    left: 14px;
+    top: 62px;
+    font-size: 11px;
   }
 }
