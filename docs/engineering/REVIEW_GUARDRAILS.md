@@ -32,17 +32,26 @@
 
 - `js/firebase-config.js`의 Firebase Web config는 브라우저 초기화용 설정입니다.
 - 값이 코드에 보인다는 사실만으로 **즉시 blocker**로 분류하지 않습니다.
-- 이 항목은 보통 **운영 점검 항목**으로 분리합니다.
+- Firebase Web `apiKey`는 서버 secret, service account key, private key, session token과 같은 성격으로 취급하지 않습니다.
+- 리뷰, 이슈, PR, 로그, 스크린샷, 채팅에는 실제 Firebase Web config 값을 재출력하지 않습니다. 필요한 경우 `PRESENT / CLIENT_VISIBLE_BY_DESIGN / REDACTED`처럼 상태만 기록합니다.
+- Web config 노출이 blocker가 아니라는 판단은 전체 인증 보안이 PASS라는 뜻이 아닙니다.
+- 이 항목은 보통 **운영 점검 항목** 또는 Auth/security follow-up으로 분리합니다.
 
 점검 방향:
 - Firebase authorized domains
 - Auth provider 설정
 - Security Rules
-- abuse 방지 설정
+- App Check 또는 abuse 방지 설정
+- backend token verification
+- owner authorization
+- protected-route gating
+- logout/cache cleanup
 
 금지:
 - "apiKey가 보이므로 즉시 배포 불가" 식의 단정
 - 서버 secret과 동일한 성격으로 취급
+- 실제 Firebase Web config 값을 보고서나 코멘트에 재출력
+- Firebase Console/Auth 설정 감사 없이 전체 보안을 PASS로 단정
 
 ### 2. `vercel.json`
 
