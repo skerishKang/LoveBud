@@ -54,6 +54,7 @@ async function runTarget(page, target, viewport) {
   const fatalMessages = [];
   const networkFailures = [];
   const networkBlockers = [];
+  let ignoredMedia404Count = 0; // Tracks generic 404 console errors linked to ignored media network responses
 
   page.removeAllListeners('pageerror');
   page.removeAllListeners('console');
@@ -67,6 +68,14 @@ async function runTarget(page, target, viewport) {
   page.on('console', (message) => {
     if (message.type() !== 'error') return;
     const text = message.text();
+    // If a generic "Failed to load resource: 404" console error occurs,
+    // and we have an unacknowledged ignored media 404 network response,
+    // decrement the counter and ignore this console error.
+    if (text === 'Failed to load resource: the server responded with a status of 404 ()' && ignoredMedia404Count > 0) {
+      ignoredMedia404Count--;
+      return; // Ignore this specific console error
+    }
+    // Apply original console error filtering for other cases
     if (!isIgnoredConsoleError(text)) {
       fatalMessages.push(`console.error: ${text}`);
     }
@@ -79,6 +88,11 @@ async function runTarget(page, target, viewport) {
   });
 
   page.on('response', (response) => {
+    // Increment counter for ignored YouTube 404s that might cause generic console errors
+    if (response.status() === 404 && (/ytimg\.com|img\.youtube\.com/.test(response.url()))) {
+      ignoredMedia404Count++;
+    }
+
     if (isNetworkBlocker(response)) {
       networkBlockers.push(`${response.status()} ${response.url()}`);
     }
