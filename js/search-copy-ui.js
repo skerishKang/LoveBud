@@ -47,7 +47,7 @@
 
     function buildCopiedTreeHref(treeId) {
         const basePath = getBasePath();
-        return `${basePath}detail.html?id=${encodeURIComponent(treeId)}`;
+        return `${basePath}editor.html?treeId=${encodeURIComponent(treeId)}`;
     }
 
     function buildLoginHref(treeId) {
@@ -72,79 +72,23 @@
         }
     }
 
-    function getPreviewTitleFallback() {
-        const titleRoot = document.getElementById('previewTitle');
-        if (!titleRoot) {
-            return getCopy('search.previewDefaultTreeName', '러브트리', 'LoveTree');
-        }
-        const firstLine = titleRoot.querySelector('div div') || titleRoot.querySelector('div') || titleRoot;
-        const text = String(firstLine.textContent || '').trim();
-        return text || getCopy('search.previewDefaultTreeName', '러브트리', 'LoveTree');
-    }
-
     function getSelectedTreeIdFromPreview() {
         const shareButton = document.querySelector(SHARE_BUTTON_SELECTOR);
         return shareButton?.dataset?.shareTreeLink || '';
     }
 
-    function sanitizeMemoryPayload(memory, treeId, parentId) {
-        const tags = Array.isArray(memory?.emotionTags) ? memory.emotionTags : [];
-        return {
-            treeId,
-            parentId: parentId || null,
-            title: String(memory?.title || '').slice(0, 200),
-            memo: String(memory?.memo || '').slice(0, 5000),
-            artist: String(memory?.artist || '').slice(0, 100),
-            source: String(memory?.source || '').slice(0, 200),
-            sourceUrl: String(memory?.sourceUrl || '').slice(0, 1000),
-            sourceType: String(memory?.sourceType || 'youtube').slice(0, 50),
-            thumbnail: String(memory?.thumbnail || '').slice(0, 500),
-            emotionTags: tags.map(tag => String(tag).trim()).filter(Boolean).slice(0, 20),
-            timestamp: String(memory?.timestamp || '').slice(0, 100),
-            visibility: 'public'
-        };
-    }
-
-    async function loadPublicTreeForCopy(treeId) {
-        if (!window.apiClient?.getPublicTreePreview) {
-            throw new Error('Public tree preview API unavailable');
-        }
-        return window.apiClient.getPublicTreePreview({
-            id: treeId,
-            title: getPreviewTitleFallback(),
-            memoryCount: 0,
-            memories: []
-        });
-    }
-
-    async function copyPublicTree(treeId) {
-        if (!window.apiClient?.createTree || !window.apiClient?.createMemory) {
-            throw new Error('Private tree API unavailable');
+    async function forkPublicTree(treeId) {
+        if (!window.apiClient?.forkPublicTree) {
+            throw new Error('Public tree fork API unavailable');
         }
 
-        const publicTree = await loadPublicTreeForCopy(treeId);
-        const title = String(publicTree?.title || getPreviewTitleFallback()).trim() || getCopy('search.previewDefaultTreeName', '러브트리', 'LoveTree');
-        const newTree = await window.apiClient.createTree({
-            title,
-            visibility: 'public'
-        });
-        const newTreeId = newTree?.id;
-        if (!newTreeId) {
+        const result = await window.apiClient.forkPublicTree(treeId);
+        const copiedTree = result?.tree || result?.data || result;
+        const copiedTreeId = copiedTree?.id || result?.treeId || result?.id;
+        if (!copiedTreeId) {
             throw new Error('Copied tree id missing');
         }
-
-        const memories = Array.isArray(publicTree?.memories) ? publicTree.memories : [];
-        let previousNewMemoryId = null;
-        let copiedMemoryCount = 0;
-        for (const memory of memories) {
-            const createdMemory = await window.apiClient.createMemory(
-                sanitizeMemoryPayload(memory, newTreeId, previousNewMemoryId)
-            );
-            previousNewMemoryId = createdMemory?.id || previousNewMemoryId;
-            copiedMemoryCount += 1;
-        }
-
-        return { tree: newTree, copiedMemoryCount };
+        return { tree: copiedTree, treeId: copiedTreeId };
     }
 
     function renderCopyButton(treeId) {
@@ -169,6 +113,8 @@
         if (existing) {
             if (existing.dataset.copyPublicTree !== treeId) {
                 existing.dataset.copyPublicTree = treeId;
+                delete existing.dataset.copiedTreeId;
+                setButtonState(existing, 'search.previewCopyToMyTrees', '내 러브트리로 가져오기', 'Copy to my LoveTrees', false);
             }
             return;
         }
@@ -205,16 +151,15 @@
 
         setButtonState(button, 'search.previewCopyingToMyTrees', '가져오는 중이에요', 'Copying...', true);
         try {
-            const result = await copyPublicTree(treeId);
-            const newTreeId = result?.tree?.id;
-            if (newTreeId) {
-                button.dataset.copiedTreeId = newTreeId;
-                setButtonState(button, 'search.previewOpenCopiedTree', '복사된 트리 열기', 'Open copied tree', false);
-            } else {
-                setButtonState(button, 'search.previewCopyToMyTreesDone', '내 러브트리로 복사됐어요', 'Copied to my LoveTrees', true);
-            }
+            const result = await forkPublicTree(treeId);
+            button.dataset.copiedTreeId = result.treeId;
+            setButtonState(button, 'search.previewOpenCopiedTree', '복사된 트리 열기', 'Open copied tree', false);
         } catch (error) {
-            console.warn('[search-copy-ui] public tree copy failed:', error.message);
+            console.warn('[search-copy-ui] public tree fork failed:', error.message);
+            if (error.status === 401 || error.status === 403) {
+                window.location.href = buildLoginHref(treeId);
+                return;
+            }
             setButtonState(button, 'search.previewCopyToMyTreesFailed', '가져오지 못했어요', 'Copy failed', false);
         }
     }
