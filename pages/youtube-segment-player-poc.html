@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Segment Player PoC</title>
+    <link rel="stylesheet" href="/css/product/youtube-segment-player-poc.css">
+</head>
+<body>
+    <div class="poc-container">
+        <header class="poc-header">
+            <h1>YouTube Segment Player PoC</h1>
+            <p class="poc-subtitle">Cue-based segment playback validation for Moment Timeline (#366)</p>
+        </header>
+
+        <main class="poc-main">
+            <!-- YouTube IFrame Player API will insert player here -->
+            <div id="player-container">
+                <div id="player"></div>
+            </div>
+
+            <!-- Segment list display -->
+            <section class="segment-list">
+                <h2>Segment Queue</h2>
+                <ul id="segment-queue"></ul>
+            </section>
+
+            <!-- Playback controls -->
+            <section class="controls">
+                <button id="btn-prev" disabled>Previous</button>
+                <button id="btn-play">Play</button>
+                <button id="btn-pause" disabled>Pause</button>
+                <button id="btn-next" disabled>Next</button>
+                <button id="btn-loop" data-loop="false">Loop: OFF</button>
+            </section>
+
+            <!-- Current segment info -->
+            <section class="current-segment">
+                <h3>Current Segment</h3>
+                <div id="segment-info">No segment loaded</div>
+            </section>
+
+            <!-- Console log output for PoC verification -->
+            <section class="console-output">
+                <h3>PoC Console Log</h3>
+                <pre id="log-output"></pre>
+            </section>
+        </main>
+
+        <footer class="poc-footer">
+            <p>This is a contained PoC. Not connected to production navigation or backend.</p>
+        </footer>
+    </div>
+
+    <!-- YouTube IFrame Player API -->
+    <script src="https://www.youtube.com/iframe_api"></script>
+
+    <!-- PoC runtime -->
+    <script src="/js/product/youtube-segment-player-poc.js"></script>
+</body>
+</html>
