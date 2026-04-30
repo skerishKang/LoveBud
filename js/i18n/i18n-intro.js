@@ -46,6 +46,14 @@
       ko: '✨ 공개 감상',
       en: '✨ Public view'
     },
+    'intro.sceneRevisit': {
+      ko: '🔄 다시 감상',
+      en: '🔄 Rewatch'
+    },
+    'intro.sceneLasting': {
+      ko: '⭐ 오래 남는 장면',
+      en: '⭐ Lasting scene'
+    },
     'intro.sceneCaption': {
       ko: '흩어진 순간이 이어지면, 사랑에 빠진 흐름이 보입니다.',
       en: 'When scattered moments connect, the path of falling in love appears.'
