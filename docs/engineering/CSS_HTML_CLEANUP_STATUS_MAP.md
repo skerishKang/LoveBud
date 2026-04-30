@@ -2,7 +2,7 @@
 
 **Status:** tracking map only  
 **Related:** Issue #137  
-**Base main SHA:** `ac08f6468e988357518b6cd3f1a3164662522428`
+**Base main SHA:** `ea52c5def3842a69d2e811d62ad56f9acf83b664`  
 
 ---
 
@@ -16,22 +16,25 @@ This PR is docs-only.
 
 ---
 
-## 2. Completed or in-progress references
+## 2. Completed, in-progress, and stale references
 
 | Reference | Status | Role in #137 cleanup |
 |---|---|---|
 | PR #302 — global CSS hardening strategy v1 | Merged | Added the initial `GLOBAL_CSS_HARDENING_STRATEGY.md` strategy document. |
-| PR #347 — global CSS hardening strategy v2 | Open / draft at time of mapping | Expands the global CSS strategy with token, ready-class, icon hiding, transition, and PR split decisions. |
-| PR #328 — editor overrides formatting-only cleanup | Completed/in progress reference | Formatting-only cleanup around editor overrides. It is not a role-based relocation implementation. |
+| PR #347 — global CSS hardening strategy v2 | Merged | Expanded the global CSS strategy with token, ready-class, icon hiding, transition, and PR split decisions. |
+| PR #328 — editor overrides formatting-only cleanup | Merged | Completed the formatting-only cleanup around editor overrides. It is not a role-based relocation implementation. |
+| PR #357 — editor overrides relocation audit | Merged | Documented editor override ownership and relocation guardrails before any selector movement. |
 | PR #285 — my-trees inline display cleanup history | Historical reference | Prior My Trees display-state cleanup context; use only as history when deciding remaining My Trees cleanup. |
-| PR #350 — my-trees class display state cleanup | In progress | Expected to complete the My Trees inline style/display state cleanup bucket before #137 closure. |
+| PR #350 — my-trees class display state cleanup | Open / draft | Expected to complete the My Trees inline style/display state cleanup bucket before #137 closure, but it overlaps active My Trees work and should not run in parallel with #379. |
 | PR #353 — browser verification entrypoint docs | Merged / ops docs | Supports verification workflow only. Not a CSS/HTML cleanup implementation. |
-| PR #354 — local auto browser verification runbook | Open / draft at time of mapping | Supports browser verification workflow only. Not a CSS/HTML cleanup implementation. |
+| PR #354 — local auto browser verification runbook | Historical ops reference | Supports browser verification workflow only. Not a CSS/HTML cleanup implementation. |
 
 Notes:
 
 - PR #353 and PR #354 improve verification readiness. They should not be counted as direct CSS/HTML cleanup implementation for #137.
 - PR #302 and PR #347 are strategy/decision documents. They are prerequisites for safe implementation, not implementation completion.
+- PR #328 and PR #357 complete the first editor overrides documentation/formatting steps, but do not authorize broad relocation.
+- The previously listed `pages/editor.html` inline `onmousedown="event.stopPropagation()"` finding is not present in current `main`; treat that item as stale unless rediscovered in a fresh audit.
 
 ---
 
@@ -54,13 +57,13 @@ Rules:
 - No selector/property/value behavior change mixed with docs or audit-only PRs.
 - Desktop and mobile smoke required for any CSS behavior change.
 
-### 3.2 Editor overrides role-based relocation audit/implementation
+### 3.2 Editor overrides role-based relocation implementation
 
 Remaining work:
 
-- Audit which editor override rules are truly editor-owned versus global/shared.
+- Use PR #357's audit before moving any selector.
 - Decide whether any override belongs in a page owner CSS file or should remain in its current owner file.
-- Move rules only after ownership is explicit.
+- Move rules only after ownership is explicit and a visual verification target is assigned.
 
 Rules:
 
@@ -70,11 +73,15 @@ Rules:
 
 ### 3.3 Editor inline event handler cleanup
 
+Current state:
+
+- The previously recorded `pages/editor.html` inline `onmousedown="event.stopPropagation()"` finding is stale on current `main`.
+- No implementation PR should be opened for that exact handler unless a fresh scan rediscovers it.
+
 Remaining work:
 
-- Identify remaining inline event handlers in editor-related HTML or generated markup.
-- Move behavior to JS modules only after current ownership and script order are understood.
-- Preserve editor runtime and fallback behavior.
+- Keep future inline handler cleanup audit-only unless a current handler is found.
+- If a current handler is found later, move behavior to JS modules only after ownership and script order are understood.
 
 Rules:
 
@@ -86,7 +93,7 @@ Rules:
 
 Remaining work:
 
-- Complete PR #350 or equivalent My Trees class/display state cleanup.
+- Complete PR #350 or equivalent My Trees class/display state cleanup after active My Trees PRs settle.
 - Confirm no JS/CSS/page runtime regression.
 - Verify visual state behavior if any display-state behavior changed.
 
@@ -94,6 +101,7 @@ Rules:
 
 - Do not duplicate PR #350 work in a separate branch unless PR #350 is abandoned or explicitly superseded.
 - Keep My Trees cleanup separate from Search/Browse and Editor cleanup.
+- Do not run PR #350 in parallel with PR #379 because they overlap My Trees state behavior.
 
 ---
 
@@ -101,13 +109,12 @@ Rules:
 
 Recommended sequence before considering Issue #137 closure:
 
-1. Finish PR #350 or explicitly supersede it with a scoped My Trees cleanup PR.
-2. Complete editor inline event handler cleanup as a separate scoped PR.
-3. Land global CSS minimal hardening PRs one at a time, following PR #302/#347 strategy constraints.
-4. Perform editor overrides relocation audit.
-5. Implement editor overrides relocation only if the audit identifies safe ownership moves.
-6. Re-evaluate Issue #137.
-7. If remaining work is still broad, split the leftovers into new specific issues rather than closing #137 prematurely.
+1. Finish or supersede PR #350 after active My Trees work settles.
+2. Land global CSS minimal hardening PRs one at a time, following PR #302/#347 strategy constraints.
+3. Implement editor overrides relocation only if PR #357's audit identifies a safe ownership move and browser smoke is assigned.
+4. Re-run an inline HTML handler scan before opening any editor inline event handler implementation PR.
+5. Re-evaluate Issue #137.
+6. If remaining work is still broad, split the leftovers into new specific issues rather than closing #137 prematurely.
 
 ---
 
@@ -157,4 +164,4 @@ Future cleanup PRs must preserve these guardrails:
 
 Issue #137 remains open.
 
-Current recommended next operational step: finish PR #350 or determine whether it should be superseded, then proceed to editor inline event handler cleanup and global CSS hardening implementation in separate, narrow PRs.
+Current recommended next operational step: merge the status-map refresh, keep PR #350 blocked behind active My Trees work, then proceed to global CSS hardening implementation in narrow PRs or split any remaining broad work into dedicated issues.
