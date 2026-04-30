@@ -59,7 +59,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         currentPreviewRequestId: 0,
         currentQuery: '',
         currentSort: 'latest',
-        currentLimit: 10,
+        currentLimit: 6,
         currentCategory: '전체',
         isRestoringUrlState: false,
         urlStateReady: false,

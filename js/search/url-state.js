@@ -1,7 +1,7 @@
 (function () {
     const DEFAULT_CATEGORY = '전체';
     const DEFAULT_SORT = 'latest';
-    const DEFAULT_LIMIT = 10;
+    const DEFAULT_LIMIT = 6;
     const MAX_LIMIT = 60;
 
     function createSearchUrlState({ refs, state, ui }) {
