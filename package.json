@@ -24,6 +24,7 @@
     "test:e2e:login-timeout": "node scripts/e2e-login-timeout-smoke.js",
     "test:e2e:ui-regression": "node scripts/e2e-ui-regression-smoke.js",
     "test:e2e:ci": "npm run test:e2e:search-detail && npm run test:e2e:login-timeout && npm run test:e2e:ui-regression",
+    "smoke:cloudflare": "node scripts/cloudflare-supplied-url-smoke.js",
     "ci": "npm run lint && npm run build && npm run test && npm run verify"
   },
   "dependencies": {
