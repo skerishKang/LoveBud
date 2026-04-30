@@ -155,11 +155,15 @@
     });
   }
 
-  window.LoveBudMyTreesPage = {
+  var api = {
     STATE: STATE,
     showToast: showToast,
     setState: setState,
     setupHeaderCreateButton: setupHeaderCreateButton,
     setupRetryButton: setupRetryButton
   };
+
+  // Backward compatibility: export both LoveBudMyTreesPage and LoveTreeMyTreesPage
+  window.LoveBudMyTreesPage = api;
+  window.LoveTreeMyTreesPage = api;
 })();
