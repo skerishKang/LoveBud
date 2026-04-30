@@ -304,6 +304,59 @@ LoveBud는 여러 에이전트가 동시에 검토하고 작업할 수 있도록
 
 #### Secrets / credentials 취급 규칙
 
+Secret Handling Clarification
+
+Agents must never print, paste, summarize, screenshot, log, commit, or expose secret values.
+
+However, agents may use secrets locally when required for authorized project operations, provided that the value is not displayed, copied, summarized, committed, or persisted outside the approved local secret store.
+
+**Allowed:**
+- Referring to secret names, required locations, and expected presence.
+- Checking whether a required secret file exists.
+- Checking whether required secret keys are present, without printing values.
+- Loading a local secret file into an environment for an authorized command or test.
+- Using secrets through approved tools such as gh, wrangler, firebase, npm scripts, or local test runners.
+- Reporting only redacted status:
+  - `GH_TOKEN: PRESENT`
+  - `CLOUDFLARE_API_TOKEN: PRESENT`
+  - `.secrets/lovebud-runtime.env: EXISTS`
+  - `.secrets/lovebud-runtime.env: GITIGNORED`
+  - `required secret keys present: YES`
+
+**Forbidden:**
+- Printing raw secret values.
+- Printing partial secret values.
+- Printing credential prefixes, suffixes, or last characters.
+- Copying secrets into issue/PR comments, docs, chat, screenshots, logs, or reports.
+- Summarizing private keys, service account JSON, tokens, cookies, session values, or Authorization headers.
+- Committing secret files or generated files containing secret values.
+- Running commands that echo secrets to stdout/stderr.
+- Running commands that dump all environment variables.
+- Including secret values directly in command lines that may be stored in shell history or process lists.
+
+**Clarification:**
+- Secret files may be read by machine processes only for authorized local execution or key-presence validation.
+- Secret values must not be displayed to the agent, user, logs, PRs, issues, screenshots, or reports.
+- Reports may contain only `EXISTS` / `MISSING` / `PRESENT` / `GITIGNORED` / `SUCCESS` / `FAIL`.
+- If a secret value is accidentally displayed or logged, stop work and report `SECURITY_INCIDENT_SECRET_EXPOSURE` without repeating the secret.
+
+**PowerShell guidance to include or summarize:**
+**Allowed:**
+- `Test-Path .secrets/lovebud-runtime.env`
+- `git check-ignore .secrets/lovebud-runtime.env`
+- Parsing required key names and reporting only `PRESENT`/`MISSING`
+- Loading values into process environment without printing them
+
+**Forbidden:**
+- `cat .secrets/lovebud-runtime.env`
+- `type .secrets/lovebud-runtime.env`
+- `Get-Content .secrets/lovebud-runtime.env` when output is displayed
+- `echo $env:GH_TOKEN`
+- `printenv`
+- `env`
+- `set`
+- commands that dump full environment variables
+
 LoveBud 작업에는 배포, API 접근, 테스트 계정, 외부 서비스 연동을 위한 로컬 전용 secrets가 존재할 수 있습니다.
 
 로컬 전용 경로는 아래 repo-relative path로만 언급합니다.
@@ -314,37 +367,9 @@ LoveBud 작업에는 배포, API 접근, 테스트 계정, 외부 서비스 연�
 
 이 경로들은 로컬 전용이며, 저장소에 커밋하거나 PR, issue, 문서, 로그, 스크린샷, 보고서에 값을 노출하지 않습니다.
 
-에이전트는 필요한 secret의 **이름이나 위치 정책**은 언급할 수 있지만, 아래 값은 절대 출력하거나 요약하거나 복사하지 않습니다.
-
-- raw token values
-- passwords
-- private keys
-- Firebase Admin SDK JSON contents
-- service account JSON contents
-- Authorization headers
-- cookies
-- session tokens
-- provider access tokens
-- 마지막 8자리 등 token 식별 정보
-
 GitHub CLI, browser login, connector-backed GitHub access, or token-backed local access를 사용하는 경우 `docs/ops/GITHUB_AUTH_TOKEN_USAGE.md`를 함께 따릅니다.
 
 작업에 secret이 필요하면 에이전트는 값을 요구하거나 출력하지 말고, 필요한 secret name만 말합니다. 실제 값 주입은 사용자가 로컬 환경, provider dashboard, GitHub Actions Secrets, Cloudflare/Vercel/Netlify dashboard 등 적절한 secret store를 통해 처리합니다.
-
-**금지 예시:**
-
-- `.secrets/` 내부 파일 내용을 읽어서 보고서에 붙여넣기
-- `.env` 값을 issue/PR/comment에 복사하기
-- Firebase Admin SDK JSON 내용을 요약하기
-- token의 일부 또는 마지막 8자리를 문서화하기
-- 테스트 계정 비밀번호를 AGENTS.md나 docs에 기록하기
-
-**허용 예시:**
-
-- "`.secrets/`는 로컬 전용이며 gitignored 상태여야 한다"고 안내
-- "`VERCEL_TOKEN`이 필요하다"고 secret name만 안내
-- "Firebase Admin SDK key file은 `.secrets/` 아래 로컬에만 둔다"고 위치 정책만 안내
-- "secret 값은 provider dashboard에서 rotate한다"고 절차만 안내
 
 `.secrets/` 또는 `.env*` 파일이 git 추적 대상에 올라온 정황이 있으면 즉시 작업을 중단하고 보고합니다.
 

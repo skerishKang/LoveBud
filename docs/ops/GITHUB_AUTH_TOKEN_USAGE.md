@@ -37,36 +37,58 @@ Do not print credential values or copy credential-store contents into reports.
 
 ## 3. Secret handling rules
 
-Never output, paste, summarize, screenshot, or log:
+Secret Handling Clarification
 
-- raw GitHub credential values;
-- partial credential values;
-- credential prefixes or suffixes;
-- Authorization headers;
-- cookies;
-- browser session values;
-- credential store contents;
-- one-time login codes;
-- password manager entries.
+Agents must never print, paste, summarize, screenshot, log, commit, or expose secret values.
 
-Allowed reporting examples:
+However, agents may use secrets locally when required for authorized project operations, provided that the value is not displayed, copied, summarized, committed, or persisted outside the approved local secret store.
 
-```text
-GitHub CLI auth: authenticated as <account>
-GitHub CLI auth: not authenticated
-Required secret name: GH_TOKEN
-Required secret name: GITHUB_TOKEN
-```
+**Allowed:**
+- Referring to secret names, required locations, and expected presence.
+- Checking whether a required secret file exists.
+- Checking whether required secret keys are present, without printing values.
+- Loading a local secret file into an environment for an authorized command or test.
+- Using secrets through approved tools such as gh, wrangler, firebase, npm scripts, or local test runners.
+- Reporting only redacted status:
+  - `GH_TOKEN: PRESENT`
+  - `CLOUDFLARE_API_TOKEN: PRESENT`
+  - `.secrets/lovebud-runtime.env: EXISTS`
+  - `.secrets/lovebud-runtime.env: GITIGNORED`
+  - `required secret keys present: YES`
 
-Forbidden reporting examples:
+**Forbidden:**
+- Printing raw secret values.
+- Printing partial secret values.
+- Printing credential prefixes, suffixes, or last characters.
+- Copying secrets into issue/PR comments, docs, chat, screenshots, logs, or reports.
+- Summarizing private keys, service account JSON, tokens, cookies, session values, or Authorization headers.
+- Committing secret files or generated files containing secret values.
+- Running commands that echo secrets to stdout/stderr.
+- Running commands that dump all environment variables.
+- Including secret values directly in command lines that may be stored in shell history or process lists.
 
-```text
-<environment variable name>=<credential value>
-Authorization header with credential value
-Cookie header with session value
-```
+**Clarification:**
+- Secret files may be read by machine processes only for authorized local execution or key-presence validation.
+- Secret values must not be displayed to the agent, user, logs, PRs, issues, screenshots, or reports.
+- Reports may contain only `EXISTS` / `MISSING` / `PRESENT` / `GITIGNORED` / `SUCCESS` / `FAIL`.
+- If a secret value is accidentally displayed or logged, stop work and report `SECURITY_INCIDENT_SECRET_EXPOSURE` without repeating the secret.
 
-If a credential or session value appears in terminal output, screenshots, logs, or browser developer tools, redact it before reporting. If redaction is not possible, do not share the artifact.
+**PowerShell guidance to include or summarize:**
+**Allowed:**
+- `Test-Path .secrets/lovebud-runtime.env`
+- `git check-ignore .secrets/lovebud-runtime.env`
+- Parsing required key names and reporting only `PRESENT`/`MISSING`
+- Loading values into process environment without printing them
+
+**Forbidden:**
+- `cat .secrets/lovebud-runtime.env`
+- `type .secrets/lovebud-runtime.env`
+- `Get-Content .secrets/lovebud-runtime.env` when output is displayed
+- `echo $env:GH_TOKEN`
+- `printenv`
+- `env`
+- `set`
+- commands that dump full environment variables
 
 ---
 
