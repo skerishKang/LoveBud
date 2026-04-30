@@ -25,6 +25,7 @@
                 return Array.isArray(trees) && trees.length > 0 ? trees[0] : null;
             },
             createTree: async (payload) => BaseApiFetch.apiFetch('/trees', { method: 'POST', body: JSON.stringify(payload) }),
+            forkPublicTree: async (treeId) => BaseApiFetch.apiFetch(`/trees/${encodeURIComponent(treeId)}/fork`, { method: 'POST', body: JSON.stringify({}) }),
             updateTree: async (treeId, payload) => BaseApiFetch.apiFetch('/trees/' + treeId, { method: 'PUT', body: JSON.stringify(payload) }),
             deleteTree: async (treeId) => BaseApiFetch.apiFetch('/trees/' + treeId, { method: 'DELETE' })
         };
