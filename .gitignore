@@ -122,13 +122,20 @@ firebase-debug*.log
 .git-backup-*/
 
 # Local verification artifacts and work folders
+# These paths are local-only. Never commit or include in PR scope.
 local-backup/
 work/
 ops/inbox/
 ops/reports/
 ops/screenshots/
+# ops/slots/ is local-only runtime state; slot policy doc lives in docs/ops/
 ops/slots/
 
-# Root-level screenshots (desktop/mobile verification)
+# Root-level screenshots and image dumps (desktop/mobile verification artifacts)
+# SVG files are legitimate repo assets and must remain trackable.
 *.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
 !*.svg
