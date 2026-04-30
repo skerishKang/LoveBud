@@ -66,7 +66,10 @@ LoveBud / LoveTree는 일반 북마크 정리 앱이나 관리자 도구가 아�
 - 공식 사용자-facing 주소는 **`https://lovebud.pages.dev/`** 입니다.
 - active runtime은 **Cloudflare Pages + Modal** 입니다.
 - active API path는 **browser → same-origin `/api/*` → Cloudflare Pages Functions → Modal → Neon** 입니다.
-- Firebase는 Auth 및 client bootstrap 용도입니다.
+- Firebase Auth는 client-side에서 ID token을 발급합니다. Cloudflare Pages Functions는 same-origin `/api/*` 요청의 Authorization header를 Modal backend로 전달하며, token verification과 private route authorization은 Modal backend에서 수행합니다.
+- Firebase Web `apiKey`는 client bootstrap용이며, 단독 노출만으로는 security blocker가 아닙니다. 실제 보안 경계는 authorized domains, backend token verification, owner authorization, Security Rules/App Check 적용 여부 등으로 판단합니다.
+- 현재 기준으로 이 프로젝트는 bundler를 사용하지 않으며, `pages/*.html` 독립 진입점과 script-order / window namespace 기반 로딩 모델을 사용합니다.
+- Vercel/Netlify 관련 설정 파일은 legacy artifact이며, 현재 active runtime은 Cloudflare Pages + Modal입니다.
 - Vercel은 현재 active deployment 또는 active fallback이 아닙니다. `vercel.json`은 legacy artifact / removal audit 대상으로만 봅니다.
 - Netlify는 현재 active deployment 또는 active fallback이 아닙니다. `netlify.toml`과 `netlify/functions/**`는 legacy artifact / removal audit 대상으로만 봅니다.
 - `_redirects`는 Cloudflare Pages에서도 사용할 수 있으므로 Netlify 전용 파일로 단정하지 않습니다.
@@ -79,6 +82,8 @@ LoveBud / LoveTree는 일반 북마크 정리 앱이나 관리자 도구가 아�
 - `docs/ops/OPERATIONS.md`
 - `docs/ops/NETLIFY_LEGACY_ARTIFACT_AUDIT.md`
 - `docs/migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md`
+- `docs/engineering/API_CONTRACT.md`
+- `docs/engineering/REVIEW_GUARDRAILS.md`
 - `docs/engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md`
 
 ---
