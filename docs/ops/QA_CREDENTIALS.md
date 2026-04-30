@@ -12,6 +12,56 @@
 
 ---
 
+## Security boundary
+
+Models, connector sessions, PR comments, Issue comments, screenshots, docs, and central systems must not access or expose actual QA credential values.
+
+Allowed information is limited to:
+
+- approved local path names;
+- bundle path names;
+- whether a file exists;
+- whether a local credential path is gitignored;
+- whether required keys are present;
+- whether verification used a Cloudflare Preview or fixed test slot.
+
+Allowed status words include only:
+
+- `EXISTS`
+- `MISSING`
+- `PRESENT`
+- `GITIGNORED`
+- `PASS`
+- `BLOCKED`
+- `REDACTED`
+
+Forbidden:
+
+- printing plaintext QA credentials;
+- printing bundle passwords;
+- printing partial values, prefixes, suffixes, or last characters;
+- committing plaintext `.local/test-accounts.json`;
+- dumping environment variables;
+- pasting credential file contents into chat, PRs, Issues, logs, screenshots, or reports.
+
+Approved local checks:
+
+```powershell
+Test-Path .local/test-accounts.json
+Test-Path .local/test-accounts.example.json
+git check-ignore .local/test-accounts.json
+```
+
+Do not run commands that print credential file contents, such as:
+
+```powershell
+Get-Content .local/test-accounts.json
+type .local/test-accounts.json
+cat .local/test-accounts.json
+```
+
+---
+
 ## Overview
 
 This document describes two distinct workflows for managing QA test credentials:
@@ -39,6 +89,7 @@ Do not conflate these two workflows. The temporary handoff branch (`ops/temp-qa-
 - **Local Runtime**: Uses decrypted `.local/test-accounts.json` (gitignored)
 - **No Plaintext**: Credentials never committed in plain text
 - **Bundle Password**: Never documented in repository
+- **Reports**: Use status only; never values
 
 ---
 
@@ -90,9 +141,9 @@ Step 2: Does .local/test-accounts.json already exist on your machine?
 
 1. Pull latest branch containing the bundle
 2. Locate bundle: `docs/ops/qa-credential-bundle/test-accounts-encrypted.zip`
-3. Extract using the bundle password (obtained via secure channel from bundle custodian)
+3. Extract using the bundle password obtained via secure channel from bundle custodian
 4. Copy extracted `test-accounts.json` to `.local/test-accounts.json`
-5. Verify format matches `.local/test-accounts.example.json`
+5. Verify format matches `.local/test-accounts.example.json` without printing values
 
 #### Multi-Clone / Worktree Setup
 
@@ -104,6 +155,8 @@ mkdir -p .local
 # Copy restored credentials from your master restore location
 cp /path/to/your/restored/test-accounts.json .local/
 ```
+
+Do not print the restored file contents.
 
 ---
 
@@ -129,7 +182,7 @@ cp /path/to/your/restored/test-accounts.json .local/
 1. Read Issue #351 for the current handoff file location and instructions
 2. Obtain bundle password via secure channel
 3. Extract bundle and copy to `.local/test-accounts.json`
-4. Verify credentials are valid
+4. Verify credentials are valid without printing values
 5. Report: `credential source: temporary handoff (Issue #351)`
 
 ---
@@ -138,9 +191,9 @@ cp /path/to/your/restored/test-accounts.json .local/
 
 ### Bundle Creation (Persistent)
 
-1. Prepare credentials file with all 10 slots
+1. Prepare credentials file with all 10 slots locally
 2. Create password-protected ZIP bundle
-3. Commit bundle to `docs/ops/qa-credential-bundle/test-accounts-encrypted.zip`
+3. Commit encrypted bundle only to `docs/ops/qa-credential-bundle/test-accounts-encrypted.zip`
 4. Update `docs/ops/qa-credential-bundle/README.md` with commit SHA and date
 5. Distribute bundle password through secure channel
 6. Once persistent bundle is committed, mark Issue #351 temporary handoff as superseded
@@ -185,8 +238,9 @@ Final verification for PR #350 must be performed against a **fixed test slot** o
 ### Local Setup
 
 - [ ] `.local/test-accounts.json` exists
-- [ ] File format matches example structure
-- [ ] All QA slots are populated
+- [ ] `.local/test-accounts.json` is gitignored
+- [ ] File format matches example structure without printing values
+- [ ] All QA slots are populated, reported only as `PRESENT`/`MISSING`
 - [ ] Credentials are valid for testing
 
 ### Multi-Repository Usage
@@ -205,6 +259,7 @@ Final verification for PR #350 must be performed against a **fixed test slot** o
 - Distribute bundle passwords through secure channels
 - Rotate credentials regularly
 - Verify bundle integrity after extraction
+- Report only path/status information
 
 ### Don'ts
 
@@ -213,6 +268,8 @@ Final verification for PR #350 must be performed against a **fixed test slot** o
 - Never share bundle passwords in plaintext channels
 - Never store bundle passwords in scripts
 - Never treat `ops/temp-qa-credential-handoff` branch as a permanent source
+- Never print credential file contents
+- Never dump all environment variables
 
 ---
 
@@ -224,7 +281,7 @@ Final verification for PR #350 must be performed against a **fixed test slot** o
    - Check if persistent bundle exists in `docs/ops/qa-credential-bundle/`
    - If not: use temporary handoff (Issue #351)
    - If yes: extract bundle and restore
-   - Verify bundle password
+   - Verify bundle password through secure channel
    - Check file permissions
 
 2. **Procedure appears to work but bundle was not used**
@@ -233,12 +290,12 @@ Final verification for PR #350 must be performed against a **fixed test slot** o
 
 3. **Invalid credential format**
    - Compare with `.local/test-accounts.example.json`
-   - Verify JSON structure
-   - Check for missing required fields
+   - Verify JSON structure without printing values
+   - Report only missing required keys as `MISSING`
 
 4. **Bundle extraction fails**
    - Verify bundle file integrity
-   - Check bundle password
+   - Check bundle password through secure channel
    - Re-download bundle from repository if corrupted
 
 ### Recovery Procedures
@@ -246,9 +303,9 @@ Final verification for PR #350 must be performed against a **fixed test slot** o
 If credentials are lost or corrupted:
 
 1. Check if persistent bundle exists in `docs/ops/qa-credential-bundle/`
-2. If yes: extract from persistent bundle (contact custodian for password)
+2. If yes: extract from persistent bundle after contacting custodian for password
 3. If no: use temporary handoff via Issue #351
-4. Verify all QA slots work correctly
+4. Verify all QA slots work correctly without printing values
 
 ---
 
@@ -261,6 +318,8 @@ procedure validation result: PROCEDURE WORKS | PARTIALLY WORKS | BLOCKED
 credential source:           persistent bundle | temporary handoff (Issue #351) | pre-existing local file
 secret values exposed:       NO
 bundle committed to repo:    YES | NO
+credential file:             EXISTS | MISSING
+credential file gitignored:  YES | NO
 verification environment:    Cloudflare PR Preview | fixed test slot | [other]
 ```
 
@@ -277,6 +336,8 @@ verification environment:    fixed test slot
 
 ## Related Documents
 
+- [AGENTS.md](AGENTS.md)
+- [AGENT_SECURITY.md](AGENT_SECURITY.md)
 - [qa-credential-bundle/README.md](qa-credential-bundle/README.md) — persistent bundle commit status
 - [LOCAL_BROWSER_VERIFICATION_STARTUP.md](LOCAL_BROWSER_VERIFICATION_STARTUP.md)
 - [GITHUB_AUTH_TOKEN_USAGE.md](GITHUB_AUTH_TOKEN_USAGE.md)

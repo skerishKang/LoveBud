@@ -33,6 +33,14 @@ gh auth status
 
 Do not print credential values or copy credential-store contents into reports.
 
+GitHub token creation may be directed to:
+
+```text
+https://github.com/settings/tokens
+```
+
+The generated token value must remain local to the operator and must not be pasted into chat, docs, PRs, issues, screenshots, logs, or reports.
+
 ---
 
 ## 3. Secret handling rules
@@ -41,13 +49,21 @@ Secret Handling Clarification
 
 Agents must never print, paste, summarize, screenshot, log, commit, or expose secret values.
 
-However, agents may use secrets locally when required for authorized project operations, provided that the value is not displayed, copied, summarized, committed, or persisted outside the approved local secret store.
+Model-side or central-system work must not access actual token or secret values. Agents may guide operators by naming the required credential, approved path, and safe presence check only.
+
+However, local machine processes may use secrets when required for authorized project operations, provided that the value is not displayed, copied, summarized, committed, or persisted outside the approved local secret store.
 
 **Allowed:**
 - Referring to secret names, required locations, and expected presence.
+- Referencing approved local paths only as paths:
+  - `.secrets/`
+  - `.env`
+  - `.env.*`
+  - `~/.config/gh/hosts.yml`
 - Checking whether a required secret file exists.
 - Checking whether required secret keys are present, without printing values.
-- Loading a local secret file into an environment for an authorized command or test.
+- Checking whether local secret files are ignored with `git check-ignore`.
+- Loading a local secret file into an environment for an authorized command or test, without displaying the value.
 - Using secrets through approved tools such as gh, wrangler, firebase, npm scripts, or local test runners.
 - Reporting only redacted status:
   - `GH_TOKEN: PRESENT`
@@ -66,29 +82,36 @@ However, agents may use secrets locally when required for authorized project ope
 - Running commands that echo secrets to stdout/stderr.
 - Running commands that dump all environment variables.
 - Including secret values directly in command lines that may be stored in shell history or process lists.
+- Asking a model, connector, or central system to read and display a credential file.
 
 **Clarification:**
-- Secret files may be read by machine processes only for authorized local execution or key-presence validation.
+- Secret files may be read by local machine processes only for authorized local execution or key-presence validation.
 - Secret values must not be displayed to the agent, user, logs, PRs, issues, screenshots, or reports.
-- Reports may contain only `EXISTS` / `MISSING` / `PRESENT` / `GITIGNORED` / `SUCCESS` / `FAIL`.
+- Reports may contain only `EXISTS` / `MISSING` / `PRESENT` / `GITIGNORED` / `SUCCESS` / `FAIL` / `REDACTED`.
 - If a secret value is accidentally displayed or logged, stop work and report `SECURITY_INCIDENT_SECRET_EXPOSURE` without repeating the secret.
 
-**PowerShell guidance to include or summarize:**
-**Allowed:**
-- `Test-Path .secrets/lovebud-runtime.env`
-- `git check-ignore .secrets/lovebud-runtime.env`
-- Parsing required key names and reporting only `PRESENT`/`MISSING`
-- Loading values into process environment without printing them
+**PowerShell guidance:**
 
-**Forbidden:**
-- `cat .secrets/lovebud-runtime.env`
-- `type .secrets/lovebud-runtime.env`
-- `Get-Content .secrets/lovebud-runtime.env` when output is displayed
-- `echo $env:GH_TOKEN`
-- `printenv`
-- `env`
-- `set`
-- commands that dump full environment variables
+Allowed:
+
+```powershell
+Test-Path .secrets/lovebud-runtime.env
+Test-Path .env
+Test-Path .env.local
+Test-Path ~/.config/gh/hosts.yml
+git check-ignore .secrets/lovebud-runtime.env
+```
+
+Forbidden:
+
+```powershell
+cat .secrets/lovebud-runtime.env
+type .secrets/lovebud-runtime.env
+Get-Content .secrets/lovebud-runtime.env
+echo $env:GH_TOKEN
+echo $env:CLOUDFLARE_API_TOKEN
+Get-ChildItem Env:
+```
 
 ---
 
@@ -101,6 +124,7 @@ Local-only paths that may contain secrets are:
 - `.secrets/`
 - `.env`
 - `.env.*`
+- `~/.config/gh/hosts.yml`
 
 These paths must not be committed, copied into docs, pasted into PR comments, or included in screenshots.
 
@@ -110,7 +134,29 @@ Do not create new credential files inside the repository unless the CTO explicit
 
 ---
 
-## 5. GitHub CLI usage rules
+## 5. Local automation pattern
+
+Use path indirection rather than value disclosure.
+
+1. Operator stores the credential in an approved local path.
+2. Automation references only the path.
+3. The local process reads the value into process memory.
+4. The CLI or script receives the value without printing it.
+5. Reports include only status words such as `PRESENT`, `MISSING`, `EXISTS`, `GITIGNORED`, `PASS`, or `BLOCKED`.
+
+Safe report example:
+
+```text
+credential path: .secrets/lovebud-runtime.env
+credential file: EXISTS
+credential file gitignored: YES
+required key: PRESENT
+secret value exposed: NO
+```
+
+---
+
+## 6. GitHub CLI usage rules
 
 Before write operations, verify repository and account context:
 
@@ -135,7 +181,7 @@ Merge is forbidden unless the CTO explicitly approves that merge in the current 
 
 ---
 
-## 6. Browser login rules
+## 7. Browser login rules
 
 Browser login may be used to inspect GitHub PRs, issues, checks, deployments, and deployment bot comments.
 
@@ -151,7 +197,7 @@ When a browser session is needed only for inspection, keep the action read-only.
 
 ---
 
-## 7. Connector vs local GitHub access
+## 8. Connector vs local GitHub access
 
 Connector-based access and local GitHub access are separate trust surfaces.
 
@@ -174,7 +220,7 @@ Do not assume connector state and local branch state are equivalent. Verify both
 
 ---
 
-## 8. Write permission guardrails
+## 9. Write permission guardrails
 
 Authentication does not imply authorization.
 
@@ -194,7 +240,29 @@ Use task-specific permission, not account capability, as the source of authority
 
 ---
 
-## 9. Reporting template
+## 10. PR and Issue safety guidance
+
+PR and Issue comments should include only:
+
+- scope;
+- related Issue or PR number;
+- whether merge is needed;
+- whether CTO approval is required;
+- verification status without secret values.
+
+Do not mix static verification PASS with functional PASS.
+
+Examples:
+
+- `git diff --check: PASS` means whitespace/static diff is clean only.
+- `Docs-only scope: PASS` means file scope was checked only.
+- `Cloudflare Preview smoke: PASS` means browser/runtime verification passed for the stated URL only.
+
+PR merge requires explicit CTO approval in the current task.
+
+---
+
+## 11. Reporting template
 
 Use this compact report when GitHub authentication is relevant:
 
@@ -214,8 +282,10 @@ GitHub Auth Context Report
 
 ---
 
-## 10. Related documents
+## 12. Related documents
 
+- [AGENTS.md](AGENTS.md)
+- [AGENT_SECURITY.md](AGENT_SECURITY.md)
 - [LOCAL_BROWSER_VERIFICATION_STARTUP.md](LOCAL_BROWSER_VERIFICATION_STARTUP.md)
 - [BROWSER_VERIFICATION_URL_POLICY.md](BROWSER_VERIFICATION_URL_POLICY.md)
 - [TEST_PREVIEW_SLOTS.md](TEST_PREVIEW_SLOTS.md)
