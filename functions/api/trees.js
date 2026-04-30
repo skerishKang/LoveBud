@@ -12,6 +12,17 @@ function withModalHeader(response) {
   });
 }
 
+function buildModalUnavailableResponse() {
+  return new Response(JSON.stringify({ error: 'Modal service temporarily unavailable' }), {
+    status: 503,
+    headers: {
+      'content-type': 'application/json; charset=utf-8',
+      'x-lovebud-upstream': 'modal',
+      'x-lovebud-degraded': 'modal-unavailable'
+    }
+  });
+}
+
 export async function onRequestGet(context) {
   const modalBaseUrl = stripTrailingSlash(context.env?.MODAL_BASE_URL);
   if (!modalBaseUrl) {
@@ -26,14 +37,19 @@ export async function onRequestGet(context) {
   const target = new URL('/modal/private/trees', modalBaseUrl);
   target.searchParams.set('limit', String(limit));
 
-  const response = await fetch(target.toString(), {
-    headers: {
-      accept: 'application/json',
-      ...(context.request.headers.get('authorization')
-        ? { authorization: context.request.headers.get('authorization') }
-        : {})
-    }
-  });
+  let response;
+  try {
+    response = await fetch(target.toString(), {
+      headers: {
+        accept: 'application/json',
+        ...(context.request.headers.get('authorization')
+          ? { authorization: context.request.headers.get('authorization') }
+          : {})
+      }
+    });
+  } catch (error) {
+    return buildModalUnavailableResponse();
+  }
 
   return withModalHeader(response);
 }
@@ -47,17 +63,22 @@ export async function onRequestPost(context) {
     });
   }
 
-  const response = await fetch(new URL('/modal/private/trees', modalBaseUrl).toString(), {
-    method: 'POST',
-    headers: {
-      accept: 'application/json',
-      'content-type': context.request.headers.get('content-type') || 'application/json',
-      ...(context.request.headers.get('authorization')
-        ? { authorization: context.request.headers.get('authorization') }
-        : {})
-    },
-    body: context.request.body
-  });
+  let response;
+  try {
+    response = await fetch(new URL('/modal/private/trees', modalBaseUrl).toString(), {
+      method: 'POST',
+      headers: {
+        accept: 'application/json',
+        'content-type': context.request.headers.get('content-type') || 'application/json',
+        ...(context.request.headers.get('authorization')
+          ? { authorization: context.request.headers.get('authorization') }
+          : {})
+      },
+      body: context.request.body
+    });
+  } catch (error) {
+    return buildModalUnavailableResponse();
+  }
 
   return withModalHeader(response);
 }
