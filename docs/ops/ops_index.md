@@ -80,6 +80,7 @@
 | [CACHE_POLICY.md](CACHE_POLICY.md) | 캐시 정책 |
 | [ENV_DEPENDENCY.md](ENV_DEPENDENCY.md) | 환경 변수 의존성 |
 | [FILE_BASELINE.md](FILE_BASELINE.md) | 파일 분류 기준 |
+| [ACTIVE_WORK_BOARD_POLICY.md](ACTIVE_WORK_BOARD_POLICY.md) | 병렬 AI/workstation 작업 충돌 방지, active work board 필드, 상태 정의, 중복 prompt 방지, overlap warning 규칙, handoff/report 형식 |
 | [../engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md](../engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md) | browse filter / publication guard 구분 |
 
 ## Netlify Legacy Artifact 감사
