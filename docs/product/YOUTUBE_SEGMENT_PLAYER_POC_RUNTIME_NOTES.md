@@ -56,6 +56,16 @@ This document captures runtime notes, observations, and limitations encountered 
 | Mobile viewport basic test | ⬜ | ⬜ | ⬜ | ⬜ | |
 | No fatal console errors | ⬜ | ⬜ | ⬜ | ⬜ | |
 
+## Boundary Handling Implementation
+
+The PoC implements endSeconds boundary detection with duplicate trigger prevention:
+
+- **State flag:** `isHandlingBoundary` prevents re-entrant boundary handling during seek/play transitions.
+- **Loop segments:** When `loop=true`, the player seeks to `startSeconds` and resumes playback immediately.
+- **Sequential segments:** When `loop=false` and a next segment exists, `loadSegment(index+1)` is called.
+- **Final segment:** When no next segment exists, playback stops and `isPlaying` is set to `false`.
+- **Verification:** Tested with loop enabled/disabled and multi-segment sequences; no duplicate triggers observed.
+
 ## Known Limitations
 
 1. **No persistence:** Segments are not saved; reload loses state.
@@ -64,6 +74,7 @@ This document captures runtime notes, observations, and limitations encountered 
 4. **No production nav:** Accessible only via direct URL; not linked from anywhere.
 5. **No segment reordering:** Static order only; reorder UI is separate design (#372).
 6. **No share/view page:** Timeline sharing not implemented.
+
 
 ## Follow-up Items
 

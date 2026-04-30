@@ -42,6 +42,7 @@
     let currentSegmentIndex = 0;
     let isPlaying = false;
     let checkInterval = null;
+    let isHandlingBoundary = false;  // prevent duplicate boundary triggers
 
     // === DOM elements ===
     const elLog = document.getElementById('log-output');
@@ -169,29 +170,57 @@
 
     // === Update segment info display ===
     function updateSegmentInfo(seg) {
-        elSegmentInfo.innerHTML = `
-            <strong>${seg.title}</strong><br>
-            Video: ${seg.videoId}<br>
-            Range: ${seg.startSeconds}s – ${seg.endSeconds}s<br>
-            Loop: ${seg.loop ? 'ON' : 'OFF'}
-        `;
+        // Clear using textContent to avoid innerHTML
+        elSegmentInfo.textContent = '';
+
+        const titleEl = document.createElement('strong');
+        titleEl.textContent = seg.title;
+
+        const br1 = document.createElement('br');
+        const videoEl = document.createElement('span');
+        videoEl.textContent = 'Video: ' + seg.videoId;
+
+        const br2 = document.createElement('br');
+        const rangeEl = document.createElement('span');
+        rangeEl.textContent = 'Range: ' + seg.startSeconds + 's – ' + seg.endSeconds + 's';
+
+        const br3 = document.createElement('br');
+        const loopEl = document.createElement('span');
+        loopEl.textContent = 'Loop: ' + (seg.loop ? 'ON' : 'OFF');
+
+        elSegmentInfo.appendChild(titleEl);
+        elSegmentInfo.appendChild(br1);
+        elSegmentInfo.appendChild(videoEl);
+        elSegmentInfo.appendChild(br2);
+        elSegmentInfo.appendChild(rangeEl);
+        elSegmentInfo.appendChild(br3);
+        elSegmentInfo.appendChild(loopEl);
     }
 
     // === Handle segment end ===
     function handleSegmentEnd() {
+        // Prevent duplicate boundary triggers
+        if (isHandlingBoundary) {
+            return;
+        }
+        isHandlingBoundary = true;
+
         const seg = POC_SEGMENTS[currentSegmentIndex];
 
         if (seg.loop) {
             pocLog('Segment ended with loop enabled — restarting from ' + seg.startSeconds + 's');
             player.seekTo(seg.startSeconds, true);
             player.playVideo();
+            isHandlingBoundary = false;
         } else if (currentSegmentIndex < POC_SEGMENTS.length - 1) {
             pocLog('Segment ended — advancing to next');
             loadSegment(currentSegmentIndex + 1);
+            isHandlingBoundary = false;
         } else {
-            pocLog('All segments completed');
+            pocLog('All segments completed — stopping');
             isPlaying = false;
             updateControls();
+            isHandlingBoundary = false;
         }
     }
 
