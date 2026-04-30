@@ -15,3 +15,8 @@
 #state-error { display: none; }
 #state-empty { display: none; }
 #state-loaded { display: none; }
+
+/* Runtime display state classes. Keep selectors ID-scoped so they override initial state IDs. */
+#treesContainer .state-hidden { display: none; }
+#treesContainer .state-visible { display: flex; }
+#treesContainer .state-visible-block { display: block; }
