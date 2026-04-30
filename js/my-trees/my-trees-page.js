@@ -17,6 +17,13 @@
     ERROR: 'error'
   };
 
+  var STATE_DISPLAY_CLASS = {
+    loading: 'state-visible',
+    error: 'state-visible',
+    empty: 'state-visible',
+    loaded: 'state-visible-block'
+  };
+
   function showToast(message, type) {
     if (window.LoveBudUI?.showToast) {
       window.LoveBudUI.showToast(message, type, 3000);
@@ -24,6 +31,23 @@
       console.warn('[my-trees] LoveBudUI not loaded, toast degraded to console');
       console.log('[Toast ' + type + '] ' + message);
     }
+  }
+
+  function hideStateSection(el) {
+    if (!el) return;
+    el.style.display = '';
+    el.classList.remove('state-visible', 'state-visible-block');
+    el.classList.add('state-hidden');
+    el.setAttribute('aria-hidden', 'true');
+  }
+
+  function showStateSection(el, stateName) {
+    var displayClass = STATE_DISPLAY_CLASS[stateName];
+    if (!el || !displayClass) return;
+    el.style.display = '';
+    el.classList.remove('state-hidden', 'state-visible', 'state-visible-block');
+    el.classList.add(displayClass);
+    el.removeAttribute('aria-hidden');
   }
 
   function setState(newState) {
@@ -37,22 +61,24 @@
       loaded: document.getElementById('state-loaded')
     };
 
-    Object.values(sections).forEach(function(el) {
-      if (el) el.style.display = 'none';
-    });
+    Object.values(sections).forEach(hideStateSection);
 
     switch (newState) {
       case STATE.LOADING:
-        if (sections.loading) sections.loading.style.display = 'flex';
+        showStateSection(sections.loading, 'loading');
         break;
       case STATE.ERROR:
-        if (sections.error) sections.error.style.display = 'flex';
+        showStateSection(sections.error, 'error');
         break;
       case STATE.EMPTY:
-        if (sections.empty) sections.empty.style.display = 'flex';
+        showStateSection(sections.empty, 'empty');
         break;
       case STATE.LOADED:
-        if (sections.loaded) sections.loaded.style.display = 'block';
+        showStateSection(sections.loaded, 'loaded');
+        break;
+      default:
+        console.warn('[my-trees] Unknown state requested:', newState);
+        showStateSection(sections.error, 'error');
         break;
     }
   }
