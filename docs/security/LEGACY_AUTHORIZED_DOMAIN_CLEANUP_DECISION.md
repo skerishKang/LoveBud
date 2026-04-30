@@ -85,7 +85,7 @@ Domains confirmed as required for current operations:
 - `localhost:*` / `127.0.0.1:*`
 
 ### NEEDS_LEGACY_DOMAIN_REMOVAL
-Domains confirmed as legacy and safe for removal:
+Domains classified as legacy candidates pending authorized owner confirmation:
 - `*.netlify.app` domains
 - `*.vercel.app` domains
 
