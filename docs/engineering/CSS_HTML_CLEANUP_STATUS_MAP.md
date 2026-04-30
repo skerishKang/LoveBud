@@ -106,19 +106,67 @@ Rules:
 
 ---
 
-## 4. Recommended sequence
+## 4. Issue #137 closure disposition
 
-Recommended sequence before considering Issue #137 closure:
+Issue #137 should not be closed directly from its original backlog state.
 
-1. Land global CSS minimal hardening PRs one at a time, following PR #302/#347 strategy constraints.
-2. Implement editor overrides relocation only if PR #357's audit identifies a safe ownership move and browser smoke is assigned.
-3. Re-run an inline HTML handler scan before opening any editor inline event handler implementation PR.
-4. Re-evaluate Issue #137.
-5. If remaining work is still broad, split the leftovers into new specific issues rather than closing #137 prematurely.
+The current disposition is to separate completed or stale cleanup buckets from remaining implementation follow-ups. After that split is recorded in issue comments or follow-up issue links, #137 can be considered for administrative closure as completed tracking work.
+
+Closure disposition:
+
+- #137 can be closed after follow-up issue links are created and added to the issue comment or body.
+- Closing #137 does not authorize broad CSS rewrites.
+- Future implementation must remain one PR per risk area.
+- Visual or runtime-sensitive follow-ups must use browser and Cloudflare validation when applicable.
+- Selector movement remains prohibited unless a specific implementation PR has ownership, verification scope, and CTO approval.
+
+### 4.1 Completed or no-op buckets
+
+The following buckets are completed or no longer actionable under current `main`:
+
+| Bucket | Disposition | Evidence / note |
+|---|---|---|
+| My Trees inline display cleanup | Completed / accepted | PR #350 completed the inline display cleanup bucket; PR #379 completed the related My Trees state transition recovery; post-merge regression was accepted. |
+| Editor inline `onmousedown` handler | Stale / no-op | The previously recorded `pages/editor.html` inline `onmousedown="event.stopPropagation()"` finding is not present on current `main`. |
+| Editor overrides formatting cleanup | Completed | PR #328 completed formatting-only cleanup around editor overrides. |
+| Editor overrides relocation audit | Completed | PR #357 documented ownership and relocation guardrails before any selector movement. |
+| Global CSS hardening strategy | Completed as strategy | PR #302 and PR #347 completed the strategy and decision baseline. Implementation remains separate. |
+
+### 4.2 Transferred follow-up buckets
+
+The following buckets should move to dedicated follow-up issues before #137 is closed:
+
+| Follow-up bucket | Recommended disposition | Required guardrail |
+|---|---|---|
+| Global CSS hardening implementation | New implementation issue or narrow issue set | One risk area per PR; no broad `global.css` rewrite; browser smoke for behavior-affecting CSS. |
+| Editor overrides role-based relocation implementation | New editor CSS ownership issue | Use PR #357 audit; no selector movement without ownership and editor visual verification. |
+| `transition: none` UX polish | Optional separate UX polish issue if CTO wants it tracked separately | Treat as visual/UX polish, not structural hardening; validate nav/auth/icon-loading behavior. |
+
+### 4.3 Closure rule
+
+#137 can move to closure only when all of the following are true:
+
+1. follow-up issue links exist for remaining implementation buckets;
+2. the #137 tracker comment or body lists those follow-up links;
+3. the tracker states that closure is administrative and does not authorize implementation;
+4. no close keyword is used accidentally from a PR body;
+5. no CSS/JS/HTML/runtime files are changed as part of the disposition.
 
 ---
 
-## 5. Closure criteria for Issue #137
+## 5. Recommended sequence
+
+Recommended sequence before considering Issue #137 closure:
+
+1. Create follow-up issue links for global CSS hardening implementation.
+2. Create follow-up issue links for editor overrides role-based relocation implementation.
+3. Optionally split `transition: none` UX polish if CTO wants separate tracking.
+4. Add those links to the #137 tracker comment or body.
+5. Close #137 only as administrative tracking completion, not as implementation approval.
+
+---
+
+## 6. Closure criteria for Issue #137
 
 Do not close Issue #137 until at least one of these is true:
 
@@ -130,7 +178,7 @@ Close keywords must not be used by this document.
 
 ---
 
-## 6. Non-goals
+## 7. Non-goals
 
 This status map does not:
 
@@ -142,26 +190,31 @@ This status map does not:
 - approve broad CSS splitting;
 - approve token replacement implementation;
 - approve editor fallback migration;
+- approve selector movement;
+- modify `pages/editor.html`;
 - modify PR #7;
 - modify prototype/reference/demo/variant paths.
 
 ---
 
-## 7. Guardrails
+## 8. Guardrails
 
 Future cleanup PRs must preserve these guardrails:
 
+- No CSS/JS/HTML/runtime changes in docs-only disposition PRs.
+- No selector movement without a dedicated implementation PR.
 - No broad `global.css` split.
 - No unrelated JS/CSS/HTML changes bundled into one PR.
 - No runtime/Auth/API behavior changes in CSS cleanup PRs.
+- No `pages/editor.html` changes in disposition docs PRs.
 - No prototype/reference/demo/variant path changes unless explicitly approved.
 - PR #7 remains untouched unless a future CTO-approved task explicitly says otherwise.
 - Verification must distinguish docs-only, visual-only, and behavior-changing PRs.
 
 ---
 
-## 8. Final status
+## 9. Final status
 
 Issue #137 remains open.
 
-Current recommended next operational step: merge the status-map refresh, then proceed to global CSS hardening implementation in narrow PRs or split any remaining broad work into dedicated issues.
+Current recommended next operational step: create follow-up issues for the remaining implementation buckets, add those links to #137, then consider administrative closure of #137 without authorizing broad CSS rewrites.
