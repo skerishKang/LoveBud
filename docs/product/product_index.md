@@ -19,6 +19,7 @@
 | [PUBLICATION_AND_PRIVACY_UX_POLICY.md](PUBLICATION_AND_PRIVACY_UX_POLICY.md) | public-first visibility, Plus private storage, memory visibility inheritance, anonymous public exposure, Browse/Search eligibility 정책 |
 | [MOMENT_TIMELINE_PLAN.md](MOMENT_TIMELINE_PLAN.md) | cue-based YouTube Moment Timeline 제품/기술 계획 |
 | [YOUTUBE_SEGMENT_PLAYER_POC_SCOPE.md](YOUTUBE_SEGMENT_PLAYER_POC_SCOPE.md) | cue-based YouTube segment player PoC scope and Go/No-Go criteria |
+| [YOUTUBE_SEGMENT_PLAYER_POC_TEST_MATRIX.md](YOUTUBE_SEGMENT_PLAYER_POC_TEST_MATRIX.md) | YouTube segment player PoC test matrix and browser verification requirements |
 | [MOMENT_CAPTURE_UI_DESIGN.md](MOMENT_CAPTURE_UI_DESIGN.md) | Moment capture UI flow design |
 | [MOMENT_TIMELINE_REORDER_DESIGN.md](MOMENT_TIMELINE_REORDER_DESIGN.md) | Moment Timeline reorder / sequence editor design |
 | [UI_COPY_DIET_GUIDE.md](UI_COPY_DIET_GUIDE.md) | 전역 UI 카피 다이어트 운영 기준 |
@@ -61,10 +62,11 @@
 1. **PRODUCT_IDENTITY.md** — 제품 철학과 핵심 가치
 2. **BRAND_EXPERIENCE.md** — 팬 감성 UX / 톤앤매너 / 페이지별 표현 원칙
 3. **PUBLICATION_AND_PRIVACY_UX_POLICY.md** — public-first visibility / Plus private storage / anonymous public exposure / Browse/Search eligibility 정책
-4. **MOMENT_TIMELINE_PLAN.md** — cue-based Moment Timeline 계획
-5. **YOUTUBE_SEGMENT_PLAYER_POC_SCOPE.md** — YouTube segment player PoC scope and verification criteria
-6. **MOMENT_CAPTURE_UI_DESIGN.md** — Moment capture UI flow 설계
-7. **MOMENT_TIMELINE_REORDER_DESIGN.md** — Moment Timeline reorder / sequence editor 설계
+4.  **MOMENT_TIMELINE_PLAN.md** — cue-based Moment Timeline 계획
+5.  **YOUTUBE_SEGMENT_PLAYER_POC_SCOPE.md** — YouTube segment player PoC scope and verification criteria
+6.  **YOUTUBE_SEGMENT_PLAYER_POC_TEST_MATRIX.md** — YouTube segment player PoC test matrix and browser verification requirements
+7.  **MOMENT_CAPTURE_UI_DESIGN.md** — Moment capture UI flow 설계
+8.  **MOMENT_TIMELINE_REORDER_DESIGN.md** — Moment Timeline reorder / sequence editor 설계
 8. **UI_COPY_DIET_GUIDE.md** — 전역 UI 카피 다이어트 기준
 9. **MVP_SCOPE.md** — MVP 범위 및 In/Out of Scope
 10. **USER_FLOW.md** — 사용자 여정 및 핵심 플로우
