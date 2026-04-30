@@ -42,6 +42,9 @@
 .intro-section-text {
   position: sticky;
   top: 120px;
+  max-height: 50vh;
+  overflow-y: auto;
+  padding-right: 1rem;
 }
 
 /* 러브트리란 섹션 강화 */
@@ -434,4 +437,25 @@
   line-height: 1.55;
   margin: 0;
   max-width: none;
+}
+
+/* Mobile: Disable sticky behavior for better UX */
+@media (max-width: 768px) {
+  .intro-section-text {
+    position: static;
+    max-height: none;
+    overflow-y: visible;
+    padding-right: 0;
+    margin-bottom: 2rem;
+  }
+
+  .intro-grid-layout {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+
+  .intro-section h2 {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+  }
 }
