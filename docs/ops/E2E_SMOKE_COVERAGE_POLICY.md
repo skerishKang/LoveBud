@@ -140,7 +140,7 @@ Recommended follow-up sequence:
 - Do not use production URL as pre-merge source of truth.
 - Use Cloudflare Preview or fixed test slots for runtime-sensitive browser flows.
 - Do not touch PR #7 or prototype/reference/demo/variant paths.
-- Use non-completing issue references only for #413 unless CTO explicitly authorizes issue closure.
+- Use non-completing issue references only for #413 unless CTO explicitly authorizes final issue completion.
 
 ---
 
