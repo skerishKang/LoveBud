@@ -181,7 +181,7 @@
         '<div class="tree-card-thumb-initial" style="color:' + palette.accent + ';border-color:' + palette.leafSoft + ';">' + initial + '</div>',
         '<div class="tree-card-thumb-art">',
           thumbnail
-            ? '<img class="tree-card-thumb-image" src="' + escapeHtml(thumbnail) + '" alt="' + escapeHtml(title) + '">' 
+            ? '<img class="tree-card-thumb-image" src="' + escapeHtml(thumbnail) + '" alt="' + escapeHtml(title) + '">'
             : (textVisual || buildMiniTreeSVG(tree)),
         '</div>',
         '<div class="tree-card-thumb-topline">',
@@ -195,7 +195,10 @@
   function updateManageSummary(trees, options) {
     var summaryBar = document.getElementById('manageSummaryBar');
     if (!summaryBar || !trees || trees.length === 0) {
-      if (summaryBar) summaryBar.style.display = 'none';
+      if (summaryBar) {
+        summaryBar.classList.remove('manage-summary-visible');
+        summaryBar.classList.add('manage-summary-hidden');
+      }
       return trees || [];
     }
 
@@ -286,7 +289,8 @@
       };
     }
 
-    summaryBar.style.display = 'flex';
+    summaryBar.classList.remove('manage-summary-hidden');
+    summaryBar.classList.add('manage-summary-visible');
 
     if (options && typeof options.setLastTreesData === 'function') {
       options.setLastTreesData(trees);
@@ -503,7 +507,7 @@
     }
   }
 
-  window.LoveBudMyTreesUI = {
+  var api = {
     escapeHtml: escapeHtml,
     closeAllDropdowns: closeAllDropdowns,
     buildMiniTreeSVG: buildMiniTreeSVG,
@@ -513,4 +517,8 @@
     buildTreeCard: buildTreeCard,
     renderTrees: renderTrees
   };
+
+  // Backward-compat: older page scripts referenced "LoveTree*" namespaces.
+  window.LoveBudMyTreesUI = api;
+  window.LoveTreeMyTreesUI = api;
 })();
