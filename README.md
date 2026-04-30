@@ -17,6 +17,14 @@ LoveBud / LoveTree는 일반 북마크 정리 앱이나 관리자 도구가 아�
 - 첫 순간 생성 및 다음 순간 이어가기
 - 감정 메모와 트리 흐름 편집
 
+### 사용자 시나리오
+
+예상 사용자는 어떤 노래, 장면, 무대, 대사, 이미지, 글을 계기로 팬이 된 첫 순간을 하나의 공개 또는 비공개 기억으로 저장합니다.
+
+그 뒤 사용자는 이어지는 감정 메모와 대표 순간을 같은 러브트리에 추가하면서, 단순한 목록이 아니라 시간과 감정의 흐름을 가진 트리형 스크랩북으로 키워갑니다.
+
+다른 사용자는 공개된 러브트리를 둘러보며 누군가의 입덕 첫 순간, 이어진 기억, 대표 순간을 감상할 수 있습니다.
+
 제품/브랜드 판단의 최상위 기준은 아래 문서입니다.
 
 - `docs/product/PRODUCT_IDENTITY.md`
@@ -27,10 +35,17 @@ LoveBud / LoveTree는 일반 북마크 정리 앱이나 관리자 도구가 아�
 
 ## 이름과 용어 기준
 
-- **LoveBud**: 현재 저장소명과 운영 프로젝트명
-- **LoveTree**: 사용자-facing 제품/브랜드 경험명으로 함께 사용 가능
+- **LoveBud**: 저장소명, 운영 프로젝트명, 내부 문서/이슈/PR의 기본 프로젝트명
+- **LoveTree**: 사용자-facing 제품 경험, 공개/개인 트리, 브랜드 카피에서 사용하는 서비스 경험명
 - **search**: 현재 실제 파일/페이지 경로명 (`pages/search.html`)
 - **browse / 둘러보기**: 사용자-facing 제품 경험 표현
+
+사용 기준:
+
+- 저장소, 브랜치, PR, Issue, 운영 보고에서는 기본적으로 **LoveBud**를 사용합니다.
+- UI 카피, 브랜드 경험, 공개 트리 설명, 사용자 도움말에서는 문맥상 **LoveTree**를 사용할 수 있습니다.
+- 파일 경로와 코드 식별자는 실제 저장소 경로를 우선하므로 `search`를 유지할 수 있습니다.
+- 사용자-facing 문구에서는 `browse`, `둘러보기`, `감상 허브` 계열 표현을 우선합니다.
 
 즉, 구현 경로명은 `search`를 유지할 수 있지만, 제품 카피와 문서 설명에서는 `browse`, `둘러보기`, `감상 허브` 계열 표현을 우선합니다.
 
@@ -51,7 +66,10 @@ LoveBud / LoveTree는 일반 북마크 정리 앱이나 관리자 도구가 아�
 - 공식 사용자-facing 주소는 **`https://lovebud.pages.dev/`** 입니다.
 - active runtime은 **Cloudflare Pages + Modal** 입니다.
 - active API path는 **browser → same-origin `/api/*` → Cloudflare Pages Functions → Modal → Neon** 입니다.
-- Firebase는 Auth 및 client bootstrap 용도입니다.
+- Firebase Auth는 client-side에서 ID token을 발급합니다. Cloudflare Pages Functions는 same-origin `/api/*` 요청의 Authorization header를 Modal backend로 전달하며, token verification과 private route authorization은 Modal backend에서 수행합니다.
+- Firebase Web `apiKey`는 client bootstrap용이며, 단독 노출만으로는 security blocker가 아닙니다. 실제 보안 경계는 authorized domains, backend token verification, owner authorization, Security Rules/App Check 적용 여부 등으로 판단합니다.
+- 현재 기준으로 이 프로젝트는 bundler를 사용하지 않으며, `pages/*.html` 독립 진입점과 script-order / window namespace 기반 로딩 모델을 사용합니다.
+- Vercel/Netlify 관련 설정 파일은 legacy artifact이며, 현재 active runtime은 Cloudflare Pages + Modal입니다.
 - Vercel은 현재 active deployment 또는 active fallback이 아닙니다. `vercel.json`은 legacy artifact / removal audit 대상으로만 봅니다.
 - Netlify는 현재 active deployment 또는 active fallback이 아닙니다. `netlify.toml`과 `netlify/functions/**`는 legacy artifact / removal audit 대상으로만 봅니다.
 - `_redirects`는 Cloudflare Pages에서도 사용할 수 있으므로 Netlify 전용 파일로 단정하지 않습니다.
@@ -64,6 +82,8 @@ LoveBud / LoveTree는 일반 북마크 정리 앱이나 관리자 도구가 아�
 - `docs/ops/OPERATIONS.md`
 - `docs/ops/NETLIFY_LEGACY_ARTIFACT_AUDIT.md`
 - `docs/migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md`
+- `docs/engineering/API_CONTRACT.md`
+- `docs/engineering/REVIEW_GUARDRAILS.md`
 - `docs/engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md`
 
 ---
