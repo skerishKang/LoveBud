@@ -369,7 +369,15 @@ LoveBud 작업에는 배포, API 접근, 테스트 계정, 외부 서비스 연�
 
 GitHub CLI, browser login, connector-backed GitHub access, or token-backed local access를 사용하는 경우 `docs/ops/GITHUB_AUTH_TOKEN_USAGE.md`를 함께 따릅니다.
 
-작업에 secret이 필요하면 에이전트는 값을 요구하거나 출력하지 말고, 필요한 secret name만 말합니다. 실제 값 주입은 사용자가 로컬 환경, provider dashboard, GitHub Actions Secrets, Cloudflare/Vercel/Netlify dashboard 등 적절한 secret store를 통해 처리합니다.
+작업에 secret이 필요하면 에이전트는 다음 방식으로 처리합니다:
+
+1. **로컬 환경 사용**: 사용자가 미리 로컬 환경 변수에 값을 설정해두면, 에이전트는 그 환경 변수를 사용하는 명령을 실행합니다. 에이전트는 환경 변수 값을 읽거나 출력하지 않고, 환경 변수가 설정되어 있는지 여부만 확인합니다.
+
+2. **사용자 직접 주입**: 로컬 환경이 설정되어 있지 않으면, 에이전트는 사용자에게 "비밀 값이 필요합니다. [secret name]을 로컬 환경에 설정하거나 직접 입력해주세요"라고 요청합니다. 사용자가 직접 값을 입력하거나 설정합니다.
+
+3. **Provider Dashboard 사용**: 배포나 외부 서비스 연동이 필요한 경우, 에이전트는 사용자에게 해당 provider dashboard (GitHub Actions Secrets, Cloudflare/Vercel/Netlify dashboard 등)에서 값을 설정하도록 안내합니다.
+
+에이전트는 어떤 경우에도 비밀 값을 직접 읽거나 출력하지 않습니다.
 
 `.secrets/` 또는 `.env*` 파일이 git 추적 대상에 올라온 정황이 있으면 즉시 작업을 중단하고 보고합니다.
 
