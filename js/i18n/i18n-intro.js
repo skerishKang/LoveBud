@@ -11,20 +11,20 @@
   window.i18nIntro = {
     // Hero 섹션
     'intro.heroEyebrow': {
-      ko: '좋아하는 마음이 자라나는 곳',
-      en: 'Where what you love keeps growing'
+      ko: '팬 감정 러브트리 · 처음 마음이 이어지는 곳',
+      en: 'Fan feeling LoveTree · where the first feeling connects'
     },
     'intro.heroTitle': {
-      ko: '<span class="title-line">사랑하는 순간을</span><span class="title-line title-accent">하나의 러브트리로</span><span class="title-line">남겨요</span>',
-      en: '<span class="title-line">Turn the moment</span><span class="title-line title-accent">you loved</span><span class="title-line">into one LoveTree</span>'
+      ko: '<span class="title-line">첫 순간이 하나의</span><span class="title-line title-accent">러브트리로</span><span class="title-line">이어져요</span>',
+      en: '<span class="title-line">Your first moment</span><span class="title-line title-accent">becomes one LoveTree</span><span class="title-line">and keeps growing</span>'
     },
     'intro.heroLead': {
-      ko: '사랑에 빠진 첫 순간부터 차곡차곡 쌓인 마음까지,<br class="pc-only">당신만의 감정 경로를 하나의 러브트리로 피워내세요.',
-      en: 'From the first moment you fell in love to the feelings that followed,<br class="pc-only">bloom your own emotional path into a LoveTree.'
+      ko: '반했던 장면과 오래 남은 마음을,<br class="pc-only">감정이 이어진 경로로 천천히 남겨 보세요.',
+      en: 'Keep the scene that drew you in and the feelings that stayed,<br class="pc-only">as a path of connected emotion.'
     },
     'intro.heroPrimaryCta': {
-      ko: '내 러브트리 만들기',
-      en: 'Create My LoveTree'
+      ko: '내 러브트리 시작하기',
+      en: 'Start My LoveTree'
     },
     'intro.ctaSecondary': {
       ko: '다른 트리 둘러보기',
@@ -55,8 +55,8 @@
       en: '⭐ Lasting scene'
     },
     'intro.sceneCaption': {
-      ko: '흩어진 순간이 이어지면, 사랑에 빠진 흐름이 보입니다.',
-      en: 'When scattered moments connect, the path of falling in love appears.'
+      ko: '순간이 이어지면, 좋아하게 된 흐름이 보입니다.',
+      en: 'When moments connect, the path of affection becomes visible.'
     },
 
     // What is 섹션
