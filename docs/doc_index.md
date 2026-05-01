@@ -36,10 +36,11 @@
 1. `../AGENTS.md`
 2. `./doc_index.md`
 3. `./ops/PARALLEL_WORKTREE_AGENT_POLICY.md`
-4. `./product/PRODUCT_IDENTITY.md`
-5. `./product/BRAND_EXPERIENCE.md`
-6. `./design/UI_DESIGN_SYSTEM.md`
-7. 요청 범위에 맞는 문서군 인덱스
+4. `./ops/AGENT_STARTUP_VERIFICATION_RULES.md`
+5. `./product/PRODUCT_IDENTITY.md`
+6. `./product/BRAND_EXPERIENCE.md`
+7. `./design/UI_DESIGN_SYSTEM.md`
+8. 요청 범위에 맞는 문서군 인덱스
 
 Visibility, private storage, anonymous public exposure, Browse/Search eligibility 판단이 필요하면 아래를 추가로 읽습니다.
 
@@ -63,6 +64,7 @@ PR3 button / badge / chip tone 기준 판단이 필요하면 아래를 추가로
 
 - `./ops/OPERATIONS.md`
 - `./ops/LOCAL_BROWSER_VERIFICATION_STARTUP.md`
+- `./ops/AGENT_STARTUP_VERIFICATION_RULES.md`
 - `./ops/NETLIFY_LEGACY_ARTIFACT_AUDIT.md`
 - `./ops/PARALLEL_WORKTREE_AGENT_POLICY.md`
 - `./ops/BROWSER_VERIFICATION_URL_POLICY.md`
@@ -148,6 +150,7 @@ Reference 문서는 `docs/reference/` 아래에 정리됩니다.
 - [NETLIFY_LEGACY_ARTIFACT_AUDIT.md](./ops/NETLIFY_LEGACY_ARTIFACT_AUDIT.md) - Netlify legacy artifact / removal candidate 감사 기준 및 현황. `netlify/functions/*`, `netlify.toml` removal audit 진행 상태
 - [PARALLEL_WORKTREE_AGENT_POLICY.md](./ops/PARALLEL_WORKTREE_AGENT_POLICY.md) - 병렬 모델, worktree, 검증 모델, PR 통합 운영 기준
 - [LOCAL_BROWSER_VERIFICATION_STARTUP.md](./ops/LOCAL_BROWSER_VERIFICATION_STARTUP.md) - 로컬/브라우저 검증 시작 전 공통 preflight, URL provenance, evidence, PR checklist 기준
+- [AGENT_STARTUP_VERIFICATION_RULES.md](./ops/AGENT_STARTUP_VERIFICATION_RULES.md) - Agent startup checklist, fixed-slot verification, dirty worktree stop, token-safe reporting 기준
 - [BROWSER_VERIFICATION_URL_POLICY.md](./ops/BROWSER_VERIFICATION_URL_POLICY.md) - 브라우저 smoke URL provenance, PR Preview, Branch Preview, fixed test slot 검증 기준
 - [TEST_PREVIEW_SLOTS.md](./ops/TEST_PREVIEW_SLOTS.md) - 고정 테스트 Preview 슬롯 운영 기준
 - [MODAL_RUNTIME_DIAGNOSTICS_WORKFLOW.md](./ops/MODAL_RUNTIME_DIAGNOSTICS_WORKFLOW.md) - Cloudflare and Modal runtime diagnostics workflow, request ID correlation, redaction-safe report templates
