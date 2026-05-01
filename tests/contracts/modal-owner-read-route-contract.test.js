@@ -5,9 +5,14 @@ const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const MODAL_APP = path.join(ROOT, 'modal_compute', 'app.py');
+const OWNER_READS = path.join(ROOT, 'modal_compute', 'owner_reads.py');
 
 function readModalApp() {
   return fs.readFileSync(MODAL_APP, 'utf8');
+}
+
+function readOwnerReads() {
+  return fs.readFileSync(OWNER_READS, 'utf8');
 }
 
 function compact(value) {
@@ -45,7 +50,7 @@ function assertAppearsInOrder(body, tokens, label) {
 }
 
 test('fetch_user_trees keeps owner boundary, limit, parameter order, and normalization', () => {
-  const body = getTopLevelFunction(readModalApp(), 'fetch_user_trees');
+  const body = getTopLevelFunction(readOwnerReads(), 'fetch_user_trees');
   const normalized = compact(body);
 
   assert.match(normalized, /wheret\.owner_id=%s/, 'fetch_user_trees must constrain trees.owner_id');
@@ -59,7 +64,7 @@ test('fetch_user_trees keeps owner boundary, limit, parameter order, and normali
 });
 
 test('fetch_owner_tree keeps tree and owner boundary, limit, parameter order, and missing-row path', () => {
-  const body = getTopLevelFunction(readModalApp(), 'fetch_owner_tree');
+  const body = getTopLevelFunction(readOwnerReads(), 'fetch_owner_tree');
   const normalized = compact(body);
 
   assert.match(normalized, /wheret\.id=%sandt\.owner_id=%s/, 'fetch_owner_tree must constrain tree id and owner id');
@@ -69,7 +74,7 @@ test('fetch_owner_tree keeps tree and owner boundary, limit, parameter order, an
 });
 
 test('fetch_owner_memories keeps owner boundary, optional tree filter, limit, parameter order, and normalization', () => {
-  const body = getTopLevelFunction(readModalApp(), 'fetch_owner_memories');
+  const body = getTopLevelFunction(readOwnerReads(), 'fetch_owner_memories');
   const normalized = compact(body);
 
   assert.match(normalized, /innerjointreestont\.id=m\.tree_id/, 'fetch_owner_memories must join memories to trees');
