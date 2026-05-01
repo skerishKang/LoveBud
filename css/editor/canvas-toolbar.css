@@ -1,0 +1,65 @@
+/**
+ * LoveBud Editor Canvas Toolbar Styles
+ * Issue #515 - Canvas Toolbar CSS Relocation
+ * 
+ * Extracted from css/editor/overrides.css for better role ownership
+ * Contains Editor Canvas Topbar & Toolbar selectors
+ */
+
+/* Editor Canvas Topbar */
+.editor-canvas-topbar {
+    position: absolute;
+    top: 22px;
+    left: 24px;
+    right: 24px;
+    z-index: 7;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+    pointer-events: none;
+}
+
+.editor-canvas-topbar > * {
+    pointer-events: auto;
+}
+
+/* Editor Canvas Title & Caption */
+.editor-canvas-title h2 {
+    margin: 10px 0 0;
+    font-size: 1.76rem;
+    line-height: 1.12;
+    letter-spacing: -0.05em;
+    color: #553f35;
+}
+
+.editor-canvas-caption {
+    margin: 7px 0 0;
+    max-width: 360px;
+    color: #9a8175;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+/* Editor Canvas Toolbar */
+.editor-canvas-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    border-radius: 999px;
+    background: rgba(255,250,244,0.82);
+    border: 1px solid rgba(230,207,194,0.78);
+    box-shadow: 0 14px 30px rgba(161,119,96,0.10);
+    backdrop-filter: blur(8px);
+}
+
+.editor-canvas-toolbar .sidebar-btn {
+    min-height: 38px;
+    padding: 0 14px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.74);
+    border: 1px solid rgba(221,198,184,0.84);
+    color: #7f6258;
+    box-shadow: none;
+}
