@@ -64,11 +64,19 @@
     }
 
     function getCurrentLocale() {
+        const helper = window.LoveBudSearchPreviewCopyHelper;
+        if (helper?.getCurrentLocale) {
+            return helper.getCurrentLocale();
+        }
         const locale = window.i18n?.currentLang || document.documentElement?.lang || 'ko';
         return String(locale).toLowerCase().startsWith('en') ? 'en' : 'ko';
     }
 
     function getSearchCopy(key, fallbackKo, fallbackEn) {
+        const helper = window.LoveBudSearchPreviewCopyHelper;
+        if (helper?.getSearchCopy) {
+            return helper.getSearchCopy(key, fallbackKo, fallbackEn);
+        }
         const locale = getCurrentLocale();
         const dict = window.i18nSearch?.[key];
         if (dict && typeof dict === 'object') {
@@ -78,6 +86,10 @@
     }
 
     function formatSearchCopy(key, replacements, fallbackKo, fallbackEn) {
+        const helper = window.LoveBudSearchPreviewCopyHelper;
+        if (helper?.formatSearchCopy) {
+            return helper.formatSearchCopy(key, replacements, fallbackKo, fallbackEn);
+        }
         const template = getSearchCopy(key, fallbackKo, fallbackEn);
         return String(template).replace(/\{(\w+)\}/g, (_, token) => {
             return Object.prototype.hasOwnProperty.call(replacements, token)
@@ -197,15 +209,21 @@
 
     function getTimelineLabel(tree, memories) {
         const titleHelper = getSearchTitleHelper();
-        const formatDate = titleHelper?.formatShortDate || ((value) => {
-            if (!value) return '';
-            const date = new Date(value);
-            if (Number.isNaN(date.getTime())) return '';
-            return date.toLocaleDateString(getCurrentLocale() === 'en' ? 'en-US' : 'ko-KR', {
-                month: 'short',
-                day: 'numeric'
-            });
-        });
+        const formatDate = titleHelper?.formatShortDate || (() => {
+            const helper = window.LoveBudSearchPreviewCopyHelper;
+            if (helper?.formatShortDate) {
+                return helper.formatShortDate;
+            }
+            return (value) => {
+                if (!value) return '';
+                const date = new Date(value);
+                if (Number.isNaN(date.getTime())) return '';
+                return date.toLocaleDateString(getCurrentLocale() === 'en' ? 'en-US' : 'ko-KR', {
+                    month: 'short',
+                    day: 'numeric'
+                });
+            };
+        })();
 
         const updatedAt = tree.updatedAt || '';
         const createdAt = tree.createdAt || '';
