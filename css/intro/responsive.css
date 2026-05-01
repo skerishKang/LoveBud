@@ -8,7 +8,7 @@
   .intro-hero {
     grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.6fr);
     gap: 28px;
-    padding: 60px var(--page-pad-desktop) 48px;
+    padding: 60px var(--lovetree-page-pad-desktop) 48px;
   }
 
   .intro-tree-scene {
@@ -23,7 +23,7 @@
   }
 
   .intro-hero, .intro-section, .cta-section {
-    padding: 60px var(--page-pad-mobile) 36px;
+    padding: 60px var(--lovetree-page-pad-mobile) 36px;
   }
 
   .intro-hero h1 {
