@@ -72,6 +72,7 @@ PR3 button / badge / chip tone 기준 판단이 필요하면 아래를 추가로
 - `./ops/NETLIFY_LEGACY_ARTIFACT_AUDIT.md`
 - `./ops/PARALLEL_WORKTREE_AGENT_POLICY.md`
 - `./ops/BROWSER_VERIFICATION_URL_POLICY.md`
+- `./ops/GLOBAL_CSS_BROWSER_SMOKE_CHECKLIST.md`
 - `./ops/TEST_PREVIEW_SLOTS.md`
 - `./ops/KNOWN_CI_E2E_BLOCKERS.md`
 - `./ops/BRANCH_CLEANUP_PLAN.md`
@@ -154,6 +155,7 @@ Reference 문서는 `docs/reference/` 아래에 정리됩니다.
 - **index**: [ops_index.md](./ops/ops_index.md)
 - [OPERATIONS.md](./ops/OPERATIONS.md) - 현재 운영 전략 및 인프라 우선순위
 - [SOURCE_OF_TRUTH_HYGIENE_DISPOSITION.md](./ops/SOURCE_OF_TRUTH_HYGIENE_DISPOSITION.md) - #425 docs source-of-truth hierarchy, stale-doc classification, update routing, archive and index maintenance rules
+- [GLOBAL_CSS_BROWSER_SMOKE_CHECKLIST.md](./ops/GLOBAL_CSS_BROWSER_SMOKE_CHECKLIST.md) - #512 global CSS desktop/mobile smoke matrix, PASS/NOT_VERIFIED/BLOCKED reporting, fixed-slot requirements
 - [NETLIFY_LEGACY_ARTIFACT_AUDIT.md](./ops/NETLIFY_LEGACY_ARTIFACT_AUDIT.md) - Netlify legacy artifact / removal candidate 감사 기준 및 현황. `netlify/functions/*`, `netlify.toml` removal audit 진행 상태
 - [PARALLEL_WORKTREE_AGENT_POLICY.md](./ops/PARALLEL_WORKTREE_AGENT_POLICY.md) - 병렬 모델, worktree, 검증 모델, PR 통합 운영 기준
 - [LOCAL_BROWSER_VERIFICATION_STARTUP.md](./ops/LOCAL_BROWSER_VERIFICATION_STARTUP.md) - 로컬/브라우저 검증 시작 전 공통 preflight, URL provenance, evidence, PR checklist 기준
