@@ -40,83 +40,81 @@ function createEditorDetailUI(deps) {
     };
 
     // ── Tree meta boundary helpers ───────────────────────────────────────────
-    // Responsible: derive visibility metadata, build count label, create share/open buttons,
-    // and render the tree meta block into the mount point. Kept separate from detail content rendering.
-    const buildTreeMetaRenderModel = ({
-        currentTree,
-        treeState,
-        data,
-        isEmptyState,
-        isRootSelected,
-        localSaveMode,
-        resolveTreeTitleText,
-        formatI18nText,
-        createShareTreeButton,
-        createOpenDetailButton,
-        bindShareButton,
-        bindOpenDetailButton,
-        createTreeMetaBlock
-    }) => {
-        const visibility = currentTree.visibility || 'public';
-        const isPublic = visibility === 'public';
-        const visIcon = isPublic ? 'public' : 'lock';
-        const visLabel = isPublic ? i18n('visibility_public') : i18n('visibility_private');
-        const visInfo = isPublic
-            ? formatI18nText('editor_tree_public_info', '이 트리 전체가 공개되어 있어요. 링크가 있는 사람은 감상할 수 있습니다.')
-            : formatI18nText('editor_tree_private_info', '이 트리 전체는 비공개예요. 지금은 나만 볼 수 있습니다.');
-        const displayTreeTitle = resolveTreeTitleText(currentTree.title);
-        const localBadgeText = localSaveMode ? (i18n('local_save_badge') || '로컬 저장') : '';
-        const countForLabel = treeState.totalMomentCount;
-        const treeCountLabel = treeState.hasMoments
-            ? formatI18nText('editor_tree_status_count', `{count}개의 순간이 이 트리 안에서 이어지고 있어요.`, { count: countForLabel })
-            : formatI18nText('editor_tree_status_empty', '아직 첫 순간을 기다리고 있어요.');
+    // (기존 tree meta helpers 유지)
+    // ── Title edit boundary helper ──────────────────────────────────────────
+    // Responsible: encapsulate inline title edit button creation and state binding.
+    // Does not affect memo edit or current memory actions.
+    const createTitleEditBoundary = (titleContainer, data, { updateSelectedMemoryFields, showToast, formatI18nText, i18n, isEmptyState }) => {
+        if (isEmptyState || typeof updateSelectedMemoryFields !== 'function') return;
 
-        let shareBtn = null;
-        let openDetailBtn = null;
-        if (!isEmptyState && data?.id) {
-            shareBtn = createShareTreeButton();
-            openDetailBtn = createOpenDetailButton();
-        }
+        const editBtn = document.createElement('button');
+        editBtn.className = 'memory-edit-button';
+        editBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;margin-right:2px;">edit</span>' + formatI18nText('editMemoryTitle', '제목 수정');
 
-        return {
-            displayTreeTitle,
-            visIcon,
-            visLabel,
-            visInfo,
-            isPublic,
-            countLabel: localBadgeText ? `${treeCountLabel} · ${localBadgeText}` : treeCountLabel,
-            shareButtonEl: shareBtn,
-            openDetailButtonEl: openDetailBtn,
-            shareBtn,
-            openDetailBtn
-        };
-    };
+        editBtn.onclick = () => {
+            titleContainer.innerHTML = '';
 
-    const renderTreeMetaBoundary = (treeMetaMount, model, treeId, data, { i18n, showToast, bindShareButton, bindOpenDetailButton }) => {
-        if (!treeMetaMount) return;
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.value = data.title || '';
 
-        treeMetaMount.innerHTML = '';
-        treeMetaMount.appendChild(createTreeMetaBlock({
-            displayTreeTitle: model.displayTreeTitle,
-            visIcon: model.visIcon,
-            visLabel: model.visLabel,
-            visInfo: model.visInfo,
-            isPublic: model.isPublic,
-            countLabel: model.countLabel,
-            shareButtonEl: model.shareButtonEl,
-            openDetailButtonEl: model.openDetailButtonEl
-        }));
+            const actions = document.createElement('div');
+            actions.className = 'memory-edit-actions';
 
-        if (model.shareBtn) {
-            bindShareButton({
-                btn: model.shareBtn,
-                data,
-                treeId,
-                i18n,
-                showToast
+            const saveBtn = document.createElement('button');
+            saveBtn.className = 'btn-save';
+            saveBtn.textContent = formatI18nText('saveMemoryTitle', '저장');
+
+            const cancelBtn = document.createElement('button');
+            cancelBtn.className = 'btn-cancel';
+            cancelBtn.textContent = formatI18nText('cancelMemoryTitle', '취소');
+
+            const errorMsg = document.createElement('div');
+            errorMsg.className = 'memory-edit-error';
+
+            actions.appendChild(cancelBtn);
+            actions.appendChild(saveBtn);
+
+            const wrap = document.createElement('div');
+            wrap.style.width = '100%';
+            wrap.appendChild(input);
+            wrap.appendChild(errorMsg);
+            wrap.appendChild(actions);
+            titleContainer.appendChild(wrap);
+
+            input.focus();
+
+            const endEdit = () => { updateDetailPanel(data); };
+
+            const saveEdit = async () => {
+                const newTitle = input.value.trim();
+                if (!newTitle) {
+                    errorMsg.textContent = formatI18nText('memoryTitleRequired', '순간 제목을 입력해 주세요');
+                    return;
+                }
+                errorMsg.textContent = '';
+                saveBtn.disabled = true;
+                cancelBtn.disabled = true;
+                if (await updateSelectedMemoryFields({ title: newTitle })) {
+                    if (showToast) showToast(formatI18nText('memoryUpdateSaved', '순간을 수정했어요.'), 'success');
+                    endEdit();
+                } else {
+                    if (showToast) showToast(formatI18nText('memoryUpdateFailed', '순간을 수정하지 못했어요.'), 'error');
+                    saveBtn.disabled = false;
+                    cancelBtn.disabled = false;
+                }
+            };
+
+            cancelBtn.onclick = endEdit;
+            saveBtn.onclick = saveEdit;
+
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') { e.preventDefault(); saveEdit(); }
+                if (e.key === 'Escape') { e.preventDefault(); endEdit(); }
             });
-        }
-        bindOpenDetailButton(model.openDetailBtn);
+        };
+
+        titleContainer.appendChild(editBtn);
     };
     // ──────────────────────────────────────────────────────────────────────────
 
@@ -590,75 +588,13 @@ function createEditorDetailUI(deps) {
 
             titleContainer.appendChild(titleText);
 
-            if (!isEmptyState && typeof updateSelectedMemoryFields === 'function') {
-                const editBtn = document.createElement('button');
-                editBtn.className = 'memory-edit-button';
-                editBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;margin-right:2px;">edit</span>' + formatI18nText('editMemoryTitle', '제목 수정');
-
-                editBtn.onclick = () => {
-                    titleContainer.innerHTML = '';
-
-                    const input = document.createElement('input');
-                    input.type = 'text';
-                    input.value = data.title || '';
-
-                    const actions = document.createElement('div');
-                    actions.className = 'memory-edit-actions';
-
-                    const saveBtn = document.createElement('button');
-                    saveBtn.className = 'btn-save';
-                    saveBtn.textContent = formatI18nText('saveMemoryTitle', '저장');
-
-                    const cancelBtn = document.createElement('button');
-                    cancelBtn.className = 'btn-cancel';
-                    cancelBtn.textContent = formatI18nText('cancelMemoryTitle', '취소');
-
-                    const errorMsg = document.createElement('div');
-                    errorMsg.className = 'memory-edit-error';
-
-                    actions.appendChild(cancelBtn);
-                    actions.appendChild(saveBtn);
-
-                    const wrap = document.createElement('div');
-                    wrap.style.width = '100%';
-                    wrap.appendChild(input);
-                    wrap.appendChild(errorMsg);
-                    wrap.appendChild(actions);
-                    titleContainer.appendChild(wrap);
-
-                    input.focus();
-
-                    const endEdit = () => { updateDetailPanel(data); };
-
-                    const saveEdit = async () => {
-                        const newTitle = input.value.trim();
-                        if (!newTitle) {
-                            errorMsg.textContent = formatI18nText('memoryTitleRequired', '순간 제목을 입력해 주세요');
-                            return;
-                        }
-                        errorMsg.textContent = '';
-                        saveBtn.disabled = true;
-                        cancelBtn.disabled = true;
-                        if (await updateSelectedMemoryFields({ title: newTitle })) {
-                            if (showToast) showToast(formatI18nText('memoryUpdateSaved', '순간을 수정했어요.'), 'success');
-                            endEdit();
-                        } else {
-                            if (showToast) showToast(formatI18nText('memoryUpdateFailed', '순간을 수정하지 못했어요.'), 'error');
-                            saveBtn.disabled = false;
-                            cancelBtn.disabled = false;
-                        }
-                    };
-
-                    cancelBtn.onclick = endEdit;
-                    saveBtn.onclick = saveEdit;
-
-                    input.addEventListener('keydown', (e) => {
-                        if (e.key === 'Enter') { e.preventDefault(); saveEdit(); }
-                        if (e.key === 'Escape') { e.preventDefault(); endEdit(); }
-                    });
-                };
-                titleContainer.appendChild(editBtn);
-            }
+            createTitleEditBoundary(titleContainer, data, {
+                updateSelectedMemoryFields,
+                showToast,
+                formatI18nText,
+                i18n,
+                isEmptyState
+            });
 
             titleEl.appendChild(titleContainer);
         }
