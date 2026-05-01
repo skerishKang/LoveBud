@@ -42,6 +42,11 @@ from modal_compute.public_reads import (
     fetch_public_memory,
     fetch_public_tree,
 )
+from modal_compute.owner_reads import (
+    fetch_user_trees,
+    fetch_owner_tree,
+    fetch_owner_memories,
+)
 
 
 def add_request_id_to_response(response: Any, request_id: str | None = None) -> Any:
@@ -49,86 +54,6 @@ def add_request_id_to_response(response: Any, request_id: str | None = None) -> 
     if request_id and hasattr(response, 'headers'):
         response.headers["x-lovebud-request-id"] = request_id
     return response
-
-
-def fetch_user_trees(owner_id: str, limit: int = 100) -> list[dict[str, Any]]:
-    query = """
-        SELECT t.id, t.owner_id, t.title, t.visibility, t.created_at, t.updated_at,
-               COUNT(m.id)::int AS memory_count
-        FROM trees t
-        LEFT JOIN memories m
-          ON m.tree_id = t.id
-        WHERE t.owner_id = %s
-        GROUP BY t.id, t.owner_id, t.title, t.visibility, t.created_at, t.updated_at
-        ORDER BY t.created_at DESC
-        LIMIT %s;
-    """
-
-    def operation():
-        with get_db_connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute(query, (owner_id, limit))
-                return cur.fetchall()
-
-    rows = run_db_with_retry(operation)
-
-    return [normalize_tree_row(row, row.get("memory_count")) for row in rows]
-
-
-def fetch_owner_tree(tree_id: str, owner_id: str) -> dict[str, Any] | None:
-    query = """
-        SELECT t.id, t.owner_id, t.title, t.visibility, t.created_at, t.updated_at,
-               COUNT(m.id)::int AS memory_count
-        FROM trees t
-        LEFT JOIN memories m
-          ON m.tree_id = t.id
-        WHERE t.id = %s
-          AND t.owner_id = %s
-        GROUP BY t.id, t.owner_id, t.title, t.visibility, t.created_at, t.updated_at
-        LIMIT 1;
-    """
-
-    def operation():
-        with get_db_connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute(query, (tree_id, owner_id))
-                return cur.fetchone()
-
-    row = run_db_with_retry(operation)
-
-    return normalize_tree_row(row, row.get("memory_count")) if row else None
-
-
-def fetch_owner_memories(owner_id: str, tree_id: str | None = None, limit: int = 100) -> list[dict[str, Any]]:
-    params: list[Any] = [owner_id]
-    filters = ["t.owner_id = %s"]
-
-    if tree_id:
-        params.append(tree_id)
-        filters.append("m.tree_id = %s")
-
-    params.append(limit)
-    query = f"""
-        SELECT m.id, m.tree_id, m.parent_id, m.title, m.memo, m.artist, m.source, m.source_url,
-               m.source_type, m.thumbnail, m.emotion_tags, m.timestamp, m.visibility,
-               m.created_at, m.updated_at
-        FROM memories m
-        INNER JOIN trees t
-          ON t.id = m.tree_id
-        WHERE {' AND '.join(filters)}
-        ORDER BY m.created_at DESC
-        LIMIT %s;
-    """
-
-    def operation():
-        with get_db_connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute(query, tuple(params))
-                return cur.fetchall()
-
-    rows = run_db_with_retry(operation)
-
-    return [normalize_memory_row(row) for row in rows]
 
 
 def create_owner_tree(owner_id: str, payload: dict[str, Any]) -> dict[str, Any]:
