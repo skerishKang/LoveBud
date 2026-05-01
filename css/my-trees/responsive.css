@@ -1,9 +1,9 @@
 @media (max-width: 1024px) {
-.my-trees-content { padding: 40px 28px 56px; }
+.my-trees-content { padding: 40px var(--lovetree-page-pad-tablet) 56px; }
 .trees-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
 }
 @media (max-width: 768px) {
-.my-trees-content { padding: 32px 20px 64px; }
+.my-trees-content { padding: 32px var(--lovetree-page-pad-mobile) 64px; }
 .my-trees-header { flex-direction: column; align-items: flex-start; gap: 20px; margin-bottom: 32px; padding-bottom: 20px; }
 .header-content { width: 100%; }
 .my-trees-header h1 { font-size: 1.8rem; }
