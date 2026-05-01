@@ -5,9 +5,14 @@ const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const MODAL_APP = path.join(ROOT, 'modal_compute', 'app.py');
+const MODAL_PUBLIC_READS = path.join(ROOT, 'modal_compute', 'public_reads.py');
 
 function readModalApp() {
   return fs.readFileSync(MODAL_APP, 'utf8');
+}
+
+function readModalPublicReads() {
+  return fs.readFileSync(MODAL_PUBLIC_READS, 'utf8');
 }
 
 function compact(value) {
@@ -16,7 +21,7 @@ function compact(value) {
 
 function getFunctionBody(source, functionName) {
   const normalizedSource = source.replace(/\r\n/g, '\n');
-  const match = normalizedSource.match(new RegExp(`def\\s+${functionName}\\s*\\([\\s\\S]*?(?=\\n\\n+def\\s+)`));
+  const match = normalizedSource.match(new RegExp(`def\\s+${functionName}\\s*\\([\\s\\S]*?(?=\\n\\n+def\\s+|\\n\\n+class\\s+|\\n\\n+@[a-zA-Z_]|$)`));
   assert.ok(match, `missing ${functionName}`);
   return match[0];
 }
@@ -45,16 +50,16 @@ function assertPublicReadUsesRetry(source, functionName, fetchMethod) {
 }
 
 test('public memory list fetch uses retry wrapper', () => {
-  const source = readModalApp();
+  const source = readModalPublicReads();
   assertPublicReadUsesRetry(source, 'fetch_public_memories', 'fetchall');
 });
 
 test('public memory detail fetch uses retry wrapper', () => {
-  const source = readModalApp();
+  const source = readModalPublicReads();
   assertPublicReadUsesRetry(source, 'fetch_public_memory', 'fetchone');
 });
 
 test('public tree detail fetch uses retry wrapper', () => {
-  const source = readModalApp();
+  const source = readModalPublicReads();
   assertPublicReadUsesRetry(source, 'fetch_public_tree', 'fetchone');
 });

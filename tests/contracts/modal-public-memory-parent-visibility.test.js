@@ -5,9 +5,14 @@ const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const MODAL_APP = path.join(ROOT, 'modal_compute', 'app.py');
+const MODAL_PUBLIC_READS = path.join(ROOT, 'modal_compute', 'public_reads.py');
 
 function readModalApp() {
   return fs.readFileSync(MODAL_APP, 'utf8');
+}
+
+function readModalPublicReads() {
+  return fs.readFileSync(MODAL_PUBLIC_READS, 'utf8');
 }
 
 function compact(value) {
@@ -22,7 +27,7 @@ function getFunctionBody(source, functionName) {
 }
 
 test('modal public memory list excludes memories under private parent trees', () => {
-  const source = readModalApp();
+  const source = readModalPublicReads();
   const body = getFunctionBody(source, 'fetch_public_memories');
   const normalized = compact(body);
 
@@ -52,7 +57,7 @@ test('modal public memory list excludes memories under private parent trees', ()
 });
 
 test('modal public memory detail excludes memories under private parent trees', () => {
-  const source = readModalApp();
+  const source = readModalPublicReads();
   const body = getFunctionBody(source, 'fetch_public_memory');
   const normalized = compact(body);
 
