@@ -120,6 +120,83 @@ function createEditorDetailUI(deps) {
     };
     // ──────────────────────────────────────────────────────────────────────────
 
+    // ── Title edit boundary helper ──────────────────────────────────────────
+    // Responsible: encapsulate inline title edit button creation and state binding.
+    // Does not affect memo edit or current memory actions.
+    const createTitleEditBoundary = (titleContainer, data, { updateSelectedMemoryFields, showToast, formatI18nText, i18n, isEmptyState }) => {
+        if (isEmptyState || typeof updateSelectedMemoryFields !== 'function') return;
+
+        const editBtn = document.createElement('button');
+        editBtn.className = 'memory-edit-button';
+        editBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;margin-right:2px;">edit</span>' + formatI18nText('editMemoryTitle', '제목 수정');
+
+        editBtn.onclick = () => {
+            titleContainer.innerHTML = '';
+
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.value = data.title || '';
+
+            const actions = document.createElement('div');
+            actions.className = 'memory-edit-actions';
+
+            const saveBtn = document.createElement('button');
+            saveBtn.className = 'btn-save';
+            saveBtn.textContent = formatI18nText('saveMemoryTitle', '저장');
+
+            const cancelBtn = document.createElement('button');
+            cancelBtn.className = 'btn-cancel';
+            cancelBtn.textContent = formatI18nText('cancelMemoryTitle', '취소');
+
+            const errorMsg = document.createElement('div');
+            errorMsg.className = 'memory-edit-error';
+
+            actions.appendChild(cancelBtn);
+            actions.appendChild(saveBtn);
+
+            const wrap = document.createElement('div');
+            wrap.style.width = '100%';
+            wrap.appendChild(input);
+            wrap.appendChild(errorMsg);
+            wrap.appendChild(actions);
+            titleContainer.appendChild(wrap);
+
+            input.focus();
+
+            const endEdit = () => { updateDetailPanel(data); };
+
+            const saveEdit = async () => {
+                const newTitle = input.value.trim();
+                if (!newTitle) {
+                    errorMsg.textContent = formatI18nText('memoryTitleRequired', '순간 제목을 입력해 주세요');
+                    return;
+                }
+                errorMsg.textContent = '';
+                saveBtn.disabled = true;
+                cancelBtn.disabled = true;
+                if (await updateSelectedMemoryFields({ title: newTitle })) {
+                    if (showToast) showToast(formatI18nText('memoryUpdateSaved', '순간을 수정했어요.'), 'success');
+                    endEdit();
+                } else {
+                    if (showToast) showToast(formatI18nText('memoryUpdateFailed', '순간을 수정하지 못했어요.'), 'error');
+                    saveBtn.disabled = false;
+                    cancelBtn.disabled = false;
+                }
+            };
+
+            cancelBtn.onclick = endEdit;
+            saveBtn.onclick = saveEdit;
+
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') { e.preventDefault(); saveEdit(); }
+                if (e.key === 'Escape') { e.preventDefault(); endEdit(); }
+            });
+        };
+
+        titleContainer.appendChild(editBtn);
+    };
+    // ──────────────────────────────────────────────────────────────────────────
+
     const getTreeState = () => {
         const canonicalRootId = getCanonicalRootId();
         const treeMemories = getTreeMemories();
@@ -590,75 +667,13 @@ function createEditorDetailUI(deps) {
 
             titleContainer.appendChild(titleText);
 
-            if (!isEmptyState && typeof updateSelectedMemoryFields === 'function') {
-                const editBtn = document.createElement('button');
-                editBtn.className = 'memory-edit-button';
-                editBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;margin-right:2px;">edit</span>' + formatI18nText('editMemoryTitle', '제목 수정');
-
-                editBtn.onclick = () => {
-                    titleContainer.innerHTML = '';
-
-                    const input = document.createElement('input');
-                    input.type = 'text';
-                    input.value = data.title || '';
-
-                    const actions = document.createElement('div');
-                    actions.className = 'memory-edit-actions';
-
-                    const saveBtn = document.createElement('button');
-                    saveBtn.className = 'btn-save';
-                    saveBtn.textContent = formatI18nText('saveMemoryTitle', '저장');
-
-                    const cancelBtn = document.createElement('button');
-                    cancelBtn.className = 'btn-cancel';
-                    cancelBtn.textContent = formatI18nText('cancelMemoryTitle', '취소');
-
-                    const errorMsg = document.createElement('div');
-                    errorMsg.className = 'memory-edit-error';
-
-                    actions.appendChild(cancelBtn);
-                    actions.appendChild(saveBtn);
-
-                    const wrap = document.createElement('div');
-                    wrap.style.width = '100%';
-                    wrap.appendChild(input);
-                    wrap.appendChild(errorMsg);
-                    wrap.appendChild(actions);
-                    titleContainer.appendChild(wrap);
-
-                    input.focus();
-
-                    const endEdit = () => { updateDetailPanel(data); };
-
-                    const saveEdit = async () => {
-                        const newTitle = input.value.trim();
-                        if (!newTitle) {
-                            errorMsg.textContent = formatI18nText('memoryTitleRequired', '순간 제목을 입력해 주세요');
-                            return;
-                        }
-                        errorMsg.textContent = '';
-                        saveBtn.disabled = true;
-                        cancelBtn.disabled = true;
-                        if (await updateSelectedMemoryFields({ title: newTitle })) {
-                            if (showToast) showToast(formatI18nText('memoryUpdateSaved', '순간을 수정했어요.'), 'success');
-                            endEdit();
-                        } else {
-                            if (showToast) showToast(formatI18nText('memoryUpdateFailed', '순간을 수정하지 못했어요.'), 'error');
-                            saveBtn.disabled = false;
-                            cancelBtn.disabled = false;
-                        }
-                    };
-
-                    cancelBtn.onclick = endEdit;
-                    saveBtn.onclick = saveEdit;
-
-                    input.addEventListener('keydown', (e) => {
-                        if (e.key === 'Enter') { e.preventDefault(); saveEdit(); }
-                        if (e.key === 'Escape') { e.preventDefault(); endEdit(); }
-                    });
-                };
-                titleContainer.appendChild(editBtn);
-            }
+            createTitleEditBoundary(titleContainer, data, {
+                updateSelectedMemoryFields,
+                showToast,
+                formatI18nText,
+                i18n,
+                isEmptyState
+            });
 
             titleEl.appendChild(titleContainer);
         }
