@@ -128,6 +128,7 @@ Reference 문서는 `docs/reference/` 아래에 정리됩니다.
 - [CSS_ARCHITECTURE.md](./engineering/CSS_ARCHITECTURE.md) - CSS import hub, split ownership, import order, visual verification 기준
 - [CODE_ARCHITECTURE.md](./engineering/CODE_ARCHITECTURE.md) - module size, thin entrypoint, browser-global split, large file refactor safety policy
 - [LARGE_FILE_MODULARIZATION_CANDIDATES.md](./engineering/LARGE_FILE_MODULARIZATION_CANDIDATES.md) - #408 large-file candidate inventory, owner routing, extraction guardrails, verification requirements
+- [MODAL_OWNER_ROUTE_SPLIT_BOUNDARY.md](./engineering/MODAL_OWNER_ROUTE_SPLIT_BOUNDARY.md) - #423 Modal owner read/write route split boundary, implementation gates, verification requirements
 - [SCRIPT_LOAD_ORDER.md](./engineering/SCRIPT_LOAD_ORDER.md) - pages/*.html script load order runtime contract, Auth/Login dependency order, reorder checklist
 - [SEARCH_RUNTIME_CONTRACT.md](./engineering/SEARCH_RUNTIME_CONTRACT.md) - Search/Browse runtime script order, globals, forbidden changes, smoke checklist
 - [AUTH_LOGIN_ACTIVE_PROVIDER_TRANSITION_PLAN.md](./engineering/AUTH_LOGIN_ACTIVE_PROVIDER_TRANSITION_PLAN.md) - Auth/Login active provider transition 단계, file ownership, 금지 조합, fixed test slot 검증 기준
