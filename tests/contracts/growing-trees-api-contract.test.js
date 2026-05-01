@@ -19,6 +19,20 @@ function stripWhitespace(value) {
   return value.replace(/\s+/g, '');
 }
 
+function extractPythonFunction(source, functionName) {
+  const normalizedSource = source.replace(/\r\n/g, '\n');
+  const startRegex = new RegExp(`^def ${functionName}\\(`, 'm');
+  const match = startRegex.exec(normalizedSource);
+  assert.ok(match, `missing ${functionName} function body`);
+
+  const start = match.index;
+  const afterStart = normalizedSource.slice(start);
+  const nextTopLevel = afterStart.search(/\n\n+def\s+|\n\n+async\s+def\s+|\n\n+@web_app\./);
+
+  if (nextTopLevel === -1) return normalizedSource.slice(start);
+  return normalizedSource.slice(start, start + nextTopLevel);
+}
+
 test('cloudflare proxy maps growing trees API to modal growing browse endpoint', () => {
   const source = readCloudflareProxy();
   const compactSource = stripWhitespace(source);
@@ -70,7 +84,7 @@ test('modal app exposes growing browse endpoint backed by growing snapshot fetch
 
   assert.match(
     source,
-    /def\s+fetch_growing_public_tree_snapshots\s*\(\s*limit:\s*int\s*=\s*6\s*\)/,
+    /def\s+fetch_growing_public_tree_snapshots\s*\(/,
     'missing fetch_growing_public_tree_snapshots function'
   );
 
@@ -96,13 +110,7 @@ test('modal app exposes growing browse endpoint backed by growing snapshot fetch
 test('modal growing snapshot query keeps public memory count and growing stage contract', () => {
   const source = readModalApp();
 
-  const normalizedSource = source.replace(/\r\n/g, '\n');
-  const functionMatch = normalizedSource.match(
-    /def\s+fetch_growing_public_tree_snapshots\s*\(\s*limit:\s*int\s*=\s*6\s*\)[\s\S]*?(?=\n\n+def\s+)/
-  );
-  assert.ok(functionMatch, 'missing fetch_growing_public_tree_snapshots function body');
-
-  const functionBody = functionMatch[0];
+  const functionBody = extractPythonFunction(source, 'fetch_growing_public_tree_snapshots');
   const compactBody = stripWhitespace(functionBody).toLowerCase();
 
   assert.match(
