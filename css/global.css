@@ -8,6 +8,87 @@
 @import url('./global/base.css');
 @import url('./global/header.css');
 
+/* LoveTree Shared Visual Foundation Classes */
+.lovetree-page-shell {
+    max-width: var(--lovetree-page-shell-max);
+    margin: 0 auto;
+    padding: 0 var(--lovetree-page-pad-desktop);
+}
+
+@media (max-width: 1024px) {
+    .lovetree-page-shell {
+        padding: 0 var(--lovetree-page-pad-tablet);
+    }
+}
+
+@media (max-width: 480px) {
+    .lovetree-page-shell {
+        padding: 0 var(--lovetree-page-pad-mobile);
+    }
+}
+
+.lovetree-soft-surface {
+    background: var(--lovetree-soft-surface);
+    border: 1px solid var(--lovetree-soft-surface-border);
+    border-radius: var(--lovetree-card-radius);
+    box-shadow: var(--lovetree-card-shadow);
+}
+
+.lovetree-card {
+    background: var(--lovetree-soft-surface);
+    border: 1px solid var(--lovetree-soft-surface-border);
+    border-radius: var(--lovetree-card-radius);
+    box-shadow: var(--lovetree-card-shadow);
+    padding: 20px;
+}
+
+.lovetree-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: var(--radius-full);
+    background: var(--lovetree-pill-bg);
+    border: 1px solid var(--lovetree-pill-border);
+    color: var(--lovetree-pill-text);
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.18s ease;
+}
+
+.lovetree-pill:hover {
+    background: var(--lovetree-pill-hover-bg);
+}
+
+.lovetree-pill:active,
+.lovetree-pill.is-active {
+    background: var(--lovetree-pill-active-bg);
+}
+
+.lovetree-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 40px;
+    padding: 0 14px;
+    border-radius: var(--radius-full);
+    background: var(--lovetree-chip-bg);
+    border: 1px solid var(--lovetree-chip-border);
+    color: var(--lovetree-chip-text);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.18s ease;
+}
+
+.lovetree-chip.is-active {
+    background: var(--lovetree-chip-active-bg);
+    color: var(--lovetree-chip-active-text);
+    border-color: var(--lovetree-chip-active-border);
+    box-shadow: 0 8px 20px rgba(75, 64, 57, 0.05);
+}
+
 
 
 
