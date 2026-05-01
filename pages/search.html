@@ -8,6 +8,7 @@
     <link rel="icon" href="/favicon.ico" sizes="32x32">
     <link rel="stylesheet" href="../css/global.css?v=20260415-10">
     <link rel="stylesheet" href="../css/search.css?v=20260501-455c">
+    <link rel="stylesheet" href="../css/page-transitions.css?v=20260430-1">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
 </head>
 <body class="bokeh-bg">
@@ -16,16 +17,16 @@
     <!-- Shared Header -->
     <div id="shared-header"></div>
 
-    <main class="search-container">
+    <main class="search-container page-transition-enter">
         <section>
-            <div class="browse-curation-shell">
+            <div class="browse-curation-shell reveal-up">
                 <div class="search-panel-header">
                     <h2 class="headline" data-i18n="search.title">러브트리 감상 둘러보기</h2>
                     <p data-i18n="search.subtitle">첫 순간과 이어진 마음을 따라가 보세요</p>
                 </div>
             </div>
 
-            <div id="resultsList">
+            <div id="resultsList" class="reveal-up">
                 <div class="tree-card tree-card-featured search-skeleton-card" aria-hidden="true">
                     <div class="tree-card-media search-skeleton-block"></div>
                     <div class="tree-card-body">
@@ -75,7 +76,7 @@
                 </div>
             </section>
 
-            <div class="browse-utility-row">
+            <div class="browse-utility-row reveal-up">
                 <div class="search-input-wrapper">
                     <span class="material-symbols-outlined search-icon">search</span>
                     <input type="text" id="searchInput" class="search-input" placeholder="아티스트, 첫 순간, 감정으로 찾아보기" required>
@@ -90,7 +91,7 @@
             </div>
         </section>
 
-        <aside class="preview-sidebar" id="previewSidebar">
+        <aside class="preview-sidebar reveal-fade" id="previewSidebar">
             <div class="preview-panel-header">
                 <div class="preview-panel-title-group">
                     <h3>감상 허브</h3>
@@ -177,6 +178,7 @@
      <script src="../js/auth/auth-session.js?v=20260417-31"></script>
      <script src="../js/auth/auth-firebase.js?v=20260420-1"></script>
      <script src="../js/auth.js?v=20260417-31"></script>
+     <script src="../js/page-transitions.js?v=20260430-1"></script>
     <script>LoveTreePageShell.initSharedPage({
       renderHeader: true,
       applyI18n: true
