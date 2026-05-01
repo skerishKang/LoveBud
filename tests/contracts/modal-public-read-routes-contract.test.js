@@ -16,16 +16,16 @@ function hasString(content, pattern) {
 
 function extractPythonFunction(content, functionName) {
   const normalized = content.replace(/\r\n/g, '\n');
-  const startRegex = new RegExp(`^def ${functionName}\\([^\\n]*\\):`, 'm');
+  const startRegex = new RegExp(`^def ${functionName}\\(`, 'm');
   const match = startRegex.exec(normalized);
   assert.ok(match, `${functionName} should exist`);
 
   const start = match.index;
-  const afterStart = normalized.slice(start + match[0].length);
+  const afterStart = normalized.slice(start);
   const nextTopLevel = afterStart.search(/\n\ndef |\n\nasync def |\n\n@web_app\.|\n\napp = |\n\nimage = |\n\nweb_app = /);
 
   if (nextTopLevel === -1) return normalized.slice(start);
-  return normalized.slice(start, start + match[0].length + nextTopLevel);
+  return normalized.slice(start, start + nextTopLevel);
 }
 
 function extractDecoratedHandler(content, decoratorNeedle, handlerName) {
