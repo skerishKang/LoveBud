@@ -65,6 +65,16 @@ PR 병합 전 UI 검증 우선순위는 아래와 같습니다.
 2. **해당 작업을 위해 이미 확보한 테스트/프리뷰 페이지 URL**
 3. **로컬 서버** — 정적 레이아웃 참고용 fallback
 
+**중요: 브라우저 테스트 슬롯 사용 순서**
+
+브라우저 테스트 슬롯(test2, test3 등)을 사용하여 UI 검증을 수행하려면:
+
+1. 먼저 해당 PR을 Cloudflare Pages에 배포하여 PR Preview URL을 생성합니다
+2. 그 다음에 할당된 테스트 슬롯에 해당 코드를 배포합니다
+3. 배포가 완료된 후에 브라우저 테스트 슬롯 URL을 사용하여 검증을 수행합니다
+
+즉, **PR push → Cloudflare Preview 배포 → 테스트 슬롯 배포 → 브라우저 검증** 순서를 따릅니다. 배포 없이 브라우저 테스트 슬롯을 사용하면 최신 코드가 반영되지 않습니다.
+
 중요:
 - `https://lovebud.pages.dev/`는 병합 전 PR 검증 기준이 아닙니다. production 도메인은 현재 `main`을 반영하므로, 아직 병합되지 않은 PR branch의 source of truth가 될 수 없습니다.
 - production 도메인 검증은 PR이 `main`에 병합되고 배포된 뒤 수행합니다.
@@ -369,7 +379,15 @@ LoveBud 작업에는 배포, API 접근, 테스트 계정, 외부 서비스 연�
 
 GitHub CLI, browser login, connector-backed GitHub access, or token-backed local access를 사용하는 경우 `docs/ops/GITHUB_AUTH_TOKEN_USAGE.md`를 함께 따릅니다.
 
-작업에 secret이 필요하면 에이전트는 값을 요구하거나 출력하지 말고, 필요한 secret name만 말합니다. 실제 값 주입은 사용자가 로컬 환경, provider dashboard, GitHub Actions Secrets, Cloudflare/Vercel/Netlify dashboard 등 적절한 secret store를 통해 처리합니다.
+작업에 secret이 필요하면 에이전트는 다음 방식으로 처리합니다:
+
+1. **로컬 환경 사용**: 사용자가 미리 로컬 환경 변수에 값을 설정해두면, 에이전트는 그 환경 변수를 사용하는 명령을 실행합니다. 에이전트는 환경 변수 값을 읽거나 출력하지 않고, 환경 변수가 설정되어 있는지 여부만 확인합니다.
+
+2. **사용자 직접 주입**: 로컬 환경이 설정되어 있지 않으면, 에이전트는 사용자에게 "비밀 값이 필요합니다. [secret name]을 로컬 환경에 설정하거나 직접 입력해주세요"라고 요청합니다. 사용자가 직접 값을 입력하거나 설정합니다.
+
+3. **Provider Dashboard 사용**: 배포나 외부 서비스 연동이 필요한 경우, 에이전트는 사용자에게 해당 provider dashboard (GitHub Actions Secrets, Cloudflare/Vercel/Netlify dashboard 등)에서 값을 설정하도록 안내합니다.
+
+에이전트는 어떤 경우에도 비밀 값을 직접 읽거나 출력하지 않습니다.
 
 `.secrets/` 또는 `.env*` 파일이 git 추적 대상에 올라온 정황이 있으면 즉시 작업을 중단하고 보고합니다.
 
