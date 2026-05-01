@@ -63,7 +63,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         currentCategory: '전체',
         isRestoringUrlState: false,
         urlStateReady: false,
-        initialTreeDeepLinkApplied: false
+        initialTreeDeepLinkApplied: false,
+        isLoadingMore: false,
+        hasMoreTrees: true
     };
     const previewCache = new Map();
     const callbacks = {};
