@@ -1,0 +1,34 @@
+/* Issue #418 — global ready-state hardening.
+   Scope: Material Symbols ready-class consistency and shared global ready states.
+   The canonical JS class is `material-symbols-ready`; legacy aliases remain
+   supported so older header/auth code paths do not regress. */
+
+:root {
+    --lovetree-icon-ready-transition: opacity 0.16s ease;
+}
+
+html body .material-symbols-outlined {
+    opacity: 0;
+    transition: var(--lovetree-icon-ready-transition);
+}
+
+html.material-symbols-ready body .material-symbols-outlined,
+html.ms-fonts-loaded body .material-symbols-outlined,
+html body .material-symbols-outlined.ms-ready {
+    opacity: 1;
+}
+
+html.material-symbols-ready body .mobile-nav-toggle::before,
+html.ms-fonts-loaded body .mobile-nav-toggle::before {
+    display: none;
+}
+
+html:not(.material-symbols-ready):not(.ms-fonts-loaded) body .mobile-nav-toggle .material-symbols-outlined:not(.ms-ready) {
+    display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :root {
+        --lovetree-icon-ready-transition: none;
+    }
+}
