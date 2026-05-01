@@ -64,7 +64,31 @@
         padding: 0 8px;
         min-height: 24px;
     }
+
+    .tree-card-media-fallback {
+        gap: 8px;
+        padding: 12px;
+    }
+
+    .tree-card-media-fallback::before {
+        font-size: 36px;
+    }
+
+    .tree-card-media-fallback .fallback-title {
+        font-size: 12px;
+    }
+
+    .tree-card-media-fallback .fallback-dots {
+        gap: 4px;
+    }
+
+    .tree-card-media-fallback .fallback-dots span {
+        width: 5px;
+        height: 5px;
+    }
 }
+
+@media (max-width: 768px) {
     .search-container {
         padding: 20px var(--page-pad-mobile) 36px;
         gap: 22px;

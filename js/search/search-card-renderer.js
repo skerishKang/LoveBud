@@ -132,10 +132,16 @@
 
     function renderMediaFallback(tree, titleText) {
         const safeTitle = escapeHtml(titleText || '러브트리');
+        const treeStage = tree?.stage || 'empty';
+        const stageIcon = getTreeIcon(treeStage);
         return `
-            <div class="tree-card-media-fallback" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:20px;text-align:center;background:linear-gradient(135deg, rgba(250,242,243,0.96), rgba(255,255,255,0.96));width:100%;height:100%;">
-                <span style="font-size:34px;line-height:1;">${escapeHtml(getTreeIcon(tree.stage))}</span>
-                <div style="font-size:13px;font-weight:800;color:var(--on-surface);">${safeTitle}</div>
+            <div class="tree-card-media-fallback">
+                <div class="fallback-title">${safeTitle}</div>
+                <div class="fallback-dots">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
             </div>
         `;
     }
