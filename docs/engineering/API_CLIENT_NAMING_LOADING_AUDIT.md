@@ -1,22 +1,24 @@
 # API Client Naming and Loading Audit
 
 > **Status:** AUDIT_ONLY
-> **Source:** Issue #72
-> **Type:** Docs-only — no JavaScript, page markup, CSS, runtime, rename, or file-move changes
+> **Source:** Issue #409, Issue #72
+> **Type:** Docs-only — no JavaScript, page markup, CSS, runtime, rename, wrapper, or file-move changes
 
 ---
 
 ## 1. Purpose
 
-This document records the API client naming and loading audit required by Issue #72 before any implementation work.
+Issue #409 tracks the browser API client naming and loading contract audit after the Issue #72 JS Architecture Cleanup Tracker closure disposition.
 
-The current file name `js/postgres-client.js` is historically named after the backend data store, but the file currently acts as the browser-side API client. It should not be renamed immediately because page script loading order, global `window` contracts, Auth token behavior, public-tree normalization, and protected API flows all depend on the current loading contract.
+This document records whether the browser API client contract should remain as-is or move toward a clearer owner path such as `js/api/browser-client.js`.
 
-This PR is the audit-only step. It does not rename, move, wrap, or change any runtime file.
+The current file name `js/postgres-client.js` is historically named after the backend data store, but the file currently acts as the browser-side API client. It should not be renamed immediately because page script loading order, global `window` contracts, Auth token behavior, public-tree normalization, protected API flows, and page call sites all depend on the current loading contract.
+
+This document is the audit-only step. It does not rename, move, wrap, or change any runtime file.
 
 ---
 
-## 2. Current API Client Role Summary
+## 2. Current API client role summary
 
 Current runtime path:
 
@@ -38,7 +40,26 @@ Because the active browser contract is `/api/*`, not direct browser-to-database 
 
 ---
 
-## 3. Current Script Loading Order
+## 3. Current reference and call-site inventory
+
+Static search for `window.apiClient` and related client usage shows that the current contract is consumed across Search/Browse, Detail, My Trees, Editor, Auth-adjacent cache cleanup, docs, and tests. The list below is a contract inventory, not implementation approval.
+
+| Area | Representative file/path | Contract use | Risk if renamed or moved without compatibility |
+| --- | --- | --- | --- |
+| Client definition | `js/postgres-client.js` | Defines and exposes the merged browser API surface as `window.apiClient`. | Full browser API contract break if the global or script path disappears. |
+| Search data loading | `js/search/data.js` | Reads `window.apiClient` for Search/Browse data access. | Search/Browse data load failure. |
+| Search preview/copy | `js/search/preview-controller.js`, `js/search-copy-ui.js` | Uses API client access for preview/copy/fork-adjacent flows. | Public tree preview/copy behavior can fail or partially regress. |
+| Detail page | `js/detail/detail-loader.js` | Reads API client contract for detail data loading. | Detail page data load failure. |
+| My Trees data/actions | `js/my-trees/my-trees-data.js`, `js/my-trees/my-trees-actions.js` | Uses protected API client methods for user tree list and actions. | Auth/API/data-sensitive My Trees regression. |
+| Editor memory/actions | `js/editor/editor-memory-actions.js`, `js/editor/editor-memory-form.js`, `js/editor/editor-rename-ui.js`, `js/editor.js` | Uses protected API client methods for Editor save/update/rename/memory flows. | High-risk Editor runtime regression. |
+| Auth cleanup adjacency | `js/auth.js`, `js/auth/auth-firebase.js` | Reads optional `window.apiClient` for cache/reset or post-login/preload-adjacent behavior. | Auth/logout/login-adjacent side effects if unavailable. |
+| Existing docs/contracts | `docs/engineering/API_CLIENT_NAMING_LOADING_AUDIT.md`, `docs/engineering/JS_SCRIPT_LOADING_NAMESPACE_CONTRACT.md`, `docs/engineering/SHARED_ROOT_JS_OWNERSHIP_CONTRACTS.md` | Document the loading/global contract. | Documentation drift if implementation moves ahead without contract update. |
+
+Boundary rule: any change to `js/postgres-client.js`, `window.apiClient`, or the script loading order must be treated as a runtime-sensitive API contract change, not as a simple filename cleanup.
+
+---
+
+## 4. Current script loading order
 
 The table below summarizes the current loading relationship for the API helper files on primary pages.
 
@@ -63,7 +84,7 @@ This means `js/postgres-client.js` must continue to load after `base-api-fetch` 
 
 ---
 
-## 4. Global / Window Contract
+## 5. Global / window contract
 
 ### `window.apiClient`
 
@@ -123,7 +144,56 @@ Risk:
 
 ---
 
-## 5. Rename Candidate Evaluation
+## 6. Flat API method merge and collision risk
+
+`js/postgres-client.js` exposes a merged browser API surface. That shape is convenient for page call sites, but it creates collision risk if future API groups add methods with overlapping names.
+
+Current risk areas:
+
+- tree methods, memory methods, community methods, browse methods, cache helpers, and compatibility helpers share a single outward-facing object;
+- page modules usually call `window.apiClient.<method>()` directly;
+- future grouping or wrapper work could accidentally shadow a method name or change call-site expectations;
+- a future compatibility namespace must not silently change the flat method contract.
+
+Required guardrail for future implementation:
+
+- document any new method name before adding it to the flat surface;
+- avoid renaming existing public methods during a wrapper-only PR;
+- keep `window.apiClient` available until all page call sites have migrated;
+- if a namespaced API is introduced later, provide explicit compatibility aliases and a call-site migration map first.
+
+---
+
+## 7. Production global exposure risk
+
+The public `window.apiClient` global is a browser convenience contract, not an authorization boundary. Server authorization must remain enforced by same-origin `/api/*`, Cloudflare Functions, Modal, Firebase token verification, and backend policy checks.
+
+Risk framing:
+
+- exposing method names in the browser is expected for static multipage JS;
+- exposing private tokens, cookies, session values, credential material, raw private payloads, or service-account material is prohibited;
+- debug internals must not be broadly exposed in production;
+- any wrapper or namespace should reduce naming ambiguity without increasing production debug surface area.
+
+Allowed in documentation/reports:
+
+- method categories;
+- global names;
+- file paths;
+- PRESENT / ABSENT / UNKNOWN status language.
+
+Prohibited in documentation/reports:
+
+- token values;
+- cookie/session values;
+- API keys;
+- Firebase service-account material;
+- raw private tree or memory payloads;
+- browser storage dumps.
+
+---
+
+## 8. Naming options and risk comparison
 
 ### Candidate A: Keep `js/postgres-client.js`
 
@@ -139,9 +209,10 @@ Cons:
 - Name is misleading because the browser no longer talks directly to Postgres.
 - New contributors may infer direct database coupling from the filename.
 
-Recommended use:
+Recommendation:
 
-- Keep as-is until a staged migration plan exists.
+- Keep as-is for now.
+- This is the safest closure recommendation for Issue #409.
 
 ### Candidate B: Add wrapper `js/api/browser-client.js`
 
@@ -157,9 +228,9 @@ Cons:
 - Creates temporary dual-path maintenance risk.
 - Requires exact load-order documentation and smoke testing.
 
-Recommended use:
+Recommendation:
 
-- Possible first implementation PR, but only after this audit is reviewed.
+- Possible later narrow implementation PR only if naming ambiguity becomes an active maintenance problem.
 - Must be no behavior change.
 
 ### Candidate C: Future rename to `js/api/browser-client.js`
@@ -175,15 +246,31 @@ Cons:
 - Requires page script path changes across all consumers.
 - Requires old filename deprecation/removal only after all callers migrate.
 
-Recommended use:
+Recommendation:
 
 - Final staged cleanup only after wrapper or migration path is complete.
+- Not justified as the immediate next step.
 
 ---
 
-## 6. Implementations Prohibited in This PR
+## 9. Closure recommendation for Issue #409
 
-This audit PR must not include:
+Current recommendation: keep `js/postgres-client.js` and `window.apiClient` as-is.
+
+Do not prepare an implementation PR now. A future narrow implementation PR is only justified if:
+
+- `js/postgres-client.js` naming causes repeated contributor confusion;
+- a wrapper can be introduced without changing behavior;
+- all affected page call sites and script loading order are listed;
+- fixed-slot/runtime verification is available for Auth/API/data-sensitive pages.
+
+If implemented later, the preferred first implementation would be a thin compatibility wrapper such as `js/api/browser-client.js` that preserves `window.apiClient`. It must not rename the old file, remove the old path, alter API method behavior, or change page script order in the same PR.
+
+---
+
+## 10. Implementations prohibited in this audit
+
+This audit must not include:
 
 - renaming `js/postgres-client.js`;
 - moving `js/postgres-client.js`;
@@ -192,18 +279,20 @@ This audit PR must not include:
 - changing API behavior;
 - changing Auth token or retry behavior;
 - changing Search/Browse data loading;
-- combining API client naming with Search file grouping;
-- modifying any JavaScript, page markup, CSS, runtime, API, Auth, Modal, or data-loading file.
+- changing Search/Auth/Editor/My Trees behavior;
+- combining API client naming with Search grouping, public tree adapter work, or Auth cleanup;
+- modifying any JavaScript, page markup, CSS, runtime, API, Auth, Modal, or data-loading file;
+- touching PR #7/prototype/reference/demo/variant paths.
 
 ---
 
-## 7. Follow-up PR Split
+## 11. Follow-up PR split if implementation is later approved
 
 Recommended staged split:
 
 | PR | Scope | Notes |
 |---|---|---|
-| PR A | Audit docs only | This PR |
+| PR A | Audit docs only | This document |
 | PR B | Optional thin wrapper | Add `js/api/browser-client.js` only if approved; no behavior change |
 | PR C | Page script path migration | One page/domain at a time; preserve `window.apiClient` |
 | PR D | Old filename deprecation/removal | Only after all callers have migrated and smoke tests pass |
@@ -212,7 +301,7 @@ Do not combine these stages into one implementation PR.
 
 ---
 
-## 8. Verification Requirements for Future Implementation
+## 12. Verification requirements for future implementation
 
 Any future implementation that touches the API client file name, location, wrapper, or script loading order must verify:
 
@@ -226,24 +315,22 @@ Any future implementation that touches the API client file name, location, wrapp
 - no API/auth token regression;
 - `window.apiClient` remains available until all callers have migrated.
 
----
-
-## 9. Recommended Next Step
-
-The safest next step is to keep `js/postgres-client.js` unchanged and, if renaming is still desired, open a separate plan for an optional thin wrapper that preserves current behavior and exports.
+Runtime-sensitive pages such as My Trees, Editor, and authenticated API flows require fixed test slot validation for final PASS.
 
 ---
 
-## Verification Checklist
+## Verification checklist
 
 - [ ] `git diff --check` passes.
 - [ ] Changed files limited to `docs/engineering/API_CLIENT_NAMING_LOADING_AUDIT.md`.
 - [ ] No JS/page/CSS/runtime changes.
 - [ ] No file moves or renames.
-- [ ] No close keywords for Issue #72.
+- [ ] No close keywords for Issue #409.
+- [ ] No secret/token/session/cookie/private key/private payload values included.
 
 ---
 
 ## Related
 
+Refs #409
 Refs #72
