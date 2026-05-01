@@ -245,3 +245,82 @@
 .tree-meta-chip .material-symbols-outlined {
     font-size: 14px;
 }
+
+/* Issue #455 PR B: representative media and fallback tree preview polish. */
+.tree-card-media::before {
+    content: '';
+    position: absolute;
+    right: 14px;
+    bottom: 14px;
+    width: 54px;
+    height: 38px;
+    border-radius: 19px;
+    background: rgba(255, 255, 255, 0.78);
+    border: 1px solid rgba(255, 255, 255, 0.64);
+    box-shadow: 0 12px 24px rgba(50, 38, 35, 0.16);
+    pointer-events: none;
+    z-index: 2;
+}
+
+.tree-card-media-fallback {
+    justify-content: flex-end;
+    overflow: hidden;
+    background:
+        radial-gradient(circle at 24% 18%, rgba(255, 248, 245, 0.98), transparent 48%),
+        radial-gradient(circle at 72% 32%, rgba(255, 229, 225, 0.56), transparent 34%),
+        linear-gradient(135deg, rgba(144, 73, 81, 0.08), rgba(122, 139, 110, 0.08));
+}
+
+.tree-card-media-fallback::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 24px;
+    width: 86px;
+    height: 74px;
+    transform: translateX(-50%);
+    border-radius: 999px;
+    background:
+        radial-gradient(circle at 72% 24%, rgba(144, 73, 81, 0.58) 0 4px, transparent 5px),
+        radial-gradient(circle at 30% 30%, rgba(122, 139, 110, 0.52) 0 4px, transparent 5px),
+        radial-gradient(circle at 48% 58%, rgba(200, 116, 128, 0.52) 0 4px, transparent 5px),
+        linear-gradient(90deg, transparent 20%, rgba(144, 73, 81, 0.32) 21% 24%, transparent 25% 48%, rgba(144, 73, 81, 0.42) 49% 53%, transparent 54%);
+    filter: none;
+    z-index: 1;
+}
+
+.tree-card-media-fallback::after {
+    top: 58px;
+    bottom: auto;
+    width: 8px;
+    height: 46px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, rgba(193, 139, 131, 0.92), rgba(144, 73, 81, 0.78));
+    z-index: 1;
+}
+
+.tree-card-media-fallback .fallback-title {
+    position: relative;
+    z-index: 2;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.78);
+    border: 1px solid rgba(144, 73, 81, 0.08);
+    box-shadow: 0 10px 18px rgba(75, 64, 57, 0.08);
+}
+
+.tree-card-media-fallback .fallback-dots {
+    position: absolute;
+    left: 50%;
+    top: 52px;
+    z-index: 2;
+    gap: 24px;
+    margin-top: 0;
+    transform: translateX(-50%);
+}
+
+.tree-card-media-fallback .fallback-dots span {
+    width: 7px;
+    height: 7px;
+    box-shadow: 0 0 0 5px rgba(144, 73, 81, 0.08);
+}
