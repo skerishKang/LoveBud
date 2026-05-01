@@ -33,6 +33,21 @@ function extractPythonFunction(source, functionName) {
   return normalizedSource.slice(start, start + nextTopLevel);
 }
 
+function extractDecoratedHandler(source, decoratorNeedle, handlerName) {
+  const normalizedSource = source.replace(/\r\n/g, '\n');
+  const decoratorIndex = normalizedSource.indexOf(decoratorNeedle);
+  assert.notEqual(decoratorIndex, -1, `missing ${decoratorNeedle} decorator`);
+
+  const handlerIndex = normalizedSource.indexOf(`def ${handlerName}(`, decoratorIndex);
+  assert.notEqual(handlerIndex, -1, `missing ${handlerName} handler`);
+
+  const afterStart = normalizedSource.slice(handlerIndex);
+  const nextDecorator = afterStart.search(/\n\n+@web_app\./);
+
+  if (nextDecorator === -1) return afterStart;
+  return afterStart.slice(0, nextDecorator);
+}
+
 test('cloudflare proxy maps growing trees API to modal growing browse endpoint', () => {
   const source = readCloudflareProxy();
   const compactSource = stripWhitespace(source);
@@ -94,14 +109,19 @@ test('modal app exposes growing browse endpoint backed by growing snapshot fetch
     'missing /modal/browse/growing endpoint'
   );
 
-  assert.match(
+  const handlerBody = extractDecoratedHandler(
     source,
-    /def\s+get_growing_browse_snapshot\s*\([\s\S]*?return\s+fetch_growing_public_tree_snapshots\(\s*limit=limit\s*\)/,
+    '@web_app.get("/modal/browse/growing")',
+    'get_growing_browse_snapshot'
+  );
+  assert.match(
+    handlerBody,
+    /return\s+fetch_growing_public_tree_snapshots\(\s*limit=limit\s*\)/,
     'growing endpoint must return fetch_growing_public_tree_snapshots(limit=limit)'
   );
 
   assert.match(
-    source,
+    handlerBody,
     /limit:\s*int\s*=\s*Query\(\s*default=6,\s*ge=3,\s*le=12\s*\)/,
     'modal growing endpoint limit must be constrained to 3 through 12'
   );
