@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="slides-format" content="viewport">
+    <title>LoveBud 사업 전략 보고서</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style type="text/tailwindcss">
+        @theme {
+            --color-bg: #0f0a1e;
+            --color-bg-deep: #07040f;
+            --color-surface: #1a1030;
+            --color-text: #f1e8ff;
+            --color-text-secondary: #c9b8e8;
+            --color-text-muted: #8a7aaa;
+            --color-accent-1: #e879f9;
+            --color-accent-2: #fb923c;
+            --color-accent-3: #a855f7;
+            --color-glass-bg: rgba(255,255,255,0.06);
+            --color-glass-border: rgba(255,255,255,0.1);
+            --color-vignette: rgba(0,0,0,0.5);
+            --font-display: 'Playfair Display', serif;
+            --font-body: 'DM Sans', sans-serif;
+        }
+    </style>
+    <style>
+        :root { --color-bg: #0f0a1e; --color-text: #f1e8ff; --glow-color-rgb: 232,121,249; }
+        *, *::before, *::after { box-sizing: border-box; }
+        html, body { background: var(--color-bg); margin: 0; }
+        body { font-family: var(--font-body); color: var(--color-text); overflow: hidden; height: 100vh; width: 100vw; }
+        .deck { width: 100vw; height: 100vh; position: relative; }
+        .slide { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: var(--color-bg); display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0; transform: scale(0.95); transition: opacity 0.7s ease, transform 0.7s ease; pointer-events: none; overflow: hidden; }
+        .slide.active { opacity: 1; transform: scale(1); pointer-events: all; }
+        .slide > .content { position: relative; z-index: 2; width: 100%; max-width: 1100px; padding: clamp(1.5rem, 4vw, 3.5rem); }
+        .nav-controls { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 16px; z-index: 100; background: var(--color-glass-bg); backdrop-filter: blur(10px); padding: 10px 24px; border-radius: 40px; border: 1px solid var(--color-glass-border); }
+        .nav-btn { width: 40px; height: 40px; border: none; background: var(--color-glass-bg); color: var(--color-accent-1); border-radius: 50%; font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.3s; }
+        .nav-btn:hover { background: var(--color-glass-border); }
+        .slide-dots { display: flex; gap: 8px; }
+        .slide-dots .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--color-glass-border); cursor: pointer; transition: background 0.3s, transform 0.3s; }
+        .slide-dots .dot.active { background: var(--color-accent-1); transform: scale(1.3); }
+        .slide-counter { font-size: 0.8rem; color: var(--color-text-muted); min-width: 40px; text-align: center; }
+        .reveal { opacity: 0; transform: translateY(20px); }
+        .text-glow { text-shadow: 0 0 20px rgba(232,121,249,0.5), 0 0 40px rgba(232,121,249,0.2); }
+        .stat-glow { text-shadow: 0 0 30px rgba(232,121,249,0.6), 0 0 60px rgba(232,121,249,0.25); }
+        @keyframes glow-pulse {
+            0%, 100% { text-shadow: 0 0 20px rgba(232,121,249,0.5), 0 0 40px rgba(232,121,249,0.2); }
+            50% { text-shadow: 0 0 30px rgba(232,121,249,0.8), 0 0 60px rgba(232,121,249,0.3); }
+        }
+        .glow-pulse { animation: glow-pulse 3s ease-in-out infinite; }
+        @keyframes float-slow { 0%{transform:translate(0,0) scale(1);} 25%{transform:translate(60px,-50px) scale(1.12);} 50%{transform:translate(-40px,40px) scale(0.9);} 75%{transform:translate(50px,20px) scale(1.08);} 100%{transform:translate(0,0) scale(1);} }
+        @keyframes float-drift { 0%{transform:translate(0,0) scale(1) rotate(0deg);} 33%{transform:translate(-50px,-60px) scale(1.15) rotate(3deg);} 66%{transform:translate(40px,30px) scale(0.88) rotate(-2deg);} 100%{transform:translate(0,0) scale(1) rotate(0deg);} }
+        @keyframes float { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-15px);} }
+        .gradient-mesh { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+        .blob { position: absolute; border-radius: 50%; filter: blur(80px); animation: float-slow 10s ease-in-out infinite; }
+        .blob:nth-child(2) { animation: float-drift 14s ease-in-out infinite; }
+        .blob:nth-child(3) { animation: float-slow 18s ease-in-out infinite reverse; }
+        .slide::before { content:''; position:absolute; inset:0; z-index:1; pointer-events:none; background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E"); background-repeat:repeat; background-size:256px 256px; opacity:0.03; mix-blend-mode:overlay; }
+        .slide::after { content:''; position:absolute; inset:0; z-index:1; pointer-events:none; background:radial-gradient(ellipse at center, transparent 50%, var(--color-vignette) 100%); }
+        .bar-fill { height: 100%; border-radius: 6px; width: 0%; transition: width 0.8s ease; }
+        .bar-track { height: 28px; background: var(--color-glass-bg); border-radius: 6px; overflow: hidden; flex: 1; }
+        @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.2s !important; } }
+    </style>
+</head>
+<body>
+<div class="mouse-spotlight" style="position:fixed;inset:0;z-index:99;pointer-events:none;"></div>
+<div class="deck">
+
+    <!-- SLIDE 1: 타이틀 -->
+    <div class="slide active" data-slide="1">
+        <div class="gradient-mesh">
+            <div class="blob" style="width:520px;height:520px;top:-120px;right:-120px;background:var(--color-accent-1);opacity:0.18;"></div>
+            <div class="blob" style="width:320px;height:320px;bottom:-80px;left:-60px;background:var(--color-accent-2);opacity:0.14;"></div>
+            <div class="blob" style="width:220px;height:220px;top:40%;left:15%;background:var(--color-accent-3);opacity:0.1;"></div>
+        </div>
+        <canvas class="particle-canvas" style="position:absolute;inset:0;z-index:1;"></canvas>
+        <div class="content text-center">
+            <div style="font-size:100px;margin-bottom:16px;animation:float 3s ease-in-out infinite;" class="reveal">🌸</div>
+            <h1 class="font-display reveal" style="font-size:clamp(2.8rem,6vw,5rem);font-weight:900;background:linear-gradient(135deg,#e879f9,#fb923c,#e879f9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:-0.02em;margin-bottom:1rem;">LoveBud</h1>
+            <p class="reveal" style="font-size:clamp(1rem,1.8vw,1.4rem);color:var(--color-text-secondary);letter-spacing:4px;text-transform:uppercase;font-weight:300;margin-bottom:0.5rem;">사업 전략 보고서</p>
+            <p class="reveal" style="font-size:0.95rem;color:var(--color-text-muted);">팬 감정 러브트리 서비스의 비즈니스 기회와 성장 전략</p>
+        </div>
+    </div>
+
+    <!-- SLIDE 2: 목차 -->
+    <div class="slide" data-slide="2">
+        <div class="gradient-mesh">
+            <div class="blob" style="width:380px;height:380px;top:-80px;right:-80px;background:var(--color-accent-3);opacity:0.1;"></div>
+            <div class="blob" style="width:260px;height:260px;bottom:-60px;left:-40px;background:var(--color-accent-1);opacity:0.08;"></div>
+        </div>
+        <div class="content">
+            <p class="reveal" style="font-size:0.8rem;text-transform:uppercase;letter-spacing:5px;color:var(--color-accent-1);margin-bottom:0.5rem;">Contents</p>
+            <h2 class="font-display reveal" style="font-size:clamp(2rem,3.5vw,2.8rem);font-weight:700;margin-bottom:2rem;">목차</h2>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                <div class="reveal" style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-radius:12px;padding:20px 24px;backdrop-filter:blur(12px);display:flex;align-items:center;gap:16px;">
+                    <span style="font-size:2rem;font-weight:900;background:linear-gradient(135deg,#e879f9,#fb923c);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;min-width:40px;">01</span>
+                    <div><div style="font-weight:600;font-size:1rem;">제품 포지셔닝</div><div style="font-size:0.8rem;color:var(--color-text-muted);">차별화 포인트 분석</div></div>
+                </div>
+                <div class="reveal" style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-radius:12px;padding:20px 24px;backdrop-filter:blur(12px);display:flex;align-items:center;gap:16px;">
+                    <span style="font-size:2rem;font-weight:900;background:linear-gradient(135deg,#e879f9,#fb923c);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;min-width:40px;">02</span>
+                    <div><div style="font-weight:600;font-size:1rem;">시장 분석</div><div style="font-size:0.8rem;color:var(--color-text-muted);">타깃 시장 규모와 기회</div></div>
+                </div>
+                <div class="reveal" style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-radius:12px;padding:20px 24px;backdrop-filter:blur(12px);display:flex;align-items:center;gap:16px;">
+                    <span style="font-size:2rem;font-weight:900;background:linear-gradient(135deg,#e879f9,#fb923c);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;min-width:40px;">03</span>
+                    <div><div style="font-weight:600;font-size:1rem;">수익화 모델</div><div style="font-size:0.8rem;color:var(--color-text-muted);">B2C + B2B 혼합 전략</div></div>
+                </div>
+                <div class="reveal" style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-radius:12px;padding:20px 24px;backdrop-filter:blur(12px);display:flex;align-items:center;gap:16px;">
+                    <span style="font-size:2rem;font-weight:900;background:linear-gradient(135deg,#e879f9,#fb923c);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;min-width:40px;">04</span>
+                    <div><div style="font-weight:600;font-size:1rem;">성장 로드맵</div><div style="font-size:0.8rem;color:var(--color-text-muted);">3단계 성장 전략</div></div>
+                </div>
+                <div class="reveal" style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-radius:12px;padding:20px 24px;backdrop-filter:blur(12px);display:flex;align-items:center;gap:16px;">
+                    <span style="font-size:2rem;font-weight:900;background:linear-gradient(135deg,#e879f9,#fb923c);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;min-width:40px;">05</span>
+                    <div><div style="font-weight:600;font-size:1rem;">즉시 실행 액션</div><div style="font-size:0.8rem;color:var(--color-text-muted);">우선순위별 To-Do</div></div>
+                </div>
+                <div class="reveal" style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-radius:12px;padding:20px 24px;backdrop-filter:blur(12px);display:flex;align-items:center;gap:16px;">
+                    <span style="font-size:2rem;font-weight:900;background:linear-gradient(135deg,#e879f9,#fb923c);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;min-width:40px;">06</span>
+                    <div><div style="font-weight:600;font-size:1rem;">기술 리스크</div><div style="font-size:0.8rem;color:var(--color-text-muted);">인프라 최적화 방향</div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 3: 제품 개요 -->
+    <div class="slide" data-slide="3">
+        <div class="gradient-mesh">
+            <div class="blob" style="width:400px;height:400px;top:-100px;left:-80px;background:var(--color-accent-1);opacity:0.1;"></div>
+            <div class="blob" style="width:280px;height:280px;bottom:-60px;right:-40px;background:var(--color-accent-2);opacity:0.08;"></div>
+        </div>
+        <canvas class="particle-canvas-ambient" style="position:absolute;inset:0;z-index:1;"></canvas>
+        <div class="content">
+            <p class="reveal" style="font-size:0.8rem;text-transform:uppercase;letter-spacing:5px;color:var(--color-accent-1);margin-bottom:0.5rem;">01 · Product Positioning</p>
+            <h2 class="font-display reveal" style="font-size:clamp(1.8rem,3.5vw,2.8rem);font-weight:700;margin-bottom:0.4rem;">LoveBud는 무엇이 다른가?</h2>
+            <p class="reveal" style="color:var(--color-text-muted);font-size:0.95rem;margin-bottom:1.5rem;">기존 서비스와의 결정적 차이 — 정보 정리가 아닌 <strong style="color:var(--color-accent-1);">감정 흐름의 기록</strong></p>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:1.2rem;">
+                <div class="reveal" style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-radius:14px;padding:22px 18px;backdrop-filter:blur(12px);border-top:3px solid #e879f9;">
+                    <div style="font-size:2rem;margin-bottom:8px;">📌</div>
+                    <div style="font-weight:700;font-size:1rem;margin-bottom:6px;">Notion / Pinterest</div>
+                    <div style="font-size:0.82rem;color:var(--color-text-muted);line-height:1.5;">정보 정리 · 북마크 관리 → <span style="color:#fb7185;">차갑고 기계적</span></div>
+                </div>
+                <div class="reveal" style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-radius:14px;padding:22px 18px;backdrop-filter:blur(12px);border-top:3px solid #fb923c;">
+                    <div style="font-size:2rem;margin-bottom:8px;">🎬</div>
+                    <div style="font-weight:700;font-size:1rem;margin-bottom:6px;">Letterboxd</div>
+                    <div style="font-size:0.82rem;color:var(--color-text-muted);line-height:1.5;">영화 평론 · 별점 → <span style="color:#fb7185;">단방향 리뷰</span></div>
+                </div>
+                <div class="reveal" style="background:linear-gradient(135deg,rgba(232,121,249,0.15),rgba(251,146,60,0.1));border:1px solid rgba(232,121,249,0.3);border-radius:14px;padding:22px 18px;backdrop-filter:blur(12px);border-top:3px solid #e879f9;">
+                    <div style="font-size:2rem;margin-bottom:8px;">🌸</div>
+                    <div style="font-weight:700;font-size:1rem;margin-bottom:6px;color:var(--color-accent-1);">LoveBud</div>
+                    <div style="font-size:0.82rem;color:var(--color-text-secondary);line-height:1.5;">입덕 첫 순간 → 감정 경로 시각화 → 트리로 성장 → 커뮤니티 공유</div>
+                </div>
+            </div>
+            <div class="reveal" style="background:rgba(232,121,249,0.08);border:1px solid rgba(232,121,249,0.2);border-radius:10px;padding:16px 20px;display:flex;align-items:center;gap:12px;">
+                <span style="font-size:1.5rem;">💡</span>
+                <p style="font-size:0.9rem;color:var(--color-text-secondary);margin:0;line-height:1.5;">핵심 USP: YouTube 타임스탬프 + 감정 메모를 <strong style="color:var(--color-accent-1);">"나무(Tree)"</strong> 구조로 연결하는 유일한 서비스. 팬덤에서 이미 자생하는 "입덕 경로 공유" 문화를 제품화했다.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 4: 시장 기회 -->
+    <div class="slide" data-slide="4">
+        <div class="gradient-mesh">
+            <div class="blob" style="width:440px;height:440px;top:-100px;right:-100px;background:var(--color-accent-2);opacity:0.1;"></div>
+            <div class="blob" style="width:300px;height:300px;bottom:-70px;left:-50px;background:var(--color-accent-3);opacity:0.09;"></div>
+        </div>
+        <div class="content">
+            <p class="reveal" style="font-size:0.8rem;text-transform:uppercase;letter-spacing:5px;color:var(--color-accent-2);margin-bottom:0.5rem;">02 · Market Analysis</p>
+            <h2 class="font-display reveal" style="font-size:clamp(1.8rem,3.5vw,2.8rem);font-weight:700;margin-bottom:1.5rem;">글로벌 팬덤 시장 기회</h2>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:1.4rem;">
+                <div class="reveal" style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-radius:14px;padding:20px 16px;backdrop-filter:blur(12px);text-align:center;">
+                    <div style="font-size:1.9rem;font-weight:900;background:linear-gradient(135deg,#e879f9,#fb923c);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;" data-count="5" data-suffix="억+">0</div>
+                    <div style="font-size:0.78rem;color:var(--color-text-muted);margin-top:4px;line-height:1.4;">전 세계 K-pop<br>팬덤 인구</div>
+                </div>
+                <div class="reveal" style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-radius:14px;padding:20px 16px;backdrop-filter:blur(12px);text-align:center;">
+                    <div style="font-size:1.9rem;font-weight:900;background:linear-gradient(135deg,#e879f9,#fb923c);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;" data-count="12" data-prefix="$" data-suffix="B">0</div>
+                    <div style="font-size:0.78rem;color:var(--color-text-muted);margin-top:4px;line-height:1.4;">K-pop 글로벌<br>시장 규모 (2024)</div>
+                </div>
+                <div class="reveal" style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-radius:14px;padding:20px 16px;backdrop-filter:blur(12px);text-align:center;">
+                    <div style="font-size:1.9rem;font-weight:900;background:linear-gradient(135deg,#e879f9,#fb923c);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;" data-count="73" data-suffix="%">0</div>
+                    <div style="font-size:0.78rem;color:var(--color-text-muted);margin-top:4px;line-height:1.4;">Z세대 팬덤 참여<br>온라인 비율</div>
+                </div>
+                <div class="reveal" style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-radius:14px;padding:20px 16px;backdrop-filter:blur(12px);text-align:center;">
+                    <div style="font-size:1.9rem;font-weight:900;background:linear-gradient(135deg,#e879f9,#fb923c);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;" data-count="89" data-suffix="%">0</div>
+                    <div style="font-size:0.78rem;color:var(--color-text-muted);margin-top:4px;line-height:1.4;">YouTube 통해<br>입덕 경험 비율</div>
+                </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                <div class="reveal" style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-radius:12px;padding:18px;backdrop-filter:blur(12px);">
+                    <div style="font-weight:600;margin-bottom:10px;font-size:0.95rem;">🎯 핵심 타깃 시장</div>
+                    <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:7px;">
+                        <li style="font-size:0.85rem;color:var(--color-text-secondary);display:flex;align-items:center;gap:8px;"><span style="color:var(--color-accent-1);">▸</span> K-pop 팬덤 (한국·동남아·미국)</li>
+                        <li style="font-size:0.85rem;color:var(--color-text-secondary);display:flex;align-items:center;gap:8px;"><span style="color:var(--color-accent-1);">▸</span> YouTube 크리에이터 팬 커뮤니티</li>
+                        <li style="font-size:0.85rem;color:var(--color-text-secondary);display:flex;align-items:center;gap:8px;"><span style="color:var(--color-accent-1);">▸</span> 애니·드라마·영화 팬덤</li>
+                        <li style="font-size:0.85rem;color:var(--color-text-secondary);display:flex;align-items:center;gap:8px;"><span style="color:var(--color-accent-1);">▸</span> 10~30대 Z세대·밀레니얼</li>
+                    </ul>
+                </div>
+                <div class="reveal" style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-radius:12px;padding:18px;backdrop-filter:blur(12px);">
+                    <div style="font-weight:600;margin-bottom:10px;font-size:0.95rem;">📈 시장 진입 타이밍</div>
+                    <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:7px;">
+                        <li style="font-size:0.85rem;color:var(--color-text-secondary);display:flex;align-items:center;gap:8px;"><span style="color:var(--color-accent-2);">▸</span> "입덕 경로 공유" 문화 이미 존재</li>
+                        <li style="font-size:0.85rem;color:var(--color-text-secondary);display:flex;align-items:center;gap:8px;"><span style="color:var(--color-accent-2);">▸</span> 경쟁 서비스 공백 — 블루오션</li>
+                        <li style="font-size:0.85rem;color:var(--color-text-secondary);display:flex;align-items:center;gap:8px;"><span style="color:var(--color-accent-2);">▸</span> K-culture 글로벌 확산 최고조</li>
+                        <li style="font-size:0.85rem;color:var(--color-text-secondary);display:flex;align-items:center;gap:8px;"><span style="color:var(--color-accent-2);">▸</span> 팬덤 SNS 피로감 증가 중</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 5: 수익화 모델 -->
+    <div class="slide" data-slide="5">
+        <div class="gradient-mesh">
+            <div class="blob" style="width:420px;height:420px;top:-80px;left:-80px;background:var(--color-accent-3);opacity:0.12;"></div>
+            <div class="blob" style="width:280px;height:280px;bottom:-60px;right:-50px;background:var(--color-accent-1);opacity:0.08;"></div>
+        </div>
+        <div class="content">
+            <p class="reveal" style="font-size:0.8rem;text-transform:uppercase;letter-spacing:5px;color:var(--color-accent-3);margin-bottom:0.5rem;">03 · Monetization</p>
+            <h2 class="font-display reveal" style="font-size:clamp(1.8rem,3.5vw,2.8rem);font-weight:700;margin-bottom:1.5rem;">수익화 모델 구조</h2>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:1.2rem;">
+                <div class="reveal" style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-radius:14px;padding:22px;backdrop-filter:blur(12px);">
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+                        <span style="font-size:1.5rem;">🆓</span>
+                        <div>
+                            <div style="font-weight:700;font-size:1rem;">Free Tier</div>
+                            <div style="font-size:0.78rem;color:var(--color-text-muted);">무료 · 성장 엔진</div>
+                        </div>
+                    </div>
+                    <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px;">
+                        <li style="font-size:0.83rem;color:var(--color-text-secondary);">✓ 공개 러브트리 무제한 생성</li>
+                        <li style="font-size:0.83rem;color:var(--color-text-secondary);">✓ Browse/Search 기능</li>
+                        <li style="font-size:0.83rem;color:var(--color-text-secondary);">✓ YouTube 타임스탬프 연동</li>
+                        <li style="font-size:0.83rem;color:var(--color-text-muted);">— 비공개 트리 불가</li>
+                    </ul>
+                </div>
+                <div class="reveal" style="background:linear-gradient(135deg,rgba(232,121,249,0.12),rgba(168,85,247,0.08));border:1px solid rgba(232,121,249,0.25);border-radius:14px;padding:22px;backdrop-filter:blur(12px);">
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+                        <span style="font-size:1.5rem;">💎</span>
+                        <div>
+                            <div style="font-weight:700;font-size:1rem;color:var(--color-accent-1);">Plus 플랜</div>
+                            <div style="font-size:0.78rem;color:var(--color-text-muted);">₩4,900/월 예상</div>
+                        </div>
+                    </div>
+                    <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px;">
+                        <li style="font-size:0.83rem;color:var(--color-text-secondary);">✓ Private Storage (비공개 트리)</li>
+                        <li style="font-size:0.83rem;color:var(--color-text-secondary);">✓ 고급 테마 & 스킨</li>
+                        <li style="font-size:0.83rem;color:var(--color-text-secondary);">✓ 트리 Export (이미지/PDF)</li>
+                        <li style="font-size:0.83rem;color:var(--color-text-secondary);">✓ 우선 Browse 노출</li>
+                    </ul>
+                </div>
+                <div class="reveal" style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-radius:14px;padding:22px;backdrop-filter:blur(12px);">
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+                        <span style="font-size:1.5rem;">🏢</span>
+                        <div>
+                            <div style="font-weight:700;font-size:1rem;">Artist/Agency Plan</div>
+                            <div style="font-size:0.78rem;color:var(--color-text-muted);">B2B · 월정액 SaaS</div>
+                        </div>
+                    </div>
+                    <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px;">
+                        <li style="font-size:0.83rem;color:var(--color-text-secondary);">✓ 공식 아티스트 러브트리 채널</li>
+                        <li style="font-size:0.83rem;color:var(--color-text-secondary);">✓ 팬 분석 대시보드</li>
+                        <li style="font-size:0.83rem;color:var(--color-text-secondary);">✓ 신곡 런칭 캠페인 연동</li>
+                    </ul>
+                </div>
+                <div class="reveal" style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-radius:14px;padding:22px;backdrop-filter:blur(12px);">
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+                        <span style="font-size:1.5rem;">🎯</span>
+                        <div>
+                            <div style="font-weight:700;font-size:1rem;">Sponsored Tree</div>
+                            <div style="font-size:0.78rem;color:var(--color-text-muted);">브랜드 캠페인 광고</div>
+                        </div>
+                    </div>
+                    <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px;">
+                        <li style="font-size:0.83rem;color:var(--color-text-secondary);">✓ 브랜드 공식 러브트리 운영</li>
+                        <li style="font-size:0.83rem;color:var(--color-text-secondary);">✓ 신보·콘텐츠 런칭 연동</li>
+                        <li style="font-size:0.83rem;color:var(--color-text-secondary);">✓ 팬덤 인게이지먼트 측정</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 6: 성장 로드맵 -->
+    <div class="slide" data-slide="6">
+        <div class="gradient-mesh">
+            <div class="blob" style="width:400px;height:400px;top:-90px;right:-90px;background:var(--color-accent-1);opacity:0.1;"></div>
+            <div class="blob" style="width:260px;height:260px;bottom:-60px;left:-40px;background:var(--color-accent-2);opacity:0.09;"></div>
+        </div>
+        <canvas class="particle-canvas-ambient" style="position:absolute;inset:0;z-index:1;"></canvas>
+        <div class="content">
+            <p class="reveal" style="font-size:0.8rem;text-transform:uppercase;letter-spacing:5px;color:var(--color-accent-1);margin-bottom:0.5rem;">04 · Growth Roadmap</p>
+            <h2 class="font-display reveal" style="font-size:clamp(1.8rem,3.5vw,2.8rem);font-weight:700;margin-bottom:1.5rem;">3단계 성장 전략</h2>
+            <div style="display:flex;flex-direction:column;gap:14px;">
+                <div class="reveal" style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-left:4px solid #e879f9;border-radius:12px;padding:18px 22px;backdrop-filter:blur(12px);display:grid;grid-template-columns:180px 1fr;gap:20px;align-items:center;">
+                    <div>
+                        <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:3px;color:#e879f9;margin-bottom:4px;">Phase 1</div>
+                        <div style="font-weight:700;font-size:1rem;">코어 락인</div>
+                        <div style="font-size:0.8rem;color:var(--color-text-muted);">0~6개월</div>
+                    </div>
+                    <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:5px;">
+                        <li style="font-size:0.85rem;color:var(--color-text-secondary);display:flex;gap:8px;"><span style="color:#e879f9;flex-shrink:0;">▸</span>K-pop 커뮤니티(트위터·디시인사이드) 베타 유저 100명 모집</li>
+                        <li style="font-size:0.85rem;color:var(--color-text-secondary);display:flex;gap:8px;"><span style="color:#e879f9;flex-shrink:0;">▸</span>"내 최애 입덕 러브트리 공유" 챌린지 → 바이럴 루프 설계</li>
+                        <li style="font-size:0.85rem;color:var(--color-text-secondary);display:flex;gap:8px;"><span style="color:#e879f9;flex-shrink:0;">▸</span>Plus 플랜 조기 출시 → 초기 수익 검증</li>
+                    </ul>
+                </div>
+                <div class="reveal" style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-left:4px solid #fb923c;border-radius:12px;padding:18px 22px;backdrop-filter:blur(12px);display:grid;grid-template-columns:180px 1fr;gap:20px;align-items:center;">
+                    <div>
+                        <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:3px;color:#fb923c;margin-bottom:4px;">Phase 2</div>
+                        <div style="font-weight:700;font-size:1rem;">파트너십 확장</div>
+                        <div style="font-size:0.8rem;color:var(--color-text-muted);">6~18개월</div>
+                    </div>
+                    <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:5px;">
+                        <li style="font-size:0.85rem;color:var(--color-text-secondary);display:flex;gap:8px;"><span style="color:#fb923c;flex-shrink:0;">▸</span>K-pop 소속사 B2B Artist Plan 계약 1~3건 체결</li>
+                        <li style="font-size:0.85rem;color:var(--color-text-secondary);display:flex;gap:8px;"><span style="color:#fb923c;flex-shrink:0;">▸</span>유튜브 크리에이터 앰배서더 프로그램 운영</li>
+                        <li style="font-size:0.85rem;color:var(--color-text-secondary);display:flex;gap:8px;"><span style="color:#fb923c;flex-shrink:0;">▸</span>SNS 공유 카드 자동 생성 (OG image) → 재공유 유도</li>
+                    </ul>
+                </div>
+                <div class="reveal" style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-left:4px solid #a855f7;border-radius:12px;padding:18px 22px;backdrop-filter:blur(12px);display:grid;grid-template-columns:180px 1fr;gap:20px;align-items:center;">
+                    <div>
+                        <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:3px;color:#a855f7;margin-bottom:4px;">Phase 3</div>
+                        <div style="font-weight:700;font-size:1rem;">글로벌 확장</div>
+                        <div style="font-size:0.8rem;color:var(--color-text-muted);">18개월~</div>
+                    </div>
+                    <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:5px;">
+                        <li style="font-size:0.85rem;color:var(--color-text-secondary);display:flex;gap:8px;"><span style="color:#a855f7;flex-shrink:0;">▸</span>일본·동남아 K-pop 팬덤 현지화 (다국어 지원)</li>
+                        <li style="font-size:0.85rem;color:var(--color-text-secondary);display:flex;gap:8px;"><span style="color:#a855f7;flex-shrink:0;">▸</span>애니·J-pop 팬덤으로 카테고리 확장</li>
+                        <li style="font-size:0.85rem;color:var(--color-text-secondary);display:flex;gap:8px;"><span style="color:#a855f7;flex-shrink:0;">▸</span>시리즈 A 투자 유치 검토</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 7: 즉시 실행 액션 -->
+    <div class="slide" data-slide="7">
+        <div class="gradient-mesh">
+            <div class="blob" style="width:420px;height:420px;top:-100px;left:-80px;background:var(--color-accent-2);opacity:0.11;"></div>
+            <div class="blob" style="width:290px;height:290px;bottom:-60px;right:-50px;background:var(--color-accent-3);opacity:0.09;"></div>
+        </div>
+        <div class="content">
+            <p class="reveal" style="font-size:0.8rem;text-transform:uppercase;letter-spacing:5px;color:var(--color-accent-2);margin-bottom:0.5rem;">05 · Immediate Actions</p>
+            <h2 class="font-display reveal" style="font-size:clamp(1.8rem,3.5vw,2.8rem);font-weight:700;margin-bottom:1.4rem;">지금 당장 해야 할 일</h2>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+                <div class="reveal" style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-radius:12px;padding:20px;backdrop-filter:blur(12px);">
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+                        <span style="background:linear-gradient(135deg,#e879f9,#fb923c);border-radius:8px;padding:4px 10px;font-size:0.75rem;font-weight:700;">P1 긴급</span>
+                        <span style="font-size:1.2rem;">🖥️</span>
+                    </div>
+                    <div style="font-weight:600;margin-bottom:6px;font-size:0.95rem;">랜딩 페이지 리포지셔닝</div>
+                    <p style="font-size:0.83rem;color:var(--color-text-muted);line-height:1.5;margin:0;">"감정 스크랩북" 컨셉 강화. 스크린샷·데모 GIF 추가. lovebud.pages.dev 첫인상 최적화</p>
+                </div>
+                <div class="reveal" style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-radius:12px;padding:20px;backdrop-filter:blur(12px);">
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+                        <span style="background:linear-gradient(135deg,#e879f9,#fb923c);border-radius:8px;padding:4px 10px;font-size:0.75rem;font-weight:700;">P1 긴급</span>
+                        <span style="font-size:1.2rem;">📤</span>
+                    </div>
+                    <div style="font-weight:600;margin-bottom:6px;font-size:0.95rem;">SNS 공유 기능 완성</div>
+                    <p style="font-size:0.83rem;color:var(--color-text-muted);line-height:1.5;margin:0;">러브트리 1개 → 카드 이미지로 공유 가능하게. 가장 빠른 바이럴 트리거</p>
+                </div>
+                <div class="reveal" style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-radius:12px;padding:20px;backdrop-filter:blur(12px);">
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+                        <span style="background:rgba(168,85,247,0.25);border:1px solid rgba(168,85,247,0.4);border-radius:8px;padding:4px 10px;font-size:0.75rem;font-weight:700;color:#c084fc;">P2 중요</span>
+                        <span style="font-size:1.2rem;">👥</span>
+                    </div>
+                    <div style="font-weight:600;margin-bottom:6px;font-size:0.95rem;">베타 유저 100명 모집</div>
+                    <p style="font-size:0.83rem;color:var(--color-text-muted);line-height:1.5;margin:0;">K-pop 팬덤 커뮤니티 직접 모집. 피드백 루프 구축. NPS 측정 시작</p>
+                </div>
+                <div class="reveal" style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-radius:12px;padding:20px;backdrop-filter:blur(12px);">
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+                        <span style="background:rgba(168,85,247,0.25);border:1px solid rgba(168,85,247,0.4);border-radius:8px;padding:4px 10px;font-size:0.75rem;font-weight:700;color:#c084fc;">P2 중요</span>
+                        <span style="font-size:1.2rem;">💳</span>
+                    </div>
+                    <div style="font-weight:600;margin-bottom:6px;font-size:0.95rem;">Plus 플랜 조기 출시</div>
+                    <p style="font-size:0.83rem;color:var(--color-text-muted);line-height:1.5;margin:0;">Private tree 비공개 기능 유료화. 월 ₩4,900 책정. 초기 수익 모델 검증</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 8: 기술 리스크 -->
+    <div class="slide" data-slide="8">
+        <div class="gradient-mesh">
+            <div class="blob" style="width:380px;height:380px;top:-80px;right:-80px;background:var(--color-accent-1);opacity:0.09;"></div>
+            <div class="blob" style="width:260px;height:260px;bottom:-50px;left:-40px;background:var(--color-accent-2);opacity:0.08;"></div>
+        </div>
+        <div class="content">
+            <p class="reveal" style="font-size:0.8rem;text-transform:uppercase;letter-spacing:5px;color:var(--color-accent-1);margin-bottom:0.5rem;">06 · Technical Risk</p>
+            <h2 class="font-display reveal" style="font-size:clamp(1.8rem,3.5vw,2.8rem);font-weight:700;margin-bottom:0.4rem;">인프라 최적화 방향</h2>
+            <p class="reveal" style="color:var(--color-text-muted);font-size:0.9rem;margin-bottom:1.4rem;">현재 4중 레이어 구조 → 2단 구조로 단순화 필요</p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:14px;">
+                <div class="reveal" style="background:rgba(251,113,133,0.08);border:1px solid rgba(251,113,133,0.2);border-radius:12px;padding:18px;">
+                    <div style="font-weight:700;color:#fb7185;margin-bottom:10px;font-size:0.95rem;">⚠️ 현재 리스크</div>
+                    <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:7px;">
+                        <li style="font-size:0.83rem;color:var(--color-text-secondary);">Cloudflare → Modal → Vercel → Netlify 4중 레이어</li>
+                        <li style="font-size:0.83rem;color:var(--color-text-secondary);">운영 복잡도 높음 → 장애 추적 어려움</li>
+                        <li style="font-size:0.83rem;color:var(--color-text-secondary);">Vanilla JS + HTML → 팀 확장 시 확장성 제한</li>
+                        <li style="font-size:0.83rem;color:var(--color-text-secondary);">번들러 부재 → 코드 스플리팅 불가</li>
+                    </ul>
+                </div>
+                <div class="reveal" style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:12px;padding:18px;">
+                    <div style="font-weight:700;color:#4ade80;margin-bottom:10px;font-size:0.95rem;">✅ 권장 방향</div>
+                    <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:7px;">
+                        <li style="font-size:0.83rem;color:var(--color-text-secondary);">Cloudflare Pages + Modal 2단 구조 단순화</li>
+                        <li style="font-size:0.83rem;color:var(--color-text-secondary);">Netlify 레거시 경로 단계적 제거</li>
+                        <li style="font-size:0.83rem;color:var(--color-text-secondary);">유저 1,000명 돌파 시 React 마이그레이션 계획</li>
+                        <li style="font-size:0.83rem;color:var(--color-text-secondary);">모니터링 도구 (Sentry / Cloudflare Analytics) 도입</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="reveal" style="background:rgba(232,121,249,0.08);border:1px solid rgba(232,121,249,0.2);border-radius:10px;padding:14px 20px;">
+                <p style="font-size:0.88rem;color:var(--color-text-secondary);margin:0;line-height:1.6;">💡 <strong style="color:var(--color-accent-1);">핵심 원칙:</strong> 기술 완성도보다 <strong>실제 팬덤 유저 검증</strong>이 우선. 인프라 단순화는 MVP 검증 이후 진행해도 무방.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 9: 마무리 -->
+    <div class="slide" data-slide="9">
+        <div class="gradient-mesh">
+            <div class="blob" style="width:560px;height:560px;top:-130px;right:-130px;background:var(--color-accent-1);opacity:0.18;"></div>
+            <div class="blob" style="width:340px;height:340px;bottom:-90px;left:-70px;background:var(--color-accent-2);opacity:0.14;"></div>
+            <div class="blob" style="width:230px;height:230px;top:35%;left:12%;background:var(--color-accent-3);opacity:0.1;"></div>
+        </div>
+        <canvas class="particle-canvas" style="position:absolute;inset:0;z-index:1;"></canvas>
+        <div class="content text-center">
+            <div style="font-size:90px;margin-bottom:14px;animation:float 3s ease-in-out infinite;" class="reveal">🌳</div>
+            <h2 class="font-display reveal" style="font-size:clamp(2rem,5vw,4rem);font-weight:900;background:linear-gradient(135deg,#e879f9,#fb923c,#e879f9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:1rem;">첫 순간이 쌓여<br>러브트리가 된다</h2>
+            <p class="reveal" style="color:var(--color-text-secondary);font-size:1rem;margin-bottom:1.8rem;line-height:1.7;">LoveBud는 팬덤 시장의 감정 경로를 최초로 제품화한 서비스입니다.<br>지금이 바로 시장 선점의 최적 타이밍입니다.</p>
+            <div class="reveal" style="display:inline-flex;gap:12px;flex-wrap:wrap;justify-content:center;">
+                <span style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-radius:20px;padding:8px 18px;font-size:0.85rem;backdrop-filter:blur(10px);">🎯 Phase 1 — 유저 100명 락인</span>
+                <span style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-radius:20px;padding:8px 18px;font-size:0.85rem;backdrop-filter:blur(10px);">📤 SNS 공유 카드 완성</span>
+                <span style="background:var(--color-glass-bg);border:1px solid var(--color-glass-border);border-radius:20px;padding:8px 18px;font-size:0.85rem;backdrop-filter:blur(10px);">💳 Plus 플랜 검증</span>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<div class="nav-controls">
+    <button class="nav-btn" onclick="changeSlide(-1)">&#8249;</button>
+    <div class="slide-dots" id="dots"></div>
+    <button class="nav-btn" onclick="changeSlide(1)">&#8250;</button>
+    <span class="slide-counter" id="counter">1 / 9</span>
+</div>
+
+<script>
+    let current = 1;
+    const total = document.querySelectorAll('.slide').length;
+    const dotsContainer = document.getElementById('dots');
+    const counter = document.getElementById('counter');
+    for (let i = 1; i <= total; i++) { const dot = document.createElement('div'); dot.className = 'dot' + (i === 1 ? ' active' : ''); dot.onclick = () => goToSlide(i); dotsContainer.appendChild(dot); }
+    function goToSlide(n) {
+        const prev = document.querySelector('.slide.active');
+        const next = document.querySelector(`.slide[data-slide="${n}"]`);
+        if (prev) prev.classList.remove('active');
+        if (next) { next.classList.add('active'); animateSlide(next); }
+        current = n; updateNav();
+    }
+    function changeSlide(dir) { let next = current + dir; if (next < 1) next = total; if (next > total) next = 1; goToSlide(next); }
+    function updateNav() { document.querySelectorAll('.dot').forEach((d, i) => { d.classList.toggle('active', i + 1 === current); }); counter.textContent = current + ' / ' + total; }
+    document.addEventListener('keydown', (e) => { if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); changeSlide(1); } if (e.key === 'ArrowLeft') { e.preventDefault(); changeSlide(-1); } });
+    let touchStartX = 0;
+    document.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; });
+    document.addEventListener('touchend', (e) => { const diff = touchStartX - e.changedTouches[0].clientX; if (Math.abs(diff) > 50) changeSlide(diff > 0 ? 1 : -1); });
+
+    function animateSlide(slide) {
+        slide.querySelectorAll('.reveal').forEach((el, i) => {
+            el.style.transition = 'none'; el.style.opacity = '0'; el.style.transform = 'translateY(20px)';
+            el.offsetHeight;
+            const delay = i * 0.08;
+            el.style.transition = `opacity 0.35s ease ${delay}s, transform 0.35s ease ${delay}s`;
+            el.style.opacity = '1'; el.style.transform = 'translateY(0px)';
+        });
+        animateSlideEffects(slide);
+    }
+
+    function animateSlideEffects(slide) {
+        slide.querySelectorAll('[data-count]:not(.counted)').forEach(el => {
+            el.classList.add('counted');
+            const target = parseInt(el.dataset.count);
+            const suffix = el.dataset.suffix || '', prefix = el.dataset.prefix || '';
+            let cur = 0; const step = target / 40;
+            const timer = setInterval(() => { cur += step; if (cur >= target) { cur = target; clearInterval(timer); } el.textContent = prefix + Math.round(cur).toLocaleString() + suffix; }, 30);
+        });
+        slide.querySelectorAll('.bar-fill:not(.fill-init)').forEach((bar, i) => {
+            bar.classList.add('fill-init');
+            bar.style.width = '0%'; bar.style.transition = `width 0.6s ease ${i * 0.1}s`; bar.offsetHeight; bar.style.width = bar.dataset.width + '%';
+        });
+    }
+
+    document.addEventListener('mousemove', (e) => {
+        const spotlight = document.querySelector('.mouse-spotlight');
+        if (spotlight) spotlight.style.background = `radial-gradient(600px circle at ${e.clientX}px ${e.clientY}px, rgba(232,121,249, 0.06), transparent 40%)`;
+    });
+
+    window.initParticles = function(canvas, options) {
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight;
+        const interactive = options.interactive !== false;
+        const count = options.count || (interactive ? 55 : 18);
+        let mx = -1000, my = -1000;
+        const particles = Array.from({ length: count }, () => ({
+            x: Math.random() * canvas.width, y: Math.random() * canvas.height,
+            vx: (Math.random() - 0.5) * 0.3, vy: (Math.random() - 0.5) * 0.3,
+            size: Math.random() * 2.5 + 0.8, alpha: Math.random() * 0.3 + 0.1
+        }));
+        if (interactive) {
+            canvas.addEventListener('mousemove', (e) => { const rect = canvas.getBoundingClientRect(); mx = e.clientX - rect.left; my = e.clientY - rect.top; });
+            canvas.addEventListener('mouseleave', () => { mx = -1000; my = -1000; });
+        }
+        (function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach(p => {
+                if (interactive) { const dx = p.x - mx, dy = p.y - my, dist = Math.sqrt(dx*dx+dy*dy); if (dist < 120) { const force = (120-dist)/120*2; p.vx += (dx/dist)*force*0.1; p.vy += (dy/dist)*force*0.1; } }
+                p.vx *= 0.98; p.vy *= 0.98; p.x += p.vx; p.y += p.vy;
+                if (p.x < 0) p.x = canvas.width; if (p.x > canvas.width) p.x = 0;
+                if (p.y < 0) p.y = canvas.height; if (p.y > canvas.height) p.y = 0;
+                ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+                ctx.fillStyle = `rgba(232,121,249,${p.alpha})`; ctx.fill();
+            });
+            requestAnimationFrame(animate);
+        })();
+    };
+    document.querySelectorAll('.particle-canvas').forEach(c => window.initParticles(c, { interactive: true, count: 55 }));
+    document.querySelectorAll('.particle-canvas-ambient').forEach(c => window.initParticles(c, { interactive: false, count: 18 }));
+    try { animateSlide(document.querySelector('.slide.active')); } catch(e) {}
+</script>
+</body>
+</html>

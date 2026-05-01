@@ -1,0 +1,796 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LoveBud Business Strategy Deck</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800;900&display=swap');
+
+    :root {
+      --paper: #fff8f4;
+      --paper-2: #fffdf9;
+      --ink: #3f302b;
+      --muted: #7a6660;
+      --soft: #9b827a;
+      --rose: #934c57;
+      --rose-2: #bf6f7d;
+      --rose-3: #f3d4d9;
+      --sage: #8fa987;
+      --sage-2: #dfe9d7;
+      --cream: #f6eadc;
+      --line: rgba(147, 76, 87, 0.16);
+      --shadow: 0 28px 70px rgba(83, 56, 49, 0.14);
+      --slide-w: 1280px;
+      --slide-h: 720px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: radial-gradient(circle at 15% 5%, #ffe9e6 0, transparent 28%),
+                  radial-gradient(circle at 88% 12%, #e6efd9 0, transparent 24%),
+                  linear-gradient(135deg, #fbf0e9, #fffdf9 52%, #f7ece7);
+      color: var(--ink);
+      font-family: 'Noto Sans KR', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      line-height: 1.45;
+    }
+
+    .deck {
+      width: min(100%, calc(var(--slide-w) + 80px));
+      margin: 0 auto;
+      padding: 40px;
+      display: grid;
+      gap: 36px;
+    }
+
+    .slide {
+      position: relative;
+      width: var(--slide-w);
+      height: var(--slide-h);
+      max-width: 100%;
+      aspect-ratio: 16 / 9;
+      min-height: 720px;
+      overflow: hidden;
+      border-radius: 34px;
+      background: linear-gradient(135deg, rgba(255, 253, 249, 0.96), rgba(255, 247, 242, 0.94));
+      border: 1px solid rgba(147, 76, 87, 0.12);
+      box-shadow: var(--shadow);
+      padding: 58px 68px;
+      page-break-after: always;
+    }
+
+    .slide::before {
+      content: '';
+      position: absolute;
+      width: 440px;
+      height: 440px;
+      right: -180px;
+      top: -170px;
+      border-radius: 999px;
+      background: radial-gradient(circle, rgba(243, 212, 217, 0.86), rgba(243, 212, 217, 0));
+      pointer-events: none;
+    }
+
+    .slide::after {
+      content: '';
+      position: absolute;
+      width: 360px;
+      height: 360px;
+      left: -160px;
+      bottom: -150px;
+      border-radius: 999px;
+      background: radial-gradient(circle, rgba(223, 233, 215, 0.82), rgba(223, 233, 215, 0));
+      pointer-events: none;
+    }
+
+    .slide > * { position: relative; z-index: 1; }
+
+    .slide-number {
+      position: absolute;
+      right: 58px;
+      bottom: 38px;
+      z-index: 2;
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      color: rgba(147, 76, 87, 0.38);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--rose);
+      font-size: 15px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 18px;
+    }
+
+    .eyebrow::before {
+      content: '';
+      width: 36px;
+      height: 2px;
+      border-radius: 999px;
+      background: var(--rose);
+      opacity: 0.42;
+    }
+
+    h1, h2, h3, p { margin: 0; }
+
+    h1 {
+      font-size: 76px;
+      line-height: 0.98;
+      letter-spacing: -0.06em;
+      font-weight: 900;
+      max-width: 780px;
+    }
+
+    h2 {
+      font-size: 48px;
+      line-height: 1.12;
+      letter-spacing: -0.045em;
+      font-weight: 900;
+      max-width: 900px;
+      margin-bottom: 24px;
+    }
+
+    h3 {
+      font-size: 27px;
+      letter-spacing: -0.035em;
+      line-height: 1.25;
+      font-weight: 850;
+      color: var(--ink);
+    }
+
+    .lead {
+      margin-top: 26px;
+      max-width: 720px;
+      color: var(--muted);
+      font-size: 23px;
+      line-height: 1.72;
+      letter-spacing: -0.02em;
+      font-weight: 500;
+    }
+
+    .big-quote {
+      margin-top: 40px;
+      width: 790px;
+      padding: 28px 34px;
+      border-left: 6px solid var(--rose-2);
+      border-radius: 0 28px 28px 0;
+      background: rgba(255, 255, 255, 0.62);
+      box-shadow: 0 14px 38px rgba(83, 56, 49, 0.08);
+      color: var(--rose);
+      font-size: 26px;
+      font-weight: 850;
+      letter-spacing: -0.035em;
+      line-height: 1.45;
+    }
+
+    .title-accent { color: var(--rose); }
+    .title-soft { color: #82665e; }
+
+    .hero-visual {
+      position: absolute;
+      right: 70px;
+      bottom: 78px;
+      width: 330px;
+      height: 330px;
+      border-radius: 46px;
+      background: linear-gradient(145deg, rgba(255,255,255,0.86), rgba(246,234,220,0.72));
+      border: 1px solid var(--line);
+      box-shadow: 0 28px 64px rgba(83, 56, 49, 0.16);
+      transform: rotate(3deg);
+    }
+
+    .hero-visual .node {
+      position: absolute;
+      width: 76px;
+      height: 76px;
+      border-radius: 24px;
+      background: #fff;
+      border: 1px solid rgba(147, 76, 87, 0.13);
+      box-shadow: 0 12px 28px rgba(83, 56, 49, 0.12);
+    }
+
+    .hero-visual .node::after {
+      content: '♡';
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      color: var(--rose-2);
+      font-size: 32px;
+      font-weight: 900;
+    }
+
+    .hero-visual .n1 { left: 42px; top: 202px; }
+    .hero-visual .n2 { left: 128px; top: 92px; }
+    .hero-visual .n3 { right: 42px; top: 176px; }
+    .hero-visual .branch {
+      position: absolute;
+      height: 7px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(147,76,87,0.34), rgba(143,169,135,0.5));
+      transform-origin: left center;
+    }
+    .hero-visual .b1 { left: 100px; top: 202px; width: 92px; transform: rotate(-52deg); }
+    .hero-visual .b2 { left: 184px; top: 150px; width: 92px; transform: rotate(42deg); }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 34px;
+      align-items: start;
+      margin-top: 22px;
+    }
+
+    .three-col {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 22px;
+      margin-top: 26px;
+    }
+
+    .card {
+      min-height: 154px;
+      padding: 26px 28px;
+      border-radius: 30px;
+      background: rgba(255,255,255,0.70);
+      border: 1px solid var(--line);
+      box-shadow: 0 14px 34px rgba(83, 56, 49, 0.08);
+      backdrop-filter: blur(12px);
+    }
+
+    .card.rose { background: linear-gradient(160deg, rgba(255,255,255,0.72), rgba(252,231,235,0.8)); }
+    .card.sage { background: linear-gradient(160deg, rgba(255,255,255,0.72), rgba(229,239,221,0.82)); }
+    .card.cream { background: linear-gradient(160deg, rgba(255,255,255,0.74), rgba(250,236,218,0.84)); }
+
+    .card p {
+      margin-top: 11px;
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1.62;
+      letter-spacing: -0.02em;
+      font-weight: 500;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 0 16px;
+      border-radius: 999px;
+      background: rgba(147, 76, 87, 0.08);
+      color: var(--rose);
+      font-size: 15px;
+      font-weight: 900;
+      margin-bottom: 14px;
+    }
+
+    .metric-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+      margin-top: 36px;
+    }
+
+    .metric {
+      padding: 26px 22px;
+      border-radius: 28px;
+      background: #fff;
+      border: 1px solid var(--line);
+      box-shadow: 0 14px 32px rgba(83, 56, 49, 0.08);
+    }
+
+    .metric .num {
+      display: block;
+      color: var(--rose);
+      font-size: 52px;
+      line-height: 1;
+      letter-spacing: -0.06em;
+      font-weight: 900;
+    }
+
+    .metric .label {
+      display: block;
+      margin-top: 11px;
+      color: var(--muted);
+      font-size: 17px;
+      line-height: 1.45;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 18px;
+      margin-top: 30px;
+    }
+
+    .flow-step {
+      position: relative;
+      min-height: 150px;
+      padding: 24px 22px;
+      border-radius: 28px;
+      background: rgba(255,255,255,0.74);
+      border: 1px solid var(--line);
+      box-shadow: 0 12px 30px rgba(83, 56, 49, 0.07);
+    }
+
+    .flow-step:not(:last-child)::after {
+      content: '→';
+      position: absolute;
+      right: -18px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--rose-2);
+      font-size: 28px;
+      font-weight: 900;
+      z-index: 2;
+    }
+
+    .flow-step .index {
+      display: inline-flex;
+      width: 34px;
+      height: 34px;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background: var(--rose);
+      color: #fff;
+      font-size: 16px;
+      font-weight: 900;
+      margin-bottom: 15px;
+    }
+
+    .flow-step strong {
+      display: block;
+      font-size: 22px;
+      line-height: 1.2;
+      letter-spacing: -0.035em;
+    }
+
+    .flow-step span {
+      display: block;
+      margin-top: 9px;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.45;
+      font-weight: 500;
+    }
+
+    .statement {
+      margin-top: 26px;
+      padding: 30px 36px;
+      border-radius: 34px;
+      background: linear-gradient(135deg, rgba(147,76,87,0.1), rgba(143,169,135,0.12));
+      border: 1px solid var(--line);
+      color: var(--ink);
+      font-size: 28px;
+      line-height: 1.5;
+      letter-spacing: -0.04em;
+      font-weight: 850;
+    }
+
+    .table-like {
+      display: grid;
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 260px 1fr 1fr;
+      gap: 0;
+      overflow: hidden;
+      border-radius: 22px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.74);
+    }
+
+    .row > div {
+      padding: 18px 20px;
+      font-size: 17px;
+      line-height: 1.45;
+      color: var(--muted);
+      font-weight: 600;
+      border-left: 1px solid rgba(147,76,87,0.1);
+    }
+
+    .row > div:first-child {
+      border-left: none;
+      color: var(--rose);
+      font-weight: 900;
+      background: rgba(147,76,87,0.06);
+    }
+
+    .row.header > div {
+      color: var(--ink);
+      background: rgba(255,255,255,0.92);
+      font-size: 16px;
+      font-weight: 900;
+    }
+
+    .timeline {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+      margin-top: 32px;
+    }
+
+    .week {
+      min-height: 350px;
+      padding: 26px 24px;
+      border-radius: 30px;
+      background: rgba(255,255,255,0.74);
+      border: 1px solid var(--line);
+      box-shadow: 0 13px 32px rgba(83, 56, 49, 0.08);
+    }
+
+    .week .week-label {
+      display: inline-flex;
+      min-height: 34px;
+      align-items: center;
+      padding: 0 14px;
+      border-radius: 999px;
+      background: rgba(147,76,87,0.09);
+      color: var(--rose);
+      font-size: 15px;
+      font-weight: 900;
+      margin-bottom: 18px;
+    }
+
+    .week h3 { font-size: 23px; }
+
+    .week ul,
+    .bullets {
+      list-style: none;
+      padding: 0;
+      margin: 18px 0 0;
+      display: grid;
+      gap: 12px;
+    }
+
+    .week li,
+    .bullets li {
+      position: relative;
+      padding-left: 22px;
+      color: var(--muted);
+      font-size: 17px;
+      line-height: 1.52;
+      font-weight: 550;
+      letter-spacing: -0.02em;
+    }
+
+    .week li::before,
+    .bullets li::before {
+      content: '✦';
+      position: absolute;
+      left: 0;
+      top: 0;
+      color: var(--rose-2);
+      font-size: 14px;
+    }
+
+    .decision-grid {
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap: 28px;
+      align-items: stretch;
+      margin-top: 26px;
+    }
+
+    .final-box {
+      padding: 34px;
+      border-radius: 34px;
+      background: linear-gradient(145deg, rgba(147,76,87,0.12), rgba(255,255,255,0.72));
+      border: 1px solid var(--line);
+      box-shadow: 0 16px 38px rgba(83, 56, 49, 0.08);
+    }
+
+    .final-box strong {
+      display: block;
+      color: var(--rose);
+      font-size: 30px;
+      line-height: 1.28;
+      letter-spacing: -0.045em;
+      margin-bottom: 18px;
+    }
+
+    .final-box p {
+      color: var(--muted);
+      font-size: 20px;
+      line-height: 1.68;
+      letter-spacing: -0.02em;
+      font-weight: 550;
+    }
+
+    .stamp {
+      position: absolute;
+      right: 86px;
+      top: 84px;
+      width: 156px;
+      height: 156px;
+      border-radius: 50%;
+      border: 3px solid rgba(147,76,87,0.22);
+      display: grid;
+      place-items: center;
+      color: rgba(147,76,87,0.48);
+      font-size: 22px;
+      font-weight: 900;
+      letter-spacing: -0.04em;
+      transform: rotate(11deg);
+    }
+
+    .footer-note {
+      position: absolute;
+      left: 68px;
+      bottom: 38px;
+      color: rgba(122, 102, 96, 0.7);
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+
+    @media print {
+      body { background: #fff; }
+      .deck { padding: 0; gap: 0; width: var(--slide-w); }
+      .slide {
+        border-radius: 0;
+        box-shadow: none;
+        border: none;
+        width: var(--slide-w);
+        height: var(--slide-h);
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="deck">
+    <section class="slide">
+      <div class="eyebrow">Business Strategy</div>
+      <h1><span class="title-accent">LoveBud</span><br><span class="title-soft">사업화 전략</span></h1>
+      <p class="lead">팬의 입덕 첫 순간을 기록하고, 감정 경로를 공유하는 팬덤 스크랩북 플랫폼</p>
+      <div class="big-quote">“좋아하는 영상을 저장하는 앱”이 아니라,<br>“내가 팬이 되어간 감정의 경로를 만드는 서비스”</div>
+      <div class="hero-visual" aria-hidden="true">
+        <div class="branch b1"></div><div class="branch b2"></div>
+        <div class="node n1"></div><div class="node n2"></div><div class="node n3"></div>
+      </div>
+      <div class="footer-note">Prepared for business decision · LoveBud / LoveTree</div>
+      <div class="slide-number">01</div>
+    </section>
+
+    <section class="slide">
+      <div class="eyebrow">Current Stage</div>
+      <h2>LoveBud는 아이디어가 아니라<br>초기 MVP 루프를 가진 제품입니다.</h2>
+      <div class="three-col">
+        <div class="card rose"><span class="tag">제품 구조</span><h3>핵심 화면 보유</h3><p>Home, My Trees, Editor, Browse, Detail, Login 흐름이 이미 제품 루프로 연결되어 있습니다.</p></div>
+        <div class="card sage"><span class="tag">운영 구조</span><h3>배포·검증 체계 보유</h3><p>Cloudflare Pages, Modal, Preview/Test slot 중심의 운영 기준이 잡혀 있습니다.</p></div>
+        <div class="card cream"><span class="tag">사업 과제</span><h3>검증은 이제부터</h3><p>다음 질문은 “더 만들까?”가 아니라 “팬이 만들고 공유하는가?”입니다.</p></div>
+      </div>
+      <div class="statement">지금은 대규모 런칭보다, 30명의 실제 팬이 러브트리를 만들고 공유하는지 확인할 단계입니다.</div>
+      <div class="slide-number">02</div>
+    </section>
+
+    <section class="slide">
+      <div class="eyebrow">Product Identity</div>
+      <h2>LoveBud의 본질은 정보 정리가 아니라<br>팬 감정의 디지털 스크랩북입니다.</h2>
+      <div class="two-col">
+        <div class="card rose">
+          <h3>LoveBud가 다루는 것</h3>
+          <ul class="bullets">
+            <li>입덕 첫 영상과 특정 timestamp</li>
+            <li>그 장면이 특별했던 감정 메모</li>
+            <li>이어지는 팬심의 경로</li>
+            <li>공유 가능한 입덕 루트</li>
+          </ul>
+        </div>
+        <div class="card cream">
+          <h3>LoveBud가 피해야 할 것</h3>
+          <ul class="bullets">
+            <li>일반 북마크 앱</li>
+            <li>차가운 데이터 관리 도구</li>
+            <li>범용 커뮤니티 피드</li>
+            <li>단순 영상 저장소</li>
+          </ul>
+        </div>
+      </div>
+      <div class="big-quote">한 문장 정의: 나를 팬으로 만든 순간들을 영상과 감정으로 연결하는 입덕 경로 기록 서비스</div>
+      <div class="slide-number">03</div>
+    </section>
+
+    <section class="slide">
+      <div class="eyebrow">Market Problem</div>
+      <h2>팬들은 이미 기록하고 있지만,<br>감정의 경로를 담을 도구는 부족합니다.</h2>
+      <div class="three-col">
+        <div class="card rose"><h3>링크는 남지만<br>맥락은 사라짐</h3><p>왜 그 장면이 특별했는지, 어느 시점에서 입덕했는지 시간이 지나면 흐려집니다.</p></div>
+        <div class="card sage"><h3>팬심의 순서가<br>보이지 않음</h3><p>첫 장면, 다음 장면, 확신하게 된 장면이 하나의 경로로 연결되지 않습니다.</p></div>
+        <div class="card cream"><h3>공유가<br>흩어짐</h3><p>추천 영상 모음은 가능하지만 “내가 어떻게 팬이 되었는가”는 보여주기 어렵습니다.</p></div>
+      </div>
+      <div class="statement">LoveBud의 기회는 “영상 저장”이 아니라 “입덕의 맥락을 다시 감상 가능하게 만드는 것”에 있습니다.</div>
+      <div class="slide-number">04</div>
+    </section>
+
+    <section class="slide">
+      <div class="eyebrow">Target User</div>
+      <h2>초기 타깃은 전체 팬덤이 아니라<br>‘입덕 루트를 공유하는 팬’입니다.</h2>
+      <div class="two-col">
+        <div class="card rose">
+          <span class="tag">1차 타깃</span>
+          <h3>입덕 경험을 정리하고 싶은 팬</h3>
+          <ul class="bullets">
+            <li>아이돌·배우·드라마·영화·크리에이터 팬</li>
+            <li>“이 영상 보고 입덕했다”는 경험이 있는 사람</li>
+            <li>다른 사람에게 좋아하는 대상을 영업하고 싶은 사람</li>
+          </ul>
+        </div>
+        <div class="card sage">
+          <span class="tag">핵심 욕구</span>
+          <h3>좋아하게 된 이유를 보여주고 싶다</h3>
+          <ul class="bullets">
+            <li>내 입덕 순간을 예쁘게 남기고 싶다</li>
+            <li>친구에게 왜 좋아하는지 보여주고 싶다</li>
+            <li>신규 팬에게 입덕 루트를 안내하고 싶다</li>
+          </ul>
+        </div>
+      </div>
+      <div class="slide-number">05</div>
+    </section>
+
+    <section class="slide">
+      <div class="eyebrow">Positioning</div>
+      <h2>LoveBud는 콘텐츠 저장이 아니라<br>‘감정 경로’를 보여주는 서비스입니다.</h2>
+      <div class="table-like">
+        <div class="row header"><div>구분</div><div>기존 도구</div><div>LoveBud</div></div>
+        <div class="row"><div>유튜브 재생목록</div><div>영상 목록 중심</div><div>특정 시점과 감정 중심</div></div>
+        <div class="row"><div>북마크 앱</div><div>링크 저장 중심</div><div>입덕 맥락 기록 중심</div></div>
+        <div class="row"><div>블로그 후기</div><div>긴 글 중심</div><div>영상·시점·메모 연결 중심</div></div>
+        <div class="row"><div>SNS 공유</div><div>순간적 확산 중심</div><div>다시 감상 가능한 구조 중심</div></div>
+      </div>
+      <div class="slide-number">06</div>
+    </section>
+
+    <section class="slide">
+      <div class="eyebrow">Core Loop</div>
+      <h2>첫 순간을 심고, 3개의 감정 순간을 연결하고,<br>링크로 공유하게 만듭니다.</h2>
+      <div class="flow">
+        <div class="flow-step"><span class="index">1</span><strong>첫 영상 입력</strong><span>입덕한 유튜브 영상과 timestamp를 남김</span></div>
+        <div class="flow-step"><span class="index">2</span><strong>감정 메모</strong><span>왜 이 순간이 특별했는지 기록</span></div>
+        <div class="flow-step"><span class="index">3</span><strong>3 Moments 완성</strong><span>두 번째·세 번째 순간을 연결</span></div>
+        <div class="flow-step"><span class="index">4</span><strong>링크 공유</strong><span>다른 팬이 보고 다시 만들게 함</span></div>
+      </div>
+      <div class="statement">초기 성장은 검색 유입보다 공유 링크 기반으로 만들어야 합니다.</div>
+      <div class="slide-number">07</div>
+    </section>
+
+    <section class="slide">
+      <div class="eyebrow">Validation Goal</div>
+      <h2>대규모 런칭보다<br>30명의 실제 팬 검증이 먼저입니다.</h2>
+      <div class="metric-row">
+        <div class="metric"><span class="num">30</span><span class="label">실제 팬 테스트 참여자</span></div>
+        <div class="metric"><span class="num">15</span><span class="label">3개 순간 완성 트리</span></div>
+        <div class="metric"><span class="num">10</span><span class="label">링크 공유 사용자</span></div>
+        <div class="metric"><span class="num">1</span><span class="label">핵심 루프 검증</span></div>
+      </div>
+      <div class="two-col">
+        <div class="card cream"><h3>검증 질문</h3><p>사용자가 첫 트리를 쉽게 만들고, 3개의 순간까지 기록하고, 완성된 트리를 공유하고 싶어지는가?</p></div>
+        <div class="card sage"><h3>판단 기준</h3><p>가입자 수보다 3 Moments 완성률, 공유 링크 복사율, 공유 링크 방문률을 먼저 봐야 합니다.</p></div>
+      </div>
+      <div class="slide-number">08</div>
+    </section>
+
+    <section class="slide">
+      <div class="eyebrow">Product Priority</div>
+      <h2>기술 구조 정리보다<br>공유 루프 완성이 먼저입니다.</h2>
+      <div class="three-col">
+        <div class="card rose"><span class="tag">Priority 1</span><h3>Selected Tree Deep Link</h3><p>공유 링크로 들어오면 해당 러브트리가 바로 보여야 합니다. 이 기능은 바이럴 루프의 입구입니다.</p></div>
+        <div class="card sage"><span class="tag">Priority 2</span><h3>첫 트리 생성 UX</h3><p>처음 들어온 사용자가 “첫 순간을 심기” 행동을 바로 이해해야 합니다.</p></div>
+        <div class="card cream"><span class="tag">Priority 3</span><h3>샘플 러브트리</h3><p>빈 서비스는 설득력이 약합니다. 운영자 예시 트리가 사용법을 설명해야 합니다.</p></div>
+      </div>
+      <div class="statement">리팩터링은 필요하지만, 지금 사업 임팩트가 가장 큰 작업은 공유 가능한 완성 경험입니다.</div>
+      <div class="slide-number">09</div>
+    </section>
+
+    <section class="slide">
+      <div class="eyebrow">Revenue Model</div>
+      <h2>초반에는 무료 공유,<br>이후 Plus와 팬덤 큐레이션으로 확장합니다.</h2>
+      <div class="three-col">
+        <div class="card cream"><span class="tag">Step 1</span><h3>무료 공개 트리</h3><p>누구나 만들고 공유하게 하여 사용 사례와 공개 콘텐츠를 확보합니다.</p></div>
+        <div class="card rose"><span class="tag">Step 2</span><h3>Plus 기능</h3><p>비공개 보관, 고급 테마, 트리 개수 확장, export, 워터마크 제거로 과금합니다.</p></div>
+        <div class="card sage"><span class="tag">Step 3</span><h3>팬덤·크리에이터용</h3><p>입덕 가이드 페이지, 팬덤 큐레이션, 임베드 가능한 러브트리로 확장합니다.</p></div>
+      </div>
+      <div class="big-quote">지금 결제부터 붙이면 안 됩니다. 먼저 “왜 만들고 공유하는지”를 증명해야 합니다.</div>
+      <div class="slide-number">10</div>
+    </section>
+
+    <section class="slide">
+      <div class="eyebrow">Go-to-Market</div>
+      <h2>“앱 출시”가 아니라<br>“입덕트리 3 Moments 챌린지”로 시작합니다.</h2>
+      <div class="decision-grid">
+        <div class="final-box">
+          <strong>캠페인 메시지</strong>
+          <p>당신의 입덕 첫 순간은 무엇이었나요?<br>나를 팬으로 만든 영상 3개로 러브트리를 만들어보세요.</p>
+        </div>
+        <div class="card rose">
+          <h3>참여 방식</h3>
+          <ul class="bullets">
+            <li>첫 영상과 timestamp 입력</li>
+            <li>감정 메모 작성</li>
+            <li>두 번째·세 번째 순간 추가</li>
+            <li>러브트리 링크 공유</li>
+          </ul>
+        </div>
+      </div>
+      <div class="statement">내 입덕 루트가 다른 팬의 시작점이 된다는 메시지가 가장 강한 확산 동기입니다.</div>
+      <div class="slide-number">11</div>
+    </section>
+
+    <section class="slide">
+      <div class="eyebrow">Operating Strategy</div>
+      <h2>CTO 운영은 작게 나누고,<br>하나씩 검증하고, 사업 루프와 연결해야 합니다.</h2>
+      <div class="two-col">
+        <div class="card sage">
+          <h3>개발 운영 원칙</h3>
+          <ul class="bullets">
+            <li>main 직접 수정 금지</li>
+            <li>한 PR에 하나의 목적만 담기</li>
+            <li>기능·UI·문서 작업 분리</li>
+            <li>Preview 또는 test slot 기준 검증</li>
+          </ul>
+        </div>
+        <div class="card cream">
+          <h3>사업 판단 기준</h3>
+          <ul class="bullets">
+            <li>사용자가 만들 수 있는가?</li>
+            <li>사용자가 공유할 수 있는가?</li>
+            <li>공유받은 사람이 이해하는가?</li>
+            <li>다시 만들고 싶어지는가?</li>
+          </ul>
+        </div>
+      </div>
+      <div class="slide-number">12</div>
+    </section>
+
+    <section class="slide">
+      <div class="eyebrow">30-Day Plan</div>
+      <h2>첫 사업 검증은<br>30일 안에 끝내야 합니다.</h2>
+      <div class="timeline">
+        <div class="week"><span class="week-label">Week 1</span><h3>공유 루프 완성</h3><ul><li>selected tree deep link</li><li>공유 링크 직접 진입 검증</li><li>첫 트리 생성 문구 보강</li></ul></div>
+        <div class="week"><span class="week-label">Week 2</span><h3>샘플 확보</h3><ul><li>샘플 트리 5~10개</li><li>팬덤별 예시 구성</li><li>챌린지 문구 제작</li></ul></div>
+        <div class="week"><span class="week-label">Week 3</span><h3>사용자 테스트</h3><ul><li>실제 팬 30명 초대</li><li>3개 순간 완성률 측정</li><li>공유 링크 반응 수집</li></ul></div>
+        <div class="week"><span class="week-label">Week 4</span><h3>개선·판단</h3><ul><li>이탈 구간 파악</li><li>UX 문구 수정</li><li>Plus 도입 여부 판단</li></ul></div>
+      </div>
+      <div class="slide-number">13</div>
+    </section>
+
+    <section class="slide">
+      <div class="eyebrow">Final Decision</div>
+      <h2>LoveBud는 만들 가치가 있습니다.<br>다만 지금은 ‘공유되는 이유’를 증명해야 합니다.</h2>
+      <div class="stamp">GO<br>VERIFY</div>
+      <div class="decision-grid">
+        <div class="final-box">
+          <strong>한 줄 전략</strong>
+          <p>LoveBud는 팬이 좋아하는 영상을 저장하는 앱이 아니라, 내가 팬이 되어간 감정의 경로를 만들고 공유하는 서비스로 가야 합니다.</p>
+        </div>
+        <div class="card rose">
+          <h3>다음 의사결정</h3>
+          <ul class="bullets">
+            <li>selected tree deep link 최우선 개발</li>
+            <li>샘플 러브트리 5~10개 제작</li>
+            <li>30명의 팬 대상 비공개 테스트</li>
+            <li>3 Moments 완성률과 공유율로 다음 투자 결정</li>
+          </ul>
+        </div>
+      </div>
+      <div class="big-quote">기능을 더 많이 붙이는 것이 아니라, 팬이 자기 이야기를 만들고 공유하게 만드는 것이 핵심입니다.</div>
+      <div class="slide-number">14</div>
+    </section>
+  </main>
+</body>
+</html>
