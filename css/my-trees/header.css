@@ -5,7 +5,7 @@ justify-content: space-between;
 gap: 24px;
 margin-bottom: 48px;
 padding-bottom: 24px;
-border-bottom: 1px solid var(--outline-variant);
+border-bottom: 1px solid var(--lovetree-soft-surface-border);
 }
 .header-content { flex: 1; min-width: 0; }
 .my-trees-header h1 { font-size: 2.2rem; font-weight: 900; color: var(--on-surface); margin: 0 0 8px; letter-spacing: -0.03em; }
@@ -14,20 +14,20 @@ border-bottom: 1px solid var(--outline-variant);
 .sort-control { position: relative; }
 .summary-sort-control {
 padding: 10px 36px 10px 16px;
-border-radius: 14px;
-border: 1px solid var(--outline-variant);
+border-radius: 999px;
+border: 1px solid var(--lovetree-chip-border);
 font-size: 14px;
 font-weight: 600;
 cursor: pointer;
-background: white;
-color: var(--on-surface);
+background: var(--lovetree-chip-bg);
+color: var(--lovetree-chip-text);
 appearance: none;
 background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' height='20' viewBox='0 -960 960 960' width='20'%3E%3Cpath d='M480-345 240-585l56-56 184 184 184-184 56 56-240 240Z'/%3E%3C/svg%3E");
 background-repeat: no-repeat;
 background-position: right 10px center;
 transition: all 0.2s ease;
 }
-.summary-sort-control:hover { border-color: var(--primary-soft); background-color: var(--surface-container-lowest); }
+.summary-sort-control:hover { border-color: var(--lovetree-pill-border); background-color: var(--lovetree-pill-hover-bg); color: var(--lovetree-pill-text); }
 .btn-header-create {
 display: inline-flex;
 align-items: center;
