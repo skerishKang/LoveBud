@@ -8,6 +8,7 @@
   <link rel="icon" href="/favicon.ico" sizes="32x32">
   <link rel="stylesheet" href="../css/global.css?v=20260415-10">
   <link rel="stylesheet" href="../css/intro.css?v=20260426-1">
+  <link rel="stylesheet" href="../css/page-transitions.css?v=20260430-1">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
 </head>
 <body class="bokeh-bg">
@@ -17,10 +18,10 @@
     <!-- Shared Header -->
     <div id="shared-header"></div>
 
-    <main>
+    <main class="page-transition-enter">
       <!-- Hero -->
-      <section class="intro-hero">
-        <div class="intro-hero-copy">
+      <section class="intro-hero page-transition-stagger">
+        <div class="intro-hero-copy reveal-up">
           <div class="intro-hero-eyebrow" data-i18n="intro.heroEyebrow">좋아하는 마음이 자라나는 곳</div>
           <h1 data-i18n="intro.heroTitle" data-i18n-html><span class="title-line">사랑하는 순간을</span><span class="title-line title-accent">하나의 러브트리로</span><span class="title-line">남겨요</span></h1>
           <p class="lead" data-i18n="intro.heroLead" data-i18n-html>
@@ -31,7 +32,7 @@
             <a href="search.html" class="intro-cta-link"><span class="btn-round btn-outline intro-cta-secondary" data-i18n="intro.ctaSecondary">다른 트리 둘러보기</span></a>
           </div>
         </div>
-        <div class="intro-hero-visual" aria-hidden="true">
+        <div class="intro-hero-visual reveal-scale" aria-hidden="true">
           <div class="intro-tree-scene">
             <div class="intro-tree-stem"></div>
             <div class="intro-tree-branch one"></div>
@@ -57,7 +58,7 @@
       </section>
 
       <!-- What is Lovetree -->
-      <section class="intro-section intro-section-wide intro-what-is">
+      <section class="intro-section intro-section-wide intro-what-is reveal-up">
         <div class="intro-grid-layout">
           <div class="intro-section-text">
             <div class="intro-what-eyebrow">서비스 소개</div>
@@ -98,7 +99,7 @@
       </section>
 
       <!-- How to Use -->
-      <section class="intro-section intro-section-wide">
+      <section class="intro-section intro-section-wide reveal-up">
         <div class="intro-grid-layout">
           <div class="intro-section-text">
             <h2 data-i18n="intro.howToTitle">처음은 이렇게 남겨요</h2>
@@ -166,7 +167,7 @@
       </section>
 
       <!-- Value -->
-      <section class="intro-section intro-section-wide">
+      <section class="intro-section intro-section-wide reveal-up">
         <div class="intro-grid-layout">
           <div class="intro-section-text">
             <h2 data-i18n="intro.valueTitle">이런 순간이 남아요</h2>
@@ -241,7 +242,7 @@
       </section>
 
       <!-- CTA -->
-      <section class="cta-section">
+      <section class="cta-section reveal-up">
         <h2 data-i18n="intro.ctaTitle">첫 순간을 남길 준비가 되셨나요?</h2>
         <p data-i18n="intro.ctaDesc">시작된 장면부터 당신의 러브트리를 남겨보세요.</p>
         <div class="cta-buttons">
@@ -273,6 +274,7 @@
      <script src="../js/auth/auth-session.js?v=20260417-31"></script>
      <script src="../js/auth/auth-firebase.js?v=20260420-1"></script>
      <script src="../js/auth.js?v=20260417-31"></script>
+     <script src="../js/page-transitions.js?v=20260430-1"></script>
    <script>
      renderSharedHeader();
 
