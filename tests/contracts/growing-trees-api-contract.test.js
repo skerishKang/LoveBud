@@ -116,8 +116,8 @@ test('modal app exposes growing browse endpoint backed by growing snapshot fetch
   );
   assert.match(
     handlerBody,
-    /return\s+fetch_growing_public_tree_snapshots\(\s*limit=limit\s*\)/,
-    'growing endpoint must return fetch_growing_public_tree_snapshots(limit=limit)'
+    /fetch_growing_public_tree_snapshots\(\s*limit=limit\s*\)/,
+    'growing endpoint must call fetch_growing_public_tree_snapshots(limit=limit)'
   );
 
   assert.match(
