@@ -5,9 +5,14 @@ const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const MODAL_APP = path.join(ROOT, 'modal_compute', 'app.py');
+const OWNER_WRITES = path.join(ROOT, 'modal_compute', 'owner_writes.py');
 
 function readModalApp() {
   return fs.readFileSync(MODAL_APP, 'utf8');
+}
+
+function readOwnerWrites() {
+  return fs.readFileSync(OWNER_WRITES, 'utf8');
 }
 
 function compact(value) {
@@ -44,7 +49,7 @@ function getRouteFunctionBody(source, routeName, method) {
 
 // create_owner_tree helper contracts
 test('create_owner_tree uses validate_optional_string for title with max 200', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'create_owner_tree');
   const normalized = compact(body);
 
@@ -56,7 +61,7 @@ test('create_owner_tree uses validate_optional_string for title with max 200', (
 });
 
 test('create_owner_tree uses validate_visibility with public fallback', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'create_owner_tree');
   const normalized = compact(body);
 
@@ -68,7 +73,7 @@ test('create_owner_tree uses validate_visibility with public fallback', () => {
 });
 
 test('create_owner_tree calls require_plus_for_private_storage', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'create_owner_tree');
   const normalized = compact(body);
 
@@ -80,7 +85,7 @@ test('create_owner_tree calls require_plus_for_private_storage', () => {
 });
 
 test('create_owner_tree INSERT targets trees table with correct columns', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'create_owner_tree');
   const normalized = compact(body);
 
@@ -104,7 +109,7 @@ test('create_owner_tree INSERT targets trees table with correct columns', () => 
 });
 
 test('create_owner_tree generates uuid and passes owner_id, title, visibility', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'create_owner_tree');
   const normalized = compact(body);
 
@@ -122,7 +127,7 @@ test('create_owner_tree generates uuid and passes owner_id, title, visibility', 
 });
 
 test('create_owner_tree calls normalize_tree_row with memory count 0', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'create_owner_tree');
   const normalized = compact(body);
 
@@ -135,7 +140,7 @@ test('create_owner_tree calls normalize_tree_row with memory count 0', () => {
 
 // create_owner_memory helper contracts
 test('create_owner_memory uses validate_required_uuid for treeId', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'create_owner_memory');
   const normalized = compact(body);
 
@@ -147,7 +152,7 @@ test('create_owner_memory uses validate_required_uuid for treeId', () => {
 });
 
 test('create_owner_memory calls fetch_owner_tree with tree_id and owner_id', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'create_owner_memory');
   const normalized = compact(body);
 
@@ -159,7 +164,7 @@ test('create_owner_memory calls fetch_owner_tree with tree_id and owner_id', () 
 });
 
 test('create_owner_memory raises 403 when tree not owned', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'create_owner_memory');
   const normalized = compact(body);
 
@@ -177,7 +182,7 @@ test('create_owner_memory raises 403 when tree not owned', () => {
 });
 
 test('create_owner_memory uses tree visibility fallback', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'create_owner_memory');
   const normalized = compact(body);
 
@@ -189,7 +194,7 @@ test('create_owner_memory uses tree visibility fallback', () => {
 });
 
 test('create_owner_memory calls require_plus_for_private_storage', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'create_owner_memory');
   const normalized = compact(body);
 
@@ -201,7 +206,7 @@ test('create_owner_memory calls require_plus_for_private_storage', () => {
 });
 
 test('create_owner_memory guards emotionTags max 20 items', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'create_owner_memory');
   const normalized = compact(body);
 
@@ -225,7 +230,7 @@ test('create_owner_memory guards emotionTags max 20 items', () => {
 });
 
 test('create_owner_memory INSERT targets memories table', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'create_owner_memory');
   const normalized = compact(body);
 
@@ -237,7 +242,7 @@ test('create_owner_memory INSERT targets memories table', () => {
 });
 
 test('create_owner_memory calls normalize_memory_row', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'create_owner_memory');
   const normalized = compact(body);
 
@@ -250,7 +255,7 @@ test('create_owner_memory calls normalize_memory_row', () => {
 
 // update_owner_tree helper contracts
 test('update_owner_tree uses validate_required_uuid for treeId', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'update_owner_tree');
   const normalized = compact(body);
 
@@ -262,7 +267,7 @@ test('update_owner_tree uses validate_required_uuid for treeId', () => {
 });
 
 test('update_owner_tree calls require_tree_owner', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'update_owner_tree');
   const normalized = compact(body);
 
@@ -274,7 +279,7 @@ test('update_owner_tree calls require_tree_owner', () => {
 });
 
 test('update_owner_tree only allows title and visibility updates', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'update_owner_tree');
   const normalized = compact(body);
 
@@ -298,7 +303,7 @@ test('update_owner_tree only allows title and visibility updates', () => {
 });
 
 test('update_owner_tree validates visibility changes and calls require_plus_for_private_storage', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'update_owner_tree');
   const normalized = compact(body);
 
@@ -316,7 +321,7 @@ test('update_owner_tree validates visibility changes and calls require_plus_for_
 });
 
 test('update_owner_tree returns fetch_owner_tree when no updates', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'update_owner_tree');
   const normalized = compact(body);
 
@@ -334,7 +339,7 @@ test('update_owner_tree returns fetch_owner_tree when no updates', () => {
 });
 
 test('update_owner_tree UPDATE includes owner_id guard', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'update_owner_tree');
   const normalized = compact(body);
 
@@ -352,7 +357,7 @@ test('update_owner_tree UPDATE includes owner_id guard', () => {
 });
 
 test('update_owner_tree raises 404 when no rows affected', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'update_owner_tree');
   const normalized = compact(body);
 
@@ -371,7 +376,7 @@ test('update_owner_tree raises 404 when no rows affected', () => {
 
 // delete_owner_tree helper contracts
 test('delete_owner_tree uses validate_required_uuid for treeId', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'delete_owner_tree');
   const normalized = compact(body);
 
@@ -383,7 +388,7 @@ test('delete_owner_tree uses validate_required_uuid for treeId', () => {
 });
 
 test('delete_owner_tree calls require_tree_owner', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'delete_owner_tree');
   const normalized = compact(body);
 
@@ -395,7 +400,7 @@ test('delete_owner_tree calls require_tree_owner', () => {
 });
 
 test('delete_owner_tree cleans up child memory parent relationships', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'delete_owner_tree');
   const normalized = compact(body);
 
@@ -407,7 +412,7 @@ test('delete_owner_tree cleans up child memory parent relationships', () => {
 });
 
 test('delete_owner_tree deletes memories by tree_id', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'delete_owner_tree');
   const normalized = compact(body);
 
@@ -419,7 +424,7 @@ test('delete_owner_tree deletes memories by tree_id', () => {
 });
 
 test('delete_owner_tree DELETE includes owner_id guard', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'delete_owner_tree');
   const normalized = compact(body);
 
@@ -431,7 +436,7 @@ test('delete_owner_tree DELETE includes owner_id guard', () => {
 });
 
 test('delete_owner_tree raises 404 when tree not found', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'delete_owner_tree');
   const normalized = compact(body);
 
@@ -449,7 +454,7 @@ test('delete_owner_tree raises 404 when tree not found', () => {
 });
 
 test('delete_owner_tree returns deleted shape with id', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'delete_owner_tree');
   const normalized = compact(body);
 
@@ -462,7 +467,7 @@ test('delete_owner_tree returns deleted shape with id', () => {
 
 // update_owner_memory helper contracts
 test('update_owner_memory uses validate_required_uuid for memoryId', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'update_owner_memory');
   const normalized = compact(body);
 
@@ -474,7 +479,7 @@ test('update_owner_memory uses validate_required_uuid for memoryId', () => {
 });
 
 test('update_owner_memory calls require_memory_owner', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'update_owner_memory');
   const normalized = compact(body);
 
@@ -486,7 +491,7 @@ test('update_owner_memory calls require_memory_owner', () => {
 });
 
 test('update_owner_memory only allows specific update fields', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'update_owner_memory');
   const normalized = compact(body);
 
@@ -516,7 +521,7 @@ test('update_owner_memory only allows specific update fields', () => {
 });
 
 test('update_owner_memory guards emotionTags max 20 items', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'update_owner_memory');
   const normalized = compact(body);
 
@@ -540,7 +545,7 @@ test('update_owner_memory guards emotionTags max 20 items', () => {
 });
 
 test('update_owner_memory validates visibility changes and calls require_plus_for_private_storage', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'update_owner_memory');
   const normalized = compact(body);
 
@@ -558,7 +563,7 @@ test('update_owner_memory validates visibility changes and calls require_plus_fo
 });
 
 test('update_owner_memory returns require_memory_owner row when no updates', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'update_owner_memory');
   const normalized = compact(body);
 
@@ -582,7 +587,7 @@ test('update_owner_memory returns require_memory_owner row when no updates', () 
 });
 
 test('update_owner_memory UPDATE includes tree owner guard', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'update_owner_memory');
   const normalized = compact(body);
 
@@ -600,7 +605,7 @@ test('update_owner_memory UPDATE includes tree owner guard', () => {
 });
 
 test('update_owner_memory raises 404 when memory not found', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'update_owner_memory');
   const normalized = compact(body);
 
@@ -619,7 +624,7 @@ test('update_owner_memory raises 404 when memory not found', () => {
 
 // delete_owner_memory helper contracts
 test('delete_owner_memory uses validate_required_uuid for memoryId', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'delete_owner_memory');
   const normalized = compact(body);
 
@@ -631,7 +636,7 @@ test('delete_owner_memory uses validate_required_uuid for memoryId', () => {
 });
 
 test('delete_owner_memory calls require_memory_owner', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'delete_owner_memory');
   const normalized = compact(body);
 
@@ -643,7 +648,7 @@ test('delete_owner_memory calls require_memory_owner', () => {
 });
 
 test('delete_owner_memory cleans up sibling/child parent relationships', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'delete_owner_memory');
   const normalized = compact(body);
 
@@ -655,7 +660,7 @@ test('delete_owner_memory cleans up sibling/child parent relationships', () => {
 });
 
 test('delete_owner_memory DELETE includes tree owner guard', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'delete_owner_memory');
   const normalized = compact(body);
 
@@ -667,7 +672,7 @@ test('delete_owner_memory DELETE includes tree owner guard', () => {
 });
 
 test('delete_owner_memory raises 404 when memory not found', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'delete_owner_memory');
   const normalized = compact(body);
 
@@ -685,7 +690,7 @@ test('delete_owner_memory raises 404 when memory not found', () => {
 });
 
 test('delete_owner_memory returns deleted shape with id', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'delete_owner_memory');
   const normalized = compact(body);
 

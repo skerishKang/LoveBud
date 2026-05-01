@@ -5,9 +5,14 @@ const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const MODAL_APP = path.join(ROOT, 'modal_compute', 'app.py');
+const OWNER_WRITES = path.join(ROOT, 'modal_compute', 'owner_writes.py');
 
-function readModalApp() {
+function readOwnerWrites() {
   return fs.readFileSync(MODAL_APP, 'utf8');
+}
+
+function readOwnerWrites() {
+  return fs.readFileSync(OWNER_WRITES, 'utf8');
 }
 
 function compact(value) {
@@ -50,7 +55,7 @@ function assertMemoryWriteOwnerGuard(body, label) {
 }
 
 test('create_owner_memory calls fetch_owner_tree with tree_id and owner_id', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'create_owner_memory');
   const normalized = compact(body);
 
@@ -68,7 +73,7 @@ test('create_owner_memory calls fetch_owner_tree with tree_id and owner_id', () 
 });
 
 test('create_owner_memory raises 403 when owner tree not found', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'create_owner_memory');
   const normalized = compact(body);
 
@@ -92,7 +97,7 @@ test('create_owner_memory raises 403 when owner tree not found', () => {
 });
 
 test('require_tree_owner raises 403 on owner mismatch', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'require_tree_owner');
   const normalized = compact(body);
 
@@ -116,7 +121,7 @@ test('require_tree_owner raises 403 on owner mismatch', () => {
 });
 
 test('require_memory_owner raises 403 on owner mismatch', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'require_memory_owner');
   const normalized = compact(body);
 
@@ -140,7 +145,7 @@ test('require_memory_owner raises 403 on owner mismatch', () => {
 });
 
 test('update_owner_tree calls require_tree_owner', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'update_owner_tree');
   const normalized = compact(body);
 
@@ -152,7 +157,7 @@ test('update_owner_tree calls require_tree_owner', () => {
 });
 
 test('update_owner_tree includes owner_id in WHERE clause', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'update_owner_tree');
   const normalized = compact(body);
 
@@ -170,7 +175,7 @@ test('update_owner_tree includes owner_id in WHERE clause', () => {
 });
 
 test('delete_owner_tree calls require_tree_owner', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'delete_owner_tree');
   const normalized = compact(body);
 
@@ -182,7 +187,7 @@ test('delete_owner_tree calls require_tree_owner', () => {
 });
 
 test('delete_owner_tree includes owner_id in DELETE WHERE clause', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'delete_owner_tree');
   const normalized = compact(body);
 
@@ -194,7 +199,7 @@ test('delete_owner_tree includes owner_id in DELETE WHERE clause', () => {
 });
 
 test('update_owner_memory calls require_memory_owner', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'update_owner_memory');
   const normalized = compact(body);
 
@@ -206,7 +211,7 @@ test('update_owner_memory calls require_memory_owner', () => {
 });
 
 test('update_owner_memory SQL write includes tree owner guard', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'update_owner_memory');
   const normalized = compact(body);
 
@@ -220,7 +225,7 @@ test('update_owner_memory SQL write includes tree owner guard', () => {
 });
 
 test('delete_owner_memory calls require_memory_owner', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'delete_owner_memory');
   const normalized = compact(body);
 
@@ -232,7 +237,7 @@ test('delete_owner_memory calls require_memory_owner', () => {
 });
 
 test('delete_owner_memory SQL write includes tree owner guard', () => {
-  const source = readModalApp();
+  const source = readOwnerWrites();
   const body = getFunctionBody(source, 'delete_owner_memory');
   const normalized = compact(body);
 
