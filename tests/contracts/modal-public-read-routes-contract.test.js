@@ -5,9 +5,14 @@ const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const MODAL_APP = path.join(ROOT, 'modal_compute/app.py');
+const MODAL_PUBLIC_READS = path.join(ROOT, 'modal_compute/public_reads.py');
 
 function readModalApp() {
   return fs.readFileSync(MODAL_APP, 'utf8').replace(/\r\n/g, '\n');
+}
+
+function readModalPublicReads() {
+  return fs.readFileSync(MODAL_PUBLIC_READS, 'utf8').replace(/\r\n/g, '\n');
 }
 
 function hasString(content, pattern) {
@@ -83,7 +88,7 @@ test('modal public read handlers call their current helper functions', () => {
 });
 
 test('modal public read helpers preserve public visibility filters and normalization boundaries', () => {
-  const content = readModalApp();
+  const content = readModalPublicReads();
 
   const latestHelper = extractPythonFunction(content, 'fetch_latest_public_tree_snapshots');
   assert.ok(hasString(latestHelper, "t.visibility = 'public'"));

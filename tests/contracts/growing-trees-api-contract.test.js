@@ -6,6 +6,7 @@ const path = require('node:path');
 const ROOT = path.resolve(__dirname, '..', '..');
 const CLOUDFLARE_PROXY = path.join(ROOT, 'functions', 'api', '[[path]].js');
 const MODAL_APP = path.join(ROOT, 'modal_compute', 'app.py');
+const MODAL_PUBLIC_READS = path.join(ROOT, 'modal_compute', 'public_reads.py');
 
 function readCloudflareProxy() {
   return fs.readFileSync(CLOUDFLARE_PROXY, 'utf8');
@@ -13,6 +14,10 @@ function readCloudflareProxy() {
 
 function readModalApp() {
   return fs.readFileSync(MODAL_APP, 'utf8');
+}
+
+function readModalPublicReads() {
+  return fs.readFileSync(MODAL_PUBLIC_READS, 'utf8');
 }
 
 function stripWhitespace(value) {
@@ -95,22 +100,23 @@ test('cloudflare proxy constrains growing trees limit to 3 through 12', () => {
 });
 
 test('modal app exposes growing browse endpoint backed by growing snapshot fetcher', () => {
-  const source = readModalApp();
+  const appSource = readModalApp();
+  const publicReadsSource = readModalPublicReads();
 
   assert.match(
-    source,
+    publicReadsSource,
     /def\s+fetch_growing_public_tree_snapshots\s*\(/,
     'missing fetch_growing_public_tree_snapshots function'
   );
 
   assert.match(
-    source,
+    appSource,
     /@web_app\.get\(\s*["']\/modal\/browse\/growing["']\s*\)/,
     'missing /modal/browse/growing endpoint'
   );
 
   const handlerBody = extractDecoratedHandler(
-    source,
+    appSource,
     '@web_app.get("/modal/browse/growing")',
     'get_growing_browse_snapshot'
   );
@@ -128,7 +134,7 @@ test('modal app exposes growing browse endpoint backed by growing snapshot fetch
 });
 
 test('modal growing snapshot query keeps public memory count and growing stage contract', () => {
-  const source = readModalApp();
+  const source = readModalPublicReads();
 
   const functionBody = extractPythonFunction(source, 'fetch_growing_public_tree_snapshots');
   const compactBody = stripWhitespace(functionBody).toLowerCase();
