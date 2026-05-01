@@ -1,0 +1,51 @@
+/* Issue #420 — targeted transition polish for nav/auth/icon-loading.
+   Scope: global header navigation, auth nav container, Material Symbols ready state.
+   This file intentionally overrides existing transition: none declarations without
+   changing layout, visibility logic, or JavaScript behavior. */
+
+html body .nav-links a {
+    transition:
+        opacity 0.18s ease,
+        color 0.18s ease,
+        background-color 0.18s ease,
+        border-color 0.18s ease;
+}
+
+html body .nav-links a.nav-highlight {
+    transition:
+        background-color 0.18s ease,
+        border-color 0.18s ease,
+        color 0.18s ease,
+        opacity 0.18s ease;
+}
+
+html body #auth-nav,
+html body #auth-nav-container {
+    transition:
+        opacity 0.16s ease,
+        visibility 0.16s ease;
+}
+
+html body .material-symbols-outlined,
+html body .nav-bar .material-symbols-outlined,
+html body .lang-toggle-btn .material-symbols-outlined,
+html body .user-avatar-shell .material-symbols-outlined,
+html body .user-dropdown-menu .material-symbols-outlined,
+html body #auth-nav .material-symbols-outlined {
+    transition: opacity 0.16s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html body .nav-links a,
+    html body .nav-links a.nav-highlight,
+    html body #auth-nav,
+    html body #auth-nav-container,
+    html body .material-symbols-outlined,
+    html body .nav-bar .material-symbols-outlined,
+    html body .lang-toggle-btn .material-symbols-outlined,
+    html body .user-avatar-shell .material-symbols-outlined,
+    html body .user-dropdown-menu .material-symbols-outlined,
+    html body #auth-nav .material-symbols-outlined {
+        transition: none;
+    }
+}
