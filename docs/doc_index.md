@@ -69,6 +69,7 @@ PR3 button / badge / chip tone 기준 판단이 필요하면 아래를 추가로
 - `./ops/TEST_PREVIEW_SLOTS.md`
 - `./ops/KNOWN_CI_E2E_BLOCKERS.md`
 - `./ops/BRANCH_CLEANUP_PLAN.md`
+- `./ops/MODAL_RUNTIME_DIAGNOSTICS_WORKFLOW.md`
 - `./migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md`
 - `./engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md`
 - `./engineering/REVIEW_GUARDRAILS.md`
@@ -149,6 +150,7 @@ Reference 문서는 `docs/reference/` 아래에 정리됩니다.
 - [LOCAL_BROWSER_VERIFICATION_STARTUP.md](./ops/LOCAL_BROWSER_VERIFICATION_STARTUP.md) - 로컬/브라우저 검증 시작 전 공통 preflight, URL provenance, evidence, PR checklist 기준
 - [BROWSER_VERIFICATION_URL_POLICY.md](./ops/BROWSER_VERIFICATION_URL_POLICY.md) - 브라우저 smoke URL provenance, PR Preview, Branch Preview, fixed test slot 검증 기준
 - [TEST_PREVIEW_SLOTS.md](./ops/TEST_PREVIEW_SLOTS.md) - 고정 테스트 Preview 슬롯 운영 기준
+- [MODAL_RUNTIME_DIAGNOSTICS_WORKFLOW.md](./ops/MODAL_RUNTIME_DIAGNOSTICS_WORKFLOW.md) - Cloudflare and Modal runtime diagnostics workflow, request ID correlation, redaction-safe report templates
 - [DEPLOY_CHECKLIST.md](./ops/DEPLOY_CHECKLIST.md) - 배포 체크리스트
 - [RUNBOOK.md](./ops/RUNBOOK.md) - 운영 / 장애 대응 런북
 - [DOC_WORKFLOW.md](./ops/DOC_WORKFLOW.md) - 문서 작업 흐름
