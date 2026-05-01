@@ -26,7 +26,45 @@
     }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 375px) {
+    .tree-card {
+        height: 300px;
+        padding: 12px;
+    }
+
+    .tree-card-media {
+        height: 120px;
+        margin: 0 0 12px;
+    }
+
+    .tree-card-body {
+        gap: 8px;
+        padding: 4px;
+    }
+
+    .tree-title {
+        font-size: 1.3rem;
+        min-height: 2.1em;
+        max-height: 2.1em;
+    }
+
+    .tree-subtitle {
+        font-size: 0.88rem;
+        min-height: 1.7em;
+        max-height: 1.7em;
+    }
+
+    .tree-meta-row {
+        padding-top: 10px;
+        font-size: 12px;
+    }
+
+    .tree-meta-chip {
+        font-size: 11px;
+        padding: 0 8px;
+        min-height: 24px;
+    }
+}
     .search-container {
         padding: 20px var(--page-pad-mobile) 36px;
         gap: 22px;
