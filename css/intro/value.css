@@ -16,17 +16,17 @@
   align-items: flex-start;
   gap: 16px;
   padding: 20px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,246,244,0.96));
-  border-radius: 1.2rem;
-  border: 1px solid rgba(144, 73, 81, 0.08);
+  background: var(--lovetree-soft-surface);
+  border-radius: var(--lovetree-card-radius);
+  border: 1px solid var(--lovetree-soft-surface-border);
   min-height: 148px;
-  box-shadow: 0 10px 24px rgba(75, 64, 57, 0.04);
+  box-shadow: var(--lovetree-card-shadow);
 }
 
 .value-item-featured {
-  background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(255, 245, 246, 0.95));
-  border-color: rgba(144, 73, 81, 0.12);
-  box-shadow: 0 12px 28px rgba(144, 73, 81, 0.06);
+  background: var(--lovetree-soft-surface);
+  border-color: var(--lovetree-soft-surface-border);
+  box-shadow: var(--lovetree-card-shadow);
 }
 
 .value-item .material-symbols-outlined {

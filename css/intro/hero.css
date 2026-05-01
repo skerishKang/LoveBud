@@ -9,8 +9,8 @@
   grid-template-columns: minmax(0, 1.05fr) minmax(300px, 0.72fr);
   gap: var(--hero-gap);
   align-items: center;
-  padding: 52px var(--page-pad-desktop) 32px;
-  max-width: var(--page-shell-max);
+  padding: 52px var(--lovetree-page-pad-desktop) 32px;
+  max-width: var(--lovetree-page-shell-max);
   margin: 0 auto;
   width: 100%;
   min-height: min(820px, calc(100vh - 108px));
