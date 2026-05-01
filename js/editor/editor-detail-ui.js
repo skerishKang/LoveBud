@@ -195,6 +195,89 @@ function createEditorDetailUI(deps) {
 
         titleContainer.appendChild(editBtn);
     };
+
+    // ── Memo edit boundary helper ────────────────────────────────────────────
+    // Responsible: encapsulate inline memo edit textarea, buttons, and state binding.
+    // Does not affect title edit or current memory actions.
+    const createMemoEditBoundary = (memoContainer, data, { updateSelectedMemoryFields, showToast, formatI18nText, getMemoFallbackText, isEmptyState }) => {
+        memoContainer.innerHTML = '';
+
+        const memoBody = document.createElement('div');
+        memoBody.style.lineHeight = '1.8';
+        memoBody.style.fontSize = '0.95rem';
+        memoBody.style.color = 'var(--on-surface)';
+        memoBody.style.whiteSpace = 'pre-line';
+        memoBody.textContent = isEmptyState
+            ? getMemoFallbackText({ isEmptyState: true })
+            : (data.memo || formatI18nText('emptyMemoryNote', '아직 메모가 남겨지지 않았어요'));
+        memoContainer.appendChild(memoBody);
+
+        if (isEmptyState || typeof updateSelectedMemoryFields !== 'function') return;
+
+        const editBtn = document.createElement('button');
+        editBtn.className = 'memory-edit-button';
+        editBtn.style.marginTop = '10px';
+        editBtn.style.marginLeft = '0';
+        editBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;margin-right:2px;">edit</span>' + formatI18nText('editMemoryNote', '메모 수정');
+
+        editBtn.onclick = () => {
+            memoContainer.innerHTML = '';
+
+            const textarea = document.createElement('textarea');
+            textarea.className = 'memory-edit-textarea';
+            textarea.value = data.memo || '';
+
+            const hintDiv = document.createElement('div');
+            hintDiv.className = 'memory-edit-hint';
+            hintDiv.textContent = formatI18nText('noteSaveHint', 'Ctrl+Enter로 저장할 수 있어요.');
+
+            const actions = document.createElement('div');
+            actions.className = 'memory-edit-actions';
+
+            const saveBtn = document.createElement('button');
+            saveBtn.className = 'btn-save';
+            saveBtn.textContent = formatI18nText('saveMemoryNote', '메모 저장');
+
+            const cancelBtn = document.createElement('button');
+            cancelBtn.className = 'btn-cancel';
+            cancelBtn.textContent = formatI18nText('cancelMemoryNote', '취소');
+
+            actions.appendChild(cancelBtn);
+            actions.appendChild(saveBtn);
+
+            memoContainer.appendChild(textarea);
+            memoContainer.appendChild(hintDiv);
+            memoContainer.appendChild(actions);
+
+            textarea.focus();
+
+            const endEdit = () => { updateDetailPanel(data); };
+
+            const saveEdit = async () => {
+                const newMemo = textarea.value.trim();
+                saveBtn.disabled = true;
+                cancelBtn.disabled = true;
+                if (await updateSelectedMemoryFields({ memo: newMemo })) {
+                    if (showToast) showToast(formatI18nText('memoryUpdateSaved', '순간을 수정했어요.'), 'success');
+                    endEdit();
+                } else {
+                    if (showToast) showToast(formatI18nText('memoryUpdateFailed', '순간을 수정하지 못했어요.'), 'error');
+                    saveBtn.disabled = false;
+                    cancelBtn.disabled = false;
+                }
+            };
+
+            cancelBtn.onclick = endEdit;
+            saveBtn.onclick = saveEdit;
+
+            textarea.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); saveEdit(); }
+                if (e.key === 'Escape') { e.preventDefault(); endEdit(); }
+            });
+        };
+
+        memoContainer.appendChild(editBtn);
+    };
     // ──────────────────────────────────────────────────────────────────────────
 
     const getTreeState = () => {
@@ -726,69 +809,13 @@ function createEditorDetailUI(deps) {
                 : (data.memo || formatI18nText('emptyMemoryNote', '아직 메모가 남겨지지 않았어요'));
             memoContainer.appendChild(memoBody);
 
-            if (!isEmptyState && typeof updateSelectedMemoryFields === 'function') {
-                const editBtn = document.createElement('button');
-                editBtn.className = 'memory-edit-button';
-                editBtn.style.marginTop = '10px';
-                editBtn.style.marginLeft = '0';
-                editBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;margin-right:2px;">edit</span>' + formatI18nText('editMemoryNote', '메모 수정');
-                editBtn.onclick = () => {
-                    memoContainer.innerHTML = '';
-
-                    const textarea = document.createElement('textarea');
-                    textarea.className = 'memory-edit-textarea';
-                    textarea.value = data.memo || '';
-
-                    const hintDiv = document.createElement('div');
-                    hintDiv.className = 'memory-edit-hint';
-                    hintDiv.textContent = formatI18nText('noteSaveHint', 'Ctrl+Enter로 저장할 수 있어요.');
-
-                    const actions = document.createElement('div');
-                    actions.className = 'memory-edit-actions';
-
-                    const saveBtn = document.createElement('button');
-                    saveBtn.className = 'btn-save';
-                    saveBtn.textContent = formatI18nText('saveMemoryNote', '메모 저장');
-
-                    const cancelBtn = document.createElement('button');
-                    cancelBtn.className = 'btn-cancel';
-                    cancelBtn.textContent = formatI18nText('cancelMemoryNote', '취소');
-
-                    actions.appendChild(cancelBtn);
-                    actions.appendChild(saveBtn);
-
-                    memoContainer.appendChild(textarea);
-                    memoContainer.appendChild(hintDiv);
-                    memoContainer.appendChild(actions);
-
-                    textarea.focus();
-
-                    const endEdit = () => { updateDetailPanel(data); };
-
-                    const saveEdit = async () => {
-                        const newMemo = textarea.value.trim();
-                        saveBtn.disabled = true;
-                        cancelBtn.disabled = true;
-                        if (await updateSelectedMemoryFields({ memo: newMemo })) {
-                            if (showToast) showToast(formatI18nText('memoryUpdateSaved', '순간을 수정했어요.'), 'success');
-                            endEdit();
-                        } else {
-                            if (showToast) showToast(formatI18nText('memoryUpdateFailed', '순간을 수정하지 못했어요.'), 'error');
-                            saveBtn.disabled = false;
-                            cancelBtn.disabled = false;
-                        }
-                    };
-
-                    cancelBtn.onclick = endEdit;
-                    saveBtn.onclick = saveEdit;
-
-                    textarea.addEventListener('keydown', (e) => {
-                        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); saveEdit(); }
-                        if (e.key === 'Escape') { e.preventDefault(); endEdit(); }
-                    });
-                };
-                memoContainer.appendChild(editBtn);
-            }
+            createMemoEditBoundary(memoContainer, data, {
+                updateSelectedMemoryFields,
+                showToast,
+                formatI18nText,
+                getMemoFallbackText,
+                isEmptyState
+            });
 
             noteEl.appendChild(memoContainer);
 
