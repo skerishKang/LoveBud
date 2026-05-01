@@ -264,10 +264,10 @@ async function tryModalRead(request, env, requestId = null) {
         accept: 'application/json'
       }
     });
-    return withUpstreamHeader(publicResponse, 'modal');
+    return withUpstreamHeader(publicResponse, 'modal', requestId);
   }
 
-  return withUpstreamHeader(response, 'modal');
+  return withUpstreamHeader(response, 'modal', requestId);
 }
 
 async function tryModalWrite(request, env, requestId = null) {
