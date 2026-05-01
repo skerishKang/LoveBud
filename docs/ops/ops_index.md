@@ -35,8 +35,9 @@
 17. [ENV_NAMING_RUNTIME_TERMINOLOGY_AUDIT.md](ENV_NAMING_RUNTIME_TERMINOLOGY_AUDIT.md) - Issue #431 환경변수 명명 및 runtime terminology 감사, NETLIFY_DATABASE_URL 사용 현황, Cloudflare + Modal + Neon active runtime 정리
 18. [LOCAL_FILE_HYGIENE_PG_DEPENDENCY_AUDIT.md](LOCAL_FILE_HYGIENE_PG_DEPENDENCY_AUDIT.md) - Issue #429 local file hygiene 및 pg dependency usage 감사, .local/ tracked-file safety boundary, secret-safe local file handling, Cloudflare Functions vs local script dependency boundary
 19. [OBSERVABILITY_RUNTIME_LOGGING_AUDIT.md](OBSERVABILITY_RUNTIME_LOGGING_AUDIT.md) - Issue #415 observability 및 runtime logging strategy 감사, Cloudflare/Modal/browser 디버깅 경로, redaction-safe logging boundary, follow-up implementation issue plan (A/B/C)
-20. [MODAL_RUNTIME_DIAGNOSTICS_WORKFLOW.md](MODAL_RUNTIME_DIAGNOSTICS_WORKFLOW.md) - Issue #473 Modal runtime diagnostics workflow, Cloudflare ↔ Modal verification 절차, request ID correlation, blocked-state 보고 기준
-21. [../engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md](../engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md) - browse filter / publication guard 구분
+20. [MODAL_RUNTIME_DIAGNOSTICS_WORKFLOW.md](MODAL_RUNTIME_DIAGNOSTICS_WORKFLOW.md) - Modal runtime diagnostics workflow and verification procedures for Issue #473, PR #477 structured logging runtime verification, blocked-state reporting templates
+21. [LOCAL_FILE_HYGIENE_AND_PG_USAGE_AUDIT.md](LOCAL_FILE_HYGIENE_AND_PG_USAGE_AUDIT.md) - Local file hygiene and pg dependency usage audit for Issue #429, .local/ tracked-file safety boundaries, secret-safe local file handling, Cloudflare Functions vs local script dependency boundary
+22. [../engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md](../engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md) - browse filter / publication guard 구분
 
 ---
 
