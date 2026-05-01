@@ -8,7 +8,7 @@ from typing import Any
 import modal
 from fastapi import FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 
 from modal_compute.auth import (
     PlusRequiredError,
@@ -34,6 +34,13 @@ from modal_compute.validation import (
     validate_required_uuid,
     validate_optional_uuid,
 )
+
+
+def add_request_id_to_response(response: Any, request_id: str | None = None) -> Any:
+    """Add request ID to response headers if available."""
+    if request_id and hasattr(response, 'headers'):
+        response.headers["x-lovebud-request-id"] = request_id
+    return response
 
 
 def fetch_latest_public_tree_snapshots(limit: int = 12, sort: str = "latest") -> list[dict[str, Any]]:
@@ -748,16 +755,23 @@ def modal_health() -> dict[str, bool]:
 def get_latest_browse_snapshot(
     limit: int = Query(default=12, ge=1, le=60),
     sort: str = Query(default="latest"),
+    x_lovebud_request_id: str | None = Header(default=None),
 ) -> list[dict]:
     safe_sort = sort if sort in {"latest", "popular"} else "latest"
-    return fetch_latest_public_tree_snapshots(limit=limit, sort=safe_sort)
+    result = fetch_latest_public_tree_snapshots(limit=limit, sort=safe_sort)
+    # Note: FastAPI handles response headers automatically for list responses
+    # Request ID is available for logging in future structured logging (Issue #472)
+    return result
 
 
 @web_app.get("/modal/browse/growing")
 def get_growing_browse_snapshot(
     limit: int = Query(default=6, ge=3, le=12),
+    x_lovebud_request_id: str | None = Header(default=None),
 ) -> list[dict]:
-    return fetch_growing_public_tree_snapshots(limit=limit)
+    result = fetch_growing_public_tree_snapshots(limit=limit)
+    # Note: Request ID available for future structured logging (Issue #472)
+    return result
 
 
 @web_app.get("/modal/community/memories")
