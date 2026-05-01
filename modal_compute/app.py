@@ -21,6 +21,7 @@ from modal_compute.db import (
     get_db_connection,
     run_db_with_retry,
 )
+from modal_compute.logging import RequestLogger, log_request_event
 from modal_compute.validation import (
     _to_isoformat,
     estimate_stage,
@@ -757,11 +758,19 @@ def get_latest_browse_snapshot(
     sort: str = Query(default="latest"),
     x_lovebud_request_id: str | None = Header(default=None),
 ) -> list[dict]:
-    safe_sort = sort if sort in {"latest", "popular"} else "latest"
-    result = fetch_latest_public_tree_snapshots(limit=limit, sort=safe_sort)
-    # Note: FastAPI handles response headers automatically for list responses
-    # Request ID is available for logging in future structured logging (Issue #472)
-    return result
+    logger = RequestLogger(
+        request_id=x_lovebud_request_id,
+        route="/modal/browse/latest",
+        method="GET",
+    )
+    try:
+        safe_sort = sort if sort in {"latest", "popular"} else "latest"
+        result = fetch_latest_public_tree_snapshots(limit=limit, sort=safe_sort)
+        logger.log_success(status_code=200)
+        return result
+    except Exception:
+        logger.log_error(status_code=500, error_category="UNEXPECTED_ERROR")
+        raise
 
 
 @web_app.get("/modal/browse/growing")
@@ -769,9 +778,18 @@ def get_growing_browse_snapshot(
     limit: int = Query(default=6, ge=3, le=12),
     x_lovebud_request_id: str | None = Header(default=None),
 ) -> list[dict]:
-    result = fetch_growing_public_tree_snapshots(limit=limit)
-    # Note: Request ID available for future structured logging (Issue #472)
-    return result
+    logger = RequestLogger(
+        request_id=x_lovebud_request_id,
+        route="/modal/browse/growing",
+        method="GET",
+    )
+    try:
+        result = fetch_growing_public_tree_snapshots(limit=limit)
+        logger.log_success(status_code=200)
+        return result
+    except Exception:
+        logger.log_error(status_code=500, error_category="UNEXPECTED_ERROR")
+        raise
 
 
 @web_app.get("/modal/community/memories")
