@@ -39,88 +39,88 @@ function createEditorDetailUI(deps) {
         return icon;
     };
 
-     // ── Tree meta boundary helpers ───────────────────────────────────────────
-     // Responsible: derive visibility metadata, build count label, create share/open buttons,
-     // and render the tree meta block into the mount point. Kept separate from detail content rendering.
-     const buildTreeMetaRenderModel = ({
-         currentTree,
-         treeState,
-         data,
-         isEmptyState,
-         isRootSelected,
-         localSaveMode,
-         resolveTreeTitleText,
-         formatI18nText,
-         createShareTreeButton,
-         createOpenDetailButton,
-         bindShareButton,
-         bindOpenDetailButton,
-         createTreeMetaBlock
-     }) => {
-         const visibility = currentTree.visibility || 'public';
-         const isPublic = visibility === 'public';
-         const visIcon = isPublic ? 'public' : 'lock';
-         const visLabel = isPublic ? i18n('visibility_public') : i18n('visibility_private');
-         const visInfo = isPublic
-             ? formatI18nText('editor_tree_public_info', '이 트리 전체가 공개되어 있어요. 링크가 있는 사람은 감상할 수 있습니다.')
-             : formatI18nText('editor_tree_private_info', '이 트리 전체는 비공개예요. 지금은 나만 볼 수 있습니다.');
-         const displayTreeTitle = resolveTreeTitleText(currentTree.title);
-         const localBadgeText = localSaveMode ? (i18n('local_save_badge') || '로컬 저장') : '';
-         const countForLabel = treeState.totalMomentCount;
-         const treeCountLabel = treeState.hasMoments
-             ? formatI18nText('editor_tree_status_count', `{count}개의 순간이 이 트리 안에서 이어지고 있어요.`, { count: countForLabel })
-             : formatI18nText('editor_tree_status_empty', '아직 첫 순간을 기다리고 있어요.');
+    // ── Tree meta boundary helpers ───────────────────────────────────────────
+    // Responsible: derive visibility metadata, build count label, create share/open buttons,
+    // and render the tree meta block into the mount point. Kept separate from detail content rendering.
+    const buildTreeMetaRenderModel = ({
+        currentTree,
+        treeState,
+        data,
+        isEmptyState,
+        isRootSelected,
+        localSaveMode,
+        resolveTreeTitleText,
+        formatI18nText,
+        createShareTreeButton,
+        createOpenDetailButton,
+        bindShareButton,
+        bindOpenDetailButton,
+        createTreeMetaBlock
+    }) => {
+        const visibility = currentTree.visibility || 'public';
+        const isPublic = visibility === 'public';
+        const visIcon = isPublic ? 'public' : 'lock';
+        const visLabel = isPublic ? i18n('visibility_public') : i18n('visibility_private');
+        const visInfo = isPublic
+            ? formatI18nText('editor_tree_public_info', '이 트리 전체가 공개되어 있어요. 링크가 있는 사람은 감상할 수 있습니다.')
+            : formatI18nText('editor_tree_private_info', '이 트리 전체는 비공개예요. 지금은 나만 볼 수 있습니다.');
+        const displayTreeTitle = resolveTreeTitleText(currentTree.title);
+        const localBadgeText = localSaveMode ? (i18n('local_save_badge') || '로컬 저장') : '';
+        const countForLabel = treeState.totalMomentCount;
+        const treeCountLabel = treeState.hasMoments
+            ? formatI18nText('editor_tree_status_count', `{count}개의 순간이 이 트리 안에서 이어지고 있어요.`, { count: countForLabel })
+            : formatI18nText('editor_tree_status_empty', '아직 첫 순간을 기다리고 있어요.');
 
-         let shareBtn = null;
-         let openDetailBtn = null;
-         if (!isEmptyState && data?.id) {
-             shareBtn = createShareTreeButton();
-             openDetailBtn = createOpenDetailButton();
-         }
+        let shareBtn = null;
+        let openDetailBtn = null;
+        if (!isEmptyState && data?.id) {
+            shareBtn = createShareTreeButton();
+            openDetailBtn = createOpenDetailButton();
+        }
 
-         return {
-             displayTreeTitle,
-             visIcon,
-             visLabel,
-             visInfo,
-             isPublic,
-             countLabel: localBadgeText ? `${treeCountLabel} · ${localBadgeText}` : treeCountLabel,
-             shareButtonEl: shareBtn,
-             openDetailButtonEl: openDetailBtn,
-             shareBtn,
-             openDetailBtn
-         };
-     };
+        return {
+            displayTreeTitle,
+            visIcon,
+            visLabel,
+            visInfo,
+            isPublic,
+            countLabel: localBadgeText ? `${treeCountLabel} · ${localBadgeText}` : treeCountLabel,
+            shareButtonEl: shareBtn,
+            openDetailButtonEl: openDetailBtn,
+            shareBtn,
+            openDetailBtn
+        };
+    };
 
-     const renderTreeMetaBoundary = (treeMetaMount, model, treeId, data, { i18n, showToast, bindShareButton, bindOpenDetailButton }) => {
-         if (!treeMetaMount) return;
+    const renderTreeMetaBoundary = (treeMetaMount, model, treeId, data, { i18n, showToast, bindShareButton, bindOpenDetailButton }) => {
+        if (!treeMetaMount) return;
 
-         treeMetaMount.innerHTML = '';
-         treeMetaMount.appendChild(createTreeMetaBlock({
-             displayTreeTitle: model.displayTreeTitle,
-             visIcon: model.visIcon,
-             visLabel: model.visLabel,
-             visInfo: model.visInfo,
-             isPublic: model.isPublic,
-             countLabel: model.countLabel,
-             shareButtonEl: model.shareButtonEl,
-             openDetailButtonEl: model.openDetailButtonEl
-         }));
+        treeMetaMount.innerHTML = '';
+        treeMetaMount.appendChild(createTreeMetaBlock({
+            displayTreeTitle: model.displayTreeTitle,
+            visIcon: model.visIcon,
+            visLabel: model.visLabel,
+            visInfo: model.visInfo,
+            isPublic: model.isPublic,
+            countLabel: model.countLabel,
+            shareButtonEl: model.shareButtonEl,
+            openDetailButtonEl: model.openDetailButtonEl
+        }));
 
-         if (model.shareBtn) {
-             bindShareButton({
-                 btn: model.shareBtn,
-                 data,
-                 treeId,
-                 i18n,
-                 showToast
-             });
-         }
-         bindOpenDetailButton(model.openDetailBtn);
-     };
-     // ──────────────────────────────────────────────────────────────────────────
+        if (model.shareBtn) {
+            bindShareButton({
+                btn: model.shareBtn,
+                data,
+                treeId,
+                i18n,
+                showToast
+            });
+        }
+        bindOpenDetailButton(model.openDetailBtn);
+    };
+    // ──────────────────────────────────────────────────────────────────────────
 
-     // ── Title edit boundary helper ──────────────────────────────────────────
+    // ── Title edit boundary helper ──────────────────────────────────────────
     // Responsible: encapsulate inline title edit button creation and state binding.
     // Does not affect memo edit or current memory actions.
     const createTitleEditBoundary = (titleContainer, data, { updateSelectedMemoryFields, showToast, formatI18nText, i18n, isEmptyState }) => {
