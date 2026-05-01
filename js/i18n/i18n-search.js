@@ -10,12 +10,12 @@
 
   window.i18nSearch = {
     'search.title': {
-      ko: '러브트리 둘러보기',
-      en: 'Browse LoveTrees'
+      ko: '러브트리 감상 둘러보기',
+      en: 'Browse LoveTree moments'
     },
     'search.subtitle': {
-      ko: '조용히 자라는 마음들',
-      en: 'Quietly growing feelings'
+      ko: '첫 순간과 이어진 마음을 따라가 보세요',
+      en: 'Follow first moments and the feelings that grew from them'
     },
     'search.intentNote': {
       ko: '트리를 고르면 열려요.',
