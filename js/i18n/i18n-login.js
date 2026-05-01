@@ -19,12 +19,12 @@
 
     // 로그인 페이지
     'login_title': {
-      ko: '당신의 감정 나무를 시작하세요',
-      en: 'Start your emotional tree'
+      ko: '첫 순간을 내 러브트리로 남겨보세요',
+      en: 'Save your first moment in a LoveTree'
     },
     'login_desc': {
-      ko: '처음 사랑에 빠진 순간부터, 팬이 되어가는 모든 경로를 영상과 메모로 연결해 기록하세요.',
-      en: 'Record every step of your journey from the first spark to full fandom with videos and notes.'
+      ko: '좋아하게 된 순간부터 이어진 마음까지, 영상과 메모로 차곡차곡 연결해 보세요.',
+      en: 'Connect the moment you fell for them with every feeling that followed through videos and notes.'
     },
 
     // 소셜 로그인
