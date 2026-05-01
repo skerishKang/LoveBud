@@ -196,10 +196,19 @@
             }
             const loadMoreBtn = document.getElementById('browseLoadMoreBtn');
             if (loadMoreBtn) {
-                loadMoreBtn.disabled = state.currentLimit >= 60;
-                loadMoreBtn.textContent = state.currentLimit >= 60
-                    ? (getCurrentLocale() === 'en' ? 'Max 60' : '최대 60개')
-                    : (getCurrentLocale() === 'en' ? 'Load more' : '더 보기');
+                const shouldDisable = state.currentLimit >= 60 || !state.hasMoreTrees || state.isLoadingMore;
+                loadMoreBtn.disabled = shouldDisable;
+
+                if (state.isLoadingMore) {
+                    loadMoreBtn.innerHTML = `
+                        <span class="material-symbols-outlined" style="animation: spin 1s linear infinite;">progress_activity</span>
+                        ${getCurrentLocale() === 'en' ? 'Loading...' : '로딩 중...'}
+                    `;
+                } else {
+                    loadMoreBtn.textContent = state.currentLimit >= 60
+                        ? (getCurrentLocale() === 'en' ? 'Max 60' : '최대 60개')
+                        : (getCurrentLocale() === 'en' ? 'Load more' : '더 보기');
+                }
             }
         }
 
@@ -235,7 +244,22 @@
 
             const loadMoreBtn = controls.querySelector('#browseLoadMoreBtn');
             if (loadMoreBtn) {
-                loadMoreBtn.style.display = (state.currentLimit >= 60) ? 'none' : 'inline-flex';
+                const shouldHide = state.currentLimit >= 60 || !state.hasMoreTrees;
+                loadMoreBtn.style.display = shouldHide ? 'none' : 'inline-flex';
+
+                // Update button text and state for loading
+                if (state.isLoadingMore) {
+                    loadMoreBtn.disabled = true;
+                    loadMoreBtn.innerHTML = `
+                        <span class="material-symbols-outlined" style="animation: spin 1s linear infinite;">progress_activity</span>
+                        ${getCurrentLocale() === 'en' ? 'Loading...' : '로딩 중...'}
+                    `;
+                } else {
+                    loadMoreBtn.disabled = false;
+                    loadMoreBtn.textContent = state.currentLimit >= 60
+                        ? (getCurrentLocale() === 'en' ? 'Max 60' : '최대 60개')
+                        : (getCurrentLocale() === 'en' ? 'Load more' : '더 보기');
+                }
             }
         }
 
@@ -288,6 +312,8 @@
             });
 
             controls.querySelector('#browseLoadMoreBtn')?.addEventListener('click', async () => {
+                if (state.isLoadingMore || !state.hasMoreTrees) return;
+
                 state.currentLimit = Math.min(state.currentLimit + 10, 60);
                 syncControlsFromState();
                 callbacks.updateUrlState();

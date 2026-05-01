@@ -56,6 +56,16 @@
                 ui.clearSelectedPreview();
             }
 
+            // Prevent duplicate concurrent requests
+            if (state.isLoadingMore && !resetSelection) {
+                return;
+            }
+
+            // Set loading state for incremental loading
+            if (!resetSelection) {
+                state.isLoadingMore = true;
+            }
+
             // Serve from cache first (stale-while-revalidate)
             let cachedTrees = null;
             if (cache) {
@@ -90,6 +100,7 @@
                     }
                     state.loadError = null;
                     state.apiTreesLoaded = true;
+                    state.hasMoreTrees = apiTrees.length === state.currentLimit;
                     callbacks.renderResults();
                 } else {
                     throw new Error(
@@ -105,6 +116,8 @@
                     state.allTrees = [];
                 }
                 callbacks.renderResults();
+            } finally {
+                state.isLoadingMore = false;
             }
         }
 
