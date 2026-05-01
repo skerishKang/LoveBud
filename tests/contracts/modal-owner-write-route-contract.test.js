@@ -26,16 +26,16 @@ function getRouteFunctionBody(source, routeName, method) {
   const normalizedSource = source.replace(/\r\n/g, '\n');
   // For path parameters, escape the curly braces
   const escapedRouteName = routeName.replace(/\{([^}]+)\}/g, '\\{$1\\}');
-  
+
   // Find the specific route by method and path
   const routePattern = `@web_app\\.${method}\\(["']${escapedRouteName}["'][\\s\\S]*?(?:async\\s+)?def\\s+[\\w_]+\\s*\\([^)]*\\)`;
   const decoratorMatch = normalizedSource.match(new RegExp(routePattern));
   assert.ok(decoratorMatch, `missing route ${method} ${routeName}`);
-  
+
   // Find the function body starting from the decorator
   const startIndex = normalizedSource.indexOf(decoratorMatch[0]);
   const remaining = normalizedSource.substring(startIndex);
-  
+
   // Extract the decorator and function body (up to next decorator or end)
   const functionBodyMatch = remaining.match(/(@web_app\.[^(]*\([^)]*\)[\s\S]*?(?:async\s+)?def\s+[\w_]+\s*\([^)]*\)[\s\S]*?)(?=@web_app\.|\n\n\n|\n\n@|$)/);
   assert.ok(functionBodyMatch, `missing function body ${method} ${routeName}`);
