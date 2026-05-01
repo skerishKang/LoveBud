@@ -149,10 +149,13 @@ Use path indirection rather than value disclosure.
 When GitHub CLI authentication is required, the agent should:
 
 1. Check if `gh auth status` shows authenticated state
-2. If not authenticated, guide the user to run `gh auth login` or set `GH_TOKEN` environment variable
-3. The agent does NOT read the token value from files
-4. The agent runs `gh` commands which will use the already-authenticated session or environment variable
+2. If already authenticated (keyring/session/token stored), the agent can use `gh` commands directly
+3. The agent does NOT read the token value from files or environment
+4. The agent runs `gh` commands which will use the already-authenticated session or stored token
 5. The agent only reports authentication status: `AUTHENTICATED` or `NOT_AUTHENTICATED`
+6. If not authenticated, guide the user to run `gh auth login` (which stores token in keyring)
+
+**Key point**: GitHub CLI automatically uses stored tokens from keyring. The agent does NOT need to read or handle token values manually. The CLI handles token storage and usage securely.
 
 Example PowerShell pattern for checking auth state:
 
