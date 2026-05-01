@@ -40,10 +40,9 @@
 }
 
 .intro-section-text {
-  position: sticky;
-  top: 120px;
-  max-height: 50vh;
-  overflow-y: auto;
+  position: static;
+  max-height: none;
+  overflow-y: visible;
   padding-right: 1rem;
 }
 
