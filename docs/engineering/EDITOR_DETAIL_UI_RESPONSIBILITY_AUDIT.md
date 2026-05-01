@@ -1,213 +1,187 @@
 # Editor Detail UI Responsibility Audit
 
-> **Status:** AUDIT_CAPTURED  
-> **Source:** Issue #223 item 1  
-> **Type:** Docs-only — no JS, CSS, HTML, or runtime changes in this document
+Issue: #518
 
----
+This is a docs/inspection-only audit for `js/editor/editor-detail-ui.js`.
 
-## 1. Purpose
+No JavaScript, CSS, HTML, runtime, backend, package, workflow, PR #7, or PR #450 files are changed by this audit.
 
-This document captures the responsibility boundary audit for `js/editor/editor-detail-ui.js`.
+## Purpose
 
-The file currently handles several distinct concerns in a single module. This audit maps each responsibility, identifies inline style extraction candidates, proposes small follow-up PR candidates, and records the browser smoke checklist for desktop and mobile editor interactions.
+`js/editor/editor-detail-ui.js` currently combines detail panel rendering, sidebar status rendering, inline edit rendering, and action binding inside one factory. This document records responsibility boundaries before any implementation split.
 
-No code changes are made in this document. `js/editor/editor-detail-ui.js`, `js/editor.js`, `pages/editor.html`, and all CSS files are read-only with respect to this PR.
+## Current module boundary
 
----
+Current module:
 
-## 2. Audit Source
+- `js/editor/editor-detail-ui.js`
+- factory: `createEditorDetailUI(deps)`
 
-| Field | Value |
-|---|---|
-| Source issue | Issue #223 item 1 |
-| Audit target | `js/editor/editor-detail-ui.js` |
-| Related files (read-only) | `js/editor.js`, `pages/editor.html`, `css/editor*.css` |
+Primary dependency groups:
 
----
+- DOM mount: `detailPanel`
+- copy and formatting: `i18n`, title/hint/info resolvers
+- editor state readers: selected node, tree memories, current tree data, root id, local save mode
+- UI actions: toast, visibility update, open detail, focus selected moment, selected memory field update
 
-## 3. Responsibility Map
+The module is UI-heavy but behavior-linked because it builds DOM nodes and binds interaction handlers.
 
-### 3.1 Current Memory Card
+## Responsibility buckets
 
-**Responsibility:** Renders the currently-selected memory/moment card in the editor detail panel.
+| Bucket | Current responsibility | Risk | Future direction |
+| --- | --- | --- | --- |
+| Copy and formatting | fallback text, replacement formatting, display tag fallback | LOW | Keep local unless reused elsewhere. |
+| Button and icon construction | pill buttons, inline icons, share/detail action buttons | MEDIUM | Extract only with action smoke. |
+| Tree state derivation | root/non-root memory counts and empty state flags | MEDIUM | Keep near detail UI unless a state selector helper is approved. |
+| Tree meta rendering | current tree card, visibility badge, count text, action row | MEDIUM | Candidate for one narrow tree-meta helper PR. |
+| Empty/reset state | clearing detail fields, empty detail state, footer/action visibility | MEDIUM | Candidate for one narrow empty-state helper PR. |
+| Sidebar status rendering | sidebar title, visibility text, moment count, flow summary, add-memory copy | MEDIUM | Candidate for one narrow sidebar-status helper PR. |
+| Current moment card | badge, title, hint, thumbnail, date, tags, memo body | HIGH | Split only with full selected-memory smoke. |
+| Inline title edit | title edit button, input, save/cancel/error behavior | HIGH | Candidate for one narrow title-edit helper PR. |
+| Inline memo edit | memo edit button, textarea, hint, save/cancel behavior | HIGH | Candidate for one narrow memo-edit helper PR. |
+| Inline style ownership | style assignments on generated nodes | HIGH | Audit separately before moving styles to CSS. |
 
-| Aspect | Notes |
-|---|---|
-| DOM target | Memory card container inside editor detail panel |
-| Data source | Selected memory object passed from `js/editor.js` or editor state |
-| Render trigger | Memory selection event / editor state change |
-| Action surface | Action buttons (edit, delete, pin, etc.) rendered inside card |
-| Inline style risk | Card layout may contain inline dimension or color styles — **VERIFY** |
+## Main concerns
 
-**Concern:** Action button rendering and card layout rendering are currently co-located. These are distinct responsibilities and are candidates for separation in a follow-up PR.
+1. Detail rendering and interaction binding are mixed.
+2. Tree meta and sidebar status responsibilities are in the same factory.
+3. Title and memo editing should not be extracted together.
+4. Inline style cleanup should not be mixed with behavior extraction.
+5. Empty state and selected-memory state share reset paths.
 
----
+## Future PR split
 
-### 3.2 Inline Title Edit
+### PR A — Tree meta renderer only
 
-**Responsibility:** Manages the in-place editable title field for the current LoveTree in the editor.
+Allowed files:
+- `js/editor/editor-detail-ui.js`
+- optional new tree-meta helper
+- `pages/editor.html` only for a narrow script include if required
 
-| Aspect | Notes |
-|---|---|
-| DOM target | Tree title element (contenteditable or input) in editor header/detail area |
-| Trigger | User clicks / focuses title field |
-| Save path | Debounced API call or on-blur save — **VERIFY actual save trigger** |
-| Validation | Minimum/maximum length, non-empty guard — **VERIFY** |
-| Error state | Inline error or silent revert — **VERIFY** |
-| Inline style risk | Focus ring, active-edit highlight may be inline styles — **VERIFY** |
+Forbidden:
+- inline edit changes
+- sidebar status changes
+- data/API changes
+- CSS migration
 
-**Concern:** Inline title edit combines DOM event management, validation, and API call triggering. Save-path logic is a candidate for extraction to a dedicated editor-save helper in a follow-up PR.
+Required smoke:
+- empty editor
+- populated tree
+- selected memory
+- mobile 375px
 
----
+### PR B — Title inline edit only
 
-### 3.3 Inline Memo Edit
+Allowed:
+- move title edit UI construction and save/cancel handling into a helper
+- preserve selected-memory title update behavior
 
-**Responsibility:** Manages the in-place editable memo/description field for the current memory or tree.
+Forbidden:
+- memo edit changes
+- tree meta changes
+- CSS migration
 
-| Aspect | Notes |
-|---|---|
-| DOM target | Memo/description textarea or contenteditable element |
-| Trigger | User clicks / focuses memo field |
-| Save path | Debounced or on-blur API call — **VERIFY** |
-| Validation | Max length, sanitization — **VERIFY** |
-| Shared logic with title edit | Save trigger and error handling may be duplicated — **VERIFY** |
-| Inline style risk | Edit-mode height/resize styles may be inline — **VERIFY** |
+Required smoke:
+- selected memory title edit open
+- validation/error rendering
+- save path where safely testable
+- cancel path
+- mobile 375px
 
-**Concern:** Title edit and memo edit may share save-path and validation logic that is currently duplicated. Consolidation is a candidate for the title/memo edit cleanup PR.
+### PR C — Memo inline edit only
 
----
+Allowed:
+- move memo edit UI construction and save/cancel handling into a helper
+- preserve selected-memory memo update behavior
 
-### 3.4 Action Buttons
+Forbidden:
+- title edit changes
+- tree meta changes
+- CSS migration
 
-**Responsibility:** Renders and handles click events for memory/tree action buttons (edit, delete, pin, copy, share, etc.).
+Required smoke:
+- selected memory memo edit open
+- hint rendering
+- save path where safely testable
+- cancel path
+- mobile 375px
 
-| Aspect | Notes |
-|---|---|
-| DOM target | Action button bar inside memory card or detail header |
-| Button set | Varies by ownership state (owner vs. viewer) and memory type — **VERIFY full set** |
-| Auth dependency | Owner-only actions gated by auth state — **VERIFY gate mechanism** |
-| Event delegation | Inline listener vs. delegated handler — **VERIFY** |
-| Inline style risk | Button visibility toggles may use `display:none` inline — **VERIFY** |
+### PR D — Sidebar status only
 
-**Concern:** Action button state (which buttons are visible) is currently coupled with render logic. Visibility control via inline styles is a high-priority extraction candidate.
+Allowed:
+- move sidebar title, visibility, count, flow summary, selection hint, and add-memory copy updates into a helper
 
----
+Forbidden:
+- detail card rendering changes
+- inline edit changes
+- add-memory form behavior changes
 
-### 3.5 Tree Meta Render
+Required smoke:
+- empty tree sidebar
+- populated tree sidebar
+- selected memory sidebar
+- add-memory intro/button copy
+- mobile 375px
 
-**Responsibility:** Renders tree-level metadata in the editor detail panel (title, cover image, tag list, owner info, visibility badge).
+### PR E — Inline style ownership audit
 
-| Aspect | Notes |
-|---|---|
-| DOM target | Tree meta section of editor detail panel |
-| Data source | Tree object from editor state or API response |
-| Update trigger | Tree selection, tree save, or tree reload |
-| Inline style risk | Cover image sizing, tag layout may be inline — **VERIFY** |
+Allowed:
+- docs-only audit of inline styles and future CSS ownership candidates
 
-**Concern:** Tree meta render and memory card render share the same detail panel DOM parent, which creates coupling between two logically independent render paths.
+Forbidden:
+- moving styles to CSS in the same PR as JS extraction
+- broad visual redesign
 
----
+## Forbidden combinations
 
-## 4. Inline Style Extraction Candidates
+Do not combine #518 implementation work with:
 
-Inline styles in `js/editor/editor-detail-ui.js` that are candidates for migration to existing editor CSS files. **No migration is performed in this PR.**
+- `js/editor.js` rewrite
+- broad `pages/editor.html` rewrite
+- data loading changes
+- backend or package changes
+- CSS relocation or visual redesign
+- #517 paper tone/layout work
+- #516 hidden compatibility follow-up
+- #456 or #424 Browse/Search work
+- My Trees work
+- PR #7 paths
+- PR #450 files
 
-| Candidate | Current location | Target CSS file | Risk |
-|---|---|---|---|
-| Action button `display:none` / `display:flex` toggles | Inline via `.style.display` | `css/editor.css` or `css/editor-detail.css` | Low — visibility-only |
-| Memory card layout dimensions | Inline `style` attributes in rendered HTML | `css/editor.css` | Medium — verify no JS reads `.style.*` for layout calc |
-| Title/memo edit focus highlight | Inline via `.style.outline` or `.style.border` | `css/editor.css` `:focus` rule | Low — CSS-only |
-| Cover image sizing in tree meta | Inline `width`/`height` on `<img>` | `css/editor.css` or `css/editor-detail.css` | Medium — verify no JS resizes dynamically |
-| Tag list flex/gap layout | Inline style on tag container | `css/editor.css` | Low |
+## Browser smoke requirements for future implementation
 
-**Pre-migration check required for each candidate:**
-1. Confirm no JS in `editor-detail-ui.js` or `editor.js` reads `.style.*` of the target element for layout calculation.
-2. Confirm the CSS class rule does not exist elsewhere with a conflicting value.
-3. Smoke-test desktop and mobile after each individual extraction.
+Any behavior-affecting implementation under #518 requires a valid browser verification target decision before handoff.
 
----
+Use `docs/ops/BROWSER_VERIFICATION_SLOT_GATE.md` before assigning a verifier.
 
-## 5. Small PR Candidates
+Required checks by touched area:
 
-### PR A — Current-Memory Action Simplification
+- empty editor state
+- populated tree state
+- selected memory detail panel
+- title edit mode if title edit is touched
+- memo edit mode if memo edit is touched
+- add memory form state if sidebar/add copy is touched
+- tree status/settings panel if sidebar status is touched
+- action visibility if action buttons are touched
+- mobile 375px editor smoke
+- horizontal overflow
+- fatal console errors
+- PASS / PARTIAL / NOT_VERIFIED separated
 
-**Branch candidate:** `refactor/editor-detail-action-button-visibility`  
-**Scope:**
-- Replace inline `display:none` / `display:flex` toggles on action buttons with CSS class toggling (`classList.add/remove`).
-- Move visibility rules to `css/editor.css` or `css/editor-detail.css`.
-- No behavior change — buttons show/hide identically.
+## Closure criteria
 
-**Guardrails:**
-- Only action button visibility — no button logic, auth gate, or event handler changes.
-- Smoke test: all action buttons visible/hidden correctly for owner and viewer states, desktop and mobile.
-- No other JS changes.
+#518 can be closed when:
 
-**Pre-condition:** Inline style extraction candidate audit (Section 4) confirmed for action button rows.
+- responsibility buckets are documented;
+- future implementation PRs are split by one responsibility each;
+- allowed and forbidden files are listed;
+- browser smoke requirements are documented;
+- no implementation is included in the audit PR.
 
----
+This audit satisfies the docs/inspection portion of #518. Any implementation requires separate approval.
 
-### PR B — Title / Memo Edit Responsibility Cleanup
-
-**Branch candidate:** `refactor/editor-detail-title-memo-edit-cleanup`  
-**Scope:**
-- Extract shared save-trigger and validation logic from inline title edit and inline memo edit into a small private helper within `js/editor/editor-detail-ui.js` (no new file required for first pass).
-- Remove duplicated debounce / save-path code.
-- No API contract change, no save behavior change.
-
-**Guardrails:**
-- No change to save endpoint, save payload shape, or error handling UX.
-- Smoke test: title edit save, memo edit save, validation rejection — all verified on desktop and mobile.
-- No CSS changes in this PR.
-
-**Pre-condition:** Confirmed that save-path logic is actually duplicated (VERIFY in Section 3.2 and 3.3 items).
-
----
-
-## 6. Desktop / Mobile Browser Smoke Checklist
-
-For use in PR A, PR B, and any follow-up editor-detail PRs.
-
-### Desktop (Chrome / Firefox / Safari — 1280px+)
-
-- [ ] Memory card renders correctly for selected memory
-- [ ] Memory card renders empty/placeholder state when no memory selected
-- [ ] Inline title edit: click to edit, type, save on blur — title updates
-- [ ] Inline title edit: empty value rejected / reverts to previous value
-- [ ] Inline memo edit: click to edit, type, save on blur — memo updates
-- [ ] Inline memo edit: over-length value rejected or truncated
-- [ ] Action buttons: all owner-state buttons visible for own tree
-- [ ] Action buttons: viewer-state buttons only for non-owned tree
-- [ ] Action buttons: delete triggers confirmation; confirmation cancels cleanly
-- [ ] Tree meta: title, cover, tags, visibility badge render correctly
-- [ ] Tree meta: updates after save without full page reload
-
-### Mobile (Chrome / Safari — 375px – 430px)
-
-- [ ] Memory card: correct layout at narrow viewport
-- [ ] Inline title edit: tap to edit works; keyboard does not obscure save button
-- [ ] Inline memo edit: tap to edit works; textarea expands correctly
-- [ ] Action buttons: tap targets ≥ 44px; no overflow clipping
-- [ ] Tree meta: cover image, tags, badge layout correct at narrow viewport
-- [ ] No horizontal overflow on editor detail panel
-
----
-
-## 7. Guardrails
-
-- **No JS changes in this document or its PR.** `js/editor/editor-detail-ui.js` and `js/editor.js` are read-only.
-- **No HTML changes.** `pages/editor.html` is read-only.
-- **No CSS changes.** All CSS files are read-only in this PR.
-- **No runtime behavior changes.**
-- **Do not touch PR #319 or PR #7.**
-- **Do not auto-delete or modify prototype/reference/demo/variant files.**
-- **Issue #223 remains open** — this document covers item 1 only.
-
----
-
-## 8. Verification Checklist (This PR)
-
-- [ ] `git diff --check` passes
-- [ ] Changed files limited to `docs/engineering/EDITOR_DETAIL_UI_RESPONSIBILITY_AUDIT.md`
-- [ ] No JS/CSS/HTML/runtime changes
-- [ ] No `close`/`fixes`/`resolves` keywords for #223
+Refs #518
+Refs #422
+Refs #223
+Refs #400
