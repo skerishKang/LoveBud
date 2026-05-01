@@ -24,21 +24,22 @@
 6. [AGENT_SECURITY.md](AGENT_SECURITY.md) - agent secret handling policy, approved local paths, forbidden value exposure 기준
 7. [GITHUB_AUTH_TOKEN_USAGE.md](GITHUB_AUTH_TOKEN_USAGE.md) - GitHub CLI/browser login/connector 인증 및 token/credential 취급 기준
 8. [BROWSER_VERIFICATION_URL_POLICY.md](BROWSER_VERIFICATION_URL_POLICY.md) - 브라우저 검증 URL 출처, PR Preview, fixed test slot 사용 기준
-9. [TEST_PREVIEW_SLOTS.md](TEST_PREVIEW_SLOTS.md) - 고정 테스트 Preview 슬롯 운영 기준
-10. [DEPLOY_CHECKLIST.md](DEPLOY_CHECKLIST.md) - 배포 전/후 체크리스트
-11. [RUNBOOK.md](RUNBOOK.md) - 운영 / 장애 대응 기준
-12. [MODAL_BROWSE_RUNTIME.md](MODAL_BROWSE_RUNTIME.md) - browse summary의 Modal 우선 read path 기준
-13. [KNOWN_CI_E2E_BLOCKERS.md](KNOWN_CI_E2E_BLOCKERS.md) - 반복 CI/E2E blocker 원인 분리 및 exception merge 판단 기준
-14. [E2E_SMOKE_COVERAGE_POLICY.md](E2E_SMOKE_COVERAGE_POLICY.md) - Issue #413 E2E smoke coverage 분류, CI/manual/Cloudflare Preview/fixed test slot 실행 정책, evidence 기준
-15. [ACTIVE_WORK_BOARD_POLICY.md](ACTIVE_WORK_BOARD_POLICY.md) - Issue #426 병렬 AI/workstation 작업 충돌 방지, active work board 필드, 상태 정의, 중복 prompt 방지, overlap warning 규칙, handoff/report 형식
-16. [SOURCE_OF_TRUTH_HYGIENE_DISPOSITION.md](SOURCE_OF_TRUTH_HYGIENE_DISPOSITION.md) - Issue #425 docs source-of-truth hierarchy, stale-doc classification, update routing, archive and index maintenance rules
-17. [BRANCH_CLEANUP_PLAN.md](BRANCH_CLEANUP_PLAN.md) - merged/stale branch cleanup 후보와 보존 branch 분류 기준
-18. [../migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md](../migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md) - 전환 현황과 남은 과제
-19. [ENV_NAMING_RUNTIME_TERMINOLOGY_AUDIT.md](ENV_NAMING_RUNTIME_TERMINOLOGY_AUDIT.md) - Issue #431 환경변수 명명 및 runtime terminology 감사, NETLIFY_DATABASE_URL 사용 현황, Cloudflare + Modal + Neon active runtime 정리
-20. [LOCAL_FILE_HYGIENE_PG_DEPENDENCY_AUDIT.md](LOCAL_FILE_HYGIENE_PG_DEPENDENCY_AUDIT.md) - Issue #429 local file hygiene 및 pg dependency usage 감사, .local/ tracked-file safety boundary, secret-safe local file handling, Cloudflare Functions vs local script dependency boundary
-21. [OBSERVABILITY_RUNTIME_LOGGING_AUDIT.md](OBSERVABILITY_RUNTIME_LOGGING_AUDIT.md) - Issue #415 observability 및 runtime logging strategy 감사, Cloudflare/Modal/browser 디버깅 경로, redaction-safe logging boundary, follow-up implementation issue plan (A/B/C)
-22. [MODAL_RUNTIME_DIAGNOSTICS_WORKFLOW.md](MODAL_RUNTIME_DIAGNOSTICS_WORKFLOW.md) - Issue #473 Modal runtime diagnostics workflow, Cloudflare ↔ Modal verification 절차, request ID correlation, blocked-state 보고 기준
-23. [../engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md](../engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md) - browse filter / publication guard 구분
+9. [GLOBAL_CSS_BROWSER_SMOKE_CHECKLIST.md](GLOBAL_CSS_BROWSER_SMOKE_CHECKLIST.md) - Issue #512 global CSS desktop/mobile smoke matrix, PASS/NOT_VERIFIED/BLOCKED reporting, fixed-slot requirements
+10. [TEST_PREVIEW_SLOTS.md](TEST_PREVIEW_SLOTS.md) - 고정 테스트 Preview 슬롯 운영 기준
+11. [DEPLOY_CHECKLIST.md](DEPLOY_CHECKLIST.md) - 배포 전/후 체크리스트
+12. [RUNBOOK.md](RUNBOOK.md) - 운영 / 장애 대응 기준
+13. [MODAL_BROWSE_RUNTIME.md](MODAL_BROWSE_RUNTIME.md) - browse summary의 Modal 우선 read path 기준
+14. [KNOWN_CI_E2E_BLOCKERS.md](KNOWN_CI_E2E_BLOCKERS.md) - 반복 CI/E2E blocker 원인 분리 및 exception merge 판단 기준
+15. [E2E_SMOKE_COVERAGE_POLICY.md](E2E_SMOKE_COVERAGE_POLICY.md) - Issue #413 E2E smoke coverage 분류, CI/manual/Cloudflare Preview/fixed test slot 실행 정책, evidence 기준
+16. [ACTIVE_WORK_BOARD_POLICY.md](ACTIVE_WORK_BOARD_POLICY.md) - Issue #426 병렬 AI/workstation 작업 충돌 방지, active work board 필드, 상태 정의, 중복 prompt 방지, overlap warning 규칙, handoff/report 형식
+17. [SOURCE_OF_TRUTH_HYGIENE_DISPOSITION.md](SOURCE_OF_TRUTH_HYGIENE_DISPOSITION.md) - Issue #425 docs source-of-truth hierarchy, stale-doc classification, update routing, archive and index maintenance rules
+18. [BRANCH_CLEANUP_PLAN.md](BRANCH_CLEANUP_PLAN.md) - merged/stale branch cleanup 후보와 보존 branch 분류 기준
+19. [../migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md](../migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md) - 전환 현황과 남은 과제
+20. [ENV_NAMING_RUNTIME_TERMINOLOGY_AUDIT.md](ENV_NAMING_RUNTIME_TERMINOLOGY_AUDIT.md) - Issue #431 환경변수 명명 및 runtime terminology 감사, NETLIFY_DATABASE_URL 사용 현황, Cloudflare + Modal + Neon active runtime 정리
+21. [LOCAL_FILE_HYGIENE_PG_DEPENDENCY_AUDIT.md](LOCAL_FILE_HYGIENE_PG_DEPENDENCY_AUDIT.md) - Issue #429 local file hygiene 및 pg dependency usage 감사, .local/ tracked-file safety boundary, secret-safe local file handling, Cloudflare Functions vs local script dependency boundary
+22. [OBSERVABILITY_RUNTIME_LOGGING_AUDIT.md](OBSERVABILITY_RUNTIME_LOGGING_AUDIT.md) - Issue #415 observability 및 runtime logging strategy 감사, Cloudflare/Modal/browser 디버깅 경로, redaction-safe logging boundary, follow-up implementation issue plan (A/B/C)
+23. [MODAL_RUNTIME_DIAGNOSTICS_WORKFLOW.md](MODAL_RUNTIME_DIAGNOSTICS_WORKFLOW.md) - Issue #473 Modal runtime diagnostics workflow, Cloudflare ↔ Modal verification 절차, request ID correlation, blocked-state 보고 기준
+24. [../engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md](../engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md) - browse filter / publication guard 구분
 
 ---
 
@@ -67,6 +68,7 @@
 | [AGENT_SECURITY.md](AGENT_SECURITY.md) | agent secret handling policy, approved local paths, forbidden value exposure 기준 |
 | [GITHUB_AUTH_TOKEN_USAGE.md](GITHUB_AUTH_TOKEN_USAGE.md) | GitHub CLI/browser login/connector 인증 및 token/credential 취급 기준 |
 | [BROWSER_VERIFICATION_URL_POLICY.md](BROWSER_VERIFICATION_URL_POLICY.md) | 브라우저 smoke URL provenance, PR Preview, Branch Preview, fixed test slot 검증 기준 |
+| [GLOBAL_CSS_BROWSER_SMOKE_CHECKLIST.md](GLOBAL_CSS_BROWSER_SMOKE_CHECKLIST.md) | Issue #512 global CSS desktop/mobile smoke matrix, PASS/NOT_VERIFIED/BLOCKED reporting, fixed-slot requirements |
 | [TEST_PREVIEW_SLOTS.md](TEST_PREVIEW_SLOTS.md) | 고정 테스트 Preview 슬롯 운영 기준 |
 | [FIXED_SLOT_MANUAL_E2E_GATE.md](FIXED_SLOT_MANUAL_E2E_GATE.md) | Fixed slot 수동 E2E gate 런북 — slot 배정·SHA provenance·evidence 양식·page 분류·제한 사항 (Issue #136 manual gate 단계) |
 | [CLOUDFLARE_PAGES_E2E_SMOKE_REPLACEMENT.md](CLOUDFLARE_PAGES_E2E_SMOKE_REPLACEMENT.md) | Cloudflare Pages + Modal 기반 E2E smoke replacement 제안 — Phase 1 supplied URL smoke, Phase 2 manual workflow, Phase 3 preview URL discovery 기준 |
