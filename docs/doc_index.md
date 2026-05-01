@@ -81,6 +81,10 @@ PR3 button / badge / chip tone 기준 판단이 필요하면 아래를 추가로
 - `./engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md`
 - `./engineering/REVIEW_GUARDRAILS.md`
 
+Global CSS token/readiness ownership 판단이 필요하면 아래를 추가로 읽습니다.
+
+- `./engineering/GLOBAL_CSS_TOKEN_READINESS_AUDIT.md`
+
 검증 warning / blocker 분류가 필요하면 아래를 추가로 읽습니다.
 
 - `./project/VERIFICATION_WARNING_CATALOG.md`
@@ -131,6 +135,7 @@ Reference 문서는 `docs/reference/` 아래에 정리됩니다.
 - [API_CONTRACT.md](./engineering/API_CONTRACT.md) - flat camelCase API 계약
 - [BROWSE_FILTER_VS_PUBLICATION_GUARD.md](./engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md) - stored visibility, anonymous public exposure, Browse/Search eligibility, Browse display filter 개념 분리
 - [CSS_ARCHITECTURE.md](./engineering/CSS_ARCHITECTURE.md) - CSS import hub, split ownership, import order, visual verification 기준
+- [GLOBAL_CSS_TOKEN_READINESS_AUDIT.md](./engineering/GLOBAL_CSS_TOKEN_READINESS_AUDIT.md) - #510 global CSS token groups, readiness selector aliases, duplication candidates, future PR split, and #512 verification linkage
 - [CODE_ARCHITECTURE.md](./engineering/CODE_ARCHITECTURE.md) - module size, thin entrypoint, browser-global split, large file refactor safety policy
 - [LARGE_FILE_MODULARIZATION_CANDIDATES.md](./engineering/LARGE_FILE_MODULARIZATION_CANDIDATES.md) - #408 large-file candidate inventory, owner routing, extraction guardrails, verification requirements
 - [MODAL_OWNER_ROUTE_SPLIT_BOUNDARY.md](./engineering/MODAL_OWNER_ROUTE_SPLIT_BOUNDARY.md) - #423 Modal owner read/write route split boundary, implementation gates, verification requirements
