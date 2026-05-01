@@ -14,6 +14,7 @@ This folder contains LoveBud security policy, posture, and rollout planning docu
 | [ISSUE_266_REMAINING_OPS_POSTURE_GAPS.md](ISSUE_266_REMAINING_OPS_POSTURE_GAPS.md) | Tracker for remaining #266 ops posture gaps after partial verification |
 | [LEGACY_AUTHORIZED_DOMAIN_CLEANUP_DECISION.md](LEGACY_AUTHORIZED_DOMAIN_CLEANUP_DECISION.md) | Legacy authorized domain cleanup decision record for #266 |
 | [MODAL_FIREBASE_SECRET_ROTATION_RUNBOOK.md](MODAL_FIREBASE_SECRET_ROTATION_RUNBOOK.md) | Owner/cadence runbook for Modal FIREBASE_SERVICE_ACCOUNT_JSON secret rotation posture (#266) |
+| [SECRET_OWNER_ROTATION_CADENCE_POLICY.md](SECRET_OWNER_ROTATION_CADENCE_POLICY.md) | Category-level secret owner, rotation cadence, emergency rotation, and evidence policy for #544/#266 |
 
 ## Guardrails
 
