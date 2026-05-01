@@ -166,6 +166,7 @@
     padding: 4px 6px 6px;
     flex: 1;
     min-width: 0;
+    min-height: 0;
     overflow: hidden;
 }
 
@@ -183,6 +184,7 @@
     hyphens: auto;
     min-height: 2.36em;
     max-height: 2.36em;
+    flex-shrink: 0;
 }
 
 .tree-subtitle {
@@ -197,13 +199,12 @@
     text-overflow: ellipsis;
     word-break: break-word;
     hyphens: auto;
-    min-height: 1.84em;
-    max-height: 1.84em;
-    flex: 1;
+    min-height: 3.16em;
+    max-height: 3.16em;
+    flex: 0 0 3.16em;
 }
 
 .tree-meta-row {
-    margin-top: auto;
     display: flex;
     align-items: center;
     justify-content: space-between;
