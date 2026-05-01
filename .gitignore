@@ -68,7 +68,9 @@ Thumbs.db
 .tmp/
 .temp/
 .tmp.driveupload/
+# .windsurf/ is ignored by default, but workflows can be tracked
 .windsurf/
+!.windsurf/workflows/
 .kilo/
 nul
 memories_check.json
