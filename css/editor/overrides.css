@@ -496,63 +496,6 @@ body .editor-canvas-title h2 {
     margin-top: 4px;
 }
 
-.editor-memory-mode-group {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    margin: 4px 0 2px;
-}
-
-.editor-memory-mode-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    min-height: 40px;
-    padding: 0 14px;
-    border-radius: 999px;
-    border: 1px solid rgba(144,73,81,0.12);
-    background: rgba(255,255,255,0.84);
-    color: var(--on-surface-variant);
-    font-size: 13px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.18s ease;
-}
-
-.editor-memory-mode-chip.is-active {
-    color: var(--primary);
-    border-color: rgba(144,73,81,0.22);
-    background: rgba(144,73,81,0.08);
-    box-shadow: 0 8px 20px rgba(75,64,57,0.05);
-}
-
-.editor-memory-mode-chip .material-symbols-outlined {
-    font-size: 18px;
-}
-
-.editor-form-support-note {
-    margin: -4px 0 2px;
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    padding: 12px 14px;
-    border-radius: 16px;
-    background: rgba(255,255,255,0.68);
-    border: 1px solid rgba(144,73,81,0.08);
-    color: var(--on-surface-variant);
-    font-size: 12px;
-    line-height: 1.6;
-}
-
-.editor-form-support-note .material-symbols-outlined {
-    font-size: 16px;
-    color: var(--primary);
-    margin-top: 1px;
-}
-
-.editor-form-field.is-deemphasized {
-    opacity: 0.72;
-}
 
 .editor-layout {
     background: linear-gradient(180deg,#fff8f0 0%,#f8ede2 52%,#f5e6dc 100%);
