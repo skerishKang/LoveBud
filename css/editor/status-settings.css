@@ -1,0 +1,199 @@
+/* ==========================================================================
+   Editor Status & Settings Panel
+   Group A selectors relocated from css/editor/overrides.css
+   Issue #513 - Status & Settings Panel relocation
+   ========================================================================== */
+
+.editor-status-section,
+.editor-add-section {
+    width: 100%;
+}
+
+.editor-status-section h3,
+.editor-add-section h3 {
+    margin: 0 0 6px;
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1.4;
+    color: var(--on-surface);
+}
+
+.editor-status-card {
+    width: 100%;
+    padding: 16px 14px 14px;
+    border-radius: 18px;
+    background: white;
+    box-sizing: border-box;
+    border: 1px solid rgba(144, 73, 81, 0.05);
+    box-shadow: 0 4px 12px rgba(75, 64, 57, 0.03);
+}
+
+.editor-space-between-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.editor-status-card strong {
+    display: block;
+    font-size: 1.42rem;
+    font-weight: 900;
+    line-height: 1.24;
+    color: var(--on-surface);
+    white-space: normal;
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+    letter-spacing: -0.03em;
+}
+
+.editor-status-card p {
+    margin: 6px 0 0;
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--on-surface-variant);
+    white-space: normal;
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+}
+
+.editor-rename-btn {
+    flex: 0 0 auto;
+    min-height: 34px;
+    padding: 0 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(144, 73, 81, 0.14);
+    background: rgba(255,255,255,0.9);
+    color: var(--primary);
+    font-size: 12px;
+    font-weight: 800;
+    box-shadow: 0 6px 16px rgba(75,64,57,0.05);
+}
+
+.editor-tree-visibility-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: fit-content;
+    min-height: 26px;
+    padding: 0 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    margin-top: 8px;
+}
+
+.editor-tree-visibility-pill.is-public {
+    background: rgba(76,175,80,0.06);
+    color: #6ab06a;
+    border: 1px solid rgba(76,175,80,0.12);
+}
+
+.editor-tree-visibility-pill.is-private {
+    background: rgba(144,73,81,0.04);
+    color: #a36b62;
+    border: 1px solid rgba(144,73,81,0.08);
+}
+
+.editor-title-settings-panel {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.editor-mini-setting-btn {
+    min-height: 36px;
+    padding: 7px 10px;
+    border-radius: 12px;
+    border: 1px solid rgba(144,73,81,0.06);
+    background: rgba(255,253,249,0.62);
+    color: var(--on-surface-variant);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.35;
+    text-align: center;
+    cursor: pointer;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+
+.editor-mini-setting-btn .material-symbols-outlined {
+    font-size: 14px;
+    flex: 0 0 auto;
+    color: var(--primary);
+    opacity: 0.7;
+}
+
+.editor-mini-setting-btn:hover {
+    transform: translateY(-1px);
+    background: rgba(255,253,249,0.82);
+    border-color: rgba(144,73,81,0.12);
+}
+
+.editor-flow-summary {
+    margin-top: 6px;
+}
+
+.editor-sidebar-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.editor-add-section .secondary-btn,
+.editor-sidebar-actions .secondary-btn {
+    width: 100%;
+    min-height: 44px;
+    padding: 12px 16px;
+    border-radius: 12px;
+    border: 1px solid var(--outline-variant);
+    background: white;
+    color: var(--on-surface);
+    font-weight: 600;
+    font-size: 13px;
+    white-space: nowrap;
+    line-height: 1.4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.editor-add-section .secondary-btn:hover,
+.editor-sidebar-actions .secondary-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(144, 73, 81, 0.12);
+    border-color: rgba(144, 73, 81, 0.3);
+    background: white;
+}
+
+.editor-add-section .secondary-btn::before {
+    content: '+';
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.editor-sidebar-actions .secondary-btn:last-child::before {
+    content: '⌂';
+    font-size: 12px;
+}
+
+/* Note: .sidebar-btn and related selectors are excluded from this relocation
+   due to canvas toolbar usage conflicts. They remain in overrides.css. */
+
+.editor-sidebar-meta {
+    display: block;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--outline-variant);
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--on-surface-variant);
+}
