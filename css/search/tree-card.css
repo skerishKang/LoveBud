@@ -129,8 +129,9 @@
     max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
 }
 
@@ -175,8 +176,9 @@
     font-weight: 900;
     line-height: 1.18;
     letter-spacing: -0.02em;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -192,8 +194,9 @@
     color: var(--on-surface-variant);
     line-height: 1.58;
     margin: 0;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
     text-overflow: ellipsis;
