@@ -24,10 +24,10 @@
 6. [CORE_RUNTIME_BOUNDARY_MAP.md](./CORE_RUNTIME_BOUNDARY_MAP.md) - #428 core runtime module owner domains, runtime boundaries, verification requirements
 7. [CSS_ARCHITECTURE.md](./CSS_ARCHITECTURE.md) - stylesheet import hub, split ownership, visual verification 기준
 8. [GLOBAL_CSS_TOKEN_READINESS_AUDIT.md](./GLOBAL_CSS_TOKEN_READINESS_AUDIT.md) - #510 global CSS token and readiness selector ownership audit, future PR split, #512 verification linkage
-9. [GLOBAL_FOCUS_VISIBILITY_HARDENING_AUDIT.md](./GLOBAL_FOCUS_VISIBILITY_HARDENING_AUDIT.md) - #511 global focus and visibility selector audit, affected surfaces, allowed future PR shapes, #512 verification linkage
+9. [GLOBAL_FOCUS_VISIBILITY_HARDENING_AUDIT.md](./GLOBAL_FOCUS_VISIBILITY_HARDENING_AUDIT.md) - #511 global focus and visibility selector audit, affected surfaces, allowed future PR shapes, and #512 verification linkage
 10. [SCRIPT_LOAD_ORDER.md](./SCRIPT_LOAD_ORDER.md) - pages/*.html script order runtime contract, Auth/Login dependency order, reorder checklist
 11. [SEARCH_RUNTIME_CONTRACT.md](./SEARCH_RUNTIME_CONTRACT.md) - Search/Browse runtime script order, globals, submodule boundary
-12. [AUTH_LOGIN_ACTIVE_PROVIDER_TRANSITION_PLAN.md](./AUTH_LOGIN_ACTIVE_PROVIDER_TRANSITION_PLAN.md) - Auth/Login active provider transition 단계, 금지 조합, fixed test slot 검증 기준
+12. [AUTH_LOGIN_ACTIVE_PROVIDER_TRANSITION_PLAN.md](./AUTH_LOGIN_ACTIVE_PROVIDER_TRANSITION_PLAN.md) - Auth/Login active provider transition 단계, file ownership, forbidden combinations, fixed slot smoke 기준
 13. [TECHNICAL_DEBT_CHECKLIST_DISPOSITION.md](./TECHNICAL_DEBT_CHECKLIST_DISPOSITION.md) - #224 technical-debt checklist disposition map
 14. [CSS_HTML_CLEANUP_STATUS_MAP.md](./CSS_HTML_CLEANUP_STATUS_MAP.md) - #137 CSS/HTML cleanup backlog 상태와 잔여 작업 순서
 15. [EDITOR_FALLBACK_GLOBAL_STATE_AUDIT.md](./EDITOR_FALLBACK_GLOBAL_STATE_AUDIT.md) - Editor fallback factories와 global state cleanup path 감사 계획
@@ -37,8 +37,9 @@
 19. [REVIEW_GUARDRAILS.md](./REVIEW_GUARDRAILS.md) - 반복 false positive 방지 규칙
 20. [RECENT_REFACTORING.md](./RECENT_REFACTORING.md) - 최근 리팩터링 기록
 21. [EDITOR_OVERRIDES_RELOCATION_AUDIT.md](./EDITOR_OVERRIDES_RELOCATION_AUDIT.md) - css/editor/overrides.css role-based relocation 사전 audit (구현 없음, #137 종속)
-22. [REPOSITORY_STRUCTURE_FOLLOWUP_STATUS_MAP.md](./REPOSITORY_STRUCTURE_FOLLOWUP_STATUS_MAP.md) - Issue #223 repository structure follow-up bucket disposition, active blockers, and closure conditions
-23. [PUBLIC_TREE_ADAPTER_BOUNDARY_AUDIT.md](./PUBLIC_TREE_ADAPTER_BOUNDARY_AUDIT.md) - #412 public tree adapter helper boundaries, export contract, loading-order risk, preview implications audit
+22. [EDITOR_HIDDEN_COMPATIBILITY_OVERRIDE_AUDIT.md](./EDITOR_HIDDEN_COMPATIBILITY_OVERRIDE_AUDIT.md) - #516 editor hidden/compatibility selector usage audit, disposition map, and future removal/relocation gates
+23. [REPOSITORY_STRUCTURE_FOLLOWUP_STATUS_MAP.md](./REPOSITORY_STRUCTURE_FOLLOWUP_STATUS_MAP.md) - Issue #223 repository structure follow-up bucket disposition, active blockers, and closure conditions
+24. [PUBLIC_TREE_ADAPTER_BOUNDARY_AUDIT.md](./PUBLIC_TREE_ADAPTER_BOUNDARY_AUDIT.md) - #412 public tree adapter helper boundaries, export contract, loading-order risk, preview implications audit
 
 ---
 
@@ -56,7 +57,7 @@
 | [GLOBAL_CSS_TOKEN_READINESS_AUDIT.md](./GLOBAL_CSS_TOKEN_READINESS_AUDIT.md) | Issue #510 global CSS token groups, readiness selector aliases, duplication candidates, future PR split, and #512 verification linkage |
 | [GLOBAL_FOCUS_VISIBILITY_HARDENING_AUDIT.md](./GLOBAL_FOCUS_VISIBILITY_HARDENING_AUDIT.md) | Issue #511 global focus and visibility selector groups, affected surfaces, forbidden combinations, future narrow PR shapes, and #512 verification linkage |
 | [SCRIPT_LOAD_ORDER.md](./SCRIPT_LOAD_ORDER.md) | pages/*.html script load order runtime contract, Auth/Login dependency order, reorder checklist |
-| [SEARCH_RUNTIME_CONTRACT.md](./SEARCH_RUNTIME_CONTRACT.md) | Search/Browse runtime script order, globals, submodule boundary, smoke checklist |
+| [SEARCH_RUNTIME_CONTRACT.md](./SEARCH_RUNTIME_CONTRACT.md) | Search/Browse runtime script order, globals, smoke checklist |
 | [SEARCH_PREVIEW_CONTROLLER_SPLIT_AUDIT.md](./SEARCH_PREVIEW_CONTROLLER_SPLIT_AUDIT.md) | Search/Browse preview controller split 준비 audit와 종속 구현 guardrail |
 | [PUBLIC_TREE_ADAPTER_BOUNDARY_AUDIT.md](./PUBLIC_TREE_ADAPTER_BOUNDARY_AUDIT.md) | #412 public tree adapter helper boundaries, export contract, loading-order risk, preview implications audit |
 | [AUTH_LOGIN_ACTIVE_PROVIDER_TRANSITION_PLAN.md](./AUTH_LOGIN_ACTIVE_PROVIDER_TRANSITION_PLAN.md) | Auth/Login active provider transition 단계, file ownership, forbidden combinations, fixed slot smoke 기준 |
@@ -66,6 +67,7 @@
 | [AUTH_EDITOR_FALLBACK_CHECKLIST_MAPPING.md](./AUTH_EDITOR_FALLBACK_CHECKLIST_MAPPING.md) | Auth fallback cleanup, Editor fallback factories, and `window.currentTreeMemories/currentTreeData` ownership mapping for #224/#78/#223/#225 |
 | [SHARED_HEADER_CONFIG_HELPER_DECISION.md](./SHARED_HEADER_CONFIG_HELPER_DECISION.md) | Shared header render/mobile nav/language/Auth/path helper 책임과 config/helper extraction defer 기준 |
 | [EDITOR_OVERRIDES_RELOCATION_AUDIT.md](./EDITOR_OVERRIDES_RELOCATION_AUDIT.md) | `css/editor/overrides.css` role-based relocation 사전 audit (구현 없음, cascade 위험 문서, future PR split 계획 (#137 종속)) |
+| [EDITOR_HIDDEN_COMPATIBILITY_OVERRIDE_AUDIT.md](./EDITOR_HIDDEN_COMPATIBILITY_OVERRIDE_AUDIT.md) | Issue #516 hidden/compatibility selector references, runtime linkage, removal/relocation disposition, and future browser verification gates |
 | [SUPABASE_FREE_POC_PLAN.md](./SUPABASE_FREE_POC_PLAN.md) | Supabase Free PoC 기반 장기 backend 구조 단순화 검증 계획 |
 | [REVIEW_GUARDRAILS.md](./REVIEW_GUARDRAILS.md) | 반복 false positive 방지 및 리뷰 규칙 |
 | [RECENT_REFACTORING.md](./RECENT_REFACTORING.md) | 최근 코드 구조 정리 이력 |
@@ -101,6 +103,7 @@
 - #224 Auth/Editor fallback checklist 판단은 `AUTH_EDITOR_FALLBACK_CHECKLIST_MAPPING.md`에서 #78/#223/#225 ownership mapping을 먼저 확인합니다.
 - Shared header config/path helper extraction 판단은 `SHARED_HEADER_CONFIG_HELPER_DECISION.md`의 defer 조건과 follow-up trigger를 먼저 확인합니다.
 - `css/editor/overrides.css` relocation 판단은 `EDITOR_OVERRIDES_RELOCATION_AUDIT.md`의 cascade risk 및 future implementation gate를 먼저 확인합니다.
+- Editor hidden/compatibility selector 제거·relocation 판단은 `EDITOR_HIDDEN_COMPATIBILITY_OVERRIDE_AUDIT.md`의 usage/disposition table을 먼저 확인합니다.
 
 ---
 
