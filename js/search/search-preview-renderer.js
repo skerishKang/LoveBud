@@ -165,6 +165,10 @@
     }
 
     function getPreviewMediaMemory(memories) {
+        const helper = window.LoveBudSearchPreviewMediaHelper;
+        if (helper?.getPreviewMediaMemory) {
+            return helper.getPreviewMediaMemory(memories);
+        }
         return (Array.isArray(memories) ? memories : []).find(memory => {
             return sanitizeUrl(memory?.sourceUrl || '') || sanitizeUrl(memory?.thumbnail || '');
         }) || null;
@@ -359,6 +363,10 @@
     }
 
     function renderPreviewThumbnailFallback(title, subtitle) {
+        const helper = window.LoveBudSearchPreviewMediaHelper;
+        if (helper?.renderPreviewThumbnailFallback) {
+            return helper.renderPreviewThumbnailFallback(title, subtitle);
+        }
         return `
             <div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;background:linear-gradient(135deg,var(--surface-container-low),white);border-radius:1rem;color:var(--on-surface-variant);">
                 <span class="material-symbols-outlined" style="font-size:36px;color:var(--primary);margin-bottom:12px;">movie</span>
@@ -369,6 +377,11 @@
     }
 
     function renderPreviewThumbnailMedia(thumbnailUrl, mediaTitle, treeTitle) {
+        const helper = window.LoveBudSearchPreviewMediaHelper;
+        if (helper?.renderPreviewThumbnailMedia) {
+            return helper.renderPreviewThumbnailMedia(thumbnailUrl, mediaTitle, treeTitle);
+        }
+
         const fallbackHtml = renderPreviewThumbnailFallback(
             treeTitle,
             getSearchCopy('search.previewNoMomentBody', '시작 순간이 더해지면 이 감상 허브에서 가장 먼저 열어볼 수 있어요.', 'Once the starting moment is added, you will be able to open it here first.')
@@ -391,6 +404,11 @@
     }
 
     function showPreviewImageFallback(img) {
+        const helper = window.LoveBudSearchPreviewMediaHelper;
+        if (helper?.showPreviewImageFallback) {
+            return helper.showPreviewImageFallback(img);
+        }
+
         if (!img) return;
         if (img.dataset.fallbackTriggered) return;
         img.dataset.fallbackTriggered = 'true';
@@ -437,24 +455,29 @@
                 const mediaMem = getPreviewMediaMemory(memories);
                 const safeSourceUrl = sanitizeUrl(mediaMem?.sourceUrl || '');
                 const safeThumbnail = sanitizeUrl(mediaMem?.thumbnail || '');
-                const iframeSrc = safeSourceUrl
-                    ? safeSourceUrl + (safeSourceUrl.includes('?') ? '&' : '?') + 'autoplay=0&mute=1'
-                    : '';
                 const safeMediaMemTitle = escapeHtml(getMomentLabel(mediaMem || firstMem));
 
-                _dom.previewContainer.innerHTML = iframeSrc ? `
-                    <div style="position:relative;width:100%;height:100%;border-radius:1rem;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.12);">
-                        <iframe width="100%" height="100%"
-                            src="${iframeSrc}"
-                            title="${safeTreeTitle}" frameborder="0"
-                            allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                            allowfullscreen style="position:absolute;top:0;left:0;"></iframe>
-                        <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top,rgba(0,0,0,0.8),transparent);padding:40px 20px 20px;color:white;text-align:center;">
-                            <div style="font-size:14px;font-weight:700;margin-bottom:8px;opacity:0.9;">${escapeHtml(getSearchCopy('search.previewStartFromFirstMoment', '대표 순간부터 감상하기', 'Start from the featured moment'))}</div>
-                            <div style="font-size:12px;opacity:0.7;">${safeMediaMemTitle}</div>
+                const mediaHelper = window.LoveBudSearchPreviewMediaHelper;
+                if (mediaHelper?.renderPreviewIframe && safeSourceUrl) {
+                    _dom.previewContainer.innerHTML = mediaHelper.renderPreviewIframe(safeSourceUrl, safeTreeTitle, safeMediaMemTitle);
+                } else {
+                    const iframeSrc = safeSourceUrl
+                        ? safeSourceUrl + (safeSourceUrl.includes('?') ? '&' : '?') + 'autoplay=0&mute=1'
+                        : '';
+                    _dom.previewContainer.innerHTML = iframeSrc ? `
+                        <div style="position:relative;width:100%;height:100%;border-radius:1rem;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.12);">
+                            <iframe width="100%" height="100%"
+                                src="${iframeSrc}"
+                                title="${safeTreeTitle}" frameborder="0"
+                                allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowfullscreen style="position:absolute;top:0;left:0;"></iframe>
+                            <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top,rgba(0,0,0,0.8),transparent);padding:40px 20px 20px;color:white;text-align:center;">
+                                <div style="font-size:14px;font-weight:700;margin-bottom:8px;opacity:0.9;">${escapeHtml(getSearchCopy('search.previewStartFromFirstMoment', '대표 순간부터 감상하기', 'Start from the featured moment'))}</div>
+                                <div style="font-size:12px;opacity:0.7;">${safeMediaMemTitle}</div>
+                            </div>
                         </div>
-                    </div>
-                ` : (safeThumbnail ? renderPreviewThumbnailMedia(safeThumbnail, safeMediaMemTitle, safeTreeTitle) : renderPlaceholder());
+                    ` : (safeThumbnail ? renderPreviewThumbnailMedia(safeThumbnail, safeMediaMemTitle, safeTreeTitle) : renderPlaceholder());
+                }
             }
         }
 
