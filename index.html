@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="css/global.css?v=20260417-31">
     <link rel="stylesheet" href="css/index.css?v=20260426-1">
     <link rel="stylesheet" href="css/index-visual.css?v=20260426-1">
+    <link rel="stylesheet" href="css/page-transitions.css?v=20260430-1">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
 </head>
 <body class="bokeh-bg" data-home-density="quiet">
@@ -17,9 +18,9 @@
     <div class="home-v3-shell">
         <div id="shared-header"></div>
 
-        <main class="home-v3-main">
-            <section class="home-v3-hero">
-                <div class="home-v3-copy reveal">
+        <main class="home-v3-main page-transition-enter">
+            <section class="home-v3-hero page-transition-stagger">
+                <div class="home-v3-copy reveal reveal-up">
                     <div class="home-v3-identity-copy">
                         <div class="home-v3-eyebrow">팬 감정 러브트리 · 따뜻한 디지털 스크랩북</div>
                         <h1 class="home-v3-title">
@@ -41,7 +42,7 @@
                     </div>
                 </div>
 
-                <div class="home-v3-collage reveal is-video-pending" aria-hidden="true">
+                <div class="home-v3-collage reveal reveal-scale is-video-pending" aria-hidden="true">
                     <div class="home-v3-growth-stage">
                         <video id="hero-growth-video" class="growth-stage-video" autoplay muted playsinline loop preload="metadata" src="/docs/video/home-hero.mp4"></video>
                         <div class="growth-stage-caption">순간 하나가 이어지고, 감정의 가지가 자라나요</div>
@@ -177,6 +178,7 @@
     <script src="js/auth/auth-firebase.js?v=20260420-1"></script>
     <script src="js/auth.js?v=20260417-31"></script>
     <script src="js/page-shell.js?v=20260419-1"></script>
+    <script src="js/page-transitions.js?v=20260430-1"></script>
     <script>
         (function() {
             const cards = Array.from(document.querySelectorAll('.growth-stage-card'));
