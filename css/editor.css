@@ -12,6 +12,7 @@
 @import url("./editor/layout.css");
 @import url("./editor/sidebar.css");
 @import url("./editor/canvas.css");
+@import url("./editor/canvas-toolbar.css");
 @import url("./editor/memory-form.css");
 @import url("./editor/detail-panel.css");
 @import url("./editor/responsive.css");
