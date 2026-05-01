@@ -15,5 +15,6 @@
 @import url("./editor/memory-form.css");
 @import url("./editor/detail-panel.css");
 @import url("./editor/responsive.css");
+@import url("./editor/mode-selection.css");
 @import url("./editor/overrides.css");
 @import url("./editor/responsive-tail.css");
