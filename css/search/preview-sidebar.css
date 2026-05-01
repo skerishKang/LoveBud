@@ -179,6 +179,103 @@
     line-height: 1.6;
 }
 
+/* Issue #455 PR C: selected-tree hub preview polish. */
+.preview-sidebar {
+    overflow: hidden;
+}
+
+.preview-sidebar::before {
+    content: '';
+    position: absolute;
+    top: 92px;
+    right: 20px;
+    width: 118px;
+    height: 156px;
+    border-radius: 999px;
+    background:
+        radial-gradient(circle at 64% 18%, rgba(144, 73, 81, 0.16) 0 6px, transparent 7px),
+        radial-gradient(circle at 28% 34%, rgba(122, 139, 110, 0.14) 0 5px, transparent 6px),
+        radial-gradient(circle at 52% 48%, rgba(200, 116, 128, 0.14) 0 5px, transparent 6px),
+        linear-gradient(24deg, transparent 42%, rgba(144, 73, 81, 0.12) 43% 47%, transparent 48%),
+        linear-gradient(148deg, transparent 39%, rgba(122, 139, 110, 0.10) 40% 45%, transparent 46%);
+    opacity: 0.78;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.preview-sidebar::after {
+    content: '';
+    position: absolute;
+    top: 146px;
+    right: 72px;
+    width: 8px;
+    height: 104px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, rgba(193, 139, 131, 0.28), rgba(144, 73, 81, 0.18));
+    pointer-events: none;
+    z-index: 0;
+}
+
+.preview-sidebar > * {
+    position: relative;
+    z-index: 1;
+}
+
+.preview-panel-header {
+    padding-bottom: 14px;
+    border-bottom: 1px solid rgba(144, 73, 81, 0.08);
+}
+
+.preview-badge {
+    box-shadow: 0 8px 18px rgba(144, 73, 81, 0.08);
+}
+
+.video-container {
+    position: relative;
+    box-shadow: 0 16px 38px rgba(75, 64, 57, 0.10);
+}
+
+.video-container::before {
+    content: '';
+    position: absolute;
+    left: 18px;
+    top: 16px;
+    width: 58px;
+    height: 42px;
+    border-radius: 999px;
+    background:
+        radial-gradient(circle at 68% 26%, rgba(144, 73, 81, 0.50) 0 4px, transparent 5px),
+        radial-gradient(circle at 32% 48%, rgba(122, 139, 110, 0.42) 0 4px, transparent 5px),
+        linear-gradient(32deg, transparent 41%, rgba(144, 73, 81, 0.34) 42% 47%, transparent 48%),
+        rgba(255, 255, 255, 0.82);
+    border: 1px solid rgba(255, 255, 255, 0.62);
+    box-shadow: 0 12px 24px rgba(50, 38, 35, 0.12);
+    pointer-events: none;
+    z-index: 2;
+}
+
+.tree-meta {
+    padding: 14px 0 16px;
+    background: rgba(255, 255, 255, 0.34);
+    border-radius: 18px;
+    border: 1px solid rgba(144, 73, 81, 0.08);
+    justify-content: space-between;
+    padding-left: 14px;
+    padding-right: 14px;
+}
+
+.tree-meta-item {
+    min-height: 30px;
+    padding: 0 10px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.58);
+    font-weight: 700;
+}
+
+.preview-panel-emotion-tags span {
+    box-shadow: 0 8px 16px rgba(75, 64, 57, 0.06);
+}
+
 /* Mobile bottom sheet: body scroll lock when sheet is open */
 body.preview-sheet-open {
     overflow: hidden;
