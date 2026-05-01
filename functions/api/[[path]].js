@@ -134,6 +134,12 @@ function withUpstreamHeader(response, upstream, requestId = null) {
   headers.set('x-lovebud-upstream', upstream);
   if (requestId) {
     headers.set('x-lovebud-request-id', requestId);
+    // Allow browser to access the request ID header
+    const existingExposeHeaders = headers.get('Access-Control-Expose-Headers') || '';
+    const exposeHeaders = existingExposeHeaders
+      ? `${existingExposeHeaders}, x-lovebud-request-id`
+      : 'x-lovebud-request-id';
+    headers.set('Access-Control-Expose-Headers', exposeHeaders);
   }
   return new Response(response.body, {
     status: response.status,
@@ -197,11 +203,9 @@ function buildMethodNotAllowedResponse(allow = 'GET', requestId = null) {
     'content-type': 'application/json; charset=utf-8',
     'x-lovebud-upstream': 'cloudflare',
     'x-lovebud-route-status': 'method-not-allowed',
-    'allow': allow
+    'allow': allow,
+    'x-lovebud-request-id': requestId
   };
-  if (requestId) {
-    headers['x-lovebud-request-id'] = requestId;
-  }
   return new Response(
     JSON.stringify({ error: 'Method not allowed' }),
     {
