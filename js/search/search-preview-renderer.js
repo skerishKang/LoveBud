@@ -115,6 +115,10 @@
     }
 
     function getTreeDetailHref(tree) {
+        const helper = window.LoveBudSearchPreviewActionHelper;
+        if (helper?.getTreeDetailHref) {
+            return helper.getTreeDetailHref(tree);
+        }
         const memories = Array.isArray(tree?.memories) ? tree.memories : [];
         const firstMemory = memories[0];
         if (!tree?.id || !firstMemory?.id) return '';
@@ -123,6 +127,10 @@
     }
 
     function renderPreviewActionButton(tree) {
+        const helper = window.LoveBudSearchPreviewActionHelper;
+        if (helper?.renderPreviewActionButton) {
+            return helper.renderPreviewActionButton(tree);
+        }
         const href = getTreeDetailHref(tree);
         if (!href) return '';
         const label = getSearchCopy(
@@ -139,6 +147,10 @@
     }
 
     function renderShareButton(tree) {
+        const helper = window.LoveBudSearchPreviewActionHelper;
+        if (helper?.renderShareButton) {
+            return helper.renderShareButton(tree);
+        }
         if (!tree?.id) return '';
         const label = getSearchCopy(
             'search.previewShareLink',
