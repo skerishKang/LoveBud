@@ -53,8 +53,8 @@
 .detail-hero {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    margin-bottom: 16px;
+    gap: 10px;
+    margin-bottom: 18px;
     padding: 16px 20px;
     border-radius: 1.3rem;
     background: linear-gradient(135deg, rgba(255,255,255,0.88), rgba(249,245,242,0.9));
@@ -75,7 +75,7 @@
 
 .detail-hero-title {
     margin: 0;
-    font-size: 1.9rem;
+    font-size: 1.85rem;
     line-height: 1.15;
     color: var(--on-surface);
 }
@@ -325,7 +325,7 @@
     .detail-page-shell { padding: 16px 16px 30px; }
     .detail-topbar { align-items: flex-start; flex-direction: column; margin-bottom: 12px; }
     .detail-hero { padding: 15px 16px; border-radius: 1.2rem; margin-bottom: 14px; gap: 7px; }
-    .detail-hero-title { font-size: 1.5rem; line-height: 1.2; }
+    .detail-hero-title { font-size: 1.45rem; line-height: 1.2; }
     .detail-hero-desc { font-size: 0.88rem; line-height: 1.5; }
     .detail-layout { gap: 22px; }
     .detail-title-block { gap: 10px; }
