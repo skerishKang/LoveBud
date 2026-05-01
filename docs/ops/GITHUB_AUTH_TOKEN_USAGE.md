@@ -144,6 +144,24 @@ Use path indirection rather than value disclosure.
 4. The CLI or script receives the value without printing it.
 5. Reports include only status words such as `PRESENT`, `MISSING`, `EXISTS`, `GITIGNORED`, `PASS`, or `BLOCKED`.
 
+**Important for GitHub CLI operations:**
+
+When GitHub CLI authentication is required, the agent should:
+
+1. Check if `gh auth status` shows authenticated state
+2. If not authenticated, guide the user to run `gh auth login` or set `GH_TOKEN` environment variable
+3. The agent does NOT read the token value from files
+4. The agent runs `gh` commands which will use the already-authenticated session or environment variable
+5. The agent only reports authentication status: `AUTHENTICATED` or `NOT_AUTHENTICATED`
+
+Example PowerShell pattern for checking auth state:
+
+```powershell
+# Allowed: Check auth status without reading token values
+gh auth status
+# Output: Logged in as username → This is safe to report
+```
+
 Safe report example:
 
 ```text
@@ -152,6 +170,7 @@ credential file: EXISTS
 credential file gitignored: YES
 required key: PRESENT
 secret value exposed: NO
+gh auth status: AUTHENTICATED
 ```
 
 ---
