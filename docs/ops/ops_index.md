@@ -31,13 +31,14 @@
 13. [KNOWN_CI_E2E_BLOCKERS.md](KNOWN_CI_E2E_BLOCKERS.md) - 반복 CI/E2E blocker 원인 분리 및 exception merge 판단 기준
 14. [E2E_SMOKE_COVERAGE_POLICY.md](E2E_SMOKE_COVERAGE_POLICY.md) - Issue #413 E2E smoke coverage 분류, CI/manual/Cloudflare Preview/fixed test slot 실행 정책, evidence 기준
 15. [ACTIVE_WORK_BOARD_POLICY.md](ACTIVE_WORK_BOARD_POLICY.md) - Issue #426 병렬 AI/workstation 작업 충돌 방지, active work board 필드, 상태 정의, 중복 prompt 방지, overlap warning 규칙, handoff/report 형식
-16. [BRANCH_CLEANUP_PLAN.md](BRANCH_CLEANUP_PLAN.md) - merged/stale branch cleanup 후보와 보존 branch 분류 기준
-17. [../migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md](../migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md) - 전환 현황과 남은 과제
-18. [ENV_NAMING_RUNTIME_TERMINOLOGY_AUDIT.md](ENV_NAMING_RUNTIME_TERMINOLOGY_AUDIT.md) - Issue #431 환경변수 명명 및 runtime terminology 감사, NETLIFY_DATABASE_URL 사용 현황, Cloudflare + Modal + Neon active runtime 정리
-19. [LOCAL_FILE_HYGIENE_PG_DEPENDENCY_AUDIT.md](LOCAL_FILE_HYGIENE_PG_DEPENDENCY_AUDIT.md) - Issue #429 local file hygiene 및 pg dependency usage 감사, .local/ tracked-file safety boundary, secret-safe local file handling, Cloudflare Functions vs local script dependency boundary
-20. [OBSERVABILITY_RUNTIME_LOGGING_AUDIT.md](OBSERVABILITY_RUNTIME_LOGGING_AUDIT.md) - Issue #415 observability 및 runtime logging strategy 감사, Cloudflare/Modal/browser 디버깅 경로, redaction-safe logging boundary, follow-up implementation issue plan (A/B/C)
-21. [MODAL_RUNTIME_DIAGNOSTICS_WORKFLOW.md](MODAL_RUNTIME_DIAGNOSTICS_WORKFLOW.md) - Issue #473 Modal runtime diagnostics workflow, Cloudflare ↔ Modal verification 절차, request ID correlation, blocked-state 보고 기준
-22. [../engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md](../engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md) - browse filter / publication guard 구분
+16. [SOURCE_OF_TRUTH_HYGIENE_DISPOSITION.md](SOURCE_OF_TRUTH_HYGIENE_DISPOSITION.md) - Issue #425 docs source-of-truth hierarchy, stale-doc classification, update routing, archive and index maintenance rules
+17. [BRANCH_CLEANUP_PLAN.md](BRANCH_CLEANUP_PLAN.md) - merged/stale branch cleanup 후보와 보존 branch 분류 기준
+18. [../migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md](../migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md) - 전환 현황과 남은 과제
+19. [ENV_NAMING_RUNTIME_TERMINOLOGY_AUDIT.md](ENV_NAMING_RUNTIME_TERMINOLOGY_AUDIT.md) - Issue #431 환경변수 명명 및 runtime terminology 감사, NETLIFY_DATABASE_URL 사용 현황, Cloudflare + Modal + Neon active runtime 정리
+20. [LOCAL_FILE_HYGIENE_PG_DEPENDENCY_AUDIT.md](LOCAL_FILE_HYGIENE_PG_DEPENDENCY_AUDIT.md) - Issue #429 local file hygiene 및 pg dependency usage 감사, .local/ tracked-file safety boundary, secret-safe local file handling, Cloudflare Functions vs local script dependency boundary
+21. [OBSERVABILITY_RUNTIME_LOGGING_AUDIT.md](OBSERVABILITY_RUNTIME_LOGGING_AUDIT.md) - Issue #415 observability 및 runtime logging strategy 감사, Cloudflare/Modal/browser 디버깅 경로, redaction-safe logging boundary, follow-up implementation issue plan (A/B/C)
+22. [MODAL_RUNTIME_DIAGNOSTICS_WORKFLOW.md](MODAL_RUNTIME_DIAGNOSTICS_WORKFLOW.md) - Issue #473 Modal runtime diagnostics workflow, Cloudflare ↔ Modal verification 절차, request ID correlation, blocked-state 보고 기준
+23. [../engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md](../engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md) - browse filter / publication guard 구분
 
 ---
 
@@ -48,6 +49,7 @@
 | [DOC_WORKFLOW.md](DOC_WORKFLOW.md) | 문서 작업 흐름 및 문서군 역할 정의 |
 | [PARALLEL_WORKTREE_AGENT_POLICY.md](PARALLEL_WORKTREE_AGENT_POLICY.md) | 병렬 모델, worktree, 검증 모델, PR 통합 운영 기준 |
 | [AGENT_STARTUP_VERIFICATION_RULES.md](AGENT_STARTUP_VERIFICATION_RULES.md) | Issue #464 agent startup checklist, fixed-slot verification, dirty worktree stop, token/secret-safe reporting 기준 |
+| [SOURCE_OF_TRUTH_HYGIENE_DISPOSITION.md](SOURCE_OF_TRUTH_HYGIENE_DISPOSITION.md) | Issue #425 docs source-of-truth hierarchy, stale-doc classification, update routing, archive and index maintenance rules |
 | [PATHS_AND_SHELLS.md](PATHS_AND_SHELLS.md) | 경로 / 셸 기준 |
 | [REMOTE_ACCESS_AND_WSL.md](REMOTE_ACCESS_AND_WSL.md) | 원격 접근 / WSL 기준 |
 | [GIT_SSH_SETUP.md](GIT_SSH_SETUP.md) | Git / SSH 설정 |
@@ -70,6 +72,7 @@
 | [CLOUDFLARE_PAGES_E2E_SMOKE_REPLACEMENT.md](CLOUDFLARE_PAGES_E2E_SMOKE_REPLACEMENT.md) | Cloudflare Pages + Modal 기반 E2E smoke replacement 제안 — Phase 1 supplied URL smoke, Phase 2 manual workflow, Phase 3 preview URL discovery 기준 |
 | [E2E_SMOKE_COVERAGE_POLICY.md](E2E_SMOKE_COVERAGE_POLICY.md) | Issue #413 E2E smoke coverage 분류, CI/manual/Cloudflare Preview/fixed test slot 실행 정책, auth/test-account evidence 기준 |
 | [ACTIVE_WORK_BOARD_POLICY.md](ACTIVE_WORK_BOARD_POLICY.md) | Issue #426 병렬 AI/workstation 작업 충돌 방지, active work board 필드, 상태 정의, 중복 prompt 방지, overlap warning 규칙, handoff/report 형식 |
+| [SOURCE_OF_TRUTH_HYGIENE_DISPOSITION.md](SOURCE_OF_TRUTH_HYGIENE_DISPOSITION.md) | Issue #425 docs source-of-truth hierarchy, stale-doc classification, update routing, archive and index maintenance rules |
 | [ENV_NAMING_RUNTIME_TERMINOLOGY_AUDIT.md](ENV_NAMING_RUNTIME_TERMINOLOGY_AUDIT.md) | Issue #431 환경변수 명명 및 runtime terminology 감사, NETLIFY_DATABASE_URL 사용 현황, Cloudflare + Modal + Neon active runtime 정리 |
 | [MODAL_BROWSE_RUNTIME.md](MODAL_BROWSE_RUNTIME.md) | browse summary의 Modal 우선 경로와 Modal security contract 기준 |
 | [KNOWN_CI_E2E_BLOCKERS.md](KNOWN_CI_E2E_BLOCKERS.md) | 반복 CI/E2E 실패의 원인 분리 및 exception merge 판단 기준 |
