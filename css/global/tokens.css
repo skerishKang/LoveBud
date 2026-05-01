@@ -33,6 +33,30 @@
     --radius-lg: 2rem;
     --radius-full: 9999px;
 
+    /* LoveTree Shared Visual Foundation */
+    --lovetree-page-shell-max: 1280px;
+    --lovetree-page-pad-desktop: 24px;
+    --lovetree-page-pad-tablet: 24px;
+    --lovetree-page-pad-mobile: 16px;
+
+    --lovetree-soft-surface: #f8f5f0;
+    --lovetree-soft-surface-border: rgba(144, 73, 81, 0.08);
+    --lovetree-card-shadow: 0 4px 20px rgba(75, 64, 57, 0.05);
+    --lovetree-card-radius: 16px;
+
+    --lovetree-pill-bg: rgba(144, 73, 81, 0.08);
+    --lovetree-pill-border: rgba(144, 73, 81, 0.22);
+    --lovetree-pill-text: var(--primary);
+    --lovetree-pill-hover-bg: rgba(144, 73, 81, 0.12);
+    --lovetree-pill-active-bg: rgba(144, 73, 81, 0.16);
+
+    --lovetree-chip-bg: rgba(255, 255, 255, 0.84);
+    --lovetree-chip-border: rgba(144, 73, 81, 0.12);
+    --lovetree-chip-text: var(--on-surface-variant);
+    --lovetree-chip-active-bg: var(--lovetree-pill-bg);
+    --lovetree-chip-active-text: var(--primary);
+    --lovetree-chip-active-border: var(--lovetree-pill-border);
+
     /* Page width rhythm */
     --page-brand-max: 1280px;
     --page-work-max: 1440px;
