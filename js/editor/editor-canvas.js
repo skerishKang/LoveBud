@@ -26,114 +26,101 @@ function createEditorCanvas(deps) {
     const canvasLayoutHelpers = window.LoveBudEditorCanvasLayoutHelpers || {};
     const canvasEdges = window.createEditorCanvasEdges({ svg, canvasViewport });
 
-    const canvasState = window.createEditorCanvasStateBoundary({
-        treeId,
-        layoutStorageKey,
-        canvasLayout
-    });
-    const viewportState = canvasState.createViewportState();
-    viewportState.hasStoredViewportOffset = hasStoredViewportOffset();
-
-    const ROOT_RIGHT_GUTTER = 300;
-    const ROOT_BOTTOM_GUTTER = 180;
-    const NODE_WIDTH = 108;
-    const NODE_HALF = Math.round(NODE_WIDTH / 2);
-    const AFFORDANCE_OFFSET_X = 168;
-    const AFFORDANCE_OFFSET_Y = 10;
-    const AFFORDANCE_CARD_HALF = 108;
-    const layoutHelperConstants = { ROOT_RIGHT_GUTTER, ROOT_BOTTOM_GUTTER };
-
-    function persistStoredPositions() {
-        canvasState.persistStoredPositions(viewportState);
-    }
-
-    function hasStoredViewportOffset() {
-        try {
-            const raw = localStorage.getItem(layoutStorageKey);
-            if (!raw || raw === 'null') return false;
-            const parsed = JSON.parse(raw);
-            return !!parsed && typeof parsed === 'object'
-                && (typeof parsed.offsetX === 'number' || typeof parsed.offsetY === 'number');
-        } catch (error) {
-            return false;
-        }
-    }
-
-    function getMetrics() {
-        return canvasLayoutHelpers.getMetrics(canvas);
-    }
-
-    function getRootBasePosition() {
-        return canvasLayoutHelpers.getRootBasePosition(getMetrics(), layoutHelperConstants);
-    }
-
-    function getRadiusL1() {
-        return canvasLayoutHelpers.getRadiusL1(getMetrics());
-    }
-
-    function getRadiusL2() {
-        return canvasLayoutHelpers.getRadiusL2(getMetrics());
-    }
-
-    function distributeAngles(count, baseAngle = -10) {
-        return canvasLayoutHelpers.distributeAngles(count, baseAngle);
-    }
-
-    function getWorldPosition(mem, visited = new Set()) {
-        const canonicalRootId = getCanonicalRootId();
-        const treeMemories = getTreeMemories();
-
-        if (!mem) {
-            return getRootBasePosition();
-        }
-
-        if (viewportState.positions[mem.id]) {
+function loadStoredLayout() {
+        if (typeof canvasLayout.createLayoutStore === 'function') {
+            const store = canvasLayout.createLayoutStore(treeId);
+            const initialState = store.createInitialViewportState();
             return {
-                x: Number(viewportState.positions[mem.id].x) || 0,
-                y: Number(viewportState.positions[mem.id].y) || 0
+                positions: initialState.positions,
+                offsetX: initialState.offsetX,
+                offsetY: initialState.offsetY
             };
         }
 
-        if (isRootMemory(mem, canonicalRootId)) {
-            return getRootBasePosition();
+        try {
+            const raw = localStorage.getItem(layoutStorageKey);
+            if (!raw || raw === 'null') return { positions: {}, offsetX: 0, offsetY: 0 };
+            const parsed = JSON.parse(raw);
+            if (!parsed || typeof parsed !== 'object') return { positions: {}, offsetX: 0, offsetY: 0 };
+            return {
+                positions: (parsed.positions && typeof parsed.positions === 'object') ? parsed.positions : {},
+                offsetX: typeof parsed.offsetX === 'number' ? parsed.offsetX : 0,
+                offsetY: typeof parsed.offsetY === 'number' ? parsed.offsetY : 0
+            };
+        } catch (e) {
+            return { positions: {}, offsetX: 0, offsetY: 0 };
         }
-
-        if (visited.has(mem.id)) {
-            return getRootBasePosition();
-        }
-        visited.add(mem.id);
-
-        const parentId = mem.parentId || canonicalRootId;
-        const siblings = treeMemories.filter((m) => (
-            (m.parentId || canonicalRootId) === parentId && !isRootMemory(m, canonicalRootId)
-        ));
-        const idx = Math.max(0, siblings.findIndex((m) => m.id === mem.id));
-        const count = Math.max(1, siblings.length);
-
-        if (parentId === canonicalRootId) {
-            const angles = distributeAngles(count, -10);
-            const angle = angles[idx] !== undefined ? angles[idx] : -10;
-            const rootBase = getRootBasePosition();
-            const radius = getRadiusL1();
-            return canvasLayoutHelpers.offsetByAngle(rootBase, radius, angle);
-        }
-
-        const parent = treeMemories.find((m) => m.id === parentId);
-        const parentPos = parent ? getWorldPosition(parent, visited) : getRootBasePosition();
-        const childAngles = distributeAngles(count, 0);
-        const childAngle = childAngles[idx] !== undefined ? childAngles[idx] : 0;
-        const radius = getRadiusL2();
-
-        return canvasLayoutHelpers.offsetByAngle(parentPos, radius, childAngle);
     }
 
-    const calcPosition = (mem) => {
-        const world = getWorldPosition(mem);
-        return {
-            x: world.x + viewportState.offsetX,
-            y: world.y + viewportState.offsetY
-        };
+    const storedLayout = loadStoredLayout();
+
+    const viewportState = {
+        offsetX: storedLayout.offsetX,
+        offsetY: storedLayout.offsetY,
+        initialized: false,
+        isPanning: false,
+        startX: 0,
+        startY: 0,
+        isDraggingNode: false,
+        dragNodeId: null,
+        dragStartClientX: 0,
+        dragStartClientY: 0,
+        dragStartWorldX: 0,
+        dragStartWorldY: 0,
+        dragMoved: false,
+        controlsBound: false,
+        globalsBound: false,
+        resizeBound: false,
+        resizeTimer: null,
+        positions: storedLayout.positions,
+        rafScheduled: false,
+        rafFrame: null
     };
+    const { NODE_HALF, AFFORDANCE_OFFSET_X, AFFORDANCE_OFFSET_Y, AFFORDANCE_CARD_HALF } = window.EditorCanvasGeometry;
+
+    function getMetrics() {
+        return window.EditorCanvasGeometry.getMetrics(canvas);
+    }
+
+    function getRootBasePosition() {
+        return window.EditorCanvasGeometry.getRootBasePosition(getMetrics());
+    }
+
+    function getRadiusL1() {
+        return window.EditorCanvasGeometry.getRadiusL1(getMetrics());
+    }
+
+    function getRadiusL2() {
+        return window.EditorCanvasGeometry.getRadiusL2(getMetrics());
+    }
+
+    function distributeAngles(count, baseAngle = -10) {
+        return window.EditorCanvasGeometry.distributeAngles(count, baseAngle);
+    }
+
+    function getWorldPosition(mem) {
+        return window.EditorCanvasGeometry.getWorldPosition(mem, viewportState, getCanonicalRootId, getTreeMemories, isRootMemory, getMetrics);
+    }
+
+    function calcPosition(mem) {
+        return window.EditorCanvasGeometry.calcPosition(mem, viewportState, getWorldPosition);
+    }
+
+    function persistStoredPositions() {
+        if (typeof canvasLayout.createLayoutStore === 'function') {
+            const store = canvasLayout.createLayoutStore(treeId);
+            store.persist(viewportState);
+            return;
+        }
+
+        try {
+            localStorage.setItem(layoutStorageKey, JSON.stringify({
+                positions: viewportState.positions,
+                offsetX: viewportState.offsetX,
+                offsetY: viewportState.offsetY
+            }));
+        } catch (e) {}
+    }
 
     const growthAffordance = window.createEditorCanvasGrowthAffordance({
         canvas,
@@ -151,7 +138,13 @@ function createEditorCanvas(deps) {
         }
     });
 
-    function isNodeWithinSafeViewport(pos) {
+
+
+
+
+
+
+function isNodeWithinSafeViewport(pos) {
         const metrics = getMetrics();
         const padding = 96;
         return pos.x >= padding && pos.x <= metrics.width - padding && pos.y >= padding && pos.y <= metrics.height - padding;
@@ -175,10 +168,17 @@ function createEditorCanvas(deps) {
     }
 
     function bindResizeHandling() {
-        canvasState.bindResizeHandling({
-            viewportState,
-            keepSelectionVisible,
-            persistStoredPositions
+        if (viewportState.resizeBound) return;
+        viewportState.resizeBound = true;
+
+        window.addEventListener('resize', () => {
+            if (viewportState.resizeTimer) {
+                clearTimeout(viewportState.resizeTimer);
+            }
+            viewportState.resizeTimer = setTimeout(() => {
+                keepSelectionVisible();
+                persistStoredPositions();
+            }, 120);
         });
     }
 
@@ -552,8 +552,13 @@ function createEditorCanvas(deps) {
             scheduleInitCanvas();
         });
 
-        window.addEventListener('mouseup', () => {
-            canvasState.cancelScheduledFrame(viewportState);
+window.addEventListener('mouseup', () => {
+            const currentFrame = viewportState.rafFrame;
+            if (currentFrame) {
+                cancelAnimationFrame(currentFrame);
+                viewportState.rafFrame = null;
+                viewportState.rafScheduled = false;
+            }
 
             let shouldRender = false;
             if (viewportState.isDraggingNode && viewportState.dragNodeId) {
@@ -586,8 +591,14 @@ function createEditorCanvas(deps) {
         });
     };
 
-    function scheduleInitCanvas() {
-        canvasState.scheduleRender(viewportState, initCanvas);
+function scheduleInitCanvas() {
+        if (viewportState.rafScheduled) return;
+        viewportState.rafScheduled = true;
+        viewportState.rafFrame = requestAnimationFrame(() => {
+            viewportState.rafScheduled = false;
+            viewportState.rafFrame = null;
+            initCanvas();
+        });
     }
 
     return {
