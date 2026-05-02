@@ -58,7 +58,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const editorBindings = window.LoveBudEditorBindings || {};
     const editorDataLoader = window.LoveBudEditorDataLoader || {};
     const editorAuthHelpers = window.LoveBudEditorAuthHelpers || {};
-    const readConfirmedAuthCacheFromHelper = editorAuthHelpers.readConfirmedAuthCache || (() => null);
+    const readConfirmedAuthCacheFromHelper = () => (
+        window.LoveBudEditorAuthHelpers?.readConfirmedAuthCache?.() || null
+    );
     const getConfirmedSessionUser = editorAuthHelpers.getConfirmedSessionUser || function() {
         try {
             if (window.getConfirmedAuthUser) return window.getConfirmedAuthUser();
