@@ -304,7 +304,6 @@
                     const nextSort = button.dataset.browseSort || 'latest';
                     if (nextSort === state.currentSort) return;
                     state.currentSort = nextSort;
-                    state.currentLimit = 10;
                     syncControlsFromState();
                     callbacks.updateUrlState();
                     await callbacks.loadPublicTrees({ resetSelection: true });
