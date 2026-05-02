@@ -58,6 +58,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const editorBindings = window.LoveBudEditorBindings || {};
     const editorDataLoader = window.LoveBudEditorDataLoader || {};
     const editorAuthHelpers = window.LoveBudEditorAuthHelpers || {};
+    const readConfirmedAuthCacheFromHelper = () => (
+        window.LoveBudEditorAuthHelpers?.readConfirmedAuthCache?.() || null
+    );
 
     const getHttpStatus = (error) => Number(error?.status || error?.statusCode || error?.response?.status || 0);
 
@@ -744,11 +747,13 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     var editorStarted = false;
-    const getConfirmedSessionUser = editorAuthHelpers.getConfirmedSessionUser || function() {
+    const getConfirmedSessionUser = function() {
+        const helper = window.LoveBudEditorAuthHelpers?.getConfirmedSessionUser;
+        if (typeof helper === 'function') return helper();
         try {
             if (window.getConfirmedAuthUser) return window.getConfirmedAuthUser();
         } catch (e) {}
-        return readConfirmedAuthCache();
+        return readConfirmedAuthCacheFromHelper();
     };
 
     function tryStartEditor(user) {
@@ -759,7 +764,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         if (!user) {
-            var cachedUser = readConfirmedAuthCache();
+            var cachedUser = readConfirmedAuthCacheFromHelper();
             if (!cachedUser || !cachedUser.uid) {
                 redirectToEditorLogin();
                 return;
