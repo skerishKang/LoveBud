@@ -1,6 +1,71 @@
 (function () {
   if (window.LoveBudAuthLoginPage) return;
 
+  function isCurrentLoginPage() {
+    var path = window.location.pathname || '';
+    return path.indexOf('/pages/login.html') !== -1 ||
+      path.indexOf('/pages/login') !== -1 ||
+      path.indexOf('login.html') !== -1;
+  }
+
+  function getLoginCard() {
+    return document.querySelector('.login-card');
+  }
+
+  function hideLoginCard() {
+    var card = getLoginCard();
+    if (!card) return;
+    card.style.visibility = 'hidden';
+    card.setAttribute('aria-hidden', 'true');
+  }
+
+  function showLoginCard() {
+    var card = getLoginCard();
+    if (!card) return;
+    card.style.visibility = '';
+    card.setAttribute('aria-hidden', 'false');
+  }
+
+  function clearLoginHeaderAuthState() {
+    var authContainer = document.getElementById('auth-nav-container');
+    if (authContainer) authContainer.innerHTML = '';
+  }
+
+  function resolveLoginRedirectTarget() {
+    try {
+      var params = new URLSearchParams(window.location.search || '');
+      return params.get('redirect') || 'my-trees.html';
+    } catch (error) {
+      return 'my-trees.html';
+    }
+  }
+
+  function bindLoginAuthState() {
+    if (!isCurrentLoginPage()) return;
+    hideLoginCard();
+
+    if (window.__lovebudLoginAuthStateBound) return;
+    window.__lovebudLoginAuthStateBound = true;
+
+    try {
+      if (typeof initFirebase === 'function') initFirebase();
+      var auth = window.firebase && typeof window.firebase.auth === 'function'
+        ? window.firebase.auth()
+        : null;
+      if (!auth || typeof auth.onAuthStateChanged !== 'function') return;
+
+      auth.onAuthStateChanged(function (user) {
+        if (user) {
+          window.location.href = resolveLoginRedirectTarget();
+          return;
+        }
+        clearLoginHeaderAuthState();
+        showLoginCard();
+      });
+    } catch (error) {
+    }
+  }
+
   function syncEmailAuthModeUi(options) {
     var emailAuthMode = options && options.emailAuthMode;
     var titleEl = options && options.titleEl;
@@ -371,4 +436,6 @@
     setupEmailAuthForm: setupEmailAuthForm,
     setupSignupForm: setupSignupForm
   };
+
+  bindLoginAuthState();
 })();
