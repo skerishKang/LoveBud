@@ -52,19 +52,6 @@ function createEditorDetailUI(deps) {
     const { buildTreeMetaRenderModel, renderTreeMetaBoundary } = treeMetaBoundary;
     // ──────────────────────────────────────────────────────────────────
 
-    // ── Inline edit boundary integration ───────────────────────────────────────
-    // Use extracted helper for title/memo edit boundaries
-    const inlineEditHelper = window.createEditorDetailInlineEditBoundary({
-        updateSelectedMemoryFields,
-        showToast,
-        formatI18nText,
-        i18n,
-        getMemoFallbackText
-    });
-    const createTitleEditBoundary = inlineEditHelper.createTitleEditBoundary;
-    const createMemoEditBoundary = inlineEditHelper.createMemoEditBoundary;
-    // ──────────────────────────────────────────────────────────────────────────
-
     const getTreeState = () => {
         const canonicalRootId = getCanonicalRootId();
         const treeMemories = getTreeMemories();
@@ -115,6 +102,18 @@ function createEditorDetailUI(deps) {
         return formatI18nText('editor_selected_memo_fallback', '이 순간의 마음을 한 줄 남겨두면, 이어진 흐름을 다시 떠올리기 쉬워져요.');
     };
 
+    // ── Inline edit boundary integration ───────────────────────────────────────
+    // Use extracted helper for title/memo edit boundaries
+    const inlineEditHelper = window.createEditorDetailInlineEditBoundary({
+        updateSelectedMemoryFields,
+        showToast,
+        formatI18nText,
+        i18n,
+        getMemoFallbackText
+    });
+    const createTitleEditBoundary = inlineEditHelper.createTitleEditBoundary;
+    const createMemoEditBoundary = inlineEditHelper.createMemoEditBoundary;
+    // ──────────────────────────────────────────────────────────────────────────
 
     const resetDetailViewState = () => {
         const headerEl = detailPanel.querySelector('h3');
