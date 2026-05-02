@@ -65,7 +65,7 @@ This document does not implement CSS or JavaScript changes. It does not change B
 
 This document supports Issue #599 and should guide a later narrow implementation PR.
 
-Closes #599
+Refs #599
 Refs #594
 Refs #600
 Refs #601
