@@ -304,19 +304,11 @@ function createEditorDetailUI(deps) {
              treeState,
              data,
              isEmptyState,
-             isRootSelected,
-             localSaveMode,
-             resolveTreeTitleText,
-             formatI18nText,
-             createShareTreeButton,
-             createOpenDetailButton,
-             bindShareButton,
-             bindOpenDetailButton,
-             createTreeMetaBlock
+             localSaveMode
          });
 
          if (treeMetaMount) {
-             renderTreeMetaBoundary(treeMetaMount, treeMetaModel, treeId, data, { i18n, showToast, bindShareButton, bindOpenDetailButton });
+             renderTreeMetaBoundary(treeMetaMount, treeMetaModel, treeId, data);
          }
 
         if (badgeEl) {
