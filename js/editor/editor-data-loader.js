@@ -85,29 +85,32 @@
             };
         }
 
-        try {
-            if (apiClient && apiClient.getFirstTree) {
-                const apiTree = await apiClient.getFirstTree();
-                if (apiTree) {
-                    tree = apiTree;
-                    treeLoadStatus = 'loaded';
-                    console.log('[editor] API tree loaded (getFirstTree)');
-                } else if (apiClient.createTree) {
-                    console.log('[editor] No tree found, creating default tree...');
-                    const newTree = await apiClient.createTree({
-                        title: createDefaultTreeTitle(),
-                        visibility: 'public'
-                    });
-                    tree = newTree;
-                    isNewTree = true;
-                    treeLoadStatus = 'created';
-                    console.log('[editor] Default tree created:', newTree);
+        // Only fall back to getFirstTree if no specific treeId was requested
+        if (!urlTreeId) {
+            try {
+                if (apiClient && apiClient.getFirstTree) {
+                    const apiTree = await apiClient.getFirstTree();
+                    if (apiTree) {
+                        tree = apiTree;
+                        treeLoadStatus = 'loaded';
+                        console.log('[editor] API tree loaded (getFirstTree)');
+                    } else if (apiClient.createTree) {
+                        console.log('[editor] No tree found, creating default tree...');
+                        const newTree = await apiClient.createTree({
+                            title: createDefaultTreeTitle(),
+                            visibility: 'public'
+                        });
+                        tree = newTree;
+                        isNewTree = true;
+                        treeLoadStatus = 'created';
+                        console.log('[editor] Default tree created:', newTree);
+                    }
                 }
+            } catch (e) {
+                treeLoadErrorMessage = String(e?.message || '');
+                console.warn('[editor] API tree load failed:', e.message);
+                authRequired = /401|Authentication/i.test(treeLoadErrorMessage);
             }
-        } catch (e) {
-            treeLoadErrorMessage = String(e?.message || '');
-            console.warn('[editor] API tree load failed:', e.message);
-            authRequired = /401|Authentication/i.test(treeLoadErrorMessage);
         }
 
         if (authRequired) {
