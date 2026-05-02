@@ -33,6 +33,7 @@ test('detail runtime submodules load after API client and before detail entrypoi
     '../js/detail/detail-render.js',
     '../js/detail/detail-connected.js',
     '../js/detail/detail-loader.js',
+    '../js/detail/detail-loading-error-boundary.js',
   ];
   const moduleIndexes = expectedModules.map(indexOf);
 
