@@ -46,6 +46,7 @@ test('editor helper scripts load before the editor entry script', () => {
     'js/editor/editor-canvas-viewport.js',
     'js/editor/editor-canvas.js',
     'js/editor/editor-rename-ui.js',
+    'js/editor/editor-detail-sidebar-status-boundary.js',
     'js/editor/editor-detail-ui-builders.js',
     'js/editor/editor-detail-ui.js',
     'js/editor/editor-memory-actions.js',
@@ -76,6 +77,12 @@ test('detail UI builders load before detail UI', () => {
   const sources = scriptSources(editorHtml());
 
   assertLoadedBefore(sources, 'js/editor/editor-detail-ui-builders.js', 'js/editor/editor-detail-ui.js');
+});
+
+test('detail sidebar status boundary loads before detail UI', () => {
+  const sources = scriptSources(editorHtml());
+
+  assertLoadedBefore(sources, 'js/editor/editor-detail-sidebar-status-boundary.js', 'js/editor/editor-detail-ui.js');
 });
 
 test('entry fallback boundary is explicitly mounted before editor entry', () => {
