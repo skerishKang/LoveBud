@@ -1,6 +1,6 @@
 /**
  * LoveBud - i18n Intro Dictionary
- * v20260502-587
+ * v20260423-2
  *
  * 소개 페이지(intro.html) 번역 키
  */
@@ -11,16 +11,16 @@
   window.i18nIntro = {
     // Hero 섹션
     'intro.heroEyebrow': {
-      ko: '러브트리가 무엇인지 처음 이해하는 곳',
-      en: 'Where LoveTree first becomes clear'
+      ko: '팬 감정 러브트리 · 처음 마음이 이어지는 곳',
+      en: 'Fan feeling LoveTree · where the first feeling connects'
     },
     'intro.heroTitle': {
-      ko: '<span class="title-line">좋아하게 된 흐름을</span><span class="title-line title-accent">하나의 트리로</span><span class="title-line">읽어보세요</span>',
-      en: '<span class="title-line">Read the path</span><span class="title-line title-accent">of what you love</span><span class="title-line">as one tree</span>'
+      ko: '<span class="title-line">첫 순간이 하나의</span><span class="title-line title-accent">러브트리로</span><span class="title-line">이어져요</span>',
+      en: '<span class="title-line">Your first moment</span><span class="title-line title-accent">becomes one LoveTree</span><span class="title-line">and keeps growing</span>'
     },
     'intro.heroLead': {
-      ko: '러브트리는 첫 장면, 마음 메모, 다시 보고 싶은 순간을<br class="pc-only">하나의 감정 경로로 묶어 보여주는 공간입니다.',
-      en: 'LoveTree connects the first scene, heart notes, and moments worth revisiting<br class="pc-only">into one emotional path.'
+      ko: '반했던 장면과 오래 남은 마음을,<br class="pc-only">감정이 이어진 경로로 천천히 남겨 보세요.',
+      en: 'Keep the scene that drew you in and the feelings that stayed,<br class="pc-only">as a path of connected emotion.'
     },
     'intro.heroPrimaryCta': {
       ko: '내 러브트리 시작하기',
