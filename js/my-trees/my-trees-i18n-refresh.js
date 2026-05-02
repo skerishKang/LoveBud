@@ -60,7 +60,7 @@
 
     document.querySelectorAll('.tree-card-dropdown').forEach(function(dropdown) {
       var card = dropdown.closest('.tree-card');
-      var isPublic = !!card?.querySelector('.tree-card-visibility.public');
+      var isPublic = card?.dataset?.visibility !== 'private';
       var visibilityItem = dropdown.querySelector('.dropdown-item.visibility');
       var renameItem = dropdown.querySelector('.dropdown-item.rename');
       var deleteItem = dropdown.querySelector('.dropdown-item.delete');
