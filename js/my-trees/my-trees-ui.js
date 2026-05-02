@@ -184,10 +184,8 @@
             ? '<img class="tree-card-thumb-image" src="' + escapeHtml(thumbnail) + '" alt="' + escapeHtml(title) + '">'
             : (textVisual || buildMiniTreeSVG(tree)),
         '</div>',
-        '<div class="tree-card-thumb-topline">',
-          '<span class="tree-card-moment-badge" data-count="' + momentCount + '">' + (i18n('myTrees.moment_count_compact') || '순간 {count}개').replace('{count}', String(momentCount)) + '</span>',
-        '</div>',
-        '<div class="tree-card-thumb-caption">' + moodLabel + '</div>',
+        (momentCount > 0 ? '<div class="tree-card-thumb-topline"><span class="tree-card-moment-badge" data-count="' + momentCount + '">' + (i18n('myTrees.moment_count_compact') || '순간 {count}개').replace('{count}', String(momentCount)) + '</span></div>' : ''),
+        (momentCount > 0 ? '<div class="tree-card-thumb-caption">' + moodLabel + '</div>' : ''),
       '</div>'
     ].join('');
   }
@@ -354,22 +352,39 @@
     var card = document.createElement('div');
     card.className = 'tree-card' + selectedClass;
     card.style.cursor = 'pointer';
+    card.setAttribute('role', 'button');
+    card.setAttribute('tabindex', '0');
+    card.dataset.visibility = normalizedTree.visibility;
 
-    card.addEventListener('click', function (e) {
-      if (e.target.closest('.tree-card-menu') || e.target.closest('.tree-card-dropdown') || e.target.closest('.tree-card-manage-btn')) {
-        return;
-      }
+    var openTree = function () {
       if (typeof onNavigate === 'function') {
         onNavigate(normalizedTree);
       } else {
         window.location.href = 'editor.html?treeId=' + encodeURIComponent(normalizedTree.id);
       }
+    };
+
+    card.addEventListener('click', function (e) {
+      if (e.target.closest('.tree-card-menu') || e.target.closest('.tree-card-dropdown')) {
+        return;
+      }
+      openTree();
+    });
+
+    card.addEventListener('keydown', function (e) {
+      if (e.target.closest('.tree-card-menu') || e.target.closest('.tree-card-dropdown')) {
+        return;
+      }
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        openTree();
+      }
     });
 
     card.innerHTML = [
       buildTreeThumbVisual(normalizedTree, i18n),
-      '<button class="tree-card-menu" id="' + menuBtnId + '" type="button" aria-label="' + escapeHtml(i18n('myTrees.card_menu') || '트리 관리 열기') + '">',
-        '<span class="material-symbols-outlined" style="font-size:20px;color:var(--on-surface);">more_vert</span>',
+      '<button class="tree-card-menu" id="' + menuBtnId + '" type="button" aria-label="' + escapeHtml(i18n('myTrees.card_menu') || '트리 메뉴 열기') + '">',
+        '<span class="material-symbols-outlined" aria-hidden="true">more_vert</span>',
       '</button>',
       '<div class="tree-card-dropdown" id="' + dropdownId + '">',
         '<div class="dropdown-item visibility" data-action="visibility">',
@@ -388,28 +403,17 @@
       '<div class="tree-card-info">',
         '<div class="tree-card-title-row">',
           '<div class="tree-card-title">' + escapeHtml(title) + '</div>',
-          '<span class="tree-card-count-pill" data-count="' + momentCount + '">' + (i18n('myTrees.moment_count_compact') || '순간 {count}개').replace('{count}', String(momentCount)) + '</span>',
         '</div>',
         '<div class="tree-card-subcopy">' + metaMood + '</div>',
-        '<div class="tree-card-meta">',
-          '<span class="tree-card-visibility ' + visClass + '">',
-            '<span class="material-symbols-outlined" style="font-size:12px;">' + (visClass === 'public' ? 'public' : 'lock') + '</span>',
-            visLabel,
-          '</span>',
-          date ? '<span class="tree-card-date">' + date + '</span>' : '',
-        '</div>',
-        '<div class="tree-card-manage-row">',
-          '<button type="button" class="tree-card-manage-btn tree-card-select-btn">' + (selectedClass ? (i18n('myTrees.card_selected') || '선택됨') : (i18n('myTrees.card_select') || '선택')) + '</button>',
-          '<button type="button" class="tree-card-manage-btn tree-card-open-btn">' + (i18n('myTrees.card_open') || '열어보기') + '</button>',
-        '</div>',
+        (normalizedTree.visibility === 'private'
+          ? '<div class="tree-card-meta"><span class="tree-card-visibility private"><span class="material-symbols-outlined" style="font-size:12px;">lock</span>' + visLabel + '</span></div>'
+          : ''),
       '</div>'
     ].join('');
 
     setTimeout(function () {
       var menuBtn = document.getElementById(menuBtnId);
       var dropdown = document.getElementById(dropdownId);
-      var selectBtn = card.querySelector('.tree-card-select-btn');
-      var openBtn = card.querySelector('.tree-card-open-btn');
 
       if (menuBtn && dropdown) {
         menuBtn.addEventListener('click', function (e) {
@@ -445,25 +449,6 @@
         });
       }
 
-      if (selectBtn) {
-        selectBtn.addEventListener('click', function(e) {
-          e.preventDefault();
-          e.stopPropagation();
-          if (typeof onSelect === 'function') {
-            onSelect(normalizedTree.id);
-          }
-        });
-      }
-
-      if (openBtn) {
-        openBtn.addEventListener('click', function(e) {
-          e.preventDefault();
-          e.stopPropagation();
-          if (typeof onNavigate === 'function') {
-            onNavigate(normalizedTree);
-          }
-        });
-      }
     }, 0);
 
     return card;
