@@ -7,7 +7,7 @@
     <link rel="icon" href="/assets/favicon/favicon.svg" type="image/svg+xml">
     <link rel="icon" href="/favicon.ico" sizes="32x32">
     <link rel="stylesheet" href="../css/global.css?v=20260415-10">
-    <link rel="stylesheet" href="../css/search.css?v=20260501-455c">
+    <link rel="stylesheet" href="../css/search.css?v=20260502-596597">
     <link rel="stylesheet" href="../css/page-transitions.css?v=20260430-1">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
 </head>
@@ -23,6 +23,20 @@
                 <div class="search-panel-header">
                     <h2 class="headline" data-i18n="search.title">러브트리 감상 둘러보기</h2>
                     <p data-i18n="search.subtitle">첫 순간과 이어진 마음을 따라가 보세요</p>
+                </div>
+            </div>
+
+            <div class="browse-utility-row reveal-up">
+                <div class="search-input-wrapper">
+                    <span class="material-symbols-outlined search-icon">search</span>
+                    <input type="text" id="searchInput" class="search-input" placeholder="아티스트, 첫 순간, 감정으로 찾아보기" required>
+                </div>
+
+                <div class="filter-row" aria-label="감상 보조 필터">
+                    <span class="tag-chip active" data-category="전체">전체</span>
+                    <span class="tag-chip" data-category="입덕">첫 순간</span>
+                    <span class="tag-chip" data-category="성장">이어진 마음</span>
+                    <span class="tag-chip" data-category="최애">깊어진 마음</span>
                 </div>
             </div>
 
@@ -59,34 +73,6 @@
                             <div class="tree-meta-right"><span class="search-skeleton-line search-skeleton-count"></span></div>
                         </div>
                     </div>
-                </div>
-            </div>
-
-            <!-- 새로 자라는 러브트리 섹션 -->
-            <section id="growingTreesSection" class="growing-trees-section" hidden>
-                <div class="growing-trees-head">
-                    <div>
-                        <h3 data-i18n="search.growingTreesTitle">새로 자라는 러브트리</h3>
-                        <p data-i18n="search.growingTreesSubtitle">막 자라기 시작한 마음들</p>
-                    </div>
-                    <span class="growing-trees-badge" data-i18n="search.growingTreesBadge">자라는 중</span>
-                </div>
-                <div id="growingTreesList">
-                    <!-- Populated by JS -->
-                </div>
-            </section>
-
-            <div class="browse-utility-row reveal-up">
-                <div class="search-input-wrapper">
-                    <span class="material-symbols-outlined search-icon">search</span>
-                    <input type="text" id="searchInput" class="search-input" placeholder="아티스트, 첫 순간, 감정으로 찾아보기" required>
-                </div>
-
-                <div class="filter-row" aria-label="감상 보조 필터">
-                    <span class="tag-chip active" data-category="전체">전체</span>
-                    <span class="tag-chip" data-category="입덕">첫 순간</span>
-                    <span class="tag-chip" data-category="성장">이어진 마음</span>
-                    <span class="tag-chip" data-category="최애">깊어진 마음</span>
                 </div>
             </div>
         </section>
