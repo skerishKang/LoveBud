@@ -469,6 +469,15 @@
     return card;
   }
 
+  // Issue #616: first-batch rendering constants
+  var FIRST_BATCH_SIZE = 6;
+  var BATCH_SIZE = 6;
+  var currentVisibleCount = 0;
+  var totalTreesCount = 0;
+  var allTreesData = [];
+  var isLoadingMore = false;
+  var scrollSentinel = null;
+
   function renderTrees(trees, options) {
     var container = document.getElementById('state-loaded');
     if (!container) return;
@@ -487,24 +496,131 @@
       return;
     }
 
-    var grid = document.createElement('div');
-    grid.className = 'trees-grid';
+    // Issue #616: Store all trees and initialize first batch
+    allTreesData = trees;
+    totalTreesCount = trees.length;
+    currentVisibleCount = 0;
 
-    trees.forEach(function (tree) {
-      var card = buildTreeCardFn(tree, options);
-      if (!(card instanceof Node)) {
-        console.warn('[my-trees-ui] buildTreeCard returned a non-Node value:', card, tree);
-        return;
-      }
-      grid.appendChild(card);
-    });
+    var grid = document.getElementById('trees-grid');
+    if (!grid) {
+      grid = document.createElement('div');
+      grid.className = 'trees-grid';
+      grid.id = 'trees-grid';
+      container.innerHTML = '';
+      container.appendChild(grid);
+    }
 
-    container.innerHTML = '';
-    container.appendChild(grid);
+    // Issue #616: Render first batch only
+    renderNextBatch(grid, buildTreeCardFn, setState, stateEnum);
+
+    // Issue #616: Set up scroll continuation
+    setupScrollContinuation(grid, buildTreeCardFn, setState, stateEnum);
 
     if (typeof setState === 'function' && stateEnum && stateEnum.LOADED) {
       setState(stateEnum.LOADED);
     }
+  }
+
+  // Issue #616: Render next batch of trees
+  function renderNextBatch(grid, buildTreeCardFn, setState, stateEnum) {
+    var startIndex = currentVisibleCount;
+    var endIndex = Math.min(startIndex + BATCH_SIZE, totalTreesCount);
+    
+    for (var i = startIndex; i < endIndex; i++) {
+      var tree = allTreesData[i];
+      var card = buildTreeCardFn(tree, {});
+      if (!(card instanceof Node)) {
+        console.warn('[my-trees-ui] buildTreeCard returned a non-Node value:', card, tree);
+        continue;
+      }
+      card.style.opacity = '0';
+      card.classList.add('tree-card-batch-pending');
+      grid.appendChild(card);
+      
+      // Fade-in animation
+      setTimeout(function(c) {
+        c.style.transition = 'opacity 0.2s ease-in';
+        c.style.opacity = '1';
+        c.classList.remove('tree-card-batch-pending');
+      }, 10, card);
+    }
+    
+    currentVisibleCount = endIndex;
+    
+    // Update manage summary with total count (not just visible)
+    var summary = document.getElementById('trees-manage-summary');
+    if (summary) {
+      var i18n = window.i18nMyTrees || {};
+      var countText = (i18n.myTrees_count || '총 {count}개').replace('{count}', String(totalTreesCount));
+      summary.textContent = countText;
+    }
+  }
+
+  // Issue #616: Set up scroll continuation sentinel
+  function setupScrollContinuation(grid, buildTreeCardFn, setState, stateEnum) {
+    // Remove existing sentinel
+    if (scrollSentinel) {
+      scrollSentinel.remove();
+    }
+    
+    // Check if more trees available
+    if (currentVisibleCount >= totalTreesCount) {
+      return;
+    }
+    
+    // Create sentinel element
+    scrollSentinel = document.createElement('div');
+    scrollSentinel.id = 'trees-scroll-sentinel';
+    scrollSentinel.style.height = '20px';
+    scrollSentinel.style.gridColumn = '1 / -1';
+    grid.appendChild(scrollSentinel);
+    
+    // IntersectionObserver for scroll continuation
+    if ('IntersectionObserver' in window) {
+      var observer = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+          if (entry.isIntersecting && !isLoadingMore && currentVisibleCount < totalTreesCount) {
+            loadMoreBatch(grid, buildTreeCardFn, setState, stateEnum);
+          }
+        });
+      }, { rootMargin: '100px' });
+      
+      observer.observe(scrollSentinel);
+      scrollSentinel._observer = observer;
+    }
+  }
+
+  // Issue #616: Load more batch on scroll
+  function loadMoreBatch(grid, buildTreeCardFn, setState, stateEnum) {
+    if (isLoadingMore || currentVisibleCount >= totalTreesCount) {
+      return;
+    }
+    
+    isLoadingMore = true;
+    
+    // Remove old sentinel observer
+    if (scrollSentinel && scrollSentinel._observer) {
+      scrollSentinel._observer.disconnect();
+    }
+    
+    renderNextBatch(grid, buildTreeCardFn, setState, stateEnum);
+    
+    // Set up new sentinel
+    setupScrollContinuation(grid, buildTreeCardFn, setState, stateEnum);
+    
+    isLoadingMore = false;
+  }
+
+  // Issue #616: Reset batch state on sort change or reload
+  function resetBatchState() {
+    var grid = document.getElementById('trees-grid');
+    if (grid) {
+      grid.innerHTML = '';
+    }
+    currentVisibleCount = 0;
+    allTreesData = [];
+    totalTreesCount = 0;
+    isLoadingMore = false;
   }
 
   var api = {
