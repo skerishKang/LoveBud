@@ -623,7 +623,7 @@ function initOfflineAuth() {
   // Offline 모드에서도 ready 상태로 전환 후 UI 표시
   // 순서 중요: markAuthReady 먼저, updateNavUI 나중
   markAuthReady();
-  var user = cachedUser && cachedUser.uid ? cachedUser : null;
+  var user = !isLoginPage() && cachedUser && cachedUser.uid ? cachedUser : null;
   updateNavUI(user);
   resolveAuthBootstrap(user);
   // Offline 모드에서도 콜백 실행

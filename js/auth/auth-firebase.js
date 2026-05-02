@@ -101,6 +101,13 @@
     return /^\/(?:pages\/)?(?:my-trees|editor|settings)(?:\.html)?$/.test(path);
   }
 
+  function isLoginPage() {
+    var path = window.location.pathname || '';
+    return path.indexOf('/pages/login.html') !== -1 ||
+      path.indexOf('/pages/login') !== -1 ||
+      path.indexOf('login.html') !== -1;
+  }
+
   function initOfflineAuth(options) {
     var markAuthReady = options && options.markAuthReady;
     var updateNavUI = options && options.updateNavUI;
@@ -110,6 +117,7 @@
 
     var cachedUser = typeof getCachedAuthUser === 'function' ? getCachedAuthUser() : null;
     var user = !isProtectedRoute() && cachedUser && cachedUser.uid ? cachedUser : null;
+    if (isLoginPage()) user = null;
 
     if (typeof markAuthReady === 'function') {
       markAuthReady();
