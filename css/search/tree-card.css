@@ -247,21 +247,6 @@
 }
 
 /* Issue #455 PR B: representative media and fallback tree preview polish. */
-.tree-card-media::before {
-    content: '';
-    position: absolute;
-    right: 14px;
-    bottom: 14px;
-    width: 54px;
-    height: 38px;
-    border-radius: 19px;
-    background: rgba(255, 255, 255, 0.78);
-    border: 1px solid rgba(255, 255, 255, 0.64);
-    box-shadow: 0 12px 24px rgba(50, 38, 35, 0.16);
-    pointer-events: none;
-    z-index: 2;
-}
-
 .tree-card-media-fallback {
     justify-content: flex-end;
     overflow: hidden;

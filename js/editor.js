@@ -58,6 +58,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const editorBindings = window.LoveBudEditorBindings || {};
     const editorDataLoader = window.LoveBudEditorDataLoader || {};
     const editorAuthHelpers = window.LoveBudEditorAuthHelpers || {};
+    const readConfirmedAuthCacheFromHelper = () => (
+        window.LoveBudEditorAuthHelpers?.readConfirmedAuthCache?.() || null
+    );
+    const getConfirmedSessionUser = editorAuthHelpers.getConfirmedSessionUser || function() {
+        try {
+            if (window.getConfirmedAuthUser) return window.getConfirmedAuthUser();
+        } catch (e) {}
+        return readConfirmedAuthCacheFromHelper();
+    };
+    const hasConfirmedSessionUser = editorAuthHelpers.hasConfirmedSessionUser || (() => !!getConfirmedSessionUser());
 
     const getHttpStatus = (error) => Number(error?.status || error?.statusCode || error?.response?.status || 0);
 
@@ -744,12 +754,6 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     var editorStarted = false;
-    const getConfirmedSessionUser = editorAuthHelpers.getConfirmedSessionUser || function() {
-        try {
-            if (window.getConfirmedAuthUser) return window.getConfirmedAuthUser();
-        } catch (e) {}
-        return readConfirmedAuthCache();
-    };
 
     function tryStartEditor(user) {
         if (editorStarted) {
@@ -759,7 +763,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         if (!user) {
-            var cachedUser = readConfirmedAuthCache();
+            var cachedUser = readConfirmedAuthCacheFromHelper();
             if (!cachedUser || !cachedUser.uid) {
                 redirectToEditorLogin();
                 return;

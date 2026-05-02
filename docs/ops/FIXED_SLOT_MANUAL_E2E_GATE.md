@@ -23,6 +23,8 @@ Until automated E2E smoke is available, this runbook defines the **manual gate**
 > **This is NOT a reintroduction of Netlify dev.**
 > Netlify remains a legacy artifact / removal candidate and must not be used as a verification target.
 
+For the standard fixed-slot deployment command before browser verification, see [FIXED_SLOT_DEPLOY_WITH_WRANGLER.md](FIXED_SLOT_DEPLOY_WITH_WRANGLER.md).
+
 ---
 
 ## 2. Fixed Slot Scope
@@ -242,6 +244,7 @@ Based on Issue #136 suggested minimal smoke targets:
 
 ## 10. Related Documents
 
+- [FIXED_SLOT_DEPLOY_WITH_WRANGLER.md](FIXED_SLOT_DEPLOY_WITH_WRANGLER.md) — Wrangler direct deploy 표준 경로 및 stale asset guardrail
 - [TEST_PREVIEW_SLOTS.md](TEST_PREVIEW_SLOTS.md) — fixed test slot 운영 기준
 - [BROWSER_VERIFICATION_URL_POLICY.md](BROWSER_VERIFICATION_URL_POLICY.md) — URL provenance 및 PR Preview 기준
 - [QA_CREDENTIALS.md](QA_CREDENTIALS.md) — QA credential 복원 워크플로우
