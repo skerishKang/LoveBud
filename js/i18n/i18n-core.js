@@ -14,11 +14,42 @@
   var I18N_KEY = 'lovebud_lang';
   var DEFAULT_LANG = 'ko';
 
+  function isSupportedLang(lang) {
+    return lang === 'ko' || lang === 'en';
+  }
+
+  function getLangFromQuery() {
+    try {
+      var params = new URLSearchParams(window.location.search || '');
+      var rawLang = params.get('lang');
+      var lang = rawLang ? rawLang.toLowerCase() : '';
+      if (isSupportedLang(lang)) {
+        return lang;
+      }
+    } catch (e) {
+      console.warn('[i18n] Failed to read language query param:', e);
+    }
+    return '';
+  }
+
+  function persistInitialQueryLang() {
+    var queryLang = getLangFromQuery();
+    if (!queryLang) return;
+    try {
+      localStorage.setItem(I18N_KEY, queryLang);
+      console.log('[i18n] Language set from query param:', queryLang);
+    } catch (e) {
+      console.warn('[i18n] Failed to save query language:', e);
+    }
+  }
+
+  persistInitialQueryLang();
+
   // 현재 언어 가져오기
   function getCurrentLang() {
     try {
       var stored = localStorage.getItem(I18N_KEY);
-      if (stored && (stored === 'ko' || stored === 'en')) {
+      if (isSupportedLang(stored)) {
         return stored;
       }
     } catch (e) {
@@ -29,7 +60,7 @@
 
   // 언어 설정하기
   function setCurrentLang(lang) {
-    if (lang !== 'ko' && lang !== 'en') {
+    if (!isSupportedLang(lang)) {
       console.warn('[i18n] Invalid language:', lang);
       return false;
     }
