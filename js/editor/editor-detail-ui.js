@@ -39,174 +39,98 @@ function createEditorDetailUI(deps) {
         return icon;
     };
 
-    const treeMetaBoundary = window.createEditorDetailTreeMetaBoundary({
-        i18n,
-        formatI18nText,
+    // ── Tree meta boundary helpers ───────────────────────────────────────────
+    // Responsible: derive visibility metadata, build count label, create share/open buttons,
+    // and render the tree meta block into the mount point. Kept separate from detail content rendering.
+    const buildTreeMetaRenderModel = ({
+        currentTree,
+        treeState,
+        data,
+        isEmptyState,
+        isRootSelected,
+        localSaveMode,
         resolveTreeTitleText,
-        createInlineIcon,
+        formatI18nText,
+        createShareTreeButton,
+        createOpenDetailButton,
+        bindShareButton,
+        bindOpenDetailButton,
+        createTreeMetaBlock
+    }) => {
+        const visibility = currentTree.visibility || 'public';
+        const isPublic = visibility === 'public';
+        const visIcon = isPublic ? 'public' : 'lock';
+        const visLabel = isPublic ? i18n('visibility_public') : i18n('visibility_private');
+        const visInfo = isPublic
+            ? formatI18nText('editor_tree_public_info', '이 트리 전체가 공개되어 있어요. 링크가 있는 사람은 감상할 수 있습니다.')
+            : formatI18nText('editor_tree_private_info', '이 트리 전체는 비공개예요. 지금은 나만 볼 수 있습니다.');
+        const displayTreeTitle = resolveTreeTitleText(currentTree.title);
+        const localBadgeText = localSaveMode ? (i18n('local_save_badge') || '로컬 저장') : '';
+        const countForLabel = treeState.totalMomentCount;
+        const treeCountLabel = treeState.hasMoments
+            ? formatI18nText('editor_tree_status_count', `{count}개의 순간이 이 트리 안에서 이어지고 있어요.`, { count: countForLabel })
+            : formatI18nText('editor_tree_status_empty', '아직 첫 순간을 기다리고 있어요.');
+
+        let shareBtn = null;
+        let openDetailBtn = null;
+        if (!isEmptyState && data?.id) {
+            shareBtn = createShareTreeButton();
+            openDetailBtn = createOpenDetailButton();
+        }
+
+        return {
+            displayTreeTitle,
+            visIcon,
+            visLabel,
+            visInfo,
+            isPublic,
+            countLabel: localBadgeText ? `${treeCountLabel} · ${localBadgeText}` : treeCountLabel,
+            shareButtonEl: shareBtn,
+            openDetailButtonEl: openDetailBtn,
+            shareBtn,
+            openDetailBtn
+        };
+    };
+
+    const renderTreeMetaBoundary = (treeMetaMount, model, treeId, data, { i18n, showToast, bindShareButton, bindOpenDetailButton }) => {
+        if (!treeMetaMount) return;
+
+        treeMetaMount.innerHTML = '';
+        treeMetaMount.appendChild(createTreeMetaBlock({
+            displayTreeTitle: model.displayTreeTitle,
+            visIcon: model.visIcon,
+            visLabel: model.visLabel,
+            visInfo: model.visInfo,
+            isPublic: model.isPublic,
+            countLabel: model.countLabel,
+            shareButtonEl: model.shareButtonEl,
+            openDetailButtonEl: model.openDetailButtonEl
+        }));
+
+        if (model.shareBtn) {
+            bindShareButton({
+                btn: model.shareBtn,
+                data,
+                treeId,
+                i18n,
+                showToast
+            });
+        }
+        bindOpenDetailButton(model.openDetailBtn);
+    };
+    // ──────────────────────────────────────────────────────────────────────────
+
+    // ── Inline edit boundary integration ───────────────────────────────────────
+    // Use extracted helper for title/memo edit boundaries
+    const inlineEditHelper = window.createEditorDetailInlineEditBoundary({
+        updateSelectedMemoryFields,
         showToast,
-        openCurrentMomentDetail
+        formatI18nText,
+        i18n,
+        getMemoFallbackText
     });
-    const { buildTreeMetaRenderModel, renderTreeMetaBoundary } = treeMetaBoundary;
-
-    // ── Title edit boundary helper ──────────────────────────────────────────
-    // Responsible: encapsulate inline title edit button creation and state binding.
-    // Does not affect memo edit or current memory actions.
-    const createTitleEditBoundary = (titleContainer, data, { updateSelectedMemoryFields, showToast, formatI18nText, i18n, isEmptyState }) => {
-        if (isEmptyState || typeof updateSelectedMemoryFields !== 'function') return;
-
-        const editBtn = document.createElement('button');
-        editBtn.className = 'memory-edit-button';
-        editBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;margin-right:2px;">edit</span>' + formatI18nText('editMemoryTitle', '제목 수정');
-
-        editBtn.onclick = () => {
-            titleContainer.innerHTML = '';
-
-            const input = document.createElement('input');
-            input.type = 'text';
-            input.value = data.title || '';
-
-            const actions = document.createElement('div');
-            actions.className = 'memory-edit-actions';
-
-            const saveBtn = document.createElement('button');
-            saveBtn.className = 'btn-save';
-            saveBtn.textContent = formatI18nText('saveMemoryTitle', '저장');
-
-            const cancelBtn = document.createElement('button');
-            cancelBtn.className = 'btn-cancel';
-            cancelBtn.textContent = formatI18nText('cancelMemoryTitle', '취소');
-
-            const errorMsg = document.createElement('div');
-            errorMsg.className = 'memory-edit-error';
-
-            actions.appendChild(cancelBtn);
-            actions.appendChild(saveBtn);
-
-            const wrap = document.createElement('div');
-            wrap.style.width = '100%';
-            wrap.appendChild(input);
-            wrap.appendChild(errorMsg);
-            wrap.appendChild(actions);
-            titleContainer.appendChild(wrap);
-
-            input.focus();
-
-            const endEdit = () => { updateDetailPanel(data); };
-
-            const saveEdit = async () => {
-                const newTitle = input.value.trim();
-                if (!newTitle) {
-                    errorMsg.textContent = formatI18nText('memoryTitleRequired', '순간 제목을 입력해 주세요');
-                    return;
-                }
-                errorMsg.textContent = '';
-                saveBtn.disabled = true;
-                cancelBtn.disabled = true;
-                if (await updateSelectedMemoryFields({ title: newTitle })) {
-                    if (showToast) showToast(formatI18nText('memoryUpdateSaved', '순간을 수정했어요.'), 'success');
-                    endEdit();
-                } else {
-                    if (showToast) showToast(formatI18nText('memoryUpdateFailed', '순간을 수정하지 못했어요.'), 'error');
-                    saveBtn.disabled = false;
-                    cancelBtn.disabled = false;
-                }
-            };
-
-            cancelBtn.onclick = endEdit;
-            saveBtn.onclick = saveEdit;
-
-            input.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') { e.preventDefault(); saveEdit(); }
-                if (e.key === 'Escape') { e.preventDefault(); endEdit(); }
-            });
-        };
-
-        titleContainer.appendChild(editBtn);
-    };
-
-    // ── Memo edit boundary helper ────────────────────────────────────────────
-    // Responsible: encapsulate inline memo edit textarea, buttons, and state binding.
-    // Does not affect title edit or current memory actions.
-    const createMemoEditBoundary = (memoContainer, data, { updateSelectedMemoryFields, showToast, formatI18nText, getMemoFallbackText, isEmptyState }) => {
-        memoContainer.innerHTML = '';
-
-        const memoBody = document.createElement('div');
-        memoBody.style.lineHeight = '1.8';
-        memoBody.style.fontSize = '0.95rem';
-        memoBody.style.color = 'var(--on-surface)';
-        memoBody.style.whiteSpace = 'pre-line';
-        memoBody.textContent = isEmptyState
-            ? getMemoFallbackText({ isEmptyState: true })
-            : (data.memo || formatI18nText('emptyMemoryNote', '아직 메모가 남겨지지 않았어요'));
-        memoContainer.appendChild(memoBody);
-
-        if (isEmptyState || typeof updateSelectedMemoryFields !== 'function') return;
-
-        const editBtn = document.createElement('button');
-        editBtn.className = 'memory-edit-button';
-        editBtn.style.marginTop = '10px';
-        editBtn.style.marginLeft = '0';
-        editBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;margin-right:2px;">edit</span>' + formatI18nText('editMemoryNote', '메모 수정');
-
-        editBtn.onclick = () => {
-            memoContainer.innerHTML = '';
-
-            const textarea = document.createElement('textarea');
-            textarea.className = 'memory-edit-textarea';
-            textarea.value = data.memo || '';
-
-            const hintDiv = document.createElement('div');
-            hintDiv.className = 'memory-edit-hint';
-            hintDiv.textContent = formatI18nText('noteSaveHint', 'Ctrl+Enter로 저장할 수 있어요.');
-
-            const actions = document.createElement('div');
-            actions.className = 'memory-edit-actions';
-
-            const saveBtn = document.createElement('button');
-            saveBtn.className = 'btn-save';
-            saveBtn.textContent = formatI18nText('saveMemoryNote', '메모 저장');
-
-            const cancelBtn = document.createElement('button');
-            cancelBtn.className = 'btn-cancel';
-            cancelBtn.textContent = formatI18nText('cancelMemoryNote', '취소');
-
-            actions.appendChild(cancelBtn);
-            actions.appendChild(saveBtn);
-
-            memoContainer.appendChild(textarea);
-            memoContainer.appendChild(hintDiv);
-            memoContainer.appendChild(actions);
-
-            textarea.focus();
-
-            const endEdit = () => { updateDetailPanel(data); };
-
-            const saveEdit = async () => {
-                const newMemo = textarea.value.trim();
-                saveBtn.disabled = true;
-                cancelBtn.disabled = true;
-                if (await updateSelectedMemoryFields({ memo: newMemo })) {
-                    if (showToast) showToast(formatI18nText('memoryUpdateSaved', '순간을 수정했어요.'), 'success');
-                    endEdit();
-                } else {
-                    if (showToast) showToast(formatI18nText('memoryUpdateFailed', '순간을 수정하지 못했어요.'), 'error');
-                    saveBtn.disabled = false;
-                    cancelBtn.disabled = false;
-                }
-            };
-
-            cancelBtn.onclick = endEdit;
-            saveBtn.onclick = saveEdit;
-
-            textarea.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); saveEdit(); }
-                if (e.key === 'Escape') { e.preventDefault(); endEdit(); }
-            });
-        };
-
-        memoContainer.appendChild(editBtn);
-    };
+    const createTitleEditBoundary = inlineEditHelper.createTitleEditBoundary;
+    const createMemoEditBoundary = inlineEditHelper.createMemoEditBoundary;
     // ──────────────────────────────────────────────────────────────────────────
 
     const getTreeState = () => {
@@ -257,6 +181,198 @@ function createEditorDetailUI(deps) {
             return formatI18nText('editor_root_memo_fallback', '이 장면이 왜 시작이 되었는지 남겨두면, 다음 순간들이 더 자연스럽게 이어져요.');
         }
         return formatI18nText('editor_selected_memo_fallback', '이 순간의 마음을 한 줄 남겨두면, 이어진 흐름을 다시 떠올리기 쉬워져요.');
+    };
+
+    const createPillButton = ({ label, icon, tone = 'soft' }) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.style.display = 'inline-flex';
+        btn.style.alignItems = 'center';
+        btn.style.justifyContent = 'center';
+        btn.style.gap = '6px';
+        btn.style.minHeight = '38px';
+        btn.style.padding = tone === 'primary' ? '10px 15px' : '9px 13px';
+        btn.style.borderRadius = '999px';
+        btn.style.fontSize = '12px';
+        btn.style.fontWeight = '800';
+        btn.style.cursor = 'pointer';
+        btn.style.transition = 'transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, border-color 0.18s ease';
+        btn.style.border = '1px solid rgba(144,73,81,0.10)';
+        btn.style.boxShadow = tone === 'primary'
+            ? '0 10px 22px rgba(144, 73, 81, 0.18)'
+            : '0 6px 16px rgba(75, 64, 57, 0.06)';
+        btn.style.background = tone === 'primary'
+            ? 'linear-gradient(180deg, rgba(144,73,81,0.98), rgba(144,73,81,0.90))'
+            : 'linear-gradient(180deg, rgba(255,255,255,0.98), rgba(247,242,239,0.96))';
+        btn.style.color = tone === 'primary'
+            ? '#fff'
+            : tone === 'ghost'
+                ? 'var(--on-surface-variant)'
+                : 'var(--primary)';
+
+        if (tone === 'ghost') {
+            btn.style.background = 'rgba(255,255,255,0.72)';
+            btn.style.borderColor = 'rgba(144,73,81,0.08)';
+        }
+
+        if (icon) btn.appendChild(createInlineIcon(icon, '14px'));
+        btn.appendChild(document.createTextNode(label));
+
+        btn.addEventListener('mouseenter', () => {
+            btn.style.transform = 'translateY(-1px)';
+        });
+        btn.addEventListener('mouseleave', () => {
+            btn.style.transform = 'translateY(0)';
+        });
+
+        return btn;
+    };
+
+    const createShareTreeButton = () => createPillButton({
+        label: formatI18nText('share_link', '링크 복사'),
+        icon: 'content_copy',
+        tone: 'soft'
+    });
+
+    const createOpenDetailButton = () => createPillButton({
+        label: formatI18nText('editor_open_detail', '상세로 보기'),
+        icon: 'open_in_new',
+        tone: 'ghost'
+    });
+
+    const bindShareButton = ({ btn, data, treeId, i18n, showToast }) => {
+        if (!btn || !data?.id) return;
+        if (btn.dataset.shareBound === '1') return;
+        btn.dataset.shareBound = '1';
+
+        const basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
+
+        btn.addEventListener('click', () => {
+            const shareUrl = window.location.origin + '/' + basePath + 'detail.html?id=' + data.id + '&tree=' + treeId;
+            navigator.clipboard?.writeText(shareUrl).then(() => {
+                showToast(i18n('copied_link') || '링크가 복사되었습니다', 'success');
+            }).catch(() => {
+                showToast(i18n('copy_link_failed') || '링크 복사에 실패했습니다', 'error');
+            });
+        });
+    };
+
+    const bindOpenDetailButton = (btn) => {
+        if (!btn || typeof openCurrentMomentDetail !== 'function') return;
+        if (btn.dataset.openDetailBound === '1') return;
+        btn.dataset.openDetailBound = '1';
+        btn.addEventListener('click', () => {
+            openCurrentMomentDetail();
+        });
+    };
+
+    const createTreeMetaBlock = ({
+        displayTreeTitle,
+        visIcon,
+        visLabel,
+        visInfo,
+        isPublic,
+        countLabel,
+        shareButtonEl = null,
+        openDetailButtonEl = null
+    }) => {
+        const wrap = document.createElement('div');
+        wrap.style.padding = '20px 20px 18px';
+        wrap.style.borderRadius = '22px';
+        wrap.style.background = 'linear-gradient(180deg, rgba(255,255,255,0.99), rgba(250,246,244,0.97))';
+        wrap.style.boxShadow = '0 14px 30px rgba(75, 64, 57, 0.08)';
+        wrap.style.border = '1px solid rgba(144,73,81,0.10)';
+        wrap.style.display = 'flex';
+        wrap.style.flexDirection = 'column';
+        wrap.style.gap = '14px';
+
+        const topRow = document.createElement('div');
+        topRow.style.display = 'flex';
+        topRow.style.alignItems = 'flex-start';
+        topRow.style.justifyContent = 'space-between';
+        topRow.style.gap = '12px';
+        topRow.style.flexWrap = 'wrap';
+
+        const titleWrap = document.createElement('div');
+        titleWrap.style.display = 'flex';
+        titleWrap.style.flexDirection = 'column';
+        titleWrap.style.gap = '8px';
+        titleWrap.style.flex = '1 1 220px';
+
+        const eyebrow = document.createElement('div');
+        eyebrow.textContent = formatI18nText('current_tree', '현재 트리');
+        eyebrow.style.fontSize = '11px';
+        eyebrow.style.fontWeight = '800';
+        eyebrow.style.letterSpacing = '.08em';
+        eyebrow.style.textTransform = 'uppercase';
+        eyebrow.style.color = 'var(--on-surface-variant)';
+        titleWrap.appendChild(eyebrow);
+
+        const title = document.createElement('div');
+        title.textContent = displayTreeTitle;
+        title.style.fontSize = '24px';
+        title.style.fontWeight = '900';
+        title.style.color = 'var(--on-surface)';
+        title.style.lineHeight = '1.24';
+        title.style.letterSpacing = '-0.04em';
+        titleWrap.appendChild(title);
+
+        const count = document.createElement('div');
+        count.textContent = countLabel;
+        count.style.fontSize = '12px';
+        count.style.color = 'var(--on-surface-variant)';
+        count.style.lineHeight = '1.75';
+        titleWrap.appendChild(count);
+
+        const visBadge = document.createElement('span');
+        visBadge.style.padding = '6px 11px';
+        visBadge.style.borderRadius = '999px';
+        visBadge.style.display = 'inline-flex';
+        visBadge.style.alignItems = 'center';
+        visBadge.style.gap = '5px';
+        visBadge.style.fontSize = '12px';
+        visBadge.style.fontWeight = '700';
+        visBadge.style.boxShadow = '0 4px 12px rgba(75,64,57,0.05)';
+        if (isPublic) {
+            visBadge.style.background = 'rgba(76,175,80,0.1)';
+            visBadge.style.color = '#4caf50';
+            visBadge.style.border = '1px solid rgba(76,175,80,0.25)';
+        } else {
+            visBadge.style.background = 'rgba(158,158,158,0.1)';
+            visBadge.style.color = '#757575';
+            visBadge.style.border = '1px solid rgba(158,158,158,0.25)';
+        }
+        visBadge.appendChild(createInlineIcon(visIcon, '12px'));
+        visBadge.appendChild(document.createTextNode(visLabel));
+
+        topRow.appendChild(titleWrap);
+        topRow.appendChild(visBadge);
+        wrap.appendChild(topRow);
+
+        if (visInfo) {
+            const info = document.createElement('div');
+            info.textContent = visInfo;
+            info.style.fontSize = '12px';
+            info.style.color = 'var(--on-surface-variant)';
+            info.style.lineHeight = '1.75';
+            wrap.appendChild(info);
+        }
+
+        const actionsRow = document.createElement('div');
+        actionsRow.style.display = 'flex';
+        actionsRow.style.alignItems = 'center';
+        actionsRow.style.gap = '8px';
+        actionsRow.style.flexWrap = 'wrap';
+        actionsRow.style.paddingTop = '2px';
+
+        if (shareButtonEl) actionsRow.appendChild(shareButtonEl);
+        if (openDetailButtonEl) actionsRow.appendChild(openDetailButtonEl);
+
+        if (actionsRow.children.length > 0) {
+            wrap.appendChild(actionsRow);
+        }
+
+        return wrap;
     };
 
     const resetDetailViewState = () => {
@@ -447,11 +563,19 @@ function createEditorDetailUI(deps) {
              treeState,
              data,
              isEmptyState,
-             localSaveMode
+             isRootSelected,
+             localSaveMode,
+             resolveTreeTitleText,
+             formatI18nText,
+             createShareTreeButton,
+             createOpenDetailButton,
+             bindShareButton,
+             bindOpenDetailButton,
+             createTreeMetaBlock
          });
 
          if (treeMetaMount) {
-             renderTreeMetaBoundary(treeMetaMount, treeMetaModel, treeId, data);
+             renderTreeMetaBoundary(treeMetaMount, treeMetaModel, treeId, data, { i18n, showToast, bindShareButton, bindOpenDetailButton });
          }
 
         if (badgeEl) {
