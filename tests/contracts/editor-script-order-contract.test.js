@@ -46,6 +46,7 @@ test('editor helper scripts load before the editor entry script', () => {
     'js/editor/editor-canvas-viewport.js',
     'js/editor/editor-canvas.js',
     'js/editor/editor-rename-ui.js',
+    'js/editor/editor-detail-sidebar-status-boundary.js',
     'js/editor/editor-detail-ui.js',
     'js/editor/editor-memory-actions.js',
     'js/editor/editor-memory-form.js',
