@@ -13,6 +13,7 @@ test('editor auth cache reader is called through the helper namespace binding', 
   const editor = read('js/editor.js');
 
   assert.match(editor, /const\s+editorAuthHelpers\s*=\s*window\.LoveBudEditorAuthHelpers\s*\|\|\s*\{\}/);
-  assert.match(editor, /readConfirmedAuthCacheFromHelper\s*=\s*editorAuthHelpers\.readConfirmedAuthCache\s*\|\|/);
+  assert.match(editor, /readConfirmedAuthCacheFromHelper\s*=\s*\(\)\s*=>\s*\(/);
+  assert.match(editor, /window\.LoveBudEditorAuthHelpers\?\.readConfirmedAuthCache\?\.\(\)/);
   assert.doesNotMatch(editor, /[^.\w]readConfirmedAuthCache\s*\(/);
 });
