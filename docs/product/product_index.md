@@ -18,6 +18,7 @@
 | [PRODUCT_IDENTITY.md](PRODUCT_IDENTITY.md) | LoveBud의 핵심 정체성과 public-first 감상 공간 원칙 |
 | [BRAND_EXPERIENCE.md](BRAND_EXPERIENCE.md) | 팬 경험 중심 브랜드/UX 톤앤매너와 페이지별 감성 기준 |
 | [PUBLICATION_AND_PRIVACY_UX_POLICY.md](PUBLICATION_AND_PRIVACY_UX_POLICY.md) | public-first visibility, Plus private storage, memory visibility inheritance, anonymous public exposure, Browse/Search eligibility 정책 |
+| [PUBLIC_DEFAULT_VISIBILITY_AUDIT_PLAN.md](PUBLIC_DEFAULT_VISIBILITY_AUDIT_PLAN.md) | public-by-default 정책과 private entitlement 이전 visibility mismatch를 안전하게 audit/backfill 판단하기 위한 count-only 계획 |
 | [BROWSE_POPULAR_SORT_SEMANTICS.md](BROWSE_POPULAR_SORT_SEMANTICS.md) | Browse `popular` sort의 현재 memory-count proxy 의미와 v0.1 표시 정책 방향 |
 | [MOMENT_TIMELINE_PLAN.md](MOMENT_TIMELINE_PLAN.md) | cue-based YouTube Moment Timeline 제품/기술 계획 |
 | [YOUTUBE_SEGMENT_PLAYER_POC_SCOPE.md](YOUTUBE_SEGMENT_PLAYER_POC_SCOPE.md) | cue-based YouTube segment player PoC scope and Go/No-Go criteria |
@@ -67,19 +68,20 @@
 1. **PRODUCT_IDENTITY.md** — 제품 철학과 핵심 가치
 2. **BRAND_EXPERIENCE.md** — 팬 감성 UX / 톤앤매너 / 페이지별 표현 원칙
 3. **PUBLICATION_AND_PRIVACY_UX_POLICY.md** — public-first visibility / Plus private storage / anonymous public exposure / Browse/Search eligibility 정책
-4. **BROWSE_POPULAR_SORT_SEMANTICS.md** — Browse `popular` sort의 현재 의미와 v0.1 표시 정책 방향
-5.  **MOMENT_TIMELINE_PLAN.md** — cue-based Moment Timeline 계획
-6.  **YOUTUBE_SEGMENT_PLAYER_POC_SCOPE.md** — YouTube segment player PoC scope and verification criteria
-7.  **YOUTUBE_SEGMENT_PLAYER_POC_TEST_MATRIX.md** — YouTube segment player PoC test matrix and browser verification requirements
-8.  **YOUTUBE_SEGMENT_PLAYER_POC_RUNTIME_NOTES.md** — YouTube segment player PoC runtime observations and limitations
-9.  **YOUTUBE_SEGMENT_PLAYER_POC_BROWSER_VERIFICATION.md** — YouTube segment player PoC browser verification evidence and feasibility decision
-10.  **MOMENT_CAPTURE_UI_DESIGN.md** — Moment capture UI flow 설계
-11. **MOMENT_TIMELINE_REORDER_DESIGN.md** — Moment Timeline reorder / sequence editor 설계
-12. **UI_COPY_DIET_GUIDE.md** — 전역 UI 카피 다이어트 기준
-13. **MVP_SCOPE.md** — MVP 범위 및 In/Out of Scope
-14. **USER_FLOW.md** — 사용자 여정 및 핵심 플로우
-15. **PRODUCT_BRIEF.md** — 현재 실행 기준 요약
-16. 필요시 DATA_NAMING_RULE.md, READONLY_SHARE_SCOPE.md
+4. **PUBLIC_DEFAULT_VISIBILITY_AUDIT_PLAN.md** — public-by-default 정책 alignment와 private entitlement 이전 visibility mismatch audit/backfill gate
+5. **BROWSE_POPULAR_SORT_SEMANTICS.md** — Browse `popular` sort의 현재 의미와 v0.1 표시 정책 방향
+6.  **MOMENT_TIMELINE_PLAN.md** — cue-based Moment Timeline 계획
+7.  **YOUTUBE_SEGMENT_PLAYER_POC_SCOPE.md** — YouTube segment player PoC scope and verification criteria
+8.  **YOUTUBE_SEGMENT_PLAYER_POC_TEST_MATRIX.md** — YouTube segment player PoC test matrix and browser verification requirements
+9.  **YOUTUBE_SEGMENT_PLAYER_POC_RUNTIME_NOTES.md** — YouTube segment player PoC runtime observations and limitations
+10.  **YOUTUBE_SEGMENT_PLAYER_POC_BROWSER_VERIFICATION.md** — YouTube segment player PoC browser verification evidence and feasibility decision
+11.  **MOMENT_CAPTURE_UI_DESIGN.md** — Moment capture UI flow 설계
+12. **MOMENT_TIMELINE_REORDER_DESIGN.md** — Moment Timeline reorder / sequence editor 설계
+13. **UI_COPY_DIET_GUIDE.md** — 전역 UI 카피 다이어트 기준
+14. **MVP_SCOPE.md** — MVP 범위 및 In/Out of Scope
+15. **USER_FLOW.md** — 사용자 여정 및 핵심 플로우
+16. **PRODUCT_BRIEF.md** — 현재 실행 기준 요약
+17. 필요시 DATA_NAMING_RULE.md, READONLY_SHARE_SCOPE.md
 
 ## 참조
 - 전체 문서 인덱스: `../doc_index.md`
