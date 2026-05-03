@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     const dataLoaderFallbacks = window.LoveBudEditorDataLoaderFallbacks || {};
+    const entryFallbacks = window.LoveBudEditorEntryFallbacks || {};
     const resolverFallbacks = window.LoveBudEditorResolverFallbacks || {};
     const shellHelpers = window.LoveBudEditorShellHelpers || {};
 
@@ -73,19 +74,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
-    const createInlineShowToastFallback = shellHelpers.createInlineShowToastFallback || function() {
-        if (window.LoveBudUI?.showToast) {
-            return (message, type = 'info') => window.LoveBudUI.showToast(message, type, 3000);
-        } else {
-            return (message, type = 'info') => {
-                if (!window.__editorToastWarningShown) {
-                    console.warn('[editor] LoveBudUI not loaded, toast degraded to console');
-                    window.__editorToastWarningShown = true;
-                }
-                console.log(`[Toast ${type}] ${message}`);
-            };
-        }
-    };
+    const createInlineShowToastFallback = shellHelpers.createInlineShowToastFallback ||
+        entryFallbacks.createInlineShowToastFallback;
 
     const showToast = editorHelpers.createToast
         ? editorHelpers.createToast({ warningKey: '__editorToastWarningShown' })
@@ -100,23 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const buildEditorRedirectTarget = shellHelpers.buildEditorRedirectTarget || (() =>
         getEditorBasePath() + 'editor.html' + (window.location.search || ''));
 
-    const createInlineRedirectToEditorLoginFallback = (options) => (delayMs = 0) => {
-        const opts = options || {};
-        const getEditorBasePath = opts.getEditorBasePath || (() => '');
-        const buildEditorRedirectTarget = opts.buildEditorRedirectTarget || (() => 'editor.html');
-
-        const loginUrl =
-            getEditorBasePath() + 'login.html?redirect=' + encodeURIComponent(buildEditorRedirectTarget());
-
-        if (delayMs > 0) {
-            setTimeout(() => {
-                window.location.href = loginUrl;
-            }, delayMs);
-            return;
-        }
-
-        window.location.href = loginUrl;
-    };
+    const createInlineRedirectToEditorLoginFallback = entryFallbacks.createInlineRedirectToEditorLoginFallback;
 
     const redirectToEditorLogin = editorPageHelpers.redirectToEditorLogin || createInlineRedirectToEditorLoginFallback({
         getEditorBasePath,
@@ -177,58 +151,15 @@ document.addEventListener('DOMContentLoaded', () => {
         return i18n('invalid_youtube') || '유효한 YouTube 링크를 입력해 주세요.';
     });
 
-    // Tree load error renderer: primary = editorPageHelpers.renderTreeLoadError, fallback = inline minimal UI
-    const createRenderTreeLoadErrorFallback = () => ({
-        canvas,
-        addBtn,
-        errorTitle,
-        errorDesc,
-        i18n,
-        escapeHtml,
-        setDetailEmptyState
-    }) => {
-        canvas.innerHTML = `
-            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;padding:32px;background:rgba(255,255,255,0.96);border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,0.1);max-width:360px;width:calc(100% - 32px);">
-                <div style="font-size:48px;margin-bottom:16px;">🌱</div>
-                <div style="font-size:1.2rem;font-weight:800;margin-bottom:8px;color:var(--on-surface);">${escapeHtml(errorTitle)}</div>
-                <div style="font-size:14px;color:var(--on-surface-variant);line-height:1.6;margin-bottom:20px;">
-                    ${escapeHtml(errorDesc)}
-                </div>
-                <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
-                    <button type="button" id="retryOpenTreeBtn" class="btn-round btn-outline" style="padding:10px 16px;">
-                        ${i18n('retry') || '다시 시도'}
-                    </button>
-                    <a href="${escapeHtml(getMyTreesHref())}" class="btn-round btn-primary" style="padding:10px 16px;text-decoration:none;">
-                        ${i18n('go_to_my_trees') || '내 트리로 가기'}
-                    </a>
-                </div>
-            </div>
-        `;
-
-        if (typeof setDetailEmptyState === 'function') {
-            setDetailEmptyState(true);
-        }
-
-        const retryBtn = document.getElementById('retryOpenTreeBtn');
-        if (retryBtn) retryBtn.addEventListener('click', () => window.location.reload());
-        if (addBtn) addBtn.disabled = true;
-    };
-
-    const renderTreeLoadError = editorPageHelpers.renderTreeLoadError || createRenderTreeLoadErrorFallback();
+    const renderTreeLoadError = editorPageHelpers.renderTreeLoadError ||
+        entryFallbacks.createInlineRenderTreeLoadErrorFallback({ getMyTreesHref });
     const createInlineNormalizeMemoryFallback = dataLoaderFallbacks.createInlineNormalizeMemoryFallback || (() => (mem) => mem);
     const createInlineLoadInitialTreeFallback = dataLoaderFallbacks.createInlineLoadInitialTreeFallback || (() => async () => ({}));
     const createInlineLoadEditorMemoriesFallback = dataLoaderFallbacks.createInlineLoadEditorMemoriesFallback || (() => async () => ({}));
     const createInlineCreateInitialMemoryFallback = dataLoaderFallbacks.createInlineCreateInitialMemoryFallback || ((options) => () => ({}));
     const createInlineNextMemoryIdFallback = dataLoaderFallbacks.createInlineNextMemoryIdFallback || ((options) => () => 'm1');
     const createInlineRefreshMemoriesFallback = dataLoaderFallbacks.createInlineRefreshMemoriesFallback || ((options) => async () => {});
-    const createInlineFormatTimeAgoFallback = () => (date) => {
-        if (!date) return '';
-        const diff = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
-        if (diff < 60) return '방금';
-        if (diff < 3600) return `${Math.floor(diff / 60)}분 전`;
-        if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`;
-        return `${Math.floor(diff / 86400)}일 전`;
-    };
+    const createInlineFormatTimeAgoFallback = entryFallbacks.createInlineFormatTimeAgoFallback;
 
     const markEditorReady = () => document.body?.classList.remove('editor-preload');
 
