@@ -46,6 +46,7 @@ test('editor helper scripts load before the editor entry script', () => {
     'js/editor/editor-canvas-interaction.js',
     'js/editor/editor-canvas-viewport.js',
     'js/editor/editor-canvas-state-boundary.js',
+    'js/editor/editor-canvas-growth-affordance.js',
     'js/editor/editor-canvas.js',
     'js/editor/editor-rename-ui.js',
     'js/editor/editor-detail-sidebar-status-boundary.js',
@@ -84,6 +85,16 @@ test('canvas state boundary loads before canvas runtime', () => {
   assertLoadedBefore(
     sources,
     'js/editor/editor-canvas-state-boundary.js',
+    'js/editor/editor-canvas.js'
+  );
+});
+
+test('canvas growth affordance helper loads before canvas runtime', () => {
+  const sources = scriptSources(editorHtml());
+
+  assertLoadedBefore(
+    sources,
+    'js/editor/editor-canvas-growth-affordance.js',
     'js/editor/editor-canvas.js'
   );
 });
