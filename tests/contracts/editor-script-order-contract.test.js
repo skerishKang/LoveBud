@@ -41,6 +41,7 @@ test('editor helper scripts load before the editor entry script', () => {
     'js/utils/media.js',
     'js/editor/editor-root-helpers.js',
     'js/editor/editor-canvas-layout.js',
+    'js/editor/editor-canvas-layout-helpers.js',
     'js/editor/editor-canvas-node.js',
     'js/editor/editor-canvas-interaction.js',
     'js/editor/editor-canvas-viewport.js',
@@ -64,6 +65,16 @@ test('editor helper scripts load before the editor entry script', () => {
   for (const helper of helpers) {
     assertLoadedBefore(sources, helper, 'js/editor.js');
   }
+});
+
+test('canvas layout helpers load before canvas runtime', () => {
+  const sources = scriptSources(editorHtml());
+
+  assertLoadedBefore(
+    sources,
+    'js/editor/editor-canvas-layout-helpers.js',
+    'js/editor/editor-canvas.js'
+  );
 });
 
 test('data-loader fallback boundary is explicitly mounted before editor entry', () => {
