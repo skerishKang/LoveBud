@@ -313,12 +313,16 @@
         window.LoveBudAuthBootstrap.whenReady()
           .then(handleSettingsAuthUser)
           .catch(function() {
-            if (!cachedUser) {
+            if (!cachedUser && typeof window.registerOnAuthReady === 'function') {
+              window.registerOnAuthReady(handleSettingsAuthUser);
+            } else if (!cachedUser) {
               redirectToLogin();
             }
           });
       } catch (e) {
-        if (!cachedUser) {
+        if (!cachedUser && typeof window.registerOnAuthReady === 'function') {
+          window.registerOnAuthReady(handleSettingsAuthUser);
+        } else if (!cachedUser) {
           redirectToLogin();
         }
       }
