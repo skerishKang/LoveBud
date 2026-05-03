@@ -318,7 +318,24 @@ body .editor-canvas-title h2 {
 }
 
 .editor-rename-btn {
-    display: none !important;
+    align-self: flex-start;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: auto;
+    min-height: 32px;
+    padding: 0 11px;
+    margin-top: 2px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.78);
+    border-color: rgba(197,146,128,0.30);
+    color: #9b5f58;
+    font-size: 11px;
+    font-weight: 900;
+    line-height: 1;
+    white-space: nowrap;
+    box-shadow: 0 8px 18px rgba(165,124,101,0.08);
 }
 
 .editor-tree-visibility-pill {
@@ -330,11 +347,19 @@ body .editor-canvas-title h2 {
 }
 
 .editor-title-settings-panel {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
     gap: 10px;
-    margin-top: 20px;
+    margin-top: 14px;
+    width: 100% !important;
+    align-items: stretch !important;
+    justify-content: stretch !important;
+    pointer-events: auto !important;
 }
 
 .editor-mini-setting-btn {
+    display: inline-flex !important;
+    width: 100%;
     min-height: 48px;
     border-radius: 999px;
     background: rgba(255,255,255,0.70);
@@ -342,6 +367,10 @@ body .editor-canvas-title h2 {
     color: #7f6258;
     font-weight: 800;
     box-shadow: 0 8px 16px rgba(165,124,101,0.06);
+}
+
+.editor-status-card #sidebarVisibilityToggleBtn.editor-mini-setting-btn {
+    display: inline-flex !important;
 }
 
 .editor-tree-quiet-note {
