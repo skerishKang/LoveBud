@@ -53,6 +53,19 @@
       : (i18n('visibility_make_public') || '공개로 전환');
   }
 
+  function getTreeCardMeta(tree, i18n) {
+    var visibility = tree && tree.visibility === 'public' ? 'public' : 'private';
+    var visibilityLabel = visibility === 'public' ? (i18n('myTrees.summary_public') || '공개') : (i18n('myTrees.summary_private') || '비공개');
+
+    return {
+      visibilityIcon: visibility === 'public' ? 'lock' : 'public',
+      visibilityActionLabel: getVisibilityActionLabel(tree, i18n),
+      title: tree && tree.title,
+      mood: getTreeMomentCount(tree) > 0 ? (i18n('myTrees.card_growing') || '차곡차곡 자라는 중') : (i18n('myTrees.card_waiting') || '첫 순간을 기다리는 중'),
+      privateBadgeHtml: visibility === 'private' ? '<div class="tree-card-meta"><span class="tree-card-visibility private"><span class="material-symbols-outlined" style="font-size:12px;">lock</span>' + visibilityLabel + '</span></div>' : ''
+    };
+  }
+
   function getTreeMoodPalette(tree) {
     var seed = hashSeed((tree && tree.id) || (tree && tree.title) || 'lovetree');
     var palettes = [
@@ -330,20 +343,8 @@
       normalizedTree.representativeMemo = normalizedTree.representativeMemo || (tree && (tree.representativeMemo || tree.representative_memo || ''));
     }
 
-    var momentCount = getTreeMomentCount(normalizedTree);
-    var visClass = normalizedTree.visibility === 'public' ? 'public' : 'private';
-    var visLabel = normalizedTree.visibility === 'public'
-      ? (i18n('myTrees.summary_public') || '공개')
-      : (i18n('myTrees.summary_private') || '비공개');
-    var title = normalizedTree.title;
-    var date = normalizedTree.updatedAt || normalizedTree.createdAt || '';
-    var metaMood = momentCount > 0
-      ? (i18n('myTrees.card_growing') || '차곡차곡 자라는 중')
-      : (i18n('myTrees.card_waiting') || '첫 순간을 기다리는 중');
-
-    if (date) {
-      date = date.slice(0, 10).replace(/-/g, '.');
-    }
+    var cardMeta = getTreeCardMeta(normalizedTree, i18n);
+    var title = cardMeta.title;
 
     var menuBtnId = 'menuBtn_' + normalizedTree.id;
     var dropdownId = 'dropdown_' + normalizedTree.id;
@@ -388,8 +389,8 @@
       '</button>',
       '<div class="tree-card-dropdown" id="' + dropdownId + '">',
         '<div class="dropdown-item visibility" data-action="visibility">',
-          '<span class="material-symbols-outlined" style="font-size:16px;">' + (normalizedTree.visibility === 'public' ? 'lock' : 'public') + '</span>',
-          getVisibilityActionLabel(normalizedTree, i18n),
+          '<span class="material-symbols-outlined" style="font-size:16px;">' + cardMeta.visibilityIcon + '</span>',
+          cardMeta.visibilityActionLabel,
         '</div>',
         '<div class="dropdown-item rename" data-action="rename">',
           '<span class="material-symbols-outlined" style="font-size:16px;">edit</span>',
@@ -404,10 +405,8 @@
         '<div class="tree-card-title-row">',
           '<div class="tree-card-title">' + escapeHtml(title) + '</div>',
         '</div>',
-        '<div class="tree-card-subcopy">' + metaMood + '</div>',
-        (normalizedTree.visibility === 'private'
-          ? '<div class="tree-card-meta"><span class="tree-card-visibility private"><span class="material-symbols-outlined" style="font-size:12px;">lock</span>' + visLabel + '</span></div>'
-          : ''),
+        '<div class="tree-card-subcopy">' + cardMeta.mood + '</div>',
+        cardMeta.privateBadgeHtml,
       '</div>'
     ].join('');
 
