@@ -7,6 +7,7 @@
     <link rel="icon" href="/assets/favicon/favicon.svg" type="image/svg+xml">
     <link rel="icon" href="/favicon.ico" sizes="32x32">
     <link rel="stylesheet" href="../css/editor.css?v=20260423-1">
+    <link rel="stylesheet" href="../css/page-transitions.css?v=20260430-1">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
 </head>
 <body class="editor-preload">
@@ -14,8 +15,8 @@
 
     <div id="shared-header"></div>
 
-    <div class="editor-layout">
-        <aside class="sidebar">
+    <div class="editor-layout page-transition-enter">
+        <aside class="sidebar reveal-fade">
             <div class="editor-sidebar-back-wrap">
                 <a id="backToMyTreesLink" href="my-trees.html" class="editor-sidebar-back-link">
                     <span aria-hidden="true" class="editor-sidebar-back-icon">←</span>
@@ -63,7 +64,7 @@
             </section>
         </aside>
 
-        <main class="canvas-area" id="canvasArea">
+        <main class="canvas-area reveal-scale reveal-up" id="canvasArea">
             <div class="editor-canvas-topbar" aria-label="러브트리 캔버스 도구">
                 <div class="editor-canvas-title">
                     <div class="editor-reference-kicker">✿ 순간을 이어가는 중</div>
@@ -140,7 +141,7 @@
             </div>
         </main>
 
-        <aside class="detail-panel memory-detail-section" id="detailPanel">
+        <aside class="detail-panel memory-detail-section reveal-fade" id="detailPanel">
             <div class="panel-header">
                 <h3 class="headline editor-panel-headline"></h3>
                 <button type="button" class="icon-menu-btn editor-hidden-initial editor-detail-more-btn" aria-label="상세로 보기" id="detailMoreBtn">상세로 보기</button>
@@ -306,6 +307,7 @@
     <script src="../js/auth/auth-session.js?v=20260417-31"></script>
     <script src="../js/auth/auth-firebase.js?v=20260427-3"></script>
     <script src="../js/auth.js?v=20260417-31"></script>
+    <script src="../js/page-transitions.js?v=20260430-1"></script>
     <script>renderSharedHeader();</script>
 </body>
 </html>
