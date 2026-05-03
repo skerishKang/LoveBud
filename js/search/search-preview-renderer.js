@@ -315,6 +315,24 @@
         return getSearchCopy('search.previewDefaultTreeName', '러브트리', 'LoveTree');
     }
 
+    function getPreviewTimeRange(tree) {
+        const raw = String(tree?.timeRange || '').trim();
+        const missingRangeLabels = [
+            '기록 없음',
+            'no records',
+            'no record',
+            'unknown',
+            'n/a',
+            getSearchCopy('search.previewUnknownRange', '아직 흐름이 또렷하지 않아요', 'The flow is not clear yet')
+        ].map(label => String(label || '').trim().toLowerCase()).filter(Boolean);
+
+        if (!raw) {
+            return '';
+        }
+
+        return missingRangeLabels.includes(raw.toLowerCase()) ? '' : raw;
+    }
+
     function getPreviewSummaryCopy(tree, memories) {
         const titleHelper = getSearchTitleHelper();
         const displayTitle = titleHelper?.getBrowseDisplayTitle
@@ -323,7 +341,7 @@
         const themeLabel = titleHelper?.getThemeLabel
             ? titleHelper.getThemeLabel(tree)
             : '';
-        const timeRange = String(tree?.timeRange || getSearchCopy('search.previewUnknownRange', '아직 흐름이 또렷하지 않아요', 'The flow is not clear yet')).trim();
+        const timeRange = getPreviewTimeRange(tree);
         const memoryCount = Number(tree?.memoryCount || 0);
         const safeTitle = escapeHtml(displayTitle);
         const safeTheme = escapeHtml(themeLabel);
@@ -343,6 +361,24 @@
                 { title: safeTitle },
                 '<strong style="color:var(--on-surface);">{title}</strong>는 이제 막 시작된 공개 러브트리예요.',
                 '<strong style="color:var(--on-surface);">{title}</strong> is a newly started public LoveTree.'
+            );
+        }
+
+        if (!timeRange) {
+            if (themeLabel) {
+                return formatSearchCopy(
+                    'search.previewSummaryThemeNoRange',
+                    { theme: safeTheme, count: memoryCount },
+                    '<strong style="color:var(--on-surface);">{theme}</strong>와 함께한 <span style="color:var(--primary);font-weight:700;">{count}개의 순간</span>이 이어졌어요.',
+                    '<strong style="color:var(--on-surface);">{count} moments</strong> with <strong style="color:var(--on-surface);">{theme}</strong> are connected.'
+                );
+            }
+
+            return formatSearchCopy(
+                'search.previewSummaryNoRange',
+                { title: safeTitle, count: memoryCount },
+                '<strong style="color:var(--on-surface);">{title}</strong>에 담긴 <span style="color:var(--primary);font-weight:700;">{count}개의 순간</span>이 이어졌어요.',
+                '<strong style="color:var(--on-surface);">{count} moments</strong> in <strong style="color:var(--on-surface);">{title}</strong> are connected.'
             );
         }
 
