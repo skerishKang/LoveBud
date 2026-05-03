@@ -1,6 +1,6 @@
 /**
  * LoveBud Search Card Renderer
- * v20260503-591
+ * v20260503-618
  * 
  * Rendering layer: tree cards, empty states.
  * DOM-agnostic - returns HTML strings.
@@ -72,6 +72,10 @@
         if (fallback) {
             fallback.hidden = false;
         }
+        const mediaPreview = img.parentElement?.querySelector?.('.tree-card-preview-strip-media');
+        if (mediaPreview) {
+            mediaPreview.hidden = true;
+        }
     }
 
     let _resultsList = null;
@@ -130,6 +134,28 @@
         return Number.isFinite(count) && count > 0 ? count : 0;
     }
 
+    function getTreePreviewTone(tree) {
+        const memoryCount = getDisplayMemoryCount(tree?.memoryCount);
+        if (memoryCount >= 6) return 'full';
+        if (memoryCount >= 3) return 'growing';
+        if (memoryCount >= 1) return 'sprout';
+        return 'empty';
+    }
+
+    function renderCompactTreePreview(tree, variant) {
+        const tone = getTreePreviewTone(tree);
+        return `
+            <div class="tree-card-preview-strip tree-card-preview-strip-${variant} tree-card-preview-${tone}" aria-hidden="true">
+                <span class="tree-card-preview-line tree-card-preview-line-main"></span>
+                <span class="tree-card-preview-line tree-card-preview-line-branch"></span>
+                <span class="tree-card-preview-node tree-card-preview-node-root"></span>
+                <span class="tree-card-preview-node tree-card-preview-node-branch"></span>
+                <span class="tree-card-preview-node tree-card-preview-node-leaf"></span>
+                <span class="tree-card-preview-node tree-card-preview-node-end"></span>
+            </div>
+        `;
+    }
+
     function renderMediaFallback(tree, titleText) {
         const safeTitle = escapeHtml(titleText || '러브트리');
         const treeStage = tree?.stage || 'empty';
@@ -137,11 +163,7 @@
         return `
             <div class="tree-card-media-fallback">
                 <div class="fallback-title">${safeTitle}</div>
-                <div class="fallback-dots">
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                </div>
+                ${renderCompactTreePreview(tree, 'fallback')}
             </div>
         `;
     }
@@ -181,9 +203,12 @@
          );
          const firstMoment = escapeHtml(firstMem?.title || '대표 순간 준비 중');
 
+         const mediaPreview = mediaUrl ? renderCompactTreePreview(tree, 'media') : '';
+
          return `
              <div class="tree-card-media" aria-label="${firstMoment}" style="position:relative;overflow:hidden;">
                  ${renderRepresentativeImage(mediaUrl, firstMoment, tree, titleText)}
+                 ${mediaPreview}
              </div>
          `;
      }
@@ -385,5 +410,5 @@
         }
     };
 
-    console.log('[LoveBudSearchCardRenderer] Search card renderer loaded v20260503-591');
+    console.log('[LoveBudSearchCardRenderer] Search card renderer loaded v20260503-618');
  })();
