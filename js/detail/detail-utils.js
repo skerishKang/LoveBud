@@ -13,6 +13,12 @@
         const homeHref = isPagesContext ? '../index.html' : 'index.html';
         const searchHref = buildPageHref('search');
         const myTreesHref = buildPageHref('my-trees');
+        const createDetailNavigationHrefs = () => ({
+            homeHref,
+            searchHref,
+            myTreesHref,
+            buildPageHref
+        });
         const i18n = window.t || ((k) => k);
         const tText = (key, fallback) => {
             const translated = i18n(key);
@@ -124,6 +130,7 @@
 
         return {
             buildPageHref,
+            createDetailNavigationHrefs,
             tText,
             escapeHtml,
             prettifyTagLabel,

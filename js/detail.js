@@ -24,9 +24,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const isPagesContext = window.location.pathname.indexOf('/pages/') !== -1;
     const utils = window.LoveBudDetailUtils.createUtils({ isPagesContext });
-    const homeHref = isPagesContext ? '../index.html' : 'index.html';
-    const searchHref = utils.buildPageHref('search');
-    const myTreesHref = utils.buildPageHref('my-trees');
+    const {
+        homeHref,
+        searchHref,
+        myTreesHref,
+        buildPageHref
+    } = utils.createDetailNavigationHrefs();
 
     const video = window.LoveBudDetailVideo.createVideoHelpers({
         tText: utils.tText,
@@ -50,7 +53,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         refs,
         tText: utils.tText,
         escapeHtml: utils.escapeHtml,
-        buildPageHref: utils.buildPageHref,
+        buildPageHref,
         sortTreeMemories: utils.sortTreeMemories,
         isStructuralRootMemory: utils.isStructuralRootMemory,
         buildSoftPanelMarkup: video.buildSoftPanelMarkup
@@ -73,7 +76,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             homeHref,
             searchHref,
             myTreesHref,
-            buildPageHref: utils.buildPageHref
+            buildPageHref
         },
         tText: utils.tText,
         sortTreeMemories: utils.sortTreeMemories,
