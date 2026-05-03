@@ -165,10 +165,40 @@
         `;
     }
 
+    const VISIBLE_FLOW_MOMENT_COUNT = 4;
+
     let _dom = null;
+    let currentPreviewTree = null;
+    let expandedFlowTreeKey = null;
+    let previewFlowToggleBound = false;
 
     function init(domRefs) {
         _dom = domRefs;
+        bindPreviewFlowToggle();
+    }
+
+    function getPreviewTreeKey(tree) {
+        if (!tree) return '';
+        if (tree.id != null && tree.id !== '') {
+            return String(tree.id);
+        }
+        const title = String(tree.title || '').trim();
+        const memoryCount = Array.isArray(tree.memories) ? tree.memories.length : Number(tree.memoryCount || 0);
+        return `${title}:${memoryCount}`;
+    }
+
+    function bindPreviewFlowToggle() {
+        if (previewFlowToggleBound) return;
+        previewFlowToggleBound = true;
+
+        document.addEventListener('click', (event) => {
+            const toggle = event.target?.closest?.('[data-preview-flow-toggle]');
+            if (!toggle || !_dom?.previewDesc?.contains(toggle) || !currentPreviewTree) return;
+
+            const treeKey = getPreviewTreeKey(currentPreviewTree);
+            expandedFlowTreeKey = expandedFlowTreeKey === treeKey ? null : treeKey;
+            updatePreview(currentPreviewTree);
+        });
     }
 
     function setPreviewState(state) {
@@ -356,21 +386,50 @@
     }
 
     function renderPathStageBadge(index, title) {
-        return `<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:var(--surface-container);border-radius:8px;font-size:13px;"><span style="color:var(--primary);font-weight:800;">${index}</span><span>${escapeHtml(title)}</span></span>`;
+        return `<span class="preview-flow-stage" style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:var(--surface-container);border-radius:8px;font-size:13px;"><span style="color:var(--primary);font-weight:800;">${index}</span><span>${escapeHtml(title)}</span></span>`;
     }
 
-    function renderMoreStagesText(count) {
-        if (!count || count <= 0) return '';
-        return formatSearchCopy(
-            'search.previewMoreMoments',
-            { count },
-            '... 그리고 {count}개의 순간 더',
-            '... and {count} more moments'
-        );
+    function renderPathStages(memories, startIndex = 0) {
+        return memories.map((memory, index) => {
+            const fallbackKo = startIndex + index === 0 ? '시작 순간' : '이어진 순간';
+            const fallbackEn = startIndex + index === 0 ? 'Starting moment' : 'Connected moment';
+            return renderPathStageBadge(startIndex + index + 1, getMomentLabel(memory, fallbackKo, fallbackEn));
+        }).join('');
+    }
+
+    function renderFlowToggleButton(hiddenCount, isExpanded) {
+        if (!hiddenCount || hiddenCount <= 0) return '';
+        const label = isExpanded
+            ? getSearchCopy('search.previewCollapseMoments', '접기', 'Collapse')
+            : formatSearchCopy(
+                'search.previewShowMoreMoments',
+                { count: hiddenCount },
+                '{count}개의 순간 더 보기',
+                'Show {count} more moments'
+            );
+        const icon = isExpanded ? 'expand_less' : 'expand_more';
+
+        return `
+            <button type="button" class="preview-flow-toggle" data-preview-flow-toggle aria-expanded="${isExpanded ? 'true' : 'false'}">
+                <span>${escapeHtml(label)}</span>
+                <span class="material-symbols-outlined" aria-hidden="true">${icon}</span>
+            </button>
+        `;
+    }
+
+    function renderHiddenPathStages(hiddenMemories, startIndex, isExpanded) {
+        if (!isExpanded || !hiddenMemories.length) return '';
+        return `
+            <div class="preview-flow-more-list">
+                ${renderPathStages(hiddenMemories, startIndex)}
+            </div>
+        `;
     }
 
     function renderLoadingPreview(tree) {
         if (!_dom) return;
+        currentPreviewTree = tree || null;
+        expandedFlowTreeKey = null;
         const titleHelper = getSearchTitleHelper();
         const previewDisplayTitle = titleHelper?.getBrowseDisplayTitle
             ? titleHelper.getBrowseDisplayTitle(tree)
@@ -479,7 +538,10 @@
             return;
         }
 
+        currentPreviewTree = tree || null;
         const memories = Array.isArray(tree.memories) ? tree.memories : [];
+        const treeKey = getPreviewTreeKey(tree);
+        const isFlowExpanded = !!treeKey && expandedFlowTreeKey === treeKey;
         const firstMem = memories[0];
         const hasMemories = memories.length > 0;
         const previewStats = getPreviewStatsElement();
@@ -577,21 +639,22 @@
                     ${renderShareButton(tree)}
                 `;
             } else {
-                const pathStages = memories.slice(0, 3).map((m, i) => {
-                    return renderPathStageBadge(i + 1, getMomentLabel(m, '시작 순간', 'Starting moment'));
-                }).join('<span style="opacity:0.3;margin:0 4px;">→</span>');
-
-                const moreStages = renderMoreStagesText(memories.length - 3);
+                const visibleMemories = memories.slice(0, VISIBLE_FLOW_MOMENT_COUNT);
+                const hiddenMemories = memories.slice(VISIBLE_FLOW_MOMENT_COUNT);
+                const pathStages = renderPathStages(visibleMemories);
+                const flowToggle = renderFlowToggleButton(hiddenMemories.length, isFlowExpanded);
+                const hiddenStages = renderHiddenPathStages(hiddenMemories, VISIBLE_FLOW_MOMENT_COUNT, isFlowExpanded);
                 const firstMomentLabel = getMomentLabel(firstMem, '시작 순간', 'Starting moment');
                 const lastMomentLabel = getMomentLabel(memories[memories.length - 1], '최근에 남은 순간', 'Latest saved moment');
 
                 _dom.previewDesc.innerHTML = `
                     <div style="background:var(--surface-container-low);padding:20px;border-radius:1rem;margin-bottom:16px;">
                         ${renderSectionHeading('route', getSearchCopy('search.previewTimelineHeading', '대표 순간에서 이어진 흐름', 'Flow connected from the featured moment'))}
-                        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;line-height:1.8;">
+                        <div class="preview-flow-list">
                             ${pathStages}
                         </div>
-                        <div style="margin-top:8px;font-size:12px;color:var(--on-surface-variant);font-style:italic;">${escapeHtml(moreStages)}</div>
+                        ${hiddenStages}
+                        ${flowToggle ? `<div class="preview-flow-controls">${flowToggle}</div>` : ''}
                     </div>
 
                     <div style="font-size:14px;color:var(--on-surface-variant);line-height:1.6;padding:0 4px;">
@@ -642,6 +705,8 @@
     function resetPreview() {
         if (!_dom || !_dom.previewContainer) return;
 
+        currentPreviewTree = null;
+        expandedFlowTreeKey = null;
         const previewStats = getPreviewStatsElement();
         const placeholderTitle = getSearchCopy(
             'search.previewPlaceholder',
