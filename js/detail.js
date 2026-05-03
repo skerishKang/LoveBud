@@ -61,6 +61,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         tText: utils.tText
     });
 
+    const loadingErrorBoundary = window.createDetailLoadingErrorBoundary({
+        tText: utils.tText,
+        homeHref,
+        searchHref
+    });
+
     const loader = window.LoveBudDetailLoader.createDetailLoader({
         refs,
         hrefs: {
@@ -77,7 +83,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderMemoryBase: render.renderMemoryBase,
         renderTreeContext: render.renderTreeContext,
         renderConnectedFragments: connected.renderConnectedFragments,
-        renderMissingMemoryState: render.renderMissingMemoryState,
+        renderMissingMemoryState: loadingErrorBoundary.renderMissingMemoryState,
         applyViewingPageCopy: copy.applyViewingPageCopy
     });
 
