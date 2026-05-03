@@ -40,6 +40,78 @@
     );
   }
 
+  function createBootstrapCompatibilityBoundary() {
+    var authStateModule = window.LoveBudAuthState || null;
+    var bootstrap = window.LoveBudAuthBootstrap = window.LoveBudAuthBootstrap || (function () {
+      var resolved = false;
+      var lastUser = null;
+      var waiters = [];
+
+      function flush(user) {
+        var pending = waiters.splice(0, waiters.length);
+        pending.forEach(function (fn) {
+          try {
+            fn(user);
+          } catch (error) {
+            console.error("[auth] Bootstrap waiter error:", error);
+          }
+        });
+      }
+
+      function resolve(user) {
+        if (resolved) return;
+        resolved = true;
+        lastUser = user || null;
+        flush(lastUser);
+      }
+
+      function whenReady() {
+        if (resolved) return Promise.resolve(lastUser);
+        return new Promise(function (resolveFn) {
+          waiters.push(resolveFn);
+        });
+      }
+
+      function getSnapshot() {
+        return {
+          ready: resolved,
+          user: lastUser,
+        };
+      }
+
+      return {
+        resolve: resolve,
+        whenReady: whenReady,
+        getSnapshot: getSnapshot,
+        getResolvedUser: function () {
+          return lastUser;
+        },
+      };
+    })();
+
+    return {
+      authStateModule: authStateModule,
+      authUiModule: window.LoveBudAuthUI || null,
+      authSessionModule: window.LoveBudAuthSession || null,
+      authFirebaseModule: window.LoveBudAuthFirebase || null,
+      emailAuthMode: authStateModule
+        ? authStateModule.getEmailAuthMode()
+        : resolveEmailAuthMode(),
+      authInitFlag: authStateModule
+        ? authStateModule.AUTH_INIT_FLAG
+        : authState.AUTH_INIT_FLAG,
+      authReadyFlag: authStateModule
+        ? authStateModule.AUTH_READY_FLAG
+        : authState.AUTH_READY_FLAG,
+      dropdownListenerAttached: authStateModule
+        ? authStateModule.isDropdownListenerAttached()
+        : false,
+      resolveAuthBootstrap: function (user) {
+        bootstrap.resolve(user || null);
+      },
+    };
+  }
+
   authState.EMAIL_AUTH_MODE = resolveEmailAuthMode();
 
   window.LoveBudAuthState = {
@@ -56,6 +128,7 @@
       return authState.EMAIL_AUTH_MODE;
     },
     resolveEmailAuthMode: resolveEmailAuthMode,
+    createBootstrapCompatibilityBoundary: createBootstrapCompatibilityBoundary,
     isLoginPage: isLoginPage,
     isDropdownListenerAttached: function () {
       return !!authState.DROPDOWN_LISTENER_ATTACHED;
