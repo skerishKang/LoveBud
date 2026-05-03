@@ -15,6 +15,26 @@
  * CSS, HTML, preview renderer, card renderer, url-state are untouched.
  */
 (function () {
+    function dedupeTreesById(trees) {
+        if (!Array.isArray(trees)) return [];
+
+        const seenIds = new Set();
+        return trees.filter((tree) => {
+            const rawId = tree?.id ?? tree?.treeId ?? tree?.tree_id;
+            if (rawId === null || rawId === undefined || rawId === '') {
+                return true;
+            }
+
+            const key = String(rawId);
+            if (seenIds.has(key)) {
+                return false;
+            }
+
+            seenIds.add(key);
+            return true;
+        });
+    }
+
     function createSearchData({ refs, state, previewCacheApi, ui, CardRenderer, PreviewRenderer, callbacks, cache, PUBLIC_TREES_CACHE_KEY, PREVIEW_CACHE_TTL_MS, getPreviewCacheKey }) {
 
         // ── Hydrate selected tree preview ──────────────────────────────────────
@@ -80,7 +100,7 @@
             if (cache) {
                 cachedTrees = cache.get(cacheKey);
                 if (cachedTrees && Array.isArray(cachedTrees) && cachedTrees.length > 0) {
-                    state.allTrees = cachedTrees;
+                    state.allTrees = dedupeTreesById(cachedTrees);
                     state.isFromCache = true;
                     callbacks.renderResults();
                 }
@@ -103,16 +123,17 @@
                     if (!isCurrentRequest()) {
                         return;
                     }
+                    const uniqueApiTrees = dedupeTreesById(apiTrees);
 
                     if (cache) {
-                        cache.set(cacheKey, apiTrees, 5 * 60 * 1000);
+                        cache.set(cacheKey, uniqueApiTrees, 5 * 60 * 1000);
                     }
-                    if (!previewCacheApi.areTreesEffectivelySame(state.allTrees, apiTrees)) {
-                        state.allTrees = apiTrees;
+                    if (!previewCacheApi.areTreesEffectivelySame(state.allTrees, uniqueApiTrees)) {
+                        state.allTrees = uniqueApiTrees;
                     }
                     state.loadError = null;
                     state.apiTreesLoaded = true;
-                    state.hasMoreTrees = apiTrees.length === state.currentLimit;
+                    state.hasMoreTrees = apiTrees.length >= requestLimit && requestLimit < 60;
                     callbacks.renderResults();
                 } else {
                     throw new Error(
@@ -169,6 +190,7 @@
         }
 
         return {
+            dedupeTreesById,
             hydrateSelectedTreePreview,
             loadPublicTrees,
             loadGrowingTrees

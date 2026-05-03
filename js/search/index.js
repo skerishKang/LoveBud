@@ -70,6 +70,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
     const previewCache = new Map();
     const callbacks = {};
+    let loadMoreRequestInFlight = false;
 
     const ui = window.LoveBudSearchUI.createSearchUI({
         refs,
@@ -178,7 +179,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         })
         : createInlinePreviewController();
 
-    const getFilteredTrees = () => Adapter.filterTrees(state.allTrees, state.currentQuery, state.currentCategory);
+    const getFilteredTrees = () => dataApi.dedupeTreesById(
+        Adapter.filterTrees(state.allTrees, state.currentQuery, state.currentCategory)
+    );
 
     function renderResults(resetPreviewWhenNoSelection = true) {
         const filtered = getFilteredTrees();
@@ -248,21 +251,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     callbacks.updateUrlState = urlState.updateUrlState;
 
     callbacks.loadMorePublicTrees = async () => {
-        if (!state.apiTreesLoaded || state.isLoadingMore || !state.hasMoreTrees || state.currentLimit >= 60) {
+        if (loadMoreRequestInFlight || !state.apiTreesLoaded || state.isLoadingMore || !state.hasMoreTrees || state.currentLimit >= 60) {
             return false;
         }
 
         const nextLimit = Math.min(state.currentLimit + 10, 60);
         if (nextLimit === state.currentLimit) return false;
 
-        state.currentLimit = nextLimit;
-        ui.syncControlsFromState();
-        ui.syncBrowseHead();
-        urlState.updateUrlState();
+        loadMoreRequestInFlight = true;
 
-        await dataApi.loadPublicTrees({ resetSelection: false });
-        ui.syncControlsFromState();
-        return true;
+        try {
+            state.currentLimit = nextLimit;
+            ui.syncControlsFromState();
+            ui.syncBrowseHead();
+            urlState.updateUrlState();
+
+            await dataApi.loadPublicTrees({ resetSelection: false });
+            return true;
+        } finally {
+            loadMoreRequestInFlight = false;
+            ui.syncControlsFromState();
+        }
     };
 
     const controls = window.LoveBudSearchControls.createSearchControls({
