@@ -83,6 +83,46 @@
         opacity: 0.62;
     }
 
+    .tree-card-preview-strip-media {
+        left: 14px;
+        right: 14px;
+        bottom: 10px;
+        height: 34px;
+    }
+
+    .tree-card-preview-strip-fallback {
+        top: 28px;
+        width: 98px;
+        height: 36px;
+    }
+
+    .tree-card-preview-line-main {
+        top: 20px;
+    }
+
+    .tree-card-preview-line-branch {
+        top: 19px;
+        width: 28px;
+    }
+
+    .tree-card-preview-node {
+        width: 7px;
+        height: 7px;
+        box-shadow:
+            0 0 0 4px rgba(255, 248, 245, 0.14),
+            0 5px 10px rgba(50, 38, 35, 0.14);
+    }
+
+    .tree-card-preview-node-root,
+    .tree-card-preview-node-leaf,
+    .tree-card-preview-node-end {
+        top: 17px;
+    }
+
+    .tree-card-preview-node-branch {
+        top: 8px;
+    }
+
     .tree-card-media-fallback::before {
         top: 20px;
         width: 74px;
