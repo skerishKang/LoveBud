@@ -135,6 +135,32 @@
     }
   }
 
+  function createConfirmedAuthCacheBridge(options) {
+    var cacheKey = options && options.cacheKey;
+    var confirmedKey = options && options.confirmedKey;
+    var tokenKey = options && options.tokenKey;
+
+    return {
+      isInvalidAuthSessionError: isInvalidAuthSessionError,
+      clearStaleFirebaseAuthState: clearStaleFirebaseAuthState,
+      getCachedAuthUser: function () {
+        return getCachedAuthUser(cacheKey, confirmedKey);
+      },
+      setConfirmedAuthCache: function (user) {
+        return setConfirmedAuthCache(user, cacheKey, confirmedKey, tokenKey);
+      },
+      clearConfirmedAuthCache: function () {
+        return clearConfirmedAuthCache(cacheKey, confirmedKey, tokenKey);
+      },
+      getCachedAuthToken: function () {
+        return getCachedAuthToken(tokenKey);
+      },
+      persistConfirmedAuthSession: function (user) {
+        return persistConfirmedAuthSession(user, cacheKey, confirmedKey, tokenKey);
+      },
+    };
+  }
+
   window.LoveBudAuthCache = {
     isInvalidAuthSessionError: isInvalidAuthSessionError,
     clearStaleFirebaseAuthState: clearStaleFirebaseAuthState,
@@ -143,5 +169,6 @@
     clearConfirmedAuthCache: clearConfirmedAuthCache,
     getCachedAuthToken: getCachedAuthToken,
     persistConfirmedAuthSession: persistConfirmedAuthSession,
+    createConfirmedAuthCacheBridge: createConfirmedAuthCacheBridge,
   };
 })();
