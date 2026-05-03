@@ -162,6 +162,83 @@
     margin-bottom: 16px;
 }
 
+.preview-flow-list,
+.preview-flow-more-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.preview-flow-more-list {
+    margin-top: 8px;
+}
+
+.preview-flow-stage {
+    min-width: 0;
+    max-width: 100%;
+    min-height: 36px;
+    justify-content: flex-start;
+    overflow-wrap: anywhere;
+}
+
+.preview-flow-stage span:last-child {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.preview-flow-controls {
+    margin-top: 10px;
+}
+
+.preview-flow-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 36px;
+    max-width: 100%;
+    padding: 7px 12px;
+    border: 1px solid rgba(144, 73, 81, 0.18);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.68);
+    color: var(--primary);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1.2;
+    cursor: pointer;
+    overflow-wrap: anywhere;
+    transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.preview-flow-toggle:hover {
+    background: var(--surface-container);
+    border-color: rgba(144, 73, 81, 0.28);
+}
+
+.preview-flow-toggle:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+.preview-flow-toggle .material-symbols-outlined {
+    font-size: 18px;
+    flex: 0 0 auto;
+}
+
+@media (max-width: 480px) {
+    .preview-flow-list,
+    .preview-flow-more-list {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .preview-flow-toggle {
+        width: 100%;
+    }
+}
+
 .preview-panel-icon {
     font-size: 14px;
     vertical-align: middle;
