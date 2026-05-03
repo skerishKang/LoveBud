@@ -78,6 +78,10 @@ PR3 button / badge / chip tone 기준 판단이 필요하면 아래를 추가로
 - `./ops/BRANCH_CLEANUP_PLAN.md`
 - `./ops/MODAL_RUNTIME_DIAGNOSTICS_WORKFLOW.md`
 - `./migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md`
+
+테스트 데이터(트리/순간) 생성이 필요하면 아래 워크플로우 가이드를 참고합니다.
+
+- `../.windsurf/workflows/tree-moment-creation-guide.md` — 테스트 환경에서 러브트리와 순간 생성 방법
 - `./engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md`
 - `./engineering/REVIEW_GUARDRAILS.md`
 
