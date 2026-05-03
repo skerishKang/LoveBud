@@ -20,31 +20,32 @@
 2. [PARALLEL_WORKTREE_AGENT_POLICY.md](PARALLEL_WORKTREE_AGENT_POLICY.md) - 병렬 모델/worktree/검증 모델 운영 기준
 3. [LOCAL_BROWSER_VERIFICATION_STARTUP.md](LOCAL_BROWSER_VERIFICATION_STARTUP.md) - 로컬/브라우저 검증 시작 전 공통 preflight, URL provenance, evidence, PR checklist 기준
 4. [BROWSER_VERIFICATION_SLOT_GATE.md](BROWSER_VERIFICATION_SLOT_GATE.md) - 브라우저/network 검증 전 final PASS target 및 fixed slot 배정 gate
-5. [OPERATOR_WRITING_AND_VERIFICATION_POLICY.md](OPERATOR_WRITING_AND_VERIFICATION_POLICY.md) - prose-first Issue/PR 작성, valid runtime verification, QA credential safe reporting, batch verification 운영 기준
-6. [AGENT_STARTUP_VERIFICATION_RULES.md](AGENT_STARTUP_VERIFICATION_RULES.md) - Issue #464 agent startup checklist, fixed-slot verification, dirty worktree stop, token-safe reporting 기준
-7. [AGENTS.md](AGENTS.md) - ops agent secret/path-only handling, PR/Issue safety, CTO merge approval 기준
-8. [AGENT_SECURITY.md](AGENT_SECURITY.md) - agent secret handling policy, approved local paths, forbidden value exposure 기준
-9. [GITHUB_AUTH_TOKEN_USAGE.md](GITHUB_AUTH_TOKEN_USAGE.md) - GitHub CLI/browser login/connector 인증 및 token/credential 취급 기준
-10. [BROWSER_VERIFICATION_URL_POLICY.md](BROWSER_VERIFICATION_URL_POLICY.md) - 브라우저 검증 URL 출처, PR Preview, fixed test slot 사용 기준
-11. [GLOBAL_CSS_BROWSER_SMOKE_CHECKLIST.md](GLOBAL_CSS_BROWSER_SMOKE_CHECKLIST.md) - Issue #512 global CSS desktop/mobile smoke matrix, PASS/NOT_VERIFIED/BLOCKED reporting, fixed-slot requirements
-12. [EDITOR_DETAIL_UI_BROWSER_SMOKE_CHECKLIST.md](EDITOR_DETAIL_UI_BROWSER_SMOKE_CHECKLIST.md) - Issue #521 editor detail UI smoke matrix, fixed-slot/SHA provenance, PASS/NOT_VERIFIED/BLOCKED reporting 기준
-13. [TEST_PREVIEW_SLOTS.md](TEST_PREVIEW_SLOTS.md) - 고정 테스트 Preview 슬롯 운영 기준
-14. [FIXED_SLOT_WORKFLOW_SECRET_SETUP.md](FIXED_SLOT_WORKFLOW_SECRET_SETUP.md) - Issue #684 Deploy fixed test slot workflow의 Cloudflare GitHub Actions secret setup 및 post-secret runtime verification 절차
-15. [DEPLOY_CHECKLIST.md](DEPLOY_CHECKLIST.md) - 배포 전/후 체크리스트
-16. [RUNBOOK.md](RUNBOOK.md) - 운영 / 장애 대응 기준
-17. [MODAL_BROWSE_RUNTIME.md](MODAL_BROWSE_RUNTIME.md) - browse summary의 Modal 우선 read path 기준
-18. [KNOWN_CI_E2E_BLOCKERS.md](KNOWN_CI_E2E_BLOCKERS.md) - 반복 CI/E2E blocker 원인 분리 및 exception merge 판단 기준
-19. [E2E_SMOKE_COVERAGE_POLICY.md](E2E_SMOKE_COVERAGE_POLICY.md) - Issue #413 E2E smoke coverage 분류, CI/manual/Cloudflare Preview/fixed test slot 실행 정책, evidence 기준
-20. [ACTIVE_WORK_BOARD_POLICY.md](ACTIVE_WORK_BOARD_POLICY.md) - Issue #426 병렬 AI/workstation 작업 충돌 방지, active work board 필드, 상태 정의, 중복 prompt 방지, overlap warning 규칙, handoff/report 형식
-21. [SOURCE_OF_TRUTH_HYGIENE_DISPOSITION.md](SOURCE_OF_TRUTH_HYGIENE_DISPOSITION.md) - Issue #425 docs source-of-truth hierarchy, stale-doc classification, update routing, archive and index maintenance rules
-22. [BRANCH_CLEANUP_PLAN.md](BRANCH_CLEANUP_PLAN.md) - merged/stale branch cleanup 후보와 보존 branch 분류 기준
-23. [../migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md](../migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md) - 전환 현황과 남은 과제
-24. [ENV_NAMING_RUNTIME_TERMINOLOGY_AUDIT.md](ENV_NAMING_RUNTIME_TERMINOLOGY_AUDIT.md) - Issue #431 환경변수 명명 및 runtime terminology 감사, NETLIFY_DATABASE_URL 사용 현황, Cloudflare + Modal + Neon active runtime 정리
-25. [LOCAL_FILE_HYGIENE_PG_DEPENDENCY_AUDIT.md](LOCAL_FILE_HYGIENE_PG_DEPENDENCY_AUDIT.md) - Issue #429 local file hygiene 및 pg dependency usage 감사, .local/ tracked-file safety boundary, secret-safe local file handling, Cloudflare Functions vs local script dependency boundary
-26. [OBSERVABILITY_RUNTIME_LOGGING_AUDIT.md](OBSERVABILITY_RUNTIME_LOGGING_AUDIT.md) - Issue #415 observability 및 runtime logging strategy 감사, Cloudflare/Modal/browser 디버깅 경로, redaction-safe logging boundary, follow-up implementation issue plan (A/B/C)
-27. [MODAL_RUNTIME_DIAGNOSTICS_WORKFLOW.md](MODAL_RUNTIME_DIAGNOSTICS_WORKFLOW.md) - Issue #473 Modal runtime diagnostics workflow, Cloudflare ↔ Modal verification 절차, request ID correlation, blocked-state 보고 기준
-28. [FIXED_SLOT_DEPLOY_WITH_WRANGLER.md](FIXED_SLOT_DEPLOY_WITH_WRANGLER.md) - Issue #694 fixed slot Wrangler direct deploy 표준 경로 및 stale asset guardrail
-29. [../engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md](../engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md) - browse filter / publication guard 구분
+5. [BROWSER_VERIFICATION_URL_POLICY.md](BROWSER_VERIFICATION_URL_POLICY.md) - 브라우저 검증 URL 출처, PR Preview, fixed test slot 사용 기준
+6. [CLOUDFLARE_PREVIEW_PROVENANCE_RUNBOOK.md](CLOUDFLARE_PREVIEW_PROVENANCE_RUNBOOK.md) - Cloudflare Preview/Branch Preview/fixed slot URL provenance, SHA match, malformed URL handling 기준
+7. [OPERATOR_WRITING_AND_VERIFICATION_POLICY.md](OPERATOR_WRITING_AND_VERIFICATION_POLICY.md) - prose-first Issue/PR 작성, valid runtime verification, QA credential safe reporting, batch verification 운영 기준
+8. [AGENT_STARTUP_VERIFICATION_RULES.md](AGENT_STARTUP_VERIFICATION_RULES.md) - Issue #464 agent startup checklist, fixed-slot verification, dirty worktree stop, token-safe reporting 기준
+9. [AGENTS.md](AGENTS.md) - ops agent secret/path-only handling, PR/Issue safety, CTO merge approval 기준
+10. [AGENT_SECURITY.md](AGENT_SECURITY.md) - agent secret handling policy, approved local paths, forbidden value exposure 기준
+11. [GITHUB_AUTH_TOKEN_USAGE.md](GITHUB_AUTH_TOKEN_USAGE.md) - GitHub CLI/browser login/connector 인증 및 token/credential 취급 기준
+12. [GLOBAL_CSS_BROWSER_SMOKE_CHECKLIST.md](GLOBAL_CSS_BROWSER_SMOKE_CHECKLIST.md) - Issue #512 global CSS desktop/mobile smoke matrix, PASS/NOT_VERIFIED/BLOCKED reporting, fixed-slot requirements
+13. [EDITOR_DETAIL_UI_BROWSER_SMOKE_CHECKLIST.md](EDITOR_DETAIL_UI_BROWSER_SMOKE_CHECKLIST.md) - Issue #521 editor detail UI smoke matrix, fixed-slot/SHA provenance, PASS/NOT_VERIFIED/BLOCKED reporting 기준
+14. [TEST_PREVIEW_SLOTS.md](TEST_PREVIEW_SLOTS.md) - 고정 테스트 Preview 슬롯 운영 기준
+15. [FIXED_SLOT_WORKFLOW_SECRET_SETUP.md](FIXED_SLOT_WORKFLOW_SECRET_SETUP.md) - Issue #684 Deploy fixed test slot workflow의 Cloudflare GitHub Actions secret setup 및 post-secret runtime verification 절차
+16. [DEPLOY_CHECKLIST.md](DEPLOY_CHECKLIST.md) - 배포 전/후 체크리스트
+17. [RUNBOOK.md](RUNBOOK.md) - 운영 / 장애 대응 기준
+18. [MODAL_BROWSE_RUNTIME.md](MODAL_BROWSE_RUNTIME.md) - browse summary의 Modal 우선 read path 기준
+19. [KNOWN_CI_E2E_BLOCKERS.md](KNOWN_CI_E2E_BLOCKERS.md) - 반복 CI/E2E blocker 원인 분리 및 exception merge 판단 기준
+20. [E2E_SMOKE_COVERAGE_POLICY.md](E2E_SMOKE_COVERAGE_POLICY.md) - Issue #413 E2E smoke coverage 분류, CI/manual/Cloudflare Preview/fixed test slot 실행 정책, evidence 기준
+21. [ACTIVE_WORK_BOARD_POLICY.md](ACTIVE_WORK_BOARD_POLICY.md) - Issue #426 병렬 AI/workstation 작업 충돌 방지, active work board 필드, 상태 정의, 중복 prompt 방지, overlap warning 규칙, handoff/report 형식
+22. [SOURCE_OF_TRUTH_HYGIENE_DISPOSITION.md](SOURCE_OF_TRUTH_HYGIENE_DISPOSITION.md) - Issue #425 docs source-of-truth hierarchy, stale-doc classification, update routing, archive and index maintenance rules
+23. [BRANCH_CLEANUP_PLAN.md](BRANCH_CLEANUP_PLAN.md) - merged/stale branch cleanup 후보와 보존 branch 분류 기준
+24. [../migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md](../migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md) - 전환 현황과 남은 과제
+25. [ENV_NAMING_RUNTIME_TERMINOLOGY_AUDIT.md](ENV_NAMING_RUNTIME_TERMINOLOGY_AUDIT.md) - Issue #431 환경변수 명명 및 runtime terminology 감사, NETLIFY_DATABASE_URL 사용 현황, Cloudflare + Modal + Neon active runtime 정리
+26. [LOCAL_FILE_HYGIENE_PG_DEPENDENCY_AUDIT.md](LOCAL_FILE_HYGIENE_PG_DEPENDENCY_AUDIT.md) - Issue #429 local file hygiene 및 pg dependency usage 감사, .local/ tracked-file safety boundary, secret-safe local file handling, Cloudflare Functions vs local script dependency boundary
+27. [OBSERVABILITY_RUNTIME_LOGGING_AUDIT.md](OBSERVABILITY_RUNTIME_LOGGING_AUDIT.md) - Issue #415 observability 및 runtime logging strategy 감사, Cloudflare/Modal/browser 디버깅 경로, redaction-safe logging boundary, follow-up implementation issue plan (A/B/C)
+28. [MODAL_RUNTIME_DIAGNOSTICS_WORKFLOW.md](MODAL_RUNTIME_DIAGNOSTICS_WORKFLOW.md) - Issue #473 Modal runtime diagnostics workflow, Cloudflare ↔ Modal verification 절차, request ID correlation, blocked-state 보고 기준
+29. [FIXED_SLOT_DEPLOY_WITH_WRANGLER.md](FIXED_SLOT_DEPLOY_WITH_WRANGLER.md) - Issue #694 fixed slot Wrangler direct deploy 표준 경로 및 stale asset guardrail
+30. [../engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md](../engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md) - browse filter / publication guard 구분
 
 ---
 
@@ -75,6 +76,7 @@
 | [AGENT_SECURITY.md](AGENT_SECURITY.md) | agent secret handling policy, approved local paths, forbidden value exposure 기준 |
 | [GITHUB_AUTH_TOKEN_USAGE.md](GITHUB_AUTH_TOKEN_USAGE.md) | GitHub CLI/browser login/connector 인증 및 token/credential 취급 기준 |
 | [BROWSER_VERIFICATION_URL_POLICY.md](BROWSER_VERIFICATION_URL_POLICY.md) | 브라우저 smoke URL provenance, PR Preview, Branch Preview, fixed test slot 검증 기준 |
+| [CLOUDFLARE_PREVIEW_PROVENANCE_RUNBOOK.md](CLOUDFLARE_PREVIEW_PROVENANCE_RUNBOOK.md) | Cloudflare Preview/Branch Preview/fixed slot URL provenance, SHA match, malformed/truncated URL handling, safe report template |
 | [GLOBAL_CSS_BROWSER_SMOKE_CHECKLIST.md](GLOBAL_CSS_BROWSER_SMOKE_CHECKLIST.md) | Issue #512 global CSS desktop/mobile smoke matrix, PASS/NOT_VERIFIED/BLOCKED reporting, fixed-slot requirements |
 | [EDITOR_DETAIL_UI_BROWSER_SMOKE_CHECKLIST.md](EDITOR_DETAIL_UI_BROWSER_SMOKE_CHECKLIST.md) | Issue #521 editor detail UI smoke matrix, fixed-slot/SHA provenance, PASS/NOT_VERIFIED/BLOCKED reporting 기준 |
 | [TEST_PREVIEW_SLOTS.md](TEST_PREVIEW_SLOTS.md) | 고정 테스트 Preview 슬롯 운영 기준 |
