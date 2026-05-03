@@ -318,7 +318,16 @@ body .editor-canvas-title h2 {
 }
 
 .editor-rename-btn {
-    display: none !important;
+    display: inline-flex !important;
+    min-height: 32px;
+    padding: 0 11px;
+    margin-top: 2px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.78);
+    border-color: rgba(197,146,128,0.30);
+    color: #9b5f58;
+    font-size: 11px;
+    box-shadow: 0 8px 18px rgba(165,124,101,0.08);
 }
 
 .editor-tree-visibility-pill {
@@ -331,7 +340,7 @@ body .editor-canvas-title h2 {
 
 .editor-title-settings-panel {
     gap: 10px;
-    margin-top: 20px;
+    margin-top: 14px;
 }
 
 .editor-mini-setting-btn {
