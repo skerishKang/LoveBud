@@ -209,7 +209,7 @@
         overscroll-behavior: contain;
         /* Appearance */
         border-radius: 2rem 2rem 0 0;
-        padding: 22px 18px env(safe-area-inset-bottom, 0px);
+        padding: 22px 18px calc(18px + env(safe-area-inset-bottom, 0px));
         /* Preserve desktop gradient bg from preview-sidebar.css — override position only */
         /* Reset sticky/grid props from tablet breakpoint */
         align-self: auto;
@@ -270,6 +270,7 @@
     .preview-panel-header {
         align-items: flex-start;
         gap: 8px;
+        margin-bottom: 14px;
     }
 
     .preview-panel-title-group {
@@ -279,6 +280,53 @@
 
     .preview-panel-header h3 {
         font-size: 1.42rem;
+    }
+
+    .preview-sidebar .video-container {
+        margin-bottom: 16px;
+        border-radius: 1.35rem;
+    }
+
+    .preview-sidebar .preview-panel-title {
+        font-size: 1.04rem;
+        margin-bottom: 10px;
+    }
+
+    .preview-sidebar .preview-panel-desc {
+        font-size: 13px;
+        line-height: 1.55;
+    }
+
+    .preview-sidebar .tree-meta {
+        gap: 8px;
+        margin: 14px 0;
+        padding: 10px;
+    }
+
+    .preview-sidebar .tree-meta-item {
+        flex: 1 1 140px;
+        justify-content: center;
+        min-height: 34px;
+        padding: 0 8px;
+        font-size: 12px;
+    }
+
+    .preview-sidebar .emotion-tags-label {
+        margin-bottom: 10px;
+    }
+
+    .preview-sidebar .preview-panel-emotion-tags {
+        gap: 6px;
+    }
+
+    .preview-sidebar .preview-primary-action {
+        margin-top: 14px !important;
+        min-height: 46px !important;
+    }
+
+    .preview-sidebar .preview-share-action {
+        margin-top: 8px !important;
+        min-height: 42px !important;
     }
 
     .preview-mobile-close {

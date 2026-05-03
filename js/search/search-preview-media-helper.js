@@ -84,7 +84,7 @@
      */
     function renderPreviewThumbnailFallback(title, subtitle) {
         return `
-            <div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;background:linear-gradient(135deg,var(--surface-container-low),white);border-radius:1rem;color:var(--on-surface-variant);">
+            <div class="preview-media-fallback" style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;background:linear-gradient(135deg,var(--surface-container-low),white);border-radius:1rem;color:var(--on-surface-variant);">
                 <span class="material-symbols-outlined" style="font-size:36px;color:var(--primary);margin-bottom:12px;">movie</span>
                 <div style="font-size:14px;font-weight:800;color:var(--on-surface);margin-bottom:8px;">${escapeHtml(title)}</div>
                 <p style="margin:0;font-size:13px;line-height:1.6;">${escapeHtml(subtitle)}</p>
@@ -102,7 +102,7 @@
         );
 
         return `
-            <div style="position:relative;width:100%;height:100%;border-radius:1rem;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.12);">
+            <div class="preview-media-frame preview-media-frame-thumbnail" style="position:relative;width:100%;height:100%;border-radius:1rem;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.12);">
                 <img src="${thumbnailUrl}" alt="${mediaTitle}" loading="lazy" onerror="window.LoveBudSearchPreviewRenderer?.showPreviewImageFallback?.(this)" onload="window.LoveBudSearchPreviewRenderer?.handlePreviewImageLoad?.(this)" style="width:100%;height:100%;object-fit:cover;display:block;">
                 <div data-preview-thumbnail-fallback hidden style="position:absolute;inset:0;">${fallbackHtml}</div>
                 <div data-preview-overlay style="position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.72),rgba(0,0,0,0.04) 58%);"></div>
@@ -170,7 +170,7 @@
         if (!iframeSrc) return '';
 
         return `
-            <div style="position:relative;width:100%;height:100%;border-radius:1rem;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.12);">
+            <div class="preview-media-frame preview-media-frame-iframe" style="position:relative;width:100%;height:100%;border-radius:1rem;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.12);">
                 <iframe width="100%" height="100%"
                     src="${iframeSrc}"
                     title="${escapeHtml(treeTitle)}" frameborder="0"
