@@ -22,6 +22,10 @@ from modal_compute.db import (
     run_db_with_retry,
 )
 from modal_compute.logging import RequestLogger, log_request_event
+from modal_compute.api_response_helpers import (
+    add_request_id_to_response,
+    parse_json_body,
+)
 from modal_compute.validation import (
     _to_isoformat,
     estimate_stage,
@@ -60,13 +64,6 @@ from modal_compute.owner_writes import (
     delete_owner_memory,
     fork_public_tree,
 )
-
-
-def add_request_id_to_response(response: Any, request_id: str | None = None) -> Any:
-    """Add request ID to response headers if available."""
-    if request_id and hasattr(response, 'headers'):
-        response.headers["x-lovebud-request-id"] = request_id
-    return response
 
 
 def _allowed_origins() -> list[str]:
@@ -201,11 +198,8 @@ async def post_private_tree(
     authorization: str | None = Header(default=None),
 ) -> dict:
     user = require_firebase_user(authorization)
-    try:
-        payload = await request.json()
-    except json.JSONDecodeError as error:
-        raise HTTPException(status_code=400, detail="Invalid JSON body") from error
-    return create_owner_tree(user["uid"], payload if isinstance(payload, dict) else {})
+    payload = await parse_json_body(request)
+    return create_owner_tree(user["uid"], payload)
 
 
 @web_app.get("/modal/private/trees/{tree_id}")
@@ -237,11 +231,8 @@ async def put_private_tree(
     authorization: str | None = Header(default=None),
 ) -> dict:
     user = require_firebase_user(authorization)
-    try:
-        payload = await request.json()
-    except json.JSONDecodeError as error:
-        raise HTTPException(status_code=400, detail="Invalid JSON body") from error
-    return update_owner_tree(user["uid"], tree_id, payload if isinstance(payload, dict) else {})
+    payload = await parse_json_body(request)
+    return update_owner_tree(user["uid"], tree_id, payload)
 
 
 @web_app.delete("/modal/private/trees/{tree_id}")
@@ -270,11 +261,8 @@ async def post_private_memory(
     authorization: str | None = Header(default=None),
 ) -> dict:
     user = require_firebase_user(authorization)
-    try:
-        payload = await request.json()
-    except json.JSONDecodeError as error:
-        raise HTTPException(status_code=400, detail="Invalid JSON body") from error
-    return create_owner_memory(user["uid"], payload if isinstance(payload, dict) else {})
+    payload = await parse_json_body(request)
+    return create_owner_memory(user["uid"], payload)
 
 
 @web_app.put("/modal/private/memories/{memory_id}")
@@ -284,11 +272,8 @@ async def put_private_memory(
     authorization: str | None = Header(default=None),
 ) -> dict:
     user = require_firebase_user(authorization)
-    try:
-        payload = await request.json()
-    except json.JSONDecodeError as error:
-        raise HTTPException(status_code=400, detail="Invalid JSON body") from error
-    return update_owner_memory(user["uid"], memory_id, payload if isinstance(payload, dict) else {})
+    payload = await parse_json_body(request)
+    return update_owner_memory(user["uid"], memory_id, payload)
 
 
 @web_app.delete("/modal/private/memories/{memory_id}")
