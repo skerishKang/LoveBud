@@ -1,6 +1,6 @@
 /**
  * LoveBud Search Card Renderer
- * v20260428-1
+ * v20260503-591
  * 
  * Rendering layer: tree cards, empty states.
  * DOM-agnostic - returns HTML strings.
@@ -205,6 +205,7 @@
          const safeTitle = escapeHtml(displayTitleRaw);
          const emotionTag = renderEmotionTags(tree.emotionTags);
          const countLabel = memoryCount > 0 ? `${memoryCount}개의 순간` : '대표 순간 준비 중';
+         const hasDerivedDescription = Boolean(displayTheme || primaryTag);
          const softMoodLine = displayTheme
              ? `${displayTheme}와 함께 시작된 마음`
              : primaryTag
@@ -212,13 +213,16 @@
                  : memoryCount > 0
                      ? '첫 순간에서 이어진 감정을 천천히 따라가 보세요.'
                      : '이제 막 열리기 시작한 공개 러브트리예요.';
+         const subtitleClass = hasDerivedDescription
+             ? 'tree-subtitle tree-subtitle-derived'
+             : 'tree-subtitle tree-subtitle-fallback';
 
          return `
              <div class="tree-card ${index === 0 ? 'tree-card-featured' : ''}" id="tree-card-${safeTreeId}" data-tree-id="${safeTreeId}" style="animation-delay: ${index * 0.05}s;">
                  ${renderRepresentativeMedia(tree, firstMem, displayTitleRaw)}
                  <div class="tree-card-body">
                      <div class="tree-title">${safeTitle}</div>
-                     <p class="tree-subtitle">${escapeHtml(softMoodLine)}</p>
+                     <p class="${subtitleClass}">${escapeHtml(softMoodLine)}</p>
                      <div class="tree-meta-row">
                          <div class="tree-meta-left">
                              <span class="tree-meta-chip">
@@ -381,5 +385,5 @@
         }
     };
 
-     console.log('[LoveBudSearchCardRenderer] Search card renderer loaded v20260428-1');
+    console.log('[LoveBudSearchCardRenderer] Search card renderer loaded v20260503-591');
  })();
