@@ -1,6 +1,6 @@
 /**
  * LoveBud Search Preview Renderer
- * v20260428-1
+ * v20260504-1
  * 
  * Rendering layer: preview sidebar panel.
  * DOM-agnostic - updates passed DOM elements.
@@ -421,8 +421,9 @@
         `;
     }
 
+    // Issue #602: full label preserved in title attribute; label text uses .preview-flow-stage-label for 2-line clamp.
     function renderPathStageBadge(index, title) {
-        return `<span class="preview-flow-stage" style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:var(--surface-container);border-radius:8px;font-size:13px;"><span style="color:var(--primary);font-weight:800;">${index}</span><span>${escapeHtml(title)}</span></span>`;
+        return `<span class="preview-flow-stage" style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:var(--surface-container);border-radius:8px;font-size:13px;"><span style="color:var(--primary);font-weight:800;flex:0 0 auto;">${index}</span><span class="preview-flow-stage-label" title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}">${escapeHtml(title)}</span></span>`;
     }
 
     function renderPathStages(memories, startIndex = 0) {
@@ -795,5 +796,5 @@
         }
     };
 
-    console.log('[LoveBudSearchPreviewRenderer] Search preview renderer loaded v20260428-1');
+    console.log('[LoveBudSearchPreviewRenderer] Search preview renderer loaded v20260504-1');
 })();
