@@ -509,6 +509,13 @@ UI 검증 환경은 `## 3. 현재 서비스 / 인프라 기준`의 **UI 검증 �
 - `docs/ops/SKILL_REGISTRY.md`
 - `docs/ops/AI_REQUEST_PATTERNS.md`
 
+### 테스트 데이터 생성
+- `.windsurf/workflows/tree-moment-creation-guide.md` — 테스트 환경에서 러브트리와 순간을 생성하는 방법
+  - 6개 이상 트리 생성 절차
+  - 유튜브 링크 기반 순간 추가 방법
+  - QA 계정 관리 및 오류 대응
+  - 2025년 데뷔 아이돌 추천 목록
+
 ---
 
 ## 13. 한 줄 요약
