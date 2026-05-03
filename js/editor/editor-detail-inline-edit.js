@@ -127,6 +127,10 @@ function createEditorDetailInlineEditBoundary(deps) {
             hintDiv.className = 'memory-edit-hint';
             hintDiv.textContent = formatI18nText('noteSaveHint', 'Ctrl+Enter로 저장할 수 있어요.');
 
+            const errorMsg = document.createElement('div');
+            errorMsg.className = 'memory-edit-error';
+            errorMsg.setAttribute('role', 'status');
+
             const actions = document.createElement('div');
             actions.className = 'memory-edit-actions';
 
@@ -143,6 +147,7 @@ function createEditorDetailInlineEditBoundary(deps) {
 
             memoContainer.appendChild(textarea);
             memoContainer.appendChild(hintDiv);
+            memoContainer.appendChild(errorMsg);
             memoContainer.appendChild(actions);
 
             textarea.focus();
@@ -155,12 +160,14 @@ function createEditorDetailInlineEditBoundary(deps) {
 
             const saveEdit = async () => {
                 const newMemo = textarea.value.trim();
+                errorMsg.textContent = '';
                 saveBtn.disabled = true;
                 cancelBtn.disabled = true;
                 if (await updateSelectedMemoryFields({ memo: newMemo })) {
                     if (showToast) showToast(formatI18nText('memoryUpdateSaved', '순간을 수정했어요.'), 'success');
                     endEdit();
                 } else {
+                    errorMsg.textContent = formatI18nText('memoryUpdateFailed', '순간을 수정하지 못했어요.');
                     if (showToast) showToast(formatI18nText('memoryUpdateFailed', '순간을 수정하지 못했어요.'), 'error');
                     saveBtn.disabled = false;
                     cancelBtn.disabled = false;
