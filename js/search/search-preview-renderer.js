@@ -540,12 +540,9 @@
             const memoryCountSuffix = getSearchCopy('search.previewMomentCountSuffix', '개의 순간', 'moments');
 
             _dom.previewTitle.innerHTML = `
-                <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
-                    <span style="font-size:2rem;background:var(--surface-container-low);width:48px;height:48px;display:flex;align-items:center;justify-content:center;border-radius:12px;">${getTreeIcon(tree.stage)}</span>
-                    <div>
-                        <div style="font-size:1.1rem;font-weight:800;color:var(--on-surface);line-height:1.3;">${safeTreeTitle}</div>
-                        <div style="font-size:12px;color:var(--on-surface-variant);margin-top:2px;">${tree.memoryCount}${escapeHtml(memoryCountSuffix)} · ${safeTimeRange}</div>
-                    </div>
+                <div style="margin-bottom:12px;">
+                    <div style="font-size:1.18rem;font-weight:900;color:var(--on-surface);line-height:1.25;overflow-wrap:anywhere;">${safeTreeTitle}</div>
+                    <div style="font-size:12px;color:var(--on-surface-variant);margin-top:2px;">${tree.memoryCount}${escapeHtml(memoryCountSuffix)} · ${safeTimeRange}</div>
                 </div>
             `;
         }
