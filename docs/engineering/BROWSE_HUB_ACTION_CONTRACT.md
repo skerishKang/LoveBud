@@ -70,8 +70,8 @@ This document does not implement Browse actions, API behavior, ownership behavio
 
 This document supports the Browse selected hub action issues.
 
-Closes #604
-Closes #605
+Refs #604
+Refs #605
 Refs #594
 Refs #599
 Refs #600
