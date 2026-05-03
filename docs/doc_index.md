@@ -153,7 +153,7 @@ Reference 문서는 `docs/reference/` 아래에 정리됩니다.
 - [AUTH_LOGIN_ACTIVE_PROVIDER_TRANSITION_PLAN.md](./engineering/AUTH_LOGIN_ACTIVE_PROVIDER_TRANSITION_PLAN.md) - Auth/Login active provider transition 단계, file ownership, 금지 조합, fixed test slot 검증 기준
 - [SUPABASE_FREE_POC_PLAN.md](./engineering/SUPABASE_FREE_POC_PLAN.md) - Supabase Free PoC 기반 장기 backend 구조 단순화 검증 계획
 - [REVIEW_GUARDRAILS.md](./engineering/REVIEW_GUARDRAILS.md) - 반복 false positive 방지 규칙
-- [RECENT_REFACTORING.md](./engineering/RECENT_REFACTORING.md) - 최근 리팩터링 기록
+- [RECENT_REFACTORING.md](./engineering/RECENT_REFACTORING.md) - 최근 코드 구조 정리 이력
  - [PUBLIC_TREE_ADAPTER_BOUNDARY_AUDIT.md](./engineering/PUBLIC_TREE_ADAPTER_BOUNDARY_AUDIT.md) - #412 public tree adapter helper boundaries, export contract, loading-order risk, preview implications audit
 
 ## security 문서군
@@ -161,6 +161,8 @@ Reference 문서는 `docs/reference/` 아래에 정리됩니다.
 보안 관련 문서는 `docs/security/` 아래에 정리됩니다.
 
 - [FIREBASE_CLIENT_CONFIG_POLICY.md](./security/FIREBASE_CLIENT_CONFIG_POLICY.md) - Firebase 클라이언트 설정 노출 정책 및 보안 모델
+- [FIREBASE_DEPLOYMENT_SECRET_POSTURE_RUNBOOK.md](./security/FIREBASE_DEPLOYMENT_SECRET_POSTURE_RUNBOOK.md) - Firebase Console, Google Cloud, Modal, Cloudflare, legacy deployment secret posture 검증 런북
+- [FIRESTORE_RULES_HARDENING_PLAN.md](./security/FIRESTORE_RULES_HARDENING_PLAN.md) - Firestore owner/visibility/comment rule hardening staged plan and deployment gate
 
 ## ops 문서군
 
