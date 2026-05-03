@@ -11,6 +11,7 @@
   var SETTINGS_KEY = 'lovebud_user_settings';
   var SETTINGS_LOGIN_REDIRECT_KEY = 'lovebud_settings_login_redirect_at';
   var SETTINGS_AUTH_PENDING_MS = 2000;
+  var SETTINGS_AUTH_RETRY_MS = 500;
   var SETTINGS_REDIRECT_LOOP_WINDOW_MS = 10000;
   var DEFAULT_SETTINGS = {
     defaultVisibility: 'private'
@@ -223,6 +224,7 @@
   var settingsRedirected = false;
   var settingsAuthRedirectTimer = null;
   var settingsAuthenticatedEntry = false;
+  var settingsAuthWaitStartedAt = 0;
 
   function getSettingsLoginHref() {
     var returnTo = '';
@@ -241,7 +243,7 @@
 
   function redirectToLogin() {
     if (settingsRedirected) return;
-    if (settingsAuthenticatedEntry || settingsStarted || hasAnyAuthEvidence()) {
+    if (settingsAuthenticatedEntry || settingsStarted || hasAnyAuthEvidence() || isSettingsAuthStillPending()) {
       return;
     }
     settingsRedirected = true;
@@ -266,6 +268,7 @@
     try {
       sessionStorage.removeItem(SETTINGS_LOGIN_REDIRECT_KEY);
     } catch (e) {}
+    settingsAuthWaitStartedAt = 0;
   }
 
   function startSettings() {
@@ -323,19 +326,33 @@
     return null;
   }
 
-  function getBootstrapSnapshotUser() {
+  function getBootstrapSnapshot() {
     try {
       if (
         window.LoveBudAuthBootstrap &&
         typeof window.LoveBudAuthBootstrap.getSnapshot === 'function'
       ) {
-        var snapshot = window.LoveBudAuthBootstrap.getSnapshot();
-        if (snapshot && snapshot.user && snapshot.user.uid) {
-          return snapshot.user;
-        }
+        return window.LoveBudAuthBootstrap.getSnapshot();
       }
     } catch (e) {}
     return null;
+  }
+
+  function getBootstrapSnapshotUser() {
+    var snapshot = getBootstrapSnapshot();
+    if (snapshot && snapshot.user && snapshot.user.uid) {
+      return snapshot.user;
+    }
+    return null;
+  }
+
+  function getAuthReadyFlagKey() {
+    try {
+      if (window.LoveBudAuthState && window.LoveBudAuthState.AUTH_READY_FLAG) {
+        return window.LoveBudAuthState.AUTH_READY_FLAG;
+      }
+    } catch (e) {}
+    return '__lovebudAuthReady';
   }
 
   function normalizeAuthUser(result) {
@@ -350,6 +367,39 @@
       getBootstrapSnapshotUser() ||
       getConfirmedSessionUser()
     );
+  }
+
+  function getSettingsAuthMaxWaitMs() {
+    var authWaitMs = 8000;
+    try {
+      if (typeof window.__LOVEBUD_AUTH_WAIT_MS === 'number' && window.__LOVEBUD_AUTH_WAIT_MS > 0) {
+        authWaitMs = window.__LOVEBUD_AUTH_WAIT_MS;
+      }
+    } catch (e) {}
+    return Math.max(SETTINGS_REDIRECT_LOOP_WINDOW_MS, authWaitMs + SETTINGS_AUTH_PENDING_MS);
+  }
+
+  function isSettingsAuthStillPending() {
+    if (hasAnyAuthEvidence()) {
+      return false;
+    }
+
+    var snapshot = getBootstrapSnapshot();
+    if (snapshot && snapshot.ready) {
+      return false;
+    }
+
+    try {
+      if (window[getAuthReadyFlagKey()]) {
+        return false;
+      }
+    } catch (e) {}
+
+    if (!settingsAuthWaitStartedAt) {
+      return true;
+    }
+
+    return Date.now() - settingsAuthWaitStartedAt < getSettingsAuthMaxWaitMs();
   }
 
   function handleSettingsAuthUser(result) {
@@ -376,6 +426,10 @@
       return;
     }
 
+    if (!settingsAuthWaitStartedAt) {
+      settingsAuthWaitStartedAt = Date.now();
+    }
+
     var delayMs = SETTINGS_AUTH_PENDING_MS;
     var recentRedirectAge = getRecentSettingsLoginRedirectAge();
     if (recentRedirectAge < SETTINGS_REDIRECT_LOOP_WINDOW_MS) {
@@ -399,8 +453,13 @@
         return;
       }
 
+      if (isSettingsAuthStillPending()) {
+        waitForSettledLogoutBeforeRedirect();
+        return;
+      }
+
       redirectToLogin();
-    }, delayMs);
+    }, Math.min(delayMs, SETTINGS_AUTH_RETRY_MS));
   }
 
   function initSettings() {

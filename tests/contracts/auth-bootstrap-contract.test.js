@@ -134,12 +134,17 @@ test('settings auth guard waits before redirecting provisional null auth state',
   const source = readRepoFile('js/settings.js');
 
   assert.match(source, /SETTINGS_AUTH_PENDING_MS/, 'settings guard must keep an auth pending window before redirect');
+  assert.match(source, /SETTINGS_AUTH_RETRY_MS/, 'settings guard must poll while auth is still settling');
   assert.match(source, /SETTINGS_LOGIN_REDIRECT_KEY/, 'settings guard must mark settings-to-login redirects for loop detection');
   assert.match(source, /getCurrentFirebaseUser/, 'settings guard must re-check current Firebase user before redirect');
   assert.match(source, /getBootstrapSnapshotUser/, 'settings guard must re-check bootstrap user before redirect');
+  assert.match(source, /getBootstrapSnapshot/, 'settings guard must inspect bootstrap ready state before redirect');
+  assert.match(source, /getAuthReadyFlagKey/, 'settings guard must inspect the shared auth ready flag before redirect');
   assert.match(source, /settingsAuthenticatedEntry/, 'settings guard must remember authenticated settings entry');
+  assert.match(source, /settingsAuthWaitStartedAt/, 'settings guard must track the pending auth wait window');
   assert.match(source, /clearTimeout\(settingsAuthRedirectTimer\)/, 'settings guard must cancel delayed redirects after settings starts');
-  assert.match(source, /settingsAuthenticatedEntry\s*\|\|\s*settingsStarted\s*\|\|\s*hasAnyAuthEvidence\(\)/, 'settings guard must re-check stable auth evidence before redirecting');
+  assert.match(source, /settingsAuthenticatedEntry\s*\|\|\s*settingsStarted\s*\|\|\s*hasAnyAuthEvidence\(\)\s*\|\|\s*isSettingsAuthStillPending\(\)/, 'settings guard must re-check stable auth evidence before redirecting');
+  assert.match(source, /isSettingsAuthStillPending/, 'settings guard must not redirect before auth bootstrap settles');
   assert.match(source, /waitForSettledLogoutBeforeRedirect/, 'settings guard must route null auth through settled-logout confirmation');
   assert.match(
     source,
@@ -148,7 +153,7 @@ test('settings auth guard waits before redirecting provisional null auth state',
   );
   assert.match(
     source,
-    /settledUser[\s\S]*startSettings\(\)[\s\S]*redirectToLogin\(\)/,
+    /settledUser[\s\S]*startSettings\(\)[\s\S]*isSettingsAuthStillPending\(\)[\s\S]*redirectToLogin\(\)/,
     'settings guard must start settings for a settled user and redirect only after no user evidence remains'
   );
 });
