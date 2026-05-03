@@ -20,6 +20,7 @@
 | [PUBLICATION_AND_PRIVACY_UX_POLICY.md](PUBLICATION_AND_PRIVACY_UX_POLICY.md) | public-first visibility, Plus private storage, memory visibility inheritance, anonymous public exposure, Browse/Search eligibility 정책 |
 | [PUBLIC_DEFAULT_VISIBILITY_AUDIT_PLAN.md](PUBLIC_DEFAULT_VISIBILITY_AUDIT_PLAN.md) | public-by-default 정책과 private entitlement 이전 visibility mismatch를 안전하게 audit/backfill 판단하기 위한 count-only 계획 |
 | [BROWSE_POPULAR_SORT_SEMANTICS.md](BROWSE_POPULAR_SORT_SEMANTICS.md) | Browse `popular` sort의 현재 memory-count proxy 의미와 v0.1 표시 정책 방향 |
+| [TREE_MOMENT_SOCIAL_MODEL.md](TREE_MOMENT_SOCIAL_MODEL.md) | public LoveTree의 tree-level / moment-level comments, reactions, permissions, moderation, phased implementation 모델 |
 | [MOMENT_TIMELINE_PLAN.md](MOMENT_TIMELINE_PLAN.md) | cue-based YouTube Moment Timeline 제품/기술 계획 |
 | [YOUTUBE_SEGMENT_PLAYER_POC_SCOPE.md](YOUTUBE_SEGMENT_PLAYER_POC_SCOPE.md) | cue-based YouTube segment player PoC scope and Go/No-Go criteria |
 | [YOUTUBE_SEGMENT_PLAYER_POC_TEST_MATRIX.md](YOUTUBE_SEGMENT_PLAYER_POC_TEST_MATRIX.md) | YouTube segment player PoC test matrix and browser verification requirements |
@@ -27,7 +28,7 @@
 | [YOUTUBE_SEGMENT_PLAYER_POC_BROWSER_VERIFICATION.md](YOUTUBE_SEGMENT_PLAYER_POC_BROWSER_VERIFICATION.md) | Browser verification evidence and feasibility decision for the YouTube segment player PoC |
 | [MOMENT_CAPTURE_UI_DESIGN.md](MOMENT_CAPTURE_UI_DESIGN.md) | Moment capture UI flow design |
 | [MOMENT_TIMELINE_REORDER_DESIGN.md](MOMENT_TIMELINE_REORDER_DESIGN.md) | Moment Timeline reorder / sequence editor design |
-| [UI_COPY_DIET_GUIDE.md](UI_COPY_DIET_GUIDE.md) | 전역 UI 카피 다이어트 운영 기준 |
+| [UI_COPY_DIET_GUIDE.md](UI_COPY_DIET_GUIDE.md) | 전역 UI 카피 다이어트 기준 |
 | [MVP_SCOPE.md](MVP_SCOPE.md) | MVP 범위 및 포함/제외 항목 |
 | [USER_FLOW.md](USER_FLOW.md) | 주요 사용자 여정 및 플로우 |
 | [PRODUCT_BRIEF.md](PRODUCT_BRIEF.md) | 현재 실행 기준 제품 개요 |
@@ -52,6 +53,15 @@
 - private tree 아래 public memory가 가능하더라도 Browse/Search, community memories list, public memory detail read 노출은 parent tree visibility guard를 함께 봅니다.
 - owner/private read는 private access policy에 따라 private tree 아래 public/private memory를 조회할 수 있습니다.
 
+## Social model highlights
+
+public LoveTree social surfaces are planned as two distinct scopes:
+
+- tree-level discussion/reactions for the full public LoveTree;
+- moment-level discussion/reactions for a specific public moment/node.
+
+The two scopes should not be merged into one ambiguous count or comment surface. Public reads must inherit parent tree and target moment visibility boundaries.
+
 ## 원천 자료 (Identity Source)
 
 제품 정체성의 기반이 된 인터뷰 및 콘셉트 원본 문서:
@@ -70,18 +80,19 @@
 3. **PUBLICATION_AND_PRIVACY_UX_POLICY.md** — public-first visibility / Plus private storage / anonymous public exposure / Browse/Search eligibility 정책
 4. **PUBLIC_DEFAULT_VISIBILITY_AUDIT_PLAN.md** — public-by-default 정책 alignment와 private entitlement 이전 visibility mismatch audit/backfill gate
 5. **BROWSE_POPULAR_SORT_SEMANTICS.md** — Browse `popular` sort의 현재 의미와 v0.1 표시 정책 방향
-6.  **MOMENT_TIMELINE_PLAN.md** — cue-based Moment Timeline 계획
-7.  **YOUTUBE_SEGMENT_PLAYER_POC_SCOPE.md** — YouTube segment player PoC scope and verification criteria
-8.  **YOUTUBE_SEGMENT_PLAYER_POC_TEST_MATRIX.md** — YouTube segment player PoC test matrix and browser verification requirements
-9.  **YOUTUBE_SEGMENT_PLAYER_POC_RUNTIME_NOTES.md** — YouTube segment player PoC runtime observations and limitations
-10.  **YOUTUBE_SEGMENT_PLAYER_POC_BROWSER_VERIFICATION.md** — YouTube segment player PoC browser verification evidence and feasibility decision
-11.  **MOMENT_CAPTURE_UI_DESIGN.md** — Moment capture UI flow 설계
-12. **MOMENT_TIMELINE_REORDER_DESIGN.md** — Moment Timeline reorder / sequence editor 설계
-13. **UI_COPY_DIET_GUIDE.md** — 전역 UI 카피 다이어트 기준
-14. **MVP_SCOPE.md** — MVP 범위 및 In/Out of Scope
-15. **USER_FLOW.md** — 사용자 여정 및 핵심 플로우
-16. **PRODUCT_BRIEF.md** — 현재 실행 기준 요약
-17. 필요시 DATA_NAMING_RULE.md, READONLY_SHARE_SCOPE.md
+6. **TREE_MOMENT_SOCIAL_MODEL.md** — tree-level / moment-level social scope, permissions, moderation, data model planning
+7.  **MOMENT_TIMELINE_PLAN.md** — cue-based Moment Timeline 계획
+8.  **YOUTUBE_SEGMENT_PLAYER_POC_SCOPE.md** — YouTube segment player PoC scope and verification criteria
+9.  **YOUTUBE_SEGMENT_PLAYER_POC_TEST_MATRIX.md** — YouTube segment player PoC test matrix and browser verification requirements
+10.  **YOUTUBE_SEGMENT_PLAYER_POC_RUNTIME_NOTES.md** — YouTube segment player PoC runtime observations and limitations
+11.  **YOUTUBE_SEGMENT_PLAYER_POC_BROWSER_VERIFICATION.md** — YouTube segment player PoC browser verification evidence and feasibility decision
+12.  **MOMENT_CAPTURE_UI_DESIGN.md** — Moment capture UI flow 설계
+13. **MOMENT_TIMELINE_REORDER_DESIGN.md** — Moment Timeline reorder / sequence editor 설계
+14. **UI_COPY_DIET_GUIDE.md** — 전역 UI 카피 다이어트 기준
+15. **MVP_SCOPE.md** — MVP 범위 및 In/Out of Scope
+16. **USER_FLOW.md** — 사용자 여정 및 핵심 플로우
+17. **PRODUCT_BRIEF.md** — 현재 실행 기준 요약
+18. 필요시 DATA_NAMING_RULE.md, READONLY_SHARE_SCOPE.md
 
 ## 참조
 - 전체 문서 인덱스: `../doc_index.md`
