@@ -229,6 +229,38 @@ function clearConfirmedAuthCache() { __authCacheBridge.clearConfirmedAuthCache()
 function getCachedAuthToken() { return __authCacheBridge.getCachedAuthToken(); }
 async function persistConfirmedAuthSession(user) { await __authCacheBridge.persistConfirmedAuthSession(user); }
 
+var __authProtectedRouteBridge = __authFirebaseModule &&
+  typeof __authFirebaseModule.createProtectedRouteBridge === 'function'
+  ? __authFirebaseModule.createProtectedRouteBridge({
+      resolveEmailAuthMode: resolveEmailAuthMode,
+      setupLoginPageAuthUi: setupLoginPageAuthUi,
+      applyCachedAuthState: applyCachedAuthState,
+      markAuthLoading: markAuthLoading,
+      markAuthReady: markAuthReady,
+      initOfflineAuth: initOfflineAuth,
+      attachDropdownListener: attachDropdownListener,
+      persistConfirmedAuthSession: persistConfirmedAuthSession,
+      updateNavUI: updateNavUI,
+      fireAuthReadyCallbacks: fireAuthReadyCallbacks,
+      resolveAuthBootstrap: resolveAuthBootstrap,
+      isInvalidAuthSessionError: isInvalidAuthSessionError,
+      clearStaleFirebaseAuthState: clearStaleFirebaseAuthState,
+      clearConfirmedAuthCache: clearConfirmedAuthCache,
+      setupGoogleBtn: setupGoogleBtn,
+      setupEmailAuthForm: setupEmailAuthForm,
+      setupSignupForm: setupSignupForm,
+      setupSignupGoogleBtn: setupSignupGoogleBtn,
+      authInitFlag: AUTH_INIT_FLAG,
+      authReadyFlag: AUTH_READY_FLAG,
+      isLoginPage: isLoginPage,
+      getCachedAuthUser: getCachedAuthUser,
+      buildUserDropdown: buildUserDropdown,
+      getEnvironmentCheckError: getEnvironmentCheckError,
+      preloadRedirectTargetData: preloadRedirectTargetData,
+      getRedirectTarget: getRedirectTarget
+    })
+  : null;
+
 // ── Preload redirect target data after login ────────────────────────────────────
 function preloadRedirectTargetData() {
   if (__authSessionModule) {
@@ -295,55 +327,24 @@ function preloadRedirectTargetData() {
 }
 
 function applyCachedAuthState() {
-  if (__authFirebaseModule && typeof __authFirebaseModule.applyCachedAuthState === 'function') {
-    return __authFirebaseModule.applyCachedAuthState({
-      isLoginPage: isLoginPage,
-      getCachedAuthUser: getCachedAuthUser,
-      buildUserDropdown: buildUserDropdown
-    });
+  if (__authProtectedRouteBridge) {
+    return __authProtectedRouteBridge.applyCachedAuthState();
   }
   return false;
 }
 
 function initAuth() {
-  if (!__authFirebaseModule || typeof __authFirebaseModule.initAuth !== 'function') {
-    console.warn('Auth Firebase boundary not loaded. Auth running in offline mode.');
-    initOfflineAuth();
+  if (__authProtectedRouteBridge) {
+    __authProtectedRouteBridge.initAuth();
     return;
   }
-  __authFirebaseModule.initAuth({
-    resolveEmailAuthMode: resolveEmailAuthMode,
-    setupLoginPageAuthUi: setupLoginPageAuthUi,
-    applyCachedAuthState: applyCachedAuthState,
-    markAuthLoading: markAuthLoading,
-    markAuthReady: markAuthReady,
-    initOfflineAuth: initOfflineAuth,
-    attachDropdownListener: attachDropdownListener,
-    persistConfirmedAuthSession: persistConfirmedAuthSession,
-    updateNavUI: updateNavUI,
-    fireAuthReadyCallbacks: fireAuthReadyCallbacks,
-    resolveAuthBootstrap: resolveAuthBootstrap,
-    isInvalidAuthSessionError: isInvalidAuthSessionError,
-    clearStaleFirebaseAuthState: clearStaleFirebaseAuthState,
-    clearConfirmedAuthCache: clearConfirmedAuthCache,
-    setupGoogleBtn: setupGoogleBtn,
-    setupEmailAuthForm: setupEmailAuthForm,
-    setupSignupForm: setupSignupForm,
-    setupSignupGoogleBtn: setupSignupGoogleBtn,
-    authInitFlag: AUTH_INIT_FLAG,
-    authReadyFlag: AUTH_READY_FLAG
-  });
+  console.warn('Auth Firebase boundary not loaded. Auth running in offline mode.');
+  initOfflineAuth();
 }
 
 function initOfflineAuth() {
-  if (__authFirebaseModule && typeof __authFirebaseModule.initOfflineAuth === 'function') {
-    __authFirebaseModule.initOfflineAuth({
-      markAuthReady: markAuthReady,
-      updateNavUI: updateNavUI,
-      getCachedAuthUser: getCachedAuthUser,
-      resolveAuthBootstrap: resolveAuthBootstrap,
-      fireAuthReadyCallbacks: fireAuthReadyCallbacks
-    });
+  if (__authProtectedRouteBridge) {
+    __authProtectedRouteBridge.initOfflineAuth();
     return;
   }
   markAuthReady();
@@ -622,25 +623,8 @@ function getRedirectTarget() {
  * Returns null if supported, or error message string if not.
  */
 function getEnvironmentCheckError() {
+  if (__authProtectedRouteBridge) return __authProtectedRouteBridge.getEnvironmentCheckError();
   if (__authFirebaseModule) return __authFirebaseModule.getEnvironmentCheckError();
-  var protocol = window.location.protocol || '';
-  // Check file:// protocol
-  if (protocol === 'file:') {
-    return '이 페이지는 파일:// 프로토콜에서 열 수 없습니다. http:// 또는 https:// 주소에서 접근해 주세요.';
-  }
-  // Check web storage availability
-  try {
-    var testKey = '__lovebud_storage_test__';
-    localStorage.setItem(testKey, testKey);
-    localStorage.removeItem(testKey);
-  } catch (e) {
-    return '브라우저 저장소(storage)가 비활성화되어 있습니다. 쿠키/저장소를 허용한 후 다시 시도해 주세요.';
-  }
-  // Check https requirement for some browsers
-  if (protocol === 'http:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-    // Allow http on localhost for dev, warn otherwise
-    console.warn('[auth] Running on http:// - some features may be restricted');
-  }
   return null;
 }
 
@@ -649,62 +633,18 @@ function getEnvironmentCheckError() {
  * Original error is logged to console for developers.
  */
 function getFriendlyErrorMessage(error, isGoogleLogin) {
+  if (__authProtectedRouteBridge) return __authProtectedRouteBridge.getFriendlyErrorMessage(error, isGoogleLogin);
   if (__authFirebaseModule) return __authFirebaseModule.getFriendlyErrorMessage(error, isGoogleLogin);
   if (!error) return '알 수 없는 오류가 발생했습니다.';
-  var code = error.code || '';
-  var message = error.message || '';
-  // Log full error for devs
   console.error('Auth error (developer only):', error);
-
-  // Environment-related errors
-  if (message.indexOf('location.protocol') !== -1 || message.indexOf('not supported in the environment') !== -1) {
-    return '이 브라우저 환경에서는 로그인할 수 없습니다. http:// 또는 https:// 주소(localhost 가능)에서 다시 시도해 주세요.';
-  }
-  if (message.indexOf('web storage') !== -1 || message.indexOf('storage') !== -1) {
-    return '브라우저 저장소(storage)가 비활성화되어 있습니다. 쿠키와 저장소를 허용한 후 다시 시도해 주세요.';
-  }
-
-   // Common auth errors
-   switch (code) {
-     case 'auth/popup-closed-by-user':
-       return null; // User cancelled, no message needed
-     case 'auth/cancelled-popup-request':
-       return '로그인이 취소되었습니다.';
-     case 'auth/popup-blocked':
-       return '브라우저가 로그인 팝업을 차단했습니다. 팝업 허용 후 다시 시도해 주세요.';
-     case 'auth/web-storage-unsupported':
-       return '브라우저 저장소를 사용할 수 없어 로그인할 수 없습니다. 시크릿 모드/보안 설정을 확인해 주세요.';
-     case 'auth/unauthorized-domain':
-       return '현재 도메인이 Firebase 인증 허용 도메인에 등록되지 않았습니다.';
-     case 'auth/account-exists-with-different-credential':
-       return '이미 다른 방법으로 가입된 계정이 있습니다.';
-     case 'auth/credential-already-in-use':
-       return '이미 사용 중인Credential입니다.';
-     case 'auth/email-already-in-use':
-       return '이미 사용 중인 이메일 주소입니다.';
-     case 'auth/user-disabled':
-       return '비활성화된 계정입니다. 관리자에게 문의해 주세요.';
-     case 'auth/user-not-found':
-       return '가입되지 않은 이메일 주소입니다.';
-     case 'auth/wrong-password':
-       return '비밀번호가 올바르지 않습니다.';
-     case 'auth/invalid-email':
-       return '유효하지 않은 이메일 주소입니다.';
-     case 'auth/operation-not-allowed':
-       return '이 로그인 방법은 사용할 수 없습니다.';
-     case 'auth/requires-recent-login':
-       return '보안을 위해 다시 로그인해 주세요.';
-     case 'auth/too-many-requests':
-       return '시도 횟수 초과. 잠시 후 다시 시도해 주세요.';
-     case 'auth/network-request-failed':
-       return '네트워크 연결을 확인해 주세요.';
-     default:
-       // Generic fallback - don't expose raw message
-       return '로그인에 실패했습니다. 다시 시도해 주세요.';
-   }
+  return '로그인에 실패했습니다. 다시 시도해 주세요.';
 }
 
 async function signInWithGoogle() {
+  if (__authProtectedRouteBridge) {
+    await __authProtectedRouteBridge.signInWithGoogle();
+    return;
+  }
   if (__authFirebaseModule) {
     await __authFirebaseModule.signInWithGoogle({
       getEnvironmentCheckError: getEnvironmentCheckError,
@@ -715,7 +655,6 @@ async function signInWithGoogle() {
     });
     return;
   }
-  // Environment check first
   var envError = getEnvironmentCheckError();
   if (envError) {
     alert(envError);
@@ -730,54 +669,15 @@ async function signInWithGoogle() {
     alert('로그인 시스템을 초기화할 수 없습니다. 페이지를 새로고침해 주세요.');
     return;
   }
-
-  var provider = new firebase.auth.GoogleAuthProvider();
-  try { provider.setCustomParameters({ prompt: 'select_account' }); } catch (e) {}
-
-  var loginPage = isLoginPage();
-
-  try {
-    var authResult = await firebase.auth().signInWithPopup(provider);
-    // 세션 캐시 저장 및 redirect target 데이터 preload (비동기, 실패 무시)
-    await persistConfirmedAuthSession(authResult && authResult.user ? authResult.user : firebase.auth().currentUser);
-    preloadRedirectTargetData();
-    window.location.href = getRedirectTarget();
-  } catch (error) {
-    console.error('Google login failed:', error);
-
-    var popupFallbackCodes = {
-      'auth/popup-blocked': true,
-      'auth/web-storage-unsupported': true,
-      'auth/cancelled-popup-request': true
-    };
-
-    var shouldTryRedirectFallback =
-      loginPage &&
-      popupFallbackCodes[error && error.code];
-
-    if (shouldTryRedirectFallback) {
-      try {
-        alert('팝업 로그인에 실패해 리디렉션 방식으로 다시 시도합니다.');
-        await firebase.auth().signInWithRedirect(provider);
-        return;
-      } catch (redirectError) {
-        console.error('Google redirect fallback failed:', redirectError);
-        var redirectMessage = getFriendlyErrorMessage(redirectError, true);
-        if (redirectMessage) {
-          alert(redirectMessage);
-        }
-        return;
-      }
-    }
-
-    var friendlyMessage = getFriendlyErrorMessage(error, true);
-    if (friendlyMessage) {
-      alert(friendlyMessage);
-    }
-  }
+  console.error('Auth Firebase boundary not loaded before signInWithGoogle.');
+  alert('로그인 시스템을 초기화할 수 없습니다. 페이지를 새로고침해 주세요.');
 }
 
 async function signOut() {
+  if (__authProtectedRouteBridge) {
+    await __authProtectedRouteBridge.signOut();
+    return;
+  }
   if (__authFirebaseModule) {
     await __authFirebaseModule.signOut({
       clearStaleFirebaseAuthState: clearStaleFirebaseAuthState,

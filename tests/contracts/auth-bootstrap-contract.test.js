@@ -233,6 +233,32 @@ test('root auth preserves LoveBudLoginPageController as primary for UI-only meth
   }
 });
 
+test('root auth delegates protected route bridge through auth firebase boundary', () => {
+  const source = readRepoFile('js/auth.js');
+  const firebaseSource = readRepoFile('js/auth/auth-firebase.js');
+
+  assert.match(
+    firebaseSource,
+    /createProtectedRouteBridge/,
+    'auth firebase boundary must expose protected route bridge factory'
+  );
+  assert.match(
+    source,
+    /__authProtectedRouteBridge/,
+    'root auth must keep a protected route bridge handle'
+  );
+  assert.match(
+    source,
+    /createProtectedRouteBridge\s*\(/,
+    'root auth must create the protected route bridge from LoveBudAuthFirebase'
+  );
+  assert.match(
+    firebaseSource,
+    /signInWithGoogle[\s\S]*persistConfirmedAuthSession[\s\S]*preloadRedirectTargetData[\s\S]*getRedirectTarget/,
+    'protected route bridge must preserve login session, preload, and redirect dependencies'
+  );
+});
+
 test('auth firebase fallback keeps protected-route-aware offline behavior', () => {
   const source = readRepoFile('js/auth/auth-firebase.js');
 
