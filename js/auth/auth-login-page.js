@@ -111,6 +111,29 @@
     }
   }
 
+  var EMAIL_AUTH_EXECUTION_METHODS = {
+    setupEmailAuthForm: true,
+    setupSignupForm: true
+  };
+
+  function getLoginPageModule(methodName) {
+    if (methodName && EMAIL_AUTH_EXECUTION_METHODS[methodName]) {
+      if (window.LoveBudAuthLoginPage) return window.LoveBudAuthLoginPage;
+      return null;
+    }
+    if (window.LoveBudLoginPageController) return window.LoveBudLoginPageController;
+    return window.LoveBudAuthLoginPage || null;
+  }
+
+  function callLoginPageModule(methodName, args) {
+    var loginPageModule = getLoginPageModule(methodName);
+    if (!loginPageModule || typeof loginPageModule[methodName] !== 'function') {
+      return false;
+    }
+    loginPageModule[methodName].apply(loginPageModule, args || []);
+    return true;
+  }
+
   function setupLoginPageAuthUi(options) {
     var isLoginPage = options && options.isLoginPage;
     var resolveEmailAuthMode = options && options.resolveEmailAuthMode;
@@ -429,6 +452,8 @@
   }
 
   window.LoveBudAuthLoginPage = {
+    getLoginPageModule: getLoginPageModule,
+    callLoginPageModule: callLoginPageModule,
     syncEmailAuthModeUi: syncEmailAuthModeUi,
     setupLoginPageAuthUi: setupLoginPageAuthUi,
     setupGoogleBtn: setupGoogleBtn,
