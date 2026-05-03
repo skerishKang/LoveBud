@@ -23,6 +23,7 @@ function createEditorCanvas(deps) {
     const canvasNode = window.LoveBudEditorCanvasNode || {};
     const canvasInteraction = window.LoveBudEditorCanvasInteraction || {};
     const canvasViewport = window.LoveBudEditorCanvasViewport || {};
+    const canvasLayoutHelpers = window.LoveBudEditorCanvasLayoutHelpers || {};
     const canvasEdges = window.createEditorCanvasEdges({ svg, canvasViewport });
 
     function loadStoredLayout() {
@@ -83,6 +84,7 @@ function createEditorCanvas(deps) {
     const AFFORDANCE_OFFSET_X = 168;
     const AFFORDANCE_OFFSET_Y = 10;
     const AFFORDANCE_CARD_HALF = 108;
+    const layoutHelperConstants = { ROOT_RIGHT_GUTTER, ROOT_BOTTOM_GUTTER };
 
     function persistStoredPositions() {
         if (typeof canvasLayout.createLayoutStore === 'function') {
@@ -101,40 +103,23 @@ function createEditorCanvas(deps) {
     }
 
     function getMetrics() {
-        return {
-            width: Math.max(canvas.clientWidth || 0, 720),
-            height: Math.max(canvas.clientHeight || 0, 520)
-        };
+        return canvasLayoutHelpers.getMetrics(canvas);
     }
 
     function getRootBasePosition() {
-        const metrics = getMetrics();
-        return {
-            x: Math.max(360, Math.min(Math.round(metrics.width * 0.42), metrics.width - ROOT_RIGHT_GUTTER)),
-            y: Math.max(260, Math.min(Math.round(metrics.height * 0.48), metrics.height - ROOT_BOTTOM_GUTTER))
-        };
+        return canvasLayoutHelpers.getRootBasePosition(getMetrics(), layoutHelperConstants);
     }
 
     function getRadiusL1() {
-        const metrics = getMetrics();
-        return Math.max(180, Math.min(250, Math.round(metrics.width * 0.20)));
+        return canvasLayoutHelpers.getRadiusL1(getMetrics());
     }
 
     function getRadiusL2() {
-        const metrics = getMetrics();
-        return Math.max(130, Math.min(190, Math.round(metrics.width * 0.14)));
+        return canvasLayoutHelpers.getRadiusL2(getMetrics());
     }
 
     function distributeAngles(count, baseAngle = -10) {
-        if (count <= 0) return [baseAngle];
-        if (count === 1) return [baseAngle];
-
-        const totalSpread = Math.min(220, Math.max(90, (count - 1) * 36));
-        const startAngle = baseAngle - totalSpread / 2;
-
-        return Array.from({ length: count }, (_, i) => {
-            return startAngle + (totalSpread * i / (count - 1));
-        });
+        return canvasLayoutHelpers.distributeAngles(count, baseAngle);
     }
 
     function getWorldPosition(mem, visited = new Set()) {
@@ -173,10 +158,7 @@ function createEditorCanvas(deps) {
             const angle = angles[idx] !== undefined ? angles[idx] : -10;
             const rootBase = getRootBasePosition();
             const radius = getRadiusL1();
-            return {
-                x: rootBase.x + radius * Math.cos(angle * Math.PI / 180),
-                y: rootBase.y + radius * Math.sin(angle * Math.PI / 180)
-            };
+            return canvasLayoutHelpers.offsetByAngle(rootBase, radius, angle);
         }
 
         const parent = treeMemories.find((m) => m.id === parentId);
@@ -185,10 +167,7 @@ function createEditorCanvas(deps) {
         const childAngle = childAngles[idx] !== undefined ? childAngles[idx] : 0;
         const radius = getRadiusL2();
 
-        return {
-            x: parentPos.x + radius * Math.cos(childAngle * Math.PI / 180),
-            y: parentPos.y + radius * Math.sin(childAngle * Math.PI / 180)
-        };
+        return canvasLayoutHelpers.offsetByAngle(parentPos, radius, childAngle);
     }
 
     const calcPosition = (mem) => {
