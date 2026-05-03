@@ -139,7 +139,7 @@
             'Open this tree'
         );
         return `
-            <a href="${escapeHtml(href)}" class="btn-round btn-primary" style="width:100%;margin-top:18px;min-height:50px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;font-size:14px;font-weight:800;gap:8px;">
+            <a href="${escapeHtml(href)}" class="btn-round btn-primary preview-primary-action" style="width:100%;margin-top:18px;min-height:50px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;font-size:14px;font-weight:800;gap:8px;">
                 <span class="material-symbols-outlined" style="font-size:18px;">play_circle</span>
                 ${escapeHtml(label)}
             </a>
@@ -158,7 +158,7 @@
             'Copy view link'
         );
         return `
-            <button type="button" data-share-tree-link="${escapeHtml(tree.id)}" class="btn-round" style="width:100%;margin-top:12px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;gap:6px;background:var(--surface-container);color:var(--on-surface-variant);border:1px solid var(--outline-variant);">
+            <button type="button" data-share-tree-link="${escapeHtml(tree.id)}" class="btn-round preview-share-action" style="width:100%;margin-top:12px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;gap:6px;background:var(--surface-container);color:var(--on-surface-variant);border:1px solid var(--outline-variant);">
                 <span class="material-symbols-outlined" style="font-size:16px;">link</span>
                 <span data-share-tree-link-label>${escapeHtml(label)}</span>
             </button>
@@ -169,6 +169,25 @@
 
     function init(domRefs) {
         _dom = domRefs;
+    }
+
+    function setPreviewState(state) {
+        const previewContainer = _dom?.previewContainer;
+        const previewSidebar = document.getElementById('previewSidebar');
+        const stateClassNames = [
+            'preview-state-empty',
+            'preview-state-loading',
+            'preview-state-no-moments',
+            'preview-state-media',
+            'preview-state-thumbnail'
+        ];
+
+        [previewContainer, previewSidebar].forEach((element) => {
+            if (!element) return;
+            element.classList.remove(...stateClassNames);
+            element.classList.add(`preview-state-${state}`);
+            element.dataset.previewState = state;
+        });
     }
 
     function getTreeIcon(stage) {
@@ -358,6 +377,7 @@
             : (String(tree?.title || '').trim() || getDefaultTreeName());
         const safeTreeTitle = escapeHtml(previewDisplayTitle);
         const previewStats = getPreviewStatsElement();
+        setPreviewState('loading');
 
         if (_dom.previewContainer) {
             _dom.previewContainer.innerHTML = `
@@ -398,7 +418,7 @@
             return helper.renderPreviewThumbnailFallback(title, subtitle);
         }
         return `
-            <div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;background:linear-gradient(135deg,var(--surface-container-low),white);border-radius:1rem;color:var(--on-surface-variant);">
+            <div class="preview-media-fallback" style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;background:linear-gradient(135deg,var(--surface-container-low),white);border-radius:1rem;color:var(--on-surface-variant);">
                 <span class="material-symbols-outlined" style="font-size:36px;color:var(--primary);margin-bottom:12px;">movie</span>
                 <div style="font-size:14px;font-weight:800;color:var(--on-surface);margin-bottom:8px;">${escapeHtml(title)}</div>
                 <p style="margin:0;font-size:13px;line-height:1.6;">${escapeHtml(subtitle)}</p>
@@ -418,7 +438,7 @@
         );
 
         return `
-            <div style="position:relative;width:100%;height:100%;border-radius:1rem;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.12);">
+            <div class="preview-media-frame preview-media-frame-thumbnail" style="position:relative;width:100%;height:100%;border-radius:1rem;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.12);">
                 <img src="${thumbnailUrl}" alt="${mediaTitle}" loading="lazy" onerror="window.LoveBudSearchPreviewRenderer?.showPreviewImageFallback?.(this)" onload="window.LoveBudSearchPreviewRenderer?.handlePreviewImageLoad?.(this)" style="width:100%;height:100%;object-fit:cover;display:block;">
                 <div data-preview-thumbnail-fallback hidden style="position:absolute;inset:0;">${fallbackHtml}</div>
                 <div data-preview-overlay style="position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.72),rgba(0,0,0,0.04) 58%);"></div>
@@ -468,9 +488,11 @@
             ? titleHelper.getBrowseDisplayTitle(tree)
             : (String(tree?.title || '').trim() || getDefaultTreeName());
         const safeTreeTitle = escapeHtml(previewDisplayTitle);
+        let previewState = 'empty';
 
         if (_dom.previewContainer) {
             if (!hasMemories) {
+                previewState = 'no-moments';
                 _dom.previewContainer.innerHTML = `
                     <div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;background:linear-gradient(135deg,var(--surface-container-low),white);border-radius:1rem;color:var(--on-surface-variant);">
                         <span class="material-symbols-outlined" style="font-size:36px;color:var(--primary);margin-bottom:12px;">psychiatry</span>
@@ -486,6 +508,7 @@
                 const safeSourceUrl = sanitizeUrl(mediaMem?.sourceUrl || '');
                 const safeThumbnail = sanitizeUrl(mediaMem?.thumbnail || '');
                 const safeMediaMemTitle = escapeHtml(getMomentLabel(mediaMem || firstMem));
+                previewState = safeSourceUrl ? 'media' : (safeThumbnail ? 'thumbnail' : 'empty');
 
                 const mediaHelper = window.LoveBudSearchPreviewMediaHelper;
                 if (mediaHelper?.renderPreviewIframe && safeSourceUrl) {
@@ -495,7 +518,7 @@
                         ? safeSourceUrl + (safeSourceUrl.includes('?') ? '&' : '?') + 'autoplay=0&mute=1'
                         : '';
                     _dom.previewContainer.innerHTML = iframeSrc ? `
-                        <div style="position:relative;width:100%;height:100%;border-radius:1rem;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.12);">
+                        <div class="preview-media-frame preview-media-frame-iframe" style="position:relative;width:100%;height:100%;border-radius:1rem;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.12);">
                             <iframe width="100%" height="100%"
                                 src="${iframeSrc}"
                                 title="${safeTreeTitle}" frameborder="0"
@@ -509,6 +532,7 @@
                     ` : (safeThumbnail ? renderPreviewThumbnailMedia(safeThumbnail, safeMediaMemTitle, safeTreeTitle) : renderPlaceholder());
                 }
             }
+            setPreviewState(previewState);
         }
 
         if (_dom.previewTitle) {
@@ -632,7 +656,8 @@
             '트리를 고르면 대표 순간과 이어진 감정이 이곳에 열립니다.',
             'Choose a tree to open the featured moment and connected feelings here.'
         );
-        
+        setPreviewState('empty');
+
         if (_dom.previewContainer) {
             _dom.previewContainer.innerHTML = renderPlaceholder();
         }

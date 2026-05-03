@@ -101,7 +101,7 @@
             'Open this tree'
         );
         return `
-            <a href="${escapeHtml(href)}" class="btn-round btn-primary" style="width:100%;margin-top:18px;min-height:50px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;font-size:14px;font-weight:800;gap:8px;">
+            <a href="${escapeHtml(href)}" class="btn-round btn-primary preview-primary-action" style="width:100%;margin-top:18px;min-height:50px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;font-size:14px;font-weight:800;gap:8px;">
                 <span class="material-symbols-outlined" style="font-size:18px;">play_circle</span>
                 ${escapeHtml(label)}
             </a>
@@ -121,7 +121,7 @@
             'Copy view link'
         );
         return `
-            <button type="button" data-share-tree-link="${escapeHtml(tree.id)}" class="btn-round" style="width:100%;margin-top:12px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;gap:6px;background:var(--surface-container);color:var(--on-surface-variant);border:1px solid var(--outline-variant);">
+            <button type="button" data-share-tree-link="${escapeHtml(tree.id)}" class="btn-round preview-share-action" style="width:100%;margin-top:12px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;gap:6px;background:var(--surface-container);color:var(--on-surface-variant);border:1px solid var(--outline-variant);">
                 <span class="material-symbols-outlined" style="font-size:16px;">link</span>
                 <span data-share-tree-link-label>${escapeHtml(label)}</span>
             </button>
