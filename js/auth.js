@@ -294,156 +294,49 @@ function preloadRedirectTargetData() {
   }
 }
 
-// ── Core Auth ─────────────────────────────────────────────────────────────────
-
-/**
- * Apply cached auth state for fast initial render (prevents flicker).
- *
- * If we have a previously confirmed authenticated user, render the cached
- * dropdown immediately and let Firebase revalidate in the background.
- * If no confirmed cache exists, show a neutral skeleton that preserves layout.
- */
 function applyCachedAuthState() {
-  if (__authFirebaseModule) {
+  if (__authFirebaseModule && typeof __authFirebaseModule.applyCachedAuthState === 'function') {
     return __authFirebaseModule.applyCachedAuthState({
       isLoginPage: isLoginPage,
       getCachedAuthUser: getCachedAuthUser,
       buildUserDropdown: buildUserDropdown
     });
   }
-  var path = window.location.pathname;
-  var isLoginPage = path.indexOf('/pages/login.html') !== -1 ||
-                    path.indexOf('/pages/login') !== -1 ||
-                    path.indexOf('login.html') !== -1;
-  if (isLoginPage) return false;
-
-  var authNav = document.getElementById('auth-nav');
-  if (!authNav) return false;
-
-  try {
-    var cachedUser = getCachedAuthUser();
-    if (cachedUser) {
-      authNav.innerHTML = buildUserDropdown(cachedUser);
-      authNav.style.cssText = 'pointer-events:auto;opacity:1;transition:opacity 0.2s ease;min-width:36px;height:36px;display:flex;align-items:center;justify-content:flex-end;user-select:auto;';
-      authNav.classList.add('auth-ready');
-      return true;
-    }
-
-    // If there is no confirmed cache, keep a neutral skeleton until Firebase answers.
-    authNav.innerHTML = '<div class="auth-skeleton" style="width:36px;height:36px;border-radius:18px;background:var(--surface-container-highest, #e8e8e8);pointer-events:none;"></div>';
-  } catch(e) {}
   return false;
 }
 
 function initAuth() {
-  if (__authFirebaseModule) {
-    __authFirebaseModule.initAuth({
-      resolveEmailAuthMode: resolveEmailAuthMode,
-      setupLoginPageAuthUi: setupLoginPageAuthUi,
-      applyCachedAuthState: applyCachedAuthState,
-      markAuthLoading: markAuthLoading,
-      markAuthReady: markAuthReady,
-      initOfflineAuth: initOfflineAuth,
-      attachDropdownListener: attachDropdownListener,
-      persistConfirmedAuthSession: persistConfirmedAuthSession,
-      updateNavUI: updateNavUI,
-      fireAuthReadyCallbacks: fireAuthReadyCallbacks,
-      resolveAuthBootstrap: resolveAuthBootstrap,
-      isInvalidAuthSessionError: isInvalidAuthSessionError,
-      clearStaleFirebaseAuthState: clearStaleFirebaseAuthState,
-      clearConfirmedAuthCache: clearConfirmedAuthCache,
-      setupGoogleBtn: setupGoogleBtn,
-      setupEmailAuthForm: setupEmailAuthForm,
-      setupSignupForm: setupSignupForm,
-      setupSignupGoogleBtn: setupSignupGoogleBtn,
-      authInitFlag: AUTH_INIT_FLAG,
-      authReadyFlag: AUTH_READY_FLAG
-    });
-    return;
-  }
-  EMAIL_AUTH_MODE = resolveEmailAuthMode();
-  if (__authStateModule) __authStateModule.setEmailAuthMode(EMAIL_AUTH_MODE);
-  setupLoginPageAuthUi();
-
-  // Apply confirmed cached state immediately to prevent flicker
-  var hasImmediateAuthUI = applyCachedAuthState();
-
-  // Cached authenticated UI can stay visible while Firebase revalidates in background.
-  window[AUTH_READY_FLAG] = !!hasImmediateAuthUI;
-  if (!hasImmediateAuthUI) {
-    markAuthLoading();
-  }
-
-  // 안전장치: 2초 타임아웃 (MVP 공격적 축소) - Firebase 응답 없을 때 오프라인 모드로 전환
-  // confirmed session cache가 있으면 즉시 진입하므로 긴 대기 불필요
-  var authTimeout = setTimeout(function() {
-    if (!window[AUTH_READY_FLAG]) {
-      console.warn('[auth] Firebase auth timeout (2s) - switching to offline mode');
-      initOfflineAuth();
-    }
-  }, 2000);
-
-  if (typeof firebase === 'undefined') {
-    console.warn('Firebase SDK not loaded. Auth running in offline mode.');
-    clearTimeout(authTimeout);
+  if (!__authFirebaseModule || typeof __authFirebaseModule.initAuth !== 'function') {
+    console.warn('Auth Firebase boundary not loaded. Auth running in offline mode.');
     initOfflineAuth();
     return;
   }
-
-  if (typeof initFirebase === 'function') initFirebase();
-
-  if (!firebase.apps || !firebase.apps.length) {
-    console.error('Firebase not initialized. Auth setup aborted.');
-    clearTimeout(authTimeout);
-    initOfflineAuth();
-    return;
-  }
-
-  if (window[AUTH_INIT_FLAG]) {
-    clearTimeout(authTimeout);
-    return;
-  }
-  window[AUTH_INIT_FLAG] = true;
-
-  attachDropdownListener();
-
-  firebase.auth().onAuthStateChanged(async function (user) {
-    clearTimeout(authTimeout); // 정상 응답 - 타임아웃 취소
-
-    if (user) {
-      try {
-        if (typeof user.reload === 'function') await user.reload();
-      } catch (error) {
-        if (isInvalidAuthSessionError(error)) {
-          console.warn('Invalid Firebase session detected. Signing out.');
-          await firebase.auth().signOut().catch(function () {});
-          clearStaleFirebaseAuthState();
-          clearConfirmedAuthCache();
-          resolveAuthBootstrap(null);
-          return;
-        }
-      }
-    }
-    // Auth 상태 확인 완료 후 세션 캐시 저장 및 UI 업데이트
-    await persistConfirmedAuthSession(user);
-    markAuthReady();
-    updateNavUI(user);
-    resolveAuthBootstrap(user);
-
-    // 배열 콜백 패턴으로 모든 등록된 콜백 실행
-    fireAuthReadyCallbacks(user);
+  __authFirebaseModule.initAuth({
+    resolveEmailAuthMode: resolveEmailAuthMode,
+    setupLoginPageAuthUi: setupLoginPageAuthUi,
+    applyCachedAuthState: applyCachedAuthState,
+    markAuthLoading: markAuthLoading,
+    markAuthReady: markAuthReady,
+    initOfflineAuth: initOfflineAuth,
+    attachDropdownListener: attachDropdownListener,
+    persistConfirmedAuthSession: persistConfirmedAuthSession,
+    updateNavUI: updateNavUI,
+    fireAuthReadyCallbacks: fireAuthReadyCallbacks,
+    resolveAuthBootstrap: resolveAuthBootstrap,
+    isInvalidAuthSessionError: isInvalidAuthSessionError,
+    clearStaleFirebaseAuthState: clearStaleFirebaseAuthState,
+    clearConfirmedAuthCache: clearConfirmedAuthCache,
+    setupGoogleBtn: setupGoogleBtn,
+    setupEmailAuthForm: setupEmailAuthForm,
+    setupSignupForm: setupSignupForm,
+    setupSignupGoogleBtn: setupSignupGoogleBtn,
+    authInitFlag: AUTH_INIT_FLAG,
+    authReadyFlag: AUTH_READY_FLAG
   });
-
-  setupGoogleBtn();
-  setupEmailAuthForm();
-  setupSignupForm();
-  setupSignupGoogleBtn();
 }
 
-// ── Offline Fallback ──────────────────────────────────────────────────────────
-
 function initOfflineAuth() {
-  if (__authFirebaseModule) {
+  if (__authFirebaseModule && typeof __authFirebaseModule.initOfflineAuth === 'function') {
     __authFirebaseModule.initOfflineAuth({
       markAuthReady: markAuthReady,
       updateNavUI: updateNavUI,
@@ -453,26 +346,12 @@ function initOfflineAuth() {
     });
     return;
   }
-  var cachedUser = getCachedAuthUser();
-  // Offline 모드에서도 ready 상태로 전환 후 UI 표시
-  // 순서 중요: markAuthReady 먼저, updateNavUI 나중
   markAuthReady();
-  var user = cachedUser && cachedUser.uid ? cachedUser : null;
-  updateNavUI(user);
-  resolveAuthBootstrap(user);
-  // Offline 모드에서도 콜백 실행
-  fireAuthReadyCallbacks(user);
+  updateNavUI(null);
+  resolveAuthBootstrap(null);
+  fireAuthReadyCallbacks(null);
 }
 
-// ── Loading State (prevent flash) ────────────────────────────────────────────
-
-/**
- * Show auth nav loading state - neutral skeleton with pointer-events blocked.
- *
- * IMPORTANT: During loading, the skeleton container is completely non-interactive.
- * This prevents any stale cached auth UI from being clickable before Firebase
- * confirms the actual auth state.
- */
 function markAuthLoading() {
   if (__authUiModule) {
     __authUiModule.markAuthLoading();
@@ -480,8 +359,6 @@ function markAuthLoading() {
   }
   var authNav = document.getElementById('auth-nav');
   var authContainer = document.getElementById('auth-nav-container');
-  // During loading: layout-preserving skeleton that is completely non-interactive.
-  // pointer-events:none ensures no click/keyboard interaction until AUTH_READY_FLAG.
   var loadingStyle = 'pointer-events:none;opacity:0.6;transition:opacity 0.2s ease;min-width:36px;height:36px;display:flex;align-items:center;justify-content:flex-end;user-select:none;';
   if (authNav) {
     authNav.style.cssText = loadingStyle;
@@ -491,11 +368,6 @@ function markAuthLoading() {
   }
 }
 
-/**
- * Mark auth as ready and reveal the nav UI with smooth fade-in.
- * index.html의 로딩 스피너를 지우고 실제 UI를 표시.
- * pointer-events:auto explicit 설정으로 interactive 전환을 보장.
- */
 function markAuthReady() {
   if (__authUiModule) {
     __authUiModule.markAuthReady(AUTH_READY_FLAG);
