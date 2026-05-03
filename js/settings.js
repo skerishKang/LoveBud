@@ -9,6 +9,9 @@
 
 (function() {
   var SETTINGS_KEY = 'lovebud_user_settings';
+  var SETTINGS_LOGIN_REDIRECT_KEY = 'lovebud_settings_login_redirect_at';
+  var SETTINGS_AUTH_PENDING_MS = 2000;
+  var SETTINGS_REDIRECT_LOOP_WINDOW_MS = 10000;
   var DEFAULT_SETTINGS = {
     defaultVisibility: 'private'
   };
@@ -218,6 +221,7 @@
 
   var settingsStarted = false;
   var settingsRedirected = false;
+  var settingsAuthRedirectTimer = null;
 
   function getSettingsLoginHref() {
     var returnTo = '';
@@ -237,7 +241,27 @@
   function redirectToLogin() {
     if (settingsRedirected) return;
     settingsRedirected = true;
+    try {
+      sessionStorage.setItem(SETTINGS_LOGIN_REDIRECT_KEY, String(Date.now()));
+    } catch (e) {}
     window.location.replace(getSettingsLoginHref());
+  }
+
+  function getRecentSettingsLoginRedirectAge() {
+    try {
+      var raw = sessionStorage.getItem(SETTINGS_LOGIN_REDIRECT_KEY);
+      var timestamp = Number(raw || 0);
+      if (!timestamp) return Infinity;
+      return Math.max(0, Date.now() - timestamp);
+    } catch (e) {
+      return Infinity;
+    }
+  }
+
+  function clearSettingsLoginRedirectMarker() {
+    try {
+      sessionStorage.removeItem(SETTINGS_LOGIN_REDIRECT_KEY);
+    } catch (e) {}
   }
 
   function startSettings() {
@@ -276,6 +300,35 @@
     return null;
   }
 
+  function getCurrentFirebaseUser() {
+    try {
+      if (
+        typeof firebase !== 'undefined' &&
+        firebase.auth &&
+        typeof firebase.auth === 'function'
+      ) {
+        var auth = firebase.auth();
+        return auth && auth.currentUser && auth.currentUser.uid ? auth.currentUser : null;
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  function getBootstrapSnapshotUser() {
+    try {
+      if (
+        window.LoveBudAuthBootstrap &&
+        typeof window.LoveBudAuthBootstrap.getSnapshot === 'function'
+      ) {
+        var snapshot = window.LoveBudAuthBootstrap.getSnapshot();
+        if (snapshot && snapshot.user && snapshot.user.uid) {
+          return snapshot.user;
+        }
+      }
+    } catch (e) {}
+    return null;
+  }
+
   function normalizeAuthUser(result) {
     if (result && result.uid) return result;
     if (result && result.user && result.user.uid) return result.user;
@@ -283,19 +336,46 @@
   }
 
   function handleSettingsAuthUser(result) {
-    var user = normalizeAuthUser(result);
+    var user = normalizeAuthUser(result) ||
+      getCurrentFirebaseUser() ||
+      getBootstrapSnapshotUser() ||
+      getConfirmedSessionUser();
 
     if (user) {
+      clearSettingsLoginRedirectMarker();
       startSettings();
       return;
     }
 
-    if (!getConfirmedSessionUser()) {
-      redirectToLogin();
+    waitForSettledLogoutBeforeRedirect();
+  }
+
+  function waitForSettledLogoutBeforeRedirect() {
+    if (settingsStarted || settingsRedirected || settingsAuthRedirectTimer) {
       return;
     }
 
-    startSettings();
+    var delayMs = SETTINGS_AUTH_PENDING_MS;
+    var recentRedirectAge = getRecentSettingsLoginRedirectAge();
+    if (recentRedirectAge < SETTINGS_REDIRECT_LOOP_WINDOW_MS) {
+      delayMs = Math.max(delayMs, SETTINGS_REDIRECT_LOOP_WINDOW_MS - recentRedirectAge);
+    }
+
+    settingsAuthRedirectTimer = setTimeout(function() {
+      settingsAuthRedirectTimer = null;
+
+      var settledUser = getCurrentFirebaseUser() ||
+        getBootstrapSnapshotUser() ||
+        getConfirmedSessionUser();
+
+      if (settledUser) {
+        clearSettingsLoginRedirectMarker();
+        startSettings();
+        return;
+      }
+
+      redirectToLogin();
+    }, delayMs);
   }
 
   function initSettings() {
@@ -316,14 +396,14 @@
             if (!cachedUser && typeof window.registerOnAuthReady === 'function') {
               window.registerOnAuthReady(handleSettingsAuthUser);
             } else if (!cachedUser) {
-              redirectToLogin();
+              waitForSettledLogoutBeforeRedirect();
             }
           });
       } catch (e) {
         if (!cachedUser && typeof window.registerOnAuthReady === 'function') {
           window.registerOnAuthReady(handleSettingsAuthUser);
         } else if (!cachedUser) {
-          redirectToLogin();
+          waitForSettledLogoutBeforeRedirect();
         }
       }
       return;
@@ -339,7 +419,7 @@
       return;
     }
 
-    redirectToLogin();
+    waitForSettledLogoutBeforeRedirect();
   }
 
   function redirectAfterLogout() {

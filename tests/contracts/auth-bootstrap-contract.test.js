@@ -130,6 +130,26 @@ test('settings page preserves auth submodules, root auth.js, then settings.js or
   );
 });
 
+test('settings auth guard waits before redirecting provisional null auth state', () => {
+  const source = readRepoFile('js/settings.js');
+
+  assert.match(source, /SETTINGS_AUTH_PENDING_MS/, 'settings guard must keep an auth pending window before redirect');
+  assert.match(source, /SETTINGS_LOGIN_REDIRECT_KEY/, 'settings guard must mark settings-to-login redirects for loop detection');
+  assert.match(source, /getCurrentFirebaseUser/, 'settings guard must re-check current Firebase user before redirect');
+  assert.match(source, /getBootstrapSnapshotUser/, 'settings guard must re-check bootstrap user before redirect');
+  assert.match(source, /waitForSettledLogoutBeforeRedirect/, 'settings guard must route null auth through settled-logout confirmation');
+  assert.match(
+    source,
+    /SETTINGS_REDIRECT_LOOP_WINDOW_MS[\s\S]*getRecentSettingsLoginRedirectAge/,
+    'settings guard must extend pending time after a recent settings login redirect'
+  );
+  assert.match(
+    source,
+    /settledUser[\s\S]*startSettings\(\)[\s\S]*redirectToLogin\(\)/,
+    'settings guard must start settings for a settled user and redirect only after no user evidence remains'
+  );
+});
+
 test('shared header keeps optional/idempotent initAuth handoff after dynamic auth container render', () => {
   const source = readRepoFile('js/shared-header.js');
 
