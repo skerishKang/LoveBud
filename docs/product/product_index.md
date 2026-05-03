@@ -9,6 +9,7 @@
 - 팬페이지 기반 감성 UX / 페이지 경험 기준 정리
 - 전역 UI 카피 운영 기준 정리
 - public-first visibility / Plus private storage / anonymous public exposure / Browse/Search eligibility 정책 정리
+- Browse sort semantics and public discovery language 정리
 
 ## 파일 목록
 
@@ -17,6 +18,7 @@
 | [PRODUCT_IDENTITY.md](PRODUCT_IDENTITY.md) | LoveBud의 핵심 정체성과 public-first 감상 공간 원칙 |
 | [BRAND_EXPERIENCE.md](BRAND_EXPERIENCE.md) | 팬 경험 중심 브랜드/UX 톤앤매너와 페이지별 감성 기준 |
 | [PUBLICATION_AND_PRIVACY_UX_POLICY.md](PUBLICATION_AND_PRIVACY_UX_POLICY.md) | public-first visibility, Plus private storage, memory visibility inheritance, anonymous public exposure, Browse/Search eligibility 정책 |
+| [BROWSE_POPULAR_SORT_SEMANTICS.md](BROWSE_POPULAR_SORT_SEMANTICS.md) | Browse `popular` sort의 현재 memory-count proxy 의미와 v0.1 표시 정책 방향 |
 | [MOMENT_TIMELINE_PLAN.md](MOMENT_TIMELINE_PLAN.md) | cue-based YouTube Moment Timeline 제품/기술 계획 |
 | [YOUTUBE_SEGMENT_PLAYER_POC_SCOPE.md](YOUTUBE_SEGMENT_PLAYER_POC_SCOPE.md) | cue-based YouTube segment player PoC scope and Go/No-Go criteria |
 | [YOUTUBE_SEGMENT_PLAYER_POC_TEST_MATRIX.md](YOUTUBE_SEGMENT_PLAYER_POC_TEST_MATRIX.md) | YouTube segment player PoC test matrix and browser verification requirements |
@@ -45,6 +47,7 @@
 - anonymous public read는 `memory.visibility = public`과 `parent tree.visibility = public`을 모두 요구합니다.
 - public visibility와 Browse/Search eligibility는 별개입니다.
 - Browse/Search introduction은 `publicMomentCount >= 3`이 필요합니다.
+- Browse `popular` sort는 현재 true engagement popularity가 아니라 `publicMemoryCount DESC, createdAt DESC` proxy입니다.
 - private tree 아래 public memory가 가능하더라도 Browse/Search, community memories list, public memory detail read 노출은 parent tree visibility guard를 함께 봅니다.
 - owner/private read는 private access policy에 따라 private tree 아래 public/private memory를 조회할 수 있습니다.
 
@@ -64,18 +67,19 @@
 1. **PRODUCT_IDENTITY.md** — 제품 철학과 핵심 가치
 2. **BRAND_EXPERIENCE.md** — 팬 감성 UX / 톤앤매너 / 페이지별 표현 원칙
 3. **PUBLICATION_AND_PRIVACY_UX_POLICY.md** — public-first visibility / Plus private storage / anonymous public exposure / Browse/Search eligibility 정책
-4.  **MOMENT_TIMELINE_PLAN.md** — cue-based Moment Timeline 계획
-5.  **YOUTUBE_SEGMENT_PLAYER_POC_SCOPE.md** — YouTube segment player PoC scope and verification criteria
-6.  **YOUTUBE_SEGMENT_PLAYER_POC_TEST_MATRIX.md** — YouTube segment player PoC test matrix and browser verification requirements
-7.  **YOUTUBE_SEGMENT_PLAYER_POC_RUNTIME_NOTES.md** — YouTube segment player PoC runtime observations and limitations
-8.  **YOUTUBE_SEGMENT_PLAYER_POC_BROWSER_VERIFICATION.md** — YouTube segment player PoC browser verification evidence and feasibility decision
-9.  **MOMENT_CAPTURE_UI_DESIGN.md** — Moment capture UI flow 설계
-10. **MOMENT_TIMELINE_REORDER_DESIGN.md** — Moment Timeline reorder / sequence editor 설계
-11. **UI_COPY_DIET_GUIDE.md** — 전역 UI 카피 다이어트 기준
-12. **MVP_SCOPE.md** — MVP 범위 및 In/Out of Scope
-13. **USER_FLOW.md** — 사용자 여정 및 핵심 플로우
-14. **PRODUCT_BRIEF.md** — 현재 실행 기준 요약
-15. 필요시 DATA_NAMING_RULE.md, READONLY_SHARE_SCOPE.md
+4. **BROWSE_POPULAR_SORT_SEMANTICS.md** — Browse `popular` sort의 현재 의미와 v0.1 표시 정책 방향
+5.  **MOMENT_TIMELINE_PLAN.md** — cue-based Moment Timeline 계획
+6.  **YOUTUBE_SEGMENT_PLAYER_POC_SCOPE.md** — YouTube segment player PoC scope and verification criteria
+7.  **YOUTUBE_SEGMENT_PLAYER_POC_TEST_MATRIX.md** — YouTube segment player PoC test matrix and browser verification requirements
+8.  **YOUTUBE_SEGMENT_PLAYER_POC_RUNTIME_NOTES.md** — YouTube segment player PoC runtime observations and limitations
+9.  **YOUTUBE_SEGMENT_PLAYER_POC_BROWSER_VERIFICATION.md** — YouTube segment player PoC browser verification evidence and feasibility decision
+10.  **MOMENT_CAPTURE_UI_DESIGN.md** — Moment capture UI flow 설계
+11. **MOMENT_TIMELINE_REORDER_DESIGN.md** — Moment Timeline reorder / sequence editor 설계
+12. **UI_COPY_DIET_GUIDE.md** — 전역 UI 카피 다이어트 기준
+13. **MVP_SCOPE.md** — MVP 범위 및 In/Out of Scope
+14. **USER_FLOW.md** — 사용자 여정 및 핵심 플로우
+15. **PRODUCT_BRIEF.md** — 현재 실행 기준 요약
+16. 필요시 DATA_NAMING_RULE.md, READONLY_SHARE_SCOPE.md
 
 ## 참조
 - 전체 문서 인덱스: `../doc_index.md`
