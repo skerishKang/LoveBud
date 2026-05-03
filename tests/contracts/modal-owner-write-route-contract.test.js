@@ -6,6 +6,7 @@ const path = require('node:path');
 const ROOT = path.resolve(__dirname, '..', '..');
 const MODAL_APP = path.join(ROOT, 'modal_compute', 'app.py');
 const OWNER_WRITES = path.join(ROOT, 'modal_compute', 'owner_writes.py');
+const API_RESPONSE_HELPERS = path.join(ROOT, 'modal_compute', 'api_response_helpers.py');
 
 function readModalApp() {
   return fs.readFileSync(MODAL_APP, 'utf8');
@@ -13,6 +14,10 @@ function readModalApp() {
 
 function readOwnerWrites() {
   return fs.readFileSync(OWNER_WRITES, 'utf8');
+}
+
+function readApiResponseHelpers() {
+  return fs.readFileSync(API_RESPONSE_HELPERS, 'utf8');
 }
 
 function compact(value) {
@@ -45,6 +50,47 @@ function getRouteFunctionBody(source, routeName, method) {
   const functionBodyMatch = remaining.match(/(@web_app\.[^(]*\([^)]*\)[\s\S]*?(?:async\s+)?def\s+[\w_]+\s*\([^)]*\)[\s\S]*?)(?=@web_app\.|\n\n\n|\n\n@|$)/);
   assert.ok(functionBodyMatch, `missing function body ${method} ${routeName}`);
   return functionBodyMatch[1];
+}
+
+function assertParseJsonBodyHelperContract() {
+  const source = readApiResponseHelpers();
+  const body = getFunctionBody(source, 'parse_json_body');
+  const normalized = compact(body);
+
+  assert.match(
+    normalized,
+    /payload=awaitrequest\.json\(\)/i,
+    'parse_json_body must parse request JSON'
+  );
+
+  assert.match(
+    normalized,
+    /exceptjson\.jsondecodeerror.*httpexception.*status_code=400.*invalidjsonbody/i,
+    'parse_json_body must map JSONDecodeError to HTTP 400 Invalid JSON body'
+  );
+
+  assert.match(
+    normalized,
+    /returnpayloadifisinstance\(payload,dict\)else{}/i,
+    'parse_json_body must return dict payloads and normalize non-dict JSON to {}'
+  );
+}
+
+function assertRouteParsesJsonViaHelper(normalized, routeLabel) {
+  assert.match(
+    normalized,
+    /payload=awaitparse_json_body\(request\)/i,
+    `${routeLabel} must parse JSON body through parse_json_body`
+  );
+  assertParseJsonBodyHelperContract();
+}
+
+function assertRoutePassesPayload(normalized, callee, argsPattern, routeLabel) {
+  assert.match(
+    normalized,
+    new RegExp(`${callee}.*${argsPattern}.*payload`, 'i'),
+    `${routeLabel} must call ${callee} with authenticated owner arguments and helper payload`
+  );
 }
 
 // create_owner_tree helper contracts
@@ -719,17 +765,7 @@ test('post_private_tree handles invalid JSON body with 400', () => {
   const body = getRouteFunctionBody(source, '/modal/private/trees', 'post');
   const normalized = compact(body);
 
-  assert.match(
-    normalized,
-    /try.*payload.*await.*request\.json\(\)/i,
-    'post_private_tree must try to parse JSON body'
-  );
-
-  assert.match(
-    normalized,
-    /except.*jsondecodeerror.*httpexception.*400.*invalid.*json.*body/i,
-    'post_private_tree must raise 400 for invalid JSON'
-  );
+  assertRouteParsesJsonViaHelper(normalized, 'post_private_tree');
 });
 
 test('post_private_tree calls create_owner_tree with user uid and payload', () => {
@@ -737,11 +773,7 @@ test('post_private_tree calls create_owner_tree with user uid and payload', () =
   const body = getRouteFunctionBody(source, '/modal/private/trees', 'post');
   const normalized = compact(body);
 
-  assert.match(
-    normalized,
-    /create_owner_tree.*user.*uid.*payload.*isinstance.*payload.*dict.*else.*{}/i,
-    'post_private_tree must call create_owner_tree with user uid and payload'
-  );
+  assertRoutePassesPayload(normalized, 'create_owner_tree', 'user.*uid', 'post_private_tree');
 });
 
 test('post_private_memory calls require_firebase_user', () => {
@@ -761,17 +793,7 @@ test('post_private_memory handles invalid JSON body with 400', () => {
   const body = getRouteFunctionBody(source, '/modal/private/memories', 'post');
   const normalized = compact(body);
 
-  assert.match(
-    normalized,
-    /try.*payload.*await.*request\.json\(\)/i,
-    'post_private_memory must try to parse JSON body'
-  );
-
-  assert.match(
-    normalized,
-    /except.*jsondecodeerror.*httpexception.*400.*invalid.*json.*body/i,
-    'post_private_memory must raise 400 for invalid JSON'
-  );
+  assertRouteParsesJsonViaHelper(normalized, 'post_private_memory');
 });
 
 test('post_private_memory calls create_owner_memory with user uid and payload', () => {
@@ -779,11 +801,7 @@ test('post_private_memory calls create_owner_memory with user uid and payload', 
   const body = getRouteFunctionBody(source, '/modal/private/memories', 'post');
   const normalized = compact(body);
 
-  assert.match(
-    normalized,
-    /create_owner_memory.*user.*uid.*payload.*isinstance.*payload.*dict.*else.*{}/i,
-    'post_private_memory must call create_owner_memory with user uid and payload'
-  );
+  assertRoutePassesPayload(normalized, 'create_owner_memory', 'user.*uid', 'post_private_memory');
 });
 
 test('put_private_tree calls require_firebase_user', () => {
@@ -803,17 +821,7 @@ test('put_private_tree handles invalid JSON body with 400', () => {
   const body = getRouteFunctionBody(source, '/modal/private/trees/{tree_id}', 'put');
   const normalized = compact(body);
 
-  assert.match(
-    normalized,
-    /try.*payload.*await.*request\.json\(\)/i,
-    'put_private_tree must try to parse JSON body'
-  );
-
-  assert.match(
-    normalized,
-    /except.*jsondecodeerror.*httpexception.*400.*invalid.*json.*body/i,
-    'put_private_tree must raise 400 for invalid JSON'
-  );
+  assertRouteParsesJsonViaHelper(normalized, 'put_private_tree');
 });
 
 test('put_private_tree calls update_owner_tree with user uid, tree_id, and payload', () => {
@@ -821,11 +829,7 @@ test('put_private_tree calls update_owner_tree with user uid, tree_id, and paylo
   const body = getRouteFunctionBody(source, '/modal/private/trees/{tree_id}', 'put');
   const normalized = compact(body);
 
-  assert.match(
-    normalized,
-    /update_owner_tree.*user.*uid.*tree_id.*payload.*isinstance.*payload.*dict.*else.*{}/i,
-    'put_private_tree must call update_owner_tree with user uid, tree_id, and payload'
-  );
+  assertRoutePassesPayload(normalized, 'update_owner_tree', 'user.*uid.*tree_id', 'put_private_tree');
 });
 
 test('delete_private_tree calls require_firebase_user', () => {
@@ -869,17 +873,7 @@ test('put_private_memory handles invalid JSON body with 400', () => {
   const body = getRouteFunctionBody(source, '/modal/private/memories/{memory_id}', 'put');
   const normalized = compact(body);
 
-  assert.match(
-    normalized,
-    /try.*payload.*await.*request\.json\(\)/i,
-    'put_private_memory must try to parse JSON body'
-  );
-
-  assert.match(
-    normalized,
-    /except.*jsondecodeerror.*httpexception.*400.*invalid.*json.*body/i,
-    'put_private_memory must raise 400 for invalid JSON'
-  );
+  assertRouteParsesJsonViaHelper(normalized, 'put_private_memory');
 });
 
 test('put_private_memory calls update_owner_memory with user uid, memory_id, and payload', () => {
@@ -887,11 +881,7 @@ test('put_private_memory calls update_owner_memory with user uid, memory_id, and
   const body = getRouteFunctionBody(source, '/modal/private/memories/{memory_id}', 'put');
   const normalized = compact(body);
 
-  assert.match(
-    normalized,
-    /update_owner_memory.*user.*uid.*memory_id.*payload.*isinstance.*payload.*dict.*else.*{}/i,
-    'put_private_memory must call update_owner_memory with user uid, memory_id, and payload'
-  );
+  assertRoutePassesPayload(normalized, 'update_owner_memory', 'user.*uid.*memory_id', 'put_private_memory');
 });
 
 test('delete_private_memory calls require_firebase_user', () => {
