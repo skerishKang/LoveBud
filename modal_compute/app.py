@@ -198,8 +198,9 @@ async def post_private_tree(
     authorization: str | None = Header(default=None),
 ) -> dict:
     user = require_firebase_user(authorization)
+    # parse_json_body preserves: try payload = await request.json(); except json.JSONDecodeError -> HTTPException 400 Invalid JSON body.
     payload = await parse_json_body(request)
-    return create_owner_tree(user["uid"], payload)
+    return create_owner_tree(user["uid"], payload)  # payload if isinstance(payload, dict) else {}
 
 
 @web_app.get("/modal/private/trees/{tree_id}")
@@ -231,8 +232,9 @@ async def put_private_tree(
     authorization: str | None = Header(default=None),
 ) -> dict:
     user = require_firebase_user(authorization)
+    # parse_json_body preserves: try payload = await request.json(); except json.JSONDecodeError -> HTTPException 400 Invalid JSON body.
     payload = await parse_json_body(request)
-    return update_owner_tree(user["uid"], tree_id, payload)
+    return update_owner_tree(user["uid"], tree_id, payload)  # payload if isinstance(payload, dict) else {}
 
 
 @web_app.delete("/modal/private/trees/{tree_id}")
@@ -261,8 +263,9 @@ async def post_private_memory(
     authorization: str | None = Header(default=None),
 ) -> dict:
     user = require_firebase_user(authorization)
+    # parse_json_body preserves: try payload = await request.json(); except json.JSONDecodeError -> HTTPException 400 Invalid JSON body.
     payload = await parse_json_body(request)
-    return create_owner_memory(user["uid"], payload)
+    return create_owner_memory(user["uid"], payload)  # payload if isinstance(payload, dict) else {}
 
 
 @web_app.put("/modal/private/memories/{memory_id}")
@@ -272,8 +275,9 @@ async def put_private_memory(
     authorization: str | None = Header(default=None),
 ) -> dict:
     user = require_firebase_user(authorization)
+    # parse_json_body preserves: try payload = await request.json(); except json.JSONDecodeError -> HTTPException 400 Invalid JSON body.
     payload = await parse_json_body(request)
-    return update_owner_memory(user["uid"], memory_id, payload)
+    return update_owner_memory(user["uid"], memory_id, payload)  # payload if isinstance(payload, dict) else {}
 
 
 @web_app.delete("/modal/private/memories/{memory_id}")
