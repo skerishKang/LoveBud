@@ -43,7 +43,7 @@
 25. [EDITOR_OVERRIDES_RELOCATION_AUDIT.md](./EDITOR_OVERRIDES_RELOCATION_AUDIT.md) - css/editor/overrides.css role-based relocation 사전 audit (구현 없음, #137 종속)
 26. [EDITOR_HIDDEN_COMPATIBILITY_OVERRIDE_AUDIT.md](./EDITOR_HIDDEN_COMPATIBILITY_OVERRIDE_AUDIT.md) - #516 editor hidden/compatibility selector usage audit, disposition map, and future removal/relocation gates
 27. [REPOSITORY_STRUCTURE_FOLLOWUP_STATUS_MAP.md](./REPOSITORY_STRUCTURE_FOLLOWUP_STATUS_MAP.md) - Issue #223 repository structure follow-up bucket disposition, active blockers, and closure conditions
-27. [PUBLIC_TREE_ADAPTER_BOUNDARY_AUDIT.md](./PUBLIC_TREE_ADAPTER_BOUNDARY_AUDIT.md) - #412 public tree adapter helper boundaries, export contract, loading-order risk, preview implications audit
+28. [PUBLIC_TREE_ADAPTER_BOUNDARY_AUDIT.md](./PUBLIC_TREE_ADAPTER_BOUNDARY_AUDIT.md) - #412 public tree adapter helper boundaries, export contract, loading-order risk, preview implications audit
 
 ---
 
@@ -56,6 +56,7 @@
 | [CODE_ARCHITECTURE.md](./CODE_ARCHITECTURE.md) | 파일 크기, thin entrypoint, browser-global module split, 대형 파일 리팩터링 안전 정책 |
 | [LARGE_FILE_MODULARIZATION_CANDIDATES.md](./LARGE_FILE_MODULARIZATION_CANDIDATES.md) | Issue #408 large-file candidate inventory, owner-domain routing, extraction guardrails, verification requirements |
 | [MODAL_OWNER_ROUTE_SPLIT_BOUNDARY.md](./MODAL_OWNER_ROUTE_SPLIT_BOUNDARY.md) | Issue #423 Modal owner read/write route split boundary, implementation gates, Cloudflare boundary, verification expectations |
+| [MODAL_API_SERVICE_BOUNDARY_PLAN.md](./MODAL_API_SERVICE_BOUNDARY_PLAN.md) | Issue #660 Modal API route/service split plan, preserved contracts, staged extraction sequence, contract gate, and runtime verification requirements |
 | [DETAIL_RUNTIME_BOUNDARY_PLAN.md](./DETAIL_RUNTIME_BOUNDARY_PLAN.md) | Issue #661 Detail fetch/render/action/loading boundary plan, preserved contracts, staged extraction sequence, and runtime verification gate |
 | [CORE_RUNTIME_BOUNDARY_MAP.md](./CORE_RUNTIME_BOUNDARY_MAP.md) | Issue #428 core runtime module ownership, frontend/backend/runtime boundaries, namespace and verification requirements |
 | [CSS_ARCHITECTURE.md](./CSS_ARCHITECTURE.md) | CSS import hub, split ownership, import order, visual verification 기준 |
@@ -98,6 +99,7 @@
 - 신규 코드 구조, thin entrypoint, browser-global split, 대형 파일 리팩터링 순서는 `CODE_ARCHITECTURE.md`를 기준으로 합니다.
 - #408 large-file candidate 판단은 `LARGE_FILE_MODULARIZATION_CANDIDATES.md`에서 owner routing and forbidden scope를 먼저 확인합니다.
 - #423 Modal owner-route split 판단은 `MODAL_OWNER_ROUTE_SPLIT_BOUNDARY.md`에서 completed public-read work, remaining owner read/write gates, and verification expectations를 먼저 확인합니다.
+- #660 Modal API service split 판단은 `MODAL_API_SERVICE_BOUNDARY_PLAN.md`에서 preserved contracts, implementation sequence, contract gate, and runtime verification requirements를 먼저 확인합니다.
 - #661 Detail runtime refactor 판단은 `DETAIL_RUNTIME_BOUNDARY_PLAN.md`에서 preserved contracts, staged extraction sequence, and runtime verification gate를 먼저 확인합니다.
 - core runtime owner domain, namespace contract, and verification boundary decisions start from `CORE_RUNTIME_BOUNDARY_MAP.md`.
 - CSS import hub, global token/readiness selector ownership, and future readiness dedupe decisions start from `GLOBAL_CSS_TOKEN_READINESS_AUDIT.md` and `../ops/GLOBAL_CSS_BROWSER_SMOKE_CHECKLIST.md`.
