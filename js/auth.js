@@ -11,78 +11,53 @@
  * Version: ?v=20260422-3
  */
 
-var __authStateModule = window.LoveBudAuthState || null;
-var __authUiModule = window.LoveBudAuthUI || null;
-var __authSessionModule = window.LoveBudAuthSession || null;
-var __authFirebaseModule = window.LoveBudAuthFirebase || null;
-var EMAIL_AUTH_MODE = __authStateModule
-  ? __authStateModule.getEmailAuthMode()
-  : (function() {
-      try {
-        if (window.__initialAuthMode === 'signup' || window.__initialAuthMode === 'login') {
-          return window.__initialAuthMode;
-        }
-        var params = new URLSearchParams(window.location.search);
-        var mode = params.get('mode');
-        return mode === 'signup' ? 'signup' : 'login';
-      } catch (e) {
-        return 'login';
-      }
-    })();
-var AUTH_INIT_FLAG = __authStateModule ? __authStateModule.AUTH_INIT_FLAG : '__lovebudAuthInitialized';
-var AUTH_READY_FLAG = __authStateModule ? __authStateModule.AUTH_READY_FLAG : '__lovebudAuthReady';
-var DROPDOWN_LISTENER_ATTACHED = __authStateModule
-  ? __authStateModule.isDropdownListenerAttached()
-  : false;
-
-window.LoveBudAuthBootstrap = window.LoveBudAuthBootstrap || (function() {
-  var resolved = false;
-  var lastUser = null;
-  var waiters = [];
-
-  function flush(user) {
-    var pending = waiters.splice(0, waiters.length);
-    pending.forEach(function(fn) {
-      try {
-        fn(user);
-      } catch (error) {
-        console.error('[auth] Bootstrap waiter error:', error);
-      }
-    });
-  }
-
-  function resolve(user) {
-    if (resolved) return;
-    resolved = true;
-    lastUser = user || null;
-    flush(lastUser);
-  }
-
-  function whenReady() {
-    if (resolved) return Promise.resolve(lastUser);
-    return new Promise(function(resolveFn) {
-      waiters.push(resolveFn);
-    });
-  }
-
-  function getSnapshot() {
-    return {
-      ready: resolved,
-      user: lastUser
-    };
-  }
-
-  return {
-    resolve: resolve,
-    whenReady: whenReady,
-    getSnapshot: getSnapshot,
-    getResolvedUser: function() {
-      return lastUser;
-    }
-  };
-})();
+var __authBootstrapCompat = window.LoveBudAuthState &&
+  typeof window.LoveBudAuthState.createBootstrapCompatibilityBoundary === 'function'
+  ? window.LoveBudAuthState.createBootstrapCompatibilityBoundary()
+  : null;
+var __authStateModule = __authBootstrapCompat
+  ? __authBootstrapCompat.authStateModule
+  : (window.LoveBudAuthState || null);
+var __authUiModule = __authBootstrapCompat
+  ? __authBootstrapCompat.authUiModule
+  : (window.LoveBudAuthUI || null);
+var __authSessionModule = __authBootstrapCompat
+  ? __authBootstrapCompat.authSessionModule
+  : (window.LoveBudAuthSession || null);
+var __authFirebaseModule = __authBootstrapCompat
+  ? __authBootstrapCompat.authFirebaseModule
+  : (window.LoveBudAuthFirebase || null);
+var EMAIL_AUTH_MODE = __authBootstrapCompat
+  ? __authBootstrapCompat.emailAuthMode
+  : (__authStateModule
+      ? __authStateModule.getEmailAuthMode()
+      : (function() {
+          try {
+            if (window.__initialAuthMode === 'signup' || window.__initialAuthMode === 'login') {
+              return window.__initialAuthMode;
+            }
+            var params = new URLSearchParams(window.location.search);
+            var mode = params.get('mode');
+            return mode === 'signup' ? 'signup' : 'login';
+          } catch (e) {
+            return 'login';
+          }
+        })());
+var AUTH_INIT_FLAG = __authBootstrapCompat
+  ? __authBootstrapCompat.authInitFlag
+  : (__authStateModule ? __authStateModule.AUTH_INIT_FLAG : '__lovebudAuthInitialized');
+var AUTH_READY_FLAG = __authBootstrapCompat
+  ? __authBootstrapCompat.authReadyFlag
+  : (__authStateModule ? __authStateModule.AUTH_READY_FLAG : '__lovebudAuthReady');
+var DROPDOWN_LISTENER_ATTACHED = __authBootstrapCompat
+  ? __authBootstrapCompat.dropdownListenerAttached
+  : (__authStateModule ? __authStateModule.isDropdownListenerAttached() : false);
 
 function resolveAuthBootstrap(user) {
+  if (__authBootstrapCompat && typeof __authBootstrapCompat.resolveAuthBootstrap === 'function') {
+    __authBootstrapCompat.resolveAuthBootstrap(user);
+    return;
+  }
   if (!window.LoveBudAuthBootstrap || typeof window.LoveBudAuthBootstrap.resolve !== 'function') {
     return;
   }
