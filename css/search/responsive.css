@@ -75,8 +75,18 @@
         padding: 12px;
     }
 
+    .tree-card-media::before {
+        right: 10px;
+        bottom: 10px;
+        width: 54px;
+        height: 40px;
+        opacity: 0.62;
+    }
+
     .tree-card-media-fallback::before {
-        font-size: 36px;
+        top: 20px;
+        width: 74px;
+        height: 62px;
     }
 
     .tree-card-media-fallback .fallback-title {
@@ -84,7 +94,8 @@
     }
 
     .tree-card-media-fallback .fallback-dots {
-        gap: 4px;
+        top: 47px;
+        gap: 20px;
     }
 
     .tree-card-media-fallback .fallback-dots span {
