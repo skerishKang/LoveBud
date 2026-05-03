@@ -222,6 +222,7 @@
   var settingsStarted = false;
   var settingsRedirected = false;
   var settingsAuthRedirectTimer = null;
+  var settingsAuthenticatedEntry = false;
 
   function getSettingsLoginHref() {
     var returnTo = '';
@@ -240,6 +241,9 @@
 
   function redirectToLogin() {
     if (settingsRedirected) return;
+    if (settingsAuthenticatedEntry || settingsStarted || hasAnyAuthEvidence()) {
+      return;
+    }
     settingsRedirected = true;
     try {
       sessionStorage.setItem(SETTINGS_LOGIN_REDIRECT_KEY, String(Date.now()));
@@ -267,6 +271,11 @@
   function startSettings() {
     if (settingsStarted) return;
     settingsStarted = true;
+    settingsAuthenticatedEntry = true;
+    if (settingsAuthRedirectTimer) {
+      clearTimeout(settingsAuthRedirectTimer);
+      settingsAuthRedirectTimer = null;
+    }
     document.body.classList.remove('settings-auth-pending');
 
     var settings = loadSettings();
@@ -335,6 +344,14 @@
     return null;
   }
 
+  function hasAnyAuthEvidence() {
+    return !!(
+      getCurrentFirebaseUser() ||
+      getBootstrapSnapshotUser() ||
+      getConfirmedSessionUser()
+    );
+  }
+
   function handleSettingsAuthUser(result) {
     var user = normalizeAuthUser(result) ||
       getCurrentFirebaseUser() ||
@@ -347,11 +364,15 @@
       return;
     }
 
+    if (settingsAuthenticatedEntry || settingsStarted) {
+      return;
+    }
+
     waitForSettledLogoutBeforeRedirect();
   }
 
   function waitForSettledLogoutBeforeRedirect() {
-    if (settingsStarted || settingsRedirected || settingsAuthRedirectTimer) {
+    if (settingsAuthenticatedEntry || settingsStarted || settingsRedirected || settingsAuthRedirectTimer) {
       return;
     }
 
@@ -363,6 +384,10 @@
 
     settingsAuthRedirectTimer = setTimeout(function() {
       settingsAuthRedirectTimer = null;
+
+      if (settingsAuthenticatedEntry || settingsStarted) {
+        return;
+      }
 
       var settledUser = getCurrentFirebaseUser() ||
         getBootstrapSnapshotUser() ||
