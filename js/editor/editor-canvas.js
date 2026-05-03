@@ -26,56 +26,12 @@ function createEditorCanvas(deps) {
     const canvasLayoutHelpers = window.LoveBudEditorCanvasLayoutHelpers || {};
     const canvasEdges = window.createEditorCanvasEdges({ svg, canvasViewport });
 
-    function loadStoredLayout() {
-        if (typeof canvasLayout.createLayoutStore === 'function') {
-            const store = canvasLayout.createLayoutStore(treeId);
-            const initialState = store.createInitialViewportState();
-            return {
-                positions: initialState.positions,
-                offsetX: initialState.offsetX,
-                offsetY: initialState.offsetY
-            };
-        }
-
-        try {
-            const raw = localStorage.getItem(layoutStorageKey);
-            if (!raw || raw === 'null') return { positions: {}, offsetX: 0, offsetY: 0 };
-            const parsed = JSON.parse(raw);
-            if (!parsed || typeof parsed !== 'object') return { positions: {}, offsetX: 0, offsetY: 0 };
-            return {
-                positions: (parsed.positions && typeof parsed.positions === 'object') ? parsed.positions : {},
-                offsetX: typeof parsed.offsetX === 'number' ? parsed.offsetX : 0,
-                offsetY: typeof parsed.offsetY === 'number' ? parsed.offsetY : 0
-            };
-        } catch (e) {
-            return { positions: {}, offsetX: 0, offsetY: 0 };
-        }
-    }
-
-    const storedLayout = loadStoredLayout();
-
-    const viewportState = {
-        offsetX: storedLayout.offsetX,
-        offsetY: storedLayout.offsetY,
-        initialized: false,
-        isPanning: false,
-        startX: 0,
-        startY: 0,
-        isDraggingNode: false,
-        dragNodeId: null,
-        dragStartClientX: 0,
-        dragStartClientY: 0,
-        dragStartWorldX: 0,
-        dragStartWorldY: 0,
-        dragMoved: false,
-        controlsBound: false,
-        globalsBound: false,
-        resizeBound: false,
-        resizeTimer: null,
-        positions: storedLayout.positions,
-        rafScheduled: false,
-        rafFrame: null
-    };
+    const canvasState = window.createEditorCanvasStateBoundary({
+        treeId,
+        layoutStorageKey,
+        canvasLayout
+    });
+    const viewportState = canvasState.createViewportState();
 
     const ROOT_RIGHT_GUTTER = 300;
     const ROOT_BOTTOM_GUTTER = 180;
@@ -87,19 +43,7 @@ function createEditorCanvas(deps) {
     const layoutHelperConstants = { ROOT_RIGHT_GUTTER, ROOT_BOTTOM_GUTTER };
 
     function persistStoredPositions() {
-        if (typeof canvasLayout.createLayoutStore === 'function') {
-            const store = canvasLayout.createLayoutStore(treeId);
-            store.persist(viewportState);
-            return;
-        }
-
-        try {
-            localStorage.setItem(layoutStorageKey, JSON.stringify({
-                positions: viewportState.positions,
-                offsetX: viewportState.offsetX,
-                offsetY: viewportState.offsetY
-            }));
-        } catch (e) {}
+        canvasState.persistStoredPositions(viewportState);
     }
 
     function getMetrics() {
@@ -202,17 +146,10 @@ function createEditorCanvas(deps) {
     }
 
     function bindResizeHandling() {
-        if (viewportState.resizeBound) return;
-        viewportState.resizeBound = true;
-
-        window.addEventListener('resize', () => {
-            if (viewportState.resizeTimer) {
-                clearTimeout(viewportState.resizeTimer);
-            }
-            viewportState.resizeTimer = setTimeout(() => {
-                keepSelectionVisible();
-                persistStoredPositions();
-            }, 120);
+        canvasState.bindResizeHandling({
+            viewportState,
+            keepSelectionVisible,
+            persistStoredPositions
         });
     }
 
@@ -713,12 +650,7 @@ function createEditorCanvas(deps) {
         });
 
         window.addEventListener('mouseup', () => {
-            const currentFrame = viewportState.rafFrame;
-            if (currentFrame) {
-                cancelAnimationFrame(currentFrame);
-                viewportState.rafFrame = null;
-                viewportState.rafScheduled = false;
-            }
+            canvasState.cancelScheduledFrame(viewportState);
 
             let shouldRender = false;
             if (viewportState.isDraggingNode && viewportState.dragNodeId) {
@@ -752,13 +684,7 @@ function createEditorCanvas(deps) {
     };
 
     function scheduleInitCanvas() {
-        if (viewportState.rafScheduled) return;
-        viewportState.rafScheduled = true;
-        viewportState.rafFrame = requestAnimationFrame(() => {
-            viewportState.rafScheduled = false;
-            viewportState.rafFrame = null;
-            initCanvas();
-        });
+        canvasState.scheduleRender(viewportState, initCanvas);
     }
 
     return {
