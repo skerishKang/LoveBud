@@ -65,7 +65,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         urlStateReady: false,
         initialTreeDeepLinkApplied: false,
         isLoadingMore: false,
-        hasMoreTrees: true
+        hasMoreTrees: true,
+        currentPublicTreeRequestId: 0
     };
     const previewCache = new Map();
     const callbacks = {};
@@ -245,6 +246,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     callbacks.renderResults = renderResults;
     callbacks.renderGrowingResults = renderGrowingResults;
     callbacks.updateUrlState = urlState.updateUrlState;
+
+    callbacks.loadMorePublicTrees = async () => {
+        if (!state.apiTreesLoaded || state.isLoadingMore || !state.hasMoreTrees || state.currentLimit >= 60) {
+            return false;
+        }
+
+        const nextLimit = Math.min(state.currentLimit + 10, 60);
+        if (nextLimit === state.currentLimit) return false;
+
+        state.currentLimit = nextLimit;
+        ui.syncControlsFromState();
+        ui.syncBrowseHead();
+        urlState.updateUrlState();
+
+        await dataApi.loadPublicTrees({ resetSelection: false });
+        ui.syncControlsFromState();
+        return true;
+    };
 
     const controls = window.LoveBudSearchControls.createSearchControls({
         refs,

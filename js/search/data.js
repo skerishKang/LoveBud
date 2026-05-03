@@ -48,7 +48,20 @@
         // ── Load public trees (main browse) ────────────────────────────────────
         async function loadPublicTrees(options = {}) {
             const { resetSelection = false } = options;
+
+            // Prevent duplicate concurrent requests
+            if (state.isLoadingMore && !resetSelection) {
+                return;
+            }
+
             const cacheKey = `${PUBLIC_TREES_CACHE_KEY}_${state.currentSort}_${state.currentLimit}`;
+            const requestId = (state.currentPublicTreeRequestId || 0) + 1;
+            const requestSort = state.currentSort;
+            const requestLimit = state.currentLimit;
+            state.currentPublicTreeRequestId = requestId;
+            const isCurrentRequest = () => state.currentPublicTreeRequestId === requestId
+                && state.currentSort === requestSort
+                && state.currentLimit === requestLimit;
 
             ui.syncBrowseHead();
 
@@ -56,14 +69,10 @@
                 ui.clearSelectedPreview();
             }
 
-            // Prevent duplicate concurrent requests
-            if (state.isLoadingMore && !resetSelection) {
-                return;
-            }
-
             // Set loading state for incremental loading
             if (!resetSelection) {
                 state.isLoadingMore = true;
+                ui.syncControlsFromState();
             }
 
             // Serve from cache first (stale-while-revalidate)
@@ -91,6 +100,9 @@
                                 : 'API 응답 형식 오류'
                         );
                     }
+                    if (!isCurrentRequest()) {
+                        return;
+                    }
 
                     if (cache) {
                         cache.set(cacheKey, apiTrees, 5 * 60 * 1000);
@@ -110,6 +122,9 @@
                     );
                 }
             } catch (error) {
+                if (!isCurrentRequest()) {
+                    return;
+                }
                 state.loadError = error;
                 console.warn('[search/data] API 로드 실패:', error.message);
                 if (!state.allTrees || state.allTrees.length === 0) {
@@ -117,7 +132,10 @@
                 }
                 callbacks.renderResults();
             } finally {
-                state.isLoadingMore = false;
+                if (isCurrentRequest()) {
+                    state.isLoadingMore = false;
+                    ui.syncControlsFromState();
+                }
             }
         }
 

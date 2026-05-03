@@ -19,6 +19,11 @@
         // overlay element reference + saved scroll position for lock/restore
         let sheetOverlay = null;
         let savedScrollY = 0;
+        let scrollLoadSentinel = null;
+        let scrollLoadObserver = null;
+        let scrollCheckRaf = 0;
+        let isScrollLoadQueued = false;
+        let hasUserScrolledTowardFeed = false;
 
         function getCurrentLocale() {
             const locale = window.i18n?.currentLang || window.getCurrentLang?.() || document.documentElement?.lang || 'ko';
@@ -196,7 +201,7 @@
             }
             const loadMoreBtn = document.getElementById('browseLoadMoreBtn');
             if (loadMoreBtn) {
-                const shouldDisable = state.currentLimit >= 60 || !state.hasMoreTrees || state.isLoadingMore;
+                const shouldDisable = !state.apiTreesLoaded || state.currentLimit >= 60 || !state.hasMoreTrees || state.isLoadingMore;
                 loadMoreBtn.disabled = shouldDisable;
 
                 if (state.isLoadingMore) {
@@ -255,17 +260,107 @@
                         ${getCurrentLocale() === 'en' ? 'Loading...' : '로딩 중...'}
                     `;
                 } else {
-                    loadMoreBtn.disabled = false;
+                    loadMoreBtn.disabled = !state.apiTreesLoaded;
                     loadMoreBtn.textContent = state.currentLimit >= 60
                         ? (getCurrentLocale() === 'en' ? 'Max 60' : '최대 60개')
                         : (getCurrentLocale() === 'en' ? 'Load more' : '더 보기');
                 }
             }
+            syncScrollLoadSentinel();
+        }
+
+        function canLoadMorePublicTrees() {
+            return Boolean(
+                callbacks.loadMorePublicTrees
+                && state.apiTreesLoaded
+                && state.hasMoreTrees
+                && !state.isLoadingMore
+                && !isScrollLoadQueued
+                && state.currentLimit < 60
+            );
+        }
+
+        function syncScrollLoadSentinel() {
+            if (!scrollLoadSentinel) return;
+
+            const isDone = !state.apiTreesLoaded || state.currentLimit >= 60 || !state.hasMoreTrees;
+            scrollLoadSentinel.hidden = isDone;
+            scrollLoadSentinel.classList.toggle('is-loading', Boolean(state.isLoadingMore));
+            scrollLoadSentinel.setAttribute('aria-hidden', isDone ? 'true' : 'false');
+
+            const text = scrollLoadSentinel.querySelector('[data-scroll-load-label]');
+            if (!text) return;
+            text.textContent = state.isLoadingMore
+                ? 'Loading more LoveTrees...'
+                : 'More LoveTrees will appear as you scroll.';
+        }
+
+        function isSentinelNearViewport() {
+            if (!scrollLoadSentinel || scrollLoadSentinel.hidden) return false;
+            const rect = scrollLoadSentinel.getBoundingClientRect();
+            return rect.top <= window.innerHeight + 520 && rect.bottom >= -160;
+        }
+
+        async function requestScrollLoadMore() {
+            if (!hasUserScrolledTowardFeed || !isSentinelNearViewport() || !canLoadMorePublicTrees()) return;
+
+            isScrollLoadQueued = true;
+            syncScrollLoadSentinel();
+            try {
+                await callbacks.loadMorePublicTrees({ source: 'scroll' });
+            } finally {
+                isScrollLoadQueued = false;
+                syncScrollLoadSentinel();
+            }
+        }
+
+        function scheduleScrollLoadCheck() {
+            if (scrollCheckRaf) return;
+            scrollCheckRaf = window.requestAnimationFrame(() => {
+                scrollCheckRaf = 0;
+                if ((window.scrollY || window.pageYOffset || 0) > 80) {
+                    hasUserScrolledTowardFeed = true;
+                }
+                requestScrollLoadMore();
+            });
+        }
+
+        function ensureScrollLoadSentinel() {
+            if (!resultsList || scrollLoadSentinel) return;
+
+            scrollLoadSentinel = document.createElement('div');
+            scrollLoadSentinel.id = 'browseScrollLoadSentinel';
+            scrollLoadSentinel.className = 'browse-scroll-load-sentinel';
+            scrollLoadSentinel.innerHTML = `
+                <span class="material-symbols-outlined" aria-hidden="true">progress_activity</span>
+                <span data-scroll-load-label></span>
+            `;
+
+            resultsList.insertAdjacentElement('afterend', scrollLoadSentinel);
+            syncScrollLoadSentinel();
+
+            if ('IntersectionObserver' in window) {
+                scrollLoadObserver = new IntersectionObserver((entries) => {
+                    if (entries.some(entry => entry.isIntersecting)) {
+                        scheduleScrollLoadCheck();
+                    }
+                }, {
+                    root: null,
+                    rootMargin: '520px 0px 520px 0px',
+                    threshold: 0
+                });
+                scrollLoadObserver.observe(scrollLoadSentinel);
+            }
+
+            window.addEventListener('scroll', scheduleScrollLoadCheck, { passive: true });
         }
 
         function ensureBrowseControls() {
             ensureResultsHead();
-            if (document.getElementById('browseSortControls')) return;
+            if (document.getElementById('browseSortControls')) {
+                ensureScrollLoadSentinel();
+                return;
+            }
 
             const controls = document.createElement('div');
             controls.id = 'browseSortControls';
@@ -311,14 +406,10 @@
             });
 
             controls.querySelector('#browseLoadMoreBtn')?.addEventListener('click', async () => {
-                if (state.isLoadingMore || !state.hasMoreTrees) return;
-
-                state.currentLimit = Math.min(state.currentLimit + 10, 60);
-                syncControlsFromState();
-                callbacks.updateUrlState();
-                await callbacks.loadPublicTrees({ resetSelection: false });
+                await callbacks.loadMorePublicTrees?.({ source: 'button' });
             });
 
+            ensureScrollLoadSentinel();
             syncControlsFromState();
         }
 
