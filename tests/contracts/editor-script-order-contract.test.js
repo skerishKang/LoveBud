@@ -91,6 +91,23 @@ test('entry fallback boundary is explicitly mounted before editor entry', () => 
   assertLoadedBefore(sources, 'js/editor/editor-entry-fallbacks.js', 'js/editor.js');
 });
 
+test('editor entry delegates entry fallback factories through boundary', () => {
+  const editor = read('js/editor.js');
+  const boundary = read('js/editor/editor-entry-fallbacks.js');
+
+  assert.match(editor, /window\.LoveBudEditorEntryFallbacks/, 'editor entry must read the entry fallback boundary');
+
+  for (const factory of [
+    'createInlineShowToastFallback',
+    'createInlineRedirectToEditorLoginFallback',
+    'createInlineRenderTreeLoadErrorFallback',
+    'createInlineFormatTimeAgoFallback',
+  ]) {
+    assert.match(boundary, new RegExp(`${factory}\\s*:`), `entry fallback boundary must expose ${factory}`);
+    assert.match(editor, new RegExp(`entryFallbacks\\.${factory}`), `editor entry must delegate ${factory}`);
+  }
+});
+
 test('shell helpers are explicitly mounted before editor entry', () => {
   const sources = scriptSources(editorHtml());
 
