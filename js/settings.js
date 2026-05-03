@@ -237,13 +237,13 @@
   }
 
   function handleLogout() {
-    if (window.LoveBudAuthFirebase && typeof window.LoveBudAuthFirebase.signOut === 'function') {
-      Promise.resolve(window.LoveBudAuthFirebase.signOut()).catch(redirectAfterLogout);
+    if (typeof window.signOut === 'function') {
+      window.signOut().then(redirectAfterLogout).catch(redirectAfterLogout);
       return;
     }
 
-    if (typeof window.signOut === 'function') {
-      window.signOut().then(redirectAfterLogout).catch(redirectAfterLogout);
+    if (window.LoveBudAuthFirebase && typeof window.LoveBudAuthFirebase.signOut === 'function') {
+      Promise.resolve(window.LoveBudAuthFirebase.signOut()).catch(redirectAfterLogout);
       return;
     }
 
