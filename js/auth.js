@@ -212,128 +212,22 @@ function fireAuthReadyCallbacks(user) {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 var __authCacheModule = window.LoveBudAuthCache || null;
+var __authCacheBridge = __authCacheModule &&
+  typeof __authCacheModule.createConfirmedAuthCacheBridge === 'function'
+  ? __authCacheModule.createConfirmedAuthCacheBridge({
+      cacheKey: AUTH_CACHE_KEY,
+      confirmedKey: AUTH_CONFIRMED_KEY,
+      tokenKey: AUTH_TOKEN_KEY
+    })
+  : null;
 
-function isInvalidAuthSessionError(error) {
-  if (__authCacheModule) return __authCacheModule.isInvalidAuthSessionError(error);
-  var message = String((error && (error.code || error.message)) || '');
-  return /USER_NOT_FOUND|user-not-found|invalid-user-token|token.*expired|user token/i.test(message);
-}
-
-function clearStaleFirebaseAuthState() {
-  if (__authCacheModule) {
-    __authCacheModule.clearStaleFirebaseAuthState();
-    return;
-  }
-  var prefixes = ['firebase:authUser:', 'firebase:pendingRedirect:', 'firebase:redirectUser:'];
-  function clearStorage(storage) {
-    if (!storage) return;
-    var keys = [];
-    for (var i = 0; i < storage.length; i++) {
-      var key = storage.key(i);
-      if (key && prefixes.some(function (p) { return key.indexOf(p) === 0; })) {
-        keys.push(key);
-      }
-    }
-    keys.forEach(function (k) { try { storage.removeItem(k); } catch (e) {} });
-  }
-  try { clearStorage(window.localStorage); } catch (e) {}
-  try { clearStorage(window.sessionStorage); } catch (e) {}
-}
-
-function getCachedAuthUser() {
-  if (__authCacheModule) {
-    return __authCacheModule.getCachedAuthUser(AUTH_CACHE_KEY, AUTH_CONFIRMED_KEY);
-  }
-  try {
-    if (localStorage.getItem(AUTH_CONFIRMED_KEY) !== 'true') return null;
-    var raw = localStorage.getItem(AUTH_CACHE_KEY);
-    if (!raw || raw === 'null') return null;
-    var parsed = JSON.parse(raw);
-    if (!parsed || !parsed.uid) return null;
-    return parsed;
-  } catch (e) {
-    return null;
-  }
-}
-
-function setConfirmedAuthCache(user) {
-  if (__authCacheModule) {
-    __authCacheModule.setConfirmedAuthCache(user, AUTH_CACHE_KEY, AUTH_CONFIRMED_KEY, AUTH_TOKEN_KEY);
-    return;
-  }
-  try {
-    if (user && user.uid) {
-      var cacheData = { uid: user.uid, displayName: user.displayName || '', email: user.email || '' };
-      localStorage.setItem(AUTH_CACHE_KEY, JSON.stringify(cacheData));
-      localStorage.setItem(AUTH_CONFIRMED_KEY, 'true');
-      return;
-    }
-  } catch (e) {}
-  clearConfirmedAuthCache();
-}
-
-function clearConfirmedAuthCache() {
-  if (__authCacheModule) {
-    __authCacheModule.clearConfirmedAuthCache(AUTH_CACHE_KEY, AUTH_CONFIRMED_KEY, AUTH_TOKEN_KEY);
-    return;
-  }
-  try {
-    localStorage.removeItem(AUTH_CACHE_KEY);
-    localStorage.removeItem(AUTH_CONFIRMED_KEY);
-    localStorage.removeItem(AUTH_TOKEN_KEY);
-  } catch (e) {}
-}
-
-function getCachedAuthToken() {
-  if (__authCacheModule) {
-    return __authCacheModule.getCachedAuthToken(AUTH_TOKEN_KEY);
-  }
-  try {
-    var raw = localStorage.getItem(AUTH_TOKEN_KEY);
-    if (!raw || raw === 'null') return null;
-    var parsed = JSON.parse(raw);
-    if (!parsed || !parsed.token || !parsed.expiresAt) return null;
-    if (Date.now() >= Number(parsed.expiresAt) - 30000) return null;
-    return parsed;
-  } catch (e) {
-    return null;
-  }
-}
-
-async function persistConfirmedAuthSession(user) {
-  if (__authCacheModule) {
-    await __authCacheModule.persistConfirmedAuthSession(user, AUTH_CACHE_KEY, AUTH_CONFIRMED_KEY, AUTH_TOKEN_KEY);
-    return;
-  }
-  try {
-    if (!user || !user.uid) {
-      clearConfirmedAuthCache();
-      return;
-    }
-
-    var cacheData = {
-      uid: user.uid,
-      displayName: user.displayName || '',
-      email: user.email || ''
-    };
-
-    localStorage.setItem(AUTH_CACHE_KEY, JSON.stringify(cacheData));
-    localStorage.setItem(AUTH_CONFIRMED_KEY, 'true');
-
-    if (typeof user.getIdTokenResult === 'function') {
-      var tokenResult = await user.getIdTokenResult();
-      if (tokenResult && tokenResult.token) {
-        localStorage.setItem(AUTH_TOKEN_KEY, JSON.stringify({
-          uid: user.uid,
-          token: tokenResult.token,
-          expiresAt: new Date(tokenResult.expirationTime).getTime()
-        }));
-      }
-    }
-  } catch (e) {
-    console.warn('[auth] Failed to persist confirmed session:', e);
-  }
-}
+function isInvalidAuthSessionError(error) { return __authCacheBridge.isInvalidAuthSessionError(error); }
+function clearStaleFirebaseAuthState() { __authCacheBridge.clearStaleFirebaseAuthState(); }
+function getCachedAuthUser() { return __authCacheBridge.getCachedAuthUser(); }
+function setConfirmedAuthCache(user) { __authCacheBridge.setConfirmedAuthCache(user); }
+function clearConfirmedAuthCache() { __authCacheBridge.clearConfirmedAuthCache(); }
+function getCachedAuthToken() { return __authCacheBridge.getCachedAuthToken(); }
+async function persistConfirmedAuthSession(user) { await __authCacheBridge.persistConfirmedAuthSession(user); }
 
 // ── Preload redirect target data after login ────────────────────────────────────
 function preloadRedirectTargetData() {
