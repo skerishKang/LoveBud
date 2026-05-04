@@ -71,22 +71,30 @@
     }
 
     // Render helpers
-    function setContent(elem, text) {
-        if (elem) elem.textContent = text;
+    function resolveElement(sel) {
+        if (!sel) return null;
+        if (typeof sel === 'string') {
+            return document.querySelector(sel);
+        }
+        return sel; // already an element
     }
 
-    function show(...els) {
-        for (const el of els) {
-            if (el) {
-                if (el.setAttribute) el.setAttribute('hidden', false);
-                else if (el.removeAttribute) el.removeAttribute('hidden');
-            }
+    function setContent(sel, text) {
+        const el = resolveElement(sel);
+        if (el) el.textContent = text;
+    }
+
+    function show(...sels) {
+        for (const sel of sels) {
+            const el = resolveElement(sel);
+            if (el) el.removeAttribute('hidden');
         }
     }
 
-    function hide(...els) {
-        for (const el of els) {
-            if (el && el.setAttribute) el.setAttribute('hidden', true);
+    function hide(...sels) {
+        for (const sel of sels) {
+            const el = resolveElement(sel);
+            if (el) el.setAttribute('hidden', '');
         }
     }
 
@@ -190,7 +198,7 @@
     }
 
     function renderNodesList() {
-        const list = SEL.nodesList;
+        const list = resolveElement(SEL.nodesList);
         if (!list) return;
         list.innerHTML = '';
 
@@ -255,7 +263,8 @@
     function selectMemory(memoryId) {
         selectedMemoryId = memoryId;
         // update active node class
-        const nodes = SEL.nodesList.querySelectorAll('.viewer-node');
+        const list = resolveElement(SEL.nodesList);
+        const nodes = list ? list.querySelectorAll('.viewer-node') : [];
         nodes.forEach(n => {
             n.classList.toggle('viewer-node-active', n.dataset.memoryId === memoryId);
         });
@@ -278,7 +287,7 @@
 
     function renderPreviewMemory(memory) {
         // Media (video embed or thumbnail)
-        const mediaContainer = SEL.previewMedia;
+        const mediaContainer = resolveElement(SEL.previewMedia);
         if (mediaContainer) {
             const sourceUrl = memory.sourceUrl || memory.originalUrl || '';
             const thumb = memory.representativeThumbnail || memory.thumbnail || '';
@@ -298,7 +307,7 @@
 
         // Title & tags
         setContent(SEL.momentTitle, memory.title || memory.emotionMemo || '');
-        const tagsContainer = SEL.momentTags;
+        const tagsContainer = resolveElement(SEL.momentTags);
         if (tagsContainer) {
             tagsContainer.innerHTML = (memory.emotionTags || [])
                 .map(tag => `<span class="viewer-preview-tag">${escapeHtml(tag)}</span>`)
@@ -306,7 +315,7 @@
         }
 
         // Meta: date/location
-        const metaContainer = SEL.momentMeta;
+        const metaContainer = resolveElement(SEL.momentMeta);
         if (metaContainer) {
             const dateStr = formatMemoryDate(memory);
             const location = memory.location || '';
@@ -317,8 +326,8 @@
         }
 
         // Diary
-        const quoteEl = SEL.diaryQuote;
-        const contentEl = SEL.diaryContent;
+        const quoteEl = resolveElement(SEL.diaryQuote);
+        const contentEl = resolveElement(SEL.diaryContent);
         if (quoteEl) quoteEl.textContent = memory.emotionMemo || '';
         if (contentEl) {
             // raw diary content is not exposed; show placeholder if empty
@@ -330,7 +339,7 @@
 
     // Error retry
     function setupRetry() {
-        const btn = document.querySelector(SEL.retryBtn);
+        const btn = resolveElement(SEL.retryBtn);
         if (btn && typeof btn.addEventListener === 'function') {
             btn.addEventListener('click', () => {
                 if (currentTreeId) {
@@ -342,7 +351,7 @@
 
     // Navigation back
     function setupBackLink() {
-        const back = document.querySelector(SEL.backLink);
+        const back = resolveElement(SEL.backLink);
         if (back && typeof back.addEventListener === 'function') {
             back.addEventListener('click', (e) => {
                 // default behavior is fine (link to search)
