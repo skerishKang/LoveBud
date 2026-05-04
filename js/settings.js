@@ -218,6 +218,17 @@
   function initSettings() {
     startSettings();
 
+    // Early auth check: redirect to login if not authenticated (except on login page)
+    const isLoginPage = window.location.pathname.endsWith('login.html') || window.location.pathname.endsWith('/') || window.location.pathname === '' || window.location.pathname.endsWith('index.html');
+    const confirmedAuthUser = window.getConfirmedAuthUser ? window.getConfirmedAuthUser() : null;
+    const storedAuth = localStorage.getItem('lovebud_auth_confirmed');
+    const isAuthenticated = !!confirmedAuthUser || !!storedAuth;
+    if (!isAuthenticated && !isLoginPage) {
+      const returnTo = encodeURIComponent(window.location.pathname + window.location.search);
+      window.location.href = 'login.html?redirect=' + returnTo;
+      return;
+    }
+
     if (window.LoveBudAuthBootstrap && typeof window.LoveBudAuthBootstrap.whenReady === 'function') {
       try {
         window.LoveBudAuthBootstrap.whenReady().then(startSettings).catch(startSettings);

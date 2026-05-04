@@ -290,6 +290,20 @@
 
         // 에디터 페이지에서는 "편집하기" 메뉴 숨김 (이미 편집 화면 안에 있음)
 
+        // Settings (auth gated)
+        if (menuConfig.settings) {
+            var settingsClasses = [];
+            if (activeKey === 'settings') settingsClasses.unshift('active');
+
+            var settingsHref = cachedUser
+                ? menuConfig.settings.href
+                : getLoginRedirectHref(menuConfig.settings.href);
+
+            navLinksHTML += '<a href="' + settingsHref + '"' +
+                (settingsClasses.length ? ' class="' + settingsClasses.join(' ') + '"' : '') +
+                '>' + t(menuConfig.settings.textKey) + '</a>';
+        }
+
         return [
             '<header class="nav-bar">',
                 '<a href="' + logoHref + '" class="headline header-logo" aria-label="LoveTree 홈으로 이동">LoveTree</a>',
