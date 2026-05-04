@@ -1,9 +1,10 @@
 /**
  * LoveBud Public Tree Viewer
- * v20260505-801-1
+ * v20260505-802-1
  *
  * Read-only public LoveTree viewer shell.
  * Loads public tree data and displays nodes + selected moment preview.
+ * Enhanced: YouTube embed support, improved accessibility.
  */
 
 (function() {
@@ -193,6 +194,9 @@
             const node = document.createElement('div');
             node.className = 'viewer-node' + (memory.id === selectedMemoryId ? ' viewer-node-active' : '');
             node.dataset.memoryId = memory.id;
+            node.setAttribute('role', 'button');
+            node.setAttribute('tabindex', '0');
+            node.setAttribute('aria-label', escapeHtml(memory.title || memory.emotionMemo || t('viewer.momentTitle', '그때의 마음', 'That Moment')));
 
             // Node content: title + date + tags
             let tagsHtml = '';
@@ -210,6 +214,12 @@
             `;
 
             node.addEventListener('click', () => selectMemory(memory.id));
+            node.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    selectMemory(memory.id);
+                }
+            });
             list.appendChild(node);
         }
     }
@@ -224,6 +234,18 @@
         } catch (e) {
             return raw;
         }
+    }
+
+    function extractYouTubeVideoId(url) {
+        if (!url) return null;
+        const s = String(url);
+        // Standard watch URL with v= parameter
+        const vMatch = s.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
+        if (vMatch) return vMatch[1];
+        // youtu.be/ID, shorts/ID, embed/ID, live/ID, v/ID
+        const pathMatch = s.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|shorts\/|live\/))([a-zA-Z0-9_-]{11})/);
+        if (pathMatch) return pathMatch[1];
+        return null;
     }
 
     function selectMemory(memoryId) {
@@ -251,12 +273,20 @@
     }
 
     function renderPreviewMemory(memory) {
-        // Media (if available)
+        // Media (video embed or thumbnail)
         const mediaContainer = SEL.previewMedia;
         if (mediaContainer) {
+            const sourceUrl = memory.sourceUrl || memory.originalUrl || '';
             const thumb = memory.representativeThumbnail || memory.thumbnail || '';
-            if (thumb) {
-                mediaContainer.innerHTML = `<img src="${escapeHtml(thumb)}" alt="${escapeHtml(memory.title || '')}" class="viewer-preview-image" />`;
+
+            // Check for YouTube embed URL
+            const ytVideoId = extractYouTubeVideoId(sourceUrl);
+            if (ytVideoId) {
+                const embedUrl = `https://www.youtube.com/embed/${ytVideoId}?rel=0&modestbranding=1`;
+                const safeTitle = escapeHtml(memory.title || 'moment video');
+                mediaContainer.innerHTML = `<iframe src="${escapeHtml(embedUrl)}" class="viewer-preview-video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy" title="${safeTitle}"></iframe>`;
+            } else if (thumb) {
+                mediaContainer.innerHTML = `<img src="${escapeHtml(thumb)}" alt="${escapeHtml(memory.title || '')}" class="viewer-preview-image" loading="lazy" />`;
             } else {
                 mediaContainer.innerHTML = `<div class="viewer-preview-no-media"><span class="material-symbols-outlined">image</span></div>`;
             }

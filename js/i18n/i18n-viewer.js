@@ -1,6 +1,6 @@
 /**
  * LoveBud - i18n Viewer Dictionary
- * v20260505-801-1
+ * v20260505-802-1
  *
  * Viewer page (public tree viewer) translation keys
  */
@@ -81,6 +81,18 @@
     'viewer.momentMedia': {
       ko: '미디어',
       en: 'Media'
+    },
+    'viewer.videoPlayer': {
+      ko: '영상 재생',
+      en: 'Video Player'
+    },
+    'viewer.noMedia': {
+      ko: '표시할 미디어가 없어요',
+      en: 'No media to display'
+    },
+    'viewer.momentPosition': {
+      ko: '순간 {index}번째',
+      en: 'Moment {index}'
     }
   };
 })();
