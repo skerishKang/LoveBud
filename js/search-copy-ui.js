@@ -9,6 +9,7 @@
     'use strict';
 
     const COPY_BUTTON_SELECTOR = '[data-copy-public-tree]';
+    const COPY_STATUS_SELECTOR = '[data-copy-public-tree-status]';
     const SHARE_BUTTON_SELECTOR = '[data-share-tree-link]';
     const SCRIPT_MARK = 'lovebudSearchCopyUiLoaded';
 
@@ -100,6 +101,7 @@
                 <span class="material-symbols-outlined" style="font-size:16px;">content_copy</span>
                 <span data-copy-public-tree-label>${safeLabel}</span>
             </button>
+            <div data-copy-public-tree-status class="copy-status-text" style="font-size:12px;color:var(--on-surface-variant);margin-top:6px;min-height:18px;"></div>
         `;
     }
 
@@ -130,6 +132,20 @@
         button.disabled = Boolean(disabled);
     }
 
+    function setStatusText(button, key, fallbackKo, fallbackEn) {
+        const statusEl = button.parentElement?.querySelector(COPY_STATUS_SELECTOR);
+        if (statusEl) {
+            statusEl.textContent = getCopy(key, fallbackKo, fallbackEn);
+        }
+    }
+
+    function clearStatusText(button) {
+        const statusEl = button.parentElement?.querySelector(COPY_STATUS_SELECTOR);
+        if (statusEl) {
+            statusEl.textContent = '';
+        }
+    }
+
     async function handleCopyClick(event) {
         const button = event.target.closest(COPY_BUTTON_SELECTOR);
         if (!button) return;
@@ -145,22 +161,30 @@
         if (!treeId) return;
 
         if (!hasAuthSession()) {
+            const loginMsg = getCopy('search.previewCopyToMyTreesLoginRequired', '로그인이 필요해요', 'Login required');
+            setStatusText(button, 'search.previewCopyToMyTreesLoginRequired', '로그인이 필요해요', 'Login required');
+            setButtonState(button, 'search.previewCopyToMyTrees', '내 러브트리로 가져오기', 'Copy to my LoveTrees', false);
             window.location.href = buildLoginHref(treeId);
             return;
         }
 
         setButtonState(button, 'search.previewCopyingToMyTrees', '가져오는 중이에요', 'Copying...', true);
+        clearStatusText(button);
         try {
             const result = await forkPublicTree(treeId);
             button.dataset.copiedTreeId = result.treeId;
             setButtonState(button, 'search.previewOpenCopiedTree', '복사된 트리 열기', 'Open copied tree', false);
+            setStatusText(button, 'search.previewCopyToMyTreesDone', '내 러브트리로 복사됐어요', 'Copied to my LoveTrees');
         } catch (error) {
-            console.warn('[search-copy-ui] public tree fork failed:', error.message);
             if (error.status === 401 || error.status === 403) {
+                setStatusText(button, 'search.previewCopyToMyTreesLoginRequired', '로그인이 필요해요', 'Login required');
                 window.location.href = buildLoginHref(treeId);
                 return;
             }
-            setButtonState(button, 'search.previewCopyToMyTreesFailed', '가져오지 못했어요', 'Copy failed', false);
+            const retryMsg = getCopy('search.previewCopyToMyTreesRetry', '다시 시도', 'Try again');
+            const failedBody = getCopy('search.previewCopyToMyTreesFailedBody', '가져오지 못했어요. 다시 시도해 주세요.', 'Copy failed. Please try again.');
+            setButtonState(button, 'search.previewCopyToMyTrees', '내 러브트리로 가져오기', 'Copy to my LoveTrees', false);
+            setStatusText(button, 'search.previewCopyToMyTreesFailedBody', '가져오지 못했어요. 다시 시도해 주세요.', 'Copy failed. Please try again.');
         }
     }
 
