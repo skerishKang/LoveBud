@@ -180,12 +180,19 @@
     max-width: 100%;
     min-height: 36px;
     justify-content: flex-start;
-    overflow-wrap: anywhere;
+    overflow: hidden;
 }
 
-.preview-flow-stage span:last-child {
+/* Issue #602: label text clamped to 2 lines with ellipsis; full label preserved in title attribute */
+.preview-flow-stage-label {
     min-width: 0;
-    overflow-wrap: anywhere;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    text-overflow: ellipsis;
+    word-break: break-word;
+    line-height: 1.35;
 }
 
 .preview-flow-controls {
