@@ -1,4 +1,61 @@
 window.LoveBudEditorCanvasViewport = {
+  readableCenter: {
+    x: 0.5,
+    y: 0.38
+  },
+
+  getViewportTargets(options) {
+    const { getTreeMemories, getCanonicalRootId, isRootMemory } = options;
+    const treeMemories = getTreeMemories();
+    if (!treeMemories.length) return [];
+
+    if (typeof getCanonicalRootId !== 'function' || typeof isRootMemory !== 'function') {
+      return treeMemories;
+    }
+
+    const canonicalRootId = getCanonicalRootId();
+    const visibleNodes = treeMemories.filter((memory) => !isRootMemory(memory, canonicalRootId));
+    if (visibleNodes.length) return visibleNodes;
+
+    const rootMemory = treeMemories.find((memory) => isRootMemory(memory, canonicalRootId));
+    return rootMemory ? [rootMemory] : [];
+  },
+
+  getReadableViewportOffset(options) {
+    const { getWorldPosition, getMetrics } = options;
+    const targets = this.getViewportTargets(options);
+    if (!targets.length) return null;
+
+    const points = targets.map((memory) => getWorldPosition(memory));
+    const minX = Math.min(...points.map((point) => point.x));
+    const maxX = Math.max(...points.map((point) => point.x));
+    const minY = Math.min(...points.map((point) => point.y));
+    const maxY = Math.max(...points.map((point) => point.y));
+    const metrics = getMetrics();
+
+    return {
+      offsetX: Math.round(metrics.width * this.readableCenter.x - ((minX + maxX) / 2)),
+      offsetY: Math.round(metrics.height * this.readableCenter.y - ((minY + maxY) / 2))
+    };
+  },
+
+  prepareInitialViewport(options) {
+    const { viewportState } = options;
+    if (viewportState.initialViewportApplied) return;
+
+    if (viewportState.hasStoredViewportOffset) {
+      viewportState.initialViewportApplied = true;
+      return;
+    }
+
+    const nextOffset = this.getReadableViewportOffset(options);
+    if (!nextOffset) return;
+
+    viewportState.offsetX = nextOffset.offsetX;
+    viewportState.offsetY = nextOffset.offsetY;
+    viewportState.initialViewportApplied = true;
+  },
+
   drawBranch(svg, startPos, endPos) {
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     const cp1x = startPos.x + (endPos.x - startPos.x) / 2;
@@ -28,7 +85,7 @@ window.LoveBudEditorCanvasViewport = {
   },
 
   recenterViewport(options) {
-    const { getTreeMemories, getWorldPosition, getMetrics, viewportState, initCanvas } = options;
+    const { getTreeMemories, viewportState, initCanvas } = options;
     const treeMemories = getTreeMemories();
     if (!treeMemories.length) {
       viewportState.offsetX = 0;
@@ -37,15 +94,11 @@ window.LoveBudEditorCanvasViewport = {
       return;
     }
 
-    const points = treeMemories.map((memory) => getWorldPosition(memory));
-    const minX = Math.min(...points.map((point) => point.x));
-    const maxX = Math.max(...points.map((point) => point.x));
-    const minY = Math.min(...points.map((point) => point.y));
-    const maxY = Math.max(...points.map((point) => point.y));
-    const metrics = getMetrics();
+    const nextOffset = this.getReadableViewportOffset(options);
+    if (!nextOffset) return;
 
-    viewportState.offsetX = Math.round(metrics.width * 0.5 - ((minX + maxX) / 2));
-    viewportState.offsetY = Math.round(metrics.height * 0.38 - ((minY + maxY) / 2));
+    viewportState.offsetX = nextOffset.offsetX;
+    viewportState.offsetY = nextOffset.offsetY;
     initCanvas();
   },
 
