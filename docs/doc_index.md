@@ -37,10 +37,11 @@
 2. `./doc_index.md`
 3. `./ops/PARALLEL_WORKTREE_AGENT_POLICY.md`
 4. `./ops/AGENT_STARTUP_VERIFICATION_RULES.md`
-5. `./product/PRODUCT_IDENTITY.md`
-6. `./product/BRAND_EXPERIENCE.md`
-7. `./design/UI_DESIGN_SYSTEM.md`
-8. 요청 범위에 맞는 문서군 인덱스
+5. `./project/AGENT_OPERATION_GUARDRAILS.md`
+6. `./product/PRODUCT_IDENTITY.md`
+7. `./product/BRAND_EXPERIENCE.md`
+8. `./design/UI_DESIGN_SYSTEM.md`
+9. 요청 범위에 맞는 문서군 인덱스
 
 Visibility, private storage, anonymous public exposure, Browse/Search eligibility 판단이 필요하면 아래를 추가로 읽습니다.
 
@@ -197,6 +198,7 @@ Reference 문서는 `docs/reference/` 아래에 정리됩니다.
 - [PROJECT_OPERATING_MODEL.md](./project/PROJECT_OPERATING_MODEL.md) - 역할, 책임, 승인권, 세션 시작 프로토콜
 - [BRANCHING_AND_REVIEW.md](./project/BRANCHING_AND_REVIEW.md) - main 우선 확인, 브랜치 작업, 리뷰/검증/완료 보고 원칙
 - [LOCAL_MODEL_WORKFLOW.md](./project/LOCAL_MODEL_WORKFLOW.md) - 로컬 실행 모델 작업 기준
+- [AGENT_OPERATION_GUARDRAILS.md](./project/AGENT_OPERATION_GUARDRAILS.md) - 파일 inspection과 secret 노출의 경계, fixed-slot browser verification, test account handling, 병렬 프롬프트 중복 방지, 범위 밖 입력 확인, implementation handoff 기준
 - [TASK_STATUS.md](./project/TASK_STATUS.md) - 작업 상태 추적 문서
 - [VERIFICATION_AND_EVIDENCE.md](./project/VERIFICATION_AND_EVIDENCE.md) - 검증 및 증빙 기준
 - [VERIFICATION_WARNING_CATALOG.md](./project/VERIFICATION_WARNING_CATALOG.md) - UI/production/test preview 검증 warning과 blocker 분류 기준
