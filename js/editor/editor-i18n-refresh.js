@@ -39,7 +39,9 @@
 
     var momentCountEl = document.getElementById('sidebarMomentCount');
     if (momentCountEl) {
-      momentCountEl.textContent = tText('sidebar_moment_count', '순간 {count}개가 이어지고 있어요').replace('{count}', String(count));
+      momentCountEl.textContent = count === 0
+        ? tText('sidebar_moment_count_empty_short', '첫 순간 준비 중')
+        : tText('sidebar_moment_count_short', '총 {count}개의 순간', '{count}').replace('{count}', String(count));
     }
 
     var flowSummaryEl = document.getElementById('sidebarFlowSummary');

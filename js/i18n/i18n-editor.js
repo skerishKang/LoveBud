@@ -113,3 +113,10 @@ Object.assign(window.i18nEditor, {
     editor_add_first_memory_eyebrow: { ko: '첫 순간에서', en: 'From first moment' },
     editor_empty_tree_hint_short: { ko: '첫 순간이 여기에 시작돼요.', en: 'The first moment starts here.' }
 });
+Object.assign(window.i18nEditor, {
+    start_moment: { ko: '현재 선택 · 시작 순간', en: 'Current selection · starting moment' },
+    selected_moment: { ko: '현재 선택한 순간', en: 'Current selected moment' },
+    sidebar_moment_count_short: { ko: '총 {count}개의 저장된 순간', en: '{count} saved moments total' },
+    sidebar_moment_count_with_visible_short: { ko: '총 {total}개의 저장된 순간 · 캔버스 {visible}개 표시', en: '{total} saved moments · {visible} shown on canvas' },
+    sidebar_flow_summary_connected_short: { ko: '이 트리에 {count}개의 순간이 저장되어 있어요', en: '{count} moments are saved in this tree' }
+});
