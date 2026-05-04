@@ -89,3 +89,15 @@
     margin-top: 4px;
     min-width: 170px;
 }
+
+@media (max-width: 1024px) {
+    .editor-canvas-empty-guide {
+        top: calc(50% + 32px);
+    }
+}
+
+@media (max-width: 768px) {
+    .editor-canvas-empty-guide {
+        top: calc(50% + 40px);
+    }
+}
