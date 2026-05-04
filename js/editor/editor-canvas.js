@@ -32,6 +32,7 @@ function createEditorCanvas(deps) {
         canvasLayout
     });
     const viewportState = canvasState.createViewportState();
+    viewportState.hasStoredViewportOffset = hasStoredViewportOffset();
 
     const ROOT_RIGHT_GUTTER = 300;
     const ROOT_BOTTOM_GUTTER = 180;
@@ -44,6 +45,18 @@ function createEditorCanvas(deps) {
 
     function persistStoredPositions() {
         canvasState.persistStoredPositions(viewportState);
+    }
+
+    function hasStoredViewportOffset() {
+        try {
+            const raw = localStorage.getItem(layoutStorageKey);
+            if (!raw || raw === 'null') return false;
+            const parsed = JSON.parse(raw);
+            return !!parsed && typeof parsed === 'object'
+                && (typeof parsed.offsetX === 'number' || typeof parsed.offsetY === 'number');
+        } catch (error) {
+            return false;
+        }
     }
 
     function getMetrics() {
@@ -335,6 +348,16 @@ function createEditorCanvas(deps) {
         const rootMemory = treeMemories.find((node) => isRootMemory(node, canonicalRootId)) || null;
         const shouldRenderRootNode = drawableMemories.length === 0 && !!rootMemory;
         const hasVisibleNodes = drawableMemories.length > 0 || shouldRenderRootNode;
+        if (hasVisibleNodes && typeof canvasViewport.prepareInitialViewport === 'function') {
+            canvasViewport.prepareInitialViewport({
+                getTreeMemories,
+                getCanonicalRootId,
+                isRootMemory,
+                getWorldPosition,
+                getMetrics,
+                viewportState
+            });
+        }
         canvas.style.backgroundPosition = `${viewportState.offsetX}px ${viewportState.offsetY}px`;
 
         canvas.querySelectorAll('.memory-node').forEach((node) => node.remove());
@@ -382,6 +405,8 @@ function createEditorCanvas(deps) {
             canvasViewport.focusNodeById({
                 nodeId,
                 getTreeMemories,
+                getCanonicalRootId,
+                isRootMemory,
                 getWorldPosition,
                 getMetrics,
                 viewportState,
