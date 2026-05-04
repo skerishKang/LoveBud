@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>러브트리 감상 | LoveTree</title>
+    <link rel="icon" href="/assets/favicon/favicon.svg" type="image/svg+xml">
+    <link rel="icon" href="/favicon.ico" sizes="32x32">
+    <link rel="stylesheet" href="../css/global.css?v=20260415-10">
+    <link rel="stylesheet" href="../css/viewer/public-tree-viewer.css?v=20260505-801-1">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
+</head>
+<body class="paper-grain">
+    <div class="noise-overlay"></div>
+
+    <!-- Shared Header (public, non-auth-gated) -->
+    <div id="shared-header"></div>
+
+    <div class="viewer-page-shell page-transition-enter">
+        <!-- Topbar -->
+        <div class="viewer-topbar">
+            <a id="backButton" class="viewer-back-link" href="../pages/search.html">
+                <span class="material-symbols-outlined">arrow_back</span>
+                <span data-i18n="viewer.backToBrowse">둘러보기로 돌아가기</span>
+            </a>
+            <div class="viewer-badge">
+                <span class="material-symbols-outlined">public</span>
+                <span data-i18n="viewer.public">공개</span>
+            </div>
+        </div>
+
+        <main class="viewer-layout">
+            <!-- Tree Area (Left/Top) -->
+            <section class="viewer-tree-section">
+                <div id="viewerTreeShell" class="viewer-tree-shell">
+                    <!-- Loading / Empty / Error states -->
+                    <div id="viewerLoadingState" class="viewer-state" hidden>
+                        <div class="viewer-state-content">
+                            <span class="material-symbols-outlined refresh-symbol">progress_activity</span>
+                            <p data-i18n="viewer.loading">러브트리를 불러오는 중이에요</p>
+                        </div>
+                    </div>
+
+                    <div id="viewerEmptyState" class="viewer-state" hidden>
+                        <div class="viewer-state-content">
+                            <span class="material-symbols-outlined">sentiment_dissatisfied</span>
+                            <p data-i18n="viewer.empty">아직 공개된 순간이 없어요</p>
+                        </div>
+                    </div>
+
+                    <div id="viewerErrorState" class="viewer-state" hidden>
+                        <div class="viewer-state-content">
+                            <span class="material-symbols-outlined">error_outline</span>
+                            <p data-i18n="viewer.error">러브트리를 불러오지 못했어요. 다시 시도해 주세요.</p>
+                            <button type="button" id="viewerRetryBtn" class="btn-round btn-outline" data-i18n="viewer.retry">
+                                다시 시도
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Tree Nodes Container -->
+                    <div id="viewerTreeContainer" class="viewer-tree-container" hidden>
+                        <!-- Tree title/meta -->
+                        <div class="viewer-tree-header">
+                            <h2 id="viewerTreeTitle" class="viewer-tree-title"></h2>
+                            <div id="viewerTreeMeta" class="viewer-tree-meta"></div>
+                        </div>
+
+                        <!-- Tree nodes vertical flow -->
+                        <div id="viewerNodesList" class="viewer-nodes-list"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Moment Preview Panel (Right/Bottom) -->
+            <aside class="viewer-preview-section">
+                <div class="viewer-preview-sticky">
+                    <div class="viewer-preview-header">
+                        <h3 data-i18n="viewer.selectedMoment">선택한 순간</h3>
+                    </div>
+
+                    <div id="viewerPreviewContainer" class="viewer-preview-container">
+                        <!-- Empty state -->
+                        <div id="viewerPreviewEmpty" class="viewer-preview-empty">
+                            <p data-i18n="viewer.previewPlaceholder">순간을 선택하면 여기에 표시돼요</p>
+                        </div>
+
+                        <!-- Moment content -->
+                        <div id="viewerPreviewContent" class="viewer-preview-content" hidden>
+                            <div id="viewerPreviewMedia" class="viewer-preview-media"></div>
+                            <div class="viewer-preview-details">
+                                <h4 id="viewerMomentTitle" class="viewer-moment-title"></h4>
+                                <div id="viewerMomentTags" class="viewer-moment-tags"></div>
+                                <div id="viewerMomentMeta" class="viewer-moment-meta"></div>
+                                <div id="viewerMomentDiary" class="viewer-moment-diary">
+                                    <p id="viewerDiaryQuote" class="viewer-diary-quote"></p>
+                                    <div id="viewerDiaryContent" class="viewer-diary-content"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        </main>
+    </div>
+
+    <!-- Scripts (no auth/editor scripts) -->
+    <script src="../js/cache-utils.js?v=20260418-1"></script>
+    <script src="../js/utils/normalize.js?v=20260422-1"></script>
+    <script src="../js/api/base-api-fetch.js?v=20260420-1"></script>
+    <script src="../js/postgres-client.js?v=20260422-1"></script>
+    <script src="../js/search/search-preview-renderer.js?v=20260504-1"></script>
+    <script src="../js/i18n/i18n-core.js?v=20260421-1"></script>
+    <script src="../js/i18n/i18n-search.js?v=20260421-1"></script>
+    <script src="../js/i18n/i18n-viewer.js?v=20260505-801-1"></script>
+    <script src="../js/i18n.js?v=20260419-2"></script>
+    <script src="../js/viewer/public-tree-viewer.js?v=20260505-801-1"></script>
+</body>
+</html>
