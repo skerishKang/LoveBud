@@ -280,6 +280,15 @@
 
      // i18n 초기화
      document.addEventListener('DOMContentLoaded', function() {
+       // URL param에서 언어 확인 (?lang=en 또는 ?lang=ko)
+       var urlParams = new URLSearchParams(window.location.search);
+       var langParam = urlParams.get('lang');
+
+       if (langParam && (langParam === 'en' || langParam === 'ko')) {
+         // URL param이 있으면 해당 언어로 설정
+         if (window.setCurrentLang) window.setCurrentLang(langParam);
+       }
+
        if (window.applyI18n) window.applyI18n();
 
        // 저장된 언어로 드롭다운 상태 동기화
