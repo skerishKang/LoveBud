@@ -9,6 +9,22 @@
             getTreeState
         } = deps;
 
+        const formatCountLabel = (treeState) => {
+            const total = treeState.totalMomentCount;
+            const visible = treeState.visibleMomentCount;
+            if (!treeState.hasMoments) {
+                return formatI18nText('sidebar_moment_count_empty_short', '첫 순간 준비 중');
+            }
+            if (total !== visible) {
+                return formatI18nText(
+                    'sidebar_moment_count_with_visible_short',
+                    '총 {total}개의 저장된 순간 · 캔버스 {visible}개 표시',
+                    { total, visible }
+                );
+            }
+            return formatI18nText('sidebar_moment_count_short', '총 {count}개의 저장된 순간', { count: total });
+        };
+
         const updateSidebarStatus = () => {
             const treeTitleEl = document.getElementById('sidebarTreeTitle');
             const visibilityEl = document.getElementById('sidebarTreeVisibility');
@@ -18,7 +34,6 @@
             const currentTreeData = getCurrentTreeData();
             const selectedNodeId = getSelectedNodeId();
             const treeState = getTreeState();
-            const count = treeState.visibleMomentCount;
             const selected = treeState.treeMemories.find(m => m.id === selectedNodeId);
             const visibility = currentTreeData?.visibility || 'public';
             const isPublic = visibility === 'public';
@@ -34,21 +49,19 @@
                 visibilityEl.classList.toggle('is-private', !isPublic);
             }
             if (momentCountEl) {
-                momentCountEl.textContent = treeState.hasVisibleMoments
-                    ? formatI18nText('sidebar_moment_count_short', `총 ${count}개의 순간`, { count })
-                    : formatI18nText('sidebar_moment_count_empty_short', '첫 순간 준비 중');
+                momentCountEl.textContent = formatCountLabel(treeState);
             }
             if (flowSummaryEl) {
                 flowSummaryEl.textContent = selected?.title
-                    ? formatI18nText('sidebar_flow_summary_selected_short', `지금은 "{title}"에 마음이 머물러 있어요.`, { title: selected.title })
-                    : treeState.hasVisibleMoments
-                        ? formatI18nText('sidebar_flow_summary_connected_short', `이 트리에 {count}개의 순간이 이어져 있어요.`, { count })
+                    ? formatI18nText('sidebar_flow_summary_selected_short', '지금은 "{title}" 순간을 보고 있어요', { title: selected.title })
+                    : treeState.hasMoments
+                        ? formatI18nText('sidebar_flow_summary_connected_short', '이 트리에 {count}개의 순간이 저장되어 있어요', { count: treeState.totalMomentCount })
                         : formatI18nText('sidebar_flow_summary_empty_short', '첫 순간을 심으면 감정의 흐름이 여기서 시작됩니다.');
             }
             if (hintEl) {
                 hintEl.textContent = selected?.title
-                    ? formatI18nText('sidebar_canvas_hint_selected', '빈 공간을 드래그해 이동하고, “트리 한눈에 보기”로 전체 흐름을 다시 볼 수 있어요.')
-                    : formatI18nText('sidebar_canvas_hint_empty', '트리가 화면 밖으로 밀리면 “트리 한눈에 보기”로 다시 가운데에 맞출 수 있어요.');
+                    ? formatI18nText('sidebar_canvas_hint_selected', '선택한 순간을 중심으로 트리를 둘러보세요.')
+                    : formatI18nText('sidebar_canvas_hint_empty', '첫 순간을 심으면 감정이 여기서 시작돼요.');
                 hintEl.style.fontStyle = 'normal';
                 hintEl.style.color = 'var(--on-surface-variant)';
             }
@@ -65,13 +78,13 @@
             }
             if (addMemoryEyebrow) {
                 addMemoryEyebrow.textContent = isEmptyTree
-                    ? formatI18nText('editor_add_first_memory_eyebrow', '첫 순간 심기')
+                    ? formatI18nText('editor_add_first_memory_eyebrow', '첫 순간에서')
                     : i18n('editor_add_memory_eyebrow');
             }
             if (addMemoryIntro) {
                 addMemoryIntro.textContent = isEmptyTree
-                    ? formatI18nText('editor_empty_tree_hint_short', '이 트리의 첫 장면을 남기면 가운데 캔버스에 감정의 흐름이 열립니다.')
-                    : formatI18nText('editor_next_memory_hint_short', '지금 머문 장면 다음에 새로운 순간을 이어 심어 보세요.');
+                    ? formatI18nText('editor_empty_tree_hint_short', '첫 순간이 여기서 시작돼요.')
+                    : formatI18nText('editor_next_memory_hint_short', '다음 순간을 이어가 보세요.');
             }
         };
 
