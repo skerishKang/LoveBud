@@ -184,6 +184,35 @@
     background: rgba(158,81,88,0.08);
 }
 
+#detailEditMode .detail-info-group {
+    margin: 0;
+}
+
+#detailEditMode .detail-info-group + .detail-info-group {
+    margin-top: 18px;
+}
+
+#detailEditMode .detail-info-group:nth-of-type(3) {
+    margin-top: 20px;
+}
+
+.editor-edit-actions-row {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 24px;
+    padding-top: 18px;
+    border-top: 1px solid rgba(144,73,81,0.10);
+}
+
+.editor-edit-actions-row .editor-edit-action-btn,
+.editor-edit-actions-row .editor-edit-danger-action {
+    min-height: 42px;
+    padding-inline: 16px;
+}
+
 .editor-memory-delete-btn {
     color: #a87b80;
     border-color: rgba(158,81,88,0.08);
@@ -421,5 +450,28 @@
         min-height: 30px;
         padding: 0 10px;
         font-size: 10.5px;
+    }
+
+    .editor-edit-actions-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+        margin-top: 22px;
+        padding-top: 16px;
+    }
+
+    .editor-edit-actions-row .editor-edit-action-btn,
+    .editor-edit-actions-row .editor-edit-danger-action {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .editor-edit-actions-row .editor-edit-action-btn {
+        order: 1;
+    }
+
+    .editor-edit-actions-row .editor-edit-danger-action {
+        order: 2;
+        margin: 8px 0 0;
     }
 }
