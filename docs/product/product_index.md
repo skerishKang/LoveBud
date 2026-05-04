@@ -88,7 +88,12 @@ Strong primary CTAs require Ready status and valid runtime verification when Aut
 
 ## 원천 자료 (Identity Source)
 
-제품 정체성의 기반이 된 인터뷰 및 콘셍
+제품 정체성의 기반이 된 인터뷰 및 콘셉트 원본 문서:
+
+| 파일명 | 설명 |
+|--------|------|
+| [identity-source/relovetree-concept-interview-answer.txt](identity-source/relovetree-concept-interview-answer.txt) | Relovetree 정체성 인터뷰 답변 원본 (txt) |
+| [identity-source/concept-interview.html](identity-source/concept-interview.html) | 인터뷰 내용 포맷된 HTML |
 
 ## 먼저 읽기 순서
 
