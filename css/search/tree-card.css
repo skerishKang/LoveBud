@@ -58,9 +58,10 @@
     opacity: 1;
 }
 
+/* Issue #778: keep the first/featured card media within the same vertical budget as other cards so the footer row is not clipped. */
 .tree-card-featured .tree-card-media {
-    height: 150px;
-    min-height: 150px;
+    height: 136px;
+    min-height: 136px;
 }
 
 .tree-card-media {
