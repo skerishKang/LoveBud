@@ -10,6 +10,7 @@
 - 3TF 구조, TF별 보고선, project 운영 문서 진입 경로
 - 상태 추적 문서 위치
 - 검증 warning / blocker 분류 기준
+- 에이전트 운영 가드레일과 구현 handoff 기준
 
 장문 정책 본문은 이 인덱스에 두지 않습니다. 상세 기준은 아래 하위 문서로 이동합니다.
 
@@ -19,9 +20,10 @@
 2. [PROJECT_OPERATING_MODEL.md](./PROJECT_OPERATING_MODEL.md)
 3. [BRANCHING_AND_REVIEW.md](./BRANCHING_AND_REVIEW.md)
 4. [LOCAL_MODEL_WORKFLOW.md](./LOCAL_MODEL_WORKFLOW.md)
-5. [TASK_STATUS.md](./TASK_STATUS.md)
-6. [VERIFICATION_AND_EVIDENCE.md](./VERIFICATION_AND_EVIDENCE.md)
-7. [VERIFICATION_WARNING_CATALOG.md](./VERIFICATION_WARNING_CATALOG.md)
+5. [AGENT_OPERATION_GUARDRAILS.md](./AGENT_OPERATION_GUARDRAILS.md)
+6. [TASK_STATUS.md](./TASK_STATUS.md)
+7. [VERIFICATION_AND_EVIDENCE.md](./VERIFICATION_AND_EVIDENCE.md)
+8. [VERIFICATION_WARNING_CATALOG.md](./VERIFICATION_WARNING_CATALOG.md)
 
 ## 하위 문서 안내
 
@@ -36,6 +38,9 @@
 
 - [LOCAL_MODEL_WORKFLOW.md](./LOCAL_MODEL_WORKFLOW.md)  
   프로젝트 공통 로컬 실행 규칙과 로컬 실행 모델이 따라야 할 작업 기준을 정리합니다.
+
+- [AGENT_OPERATION_GUARDRAILS.md](./AGENT_OPERATION_GUARDRAILS.md)  
+  파일 inspection과 secret 노출의 경계, fixed-slot browser verification, test account handling, 병렬 프롬프트 중복 방지, 범위 밖 입력 확인, implementation handoff 기준을 정리합니다.
 
 - [TASK_STATUS.md](./TASK_STATUS.md)  
   작업 상태를 추적하기 위한 상태 필드, 템플릿, 항목 관리 기준을 제공합니다.
