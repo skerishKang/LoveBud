@@ -24,6 +24,7 @@
         let scrollCheckRaf = 0;
         let isScrollLoadQueued = false;
         let hasUserScrolledTowardFeed = false;
+        let scrollLoadIntentBound = false;
 
         function getCurrentLocale() {
             const locale = window.i18n?.currentLang || window.getCurrentLang?.() || document.documentElement?.lang || 'ko';
@@ -298,7 +299,7 @@
         function isSentinelNearViewport() {
             if (!scrollLoadSentinel || scrollLoadSentinel.hidden) return false;
             const rect = scrollLoadSentinel.getBoundingClientRect();
-            return rect.top <= window.innerHeight + 520 && rect.bottom >= -160;
+            return rect.top <= window.innerHeight + 720 && rect.bottom >= -240;
         }
 
         async function requestScrollLoadMore() {
@@ -325,6 +326,30 @@
             });
         }
 
+        function markScrollLoadIntent() {
+            hasUserScrolledTowardFeed = true;
+            scheduleScrollLoadCheck();
+        }
+
+        function handleScrollLoadKeydown(event) {
+            const scrollingKeys = [' ', 'PageDown', 'End', 'ArrowDown'];
+            if (scrollingKeys.includes(event.key)) {
+                markScrollLoadIntent();
+            }
+        }
+
+        function bindScrollLoadIntentHandlers() {
+            if (scrollLoadIntentBound) return;
+            scrollLoadIntentBound = true;
+
+            window.addEventListener('scroll', scheduleScrollLoadCheck, { passive: true });
+            window.addEventListener('wheel', markScrollLoadIntent, { passive: true });
+            window.addEventListener('touchmove', markScrollLoadIntent, { passive: true });
+            window.addEventListener('keydown', handleScrollLoadKeydown);
+            window.addEventListener('resize', scheduleScrollLoadCheck, { passive: true });
+            window.addEventListener('pageshow', scheduleScrollLoadCheck);
+        }
+
         function ensureScrollLoadSentinel() {
             if (!resultsList || scrollLoadSentinel) return;
 
@@ -346,13 +371,14 @@
                     }
                 }, {
                     root: null,
-                    rootMargin: '520px 0px 520px 0px',
+                    rootMargin: '720px 0px 720px 0px',
                     threshold: 0
                 });
                 scrollLoadObserver.observe(scrollLoadSentinel);
             }
 
-            window.addEventListener('scroll', scheduleScrollLoadCheck, { passive: true });
+            bindScrollLoadIntentHandlers();
+            scheduleScrollLoadCheck();
         }
 
         function ensureBrowseControls() {
