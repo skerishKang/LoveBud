@@ -296,8 +296,8 @@
 
     // Error retry
     function setupRetry() {
-        const btn = SEL.retryBtn;
-        if (btn) {
+        const btn = document.querySelector(SEL.retryBtn);
+        if (btn && typeof btn.addEventListener === 'function') {
             btn.addEventListener('click', () => {
                 if (currentTreeId) {
                     initViewer();
@@ -308,8 +308,8 @@
 
     // Navigation back
     function setupBackLink() {
-        const back = SEL.backLink;
-        if (back) {
+        const back = document.querySelector(SEL.backLink);
+        if (back && typeof back.addEventListener === 'function') {
             back.addEventListener('click', (e) => {
                 // default behavior is fine (link to search)
             });
