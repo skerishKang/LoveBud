@@ -95,8 +95,9 @@ function createEditorDetailInlineEditBoundary(deps) {
     // ── Memo edit boundary helper ────────────────────────────────────────────
     // Responsible: encapsulate inline memo edit textarea, buttons, and state binding.
     // Does not affect title edit or current memory actions.
-    const createMemoEditBoundary = (memoContainer, data, { updateSelectedMemoryFields, showToast, formatI18nText, getMemoFallbackText, isEmptyState }) => {
+    const createMemoEditBoundary = (memoContainer, data, { updateSelectedMemoryFields, showToast, formatI18nText, getMemoFallbackText, isEmptyState, editButtonMount }) => {
         memoContainer.innerHTML = '';
+        if (editButtonMount) editButtonMount.innerHTML = '';
 
         const memoBody = document.createElement('div');
         memoBody.style.lineHeight = '1.8';
@@ -111,13 +112,12 @@ function createEditorDetailInlineEditBoundary(deps) {
         if (isEmptyState || typeof updateSelectedMemoryFields !== 'function') return;
 
         const editBtn = document.createElement('button');
-        editBtn.className = 'memory-edit-button';
-        editBtn.style.marginTop = '10px';
-        editBtn.style.marginLeft = '0';
+        editBtn.className = 'memory-edit-button editor-memo-heading-edit-button';
         editBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;margin-right:2px;">edit</span>' + formatI18nText('editMemoryNote', '메모 수정');
 
         editBtn.onclick = () => {
             memoContainer.innerHTML = '';
+            if (editButtonMount) editButtonMount.innerHTML = '';
 
             const textarea = document.createElement('textarea');
             textarea.className = 'memory-edit-textarea';
@@ -183,7 +183,7 @@ function createEditorDetailInlineEditBoundary(deps) {
             });
         };
 
-        memoContainer.appendChild(editBtn);
+        (editButtonMount || memoContainer).appendChild(editBtn);
     };
 
     return {

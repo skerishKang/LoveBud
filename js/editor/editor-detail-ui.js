@@ -231,6 +231,37 @@ function createEditorDetailUI(deps) {
     });
     const { updateSidebarStatus } = sidebarStatusBoundary;
 
+    const prepareMemoHeadingActionSlot = () => {
+        const memoLabel = document.getElementById('detailMemoLabel');
+        if (!memoLabel) return null;
+
+        const memoGroup = memoLabel.closest('.detail-info-group');
+        if (!memoGroup) return null;
+
+        memoGroup.classList.add('editor-memo-section-group');
+
+        let headingRow = memoGroup.querySelector('.editor-memo-heading-row');
+        if (!headingRow) {
+            headingRow = document.createElement('div');
+            headingRow.className = 'editor-memo-heading-row';
+            memoGroup.insertBefore(headingRow, memoLabel);
+        }
+
+        if (memoLabel.parentElement !== headingRow) {
+            headingRow.insertBefore(memoLabel, headingRow.firstChild);
+        }
+
+        let actionSlot = headingRow.querySelector('.editor-memo-heading-action-slot');
+        if (!actionSlot) {
+            actionSlot = document.createElement('div');
+            actionSlot.className = 'editor-memo-heading-action-slot';
+            headingRow.appendChild(actionSlot);
+        }
+
+        actionSlot.innerHTML = '';
+        return actionSlot;
+    };
+
      const updateDetailPanel = (data) => {
          const currentTree = getCurrentTreeData() || {};
          const treeId = currentTree.id || new URLSearchParams(window.location.search).get('tree');
@@ -253,6 +284,7 @@ function createEditorDetailUI(deps) {
          const dateEl = document.getElementById('detailDateText');
          const tagsContainer = detailPanel.querySelector('.tags-container');
          const noteEl = document.querySelector('.diary-note');
+         const memoEditButtonMount = prepareMemoHeadingActionSlot();
          const memoryActions = detailPanel.querySelector('.memory-actions');
 
          const treeMetaModel = buildTreeMetaRenderModel({
@@ -356,7 +388,8 @@ function createEditorDetailUI(deps) {
                 showToast,
                 formatI18nText,
                 getMemoFallbackText,
-                isEmptyState
+                isEmptyState,
+                editButtonMount: memoEditButtonMount
             });
 
             noteEl.appendChild(memoContainer);
