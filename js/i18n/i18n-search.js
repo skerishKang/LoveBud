@@ -133,6 +133,18 @@
       ko: '가져오지 못했어요',
       en: 'Copy failed'
     },
+    'search.previewCopyToMyTreesFailedBody': {
+      ko: '가져오지 못했어요. 다시 시도해 주세요.',
+      en: 'Copy failed. Please try again.'
+    },
+    'search.previewCopyToMyTreesRetry': {
+      ko: '다시 시도',
+      en: 'Try again'
+    },
+    'search.previewCopyToMyTreesLoginRequired': {
+      ko: '로그인이 필요해요',
+      en: 'Login required'
+    },
     'search.previewOpenCopiedTree': {
       ko: '복사된 트리 열기',
       en: 'Open copied tree'
