@@ -1,10 +1,8 @@
 /**
  * LoveBud - Settings Module
- * v20260428-1
- * 
- * localStorage 기반 설정 관리
- * - 설정 화면 닫기 / 로그아웃
- * - 둘러보기 소개 안내 표시
+ * v20260504-639-stay
+ *
+ * Settings should stay on settings.html after entry.
  */
 
 (function() {
@@ -91,7 +89,7 @@
     } catch (e) {
       console.warn('[settings] Failed to load settings:', e);
     }
-    return { ...DEFAULT_SETTINGS };
+    return Object.assign({}, DEFAULT_SETTINGS);
   }
 
   function applyHeaderNavFallbacks() {
@@ -132,16 +130,12 @@
       closeBtn.setAttribute('aria-label', safeText('close', '설정 닫기'));
       closeBtn.setAttribute('title', safeText('close', '닫기'));
     }
-    
+
     var titleEl = document.querySelector('.settings-card h1');
-    if (titleEl) {
-      titleEl.textContent = safeText('settings.title', '설정');
-    }
-    
+    if (titleEl) titleEl.textContent = safeText('settings.title', '설정');
+
     var subtitleEl = document.querySelector('.settings-subtitle');
-    if (subtitleEl) {
-      subtitleEl.textContent = safeText('settings.subtitle', '러브트리를 어떻게 소개할지 살펴봅니다');
-    }
+    if (subtitleEl) subtitleEl.textContent = safeText('settings.subtitle', '러브트리를 어떻게 소개할지 살펴봅니다');
 
     var browseIntroTitleEl = document.getElementById('settingsBrowseIntroTitle');
     if (browseIntroTitleEl) {
@@ -149,35 +143,21 @@
     }
 
     var browseIntroCardTitleEl = document.getElementById('settingsBrowseIntroCardTitle');
-    if (browseIntroCardTitleEl) {
-      browseIntroCardTitleEl.textContent = safeText('settings.browseIntroCardTitle', '둘러보기에 소개될 트리로 키우기');
-    }
+    if (browseIntroCardTitleEl) browseIntroCardTitleEl.textContent = safeText('settings.browseIntroCardTitle', '둘러보기에 소개될 트리로 키우기');
 
     var browseIntroDescEl = document.getElementById('settingsBrowseIntroDesc');
     if (browseIntroDescEl) {
-      browseIntroDescEl.textContent = safeText(
-        'settings.browseIntroDesc',
-        '좋아하는 순간을 3개 이상 남기면 이 트리를 둘러보기에 소개할 수 있어요. 소개 여부는 각 러브트리에서 조건을 채운 뒤 선택할 수 있어요.'
-      );
+      browseIntroDescEl.textContent = safeText('settings.browseIntroDesc', '좋아하는 순간을 3개 이상 남기면 이 트리를 둘러보기에 소개할 수 있어요. 소개 여부는 각 러브트리에서 조건을 채운 뒤 선택할 수 있어요.');
     }
 
     var plusTitleEl = document.getElementById('settingsPlusTitle');
-    if (plusTitleEl) {
-      plusTitleEl.textContent = safeText('settings.privateStorageTitle', '프라이빗 보관');
-    }
+    if (plusTitleEl) plusTitleEl.textContent = safeText('settings.privateStorageTitle', '프라이빗 보관');
 
     var plusDescEl = document.getElementById('settingsPlusDesc');
-    if (plusDescEl) {
-      plusDescEl.textContent = safeText(
-        'settings.privateStorageDesc',
-        '나만 보는 러브트리를 조용히 보관하는 기능은 Plus에서 준비 중이에요.'
-      );
-    }
-    
+    if (plusDescEl) plusDescEl.textContent = safeText('settings.privateStorageDesc', '나만 보는 러브트리를 조용히 보관하는 기능은 Plus에서 준비 중이에요.');
+
     var logoutBtn = document.querySelector('.logout-btn');
-    if (logoutBtn) {
-      logoutBtn.innerHTML = '<span class="material-symbols-outlined">logout</span>' + safeText('logout_btn', '로그아웃');
-    }
+    if (logoutBtn) logoutBtn.innerHTML = '<span class="material-symbols-outlined">logout</span>' + safeText('logout_btn', '로그아웃');
   }
 
   function bindCloseInteractions() {
@@ -217,28 +197,6 @@
   }
 
   var settingsStarted = false;
-  var settingsRedirected = false;
-
-  function getSettingsLoginHref() {
-    var returnTo = '';
-    try {
-      var params = new URLSearchParams(window.location.search || '');
-      returnTo = params.get('returnTo') || '';
-    } catch (e) {}
-    var redirect = 'settings.html';
-    if (returnTo) {
-      redirect += '?returnTo=' + encodeURIComponent(returnTo);
-    } else if (window.location.search) {
-      redirect += window.location.search;
-    }
-    return 'login.html?redirect=' + encodeURIComponent(redirect);
-  }
-
-  function redirectToLogin() {
-    if (settingsRedirected) return;
-    settingsRedirected = true;
-    window.location.replace(getSettingsLoginHref());
-  }
 
   function startSettings() {
     if (settingsStarted) return;
@@ -246,126 +204,46 @@
     document.body.classList.remove('settings-auth-pending');
 
     var settings = loadSettings();
-
     bindCloseInteractions();
 
     setTimeout(function() {
       applyI18nText();
-      if (typeof window.applyI18n === 'function') {
-        window.applyI18n();
-      }
+      if (typeof window.applyI18n === 'function') window.applyI18n();
       applyHeaderNavFallbacks();
     }, 0);
 
-    console.log('[settings] Initialized with browse introduction guidance:', settings);
-  }
-
-  function getConfirmedSessionUser() {
-    try {
-      if (window.getConfirmedAuthUser) {
-        return window.getConfirmedAuthUser();
-      }
-      if (localStorage.getItem('lovebud_auth_confirmed') === 'true') {
-        var raw = localStorage.getItem('lovebud_auth_cache');
-        if (raw && raw !== 'null') {
-          var parsed = JSON.parse(raw);
-          return parsed && parsed.uid ? parsed : null;
-        }
-      }
-    } catch (e) {}
-    return null;
-  }
-
-  function normalizeAuthUser(result) {
-    if (result && result.uid) return result;
-    if (result && result.user && result.user.uid) return result.user;
-    return null;
-  }
-
-  function handleSettingsAuthUser(result) {
-    var user = normalizeAuthUser(result);
-
-    if (user) {
-      startSettings();
-      return;
-    }
-
-    if (!getConfirmedSessionUser()) {
-      redirectToLogin();
-      return;
-    }
-
-    startSettings();
+    console.log('[settings] Initialized and staying on settings route:', settings);
   }
 
   function initSettings() {
-    var cachedUser = getConfirmedSessionUser();
+    startSettings();
 
-    if (cachedUser) {
-      startSettings();
-    }
-
-    if (
-      window.LoveBudAuthBootstrap &&
-      typeof window.LoveBudAuthBootstrap.whenReady === 'function'
-    ) {
+    if (window.LoveBudAuthBootstrap && typeof window.LoveBudAuthBootstrap.whenReady === 'function') {
       try {
-        window.LoveBudAuthBootstrap.whenReady()
-          .then(handleSettingsAuthUser)
-          .catch(function() {
-            if (!cachedUser) {
-              redirectToLogin();
-            }
-          });
+        window.LoveBudAuthBootstrap.whenReady().then(startSettings).catch(startSettings);
       } catch (e) {
-        if (!cachedUser) {
-          redirectToLogin();
-        }
+        startSettings();
       }
       return;
     }
 
     if (typeof window.registerOnAuthReady === 'function') {
-      window.registerOnAuthReady(handleSettingsAuthUser);
-      return;
+      window.registerOnAuthReady(startSettings);
     }
-
-    if (cachedUser) {
-      startSettings();
-      return;
-    }
-
-    redirectToLogin();
   }
 
   function redirectAfterLogout() {
     window.location.href = '../index.html';
   }
 
-  function getCanonicalLogoutOptions() {
-    return {
-      clearStaleFirebaseAuthState: function() {
-        if (window.LoveBudAuthCache && typeof window.LoveBudAuthCache.clearStaleFirebaseAuthState === 'function') {
-          window.LoveBudAuthCache.clearStaleFirebaseAuthState();
-        }
-      },
-      clearConfirmedAuthCache: function() {
-        if (window.LoveBudAuthCache && typeof window.LoveBudAuthCache.clearConfirmedAuthCache === 'function') {
-          window.LoveBudAuthCache.clearConfirmedAuthCache('lovebud_auth_cache', 'lovebud_auth_confirmed', 'lovebud_auth_token');
-        }
-      }
-    };
-  }
-
   function handleLogout() {
-    if (window.LoveBudAuthFirebase && typeof window.LoveBudAuthFirebase.signOut === 'function') {
-      Promise.resolve(window.LoveBudAuthFirebase.signOut(getCanonicalLogoutOptions()))
-        .catch(redirectAfterLogout);
+    if (typeof window.signOut === 'function') {
+      window.signOut().then(redirectAfterLogout).catch(redirectAfterLogout);
       return;
     }
 
-    if (typeof window.signOut === 'function') {
-      window.signOut().then(redirectAfterLogout).catch(redirectAfterLogout);
+    if (window.LoveBudAuthFirebase && typeof window.LoveBudAuthFirebase.signOut === 'function') {
+      Promise.resolve(window.LoveBudAuthFirebase.signOut()).catch(redirectAfterLogout);
       return;
     }
 
