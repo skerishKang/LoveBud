@@ -136,13 +136,17 @@
     }
 
     async function loadPublicMemories(treeId) {
-        if (!window.apiClient?.communityApi?.getCachedCommunityMemories) {
+        // Defensive: community methods may be on apiClient.communityApi or flattened onto apiClient
+        const getCachedCommunityMemories =
+            window.apiClient?.communityApi?.getCachedCommunityMemories ||
+            window.apiClient?.getCachedCommunityMemories;
+
+        if (typeof getCachedCommunityMemories !== 'function') {
             throw new Error('Community API not available');
         }
-        // Fetch public memories for this tree
-        const memories = await window.apiClient.communityApi.getCachedCommunityMemories({ treeId, limit: 100 });
-        // Filter: only public memories (safety)
-        return Array.isArray(memories) 
+
+        const memories = await getCachedCommunityMemories({ treeId, limit: 100 });
+        return Array.isArray(memories)
             ? memories.filter(m => m && m.visibility === 'public')
             : [];
     }
