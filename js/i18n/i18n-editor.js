@@ -77,7 +77,7 @@ Object.assign(window.i18nEditor, {
     editor_visibility_loading_private: { ko: '비공개로 전환하는 중...', en: 'Switching to private...' },
     editor_visibility_loading_public: { ko: '공개로 전환하는 중...', en: 'Switching to public...' },
     editor_visibility_guard_failed: { ko: '공개 순간이 3개 이상일 때만 이 트리를 공개할 수 있어요.', en: 'This tree can be made public only when it has at least 3 public moments.' },
-    editor_open_detail: { ko: '상세로 보기', en: 'View details' },
+    editor_open_detail: { ko: '현재 순간 감상하기', en: 'View current moment' },
     editor_focus_current_moment: { ko: '현재 순간 위치 보기', en: 'Locate current moment' },
     editor_visibility_updated_private: { ko: '이 트리를 비공개로 전환했어요.', en: 'This tree has been set to private.' },
     editor_visibility_updated_public: { ko: '이 트리를 공개로 전환했어요.', en: 'This tree has been set to public.' },
