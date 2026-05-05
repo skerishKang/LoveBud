@@ -184,9 +184,15 @@ function isNodeWithinSafeViewport(pos) {
     }
 
     const { drawBranch } = canvasEdges;
+    const NODE_TAP_SELECT_THRESHOLD = 8;
 
     function bindNodeDrag(nodeEl, mem) {
         nodeEl.style.cursor = 'grab';
+        let touchStartPoint = null;
+
+        const selectMemoryNode = () => {
+            onNodeClick(nodeEl, mem);
+        };
 
         nodeEl.addEventListener('mousedown', (e) => {
             if (typeof canvasInteraction.beginNodeDrag === 'function') {
@@ -211,13 +217,59 @@ function isNodeWithinSafeViewport(pos) {
         });
 
         nodeEl.addEventListener('click', (e) => {
+            if (nodeEl.dataset.skipNextClick === '1') {
+                nodeEl.dataset.skipNextClick = '';
+                e.preventDefault();
+                e.stopPropagation();
+                return;
+            }
             if (nodeEl.dataset.suppressClick === '1') {
                 nodeEl.dataset.suppressClick = '';
                 e.preventDefault();
                 e.stopPropagation();
                 return;
             }
-            onNodeClick(nodeEl, mem);
+            e.preventDefault();
+            e.stopPropagation();
+            selectMemoryNode();
+        });
+
+        nodeEl.addEventListener('touchstart', (e) => {
+            if (e.target.closest('button')) return;
+            const touch = e.changedTouches && e.changedTouches[0];
+            if (!touch) return;
+            touchStartPoint = {
+                x: touch.clientX,
+                y: touch.clientY
+            };
+        }, { passive: true });
+
+        nodeEl.addEventListener('touchend', (e) => {
+            if (!touchStartPoint) return;
+            const touch = e.changedTouches && e.changedTouches[0];
+            if (!touch) {
+                touchStartPoint = null;
+                return;
+            }
+            const dx = touch.clientX - touchStartPoint.x;
+            const dy = touch.clientY - touchStartPoint.y;
+            touchStartPoint = null;
+            if (Math.abs(dx) > NODE_TAP_SELECT_THRESHOLD || Math.abs(dy) > NODE_TAP_SELECT_THRESHOLD) return;
+            e.preventDefault();
+            e.stopPropagation();
+            nodeEl.dataset.skipNextClick = '1';
+            selectMemoryNode();
+        }, { passive: false });
+
+        nodeEl.addEventListener('touchcancel', () => {
+            touchStartPoint = null;
+        });
+
+        nodeEl.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            e.preventDefault();
+            e.stopPropagation();
+            selectMemoryNode();
         });
     }
 
@@ -279,6 +331,9 @@ function isNodeWithinSafeViewport(pos) {
         nodeEl.className = 'memory-node floating-node';
         nodeEl.dataset.memoryId = mem.id;
         nodeEl.draggable = false;
+        nodeEl.tabIndex = 0;
+        nodeEl.setAttribute('role', 'button');
+        nodeEl.setAttribute('aria-label', mem.title ? `${mem.title} 선택` : '순간 선택');
         nodeEl.style.touchAction = 'none';
     }
 
