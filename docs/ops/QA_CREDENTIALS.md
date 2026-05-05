@@ -50,6 +50,7 @@ Approved local checks:
 Test-Path .local/test-accounts.json
 Test-Path .local/test-accounts.example.json
 git check-ignore .local/test-accounts.json
+npm run check:auth-credentials -- --key accounts.user
 ```
 
 Do not run commands that print credential file contents, such as:
@@ -59,6 +60,88 @@ Get-Content .local/test-accounts.json
 type .local/test-accounts.json
 cat .local/test-accounts.json
 ```
+
+---
+
+## Credential preflight before browser auth verification
+
+Before any fixed-slot browser verification that depends on email/password login, run the local credential preflight from the repository root:
+
+```bash
+npm run check:auth-credentials -- --key accounts.user
+```
+
+The preflight is secret-safe. It reports only path, schema, key presence, empty/non-empty status, leading/trailing whitespace status, optional `confirmPassword` match status, and final status. It must not print email, password, token, session, cookie, UID, request payload, or private values.
+
+Use this gate before Browser Auth Verification:
+
+| Preflight result | Action |
+|---|---|
+| `CREDENTIAL_PREFLIGHT_PASS` | Browser Auth Verification may proceed. |
+| `CREDENTIAL_PREFLIGHT_BLOCKED` | Fix local credential file or Firebase test user alignment before browser auth verification. |
+| `CREDENTIAL_FILE_BLOCKED` | Restore or locate `.local/test-accounts.json` before browser auth verification. |
+
+Required safe report fields:
+
+```text
+credential file absolute path: <local path only>
+selected credential key: accounts.user
+credential schema: OBJECT_MAP | LEGACY_ARRAY
+accounts.user email: PRESENT_NONEMPTY | EMPTY | MISSING
+accounts.user password: PRESENT_NONEMPTY | EMPTY | MISSING
+email leading/trailing whitespace: YES | NO
+password leading/trailing whitespace: YES | NO
+confirmPassword: PRESENT_NONEMPTY | EMPTY | MISSING
+password confirm match: YES | NO | NOT_CHECKED
+credential values exposed: NO
+secret exposure: NO
+final status: CREDENTIAL_PREFLIGHT_PASS | CREDENTIAL_PREFLIGHT_BLOCKED | CREDENTIAL_FILE_BLOCKED
+```
+
+Do not proceed to PR behavior verification when the credential preflight is blocked. A Firebase `INVALID_LOGIN_CREDENTIALS` result after a successful fresh fixed-slot deploy should be treated as a credential/environment blocker until the preflight and Firebase user state are aligned.
+
+---
+
+## Canonical local credential schema
+
+The preferred local runtime schema is an object map under `accounts`:
+
+```json
+{
+  "version": "1.0",
+  "accounts": {
+    "user": {
+      "email": "REDACTED",
+      "password": "REDACTED",
+      "confirmPassword": "REDACTED"
+    },
+    "user10": {
+      "email": "REDACTED",
+      "password": "REDACTED",
+      "confirmPassword": "REDACTED"
+    }
+  }
+}
+```
+
+The optional `confirmPassword` field is local-only and exists only to catch mistyped updates before browser verification. It must never be committed or printed.
+
+Legacy array-shaped credential files may still exist temporarily:
+
+```json
+{
+  "version": "1.0",
+  "accounts": [
+    {
+      "id": "user",
+      "email": "REDACTED",
+      "password": "REDACTED"
+    }
+  ]
+}
+```
+
+For new or repaired local credential files, prefer the object-map schema. Keep `accounts.user` as the default automation key. Slot-specific aliases such as `accounts.user10` may exist, but browser verification prompts must name the selected key explicitly.
 
 ---
 
@@ -239,7 +322,8 @@ Final verification for PR #350 must be performed against a **fixed test slot** o
 
 - [ ] `.local/test-accounts.json` exists
 - [ ] `.local/test-accounts.json` is gitignored
-- [ ] File format matches example structure without printing values
+- [ ] File format matches the canonical schema without printing values
+- [ ] `npm run check:auth-credentials -- --key accounts.user` returns `CREDENTIAL_PREFLIGHT_PASS`
 - [ ] All QA slots are populated, reported only as `PRESENT`/`MISSING`
 - [ ] Credentials are valid for testing
 
@@ -288,12 +372,20 @@ Final verification for PR #350 must be performed against a **fixed test slot** o
    - If `.local/test-accounts.json` already existed before restore attempt, that is a **pre-existing local credential**, not a docs-based restore
    - Always confirm whether the file existed before starting the procedure
 
-3. **Invalid credential format**
-   - Compare with `.local/test-accounts.example.json`
+3. **Invalid credential format or selected key**
+   - Use `npm run check:auth-credentials -- --key accounts.user`
    - Verify JSON structure without printing values
    - Report only missing required keys as `MISSING`
+   - Prefer the object-map schema with `accounts.user` for new or repaired local files
 
-4. **Bundle extraction fails**
+4. **Credential mismatch despite existing Firebase user**
+   - Confirm the selected credential key is the intended key, such as `accounts.user`
+   - Check that email/password are `PRESENT_NONEMPTY`
+   - Check `email leading/trailing whitespace` and `password leading/trailing whitespace`
+   - If `confirmPassword` exists, require `password confirm match: YES`
+   - If Firebase returns `INVALID_LOGIN_CREDENTIALS`, realign the local credential and Firebase Auth user before PR behavior verification
+
+5. **Bundle extraction fails**
    - Verify bundle file integrity
    - Check bundle password through secure channel
    - Re-download bundle from repository if corrupted
@@ -345,3 +437,4 @@ verification environment:    fixed test slot
 - [BROWSER_VERIFICATION_URL_POLICY.md](BROWSER_VERIFICATION_URL_POLICY.md)
 - Issue [#351](https://github.com/skerishKang/LoveBud/issues/351) — temporary handoff
 - Issue [#137](https://github.com/skerishKang/LoveBud/issues/137)
+- Issue [#810](https://github.com/skerishKang/LoveBud/issues/810) — password confirmation validation follow-up
