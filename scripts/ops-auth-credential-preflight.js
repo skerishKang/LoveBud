@@ -8,6 +8,7 @@ function parseArgs(argv) {
   const options = {
     file: path.join('.local', 'test-accounts.json'),
     key: 'accounts.user',
+    compareKey: '',
   };
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -17,6 +18,9 @@ function parseArgs(argv) {
       index += 1;
     } else if (arg === '--key' && argv[index + 1]) {
       options.key = argv[index + 1];
+      index += 1;
+    } else if (arg === '--compare-key' && argv[index + 1]) {
+      options.compareKey = argv[index + 1];
       index += 1;
     } else if (arg === '--help' || arg === '-h') {
       options.help = true;
@@ -31,7 +35,7 @@ function parseArgs(argv) {
 
 function printHelp() {
   console.log([
-    'Usage: node scripts/ops-auth-credential-preflight.js [--file .local/test-accounts.json] [--key accounts.user]',
+    'Usage: node scripts/ops-auth-credential-preflight.js [--file .local/test-accounts.json] [--key accounts.user] [--compare-key accounts.user10]',
     '',
     'Secret-safe local credential preflight for browser auth verification.',
     'The script never prints email, password, token, session, cookie, UID, or private values.',
@@ -62,6 +66,12 @@ function getLegacyArrayAccount(root, selectedKey) {
   const suffix = String(selectedKey || '').split('.').pop();
   if (!Array.isArray(root && root.accounts)) return undefined;
   return root.accounts.find((account) => account && account.id === suffix);
+}
+
+function getAccount(root, selectedKey) {
+  const dottedAccount = getByDottedPath(root, selectedKey);
+  const legacyAccount = dottedAccount || getLegacyArrayAccount(root, selectedKey);
+  return legacyAccount && typeof legacyAccount === 'object' ? legacyAccount : undefined;
 }
 
 function classifyString(value) {
@@ -99,6 +109,9 @@ function main() {
 
   status('Work type', 'Local Auth Credential Preflight');
   status('Selected credential key', options.key);
+  if (options.compareKey) {
+    status('Compare credential key', options.compareKey);
+  }
 
   let loaded;
   try {
@@ -115,9 +128,7 @@ function main() {
   status('Credential file absolute path', loaded.absolutePath);
   status('Credential file', 'PRESENT');
 
-  const dottedAccount = getByDottedPath(loaded.json, options.key);
-  const legacyAccount = dottedAccount || getLegacyArrayAccount(loaded.json, options.key);
-  const account = legacyAccount && typeof legacyAccount === 'object' ? legacyAccount : undefined;
+  const account = getAccount(loaded.json, options.key);
 
   status('Selected credential key present', account ? 'YES' : 'NO');
   status('Credential schema', Array.isArray(loaded.json && loaded.json.accounts) ? 'LEGACY_ARRAY' : 'OBJECT_MAP');
@@ -140,11 +151,27 @@ function main() {
     status('password confirm match', 'NOT_CHECKED');
   }
 
+  let comparePass = true;
+  if (options.compareKey) {
+    const compareAccount = getAccount(loaded.json, options.compareKey);
+    status('Compare credential key present', compareAccount ? 'YES' : 'NO');
+    if (account && compareAccount) {
+      status('Compared email values match', account.email === compareAccount.email ? 'YES' : 'NO');
+      status('Compared password values match', account.password === compareAccount.password ? 'YES' : 'NO');
+      comparePass = account.email === compareAccount.email && account.password === compareAccount.password;
+    } else {
+      status('Compared email values match', 'NOT_CHECKED');
+      status('Compared password values match', 'NOT_CHECKED');
+      comparePass = false;
+    }
+  }
+
   const pass = Boolean(
     account &&
     email.present && email.nonEmpty && !email.leadingTrailingWhitespace &&
     password.present && password.nonEmpty && !password.leadingTrailingWhitespace &&
-    (!confirmPassword.present || account.password === account.confirmPassword)
+    (!confirmPassword.present || account.password === account.confirmPassword) &&
+    comparePass
   );
 
   status('Credential values exposed', 'NO');
