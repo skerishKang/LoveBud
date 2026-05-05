@@ -1,60 +1,58 @@
-# Runtime JS files over 500 lines audit
+# Runtime JS files over 500 lines audit (refresh)
 
-Date: 2026-04-28
-Branch: `audit/runtime-files-over-500-lines`
+Date: 2026-05-05
+Branch: `audit/runtime-files-over-500-lines-refresh-656`
 Base branch: `main`
-Base SHA: `1dddfa7633445ac10e2851b5794a55ab85c9dad2`
-Related issues: #223, #224
+Base SHA: `948ac142dd741b83146086f5defae01f464253c1`
+Related issues: #223, #224, #656
+
+Previous audit: `docs/reports/RUNTIME_FILES_OVER_500_LINES_AUDIT.md` (2026-04-28, SHA `1dddfa7`)
 
 ## Scope
 
-This is a pre-refactor audit only. No runtime JavaScript, HTML, CSS, tests, prototypes, references, demos, variants, auth providers, login provider flow, fallback code, or editor behavior were changed.
-
-Primary requested files:
-
-- `js/auth.js`
-- `js/editor.js`
-- `js/my-trees.js`
-- `js/search.js`
-- `js/settings.js`
-- `js/postgres-client.js`
-
-Additional `js/**/*.js` files found during the audit and included because they exceed the 500-line threshold:
-
-- `js/editor/editor-canvas.js`
-- `js/editor/editor-detail-ui.js`
-
-## Method and limitation
-
-The audit was performed against current GitHub `main` using the GitHub connector. Local `git clone` / `wc -l` could not be used in this execution environment because external DNS resolution for `github.com` failed. The line counts below are normalized logical line counts from fetched GitHub file contents. CRLF/LF differences may change counts by zero lines only; threshold classification is unaffected.
-
-Because the repository contains many docs and legacy artifacts, this audit focuses on runtime browser JavaScript under `js/`, not docs, tests, Netlify legacy functions, prototypes, reference/demo/variant files, or server-side runtime files.
+This is a docs-only refresh of the previous audit after auth refactoring (PRs #826, #827) and editor decomposition. No runtime files were changed in this refresh.
 
 ## Summary
 
 ### Files over 500 lines
 
-| Path | Lines | Over 500 | Current role | Recommendation |
-|---|---:|:---:|---|---|
-| `js/editor.js` | 1,071 | Yes | entry orchestrator / compatibility-heavy page bootstrap | Refactor first |
-| `js/auth.js` | 954 | Yes | compatibility shim + auth bootstrap bridge | Audit-only until contract/smoke guard is explicit |
-| `js/editor/editor-detail-ui.js` | 846 | Yes | active runtime module / DOM renderer | Refactor after editor entry reduction |
-| `js/editor/editor-canvas.js` | 735 | Yes | active runtime module / canvas controller | Refactor after detail UI split |
-| `js/my-trees.js` | 528 | Yes | page controller / compatibility bridge | Refactor later, after active parallel my-trees work settles |
+| Path | Lines | Previous audit | Delta | Current role | Recommendation |
+|---|---|---|---:|---:|---|---|
+| `js/search/search-preview-renderer.js` | 718 | Not audited | — | active runtime module / browser preview renderer | Audit candidate |
+| `js/auth.js` | 698 | 954 | -256 | auth bootstrap bridge | Refactoring reduced lines; reassess threshold |
+| `js/editor.js` | 634 | 1,071 | -437 | entry orchestrator | Refactoring reduced significantly; remaining orchestrator code |
+| `js/editor/editor-memory-form.js` | 530 | Not audited | — | active runtime module / memory form controller | Audit candidate |
+| `js/editor/editor-canvas.js` | 527 | 735 | -208 | canvas controller | Below 500 after editor decomposition |
+
+### Files 450-499
+
+None in current refresh.
+
+### Previous over-500 files that dropped below threshold
+
+| Path | Previous lines | Current lines | Reason |
+|---|---|---|---|
+| `js/my-trees.js` | 528 | 298 | Auth gate extraction + my-trees module decomposition |
+| `js/editor/editor-detail-ui.js` | 846 | 385 | Detail UI decomposition into sidebar-status-boundary, detail-ui-builders |
 
 ### Requested files at or below 500 lines
 
-| Path | Lines | Over 500 | Current role | Recommendation |
-|---|---:|:---:|---|---|
-| `js/search.js` | 374 | No | page orchestrator | Do not refactor for line count now |
-| `js/settings.js` | 298 | No | page controller | Do not refactor now |
-| `js/postgres-client.js` | 224 | No | active runtime API client facade | Do not refactor now |
+| Path | Lines | Previous | Current role | Recommendation |
+|---|---|---|---|---|
+| `js/my-trees.js` | 298 | 528 | page controller / compatibility bridge | Below threshold now |
+| `js/settings.js` | 276 | 298 | page controller | Do not refactor now |
+| `js/search.js` | 230 | 374 | page orchestrator | Do not refactor now |
+| `js/postgres-client.js` | 175 | 224 | API client facade | Do not refactor now |
 
-### Additional checked runtime candidates under `js/`
+### JavaScript files over 500 lines (full list)
 
-| Path | Lines | Over 500 | Notes |
-|---|---:|:---:|---|
-| `js/editor/editor-data-loader-fallbacks.js` | 283 | No | Extracted fallback helper; not a current 500-line target |
+| Path | Lines | Role |
+|---|---|---|
+| `js/search/search-preview-renderer.js` | 718 | Browser preview renderer / UI builder |
+| `js/auth.js` | 698 | Auth bootstrap bridge |
+| `js/editor.js` | 634 | Editor entry orchestrator |
+| `js/editor/editor-memory-form.js` | 530 | Memory form controller |
+| `js/editor/editor-canvas.js` | 527 | Canvas controller |
 
 ## Detailed file audit
 
