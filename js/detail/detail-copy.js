@@ -30,11 +30,14 @@
 
         const applyViewingPageCopy = ({ sourceContext, treeTitle, memoryTitleText, treeMomentCount, connectedCount, memory, degradedReason }) => {
             const isMissingTreeId = degradedReason === 'missing-tree-id';
+            const isContextLoading = degradedReason === 'context-loading';
             const isTreeDegraded = degradedReason === 'tree-load-partial' || degradedReason === 'tree-and-memories-load-failed';
 
             if (detailViewChipLabel) {
                 detailViewChipLabel.textContent = isMissingTreeId
                     ? tText('single_moment_view_chip', '한 순간 감상')
+                    : isContextLoading
+                        ? tText('detail_loading_view_chip', '순간 먼저 여는 중')
                     : isTreeDegraded
                         ? tText('moment_centered_view_chip', '지금은 이 순간 중심 감상')
                         : tText('public_tree_view_chip', '공개 러브트리 감상');
@@ -42,6 +45,8 @@
             if (detailHeroKicker) {
                 detailHeroKicker.textContent = isMissingTreeId
                     ? tText('single_moment_kicker', '남겨진 한 순간')
+                    : isContextLoading
+                        ? tText('detail_loading_kicker', '현재 순간 먼저 열기')
                     : isTreeDegraded
                         ? tText('moment_centered_kicker', '지금은 이 순간 중심 감상')
                         : tText('public_tree_kicker', '공개 러브트리');
@@ -49,6 +54,8 @@
             if (detailHeroTitle) {
                 detailHeroTitle.textContent = isMissingTreeId
                     ? (memoryTitleText || tText('single_moment_fallback_title', '이 순간에 남겨진 마음을 감상하고 있어요'))
+                    : isContextLoading
+                        ? (memoryTitleText || tText('detail_loading_title', '현재 순간을 먼저 열고 있어요'))
                     : treeTitle || getHeroFallbackTitle(memory);
             }
             if (detailHeroDesc) {
@@ -57,6 +64,8 @@
                     detailHeroDesc.textContent = memoryTitleText
                         ? `“${memoryTitleText}” ${tText('single_moment_hero_desc', '하나에 남겨진 감정을 따라가고 있어요.')}`
                         : tText('single_moment_hero_desc_fallback', '지금 남아 있는 이 장면 하나를 중심으로 감상하고 있어요.');
+                } else if (isContextLoading) {
+                    detailHeroDesc.textContent = tText('detail_loading_hero_desc', '현재 순간은 먼저 보여드리고, 이어진 트리 흐름은 따로 불러오고 있어요.');
                 } else if (isTreeDegraded) {
                     detailHeroDesc.textContent = tText('tree_partial_hero_desc', '지금 남아 있는 이 순간을 중심으로 감정의 결을 보고 있어요.');
                 } else {
@@ -73,16 +82,22 @@
             if (connectedKicker) {
                 connectedKicker.textContent = isMissingTreeId
                     ? tText('single_moment_connected_kicker', '지금 머무는 장면')
+                    : isContextLoading
+                        ? tText('connected_loading_kicker', '이어진 흐름 준비 중')
                     : tText('connected_flow_kicker', '이어진 흐름');
             }
             if (connectedTitle) {
                 connectedTitle.textContent = isMissingTreeId
                     ? tText('single_moment_connected_title', '지금은 이 순간을 중심으로 감상 중이에요')
+                    : isContextLoading
+                        ? tText('connected_loading_heading', '현재 순간을 먼저 감상해 주세요')
                     : tText('connected_flow_title', '이 트리의 이어진 기억');
             }
             if (connectedSummary) {
                 if (isMissingTreeId) {
                     connectedSummary.textContent = tText('single_moment_connected_summary', '지금 남아 있는 이 장면과 마음부터 따라가 볼 수 있어요.');
+                } else if (isContextLoading) {
+                    connectedSummary.textContent = tText('connected_loading_summary', '이어진 순간은 현재 장면과 분리해서 불러오고 있어요.');
                 } else if (connectedCount > 0) {
                     connectedSummary.textContent = treeMomentCount > 1
                         ? `${treeMomentCount}${tText('connected_flow_count_suffix', '개의 순간 가운데 지금 장면과 함께 읽히는 기억을 이어서 살펴보세요.')}`
@@ -106,6 +121,8 @@
                 };
                 growthLabel.textContent = isMissingTreeId
                     ? tText('single_moment_growth_label', '한 순간 감상 중')
+                    : isContextLoading
+                        ? tText('detail_loading_growth_label', '이어진 흐름 준비 중')
                     : isTreeDegraded
                         ? tText('moment_centered_growth_label', '지금은 이 순간 중심 감상 중')
                         : (growthMap[sourceContext] || growthMap.browse);

@@ -94,6 +94,14 @@
       ko: '감상 중',
       en: 'Viewing'
     },
+    'tree_context_loading_kicker': {
+      ko: '트리 흐름 확인 중',
+      en: 'Checking tree flow'
+    },
+    'tree_context_loading_desc': {
+      ko: '현재 순간은 먼저 열어두었어요. 이어진 트리 흐름을 잠시 불러오고 있어요.',
+      en: 'This moment is open first. The connected tree flow is still loading.'
+    },
     'tree_context_solo_view': {
       ko: '이 순간만 단독으로 감상하고 있어요.',
       en: 'You are viewing just this moment on its own.'
@@ -286,6 +294,14 @@
       ko: '지금은 이 순간을 먼저 보고 있어요.',
       en: 'For now, stay with this moment first.'
     },
+    'connected_loading_title': {
+      ko: '이어진 순간을 불러오는 중이에요.',
+      en: 'Loading connected moments.'
+    },
+    'connected_loading_desc': {
+      ko: '현재 순간은 먼저 감상할 수 있어요. 연결된 기억은 준비되는 대로 이어서 보여드릴게요.',
+      en: 'You can view this moment first. Connected memories will appear as soon as they are ready.'
+    },
     'connected_path_missing_title': {
       ko: '이어진 흐름이 아직 보이지 않아요.',
       en: 'The connected flow is not visible yet.'
@@ -346,6 +362,10 @@
       ko: '이 순간 감상',
       en: 'Viewing this moment'
     },
+    'detail_loading_view_chip': {
+      ko: '순간 먼저 여는 중',
+      en: 'Opening moment first'
+    },
     'public_tree_kicker': {
       ko: '공개 러브트리',
       en: 'Public LoveTree'
@@ -358,6 +378,10 @@
       ko: '이 순간 감상',
       en: 'Staying with this moment'
     },
+    'detail_loading_kicker': {
+      ko: '현재 순간 먼저 열기',
+      en: 'Opening the current moment first'
+    },
     'public_tree_fallback_title': {
       ko: '이 순간에서 시작된 마음',
       en: 'The feeling that began here'
@@ -369,6 +393,10 @@
     'single_moment_fallback_title': {
       ko: '이 순간에서 시작된 마음',
       en: 'The feeling that began here'
+    },
+    'detail_loading_title': {
+      ko: '현재 순간을 먼저 열고 있어요',
+      en: 'Opening this moment first'
     },
     'public_tree_desc_join': {
       ko: ' 안에서',
@@ -394,6 +422,10 @@
       ko: '이어진 장면들',
       en: 'Connected scenes'
     },
+    'detail_loading_hero_desc': {
+      ko: '현재 순간은 먼저 보여드리고, 이어진 트리 흐름은 따로 불러오고 있어요.',
+      en: 'The current moment is shown first while the connected tree flow loads separately.'
+    },
     'public_tree_context_desc': {
       ko: '이 트리 안에서 남겨진 순간을 감상하고 있어요.',
       en: 'You are viewing a moment within this tree.'
@@ -414,6 +446,10 @@
       ko: '이어진 순간들',
       en: 'Connected moments'
     },
+    'connected_loading_kicker': {
+      ko: '이어진 흐름 준비 중',
+      en: 'Preparing connected flow'
+    },
     'single_moment_connected_kicker': {
       ko: '지금 머무는 장면',
       en: 'The scene you are staying with'
@@ -422,6 +458,10 @@
       ko: '이어진 순간들',
       en: 'Connected moments'
     },
+    'connected_loading_heading': {
+      ko: '현재 순간을 먼저 감상해 주세요',
+      en: 'View this moment first'
+    },
     'single_moment_connected_title': {
       ko: '이어진 순간들',
       en: 'Connected moments'
@@ -429,6 +469,10 @@
     'connected_flow_summary': {
       ko: '함께 이어지는 순간들',
       en: 'Connected moments'
+    },
+    'connected_loading_summary': {
+      ko: '이어진 순간은 현재 장면과 분리해서 불러오고 있어요.',
+      en: 'Connected moments are loading separately from the current scene.'
     },
     'connected_flow_count_suffix': {
       ko: '개의 순간이 이어져 있어요.',
@@ -477,6 +521,10 @@
     'moment_centered_growth_label': {
       ko: '감정이 자라는 중',
       en: 'Feeling growing'
+    },
+    'detail_loading_growth_label': {
+      ko: '이어진 흐름 준비 중',
+      en: 'Preparing connected flow'
     },
     'back_to_browse_soft': {
       ko: '둘러보기로 돌아가기',
