@@ -92,6 +92,34 @@
     return Object.assign({}, DEFAULT_SETTINGS);
   }
 
+  function getConfirmedSessionUser() {
+    try {
+      if (window.getConfirmedAuthUser) {
+        return window.getConfirmedAuthUser();
+      }
+      if (localStorage.getItem('lovebud_auth_confirmed') === 'true') {
+        var raw = localStorage.getItem('lovebud_auth_cache');
+        if (raw && raw !== 'null') {
+          return JSON.parse(raw);
+        }
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  function isAuthenticatedUser(user) {
+    return !!(user && user.uid);
+  }
+
+  function getLoginRedirectHref() {
+    var target = window.location.pathname + (window.location.search || '') + (window.location.hash || '');
+    return 'login.html?redirect=' + encodeURIComponent(target);
+  }
+
+  function redirectToLogin() {
+    window.location.replace(getLoginRedirectHref());
+  }
+
   function applyHeaderNavFallbacks() {
     var t = window.t || function(key) { return key; };
     var navMap = [
@@ -198,8 +226,12 @@
 
   var settingsStarted = false;
 
-  function startSettings() {
+  function startSettings(user) {
     if (settingsStarted) return;
+    if (!isAuthenticatedUser(user)) {
+      redirectToLogin();
+      return;
+    }
     settingsStarted = true;
     document.body.classList.remove('settings-auth-pending');
 
@@ -216,31 +248,29 @@
   }
 
   function initSettings() {
-    startSettings();
-
-    // Early auth check: redirect to login if not authenticated (except on login page)
-    const isLoginPage = window.location.pathname.endsWith('login.html') || window.location.pathname.endsWith('/') || window.location.pathname === '' || window.location.pathname.endsWith('index.html');
-    const confirmedAuthUser = window.getConfirmedAuthUser ? window.getConfirmedAuthUser() : null;
-    const storedAuth = localStorage.getItem('lovebud_auth_confirmed');
-    const isAuthenticated = !!confirmedAuthUser || !!storedAuth;
-    if (!isAuthenticated && !isLoginPage) {
-      const returnTo = encodeURIComponent(window.location.pathname + window.location.search);
-      window.location.href = 'login.html?redirect=' + returnTo;
-      return;
-    }
+    var cachedUser = getConfirmedSessionUser();
 
     if (window.LoveBudAuthBootstrap && typeof window.LoveBudAuthBootstrap.whenReady === 'function') {
       try {
-        window.LoveBudAuthBootstrap.whenReady().then(startSettings).catch(startSettings);
+        window.LoveBudAuthBootstrap.whenReady().then(function(user) {
+          startSettings(user);
+        }).catch(function() {
+          startSettings(cachedUser);
+        });
       } catch (e) {
-        startSettings();
+        startSettings(cachedUser);
       }
       return;
     }
 
     if (typeof window.registerOnAuthReady === 'function') {
-      window.registerOnAuthReady(startSettings);
+      window.registerOnAuthReady(function(user) {
+        startSettings(user);
+      });
+      return;
     }
+
+    startSettings(cachedUser);
   }
 
   function redirectAfterLogout() {

@@ -295,9 +295,10 @@
             var settingsClasses = [];
             if (activeKey === 'settings') settingsClasses.unshift('active');
 
+            var settingsReturnHref = appendSettingsReturnTo(menuConfig.settings.href);
             var settingsHref = cachedUser
-                ? menuConfig.settings.href
-                : getLoginRedirectHref(menuConfig.settings.href);
+                ? settingsReturnHref
+                : getLoginRedirectHref(settingsReturnHref);
 
             navLinksHTML += '<a href="' + settingsHref + '"' +
                 (settingsClasses.length ? ' class="' + settingsClasses.join(' ') + '"' : '') +
