@@ -43,6 +43,10 @@
 
   function getConfirmedSessionUser() {
     try {
+      if (window.LoveBudProtectedRoute) {
+        var state = window.LoveBudProtectedRoute.getAuthState();
+        if (state.ready && state.user) return state.user;
+      }
       if (window.getConfirmedAuthUser) {
         return window.getConfirmedAuthUser();
       }
