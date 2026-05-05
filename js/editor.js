@@ -704,8 +704,6 @@ document.addEventListener('DOMContentLoaded', () => {
         startEditor();
     }
 
-    var cachedUser = getConfirmedSessionUser();
-    if (cachedUser) tryStartEditor(cachedUser);
     if (typeof window.registerOnAuthReady === 'function') {
         window.registerOnAuthReady(tryStartEditor);
     } else {
