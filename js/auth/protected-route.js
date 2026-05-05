@@ -230,5 +230,9 @@
     isLoggedIn: isLoggedIn,
     redirectToLogin: redirectToLogin,
     requireAuthenticatedPage: requireAuthenticatedPage,
+    getAuthState: getAuthState,
+    subscribeAuth: subscribeAuth,
+    setAuthState: setAuthState,
+    initCentralAuthState: initCentralAuthState,
   };
 })();
