@@ -92,6 +92,50 @@
     return Object.assign({}, DEFAULT_SETTINGS);
   }
 
+  function getConfirmedSessionUser() {
+    try {
+      if (window.getConfirmedAuthUser) {
+        return window.getConfirmedAuthUser();
+      }
+      if (localStorage.getItem('lovebud_auth_confirmed') === 'true') {
+        var raw = localStorage.getItem('lovebud_auth_cache');
+        if (raw && raw !== 'null') {
+          return JSON.parse(raw);
+        }
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  function isAuthenticatedUser(user) {
+    return !!(user && user.uid);
+  }
+
+  function resolveEffectiveUser(user) {
+    if (isAuthenticatedUser(user)) return user;
+    var cachedUser = getConfirmedSessionUser();
+    if (isAuthenticatedUser(cachedUser)) return cachedUser;
+    return null;
+  }
+
+  function getLoginRedirectHref() {
+    var target = window.location.pathname;
+
+    try {
+      var params = new URLSearchParams(window.location.search || '');
+      var returnTo = params.get('returnTo');
+      if (returnTo && isSafeReturnTarget(returnTo)) {
+        target += '?returnTo=' + encodeURIComponent(normalizeReturnTarget(returnTo));
+      }
+    } catch (e) {}
+
+    return 'login.html?redirect=' + encodeURIComponent(target);
+  }
+
+  function redirectToLogin() {
+    window.location.replace(getLoginRedirectHref());
+  }
+
   function applyHeaderNavFallbacks() {
     var t = window.t || function(key) { return key; };
     var navMap = [
@@ -198,8 +242,13 @@
 
   var settingsStarted = false;
 
-  function startSettings() {
+  function startSettings(user) {
     if (settingsStarted) return;
+    var effectiveUser = resolveEffectiveUser(user);
+    if (!isAuthenticatedUser(effectiveUser)) {
+      redirectToLogin();
+      return;
+    }
     settingsStarted = true;
     document.body.classList.remove('settings-auth-pending');
 
@@ -216,20 +265,29 @@
   }
 
   function initSettings() {
-    startSettings();
+    var cachedUser = getConfirmedSessionUser();
 
     if (window.LoveBudAuthBootstrap && typeof window.LoveBudAuthBootstrap.whenReady === 'function') {
       try {
-        window.LoveBudAuthBootstrap.whenReady().then(startSettings).catch(startSettings);
+        window.LoveBudAuthBootstrap.whenReady().then(function(user) {
+          startSettings(user || cachedUser || getConfirmedSessionUser());
+        }).catch(function() {
+          startSettings(cachedUser || getConfirmedSessionUser());
+        });
       } catch (e) {
-        startSettings();
+        startSettings(cachedUser || getConfirmedSessionUser());
       }
       return;
     }
 
     if (typeof window.registerOnAuthReady === 'function') {
-      window.registerOnAuthReady(startSettings);
+      window.registerOnAuthReady(function(user) {
+        startSettings(user || getConfirmedSessionUser());
+      });
+      return;
     }
+
+    startSettings(cachedUser || getConfirmedSessionUser());
   }
 
   function redirectAfterLogout() {
