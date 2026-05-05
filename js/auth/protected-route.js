@@ -76,33 +76,51 @@
   /**
    * Initialize central auth state from existing globals
    */
-  function initCentralAuthState() {
+function initCentralAuthState() {
+    // Use the existing __lovebudAuthReady and __lastAuthUser first
     if (window.__lovebudAuthReady === true) {
       setAuthState(true, window.__lastAuthUser || null);
-    } else {
-      setAuthState(false, null);
+      return;
     }
+    // Try Firebase directly as fallback
+    try {
+      if (typeof firebase !== 'undefined' && firebase.auth) {
+        var currentUser = firebase.auth().currentUser;
+        if (currentUser) {
+          setAuthState(true, currentUser);
+          return;
+        }
+      }
+    } catch (e) {}
+    setAuthState(false, null);
   }
-
-  // Initialize from existing globals
-  initCentralAuthState();
 
   // Set up single onAuthStateChanged subscription if available
   if (typeof window.LoveBudAuthFirebase !== 'undefined' &&
       window.LoveBudAuthFirebase &&
       typeof window.LoveBudAuthFirebase.onAuthStateChanged === 'function') {
     window.LoveBudAuthFirebase.onAuthStateChanged(function(user) {
-      setAuthState(true, user);
+      if (user) {
+        setAuthState(true, user);
+      }
     });
   } else if (typeof firebase !== 'undefined' && firebase.auth) {
     try {
       if (typeof firebase.auth().onAuthStateChanged === 'function') {
         firebase.auth().onAuthStateChanged(function(user) {
-          setAuthState(true, user);
+          if (user) {
+            setAuthState(true, user);
+          }
         });
       }
     } catch (e) {}
   }
+
+  // Initialize from existing globals
+  initCentralAuthState();
+
+  /**
+
 
   /**
    * Wait for auth to be confirmed ready.
