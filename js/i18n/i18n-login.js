@@ -43,7 +43,7 @@
       en: 'Or continue with email'
     },
     'email_login': {
-      ko: '이메일로 계속하기',
+      ko: '이메일로 로그인',
       en: 'Continue with email'
     },
 
