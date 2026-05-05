@@ -48,6 +48,20 @@
           const connectedSection = connectedFragments.closest('.connected-section');
           connectedSection.classList.remove('is-empty', 'is-solo', 'is-threaded');
 
+          if (degradedReason === 'context-loading') {
+                connectedFragments.innerHTML = `
+                    <div class="connected-loading-state">
+                        <span class="material-symbols-outlined">device_hub</span>
+                        <div>
+                            <div class="connected-loading-title">${tText('connected_loading_title', '이어진 순간을 불러오는 중이에요.')}</div>
+                            <p>${tText('connected_loading_desc', '현재 순간은 먼저 감상할 수 있어요. 연결된 기억은 준비되는 대로 이어서 보여드릴게요.')}</p>
+                        </div>
+                    </div>
+                `;
+                connectedSection.classList.add('is-empty');
+                return;
+          }
+
           if (degradedReason === 'missing-tree-id') {
                 connectedFragments.innerHTML = `
                     <div style="display:grid;grid-template-columns:1fr;gap:24px;">
