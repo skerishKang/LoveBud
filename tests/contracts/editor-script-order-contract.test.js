@@ -44,6 +44,7 @@ test('editor helper scripts load before the editor entry script', () => {
     'js/editor/editor-canvas-layout-helpers.js',
     'js/editor/editor-canvas-node.js',
     'js/editor/editor-canvas-interaction.js',
+    'js/editor/editor-canvas-interaction-helpers.js',
     'js/editor/editor-canvas-viewport.js',
     'js/editor/editor-canvas-state-boundary.js',
     'js/editor/editor-canvas-growth-affordance.js',
@@ -75,6 +76,16 @@ test('canvas layout helpers load before canvas runtime', () => {
   assertLoadedBefore(
     sources,
     'js/editor/editor-canvas-layout-helpers.js',
+    'js/editor/editor-canvas.js'
+  );
+});
+
+test('canvas interaction helpers load before canvas runtime', () => {
+  const sources = scriptSources(editorHtml());
+
+  assertLoadedBefore(
+    sources,
+    'js/editor/editor-canvas-interaction-helpers.js',
     'js/editor/editor-canvas.js'
   );
 });

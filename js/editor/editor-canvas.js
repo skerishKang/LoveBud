@@ -22,6 +22,7 @@ function createEditorCanvas(deps) {
     const canvasLayout = window.LoveBudEditorCanvasLayout || {};
     const canvasNode = window.LoveBudEditorCanvasNode || {};
     const canvasInteraction = window.LoveBudEditorCanvasInteraction || {};
+    const canvasInteractionHelpers = window.LoveBudEditorCanvasInteractionHelpers || {};
     const canvasViewport = window.LoveBudEditorCanvasViewport || {};
     const canvasLayoutHelpers = window.LoveBudEditorCanvasLayoutHelpers || {};
     const canvasEdges = window.createEditorCanvasEdges({ svg, canvasViewport });
@@ -512,82 +513,13 @@ function isNodeWithinSafeViewport(pos) {
             return;
         }
 
-        if (viewportState.globalsBound) return;
-        viewportState.globalsBound = true;
-
-        canvas.style.cursor = 'grab';
-        canvas.style.touchAction = 'none';
-
-        canvas.addEventListener('mousedown', (e) => {
-            if (e.target.closest('.memory-node') || e.target.closest('#addMemoryForm') || e.target.closest('.memory-add-affordance')) return;
-            viewportState.isPanning = true;
-            viewportState.startX = e.clientX;
-            viewportState.startY = e.clientY;
-            canvas.classList.add('panning');
-            canvas.style.cursor = 'grabbing';
-        });
-
-        window.addEventListener('mousemove', (e) => {
-            if (viewportState.isDraggingNode && viewportState.dragNodeId) {
-                const dx = e.clientX - viewportState.dragStartClientX;
-                const dy = e.clientY - viewportState.dragStartClientY;
-                if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
-                    viewportState.dragMoved = true;
-                }
-                viewportState.positions[viewportState.dragNodeId] = {
-                    x: Math.round(viewportState.dragStartWorldX + dx),
-                    y: Math.round(viewportState.dragStartWorldY + dy)
-                };
-                scheduleInitCanvas();
-                return;
-            }
-
-            if (!viewportState.isPanning) return;
-            const dx = e.clientX - viewportState.startX;
-            const dy = e.clientY - viewportState.startY;
-            viewportState.startX = e.clientX;
-            viewportState.startY = e.clientY;
-            viewportState.offsetX += dx;
-            viewportState.offsetY += dy;
-            scheduleInitCanvas();
-        });
-
-window.addEventListener('mouseup', () => {
-            const currentFrame = viewportState.rafFrame;
-            if (currentFrame) {
-                cancelAnimationFrame(currentFrame);
-                viewportState.rafFrame = null;
-                viewportState.rafScheduled = false;
-            }
-
-            let shouldRender = false;
-            if (viewportState.isDraggingNode && viewportState.dragNodeId) {
-                const draggedId = viewportState.dragNodeId;
-                const moved = viewportState.dragMoved;
-                viewportState.isDraggingNode = false;
-                viewportState.dragNodeId = null;
-                viewportState.dragMoved = false;
-                const draggedEl = document.querySelector(`.memory-node[data-memory-id="${draggedId}"]`);
-                if (draggedEl && moved) {
-                    draggedEl.dataset.suppressClick = '1';
-                    draggedEl.style.cursor = 'grab';
-                    shouldRender = true;
-                    if (window.LoveBudUI?.showToast) {
-                        window.LoveBudUI.showToast(i18n('node_position_adjusted') || '순간 위치를 조정했습니다', 'success', 1800);
-                    }
-                }
-            }
-
-            if (viewportState.isPanning) {
-                shouldRender = true;
-            }
-            viewportState.isPanning = false;
-            canvas.classList.remove('panning');
-            canvas.style.cursor = 'grab';
-            if (shouldRender) {
-                persistStoredPositions();
-                initCanvas();
-            }
+        canvasInteractionHelpers.bindFallbackCanvasPan({
+            canvas,
+            viewportState,
+            scheduleInitCanvas,
+            persistStoredPositions,
+            initCanvas,
+            i18n
         });
     };
 
