@@ -4,7 +4,7 @@
 
 This document defines the standard manual deployment path for LoveBud fixed test slots before browser verification.
 
-Use this procedure when a PR or issue requires a deployed fixed slot such as `test/slot-4`, `test/slot-5`, or another assigned slot branch before Browse, Search, Editor, My Trees, Auth, or API-dependent browser verification.
+Use this procedure when a PR or issue requires a deployed fixed slot such as `test4`, `test5`, or another CTO-assigned fixed test slot before Browse, Search, Editor, My Trees, Auth, or API-dependent browser verification.
 
 This is a docs-only operational procedure. It does not implement a GitHub workflow and does not change runtime behavior.
 
@@ -13,6 +13,7 @@ This is a docs-only operational procedure. It does not implement a GitHub workfl
 - PR #696 and PR #698 documented the need to separate fixed slot verification from stale slot artifacts.
 - Issue #694 tracks the fixed slot deployment procedure and stale asset guardrail.
 - [FIXED_SLOT_MANUAL_E2E_GATE.md](FIXED_SLOT_MANUAL_E2E_GATE.md) remains the assignment, SHA provenance, and evidence gate.
+- [TEST_PREVIEW_SLOTS.md](TEST_PREVIEW_SLOTS.md) is the source of truth for the LoveBud fixed slot domain format.
 
 ## Standard deployment path
 
@@ -23,35 +24,37 @@ Do not rely on a normal `git push` to a slot branch as the only deployment signa
 Use Wrangler direct deploy after the slot assignment and before browser verification.
 
 ```bash
-npx wrangler pages deploy . --project-name lovebud --branch test/slot-X
+npx wrangler pages deploy . --project-name lovebud --branch testX
 ```
 
-Replace `test/slot-X` with the assigned fixed slot branch, for example:
+Replace `testX` with the assigned fixed slot branch, for example:
 
 ```bash
-npx wrangler pages deploy . --project-name lovebud --branch test/slot-4
+npx wrangler pages deploy . --project-name lovebud --branch test4
 ```
 
 ## Slot URL format
 
-For a fixed slot branch named `test/slot-X`, the expected Cloudflare Pages URL is:
+LoveBud fixed test slots use the `test1` through `test10` domain format defined in [TEST_PREVIEW_SLOTS.md](TEST_PREVIEW_SLOTS.md).
+
+For a fixed slot named `testX`, the expected Cloudflare Pages URL is:
 
 ```text
-https://test-slot-X.lovebud.pages.dev
+https://testX.lovebud.pages.dev
 ```
 
 Examples:
 
 | Slot branch | Expected URL |
 | --- | --- |
-| `test/slot-4` | `https://test-slot-4.lovebud.pages.dev` |
-| `test/slot-5` | `https://test-slot-5.lovebud.pages.dev` |
+| `test4` | `https://test4.lovebud.pages.dev` |
+| `test5` | `https://test5.lovebud.pages.dev` |
 
-Do not confuse these URLs with `testX.lovebud.pages.dev`.
+Do not introduce or use `test-slot-X.lovebud.pages.dev` URLs for LoveBud fixed slot verification.
 
 ```text
-Correct:   https://test-slot-4.lovebud.pages.dev
-Incorrect: https://test4.lovebud.pages.dev
+Correct:   https://test4.lovebud.pages.dev
+Incorrect: https://test-slot-4.lovebud.pages.dev
 ```
 
 Browser verification evidence must report the exact URL that was actually loaded.
@@ -59,18 +62,18 @@ Browser verification evidence must report the exact URL that was actually loaded
 ## Required sequence
 
 1. Confirm the PR or task requires fixed slot browser verification.
-2. Confirm the assigned slot branch, such as `test/slot-4`.
+2. Confirm the assigned fixed slot, such as `test4`.
 3. Confirm the source branch and source head SHA that should be deployed.
 4. Check out the intended source tree locally.
 5. Run the expected local static checks for the PR scope.
 6. Run Wrangler direct deploy:
 
    ```bash
-   npx wrangler pages deploy . --project-name lovebud --branch test/slot-X
+   npx wrangler pages deploy . --project-name lovebud --branch testX
    ```
 
 7. Confirm the Wrangler output reports a successful deploy.
-8. Open the expected fixed slot URL, such as `https://test-slot-X.lovebud.pages.dev`.
+8. Open the expected fixed slot URL, such as `https://testX.lovebud.pages.dev`.
 9. Perform the browser verification only after the Wrangler deployment succeeds.
 10. Report the deployed SHA/source branch, exact URL, viewport, browser, console/pageerror status, and final status.
 
@@ -127,7 +130,7 @@ Do not claim Browse browser PASS from:
 - an unassigned slot;
 - a stale slot;
 - a URL whose branch/SHA/source provenance is unclear;
-- `testX.lovebud.pages.dev` when the expected fixed slot URL is `test-slot-X.lovebud.pages.dev`.
+- `test-slot-X.lovebud.pages.dev` when the expected fixed slot URL is `testX.lovebud.pages.dev`.
 
 ## Security and reporting restrictions
 
