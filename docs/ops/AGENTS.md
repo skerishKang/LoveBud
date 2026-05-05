@@ -78,7 +78,7 @@ Required safe reporting status values include:
 
 Agents must not use empty commits, version bumps, unrelated source edits, or workflow changes merely to trigger fixed slot deployment. If the deploy output indicates stale asset risk, such as `Uploaded 0 files`, report `BLOCKED_BY_STALE_ASSET` instead of final PASS.
 
-For fixed slot URLs, agents must distinguish `https://test-slot-X.lovebud.pages.dev` from `https://testX.lovebud.pages.dev` and report the exact URL used.
+For fixed slot URLs, agents must use the `test1` through `test10` domain format defined in [TEST_PREVIEW_SLOTS.md](TEST_PREVIEW_SLOTS.md). Example: slot `test4` must use `https://test4.lovebud.pages.dev`. Do not use `https://test-slot-4.lovebud.pages.dev` for LoveBud fixed slot verification. Always report the exact URL used.
 
 ## Forbidden actions
 
