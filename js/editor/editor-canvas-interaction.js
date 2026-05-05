@@ -1,3 +1,5 @@
+const NODE_DRAG_INTENT_THRESHOLD = 6;
+
 window.LoveBudEditorCanvasInteraction = {
   bind(options) {
     const {
@@ -30,9 +32,10 @@ window.LoveBudEditorCanvasInteraction = {
       if (viewportState.isDraggingNode && viewportState.dragNodeId) {
         const dx = event.clientX - viewportState.dragStartClientX;
         const dy = event.clientY - viewportState.dragStartClientY;
-        if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
+        if (Math.abs(dx) > NODE_DRAG_INTENT_THRESHOLD || Math.abs(dy) > NODE_DRAG_INTENT_THRESHOLD) {
           viewportState.dragMoved = true;
         }
+        if (!viewportState.dragMoved) return;
         viewportState.positions[viewportState.dragNodeId] = {
           x: Math.round(viewportState.dragStartWorldX + dx),
           y: Math.round(viewportState.dragStartWorldY + dy)
@@ -67,9 +70,11 @@ window.LoveBudEditorCanvasInteraction = {
         viewportState.dragNodeId = null;
         viewportState.dragMoved = false;
         const draggedEl = getDragTargetElement(draggedId);
+        if (draggedEl) {
+          draggedEl.style.cursor = 'grab';
+        }
         if (draggedEl && moved) {
           draggedEl.dataset.suppressClick = '1';
-          draggedEl.style.cursor = 'grab';
           shouldRender = true;
           if (typeof showMovedToast === 'function') {
             showMovedToast();
