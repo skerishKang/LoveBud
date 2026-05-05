@@ -265,29 +265,35 @@
   }
 
   function initSettings() {
-    var cachedUser = getConfirmedSessionUser();
-
     if (window.LoveBudAuthBootstrap && typeof window.LoveBudAuthBootstrap.whenReady === 'function') {
       try {
         window.LoveBudAuthBootstrap.whenReady().then(function(user) {
-          startSettings(user || cachedUser || getConfirmedSessionUser());
+          if (user && user.uid) {
+            startSettings(user);
+          } else {
+            redirectToLogin();
+          }
         }).catch(function() {
-          startSettings(cachedUser || getConfirmedSessionUser());
+          redirectToLogin();
         });
       } catch (e) {
-        startSettings(cachedUser || getConfirmedSessionUser());
+        redirectToLogin();
       }
       return;
     }
 
     if (typeof window.registerOnAuthReady === 'function') {
       window.registerOnAuthReady(function(user) {
-        startSettings(user || getConfirmedSessionUser());
+        if (user && user.uid) {
+          startSettings(user);
+        } else {
+          redirectToLogin();
+        }
       });
       return;
     }
 
-    startSettings(cachedUser || getConfirmedSessionUser());
+    redirectToLogin();
   }
 
   function redirectAfterLogout() {
