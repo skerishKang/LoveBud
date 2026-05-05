@@ -217,9 +217,9 @@
       ko: '... 그리고 {count}개의 순간 더',
       en: '... and {count} more moments'
     },
-    'search.previewOpenTreeCta': {
-      ko: '이 트리 열기',
-      en: 'Open this tree'
+    'search.previewOpenViewingCta': {
+      ko: '감상 열기',
+      en: 'Open viewing'
     },
     'search.previewSummaryThemeStart': {
       ko: '<strong style="color:var(--on-surface);">{title}</strong>는 <strong style="color:var(--on-surface);">{theme}</strong>와 함께 막 시작된 러브트리예요.',

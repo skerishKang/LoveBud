@@ -134,9 +134,9 @@
         const href = getTreeDetailHref(tree);
         if (!href) return '';
         const label = getSearchCopy(
-            'search.previewOpenTreeCta',
-            '이 트리 열기',
-            'Open this tree'
+            'search.previewOpenViewingCta',
+            '감상 열기',
+            'Open viewing'
         );
         return `
             <a href="${escapeHtml(href)}" class="btn-round btn-primary preview-primary-action" style="width:100%;margin-top:18px;min-height:50px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;font-size:14px;font-weight:800;gap:8px;">
