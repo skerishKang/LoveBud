@@ -70,6 +70,7 @@ Object.assign(window.i18nEditor, {
     editor_canvas_empty_desc: { ko: '첫 순간을 만들면 오른쪽에서 내용을 다듬고, 가운데에서 감정의 흐름을 이어갈 수 있어요.', en: 'Create the first moment, refine it on the right, and continue the emotional flow from the center.' },
     continue_moment: { ko: '순간 이어가기', en: 'Continue this moment' },
     growth_start_hint: { ko: '여기서 다음 가지가 자라나요', en: 'The next branch grows from here' },
+    growth_first_step_hint: { ko: '첫 순간에서 이어지는 감정을 기록해보세요', en: 'Record the feeling that continues from your first moment' },
     growth_continue_hint: { ko: '선택한 순간 뒤로 감정이 이어져요', en: 'The feeling continues from the selected moment' },
     detail_empty_desc: { ko: '가운데에서 첫 순간을 만들면 이곳에서 제목과 마음 기록을 다듬을 수 있어요.', en: 'Create the first moment from the center, then refine its title and note here.' },
     editor_make_private: { ko: '이 트리 비공개로 전환', en: 'Make this tree private' },
