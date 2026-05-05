@@ -256,6 +256,11 @@ document.addEventListener('DOMContentLoaded', () => {
         confirmBtn: document.getElementById('confirmAddMemory')
     });
 
+    const setElementDisplay = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = value;
+    };
+
     const prepareEditorShell = () => {
         applyEditorShellCopy(safeI18nText, i18n);
         const backToMyTreesLink = document.getElementById('backToMyTreesLink');
@@ -263,12 +268,9 @@ document.addEventListener('DOMContentLoaded', () => {
             backToMyTreesLink.setAttribute('href', getMyTreesHref());
             backToMyTreesLink.setAttribute('aria-label', safeI18nText(i18n, 'editor_back_to_my_trees', '내 러브트리로 돌아가기'));
         }
-        const detailEmptyState = document.getElementById('detailEmptyState');
-        const detailViewMode = document.getElementById('detailViewMode');
-        const detailEditMode = document.getElementById('detailEditMode');
-        if (detailEmptyState) detailEmptyState.style.display = 'block';
-        if (detailViewMode) detailViewMode.style.display = 'none';
-        if (detailEditMode) detailEditMode.style.display = 'none';
+        setElementDisplay('detailEmptyState', 'block');
+        setElementDisplay('detailViewMode', 'none');
+        setElementDisplay('detailEditMode', 'none');
     };
 
     const startEditor = async () => {
