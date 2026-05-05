@@ -94,11 +94,14 @@
     window.LoveBudAuthFirebase.onAuthStateChanged(function(user) {
       setAuthState(true, user);
     });
-  } else if (typeof firebase !== 'undefined' && firebase.auth &&
-             typeof firebase.auth().onAuthStateChanged === 'function') {
-    firebase.auth().onAuthStateChanged(function(user) {
-      setAuthState(true, user);
-    });
+  } else if (typeof firebase !== 'undefined' && firebase.auth) {
+    try {
+      if (typeof firebase.auth().onAuthStateChanged === 'function') {
+        firebase.auth().onAuthStateChanged(function(user) {
+          setAuthState(true, user);
+        });
+      }
+    } catch (e) {}
   }
 
   /**
