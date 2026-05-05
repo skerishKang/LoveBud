@@ -76,3 +76,19 @@ test('search preview summary omits range phrase for missing time range labels', 
   assert.match(i18nSearch, /'search\.previewSummaryNoRange'/);
   assert.match(i18nSearch, /span style="color:var\(--primary\);font-weight:700;">\{count\}개의 순간<\/span>이 이어졌어요/);
 });
+
+test('browse selected hub primary CTA label matches detail viewing route', () => {
+  const actionHelper = read('js/search/search-preview-action-helper.js');
+  const previewRenderer = read('js/search/search-preview-renderer.js');
+  const i18nSearch = read('js/i18n/i18n-search.js');
+
+  assert.match(actionHelper, /detail\.html\?id=/);
+  assert.match(actionHelper, /from=browse/);
+  assert.match(actionHelper, /search\.previewOpenViewingCta/);
+  assert.match(previewRenderer, /search\.previewOpenViewingCta/);
+  assert.match(i18nSearch, /'search\.previewOpenViewingCta'/);
+  assert.match(i18nSearch, /ko:\s*'감상 열기'/);
+  assert.doesNotMatch(actionHelper, /이 트리 열기|Open this tree|search\.previewOpenTreeCta/);
+  assert.doesNotMatch(previewRenderer, /이 트리 열기|Open this tree|search\.previewOpenTreeCta/);
+  assert.doesNotMatch(i18nSearch, /이 트리 열기|Open this tree|search\.previewOpenTreeCta/);
+});
