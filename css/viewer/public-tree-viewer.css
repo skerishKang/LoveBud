@@ -1,6 +1,6 @@
 /**
  * Public Tree Viewer Styles
- * v20260505-801-1
+ * v20260505-802-1
  */
 
 /* Viewer page shell */
@@ -217,6 +217,15 @@
 .viewer-preview-image {
     width: 100%;
     height: auto;
+    display: block;
+}
+
+.viewer-preview-video {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border: none;
+    border-radius: 12px;
+    background: #000;
     display: block;
 }
 
