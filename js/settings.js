@@ -111,8 +111,24 @@
     return !!(user && user.uid);
   }
 
+  function resolveEffectiveUser(user) {
+    if (isAuthenticatedUser(user)) return user;
+    var cachedUser = getConfirmedSessionUser();
+    if (isAuthenticatedUser(cachedUser)) return cachedUser;
+    return null;
+  }
+
   function getLoginRedirectHref() {
-    var target = window.location.pathname + (window.location.search || '') + (window.location.hash || '');
+    var target = window.location.pathname;
+
+    try {
+      var params = new URLSearchParams(window.location.search || '');
+      var returnTo = params.get('returnTo');
+      if (returnTo && isSafeReturnTarget(returnTo)) {
+        target += '?returnTo=' + encodeURIComponent(normalizeReturnTarget(returnTo));
+      }
+    } catch (e) {}
+
     return 'login.html?redirect=' + encodeURIComponent(target);
   }
 
@@ -228,7 +244,8 @@
 
   function startSettings(user) {
     if (settingsStarted) return;
-    if (!isAuthenticatedUser(user)) {
+    var effectiveUser = resolveEffectiveUser(user);
+    if (!isAuthenticatedUser(effectiveUser)) {
       redirectToLogin();
       return;
     }
@@ -253,24 +270,24 @@
     if (window.LoveBudAuthBootstrap && typeof window.LoveBudAuthBootstrap.whenReady === 'function') {
       try {
         window.LoveBudAuthBootstrap.whenReady().then(function(user) {
-          startSettings(user);
+          startSettings(user || cachedUser || getConfirmedSessionUser());
         }).catch(function() {
-          startSettings(cachedUser);
+          startSettings(cachedUser || getConfirmedSessionUser());
         });
       } catch (e) {
-        startSettings(cachedUser);
+        startSettings(cachedUser || getConfirmedSessionUser());
       }
       return;
     }
 
     if (typeof window.registerOnAuthReady === 'function') {
       window.registerOnAuthReady(function(user) {
-        startSettings(user);
+        startSettings(user || getConfirmedSessionUser());
       });
       return;
     }
 
-    startSettings(cachedUser);
+    startSettings(cachedUser || getConfirmedSessionUser());
   }
 
   function redirectAfterLogout() {
