@@ -1,9 +1,10 @@
 /**
  * LoveBud Public Tree Viewer
- * v20260505-801-1
+ * v20260505-802-1
  *
  * Read-only public LoveTree viewer shell.
  * Loads public tree data and displays nodes + selected moment preview.
+ * Enhanced: YouTube embed support, improved accessibility.
  */
 
 (function() {
@@ -70,22 +71,30 @@
     }
 
     // Render helpers
-    function setContent(elem, text) {
-        if (elem) elem.textContent = text;
+    function resolveElement(sel) {
+        if (!sel) return null;
+        if (typeof sel === 'string') {
+            return document.querySelector(sel);
+        }
+        return sel; // already an element
     }
 
-    function show(...els) {
-        for (const el of els) {
-            if (el) {
-                if (el.setAttribute) el.setAttribute('hidden', false);
-                else if (el.removeAttribute) el.removeAttribute('hidden');
-            }
+    function setContent(sel, text) {
+        const el = resolveElement(sel);
+        if (el) el.textContent = text;
+    }
+
+    function show(...sels) {
+        for (const sel of sels) {
+            const el = resolveElement(sel);
+            if (el) el.removeAttribute('hidden');
         }
     }
 
-    function hide(...els) {
-        for (const el of els) {
-            if (el && el.setAttribute) el.setAttribute('hidden', true);
+    function hide(...sels) {
+        for (const sel of sels) {
+            const el = resolveElement(sel);
+            if (el) el.setAttribute('hidden', '');
         }
     }
 
@@ -135,13 +144,17 @@
     }
 
     async function loadPublicMemories(treeId) {
-        if (!window.apiClient?.communityApi?.getCachedCommunityMemories) {
+        // Defensive: community methods may be on apiClient.communityApi or flattened onto apiClient
+        const getCachedCommunityMemories =
+            window.apiClient?.communityApi?.getCachedCommunityMemories ||
+            window.apiClient?.getCachedCommunityMemories;
+
+        if (typeof getCachedCommunityMemories !== 'function') {
             throw new Error('Community API not available');
         }
-        // Fetch public memories for this tree
-        const memories = await window.apiClient.communityApi.getCachedCommunityMemories({ treeId, limit: 100 });
-        // Filter: only public memories (safety)
-        return Array.isArray(memories) 
+
+        const memories = await getCachedCommunityMemories({ treeId, limit: 100 });
+        return Array.isArray(memories)
             ? memories.filter(m => m && m.visibility === 'public')
             : [];
     }
@@ -185,7 +198,7 @@
     }
 
     function renderNodesList() {
-        const list = SEL.nodesList;
+        const list = resolveElement(SEL.nodesList);
         if (!list) return;
         list.innerHTML = '';
 
@@ -193,6 +206,9 @@
             const node = document.createElement('div');
             node.className = 'viewer-node' + (memory.id === selectedMemoryId ? ' viewer-node-active' : '');
             node.dataset.memoryId = memory.id;
+            node.setAttribute('role', 'button');
+            node.setAttribute('tabindex', '0');
+            node.setAttribute('aria-label', escapeHtml(memory.title || memory.emotionMemo || t('viewer.momentTitle', '그때의 마음', 'That Moment')));
 
             // Node content: title + date + tags
             let tagsHtml = '';
@@ -210,6 +226,12 @@
             `;
 
             node.addEventListener('click', () => selectMemory(memory.id));
+            node.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    selectMemory(memory.id);
+                }
+            });
             list.appendChild(node);
         }
     }
@@ -226,10 +248,23 @@
         }
     }
 
+    function extractYouTubeVideoId(url) {
+        if (!url) return null;
+        const s = String(url);
+        // Standard watch URL with v= parameter
+        const vMatch = s.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
+        if (vMatch) return vMatch[1];
+        // youtu.be/ID, shorts/ID, embed/ID, live/ID, v/ID
+        const pathMatch = s.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|shorts\/|live\/))([a-zA-Z0-9_-]{11})/);
+        if (pathMatch) return pathMatch[1];
+        return null;
+    }
+
     function selectMemory(memoryId) {
         selectedMemoryId = memoryId;
         // update active node class
-        const nodes = SEL.nodesList.querySelectorAll('.viewer-node');
+        const list = resolveElement(SEL.nodesList);
+        const nodes = list ? list.querySelectorAll('.viewer-node') : [];
         nodes.forEach(n => {
             n.classList.toggle('viewer-node-active', n.dataset.memoryId === memoryId);
         });
@@ -251,12 +286,20 @@
     }
 
     function renderPreviewMemory(memory) {
-        // Media (if available)
-        const mediaContainer = SEL.previewMedia;
+        // Media (video embed or thumbnail)
+        const mediaContainer = resolveElement(SEL.previewMedia);
         if (mediaContainer) {
+            const sourceUrl = memory.sourceUrl || memory.originalUrl || '';
             const thumb = memory.representativeThumbnail || memory.thumbnail || '';
-            if (thumb) {
-                mediaContainer.innerHTML = `<img src="${escapeHtml(thumb)}" alt="${escapeHtml(memory.title || '')}" class="viewer-preview-image" />`;
+
+            // Check for YouTube embed URL
+            const ytVideoId = extractYouTubeVideoId(sourceUrl);
+            if (ytVideoId) {
+                const embedUrl = `https://www.youtube.com/embed/${ytVideoId}?rel=0&modestbranding=1`;
+                const safeTitle = escapeHtml(memory.title || 'moment video');
+                mediaContainer.innerHTML = `<iframe src="${escapeHtml(embedUrl)}" class="viewer-preview-video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy" title="${safeTitle}"></iframe>`;
+            } else if (thumb) {
+                mediaContainer.innerHTML = `<img src="${escapeHtml(thumb)}" alt="${escapeHtml(memory.title || '')}" class="viewer-preview-image" loading="lazy" />`;
             } else {
                 mediaContainer.innerHTML = `<div class="viewer-preview-no-media"><span class="material-symbols-outlined">image</span></div>`;
             }
@@ -264,7 +307,7 @@
 
         // Title & tags
         setContent(SEL.momentTitle, memory.title || memory.emotionMemo || '');
-        const tagsContainer = SEL.momentTags;
+        const tagsContainer = resolveElement(SEL.momentTags);
         if (tagsContainer) {
             tagsContainer.innerHTML = (memory.emotionTags || [])
                 .map(tag => `<span class="viewer-preview-tag">${escapeHtml(tag)}</span>`)
@@ -272,7 +315,7 @@
         }
 
         // Meta: date/location
-        const metaContainer = SEL.momentMeta;
+        const metaContainer = resolveElement(SEL.momentMeta);
         if (metaContainer) {
             const dateStr = formatMemoryDate(memory);
             const location = memory.location || '';
@@ -283,8 +326,8 @@
         }
 
         // Diary
-        const quoteEl = SEL.diaryQuote;
-        const contentEl = SEL.diaryContent;
+        const quoteEl = resolveElement(SEL.diaryQuote);
+        const contentEl = resolveElement(SEL.diaryContent);
         if (quoteEl) quoteEl.textContent = memory.emotionMemo || '';
         if (contentEl) {
             // raw diary content is not exposed; show placeholder if empty
@@ -296,7 +339,7 @@
 
     // Error retry
     function setupRetry() {
-        const btn = document.querySelector(SEL.retryBtn);
+        const btn = resolveElement(SEL.retryBtn);
         if (btn && typeof btn.addEventListener === 'function') {
             btn.addEventListener('click', () => {
                 if (currentTreeId) {
@@ -308,7 +351,7 @@
 
     // Navigation back
     function setupBackLink() {
-        const back = document.querySelector(SEL.backLink);
+        const back = resolveElement(SEL.backLink);
         if (back && typeof back.addEventListener === 'function') {
             back.addEventListener('click', (e) => {
                 // default behavior is fine (link to search)
