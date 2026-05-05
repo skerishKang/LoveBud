@@ -11,9 +11,9 @@
 (function() {
     'use strict';
 
-    function getSharedUtils() {
-        return window.LoveBudSearchSharedUtils || null;
-    }
+    const previewBuilders = window.LoveBudSearchPreviewBuilders || {};
+
+    const getSharedUtils = previewBuilders.getSharedUtils || (function() { return window.LoveBudSearchSharedUtils || null; });
 
     function escapeHtml(value) {
         const utils = getSharedUtils();
@@ -48,20 +48,7 @@
         }
     }
 
-    function isSuspiciousYouTubeThumbnailImage(img) {
-        const utils = getSharedUtils();
-        if (utils?.isSuspiciousYouTubeThumbnailImage) {
-            return utils.isSuspiciousYouTubeThumbnailImage(img);
-        }
-        if (!img || !img.currentSrc) return false;
-        const src = String(img.currentSrc || img.src || '');
-        const isYouTubeThumb = src.includes('ytimg.com/vi/') || src.includes('img.youtube.com/vi/');
-        if (!isYouTubeThumb) return false;
-
-        const width = Number(img.naturalWidth || 0);
-        const height = Number(img.naturalHeight || 0);
-        return width > 0 && height > 0 && width <= 120 && height <= 90;
-    }
+    const isSuspiciousYouTubeThumbnailImage = previewBuilders.isSuspiciousYouTubeThumbnailImage || function(img) { return false; };
 
     function getCurrentLocale() {
         const helper = window.LoveBudSearchPreviewCopyHelper;
@@ -220,10 +207,7 @@
         });
     }
 
-    function getTreeIcon(stage) {
-        const icons = { '입덕': '🌱', '성장': '🌿', '최애': '🌳', '새 트리': '🌱' };
-        return icons[stage] || '🌱';
-    }
+    const getTreeIcon = previewBuilders.getTreeIcon || function(stage) { return '🌱'; };
 
     function getSearchTitleHelper() {
         return window.LoveBudSearchTitleHelper || null;
@@ -247,26 +231,7 @@
         }) || null;
     }
 
-    function renderEmotionTags(tags) {
-        const titleHelper = getSearchTitleHelper();
-        const safeTags = (Array.isArray(tags) ? tags : [])
-            .map(tag => titleHelper?.sanitizeBrowseLabel ? titleHelper.sanitizeBrowseLabel(tag) : String(tag || '').trim())
-            .filter(Boolean)
-            .filter(tag => tag !== '기록' && tag !== 'tag_record')
-            .slice(0, 4);
-
-        if (!safeTags.length) {
-            return `
-                <span style="padding:8px 14px;background:var(--surface-container-low);border-radius:99px;font-size:13px;font-weight:600;color:var(--on-surface-variant);border:1px solid var(--outline-variant);">
-                    ${escapeHtml(getSearchCopy('search.previewNoEmotionTags', '아직 이어진 감정은 없어요.', 'There are no clearly saved emotions yet.'))}
-                </span>
-            `;
-        }
-
-        return safeTags.map(tag =>
-            `<span style="padding:8px 14px;background:var(--primary-container);border-radius:99px;font-size:13px;font-weight:700;color:var(--on-primary-container);border:1px solid var(--outline-variant);">#${escapeHtml(tag)}</span>`
-        ).join('');
-    }
+    const renderEmotionTags = previewBuilders.renderEmotionTags || function(tags) { return ''; };
 
     function getTimelineLabel(tree, memories) {
         const titleHelper = getSearchTitleHelper();
@@ -311,9 +276,7 @@
         return getSearchCopy('search.previewTimelineUnavailable', '아직 시작 순간을 기다리는 중이에요', 'Still waiting for the first moment');
     }
 
-    function getDefaultTreeName() {
-        return getSearchCopy('search.previewDefaultTreeName', '러브트리', 'LoveTree');
-    }
+    const getDefaultTreeName = previewBuilders.getDefaultTreeName || function() { return '러브트리'; };
 
     function getPreviewTimeRange(tree) {
         const raw = String(tree?.timeRange || '').trim();
@@ -399,69 +362,17 @@
         );
     }
 
-    function renderSectionHeading(icon, label) {
-        return `
-            <div style="font-size:11px;font-weight:800;color:var(--on-surface-variant);margin-bottom:12px;text-transform:uppercase;letter-spacing:1px;display:flex;align-items:center;gap:4px;">
-                <span class="material-symbols-outlined" style="font-size:14px;">${escapeHtml(icon)}</span>
-                ${escapeHtml(label)}
-            </div>
-        `;
-    }
+    const renderSectionHeading = previewBuilders.renderSectionHeading || function(icon, label) { return ''; };
 
-    function renderInfoCallout(icon, text, variant = 'neutral') {
-        const isPrimary = variant === 'primary';
-        const background = isPrimary ? 'var(--primary-container)' : 'var(--surface-container)';
-        const color = isPrimary ? 'var(--on-primary-container)' : 'var(--on-surface-variant)';
+    const renderInfoCallout = previewBuilders.renderInfoCallout || function(icon, text, variant) { return ''; };
 
-        return `
-            <div style="margin-top:12px;padding:12px;background:${background};border-radius:0.75rem;font-size:13px;color:${color};font-weight:500;display:flex;align-items:center;gap:8px;">
-                <span class="material-symbols-outlined" style="font-size:18px;">${escapeHtml(icon)}</span>
-                ${escapeHtml(text)}
-            </div>
-        `;
-    }
+    const renderPathStageBadge = previewBuilders.renderPathStageBadge || function(index, title) { return ''; };
 
-    // Issue #602: full label preserved in title attribute; label text uses .preview-flow-stage-label for 2-line clamp.
-    function renderPathStageBadge(index, title) {
-        return `<span class="preview-flow-stage" style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:var(--surface-container);border-radius:8px;font-size:13px;"><span style="color:var(--primary);font-weight:800;flex:0 0 auto;">${index}</span><span class="preview-flow-stage-label" title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}">${escapeHtml(title)}</span></span>`;
-    }
+    const renderPathStages = previewBuilders.renderPathStages || function(memories, startIndex) { return ''; };
 
-    function renderPathStages(memories, startIndex = 0) {
-        return memories.map((memory, index) => {
-            const fallbackKo = startIndex + index === 0 ? '시작 순간' : '이어진 순간';
-            const fallbackEn = startIndex + index === 0 ? 'Starting moment' : 'Connected moment';
-            return renderPathStageBadge(startIndex + index + 1, getMomentLabel(memory, fallbackKo, fallbackEn));
-        }).join('');
-    }
+    const renderFlowToggleButton = previewBuilders.renderFlowToggleButton || function(hiddenCount, isExpanded) { return ''; };
 
-    function renderFlowToggleButton(hiddenCount, isExpanded) {
-        if (!hiddenCount || hiddenCount <= 0) return '';
-        const label = isExpanded
-            ? getSearchCopy('search.previewCollapseMoments', '접기', 'Collapse')
-            : formatSearchCopy(
-                'search.previewShowMoreMoments',
-                { count: hiddenCount },
-                '{count}개의 순간 더 보기',
-                'Show {count} more moments'
-            );
-        const icon = isExpanded ? 'expand_less' : 'expand_more';
-
-        return `
-            <button type="button" class="preview-flow-toggle" data-preview-flow-toggle aria-expanded="${isExpanded ? 'true' : 'false'}">
-                <span>${escapeHtml(label)}</span>
-                <span class="material-symbols-outlined" aria-hidden="true">${icon}</span>
-            </button>
-        `;
-    }
-
-    function renderHiddenPathStages(hiddenMemories, startIndex, isExpanded) {
-        if (!isExpanded || !hiddenMemories.length) return '';
-        return `
-            <div class="preview-flow-more-list">
-                ${renderPathStages(hiddenMemories, startIndex)}
-            </div>
-        `;
-    }
+    const renderHiddenPathStages = previewBuilders.renderHiddenPathStages || function(hiddenMemories, startIndex, isExpanded) { return ''; };
 
     function renderLoadingPreview(tree) {
         if (!_dom) return;
@@ -508,19 +419,7 @@
         }
     }
 
-    function renderPreviewThumbnailFallback(title, subtitle) {
-        const helper = window.LoveBudSearchPreviewMediaHelper;
-        if (helper?.renderPreviewThumbnailFallback) {
-            return helper.renderPreviewThumbnailFallback(title, subtitle);
-        }
-        return `
-            <div class="preview-media-fallback" style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;background:linear-gradient(135deg,var(--surface-container-low),white);border-radius:1rem;color:var(--on-surface-variant);">
-                <span class="material-symbols-outlined" style="font-size:36px;color:var(--primary);margin-bottom:12px;">movie</span>
-                <div style="font-size:14px;font-weight:800;color:var(--on-surface);margin-bottom:8px;">${escapeHtml(title)}</div>
-                <p style="margin:0;font-size:13px;line-height:1.6;">${escapeHtml(subtitle)}</p>
-            </div>
-        `;
-    }
+    const renderPreviewThumbnailFallback = previewBuilders.renderPreviewThumbnailFallback || function(title, subtitle) { return ''; };
 
     function renderPreviewThumbnailMedia(thumbnailUrl, mediaTitle, treeTitle) {
         const helper = window.LoveBudSearchPreviewMediaHelper;
