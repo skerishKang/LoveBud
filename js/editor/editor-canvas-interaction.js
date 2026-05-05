@@ -20,7 +20,13 @@ window.LoveBudEditorCanvasInteraction = {
     canvas.style.touchAction = 'none';
 
     canvas.addEventListener('mousedown', (event) => {
-      if (event.target.closest('.memory-node') || event.target.closest('#addMemoryForm')) return;
+      if (
+        event.target.closest('.memory-node') ||
+        event.target.closest('#addMemoryForm') ||
+        event.target.closest('.memory-add-affordance')
+      ) {
+        return;
+      }
       viewportState.isPanning = true;
       viewportState.startX = event.clientX;
       viewportState.startY = event.clientY;
