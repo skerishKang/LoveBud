@@ -62,8 +62,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const readConfirmedAuthCacheFromHelper = () => (
         window.LoveBudEditorAuthHelpers?.readConfirmedAuthCache?.() || null
     );
-    const getConfirmedSessionUser = editorAuthHelpers.getConfirmedSessionUser || function() {
+    const getConfirmedSessionUser = function() {
         try {
+            if (window.LoveBudProtectedRoute) {
+                var state = window.LoveBudProtectedRoute.getAuthState();
+                if (state.ready && state.user) return state.user;
+            }
             if (window.getConfirmedAuthUser) return window.getConfirmedAuthUser();
         } catch (e) {}
         return readConfirmedAuthCacheFromHelper();
