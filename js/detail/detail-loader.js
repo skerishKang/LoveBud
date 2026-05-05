@@ -100,6 +100,41 @@
             let degradedReason = null;
             if (!canonicalTreeId) degradedReason = 'missing-tree-id';
 
+            const stagedMemories = [memory];
+            const stagedTree = inferTreeContext({ treeId: canonicalTreeId, currentMemory: memory, mergedMemories: stagedMemories });
+            const stagedMomentCount = resolveTreeMomentCount({ tree: stagedTree, memories: stagedMemories, currentMemory: memory });
+            const stagedDegradedReason = hasTreeContext ? 'context-loading' : 'missing-tree-id';
+
+            renderMemoryBase(memory);
+            renderTreeContext({
+                hasTreeContext,
+                tree: stagedTree,
+                memories: stagedMemories,
+                sourceContext,
+                degradedReason: stagedDegradedReason,
+                currentMemory: memory
+            });
+            renderConnectedFragments({
+                memory,
+                memories: stagedMemories,
+                treeId: canonicalTreeId,
+                sourceContext,
+                degradedReason: stagedDegradedReason,
+                treeMomentCount: stagedMomentCount
+            });
+
+            const stagedTitle = memory.title || tText('tree_context_moment', '순간 상세');
+            document.title = `${stagedTitle} — ${tText('lovetree_brand', '러브트리')}`;
+            applyViewingPageCopy({
+                sourceContext,
+                treeTitle: String(stagedTree?.title || '').trim(),
+                memoryTitleText: memory.title,
+                treeMomentCount: stagedMomentCount,
+                connectedCount: 0,
+                memory,
+                degradedReason: stagedDegradedReason
+            });
+
             let tree = hasTreeContext && cache ? cache.get(TREE_CACHE_KEY(canonicalTreeId)) : null;
             let memories = hasTreeContext && cache ? cache.get(MEMORIES_CACHE_KEY(canonicalTreeId)) : null;
             let treeFetchState = tree ? 'cache' : 'idle';

@@ -7,7 +7,7 @@
     <link rel="icon" href="/assets/favicon/favicon.svg" type="image/svg+xml">
     <link rel="icon" href="/favicon.ico" sizes="32x32">
     <link rel="stylesheet" href="../css/global.css?v=20260415-10">
-    <link rel="stylesheet" href="../css/detail.css?v=20260426-1">
+    <link rel="stylesheet" href="../css/detail.css?v=20260505-646">
     <link rel="stylesheet" href="../css/page-transitions.css?v=20260430-1">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
 </head>
@@ -23,21 +23,26 @@
             </a>
             <div class="detail-view-chip">
                 <span class="material-symbols-outlined">visibility</span>
-                <span id="detailViewChipLabel">&nbsp;</span>
+                <span id="detailViewChipLabel">순간 준비 중</span>
             </div>
         </div>
 
         <section id="detailHero" class="detail-hero reveal-scale reveal-up">
-            <div id="detailHeroKicker" class="detail-hero-kicker">&nbsp;</div>
-            <h2 id="detailHeroTitle" class="headline detail-hero-title">이 순간에서 시작된 마음</h2>
-            <p id="detailHeroDesc" class="detail-hero-desc">이어진 장면들</p>
+            <div id="detailHeroKicker" class="detail-hero-kicker">현재 순간 준비 중</div>
+            <h2 id="detailHeroTitle" class="headline detail-hero-title">남겨진 순간을 불러오고 있어요</h2>
+            <p id="detailHeroDesc" class="detail-hero-desc">순간이 열리면 이어진 흐름은 따로 불러올게요.</p>
             <div id="treeContext"></div>
         </section>
 
         <main class="detail-layout reveal-fade">
             <section class="detail-primary-stack">
                 <section class="detail-main-media">
-                    <div id="videoMain" class="video-main"></div>
+                    <div id="videoMain" class="video-main">
+                        <div class="detail-media-loading" role="status" aria-live="polite">
+                            <span class="material-symbols-outlined">hourglass_top</span>
+                            <span>대표 장면을 준비하고 있어요</span>
+                        </div>
+                    </div>
                     <div class="detail-memory-meta">
                         <span class="detail-meta-pill">
                             <span class="material-symbols-outlined">artist</span>
@@ -70,8 +75,8 @@
                 <div class="connected-section">
                     <div class="connected-heading">
                         <span id="connectedKicker" class="connected-kicker">&nbsp;</span>
-                        <h3 id="connectedTitle" class="headline">이어진 순간들</h3>
-                        <p id="connectedSummary" class="connected-summary">&nbsp;</p>
+                        <h3 id="connectedTitle" class="headline">이어진 흐름 준비 중</h3>
+                        <p id="connectedSummary" class="connected-summary">현재 순간이 열리면 연결된 기억을 이어서 불러올게요.</p>
                     </div>
                     <div id="connectedFragments" class="connected-fragments-grid"></div>
                 </div>
@@ -79,7 +84,7 @@
                 <div class="growth-visualization">
                     <div class="growth-line"></div>
                     <div class="growth-dot"></div>
-                    <p id="growthLabel" class="growth-label">감정이 자라는 중</p>
+                    <p id="growthLabel" class="growth-label">이어진 흐름 준비 중</p>
                 </div>
             </aside>
         </main>
@@ -93,11 +98,11 @@
 <script src="../js/detail/detail-utils.js?v=20260427-1"></script>
 <script src="../js/detail/detail-video.js?v=20260427-1"></script>
 <script src="../js/detail/detail-copy.js?v=20260427-1"></script>
-<script src="../js/detail/detail-render.js?v=20260427-1"></script>
-<script src="../js/detail/detail-connected.js?v=20260427-1"></script>
-<script src="../js/detail/detail-loader.js?v=20260427-1"></script>
+<script src="../js/detail/detail-render.js?v=20260505-646"></script>
+<script src="../js/detail/detail-connected.js?v=20260505-646"></script>
+<script src="../js/detail/detail-loader.js?v=20260505-646"></script>
 <script src="../js/detail/detail-loading-error-boundary.js?v=20260502-1"></script>
-<script src="../js/detail.js?v=20260422-6"></script>
+<script src="../js/detail.js?v=20260505-646"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 <script src="../js/firebase-config.js?v=20260417-31"></script>
@@ -106,7 +111,7 @@
     <script src="../js/i18n/i18n-login.js?v=20260419-2"></script>
     <script src="../js/i18n/i18n-intro.js?v=20260421-2"></script>
     <script src="../js/i18n/i18n-search.js?v=20260421-1"></script>
-    <script src="../js/i18n/i18n-detail.js?v=20260422-3"></script>
+    <script src="../js/i18n/i18n-detail.js?v=20260505-646"></script>
     <script src="../js/i18n/i18n-editor.js?v=20260421-9"></script>
     <script src="../js/i18n/i18n-my-trees.js?v=20260421-5"></script>
 <script src="../js/i18n/i18n-index.js?v=20260421-1"></script>
