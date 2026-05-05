@@ -321,10 +321,6 @@
   document.addEventListener('DOMContentLoaded', async function() {
     var cachedUser = getConfirmedSessionUser();
 
-    if (cachedUser && cachedUser.uid && !myTreesStarted) {
-      bootMyTrees(cachedUser, { fromCache: true });
-    }
-
     if (window.LoveBudAuthBootstrap && typeof window.LoveBudAuthBootstrap.whenReady === 'function') {
       try {
         var user = await window.LoveBudAuthBootstrap.whenReady();
@@ -335,16 +331,14 @@
       return;
     }
 
-    if (!myTreesStarted && typeof window.registerOnAuthReady === 'function') {
+    if (typeof window.registerOnAuthReady === 'function') {
       window.registerOnAuthReady(function(user) {
         reconcileBootstrapUser(user || null);
       });
       return;
     }
 
-    if (!myTreesStarted) {
-      bootMyTrees(cachedUser || null, { fromCache: !!(cachedUser && cachedUser.uid) });
-    }
+    reconcileBootstrapUser(cachedUser);
   }, { once: true });
 
 })();
