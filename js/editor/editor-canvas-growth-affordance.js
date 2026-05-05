@@ -214,8 +214,9 @@ function createEditorCanvasGrowthAffordance(deps) {
         if (!anchorMem) return;
         const opts = options || {};
         const labelText = opts.labelText || (i18n('editor_add_memory') || '새 순간 이어가기');
-        const helperText = opts.isFirstStep
-            ? ''
+        const isFirstStep = opts.isFirstStep;
+        const helperText = isFirstStep
+            ? (i18n('growth_first_step_hint') || '첫 순간에서 이어지는 감정을 기록해보세요')
             : (opts.helperText || i18n('growth_continue_hint') || '선택한 순간 뒤로 감정이 이어져요');
 
         createGrowthAffordanceElement(anchorMem, labelText, helperText);
