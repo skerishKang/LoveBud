@@ -138,6 +138,10 @@
     // Confirmed session helper - 헤더 즉시 렌더링용
     function getConfirmedSessionUser() {
         try {
+            if (window.LoveBudProtectedRoute) {
+                var state = window.LoveBudProtectedRoute.getAuthState();
+                if (state.ready && state.user) return state.user;
+            }
             if (window.getConfirmedAuthUser) {
                 return window.getConfirmedAuthUser();
             }
