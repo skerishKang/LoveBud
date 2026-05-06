@@ -20,6 +20,7 @@
         return {
             getTrees: async () => BaseApiFetch.apiFetch('/trees'),
             getTree: async (treeId) => BaseApiFetch.apiFetch(`/trees/${treeId}`),
+            getPublicTree: async (treeId) => BaseApiFetch.apiFetch(`/trees/${treeId}`, { publicRead: true }),
             getFirstTree: async () => {
                 const trees = await BaseApiFetch.apiFetch('/trees');
                 return Array.isArray(trees) && trees.length > 0 ? trees[0] : null;
