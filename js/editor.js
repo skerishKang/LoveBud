@@ -449,14 +449,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const visibility = (window.currentTreeData?.visibility || 'public');
             const isPublic = visibility === 'public';
             const nextActionLabel = isPublic
-                ? safeI18nText(i18n, 'editor_make_private', '이 트리 비공개로 전환')
-                : safeI18nText(i18n, 'editor_make_public', '이 트리 공개하기');
+                ? safeI18nText(i18n, 'visibility_public', '공개')
+                : safeI18nText(i18n, 'visibility_private', '비공개');
 
             visibilityToggleLabel.textContent = nextActionLabel;
-            visibilityToggleIcon.textContent = isPublic ? 'lock' : 'public';
+            visibilityToggleIcon.textContent = isPublic ? 'public' : 'lock';
             visibilityToggleBtn.setAttribute('aria-label', nextActionLabel);
             visibilityToggleBtn.setAttribute('title', nextActionLabel);
-            visibilityToggleBtn.disabled = !treeId;
+            visibilityToggleBtn.disabled = true;
             visibilityToggleBtn.dataset.idleLabel = nextActionLabel;
             visibilityToggleBtn.dataset.loadingLabel = isPublic
                 ? safeI18nText(i18n, 'editor_visibility_loading_private', '비공개로 전환하는 중...')
@@ -619,6 +619,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (sidebarVisibilityToggleBtn && sidebarVisibilityToggleBtn.dataset.bound !== '1') {
             sidebarVisibilityToggleBtn.dataset.bound = '1';
             sidebarVisibilityToggleBtn.addEventListener('click', async () => {
+                if (sidebarVisibilityToggleBtn.disabled) return;
                 if (!treeId) return;
                 const currentVisibility = window.currentTreeData?.visibility || 'public';
                 const isCurrentlyPublic = currentVisibility === 'public';
