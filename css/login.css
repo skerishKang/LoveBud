@@ -460,3 +460,8 @@ input[type="password"]:focus {
     margin-top: 16px;
     opacity: 0.7;
 }
+.login-signup-link {
+    color: var(--primary);
+    text-decoration: underline;
+    font-weight: 700;
+}
