@@ -276,11 +276,15 @@ test('auth firebase fallback keeps protected-route-aware offline behavior', () =
 test('login page redirects confirmed authenticated users away from login state', () => {
   const source = readRepoFile('js/auth/auth-firebase.js');
   const session = readRepoFile('js/auth/auth-session.js');
+  const loginPage = readRepoFile('js/auth/auth-login-page.js');
 
   assert.match(source, /user\s*&&\s*typeof\s+isLoginPage\s*===\s*'function'\s*&&\s*isLoginPage\(\)/, 'auth-firebase must detect signed-in login-page state');
   assert.match(source, /window\.location\.replace\(typeof getRedirectTarget === 'function' \? getRedirectTarget\(\) : 'my-trees\.html'\)/, 'signed-in login page must redirect to the resolved auth target');
   assert.match(session, /var\s+returnTo\s*=\s*params\.get\('returnTo'\)/, 'auth session target resolver must read returnTo');
   assert.match(session, /if\s*\(returnTo\)\s*return returnTo/, 'returnTo must win before legacy redirect target');
+  assert.match(loginPage, /var\s+returnTo\s*=\s*params\.get\('returnTo'\)/, 'login-page auth observer must read returnTo before redirect');
+  assert.match(loginPage, /if\s*\(returnTo\)\s*return returnTo/, 'login-page auth observer must preserve settings returnTo before auth-firebase redirect runs');
+  assert.match(loginPage, /params\.get\('redirect'\)\s*\|\|\s*params\.get\('returnTo'\)/, 'login-page redirect notice must support returnTo-only login redirects');
 });
 
 test('settings page uses protected route helper and stable returnTo login target', () => {
