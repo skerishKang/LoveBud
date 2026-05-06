@@ -1,6 +1,6 @@
 /**
  * LoveBud Search Preview Renderer
- * v20260504-1
+ * v20260506-1
  * 
  * Rendering layer: preview sidebar panel.
  * DOM-agnostic - updates passed DOM elements.
@@ -220,56 +220,31 @@
     const renderEmotionTags = previewBuilders.renderEmotionTags || function(tags) { return ''; };
 
     function getTimelineLabel(tree, memories) {
-        const titleHelper = getSearchTitleHelper();
-        const formatDate = titleHelper?.formatShortDate || (() => {
-            const helper = window.LoveBudSearchPreviewCopyHelper;
-            if (helper?.formatShortDate) {
-                return helper.formatShortDate;
-            }
-            return (value) => {
-                if (!value) return '';
-                const date = new Date(value);
-                if (Number.isNaN(date.getTime())) return '';
-                return date.toLocaleDateString(getCurrentLocale() === 'en' ? 'en-US' : 'ko-KR', {
-                    month: 'short',
-                    day: 'numeric'
-                });
-            };
-        })();
-
-        const updatedAt = tree.updatedAt || '';
-        const createdAt = tree.createdAt || '';
-        const firstTimestamp = memories[0]?.timestamp || '';
-        const lastTimestamp = memories[memories.length - 1]?.timestamp || '';
-
-        const safeUpdated = formatDate(updatedAt);
-        const safeCreated = formatDate(createdAt);
-        const safeFirst = formatDate(firstTimestamp);
-        const safeLast = formatDate(lastTimestamp);
-
-        if (safeUpdated) {
-            return `${getSearchCopy('search.previewTimelineRecentUpdate', '최근에 이어진 감정', 'Recently added moment')} ${safeUpdated}`;
-        }
-        if (safeLast) {
-            return `${getSearchCopy('search.previewTimelineLastMoment', '가장 최근에 남은 순간', 'Latest saved moment')} ${safeLast}`;
-        }
-        if (safeFirst && safeLast && safeFirst !== safeLast) {
-            return `${safeFirst} ~ ${safeLast}`;
-        }
-        if (safeCreated) {
-            return `${getSearchCopy('search.previewTimelineCreated', '처음 남긴 날', 'First saved on')} ${safeCreated}`;
+        if (previewBuilders.getTimelineLabel) {
+            return previewBuilders.getTimelineLabel(tree, memories);
         }
         return getSearchCopy('search.previewTimelineUnavailable', '아직 시작 순간을 기다리는 중이에요', 'Still waiting for the first moment');
     }
 
     const getDefaultTreeName = previewBuilders.getDefaultTreeName || function() { return '러브트리'; };
 
-    const getPreviewTimeRange = previewBuilders.getPreviewTimeRange || function(tree) {
-        return String(tree && tree.timeRange ? tree.timeRange : '').trim();
+    function getPreviewTimeRange(tree) {
+        if (previewBuilders.getPreviewTimeRange) {
+            return previewBuilders.getPreviewTimeRange(tree);
+        }
+        const raw = String(tree?.timeRange || '').trim();
+        return raw || '';
     }
 
-    const getPreviewSummaryCopy = previewBuilders.getPreviewSummaryCopy || function(tree, memories) {
-        return '';
+    function getPreviewSummaryCopy(tree, memories) {
+        if (previewBuilders.getPreviewSummaryCopy) {
+            return previewBuilders.getPreviewSummaryCopy(tree, memories);
+        }
+        const displayTitle = String(tree?.title || '').trim() || '러브트리';
+        return formatSearchCopy('search.previewSummaryNoRange',
+            { title: escapeHtml(displayTitle), count: Number(tree?.memoryCount || 0) },
+            '<strong style="color:var(--on-surface);">{title}</strong>에 담긴 <span style="color:var(--primary);font-weight:700;">{count}개의 순간</span>이 이어졌어요.',
+            '<strong style="color:var(--on-surface);">{count} moments</strong> in <strong style="color:var(--on-surface);">{title}</strong> are connected.');
     }
 
     const renderSectionHeading = previewBuilders.renderSectionHeading || function(icon, label) { return ''; };
@@ -592,5 +567,5 @@
         }
     };
 
-    console.log('[LoveBudSearchPreviewRenderer] Search preview renderer loaded v20260504-1');
+    console.log('[LoveBudSearchPreviewRenderer] Search preview renderer loaded v20260506-1');
 })();
