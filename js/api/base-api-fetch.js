@@ -1,5 +1,7 @@
 (function () {
   // auth-state.js의 AUTH_TOKEN_KEY 상수를 재사용, fallback으로 기존 문자열 유지
+  const AUTH_CACHE_KEY = (window.LoveBudAuthState && window.LoveBudAuthState.AUTH_CACHE_KEY) || 'lovebud_auth_cache';
+  const AUTH_CONFIRMED_KEY = (window.LoveBudAuthState && window.LoveBudAuthState.AUTH_CONFIRMED_KEY) || 'lovebud_auth_confirmed';
   const AUTH_TOKEN_KEY = (window.LoveBudAuthState && window.LoveBudAuthState.AUTH_TOKEN_KEY) || 'lovebud_auth_token';
 
   function getCachedTokenRecord() {
@@ -32,16 +34,63 @@
     await new Promise((resolve) => setTimeout(resolve, waitMs));
   }
 
+  async function waitForAuthBootstrapReady(maxMs) {
+    const bootstrap = window.LoveBudAuthBootstrap;
+    if (!bootstrap || typeof bootstrap.whenReady !== 'function') return;
+    try {
+      const snapshot = typeof bootstrap.getSnapshot === 'function' ? bootstrap.getSnapshot() : null;
+      if (snapshot && snapshot.ready) return;
+      await Promise.race([
+        bootstrap.whenReady(),
+        new Promise((resolve) => setTimeout(resolve, Math.max(0, Number(maxMs || 0))))
+      ]);
+    } catch (e) {}
+  }
+
+  function clearConfirmedAuthState() {
+    try {
+      localStorage.removeItem(AUTH_CACHE_KEY);
+      localStorage.removeItem(AUTH_CONFIRMED_KEY);
+      localStorage.removeItem(AUTH_TOKEN_KEY);
+    } catch (e) {}
+
+    try {
+      if (window.clearPrivateCaches) {
+        window.clearPrivateCaches();
+      }
+    } catch (e) {}
+
+    try {
+      if (
+        window.LoveBudProtectedRoute &&
+        typeof window.LoveBudProtectedRoute.setAuthState === 'function'
+      ) {
+        window.LoveBudProtectedRoute.setAuthState(true, null);
+      }
+    } catch (e) {}
+
+    try {
+      window.dispatchEvent(new CustomEvent('lovebud-auth-cache-cleared', {
+        detail: { reason: 'api-auth-failure' }
+      }));
+    } catch (e) {}
+  }
+
   async function getAuthHeaders(options = {}) {
     const policy = window.LoveTreeAuthPolicy;
     const headers = {
       'Content-Type': 'application/json'
     };
+    const requireAuth = !!options.requireAuth;
 
     const cachedToken = getCachedTokenRecord();
     if (cachedToken && cachedToken.token) {
       headers.Authorization = `Bearer ${cachedToken.token}`;
       return headers;
+    }
+
+    if (requireAuth && policy.hasConfirmedAuthSession()) {
+      await waitForAuthBootstrapReady(Math.max(policy.AUTH_WAIT_MS, 3000));
     }
 
     let attempts = 0;
@@ -64,7 +113,7 @@
             if (tokenResult) setCachedTokenRecord(user, tokenResult);
             return headers;
           }
-        } else {
+        } else if (!requireAuth || !policy.hasConfirmedAuthSession()) {
           return headers;
         }
       }
@@ -76,7 +125,11 @@
 
   async function apiFetch(endpoint, options = {}) {
     const policy = window.LoveTreeAuthPolicy;
-    const authHeaders = await getAuthHeaders();
+    const requiresAuth = policy.endpointLikelyRequiresAuth(endpoint);
+    const authHeaders = await getAuthHeaders({
+      forceLongWait: requiresAuth && policy.hasConfirmedAuthSession(),
+      requireAuth: requiresAuth
+    });
     const hadAuthHeader = !!authHeaders.Authorization;
 
     const buildConfig = (baseHeaders) => ({
@@ -93,11 +146,11 @@
     if (
       (response.status === 401 || response.status === 403) &&
       !hadAuthHeader &&
-      policy.endpointLikelyRequiresAuth(endpoint) &&
+      requiresAuth &&
       policy.hasConfirmedAuthSession()
     ) {
       await waitForAuthToken(Math.min(1200, policy.AUTH_WAIT_MS));
-      const retryHeaders = await getAuthHeaders({ forceLongWait: true });
+      const retryHeaders = await getAuthHeaders({ forceLongWait: true, requireAuth: true });
       if (retryHeaders.Authorization) {
         config = buildConfig(retryHeaders);
         response = await fetch(`/api${endpoint}`, config);
@@ -105,6 +158,10 @@
     }
 
     if (!response.ok) {
+      if (response.status === 401 && requiresAuth && policy.hasConfirmedAuthSession()) {
+        clearConfirmedAuthState();
+      }
+
       let errorMsg = `HTTP Error ${response.status}`;
       let errorData = null;
       try {
@@ -135,6 +192,8 @@
     getCachedTokenRecord,
     setCachedTokenRecord,
     waitForAuthToken,
+    waitForAuthBootstrapReady,
+    clearConfirmedAuthState,
     getAuthHeaders,
     apiFetch,
   };
