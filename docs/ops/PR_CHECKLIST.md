@@ -23,9 +23,11 @@
 
 ## Member Journey QA 영향
 - 적용 대상: AUTH / FIRST_TREE / MY_TREES / EDITOR / PUBLIC_VIEWER / MOBILE / ERROR_RECOVERY / N/A
+- Synthetic actor track: DEVELOPMENT_TESTING / USER_BEHAVIOR_TESTING / AI_MODEL_ACTIVITY / N/A
 - 적용 persona: docs/ops/MEMBER_JOURNEY_PERSONAS.md 기준으로 기재
 - 필요한 journey: docs/ops/MEMBER_JOURNEY_QA_SUITE.md 기준으로 기재
 - 테스트 데이터 상태: NEW_ACCOUNT / EXISTING_OWNER / PUBLIC_VIEWER_FIXTURE / CLEAN_SESSION / N/A
+- credential location label: LOCAL_SECRET_STORE / ENCRYPTED_QA_HANDOFF / APPROVED_PASSWORD_MANAGER / CTO_MANAGED_SECRET / UNKNOWN_CREDENTIALS / N/A
 - cleanup 필요 여부: YES / NO / NOT_AVAILABLE / N/A
 - fixed slot 필요 여부: YES / NO
 - 브라우저 검증 필요 여부: YES / NO
@@ -45,10 +47,12 @@
 
 PR이 Auth, My Trees, Editor, Public Viewer, Browse/Search, 모바일 레이아웃, loading/error 상태에 영향을 주면 먼저 [MEMBER_JOURNEY_PERSONAS.md](MEMBER_JOURNEY_PERSONAS.md)에서 persona를 선택하고, 그 다음 [MEMBER_JOURNEY_QA_SUITE.md](MEMBER_JOURNEY_QA_SUITE.md)를 기준으로 필요한 journey를 PR 본문에 명시해야 합니다.
 
+계정을 생성하거나 AI/synthetic account를 사용하는 경우 [SYNTHETIC_ACTOR_ACCOUNT_STRATEGY.md](SYNTHETIC_ACTOR_ACCOUNT_STRATEGY.md)를 기준으로 track과 credential location label을 함께 기록해야 합니다.
+
 순서는 아래를 따릅니다.
 
 ```text
-persona -> journey -> issue/PR verification -> report
+synthetic actor track -> persona -> journey -> issue/PR verification -> report
 ```
 
 ### 필수 판단 항목
@@ -61,19 +65,22 @@ persona -> journey -> issue/PR verification -> report
 - [ ] 이 PR이 모바일 375px 또는 wider mobile layout에 영향을 주는가?
 - [ ] 이 PR이 loading/empty/error/degraded/back recovery 상태에 영향을 주는가?
 - [ ] 이 PR이 테스트 데이터 생성/수정/정리 정책에 영향을 주는가?
+- [ ] 이 PR이 synthetic actor track 또는 AI model activity에 영향을 주는가?
+- [ ] 이 PR이 credential reuse / lost credential handling에 영향을 주는가?
 
-### PR 유형별 기본 persona + journey
+### PR 유형별 기본 track + persona + journey
 
-| PR 영향 범위 | 기본 persona | 기본 요구 journey | 테스트 데이터 상태 |
-|--------------|--------------|-------------------|--------------------|
-| Auth / protected route | `PERSONA_A_FIRST_TIME_CREATOR` 또는 `PERSONA_B_RETURNING_OWNER` | `AUTH_SIGNUP_LOGIN_JOURNEY`, `LOGOUT_AND_PROTECTED_ROUTE_JOURNEY` | `NEW_ACCOUNT` 또는 `EXISTING_OWNER` |
-| First-create / persistence | `PERSONA_A_FIRST_TIME_CREATOR` | `FIRST_TREE_CREATION_JOURNEY` | `NEW_ACCOUNT` |
-| My Trees | `PERSONA_B_RETURNING_OWNER` | `MY_TREES_RETURNING_USER_JOURNEY` | `EXISTING_OWNER` |
-| Editor | `PERSONA_B_RETURNING_OWNER` | `EDITOR_MOMENT_EDITING_JOURNEY` | `EXISTING_OWNER` |
-| Public Viewer / read-only route | `PERSONA_C_PUBLIC_VIEWER` | `PUBLIC_VIEWER_READONLY_JOURNEY` | `PUBLIC_VIEWER_FIXTURE` 또는 `CLEAN_SESSION` |
-| Mobile-visible UI | `PERSONA_D_MOBILE_CASUAL` | `MOBILE_375_FULL_JOURNEY` | paired persona 기준 |
-| Loading/empty/error/degraded states | `PERSONA_E_INTERRUPTED_USER` | `ERROR_RECOVERY_JOURNEY` | target scope 기준 |
-| Docs-only with no runtime claim | `N/A` | `N/A` | `N/A` |
+| PR 영향 범위 | 기본 track | 기본 persona | 기본 요구 journey | 테스트 데이터 상태 |
+|--------------|------------|--------------|-------------------|--------------------|
+| Auth / protected route | `DEVELOPMENT_TESTING` 또는 `USER_BEHAVIOR_TESTING` | `PERSONA_A_FIRST_TIME_CREATOR` 또는 `PERSONA_B_RETURNING_OWNER` | `AUTH_SIGNUP_LOGIN_JOURNEY`, `LOGOUT_AND_PROTECTED_ROUTE_JOURNEY` | `NEW_ACCOUNT` 또는 `EXISTING_OWNER` |
+| First-create / persistence | `USER_BEHAVIOR_TESTING` | `PERSONA_A_FIRST_TIME_CREATOR` | `FIRST_TREE_CREATION_JOURNEY` | `NEW_ACCOUNT` |
+| My Trees | `USER_BEHAVIOR_TESTING` | `PERSONA_B_RETURNING_OWNER` | `MY_TREES_RETURNING_USER_JOURNEY` | `EXISTING_OWNER` |
+| Editor | `USER_BEHAVIOR_TESTING` | `PERSONA_B_RETURNING_OWNER` | `EDITOR_MOMENT_EDITING_JOURNEY` | `EXISTING_OWNER` |
+| Public Viewer / read-only route | `USER_BEHAVIOR_TESTING` | `PERSONA_C_PUBLIC_VIEWER` | `PUBLIC_VIEWER_READONLY_JOURNEY` | `PUBLIC_VIEWER_FIXTURE` 또는 `CLEAN_SESSION` |
+| Mobile-visible UI | `USER_BEHAVIOR_TESTING` | `PERSONA_D_MOBILE_CASUAL` | `MOBILE_375_FULL_JOURNEY` | paired persona 기준 |
+| Loading/empty/error/degraded states | `USER_BEHAVIOR_TESTING` | `PERSONA_E_INTERRUPTED_USER` | `ERROR_RECOVERY_JOURNEY` | target scope 기준 |
+| AI Guide / Instructor | `AI_MODEL_ACTIVITY` | `N/A` 또는 product AI persona | AI-specific checklist required later | product-managed |
+| Docs-only with no runtime claim | `N/A` | `N/A` | `N/A` | `N/A` |
 
 ### fixed slot gate
 
@@ -90,6 +97,23 @@ Public/private boundary
 ```
 
 Production은 별도 승인 없이는 non-destructive smoke만 허용합니다.
+
+### credential reuse gate
+
+계정 생성을 수행한 검증은 report에 credential location label을 남겨야 합니다. 실제 credential 값은 절대 남기지 않습니다.
+
+Allowed labels:
+
+```text
+LOCAL_SECRET_STORE
+ENCRYPTED_QA_HANDOFF
+APPROVED_PASSWORD_MANAGER
+CTO_MANAGED_SECRET
+UNKNOWN_CREDENTIALS
+N/A
+```
+
+기존 계정의 credential이 없으면 `UNKNOWN_CREDENTIALS` 또는 `ORPHANED_TEST_ACCOUNT` 상태로만 보고하고, 비밀번호/세션/cookie/token 복구 시도나 출력은 금지합니다.
 
 ### cleanup gate
 
@@ -177,8 +201,9 @@ npx playwright test tests/editor-fieldvalue.spec.js
 2. ✅ PR description 필수 항목 포함
 3. ✅ 최소 1명 Approve 획득
 4. ✅ 테스트 실패 관련 코멘트 해결 완료
-5. ✅ runtime-sensitive PR은 필요한 persona, Member Journey QA, fixed slot/SHA evidence 포함
+5. ✅ runtime-sensitive PR은 필요한 synthetic actor track, persona, Member Journey QA, fixed slot/SHA evidence 포함
 6. ✅ 데이터 생성/수정 PR은 테스트 데이터 상태와 cleanup 상태 포함
+7. ✅ 계정 생성/재사용 PR은 credential location label 포함, credential 값 미노출
 
 ### 테스트 실패 시 처리 원칙
 
