@@ -145,6 +145,33 @@
     'first_time_note': {
       ko: '처음 오셨나요? Google 또는 이메일로 계정을 만들 수 있어요.',
       en: 'New here? You can create an account with Google or email.'
+    },
+
+    // 회원가입 페이지
+    'signup_title': {
+      ko: '러브트리를 처음 시작하세요',
+      en: 'Start your LoveTree for the first time'
+    },
+    'signup_desc': {
+      ko: '좋아하게 된 첫 순간부터 영상과 메모를 연결해<br>나만의 러브트리를 만들어 보세요.',
+      en: 'Connect videos and notes from the first moment you fell in love<br>and create your own LoveTree.'
+    },
+    'google_signup_prompt': {
+      ko: 'Google로 시작하기',
+      en: 'Start with Google'
+    },
+    'signup_or_email': {
+      ko: '또는 이메일로 계정 만들기',
+      en: 'Or create an account with email'
+    },
+    'signup_submit': {
+      ko: '이메일로 계정 만들기',
+      en: 'Create account with email'
+    },
+    'already_have_account': {
+      ko: '이미 계정이 있나요? 로그인하기',
+      en: 'Already have an account? Log in'
     }
+
   };
 })();
