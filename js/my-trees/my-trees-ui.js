@@ -235,6 +235,9 @@
     var renameBtn = document.getElementById('manageRenameBtn');
     var deleteBtn = document.getElementById('manageDeleteBtn');
     var visibilityBtn = document.getElementById('manageVisibilityBtn');
+    if (visibilityBtn) visibilityBtn.style.display = 'none';
+    if (visibilityBtn) visibilityBtn.style.display = 'none';
+    if (visibilityBtn) visibilityBtn.style.display = 'none';
 
     if (totalEl) totalEl.textContent = total;
     if (publicEl) publicEl.textContent = publicCount;
@@ -388,10 +391,6 @@
         '<span class="material-symbols-outlined" aria-hidden="true">more_vert</span>',
       '</button>',
       '<div class="tree-card-dropdown" id="' + dropdownId + '">',
-        '<div class="dropdown-item visibility" data-action="visibility">',
-          '<span class="material-symbols-outlined" style="font-size:16px;">' + cardMeta.visibilityIcon + '</span>',
-          cardMeta.visibilityActionLabel,
-        '</div>',
         '<div class="dropdown-item rename" data-action="rename">',
           '<span class="material-symbols-outlined" style="font-size:16px;">edit</span>',
           i18n('rename') || '이름 변경',
@@ -435,9 +434,7 @@
             }
 
             var action = this.getAttribute('data-action');
-            if (action === 'visibility' && typeof onToggleVisibility === 'function') {
-              onToggleVisibility(normalizedTree.id, normalizedTree.visibility);
-            } else if (action === 'rename' && typeof onRename === 'function') {
+             if (action === 'rename' && typeof onRename === 'function') {
               onRename(normalizedTree.id, title);
             } else if (action === 'delete' && typeof onDelete === 'function') {
               onDelete(normalizedTree.id, title);
@@ -509,7 +506,7 @@
   function renderNextBatch(grid, buildTreeCardFn, setState, stateEnum) {
     var startIndex = currentVisibleCount;
     var endIndex = Math.min(startIndex + BATCH_SIZE, totalTreesCount);
-    
+
     for (var i = startIndex; i < endIndex; i++) {
       var tree = allTreesData[i];
       var card = buildTreeCardFn(tree, {});
@@ -520,7 +517,7 @@
       card.style.opacity = '0';
       card.classList.add('tree-card-batch-pending');
       grid.appendChild(card);
-      
+
       // Fade-in animation
       setTimeout(function(c) {
         c.style.transition = 'opacity 0.2s ease-in';
@@ -528,9 +525,9 @@
         c.classList.remove('tree-card-batch-pending');
       }, 10, card);
     }
-    
+
     currentVisibleCount = endIndex;
-    
+
     // Update manage summary with total count (not just visible)
     var summary = document.getElementById('trees-manage-summary');
     if (summary) {
@@ -546,19 +543,19 @@
     if (scrollSentinel) {
       scrollSentinel.remove();
     }
-    
+
     // Check if more trees available
     if (currentVisibleCount >= totalTreesCount) {
       return;
     }
-    
+
     // Create sentinel element
     scrollSentinel = document.createElement('div');
     scrollSentinel.id = 'trees-scroll-sentinel';
     scrollSentinel.style.height = '20px';
     scrollSentinel.style.gridColumn = '1 / -1';
     grid.appendChild(scrollSentinel);
-    
+
     // IntersectionObserver for scroll continuation
     if ('IntersectionObserver' in window) {
       var observer = new IntersectionObserver(function(entries) {
@@ -568,7 +565,7 @@
           }
         });
       }, { rootMargin: '100px' });
-      
+
       observer.observe(scrollSentinel);
       scrollSentinel._observer = observer;
     }
@@ -579,19 +576,19 @@
     if (isLoadingMore || currentVisibleCount >= totalTreesCount) {
       return;
     }
-    
+
     isLoadingMore = true;
-    
+
     // Remove old sentinel observer
     if (scrollSentinel && scrollSentinel._observer) {
       scrollSentinel._observer.disconnect();
     }
-    
+
     renderNextBatch(grid, buildTreeCardFn, setState, stateEnum);
-    
+
     // Set up new sentinel
     setupScrollContinuation(grid, buildTreeCardFn, setState, stateEnum);
-    
+
     isLoadingMore = false;
   }
 

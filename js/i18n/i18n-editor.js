@@ -119,5 +119,9 @@ Object.assign(window.i18nEditor, {
     selected_moment: { ko: '현재 선택한 순간', en: 'Current selected moment' },
     sidebar_moment_count_short: { ko: '총 {count}개의 저장된 순간', en: '{count} saved moments total' },
     sidebar_moment_count_with_visible_short: { ko: '총 {total}개의 저장된 순간 · 캔버스 {visible}개 표시', en: '{total} saved moments · {visible} shown on canvas' },
-    sidebar_flow_summary_connected_short: { ko: '이 트리에 {count}개의 순간이 저장되어 있어요', en: '{count} moments are saved in this tree' }
+    sidebar_flow_summary_connected_short: { ko: '이 트리에 {count}개의 순간이 저장되어 있어요', en: '{count} moments are saved in this tree' },
+    'editor_visibility_state_suffix': {
+      ko: '· v0.1 이후 설정 가능',
+      en: '· settings coming post-v0.1'
+    }
 });
