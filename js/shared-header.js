@@ -433,6 +433,30 @@
         }, true);
     }
 
+    function bindBrowsePrefetchHover() {
+        if (window.__lovebudBrowsePrefetchBound) return;
+        window.__lovebudBrowsePrefetchBound = true;
+
+        document.body.addEventListener('pointerenter', function (event) {
+            var link = event.target && event.target.closest && event.target.closest('a[href]');
+            if (!link) return;
+            var href = link.getAttribute('href') || '';
+            if (href.indexOf('search.html') === -1) return;
+            if (window.LoveBudBrowsePrefetch) {
+                window.LoveBudBrowsePrefetch.prefetch();
+            }
+        }, { passive: true });
+
+        document.body.addEventListener('focusin', function (event) {
+            var link = event.target && event.target.closest && event.target.closest('a[href]');
+            if (!link) return;
+            var href = link.getAttribute('href') || '';
+            if (href.indexOf('search.html') === -1) return;
+            if (window.LoveBudBrowsePrefetch) {
+                window.LoveBudBrowsePrefetch.prefetch();
+            }
+        });
+    }
     function bindSharedHeaderLangRefresh() {
         if (window.__lovebudSharedHeaderLangBound) return;
         window.__lovebudSharedHeaderLangBound = true;
@@ -445,6 +469,7 @@
 
     bindSettingsReturnLinkCapture();
     bindSharedHeaderLangRefresh();
+    bindBrowsePrefetchHover();
 
     // DOM 준비 완료 시 자동 렌더링 (선택적)
     if (document.readyState === 'loading') {
