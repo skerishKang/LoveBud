@@ -281,7 +281,9 @@
           setupSignupForm: options.setupSignupForm,
           setupSignupGoogleBtn: options.setupSignupGoogleBtn,
           authInitFlag: options.authInitFlag,
-          authReadyFlag: options.authReadyFlag
+          authReadyFlag: options.authReadyFlag,
+          isLoginPage: options.isLoginPage,
+          getRedirectTarget: options.getRedirectTarget
         });
       },
       initOfflineAuth: function () {
@@ -334,6 +336,8 @@
     var setupSignupGoogleBtn = options && options.setupSignupGoogleBtn;
     var authInitFlag = options && options.authInitFlag;
     var authReadyFlag = options && options.authReadyFlag;
+    var isLoginPage = options && options.isLoginPage;
+    var getRedirectTarget = options && options.getRedirectTarget;
 
     if (typeof resolveEmailAuthMode === 'function') {
       window.EMAIL_AUTH_MODE = resolveEmailAuthMode();
@@ -438,6 +442,9 @@
       }
       if (typeof fireAuthReadyCallbacks === 'function') {
         fireAuthReadyCallbacks(user);
+      }
+      if (user && typeof isLoginPage === 'function' && isLoginPage()) {
+        window.location.replace(typeof getRedirectTarget === 'function' ? getRedirectTarget() : 'my-trees.html');
       }
     });
 

@@ -123,17 +123,17 @@
   }
 
   function getLoginRedirectHref() {
-    var target = window.location.pathname;
+    var target = window.location.pathname + window.location.search + window.location.hash;
 
     try {
       var params = new URLSearchParams(window.location.search || '');
       var returnTo = params.get('returnTo');
       if (returnTo && isSafeReturnTarget(returnTo)) {
-        target += '?returnTo=' + encodeURIComponent(normalizeReturnTarget(returnTo));
+        target = window.location.pathname + '?returnTo=' + encodeURIComponent(normalizeReturnTarget(returnTo));
       }
     } catch (e) {}
 
-    return 'login.html?redirect=' + encodeURIComponent(target);
+    return 'login.html?returnTo=' + encodeURIComponent(target);
   }
 
   function redirectToLogin() {
@@ -269,6 +269,20 @@
   }
 
   function initSettings() {
+    if (
+      window.LoveBudProtectedRoute &&
+      typeof window.LoveBudProtectedRoute.requireAuthenticatedPage === 'function'
+    ) {
+      window.LoveBudProtectedRoute.requireAuthenticatedPage({
+        redirectTo: 'login.html',
+        returnTo: window.location.pathname + window.location.search + window.location.hash,
+        allowCachedUser: false,
+        onAuthenticated: startSettings,
+        onUnauthenticated: redirectToLogin
+      });
+      return;
+    }
+
     if (window.LoveBudAuthBootstrap && typeof window.LoveBudAuthBootstrap.whenReady === 'function') {
       try {
         window.LoveBudAuthBootstrap.whenReady().then(function(user) {

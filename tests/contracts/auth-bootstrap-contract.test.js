@@ -273,6 +273,27 @@ test('auth firebase fallback keeps protected-route-aware offline behavior', () =
   assert.match(source, /initOfflineAuth/, 'auth-firebase must keep offline auth fallback logic');
 });
 
+test('login page redirects confirmed authenticated users away from login state', () => {
+  const source = readRepoFile('js/auth/auth-firebase.js');
+  const session = readRepoFile('js/auth/auth-session.js');
+
+  assert.match(source, /user\s*&&\s*typeof\s+isLoginPage\s*===\s*'function'\s*&&\s*isLoginPage\(\)/, 'auth-firebase must detect signed-in login-page state');
+  assert.match(source, /window\.location\.replace\(typeof getRedirectTarget === 'function' \? getRedirectTarget\(\) : 'my-trees\.html'\)/, 'signed-in login page must redirect to the resolved auth target');
+  assert.match(session, /var\s+returnTo\s*=\s*params\.get\('returnTo'\)/, 'auth session target resolver must read returnTo');
+  assert.match(session, /if\s*\(returnTo\)\s*return returnTo/, 'returnTo must win before legacy redirect target');
+});
+
+test('settings page uses protected route helper and stable returnTo login target', () => {
+  const source = readRepoFile('js/settings.js');
+
+  assert.match(source, /LoveBudProtectedRoute\.requireAuthenticatedPage/, 'settings must use protected-route helper when available');
+  assert.match(source, /allowCachedUser:\s*false/, 'settings must not unlock from stale confirmed cache alone');
+  assert.match(source, /onAuthenticated:\s*startSettings/, 'settings authenticated path must start settings content');
+  assert.match(source, /onUnauthenticated:\s*redirectToLogin/, 'settings unauthenticated path must use local login redirect');
+  assert.match(source, /return 'login\.html\?returnTo='/, 'settings login redirect must use stable returnTo target');
+  assert.doesNotMatch(source, /login\.html\?redirect=/, 'settings must not use legacy redirect query for protected-route login target');
+});
+
 test('auth UI logout uses delegated data attribute and blocks inline signOut onclick regression', () => {
   const source = readRepoFile('js/auth/auth-ui.js');
 
