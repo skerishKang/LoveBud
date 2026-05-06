@@ -90,16 +90,25 @@ def normalize_memory_row(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def normalize_tree_row(row: dict[str, Any], memory_count: int | None = None) -> dict[str, Any]:
-    return {
+def normalize_tree_row(
+    row: dict[str, Any],
+    memory_count: int | None = None,
+    *,
+    include_owner: bool = True,
+) -> dict[str, Any]:
+    tree = {
         "id": str(row["id"]),
-        "ownerId": str(row["owner_id"]) if row.get("owner_id") else None,
         "title": row.get("title") or "",
         "visibility": row.get("visibility") or "public",
         "createdAt": _to_isoformat(row.get("created_at")),
         "updatedAt": _to_isoformat(row.get("updated_at")),
         "memoryCount": int(memory_count or 0),
     }
+
+    if include_owner:
+        tree["ownerId"] = str(row["owner_id"]) if row.get("owner_id") else None
+
+    return tree
 
 
 def normalize_row(row: dict[str, Any], *, stage_override: str | None = None) -> dict[str, Any]:
