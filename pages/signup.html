@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>로그인 | 러브트리</title>
+    <title>회원가입 | 러브트리</title>
     <link rel="icon" href="/assets/favicon/favicon.svg" type="image/svg+xml">
     <link rel="icon" href="/favicon.ico" sizes="32x32">
     <link rel="stylesheet" href="../css/global.css?v=20260415-10">
@@ -19,38 +19,41 @@
 
     <div class="login-shell page-transition-enter">
         <div class="login-card reveal-scale reveal-up">
-            <!-- Redirect notice: shown when user came from auth-gated page -->
-            <div id="redirect-notice" class="login-redirect-notice" style="display:none;">
-                <div class="login-redirect-notice-row">
-                    <span class="material-symbols-outlined login-redirect-icon">lock</span>
-                    <div class="login-redirect-content">
-                        <div class="login-redirect-title" data-i18n="redirect_notice_title">내 러브트리를 이용하려면 로그인이 필요합니다</div>
-                        <div class="login-redirect-desc" data-i18n="redirect_notice_desc">로그인 후 자동으로 이동합니다</div>
-                    </div>
-                </div>
-            </div>
-
             <div class="serif login-brand-title">러브트리</div>
-            <h1 class="headline login-headline" data-i18n="login_title">다시 러브트리에 로그인하세요</h1>
-            <p class="login-desc" data-i18n="login_desc">
-                기록해 둔 순간과 러브트리를 이어서 보려면 로그인하세요.
+            <h1 class="headline login-headline" data-i18n="signup_title">러브트리를 처음 시작하세요</h1>
+            <p class="login-desc" data-i18n="signup_desc">
+                좋아하게 된 첫 순간부터 영상과 메모를 연결해<br>
+                나만의 러브트리를 만들어 보세요.
             </p>
 
-            <button id="login-btn-google" class="login-btn-google">
+            <button id="signup-btn-google" class="login-btn-google">
                 <svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" class="login-google-icon">
                     <path fill="#4285F4" d="M45.12,24.5c0-2.46-0.2-4.84-0.64-7.12l-14.54,0c0.24,1.08,0.4,2.2,0.4,3.4c0,5.6-3.8,10.8-10.8,10.8l-8.72,0c-6.48,0-11.76-5.28-11.76-11.76c0-6.4,5.2-11.64,11.64-11.64c2.96,0,5.56,1.12,7.6,2.96l6.24-6.16C29.32,6.56,24.36,5.72,19.04,5.72c-9.36,0-17.52,6.76-17.52,16.08c0,9.28,8.16,16.08,17.52,16.08c6.8,0,11.52-3.28,14.36-7.96c0.76,0.08,1.56,0.12,2.4,0.12C42.4,29.92,45.12,27.56,45.12,24.5z"/>
                     <path fill="#34A853" d="M19.12,44.36c6.56,0,12.16-2.44,16.24-6.56l-7.68-5.92C25.24,34.8,22.52,36,19.12,36c-6.08,0-10.8-4.16-12.48-9.76l-7.76,0C3.48,31.96,10.64,44.36,19.12,44.36z"/>
                     <path fill="#FBBC05" d="M9.84,26.68c-1.56-2.92-2.4-6.08-2.4-9.48c0-3.4,0.84-6.56,2.4-9.48L3.2,12.08C1.24,16.52,0.04,21.48,0.04,26.32C0.04,31.16,1.24,36.12,3.2,40.56L9.84,26.68z"/>
                     <path fill="#EA4335" d="M19.12,12.32c4.76,0,8.24,1.92,10.04,3.56l7.24-7.16C34.76,5.92,29.32,4.8,23.72,4.8c-7.4,0-14,4.4-17.6,10.96l7.76,6.44C15.48,16.84,18.32,12.32,19.12,12.32z"/>
                 </svg>
-                <span data-i18n="google_login">Google로 로그인</span>
+                <span data-i18n="google_signup_prompt">Google로 시작하기</span>
             </button>
 
-            <div class="login-divider" data-i18n="or_email">또는 이메일로 로그인</div>
+            <div class="login-divider" data-i18n="signup_or_email">또는 이메일로 계정 만들기</div>
 
-            <button id="login-btn-email" class="btn-round btn-outline login-email-button" data-i18n="email_login">
-                이메일로 로그인
-            </button>
+            <form id="signup-form" class="login-form" novalidate>
+                <div class="login-form-group-large">
+                    <label for="signup-display-name" class="login-form-label" data-i18n="display_name_label">닉네임</label>
+                    <input type="text" id="signup-display-name" maxlength="30" placeholder="예: XG Alpha" data-i18n-placeholder="display_name_placeholder" class="login-form-input">
+                </div>
+                <div class="login-form-group-large">
+                    <label for="signup-email" class="login-form-label" data-i18n="email_label">이메일</label>
+                    <input type="email" id="signup-email" required class="login-form-input" aria-describedby="signup-error">
+                </div>
+                <div class="login-form-group-xl">
+                    <label for="signup-password" class="login-form-label" data-i18n="password_label">비밀번호</label>
+                    <input type="password" id="signup-password" required class="login-form-input" aria-describedby="signup-error">
+                </div>
+                <p id="signup-error" class="login-form-error" role="alert" aria-live="polite" aria-hidden="true" hidden></p>
+                <button type="submit" id="signup-submit" class="login-submit-button login-submit-button-primary" data-i18n="signup_submit">이메일로 계정 만들기</button>
+            </form>
 
             <div class="badge-group">
                 <span class="badge" data-i18n="badge_first_moment">첫 순간 기록</span>
@@ -58,7 +61,7 @@
                 <span class="badge" data-i18n="badge_safe">안전한 보관</span>
             </div>
 
-            <p class="login-first-time-note"><span data-i18n="first_time_question">처음 오셨나요?</span> <a href="signup.html" class="login-signup-link" data-i18n="signup_link_label">회원가입하기</a></p>
+            <p class="login-first-time-note"><span data-i18n="already_have_account_question">이미 계정이 있나요?</span> <a href="login.html" class="login-signup-link" data-i18n="login_link_label">로그인하기</a></p>
 
             <a href="../index.html" class="login-later-link" data-i18n="later">
                 나중에 시작하기
@@ -70,43 +73,6 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 <script src="../js/firebase-config.js?v=20260417-31"></script>
-
-    <!-- Email Auth Modal -->
-    <div id="email-auth-modal" role="dialog" aria-modal="true" aria-labelledby="email-auth-title" aria-describedby="email-auth-helper" class="login-email-modal" style="display:none;">
-    <div class="login-email-modal-card">
-    <button id="email-auth-close" aria-label="모달 닫기" class="login-email-close">&times;</button>
-<!-- 모드 표시 -->
-<div id="auth-mode-badge" class="login-auth-mode-badge">
-    로그인
-</div>
-<h2 id="email-auth-title" class="login-email-title" data-i18n="email_modal_title_login">이메일로 로그인</h2>
-<p id="email-auth-helper" class="login-email-helper" data-i18n="email_modal_desc_login">이미 만든 이메일 계정으로 로그인합니다</p>
- <form id="email-auth-form" class="login-form" novalidate>
- <div data-auth-display-name-wrap class="login-form-group-large" style="display:none;">
-     <label for="email-auth-display-name" class="login-form-label" data-i18n="display_name_label">닉네임</label>
-     <input
-         type="text"
-         id="email-auth-display-name"
-         maxlength="30"
-         placeholder="예: XG Alpha"
-         data-i18n-placeholder="display_name_placeholder"
-         class="login-form-input"
-     >
- </div>
- <div class="login-form-group-large">
-     <label for="email-auth-email" class="login-form-label" data-i18n="email_label">이메일</label>
-     <input type="email" id="email-auth-email" required class="login-form-input" aria-describedby="email-auth-error">
- </div>
-<div class="login-form-group-xl">
-    <label for="email-auth-password" class="login-form-label" data-i18n="password_label">비밀번호</label>
-    <input type="password" id="email-auth-password" required class="login-form-input" aria-describedby="email-auth-error">
-</div>
-<p id="email-auth-error" class="login-form-error" role="alert" aria-live="polite" aria-hidden="true" hidden></p>
-<button type="submit" id="email-auth-submit" class="login-submit-button login-submit-button-primary" data-i18n="login_btn">로그인</button>
-</form>
-<button id="email-auth-toggle" class="login-email-toggle" data-i18n="switch_to_signup">계정이 없나요? 회원가입으로 전환</button>
-</div>
-</div>
 
     <script src="../js/i18n/i18n-core.js?v=20260421-1"></script>
     <script src="../js/i18n/i18n-shared.js?v=20260421-4"></script>
