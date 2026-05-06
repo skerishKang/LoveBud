@@ -41,6 +41,7 @@
 23. [EDITOR_HIDDEN_COMPATIBILITY_OVERRIDE_AUDIT.md](./EDITOR_HIDDEN_COMPATIBILITY_OVERRIDE_AUDIT.md) - #516 editor hidden/compatibility selector usage audit, disposition map, and future removal/relocation gates
 24. [REPOSITORY_STRUCTURE_FOLLOWUP_STATUS_MAP.md](./REPOSITORY_STRUCTURE_FOLLOWUP_STATUS_MAP.md) - Issue #223 repository structure follow-up bucket disposition, active blockers, and closure conditions
 25. [PUBLIC_TREE_ADAPTER_BOUNDARY_AUDIT.md](./PUBLIC_TREE_ADAPTER_BOUNDARY_AUDIT.md) - #412 public tree adapter helper boundaries, export contract, loading-order risk, preview implications audit
+26. [AUTH_EDITOR_RUNTIME_INVENTORY_834.md](./AUTH_EDITOR_RUNTIME_INVENTORY_834.md) - #834 auth/editor runtime inventory, dependency mapping, naming consistency audit, decomposition candidates
 
 ---
 
@@ -71,6 +72,7 @@
 | [EDITOR_OVERRIDES_RELOCATION_AUDIT.md](./EDITOR_OVERRIDES_RELOCATION_AUDIT.md) | `css/editor/overrides.css` role-based relocation 사전 audit (구현 없음, cascade 위험 문서, future PR split 계획 (#137 종속)) |
 | [EDITOR_HIDDEN_COMPATIBILITY_OVERRIDE_AUDIT.md](./EDITOR_HIDDEN_COMPATIBILITY_OVERRIDE_AUDIT.md) | Issue #516 hidden/compatibility selector references, runtime linkage, removal/relocation disposition, and future browser verification gates |
 | [SUPABASE_FREE_POC_PLAN.md](./SUPABASE_FREE_POC_PLAN.md) | Supabase Free PoC 기반 장기 backend 구조 단순화 검증 계획 |
+| [AUTH_EDITOR_RUNTIME_INVENTORY_834.md](./AUTH_EDITOR_RUNTIME_INVENTORY_834.md) | #834 auth/editor runtime inventory, dependency mapping, naming audit, decomposition candidates |
 | [REVIEW_GUARDRAILS.md](./REVIEW_GUARDRAILS.md) | 반복 false positive 방지 및 리뷰 규칙 |
 | [RECENT_REFACTORING.md](./RECENT_REFACTORING.md) | 최근 코드 구조 정리 이력 |
 | [UTIL_USAGE_POLICY.md](./UTIL_USAGE_POLICY.md) | 공통 유틸 사용 정책 |
@@ -107,6 +109,7 @@
 - Editor detail UI responsibility split 판단은 `EDITOR_DETAIL_UI_RESPONSIBILITY_AUDIT.md`의 bucket map, future PR split, and browser smoke gates를 먼저 확인합니다.
 - `css/editor/overrides.css` relocation 판단은 `EDITOR_OVERRIDES_RELOCATION_AUDIT.md`의 cascade risk 및 future implementation gate를 먼저 확인합니다.
 - Editor hidden/compatibility selector 제거·relocation 판단은 `EDITOR_HIDDEN_COMPATIBILITY_OVERRIDE_AUDIT.md`의 usage/disposition table을 먼저 확인합니다.
+- Auth/Editor runtime inventory, naming consistency, dependency mapping, decomposition candidates 판단은 `AUTH_EDITOR_RUNTIME_INVENTORY_834.md`의 inventory table과 risk classification을 먼저 확인합니다.
 
 ---
 
