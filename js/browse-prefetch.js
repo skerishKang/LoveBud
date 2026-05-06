@@ -1,4 +1,4 @@
-﻿(function () {
+(function () {
     var PREFETCH_CACHE_KEY = 'public_trees_summary_latest_10_latest_6';
     var PREFETCH_TTL_MS = 5 * 60 * 1000;
     var PREFETCH_LIMIT = 6;
@@ -25,7 +25,7 @@
             }
         }
 
-        inFlightPromise = fetch('/api/community/trees?view=summary&sort=' + encodeURIComponent(PREFETCH_SORT) + '&limit=' + PREFETCH_LIMIT, {
+        inFlightPromise = fetch('/api/community/trees?view=summary' + '&sort=' + encodeURIComponent(PREFETCH_SORT) + '&limit=' + PREFETCH_LIMIT, {
             headers: { Accept: 'application/json' },
             credentials: 'same-origin'
         }).then(function (response) {
@@ -85,7 +85,7 @@
         if (hoverTriggerBound) return;
         hoverTriggerBound = true;
 
-        document.body.addEventListener('pointerenter', function (event) {
+        document.body.addEventListener('pointerover', function (event) {
             if (isBrowseLink(event.target)) prefetchBrowseTrees();
         }, { passive: true });
 

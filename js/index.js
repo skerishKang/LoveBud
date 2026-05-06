@@ -1,4 +1,4 @@
-﻿document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', () => {
     // Reveal Observer for scroll animations
     const observerOptions = {
         threshold: 0.1
