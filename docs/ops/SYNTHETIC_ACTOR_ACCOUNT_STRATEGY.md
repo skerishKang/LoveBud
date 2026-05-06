@@ -145,6 +145,181 @@ ranking_policy: ai_guide_only / sample_only / excluded_from_user_rankings
 allowed_actions: dm_answer / sample_tree_create / analytics_aggregate
 ```
 
+## Account storage tiers
+
+Local-only storage is not sufficient once accounts are reused across multiple agents, devices, and verification runs. Use a three-tier storage model.
+
+### Tier 0 — Public-safe registry
+
+Purpose:
+
+```text
+coordination only
+safe status reporting
+PR/Issue references
+account inventory without secrets
+```
+
+Allowed location:
+
+```text
+GitHub docs
+GitHub issues
+PR comments
+QA reports
+```
+
+Allowed fields:
+
+```text
+account_label
+track
+persona_id_or_ai_role
+environment
+credential_key
+credential_location_label
+status
+custodian
+rotation_required
+cleanup_status
+last_verified_status
+```
+
+Forbidden fields:
+
+```text
+email
+password
+confirmPassword
+token
+session
+cookie
+private UID
+raw credential
+raw auth payload
+```
+
+### Tier 1 — Local runtime credential file
+
+Purpose:
+
+```text
+actual browser login runtime
+local automation
+fixed-slot verification
+```
+
+Allowed location:
+
+```text
+.local/test-accounts.json
+```
+
+Rules:
+
+- must be gitignored;
+- values must never be printed;
+- selected key may be referenced, such as `accounts.personaA001`;
+- local preflight must report only safe status;
+- models should not read the file contents.
+
+### Tier 2 — Encrypted shared backup / restore source
+
+Purpose:
+
+```text
+restore credentials across machines
+avoid orphaned long-lived QA accounts
+support account rotation
+support custodian handoff
+```
+
+Allowed target locations:
+
+```text
+docs/ops/qa-credential-bundle/test-accounts-encrypted.zip
+docs/ops/qa-credential-bundle/test-accounts.json.age
+approved password manager export/import controlled by custodian
+```
+
+Rules:
+
+- encrypted bundle only;
+- plaintext credential file must not be committed;
+- bundle password must not be documented in repository;
+- restore procedure must report only existence/status;
+- production-grade or AI Guide credentials should prefer approved password manager or CTO-managed secret storage over ad-hoc local files.
+
+## Account sensitivity classes
+
+Not every account has the same risk. Assign a class before creating or storing credentials.
+
+| Class | Examples | Storage requirement | Reuse policy | Rotation policy |
+|------|----------|---------------------|--------------|-----------------|
+| `LOW_QA_DISPOSABLE` | signup disposable, one-off onboarding check | local runtime + optional encrypted backup | short-term only | may retire after run |
+| `STANDARD_QA_REUSABLE` | persona A/B/C/D/E, fixed-slot user | local runtime + encrypted backup | reusable | rotate on schedule or when leaked/lost |
+| `PRIVILEGED_QA` | admin/moderation/test admin | password manager or CTO-managed secret + encrypted backup metadata | tightly controlled | rotate more frequently |
+| `AI_GUIDE_PRODUCT` | user-facing AI guide account | product-managed secret storage / password manager | long-lived | rotation + audit required |
+| `AI_SAMPLE_CREATOR` | labeled sample content creator | password manager or product-managed | reusable with disclosure | rotate on schedule |
+
+## Custody model
+
+Every reusable account should have a custodian label. The custodian is responsible for maintaining credential location, status, and rotation metadata without exposing values.
+
+Allowed custodian labels:
+
+```text
+CTO_MANAGED
+LOCAL_VERIFIER_MANAGED
+OPS_BUNDLE_CUSTODIAN
+PRODUCT_AI_CUSTODIAN
+UNKNOWN_CUSTODIAN
+```
+
+Required rule:
+
+```text
+If custodian is UNKNOWN_CUSTODIAN and credentials are not recoverable from encrypted backup, mark account status as ORPHANED_TEST_ACCOUNT.
+```
+
+## Account inventory template
+
+Use this as a public-safe inventory row. It may appear in docs or reports because it contains no credential values.
+
+```text
+Account label:
+Track:
+Sensitivity class:
+Persona or AI role:
+Environment:
+Credential key:
+Credential location label:
+Custodian:
+Status:
+Rotation required: YES / NO
+Cleanup status:
+Last verified status:
+Secret values exposed: NO
+```
+
+Example:
+
+```text
+Account label: QA_PERSONA_A_001
+Track: USER_BEHAVIOR_TESTING
+Sensitivity class: STANDARD_QA_REUSABLE
+Persona or AI role: PERSONA_A_FIRST_TIME_CREATOR
+Environment: fixed_slot
+Credential key: accounts.personaA001
+Credential location label: ENCRYPTED_QA_HANDOFF + LOCAL_SECRET_STORE
+Custodian: OPS_BUNDLE_CUSTODIAN
+Status: ACTIVE
+Rotation required: NO
+Cleanup status: NOT_REQUIRED
+Last verified status: CREDENTIAL_PREFLIGHT_PASS
+Secret values exposed: NO
+```
+
 ## Credential and account reuse policy
 
 ### Problem
@@ -153,12 +328,14 @@ Models or executors have created accounts during browser verification but did no
 
 ### Policy
 
+- Reuse managed QA accounts when credentials are safely stored.
+- Create disposable accounts only when signup, clean onboarding, or account-isolation behavior is under test.
 - Never store passwords in GitHub issues, PRs, comments, docs, screenshots, or logs.
 - Store only safe labels and metadata in GitHub reports.
-- Store actual credentials only in an approved local secret store or encrypted QA credential handoff.
+- Store actual credentials only in an approved local secret store, encrypted QA credential handoff, approved password manager, or CTO-managed secret store.
 - If credentials are lost, mark the account as `UNKNOWN_CREDENTIALS` or `ORPHANED_TEST_ACCOUNT` by safe label only.
 - Do not attempt to recover or print secrets through logs.
-- Prefer creating a new controlled test account and recording its credential location safely.
+- For reusable accounts, record credential location label and custodian label at creation time.
 
 Safe public metadata:
 
@@ -171,7 +348,9 @@ created_for_pr
 created_for_issue
 created_at
 status
+credential_key
 credential_location_label
+custodian
 cleanup_status
 ```
 
@@ -200,6 +379,7 @@ LOCAL_SECRET_STORE
 ENCRYPTED_QA_HANDOFF
 APPROVED_PASSWORD_MANAGER
 CTO_MANAGED_SECRET
+PRODUCT_MANAGED_SECRET
 UNKNOWN_CREDENTIALS
 ```
 
@@ -213,6 +393,7 @@ RETIRED
 UNKNOWN_CREDENTIALS
 ORPHANED_TEST_ACCOUNT
 CLEANUP_NOT_AVAILABLE
+ROTATION_REQUIRED
 ```
 
 Use `ORPHANED_TEST_ACCOUNT` when an account was created but credentials were not preserved and safe cleanup is not available.
@@ -225,13 +406,15 @@ Use this template after any account-creation verification.
 Synthetic Account Creation Report
 
 Track:
+Sensitivity class:
 Account label:
 Persona or AI role:
 Environment:
-Created for PR:
-Created for Issue:
+Credential key:
 Credential location label:
+Custodian:
 Account status:
+Rotation required: YES / NO
 Cleanup status:
 Production data created: YES / NO
 Secret/private data exposure: NO / PRESENT
@@ -256,14 +439,19 @@ If this later becomes a database-backed system, prefer a neutral synthetic actor
 synthetic_actors
 - actor_id
 - track
+- sensitivity_class
 - persona_id
 - ai_role
 - disclosure_label
 - visibility
 - environment
+- credential_key
+- credential_location_label
+- custodian
 - allowed_actions
 - ranking_policy
 - status
+- rotation_required
 ```
 
 Do not store plaintext credentials in this table.
