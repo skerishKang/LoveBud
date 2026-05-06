@@ -1,8 +1,8 @@
 # Fixed Slot Workflow Secret Setup
 
-**Status:** Active ops runbook  
-**Owner:** CTO / Ops Lead  
-**Related issue:** #684  
+**Status:** Active ops runbook
+**Owner:** CTO / Ops Lead
+**Related issue:** #684
 **Related workflow:** `.github/workflows/deploy-test-slot.yml`
 
 This runbook explains the repository secret setup and safe verification process for the `Deploy fixed test slot` workflow.
