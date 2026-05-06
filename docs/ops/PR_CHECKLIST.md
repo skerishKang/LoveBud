@@ -23,6 +23,7 @@
 
 ## Member Journey QA 영향
 - 적용 대상: AUTH / FIRST_TREE / MY_TREES / EDITOR / PUBLIC_VIEWER / MOBILE / ERROR_RECOVERY / N/A
+- 적용 persona: docs/ops/MEMBER_JOURNEY_PERSONAS.md 기준으로 기재
 - 필요한 journey: docs/ops/MEMBER_JOURNEY_QA_SUITE.md 기준으로 기재
 - fixed slot 필요 여부: YES / NO
 - 브라우저 검증 필요 여부: YES / NO
@@ -38,9 +39,15 @@
 
 ---
 
-## 2. Member Journey QA 매핑
+## 2. Member Persona + Journey QA 매핑
 
-PR이 Auth, My Trees, Editor, Public Viewer, Browse/Search, 모바일 레이아웃, loading/error 상태에 영향을 주면 [MEMBER_JOURNEY_QA_SUITE.md](MEMBER_JOURNEY_QA_SUITE.md)를 기준으로 필요한 journey를 PR 본문에 명시해야 합니다.
+PR이 Auth, My Trees, Editor, Public Viewer, Browse/Search, 모바일 레이아웃, loading/error 상태에 영향을 주면 먼저 [MEMBER_JOURNEY_PERSONAS.md](MEMBER_JOURNEY_PERSONAS.md)에서 persona를 선택하고, 그 다음 [MEMBER_JOURNEY_QA_SUITE.md](MEMBER_JOURNEY_QA_SUITE.md)를 기준으로 필요한 journey를 PR 본문에 명시해야 합니다.
+
+순서는 아래를 따릅니다.
+
+```text
+persona -> journey -> issue/PR verification -> report
+```
 
 ### 필수 판단 항목
 
@@ -52,18 +59,18 @@ PR이 Auth, My Trees, Editor, Public Viewer, Browse/Search, 모바일 레이아�
 - [ ] 이 PR이 모바일 375px 또는 wider mobile layout에 영향을 주는가?
 - [ ] 이 PR이 loading/empty/error/degraded/back recovery 상태에 영향을 주는가?
 
-### PR 유형별 기본 journey
+### PR 유형별 기본 persona + journey
 
-| PR 영향 범위 | 기본 요구 journey |
-|--------------|-------------------|
-| Auth / protected route | `AUTH_SIGNUP_LOGIN_JOURNEY`, `LOGOUT_AND_PROTECTED_ROUTE_JOURNEY` |
-| First-create / persistence | `FIRST_TREE_CREATION_JOURNEY` |
-| My Trees | `MY_TREES_RETURNING_USER_JOURNEY` |
-| Editor | `EDITOR_MOMENT_EDITING_JOURNEY` |
-| Public Viewer / read-only route | `PUBLIC_VIEWER_READONLY_JOURNEY` |
-| Mobile-visible UI | `MOBILE_375_FULL_JOURNEY` |
-| Loading/empty/error/degraded states | `ERROR_RECOVERY_JOURNEY` |
-| Docs-only with no runtime claim | `N/A` |
+| PR 영향 범위 | 기본 persona | 기본 요구 journey |
+|--------------|--------------|-------------------|
+| Auth / protected route | `PERSONA_A_FIRST_TIME_CREATOR` 또는 `PERSONA_B_RETURNING_OWNER` | `AUTH_SIGNUP_LOGIN_JOURNEY`, `LOGOUT_AND_PROTECTED_ROUTE_JOURNEY` |
+| First-create / persistence | `PERSONA_A_FIRST_TIME_CREATOR` | `FIRST_TREE_CREATION_JOURNEY` |
+| My Trees | `PERSONA_B_RETURNING_OWNER` | `MY_TREES_RETURNING_USER_JOURNEY` |
+| Editor | `PERSONA_B_RETURNING_OWNER` | `EDITOR_MOMENT_EDITING_JOURNEY` |
+| Public Viewer / read-only route | `PERSONA_C_PUBLIC_VIEWER` | `PUBLIC_VIEWER_READONLY_JOURNEY` |
+| Mobile-visible UI | `PERSONA_D_MOBILE_CASUAL` | `MOBILE_375_FULL_JOURNEY` |
+| Loading/empty/error/degraded states | `PERSONA_E_INTERRUPTED_USER` | `ERROR_RECOVERY_JOURNEY` |
+| Docs-only with no runtime claim | `N/A` | `N/A` |
 
 ### fixed slot gate
 
@@ -157,7 +164,7 @@ npx playwright test tests/editor-fieldvalue.spec.js
 2. ✅ PR description 필수 항목 포함
 3. ✅ 최소 1명 Approve 획득
 4. ✅ 테스트 실패 관련 코멘트 해결 완료
-5. ✅ runtime-sensitive PR은 필요한 Member Journey QA와 fixed slot/SHA evidence 포함
+5. ✅ runtime-sensitive PR은 필요한 persona, Member Journey QA, fixed slot/SHA evidence 포함
 
 ### 테스트 실패 시 처리 원칙
 
