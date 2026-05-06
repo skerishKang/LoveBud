@@ -146,5 +146,5 @@
       ko: '처음 오셨나요? Google 또는 이메일로 계정을 만들 수 있어요.',
       en: 'New here? You can create an account with Google or email.'
     }
-  };;
+  };
 })();
