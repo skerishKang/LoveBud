@@ -1,6 +1,7 @@
 # Synthetic Actor Account Strategy
 
 Refs #849
+Refs #851
 Refs #838
 Refs #846
 
@@ -17,6 +18,97 @@ The goal is to support three concrete needs without overcomplicating day-to-day 
 ```
 
 The tracks can share infrastructure, account registry patterns, and safe reporting formats. They must not share the same public behavior rules.
+
+## Initial free password manager recommendation
+
+Start with a free password manager rather than a custom credential vault.
+
+Recommended first option:
+
+```text
+Bitwarden Free
+```
+
+Reason:
+
+```text
+free plan supports unlimited devices and items
+core password management functions are available
+single CTO-managed vault is enough for the first account set
+GitHub stores only labels and credential keys, not values
+```
+
+Alternative:
+
+```text
+Proton Pass Free
+```
+
+Reason:
+
+```text
+free plan supports unlimited logins and unlimited devices
+browser, mobile, and desktop apps are available
+useful if the Proton ecosystem is preferred
+```
+
+Do not build a custom plaintext credential vault for the first phase.
+
+## Initial long-lived account set
+
+Start with roughly 10-11 reusable accounts only.
+
+```text
+DEVELOPMENT_TESTING
+- QA_DEV_001
+- QA_DEV_002
+- QA_ADMIN_001
+
+USER_BEHAVIOR_TESTING
+- QA_PERSONA_A_001
+- QA_PERSONA_B_001
+- QA_PERSONA_C_001
+- QA_PERSONA_D_001
+- QA_PERSONA_E_001
+
+AI_MODEL_ACTIVITY
+- AI_GUIDE_001
+- AI_GUIDE_002
+- AI_SAMPLE_001
+```
+
+Disposable signup accounts are separate from the long-lived set.
+
+```text
+QA_SIGNUP_DISPOSABLE_YYYYMMDD_001
+QA_SIGNUP_DISPOSABLE_YYYYMMDD_002
+```
+
+Use disposable accounts only when signup, clean onboarding, or account-isolation behavior is under test.
+
+## Password manager entry format
+
+Use stable entry titles.
+
+```text
+LoveBud / QA / QA_PERSONA_A_001
+LoveBud / QA / QA_PERSONA_B_001
+LoveBud / AI / AI_GUIDE_001
+LoveBud / AI / AI_SAMPLE_001
+LoveBud / Admin / QA_ADMIN_001
+```
+
+Use notes to store metadata that helps operators map the password manager entry to `.local/test-accounts.json` and GitHub-safe inventory.
+
+```text
+credential_key: accounts.personaA001
+track: USER_BEHAVIOR_TESTING
+persona: PERSONA_A_FIRST_TIME_CREATOR
+environment: fixed_slot
+custodian: CTO_MANAGED
+```
+
+Do not copy actual credential values into GitHub, PRs, issues, screenshots, or reports.
 
 ## Track 1 — Development testing accounts
 
@@ -311,8 +403,8 @@ Sensitivity class: STANDARD_QA_REUSABLE
 Persona or AI role: PERSONA_A_FIRST_TIME_CREATOR
 Environment: fixed_slot
 Credential key: accounts.personaA001
-Credential location label: ENCRYPTED_QA_HANDOFF + LOCAL_SECRET_STORE
-Custodian: OPS_BUNDLE_CUSTODIAN
+Credential location label: APPROVED_PASSWORD_MANAGER + LOCAL_SECRET_STORE
+Custodian: CTO_MANAGED
 Status: ACTIVE
 Rotation required: NO
 Cleanup status: NOT_REQUIRED
