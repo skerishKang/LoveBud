@@ -1,0 +1,109 @@
+name: Deploy fixed test slot
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref to deploy, such as a PR branch name"
+        required: true
+        type: string
+      expected_sha:
+        description: "Full commit SHA expected after checkout"
+        required: true
+        type: string
+      slot:
+        description: "Cloudflare Pages branch/test slot name"
+        required: true
+        default: "test4"
+        type: choice
+        options:
+          - test4
+          - test5
+      project_name:
+        description: "Cloudflare Pages project name"
+        required: true
+        default: "lovebud"
+        type: choice
+        options:
+          - lovebud
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: "22"
+
+jobs:
+  deploy-test-slot:
+    name: Deploy to fixed test slot
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Validate inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ inputs.expected_sha }}" == "main" ]]; then
+            echo "expected_sha must be a full commit SHA, not a branch name."
+            exit 1
+          fi
+          if [[ ! "${{ inputs.expected_sha }}" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "expected_sha must be a 40-character lowercase commit SHA."
+            exit 1
+          fi
+          case "${{ inputs.slot }}" in
+            test4|test5) ;;
+            *) echo "Unsupported slot: ${{ inputs.slot }}"; exit 1 ;;
+          esac
+          case "${{ inputs.project_name }}" in
+            lovebud) ;;
+            *) echo "Unsupported project_name: ${{ inputs.project_name }}"; exit 1 ;;
+          esac
+
+      - name: Checkout requested ref
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+
+      - name: Verify checked-out SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual_sha="$(git rev-parse HEAD)"
+          echo "Expected SHA: ${{ inputs.expected_sha }}"
+          echo "Actual SHA:   ${actual_sha}"
+          if [[ "${actual_sha}" != "${{ inputs.expected_sha }}" ]]; then
+            echo "Checked-out SHA does not match expected_sha."
+            exit 1
+          fi
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run static build check
+        run: npm run build
+
+      - name: Deploy to Cloudflare Pages test slot
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy . --project-name=${{ inputs.project_name }} --branch=${{ inputs.slot }} --commit-hash=${{ inputs.expected_sha }}
+
+      - name: Report deployment target
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "TEST_SLOT_DEPLOY_ATTEMPTED"
+          echo "slot=${{ inputs.slot }}"
+          echo "ref=${{ inputs.ref }}"
+          echo "expected_sha=${{ inputs.expected_sha }}"
+          echo "url=https://${{ inputs.slot }}.lovebud.pages.dev"
