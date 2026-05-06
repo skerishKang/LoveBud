@@ -47,6 +47,66 @@ Docs-only PRs with no runtime claim may use:
 Persona: N/A
 ```
 
+## Test data state matrix
+
+Use this matrix before assigning a persona to a browser verification task.
+
+| Persona | Required starting data state | Fixed slot requirement | Production default |
+|---------|------------------------------|------------------------|--------------------|
+| `PERSONA_A_FIRST_TIME_CREATOR` | New or disposable test account; no existing LoveTree required; first moment creation path available | Required for signup and creation | No signup or persistent data creation |
+| `PERSONA_B_RETURNING_OWNER` | Approved test account with at least one owned LoveTree; ideally at least two moments and editable memo/content | Required for private My Trees and Editor | Non-destructive smoke only |
+| `PERSONA_C_PUBLIC_VIEWER` | Public/read-only test tree or route available; clean visitor session preferred | Required when preparing public fixture or verifying PR runtime | Public route smoke only |
+| `PERSONA_D_MOBILE_CASUAL` | Same data state as paired persona, tested at 375px baseline and wider mobile when needed | Required for Auth/data/mobile runtime | Non-destructive smoke only |
+| `PERSONA_E_INTERRUPTED_USER` | Test state that can safely reload/back/cancel/error without exposing private data | Required when mutation or protected content is involved | Non-destructive smoke only |
+
+## Test data cleanup and reuse policy
+
+### Fixed test slot
+
+Allowed:
+
+```text
+new disposable test account
+safe dummy first moment
+safe dummy tree title/content
+edit/cancel/save checks
+public fixture preparation when scoped
+```
+
+Required:
+
+```text
+record PR number or run label in safe test data naming when visible to the tester
+avoid raw private IDs in reports
+reuse existing approved test account when the journey does not require signup
+prefer cleanup when the product has a safe cleanup path
+mark cleanup NOT_AVAILABLE when no safe cleanup UI/API exists
+```
+
+### Production
+
+Default production rule:
+
+```text
+no new account creation
+no persistent test tree creation
+no destructive mutation
+no private data probing
+public/landing/login smoke only
+```
+
+Exceptions require explicit CTO approval and must still avoid exposing credentials, tokens, sessions, cookies, private IDs, raw payloads, or DB row values.
+
+## Persona to issue-family matrix
+
+| Persona | Issue families it naturally exercises |
+|---------|----------------------------------------|
+| `PERSONA_A_FIRST_TIME_CREATOR` | Intro/Login clarity, signup, auth state, first moment, first tree save, My Trees first reflection, mobile onboarding |
+| `PERSONA_B_RETURNING_OWNER` | My Trees cards, protected routes, session persistence, Editor node selection, add/edit/save/cancel, persistence after refresh |
+| `PERSONA_C_PUBLIC_VIEWER` | Browse-to-viewer, public route, read-only boundary, owner controls hidden, public/private separation, creator memo/media visibility |
+| `PERSONA_D_MOBILE_CASUAL` | Mobile header/menu, mobile forms, card overflow, mobile Editor, mobile public viewer, wider mobile layout smoke |
+| `PERSONA_E_INTERRUPTED_USER` | Loading, empty, degraded/error states, back/close recovery, cancel/reload behavior, auth-pending privacy |
+
 ## Persona A — First-time fan memory creator
 
 ```text
@@ -318,6 +378,62 @@ DEGRADED_STATE_CLEAR
 BACK_NAVIGATION_RECOVERS
 AUTH_PENDING_PRIVATE_CONTENT_HIDDEN
 CANCEL_NO_MUTATION
+```
+
+## Browser Verification Executor prompt template
+
+Use this template when delegating persona-based browser verification.
+
+```text
+[CTO → Browser Verification Executor]
+
+작업 구분:
+Persona-based browser verification
+
+Persona:
+- PERSONA_ID_HERE
+
+Journeys:
+- JOURNEY_ID_HERE
+
+Target:
+- PR:
+- Issue:
+- Fixed slot URL:
+- Expected head SHA:
+
+Required preflight:
+1. Confirm fixed slot URL is the intended target.
+2. Confirm deployed SHA matches expected head SHA.
+3. Confirm real browser is used.
+4. Confirm required auth/test account state is available without printing credentials.
+5. Confirm no production data creation unless explicitly approved.
+
+Verification rules:
+- Use the selected persona's goal and likely confusion as the user lens.
+- Follow the selected journey checklist.
+- Capture screenshots when required.
+- Do not print credentials, tokens, sessions, cookies, headers, passwords, private keys, DB URLs, tree IDs, owner IDs, memory IDs, copied tree IDs, raw payloads, or DB row values.
+- Use safe labels only.
+
+Report format:
+- Persona selected:
+- Journey selected:
+- Why this persona applies:
+- Target URL:
+- Expected head SHA:
+- Deployed SHA:
+- SHA match: YES / NO
+- Browser used: YES / NO
+- Viewports tested:
+- Test data state:
+- Cleanup status: DONE / NOT_REQUIRED / NOT_AVAILABLE
+- Findings:
+- Screenshots:
+- Fatal console errors:
+- Fatal network blockers:
+- Secret/private data exposure: NO / PRESENT
+- Final status: PASS / FAIL / BLOCKED / NOT_VERIFIED
 ```
 
 ## Issue and PR usage examples
