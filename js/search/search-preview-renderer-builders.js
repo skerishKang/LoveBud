@@ -1,9 +1,9 @@
 /**
  * LoveBud Search Preview Renderer Builders
- * v20260505-1
+ * v20260506-1
  *
  * Pure DOM builder helpers extracted from search-preview-renderer.js
- * Issue #656 — Phase 3: structural split
+ * Issue #656 — Phase 3 structural split + Phase 4 extended split
  *
  * Dependencies: LoveBudSearchSharedUtils, LoveBudSearchPreviewCopyHelper
  */
@@ -188,6 +188,120 @@
         return icons[stage] || '🌱';
     }
 
+
+    function getPreviewTimeRange(tree) {
+        var raw = String(tree && tree.timeRange ? tree.timeRange : '').trim();
+        var missingRangeLabels = [
+            '기록 없음',
+            'no records',
+            'no record',
+            'unknown',
+            'n/a',
+            getSearchCopy('search.previewUnknownRange', '아직 흐름이 또렷하지 않아요', 'The flow is not clear yet')
+        ].map(function(label) { return String(label || '').trim().toLowerCase(); }).filter(Boolean);
+
+        if (!raw) return '';
+        return missingRangeLabels.indexOf(raw.toLowerCase()) !== -1 ? '' : raw;
+    }
+
+    function getPreviewSummaryCopy(tree, memories) {
+        var titleHelper = getSearchTitleHelper();
+        var displayTitle = (titleHelper && titleHelper.getBrowseDisplayTitle)
+            ? titleHelper.getBrowseDisplayTitle(tree)
+            : (String(tree && tree.title ? tree.title : '').trim() || getDefaultTreeName());
+        var themeLabel = (titleHelper && titleHelper.getThemeLabel)
+            ? titleHelper.getThemeLabel(tree)
+            : '';
+        var timeRange = getPreviewTimeRange(tree);
+        var memoryCount = Number(tree && tree.memoryCount ? tree.memoryCount : 0);
+        var safeTitle = escapeHtml(displayTitle);
+        var safeTheme = escapeHtml(themeLabel);
+        var safeRange = escapeHtml(timeRange);
+
+        if (!memories.length) {
+            if (themeLabel) {
+                return formatSearchCopy(
+                    'search.previewSummaryThemeStart',
+                    { title: safeTitle, theme: safeTheme },
+                    '<strong style="color:var(--on-surface);">{title}</strong>는 <strong style="color:var(--on-surface);">{theme}</strong>와 함께 막 시작된 공개 러브트리예요.',
+                    '<strong style="color:var(--on-surface);">{title}</strong> is a public LoveTree that has just begun with <strong style="color:var(--on-surface);">{theme}</strong>.'
+                );
+            }
+            return formatSearchCopy(
+                'search.previewSummaryStart',
+                { title: safeTitle },
+                '<strong style="color:var(--on-surface);">{title}</strong>는 이제 막 시작된 공개 러브트리예요.',
+                '<strong style="color:var(--on-surface);">{title}</strong> is a newly started public LoveTree.'
+            );
+        }
+
+        if (!timeRange) {
+            if (themeLabel) {
+                return formatSearchCopy(
+                    'search.previewSummaryThemeNoRange',
+                    { theme: safeTheme, count: memoryCount },
+                    '<strong style="color:var(--on-surface);">{theme}</strong>와 함께한 <span style="color:var(--primary);font-weight:700;">{count}개의 순간</span>이 이어졌어요.',
+                    '<strong style="color:var(--on-surface);">{count} moments</strong> with <strong style="color:var(--on-surface);">{theme}</strong> are connected.'
+                );
+            }
+            return formatSearchCopy(
+                'search.previewSummaryNoRange',
+                { title: safeTitle, count: memoryCount },
+                '<strong style="color:var(--on-surface);">{title}</strong>에 담긴 <span style="color:var(--primary);font-weight:700;">{count}개의 순간</span>이 이어졌어요.',
+                '<strong style="color:var(--on-surface);">{count} moments</strong> in <strong style="color:var(--on-surface);">{title}</strong> are connected.'
+            );
+        }
+
+        if (themeLabel) {
+            return formatSearchCopy(
+                'search.previewSummaryThemeRange',
+                { theme: safeTheme, count: memoryCount, range: safeRange },
+                '<strong style="color:var(--on-surface);">{theme}</strong>와 함께한 <span style="color:var(--primary);font-weight:700;">{count}개의 순간</span>이 <strong>{range}</strong>에 걸쳐 이어졌어요.',
+                '<strong style="color:var(--on-surface);">{count} moments</strong> with <strong style="color:var(--on-surface);">{theme}</strong> continued across <strong>{range}</strong>.'
+            );
+        }
+        return formatSearchCopy(
+            'search.previewSummaryRange',
+            { title: safeTitle, count: memoryCount, range: safeRange },
+            '<strong style="color:var(--on-surface);">{title}</strong>에 담긴 <span style="color:var(--primary);font-weight:700;">{count}개의 순간</span>이 <strong>{range}</strong>에 걸쳐 이어졌어요.',
+            '<strong style="color:var(--on-surface);">{count} moments</strong> in <strong style="color:var(--on-surface);">{title}</strong> continued across <strong>{range}</strong>.'
+        );
+    }
+
+    function renderPlaceholder() {
+        var lead = getSearchCopy(
+            'search.previewEmptyLead',
+            '트리를 고르면',
+            'When you choose a tree,'
+        );
+        var body = getSearchCopy(
+            'search.previewEmptyBody',
+            '대표 순간과 이어진 감정이 이곳에 열립니다.',
+            'the featured moment and connected feelings open here.'
+        );
+
+        return '<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--on-surface-variant);font-size:14px;text-align:center;padding:20px;">' +
+            '<p style="margin:0 0 8px;">' + escapeHtml(lead) + '</p>' +
+            '<p style="margin:0;line-height:1.5;">' + escapeHtml(body) + '</p>' +
+            '</div>';
+    }
+
+    function renderShareButton(tree) {
+        var helper = window.LoveBudSearchPreviewActionHelper;
+        if (helper && helper.renderShareButton) {
+            return helper.renderShareButton(tree);
+        }
+        if (!(tree && tree.id)) return '';
+        var label = getSearchCopy(
+            'search.previewShareLink',
+            '감상 링크 복사',
+            'Copy view link'
+        );
+        return '<button type="button" data-share-tree-link="' + escapeHtml(tree.id) + '" class="btn-round preview-share-action" style="width:100%;margin-top:12px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;gap:6px;background:var(--surface-container);color:var(--on-surface-variant);border:1px solid var(--outline-variant);">' +
+            '<span class="material-symbols-outlined" style="font-size:16px;">link</span>' +
+            '<span data-share-tree-link-label>' + escapeHtml(label) + '</span>' +
+            '</button>';
+    }
     window.LoveBudSearchPreviewBuilders = {
         renderSectionHeading: renderSectionHeading,
         renderInfoCallout: renderInfoCallout,
@@ -200,7 +314,11 @@
         renderEmotionTags: renderEmotionTags,
         getDefaultTreeName: getDefaultTreeName,
         getTreeIcon: getTreeIcon,
-        getSharedUtils: getSharedUtils
+        getSharedUtils: getSharedUtils,
+        getPreviewTimeRange: getPreviewTimeRange,
+        getPreviewSummaryCopy: getPreviewSummaryCopy,
+        renderPlaceholder: renderPlaceholder,
+        renderShareButton: renderShareButton
     };
 
     console.log('[LoveBudSearchPreviewBuilders] Preview builder helpers loaded v20260505-1');
