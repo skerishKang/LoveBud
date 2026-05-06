@@ -130,6 +130,7 @@
 
     // Public API
     window.LoveBudSearchPreviewActionHelper = {
+        getBasePath: getBasePath,
         getTreeDetailHref: getTreeDetailHref,
         renderPreviewActionButton: renderPreviewActionButton,
         renderShareButton: renderShareButton
