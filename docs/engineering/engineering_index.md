@@ -46,6 +46,7 @@
 28. [REPOSITORY_STRUCTURE_FOLLOWUP_STATUS_MAP.md](./REPOSITORY_STRUCTURE_FOLLOWUP_STATUS_MAP.md) - Issue #223 repository structure follow-up bucket disposition, active blockers, and closure conditions
 29. [PUBLIC_TREE_ADAPTER_BOUNDARY_AUDIT.md](./PUBLIC_TREE_ADAPTER_BOUNDARY_AUDIT.md) - #412 public tree adapter helper boundaries, export contract, loading-order risk, preview implications audit
 30. [AUTH_EDITOR_RUNTIME_INVENTORY_834.md](./AUTH_EDITOR_RUNTIME_INVENTORY_834.md) - #834 auth/editor runtime inventory, dependency mapping, naming consistency audit, decomposition candidates
+31. [V01_UI_TRUST_PASS_RELEASE_GATE_681.md](./V01_UI_TRUST_PASS_RELEASE_GATE_681.md) - #681 v0.1 UI Trust Pass release-gate status taxonomy and active PR verification contract
 
 ---
 
@@ -81,6 +82,7 @@
 | [EDITOR_HIDDEN_COMPATIBILITY_OVERRIDE_AUDIT.md](./EDITOR_HIDDEN_COMPATIBILITY_OVERRIDE_AUDIT.md) | Issue #516 hidden/compatibility selector references, runtime linkage, removal/relocation disposition, and future browser verification gates |
 | [SUPABASE_FREE_POC_PLAN.md](./SUPABASE_FREE_POC_PLAN.md) | Supabase Free PoC 기반 장기 backend 구조 단순화 검증 계획 |
 | [AUTH_EDITOR_RUNTIME_INVENTORY_834.md](./AUTH_EDITOR_RUNTIME_INVENTORY_834.md) | #834 auth/editor runtime inventory, dependency mapping, naming audit, decomposition candidates |
+| [V01_UI_TRUST_PASS_RELEASE_GATE_681.md](./V01_UI_TRUST_PASS_RELEASE_GATE_681.md) | #681 v0.1 UI Trust Pass release-gate status taxonomy and active PR verification contract |
 | [REVIEW_GUARDRAILS.md](./REVIEW_GUARDRAILS.md) | 반복 false positive 방지 및 리뷰 규칙 |
 | [RECENT_REFACTORING.md](./RECENT_REFACTORING.md) | 최근 코드 구조 정리 이력 |
 | [UTIL_USAGE_POLICY.md](./UTIL_USAGE_POLICY.md) | 공통 유틸 사용 정책 |
