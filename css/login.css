@@ -99,7 +99,7 @@
     transition: all 0.2s;
 }
 
-/* ì…ë ¥ì°½ í¬ì»¤ìŠ¤ ìŠ¤íƒ€ì¼ ê³ ê¸‰í™” */
+/* ÀÔ·ÂÃ¢ Æ÷Ä¿½º ½ºÅ¸ÀÏ °í±ŞÈ­ */
 input[type="text"],
 input[type="email"],
 input[type="password"] {
@@ -443,6 +443,13 @@ input[type="password"]:focus {
     font-size: 0.9rem;
     cursor: pointer;
     text-decoration: underline;
+}
+
+.login-first-time-note {
+    color: var(--on-surface-variant);
+    font-size: 13px;
+    margin-top: 16px;
+    opacity: 0.7;
 }
 
 @media (max-width: 768px) {
