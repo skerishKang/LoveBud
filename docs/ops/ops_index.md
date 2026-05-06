@@ -81,10 +81,10 @@
 | [GLOBAL_CSS_BROWSER_SMOKE_CHECKLIST.md](GLOBAL_CSS_BROWSER_SMOKE_CHECKLIST.md) | Issue #512 global CSS desktop/mobile smoke matrix, PASS/NOT_VERIFIED/BLOCKED reporting, fixed-slot requirements |
 | [EDITOR_DETAIL_UI_BROWSER_SMOKE_CHECKLIST.md](EDITOR_DETAIL_UI_BROWSER_SMOKE_CHECKLIST.md) | Issue #521 editor detail UI smoke matrix, fixed-slot/SHA provenance, PASS/NOT_VERIFIED/BLOCKED reporting 기준 |
 | [TEST_PREVIEW_SLOTS.md](TEST_PREVIEW_SLOTS.md) | 고정 테스트 Preview 슬롯 운영 기준 |
-| [FIXED_SLOT_WORKFLOW_SECRET_SETUP.md](FIXED_SLOT_WORKFLOW_SECRET_SETUP.md) | `Deploy fixed test slot` workflow의 required GitHub Actions secret names, rerun 절차, safe report template, blocked-state 분류 |
+| [FIXED_SLOT_WORKFLOW_SECRET_SETUP.md](FIXED_SLOT_WORKFLOW_SECRET_SETUP.md) | ⚠️ DEPRECATED — GitHub Actions \Deploy fixed test slot\ workflow secret setup (inactive; archived at \docs/ops/archive/deploy-test-slot.workflow.yml.txt\). Kept for reference only. |
 | [FIREBASE_CONSOLE_AND_DEPLOYMENT_SECRET_POSTURE.md](FIREBASE_CONSOLE_AND_DEPLOYMENT_SECRET_POSTURE.md) | Firebase Console authorized domains, API key restriction, Firestore/Storage rules, Modal secret, legacy Netlify secret posture 점검 기준 |
 | [FIXED_SLOT_MANUAL_E2E_GATE.md](FIXED_SLOT_MANUAL_E2E_GATE.md) | Fixed slot 수동 E2E gate 런북 — slot 배정·SHA provenance·evidence 양식·page 분류·제한 사항 (Issue #136 manual gate 단계) |
-| [FIXED_SLOT_DEPLOY_WITH_WRANGLER.md](FIXED_SLOT_DEPLOY_WITH_WRANGLER.md) | Fixed slot Wrangler direct deploy 표준 경로 — `test/slot-X` 배포, `test-slot-X` URL, stale asset guardrail |
+| [FIXED_SLOT_DEPLOY_WITH_WRANGLER.md](FIXED_SLOT_DEPLOY_WITH_WRANGLER.md) | **Fixed-slot deploy source of truth.** Current operational standard: local Wrangler OAuth deploy for PR fixed-slot (test4/test5). Supersedes deprecated GitHub Actions workflow. |
 | [CLOUDFLARE_PAGES_E2E_SMOKE_REPLACEMENT.md](CLOUDFLARE_PAGES_E2E_SMOKE_REPLACEMENT.md) | Cloudflare Pages + Modal 기반 E2E smoke replacement 제안 — Phase 1 supplied URL smoke, Phase 2 manual workflow, Phase 3 preview URL discovery 기준 |
 | [E2E_SMOKE_COVERAGE_POLICY.md](E2E_SMOKE_COVERAGE_POLICY.md) | Issue #413 E2E smoke coverage 분류, CI/manual/Cloudflare Preview/fixed test slot 실행 정책, auth/test-account evidence 기준 |
 | [ACTIVE_WORK_BOARD_POLICY.md](ACTIVE_WORK_BOARD_POLICY.md) | Issue #426 병렬 AI/workstation 작업 충돌 방지, active work board 필드, 상태 정의, 중복 prompt 방지, overlap warning 규칙, handoff/report 형식 |
