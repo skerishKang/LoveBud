@@ -90,6 +90,10 @@
     }
 
     function getBasePath() {
+        const helper = window.LoveBudSearchPreviewActionHelper;
+        if (helper?.getBasePath) {
+            return helper.getBasePath();
+        }
         const utils = getSharedUtils();
         if (utils?.getBasePath) {
             return utils.getBasePath();
@@ -106,11 +110,7 @@
         if (helper?.getTreeDetailHref) {
             return helper.getTreeDetailHref(tree);
         }
-        const memories = Array.isArray(tree?.memories) ? tree.memories : [];
-        const firstMemory = memories[0];
-        if (!tree?.id || !firstMemory?.id) return '';
-        const basePath = getBasePath();
-        return `${basePath}detail.html?id=${encodeURIComponent(firstMemory.id)}&tree=${encodeURIComponent(tree.id)}&from=browse`;
+        return '';
     }
 
     function renderPreviewActionButton(tree) {
@@ -118,19 +118,7 @@
         if (helper?.renderPreviewActionButton) {
             return helper.renderPreviewActionButton(tree);
         }
-        const href = getTreeDetailHref(tree);
-        if (!href) return '';
-        const label = getSearchCopy(
-            'search.previewOpenViewingCta',
-            '감상 열기',
-            'Open viewing'
-        );
-        return `
-            <a href="${escapeHtml(href)}" class="btn-round btn-primary preview-primary-action" style="width:100%;margin-top:18px;min-height:50px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;font-size:14px;font-weight:800;gap:8px;">
-                <span class="material-symbols-outlined" style="font-size:18px;">play_circle</span>
-                ${escapeHtml(label)}
-            </a>
-        `;
+        return '';
     }
 
     const renderShareButton = previewBuilders.renderShareButton || function(tree) {
