@@ -156,6 +156,7 @@ Reference 문서는 `docs/reference/` 아래에 정리됩니다.
 - [REVIEW_GUARDRAILS.md](./engineering/REVIEW_GUARDRAILS.md) - 반복 false positive 방지 규칙
 - [RECENT_REFACTORING.md](./engineering/RECENT_REFACTORING.md) - 최근 코드 구조 정리 이력
  - [PUBLIC_TREE_ADAPTER_BOUNDARY_AUDIT.md](./engineering/PUBLIC_TREE_ADAPTER_BOUNDARY_AUDIT.md) - #412 public tree adapter helper boundaries, export contract, loading-order risk, preview implications audit
+ - [AUTH_EDITOR_RUNTIME_INVENTORY_834.md](./engineering/AUTH_EDITOR_RUNTIME_INVENTORY_834.md) - #834 auth/editor runtime inventory, dependency mapping, naming consistency audit, decomposition candidates
 
 ## security 문서군
 
