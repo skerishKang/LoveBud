@@ -123,6 +123,15 @@ firebase-debug*.log
 .git (1)/
 .git-backup-*/
 
+# Wrangler temporary build artifacts
+.wrangler/
+
+# Inter-agent handoff temp files (never commit)
+jobs.json
+pr-body.md
+temp-pr-comment.md
+tree-moment-creation-guide.md
+
 # Local verification artifacts and work folders
 # These paths are local-only. Never commit or include in PR scope.
 local-backup/
