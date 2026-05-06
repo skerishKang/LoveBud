@@ -93,4 +93,19 @@ test('browse selected hub primary CTA label matches detail viewing route', () =>
   assert.doesNotMatch(actionHelper, /이 트리 열기|Open this tree|search\.previewOpenTreeCta/);
   assert.doesNotMatch(previewRenderer, /이 트리 열기|Open this tree|search\.previewOpenTreeCta/);
   assert.doesNotMatch(i18nSearch, /이 트리 열기|Open this tree|search\.previewOpenTreeCta/);
+
+
+test('browse selected hub share button delegates to action helper', () => {
+  const actionHelper = read('js/search/search-preview-action-helper.js');
+  const previewRenderer = read('js/search/search-preview-renderer.js');
+
+  assert.match(actionHelper, /renderShareButton:/);
+  assert.match(actionHelper, /data-share-tree-link/);
+  assert.match(actionHelper, /data-share-tree-link-label/);
+  assert.match(previewRenderer, /helper\?\.renderShareButton/);
+  assert.match(previewRenderer, /function renderShareButton\(tree\)/);
+  const fallbackCount = (previewRenderer.match(/return '';/g) || []).length;
+  assert.ok(fallbackCount >= 2, 'renderer should have at least 2 empty string fallbacks (action + share)');
+  assert.doesNotMatch(previewRenderer, /data-share-tree-link="\+' \+ escapeHtml\(tree\.id\)/);
+});
 });
