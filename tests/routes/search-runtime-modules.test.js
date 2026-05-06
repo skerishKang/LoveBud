@@ -86,7 +86,8 @@ test('browse selected hub primary CTA label matches detail viewing route', () =>
   assert.match(actionHelper, /detail\.html\?id=/);
   assert.match(actionHelper, /from=browse/);
   assert.match(actionHelper, /search\.previewOpenViewingCta/);
-  assert.match(previewRenderer, /search\.previewOpenViewingCta/);
+  assert.match(previewRenderer, /helper\?\.renderPreviewActionButton/);
+  assert.match(previewRenderer, /return '';/);
   assert.match(i18nSearch, /'search\.previewOpenViewingCta'/);
   assert.match(i18nSearch, /ko:\s*'감상 열기'/);
   assert.doesNotMatch(actionHelper, /이 트리 열기|Open this tree|search\.previewOpenTreeCta/);
