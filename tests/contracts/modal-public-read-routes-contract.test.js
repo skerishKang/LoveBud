@@ -62,6 +62,12 @@ test('modal public read route handlers remain in app.py', () => {
   }
 });
 
+test('normalize_tree_row omits ownerId for public tree detail', () => {
+  const validationContent = fs.readFileSync(path.join(ROOT, 'modal_compute', 'validation.py'), 'utf8').replace(/\r\n/g, '\n');
+  const func = extractPythonFunction(validationContent, 'normalize_tree_row');
+  assert.ok(!hasString(func, '"ownerId"'), 'normalize_tree_row should not include "ownerId" in its return dict');
+});
+
 test('modal public read handlers call their current helper functions', () => {
   const content = readModalApp();
 
