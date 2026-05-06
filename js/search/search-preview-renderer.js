@@ -121,9 +121,12 @@
         return '';
     }
 
-    const renderShareButton = previewBuilders.renderShareButton || function(tree) {
-        if (!(tree && tree.id)) return '';
-        return '<button type="button" data-share-tree-link="' + escapeHtml(tree.id) + '">' + escapeHtml(getSearchCopy('search.previewShareLink', '감상 링크 복사', 'Copy view link')) + '</button>';
+    function renderShareButton(tree) {
+        const helper = window.LoveBudSearchPreviewActionHelper;
+        if (helper?.renderShareButton) {
+            return helper.renderShareButton(tree);
+        }
+        return '';
     }
 
     const VISIBLE_FLOW_MOMENT_COUNT = 4;
