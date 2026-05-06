@@ -2,151 +2,149 @@
  * LoveBud - i18n Login Dictionary
  * v20260423-1
  *
- * ·Î±×ÀÎ/È¸¿ø°¡ÀÔ ÆäÀÌÁö ¹ø¿ª Å°
+ * ë¡œê·¸ì¸/íšŒì›ê°€ì… í˜ì´ì§€ ë²ˆì—­ í‚¤
  */
 (function() {
   'use strict';
   window.i18nLogin = {
-    // ¸®´ÙÀÌ·ºÆ® ¾Ë¸²
+    // ë¦¬ë‹¤ì´ë ‰íŠ¸ ì•Œë¦¼
     'redirect_notice_title': {
-      ko: '³» ·¯ºêÆ®¸®¸¦ ÀÌ¿ëÇÏ·Á¸é ·Î±×ÀÎÀÌ ÇÊ¿äÇÕ´Ï´Ù',
+      ko: 'ë‚´ ëŸ¬ë¸ŒíŠ¸ë¦¬ë¥¼ ì´ìš©í•˜ë ¤ë©´ ë¡œê·¸ì¸ì´ í•„ìš”í•©ë‹ˆë‹¤',
       en: 'Login is required to use your LoveTree'
     },
     'redirect_notice_desc': {
-      ko: '·Î±×ÀÎ ÈÄ ÀÚµ¿À¸·Î ÀÌµ¿ÇÕ´Ï´Ù',
+      ko: 'ë¡œê·¸ì¸ í›„ ìë™ìœ¼ë¡œ ì´ë™í•©ë‹ˆë‹¤',
       en: 'You will be redirected automatically after login'
     },
 
-    // ·Î±×ÀÎ ÆäÀÌÁö
+    // ë¡œê·¸ì¸ í˜ì´ì§€
     'login_title': {
-      ko: '´Ù½Ã ·¯ºêÆ®¸®¿¡ ·Î±×ÀÎÇÏ¼¼¿ä',
+      ko: 'ë‹¤ì‹œ ëŸ¬ë¸ŒíŠ¸ë¦¬ì— ë¡œê·¸ì¸í•˜ì„¸ìš”',
       en: 'Log back in to LoveTree'
     },
     'login_desc': {
-      ko: '±â·ÏÇØ µĞ ¼ø°£°ú ·¯ºêÆ®¸®¸¦ ÀÌ¾î¼­ º¸·Á¸é ·Î±×ÀÎÇÏ¼¼¿ä.',
+      ko: 'ê¸°ë¡í•´ ë‘” ìˆœê°„ê³¼ ëŸ¬ë¸ŒíŠ¸ë¦¬ë¥¼ ì´ì–´ì„œ ë³´ë ¤ë©´ ë¡œê·¸ì¸í•˜ì„¸ìš”.',
       en: 'Log in to continue viewing your moments and LoveTree.'
     },
 
-    // ¼Ò¼È ·Î±×ÀÎ
+    // ì†Œì…œ ë¡œê·¸ì¸
     'google_login': {
-      ko: 'Google·Î ·Î±×ÀÎ',
+      ko: 'Googleë¡œ ë¡œê·¸ì¸',
       en: 'Log in with Google'
     },
     'google_signup': {
-      ko: 'Google·Î °è¼ÓÇÏ±â',
+      ko: 'Googleë¡œ ê³„ì†í•˜ê¸°',
       en: 'Continue with Google'
     },
 
-    // ±¸ºĞ¼±
+    // êµ¬ë¶„ì„ 
     'or_email': {
-      ko: '¶Ç´Â ÀÌ¸ŞÀÏ·Î ·Î±×ÀÎ',
+      ko: 'ë˜ëŠ” ì´ë©”ì¼ë¡œ ë¡œê·¸ì¸',
       en: 'Or log in with email'
     },
     'email_login': {
-      ko: 'ÀÌ¸ŞÀÏ·Î ·Î±×ÀÎ',
+      ko: 'ì´ë©”ì¼ë¡œ ë¡œê·¸ì¸',
       en: 'Log in with email'
     },
 
-    // Ã³À½ ¿À¼Ì³ª¿ä ³ëÆ®
-    'first_time_note': {
-      ko: 'Ã³À½ ¿À¼Ì³ª¿ä? Google ¶Ç´Â ÀÌ¸ŞÀÏ·Î °èÁ¤À» ¸¸µé ¼ö ÀÖ¾î¿ä.',
-      en: 'New here? You can create an account with Google or email.'
-    },
-
-    // È¸¿ø°¡ÀÔ ¼½¼Ç ¾È³»
+    // íšŒì›ê°€ì… ì„¹ì…˜ ì•ˆë‚´
     'signup_intro_badge': {
-      ko: 'Ã³À½ ¿À¼Ì³ª¿ä?',
+      ko: 'ì²˜ìŒ ì˜¤ì…¨ë‚˜ìš”?',
       en: 'New here?'
     },
     'signup_intro_title': {
-      ko: 'Ã³À½ÀÌ¾îµµ °°Àº ¹öÆ°À¸·Î ¹Ù·Î ½ÃÀÛÇÒ ¼ö ÀÖ¾î¿ä',
+      ko: 'ì²˜ìŒì´ì–´ë„ ê°™ì€ ë²„íŠ¼ìœ¼ë¡œ ë°”ë¡œ ì‹œì‘í•  ìˆ˜ ìˆì–´ìš”',
       en: 'New here? The same buttons get you started.'
     },
     'signup_intro_desc': {
-      ko: 'Google ¶Ç´Â ÀÌ¸ŞÀÏ·Î °è¼ÓÇÏ¸é ÇÊ¿äÇÑ °æ¿ì °èÁ¤ »ı¼º±îÁö °°Àº Èå¸§¿¡¼­ ÀÌ¾îÁı´Ï´Ù.',
+      ko: 'Google ë˜ëŠ” ì´ë©”ì¼ë¡œ ê³„ì†í•˜ë©´ í•„ìš”í•œ ê²½ìš° ê³„ì • ìƒì„±ê¹Œì§€ ê°™ì€ íë¦„ì—ì„œ ì´ì–´ì§‘ë‹ˆë‹¤.',
       en: 'Continue with Google or email; account creation is included in the same flow when needed.'
     },
     'google_signup_helper': {
-      ko: 'Google °èÁ¤À¸·Î ·Î±×ÀÎ¸¸ ÇÏ¸é º°µµ °¡ÀÔ ¾øÀÌ ¹Ù·Î ½ÃÀÛµË´Ï´Ù',
+      ko: 'Google ê³„ì •ìœ¼ë¡œ ë¡œê·¸ì¸ë§Œ í•˜ë©´ ë³„ë„ ê°€ì… ì—†ì´ ë°”ë¡œ ì‹œì‘ë©ë‹ˆë‹¤',
       en: 'Sign in with Google and start right away without a separate sign-up step'
     },
     'or_create_with_email': {
-      ko: '¶Ç´Â ÀÌ¸ŞÀÏ·Î °èÁ¤ ¸¸µé±â',
+      ko: 'ë˜ëŠ” ì´ë©”ì¼ë¡œ ê³„ì • ë§Œë“¤ê¸°',
       en: 'Or create an account with email'
     },
 
-    // ÀÌ¸ŞÀÏ ÀÎÁõ ¸ğ´Ş
+    // ì´ë©”ì¼ ì¸ì¦ ëª¨ë‹¬
     'email_modal_title_login': {
-      ko: 'ÀÌ¸ŞÀÏ·Î ·Î±×ÀÎ',
+      ko: 'ì´ë©”ì¼ë¡œ ë¡œê·¸ì¸',
       en: 'Sign in with email'
     },
     'email_modal_desc_login': {
-      ko: 'ÀÌ¹Ì ¸¸µç ÀÌ¸ŞÀÏ °èÁ¤À¸·Î ·Î±×ÀÎÇÕ´Ï´Ù',
+      ko: 'ì´ë¯¸ ë§Œë“  ì´ë©”ì¼ ê³„ì •ìœ¼ë¡œ ë¡œê·¸ì¸í•©ë‹ˆë‹¤',
       en: 'Sign in with an email account you already created'
     },
     'email_modal_title_signup': {
-      ko: 'ÀÌ¸ŞÀÏ·Î È¸¿ø°¡ÀÔ',
+      ko: 'ì´ë©”ì¼ë¡œ íšŒì›ê°€ì…',
       en: 'Create an account with email'
     },
     'email_modal_desc_signup': {
-      ko: 'ÀÌ¸ŞÀÏ°ú ´Ğ³×ÀÓÀ¸·Î ·¯ºêÆ®¸®¸¦ ½ÃÀÛÇÕ´Ï´Ù',
+      ko: 'ì´ë©”ì¼ê³¼ ë‹‰ë„¤ì„ìœ¼ë¡œ ëŸ¬ë¸ŒíŠ¸ë¦¬ë¥¼ ì‹œì‘í•©ë‹ˆë‹¤',
       en: 'Start your LoveTree with an email address and display name'
     },
 
-    // Æû ·¹ÀÌºí
+    // í¼ ë ˆì´ë¸”
     'display_name_label': {
-      ko: '´Ğ³×ÀÓ',
+      ko: 'ë‹‰ë„¤ì„',
       en: 'Display name'
     },
     'display_name_placeholder': {
-      ko: '¿¹: XG Alpha',
+      ko: 'ì˜ˆ: XG Alpha',
       en: 'e.g. XG Alpha'
     },
     'email_label': {
-      ko: 'ÀÌ¸ŞÀÏ',
+      ko: 'ì´ë©”ì¼',
       en: 'Email'
     },
     'password_label': {
-      ko: 'ºñ¹Ğ¹øÈ£',
+      ko: 'ë¹„ë°€ë²ˆí˜¸',
       en: 'Password'
     },
 
-    // ¹öÆ° ¹®±¸
+    // ë²„íŠ¼ ë¬¸êµ¬
     'login_btn': {
-      ko: '·Î±×ÀÎ',
+      ko: 'ë¡œê·¸ì¸',
       en: 'Log in'
     },
     'signup_btn': {
-      ko: 'È¸¿ø°¡ÀÔ ¿Ï·á',
+      ko: 'íšŒì›ê°€ì… ì™„ë£Œ',
       en: 'Create account'
     },
     'later': {
-      ko: '³ªÁß¿¡ ½ÃÀÛÇÏ±â',
+      ko: 'ë‚˜ì¤‘ì— ì‹œì‘í•˜ê¸°',
       en: 'Maybe later'
     },
 
-    // ÀüÈ¯ ¸µÅ©
+    // ì „í™˜ ë§í¬
     'switch_to_signup': {
-      ko: '°èÁ¤ÀÌ ¾ø³ª¿ä? È¸¿ø°¡ÀÔÀ¸·Î ÀüÈ¯',
+      ko: 'ê³„ì •ì´ ì—†ë‚˜ìš”? íšŒì›ê°€ì…ìœ¼ë¡œ ì „í™˜',
       en: 'No account? Switch to sign up'
     },
     'switch_to_login': {
-      ko: 'ÀÌ¹Ì °èÁ¤ÀÌ ÀÖ³ª¿ä? ·Î±×ÀÎÀ¸·Î ÀüÈ¯',
+      ko: 'ì´ë¯¸ ê³„ì •ì´ ìˆë‚˜ìš”? ë¡œê·¸ì¸ìœ¼ë¡œ ì „í™˜',
       en: 'Already have an account? Switch to login'
     },
 
-    // ¹èÁö (login.html .badge-group)
+    // ë°°ì§€ (login.html .badge-group)
     'badge_first_moment': {
-      ko: 'Ã¹ ¼ø°£ ±â·Ï',
+      ko: 'ì²« ìˆœê°„ ê¸°ë¡',
       en: 'First moment'
     },
     'badge_tree_grow': {
-      ko: '°¨Á¤ ³ª¹« ¼ºÀå',
+      ko: 'ê°ì • ë‚˜ë¬´ ì„±ì¥',
       en: 'Tree grows'
     },
     'badge_safe': {
-      ko: '¾ÈÀüÇÑ º¸°ü',
+      ko: 'ì•ˆì „í•œ ë³´ê´€',
       en: 'Safe storage'
+    },
+    'first_time_note': {
+      ko: 'ì²˜ìŒ ì˜¤ì…¨ë‚˜ìš”? Google ë˜ëŠ” ì´ë©”ì¼ë¡œ ê³„ì •ì„ ë§Œë“¤ ìˆ˜ ìˆì–´ìš”.',
+      en: 'New here? You can create an account with Google or email.'
     }
-  };
+  };;
 })();

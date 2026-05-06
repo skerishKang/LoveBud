@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>�α��� | ����Ʈ��</title>
+    <title>로그인 | 러브트리</title>
     <link rel="icon" href="/assets/favicon/favicon.svg" type="image/svg+xml">
     <link rel="icon" href="/favicon.ico" sizes="32x32">
     <link rel="stylesheet" href="../css/global.css?v=20260415-10">
@@ -24,16 +24,16 @@
                 <div class="login-redirect-notice-row">
                     <span class="material-symbols-outlined login-redirect-icon">lock</span>
                     <div class="login-redirect-content">
-                        <div class="login-redirect-title" data-i18n="redirect_notice_title">�� ����Ʈ���� �̿��Ϸ��� �α����� �ʿ��մϴ�</div>
-                        <div class="login-redirect-desc" data-i18n="redirect_notice_desc">�α��� �� �ڵ����� �̵��մϴ�</div>
+                        <div class="login-redirect-title" data-i18n="redirect_notice_title">내 러브트리를 이용하려면 로그인이 필요합니다</div>
+                        <div class="login-redirect-desc" data-i18n="redirect_notice_desc">로그인 후 자동으로 이동합니다</div>
                     </div>
                 </div>
             </div>
 
-            <div class="serif login-brand-title">����Ʈ��</div>
-            <h1 class="headline login-headline" data-i18n="login_title">�ٽ� ����Ʈ���� �α����ϼ���</h1>
+            <div class="serif login-brand-title">러브트리</div>
+            <h1 class="headline login-headline" data-i18n="login_title">다시 러브트리에 로그인하세요</h1>
             <p class="login-desc" data-i18n="login_desc">
-                ����� �� ������ ����Ʈ���� �̾ ������ �α����ϼ���.
+                기록해 둔 순간과 러브트리를 이어서 보려면 로그인하세요.
             </p>
 
             <button id="login-btn-google" class="login-btn-google">
@@ -43,25 +43,38 @@
                     <path fill="#FBBC05" d="M9.84,26.68c-1.56-2.92-2.4-6.08-2.4-9.48c0-3.4,0.84-6.56,2.4-9.48L3.2,12.08C1.24,16.52,0.04,21.48,0.04,26.32C0.04,31.16,1.24,36.12,3.2,40.56L9.84,26.68z"/>
                     <path fill="#EA4335" d="M19.12,12.32c4.76,0,8.24,1.92,10.04,3.56l7.24-7.16C34.76,5.92,29.32,4.8,23.72,4.8c-7.4,0-14,4.4-17.6,10.96l7.76,6.44C15.48,16.84,18.32,12.32,19.12,12.32z"/>
                 </svg>
-                <span data-i18n="google_login">Google�� �α���</span>
+                <span data-i18n="google_login">Google로 로그인</span>
             </button>
 
-            <div class="login-divider" data-i18n="or_email">�Ǵ� �̸��Ϸ� �α���</div>
+            <div class="login-divider" data-i18n="or_email">또는 이메일로 로그인</div>
 
             <button id="login-btn-email" class="btn-round btn-outline login-email-button" data-i18n="email_login">
-                �̸��Ϸ� �α���
+                이메일로 로그인
             </button>
 
             <div class="badge-group">
-                <span class="badge" data-i18n="badge_first_moment">ù ���� ���</span>
-                <span class="badge" data-i18n="badge_tree_grow">���� ���� ����</span>
-                <span class="badge" data-i18n="badge_safe">������ ����</span>
+                <span class="badge" data-i18n="badge_first_moment">첫 순간 기록</span>
+                <span class="badge" data-i18n="badge_tree_grow">감정 나무 성장</span>
+                <span class="badge" data-i18n="badge_safe">안전한 보관</span>
             </div>
 
-            <p class="login-first-time-note" data-i18n="first_time_note">ó�� ���̳���? Google �Ǵ� �̸��Ϸ� ������ ���� �� �־��.</p>
+            <p class="login-first-time-note" data-i18n="first_time_note">처음 오셨나요? Google 또는 이메일로 계정을 만들 수 있어요.</p>
 
             <a href="../index.html" class="login-later-link" data-i18n="later">
-                ���߿� �����ϱ�
+                나중에 시작하기
+            </a>
+        </div>
+    </div>
+            <div class="badge-group">
+                <span class="badge" data-i18n="badge_first_moment">첫 순간 기록</span>
+                <span class="badge" data-i18n="badge_tree_grow">감정 나무 성장</span>
+                <span class="badge" data-i18n="badge_safe">안전한 보관</span>
+            </div>
+
+            <p class="login-first-time-note" data-i18n="first_time_note">처음 오셨나요? Google 또는 이메일로 계정을 만들 수 있어요.</p>
+
+            <a href="../index.html" class="login-later-link" data-i18n="later">
+                나중에 시작하기
             </a>
         </div>
     </div>
@@ -74,37 +87,37 @@
     <!-- Email Auth Modal -->
     <div id="email-auth-modal" role="dialog" aria-modal="true" aria-labelledby="email-auth-title" aria-describedby="email-auth-helper" class="login-email-modal" style="display:none;">
     <div class="login-email-modal-card">
-    <button id="email-auth-close" aria-label="��� �ݱ�" class="login-email-close">&times;</button>
-<!-- ��� ǥ�� -->
+    <button id="email-auth-close" aria-label="모달 닫기" class="login-email-close">&times;</button>
+<!-- 모드 표시 -->
 <div id="auth-mode-badge" class="login-auth-mode-badge">
-    �α���
+    로그인
 </div>
-<h2 id="email-auth-title" class="login-email-title" data-i18n="email_modal_title_login">�̸��Ϸ� �α���</h2>
-<p id="email-auth-helper" class="login-email-helper" data-i18n="email_modal_desc_login">�̹� ���� �̸��� �������� �α����մϴ�</p>
+<h2 id="email-auth-title" class="login-email-title" data-i18n="email_modal_title_login">이메일로 로그인</h2>
+<p id="email-auth-helper" class="login-email-helper" data-i18n="email_modal_desc_login">이미 만든 이메일 계정으로 로그인합니다</p>
  <form id="email-auth-form" class="login-form" novalidate>
  <div data-auth-display-name-wrap class="login-form-group-large" style="display:none;">
-     <label for="email-auth-display-name" class="login-form-label" data-i18n="display_name_label">�г���</label>
+     <label for="email-auth-display-name" class="login-form-label" data-i18n="display_name_label">닉네임</label>
      <input
          type="text"
          id="email-auth-display-name"
          maxlength="30"
-         placeholder="��: XG Alpha"
+         placeholder="예: XG Alpha"
          data-i18n-placeholder="display_name_placeholder"
          class="login-form-input"
      >
  </div>
  <div class="login-form-group-large">
-     <label for="email-auth-email" class="login-form-label" data-i18n="email_label">�̸���</label>
+     <label for="email-auth-email" class="login-form-label" data-i18n="email_label">이메일</label>
      <input type="email" id="email-auth-email" required class="login-form-input" aria-describedby="email-auth-error">
  </div>
 <div class="login-form-group-xl">
-    <label for="email-auth-password" class="login-form-label" data-i18n="password_label">��й�ȣ</label>
+    <label for="email-auth-password" class="login-form-label" data-i18n="password_label">비밀번호</label>
     <input type="password" id="email-auth-password" required class="login-form-input" aria-describedby="email-auth-error">
 </div>
 <p id="email-auth-error" class="login-form-error" role="alert" aria-live="polite" aria-hidden="true" hidden></p>
-<button type="submit" id="email-auth-submit" class="login-submit-button login-submit-button-primary" data-i18n="login_btn">�α���</button>
+<button type="submit" id="email-auth-submit" class="login-submit-button login-submit-button-primary" data-i18n="login_btn">로그인</button>
 </form>
-<button id="email-auth-toggle" class="login-email-toggle" data-i18n="switch_to_signup">������ ������? ȸ���������� ��ȯ</button>
+<button id="email-auth-toggle" class="login-email-toggle" data-i18n="switch_to_signup">계정이 없나요? 회원가입으로 전환</button>
 </div>
 </div>
 
