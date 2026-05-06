@@ -19,18 +19,18 @@
 
     // 로그인 페이지
     'login_title': {
-      ko: '당신의 감정 나무를 시작하세요',
-      en: 'Start your emotion tree'
+      ko: '다시 러브트리에 로그인하세요',
+      en: 'Log back in to LoveTree'
     },
     'login_desc': {
-      ko: '처음 사랑에 빠진 순간부터, 팬이 되어가는 모든 경로를<br>영상과 메모로 연결해 기록하세요.',
-      en: 'From the first moment you fell in love, connect every path you become a fan of with videos and notes.'
+      ko: '기록해 둔 순간과 러브트리를 이어서 보려면 로그인하세요.',
+      en: 'Log in to continue viewing your moments and LoveTree.'
     },
 
     // 소셜 로그인
     'google_login': {
-      ko: 'Google로 계속하기',
-      en: 'Continue with Google'
+      ko: 'Google로 로그인',
+      en: 'Log in with Google'
     },
     'google_signup': {
       ko: 'Google로 계속하기',
@@ -39,12 +39,12 @@
 
     // 구분선
     'or_email': {
-      ko: '또는 이메일로 계속하기',
-      en: 'Or continue with email'
+      ko: '또는 이메일로 로그인',
+      en: 'Or log in with email'
     },
     'email_login': {
       ko: '이메일로 로그인',
-      en: 'Continue with email'
+      en: 'Log in with email'
     },
 
     // 회원가입 섹션 안내
@@ -141,6 +141,10 @@
     'badge_safe': {
       ko: '안전한 보관',
       en: 'Safe storage'
+    },
+    'first_time_note': {
+      ko: '처음 오셨나요? Google 또는 이메일로 계정을 만들 수 있어요.',
+      en: 'New here? You can create an account with Google or email.'
     }
   };
 })();
