@@ -236,8 +236,6 @@
     var deleteBtn = document.getElementById('manageDeleteBtn');
     var visibilityBtn = document.getElementById('manageVisibilityBtn');
     if (visibilityBtn) visibilityBtn.style.display = 'none';
-    if (visibilityBtn) visibilityBtn.style.display = 'none';
-    if (visibilityBtn) visibilityBtn.style.display = 'none';
 
     if (totalEl) totalEl.textContent = total;
     if (publicEl) publicEl.textContent = publicCount;
@@ -263,15 +261,10 @@
       }
     }
 
-    [openBtn, renameBtn, deleteBtn, visibilityBtn].forEach(function(btn) {
+    [openBtn, renameBtn, deleteBtn].forEach(function(btn) {
       if (btn) btn.disabled = !selectedTree;
     });
 
-    if (visibilityBtn) {
-      visibilityBtn.textContent = selectedTree
-        ? getVisibilityActionLabel(selectedTree, i18n)
-        : (i18n('myTrees.manage_visibility') || '공개 설정');
-    }
 
     if (openBtn) {
       openBtn.onclick = function() {
@@ -296,12 +289,6 @@
       };
     }
 
-    if (visibilityBtn) {
-      visibilityBtn.onclick = function() {
-        if (!selectedTree || typeof options?.onToggleVisibility !== 'function') return;
-        options.onToggleVisibility(selectedTree.id, selectedTree.visibility);
-      };
-    }
 
     summaryBar.classList.remove('manage-summary-hidden');
     summaryBar.classList.add('manage-summary-visible');
@@ -391,7 +378,7 @@
         '<span class="material-symbols-outlined" aria-hidden="true">more_vert</span>',
       '</button>',
       '<div class="tree-card-dropdown" id="' + dropdownId + '">',
-        '<div class="dropdown-item rename" data-action="rename">',
+'<div class="dropdown-item rename" data-action="rename">',
           '<span class="material-symbols-outlined" style="font-size:16px;">edit</span>',
           i18n('rename') || '이름 변경',
         '</div>',
@@ -434,7 +421,7 @@
             }
 
             var action = this.getAttribute('data-action');
-             if (action === 'rename' && typeof onRename === 'function') {
+            if (action === 'rename' && typeof onRename === 'function') {
               onRename(normalizedTree.id, title);
             } else if (action === 'delete' && typeof onDelete === 'function') {
               onDelete(normalizedTree.id, title);
@@ -619,3 +606,4 @@
   window.LoveBudMyTreesUI = api;
   window.LoveTreeMyTreesUI = api;
 })();
+

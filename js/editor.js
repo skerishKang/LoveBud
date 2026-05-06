@@ -453,14 +453,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 : safeI18nText(i18n, 'visibility_private', '비공개');
 
             visibilityToggleLabel.textContent = nextActionLabel;
-            visibilityToggleIcon.textContent = isPublic ? 'lock' : 'public';
+            visibilityToggleIcon.textContent = isPublic ? 'public' : 'lock';
             visibilityToggleBtn.setAttribute('aria-label', nextActionLabel);
             visibilityToggleBtn.setAttribute('title', nextActionLabel);
             visibilityToggleBtn.disabled = true;
             visibilityToggleBtn.dataset.idleLabel = nextActionLabel;
-            visibilityToggleBtn.dataset.loadingLabel = isPublic
-                ? safeI18nText(i18n, 'editor_visibility_loading_private', '비공개로 전환하는 중...')
-                : safeI18nText(i18n, 'editor_visibility_loading_public', '공개로 전환하는 중...');
+            visibilityToggleBtn.dataset.loadingLabel = '';
         };
 
         const updateSidebarStatus = () => {
@@ -619,7 +617,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (sidebarVisibilityToggleBtn && sidebarVisibilityToggleBtn.dataset.bound !== '1') {
             sidebarVisibilityToggleBtn.dataset.bound = '1';
             sidebarVisibilityToggleBtn.addEventListener('click', async () => {
-                if (sidebarVisibilityToggleBtn.disabled) return;
                 if (sidebarVisibilityToggleBtn.disabled) return;
                 if (!treeId) return;
                 const currentVisibility = window.currentTreeData?.visibility || 'public';
