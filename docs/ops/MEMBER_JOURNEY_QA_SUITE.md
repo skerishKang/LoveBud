@@ -7,6 +7,7 @@ Refs #841
 Refs #842
 Refs #843
 Refs #844
+Refs #846
 
 ## Purpose
 
@@ -15,6 +16,31 @@ This document defines the reusable end-to-end member journey QA suite for LoveBu
 The suite verifies the product as a real member would experience it: first visit, signup, login, first tree creation, My Trees revisit, Editor usage, public/read-only viewing, logout, re-login, screenshots, and mobile coverage.
 
 This is not a replacement for narrow PR-level checks. It is a higher-level browser verification layer used when a change can affect whether the product works as a coherent user journey.
+
+## Persona-first execution model
+
+Before choosing journeys, select a persona from [MEMBER_JOURNEY_PERSONAS.md](MEMBER_JOURNEY_PERSONAS.md).
+
+Use this order for runtime-sensitive QA:
+
+```text
+persona -> journey -> issue/PR verification -> report
+```
+
+The persona answers who is using LoveBud and why. The journey answers which route and behavior must be verified. The issue/PR defines the exact implementation risk.
+
+Every runtime-sensitive browser verification report should include:
+
+```text
+Persona selected:
+Journey selected:
+Why this persona applies:
+Target URL:
+Expected head SHA:
+Deployed SHA:
+SHA match:
+Final status:
+```
 
 ## Verification target policy
 
@@ -76,6 +102,15 @@ Do not repeatedly create throwaway production accounts or persistent production 
 
 Use when a PR or issue can affect signup, login, logout, session persistence, protected routes, or shared header auth state.
 
+Typical personas:
+
+```text
+PERSONA_A_FIRST_TIME_CREATOR
+PERSONA_B_RETURNING_OWNER smoke
+PERSONA_D_MOBILE_CASUAL smoke
+PERSONA_E_INTERRUPTED_USER smoke
+```
+
 Required scenario:
 
 1. Visit the target as a logged-out user.
@@ -94,6 +129,7 @@ Report template:
 ```text
 AUTH_SIGNUP_LOGIN_JOURNEY
 Target:
+- Persona:
 - URL:
 - Expected head SHA:
 - Deployed SHA:
@@ -130,6 +166,13 @@ AUTH_STATE_CONSISTENT
 
 Use when a PR or issue can affect first-time creation, first moment entry, save behavior, My Trees reflection, or Editor/detail persistence.
 
+Typical personas:
+
+```text
+PERSONA_A_FIRST_TIME_CREATOR
+PERSONA_D_MOBILE_CASUAL smoke
+```
+
 Required scenario:
 
 1. Start from a logged-in test account on a fixed test slot.
@@ -148,6 +191,7 @@ Report template:
 ```text
 FIRST_TREE_CREATION_JOURNEY
 Target:
+- Persona:
 - URL:
 - Expected head SHA:
 - Deployed SHA:
@@ -183,6 +227,13 @@ PERSISTENCE_CONFIRMED
 
 Use when a PR or issue can affect My Trees, owned tree cards, card opening, loading/empty/error states, or account-gated rendering.
 
+Typical personas:
+
+```text
+PERSONA_B_RETURNING_OWNER
+PERSONA_D_MOBILE_CASUAL smoke
+```
+
 Required scenario:
 
 1. Log in with an approved test account that has at least one saved tree.
@@ -200,6 +251,7 @@ Report template:
 ```text
 MY_TREES_RETURNING_USER_JOURNEY
 Target:
+- Persona:
 - URL:
 - Expected head SHA:
 - Deployed SHA:
@@ -236,6 +288,14 @@ REFRESH_STABLE
 
 Use when a PR or issue can affect Editor canvas load, node selection, detail panel updates, add/edit/cancel/save behavior, or persistence.
 
+Typical personas:
+
+```text
+PERSONA_B_RETURNING_OWNER
+PERSONA_D_MOBILE_CASUAL smoke
+PERSONA_E_INTERRUPTED_USER smoke
+```
+
 Required scenario:
 
 1. Log in with an approved test account.
@@ -256,6 +316,7 @@ Report template:
 ```text
 EDITOR_MOMENT_EDITING_JOURNEY
 Target:
+- Persona:
 - URL:
 - Expected head SHA:
 - Deployed SHA:
@@ -295,6 +356,13 @@ PERSISTENCE_CONFIRMED
 
 Use when a PR or issue can affect public/read-only LoveTree viewing, public/private boundaries, public viewer node selection, or read-only moment details.
 
+Typical personas:
+
+```text
+PERSONA_C_PUBLIC_VIEWER
+PERSONA_D_MOBILE_CASUAL smoke
+```
+
 Required scenario:
 
 1. Prepare or identify a public/read-only test tree through an approved fixed-slot path.
@@ -313,6 +381,7 @@ Report template:
 ```text
 PUBLIC_VIEWER_READONLY_JOURNEY
 Target:
+- Persona:
 - URL:
 - Expected head SHA:
 - Deployed SHA:
@@ -349,6 +418,14 @@ COMMENT_LAYER_NOT_IMPLEMENTED
 ## 6. MOBILE_375_FULL_JOURNEY
 
 Use when a PR or issue can affect mobile layouts, header/menu behavior, forms, cards, Editor panels, public viewer, or fixed-position UI.
+
+Typical personas:
+
+```text
+PERSONA_D_MOBILE_CASUAL
+PERSONA_A_FIRST_TIME_CREATOR when onboarding is in scope
+PERSONA_C_PUBLIC_VIEWER when public viewer mobile is in scope
+```
 
 Minimum baseline:
 
@@ -392,6 +469,13 @@ MOBILE_EDITOR_USABLE
 
 Use with Auth and protected-page PRs.
 
+Typical personas:
+
+```text
+PERSONA_B_RETURNING_OWNER
+PERSONA_E_INTERRUPTED_USER
+```
+
 Required scenario:
 
 1. Log in.
@@ -415,6 +499,14 @@ HEADER_PAGE_AUTH_MATCH
 ## 8. ERROR_RECOVERY_JOURNEY
 
 Use when a PR or issue can affect loading, empty, degraded, failed, or back/close states.
+
+Typical personas:
+
+```text
+PERSONA_E_INTERRUPTED_USER
+PERSONA_A_FIRST_TIME_CREATOR smoke
+PERSONA_C_PUBLIC_VIEWER smoke
+```
 
 Required checks:
 
@@ -442,30 +534,36 @@ Use this mapping when deciding which journeys a future PR needs.
 
 ```text
 Auth PR:
+- Persona A or B depending on signup vs returning-user scope
 - AUTH_SIGNUP_LOGIN_JOURNEY required
 - LOGOUT_AND_PROTECTED_ROUTE_JOURNEY required
 - MOBILE_375_FULL_JOURNEY smoke when UI-visible
 
 My Trees PR:
+- Persona B required
 - MY_TREES_RETURNING_USER_JOURNEY required
 - AUTH_SIGNUP_LOGIN_JOURNEY smoke when auth-gated rendering is touched
 - MOBILE_375_FULL_JOURNEY required when card/layout changes
 
 Editor PR:
+- Persona B required
 - EDITOR_MOMENT_EDITING_JOURNEY required
 - FIRST_TREE_CREATION_JOURNEY smoke when first-create or persistence is touched
 - MOBILE_375_FULL_JOURNEY required for canvas/panel/form changes
 
 Public viewer PR:
+- Persona C required
 - PUBLIC_VIEWER_READONLY_JOURNEY required
 - MOBILE_375_FULL_JOURNEY required for viewer/panel changes
 - ERROR_RECOVERY_JOURNEY when loading/degraded states are touched
 
 Browse/Search PR:
+- Persona C when routes into public viewing are touched
 - Relevant Browse/Search-specific checklist plus PUBLIC_VIEWER_READONLY_JOURNEY smoke when routes into public viewing are touched
 - MOBILE_375_FULL_JOURNEY required when cards/hub/layout changes
 
 Docs-only PR:
+- Persona N/A unless the document claims runtime verification results
 - Browser journey not required unless the document claims runtime verification results
 ```
 
