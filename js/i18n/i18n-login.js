@@ -171,7 +171,25 @@
     'already_have_account': {
       ko: '이미 계정이 있나요? 로그인하기',
       en: 'Already have an account? Log in'
-    }
+    },
 
+
+    // 로그인/회원가입 간 이동 링크
+    'first_time_question': {
+      ko: '처음 오셨나요?',
+      en: 'New here?'
+    },
+    'signup_link_label': {
+      ko: '회원가입하기',
+      en: 'Sign up'
+    },
+    'already_have_account_question': {
+      ko: '이미 계정이 있나요?',
+      en: 'Already have an account?'
+    },
+    'login_link_label': {
+      ko: '로그인하기',
+      en: 'Log in'
+    }
   };
 })();
