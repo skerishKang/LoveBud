@@ -6,6 +6,7 @@ const vm = require('node:vm');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const AUTH_POLICY_PATH = path.join(ROOT, 'js', 'api', 'auth-policy.js');
+const BASE_API_FETCH_PATH = path.join(ROOT, 'js', 'api', 'base-api-fetch.js');
 const PUBLIC_TREE_ADAPTER_PATH = path.join(ROOT, 'js', 'api', 'public-tree-adapter.js');
 const POSTGRES_CLIENT_PATH = path.join(ROOT, 'js', 'postgres-client.js');
 
@@ -106,4 +107,73 @@ test('community endpoints stay outside auth-required classification', () => {
   assert.equal(internals.endpointLikelyRequiresAuth('/community/memories'), false);
   assert.equal(internals.endpointLikelyRequiresAuth('/trees'), true);
   assert.equal(internals.endpointLikelyRequiresAuth('/memories'), true);
+});
+
+test('auth headers wait for currentUser when confirmed cache exists', async () => {
+  const localStorageState = new Map([
+    ['lovebud_auth_confirmed', 'true'],
+    ['lovebud_auth_cache', JSON.stringify({ uid: 'test-user' })],
+  ]);
+  const localStorageMock = {
+    getItem(key) {
+      return localStorageState.has(key) ? localStorageState.get(key) : null;
+    },
+    setItem(key, value) {
+      localStorageState.set(key, String(value));
+    },
+    removeItem(key) {
+      localStorageState.delete(key);
+    },
+  };
+  const authUser = {
+    uid: 'test-user',
+    getIdTokenResult: async () => ({
+      token: 'test-token',
+      expirationTime: new Date(Date.now() + 60000).toISOString(),
+    }),
+  };
+  let authReadCount = 0;
+  const firebaseMock = {
+    auth: () => ({
+      get currentUser() {
+        authReadCount += 1;
+        return authReadCount === 1 ? null : authUser;
+      },
+    }),
+  };
+
+  const sandbox = {
+    window: {
+      __LOVEBUD_AUTH_WAIT_MS: 200,
+      __lovebudAuthReady: true,
+      LoveBudAuthBootstrap: {
+        getSnapshot: () => ({ ready: true, user: null }),
+        whenReady: () => Promise.resolve(null),
+      },
+      localStorage: localStorageMock,
+      firebase: firebaseMock,
+      LoveBudAuthState: null,
+    },
+    localStorage: localStorageMock,
+    firebase: firebaseMock,
+    console,
+    setTimeout,
+    clearTimeout,
+    CustomEvent: function CustomEvent(type, init) {
+      this.type = type;
+      this.detail = init && init.detail;
+    },
+  };
+
+  vm.createContext(sandbox);
+  vm.runInContext(fs.readFileSync(AUTH_POLICY_PATH, 'utf8'), sandbox, { filename: AUTH_POLICY_PATH });
+  vm.runInContext(fs.readFileSync(BASE_API_FETCH_PATH, 'utf8'), sandbox, { filename: BASE_API_FETCH_PATH });
+
+  const headers = await sandbox.window.LoveTreeBaseApiFetch.getAuthHeaders({
+    forceLongWait: true,
+    requireAuth: true,
+  });
+
+  assert.equal(headers.Authorization, 'Bearer test-token');
+  assert.ok(authReadCount > 1);
 });
