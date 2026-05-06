@@ -321,5 +321,5 @@
         renderShareButton: renderShareButton
     };
 
-    console.log('[LoveBudSearchPreviewBuilders] Preview builder helpers loaded v20260505-1');
+    console.log('[LoveBudSearchPreviewBuilders] Preview builder helpers loaded v20260506-1');
 })();
