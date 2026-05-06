@@ -133,23 +133,9 @@
         `;
     }
 
-    function renderShareButton(tree) {
-        const helper = window.LoveBudSearchPreviewActionHelper;
-        if (helper?.renderShareButton) {
-            return helper.renderShareButton(tree);
-        }
-        if (!tree?.id) return '';
-        const label = getSearchCopy(
-            'search.previewShareLink',
-            '감상 링크 복사',
-            'Copy view link'
-        );
-        return `
-            <button type="button" data-share-tree-link="${escapeHtml(tree.id)}" class="btn-round preview-share-action" style="width:100%;margin-top:12px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;gap:6px;background:var(--surface-container);color:var(--on-surface-variant);border:1px solid var(--outline-variant);">
-                <span class="material-symbols-outlined" style="font-size:16px;">link</span>
-                <span data-share-tree-link-label>${escapeHtml(label)}</span>
-            </button>
-        `;
+    const renderShareButton = previewBuilders.renderShareButton || function(tree) {
+        if (!(tree && tree.id)) return '';
+        return '<button type="button" data-share-tree-link="' + escapeHtml(tree.id) + '">' + escapeHtml(getSearchCopy('search.previewShareLink', '감상 링크 복사', 'Copy view link')) + '</button>';
     }
 
     const VISIBLE_FLOW_MOMENT_COUNT = 4;
@@ -278,88 +264,12 @@
 
     const getDefaultTreeName = previewBuilders.getDefaultTreeName || function() { return '러브트리'; };
 
-    function getPreviewTimeRange(tree) {
-        const raw = String(tree?.timeRange || '').trim();
-        const missingRangeLabels = [
-            '기록 없음',
-            'no records',
-            'no record',
-            'unknown',
-            'n/a',
-            getSearchCopy('search.previewUnknownRange', '아직 흐름이 또렷하지 않아요', 'The flow is not clear yet')
-        ].map(label => String(label || '').trim().toLowerCase()).filter(Boolean);
-
-        if (!raw) {
-            return '';
-        }
-
-        return missingRangeLabels.includes(raw.toLowerCase()) ? '' : raw;
+    const getPreviewTimeRange = previewBuilders.getPreviewTimeRange || function(tree) {
+        return String(tree && tree.timeRange ? tree.timeRange : '').trim();
     }
 
-    function getPreviewSummaryCopy(tree, memories) {
-        const titleHelper = getSearchTitleHelper();
-        const displayTitle = titleHelper?.getBrowseDisplayTitle
-            ? titleHelper.getBrowseDisplayTitle(tree)
-            : (String(tree?.title || '').trim() || getDefaultTreeName());
-        const themeLabel = titleHelper?.getThemeLabel
-            ? titleHelper.getThemeLabel(tree)
-            : '';
-        const timeRange = getPreviewTimeRange(tree);
-        const memoryCount = Number(tree?.memoryCount || 0);
-        const safeTitle = escapeHtml(displayTitle);
-        const safeTheme = escapeHtml(themeLabel);
-        const safeRange = escapeHtml(timeRange);
-
-        if (!memories.length) {
-            if (themeLabel) {
-                return formatSearchCopy(
-                    'search.previewSummaryThemeStart',
-                    { title: safeTitle, theme: safeTheme },
-                    '<strong style="color:var(--on-surface);">{title}</strong>는 <strong style="color:var(--on-surface);">{theme}</strong>와 함께 막 시작된 공개 러브트리예요.',
-                    '<strong style="color:var(--on-surface);">{title}</strong> is a public LoveTree that has just begun with <strong style="color:var(--on-surface);">{theme}</strong>.'
-                );
-            }
-            return formatSearchCopy(
-                'search.previewSummaryStart',
-                { title: safeTitle },
-                '<strong style="color:var(--on-surface);">{title}</strong>는 이제 막 시작된 공개 러브트리예요.',
-                '<strong style="color:var(--on-surface);">{title}</strong> is a newly started public LoveTree.'
-            );
-        }
-
-        if (!timeRange) {
-            if (themeLabel) {
-                return formatSearchCopy(
-                    'search.previewSummaryThemeNoRange',
-                    { theme: safeTheme, count: memoryCount },
-                    '<strong style="color:var(--on-surface);">{theme}</strong>와 함께한 <span style="color:var(--primary);font-weight:700;">{count}개의 순간</span>이 이어졌어요.',
-                    '<strong style="color:var(--on-surface);">{count} moments</strong> with <strong style="color:var(--on-surface);">{theme}</strong> are connected.'
-                );
-            }
-
-            return formatSearchCopy(
-                'search.previewSummaryNoRange',
-                { title: safeTitle, count: memoryCount },
-                '<strong style="color:var(--on-surface);">{title}</strong>에 담긴 <span style="color:var(--primary);font-weight:700;">{count}개의 순간</span>이 이어졌어요.',
-                '<strong style="color:var(--on-surface);">{count} moments</strong> in <strong style="color:var(--on-surface);">{title}</strong> are connected.'
-            );
-        }
-
-        if (themeLabel) {
-            return formatSearchCopy(
-                'search.previewSummaryThemeRange',
-                { theme: safeTheme, count: memoryCount, range: safeRange },
-                '<strong style="color:var(--on-surface);">{theme}</strong>와 함께한 <span style="color:var(--primary);font-weight:700;">{count}개의 순간</span>이 <strong>{range}</strong>에 걸쳐 이어졌어요.',
-                '<strong style="color:var(--on-surface);">{count} moments</strong> with <strong style="color:var(--on-surface);">{theme}</strong> continued across <strong>{range}</strong>.'
-            );
-        }
-
-        return formatSearchCopy(
-            'search.previewSummaryRange',
-            { title: safeTitle, count: memoryCount, range: safeRange },
-            '<strong style="color:var(--on-surface);">{title}</strong>에 담긴 <span style="color:var(--primary);font-weight:700;">{count}개의 순간</span>이 <strong>{range}</strong>에 걸쳐 이어졌어요.',
-            '<strong style="color:var(--on-surface);">{count} moments</strong> in <strong style="color:var(--on-surface);">{title}</strong> continued across <strong>{range}</strong>.'
-        );
+    const getPreviewSummaryCopy = previewBuilders.getPreviewSummaryCopy || function(tree, memories) {
+        return '';
     }
 
     const renderSectionHeading = previewBuilders.renderSectionHeading || function(icon, label) { return ''; };
@@ -618,24 +528,11 @@
         }
     }
 
-    function renderPlaceholder() {
-        const lead = getSearchCopy(
-            'search.previewEmptyLead',
-            '트리를 고르면',
-            'When you choose a tree,'
-        );
-        const body = getSearchCopy(
-            'search.previewEmptyBody',
-            '대표 순간과 이어진 감정이 이곳에 열립니다.',
-            'the featured moment and connected feelings open here.'
-        );
-
-        return `
-            <div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--on-surface-variant);font-size:14px;text-align:center;padding:20px;">
-                <p style="margin:0 0 8px;">${escapeHtml(lead)}</p>
-                <p style="margin:0;line-height:1.5;">${escapeHtml(body)}</p>
-            </div>
-        `;
+    const renderPlaceholder = previewBuilders.renderPlaceholder || function() {
+        return '<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--on-surface-variant);font-size:14px;text-align:center;padding:20px;">' +
+            '<p>' + escapeHtml(getSearchCopy('search.previewEmptyLead', '트리를 고르면', 'When you choose a tree,')) + '</p>' +
+            '<p>' + escapeHtml(getSearchCopy('search.previewEmptyBody', '대표 순간과 이어진 감정이 이곳에 열립니다.', 'the featured moment and connected feelings open here.')) + '</p>' +
+            '</div>';
     }
 
     function resetPreview() {
