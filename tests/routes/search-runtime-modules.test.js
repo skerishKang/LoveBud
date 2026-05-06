@@ -62,7 +62,6 @@ test('search UI module implements card accessibility and event delegation', () =
 });
 
 test('search preview summary omits range phrase for missing time range labels', () => {
-  const previewBuilders = read('js/search/search-preview-renderer-builders.js');
   const previewRenderer = read('js/search/search-preview-renderer.js');
   const previewBuilders = read('js/search/search-preview-renderer-builders.js');
   const i18nSearch = read('js/i18n/i18n-search.js');
