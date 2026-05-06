@@ -31,94 +31,69 @@ function createEditorDetailUI(deps) {
         return text;
     };
 
-    const createInlineIcon = (name, size = '12px') => {
-        const icon = document.createElement('span');
-        icon.className = 'material-symbols-outlined';
-        icon.style.fontSize = size;
-        icon.textContent = name;
-        return icon;
-    };
+    const createEditorDetailUIBuilders = window.createEditorDetailUIBuilders || function({ formatI18nText }) {
+        const createInlineIcon = (name, size = '12px') => {
+            const icon = document.createElement('span');
+            icon.className = 'material-symbols-outlined';
+            icon.style.fontSize = size;
+            icon.textContent = name;
+            return icon;
+        };
 
-    // ── Tree meta boundary helpers ───────────────────────────────────────────
-    // Responsible: derive visibility metadata, build count label, create share/open buttons,
-    // and render the tree meta block into the mount point. Kept separate from detail content rendering.
-    const buildTreeMetaRenderModel = ({
-        currentTree,
-        treeState,
-        data,
-        isEmptyState,
-        isRootSelected,
-        localSaveMode,
-        resolveTreeTitleText,
-        formatI18nText,
-        createShareTreeButton,
-        createOpenDetailButton,
-        bindShareButton,
-        bindOpenDetailButton,
-        createTreeMetaBlock
-    }) => {
-        const visibility = currentTree.visibility || 'public';
-        const isPublic = visibility === 'public';
-        const visIcon = isPublic ? 'public' : 'lock';
-        const visLabel = isPublic ? i18n('visibility_public') : i18n('visibility_private');
-        const visInfo = isPublic
-            ? formatI18nText('editor_tree_public_info', '이 트리 전체가 공개되어 있어요. 링크가 있는 사람은 감상할 수 있습니다.')
-            : formatI18nText('editor_tree_private_info', '이 트리 전체는 비공개예요. 지금은 나만 볼 수 있습니다.');
-        const displayTreeTitle = resolveTreeTitleText(currentTree.title);
-        const localBadgeText = localSaveMode ? (i18n('local_save_badge') || '로컬 저장') : '';
-        const countForLabel = treeState.totalMomentCount;
-        const treeCountLabel = treeState.hasMoments
-            ? formatI18nText('editor_tree_status_count', `{count}개의 순간이 이 트리 안에서 이어지고 있어요.`, { count: countForLabel })
-            : formatI18nText('editor_tree_status_empty', '아직 첫 순간을 기다리고 있어요.');
+        const getDisplayEmotionTags = (data, options = {}) => {
+            const opts = options || {};
+            const isRootSelected = !!opts.isRootSelected;
+            const isEmptyState = !!opts.isEmptyState;
+            const rawTags = Array.isArray(data?.emotionTags) ? data.emotionTags.filter(Boolean) : [];
+            const normalizedTags = rawTags.map((tag) => {
+                const trimmed = String(tag || '').trim();
+                if (!trimmed) return '';
+                if (trimmed === '기록') {
+                    return formatI18nText('editor_root_emotion_tag', '첫 마음');
+                }
+                return trimmed;
+            }).filter(Boolean);
 
-        let shareBtn = null;
-        let openDetailBtn = null;
-        if (!isEmptyState && data?.id) {
-            shareBtn = createShareTreeButton();
-            openDetailBtn = createOpenDetailButton();
-        }
+            if (normalizedTags.length > 0) return normalizedTags;
+            if (!isEmptyState && isRootSelected) return [formatI18nText('editor_root_emotion_tag', '첫 마음')];
+            return [];
+        };
+
+        const getMemoFallbackText = (options = {}) => {
+            const opts = options || {};
+            if (opts.isEmptyState) {
+                return formatI18nText('empty_tree_memo', '아직 비어 있는 자리예요. 첫 순간을 심으면 이 트리가 당신의 흐름으로 자라나기 시작해요.');
+            }
+            if (opts.isRootSelected) {
+                return formatI18nText('editor_root_memo_fallback', '이 장면이 왜 시작이 되었는지 남겨두면, 다음 순간들이 더 자연스럽게 이어져요.');
+            }
+            return formatI18nText('editor_selected_memo_fallback', '이 순간의 마음을 한 줄 남겨두면, 이어진 흐름을 다시 떠올리기 쉬워져요.');
+        };
 
         return {
-            displayTreeTitle,
-            visIcon,
-            visLabel,
-            visInfo,
-            isPublic,
-            countLabel: localBadgeText ? `${treeCountLabel} · ${localBadgeText}` : treeCountLabel,
-            shareButtonEl: shareBtn,
-            openDetailButtonEl: openDetailBtn,
-            shareBtn,
-            openDetailBtn
+            createInlineIcon,
+            getDisplayEmotionTags,
+            getMemoFallbackText
         };
     };
+    const {
+        createInlineIcon,
+        getDisplayEmotionTags,
+        getMemoFallbackText
+    } = createEditorDetailUIBuilders({ formatI18nText });
 
-    const renderTreeMetaBoundary = (treeMetaMount, model, treeId, data, { i18n, showToast, bindShareButton, bindOpenDetailButton }) => {
-        if (!treeMetaMount) return;
-
-        treeMetaMount.innerHTML = '';
-        treeMetaMount.appendChild(createTreeMetaBlock({
-            displayTreeTitle: model.displayTreeTitle,
-            visIcon: model.visIcon,
-            visLabel: model.visLabel,
-            visInfo: model.visInfo,
-            isPublic: model.isPublic,
-            countLabel: model.countLabel,
-            shareButtonEl: model.shareButtonEl,
-            openDetailButtonEl: model.openDetailButtonEl
-        }));
-
-        if (model.shareBtn) {
-            bindShareButton({
-                btn: model.shareBtn,
-                data,
-                treeId,
-                i18n,
-                showToast
-            });
-        }
-        bindOpenDetailButton(model.openDetailBtn);
-    };
-    // ──────────────────────────────────────────────────────────────────────────
+    // ── Tree meta boundary integration ───────────────────────────────────────
+    // Use extracted helper from PR #664 for tree meta boundary
+    const treeMetaBoundary = window.createEditorDetailTreeMetaBoundary({
+        i18n,
+        formatI18nText,
+        resolveTreeTitleText,
+        createInlineIcon,
+        showToast,
+        openCurrentMomentDetail
+    });
+    const { buildTreeMetaRenderModel, renderTreeMetaBoundary } = treeMetaBoundary;
+    // ──────────────────────────────────────────────────────────────────
 
     const getTreeState = () => {
         const canonicalRootId = getCanonicalRootId();
@@ -140,227 +115,18 @@ function createEditorDetailUI(deps) {
         };
     };
 
-    const getDisplayEmotionTags = (data, options = {}) => {
-        const opts = options || {};
-        const isRootSelected = !!opts.isRootSelected;
-        const isEmptyState = !!opts.isEmptyState;
-        const rawTags = Array.isArray(data?.emotionTags) ? data.emotionTags.filter(Boolean) : [];
-        const normalizedTags = rawTags.map((tag) => {
-            const trimmed = String(tag || '').trim();
-            if (!trimmed) return '';
-            if (trimmed === '기록') {
-                return formatI18nText('editor_root_emotion_tag', '첫 마음');
-            }
-            return trimmed;
-        }).filter(Boolean);
-
-        if (normalizedTags.length > 0) return normalizedTags;
-        if (!isEmptyState && isRootSelected) return [formatI18nText('editor_root_emotion_tag', '첫 마음')];
-        return [];
-    };
-
-    const getMemoFallbackText = (options = {}) => {
-        const opts = options || {};
-        if (opts.isEmptyState) {
-            return formatI18nText('empty_tree_memo', '아직 비어 있는 자리예요. 첫 순간을 심으면 이 트리가 당신의 흐름으로 자라나기 시작해요.');
-        }
-        if (opts.isRootSelected) {
-            return formatI18nText('editor_root_memo_fallback', '이 장면이 왜 시작이 되었는지 남겨두면, 다음 순간들이 더 자연스럽게 이어져요.');
-        }
-        return formatI18nText('editor_selected_memo_fallback', '이 순간의 마음을 한 줄 남겨두면, 이어진 흐름을 다시 떠올리기 쉬워져요.');
-    };
-
-    const createPillButton = ({ label, icon, tone = 'soft' }) => {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.style.display = 'inline-flex';
-        btn.style.alignItems = 'center';
-        btn.style.justifyContent = 'center';
-        btn.style.gap = '6px';
-        btn.style.minHeight = '38px';
-        btn.style.padding = tone === 'primary' ? '10px 15px' : '9px 13px';
-        btn.style.borderRadius = '999px';
-        btn.style.fontSize = '12px';
-        btn.style.fontWeight = '800';
-        btn.style.cursor = 'pointer';
-        btn.style.transition = 'transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, border-color 0.18s ease';
-        btn.style.border = '1px solid rgba(144,73,81,0.10)';
-        btn.style.boxShadow = tone === 'primary'
-            ? '0 10px 22px rgba(144, 73, 81, 0.18)'
-            : '0 6px 16px rgba(75, 64, 57, 0.06)';
-        btn.style.background = tone === 'primary'
-            ? 'linear-gradient(180deg, rgba(144,73,81,0.98), rgba(144,73,81,0.90))'
-            : 'linear-gradient(180deg, rgba(255,255,255,0.98), rgba(247,242,239,0.96))';
-        btn.style.color = tone === 'primary'
-            ? '#fff'
-            : tone === 'ghost'
-                ? 'var(--on-surface-variant)'
-                : 'var(--primary)';
-
-        if (tone === 'ghost') {
-            btn.style.background = 'rgba(255,255,255,0.72)';
-            btn.style.borderColor = 'rgba(144,73,81,0.08)';
-        }
-
-        if (icon) btn.appendChild(createInlineIcon(icon, '14px'));
-        btn.appendChild(document.createTextNode(label));
-
-        btn.addEventListener('mouseenter', () => {
-            btn.style.transform = 'translateY(-1px)';
-        });
-        btn.addEventListener('mouseleave', () => {
-            btn.style.transform = 'translateY(0)';
-        });
-
-        return btn;
-    };
-
-    const createShareTreeButton = () => createPillButton({
-        label: formatI18nText('share_link', '링크 복사'),
-        icon: 'content_copy',
-        tone: 'soft'
+    // ── Inline edit boundary integration ───────────────────────────────────────
+    // Use extracted helper for title/memo edit boundaries
+    const inlineEditHelper = window.createEditorDetailInlineEditBoundary({
+        updateSelectedMemoryFields,
+        showToast,
+        formatI18nText,
+        i18n,
+        getMemoFallbackText
     });
-
-    const createOpenDetailButton = () => createPillButton({
-        label: formatI18nText('editor_open_detail', '상세로 보기'),
-        icon: 'open_in_new',
-        tone: 'ghost'
-    });
-
-    const bindShareButton = ({ btn, data, treeId, i18n, showToast }) => {
-        if (!btn || !data?.id) return;
-        if (btn.dataset.shareBound === '1') return;
-        btn.dataset.shareBound = '1';
-
-        const basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
-
-        btn.addEventListener('click', () => {
-            const shareUrl = window.location.origin + '/' + basePath + 'detail.html?id=' + data.id + '&tree=' + treeId;
-            navigator.clipboard?.writeText(shareUrl).then(() => {
-                showToast(i18n('copied_link') || '링크가 복사되었습니다', 'success');
-            }).catch(() => {
-                showToast(i18n('copy_link_failed') || '링크 복사에 실패했습니다', 'error');
-            });
-        });
-    };
-
-    const bindOpenDetailButton = (btn) => {
-        if (!btn || typeof openCurrentMomentDetail !== 'function') return;
-        if (btn.dataset.openDetailBound === '1') return;
-        btn.dataset.openDetailBound = '1';
-        btn.addEventListener('click', () => {
-            openCurrentMomentDetail();
-        });
-    };
-
-    const createTreeMetaBlock = ({
-        displayTreeTitle,
-        visIcon,
-        visLabel,
-        visInfo,
-        isPublic,
-        countLabel,
-        shareButtonEl = null,
-        openDetailButtonEl = null
-    }) => {
-        const wrap = document.createElement('div');
-        wrap.style.padding = '20px 20px 18px';
-        wrap.style.borderRadius = '22px';
-        wrap.style.background = 'linear-gradient(180deg, rgba(255,255,255,0.99), rgba(250,246,244,0.97))';
-        wrap.style.boxShadow = '0 14px 30px rgba(75, 64, 57, 0.08)';
-        wrap.style.border = '1px solid rgba(144,73,81,0.10)';
-        wrap.style.display = 'flex';
-        wrap.style.flexDirection = 'column';
-        wrap.style.gap = '14px';
-
-        const topRow = document.createElement('div');
-        topRow.style.display = 'flex';
-        topRow.style.alignItems = 'flex-start';
-        topRow.style.justifyContent = 'space-between';
-        topRow.style.gap = '12px';
-        topRow.style.flexWrap = 'wrap';
-
-        const titleWrap = document.createElement('div');
-        titleWrap.style.display = 'flex';
-        titleWrap.style.flexDirection = 'column';
-        titleWrap.style.gap = '8px';
-        titleWrap.style.flex = '1 1 220px';
-
-        const eyebrow = document.createElement('div');
-        eyebrow.textContent = formatI18nText('current_tree', '현재 트리');
-        eyebrow.style.fontSize = '11px';
-        eyebrow.style.fontWeight = '800';
-        eyebrow.style.letterSpacing = '.08em';
-        eyebrow.style.textTransform = 'uppercase';
-        eyebrow.style.color = 'var(--on-surface-variant)';
-        titleWrap.appendChild(eyebrow);
-
-        const title = document.createElement('div');
-        title.textContent = displayTreeTitle;
-        title.style.fontSize = '24px';
-        title.style.fontWeight = '900';
-        title.style.color = 'var(--on-surface)';
-        title.style.lineHeight = '1.24';
-        title.style.letterSpacing = '-0.04em';
-        titleWrap.appendChild(title);
-
-        const count = document.createElement('div');
-        count.textContent = countLabel;
-        count.style.fontSize = '12px';
-        count.style.color = 'var(--on-surface-variant)';
-        count.style.lineHeight = '1.75';
-        titleWrap.appendChild(count);
-
-        const visBadge = document.createElement('span');
-        visBadge.style.padding = '6px 11px';
-        visBadge.style.borderRadius = '999px';
-        visBadge.style.display = 'inline-flex';
-        visBadge.style.alignItems = 'center';
-        visBadge.style.gap = '5px';
-        visBadge.style.fontSize = '12px';
-        visBadge.style.fontWeight = '700';
-        visBadge.style.boxShadow = '0 4px 12px rgba(75,64,57,0.05)';
-        if (isPublic) {
-            visBadge.style.background = 'rgba(76,175,80,0.1)';
-            visBadge.style.color = '#4caf50';
-            visBadge.style.border = '1px solid rgba(76,175,80,0.25)';
-        } else {
-            visBadge.style.background = 'rgba(158,158,158,0.1)';
-            visBadge.style.color = '#757575';
-            visBadge.style.border = '1px solid rgba(158,158,158,0.25)';
-        }
-        visBadge.appendChild(createInlineIcon(visIcon, '12px'));
-        visBadge.appendChild(document.createTextNode(visLabel));
-
-        topRow.appendChild(titleWrap);
-        topRow.appendChild(visBadge);
-        wrap.appendChild(topRow);
-
-        if (visInfo) {
-            const info = document.createElement('div');
-            info.textContent = visInfo;
-            info.style.fontSize = '12px';
-            info.style.color = 'var(--on-surface-variant)';
-            info.style.lineHeight = '1.75';
-            wrap.appendChild(info);
-        }
-
-        const actionsRow = document.createElement('div');
-        actionsRow.style.display = 'flex';
-        actionsRow.style.alignItems = 'center';
-        actionsRow.style.gap = '8px';
-        actionsRow.style.flexWrap = 'wrap';
-        actionsRow.style.paddingTop = '2px';
-
-        if (shareButtonEl) actionsRow.appendChild(shareButtonEl);
-        if (openDetailButtonEl) actionsRow.appendChild(openDetailButtonEl);
-
-        if (actionsRow.children.length > 0) {
-            wrap.appendChild(actionsRow);
-        }
-
-        return wrap;
-    };
+    const createTitleEditBoundary = inlineEditHelper.createTitleEditBoundary;
+    const createMemoEditBoundary = inlineEditHelper.createMemoEditBoundary;
+    // ──────────────────────────────────────────────────────────────────────────
 
     const resetDetailViewState = () => {
         const headerEl = detailPanel.querySelector('h3');
@@ -455,70 +221,45 @@ function createEditorDetailUI(deps) {
         btn.classList.toggle('is-disabled', !hasSelection);
     };
 
-    const updateSidebarStatus = () => {
-        const treeTitleEl = document.getElementById('sidebarTreeTitle');
-        const visibilityEl = document.getElementById('sidebarTreeVisibility');
-        const momentCountEl = document.getElementById('sidebarMomentCount');
-        const flowSummaryEl = document.getElementById('sidebarFlowSummary');
-        const hintEl = document.getElementById('sidebarSelectionHint');
-        const currentTreeData = getCurrentTreeData();
-        const selectedNodeId = getSelectedNodeId();
-        const treeState = getTreeState();
-        const count = treeState.visibleMomentCount;
-        const selected = treeState.treeMemories.find(m => m.id === selectedNodeId);
-        const visibility = currentTreeData?.visibility || 'public';
-        const isPublic = visibility === 'public';
+    const sidebarStatusBoundary = window.createEditorDetailSidebarStatusBoundary({
+        i18n,
+        formatI18nText,
+        resolveTreeTitleText,
+        getCurrentTreeData,
+        getSelectedNodeId,
+        getTreeState
+    });
+    const { updateSidebarStatus } = sidebarStatusBoundary;
 
-        if (treeTitleEl) {
-            treeTitleEl.textContent = resolveTreeTitleText(currentTreeData?.title);
-        }
-        if (visibilityEl) {
-            visibilityEl.textContent = isPublic
-                ? formatI18nText('editor_sidebar_public_tree', '공개 러브트리')
-                : formatI18nText('editor_sidebar_private_tree', '비공개 러브트리');
-            visibilityEl.classList.toggle('is-public', isPublic);
-            visibilityEl.classList.toggle('is-private', !isPublic);
-        }
-        if (momentCountEl) {
-            momentCountEl.textContent = treeState.hasVisibleMoments
-                ? formatI18nText('sidebar_moment_count_short', `총 ${count}개의 순간`, { count })
-                : formatI18nText('sidebar_moment_count_empty_short', '첫 순간 준비 중');
-        }
-        if (flowSummaryEl) {
-            flowSummaryEl.textContent = selected?.title
-                ? formatI18nText('sidebar_flow_summary_selected_short', `지금은 "{title}"에 마음이 머물러 있어요.`, { title: selected.title })
-                : treeState.hasVisibleMoments
-                    ? formatI18nText('sidebar_flow_summary_connected_short', `이 트리에 {count}개의 순간이 이어져 있어요.`, { count })
-                    : formatI18nText('sidebar_flow_summary_empty_short', '첫 순간을 심으면 감정의 흐름이 여기서 시작됩니다.');
-        }
-        if (hintEl) {
-            hintEl.textContent = selected?.title
-                ? formatI18nText('sidebar_canvas_hint_selected', '빈 공간을 드래그해 이동하고, “트리 한눈에 보기”로 전체 흐름을 다시 볼 수 있어요.')
-                : formatI18nText('sidebar_canvas_hint_empty', '트리가 화면 밖으로 밀리면 “트리 한눈에 보기”로 다시 가운데에 맞출 수 있어요.');
-            hintEl.style.fontStyle = 'normal';
-            hintEl.style.color = 'var(--on-surface-variant)';
+    const prepareMemoHeadingActionSlot = () => {
+        const memoLabel = document.getElementById('detailMemoLabel');
+        if (!memoLabel) return null;
+
+        const memoGroup = memoLabel.closest('.detail-info-group');
+        if (!memoGroup) return null;
+
+        memoGroup.classList.add('editor-memo-section-group');
+
+        let headingRow = memoGroup.querySelector('.editor-memo-heading-row');
+        if (!headingRow) {
+            headingRow = document.createElement('div');
+            headingRow.className = 'editor-memo-heading-row';
+            memoGroup.insertBefore(headingRow, memoLabel);
         }
 
-        const addMemoryBtnLabel = document.getElementById('addMemoryBtnLabel');
-        const addMemoryEyebrow = document.getElementById('addMemoryEyebrow');
-        const addMemoryIntro = document.getElementById('addMemoryIntro');
-        const isEmptyTree = !treeState.hasVisibleMoments;
+        if (memoLabel.parentElement !== headingRow) {
+            headingRow.insertBefore(memoLabel, headingRow.firstChild);
+        }
 
-        if (addMemoryBtnLabel) {
-            addMemoryBtnLabel.textContent = isEmptyTree
-                ? i18n('editor_add_first_memory')
-                : i18n('editor_add_next_memory');
+        let actionSlot = headingRow.querySelector('.editor-memo-heading-action-slot');
+        if (!actionSlot) {
+            actionSlot = document.createElement('div');
+            actionSlot.className = 'editor-memo-heading-action-slot';
+            headingRow.appendChild(actionSlot);
         }
-        if (addMemoryEyebrow) {
-            addMemoryEyebrow.textContent = isEmptyTree
-                ? formatI18nText('editor_add_first_memory_eyebrow', '첫 순간 심기')
-                : i18n('editor_add_memory_eyebrow');
-        }
-        if (addMemoryIntro) {
-            addMemoryIntro.textContent = isEmptyTree
-                ? formatI18nText('editor_empty_tree_hint_short', '이 트리의 첫 장면을 남기면 가운데 캔버스에 감정의 흐름이 열립니다.')
-                : formatI18nText('editor_next_memory_hint_short', '지금 머문 장면 다음에 새로운 순간을 이어 심어 보세요.');
-        }
+
+        actionSlot.innerHTML = '';
+        return actionSlot;
     };
 
      const updateDetailPanel = (data) => {
@@ -543,6 +284,7 @@ function createEditorDetailUI(deps) {
          const dateEl = document.getElementById('detailDateText');
          const tagsContainer = detailPanel.querySelector('.tags-container');
          const noteEl = document.querySelector('.diary-note');
+         const memoEditButtonMount = prepareMemoHeadingActionSlot();
          const memoryActions = detailPanel.querySelector('.memory-actions');
 
          const treeMetaModel = buildTreeMetaRenderModel({
@@ -550,19 +292,11 @@ function createEditorDetailUI(deps) {
              treeState,
              data,
              isEmptyState,
-             isRootSelected,
-             localSaveMode,
-             resolveTreeTitleText,
-             formatI18nText,
-             createShareTreeButton,
-             createOpenDetailButton,
-             bindShareButton,
-             bindOpenDetailButton,
-             createTreeMetaBlock
+             localSaveMode
          });
 
          if (treeMetaMount) {
-             renderTreeMetaBoundary(treeMetaMount, treeMetaModel, treeId, data, { i18n, showToast, bindShareButton, bindOpenDetailButton });
+             renderTreeMetaBoundary(treeMetaMount, treeMetaModel, treeId, data);
          }
 
         if (badgeEl) {
@@ -590,75 +324,13 @@ function createEditorDetailUI(deps) {
 
             titleContainer.appendChild(titleText);
 
-            if (!isEmptyState && typeof updateSelectedMemoryFields === 'function') {
-                const editBtn = document.createElement('button');
-                editBtn.className = 'memory-edit-button';
-                editBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;margin-right:2px;">edit</span>' + formatI18nText('editMemoryTitle', '제목 수정');
-
-                editBtn.onclick = () => {
-                    titleContainer.innerHTML = '';
-
-                    const input = document.createElement('input');
-                    input.type = 'text';
-                    input.value = data.title || '';
-
-                    const actions = document.createElement('div');
-                    actions.className = 'memory-edit-actions';
-
-                    const saveBtn = document.createElement('button');
-                    saveBtn.className = 'btn-save';
-                    saveBtn.textContent = formatI18nText('saveMemoryTitle', '저장');
-
-                    const cancelBtn = document.createElement('button');
-                    cancelBtn.className = 'btn-cancel';
-                    cancelBtn.textContent = formatI18nText('cancelMemoryTitle', '취소');
-
-                    const errorMsg = document.createElement('div');
-                    errorMsg.className = 'memory-edit-error';
-
-                    actions.appendChild(cancelBtn);
-                    actions.appendChild(saveBtn);
-
-                    const wrap = document.createElement('div');
-                    wrap.style.width = '100%';
-                    wrap.appendChild(input);
-                    wrap.appendChild(errorMsg);
-                    wrap.appendChild(actions);
-                    titleContainer.appendChild(wrap);
-
-                    input.focus();
-
-                    const endEdit = () => { updateDetailPanel(data); };
-
-                    const saveEdit = async () => {
-                        const newTitle = input.value.trim();
-                        if (!newTitle) {
-                            errorMsg.textContent = formatI18nText('memoryTitleRequired', '순간 제목을 입력해 주세요');
-                            return;
-                        }
-                        errorMsg.textContent = '';
-                        saveBtn.disabled = true;
-                        cancelBtn.disabled = true;
-                        if (await updateSelectedMemoryFields({ title: newTitle })) {
-                            if (showToast) showToast(formatI18nText('memoryUpdateSaved', '순간을 수정했어요.'), 'success');
-                            endEdit();
-                        } else {
-                            if (showToast) showToast(formatI18nText('memoryUpdateFailed', '순간을 수정하지 못했어요.'), 'error');
-                            saveBtn.disabled = false;
-                            cancelBtn.disabled = false;
-                        }
-                    };
-
-                    cancelBtn.onclick = endEdit;
-                    saveBtn.onclick = saveEdit;
-
-                    input.addEventListener('keydown', (e) => {
-                        if (e.key === 'Enter') { e.preventDefault(); saveEdit(); }
-                        if (e.key === 'Escape') { e.preventDefault(); endEdit(); }
-                    });
-                };
-                titleContainer.appendChild(editBtn);
-            }
+            createTitleEditBoundary(titleContainer, data, {
+                updateSelectedMemoryFields,
+                showToast,
+                formatI18nText,
+                i18n,
+                isEmptyState
+            });
 
             titleEl.appendChild(titleContainer);
         }
@@ -711,69 +383,14 @@ function createEditorDetailUI(deps) {
                 : (data.memo || formatI18nText('emptyMemoryNote', '아직 메모가 남겨지지 않았어요'));
             memoContainer.appendChild(memoBody);
 
-            if (!isEmptyState && typeof updateSelectedMemoryFields === 'function') {
-                const editBtn = document.createElement('button');
-                editBtn.className = 'memory-edit-button';
-                editBtn.style.marginTop = '10px';
-                editBtn.style.marginLeft = '0';
-                editBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;margin-right:2px;">edit</span>' + formatI18nText('editMemoryNote', '메모 수정');
-                editBtn.onclick = () => {
-                    memoContainer.innerHTML = '';
-
-                    const textarea = document.createElement('textarea');
-                    textarea.className = 'memory-edit-textarea';
-                    textarea.value = data.memo || '';
-
-                    const hintDiv = document.createElement('div');
-                    hintDiv.className = 'memory-edit-hint';
-                    hintDiv.textContent = formatI18nText('noteSaveHint', 'Ctrl+Enter로 저장할 수 있어요.');
-
-                    const actions = document.createElement('div');
-                    actions.className = 'memory-edit-actions';
-
-                    const saveBtn = document.createElement('button');
-                    saveBtn.className = 'btn-save';
-                    saveBtn.textContent = formatI18nText('saveMemoryNote', '메모 저장');
-
-                    const cancelBtn = document.createElement('button');
-                    cancelBtn.className = 'btn-cancel';
-                    cancelBtn.textContent = formatI18nText('cancelMemoryNote', '취소');
-
-                    actions.appendChild(cancelBtn);
-                    actions.appendChild(saveBtn);
-
-                    memoContainer.appendChild(textarea);
-                    memoContainer.appendChild(hintDiv);
-                    memoContainer.appendChild(actions);
-
-                    textarea.focus();
-
-                    const endEdit = () => { updateDetailPanel(data); };
-
-                    const saveEdit = async () => {
-                        const newMemo = textarea.value.trim();
-                        saveBtn.disabled = true;
-                        cancelBtn.disabled = true;
-                        if (await updateSelectedMemoryFields({ memo: newMemo })) {
-                            if (showToast) showToast(formatI18nText('memoryUpdateSaved', '순간을 수정했어요.'), 'success');
-                            endEdit();
-                        } else {
-                            if (showToast) showToast(formatI18nText('memoryUpdateFailed', '순간을 수정하지 못했어요.'), 'error');
-                            saveBtn.disabled = false;
-                            cancelBtn.disabled = false;
-                        }
-                    };
-
-                    cancelBtn.onclick = endEdit;
-                    saveBtn.onclick = saveEdit;
-
-                    textarea.addEventListener('keydown', (e) => {
-                        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); saveEdit(); }
-                        if (e.key === 'Escape') { e.preventDefault(); endEdit(); }
-                    });
-                };
-                memoContainer.appendChild(editBtn);
-            }
+            createMemoEditBoundary(memoContainer, data, {
+                updateSelectedMemoryFields,
+                showToast,
+                formatI18nText,
+                getMemoFallbackText,
+                isEmptyState,
+                editButtonMount: memoEditButtonMount
+            });
 
             noteEl.appendChild(memoContainer);
 
