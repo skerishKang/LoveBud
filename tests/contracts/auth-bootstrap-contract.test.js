@@ -164,13 +164,16 @@ test('root auth bootstrap exposes compatibility window APIs and flags', () => {
 
 test('root auth delegates login page helpers through method-aware provider selection', () => {
   const source = readRepoFile('js/auth.js');
+  const loginPageSource = readRepoFile('js/auth/auth-login-page.js');
 
-  assert.match(source, /window\.LoveBudLoginPageController/, 'root auth must reference LoveBudLoginPageController as primary active provider');
   assert.match(source, /window\.LoveBudAuthLoginPage/, 'root auth must keep LoveBudAuthLoginPage as compatibility/fallback namespace');
-  assert.match(source, /function\s+getLoginPageModule\s*\(/, 'root auth must keep a thin login page module lookup helper');
   assert.match(source, /function\s+callLoginPageModule\s*\(/, 'root auth must keep a thin login page module call helper');
-  assert.match(source, /EMAIL_AUTH_EXECUTION_METHODS/, 'root auth must define method-to-auth-provider mapping for method-aware selection');
-  assert.match(source, /setupEmailAuthForm[\s\S]*setupSignupForm|setupSignupForm[\s\S]*setupEmailAuthForm/, 'method mapping must include setupEmailAuthForm and setupSignupForm');
+  assert.match(loginPageSource, /window\.LoveBudLoginPageController/, 'login page boundary must reference LoveBudLoginPageController as primary active provider');
+  assert.match(loginPageSource, /window\.LoveBudAuthLoginPage/, 'login page boundary must keep LoveBudAuthLoginPage as compatibility/fallback namespace');
+  assert.match(loginPageSource, /function\s+getLoginPageModule\s*\(/, 'login page boundary must own module lookup helper');
+  assert.match(loginPageSource, /function\s+callLoginPageModule\s*\(/, 'login page boundary must own module call helper');
+  assert.match(loginPageSource, /EMAIL_AUTH_EXECUTION_METHODS/, 'login page boundary must define method-to-auth-provider mapping');
+  assert.match(loginPageSource, /setupEmailAuthForm[\s\S]*setupSignupForm|setupSignupForm[\s\S]*setupEmailAuthForm/, 'method mapping must include setupEmailAuthForm and setupSignupForm');
 
   for (const methodName of [
     'syncEmailAuthModeUi',
@@ -189,7 +192,7 @@ test('root auth delegates login page helpers through method-aware provider selec
 });
 
 test('root auth uses LoveBudAuthLoginPage directly for email auth execution methods', () => {
-  const source = readRepoFile('js/auth.js');
+  const source = readRepoFile('js/auth/auth-login-page.js');
 
   assert.match(
     source,
@@ -228,6 +231,32 @@ test('root auth preserves LoveBudLoginPageController as primary for UI-only meth
       `root auth must reference ${methodName} in login page delegation`
     );
   }
+});
+
+test('root auth delegates protected route bridge through auth firebase boundary', () => {
+  const source = readRepoFile('js/auth.js');
+  const firebaseSource = readRepoFile('js/auth/auth-firebase.js');
+
+  assert.match(
+    firebaseSource,
+    /createProtectedRouteBridge/,
+    'auth firebase boundary must expose protected route bridge factory'
+  );
+  assert.match(
+    source,
+    /__authProtectedRouteBridge/,
+    'root auth must keep a protected route bridge handle'
+  );
+  assert.match(
+    source,
+    /createProtectedRouteBridge\s*\(/,
+    'root auth must create the protected route bridge from LoveBudAuthFirebase'
+  );
+  assert.match(
+    firebaseSource,
+    /signInWithGoogle[\s\S]*persistConfirmedAuthSession[\s\S]*preloadRedirectTargetData[\s\S]*getRedirectTarget/,
+    'protected route bridge must preserve login session, preload, and redirect dependencies'
+  );
 });
 
 test('auth firebase fallback keeps protected-route-aware offline behavior', () => {

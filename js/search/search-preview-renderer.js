@@ -1,6 +1,6 @@
 /**
  * LoveBud Search Preview Renderer
- * v20260428-1
+ * v20260504-1
  * 
  * Rendering layer: preview sidebar panel.
  * DOM-agnostic - updates passed DOM elements.
@@ -11,9 +11,9 @@
 (function() {
     'use strict';
 
-    function getSharedUtils() {
-        return window.LoveBudSearchSharedUtils || null;
-    }
+    const previewBuilders = window.LoveBudSearchPreviewBuilders || {};
+
+    const getSharedUtils = previewBuilders.getSharedUtils || (function() { return window.LoveBudSearchSharedUtils || null; });
 
     function escapeHtml(value) {
         const utils = getSharedUtils();
@@ -24,7 +24,7 @@
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;')
-            .replace(/\\"/g, '&quot;')
+            .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
     }
 
@@ -48,27 +48,22 @@
         }
     }
 
-    function isSuspiciousYouTubeThumbnailImage(img) {
-        const utils = getSharedUtils();
-        if (utils?.isSuspiciousYouTubeThumbnailImage) {
-            return utils.isSuspiciousYouTubeThumbnailImage(img);
-        }
-        if (!img || !img.currentSrc) return false;
-        const src = String(img.currentSrc || img.src || '');
-        const isYouTubeThumb = src.includes('ytimg.com/vi/') || src.includes('img.youtube.com/vi/');
-        if (!isYouTubeThumb) return false;
-
-        const width = Number(img.naturalWidth || 0);
-        const height = Number(img.naturalHeight || 0);
-        return width > 0 && height > 0 && width <= 120 && height <= 90;
-    }
+    const isSuspiciousYouTubeThumbnailImage = previewBuilders.isSuspiciousYouTubeThumbnailImage || function(img) { return false; };
 
     function getCurrentLocale() {
+        const helper = window.LoveBudSearchPreviewCopyHelper;
+        if (helper?.getCurrentLocale) {
+            return helper.getCurrentLocale();
+        }
         const locale = window.i18n?.currentLang || document.documentElement?.lang || 'ko';
         return String(locale).toLowerCase().startsWith('en') ? 'en' : 'ko';
     }
 
     function getSearchCopy(key, fallbackKo, fallbackEn) {
+        const helper = window.LoveBudSearchPreviewCopyHelper;
+        if (helper?.getSearchCopy) {
+            return helper.getSearchCopy(key, fallbackKo, fallbackEn);
+        }
         const locale = getCurrentLocale();
         const dict = window.i18nSearch?.[key];
         if (dict && typeof dict === 'object') {
@@ -78,6 +73,10 @@
     }
 
     function formatSearchCopy(key, replacements, fallbackKo, fallbackEn) {
+        const helper = window.LoveBudSearchPreviewCopyHelper;
+        if (helper?.formatSearchCopy) {
+            return helper.formatSearchCopy(key, replacements, fallbackKo, fallbackEn);
+        }
         const template = getSearchCopy(key, fallbackKo, fallbackEn);
         return String(template).replace(/\{(\w+)\}/g, (_, token) => {
             return Object.prototype.hasOwnProperty.call(replacements, token)
@@ -103,6 +102,10 @@
     }
 
     function getTreeDetailHref(tree) {
+        const helper = window.LoveBudSearchPreviewActionHelper;
+        if (helper?.getTreeDetailHref) {
+            return helper.getTreeDetailHref(tree);
+        }
         const memories = Array.isArray(tree?.memories) ? tree.memories : [];
         const firstMemory = memories[0];
         if (!tree?.id || !firstMemory?.id) return '';
@@ -111,15 +114,19 @@
     }
 
     function renderPreviewActionButton(tree) {
+        const helper = window.LoveBudSearchPreviewActionHelper;
+        if (helper?.renderPreviewActionButton) {
+            return helper.renderPreviewActionButton(tree);
+        }
         const href = getTreeDetailHref(tree);
         if (!href) return '';
         const label = getSearchCopy(
-            'search.previewOpenTreeCta',
-            '이 트리 열기',
-            'Open this tree'
+            'search.previewOpenViewingCta',
+            '감상 열기',
+            'Open viewing'
         );
         return `
-            <a href="${escapeHtml(href)}" class="btn-round btn-primary" style="width:100%;margin-top:18px;min-height:50px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;font-size:14px;font-weight:800;gap:8px;">
+            <a href="${escapeHtml(href)}" class="btn-round btn-primary preview-primary-action" style="width:100%;margin-top:18px;min-height:50px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;font-size:14px;font-weight:800;gap:8px;">
                 <span class="material-symbols-outlined" style="font-size:18px;">play_circle</span>
                 ${escapeHtml(label)}
             </a>
@@ -127,6 +134,10 @@
     }
 
     function renderShareButton(tree) {
+        const helper = window.LoveBudSearchPreviewActionHelper;
+        if (helper?.renderShareButton) {
+            return helper.renderShareButton(tree);
+        }
         if (!tree?.id) return '';
         const label = getSearchCopy(
             'search.previewShareLink',
@@ -134,23 +145,69 @@
             'Copy view link'
         );
         return `
-            <button type="button" data-share-tree-link="${escapeHtml(tree.id)}" class="btn-round" style="width:100%;margin-top:12px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;gap:6px;background:var(--surface-container);color:var(--on-surface-variant);border:1px solid var(--outline-variant);">
+            <button type="button" data-share-tree-link="${escapeHtml(tree.id)}" class="btn-round preview-share-action" style="width:100%;margin-top:12px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;gap:6px;background:var(--surface-container);color:var(--on-surface-variant);border:1px solid var(--outline-variant);">
                 <span class="material-symbols-outlined" style="font-size:16px;">link</span>
                 <span data-share-tree-link-label>${escapeHtml(label)}</span>
             </button>
         `;
     }
 
+    const VISIBLE_FLOW_MOMENT_COUNT = 4;
+
     let _dom = null;
+    let currentPreviewTree = null;
+    let expandedFlowTreeKey = null;
+    let previewFlowToggleBound = false;
 
     function init(domRefs) {
         _dom = domRefs;
+        bindPreviewFlowToggle();
     }
 
-    function getTreeIcon(stage) {
-        const icons = { '입덕': '🌱', '성장': '🌿', '최애': '🌳', '새 트리': '🌱' };
-        return icons[stage] || '🌱';
+    function getPreviewTreeKey(tree) {
+        if (!tree) return '';
+        if (tree.id != null && tree.id !== '') {
+            return String(tree.id);
+        }
+        const title = String(tree.title || '').trim();
+        const memoryCount = Array.isArray(tree.memories) ? tree.memories.length : Number(tree.memoryCount || 0);
+        return `${title}:${memoryCount}`;
     }
+
+    function bindPreviewFlowToggle() {
+        if (previewFlowToggleBound) return;
+        previewFlowToggleBound = true;
+
+        document.addEventListener('click', (event) => {
+            const toggle = event.target?.closest?.('[data-preview-flow-toggle]');
+            if (!toggle || !_dom?.previewDesc?.contains(toggle) || !currentPreviewTree) return;
+
+            const treeKey = getPreviewTreeKey(currentPreviewTree);
+            expandedFlowTreeKey = expandedFlowTreeKey === treeKey ? null : treeKey;
+            updatePreview(currentPreviewTree);
+        });
+    }
+
+    function setPreviewState(state) {
+        const previewContainer = _dom?.previewContainer;
+        const previewSidebar = document.getElementById('previewSidebar');
+        const stateClassNames = [
+            'preview-state-empty',
+            'preview-state-loading',
+            'preview-state-no-moments',
+            'preview-state-media',
+            'preview-state-thumbnail'
+        ];
+
+        [previewContainer, previewSidebar].forEach((element) => {
+            if (!element) return;
+            element.classList.remove(...stateClassNames);
+            element.classList.add(`preview-state-${state}`);
+            element.dataset.previewState = state;
+        });
+    }
+
+    const getTreeIcon = previewBuilders.getTreeIcon || function(stage) { return '🌱'; };
 
     function getSearchTitleHelper() {
         return window.LoveBudSearchTitleHelper || null;
@@ -174,38 +231,25 @@
         }) || null;
     }
 
-    function renderEmotionTags(tags) {
-        const titleHelper = getSearchTitleHelper();
-        const safeTags = (Array.isArray(tags) ? tags : [])
-            .map(tag => titleHelper?.sanitizeBrowseLabel ? titleHelper.sanitizeBrowseLabel(tag) : String(tag || '').trim())
-            .filter(Boolean)
-            .filter(tag => tag !== '기록' && tag !== 'tag_record')
-            .slice(0, 4);
-
-        if (!safeTags.length) {
-            return `
-                <span style="padding:8px 14px;background:var(--surface-container-low);border-radius:99px;font-size:13px;font-weight:600;color:var(--on-surface-variant);border:1px solid var(--outline-variant);">
-                    ${escapeHtml(getSearchCopy('search.previewNoEmotionTags', '아직 이어진 감정은 없어요.', 'There are no clearly saved emotions yet.'))}
-                </span>
-            `;
-        }
-
-        return safeTags.map(tag =>
-            `<span style="padding:8px 14px;background:var(--primary-container);border-radius:99px;font-size:13px;font-weight:700;color:var(--on-primary-container);border:1px solid var(--outline-variant);">#${escapeHtml(tag)}</span>`
-        ).join('');
-    }
+    const renderEmotionTags = previewBuilders.renderEmotionTags || function(tags) { return ''; };
 
     function getTimelineLabel(tree, memories) {
         const titleHelper = getSearchTitleHelper();
-        const formatDate = titleHelper?.formatShortDate || ((value) => {
-            if (!value) return '';
-            const date = new Date(value);
-            if (Number.isNaN(date.getTime())) return '';
-            return date.toLocaleDateString(getCurrentLocale() === 'en' ? 'en-US' : 'ko-KR', {
-                month: 'short',
-                day: 'numeric'
-            });
-        });
+        const formatDate = titleHelper?.formatShortDate || (() => {
+            const helper = window.LoveBudSearchPreviewCopyHelper;
+            if (helper?.formatShortDate) {
+                return helper.formatShortDate;
+            }
+            return (value) => {
+                if (!value) return '';
+                const date = new Date(value);
+                if (Number.isNaN(date.getTime())) return '';
+                return date.toLocaleDateString(getCurrentLocale() === 'en' ? 'en-US' : 'ko-KR', {
+                    month: 'short',
+                    day: 'numeric'
+                });
+            };
+        })();
 
         const updatedAt = tree.updatedAt || '';
         const createdAt = tree.createdAt || '';
@@ -232,8 +276,24 @@
         return getSearchCopy('search.previewTimelineUnavailable', '아직 시작 순간을 기다리는 중이에요', 'Still waiting for the first moment');
     }
 
-    function getDefaultTreeName() {
-        return getSearchCopy('search.previewDefaultTreeName', '러브트리', 'LoveTree');
+    const getDefaultTreeName = previewBuilders.getDefaultTreeName || function() { return '러브트리'; };
+
+    function getPreviewTimeRange(tree) {
+        const raw = String(tree?.timeRange || '').trim();
+        const missingRangeLabels = [
+            '기록 없음',
+            'no records',
+            'no record',
+            'unknown',
+            'n/a',
+            getSearchCopy('search.previewUnknownRange', '아직 흐름이 또렷하지 않아요', 'The flow is not clear yet')
+        ].map(label => String(label || '').trim().toLowerCase()).filter(Boolean);
+
+        if (!raw) {
+            return '';
+        }
+
+        return missingRangeLabels.includes(raw.toLowerCase()) ? '' : raw;
     }
 
     function getPreviewSummaryCopy(tree, memories) {
@@ -244,7 +304,7 @@
         const themeLabel = titleHelper?.getThemeLabel
             ? titleHelper.getThemeLabel(tree)
             : '';
-        const timeRange = String(tree?.timeRange || getSearchCopy('search.previewUnknownRange', '아직 흐름이 또렷하지 않아요', 'The flow is not clear yet')).trim();
+        const timeRange = getPreviewTimeRange(tree);
         const memoryCount = Number(tree?.memoryCount || 0);
         const safeTitle = escapeHtml(displayTitle);
         const safeTheme = escapeHtml(themeLabel);
@@ -267,6 +327,24 @@
             );
         }
 
+        if (!timeRange) {
+            if (themeLabel) {
+                return formatSearchCopy(
+                    'search.previewSummaryThemeNoRange',
+                    { theme: safeTheme, count: memoryCount },
+                    '<strong style="color:var(--on-surface);">{theme}</strong>와 함께한 <span style="color:var(--primary);font-weight:700;">{count}개의 순간</span>이 이어졌어요.',
+                    '<strong style="color:var(--on-surface);">{count} moments</strong> with <strong style="color:var(--on-surface);">{theme}</strong> are connected.'
+                );
+            }
+
+            return formatSearchCopy(
+                'search.previewSummaryNoRange',
+                { title: safeTitle, count: memoryCount },
+                '<strong style="color:var(--on-surface);">{title}</strong>에 담긴 <span style="color:var(--primary);font-weight:700;">{count}개의 순간</span>이 이어졌어요.',
+                '<strong style="color:var(--on-surface);">{count} moments</strong> in <strong style="color:var(--on-surface);">{title}</strong> are connected.'
+            );
+        }
+
         if (themeLabel) {
             return formatSearchCopy(
                 'search.previewSummaryThemeRange',
@@ -284,50 +362,29 @@
         );
     }
 
-    function renderSectionHeading(icon, label) {
-        return `
-            <div style="font-size:11px;font-weight:800;color:var(--on-surface-variant);margin-bottom:12px;text-transform:uppercase;letter-spacing:1px;display:flex;align-items:center;gap:4px;">
-                <span class="material-symbols-outlined" style="font-size:14px;">${escapeHtml(icon)}</span>
-                ${escapeHtml(label)}
-            </div>
-        `;
-    }
+    const renderSectionHeading = previewBuilders.renderSectionHeading || function(icon, label) { return ''; };
 
-    function renderInfoCallout(icon, text, variant = 'neutral') {
-        const isPrimary = variant === 'primary';
-        const background = isPrimary ? 'var(--primary-container)' : 'var(--surface-container)';
-        const color = isPrimary ? 'var(--on-primary-container)' : 'var(--on-surface-variant)';
+    const renderInfoCallout = previewBuilders.renderInfoCallout || function(icon, text, variant) { return ''; };
 
-        return `
-            <div style="margin-top:12px;padding:12px;background:${background};border-radius:0.75rem;font-size:13px;color:${color};font-weight:500;display:flex;align-items:center;gap:8px;">
-                <span class="material-symbols-outlined" style="font-size:18px;">${escapeHtml(icon)}</span>
-                ${escapeHtml(text)}
-            </div>
-        `;
-    }
+    const renderPathStageBadge = previewBuilders.renderPathStageBadge || function(index, title) { return ''; };
 
-    function renderPathStageBadge(index, title) {
-        return `<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:var(--surface-container);border-radius:8px;font-size:13px;"><span style="color:var(--primary);font-weight:800;">${index}</span><span>${escapeHtml(title)}</span></span>`;
-    }
+    const renderPathStages = previewBuilders.renderPathStages || function(memories, startIndex) { return ''; };
 
-    function renderMoreStagesText(count) {
-        if (!count || count <= 0) return '';
-        return formatSearchCopy(
-            'search.previewMoreMoments',
-            { count },
-            '... 그리고 {count}개의 순간 더',
-            '... and {count} more moments'
-        );
-    }
+    const renderFlowToggleButton = previewBuilders.renderFlowToggleButton || function(hiddenCount, isExpanded) { return ''; };
+
+    const renderHiddenPathStages = previewBuilders.renderHiddenPathStages || function(hiddenMemories, startIndex, isExpanded) { return ''; };
 
     function renderLoadingPreview(tree) {
         if (!_dom) return;
+        currentPreviewTree = tree || null;
+        expandedFlowTreeKey = null;
         const titleHelper = getSearchTitleHelper();
         const previewDisplayTitle = titleHelper?.getBrowseDisplayTitle
             ? titleHelper.getBrowseDisplayTitle(tree)
             : (String(tree?.title || '').trim() || getDefaultTreeName());
         const safeTreeTitle = escapeHtml(previewDisplayTitle);
         const previewStats = getPreviewStatsElement();
+        setPreviewState('loading');
 
         if (_dom.previewContainer) {
             _dom.previewContainer.innerHTML = `
@@ -362,19 +419,7 @@
         }
     }
 
-    function renderPreviewThumbnailFallback(title, subtitle) {
-        const helper = window.LoveBudSearchPreviewMediaHelper;
-        if (helper?.renderPreviewThumbnailFallback) {
-            return helper.renderPreviewThumbnailFallback(title, subtitle);
-        }
-        return `
-            <div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;background:linear-gradient(135deg,var(--surface-container-low),white);border-radius:1rem;color:var(--on-surface-variant);">
-                <span class="material-symbols-outlined" style="font-size:36px;color:var(--primary);margin-bottom:12px;">movie</span>
-                <div style="font-size:14px;font-weight:800;color:var(--on-surface);margin-bottom:8px;">${escapeHtml(title)}</div>
-                <p style="margin:0;font-size:13px;line-height:1.6;">${escapeHtml(subtitle)}</p>
-            </div>
-        `;
-    }
+    const renderPreviewThumbnailFallback = previewBuilders.renderPreviewThumbnailFallback || function(title, subtitle) { return ''; };
 
     function renderPreviewThumbnailMedia(thumbnailUrl, mediaTitle, treeTitle) {
         const helper = window.LoveBudSearchPreviewMediaHelper;
@@ -388,7 +433,7 @@
         );
 
         return `
-            <div style="position:relative;width:100%;height:100%;border-radius:1rem;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.12);">
+            <div class="preview-media-frame preview-media-frame-thumbnail" style="position:relative;width:100%;height:100%;border-radius:1rem;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.12);">
                 <img src="${thumbnailUrl}" alt="${mediaTitle}" loading="lazy" onerror="window.LoveBudSearchPreviewRenderer?.showPreviewImageFallback?.(this)" onload="window.LoveBudSearchPreviewRenderer?.handlePreviewImageLoad?.(this)" style="width:100%;height:100%;object-fit:cover;display:block;">
                 <div data-preview-thumbnail-fallback hidden style="position:absolute;inset:0;">${fallbackHtml}</div>
                 <div data-preview-overlay style="position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.72),rgba(0,0,0,0.04) 58%);"></div>
@@ -429,7 +474,10 @@
             return;
         }
 
+        currentPreviewTree = tree || null;
         const memories = Array.isArray(tree.memories) ? tree.memories : [];
+        const treeKey = getPreviewTreeKey(tree);
+        const isFlowExpanded = !!treeKey && expandedFlowTreeKey === treeKey;
         const firstMem = memories[0];
         const hasMemories = memories.length > 0;
         const previewStats = getPreviewStatsElement();
@@ -438,9 +486,11 @@
             ? titleHelper.getBrowseDisplayTitle(tree)
             : (String(tree?.title || '').trim() || getDefaultTreeName());
         const safeTreeTitle = escapeHtml(previewDisplayTitle);
+        let previewState = 'empty';
 
         if (_dom.previewContainer) {
             if (!hasMemories) {
+                previewState = 'no-moments';
                 _dom.previewContainer.innerHTML = `
                     <div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;background:linear-gradient(135deg,var(--surface-container-low),white);border-radius:1rem;color:var(--on-surface-variant);">
                         <span class="material-symbols-outlined" style="font-size:36px;color:var(--primary);margin-bottom:12px;">psychiatry</span>
@@ -456,6 +506,7 @@
                 const safeSourceUrl = sanitizeUrl(mediaMem?.sourceUrl || '');
                 const safeThumbnail = sanitizeUrl(mediaMem?.thumbnail || '');
                 const safeMediaMemTitle = escapeHtml(getMomentLabel(mediaMem || firstMem));
+                previewState = safeSourceUrl ? 'media' : (safeThumbnail ? 'thumbnail' : 'empty');
 
                 const mediaHelper = window.LoveBudSearchPreviewMediaHelper;
                 if (mediaHelper?.renderPreviewIframe && safeSourceUrl) {
@@ -465,7 +516,7 @@
                         ? safeSourceUrl + (safeSourceUrl.includes('?') ? '&' : '?') + 'autoplay=0&mute=1'
                         : '';
                     _dom.previewContainer.innerHTML = iframeSrc ? `
-                        <div style="position:relative;width:100%;height:100%;border-radius:1rem;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.12);">
+                        <div class="preview-media-frame preview-media-frame-iframe" style="position:relative;width:100%;height:100%;border-radius:1rem;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.12);">
                             <iframe width="100%" height="100%"
                                 src="${iframeSrc}"
                                 title="${safeTreeTitle}" frameborder="0"
@@ -479,6 +530,7 @@
                     ` : (safeThumbnail ? renderPreviewThumbnailMedia(safeThumbnail, safeMediaMemTitle, safeTreeTitle) : renderPlaceholder());
                 }
             }
+            setPreviewState(previewState);
         }
 
         if (_dom.previewTitle) {
@@ -486,12 +538,9 @@
             const memoryCountSuffix = getSearchCopy('search.previewMomentCountSuffix', '개의 순간', 'moments');
 
             _dom.previewTitle.innerHTML = `
-                <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
-                    <span style="font-size:2rem;background:var(--surface-container-low);width:48px;height:48px;display:flex;align-items:center;justify-content:center;border-radius:12px;">${getTreeIcon(tree.stage)}</span>
-                    <div>
-                        <div style="font-size:1.1rem;font-weight:800;color:var(--on-surface);line-height:1.3;">${safeTreeTitle}</div>
-                        <div style="font-size:12px;color:var(--on-surface-variant);margin-top:2px;">${tree.memoryCount}${escapeHtml(memoryCountSuffix)} · ${safeTimeRange}</div>
-                    </div>
+                <div style="margin-bottom:12px;">
+                    <div style="font-size:1.18rem;font-weight:900;color:var(--on-surface);line-height:1.25;overflow-wrap:anywhere;">${safeTreeTitle}</div>
+                    <div style="font-size:12px;color:var(--on-surface-variant);margin-top:2px;">${tree.memoryCount}${escapeHtml(memoryCountSuffix)} · ${safeTimeRange}</div>
                 </div>
             `;
         }
@@ -526,21 +575,22 @@
                     ${renderShareButton(tree)}
                 `;
             } else {
-                const pathStages = memories.slice(0, 3).map((m, i) => {
-                    return renderPathStageBadge(i + 1, getMomentLabel(m, '시작 순간', 'Starting moment'));
-                }).join('<span style="opacity:0.3;margin:0 4px;">→</span>');
-
-                const moreStages = renderMoreStagesText(memories.length - 3);
+                const visibleMemories = memories.slice(0, VISIBLE_FLOW_MOMENT_COUNT);
+                const hiddenMemories = memories.slice(VISIBLE_FLOW_MOMENT_COUNT);
+                const pathStages = renderPathStages(visibleMemories);
+                const flowToggle = renderFlowToggleButton(hiddenMemories.length, isFlowExpanded);
+                const hiddenStages = renderHiddenPathStages(hiddenMemories, VISIBLE_FLOW_MOMENT_COUNT, isFlowExpanded);
                 const firstMomentLabel = getMomentLabel(firstMem, '시작 순간', 'Starting moment');
                 const lastMomentLabel = getMomentLabel(memories[memories.length - 1], '최근에 남은 순간', 'Latest saved moment');
 
                 _dom.previewDesc.innerHTML = `
                     <div style="background:var(--surface-container-low);padding:20px;border-radius:1rem;margin-bottom:16px;">
                         ${renderSectionHeading('route', getSearchCopy('search.previewTimelineHeading', '대표 순간에서 이어진 흐름', 'Flow connected from the featured moment'))}
-                        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;line-height:1.8;">
+                        <div class="preview-flow-list">
                             ${pathStages}
                         </div>
-                        <div style="margin-top:8px;font-size:12px;color:var(--on-surface-variant);font-style:italic;">${escapeHtml(moreStages)}</div>
+                        ${hiddenStages}
+                        ${flowToggle ? `<div class="preview-flow-controls">${flowToggle}</div>` : ''}
                     </div>
 
                     <div style="font-size:14px;color:var(--on-surface-variant);line-height:1.6;padding:0 4px;">
@@ -591,6 +641,8 @@
     function resetPreview() {
         if (!_dom || !_dom.previewContainer) return;
 
+        currentPreviewTree = null;
+        expandedFlowTreeKey = null;
         const previewStats = getPreviewStatsElement();
         const placeholderTitle = getSearchCopy(
             'search.previewPlaceholder',
@@ -602,7 +654,8 @@
             '트리를 고르면 대표 순간과 이어진 감정이 이곳에 열립니다.',
             'Choose a tree to open the featured moment and connected feelings here.'
         );
-        
+        setPreviewState('empty');
+
         if (_dom.previewContainer) {
             _dom.previewContainer.innerHTML = renderPlaceholder();
         }
@@ -642,5 +695,5 @@
         }
     };
 
-    console.log('[LoveBudSearchPreviewRenderer] Search preview renderer loaded v20260428-1');
+    console.log('[LoveBudSearchPreviewRenderer] Search preview renderer loaded v20260504-1');
 })();

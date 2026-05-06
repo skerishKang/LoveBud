@@ -6,7 +6,7 @@
 
 .intro-hero {
   display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(300px, 0.72fr);
+  grid-template-columns: minmax(0, 1.08fr) minmax(380px, 0.78fr);
   gap: var(--hero-gap);
   align-items: center;
   padding: 52px var(--lovetree-page-pad-desktop) 32px;
@@ -85,7 +85,7 @@
 
 .intro-hero-visual {
   position: relative;
-  padding: 22px;
+  padding: 20px;
   border-radius: 32px;
   background:
     radial-gradient(circle at 30% 20%, rgba(255, 248, 245, 0.92), transparent 52%),
@@ -97,13 +97,13 @@
 
 .intro-tree-scene {
   position: relative;
-  min-height: 340px;
+  min-height: 390px;
   border-radius: 24px;
   overflow: hidden;
   background:
-    radial-gradient(circle at 28% 12%, rgba(255, 248, 246, 0.96), transparent 38%),
-    radial-gradient(circle at 80% 22%, rgba(242, 234, 228, 0.72), transparent 28%),
-    radial-gradient(circle at 50% 68%, rgba(255, 225, 220, 0.38), transparent 34%),
+    radial-gradient(circle at 34% 22%, rgba(255, 248, 246, 0.96), transparent 38%),
+    radial-gradient(circle at 72% 30%, rgba(242, 234, 228, 0.68), transparent 30%),
+    radial-gradient(circle at 50% 72%, rgba(255, 225, 220, 0.34), transparent 34%),
     linear-gradient(180deg, rgba(255, 249, 245, 0.92), rgba(244, 248, 238, 0.96));
   border: 1px solid rgba(144, 73, 81, 0.07);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
@@ -119,34 +119,67 @@
 }
 
 .intro-tree-scene::before {
-  left: 31%;
-  right: 24%;
-  top: 72px;
-  height: 178px;
-  border: 1px dashed rgba(144, 73, 81, 0.16);
-  transform: rotate(-13deg);
+  left: 24%;
+  right: 15%;
+  top: 62px;
+  height: 238px;
+  background:
+    radial-gradient(circle at 54% 42%, rgba(255, 242, 238, 0.62), transparent 50%),
+    radial-gradient(circle at 32% 58%, rgba(244, 248, 238, 0.44), transparent 46%);
+  border: 1px solid rgba(144, 73, 81, 0.06);
+  box-shadow: 0 18px 44px rgba(144, 73, 81, 0.045) inset;
+  transform: rotate(-10deg);
 }
 
 .intro-tree-scene::after {
-  left: 42%;
-  top: 44px;
-  width: 112px;
-  height: 218px;
-  border: 1px solid rgba(122, 139, 110, 0.12);
-  transform: rotate(18deg);
+  left: 39%;
+  top: 64px;
+  width: 168px;
+  height: 236px;
+  background: radial-gradient(circle at 50% 46%, rgba(122, 139, 110, 0.08), transparent 58%);
+  border: 1px solid rgba(122, 139, 110, 0.05);
+  transform: rotate(13deg);
 }
 
 .intro-tree-stem {
   position: absolute;
-  left: 50%;
-  bottom: 42px;
-  width: 14px;
-  height: 148px;
+  left: 51%;
+  bottom: 44px;
+  width: 19px;
+  height: 196px;
   transform-origin: bottom center;
   border-radius: 999px;
-  background: linear-gradient(180deg, #c18b83, #904951);
-  box-shadow: 0 10px 24px rgba(144, 73, 81, 0.16), 0 0 0 5px rgba(144, 73, 81, 0.035);
+  background:
+    linear-gradient(90deg, rgba(255, 236, 230, 0.24), transparent 32%),
+    linear-gradient(180deg, #c9968d 0%, #aa646d 48%, #904951 100%);
+  box-shadow: 0 12px 26px rgba(144, 73, 81, 0.18), 0 0 0 5px rgba(144, 73, 81, 0.035);
   animation: introStemGrow 0.7s cubic-bezier(0.34, 1.3, 0.64, 1) 0.15s both;
+}
+
+.intro-tree-stem::before,
+.intro-tree-stem::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
+.intro-tree-stem::before {
+  left: 4px;
+  top: 14px;
+  bottom: 18px;
+  width: 3px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255, 241, 235, 0.42), rgba(255, 241, 235, 0));
+}
+
+.intro-tree-stem::after {
+  left: 50%;
+  bottom: -8px;
+  width: 42px;
+  height: 18px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(144, 73, 81, 0.16), transparent 68%);
+  transform: translateX(-50%);
 }
 
 @keyframes introStemGrow {
@@ -156,60 +189,82 @@
 
 .intro-tree-branch {
   position: absolute;
-  left: 50%;
-  height: 6px;
+  left: 51%;
+  height: 9px;
   border-radius: 999px;
-  background: linear-gradient(90deg, #c18b83, #aa646d);
-  transform-origin: left center;
-  box-shadow: 0 4px 12px rgba(144, 73, 81, 0.1);
+  background:
+    linear-gradient(180deg, rgba(255, 242, 236, 0.24), transparent 58%),
+    linear-gradient(90deg, #aa646d 0%, #c18b83 66%, #deb3aa 100%);
+  transform-origin: 0 50%;
+  box-shadow: 0 5px 14px rgba(144, 73, 81, 0.11);
   animation: introBranchIn 0.45s ease both;
+}
+
+.intro-tree-branch::before {
+  content: "";
+  position: absolute;
+  right: 18%;
+  top: 50%;
+  width: 28px;
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(193, 139, 131, 0.7), rgba(222, 179, 170, 0));
+  transform: translateY(-50%) rotate(var(--twig-rotate, 22deg));
+  transform-origin: left center;
+  opacity: 0.7;
 }
 
 .intro-tree-branch::after {
   content: "";
   position: absolute;
-  right: -5px;
+  right: -6px;
   top: 50%;
-  width: 10px;
-  height: 10px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
-  background: rgba(255, 244, 242, 0.94);
-  border: 1px solid rgba(144, 73, 81, 0.14);
+  background: radial-gradient(circle at 34% 28%, #fff9f5 0 24%, #eccbc0 25% 60%, #c18b83 61% 100%);
+  border: 1px solid rgba(255, 255, 255, 0.76);
+  box-shadow: 0 7px 16px rgba(144, 73, 81, 0.15), 0 0 0 5px rgba(144, 73, 81, 0.045);
   transform: translateY(-50%);
 }
 
 .intro-tree-branch.one {
-  bottom: 158px;
-  width: 96px;
-  transform: translateX(4px) rotate(-32deg);
+  bottom: 206px;
+  width: 132px;
+  transform: translateX(1px) rotate(-31deg);
+  --twig-rotate: -28deg;
   animation-delay: 0.75s;
 }
 
 .intro-tree-branch.two {
-  bottom: 134px;
-  width: 90px;
-  transform: translateX(-6px) rotate(207deg);
+  bottom: 174px;
+  width: 126px;
+  transform: translateX(-4px) rotate(209deg);
+  --twig-rotate: 28deg;
   animation-delay: 1.0s;
 }
 
 .intro-tree-branch.three {
-  bottom: 112px;
-  width: 82px;
-  transform: translateX(4px) rotate(28deg);
+  bottom: 142px;
+  width: 116px;
+  transform: translateX(0) rotate(29deg);
+  --twig-rotate: 24deg;
   animation-delay: 1.25s;
 }
 
 .intro-tree-branch.four {
-  bottom: 88px;
-  width: 74px;
-  transform: translateX(-8px) rotate(200deg);
+  bottom: 112px;
+  width: 104px;
+  transform: translateX(-5px) rotate(202deg);
+  --twig-rotate: -24deg;
   animation-delay: 1.5s;
 }
 
 .intro-tree-branch.five {
-  bottom: 66px;
-  width: 66px;
-  transform: translateX(6px) rotate(24deg);
+  bottom: 84px;
+  width: 94px;
+  transform: translateX(1px) rotate(25deg);
+  --twig-rotate: 22deg;
   animation-delay: 1.75s;
 }
 
@@ -220,13 +275,22 @@
 
 .intro-tree-node {
   position: absolute;
-  width: 13px;
-  height: 13px;
+  width: 15px;
+  height: 15px;
   border-radius: 50%;
-  background: radial-gradient(circle at 32% 28%, #fff4ef 0 22%, #e8c4b8 23% 58%, #c18b83 59% 100%);
+  background: radial-gradient(circle at 32% 26%, #fffaf6 0 22%, #eac9bf 23% 58%, #c18b83 59% 100%);
   border: 1px solid rgba(255, 255, 255, 0.72);
-  box-shadow: 0 6px 16px rgba(144, 73, 81, 0.22), 0 0 0 5px rgba(144, 73, 81, 0.06);
+  box-shadow: 0 7px 18px rgba(144, 73, 81, 0.2), 0 0 0 6px rgba(144, 73, 81, 0.045);
   animation: introNodeIn 0.3s ease both;
+}
+
+.intro-tree-node::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border-radius: inherit;
+  background: radial-gradient(circle at 36% 28%, rgba(255, 255, 255, 0.82), transparent 58%);
+  pointer-events: none;
 }
 
 @keyframes introNodeIn {
@@ -235,44 +299,44 @@
 }
 
 .intro-tree-node.node-1 {
-  left: 62%;
-  bottom: 208px;
+  left: 70%;
+  bottom: 262px;
   animation-delay: 1.8s;
 }
 
 .intro-tree-node.node-2 {
-  left: 28%;
-  bottom: 162px;
+  left: 25%;
+  bottom: 211px;
   animation-delay: 1.95s;
 }
 
 .intro-tree-node.node-3 {
-  left: 70%;
-  bottom: 138px;
+  left: 76%;
+  bottom: 176px;
   animation-delay: 2.1s;
 }
 
 .intro-tree-node.node-4 {
-  left: 33%;
-  bottom: 104px;
+  left: 28%;
+  bottom: 142px;
   animation-delay: 2.25s;
 }
 
 .intro-tree-node.node-5 {
-  left: 63%;
-  bottom: 86px;
+  left: 68%;
+  bottom: 111px;
   animation-delay: 2.4s;
 }
 
 .intro-tree-node.node-6 {
-  left: 46%;
-  bottom: 222px;
+  left: 50%;
+  bottom: 236px;
   animation-delay: 2.55s;
 }
 
 .intro-tree-node.node-7 {
-  left: 53%;
-  bottom: 46px;
+  left: 55%;
+  bottom: 70px;
   animation-delay: 2.7s;
 }
 
@@ -281,8 +345,8 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 34px;
-  padding: 0 12px;
+  min-height: 32px;
+  padding: 0 11px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.9);
   border: 1px solid rgba(144, 73, 81, 0.1);
@@ -299,11 +363,12 @@
   position: absolute;
   top: 50%;
   width: var(--connector-width, 42px);
-  height: 2px;
+  height: 4px;
   border-radius: 999px;
-  background: linear-gradient(90deg, rgba(144, 73, 81, 0.08), rgba(144, 73, 81, 0.28));
+  background: linear-gradient(90deg, rgba(144, 73, 81, 0.03), rgba(193, 139, 131, 0.24), rgba(144, 73, 81, 0.08));
+  opacity: 0.72;
   transform: translateY(-50%) rotate(var(--connector-rotate, 0deg));
-  transform-origin: center;
+  transform-origin: var(--connector-origin, center);
   pointer-events: none;
 }
 
@@ -313,11 +378,12 @@
 }
 
 .intro-tree-moment.first {
-  left: 16px;
-  bottom: 64px;
+  left: 18px;
+  bottom: 72px;
   color: var(--primary);
-  --connector-width: 82px;
-  --connector-rotate: -10deg;
+  --connector-width: 74px;
+  --connector-rotate: -12deg;
+  --connector-origin: left center;
   animation-delay: 1.5s;
 }
 
@@ -334,37 +400,41 @@
 }
 
 .intro-tree-moment.saved {
-  right: 16px;
-  top: 54px;
-  --connector-width: 58px;
-  --connector-rotate: 18deg;
+  right: 18px;
+  top: 58px;
+  --connector-width: 64px;
+  --connector-rotate: 15deg;
+  --connector-origin: right center;
   animation-delay: 1.75s;
 }
 
 .intro-tree-moment.shared {
-  left: 20px;
-  top: 84px;
+  left: 18px;
+  top: 102px;
   color: #667a55;
   --connector-width: 92px;
-  --connector-rotate: 9deg;
+  --connector-rotate: 10deg;
+  --connector-origin: left center;
   animation-delay: 2.0s;
 }
 
 .intro-tree-moment.revisit {
   right: 18px;
-  bottom: 94px;
+  bottom: 104px;
   color: #8b7355;
-  --connector-width: 62px;
-  --connector-rotate: -16deg;
+  --connector-width: 66px;
+  --connector-rotate: -13deg;
+  --connector-origin: right center;
   animation-delay: 2.25s;
 }
 
 .intro-tree-moment.lasting {
-  left: 24px;
-  top: 38px;
+  left: 22px;
+  top: 42px;
   color: #a67c52;
-  --connector-width: 116px;
-  --connector-rotate: -6deg;
+  --connector-width: 112px;
+  --connector-rotate: -5deg;
+  --connector-origin: left center;
   animation-delay: 2.5s;
 }
 
@@ -525,9 +595,15 @@
     min-height: 54px;
   }
 
-  /* Mobile: simplify tree visual */
+  .intro-hero-visual {
+    padding: 14px !important;
+    border-radius: 26px;
+  }
+
+  /* Mobile: keep the tree as the primary object while reducing label noise */
   .intro-tree-scene {
-    min-height: 280px;
+    min-height: 330px !important;
+    border-radius: 20px;
   }
 
   .intro-tree-scene::before,
@@ -537,19 +613,79 @@
   }
 
   .intro-tree-stem {
-    height: 100px;
-    bottom: 32px;
+    left: 52%;
+    width: 16px;
+    height: 154px;
+    bottom: 34px;
   }
 
-  .intro-tree-branch.four,
+  .intro-tree-branch {
+    height: 7px;
+  }
+
+  .intro-tree-branch.one {
+    bottom: 178px;
+    width: 96px;
+  }
+
+  .intro-tree-branch.two {
+    bottom: 148px;
+    width: 92px;
+  }
+
+  .intro-tree-branch.three {
+    bottom: 120px;
+    width: 86px;
+  }
+
+  .intro-tree-branch.four {
+    bottom: 94px;
+    width: 78px;
+  }
+
   .intro-tree-branch.five {
-    display: none;
+    bottom: 70px;
+    width: 70px;
   }
 
-  .intro-tree-node.node-5,
-  .intro-tree-node.node-6,
+  .intro-tree-node {
+    width: 14px;
+    height: 14px;
+  }
+
+  .intro-tree-node.node-1 {
+    left: 72%;
+    bottom: 226px;
+  }
+
+  .intro-tree-node.node-2 {
+    left: 22%;
+    bottom: 176px;
+  }
+
+  .intro-tree-node.node-3 {
+    left: 76%;
+    bottom: 148px;
+  }
+
+  .intro-tree-node.node-4 {
+    left: 25%;
+    bottom: 118px;
+  }
+
+  .intro-tree-node.node-5 {
+    left: 69%;
+    bottom: 92px;
+  }
+
+  .intro-tree-node.node-6 {
+    left: 45%;
+    bottom: 236px;
+  }
+
   .intro-tree-node.node-7 {
-    display: none;
+    left: 58%;
+    bottom: 48px;
   }
 
   .intro-tree-moment.revisit,

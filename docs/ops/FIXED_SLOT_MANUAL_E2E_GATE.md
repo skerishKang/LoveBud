@@ -23,6 +23,8 @@ Until automated E2E smoke is available, this runbook defines the **manual gate**
 > **This is NOT a reintroduction of Netlify dev.**
 > Netlify remains a legacy artifact / removal candidate and must not be used as a verification target.
 
+For the standard fixed-slot deployment command before browser verification, see [FIXED_SLOT_DEPLOY_WITH_WRANGLER.md](FIXED_SLOT_DEPLOY_WITH_WRANGLER.md).
+
 ---
 
 ## 2. Fixed Slot Scope
@@ -33,16 +35,16 @@ The current fixed slot pool is `test1` through `test10`.
 
 | Slot | Cloudflare Pages Branch | Status |
 |------|------------------------|--------|
-| test1 | `test/slot-1` | Available for assignment when no active assignment exists |
-| test2 | `test/slot-2` | Available for assignment when no active assignment exists |
-| test3 | `test/slot-3` | Available for assignment when no active assignment exists |
-| test4 | `test/slot-4` | Available for assignment when no active assignment exists |
-| test5 | `test/slot-5` | Available for assignment when no active assignment exists |
-| test6 | `test/slot-6` | Available for assignment when no active assignment exists |
-| test7 | `test/slot-7` | Available for assignment when no active assignment exists |
-| test8 | `test/slot-8` | Available for assignment when no active assignment exists |
-| test9 | `test/slot-9` | Available for assignment when no active assignment exists |
-| test10 | `test/slot-10` | Available for assignment when no active assignment exists |
+| test1 | `test1` | Available for assignment when no active assignment exists |
+| test2 | `test2` | Available for assignment when no active assignment exists |
+| test3 | `test3` | Available for assignment when no active assignment exists |
+| test4 | `test4` | Available for assignment when no active assignment exists |
+| test5 | `test5` | Available for assignment when no active assignment exists |
+| test6 | `test6` | Available for assignment when no active assignment exists |
+| test7 | `test7` | Available for assignment when no active assignment exists |
+| test8 | `test8` | Available for assignment when no active assignment exists |
+| test9 | `test9` | Available for assignment when no active assignment exists |
+| test10 | `test10` | Available for assignment when no active assignment exists |
 
 ### Slot Assignment Rules
 
@@ -80,7 +82,7 @@ Before reporting any E2E result against a fixed slot, the verifier **must** conf
 ```text
 1. Identify the slot's current branch head SHA:
    - Check the Cloudflare Pages deployment dashboard, OR
-   - Check the slot branch tip: git log test/slot-N --oneline -1
+   - Check the slot branch tip: git log testN --oneline -1
 
 2. Identify the PR head SHA:
    - GitHub PR page → head commit SHA, OR
@@ -242,9 +244,58 @@ Based on Issue #136 suggested minimal smoke targets:
 
 ## 10. Related Documents
 
+- [FIXED_SLOT_DEPLOY_WITH_WRANGLER.md](FIXED_SLOT_DEPLOY_WITH_WRANGLER.md) — Wrangler direct deploy 표준 경로 및 stale asset guardrail
 - [TEST_PREVIEW_SLOTS.md](TEST_PREVIEW_SLOTS.md) — fixed test slot 운영 기준
 - [BROWSER_VERIFICATION_URL_POLICY.md](BROWSER_VERIFICATION_URL_POLICY.md) — URL provenance 및 PR Preview 기준
 - [QA_CREDENTIALS.md](QA_CREDENTIALS.md) — QA credential 복원 워크플로우
 - [LOCAL_BROWSER_VERIFICATION_STARTUP.md](LOCAL_BROWSER_VERIFICATION_STARTUP.md) — 브라우저 검증 시작 전 공통 preflight
 - [KNOWN_CI_E2E_BLOCKERS.md](KNOWN_CI_E2E_BLOCKERS.md) — 반복 CI/E2E blocker 원인 분리
 - Issue [#136](https://github.com/skerishKang/LoveBud/issues/136) — CI gap: Cloudflare Pages E2E smoke replacement
+
+---
+
+## 11. Cloudflare Pages URL source of truth
+
+The LoveBud fixed slot URL format is defined by [TEST_PREVIEW_SLOTS.md](TEST_PREVIEW_SLOTS.md):
+
+```text
+https://test1.lovebud.pages.dev
+https://test2.lovebud.pages.dev
+...
+https://test10.lovebud.pages.dev
+```
+
+Do not use `test-slot-1`, `test-slot-2`, or `test-slot-X` URLs for LoveBud fixed slot verification unless the CTO explicitly changes the fixed slot domain map.
+
+---
+
+## 12. Guardrails
+
+- main direct commit/push/force-push is prohibited.
+- PR branch modification is prohibited during slot verification.
+- plain `--force` is prohibited.
+- Fixed slot assignment must be explicit.
+- Available fixed slots are `test1` through `test10`.
+- PR Preview URLs are not sufficient for final PASS on login/auth/API/domain-sensitive UI flows.
+- A verifier must not silently choose a slot when no slot has been assigned.
+- A verifier must not claim final UI PASS from PR Preview when the CTO requested fixed slot verification.
+- production data write/delete is prohibited unless separately approved.
+- token/password/cookie/raw credential logging is prohibited.
+- PR #7 prototype and prototype/reference/demo folders are not slot cleanup targets.
+- API/backend code changes are not part of slot verification.
+- Browser-only verification must not be replaced by GitHub metadata when the task requires rendered UI proof.
+
+---
+
+## 13. Reference docs
+
+- [DEPLOY_CHECKLIST.md](DEPLOY_CHECKLIST.md) - deployment verification checklist
+- [RUNBOOK.md](RUNBOOK.md) - operations runbook
+- [PR_CHECKLIST.md](PR_CHECKLIST.md) - PR review checklist
+- [../engineering/API_CONTRACT.md](../engineering/API_CONTRACT.md) - API contract
+- [../product/PRODUCT_IDENTITY.md](../product/PRODUCT_IDENTITY.md) - product identity
+
+---
+
+Document version: 1.5  
+Next review: CTO approval after next fixed-slot verification cycle

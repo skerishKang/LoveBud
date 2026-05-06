@@ -249,6 +249,70 @@
     window.location.reload();
   }
 
+  function createProtectedRouteBridge(options) {
+    options = options || {};
+
+    return {
+      applyCachedAuthState: function () {
+        return applyCachedAuthState({
+          isLoginPage: options.isLoginPage,
+          getCachedAuthUser: options.getCachedAuthUser,
+          buildUserDropdown: options.buildUserDropdown
+        });
+      },
+      initAuth: function () {
+        initAuth({
+          resolveEmailAuthMode: options.resolveEmailAuthMode,
+          setupLoginPageAuthUi: options.setupLoginPageAuthUi,
+          applyCachedAuthState: options.applyCachedAuthState,
+          markAuthLoading: options.markAuthLoading,
+          markAuthReady: options.markAuthReady,
+          initOfflineAuth: options.initOfflineAuth,
+          attachDropdownListener: options.attachDropdownListener,
+          persistConfirmedAuthSession: options.persistConfirmedAuthSession,
+          updateNavUI: options.updateNavUI,
+          fireAuthReadyCallbacks: options.fireAuthReadyCallbacks,
+          resolveAuthBootstrap: options.resolveAuthBootstrap,
+          isInvalidAuthSessionError: options.isInvalidAuthSessionError,
+          clearStaleFirebaseAuthState: options.clearStaleFirebaseAuthState,
+          clearConfirmedAuthCache: options.clearConfirmedAuthCache,
+          setupGoogleBtn: options.setupGoogleBtn,
+          setupEmailAuthForm: options.setupEmailAuthForm,
+          setupSignupForm: options.setupSignupForm,
+          setupSignupGoogleBtn: options.setupSignupGoogleBtn,
+          authInitFlag: options.authInitFlag,
+          authReadyFlag: options.authReadyFlag
+        });
+      },
+      initOfflineAuth: function () {
+        initOfflineAuth({
+          markAuthReady: options.markAuthReady,
+          updateNavUI: options.updateNavUI,
+          getCachedAuthUser: options.getCachedAuthUser,
+          resolveAuthBootstrap: options.resolveAuthBootstrap,
+          fireAuthReadyCallbacks: options.fireAuthReadyCallbacks
+        });
+      },
+      getEnvironmentCheckError: getEnvironmentCheckError,
+      getFriendlyErrorMessage: getFriendlyErrorMessage,
+      signInWithGoogle: function () {
+        return signInWithGoogle({
+          getEnvironmentCheckError: options.getEnvironmentCheckError,
+          isLoginPage: options.isLoginPage,
+          persistConfirmedAuthSession: options.persistConfirmedAuthSession,
+          preloadRedirectTargetData: options.preloadRedirectTargetData,
+          getRedirectTarget: options.getRedirectTarget
+        });
+      },
+      signOut: function () {
+        return signOut({
+          clearStaleFirebaseAuthState: options.clearStaleFirebaseAuthState,
+          clearConfirmedAuthCache: options.clearConfirmedAuthCache
+        });
+      }
+    };
+  }
+
   function initAuth(options) {
     var resolveEmailAuthMode = options && options.resolveEmailAuthMode;
     var setupLoginPageAuthUi = options && options.setupLoginPageAuthUi;
@@ -390,6 +454,7 @@
     initOfflineAuth: initOfflineAuth,
     signInWithGoogle: signInWithGoogle,
     signOut: signOut,
-    initAuth: initAuth
+    initAuth: initAuth,
+    createProtectedRouteBridge: createProtectedRouteBridge
   };
 })();

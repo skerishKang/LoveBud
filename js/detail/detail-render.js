@@ -65,6 +65,21 @@
         const renderTreeContext = ({ hasTreeContext, tree, memories, sourceContext, degradedReason, currentMemory }) => {
             if (!treeContextEl) return;
 
+            if (degradedReason === 'context-loading') {
+                treeContextEl.innerHTML = `
+                    <div class="detail-context-state detail-context-state-loading">
+                        <div class="detail-context-icon">
+                            <span class="material-symbols-outlined">hourglass_top</span>
+                        </div>
+                        <div class="detail-context-copy">
+                            <div class="detail-context-kicker">${tText('tree_context_loading_kicker', '트리 흐름 확인 중')}</div>
+                            <p>${tText('tree_context_loading_desc', '현재 순간은 먼저 열어두었어요. 이어진 트리 흐름을 잠시 불러오고 있어요.')}</p>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
             if (degradedReason === 'missing-tree-id') {
                 treeContextEl.innerHTML = `
                     <div style="display:flex; align-items:flex-start; gap:14px;">

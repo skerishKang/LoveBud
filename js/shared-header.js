@@ -138,6 +138,10 @@
     // Confirmed session helper - 헤더 즉시 렌더링용
     function getConfirmedSessionUser() {
         try {
+            if (window.LoveBudProtectedRoute) {
+                var state = window.LoveBudProtectedRoute.getAuthState();
+                if (state.ready && state.user) return state.user;
+            }
             if (window.getConfirmedAuthUser) {
                 return window.getConfirmedAuthUser();
             }
@@ -289,6 +293,21 @@
         }
 
         // 에디터 페이지에서는 "편집하기" 메뉴 숨김 (이미 편집 화면 안에 있음)
+
+        // Settings (auth gated)
+        if (menuConfig.settings) {
+            var settingsClasses = [];
+            if (activeKey === 'settings') settingsClasses.unshift('active');
+
+            var settingsReturnHref = appendSettingsReturnTo(menuConfig.settings.href);
+            var settingsHref = cachedUser
+                ? settingsReturnHref
+                : getLoginRedirectHref(settingsReturnHref);
+
+            navLinksHTML += '<a href="' + settingsHref + '"' +
+                (settingsClasses.length ? ' class="' + settingsClasses.join(' ') + '"' : '') +
+                '>' + t(menuConfig.settings.textKey) + '</a>';
+        }
 
         return [
             '<header class="nav-bar">',

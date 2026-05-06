@@ -75,19 +75,21 @@
     }
   }
 
-  function moveDeleteButtonIntoEditMode(deleteMemoryBtn) {
+  function ensureDeleteButtonInCurrentMomentActions(deleteMemoryBtn) {
     if (!deleteMemoryBtn) return;
 
-    var editMode = document.getElementById('detailEditMode');
-    var editActions = editMode ? editMode.querySelector('.editor-edit-actions-row') : null;
-    if (!editActions) return;
+    var viewMode = document.getElementById('detailViewMode');
+    var currentMomentActions = viewMode ? viewMode.querySelector('.editor-current-moment-actions') : null;
+    if (!currentMomentActions) return;
 
-    deleteMemoryBtn.classList.add('editor-edit-danger-action');
+    deleteMemoryBtn.classList.remove('editor-edit-danger-action');
     deleteMemoryBtn.setAttribute('aria-label', deleteMemoryBtn.textContent || '순간 삭제');
     deleteMemoryBtn.style.removeProperty('display');
+    deleteMemoryBtn.removeAttribute('aria-hidden');
+    deleteMemoryBtn.removeAttribute('tabindex');
 
-    if (deleteMemoryBtn.parentElement !== editActions) {
-      editActions.insertBefore(deleteMemoryBtn, editActions.firstChild);
+    if (deleteMemoryBtn.parentElement !== currentMomentActions) {
+      currentMomentActions.appendChild(deleteMemoryBtn);
     }
   }
 
@@ -101,34 +103,49 @@
       btn.tabIndex = -1;
     });
 
-    if (!deleteMemoryBtn) return;
-    var viewMode = document.getElementById('detailViewMode');
-    var editMode = document.getElementById('detailEditMode');
-    var isInsideViewMode = !!(viewMode && viewMode.contains(deleteMemoryBtn));
-    var isInsideEditMode = !!(editMode && editMode.contains(deleteMemoryBtn));
-
-    if (isInsideViewMode && !isInsideEditMode) {
-      deleteMemoryBtn.style.setProperty('display', 'none', 'important');
-      deleteMemoryBtn.setAttribute('aria-hidden', 'true');
-      deleteMemoryBtn.tabIndex = -1;
-    } else if (isInsideEditMode) {
-      deleteMemoryBtn.style.removeProperty('display');
-      deleteMemoryBtn.removeAttribute('aria-hidden');
-      deleteMemoryBtn.removeAttribute('tabindex');
-    }
+    ensureDeleteButtonInCurrentMomentActions(deleteMemoryBtn);
   }
 
-  function watchCurrentMemoryViewModeActions(detailPanel, deleteMemoryBtn) {
+  function ensureEditModeDeleteButton(deleteMemoryBtn, deleteMemory) {
+    if (!deleteMemoryBtn || typeof deleteMemory !== 'function') return null;
+
+    var editMode = document.getElementById('detailEditMode');
+    var editActions = editMode ? editMode.querySelector('.editor-edit-actions-row') : null;
+    if (!editActions) return null;
+
+    var editDeleteBtn = document.getElementById('editDeleteMemoryBtn');
+    if (!editDeleteBtn) {
+      editDeleteBtn = deleteMemoryBtn.cloneNode(true);
+      editDeleteBtn.id = 'editDeleteMemoryBtn';
+      editDeleteBtn.classList.add('editor-edit-danger-action');
+      editActions.insertBefore(editDeleteBtn, editActions.firstChild);
+    }
+
+    if (editDeleteBtn.textContent !== deleteMemoryBtn.textContent) {
+      editDeleteBtn.textContent = deleteMemoryBtn.textContent;
+    }
+    editDeleteBtn.setAttribute('aria-label', deleteMemoryBtn.getAttribute('aria-label') || deleteMemoryBtn.textContent || '순간 삭제');
+
+    if (editDeleteBtn.dataset.bound !== '1') {
+      editDeleteBtn.dataset.bound = '1';
+      editDeleteBtn.addEventListener('click', deleteMemory);
+    }
+
+    return editDeleteBtn;
+  }
+
+  function watchCurrentMemoryViewModeActions(detailPanel, deleteMemoryBtn, deleteMemory) {
     if (!detailPanel || detailPanel.dataset.currentMemoryActionWatchBound === '1') return;
     detailPanel.dataset.currentMemoryActionWatchBound = '1';
 
     hideCurrentMemoryViewModeSecondaryActions(detailPanel, deleteMemoryBtn);
+    ensureEditModeDeleteButton(deleteMemoryBtn, deleteMemory);
 
     if (typeof MutationObserver !== 'function') return;
 
     var observer = new MutationObserver(function() {
-      moveDeleteButtonIntoEditMode(deleteMemoryBtn);
       hideCurrentMemoryViewModeSecondaryActions(detailPanel, deleteMemoryBtn);
+      ensureEditModeDeleteButton(deleteMemoryBtn, deleteMemory);
     });
 
     observer.observe(detailPanel, {
@@ -148,13 +165,14 @@
     var saveMemoryEdit = options && options.saveMemoryEdit;
     var detailPanel = document.getElementById('detailPanel');
 
-    moveDeleteButtonIntoEditMode(deleteMemoryBtn);
-    watchCurrentMemoryViewModeActions(detailPanel, deleteMemoryBtn);
+    ensureDeleteButtonInCurrentMomentActions(deleteMemoryBtn);
+    ensureEditModeDeleteButton(deleteMemoryBtn, deleteMemory);
+    watchCurrentMemoryViewModeActions(detailPanel, deleteMemoryBtn, deleteMemory);
 
     if (editMemoryBtn && typeof enterEditMode === 'function') {
       editMemoryBtn.addEventListener('click', function(e) {
-        moveDeleteButtonIntoEditMode(deleteMemoryBtn);
         hideCurrentMemoryViewModeSecondaryActions(detailPanel, deleteMemoryBtn);
+        ensureEditModeDeleteButton(deleteMemoryBtn, deleteMemory);
         enterEditMode(e);
       });
     }

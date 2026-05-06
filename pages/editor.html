@@ -6,7 +6,8 @@
     <title>러브트리 편집 | LoveTree</title>
     <link rel="icon" href="/assets/favicon/favicon.svg" type="image/svg+xml">
     <link rel="icon" href="/favicon.ico" sizes="32x32">
-    <link rel="stylesheet" href="../css/editor.css?v=20260423-1">
+    <link rel="stylesheet" href="../css/editor.css?v=20260504-624">
+    <link rel="stylesheet" href="../css/page-transitions.css?v=20260430-1">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
 </head>
 <body class="editor-preload">
@@ -14,8 +15,8 @@
 
     <div id="shared-header"></div>
 
-    <div class="editor-layout">
-        <aside class="sidebar">
+    <div class="editor-layout page-transition-enter">
+        <aside class="sidebar reveal-fade">
             <div class="editor-sidebar-back-wrap">
                 <a id="backToMyTreesLink" href="my-trees.html" class="editor-sidebar-back-link">
                     <span aria-hidden="true" class="editor-sidebar-back-icon">←</span>
@@ -28,15 +29,11 @@
                 <div class="editor-status-card">
                     <div class="editor-reference-kicker" aria-hidden="true">✿ Our LoveTree</div>
                     <div class="editor-space-between-row">
-                        <strong id="sidebarTreeTitle">LoveTree</strong>
-                        <button type="button" id="renameTreeBtn" class="icon-menu-btn editor-rename-btn" aria-label="트리 제목 변경" title="트리 제목 변경">편집</button>
+                        <strong id="sidebarTreeTitle">러브트리</strong>
+                        <button type="button" id="renameTreeBtn" class="icon-menu-btn editor-rename-btn" aria-label="트리 제목 수정" title="트리 제목 수정">제목 수정</button>
                     </div>
                     <span id="sidebarTreeVisibility" class="editor-tree-visibility-pill is-private">비공개</span>
-                    <div class="editor-title-settings-panel" aria-label="트리 핵심 설정">
-                        <button type="button" class="editor-mini-setting-btn" id="sidebarTitleEditBtn" aria-label="제목 수정">
-                            <span class="material-symbols-outlined" aria-hidden="true">edit</span>
-                            <span id="sidebarTitleEditBtnLabel">제목 수정</span>
-                        </button>
+                    <div class="editor-title-settings-panel" aria-label="트리 공개 설정">
                         <button type="button" class="editor-mini-setting-btn" id="sidebarVisibilityToggleBtn">
                             <span class="material-symbols-outlined" id="sidebarVisibilityToggleBtnIcon" aria-hidden="true">public</span>
                             <span id="sidebarVisibilityToggleBtnLabel">이 트리 공개하기</span>
@@ -63,7 +60,7 @@
             </section>
         </aside>
 
-        <main class="canvas-area" id="canvasArea">
+        <main class="canvas-area reveal-scale reveal-up" id="canvasArea">
             <div class="editor-canvas-topbar" aria-label="러브트리 캔버스 도구">
                 <div class="editor-canvas-title">
                     <div class="editor-reference-kicker">✿ 순간을 이어가는 중</div>
@@ -140,10 +137,10 @@
             </div>
         </main>
 
-        <aside class="detail-panel memory-detail-section" id="detailPanel">
+        <aside class="detail-panel memory-detail-section reveal-fade" id="detailPanel">
             <div class="panel-header">
                 <h3 class="headline editor-panel-headline"></h3>
-                <button type="button" class="icon-menu-btn editor-hidden-initial editor-detail-more-btn" aria-label="상세로 보기" id="detailMoreBtn">상세로 보기</button>
+                <button type="button" class="icon-menu-btn editor-hidden-initial editor-detail-more-btn" aria-label="현재 순간 감상하기" id="detailMoreBtn">현재 순간 감상하기</button>
             </div>
 
             <div class="detail-content" id="detailContent">
@@ -165,11 +162,11 @@
                     <div class="editor-current-moment-card">
                         <div class="editor-current-moment-head">
                             <div id="detailCurrentMomentBadge" class="editor-current-moment-badge">...</div>
+                            <button id="editMemoryBtn" class="btn-round btn-outline editor-memory-action-btn editor-moment-edit-chip">...</button>
                         </div>
                         <h4 id="detailCurrentMomentTitle" class="editor-current-moment-title">&nbsp;</h4>
                         <p id="detailCurrentMomentHint" class="editor-current-moment-hint">&nbsp;</p>
                         <div class="memory-actions editor-current-moment-actions">
-                            <button id="editMemoryBtn" class="btn-round btn-outline editor-memory-action-btn">...</button>
                             <button id="deleteMemoryBtn" class="btn-round btn-outline editor-memory-action-btn editor-memory-delete-btn">...</button>
                         </div>
                         <div class="detail-video">
@@ -246,13 +243,23 @@
     <script src="../js/editor/editor-dom-selectors.js?v=20260428-1"></script>
     <script src="../js/editor/editor-root-helpers.js?v=20260422-1"></script>
     <script src="../js/editor/editor-canvas-layout.js?v=20260420-1"></script>
+    <script src="../js/editor/editor-canvas-layout-helpers.js?v=20260503-1"></script>
     <script src="../js/editor/editor-canvas-node.js?v=20260420-1"></script>
     <script src="../js/editor/editor-canvas-interaction.js?v=20260421-1"></script>
-    <script src="../js/editor/editor-canvas-viewport.js?v=20260420-1"></script>
-    <script src="../js/editor/editor-canvas.js?v=20260421-5"></script>
+    <script src="../js/editor/editor-canvas-interaction-helpers.js?v=20260503-1"></script>
+    <script src="../js/editor/editor-canvas-viewport.js?v=20260504-651"></script>
+    <script src="../js/editor/editor-canvas-edges.js?v=20260502-1"></script>
+    <script src="../js/editor/editor-canvas-state-boundary.js?v=20260503-1"></script>
+    <script src="../js/editor/editor-canvas-growth-affordance.js?v=20260503-1"></script>
+    <script src="../js/editor/editor-canvas-geometry.js?v=20260502-1"></script>
+    <script src="../js/editor/editor-canvas.js?v=20260504-651"></script>
     <script src="../js/editor/editor-rename-ui.js?v=20260422-2"></script>
-    <script src="../js/editor/editor-detail-ui.js?v=20260422-2"></script>
-    <script src="../js/editor/editor-memory-actions.js?v=20260419-1"></script>
+    <script src="../js/editor/editor-detail-tree-meta.js?v=20260502-1"></script>
+    <script src="../js/editor/editor-detail-inline-edit.js?v=20260504-627"></script>
+    <script src="../js/editor/editor-detail-sidebar-status-boundary.js?v=20260504-772"></script>
+    <script src="../js/editor/editor-detail-ui-builders.js?v=20260503-1"></script>
+    <script src="../js/editor/editor-detail-ui.js?v=20260504-627"></script>
+    <script src="../js/editor/editor-memory-actions.js?v=20260504-628"></script>
     <script src="../js/editor/editor-memory-form.js?v=20260422-3"></script>
     <script src="../js/api/auth-policy.js?v=20260420-1"></script>
     <script src="../js/api/base-api-fetch.js?v=20260420-1"></script>
@@ -268,7 +275,7 @@
     <script src="../js/editor/editor-entry-fallbacks.js?v=20260422-1"></script>
     <script src="../js/editor/editor-shell-helpers.js?v=20260422-1"></script>
 
-    <script src="../js/editor.js?v=20260422-4"></script>
+    <script src="../js/editor.js?v=20260502-1"></script>
     <script src="../js/editor/editor-i18n-refresh.js?v=20260422-2"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
@@ -279,7 +286,7 @@
     <script src="../js/i18n/i18n-intro.js?v=20260421-2"></script>
     <script src="../js/i18n/i18n-search.js?v=20260421-1"></script>
     <script src="../js/i18n/i18n-detail.js?v=20260421-5"></script>
-    <script src="../js/i18n/i18n-editor.js?v=20260423-1"></script>
+    <script src="../js/i18n/i18n-editor.js?v=20260504-633"></script>
     <script>
         window.i18nEditor = Object.assign(window.i18nEditor || {}, {
             editor_sidebar_public_tree: { ko: '공개', en: 'Public' },
@@ -301,6 +308,8 @@
     <script src="../js/auth/auth-session.js?v=20260417-31"></script>
     <script src="../js/auth/auth-firebase.js?v=20260427-3"></script>
     <script src="../js/auth.js?v=20260417-31"></script>
+    <script src="../js/auth/protected-route.js?v=20260505-828"></script>
+    <script src="../js/page-transitions.js?v=20260430-1"></script>
     <script>renderSharedHeader();</script>
 </body>
 </html>

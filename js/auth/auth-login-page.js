@@ -1,6 +1,71 @@
 (function () {
   if (window.LoveBudAuthLoginPage) return;
 
+  function isCurrentLoginPage() {
+    var path = window.location.pathname || '';
+    return path.indexOf('/pages/login.html') !== -1 ||
+      path.indexOf('/pages/login') !== -1 ||
+      path.indexOf('login.html') !== -1;
+  }
+
+  function getLoginCard() {
+    return document.querySelector('.login-card');
+  }
+
+  function hideLoginCard() {
+    var card = getLoginCard();
+    if (!card) return;
+    card.style.visibility = 'hidden';
+    card.setAttribute('aria-hidden', 'true');
+  }
+
+  function showLoginCard() {
+    var card = getLoginCard();
+    if (!card) return;
+    card.style.visibility = '';
+    card.setAttribute('aria-hidden', 'false');
+  }
+
+  function clearLoginHeaderAuthState() {
+    var authContainer = document.getElementById('auth-nav-container');
+    if (authContainer) authContainer.innerHTML = '';
+  }
+
+  function resolveLoginRedirectTarget() {
+    try {
+      var params = new URLSearchParams(window.location.search || '');
+      return params.get('redirect') || 'my-trees.html';
+    } catch (error) {
+      return 'my-trees.html';
+    }
+  }
+
+  function bindLoginAuthState() {
+    if (!isCurrentLoginPage()) return;
+    hideLoginCard();
+
+    if (window.__lovebudLoginAuthStateBound) return;
+    window.__lovebudLoginAuthStateBound = true;
+
+    try {
+      if (typeof initFirebase === 'function') initFirebase();
+      var auth = window.firebase && typeof window.firebase.auth === 'function'
+        ? window.firebase.auth()
+        : null;
+      if (!auth || typeof auth.onAuthStateChanged !== 'function') return;
+
+      auth.onAuthStateChanged(function (user) {
+        if (user) {
+          window.location.href = resolveLoginRedirectTarget();
+          return;
+        }
+        clearLoginHeaderAuthState();
+        showLoginCard();
+      });
+    } catch (error) {
+    }
+  }
+
   function syncEmailAuthModeUi(options) {
     var emailAuthMode = options && options.emailAuthMode;
     var titleEl = options && options.titleEl;
@@ -44,6 +109,29 @@
     if (typeof applyI18n === 'function') {
       applyI18n();
     }
+  }
+
+  var EMAIL_AUTH_EXECUTION_METHODS = {
+    setupEmailAuthForm: true,
+    setupSignupForm: true
+  };
+
+  function getLoginPageModule(methodName) {
+    if (methodName && EMAIL_AUTH_EXECUTION_METHODS[methodName]) {
+      if (window.LoveBudAuthLoginPage) return window.LoveBudAuthLoginPage;
+      return null;
+    }
+    if (window.LoveBudLoginPageController) return window.LoveBudLoginPageController;
+    return window.LoveBudAuthLoginPage || null;
+  }
+
+  function callLoginPageModule(methodName, args) {
+    var loginPageModule = getLoginPageModule(methodName);
+    if (!loginPageModule || typeof loginPageModule[methodName] !== 'function') {
+      return false;
+    }
+    loginPageModule[methodName].apply(loginPageModule, args || []);
+    return true;
   }
 
   function setupLoginPageAuthUi(options) {
@@ -364,6 +452,8 @@
   }
 
   window.LoveBudAuthLoginPage = {
+    getLoginPageModule: getLoginPageModule,
+    callLoginPageModule: callLoginPageModule,
     syncEmailAuthModeUi: syncEmailAuthModeUi,
     setupLoginPageAuthUi: setupLoginPageAuthUi,
     setupGoogleBtn: setupGoogleBtn,
@@ -371,4 +461,6 @@
     setupEmailAuthForm: setupEmailAuthForm,
     setupSignupForm: setupSignupForm
   };
+
+  bindLoginAuthState();
 })();

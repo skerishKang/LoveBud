@@ -37,10 +37,11 @@
 2. `./doc_index.md`
 3. `./ops/PARALLEL_WORKTREE_AGENT_POLICY.md`
 4. `./ops/AGENT_STARTUP_VERIFICATION_RULES.md`
-5. `./product/PRODUCT_IDENTITY.md`
-6. `./product/BRAND_EXPERIENCE.md`
-7. `./design/UI_DESIGN_SYSTEM.md`
-8. 요청 범위에 맞는 문서군 인덱스
+5. `./project/AGENT_OPERATION_GUARDRAILS.md`
+6. `./product/PRODUCT_IDENTITY.md`
+7. `./product/BRAND_EXPERIENCE.md`
+8. `./design/UI_DESIGN_SYSTEM.md`
+9. 요청 범위에 맞는 문서군 인덱스
 
 Visibility, private storage, anonymous public exposure, Browse/Search eligibility 판단이 필요하면 아래를 추가로 읽습니다.
 
@@ -78,6 +79,10 @@ PR3 button / badge / chip tone 기준 판단이 필요하면 아래를 추가로
 - `./ops/BRANCH_CLEANUP_PLAN.md`
 - `./ops/MODAL_RUNTIME_DIAGNOSTICS_WORKFLOW.md`
 - `./migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md`
+
+테스트 데이터(트리/순간) 생성이 필요하면 아래 워크플로우 가이드를 참고합니다.
+
+- `../.windsurf/workflows/tree-moment-creation-guide.md` — 테스트 환경에서 러브트리와 순간 생성 방법
 - `./engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md`
 - `./engineering/REVIEW_GUARDRAILS.md`
 
@@ -149,7 +154,7 @@ Reference 문서는 `docs/reference/` 아래에 정리됩니다.
 - [AUTH_LOGIN_ACTIVE_PROVIDER_TRANSITION_PLAN.md](./engineering/AUTH_LOGIN_ACTIVE_PROVIDER_TRANSITION_PLAN.md) - Auth/Login active provider transition 단계, file ownership, 금지 조합, fixed test slot 검증 기준
 - [SUPABASE_FREE_POC_PLAN.md](./engineering/SUPABASE_FREE_POC_PLAN.md) - Supabase Free PoC 기반 장기 backend 구조 단순화 검증 계획
 - [REVIEW_GUARDRAILS.md](./engineering/REVIEW_GUARDRAILS.md) - 반복 false positive 방지 규칙
-- [RECENT_REFACTORING.md](./engineering/RECENT_REFACTORING.md) - 최근 리팩터링 기록
+- [RECENT_REFACTORING.md](./engineering/RECENT_REFACTORING.md) - 최근 코드 구조 정리 이력
  - [PUBLIC_TREE_ADAPTER_BOUNDARY_AUDIT.md](./engineering/PUBLIC_TREE_ADAPTER_BOUNDARY_AUDIT.md) - #412 public tree adapter helper boundaries, export contract, loading-order risk, preview implications audit
  - [AUTH_EDITOR_RUNTIME_INVENTORY_834.md](./engineering/AUTH_EDITOR_RUNTIME_INVENTORY_834.md) - #834 auth/editor runtime inventory, dependency mapping, naming consistency audit, decomposition candidates
 
@@ -158,6 +163,8 @@ Reference 문서는 `docs/reference/` 아래에 정리됩니다.
 보안 관련 문서는 `docs/security/` 아래에 정리됩니다.
 
 - [FIREBASE_CLIENT_CONFIG_POLICY.md](./security/FIREBASE_CLIENT_CONFIG_POLICY.md) - Firebase 클라이언트 설정 노출 정책 및 보안 모델
+- [FIREBASE_DEPLOYMENT_SECRET_POSTURE_RUNBOOK.md](./security/FIREBASE_DEPLOYMENT_SECRET_POSTURE_RUNBOOK.md) - Firebase Console, Google Cloud, Modal, Cloudflare, legacy deployment secret posture 검증 런북
+- [FIRESTORE_RULES_HARDENING_PLAN.md](./security/FIRESTORE_RULES_HARDENING_PLAN.md) - Firestore owner/visibility/comment rule hardening staged plan and deployment gate
 
 ## ops 문서군
 
@@ -192,6 +199,7 @@ Reference 문서는 `docs/reference/` 아래에 정리됩니다.
 - [PROJECT_OPERATING_MODEL.md](./project/PROJECT_OPERATING_MODEL.md) - 역할, 책임, 승인권, 세션 시작 프로토콜
 - [BRANCHING_AND_REVIEW.md](./project/BRANCHING_AND_REVIEW.md) - main 우선 확인, 브랜치 작업, 리뷰/검증/완료 보고 원칙
 - [LOCAL_MODEL_WORKFLOW.md](./project/LOCAL_MODEL_WORKFLOW.md) - 로컬 실행 모델 작업 기준
+- [AGENT_OPERATION_GUARDRAILS.md](./project/AGENT_OPERATION_GUARDRAILS.md) - 파일 inspection과 secret 노출의 경계, fixed-slot browser verification, test account handling, 병렬 프롬프트 중복 방지, 범위 밖 입력 확인, implementation handoff 기준
 - [TASK_STATUS.md](./project/TASK_STATUS.md) - 작업 상태 추적 문서
 - [VERIFICATION_AND_EVIDENCE.md](./project/VERIFICATION_AND_EVIDENCE.md) - 검증 및 증빙 기준
 - [VERIFICATION_WARNING_CATALOG.md](./project/VERIFICATION_WARNING_CATALOG.md) - UI/production/test preview 검증 warning과 blocker 분류 기준

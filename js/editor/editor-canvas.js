@@ -22,9 +22,12 @@ function createEditorCanvas(deps) {
     const canvasLayout = window.LoveBudEditorCanvasLayout || {};
     const canvasNode = window.LoveBudEditorCanvasNode || {};
     const canvasInteraction = window.LoveBudEditorCanvasInteraction || {};
+    const canvasInteractionHelpers = window.LoveBudEditorCanvasInteractionHelpers || {};
     const canvasViewport = window.LoveBudEditorCanvasViewport || {};
+    const canvasLayoutHelpers = window.LoveBudEditorCanvasLayoutHelpers || {};
+    const canvasEdges = window.createEditorCanvasEdges({ svg, canvasViewport });
 
-    function loadStoredLayout() {
+function loadStoredLayout() {
         if (typeof canvasLayout.createLayoutStore === 'function') {
             const store = canvasLayout.createLayoutStore(treeId);
             const initialState = store.createInitialViewportState();
@@ -74,14 +77,35 @@ function createEditorCanvas(deps) {
         rafScheduled: false,
         rafFrame: null
     };
+    const { NODE_HALF, AFFORDANCE_OFFSET_X, AFFORDANCE_OFFSET_Y, AFFORDANCE_CARD_HALF } = window.EditorCanvasGeometry;
 
-    const ROOT_RIGHT_GUTTER = 300;
-    const ROOT_BOTTOM_GUTTER = 180;
-    const NODE_WIDTH = 108;
-    const NODE_HALF = Math.round(NODE_WIDTH / 2);
-    const AFFORDANCE_OFFSET_X = 168;
-    const AFFORDANCE_OFFSET_Y = 10;
-    const AFFORDANCE_CARD_HALF = 108;
+    function getMetrics() {
+        return window.EditorCanvasGeometry.getMetrics(canvas);
+    }
+
+    function getRootBasePosition() {
+        return window.EditorCanvasGeometry.getRootBasePosition(getMetrics());
+    }
+
+    function getRadiusL1() {
+        return window.EditorCanvasGeometry.getRadiusL1(getMetrics());
+    }
+
+    function getRadiusL2() {
+        return window.EditorCanvasGeometry.getRadiusL2(getMetrics());
+    }
+
+    function distributeAngles(count, baseAngle = -10) {
+        return window.EditorCanvasGeometry.distributeAngles(count, baseAngle);
+    }
+
+    function getWorldPosition(mem) {
+        return window.EditorCanvasGeometry.getWorldPosition(mem, viewportState, getCanonicalRootId, getTreeMemories, isRootMemory, getMetrics);
+    }
+
+    function calcPosition(mem) {
+        return window.EditorCanvasGeometry.calcPosition(mem, viewportState, getWorldPosition);
+    }
 
     function persistStoredPositions() {
         if (typeof canvasLayout.createLayoutStore === 'function') {
@@ -99,106 +123,29 @@ function createEditorCanvas(deps) {
         } catch (e) {}
     }
 
-    function getMetrics() {
-        return {
-            width: Math.max(canvas.clientWidth || 0, 720),
-            height: Math.max(canvas.clientHeight || 0, 520)
-        };
-    }
-
-    function getRootBasePosition() {
-        const metrics = getMetrics();
-        return {
-            x: Math.max(360, Math.min(Math.round(metrics.width * 0.42), metrics.width - ROOT_RIGHT_GUTTER)),
-            y: Math.max(260, Math.min(Math.round(metrics.height * 0.48), metrics.height - ROOT_BOTTOM_GUTTER))
-        };
-    }
-
-    function getRadiusL1() {
-        const metrics = getMetrics();
-        return Math.max(180, Math.min(250, Math.round(metrics.width * 0.20)));
-    }
-
-    function getRadiusL2() {
-        const metrics = getMetrics();
-        return Math.max(130, Math.min(190, Math.round(metrics.width * 0.14)));
-    }
-
-    function distributeAngles(count, baseAngle = -10) {
-        if (count <= 0) return [baseAngle];
-        if (count === 1) return [baseAngle];
-
-        const totalSpread = Math.min(220, Math.max(90, (count - 1) * 36));
-        const startAngle = baseAngle - totalSpread / 2;
-
-        return Array.from({ length: count }, (_, i) => {
-            return startAngle + (totalSpread * i / (count - 1));
-        });
-    }
-
-    function getWorldPosition(mem, visited = new Set()) {
-        const canonicalRootId = getCanonicalRootId();
-        const treeMemories = getTreeMemories();
-
-        if (!mem) {
-            return getRootBasePosition();
+    const growthAffordance = window.createEditorCanvasGrowthAffordance({
+        canvas,
+        svg,
+        documentRef: document,
+        getMetrics,
+        calcPosition,
+        openAddMoment,
+        i18n,
+        constants: {
+            NODE_HALF,
+            AFFORDANCE_OFFSET_X,
+            AFFORDANCE_OFFSET_Y,
+            AFFORDANCE_CARD_HALF
         }
+    });
 
-        if (viewportState.positions[mem.id]) {
-            return {
-                x: Number(viewportState.positions[mem.id].x) || 0,
-                y: Number(viewportState.positions[mem.id].y) || 0
-            };
-        }
 
-        if (isRootMemory(mem, canonicalRootId)) {
-            return getRootBasePosition();
-        }
 
-        if (visited.has(mem.id)) {
-            return getRootBasePosition();
-        }
-        visited.add(mem.id);
 
-        const parentId = mem.parentId || canonicalRootId;
-        const siblings = treeMemories.filter((m) => (
-            (m.parentId || canonicalRootId) === parentId && !isRootMemory(m, canonicalRootId)
-        ));
-        const idx = Math.max(0, siblings.findIndex((m) => m.id === mem.id));
-        const count = Math.max(1, siblings.length);
 
-        if (parentId === canonicalRootId) {
-            const angles = distributeAngles(count, -10);
-            const angle = angles[idx] !== undefined ? angles[idx] : -10;
-            const rootBase = getRootBasePosition();
-            const radius = getRadiusL1();
-            return {
-                x: rootBase.x + radius * Math.cos(angle * Math.PI / 180),
-                y: rootBase.y + radius * Math.sin(angle * Math.PI / 180)
-            };
-        }
 
-        const parent = treeMemories.find((m) => m.id === parentId);
-        const parentPos = parent ? getWorldPosition(parent, visited) : getRootBasePosition();
-        const childAngles = distributeAngles(count, 0);
-        const childAngle = childAngles[idx] !== undefined ? childAngles[idx] : 0;
-        const radius = getRadiusL2();
 
-        return {
-            x: parentPos.x + radius * Math.cos(childAngle * Math.PI / 180),
-            y: parentPos.y + radius * Math.sin(childAngle * Math.PI / 180)
-        };
-    }
-
-    const calcPosition = (mem) => {
-        const world = getWorldPosition(mem);
-        return {
-            x: world.x + viewportState.offsetX,
-            y: world.y + viewportState.offsetY
-        };
-    };
-
-    function isNodeWithinSafeViewport(pos) {
+function isNodeWithinSafeViewport(pos) {
         const metrics = getMetrics();
         const padding = 96;
         return pos.x >= padding && pos.x <= metrics.width - padding && pos.y >= padding && pos.y <= metrics.height - padding;
@@ -236,26 +183,16 @@ function createEditorCanvas(deps) {
         });
     }
 
-    const drawBranch = (startPos, endPos) => {
-        if (typeof canvasViewport.drawBranch === 'function') {
-            canvasViewport.drawBranch(svg, startPos, endPos);
-            return;
-        }
-
-        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        const cp1x = startPos.x + (endPos.x - startPos.x) / 2;
-        const d = `M ${startPos.x},${startPos.y} Q ${cp1x},${startPos.y} ${endPos.x},${endPos.y}`;
-        path.setAttribute('d', d);
-        path.setAttribute('class', 'branch-line');
-        path.setAttribute('fill', 'none');
-        path.setAttribute('stroke', 'var(--secondary)');
-        path.setAttribute('stroke-width', '2');
-        path.setAttribute('opacity', '0.5');
-        svg.appendChild(path);
-    };
+    const { drawBranch } = canvasEdges;
+    const NODE_TAP_SELECT_THRESHOLD = 8;
 
     function bindNodeDrag(nodeEl, mem) {
         nodeEl.style.cursor = 'grab';
+        let touchStartPoint = null;
+
+        const selectMemoryNode = () => {
+            onNodeClick(nodeEl, mem);
+        };
 
         nodeEl.addEventListener('mousedown', (e) => {
             if (typeof canvasInteraction.beginNodeDrag === 'function') {
@@ -280,13 +217,59 @@ function createEditorCanvas(deps) {
         });
 
         nodeEl.addEventListener('click', (e) => {
+            if (nodeEl.dataset.skipNextClick === '1') {
+                nodeEl.dataset.skipNextClick = '';
+                e.preventDefault();
+                e.stopPropagation();
+                return;
+            }
             if (nodeEl.dataset.suppressClick === '1') {
                 nodeEl.dataset.suppressClick = '';
                 e.preventDefault();
                 e.stopPropagation();
                 return;
             }
-            onNodeClick(nodeEl, mem);
+            e.preventDefault();
+            e.stopPropagation();
+            selectMemoryNode();
+        });
+
+        nodeEl.addEventListener('touchstart', (e) => {
+            if (e.target.closest('button')) return;
+            const touch = e.changedTouches && e.changedTouches[0];
+            if (!touch) return;
+            touchStartPoint = {
+                x: touch.clientX,
+                y: touch.clientY
+            };
+        }, { passive: true });
+
+        nodeEl.addEventListener('touchend', (e) => {
+            if (!touchStartPoint) return;
+            const touch = e.changedTouches && e.changedTouches[0];
+            if (!touch) {
+                touchStartPoint = null;
+                return;
+            }
+            const dx = touch.clientX - touchStartPoint.x;
+            const dy = touch.clientY - touchStartPoint.y;
+            touchStartPoint = null;
+            if (Math.abs(dx) > NODE_TAP_SELECT_THRESHOLD || Math.abs(dy) > NODE_TAP_SELECT_THRESHOLD) return;
+            e.preventDefault();
+            e.stopPropagation();
+            nodeEl.dataset.skipNextClick = '1';
+            selectMemoryNode();
+        }, { passive: false });
+
+        nodeEl.addEventListener('touchcancel', () => {
+            touchStartPoint = null;
+        });
+
+        nodeEl.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            e.preventDefault();
+            e.stopPropagation();
+            selectMemoryNode();
         });
     }
 
@@ -348,6 +331,9 @@ function createEditorCanvas(deps) {
         nodeEl.className = 'memory-node floating-node';
         nodeEl.dataset.memoryId = mem.id;
         nodeEl.draggable = false;
+        nodeEl.tabIndex = 0;
+        nodeEl.setAttribute('role', 'button');
+        nodeEl.setAttribute('aria-label', mem.title ? `${mem.title} 선택` : '순간 선택');
         nodeEl.style.touchAction = 'none';
     }
 
@@ -387,165 +373,27 @@ function createEditorCanvas(deps) {
     }
 
     function clearGrowthAffordance() {
-        canvas.querySelectorAll('.memory-add-affordance').forEach((el) => el.remove());
-        svg.querySelectorAll('.branch-line-affordance').forEach((el) => el.remove());
+        growthAffordance.clearGrowthAffordance();
     }
 
     function openAddMomentFromCanvas() {
-        if (typeof openAddMoment === 'function') {
-            openAddMoment();
-            return;
-        }
-
-        const addBtn = document.getElementById('addMemoryBtn');
-        if (addBtn) {
-            addBtn.click();
-        }
+        growthAffordance.openAddMomentFromCanvas();
     }
 
     function getGrowthAffordancePosition(anchorPos) {
-        const metrics = getMetrics();
-        const edgePadding = 28;
-        const minCenterX = AFFORDANCE_CARD_HALF + edgePadding;
-        const maxCenterX = metrics.width - AFFORDANCE_CARD_HALF - edgePadding;
-        const hasRightRoom = anchorPos.x + NODE_HALF + AFFORDANCE_CARD_HALF + edgePadding <= metrics.width;
-        const hasLeftRoom = anchorPos.x - NODE_HALF - AFFORDANCE_CARD_HALF - edgePadding >= 0;
-        const shouldPlaceLeft = !hasRightRoom && hasLeftRoom;
-
-        return {
-            x: Math.max(
-                minCenterX,
-                Math.min(
-                    shouldPlaceLeft ? anchorPos.x - AFFORDANCE_OFFSET_X : anchorPos.x + AFFORDANCE_OFFSET_X,
-                    maxCenterX
-                )
-            ),
-            y: Math.max(110, Math.min(anchorPos.y - AFFORDANCE_OFFSET_Y, metrics.height - 80)),
-            side: shouldPlaceLeft ? 'left' : 'right'
-        };
+        return growthAffordance.getGrowthAffordancePosition(anchorPos);
     }
 
     function drawGrowthAffordanceBranch(startPos, endPos, side) {
-        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        const tension = side === 'left' ? 0.55 : 0.45;
-        const cp1x = startPos.x + ((endPos.x - startPos.x) * tension);
-        const cp1y = Math.min(startPos.y, endPos.y) - 18;
-        const d = `M ${startPos.x},${startPos.y} Q ${cp1x},${cp1y} ${endPos.x},${endPos.y}`;
-        path.setAttribute('d', d);
-        path.setAttribute('class', 'branch-line branch-line-affordance');
-        path.setAttribute('fill', 'none');
-        path.setAttribute('stroke', 'rgba(144, 73, 81, 0.42)');
-        path.setAttribute('stroke-width', '2');
-        path.setAttribute('stroke-linecap', 'round');
-        path.setAttribute('stroke-dasharray', '6 7');
-        path.setAttribute('opacity', '0.95');
-        svg.appendChild(path);
+        growthAffordance.drawGrowthAffordanceBranch(startPos, endPos, side);
     }
 
     function createGrowthAffordanceElement(anchorMem, labelText, helperText) {
-        const anchorPos = calcPosition(anchorMem);
-        const affPos = getGrowthAffordancePosition(anchorPos);
-        const wrap = document.createElement('button');
-        wrap.type = 'button';
-        wrap.className = 'memory-add-affordance';
-        wrap.setAttribute('aria-label', labelText);
-        wrap.style.position = 'absolute';
-        wrap.style.left = `${affPos.x - AFFORDANCE_CARD_HALF}px`;
-        wrap.style.top = `${affPos.y - 30}px`;
-        wrap.style.zIndex = '4';
-        wrap.style.display = 'flex';
-        wrap.style.alignItems = 'center';
-        wrap.style.gap = '10px';
-        wrap.style.padding = '10px 14px 10px 10px';
-        wrap.style.border = '1px solid rgba(144, 73, 81, 0.18)';
-        wrap.style.borderRadius = '999px';
-        wrap.style.background = 'linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,246,244,0.96))';
-        wrap.style.boxShadow = '0 12px 28px rgba(75, 64, 57, 0.10)';
-        wrap.style.cursor = 'pointer';
-        wrap.style.backdropFilter = 'blur(8px)';
-        wrap.style.transition = 'transform 0.18s ease, box-shadow 0.18s ease';
-
-        const plusBubble = document.createElement('span');
-        plusBubble.textContent = '+';
-        plusBubble.style.width = '32px';
-        plusBubble.style.height = '32px';
-        plusBubble.style.borderRadius = '50%';
-        plusBubble.style.display = 'inline-flex';
-        plusBubble.style.alignItems = 'center';
-        plusBubble.style.justifyContent = 'center';
-        plusBubble.style.background = 'linear-gradient(180deg, rgba(144, 73, 81, 1), rgba(144, 73, 81, 0.88))';
-        plusBubble.style.color = '#fff';
-        plusBubble.style.fontSize = '18px';
-        plusBubble.style.fontWeight = '700';
-        plusBubble.style.flex = '0 0 auto';
-        plusBubble.style.boxShadow = '0 6px 14px rgba(144, 73, 81, 0.22)';
-
-        const textWrap = document.createElement('span');
-        textWrap.style.display = 'flex';
-        textWrap.style.flexDirection = 'column';
-        textWrap.style.alignItems = 'flex-start';
-        textWrap.style.gap = helperText ? '1px' : '0';
-
-        const titleEl = document.createElement('span');
-        titleEl.textContent = labelText;
-        titleEl.style.fontSize = '13px';
-        titleEl.style.fontWeight = '700';
-        titleEl.style.color = 'var(--on-surface)';
-        titleEl.style.lineHeight = '1.25';
-
-        textWrap.appendChild(titleEl);
-
-        if (helperText) {
-            const hintEl = document.createElement('span');
-            hintEl.textContent = helperText;
-            hintEl.style.fontSize = '11px';
-            hintEl.style.fontWeight = '600';
-            hintEl.style.color = 'var(--on-surface-variant)';
-            hintEl.style.lineHeight = '1.25';
-            hintEl.style.opacity = '0.82';
-            textWrap.appendChild(hintEl);
-        }
-
-        wrap.appendChild(plusBubble);
-        wrap.appendChild(textWrap);
-
-        wrap.addEventListener('mouseenter', () => {
-            wrap.style.transform = 'translateY(-2px)';
-            wrap.style.boxShadow = '0 16px 30px rgba(144, 73, 81, 0.16)';
-        });
-        wrap.addEventListener('mouseleave', () => {
-            wrap.style.transform = 'translateY(0)';
-            wrap.style.boxShadow = '0 12px 28px rgba(75, 64, 57, 0.10)';
-        });
-        wrap.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            openAddMomentFromCanvas();
-        });
-
-        drawGrowthAffordanceBranch(
-            {
-                x: anchorPos.x + (affPos.side === 'left' ? (-NODE_HALF + 2) : (NODE_HALF - 2)),
-                y: anchorPos.y + 4
-            },
-            {
-                x: affPos.x + (affPos.side === 'left' ? 72 : -72),
-                y: affPos.y
-            },
-            affPos.side
-        );
-        canvas.appendChild(wrap);
+        growthAffordance.createGrowthAffordanceElement(anchorMem, labelText, helperText);
     }
 
     function renderGrowthAffordance(anchorMem, options) {
-        if (!anchorMem) return;
-        const opts = options || {};
-        const labelText = opts.labelText || (i18n('editor_add_memory') || '새 순간 이어가기');
-        const helperText = opts.isFirstStep
-            ? ''
-            : (opts.helperText || i18n('growth_continue_hint') || '선택한 순간 뒤로 감정이 이어져요');
-
-        createGrowthAffordanceElement(anchorMem, labelText, helperText);
+        growthAffordance.renderGrowthAffordance(anchorMem, options);
     }
 
     const initCanvas = () => {
@@ -556,6 +404,16 @@ function createEditorCanvas(deps) {
         const rootMemory = treeMemories.find((node) => isRootMemory(node, canonicalRootId)) || null;
         const shouldRenderRootNode = drawableMemories.length === 0 && !!rootMemory;
         const hasVisibleNodes = drawableMemories.length > 0 || shouldRenderRootNode;
+        if (hasVisibleNodes && typeof canvasViewport.prepareInitialViewport === 'function') {
+            canvasViewport.prepareInitialViewport({
+                getTreeMemories,
+                getCanonicalRootId,
+                isRootMemory,
+                getWorldPosition,
+                getMetrics,
+                viewportState
+            });
+        }
         canvas.style.backgroundPosition = `${viewportState.offsetX}px ${viewportState.offsetY}px`;
 
         canvas.querySelectorAll('.memory-node').forEach((node) => node.remove());
@@ -603,6 +461,8 @@ function createEditorCanvas(deps) {
             canvasViewport.focusNodeById({
                 nodeId,
                 getTreeMemories,
+                getCanonicalRootId,
+                isRootMemory,
                 getWorldPosition,
                 getMetrics,
                 viewportState,
@@ -708,86 +568,17 @@ function createEditorCanvas(deps) {
             return;
         }
 
-        if (viewportState.globalsBound) return;
-        viewportState.globalsBound = true;
-
-        canvas.style.cursor = 'grab';
-        canvas.style.touchAction = 'none';
-
-        canvas.addEventListener('mousedown', (e) => {
-            if (e.target.closest('.memory-node') || e.target.closest('#addMemoryForm') || e.target.closest('.memory-add-affordance')) return;
-            viewportState.isPanning = true;
-            viewportState.startX = e.clientX;
-            viewportState.startY = e.clientY;
-            canvas.classList.add('panning');
-            canvas.style.cursor = 'grabbing';
-        });
-
-        window.addEventListener('mousemove', (e) => {
-            if (viewportState.isDraggingNode && viewportState.dragNodeId) {
-                const dx = e.clientX - viewportState.dragStartClientX;
-                const dy = e.clientY - viewportState.dragStartClientY;
-                if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
-                    viewportState.dragMoved = true;
-                }
-                viewportState.positions[viewportState.dragNodeId] = {
-                    x: Math.round(viewportState.dragStartWorldX + dx),
-                    y: Math.round(viewportState.dragStartWorldY + dy)
-                };
-                scheduleInitCanvas();
-                return;
-            }
-
-            if (!viewportState.isPanning) return;
-            const dx = e.clientX - viewportState.startX;
-            const dy = e.clientY - viewportState.startY;
-            viewportState.startX = e.clientX;
-            viewportState.startY = e.clientY;
-            viewportState.offsetX += dx;
-            viewportState.offsetY += dy;
-            scheduleInitCanvas();
-        });
-
-        window.addEventListener('mouseup', () => {
-            const currentFrame = viewportState.rafFrame;
-            if (currentFrame) {
-                cancelAnimationFrame(currentFrame);
-                viewportState.rafFrame = null;
-                viewportState.rafScheduled = false;
-            }
-
-            let shouldRender = false;
-            if (viewportState.isDraggingNode && viewportState.dragNodeId) {
-                const draggedId = viewportState.dragNodeId;
-                const moved = viewportState.dragMoved;
-                viewportState.isDraggingNode = false;
-                viewportState.dragNodeId = null;
-                viewportState.dragMoved = false;
-                const draggedEl = document.querySelector(`.memory-node[data-memory-id="${draggedId}"]`);
-                if (draggedEl && moved) {
-                    draggedEl.dataset.suppressClick = '1';
-                    draggedEl.style.cursor = 'grab';
-                    shouldRender = true;
-                    if (window.LoveBudUI?.showToast) {
-                        window.LoveBudUI.showToast(i18n('node_position_adjusted') || '순간 위치를 조정했습니다', 'success', 1800);
-                    }
-                }
-            }
-
-            if (viewportState.isPanning) {
-                shouldRender = true;
-            }
-            viewportState.isPanning = false;
-            canvas.classList.remove('panning');
-            canvas.style.cursor = 'grab';
-            if (shouldRender) {
-                persistStoredPositions();
-                initCanvas();
-            }
+        canvasInteractionHelpers.bindFallbackCanvasPan({
+            canvas,
+            viewportState,
+            scheduleInitCanvas,
+            persistStoredPositions,
+            initCanvas,
+            i18n
         });
     };
 
-    function scheduleInitCanvas() {
+function scheduleInitCanvas() {
         if (viewportState.rafScheduled) return;
         viewportState.rafScheduled = true;
         viewportState.rafFrame = requestAnimationFrame(() => {

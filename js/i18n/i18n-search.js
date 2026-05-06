@@ -10,12 +10,12 @@
 
   window.i18nSearch = {
     'search.title': {
-      ko: '러브트리 둘러보기',
-      en: 'Browse LoveTrees'
+      ko: '러브트리 감상 둘러보기',
+      en: 'Browse LoveTree moments'
     },
     'search.subtitle': {
-      ko: '조용히 자라는 마음들',
-      en: 'Quietly growing feelings'
+      ko: '첫 순간과 이어진 마음을 따라가 보세요',
+      en: 'Follow first moments and the feelings that grew from them'
     },
     'search.intentNote': {
       ko: '트리를 고르면 열려요.',
@@ -133,6 +133,18 @@
       ko: '가져오지 못했어요',
       en: 'Copy failed'
     },
+    'search.previewCopyToMyTreesFailedBody': {
+      ko: '가져오지 못했어요. 다시 시도해 주세요.',
+      en: 'Copy failed. Please try again.'
+    },
+    'search.previewCopyToMyTreesRetry': {
+      ko: '다시 시도',
+      en: 'Try again'
+    },
+    'search.previewCopyToMyTreesLoginRequired': {
+      ko: '로그인이 필요해요',
+      en: 'Login required'
+    },
     'search.previewOpenCopiedTree': {
       ko: '복사된 트리 열기',
       en: 'Open copied tree'
@@ -205,9 +217,9 @@
       ko: '... 그리고 {count}개의 순간 더',
       en: '... and {count} more moments'
     },
-    'search.previewOpenTreeCta': {
-      ko: '이 트리 열기',
-      en: 'Open this tree'
+    'search.previewOpenViewingCta': {
+      ko: '감상 열기',
+      en: 'Open viewing'
     },
     'search.previewSummaryThemeStart': {
       ko: '<strong style="color:var(--on-surface);">{title}</strong>는 <strong style="color:var(--on-surface);">{theme}</strong>와 함께 막 시작된 러브트리예요.',
@@ -224,6 +236,14 @@
     'search.previewSummaryRange': {
       ko: '<strong style="color:var(--on-surface);">{title}</strong>에 담긴 <span style="color:var(--primary);font-weight:700;">{count}개의 순간</span>이 <strong>{range}</strong>에 걸쳐 이어졌어요.',
       en: '<strong style="color:var(--on-surface);">{count} moments</strong> in <strong style="color:var(--on-surface);">{title}</strong> continued across <strong>{range}</strong>.'
+    },
+    'search.previewSummaryThemeNoRange': {
+      ko: '<strong style="color:var(--on-surface);">{theme}</strong>와 함께한 <span style="color:var(--primary);font-weight:700;">{count}개의 순간</span>이 이어졌어요.',
+      en: '<strong style="color:var(--on-surface);">{count} moments</strong> with <strong style="color:var(--on-surface);">{theme}</strong> are connected.'
+    },
+    'search.previewSummaryNoRange': {
+      ko: '<strong style="color:var(--on-surface);">{title}</strong>에 담긴 <span style="color:var(--primary);font-weight:700;">{count}개의 순간</span>이 이어졌어요.',
+      en: '<strong style="color:var(--on-surface);">{count} moments</strong> in <strong style="color:var(--on-surface);">{title}</strong> are connected.'
     },
     'search.previewLoadingLead': {
       ko: '대표 순간을 불러오는 중이에요.',

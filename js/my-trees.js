@@ -16,6 +16,7 @@
   var myTreesData = window.LoveBudMyTreesData || null;
   var myTreesState = window.LoveBudMyTreesState || null;
   var myTreesPage = window.LoveBudMyTreesPage || null;
+  var myTreesRender = window.LoveBudMyTreesRender || null;
 
   function showToast(message, type) {
     if (myTreesPage && typeof myTreesPage.showToast === 'function') {
@@ -42,6 +43,10 @@
 
   function getConfirmedSessionUser() {
     try {
+      if (window.LoveBudProtectedRoute) {
+        var state = window.LoveBudProtectedRoute.getAuthState();
+        if (state.ready && state.user) return state.user;
+      }
       if (window.getConfirmedAuthUser) {
         return window.getConfirmedAuthUser();
       }
@@ -61,80 +66,6 @@
       localStorage.removeItem('lovebud_auth_confirmed');
       localStorage.removeItem('lovebud_auth_token');
     } catch (e) {}
-  }
-
-  var STATE = myTreesPage?.STATE || {
-    LOADING: 'loading',
-    LOADED: 'loaded',
-    EMPTY: 'empty',
-    ERROR: 'error'
-  };
-
-  var currentState = STATE.LOADING;
-
-  function setState(newState, meta) {
-    currentState = newState;
-
-    if (myTreesPage && typeof myTreesPage.setState === 'function') {
-      return myTreesPage.setState(newState, meta);
-    }
-
-    var container = document.getElementById('treesContainer');
-    if (!container) return;
-
-    var sections = {
-      loading: document.getElementById('state-loading'),
-      error: document.getElementById('state-error'),
-      empty: document.getElementById('state-empty'),
-      loaded: document.getElementById('state-loaded')
-    };
-
-    Object.values(sections).forEach(function(el) {
-      if (el) el.style.display = 'none';
-    });
-
-    switch (newState) {
-      case STATE.LOADING:
-        if (sections.loading) sections.loading.style.display = 'flex';
-        break;
-      case STATE.ERROR:
-        if (sections.error) sections.error.style.display = 'flex';
-        break;
-      case STATE.EMPTY:
-        if (sections.empty) sections.empty.style.display = 'flex';
-        break;
-      case STATE.LOADED:
-        if (sections.loaded) sections.loaded.style.display = 'block';
-        break;
-    }
-  }
-
-  function getSelectedTreeId() {
-    if (myTreesState && typeof myTreesState.getSelectedTreeId === 'function') {
-      return myTreesState.getSelectedTreeId();
-    }
-    return null;
-  }
-
-  function setSelectedTreeId(treeId) {
-    if (myTreesState && typeof myTreesState.setSelectedTreeId === 'function') {
-      myTreesState.setSelectedTreeId(treeId);
-    }
-  }
-
-  function getRenderableTrees() {
-    if (myTreesState && typeof myTreesState.getLastTreesData === 'function') {
-      return myTreesState.getLastTreesData();
-    }
-    return lastTreesData;
-  }
-
-  function applyTreeSelection(treeId) {
-    setSelectedTreeId(treeId);
-    var currentTrees = getRenderableTrees();
-    if (Array.isArray(currentTrees) && currentTrees.length) {
-      renderTrees(currentTrees);
-    }
   }
 
   function setupHeaderCreateButton() {
@@ -186,47 +117,44 @@
     loadTrees();
   }
 
-   async function renameTree(treeId, currentTitle) {
-     if (myTreesActions && typeof myTreesActions.renameTree === 'function') {
-       return myTreesActions.renameTree(treeId, currentTitle, {
-         showToast: showToast,
-         reloadTrees: loadTrees,
-         i18n: window.t || function(k) { return k; }
-       });
-     }
+  async function renameTree(treeId, currentTitle) {
+    if (myTreesActions && typeof myTreesActions.renameTree === 'function') {
+      return myTreesActions.renameTree(treeId, currentTitle, {
+        showToast: showToast,
+        reloadTrees: loadTrees,
+        i18n: window.t || function(k) { return k; }
+      });
+    }
 
-     // Fail-safe: missing renameTree action
-     warnMissingModule('LoveBudMyTreesActions', 'renameTree');
-     showMissingActionError('renameTree');
-   }
+    warnMissingModule('LoveBudMyTreesActions', 'renameTree');
+    showMissingActionError('renameTree');
+  }
 
-   async function deleteTree(treeId, treeTitle) {
-     if (myTreesActions && typeof myTreesActions.deleteTree === 'function') {
-       return myTreesActions.deleteTree(treeId, treeTitle, {
-         showToast: showToast,
-         reloadTrees: loadTrees,
-         i18n: window.t || function(k) { return k; }
-       });
-     }
+  async function deleteTree(treeId, treeTitle) {
+    if (myTreesActions && typeof myTreesActions.deleteTree === 'function') {
+      return myTreesActions.deleteTree(treeId, treeTitle, {
+        showToast: showToast,
+        reloadTrees: loadTrees,
+        i18n: window.t || function(k) { return k; }
+      });
+    }
 
-     // Fail-safe: missing deleteTree action
-     warnMissingModule('LoveBudMyTreesActions', 'deleteTree');
-     showMissingActionError('deleteTree');
-   }
+    warnMissingModule('LoveBudMyTreesActions', 'deleteTree');
+    showMissingActionError('deleteTree');
+  }
 
-   async function toggleTreeVisibility(treeId, currentVisibility) {
-     if (myTreesActions && typeof myTreesActions.toggleTreeVisibility === 'function') {
-       return myTreesActions.toggleTreeVisibility(treeId, currentVisibility, {
-         showToast: showToast,
-         reloadTrees: loadTrees,
-         i18n: window.t || function(k) { return k; }
-       });
-     }
+  async function toggleTreeVisibility(treeId, currentVisibility) {
+    if (myTreesActions && typeof myTreesActions.toggleTreeVisibility === 'function') {
+      return myTreesActions.toggleTreeVisibility(treeId, currentVisibility, {
+        showToast: showToast,
+        reloadTrees: loadTrees,
+        i18n: window.t || function(k) { return k; }
+      });
+    }
 
-     // Fail-safe: missing toggleTreeVisibility action
-     warnMissingModule('LoveBudMyTreesActions', 'toggleTreeVisibility');
-     showMissingActionError('toggleTreeVisibility');
-   }
+    warnMissingModule('LoveBudMyTreesActions', 'toggleTreeVisibility');
+    showMissingActionError('toggleTreeVisibility');
+  }
 
   function closeAllDropdowns() {
     if (myTreesUI && typeof myTreesUI.closeAllDropdowns === 'function') {
@@ -255,11 +183,12 @@
   }
 
   function renderTrees(trees) {
-    if (myTreesUI && typeof myTreesUI.renderTrees === 'function') {
-      // UI module에 위임
-      myTreesUI.renderTrees(trees, {
-        setState: setState,
-        stateEnum: STATE,
+    if (myTreesRender && typeof myTreesRender.renderTrees === 'function') {
+      myTreesRender.renderTrees(trees, {
+        uiModule: myTreesUI,
+        stateModule: myTreesState,
+        setState: myTreesPage.setState,
+        stateEnum: myTreesPage.STATE,
         i18n: window.t || function(k) { return k; },
         onRename: renameTree,
         onDelete: deleteTree,
@@ -271,12 +200,14 @@
       return;
     }
 
-    // Fallback: UI module이 없는 경우
+    // Fallback: minimal rendering if render module unavailable
     var container = document.getElementById('state-loaded');
     if (!container) return;
 
     if (!trees || trees.length === 0) {
-      setState(STATE.EMPTY);
+      if (myTreesPage && typeof myTreesPage.setState === 'function') {
+        myTreesPage.setState(myTreesPage.STATE.EMPTY);
+      }
       return;
     }
 
@@ -292,7 +223,9 @@
 
     container.innerHTML = '';
     container.appendChild(grid);
-    setState(STATE.LOADED);
+    if (myTreesPage && typeof myTreesPage.setState === 'function') {
+      myTreesPage.setState(myTreesPage.STATE.LOADED);
+    }
   }
 
   function sortTrees(trees, sortBy) {
@@ -300,13 +233,6 @@
       return myTreesState.sortTrees(trees, sortBy);
     }
     return Array.isArray(trees) ? trees.slice() : [];
-  }
-
-  function updateManageSummary(trees) {
-    // Sidebar removed, no summary bar to update
-    // But we still store the data
-    lastTreesData = trees;
-    return trees;
   }
 
   function isTestPublicMode() {
@@ -323,39 +249,37 @@
     return 'public';
   }
 
-   async function createNewTree() {
-     if (myTreesActions && typeof myTreesActions.createNewTree === 'function') {
-       return myTreesActions.createNewTree({
-         getDefaultVisibility: getDefaultVisibility,
-         showToast: showToast,
-         cacheKey: TREES_CACHE_KEY,
-         i18n: window.t || function(k) { return k; }
-       });
-     }
+  async function createNewTree() {
+    if (myTreesActions && typeof myTreesActions.createNewTree === 'function') {
+      return myTreesActions.createNewTree({
+        getDefaultVisibility: getDefaultVisibility,
+        showToast: showToast,
+        cacheKey: TREES_CACHE_KEY,
+        i18n: window.t || function(k) { return k; }
+      });
+    }
 
-     // Fail-safe: missing createNewTree action
-     warnMissingModule('LoveBudMyTreesActions', 'createNewTree');
-     showMissingActionError('createNewTree');
-   }
+    warnMissingModule('LoveBudMyTreesActions', 'createNewTree');
+    showMissingActionError('createNewTree');
+  }
 
   var TREES_CACHE_KEY = myTreesData?.TREES_CACHE_KEY || 'my_trees_list';
 
-   async function loadTrees() {
-     if (myTreesData && typeof myTreesData.loadTrees === 'function') {
-       return myTreesData.loadTrees({
-         setState: setState,
-         stateEnum: STATE,
-         renderTrees: renderTrees,
-         showToast: showToast,
-         i18n: window.t || function(k) { return k; }
-       });
-     }
+  async function loadTrees() {
+    if (myTreesData && typeof myTreesData.loadTrees === 'function') {
+      return myTreesData.loadTrees({
+        setState: myTreesPage.setState,
+        stateEnum: myTreesPage.STATE,
+        renderTrees: renderTrees,
+        showToast: showToast,
+        i18n: window.t || function(k) { return k; }
+      });
+    }
 
-     // Fail-safe: missing loadTrees module
-     warnMissingModule('LoveBudMyTreesData', 'loadTrees');
-     showMissingActionError('loadTrees');
-     setState(STATE.ERROR);
-   }
+    warnMissingModule('LoveBudMyTreesData', 'loadTrees');
+    showMissingActionError('loadTrees');
+    myTreesPage.setState?.(myTreesPage.STATE.ERROR);
+  }
 
   var myTreesStarted = false;
   var myTreesBootedFromCache = false;
@@ -401,10 +325,6 @@
   document.addEventListener('DOMContentLoaded', async function() {
     var cachedUser = getConfirmedSessionUser();
 
-    if (cachedUser && cachedUser.uid && !myTreesStarted) {
-      bootMyTrees(cachedUser, { fromCache: true });
-    }
-
     if (window.LoveBudAuthBootstrap && typeof window.LoveBudAuthBootstrap.whenReady === 'function') {
       try {
         var user = await window.LoveBudAuthBootstrap.whenReady();
@@ -415,16 +335,14 @@
       return;
     }
 
-    if (!myTreesStarted && typeof window.registerOnAuthReady === 'function') {
+    if (typeof window.registerOnAuthReady === 'function') {
       window.registerOnAuthReady(function(user) {
         reconcileBootstrapUser(user || null);
       });
       return;
     }
 
-    if (!myTreesStarted) {
-      bootMyTrees(cachedUser || null, { fromCache: !!(cachedUser && cachedUser.uid) });
-    }
+    reconcileBootstrapUser(cachedUser);
   }, { once: true });
 
 })();

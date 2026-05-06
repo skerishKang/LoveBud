@@ -28,6 +28,13 @@
     return Math.floor(diff / 86400) + '일 전';
   }
 
+  function setStatusIcon(iconEl, token) {
+    if (!iconEl) return;
+    iconEl.textContent = '';
+    iconEl.setAttribute('aria-hidden', 'true');
+    iconEl.dataset.statusIcon = token || '';
+  }
+
   function updateSaveStatus(saveStatusData, options) {
     var status = options && options.status;
     var message = options && options.message;
@@ -49,7 +56,7 @@
 
     switch (status) {
       case 'saving':
-        iconEl.textContent = 'hourglass_empty';
+        setStatusIcon(iconEl, 'hourglass_empty');
         textEl.textContent = message || (typeof i18n === 'function' ? i18n('save_saving') : '저장 중...');
         indicator.className = 'save-status-indicator saving';
         indicator.style.display = 'flex';
@@ -57,7 +64,7 @@
         break;
 
       case 'saved':
-        iconEl.textContent = 'check_circle';
+        setStatusIcon(iconEl, 'check_circle');
         textEl.textContent = message || (typeof i18n === 'function' ? i18n('save_saved') : '저장됨');
         indicator.className = 'save-status-indicator saved';
         saveStatusData.lastSaved = new Date();
@@ -71,7 +78,7 @@
         break;
 
       case 'failed':
-        iconEl.textContent = 'error';
+        setStatusIcon(iconEl, 'error');
         textEl.textContent = message || (typeof i18n === 'function' ? i18n('save_failed') : '저장 실패');
         indicator.className = 'save-status-indicator failed';
         if (timeEl) timeEl.style.display = 'none';

@@ -70,6 +70,7 @@ Object.assign(window.i18nEditor, {
     editor_canvas_empty_desc: { ko: '첫 순간을 만들면 오른쪽에서 내용을 다듬고, 가운데에서 감정의 흐름을 이어갈 수 있어요.', en: 'Create the first moment, refine it on the right, and continue the emotional flow from the center.' },
     continue_moment: { ko: '순간 이어가기', en: 'Continue this moment' },
     growth_start_hint: { ko: '여기서 다음 가지가 자라나요', en: 'The next branch grows from here' },
+    growth_first_step_hint: { ko: '첫 순간에서 이어지는 감정을 기록해보세요', en: 'Record the feeling that continues from your first moment' },
     growth_continue_hint: { ko: '선택한 순간 뒤로 감정이 이어져요', en: 'The feeling continues from the selected moment' },
     detail_empty_desc: { ko: '가운데에서 첫 순간을 만들면 이곳에서 제목과 마음 기록을 다듬을 수 있어요.', en: 'Create the first moment from the center, then refine its title and note here.' },
     editor_make_private: { ko: '이 트리 비공개로 전환', en: 'Make this tree private' },
@@ -77,7 +78,7 @@ Object.assign(window.i18nEditor, {
     editor_visibility_loading_private: { ko: '비공개로 전환하는 중...', en: 'Switching to private...' },
     editor_visibility_loading_public: { ko: '공개로 전환하는 중...', en: 'Switching to public...' },
     editor_visibility_guard_failed: { ko: '공개 순간이 3개 이상일 때만 이 트리를 공개할 수 있어요.', en: 'This tree can be made public only when it has at least 3 public moments.' },
-    editor_open_detail: { ko: '상세로 보기', en: 'View details' },
+    editor_open_detail: { ko: '현재 순간 감상하기', en: 'View current moment' },
     editor_focus_current_moment: { ko: '현재 순간 위치 보기', en: 'Locate current moment' },
     editor_visibility_updated_private: { ko: '이 트리를 비공개로 전환했어요.', en: 'This tree has been set to private.' },
     editor_visibility_updated_public: { ko: '이 트리를 공개로 전환했어요.', en: 'This tree has been set to public.' },
@@ -112,4 +113,11 @@ Object.assign(window.i18nEditor, {
     sidebar_canvas_hint_empty: { ko: '첫 순간을 심으면 감정이 여기서 시작돼요.', en: 'Plant the first moment and the feeling begins here.' },
     editor_add_first_memory_eyebrow: { ko: '첫 순간에서', en: 'From first moment' },
     editor_empty_tree_hint_short: { ko: '첫 순간이 여기에 시작돼요.', en: 'The first moment starts here.' }
+});
+Object.assign(window.i18nEditor, {
+    start_moment: { ko: '현재 선택 · 시작 순간', en: 'Current selection · starting moment' },
+    selected_moment: { ko: '현재 선택한 순간', en: 'Current selected moment' },
+    sidebar_moment_count_short: { ko: '총 {count}개의 저장된 순간', en: '{count} saved moments total' },
+    sidebar_moment_count_with_visible_short: { ko: '총 {total}개의 저장된 순간 · 캔버스 {visible}개 표시', en: '{total} saved moments · {visible} shown on canvas' },
+    sidebar_flow_summary_connected_short: { ko: '이 트리에 {count}개의 순간이 저장되어 있어요', en: '{count} moments are saved in this tree' }
 });

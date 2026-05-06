@@ -11,78 +11,53 @@
  * Version: ?v=20260422-3
  */
 
-var __authStateModule = window.LoveBudAuthState || null;
-var __authUiModule = window.LoveBudAuthUI || null;
-var __authSessionModule = window.LoveBudAuthSession || null;
-var __authFirebaseModule = window.LoveBudAuthFirebase || null;
-var EMAIL_AUTH_MODE = __authStateModule
-  ? __authStateModule.getEmailAuthMode()
-  : (function() {
-      try {
-        if (window.__initialAuthMode === 'signup' || window.__initialAuthMode === 'login') {
-          return window.__initialAuthMode;
-        }
-        var params = new URLSearchParams(window.location.search);
-        var mode = params.get('mode');
-        return mode === 'signup' ? 'signup' : 'login';
-      } catch (e) {
-        return 'login';
-      }
-    })();
-var AUTH_INIT_FLAG = __authStateModule ? __authStateModule.AUTH_INIT_FLAG : '__lovebudAuthInitialized';
-var AUTH_READY_FLAG = __authStateModule ? __authStateModule.AUTH_READY_FLAG : '__lovebudAuthReady';
-var DROPDOWN_LISTENER_ATTACHED = __authStateModule
-  ? __authStateModule.isDropdownListenerAttached()
-  : false;
-
-window.LoveBudAuthBootstrap = window.LoveBudAuthBootstrap || (function() {
-  var resolved = false;
-  var lastUser = null;
-  var waiters = [];
-
-  function flush(user) {
-    var pending = waiters.splice(0, waiters.length);
-    pending.forEach(function(fn) {
-      try {
-        fn(user);
-      } catch (error) {
-        console.error('[auth] Bootstrap waiter error:', error);
-      }
-    });
-  }
-
-  function resolve(user) {
-    if (resolved) return;
-    resolved = true;
-    lastUser = user || null;
-    flush(lastUser);
-  }
-
-  function whenReady() {
-    if (resolved) return Promise.resolve(lastUser);
-    return new Promise(function(resolveFn) {
-      waiters.push(resolveFn);
-    });
-  }
-
-  function getSnapshot() {
-    return {
-      ready: resolved,
-      user: lastUser
-    };
-  }
-
-  return {
-    resolve: resolve,
-    whenReady: whenReady,
-    getSnapshot: getSnapshot,
-    getResolvedUser: function() {
-      return lastUser;
-    }
-  };
-})();
+var __authBootstrapCompat = window.LoveBudAuthState &&
+  typeof window.LoveBudAuthState.createBootstrapCompatibilityBoundary === 'function'
+  ? window.LoveBudAuthState.createBootstrapCompatibilityBoundary()
+  : null;
+var __authStateModule = __authBootstrapCompat
+  ? __authBootstrapCompat.authStateModule
+  : (window.LoveBudAuthState || null);
+var __authUiModule = __authBootstrapCompat
+  ? __authBootstrapCompat.authUiModule
+  : (window.LoveBudAuthUI || null);
+var __authSessionModule = __authBootstrapCompat
+  ? __authBootstrapCompat.authSessionModule
+  : (window.LoveBudAuthSession || null);
+var __authFirebaseModule = __authBootstrapCompat
+  ? __authBootstrapCompat.authFirebaseModule
+  : (window.LoveBudAuthFirebase || null);
+var EMAIL_AUTH_MODE = __authBootstrapCompat
+  ? __authBootstrapCompat.emailAuthMode
+  : (__authStateModule
+      ? __authStateModule.getEmailAuthMode()
+      : (function() {
+          try {
+            if (window.__initialAuthMode === 'signup' || window.__initialAuthMode === 'login') {
+              return window.__initialAuthMode;
+            }
+            var params = new URLSearchParams(window.location.search);
+            var mode = params.get('mode');
+            return mode === 'signup' ? 'signup' : 'login';
+          } catch (e) {
+            return 'login';
+          }
+        })());
+var AUTH_INIT_FLAG = __authBootstrapCompat
+  ? __authBootstrapCompat.authInitFlag
+  : (__authStateModule ? __authStateModule.AUTH_INIT_FLAG : '__lovebudAuthInitialized');
+var AUTH_READY_FLAG = __authBootstrapCompat
+  ? __authBootstrapCompat.authReadyFlag
+  : (__authStateModule ? __authStateModule.AUTH_READY_FLAG : '__lovebudAuthReady');
+var DROPDOWN_LISTENER_ATTACHED = __authBootstrapCompat
+  ? __authBootstrapCompat.dropdownListenerAttached
+  : (__authStateModule ? __authStateModule.isDropdownListenerAttached() : false);
 
 function resolveAuthBootstrap(user) {
+  if (__authBootstrapCompat && typeof __authBootstrapCompat.resolveAuthBootstrap === 'function') {
+    __authBootstrapCompat.resolveAuthBootstrap(user);
+    return;
+  }
   if (!window.LoveBudAuthBootstrap || typeof window.LoveBudAuthBootstrap.resolve !== 'function') {
     return;
   }
@@ -120,27 +95,14 @@ function resolveEmailAuthMode() {
   }
 }
 
-var EMAIL_AUTH_EXECUTION_METHODS = {
-  setupEmailAuthForm: true,
-  setupSignupForm: true
-};
-
-function getLoginPageModule(methodName) {
-  if (methodName && EMAIL_AUTH_EXECUTION_METHODS[methodName]) {
-    if (window.LoveBudAuthLoginPage) return window.LoveBudAuthLoginPage;
-    return null;
-  }
-  if (window.LoveBudLoginPageController) return window.LoveBudLoginPageController;
-  return window.LoveBudAuthLoginPage || null;
-}
-
 function callLoginPageModule(methodName, args) {
-  var loginPageModule = getLoginPageModule(methodName);
-  if (!loginPageModule || typeof loginPageModule[methodName] !== 'function') {
-    return false;
+  if (
+    window.LoveBudAuthLoginPage &&
+    typeof window.LoveBudAuthLoginPage.callLoginPageModule === 'function'
+  ) {
+    return window.LoveBudAuthLoginPage.callLoginPageModule(methodName, args);
   }
-  loginPageModule[methodName].apply(loginPageModule, args || []);
-  return true;
+  return false;
 }
 
 function setEmailAuthMode(emailAuthMode) {
@@ -204,34 +166,12 @@ function syncEmailAuthModeUi(options) {
 }
 
 function setupLoginPageAuthUi() {
-  if (callLoginPageModule('setupLoginPageAuthUi', [{
+  callLoginPageModule('setupLoginPageAuthUi', [{
     isLoginPage: isLoginPage,
     resolveEmailAuthMode: resolveEmailAuthMode,
     setEmailAuthMode: setEmailAuthMode,
     syncEmailAuthModeUi: syncEmailAuthModeUi
-  }])) {
-    return;
-  }
-
-  if (!isLoginPage()) return;
-
-  EMAIL_AUTH_MODE = resolveEmailAuthMode();
-  if (__authStateModule) __authStateModule.setEmailAuthMode(EMAIL_AUTH_MODE);
-
-  var params = new URLSearchParams(window.location.search);
-  var redirect = params.get('redirect');
-  var noticeEl = document.getElementById('redirect-notice');
-  if (noticeEl) {
-    noticeEl.style.display = redirect ? 'block' : 'none';
-  }
-
-  syncEmailAuthModeUi({
-    titleEl: document.getElementById('email-auth-title'),
-    helperEl: document.getElementById('email-auth-helper'),
-    submitBtn: document.getElementById('email-auth-submit'),
-    toggleBtn: document.getElementById('email-auth-toggle'),
-    badgeEl: document.getElementById('auth-mode-badge')
-  });
+  }]);
 }
 
 // ── Auth Ready Callbacks (배열 패턴) ─────────────────────────────────────────
@@ -272,128 +212,54 @@ function fireAuthReadyCallbacks(user) {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 var __authCacheModule = window.LoveBudAuthCache || null;
+var __authCacheBridge = __authCacheModule &&
+  typeof __authCacheModule.createConfirmedAuthCacheBridge === 'function'
+  ? __authCacheModule.createConfirmedAuthCacheBridge({
+      cacheKey: AUTH_CACHE_KEY,
+      confirmedKey: AUTH_CONFIRMED_KEY,
+      tokenKey: AUTH_TOKEN_KEY
+    })
+  : null;
 
-function isInvalidAuthSessionError(error) {
-  if (__authCacheModule) return __authCacheModule.isInvalidAuthSessionError(error);
-  var message = String((error && (error.code || error.message)) || '');
-  return /USER_NOT_FOUND|user-not-found|invalid-user-token|token.*expired|user token/i.test(message);
-}
+function isInvalidAuthSessionError(error) { return __authCacheBridge.isInvalidAuthSessionError(error); }
+function clearStaleFirebaseAuthState() { __authCacheBridge.clearStaleFirebaseAuthState(); }
+function getCachedAuthUser() { return __authCacheBridge.getCachedAuthUser(); }
+function setConfirmedAuthCache(user) { __authCacheBridge.setConfirmedAuthCache(user); }
+function clearConfirmedAuthCache() { __authCacheBridge.clearConfirmedAuthCache(); }
+function getCachedAuthToken() { return __authCacheBridge.getCachedAuthToken(); }
+async function persistConfirmedAuthSession(user) { await __authCacheBridge.persistConfirmedAuthSession(user); }
 
-function clearStaleFirebaseAuthState() {
-  if (__authCacheModule) {
-    __authCacheModule.clearStaleFirebaseAuthState();
-    return;
-  }
-  var prefixes = ['firebase:authUser:', 'firebase:pendingRedirect:', 'firebase:redirectUser:'];
-  function clearStorage(storage) {
-    if (!storage) return;
-    var keys = [];
-    for (var i = 0; i < storage.length; i++) {
-      var key = storage.key(i);
-      if (key && prefixes.some(function (p) { return key.indexOf(p) === 0; })) {
-        keys.push(key);
-      }
-    }
-    keys.forEach(function (k) { try { storage.removeItem(k); } catch (e) {} });
-  }
-  try { clearStorage(window.localStorage); } catch (e) {}
-  try { clearStorage(window.sessionStorage); } catch (e) {}
-}
-
-function getCachedAuthUser() {
-  if (__authCacheModule) {
-    return __authCacheModule.getCachedAuthUser(AUTH_CACHE_KEY, AUTH_CONFIRMED_KEY);
-  }
-  try {
-    if (localStorage.getItem(AUTH_CONFIRMED_KEY) !== 'true') return null;
-    var raw = localStorage.getItem(AUTH_CACHE_KEY);
-    if (!raw || raw === 'null') return null;
-    var parsed = JSON.parse(raw);
-    if (!parsed || !parsed.uid) return null;
-    return parsed;
-  } catch (e) {
-    return null;
-  }
-}
-
-function setConfirmedAuthCache(user) {
-  if (__authCacheModule) {
-    __authCacheModule.setConfirmedAuthCache(user, AUTH_CACHE_KEY, AUTH_CONFIRMED_KEY, AUTH_TOKEN_KEY);
-    return;
-  }
-  try {
-    if (user && user.uid) {
-      var cacheData = { uid: user.uid, displayName: user.displayName || '', email: user.email || '' };
-      localStorage.setItem(AUTH_CACHE_KEY, JSON.stringify(cacheData));
-      localStorage.setItem(AUTH_CONFIRMED_KEY, 'true');
-      return;
-    }
-  } catch (e) {}
-  clearConfirmedAuthCache();
-}
-
-function clearConfirmedAuthCache() {
-  if (__authCacheModule) {
-    __authCacheModule.clearConfirmedAuthCache(AUTH_CACHE_KEY, AUTH_CONFIRMED_KEY, AUTH_TOKEN_KEY);
-    return;
-  }
-  try {
-    localStorage.removeItem(AUTH_CACHE_KEY);
-    localStorage.removeItem(AUTH_CONFIRMED_KEY);
-    localStorage.removeItem(AUTH_TOKEN_KEY);
-  } catch (e) {}
-}
-
-function getCachedAuthToken() {
-  if (__authCacheModule) {
-    return __authCacheModule.getCachedAuthToken(AUTH_TOKEN_KEY);
-  }
-  try {
-    var raw = localStorage.getItem(AUTH_TOKEN_KEY);
-    if (!raw || raw === 'null') return null;
-    var parsed = JSON.parse(raw);
-    if (!parsed || !parsed.token || !parsed.expiresAt) return null;
-    if (Date.now() >= Number(parsed.expiresAt) - 30000) return null;
-    return parsed;
-  } catch (e) {
-    return null;
-  }
-}
-
-async function persistConfirmedAuthSession(user) {
-  if (__authCacheModule) {
-    await __authCacheModule.persistConfirmedAuthSession(user, AUTH_CACHE_KEY, AUTH_CONFIRMED_KEY, AUTH_TOKEN_KEY);
-    return;
-  }
-  try {
-    if (!user || !user.uid) {
-      clearConfirmedAuthCache();
-      return;
-    }
-
-    var cacheData = {
-      uid: user.uid,
-      displayName: user.displayName || '',
-      email: user.email || ''
-    };
-
-    localStorage.setItem(AUTH_CACHE_KEY, JSON.stringify(cacheData));
-    localStorage.setItem(AUTH_CONFIRMED_KEY, 'true');
-
-    if (typeof user.getIdTokenResult === 'function') {
-      var tokenResult = await user.getIdTokenResult();
-      if (tokenResult && tokenResult.token) {
-        localStorage.setItem(AUTH_TOKEN_KEY, JSON.stringify({
-          uid: user.uid,
-          token: tokenResult.token,
-          expiresAt: new Date(tokenResult.expirationTime).getTime()
-        }));
-      }
-    }
-  } catch (e) {
-    console.warn('[auth] Failed to persist confirmed session:', e);
-  }
-}
+var __authProtectedRouteBridge = __authFirebaseModule &&
+  typeof __authFirebaseModule.createProtectedRouteBridge === 'function'
+  ? __authFirebaseModule.createProtectedRouteBridge({
+      resolveEmailAuthMode: resolveEmailAuthMode,
+      setupLoginPageAuthUi: setupLoginPageAuthUi,
+      applyCachedAuthState: applyCachedAuthState,
+      markAuthLoading: markAuthLoading,
+      markAuthReady: markAuthReady,
+      initOfflineAuth: initOfflineAuth,
+      attachDropdownListener: attachDropdownListener,
+      persistConfirmedAuthSession: persistConfirmedAuthSession,
+      updateNavUI: updateNavUI,
+      fireAuthReadyCallbacks: fireAuthReadyCallbacks,
+      resolveAuthBootstrap: resolveAuthBootstrap,
+      isInvalidAuthSessionError: isInvalidAuthSessionError,
+      clearStaleFirebaseAuthState: clearStaleFirebaseAuthState,
+      clearConfirmedAuthCache: clearConfirmedAuthCache,
+      setupGoogleBtn: setupGoogleBtn,
+      setupEmailAuthForm: setupEmailAuthForm,
+      setupSignupForm: setupSignupForm,
+      setupSignupGoogleBtn: setupSignupGoogleBtn,
+      authInitFlag: AUTH_INIT_FLAG,
+      authReadyFlag: AUTH_READY_FLAG,
+      isLoginPage: isLoginPage,
+      getCachedAuthUser: getCachedAuthUser,
+      buildUserDropdown: buildUserDropdown,
+      getEnvironmentCheckError: getEnvironmentCheckError,
+      preloadRedirectTargetData: preloadRedirectTargetData,
+      getRedirectTarget: getRedirectTarget
+    })
+  : null;
 
 // ── Preload redirect target data after login ────────────────────────────────────
 function preloadRedirectTargetData() {
@@ -460,185 +326,33 @@ function preloadRedirectTargetData() {
   }
 }
 
-// ── Core Auth ─────────────────────────────────────────────────────────────────
-
-/**
- * Apply cached auth state for fast initial render (prevents flicker).
- *
- * If we have a previously confirmed authenticated user, render the cached
- * dropdown immediately and let Firebase revalidate in the background.
- * If no confirmed cache exists, show a neutral skeleton that preserves layout.
- */
 function applyCachedAuthState() {
-  if (__authFirebaseModule) {
-    return __authFirebaseModule.applyCachedAuthState({
-      isLoginPage: isLoginPage,
-      getCachedAuthUser: getCachedAuthUser,
-      buildUserDropdown: buildUserDropdown
-    });
+  if (__authProtectedRouteBridge) {
+    return __authProtectedRouteBridge.applyCachedAuthState();
   }
-  var path = window.location.pathname;
-  var isLoginPage = path.indexOf('/pages/login.html') !== -1 ||
-                    path.indexOf('/pages/login') !== -1 ||
-                    path.indexOf('login.html') !== -1;
-  if (isLoginPage) return false;
-
-  var authNav = document.getElementById('auth-nav');
-  if (!authNav) return false;
-
-  try {
-    var cachedUser = getCachedAuthUser();
-    if (cachedUser) {
-      authNav.innerHTML = buildUserDropdown(cachedUser);
-      authNav.style.cssText = 'pointer-events:auto;opacity:1;transition:opacity 0.2s ease;min-width:36px;height:36px;display:flex;align-items:center;justify-content:flex-end;user-select:auto;';
-      authNav.classList.add('auth-ready');
-      return true;
-    }
-
-    // If there is no confirmed cache, keep a neutral skeleton until Firebase answers.
-    authNav.innerHTML = '<div class="auth-skeleton" style="width:36px;height:36px;border-radius:18px;background:var(--surface-container-highest, #e8e8e8);pointer-events:none;"></div>';
-  } catch(e) {}
   return false;
 }
 
 function initAuth() {
-  if (__authFirebaseModule) {
-    __authFirebaseModule.initAuth({
-      resolveEmailAuthMode: resolveEmailAuthMode,
-      setupLoginPageAuthUi: setupLoginPageAuthUi,
-      applyCachedAuthState: applyCachedAuthState,
-      markAuthLoading: markAuthLoading,
-      markAuthReady: markAuthReady,
-      initOfflineAuth: initOfflineAuth,
-      attachDropdownListener: attachDropdownListener,
-      persistConfirmedAuthSession: persistConfirmedAuthSession,
-      updateNavUI: updateNavUI,
-      fireAuthReadyCallbacks: fireAuthReadyCallbacks,
-      resolveAuthBootstrap: resolveAuthBootstrap,
-      isInvalidAuthSessionError: isInvalidAuthSessionError,
-      clearStaleFirebaseAuthState: clearStaleFirebaseAuthState,
-      clearConfirmedAuthCache: clearConfirmedAuthCache,
-      setupGoogleBtn: setupGoogleBtn,
-      setupEmailAuthForm: setupEmailAuthForm,
-      setupSignupForm: setupSignupForm,
-      setupSignupGoogleBtn: setupSignupGoogleBtn,
-      authInitFlag: AUTH_INIT_FLAG,
-      authReadyFlag: AUTH_READY_FLAG
-    });
+  if (__authProtectedRouteBridge) {
+    __authProtectedRouteBridge.initAuth();
     return;
   }
-  EMAIL_AUTH_MODE = resolveEmailAuthMode();
-  if (__authStateModule) __authStateModule.setEmailAuthMode(EMAIL_AUTH_MODE);
-  setupLoginPageAuthUi();
-
-  // Apply confirmed cached state immediately to prevent flicker
-  var hasImmediateAuthUI = applyCachedAuthState();
-
-  // Cached authenticated UI can stay visible while Firebase revalidates in background.
-  window[AUTH_READY_FLAG] = !!hasImmediateAuthUI;
-  if (!hasImmediateAuthUI) {
-    markAuthLoading();
-  }
-
-  // 안전장치: 2초 타임아웃 (MVP 공격적 축소) - Firebase 응답 없을 때 오프라인 모드로 전환
-  // confirmed session cache가 있으면 즉시 진입하므로 긴 대기 불필요
-  var authTimeout = setTimeout(function() {
-    if (!window[AUTH_READY_FLAG]) {
-      console.warn('[auth] Firebase auth timeout (2s) - switching to offline mode');
-      initOfflineAuth();
-    }
-  }, 2000);
-
-  if (typeof firebase === 'undefined') {
-    console.warn('Firebase SDK not loaded. Auth running in offline mode.');
-    clearTimeout(authTimeout);
-    initOfflineAuth();
-    return;
-  }
-
-  if (typeof initFirebase === 'function') initFirebase();
-
-  if (!firebase.apps || !firebase.apps.length) {
-    console.error('Firebase not initialized. Auth setup aborted.');
-    clearTimeout(authTimeout);
-    initOfflineAuth();
-    return;
-  }
-
-  if (window[AUTH_INIT_FLAG]) {
-    clearTimeout(authTimeout);
-    return;
-  }
-  window[AUTH_INIT_FLAG] = true;
-
-  attachDropdownListener();
-
-  firebase.auth().onAuthStateChanged(async function (user) {
-    clearTimeout(authTimeout); // 정상 응답 - 타임아웃 취소
-
-    if (user) {
-      try {
-        if (typeof user.reload === 'function') await user.reload();
-      } catch (error) {
-        if (isInvalidAuthSessionError(error)) {
-          console.warn('Invalid Firebase session detected. Signing out.');
-          await firebase.auth().signOut().catch(function () {});
-          clearStaleFirebaseAuthState();
-          clearConfirmedAuthCache();
-          resolveAuthBootstrap(null);
-          return;
-        }
-      }
-    }
-    // Auth 상태 확인 완료 후 세션 캐시 저장 및 UI 업데이트
-    await persistConfirmedAuthSession(user);
-    markAuthReady();
-    updateNavUI(user);
-    resolveAuthBootstrap(user);
-
-    // 배열 콜백 패턴으로 모든 등록된 콜백 실행
-    fireAuthReadyCallbacks(user);
-  });
-
-  setupGoogleBtn();
-  setupEmailAuthForm();
-  setupSignupForm();
-  setupSignupGoogleBtn();
+  console.warn('Auth Firebase boundary not loaded. Auth running in offline mode.');
+  initOfflineAuth();
 }
-
-// ── Offline Fallback ──────────────────────────────────────────────────────────
 
 function initOfflineAuth() {
-  if (__authFirebaseModule) {
-    __authFirebaseModule.initOfflineAuth({
-      markAuthReady: markAuthReady,
-      updateNavUI: updateNavUI,
-      getCachedAuthUser: getCachedAuthUser,
-      resolveAuthBootstrap: resolveAuthBootstrap,
-      fireAuthReadyCallbacks: fireAuthReadyCallbacks
-    });
+  if (__authProtectedRouteBridge) {
+    __authProtectedRouteBridge.initOfflineAuth();
     return;
   }
-  var cachedUser = getCachedAuthUser();
-  // Offline 모드에서도 ready 상태로 전환 후 UI 표시
-  // 순서 중요: markAuthReady 먼저, updateNavUI 나중
   markAuthReady();
-  var user = cachedUser && cachedUser.uid ? cachedUser : null;
-  updateNavUI(user);
-  resolveAuthBootstrap(user);
-  // Offline 모드에서도 콜백 실행
-  fireAuthReadyCallbacks(user);
+  updateNavUI(null);
+  resolveAuthBootstrap(null);
+  fireAuthReadyCallbacks(null);
 }
 
-// ── Loading State (prevent flash) ────────────────────────────────────────────
-
-/**
- * Show auth nav loading state - neutral skeleton with pointer-events blocked.
- *
- * IMPORTANT: During loading, the skeleton container is completely non-interactive.
- * This prevents any stale cached auth UI from being clickable before Firebase
- * confirms the actual auth state.
- */
 function markAuthLoading() {
   if (__authUiModule) {
     __authUiModule.markAuthLoading();
@@ -646,8 +360,6 @@ function markAuthLoading() {
   }
   var authNav = document.getElementById('auth-nav');
   var authContainer = document.getElementById('auth-nav-container');
-  // During loading: layout-preserving skeleton that is completely non-interactive.
-  // pointer-events:none ensures no click/keyboard interaction until AUTH_READY_FLAG.
   var loadingStyle = 'pointer-events:none;opacity:0.6;transition:opacity 0.2s ease;min-width:36px;height:36px;display:flex;align-items:center;justify-content:flex-end;user-select:none;';
   if (authNav) {
     authNav.style.cssText = loadingStyle;
@@ -657,11 +369,6 @@ function markAuthLoading() {
   }
 }
 
-/**
- * Mark auth as ready and reveal the nav UI with smooth fade-in.
- * index.html의 로딩 스피너를 지우고 실제 UI를 표시.
- * pointer-events:auto explicit 설정으로 interactive 전환을 보장.
- */
 function markAuthReady() {
   if (__authUiModule) {
     __authUiModule.markAuthReady(AUTH_READY_FLAG);
@@ -916,25 +623,8 @@ function getRedirectTarget() {
  * Returns null if supported, or error message string if not.
  */
 function getEnvironmentCheckError() {
+  if (__authProtectedRouteBridge) return __authProtectedRouteBridge.getEnvironmentCheckError();
   if (__authFirebaseModule) return __authFirebaseModule.getEnvironmentCheckError();
-  var protocol = window.location.protocol || '';
-  // Check file:// protocol
-  if (protocol === 'file:') {
-    return '이 페이지는 파일:// 프로토콜에서 열 수 없습니다. http:// 또는 https:// 주소에서 접근해 주세요.';
-  }
-  // Check web storage availability
-  try {
-    var testKey = '__lovebud_storage_test__';
-    localStorage.setItem(testKey, testKey);
-    localStorage.removeItem(testKey);
-  } catch (e) {
-    return '브라우저 저장소(storage)가 비활성화되어 있습니다. 쿠키/저장소를 허용한 후 다시 시도해 주세요.';
-  }
-  // Check https requirement for some browsers
-  if (protocol === 'http:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-    // Allow http on localhost for dev, warn otherwise
-    console.warn('[auth] Running on http:// - some features may be restricted');
-  }
   return null;
 }
 
@@ -943,62 +633,18 @@ function getEnvironmentCheckError() {
  * Original error is logged to console for developers.
  */
 function getFriendlyErrorMessage(error, isGoogleLogin) {
+  if (__authProtectedRouteBridge) return __authProtectedRouteBridge.getFriendlyErrorMessage(error, isGoogleLogin);
   if (__authFirebaseModule) return __authFirebaseModule.getFriendlyErrorMessage(error, isGoogleLogin);
   if (!error) return '알 수 없는 오류가 발생했습니다.';
-  var code = error.code || '';
-  var message = error.message || '';
-  // Log full error for devs
   console.error('Auth error (developer only):', error);
-
-  // Environment-related errors
-  if (message.indexOf('location.protocol') !== -1 || message.indexOf('not supported in the environment') !== -1) {
-    return '이 브라우저 환경에서는 로그인할 수 없습니다. http:// 또는 https:// 주소(localhost 가능)에서 다시 시도해 주세요.';
-  }
-  if (message.indexOf('web storage') !== -1 || message.indexOf('storage') !== -1) {
-    return '브라우저 저장소(storage)가 비활성화되어 있습니다. 쿠키와 저장소를 허용한 후 다시 시도해 주세요.';
-  }
-
-   // Common auth errors
-   switch (code) {
-     case 'auth/popup-closed-by-user':
-       return null; // User cancelled, no message needed
-     case 'auth/cancelled-popup-request':
-       return '로그인이 취소되었습니다.';
-     case 'auth/popup-blocked':
-       return '브라우저가 로그인 팝업을 차단했습니다. 팝업 허용 후 다시 시도해 주세요.';
-     case 'auth/web-storage-unsupported':
-       return '브라우저 저장소를 사용할 수 없어 로그인할 수 없습니다. 시크릿 모드/보안 설정을 확인해 주세요.';
-     case 'auth/unauthorized-domain':
-       return '현재 도메인이 Firebase 인증 허용 도메인에 등록되지 않았습니다.';
-     case 'auth/account-exists-with-different-credential':
-       return '이미 다른 방법으로 가입된 계정이 있습니다.';
-     case 'auth/credential-already-in-use':
-       return '이미 사용 중인Credential입니다.';
-     case 'auth/email-already-in-use':
-       return '이미 사용 중인 이메일 주소입니다.';
-     case 'auth/user-disabled':
-       return '비활성화된 계정입니다. 관리자에게 문의해 주세요.';
-     case 'auth/user-not-found':
-       return '가입되지 않은 이메일 주소입니다.';
-     case 'auth/wrong-password':
-       return '비밀번호가 올바르지 않습니다.';
-     case 'auth/invalid-email':
-       return '유효하지 않은 이메일 주소입니다.';
-     case 'auth/operation-not-allowed':
-       return '이 로그인 방법은 사용할 수 없습니다.';
-     case 'auth/requires-recent-login':
-       return '보안을 위해 다시 로그인해 주세요.';
-     case 'auth/too-many-requests':
-       return '시도 횟수 초과. 잠시 후 다시 시도해 주세요.';
-     case 'auth/network-request-failed':
-       return '네트워크 연결을 확인해 주세요.';
-     default:
-       // Generic fallback - don't expose raw message
-       return '로그인에 실패했습니다. 다시 시도해 주세요.';
-   }
+  return '로그인에 실패했습니다. 다시 시도해 주세요.';
 }
 
 async function signInWithGoogle() {
+  if (__authProtectedRouteBridge) {
+    await __authProtectedRouteBridge.signInWithGoogle();
+    return;
+  }
   if (__authFirebaseModule) {
     await __authFirebaseModule.signInWithGoogle({
       getEnvironmentCheckError: getEnvironmentCheckError,
@@ -1009,7 +655,6 @@ async function signInWithGoogle() {
     });
     return;
   }
-  // Environment check first
   var envError = getEnvironmentCheckError();
   if (envError) {
     alert(envError);
@@ -1024,54 +669,15 @@ async function signInWithGoogle() {
     alert('로그인 시스템을 초기화할 수 없습니다. 페이지를 새로고침해 주세요.');
     return;
   }
-
-  var provider = new firebase.auth.GoogleAuthProvider();
-  try { provider.setCustomParameters({ prompt: 'select_account' }); } catch (e) {}
-
-  var loginPage = isLoginPage();
-
-  try {
-    var authResult = await firebase.auth().signInWithPopup(provider);
-    // 세션 캐시 저장 및 redirect target 데이터 preload (비동기, 실패 무시)
-    await persistConfirmedAuthSession(authResult && authResult.user ? authResult.user : firebase.auth().currentUser);
-    preloadRedirectTargetData();
-    window.location.href = getRedirectTarget();
-  } catch (error) {
-    console.error('Google login failed:', error);
-
-    var popupFallbackCodes = {
-      'auth/popup-blocked': true,
-      'auth/web-storage-unsupported': true,
-      'auth/cancelled-popup-request': true
-    };
-
-    var shouldTryRedirectFallback =
-      loginPage &&
-      popupFallbackCodes[error && error.code];
-
-    if (shouldTryRedirectFallback) {
-      try {
-        alert('팝업 로그인에 실패해 리디렉션 방식으로 다시 시도합니다.');
-        await firebase.auth().signInWithRedirect(provider);
-        return;
-      } catch (redirectError) {
-        console.error('Google redirect fallback failed:', redirectError);
-        var redirectMessage = getFriendlyErrorMessage(redirectError, true);
-        if (redirectMessage) {
-          alert(redirectMessage);
-        }
-        return;
-      }
-    }
-
-    var friendlyMessage = getFriendlyErrorMessage(error, true);
-    if (friendlyMessage) {
-      alert(friendlyMessage);
-    }
-  }
+  console.error('Auth Firebase boundary not loaded before signInWithGoogle.');
+  alert('로그인 시스템을 초기화할 수 없습니다. 페이지를 새로고침해 주세요.');
 }
 
 async function signOut() {
+  if (__authProtectedRouteBridge) {
+    await __authProtectedRouteBridge.signOut();
+    return;
+  }
   if (__authFirebaseModule) {
     await __authFirebaseModule.signOut({
       clearStaleFirebaseAuthState: clearStaleFirebaseAuthState,
@@ -1103,19 +709,9 @@ async function signOut() {
 // ── Google Btn (login.html) ───────────────────────────────────────────────────
 
 function setupGoogleBtn() {
-  if (callLoginPageModule('setupGoogleBtn', [{
+  callLoginPageModule('setupGoogleBtn', [{
     signInWithGoogle: signInWithGoogle
-  }])) {
-    return;
-  }
-
-  var googleBtn = document.getElementById('login-btn-google');
-  if (!googleBtn) return;
-  googleBtn.onclick = null;
-  googleBtn.addEventListener('click', function (e) {
-    e.preventDefault();
-    signInWithGoogle();
-  });
+  }]);
 }
 
 async function signUpWithGoogle() {
@@ -1124,25 +720,15 @@ async function signUpWithGoogle() {
 }
 
 function setupSignupGoogleBtn() {
-  if (callLoginPageModule('setupSignupGoogleBtn', [{
+  callLoginPageModule('setupSignupGoogleBtn', [{
     signUpWithGoogle: signUpWithGoogle
-  }])) {
-    return;
-  }
-
-  var signupGoogleBtn = document.getElementById('signup-btn-google');
-  if (!signupGoogleBtn) return;
-  signupGoogleBtn.onclick = null;
-  signupGoogleBtn.addEventListener('click', function (e) {
-    e.preventDefault();
-    signUpWithGoogle();
-  });
+  }]);
 }
 
 // ── Email Auth Form ───────────────────────────────────────────────────────────
 
 function setupEmailAuthForm() {
-  if (callLoginPageModule('setupEmailAuthForm', [{
+  callLoginPageModule('setupEmailAuthForm', [{
     firebase: typeof firebase !== 'undefined' ? firebase : undefined,
     initFirebase: initFirebase,
     getEnvironmentCheckError: getEnvironmentCheckError,
@@ -1155,146 +741,11 @@ function setupEmailAuthForm() {
     getRedirectTarget: getRedirectTarget,
     isInvalidAuthSessionError: isInvalidAuthSessionError,
     clearStaleFirebaseAuthState: clearStaleFirebaseAuthState
-  }])) {
-    return;
-  }
-
-  var form = document.getElementById('email-auth-form');
-  if (!form) return;
-  if (typeof firebase === 'undefined' || !firebase.auth) return;
-
-   var emailInput = document.getElementById('email-auth-email');
-   var passwordInput = document.getElementById('email-auth-password');
-   var displayNameInput = document.getElementById('email-auth-display-name');
-   var submitBtn = document.getElementById('email-auth-submit');
-  var toggleBtn = document.getElementById('email-auth-toggle');
-  var modal = document.getElementById('email-auth-modal');
-  var titleEl = document.getElementById('email-auth-title');
-  var helperEl = document.getElementById('email-auth-helper');
-
-   function updateModeUi() {
-     syncEmailAuthModeUi({
-       titleEl: titleEl,
-       helperEl: helperEl,
-       submitBtn: submitBtn,
-       toggleBtn: toggleBtn,
-       badgeEl: document.getElementById('auth-mode-badge')
-     });
-   }
-
-   function syncDisplayNameVisibility() {
-     if (!displayNameInput) return;
-     var wrapper = displayNameInput.closest('[data-auth-display-name-wrap]');
-     if (!wrapper) return;
-     wrapper.style.display = EMAIL_AUTH_MODE === 'signup' ? 'block' : 'none';
-     displayNameInput.required = EMAIL_AUTH_MODE === 'signup';
-   }
-
-   updateModeUi();
-   syncDisplayNameVisibility();
-
-   if (toggleBtn) {
-     toggleBtn.addEventListener('click', function () {
-      EMAIL_AUTH_MODE = EMAIL_AUTH_MODE === 'login' ? 'signup' : 'login';
-      if (__authStateModule) __authStateModule.setEmailAuthMode(EMAIL_AUTH_MODE);
-       updateModeUi();
-       syncDisplayNameVisibility();
-     });
-   }
-
-   var emailBtn = document.getElementById('login-btn-email');
-  if (emailBtn) {
-    emailBtn.addEventListener('click', function (e) {
-      e.preventDefault();
-      if (modal) modal.style.display = 'flex';
-    });
-  }
-
-  var closeBtn = document.getElementById('email-auth-close');
-  if (closeBtn) {
-    closeBtn.addEventListener('click', function () {
-      if (modal) modal.style.display = 'none';
-    });
-  }
-  if (modal) {
-    modal.addEventListener('click', function (e) {
-      if (e.target === modal) modal.style.display = 'none';
-    });
-  }
-
-form.addEventListener('submit', async function (e) {
-    e.preventDefault();
-
-    // Environment check
-    var envError = getEnvironmentCheckError();
-    if (envError) {
-      alert(envError);
-      return;
-    }
-
-    if (!emailInput || !passwordInput || !submitBtn) return;
-
-     var email = String(emailInput.value || '').trim();
-     var password = String(passwordInput.value || '').trim();
-     var displayName = String(displayNameInput?.value || '').trim();
-
-     if (!email || !password) { alert('이메일과 비밀번호를 모두 입력해 주세요.'); return; }
-     if (EMAIL_AUTH_MODE === 'signup' && !displayName) { alert('닉네임을 입력해 주세요.'); return; }
-     if (password.length < 6) { alert('비밀번호는 최소 6자 이상이어야 합니다.'); return; }
-
-    submitBtn.disabled = true;
-    var originalText = submitBtn.textContent;
-    submitBtn.textContent = EMAIL_AUTH_MODE === 'login' ? '로그인 중...' : '가입 중...';
-
-    if (typeof initFirebase === 'function') initFirebase();
-    if (!firebase.apps || !firebase.apps.length) {
-      alert('Firebase가 초기화되지 않았습니다. 페이지를 새로고침해 주세요.');
-      submitBtn.disabled = false;
-      submitBtn.textContent = originalText;
-      return;
-    }
-
-     try {
-       var authUser;
-       if (EMAIL_AUTH_MODE === 'login') {
-         var loginResult = await firebase.auth().signInWithEmailAndPassword(email, password);
-         authUser = loginResult && loginResult.user ? loginResult.user : firebase.auth().currentUser;
-       } else {
-         var signupResult = await firebase.auth().createUserWithEmailAndPassword(email, password);
-         if (signupResult && signupResult.user && typeof signupResult.user.updateProfile === 'function') {
-           await signupResult.user.updateProfile({ displayName: displayName });
-         }
-         authUser = signupResult && signupResult.user ? signupResult.user : firebase.auth().currentUser;
-       }
-       // 세션 캐시 저장 및 redirect target 데이터 preload (비동기, 실패 무시)
-       await persistConfirmedAuthSession(authUser);
-       preloadRedirectTargetData();
-       window.location.href = getRedirectTarget();
-    } catch (error) {
-      console.error('Email auth error:', error);
-      if (isInvalidAuthSessionError(error)) {
-        await firebase.auth().signOut().catch(function () {});
-        clearStaleFirebaseAuthState();
-      }
-      var friendlyMessage = getFriendlyErrorMessage(error, false);
-      var fallbackMessage = friendlyMessage || '인증 중 오류가 발생했습니다.';
-      if (
-        window.LoveBudLoginPageAuthError &&
-        typeof window.LoveBudLoginPageAuthError.show === 'function'
-      ) {
-        window.LoveBudLoginPageAuthError.show(fallbackMessage);
-      } else {
-        alert(fallbackMessage);
-      }
-    } finally {
-      submitBtn.disabled = false;
-      submitBtn.textContent = originalText;
-    }
-  });
+  }]);
 }
 
 function setupSignupForm() {
-  if (callLoginPageModule('setupSignupForm', [{
+  callLoginPageModule('setupSignupForm', [{
     firebase: typeof firebase !== 'undefined' ? firebase : undefined,
     initFirebase: initFirebase,
     getEnvironmentCheckError: getEnvironmentCheckError,
@@ -1302,71 +753,7 @@ function setupSignupForm() {
     persistConfirmedAuthSession: persistConfirmedAuthSession,
     preloadRedirectTargetData: preloadRedirectTargetData,
     getRedirectTarget: getRedirectTarget
-  }])) {
-    return;
-  }
-
-  var signupForm = document.getElementById('signup-form');
-  if (!signupForm) return;
-  if (typeof firebase === 'undefined' || !firebase.auth) return;
-
-   var displayNameInput = document.getElementById('signup-display-name');
-   var emailInput = document.getElementById('signup-email');
-   var passwordInput = document.getElementById('signup-password');
-   var submitBtn = document.getElementById('signup-submit');
-
-  signupForm.addEventListener('submit', async function (e) {
-    e.preventDefault();
-
-    var envError = getEnvironmentCheckError();
-    if (envError) {
-      alert(envError);
-      return;
-    }
-
-     var displayName = String(displayNameInput?.value || '').trim();
-     var email = String(emailInput?.value || '').trim();
-     var password = String(passwordInput?.value || '').trim();
-
-     if (!displayName || !email || !password) {
-       alert('닉네임, 이메일, 비밀번호를 입력해주세요.');
-       return;
-     }
-    if (password.length < 6) {
-      alert('비밀번호는 최소 6자 이상이어야 합니다.');
-      return;
-    }
-
-    if (submitBtn) {
-      submitBtn.disabled = true;
-    }
-    var originalText = submitBtn ? submitBtn.textContent : '';
-    if (submitBtn) {
-      submitBtn.textContent = '가입 중...';
-    }
-
-    try {
-      if (typeof initFirebase === 'function') initFirebase();
-      if (!firebase.apps || !firebase.apps.length) {
-        throw new Error('Firebase not initialized');
-      }
-
-       var signupResult = await firebase.auth().createUserWithEmailAndPassword(email, password);
-       if (signupResult && signupResult.user && typeof signupResult.user.updateProfile === 'function') {
-         await signupResult.user.updateProfile({ displayName: displayName });
-       }
-       window.location.href = getRedirectTarget();
-    } catch (error) {
-      console.error('Signup error:', error);
-      var friendlyMessage = getFriendlyErrorMessage(error, false);
-      alert(friendlyMessage || '회원가입 중 오류가 발생했습니다.');
-    } finally {
-      if (submitBtn) {
-        submitBtn.disabled = false;
-        submitBtn.textContent = originalText;
-      }
-    }
-  });
+  }]);
 }
 
 // ── Exports ────────────────────────────────────────────────────────────────────

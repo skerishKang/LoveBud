@@ -20,30 +20,30 @@
     // 로그인 페이지
     'login_title': {
       ko: '당신의 감정 나무를 시작하세요',
-      en: 'Start your emotional tree'
+      en: 'Start your emotion tree'
     },
     'login_desc': {
-      ko: '처음 사랑에 빠진 순간부터, 팬이 되어가는 모든 경로를 영상과 메모로 연결해 기록하세요.',
-      en: 'Record every step of your journey from the first spark to full fandom with videos and notes.'
+      ko: '처음 사랑에 빠진 순간부터, 팬이 되어가는 모든 경로를<br>영상과 메모로 연결해 기록하세요.',
+      en: 'From the first moment you fell in love, connect every path you become a fan of with videos and notes.'
     },
 
     // 소셜 로그인
     'google_login': {
-      ko: 'Google로 시작하기',
+      ko: 'Google로 계속하기',
       en: 'Continue with Google'
     },
     'google_signup': {
-      ko: 'Google로 바로 시작하기',
-      en: 'Start with Google'
+      ko: 'Google로 계속하기',
+      en: 'Continue with Google'
     },
 
     // 구분선
     'or_email': {
-      ko: '또는 이메일로 시작하기',
+      ko: '또는 이메일로 계속하기',
       en: 'Or continue with email'
     },
     'email_login': {
-      ko: '이메일로 시작하기',
+      ko: '이메일로 로그인',
       en: 'Continue with email'
     },
 
@@ -53,12 +53,12 @@
       en: 'New here?'
     },
     'signup_intro_title': {
-      ko: '계정만 만들면 바로 첫 순간을 남길 수 있어요',
-      en: 'Create an account and save your first moment right away'
+      ko: '처음이어도 같은 버튼으로 바로 시작할 수 있어요',
+      en: 'New here? The same buttons get you started.'
     },
     'signup_intro_desc': {
-      ko: '아래에서 Google 또는 이메일로 바로 시작해보세요',
-      en: 'Start right away with Google or email below'
+      ko: 'Google 또는 이메일로 계속하면 필요한 경우 계정 생성까지 같은 흐름에서 이어집니다.',
+      en: 'Continue with Google or email; account creation is included in the same flow when needed.'
     },
     'google_signup_helper': {
       ko: 'Google 계정으로 로그인만 하면 별도 가입 없이 바로 시작됩니다',

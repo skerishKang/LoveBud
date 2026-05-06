@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     const dataLoaderFallbacks = window.LoveBudEditorDataLoaderFallbacks || {};
+    const entryFallbacks = window.LoveBudEditorEntryFallbacks || {};
     const resolverFallbacks = window.LoveBudEditorResolverFallbacks || {};
     const shellHelpers = window.LoveBudEditorShellHelpers || {};
 
@@ -58,24 +59,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const editorBindings = window.LoveBudEditorBindings || {};
     const editorDataLoader = window.LoveBudEditorDataLoader || {};
     const editorAuthHelpers = window.LoveBudEditorAuthHelpers || {};
+    const readConfirmedAuthCacheFromHelper = () => (
+        window.LoveBudEditorAuthHelpers?.readConfirmedAuthCache?.() || null
+    );
+    const getConfirmedSessionUser = function() {
+        try {
+            if (window.LoveBudProtectedRoute) {
+                var state = window.LoveBudProtectedRoute.getAuthState();
+                if (state.ready && state.user) return state.user;
+            }
+            if (window.getConfirmedAuthUser) return window.getConfirmedAuthUser();
+        } catch (e) {}
+        return readConfirmedAuthCacheFromHelper();
+    };
+    const hasConfirmedSessionUser = editorAuthHelpers.hasConfirmedSessionUser || (() => !!getConfirmedSessionUser());
 
     const getHttpStatus = (error) => Number(error?.status || error?.statusCode || error?.response?.status || 0);
 
 
 
-    const createInlineShowToastFallback = shellHelpers.createInlineShowToastFallback || function() {
-        if (window.LoveBudUI?.showToast) {
-            return (message, type = 'info') => window.LoveBudUI.showToast(message, type, 3000);
-        } else {
-            return (message, type = 'info') => {
-                if (!window.__editorToastWarningShown) {
-                    console.warn('[editor] LoveBudUI not loaded, toast degraded to console');
-                    window.__editorToastWarningShown = true;
-                }
-                console.log(`[Toast ${type}] ${message}`);
-            };
-        }
-    };
+    const createInlineShowToastFallback = shellHelpers.createInlineShowToastFallback ||
+        entryFallbacks.createInlineShowToastFallback;
 
     const showToast = editorHelpers.createToast
         ? editorHelpers.createToast({ warningKey: '__editorToastWarningShown' })
@@ -90,23 +94,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const buildEditorRedirectTarget = shellHelpers.buildEditorRedirectTarget || (() =>
         getEditorBasePath() + 'editor.html' + (window.location.search || ''));
 
-    const createInlineRedirectToEditorLoginFallback = (options) => (delayMs = 0) => {
-        const opts = options || {};
-        const getEditorBasePath = opts.getEditorBasePath || (() => '');
-        const buildEditorRedirectTarget = opts.buildEditorRedirectTarget || (() => 'editor.html');
-
-        const loginUrl =
-            getEditorBasePath() + 'login.html?redirect=' + encodeURIComponent(buildEditorRedirectTarget());
-
-        if (delayMs > 0) {
-            setTimeout(() => {
-                window.location.href = loginUrl;
-            }, delayMs);
-            return;
-        }
-
-        window.location.href = loginUrl;
-    };
+    const createInlineRedirectToEditorLoginFallback = entryFallbacks.createInlineRedirectToEditorLoginFallback;
 
     const redirectToEditorLogin = editorPageHelpers.redirectToEditorLogin || createInlineRedirectToEditorLoginFallback({
         getEditorBasePath,
@@ -167,62 +155,19 @@ document.addEventListener('DOMContentLoaded', () => {
         return i18n('invalid_youtube') || '유효한 YouTube 링크를 입력해 주세요.';
     });
 
-    // Tree load error renderer: primary = editorPageHelpers.renderTreeLoadError, fallback = inline minimal UI
-    const createRenderTreeLoadErrorFallback = () => ({
-        canvas,
-        addBtn,
-        errorTitle,
-        errorDesc,
-        i18n,
-        escapeHtml,
-        setDetailEmptyState
-    }) => {
-        canvas.innerHTML = `
-            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;padding:32px;background:rgba(255,255,255,0.96);border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,0.1);max-width:360px;width:calc(100% - 32px);">
-                <div style="font-size:48px;margin-bottom:16px;">🌱</div>
-                <div style="font-size:1.2rem;font-weight:800;margin-bottom:8px;color:var(--on-surface);">${escapeHtml(errorTitle)}</div>
-                <div style="font-size:14px;color:var(--on-surface-variant);line-height:1.6;margin-bottom:20px;">
-                    ${escapeHtml(errorDesc)}
-                </div>
-                <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
-                    <button type="button" id="retryOpenTreeBtn" class="btn-round btn-outline" style="padding:10px 16px;">
-                        ${i18n('retry') || '다시 시도'}
-                    </button>
-                    <a href="${escapeHtml(getMyTreesHref())}" class="btn-round btn-primary" style="padding:10px 16px;text-decoration:none;">
-                        ${i18n('go_to_my_trees') || '내 트리로 가기'}
-                    </a>
-                </div>
-            </div>
-        `;
-
-        if (typeof setDetailEmptyState === 'function') {
-            setDetailEmptyState(true);
-        }
-
-        const retryBtn = document.getElementById('retryOpenTreeBtn');
-        if (retryBtn) retryBtn.addEventListener('click', () => window.location.reload());
-        if (addBtn) addBtn.disabled = true;
-    };
-
-    const renderTreeLoadError = editorPageHelpers.renderTreeLoadError || createRenderTreeLoadErrorFallback();
+    const renderTreeLoadError = editorPageHelpers.renderTreeLoadError ||
+        entryFallbacks.createInlineRenderTreeLoadErrorFallback({ getMyTreesHref });
     const createInlineNormalizeMemoryFallback = dataLoaderFallbacks.createInlineNormalizeMemoryFallback || (() => (mem) => mem);
     const createInlineLoadInitialTreeFallback = dataLoaderFallbacks.createInlineLoadInitialTreeFallback || (() => async () => ({}));
     const createInlineLoadEditorMemoriesFallback = dataLoaderFallbacks.createInlineLoadEditorMemoriesFallback || (() => async () => ({}));
     const createInlineCreateInitialMemoryFallback = dataLoaderFallbacks.createInlineCreateInitialMemoryFallback || ((options) => () => ({}));
     const createInlineNextMemoryIdFallback = dataLoaderFallbacks.createInlineNextMemoryIdFallback || ((options) => () => 'm1');
     const createInlineRefreshMemoriesFallback = dataLoaderFallbacks.createInlineRefreshMemoriesFallback || ((options) => async () => {});
-    const createInlineFormatTimeAgoFallback = () => (date) => {
-        if (!date) return '';
-        const diff = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
-        if (diff < 60) return '방금';
-        if (diff < 3600) return `${Math.floor(diff / 60)}분 전`;
-        if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`;
-        return `${Math.floor(diff / 86400)}일 전`;
-    };
+    const createInlineFormatTimeAgoFallback = entryFallbacks.createInlineFormatTimeAgoFallback;
 
     const markEditorReady = () => document.body?.classList.remove('editor-preload');
 
-    const applyEditorShellCopy = shellHelpers.applyEditorShellCopy || function() {
+    const createEditorShellCopyApplier = ({ safeI18nText, i18n }) => {
         const setText = (id, key, fallback) => {
             const el = document.getElementById(id);
             if (!el) return;
@@ -234,52 +179,65 @@ document.addEventListener('DOMContentLoaded', () => {
             el.setAttribute('placeholder', safeI18nText(i18n, key, fallback));
         };
 
-        setText('backToMyTreesLabel', 'editor_back_to_my_trees', '내 러브트리로 돌아가기');
-        setText('editorFlowHeading', 'sidebar_flow_heading', '트리 정보');
-        setText('editorFlowLead', 'sidebar_flow_lead', '트리 이름과 공개 상태를 여기서 정리하고, 가운데 캔버스에서는 흐름만 살펴보세요.');
-        setText('sidebarVisibilityToggleBtnLabel', 'editor_make_public', '이 트리 공개하기');
-        setText('recenterCanvasBtnLabel', 'sidebar_recenter_tree', '트리 한눈에 보기');
-        setText('addMemoryEyebrow', 'editor_add_memory_eyebrow', '다음 순간 심기');
-        setText('addMemoryIntro', 'editor_add_memory_intro', '지금 마음이 머문 다음 장면을 이어 심어 보세요. 첫 순간이라면 여기서 러브트리가 시작됩니다.');
-        setText('saveStatusText', 'save_saved', '저장됨');
-        setText('detailMoreBtn', 'editor_open_detail', '상세로 보기');
-        setText('detailEmptyStartBtn', 'editor_add_first_memory', '첫 순간 심기');
-        setText('canvasEmptyGuideEyebrow', 'editor_canvas_empty_eyebrow', '첫 순간 준비');
-        setText('canvasEmptyGuideTitle', 'editor_canvas_empty_title', '이 장면에서 러브트리가 시작돼요');
-        setText('canvasEmptyGuideDesc', 'editor_canvas_empty_desc', '첫 순간을 심으면 이 공간에 감정의 흐름이 천천히 뻗어나갑니다.');
-        setText('canvasEmptyStartBtn', 'editor_add_first_memory', '첫 순간 심기');
-        setText('addMemoryFormEyebrow', 'editor_add_first_memory', '첫 순간 심기');
-        setText('addMemoryFormTitle', 'editor_new_memory', '어떤 순간이 이어졌나요?');
-        setText('addMemoryFormIntro', 'editor_add_memory_intro', '지금 마음이 머문 다음 장면을 이어 심어 보세요. 첫 순간이라면 여기서 러브트리가 시작됩니다.');
-        setText('memoryUrlLabel', 'editor_youtube_link', 'YouTube 장면 링크');
-        setText('memoryTitleLabel', 'editor_memory_title', '순간 제목');
-        setText('memoryMemoLabel', 'editor_memory_memo_optional', '감정 메모');
-        setText('cancelAddMemory', 'editor_cancel', '취소');
-        setText('confirmAddMemory', 'editor_confirm_add', '이 순간 심기');
-        setPlaceholder('memoryTitleInput', 'editor_memory_title_placeholder', '이 순간을 어떻게 기억하고 싶은지 적어보세요');
-        setPlaceholder('memoryMemoInput', 'editor_memory_memo_placeholder', '왜 이 장면이 이어졌는지, 지금 마음을 남겨보세요...');
-        setText('detailEmptyTitle', 'detail_empty_title', '첫 순간이 트리를 깨워요');
-        setText('detailEmptyDesc', 'detail_empty_desc', '첫 순간을 심으면 이 패널이 현재 순간 허브로 바뀝니다.');
-        setText('detailCurrentMomentBadge', 'editor_current_moment_badge', '현재 순간');
-        setText('detailCurrentMomentTitle', 'editor_current_moment_title', '지금 마음이 머문 장면');
-        setText('detailCurrentMomentHint', 'editor_current_moment_hint', '선택한 순간을 중심으로 감정 메모와 다음 행동이 정리됩니다.');
-        setText('detailMomentInfoLabel', 'editor_moment_info_label', '순간 정보');
-        setText('detailTreeStatusLabel', 'current_tree', '현재 트리');
-        setText('detailDateLabel', 'editor_date_label', '기억한 날');
-        setText('detailTagsLabel', 'editor_tag_label', '감정 태그');
-        setText('detailMemoLabel', 'editor_note_label', '감정 메모');
-        setText('editMemoryBtn', 'editor_edit', '순간 수정');
-        setText('deleteMemoryBtn', 'editor_delete', '순간 삭제');
-        setText('editTitleLabel', 'editor_memory_title', '제목');
-        setText('editMemoLabel', 'editor_note_label', '감정 메모');
-        setText('editTagsLabel', 'editor_edit_tag_label', '감정 태그 (쉼표로 구분)');
-        setPlaceholder('editTitleInput', 'editor_edit_title_placeholder', '순간의 제목을 입력하세요');
-        setPlaceholder('editMemoInput', 'editor_memory_memo_placeholder', '이 순간의 감정을 남겨보세요...');
-        setPlaceholder('editTagsInput', 'editor_edit_tag_placeholder', '#감동, #행복, #그리움');
-        setText('cancelEditBtn', 'editor_cancel', '취소');
-        setText('saveEditBtn', 'editor_save', '저장하기');
-        setText('detailSubmitBtn', 'editor_record_submit', '내 러브트리에 기록하기');
+        const textBindings = [
+            ['backToMyTreesLabel', 'editor_back_to_my_trees', '내 러브트리로 돌아가기'],
+            ['editorFlowHeading', 'sidebar_flow_heading', '트리 정보'],
+            ['editorFlowLead', 'sidebar_flow_lead', '트리 이름과 공개 상태를 여기서 정리하고, 가운데 캔버스에서는 흐름만 살펴보세요.'],
+            ['sidebarVisibilityToggleBtnLabel', 'editor_make_public', '이 트리 공개하기'],
+            ['recenterCanvasBtnLabel', 'sidebar_recenter_tree', '트리 한눈에 보기'],
+            ['addMemoryEyebrow', 'editor_add_memory_eyebrow', '다음 순간 심기'],
+            ['addMemoryIntro', 'editor_add_memory_intro', '지금 마음이 머문 다음 장면을 이어 심어 보세요. 첫 순간이라면 여기서 러브트리가 시작됩니다.'],
+            ['saveStatusText', 'save_saved', '저장됨'],
+            ['detailMoreBtn', 'editor_open_detail', '상세로 보기'],
+            ['detailEmptyStartBtn', 'editor_add_first_memory', '첫 순간 심기'],
+            ['canvasEmptyGuideEyebrow', 'editor_canvas_empty_eyebrow', '첫 순간 준비'],
+            ['canvasEmptyGuideTitle', 'editor_canvas_empty_title', '이 장면에서 러브트리가 시작돼요'],
+            ['canvasEmptyGuideDesc', 'editor_canvas_empty_desc', '첫 순간을 심으면 이 공간에 감정의 흐름이 천천히 뻗어나갑니다.'],
+            ['canvasEmptyStartBtn', 'editor_add_first_memory', '첫 순간 심기'],
+            ['addMemoryFormEyebrow', 'editor_add_first_memory', '첫 순간 심기'],
+            ['addMemoryFormTitle', 'editor_new_memory', '어떤 순간이 이어졌나요?'],
+            ['addMemoryFormIntro', 'editor_add_memory_intro', '지금 마음이 머문 다음 장면을 이어 심어 보세요. 첫 순간이라면 여기서 러브트리가 시작됩니다.'],
+            ['memoryUrlLabel', 'editor_youtube_link', 'YouTube 장면 링크'],
+            ['memoryTitleLabel', 'editor_memory_title', '순간 제목'],
+            ['memoryMemoLabel', 'editor_memory_memo_optional', '감정 메모'],
+            ['cancelAddMemory', 'editor_cancel', '취소'],
+            ['confirmAddMemory', 'editor_confirm_add', '이 순간 심기'],
+            ['detailEmptyTitle', 'detail_empty_title', '첫 순간이 트리를 깨워요'],
+            ['detailEmptyDesc', 'detail_empty_desc', '첫 순간을 심으면 이 패널이 현재 순간 허브로 바뀝니다.'],
+            ['detailCurrentMomentBadge', 'editor_current_moment_badge', '현재 순간'],
+            ['detailCurrentMomentTitle', 'editor_current_moment_title', '지금 마음이 머문 장면'],
+            ['detailCurrentMomentHint', 'editor_current_moment_hint', '선택한 순간을 중심으로 감정 메모와 다음 행동이 정리됩니다.'],
+            ['detailMomentInfoLabel', 'editor_moment_info_label', '순간 정보'],
+            ['detailTreeStatusLabel', 'current_tree', '현재 트리'],
+            ['detailDateLabel', 'editor_date_label', '기억한 날'],
+            ['detailTagsLabel', 'editor_tag_label', '감정 태그'],
+            ['detailMemoLabel', 'editor_note_label', '감정 메모'],
+            ['editMemoryBtn', 'editor_edit', '순간 수정'],
+            ['deleteMemoryBtn', 'editor_delete', '순간 삭제'],
+            ['editTitleLabel', 'editor_memory_title', '제목'],
+            ['editMemoLabel', 'editor_note_label', '감정 메모'],
+            ['editTagsLabel', 'editor_edit_tag_label', '감정 태그 (쉼표로 구분)'],
+            ['cancelEditBtn', 'editor_cancel', '취소'],
+            ['saveEditBtn', 'editor_save', '저장하기'],
+            ['detailSubmitBtn', 'editor_record_submit', '내 러브트리에 기록하기']
+        ];
+
+        const placeholderBindings = [
+            ['memoryTitleInput', 'editor_memory_title_placeholder', '이 순간을 어떻게 기억하고 싶은지 적어보세요'],
+            ['memoryMemoInput', 'editor_memory_memo_placeholder', '왜 이 장면이 이어졌는지, 지금 마음을 남겨보세요...'],
+            ['editTitleInput', 'editor_edit_title_placeholder', '순간의 제목을 입력하세요'],
+            ['editMemoInput', 'editor_memory_memo_placeholder', '이 순간의 감정을 남겨보세요...'],
+            ['editTagsInput', 'editor_edit_tag_placeholder', '#감동, #행복, #그리움']
+        ];
+
+        return () => {
+            textBindings.forEach(([id, key, fallback]) => setText(id, key, fallback));
+            placeholderBindings.forEach(([id, key, fallback]) => setPlaceholder(id, key, fallback));
+        };
     };
+
+    const applyEditorShellCopy = shellHelpers.applyEditorShellCopy ||
+        createEditorShellCopyApplier({ safeI18nText, i18n });
 
     applyEditorShellCopy(safeI18nText, i18n);
 
@@ -744,12 +702,6 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     var editorStarted = false;
-    const getConfirmedSessionUser = editorAuthHelpers.getConfirmedSessionUser || function() {
-        try {
-            if (window.getConfirmedAuthUser) return window.getConfirmedAuthUser();
-        } catch (e) {}
-        return readConfirmedAuthCache();
-    };
 
     function tryStartEditor(user) {
         if (editorStarted) {
@@ -759,7 +711,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         if (!user) {
-            var cachedUser = readConfirmedAuthCache();
+            var cachedUser = readConfirmedAuthCacheFromHelper();
             if (!cachedUser || !cachedUser.uid) {
                 redirectToEditorLogin();
                 return;
@@ -769,8 +721,6 @@ document.addEventListener('DOMContentLoaded', () => {
         startEditor();
     }
 
-    var cachedUser = getConfirmedSessionUser();
-    if (cachedUser) tryStartEditor(cachedUser);
     if (typeof window.registerOnAuthReady === 'function') {
         window.registerOnAuthReady(tryStartEditor);
     } else {

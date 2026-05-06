@@ -7,14 +7,15 @@
   <link rel="icon" href="/assets/favicon/favicon.svg" type="image/svg+xml">
   <link rel="icon" href="/favicon.ico" sizes="32x32">
   <link rel="stylesheet" href="../css/global.css?v=20260415-10">
-  <link rel="stylesheet" href="../css/my-trees.css?v=20260427-1">
+  <link rel="stylesheet" href="../css/my-trees.css?v=20260504-1">
+  <link rel="stylesheet" href="../css/page-transitions.css?v=20260430-1">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
 </head>
 <body class="bokeh-bg my-trees-auth-pending">
   <div class="noise-overlay"></div>
-  <div class="my-trees-layout">
+  <div class="my-trees-layout page-transition-enter">
     <div id="shared-header"></div>
-    <main class="my-trees-content">
+    <main class="my-trees-content reveal-scale reveal-up">
       <div class="my-trees-header">
         <div class="header-content">
           <h1 id="myTreesPageTitle">🌳 내 러브트리</h1>
@@ -35,9 +36,55 @@
         </div>
       </div>
 
-      <section class="dashboard-main">
+      <section class="dashboard-main reveal-fade">
         <div id="treesContainer">
-          <div id="state-loading" class="trees-loading"><div class="spinner"></div><span class="loading-text" data-i18n="myTrees.loading">러브트리 목록을 불러오는 중...</span></div>
+          <div id="state-loading" class="trees-loading">
+            <div class="trees-loading-head">
+              <div class="spinner"></div>
+              <span class="loading-text" data-i18n="myTrees.loading">러브트리 목록을 불러오는 중...</span>
+            </div>
+            <div class="trees-skeleton-grid" aria-hidden="true">
+              <div class="tree-card tree-card-skeleton">
+                <div class="tree-skeleton-thumb">
+                  <span class="tree-skeleton-avatar"></span>
+                  <span class="tree-skeleton-pill"></span>
+                  <span class="tree-skeleton-branch tree-skeleton-branch-main"></span>
+                  <span class="tree-skeleton-branch tree-skeleton-branch-side"></span>
+                </div>
+                <div class="tree-skeleton-info">
+                  <span class="tree-skeleton-line tree-skeleton-title"></span>
+                  <span class="tree-skeleton-line tree-skeleton-status"></span>
+                  <span class="tree-skeleton-line tree-skeleton-meta"></span>
+                </div>
+              </div>
+              <div class="tree-card tree-card-skeleton">
+                <div class="tree-skeleton-thumb">
+                  <span class="tree-skeleton-avatar"></span>
+                  <span class="tree-skeleton-pill"></span>
+                  <span class="tree-skeleton-branch tree-skeleton-branch-main"></span>
+                  <span class="tree-skeleton-branch tree-skeleton-branch-side"></span>
+                </div>
+                <div class="tree-skeleton-info">
+                  <span class="tree-skeleton-line tree-skeleton-title"></span>
+                  <span class="tree-skeleton-line tree-skeleton-status"></span>
+                  <span class="tree-skeleton-line tree-skeleton-meta"></span>
+                </div>
+              </div>
+              <div class="tree-card tree-card-skeleton">
+                <div class="tree-skeleton-thumb">
+                  <span class="tree-skeleton-avatar"></span>
+                  <span class="tree-skeleton-pill"></span>
+                  <span class="tree-skeleton-branch tree-skeleton-branch-main"></span>
+                  <span class="tree-skeleton-branch tree-skeleton-branch-side"></span>
+                </div>
+                <div class="tree-skeleton-info">
+                  <span class="tree-skeleton-line tree-skeleton-title"></span>
+                  <span class="tree-skeleton-line tree-skeleton-status"></span>
+                  <span class="tree-skeleton-line tree-skeleton-meta"></span>
+                </div>
+              </div>
+            </div>
+          </div>
           <div id="state-error" class="error-state"><span class="material-symbols-outlined error-state-icon">error</span><h2 data-i18n="myTrees.error_title">불러오기에 실패했습니다</h2><p data-i18n="myTrees.error_desc">네트워크 연결을 확인하고 다시 시도해주세요.</p><button class="btn-round btn-primary" id="retryLoadBtn" data-i18n="myTrees.retry">다시 시도</button></div>
           <div id="state-empty" class="empty-state"><span class="material-symbols-outlined empty-state-icon">account_tree</span><h2 data-i18n="empty_state_title">아직 러브트리가 없어요</h2><p data-i18n="empty_state_desc">첫 러브트리를 만들어 시작해보세요.</p><button class="btn-create-tree" id="createTreeBtn"><span class="material-symbols-outlined my-trees-create-icon">add_circle</span><span data-i18n="create_tree_btn">새 러브트리 만들기</span></button></div>
           <div id="state-loaded"></div>
@@ -98,7 +145,8 @@
   <script src="../js/my-trees/my-trees-data.js?v=20260422-4"></script>
   <script src="../js/my-trees/my-trees-state.js?v=20260421-4"></script>
   <script src="../js/my-trees/my-trees-page.js?v=20260420-1"></script>
-  <script src="../js/my-trees.js?v=20260421-6"></script>
+    <script src="../js/my-trees/my-trees-render.js?v=20260504-1"></script>
+    <script src="../js/my-trees.js?v=20260421-6"></script>
   <script src="../js/my-trees/my-trees-i18n-refresh.js?v=20260422-1"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
@@ -122,6 +170,8 @@
   <script src="../js/auth/auth-firebase.js?v=20260427-3"></script>
   <script src="../js/auth/auth-login-page.js?v=20260420-1"></script>
   <script src="../js/auth.js?v=20260417-31"></script>
+  <script src="../js/auth/protected-route.js?v=20260505-828"></script>
+  <script src="../js/page-transitions.js?v=20260430-1"></script>
   <script>renderSharedHeader();</script>
 </body>
 </html>

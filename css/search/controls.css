@@ -73,6 +73,33 @@
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    margin-top: 18px;
+    margin: 0 0 22px;
     min-width: 0;
+}
+
+.browse-scroll-load-sentinel {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 54px;
+    margin: 18px 0 4px;
+    color: var(--on-surface-variant);
+    font-size: 13px;
+    font-weight: 700;
+    text-align: center;
+}
+
+.browse-scroll-load-sentinel[hidden] {
+    display: none;
+}
+
+.browse-scroll-load-sentinel .material-symbols-outlined {
+    font-size: 18px;
+    color: var(--primary);
+    opacity: 0.72;
+}
+
+.browse-scroll-load-sentinel.is-loading .material-symbols-outlined {
+    animation: spin 1s linear infinite;
 }

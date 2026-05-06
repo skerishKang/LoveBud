@@ -9,12 +9,12 @@
  * verification across desktop, tablet, and mobile viewports.
  */
 @import url("./editor/base.css");
-@import url("./editor/layout.css");
+@import url("./editor/layout.css?v=20260504-775");
 @import url("./editor/sidebar.css");
-@import url("./editor/canvas.css");
+@import url("./editor/canvas.css?v=20260504-787");
 @import url("./editor/canvas-toolbar.css");
 @import url("./editor/memory-form.css");
-@import url("./editor/detail-panel.css");
+@import url("./editor/detail-panel.css?v=20260504-627");
 @import url("./editor/responsive.css");
 @import url("./editor/mode-selection.css");
 @import url("./editor/status-settings.css");

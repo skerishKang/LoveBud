@@ -53,6 +53,19 @@
       : (i18n('visibility_make_public') || '공개로 전환');
   }
 
+  function getTreeCardMeta(tree, i18n) {
+    var visibility = tree && tree.visibility === 'public' ? 'public' : 'private';
+    var visibilityLabel = visibility === 'public' ? (i18n('myTrees.summary_public') || '공개') : (i18n('myTrees.summary_private') || '비공개');
+
+    return {
+      visibilityIcon: visibility === 'public' ? 'lock' : 'public',
+      visibilityActionLabel: getVisibilityActionLabel(tree, i18n),
+      title: tree && tree.title,
+      mood: getTreeMomentCount(tree) > 0 ? (i18n('myTrees.card_growing') || '차곡차곡 자라는 중') : (i18n('myTrees.card_waiting') || '첫 순간을 기다리는 중'),
+      privateBadgeHtml: visibility === 'private' ? '<div class="tree-card-meta"><span class="tree-card-visibility private"><span class="material-symbols-outlined" style="font-size:12px;">lock</span>' + visibilityLabel + '</span></div>' : ''
+    };
+  }
+
   function getTreeMoodPalette(tree) {
     var seed = hashSeed((tree && tree.id) || (tree && tree.title) || 'lovetree');
     var palettes = [
@@ -184,10 +197,8 @@
             ? '<img class="tree-card-thumb-image" src="' + escapeHtml(thumbnail) + '" alt="' + escapeHtml(title) + '">'
             : (textVisual || buildMiniTreeSVG(tree)),
         '</div>',
-        '<div class="tree-card-thumb-topline">',
-          '<span class="tree-card-moment-badge" data-count="' + momentCount + '">' + (i18n('myTrees.moment_count_compact') || '순간 {count}개').replace('{count}', String(momentCount)) + '</span>',
-        '</div>',
-        '<div class="tree-card-thumb-caption">' + moodLabel + '</div>',
+        (momentCount > 0 ? '<div class="tree-card-thumb-topline"><span class="tree-card-moment-badge" data-count="' + momentCount + '">' + (i18n('myTrees.moment_count_compact') || '순간 {count}개').replace('{count}', String(momentCount)) + '</span></div>' : ''),
+        (momentCount > 0 ? '<div class="tree-card-thumb-caption">' + moodLabel + '</div>' : ''),
       '</div>'
     ].join('');
   }
@@ -332,20 +343,8 @@
       normalizedTree.representativeMemo = normalizedTree.representativeMemo || (tree && (tree.representativeMemo || tree.representative_memo || ''));
     }
 
-    var momentCount = getTreeMomentCount(normalizedTree);
-    var visClass = normalizedTree.visibility === 'public' ? 'public' : 'private';
-    var visLabel = normalizedTree.visibility === 'public'
-      ? (i18n('myTrees.summary_public') || '공개')
-      : (i18n('myTrees.summary_private') || '비공개');
-    var title = normalizedTree.title;
-    var date = normalizedTree.updatedAt || normalizedTree.createdAt || '';
-    var metaMood = momentCount > 0
-      ? (i18n('myTrees.card_growing') || '차곡차곡 자라는 중')
-      : (i18n('myTrees.card_waiting') || '첫 순간을 기다리는 중');
-
-    if (date) {
-      date = date.slice(0, 10).replace(/-/g, '.');
-    }
+    var cardMeta = getTreeCardMeta(normalizedTree, i18n);
+    var title = cardMeta.title;
 
     var menuBtnId = 'menuBtn_' + normalizedTree.id;
     var dropdownId = 'dropdown_' + normalizedTree.id;
@@ -354,27 +353,44 @@
     var card = document.createElement('div');
     card.className = 'tree-card' + selectedClass;
     card.style.cursor = 'pointer';
+    card.setAttribute('role', 'button');
+    card.setAttribute('tabindex', '0');
+    card.dataset.visibility = normalizedTree.visibility;
 
-    card.addEventListener('click', function (e) {
-      if (e.target.closest('.tree-card-menu') || e.target.closest('.tree-card-dropdown') || e.target.closest('.tree-card-manage-btn')) {
-        return;
-      }
+    var openTree = function () {
       if (typeof onNavigate === 'function') {
         onNavigate(normalizedTree);
       } else {
         window.location.href = 'editor.html?treeId=' + encodeURIComponent(normalizedTree.id);
       }
+    };
+
+    card.addEventListener('click', function (e) {
+      if (e.target.closest('.tree-card-menu') || e.target.closest('.tree-card-dropdown')) {
+        return;
+      }
+      openTree();
+    });
+
+    card.addEventListener('keydown', function (e) {
+      if (e.target.closest('.tree-card-menu') || e.target.closest('.tree-card-dropdown')) {
+        return;
+      }
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        openTree();
+      }
     });
 
     card.innerHTML = [
       buildTreeThumbVisual(normalizedTree, i18n),
-      '<button class="tree-card-menu" id="' + menuBtnId + '" type="button" aria-label="' + escapeHtml(i18n('myTrees.card_menu') || '트리 관리 열기') + '">',
-        '<span class="material-symbols-outlined" style="font-size:20px;color:var(--on-surface);">more_vert</span>',
+      '<button class="tree-card-menu" id="' + menuBtnId + '" type="button" aria-label="' + escapeHtml(i18n('myTrees.card_menu') || '트리 메뉴 열기') + '">',
+        '<span class="material-symbols-outlined" aria-hidden="true">more_vert</span>',
       '</button>',
       '<div class="tree-card-dropdown" id="' + dropdownId + '">',
         '<div class="dropdown-item visibility" data-action="visibility">',
-          '<span class="material-symbols-outlined" style="font-size:16px;">' + (normalizedTree.visibility === 'public' ? 'lock' : 'public') + '</span>',
-          getVisibilityActionLabel(normalizedTree, i18n),
+          '<span class="material-symbols-outlined" style="font-size:16px;">' + cardMeta.visibilityIcon + '</span>',
+          cardMeta.visibilityActionLabel,
         '</div>',
         '<div class="dropdown-item rename" data-action="rename">',
           '<span class="material-symbols-outlined" style="font-size:16px;">edit</span>',
@@ -388,28 +404,15 @@
       '<div class="tree-card-info">',
         '<div class="tree-card-title-row">',
           '<div class="tree-card-title">' + escapeHtml(title) + '</div>',
-          '<span class="tree-card-count-pill" data-count="' + momentCount + '">' + (i18n('myTrees.moment_count_compact') || '순간 {count}개').replace('{count}', String(momentCount)) + '</span>',
         '</div>',
-        '<div class="tree-card-subcopy">' + metaMood + '</div>',
-        '<div class="tree-card-meta">',
-          '<span class="tree-card-visibility ' + visClass + '">',
-            '<span class="material-symbols-outlined" style="font-size:12px;">' + (visClass === 'public' ? 'public' : 'lock') + '</span>',
-            visLabel,
-          '</span>',
-          date ? '<span class="tree-card-date">' + date + '</span>' : '',
-        '</div>',
-        '<div class="tree-card-manage-row">',
-          '<button type="button" class="tree-card-manage-btn tree-card-select-btn">' + (selectedClass ? (i18n('myTrees.card_selected') || '선택됨') : (i18n('myTrees.card_select') || '선택')) + '</button>',
-          '<button type="button" class="tree-card-manage-btn tree-card-open-btn">' + (i18n('myTrees.card_open') || '열어보기') + '</button>',
-        '</div>',
+        '<div class="tree-card-subcopy">' + cardMeta.mood + '</div>',
+        cardMeta.privateBadgeHtml,
       '</div>'
     ].join('');
 
     setTimeout(function () {
       var menuBtn = document.getElementById(menuBtnId);
       var dropdown = document.getElementById(dropdownId);
-      var selectBtn = card.querySelector('.tree-card-select-btn');
-      var openBtn = card.querySelector('.tree-card-open-btn');
 
       if (menuBtn && dropdown) {
         menuBtn.addEventListener('click', function (e) {
@@ -445,29 +448,19 @@
         });
       }
 
-      if (selectBtn) {
-        selectBtn.addEventListener('click', function(e) {
-          e.preventDefault();
-          e.stopPropagation();
-          if (typeof onSelect === 'function') {
-            onSelect(normalizedTree.id);
-          }
-        });
-      }
-
-      if (openBtn) {
-        openBtn.addEventListener('click', function(e) {
-          e.preventDefault();
-          e.stopPropagation();
-          if (typeof onNavigate === 'function') {
-            onNavigate(normalizedTree);
-          }
-        });
-      }
     }, 0);
 
     return card;
   }
+
+  // Issue #616: first-batch rendering constants
+  var FIRST_BATCH_SIZE = 6;
+  var BATCH_SIZE = 6;
+  var currentVisibleCount = 0;
+  var totalTreesCount = 0;
+  var allTreesData = [];
+  var isLoadingMore = false;
+  var scrollSentinel = null;
 
   function renderTrees(trees, options) {
     var container = document.getElementById('state-loaded');
@@ -487,24 +480,131 @@
       return;
     }
 
-    var grid = document.createElement('div');
-    grid.className = 'trees-grid';
+    // Issue #616: Store all trees and initialize first batch
+    allTreesData = trees;
+    totalTreesCount = trees.length;
+    currentVisibleCount = 0;
 
-    trees.forEach(function (tree) {
-      var card = buildTreeCardFn(tree, options);
-      if (!(card instanceof Node)) {
-        console.warn('[my-trees-ui] buildTreeCard returned a non-Node value:', card, tree);
-        return;
-      }
-      grid.appendChild(card);
-    });
+    var grid = document.getElementById('trees-grid');
+    if (!grid) {
+      grid = document.createElement('div');
+      grid.className = 'trees-grid';
+      grid.id = 'trees-grid';
+      container.innerHTML = '';
+      container.appendChild(grid);
+    }
 
-    container.innerHTML = '';
-    container.appendChild(grid);
+    // Issue #616: Render first batch only
+    renderNextBatch(grid, buildTreeCardFn, setState, stateEnum);
+
+    // Issue #616: Set up scroll continuation
+    setupScrollContinuation(grid, buildTreeCardFn, setState, stateEnum);
 
     if (typeof setState === 'function' && stateEnum && stateEnum.LOADED) {
       setState(stateEnum.LOADED);
     }
+  }
+
+  // Issue #616: Render next batch of trees
+  function renderNextBatch(grid, buildTreeCardFn, setState, stateEnum) {
+    var startIndex = currentVisibleCount;
+    var endIndex = Math.min(startIndex + BATCH_SIZE, totalTreesCount);
+    
+    for (var i = startIndex; i < endIndex; i++) {
+      var tree = allTreesData[i];
+      var card = buildTreeCardFn(tree, {});
+      if (!(card instanceof Node)) {
+        console.warn('[my-trees-ui] buildTreeCard returned a non-Node value:', card, tree);
+        continue;
+      }
+      card.style.opacity = '0';
+      card.classList.add('tree-card-batch-pending');
+      grid.appendChild(card);
+      
+      // Fade-in animation
+      setTimeout(function(c) {
+        c.style.transition = 'opacity 0.2s ease-in';
+        c.style.opacity = '1';
+        c.classList.remove('tree-card-batch-pending');
+      }, 10, card);
+    }
+    
+    currentVisibleCount = endIndex;
+    
+    // Update manage summary with total count (not just visible)
+    var summary = document.getElementById('trees-manage-summary');
+    if (summary) {
+      var i18n = window.i18nMyTrees || {};
+      var countText = (i18n.myTrees_count || '총 {count}개').replace('{count}', String(totalTreesCount));
+      summary.textContent = countText;
+    }
+  }
+
+  // Issue #616: Set up scroll continuation sentinel
+  function setupScrollContinuation(grid, buildTreeCardFn, setState, stateEnum) {
+    // Remove existing sentinel
+    if (scrollSentinel) {
+      scrollSentinel.remove();
+    }
+    
+    // Check if more trees available
+    if (currentVisibleCount >= totalTreesCount) {
+      return;
+    }
+    
+    // Create sentinel element
+    scrollSentinel = document.createElement('div');
+    scrollSentinel.id = 'trees-scroll-sentinel';
+    scrollSentinel.style.height = '20px';
+    scrollSentinel.style.gridColumn = '1 / -1';
+    grid.appendChild(scrollSentinel);
+    
+    // IntersectionObserver for scroll continuation
+    if ('IntersectionObserver' in window) {
+      var observer = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+          if (entry.isIntersecting && !isLoadingMore && currentVisibleCount < totalTreesCount) {
+            loadMoreBatch(grid, buildTreeCardFn, setState, stateEnum);
+          }
+        });
+      }, { rootMargin: '100px' });
+      
+      observer.observe(scrollSentinel);
+      scrollSentinel._observer = observer;
+    }
+  }
+
+  // Issue #616: Load more batch on scroll
+  function loadMoreBatch(grid, buildTreeCardFn, setState, stateEnum) {
+    if (isLoadingMore || currentVisibleCount >= totalTreesCount) {
+      return;
+    }
+    
+    isLoadingMore = true;
+    
+    // Remove old sentinel observer
+    if (scrollSentinel && scrollSentinel._observer) {
+      scrollSentinel._observer.disconnect();
+    }
+    
+    renderNextBatch(grid, buildTreeCardFn, setState, stateEnum);
+    
+    // Set up new sentinel
+    setupScrollContinuation(grid, buildTreeCardFn, setState, stateEnum);
+    
+    isLoadingMore = false;
+  }
+
+  // Issue #616: Reset batch state on sort change or reload
+  function resetBatchState() {
+    var grid = document.getElementById('trees-grid');
+    if (grid) {
+      grid.innerHTML = '';
+    }
+    currentVisibleCount = 0;
+    allTreesData = [];
+    totalTreesCount = 0;
+    isLoadingMore = false;
   }
 
   var api = {

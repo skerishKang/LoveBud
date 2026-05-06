@@ -41,11 +41,17 @@ test('editor helper scripts load before the editor entry script', () => {
     'js/utils/media.js',
     'js/editor/editor-root-helpers.js',
     'js/editor/editor-canvas-layout.js',
+    'js/editor/editor-canvas-layout-helpers.js',
     'js/editor/editor-canvas-node.js',
     'js/editor/editor-canvas-interaction.js',
+    'js/editor/editor-canvas-interaction-helpers.js',
     'js/editor/editor-canvas-viewport.js',
+    'js/editor/editor-canvas-state-boundary.js',
+    'js/editor/editor-canvas-growth-affordance.js',
     'js/editor/editor-canvas.js',
     'js/editor/editor-rename-ui.js',
+    'js/editor/editor-detail-sidebar-status-boundary.js',
+    'js/editor/editor-detail-ui-builders.js',
     'js/editor/editor-detail-ui.js',
     'js/editor/editor-memory-actions.js',
     'js/editor/editor-memory-form.js',
@@ -64,6 +70,46 @@ test('editor helper scripts load before the editor entry script', () => {
   }
 });
 
+test('canvas layout helpers load before canvas runtime', () => {
+  const sources = scriptSources(editorHtml());
+
+  assertLoadedBefore(
+    sources,
+    'js/editor/editor-canvas-layout-helpers.js',
+    'js/editor/editor-canvas.js'
+  );
+});
+
+test('canvas interaction helpers load before canvas runtime', () => {
+  const sources = scriptSources(editorHtml());
+
+  assertLoadedBefore(
+    sources,
+    'js/editor/editor-canvas-interaction-helpers.js',
+    'js/editor/editor-canvas.js'
+  );
+});
+
+test('canvas state boundary loads before canvas runtime', () => {
+  const sources = scriptSources(editorHtml());
+
+  assertLoadedBefore(
+    sources,
+    'js/editor/editor-canvas-state-boundary.js',
+    'js/editor/editor-canvas.js'
+  );
+});
+
+test('canvas growth affordance helper loads before canvas runtime', () => {
+  const sources = scriptSources(editorHtml());
+
+  assertLoadedBefore(
+    sources,
+    'js/editor/editor-canvas-growth-affordance.js',
+    'js/editor/editor-canvas.js'
+  );
+});
+
 test('data-loader fallback boundary is explicitly mounted before editor entry', () => {
   const sources = scriptSources(editorHtml());
 
@@ -71,10 +117,39 @@ test('data-loader fallback boundary is explicitly mounted before editor entry', 
   assertLoadedBefore(sources, 'js/editor/editor-data-loader-fallbacks.js', 'js/editor.js');
 });
 
+test('detail UI builders load before detail UI', () => {
+  const sources = scriptSources(editorHtml());
+
+  assertLoadedBefore(sources, 'js/editor/editor-detail-ui-builders.js', 'js/editor/editor-detail-ui.js');
+});
+
+test('detail sidebar status boundary loads before detail UI', () => {
+  const sources = scriptSources(editorHtml());
+
+  assertLoadedBefore(sources, 'js/editor/editor-detail-sidebar-status-boundary.js', 'js/editor/editor-detail-ui.js');
+});
+
 test('entry fallback boundary is explicitly mounted before editor entry', () => {
   const sources = scriptSources(editorHtml());
 
   assertLoadedBefore(sources, 'js/editor/editor-entry-fallbacks.js', 'js/editor.js');
+});
+
+test('editor entry delegates entry fallback factories through boundary', () => {
+  const editor = read('js/editor.js');
+  const boundary = read('js/editor/editor-entry-fallbacks.js');
+
+  assert.match(editor, /window\.LoveBudEditorEntryFallbacks/, 'editor entry must read the entry fallback boundary');
+
+  for (const factory of [
+    'createInlineShowToastFallback',
+    'createInlineRedirectToEditorLoginFallback',
+    'createInlineRenderTreeLoadErrorFallback',
+    'createInlineFormatTimeAgoFallback',
+  ]) {
+    assert.match(boundary, new RegExp(`${factory}\\s*:`), `entry fallback boundary must expose ${factory}`);
+    assert.match(editor, new RegExp(`entryFallbacks\\.${factory}`), `editor entry must delegate ${factory}`);
+  }
 });
 
 test('shell helpers are explicitly mounted before editor entry', () => {

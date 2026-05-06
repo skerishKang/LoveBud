@@ -75,6 +75,28 @@ PR 병합 전 UI 검증 우선순위는 아래와 같습니다.
 
 즉, **PR push → Cloudflare Preview 배포 → 테스트 슬롯 배포 → 브라우저 검증** 순서를 따릅니다. 배포 없이 브라우저 테스트 슬롯을 사용하면 최신 코드가 반영되지 않습니다.
 
+### Wrangler fixed-slot 배포 규칙
+
+LoveBud의 fixed test slot 배포는 Cloudflare Pages Wrangler를 사용합니다.
+
+중요:
+- Wrangler 배포는 기본적으로 **브라우저 로그인 세션(wrangler login)** 기반 인증을 사용합니다.
+- CLOUDFLARE_API_TOKEN 방식은 권한(User Details Read 등)이 부족하면 실패할 수 있습니다.
+
+우선순위:
+1. wrangler login (브라우저 로그인)
+2. CLOUDFLARE_API_TOKEN (fallback)
+
+배포 전 확인:
+- npx wrangler whoami → PASS/FAIL만 확인
+
+禁区:
+- 인증 상태 없이 slot 배포 시도 금지
+- token 권한 불명 상태에서 반복 배포 금지
+
+정의:
+- Wrangler 배포는 단순 CLI가 아니라 **인증 상태 포함 작업**으로 간주합니다.
+
 중요:
 - `https://lovebud.pages.dev/`는 병합 전 PR 검증 기준이 아닙니다. production 도메인은 현재 `main`을 반영하므로, 아직 병합되지 않은 PR branch의 source of truth가 될 수 없습니다.
 - production 도메인 검증은 PR이 `main`에 병합되고 배포된 뒤 수행합니다.
@@ -486,6 +508,13 @@ UI 검증 환경은 `## 3. 현재 서비스 / 인프라 기준`의 **UI 검증 �
 - `docs/ops/DOC_WORKFLOW.md`
 - `docs/ops/SKILL_REGISTRY.md`
 - `docs/ops/AI_REQUEST_PATTERNS.md`
+
+### 테스트 데이터 생성
+- `.windsurf/workflows/tree-moment-creation-guide.md` — 테스트 환경에서 러브트리와 순간을 생성하는 방법
+  - 6개 이상 트리 생성 절차
+  - 유튜브 링크 기반 순간 추가 방법
+  - QA 계정 관리 및 오류 대응
+  - 2025년 데뷔 아이돌 추천 목록
 
 ---
 

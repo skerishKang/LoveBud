@@ -24,6 +24,7 @@ function createEditorMemoryActions(deps) {
     } = deps;
 
     let isEditMode = false;
+    let isInlineMemorySaveInFlight = false;
 
     const enterEditMode = () => {
         const currentEditingMemory = getCurrentEditingMemory();
@@ -103,52 +104,77 @@ function createEditorMemoryActions(deps) {
     };
 
     const updateSelectedMemoryFields = async (updates) => {
-        const selectedNodeId = getSelectedNodeId();
-        if (!selectedNodeId) return false;
+        const currentEditingMemory = getCurrentEditingMemory();
+        const selectedNodeId = getSelectedNodeId() || currentEditingMemory?.id;
+        if (!selectedNodeId) {
+            updateSaveStatus('failed', i18n('save_failed'));
+            return false;
+        }
+        if (isInlineMemorySaveInFlight) return false;
+
         const allowedUpdates = {};
         if (Object.prototype.hasOwnProperty.call(updates || {}, 'title')) allowedUpdates.title = updates.title;
         if (Object.prototype.hasOwnProperty.call(updates || {}, 'memo')) allowedUpdates.memo = updates.memo;
         if (Object.keys(allowedUpdates).length === 0) return false;
 
-        const memories = getTreeMemories();
+        const memories = Array.isArray(getTreeMemories()) ? getTreeMemories().slice() : [];
         const idx = memories.findIndex(m => m.id === selectedNodeId);
-        if (idx === -1) return false;
-
-        if (window.apiClient && typeof window.apiClient.updateMemory === 'function' && !isLocalSaveMode()) {
-            updateSaveStatus('saving', i18n('save_saving'));
-            try {
-                await window.apiClient.updateMemory(selectedNodeId, allowedUpdates);
-            } catch (error) {
-                console.error('[editor] Failed to update selected memory:', error);
-                updateSaveStatus('failed', i18n('save_failed'));
-                return false;
-            }
+        if (idx === -1) {
+            updateSaveStatus('failed', i18n('save_failed'));
+            return false;
         }
 
-        if (Object.prototype.hasOwnProperty.call(allowedUpdates, 'title')) memories[idx].title = allowedUpdates.title;
-        if (Object.prototype.hasOwnProperty.call(allowedUpdates, 'memo')) memories[idx].memo = allowedUpdates.memo;
+        const localSaveMode = typeof isLocalSaveMode === 'function' ? isLocalSaveMode() : false;
+        let savedMemory = null;
+
+        updateSaveStatus('saving', i18n('save_saving'));
+        isInlineMemorySaveInFlight = true;
+        try {
+            if (!localSaveMode) {
+                if (!window.apiClient || typeof window.apiClient.updateMemory !== 'function') {
+                    throw new Error('updateMemory not available');
+                }
+                savedMemory = await window.apiClient.updateMemory(selectedNodeId, allowedUpdates);
+            }
+        } catch (error) {
+            console.error('[editor] Failed to update selected memory:', error);
+            updateSaveStatus('failed', i18n('save_failed'));
+            return false;
+        } finally {
+            isInlineMemorySaveInFlight = false;
+        }
+
+        const nextMemory = {
+            ...memories[idx],
+            ...allowedUpdates,
+            ...(savedMemory && typeof savedMemory === 'object' ? savedMemory : {})
+        };
+        memories[idx] = nextMemory;
+        setTreeMemories(memories);
 
         const currentTreeData = getCurrentTreeData();
         if (currentTreeData && currentTreeData.memories) {
             const dataIdx = currentTreeData.memories.findIndex(m => m.id === selectedNodeId);
             if (dataIdx !== -1) {
-                if (Object.prototype.hasOwnProperty.call(allowedUpdates, 'title')) currentTreeData.memories[dataIdx].title = allowedUpdates.title;
-                if (Object.prototype.hasOwnProperty.call(allowedUpdates, 'memo')) currentTreeData.memories[dataIdx].memo = allowedUpdates.memo;
+                currentTreeData.memories[dataIdx] = {
+                    ...currentTreeData.memories[dataIdx],
+                    ...nextMemory
+                };
             }
         }
 
         if (window.LoveBudCache) {
-            const treeId = (currentTreeData && currentTreeData.id) ? currentTreeData.id : 'default';
+            const treeId = (currentTreeData && currentTreeData.id) || nextMemory.treeId || 'default';
             const cacheKey = 'memories_' + treeId;
             window.LoveBudCache.set(cacheKey, memories, 2 * 60 * 1000);
         }
 
-        const currentEditingMemory = getCurrentEditingMemory();
         if (currentEditingMemory && currentEditingMemory.id === selectedNodeId) {
-            const updatedMemory = { ...currentEditingMemory };
-            if (Object.prototype.hasOwnProperty.call(allowedUpdates, 'title')) updatedMemory.title = allowedUpdates.title;
-            if (Object.prototype.hasOwnProperty.call(allowedUpdates, 'memo')) updatedMemory.memo = allowedUpdates.memo;
+            const updatedMemory = { ...currentEditingMemory, ...nextMemory };
             setCurrentEditingMemory(updatedMemory);
+            if (typeof updateDetailPanel === 'function') updateDetailPanel(updatedMemory);
+        } else if (typeof updateDetailPanel === 'function') {
+            updateDetailPanel(nextMemory);
         }
 
         if (typeof rerenderCanvas === 'function') rerenderCanvas();
