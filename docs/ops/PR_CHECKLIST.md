@@ -21,6 +21,12 @@
 - 에디터 (editor.html)
 - shared 계층
 
+## Member Journey QA 영향
+- 적용 대상: AUTH / FIRST_TREE / MY_TREES / EDITOR / PUBLIC_VIEWER / MOBILE / ERROR_RECOVERY / N/A
+- 필요한 journey: docs/ops/MEMBER_JOURNEY_QA_SUITE.md 기준으로 기재
+- fixed slot 필요 여부: YES / NO
+- 브라우저 검증 필요 여부: YES / NO
+
 ## 실행한 테스트
 - [ ] tests/smoke.spec.js 통과
 - [ ] tests/editor-smoke.spec.js 통과
@@ -32,7 +38,52 @@
 
 ---
 
-## 2. Editor 변경 시 체크리스트
+## 2. Member Journey QA 매핑
+
+PR이 Auth, My Trees, Editor, Public Viewer, Browse/Search, 모바일 레이아웃, loading/error 상태에 영향을 주면 [MEMBER_JOURNEY_QA_SUITE.md](MEMBER_JOURNEY_QA_SUITE.md)를 기준으로 필요한 journey를 PR 본문에 명시해야 합니다.
+
+### 필수 판단 항목
+
+- [ ] 이 PR이 회원가입/로그인/로그아웃/세션 유지/보호 라우트에 영향을 주는가?
+- [ ] 이 PR이 첫 트리 또는 첫 순간 생성에 영향을 주는가?
+- [ ] 이 PR이 My Trees 로드/카드/열기/빈 상태에 영향을 주는가?
+- [ ] 이 PR이 Editor canvas/detail/add/edit/save/cancel에 영향을 주는가?
+- [ ] 이 PR이 Public Viewer 또는 public/private boundary에 영향을 주는가?
+- [ ] 이 PR이 모바일 375px 또는 wider mobile layout에 영향을 주는가?
+- [ ] 이 PR이 loading/empty/error/degraded/back recovery 상태에 영향을 주는가?
+
+### PR 유형별 기본 journey
+
+| PR 영향 범위 | 기본 요구 journey |
+|--------------|-------------------|
+| Auth / protected route | `AUTH_SIGNUP_LOGIN_JOURNEY`, `LOGOUT_AND_PROTECTED_ROUTE_JOURNEY` |
+| First-create / persistence | `FIRST_TREE_CREATION_JOURNEY` |
+| My Trees | `MY_TREES_RETURNING_USER_JOURNEY` |
+| Editor | `EDITOR_MOMENT_EDITING_JOURNEY` |
+| Public Viewer / read-only route | `PUBLIC_VIEWER_READONLY_JOURNEY` |
+| Mobile-visible UI | `MOBILE_375_FULL_JOURNEY` |
+| Loading/empty/error/degraded states | `ERROR_RECOVERY_JOURNEY` |
+| Docs-only with no runtime claim | `N/A` |
+
+### fixed slot gate
+
+아래 범위는 최종 PASS에 fixed test slot + deployed SHA match + real browser가 필요합니다.
+
+```text
+Auth
+My Trees
+Editor
+Browse/Search runtime
+Public/private boundary
+회원 데이터 생성/수정/삭제/저장
+모바일 runtime-sensitive UI
+```
+
+Production은 별도 승인 없이는 non-destructive smoke만 허용합니다.
+
+---
+
+## 3. Editor 변경 시 체크리스트
 
 ### 사전 준비
 - [ ] [docs/ops/EDITOR_ARCHITECTURE.md](docs/ops/EDITOR_ARCHITECTURE.md) 숙독
@@ -67,7 +118,7 @@ npx playwright test tests/editor-fieldvalue.spec.js
 
 ---
 
-## 3. Shared/Standard Page 변경 시 체크리스트
+## 4. Shared/Standard Page 변경 시 체크리스트
 
 ### 필수 테스트 실행
 ```bash
@@ -99,13 +150,14 @@ npx playwright test tests/editor-fieldvalue.spec.js
 
 ---
 
-## 4. Merge Gate 제안
+## 5. Merge Gate 제안
 
 ### Merge 가능 조건 (모두 충족)
 1. ✅ CI/CD 파이프라인 통과 (Smoke 테스트)
 2. ✅ PR description 필수 항목 포함
 3. ✅ 최소 1명 Approve 획득
 4. ✅ 테스트 실패 관련 코멘트 해결 완료
+5. ✅ runtime-sensitive PR은 필요한 Member Journey QA와 fixed slot/SHA evidence 포함
 
 ### 테스트 실패 시 처리 원칙
 
@@ -143,7 +195,7 @@ npx playwright test tests/architecture-v2.spec.js
 
 ---
 
-## 5. 테스트 종류별 역할 구분
+## 6. 테스트 종류별 역할 구분
 
 > ⚠️ smoke.spec.js와 architecture-v2.spec.js는 서로 다른 것을 검증합니다. 혼동하지 마세요.
 
@@ -165,7 +217,7 @@ npx playwright test tests/architecture-v2.spec.js
 
 ---
 
-## 6. 빠른 참조 명령어
+## 7. 빠른 참조 명령어
 
 ```bash
 # 전체 테스트
