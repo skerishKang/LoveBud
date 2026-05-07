@@ -4,7 +4,7 @@
 - Parent tracker: #656
 - Audit source: #834 / PR #886
 - Base main SHA: 664e4d0167cadc5d8d2343ebaedbd913d86f0204
-- Status: docs-only preflight
+- Status: PR-C1 direct-load helper move completed on follow-up branch
 
 ## Purpose
 
@@ -43,9 +43,9 @@ Forbidden in this audit:
 
 | Candidate | Current runtime reference | Target path availability | Collision risk | Test/doc reference risk | Preflight disposition |
 |---|---|---|---|---|---|
-| `js/search-title-helper.js` | Directly loaded by `pages/search.html` before Search renderers and Search entrypoint. | `js/search/search-title-helper.js` is available. | LOW | Docs mention root path. Runtime tests do not directly pin this root path. | MOVE_READY_WITH_HTML_UPDATE |
-| `js/search-data-adapter.js` | Directly loaded by `pages/search.html` before Search entrypoint. | `js/search/search-data-adapter.js` is available. | LOW | `tests/contracts/public-tree-fallback-boundary.test.js` reads the current root path. | MOVE_READY_WITH_HTML_AND_TEST_UPDATE |
-| `js/search-shared-utils.js` | Directly loaded by `pages/search.html` before active Search renderers. | `js/search/search-shared-utils.js` is available. | LOW | Docs mention root path. Contract tests do not currently pin the root path. | MOVE_READY_WITH_HTML_UPDATE |
+| `js/search/search-title-helper.js` | Directly loaded by `pages/search.html` before Search renderers and Search entrypoint. | Moved by PR-C1 follow-up. | LOW | Docs mention folder path. Runtime tests do not directly pin this path. | COMPLETED_IN_PR_C1 |
+| `js/search/search-data-adapter.js` | Directly loaded by `pages/search.html` before Search entrypoint. | Moved by PR-C1 follow-up. | LOW | `tests/contracts/public-tree-fallback-boundary.test.js` reads the folder path. | COMPLETED_IN_PR_C1 |
+| `js/search/search-shared-utils.js` | Directly loaded by `pages/search.html` before active Search renderers. | Moved by PR-C1 follow-up. | LOW | Docs mention folder path. Contract tests do not currently pin this path. | COMPLETED_IN_PR_C1 |
 | `js/search-copy-ui.js` | Dynamically injected by `js/i18n/i18n-search.js`; not directly loaded by `pages/search.html`. | `js/search/search-copy-ui.js` is available. | LOW | Dynamic loader path must change. Add/update a contract test for the injected path. | MOVE_READY_WITH_DYNAMIC_LOADER_AND_TEST_UPDATE |
 | `js/search-card-renderer.js` | Not directly loaded by current `pages/search.html`; active page loads `js/search/search-card-renderer.js`. | `js/search/search-card-renderer.js` already exists. | HIGH | Root file and folder file both expose `window.LoveBudSearchCardRenderer`; root appears legacy and cannot move to the same target path as-is. | BLOCKED_DUPLICATE_TARGET_PATH |
 | `js/search-preview-renderer.js` | Not directly loaded by current `pages/search.html`; active page loads `js/search/search-preview-renderer.js`. | `js/search/search-preview-renderer.js` already exists. | HIGH | `tests/routes/detail-alias-consistency.test.js` reads the root path while active Search runtime uses the folder path. Root appears legacy and cannot move to the same target path as-is. | BLOCKED_DUPLICATE_TARGET_PATH |
@@ -54,9 +54,9 @@ Forbidden in this audit:
 
 Current `pages/search.html` loads Search-related scripts in this relevant order:
 
-1. `js/search-title-helper.js`
-2. `js/search-data-adapter.js`
-3. `js/search-shared-utils.js`
+1. `js/search/search-title-helper.js`
+2. `js/search/search-data-adapter.js`
+3. `js/search/search-shared-utils.js`
 4. `js/search/search-card-renderer.js`
 5. `js/search/search-preview-media-helper.js`
 6. `js/search/search-preview-copy-helper.js`
@@ -102,7 +102,7 @@ Preflight disposition:
 
 | Future PR | Scope | Required local validation | Required browser verification |
 |---|---|---|---|
-| PR-C1 | Move `search-title-helper`, `search-data-adapter`, and `search-shared-utils` into `js/search/`; update `pages/search.html` and affected tests. | `git diff --check`, `node --check` changed JS files, `npm test`, `npm run verify`. | Search/Browse fixed-slot or Cloudflare preview with deployed SHA match. |
+| PR-C1 | Move `search-title-helper`, `search-data-adapter`, and `search-shared-utils` into `js/search/`; update `pages/search.html` and affected tests. | Completed in follow-up branch with `git diff --check`, `node --check` moved JS files, `npm test`, and `npm run verify`. | Search/Browse fixed-slot or Cloudflare preview with deployed SHA match remains required before ready/merge. |
 | PR-C2 | Move `search-copy-ui` into `js/search/`; update dynamic loader and add path contract coverage. | `git diff --check`, `node --check` changed JS files, `npm test`, `npm run verify`. | Search/Browse copy UI smoke with credential-safe reporting if auth is involved. |
 | PR-C3 | Resolve duplicate root renderer files after source-of-truth comparison. | Add contract coverage proving active renderer path and detail alias expectations. | Search/Browse desktop and mobile smoke, preview open, card render, detail CTA route. |
 
@@ -122,7 +122,7 @@ Preflight disposition:
 | Decision field | Value |
 |---|---|
 | Can all six files be moved in one PR? | NO |
-| Non-colliding direct-load files ready for future move? | YES_WITH_HTML_AND_TEST_UPDATES |
+| Non-colliding direct-load files ready for future move? | COMPLETED_IN_PR_C1 |
 | Dynamic loader file ready for future move? | YES_WITH_DYNAMIC_LOADER_AND_TEST_UPDATE |
 | Duplicate renderer files ready for direct move? | NO |
 | Recommended implementation shape | SPLIT_PR_SEQUENCE |

@@ -47,26 +47,27 @@ The page is intentionally public-first. Public tree loading must not depend on F
 5.  js/api/public-tree-adapter.js
 6.  js/postgres-client.js
 
-7.  js/search-title-helper.js
-8.  js/search-data-adapter.js
-9.  js/search-card-renderer.js
-10. js/search-preview-renderer.js
-11. js/search/search-preview-cache.js
-12. js/search/search-ui.js
-13. js/search/search-url-state.js
-14. js/search.js
+7.  js/search/search-title-helper.js
+8.  js/search/search-data-adapter.js
+9.  js/search/search-shared-utils.js
+10. js/search/search-card-renderer.js
+11. js/search/search-preview-renderer.js
+12. js/search/search-preview-cache.js
+13. js/search/search-ui.js
+14. js/search/search-url-state.js
+15. js/search.js
 
-15. Firebase SDK
-16. js/firebase-config.js
+16. Firebase SDK
+17. js/firebase-config.js
 
-17. i18n dictionaries/core stack
-18. js/i18n.js
-19. js/shared-header.js
+18. i18n dictionaries/core stack
+19. js/i18n.js
+20. js/shared-header.js
 
-20. auth modules
-21. js/auth.js
+21. auth modules
+22. js/auth.js
 
-22. inline LoveTreePageShell.initSharedPage({ renderHeader: true, applyI18n: true })
+23. inline LoveTreePageShell.initSharedPage({ renderHeader: true, applyI18n: true })
 ```
 
 The critical pre-`search.js` chain is:
@@ -77,10 +78,11 @@ cache-utils
 → api/base-api-fetch
 → api/public-tree-adapter
 → postgres-client
-→ search-title-helper
-→ search-data-adapter
-→ search-card-renderer
-→ search-preview-renderer
+→ search/search-title-helper
+→ search/search-data-adapter
+→ search/search-shared-utils
+→ search/search-card-renderer
+→ search/search-preview-renderer
 → search/search-preview-cache
 → search/search-ui
 → search/search-url-state
@@ -247,10 +249,11 @@ Owns URL state helpers:
 
 ### Existing helper/renderer modules
 
-- `js/search-title-helper.js` owns title, tag, and date cleanup helpers.
-- `js/search-data-adapter.js` owns UI-agnostic tree filtering and legacy data build helpers.
-- `js/search-card-renderer.js` owns card HTML and list-state HTML.
-- `js/search-preview-renderer.js` owns preview panel DOM rendering.
+- `js/search/search-title-helper.js` owns title, tag, and date cleanup helpers.
+- `js/search/search-data-adapter.js` owns UI-agnostic tree filtering and legacy data build helpers.
+- `js/search/search-shared-utils.js` owns shared Search helper utilities.
+- `js/search/search-card-renderer.js` owns card HTML and list-state HTML.
+- `js/search/search-preview-renderer.js` owns preview panel DOM rendering.
 - `js/postgres-client.js` owns browser API facade and captures API dependencies at load time.
 
 ---
@@ -458,10 +461,11 @@ Do not move `search.js` before:
 - `api/base-api-fetch.js`
 - `api/public-tree-adapter.js`
 - `postgres-client.js`
-- `search-title-helper.js`
-- `search-data-adapter.js`
-- `search-card-renderer.js`
-- `search-preview-renderer.js`
+- `search/search-title-helper.js`
+- `search/search-data-adapter.js`
+- `search/search-shared-utils.js`
+- `search/search-card-renderer.js`
+- `search/search-preview-renderer.js`
 - `search/search-preview-cache.js`
 - `search/search-ui.js`
 - `search/search-url-state.js`
@@ -561,10 +565,11 @@ Safe guard targets:
 
 - `api/public-tree-adapter.js` before `postgres-client.js`
 - `postgres-client.js` before `search.js`
-- `search-title-helper.js` before renderers and `search.js`
-- `search-data-adapter.js` before `search.js`
-- `search-card-renderer.js` before `search.js`
-- `search-preview-renderer.js` before `search.js`
+- `search/search-title-helper.js` before renderers and `search.js`
+- `search/search-data-adapter.js` before `search.js`
+- `search/search-shared-utils.js` before renderers and `search.js`
+- `search/search-card-renderer.js` before `search.js`
+- `search/search-preview-renderer.js` before `search.js`
 - `search/search-preview-cache.js` before `search.js`
 - `search/search-ui.js` before `search.js`
 - `search/search-url-state.js` before `search.js`

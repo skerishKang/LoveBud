@@ -27,7 +27,7 @@ test('snake_case and wrapper fallback stay isolated to standard pages', () => {
     'js/detail.js',
     'js/my-trees.js',
     'js/editor.js',
-    'js/search-data-adapter.js',
+    'js/search/search-data-adapter.js',
   ];
 
   const forbiddenPatterns = [
