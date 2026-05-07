@@ -4,9 +4,9 @@
  *
  * Search page orchestration:
  * - Fast list-first loading for public trees
- * - Delegates q/category/sort/limit URL state to js/search/url-state.js
- * - Delegates search/filter/sort/limit controls binding to js/search/controls.js
- * - Delegates preview selection/deep-link orchestration to js/search/preview-controller.js when loaded
+ * - Delegates q/category/sort/limit URL state to js/search/search-url-state.js
+ * - Delegates search/filter/sort/limit controls binding to js/search/search-controls.js
+ * - Delegates preview selection/deep-link orchestration to js/search/search-preview-controller.js when loaded
  */
 
 document.addEventListener('DOMContentLoaded', async () => {

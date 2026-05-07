@@ -16,9 +16,9 @@ The following Issue #72-related work is already complete or superseded:
 
 | Area | Status | Evidence |
 |---|---|---|
-| Search data loading split | Completed | PR #336 added `js/search/data.js` |
-| Search URL state and controls split | Completed | PR #337 added `js/search/url-state.js` and `js/search/controls.js` |
-| Search preview controller split | Completed | PR #382 added `js/search/preview-controller.js` |
+| Search data loading split | Completed | PR #336 added `js/search/search-data.js` |
+| Search URL state and controls split | Completed | PR #337 added `js/search/search-url-state.js` and `js/search/search-controls.js` |
+| Search preview controller split | Completed | PR #382 added `js/search/search-preview-controller.js` |
 | Selected tree deep link | Completed / revalidated | Completed via PR #83 and production-revalidated via PR #382 |
 | Search grouped script paths | Completed / stabilized | PR #338 grouped Search scripts; later Search module expectations were updated by PR #382 |
 | Search inline style cleanup | Completed / no current remainder | PR #339 recorded no remaining inline Search page styles; current Search has no known inline-style remainder |
