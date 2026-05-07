@@ -34,22 +34,24 @@ function loadStoredLayout() {
             return {
                 positions: initialState.positions,
                 offsetX: initialState.offsetX,
-                offsetY: initialState.offsetY
+                offsetY: initialState.offsetY,
+                scale: initialState.scale
             };
         }
 
         try {
             const raw = localStorage.getItem(layoutStorageKey);
-            if (!raw || raw === 'null') return { positions: {}, offsetX: 0, offsetY: 0 };
+            if (!raw || raw === 'null') return { positions: {}, offsetX: 0, offsetY: 0, scale: 1 };
             const parsed = JSON.parse(raw);
-            if (!parsed || typeof parsed !== 'object') return { positions: {}, offsetX: 0, offsetY: 0 };
+            if (!parsed || typeof parsed !== 'object') return { positions: {}, offsetX: 0, offsetY: 0, scale: 1 };
             return {
                 positions: (parsed.positions && typeof parsed.positions === 'object') ? parsed.positions : {},
                 offsetX: typeof parsed.offsetX === 'number' ? parsed.offsetX : 0,
-                offsetY: typeof parsed.offsetY === 'number' ? parsed.offsetY : 0
+                offsetY: typeof parsed.offsetY === 'number' ? parsed.offsetY : 0,
+                scale: typeof parsed.scale === 'number' ? parsed.scale : 1
             };
         } catch (e) {
-            return { positions: {}, offsetX: 0, offsetY: 0 };
+            return { positions: {}, offsetX: 0, offsetY: 0, scale: 1 };
         }
     }
 
@@ -58,6 +60,7 @@ function loadStoredLayout() {
     const viewportState = {
         offsetX: storedLayout.offsetX,
         offsetY: storedLayout.offsetY,
+        scale: storedLayout.scale || 1,
         initialized: false,
         isPanning: false,
         startX: 0,
@@ -104,7 +107,11 @@ function loadStoredLayout() {
     }
 
     function calcPosition(mem) {
-        return window.EditorCanvasGeometry.calcPosition(mem, viewportState, getWorldPosition);
+        const world = getWorldPosition(mem);
+        if (typeof canvasViewport.projectWorldPosition === 'function') {
+            return canvasViewport.projectWorldPosition(world, viewportState);
+        }
+        return { x: world.x + viewportState.offsetX, y: world.y + viewportState.offsetY };
     }
 
     function persistStoredPositions() {
@@ -118,7 +125,8 @@ function loadStoredLayout() {
             localStorage.setItem(layoutStorageKey, JSON.stringify({
                 positions: viewportState.positions,
                 offsetX: viewportState.offsetX,
-                offsetY: viewportState.offsetY
+                offsetY: viewportState.offsetY,
+                scale: viewportState.scale || 1
             }));
         } catch (e) {}
     }
@@ -324,6 +332,8 @@ function isNodeWithinSafeViewport(pos) {
     function applyNodePosition(nodeEl, pos, mem) {
         nodeEl.style.left = `${pos.x - NODE_HALF}px`;
         nodeEl.style.top = `${pos.y - NODE_HALF}px`;
+        nodeEl.style.transform = `scale(${viewportState.scale || 1})`;
+        nodeEl.style.transformOrigin = 'center center';
         nodeEl.style.animationDelay = mem.delay || '0s';
     }
 
@@ -469,6 +479,7 @@ function isNodeWithinSafeViewport(pos) {
                 initCanvas,
                 reapplySelection
             });
+            persistStoredPositions();
             return;
         }
 
@@ -479,10 +490,12 @@ function isNodeWithinSafeViewport(pos) {
 
         const world = getWorldPosition(target);
         const metrics = getMetrics();
-        viewportState.offsetX = Math.round(metrics.width * 0.5 - world.x);
-        viewportState.offsetY = Math.round(metrics.height * 0.38 - world.y);
+        const scale = viewportState.scale || 1;
+        viewportState.offsetX = Math.round(metrics.width * 0.5 - (world.x * scale));
+        viewportState.offsetY = Math.round(metrics.height * 0.38 - (world.y * scale));
         initCanvas();
         reapplySelection(nodeId);
+        persistStoredPositions();
     }
 
     function recenterViewport() {
@@ -494,6 +507,7 @@ function isNodeWithinSafeViewport(pos) {
                 viewportState,
                 initCanvas
             });
+            persistStoredPositions();
             return;
         }
 
@@ -501,7 +515,9 @@ function isNodeWithinSafeViewport(pos) {
         if (!treeMemories.length) {
             viewportState.offsetX = 0;
             viewportState.offsetY = 0;
+            viewportState.scale = 1;
             initCanvas();
+            persistStoredPositions();
             return;
         }
 
@@ -515,6 +531,7 @@ function isNodeWithinSafeViewport(pos) {
         viewportState.offsetX = Math.round(metrics.width * 0.5 - ((minX + maxX) / 2));
         viewportState.offsetY = Math.round(metrics.height * 0.38 - ((minY + maxY) / 2));
         initCanvas();
+        persistStoredPositions();
     }
 
     function bindViewportControls() {
@@ -522,7 +539,8 @@ function isNodeWithinSafeViewport(pos) {
             canvasViewport.bindControls({
                 viewportState,
                 focusNodeById,
-                recenterViewport
+                recenterViewport,
+                zoomBy
             });
             return;
         }
@@ -547,6 +565,27 @@ function isNodeWithinSafeViewport(pos) {
                 recenterViewport();
             });
         }
+    }
+
+    function zoomBy(factor) {
+        if (!factor || factor === 1) return;
+        const metrics = getMetrics();
+        const oldScale = viewportState.scale || 1;
+        const minScale = typeof canvasViewport.minScale === 'number' ? canvasViewport.minScale : 0.65;
+        const maxScale = typeof canvasViewport.maxScale === 'number' ? canvasViewport.maxScale : 1.55;
+        const nextScale = Math.min(maxScale, Math.max(minScale, oldScale * factor));
+        if (Math.abs(nextScale - oldScale) < 0.001) return;
+
+        const centerX = metrics.width * 0.5;
+        const centerY = metrics.height * 0.5;
+        const centerWorldX = (centerX - viewportState.offsetX) / oldScale;
+        const centerWorldY = (centerY - viewportState.offsetY) / oldScale;
+
+        viewportState.scale = nextScale;
+        viewportState.offsetX = Math.round(centerX - (centerWorldX * nextScale));
+        viewportState.offsetY = Math.round(centerY - (centerWorldY * nextScale));
+        persistStoredPositions();
+        initCanvas();
     }
 
     const bindCanvasPan = () => {
@@ -597,7 +636,8 @@ function scheduleInitCanvas() {
         viewportState,
         focusNodeById,
         recenterViewport,
-        keepSelectionVisible
+        keepSelectionVisible,
+        zoomBy
     };
 }
 
