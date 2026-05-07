@@ -527,7 +527,7 @@
             _dom.previewContainer.innerHTML = renderPlaceholder();
         }
         if (_dom.previewTitle) {
-            _dom.previewTitle.textContent = placeholderTitle;
+            _dom.previewTitle.textContent = '';
         }
         if (_dom.previewDesc) {
             _dom.previewDesc.hidden = true;
