@@ -1,4 +1,4 @@
-function createEditorCanvas(deps) {
+﻿function createEditorCanvas(deps) {
     const {
         canvas,
         svg,
