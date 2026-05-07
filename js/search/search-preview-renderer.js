@@ -432,6 +432,7 @@
         }
 
         if (_dom.previewDesc) {
+            _dom.previewDesc.hidden = false;
             if (!hasMemories) {
                 const noRecordsLine = formatSearchCopy(
                     'search.previewNoRecordsLine',
@@ -470,6 +471,7 @@
                 const firstMomentLabel = getMomentLabel(firstMem, '시작 순간', 'Starting moment');
                 const lastMomentLabel = getMomentLabel(memories[memories.length - 1], '최근에 남은 순간', 'Latest saved moment');
 
+                _dom.previewDesc.hidden = false;
                 _dom.previewDesc.innerHTML = `
                     <div style="background:var(--surface-container-low);padding:20px;border-radius:1rem;margin-bottom:16px;">
                         ${renderSectionHeading('route', getSearchCopy('search.previewTimelineHeading', '대표 순간에서 이어진 흐름', 'Flow connected from the featured moment'))}
