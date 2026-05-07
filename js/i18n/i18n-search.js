@@ -9,8 +9,13 @@
   'use strict';
 
   window.i18nSearch = {
+    'search.eyebrow': {
+      ko: 'BROWSE',
+      en: 'BROWSE'
+    },
+
     'search.title': {
-      ko: '러브트리 감상 둘러보기',
+      ko: '러브트리를 둘러보세요',
       en: 'Browse LoveTree moments'
     },
     'search.subtitle': {
