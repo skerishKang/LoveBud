@@ -147,6 +147,12 @@ function loadStoredLayout() {
         }
     });
 
+
+
+
+
+
+
 function isNodeWithinSafeViewport(pos) {
         const metrics = getMetrics();
         const padding = 96;
@@ -275,9 +281,15 @@ function isNodeWithinSafeViewport(pos) {
         });
     }
 
+
+
+
+
+
+
     function createNodeElement(mem, pos) {
-        if (typeof canvasNode.createNodeElement !== 'function') {
-            throw new Error('LoveBudEditorCanvasNode.createNodeElement is required');
+        if (typeof canvasNode.createNodeElement !== "function") {
+            throw new Error("LoveBudEditorCanvasNode.createNodeElement is required");
         }
         return canvasNode.createNodeElement(mem, pos, {
             resolveMemoryThumbnail: resolveMemoryThumbnail,
