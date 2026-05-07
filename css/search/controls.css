@@ -73,7 +73,12 @@
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    margin: 0 0 22px;
+    margin: 0 0 18px;
+    padding: 14px;
+    border: 1px solid rgba(144, 73, 81, 0.08);
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.48);
+    box-shadow: 0 14px 32px rgba(75, 64, 57, 0.035);
     min-width: 0;
 }
 

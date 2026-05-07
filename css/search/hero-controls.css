@@ -4,7 +4,7 @@
  */
 
 .browse-curation-shell {
-    margin-bottom: 20px;
+    margin-bottom: 18px;
     padding: 0;
     background: transparent;
     border: 0;
@@ -12,7 +12,7 @@
 }
 
 .search-panel-header {
-    margin-bottom: 10px;
+    margin-bottom: 0;
 }
 
 .search-panel-eyebrow {
@@ -29,11 +29,20 @@
     margin-bottom: 14px;
 }
 
+.search-panel-header h1,
 .search-panel-header h2 {
-    font-size: clamp(2.28rem, 4.2vw, 3.4rem);
-    margin-bottom: 8px;
-    line-height: 1.04;
-    letter-spacing: -0.035em;
+    max-width: 640px;
+    margin: 18px 0 10px;
+    color: var(--on-surface);
+    font-size: clamp(3rem, 5vw, 4.35rem);
+    font-weight: 900;
+    line-height: 0.99;
+    letter-spacing: -0.052em;
+}
+
+.search-panel-header .title-accent {
+    color: var(--hero-warm-color, var(--primary));
+    font-weight: 900;
 }
 
 .search-panel-header p {
@@ -65,15 +74,17 @@
     align-items: flex-end;
     justify-content: space-between;
     gap: 16px;
-    margin-bottom: 18px;
+    margin: 4px 0 18px;
+    padding-top: 18px;
+    border-top: 1px solid rgba(144, 73, 81, 0.09);
 }
 
 .browse-results-head h3 {
     margin: 0;
-    font-size: 1.7rem;
-    font-weight: 900;
+    font-size: 1.22rem;
+    font-weight: 820;
     color: var(--on-surface);
-    letter-spacing: -0.02em;
+    letter-spacing: -0.012em;
 }
 
 .browse-results-head p {
