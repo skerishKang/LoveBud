@@ -25,7 +25,6 @@ Files above 500 lines and files between 450-499 lines. Excludes prototype, legac
 | css/global/header.css | 598 | CSS | LOW |
 | css/global.css | 555 | CSS | LOW |
 | css/editor/detail-panel.css | 526 | CSS | LOW |
-| css/index-visual.css | 499 | CSS | LOW |
 
 Note: js/search-card-renderer.js (378 lines) was deleted in PR #893 as it was a duplicate of js/search/search-card-renderer.js (413 lines).
 
@@ -40,6 +39,7 @@ Note: js/search-card-renderer.js (378 lines) was deleted in PR #893 as it was a 
 | css/index.css | 467 | CSS | LOW |
 | css/intro/how-to.css | 460 | CSS | LOW |
 | js/shared-header.js | 451 | JS | MEDIUM |
+| css/index-visual.css | 499 | CSS | LOW |
 
 ## Candidate descriptions
 
