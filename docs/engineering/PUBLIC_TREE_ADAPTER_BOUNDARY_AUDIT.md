@@ -198,7 +198,7 @@ The adapter is already reasonably factored. Its responsibilities are clear:
 | `git diff --check` | PASS | Required before PR report. |
 | Docs-only changed files | YES | Only `docs/engineering/PUBLIC_TREE_ADAPTER_BOUNDARY_AUDIT.md` modified. |
 | Adapter file inspected | YES | Full `js/api/public-tree-adapter.js` reviewed. |
-| Adapter references inspected | YES | `js/search/search-index.js`, `js/search/data.js`, `js/postgres-client.js` checked. |
+| Adapter references inspected | YES | `js/search/search-index.js`, `js/search/search-data.js`, `js/postgres-client.js` checked. |
 | Helper responsibility map | YES | All 16 functions categorized with surface impact. |
 | Export contract documented | YES | Primary namespace + internal bridge fully listed. |
 | Loading-order risk documented | YES | Script order across 4 pages analyzed, coupling to `postgres-client.js` flagged. |
