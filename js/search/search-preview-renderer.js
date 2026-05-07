@@ -129,6 +129,14 @@
         return '';
     }
 
+    function renderOpenTreeButton(tree) {
+        const helper = window.LoveBudSearchPreviewActionHelper;
+        if (helper?.renderOpenTreeButton) {
+            return helper.renderOpenTreeButton(tree);
+        }
+        return '';
+    }
+
     const VISIBLE_FLOW_MOMENT_COUNT = 4;
 
     let _dom = null;
@@ -450,6 +458,7 @@
                         ${renderInfoCallout('info', getSearchCopy('search.previewNewTreeInfo', '이제 막 감상이 시작될 공개 러브트리예요.', 'This public LoveTree is just about to begin.'))}
                     </div>
                     ${renderPreviewActionButton(tree)}
+                    ${renderOpenTreeButton(tree)}
                     ${renderShareButton(tree)}
                 `;
             } else {
@@ -477,6 +486,7 @@
                         ${renderInfoCallout('touch_app', getSearchCopy('search.previewJourneyCta', '이곳에서 대표 순간과 이어진 감정을 훑어보고, 마음이 머무는 순간으로 들어가 보세요.', 'Scan the featured moment and connected feelings here, then open the moment that draws you in.'), 'primary')}
                     </div>
                     ${renderPreviewActionButton(tree)}
+                    ${renderOpenTreeButton(tree)}
                     ${renderShareButton(tree)}
                 `;
             }

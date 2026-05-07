@@ -105,7 +105,54 @@
 }
 
 .browse-scroll-load-sentinel.is-idle {
-    min-height: 1px;
+    min-height: 0;
     margin: 0;
+    padding: 0;
+    border: 0;
     overflow: hidden;
+    visibility: hidden;
+    opacity: 0;
+}
+
+/* Issue #911: Mobile filter density reduction */
+@media (max-width: 480px) {
+    .filter-row {
+        gap: 6px;
+        justify-content: flex-start;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        padding-bottom: 4px;
+    }
+
+    .filter-row::-webkit-scrollbar {
+        display: none;
+    }
+
+    .tag-chip {
+        padding: 6px 10px;
+        font-size: 11px;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    .browse-utility-row {
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .search-input-wrapper {
+        flex: 1 1 100%;
+        max-width: 100%;
+    }
+
+    .search-input {
+        padding: 12px 14px 12px 40px;
+        font-size: 0.9rem;
+    }
+
+    .search-icon {
+        left: 12px;
+        font-size: 18px;
+    }
 }
