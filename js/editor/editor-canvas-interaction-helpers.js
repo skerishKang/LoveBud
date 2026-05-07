@@ -37,9 +37,10 @@ window.LoveBudEditorCanvasInteractionHelpers = {
         if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
           viewportState.dragMoved = true;
         }
+        const scale = viewportState.scale || 1;
         viewportState.positions[viewportState.dragNodeId] = {
-          x: Math.round(viewportState.dragStartWorldX + dx),
-          y: Math.round(viewportState.dragStartWorldY + dy)
+          x: Math.round(viewportState.dragStartWorldX + (dx / scale)),
+          y: Math.round(viewportState.dragStartWorldY + (dy / scale))
         };
         scheduleInitCanvas();
         return;

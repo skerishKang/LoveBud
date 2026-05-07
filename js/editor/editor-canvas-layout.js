@@ -5,16 +5,17 @@ window.LoveBudEditorCanvasLayout = {
     function load() {
       try {
         const raw = localStorage.getItem(layoutStorageKey);
-        if (!raw || raw === 'null') return { positions: {}, offsetX: 0, offsetY: 0 };
+        if (!raw || raw === 'null') return { positions: {}, offsetX: 0, offsetY: 0, scale: 1 };
         const parsed = JSON.parse(raw);
-        if (!parsed || typeof parsed !== 'object') return { positions: {}, offsetX: 0, offsetY: 0 };
+        if (!parsed || typeof parsed !== 'object') return { positions: {}, offsetX: 0, offsetY: 0, scale: 1 };
         return {
           positions: parsed.positions && typeof parsed.positions === 'object' ? parsed.positions : {},
           offsetX: typeof parsed.offsetX === 'number' ? parsed.offsetX : 0,
-          offsetY: typeof parsed.offsetY === 'number' ? parsed.offsetY : 0
+          offsetY: typeof parsed.offsetY === 'number' ? parsed.offsetY : 0,
+          scale: typeof parsed.scale === 'number' ? parsed.scale : 1
         };
       } catch (error) {
-        return { positions: {}, offsetX: 0, offsetY: 0 };
+        return { positions: {}, offsetX: 0, offsetY: 0, scale: 1 };
       }
     }
 
@@ -24,6 +25,7 @@ window.LoveBudEditorCanvasLayout = {
         return {
           offsetX: storedLayout.offsetX,
           offsetY: storedLayout.offsetY,
+          scale: storedLayout.scale,
           initialized: false,
           isPanning: false,
           startX: 0,
@@ -45,7 +47,8 @@ window.LoveBudEditorCanvasLayout = {
           localStorage.setItem(layoutStorageKey, JSON.stringify({
             positions: viewportState.positions,
             offsetX: viewportState.offsetX,
-            offsetY: viewportState.offsetY
+            offsetY: viewportState.offsetY,
+            scale: viewportState.scale || 1
           }));
         } catch (error) {}
       }

@@ -45,21 +45,107 @@
 .editor-canvas-toolbar {
     display: flex;
     align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
     gap: 8px;
     padding: 8px;
-    border-radius: 999px;
+    max-width: min(100%, 360px);
+    border-radius: 18px;
     background: rgba(255,250,244,0.82);
     border: 1px solid rgba(230,207,194,0.78);
     box-shadow: 0 14px 30px rgba(161,119,96,0.10);
     backdrop-filter: blur(8px);
 }
 
-.editor-canvas-toolbar .sidebar-btn {
-    min-height: 38px;
-    padding: 0 14px;
-    border-radius: 999px;
+.editor-canvas-tool-btn {
+    position: relative;
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 0;
+    border-radius: 12px;
     background: rgba(255,255,255,0.74);
     border: 1px solid rgba(221,198,184,0.84);
     color: #7f6258;
     box-shadow: none;
+    cursor: pointer;
+    transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+
+.editor-canvas-tool-btn:hover:not(:disabled),
+.editor-canvas-tool-btn:focus-visible:not(:disabled) {
+    background: rgba(255,255,255,0.96);
+    border-color: rgba(144,73,81,0.26);
+    color: var(--primary);
+    transform: translateY(-1px);
+}
+
+.editor-canvas-tool-btn:focus-visible {
+    outline: 2px solid var(--control-focus-ring, rgba(144,73,81,0.32));
+    outline-offset: 2px;
+}
+
+.editor-canvas-tool-btn:disabled,
+.editor-canvas-tool-btn.is-disabled {
+    opacity: 0.46;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.editor-canvas-tool-btn .material-symbols-outlined {
+    font-size: 20px;
+    line-height: 1;
+}
+
+.editor-canvas-tool-btn-wide {
+    width: auto;
+    min-width: 38px;
+    max-width: 150px;
+    padding: 0 12px;
+}
+
+.editor-canvas-tool-label {
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1.15;
+    white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+    .editor-canvas-topbar {
+        left: 14px;
+        right: 14px;
+        gap: 10px;
+    }
+
+    .editor-canvas-toolbar {
+        max-width: 100%;
+        padding: 6px;
+        gap: 6px;
+    }
+
+    .editor-canvas-tool-btn {
+        width: 36px;
+        height: 36px;
+        min-width: 36px;
+    }
+
+    .editor-canvas-tool-btn-wide {
+        width: 36px;
+        max-width: 36px;
+        padding: 0;
+    }
+
+    .editor-canvas-tool-label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+    }
 }
