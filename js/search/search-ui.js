@@ -129,10 +129,10 @@
 
         const SORT_COPY = {
             latest: {
-                title: () => getSearchCopy('search.resultsHeading', '최근 러브트리', 'Recent LoveTrees')
+                title: () => getSearchCopy('search.resultsHeading', '공개 러브트리', 'Public LoveTrees')
             },
             popular: {
-                title: () => getCurrentLocale() === 'en' ? 'Popular LoveTrees' : '인기 많은 러브트리'
+                title: () => getSearchCopy('search.resultsPopularHeading', '많이 감상한 러브트리', 'Popular LoveTrees')
             }
         };
 
