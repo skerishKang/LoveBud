@@ -32,8 +32,21 @@
     });
   }
 
+  function createAuthReadyCallbackBridge(options) {
+    options = options || {};
+    var authReadyFlagKey = options.authReadyFlagKey;
+
+    return {
+      registerOnAuthReady: function (callback) {
+        registerOnAuthReady(callback, authReadyFlagKey);
+      },
+      fireAuthReadyCallbacks: fireAuthReadyCallbacks,
+    };
+  }
+
   window.LoveBudAuthCallbacks = {
     registerOnAuthReady: registerOnAuthReady,
     fireAuthReadyCallbacks: fireAuthReadyCallbacks,
+    createAuthReadyCallbackBridge: createAuthReadyCallbackBridge,
   };
 })();
