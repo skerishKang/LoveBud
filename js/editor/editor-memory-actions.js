@@ -26,6 +26,69 @@ function createEditorMemoryActions(deps) {
     let isEditMode = false;
     let isInlineMemorySaveInFlight = false;
 
+    const formatI18nText = (key, fallback) => {
+        const text = typeof i18n === 'function' ? i18n(key) : '';
+        return text && text !== key ? text : fallback;
+    };
+
+    const getEditableSourceUrl = (memory) => String(memory?.sourceUrl || '').trim();
+
+    const resolveSourceUpdate = (rawUrl) => {
+        const value = String(rawUrl || '').trim();
+        if (!value) {
+            return {
+                sourceUrl: '',
+                sourceType: 'other',
+                thumbnail: '',
+                source: ''
+            };
+        }
+
+        const media = window.LoveBudMedia || {};
+        const videoId = typeof media.extractYouTubeId === 'function'
+            ? media.extractYouTubeId(value)
+            : ((value.match(/(?:v=|\/|youtu\.be\/|embed\/|shorts\/)([0-9A-Za-z_-]{11})/) || [])[1] || '');
+
+        if (!videoId) {
+            return null;
+        }
+
+        const embedUrl = typeof media.getEmbedUrl === 'function'
+            ? media.getEmbedUrl(value, 'youtube')
+            : `https://www.youtube.com/embed/${videoId}`;
+        const thumbnailUrl = typeof media.getThumbnailUrl === 'function'
+            ? media.getThumbnailUrl(value, 'youtube', 'mqdefault')
+            : `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
+
+        return {
+            sourceUrl: embedUrl || value,
+            sourceType: 'youtube',
+            thumbnail: thumbnailUrl || '',
+            source: 'YouTube'
+        };
+    };
+
+    const ensureSourceUrlEditField = () => {
+        const editMode = document.getElementById('detailEditMode');
+        const memoGroup = document.getElementById('editMemoInput')?.closest('.detail-info-group');
+        if (!editMode || !memoGroup) return null;
+
+        let field = document.getElementById('editSourceUrlGroup');
+        if (!field) {
+            field = document.createElement('div');
+            field.id = 'editSourceUrlGroup';
+            field.className = 'detail-info-group editor-source-url-edit-group';
+            field.innerHTML = `
+                <label id="editSourceUrlLabel" for="editSourceUrlInput">${formatI18nText('editor_source_url_label', '영상 또는 출처 링크')}</label>
+                <input type="text" id="editSourceUrlInput" class="editor-edit-input" placeholder="https://www.youtube.com/watch?v=...">
+                <p id="editSourceUrlHint" class="memory-edit-hint editor-source-url-edit-hint">${formatI18nText('editor_source_url_hint', 'YouTube 링크를 바꾸면 저장 후 대표 이미지도 함께 갱신됩니다.')}</p>
+            `;
+            editMode.insertBefore(field, memoGroup);
+        }
+
+        return document.getElementById('editSourceUrlInput');
+    };
+
     const enterEditMode = () => {
         const currentEditingMemory = getCurrentEditingMemory();
         if (!currentEditingMemory) return;
@@ -38,6 +101,7 @@ function createEditorMemoryActions(deps) {
         if (editMode) editMode.style.display = 'block';
 
         const titleInput = document.getElementById('editTitleInput');
+        const sourceUrlInput = ensureSourceUrlEditField();
         const memoInput = document.getElementById('editMemoInput');
         const tagsInput = document.getElementById('editTagsInput');
 
@@ -45,6 +109,7 @@ function createEditorMemoryActions(deps) {
             titleInput.value = currentEditingMemory.title || '';
             setTimeout(() => titleInput.focus(), 0);
         }
+        if (sourceUrlInput) sourceUrlInput.value = getEditableSourceUrl(currentEditingMemory);
         if (memoInput) memoInput.value = currentEditingMemory.memo || '';
         if (tagsInput) tagsInput.value = (currentEditingMemory.emotionTags || []).join(', ');
     };
@@ -62,6 +127,7 @@ function createEditorMemoryActions(deps) {
         if (!currentEditingMemory) return;
 
         const titleInput = document.getElementById('editTitleInput');
+        const sourceUrlInput = document.getElementById('editSourceUrlInput');
         const memoInput = document.getElementById('editMemoInput');
         const tagsInput = document.getElementById('editTagsInput');
 
@@ -71,20 +137,42 @@ function createEditorMemoryActions(deps) {
             emotionTags: tagsInput ? tagsInput.value.split(',').map((t) => t.trim()).filter((t) => t) : currentEditingMemory.emotionTags
         };
 
+        if (sourceUrlInput) {
+            const rawSourceUrl = sourceUrlInput.value.trim();
+            const previousSourceUrl = getEditableSourceUrl(currentEditingMemory);
+            if (rawSourceUrl !== previousSourceUrl) {
+                const sourceUpdate = resolveSourceUpdate(rawSourceUrl);
+                if (!sourceUpdate) {
+                    showToast(formatI18nText('invalid_youtube_unsupported', 'YouTube 링크만 지원합니다. youtube.com 또는 youtu.be 링크를 사용해 주세요.'), 'error');
+                    updateSaveStatus('failed', formatI18nText('save_failed', '저장 실패'));
+                    return;
+                }
+                Object.assign(payload, sourceUpdate);
+            }
+        }
+
         updateSaveStatus('saving', i18n('save_saving'));
 
         try {
             if (window.apiClient && typeof window.apiClient.updateMemory === 'function') {
-                await window.apiClient.updateMemory(currentEditingMemory.id, payload);
+                const savedMemory = await window.apiClient.updateMemory(currentEditingMemory.id, payload);
 
                 const nextMemories = getTreeMemories().slice();
                 const memIndex = nextMemories.findIndex((m) => m.id === currentEditingMemory.id);
                 if (memIndex >= 0) {
-                    nextMemories[memIndex] = { ...nextMemories[memIndex], ...payload };
+                    nextMemories[memIndex] = {
+                        ...nextMemories[memIndex],
+                        ...payload,
+                        ...(savedMemory && typeof savedMemory === 'object' ? savedMemory : {})
+                    };
                     setTreeMemories(nextMemories);
                 }
 
-                const nextEditingMemory = { ...currentEditingMemory, ...payload };
+                const nextEditingMemory = {
+                    ...currentEditingMemory,
+                    ...payload,
+                    ...(savedMemory && typeof savedMemory === 'object' ? savedMemory : {})
+                };
                 setCurrentEditingMemory(nextEditingMemory);
                 exitEditMode();
                 updateDetailPanel(nextEditingMemory);
