@@ -5,6 +5,10 @@
             canvasViewport = {}
         } = options || {};
 
+        const clearBranches = () => {
+            svg.querySelectorAll('.branch-line').forEach((line) => line.remove());
+        };
+
         const drawBranch = (startPos, endPos) => {
             if (typeof canvasViewport.drawBranch === 'function') {
                 canvasViewport.drawBranch(svg, startPos, endPos);
@@ -23,8 +27,26 @@
             svg.appendChild(path);
         };
 
+        const drawBranchForMemory = (node, context) => {
+            const {
+                treeMemories = [],
+                canonicalRootId,
+                calcPosition
+            } = context || {};
+
+            if (!node || typeof calcPosition !== 'function') return;
+
+            const parentId = node.parentId || canonicalRootId;
+            const parent = treeMemories.find((memory) => memory.id === parentId);
+            if (parent) {
+                drawBranch(calcPosition(parent), calcPosition(node));
+            }
+        };
+
         return {
-            drawBranch
+            clearBranches,
+            drawBranch,
+            drawBranchForMemory
         };
     }
 
