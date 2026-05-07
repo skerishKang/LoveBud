@@ -57,7 +57,7 @@ Each finding is classified for future reference. Any implementation PR must refe
 | File | Target folder | Classification | Note |
 |---|---|---|---|
 | js/search-card-renderer.js | js/search/ | MOVE_CANDIDATE + NEEDS_SCRIPT_ORDER_REVIEW | |
-| js/search-copy-ui.js | js/search/ | MOVE_CANDIDATE + NEEDS_SCRIPT_ORDER_REVIEW | |
+| js/search/search-copy-ui.js | js/search/ | MOVE_CANDIDATE + NEEDS_SCRIPT_ORDER_REVIEW | |
 | js/search/search-data-adapter.js | js/search/ | MOVED_IN_PR_C1 | |
 | js/search-preview-renderer.js | js/search/ | MOVE_CANDIDATE + NEEDS_SCRIPT_ORDER_REVIEW | |
 | js/search/search-shared-utils.js | js/search/ | MOVED_IN_PR_C1 | |

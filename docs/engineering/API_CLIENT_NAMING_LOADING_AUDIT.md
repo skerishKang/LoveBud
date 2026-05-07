@@ -48,7 +48,7 @@ Static search for `window.apiClient` and related client usage shows that the cur
 | --- | --- | --- | --- |
 | Client definition | `js/postgres-client.js` | Defines and exposes the merged browser API surface as `window.apiClient`. | Full browser API contract break if the global or script path disappears. |
 | Search data loading | `js/search/search-data.js` | Reads `window.apiClient` for Search/Browse data access. | Search/Browse data load failure. |
-| Search preview/copy | `js/search/search-preview-controller.js`, `js/search-copy-ui.js` | Uses API client access for preview/copy/fork-adjacent flows. | Public tree preview/copy behavior can fail or partially regress. |
+| Search preview/copy | `js/search/search-preview-controller.js`, `js/search/search-copy-ui.js` | Uses API client access for preview/copy/fork-adjacent flows. | Public tree preview/copy behavior can fail or partially regress. |
 | Detail page | `js/detail/detail-loader.js` | Reads API client contract for detail data loading. | Detail page data load failure. |
 | My Trees data/actions | `js/my-trees/my-trees-data.js`, `js/my-trees/my-trees-actions.js` | Uses protected API client methods for user tree list and actions. | Auth/API/data-sensitive My Trees regression. |
 | Editor memory/actions | `js/editor/editor-memory-actions.js`, `js/editor/editor-memory-form.js`, `js/editor/editor-rename-ui.js`, `js/editor.js` | Uses protected API client methods for Editor save/update/rename/memory flows. | High-risk Editor runtime regression. |
