@@ -169,12 +169,12 @@
 
             const previewKicker = document.querySelector('.preview-kicker');
             if (previewKicker) {
-                previewKicker.textContent = getSearchCopy('search.previewKicker', '대표 순간과 이어진 감정을 먼저 열어보세요.', 'Begin with the featured moment and connected feelings.');
+                previewKicker.textContent = getSearchCopy('search.previewKicker', '러브트리를 고르면 흐름이 열려요.', 'Choose a LoveTree to open its flow.');
             }
 
             const previewStatsPending = document.querySelector('#previewTreeStats .tree-meta-item:first-child span:last-child');
             if (previewStatsPending) {
-                previewStatsPending.textContent = getSearchCopy('search.previewStatsPending', '대표 순간이 열리면 함께 보여드릴게요', 'This will appear once the featured moment opens.');
+                previewStatsPending.textContent = getSearchCopy('search.previewStatsPending', '첫 순간을 기다리는 중', 'Waiting for the first moment');
             }
 
             const emotionLabel = document.querySelector('.emotion-tags-label span:last-child');

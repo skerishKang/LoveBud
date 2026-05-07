@@ -86,32 +86,32 @@
       en: 'Selected Tree'
     },
     'search.previewKicker': {
-      ko: '트리를 고르면 열려요.',
-      en: 'Choose a tree to open it.'
+      ko: '러브트리를 고르면 흐름이 열려요.',
+      en: 'Choose a LoveTree to open its flow.'
     },
     'search.previewPlaceholder': {
-      ko: '트리를 선택해보세요',
-      en: 'Select a tree to preview'
+      ko: '러브트리를 고르면',
+      en: 'Choose a LoveTree'
     },
     'search.previewDescriptionPlaceholder': {
-      ko: '대표 순간과 이어진 마음이 이곳에 열려요.',
-      en: 'The featured moment and connected feelings open here.'
+      ko: '이어진 순간의 흐름이 여기에 열려요.',
+      en: 'to open its connected moments here.'
     },
     'search.previewEmptyLead': {
-      ko: '트리를 선택해보세요',
-      en: 'Select a tree to preview'
+      ko: '러브트리를 고르면',
+      en: 'Choose a LoveTree'
     },
     'search.previewEmptyBody': {
-      ko: '대표 순간과 이어진 마음이 이곳에 열려요.',
-      en: 'The featured moment and connected feelings open here.'
+      ko: '이어진 순간의 흐름이 여기에 열려요.',
+      en: 'to open its connected moments here.'
     },
     'search.previewNoMomentTitle': {
-      ko: '아직 대표 순간이 없어요.',
-      en: 'No featured moment yet.'
+      ko: '아직 이어진 순간을 기다리는 트리예요.',
+      en: 'This tree is still waiting for connected moments.'
     },
     'search.previewNoMomentBody': {
-      ko: '첫 순간이 더해지면 열려요.',
-      en: 'It opens once the first moment is added.'
+      ko: '대표 순간이 더해지면 이곳에서 감정의 흐름을 볼 수 있어요.',
+      en: 'Once a featured moment is added, its emotional flow will open here.'
     },
     'search.previewStartFromFirstMoment': {
       ko: '대표 순간부터 감상하기',
@@ -122,12 +122,12 @@
       en: 'Connected flow'
     },
     'search.previewTimelineEmpty': {
-      ko: '아직 이어진 순간이 없어요.',
-      en: 'No connected moments yet.'
+      ko: '아직 흐름으로 펼칠 순간이 없어요.',
+      en: 'There are no moments to unfold yet.'
     },
 'search.previewTimelineEmptyBody': {
-      ko: '아직 이어진 순간이 없어요.',
-      en: 'No connected moments yet.'
+      ko: '대표 순간이 남겨지면 이 감상 허브에서 먼저 보여드릴게요.',
+      en: 'When a featured moment is saved, it will appear in this viewing hub first.'
     },
     'search.previewCopyToMyTrees': {
       ko: '내 러브트리로 가져오기',
@@ -162,20 +162,20 @@
       en: 'Open copied tree'
     },
     'search.previewNoRecordsYet': {
-      ko: '아직 남은 순간은 없지만',
-      en: 'There are no saved moments yet, but'
+      ko: '아직 보여줄 순간 수는 없지만',
+      en: 'There are no visible moments yet, but'
     },
     'search.previewNoRecordsFollowup': {
-      ko: '다음 순간이 이어지면 열려요.',
-      en: 'when the next moment is added, it opens here.'
+      ko: '첫 순간이 이어지면 이곳에 조용히 열려요.',
+      en: 'the first connected moment will open here gently.'
     },
     'search.previewNoRecordsLine': {
       ko: '{countLabel} {followup}',
       en: '{countLabel} {followup}'
     },
     'search.previewNewTreeInfo': {
-      ko: '막 자라기 시작한 러브트리예요.',
-      en: 'This LoveTree has just begun to grow.'
+      ko: '숫자보다 첫 순간을 기다리는 공개 러브트리예요.',
+      en: 'This public LoveTree is waiting for its first moment, not showing a metric yet.'
     },
     'search.previewJourneyCta': {
       ko: '마음이 닿는 순간으로',
@@ -190,8 +190,8 @@
       en: 'Waiting for the first moment'
     },
     'search.previewStatsPending': {
-      ko: '대기 중',
-      en: 'Pending'
+      ko: '첫 순간을 기다리는 중',
+      en: 'Waiting for the first moment'
     },
     'search.previewEmotionTagsLabel': {
       ko: '이어진 감정',

@@ -366,6 +366,7 @@
         const isFlowExpanded = !!treeKey && expandedFlowTreeKey === treeKey;
         const firstMem = memories[0];
         const hasMemories = memories.length > 0;
+        const displayMemoryCount = Number(tree?.memoryCount || memories.length || 0);
         const previewStats = getPreviewStatsElement();
         const titleHelper = getSearchTitleHelper();
         const previewDisplayTitle = titleHelper?.getBrowseDisplayTitle
@@ -422,11 +423,14 @@
         if (_dom.previewTitle) {
             const safeTimeRange = escapeHtml(String(tree?.timeRange || getSearchCopy('search.previewUnknownRange', '아직 흐름이 또렷하지 않아요', 'The flow is not clear yet')).trim());
             const memoryCountSuffix = getSearchCopy('search.previewMomentCountSuffix', '개의 순간', 'moments');
+            const titleMeta = hasMemories
+                ? `${displayMemoryCount}${escapeHtml(memoryCountSuffix)} · ${safeTimeRange}`
+                : escapeHtml(getSearchCopy('search.previewStatsPending', '첫 순간을 기다리는 중', 'Waiting for the first moment'));
 
             _dom.previewTitle.innerHTML = `
                 <div style="margin-bottom:12px;">
                     <div style="font-size:1.18rem;font-weight:900;color:var(--on-surface);line-height:1.25;overflow-wrap:anywhere;">${safeTreeTitle}</div>
-                    <div style="font-size:12px;color:var(--on-surface-variant);margin-top:2px;">${tree.memoryCount}${escapeHtml(memoryCountSuffix)} · ${safeTimeRange}</div>
+                    <div style="font-size:12px;color:var(--on-surface-variant);margin-top:2px;">${titleMeta}</div>
                 </div>
             `;
         }
@@ -495,13 +499,13 @@
         }
 
         if (previewStats) {
-            previewStats.hidden = false;
+            previewStats.hidden = !hasMemories;
         }
         if (_dom.previewMemoriesCount) {
-            _dom.previewMemoriesCount.textContent = tree.memoryCount;
+            _dom.previewMemoriesCount.textContent = hasMemories ? displayMemoryCount : '';
         }
         if (_dom.previewTreeDuration) {
-            _dom.previewTreeDuration.textContent = getTimelineLabel(tree, memories);
+            _dom.previewTreeDuration.textContent = hasMemories ? getTimelineLabel(tree, memories) : '';
         }
         if (_dom.previewEmotionTags) {
             _dom.previewEmotionTags.innerHTML = renderEmotionTags(tree.emotionTags);
@@ -511,9 +515,9 @@
     }
 
     const renderPlaceholder = previewBuilders.renderPlaceholder || function() {
-        return '<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--on-surface-variant);font-size:14px;text-align:center;padding:20px;">' +
-            '<p>' + escapeHtml(getSearchCopy('search.previewEmptyLead', '트리를 고르면', 'When you choose a tree,')) + '</p>' +
-            '<p>' + escapeHtml(getSearchCopy('search.previewEmptyBody', '대표 순간과 이어진 감정이 이곳에 열립니다.', 'the featured moment and connected feelings open here.')) + '</p>' +
+        return '<div class="preview-empty-guide">' +
+            '<p>' + escapeHtml(getSearchCopy('search.previewEmptyLead', '러브트리를 고르면', 'Choose a LoveTree')) + '</p>' +
+            '<p>' + escapeHtml(getSearchCopy('search.previewEmptyBody', '이어진 순간의 흐름이 여기에 열려요.', 'to open its connected moments here.')) + '</p>' +
             '</div>';
     }
 
@@ -525,13 +529,13 @@
         const previewStats = getPreviewStatsElement();
         const placeholderTitle = getSearchCopy(
             'search.previewPlaceholder',
-            '트리를 골라 감상하기',
-            'Select a tree to preview'
+            '러브트리를 고르면',
+            'Choose a LoveTree'
         );
         const placeholderDescription = getSearchCopy(
             'search.previewDescriptionPlaceholder',
-            '트리를 고르면 대표 순간과 이어진 감정이 이곳에 열립니다.',
-            'Choose a tree to open the featured moment and connected feelings here.'
+            '이어진 순간의 흐름이 여기에 열려요.',
+            'to open its connected moments here.'
         );
         setPreviewState('empty');
 
@@ -539,10 +543,11 @@
             _dom.previewContainer.innerHTML = renderPlaceholder();
         }
         if (_dom.previewTitle) {
-            _dom.previewTitle.textContent = '';
+            _dom.previewTitle.textContent = placeholderTitle;
         }
         if (_dom.previewDesc) {
-            _dom.previewDesc.hidden = true;
+            _dom.previewDesc.hidden = false;
+            _dom.previewDesc.innerHTML = '<p class="preview-empty-description">' + escapeHtml(placeholderDescription) + '</p>';
         }
         if (previewStats) {
             previewStats.hidden = true;
