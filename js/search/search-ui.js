@@ -129,12 +129,10 @@
 
         const SORT_COPY = {
             latest: {
-                title: () => getSearchCopy('search.resultsHeading', '최근 러브트리', 'Recent LoveTrees'),
-                badge: () => getCurrentLocale() === 'en' ? 'Continuous feed' : '이어지는 감상'
+                title: () => getSearchCopy('search.resultsHeading', '최근 러브트리', 'Recent LoveTrees')
             },
             popular: {
-                title: () => getCurrentLocale() === 'en' ? 'Popular LoveTrees' : '인기 많은 러브트리',
-                badge: () => getCurrentLocale() === 'en' ? 'Most connected' : '많이 이어진 감상'
+                title: () => getCurrentLocale() === 'en' ? 'Popular LoveTrees' : '인기 많은 러브트리'
             }
         };
 
@@ -195,10 +193,8 @@
                 refs.resultsTitle.textContent = typeof copy.title === 'function' ? copy.title() : copy.title;
             }
             if (refs.resultsBadge) {
-                refs.resultsBadge.innerHTML = `
-                    <span class="material-symbols-outlined" style="font-size:15px;">auto_awesome</span>
-                    ${copy.badge()}
-                `;
+                refs.resultsBadge.hidden = true;
+                refs.resultsBadge.textContent = '';
             }
         }
 

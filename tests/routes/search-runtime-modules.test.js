@@ -64,8 +64,11 @@ test('browse feed controls do not expose batch strategy as product UI', () => {
   const uiModule = read('js/search/search-ui.js');
 
   assert.doesNotMatch(uiModule, /지금 먼저 볼|to start with|More LoveTrees will appear as you scroll/);
+  assert.doesNotMatch(uiModule, /이어지는 감상|Continuous feed|많이 이어진 감상|Most connected/);
   assert.doesNotMatch(uiModule, /id=["']browseLoadMoreBtn["']/);
   assert.doesNotMatch(uiModule, /getElementById\(['"]browseLoadMoreBtn['"]\)/);
+  assert.match(uiModule, /refs\.resultsBadge\.hidden = true/);
+  assert.match(uiModule, /refs\.resultsBadge\.textContent = ''/);
   assert.match(uiModule, /browseScrollLoadSentinel/);
   assert.match(uiModule, /callbacks\.loadMorePublicTrees/);
 });
