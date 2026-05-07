@@ -81,6 +81,9 @@
     const headers = {
       'Content-Type': 'application/json'
     };
+    if (options.skipAuth === true || options.publicRead === true) {
+      return headers;
+    }
     const requireAuth = !!options.requireAuth;
 
     const cachedToken = getCachedTokenRecord();
@@ -125,20 +128,38 @@
 
   async function apiFetch(endpoint, options = {}) {
     const policy = window.LoveTreeAuthPolicy;
-    const requiresAuth = policy.endpointLikelyRequiresAuth(endpoint);
+    const skipAuth = options.skipAuth === true || options.publicRead === true;
+    const fetchOptions = { ...options };
+    delete fetchOptions.skipAuth;
+    delete fetchOptions.publicRead;
+    const requiresAuth = !skipAuth && policy.endpointLikelyRequiresAuth(endpoint);
     const authHeaders = await getAuthHeaders({
       forceLongWait: requiresAuth && policy.hasConfirmedAuthSession(),
-      requireAuth: requiresAuth
+      requireAuth: requiresAuth,
+      skipAuth
     });
     const hadAuthHeader = !!authHeaders.Authorization;
 
-    const buildConfig = (baseHeaders) => ({
-      ...options,
-      headers: {
+    const stripAuthorizationHeader = (headers) => {
+      const safeHeaders = { ...headers };
+      Object.keys(safeHeaders).forEach((key) => {
+        if (key.toLowerCase() === 'authorization') {
+          delete safeHeaders[key];
+        }
+      });
+      return safeHeaders;
+    };
+
+    const buildConfig = (baseHeaders) => {
+      const headers = {
         ...baseHeaders,
-        ...options.headers
-      }
-    });
+        ...fetchOptions.headers
+      };
+      return {
+        ...fetchOptions,
+        headers: skipAuth ? stripAuthorizationHeader(headers) : headers
+      };
+    };
 
     let config = buildConfig(authHeaders);
     let response = await fetch(`/api${endpoint}`, config);
