@@ -93,7 +93,7 @@ if (window.LoveBudUI?.showToast) {
 **적용의 대상:**
 - 토스트 메시지: `showToast(message, type, duration)`
 - 로딩 표시: `showLoading()` (placeholder)
--确认 다이얼로그: `showConfirm(message)`
+-확인 다이얼로그: `showConfirm(message)`
 
 ### 3.3 Path (선택 사용, 권장)
 
@@ -135,7 +135,7 @@ const embedUrl = window.LoveBudMedia?.getEmbedUrl(url);
 
 아래 kasus는 이제 local로 다시 만들지 말 것:
 
-|역할|이미-common化|The 만들어서는 안 되는 예|
+|역할|이미 공통화|만들어서는 안 되는 예|
 |---|---|---|
 | memory 정규화 | normalize.js | `const title = mem.title \|\| mem.titles \|\| ''` |
 | tree 정규화 | normalize.js | `const treeTitle = tree?.title \|\| '나의 트리'` |
@@ -213,7 +213,7 @@ const embedUrl = window.LoveBudMedia?.getEmbedUrl(url);
 2. **UI/Path는 권장 사용** - local fallback 함께 있으나 점진적으로 LoveBud_*로 교체
 3. **Media는 미배선 상태** - 파일은 있으나 HTML 로드 안 됨, 새로운 미디어처리만들 때 integration 검토
 4. **동일 역할 local 헬퍼 재생산 금지** - 이미 common화된 영역은 다시 만들지 말 것
-5. **예외는 문서화 필수** -止むを得ない理由で로컬維持する場合 주석 또는 이 문서에 이유记载
+5. **예외는 문서화 필수** - 불가피한 이유로 로컬 구현을 유지하는 경우 주석 또는 이 문서에 이유를 기록
 
 ---
 
