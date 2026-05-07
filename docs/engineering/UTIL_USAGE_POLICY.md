@@ -30,7 +30,7 @@
 
 **normalize.js (완료)**
 - HTML: detail.html, my-trees.html, editor.html, search.html
-- JS 호출: detail.js, my-trees.js, editor.js, search-data-adapter.js
+- JS 호출: detail.js, my-trees.js, editor.js, js/search/search-data-adapter.js
 - 상태: 모든 페이지에서 표준 사용 중
 
 **detail.js 적용 상태:**
@@ -168,7 +168,7 @@ const embedUrl = window.LoveBudMedia?.getEmbedUrl(url);
 | date formatting | 공통 util 미구현 | `date.slice(0, 10).replace(/-/g, '.')` |
 | sourceContext/backButton | detail.js 전용 | detail.js 내부 로직 유지 |
 | Canvas 좌표 | editor 전용 | editor.js 내부 로직 유지 |
-| category/stage规则 | search 전용 | search-data-adapter.js 내부 유지 |
+| category/stage规则 | search 전용 | js/search/search-data-adapter.js 내부 유지 |
 
 ### 5.2 문서화 요구
 

@@ -14,17 +14,29 @@ test('search runtime submodules load after existing search helpers and before se
   const scripts = [...html.matchAll(/<script src="([^"]+)"/g)].map((match) => match[1]);
   const indexOf = (needle) => scripts.findIndex((src) => src.includes(needle));
 
-   const previewRendererIndex = indexOf('../js/search/search-preview-renderer.js');
-   const searchEntrypointIndex = indexOf('../js/search/index.js');
-   const expectedModules = [
-     '../js/search/search-preview-cache.js',
-     '../js/search/search-ui.js',
-     '../js/search/search-url-state.js',
-   ];
+  const helperModules = [
+    '../js/search/search-title-helper.js',
+    '../js/search/search-data-adapter.js',
+    '../js/search/search-shared-utils.js',
+  ];
+  const helperIndexes = helperModules.map(indexOf);
+  const previewRendererIndex = indexOf('../js/search/search-preview-renderer.js');
+  const searchEntrypointIndex = indexOf('../js/search/index.js');
+  const expectedModules = [
+    '../js/search/search-preview-cache.js',
+    '../js/search/search-ui.js',
+    '../js/search/search-url-state.js',
+  ];
   const moduleIndexes = expectedModules.map(indexOf);
 
+  assert.ok(helperIndexes.every((index) => index >= 0));
   assert.ok(previewRendererIndex >= 0);
   assert.ok(searchEntrypointIndex >= 0);
+  assert.deepEqual(helperIndexes, helperIndexes.toSorted((a, b) => a - b));
+  assert.ok(helperIndexes.every((index) => index < previewRendererIndex));
+  assert.equal(html.includes('../js/search-title-helper.js'), false);
+  assert.equal(html.includes('../js/search-data-adapter.js'), false);
+  assert.equal(html.includes('../js/search-shared-utils.js'), false);
   assert.deepEqual(moduleIndexes, moduleIndexes.toSorted((a, b) => a - b));
   assert.ok(moduleIndexes.every((index) => index > previewRendererIndex));
   assert.ok(moduleIndexes.every((index) => index < searchEntrypointIndex));
