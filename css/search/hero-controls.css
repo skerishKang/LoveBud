@@ -4,7 +4,7 @@
  */
 
 .browse-curation-shell {
-    margin-bottom: 20px;
+    margin-bottom: 16px;
     padding: 0;
     background: transparent;
     border: 0;
@@ -30,10 +30,20 @@
 }
 
 .search-panel-header h2 {
-    font-size: clamp(2.28rem, 4.2vw, 3.4rem);
-    margin-bottom: 8px;
-    line-height: 1.04;
-    letter-spacing: -0.035em;
+    max-width: 620px;
+    font-size: clamp(2.1rem, 3.35vw, 3.0rem);
+    margin-bottom: 10px;
+    line-height: 1.08;
+    letter-spacing: 0;
+    color: var(--on-surface);
+}
+
+.search-panel-header .brand-emphasis {
+    color: var(--primary);
+}
+
+.browse-heading-action {
+    color: var(--on-surface);
 }
 
 .search-panel-header p {
@@ -41,7 +51,7 @@
     font-size: 0.98rem;
     font-weight: 400;
     line-height: 1.55;
-    max-width: 420px;
+    max-width: 470px;
     margin: 0;
 }
 
@@ -73,7 +83,7 @@
     font-size: 1.7rem;
     font-weight: 900;
     color: var(--on-surface);
-    letter-spacing: -0.02em;
+    letter-spacing: 0;
 }
 
 .browse-results-head p {

@@ -4,6 +4,15 @@
  * Refs #65
  */
 
+.browse-discovery-panel {
+    margin: 0 0 22px;
+    padding: 12px;
+    border: 1px solid rgba(144, 73, 81, 0.08);
+    border-radius: 26px;
+    background: rgba(255, 255, 255, 0.58);
+    box-shadow: 0 16px 34px rgba(75, 64, 57, 0.045);
+}
+
 .search-input-wrapper {
     position: relative;
     margin-bottom: 0;
@@ -73,7 +82,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    margin: 0 0 22px;
+    margin: 0;
     min-width: 0;
 }
 

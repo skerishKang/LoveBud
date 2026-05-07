@@ -13,6 +13,14 @@
       ko: '러브트리 감상 둘러보기',
       en: 'Browse LoveTree moments'
     },
+    'search.titleBrand': {
+      ko: '러브트리',
+      en: 'LoveTrees'
+    },
+    'search.titleAction': {
+      ko: '를 둘러보세요',
+      en: ' to browse'
+    },
     'search.subtitle': {
       ko: '첫 순간과 이어진 마음을 따라가 보세요',
       en: 'Follow first moments and the feelings that grew from them'

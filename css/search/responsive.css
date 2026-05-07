@@ -1,7 +1,7 @@
 @media (max-width: 1240px) {
     .search-container {
         grid-template-columns: minmax(0, 1fr) 380px;
-        gap: 24px;
+        gap: 22px;
         padding: 24px var(--page-pad-tablet) 48px;
     }
 
@@ -151,11 +151,11 @@
     }
 
     .browse-curation-shell {
-        margin-bottom: 16px;
+        margin-bottom: 14px;
     }
 
     .search-panel-header h2 {
-        font-size: 2.0rem;
+        font-size: clamp(1.76rem, 8.5vw, 2.08rem);
         line-height: 1.08;
         margin-bottom: 7px;
     }
@@ -349,7 +349,18 @@
     }
 
     .browse-utility-row {
+        flex-direction: column;
+        align-items: stretch;
         gap: 10px;
-        margin-top: 14px;
+    }
+
+    .browse-discovery-panel {
+        margin-bottom: 18px;
+        padding: 10px;
+        border-radius: 22px;
+    }
+
+    .filter-row {
+        justify-content: flex-start;
     }
 }
