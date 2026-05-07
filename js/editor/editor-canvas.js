@@ -276,19 +276,14 @@ function isNodeWithinSafeViewport(pos) {
     }
 
     function createNodeElement(mem, pos) {
-        if (typeof canvasNode.createNodeElement === 'function') {
-            return canvasNode.createNodeElement(mem, pos, {
-                resolveMemoryThumbnail: resolveMemoryThumbnail,
-                NODE_HALF: NODE_HALF,
-                scale: viewportState.scale || 1
-            });
+        if (typeof canvasNode.createNodeElement !== 'function') {
+            throw new Error('LoveBudEditorCanvasNode.createNodeElement is required');
         }
-        const nodeEl = document.createElement('div');
-        nodeEl.className = 'memory-node floating-node';
-        nodeEl.dataset.memoryId = mem.id;
-        nodeEl.draggable = false;
-        nodeEl.tabIndex = 0;
-        return nodeEl;
+        return canvasNode.createNodeElement(mem, pos, {
+            resolveMemoryThumbnail: resolveMemoryThumbnail,
+            NODE_HALF: NODE_HALF,
+            scale: viewportState.scale || 1
+        });
     }
 
     function attachNodeInfo(nodeEl, mem) {
