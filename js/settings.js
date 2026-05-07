@@ -7,6 +7,7 @@
 
 (function() {
   var SETTINGS_KEY = 'lovebud_user_settings';
+  var SETTINGS_AUTH_RECOVERY_TIMEOUT_MS = 1200;
   var DEFAULT_SETTINGS = {
     defaultVisibility: 'private'
   };
@@ -138,6 +139,72 @@
 
   function redirectToLogin() {
     window.location.replace(getLoginRedirectHref());
+  }
+
+  function getLiveFirebaseUser() {
+    try {
+      if (typeof initFirebase === 'function') initFirebase();
+      if (typeof firebase === 'undefined' || !firebase.auth) return null;
+      return firebase.auth().currentUser || null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function waitForRecoverableAuthUser() {
+    return new Promise(function(resolve) {
+      var liveUser = getLiveFirebaseUser();
+      if (isAuthenticatedUser(liveUser)) {
+        resolve(liveUser);
+        return;
+      }
+
+      var settled = false;
+      var unsubscribe = null;
+      var timeoutId = setTimeout(function() {
+        if (settled) return;
+        settled = true;
+        try {
+          if (typeof unsubscribe === 'function') unsubscribe();
+        } catch (e) {}
+        resolve(null);
+      }, SETTINGS_AUTH_RECOVERY_TIMEOUT_MS);
+
+      try {
+        if (typeof firebase === 'undefined' || !firebase.auth || typeof firebase.auth().onAuthStateChanged !== 'function') {
+          clearTimeout(timeoutId);
+          settled = true;
+          resolve(null);
+          return;
+        }
+
+        unsubscribe = firebase.auth().onAuthStateChanged(function(user) {
+          if (!isAuthenticatedUser(user) || settled) return;
+          settled = true;
+          clearTimeout(timeoutId);
+          try {
+            if (typeof unsubscribe === 'function') unsubscribe();
+          } catch (e) {}
+          resolve(user);
+        });
+      } catch (e) {
+        clearTimeout(timeoutId);
+        settled = true;
+        resolve(null);
+      }
+    });
+  }
+
+  function recoverSettingsAuthOrRedirect() {
+    waitForRecoverableAuthUser().then(function(user) {
+      if (isAuthenticatedUser(user)) {
+        startSettings(user);
+        return;
+      }
+      redirectToLogin();
+    }).catch(function() {
+      redirectToLogin();
+    });
   }
 
   function applyHeaderNavFallbacks() {
@@ -278,7 +345,7 @@
         returnTo: window.location.pathname + window.location.search + window.location.hash,
         allowCachedUser: false,
         onAuthenticated: startSettings,
-        onUnauthenticated: redirectToLogin
+        onUnauthenticated: recoverSettingsAuthOrRedirect
       });
       return;
     }

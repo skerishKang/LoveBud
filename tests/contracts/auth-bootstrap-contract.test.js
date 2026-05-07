@@ -293,9 +293,15 @@ test('settings page uses protected route helper and stable returnTo login target
   assert.match(source, /LoveBudProtectedRoute\.requireAuthenticatedPage/, 'settings must use protected-route helper when available');
   assert.match(source, /allowCachedUser:\s*false/, 'settings must not unlock from stale confirmed cache alone');
   assert.match(source, /onAuthenticated:\s*startSettings/, 'settings authenticated path must start settings content');
-  assert.match(source, /onUnauthenticated:\s*redirectToLogin/, 'settings unauthenticated path must use local login redirect');
+  assert.match(source, /onUnauthenticated:\s*recoverSettingsAuthOrRedirect/, 'settings unauthenticated path must recover live auth before redirecting');
+  assert.match(source, /function\s+waitForRecoverableAuthUser\s*\(/, 'settings must have a bounded live-auth recovery path for returnTo after login');
+  assert.match(source, /firebase\.auth\(\)\.currentUser/, 'settings recovery must check live Firebase currentUser');
+  assert.match(source, /firebase\.auth\(\)\.onAuthStateChanged/, 'settings recovery must wait for the live Firebase auth observer before redirecting');
+  assert.match(source, /SETTINGS_AUTH_RECOVERY_TIMEOUT_MS/, 'settings live-auth recovery must be bounded');
+  assert.match(source, /startSettings\(user\)/, 'settings recovery must start settings after live authenticated user is observed');
   assert.match(source, /return 'login\.html\?returnTo='/, 'settings login redirect must use stable returnTo target');
   assert.doesNotMatch(source, /login\.html\?redirect=/, 'settings must not use legacy redirect query for protected-route login target');
+  assert.doesNotMatch(source, /allowCachedUser:\s*true/, 'settings must not fix the returnTo loop by unlocking from cached auth alone');
 });
 
 test('auth UI logout uses delegated data attribute and blocks inline signOut onclick regression', () => {
