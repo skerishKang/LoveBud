@@ -1,6 +1,7 @@
 # Ops Agent Security Rules
 
 Refs #299
+Refs #849
 
 ## Purpose
 
@@ -31,9 +32,14 @@ Agents may reference these local paths by name only:
 - `.secrets/`
 - `.env`
 - `.env.*`
+- `.local/test-accounts.json`
+- `.local/test-accounts.example.json`
+- `docs/ops/qa-credential-bundle/`
 - `~/.config/gh/hosts.yml`
 
 Referencing a path does not authorize printing its contents.
+
+`.local/test-accounts.json` is a credential-bearing runtime file. Agents may reference the path, selected credential keys, and safe preflight status only. They must not print email, password, confirmPassword, token, session, cookie, UID, request payload, or private values.
 
 ## Allowed checks
 
@@ -44,6 +50,8 @@ PowerShell examples:
 ```powershell
 Test-Path .secrets/lovebud-runtime.env
 Test-Path .env
+Test-Path .local/test-accounts.json
+Test-Path .local/test-accounts.example.json
 Test-Path ~/.config/gh/hosts.yml
 ```
 
@@ -53,7 +61,17 @@ Git examples:
 git check-ignore .secrets/lovebud-runtime.env
 git check-ignore .env
 git check-ignore .env.local
+git check-ignore .local/test-accounts.json
 ```
+
+Credential preflight examples:
+
+```bash
+npm run check:auth-credentials -- --key accounts.user
+npm run check:auth-credentials -- --key accounts.personaA001
+```
+
+Credential preflight must report only safe status fields such as key presence, non-empty status, whitespace status, confirmPassword match status, and final PASS/BLOCKED state. It must not print credential values.
 
 GitHub token creation may be directed to:
 
@@ -88,6 +106,7 @@ Do not run or request commands that print secret material, including:
 cat .env
 cat .env.*
 cat .secrets/*
+cat .local/test-accounts.json
 printenv
 env
 set
@@ -99,6 +118,8 @@ echo $CLOUDFLARE_API_TOKEN
 Get-Content .env
 Get-Content .env.*
 Get-Content .secrets/*
+Get-Content .local/test-accounts.json
+type .local/test-accounts.json
 echo $env:GH_TOKEN
 echo $env:CLOUDFLARE_API_TOKEN
 Get-ChildItem Env:
@@ -118,20 +139,35 @@ Also forbidden:
 Use this pattern when a local command needs a secret:
 
 1. Operator stores the secret in an approved local path.
-2. Automation references the path.
+2. Automation references the path and selected key, not the value.
 3. The local machine reads the value into process memory.
-4. The command receives the value through the CLI, environment, stdin, or approved credential manager.
+4. The command receives the value through the CLI, environment, stdin, browser automation, or approved credential manager.
 5. Reports include only status, never the value.
 
 Safe report example:
 
 ```text
-credential path: .secrets/lovebud-runtime.env
+credential path: .local/test-accounts.json
+selected credential key: accounts.personaA001
 credential file: EXISTS
 credential file gitignored: YES
 required key: PRESENT
 secret value exposed: NO
 ```
+
+## Browser login credential pattern
+
+For browser verification, agents should not ask the model to read credentials. Use this pattern instead:
+
+```text
+credential source: .local/test-accounts.json
+selected key: accounts.personaA001
+credential preflight: CREDENTIAL_PREFLIGHT_PASS
+browser login performed locally: YES
+credential values exposed: NO
+```
+
+A local browser executor may load the selected credential key into the browser form through local automation or manual operator entry. The model/report should see only key names and status fields.
 
 ## PR and Issue safety guidance
 
