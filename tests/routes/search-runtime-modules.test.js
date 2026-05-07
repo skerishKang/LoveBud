@@ -60,6 +60,31 @@ test('search UI module preserves orchestrator contract methods', () => {
   }
 });
 
+test('browse feed controls do not expose batch strategy as product UI', () => {
+  const uiModule = read('js/search/search-ui.js');
+
+  assert.doesNotMatch(uiModule, /지금 먼저 볼|to start with|More LoveTrees will appear as you scroll/);
+  assert.doesNotMatch(uiModule, /이어지는 감상|Continuous feed|많이 이어진 감상|Most connected/);
+  assert.doesNotMatch(uiModule, /id=["']browseLoadMoreBtn["']/);
+  assert.doesNotMatch(uiModule, /getElementById\(['"]browseLoadMoreBtn['"]\)/);
+  assert.match(uiModule, /refs\.resultsBadge\.hidden = true/);
+  assert.match(uiModule, /refs\.resultsBadge\.textContent = ''/);
+  assert.match(uiModule, /browseScrollLoadSentinel/);
+  assert.match(uiModule, /callbacks\.loadMorePublicTrees/);
+});
+
+test('browse filter and sort changes reset pagination state without changing feed cards', () => {
+  const uiModule = read('js/search/search-ui.js');
+  const controlsModule = read('js/search/search-controls.js');
+
+  assert.match(controlsModule, /const DEFAULT_LIMIT = 6/);
+  assert.match(controlsModule, /function resetPaginationState\(\)/);
+  assert.match(controlsModule, /state\.currentLimit = DEFAULT_LIMIT/);
+  assert.match(controlsModule, /state\.hasMoreTrees = true/);
+  assert.match(uiModule, /state\.currentLimit = 6/);
+  assert.match(uiModule, /state\.hasMoreTrees = true/);
+});
+
 test('search UI module implements card accessibility and event delegation', () => {
   const uiModule = read('js/search/search-ui.js');
   
