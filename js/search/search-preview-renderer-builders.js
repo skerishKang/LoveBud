@@ -90,18 +90,22 @@
     }
 
     function renderPathStageBadge(index, title) {
-        return '<span class="preview-flow-stage" style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:var(--surface-container);border-radius:8px;font-size:13px;">' +
+        return '<span class="preview-flow-stage" style="display:inline-flex;align-items:center;gap:4px;padding:2px 6px;background:transparent;border-radius:4px;font-size:13px;color:var(--on-surface-variant);min-height:auto;">' +
             '<span style="color:var(--primary);font-weight:800;flex:0 0 auto;">' + index + '</span>' +
             '<span class="preview-flow-stage-label" title="' + escapeHtml(title) + '" aria-label="' + escapeHtml(title) + '">' + escapeHtml(title) + '</span>' +
             '</span>';
     }
 
-    function renderPathStages(memories, startIndex) {
+    function renderPathStages(memories, startIndex, showArrows = true) {
         if (startIndex === undefined) startIndex = 0;
         return memories.map(function(memory, index) {
             var fallbackKo = startIndex + index === 0 ? '시작 순간' : '이어진 순간';
             var fallbackEn = startIndex + index === 0 ? 'Starting moment' : 'Connected moment';
-            return renderPathStageBadge(startIndex + index + 1, getMomentLabel(memory, fallbackKo, fallbackEn));
+            var badge = renderPathStageBadge(startIndex + index + 1, getMomentLabel(memory, fallbackKo, fallbackEn));
+            if (showArrows && index < memories.length - 1) {
+                return badge + '<span class="flow-arrow" style="color:var(--on-surface-variant);font-size:14px;margin:0 4px;">→</span>';
+            }
+            return badge;
         }).join('');
     }
 
@@ -126,7 +130,7 @@
     function renderHiddenPathStages(hiddenMemories, startIndex, isExpanded) {
         if (!isExpanded || !hiddenMemories.length) return '';
         return '<div class="preview-flow-more-list">' +
-            renderPathStages(hiddenMemories, startIndex) +
+            renderPathStages(hiddenMemories, startIndex, false) +
             '</div>';
     }
 
