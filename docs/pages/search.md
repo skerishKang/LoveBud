@@ -22,7 +22,7 @@
 ### 현재 파일 구조
 - `pages/search.html` (inline CSS 포함)
 - `js/search.js` (~150줄, orchestrator only)
-- `js/search-data-adapter.js` (~220줄, data layer)
+- `js/search/search-data-adapter.js` (~220줄, data layer)
 - `js/search-card-renderer.js` (~280줄, card rendering)
 - `js/search-preview-renderer.js` (~170줄, preview rendering)
 
@@ -30,12 +30,12 @@
 ```
 search.html
 ├── search.js (orchestrator)
-├── search-data-adapter.js (data transformation)
+├── js/search/search-data-adapter.js (data transformation)
 ├── search-card-renderer.js (card + empty state)
 └── search-preview-renderer.js (preview sidebar)
 ```
 
-### 데이터 계층 (search-data-adapter.js)
+### 데이터 계층 (js/search/search-data-adapter.js)
 - `buildTreeData(memories, trees)` - raw data → view models
 - `filterTrees(trees, query, category)` - query + category filtering
 - `estimateStage(count)` - memory count → stage (입덕/성장/최애)
@@ -127,7 +127,7 @@ search.html
 ## 향후 확장 포인트
 
 ### 데이터 계층 확장
-- `search-data-adapter.js`에 새로운 필터 로직 추가 (아티스트, 태그)
+- `js/search/search-data-adapter.js`에 새로운 필터 로직 추가 (아티스트, 태그)
 - 페이지네이션 지원 (`filterTrees`에 offset, limit 파라미터)
 - 정렬 옵션 추가 (최신, 오래된, 메모리 수)
 
