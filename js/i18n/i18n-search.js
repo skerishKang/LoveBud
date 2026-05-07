@@ -9,13 +9,25 @@
   'use strict';
 
   window.i18nSearch = {
+    'search.eyebrow': {
+      ko: '공개 러브트리',
+      en: 'Public LoveTrees'
+    },
     'search.title': {
-      ko: '러브트리 감상 둘러보기',
-      en: 'Browse LoveTree moments'
+      ko: '<span class="title-accent">러브트리</span> 둘러보기',
+      en: 'Browse <span class="title-accent">LoveTrees</span>'
     },
     'search.subtitle': {
-      ko: '첫 순간과 이어진 마음을 따라가 보세요',
-      en: 'Follow first moments and the feelings that grew from them'
+      ko: '다른 사람이 남긴 순간의 흐름을 가볍게 살펴보세요.',
+      en: 'Lightly explore the flow of moments others have shared.'
+    },
+    'search.resultsHeading': {
+      ko: '공개 러브트리',
+      en: 'Public LoveTrees'
+    },
+    'search.resultsPopularHeading': {
+      ko: '많이 감상한 러브트리',
+      en: 'Popular LoveTrees'
     },
     'search.intentNote': {
       ko: '트리를 고르면 열려요.',
