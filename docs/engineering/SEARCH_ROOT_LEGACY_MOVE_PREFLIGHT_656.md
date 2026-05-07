@@ -46,7 +46,7 @@ Forbidden in this audit:
 | `js/search/search-title-helper.js` | Directly loaded by `pages/search.html` before Search renderers and Search entrypoint. | Moved by PR-C1 follow-up. | LOW | Docs mention folder path. Runtime tests do not directly pin this path. | COMPLETED_IN_PR_C1 |
 | `js/search/search-data-adapter.js` | Directly loaded by `pages/search.html` before Search entrypoint. | Moved by PR-C1 follow-up. | LOW | `tests/contracts/public-tree-fallback-boundary.test.js` reads the folder path. | COMPLETED_IN_PR_C1 |
 | `js/search/search-shared-utils.js` | Directly loaded by `pages/search.html` before active Search renderers. | Moved by PR-C1 follow-up. | LOW | Docs mention folder path. Contract tests do not currently pin this path. | COMPLETED_IN_PR_C1 |
-| `js/search-copy-ui.js` | Dynamically injected by `js/i18n/i18n-search.js`; not directly loaded by `pages/search.html`. | `js/search/search-copy-ui.js` is available. | LOW | Dynamic loader path must change. Add/update a contract test for the injected path. | MOVE_READY_WITH_DYNAMIC_LOADER_AND_TEST_UPDATE |
+| `js/search/search-copy-ui.js` | Dynamically injected by `js/i18n/i18n-search.js`; not directly loaded by `pages/search.html`. | `js/search/search-copy-ui.js` is available. | LOW | Dynamic loader path must change. Add/update a contract test for the injected path. | MOVE_READY_WITH_DYNAMIC_LOADER_AND_TEST_UPDATE |
 | `js/search-card-renderer.js` | Not directly loaded by current `pages/search.html`; active page loads `js/search/search-card-renderer.js`. | `js/search/search-card-renderer.js` already exists. | HIGH | Root file and folder file both expose `window.LoveBudSearchCardRenderer`; root appears legacy and cannot move to the same target path as-is. | BLOCKED_DUPLICATE_TARGET_PATH |
 | `js/search-preview-renderer.js` | Not directly loaded by current `pages/search.html`; active page loads `js/search/search-preview-renderer.js`. | `js/search/search-preview-renderer.js` already exists. | HIGH | `tests/routes/detail-alias-consistency.test.js` reads the root path while active Search runtime uses the folder path. Root appears legacy and cannot move to the same target path as-is. | BLOCKED_DUPLICATE_TARGET_PATH |
 
@@ -75,7 +75,7 @@ The first three root helpers are runtime dependencies and must stay before the a
 
 ## Dynamic Loader Finding
 
-`js/i18n/i18n-search.js` appends `../js/search-copy-ui.js?v=20260426-1` on Search pages.
+`js/i18n/i18n-search.js` appends `../js/search/search-copy-ui.js?v=20260426-1` on Search pages.
 
 Future move requirement:
 
