@@ -42,9 +42,10 @@ window.LoveBudEditorCanvasInteraction = {
           viewportState.dragMoved = true;
         }
         if (!viewportState.dragMoved) return;
+        const scale = viewportState.scale || 1;
         viewportState.positions[viewportState.dragNodeId] = {
-          x: Math.round(viewportState.dragStartWorldX + dx),
-          y: Math.round(viewportState.dragStartWorldY + dy)
+          x: Math.round(viewportState.dragStartWorldX + (dx / scale)),
+          y: Math.round(viewportState.dragStartWorldY + (dy / scale))
         };
         scheduleRender();
         return;
