@@ -6,9 +6,9 @@
  * This file is an import-only entrypoint for role-based CSS files.
  */
 
-@import url("./intro/base.css");
-@import url("./intro/hero.css");
-@import url("./intro/how-to.css");
-@import url("./intro/value.css");
-@import url("./intro/cta.css");
-@import url("./intro/responsive.css");
+@import url("./intro/intro-base.css");
+@import url("./intro/intro-hero.css");
+@import url("./intro/intro-how-to.css");
+@import url("./intro/intro-value.css");
+@import url("./intro/intro-cta.css");
+@import url("./intro/intro-responsive.css");
