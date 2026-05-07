@@ -200,39 +200,31 @@
 }
 
 .preview-flow-toggle {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    min-height: 36px;
-    max-width: 100%;
-    padding: 7px 12px;
-    border: 1px solid rgba(144, 73, 81, 0.18);
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.68);
+    display: inline;
     color: var(--primary);
     font: inherit;
     font-size: 13px;
-    font-weight: 800;
+    font-weight: 600;
     line-height: 1.2;
     cursor: pointer;
-    overflow-wrap: anywhere;
-    transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+    border: none;
+    background: transparent;
+    padding: 0;
+    margin: 0;
+    text-decoration: underline;
+    text-decoration-color: rgba(144, 73, 81, 0.25);
+    text-underline-offset: 3px;
 }
 
 .preview-flow-toggle:hover {
-    background: var(--surface-container);
-    border-color: rgba(144, 73, 81, 0.28);
+    color: var(--primary-vibrant);
+    text-decoration-color: var(--primary);
 }
 
 .preview-flow-toggle:focus-visible {
     outline: 2px solid var(--primary);
     outline-offset: 2px;
-}
-
-.preview-flow-toggle .material-symbols-outlined {
-    font-size: 18px;
-    flex: 0 0 auto;
+    border-radius: 2px;
 }
 
 @media (max-width: 480px) {
@@ -240,11 +232,8 @@
     .preview-flow-more-list {
         grid-template-columns: minmax(0, 1fr);
     }
-
-    .preview-flow-toggle {
-        width: 100%;
-    }
 }
+
 
 .preview-panel-icon {
     font-size: 14px;
