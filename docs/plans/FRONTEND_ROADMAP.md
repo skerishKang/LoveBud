@@ -1,5 +1,13 @@
 # Lovetree Frontend Roadmap
 
+> [!WARNING]
+> This document is retained as a corrupted legacy/planning artifact.
+> Its body contains severe mojibake / unreadable text and must not be treated as authoritative project guidance.
+> Do not reconstruct the original meaning by guessing from the corrupted text.
+> Use current repository docs and issue/PR records instead.
+>
+> Tracking: Refs #898
+
 ## 1. 개요 (Baseline Context)
 
 `frontend-concept-v2` ?�안?� Lovetree ?�품???�각??목표?�자 UX 가?�드?�인?�니?? ??문서???�순???�안 목록???�어, ?�제 ?�로?�션 코드(`src/`, `pages/`)�??�합???�의 기�????�의?�니??
