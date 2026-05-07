@@ -144,6 +144,8 @@ test('shared header keeps optional/idempotent initAuth handoff after dynamic aut
 
 test('root auth bootstrap exposes compatibility window APIs and flags', () => {
   const source = readRepoFile('js/auth.js');
+  const callbacksSource = readRepoFile('js/auth/auth-callbacks.js');
+  const compatibilitySource = `${source}\n${callbacksSource}`;
 
   const contracts = [
     { label: 'window.initAuth', needles: ['window.initAuth'] },
@@ -158,8 +160,24 @@ test('root auth bootstrap exposes compatibility window APIs and flags', () => {
   ];
 
   for (const contract of contracts) {
-    assertIncludesAny(source, contract.label, contract.needles);
+    assertIncludesAny(compatibilitySource, contract.label, contract.needles);
   }
+
+  assert.match(
+    callbacksSource,
+    /createAuthReadyCallbackBridge/,
+    'auth callbacks helper must expose the auth-ready compatibility bridge'
+  );
+  assert.match(
+    source,
+    /createAuthReadyCallbackBridge\s*\(/,
+    'root auth must create the auth-ready callback bridge from LoveBudAuthCallbacks'
+  );
+  assert.match(
+    source,
+    /window\.registerOnAuthReady\s*=\s*function\s*\(callback\)\s*\{[\s\S]*__authReadyCallbackBridge\.registerOnAuthReady\(callback\)/,
+    'root auth must keep the public registerOnAuthReady export delegated through the bridge'
+  );
 });
 
 test('root auth delegates login page helpers through method-aware provider selection', () => {

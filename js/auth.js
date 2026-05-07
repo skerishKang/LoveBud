@@ -176,38 +176,24 @@ function setupLoginPageAuthUi() {
 
 // ── Auth Ready Callbacks (배열 패턴) ─────────────────────────────────────────
 // 여러 모듈이 등록해도 덮어쓰기 문제 없음
-window.__onAuthReadyCallbacks = window.__onAuthReadyCallbacks || [];
 var __authCallbacksModule = window.LoveBudAuthCallbacks || null;
+var __authReadyCallbackBridge = __authCallbacksModule.createAuthReadyCallbackBridge({
+  authReadyFlagKey: AUTH_READY_FLAG
+});
 
 /**
  * 인증 준비 후 실행할 콜백 등록
  * @param {Function} callback - user 객체를 받는 콜백 함수
  */
 window.registerOnAuthReady = function(callback) {
-  if (__authCallbacksModule) {
-    __authCallbacksModule.registerOnAuthReady(callback, AUTH_READY_FLAG);
-    return;
-  }
-  if (typeof callback !== 'function') return;
-  window.__onAuthReadyCallbacks.push(callback);
-  if (window[AUTH_READY_FLAG]) {
-    var user = window.__lastAuthUser || null;
-    try { callback(user); } catch (e) { console.error('[auth] Callback error:', e); }
-  }
+  __authReadyCallbackBridge.registerOnAuthReady(callback);
 };
 
 /**
  * 모든 등록된 콜백 실행 (auth.js 내부 사용)
  */
 function fireAuthReadyCallbacks(user) {
-  if (__authCallbacksModule) {
-    __authCallbacksModule.fireAuthReadyCallbacks(user);
-    return;
-  }
-  window.__lastAuthUser = user;
-  window.__onAuthReadyCallbacks.forEach(function(callback) {
-    try { callback(user); } catch (e) { console.error('[auth] Callback error:', e); }
-  });
+  __authReadyCallbackBridge.fireAuthReadyCallbacks(user);
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
