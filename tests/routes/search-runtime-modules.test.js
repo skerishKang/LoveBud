@@ -19,7 +19,7 @@ test('search runtime submodules load after existing search helpers and before se
    const expectedModules = [
      '../js/search/search-preview-cache.js',
      '../js/search/search-ui.js',
-     '../js/search/url-state.js',
+     '../js/search/search-url-state.js',
    ];
   const moduleIndexes = expectedModules.map(indexOf);
 

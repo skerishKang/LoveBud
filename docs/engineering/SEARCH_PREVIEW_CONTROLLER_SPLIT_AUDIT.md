@@ -30,9 +30,9 @@ This PR does not implement the preview controller split.
 
 Do not do the following in this audit PR:
 
-- create `js/search/preview-controller.js`
+- create `js/search/search-preview-controller.js`
 - modify `js/search.js`
-- modify `js/search/data.js`
+- modify `js/search/search-data.js`
 - modify `js/search-ui.js`
 - modify `search-preview-cache.js`
 - modify `pages/search.html`
@@ -56,7 +56,7 @@ The preview controller split must not be merged before the preceding Search spli
 Future implementation candidate:
 
 ```text
-js/search/preview-controller.js
+js/search/search-preview-controller.js
 ```
 
 Expected browser-global namespace candidate:
@@ -103,7 +103,7 @@ A future implementation must preserve existing user-visible behavior:
 
 ## 7. Script loading guardrails
 
-If a future PR adds `js/search/preview-controller.js`, then `pages/search.html` must load it in a safe order.
+If a future PR adds `js/search/search-preview-controller.js`, then `pages/search.html` must load it in a safe order.
 
 Candidate order should be verified against the current Search runtime contract:
 
@@ -139,7 +139,7 @@ Minimum checks:
 
 ```markdown
 ## Summary
-- Split Search/Browse preview controller orchestration into `js/search/preview-controller.js`.
+- Split Search/Browse preview controller orchestration into `js/search/search-preview-controller.js`.
 - Preserve selected tree deep link, desktop/mobile preview behavior, and preview cache behavior.
 - Keep API, adapter, renderer, CSS, and URL state contracts unchanged.
 
