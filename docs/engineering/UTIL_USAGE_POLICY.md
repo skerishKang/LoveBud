@@ -12,8 +12,8 @@
 
 **왜 필요한가:**
 - 각 페이지 JS마다 동일한 로직이 중복되는 현상 방지
--/util별 현재 상태와今後の進むべき 방향을 명확히
--新しいローカルを 만드는前に参照すべき 기준を提供
+-/util별 현재 상태와향후 진행 방향을 명확히
+- 새로운 로컬을 만드는 전에 참조해야 할 기준을 제공
 
 ---
 
@@ -73,7 +73,7 @@ const normalized = window.LoveBudNormalize?.normalizeMemory(mem);
 const title = mem.title || mem.titles || '';
 ```
 
-**適用の 대상:**
+**적용의 대상:**
 - memory 객체 정규화: `normalizeMemory(mem)`
 - tree 객체 정규화: `normalizeTree(tree)`
 - emotion tags 정리: `normalizeEmotionTags(tags)`
@@ -90,7 +90,7 @@ if (window.LoveBudUI?.showToast) {
 }
 ```
 
-**適用の 대상:**
+**적용의 대상:**
 - 토스트 메시지: `showToast(message, type, duration)`
 - 로딩 표시: `showLoading()` (placeholder)
 -确认 다이얼로그: `showConfirm(message)`
@@ -105,7 +105,7 @@ const basePath = window.LoveBudPath?.getBasePath() || '';
 const basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
 ```
 
-**適用の 대상:**
+**적용의 대상:**
 - 페이지 컨텍스트: `isPagesContext()`
 - basePath 반환: `getBasePath()`
 - URL 생성: `resolvePageUrl(pageName)`, `buildUrl(pageName, params)`
@@ -121,7 +121,7 @@ const videoId = window.LoveBudMedia?.extractYouTubeId(url);
 const embedUrl = window.LoveBudMedia?.getEmbedUrl(url);
 ```
 
-**適用の 대상:**
+**적용의 대상:**
 - YouTube ID 추출: `extractYouTubeId(url)`
 - embed URL: `getEmbedUrl(sourceUrl, type)`
 - 썸네일 URL: `getThumbnailUrl(sourceUrl, type, quality)`
@@ -135,7 +135,7 @@ const embedUrl = window.LoveBudMedia?.getEmbedUrl(url);
 
 아래 kasus는 이제 local로 다시 만들지 말 것:
 
-|役割|既に-common化|The 作ってはいけない例|
+|역할|이미-common化|The 만들어서는 안 되는 예|
 |---|---|---|
 | memory 정규화 | normalize.js | `const title = mem.title \|\| mem.titles \|\| ''` |
 | tree 정규화 | normalize.js | `const treeTitle = tree?.title \|\| '나의 트리'` |
@@ -168,7 +168,7 @@ const embedUrl = window.LoveBudMedia?.getEmbedUrl(url);
 | date formatting | 공통 util 미구현 | `date.slice(0, 10).replace(/-/g, '.')` |
 | sourceContext/backButton | detail.js 전용 | detail.js 내부 로직 유지 |
 | Canvas 좌표 | editor 전용 | editor.js 내부 로직 유지 |
-| category/stage规则 | search 전용 | js/search/search-data-adapter.js 내부 유지 |
+| category/stage규칙 | search 전용 | js/search/search-data-adapter.js 내부 유지 |
 
 ### 5.2 문서화 요구
 
@@ -184,7 +184,7 @@ const embedUrl = window.LoveBudMedia?.getEmbedUrl(url);
 
 | # | 항목 | 상태 | 담당 |
 |---|------|------|-------|
-| 1 | media.js HTML 로드 추가 (editor.html试点) | 미배선 | - |
+| 1 | media.js HTML 로드 추가 (editor.html시범) | 미배선 | - |
 | 2 | editor.js의 YouTube 처리 → LoveBudMedia 통합 | 미연결 | - |
 | 3 | search.js의 local getBasePath → LoveBudPath로 교체 | 진행 중 | - |
 
@@ -211,8 +211,8 @@ const embedUrl = window.LoveBudMedia?.getEmbedUrl(url);
 
 1. **Normalize는 반드시 사용** - 모든 memory/tree 정규화에 LoveBudNormalize 우선
 2. **UI/Path는 권장 사용** - local fallback 함께 있으나 점진적으로 LoveBud_*로 교체
-3. **Media는 미배선 상태** - 파일은 있으나 HTML 로드 안 됨, 새로운 미디어処理作るとき integration 검토
-4. **동일 역할 local 헬퍼 재생산 금지** - 이�� common화된 영역은 다시 만들지 말 것
+3. **Media는 미배선 상태** - 파일은 있으나 HTML 로드 안 됨, 새로운 미디어처리만들 때 integration 검토
+4. **동일 역할 local 헬퍼 재생산 금지** - 이미 common화된 영역은 다시 만들지 말 것
 5. **예외는 문서화 필수** -止むを得ない理由で로컬維持する場合 주석 또는 이 문서에 이유记载
 
 ---
