@@ -1,8 +1,8 @@
 # Legacy Deployment Artifact Audit
 
-**Status:** Audit map  
-**Owner:** CTO / Ops  
-**Related issue:** #221  
+**Status:** Audit map
+**Owner:** CTO / Ops
+**Related issue:** #221
 **Scope:** docs-only audit; no runtime, routing, deployment, or config behavior changes
 
 ---
