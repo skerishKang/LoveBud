@@ -35,21 +35,21 @@
 ```javascript
 {
   // ?�별??  _id: string,          // DB 고유 ?�별??(?�동 ?�성)
-  
+
   // ?�수 ?�드
   name: string,         // ?�리 ?�목 (?�용???�력)
   ownerId: string,      // ?�유??UID (Firebase Auth??uid?� 매핑)
   nodes: array,         // ?�드(?�간) 객체 배열
   edges: array,         // 간선(?�결) 객체 배열
   lastUpdated: string,  // ISO 8601 ?�식??마�?�??�정 ?�간
-  
+
   // ?�택 ?�드
   nodeCount: number,    // nodes.length (조회 최적?�용 캐시)
   visibility: string,   // "public" | "private" | "link" (공개 범위 ?�정)
   viewCount: number,    // 조회??  shareCount: number,   // 공유 ?�수
   likeCount: number,    // 좋아????  lastOpened: timestamp, // 마�?�??�람 ?�간
   forkedFrom: object,   // ?�른 ?�리?�서 복제??경우???�본 ?�보
-  
+
   // ?�위 ?�이??(?�재??Tree 객체 ?�에 ?�함)
   likes: array,         // 공감???�용??ID 리스??  comments: array,      // ?��? ?�이??배열
   updatedAt: timestamp, // ?�이???�정 ?�점
@@ -68,15 +68,15 @@
   id: number|string,   // 개별 ?�드 ?�별??(컴포?�트 ?�별?? 주로 Date.now())
   title: string,       // ?�간???�목 (?�용???�력)
   date: string,        // 기록???�짜 ("YYYY-MM-DD")
-  
+
   // ?�상 ?�보
   videoId: string,     // YouTube ?�영??ID (URL?�서 ?�동 추출)
   sourceUrl: string,   // ?�본 미디??URL
-  
+
   // 감정 �?메모
   moments: array,      // ?�세 ?�?�라???�보 [{ time, text, feeling }]
   description: string, // ?�드 ?�???�명 (메모 ?�용)
-  
+
   // ?�각???�보 (?�디?????�치)
   x: number,           // 캔버??가�?좌표 (기본�?
   y: number            // 캔버???�로 좌표 (기본�?
