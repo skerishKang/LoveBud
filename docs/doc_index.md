@@ -240,7 +240,7 @@ Reference 문서는 `docs/reference/` 아래에 정리됩니다.
 실행 계획은 `docs/plans/` 아래에 정리됩니다.
 
 - **index**: [plans_index.md](./plans/plans_index.md)
-- [FRONTEND_ROADMAP.md](./plans/FRONTEND_ROADMAP.md)
+- [FRONTEND_ROADMAP.md](./plans/FRONTEND_ROADMAP.md) *(corrupted legacy, see #898)*
 - [ROADMAP.md](./plans/ROADMAP.md)
 
 ## archive 문서군
