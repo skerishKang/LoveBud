@@ -1,4 +1,4 @@
-﻿(function () {
+(function () {
   var nodeHelpers = {};
 
   nodeHelpers.hideNodeSkeleton = function hideNodeSkeleton(img, skeleton) {
@@ -21,15 +21,14 @@
     skeleton.textContent = '\u266A';
   };
 
-  nodeHelpers.createNodeImageSection = function createNodeImageSection(mem, deps) {
-    var resolveThumb = deps && deps.resolveMemoryThumbnail;
+  nodeHelpers.createNodeImageSection = function createNodeImageSection(mem, resolveThumbnail) {
     var imgWrapper = document.createElement('div');
     imgWrapper.className = 'node-img-wrapper';
     var skeleton = document.createElement('div');
     skeleton.className = 'node-skeleton';
     imgWrapper.appendChild(skeleton);
     var img = document.createElement('img');
-    img.src = typeof resolveThumb === 'function' ? resolveThumb(mem) : (mem.thumbnail || '');
+    img.src = typeof resolveThumbnail === 'function' ? resolveThumbnail(mem) : (mem.thumbnail || '');
     img.alt = mem.title || '';
     img.draggable = false;
     img.addEventListener('dragstart', function (e) { e.preventDefault(); });
@@ -42,22 +41,23 @@
     return imgWrapper;
   };
 
-  nodeHelpers.createNodeCard = function createNodeCard(mem, deps) {
+  nodeHelpers.createNodeCard = function createNodeCard(mem, resolveThumbnail) {
     var card = document.createElement('div');
     card.className = 'node-card';
-    var imgWrapper = nodeHelpers.createNodeImageSection(mem, deps);
+    var imgWrapper = nodeHelpers.createNodeImageSection(mem, resolveThumbnail);
     card.appendChild(imgWrapper);
     return card;
   };
 
-  nodeHelpers.applyNodePosition = function applyNodePosition(nodeEl, pos, constants) {
+  nodeHelpers.applyNodePosition = function applyNodePosition(nodeEl, pos, constants, mem) {
     var nodeHalf = (constants && constants.NODE_HALF) || 44;
     var scale = (constants && constants.scale) || 1;
+    var delay = (mem && (mem.delay || '0s')) || '0s';
     nodeEl.style.left = (pos.x - nodeHalf) + 'px';
     nodeEl.style.top = (pos.y - nodeHalf) + 'px';
     nodeEl.style.transform = 'scale(' + scale + ')';
     nodeEl.style.transformOrigin = 'center center';
-    nodeEl.style.animationDelay = '0s';
+    nodeEl.style.animationDelay = delay;
   };
 
   nodeHelpers.setupNodeElement = function setupNodeElement(nodeEl, mem) {
@@ -72,10 +72,10 @@
 
   nodeHelpers.createNodeElement = function createNodeElement(mem, pos, deps) {
     var nodeEl = document.createElement('div');
-    var constants = deps ? { NODE_HALF: deps.NODE_HALF, scale: deps.scale } : {};
     nodeHelpers.setupNodeElement(nodeEl, mem);
-    nodeHelpers.applyNodePosition(nodeEl, pos, constants);
-    nodeEl.appendChild(nodeHelpers.createNodeCard(mem, deps));
+    var constants = deps ? { NODE_HALF: deps.NODE_HALF, scale: deps.scale } : {};
+    nodeHelpers.applyNodePosition(nodeEl, pos, constants, mem);
+    nodeEl.appendChild(nodeHelpers.createNodeCard(mem, deps ? deps.resolveMemoryThumbnail : null));
     return nodeEl;
   };
 

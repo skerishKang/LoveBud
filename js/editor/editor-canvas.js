@@ -1,4 +1,4 @@
-﻿function createEditorCanvas(deps) {
+function createEditorCanvas(deps) {
     const {
         canvas,
         svg,
@@ -286,8 +286,8 @@ function isNodeWithinSafeViewport(pos) {
         const nodeEl = document.createElement('div');
         nodeEl.className = 'memory-node floating-node';
         nodeEl.dataset.memoryId = mem.id;
+        nodeEl.draggable = false;
         nodeEl.tabIndex = 0;
-        nodeEl.appendChild(document.createElement('div'));
         return nodeEl;
     }
 
@@ -312,7 +312,7 @@ function isNodeWithinSafeViewport(pos) {
 
     function reapplySelection(selectedNodeId) {
         if (!selectedNodeId) return;
-        const selectedEl = document.querySelector('.memory-node[data-memory-id="' + selectedNodeId + '"]');
+        const selectedEl = document.querySelector(`.memory-node[data-memory-id="${selectedNodeId}"]`);
         if (selectedEl) {
             selectedEl.classList.add('selected');
         }
@@ -360,7 +360,7 @@ function isNodeWithinSafeViewport(pos) {
                 viewportState
             });
         }
-        canvas.style.backgroundPosition = viewportState.offsetX + 'px ' + viewportState.offsetY + 'px';
+        canvas.style.backgroundPosition = `${viewportState.offsetX}px ${viewportState.offsetY}px`;
 
         canvas.querySelectorAll('.memory-node').forEach((node) => node.remove());
         canvas.querySelectorAll('#emptyTreeMessage').forEach((el) => el.remove());
@@ -533,10 +533,10 @@ function isNodeWithinSafeViewport(pos) {
                 persistStoredPositions,
                 initCanvas,
                 getWorldPosition,
-                getDragTargetElement: (draggedId) => document.querySelector('.memory-node[data-memory-id="' + draggedId + '"]'),
+                getDragTargetElement: (draggedId) => document.querySelector(`.memory-node[data-memory-id="${draggedId}"]`),
                 showMovedToast: () => {
                     if (window.LoveBudUI?.showToast) {
-                        window.LoveBudUI.showToast(i18n('node_position_adjusted') || '\uc21c\uac04 \uc704\uce58\ub97c \uc870\uc815\ud588\uc2b5\ub2c8\ub2e4', 'success', 1800);
+                        window.LoveBudUI.showToast(i18n('node_position_adjusted') || '순간 위치를 조정했습니다', 'success', 1800);
                     }
                 }
             });
