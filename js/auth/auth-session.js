@@ -5,6 +5,8 @@
 (function () {
   function getRedirectTarget(getBasePath) {
     var params = new URLSearchParams(window.location.search);
+    var returnTo = params.get('returnTo');
+    if (returnTo) return returnTo;
     var redirect = params.get('redirect');
     if (redirect) return redirect;
     var basePath = typeof getBasePath === 'function' ? getBasePath() : '';
