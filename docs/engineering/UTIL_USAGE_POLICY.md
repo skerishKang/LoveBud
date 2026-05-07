@@ -12,8 +12,8 @@
 
 **왜 필요한가:**
 - 각 페이지 JS마다 동일한 로직이 중복되는 현상 방지
- - util별 현재 상태와 향후 진행 방향을 명확히 합니다.
- - 새로운 로컬 헬퍼를 만들기 전에 참조할 기준을 제공합니다.
+- util별 현재 상태와 향후 진행 방향을 명확히 합니다.
+- 새로운 로컬 헬퍼를 만들기 전에 참조할 기준을 제공합니다.
 
 ---
 
@@ -35,7 +35,7 @@
 
 **detail.js 적용 상태:**
 - loveBudNormalize?.normalizeMemory 사용 (line 284)
- - memory 정규화에 LoveBudNormalize를 우선 사용
+- memory 정규화에 LoveBudNormalize를 우선 사용
 - local fallback: `window.LoveBudNormalize?.normalizeMemory || ((m) => m)`
 
 **ui.js (시범 적용)**
@@ -93,7 +93,7 @@ if (window.LoveBudUI?.showToast) {
 **적용의 대상:**
 - 토스트 메시지: `showToast(message, type, duration)`
 - 로딩 표시: `showLoading()` (placeholder)
- - 확인 다이얼로그: `showConfirm(message)`
+- 확인 다이얼로그: `showConfirm(message)`
 
 ### 3.3 Path (선택 사용, 권장)
 
@@ -133,7 +133,7 @@ const embedUrl = window.LoveBudMedia?.getEmbedUrl(url);
 
 ### 4.1 같은 역할 로컬 헬퍼 재생산 금지
 
-아래 항목은 이제 로컬 헬퍼로 다시 만들지 않습니다.:
+아래 항목은 이제 로컬 헬퍼로 다시 만들지 않습니다:
 
 |역할|이미 공통화|만들어서는 안 되는 예|
 |---|---|---|
