@@ -397,7 +397,7 @@ renderConnectedFragments({...});
 **파일 분리:**
 ```
 js/search.js              (~150줄) - 오케스트레이이터
-js/search-data-adapter.js (신규) - 데이터 변환/적응
+js/search/search-data-adapter.js (신규) - 데이터 변환/적응
 js/search-card-renderer.js (신규) - 카드 렌더링
 js/search-preview-renderer.js (신규) -プレビュー 렌더링
 ```
@@ -407,7 +407,7 @@ js/search-preview-renderer.js (신규) -プレビュー 렌더링
 | 파일 | 책임 |
 |------|------|
 | search.js | 오케스트레이션 (DOM 참조, 이벤트, 렌더러 조율) |
-| search-data-adapter.js | API 응답 → 뷰 모델 변환 |
+| js/search/search-data-adapter.js | API 응답 → 뷰 모델 변환 |
 | search-card-renderer.js | tree card HTML 생성 |
 | search-preview-renderer.js | preview panel HTML 생성 |
 
@@ -462,7 +462,7 @@ js/editor/editor-root-helpers.js (신규) - root 레벨 헬퍼 함수들
 |------|----------|
 | `js/detail.js` | 데이터/렌더링 분리 완료 (435줄) |
 | `js/search.js` | 오케스트레이터 분리 (240줄) |
-| `js/search-data-adapter.js` | 신규 생성 |
+| `js/search/search-data-adapter.js` | 신규 생성 |
 | `js/search-card-renderer.js` | 신규 생성 |
 | `js/search-preview-renderer.js` | 신규 생성 |
 | `js/editor/editor-root-helpers.js` | 신규 생성 |

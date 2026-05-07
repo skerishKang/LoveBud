@@ -52,9 +52,9 @@ Issue #72 remains paused because earlier file-move work created operational risk
 4. `js/api/base-api-fetch.js`
 5. `js/api/public-tree-adapter.js`
 6. `js/postgres-client.js`
-7. `js/search-title-helper.js`
-8. `js/search-data-adapter.js`
-9. `js/search-shared-utils.js`
+7. `js/search/search-title-helper.js`
+8. `js/search/search-data-adapter.js`
+9. `js/search/search-shared-utils.js`
 10. `js/search-card-renderer.js`
 11. `js/search-preview-renderer.js`
 12. `js/search/search-preview-cache.js`

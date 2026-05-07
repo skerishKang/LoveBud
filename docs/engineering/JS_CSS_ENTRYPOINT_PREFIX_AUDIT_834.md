@@ -58,10 +58,10 @@ Each finding is classified for future reference. Any implementation PR must refe
 |---|---|---|---|
 | js/search-card-renderer.js | js/search/ | MOVE_CANDIDATE + NEEDS_SCRIPT_ORDER_REVIEW | |
 | js/search-copy-ui.js | js/search/ | MOVE_CANDIDATE + NEEDS_SCRIPT_ORDER_REVIEW | |
-| js/search-data-adapter.js | js/search/ | MOVE_CANDIDATE + NEEDS_SCRIPT_ORDER_REVIEW | |
+| js/search/search-data-adapter.js | js/search/ | MOVED_IN_PR_C1 | |
 | js/search-preview-renderer.js | js/search/ | MOVE_CANDIDATE + NEEDS_SCRIPT_ORDER_REVIEW | |
-| js/search-shared-utils.js | js/search/ | MOVE_CANDIDATE + NEEDS_SCRIPT_ORDER_REVIEW | |
-| js/search-title-helper.js | js/search/ | MOVE_CANDIDATE + NEEDS_SCRIPT_ORDER_REVIEW | |
+| js/search/search-shared-utils.js | js/search/ | MOVED_IN_PR_C1 | |
+| js/search/search-title-helper.js | js/search/ | MOVED_IN_PR_C1 | |
 
 ### Folder-prefix mismatch (JS)
 
