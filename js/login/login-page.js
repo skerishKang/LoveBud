@@ -112,7 +112,7 @@
     var redirect = '';
     try {
       var params = new URLSearchParams(global.location ? global.location.search : '');
-      redirect = params.get('redirect') || '';
+      redirect = params.get('redirect') || params.get('returnTo') || '';
     } catch (error) {
       redirect = '';
     }

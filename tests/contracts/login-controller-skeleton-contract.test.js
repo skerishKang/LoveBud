@@ -74,7 +74,8 @@ test('login controller redirect notice is gated by explicit redirect query param
 
   assert.match(source, /new URLSearchParams\(global\.location \? global\.location\.search : ''\)/, 'controller must parse query params without performing navigation');
   assert.match(source, /params\.get\('redirect'\)/, 'redirect notice must use the explicit redirect query param');
-  assert.match(source, /noticeEl\.style\.display\s*=\s*redirect \? 'block' : 'none'/, 'redirect notice display must depend on redirect param only');
+  assert.match(source, /params\.get\('returnTo'\)/, 'redirect notice must also support explicit returnTo query param');
+  assert.match(source, /noticeEl\.style\.display\s*=\s*redirect \? 'block' : 'none'/, 'redirect notice display must depend on explicit auth-route param only');
   assert.doesNotMatch(source, /noticeEl\.style\.display\s*=\s*global\.location\s*&&\s*global\.location\.search/, 'redirect notice must not depend on any query string presence');
 });
 
