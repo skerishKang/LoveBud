@@ -1,10 +1,10 @@
 /**
  * LoveBud Search Preview Renderer
  * v20260506-1
- * 
+ *
  * Rendering layer: preview sidebar panel.
  * DOM-agnostic - updates passed DOM elements.
- * 
+ *
  * Dependencies: LoveBudPath (for navigation), LoveBudSearchSharedUtils (for shared utilities)
  */
 

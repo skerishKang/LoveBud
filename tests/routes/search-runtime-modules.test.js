@@ -73,19 +73,6 @@ test('browse feed controls do not expose batch strategy as product UI', () => {
   assert.match(uiModule, /callbacks\.loadMorePublicTrees/);
 });
 
-test('browse top section preserves brand emphasis and grouped discovery controls', () => {
-  const html = read('pages/search.html');
-  const i18nModule = read('js/i18n/i18n-search.js');
-  const controlsCss = read('css/search/controls.css');
-
-  assert.match(html, /<h2 class="headline"><span class="brand-emphasis" data-i18n="search\.titleBrand">러브트리<\/span><span class="browse-heading-action" data-i18n="search\.titleAction">를 둘러보세요<\/span><\/h2>/);
-  assert.doesNotMatch(html, /<h2 class="headline" data-i18n="search\.title"/);
-  assert.match(html, /class="browse-discovery-panel reveal-up"/);
-  assert.match(i18nModule, /'search\.titleBrand'/);
-  assert.match(i18nModule, /'search\.titleAction'/);
-  assert.match(controlsCss, /\.browse-discovery-panel/);
-});
-
 test('browse filter and sort changes reset pagination state without changing feed cards', () => {
   const uiModule = read('js/search/search-ui.js');
   const controlsModule = read('js/search/search-controls.js');

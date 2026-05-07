@@ -1,16 +1,16 @@
 .preview-sidebar {
     position: sticky;
-    top: 108px;
+    top: 96px;
     height: fit-content;
     background:
         radial-gradient(circle at 28% 12%, rgba(255, 248, 246, 0.96), transparent 38%),
         radial-gradient(circle at 80% 22%, rgba(242, 234, 228, 0.72), transparent 28%),
         linear-gradient(180deg, rgba(255, 249, 245, 0.92), rgba(244, 248, 238, 0.96));
-    padding: 24px 22px;
-    border-radius: 1.75rem;
+    padding: 30px 24px;
+    border-radius: 2.25rem;
     border: 1px solid rgba(144, 73, 81, 0.1);
     box-shadow:
-        0 18px 44px rgba(75, 64, 57, 0.10),
+        0 24px 60px rgba(75, 64, 57, 0.12),
         inset 0 1px 0 rgba(255, 255, 255, 0.9);
     backdrop-filter: blur(14px);
     min-width: 0;
@@ -30,16 +30,16 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 8px;
+    margin-bottom: 10px;
     min-width: 0;
 }
 
 .preview-panel-header h3 {
-    font-size: 1.34rem;
+    font-size: 1.68rem;
     font-weight: 900;
     color: var(--on-surface);
     margin: 0;
-    letter-spacing: 0;
+    letter-spacing: -0.02em;
 }
 
 .preview-panel-title-group {
@@ -73,7 +73,7 @@
     font-size: 11px;
     font-weight: 900;
     color: var(--primary);
-    background: rgba(144, 73, 81, 0.07);
+    background: rgba(144, 73, 81, 0.08);
     padding: 6px 11px;
     border-radius: 99px;
     white-space: nowrap;
