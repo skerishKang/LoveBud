@@ -1,5 +1,13 @@
 # Lovetree ?�이??모델 초안
 
+> [!WARNING]
+> This document is retained as a corrupted legacy/planning artifact.
+> Its body contains severe mojibake / unreadable text and must not be treated as authoritative project guidance.
+> Do not reconstruct the original meaning by guessing from the corrupted text.
+> Use current repository docs and issue/PR records instead.
+>
+> Tracking: Refs #898
+
 ## 1. 목적
 
 ?�재 Lovetree 코드?�서 ?�제�??�용?�는 ?�이??구조�?문서?�한?? ?�상?�인 ?�키마�? ?�닌 ?�재 구현 기�???초안?�다.
