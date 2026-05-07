@@ -103,3 +103,9 @@
 .browse-scroll-load-sentinel.is-loading .material-symbols-outlined {
     animation: spin 1s linear infinite;
 }
+
+.browse-scroll-load-sentinel.is-idle {
+    min-height: 1px;
+    margin: 0;
+    overflow: hidden;
+}
