@@ -49,6 +49,7 @@
 31. [V01_UI_TRUST_PASS_RELEASE_GATE_681.md](./V01_UI_TRUST_PASS_RELEASE_GATE_681.md) - #681 v0.1 UI Trust Pass release-gate status taxonomy and active PR verification contract
 32. [JS_CSS_ENTRYPOINT_PREFIX_AUDIT_834.md](./JS_CSS_ENTRYPOINT_PREFIX_AUDIT_834.md) - #834 JS/CSS entrypoint and folder-prefix naming consistency audit
 33. [SEARCH_ROOT_LEGACY_MOVE_PREFLIGHT_656.md](./SEARCH_ROOT_LEGACY_MOVE_PREFLIGHT_656.md) - #656 PR-C preflight for moving root Search legacy files under js/search/
+34. [SEARCH_DUPLICATE_RENDERER_SOURCE_OF_TRUTH_656.md](./SEARCH_DUPLICATE_RENDERER_SOURCE_OF_TRUTH_656.md) - #656 Search duplicate renderer source-of-truth comparison
 
 ---
 
