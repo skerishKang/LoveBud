@@ -293,6 +293,8 @@
         if (_dom.previewEmotionTags) {
             _dom.previewEmotionTags.innerHTML = renderEmotionTags([]);
         }
+        var emotionSection = document.getElementById('previewEmotionSection');
+        if (emotionSection) emotionSection.hidden = false;
     }
 
     const renderPreviewThumbnailFallback = previewBuilders.renderPreviewThumbnailFallback || function(title, subtitle) { return ''; };
@@ -492,6 +494,8 @@
         if (_dom.previewEmotionTags) {
             _dom.previewEmotionTags.innerHTML = renderEmotionTags(tree.emotionTags);
         }
+        var emotionSection = document.getElementById('previewEmotionSection');
+        if (emotionSection) emotionSection.hidden = false;
     }
 
     const renderPlaceholder = previewBuilders.renderPlaceholder || function() {
@@ -540,6 +544,8 @@
         if (_dom.previewEmotionTags) {
             _dom.previewEmotionTags.innerHTML = renderEmotionTags([]);
         }
+        var emotionSection = document.getElementById('previewEmotionSection');
+        if (emotionSection) emotionSection.hidden = true;
     }
 
     window.LoveBudSearchPreviewRenderer = {

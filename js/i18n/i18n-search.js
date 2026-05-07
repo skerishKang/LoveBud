@@ -186,8 +186,8 @@
       en: 'Waiting for the first moment'
     },
     'search.previewStatsPending': {
-      ko: '열리면 함께 보여요',
-      en: 'Appears when it opens.'
+      ko: '대기 중',
+      en: 'Pending'
     },
     'search.previewEmotionTagsLabel': {
       ko: '이어진 감정',
