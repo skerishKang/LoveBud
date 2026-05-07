@@ -1,7 +1,7 @@
 # Mobile viewport verification policy — Issue #823
 
-**Status:** Browser verification policy  
-**Owner:** CTO / UI Lead  
+**Status:** Browser verification policy
+**Owner:** CTO / UI Lead
 **Related issue:** #823
 
 This document defines the mobile viewport coverage policy for LoveBud browser verification. It extends the existing 375px mobile baseline with modern large-phone smoke coverage for UI-sensitive work.
