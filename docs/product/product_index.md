@@ -10,6 +10,7 @@
 - 전역 UI 카피 운영 기준 정리
 - public-first visibility / Plus private storage / anonymous public exposure / Browse/Search eligibility 정책 정리
 - Browse sort semantics and public discovery language 정리
+- Editor/viewer vertical LoveTree layout decision 정리
 
 ## 파일 목록
 
@@ -20,6 +21,9 @@
 | [PUBLICATION_AND_PRIVACY_UX_POLICY.md](PUBLICATION_AND_PRIVACY_UX_POLICY.md) | public-first visibility, Plus private storage, memory visibility inheritance, anonymous public exposure, Browse/Search eligibility 정책 |
 | [PUBLIC_DEFAULT_VISIBILITY_AUDIT_PLAN.md](PUBLIC_DEFAULT_VISIBILITY_AUDIT_PLAN.md) | public-by-default 정책과 private entitlement 이전 visibility mismatch를 안전하게 audit/backfill 판단하기 위한 count-only 계획 |
 | [BROWSE_POPULAR_SORT_SEMANTICS.md](BROWSE_POPULAR_SORT_SEMANTICS.md) | Browse `popular` sort의 현재 memory-count proxy 의미와 v0.1 표시 정책 방향 |
+| [READ_ONLY_LOVETREE_VIEWER_PLAN.md](READ_ONLY_LOVETREE_VIEWER_PLAN.md) | read-only LoveTree viewer의 route, public-safe data, viewer/editor separation, interaction, privacy guardrail 계획 |
+| [VERTICAL_TREE_LAYOUT_DECISION.md](VERTICAL_TREE_LAYOUT_DECISION.md) | Editor와 read-only viewer의 세로형 tree-growth layout 채택 결정, desktop/mobile 원칙, phased rollout 기준 |
+| [BROWSE_TREE_FIRST_DISCOVERY_PLAN.md](BROWSE_TREE_FIRST_DISCOVERY_PLAN.md) | Browse를 tree-first public LoveTree discovery로 발전시키기 위한 card/감상허브/viewer route semantics 계획 |
 | [PUBLIC_VIEWER_SOCIAL_PLACEHOLDER_PLAN.md](PUBLIC_VIEWER_SOCIAL_PLACEHOLDER_PLAN.md) | public LoveTree viewer에서 tree-level / moment-level social placeholder 배치 방향, desktop/mobile placement, empty-state copy, write affordance 분리 기준 |
 | [TREE_MOMENT_SOCIAL_MODEL.md](TREE_MOMENT_SOCIAL_MODEL.md) | public LoveTree의 tree-level / moment-level comments, reactions, permissions, moderation, phased implementation 모델 |
 | [TREE_LEVEL_COMMENTS_READ_CONTRACT.md](TREE_LEVEL_COMMENTS_READ_CONTRACT.md) | public LoveTree 전체에 붙는 tree-level comments의 read contract, visibility guard, safe response, empty/error state 기준 |
@@ -56,6 +60,14 @@
 - Browse `popular` sort는 현재 true engagement popularity가 아니라 `publicMemoryCount DESC, createdAt DESC` proxy입니다.
 - private tree 아래 public memory가 가능하더라도 Browse/Search, community memories list, public memory detail read 노출은 parent tree visibility guard를 함께 봅니다.
 - owner/private read는 private access policy에 따라 private tree 아래 public/private memory를 조회할 수 있습니다.
+
+## Read-only viewer highlights
+
+The read-only LoveTree viewer is the planned full-tree public viewing surface. It should use public-safe data, stay separate from Editor authority, and never create edit/delete/drag/add/title-edit/memo-edit/source-edit affordances in viewer mode.
+
+## Vertical tree layout highlights
+
+Editor and read-only viewer layout direction is vertical tree-growth, not a plain vertical list. The first/root moment should sit closer to the lower root area, while later connected moments grow upward through visible branches. Runtime implementation should proceed in phases and use screenshot-based review when visual quality is in scope.
 
 ## Social model highlights
 
@@ -102,23 +114,26 @@ Strong primary CTAs require Ready status and valid runtime verification when Aut
 3. **PUBLICATION_AND_PRIVACY_UX_POLICY.md** — public-first visibility / Plus private storage / anonymous public exposure / Browse/Search eligibility 정책
 4. **PUBLIC_DEFAULT_VISIBILITY_AUDIT_PLAN.md** — public-by-default 정책 alignment와 private entitlement 이전 visibility mismatch audit/backfill gate
 5. **BROWSE_POPULAR_SORT_SEMANTICS.md** — Browse `popular` sort의 현재 의미와 v0.1 표시 정책 방향
-6. **TREE_MOMENT_SOCIAL_MODEL.md** — tree-level / moment-level social scope, permissions, moderation, data model planning
-7. **PUBLIC_VIEWER_SOCIAL_PLACEHOLDER_PLAN.md** — public viewer social placeholder 배치 및 phasing 계획
-8. **TREE_LEVEL_COMMENTS_READ_CONTRACT.md** — tree-level comments read scope, parent-tree guard, public-safe response, empty/error state contract
-9. **MOMENT_LEVEL_COMMENTS_READ_CONTRACT.md** — moment-level comments read scope, parent-tree guard, target-moment guard, public-safe response, empty/error state contract
-10. **V01_CTA_EXPOSURE_POLICY.md** — v0.1 unfinished/partial action 노출 기준과 CTA readiness 분류 정책
-11. **MOMENT_TIMELINE_PLAN.md** — cue-based Moment Timeline 계획
-12. **YOUTUBE_SEGMENT_PLAYER_POC_SCOPE.md** — YouTube segment player PoC scope and verification criteria
-13. **YOUTUBE_SEGMENT_PLAYER_POC_TEST_MATRIX.md** — YouTube segment player PoC test matrix and browser verification requirements
-14. **YOUTUBE_SEGMENT_PLAYER_POC_RUNTIME_NOTES.md** — YouTube segment player PoC runtime observations and limitations
-15. **YOUTUBE_SEGMENT_PLAYER_POC_BROWSER_VERIFICATION.md** — YouTube segment player PoC browser verification evidence and feasibility decision
-16. **MOMENT_CAPTURE_UI_DESIGN.md** — Moment capture UI flow 설계
-17. **MOMENT_TIMELINE_REORDER_DESIGN.md** — Moment Timeline reorder / sequence editor 설계
-18. **UI_COPY_DIET_GUIDE.md** — 전역 UI 카피 다이어트 기준
-19. **MVP_SCOPE.md** — MVP 범위 및 In/Out of Scope
-20. **USER_FLOW.md** — 사용자 여정 및 핵심 플로우
-21. **PRODUCT_BRIEF.md** — 현재 실행 기준 요약
-22. **필요시 DATA_NAMING_RULE.md, READONLY_SHARE_SCOPE.md**
+6. **READ_ONLY_LOVETREE_VIEWER_PLAN.md** — read-only LoveTree viewer route/data/viewer-editor separation 계획
+7. **VERTICAL_TREE_LAYOUT_DECISION.md** — 세로형 tree-growth layout 채택 결정
+8. **BROWSE_TREE_FIRST_DISCOVERY_PLAN.md** — Browse tree-first discovery와 viewer route semantics 계획
+9. **TREE_MOMENT_SOCIAL_MODEL.md** — tree-level / moment-level social scope, permissions, moderation, data model planning
+10. **PUBLIC_VIEWER_SOCIAL_PLACEHOLDER_PLAN.md** — public viewer social placeholder 배치 및 phasing 계획
+11. **TREE_LEVEL_COMMENTS_READ_CONTRACT.md** — tree-level comments read scope, parent-tree guard, public-safe response, empty/error state contract
+12. **MOMENT_LEVEL_COMMENTS_READ_CONTRACT.md** — moment-level comments read scope, parent-tree guard, target-moment guard, public-safe response, empty/error state contract
+13. **V01_CTA_EXPOSURE_POLICY.md** — v0.1 unfinished/partial action 노출 기준과 CTA readiness 분류 정책
+14. **MOMENT_TIMELINE_PLAN.md** — cue-based Moment Timeline 계획
+15. **YOUTUBE_SEGMENT_PLAYER_POC_SCOPE.md** — YouTube segment player PoC scope and verification criteria
+16. **YOUTUBE_SEGMENT_PLAYER_POC_TEST_MATRIX.md** — YouTube segment player PoC test matrix and browser verification requirements
+17. **YOUTUBE_SEGMENT_PLAYER_POC_RUNTIME_NOTES.md** — YouTube segment player PoC runtime observations and limitations
+18. **YOUTUBE_SEGMENT_PLAYER_POC_BROWSER_VERIFICATION.md** — YouTube segment player PoC browser verification evidence and feasibility decision
+19. **MOMENT_CAPTURE_UI_DESIGN.md** — Moment capture UI flow 설계
+20. **MOMENT_TIMELINE_REORDER_DESIGN.md** — Moment Timeline reorder / sequence editor 설계
+21. **UI_COPY_DIET_GUIDE.md** — 전역 UI 카피 다이어트 기준
+22. **MVP_SCOPE.md** — MVP 범위 및 In/Out of Scope
+23. **USER_FLOW.md** — 사용자 여정 및 핵심 플로우
+24. **PRODUCT_BRIEF.md** — 현재 실행 기준 요약
+25. **필요시 DATA_NAMING_RULE.md, READONLY_SHARE_SCOPE.md**
 
 ## 참조
 - 전체 문서 인덱스: `../doc_index.md`
