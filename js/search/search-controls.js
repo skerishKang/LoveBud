@@ -2,6 +2,12 @@
     function createSearchControls({ refs, state, callbacks, ui }) {
         const { searchInput, tagChips } = refs;
         let searchInputTimer = null;
+        const DEFAULT_LIMIT = 6;
+
+        function resetPaginationState() {
+            state.currentLimit = DEFAULT_LIMIT;
+            state.hasMoreTrees = true;
+        }
 
         function bindSearchInput() {
             if (!searchInput) return;
@@ -10,8 +16,10 @@
                 state.currentQuery = event.target.value.trim();
                 if (searchInputTimer) clearTimeout(searchInputTimer);
                 searchInputTimer = setTimeout(() => {
+                    resetPaginationState();
                     callbacks.renderResults(false);
                     callbacks.updateUrlState();
+                    ui?.syncControlsFromState?.();
                 }, 180);
             });
         }
@@ -24,8 +32,10 @@
                     tagChips.forEach(c => c.classList.remove('active'));
                     chip.classList.add('active');
                     state.currentCategory = chip.dataset.category || chip.textContent.trim();
+                    resetPaginationState();
                     callbacks.renderResults(false);
                     callbacks.updateUrlState();
+                    ui?.syncControlsFromState?.();
                 });
             });
         }

@@ -130,11 +130,11 @@
         const SORT_COPY = {
             latest: {
                 title: () => getSearchCopy('search.resultsHeading', '최근 러브트리', 'Recent LoveTrees'),
-                badge: (count) => getCurrentLocale() === 'en' ? `${count} to start with` : `지금 먼저 볼 ${count}개`
+                badge: () => getCurrentLocale() === 'en' ? 'Continuous feed' : '이어지는 감상'
             },
             popular: {
                 title: () => getCurrentLocale() === 'en' ? 'Popular LoveTrees' : '인기 많은 러브트리',
-                badge: (count) => getCurrentLocale() === 'en' ? `${count} trending now` : `지금 반응 좋은 ${count}개`
+                badge: () => getCurrentLocale() === 'en' ? 'Most connected' : '많이 이어진 감상'
             }
         };
 
@@ -197,24 +197,8 @@
             if (refs.resultsBadge) {
                 refs.resultsBadge.innerHTML = `
                     <span class="material-symbols-outlined" style="font-size:15px;">auto_awesome</span>
-                    ${copy.badge(Math.min(state.currentLimit, 60))}
+                    ${copy.badge()}
                 `;
-            }
-            const loadMoreBtn = document.getElementById('browseLoadMoreBtn');
-            if (loadMoreBtn) {
-                const shouldDisable = !state.apiTreesLoaded || state.currentLimit >= 60 || !state.hasMoreTrees || state.isLoadingMore;
-                loadMoreBtn.disabled = shouldDisable;
-
-                if (state.isLoadingMore) {
-                    loadMoreBtn.innerHTML = `
-                        <span class="material-symbols-outlined" style="animation: spin 1s linear infinite;">progress_activity</span>
-                        ${getCurrentLocale() === 'en' ? 'Loading...' : '로딩 중...'}
-                    `;
-                } else {
-                    loadMoreBtn.textContent = state.currentLimit >= 60
-                        ? (getCurrentLocale() === 'en' ? 'Max 60' : '최대 60개')
-                        : (getCurrentLocale() === 'en' ? 'Load more' : '더 보기');
-                }
             }
         }
 
@@ -248,25 +232,6 @@
                 chip.classList.toggle('active', chip.dataset.browseSort === state.currentSort);
             });
 
-            const loadMoreBtn = controls.querySelector('#browseLoadMoreBtn');
-            if (loadMoreBtn) {
-                const shouldHide = state.currentLimit >= 60 || !state.hasMoreTrees;
-                loadMoreBtn.style.display = shouldHide ? 'none' : 'inline-flex';
-
-                // Update button text and state for loading
-                if (state.isLoadingMore) {
-                    loadMoreBtn.disabled = true;
-                    loadMoreBtn.innerHTML = `
-                        <span class="material-symbols-outlined" style="animation: spin 1s linear infinite;">progress_activity</span>
-                        ${getCurrentLocale() === 'en' ? 'Loading...' : '로딩 중...'}
-                    `;
-                } else {
-                    loadMoreBtn.disabled = !state.apiTreesLoaded;
-                    loadMoreBtn.textContent = state.currentLimit >= 60
-                        ? (getCurrentLocale() === 'en' ? 'Max 60' : '최대 60개')
-                        : (getCurrentLocale() === 'en' ? 'Load more' : '더 보기');
-                }
-            }
             syncScrollLoadSentinel();
         }
 
@@ -287,13 +252,19 @@
             const isDone = !state.apiTreesLoaded || state.currentLimit >= 60 || !state.hasMoreTrees;
             scrollLoadSentinel.hidden = isDone;
             scrollLoadSentinel.classList.toggle('is-loading', Boolean(state.isLoadingMore));
+            scrollLoadSentinel.classList.toggle('is-idle', !state.isLoadingMore);
             scrollLoadSentinel.setAttribute('aria-hidden', isDone ? 'true' : 'false');
+
+            const icon = scrollLoadSentinel.querySelector('.material-symbols-outlined');
+            if (icon) {
+                icon.hidden = !state.isLoadingMore;
+            }
 
             const text = scrollLoadSentinel.querySelector('[data-scroll-load-label]');
             if (!text) return;
             text.textContent = state.isLoadingMore
                 ? 'Loading more LoveTrees...'
-                : 'More LoveTrees will appear as you scroll.';
+                : '';
         }
 
         function isSentinelNearViewport() {
@@ -400,7 +371,6 @@
                     <button type="button" class="tag-chip" data-browse-sort="latest">${getCurrentLocale() === 'en' ? 'Latest' : '최신순'}</button>
                     <button type="button" class="tag-chip" data-browse-sort="popular">${getCurrentLocale() === 'en' ? 'Popular' : '많은 순간순'}</button>
                 </div>
-                <button type="button" id="browseLoadMoreBtn" class="tag-chip">${getCurrentLocale() === 'en' ? 'Load more' : '더 보기'}</button>
             `;
 
             let rightGroup = refs.resultsHead.querySelector('.browse-head-right');
@@ -425,14 +395,12 @@
                     const nextSort = button.dataset.browseSort || 'latest';
                     if (nextSort === state.currentSort) return;
                     state.currentSort = nextSort;
+                    state.currentLimit = 6;
+                    state.hasMoreTrees = true;
                     syncControlsFromState();
                     callbacks.updateUrlState();
                     await callbacks.loadPublicTrees({ resetSelection: true });
                 });
-            });
-
-            controls.querySelector('#browseLoadMoreBtn')?.addEventListener('click', async () => {
-                await callbacks.loadMorePublicTrees?.({ source: 'button' });
             });
 
             ensureScrollLoadSentinel();
