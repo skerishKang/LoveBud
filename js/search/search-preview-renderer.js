@@ -469,7 +469,7 @@
             } else {
                 const visibleMemories = memories.slice(0, VISIBLE_FLOW_MOMENT_COUNT);
                 const hiddenMemories = memories.slice(VISIBLE_FLOW_MOMENT_COUNT);
-                const pathStages = renderPathStages(visibleMemories);
+                const pathStages = renderPathStages(visibleMemories, 0, false);
                 const flowToggle = renderFlowToggleButton(hiddenMemories.length, isFlowExpanded);
                 const hiddenStages = renderHiddenPathStages(hiddenMemories, VISIBLE_FLOW_MOMENT_COUNT, isFlowExpanded);
                 const firstMomentLabel = getMomentLabel(firstMem, '시작 순간', 'Starting moment');
