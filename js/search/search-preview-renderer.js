@@ -530,7 +530,7 @@
             _dom.previewTitle.textContent = placeholderTitle;
         }
         if (_dom.previewDesc) {
-            _dom.previewDesc.innerHTML = `<p style="margin-bottom:16px;">${escapeHtml(placeholderDescription)}</p>`;
+            _dom.previewDesc.hidden = true;
         }
         if (previewStats) {
             previewStats.hidden = true;
