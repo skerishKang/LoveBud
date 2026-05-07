@@ -78,20 +78,20 @@
       en: 'Choose a tree to open it.'
     },
     'search.previewPlaceholder': {
-      ko: '아직 선택한 러브트리가 없어요.',
-      en: 'No LoveTree selected yet.'
+      ko: '트리를 선택해보세요',
+      en: 'Select a tree to preview'
     },
     'search.previewDescriptionPlaceholder': {
-      ko: '마음이 닿는 트리를 골라보세요.',
-      en: 'Choose a tree that draws you in.'
+      ko: '대표 순간과 이어진 마음이 이곳에 열려요.',
+      en: 'The featured moment and connected feelings open here.'
     },
     'search.previewEmptyLead': {
-      ko: '아직 선택한 러브트리가 없어요.',
-      en: 'No LoveTree selected yet.'
+      ko: '트리를 선택해보세요',
+      en: 'Select a tree to preview'
     },
     'search.previewEmptyBody': {
-      ko: '마음이 닿는 트리를 골라보세요.',
-      en: 'Choose a tree that draws you in.'
+      ko: '대표 순간과 이어진 마음이 이곳에 열려요.',
+      en: 'The featured moment and connected feelings open here.'
     },
     'search.previewNoMomentTitle': {
       ko: '아직 대표 순간이 없어요.',
