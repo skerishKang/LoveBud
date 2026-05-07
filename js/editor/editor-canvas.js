@@ -191,7 +191,15 @@ function isNodeWithinSafeViewport(pos) {
         });
     }
 
-    const { drawBranch } = canvasEdges;
+    const requireCanvasEdgeMethod = (name) => {
+        if (typeof canvasEdges[name] !== 'function') {
+            throw new Error(`LoveBudEditorCanvasEdges.${name} is required`);
+        }
+        return canvasEdges[name];
+    };
+    const drawBranch = requireCanvasEdgeMethod('drawBranch');
+    const clearBranches = requireCanvasEdgeMethod('clearBranches');
+    const drawBranchForMemory = requireCanvasEdgeMethod('drawBranchForMemory');
     const NODE_TAP_SELECT_THRESHOLD = 8;
 
     function bindNodeDrag(nodeEl, mem) {
@@ -371,7 +379,7 @@ function isNodeWithinSafeViewport(pos) {
 
         canvas.querySelectorAll('.memory-node').forEach((node) => node.remove());
         canvas.querySelectorAll('#emptyTreeMessage').forEach((el) => el.remove());
-        svg.querySelectorAll('.branch-line').forEach((line) => line.remove());
+        clearBranches();
         clearGrowthAffordance();
 
         setDetailEmptyState(!hasVisibleNodes);
@@ -383,11 +391,11 @@ function isNodeWithinSafeViewport(pos) {
 
         drawableMemories.forEach((node) => {
             drawNode(node);
-            const parentId = node.parentId || canonicalRootId;
-            const parent = treeMemories.find((m) => m.id === parentId);
-            if (parent) {
-                drawBranch(calcPosition(parent), calcPosition(node));
-            }
+            drawBranchForMemory(node, {
+                treeMemories,
+                canonicalRootId,
+                calcPosition
+            });
         });
 
         if (hasVisibleNodes) {
