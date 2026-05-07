@@ -4,7 +4,7 @@
 
 ## 용도
 - **프로젝트 전체 실행 계획**: 현재 상태, 남은 우선순위, 다음 작업 (ROADMAP.md)
- - **프론트엔드 구현 상세 계획**: 페이지별 품질 기준, 빌드 큐, Phase별 실행 계획 (FRONTEND_ROADMAP.md) *(corrupted legacy, see #898)*
+- **프론트엔드 구현 상세 계획**: 페이지별 품질 기준, 빌드 큐, Phase별 실행 계획 (FRONTEND_ROADMAP.md) *(corrupted legacy, see #898)*
 - 단기/중기/장기 실행 방향 및 우선순위 관리
 
 ## 먼저 읽기 순서
