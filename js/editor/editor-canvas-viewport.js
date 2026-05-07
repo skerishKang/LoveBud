@@ -1,7 +1,28 @@
 window.LoveBudEditorCanvasViewport = {
+  minScale: 0.65,
+  maxScale: 1.55,
+  zoomStep: 1.18,
   readableCenter: {
     x: 0.5,
     y: 0.38
+  },
+
+  getScale(viewportState) {
+    const scale = Number(viewportState && viewportState.scale);
+    if (!Number.isFinite(scale) || scale <= 0) return 1;
+    return Math.min(this.maxScale, Math.max(this.minScale, scale));
+  },
+
+  setScale(viewportState, nextScale) {
+    viewportState.scale = Math.min(this.maxScale, Math.max(this.minScale, Number(nextScale) || 1));
+  },
+
+  projectWorldPosition(world, viewportState) {
+    const scale = this.getScale(viewportState);
+    return {
+      x: world.x * scale + viewportState.offsetX,
+      y: world.y * scale + viewportState.offsetY
+    };
   },
 
   getViewportTargets(options) {
@@ -26,6 +47,7 @@ window.LoveBudEditorCanvasViewport = {
     const targets = this.getViewportTargets(options);
     if (!targets.length) return null;
 
+    const scale = this.getScale(options.viewportState);
     const points = targets.map((memory) => getWorldPosition(memory));
     const minX = Math.min(...points.map((point) => point.x));
     const maxX = Math.max(...points.map((point) => point.x));
@@ -34,13 +56,45 @@ window.LoveBudEditorCanvasViewport = {
     const metrics = getMetrics();
 
     return {
-      offsetX: Math.round(metrics.width * this.readableCenter.x - ((minX + maxX) / 2)),
-      offsetY: Math.round(metrics.height * this.readableCenter.y - ((minY + maxY) / 2))
+      offsetX: Math.round(metrics.width * this.readableCenter.x - (((minX + maxX) / 2) * scale)),
+      offsetY: Math.round(metrics.height * this.readableCenter.y - (((minY + maxY) / 2) * scale))
+    };
+  },
+
+  getFitViewport(options) {
+    const { getWorldPosition, getMetrics } = options;
+    const targets = this.getViewportTargets(options);
+    if (!targets.length) {
+      return { scale: 1, offsetX: 0, offsetY: 0 };
+    }
+
+    const points = targets.map((memory) => getWorldPosition(memory));
+    const minX = Math.min(...points.map((point) => point.x));
+    const maxX = Math.max(...points.map((point) => point.x));
+    const minY = Math.min(...points.map((point) => point.y));
+    const maxY = Math.max(...points.map((point) => point.y));
+    const metrics = getMetrics();
+    const padding = Math.min(180, Math.max(96, Math.round(metrics.width * 0.12)));
+    const boundsWidth = Math.max(1, maxX - minX + 180);
+    const boundsHeight = Math.max(1, maxY - minY + 180);
+    const fitScale = Math.min(
+      this.maxScale,
+      Math.max(
+        this.minScale,
+        Math.min((metrics.width - padding) / boundsWidth, (metrics.height - padding) / boundsHeight)
+      )
+    );
+
+    return {
+      scale: fitScale,
+      offsetX: Math.round(metrics.width * this.readableCenter.x - (((minX + maxX) / 2) * fitScale)),
+      offsetY: Math.round(metrics.height * this.readableCenter.y - (((minY + maxY) / 2) * fitScale))
     };
   },
 
   prepareInitialViewport(options) {
     const { viewportState } = options;
+    this.setScale(viewportState, viewportState.scale || 1);
     if (viewportState.initialViewportApplied) return;
 
     if (viewportState.hasStoredViewportOffset) {
@@ -78,8 +132,9 @@ window.LoveBudEditorCanvasViewport = {
 
     const world = getWorldPosition(target);
     const metrics = getMetrics();
-    viewportState.offsetX = Math.round(metrics.width * 0.5 - world.x);
-    viewportState.offsetY = Math.round(metrics.height * 0.38 - world.y);
+    const scale = this.getScale(viewportState);
+    viewportState.offsetX = Math.round(metrics.width * 0.5 - (world.x * scale));
+    viewportState.offsetY = Math.round(metrics.height * 0.38 - (world.y * scale));
     initCanvas();
     reapplySelection(nodeId);
   },
@@ -90,25 +145,39 @@ window.LoveBudEditorCanvasViewport = {
     if (!treeMemories.length) {
       viewportState.offsetX = 0;
       viewportState.offsetY = 0;
+      this.setScale(viewportState, 1);
       initCanvas();
       return;
     }
 
-    const nextOffset = this.getReadableViewportOffset(options);
+    const nextOffset = this.getFitViewport(options);
     if (!nextOffset) return;
 
+    this.setScale(viewportState, nextOffset.scale);
     viewportState.offsetX = nextOffset.offsetX;
     viewportState.offsetY = nextOffset.offsetY;
     initCanvas();
   },
 
   bindControls(options) {
-    const { viewportState, focusNodeById, recenterViewport } = options;
+    const { viewportState, focusNodeById, recenterViewport, zoomBy } = options;
     if (viewportState.controlsBound) return;
     viewportState.controlsBound = true;
 
     const focusBtn = document.getElementById('focusSelectedBtn');
     const recenterBtn = document.getElementById('recenterCanvasBtn');
+    const zoomInBtn = document.getElementById('zoomInCanvasBtn');
+    const zoomOutBtn = document.getElementById('zoomOutCanvasBtn');
+
+    [focusBtn, recenterBtn, zoomInBtn, zoomOutBtn].forEach((button) => {
+      if (!button) return;
+      button.addEventListener('mousedown', (event) => {
+        event.stopPropagation();
+      });
+      button.addEventListener('touchstart', (event) => {
+        event.stopPropagation();
+      }, { passive: true });
+    });
 
     if (focusBtn) {
       focusBtn.addEventListener('click', () => {
@@ -120,12 +189,20 @@ window.LoveBudEditorCanvasViewport = {
     }
 
     if (recenterBtn) {
-      recenterBtn.addEventListener('mousedown', (event) => {
-        event.stopPropagation();
-      });
-
       recenterBtn.addEventListener('click', () => {
         recenterViewport();
+      });
+    }
+
+    if (zoomInBtn && typeof zoomBy === 'function') {
+      zoomInBtn.addEventListener('click', () => {
+        zoomBy(this.zoomStep);
+      });
+    }
+
+    if (zoomOutBtn && typeof zoomBy === 'function') {
+      zoomOutBtn.addEventListener('click', () => {
+        zoomBy(1 / this.zoomStep);
       });
     }
   }
