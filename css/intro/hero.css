@@ -372,18 +372,34 @@
   pointer-events: none;
 }
 
+.intro-tree-moment::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 28%, #fffaf6 0 26%, #e8c4c8 27% 66%, #c18b83 67% 100%);
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  box-shadow: 0 6px 14px rgba(144, 73, 81, 0.14), 0 0 0 4px rgba(144, 73, 81, 0.04);
+  opacity: 0.92;
+  transform: translateY(calc(-50% + var(--anchor-y, 0px)));
+  pointer-events: none;
+}
+
 @keyframes introMomentIn {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
 .intro-tree-moment.first {
-  left: 18px;
-  bottom: 72px;
+  left: 76px;
+  bottom: 54px;
   color: var(--primary);
-  --connector-width: 74px;
-  --connector-rotate: -12deg;
+  --connector-width: 92px;
+  --connector-rotate: 3deg;
   --connector-origin: left center;
+  --anchor-y: 2px;
   animation-delay: 1.5s;
 }
 
@@ -393,48 +409,63 @@
   left: calc(100% - 4px);
 }
 
+.intro-tree-moment.first::after,
+.intro-tree-moment.shared::after,
+.intro-tree-moment.lasting::after {
+  left: calc(100% + var(--connector-width, 42px) - 8px);
+}
+
 .intro-tree-moment.saved::before,
 .intro-tree-moment.revisit::before {
   right: calc(100% - 4px);
   transform: translateY(-50%) rotate(var(--connector-rotate, 0deg));
 }
 
+.intro-tree-moment.saved::after,
+.intro-tree-moment.revisit::after {
+  right: calc(100% + var(--connector-width, 42px) - 8px);
+}
+
 .intro-tree-moment.saved {
-  right: 18px;
-  top: 58px;
-  --connector-width: 64px;
-  --connector-rotate: 15deg;
+  right: 34px;
+  top: 88px;
+  --connector-width: 72px;
+  --connector-rotate: 6deg;
   --connector-origin: right center;
+  --anchor-y: 4px;
   animation-delay: 1.75s;
 }
 
 .intro-tree-moment.shared {
-  left: 18px;
-  top: 102px;
+  left: 34px;
+  top: 154px;
   color: #667a55;
-  --connector-width: 92px;
-  --connector-rotate: 10deg;
+  --connector-width: 70px;
+  --connector-rotate: -4deg;
   --connector-origin: left center;
+  --anchor-y: -3px;
   animation-delay: 2.0s;
 }
 
 .intro-tree-moment.revisit {
-  right: 18px;
-  bottom: 104px;
+  right: 38px;
+  bottom: 96px;
   color: #8b7355;
-  --connector-width: 66px;
-  --connector-rotate: -13deg;
+  --connector-width: 64px;
+  --connector-rotate: -4deg;
   --connector-origin: right center;
+  --anchor-y: -3px;
   animation-delay: 2.25s;
 }
 
 .intro-tree-moment.lasting {
-  left: 22px;
-  top: 42px;
+  left: 82px;
+  top: 86px;
   color: #a67c52;
-  --connector-width: 112px;
-  --connector-rotate: -5deg;
+  --connector-width: 92px;
+  --connector-rotate: 1deg;
   --connector-origin: left center;
+  --anchor-y: 1px;
   animation-delay: 2.5s;
 }
 
@@ -608,7 +639,8 @@
 
   .intro-tree-scene::before,
   .intro-tree-scene::after,
-  .intro-tree-moment::before {
+  .intro-tree-moment::before,
+  .intro-tree-moment::after {
     display: none;
   }
 
