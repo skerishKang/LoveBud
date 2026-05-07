@@ -1,23 +1,22 @@
-# LoveBud Engineering 문서 인덱스
-이 문서는 LoveBud 워크플로우 문서의 현재 기준 및 읽기 순서를 정리합니다.
+﻿# LoveBud Engineering 臾몄꽌 ?몃뜳????臾몄꽌??LoveBud ?뚰겕?뚮줈??臾몄꽌???꾩옱 湲곗? 諛??쎄린 ?쒖꽌瑜??뺣━?⑸땲??
 
-현재 운영 전제는 아래와 같습니다.
+?꾩옱 ?댁쁺 ?꾩젣???꾨옒? 媛숈뒿?덈떎.
 
-- 테스트 서비스 엔트리포인트: `https://lovebud.pages.dev/`
-- 인프라 우선순위: **Modal > Cloudflare Pages > Vercel > Netlify**
-- Cloudflare Pages는 공식 user-facing entry이자 same-origin `/api` router입니다.
-- Modal은 active compute/runtime 우선 경로입니다.
-- Vercel은 upstream / secondary / transitional fallback 계층입니다.
-- Netlify는 legacy artifact / removal candidate입니다. active production fallback은 아닙니다.
-- 브라우저에서 가능하면 **same-origin `/api`** 만 사용합니다.
-- browse display filter와 publication guard는 다른 문제로 독립했습니다.
+- ?뚯뒪???쒕퉬???뷀듃由ы룷?명듃: `https://lovebud.pages.dev/`
+- ?명봽???곗꽑?쒖쐞: **Modal > Cloudflare Pages > Vercel > Netlify**
+- Cloudflare Pages??怨듭떇 user-facing entry?댁옄 same-origin `/api` router?낅땲??
+- Modal? active compute/runtime ?곗꽑 寃쎈줈?낅땲??
+- Vercel? upstream / secondary / transitional fallback 怨꾩링?낅땲??
+- Netlify??legacy artifact / removal candidate?낅땲?? active production fallback? ?꾨떃?덈떎.
+- 釉뚮씪?곗??먯꽌 媛?ν븯硫?**same-origin `/api`** 留??ъ슜?⑸땲??
+- browse display filter? publication guard???ㅻⅨ 臾몄젣濡??낅┰?덉뒿?덈떎.
 
 ---
 
-## 먼저 읽기
+## 癒쇱? ?쎄린
 
-1. [API_CONTRACT.md](./API_CONTRACT.md) - API 응답 계약 (flat camelCase)
-2. [BROWSE_FILTER_VS_PUBLICATION_GUARD.md](./BROWSE_FILTER_VS_PUBLICATION_GUARD.md) - browse filter / publication guard 구분
+1. [API_CONTRACT.md](./API_CONTRACT.md) - API ?묐떟 怨꾩빟 (flat camelCase)
+2. [BROWSE_FILTER_VS_PUBLICATION_GUARD.md](./BROWSE_FILTER_VS_PUBLICATION_GUARD.md) - browse filter / publication guard 援щ텇
 3. [CODE_ARCHITECTURE.md](./CODE_ARCHITECTURE.md) - module size, thin entrypoint, browser-global split, large file refactor safety policy
 4. [LARGE_FILE_MODULARIZATION_CANDIDATES.md](./LARGE_FILE_MODULARIZATION_CANDIDATES.md) - #408 500+ line large-file candidate inventory, owner routing, extraction guardrails
 5. [MODAL_OWNER_ROUTE_SPLIT_BOUNDARY.md](./MODAL_OWNER_ROUTE_SPLIT_BOUNDARY.md) - #423 Modal owner read/write route split boundary, implementation gates, verification requirements
@@ -25,112 +24,113 @@
 7. [DETAIL_RUNTIME_BOUNDARY_PLAN.md](./DETAIL_RUNTIME_BOUNDARY_PLAN.md) - #661 Detail fetch/render/action/loading boundary plan and verification gate
 8. [EDITOR_ENTRYPOINT_ORCHESTRATION_BOUNDARY.md](./EDITOR_ENTRYPOINT_ORCHESTRATION_BOUNDARY.md) - #659 Editor entrypoint orchestration split boundary, preserved contracts, runtime verification gate
 9. [CORE_RUNTIME_BOUNDARY_MAP.md](./CORE_RUNTIME_BOUNDARY_MAP.md) - #428 core runtime module owner domains, runtime boundaries, verification requirements
-10. [CSS_ARCHITECTURE.md](./CSS_ARCHITECTURE.md) - stylesheet import hub, split ownership, visual verification 기준
+10. [CSS_ARCHITECTURE.md](./CSS_ARCHITECTURE.md) - stylesheet import hub, split ownership, visual verification 湲곗?
 11. [GLOBAL_CSS_TOKEN_READINESS_AUDIT.md](./GLOBAL_CSS_TOKEN_READINESS_AUDIT.md) - #510 global CSS token and readiness selector ownership audit, future PR split, #512 verification linkage
 12. [GLOBAL_FOCUS_VISIBILITY_HARDENING_AUDIT.md](./GLOBAL_FOCUS_VISIBILITY_HARDENING_AUDIT.md) - #511 global focus and visibility selector audit, affected surfaces, allowed future PR shapes, and #512 verification linkage
 13. [SCRIPT_LOAD_ORDER.md](./SCRIPT_LOAD_ORDER.md) - pages/*.html script order runtime contract, Auth/Login dependency order, reorder checklist
 14. [AUTH_BOOTSTRAP_COMPATIBILITY_BOUNDARY.md](./AUTH_BOOTSTRAP_COMPATIBILITY_BOUNDARY.md) - #705 auth bootstrap compatibility boundary, global/cache/script-order contract, staged extraction guardrails
 15. [SEARCH_RUNTIME_CONTRACT.md](./SEARCH_RUNTIME_CONTRACT.md) - Search/Browse runtime script order, globals, submodule boundary
-16. [AUTH_LOGIN_ACTIVE_PROVIDER_TRANSITION_PLAN.md](./AUTH_LOGIN_ACTIVE_PROVIDER_TRANSITION_PLAN.md) - Auth/Login active provider transition 단계, file ownership, forbidden combinations, fixed slot smoke 기준
+16. [AUTH_LOGIN_ACTIVE_PROVIDER_TRANSITION_PLAN.md](./AUTH_LOGIN_ACTIVE_PROVIDER_TRANSITION_PLAN.md) - Auth/Login active provider transition ?④퀎, file ownership, forbidden combinations, fixed slot smoke 湲곗?
 17. [TECHNICAL_DEBT_CHECKLIST_DISPOSITION.md](./TECHNICAL_DEBT_CHECKLIST_DISPOSITION.md) - #224 technical-debt checklist disposition map
-18. [CSS_HTML_CLEANUP_STATUS_MAP.md](./CSS_HTML_CLEANUP_STATUS_MAP.md) - #137 CSS/HTML cleanup backlog 상태와 잔여 작업 순서
-19. [EDITOR_FALLBACK_GLOBAL_STATE_AUDIT.md](./EDITOR_FALLBACK_GLOBAL_STATE_AUDIT.md) - Editor fallback factories와 global state cleanup path 감사 계획
-20. [AUTH_EDITOR_FALLBACK_CHECKLIST_MAPPING.md](./AUTH_EDITOR_FALLBACK_CHECKLIST_MAPPING.md) - #224 Auth/Editor fallback findings의 #78/#223/#225 ownership mapping
+18. [CSS_HTML_CLEANUP_STATUS_MAP.md](./CSS_HTML_CLEANUP_STATUS_MAP.md) - #137 CSS/HTML cleanup backlog ?곹깭? ?붿뿬 ?묒뾽 ?쒖꽌
+19. [EDITOR_FALLBACK_GLOBAL_STATE_AUDIT.md](./EDITOR_FALLBACK_GLOBAL_STATE_AUDIT.md) - Editor fallback factories? global state cleanup path 媛먯궗 怨꾪쉷
+20. [AUTH_EDITOR_FALLBACK_CHECKLIST_MAPPING.md](./AUTH_EDITOR_FALLBACK_CHECKLIST_MAPPING.md) - #224 Auth/Editor fallback findings??#78/#223/#225 ownership mapping
 21. [STAGED_RUNTIME_CLEANUP_DISPOSITION.md](./STAGED_RUNTIME_CLEANUP_DISPOSITION.md) - #225 staged runtime cleanup items disposition map
-22. [SHARED_HEADER_CONFIG_HELPER_DECISION.md](./SHARED_HEADER_CONFIG_HELPER_DECISION.md) - Shared header config/helper extraction defer 결정과 follow-up trigger
+22. [SHARED_HEADER_CONFIG_HELPER_DECISION.md](./SHARED_HEADER_CONFIG_HELPER_DECISION.md) - Shared header config/helper extraction defer 寃곗젙怨?follow-up trigger
 23. [EDITOR_DETAIL_UI_RESPONSIBILITY_AUDIT.md](./EDITOR_DETAIL_UI_RESPONSIBILITY_AUDIT.md) - #518 editor detail UI responsibility buckets, future split candidates, and browser smoke gates
-24. [REVIEW_GUARDRAILS.md](./REVIEW_GUARDRAILS.md) - 반복 false positive 방지 규칙
-25. [RECENT_REFACTORING.md](./RECENT_REFACTORING.md) - 최근 리팩터링 기록
-26. [EDITOR_OVERRIDES_RELOCATION_AUDIT.md](./EDITOR_OVERRIDES_RELOCATION_AUDIT.md) - css/editor/overrides.css role-based relocation 사전 audit (구현 없음, #137 종속)
+24. [REVIEW_GUARDRAILS.md](./REVIEW_GUARDRAILS.md) - 諛섎났 false positive 諛⑹? 洹쒖튃
+25. [RECENT_REFACTORING.md](./RECENT_REFACTORING.md) - 理쒓렐 由ы뙥?곕쭅 湲곕줉
+26. [EDITOR_OVERRIDES_RELOCATION_AUDIT.md](./EDITOR_OVERRIDES_RELOCATION_AUDIT.md) - css/editor/overrides.css role-based relocation ?ъ쟾 audit (援ы쁽 ?놁쓬, #137 醫낆냽)
 27. [EDITOR_HIDDEN_COMPATIBILITY_OVERRIDE_AUDIT.md](./EDITOR_HIDDEN_COMPATIBILITY_OVERRIDE_AUDIT.md) - #516 editor hidden/compatibility selector usage audit, disposition map, and future removal/relocation gates
 28. [REPOSITORY_STRUCTURE_FOLLOWUP_STATUS_MAP.md](./REPOSITORY_STRUCTURE_FOLLOWUP_STATUS_MAP.md) - Issue #223 repository structure follow-up bucket disposition, active blockers, and closure conditions
 29. [PUBLIC_TREE_ADAPTER_BOUNDARY_AUDIT.md](./PUBLIC_TREE_ADAPTER_BOUNDARY_AUDIT.md) - #412 public tree adapter helper boundaries, export contract, loading-order risk, preview implications audit
 30. [AUTH_EDITOR_RUNTIME_INVENTORY_834.md](./AUTH_EDITOR_RUNTIME_INVENTORY_834.md) - #834 auth/editor runtime inventory, dependency mapping, naming consistency audit, decomposition candidates
 31. [V01_UI_TRUST_PASS_RELEASE_GATE_681.md](./V01_UI_TRUST_PASS_RELEASE_GATE_681.md) - #681 v0.1 UI Trust Pass release-gate status taxonomy and active PR verification contract
 32. [JS_CSS_ENTRYPOINT_PREFIX_AUDIT_834.md](./JS_CSS_ENTRYPOINT_PREFIX_AUDIT_834.md) - #834 JS/CSS entrypoint and folder-prefix naming consistency audit
-33. [SEARCH_ROOT_LEGACY_MOVE_PREFLIGHT_656.md](./SEARCH_ROOT_LEGACY_MOVE_PREFLIGHT_656.md) - #656 PR-C preflight for moving root Search legacy files under js/search/
+33. [SEARCH_DUPLICATE_RENDERER_SOURCE_OF_TRUTH_656.md](./SEARCH_DUPLICATE_RENDERER_SOURCE_OF_TRUTH_656.md) - #656 Search duplicate renderer source-of-truth comparison
+34. [SEARCH_ROOT_LEGACY_MOVE_PREFLIGHT_656.md](./SEARCH_ROOT_LEGACY_MOVE_PREFLIGHT_656.md) - #656 PR-C preflight for moving root Search legacy files under js/search/
 
 ---
 
-## 핵심 문서
+## ?듭떖 臾몄꽌
 
-| 문서 | 설명 |
+| 臾몄꽌 | ?ㅻ챸 |
 |------|------|
-| [API_CONTRACT.md](./API_CONTRACT.md) | 프론트엔드 API가 따르는 flat camelCase 계약 |
-| [BROWSE_FILTER_VS_PUBLICATION_GUARD.md](./BROWSE_FILTER_VS_PUBLICATION_GUARD.md) | browse 표시 정책과 publication guard 분리 기준 |
-| [CODE_ARCHITECTURE.md](./CODE_ARCHITECTURE.md) | 파일 크기, thin entrypoint, browser-global split, large file refactor safety policy |
+| [API_CONTRACT.md](./API_CONTRACT.md) | ?꾨줎?몄뿏??API媛 ?곕Ⅴ??flat camelCase 怨꾩빟 |
+| [BROWSE_FILTER_VS_PUBLICATION_GUARD.md](./BROWSE_FILTER_VS_PUBLICATION_GUARD.md) | browse ?쒖떆 ?뺤콉怨?publication guard 遺꾨━ 湲곗? |
+| [CODE_ARCHITECTURE.md](./CODE_ARCHITECTURE.md) | ?뚯씪 ?ш린, thin entrypoint, browser-global split, large file refactor safety policy |
 | [LARGE_FILE_MODULARIZATION_CANDIDATES.md](./LARGE_FILE_MODULARIZATION_CANDIDATES.md) | Issue #408 large-file candidate inventory, owner-domain routing, extraction guardrails, verification requirements |
 | [MODAL_OWNER_ROUTE_SPLIT_BOUNDARY.md](./MODAL_OWNER_ROUTE_SPLIT_BOUNDARY.md) | Issue #423 Modal owner read/write route split boundary, implementation gates, Cloudflare boundary, verification expectations |
 | [MODAL_API_SERVICE_BOUNDARY_PLAN.md](./MODAL_API_SERVICE_BOUNDARY_PLAN.md) | Issue #660 Modal API route/service split plan, preserved contracts, staged extraction sequence, contract gate, and runtime verification requirements |
 | [DETAIL_RUNTIME_BOUNDARY_PLAN.md](./DETAIL_RUNTIME_BOUNDARY_PLAN.md) | Issue #661 Detail fetch/render/action/loading boundary plan, preserved contracts, staged extraction sequence, and runtime verification gate |
 | [EDITOR_ENTRYPOINT_ORCHESTRATION_BOUNDARY.md](./EDITOR_ENTRYPOINT_ORCHESTRATION_BOUNDARY.md) | Issue #659 Editor entrypoint orchestration boundary, preserved contracts, staged extraction sequence, forbidden combinations, and runtime verification gate |
 | [CORE_RUNTIME_BOUNDARY_MAP.md](./CORE_RUNTIME_BOUNDARY_MAP.md) | Issue #428 core runtime module ownership, frontend/backend/runtime boundaries, namespace and verification requirements |
-| [CSS_ARCHITECTURE.md](./CSS_ARCHITECTURE.md) | CSS import hub, split ownership, import order, visual verification 기준 |
+| [CSS_ARCHITECTURE.md](./CSS_ARCHITECTURE.md) | CSS import hub, split ownership, import order, visual verification 湲곗? |
 | [GLOBAL_CSS_TOKEN_READINESS_AUDIT.md](./GLOBAL_CSS_TOKEN_READINESS_AUDIT.md) | Issue #510 global CSS token groups, readiness selector aliases, duplication candidates, future PR split, and #512 verification linkage |
 | [GLOBAL_FOCUS_VISIBILITY_HARDENING_AUDIT.md](./GLOBAL_FOCUS_VISIBILITY_HARDENING_AUDIT.md) - Issue #511 global focus and visibility selector groups, affected surfaces, forbidden combinations, future narrow PR shapes, and #512 verification linkage |
 | [SCRIPT_LOAD_ORDER.md](./SCRIPT_LOAD_ORDER.md) | pages/*.html script load order runtime contract, Auth/Login dependency order, reorder checklist |
 | [AUTH_BOOTSTRAP_COMPATIBILITY_BOUNDARY.md](./AUTH_BOOTSTRAP_COMPATIBILITY_BOUNDARY.md) | Issue #705 Auth bootstrap compatibility boundary, preserved globals, cache keys, script order, extraction guardrails, and runtime verification requirements |
 | [SEARCH_RUNTIME_CONTRACT.md](./SEARCH_RUNTIME_CONTRACT.md) | Search/Browse runtime script order, globals, smoke checklist |
-| [SEARCH_PREVIEW_CONTROLLER_SPLIT_AUDIT.md](./SEARCH_PREVIEW_CONTROLLER_SPLIT_AUDIT.md) | Search/Browse preview controller split 준비 audit와 종속 구현 guardrail |
+| [SEARCH_PREVIEW_CONTROLLER_SPLIT_AUDIT.md](./SEARCH_PREVIEW_CONTROLLER_SPLIT_AUDIT.md) | Search/Browse preview controller split 以鍮?audit? 醫낆냽 援ы쁽 guardrail |
 | [PUBLIC_TREE_ADAPTER_BOUNDARY_AUDIT.md](./PUBLIC_TREE_ADAPTER_BOUNDARY_AUDIT.md) | #412 public tree adapter helper boundaries, export contract, loading-order risk, preview implications audit |
-| [AUTH_LOGIN_ACTIVE_PROVIDER_TRANSITION_PLAN.md](./AUTH_LOGIN_ACTIVE_PROVIDER_TRANSITION_PLAN.md) | Auth/Login active provider transition 단계, file ownership, forbidden combinations, fixed slot smoke 기준 |
+| [AUTH_LOGIN_ACTIVE_PROVIDER_TRANSITION_PLAN.md](./AUTH_LOGIN_ACTIVE_PROVIDER_TRANSITION_PLAN.md) | Auth/Login active provider transition ?④퀎, file ownership, forbidden combinations, fixed slot smoke 湲곗? |
 | [REPOSITORY_STRUCTURE_FOLLOWUP_STATUS_MAP.md](./REPOSITORY_STRUCTURE_FOLLOWUP_STATUS_MAP.md) | Issue #223 repository structure follow-up bucket disposition, active blockers, and closure conditions |
-| [CSS_HTML_CLEANUP_STATUS_MAP.md](./CSS_HTML_CLEANUP_STATUS_MAP.md) | Issue #137 CSS/HTML cleanup backlog의 completed/in-progress/remaining bucket과 recommended sequence |
-| [EDITOR_FALLBACK_GLOBAL_STATE_AUDIT.md](./EDITOR_FALLBACK_GLOBAL_STATE_AUDIT.md) | Editor fallback factories, `window.currentTreeMemories`, `window.currentTreeData`, compatibility aliases, future store migration 기준 |
+| [CSS_HTML_CLEANUP_STATUS_MAP.md](./CSS_HTML_CLEANUP_STATUS_MAP.md) | Issue #137 CSS/HTML cleanup backlog??completed/in-progress/remaining bucket怨?recommended sequence |
+| [EDITOR_FALLBACK_GLOBAL_STATE_AUDIT.md](./EDITOR_FALLBACK_GLOBAL_STATE_AUDIT.md) | Editor fallback factories, `window.currentTreeMemories`, `window.currentTreeData`, compatibility aliases, future store migration 湲곗? |
 | [AUTH_EDITOR_FALLBACK_CHECKLIST_MAPPING.md](./AUTH_EDITOR_FALLBACK_CHECKLIST_MAPPING.md) | Auth fallback cleanup, Editor fallback factories, and `window.currentTreeMemories/currentTreeData` ownership mapping for #224/#78/#223/#225 |
-| [SHARED_HEADER_CONFIG_HELPER_DECISION.md](./SHARED_HEADER_CONFIG_HELPER_DECISION.md) | Shared header render/mobile nav/language/Auth/path helper 책임과 config/helper extraction defer 기준 |
+| [SHARED_HEADER_CONFIG_HELPER_DECISION.md](./SHARED_HEADER_CONFIG_HELPER_DECISION.md) | Shared header render/mobile nav/language/Auth/path helper 梨낆엫怨?config/helper extraction defer 湲곗? |
 | [EDITOR_DETAIL_UI_RESPONSIBILITY_AUDIT.md](./EDITOR_DETAIL_UI_RESPONSIBILITY_AUDIT.md) | Issue #518 editor detail UI responsibility buckets, future one-responsibility PR split, allowed/forbidden files, and browser smoke gates |
-| [EDITOR_OVERRIDES_RELOCATION_AUDIT.md](./EDITOR_OVERRIDES_RELOCATION_AUDIT.md) | `css/editor/overrides.css` role-based relocation 사전 audit (구현 없음, cascade 위험 문서, future PR split 계획 (#137 종속)) |
+| [EDITOR_OVERRIDES_RELOCATION_AUDIT.md](./EDITOR_OVERRIDES_RELOCATION_AUDIT.md) | `css/editor/overrides.css` role-based relocation ?ъ쟾 audit (援ы쁽 ?놁쓬, cascade ?꾪뿕 臾몄꽌, future PR split 怨꾪쉷 (#137 醫낆냽)) |
 | [EDITOR_HIDDEN_COMPATIBILITY_OVERRIDE_AUDIT.md](./EDITOR_HIDDEN_COMPATIBILITY_OVERRIDE_AUDIT.md) | Issue #516 hidden/compatibility selector references, runtime linkage, removal/relocation disposition, and future browser verification gates |
-| [SUPABASE_FREE_POC_PLAN.md](./SUPABASE_FREE_POC_PLAN.md) | Supabase Free PoC 기반 장기 backend 구조 단순화 검증 계획 |
+| [SUPABASE_FREE_POC_PLAN.md](./SUPABASE_FREE_POC_PLAN.md) | Supabase Free PoC 湲곕컲 ?κ린 backend 援ъ“ ?⑥닚??寃利?怨꾪쉷 |
 | [AUTH_EDITOR_RUNTIME_INVENTORY_834.md](./AUTH_EDITOR_RUNTIME_INVENTORY_834.md) | #834 auth/editor runtime inventory, dependency mapping, naming audit, decomposition candidates |
 | [V01_UI_TRUST_PASS_RELEASE_GATE_681.md](./V01_UI_TRUST_PASS_RELEASE_GATE_681.md) | #681 v0.1 UI Trust Pass release-gate status taxonomy and active PR verification contract |
-| [REVIEW_GUARDRAILS.md](./REVIEW_GUARDRAILS.md) | 반복 false positive 방지 및 리뷰 규칙 |
-| [RECENT_REFACTORING.md](./RECENT_REFACTORING.md) | 최근 코드 구조 정리 이력 |
-| [UTIL_USAGE_POLICY.md](./UTIL_USAGE_POLICY.md) | 공통 유틸 사용 정책 |
-| [COMMON_CODE_CANDIDATES.md](./COMMON_CODE_CANDIDATES.md) | 공통 코드 사전 후보 |
+| [REVIEW_GUARDRAILS.md](./REVIEW_GUARDRAILS.md) | 諛섎났 false positive 諛⑹? 諛?由щ럭 洹쒖튃 |
+| [RECENT_REFACTORING.md](./RECENT_REFACTORING.md) | 理쒓렐 肄붾뱶 援ъ“ ?뺣━ ?대젰 |
+| [UTIL_USAGE_POLICY.md](./UTIL_USAGE_POLICY.md) | 怨듯넻 ?좏떥 ?ъ슜 ?뺤콉 |
+| [COMMON_CODE_CANDIDATES.md](./COMMON_CODE_CANDIDATES.md) | 怨듯넻 肄붾뱶 ?ъ쟾 ?꾨낫 |
 | [FIREBASE_CONFIG_GLOBAL_MIGRATION_STRATEGY.md](./FIREBASE_CONFIG_GLOBAL_MIGRATION_STRATEGY.md) | Firebase config/global migration staged strategy |
 | [FIREBASE_CONFIG_CONTRACT.md](./FIREBASE_CONFIG_CONTRACT.md) | Firebase config/init global contract |
-| [CTO_REPORT_20260418.md](./CTO_REPORT_20260418.md) | 특정 시점 워크플로우 요약 |
+| [CTO_REPORT_20260418.md](./CTO_REPORT_20260418.md) | ?뱀젙 ?쒖젏 ?뚰겕?뚮줈???붿빟 |
 
 ---
 
-## 읽을 때 주의사항
-- 엔지니어링 문서는 제품 철학 문서의 대체물이 아닙니다.
-- 제품 / 브랜딩 / UI 판단은 먼저 아래 문서를 봅니다.
+## ?쎌쓣 ??二쇱쓽?ы빆
+- ?붿??덉뼱留?臾몄꽌???쒗뭹 泥좏븰 臾몄꽌???泥대Ъ???꾨떃?덈떎.
+- ?쒗뭹 / 釉뚮옖??/ UI ?먮떒? 癒쇱? ?꾨옒 臾몄꽌瑜?遊낅땲??
   - `../product/PRODUCT_IDENTITY.md`
   - `../product/BRAND_EXPERIENCE.md`
   - `../design/UI_DESIGN_SYSTEM.md`
-- 워크플로우 문서는 현재 계약, 구조, 분리 기준, 전환 원칙을 설명하는 용도로 사용합니다.
-- 런타임 / 배포 판단은 `../ops/OPERATIONS.md`와 `../migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md`의 현재 기준을 우선합니다.
-- 반복되는 오판 방지는 `REVIEW_GUARDRAILS.md`를 기준으로 합니다.
-- 신규 코드 구조, thin entrypoint, browser-global split, 대형 파일 리팩터링 순서는 `CODE_ARCHITECTURE.md`를 기준으로 합니다.
-- #408 large-file candidate 판단은 `LARGE_FILE_MODULARIZATION_CANDIDATES.md`에서 owner routing and forbidden scope를 먼저 확인합니다.
-- #423 Modal owner-route split 판단은 `MODAL_OWNER_ROUTE_SPLIT_BOUNDARY.md`에서 completed public-read work, remaining owner read/write gates, and verification expectations를 먼저 확인합니다.
-- #660 Modal API service split 판단은 `MODAL_API_SERVICE_BOUNDARY_PLAN.md`에서 preserved contracts, implementation sequence, contract gate, and runtime verification requirements를 먼저 확인합니다.
-- #661 Detail runtime refactor 판단은 `DETAIL_RUNTIME_BOUNDARY_PLAN.md`에서 preserved contracts, staged extraction sequence, and runtime verification gate를 먼저 확인합니다.
-- #659 Editor entrypoint refactor 판단은 `EDITOR_ENTRYPOINT_ORCHESTRATION_BOUNDARY.md`에서 preserved contracts, staged extraction sequence, and runtime verification gate를 먼저 확인합니다.
+- ?뚰겕?뚮줈??臾몄꽌???꾩옱 怨꾩빟, 援ъ“, 遺꾨━ 湲곗?, ?꾪솚 ?먯튃???ㅻ챸?섎뒗 ?⑸룄濡??ъ슜?⑸땲??
+- ?고???/ 諛고룷 ?먮떒? `../ops/OPERATIONS.md`? `../migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md`???꾩옱 湲곗????곗꽑?⑸땲??
+- 諛섎났?섎뒗 ?ㅽ뙋 諛⑹???`REVIEW_GUARDRAILS.md`瑜?湲곗??쇰줈 ?⑸땲??
+- ?좉퇋 肄붾뱶 援ъ“, thin entrypoint, browser-global split, ????뚯씪 由ы뙥?곕쭅 ?쒖꽌??`CODE_ARCHITECTURE.md`瑜?湲곗??쇰줈 ?⑸땲??
+- #408 large-file candidate ?먮떒? `LARGE_FILE_MODULARIZATION_CANDIDATES.md`?먯꽌 owner routing and forbidden scope瑜?癒쇱? ?뺤씤?⑸땲??
+- #423 Modal owner-route split ?먮떒? `MODAL_OWNER_ROUTE_SPLIT_BOUNDARY.md`?먯꽌 completed public-read work, remaining owner read/write gates, and verification expectations瑜?癒쇱? ?뺤씤?⑸땲??
+- #660 Modal API service split ?먮떒? `MODAL_API_SERVICE_BOUNDARY_PLAN.md`?먯꽌 preserved contracts, implementation sequence, contract gate, and runtime verification requirements瑜?癒쇱? ?뺤씤?⑸땲??
+- #661 Detail runtime refactor ?먮떒? `DETAIL_RUNTIME_BOUNDARY_PLAN.md`?먯꽌 preserved contracts, staged extraction sequence, and runtime verification gate瑜?癒쇱? ?뺤씤?⑸땲??
+- #659 Editor entrypoint refactor ?먮떒? `EDITOR_ENTRYPOINT_ORCHESTRATION_BOUNDARY.md`?먯꽌 preserved contracts, staged extraction sequence, and runtime verification gate瑜?癒쇱? ?뺤씤?⑸땲??
 - core runtime owner domain, namespace contract, and verification boundary decisions start from `CORE_RUNTIME_BOUNDARY_MAP.md`.
 - CSS import hub, global token/readiness selector ownership, and future readiness dedupe decisions start from `GLOBAL_CSS_TOKEN_READINESS_AUDIT.md` and `../ops/GLOBAL_CSS_BROWSER_SMOKE_CHECKLIST.md`.
 - Global focus/visibility hardening decisions start from `GLOBAL_FOCUS_VISIBILITY_HARDENING_AUDIT.md` and must use `../ops/GLOBAL_CSS_BROWSER_SMOKE_CHECKLIST.md` for implementation verification.
-- pages/*.html script order 변경 판단은 `SCRIPT_LOAD_ORDER.md`를 먼저 보고, Auth/Login active provider 전환은 `AUTH_LOGIN_ACTIVE_PROVIDER_TRANSITION_PLAN.md`와 함께 봅니다.
-- Auth bootstrap compatibility refactor 판단은 `AUTH_BOOTSTRAP_COMPATIBILITY_BOUNDARY.md`에서 preserved globals, cache keys, script order, and runtime verification requirements를 먼저 확인합니다.
-- Auth/Login active provider 전환은 `AUTH_LOGIN_ACTIVE_PROVIDER_TRANSITION_PLAN.md`의 phase gate와 금지 조합을 기준으로 합니다.
-- CSS import hub, split ownership, visual verification 판단은 `CSS_ARCHITECTURE.md`와 `../ops/BROWSER_VERIFICATION_URL_POLICY.md`를 함께 봅니다.
-- #223 repository structure follow-up closure 판단은 `REPOSITORY_STRUCTURE_FOLLOWUP_STATUS_MAP.md`에서 active blockers and closure conditions를 먼저 확인합니다.
-- #224 technical-debt checklist disposition 판단은 `TECHNICAL_DEBT_CHECKLIST_DISPOSITION.md`에서 item ownership and closure blockers를 먼저 확인합니다.
-- Editor fallback factory, `window.currentTreeMemories`, `window.currentTreeData`, compatibility alias 정리는 `EDITOR_FALLBACK_GLOBAL_STATE_AUDIT.md`의 audit gate를 먼저 통과해야 합니다.
-- #224 Auth/Editor fallback checklist 판단은 `AUTH_EDITOR_FALLBACK_CHECKLIST_MAPPING.md`에서 #78/#223/#225 ownership mapping을 먼저 확인합니다.
-- Shared header config/path helper extraction 판단은 `SHARED_HEADER_CONFIG_HELPER_DECISION.md`의 defer 조건과 follow-up trigger를 먼저 확인합니다.
-- Editor detail UI responsibility split 판단은 `EDITOR_DETAIL_UI_RESPONSIBILITY_AUDIT.md`의 bucket map, future PR split, and browser smoke gates를 먼저 확인합니다.
-- `css/editor/overrides.css` relocation 판단은 `EDITOR_OVERRIDES_RELOCATION_AUDIT.md`의 cascade risk 및 future implementation gate를 먼저 확인합니다.
-- Editor hidden/compatibility selector 제거·relocation 판단은 `EDITOR_HIDDEN_COMPATIBILITY_OVERRIDE_AUDIT.md`의 usage/disposition table을 먼저 확인합니다.
-- Auth/Editor runtime inventory, naming consistency, dependency mapping, decomposition candidates 판단은 `AUTH_EDITOR_RUNTIME_INVENTORY_834.md`의 inventory table과 risk classification을 먼저 확인합니다.
+- pages/*.html script order 蹂寃??먮떒? `SCRIPT_LOAD_ORDER.md`瑜?癒쇱? 蹂닿퀬, Auth/Login active provider ?꾪솚? `AUTH_LOGIN_ACTIVE_PROVIDER_TRANSITION_PLAN.md`? ?④퍡 遊낅땲??
+- Auth bootstrap compatibility refactor ?먮떒? `AUTH_BOOTSTRAP_COMPATIBILITY_BOUNDARY.md`?먯꽌 preserved globals, cache keys, script order, and runtime verification requirements瑜?癒쇱? ?뺤씤?⑸땲??
+- Auth/Login active provider ?꾪솚? `AUTH_LOGIN_ACTIVE_PROVIDER_TRANSITION_PLAN.md`??phase gate? 湲덉? 議고빀??湲곗??쇰줈 ?⑸땲??
+- CSS import hub, split ownership, visual verification ?먮떒? `CSS_ARCHITECTURE.md`? `../ops/BROWSER_VERIFICATION_URL_POLICY.md`瑜??④퍡 遊낅땲??
+- #223 repository structure follow-up closure ?먮떒? `REPOSITORY_STRUCTURE_FOLLOWUP_STATUS_MAP.md`?먯꽌 active blockers and closure conditions瑜?癒쇱? ?뺤씤?⑸땲??
+- #224 technical-debt checklist disposition ?먮떒? `TECHNICAL_DEBT_CHECKLIST_DISPOSITION.md`?먯꽌 item ownership and closure blockers瑜?癒쇱? ?뺤씤?⑸땲??
+- Editor fallback factory, `window.currentTreeMemories`, `window.currentTreeData`, compatibility alias ?뺣━??`EDITOR_FALLBACK_GLOBAL_STATE_AUDIT.md`??audit gate瑜?癒쇱? ?듦낵?댁빞 ?⑸땲??
+- #224 Auth/Editor fallback checklist ?먮떒? `AUTH_EDITOR_FALLBACK_CHECKLIST_MAPPING.md`?먯꽌 #78/#223/#225 ownership mapping??癒쇱? ?뺤씤?⑸땲??
+- Shared header config/path helper extraction ?먮떒? `SHARED_HEADER_CONFIG_HELPER_DECISION.md`??defer 議곌굔怨?follow-up trigger瑜?癒쇱? ?뺤씤?⑸땲??
+- Editor detail UI responsibility split ?먮떒? `EDITOR_DETAIL_UI_RESPONSIBILITY_AUDIT.md`??bucket map, future PR split, and browser smoke gates瑜?癒쇱? ?뺤씤?⑸땲??
+- `css/editor/overrides.css` relocation ?먮떒? `EDITOR_OVERRIDES_RELOCATION_AUDIT.md`??cascade risk 諛?future implementation gate瑜?癒쇱? ?뺤씤?⑸땲??
+- Editor hidden/compatibility selector ?쒓굅쨌relocation ?먮떒? `EDITOR_HIDDEN_COMPATIBILITY_OVERRIDE_AUDIT.md`??usage/disposition table??癒쇱? ?뺤씤?⑸땲??
+- Auth/Editor runtime inventory, naming consistency, dependency mapping, decomposition candidates ?먮떒? `AUTH_EDITOR_RUNTIME_INVENTORY_834.md`??inventory table怨?risk classification??癒쇱? ?뺤씤?⑸땲??
 
 ---
 
-## 작성 규칙
+## ?묒꽦 洹쒖튃
 
-1. 새로운 기술 문서는 이 폴더에 생성합니다.
-2. 생성 시 `docs/doc_index.md`에도 추가합니다.
-3. API 계약이나 경로 전략을 바꾸면 관련 운영 문서와 함께 갱신합니다.
+1. ?덈줈??湲곗닠 臾몄꽌?????대뜑???앹꽦?⑸땲??
+2. ?앹꽦 ??`docs/doc_index.md`?먮룄 異붽??⑸땲??
+3. API 怨꾩빟?대굹 寃쎈줈 ?꾨왂??諛붽씀硫?愿???댁쁺 臾몄꽌? ?④퍡 媛깆떊?⑸땲??
