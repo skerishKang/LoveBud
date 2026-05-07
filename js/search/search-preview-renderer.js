@@ -1,10 +1,10 @@
 /**
  * LoveBud Search Preview Renderer
  * v20260506-1
- * 
+ *
  * Rendering layer: preview sidebar panel.
  * DOM-agnostic - updates passed DOM elements.
- * 
+ *
  * Dependencies: LoveBudPath (for navigation), LoveBudSearchSharedUtils (for shared utilities)
  */
 
@@ -293,6 +293,8 @@
         if (_dom.previewEmotionTags) {
             _dom.previewEmotionTags.innerHTML = renderEmotionTags([]);
         }
+        var emotionSection = document.getElementById('previewEmotionSection');
+        if (emotionSection) emotionSection.hidden = false;
     }
 
     const renderPreviewThumbnailFallback = previewBuilders.renderPreviewThumbnailFallback || function(title, subtitle) { return ''; };
@@ -492,6 +494,8 @@
         if (_dom.previewEmotionTags) {
             _dom.previewEmotionTags.innerHTML = renderEmotionTags(tree.emotionTags);
         }
+        var emotionSection = document.getElementById('previewEmotionSection');
+        if (emotionSection) emotionSection.hidden = false;
     }
 
     const renderPlaceholder = previewBuilders.renderPlaceholder || function() {
@@ -523,10 +527,10 @@
             _dom.previewContainer.innerHTML = renderPlaceholder();
         }
         if (_dom.previewTitle) {
-            _dom.previewTitle.textContent = placeholderTitle;
+            _dom.previewTitle.textContent = '';
         }
         if (_dom.previewDesc) {
-            _dom.previewDesc.innerHTML = `<p style="margin-bottom:16px;">${escapeHtml(placeholderDescription)}</p>`;
+            _dom.previewDesc.hidden = true;
         }
         if (previewStats) {
             previewStats.hidden = true;
@@ -540,6 +544,8 @@
         if (_dom.previewEmotionTags) {
             _dom.previewEmotionTags.innerHTML = renderEmotionTags([]);
         }
+        var emotionSection = document.getElementById('previewEmotionSection');
+        if (emotionSection) emotionSection.hidden = true;
     }
 
     window.LoveBudSearchPreviewRenderer = {
