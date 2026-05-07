@@ -47,6 +47,7 @@
 29. [PUBLIC_TREE_ADAPTER_BOUNDARY_AUDIT.md](./PUBLIC_TREE_ADAPTER_BOUNDARY_AUDIT.md) - #412 public tree adapter helper boundaries, export contract, loading-order risk, preview implications audit
 30. [AUTH_EDITOR_RUNTIME_INVENTORY_834.md](./AUTH_EDITOR_RUNTIME_INVENTORY_834.md) - #834 auth/editor runtime inventory, dependency mapping, naming consistency audit, decomposition candidates
 31. [V01_UI_TRUST_PASS_RELEASE_GATE_681.md](./V01_UI_TRUST_PASS_RELEASE_GATE_681.md) - #681 v0.1 UI Trust Pass release-gate status taxonomy and active PR verification contract
+32. [JS_CSS_ENTRYPOINT_PREFIX_AUDIT_834.md](./JS_CSS_ENTRYPOINT_PREFIX_AUDIT_834.md) - #834 JS/CSS entrypoint and folder-prefix naming consistency audit
 
 ---
 
