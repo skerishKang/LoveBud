@@ -116,14 +116,12 @@
             : formatSearchCopy(
                 'search.previewShowMoreMoments',
                 { count: hiddenCount },
-                '{count}개의 순간 더 보기',
-                'Show {count} more moments'
+                '... 그리고 {count}개의 순간 더',
+                '... and {count} more moments'
             );
-        var icon = isExpanded ? 'expand_less' : 'expand_more';
         return '<button type="button" class="preview-flow-toggle" data-preview-flow-toggle aria-expanded="' +
             (isExpanded ? 'true' : 'false') + '">' +
-            '<span>' + escapeHtml(label) + '</span>' +
-            '<span class="material-symbols-outlined" aria-hidden="true">' + icon + '</span>' +
+            escapeHtml(label) +
             '</button>';
     }
 
