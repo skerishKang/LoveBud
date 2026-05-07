@@ -34,6 +34,8 @@
   function resolveLoginRedirectTarget() {
     try {
       var params = new URLSearchParams(window.location.search || '');
+      var returnTo = params.get('returnTo');
+      if (returnTo) return returnTo;
       return params.get('redirect') || 'my-trees.html';
     } catch (error) {
       return 'my-trees.html';
@@ -151,7 +153,7 @@
     }
 
     var params = new URLSearchParams(window.location.search);
-    var redirect = params.get('redirect');
+    var redirect = params.get('redirect') || params.get('returnTo');
     var noticeEl = document.getElementById('redirect-notice');
     if (noticeEl) {
       noticeEl.style.display = redirect ? 'block' : 'none';
