@@ -14,9 +14,15 @@ test('detail route target page exists', () => {
   assert.ok(fs.existsSync(detailPath), 'pages/detail.html should exist');
 });
 
-test('search page navigation still targets detail.html alias path', () => {
-  const previewRendererJs = read('js/search-preview-renderer.js');
-  assert.match(previewRendererJs, /detail\.html\?id=/);
+test('search preview action helper still targets detail.html alias path', () => {
+  const previewActionHelperJs = read('js/search/search-preview-action-helper.js');
+  assert.match(previewActionHelperJs, /detail\.html\?id=/);
+});
+
+test('search preview renderer delegates detail CTA href to action helper', () => {
+  const previewRendererJs = read('js/search/search-preview-renderer.js');
+  assert.match(previewRendererJs, /LoveBudSearchPreviewActionHelper/);
+  assert.match(previewRendererJs, /helper\?\.getTreeDetailHref/);
 });
 
 test('detail runtime submodules load after API client and before detail entrypoint', () => {
