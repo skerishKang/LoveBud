@@ -143,8 +143,11 @@
 
             if (hasTreeContext) {
                 if (!tree && window.apiClient && window.apiClient.getTree) {
+                    const loadTreeDetail = sourceContext === 'browse' && window.apiClient.getPublicTree
+                        ? () => window.apiClient.getPublicTree(canonicalTreeId)
+                        : () => window.apiClient.getTree(canonicalTreeId);
                     treeFetchState = 'loading';
-                    loadPromises.push(window.apiClient.getTree(canonicalTreeId)
+                    loadPromises.push(loadTreeDetail()
                         .then(apiTree => {
                             if (apiTree) {
                                 tree = apiTree;

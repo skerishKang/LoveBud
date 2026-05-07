@@ -41,3 +41,13 @@ test('detail connected flow has a separate staged loading state', () => {
   assert.match(connected, /degradedReason === 'context-loading'/);
   assert.match(copy, /isContextLoading/);
 });
+
+test('browse detail context uses public tree detail read path', () => {
+  const loader = read('js/detail/detail-loader.js');
+  const client = read('js/postgres-client.js');
+
+  assert.match(client, /getPublicTree:\s*async \(treeId\) => BaseApiFetch\.apiFetch\(`\/trees\/\$\{treeId\}`,\s*\{ publicRead: true \}\)/);
+  assert.match(loader, /sourceContext === 'browse' && window\.apiClient\.getPublicTree/);
+  assert.match(loader, /window\.apiClient\.getPublicTree\(canonicalTreeId\)/);
+  assert.match(loader, /window\.apiClient\.getTree\(canonicalTreeId\)/);
+});

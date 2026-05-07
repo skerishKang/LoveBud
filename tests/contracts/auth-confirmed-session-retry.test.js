@@ -177,3 +177,108 @@ test('auth headers wait for currentUser when confirmed cache exists', async () =
   assert.equal(headers.Authorization, 'Bearer test-token');
   assert.ok(authReadCount > 1);
 });
+
+test('public-read api fetch omits authorization for tree detail even with cached token', async () => {
+  const localStorageState = new Map([
+    ['lovebud_auth_token', JSON.stringify({
+      uid: 'safe-test-user',
+      token: 'safe-test-token',
+      expiresAt: Date.now() + 60000,
+    })],
+  ]);
+  const localStorageMock = {
+    getItem(key) {
+      return localStorageState.has(key) ? localStorageState.get(key) : null;
+    },
+    setItem(key, value) {
+      localStorageState.set(key, String(value));
+    },
+    removeItem(key) {
+      localStorageState.delete(key);
+    },
+  };
+  let capturedHeaders = null;
+  const sandbox = {
+    window: {
+      __LOVEBUD_AUTH_WAIT_MS: 200,
+      __lovebudAuthReady: true,
+      localStorage: localStorageMock,
+      firebase: null,
+      LoveBudAuthState: null,
+    },
+    localStorage: localStorageMock,
+    firebase: null,
+    console,
+    fetch: async (_url, config) => {
+      capturedHeaders = config.headers;
+      return { ok: true, json: async () => ({ ok: true }) };
+    },
+    setTimeout,
+    clearTimeout,
+    CustomEvent: function CustomEvent(type, init) {
+      this.type = type;
+      this.detail = init && init.detail;
+    },
+  };
+
+  vm.createContext(sandbox);
+  vm.runInContext(fs.readFileSync(AUTH_POLICY_PATH, 'utf8'), sandbox, { filename: AUTH_POLICY_PATH });
+  vm.runInContext(fs.readFileSync(BASE_API_FETCH_PATH, 'utf8'), sandbox, { filename: BASE_API_FETCH_PATH });
+
+  await sandbox.window.LoveTreeBaseApiFetch.apiFetch('/trees/safe-public-tree', { publicRead: true });
+
+  assert.equal(capturedHeaders.Authorization, undefined);
+  assert.equal(capturedHeaders.authorization, undefined);
+});
+
+test('private tree api fetch still attaches authorization from cached token', async () => {
+  const localStorageState = new Map([
+    ['lovebud_auth_token', JSON.stringify({
+      uid: 'safe-test-user',
+      token: 'safe-test-token',
+      expiresAt: Date.now() + 60000,
+    })],
+  ]);
+  const localStorageMock = {
+    getItem(key) {
+      return localStorageState.has(key) ? localStorageState.get(key) : null;
+    },
+    setItem(key, value) {
+      localStorageState.set(key, String(value));
+    },
+    removeItem(key) {
+      localStorageState.delete(key);
+    },
+  };
+  let capturedHeaders = null;
+  const sandbox = {
+    window: {
+      __LOVEBUD_AUTH_WAIT_MS: 200,
+      __lovebudAuthReady: true,
+      localStorage: localStorageMock,
+      firebase: null,
+      LoveBudAuthState: null,
+    },
+    localStorage: localStorageMock,
+    firebase: null,
+    console,
+    fetch: async (_url, config) => {
+      capturedHeaders = config.headers;
+      return { ok: true, json: async () => ({ ok: true }) };
+    },
+    setTimeout,
+    clearTimeout,
+    CustomEvent: function CustomEvent(type, init) {
+      this.type = type;
+      this.detail = init && init.detail;
+    },
+  };
+
+  vm.createContext(sandbox);
+  vm.runInContext(fs.readFileSync(AUTH_POLICY_PATH, 'utf8'), sandbox, { filename: AUTH_POLICY_PATH });
+  vm.runInContext(fs.readFileSync(BASE_API_FETCH_PATH, 'utf8'), sandbox, { filename: BASE_API_FETCH_PATH });
+
+  await sandbox.window.LoveTreeBaseApiFetch.apiFetch('/trees');
+
+  assert.equal(capturedHeaders.Authorization, 'Bearer safe-test-token');
+});

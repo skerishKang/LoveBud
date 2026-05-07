@@ -6,6 +6,7 @@ const path = require('node:path');
 const ROOT = path.resolve(__dirname, '..', '..');
 const MODAL_APP = path.join(ROOT, 'modal_compute/app.py');
 const MODAL_PUBLIC_READS = path.join(ROOT, 'modal_compute/public_reads.py');
+const MODAL_VALIDATION = path.join(ROOT, 'modal_compute/validation.py');
 
 function readModalApp() {
   return fs.readFileSync(MODAL_APP, 'utf8').replace(/\r\n/g, '\n');
@@ -13,6 +14,10 @@ function readModalApp() {
 
 function readModalPublicReads() {
   return fs.readFileSync(MODAL_PUBLIC_READS, 'utf8').replace(/\r\n/g, '\n');
+}
+
+function readModalValidation() {
+  return fs.readFileSync(MODAL_VALIDATION, 'utf8').replace(/\r\n/g, '\n');
 }
 
 function hasString(content, pattern) {
@@ -116,7 +121,25 @@ test('modal public read helpers preserve public visibility filters and normaliza
   const treeHelper = extractPythonFunction(content, 'fetch_public_tree');
   assert.ok(hasString(treeHelper, "t.visibility = 'public'"));
   assert.ok(hasString(treeHelper, "m.visibility = 'public'"));
-  assert.ok(hasString(treeHelper, 'return normalize_tree_row(row, row.get("memory_count")) if row else None'));
+  assert.ok(hasString(treeHelper, 'return normalize_tree_row(row, row.get("memory_count"), include_owner=False) if row else None'));
+});
+
+test('public tree detail helper omits owner identifier from response shape', () => {
+  const content = readModalPublicReads();
+  const treeHelper = extractPythonFunction(content, 'fetch_public_tree');
+
+  assert.ok(!hasString(treeHelper, 't.owner_id'), 'public tree detail must not select owner_id');
+  assert.ok(!hasString(treeHelper, 'owner_id,'), 'public tree detail must not return owner_id');
+  assert.ok(hasString(treeHelper, 'include_owner=False'), 'public tree detail must omit owner identifiers at normalization');
+});
+
+test('tree normalizer preserves owner identifiers by default for private routes', () => {
+  const content = readModalValidation();
+  const normalizer = extractPythonFunction(content, 'normalize_tree_row');
+
+  assert.ok(hasString(normalizer, 'include_owner: bool = True'));
+  assert.ok(hasString(normalizer, 'if include_owner:'));
+  assert.ok(hasString(normalizer, 'tree["ownerId"] = str(row["owner_id"]) if row.get("owner_id") else None'));
 });
 
 test('modal public read route limits remain clamped at route boundary', () => {

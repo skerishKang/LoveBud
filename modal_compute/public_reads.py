@@ -170,7 +170,7 @@ def fetch_public_memory(memory_id: str) -> dict[str, Any] | None:
 
 def fetch_public_tree(tree_id: str) -> dict[str, Any] | None:
     query = """
-        SELECT t.id, t.owner_id, t.title, t.visibility, t.created_at, t.updated_at,
+        SELECT t.id, t.title, t.visibility, t.created_at, t.updated_at,
                COUNT(m.id)::int AS memory_count
         FROM trees t
         LEFT JOIN memories m
@@ -178,7 +178,7 @@ def fetch_public_tree(tree_id: str) -> dict[str, Any] | None:
          AND m.visibility = 'public'
         WHERE t.id = %s
           AND t.visibility = 'public'
-        GROUP BY t.id, t.owner_id, t.title, t.visibility, t.created_at, t.updated_at
+        GROUP BY t.id, t.title, t.visibility, t.created_at, t.updated_at
         LIMIT 1;
     """
 
@@ -190,4 +190,4 @@ def fetch_public_tree(tree_id: str) -> dict[str, Any] | None:
 
     row = run_db_with_retry(operation)
 
-    return normalize_tree_row(row, row.get("memory_count")) if row else None
+    return normalize_tree_row(row, row.get("memory_count"), include_owner=False) if row else None
