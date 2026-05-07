@@ -281,78 +281,21 @@ function isNodeWithinSafeViewport(pos) {
         });
     }
 
-    function hideNodeSkeleton(img, skeleton) {
-        img.classList.add('loaded');
-        skeleton.style.display = 'none';
-    }
 
-    function handleNodeImageError(img, skeleton) {
-        const currentSrc = img.getAttribute('src') || '';
-        if (currentSrc.includes('/hqdefault.jpg')) {
-            img.src = currentSrc.replace('/hqdefault.jpg', '/mqdefault.jpg');
-            return;
-        }
-        if (currentSrc.includes('/mqdefault.jpg')) {
-            img.src = currentSrc.replace('/mqdefault.jpg', '/default.jpg');
-            return;
-        }
-        img.style.display = 'none';
-        skeleton.classList.add('error');
-        skeleton.textContent = '♪';
-    }
 
-    function createNodeImageSection(mem) {
-        const imgWrapper = document.createElement('div');
-        imgWrapper.className = 'node-img-wrapper';
-        const skeleton = document.createElement('div');
-        skeleton.className = 'node-skeleton';
-        imgWrapper.appendChild(skeleton);
-        const img = document.createElement('img');
-        img.src = resolveMemoryThumbnail(mem);
-        img.alt = mem.title || '';
-        img.draggable = false;
-        img.addEventListener('dragstart', (e) => e.preventDefault());
-        img.onload = () => hideNodeSkeleton(img, skeleton);
-        img.onerror = () => handleNodeImageError(img, skeleton);
-        if (img.complete) {
-            hideNodeSkeleton(img, skeleton);
-        }
-        imgWrapper.appendChild(img);
-        return imgWrapper;
-    }
 
-    function createNodeCard(mem) {
-        const card = document.createElement('div');
-        card.className = 'node-card';
-        const imgWrapper = createNodeImageSection(mem);
-        card.appendChild(imgWrapper);
-        return card;
-    }
 
-    function applyNodePosition(nodeEl, pos, mem) {
-        nodeEl.style.left = `${pos.x - NODE_HALF}px`;
-        nodeEl.style.top = `${pos.y - NODE_HALF}px`;
-        nodeEl.style.transform = `scale(${viewportState.scale || 1})`;
-        nodeEl.style.transformOrigin = 'center center';
-        nodeEl.style.animationDelay = mem.delay || '0s';
-    }
 
-    function setupNodeElement(nodeEl, mem) {
-        nodeEl.className = 'memory-node floating-node';
-        nodeEl.dataset.memoryId = mem.id;
-        nodeEl.draggable = false;
-        nodeEl.tabIndex = 0;
-        nodeEl.setAttribute('role', 'button');
-        nodeEl.setAttribute('aria-label', mem.title ? `${mem.title} 선택` : '순간 선택');
-        nodeEl.style.touchAction = 'none';
-    }
 
     function createNodeElement(mem, pos) {
-        const nodeEl = document.createElement('div');
-        setupNodeElement(nodeEl, mem);
-        applyNodePosition(nodeEl, pos, mem);
-        nodeEl.appendChild(createNodeCard(mem));
-        return nodeEl;
+        if (typeof canvasNode.createNodeElement !== "function") {
+            throw new Error("LoveBudEditorCanvasNode.createNodeElement is required");
+        }
+        return canvasNode.createNodeElement(mem, pos, {
+            resolveMemoryThumbnail: resolveMemoryThumbnail,
+            NODE_HALF: NODE_HALF,
+            scale: viewportState.scale || 1
+        });
     }
 
     function attachNodeInfo(nodeEl, mem) {
