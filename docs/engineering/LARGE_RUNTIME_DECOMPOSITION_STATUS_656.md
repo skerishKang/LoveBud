@@ -92,8 +92,8 @@ CSS for landing page visual. Low risk.
 | Risk | Count | Files |
 |---|---|---|
 | HIGH | 3 | auth.js, editor.js, editor-canvas.js |
-| MEDIUM | 9 | search-ui.js, my-trees-ui.js, editor-memory-form.js, search-preview-renderer.js, auth-login-page.js, auth-firebase.js, shared-header.js, i18n-detail.js (partially JS-driven) |
-| LOW | 9 | All CSS files + i18n-detail.js |
+| MEDIUM | 7 | search-ui.js, my-trees-ui.js, editor-memory-form.js, search-preview-renderer.js, auth-login-page.js, auth-firebase.js, shared-header.js |
+| LOW | 10 | i18n-detail.js, intro/hero.css, global/header.css, global.css, editor/detail-panel.css, search/tree-card.css, login.css, index.css, intro/how-to.css, index-visual.css |
 
 ## Recommended sequence
 
