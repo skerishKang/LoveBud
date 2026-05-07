@@ -9,9 +9,21 @@
   'use strict';
 
   window.i18nSearch = {
+    'search.eyebrow': {
+      ko: '오늘의 공개 감상',
+      en: 'Today\'s Public Picks'
+    },
     'search.title': {
       ko: '러브트리를 둘러보세요',
       en: 'Browse LoveTree moments'
+    },
+    'search.titleBrand': {
+      ko: '러브트리',
+      en: 'LoveTrees'
+    },
+    'search.titleAction': {
+      ko: '를 둘러보세요',
+      en: ' to browse'
     },
     'search.subtitle': {
       ko: '첫 순간과 이어진 마음을 따라가 보세요',
