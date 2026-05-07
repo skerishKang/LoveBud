@@ -1,4 +1,4 @@
-function createEditorCanvas(deps) {
+﻿function createEditorCanvas(deps) {
     const {
         canvas,
         svg,
@@ -147,12 +147,6 @@ function loadStoredLayout() {
         }
     });
 
-
-
-
-
-
-
 function isNodeWithinSafeViewport(pos) {
         const metrics = getMetrics();
         const padding = 96;
@@ -281,77 +275,19 @@ function isNodeWithinSafeViewport(pos) {
         });
     }
 
-    function hideNodeSkeleton(img, skeleton) {
-        img.classList.add('loaded');
-        skeleton.style.display = 'none';
-    }
-
-    function handleNodeImageError(img, skeleton) {
-        const currentSrc = img.getAttribute('src') || '';
-        if (currentSrc.includes('/hqdefault.jpg')) {
-            img.src = currentSrc.replace('/hqdefault.jpg', '/mqdefault.jpg');
-            return;
+    function createNodeElement(mem, pos) {
+        if (typeof canvasNode.createNodeElement === 'function') {
+            return canvasNode.createNodeElement(mem, pos, {
+                resolveMemoryThumbnail: resolveMemoryThumbnail,
+                NODE_HALF: NODE_HALF,
+                scale: viewportState.scale || 1
+            });
         }
-        if (currentSrc.includes('/mqdefault.jpg')) {
-            img.src = currentSrc.replace('/mqdefault.jpg', '/default.jpg');
-            return;
-        }
-        img.style.display = 'none';
-        skeleton.classList.add('error');
-        skeleton.textContent = '♪';
-    }
-
-    function createNodeImageSection(mem) {
-        const imgWrapper = document.createElement('div');
-        imgWrapper.className = 'node-img-wrapper';
-        const skeleton = document.createElement('div');
-        skeleton.className = 'node-skeleton';
-        imgWrapper.appendChild(skeleton);
-        const img = document.createElement('img');
-        img.src = resolveMemoryThumbnail(mem);
-        img.alt = mem.title || '';
-        img.draggable = false;
-        img.addEventListener('dragstart', (e) => e.preventDefault());
-        img.onload = () => hideNodeSkeleton(img, skeleton);
-        img.onerror = () => handleNodeImageError(img, skeleton);
-        if (img.complete) {
-            hideNodeSkeleton(img, skeleton);
-        }
-        imgWrapper.appendChild(img);
-        return imgWrapper;
-    }
-
-    function createNodeCard(mem) {
-        const card = document.createElement('div');
-        card.className = 'node-card';
-        const imgWrapper = createNodeImageSection(mem);
-        card.appendChild(imgWrapper);
-        return card;
-    }
-
-    function applyNodePosition(nodeEl, pos, mem) {
-        nodeEl.style.left = `${pos.x - NODE_HALF}px`;
-        nodeEl.style.top = `${pos.y - NODE_HALF}px`;
-        nodeEl.style.transform = `scale(${viewportState.scale || 1})`;
-        nodeEl.style.transformOrigin = 'center center';
-        nodeEl.style.animationDelay = mem.delay || '0s';
-    }
-
-    function setupNodeElement(nodeEl, mem) {
+        const nodeEl = document.createElement('div');
         nodeEl.className = 'memory-node floating-node';
         nodeEl.dataset.memoryId = mem.id;
-        nodeEl.draggable = false;
         nodeEl.tabIndex = 0;
-        nodeEl.setAttribute('role', 'button');
-        nodeEl.setAttribute('aria-label', mem.title ? `${mem.title} 선택` : '순간 선택');
-        nodeEl.style.touchAction = 'none';
-    }
-
-    function createNodeElement(mem, pos) {
-        const nodeEl = document.createElement('div');
-        setupNodeElement(nodeEl, mem);
-        applyNodePosition(nodeEl, pos, mem);
-        nodeEl.appendChild(createNodeCard(mem));
+        nodeEl.appendChild(document.createElement('div'));
         return nodeEl;
     }
 
@@ -376,7 +312,7 @@ function isNodeWithinSafeViewport(pos) {
 
     function reapplySelection(selectedNodeId) {
         if (!selectedNodeId) return;
-        const selectedEl = document.querySelector(`.memory-node[data-memory-id="${selectedNodeId}"]`);
+        const selectedEl = document.querySelector('.memory-node[data-memory-id="' + selectedNodeId + '"]');
         if (selectedEl) {
             selectedEl.classList.add('selected');
         }
@@ -424,7 +360,7 @@ function isNodeWithinSafeViewport(pos) {
                 viewportState
             });
         }
-        canvas.style.backgroundPosition = `${viewportState.offsetX}px ${viewportState.offsetY}px`;
+        canvas.style.backgroundPosition = viewportState.offsetX + 'px ' + viewportState.offsetY + 'px';
 
         canvas.querySelectorAll('.memory-node').forEach((node) => node.remove());
         canvas.querySelectorAll('#emptyTreeMessage').forEach((el) => el.remove());
@@ -597,10 +533,10 @@ function isNodeWithinSafeViewport(pos) {
                 persistStoredPositions,
                 initCanvas,
                 getWorldPosition,
-                getDragTargetElement: (draggedId) => document.querySelector(`.memory-node[data-memory-id="${draggedId}"]`),
+                getDragTargetElement: (draggedId) => document.querySelector('.memory-node[data-memory-id="' + draggedId + '"]'),
                 showMovedToast: () => {
                     if (window.LoveBudUI?.showToast) {
-                        window.LoveBudUI.showToast(i18n('node_position_adjusted') || '순간 위치를 조정했습니다', 'success', 1800);
+                        window.LoveBudUI.showToast(i18n('node_position_adjusted') || '\uc21c\uac04 \uc704\uce58\ub97c \uc870\uc815\ud588\uc2b5\ub2c8\ub2e4', 'success', 1800);
                     }
                 }
             });

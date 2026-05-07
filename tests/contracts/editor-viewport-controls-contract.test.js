@@ -46,10 +46,11 @@ test('editor canvas persists scale and keeps node dragging scale-aware', () => {
   const layout = read('js/editor/editor-canvas-layout.js');
   const interaction = read('js/editor/editor-canvas-interaction.js');
   const fallbackInteraction = read('js/editor/editor-canvas-interaction-helpers.js');
+  const canvasNode = read('js/editor/editor-canvas-node.js');
 
   assert.match(canvas, /scale:\s*storedLayout\.scale \|\| 1/, 'canvas state must initialize viewport scale');
   assert.match(canvas, /projectWorldPosition\(world,\s*viewportState\)/, 'canvas must render through viewport projection');
-  assert.match(canvas, /nodeEl\.style\.transform = `scale\(\$\{viewportState\.scale \|\| 1\}\)`/, 'node cards must visually scale with viewport');
+  assert.match(canvasNode, /nodeEl\.style\.transform = 'scale\(/ , 'node cards must visually scale with viewport (delegated to canvas-node)');
   assert.match(canvas, /function\s+zoomBy\s*\(factor\)/, 'canvas must expose zoom action');
   assert.match(canvas, /persistStoredPositions\(\)/, 'viewport control changes must persist safely');
   assert.match(layout, /scale:\s*typeof parsed\.scale === 'number' \? parsed\.scale : 1/, 'layout store must read persisted scale defensively');
