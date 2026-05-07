@@ -1,4 +1,4 @@
-﻿# Search Duplicate Renderer Source-of-Truth Comparison
+# Search Duplicate Renderer Source-of-Truth Comparison
 
 - Parent tracker: #656
 - Audit source: #834 / PR #886
