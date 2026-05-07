@@ -210,6 +210,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         ui.syncActiveCard();
 
         const selectedTree = previewController.getSelectedTreeFromFiltered(filtered);
+
+        if (!state.selectedTreeId && resetPreviewWhenNoSelection && filtered.length > 0) {
+            const firstTree = filtered[0];
+            const firstCard = findRenderedTreeCard(firstTree.id);
+            previewController.selectTree(firstTree, firstCard);
+            return;
+        }
+
         if (!state.selectedTreeId && resetPreviewWhenNoSelection) {
             ui.clearSelectedPreview();
             return;
@@ -222,6 +230,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else if (!selectedTree && resetPreviewWhenNoSelection) {
             ui.clearSelectedPreview();
         }
+    }
+
+    function findRenderedTreeCard(treeId) {
+        let selector = '';
+        try {
+            selector = `.tree-card[data-tree-id="${CSS.escape(treeId)}"]`;
+        } catch (e) {
+            selector = `.tree-card[data-tree-id="${treeId.replace(/"/g, '\\"')}"]`;
+        }
+
+        const allCardContainers = [refs.resultsList, refs.growingList].filter(Boolean);
+        for (const container of allCardContainers) {
+            const activeCard = container.querySelector(selector);
+            if (activeCard) return activeCard;
+        }
+        return null;
     }
 
 

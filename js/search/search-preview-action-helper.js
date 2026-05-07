@@ -128,12 +128,34 @@
         `;
     }
 
+    /**
+     * Render open tree CTA button (secondary action)
+     * @param {Object} tree - Tree object
+     * @returns {string} Button HTML markup
+     */
+    function renderOpenTreeButton(tree) {
+        if (!tree?.id) return '';
+        const href = `${getBasePath()}detail.html?tree=${encodeURIComponent(tree.id)}`;
+        const label = getSearchCopy(
+            'search.previewOpenTreeCta',
+            '트리 열기',
+            'Open tree'
+        );
+        return `
+            <a href="${escapeHtml(href)}" class="btn-round preview-secondary-action" style="width:100%;margin-top:12px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;font-size:13px;font-weight:700;gap:6px;background:transparent;color:var(--primary);border:1px solid var(--outline-variant);">
+                <span class="material-symbols-outlined" style="font-size:16px;">account_tree</span>
+                ${escapeHtml(label)}
+            </a>
+        `;
+    }
+
     // Public API
     window.LoveBudSearchPreviewActionHelper = {
         getBasePath: getBasePath,
         getTreeDetailHref: getTreeDetailHref,
         renderPreviewActionButton: renderPreviewActionButton,
-        renderShareButton: renderShareButton
+        renderShareButton: renderShareButton,
+        renderOpenTreeButton: renderOpenTreeButton
     };
 
     console.log('[LoveBudSearchPreviewActionHelper] Search preview action helper loaded v20260501-1');
