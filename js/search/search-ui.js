@@ -250,7 +250,7 @@
             const isDone = !state.apiTreesLoaded || state.currentLimit >= 60 || !state.hasMoreTrees;
             scrollLoadSentinel.hidden = isDone;
             scrollLoadSentinel.classList.toggle('is-loading', Boolean(state.isLoadingMore));
-            scrollLoadSentinel.classList.toggle('is-idle', !state.isLoadingMore);
+            scrollLoadSentinel.classList.toggle('is-idle', !isDone && !state.isLoadingMore);
             scrollLoadSentinel.setAttribute('aria-hidden', isDone ? 'true' : 'false');
 
             const icon = scrollLoadSentinel.querySelector('.material-symbols-outlined');
