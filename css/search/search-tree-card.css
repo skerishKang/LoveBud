@@ -1,6 +1,9 @@
 .tree-card {
     display: flex;
     flex-direction: column;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
     padding: 14px;
     background:
         radial-gradient(circle at 30% 20%, rgba(255, 248, 245, 0.92), transparent 52%),
@@ -66,6 +69,9 @@
 
 .tree-card-media {
     position: relative;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
     height: 136px;
     margin: 0 0 14px;
     overflow: hidden;
@@ -319,10 +325,13 @@
 
 .tree-card-body {
     display: grid;
-    grid-template-rows: 3.22rem 2.74rem auto;
-    row-gap: 8px;
+    grid-template-rows: 2.98rem 2.46rem 22px auto;
+    row-gap: 7px;
     padding: 4px 6px 6px;
     flex: 1;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
     min-width: 0;
     min-height: 0;
     overflow: hidden;
@@ -372,6 +381,63 @@
 .tree-subtitle-fallback {
     color: rgba(108, 89, 83, 0.72);
     font-weight: 650;
+}
+
+.tree-card-flow-bridge {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    height: 22px;
+    padding: 0 8px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, rgba(255, 248, 245, 0.64), rgba(244, 248, 238, 0.58));
+    border: 1px solid rgba(144, 73, 81, 0.07);
+    overflow: hidden;
+}
+
+.tree-card-flow-line {
+    position: absolute;
+    left: 16px;
+    right: 16px;
+    top: 50%;
+    height: 2px;
+    border-radius: 999px;
+    transform: translateY(-50%);
+    background: linear-gradient(90deg, rgba(144, 73, 81, 0.34), rgba(122, 139, 110, 0.30));
+}
+
+.tree-card-flow-node {
+    position: relative;
+    flex: 0 0 auto;
+    z-index: 1;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #c87480;
+    box-shadow: 0 0 0 4px rgba(200, 116, 128, 0.10);
+}
+
+.tree-card-flow-node + .tree-card-flow-node {
+    margin-left: auto;
+}
+
+.tree-card-flow-node-root {
+    background: #904951;
+}
+
+.tree-card-flow-node-end {
+    background: #7a8b6e;
+    box-shadow: 0 0 0 4px rgba(122, 139, 110, 0.12);
+}
+
+.tree-card-flow-count-1 .tree-card-flow-line {
+    right: 50%;
+    opacity: 0.28;
 }
 
 .tree-meta-row {

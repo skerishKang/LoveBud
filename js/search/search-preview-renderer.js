@@ -334,6 +334,25 @@
         `;
     }
 
+    function renderSelectedTreeMediaFallback(treeTitle, memoryCount) {
+        const countLabel = memoryCount > 0
+            ? formatSearchCopy(
+                'search.previewFallbackMomentCount',
+                { count: memoryCount },
+                '{count}개의 순간이 이어져 있어요.',
+                '{count} moments are connected.'
+            )
+            : getSearchCopy('search.previewStatsPending', '첫 순간을 기다리는 중', 'Waiting for the first moment');
+
+        return `
+            <div class="preview-media-fallback preview-media-fallback-selected" style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;background:linear-gradient(135deg,var(--surface-container-low),white);border-radius:1rem;color:var(--on-surface-variant);">
+                <span class="material-symbols-outlined" style="font-size:36px;color:var(--primary);margin-bottom:12px;">account_tree</span>
+                <div style="font-size:14px;font-weight:800;color:var(--on-surface);margin-bottom:8px;">${treeTitle}</div>
+                <p style="margin:0;font-size:13px;line-height:1.6;">${escapeHtml(countLabel)}</p>
+            </div>
+        `;
+    }
+
     function showPreviewImageFallback(img) {
         const helper = window.LoveBudSearchPreviewMediaHelper;
         if (helper?.showPreviewImageFallback) {
@@ -393,7 +412,7 @@
                 const safeSourceUrl = sanitizeUrl(mediaMem?.sourceUrl || '');
                 const safeThumbnail = sanitizeUrl(mediaMem?.thumbnail || '');
                 const safeMediaMemTitle = escapeHtml(getMomentLabel(mediaMem || firstMem));
-                previewState = safeSourceUrl ? 'media' : (safeThumbnail ? 'thumbnail' : 'empty');
+                previewState = safeSourceUrl ? 'media' : 'thumbnail';
 
                 const mediaHelper = window.LoveBudSearchPreviewMediaHelper;
                 if (mediaHelper?.renderPreviewIframe && safeSourceUrl) {
@@ -414,7 +433,9 @@
                                 <div style="font-size:12px;opacity:0.7;">${safeMediaMemTitle}</div>
                             </div>
                         </div>
-                    ` : (safeThumbnail ? renderPreviewThumbnailMedia(safeThumbnail, safeMediaMemTitle, safeTreeTitle) : renderPlaceholder());
+                    ` : (safeThumbnail
+                        ? renderPreviewThumbnailMedia(safeThumbnail, safeMediaMemTitle, safeTreeTitle)
+                        : renderSelectedTreeMediaFallback(safeTreeTitle, displayMemoryCount));
                 }
             }
             setPreviewState(previewState);
@@ -462,8 +483,8 @@
                         <span style="color:var(--primary);font-weight:700;">${noRecordsLine}</span>
                         ${renderInfoCallout('info', getSearchCopy('search.previewNewTreeInfo', '이제 막 감상이 시작될 공개 러브트리예요.', 'This public LoveTree is just about to begin.'))}
                     </div>
-                    ${renderPreviewActionButton(tree)}
                     ${renderOpenTreeButton(tree)}
+                    ${renderPreviewActionButton(tree)}
                     ${renderShareButton(tree)}
                 `;
             } else {
@@ -491,8 +512,8 @@
                         ${renderInfoCallout('favorite', `${firstMomentLabel}에서 시작해 ${lastMomentLabel}까지 이어진 감정의 흐름이에요.`)}
                         ${renderInfoCallout('touch_app', getSearchCopy('search.previewJourneyCta', '이곳에서 대표 순간과 이어진 감정을 훑어보고, 마음이 머무는 순간으로 들어가 보세요.', 'Scan the featured moment and connected feelings here, then open the moment that draws you in.'), 'primary')}
                     </div>
-                    ${renderPreviewActionButton(tree)}
                     ${renderOpenTreeButton(tree)}
+                    ${renderPreviewActionButton(tree)}
                     ${renderShareButton(tree)}
                 `;
             }
