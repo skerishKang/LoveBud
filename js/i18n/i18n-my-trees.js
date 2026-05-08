@@ -51,6 +51,8 @@
     'myTrees.card_selected': { ko: '보고 있는 트리', en: 'Current tree' },
     'myTrees.card_open': { ko: '다시 열기', en: 'Open again' },
     'myTrees.card_menu': { ko: '트리 메뉴 열기', en: 'Open tree menu' },
+    'myTrees.card_flow_label': { ko: '이어진 순간 흐름', en: 'Connected moment flow' },
+    'myTrees.card_flow_empty_label': { ko: '첫 순간을 기다리는 러브트리 흐름', en: 'LoveTree flow waiting for the first moment' },
     'myTrees.card_waiting': { ko: '첫 순간을 기다리는 중', en: 'Waiting for the first moment' },
     'myTrees.card_growing': { ko: '차곡차곡 자라는 중', en: 'Growing layer by layer' },
     'myTrees.moment_count_compact': { ko: '순간 {count}개', en: '{count} moments' },

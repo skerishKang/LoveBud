@@ -138,6 +138,28 @@
     ].join('');
   }
 
+  function buildTreeFlowBridge(tree, i18n) {
+    var momentCount = getTreeMomentCount(tree);
+    var nodeCount = Math.max(1, Math.min(momentCount || 1, 5));
+    var nodes = [];
+    for (var i = 0; i < nodeCount; i++) {
+      var nodeClass = 'tree-card-flow-node';
+      if (i === 0) nodeClass += ' tree-card-flow-node-root';
+      if (i === nodeCount - 1 && nodeCount > 1) nodeClass += ' tree-card-flow-node-end';
+      nodes.push('<span class="' + nodeClass + '"></span>');
+    }
+    var label = momentCount > 0
+      ? (i18n('myTrees.card_flow_label') || '이어진 순간 흐름')
+      : (i18n('myTrees.card_flow_empty_label') || '첫 순간을 기다리는 러브트리 흐름');
+
+    return [
+      '<div class="tree-card-flow-bridge tree-card-flow-count-' + nodeCount + '" role="img" aria-label="' + escapeHtml(label) + '">',
+        '<span class="tree-card-flow-line"></span>',
+        nodes.join(''),
+      '</div>'
+    ].join('');
+  }
+
   function getRepresentativeThumbnail(tree) {
     if (!tree) return '';
     return tree.representativeThumbnail || tree.representative_thumbnail || tree.thumbnail || '';
@@ -198,6 +220,7 @@
             : (textVisual || buildMiniTreeSVG(tree)),
         '</div>',
         (momentCount > 0 ? '<div class="tree-card-thumb-topline"><span class="tree-card-moment-badge" data-count="' + momentCount + '">' + (i18n('myTrees.moment_count_compact') || '순간 {count}개').replace('{count}', String(momentCount)) + '</span></div>' : ''),
+        buildTreeFlowBridge(tree, i18n),
         (momentCount > 0 ? '<div class="tree-card-thumb-caption">' + moodLabel + '</div>' : ''),
       '</div>'
     ].join('');
