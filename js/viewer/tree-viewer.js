@@ -190,6 +190,7 @@
             }
 
             var handler = {
+                getShareUrl: function() { return window.location.href; },
                 onSelectBranch: function(branchId) {
                     state.selectedBranchId = branchId;
                     state.selectedMomentId = null;
@@ -214,8 +215,34 @@
                     else state.activePanel = 'empty';
                     refresh();
                 },
-                toggleLike: function() { state.likedTree = !state.likedTree; }
+                toggleLike: function() { state.likedTree = !state.likedTree; },
+                copyLink: function() {
+                    var Share = window.LoveBudShareActions;
+                    if (!Share) return;
+                    var result = Share.copyLink(handler);
+                    showShareStatus(result);
+                },
+                nativeShare: function() {
+                    var Share = window.LoveBudShareActions;
+                    if (!Share) return;
+                    Share.nativeShare(handler).then(function(result) {
+                        showShareStatus(result);
+                    });
+                }
             };
+
+            function showShareStatus(result) {
+                if (!result || !result.message) return;
+                var statusEl = document.getElementById('vvShareStatus');
+                if (!statusEl) return;
+                statusEl.textContent = result.message;
+                statusEl.className = 'vv-share-status ' + (result.success ? 'is-success' : 'is-error');
+                clearTimeout(statusEl._hideTimer);
+                statusEl._hideTimer = setTimeout(function() {
+                    statusEl.textContent = '';
+                    statusEl.className = 'vv-share-status';
+                }, 3000);
+            }
 
             container.addEventListener('click', function(e) {
                 var action = e.target.closest('[data-action]');
@@ -226,6 +253,8 @@
                     else if (a === 'toggle-like') handler.toggleLike();
                     else if (a === 'open-tree-comments') handler.openPanel('tree-comments');
                     else if (a === 'open-share') handler.openPanel('share');
+                    else if (a === 'copy-link') handler.copyLink();
+                    else if (a === 'native-share') handler.nativeShare();
                     return;
                 }
                 var momentBtn = e.target.closest('[data-moment-id]');
