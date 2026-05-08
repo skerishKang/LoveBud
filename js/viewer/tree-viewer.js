@@ -159,6 +159,13 @@
                 '  <h1 class="vv-title">' + escapeHtml(treeTitle) + '</h1>' +
                 '  <div class="vv-meta-row"><span>' + escapeHtml(viewerData.tree.creator) + '</span><span class="vv-dot">·</span><span>' + escapeHtml(treeMetaText) + '</span></div></div>' +
                 '</header>' +
+                '<div class="vv-action-dock">' +
+                '  <div class="vv-action-group">' +
+                '    <button type="button" class="vv-action-btn" data-action="open-share"><span class="vv-action-icon">' +
+                '<svg viewBox="0 0 24 24" fill="none" class="vv-icon"><path d="M8.1 12.7 15.9 17M15.9 7 8.1 11.3M6.4 14.6a2.6 2.6 0 1 0 0-5.2 2.6 2.6 0 0 0 0 5.2Zm10.9-5a2.6 2.6 0 1 0 0-5.2 2.6 2.6 0 0 0 0 5.2Zm0 10a2.6 2.6 0 1 0 0-5.2 2.6 2.6 0 0 0 0 5.2Z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></span>' +
+                '    공유</button>' +
+                '  </div>' +
+                '</div>' +
                 '<div class="vv-viewer-layout">' +
                 '  <div class="vv-tree-container"></div>' +
                 '  <div class="vv-panel-host"></div>' +
@@ -190,6 +197,7 @@
             }
 
             var handler = {
+                getShareUrl: function() { return window.location.href; },
                 onSelectBranch: function(branchId) {
                     state.selectedBranchId = branchId;
                     state.selectedMomentId = null;
@@ -214,8 +222,34 @@
                     else state.activePanel = 'empty';
                     refresh();
                 },
-                toggleLike: function() { state.likedTree = !state.likedTree; }
+                toggleLike: function() { state.likedTree = !state.likedTree; },
+                copyLink: function() {
+                    var Share = window.LoveBudShareActions;
+                    if (!Share) return;
+                    var result = Share.copyLink(handler);
+                    showShareStatus(result);
+                },
+                nativeShare: function() {
+                    var Share = window.LoveBudShareActions;
+                    if (!Share) return;
+                    Share.nativeShare(handler).then(function(result) {
+                        showShareStatus(result);
+                    });
+                }
             };
+
+            function showShareStatus(result) {
+                if (!result || !result.message) return;
+                var statusEl = document.getElementById('vvShareStatus');
+                if (!statusEl) return;
+                statusEl.textContent = result.message;
+                statusEl.className = 'vv-share-status ' + (result.success ? 'is-success' : 'is-error');
+                clearTimeout(statusEl._hideTimer);
+                statusEl._hideTimer = setTimeout(function() {
+                    statusEl.textContent = '';
+                    statusEl.className = 'vv-share-status';
+                }, 3000);
+            }
 
             container.addEventListener('click', function(e) {
                 var action = e.target.closest('[data-action]');
@@ -226,6 +260,8 @@
                     else if (a === 'toggle-like') handler.toggleLike();
                     else if (a === 'open-tree-comments') handler.openPanel('tree-comments');
                     else if (a === 'open-share') handler.openPanel('share');
+                    else if (a === 'copy-link') handler.copyLink();
+                    else if (a === 'native-share') handler.nativeShare();
                     return;
                 }
                 var momentBtn = e.target.closest('[data-moment-id]');
