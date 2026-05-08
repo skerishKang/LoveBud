@@ -2,17 +2,25 @@
 .tree-card { display: block; position: relative; background: var(--lovetree-soft-surface); border-radius: var(--lovetree-card-radius); padding: 0; box-shadow: var(--lovetree-card-shadow); border: 1px solid var(--lovetree-soft-surface-border); overflow: hidden; cursor: pointer; transition: border-color 0.12s ease, box-shadow 0.12s ease; text-decoration: none; color: inherit; }
 .tree-card:hover { box-shadow: 0 20px 50px rgba(144, 73, 81, 0.12); border-color: var(--primary-soft); }
 .tree-card-thumb { width: 100%; height: 184px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; padding: 18px; }
+.tree-card-thumb::after { content: ""; position: absolute; inset: auto 0 0; height: 44%; background: linear-gradient(to top, rgba(75,64,57,0.18), transparent); pointer-events: none; z-index: 1; }
 .tree-card-thumb-glow { position: absolute; inset: auto auto 18px 18px; width: 128px; height: 128px; border-radius: 50%; filter: blur(10px); }
 .tree-card-thumb-initial { position: absolute; top: 16px; left: 16px; width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 17px; font-weight: 800; background: rgba(255,255,255,0.72); border: 1px solid rgba(255,255,255,0.55); backdrop-filter: blur(6px); z-index: 2; }
 .tree-card-thumb-topline { position: absolute; top: 16px; right: 16px; z-index: 2; }
 .tree-card-thumb-art { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
 .tree-card-thumb svg { width: 84%; height: 84%; opacity: 0.95; }
 .tree-card-thumb-image { width: calc(100% + 36px); height: calc(100% + 36px); margin: -18px; object-fit: cover; display: block; }
-.tree-card-text-visual { width: calc(100% - 20px); min-height: 126px; display: flex; flex-direction: column; justify-content: center; gap: 8px; padding: 16px 18px; border-radius: 24px; border: 1px solid; box-shadow: 0 14px 34px rgba(75, 64, 57, 0.07); backdrop-filter: blur(10px); }
+.tree-card-text-visual { position: relative; width: calc(100% - 20px); min-height: 126px; display: flex; flex-direction: column; justify-content: center; gap: 8px; padding: 16px 18px; border-radius: 24px; border: 1px solid; box-shadow: 0 14px 34px rgba(75, 64, 57, 0.07); backdrop-filter: blur(10px); z-index: 1; }
 .tree-card-text-kicker { font-size: 10px; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; }
 .tree-card-text-title { font-size: 1rem; font-weight: 800; line-height: 1.4; color: var(--on-surface); word-break: keep-all; }
 .tree-card-text-memo { font-size: 12px; line-height: 1.55; color: var(--on-surface-variant); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; word-break: keep-all; }
-.tree-card-thumb-caption { position: absolute; left: 16px; right: 16px; bottom: 14px; padding: 10px 12px; border-radius: 999px; background: rgba(255,255,255,0.78); backdrop-filter: blur(8px); font-size: 12px; font-weight: 700; color: var(--on-surface); text-align: center; }
+.tree-card-thumb-caption { position: absolute; left: 16px; right: 16px; bottom: 12px; padding: 8px 12px; border-radius: 999px; background: rgba(255,255,255,0.82); backdrop-filter: blur(8px); font-size: 12px; font-weight: 700; color: var(--on-surface); text-align: center; z-index: 3; }
+.tree-card-flow-bridge { position: absolute; left: 18px; right: 18px; bottom: 50px; z-index: 3; display: flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 999px; background: linear-gradient(90deg, rgba(255,248,245,0.72), rgba(244,248,238,0.62)); border: 1px solid rgba(144,73,81,0.08); box-sizing: border-box; overflow: hidden; pointer-events: none; }
+.tree-card-flow-line { position: absolute; left: 16px; right: 16px; top: 50%; height: 2px; border-radius: 999px; transform: translateY(-50%); background: linear-gradient(90deg, rgba(144,73,81,0.34), rgba(122,139,110,0.30)); }
+.tree-card-flow-node { position: relative; z-index: 1; flex: 0 0 auto; width: 7px; height: 7px; border-radius: 50%; background: #c87480; box-shadow: 0 0 0 4px rgba(200,116,128,0.10); }
+.tree-card-flow-node + .tree-card-flow-node { margin-left: auto; }
+.tree-card-flow-node-root { background: #904951; }
+.tree-card-flow-node-end { background: #7a8b6e; box-shadow: 0 0 0 4px rgba(122,139,110,0.12); }
+.tree-card-flow-count-1 .tree-card-flow-line { right: 50%; opacity: 0.28; }
 .tree-card-info { padding: 18px 18px 22px; display: flex; flex-direction: column; gap: 7px; min-height: 114px; }
 .tree-card-title-row { display: flex; align-items: flex-start; gap: 10px; justify-content: space-between; }
 .tree-card-title { font-size: 1.04rem; font-weight: 700; color: var(--on-surface); line-height: 1.3; flex: 1; overflow-wrap: anywhere; }

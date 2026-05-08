@@ -17,6 +17,9 @@
 .trees-skeleton-grid { grid-template-columns: 1fr; gap: 20px; }
 .empty-state { padding: 60px 24px; }
 .tree-card-thumb { height: 176px; }
+.tree-card-flow-bridge { left: 16px; right: 16px; bottom: 48px; height: 20px; }
+.tree-card-flow-node { width: 6px; height: 6px; box-shadow: 0 0 0 3px rgba(200,116,128,0.10); }
+.tree-card-thumb-caption { bottom: 11px; padding: 7px 10px; }
 .create-tree-modal-backdrop { padding: 16px; }
 .create-tree-modal { padding: 22px 20px; border-radius: 24px; }
 .create-tree-visibility { grid-template-columns: 1fr; }
