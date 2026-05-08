@@ -80,7 +80,7 @@
         // Group memories by parentId or create a flat single-branch structure
         var moments = memories.map(function(m, i) {
             return {
-                id: m.id,
+                id: 'moment-' + i,
                 title: m.title || m.emotionMemo || '',
                 tag: (m.emotionTags && m.emotionTags[0]) || '',
                 caption: m.emotionMemo || m.title || '',
@@ -111,7 +111,7 @@
                 caption: memories.length + t('viewer.momentsConnected', '개의 순간이 이어져 있어요', ' connected moments'),
                 count: memories.length,
                 rootSeed: {
-                    id: 'root-' + (memories[0] && memories[0].id || treeId),
+                    id: 'moment-root',
                     branchId: 'main',
                     title: memories[0] && memories[0].title || t('viewer.rootMoment', '시작된 순간', 'Starting moment'),
                     tag: t('viewer.start', '시작', 'Start'),
@@ -285,18 +285,20 @@
             };
 
             container.addEventListener('click', function(e) {
-                var branchBtn = e.target.closest('[data-branch-id]');
-                if (branchBtn) { handler.onSelectBranch(branchBtn.dataset.branchId); return; }
+                var action = e.target.closest('[data-action]');
+                if (action) {
+                    var a = action.dataset.action;
+                    if (a === 'close-moment') handler.closeMoment();
+                    else if (a === 'close-panel') handler.closePanel();
+                    else if (a === 'toggle-like') handler.toggleLike();
+                    else if (a === 'open-tree-comments') handler.openPanel('tree-comments');
+                    else if (a === 'open-share') handler.openPanel('share');
+                    return;
+                }
                 var momentBtn = e.target.closest('[data-moment-id]');
                 if (momentBtn) { handler.onSelectMoment(momentBtn.dataset.momentId, momentBtn.dataset.branchId); return; }
-                var action = e.target.closest('[data-action]');
-                if (!action) return;
-                var a = action.dataset.action;
-                if (a === 'close-moment') handler.closeMoment();
-                else if (a === 'close-panel') handler.closePanel();
-                else if (a === 'toggle-like') handler.toggleLike();
-                else if (a === 'open-tree-comments') handler.openPanel('tree-comments');
-                else if (a === 'open-share') handler.openPanel('share');
+                var branchBtn = e.target.closest('.vv-branch-label[data-branch-id]');
+                if (branchBtn) { handler.onSelectBranch(branchBtn.dataset.branchId); return; }
             });
 
             state.selectedBranchId = 'main';
