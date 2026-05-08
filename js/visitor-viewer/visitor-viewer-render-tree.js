@@ -17,6 +17,12 @@
         return 'linear-gradient(135deg,' + p.soft + ',' + p.stroke + ' 40%,white)';
     }
 
+    function escapeHtml(value) {
+        return String(value == null ? '' : value).replace(/[&<>"']/g, function(char) {
+            return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char];
+        });
+    }
+
     function renderTree(container, state, handlers) {
         if (!container) return;
         var branches = getData('branches') || [];
@@ -48,7 +54,7 @@
 
             var labelPoint = curvePoint(branch, 0.78);
 
-            branchNames += '<button type="button" class="vv-branch-label ' + (selected ? 'is-selected' : '') + '" data-branch-id="' + branch.id + '" style="left:' + labelPoint.x + '%;top:' + labelPoint.y + '%;color:' + bPalette.text + '">' + branch.name + '</button>';
+            branchNames += '<button type="button" class="vv-branch-label ' + (selected ? 'is-selected' : '') + '" data-branch-id="' + escapeHtml(branch.id) + '" style="left:' + labelPoint.x + '%;top:' + labelPoint.y + '%;color:' + bPalette.text + '">' + escapeHtml(branch.name) + '</button>';
 
             branch.moments.forEach(function(moment) {
                 var point = curvePoint(branch, moment.t);
@@ -59,10 +65,10 @@
 
         var rootEl = '';
         if (rootSeed) {
-            rootEl = '<button type="button" class="vv-root-seed ' + (selectedMomentId === rootSeed.id ? 'is-selected' : '') + '" data-moment-id="' + rootSeed.id + '" data-branch-id="' + rootSeed.branchId + '" aria-label="시작된 순간 열기">' +
+            rootEl = '<button type="button" class="vv-root-seed ' + (selectedMomentId === rootSeed.id ? 'is-selected' : '') + '" data-moment-id="' + escapeHtml(rootSeed.id) + '" data-branch-id="' + escapeHtml(rootSeed.branchId) + '" aria-label="시작된 순간 열기">' +
                 '<div class="vv-root-seed-shape" style="background:linear-gradient(135deg,' + (paletteObj.rose || {soft:'#fff1f3',stroke:'#e99aac'}).soft + ',' + (paletteObj.rose || {}).stroke + ' 40%,white)">' +
                 '<div class="vv-root-seed-inner"></div>' +
-                '<span class="vv-root-seed-emoji">' + rootSeed.emoji + '</span>' +
+                '<span class="vv-root-seed-emoji">' + escapeHtml(rootSeed.emoji) + '</span>' +
                 '<span class="vv-root-seed-play">▶</span>' +
                 '</div>' +
                 '<span class="vv-root-seed-label">시작된 순간</span>' +
@@ -95,11 +101,11 @@
         if (cluster) {
             var pal = paletteColorFn(branch);
             var sizeClass = branchSelected || selected ? 'vv-cluster-lg' : 'vv-cluster-sm';
-            return '<div class="' + leafClasses + ' vv-cluster ' + sizeClass + '" data-moment-id="' + moment.id + '" data-branch-id="' + branch.id + '" style="left:' + point.x + '%;top:' + point.y + '%" aria-label="' + moment.title + '">' +
+            return '<div class="' + leafClasses + ' vv-cluster ' + sizeClass + '" data-moment-id="' + escapeHtml(moment.id) + '" data-branch-id="' + escapeHtml(branch.id) + '" style="left:' + point.x + '%;top:' + point.y + '%" aria-label="' + escapeHtml(moment.title) + '">' +
                 '<span class="vv-cluster-leaf" style="left:16%;top:18%;background:' + leafGrad(branch) + '"></span>' +
                 '<span class="vv-cluster-leaf" style="left:28%;top:0%;background:' + leafGrad(branch) + '"></span>' +
                 '<span class="vv-cluster-leaf" style="left:0%;top:5%;background:' + leafGrad(branch) + '"></span>' +
-                '<span class="vv-cluster-label">+' + moment.cluster + '</span></div>';
+                '<span class="vv-cluster-label">+' + escapeHtml(moment.cluster) + '</span></div>';
         }
 
         var stemAngle = branch.side === 'left' ? -18 : 18;
@@ -108,13 +114,13 @@
         var leafShape = 'style="width:' + leafW + ';height:' + leafH + ';border-radius:54% 46% 52% 48% / 43% 58% 42% 57%;background:' + leafGrad(branch) + ';box-shadow:' + (selected ? '0 0 0 6px rgba(255,241,243,0.9),0 20px 38px rgba(80,45,39,0.18)' : (branchSelected ? '0 10px 28px rgba(97,61,38,0.2)' : '0 8px 20px rgba(97,61,38,0.10)')) + ';"';
 
         var p = paletteColorFn(branch);
-        return '<div class="' + leafClasses + '" data-moment-id="' + moment.id + '" data-branch-id="' + branch.id + '" style="left:' + point.x + '%;top:' + point.y + '%">' +
+        return '<div class="' + leafClasses + '" data-moment-id="' + escapeHtml(moment.id) + '" data-branch-id="' + escapeHtml(branch.id) + '" style="left:' + point.x + '%;top:' + point.y + '%">' +
             '<span class="vv-leaf-stem" style="transform:rotate(' + stemAngle + 'deg);opacity:' + (branchSelected || selected ? '0.75' : '0.38') + '"></span>' +
-            '<button type="button" class="vv-leaf-shape ' + (selected ? 'is-active' : '') + '" ' + leafShape + ' aria-label="' + moment.title + '">' +
+            '<button type="button" class="vv-leaf-shape ' + (selected ? 'is-active' : '') + '" ' + leafShape + ' aria-label="' + escapeHtml(moment.title) + '">' +
             '  <span class="vv-leaf-inner"></span>' +
-            '  <span class="vv-leaf-emoji">' + moment.emoji + '</span>' +
+            '  <span class="vv-leaf-emoji">' + escapeHtml(moment.emoji) + '</span>' +
             '  <span class="vv-leaf-play">▶</span></button>' +
-            (showLabel ? '<div class="vv-leaf-label ' + labelSide + '"><span class="vv-leaf-label-title">' + moment.title + '</span><span class="vv-leaf-label-tag" style="background:' + p.soft + ';color:' + p.text + '">' + moment.tag + '</span></div>' : '') +
+            (showLabel ? '<div class="vv-leaf-label ' + labelSide + '"><span class="vv-leaf-label-title">' + escapeHtml(moment.title) + '</span><span class="vv-leaf-label-tag" style="background:' + p.soft + ';color:' + p.text + '">' + escapeHtml(moment.tag) + '</span></div>' : '') +
             '</div>';
     }
 

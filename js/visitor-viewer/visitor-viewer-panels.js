@@ -14,7 +14,14 @@
         eye: '<svg viewBox="0 0 24 24" fill="none" class="vv-icon"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.7"/></svg>'
     };
 
-    function escape(str) { return String(str == null ? '' : str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    function escape(str) {
+        return String(str == null ? '' : str)
+            .replace(/&/g,'&amp;')
+            .replace(/</g,'&lt;')
+            .replace(/>/g,'&gt;')
+            .replace(/"/g,'&quot;')
+            .replace(/'/g,'&#39;');
+    }
 
     function momentGrad(moment, branch) {
         var pal = getData('palette');
@@ -31,10 +38,10 @@
             '<div class="vv-comment-header">' +
             '  <div class="vv-comment-avatar" style="background:linear-gradient(135deg,var(--rose-200),var(--amber-100))"><span>' + escape(comment.author).slice(1, 3).toUpperCase() + '</span></div>' +
             '  <div class="vv-comment-author"><span class="vv-comment-name">' + escape(comment.author) + '</span><span class="vv-comment-time">' + escape(comment.time) + '</span></div>' +
-            '  <button type="button" class="vv-comment-like-btn" data-action="comment-like">' + Icon.heart + ' <span>' + comment.likes + '</span></button>' +
+            '  <button type="button" class="vv-comment-like-btn" data-action="comment-like">' + Icon.heart + ' <span>' + escape(comment.likes) + '</span></button>' +
             '</div>' +
             '<p class="vv-comment-body">' + escape(comment.body) + '</p>' +
-            (comment.replies > 0 ? '<button type="button" class="vv-comment-replies-btn" data-action="show-replies">답글 ' + comment.replies + '개 보기</button>' : '') +
+            (comment.replies > 0 ? '<button type="button" class="vv-comment-replies-btn" data-action="show-replies">답글 ' + escape(comment.replies) + '개 보기</button>' : '') +
             '</article>';
     }
 
@@ -63,7 +70,7 @@
                 var bg = m.cluster ? '' : momentBg(m, branch);
                 return '<button type="button" class="vv-branch-moment-btn" style="' + bg + '" data-moment-id="' + escape(m.id) + '" data-branch-id="' + escape(branch.id) + '" title="' + escape(m.title) + '">' +
                     '<span class="vv-branch-moment-frame"></span>' +
-                    (m.cluster ? '<span class="vv-branch-moment-label">+' + m.cluster + '</span>' : '<span class="vv-branch-moment-label">' + m.emoji + '</span>') +
+                    (m.cluster ? '<span class="vv-branch-moment-label">+' + escape(m.cluster) + '</span>' : '<span class="vv-branch-moment-label">' + escape(m.emoji) + '</span>') +
                     (m.cluster ? '' : '<span class="vv-branch-moment-play">▶</span>') +
                     '</button>';
             }).join('') +
@@ -91,14 +98,14 @@
             '    <div class="vv-moment-media-border"></div>' +
             '    <span class="vv-moment-media-badge">moment media</span>' +
             '    <button type="button" class="vv-moment-play-btn" aria-label="미디어 재생">▶</button>' +
-            '    <span class="vv-moment-media-emoji">' + moment.emoji + '</span></div></div>' +
+            '    <span class="vv-moment-media-emoji">' + escape(moment.emoji) + '</span></div></div>' +
             '<div class="vv-moment-tags"><span class="vv-moment-tag-branch" style="background:' + (getData('palette') && (getData('palette')[branch.id] || {}).soft || '#fff1f3') + ';color:' + (getData('palette') && (getData('palette')[branch.id] || {}).text || '#be123c') + '">' + escape(branch.name) + '</span>' + (moment.tag ? '<span class="vv-moment-tag-default">' + escape(moment.tag) + '</span>' : '') + '</div>' +
             '<h2 class="vv-moment-title">' + escape(moment.title) + '</h2>' +
             '<p class="vv-moment-caption">' + escape(moment.caption) + '</p>' +
             '<div class="vv-moment-memo"><p class="vv-moment-memo-label">creator memo</p><p class="vv-moment-memo-text">처음으로 이 트리에 꽂아둔, 오래 남은 장면.</p></div>' +
             '<div class="vv-moment-actions">' +
             '  <button type="button" class="vv-moment-action-btn" data-action="moment-like">' + Icon.heart + ' 좋아요 1.2k</button>' +
-            '  <button type="button" class="vv-moment-action-btn" data-action="moment-comment">' + Icon.message + ' 순간 댓글 ' + comments.length + '</button>' +
+            '  <button type="button" class="vv-moment-action-btn" data-action="moment-comment">' + Icon.message + ' 순간 댓글 ' + escape(comments.length) + '</button>' +
             '  <button type="button" class="vv-moment-action-btn" data-action="moment-share">' + Icon.share + ' 공유</button></div>' +
             '<div class="vv-moment-comments-section">' +
             '  <div class="vv-moment-comments-header"><div><p class="vv-panel-eyebrow">Moment comments</p><h3 class="vv-moment-comments-title">이 순간에 남긴 댓글</h3></div>' +

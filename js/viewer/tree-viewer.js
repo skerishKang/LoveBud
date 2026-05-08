@@ -154,6 +154,11 @@
             var treeMetaText = viewerData.tree.meta;
 
             container.innerHTML =
+                '<header class="vv-header">' +
+                '  <div><p class="vv-eyebrow">Public LoveTree Viewer</p>' +
+                '  <h1 class="vv-title">' + escapeHtml(treeTitle) + '</h1>' +
+                '  <div class="vv-meta-row"><span>' + escapeHtml(viewerData.tree.creator) + '</span><span class="vv-dot">·</span><span>' + escapeHtml(treeMetaText) + '</span></div></div>' +
+                '</header>' +
                 '<div class="vv-viewer-layout">' +
                 '  <div class="vv-tree-container"></div>' +
                 '  <div class="vv-panel-host"></div>' +
