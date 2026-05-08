@@ -87,15 +87,28 @@ test('browse filter and sort changes reset pagination state without changing fee
 
 test('search UI module implements card accessibility and event delegation', () => {
   const uiModule = read('js/search/search-ui.js');
+  const cardRenderer = read('js/search/search-card-renderer.js');
   
   // Verify accessibility attributes are set
   assert.match(uiModule, /card\.setAttribute\(['"]tabindex['"],\s*['"]0['"]\)/);
   assert.match(uiModule, /card\.setAttribute\(['"]role['"],\s*['"]button['"]\)/);
+  assert.match(cardRenderer, /aria-label="\$\{escapeHtml\(cardSelectLabel\)\}"/);
   
   // Verify event delegation pattern
   assert.match(uiModule, /container\.addEventListener\(['"]click['"]/);
   assert.match(uiModule, /container\.addEventListener\(['"]keydown['"]/);
   assert.match(uiModule, /event\.target\.closest\(['"]\.tree-card\[data-tree-id\]['"]\)/);
+  assert.match(uiModule, /const interactiveSelector = ['"]a, button,/);
+});
+
+test('browse cards expose a truthful public tree viewer bridge', () => {
+  const cardRenderer = read('js/search/search-card-renderer.js');
+
+  assert.match(cardRenderer, /function getTreeViewerHref\(tree\)/);
+  assert.match(cardRenderer, /tree\.html\?treeId=/);
+  assert.match(cardRenderer, /encodeURIComponent\(tree\.id\)/);
+  assert.match(cardRenderer, /tree-card-open-link/);
+  assert.match(cardRenderer, /트리 열기/);
 });
 
 test('search preview summary omits range phrase for missing time range labels', () => {
