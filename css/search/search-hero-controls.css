@@ -119,12 +119,18 @@
     box-shadow: 0 8px 18px rgba(75,64,57,0.03);
 }
 
+.browse-results-badge[hidden] {
+    display: none !important;
+}
+
 /* Issue #911: Mobile sort hierarchy improvement */
 @media (max-width: 480px) {
     .browse-results-head {
         flex-direction: column;
         align-items: flex-start;
-        gap: 12px;
+        gap: 8px;
+        margin: 2px 0 12px;
+        padding-top: 14px;
     }
 
     .browse-head-right {
@@ -142,10 +148,12 @@
         max-width: 100%;
         min-width: 0;
         justify-content: flex-start !important;
+        gap: 6px !important;
     }
 
     #browseSortControls .tag-chip {
-        padding: 5px 10px;
-        font-size: 11px;
+        min-height: 26px;
+        padding: 4px 8px;
+        font-size: 10.5px;
     }
 }
