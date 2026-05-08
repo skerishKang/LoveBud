@@ -21,6 +21,15 @@ test('share panel has actionable buttons', () => {
     assert.ok(panels.includes('vvShareStatus'), 'share panel must have status area');
 });
 
+test('tree route loads share actions before tree viewer', () => {
+    const html = fs.readFileSync('pages/tree.html', 'utf8');
+    const shareActionsIndex = html.indexOf('../js/viewer/share-actions.js');
+    const treeViewerIndex = html.indexOf('../js/viewer/tree-viewer.js');
+    assert.notEqual(shareActionsIndex, -1, 'tree.html must load share-actions.js');
+    assert.notEqual(treeViewerIndex, -1, 'tree.html must load tree-viewer.js');
+    assert.ok(shareActionsIndex < treeViewerIndex, 'share-actions.js must load before tree-viewer.js');
+});
+
 test('tree-viewer handles share actions', () => {
     const viewer = fs.readFileSync('js/viewer/tree-viewer.js', 'utf8');
     assert.ok(viewer.includes('copy-link') || viewer.includes('copyLink'), 'tree-viewer must handle copy-link');
