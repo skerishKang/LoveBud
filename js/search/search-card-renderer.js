@@ -134,6 +134,11 @@
         return Number.isFinite(count) && count > 0 ? count : 0;
     }
 
+    function getTreeViewerHref(tree) {
+        if (!tree?.id) return '';
+        return `${getBasePath()}tree.html?treeId=${encodeURIComponent(tree.id)}`;
+    }
+
     function getTreePreviewTone(tree) {
         const memoryCount = getDisplayMemoryCount(tree?.memoryCount);
         if (memoryCount >= 6) return 'full';
@@ -255,6 +260,9 @@
          const safeTitle = escapeHtml(displayTitleRaw);
          const emotionTag = renderEmotionTags(tree.emotionTags);
          const countLabel = memoryCount > 0 ? `${memoryCount}개의 순간` : '대표 순간 준비 중';
+         const viewerHref = getTreeViewerHref(tree);
+         const cardSelectLabel = `${displayTitleRaw} 러브트리를 감상 허브에서 미리보기`;
+         const viewerLabel = `${displayTitleRaw} 러브트리 열기`;
          const hasDerivedDescription = Boolean(displayTheme || primaryTag);
          const softMoodLine = displayTheme
              ? `${displayTheme}와 함께 시작된 마음`
@@ -268,7 +276,7 @@
              : 'tree-subtitle tree-subtitle-fallback';
 
          return `
-             <div class="tree-card ${index === 0 ? 'tree-card-featured' : ''}" id="tree-card-${safeTreeId}" data-tree-id="${safeTreeId}" style="animation-delay: ${index * 0.05}s;">
+             <div class="tree-card ${index === 0 ? 'tree-card-featured' : ''}" id="tree-card-${safeTreeId}" data-tree-id="${safeTreeId}" aria-label="${escapeHtml(cardSelectLabel)}" style="animation-delay: ${index * 0.05}s;">
                  ${renderRepresentativeMedia(tree, firstMem, displayTitleRaw)}
                  <div class="tree-card-body">
                      <div class="tree-title">${safeTitle}</div>
@@ -282,8 +290,14 @@
                              </span>
                          </div>
                          <div class="tree-meta-right">
-                             <span style="font-size:13px;color:var(--on-surface-variant);white-space:nowrap;">${escapeHtml(countLabel)}</span>
+                             <span class="tree-moment-count">${escapeHtml(countLabel)}</span>
                              ${emotionTag}
+                             ${viewerHref ? `
+                                 <a href="${escapeHtml(viewerHref)}" class="tree-card-open-link" aria-label="${escapeHtml(viewerLabel)}">
+                                     <span class="material-symbols-outlined" aria-hidden="true">account_tree</span>
+                                     트리 열기
+                                 </a>
+                             ` : ''}
                          </div>
                      </div>
                  </div>
@@ -428,6 +442,7 @@
         getTreeIcon: getTreeIcon,
         renderEmotionTags: renderEmotionTags,
         getBasePath: getBasePath,
+        getTreeViewerHref: getTreeViewerHref,
         showImageFallback: showImageFallback,
         handleImageLoad: (img) => {
             if (isSuspiciousYouTubeThumbnailImage(img)) {
