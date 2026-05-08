@@ -90,7 +90,7 @@ LoveBud의 fixed test slot 배포는 Cloudflare Pages Wrangler를 사용합니�
 배포 전 확인:
 - npx wrangler whoami → PASS/FAIL만 확인
 
-禁区:
+금지 영역:
 - 인증 상태 없이 slot 배포 시도 금지
 - token 권한 불명 상태에서 반복 배포 금지
 
