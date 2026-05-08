@@ -38,13 +38,13 @@
     function show() {
         for (var i = 0; i < arguments.length; i++) {
             var el = qs(arguments[i]);
-            if (el) el.removeAttribute('hidden');
+            if (el) el.style.display = '';
         }
     }
     function hide() {
         for (var i = 0; i < arguments.length; i++) {
             var el = qs(arguments[i]);
-            if (el) el.setAttribute('hidden', '');
+            if (el) el.style.display = 'none';
         }
     }
 

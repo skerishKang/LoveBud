@@ -303,6 +303,10 @@
     min-height: 300px;
 }
 
+.viewer-tree-shell [hidden] {
+    display: none !important;
+}
+
 .viewer-state-content {
     text-align: center;
     color: var(--on-surface-variant);
