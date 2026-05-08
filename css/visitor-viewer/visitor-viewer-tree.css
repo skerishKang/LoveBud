@@ -1,0 +1,175 @@
+.visitor-tree-canvas {
+    position: relative;
+    width: min(100%, 760px);
+    height: 760px;
+    margin: 0 auto;
+}
+
+.visitor-trunk,
+.visitor-trunk-glow {
+    position: absolute;
+    left: 50%;
+    bottom: 86px;
+    transform: translateX(-50%);
+    pointer-events: none;
+}
+
+.visitor-trunk {
+    width: 18px;
+    height: 570px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #9a6558 0%, #7f5b4d 48%, #b87776 100%);
+    box-shadow: inset 5px 0 0 rgba(255, 246, 238, 0.28), 0 14px 34px rgba(75, 64, 57, 0.16);
+}
+
+.visitor-trunk-glow {
+    width: 92px;
+    height: 610px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, rgba(200, 116, 128, 0.12), rgba(122, 139, 110, 0.08));
+    filter: blur(18px);
+}
+
+.visitor-branch {
+    position: absolute;
+    left: 50%;
+    width: min(35vw, 270px);
+    height: 88px;
+    transform-origin: left center;
+}
+
+.visitor-branch[data-side="left"] {
+    transform: translateX(-100%) rotate(var(--branch-rotate));
+}
+
+.visitor-branch[data-side="right"] {
+    transform: rotate(var(--branch-rotate));
+}
+
+.visitor-branch-line {
+    position: absolute;
+    inset: 42px 0 auto;
+    height: 10px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #8c6554, #b87776 62%, rgba(122, 139, 110, 0.82));
+    box-shadow: inset 0 2px 0 rgba(255, 248, 238, 0.34), 0 10px 22px rgba(75, 64, 57, 0.12);
+}
+
+.visitor-branch[data-side="left"] .visitor-branch-line {
+    background: linear-gradient(270deg, #8c6554, #b87776 62%, rgba(122, 139, 110, 0.82));
+}
+
+.visitor-branch-btn {
+    position: absolute;
+    top: 18px;
+    right: 8px;
+    max-width: 150px;
+    border: 1px solid rgba(144, 73, 81, 0.10);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.82);
+    color: #5f443c;
+    padding: 7px 11px;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 900;
+    cursor: pointer;
+    box-shadow: 0 12px 22px rgba(75, 64, 57, 0.08);
+}
+
+.visitor-branch[data-side="right"] .visitor-branch-btn {
+    left: 8px;
+    right: auto;
+}
+
+.visitor-media-leaf {
+    position: absolute;
+    width: 86px;
+    min-height: 70px;
+    border: 1px solid rgba(144, 73, 81, 0.10);
+    border-radius: 34px 34px 34px 10px;
+    background: rgba(255, 255, 255, 0.88);
+    color: #3f302b;
+    padding: 8px;
+    text-align: left;
+    cursor: pointer;
+    box-shadow: 0 16px 28px rgba(75, 64, 57, 0.12);
+    transform: rotate(var(--leaf-rotate));
+}
+
+.visitor-media-leaf[data-index="1"] { left: 42%; top: -14px; }
+.visitor-media-leaf[data-index="2"] { left: 70%; top: 42px; }
+.visitor-media-leaf[data-index="3"] { left: 18%; top: 48px; }
+
+.visitor-media-leaf-thumb {
+    display: block;
+    width: 100%;
+    aspect-ratio: 1.35;
+    border-radius: 22px 22px 22px 8px;
+    background: linear-gradient(135deg, rgba(144, 73, 81, 0.18), rgba(122, 139, 110, 0.18));
+    margin-bottom: 6px;
+}
+
+.visitor-media-leaf span:last-child {
+    display: block;
+    overflow: hidden;
+    color: rgba(63, 48, 43, 0.88);
+    font-size: 11px;
+    font-weight: 900;
+    line-height: 1.25;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.visitor-root-seed {
+    position: absolute;
+    left: 50%;
+    bottom: 44px;
+    width: 106px;
+    min-height: 70px;
+    transform: translateX(-50%);
+    border: 1px solid rgba(144, 73, 81, 0.14);
+    border-radius: 999px 999px 46px 46px;
+    background: linear-gradient(180deg, #fff7f4, #eed6cf);
+    color: #904951;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 950;
+    cursor: pointer;
+    box-shadow: 0 18px 34px rgba(75, 64, 57, 0.16);
+}
+
+.visitor-branch.is-selected .visitor-branch-line,
+.visitor-media-leaf.is-selected {
+    filter: saturate(1.15);
+    box-shadow: 0 18px 36px rgba(144, 73, 81, 0.18);
+}
+
+.visitor-tree-canvas.has-selection .visitor-branch:not(.is-selected),
+.visitor-tree-canvas.has-selection .visitor-media-leaf:not(.is-selected) {
+    opacity: 0.46;
+}
+
+.visitor-branch-btn:hover,
+.visitor-branch-btn:focus-visible,
+.visitor-media-leaf:hover,
+.visitor-media-leaf:focus-visible,
+.visitor-root-seed:hover,
+.visitor-root-seed:focus-visible {
+    outline: 3px solid rgba(200, 116, 128, 0.28);
+    outline-offset: 3px;
+}
+
+@media (max-width: 900px) {
+    .visitor-tree-canvas {
+        width: 100%;
+        height: 860px;
+    }
+
+    .visitor-branch {
+        width: min(43vw, 178px);
+    }
+
+    .visitor-media-leaf {
+        width: 74px;
+    }
+}
