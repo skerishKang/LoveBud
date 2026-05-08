@@ -6,55 +6,16 @@
     <title>Public LoveTree Viewer Shell | LoveBud</title>
     <link rel="icon" href="/assets/favicon/favicon.svg" type="image/svg+xml">
     <link rel="icon" href="/favicon.ico" sizes="32x32">
-    <link rel="stylesheet" href="../css/global.css?v=20260415-10">
-    <link rel="stylesheet" href="../css/visitor-viewer.css?v=20260508-951-1">
+    <link rel="stylesheet" href="../css/global.css?v=20260508-951-1">
+    <link rel="stylesheet" href="../css/visitor-viewer.css?v=20260508-951-2">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap">
 </head>
-<body class="visitor-viewer-page paper-grain">
-    <div class="noise-overlay"></div>
-
-    <main class="visitor-viewer-shell" aria-label="Public visitor LoveTree viewer shell">
-        <header class="visitor-topbar">
-            <div class="visitor-tree-identity">
-                <span class="visitor-eyebrow">Public LoveTree</span>
-                <h1 id="visitorTreeTitle">XLOV 첫 기억들</h1>
-                <p id="visitorTreeMeta">@lovebud_memory · 6 moments · 12.8k views</p>
-            </div>
-            <nav class="visitor-tree-actions" aria-label="Tree actions">
-                <button type="button" class="visitor-action-btn" data-tree-action="like" aria-pressed="false">
-                    <span class="material-symbols-outlined">favorite</span>
-                    <span data-tree-like-count>1.2k</span>
-                </button>
-                <button type="button" class="visitor-action-btn" data-tree-action="comments">
-                    <span class="material-symbols-outlined">chat_bubble</span>
-                    <span>84</span>
-                </button>
-                <button type="button" class="visitor-action-btn" data-tree-action="share">
-                    <span class="material-symbols-outlined">ios_share</span>
-                    <span>Share</span>
-                </button>
-            </nav>
-        </header>
-
-        <section class="visitor-viewer-layout">
-            <section class="visitor-tree-stage" aria-label="Vertical LoveTree">
-                <div class="visitor-tree-canvas" id="visitorTreeCanvas">
-                    <div class="visitor-trunk" aria-hidden="true"></div>
-                    <div class="visitor-trunk-glow" aria-hidden="true"></div>
-                    <div id="visitorTreeBranches" class="visitor-tree-branches"></div>
-                    <button type="button" id="visitorRootSeed" class="visitor-root-seed"></button>
-                </div>
-            </section>
-
-            <aside class="visitor-side-panel" id="visitorSidePanel" aria-live="polite">
-                <div id="visitorPanelContent" class="visitor-panel-content"></div>
-            </aside>
-        </section>
-    </main>
+<body class="visitor-viewer-page">
+    <div id="visitorViewerContainer" class="visitor-viewer-shell"></div>
 
     <script src="../js/visitor-viewer/visitor-viewer-data.js?v=20260508-951-1"></script>
-    <script src="../js/visitor-viewer/visitor-viewer-render-tree.js?v=20260508-951-1"></script>
-    <script src="../js/visitor-viewer/visitor-viewer-panels.js?v=20260508-951-1"></script>
-    <script src="../js/visitor-viewer/visitor-viewer.js?v=20260508-951-1"></script>
+    <script src="../js/visitor-viewer/visitor-viewer-render-tree.js?v=20260508-951-2"></script>
+    <script src="../js/visitor-viewer/visitor-viewer-panels.js?v=20260508-951-4"></script>
+    <script src="../js/visitor-viewer/visitor-viewer.js?v=20260508-951-4"></script>
 </body>
 </html>
