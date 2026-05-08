@@ -14,6 +14,16 @@
 
     function escape(str) { return String(str == null ? '' : str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
+    function momentGrad(moment, branch) {
+        var pal = data.palette[branch && branch.color] || data.palette.rose;
+        return 'linear-gradient(135deg,' + pal.soft + ',' + pal.stroke + ' 40%,white)';
+    }
+
+    function momentBg(moment, branch) {
+        var pal = data.palette[branch && branch.color] || data.palette.rose;
+        return 'background:linear-gradient(135deg,' + pal.soft + ',' + pal.stroke + ' 45%,white)';
+    }
+
     function CommentRow(comment) {
         return '<article class="vv-comment-row">' +
             '<div class="vv-comment-header">' +
@@ -48,8 +58,11 @@
             '<div class="vv-panel-caption">' + escape(branch.caption || '이 가지의 순간들') + '</div>' +
             '<div class="vv-branch-moment-grid">' +
             moments.map(function(m) {
-                return '<button type="button" class="vv-branch-moment-btn" data-moment-id="' + escape(m.id) + '" data-branch-id="' + escape(branch.id) + '" title="' + escape(m.title) + '">' +
-                    (m.cluster ? '<span>+' + m.cluster + '</span>' : '<span>' + m.emoji + '</span>') +
+                var bg = m.cluster ? '' : momentBg(m, branch);
+                return '<button type="button" class="vv-branch-moment-btn" style="' + bg + '" data-moment-id="' + escape(m.id) + '" data-branch-id="' + escape(branch.id) + '" title="' + escape(m.title) + '">' +
+                    '<span class="vv-branch-moment-frame"></span>' +
+                    (m.cluster ? '<span class="vv-branch-moment-label">+' + m.cluster + '</span>' : '<span class="vv-branch-moment-label">' + m.emoji + '</span>') +
+                    (m.cluster ? '' : '<span class="vv-branch-moment-play">▶</span>') +
                     '</button>';
             }).join('') +
             '</div>' +
@@ -72,7 +85,7 @@
             '  <button type="button" class="vv-panel-close" data-action="close-moment" aria-label="순간 상세 닫기">' + Icon.close + '</button>' +
             '</div>' +
             '<div class="vv-moment-media">' +
-            '  <div class="vv-moment-media-inner" style="background:linear-gradient(135deg,' + moment.color.replace(/from-/, '').replace(/via-/, ',').replace(/to-/, ',') + ')">' +
+            '  <div class="vv-moment-media-inner" style="background:' + momentGrad(moment, branch) + '">' +
             '    <div class="vv-moment-media-border"></div>' +
             '    <span class="vv-moment-media-badge">moment media</span>' +
             '    <button type="button" class="vv-moment-play-btn" aria-label="미디어 재생">▶</button>' +

@@ -9,9 +9,10 @@
 
     function getAllMoments() {
         var results = [];
-        results.push({ id: data.rootSeed.id, branchId: data.rootSeed.branchId, title: data.rootSeed.title, tag: data.rootSeed.tag, caption: data.rootSeed.caption });
+        var s = data.rootSeed;
+        results.push({ id: s.id, branchId: s.branchId, title: s.title, tag: s.tag, caption: s.caption, color: s.color, emoji: s.emoji });
         data.branches.forEach(function(b) {
-            b.moments.forEach(function(m) { results.push({ id: m.id, branchId: b.id, title: m.title, tag: m.tag, caption: m.caption }); });
+            b.moments.forEach(function(m) { results.push({ id: m.id, branchId: b.id, title: m.title, tag: m.tag, caption: m.caption, color: m.color, emoji: m.emoji, cluster: m.cluster }); });
         });
         return results;
     }
@@ -37,7 +38,8 @@
             state.selectedMoment = moment;
             state.panelBranch = panelBranch;
 
-            renderTree.renderTree(container, state, handler);
+            var treeBox = container.querySelector('.vv-tree-container');
+            if (treeBox) renderTree.renderTree(treeBox, state, handler);
             var panelHtml = panels.renderPanel(state, handler);
             var panelHost = container.querySelector('.vv-panel-host');
             if (!panelHost) {
@@ -116,7 +118,7 @@
             var btn = e.target.closest('[data-branch-id]');
             if (btn && !btn.closest('.vv-panel')) { handler.onSelectBranch(btn.dataset.branchId); return; }
             var momentBtn = e.target.closest('[data-moment-id]');
-            if (momentBtn && !momentBtn.closest('.vv-panel')) { handler.onSelectMoment(momentBtn.dataset.momentId, momentBtn.dataset.branchId); return; }
+            if (momentBtn) { handler.onSelectMoment(momentBtn.dataset.momentId, momentBtn.dataset.branchId); return; }
             var action = e.target.closest('[data-action]');
             if (!action) return;
             var a = action.dataset.action;

@@ -25,7 +25,7 @@
             { id: 'm4', title: '첫 1위', tag: '기록', caption: '믿기지 않아서 여러 번 다시 봤던 순간.', t: 0.22, color: 'from-amber-200 via-yellow-100 to-white', emoji: '1' },
             { id: 'm5', title: '첫 앵콜', tag: '라이브', caption: '떨림까지 오래 남은 첫 앵콜.', t: 0.47, color: 'from-orange-100 via-amber-50 to-white', emoji: '♫' },
             { id: 'm6', title: '차트 진입', tag: '차트', caption: '작은 숫자가 큰 기억이 된 날.', t: 0.68, color: 'from-yellow-100 via-orange-50 to-white', emoji: '#' },
-            { id: 'cluster-record', title: '+12', tag: '묶음', caption: '첫 기록 가지에 모인 열두 개의 작은 순간.', t: 0.92, cluster: 12 }
+            { id: 'cluster-record', title: '+12', tag: '묶음', caption: '첫 기록 가지에 모인 열두 개의 작은 순간.', t: 0.92, cluster: 12, color: 'from-amber-200 via-yellow-100 to-white' }
         ]
     }, {
         id: 'together', name: '함께', side: 'left', color: 'emerald',
@@ -35,7 +35,7 @@
             { id: 'm7', title: '같이 울었던 밤', tag: '공연', caption: '말보다 표정이 먼저 닿았던 밤.', t: 0.22, color: 'from-emerald-100 via-lime-50 to-white', emoji: '•' },
             { id: 'm8', title: '첫 떼창', tag: '함께', caption: '목소리가 하나로 겹쳤던 순간.', t: 0.45, color: 'from-lime-100 via-emerald-50 to-white', emoji: '♪' },
             { id: 'm9', title: '응원 배너', tag: '응원', caption: '천천히 펼쳐진 마음의 문장.', t: 0.67, color: 'from-green-100 via-lime-50 to-white', emoji: '▱' },
-            { id: 'cluster-together', title: '+23', tag: '묶음', caption: '함께 가지에 모인 스물세 개의 작은 순간.', t: 0.91, cluster: 23 }
+            { id: 'cluster-together', title: '+23', tag: '묶음', caption: '함께 가지에 모인 스물세 개의 작은 순간.', t: 0.91, cluster: 23, color: 'from-emerald-100 via-lime-50 to-white' }
         ]
     }, {
         id: 'after', name: '여운', side: 'right', color: 'violet',

@@ -62,11 +62,8 @@
 
 .vv-leaf-shape {
     position: relative;
-    width: 56px;
-    height: 72px;
     border: 3px solid #fff;
     border-radius: 54% 46% 52% 48% / 43% 58% 42% 57%;
-    box-shadow: 0 10px 28px rgba(97,61,38,0.14);
     cursor: pointer;
     transition: all 0.2s;
     display: flex;
@@ -95,6 +92,23 @@
     font-size: 18px;
     line-height: 1;
     color: rgba(97,61,38,0.6);
+}
+
+.vv-leaf-play {
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 7px;
+    color: #6b5850;
+    z-index: 2;
+    opacity: 0.7;
 }
 
 .vv-leaf-label {
@@ -193,11 +207,11 @@
 }
 
 .vv-root-seed-shape {
-    width: 88px;
-    height: 78px;
+    width: 96px;
+    height: 80px;
     border-radius: 46% 54% 48% 52%;
     border: 1px solid rgba(255,255,255,0.8);
-    box-shadow: 0 16px 34px rgba(122,65,67,0.2);
+    box-shadow: 0 16px 34px rgba(122,65,67,0.2), 0 0 0 2px rgba(255,255,255,0.8);
     position: relative;
 }
 
@@ -209,30 +223,56 @@
     border: 1px solid rgba(255,255,255,0.5);
 }
 
+.vv-root-seed-inner {
+    position: absolute;
+    inset: 6px;
+    border-radius: inherit;
+    border: 1px solid rgba(255,255,255,0.5);
+    z-index: 0;
+}
+
+.vv-root-seed-play {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: #6b5850;
+    z-index: 2;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+
 .vv-root-seed-emoji {
     position: absolute;
     inset: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 24px;
+    font-size: 28px;
     color: rgba(127,68,70,0.75);
     z-index: 1;
 }
 
 .vv-root-seed-label {
     position: absolute;
-    bottom: -22px;
+    bottom: -24px;
     left: 50%;
     transform: translateX(-50%);
     white-space: nowrap;
-    padding: 3px 10px;
+    padding: 4px 12px;
     border-radius: 999px;
-    border: 1px solid rgba(251,113,133,0.2);
-    background: rgba(255,255,255,0.75);
+    border: 1px solid rgba(251,113,133,0.25);
+    background: rgba(255,255,255,0.85);
     font-size: 11px;
-    font-weight: 500;
+    font-weight: 600;
     color: #881337;
+    box-shadow: 0 2px 8px rgba(136,19,55,0.08);
 }
 
 .vv-moment-tag-branch {
