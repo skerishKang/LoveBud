@@ -51,10 +51,10 @@ test('Browse tree-open CTA targets tree.html with treeId param', () => {
 
 test('tree viewer loads Canvas v4 modules', () => {
     const html = fs.readFileSync('pages/tree.html', 'utf8');
-    const hasVisitorModules = html.includes('visitor-viewer/visitor-viewer-data.js') &&
-        html.includes('visitor-viewer/visitor-viewer-render-tree.js') &&
-        html.includes('visitor-viewer/visitor-viewer-panels.js');
-    assert.ok(hasVisitorModules, 'tree.html must load visitor-viewer Canvas v4 modules');
+    const hasRenderer = html.includes('visitor-viewer/visitor-viewer-render-tree.js');
+    const hasPanels = html.includes('visitor-viewer/visitor-viewer-panels.js');
+    const noMockData = !html.includes('visitor-viewer/visitor-viewer-data.js');
+    assert.ok(hasRenderer && hasPanels && noMockData, 'tree.html must load render-tree and panels but NOT visitor-viewer-data.js');
 });
 
 test('tree viewer does not load mock visitor-viewer orchestrator', () => {

@@ -1,8 +1,10 @@
 (function() {
     'use strict';
 
-    var data = window.LoveBudVisitorViewerData;
-    if (!data) return;
+    function getData(key) {
+        var d = window.LoveBudVisitorViewerData;
+        return d ? d[key] : null;
+    }
 
     var Icon = {
         heart: '<svg viewBox="0 0 24 24" fill="none" class="vv-icon"><path d="M12 20.2s-7.2-4.42-9.4-9.08C.92 7.58 2.68 4.3 6.15 4.3c2.02 0 3.38 1.12 3.98 2.02.58-.9 1.96-2.02 3.98-2.02 3.46 0 5.22 3.28 3.55 6.82C15.45 15.78 12 20.2 12 20.2Z" fill="currentColor"/></svg>',
@@ -12,16 +14,23 @@
         eye: '<svg viewBox="0 0 24 24" fill="none" class="vv-icon"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.7"/></svg>'
     };
 
-    function escape(str) { return String(str == null ? '' : str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    function escape(str) {
+        return String(str == null ? '' : str)
+            .replace(/&/g,'&amp;')
+            .replace(/</g,'&lt;')
+            .replace(/>/g,'&gt;')
+            .replace(/"/g,'&quot;')
+            .replace(/'/g,'&#39;');
+    }
 
     function momentGrad(moment, branch) {
-        var pal = data.palette[branch && branch.color] || data.palette.rose;
-        return 'linear-gradient(135deg,' + pal.soft + ',' + pal.stroke + ' 40%,white)';
+        var pal = getData('palette');
+        var p = pal && (pal[branch && branch.color] || pal.rose) || { soft:'#fff1f3', stroke:'#e99aac' };
+        return 'linear-gradient(135deg,' + p.soft + ',' + p.stroke + ' 40%,white)';
     }
 
     function momentBg(moment, branch) {
-        var pal = data.palette[branch && branch.color] || data.palette.rose;
-        return 'background:linear-gradient(135deg,' + pal.soft + ',' + pal.stroke + ' 45%,white)';
+        return 'background:' + momentGrad(moment, branch);
     }
 
     function CommentRow(comment) {
@@ -29,10 +38,10 @@
             '<div class="vv-comment-header">' +
             '  <div class="vv-comment-avatar" style="background:linear-gradient(135deg,var(--rose-200),var(--amber-100))"><span>' + escape(comment.author).slice(1, 3).toUpperCase() + '</span></div>' +
             '  <div class="vv-comment-author"><span class="vv-comment-name">' + escape(comment.author) + '</span><span class="vv-comment-time">' + escape(comment.time) + '</span></div>' +
-            '  <button type="button" class="vv-comment-like-btn" data-action="comment-like">' + Icon.heart + ' <span>' + comment.likes + '</span></button>' +
+            '  <button type="button" class="vv-comment-like-btn" data-action="comment-like">' + Icon.heart + ' <span>' + escape(comment.likes) + '</span></button>' +
             '</div>' +
             '<p class="vv-comment-body">' + escape(comment.body) + '</p>' +
-            (comment.replies > 0 ? '<button type="button" class="vv-comment-replies-btn" data-action="show-replies">답글 ' + comment.replies + '개 보기</button>' : '') +
+            (comment.replies > 0 ? '<button type="button" class="vv-comment-replies-btn" data-action="show-replies">답글 ' + escape(comment.replies) + '개 보기</button>' : '') +
             '</article>';
     }
 
@@ -61,7 +70,7 @@
                 var bg = m.cluster ? '' : momentBg(m, branch);
                 return '<button type="button" class="vv-branch-moment-btn" style="' + bg + '" data-moment-id="' + escape(m.id) + '" data-branch-id="' + escape(branch.id) + '" title="' + escape(m.title) + '">' +
                     '<span class="vv-branch-moment-frame"></span>' +
-                    (m.cluster ? '<span class="vv-branch-moment-label">+' + m.cluster + '</span>' : '<span class="vv-branch-moment-label">' + m.emoji + '</span>') +
+                    (m.cluster ? '<span class="vv-branch-moment-label">+' + escape(m.cluster) + '</span>' : '<span class="vv-branch-moment-label">' + escape(m.emoji) + '</span>') +
                     (m.cluster ? '' : '<span class="vv-branch-moment-play">▶</span>') +
                     '</button>';
             }).join('') +
@@ -70,13 +79,13 @@
             moments.slice(0, 3).map(function(m) {
                 return '<button type="button" class="vv-branch-moment-item" data-moment-id="' + escape(m.id) + '" data-branch-id="' + escape(branch.id) + '"><span>' + escape(m.title) + '</span><span class="vv-branch-moment-open">열기</span></button>';
             }).join('') +
-            '</div>' +
-            '</aside>';
+            '</div></aside>';
     }
 
     function renderMomentPanel(moment, branch, handlers) {
         if (!moment || !branch) return '';
-        var comments = data.momentComments[moment.id] || [
+        var momentComments = getData('momentComments') || {};
+        var comments = momentComments[moment.id] || [
             { id: 'mc-empty', author: '@lovetree_viewer', body: '이 장면에 대한 댓글이 이곳에 모입니다.', time: '예시', likes: 0, replies: 0 }
         ];
         return '<aside class="vv-panel vv-panel-moment">' +
@@ -89,34 +98,26 @@
             '    <div class="vv-moment-media-border"></div>' +
             '    <span class="vv-moment-media-badge">moment media</span>' +
             '    <button type="button" class="vv-moment-play-btn" aria-label="미디어 재생">▶</button>' +
-            '    <span class="vv-moment-media-emoji">' + moment.emoji + '</span>' +
-            '  </div>' +
-            '</div>' +
-            '<div class="vv-moment-tags"><span class="vv-moment-tag-branch" style="background:' + (data.palette[branch.id] && data.palette[branch.id].soft || '#fff1f3') + ';color:' + (data.palette[branch.id] && data.palette[branch.id].text || '#be123c') + '">' + escape(branch.name) + '</span>' + (moment.tag ? '<span class="vv-moment-tag-default">' + escape(moment.tag) + '</span>' : '') + '</div>' +
+            '    <span class="vv-moment-media-emoji">' + escape(moment.emoji) + '</span></div></div>' +
+            '<div class="vv-moment-tags"><span class="vv-moment-tag-branch" style="background:' + (getData('palette') && (getData('palette')[branch.id] || {}).soft || '#fff1f3') + ';color:' + (getData('palette') && (getData('palette')[branch.id] || {}).text || '#be123c') + '">' + escape(branch.name) + '</span>' + (moment.tag ? '<span class="vv-moment-tag-default">' + escape(moment.tag) + '</span>' : '') + '</div>' +
             '<h2 class="vv-moment-title">' + escape(moment.title) + '</h2>' +
             '<p class="vv-moment-caption">' + escape(moment.caption) + '</p>' +
-            '<div class="vv-moment-memo">' +
-            '  <p class="vv-moment-memo-label">creator memo</p>' +
-            '  <p class="vv-moment-memo-text">처음으로 이 트리에 꽂아둔, 오래 남은 장면.</p>' +
-            '</div>' +
+            '<div class="vv-moment-memo"><p class="vv-moment-memo-label">creator memo</p><p class="vv-moment-memo-text">처음으로 이 트리에 꽂아둔, 오래 남은 장면.</p></div>' +
             '<div class="vv-moment-actions">' +
             '  <button type="button" class="vv-moment-action-btn" data-action="moment-like">' + Icon.heart + ' 좋아요 1.2k</button>' +
-            '  <button type="button" class="vv-moment-action-btn" data-action="moment-comment">' + Icon.message + ' 순간 댓글 ' + comments.length + '</button>' +
-            '  <button type="button" class="vv-moment-action-btn" data-action="moment-share">' + Icon.share + ' 공유</button>' +
-            '</div>' +
+            '  <button type="button" class="vv-moment-action-btn" data-action="moment-comment">' + Icon.message + ' 순간 댓글 ' + escape(comments.length) + '</button>' +
+            '  <button type="button" class="vv-moment-action-btn" data-action="moment-share">' + Icon.share + ' 공유</button></div>' +
             '<div class="vv-moment-comments-section">' +
             '  <div class="vv-moment-comments-header"><div><p class="vv-panel-eyebrow">Moment comments</p><h3 class="vv-moment-comments-title">이 순간에 남긴 댓글</h3></div>' +
-            '    <button type="button" class="vv-sort-btn">최신순</button>' +
-            '  </div>' +
+            '    <button type="button" class="vv-sort-btn">최신순</button></div>' +
             '  <div class="vv-comment-input"><div class="vv-comment-input-avatar"></div><input type="text" class="vv-comment-input-field" placeholder="이 순간에 댓글 남기기" /><button type="button" class="vv-comment-submit">게시</button></div>' +
-            '  <div class="vv-comment-list">' + comments.map(CommentRow).join('') + '</div>' +
-            '</div>' +
+            '  <div class="vv-comment-list">' + comments.map(CommentRow).join('') + '</div></div>' +
             '<div class="vv-moment-nav"><button type="button" data-action="prev-moment">← 이전 순간</button><button type="button" data-action="next-moment">다음 순간 →</button></div>' +
-            '<p class="vv-moment-close-hint">닫으면 같은 가지 선택 상태로 돌아갑니다.</p>' +
-            '</aside>';
+            '<p class="vv-moment-close-hint">닫으면 같은 가지 선택 상태로 돌아갑니다.</p></aside>';
     }
 
     function renderTreeCommentsPanel(handlers) {
+        var treeComments = getData('treeComments') || [];
         return '<aside class="vv-panel vv-panel-tree-comments">' +
             '<div class="vv-panel-header">' +
             '  <div><p class="vv-panel-eyebrow">Tree comments</p><h2 class="vv-panel-title-lg">트리 전체 댓글</h2></div>' +
@@ -125,22 +126,21 @@
             '<div class="vv-scope-notice"><p class="vv-scope-notice-label">comment scope</p><p class="vv-scope-notice-text">트리 전체 댓글은 흐름, 큐레이션, 만든 사람의 기억에 대한 반응입니다.</p></div>' +
             '<div class="vv-sort-tabs"><button type="button" class="vv-sort-tab is-active">인기순</button><button type="button" class="vv-sort-tab">최신순</button></div>' +
             '<div class="vv-comment-input"><div class="vv-comment-input-avatar"></div><input type="text" class="vv-comment-input-field" placeholder="트리 전체에 댓글 남기기" /><button type="button" class="vv-comment-submit">게시</button></div>' +
-            '<div class="vv-comment-list">' + data.treeComments.map(CommentRow).join('') + '</div>' +
-            '</aside>';
+            '<div class="vv-comment-list">' + treeComments.map(CommentRow).join('') + '</div></aside>';
     }
 
     function renderSharePanel(handlers) {
+        var tree = getData('tree') || {};
         return '<aside class="vv-panel vv-panel-share">' +
             '<div class="vv-panel-header">' +
             '  <div><p class="vv-panel-eyebrow">Share tree</p><h2 class="vv-panel-title-lg">트리 공유</h2></div>' +
             '  <button type="button" class="vv-panel-close" data-action="close-panel" aria-label="공유 패널 닫기">' + Icon.close + '</button>' +
             '</div>' +
-            '<div class="vv-share-preview"><div class="vv-share-icon">🌳</div><h3 class="vv-share-title">' + escape(data.tree.title) + '</h3><p class="vv-share-creator">' + escape(data.tree.creator) + '</p></div>' +
+            '<div class="vv-share-preview"><div class="vv-share-icon">🌳</div><h3 class="vv-share-title">' + escape(tree.title || '') + '</h3><p class="vv-share-creator">' + escape(tree.creator || '') + '</p></div>' +
             '<div class="vv-share-actions"><button type="button" class="vv-share-btn vv-share-btn-primary">링크 복사 <span>copy</span></button>' +
             '<button type="button" class="vv-share-btn vv-share-btn-secondary">Browse에 공유 <span>public</span></button>' +
             '<button type="button" class="vv-share-btn vv-share-btn-secondary">이미지 카드로 저장 <span>later</span></button></div>' +
-            '<p class="vv-share-note">공유 액션은 나중에 실제 URL 복사, 네이티브 공유, 공개 범위 확인과 연결하면 됩니다.</p>' +
-            '</aside>';
+            '<p class="vv-share-note">공유 액션은 나중에 실제 URL 복사, 네이티브 공유, 공개 범위 확인과 연결하면 됩니다.</p></aside>';
     }
 
     function renderPanel(state, handlers) {
