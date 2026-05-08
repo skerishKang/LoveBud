@@ -36,7 +36,7 @@
     function show() {
         for (var i = 0; i < arguments.length; i++) {
             var el = qs(arguments[i]);
-            if (el) el.style.display = '';
+            if (el) { el.style.display = ''; el.removeAttribute('hidden'); }
         }
     }
     function hide() {
