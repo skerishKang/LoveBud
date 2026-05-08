@@ -8,12 +8,12 @@
  * - All Search presentation styles are in css/search/* sub-modules below
  * - Inline style closure pass for Issue #65 is COMPLETE
  */
-@import url("./search/base.css");
-@import url("./search/hero-controls.css");
-@import url("./search/controls.css");
-@import url("./search/results-skeleton.css");
-@import url("./search/empty-state.css");
-@import url("./search/growing-trees.css");
-@import url("./search/tree-card.css");
-@import url("./search/preview-sidebar.css");
-@import url("./search/responsive.css");
+@import url("./search/search-base.css");
+@import url("./search/search-hero-controls.css");
+@import url("./search/search-controls.css");
+@import url("./search/search-results-skeleton.css");
+@import url("./search/search-empty-state.css");
+@import url("./search/search-growing-trees.css");
+@import url("./search/search-tree-card.css");
+@import url("./search/search-preview-sidebar.css");
+@import url("./search/search-responsive.css");
