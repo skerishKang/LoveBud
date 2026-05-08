@@ -115,7 +115,7 @@ test('search preview summary omits range phrase for missing time range labels', 
   assert.match(i18nSearch, /span style="color:var\(--primary\);font-weight:700;">\{count\}개의 순간<\/span>이 이어졌어요/);
 });
 
-test('browse selected hub primary and secondary CTA labels match detail viewing routes', () => {
+test('browse selected hub primary tree CTA and secondary viewing CTA keep truthful routes', () => {
   const actionHelper = read('js/search/search-preview-action-helper.js');
   const previewRenderer = read('js/search/search-preview-renderer.js');
   const i18nSearch = read('js/i18n/i18n-search.js');
@@ -123,11 +123,14 @@ test('browse selected hub primary and secondary CTA labels match detail viewing 
   assert.match(actionHelper, /detail\.html\?id=/);
   assert.match(actionHelper, /from=browse/);
   assert.match(actionHelper, /search\.previewOpenViewingCta/);
+  assert.match(actionHelper, /preview-secondary-action/);
   assert.match(previewRenderer, /helper\?\.renderPreviewActionButton/);
   assert.match(previewRenderer, /return '';/);
   assert.match(i18nSearch, /'search\.previewOpenViewingCta'/);
   assert.match(i18nSearch, /ko:\s*'감상 열기'/);
   assert.match(actionHelper, /renderOpenTreeButton/);
+  assert.match(actionHelper, /tree\.html\?treeId=/);
+  assert.match(actionHelper, /preview-primary-action/);
   assert.match(actionHelper, /search\.previewOpenTreeCta/);
   assert.match(previewRenderer, /renderOpenTreeButton/);
   assert.match(i18nSearch, /'search\.previewOpenTreeCta'/);

@@ -338,7 +338,7 @@
 }
 
 .preview-sidebar::after {
-    content: '';
+    content: none;
     position: absolute;
     top: 146px;
     right: 72px;

@@ -135,12 +135,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             return null;
         };
 
-        const selectTree = (tree, activeCard) => {
+        const selectTree = (tree, activeCard, options = {}) => {
             if (!tree) return;
+            const { openMobilePreview = true } = options;
             state.selectedTreeId = tree.id;
             ui.markActiveCard(activeCard);
 
-            if (ui.isMobilePreviewMode()) {
+            if (openMobilePreview && ui.isMobilePreviewMode()) {
                 ui.setMobilePreviewOpen(true);
             }
 
@@ -161,7 +162,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const targetTree = state.allTrees.find(t => t.id === treeId) || state.growingTrees.find(t => t.id === treeId);
             if (!targetTree) return;
 
-            selectTree(targetTree, findRenderedTreeCard(treeId));
+            selectTree(targetTree, findRenderedTreeCard(treeId), { openMobilePreview: false });
             state.initialTreeDeepLinkApplied = true;
         };
 
@@ -214,7 +215,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!state.selectedTreeId && resetPreviewWhenNoSelection && filtered.length > 0) {
             const firstTree = filtered[0];
             const firstCard = findRenderedTreeCard(firstTree.id);
-            previewController.selectTree(firstTree, firstCard);
+            previewController.selectTree(firstTree, firstCard, { openMobilePreview: false });
             return;
         }
 
