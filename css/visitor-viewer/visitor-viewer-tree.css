@@ -109,7 +109,11 @@
     margin-bottom: 6px;
 }
 
-.visitor-media-leaf span:last-child {
+.visitor-media-leaf:not(.has-title) .visitor-media-leaf-thumb {
+    margin-bottom: 0;
+}
+
+.visitor-media-leaf-title {
     display: block;
     overflow: hidden;
     color: rgba(63, 48, 43, 0.88);

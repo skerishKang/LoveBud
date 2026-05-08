@@ -41,23 +41,23 @@
         });
         document.querySelector('[data-tree-action="comments"]')?.addEventListener('click', () => {
             state.panel = 'comments';
-            state.selectedBranchId = null;
-            state.selectedMomentId = null;
             render();
         });
         document.querySelector('[data-tree-action="share"]')?.addEventListener('click', () => {
             state.panel = 'share';
-            state.selectedBranchId = null;
-            state.selectedMomentId = null;
             render();
         });
     }
 
     function bindPanelClose() {
         document.querySelector('[data-panel-close]')?.addEventListener('click', () => {
-            state.panel = 'hint';
-            state.selectedBranchId = null;
-            state.selectedMomentId = null;
+            if (state.panel === 'comments' || state.panel === 'share') {
+                state.panel = getSelectionPanel();
+            } else {
+                state.panel = 'hint';
+                state.selectedBranchId = null;
+                state.selectedMomentId = null;
+            }
             render();
         });
     }
@@ -83,6 +83,12 @@
         state.selectedMomentId = momentId;
         state.selectedBranchId = moment?.branchId || null;
         render();
+    }
+
+    function getSelectionPanel() {
+        if (state.selectedMomentId) return 'moment';
+        if (state.selectedBranchId) return 'branch';
+        return 'hint';
     }
 
     function stepMoment(direction) {

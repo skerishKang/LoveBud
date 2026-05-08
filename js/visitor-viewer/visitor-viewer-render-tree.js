@@ -19,11 +19,12 @@
         branchHost.innerHTML = data.branches.map((branch) => {
             const moments = branch.momentIds.map((id) => data.moments.find((moment) => moment.id === id)).filter(Boolean);
             const branchSelected = selectedBranchId === branch.id || moments.some((moment) => moment.id === selectedMomentId);
+            const showLeafTitles = state.panel === 'branch' && selectedBranchId === branch.id;
             return `
                 <div class="visitor-branch ${branchSelected ? 'is-selected' : ''}" data-branch-id="${escapeHtml(branch.id)}" data-side="${escapeHtml(branch.side)}" style="top:${branch.y}%; --branch-rotate:${escapeHtml(branch.rotate)}">
                     <span class="visitor-branch-line" aria-hidden="true"></span>
                     <button type="button" class="visitor-branch-btn" data-branch-select="${escapeHtml(branch.id)}">${escapeHtml(branch.name)}</button>
-                    ${moments.map((moment, index) => renderLeaf(moment, index, selectedMomentId)).join('')}
+                    ${moments.map((moment, index) => renderLeaf(moment, index, selectedMomentId, showLeafTitles)).join('')}
                 </div>
             `;
         }).join('');
@@ -42,13 +43,13 @@
         });
     }
 
-    function renderLeaf(moment, index, selectedMomentId) {
+    function renderLeaf(moment, index, selectedMomentId, showTitle) {
         const selected = selectedMomentId === moment.id;
         const rotate = index % 2 === 0 ? '-4deg' : '5deg';
         return `
-            <button type="button" class="visitor-media-leaf ${selected ? 'is-selected' : ''}" data-index="${index + 1}" data-moment-select="${escapeHtml(moment.id)}" style="--leaf-rotate:${rotate}" aria-label="${escapeHtml(moment.title)}">
+            <button type="button" class="visitor-media-leaf ${selected ? 'is-selected' : ''} ${showTitle ? 'has-title' : ''}" data-index="${index + 1}" data-moment-select="${escapeHtml(moment.id)}" style="--leaf-rotate:${rotate}" aria-label="${escapeHtml(moment.title)}">
                 <span class="visitor-media-leaf-thumb" aria-hidden="true"></span>
-                <span>${escapeHtml(moment.title)}</span>
+                ${showTitle ? `<span class="visitor-media-leaf-title">${escapeHtml(moment.title)}</span>` : ''}
             </button>
         `;
     }
