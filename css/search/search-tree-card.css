@@ -56,6 +56,12 @@
         0 0 0 1px rgba(255, 255, 255, 0.42) inset;
 }
 
+.tree-card.is-active .tree-card-open-link {
+    background: rgba(144, 73, 81, 0.92);
+    border-color: rgba(144, 73, 81, 0.22);
+    color: #fffaf8;
+}
+
 .tree-card:hover::before,
 .tree-card.is-active::before {
     opacity: 1;
@@ -444,7 +450,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: 10px;
     padding-top: 10px;
     border-top: 1px solid rgba(144,73,81,0.08);
     font-size: 13px;
@@ -464,6 +470,8 @@
 .tree-meta-right {
     justify-content: flex-end;
     overflow: hidden;
+    flex: 1 1 auto;
+    gap: 6px;
 }
 
 .tree-meta-chip {
@@ -482,6 +490,54 @@
 
 .tree-meta-chip .material-symbols-outlined {
     font-size: 14px;
+}
+
+.tree-moment-count {
+    color: var(--on-surface-variant);
+    font-size: 12.5px;
+    font-weight: 720;
+    line-height: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tree-card-open-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    flex: 0 0 auto;
+    min-height: 28px;
+    padding: 0 9px;
+    border-radius: 999px;
+    border: 1px solid rgba(144, 73, 81, 0.14);
+    background: rgba(255, 250, 248, 0.84);
+    color: var(--primary);
+    font-size: 11.5px;
+    font-weight: 850;
+    line-height: 1;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.tree-card-open-link .material-symbols-outlined {
+    font-size: 14px;
+}
+
+.tree-card-open-link:hover,
+.tree-card-open-link:focus-visible {
+    background: rgba(144, 73, 81, 0.92);
+    border-color: rgba(144, 73, 81, 0.24);
+    color: #fffaf8;
+    transform: translateY(-1px);
+}
+
+.tree-card-open-link:focus-visible {
+    outline: 2px solid rgba(144, 73, 81, 0.30);
+    outline-offset: 2px;
 }
 
 /* Issue #455 PR B: representative media and fallback tree preview polish. */
