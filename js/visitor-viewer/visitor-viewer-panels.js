@@ -140,9 +140,12 @@
             '<div class="vv-share-actions">' +
             '<button type="button" class="vv-share-btn vv-share-btn-primary" data-action="copy-link">링크 복사 <span>copy</span></button>' +
             '<button type="button" class="vv-share-btn vv-share-btn-secondary" data-action="native-share">공유하기 <span>share</span></button>' +
+            '<button type="button" class="vv-share-btn vv-share-btn-secondary" data-action="platform-share" data-platform="x" aria-label="X에 트리 공유">X에 공유 <span>intent</span></button>' +
+            '<button type="button" class="vv-share-btn vv-share-btn-secondary" data-action="platform-share" data-platform="facebook" aria-label="Facebook에 트리 공유">Facebook에 공유 <span>intent</span></button>' +
+            '<button type="button" class="vv-share-btn vv-share-btn-secondary" data-action="platform-share" data-platform="email" aria-label="메일로 트리 공유">메일로 공유 <span>mail</span></button>' +
             '<button type="button" class="vv-share-btn vv-share-btn-secondary" data-action="close-panel">나중에 하기 <span>close</span></button></div>' +
             '<div id="vvShareStatus" class="vv-share-status" aria-live="polite"></div>' +
-            '<p class="vv-share-note">공유 액션은 나중에 실제 URL 복사, 네이티브 공유, 공개 범위 확인과 연결하면 됩니다.</p></aside>';
+            '<p class="vv-share-note">공개 러브트리 주소만 공유해요. 열리지 않으면 링크 복사로 이어집니다.</p></aside>';
     }
 
     function renderPanel(state, handlers) {

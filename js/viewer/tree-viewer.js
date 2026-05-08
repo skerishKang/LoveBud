@@ -235,6 +235,13 @@
                     Share.nativeShare(handler).then(function(result) {
                         showShareStatus(result);
                     });
+                },
+                platformShare: function(platform) {
+                    var Share = window.LoveBudShareActions;
+                    if (!Share || typeof Share.shareToPlatform !== 'function') return;
+                    Promise.resolve(Share.shareToPlatform(handler, platform)).then(function(result) {
+                        showShareStatus(result);
+                    });
                 }
             };
 
@@ -262,6 +269,7 @@
                     else if (a === 'open-share') handler.openPanel('share');
                     else if (a === 'copy-link') handler.copyLink();
                     else if (a === 'native-share') handler.nativeShare();
+                    else if (a === 'platform-share') handler.platformShare(action.dataset.platform);
                     return;
                 }
                 var momentBtn = e.target.closest('[data-moment-id]');
