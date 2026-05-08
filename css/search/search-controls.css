@@ -139,12 +139,13 @@
 /* Issue #911: Mobile filter density reduction */
 @media (max-width: 480px) {
     .filter-row {
-        gap: 6px;
+        width: 100%;
+        gap: 5px;
         justify-content: flex-start;
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
         scrollbar-width: none;
-        padding-bottom: 4px;
+        padding-bottom: 0;
     }
 
     .filter-row::-webkit-scrollbar {
@@ -152,20 +153,37 @@
     }
 
     .tag-chip {
-        padding: 6px 10px;
-        font-size: 11px;
+        display: inline-flex;
+        align-items: center;
+        min-height: 26px;
+        padding: 4px 8px;
+        font-size: 10.5px;
+        line-height: 1;
         white-space: nowrap;
         flex-shrink: 0;
+        border-color: rgba(144, 73, 81, 0.06);
+        background: rgba(255, 255, 255, 0.58);
+    }
+
+    .tag-chip.active {
+        background: rgba(144, 73, 81, 0.10);
+        border-color: rgba(144, 73, 81, 0.14);
     }
 
     #browseSortControls > div {
         width: 100%;
+        gap: 6px !important;
         justify-content: flex-start;
     }
 
     .browse-utility-row {
         flex-wrap: wrap;
-        gap: 12px;
+        gap: 8px;
+        margin-bottom: 12px;
+        padding: 10px;
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.34);
+        box-shadow: none;
     }
 
     .search-input-wrapper {
@@ -174,8 +192,9 @@
     }
 
     .search-input {
-        padding: 12px 14px 12px 40px;
-        font-size: 0.9rem;
+        min-height: 40px;
+        padding: 10px 12px 10px 38px;
+        font-size: 0.86rem;
     }
 
     .search-icon {
