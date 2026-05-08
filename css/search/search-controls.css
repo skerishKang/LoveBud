@@ -42,6 +42,8 @@
 }
 
 .tag-chip {
+    box-sizing: border-box;
+    max-width: 100%;
     padding: 8px 14px;
     border-radius: 99px;
     background: rgba(255,255,255,0.76);
@@ -80,6 +82,20 @@
     background: rgba(255, 255, 255, 0.48);
     box-shadow: 0 14px 32px rgba(75, 64, 57, 0.035);
     min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+#browseSortControls {
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+#browseSortControls > div {
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
 }
 
 .browse-scroll-load-sentinel {
@@ -140,6 +156,11 @@
         font-size: 11px;
         white-space: nowrap;
         flex-shrink: 0;
+    }
+
+    #browseSortControls > div {
+        width: 100%;
+        justify-content: flex-start;
     }
 
     .browse-utility-row {
