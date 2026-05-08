@@ -79,6 +79,15 @@
     border-top: 1px solid rgba(144, 73, 81, 0.09);
 }
 
+.browse-results-head > * {
+    min-width: 0;
+}
+
+.browse-head-right {
+    min-width: 0;
+    max-width: 100%;
+}
+
 .browse-results-head h3 {
     margin: 0;
     font-size: 1.22rem;
@@ -119,8 +128,9 @@
     }
 
     .browse-head-right {
-        align-self: flex-end;
+        align-self: stretch;
         width: 100%;
+        align-items: flex-start !important;
     }
 
     .browse-results-head h3 {
@@ -128,7 +138,10 @@
     }
 
     #browseSortControls {
-        justify-content: flex-start;
+        width: 100% !important;
+        max-width: 100%;
+        min-width: 0;
+        justify-content: flex-start !important;
     }
 
     #browseSortControls .tag-chip {

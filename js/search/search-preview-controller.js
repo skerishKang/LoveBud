@@ -31,12 +31,13 @@
             return null;
         }
 
-        function selectTree(tree, activeCard) {
+        function selectTree(tree, activeCard, options = {}) {
             if (!tree) return;
+            const { openMobilePreview = true } = options;
             state.selectedTreeId = tree.id;
             ui.markActiveCard(activeCard);
 
-            if (ui.isMobilePreviewMode()) {
+            if (openMobilePreview && ui.isMobilePreviewMode()) {
                 ui.setMobilePreviewOpen(true);
             }
 
@@ -69,7 +70,7 @@
                 return;
             }
 
-            selectTree(targetTree, findRenderedTreeCard(treeId));
+            selectTree(targetTree, findRenderedTreeCard(treeId), { openMobilePreview: false });
             state.initialTreeDeepLinkApplied = true;
         }
 

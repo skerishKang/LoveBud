@@ -10,8 +10,8 @@
 
   window.i18nSearch = {
     'search.eyebrow': {
-      ko: '공개 러브트리',
-      en: 'Public LoveTrees'
+      ko: '러브트리 둘러보기',
+      en: 'Browse LoveTrees'
     },
     'search.title': {
       ko: '<span class="title-accent">러브트리</span> 둘러보기',
@@ -22,8 +22,8 @@
       en: 'Lightly explore the flow of moments others have shared.'
     },
     'search.resultsHeading': {
-      ko: '공개 러브트리',
-      en: 'Public LoveTrees'
+      ko: '둘러볼 러브트리',
+      en: 'LoveTrees to browse'
     },
     'search.resultsPopularHeading': {
       ko: '많이 감상한 러브트리',
@@ -236,6 +236,10 @@
     'search.previewOpenTreeCta': {
       ko: '트리 열기',
       en: 'Open tree'
+    },
+    'search.previewFallbackMomentCount': {
+      ko: '{count}개의 순간이 이어져 있어요.',
+      en: '{count} moments are connected.'
     },
     'search.previewSummaryThemeStart': {
       ko: '<strong style="color:var(--on-surface);">{title}</strong>는 <strong style="color:var(--on-surface);">{theme}</strong>와 함께 막 시작된 러브트리예요.',

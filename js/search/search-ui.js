@@ -66,6 +66,7 @@
                 sheetOverlay.remove();
                 sheetOverlay = null;
             }
+            document.querySelectorAll('.preview-sheet-overlay').forEach((overlay) => overlay.remove());
 
             // Release scroll lock: clear class and inline top BEFORE scrollTo
             document.body.classList.remove('preview-sheet-open');
@@ -99,7 +100,8 @@
         function syncPreviewVisibility() {
             if (!previewSidebar) return;
             if (isMobilePreviewMode()) {
-                setMobilePreviewOpen(Boolean(state.selectedTreeId));
+                const shouldStayOpen = previewSidebar.classList.contains('is-open') && Boolean(state.selectedTreeId);
+                setMobilePreviewOpen(shouldStayOpen);
                 return;
             }
             // Desktop / resize from mobile: clean up overlay + scroll lock safely
@@ -129,7 +131,7 @@
 
         const SORT_COPY = {
             latest: {
-                title: () => getSearchCopy('search.resultsHeading', '공개 러브트리', 'Public LoveTrees')
+                title: () => getSearchCopy('search.resultsHeading', '둘러볼 러브트리', 'LoveTrees to browse')
             },
             popular: {
                 title: () => getSearchCopy('search.resultsPopularHeading', '많이 감상한 러브트리', 'Popular LoveTrees')
@@ -143,7 +145,7 @@
 
             const eyebrow = document.querySelector('.search-panel-eyebrow span:last-child');
             if (eyebrow) {
-                eyebrow.textContent = getSearchCopy('search.eyebrow', '오늘의 공개 감상', 'Today\'s Public Picks');
+                eyebrow.textContent = getSearchCopy('search.eyebrow', '러브트리 둘러보기', 'Browse LoveTrees');
             }
 
             if (refs.searchInput) {
