@@ -242,6 +242,13 @@
                     Promise.resolve(Share.shareToPlatform(handler, platform)).then(function(result) {
                         showShareStatus(result);
                     });
+                },
+                exportTreeImageCard: function() {
+                    var Share = window.LoveBudShareActions;
+                    if (!Share || typeof Share.exportTreeImageCard !== 'function') return;
+                    Promise.resolve(Share.exportTreeImageCard(handler)).then(function(result) {
+                        showShareStatus(result);
+                    });
                 }
             };
 
@@ -270,6 +277,7 @@
                     else if (a === 'copy-link') handler.copyLink();
                     else if (a === 'native-share') handler.nativeShare();
                     else if (a === 'platform-share') handler.platformShare(action.dataset.platform);
+                    else if (a === 'export-tree-card') handler.exportTreeImageCard();
                     return;
                 }
                 var momentBtn = e.target.closest('[data-moment-id]');
