@@ -17,9 +17,22 @@
     el.textContent = tText(key, fallback);
   }
 
+  function setTitleMarkup() {
+    var el = document.getElementById('myTreesPageTitle');
+    if (!el) return;
+    var locale = window.i18n?.currentLang || document.documentElement?.lang || 'ko';
+    var isEnglish = String(locale).toLowerCase().startsWith('en');
+    if (isEnglish) {
+      el.innerHTML = 'My <span class="my-trees-title-accent">LoveTrees</span>';
+      return;
+    }
+    el.innerHTML = '내 <span class="my-trees-title-accent">러브트리</span>';
+  }
+
   function applyMyTreesShellCopy() {
     document.title = tText('nav.myTrees', '내 러브트리') + ' | LoveTree';
-    setText('myTreesPageTitle', 'myTrees.page_title', '🌳 내 러브트리');
+    setText('myTreesPageEyebrow', 'myTrees.page_eyebrow', '내가 키우는 러브트리');
+    setTitleMarkup();
     setText('myTreesPageDesc', 'myTrees.page_desc', '내가 남긴 순간들을 다시 감상하고, 다음 장면을 이어가는 곳입니다.');
     setText('headerCreateTreeBtnLabel', 'myTrees.header_create', '새 러브트리');
     setText('summaryTotalSuffix', 'myTrees.summary_total_suffix', '개의 트리');
