@@ -125,6 +125,7 @@
     display: inline-flex;
     align-items: center;
     width: fit-content;
+    height: 26px;
     min-height: 26px;
     padding: 5px 10px;
     border-radius: 999px;
@@ -135,6 +136,7 @@
     font-weight: 800;
     line-height: 1;
     letter-spacing: .02em;
+    box-sizing: border-box;
 }
 
 .editor-memory-form-modal .editor-form-field,
@@ -158,6 +160,7 @@
     font-size: 14px;
     font-weight: 400;
     min-height: 42px;
+    box-sizing: border-box;
 }
 
 .editor-memory-form-modal .editor-form-input::placeholder,
@@ -185,12 +188,30 @@
 .editor-video-segment-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
+    column-gap: 12px;
+    row-gap: 7px;
     align-items: start;
 }
 
 .editor-video-segment-field {
+    display: grid !important;
+    grid-template-rows: 26px 42px;
+    gap: 7px;
     min-width: 0;
+}
+
+.editor-video-segment-field .editor-form-label {
+    align-self: start;
+}
+
+.editor-video-segment-field .editor-form-input {
+    width: 100%;
+    height: 42px;
+}
+
+.editor-video-segment-help {
+    grid-column: 1 / -1;
+    margin: 0;
 }
 
 .editor-memory-form-modal .memory-link-preview.is-enhanced {
