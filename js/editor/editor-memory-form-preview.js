@@ -141,8 +141,8 @@
 
         if (refs?.startTimeHint) {
             refs.startTimeHint.textContent = formatted
-                ? `${formatted}부터 재생돼요. 유튜브 공유에서 “시작 시간”을 체크한 링크도 자동으로 잡혀요.`
-                : '유튜브 공유에서 “시작 시간”을 체크한 링크를 붙이면 자동으로 잡혀요.';
+                ? `${formatted}부터 재생돼요.`
+                : '공유 링크의 시작 시간이 자동 입력돼요.';
         }
     }
 

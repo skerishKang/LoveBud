@@ -56,6 +56,7 @@ function createEditorMemoryForm(deps) {
         startTimeHint: document.getElementById('memoryStartTimeHint'),
         endTimeInput: document.getElementById('memoryEndTimeInput'),
         canvasEmptyGuide: document.getElementById('canvasEmptyGuide'),
+        canvasTopbar: document.querySelector('.editor-canvas-topbar'),
         formEyebrow: document.getElementById('addMemoryFormEyebrow'),
         formTitle: document.getElementById('addMemoryFormTitle'),
         formIntro: document.getElementById('addMemoryFormIntro'),
@@ -97,6 +98,20 @@ function createEditorMemoryForm(deps) {
     function setEmptyGuideSuppressed(isSuppressed) {
         const canvasArea = refs.addMemoryForm?.closest('.canvas-area');
         if (canvasArea) canvasArea.classList.toggle('is-memory-form-open', isSuppressed);
+        if (refs.canvasTopbar) {
+            if (isSuppressed) {
+                refs.canvasTopbar.dataset.previousAriaHidden = refs.canvasTopbar.getAttribute('aria-hidden') || '';
+                refs.canvasTopbar.setAttribute('aria-hidden', 'true');
+            } else {
+                const previousTopbarAriaHidden = refs.canvasTopbar.dataset.previousAriaHidden;
+                if (previousTopbarAriaHidden) {
+                    refs.canvasTopbar.setAttribute('aria-hidden', previousTopbarAriaHidden);
+                } else {
+                    refs.canvasTopbar.removeAttribute('aria-hidden');
+                }
+                delete refs.canvasTopbar.dataset.previousAriaHidden;
+            }
+        }
         if (!refs.canvasEmptyGuide) return;
         refs.canvasEmptyGuide.classList.toggle('editor-canvas-empty-guide-form-suppressed', isSuppressed);
         if (isSuppressed) {
