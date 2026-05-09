@@ -55,6 +55,7 @@ function createEditorMemoryForm(deps) {
         startTimeInput: document.getElementById('memoryStartTimeInput'),
         startTimeHint: document.getElementById('memoryStartTimeHint'),
         endTimeInput: document.getElementById('memoryEndTimeInput'),
+        canvasEmptyGuide: document.getElementById('canvasEmptyGuide'),
         formEyebrow: document.getElementById('addMemoryFormEyebrow'),
         formTitle: document.getElementById('addMemoryFormTitle'),
         formIntro: document.getElementById('addMemoryFormIntro'),
@@ -91,19 +92,25 @@ function createEditorMemoryForm(deps) {
         if (!form) return;
         form.style.display = 'block';
         form.classList.add('is-open');
-        form.style.position = 'absolute';
-        form.style.left = '50%';
-        form.style.top = '42px';
-        form.style.transform = 'translateX(-50%)';
-        form.style.width = 'min(620px, calc(100% - 48px))';
-        form.style.maxWidth = '620px';
-        form.style.padding = '28px 28px 24px';
-        form.style.borderRadius = '30px';
-        form.style.background = 'linear-gradient(180deg, rgba(255,255,255,0.985), rgba(250,246,244,0.97))';
-        form.style.boxShadow = '0 24px 56px rgba(75,64,57,0.14)';
-        form.style.border = '1px solid rgba(144,73,81,0.10)';
-        form.style.zIndex = '8';
-        form.style.backdropFilter = 'blur(12px)';
+    }
+
+    function setEmptyGuideSuppressed(isSuppressed) {
+        const canvasArea = refs.addMemoryForm?.closest('.canvas-area');
+        if (canvasArea) canvasArea.classList.toggle('is-memory-form-open', isSuppressed);
+        if (!refs.canvasEmptyGuide) return;
+        refs.canvasEmptyGuide.classList.toggle('editor-canvas-empty-guide-form-suppressed', isSuppressed);
+        if (isSuppressed) {
+            refs.canvasEmptyGuide.dataset.previousAriaHidden = refs.canvasEmptyGuide.getAttribute('aria-hidden') || '';
+            refs.canvasEmptyGuide.setAttribute('aria-hidden', 'true');
+            return;
+        }
+        const previousAriaHidden = refs.canvasEmptyGuide.dataset.previousAriaHidden;
+        if (previousAriaHidden) {
+            refs.canvasEmptyGuide.setAttribute('aria-hidden', previousAriaHidden);
+        } else {
+            refs.canvasEmptyGuide.removeAttribute('aria-hidden');
+        }
+        delete refs.canvasEmptyGuide.dataset.previousAriaHidden;
     }
 
     function hideLinkPreview() {
@@ -224,6 +231,7 @@ function createEditorMemoryForm(deps) {
         if (!form) return;
         resetFormValues();
         applyFormOpenStyles();
+        setEmptyGuideSuppressed(true);
         isFormOpen = true;
 
         const memories = getTreeMemories();
@@ -264,6 +272,7 @@ function createEditorMemoryForm(deps) {
         if (!form) return;
         form.style.display = 'none';
         form.classList.remove('is-open');
+        setEmptyGuideSuppressed(false);
         isFormOpen = false;
 
         document.removeEventListener('keydown', focusTrap);

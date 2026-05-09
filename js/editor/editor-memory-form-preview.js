@@ -6,25 +6,24 @@
         if (!preview) return;
         preview.classList.add('is-enhanced');
         preview.style.display = 'flex';
-        preview.style.alignItems = 'stretch';
-        preview.style.gap = '14px';
-        preview.style.padding = '14px';
-        preview.style.borderRadius = '20px';
-        preview.style.background = 'linear-gradient(180deg, rgba(245, 241, 238, 0.98), rgba(255,255,255,0.98))';
-        preview.style.border = '1px solid rgba(144,73,81,0.10)';
-        preview.style.marginTop = '8px';
-        preview.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+        preview.style.alignItems = 'center';
+        preview.style.gap = '10px';
+        preview.style.padding = '8px 10px';
+        preview.style.borderRadius = '14px';
+        preview.style.background = 'rgba(144, 73, 81, 0.045)';
+        preview.style.border = '1px solid rgba(144,73,81,0.08)';
+        preview.style.marginTop = '6px';
 
         const thumbWrap = refs?.thumbWrap || preview.querySelector('.memory-link-preview__thumb-wrap');
         if (thumbWrap) {
             thumbWrap.style.position = 'relative';
-            thumbWrap.style.width = '136px';
-            thumbWrap.style.minWidth = '136px';
-            thumbWrap.style.height = '76px';
-            thumbWrap.style.borderRadius = '14px';
+            thumbWrap.style.width = '72px';
+            thumbWrap.style.minWidth = '72px';
+            thumbWrap.style.height = '40px';
+            thumbWrap.style.borderRadius = '10px';
             thumbWrap.style.overflow = 'hidden';
             thumbWrap.style.background = 'var(--surface-container, #ece9e5)';
-            thumbWrap.style.boxShadow = '0 8px 20px rgba(75,64,57,0.08)';
+            thumbWrap.style.boxShadow = 'none';
         }
 
         if (refs?.thumb) {
@@ -55,34 +54,23 @@
         }
 
         if (refs?.badge) {
-            refs.badge.style.display = 'inline-flex';
-            refs.badge.style.alignItems = 'center';
-            refs.badge.style.padding = '4px 9px';
-            refs.badge.style.borderRadius = '999px';
-            refs.badge.style.background = 'rgba(144, 73, 81, 0.1)';
-            refs.badge.style.color = 'var(--primary, #904951)';
-            refs.badge.style.fontSize = '10px';
-            refs.badge.style.fontWeight = '700';
-            refs.badge.style.letterSpacing = '0.03em';
-            refs.badge.style.textTransform = 'uppercase';
-            refs.badge.style.width = 'fit-content';
+            refs.badge.style.display = 'none';
         }
 
         if (refs?.previewTitle) {
-            refs.previewTitle.style.fontSize = '0.95rem';
+            refs.previewTitle.textContent = '영상 링크 확인됨';
+            refs.previewTitle.style.fontSize = '0.78rem';
             refs.previewTitle.style.fontWeight = '700';
-            refs.previewTitle.style.color = 'var(--on-surface, #333)';
-            refs.previewTitle.style.lineHeight = '1.4';
+            refs.previewTitle.style.color = 'rgba(144, 73, 81, 0.72)';
+            refs.previewTitle.style.lineHeight = '1.35';
             refs.previewTitle.style.overflow = 'hidden';
             refs.previewTitle.style.textOverflow = 'ellipsis';
             refs.previewTitle.style.whiteSpace = 'nowrap';
         }
 
         if (refs?.previewHint) {
-            refs.previewHint.style.fontSize = '0.8rem';
-            refs.previewHint.style.color = 'var(--on-surface-variant, #666)';
-            refs.previewHint.style.lineHeight = '1.6';
-            refs.previewHint.style.margin = '0';
+            refs.previewHint.textContent = '';
+            refs.previewHint.style.display = 'none';
         }
     }
 
