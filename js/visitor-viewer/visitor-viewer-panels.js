@@ -139,6 +139,7 @@
             '<div class="vv-share-preview"><div class="vv-share-icon">🌳</div><h3 class="vv-share-title">' + escape(tree.title || '') + '</h3><p class="vv-share-creator">' + escape(tree.creator || '') + '</p></div>' +
             '<div class="vv-share-actions">' +
             '<button type="button" class="vv-share-btn vv-share-btn-primary" data-action="copy-link">링크 복사 <span>copy</span></button>' +
+            '<button type="button" class="vv-share-btn vv-share-btn-secondary" data-action="export-tree-card" aria-label="트리 이미지 카드 저장">이미지 카드 저장 <span>png</span></button>' +
             '<button type="button" class="vv-share-btn vv-share-btn-secondary" data-action="native-share">공유하기 <span>share</span></button>' +
             '<button type="button" class="vv-share-btn vv-share-btn-secondary" data-action="platform-share" data-platform="x" aria-label="X에 트리 공유">X에 공유 <span>intent</span></button>' +
             '<button type="button" class="vv-share-btn vv-share-btn-secondary" data-action="platform-share" data-platform="facebook" aria-label="Facebook에 트리 공유">Facebook에 공유 <span>intent</span></button>' +
