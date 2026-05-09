@@ -1,0 +1,265 @@
+# Lovetree Image Generation Prompts
+
+??ë¬¸ì„œ??Lovetree ?¤ë¬¸/?„ë¡ ??ë¦¬ë””?ì¸???”ë©´ ?´ë?ì§€ë¥??ì„±?˜ê¸° ?„í•œ ?„ë¡¬?„íŠ¸ ëª¨ìŒ?…ë‹ˆ??
+
+ê³µí†µ ê·œì¹™:
+- ?¤ì œ ?„ì´???¬ì§„, ?¤ì œ ?Œë«??ë¡œê³ , ?€?‘ê¶Œ ?´ë?ì§€ ?¬ìš© ê¸ˆì?
+- ?ìƒ ?¸ë„¤?¼ì? ì¶”ìƒ??ë¸”ëŸ¬ ?´ë?ì§€ ?ëŠ” ?¼ëŸ¬?¤íŠ¸??placeholderë¡??œí˜„
+- ì»¬ëŸ¬ ë°©í–¥?€ warm cream, soft rose, muted green, muted slate
+- ë¶„ìœ„ê¸°ëŠ” ê°ì •?????¤ì´?´ë¦¬, ?ìƒ ?„ì¹´?´ë¸Œ, ë¶€?œëŸ¬???¬ë¸Œ?¸ë¦¬
+- n8n, Figma, ê°œë°œ?ìš© ?Œë¡œ?°ì°¨?¸ì²˜??ë³´ì´ì§€ ?Šê²Œ ?˜ê¸°
+
+---
+
+## 1. `home-landing.png`
+
+```text
+Create a warm, premium landing page mockup for Lovetree, a K-pop fan memory app.
+
+Concept:
+Lovetree helps fans save meaningful moments as video cards and connect them into a growing LoveTree.
+
+Screen:
+- Desktop web landing page
+- Warm cream background with soft rose, muted green, and slate accents
+- Hero title in Korean: ?œì‚¬?‘ì— ë¹ ì§„ ëª¨ë“  ?œê°„??ê¸°ë¡??ë³´ì„¸?”â€?- Subtitle: ?œì˜?? ? ì§œ, ê°ì •, ë©”ëª¨ê°€ ?´ì–´???˜ë§Œ???¬ë¸Œ?¸ë¦¬ê°€ ?©ë‹ˆ?¤â€?- Primary CTA button: ?œì²« ?¬ë¸Œ?¸ë¦¬ ë§Œë“¤ê¸°â€?- Secondary CTA button: ?œë‹¤ë¥??¬ë¸Œ?¸ë¦¬ êµ¬ê²½?˜ê¸°??- Show a preview of a connected LoveTree with 4 to 6 video memory cards
+- Include small sections for ?œê¸°ë¡í•˜ê¸°â€? ?œì—°ê²°í•˜ê¸°â€? ?œë‹¤??ë³´ê¸°?? ?œê³µ? í•˜ê¸°â€?- No real idol photos, no real brand logos, no copyrighted content
+- Use abstract video thumbnails only
+- Emotional, soft, modern, fan diary mood
+```
+
+---
+
+## 2. `community-discovery.png`
+
+```text
+Create a community discovery page mockup for Lovetree.
+
+Concept:
+Users can browse LoveTrees made by other fans and discover emotional fan memory flows.
+
+Screen:
+- Desktop web interface
+- Header with search bar and category filters
+- Title in Korean: ?œë‹¤ë¥??¬ë“¤???¬ë¸Œ?¸ë¦¬ êµ¬ê²½?˜ê¸°??- Cards showing shared LoveTrees
+- Each card includes abstract thumbnail collage, title, author display name, emotion tags, like count, comment count
+- Include filters: ?œì¸ê¸°â€? ?œìµœ? â€? ?œì…?•â€? ?œì½˜?œíŠ¸?? ?œì§ìº â€? ?œì»´ë°±â€?- Include a featured LoveTree card that previews a connected mini tree
+- Warm cream, rose, muted slate, soft shadow design
+- No real idol photos or real logos
+- It should feel like a fan memory gallery, not a generic social feed
+```
+
+---
+
+## 3. `my-trees-dashboard.png`
+
+```text
+Create a ?œMy Trees??dashboard mockup for Lovetree.
+
+Concept:
+A user manages their own LoveTrees, sees recent edits, and creates a new tree.
+
+Screen:
+- Desktop web dashboard
+- Korean title: ?œë‚˜???¬ë¸Œ?¸ë¦¬??- Primary button: ?œìƒˆ ?¬ë¸Œ?¸ë¦¬ ë§Œë“¤ê¸°â€?- List/grid of user's LoveTrees
+- Each tree card shows title, last updated date, public/private badge, number of moments, thumbnail preview
+- Include a small ?œìµœê·??˜ì •???œê°„??area
+- Include quick actions: edit, share, duplicate, delete
+- Warm cream background, rose buttons, muted slate text
+- Clean but emotional, not corporate
+- No real idol images or copyrighted content
+```
+
+---
+
+## 4. `login-my-page.png`
+
+```text
+Create a login and profile page mockup for Lovetree.
+
+Concept:
+Logging in protects and continues the user's fan memories.
+
+Screen:
+- Mobile-first design
+- Korean headline: ?œë‚´ ?¬ë¸Œ?¸ë¦¬ë¥?ê³„ì† ?´ì–´ê°€?¤ë©´ ë¡œê·¸?¸í•˜?¸ìš”??- Subtext: ?œê¸°ë¡í•œ ?œê°„???ˆì „?˜ê²Œ ?€?¥í•˜ê³? ?¤ë¥¸ ê¸°ê¸°?ì„œ???´ì–´??ë³????ˆì–´?”â€?- Login options: Google login, email login
+- Soft profile preview card with display name: ?œí…Œ?¤íŠ¸ ?¬ë²„ A??- Show benefits: ?œê¸°ë¡??€?¥â€? ?œê³µ??ê´€ë¦¬â€? ?œëŒ“ê¸€ ?Œë¦¼?? ?œë‚´ ?¸ë¦¬ ?™ê¸°?”â€?- Warm cream and rose color palette
+- Friendly, calm, not a cold auth form
+- No real brand logos except generic login icon shapes
+```
+
+---
+
+## 5. `memory-detail-view.png`
+
+```text
+Create a memory detail screen mockup for Lovetree.
+
+Concept:
+A user opens one saved fan moment and sees the video, memo, emotion, and connected moments.
+
+Screen:
+- Mobile app screen
+- Large video thumbnail placeholder with play button
+- Korean title: ?œì²« ì½˜ì„œ?¸ì˜ ?„ìœ¨??- Date: ??023.11.15??- Emotion tags: ?œì„¤?˜â€? ?œê°?™â€? ?œí–‰ë³µâ€?- Memo section with handwritten diary-like feeling
+- Section: ?œì´ ?œê°„ê³??´ì–´ì§?ê¸°ì–µ??- Show 2 small connected memory cards below
+- Buttons: like, comment, share, edit
+- Warm cream background with soft rose accents
+- Emotional archive mood, not a generic video page
+- No real idol photos, no copyrighted content
+```
+
+---
+
+## 6. `mobile-editor-add-branch.png`
+
+```text
+Create a mobile editor mockup for adding a new branch to a LoveTree.
+
+Concept:
+The user chooses where a new memory should connect in the LoveTree.
+
+Screen:
+- Portrait smartphone UI
+- Title: ?œì–´???œê°„ê³??°ê²°? ê¹Œ????- Show a simplified vertical LoveTree with 3 existing memory cards
+- A new memory card is floating at the bottom, ready to attach
+- Use soft dotted connection lines and branch points
+- Include selectable connection targets with subtle highlight rings
+- Bottom action button: ?œì´ ?œê°„ ?¤ì— ?°ê²°?˜ê¸°??- The UI should feel simple enough for mobile, not a complex desktop canvas
+- Warm cream, rose, muted green, soft shadows
+- No real idol photos or logos
+```
+
+---
+
+## 7. `search-save-video.png`
+
+```text
+Create a video search and save screen mockup for Lovetree.
+
+Concept:
+A user searches YouTube-style video results and saves one directly into a LoveTree.
+
+Screen:
+- Mobile app UI
+- Search bar with Korean placeholder: ?œë¬´?€, ì§ìº , ?ìƒ ë§í¬ ê²€?‰â€?- Results list with abstract video thumbnails, titles, dates, channel-like text
+- Each result has a button: ?œëŸ¬ë¸ŒíŠ¸ë¦¬ì— ì¶”ê???- Include a selected result preview at the bottom
+- Show tags: ?œë¬´?€?? ?œì§ìº â€? ?œì»´ë°±â€? ?œì½˜?œíŠ¸??- No real YouTube logo, no real idol photos, no copyrighted content
+- Warm, clean fan archive style
+```
+
+---
+
+## 8. `empty-first-tree.png`
+
+```text
+Create an empty-state screen mockup for a first-time Lovetree user.
+
+Concept:
+The user has no LoveTrees yet, so the app gently invites them to create the first fan memory tree.
+
+Screen:
+- Mobile app or responsive web screen
+- Korean headline: ?œì•„ì§??¬ë¸Œ?¸ë¦¬ê°€ ?†ì–´?”â€?- Subtext: ?œì²˜??ì¢‹ì•„?˜ê²Œ ???œê°„ë¶€???˜ë‚˜???´ì–´ë³´ì„¸?”â€?- Soft illustration of a small sprout growing into video memory cards
+- Primary button: ?œì²« ?œê°„ ê¸°ë¡?˜ê¸°??- Secondary link: ?œì˜ˆ???¬ë¸Œ?¸ë¦¬ ë³´ê¸°??- Include 3 tiny example chips: ?œì…?•â€? ?œì²« ì½˜ì„œ?¸â€? ?œìµœ??ë¬´ë???- Warm cream background, rose and muted green accents
+- Gentle, emotional, encouraging, not empty or sad
+```
+
+---
+
+## 9. `editor-desktop-empty.png`
+
+```text
+Create an empty desktop editor canvas for Lovetree.
+
+Concept:
+A user is starting a new LoveTree on desktop.
+
+Screen:
+- Wide desktop canvas
+- Left sidebar with simple navigation
+- Top toolbar with title input: ?œìƒˆ ?¬ë¸Œ?¸ë¦¬??- Empty canvas with a soft central starting point
+- Korean prompt in the canvas: ?œì²« ?œê°„??ì¶”ê????¬ë¸Œ?¸ë¦¬ë¥??œì‘?˜ì„¸?”â€?- Button in canvas: ?œì²« ?œê°„ ì¶”ê???- Show faint branch guides in the background
+- Warm cream paper-like texture
+- The screen should feel like a creative memory board, not a technical workflow tool
+```
+
+---
+
+## 10. `editor-desktop-active.png`
+
+```text
+Create an active desktop editor canvas for Lovetree.
+
+Concept:
+A user is editing a LoveTree with connected video memory cards.
+
+Screen:
+- Wide desktop web app
+- Left sidebar, top toolbar, search, add memory button
+- Canvas with 8 to 10 video memory cards connected by organic branch lines
+- One selected card is highlighted
+- Right side detail panel showing selected memory: video preview, date, tags, memo, connection options
+- Korean labels
+- Warm cream background, rose accents, muted green branch lines
+- No real idol photos or copyrighted logos
+- Emotional fan memory board, not n8n or a technical node editor
+```
+
+---
+
+## 11. `community-tree-detail.png`
+
+```text
+Create a shared community LoveTree detail page mockup for Lovetree.
+
+Concept:
+A visitor opens a shared LoveTree made by another fan.
+
+Screen:
+- Desktop or tablet web view
+- Header: ?œí…Œ?¤íŠ¸ ?¬ë²„ A???¬ë¸Œ?¸ë¦¬??- Subtitle: ?œì…?•ë???ì§€ê¸ˆê¹Œì§€ ?´ì–´ì§??œê°„?¤â€?- Main area shows connected memory cards in a tree flow
+- Right or bottom panel shows comments and reactions
+- Buttons: like, comment, share, save to my tree
+- Include public/private badge and author profile
+- Warm emotional fan community mood
+- No real idol photos or logos
+```
+
+---
+
+## 12. `settings-privacy.png`
+
+```text
+Create a settings and privacy screen mockup for Lovetree.
+
+Concept:
+A user controls whether their LoveTree is private, link-shared, or public.
+
+Screen:
+- Mobile settings UI
+- Korean title: ?œê³µê°?ë²”ìœ„ ?¤ì •??- Options:
+  - ?œë‚˜ë§?ë³´ê¸°??  - ?œë§?¬ë? ê°€ì§??¬ëŒë§Œâ€?  - ?œì»¤ë®¤ë‹ˆ?°ì— ê³µê°œ??- Include toggles for comments, likes, profile display name
+- Small explanation text under each option
+- Warm cream and rose palette
+- Calm, trustworthy, simple
+```
+
+---
+
+## Recommended Creation Order
+
+```text
+1. home-landing.png
+2. my-trees-dashboard.png
+3. community-discovery.png
+4. memory-detail-view.png
+5. mobile-editor-add-branch.png
+6. search-save-video.png
+7. empty-first-tree.png
+8. editor-desktop-active.png
+9. login-my-page.png
+10. editor-desktop-empty.png
+11. community-tree-detail.png
+12. settings-privacy.png
+```

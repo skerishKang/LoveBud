@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>둘러보기 | LoveTree v3</title>
+    <link rel="stylesheet" href="../../css/gemini-v3/index.css">
+    <link rel="stylesheet" href="../../css/gemini-v3/search.css">
+    <style>
+        .search-v3-layout { display: grid; grid-template-columns: 1fr 440px; height: calc(880px - 110px); overflow: hidden; }
+        .browse-v3-area { padding: 60px 80px; overflow-y: auto; }
+        .hub-v3-sidebar { background: #FDF9F5; padding: 60px; border-left: 1px solid rgba(179, 126, 111, 0.08); display: flex; flex-direction: column; }
+        .exhibition-v3-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 40px; }
+    </style>
+</head>
+<body>
+    <div class="canvas-v3">
+        <header class="header-v3" style="padding: 40px 80px; border-bottom: 1px solid rgba(179, 126, 111, 0.05);">
+            <a href="index.html" class="logo-v3" style="font-size: 32px;">LoveTree</a>
+            <nav class="nav-v3" style="gap: 50px;">
+                <a href="index.html" class="v3-nav-link">첫 화면</a>
+                <a href="search.html" class="v3-nav-link active">둘러보기</a>
+                <a href="my-trees.html" class="v3-nav-link">내 트리</a>
+            </nav>
+            <a href="../login.html" class="btn-v3 btn-primary" style="padding: 12px 35px; font-size: 15px;">시작하기</a>
+        </header>
+
+        <div class="search-v3-layout">
+            <main class="browse-v3-area">
+                <header style="margin-bottom: 60px;">
+                    <h1 class="profile-name" style="font-size: 42px; margin-bottom: 30px;">감상의 전시장</h1>
+                    <div class="search-v3-bar">
+                        <input type="text" class="search-v3-input" placeholder="어떤 아티스트의 순간을 찾고 계신가요?">
+                    </div>
+                </header>
+
+                <div class="exhibition-v3-grid">
+                    <article class="tree-card-v3" onclick="location.href='detail.html'">
+                        <div class="card-img-v3">
+                            <img src="https://images.unsplash.com/photo-1542332213-9b5a5a3fad35?auto=format&fit=crop&q=80&w=400" alt="Tree">
+                        </div>
+                        <h3 style="font-size: 20px; font-weight: 900; margin-bottom: 10px; font-family: 'Playfair Display', serif;">보랏빛 순간</h3>
+                        <p style="font-size: 13px; color: var(--gv3-text-muted); line-height: 1.7; margin-bottom: 20px;">이름도 모르던 그날의 직캠부터 시작된, 나의 7년이 담긴 보랏빛 지도입니다.</p>
+                        <div class="v3-card-footer">
+                            <span style="font-size: 11px; font-weight: 900; color: var(--gv3-primary);">#BTS</span>
+                            <div class="v3-card-meta">
+                                <div class="meta-item">❤️ 1.6k</div>
+                                <div class="meta-item">💬 328</div>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="tree-card-v3">
+                        <div class="card-img-v3">
+                            <img src="https://images.unsplash.com/photo-1490750967868-88aa4486c946?auto=format&fit=crop&q=80&w=400" alt="Tree">
+                        </div>
+                        <h3 style="font-size: 20px; font-weight: 900; margin-bottom: 10px; font-family: 'Playfair Display', serif;">빛나던 무대</h3>
+                        <p style="font-size: 13px; color: var(--gv3-text-muted); line-height: 1.7; margin-bottom: 20px;">우리가 빛나던 그 계절, 잊지 못할 함성 소리와 조명들.</p>
+                        <div class="v3-card-footer">
+                            <span style="font-size: 11px; font-weight: 900; color: var(--gv3-primary);">#SEVENTEEN</span>
+                            <div class="v3-card-meta">
+                                <div class="meta-item">❤️ 2.1k</div>
+                                <div class="meta-item">💬 412</div>
+                            </div>
+                        </div>
+                    </article>
+                </div>
+            </main>
+
+            <aside class="hub-v3-sidebar">
+                <div class="hub-v3-empty">
+                    <div style="font-size: 64px; margin-bottom: 40px; opacity: 0.2;">✨</div>
+                    <h2 class="profile-name" style="font-size: 32px; margin-bottom: 20px;">감상 허브</h2>
+                    <p style="font-size: 16px; color: var(--gv3-text-muted); line-height: 1.9; word-break: keep-all;">
+                        왼쪽 전시장에서 트리를 선택해 보세요.<br>
+                        작성자의 감정이 담긴 경로와<br>
+                        대표 순간들이 이곳에 펼쳐집니다.
+                    </p>
+                </div>
+            </aside>
+        </div>
+    </div>
+</body>
+</html>

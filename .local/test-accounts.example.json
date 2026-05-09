@@ -1,0 +1,12 @@
+{
+  "admin": {
+    "email": "admin.test@lovetree.dev",
+    "password": "CHANGE_ME_ADMIN_PASSWORD",
+    "displayName": "테스트 관리자"
+  },
+  "user": {
+    "email": "user.test@lovetree.dev",
+    "password": "CHANGE_ME_USER_PASSWORD",
+    "displayName": "테스트 사용자"
+  }
+}

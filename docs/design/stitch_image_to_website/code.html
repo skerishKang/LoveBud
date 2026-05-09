@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+
+<html lang="ko"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Lovetree - 사랑에 빠진 모든 순간을 연결하세요</title>
+<!-- Tailwind CSS v3 CDN with plugins -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Google Fonts: Serif for titles, Sans for body -->
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700&amp;family=Noto+Sans+KR:wght@300;400;500;700&amp;display=swap" rel="stylesheet"/>
+<script>
+        tailwind.config = {
+          theme: {
+            extend: {
+              colors: {
+                'lovetree-rose': '#A67070',
+                'lovetree-beige': '#F2E8DA',
+                'lovetree-bg': '#F6F1E9',
+                'lovetree-text': '#4A3E3E',
+                'lovetree-gray': '#7D7068',
+                'lovetree-accent': '#9E948B',
+              },
+              fontFamily: {
+                serif: ['"Noto Serif KR"', 'serif'],
+                sans: ['"Noto Sans KR"', 'sans-serif'],
+              },
+              borderRadius: {
+                '4xl': '2.5rem',
+                '5xl': '3.5rem',
+              }
+            }
+          }
+        }
+    </script>
+<style>
+        body {
+            background: linear-gradient(135deg, #C2938C 0%, #E8D5C4 35%, #F6F1E9 50%, #9DA98F 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Noto Sans KR', sans-serif;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        /* Bokeh Circles */
+        .bokeh {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            z-index: 0;
+            opacity: 0.6;
+        }
+        .bokeh-1 { width: 600px; height: 600px; background: radial-gradient(circle, #F2E3D5 0%, transparent 70%); top: -10%; left: 30%; }
+        .bokeh-2 { width: 400px; height: 400px; background: radial-gradient(circle, #E8CFC5 0%, transparent 70%); bottom: 10%; left: 5%; }
+        .bokeh-3 { width: 500px; height: 500px; background: radial-gradient(circle, #D4A89C 0%, transparent 70%); top: 15%; right: -5%; }
+        .bokeh-4 { width: 350px; height: 350px; background: radial-gradient(circle, #FDF9F2 0%, transparent 70%); top: 40%; left: 40%; }
+
+        .app-container {
+            width: 1440px;
+            height: 900px;
+            background: rgba(246, 241, 233, 0.92);
+            border-radius: 6rem;
+            box-shadow: 0 80px 160px -40px rgba(0,0,0,0.15);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            padding: 4.5rem 6.5rem;
+        }
+
+        .memory-card {
+            background: white;
+            border-radius: 0.85rem;
+            padding: 0.6rem;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.06);
+            width: 155px;
+            position: absolute;
+            z-index: 20;
+        }
+        .memory-thumbnail {
+            aspect-ratio: 4/3;
+            border-radius: 0.5rem;
+            overflow: hidden;
+            position: relative;
+            background: #eee;
+        }
+        .play-icon {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 26px;
+            height: 26px;
+            background: rgba(255,255,255,0.3);
+            backdrop-filter: blur(4px);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .play-icon svg {
+            fill: white;
+            width: 10px;
+            height: 10px;
+            margin-left: 2px;
+        }
+
+        /* Connecting Lines */
+        .connector {
+            position: absolute;
+            stroke: #D1C4B8;
+            stroke-width: 1;
+            stroke-dasharray: 4 4;
+            fill: none;
+            z-index: 10;
+        }
+
+        .heart-node {
+            position: absolute;
+            color: #A67070;
+            font-size: 10px;
+            z-index: 15;
+            transform: translate(-50%, -50%);
+        }
+    </style>
+</head>
+<body>
+<div class="bokeh bokeh-1"></div>
+<div class="bokeh bokeh-2"></div>
+<div class="bokeh bokeh-3"></div>
+<div class="bokeh bokeh-4"></div>
+<main class="app-container">
+<!-- Header -->
+<header class="flex justify-between items-center relative z-30">
+<div class="text-3xl font-serif text-lovetree-rose font-bold" style="letter-spacing: -0.01em;">
+                Lovetree
+            </div>
+<nav class="flex items-center space-x-12 text-[#4A3E3E] font-medium text-[1.05rem]">
+<a class="hover:text-lovetree-rose transition-colors" href="#">소개</a>
+<a class="hover:text-lovetree-rose transition-colors" href="#">러브트리</a>
+<a class="hover:text-lovetree-rose transition-colors" href="#">커뮤니티</a>
+<a class="hover:text-lovetree-rose transition-colors" href="#">로그인</a>
+</nav>
+</header>
+<!-- Main Section -->
+<section class="flex-grow flex mt-16 relative z-10">
+<!-- Left: Text -->
+<div class="w-[42%] flex flex-col pt-16">
+<h1 class="text-[3.6rem] font-serif leading-[1.25] text-lovetree-text mb-8 font-bold">
+                    사랑에 빠진 모든<br/>
+<span class="relative">순간을<span class="absolute -bottom-1 left-0 w-full h-1 bg-lovetree-rose/10"></span></span> 연결하세요.
+                </h1>
+<p class="text-[1.3rem] text-lovetree-gray mb-12 leading-relaxed font-light">
+                    영상, 날짜, 감정, 메모가 아름답게 이어져<br/>
+                    당신만의 러브트리가 자라납니다.
+                </p>
+<div class="flex space-x-5">
+<button class="bg-[#A67070] text-white px-10 py-4.5 rounded-full text-[1.1rem] font-medium shadow-xl shadow-lovetree-rose/20 hover:brightness-105 transition-all">
+                        러브트리 시작하기
+                    </button>
+<button class="border border-[#D1C4B8] text-lovetree-gray px-10 py-4.5 rounded-full text-[1.1rem] font-medium hover:bg-white/50 transition-all">
+                        다른 트리 보기
+                    </button>
+</div>
+</div>
+<!-- Right: Interactive Visuals -->
+<div class="w-[58%] relative">
+<!-- Vine & Connection Lines SVG -->
+<svg class="absolute inset-0 w-full h-full pointer-events-none" style="overflow: visible;">
+<!-- Elegant Vine Backdrop -->
+<path d="M 500 700 C 480 500 550 300 530 0" fill="none" opacity="0.5" stroke="#D1C4B8" stroke-width="1.2"></path>
+<path d="M 515 600 C 580 550 600 480 580 380" fill="none" opacity="0.3" stroke="#D1C4B8" stroke-width="1"></path>
+<path d="M 495 530 C 400 480 380 450 320 480" fill="none" opacity="0.3" stroke="#D1C4B8" stroke-width="1"></path>
+<path d="M 510 350 C 620 300 650 200 620 100" fill="none" opacity="0.3" stroke="#D1C4B8" stroke-width="1"></path>
+<path d="M 505 250 C 400 200 350 120 300 150" fill="none" opacity="0.3" stroke="#D1C4B8" stroke-width="1"></path>
+<!-- Connecting Branch Lines (Dashed) -->
+<path class="connector" d="M 155 350 L 260 350" stroke-dasharray="4 4"></path> <!-- Card 1 to Center -->
+<path class="connector" d="M 335 350 L 335 230 L 410 230"></path> <!-- Node to Card 2 -->
+<path class="connector" d="M 335 350 L 335 480 L 410 480"></path> <!-- Node to Card 3 -->
+<path class="connector" d="M 550 230 L 610 180"></path> <!-- Card 2 to Card 4 -->
+<path class="connector" d="M 550 480 L 610 530"></path> <!-- Card 3 to Card 5 -->
+</svg>
+<!-- Hearts on Vines -->
+<div class="heart-node" style="top: 350px; left: 260px;">♥</div>
+<div class="heart-node" style="top: 230px; left: 370px;">♥</div>
+<div class="heart-node" style="top: 480px; left: 370px;">♥</div>
+<div class="heart-node" style="top: 200px; left: 580px;">♥</div>
+<div class="heart-node" style="top: 505px; left: 580px;">♥</div>
+<!-- Memory Cards -->
+<!-- 1. 2023.03.06 -->
+<div class="memory-card" style="top: 28%; left: 0%;">
+<div class="memory-thumbnail">
+<img alt="" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBJb2reehtYkk1tSupKcTenf09sFrI1MN_2H_orLdE8A1rOAlc27BWm62BVBav5qtwxTUJ7ctbr2bDNmU2EfruV9ajOc0QCzABvXJ5-qWXAeR8GOQumFqygnon2pN6L7Wc3UJvG-f9dh26hzO_bnWAoTverOtXlPKc4AqL95xSgqIwuVjm5Pb_eQ8gJI5kv4se7YvCHY5v3jZ5m1n6OzaavO3FKOfXk35Bs0O-w4R19eHXM2fn2Lr1bS2uizoWLcKYYZOKGHH6COFc"/>
+<div class="play-icon"><svg viewbox="0 0 24 24"><path d="M8 5v14l11-7z"></path></svg></div>
+</div>
+<div class="mt-2 flex justify-between items-center px-0.5">
+<span class="text-[9px] text-lovetree-gray font-medium">2023.03.06</span>
+<button class="text-lovetree-accent text-[10px]">⋮</button>
+</div>
+<div class="mt-1 px-0.5">
+<span class="inline-block px-1.5 py-0.5 bg-[#F2E8DA] text-[8px] rounded text-lovetree-rose font-bold">심쿵</span>
+</div>
+</div>
+<!-- 2. 2023.09.20 -->
+<div class="memory-card" style="top: 15%; left: 34%;">
+<div class="memory-thumbnail">
+<img alt="" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCcoOf2DhclRgqR7XU5nXxqEOPCGUFxdWrwsFjWbAI4xfFNoiEhQe-i-M46NoauL0-rODRWb0UV5uR2GXRrMojFrNpT5_fSF6JJ-N0S9nBRy6yh2hKkN3VoH5ieyDzoFl8K2g5yvA31TWKgni7DZSAIgXV9438kVGFvW02_RiwILtOd53xc90t4rov09GexhNq6k7ONuLAzx70HvMSOceJVSXGauM0BIWl3-mVxudnjoHTGwjCTUoW7aWYLzMFbw0BTpXUE3qL8Ruw"/>
+<div class="play-icon"><svg viewbox="0 0 24 24"><path d="M8 5v14l11-7z"></path></svg></div>
+</div>
+<div class="mt-2 flex justify-between items-center px-0.5">
+<span class="text-[9px] text-lovetree-gray font-medium">2023.09.20</span>
+<button class="text-lovetree-accent text-[10px]">⋮</button>
+</div>
+<div class="mt-1 px-0.5">
+<span class="inline-block px-1.5 py-0.5 bg-[#F2E8DA] text-[8px] rounded text-lovetree-rose font-bold">심쿵</span>
+</div>
+</div>
+<!-- 3. 2023.06.17 -->
+<div class="memory-card" style="top: 42%; left: 34%;">
+<div class="memory-thumbnail">
+<img alt="" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCDVplFB6u2px2YxOmd3d3d-9VJayM3pNBa_yQyJvGlDa9jMnaRBvLAkVi0dmvhmQdy-AUPsA0h6z4pKuRkgX1eUWiofnq_P7zL8qsZ-86KpKcBI5Mnq6nVw9_BzSUbtmweM7RowF7YNSvq7CQeJ9w69zhGQgriV45LV8rAYpjZimZFUHkqn0cytDA_gjTt2O-13-Ocb2JalCVTLnklJhdhEed-TLuO7WwaCJa1HQxCSEGofq-QaLgyVGDe9wo-HOIp8qVT_KV7Ga0"/>
+<div class="play-icon"><svg viewbox="0 0 24 24"><path d="M8 5v14l11-7z"></path></svg></div>
+</div>
+<div class="mt-2 flex justify-between items-center px-0.5">
+<span class="text-[9px] text-lovetree-gray font-medium">2023.06.17</span>
+<button class="text-lovetree-accent text-[10px]">⋮</button>
+</div>
+<div class="mt-1 px-0.5">
+<span class="inline-block px-1.5 py-0.5 bg-[#F2E8DA] text-[8px] rounded text-lovetree-rose font-bold">감동</span>
+</div>
+</div>
+<!-- 4. 2023.08.10 -->
+<div class="memory-card" style="top: 8%; left: 68%;">
+<div class="memory-thumbnail">
+<img alt="" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCuYJdlrWSG4XIVSeyC_XSykQSb7YFxedtTFfJHR2MRygE2xzS7RKlUAwIFfQIrHUboaGRuKEBVGmD3T9fHIZZPk_YZyj6bjULMo47i6pVt0OQi0xmoFuZ1hKlQs_1tZ6QG6KPPc1YGgN33KCVeHG19Z3xVg9gFEm91CL_ubxHrOoegtlbs9bfoypJOxayCFjhsgliraRHVdir6D-SuQM7_K1_utk67bYavBRSsjgLmt3MXJ3WG9G8nN5I_kxtdYX5Az7wlEKqVHBM"/>
+<div class="play-icon"><svg viewbox="0 0 24 24"><path d="M8 5v14l11-7z"></path></svg></div>
+</div>
+<div class="mt-2 flex justify-between items-center px-0.5">
+<span class="text-[9px] text-lovetree-gray font-medium">2023.08.10</span>
+<button class="text-lovetree-accent text-[10px]">⋮</button>
+</div>
+<div class="mt-1 px-0.5">
+<span class="inline-block px-1.5 py-0.5 bg-[#F2E8DA] text-[8px] rounded text-lovetree-rose font-bold">기록</span>
+</div>
+</div>
+<!-- 5. 2023.01.07 -->
+<div class="memory-card" style="top: 48%; left: 68%;">
+<div class="memory-thumbnail">
+<img alt="" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBdzZ7Njy4eDQKB4OKC5zPysnp4rOtgZAH0VQ2Gx2xIGCFZ1r0p5DyaMVXEia3orU-T6j2gokhTe5anIRYQEVMtoNvwQCzckEaL4UBD3TLpFNBYDktK1x3dc8IWN3pECmWXGWr2Q4QFogB2Ass0PutNQuC5xq-VHFYMHcCRy1Y2-4-dgKLtODWsymXJzxo6PoFJH5BRWCuvreIgCRYJF_worcnaQBa_BnrXS9xY4hKC5g5fVz7Pa6-1zCw4pX29xdF8zXc_bR-pP-A"/>
+<div class="play-icon"><svg viewbox="0 0 24 24"><path d="M8 5v14l11-7z"></path></svg></div>
+</div>
+<div class="mt-2 flex justify-between items-center px-0.5">
+<span class="text-[9px] text-lovetree-gray font-medium">2023.01.07</span>
+<button class="text-lovetree-accent text-[10px]">⋮</button>
+</div>
+<div class="mt-1 px-0.5">
+<span class="inline-block px-1.5 py-0.5 bg-[#F2E8DA] text-[8px] rounded text-lovetree-rose font-bold">기록</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Footer Feature Cards -->
+<footer class="grid grid-cols-4 gap-6 relative z-30 pb-4">
+<!-- Item 1 -->
+<div class="bg-white/40 backdrop-blur-md rounded-[2.2rem] p-6 flex items-center space-x-4 border border-white/60">
+<div class="w-12 h-12 rounded-2xl bg-[#EBE0D3] flex items-center justify-center text-[#A67070]">
+<svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.8" viewbox="0 0 24 24"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z"></path><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"></path></svg>
+</div>
+<div>
+<h3 class="font-bold text-lovetree-text text-[1.1rem]">순간 포착</h3>
+<p class="text-[0.85rem] text-lovetree-gray leading-tight">좋아하게 된 장면을<br/>영상과 함께 남깁니다.</p>
+</div>
+</div>
+<!-- Item 2 -->
+<div class="bg-white/40 backdrop-blur-md rounded-[2.2rem] p-6 flex items-center space-x-4 border border-white/60">
+<div class="w-12 h-12 rounded-2xl bg-[#EEDEE0] flex items-center justify-center text-[#A67070]">
+<svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.8" viewbox="0 0 24 24"><path d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
+</div>
+<div>
+<h3 class="font-bold text-lovetree-text text-[1.1rem]">경로 연결</h3>
+<p class="text-[0.85rem] text-lovetree-gray leading-tight">날짜와 감정이 이어져<br/>하나의 흐름이 됩니다.</p>
+</div>
+</div>
+<!-- Item 3 -->
+<div class="bg-white/40 backdrop-blur-md rounded-[2.2rem] p-6 flex items-center space-x-4 border border-white/60">
+<div class="w-12 h-12 rounded-2xl bg-[#E9EADA] flex items-center justify-center text-[#8C9C7B]">
+<svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.8" viewbox="0 0 24 24"><path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+</div>
+<div>
+<h3 class="font-bold text-lovetree-text text-[1.1rem]">트리 완성</h3>
+<p class="text-[0.85rem] text-lovetree-gray leading-tight">기록이 모여 당신만의<br/>러브트리가 자랍니다.</p>
+</div>
+</div>
+<!-- Item 4 -->
+<div class="bg-white/40 backdrop-blur-md rounded-[2.2rem] p-6 flex items-center space-x-4 border border-white/60">
+<div class="w-12 h-12 rounded-2xl bg-[#DCE6EE] flex items-center justify-center text-[#7086A6]">
+<svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.8" viewbox="0 0 24 24"><path d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>
+</div>
+<div>
+<h3 class="font-bold text-lovetree-text text-[1.1rem]">공유하기</h3>
+<p class="text-[0.85rem] text-lovetree-gray leading-tight">완성된 트리를 다른<br/>팬과 나눌 수 있습니다.</p>
+</div>
+</div>
+</footer>
+<!-- Decorative Sparkle -->
+<div class="absolute bottom-12 right-12 text-white/30">
+<svg fill="currentColor" height="32" viewbox="0 0 24 24" width="32">
+<path d="M12 0L14.59 9.41L24 12L14.59 14.59L12 24L9.41 14.59L0 12L9.41 9.41L12 0Z"></path>
+</svg>
+</div>
+</main>
+</body></html>

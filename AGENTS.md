@@ -1,0 +1,563 @@
+# LoveBud 에이전트 작업 기준
+
+이 문서는 LoveBud 저장소에서 여러 작업자와 에이전트가 같은 기준으로 판단하고 협업하기 위한 운영 기준입니다.
+
+문서 작업, 코드 작업, 검증 작업 모두 **현재 GitHub `main` 기준 확인**을 먼저 수행해야 합니다.
+
+---
+
+## 1. 최상위 원칙
+
+1. **현재 `main`을 먼저 읽습니다.**
+2. **추정하지 않습니다.**
+3. **최소 수정 원칙을 유지합니다.**
+4. **요청 범위를 넘는 변경을 하지 않습니다.**
+5. **문서와 코드의 source of truth를 구분합니다.**
+6. **다른 에이전트와 병렬 작업 중일 수 있음을 전제로 행동합니다.**
+
+중요:
+- 사용자가 특정 파일, 특정 화면, 특정 역할만 지정하면 그 범위를 넘기지 않습니다.
+- 충돌 가능성이 높으면 임의 확장보다 즉시 보고를 우선합니다.
+
+---
+
+## 2. 제품 / 브랜드 source of truth
+
+제품과 UX 판단이 필요할 때 아래 문서를 최우선으로 봅니다.
+
+1. `docs/product/PRODUCT_IDENTITY.md`
+2. `docs/product/BRAND_EXPERIENCE.md`
+3. `docs/design/UI_DESIGN_SYSTEM.md`
+
+이 세 문서는 LoveBud / LoveTree의 **제품 정체성, 브랜드 감성, UI 판단 기준**의 source of truth입니다.
+
+---
+
+## 3. 현재 서비스 / 인프라 기준
+
+### 실서비스 주소
+- `https://lovebud.pages.dev/`
+
+### 인프라 우선순위
+1. **Modal**
+2. **Cloudflare Pages**
+3. **Vercel**
+4. **Netlify**
+
+### 운영 해석 원칙
+- Modal은 browse summary, compute, read-heavy 처리의 최우선 계층입니다.
+- Cloudflare Pages는 실서비스 프론트 및 same-origin `/api` 진입점입니다.
+- Vercel은 upstream / secondary entry / 전이기 보조 계층입니다.
+- Netlify는 legacy artifact / removal candidate입니다. active production fallback이 아닙니다.
+
+### 브라우저 API 원칙
+- 사용자 브라우저는 가능하면 **same-origin `/api`**만 사용합니다.
+- 프론트는 직접 특정 외부 호스트를 기본값으로 가정하지 않습니다.
+- 공식 사용자-facing 주소는 `pages.dev` 기준으로 설명합니다.
+
+### UI 검증 환경 우선순위
+
+LoveBud UI 작업에서는 로컬 정적 서버를 최종 검증 환경으로 자동 가정하지 않습니다.
+
+PR 병합 전 UI 검증 우선순위는 아래와 같습니다.
+
+1. **Cloudflare Pages PR Preview URL**
+2. **해당 작업을 위해 이미 확보한 테스트/프리뷰 페이지 URL**
+3. **로컬 서버** — 정적 레이아웃 참고용 fallback
+
+**중요: 브라우저 테스트 슬롯 사용 순서**
+
+브라우저 테스트 슬롯(test2, test3 등)을 사용하여 UI 검증을 수행하려면:
+
+1. 먼저 해당 PR을 Cloudflare Pages에 배포하여 PR Preview URL을 생성합니다
+2. 그 다음에 할당된 테스트 슬롯에 해당 코드를 배포합니다
+3. 배포가 완료된 후에 브라우저 테스트 슬롯 URL을 사용하여 검증을 수행합니다
+
+즉, **PR push → Cloudflare Preview 배포 → 테스트 슬롯 배포 → 브라우저 검증** 순서를 따릅니다. 배포 없이 브라우저 테스트 슬롯을 사용하면 최신 코드가 반영되지 않습니다.
+
+### Wrangler fixed-slot 배포 규칙
+
+LoveBud의 fixed test slot 배포는 Cloudflare Pages Wrangler를 사용합니다.
+
+중요:
+- Wrangler 배포는 기본적으로 **브라우저 로그인 세션(wrangler login)** 기반 인증을 사용합니다.
+- CLOUDFLARE_API_TOKEN 방식은 권한(User Details Read 등)이 부족하면 실패할 수 있습니다.
+
+우선순위:
+1. wrangler login (브라우저 로그인)
+2. CLOUDFLARE_API_TOKEN (fallback)
+
+배포 전 확인:
+- npx wrangler whoami → PASS/FAIL만 확인
+
+금지 영역:
+- 인증 상태 없이 slot 배포 시도 금지
+- token 권한 불명 상태에서 반복 배포 금지
+
+정의:
+- Wrangler 배포는 단순 CLI가 아니라 **인증 상태 포함 작업**으로 간주합니다.
+
+중요:
+- `https://lovebud.pages.dev/`는 병합 전 PR 검증 기준이 아닙니다. production 도메인은 현재 `main`을 반영하므로, 아직 병합되지 않은 PR branch의 source of truth가 될 수 없습니다.
+- production 도메인 검증은 PR이 `main`에 병합되고 배포된 뒤 수행합니다.
+
+아래 화면/흐름은 로컬 정적 서버 단독으로 최종 판단하지 않습니다.
+
+- Browse / Search 페이지
+- Editor 페이지
+- My Trees 페이지
+- Auth-gated 페이지
+- `/api/*`를 호출하는 모든 페이지
+- Cloudflare Pages Functions에 의존하는 페이지
+- Modal upstream에 의존하는 페이지
+- Firebase authentication 또는 session state에 의존하는 페이지
+
+이런 화면에서는 로컬 서버 결과를 참고로만 사용하고, 병합 전 최종 판단은 Cloudflare Preview 또는 준비된 테스트/프리뷰 URL 기준으로 수행합니다.
+
+UI 검증 프롬프트를 작성하기 전 반드시 아래를 먼저 판단하고 명시합니다.
+
+- 정적-only 페이지인가?
+- `/api/*`를 호출하는가?
+- 인증 또는 세션 상태가 필요한가?
+- Cloudflare Functions 또는 Modal에 의존하는가?
+- 이미 확보한 테스트/프리뷰 URL이 있는가?
+- Cloudflare PR Preview URL이 있는가?
+
+브라우저/Auth/API/data-loaded 검증 작업자는 `docs/ops/AGENTS_BROWSER_VERIFICATION_ENTRYPOINT.md`를 먼저 읽고, 그 다음 `docs/ops/LOCAL_BROWSER_VERIFICATION_STARTUP.md`, `docs/ops/BROWSER_VERIFICATION_URL_POLICY.md`, `docs/ops/TEST_PREVIEW_SLOTS.md` 및 PR별 `Browser verification entrypoint` comment를 따릅니다.
+
+---
+
+## 4. 제품 / 용어 해석 가드레일
+
+### LoveBud vs LoveTree
+- **LoveBud**는 현재 저장소명과 운영 프로젝트명입니다.
+- **LoveTree**는 사용자-facing 브랜드 경험과 서비스 맥락에서 함께 쓰일 수 있는 이름입니다.
+- 문서와 보고에서는 두 이름을 섞어 쓰더라도, 저장소/운영 맥락인지 제품/브랜드 맥락인지 구분해서 씁니다.
+
+### browse vs search
+- 파일/페이지 경로명은 현재 실제 파일 기준으로 `pages/search.html`을 사용합니다.
+- 사용자-facing 표현은 가능하면 `둘러보기`, `browse`, `감상 허브` 계열을 우선합니다.
+- 즉, **search는 구현 경로명**, **browse는 제품 경험명**으로 다룹니다.
+
+### 제품 해석 금지 대상
+LoveBud / LoveTree는 다음과 같은 서비스가 아닙니다.
+
+- 관리자 대시보드
+- 일반 북마크 정리 툴
+- 차가운 데이터 관리 시스템
+- 기계적인 워크플로우 편집기
+- 범용 커뮤니티 피드
+
+핵심 해석은 아래를 따릅니다.
+
+- 팬 감정 러브트리
+- 따뜻한 디지털 스크랩북
+- 입덕의 첫 순간 우선
+- 감정이 이어진 경로
+- public-first visibility와 Plus private storage
+- public visibility와 Browse/Search eligibility 분리
+- Browse/Search 노출은 `publicMomentCount` 등 별도 소개 기준을 따름
+
+카피와 UI는 가능하면 아래 표현을 선호합니다.
+
+- 순간 이어가기
+- 대표 순간
+- 이어진 기억
+- 감정 흐름
+- 첫 순간
+- 현재 트리
+- 현재 순간
+
+---
+
+## 5. browse display filter vs publication guard
+
+이 둘은 같은 개념으로 취급하지 않습니다.
+
+### browse display filter
+- browse / search에서 무엇을 보여줄지 결정하는 **표시 정책**입니다.
+- 감상 허브 구성, 공개 트리 노출 기준, 큐레이션 밀도와 관련됩니다.
+
+### publication guard
+- 트리를 public으로 전환할 수 있는지 결정하는 **쓰기 가드**입니다.
+- 예: 공개 순간 수 부족으로 409를 반환하는 정책
+
+즉:
+- browse display filter는 **read / display 문제**
+- publication guard는 **write / state transition 문제**
+
+관련 판단은 `docs/engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md`를 따릅니다.
+
+---
+
+## 6. 리뷰 가드레일
+
+반복 오판이 많은 항목은 아래 기준을 먼저 적용합니다.
+
+### Firebase Web `apiKey`
+- `js/firebase-config.js`의 Firebase Web config는 브라우저 초기화용 설정입니다.
+- 값이 코드에 보인다는 사실만으로 **즉시 blocker**로 분류하지 않습니다.
+- 보통은 Firebase Console 설정 점검 항목으로 분리합니다.
+
+### `vercel.json`
+- 현재 `vercel.json`은 Vercel secondary entry / rewrite 계약의 일부입니다.
+- 자동 삭제 후보나 단순 정리 대상으로 분류하지 않습니다.
+
+### 파일 크기 / 번들러 / 컴포넌트화
+- 실제 현재 증상과 연결되지 않으면 높은 우선순위로 분류하지 않습니다.
+- generic 프론트엔드 교과서식 리뷰를 우선 과제로 올리지 않습니다.
+
+### 이름만 보고 위험 단정 금지
+- 파일명만 보고 DB direct access, secret leakage, inactive config를 단정하지 않습니다.
+- 반드시 현재 파일 내용과 실제 호출 구조를 확인합니다.
+
+### 참고 문서
+- 반복 false positive와 리뷰 규칙은 `docs/engineering/REVIEW_GUARDRAILS.md`를 함께 봅니다.
+
+---
+
+## 7. 현재 페이지 / 경로 기준
+
+문서의 페이지 경로 표기는 실제 저장소 파일 경로를 기준으로 합니다.
+
+- `index.html`
+- `pages/intro.html`
+- `pages/search.html`
+- `pages/detail.html`
+- `pages/editor.html`
+- `pages/my-trees.html`
+- `pages/login.html`
+
+실서비스 주소에서는 위 경로가 Cloudflare Pages를 통해 `/intro.html`, `/search.html`, `/detail.html`, `/editor.html`, `/my-trees.html`, `/login.html`로 노출될 수 있습니다.
+
+---
+
+## 8. 세션 시작 프로토콜
+
+새 작업을 시작할 때 기본 순서는 아래와 같습니다.
+
+1. `AGENTS.md`
+2. `docs/doc_index.md`
+3. 요청 범위와 직접 관련된 문서 인덱스
+4. 제품 판단이 필요하면:
+   - `docs/product/PRODUCT_IDENTITY.md`
+   - `docs/product/BRAND_EXPERIENCE.md`
+   - `docs/design/UI_DESIGN_SYSTEM.md`
+5. 운영 판단이 필요하면:
+   - `docs/ops/OPERATIONS.md`
+   - `docs/ops/AGENTS_BROWSER_VERIFICATION_ENTRYPOINT.md`
+   - `docs/ops/LOCAL_BROWSER_VERIFICATION_STARTUP.md`
+   - `docs/ops/GITHUB_AUTH_TOKEN_USAGE.md`
+   - `docs/ops/BROWSER_VERIFICATION_URL_POLICY.md`
+   - `docs/ops/TEST_PREVIEW_SLOTS.md`
+   - `docs/migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md`
+
+GitHub CLI, browser login, connector-backed GitHub access, or token-backed local access를 사용하는 작업자는 `docs/ops/GITHUB_AUTH_TOKEN_USAGE.md`를 함께 따릅니다.
+
+브라우저/Auth/API/data-loaded 검증 작업자는 `docs/ops/AGENTS_BROWSER_VERIFICATION_ENTRYPOINT.md`를 먼저 읽고, 그 다음 `docs/ops/LOCAL_BROWSER_VERIFICATION_STARTUP.md`를 먼저 따릅니다.
+
+대화 복원이 필요하면 아래를 추가로 읽습니다.
+
+- `docs/conversation/summary/summary_index.md`
+- 최신 summary 문서
+
+상세한 project 운영 기준은 아래 문서를 따릅니다.
+
+- [docs/project/PROJECT_OPERATING_MODEL.md](docs/project/PROJECT_OPERATING_MODEL.md)
+- [docs/project/REPORTING_CHAIN.md](docs/project/REPORTING_CHAIN.md)
+- [docs/project/BRANCHING_AND_REVIEW.md](docs/project/BRANCHING_AND_REVIEW.md)
+- [docs/project/TASK_STATUS.md](docs/project/TASK_STATUS.md)
+- [docs/project/VERIFICATION_AND_EVIDENCE.md](docs/project/VERIFICATION_AND_EVIDENCE.md)
+
+문서 TF 내부 역할선은 `CTO → Document Lead → Document Web`로만 해석합니다.
+
+---
+
+## 9. 작업 방식
+
+### 공통 원칙
+- 항상 현재 파일 내용을 먼저 확인합니다.
+- 완료 보고에서는 **직접 수정한 것**과 **이미 `main`에 반영돼 있던 것**을 구분합니다.
+- 검증은 가능한 범위에서 수행하되, 수행 못한 것은 명시합니다.
+
+### 코드 작업
+- 최소 수정 원칙 유지
+- 넓은 리팩터링 금지
+- 요청 범위 밖 파일 수정 금지
+- 코드 로직 변경이 필요하면 관련 문서 기준과 충돌하지 않는지 먼저 확인
+
+### Module size / thin entrypoint policy
+
+LoveBud 신규 코드 작업은 `docs/engineering/CODE_ARCHITECTURE.md`를 따릅니다.
+
+핵심 원칙:
+- 신규 파일은 가능한 한 500줄 이하로 유지합니다.
+- 500줄을 넘을 가능성이 있는 기능은 설계 단계부터 모듈 분리합니다.
+- entry file은 thin entrypoint / orchestration shell로 유지합니다.
+- 실제 로직은 feature별 helper/module 파일로 분리합니다.
+- 한 파일에 UI, API, state, cache, validation, rendering, auth, fallback 책임을 누적하지 않습니다.
+- reusable logic은 focused helper module로 이동합니다.
+- 기존 프로젝트 loading model을 보존합니다.
+- ES module `import/export` 또는 `type="module"` 전환은 명시 승인 없이는 하지 않습니다.
+- 현재 HTML script 기반 구조에서는 browser-global module split 방식을 우선 사용합니다.
+
+표준 문구:
+
+> Do not grow a single file into a large fallback bundle. Keep entrypoint files thin: orchestration only. Move reusable logic into focused helper modules. Preserve the current project loading model; do not convert to `type="module"` unless the task explicitly authorizes it.
+
+### 파일 크기 / 분리 기준
+
+LoveBud는 여러 에이전트가 동시에 검토하고 작업할 수 있도록 작고 검토 가능한 파일을 지향합니다.
+
+권장 목표:
+- HTML 파일은 가능하면 500줄 이하로 유지합니다.
+- 페이지 전용 CSS 파일은 가능하면 500줄 이하로 유지합니다.
+- 공통 CSS 파일은 공통 토큰, 공통 컴포넌트, 공통 레이아웃 기반만 담고 page-specific 스타일을 넣지 않습니다.
+
+주의 기준:
+- 500줄을 넘는 HTML/CSS 파일은 다음 작업 전에 분리 가능성을 검토합니다.
+- 800줄 이상 파일은 extraction candidate로 분류합니다.
+- 1,000줄 이상 파일은 GitHub API / 에이전트 출력이 잘릴 수 있으므로 직접 전체 덮어쓰기나 광범위 수정 대상으로 삼지 않습니다.
+
+분리 원칙:
+- 페이지 전용 CSS는 `css/<page>.css`로 분리합니다.
+- 공통 스타일만 `css/global.css`에 둡니다.
+- inline `<style>` 블록은 가능한 한 페이지 전용 CSS 파일로 이동합니다.
+- inline `style="..."` 제거는 style block extraction과 별도 PR로 진행합니다.
+- 줄 수를 줄이기 위해 무의미하게 파일을 쪼개지 않습니다. 소유권과 역할이 명확할 때만 분리합니다.
+- JS 파일 이동이나 책임 분리는 Issue #72 기준에 따라 별도 audit/승인 후 진행합니다.
+
+### 문서 작업
+- 문서 체계, 운영 설명, 읽기 순서, source of truth를 우선 정리
+- 오래된 도메인/운영 문구/폐기 경로는 최신 구조로 갱신
+- 깨진 문자나 이상한 인코딩 흔적이 보이면 우선 수정 후보로 분류
+
+### 에이전트 실행 위생 규칙
+
+#### Secrets / credentials 취급 규칙
+
+Secret Handling Clarification
+
+Agents must never print, paste, summarize, screenshot, log, commit, or expose secret values.
+
+However, agents may use secrets locally when required for authorized project operations, provided that the value is not displayed, copied, summarized, committed, or persisted outside the approved local secret store.
+
+**Allowed:**
+- Referring to secret names, required locations, and expected presence.
+- Checking whether a required secret file exists.
+- Checking whether required secret keys are present, without printing values.
+- Loading a local secret file into an environment for an authorized command or test.
+- Using secrets through approved tools such as gh, wrangler, firebase, npm scripts, or local test runners.
+- Reporting only redacted status:
+  - `GH_TOKEN: PRESENT`
+  - `CLOUDFLARE_API_TOKEN: PRESENT`
+  - `.secrets/lovebud-runtime.env: EXISTS`
+  - `.secrets/lovebud-runtime.env: GITIGNORED`
+  - `required secret keys present: YES`
+
+**Forbidden:**
+- Printing raw secret values.
+- Printing partial secret values.
+- Printing credential prefixes, suffixes, or last characters.
+- Copying secrets into issue/PR comments, docs, chat, screenshots, logs, or reports.
+- Summarizing private keys, service account JSON, tokens, cookies, session values, or Authorization headers.
+- Committing secret files or generated files containing secret values.
+- Running commands that echo secrets to stdout/stderr.
+- Running commands that dump all environment variables.
+- Including secret values directly in command lines that may be stored in shell history or process lists.
+
+**Clarification:**
+- Secret files may be read by machine processes only for authorized local execution or key-presence validation.
+- Secret values must not be displayed to the agent, user, logs, PRs, issues, screenshots, or reports.
+- Reports may contain only `EXISTS` / `MISSING` / `PRESENT` / `GITIGNORED` / `SUCCESS` / `FAIL`.
+- If a secret value is accidentally displayed or logged, stop work and report `SECURITY_INCIDENT_SECRET_EXPOSURE` without repeating the secret.
+
+**PowerShell guidance to include or summarize:**
+**Allowed:**
+- `Test-Path .secrets/lovebud-runtime.env`
+- `git check-ignore .secrets/lovebud-runtime.env`
+- Parsing required key names and reporting only `PRESENT`/`MISSING`
+- Loading values into process environment without printing them
+
+**Forbidden:**
+- `cat .secrets/lovebud-runtime.env`
+- `type .secrets/lovebud-runtime.env`
+- `Get-Content .secrets/lovebud-runtime.env` when output is displayed
+- `echo $env:GH_TOKEN`
+- `printenv`
+- `env`
+- `set`
+- commands that dump full environment variables
+
+LoveBud 작업에는 배포, API 접근, 테스트 계정, 외부 서비스 연동을 위한 로컬 전용 secrets가 존재할 수 있습니다.
+
+로컬 전용 경로는 아래 repo-relative path로만 언급합니다.
+
+- `.secrets/`
+- `.env`
+- `.env.*`
+
+이 경로들은 로컬 전용이며, 저장소에 커밋하거나 PR, issue, 문서, 로그, 스크린샷, 보고서에 값을 노출하지 않습니다.
+
+GitHub CLI, browser login, connector-backed GitHub access, or token-backed local access를 사용하는 경우 `docs/ops/GITHUB_AUTH_TOKEN_USAGE.md`를 함께 따릅니다.
+
+작업에 secret이 필요하면 에이전트는 다음 방식으로 처리합니다:
+
+1. **로컬 환경 사용**: 사용자가 미리 로컬 환경 변수에 값을 설정해두면, 에이전트는 그 환경 변수를 사용하는 명령을 실행합니다. 에이전트는 환경 변수 값을 읽거나 출력하지 않고, 환경 변수가 설정되어 있는지 여부만 확인합니다.
+
+2. **사용자 직접 주입**: 로컬 환경이 설정되어 있지 않으면, 에이전트는 사용자에게 "비밀 값이 필요합니다. [secret name]을 로컬 환경에 설정하거나 직접 입력해주세요"라고 요청합니다. 사용자가 직접 값을 입력하거나 설정합니다.
+
+3. **Provider Dashboard 사용**: 배포나 외부 서비스 연동이 필요한 경우, 에이전트는 사용자에게 해당 provider dashboard (GitHub Actions Secrets, Cloudflare/Vercel/Netlify dashboard 등)에서 값을 설정하도록 안내합니다.
+
+에이전트는 어떤 경우에도 비밀 값을 직접 읽거나 출력하지 않습니다.
+
+`.secrets/` 또는 `.env*` 파일이 git 추적 대상에 올라온 정황이 있으면 즉시 작업을 중단하고 보고합니다.
+
+#### 로컬 저장소 / 클론 / 프로세스 정리
+
+- 조사만 필요한 작업은 우선 GitHub API, 파일 조회, 검색 기능으로 확인합니다.
+- 코드 수정, 테스트, diff 확인, 커밋, push가 필요한 경우에만 로컬 저장소를 사용합니다.
+- 로컬 작업 시 매번 새로 clone하지 말고, 가능하면 기존 LoveBud 작업 폴더를 재사용합니다.
+- 새 clone이 필요한 경우에는 이유를 보고합니다.
+- 작업 시작 전 현재 경로, git remote, 현재 브랜치, 기준 `main` SHA를 확인합니다.
+- 작업 후 dev server, test watcher, `bun`, `node`, `playwright`, `vite`, MCP 관련 프로세스가 남지 않도록 종료합니다.
+- 작업이 끝난 터미널 세션은 닫고, 불필요한 `node_modules` 재설치나 중복 clone을 피합니다.
+- 로컬 환경이 꼬였거나 저장소 위치를 찾지 못하면, 무작정 새 clone을 반복하지 말고 현재 상황을 보고합니다.
+
+#### 붙여넣은 보고서 / 로그 / 대화 처리
+
+- 사용자가 다른 모델의 보고서, 로그, 명령 실행 결과, 대화 내용을 붙여넣으면 단순 요약하지 않습니다.
+- 사용자가 “요약해줘”라고 명시하지 않는 한 요약으로 끝내지 않습니다.
+- 현재 역할 기준으로 즉시 판단합니다.
+- CTO 역할이면 접수, 승인/반려/보류, 근거, 다음 실행 프롬프트, 금지 사항을 제시합니다.
+- UI Lead 역할이면 구현 범위, 영향 파일, 검증 항목, UI Web/UI Local 분배를 제시합니다.
+- 실행 모델 역할이면 보고서 내용을 현재 작업 결과로 간주할 수 있는지 확인하고, 다음 작업을 수행하거나 금지 단계라면 중단 보고합니다.
+- “보고”, “작업 완료”, “검증 완료”, “조사 완료” 같은 내용은 다음 판단을 요구하는 입력으로 봅니다.
+- 첨부파일 형태의 마크다운, 로그, 코드도 사용자 메시지 일부로 취급합니다.
+
+#### 이미지 생성 금지
+
+- LoveBud 작업 중 사용자가 “이미지”, “화면”, “레퍼런스”, “캡처”, “디자인”이라는 말을 했다고 해서 이미지 생성을 실행하지 않습니다.
+- 사용자가 명시적으로 “이미지를 생성해줘”, “그림을 만들어줘”, “시안을 이미지로 뽑아줘”라고 요청한 경우에만 이미지 생성을 고려합니다.
+- 기본값은 이미지 생성이 아니라 분석, 구조화, 구현 범위 판단, 프롬프트 작성입니다.
+- 사용자가 이미지를 첨부하면 생성 요청이 아니라 분석 자료로 취급합니다.
+- 이미지 기반 요청에서는 화면 구조 분석, 현재 구현과 비교, 빠진 기능/디자인 요소 식별, 구현 우선순위 제안, 작업 프롬프트 작성을 우선합니다.
+- 사용자가 명시하지 않은 이미지 생성, 스타일 변환, 새 배경 생성, UI mock 이미지 생성은 금지합니다.
+
+---
+
+## 10. 병렬 작업 안전 규칙
+
+- 다른 에이전트가 동시에 같은 파일을 수정할 수 있습니다.
+- 현재 `main`을 읽은 뒤에도 SHA 충돌이 나면, 다시 읽고 최소 범위로 재적용합니다.
+- 다른 사람의 흔적을 자동으로 오류라고 단정하지 않습니다.
+- 충돌 범위가 커지면 즉시 중단 후 보고합니다.
+
+---
+
+## 11. 변경 / 검증 / 완료 기준
+
+### 변경 규칙
+- 최소 수정 선호
+- 현재 파일 구조 유지
+- 요청 없는 백엔드/아키텍처 확장 금지
+- 요청 없는 unrelated 파일 변경 금지
+
+### 검증 규칙
+아래를 기본으로 확인합니다.
+
+1. 요청한 결과가 실제로 반영되었는가
+2. 관련 없는 동작을 깨지 않았는가
+3. 수정 파일이 요청 범위 안에 있는가
+4. 검증한 것과 검증하지 못한 것이 분리되어 있는가
+5. 제품 감성과 페이지 역할을 해치지 않았는가
+
+UI 검증 환경은 `## 3. 현재 서비스 / 인프라 기준`의 **UI 검증 환경 우선순위**를 반드시 따릅니다. 특히 Browse/Search/Editor/Auth/API 관련 화면은 로컬 서버 단독 결과로 최종 PASS/BLOCKER를 판단하지 않습니다.
+
+### 완료 정의
+- 요청된 결과가 반영되었거나 블로커가 명확함
+- 검증 여부가 명시됨
+- 범위 밖 변경이 없음
+- 다음 작업자가 이해할 수 있게 상태가 정리됨
+
+---
+
+## 12. 참고 문서
+
+### 문서 인덱스
+- `docs/doc_index.md`
+- `docs/ops/ops_index.md`
+- `docs/engineering/engineering_index.md`
+
+### 운영 / 배포
+- `docs/ops/OPERATIONS.md`
+- `docs/ops/LOCAL_BROWSER_VERIFICATION_STARTUP.md`
+- `docs/ops/GITHUB_AUTH_TOKEN_USAGE.md`
+- `docs/ops/BROWSER_VERIFICATION_URL_POLICY.md`
+- `docs/ops/TEST_PREVIEW_SLOTS.md`
+- `docs/ops/DEPLOY_CHECKLIST.md`
+- `docs/ops/RUNBOOK.md`
+- `docs/migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md`
+
+### 엔지니어링
+- `docs/engineering/API_CONTRACT.md`
+- `docs/engineering/BROWSE_FILTER_VS_PUBLICATION_GUARD.md`
+- `docs/engineering/REVIEW_GUARDRAILS.md`
+
+### 문서 작업 흐름
+- `docs/ops/DOC_WORKFLOW.md`
+- `docs/ops/SKILL_REGISTRY.md`
+- `docs/ops/AI_REQUEST_PATTERNS.md`
+
+### 테스트 데이터 생성
+- `.windsurf/workflows/tree-moment-creation-guide.md` — 테스트 환경에서 러브트리와 순간을 생성하는 방법
+  - 6개 이상 트리 생성 절차
+  - 유튜브 링크 기반 순간 추가 방법
+  - QA 계정 관리 및 오류 대응
+  - 2025년 데뷔 아이돌 추천 목록
+
+---
+
+## 13. 한 줄 요약
+
+LoveBud 작업은 항상 **현재 `main` 확인 → source of truth 확인 → 최소 수정 → 범위 내 검증 → 직접 수정/기존 반영 구분 보고** 순서로 진행합니다.
+
+## 14. Kilo Code 에이전트 안전 규칙
+
+다음은 Kilo Code 에이전트를 위한 공통 운영 규칙입니다. 이 규칙들은 `.kilocode/rules/00-lovebud-global.md`에도 동일하게 정의되어 있습니다.
+
+### Git Workflow
+- `main` 브랜치를 직접 수정하지 않습니다.
+- `main` 브랜치에 직접 푸시하지 않습니다.
+- `main` 브랜치를 merge하지 않습니다.
+- 한 작업은 하나의 브랜치에서 수행합니다.
+- PR은 기본적으로 draft로 생성합니다.
+
+### PR 보존
+- #7 번호 또는 prototype/reference/demo/variant 라벨이 있는 PR은 보존하며 임의로 닫거나 브랜치를 삭제하지 않습니다.
+- 임의의 PR preview URL을 추측하여 접근하지 않습니다.
+
+### 인프라 & 런타임
+- active runtime: Cloudflare Pages (프론트) + Modal (compute/back-end)
+- Netlify는 legacy artifact이며 제거 후보입니다.
+- 운영 사이트 `https://lovebud.pages.dev/`는 PR 병합 전 검증에 사용할 수 없습니다.
+
+### API 경로
+- 클라이언트 → 동일-origin `/api/*` → Cloudflare Functions `functions/api/**` → Modal → Neon
+
+### 검증
+- 최종 browser PASS는 실제 Cloudflare Preview URL 또는 할당된 test slot에서만 수행합니다.
+- Search/Browse/Editor/My Trees/Auth-gated 등 동적 데이터를 사용하는 페이지는 로컬 정적 서버만으로 최종 PASS할 수 없습니다.
+
+### 보안
+- 자격 증명, 토큰, 쿠키, 세션, Firebase/Cloudflare/Modal/Neon secret 값을 절대 기록하거나 노출하지 않습니다.
+- GitHub CLI/browser login/connector/token-backed local access는 `docs/ops/GITHUB_AUTH_TOKEN_USAGE.md`를 함께 따릅니다.
+- 필요한 secret은 이름과 위치 정책만 언급하며, 실제 값은 절대 포함하지 않습니다.
+
+### Local Artifact Hygiene
+- repo 내부에 `local-backup/`, `work/`, screenshots, report JSON 파일을 만들지 않습니다.
+- 로컬 검증 산출물(screenshots, reports, backup files)은 repo 밖 `local-backup/`로 이동합니다.
+- PR 생성 전 반드시 `git status --short`와 `git diff --name-only origin/main...HEAD`를 확인합니다.
+- 예상 외 파일이 포함되어 있으면 즉시 중단하고 scope를 정리합니다.
+- git clean, git reset --hard, git stash는 명시 승인 없이 실행하지 않습니다.
+- dirty worktree 상태에서는 작업을 중단하고 clean 환경을 준비합니다.

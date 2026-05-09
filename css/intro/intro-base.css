@@ -1,0 +1,30 @@
+/*
+ * LoveBud Intro page styles - Base
+ * Extracted from css/intro.css.
+ * Page-specific only. Do not move these rules into global.css.
+ */
+
+.intro-wrapper {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Inline styles moved to classes */
+.intro-what-desc-secondary {
+  margin-top: 1rem;
+  font-size: 0.95rem;
+  opacity: 0.85;
+}
+
+.intro-section-desc {
+  margin-top: 1rem;
+}
+
+.intro-single-column {
+  grid-template-columns: 1fr;
+}
+
+.intro-icon-small {
+  font-size: 18px;
+}

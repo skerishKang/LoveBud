@@ -1,0 +1,58 @@
+/*
+ * LoveBud Intro page styles - CTA
+ * Extracted from css/intro.css.
+ * Page-specific only. Do not move these rules into global.css.
+ */
+
+.cta-section {
+  padding: 40px var(--page-pad-desktop) 64px;
+  max-width: var(--page-brand-max);
+  margin: 0 auto;
+  width: 100%;
+  text-align: center;
+  border-top: 1px solid var(--outline-variant);
+}
+
+.cta-section h2 {
+  font-size: clamp(1.7rem, 3vw, 2.2rem);
+  font-weight: 800;
+  color: var(--on-surface);
+  margin-bottom: 0.75rem;
+}
+
+.cta-section p {
+  font-size: 1rem;
+  color: var(--on-surface-variant);
+  margin-bottom: 1.5rem;
+  max-width: 520px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.cta-buttons {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  align-items: stretch;
+  flex-wrap: wrap;
+}
+
+/* Mobile consistency */
+@media (max-width: 640px) {
+  .cta-section {
+    padding: 32px var(--page-pad-mobile, 16px) 48px;
+  }
+
+  .cta-section h2 {
+    font-size: clamp(1.5rem, 6vw, 1.9rem);
+  }
+
+  .cta-buttons {
+    flex-direction: column;
+  }
+
+  .cta-buttons .btn-round {
+    width: 100%;
+    min-height: 54px;
+  }
+}

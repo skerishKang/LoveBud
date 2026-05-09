@@ -1,0 +1,218 @@
+/*
+ * LoveBud Settings page styles
+ * Extracted from pages/settings.html.
+ * Page-specific only. Do not move these rules into global.css.
+ */
+
+.settings-layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+}
+
+.settings-card {
+  width: 100%;
+  max-width: 480px;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--outline-variant);
+  box-shadow: var(--shadow-whisper);
+  padding: 48px;
+  position: relative;
+}
+
+.settings-close-btn {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: 1px solid rgba(144, 73, 81, 0.18);
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--on-surface);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 10px 24px rgba(75, 64, 57, 0.08);
+  z-index: 2;
+  font-size: 24px;
+  font-weight: 500;
+  line-height: 1;
+  padding: 0;
+}
+
+.settings-close-btn:hover {
+  border-color: var(--primary-soft);
+  color: var(--primary);
+  background: var(--surface-container-low);
+  transform: translateY(-1px);
+}
+
+.settings-close-glyph {
+  display: inline-block;
+  transform: translateY(-1px);
+}
+
+.settings-card h1 {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--on-surface);
+  margin-bottom: 8px;
+  letter-spacing: -0.03em;
+}
+
+.settings-subtitle {
+  color: var(--on-surface-variant);
+  font-size: 0.95rem;
+  margin-bottom: 40px;
+  line-height: 1.5;
+  max-width: 320px;
+}
+
+.settings-section {
+  margin-bottom: 32px;
+}
+
+.settings-section:last-of-type {
+  margin-bottom: 0;
+}
+
+.settings-section-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--on-surface);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-section-title .material-symbols-outlined {
+  font-size: 20px;
+  color: var(--primary);
+}
+
+.settings-scope-note {
+  margin: -6px 0 16px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--surface-container-low);
+  color: var(--on-surface-variant);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.settings-intro-card,
+.settings-plus-card {
+  display: flex;
+  gap: 14px;
+  padding: 16px;
+  border-radius: var(--radius-default);
+  border: 1px solid rgba(144, 73, 81, 0.14);
+  background: rgba(255, 248, 249, 0.72);
+}
+
+.settings-plus-card {
+  margin-top: 12px;
+  background: var(--surface-container-low);
+  border-color: var(--outline-variant);
+}
+
+.settings-intro-icon,
+.settings-plus-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  background: rgba(144, 73, 81, 0.10);
+  color: var(--primary);
+}
+
+.settings-plus-icon {
+  background: rgba(122, 139, 110, 0.10);
+  color: var(--secondary);
+}
+
+.settings-intro-title,
+.settings-plus-title {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--on-surface);
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.settings-intro-desc,
+.settings-plus-desc {
+  display: block;
+  color: var(--on-surface-variant);
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.settings-divider {
+  height: 1px;
+  background: var(--outline-variant);
+  margin: 32px 0;
+}
+
+.logout-btn {
+  width: 100%;
+  padding: 16px 24px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--outline-variant);
+  background: var(--surface);
+  color: var(--on-surface);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.logout-btn:hover {
+  background: var(--surface-container);
+  border-color: var(--primary-soft);
+}
+
+.logout-btn .material-symbols-outlined {
+  font-size: 20px;
+}
+
+/* Mobile */
+@media (max-width: 640px) {
+  .settings-content {
+    padding: 24px 16px;
+  }
+
+  .settings-card {
+    padding: 32px 24px;
+  }
+
+  .settings-card h1 {
+    font-size: 1.5rem;
+  }
+
+  .settings-close-btn {
+    top: 14px;
+    right: 14px;
+  }
+}

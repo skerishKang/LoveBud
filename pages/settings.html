@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>설정 | 러브트리</title>
+    <link rel="stylesheet" href="../css/global.css?v=20260417-31">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
+  <link rel="stylesheet" href="../css/settings.css?v=20260427-1">
+</head>
+<body>
+  <div class="noise-overlay"></div>
+
+  <div class="settings-layout">
+    <div id="shared-header"></div>
+
+    <main class="settings-content" id="settingsContent">
+      <div class="settings-card" id="settingsCard" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+        <button type="button" class="settings-close-btn" id="settingsCloseBtn" aria-label="설정 닫기" title="닫기">
+          <span class="settings-close-glyph" aria-hidden="true">×</span>
+        </button>
+        <h1 id="settingsTitle">설정</h1>
+        <p class="settings-subtitle">러브트리를 어떻게 소개할지 살펴봅니다</p>
+
+        <div class="settings-section">
+          <div class="settings-section-title" id="settingsBrowseIntroTitle">
+            <span class="material-symbols-outlined">travel_explore</span>
+            둘러보기 소개
+          </div>
+          <div class="settings-intro-card" id="settingsBrowseIntroCard">
+            <span class="settings-intro-icon material-symbols-outlined" aria-hidden="true">psychiatry</span>
+            <span>
+              <span class="settings-intro-title" id="settingsBrowseIntroCardTitle">둘러보기에 소개될 트리로 키우기</span>
+              <span class="settings-intro-desc" id="settingsBrowseIntroDesc">좋아하는 순간을 3개 이상 남기면 이 트리를 둘러보기에 소개할 수 있어요. 소개 여부는 각 러브트리에서 조건을 채운 뒤 선택할 수 있어요.</span>
+            </span>
+          </div>
+          <div class="settings-plus-card" id="settingsPlusCard">
+            <span class="settings-plus-icon material-symbols-outlined" aria-hidden="true">lock</span>
+            <span>
+              <span class="settings-plus-title" id="settingsPlusTitle">프라이빗 보관</span>
+              <span class="settings-plus-desc" id="settingsPlusDesc">나만 보는 러브트리를 조용히 보관하는 기능은 Plus에서 준비 중이에요.</span>
+            </span>
+          </div>
+        </div>
+
+        <div class="settings-divider"></div>
+
+        <div class="settings-section">
+          <button class="logout-btn" onclick="handleLogout()">
+            <span class="material-symbols-outlined">logout</span>
+            로그아웃
+          </button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+    <script src="../js/i18n/i18n-core.js?v=20260421-1"></script>
+    <script src="../js/i18n/i18n-shared.js?v=20260425-1"></script>
+    <script src="../js/i18n/i18n-index.js?v=20260421-1"></script>
+    <script src="../js/i18n.js?v=20260419-2"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="../js/firebase-config.js?v=20260417-31"></script>
+    <script src="../js/shared-header.js?v=20260421-2"></script>
+     <script src="../js/auth/auth-state.js?v=20260417-31"></script>
+     <script src="../js/auth/auth-callbacks.js?v=20260417-31"></script>
+     <script src="../js/auth/auth-cache.js?v=20260417-31"></script>
+     <script src="../js/auth/auth-ui.js?v=20260421-2"></script>
+     <script src="../js/auth/auth-session.js?v=20260417-31"></script>
+     <script src="../js/auth/auth-firebase.js?v=20260427-3"></script>
+     <script src="../js/auth.js?v=20260417-31"></script>
+     <script src="../js/auth/auth-protected-route.js?v=20260505-828"></script>
+    <script src="../js/settings.js?v=20260504-639-stay"></script>
+  <script>
+    renderSharedHeader();
+    initSettings();
+  </script>
+</body>
+</html>

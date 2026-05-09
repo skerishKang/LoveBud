@@ -1,0 +1,23 @@
+/*
+ * Editor CSS entrypoint.
+ *
+ * This file intentionally preserves the existing single stylesheet link from
+ * pages/editor.html while the editor styles are split into role-based files.
+ *
+ * Import order is cascade-sensitive. Do not reorder these imports or replace
+ * them with multiple page-level stylesheet links without editor browser
+ * verification across desktop, tablet, and mobile viewports.
+ */
+@import url("./editor/editor-base.css");
+@import url("./editor/editor-layout.css?v=20260504-775");
+@import url("./editor/editor-sidebar.css");
+@import url("./editor/editor-canvas.css?v=20260504-787");
+@import url("./editor/editor-canvas-toolbar.css?v=20260507-655");
+@import url("./editor/editor-memory-form.css");
+@import url("./editor/editor-detail-panel.css?v=20260504-627");
+@import url("./editor/editor-responsive.css");
+@import url("./editor/editor-mode-selection.css");
+@import url("./editor/editor-status-settings.css");
+@import url("./editor/editor-memory-edit.css");
+@import url("./editor/editor-overrides.css");
+@import url("./editor/editor-responsive-tail.css");

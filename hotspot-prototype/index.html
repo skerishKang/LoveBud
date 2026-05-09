@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LoveTree Hotspot Prototype</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="scrapbook-wrapper">
+        <!-- 메인 디자인 이미지 -->
+        <img src="design.png" alt="LoveTree Design" class="design-bg">
+
+        <!-- 투명 버튼 (Hotspots) 레이어 -->
+        <div class="hotspot-layer">
+            <!-- 헤더 상단 버튼들 -->
+            <a href="#" class="hotspot" data-name="둘러보기" style="top: 3.5%; left: 63%; width: 6%; height: 5%;"></a>
+            <a href="#" class="hotspot" data-name="내 트리" style="top: 3.5%; left: 71%; width: 5%; height: 5%;"></a>
+            <a href="#" class="hotspot" data-name="로그인" style="top: 3.5%; left: 77%; width: 5%; height: 5%;"></a>
+            <a href="#" class="hotspot" data-name="시작하기" style="top: 3.5%; left: 84%; width: 7.5%; height: 6%; border-radius: 50px;"></a>
+
+            <!-- 메인 CTA 버튼들 -->
+            <a href="#" class="hotspot cta" data-name="내 트리 시작하기" style="top: 49.6%; left: 9.8%; width: 13.5%; height: 6.2%; border-radius: 50px;"></a>
+            <a href="#" class="hotspot cta" data-name="공개 트리 둘러보기" style="top: 49.6%; left: 24.3%; width: 14.2%; height: 6.2%; border-radius: 50px;"></a>
+
+            <!-- 폴라로이드 카드들 -->
+            <div class="hotspot card" data-name="감정 카드" style="top: 15%; left: 40.5%; width: 12.5%; height: 26%;"></div>
+            <div class="hotspot card" data-name="기억 카드" style="top: 42%; left: 40.8%; width: 11.5%; height: 18%;"></div>
+            <div class="hotspot card" data-name="순간 카드" style="top: 14%; left: 77.2%; width: 12.2%; height: 26%;"></div>
+            <div class="hotspot card" data-name="흐름 카드" style="top: 41%; left: 79.2%; width: 14%; height: 21%;"></div>
+
+            <!-- 음악 플레이어 컨트롤 -->
+            <div class="hotspot circle" data-name="재생/일시정지" style="top: 54.8%; left: 65.3%; width: 2.2%; height: 4%;"></div>
+        </div>
+    </div>
+
+    <!-- 상태 표시용 토스트 메시지 -->
+    <div id="status-toast">클릭해보세요!</div>
+
+    <script>
+        document.querySelectorAll('.hotspot').forEach(el => {
+            el.addEventListener('click', (e) => {
+                e.preventDefault();
+                const name = el.getAttribute('data-name');
+                const toast = document.getElementById('status-toast');
+                toast.innerText = `[${name}] 영역을 클릭했습니다!`;
+                toast.classList.add('show');
+                setTimeout(() => toast.classList.remove('show'), 2000);
+                console.log(`Clicked: ${name}`);
+            });
+        });
+    </script>
+</body>
+</html>

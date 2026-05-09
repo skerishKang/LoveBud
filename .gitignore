@@ -1,0 +1,152 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+.output/
+deno.lock
+
+# Local video source/work files
+movie/
+docs/movie/home-hero72024/
+docs/movie/low/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Cache
+.cache/
+.parcel-cache/
+.vite/
+.eslintcache
+__pycache__/
+*.py[cod]
+*$py.class
+
+
+# Coverage
+coverage/
+
+# Local-only secrets and test credentials
+.env
+.env.*
+!.env.example
+.secrets/
+
+# Local test account files
+.local/test-accounts.json
+.local/*
+!.local/test-accounts.example.json
+# Local agent docs / notes (ignored from public repo)
+AGENT.md
+LOCAL_AGENT.md
+
+# App pages and project reports are real repo assets and must stay trackable.
+# Do not ignore `pages/` or `docs/reports/`.
+
+# Local Netlify folder
+.netlify
+
+# Editor/IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temp files
+*.tmp
+*.temp
+.tmp/
+.temp/
+.tmp.driveupload/
+# .windsurf/ is ignored by default, but workflows can be tracked
+.windsurf/
+!.windsurf/workflows/
+.kilo/
+nul
+memories_check.json
+trees_check.json
+temp-commit-message.txt
+temp-files-to-commit.txt
+debug-logs/
+scratch/
+
+# Screenshots
+# Ignore only test resulting screenshots to save repo space
+docs/test-scenarios/results/**/screenshots/
+
+# Drive temp folders (AGENTS.md: never touch)
+.tmp.drivedownload/
+
+# Temp scripts
+*.tmp.ps1
+temp_*.ps1
+
+# Local codex notes (duplicate with conversation/)
+docs/*codex*.txt
+
+# Local test artifacts (Playwright, etc.)
+playwright-report/
+test-results/
+*.trace.zip
+*.har
+.playwright-mcp/
+
+# Diff/temp scripts
+diff_output.txt
+staged_diff.txt
+replace_*.js
+
+# Firebase debug logs
+firebase-debug*.log
+
+# SSH backup (private keys - never commit)
+.ssh-backup/
+
+.vercel
+
+# Windows System Cache (Accidental)
+%SystemDrive%/
+**/Caches/*.db
+**/Caches/*.ver*
+
+# Git Sync Conflicts & Backups
+.git (1)/
+.git-backup-*/
+
+# Wrangler temporary build artifacts
+.wrangler/
+
+# Inter-agent handoff temp files (never commit)
+jobs.json
+pr-body.md
+temp-pr-comment.md
+tree-moment-creation-guide.md
+
+# Local verification artifacts and work folders
+# These paths are local-only. Never commit or include in PR scope.
+local-backup/
+work/
+ops/inbox/
+ops/reports/
+ops/screenshots/
+# ops/slots/ is local-only runtime state; slot policy doc lives in docs/ops/
+ops/slots/
+
+# Root-level screenshots and image dumps (desktop/mobile verification artifacts)
+# SVG files are legitimate repo assets and must remain trackable.
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+!*.svg

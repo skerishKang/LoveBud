@@ -1,0 +1,246 @@
+/* LoveTree Kimi-v2 Detail Page CSS - Light Theme */
+
+@import '_variables.css';
+@import '_components.css';
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-family);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  padding-bottom: 100px;
+}
+
+/* Header */
+.detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  position: sticky;
+  top: 0;
+  background: linear-gradient(180deg, var(--bg-primary) 0%, transparent 100%);
+  z-index: 10;
+}
+
+.btn-back {
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-full);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.btn-back:hover {
+  background: var(--border-light);
+  color: var(--text-primary);
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-icon {
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-full);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition-base);
+}
+
+.btn-icon:hover {
+  background: var(--border-light);
+  color: var(--text-primary);
+}
+
+/* Hero Section */
+.detail-hero {
+  padding: 20px;
+  text-align: center;
+}
+
+.hero-visual {
+  width: 200px;
+  height: 220px;
+  margin: 0 auto 24px;
+}
+
+.detail-tree {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 8px 24px rgba(168,85,247,0.2));
+}
+
+.hero-info {
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.detail-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.detail-author {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+
+.detail-tags {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.tag {
+  padding: 6px 14px;
+  background: var(--brand-light);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  color: var(--brand-purple);
+}
+
+.detail-stats {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+}
+
+.stat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+/* Content Section */
+.detail-content {
+  padding: 20px;
+}
+
+.section-title {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-title .count {
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+
+/* Timeline */
+.timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.memory-card {
+  display: flex;
+  gap: 16px;
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  box-shadow: var(--shadow-sm);
+}
+
+.memory-thumb {
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(135deg, rgba(168,85,247,0.2) 0%, rgba(232,121,249,0.15) 100%);
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+}
+
+.memory-info {
+  flex: 1;
+  text-align: left;
+}
+
+.memory-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.memory-date {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.memory-desc {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.timeline-connector {
+  width: 2px;
+  height: 24px;
+  background: linear-gradient(180deg, var(--accent-purple), var(--accent-pink));
+  margin-left: 55px;
+  opacity: 0.5;
+}
+
+/* Footer */
+.detail-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 16px 20px 24px;
+  background: linear-gradient(0deg, var(--bg-dark) 0%, transparent 100%);
+  z-index: 10;
+}
+
+.btn-primary {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+  background: linear-gradient(135deg, var(--accent-purple), var(--accent-pink));
+  border: none;
+  border-radius: 12px;
+  color: white;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+.btn-primary:hover {
+  opacity: 0.9;
+  transform: translateY(-2px);
+}

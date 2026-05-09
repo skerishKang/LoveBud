@@ -1,0 +1,31 @@
+@media (max-width: 1024px) {
+.my-trees-content { padding: 40px var(--lovetree-page-pad-tablet) 56px; }
+.trees-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.trees-skeleton-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+}
+@media (max-width: 768px) {
+.my-trees-content { padding: 28px var(--lovetree-page-pad-mobile) 64px; }
+.my-trees-header { flex-direction: column; align-items: flex-start; gap: 16px; margin-bottom: 30px; padding-bottom: 18px; }
+.header-content { width: 100%; }
+.my-trees-eyebrow { margin-bottom: 10px; }
+.my-trees-header h1 { font-size: clamp(2.25rem, 10vw, 2.72rem); line-height: 1.06; margin-bottom: 8px; }
+.my-trees-header p { font-size: 0.94rem; line-height: 1.55; max-width: 26rem; }
+.header-actions { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.summary-sort-control { width: 100%; min-height: 40px; font-size: 13px; }
+.btn-header-create { width: 100%; min-height: 40px; padding: 10px 14px; font-size: 13px; }
+.trees-grid { grid-template-columns: 1fr; gap: 20px; }
+.trees-skeleton-grid { grid-template-columns: 1fr; gap: 20px; }
+.empty-state { padding: 60px 24px; }
+.tree-card-thumb { height: 176px; }
+.tree-card-flow-bridge { left: 16px; right: 16px; bottom: 48px; height: 20px; }
+.tree-card-flow-node { width: 6px; height: 6px; box-shadow: 0 0 0 3px rgba(200,116,128,0.10); }
+.tree-card-thumb-caption { bottom: 11px; padding: 7px 10px; }
+.create-tree-modal-backdrop { padding: 16px; }
+.create-tree-modal { padding: 22px 20px; border-radius: 24px; }
+.create-tree-visibility { grid-template-columns: 1fr; }
+.create-tree-modal-actions { flex-direction: column-reverse; }
+.create-tree-modal-btn { width: 100%; justify-content: center; }
+}
+@media (max-width: 420px) {
+.tree-card-date { display: none; }
+}

@@ -1,0 +1,40 @@
+{
+  "name": "lovebud-mvp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "LoveBud — Cloudflare Pages frontend + same-origin API entry with Modal/Vercel/Netlify transitional layers",
+  "scripts": {
+    "lint": "node scripts/lint-static.js",
+    "build": "node scripts/build-static.js",
+    "test": "node --test tests/smoke/*.test.js tests/routes/*.test.js tests/contracts/*.test.js",
+    "verify": "node scripts/pre-deploy.js",
+    "verify:full": "node scripts/pre-deploy.js --full",
+    "verify:remote": "node scripts/pre-deploy.js --remote",
+    "verify:env": "node scripts/verify-env.js",
+    "verify:env:remote": "node scripts/verify-env.js --remote",
+    "test:batch": "node scripts/batch-test-runner.js",
+    "test:batch:headed": "node scripts/batch-test-runner.js --headed",
+    "test:screenshots": "node scripts/capture-screenshots.js",
+    "test:screenshots:xg": "node scripts/capture-screenshots.js --prefix xg-test",
+    "test:e2e:search-detail": "node scripts/e2e-search-detail-smoke.js",
+    "test:e2e:auth-guard": "node scripts/e2e-auth-guard-smoke.js",
+    "test:e2e:editor-save": "node scripts/e2e-editor-save-smoke.js",
+    "test:e2e:editor-delete": "node scripts/e2e-editor-delete-smoke.js",
+    "test:e2e:login-success": "node scripts/e2e-login-success-smoke.js",
+    "test:e2e:login-timeout": "node scripts/e2e-login-timeout-smoke.js",
+    "test:e2e:ui-regression": "node scripts/e2e-ui-regression-smoke.js",
+    "test:e2e:ci": "npm run test:e2e:search-detail && npm run test:e2e:login-timeout && npm run test:e2e:ui-regression",
+    "smoke:cloudflare": "node scripts/cloudflare-supplied-url-smoke.js",
+    "check:auth-credentials": "node scripts/ops-auth-credential-preflight.js",
+    "check:pr-guardrails": "node scripts/check-pr-guardrails.js",
+    "ci": "npm run lint && npm run build && npm run test && npm run verify"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.0.0",
+    "pg": "^8.12.0"
+  },
+  "devDependencies": {
+    "dotenv": "^17.4.2",
+    "playwright": "^1.59.1"
+  }
+}

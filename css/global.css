@@ -1,0 +1,556 @@
+/* ─────────────────────────────────────────────────────────────
+   LoveBud Global Import Hub
+   FOUNDATIONAL: tokens -> base
+   COMPONENTS: nav, buttons, cards, etc.
+   ───────────────────────────────────────────────────────────── */
+
+@import url('./global/tokens.css');
+@import url('./global/global-base.css');
+@import url('./global/global-header.css');
+@import url('./global/global-ready-state.css');
+@import url('./global/global-transition-polish.css');
+
+/* LoveTree Shared Visual Foundation Classes */
+.lovetree-page-shell {
+    max-width: var(--lovetree-page-shell-max);
+    margin: 0 auto;
+    padding: 0 var(--lovetree-page-pad-desktop);
+}
+
+@media (max-width: 1024px) {
+    .lovetree-page-shell {
+        padding: 0 var(--lovetree-page-pad-tablet);
+    }
+}
+
+@media (max-width: 480px) {
+    .lovetree-page-shell {
+        padding: 0 var(--lovetree-page-pad-mobile);
+    }
+}
+
+.lovetree-soft-surface {
+    background: var(--lovetree-soft-surface);
+    border: 1px solid var(--lovetree-soft-surface-border);
+    border-radius: var(--lovetree-card-radius);
+    box-shadow: var(--lovetree-card-shadow);
+}
+
+.lovetree-card {
+    background: var(--lovetree-soft-surface);
+    border: 1px solid var(--lovetree-soft-surface-border);
+    border-radius: var(--lovetree-card-radius);
+    box-shadow: var(--lovetree-card-shadow);
+    padding: 20px;
+}
+
+.lovetree-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: var(--radius-full);
+    background: var(--lovetree-pill-bg);
+    border: 1px solid var(--lovetree-pill-border);
+    color: var(--lovetree-pill-text);
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.18s ease;
+}
+
+.lovetree-pill:hover {
+    background: var(--lovetree-pill-hover-bg);
+}
+
+.lovetree-pill:active,
+.lovetree-pill.is-active {
+    background: var(--lovetree-pill-active-bg);
+}
+
+.lovetree-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 40px;
+    padding: 0 14px;
+    border-radius: var(--radius-full);
+    background: var(--lovetree-chip-bg);
+    border: 1px solid var(--lovetree-chip-border);
+    color: var(--lovetree-chip-text);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.18s ease;
+}
+
+.lovetree-chip.is-active {
+    background: var(--lovetree-chip-active-bg);
+    color: var(--lovetree-chip-active-text);
+    border-color: var(--lovetree-chip-active-border);
+    box-shadow: 0 8px 20px rgba(75, 64, 57, 0.05);
+}
+
+
+
+
+/* Button Refinement */
+.btn-round {
+    padding: 12px 28px;
+    border-radius: var(--radius-full);
+    border: none;
+    cursor: pointer;
+    font-weight: 700;
+    font-family: var(--font-heading);
+    font-size: 15px;
+    transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+
+.btn-primary { 
+    background: var(--primary); 
+    color: white; 
+    box-shadow: 0 4px 12px rgba(144, 73, 81, 0.2);
+}
+.btn-primary:hover { 
+    background: var(--primary-vibrant);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(144, 73, 81, 0.3);
+}
+
+.btn-outline { 
+    border: 1px solid var(--outline-variant); 
+    background: white; 
+    color: var(--on-surface); 
+}
+.btn-outline:hover {
+    background: var(--surface-container-low);
+}
+
+/* Mobile optimizations */
+@media (max-width: 480px) {
+    .thumbnail-wrapper {
+        width: 100px;
+        height: 75px;
+    }
+
+    .result-card h3 {
+        font-size: 1.1rem !important;
+    }
+
+    .tag-chip {
+        font-size: 11px;
+        padding: 6px 12px;
+    }
+}
+
+@media (max-width: 768px) {
+    .btn-round {
+        padding: 10px 20px;
+        font-size: 14px;
+    }
+}
+
+
+/* Animations */
+
+
+
+/* ─────────────────────────────────────────────────────────────
+   감상 공간 톤 - Browse/Detail 공통 스타일
+   ───────────────────────────────────────────────────────────── */
+
+/* 감정 경로 강조 */
+.emotion-path-highlight {
+    background: linear-gradient(135deg, var(--primary-container) 0%, var(--surface-container) 100%);
+    border-left: 4px solid var(--primary);
+    padding: 16px 20px;
+    border-radius: 0 12px 12px 0;
+    margin: 12px 0;
+}
+
+/* 감상 유도 CTA 버튼 */
+.cta-appreciation {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: var(--primary);
+    color: white;
+    border-radius: 99px;
+    font-weight: 700;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    border: none;
+}
+
+.cta-appreciation:hover {
+    background: var(--primary-vibrant);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(144, 73, 81, 0.25);
+}
+
+/* 카드 호버 효과 - 감상 느낌 강화 */
+.card-appreciation {
+    transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+
+.card-appreciation:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 24px 60px rgba(144, 73, 81, 0.12);
+}
+
+/* 감정 태그 스타일링 */
+.emotion-tag-refined {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 14px;
+    background: var(--primary-container);
+    color: var(--on-primary-container);
+    border-radius: 99px;
+    font-size: 13px;
+    font-weight: 700;
+    border: 1px solid var(--outline-variant);
+    transition: all 0.2s ease;
+}
+
+.emotion-tag-refined:hover {
+    background: var(--primary-soft);
+    transform: scale(1.05);
+}
+
+/* 순간(Moment) 인디케이터 */
+.moment-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    background: var(--surface-container);
+    border-radius: 99px;
+    font-size: 12px;
+    color: var(--on-surface-variant);
+    font-weight: 600;
+}
+
+.moment-indicator::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    background: var(--primary);
+    border-radius: 50%;
+}
+
+/* 감상 경로 화살표 */
+.path-arrow-refined {
+    color: var(--primary-soft);
+    opacity: 0.6;
+    font-size: 20px;
+    transition: all 0.3s ease;
+}
+
+/* 섹션 구분선 - 부드러운 그라데이션 */
+.section-divider-soft {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--outline-variant), transparent);
+    margin: 24px 0;
+}
+
+/* 인사이트/안내 텍스트 */
+.insight-text {
+    font-size: 14px;
+    color: var(--on-surface-variant);
+    font-style: italic;
+    line-height: 1.6;
+    padding-left: 16px;
+    border-left: 3px solid var(--primary-soft);
+}
+
+/* 감상 중임을 나타내는 배경 톤 */
+.appreciation-bg {
+    background: linear-gradient(180deg, var(--background) 0%, var(--surface-container-low) 100%);
+}
+
+/* Save status indicator (Editor UX hardening) */
+.save-status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--on-surface-variant);
+  padding: 4px 8px;
+  border-radius: 99px;
+  background: var(--surface-container-low);
+  transition: all 0.2s ease;
+}
+
+.save-status-indicator.saving {
+  color: var(--primary);
+  background: rgba(144, 73, 81, 0.08);
+}
+
+.save-status-indicator.saved {
+  color: var(--secondary);
+  background: rgba(122, 139, 110, 0.08);
+}
+
+.save-status-indicator.failed {
+  color: #c62828;
+  background: rgba(198, 40, 40, 0.08);
+}
+
+.save-status-indicator .material-symbols-outlined {
+  font-size: 14px;
+}
+
+.save-status-indicator .last-saved-time {
+  font-weight: 500;
+}
+
+/* Material Symbols fallback text guard
+   폰트가 준비되기 전에는 raw icon name(search, tag 등)을 숨긴다. */
+.material-symbols-outlined {
+  opacity: 0;
+  transition: none;
+}
+
+html.material-symbols-ready .material-symbols-outlined {
+  opacity: 1;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   UI PR2 Typography Accent Unification
+   Home remains the visual source of truth. These overrides align
+   Intro and Browse title/accent hierarchy without changing layout.
+   ───────────────────────────────────────────────────────────── */
+
+body .intro-hero-eyebrow,
+body .search-panel-eyebrow {
+    gap: 8px;
+    min-height: 24px;
+    padding: 0;
+    border-radius: 0;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    color: var(--eyebrow-color);
+    font-size: 0.83rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+body .intro-hero-eyebrow::before,
+body .search-panel-eyebrow::before {
+    content: "";
+    width: 28px;
+    height: 1px;
+    flex: 0 0 auto;
+    background: var(--eyebrow-line-color);
+}
+
+body .intro-hero h1 {
+    font-size: var(--hero-title-size);
+    line-height: var(--hero-title-line-height);
+    letter-spacing: var(--hero-title-letter-spacing);
+}
+
+body .intro-hero h1 .title-line:nth-child(1) {
+    color: var(--hero-soft-color);
+    font-weight: 700;
+    opacity: 1;
+}
+
+body .intro-hero h1 .title-accent {
+    color: var(--hero-warm-color);
+    font-weight: 780;
+    letter-spacing: inherit;
+}
+
+body .intro-hero h1 .title-line:nth-child(3) {
+    color: var(--hero-accent-color);
+    font-weight: 900;
+}
+
+body .intro-hero .lead {
+    font-size: 1.05rem;
+    line-height: 1.78;
+    color: var(--body-muted-color);
+}
+
+body .search-panel-header h2 {
+    font-size: var(--section-title-size);
+    line-height: 1.02;
+    letter-spacing: -0.045em;
+    color: var(--on-surface);
+}
+
+body .search-panel-header p {
+    color: var(--body-muted-color);
+    font-size: 1rem;
+    line-height: 1.72;
+}
+
+
+/* -----------------------------------------------------------------
+   UI PR3 Button Badge Chip Tone Unification
+   PR3: Align button / badge / chip tone across Home / Intro / Browse
+   Home CTA baseline preserved
+   Based on docs/design/BUTTON_BADGE_CHIP_BASELINE.md
+   ----------------------------------------------------------------- */
+
+:root {
+    /* PR3 Control Tokens - reusing existing tokens where possible */
+    --control-primary: var(--primary);
+    --control-primary-hover: var(--primary-vibrant);
+    --control-primary-text: var(--on-primary);
+    --control-secondary-bg: var(--surface-container-lowest, #ffffff);
+    --control-secondary-text: var(--on-surface);
+    --control-secondary-border: var(--outline-variant);
+    --control-chip-bg: rgba(255, 255, 255, 0.76);
+    --control-chip-text: var(--on-surface-variant);
+    --control-chip-border: rgba(var(--primary-rgb), 0.08);
+    --control-chip-active-bg: rgba(var(--primary-rgb), 0.12);
+    --control-chip-active-text: var(--primary);
+    --control-chip-active-border: rgba(var(--primary-rgb), 0.16);
+    --control-focus-ring: rgba(var(--primary-rgb), 0.42);
+}
+
+/* Primary CTA unification */
+body .btn-round,
+body .btn-primary,
+body .cta-appreciation {
+    font-family: var(--font-heading);
+    font-weight: 700;
+    border-radius: var(--radius-full, 9999px);
+    transition: background-color 0.25s ease, box-shadow 0.25s ease, color 0.25s ease;
+}
+
+/* Primary CTA - maintain Home baseline */
+body .btn-primary,
+body .cta-appreciation {
+    background: var(--control-primary);
+    color: var(--control-primary-text);
+    box-shadow: 0 4px 12px rgba(144, 73, 81, 0.2);
+}
+
+body .btn-primary:hover,
+body .cta-appreciation:hover {
+    background: var(--control-primary-hover);
+    /* transform maintained in baseline CSS */
+    box-shadow: 0 6px 16px rgba(144, 73, 81, 0.28);
+}
+
+/* Secondary / outline CTA - match Home secondary tone */
+body .btn-outline {
+    background: var(--control-secondary-bg);
+    color: var(--control-secondary-text);
+    border: 1px solid var(--control-secondary-border);
+    transition: background-color 0.25s ease, border-color 0.25s ease;
+}
+
+body .btn-outline:hover {
+    background: var(--surface-container, #f8f5f0);
+    border-color: rgba(144, 73, 81, 0.22);
+}
+
+/* Intro CTA alignment with Home baseline */
+body .intro-cta-primary {
+    background: var(--control-primary);
+    color: var(--control-primary-text);
+    box-shadow: 0 4px 12px rgba(144, 73, 81, 0.2);
+}
+
+body .intro-cta-primary:hover {
+    background: var(--control-primary-hover);
+    box-shadow: 0 6px 16px rgba(144, 73, 81, 0.28);
+}
+
+body .intro-cta-secondary {
+    background: var(--control-secondary-bg);
+    color: var(--control-secondary-text);
+    border: 1px solid rgba(144, 73, 81, 0.16);
+}
+
+body .intro-cta-secondary:hover {
+    background: var(--surface-container, #f8f5f0);
+    border-color: rgba(144, 73, 81, 0.28);
+}
+
+/* Eyebrow - warm rose tone per baseline */
+body .intro-hero-eyebrow,
+body .intro-what-eyebrow {
+    color: var(--eyebrow-color, var(--primary));
+}
+
+/* Filter chip - Browse filter unification */
+body .tag-chip {
+    background: var(--control-chip-bg);
+    color: var(--control-chip-text);
+    border: 1px solid var(--control-chip-border);
+    border-radius: var(--radius-full, 9999px);
+    font-weight: 700;
+    font-size: 12px;
+    padding: 8px 14px;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+    cursor: pointer;
+}
+
+body .tag-chip:hover {
+    background: rgba(144, 73, 81, 0.06);
+    border-color: rgba(144, 73, 81, 0.18);
+}
+
+body .tag-chip.active {
+    background: var(--control-chip-active-bg);
+    color: var(--control-chip-active-text);
+    border-color: var(--control-chip-active-border);
+}
+
+body .tag-chip:focus-visible {
+    outline: 2px solid var(--control-focus-ring);
+    outline-offset: 2px;
+}
+
+/* Badge - low contrast warm tone */
+body .preview-badge,
+body .growing-trees-badge,
+body .browse-results-badge,
+body .how-to-badge {
+    background: rgba(144, 73, 81, 0.06);
+    color: var(--on-surface-variant, #6c5953);
+    border: 1px solid rgba(144, 73, 81, 0.1);
+    border-radius: var(--radius-full, 9999px);
+    font-weight: 600;
+    font-size: 11px;
+    padding: 4px 10px;
+}
+
+/* Emotion tag */
+body .emotion-tag-refined {
+    background: rgba(144, 73, 81, 0.08);
+    color: var(--primary);
+    border: 1px solid rgba(144, 73, 81, 0.12);
+}
+
+/* Focus-visible for all interactive elements */
+body .btn-round:focus-visible,
+body .btn-primary:focus-visible,
+body .btn-outline:focus-visible,
+body .cta-appreciation:focus-visible,
+body .tag-chip:focus-visible {
+    outline: 2px solid var(--control-focus-ring);
+    outline-offset: 2px;
+}
+
+@media (max-width: 768px) {
+    body .tag-chip {
+        font-size: 11px;
+        padding: 7px 12px;
+    }
+
+    body .preview-badge,
+    body .growing-trees-badge,
+    body .browse-results-badge {
+        font-size: 10px;
+        padding: 3px 8px;
+    }
+}

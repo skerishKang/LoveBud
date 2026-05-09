@@ -1,0 +1,406 @@
+/* Group A Status & Settings Panel selectors relocated to css/editor/status-settings.css
+   Issue #513 - Status & Settings Panel relocation */
+
+.sidebar-btn {
+    width: 100%;
+    min-height: 42px;
+    padding: 10px 16px;
+    border-radius: 999px;
+    border: 1px solid rgba(144, 73, 81, 0.1);
+    background: white;
+    color: var(--on-surface);
+    font-weight: 600;
+    font-size: 13px;
+    line-height: 1.35;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(75, 64, 57, 0.03);
+    text-align: left;
+}
+
+.sidebar-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(144, 73, 81, 0.15);
+    border-color: rgba(144, 73, 81, 0.25);
+    background: white;
+}
+
+.sidebar-btn-primary {
+    background: var(--primary);
+    color: white;
+    border-color: transparent;
+    font-weight: 700;
+    box-shadow: 0 4px 12px rgba(144, 73, 81, 0.12);
+    opacity: 0.96;
+}
+
+.sidebar-btn-primary:hover {
+    background: #7d3f46;
+    box-shadow: 0 4px 16px rgba(144, 73, 81, 0.16);
+    opacity: 1;
+}
+
+.btn-icon {
+    font-size: 14px;
+    line-height: 1;
+    flex: 0 0 auto;
+}
+
+.btn-label {
+    font-size: 13px;
+    flex: 1 1 auto;
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: keep-all;
+    line-height: 1.35;
+}
+
+.editor-sidebar-meta {
+    display: block;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--outline-variant);
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--on-surface-variant);
+}
+
+.editor-status-card {
+    background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,246,244,0.96));
+    box-shadow: 0 8px 20px rgba(75, 64, 57, 0.05);
+}
+
+.editor-status-card,
+.editor-status-card strong,
+.editor-status-card p,
+.editor-sidebar-meta,
+.detail-panel h3,
+.detail-panel label,
+.detail-panel p,
+.detail-panel .tag,
+.detail-panel .diary-note,
+.detail-panel .diary-note *,
+.detail-panel input,
+.detail-panel textarea {
+    -webkit-user-select: text;
+    user-select: text;
+}
+
+.memory-node,
+.memory-node * {
+    user-select: none;
+}
+
+/* ==========================================================================
+   Editor paper tone pass 3
+   Goal: Scrapbook/Paper texture unification & tone polish
+   ========================================================================== */
+
+/* 1. Base Layout & Backgrounds */
+body .editor-layout {
+    background: #fdfcfb;
+    background-image: linear-gradient(180deg, #fffcf9 0%, #f9f5f0 100%);
+}
+
+body .sidebar,
+body .detail-panel {
+    background: rgba(255, 253, 249, 0.94);
+    border: 1px solid rgba(144, 73, 81, 0.1);
+    box-shadow: 0 12px 40px rgba(75, 64, 57, 0.08);
+}
+
+body .canvas-area {
+    background-color: #faf8f6;
+    background-image: radial-gradient(rgba(144, 73, 81, 0.03) 1px, transparent 1px);
+    border: 1px solid rgba(144, 73, 81, 0.08);
+    box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.015);
+}
+
+body .canvas-area::before {
+    border-color: rgba(144, 73, 81, 0.08);
+}
+
+/* 2. Left Status Card (Scrapbook Cover/Paper) */
+body .editor-status-card {
+    background: #ffffff;
+    background-image: linear-gradient(165deg, #ffffff 0%, #fdfbf9 100%);
+    border: 1px solid rgba(144, 73, 81, 0.16);
+    box-shadow: 0 8px 24px rgba(75, 64, 57, 0.06), 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+body .editor-status-card strong {
+    color: #4a372e;
+}
+
+body .editor-tree-quiet-note {
+    color: #8f776c;
+    border-top: 1px dashed rgba(190, 147, 127, 0.24);
+}
+
+/* 3. Node Card (Paper Scrap) */
+body .node-card {
+    background: #ffffff;
+    border: 1px solid rgba(144, 73, 81, 0.08);
+    box-shadow: 1px 2px 6px rgba(75, 64, 57, 0.05);
+    border-radius: 6px;
+    transition: box-shadow 0.24s ease, border-color 0.24s ease, background-color 0.24s ease;
+}
+
+body .memory-node:hover .node-card,
+body .memory-node.selected .node-card {
+    border-color: rgba(144, 73, 81, 0.35);
+    box-shadow: 0 12px 32px rgba(144, 73, 81, 0.12);
+}
+
+body .node-img-wrapper {
+    background: #f8f6f4;
+    border-radius: 4px;
+}
+
+/* 4. Right Detail Cards (Surface Unification) */
+body .editor-current-moment-card,
+body .editor-moment-info-card,
+body .editor-save-status-card {
+    background: rgba(255,253,249,0.56);
+    border: 1px solid rgba(144, 73, 81, 0.06);
+    box-shadow: 0 2px 8px rgba(75, 64, 57, 0.02);
+}
+
+body .editor-moment-info-card {
+    background: rgba(255, 255, 255, 0.6);
+}
+
+body .diary-note {
+    background: rgba(253, 252, 251, 0.8);
+    border-left: 4px solid rgba(144, 73, 81, 0.15);
+    color: #55443d;
+}
+
+/* 5. Button/Chip/Pill Tone */
+body .editor-tree-visibility-pill.is-private {
+    background: rgba(144, 73, 81, 0.06);
+    color: #904951;
+    border: 1px solid rgba(144, 73, 81, 0.12);
+}
+
+body .editor-mini-setting-btn {
+    background: rgba(255, 255, 255, 0.86);
+    border-color: rgba(144, 73, 81, 0.14);
+    color: #6d544b;
+}
+
+body .editor-memory-mode-chip {
+    background: #ffffff;
+    border-color: rgba(144, 73, 81, 0.12);
+}
+
+body .editor-memory-mode-chip.is-active {
+    background: rgba(144, 73, 81, 0.08);
+    border-color: rgba(144, 73, 81, 0.24);
+    color: #904951;
+}
+
+/* 6. Mobile Polish (375px) */
+@media (max-width: 375px) {
+    body .editor-layout {
+        padding: 10px;
+        gap: 10px;
+    }
+
+    body .sidebar,
+    body .detail-panel,
+    body .canvas-area {
+        border-radius: 20px;
+    }
+
+    body .editor-status-card {
+        padding: 18px 14px;
+    }
+
+    body .editor-status-card strong {
+        font-size: 1.35rem;
+    }
+
+body .editor-canvas-title h2 {
+        font-size: 1.3rem;
+    }
+}
+
+/* Editor page presentation overrides extracted from pages/editor.html */
+
+
+.editor-layout {
+    background: linear-gradient(180deg,#fff8f0 0%,#f8ede2 52%,#f5e6dc 100%);
+    gap: 18px;
+    padding: 18px;
+    box-sizing: border-box;
+}
+
+.sidebar,
+.detail-panel {
+    border: 1px solid rgba(255,255,255,0.86);
+    border-radius: 32px;
+    background: linear-gradient(180deg,rgba(255,253,249,0.88),rgba(255,247,239,0.66));
+    box-shadow: 0 24px 62px rgba(156,116,94,0.13);
+}
+
+.sidebar {
+    border-right: 1px solid rgba(255,255,255,0.86);
+}
+
+.detail-panel {
+    border-left: 1px solid rgba(255,255,255,0.86);
+}
+
+.canvas-area {
+    border-radius: 34px;
+    background: radial-gradient(circle at 50% 26%,rgba(255,244,232,0.86),transparent 34%),linear-gradient(180deg,rgba(255,252,248,0.82),rgba(250,238,226,0.54));
+    border: 1px solid rgba(255,255,255,0.56);
+    box-shadow: 0 24px 62px rgba(156,116,94,0.10);
+}
+
+.canvas-area::before {
+    content: '';
+    position: absolute;
+    inset: 72px 28px 28px;
+    border-radius: 30px;
+    border: 1px solid rgba(255,255,255,0.42);
+    background: radial-gradient(circle at 50% 28%,rgba(255,255,255,0.36),transparent 34%);
+    pointer-events: none;
+    z-index: 0;
+}
+
+.canvas-svg,
+.memory-node,
+#canvasEmptyGuide,
+#addMemoryForm {
+    z-index: 2;
+}
+
+.editor-reference-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    width: max-content;
+    max-width: 100%;
+    min-height: 30px;
+    padding: 0 12px;
+    border-radius: 999px;
+    background: rgba(255,248,242,0.90);
+    border: 1px solid rgba(233,213,199,0.86);
+    color: #a36b62;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+}
+
+.editor-status-card {
+    position: relative;
+    padding: 24px 20px 20px;
+    border-radius: 28px;
+    background: linear-gradient(180deg,rgba(255,253,249,0.96),rgba(255,246,239,0.88));
+    border: 1px solid rgba(233,215,201,0.82);
+    box-shadow: 0 18px 40px rgba(161,119,96,0.10);
+}
+
+.editor-status-card .editor-reference-kicker {
+    margin-bottom: 14px;
+}
+
+.editor-status-card strong {
+    font-size: 1.62rem;
+    color: #583f35;
+}
+
+.editor-rename-btn {
+    align-self: flex-start;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: auto;
+    min-height: 32px;
+    padding: 0 11px;
+    margin-top: 2px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.78);
+    border-color: rgba(197,146,128,0.30);
+    color: #9b5f58;
+    font-size: 11px;
+    font-weight: 900;
+    line-height: 1;
+    white-space: nowrap;
+    box-shadow: 0 8px 18px rgba(165,124,101,0.08);
+}
+
+.editor-tree-visibility-pill {
+    min-height: 34px;
+    padding: 0 14px;
+    margin-top: 14px;
+    font-size: 12px;
+    border-radius: 999px;
+}
+
+.editor-title-settings-panel {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 10px;
+    margin-top: 14px;
+    width: 100% !important;
+    align-items: stretch !important;
+    justify-content: stretch !important;
+    pointer-events: auto !important;
+}
+
+.editor-mini-setting-btn {
+    display: inline-flex !important;
+    width: 100%;
+    min-height: 48px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.70);
+    border-color: rgba(221,198,184,0.84);
+    color: #7f6258;
+    font-weight: 800;
+    box-shadow: 0 8px 16px rgba(165,124,101,0.06);
+}
+
+.editor-status-card #sidebarVisibilityToggleBtn.editor-mini-setting-btn {
+    display: inline-flex !important;
+}
+
+.editor-tree-quiet-note {
+    margin: 20px 0 0;
+    padding-top: 18px;
+    border-top: 1px dashed rgba(190,147,127,0.36);
+    color: #8f776c;
+    font-size: 13px;
+    line-height: 1.7;
+    text-align: center;
+}
+
+
+.editor-status-section > h3,
+.editor-flow-lead,
+#sidebarMomentCount,
+#sidebarFlowSummary,
+#sidebarSelectionHint,
+.editor-add-section-bottom,
+.editor-tree-meta-section,
+#detailEmptyStartBtn {
+    display: none !important;
+}
+
+.editor-status-card {
+    margin-top: 0;
+}
+
+.editor-canvas-empty-guide__desc {
+    max-width: 260px;
+    margin-left: auto;
+    margin-right: auto;
+}

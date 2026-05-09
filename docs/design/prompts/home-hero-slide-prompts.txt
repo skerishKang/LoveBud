@@ -1,0 +1,176 @@
+Lovetree Home Hero Slide Prompts
+
+목적
+- 홈 히어로 오른쪽 시각 영역을 “트리가 자라나는 과정” 슬라이드 5장으로 구성하기 위한 이미지 생성 프롬프트 모음
+- 먼저 이미지 5장을 만들고, 이후 홈 슬라이드 또는 짧은 영상 소스로 사용
+
+사용 원칙
+- 화면 비율: 데스크톱 홈 히어로에 맞는 가로형 비율 권장 (16:10 또는 16:9)
+- 톤: warm cream, dusty rose, muted sage, soft brown
+- 공통 무드: K-pop 팬의 감정 기록, 영상 카드, 사랑의 흐름, 러브트리 성장
+- 공통 구조: 왼쪽에서 시작해 오른쪽으로 성장하는 트리 흐름
+- 실제 BTS 얼굴 재현보다 “현재 BTS 활동기 무드의 공연/뮤비/직캠 감성”에 가깝게
+
+프롬프트 버전 구분
+- SAFE VERSION: 실존 인물 직접 재현을 피하고 K-pop 보이그룹 무드로 생성
+- BTS MOOD VERSION: BTS를 연상시키는 현재 무드, 공연 에너지, 팬 기억 톤을 더 강하게 반영
+
+
+Slide 01
+파일명 제안
+- home-slide-01-empty-tree.png
+
+화면 카피
+- 첫 순간이 러브트리의 시작이 됩니다
+
+추가 요소
+- 빈 배경 위에 트리의 메인 줄기와 5개 노드 자리만 은은하게 보이는 상태
+- 아직 카드 내용은 거의 없음
+
+SAFE VERSION
+Create a premium desktop hero visual for a K-pop fan memory service called Lovetree.
+Show a warm cream canvas with a soft organic tree structure starting from the left and growing toward the right.
+Only the main trunk and five subtle node placeholders are visible, as if the memory tree is about to begin.
+Use dusty rose, muted sage, ivory, and warm brown tones.
+The visual should feel airy, emotional, and editorial, not technical.
+No real celebrities, no copyrighted thumbnails, no logos.
+The node placeholders should look like elegant video memory cards waiting to be filled.
+
+BTS MOOD VERSION
+Create a premium desktop hero visual for a K-pop fan memory service called Lovetree.
+The scene should feel inspired by a global K-pop boy group fandom journey in the current era: stadium lights, emotional performance memories, fan-cam energy, warm concert afterglow.
+Show an elegant tree-like path beginning on the left and extending to the right, with five subtle empty card placeholders.
+No exact celebrity face recreation, no copyrighted logos, but the mood should evoke the emotional scale of BTS-era fandom.
+Use ivory, dusty rose, muted sage, soft brown, and faint stage-light gradients.
+
+
+Slide 02
+파일명 제안
+- home-slide-02-first-memory.png
+
+화면 카피
+- 처음 사랑에 빠진 순간을 기록합니다
+
+추가 요소
+- 첫 번째 카드만 실제 영상 카드처럼 활성화
+- 나머지 4개는 아직 흐릿한 placeholder
+
+SAFE VERSION
+Create the second stage of a Lovetree hero sequence.
+One video memory card on the left is now active and filled, while four future memory cards remain soft and blurred.
+The active card should show a stylish K-pop performance thumbnail mood, a date, a short emotion tag, and a tiny memory caption.
+The tree trunk begins at this first card and extends rightward.
+Keep the image elegant, warm, and emotionally soft.
+No real celebrity face recreation, no logos.
+
+BTS MOOD VERSION
+Create the second stage of a Lovetree hero sequence inspired by the emotional beginning of a BTS fandom journey.
+The first memory card on the left is active and feels like discovering a powerful performance for the first time.
+The image should suggest a current-era K-pop concert/performance memory, with a dramatic but soft stage-light atmosphere.
+The remaining future memory cards are still faint placeholders.
+No exact celebrity face recreation, but the visual mood should strongly evoke a BTS-style first performance obsession.
+
+
+Slide 03
+파일명 제안
+- home-slide-03-growing-branches.png
+
+화면 카피
+- 영상과 감정이 경로를 만들기 시작합니다
+
+추가 요소
+- 두 번째, 세 번째 카드가 생김
+- 위쪽과 아래쪽으로 가지가 갈라지기 시작
+
+SAFE VERSION
+Create the third stage of a Lovetree hero sequence.
+Three memory cards are now visible and connected:
+- one root card on the left
+- one upper branch card
+- one lower or mid-right card
+The tree should now clearly start branching, with graceful organic lines.
+Each card should look like a video memory: thumbnail, small date, emotion tag, tiny caption.
+The scene should feel like a fandom journey becoming deeper and more personal.
+No real celebrity face recreation.
+
+BTS MOOD VERSION
+Create the third stage of a Lovetree hero sequence inspired by a BTS fandom deepening over time.
+Three cards are now active:
+- first encounter
+- one peak excitement moment
+- one emotional connection moment
+The lines between them should feel like a living branch system, warm and elegant.
+Use visual hints of music video glow, concert lighting, fan-cam intimacy, and emotional attachment.
+No exact face recreation, but the mood should feel unmistakably like the journey of falling harder for BTS.
+
+
+Slide 04
+파일명 제안
+- home-slide-04-nearly-complete.png
+
+화면 카피
+- 순간들이 이어져 나만의 러브트리가 자랍니다
+
+추가 요소
+- 네 번째, 다섯 번째 카드까지 거의 완성
+- 전체 구조가 트리처럼 보이기 시작
+
+SAFE VERSION
+Create the fourth stage of a Lovetree hero sequence.
+Five video memory cards are now almost fully connected into one elegant tree.
+The structure should clearly read as a love tree made from fan memories.
+The cards should have distinct thumbnail moods, dates, tags, and tiny captions.
+The composition should feel balanced and premium, suitable for a product landing page hero.
+Use a soft editorial aesthetic with warm cream, rose, sage, and brown.
+No real celebrities or copyrighted branding.
+
+BTS MOOD VERSION
+Create the fourth stage of a Lovetree hero sequence inspired by the emotional growth of a BTS fan archive.
+Five video memory cards are visible and almost fully complete, each suggesting a different kind of BTS-related memory:
+- first performance discovery
+- music video obsession
+- emotional lyric moment
+- concert or live performance memory
+- recent comfort or joy moment
+The branch structure should now feel full and alive.
+No exact face recreation, but the visual mood should strongly evoke current BTS fandom memories.
+
+
+Slide 05
+파일명 제안
+- home-slide-05-complete-tree.png
+
+화면 카피
+- 사랑의 흐름이 하나의 러브트리가 됩니다
+
+추가 요소
+- 완성된 5노드 러브트리
+- 가장 아름답고 완성도 높은 장면
+- 홈 첫화면의 메인 연출용
+
+SAFE VERSION
+Create the final stage of a Lovetree hero sequence.
+Show a fully completed memory tree made of five elegant video cards connected by an organic trunk and branches.
+This should look like the final polished hero image for a K-pop fan memory service landing page.
+The composition should feel complete, emotional, premium, and easy to understand at a glance.
+Use high-end soft gradients, realistic video-card polish, and warm editorial lighting.
+No real celebrity face recreation, no copyrighted logos.
+
+BTS MOOD VERSION
+Create the final stage of a Lovetree hero sequence inspired by a complete BTS fandom journey.
+Five connected video memory cards form a beautiful finished love tree.
+The cards should suggest real fan memories across time: discovery, obsession, comfort, joy, and lasting attachment.
+The overall composition should feel like a premium digital keepsake of loving BTS over time.
+No exact celebrity face recreation, but the atmosphere should clearly evoke current BTS-era fandom, warm stage lights, music video emotion, and fan memory intimacy.
+
+
+홈 슬라이드 적용 메모
+- 홈 히어로에는 이 5장을 순서대로 보여주면 됨
+- 가장 먼저는 slide-05를 기본 정지 이미지로 써도 됨
+- 그 다음 slide-01 → slide-05 순서로 페이드 또는 슬라이드 전환
+
+영상 확장 메모
+- 이 5장을 기반으로 MP4를 만들면 됨
+- GIF보다는 MP4 권장
+- 홈에는 슬라이드, 홍보 자산에는 MP4가 더 적합
+

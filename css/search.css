@@ -1,0 +1,19 @@
+/**
+ * Search page CSS owner entry
+ * v20260429-2
+ *
+ * Closure audit (2026-04-29):
+ * - pages/search.html contains no <style> blocks
+ * - pages/search.html contains no style= attributes
+ * - All Search presentation styles are in css/search/* sub-modules below
+ * - Inline style closure pass for Issue #65 is COMPLETE
+ */
+@import url("./search/search-base.css");
+@import url("./search/search-hero-controls.css");
+@import url("./search/search-controls.css");
+@import url("./search/search-results-skeleton.css");
+@import url("./search/search-empty-state.css");
+@import url("./search/search-growing-trees.css");
+@import url("./search/search-tree-card.css");
+@import url("./search/search-preview-sidebar.css");
+@import url("./search/search-responsive.css");

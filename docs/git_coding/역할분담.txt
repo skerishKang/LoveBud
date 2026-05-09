@@ -1,0 +1,48 @@
+a :fix/ui-critical-surface-leaks-20260420
+b :editor-resolver-fallbacks-2
+c :fix-ui-20260420b 
+d :진입, 공용모델
+현재 main포함 브랜치는 a,b,c의 각각 브랜치 포함해서 4개
+
+각자의 역할 
+a: 로그인 i18n 누락과 search 미리보기 초기 placeholder(---, 0) 노출, editor 사이드바 버튼 라벨 잘림을 최소 수정으로 정리하는 역할이며 작업 파일은 js/i18n/i18n-login.js, js/search-preview-renderer.js, pages/search.html, css/editor.css 입니다.
+b: `editor-resolver-fallbacks-2` — `js/editor.js`의 text/media resolver inline fallback 분리와 이에 필요한 보조 파일/최소 연결 파일(`js/editor/editor-resolver-fallbacks.js`, 필요 시 `pages/editor.html`) 담당.
+c: `fix-ui-20260420b` — search 표면 UI/i18n 누수 보정 담당, 작업 파일은 `js/i18n/i18n-search.js`, `js/search-preview-renderer.js` 입니다.
+인데 겹치는게 있는지 공용진입이 있는지 알아봐
+
+겹치는 것과 공용모델 역할 분담 후 
+네. 지금 구조에서는 **겹침 제거**를 최우선으로 이렇게 나누는 게 가장 안전합니다.
+
+a: **로그인/에디터 단독 UI 누수 보정 담당** — `js/i18n/i18n-login.js`, `css/editor.css`만 담당하고, 로그인 i18n 누락과 editor 사이드바 버튼 라벨 잘림만 처리
+b: **editor resolver 구조 정리 담당** — `js/editor.js`, `js/editor/editor-resolver-fallbacks.js`, 필요 시 `pages/editor.html`만 담당하고 text/media resolver inline fallback 분리만 처리
+c: **search 표면 UI/i18n 보정 담당** — `js/search-preview-renderer.js`, `js/i18n/i18n-search.js`, 필요 시 `pages/search.html`만 담당하고 search 미리보기 초기 placeholder, search 문구/i18n 누수만 처리
+d(공용모델): **진입/조정/병합 검수 담당** — 공용 진입 파일인 `pages/search.html`, `pages/editor.html`의 최종 연결 상태 확인, 버전 bump, 겹친 변경 정리, PR 전 최종 검수만 담당하고 기능 수정은 최소화
+
+이렇게 두는 이유는 단순합니다.
+
+* 제일 위험한 겹침 파일이 `js/search-preview-renderer.js`인데, 이걸 **c 단독 소유**로 보내야 합니다.
+* `pages/search.html`은 search 공용 진입이므로 **c가 우선 담당**, d는 최종 연결 검수만 하는 게 안전합니다.
+* `pages/editor.html`은 editor 공용 진입이므로 **b가 우선 담당**, d는 최종 연결 검수만 맡는 게 맞습니다.
+* a는 search에서 손을 빼고 **login + editor css**만 맡아야 충돌이 거의 없어집니다.
+
+한 줄 요약으로 다시 쓰면 이렇습니다.
+
+* a: 로그인 i18n + editor 버튼 잘림
+* b: editor resolver 분리
+* c: search preview + search i18n
+* d: 공용 진입 파일 최종 정리와 병합 전 검수
+
+원하시면 다음 답변에서 이걸 그대로 팀에 공유할 수 있게 **복붙용 역할 분담 공지문** 형태로 정리해드리겠습니다.  
+
+내의견
+그럼 찬성하는 의견대로 작업하고 
+다른 모델과의 충돌이나 
+d(공용모델)과의 대화나 협업이 필요하면 작업을 중지하고 나에게 
+요청하면 될거 같음
+내의견에 찬성하면 바로 작업시작
+
+갑자기 a가 반기 
+
+
+
+

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LoveTree Scrapbook Demo</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="scrapbook-container">
+        <!-- 메인 배경 (전체 이미지) -->
+        <div class="base-background"></div>
+
+        <!-- 상호작용 가능한 조각 레이어들 -->
+        <div class="piece hero-text" id="heroText">
+            <img src="assets/hero-text.png" alt="Hero Text">
+        </div>
+
+        <div class="piece card heart" id="cardHeart">
+            <img src="assets/card-heart.png" alt="Heart Card">
+            <div class="tooltip">감정의 조각</div>
+        </div>
+
+        <div class="piece card music" id="cardMusic">
+            <img src="assets/card-music.png" alt="Music Card">
+            <div class="tooltip">오늘의 한 줄 & 음악</div>
+        </div>
+
+        <div class="piece card note" id="cardNote">
+            <img src="assets/card-note.png" alt="Note Card">
+        </div>
+
+        <div class="piece card stage" id="cardStage">
+            <img src="assets/card-stage.png" alt="Stage Card">
+            <div class="tooltip">빛나던 순간</div>
+        </div>
+
+        <div class="piece card sunset" id="cardSunset">
+            <img src="assets/card-sunset.png" alt="Sunset Card">
+        </div>
+
+        <div class="piece info-area" id="bottomInfo">
+            <img src="assets/bottom-info.png" alt="Bottom Info">
+        </div>
+
+        <div class="piece list-area" id="bottomList">
+            <img src="assets/bottom-list.png" alt="Bottom List">
+        </div>
+    </div>
+
+    <script src="main.js"></script>
+</body>
+</html>

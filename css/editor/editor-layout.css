@@ -1,0 +1,29 @@
+.editor-layout {
+    display: flex;
+    height: calc(100dvh - var(--header-height));
+    width: 100%;
+    max-width: 100vw;
+    min-height: 0;
+    overflow: hidden;
+    position: relative;
+    background: var(--background);
+    box-sizing: border-box;
+}
+
+.editor-layout > .sidebar,
+.editor-layout > .detail-panel,
+.editor-layout > .canvas-area {
+    box-sizing: border-box;
+    min-height: 0;
+}
+
+.editor-layout > .canvas-area {
+    min-width: 0;
+}
+
+@media (max-width: 1024px) {
+    .editor-layout {
+        overflow-x: hidden;
+        overflow-y: auto;
+    }
+}

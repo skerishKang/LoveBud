@@ -1,0 +1,136 @@
+/* gemini-v3 Detail Specific (Ultra Fidelity) */
+@import url('index.css');
+
+.detail-v3-layout {
+    display: flex;
+    flex-direction: column;
+    height: calc(800px - 90px);
+    overflow-y: auto;
+}
+
+.media-v3-stage {
+    width: calc(100% - 110px);
+    max-width: 900px;
+    margin: 40px auto 60px;
+    aspect-ratio: 16/9;
+    background: #1a1a1a;
+    border-radius: 40px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--gv3-shadow-deep);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.media-v3-stage img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.8;
+}
+
+.play-v3-btn {
+    width: 100px;
+    height: 100px;
+    background: rgba(179, 126, 111, 0.95);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 40px;
+    cursor: pointer;
+    box-shadow: 0 0 30px rgba(179, 126, 111, 0.4);
+    z-index: 10;
+    transition: transform 0.3s ease;
+    position: absolute;
+}
+
+.play-v3-btn:hover { transform: scale(1.1); }
+
+/* Scrapbook Narrative v3 */
+.narrative-v3 {
+    max-width: 800px;
+    margin: 0 auto 100px;
+    padding: 0 20px;
+}
+
+.meta-v3-info {
+    margin-bottom: 45px;
+    text-align: center;
+}
+
+.date-v3-label {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    color: var(--gv3-gold);
+    font-size: 20px;
+    margin-bottom: 12px;
+    display: block;
+}
+
+.moment-v3-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 48px;
+    font-weight: 900;
+    color: var(--gv3-text-dark);
+}
+
+.memo-v3-paper {
+    background: white;
+    padding: 60px;
+    border-radius: 35px;
+    box-shadow: var(--gv3-shadow-soft);
+    position: relative;
+    border: 1px solid rgba(179, 126, 111, 0.05);
+}
+
+.memo-v3-paper::after {
+    content: '🔖';
+    position: absolute;
+    top: -25px;
+    right: 50px;
+    font-size: 45px;
+}
+
+.memo-v3-text {
+    font-size: 20px;
+    line-height: 2.3;
+    color: var(--gv3-text-dark);
+    background-image: linear-gradient(#F5F0EE 1.5px, transparent 1.5px);
+    background-size: 100% 2.3em;
+    padding-left: 15px;
+}
+
+/* Floating Action Bar v3 */
+.action-v3-hub {
+    position: fixed;
+    bottom: 35px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(20px);
+    padding: 18px 50px;
+    border-radius: 100px;
+    display: flex;
+    gap: 55px;
+    box-shadow: var(--gv3-shadow-deep);
+    border: 1px solid rgba(255,255,255,0.5);
+    z-index: 1000;
+}
+
+.action-v3-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    color: var(--gv3-text-muted);
+    font-size: 11px;
+    font-weight: 800;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.action-v3-item:hover { color: var(--gv3-primary); transform: translateY(-3px); }
+.action-v3-icon { font-size: 24px; }

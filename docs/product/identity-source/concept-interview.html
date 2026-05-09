@@ -1,0 +1,630 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lovetree 정체성 인터뷰</title>
+  <style>
+    :root {
+      --bg: #f7efe5;
+      --paper: #fffaf2;
+      --ink: #2d2a26;
+      --muted: #7c6f65;
+      --rose: #c97880;
+      --rose-dark: #9c4f58;
+      --sage: #6f806f;
+      --line: #ead8c7;
+      --shadow: 0 24px 70px rgba(69, 47, 36, 0.14);
+      --radius: 28px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Pretendard", "Noto Sans KR", system-ui, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 10% 10%, rgba(201, 120, 128, 0.22), transparent 26rem),
+        radial-gradient(circle at 92% 4%, rgba(111, 128, 111, 0.18), transparent 24rem),
+        linear-gradient(135deg, #f8efe4 0%, #fff8ee 48%, #f2e2d7 100%);
+      line-height: 1.65;
+    }
+
+    main {
+      width: min(1040px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 42px 0 80px;
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      padding: clamp(30px, 6vw, 68px);
+      border: 1px solid rgba(156, 79, 88, 0.18);
+      border-radius: 36px;
+      background: rgba(255, 250, 242, 0.78);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      right: -90px;
+      bottom: -130px;
+      width: 330px;
+      height: 330px;
+      border-radius: 999px;
+      background: rgba(201, 120, 128, 0.16);
+    }
+
+    .eyebrow {
+      margin: 0 0 14px;
+      color: var(--rose-dark);
+      font-size: 0.82rem;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      position: relative;
+      z-index: 1;
+      max-width: 760px;
+      margin: 0;
+      font-size: clamp(2.25rem, 7vw, 5.2rem);
+      line-height: 0.98;
+      letter-spacing: -0.08em;
+    }
+
+    .hero p {
+      position: relative;
+      z-index: 1;
+      max-width: 680px;
+      margin: 24px 0 0;
+      color: var(--muted);
+      font-size: clamp(1.02rem, 2vw, 1.18rem);
+    }
+
+    .guide {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin: 20px 0 34px;
+    }
+
+    .guide-card {
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: rgba(255, 250, 242, 0.72);
+      color: var(--muted);
+      font-size: 0.94rem;
+    }
+
+    .guide-card strong {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--ink);
+    }
+
+    form {
+      display: grid;
+      gap: 22px;
+      margin-top: 28px;
+    }
+
+    .section-title {
+      margin: 52px 0 4px;
+      color: var(--rose-dark);
+      font-size: 0.88rem;
+      font-weight: 900;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+
+    .card {
+      padding: clamp(22px, 4vw, 34px);
+      border: 1px solid rgba(156, 79, 88, 0.16);
+      border-radius: var(--radius);
+      background: rgba(255, 250, 242, 0.86);
+      box-shadow: 0 18px 45px rgba(69, 47, 36, 0.08);
+    }
+
+    .question {
+      margin: 0 0 10px;
+      font-size: clamp(1.28rem, 3vw, 1.86rem);
+      line-height: 1.25;
+      letter-spacing: -0.04em;
+    }
+
+    .hint {
+      margin: 0 0 18px;
+      color: var(--muted);
+    }
+
+    .choices {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 16px 0 0;
+    }
+
+    .choice {
+      position: relative;
+    }
+
+    .choice input {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+    }
+
+    .choice span {
+      display: inline-flex;
+      align-items: center;
+      min-height: 44px;
+      padding: 10px 15px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fff7ed;
+      color: #4b4039;
+      cursor: pointer;
+      transition: 150ms ease;
+    }
+
+    .choice input:checked + span {
+      border-color: var(--rose);
+      background: var(--rose);
+      color: #fff;
+      box-shadow: 0 10px 26px rgba(201, 120, 128, 0.28);
+    }
+
+    textarea,
+    input[type="text"] {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: #fffaf5;
+      color: var(--ink);
+      font: inherit;
+      outline: none;
+      transition: 150ms ease;
+    }
+
+    textarea {
+      min-height: 112px;
+      padding: 14px 16px;
+      resize: vertical;
+    }
+
+    input[type="text"] {
+      min-height: 48px;
+      padding: 0 15px;
+    }
+
+    textarea:focus,
+    input[type="text"]:focus {
+      border-color: var(--rose);
+      box-shadow: 0 0 0 4px rgba(201, 120, 128, 0.14);
+    }
+
+    .visual-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 18px;
+    }
+
+    .visual-choice {
+      position: relative;
+      display: block;
+    }
+
+    .visual-choice input {
+      position: absolute;
+      opacity: 0;
+    }
+
+    .visual-box {
+      overflow: hidden;
+      border: 2px solid transparent;
+      border-radius: 24px;
+      background: #fff7ed;
+      box-shadow: 0 14px 34px rgba(69, 47, 36, 0.08);
+      cursor: pointer;
+      transition: 160ms ease;
+    }
+
+    .visual-box img {
+      display: block;
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      object-fit: cover;
+      object-position: top center;
+      background: #ead8c7;
+    }
+
+    .visual-box strong {
+      display: block;
+      padding: 14px 16px 2px;
+      font-size: 1rem;
+    }
+
+    .visual-box em {
+      display: block;
+      padding: 0 16px 16px;
+      color: var(--muted);
+      font-style: normal;
+      font-size: 0.92rem;
+    }
+
+    .visual-choice input:checked + .visual-box {
+      border-color: var(--rose);
+      transform: translateY(-3px);
+      box-shadow: 0 18px 44px rgba(201, 120, 128, 0.22);
+    }
+
+    .actions {
+      position: sticky;
+      bottom: 16px;
+      z-index: 5;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 22px;
+      padding: 12px;
+      border: 1px solid rgba(156, 79, 88, 0.16);
+      border-radius: 24px;
+      background: rgba(255, 250, 242, 0.88);
+      backdrop-filter: blur(18px);
+      box-shadow: 0 18px 45px rgba(69, 47, 36, 0.12);
+    }
+
+    button {
+      min-height: 46px;
+      padding: 0 18px;
+      border: 0;
+      border-radius: 999px;
+      background: #2f3e4f;
+      color: #fff;
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    button.secondary {
+      background: #efe1d2;
+      color: #4b4039;
+    }
+
+    .output {
+      display: none;
+      white-space: pre-wrap;
+      margin-top: 14px;
+      padding: 18px;
+      border: 1px dashed var(--rose);
+      border-radius: 20px;
+      background: #fff7ed;
+      color: #3b332f;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.9rem;
+    }
+
+    .notice {
+      margin-top: 10px;
+      color: var(--sage);
+      font-size: 0.94rem;
+    }
+
+    @media (max-width: 720px) {
+      main {
+        width: min(100% - 20px, 1040px);
+        padding-top: 18px;
+      }
+
+      .guide,
+      .visual-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .hero,
+      .card {
+        border-radius: 24px;
+      }
+
+      .visual-box img {
+        aspect-ratio: 3 / 2;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="hero">
+      <p class="eyebrow">Lovetree concept interview</p>
+      <h1>러브트리는<br>어떤 앱이어야 할까?</h1>
+      <p>
+        정답을 고르는 설문이 아니라, 실제로 쓸 사람의 감각을 듣기 위한 짧은 인터뷰입니다.
+        편하게 보고 “이건 좋다 / 이건 애매하다 / 나는 다르게 쓸 것 같다”를 남겨 주세요.
+      </p>
+    </section>
+
+    <div class="guide">
+      <div class="guide-card"><strong>1. 정체성</strong>이 앱이 무엇처럼 느껴지는지 봅니다.</div>
+      <div class="guide-card"><strong>2. 기능</strong>기록, 연결, 영상 저장 방식이 이해되는지 봅니다.</div>
+      <div class="guide-card"><strong>3. 화면 방향</strong>어떤 화면이 가장 쓰고 싶은지 봅니다.</div>
+    </div>
+
+    <form id="interviewForm">
+      <p class="section-title">Part 1. Identity</p>
+
+      <section class="card">
+        <h2 class="question">처음 들었을 때, “러브트리”는 뭐 하는 앱처럼 느껴져?</h2>
+        <p class="hint">가장 가까운 느낌을 골라줘. 여러 개 골라도 됩니다.</p>
+        <div class="choices" data-name="identity">
+          <label class="choice"><input type="checkbox" value="덕질 순간을 시간순으로 기록하는 앱"><span>덕질 순간 타임라인</span></label>
+          <label class="choice"><input type="checkbox" value="좋아했던 감정을 남기는 일기"><span>감정 일기</span></label>
+          <label class="choice"><input type="checkbox" value="좋아하는 영상과 무대를 모으는 앨범"><span>영상 앨범</span></label>
+          <label class="choice"><input type="checkbox" value="입덕부터 지금까지 이어지는 팬심 지도"><span>팬심 지도</span></label>
+          <label class="choice"><input type="checkbox" value="다른 팬의 기록을 구경하는 커뮤니티"><span>팬 기록 커뮤니티</span></label>
+        </div>
+        <textarea name="identityReason" placeholder="왜 그렇게 느꼈는지, 또는 다른 표현이 떠오르면 적어줘."></textarea>
+      </section>
+
+      <section class="card">
+        <h2 class="question">이 앱이 하나만 잘해야 한다면, 뭐가 제일 중요할까?</h2>
+        <p class="hint">Lovetree의 중심축을 고르는 질문입니다.</p>
+        <div class="choices" data-name="coreValue">
+          <label class="choice"><input type="radio" name="coreValue" value="순간을 쉽게 기록"><span>순간을 쉽게 기록하기</span></label>
+          <label class="choice"><input type="radio" name="coreValue" value="기록들이 연결되는 흐름"><span>기록들이 연결되는 흐름</span></label>
+          <label class="choice"><input type="radio" name="coreValue" value="영상 모으기"><span>영상 모으기</span></label>
+          <label class="choice"><input type="radio" name="coreValue" value="나중에 다시 감상"><span>나중에 다시 감상하기</span></label>
+          <label class="choice"><input type="radio" name="coreValue" value="남에게 공유"><span>남에게 공유하기</span></label>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 class="question">너라면 첫 러브트리로 뭘 만들 것 같아?</h2>
+        <p class="hint">실제 사용 시나리오를 확인하려고 합니다.</p>
+        <div class="choices" data-name="firstTree">
+          <label class="choice"><input type="checkbox" value="입덕 타임라인"><span>입덕 타임라인</span></label>
+          <label class="choice"><input type="checkbox" value="최애 무대/직캠 모음"><span>최애 무대/직캠 모음</span></label>
+          <label class="choice"><input type="checkbox" value="콘서트/컴백 기억"><span>콘서트·컴백 기억</span></label>
+          <label class="choice"><input type="checkbox" value="친구에게 영업하는 흐름"><span>친구에게 영업하는 흐름</span></label>
+          <label class="choice"><input type="checkbox" value="요즘 좋아하는 순간 모음"><span>요즘 좋아하는 순간 모음</span></label>
+        </div>
+        <input type="text" name="firstTreeCustom" placeholder="직접 적는다면: 예) 2024년 투어 기록, 최애 입덕 루트">
+      </section>
+
+      <p class="section-title">Part 2. Function</p>
+
+      <section class="card">
+        <h2 class="question">“순간 하나”를 저장할 때 꼭 들어가야 하는 건?</h2>
+        <p class="hint">너무 복잡하면 안 쓰게 되고, 너무 단순하면 차별성이 없어집니다.</p>
+        <div class="choices" data-name="memoryFields">
+          <label class="choice"><input type="checkbox" value="영상 링크"><span>영상 링크</span></label>
+          <label class="choice"><input type="checkbox" value="날짜"><span>날짜</span></label>
+          <label class="choice"><input type="checkbox" value="짧은 메모"><span>짧은 메모</span></label>
+          <label class="choice"><input type="checkbox" value="감정 태그"><span>감정 태그</span></label>
+          <label class="choice"><input type="checkbox" value="이전/다음 순간 연결"><span>이전·다음 순간 연결</span></label>
+          <label class="choice"><input type="checkbox" value="공개/비공개"><span>공개·비공개</span></label>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 class="question">영상은 어떻게 저장되는 게 제일 자연스러워?</h2>
+        <p class="hint">처음에는 YouTube가 가장 현실적이고, TikTok/Instagram은 이후 확장 후보입니다.</p>
+        <div class="choices" data-name="videoSave">
+          <label class="choice"><input type="checkbox" value="YouTube 링크 붙여넣기"><span>YouTube 링크 붙여넣기</span></label>
+          <label class="choice"><input type="checkbox" value="검색해서 바로 추가"><span>검색해서 바로 추가</span></label>
+          <label class="choice"><input type="checkbox" value="TikTok/Instagram 링크 저장"><span>TikTok·Instagram 링크 저장</span></label>
+          <label class="choice"><input type="checkbox" value="공유 버튼으로 보내기"><span>공유 버튼으로 보내기</span></label>
+          <label class="choice"><input type="checkbox" value="영상 없이 메모만 저장"><span>영상 없이 메모만 저장</span></label>
+        </div>
+        <textarea name="videoSaveReason" placeholder="영상 저장 방식에서 불편할 것 같은 점이 있으면 적어줘."></textarea>
+      </section>
+
+      <section class="card">
+        <h2 class="question">러브트리는 “연결된 트리”여야 할까, “시간순 기록”이면 충분할까?</h2>
+        <p class="hint">이 질문이 제일 중요합니다. 서비스 차별성을 정하는 부분입니다.</p>
+        <div class="choices" data-name="treeVsTimeline">
+          <label class="choice"><input type="radio" name="treeVsTimeline" value="연결된 트리가 핵심"><span>연결된 트리가 핵심이어야 한다</span></label>
+          <label class="choice"><input type="radio" name="treeVsTimeline" value="모바일은 시간순, 데스크톱은 트리"><span>모바일은 시간순, 데스크톱은 트리</span></label>
+          <label class="choice"><input type="radio" name="treeVsTimeline" value="시간순 기록이면 충분"><span>시간순 기록이면 충분하다</span></label>
+          <label class="choice"><input type="radio" name="treeVsTimeline" value="앨범처럼 모으는 게 좋음"><span>앨범처럼 모으는 게 좋다</span></label>
+        </div>
+        <textarea name="treeVsTimelineReason" placeholder="왜 그렇게 생각했는지 편하게 적어줘."></textarea>
+      </section>
+
+      <p class="section-title">Part 3. Screens</p>
+
+      <section class="card">
+        <h2 class="question">아래 화면 중 “이게 러브트리 같다”는 건 뭐야?</h2>
+        <p class="hint">예쁜 것보다, 실제로 이해되고 쓰고 싶은 화면을 골라줘.</p>
+        <div class="visual-grid">
+          <label class="visual-choice">
+            <input type="checkbox" name="visualDirection" value="desktop-love-tree-board">
+            <span class="visual-box">
+              <img src="image/desktop-love-tree-board.png" alt="데스크톱 러브트리 보드">
+              <strong>데스크톱 러브트리 보드</strong>
+              <em>순간들이 가지처럼 이어지는 큰 화면</em>
+            </span>
+          </label>
+          <label class="visual-choice">
+            <input type="checkbox" name="visualDirection" value="mobile-love-tree">
+            <span class="visual-box">
+              <img src="image/mobile-love-tree.png" alt="모바일 러브트리">
+              <strong>모바일 러브트리</strong>
+              <em>휴대폰에서 세로로 보는 가지형 기록</em>
+            </span>
+          </label>
+          <label class="visual-choice">
+            <input type="checkbox" name="visualDirection" value="story-card-view">
+            <span class="visual-box">
+              <img src="image/story-card-view.png" alt="스토리 카드 화면">
+              <strong>스토리 카드</strong>
+              <em>하나의 순간을 크게 넘겨보는 방식</em>
+            </span>
+          </label>
+          <label class="visual-choice">
+            <input type="checkbox" name="visualDirection" value="video-album-view">
+            <span class="visual-box">
+              <img src="image/video-album-view.png" alt="영상 앨범 화면">
+              <strong>영상 앨범</strong>
+              <em>좋아하는 순간을 썸네일로 모아보는 방식</em>
+            </span>
+          </label>
+        </div>
+        <textarea name="visualReason" placeholder="어떤 화면이 제일 끌렸고, 어떤 화면은 별로였는지 적어줘."></textarea>
+      </section>
+
+      <section class="card">
+        <h2 class="question">“순간 추가하기” 화면은 이해돼?</h2>
+        <p class="hint">링크를 붙이고, 감정 태그와 메모를 남기고, 어느 순간과 연결할지 고르는 흐름입니다.</p>
+        <div class="visual-grid">
+          <label class="visual-choice">
+            <input type="checkbox" name="addMemoryReaction" value="easy">
+            <span class="visual-box">
+              <img src="image/add-memory-flow.png" alt="순간 추가하기 화면">
+              <strong>순간 추가하기</strong>
+              <em>영상 링크와 메모를 러브트리에 붙이는 화면</em>
+            </span>
+          </label>
+          <label class="visual-choice">
+            <input type="checkbox" name="addMemoryReaction" value="share">
+            <span class="visual-box">
+              <img src="image/shared-love-tree-view.png" alt="공유 러브트리 화면">
+              <strong>공유해서 보기</strong>
+              <em>친구나 다른 팬이 내 러브트리를 보는 화면</em>
+            </span>
+          </label>
+        </div>
+        <textarea name="addMemoryReason" placeholder="기록하는 과정이 쉬워 보이는지, 귀찮아 보이는지 말해줘."></textarea>
+      </section>
+
+      <p class="section-title">Part 4. Final</p>
+
+      <section class="card">
+        <h2 class="question">이 앱을 한 문장으로 소개한다면?</h2>
+        <p class="hint">사용자 입장에서 이해되는 말인지 확인하고 싶습니다.</p>
+        <textarea name="oneSentence" placeholder="예) 내가 좋아했던 무대와 순간을 가지처럼 이어서 저장하는 앱"></textarea>
+      </section>
+
+      <section class="card">
+        <h2 class="question">마지막으로, “이거 있으면 써볼 것 같다” 싶은 기능이 있어?</h2>
+        <p class="hint">작은 기능이어도 좋습니다. 실제 사용 이유가 될 수 있습니다.</p>
+        <textarea name="mustHave" placeholder="예) 유튜브 링크 붙이면 제목/썸네일이 자동으로 들어오면 좋겠다."></textarea>
+      </section>
+
+      <div class="actions">
+        <button type="button" class="secondary" id="copyBtn">답변 복사</button>
+        <button type="button" class="secondary" id="downloadBtn">텍스트로 저장</button>
+        <button type="button" id="previewBtn">답변 미리보기</button>
+      </div>
+
+      <section class="card">
+        <h2 class="question">답변 전달 방법</h2>
+        <p class="hint">
+          버튼을 누르면 답변이 정리됩니다. 카톡이나 메일로 보내려면 “답변 복사”를 누르면 되고,
+          파일로 남기려면 “텍스트로 저장”을 누르면 됩니다.
+        </p>
+        <div class="notice" id="notice">아직 정리된 답변이 없습니다.</div>
+        <pre class="output" id="output"></pre>
+      </section>
+    </form>
+  </main>
+
+  <script>
+    const form = document.getElementById('interviewForm');
+    const output = document.getElementById('output');
+    const notice = document.getElementById('notice');
+
+    function valuesBySelector(selector) {
+      return Array.from(form.querySelectorAll(selector))
+        .filter((input) => input.checked)
+        .map((input) => input.value);
+    }
+
+    function valueByName(name) {
+      const field = form.elements[name];
+      if (!field) return '';
+      if (field instanceof RadioNodeList) {
+        const checked = Array.from(field).find((input) => input.checked);
+        return checked ? checked.value : '';
+      }
+      return field.value || '';
+    }
+
+    function buildAnswerText() {
+      const lines = [
+        'Lovetree 정체성 인터뷰 답변',
+        `작성일: ${new Date().toLocaleString('ko-KR')}`,
+        '',
+        '[1. 정체성]',
+        `처음 느낌: ${valuesBySelector('[data-name="identity"] input').join(', ') || '-'}`,
+        `이유/다른 표현: ${valueByName('identityReason') || '-'}`,
+        `가장 중요한 중심축: ${valueByName('coreValue') || '-'}`,
+        `첫 러브트리 후보: ${valuesBySelector('[data-name="firstTree"] input').join(', ') || '-'}`,
+        `직접 적은 첫 러브트리: ${valueByName('firstTreeCustom') || '-'}`,
+        '',
+        '[2. 기능]',
+        `순간에 꼭 필요한 정보: ${valuesBySelector('[data-name="memoryFields"] input').join(', ') || '-'}`,
+        `영상 저장 방식: ${valuesBySelector('[data-name="videoSave"] input').join(', ') || '-'}`,
+        `영상 저장 의견: ${valueByName('videoSaveReason') || '-'}`,
+        `트리 vs 타임라인: ${valueByName('treeVsTimeline') || '-'}`,
+        `트리/타임라인 이유: ${valueByName('treeVsTimelineReason') || '-'}`,
+        '',
+        '[3. 화면]',
+        `끌리는 화면: ${valuesBySelector('[name="visualDirection"]').join(', ') || '-'}`,
+        `화면 의견: ${valueByName('visualReason') || '-'}`,
+        `순간 추가/공유 반응: ${valuesBySelector('[name="addMemoryReaction"]').join(', ') || '-'}`,
+        `기록 과정 의견: ${valueByName('addMemoryReason') || '-'}`,
+        '',
+        '[4. 마지막]',
+        `한 문장 소개: ${valueByName('oneSentence') || '-'}`,
+        `있으면 써볼 기능: ${valueByName('mustHave') || '-'}`
+      ];
+      return lines.join('\n');
+    }
+
+    function showOutput() {
+      const text = buildAnswerText();
+      output.textContent = text;
+      output.style.display = 'block';
+      notice.textContent = '답변이 아래에 정리되었습니다.';
+      return text;
+    }
+
+    document.getElementById('previewBtn').addEventListener('click', showOutput);
+
+    document.getElementById('copyBtn').addEventListener('click', async () => {
+      const text = showOutput();
+      try {
+        await navigator.clipboard.writeText(text);
+        notice.textContent = '답변을 클립보드에 복사했습니다.';
+      } catch (error) {
+        notice.textContent = '복사가 막힌 브라우저입니다. 아래 답변을 직접 선택해서 복사해 주세요.';
+      }
+    });
+
+    document.getElementById('downloadBtn').addEventListener('click', () => {
+      const text = showOutput();
+      const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'relovetree-concept-interview-answer.txt';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      notice.textContent = '답변 텍스트 파일을 저장했습니다.';
+    });
+  </script>
+</body>
+</html>

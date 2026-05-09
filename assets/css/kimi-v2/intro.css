@@ -1,0 +1,216 @@
+/* LoveTree Kimi-v2 Intro Page CSS - Light Theme */
+
+@import '_variables.css';
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  font-family: var(--font-family);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  overflow: hidden;
+}
+
+.intro-container {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-primary);
+}
+
+/* Background */
+.bg-gradient {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: 
+    radial-gradient(ellipse at 20% 80%, rgba(244, 114, 182, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(168, 85, 247, 0.05) 0%, transparent 40%),
+    var(--bg-primary);
+  z-index: 0;
+}
+
+/* Main Content */
+.intro-main {
+  position: relative;
+  z-index: 2;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+  gap: 40px;
+}
+
+/* Logo Section */
+.logo-section {
+  text-align: center;
+}
+
+.logo {
+  font-size: var(--text-3xl);
+  font-weight: 700;
+  background: var(--brand-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.02em;
+  margin-bottom: 8px;
+}
+
+.tagline {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  font-weight: 400;
+  letter-spacing: 0.05em;
+}
+
+/* Tree Stage */
+.tree-stage-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.tree-wrapper {
+  position: relative;
+  width: 260px;
+  height: 260px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tree-stage {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  opacity: 0;
+  transform: scale(0.8) translateY(20px);
+  transition: var(--transition-slow);
+  pointer-events: none;
+}
+
+.tree-stage.active {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+  pointer-events: auto;
+}
+
+.tree-visual {
+  width: 180px;
+  height: 200px;
+}
+
+.tree-svg {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 8px 24px rgba(168, 85, 247, 0.2));
+}
+
+.stage-label {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.tree-stage.active .stage-label {
+  color: var(--brand-purple);
+}
+
+/* Indicators */
+.stage-indicators {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--border-medium);
+  cursor: pointer;
+  transition: var(--transition-base);
+}
+
+.indicator.active {
+  width: 24px;
+  border-radius: 4px;
+  background: var(--brand-purple);
+}
+
+.indicator:hover {
+  background: var(--brand-pink);
+}
+
+/* Description */
+.description-section {
+  text-align: center;
+  max-width: 320px;
+}
+
+.main-title {
+  font-size: var(--text-xl);
+  font-weight: 700;
+  line-height: 1.4;
+  margin-bottom: 12px;
+  color: var(--text-primary);
+}
+
+.sub-description {
+  font-size: var(--text-base);
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+/* Footer */
+.intro-footer {
+  position: relative;
+  z-index: 2;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.btn-primary, .btn-secondary {
+  width: 100%;
+}
+
+/* Animations */
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+}
+
+.tree-stage.active .tree-visual {
+  animation: pulse 4s ease-in-out infinite;
+}
+
+/* Responsive */
+@media (max-height: 700px) {
+  .intro-main { gap: 24px; padding: 20px; }
+  .tree-wrapper { width: 200px; height: 200px; }
+  .tree-visual { width: 140px; height: 160px; }
+  .logo { font-size: var(--text-2xl); }
+  .main-title { font-size: var(--text-lg); }
+}
+
+@media (max-width: 360px) {
+  .tree-wrapper { width: 220px; height: 220px; }
+}
