@@ -585,14 +585,30 @@ html:not(.material-symbols-ready) .mobile-nav-toggle .material-symbols-outlined 
     }
 }
 
-@media (max-width: 480px) {
-    .user-dropdown-trigger-icon {
-        width: 42px;
-        height: 42px;
-    }
+ @media (max-width: 480px) {
+     .user-dropdown-trigger-icon {
+         width: 42px;
+         height: 42px;
+     }
 
-    .user-dropdown-menu {
-        min-width: min(260px, calc(100vw - 36px));
-        padding: 7px;
-    }
-}
+     .user-dropdown-menu {
+         min-width: min(260px, calc(100vw - 36px));
+         padding: 7px;
+     }
+ }
+
+ /* Desktop header overflow fix for wide viewports */
+ @media (min-width: 1280px) {
+     .nav-bar {
+         padding: 20px 24px;
+     }
+     .main-nav-panel {
+         gap: 16px;
+     }
+     .nav-links {
+         gap: 6px;
+     }
+     .nav-links a {
+         padding: 8px 12px; /* reduce horizontal padding from 16px to 12px */
+     }
+ }
