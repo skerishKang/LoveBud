@@ -164,3 +164,20 @@ test('browse selected hub share button delegates to action helper', () => {
   assert.doesNotMatch(previewRenderer, /data-share-tree-link="\+' \+ escapeHtml\(tree\.id\)/);
 });
 });
+
+test('browse selected hub exposes focus-stage shell without changing route helpers', () => {
+  const previewRenderer = read('js/search/search-preview-renderer.js');
+  const previewSidebarCss = read('css/search/search-preview-sidebar.css');
+  const previewCss = read('css/search/search-preview.css');
+  const actionHelper = read('js/search/search-preview-action-helper.js');
+
+  assert.match(previewRenderer, /preview-focus-title-block/);
+  assert.match(previewRenderer, /preview-focus-flow-card/);
+  assert.match(previewRenderer, /preview-focus-copy/);
+  assert.match(previewSidebarCss, /@import url\("\.\/search-preview\.css"\)/);
+  assert.match(previewCss, /Issue #907: focus-stage selected hub shell/);
+  assert.match(previewCss, /preview-sidebar\.preview-state-media \.video-container|preview-sidebar\.preview-state-media[\s\S]*?\.video-container/);
+  assert.match(previewCss, /preview-sidebar \.preview-primary-action/);
+  assert.match(actionHelper, /tree\.html\?treeId=/);
+  assert.match(actionHelper, /data-share-tree-link/);
+});
