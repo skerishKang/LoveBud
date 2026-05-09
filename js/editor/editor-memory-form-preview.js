@@ -148,7 +148,7 @@
         if (refs?.previewHint && formatted) {
             refs.previewHint.textContent = `${formatted}부터 재생돼요. 제목과 메모를 다듬어 트리에 심어 주세요.`;
         } else if (refs?.previewHint) {
-            refs.previewHint.textContent = i18n('editor_preview_hint') || '이 장면을 트리에 심기 전에 제목과 메모를 다듬어 주세요.';
+            refs.previewHint.textContent = '이 장면을 트리에 심기 전에 제목과 메모를 다듬어 주세요.';
         }
 
         if (refs?.startTimeHint) {
