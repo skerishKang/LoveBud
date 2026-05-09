@@ -119,3 +119,36 @@
         padding: 16px !important;
     }
 }
+
+/* Mobile density improvements for 375px viewport */
+@media (max-width: 375px) {
+    .preview-sidebar.preview-state-media .video-container,
+    .preview-sidebar.preview-state-thumbnail .video-container {
+        border-radius: 1.2rem;
+    }
+
+    .preview-focus-title-block {
+        padding: 1px 1px 0;
+    }
+
+    .preview-focus-title-block .preview-focus-title {
+        font-size: 1.0rem !important;
+        line-height: 1.22 !important;
+    }
+
+    .preview-focus-title-meta {
+        padding: 4px 8px !important;
+        font-size: 10.5px !important;
+        margin-top: 6px !important;
+    }
+
+    .preview-focus-flow-card {
+        padding: 12px !important;
+        min-height: 34px !important;
+    }
+
+    .preview-focus-copy {
+        font-size: 12px !important;
+        line-height: 1.4 !important;
+    }
+}
