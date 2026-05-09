@@ -82,6 +82,7 @@ image = (
         "PyJWT[crypto]==2.10.1",
         "psycopg[binary,pool]==3.2.9",
     )
+    .add_local_python_source("modal_compute")
 )
 
 web_app = FastAPI(
