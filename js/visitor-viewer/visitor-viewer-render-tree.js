@@ -47,9 +47,9 @@
             var bPalette = paletteColor(branch);
             var d = 'M50 ' + branch.startY + ' C' + branch.curveA + ' ' + (branch.startY - 8) + ', ' + branch.curveB + ' ' + (branch.endY + 8) + ', ' + branch.endX + ' ' + branch.endY;
 
-            svg += '<path d="' + d + '" stroke="rgba(113,76,60,.14)" stroke-width="' + (selected ? '4.35' : '3.05') + '" stroke-linecap="round" fill="none" opacity="' + (muted ? '0.18' : '1') + '" />';
-            svg += '<path d="' + d + '" stroke="' + bPalette.stroke + '" stroke-width="' + (selected ? '2.45' : '1.65') + '" stroke-linecap="round" fill="none" opacity="' + (muted ? '0.25' : '1') + '" />';
-            svg += '<path d="' + d + '" stroke="rgba(255,255,255,.70)" stroke-width=".48" stroke-linecap="round" fill="none" />';
+            svg += '<path d="' + d + '" stroke="rgba(113,76,60,.14)" stroke-width="' + (selected ? '5.1' : '3.65') + '" stroke-linecap="round" fill="none" opacity="' + (muted ? '0.18' : '1') + '" />';
+            svg += '<path d="' + d + '" stroke="' + bPalette.stroke + '" stroke-width="' + (selected ? '2.95' : '1.95') + '" stroke-linecap="round" fill="none" opacity="' + (muted ? '0.25' : '1') + '" />';
+            svg += '<path d="' + d + '" stroke="rgba(255,255,255,.70)" stroke-width=".62" stroke-linecap="round" fill="none" />';
             svg += '<circle cx="50" cy="' + branch.startY + '" r="' + (selected ? '1.65' : '1.18') + '" fill="' + bPalette.stroke + '" opacity="' + (muted ? '.25' : '.82') + '" />';
 
             var labelPoint = curvePoint(branch, 0.78);
@@ -82,8 +82,8 @@
             '  <div class="vv-tree-glow-bottom"></div>' +
             '  <svg class="vv-tree-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">' +
             '    <defs><filter id="trunkShadow"><feDropShadow dx="0" dy="1" stdDeviation="1" floodColor="#7c4a3f" floodOpacity="0.16" /></filter></defs>' +
-            '    <path d="M50 91 C48 78, 52 66, 50 54 C48 43, 52 32, 50 12" stroke="#9f745b" stroke-width="3.9" stroke-linecap="round" fill="none" opacity="0.34" />' +
-            '    <path d="M50 91 C48 78, 52 66, 50 54 C48 43, 52 32, 50 12" stroke="#7f5b47" stroke-width="1.55" stroke-linecap="round" fill="none" opacity="0.86" />' +
+            '    <path d="M50 91 C48 78, 52 66, 50 54 C48 43, 52 32, 50 12" stroke="#9f745b" stroke-width="5.35" stroke-linecap="round" fill="none" opacity="0.34" />' +
+            '    <path d="M50 91 C48 78, 52 66, 50 54 C48 43, 52 32, 50 12" stroke="#7f5b47" stroke-width="2.15" stroke-linecap="round" fill="none" opacity="0.86" />' +
             svg +
             '  </svg>' +
             '  <div class="vv-tree-organs">' + branchNames + mediaLeafs + rootEl + '</div>' +
@@ -109,8 +109,8 @@
         }
 
         var stemAngle = branch.side === 'left' ? -18 : 18;
-        var leafW = (branchSelected || selected) ? '64px' : '52px';
-        var leafH = (branchSelected || selected) ? '80px' : '68px';
+        var leafW = (branchSelected || selected) ? 'clamp(66px, 5vw, 88px)' : 'clamp(56px, 4vw, 74px)';
+        var leafH = (branchSelected || selected) ? 'clamp(84px, 6vw, 112px)' : 'clamp(72px, 5vw, 94px)';
         var leafShape = 'style="width:' + leafW + ';height:' + leafH + ';border-radius:54% 46% 52% 48% / 43% 58% 42% 57%;background:' + leafGrad(branch) + ';box-shadow:' + (selected ? '0 0 0 6px rgba(255,241,243,0.9),0 20px 38px rgba(80,45,39,0.18)' : (branchSelected ? '0 10px 28px rgba(97,61,38,0.2)' : '0 8px 20px rgba(97,61,38,0.10)')) + ';"';
 
         var p = paletteColorFn(branch);

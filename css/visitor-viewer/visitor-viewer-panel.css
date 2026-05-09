@@ -1,10 +1,10 @@
 .vv-panel {
-    background: rgba(255,255,255,0.80);
-    border: 1px solid rgba(251,113,133,0.06);
-    border-radius: 28px;
-    padding: 18px;
+    background: rgba(255,255,255,0.56);
+    border: 1px solid rgba(144,73,81,0.07);
+    border-radius: 24px;
+    padding: 16px;
     backdrop-filter: blur(8px);
-    box-shadow: 0 8px 28px rgba(111,70,44,0.04);
+    box-shadow: 0 10px 26px rgba(111,70,44,0.035);
 }
 
 .vv-panel-empty {
@@ -13,40 +13,40 @@
 
 .vv-panel-empty-illus {
     width: 100%;
-    height: 120px;
-    border-radius: 22px;
-    border: 2px dashed rgba(251,113,133,0.2);
-    background: linear-gradient(135deg, rgba(255,241,243,0.6), rgba(255,247,237,0.6));
-    margin-bottom: 18px;
+    height: 76px;
+    border-radius: 18px;
+    border: 1px dashed rgba(144,73,81,0.14);
+    background: linear-gradient(135deg, rgba(255,241,243,0.36), rgba(255,247,237,0.34));
+    margin-bottom: 14px;
 }
 
 .vv-panel-eyebrow {
     margin: 0 0 6px;
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.18em;
-    color: #904951;
-    opacity: 0.7;
+    color: #9a7468;
+    opacity: 0.62;
 }
 
 .vv-panel-title {
     margin: 0 0 8px;
-    font-size: 1.25rem;
+    font-size: 1.05rem;
     font-weight: 700;
     color: #3f302b;
 }
 
 .vv-panel-title-lg {
     margin: 4px 0 2px;
-    font-size: 1.2rem;
+    font-size: 1.04rem;
     font-weight: 700;
     color: #3f302b;
 }
 
 .vv-panel-desc {
     margin: 0 0 12px;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     line-height: 1.6;
     color: #9a8a82;
 }
@@ -54,13 +54,13 @@
 .vv-panel-stats {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 10px;
+    gap: 8px;
 }
 
 .vv-panel-stats div {
-    padding: 12px;
-    border-radius: 16px;
-    font-size: 12px;
+    padding: 9px;
+    border-radius: 14px;
+    font-size: 11px;
     color: #7e6b62;
     text-align: center;
 }
@@ -70,7 +70,7 @@
 
 .vv-panel-stats strong {
     display: block;
-    font-size: 1.1rem;
+    font-size: 0.95rem;
     color: #3f302b;
     margin-bottom: 2px;
 }
@@ -112,27 +112,27 @@
 }
 
 .vv-panel-caption {
-    margin-top: 10px;
-    padding: 10px 12px;
-    border-radius: 14px;
-    background: rgba(255,241,243,0.5);
-    font-size: 13px;
+    margin-top: 8px;
+    padding: 9px 10px;
+    border-radius: 13px;
+    background: rgba(255,241,243,0.34);
+    font-size: 12px;
     line-height: 1.6;
     color: #8a7a72;
 }
 
 .vv-branch-moment-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 6px;
-    margin-top: 14px;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 5px;
+    margin-top: 12px;
 }
 
 .vv-branch-moment-btn {
     aspect-ratio: 1;
-    border-radius: 14px;
-    border: 1px solid rgba(255,255,255,0.75);
-    font-size: 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.62);
+    font-size: 11px;
     font-weight: 500;
     color: #9a8a82;
     cursor: pointer;
@@ -140,20 +140,20 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 1px 4px rgba(111,70,44,0.03);
+    box-shadow: none;
     position: relative;
     overflow: hidden;
 }
 
 .vv-branch-moment-btn:hover {
     transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(111,70,44,0.06);
+    box-shadow: 0 2px 8px rgba(111,70,44,0.045);
 }
 
 .vv-branch-moment-frame {
     position: absolute;
-    inset: 3px;
-    border-radius: 10px;
+    inset: 4px;
+    border-radius: 9px;
     border: 1px solid rgba(255,255,255,0.4);
     pointer-events: none;
 }
@@ -161,21 +161,21 @@
 .vv-branch-moment-label {
     position: relative;
     z-index: 1;
-    font-size: 12px;
+    font-size: 11px;
 }
 
 .vv-branch-moment-play {
     position: absolute;
     bottom: 3px;
     right: 3px;
-    width: 12px;
-    height: 12px;
+    width: 10px;
+    height: 10px;
     border-radius: 50%;
     background: rgba(255,255,255,0.7);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 6px;
+    font-size: 5px;
     color: #a39087;
     opacity: 0.5;
     box-shadow: 0 1px 3px rgba(0,0,0,0.05);
@@ -185,7 +185,7 @@
     margin-top: 10px;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 3px;
 }
 
 .vv-branch-moment-item {
@@ -193,10 +193,10 @@
     justify-content: space-between;
     align-items: center;
     width: 100%;
-    padding: 8px 12px;
-    border-radius: 12px;
+    padding: 7px 10px;
+    border-radius: 11px;
     background: rgba(255,255,255,0.5);
-    font-size: 13px;
+    font-size: 12px;
     color: #8a7a72;
     cursor: pointer;
     transition: all 0.2s;
@@ -208,14 +208,14 @@
 .vv-branch-moment-open { font-size: 12px; color: #a39087; }
 
 .vv-moment-media {
-    margin-top: 16px;
+    margin-top: 12px;
 }
 
 .vv-moment-media-inner {
     position: relative;
     aspect-ratio: 16 / 9;
-    border-radius: 24px;
-    border: 1px solid rgba(255,255,255,0.8);
+    border-radius: 18px;
+    border: 1px solid rgba(255,255,255,0.68);
     overflow: hidden;
     display: flex;
     align-items: center;
@@ -224,8 +224,8 @@
 
 .vv-moment-media-border {
     position: absolute;
-    inset: 14px;
-    border-radius: 20px;
+    inset: 10px;
+    border-radius: 15px;
     border: 1px solid rgba(255,255,255,0.5);
 }
 
@@ -271,25 +271,25 @@
 }
 
 .vv-moment-title {
-    margin: 14px 0 6px;
-    font-size: 1.5rem;
+    margin: 12px 0 5px;
+    font-size: 1.18rem;
     font-weight: 700;
     color: #3f302b;
 }
 
 .vv-moment-caption {
     margin: 0;
-    font-size: 14px;
-    line-height: 1.7;
+    font-size: 13px;
+    line-height: 1.62;
     color: #6b5850;
 }
 
 .vv-moment-memo {
-    margin-top: 16px;
-    padding: 12px;
-    border-radius: 18px;
-    background: rgba(255,241,243,0.55);
-    border: 1px solid rgba(251,113,133,0.1);
+    margin-top: 12px;
+    padding: 10px;
+    border-radius: 15px;
+    background: rgba(255,241,243,0.36);
+    border: 1px solid rgba(144,73,81,0.07);
 }
 
 .vv-moment-memo-label {

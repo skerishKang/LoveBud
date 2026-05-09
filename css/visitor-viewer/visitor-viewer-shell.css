@@ -5,6 +5,33 @@
     color: #3f302b;
 }
 
+.viewer-page-shell {
+    background:
+        radial-gradient(circle at 50% 4%, rgba(255, 238, 231, 0.72), transparent 34%),
+        radial-gradient(circle at 12% 42%, rgba(244, 248, 238, 0.62), transparent 34%),
+        linear-gradient(180deg, #fffaf8 0%, #fbf5ed 100%);
+}
+
+.viewer-layout {
+    display: block;
+    width: min(100%, 1800px);
+    max-width: none;
+    margin: 0 auto;
+    padding: clamp(16px, 2vw, 30px) clamp(18px, 3vw, 48px) 48px;
+}
+
+.viewer-tree-shell {
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+}
+
+.viewer-tree-container {
+    width: 100%;
+}
+
 .visitor-viewer-shell {
     width: min(100%, 1320px);
     margin: 0 auto;
@@ -18,13 +45,14 @@
     align-items: flex-end;
     justify-content: space-between;
     gap: 14px;
-    margin-bottom: 18px;
-    padding: 18px 22px;
-    border: 1px solid rgba(255,255,255,0.7);
-    border-radius: 28px;
-    background: rgba(255,255,255,0.55);
-    box-shadow: 0 2px 12px rgba(111,70,44,0.05);
-    backdrop-filter: blur(8px);
+    max-width: 1480px;
+    margin: 0 auto 12px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
 }
 
 .vv-eyebrow {
@@ -39,7 +67,7 @@
 
 .vv-title {
     margin: 0;
-    font-size: clamp(1.6rem, 3.5vw, 2.6rem);
+    font-size: clamp(1.72rem, 2.2vw, 2.82rem);
     font-weight: 700;
     letter-spacing: -0.02em;
     color: #3f302b;
@@ -65,35 +93,39 @@
 
 .vv-viewer-layout {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
-    gap: 24px;
-    align-items: start;
+    grid-template-columns: minmax(760px, 1fr) clamp(248px, 17vw, 300px);
+    gap: clamp(18px, 1.6vw, 28px);
+    align-items: stretch;
+    min-height: clamp(720px, calc(100vh - 178px), 900px);
 }
 
 .vv-tree-container {
     position: relative;
-    min-height: 860px;
-    border: 1px solid rgba(144,73,81,0.12);
-    border-radius: 34px;
+    min-height: clamp(720px, calc(100vh - 178px), 900px);
+    border: 0;
+    border-radius: 38px;
     overflow: hidden;
-    box-shadow: 0 4px 32px rgba(111,70,44,0.05);
+    box-shadow:
+        0 32px 80px rgba(111,70,44,0.10),
+        0 0 0 1px rgba(255,255,255,0.70) inset;
     transition: box-shadow 0.2s;
 }
 
 .vv-tree-canvas {
     position: relative;
     width: 100%;
-    min-height: 860px;
-    background: linear-gradient(180deg, #fffdf9, #fffaf1 50%, #fdf6ed);
-    background-image: radial-gradient(#e8cfc0 1px, transparent 1px);
-    background-size: 18px 18px;
+    min-height: clamp(720px, calc(100vh - 178px), 900px);
+    background:
+        radial-gradient(circle at 50% 18%, rgba(255, 240, 234, 0.76), transparent 32%),
+        radial-gradient(circle at 50% 72%, rgba(244, 248, 238, 0.56), transparent 34%),
+        linear-gradient(180deg, #fffdf9, #fff9ef 52%, #fdf4e9);
     overflow: hidden;
 }
 
 .vv-tree-bg-pattern {
     position: absolute;
     inset: 0;
-    opacity: 0.45;
+    opacity: 0.36;
     background-image: radial-gradient(#e8cfc0 1px, transparent 1px);
     background-size: 18px 18px;
 }
@@ -152,12 +184,15 @@
 }
 
 .vv-action-dock {
-    margin-bottom: 18px;
-    padding: 12px 18px;
-    border-radius: 22px;
-    border: 1px solid rgba(255,255,255,0.7);
-    background: rgba(255,255,255,0.45);
-    backdrop-filter: blur(8px);
+    display: flex;
+    justify-content: flex-end;
+    max-width: 1480px;
+    margin: 0 auto 12px;
+    padding: 0 10px;
+    border-radius: 0;
+    border: 0;
+    background: transparent;
+    backdrop-filter: none;
 }
 
 .vv-action-group {
@@ -213,25 +248,53 @@
 
 .vv-panel-host {
     min-width: 0;
+    align-self: start;
+    position: sticky;
+    top: 88px;
 }
 
 .vv-panel {
-    background: rgba(255,255,255,0.85);
-    border: 1px solid rgba(251,113,133,0.06);
-    border-radius: 28px;
-    padding: 22px;
+    background: rgba(255,255,255,0.56);
+    border: 1px solid rgba(144,73,81,0.07);
+    border-radius: 24px;
+    padding: 16px;
     backdrop-filter: blur(8px);
-    box-shadow: 0 8px 30px rgba(111,70,44,0.05);
+    box-shadow: 0 10px 26px rgba(111,70,44,0.035);
+}
+
+@media (min-width: 1500px) {
+    .vv-viewer-layout {
+        grid-template-columns: minmax(1080px, 1fr) clamp(240px, 15vw, 288px);
+    }
+
+    .vv-tree-container,
+    .vv-tree-canvas {
+        min-height: clamp(760px, calc(100vh - 168px), 940px);
+    }
 }
 
 @media (max-width: 900px) {
+    .viewer-layout { padding: 14px; }
     .visitor-viewer-shell { padding: 16px; }
+    .vv-header { margin-bottom: 10px; padding: 0 4px; }
+    .vv-title { font-size: clamp(1.42rem, 7vw, 2rem); }
     .vv-viewer-layout { display: block; }
-    .vv-tree-container { min-height: 600px; border-radius: 24px; }
-    .vv-tree-canvas { min-height: 600px; }
+    .vv-tree-container { min-height: min(660px, 72vh); border-radius: 26px; }
+    .vv-tree-canvas { min-height: min(660px, 72vh); }
     .vv-panel-host { margin-top: 16px; }
     .vv-panel { box-shadow: 0 4px 16px rgba(111,70,44,0.03); border-radius: 20px; }
     .vv-mobile-note { display: block; }
     .vv-action-group { gap: 6px; }
     .vv-action-btn { padding: 6px 12px; font-size: 12px; }
+}
+
+@media (max-width: 375px) {
+    .viewer-layout { padding: 12px 10px 24px; }
+    .vv-tree-container,
+    .vv-tree-canvas {
+        min-height: 620px;
+    }
+    .vv-panel {
+        padding: 14px;
+    }
 }
