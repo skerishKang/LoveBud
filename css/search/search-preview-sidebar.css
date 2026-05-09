@@ -1,3 +1,5 @@
+@import url("./search-preview.css");
+
 .preview-sidebar {
     position: sticky;
     top: 96px;

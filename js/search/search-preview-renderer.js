@@ -272,7 +272,7 @@
 
         if (_dom.previewContainer) {
             _dom.previewContainer.innerHTML = `
-                <div style="width:100%;height:100%;border-radius:1rem;background:linear-gradient(135deg, rgba(255,248,249,0.95), rgba(255,255,255,0.98));display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;color:var(--on-surface-variant);">
+                <div class="preview-focus-loading-card" style="width:100%;height:100%;border-radius:1rem;background:linear-gradient(135deg, rgba(255,248,249,0.95), rgba(255,255,255,0.98));display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;color:var(--on-surface-variant);">
                     <span class="material-symbols-outlined" style="font-size:34px;color:var(--primary);margin-bottom:10px;animation:spin 1s linear infinite;">sync</span>
                     <div style="font-size:14px;font-weight:800;color:var(--on-surface);margin-bottom:8px;">${safeTreeTitle}</div>
                     <p style="margin:0;font-size:13px;line-height:1.6;">${escapeHtml(getSearchCopy('search.previewLoadingLead', '이 트리의 대표 순간과 이어진 감정을 불러오는 중이에요.', 'Loading the featured moment and connected feelings of this tree.'))}</p>
@@ -281,12 +281,12 @@
         }
 
         if (_dom.previewTitle) {
-            _dom.previewTitle.innerHTML = `<div style="font-size:1.05rem;font-weight:800;color:var(--on-surface);">${safeTreeTitle}</div>`;
+            _dom.previewTitle.innerHTML = `<div class="preview-focus-title" style="font-size:1.05rem;font-weight:800;color:var(--on-surface);">${safeTreeTitle}</div>`;
         }
 
         if (_dom.previewDesc) {
             _dom.previewDesc.innerHTML = `
-                <div style="background:var(--surface-container-low);padding:20px;border-radius:1rem;">
+                <div class="preview-focus-flow-card preview-focus-flow-card-loading" style="background:var(--surface-container-low);padding:20px;border-radius:1rem;">
                     ${renderSectionHeading('auto_stories', getSearchCopy('search.previewLoadingHeading', '감상 허브를 여는 중', 'Opening the preview hub'))}
                     <div style="font-size:14px;line-height:1.7;color:var(--on-surface-variant);">
                         ${escapeHtml(getSearchCopy('search.previewLoadingBody', '선택한 트리의 대표 순간과 이어진 감정을 이곳에서 먼저 보여드릴게요.', 'The featured moment and connected feelings of this tree will appear here first.'))}
@@ -398,7 +398,7 @@
             if (!hasMemories) {
                 previewState = 'no-moments';
                 _dom.previewContainer.innerHTML = `
-                    <div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;background:linear-gradient(135deg,var(--surface-container-low),white);border-radius:1rem;color:var(--on-surface-variant);">
+                    <div class="preview-focus-empty-card" style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;background:linear-gradient(135deg,var(--surface-container-low),white);border-radius:1rem;color:var(--on-surface-variant);">
                         <span class="material-symbols-outlined" style="font-size:36px;color:var(--primary);margin-bottom:12px;">psychiatry</span>
                         <div style="font-size:14px;font-weight:800;color:var(--on-surface);margin-bottom:8px;">${safeTreeTitle}</div>
                         <p style="margin:0;font-size:13px;line-height:1.6;">
@@ -449,9 +449,9 @@
                 : escapeHtml(getSearchCopy('search.previewStatsPending', '첫 순간을 기다리는 중', 'Waiting for the first moment'));
 
             _dom.previewTitle.innerHTML = `
-                <div style="margin-bottom:12px;">
-                    <div style="font-size:1.18rem;font-weight:900;color:var(--on-surface);line-height:1.25;overflow-wrap:anywhere;">${safeTreeTitle}</div>
-                    <div style="font-size:12px;color:var(--on-surface-variant);margin-top:2px;">${titleMeta}</div>
+                <div class="preview-focus-title-block" style="margin-bottom:12px;">
+                    <div class="preview-focus-title" style="font-size:1.18rem;font-weight:900;color:var(--on-surface);line-height:1.25;overflow-wrap:anywhere;">${safeTreeTitle}</div>
+                    <div class="preview-focus-title-meta" style="font-size:12px;color:var(--on-surface-variant);margin-top:2px;">${titleMeta}</div>
                 </div>
             `;
         }
@@ -470,7 +470,7 @@
                 );
 
                 _dom.previewDesc.innerHTML = `
-                    <div style="background:var(--surface-container-low);padding:20px;border-radius:1rem;margin-bottom:16px;">
+                    <div class="preview-focus-flow-card preview-focus-flow-card-empty" style="background:var(--surface-container-low);padding:20px;border-radius:1rem;margin-bottom:16px;">
                         ${renderSectionHeading('route', getSearchCopy('search.previewTimelineHeading', '이 트리는 어디서 시작될까요?', 'Where will this tree begin?'))}
                         <div style="font-size:14px;line-height:1.7;color:var(--on-surface-variant);">
                             ${escapeHtml(getSearchCopy('search.previewTimelineEmpty', '아직 시작 순간이 남아 있지 않아 흐름이 비어 있어요.', 'The flow is still empty because the starting moment has not been saved yet.'))}<br>
@@ -478,7 +478,7 @@
                         </div>
                     </div>
 
-                    <div style="font-size:14px;color:var(--on-surface-variant);line-height:1.6;padding:0 4px;">
+                    <div class="preview-focus-copy" style="font-size:14px;color:var(--on-surface-variant);line-height:1.6;padding:0 4px;">
                         ${getPreviewSummaryCopy(tree, memories)}
                         <span style="color:var(--primary);font-weight:700;">${noRecordsLine}</span>
                         ${renderInfoCallout('info', getSearchCopy('search.previewNewTreeInfo', '이제 막 감상이 시작될 공개 러브트리예요.', 'This public LoveTree is just about to begin.'))}
@@ -498,7 +498,7 @@
 
                 _dom.previewDesc.hidden = false;
                 _dom.previewDesc.innerHTML = `
-                    <div style="background:var(--surface-container-low);padding:20px;border-radius:1rem;margin-bottom:16px;">
+                    <div class="preview-focus-flow-card" style="background:var(--surface-container-low);padding:20px;border-radius:1rem;margin-bottom:16px;">
                         ${renderSectionHeading('route', getSearchCopy('search.previewTimelineHeading', '대표 순간에서 이어진 흐름', 'Flow connected from the featured moment'))}
                         <div class="preview-flow-list">
                             ${pathStages}
@@ -507,7 +507,7 @@
                         ${flowToggle ? `<div class="preview-flow-controls">${flowToggle}</div>` : ''}
                     </div>
 
-                    <div style="font-size:14px;color:var(--on-surface-variant);line-height:1.6;padding:0 4px;">
+                    <div class="preview-focus-copy" style="font-size:14px;color:var(--on-surface-variant);line-height:1.6;padding:0 4px;">
                         ${getPreviewSummaryCopy(tree, memories)}
                         ${renderInfoCallout('favorite', `${firstMomentLabel}에서 시작해 ${lastMomentLabel}까지 이어진 감정의 흐름이에요.`)}
                         ${renderInfoCallout('touch_app', getSearchCopy('search.previewJourneyCta', '이곳에서 대표 순간과 이어진 감정을 훑어보고, 마음이 머무는 순간으로 들어가 보세요.', 'Scan the featured moment and connected feelings here, then open the moment that draws you in.'), 'primary')}
