@@ -361,6 +361,12 @@ function createEditorMemoryForm(deps) {
     }
 
     const addMemoryFromForm = async () => {
+        if (!payloadHelper || typeof payloadHelper.buildMemoryPayload !== 'function') {
+            console.error('[editor] memory form payload helper is not loaded');
+            showToast(i18n('save_failed') || '저장 준비에 실패했어요. 페이지를 새로고침해 주세요.', 'error');
+            return;
+        }
+
         const payloadResult = payloadHelper.buildMemoryPayload({
             refs,
             currentInputMode,
