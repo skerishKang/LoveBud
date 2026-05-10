@@ -11,6 +11,9 @@ from modal_compute.db import (
     get_db_connection,
     run_db_with_retry,
 )
+from modal_compute.owner_reads import (
+    fetch_owner_tree,
+)
 from modal_compute.validation import (
     _to_isoformat,
     estimate_stage,
