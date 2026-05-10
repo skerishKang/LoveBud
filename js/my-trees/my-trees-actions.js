@@ -142,19 +142,21 @@
       }
 
       createTreeModalState.backdrop.classList.remove('show');
-      createTreeModalState.backdrop.setAttribute('aria-hidden', 'true');
-      document.body.style.overflow = '';
       setSubmitting(false, i18n);
       setError('');
       if (createTreeModalState.escapeHandler) {
         document.removeEventListener('keydown', createTreeModalState.escapeHandler);
         createTreeModalState.escapeHandler = null;
       }
+      // Move focus before setting aria-hidden to avoid
+      // "Blocked aria-hidden on an element because its descendant retained focus"
       var restoreTarget = createTreeModalState.lastFocusedEl;
       createTreeModalState.lastFocusedEl = null;
       if (restoreTarget && typeof restoreTarget.focus === 'function') {
-        setTimeout(function() { restoreTarget.focus(); }, 0);
+        restoreTarget.focus();
       }
+      createTreeModalState.backdrop.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
       cleanupAndResolve(payload);
     }
 
