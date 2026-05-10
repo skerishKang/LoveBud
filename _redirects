@@ -1,11 +1,36 @@
 # LoveBud runtime marker:
-# Cloudflare Pages static rewrite aliases — KEEP FOR NOW.
+# Cloudflare Pages static route canonicalization — KEEP FOR NOW.
 # This file does not define /api/* routing.
 # Do not remove during Netlify legacy cleanup without explicit CTO approval.
 
-/intro.html /pages/intro.html 200
-/login.html /pages/login.html 200
-/search.html /pages/search.html 200
-/detail.html /pages/detail.html 200
-/editor.html /pages/editor.html 200
-/my-trees.html /pages/my-trees.html 200
+# Canonical page routes are extensionless under /pages/<name>.
+# Redirect direct .html and .html/ entries to prevent directory-like asset resolution.
+/intro.html /pages/intro 301
+/intro.html/ /pages/intro 301
+/login.html /pages/login 301
+/login.html/ /pages/login 301
+/search.html /pages/search 301
+/search.html/ /pages/search 301
+/detail.html /pages/detail 301
+/detail.html/ /pages/detail 301
+/editor.html /pages/editor 301
+/editor.html/ /pages/editor 301
+/my-trees.html /pages/my-trees 301
+/my-trees.html/ /pages/my-trees 301
+
+/pages/intro.html /pages/intro 301
+/pages/intro.html/ /pages/intro 301
+/pages/login.html /pages/login 301
+/pages/login.html/ /pages/login 301
+/pages/search.html /pages/search 301
+/pages/search.html/ /pages/search 301
+/pages/detail.html /pages/detail 301
+/pages/detail.html/ /pages/detail 301
+/pages/editor.html /pages/editor 301
+/pages/editor.html/ /pages/editor 301
+/pages/my-trees.html /pages/my-trees 301
+/pages/my-trees.html/ /pages/my-trees 301
+/pages/tree.html /pages/tree 301
+/pages/tree.html/ /pages/tree 301
+/tree.html /pages/tree 301
+/tree.html/ /pages/tree 301
