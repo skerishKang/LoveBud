@@ -106,6 +106,8 @@ Object.assign(window.i18nEditor, {
     noteSaveHint: { ko: 'Ctrl+Enter로 저장할 수 있어요.', en: 'Press Ctrl+Enter to save.' },
     memoryUpdateSaved: { ko: '순간을 수정했어요.', en: 'Moment updated.' },
     memoryUpdateFailed: { ko: '순간을 수정하지 못했어요.', en: 'Could not update the moment.' },
+    editor_source_url_label: { ko: '영상 또는 출처 링크', en: 'Video or source link' },
+    editor_source_url_hint: { ko: 'YouTube 링크를 바꾸면 저장 후 대표 이미지도 함께 갱신됩니다.', en: 'Changing the YouTube link will also update the featured image after saving.' },
     sidebar_flow_summary_empty_short: { ko: '첫 순간 준비 중', en: 'Ready for first moment' },
     sidebar_flow_summary_selected_short: { ko: '선택한 순간을 보고 있어요', en: 'Viewing the selected moment' },
     sidebar_canvas_hint_selected: { ko: '선택한 순간을 중심으로 트리를 살펴보세요', en: 'Explore the tree around the selected moment' },
