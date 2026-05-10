@@ -156,23 +156,56 @@ function createEditorMemoryActions(deps) {
         try {
             if (window.apiClient && typeof window.apiClient.updateMemory === 'function') {
                 const savedMemory = await window.apiClient.updateMemory(currentEditingMemory.id, payload);
+                const savedPatch = savedMemory && typeof savedMemory === 'object' ? savedMemory : {};
+                
+                // Priority: server response > payload > current memory
+                // This ensures sourceUrl/thumbnail from server normalization is used
+                const prioritizedPatch = {
+                    ...currentEditingMemory,
+                    ...payload,
+                    ...savedPatch
+                };
+                
+                // Explicitly ensure source fields come from server response
+                if (savedPatch.sourceUrl !== undefined) {
+                    prioritizedPatch.sourceUrl = savedPatch.sourceUrl;
+                }
+                if (savedPatch.thumbnail !== undefined) {
+                    prioritizedPatch.thumbnail = savedPatch.thumbnail;
+                }
+                if (savedPatch.sourceType !== undefined) {
+                    prioritizedPatch.sourceType = savedPatch.sourceType;
+                }
+                
+                const nextEditingMemory = prioritizedPatch;
 
                 const nextMemories = getTreeMemories().slice();
                 const memIndex = nextMemories.findIndex((m) => m.id === currentEditingMemory.id);
                 if (memIndex >= 0) {
                     nextMemories[memIndex] = {
                         ...nextMemories[memIndex],
-                        ...payload,
-                        ...(savedMemory && typeof savedMemory === 'object' ? savedMemory : {})
+                        ...nextEditingMemory
                     };
                     setTreeMemories(nextMemories);
                 }
 
-                const nextEditingMemory = {
-                    ...currentEditingMemory,
-                    ...payload,
-                    ...(savedMemory && typeof savedMemory === 'object' ? savedMemory : {})
-                };
+                const currentTreeData = getCurrentTreeData();
+                if (currentTreeData && Array.isArray(currentTreeData.memories)) {
+                    const dataIndex = currentTreeData.memories.findIndex((m) => m.id === currentEditingMemory.id);
+                    if (dataIndex !== -1) {
+                        currentTreeData.memories[dataIndex] = {
+                            ...currentTreeData.memories[dataIndex],
+                            ...nextEditingMemory
+                        };
+                    }
+                }
+
+                if (window.LoveBudCache) {
+                    const treeId = (currentTreeData && currentTreeData.id) || nextEditingMemory.treeId || 'default';
+                    const cacheKey = 'memories_' + treeId;
+                    window.LoveBudCache.set(cacheKey, nextMemories, 2 * 60 * 1000);
+                }
+
                 setCurrentEditingMemory(nextEditingMemory);
                 exitEditMode();
                 updateDetailPanel(nextEditingMemory);
