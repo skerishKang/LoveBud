@@ -3,10 +3,10 @@
  * Issue #923 — First slice of read-only LoveTree viewer route
  *
  * Verifies:
- * - Viewer route (pages/tree.html) exists
+ * - Viewer page file (pages/tree.html) exists
  * - Viewer JS does not expose Editor/Builder controls
  * - Viewer does not load Editor entry script
- * - Browse "트리 열기" targets tree.html (not editor or detail)
+ * - Browse "트리 열기" targets extensionless tree route (not editor or detail)
  */
 
 const test = require('node:test');
@@ -41,12 +41,27 @@ test('tree viewer route does not reference Editor/Builder page', () => {
     assert.ok(noEditorPage, 'tree.html must not load any Editor module');
 });
 
-test('Browse tree-open CTA targets tree.html with treeId param', () => {
+test('Browse tree-open CTA targets extensionless tree route with treeId param', () => {
     const helper = fs.readFileSync('js/search/search-preview-action-helper.js', 'utf8');
-    const hasTreeUrl = helper.includes('tree.html?treeId=');
-    assert.ok(hasTreeUrl, 'search-preview-action-helper.js must use tree.html?treeId= for tree-open CTA');
+    const hasTreeUrl = helper.includes('tree?treeId=');
+    assert.ok(hasTreeUrl, 'search-preview-action-helper.js must use tree?treeId= for tree-open CTA');
+    assert.ok(!helper.includes('tree.html?treeId='), 'search-preview-action-helper.js must not use .html tree route for tree-open CTA');
     const noDetailUrl = !helper.includes('detail.html?tree=');
     assert.ok(noDetailUrl, 'search-preview-action-helper.js must not use detail.html?tree= for tree-open CTA');
+});
+
+test('Browse card renderer targets extensionless tree route with treeId param', () => {
+    const renderer = fs.readFileSync('js/search/search-card-renderer.js', 'utf8');
+    assert.ok(renderer.includes('tree?treeId='), 'search-card-renderer.js must use tree?treeId= for card tree-open link');
+    assert.ok(!renderer.includes('tree.html?treeId='), 'search-card-renderer.js must not use .html tree route for card tree-open link');
+});
+
+test('My Trees owner routes target extensionless editor route with treeId param', () => {
+    const ui = fs.readFileSync('js/my-trees/my-trees-ui.js', 'utf8');
+    const actions = fs.readFileSync('js/my-trees/my-trees-actions.js', 'utf8');
+    const source = ui + '\n' + actions;
+    assert.ok(source.includes("'editor?treeId='"), 'My Trees must use editor?treeId= for owner editor navigation');
+    assert.ok(!source.includes("'editor.html?treeId='"), 'My Trees must not use .html editor route for owner editor navigation');
 });
 
 test('tree viewer loads Canvas v4 modules', () => {

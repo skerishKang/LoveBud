@@ -2,7 +2,7 @@
  * LoveBud Search Copy UI
  *
  * Adds a lightweight "copy public tree to my LoveTrees" action to the Search Preview panel.
- * Loaded from i18n-search.js only on pages/search.html to avoid touching the large
+ * Loaded from i18n-search.js only on pages/search to avoid touching the large
  * Search renderer/orchestrator files while local git verification is unavailable.
  */
 (function () {
@@ -48,13 +48,13 @@
 
     function buildCopiedTreeHref(treeId) {
         const basePath = getBasePath();
-        return `${basePath}editor.html?treeId=${encodeURIComponent(treeId)}`;
+        return `${basePath}editor?treeId=${encodeURIComponent(treeId)}`;
     }
 
     function buildLoginHref(treeId) {
         const basePath = getBasePath();
-        const redirect = `search.html?tree=${encodeURIComponent(treeId)}`;
-        return `${basePath}login.html?redirect=${encodeURIComponent(redirect)}`;
+        const redirect = `search?tree=${encodeURIComponent(treeId)}`;
+        return `${basePath}login?redirect=${encodeURIComponent(redirect)}`;
     }
 
     function hasAuthSession() {

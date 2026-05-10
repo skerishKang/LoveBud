@@ -135,7 +135,7 @@
      */
     function renderOpenTreeButton(tree) {
         if (!tree?.id) return '';
-        const href = `${getBasePath()}tree.html?treeId=${encodeURIComponent(tree.id)}`;
+        const href = `${getBasePath()}tree?treeId=${encodeURIComponent(tree.id)}`;
         const label = getSearchCopy(
             'search.previewOpenTreeCta',
             '트리 열기',

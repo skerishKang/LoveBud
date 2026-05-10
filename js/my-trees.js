@@ -5,7 +5,7 @@
  * Responsibilities:
  * - Auth guard: redirect to login if not authenticated
  * - Load tree list via window.apiClient.getTrees()
- * - Render tree cards (clickable → editor.html?treeId=xxx)
+ * - Render tree cards (clickable → editor?treeId=xxx)
  * - Empty state with "새 러브트리 만들기" CTA
  * - "새 러브트리 만들기" → createTree() → redirect to editor
  */
@@ -98,7 +98,7 @@
 
   function getLoginRedirectUrl() {
     var basePath = window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
-    return basePath + 'login.html?redirect=' + basePath + 'my-trees.html';
+    return basePath + 'login?redirect=' + basePath + 'my-trees';
   }
 
   function redirectToLogin() {
