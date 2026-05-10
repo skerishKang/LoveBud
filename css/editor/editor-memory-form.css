@@ -188,31 +188,41 @@
 .editor-video-segment-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas:
+        "startLabel endLabel"
+        "startInput endInput"
+        "help help";
     column-gap: 10px;
     row-gap: 7px;
     align-items: start;
-    padding: 9px;
+    padding: 10px;
     border: 1px solid rgba(144,73,81,0.08);
     border-radius: 16px;
     background: rgba(255, 250, 247, 0.52);
 }
 
 .editor-video-segment-field {
-    display: grid !important;
-    grid-template-rows: 26px 42px;
-    row-gap: 6px;
-    min-width: 0;
-    height: 94px;
-    min-height: 94px;
-    padding: 10px;
-    border: 1px solid rgba(144,73,81,0.07);
-    border-radius: 14px;
-    background: rgba(255,255,255,0.50);
-    box-sizing: border-box;
+    display: contents !important;
+}
+
+.editor-video-segment-field-start .editor-form-label {
+    grid-area: startLabel;
+}
+
+.editor-video-segment-field-start .editor-form-input {
+    grid-area: startInput;
+}
+
+.editor-video-segment-field-end .editor-form-label {
+    grid-area: endLabel;
+}
+
+.editor-video-segment-field-end .editor-form-input {
+    grid-area: endInput;
 }
 
 .editor-video-segment-field .editor-form-label {
-    align-self: start;
+    align-self: end;
     justify-self: start;
     margin: 0;
 }
@@ -227,7 +237,7 @@
 }
 
 .editor-video-segment-help {
-    grid-column: 1 / -1;
+    grid-area: help;
     margin: 0;
     padding: 6px 8px;
     border-radius: 12px;
@@ -270,12 +280,12 @@
 
     .editor-video-segment-grid {
         grid-template-columns: 1fr;
-        padding: 9px;
-    }
-
-    .editor-video-segment-field {
-        height: 92px;
-        min-height: 92px;
+        grid-template-areas:
+            "startLabel"
+            "startInput"
+            "endLabel"
+            "endInput"
+            "help";
         padding: 9px;
     }
 
