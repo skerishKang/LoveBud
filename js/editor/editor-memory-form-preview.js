@@ -149,9 +149,7 @@
         }
 
         if (refs?.startTimeHint) {
-            refs.startTimeHint.textContent = formatted
-                ? `${formatted}부터 재생돼요.`
-                : '시작시간 포함 링크는 자동 입력돼요.';
+            refs.startTimeHint.textContent = '순간의 시작과 끝 시간을 입력하세요.';
         }
     }
 
