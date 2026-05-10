@@ -231,6 +231,22 @@ def update_owner_memory(owner_id: str, memory_id: str, payload: dict[str, Any]) 
         updates.append("memo = %s")
         params.append(validate_optional_string(payload.get("memo"), 5000))
 
+    if "source" in payload:
+        updates.append("source = %s")
+        params.append(validate_optional_string(payload.get("source"), 200))
+
+    if "sourceUrl" in payload:
+        updates.append("source_url = %s")
+        params.append(validate_optional_string(payload.get("sourceUrl"), 1000))
+
+    if "sourceType" in payload:
+        updates.append("source_type = %s")
+        params.append(validate_optional_string(payload.get("sourceType"), 50) or "youtube")
+
+    if "thumbnail" in payload:
+        updates.append("thumbnail = %s")
+        params.append(validate_optional_string(payload.get("thumbnail"), 500))
+
     if "emotionTags" in payload:
         emotion_tags = payload.get("emotionTags") if isinstance(payload.get("emotionTags"), list) else []
         if len(emotion_tags) > 20:
