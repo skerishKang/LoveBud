@@ -157,11 +157,27 @@ function createEditorMemoryActions(deps) {
             if (window.apiClient && typeof window.apiClient.updateMemory === 'function') {
                 const savedMemory = await window.apiClient.updateMemory(currentEditingMemory.id, payload);
                 const savedPatch = savedMemory && typeof savedMemory === 'object' ? savedMemory : {};
-                const nextEditingMemory = {
+                
+                // Priority: server response > payload > current memory
+                // This ensures sourceUrl/thumbnail from server normalization is used
+                const prioritizedPatch = {
                     ...currentEditingMemory,
                     ...payload,
                     ...savedPatch
                 };
+                
+                // Explicitly ensure source fields come from server response
+                if (savedPatch.sourceUrl !== undefined) {
+                    prioritizedPatch.sourceUrl = savedPatch.sourceUrl;
+                }
+                if (savedPatch.thumbnail !== undefined) {
+                    prioritizedPatch.thumbnail = savedPatch.thumbnail;
+                }
+                if (savedPatch.sourceType !== undefined) {
+                    prioritizedPatch.sourceType = savedPatch.sourceType;
+                }
+                
+                const nextEditingMemory = prioritizedPatch;
 
                 const nextMemories = getTreeMemories().slice();
                 const memIndex = nextMemories.findIndex((m) => m.id === currentEditingMemory.id);
