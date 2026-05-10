@@ -14,11 +14,11 @@
     }
 
     function buildEditorRedirectTarget() {
-        return getEditorBasePath() + 'editor.html' + (window.location.search || '');
+        return getEditorBasePath() + 'editor' + (window.location.search || '');
     }
 
     function getMyTreesHref() {
-        return getEditorBasePath() + 'my-trees.html';
+        return getEditorBasePath() + 'my-trees';
     }
 
     function createInlineShowToastFallback() {
@@ -47,7 +47,7 @@
             var nextDelay = Number(delayMs || 0);
             var loginUrl =
                 basePathResolver() +
-                'login.html?redirect=' +
+                'login?redirect=' +
                 encodeURIComponent(redirectTargetResolver());
 
             if (nextDelay > 0) {

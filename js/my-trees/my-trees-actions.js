@@ -379,9 +379,9 @@
 
       var treeId = newTree?.id;
       if (treeId) {
-        window.location.href = 'editor.html?treeId=' + encodeURIComponent(treeId);
+        window.location.href = 'editor?treeId=' + encodeURIComponent(treeId);
       } else {
-        window.location.href = 'editor.html';
+        window.location.href = 'editor';
       }
     } catch (e) {
       console.error('[my-trees-actions] createTree failed:', e);

@@ -32,7 +32,7 @@ function loadShareActions(options = {}) {
         URL,
         Promise,
         window: {
-            location: { href: options.href || 'https://lovebud.pages.dev/pages/tree.html?treeId=public-route-ref#selected' },
+            location: { href: options.href || 'https://lovebud.pages.dev/pages/tree?treeId=public-route-ref#selected' },
             LoveBudVisitorViewerData: options.viewerData || {
                 tree: { title: '공개 러브트리' }
             },
@@ -157,7 +157,7 @@ test('platform intent builder uses public viewer route shape', () => {
 
     assert.equal(target.origin + target.pathname, 'https://twitter.com/intent/tweet');
     assert.equal(shared.origin, 'https://lovebud.pages.dev');
-    assert.equal(shared.pathname, '/pages/tree.html');
+    assert.equal(shared.pathname, '/pages/tree');
     assert.equal(shared.hash, '');
     assert.ok(shared.searchParams.has('treeId'), 'shared URL keeps current public viewer route parameter');
 });
@@ -168,9 +168,9 @@ test('platform intents are limited to route URL and title text', () => {
     const email = Share.getPlatformIntent('email').url;
 
     assert.equal(facebook.origin + facebook.pathname, 'https://www.facebook.com/sharer/sharer.php');
-    assert.equal(new URL(facebook.searchParams.get('u')).pathname, '/pages/tree.html');
+    assert.equal(new URL(facebook.searchParams.get('u')).pathname, '/pages/tree');
     assert.match(email, /^mailto:\?subject=/);
-    assert.ok(email.includes(encodeURIComponent('/pages/tree.html')), 'email body should include public viewer route');
+    assert.ok(email.includes(encodeURIComponent('/pages/tree')), 'email body should include public viewer route');
 });
 
 test('unsupported platform falls back to canonical link copy', async () => {
@@ -178,7 +178,7 @@ test('unsupported platform falls back to canonical link copy', async () => {
     const result = await Share.shareToPlatform(null, 'unsupported');
 
     assert.equal(result.success, true);
-    assert.equal(state.copied, 'https://lovebud.pages.dev/pages/tree.html?treeId=public-route-ref');
+    assert.equal(state.copied, 'https://lovebud.pages.dev/pages/tree?treeId=public-route-ref');
 });
 
 test('existing link copy is preserved', async () => {
@@ -186,7 +186,7 @@ test('existing link copy is preserved', async () => {
     const result = await Share.copyLink();
 
     assert.equal(result.success, true);
-    assert.equal(state.copied, 'https://lovebud.pages.dev/pages/tree.html?treeId=public-route-ref');
+    assert.equal(state.copied, 'https://lovebud.pages.dev/pages/tree?treeId=public-route-ref');
 });
 
 test('native share behavior is preserved when available', async () => {
@@ -200,7 +200,7 @@ test('native share behavior is preserved when available', async () => {
 
     assert.equal(result.success, true);
     assert.equal(nativePayload.title, '공개 러브트리');
-    assert.equal(nativePayload.url, 'https://lovebud.pages.dev/pages/tree.html?treeId=public-route-ref');
+    assert.equal(nativePayload.url, 'https://lovebud.pages.dev/pages/tree?treeId=public-route-ref');
 });
 
 test('tree image card payload uses public-safe viewer content only', () => {
@@ -239,7 +239,7 @@ test('tree image card export falls back to canonical link copy when canvas is un
 
     assert.equal(result.success, true);
     assert.equal(result.message, '링크를 복사했어요');
-    assert.equal(state.copied, 'https://lovebud.pages.dev/pages/tree.html?treeId=public-route-ref');
+    assert.equal(state.copied, 'https://lovebud.pages.dev/pages/tree?treeId=public-route-ref');
 });
 
 test('tree image card export can save a client-side png without copying a link', async () => {
