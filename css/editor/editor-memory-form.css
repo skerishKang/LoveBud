@@ -78,11 +78,11 @@
     position: absolute;
     left: 50%;
     top: clamp(18px, 4vh, 30px);
-    bottom: clamp(18px, 4vh, 30px);
+    bottom: auto;
     transform: translateX(-50%);
     width: min(620px, calc(100% - 32px));
     max-width: 620px;
-    max-height: none;
+    max-height: calc(100% - 36px);
     padding: 0;
     overflow: hidden;
     z-index: 30;
@@ -96,11 +96,11 @@
 
 .editor-memory-form-body {
     display: flex;
-    flex: 1 1 auto;
+    flex: 0 1 auto;
     flex-direction: column;
-    gap: 10px;
+    gap: 9px;
     min-height: 0;
-    padding: 20px 24px 12px;
+    padding: 18px 24px 10px;
     overflow-y: auto;
     overscroll-behavior: contain;
     scrollbar-width: thin;
@@ -189,8 +189,12 @@
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     column-gap: 12px;
-    row-gap: 7px;
+    row-gap: 8px;
     align-items: start;
+    padding: 10px;
+    border: 1px solid rgba(144,73,81,0.08);
+    border-radius: 16px;
+    background: rgba(255, 250, 247, 0.62);
 }
 
 .editor-video-segment-field {
@@ -212,10 +216,14 @@
 .editor-video-segment-help {
     grid-column: 1 / -1;
     margin: 0;
+    padding: 1px 2px 0;
+    color: rgba(75, 64, 57, 0.52);
+    font-weight: 600;
 }
 
 .editor-memory-form-modal .memory-link-preview.is-enhanced {
-    max-height: 58px;
+    max-height: 54px;
+    margin-top: 0 !important;
 }
 
 .editor-memory-form-modal .editor-form-actions {
@@ -233,17 +241,19 @@
 @media (max-width: 560px) {
     #addMemoryForm.editor-memory-form-modal.is-open {
         top: 10px;
-        bottom: 10px;
+        bottom: auto;
         width: calc(100% - 20px);
+        max-height: calc(100% - 20px);
         border-radius: 22px;
     }
 
     .editor-memory-form-body {
-        padding: 16px 14px 10px;
+        padding: 16px 14px 9px;
     }
 
     .editor-video-segment-grid {
         grid-template-columns: 1fr;
+        padding: 9px;
     }
 
     .editor-memory-form-modal .editor-form-actions {
