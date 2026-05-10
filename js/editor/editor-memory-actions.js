@@ -156,23 +156,40 @@ function createEditorMemoryActions(deps) {
         try {
             if (window.apiClient && typeof window.apiClient.updateMemory === 'function') {
                 const savedMemory = await window.apiClient.updateMemory(currentEditingMemory.id, payload);
+                const savedPatch = savedMemory && typeof savedMemory === 'object' ? savedMemory : {};
+                const nextEditingMemory = {
+                    ...currentEditingMemory,
+                    ...payload,
+                    ...savedPatch
+                };
 
                 const nextMemories = getTreeMemories().slice();
                 const memIndex = nextMemories.findIndex((m) => m.id === currentEditingMemory.id);
                 if (memIndex >= 0) {
                     nextMemories[memIndex] = {
                         ...nextMemories[memIndex],
-                        ...payload,
-                        ...(savedMemory && typeof savedMemory === 'object' ? savedMemory : {})
+                        ...nextEditingMemory
                     };
                     setTreeMemories(nextMemories);
                 }
 
-                const nextEditingMemory = {
-                    ...currentEditingMemory,
-                    ...payload,
-                    ...(savedMemory && typeof savedMemory === 'object' ? savedMemory : {})
-                };
+                const currentTreeData = getCurrentTreeData();
+                if (currentTreeData && Array.isArray(currentTreeData.memories)) {
+                    const dataIndex = currentTreeData.memories.findIndex((m) => m.id === currentEditingMemory.id);
+                    if (dataIndex !== -1) {
+                        currentTreeData.memories[dataIndex] = {
+                            ...currentTreeData.memories[dataIndex],
+                            ...nextEditingMemory
+                        };
+                    }
+                }
+
+                if (window.LoveBudCache) {
+                    const treeId = (currentTreeData && currentTreeData.id) || nextEditingMemory.treeId || 'default';
+                    const cacheKey = 'memories_' + treeId;
+                    window.LoveBudCache.set(cacheKey, nextMemories, 2 * 60 * 1000);
+                }
+
                 setCurrentEditingMemory(nextEditingMemory);
                 exitEditMode();
                 updateDetailPanel(nextEditingMemory);
