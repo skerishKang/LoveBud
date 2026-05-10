@@ -12,7 +12,7 @@
         var link = target && target.closest && target.closest('a[href]');
         if (!link) return false;
         var href = link.getAttribute('href') || '';
-        return href.indexOf('search.html') !== -1;
+        return /(?:^|\/)search(?:\.html)?(?:[?#]|$)/.test(href);
     }
 
     function prefetchBrowseTrees() {

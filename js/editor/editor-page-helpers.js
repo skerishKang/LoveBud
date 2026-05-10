@@ -14,14 +14,14 @@
   }
 
   function buildEditorRedirectTarget() {
-    return getEditorBasePath() + 'editor.html' + (window.location.search || '');
+    return getEditorBasePath() + 'editor' + (window.location.search || '');
   }
 
   function redirectToEditorLogin(delayMs) {
     var nextDelay = Number(delayMs || 0);
     var loginUrl =
       getEditorBasePath() +
-      'login.html?redirect=' +
+      'login?redirect=' +
       encodeURIComponent(buildEditorRedirectTarget());
 
     if (nextDelay > 0) {
@@ -35,7 +35,7 @@
   }
 
   function getMyTreesHref() {
-    return getEditorBasePath() + 'my-trees.html';
+    return getEditorBasePath() + 'my-trees';
   }
 
   function renderTreeLoadError(options) {

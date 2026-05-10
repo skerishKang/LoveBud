@@ -92,7 +92,7 @@ document.addEventListener('DOMContentLoaded', () => {
         window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/');
 
     const buildEditorRedirectTarget = shellHelpers.buildEditorRedirectTarget || (() =>
-        getEditorBasePath() + 'editor.html' + (window.location.search || ''));
+        getEditorBasePath() + 'editor' + (window.location.search || ''));
 
     const createInlineRedirectToEditorLoginFallback = entryFallbacks.createInlineRedirectToEditorLoginFallback;
 
@@ -126,7 +126,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return selectedNodeId;
     });
 
-    const getMyTreesHref = editorPageHelpers.getMyTreesHref || (() => getEditorBasePath() + 'my-trees.html');
+    const getMyTreesHref = editorPageHelpers.getMyTreesHref || (() => getEditorBasePath() + 'my-trees');
     const createInlineMediaResolversFallbacks = resolverFallbacks.createInlineMediaResolversFallbacks || (() => ({}));
 
     const escapeHtml = editorHelpers.escapeHtml || ((value) => String(value ?? '')
