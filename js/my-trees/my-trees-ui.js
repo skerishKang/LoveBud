@@ -513,9 +513,10 @@
       grid = document.createElement('div');
       grid.className = 'trees-grid';
       grid.id = 'trees-grid';
-      container.innerHTML = '';
       container.appendChild(grid);
     }
+    // Sort change or re-render: clear old cards before appending new ones
+    grid.innerHTML = '';
 
     // Issue #616: Render first batch only
     renderNextBatch(grid, buildTreeCardFn, setState, stateEnum);
