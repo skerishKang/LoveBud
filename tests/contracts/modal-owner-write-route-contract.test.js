@@ -555,6 +555,30 @@ test('update_owner_memory only allows specific update fields', () => {
 
   assert.match(
     normalized,
+    /source.*in.*payload/i,
+    'update_owner_memory must check source in payload'
+  );
+
+  assert.match(
+    normalized,
+    /sourceurl.*in.*payload/i,
+    'update_owner_memory must check sourceUrl in payload'
+  );
+
+  assert.match(
+    normalized,
+    /sourcetype.*in.*payload/i,
+    'update_owner_memory must check sourceType in payload'
+  );
+
+  assert.match(
+    normalized,
+    /thumbnail.*in.*payload/i,
+    'update_owner_memory must check thumbnail in payload'
+  );
+
+  assert.match(
+    normalized,
     /emotiontags.*in.*payload/i,
     'update_owner_memory must check emotionTags in payload'
   );
@@ -563,6 +587,30 @@ test('update_owner_memory only allows specific update fields', () => {
     normalized,
     /visibility.*in.*payload/i,
     'update_owner_memory must check visibility in payload'
+  );
+});
+
+test('update_owner_memory maps source URL payload fields to DB columns', () => {
+  const source = readOwnerWrites();
+  const body = getFunctionBody(source, 'update_owner_memory');
+  const normalized = compact(body);
+
+  assert.match(
+    normalized,
+    /updates\.append\("source_url=%s"\).*validate_optional_string\(payload\.get\("sourceurl"\),1000\)/i,
+    'update_owner_memory must map sourceUrl to source_url with the source URL limit'
+  );
+
+  assert.match(
+    normalized,
+    /updates\.append\("source_type=%s"\).*validate_optional_string\(payload\.get\("sourcetype"\),50\)/i,
+    'update_owner_memory must map sourceType to source_type with the source type limit'
+  );
+
+  assert.match(
+    normalized,
+    /updates\.append\("thumbnail=%s"\).*validate_optional_string\(payload\.get\("thumbnail"\),500\)/i,
+    'update_owner_memory must map thumbnail with the thumbnail limit'
   );
 });
 
