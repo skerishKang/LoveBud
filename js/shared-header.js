@@ -75,20 +75,20 @@
         // root (index.html)
         'root': {
             home: { textKey: 'nav.home', href: 'index.html', active: true },
-            intro: { textKey: 'nav.intro', href: 'pages/intro.html' },
-            search: { textKey: 'nav.search', href: 'pages/search.html' },
-            myTrees: { textKey: 'nav.myTrees', href: 'pages/my-trees.html', highlight: true },
-            settings: { textKey: 'nav.settings', href: 'pages/settings.html' },
+            intro: { textKey: 'nav.intro', href: 'pages/intro' },
+            search: { textKey: 'nav.search', href: 'pages/search' },
+            myTrees: { textKey: 'nav.myTrees', href: 'pages/my-trees', highlight: true },
+            settings: { textKey: 'nav.settings', href: 'pages/settings' },
             editor: null // root에서는 에디터 숨김
         },
         // pages 폴더 내 페이지
         'pages': {
             home: { textKey: 'nav.home', href: '../index.html' },
-            intro: { textKey: 'nav.intro', href: 'intro.html' },
-            search: { textKey: 'nav.search', href: 'search.html' },
-            myTrees: { textKey: 'nav.myTrees', href: 'my-trees.html', highlight: true },
-            settings: { textKey: 'nav.settings', href: 'settings.html' },
-            editor: { textKey: 'nav.editor', href: 'editor.html' }
+            intro: { textKey: 'nav.intro', href: 'intro' },
+            search: { textKey: 'nav.search', href: 'search' },
+            myTrees: { textKey: 'nav.myTrees', href: 'my-trees', highlight: true },
+            settings: { textKey: 'nav.settings', href: 'settings' },
+            editor: { textKey: 'nav.editor', href: 'editor' }
         }
     };
 
@@ -101,7 +101,14 @@
         'my-trees.html': 'myTrees',
         'editor.html': 'editor',
         'login.html': null, // login은 메뉴 active 없음
-        'settings.html': 'settings'
+        'settings.html': 'settings',
+        'intro': 'intro',
+        'search': 'search',
+        'detail': 'search',
+        'my-trees': 'myTrees',
+        'editor': 'editor',
+        'login': null,
+        'settings': 'settings'
     };
 
     // 현재 페이지 감지
@@ -132,7 +139,8 @@
     }
 
     function isEditorPage() {
-        return getCurrentPage() === 'editor.html';
+        var currentPage = getCurrentPage();
+        return currentPage === 'editor.html' || currentPage === 'editor';
     }
 
     // Confirmed session helper - 헤더 즉시 렌더링용
@@ -189,12 +197,12 @@
 
         // 현재 페이지가 설정 페이지면 내 트리로 링크, 아니면 설정으로 링크
         var currentPage = getCurrentPage();
-        var myTreesHref = getContextType() === 'root' ? 'pages/my-trees.html' : './my-trees.html';
-        var settingsHref = appendSettingsReturnTo(getContextType() === 'root' ? 'pages/settings.html' : './settings.html');
-        var avatarHref = currentPage === 'settings.html'
+        var myTreesHref = getContextType() === 'root' ? 'pages/my-trees' : './my-trees';
+        var settingsHref = appendSettingsReturnTo(getContextType() === 'root' ? 'pages/settings' : './settings');
+        var avatarHref = currentPage === 'settings.html' || currentPage === 'settings'
             ? myTreesHref
             : settingsHref;
-        var avatarLabel = currentPage === 'settings.html' ? '내 러브트리로 돌아가기' : '설정 열기';
+        var avatarLabel = currentPage === 'settings.html' || currentPage === 'settings' ? '내 러브트리로 돌아가기' : '설정 열기';
 
         return [
             '<a href="' + avatarHref + '" title="' + avatarLabel + '" class="cached-avatar-link">',
@@ -208,11 +216,12 @@
 
     // 로그인 페이지인지 확인
     function isLoginPage() {
-        return getCurrentPage() === 'login.html';
+        var currentPage = getCurrentPage();
+        return currentPage === 'login.html' || currentPage === 'login';
     }
 
     function getLoginRedirectHref(targetHref) {
-        var loginHref = getContextType() === 'root' ? 'pages/login.html' : 'login.html';
+        var loginHref = getContextType() === 'root' ? 'pages/login' : 'login';
         return loginHref + '?redirect=' + encodeURIComponent(targetHref);
     }
 

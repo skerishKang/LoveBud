@@ -26,7 +26,7 @@
 
     /**
      * 페이지 URL 생성
-     * @param {string} pageName - 예: 'detail.html', 'search.html'
+     * @param {string} pageName - 예: 'detail', 'search'
      * @returns {string} 완성된 경로
      */
     function resolvePageUrl(pageName) {

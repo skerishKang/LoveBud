@@ -13,7 +13,7 @@ window.LoveBudEditorShellHelpers = {
     },
 
     buildEditorRedirectTarget: function() {
-        return this.getEditorBasePath() + 'editor.html' + (window.location.search || '');
+        return this.getEditorBasePath() + 'editor' + (window.location.search || '');
     },
 
     // Toast fallback

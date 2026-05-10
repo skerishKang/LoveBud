@@ -384,7 +384,7 @@
       if (typeof onNavigate === 'function') {
         onNavigate(normalizedTree);
       } else {
-        window.location.href = 'editor.html?treeId=' + encodeURIComponent(normalizedTree.id);
+        window.location.href = 'editor?treeId=' + encodeURIComponent(normalizedTree.id);
       }
     };
 
