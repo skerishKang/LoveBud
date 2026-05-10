@@ -546,7 +546,7 @@
                 const failedText = getSearchCopy('search.previewShareLinkFailed', '복사하지 못했어요', 'Copy failed');
 
                 try {
-                    const url = new URL('/pages/search.html', window.location.origin);
+                    const url = new URL('/pages/search', window.location.origin);
                     url.searchParams.set('tree', treeId);
                     await navigator.clipboard.writeText(url.toString());
                     labelSpan.textContent = copiedText;
