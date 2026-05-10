@@ -373,73 +373,79 @@
         overlays.forEach(overlay => overlay.style.display = 'none');
     }
 
-    function updatePreview(tree) {
-        if (!_dom) {
-            console.warn('[LoveBudSearchPreviewRenderer] DOM not initialized');
-            return;
-        }
+     function updatePreview(tree) {
+         if (!_dom) {
+             console.warn('[LoveBudSearchPreviewRenderer] DOM not initialized');
+             return;
+         }
 
-        currentPreviewTree = tree || null;
-        const memories = Array.isArray(tree.memories) ? tree.memories : [];
-        const treeKey = getPreviewTreeKey(tree);
-        const isFlowExpanded = !!treeKey && expandedFlowTreeKey === treeKey;
-        const firstMem = memories[0];
-        const hasMemories = memories.length > 0;
-        const displayMemoryCount = Number(tree?.memoryCount || memories.length || 0);
-        const previewStats = getPreviewStatsElement();
-        const titleHelper = getSearchTitleHelper();
-        const previewDisplayTitle = titleHelper?.getBrowseDisplayTitle
-            ? titleHelper.getBrowseDisplayTitle(tree)
-            : (String(tree?.title || '').trim() || getDefaultTreeName());
-        const safeTreeTitle = escapeHtml(previewDisplayTitle);
-        let previewState = 'empty';
+         currentPreviewTree = tree || null;
+         const memories = Array.isArray(tree.memories) ? tree.memories : [];
+         const treeKey = getPreviewTreeKey(tree);
+         const isFlowExpanded = !!treeKey && expandedFlowTreeKey === treeKey;
+         const firstMem = memories[0];
+         const hasMemories = memories.length > 0;
+         const displayMemoryCount = Number(tree?.memoryCount || memories.length || 0);
+         const previewStats = getPreviewStatsElement();
+         const titleHelper = getSearchTitleHelper();
+         const previewDisplayTitle = titleHelper?.getBrowseDisplayTitle
+             ? titleHelper.getBrowseDisplayTitle(tree)
+             : (String(tree?.title || '').trim() || getDefaultTreeName());
+         const safeTreeTitle = escapeHtml(previewDisplayTitle);
+         let previewState = 'empty';
 
-        if (_dom.previewContainer) {
-            if (!hasMemories) {
-                previewState = 'no-moments';
-                _dom.previewContainer.innerHTML = `
-                    <div class="preview-focus-empty-card" style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;background:linear-gradient(135deg,var(--surface-container-low),white);border-radius:1rem;color:var(--on-surface-variant);">
-                        <span class="material-symbols-outlined" style="font-size:36px;color:var(--primary);margin-bottom:12px;">psychiatry</span>
-                        <div style="font-size:14px;font-weight:800;color:var(--on-surface);margin-bottom:8px;">${safeTreeTitle}</div>
-                        <p style="margin:0;font-size:13px;line-height:1.6;">
-                            ${escapeHtml(getSearchCopy('search.previewNoMomentTitle', '아직 대표 순간이 또렷하게 남아 있지 않아요.', 'There is no clearly featured moment yet.'))}<br>
-                            ${escapeHtml(getSearchCopy('search.previewNoMomentBody', '시작 순간이 더해지면 이 감상 허브에서 가장 먼저 열어볼 수 있어요.', 'Once the starting moment is added, you will be able to open it here first.'))}
-                        </p>
-                    </div>
-                `;
-            } else {
-                const mediaMem = getPreviewMediaMemory(memories);
-                const safeSourceUrl = sanitizeUrl(mediaMem?.sourceUrl || '');
-                const safeThumbnail = sanitizeUrl(mediaMem?.thumbnail || '');
-                const safeMediaMemTitle = escapeHtml(getMomentLabel(mediaMem || firstMem));
-                previewState = safeSourceUrl ? 'media' : 'thumbnail';
+         // Temporary performance optimization: hide eager video loads
+         const hideEagerVideo = window.LoveBudHideEagerVideo === true;
 
-                const mediaHelper = window.LoveBudSearchPreviewMediaHelper;
-                if (mediaHelper?.renderPreviewIframe && safeSourceUrl) {
-                    _dom.previewContainer.innerHTML = mediaHelper.renderPreviewIframe(safeSourceUrl, safeTreeTitle, safeMediaMemTitle);
-                } else {
-                    const iframeSrc = safeSourceUrl
-                        ? safeSourceUrl + (safeSourceUrl.includes('?') ? '&' : '?') + 'autoplay=0&mute=1'
-                        : '';
-                    _dom.previewContainer.innerHTML = iframeSrc ? `
-                        <div class="preview-media-frame preview-media-frame-iframe" style="position:relative;width:100%;height:100%;border-radius:1rem;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.12);">
-                            <iframe width="100%" height="100%"
-                                src="${iframeSrc}"
-                                title="${safeTreeTitle}" frameborder="0"
-                                allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                allowfullscreen style="position:absolute;top:0;left:0;"></iframe>
-                            <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top,rgba(0,0,0,0.8),transparent);padding:40px 20px 20px;color:white;text-align:center;">
-                                <div style="font-size:14px;font-weight:700;margin-bottom:8px;opacity:0.9;">${escapeHtml(getSearchCopy('search.previewStartFromFirstMoment', '대표 순간부터 감상하기', 'Start from the featured moment'))}</div>
-                                <div style="font-size:12px;opacity:0.7;">${safeMediaMemTitle}</div>
-                            </div>
-                        </div>
-                    ` : (safeThumbnail
-                        ? renderPreviewThumbnailMedia(safeThumbnail, safeMediaMemTitle, safeTreeTitle)
-                        : renderSelectedTreeMediaFallback(safeTreeTitle, displayMemoryCount));
-                }
-            }
-            setPreviewState(previewState);
-        }
+         if (_dom.previewContainer) {
+             if (!hasMemories) {
+                 previewState = 'no-moments';
+                 _dom.previewContainer.innerHTML = `
+                     <div class="preview-focus-empty-card" style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;background:linear-gradient(135deg,var(--surface-container-low),white);border-radius:1rem;color:var(--on-surface-variant);">
+                         <span class="material-symbols-outlined" style="font-size:36px;color:var(--primary);margin-bottom:12px;">psychiatry</span>
+                         <div style="font-size:14px;font-weight:800;color:var(--on-surface);margin-bottom:8px;">${safeTreeTitle}</div>
+                         <p style="margin:0;font-size:13px;line-height:1.6;">
+                             ${escapeHtml(getSearchCopy('search.previewNoMomentTitle', '아직 대표 순간이 또렷하게 남아 있지 않아요.', 'There is no clearly featured moment yet.'))}<br>
+                             ${escapeHtml(getSearchCopy('search.previewNoMomentBody', '시작 순간이 더해지면 이 감상 허브에서 가장 먼저 열어볼 수 있어요.', 'Once the starting moment is added, you will be able to open it here first.'))}
+                         </p>
+                     </div>
+                 `;
+             } else {
+                 const mediaMem = getPreviewMediaMemory(memories);
+                 const safeSourceUrl = sanitizeUrl(mediaMem?.sourceUrl || '');
+                 const safeThumbnail = sanitizeUrl(mediaMem?.thumbnail || '');
+                 const safeMediaMemTitle = escapeHtml(getMomentLabel(mediaMem || firstMem));
+                 previewState = safeSourceUrl ? 'media' : 'thumbnail';
+
+                  const mediaHelper = window.LoveBudSearchPreviewMediaHelper;
+
+                  // When hiding eager video, skip iframe rendering and show thumbnail/fallback instead
+                 if (mediaHelper?.renderPreviewIframe && safeSourceUrl && !hideEagerVideo) {
+                     _dom.previewContainer.innerHTML = mediaHelper.renderPreviewIframe(safeSourceUrl, safeTreeTitle, safeMediaMemTitle);
+                 } else {
+                     // Show thumbnail or fallback (video is temporarily hidden)
+                     const iframeSrc = safeSourceUrl && !hideEagerVideo
+                         ? safeSourceUrl + (safeSourceUrl.includes('?') ? '&' : '?') + 'autoplay=0&mute=1'
+                         : '';
+                     _dom.previewContainer.innerHTML = iframeSrc && !hideEagerVideo ? `
+                         <div class="preview-media-frame preview-media-frame-iframe" style="position:relative;width:100%;height:100%;border-radius:1rem;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.12);">
+                             <iframe width="100%" height="100%"
+                                 src="${iframeSrc}"
+                                 title="${safeTreeTitle}" frameborder="0"
+                                 allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                 allowfullscreen style="position:absolute;top:0;left:0;"></iframe>
+                             <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top,rgba(0,0,0,0.8),transparent);padding:40px 20px 20px;color:white;text-align:center;">
+                                 <div style="font-size:14px;font-weight:700;margin-bottom:8px;opacity:0.9;">${escapeHtml(getSearchCopy('search.previewStartFromFirstMoment', '대표 순간부터 감상하기', 'Start from the featured moment'))}</div>
+                                 <div style="font-size:12px;opacity:0.7;">${safeMediaMemTitle}</div>
+                             </div>
+                         </div>
+                     ` : (safeThumbnail
+                         ? renderPreviewThumbnailMedia(safeThumbnail, safeMediaMemTitle, safeTreeTitle)
+                         : renderSelectedTreeMediaFallback(safeTreeTitle, displayMemoryCount));
+                 }
+             }
+             setPreviewState(previewState);
+         }
 
         if (_dom.previewTitle) {
             const safeTimeRange = escapeHtml(String(tree?.timeRange || getSearchCopy('search.previewUnknownRange', '아직 흐름이 또렷하지 않아요', 'The flow is not clear yet')).trim());
