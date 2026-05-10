@@ -1,7 +1,7 @@
 /**
  * LoveBud Search Title Helper
  * v20260421-2
- * 
+ *
  * Shared helper for browse/search title formatting.
  * Used by: search-card-renderer.js, search-preview-renderer.js
  */
@@ -94,13 +94,16 @@
         return '한 사람의 입덕 러브트리';
     }
 
-    window.LoveBudSearchTitleHelper = {
-        formatShortDate,
-        sanitizeBrowseLabel,
-        cleanMomentTitle,
-        getThemeLabel,
-        getPrimaryBrowseTag,
-        getFirstMomentLabel,
-        getBrowseDisplayTitle
-    };
-})();
+     window.LoveBudSearchTitleHelper = {
+         formatShortDate,
+         sanitizeBrowseLabel,
+         cleanMomentTitle,
+         getThemeLabel,
+         getPrimaryBrowseTag,
+         getFirstMomentLabel,
+         getBrowseDisplayTitle
+     };
+
+     // Temporary performance optimization: hide eager video/player loads
+     window.LoveBudHideEagerVideo = true;
+ })();

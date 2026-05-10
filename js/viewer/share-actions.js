@@ -289,12 +289,15 @@
         }
     }
 
-    window.LoveBudShareActions = {
-        copyLink: copyLink,
-        nativeShare: nativeShare,
-        getPlatformIntent: getPlatformIntent,
-        shareToPlatform: shareToPlatform,
-        getTreeCardPayload: getTreeCardPayload,
-        exportTreeImageCard: exportTreeImageCard
-    };
-})();
+     window.LoveBudShareActions = {
+         copyLink: copyLink,
+         nativeShare: nativeShare,
+         getPlatformIntent: getPlatformIntent,
+         shareToPlatform: shareToPlatform,
+         getTreeCardPayload: getTreeCardPayload,
+         exportTreeImageCard: exportTreeImageCard
+     };
+
+     // Temporary performance optimization: hide eager video/player loads
+     window.LoveBudHideEagerVideo = true;
+ })();

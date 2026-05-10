@@ -121,7 +121,7 @@
             // Use public tree preview from Browse data pattern
             // We'll fetch the tree's public memories via community endpoint
             const memories = await loadPublicMemories(treeId);
-            
+
             if (!memories || memories.length === 0) {
                 renderEmpty();
                 return;
@@ -279,9 +279,31 @@
     function renderPreview() {
         hide(SEL.previewEmpty);
         show(SEL.previewContent);
-        // If no memory selected yet, select first
+        // If no memory selected yet, select first (unless eager video is hidden)
+        const hideEagerVideo = window.LoveBudHideEagerVideo === true;
         if (!selectedMemoryId && currentMemories.length > 0) {
-            selectMemory(currentMemories[0].id);
+            // When hiding eager video, don't auto-select first memory on page load
+            // User must manually select a moment to view media
+            if (!hideEagerVideo) {
+                selectMemory(currentMemories[0].id);
+            } else {
+                // Show placeholder instead of auto-playing first video
+                renderPreviewPlaceholder();
+            }
+        }
+    }
+
+    function renderPreviewPlaceholder() {
+        // Show a placeholder message that user should select a moment
+        const container = resolveElement(SEL.previewMedia);
+        if (container) {
+            container.innerHTML = `
+                <div class="preview-media-placeholder" style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;background:linear-gradient(135deg,var(--surface-container-low),white);border-radius:1rem;color:var(--on-surface-variant);">
+                    <span class="material-symbols-outlined" style="font-size:36px;color:var(--primary);margin-bottom:12px;">play_circle</span>
+                    <div style="font-size:14px;font-weight:800;color:var(--on-surface);margin-bottom:8px;">순간 선택하기</div>
+                    <p style="margin:0;font-size:13px;line-height:1.6;">왼쪽 목록에서 순간을 선택하면 영상이 재생됩니다.</p>
+                </div>
+            `;
         }
     }
 
@@ -331,7 +353,7 @@
         if (quoteEl) quoteEl.textContent = memory.emotionMemo || '';
         if (contentEl) {
             // raw diary content is not exposed; show placeholder if empty
-            contentEl.innerHTML = memory.diaryContent 
+            contentEl.innerHTML = memory.diaryContent
                 ? escapeHtml(memory.diaryContent).replace(/\n/g, '<br>')
                 : '';
         }
