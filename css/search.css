@@ -19,4 +19,5 @@
 @import url("./search/search-preview-sidebar.css");
 @import url("./search/search-preview-scroll-fix.css");
 @import url("./search/search-preview-media-cleanup.css");
+@import url("./search/search-preview-media-no-overlays.css");
 @import url("./search/search-responsive.css");
