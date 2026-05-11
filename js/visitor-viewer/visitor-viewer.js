@@ -156,7 +156,7 @@
             '  </div>' +
             '</div>' +
             '<div class="vv-viewer-layout"><div class="vv-tree-container"></div></div>' +
-            '<div class="vv-mobile-note">모바일에서는 오른쪽 패널이 bottom sheet로 내려갈 수 있는 구조입니다.</div>';
+            '<div class="vv-mobile-note">모바일에서는 패널이 화면 아래로 쌓이는 구조입니다.</div>';
     }
 
     document.addEventListener('DOMContentLoaded', function() { init('visitorViewerContainer'); });
