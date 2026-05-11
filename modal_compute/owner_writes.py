@@ -296,7 +296,8 @@ def update_owner_memory(owner_id: str, memory_id: str, payload: dict[str, Any]) 
 def delete_owner_memory(owner_id: str, memory_id: str) -> dict[str, Any]:
     safe_memory_id = validate_required_uuid(memory_id, "memoryId")
     memory = require_memory_owner(safe_memory_id, owner_id)
-    tree_id = str(memory["tree_id"])
+    normalized = normalize_memory_row(memory)
+    tree_id = normalized["treeId"]
 
     with get_db_connection() as conn:
         with conn.cursor() as cur:
@@ -323,7 +324,7 @@ def delete_owner_memory(owner_id: str, memory_id: str) -> dict[str, Any]:
 
     if not row:
         raise HTTPException(status_code=404, detail="Memory not found")
-    return {"deleted": True, "id": str(row["id"])}
+    return {"deleted": True, "id": str(row["id"]), "treeId": normalized["treeId"]}
 
 
 def fork_public_tree(owner_id: str, source_tree_id: str) -> dict[str, Any]:
