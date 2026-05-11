@@ -39,7 +39,7 @@
             const isPublic = visibility === 'public';
 
             if (treeTitleEl) {
-                treeTitleEl.textContent = resolveTreeTitleText(currentTreeData?.title);
+                treeTitleEl.textContent = resolveTreeTitleText(i18n, currentTreeData?.title);
             }
             if (visibilityEl) {
                 visibilityEl.textContent = isPublic
