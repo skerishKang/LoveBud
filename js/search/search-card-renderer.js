@@ -1,6 +1,6 @@
 /**
  * LoveBud Search Card Renderer
- * v20260503-618
+ * v20260512-1049
  * 
  * Rendering layer: tree cards, empty states.
  * DOM-agnostic - returns HTML strings.
@@ -124,11 +124,6 @@
         return raw;
     }
 
-    function getDisplayTimeRange(timeRange) {
-        const raw = String(timeRange || '').trim();
-        return raw || '방금 공개됨';
-    }
-
     function getDisplayMemoryCount(memoryCount) {
         const count = Number(memoryCount || 0);
         return Number.isFinite(count) && count > 0 ? count : 0;
@@ -161,35 +156,8 @@
         `;
     }
 
-    function renderTreeFlowBridge(tree) {
-        const memoryCount = getDisplayMemoryCount(tree?.memoryCount);
-        const nodeCount = Math.max(1, Math.min(memoryCount || 1, 5));
-        const flowNodes = Array.from({ length: nodeCount }, (_, index) => {
-            const isFirst = index === 0;
-            const isLast = index === nodeCount - 1;
-            const nodeClass = [
-                'tree-card-flow-node',
-                isFirst ? 'tree-card-flow-node-root' : '',
-                isLast && nodeCount > 1 ? 'tree-card-flow-node-end' : ''
-            ].filter(Boolean).join(' ');
-            return `<span class="${nodeClass}"></span>`;
-        }).join('');
-        const label = memoryCount > 0
-            ? `${memoryCount}개의 순간이 이어진 러브트리 흐름`
-            : '이어질 순간을 기다리는 러브트리 흐름';
-
-        return `
-            <div class="tree-card-flow-bridge tree-card-flow-count-${nodeCount}" role="img" aria-label="${escapeHtml(label)}">
-                <span class="tree-card-flow-line"></span>
-                ${flowNodes}
-            </div>
-        `;
-    }
-
     function renderMediaFallback(tree, titleText) {
         const safeTitle = escapeHtml(titleText || '러브트리');
-        const treeStage = tree?.stage || 'empty';
-        const stageIcon = getTreeIcon(treeStage);
         return `
             <div class="tree-card-media-fallback">
                 <div class="fallback-title">${safeTitle}</div>
@@ -281,7 +249,6 @@
                  <div class="tree-card-body">
                      <div class="tree-title">${safeTitle}</div>
                      <p class="${subtitleClass}">${escapeHtml(softMoodLine)}</p>
-                     ${renderTreeFlowBridge(tree)}
                      <div class="tree-meta-row">
                          <div class="tree-meta-left">
                              <span class="tree-meta-chip">
@@ -451,5 +418,5 @@
         }
     };
 
-    console.log('[LoveBudSearchCardRenderer] Search card renderer loaded v20260503-618');
+    console.log('[LoveBudSearchCardRenderer] Search card renderer loaded v20260512-1049');
  })();
