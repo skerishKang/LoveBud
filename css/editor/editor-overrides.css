@@ -267,7 +267,7 @@ body .editor-canvas-title h2 {
 .canvas-area::before {
     content: '';
     position: absolute;
-    inset: 72px 28px 28px;
+    inset: 82px 28px 28px;
     border-radius: 30px;
     border: 1px solid rgba(255,255,255,0.42);
     background: radial-gradient(circle at 50% 28%,rgba(255,255,255,0.36),transparent 34%);
