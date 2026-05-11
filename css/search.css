@@ -1,6 +1,6 @@
 /**
  * Search page CSS owner entry
- * v20260429-2
+ * v20260512-1052
  *
  * Closure audit (2026-04-29):
  * - pages/search.html contains no <style> blocks
@@ -16,4 +16,5 @@
 @import url("./search/search-growing-trees.css");
 @import url("./search/search-tree-card.css");
 @import url("./search/search-preview-sidebar.css");
+@import url("./search/search-preview-media-cleanup.css");
 @import url("./search/search-responsive.css");
