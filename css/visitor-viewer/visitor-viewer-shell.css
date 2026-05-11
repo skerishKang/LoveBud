@@ -233,6 +233,10 @@
     color: #be123c;
 }
 
+.vv-action-btn.is-liked .vv-icon-heart {
+    fill: currentColor;
+}
+
 .vv-action-icon { display: inline-flex; }
 
 .vv-mobile-note {
