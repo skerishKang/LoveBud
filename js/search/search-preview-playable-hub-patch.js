@@ -1,0 +1,238 @@
+/* Issue #1053/#1058: playable Browse hub media, flow moment switching, and final hub action layout. */
+(function() {
+    'use strict';
+
+    var selectedMomentIndexByTree = Object.create(null);
+
+    function escapeHtml(value) {
+        return String(value == null ? '' : value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function getYouTubeVideoId(value) {
+        if (!value) return '';
+        try {
+            var parsed = new URL(String(value), window.location.origin);
+            var host = parsed.hostname.replace(/^www\./, '').toLowerCase();
+            if (host === 'youtu.be') return parsed.pathname.split('/').filter(Boolean)[0] || '';
+            if (host === 'youtube.com' || host === 'm.youtube.com' || host === 'music.youtube.com' || host === 'youtube-nocookie.com') {
+                if (parsed.pathname.indexOf('/embed/') === 0) return parsed.pathname.split('/').filter(Boolean)[1] || '';
+                if (parsed.pathname.indexOf('/shorts/') === 0) return parsed.pathname.split('/').filter(Boolean)[1] || '';
+                return parsed.searchParams.get('v') || '';
+            }
+            if (host.indexOf('ytimg.com') !== -1 || host.indexOf('img.youtube.com') !== -1) {
+                var parts = parsed.pathname.split('/').filter(Boolean);
+                var viIndex = parts.indexOf('vi');
+                return viIndex >= 0 ? (parts[viIndex + 1] || '') : '';
+            }
+        } catch (error) {
+            return '';
+        }
+        return '';
+    }
+
+    function toEmbedUrl(value) {
+        var raw = String(value || '').trim();
+        if (!raw) return '';
+        var videoId = getYouTubeVideoId(raw);
+        if (!videoId) return '';
+        var embedUrl = new URL('https://www.youtube.com/embed/' + encodeURIComponent(videoId));
+        embedUrl.searchParams.set('autoplay', '0');
+        embedUrl.searchParams.set('mute', '0');
+        embedUrl.searchParams.set('controls', '1');
+        embedUrl.searchParams.set('rel', '0');
+        embedUrl.searchParams.set('modestbranding', '1');
+        return embedUrl.href;
+    }
+
+    function getTreeKey(tree) {
+        if (!tree) return 'unknown';
+        if (tree.id != null && tree.id !== '') return String(tree.id);
+        return String(tree.title || 'tree') + ':' + String((tree.memories || []).length || tree.memoryCount || 0);
+    }
+
+    function getMomentLabel(memory, index) {
+        var helper = window.LoveBudSearchTitleHelper || null;
+        var raw = memory && memory.title || '';
+        var cleaned = helper && helper.cleanMomentTitle ? helper.cleanMomentTitle(raw) : String(raw || '').trim().replace(/\s*-\s*.*/, '');
+        return cleaned || (index === 0 ? '시작 순간' : '이어진 순간');
+    }
+
+    function getCandidateUrlFromMemory(memory) {
+        if (!memory) return '';
+        return memory.sourceUrl || memory.videoUrl || memory.videoURL || memory.mediaUrl || memory.mediaURL || memory.linkUrl || memory.linkURL || memory.thumbnail || memory.thumbnailUrl || memory.imageUrl || '';
+    }
+
+    function getCandidateUrlFromTree(tree, preferredIndex) {
+        if (!tree) return '';
+        var memories = Array.isArray(tree.memories) ? tree.memories : [];
+        var preferredMemory = memories[Number(preferredIndex || 0)];
+        var preferredCandidate = getCandidateUrlFromMemory(preferredMemory);
+        if (getYouTubeVideoId(preferredCandidate)) return preferredCandidate;
+        if (preferredIndex === 0 && tree.representativeSourceUrl) return tree.representativeSourceUrl;
+        for (var i = 0; i < memories.length; i += 1) {
+            var candidate = getCandidateUrlFromMemory(memories[i]);
+            if (getYouTubeVideoId(candidate)) return candidate;
+        }
+        return tree.representativeThumbnail || tree.thumbnail || '';
+    }
+
+    function getCandidateUrlFromRenderedDom(container) {
+        if (!container) return '';
+        var img = container.querySelector('img');
+        if (!img) return '';
+        return img.currentSrc || img.src || img.getAttribute('src') || '';
+    }
+
+    function renderIframe(embedUrl, title) {
+        return '<div class="preview-media-frame preview-media-frame-iframe" style="position:relative;width:100%;height:100%;border-radius:1rem;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.12);">' +
+            '<iframe width="100%" height="100%" src="' + embedUrl + '" title="' + escapeHtml(title || 'LoveTree media') + '" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen style="position:absolute;top:0;left:0;"></iframe>' +
+            '</div>';
+    }
+
+    function replaceWithIframe(tree, preferredIndex) {
+        var container = document.getElementById('previewVideoContainer');
+        if (!container) return false;
+        var candidate = getCandidateUrlFromTree(tree, preferredIndex) || getCandidateUrlFromRenderedDom(container);
+        var embedUrl = toEmbedUrl(candidate);
+        if (!embedUrl) return false;
+        var memories = Array.isArray(tree && tree.memories) ? tree.memories : [];
+        var memory = memories[Number(preferredIndex || 0)] || memories[0] || null;
+        var title = memory ? getMomentLabel(memory, Number(preferredIndex || 0)) : tree && tree.title;
+        container.innerHTML = renderIframe(embedUrl, title);
+        container.classList.remove('preview-state-thumbnail');
+        container.classList.add('preview-state-media');
+        return true;
+    }
+
+    function getCount(tree, keys) {
+        for (var i = 0; i < keys.length; i += 1) {
+            var value = Number(tree && tree[keys[i]]);
+            if (Number.isFinite(value) && value >= 0) return value;
+        }
+        return 0;
+    }
+
+    function renderSocialBar(tree) {
+        var likes = getCount(tree, ['likeCount', 'likesCount', 'likes', 'reactionCount', 'reaction_count']);
+        var comments = getCount(tree, ['commentCount', 'commentsCount', 'comments', 'replyCount', 'reply_count']);
+        var shares = getCount(tree, ['shareCount', 'sharesCount', 'shares', 'sharedCount', 'shared_count']);
+        return '<div class="preview-social-shell" data-preview-social-shell>' +
+            '<div class="preview-social-bar" aria-label="트리 반응">' +
+                '<button type="button" class="preview-social-action" data-preview-like disabled aria-label="좋아요 ' + likes + '"><span class="material-symbols-outlined" aria-hidden="true">favorite</span><strong>' + likes + '</strong><span>좋아요</span></button>' +
+                '<button type="button" class="preview-social-action" data-preview-comments aria-expanded="false" aria-label="댓글 ' + comments + '"><span class="material-symbols-outlined" aria-hidden="true">mode_comment</span><strong>' + comments + '</strong><span>댓글</span></button>' +
+                '<button type="button" class="preview-social-action" data-preview-share disabled aria-label="공유 ' + shares + '"><span class="material-symbols-outlined" aria-hidden="true">share</span><strong>' + shares + '</strong><span>공유</span></button>' +
+            '</div>' +
+            '<div class="preview-comments-panel" data-preview-comments-panel hidden>' +
+                '<div class="preview-comments-title">댓글</div>' +
+                '<p>아직 댓글이 없어요.</p>' +
+                '<p class="preview-comments-note">댓글 작성 기능은 후속 기능으로 준비 중입니다.</p>' +
+            '</div>' +
+        '</div>';
+    }
+
+    function normalizePreviewCopy(tree) {
+        var previewDesc = document.getElementById('previewDesc');
+        if (!previewDesc) return;
+        var copy = previewDesc.querySelector('.preview-focus-copy');
+        if (copy) {
+            var summary = '';
+            var firstStrong = copy.querySelector('strong');
+            if (firstStrong) {
+                summary = copy.childNodes.length ? copy.childNodes[0].textContent || '' : '';
+            }
+            var title = String(tree && tree.title || '러브트리').trim();
+            var count = Number(tree && tree.memoryCount || (tree && tree.memories && tree.memories.length) || 0);
+            var range = String(tree && tree.timeRange || '').trim();
+            if (range) {
+                copy.innerHTML = '<p class="preview-summary-line"><strong>' + escapeHtml(title) + '</strong>에 담긴 <strong>' + count + '개의 순간</strong>이 <strong>' + escapeHtml(range) + '</strong>에 걸쳐 이어졌어요.</p>';
+            } else {
+                copy.innerHTML = '<p class="preview-summary-line"><strong>' + escapeHtml(title) + '</strong>에 담긴 <strong>' + count + '개의 순간</strong>이 이어졌어요.</p>';
+            }
+        }
+        var oldSocial = previewDesc.querySelector('[data-preview-social-shell]');
+        if (oldSocial) oldSocial.remove();
+        previewDesc.insertAdjacentHTML('beforeend', renderSocialBar(tree || {}));
+    }
+
+    function hideRedundantBlocks() {
+        var titleMeta = document.querySelector('.preview-focus-title-meta');
+        if (titleMeta) titleMeta.hidden = true;
+        var stats = document.getElementById('previewTreeStats');
+        if (stats) stats.hidden = true;
+        var emotion = document.getElementById('previewEmotionSection');
+        if (emotion) emotion.hidden = true;
+    }
+
+    function enhanceFlowStages(tree) {
+        var previewDesc = document.getElementById('previewDesc');
+        if (!previewDesc || !tree) return;
+        var stages = Array.prototype.slice.call(previewDesc.querySelectorAll('.preview-flow-stage'));
+        if (!stages.length) return;
+        var treeKey = getTreeKey(tree);
+        var selectedIndex = Number(selectedMomentIndexByTree[treeKey] || 0);
+        stages.forEach(function(stage, index) {
+            stage.setAttribute('role', 'button');
+            stage.setAttribute('tabindex', '0');
+            stage.dataset.previewMomentIndex = String(index);
+            stage.classList.toggle('is-active', index === selectedIndex);
+            if (stage.dataset.previewMomentBound) return;
+            stage.dataset.previewMomentBound = 'true';
+            var activate = function() {
+                selectedMomentIndexByTree[treeKey] = index;
+                stages.forEach(function(item) { item.classList.remove('is-active'); });
+                stage.classList.add('is-active');
+                replaceWithIframe(tree, index);
+            };
+            stage.addEventListener('click', activate);
+            stage.addEventListener('keydown', function(event) {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    activate();
+                }
+            });
+        });
+    }
+
+    function bindCommentsToggle() {
+        var button = document.querySelector('[data-preview-comments]');
+        var panel = document.querySelector('[data-preview-comments-panel]');
+        if (!button || !panel || button.dataset.previewCommentsBound) return;
+        button.dataset.previewCommentsBound = 'true';
+        button.addEventListener('click', function() {
+            var willOpen = panel.hidden;
+            panel.hidden = !willOpen;
+            button.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+        });
+    }
+
+    function finalizeHub(tree) {
+        var treeKey = getTreeKey(tree);
+        var selectedIndex = Number(selectedMomentIndexByTree[treeKey] || 0);
+        replaceWithIframe(tree, selectedIndex);
+        window.setTimeout(function() { replaceWithIframe(tree, selectedIndex); }, 80);
+        normalizePreviewCopy(tree);
+        hideRedundantBlocks();
+        enhanceFlowStages(tree);
+        bindCommentsToggle();
+    }
+
+    function patchRenderer() {
+        var renderer = window.LoveBudSearchPreviewRenderer;
+        if (!renderer || renderer.__loveBudPlayableHubPatchApplied || typeof renderer.updatePreview !== 'function') return;
+        var originalUpdatePreview = renderer.updatePreview;
+        renderer.updatePreview = function(tree) {
+            originalUpdatePreview.apply(renderer, arguments);
+            finalizeHub(tree);
+        };
+        renderer.__loveBudPlayableHubPatchApplied = true;
+    }
+
+    patchRenderer();
+    document.addEventListener('DOMContentLoaded', patchRenderer);
+    console.log('[LoveBudSearchPreviewPlayableHubPatch] loaded v20260512-1058-3');
+})();

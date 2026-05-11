@@ -1,0 +1,6 @@
+/**
+ * Issue #1052: remove non-functional appreciation hub media overlays.
+ */
+.video-container::before {
+    content: none;
+}
