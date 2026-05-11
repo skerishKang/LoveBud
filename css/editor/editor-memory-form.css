@@ -317,7 +317,7 @@
 
 .node-info-label {
     width: 128px;
-    margin: 10px 0 0;
+    margin: 6px 0 0;
     transform: translateX(-10px);
     text-align: center;
     pointer-events: none;
@@ -338,11 +338,11 @@
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
-    min-height: 35px;
+    min-height: 28px;
 }
 
 .node-date {
-    margin-top: 4px;
+    margin-top: 2px;
     font-size: 12px;
     line-height: 1.3;
     color: var(--on-surface-variant);
