@@ -2,3 +2,8 @@
 @import url('./visitor-viewer/visitor-viewer-tree.css');
 @import url('./visitor-viewer/visitor-viewer-panel.css');
 @import url('./visitor-viewer/visitor-viewer-social.css');
+
+.vv-root-seed-overview-anchor {
+    cursor: default;
+    pointer-events: none;
+}
