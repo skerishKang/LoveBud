@@ -213,10 +213,34 @@
     padding-inline: 16px;
 }
 
-.editor-memory-delete-btn {
-    color: #a87b80;
-    border-color: rgba(158,81,88,0.08);
-    background: rgba(255,253,249,0.62);
+/**
+ * Delete action — moved to edit mode as de-emphasized link
+ */
+.editor-delete-row {
+    margin-top: 16px;
+    display: flex;
+    justify-content: center;
+}
+.editor-delete-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border: none;
+    background: none;
+    color: #b08b8b;
+    font-size: 12px;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: color 0.15s, background 0.15s;
+}
+.editor-delete-link:hover {
+    color: #b33636;
+    background: rgba(179,54,54,0.06);
+}
+.editor-delete-link:focus-visible {
+    outline: 2px solid #b33636;
+    outline-offset: 2px;
 }
 
 .detail-video {
