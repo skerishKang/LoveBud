@@ -60,20 +60,25 @@
                     <p class="editor-canvas-caption">순간을 심고 이어가며 나만의 러브트리를 완성해보세요.</p>
                 </div>
                 <div class="editor-canvas-toolbar" role="toolbar" aria-label="트리 화면 조정">
-                    <button type="button" class="editor-canvas-tool-btn" id="zoomOutCanvasBtn" aria-label="축소" title="축소">
-                        <span class="material-symbols-outlined" aria-hidden="true">zoom_out</span>
-                    </button>
-                    <button type="button" class="editor-canvas-tool-btn" id="zoomInCanvasBtn" aria-label="확대" title="확대">
-                        <span class="material-symbols-outlined" aria-hidden="true">zoom_in</span>
-                    </button>
-                    <button type="button" class="editor-canvas-tool-btn editor-canvas-tool-btn-wide" id="recenterCanvasBtn" aria-label="트리 한눈에 보기" title="트리 한눈에 보기">
-                        <span class="material-symbols-outlined" aria-hidden="true">fit_screen</span>
-                        <span class="editor-canvas-tool-label" id="recenterCanvasBtnLabel">트리 한눈에 보기</span>
-                    </button>
-                    <button type="button" class="editor-canvas-tool-btn editor-canvas-tool-btn-wide" id="focusSelectedBtn" aria-label="선택한 순간 보기" title="선택한 순간 보기" disabled>
-                        <span class="material-symbols-outlined" aria-hidden="true">center_focus_strong</span>
-                        <span class="editor-canvas-tool-label" id="focusSelectedBtnLabel">선택한 순간 보기</span>
-                    </button>
+                    <div class="editor-canvas-toolbar-group" aria-label="화면 줌 컨트롤">
+                        <button type="button" class="editor-canvas-tool-btn" id="zoomOutCanvasBtn" aria-label="축소" title="축소">
+                            <span class="material-symbols-outlined" aria-hidden="true">zoom_out</span>
+                        </button>
+                        <button type="button" class="editor-canvas-tool-btn" id="zoomInCanvasBtn" aria-label="확대" title="확대">
+                            <span class="material-symbols-outlined" aria-hidden="true">zoom_in</span>
+                        </button>
+                    </div>
+                    <div class="editor-canvas-toolbar-separator" aria-hidden="true"></div>
+                    <div class="editor-canvas-toolbar-group" aria-label="트리 뷰 컨트롤">
+                        <button type="button" class="editor-canvas-tool-btn editor-canvas-tool-btn-wide" id="recenterCanvasBtn" aria-label="트리 한눈에 보기" title="트리 한눈에 보기">
+                            <span class="material-symbols-outlined" aria-hidden="true">fit_screen</span>
+                            <span class="editor-canvas-tool-label" id="recenterCanvasBtnLabel">트리 한눈에 보기</span>
+                        </button>
+                        <button type="button" class="editor-canvas-tool-btn editor-canvas-tool-btn-wide" id="focusSelectedBtn" aria-label="선택한 순간 보기" title="선택한 순간 보기" disabled>
+                            <span class="material-symbols-outlined" aria-hidden="true">center_focus_strong</span>
+                            <span class="editor-canvas-tool-label" id="focusSelectedBtnLabel">선택한 순간 보기</span>
+                        </button>
+                    </div>
                 </div>
             </div>
             <svg class="canvas-svg" id="canvasSvg"></svg>
