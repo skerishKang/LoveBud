@@ -1,4 +1,12 @@
-/* Issue #1052: remove decorative hub media badge. */
+/* Issue #1052: remove non-functional Browse hub media overlays. */
 .video-container::before {
     content: none;
+}
+
+.preview-media-frame-thumbnail [data-preview-overlay] {
+    display: none !important;
+}
+
+.preview-media-frame-iframe > div {
+    display: none !important;
 }
