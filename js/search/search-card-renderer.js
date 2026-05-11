@@ -1,6 +1,6 @@
 /**
  * LoveBud Search Card Renderer
- * v20260503-618
+ * v20260512-1049
  * 
  * Rendering layer: tree cards, empty states.
  * DOM-agnostic - returns HTML strings.
@@ -100,33 +100,12 @@
         return window.LoveBudSearchTitleHelper || null;
     }
 
-    function getTreeIcon(stage) {
-        const icons = { '입덕': '🌱', '성장': '🌿', '최애': '🌳', 'empty': '🌷' };
-        return icons[stage] || '🌱';
-    }
-
-    function getDisplayStageLabel(stage, memoryCount) {
-        const raw = String(stage || '').trim();
-        if (!raw || raw === 'empty') {
-            return Number(memoryCount || 0) > 0 ? '시작 순간 중심' : '새로 열린 트리';
-        }
-        if (raw === '입덕') return '시작 순간 중심';
-        if (raw === '성장') return '이어진 감정';
-        if (raw === '최애') return '깊어진 마음';
-        return raw;
-    }
-
     function getDisplayThemeLabel(theme) {
         const raw = String(theme || '').trim();
         if (!raw || raw === 'LoveTree' || raw === 'Mixed') {
             return '';
         }
         return raw;
-    }
-
-    function getDisplayTimeRange(timeRange) {
-        const raw = String(timeRange || '').trim();
-        return raw || '방금 공개됨';
     }
 
     function getDisplayMemoryCount(memoryCount) {
@@ -147,6 +126,50 @@
         return 'empty';
     }
 
+    function getFirstFiniteCount(tree, keys) {
+        for (const key of keys) {
+            const value = Number(tree?.[key]);
+            if (Number.isFinite(value) && value >= 0) return value;
+        }
+        return 0;
+    }
+
+    function formatCompactCount(value) {
+        const count = Number(value || 0);
+        if (!Number.isFinite(count) || count <= 0) return '0';
+        if (count >= 1000000) return `${Math.floor(count / 100000) / 10}M`;
+        if (count >= 1000) return `${Math.floor(count / 100) / 10}K`;
+        return String(count);
+    }
+
+    function getTreeReactionCounts(tree) {
+        return {
+            likes: getFirstFiniteCount(tree, ['likeCount', 'likesCount', 'likes', 'reactionCount', 'reaction_count']),
+            comments: getFirstFiniteCount(tree, ['commentCount', 'commentsCount', 'comments', 'replyCount', 'reply_count']),
+            shares: getFirstFiniteCount(tree, ['shareCount', 'sharesCount', 'shares', 'sharedCount', 'shared_count'])
+        };
+    }
+
+    function renderTreeReactionMetrics(tree) {
+        const counts = getTreeReactionCounts(tree);
+        const metrics = [
+            { icon: 'favorite', label: '좋아요', value: counts.likes },
+            { icon: 'mode_comment', label: '댓글', value: counts.comments },
+            { icon: 'share', label: '공유', value: counts.shares }
+        ];
+
+        return `
+            <div class="tree-card-reaction-metrics" aria-label="트리 반응 요약">
+                ${metrics.map(metric => `
+                    <span class="tree-card-reaction-metric" title="${escapeHtml(metric.label)} ${formatCompactCount(metric.value)}">
+                        <span class="material-symbols-outlined" aria-hidden="true">${metric.icon}</span>
+                        <span>${escapeHtml(formatCompactCount(metric.value))}</span>
+                    </span>
+                `).join('')}
+            </div>
+        `;
+    }
+
     function renderCompactTreePreview(tree, variant) {
         const tone = getTreePreviewTone(tree);
         return `
@@ -161,35 +184,8 @@
         `;
     }
 
-    function renderTreeFlowBridge(tree) {
-        const memoryCount = getDisplayMemoryCount(tree?.memoryCount);
-        const nodeCount = Math.max(1, Math.min(memoryCount || 1, 5));
-        const flowNodes = Array.from({ length: nodeCount }, (_, index) => {
-            const isFirst = index === 0;
-            const isLast = index === nodeCount - 1;
-            const nodeClass = [
-                'tree-card-flow-node',
-                isFirst ? 'tree-card-flow-node-root' : '',
-                isLast && nodeCount > 1 ? 'tree-card-flow-node-end' : ''
-            ].filter(Boolean).join(' ');
-            return `<span class="${nodeClass}"></span>`;
-        }).join('');
-        const label = memoryCount > 0
-            ? `${memoryCount}개의 순간이 이어진 러브트리 흐름`
-            : '이어질 순간을 기다리는 러브트리 흐름';
-
-        return `
-            <div class="tree-card-flow-bridge tree-card-flow-count-${nodeCount}" role="img" aria-label="${escapeHtml(label)}">
-                <span class="tree-card-flow-line"></span>
-                ${flowNodes}
-            </div>
-        `;
-    }
-
     function renderMediaFallback(tree, titleText) {
         const safeTitle = escapeHtml(titleText || '러브트리');
-        const treeStage = tree?.stage || 'empty';
-        const stageIcon = getTreeIcon(treeStage);
         return `
             <div class="tree-card-media-fallback">
                 <div class="fallback-title">${safeTitle}</div>
@@ -209,20 +205,6 @@
             </div>
         `;
     }
-
-     function renderEmotionTags(tags) {
-         const titleHelper = getSearchTitleHelper();
-         const safeTags = (Array.isArray(tags) ? tags : [])
-             .map(tag => titleHelper?.sanitizeBrowseLabel ? titleHelper.sanitizeBrowseLabel(tag) : String(tag || '').trim())
-             .filter(Boolean)
-             .filter(tag => tag !== '기록' && tag !== 'tag_record')
-             .slice(0, 1);
-
-         if (!safeTags.length) return '';
-         return safeTags.map(tag =>
-             `<span class="tree-meta-chip">#${escapeHtml(tag)}</span>`
-         ).join('');
-     }
 
      function renderRepresentativeMedia(tree, firstMem, titleText) {
          const mediaUrl = sanitizeUrl(
@@ -248,7 +230,6 @@
          const firstMem = memories[0];
          const titleHelper = getSearchTitleHelper();
          const memoryCount = getDisplayMemoryCount(tree.memoryCount);
-         const displayStage = getDisplayStageLabel(tree.stage, memoryCount);
          const displayTheme = getDisplayThemeLabel(tree.theme);
          const safeTreeId = escapeHtml(tree.id);
 
@@ -258,8 +239,6 @@
          const primaryTag = titleHelper?.getPrimaryBrowseTag ? titleHelper.getPrimaryBrowseTag(tree) : '';
 
          const safeTitle = escapeHtml(displayTitleRaw);
-         const emotionTag = renderEmotionTags(tree.emotionTags);
-         const countLabel = memoryCount > 0 ? `${memoryCount}개의 순간` : '대표 순간 준비 중';
          const viewerHref = getTreeViewerHref(tree);
          const cardSelectLabel = `${displayTitleRaw} 러브트리를 감상 허브에서 미리보기`;
          const viewerLabel = `${displayTitleRaw} 러브트리 열기`;
@@ -281,17 +260,11 @@
                  <div class="tree-card-body">
                      <div class="tree-title">${safeTitle}</div>
                      <p class="${subtitleClass}">${escapeHtml(softMoodLine)}</p>
-                     ${renderTreeFlowBridge(tree)}
                      <div class="tree-meta-row">
                          <div class="tree-meta-left">
-                             <span class="tree-meta-chip">
-                                 <span class="material-symbols-outlined">schedule</span>
-                                 ${escapeHtml(displayStage)}
-                             </span>
+                             ${renderTreeReactionMetrics(tree)}
                          </div>
                          <div class="tree-meta-right">
-                             <span class="tree-moment-count">${escapeHtml(countLabel)}</span>
-                             ${emotionTag}
                              ${viewerHref ? `
                                  <a href="${escapeHtml(viewerHref)}" class="tree-card-open-link" aria-label="${escapeHtml(viewerLabel)}">
                                      <span class="material-symbols-outlined" aria-hidden="true">account_tree</span>
@@ -439,8 +412,6 @@
         renderNoTreesState: renderNoTreesState,
         renderEmptySearchState: renderEmptySearchState,
         renderDemoBadge: renderDemoBadge,
-        getTreeIcon: getTreeIcon,
-        renderEmotionTags: renderEmotionTags,
         getBasePath: getBasePath,
         getTreeViewerHref: getTreeViewerHref,
         showImageFallback: showImageFallback,
@@ -451,5 +422,5 @@
         }
     };
 
-    console.log('[LoveBudSearchCardRenderer] Search card renderer loaded v20260503-618');
+    console.log('[LoveBudSearchCardRenderer] Search card renderer loaded v20260512-1049');
  })();
