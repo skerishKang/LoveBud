@@ -1,0 +1,16 @@
+/* Issue #1052: remove non-functional Browse media overlays. */
+.video-container::before {
+    content: none;
+}
+
+.preview-media-frame-thumbnail [data-preview-overlay] {
+    display: none !important;
+}
+
+.preview-media-frame-iframe > div {
+    display: none !important;
+}
+
+.tree-card .tree-card-preview-strip-media {
+    display: none !important;
+}
