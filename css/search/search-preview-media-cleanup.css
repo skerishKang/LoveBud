@@ -1,0 +1,9 @@
+/**
+ * Issue #1052: remove non-functional appreciation hub media overlays.
+ *
+ * The hub media should not show decorative tree controls that look clickable when
+ * playback/continue behavior is not implemented in this scope.
+ */
+.video-container::before {
+    content: none;
+}
