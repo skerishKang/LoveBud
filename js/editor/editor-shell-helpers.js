@@ -68,7 +68,7 @@ window.LoveBudEditorShellHelpers = {
         setText('confirmAddMemory', 'editor_confirm_add', '이 순간 심기');
         setPlaceholder('memoryTitleInput', 'editor_memory_title_placeholder', '이 순간을 어떻게 기억하고 싶은지 적어보세요');
         setPlaceholder('memoryMemoInput', 'editor_memory_memo_placeholder', '왜 이 장면이 이어졌는지, 지금 마음을 남겨보세요...');
-        setText('detailEmptyTitle', 'detail_empty_title', '첫 순간이 트리를 깨워요');
+        setText('detailEmptyTitle', 'detail_empty_title', '첫 순간을 기다리고 있어요');
         setText('detailEmptyDesc', 'detail_empty_desc', '첫 순간을 심으면 이 패널이 현재 순간 허브로 바뀝니다.');
         setText('detailCurrentMomentBadge', 'editor_current_moment_badge', '현재 순간');
         setText('detailCurrentMomentTitle', 'editor_current_moment_title', '지금 마음이 머문 장면');

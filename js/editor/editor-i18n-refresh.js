@@ -88,10 +88,10 @@
     setText('cancelAddMemory', 'editor_cancel', '취소');
     setText('confirmAddMemory', 'editor_confirm_add', '이 순간 심기');
     setText('detailMoreBtn', 'editor_open_detail', '상세로 보기');
-    setText('detailEmptyTitle', 'detail_empty_title', '첫 순간이 트리를 깨워요');
-    setText('detailEmptyDesc', 'detail_empty_desc', '왼쪽 아래 버튼으로 첫 장면을 심으면, 이 패널이 현재 순간 허브로 바뀝니다.');
+    setText('detailEmptyTitle', 'detail_empty_title', '첫 순간을 기다리고 있어요');
+    setText('detailEmptyDesc', 'detail_empty_desc', '가운데에서 첫 순간을 만들어보세요.');
     setText('detailCurrentMomentBadge', 'editor_current_moment_badge', '현재 순간');
-    setText('detailCurrentMomentHint', 'editor_current_moment_hint', '선택한 순간을 중심으로 감정 메모와 다음 행동이 정리됩니다.');
+    setText('detailCurrentMomentHint', 'editor_current_moment_hint', '메모를 확인하고 수정해보세요.');
     setText('detailTreeStatusLabel', 'current_tree', '현재 트리');
     setText('detailMomentInfoLabel', 'editor_moment_info_label', '순간 정보');
     setText('detailDateLabel', 'editor_date_label', '기억한 날');
