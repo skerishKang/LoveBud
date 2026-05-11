@@ -61,6 +61,113 @@
         return Array.isArray(memories) ? memories.filter(function(m) { return m && m.visibility === 'public'; }) : [];
     }
 
+    function getMemoryKey(memory) {
+        return memory && memory.id ? String(memory.id) : '';
+    }
+
+    function getParentKey(memory) {
+        return memory && (memory.parentId || memory.parent_id) ? String(memory.parentId || memory.parent_id) : '';
+    }
+
+    function mapBranchMoment(memory, index, tValue) {
+        return {
+            id: 'moment-' + index,
+            title: memory.title || memory.emotionMemo || '',
+            tag: (memory.emotionTags && memory.emotionTags[0]) || '',
+            caption: memory.emotionMemo || memory.title || '',
+            emoji: '??',
+            t: tValue
+        };
+    }
+
+    function collectBranchPath(startKey, childrenByParent, memoryByKey, indexByKey) {
+        var path = [];
+        var queue = [startKey];
+        var seen = {};
+
+        while (queue.length) {
+            var key = queue.shift();
+            if (!key || seen[key]) return null;
+            var memory = memoryByKey[key];
+            if (!memory) continue;
+
+            seen[key] = true;
+            path.push(memory);
+
+            var children = (childrenByParent[key] || []).slice().sort(function(a, b) {
+                return (indexByKey[a] || 0) - (indexByKey[b] || 0);
+            });
+            for (var i = 0; i < children.length; i++) queue.push(children[i]);
+        }
+
+        return path;
+    }
+
+    function buildForkBranches(memories) {
+        var memoryByKey = {};
+        var indexByKey = {};
+        var childrenByParent = {};
+
+        memories.forEach(function(memory, index) {
+            var key = getMemoryKey(memory);
+            if (!key) return;
+            memoryByKey[key] = memory;
+            indexByKey[key] = index;
+        });
+
+        memories.forEach(function(memory) {
+            var key = getMemoryKey(memory);
+            var parentKey = getParentKey(memory);
+            if (!key || !parentKey || !memoryByKey[parentKey]) return;
+            if (!childrenByParent[parentKey]) childrenByParent[parentKey] = [];
+            childrenByParent[parentKey].push(key);
+        });
+
+        var forkParentKey = '';
+        Object.keys(childrenByParent).some(function(parentKey) {
+            if (childrenByParent[parentKey].length < 2) return false;
+            forkParentKey = parentKey;
+            return true;
+        });
+        if (!forkParentKey) return null;
+
+        var colors = ['rose', 'amber', 'emerald', 'violet'];
+        var children = childrenByParent[forkParentKey].slice().sort(function(a, b) {
+            return (indexByKey[a] || 0) - (indexByKey[b] || 0);
+        });
+        var branches = [];
+
+        for (var branchIndex = 0; branchIndex < children.length; branchIndex++) {
+            var branchPath = collectBranchPath(children[branchIndex], childrenByParent, memoryByKey, indexByKey);
+            if (!branchPath || !branchPath.length) return null;
+
+            var moments = branchPath.map(function(memory, momentIndex) {
+                return mapBranchMoment(memory, indexByKey[getMemoryKey(memory)], (momentIndex + 0.5) / Math.max(branchPath.length, 1));
+            });
+            var sideLeft = branchIndex % 2 === 0;
+            var startY = 77 - (branchIndex * 9);
+            var endY = Math.max(14, 48 - (branchIndex * 9));
+            var endX = sideLeft ? 18 + Math.min(branchIndex, 2) * 4 : 82 - Math.min(branchIndex, 2) * 4;
+
+            branches.push({
+                id: 'branch-' + (branchIndex + 1),
+                name: 'Branch ' + (branchIndex + 1),
+                side: sideLeft ? 'left' : 'right',
+                color: colors[branchIndex % colors.length],
+                startY: startY,
+                endY: endY,
+                endX: endX,
+                curveA: sideLeft ? 36 : 64,
+                curveB: sideLeft ? 28 : 72,
+                caption: moments.length + t('viewer.momentsConnected', 'connected moments', ' connected moments'),
+                count: moments.length,
+                moments: moments
+            });
+        }
+
+        return branches.length >= 2 ? branches : null;
+    }
+
     function buildBranches(memories) {
         // Group moments into a single main branch with computed positions
         var moments = memories.map(function(m, i) {
@@ -89,9 +196,13 @@
             moments: moments
         };
 
+        var forkBranches = buildForkBranches(memories);
+        var branches = forkBranches || [branch];
+        var rootBranch = branches[0] || branch;
+
         var rootSeed = {
             id: 'moment-root',
-            branchId: 'main',
+            branchId: rootBranch.id,
             title: t('viewer.rootOverviewAnchor', '러브트리의 시작점', 'LoveTree starting point'),
             tag: t('viewer.fullFlowAnchor', '전체 흐름', 'Full flow'),
             caption: t('viewer.rootOverviewCaption', '전체 흐름의 기준점', 'The anchor for the full tree overview'),
@@ -100,9 +211,14 @@
         };
 
         return {
-            branches: [branch],
+            branches: branches,
             rootSeed: rootSeed,
-            palette: { rose: { stroke:'#e99aac', soft:'#fff1f3', text:'#be123c', dim:'rgba(251,113,133,.16)' } },
+            palette: {
+                rose: { stroke:'#e99aac', soft:'#fff1f3', text:'#be123c', dim:'rgba(251,113,133,.16)' },
+                amber: { stroke:'#eac86f', soft:'#fff7df', text:'#a16207', dim:'rgba(251,191,36,.15)' },
+                emerald: { stroke:'#8fd8bc', soft:'#ecfdf5', text:'#047857', dim:'rgba(110,231,183,.16)' },
+                violet: { stroke:'#c8b8f8', soft:'#f5f3ff', text:'#7c3aed', dim:'rgba(167,139,250,.16)' }
+            },
             curvePoint: function(branch, t) {
                 var x0=50, y0=branch.startY;
                 var x1=branch.curveA, y1=branch.startY-8;
@@ -179,8 +295,10 @@
 
             function getAllMoments() {
                 var results = [];
-                viewerData.branches[0].moments.forEach(function(m) {
-                    results.push({ id: m.id, branchId: 'main', title: m.title, tag: m.tag, caption: m.caption, emoji: m.emoji });
+                viewerData.branches.forEach(function(branch) {
+                    (branch.moments || []).forEach(function(m) {
+                        results.push({ id: m.id, branchId: branch.id, title: m.title, tag: m.tag, caption: m.caption, emoji: m.emoji });
+                    });
                 });
                 return results;
             }
@@ -188,11 +306,11 @@
             var allMoments = getAllMoments();
 
             function refresh() {
-                var branch = viewerData.branches[0];
+                var branch = viewerData.branches.find(function(b) { return b.id === state.selectedBranchId; }) || viewerData.branches[0];
                 var moment = allMoments.find(function(m) { return m.id === state.selectedMomentId; });
                 state.selectedBranch = branch;
                 state.selectedMoment = moment;
-                state.panelBranch = branch;
+                state.panelBranch = moment ? (viewerData.branches.find(function(b) { return b.id === moment.branchId; }) || branch) : branch;
 
                 var treeBox = container.querySelector('.vv-tree-container');
                 if (treeBox && RenderTree) RenderTree.renderTree(treeBox, state, handler);
@@ -295,7 +413,7 @@
                 if (branchBtn) { handler.onSelectBranch(branchBtn.dataset.branchId); return; }
             });
 
-            state.selectedBranchId = 'main';
+            state.selectedBranchId = (viewerData.branches[0] && viewerData.branches[0].id) || 'main';
             state.activePanel = 'empty';
             refresh();
 
@@ -309,6 +427,14 @@
         var btn = document.getElementById('viewerRetryBtn');
         if (btn) btn.addEventListener('click', function() { if (currentTreeId) initViewer(); });
     }
+
+    if (window.__LOVE_BUD_TREE_VIEWER_TEST_HOOKS__) {
+        window.LoveBudTreeViewerTestHooks = {
+            buildBranches: buildBranches
+        };
+    }
+
+    if (window.__LOVE_BUD_TREE_VIEWER_SKIP_INIT__) return;
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', function() { setupRetry(); initViewer(); });
