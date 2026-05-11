@@ -76,20 +76,10 @@
   }
 
   function ensureDeleteButtonInCurrentMomentActions(deleteMemoryBtn) {
-    if (!deleteMemoryBtn) return;
-
-    var viewMode = document.getElementById('detailViewMode');
-    var currentMomentActions = viewMode ? viewMode.querySelector('.editor-current-moment-actions') : null;
-    if (!currentMomentActions) return;
-
-    deleteMemoryBtn.classList.remove('editor-edit-danger-action');
-    deleteMemoryBtn.setAttribute('aria-label', deleteMemoryBtn.textContent || '순간 삭제');
-    deleteMemoryBtn.style.removeProperty('display');
-    deleteMemoryBtn.removeAttribute('aria-hidden');
-    deleteMemoryBtn.removeAttribute('tabindex');
-
-    if (deleteMemoryBtn.parentElement !== currentMomentActions) {
-      currentMomentActions.appendChild(deleteMemoryBtn);
+    // Delete button moved to edit mode — no longer inserted in card view.
+    if (deleteMemoryBtn) {
+      deleteMemoryBtn.classList.remove('editor-edit-danger-action');
+      deleteMemoryBtn.setAttribute('aria-label', deleteMemoryBtn.textContent || '순간 삭제');
     }
   }
 
@@ -110,21 +100,11 @@
     if (!deleteMemoryBtn || typeof deleteMemory !== 'function') return null;
 
     var editMode = document.getElementById('detailEditMode');
-    var editActions = editMode ? editMode.querySelector('.editor-edit-actions-row') : null;
-    if (!editActions) return null;
+    if (!editMode) return null;
 
-    var editDeleteBtn = document.getElementById('editDeleteMemoryBtn');
-    if (!editDeleteBtn) {
-      editDeleteBtn = deleteMemoryBtn.cloneNode(true);
-      editDeleteBtn.id = 'editDeleteMemoryBtn';
-      editDeleteBtn.classList.add('editor-edit-danger-action');
-      editActions.insertBefore(editDeleteBtn, editActions.firstChild);
-    }
-
-    if (editDeleteBtn.textContent !== deleteMemoryBtn.textContent) {
-      editDeleteBtn.textContent = deleteMemoryBtn.textContent;
-    }
-    editDeleteBtn.setAttribute('aria-label', deleteMemoryBtn.getAttribute('aria-label') || deleteMemoryBtn.textContent || '순간 삭제');
+    // Use the existing delete button already in the edit mode HTML
+    var editDeleteBtn = document.getElementById('deleteMemoryBtn');
+    if (!editDeleteBtn || editDeleteBtn.closest('#detailEditMode') !== editMode) return null;
 
     if (editDeleteBtn.dataset.bound !== '1') {
       editDeleteBtn.dataset.bound = '1';
