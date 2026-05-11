@@ -1,4 +1,4 @@
-/* Issue #1053: make selected Browse hub media playable when source URLs can be inferred. */
+/* Issue #1053: make selected Browse hub media playable when source URLs can be be inferred. */
 (function() {
     'use strict';
 
@@ -50,10 +50,28 @@
         return tree.representativeThumbnail || tree.thumbnail || '';
     }
 
+    function getCandidateUrlFromRenderedDom(container) {
+        if (!container) return '';
+        var img = container.querySelector('img');
+        if (!img) return '';
+        return img.currentSrc || img.src || img.getAttribute('src') || '';
+    }
+
     function renderIframe(embedUrl, title) {
         return '<div class="preview-media-frame preview-media-frame-iframe" style="position:relative;width:100%;height:100%;border-radius:1rem;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.12);">' +
             '<iframe width="100%" height="100%" src="' + embedUrl + '" title="' + String(title || 'LoveTree media').replace(/"/g, '&quot;') + '" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen style="position:absolute;top:0;left:0;"></iframe>' +
             '</div>';
+    }
+
+    function replaceWithIframe(tree) {
+        var container = document.getElementById('previewVideoContainer');
+        if (!container) return;
+        var candidate = getCandidateUrlFromTree(tree) || getCandidateUrlFromRenderedDom(container);
+        var embedUrl = toEmbedUrl(candidate);
+        if (!embedUrl) return;
+        container.innerHTML = renderIframe(embedUrl, tree && tree.title);
+        container.classList.remove('preview-state-thumbnail');
+        container.classList.add('preview-state-media');
     }
 
     function patchRenderer() {
@@ -62,17 +80,13 @@
         var originalUpdatePreview = renderer.updatePreview;
         renderer.updatePreview = function(tree) {
             originalUpdatePreview.apply(renderer, arguments);
-            var embedUrl = toEmbedUrl(getCandidateUrlFromTree(tree));
-            var container = document.getElementById('previewVideoContainer');
-            if (!embedUrl || !container) return;
-            container.innerHTML = renderIframe(embedUrl, tree && tree.title);
-            container.classList.remove('preview-state-thumbnail');
-            container.classList.add('preview-state-media');
+            replaceWithIframe(tree);
+            window.setTimeout(function() { replaceWithIframe(tree); }, 80);
         };
         renderer.__loveBudPlayableHubPatchApplied = true;
     }
 
     patchRenderer();
     document.addEventListener('DOMContentLoaded', patchRenderer);
-    console.log('[LoveBudSearchPreviewPlayableHubPatch] loaded v20260512-1058');
+    console.log('[LoveBudSearchPreviewPlayableHubPatch] loaded v20260512-1058-2');
 })();
