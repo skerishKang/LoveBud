@@ -1,4 +1,4 @@
-/* Issue #1052: remove non-functional Browse hub media overlays. */
+/* Issue #1052: remove non-functional Browse media overlays. */
 .video-container::before {
     content: none;
 }
@@ -8,5 +8,9 @@
 }
 
 .preview-media-frame-iframe > div {
+    display: none !important;
+}
+
+.tree-card .tree-card-preview-strip-media {
     display: none !important;
 }
