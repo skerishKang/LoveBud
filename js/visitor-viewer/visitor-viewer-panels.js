@@ -60,7 +60,7 @@
         var moments = branch.moments || [];
         return '<aside class="vv-panel vv-panel-branch">' +
             '<div class="vv-panel-header">' +
-            '  <p class="vv-panel-eyebrow">Branch selected</p>' +
+            '  <p class="vv-panel-eyebrow">Tree overview</p>' +
             '  <h2 class="vv-panel-title-lg">' + escape(branch.name) + '</h2>' +
             '  <p class="vv-panel-meta">' + branch.count + '개의 순간</p>' +
             '</div>' +
