@@ -154,8 +154,8 @@
         const counts = getTreeReactionCounts(tree);
         const metrics = [
             { icon: 'favorite', label: '좋아요', value: counts.likes },
-            { icon: 'chat_bubble', label: '댓글', value: counts.comments },
-            { icon: 'ios_share', label: '공유', value: counts.shares }
+            { icon: 'mode_comment', label: '댓글', value: counts.comments },
+            { icon: 'share', label: '공유', value: counts.shares }
         ];
 
         return `
