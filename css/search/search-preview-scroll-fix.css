@@ -1,0 +1,18 @@
+/**
+ * Issue #1054: allow the Browse appreciation hub to scroll independently.
+ */
+@media (min-width: 769px) {
+    .preview-sidebar {
+        max-height: calc(100dvh - 120px);
+        overflow-y: auto;
+        overflow-x: hidden;
+        overscroll-behavior: contain;
+        scrollbar-gutter: stable both-edges;
+    }
+}
+
+@media (max-width: 768px) {
+    .preview-sidebar {
+        overscroll-behavior: contain;
+    }
+}

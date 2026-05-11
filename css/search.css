@@ -1,6 +1,6 @@
 /**
  * Search page CSS owner entry
- * v20260512-1049
+ * v20260512-1058-2
  *
  * Closure audit (2026-04-29):
  * - pages/search.html contains no <style> blocks
@@ -17,4 +17,8 @@
 @import url("./search/search-tree-card.css");
 @import url("./search/search-card-footer-cleanup.css");
 @import url("./search/search-preview-sidebar.css");
+@import url("./search/search-preview-scroll-fix.css");
+@import url("./search/search-preview-media-cleanup.css");
+@import url("./search/search-preview-media-no-overlays.css");
+@import url("./search/search-preview-social-bar.css");
 @import url("./search/search-responsive.css");
