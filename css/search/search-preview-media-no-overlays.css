@@ -1,0 +1,4 @@
+/* Issue #1052: remove decorative hub media badge. */
+.video-container::before {
+    content: none;
+}
