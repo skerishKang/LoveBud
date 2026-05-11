@@ -56,8 +56,9 @@
         <main class="canvas-area reveal-scale reveal-up" id="canvasArea">
             <div class="editor-canvas-topbar" aria-label="러브트리 캔버스 도구">
                 <div class="editor-canvas-title">
+                    <div class="editor-reference-kicker">✿ 순간을 이어가는 중</div>
                     <h2>순간을 이어가는 중</h2>
-                    <p class="editor-canvas-caption">순간을 심고 이어가며 나만의 러브트리를 완성해보세요.</p>
+                    <p class="editor-canvas-caption">좋아하는 순간들이 가지 위에 천천히 붙어가는 작업 공간입니다.</p>
                 </div>
                 <div class="editor-canvas-toolbar" role="toolbar" aria-label="트리 화면 조정">
                     <button type="button" class="editor-canvas-tool-btn" id="zoomOutCanvasBtn" aria-label="축소" title="축소">
@@ -79,8 +80,8 @@
             <svg class="canvas-svg" id="canvasSvg"></svg>
             <div id="canvasEmptyGuide" class="editor-canvas-empty-guide editor-canvas-empty-guide-hidden" aria-live="polite">
                 <div class="editor-canvas-empty-guide__eyebrow" id="canvasEmptyGuideEyebrow">첫 순간 준비</div>
-                <h3 class="editor-canvas-empty-guide__title" id="canvasEmptyGuideTitle">첫 순간에서 러브트리가 시작돼요</h3>
-                <p class="editor-canvas-empty-guide__desc" id="canvasEmptyGuideDesc">첫 순간을 심고 오른쪽 패널에서 내용을 다듬어보세요.</p>
+                <h3 class="editor-canvas-empty-guide__title" id="canvasEmptyGuideTitle">첫 장면에서 러브트리가 시작돼요</h3>
+                <p class="editor-canvas-empty-guide__desc" id="canvasEmptyGuideDesc">첫 순간을 만들면 오른쪽에서 내용을 다듬고, 가운데에서 감정의 흐름을 이어갈 수 있어요.</p>
                 <button type="button" id="canvasEmptyStartBtn" class="btn-round btn-primary editor-canvas-empty-guide__cta">첫 순간 심기</button>
             </div>
 
@@ -150,7 +151,7 @@
         <aside class="detail-panel memory-detail-section reveal-fade" id="detailPanel">
             <div class="panel-header">
                 <h3 class="headline editor-panel-headline"></h3>
-                <button type="button" class="icon-menu-btn editor-hidden-initial editor-detail-more-btn" aria-label="자세히 보기" id="detailMoreBtn">자세히 보기</button>
+                <button type="button" class="icon-menu-btn editor-hidden-initial editor-detail-more-btn" aria-label="현재 순간 감상하기" id="detailMoreBtn">현재 순간 감상하기</button>
             </div>
 
             <div class="detail-content" id="detailContent">
@@ -305,9 +306,9 @@
         window.i18nEditor = Object.assign(window.i18nEditor || {}, {
             editor_sidebar_public_tree: { ko: '공개', en: 'Public' },
             editor_sidebar_private_tree: { ko: '비공개', en: 'Private' },
-            detail_empty_title: { ko: '아직 선택한 순간이 없어요', en: 'No moment selected yet.' },
+            detail_empty_title: { ko: '선택한 순간이 여기에 열려요', en: 'Selected moments open here.' },
             detail_empty_desc: { ko: '첫 순간은 가운데에서 시작하세요.', en: 'Start the first moment from the canvas.' },
-            editor_current_moment_empty_title: { ko: '아직 선택한 순간이 없어요', en: 'No moment selected yet.' },
+            editor_current_moment_empty_title: { ko: '선택한 순간이 여기에 열려요', en: 'Selected moments open here.' },
             editor_current_moment_empty_hint: { ko: '첫 순간은 가운데 캔버스에서 시작하세요.', en: 'Start the first moment from the center canvas.' }
         });
     </script>
