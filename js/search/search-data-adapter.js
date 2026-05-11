@@ -1,6 +1,6 @@
 /**
  * LoveBud Search Data Adapter
- * v20260512-1058
+ * v20260512-1058-2
  *
  * Data processing layer: transforms raw memories/trees into tree view models.
  * UI-agnostic - focuses on data transformation only.
@@ -20,9 +20,24 @@
         return '';
     }
 
+    function getYouTubeIdFromThumbnail(url) {
+        if (!url) return '';
+        try {
+            const parsed = new URL(url);
+            const host = parsed.hostname.replace(/^www\./, '').toLowerCase();
+            if (!host.includes('ytimg.com') && !host.includes('img.youtube.com')) return '';
+            const parts = parsed.pathname.split('/').filter(Boolean);
+            const viIndex = parts.indexOf('vi');
+            if (viIndex >= 0 && parts[viIndex + 1]) return parts[viIndex + 1];
+        } catch (e) {
+            return '';
+        }
+        return '';
+    }
+
     function normalizePublicMemory(memory) {
         if (!memory || typeof memory !== 'object') return memory;
-        const sourceUrl = firstStringValue(memory, [
+        const explicitSourceUrl = firstStringValue(memory, [
             'sourceUrl',
             'sourceURL',
             'videoUrl',
@@ -33,6 +48,9 @@
             'linkUrl',
             'linkURL'
         ]);
+        const thumbnail = firstStringValue(memory, ['thumbnail', 'thumbnailUrl', 'thumbnailURL', 'imageUrl', 'imageURL']);
+        const youtubeId = getYouTubeIdFromThumbnail(thumbnail);
+        const sourceUrl = explicitSourceUrl || (youtubeId ? `https://www.youtube.com/watch?v=${encodeURIComponent(youtubeId)}` : '');
         return sourceUrl ? { ...memory, sourceUrl } : memory;
     }
 
@@ -146,8 +164,9 @@
         _groupMemoriesByTree: groupMemoriesByTree,
         _calculateTimeRange: calculateTimeRange,
         _collectEmotionTags: collectEmotionTags,
-        _normalizePublicMemory: normalizePublicMemory
+        _normalizePublicMemory: normalizePublicMemory,
+        _getYouTubeIdFromThumbnail: getYouTubeIdFromThumbnail
     };
 
-    console.log('[LoveBudSearchAdapter] Search data adapter loaded v20260512-1058');
+    console.log('[LoveBudSearchAdapter] Search data adapter loaded v20260512-1058-2');
 })();
