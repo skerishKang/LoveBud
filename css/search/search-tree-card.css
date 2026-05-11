@@ -365,8 +365,8 @@
 
 .tree-card-body {
     display: grid;
-    grid-template-rows: 2.98rem 2.46rem 22px auto;
-    row-gap: 7px;
+    grid-template-rows: 2.98rem 2.46rem auto;
+    row-gap: 9px;
     padding: 4px 6px 6px;
     flex: 1;
     width: 100%;
@@ -421,84 +421,6 @@
 .tree-subtitle-fallback {
     color: rgba(108, 89, 83, 0.72);
     font-weight: 650;
-}
-
-.tree-card-flow-bridge {
-    position: relative;
-    display: flex;
-    align-items: center;
-    gap: 0;
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
-    box-sizing: border-box;
-    height: 22px;
-    padding: 0 8px;
-    border-radius: 999px;
-    background: linear-gradient(90deg, rgba(255, 248, 245, 0.64), rgba(244, 248, 238, 0.58));
-    border: 1px solid rgba(144, 73, 81, 0.07);
-    overflow: hidden;
-    transition: background 0.24s ease, border-color 0.24s ease, box-shadow 0.24s ease;
-}
-
-.tree-card.is-active .tree-card-flow-bridge {
-    background: linear-gradient(90deg, rgba(255, 241, 239, 0.88), rgba(244, 249, 238, 0.82));
-    border-color: rgba(144, 73, 81, 0.16);
-    box-shadow:
-        0 8px 18px rgba(144, 73, 81, 0.08),
-        0 0 0 1px rgba(255, 255, 255, 0.62) inset;
-}
-
-.tree-card-flow-line {
-    position: absolute;
-    left: 16px;
-    right: 16px;
-    top: 50%;
-    height: 2px;
-    border-radius: 999px;
-    transform: translateY(-50%);
-    background: linear-gradient(90deg, rgba(144, 73, 81, 0.34), rgba(122, 139, 110, 0.30));
-    transition: background 0.24s ease;
-}
-
-.tree-card.is-active .tree-card-flow-line {
-    background: linear-gradient(90deg, rgba(144, 73, 81, 0.58), rgba(122, 139, 110, 0.48));
-}
-
-.tree-card-flow-node {
-    position: relative;
-    flex: 0 0 auto;
-    z-index: 1;
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: #c87480;
-    box-shadow: 0 0 0 4px rgba(200, 116, 128, 0.10);
-    transition: box-shadow 0.24s ease;
-}
-
-.tree-card.is-active .tree-card-flow-node {
-    box-shadow:
-        0 0 0 4px rgba(200, 116, 128, 0.16),
-        0 4px 10px rgba(144, 73, 81, 0.12);
-}
-
-.tree-card-flow-node + .tree-card-flow-node {
-    margin-left: auto;
-}
-
-.tree-card-flow-node-root {
-    background: #904951;
-}
-
-.tree-card-flow-node-end {
-    background: #7a8b6e;
-    box-shadow: 0 0 0 4px rgba(122, 139, 110, 0.12);
-}
-
-.tree-card-flow-count-1 .tree-card-flow-line {
-    right: 50%;
-    opacity: 0.28;
 }
 
 .tree-meta-row {

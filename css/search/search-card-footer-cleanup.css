@@ -1,0 +1,45 @@
+/**
+ * Issue #1049 follow-up: keep Browse card footer actions legible after mini-flow removal.
+ *
+ * Compact cards use reaction metrics instead of the internal stage chip. The full
+ * moment count remains available in the selected hub/detail surface.
+ */
+.tree-card .tree-meta-row {
+    gap: 8px;
+}
+
+.tree-card .tree-meta-left {
+    flex: 1 1 auto;
+    overflow: hidden;
+}
+
+.tree-card .tree-meta-right {
+    flex: 0 0 auto;
+}
+
+.tree-card .tree-card-reaction-metrics {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    color: var(--primary);
+    font-size: 12px;
+    font-weight: 820;
+    white-space: nowrap;
+}
+
+.tree-card .tree-card-reaction-metric {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    min-width: 0;
+}
+
+.tree-card .tree-card-reaction-metric .material-symbols-outlined {
+    font-size: 14px;
+    line-height: 1;
+}
+
+.tree-card .tree-card-open-link {
+    max-width: 100%;
+}
