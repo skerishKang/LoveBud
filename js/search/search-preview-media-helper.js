@@ -1,6 +1,6 @@
 /**
  * LoveBud Search Preview Media Helper
- * v20260428-1
+ * v20260512-1052
  * 
  * Media helper boundary extracted from search-preview-renderer.js
  * Issue #424 PR B - Media helper extraction
@@ -105,14 +105,6 @@
             <div class="preview-media-frame preview-media-frame-thumbnail" style="position:relative;width:100%;height:100%;border-radius:1rem;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.12);">
                 <img src="${thumbnailUrl}" alt="${mediaTitle}" loading="lazy" onerror="window.LoveBudSearchPreviewRenderer?.showPreviewImageFallback?.(this)" onload="window.LoveBudSearchPreviewRenderer?.handlePreviewImageLoad?.(this)" style="width:100%;height:100%;object-fit:cover;display:block;">
                 <div data-preview-thumbnail-fallback hidden style="position:absolute;inset:0;">${fallbackHtml}</div>
-                <div data-preview-overlay style="position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.72),rgba(0,0,0,0.04) 58%);"></div>
-                <div data-preview-overlay style="position:absolute;left:18px;right:18px;bottom:18px;color:white;">
-                    <div style="display:inline-flex;align-items:center;gap:6px;min-height:28px;padding:0 10px;border-radius:999px;background:rgba(255,255,255,0.18);backdrop-filter:blur(10px);font-size:12px;font-weight:800;margin-bottom:10px;">
-                        <span class="material-symbols-outlined" style="font-size:14px;">play_circle</span>
-                        ${escapeHtml(getSearchCopy('search.previewStartFromFirstMoment', '대표 순간부터 감상하기', 'Start from the featured moment'))}
-                    </div>
-                    <div style="font-size:14px;font-weight:800;line-height:1.4;">${mediaTitle}</div>
-                </div>
             </div>
         `;
     }
@@ -176,10 +168,6 @@
                     title="${escapeHtml(treeTitle)}" frameborder="0"
                     allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowfullscreen style="position:absolute;top:0;left:0;"></iframe>
-                <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top,rgba(0,0,0,0.8),transparent);padding:40px 20px 20px;color:white;text-align:center;">
-                    <div style="font-size:14px;font-weight:700;margin-bottom:8px;opacity:0.9;">${escapeHtml(getSearchCopy('search.previewStartFromFirstMoment', '대표 순간부터 감상하기', 'Start from the featured moment'))}</div>
-                    <div style="font-size:12px;opacity:0.7;">${escapeHtml(mediaTitle)}</div>
-                </div>
             </div>
         `;
     }
@@ -195,5 +183,5 @@
         renderPreviewIframe: renderPreviewIframe
     };
 
-    console.log('[LoveBudSearchPreviewMediaHelper] Search preview media helper loaded v20260428-1');
+    console.log('[LoveBudSearchPreviewMediaHelper] Search preview media helper loaded v20260512-1052');
 })();
