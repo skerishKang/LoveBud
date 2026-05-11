@@ -543,6 +543,87 @@ const PHASE2_TREES = [
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
+// 3차 Public 트리 (1개) - multi-branch verification용
+// Fork 구조: 하나의 부모가 2개 이상의 자식을 가짐 (branch grouping 테스트용)
+// ─────────────────────────────────────────────────────────────────────────────
+const PHASE3_TREES = [
+  {
+    id: 'public-multi-path-journey',
+    title: '여러 갈래 길을 걸어간 여행',
+    description: '같은 시작점에서 흩어지는 감정들의 이야기',
+    emotion_tags: ['#다양성', '#갈래', '#이야기'],
+    stage: 'growth',
+    memories: [
+      {
+        id: 'mpj-seed',
+        parent_id: null,
+        title: '첫 감동, 그 시작점',
+        memo: '모든 이야기가 시작되는 순간. 이제부터 갈라지는 길이 생긴다.',
+        timestamp: '2020.01.01',
+        source_url: '',
+        source_type: 'youtube',
+        emotion_tags: ['#시작', '#감동'],
+        thumbnail: '',
+        artist: '',
+        visibility: 'public'
+      },
+      {
+        id: 'mpj-left',
+        parent_id: 'mpj-seed',
+        title: '왼쪽 길 - 따뜻한 감성',
+        memo: '포근한 밤, 따뜻한 감성으로 이어지는 이야기.',
+        timestamp: '2020.03.15',
+        source_url: 'https://www.youtube.com/embed/gdZLi9oWNZg',
+        source_type: 'youtube',
+        emotion_tags: ['#감성', '#밤'],
+        thumbnail: 'https://img.youtube.com/vi/gdZLi9oWNZg/mqdefault.jpg',
+        artist: 'BTS',
+        visibility: 'public'
+      },
+      {
+        id: 'mpj-right',
+        parent_id: 'mpj-seed',
+        title: '오른쪽 길 - 활기찬 에너지',
+        memo: '밝고 활기찬 순간, 에너지 가득한 이야기.',
+        timestamp: '2020.04.20',
+        source_url: 'https://www.youtube.com/embed/UMHX0l11nlY',
+        source_type: 'youtube',
+        emotion_tags: ['#에너지', '#활력'],
+        thumbnail: 'https://img.youtube.com/vi/UMHX0l11nlY/mqdefault.jpg',
+        artist: 'BTS',
+        visibility: 'public'
+      },
+      {
+        id: 'mpj-left-child',
+        parent_id: 'mpj-left',
+        title: '감성의 깊이',
+        memo: '더 깊은 감성으로 이어지는 밤의 이야기.',
+        timestamp: '2020.06.10',
+        source_url: 'https://www.youtube.com/embed/M12RbMSj5NQ',
+        source_type: 'youtube',
+        emotion_tags: ['#깊이', '#밤'],
+        thumbnail: 'https://img.youtube.com/vi/M12RbMSj5NQ/mqdefault.jpg',
+        artist: 'IU',
+        visibility: 'public'
+      },
+      {
+        id: 'mpj-right-child',
+        parent_id: 'mpj-right',
+        title: '에너지의 정점',
+        memo: '최고의 에너지, 절정의 순간.',
+        timestamp: '2020.07.25',
+        source_url: 'https://www.youtube.com/embed/ioNng23B1QY',
+        source_type: 'youtube',
+        emotion_tags: ['#절정', '#댄스'],
+        thumbnail: 'https://img.youtube.com/vi/ioNng23B1QY/mqdefault.jpg',
+        artist: 'BLACKPINK',
+        visibility: 'public'
+      }
+    ]
+  }
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
 // 메인 로직
 // ─────────────────────────────────────────────────────────────────────────────
 async function main() {
@@ -551,19 +632,21 @@ async function main() {
   console.log(`   Demo Owner: ${DEMO_OWNER_ID}`);
   console.log(`   Dry Run: ${DRY_RUN ? 'YES (실제 삽입 없음)' : 'NO'}\n`);
 
-  // 대상 트리 결정
-  let targetTrees = [];
-  if (SEED_STAGE === 'phase1') {
-    targetTrees = PHASE1_TREES;
-  } else if (SEED_STAGE === 'phase2') {
-    targetTrees = PHASE2_TREES;
-  } else if (SEED_STAGE === 'all') {
-    targetTrees = [...PHASE1_TREES, ...PHASE2_TREES];
-  } else {
-    console.error(`❌ 잘못된 SEED_STAGE: ${SEED_STAGE}`);
-    console.error('   사용 가능: phase1, phase2, all');
-    process.exit(1);
-  }
+// 대상 트리 결정
+   let targetTrees = [];
+   if (SEED_STAGE === 'phase1') {
+     targetTrees = PHASE1_TREES;
+   } else if (SEED_STAGE === 'phase2') {
+     targetTrees = PHASE2_TREES;
+   } else if (SEED_STAGE === 'phase3') {
+     targetTrees = PHASE3_TREES;
+   } else if (SEED_STAGE === 'all') {
+     targetTrees = [...PHASE1_TREES, ...PHASE2_TREES, ...PHASE3_TREES];
+   } else {
+     console.error(`❌ 잘못된 SEED_STAGE: ${SEED_STAGE}`);
+     console.error('   사용 가능: phase1, phase2, phase3, all');
+     process.exit(1);
+   }
 
   console.log(`📦 시드할 트리: ${targetTrees.length}개\n`);
 
