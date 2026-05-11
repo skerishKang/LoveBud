@@ -1,6 +1,6 @@
 /**
  * LoveBud Search Preview Media Helper
- * v20260428-1
+ * v20260512-1053
  * 
  * Media helper boundary extracted from search-preview-renderer.js
  * Issue #424 PR B - Media helper extraction
@@ -70,18 +70,12 @@
         return cleaned || getSearchCopy('search.previewMomentFallback', fallbackKo, fallbackEn);
     }
 
-    /**
-     * Find the first memory with media (sourceUrl or thumbnail)
-     */
     function getPreviewMediaMemory(memories) {
         return (Array.isArray(memories) ? memories : []).find(memory => {
             return sanitizeUrl(memory?.sourceUrl || '') || sanitizeUrl(memory?.thumbnail || '');
         }) || null;
     }
 
-    /**
-     * Render fallback thumbnail HTML
-     */
     function renderPreviewThumbnailFallback(title, subtitle) {
         return `
             <div class="preview-media-fallback" style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;background:linear-gradient(135deg,var(--surface-container-low),white);border-radius:1rem;color:var(--on-surface-variant);">
@@ -92,9 +86,6 @@
         `;
     }
 
-    /**
-     * Render thumbnail with media
-     */
     function renderPreviewThumbnailMedia(thumbnailUrl, mediaTitle, treeTitle) {
         const fallbackHtml = renderPreviewThumbnailFallback(
             treeTitle,
@@ -117,9 +108,6 @@
         `;
     }
 
-    /**
-     * Handle image fallback display
-     */
     function showPreviewImageFallback(img) {
         if (!img) return;
         if (img.dataset.fallbackTriggered) return;
@@ -135,9 +123,6 @@
         overlays.forEach(overlay => overlay.style.display = 'none');
     }
 
-    /**
-     * Check for suspicious YouTube thumbnails
-     */
     function isSuspiciousYouTubeThumbnailImage(img) {
         const utils = getSharedUtils();
         if (utils?.isSuspiciousYouTubeThumbnailImage) {
@@ -153,18 +138,51 @@
         return width > 0 && height > 0 && width <= 120 && height <= 90;
     }
 
-    /**
-     * Generate iframe source URL with autoplay and mute parameters
-     */
-    function generateIframeSource(sourceUrl) {
-        const safeSourceUrl = sanitizeUrl(sourceUrl || '');
-        if (!safeSourceUrl) return '';
-        return safeSourceUrl + (safeSourceUrl.includes('?') ? '&' : '?') + 'autoplay=0&mute=1';
+    function getYouTubeVideoId(url) {
+        if (!url) return '';
+        try {
+            const parsed = new URL(url);
+            const host = parsed.hostname.replace(/^www\./, '').toLowerCase();
+            if (host === 'youtu.be') {
+                return parsed.pathname.split('/').filter(Boolean)[0] || '';
+            }
+            if (host === 'youtube.com' || host === 'm.youtube.com' || host === 'music.youtube.com' || host === 'youtube-nocookie.com') {
+                if (parsed.pathname.startsWith('/embed/')) {
+                    return parsed.pathname.split('/').filter(Boolean)[1] || '';
+                }
+                if (parsed.pathname.startsWith('/shorts/')) {
+                    return parsed.pathname.split('/').filter(Boolean)[1] || '';
+                }
+                return parsed.searchParams.get('v') || '';
+            }
+        } catch (e) {
+            return '';
+        }
+        return '';
     }
 
-    /**
-     * Render iframe media
-     */
+    function toPlayableEmbedUrl(sourceUrl) {
+        const safeSourceUrl = sanitizeUrl(sourceUrl || '');
+        if (!safeSourceUrl) return '';
+
+        const youtubeId = getYouTubeVideoId(safeSourceUrl);
+        if (youtubeId) {
+            const embedUrl = new URL(`https://www.youtube.com/embed/${encodeURIComponent(youtubeId)}`);
+            embedUrl.searchParams.set('autoplay', '0');
+            embedUrl.searchParams.set('mute', '0');
+            embedUrl.searchParams.set('controls', '1');
+            embedUrl.searchParams.set('rel', '0');
+            embedUrl.searchParams.set('modestbranding', '1');
+            return embedUrl.href;
+        }
+
+        return safeSourceUrl + (safeSourceUrl.includes('?') ? '&' : '?') + 'autoplay=0&mute=0&controls=1';
+    }
+
+    function generateIframeSource(sourceUrl) {
+        return toPlayableEmbedUrl(sourceUrl);
+    }
+
     function renderPreviewIframe(sourceUrl, treeTitle, mediaTitle) {
         const iframeSrc = generateIframeSource(sourceUrl);
         if (!iframeSrc) return '';
@@ -173,18 +191,18 @@
             <div class="preview-media-frame preview-media-frame-iframe" style="position:relative;width:100%;height:100%;border-radius:1rem;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.12);">
                 <iframe width="100%" height="100%"
                     src="${iframeSrc}"
-                    title="${escapeHtml(treeTitle)}" frameborder="0"
-                    allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    title="${escapeHtml(treeTitle || mediaTitle || 'LoveTree media')}" frameborder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    referrerpolicy="strict-origin-when-cross-origin"
                     allowfullscreen style="position:absolute;top:0;left:0;"></iframe>
-                <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top,rgba(0,0,0,0.8),transparent);padding:40px 20px 20px;color:white;text-align:center;">
-                    <div style="font-size:14px;font-weight:700;margin-bottom:8px;opacity:0.9;">${escapeHtml(getSearchCopy('search.previewStartFromFirstMoment', '대표 순간부터 감상하기', 'Start from the featured moment'))}</div>
+                <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top,rgba(0,0,0,0.8),transparent);padding:40px 20px 20px;color:white;text-align:center;pointer-events:none;">
+                    <div style="font-size:14px;font-weight:700;margin-bottom:8px;opacity:0.9;">${escapeHtml(getSearchCopy('search.previewPlayableHint', '영상은 이곳에서 바로 재생할 수 있어요.', 'You can play this video here.'))}</div>
                     <div style="font-size:12px;opacity:0.7;">${escapeHtml(mediaTitle)}</div>
                 </div>
             </div>
         `;
     }
 
-    // Expose the media helper
     window.LoveBudSearchPreviewMediaHelper = {
         getPreviewMediaMemory: getPreviewMediaMemory,
         renderPreviewThumbnailFallback: renderPreviewThumbnailFallback,
@@ -192,8 +210,9 @@
         showPreviewImageFallback: showPreviewImageFallback,
         isSuspiciousYouTubeThumbnailImage: isSuspiciousYouTubeThumbnailImage,
         generateIframeSource: generateIframeSource,
+        toPlayableEmbedUrl: toPlayableEmbedUrl,
         renderPreviewIframe: renderPreviewIframe
     };
 
-    console.log('[LoveBudSearchPreviewMediaHelper] Search preview media helper loaded v20260428-1');
+    console.log('[LoveBudSearchPreviewMediaHelper] Search preview media helper loaded v20260512-1053');
 })();
