@@ -170,26 +170,11 @@
         `;
     }
 
-    function renderCompactTreePreview(tree, variant) {
-        const tone = getTreePreviewTone(tree);
-        return `
-            <div class="tree-card-preview-strip tree-card-preview-strip-${variant} tree-card-preview-${tone}" aria-hidden="true">
-                <span class="tree-card-preview-line tree-card-preview-line-main"></span>
-                <span class="tree-card-preview-line tree-card-preview-line-branch"></span>
-                <span class="tree-card-preview-node tree-card-preview-node-root"></span>
-                <span class="tree-card-preview-node tree-card-preview-node-branch"></span>
-                <span class="tree-card-preview-node tree-card-preview-node-leaf"></span>
-                <span class="tree-card-preview-node tree-card-preview-node-end"></span>
-            </div>
-        `;
-    }
-
     function renderMediaFallback(tree, titleText) {
         const safeTitle = escapeHtml(titleText || '러브트리');
         return `
             <div class="tree-card-media-fallback">
                 <div class="fallback-title">${safeTitle}</div>
-                ${renderCompactTreePreview(tree, 'fallback')}
             </div>
         `;
     }
@@ -215,12 +200,9 @@
          );
          const firstMoment = escapeHtml(firstMem?.title || '대표 순간 준비 중');
 
-         const mediaPreview = mediaUrl ? renderCompactTreePreview(tree, 'media') : '';
-
          return `
              <div class="tree-card-media" aria-label="${firstMoment}" style="position:relative;overflow:hidden;">
                  ${renderRepresentativeImage(mediaUrl, firstMoment, tree, titleText)}
-                 ${mediaPreview}
              </div>
          `;
      }
