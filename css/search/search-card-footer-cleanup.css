@@ -1,0 +1,17 @@
+/**
+ * Issue #1049 follow-up: keep Browse card footer actions legible after mini-flow removal.
+ *
+ * The full moment count is already available in the selected hub. In compact cards it
+ * competes with the stage chip and the CTA, producing clipped text such as `6...`.
+ */
+.tree-card .tree-moment-count {
+    display: none;
+}
+
+.tree-card .tree-meta-right {
+    flex: 0 0 auto;
+}
+
+.tree-card .tree-card-open-link {
+    max-width: 100%;
+}
