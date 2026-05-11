@@ -92,9 +92,9 @@
         var rootSeed = {
             id: 'moment-root',
             branchId: 'main',
-            title: (memories[0] && memories[0].title) || t('viewer.rootMoment', '시작된 순간', 'Starting moment'),
-            tag: t('viewer.start', '시작', 'Start'),
-            caption: (memories[0] && memories[0].emotionMemo) || '',
+            title: t('viewer.rootOverviewAnchor', '러브트리의 시작점', 'LoveTree starting point'),
+            tag: t('viewer.fullFlowAnchor', '전체 흐름', 'Full flow'),
+            caption: t('viewer.rootOverviewCaption', '전체 흐름의 기준점', 'The anchor for the full tree overview'),
             color: 'from-rose-200 via-rose-100 to-amber-50',
             emoji: '✦'
         };
@@ -179,7 +179,6 @@
 
             function getAllMoments() {
                 var results = [];
-                results.push({ id: viewerData.rootSeed.id, branchId: 'main', title: viewerData.rootSeed.title, tag: viewerData.rootSeed.tag, caption: viewerData.rootSeed.caption, emoji: viewerData.rootSeed.emoji });
                 viewerData.branches[0].moments.forEach(function(m) {
                     results.push({ id: m.id, branchId: 'main', title: m.title, tag: m.tag, caption: m.caption, emoji: m.emoji });
                 });
@@ -211,6 +210,10 @@
                     refresh();
                 },
                 onSelectMoment: function(momentId, branchId) {
+                    if (viewerData.rootSeed && momentId === viewerData.rootSeed.id) {
+                        handler.onSelectBranch(branchId || viewerData.rootSeed.branchId || 'main');
+                        return;
+                    }
                     state.selectedBranchId = branchId;
                     state.selectedMomentId = momentId;
                     state.activePanel = 'moment';

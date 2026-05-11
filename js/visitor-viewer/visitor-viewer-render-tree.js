@@ -65,14 +65,13 @@
 
         var rootEl = '';
         if (rootSeed) {
-            rootEl = '<button type="button" class="vv-root-seed ' + (selectedMomentId === rootSeed.id ? 'is-selected' : '') + '" data-moment-id="' + escapeHtml(rootSeed.id) + '" data-branch-id="' + escapeHtml(rootSeed.branchId) + '" aria-label="시작된 순간 열기">' +
+            rootEl = '<div class="vv-root-seed vv-root-seed-overview-anchor" data-overview-anchor="true" aria-label="러브트리의 시작점">' +
                 '<div class="vv-root-seed-shape" style="background:linear-gradient(135deg,' + (paletteObj.rose || {soft:'#fff1f3',stroke:'#e99aac'}).soft + ',' + (paletteObj.rose || {}).stroke + ' 40%,white)">' +
                 '<div class="vv-root-seed-inner"></div>' +
                 '<span class="vv-root-seed-emoji">' + escapeHtml(rootSeed.emoji) + '</span>' +
-                '<span class="vv-root-seed-play">▶</span>' +
                 '</div>' +
-                '<span class="vv-root-seed-label">시작된 순간</span>' +
-                '</button>';
+                '<span class="vv-root-seed-label">러브트리의 시작점</span>' +
+                '</div>';
         }
 
         container.innerHTML =
