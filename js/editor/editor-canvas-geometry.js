@@ -7,6 +7,12 @@
     const AFFORDANCE_OFFSET_Y = 10;
     const AFFORDANCE_CARD_HALF = 108;
 
+    /** Structured layout constants */
+    const STRUCTURED_ROOT_Y_FRAC = 0.62;
+    const STRUCTURED_VERTICAL_SPACING = 160;
+    const STRUCTURED_SIBLING_SPACING = 120;
+    const STRUCTURED_LEVEL_SPREAD = 1.4;
+
     function getMetrics(canvas) {
         return {
             width: Math.max(canvas.clientWidth || 0, 720),
@@ -99,6 +105,159 @@
         return recurse(mem);
     }
 
+    /**
+     * Structured layout: vertical tree hierarchy.
+     * Root at bottom-center, children branching upward.
+     * Ignores stored positions — pure topology-based layout.
+     */
+    function getStructuredWorldPosition(mem, getCanonicalRootId, getTreeMemories, isRootMemory, getMetricsSnapshot) {
+        const canonicalRootId = getCanonicalRootId();
+        const treeMemories = getTreeMemories();
+        const readMetrics = typeof getMetricsSnapshot === 'function'
+            ? getMetricsSnapshot
+            : () => getMetrics({ clientWidth: 0, clientHeight: 0 });
+
+        function getDepth(node, visited = new Set()) {
+            if (!node || isRootMemory(node, canonicalRootId)) return 0;
+            if (visited.has(node.id)) return 0;
+            visited.add(node.id);
+            const parentId = node.parentId || canonicalRootId;
+            const parent = treeMemories.find((m) => m.id === parentId);
+            return 1 + getDepth(parent, visited);
+        }
+
+        /**
+         * Build sub-tree width for a given node, used to spread siblings.
+         * Returns the horizontal span this subtree takes.
+         */
+        function getSubtreeWidth(node, visited = new Set()) {
+            if (!node) return 1;
+            if (visited.has(node.id)) return 1;
+            visited.add(node.id);
+            const children = treeMemories.filter((m) => {
+                const pid = m.parentId || canonicalRootId;
+                return pid === node.id && !isRootMemory(m, canonicalRootId);
+            });
+            if (children.length === 0) return 1;
+            return children.reduce((sum, child) => sum + getSubtreeWidth(child, visited), 0);
+        }
+
+        /**
+         * Compute position recursively using depth, sibling index, and subtree width.
+         */
+        function computePosition(node, depth, offsetX, parentWidth, siblingIdx, siblingCount, visited = new Set()) {
+            const metrics = readMetrics();
+            if (!node || visited.has(node.id)) {
+                return { x: metrics.width / 2, y: getRootY(metrics) };
+            }
+            visited.add(node.id);
+
+            const isRoot = isRootMemory(node, canonicalRootId);
+            const y = isRoot
+                ? getRootY(metrics)
+                : getRootY(metrics) - depth * STRUCTURED_VERTICAL_SPACING;
+
+            let x;
+            if (isRoot) {
+                x = metrics.width / 2;
+            } else {
+                const slotWidth = parentWidth / siblingCount;
+                x = offsetX + slotWidth * (siblingIdx + 0.5);
+            }
+
+            // Clamp x within canvas bounds
+            x = Math.max(NODE_WIDTH, Math.min(x, metrics.width - NODE_WIDTH));
+
+            return { x: Math.round(x), y: Math.round(y) };
+        }
+
+        function getRootY(metrics) {
+            return Math.round(Math.min(metrics.height * STRUCTURED_ROOT_Y_FRAC, metrics.height - ROOT_BOTTOM_GUTTER));
+        }
+
+        // Find root
+        const rootMemory = treeMemories.find((m) => isRootMemory(m, canonicalRootId));
+
+        if (!rootMemory) {
+            // No root — position at center
+            const metrics = readMetrics();
+            return { x: Math.round(metrics.width / 2), y: getRootY(metrics) };
+        }
+
+        if (isRootMemory(mem, canonicalRootId)) {
+            const metrics = readMetrics();
+            return { x: Math.round(metrics.width / 2), y: getRootY(metrics) };
+        }
+
+        // Build a lookup map of all nodes with their positions
+        const structuredPositions = new Map();
+        const allVisited = new Set();
+
+        function placeSubtree(node, depth, offsetX, parentWidth, sIdx, sCount) {
+            if (!node || allVisited.has(node.id)) return;
+            allVisited.add(node.id);
+
+            const pos = computePosition(node, depth, offsetX, parentWidth, sIdx, sCount);
+            structuredPositions.set(node.id, pos);
+
+            const children = treeMemories.filter((m) => {
+                const pid = m.parentId || canonicalRootId;
+                return pid === node.id && !isRootMemory(m, canonicalRootId);
+            });
+
+            if (children.length === 0) return;
+
+            // Compute total subtree width for this node
+            const nodeVisited = new Set();
+            const totalSubWidth = children.reduce((sum, child) => {
+                return sum + getSubtreeWidth(child, new Set());
+            }, 0);
+
+            let childOffsetX = pos.x - (totalSubWidth * STRUCTURED_SIBLING_SPACING) / 2;
+            children.forEach((child) => {
+                const childWidth = getSubtreeWidth(child, new Set());
+                const childSlotWidth = childWidth * STRUCTURED_SIBLING_SPACING;
+                placeSubtree(child, depth + 1, childOffsetX, childSlotWidth, 0, 1);
+                childOffsetX += childSlotWidth;
+            });
+        }
+
+        // Start placement from root
+        const rootPos = computePosition(rootMemory, 0, 0, 0, 0, 1);
+        structuredPositions.set(rootMemory.id, rootPos);
+
+        const rootChildren = treeMemories.filter((m) => {
+            const pid = m.parentId || canonicalRootId;
+            return pid === rootMemory.id && !isRootMemory(m, canonicalRootId);
+        });
+
+        if (rootChildren.length > 0) {
+            const totalWidth = rootChildren.reduce((sum, child) => {
+                return sum + getSubtreeWidth(child, new Set());
+            }, 0);
+            let offsetX = rootPos.x - (totalWidth * STRUCTURED_SIBLING_SPACING) / 2;
+            rootChildren.forEach((child) => {
+                const childWidth = getSubtreeWidth(child, new Set());
+                const slotWidth = childWidth * STRUCTURED_SIBLING_SPACING;
+                placeSubtree(child, 1, offsetX, slotWidth, 0, 1);
+                offsetX += slotWidth;
+            });
+        }
+
+        // If the requested node has a structured position, return it
+        if (structuredPositions.has(mem.id)) {
+            return structuredPositions.get(mem.id);
+        }
+
+        // Fallback: compute depth-based position
+        const depth = getDepth(mem);
+        const metrics = readMetrics();
+        return {
+            x: Math.round(metrics.width / 2),
+            y: Math.round(getRootY(metrics) - depth * STRUCTURED_VERTICAL_SPACING)
+        };
+    }
+
     function calcPosition(mem, viewportState, getWorldPosFn) {
         const world = getWorldPosFn(mem);
         return { x: world.x + viewportState.offsetX, y: world.y + viewportState.offsetY };
@@ -118,6 +277,7 @@
         getRadiusL2,
         distributeAngles,
         getWorldPosition,
+        getStructuredWorldPosition,
         calcPosition
     };
 })();

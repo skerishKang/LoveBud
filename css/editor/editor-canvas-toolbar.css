@@ -153,6 +153,19 @@
     transition: background 0.1s ease, border-color 0.1s ease;
 }
 
+/* Active state for layout mode toggle */
+.editor-canvas-tool-btn.is-active {
+    background: var(--primary, rgba(144,73,81,0.92));
+    border-color: var(--primary, rgba(144,73,81,0.92));
+    color: #fff;
+}
+
+.editor-canvas-tool-btn.is-active:hover:not(:disabled) {
+    background: var(--primary-hover, rgba(124,59,67,0.92));
+    border-color: var(--primary-hover, rgba(124,59,67,0.92));
+    color: #fff;
+}
+
 .editor-canvas-tool-btn .material-symbols-outlined {
     font-size: 20px;
     line-height: 1;
@@ -209,6 +222,11 @@
     .editor-canvas-toolbar-group[aria-label="트리 뷰 컨트롤"] {
         flex: 1 1 auto;
         flex-direction: column;
+    }
+
+    .editor-canvas-toolbar-group[aria-label="레이아웃 모드"] {
+        flex: 0 0 auto;
+        flex-direction: row;
     }
 
     .editor-canvas-toolbar-separator {

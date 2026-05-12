@@ -16,7 +16,7 @@ window.LoveBudEditorCanvasInteraction = {
     if (viewportState.globalsBound) return;
     viewportState.globalsBound = true;
 
-    canvas.style.cursor = 'grab';
+    canvas.style.cursor = viewportState.layoutMode === 'structured' ? 'default' : 'grab';
     canvas.style.touchAction = 'none';
 
     canvas.addEventListener('mousedown', (event) => {
@@ -27,6 +27,10 @@ window.LoveBudEditorCanvasInteraction = {
       ) {
         return;
       }
+
+      // Disable canvas panning drag in structured mode
+      if (viewportState.layoutMode === 'structured') return;
+
       viewportState.isPanning = true;
       viewportState.startX = event.clientX;
       viewportState.startY = event.clientY;
@@ -96,7 +100,7 @@ window.LoveBudEditorCanvasInteraction = {
       }
       viewportState.isPanning = false;
       canvas.classList.remove('panning');
-      canvas.style.cursor = 'grab';
+      canvas.style.cursor = viewportState.layoutMode === 'structured' ? 'default' : 'grab';
       if (shouldRender) {
         persistStoredPositions();
         initCanvas();
@@ -105,6 +109,9 @@ window.LoveBudEditorCanvasInteraction = {
   },
 
   beginNodeDrag(event, nodeEl, memory, viewportState, getWorldPosition) {
+    // Disable node drag in structured mode
+    if (viewportState.layoutMode === 'structured') return false;
+
     if (event.button !== 0) return false;
     if (event.target.closest('button')) return false;
     event.preventDefault();
