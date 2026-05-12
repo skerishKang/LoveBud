@@ -39,7 +39,7 @@
 }
 
 .sidebar-btn-primary:hover {
-    background: #7d3f46;
+    background: var(--primary);
     box-shadow: 0 4px 16px rgba(144, 73, 81, 0.16);
     opacity: 1;
 }
@@ -103,8 +103,8 @@
 
 /* 1. Base Layout & Backgrounds */
 body .editor-layout {
-    background: #fdfcfb;
-    background-image: linear-gradient(180deg, #fffcf9 0%, #f9f5f0 100%);
+    background: var(--surface);
+    background-image: linear-gradient(180deg, var(--surface) 0%, var(--surface-container-low) 100%);
 }
 
 body .sidebar,
@@ -115,7 +115,7 @@ body .detail-panel {
 }
 
 body .canvas-area {
-    background-color: #faf8f6;
+    background-color: var(--surface-container-low);
     background-image: radial-gradient(rgba(144, 73, 81, 0.03) 1px, transparent 1px);
     border: 1px solid rgba(144, 73, 81, 0.08);
     box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.015);
@@ -127,24 +127,24 @@ body .canvas-area::before {
 
 /* 2. Left Status Card (Scrapbook Cover/Paper) */
 body .editor-status-card {
-    background: #ffffff;
-    background-image: linear-gradient(165deg, #ffffff 0%, #fdfbf9 100%);
+    background: var(--surface-container-lowest);
+    background-image: linear-gradient(165deg, var(--surface-container-lowest) 0%, var(--surface) 100%);
     border: 1px solid rgba(144, 73, 81, 0.16);
     box-shadow: 0 8px 24px rgba(75, 64, 57, 0.06), 0 2px 4px rgba(0, 0, 0, 0.02);
 }
 
 body .editor-status-card strong {
-    color: #4a372e;
+    color: var(--on-background);
 }
 
 body .editor-tree-quiet-note {
-    color: #8f776c;
+    color: var(--on-surface-note);
     border-top: 1px dashed rgba(190, 147, 127, 0.24);
 }
 
 /* 3. Node Card (Paper Scrap) */
 body .node-card {
-    background: #ffffff;
+    background: var(--surface-container-lowest);
     border: 1px solid rgba(144, 73, 81, 0.08);
     box-shadow: 1px 2px 6px rgba(75, 64, 57, 0.05);
     border-radius: 6px;
@@ -158,7 +158,7 @@ body .memory-node.selected .node-card {
 }
 
 body .node-img-wrapper {
-    background: #f8f6f4;
+    background: var(--surface-container-low);
     border-radius: 4px;
 }
 
@@ -178,31 +178,31 @@ body .editor-moment-info-card {
 body .diary-note {
     background: rgba(253, 252, 251, 0.8);
     border-left: 4px solid rgba(144, 73, 81, 0.15);
-    color: #55443d;
+    color: var(--on-surface);
 }
 
 /* 5. Button/Chip/Pill Tone */
 body .editor-tree-visibility-pill.is-private {
     background: rgba(144, 73, 81, 0.06);
-    color: #904951;
+    color: var(--primary);
     border: 1px solid rgba(144, 73, 81, 0.12);
 }
 
 body .editor-mini-setting-btn {
     background: rgba(255, 255, 255, 0.86);
     border-color: rgba(144, 73, 81, 0.14);
-    color: #6d544b;
+    color: var(--on-surface-variant);
 }
 
 body .editor-memory-mode-chip {
-    background: #ffffff;
+    background: var(--surface-container-lowest);
     border-color: rgba(144, 73, 81, 0.12);
 }
 
 body .editor-memory-mode-chip.is-active {
     background: rgba(144, 73, 81, 0.08);
     border-color: rgba(144, 73, 81, 0.24);
-    color: #904951;
+    color: var(--primary);
 }
 
 /* 6. Mobile Polish (375px) */
@@ -235,7 +235,7 @@ body .editor-canvas-title h2 {
 
 
 .editor-layout {
-    background: linear-gradient(180deg,#fff8f0 0%,#f8ede2 52%,#f5e6dc 100%);
+    background: linear-gradient(180deg, var(--surface) 0%, var(--surface-container-low) 52%, var(--surface-container) 100%);
     gap: 18px;
     padding: 18px;
     box-sizing: border-box;
@@ -293,7 +293,7 @@ body .editor-canvas-title h2 {
     border-radius: 999px;
     background: rgba(255,248,242,0.90);
     border: 1px solid rgba(233,213,199,0.86);
-    color: #a36b62;
+    color: var(--on-surface-soft);
     font-size: 12px;
     font-weight: 800;
     letter-spacing: 0.01em;
@@ -314,7 +314,7 @@ body .editor-canvas-title h2 {
 
 .editor-status-card strong {
     font-size: 1.62rem;
-    color: #583f35;
+    color: var(--on-surface);
 }
 
 .editor-rename-btn {
@@ -330,7 +330,7 @@ body .editor-canvas-title h2 {
     border-radius: 999px;
     background: rgba(255,255,255,0.78);
     border-color: rgba(197,146,128,0.30);
-    color: #9b5f58;
+    color: var(--on-surface-soft);
     font-size: 11px;
     font-weight: 900;
     line-height: 1;
@@ -364,7 +364,7 @@ body .editor-canvas-title h2 {
     border-radius: 999px;
     background: rgba(255,255,255,0.70);
     border-color: rgba(221,198,184,0.84);
-    color: #7f6258;
+    color: var(--on-surface-soft);
     font-weight: 800;
     box-shadow: 0 8px 16px rgba(165,124,101,0.06);
 }
@@ -377,7 +377,7 @@ body .editor-canvas-title h2 {
     margin: 20px 0 0;
     padding-top: 18px;
     border-top: 1px dashed rgba(190,147,127,0.36);
-    color: #8f776c;
+    color: var(--on-surface-note);
     font-size: 13px;
     line-height: 1.7;
     text-align: center;
