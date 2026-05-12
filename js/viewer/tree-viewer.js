@@ -258,7 +258,7 @@
             var Panels = window.LoveBudVisitorViewerPanels;
 
             // Render state
-            var state = { selectedBranchId: 'main', selectedMomentId: null, activePanel: 'empty', likedTree: false };
+            var state = { selectedBranchId: 'main', selectedMomentId: null, activePanel: 'empty', likedTree: false, layoutMode: 'organic' };
 
             show(SEL.treeContainer);
             hide(SEL.loading, SEL.empty, SEL.error);
@@ -274,6 +274,11 @@
                 '  <div><p class="vv-eyebrow">Public LoveTree Viewer</p>' +
                 '  <h1 class="vv-title">' + escapeHtml(treeTitle) + '</h1>' +
                 '  <div class="vv-meta-row"><span>' + escapeHtml(viewerData.tree.creator) + '</span><span class="vv-dot">·</span><span>' + escapeHtml(treeMetaText) + '</span></div></div>' +
+                '  <div class="vv-header-actions">' +
+                '    <button type="button" class="vv-layout-toggle" data-action="toggle-layout" aria-label="&#xB808;&#xC774;&#xC544;&#xC6B0;&#xCDE8; &#xC804;&#xD658;" title="&#xB808;&#xC774;&#xC544;&#xC6B0;&#xCDE8; &#xC804;&#xD658;">' +
+                '      <span class="vv-layout-toggle-label" id="vvLayoutToggleLabel">&#xAD6C;&#xC870; &#xBCF4;&#xAE30;</span>' +
+                '    </button>' +
+                '  </div>' +
                 '</header>' +
                 '<div class="vv-action-dock">' +
                 '  <div class="vv-action-group">' +
@@ -350,6 +355,14 @@
                     refresh();
                 },
                 toggleLike: function() { state.likedTree = !state.likedTree; },
+                onToggleLayout: function() {
+                    state.layoutMode = state.layoutMode === 'organic' ? 'hierarchy' : 'organic';
+                    var toggleLabel = document.getElementById('vvLayoutToggleLabel');
+                    if (toggleLabel) {
+                        toggleLabel.textContent = state.layoutMode === 'hierarchy' ? '유기적 보기' : '구조 보기';
+                    }
+                    refresh();
+                },
                 copyLink: function() {
                     var Share = window.LoveBudShareActions;
                     if (!Share) return;
@@ -405,6 +418,7 @@
                     else if (a === 'native-share') handler.nativeShare();
                     else if (a === 'platform-share') handler.platformShare(action.dataset.platform);
                     else if (a === 'export-tree-card') handler.exportTreeImageCard();
+                    else if (a === 'toggle-layout') handler.onToggleLayout();
                     return;
                 }
                 var momentBtn = e.target.closest('[data-moment-id]');
