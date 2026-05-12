@@ -171,3 +171,19 @@ def validate_optional_uuid(value: Any, name: str) -> str | None:
     if value is None or value == "":
         return None
     return validate_required_uuid(value, name)
+
+
+def validate_required_id(value: Any, name: str) -> str:
+    """Validate a required ID field. Accepts both UUID and non-UUID string IDs."""
+    if not isinstance(value, str) or not value.strip():
+        raise HTTPException(status_code=400, detail=f"{name} is required")
+    return value.strip()
+
+
+def validate_optional_id(value: Any, name: str) -> str | None:
+    """Validate an optional ID field. Accepts both UUID and non-UUID string IDs."""
+    if value is None or value == "":
+        return None
+    if not isinstance(value, str) or not value.strip():
+        raise HTTPException(status_code=400, detail=f"Invalid {name}")
+    return value.strip()
