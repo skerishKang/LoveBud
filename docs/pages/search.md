@@ -20,19 +20,82 @@
 - **Preview Panel**: 선택 트리 미리보기
 
 ### 현재 파일 구조
-- `pages/search.html` (inline CSS 포함)
-- `js/search.js` (~150줄, orchestrator only)
-- `js/search/search-data-adapter.js` (~220줄, data layer)
-- `js/search-card-renderer.js` (~280줄, card rendering)
-- `js/search-preview-renderer.js` (~170줄, preview rendering)
+- `pages/search.html` (inline CSS 포함, script/vendor modules)
+- `js/search/index.js` (orchestrator)
+- `js/search/search-title-helper.js` (제목/태그/날짜 helper)
+- `js/search/search-data-adapter.js` (data layer, PR #1058에서 source URL 정규화)
+- `js/search/search-shared-utils.js` (공유 유틸리티)
+- `js/search/search-card-renderer.js` (카드 렌더링)
+- `js/search/search-preview-media-helper.js` (미디어/썸네일 helper)
+- `js/search/search-preview-media-embed-patch.js` (PR #1058: YouTube iframe 소스 정규화)
+- `js/search/search-preview-copy-helper.js` (카피/로케일 포맷 helper)
+- `js/search/search-preview-action-helper.js` (CTA/공유 markup helper)
+- `js/search/search-preview-renderer-builders.js` (프리뷰 빌더 유틸리티)
+- `js/search/search-preview-renderer.js` (프리뷰 패널 DOM 렌더링)
+- `js/search/search-preview-playable-hub-patch.js` (PR #1058: 재생 가능 허브 미디어, 흐름 전환, 액션 레이아웃)
+- `js/search/search-preview-hub-dom-patch.js` (PR #1058: DOM 레벨 허브 레이아웃 패치, 소셜 바 와이어링)
+- `js/search/search-preview-cache.js` (프리뷰 캐시)
+- `js/search/search-ui.js` (UI 오케스트레이션)
+- `js/search/search-url-state.js` (URL 상태)
+- `js/search/search-controls.js` (컨트롤)
+- `js/search/search-data.js` (데이터)
+- `js/search/search-preview-controller.js` (프리뷰 컨트롤러)
+- `js/postgres-client.js` (API facade)
 
-### 모듈 구조 (v20260418-1)
+### CSS 파일 구조 (PR #1058 추가 포함)
+- `css/search.css` (import hub, PR #1058에서 4개 새 CSS import 추가)
+- `css/search/search-base.css`
+- `css/search/search-hero-controls.css`
+- `css/search/search-controls.css`
+- `css/search/search-results-skeleton.css`
+- `css/search/search-empty-state.css`
+- `css/search/search-growing-trees.css`
+- `css/search/search-tree-card.css`
+- `css/search/search-card-footer-cleanup.css`
+- `css/search/search-preview-sidebar.css`
+- `css/search/search-preview-scroll-fix.css` (PR #1058: 허브 독립 스크롤)
+- `css/search/search-preview-media-cleanup.css` (PR #1058: 미디어 오버레이 제거)
+- `css/search/search-preview-media-no-overlays.css` (PR #1058: Browse 미디어 오버레이 제거)
+- `css/search/search-preview-social-bar.css` (PR #1058: 소셜 액션 바)
+- `css/search/search-responsive.css`
+
+### 모듈 구조 (v20260512-1058)
 ```
 search.html
-├── search.js (orchestrator)
-├── js/search/search-data-adapter.js (data transformation)
-├── search-card-renderer.js (card + empty state)
-└── search-preview-renderer.js (preview sidebar)
+├── css/search.css (import hub, PR #1058)
+│   ├── search-base.css
+│   ├── search-hero-controls.css
+│   ├── search-controls.css
+│   ├── search-results-skeleton.css
+│   ├── search-empty-state.css
+│   ├── search-growing-trees.css
+│   ├── search-tree-card.css
+│   ├── search-card-footer-cleanup.css
+│   ├── search-preview-sidebar.css
+│   ├── search-preview-scroll-fix.css      ← PR #1058
+│   ├── search-preview-media-cleanup.css    ← PR #1058
+│   ├── search-preview-media-no-overlays.css ← PR #1058
+│   ├── search-preview-social-bar.css       ← PR #1058
+│   └── search-responsive.css
+├── js/search/index.js (orchestrator)
+├── js/search/search-title-helper.js
+├── js/search/search-data-adapter.js (data transformation, PR #1058)
+├── js/search/search-shared-utils.js
+├── js/search/search-card-renderer.js (card + empty state)
+├── js/search/search-preview-media-helper.js
+├── js/search/search-preview-media-embed-patch.js ← PR #1058
+├── js/search/search-preview-copy-helper.js
+├── js/search/search-preview-action-helper.js
+├── js/search/search-preview-renderer-builders.js
+├── js/search/search-preview-renderer.js (preview sidebar)
+├── js/search/search-preview-playable-hub-patch.js ← PR #1058
+├── js/search/search-preview-hub-dom-patch.js      ← PR #1058
+├── js/search/search-preview-cache.js
+├── js/search/search-ui.js
+├── js/search/search-url-state.js
+├── js/search/search-controls.js
+├── js/search/search-data.js
+└── js/search/search-preview-controller.js
 ```
 
 ### 데이터 계층 (js/search/search-data-adapter.js)
