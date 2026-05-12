@@ -307,7 +307,14 @@ function isNodeWithinSafeViewport(pos) {
         let touchStartPoint = null;
 
         const selectMemoryNode = () => {
+            const prevSelectedId = document.querySelector('.memory-node.selected')?.dataset?.memoryId;
             onNodeClick(nodeEl, mem);
+            if (prevSelectedId !== mem.id) {
+                clearGrowthAffordance();
+                renderGrowthAffordance(mem, {
+                    isFirstStep: getTreeMemories().filter(n => !isRootMemory(n, getCanonicalRootId())).length <= 1
+                });
+            }
         };
 
         nodeEl.addEventListener('mousedown', (e) => {

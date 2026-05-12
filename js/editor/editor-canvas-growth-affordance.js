@@ -207,6 +207,16 @@ function createEditorCanvasGrowthAffordance(deps) {
             branchEnd,
             affPos.side
         );
+
+        // Add anchor dot at node connection point to visually tie branch to node
+        const anchorDot = documentRef.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        anchorDot.setAttribute('cx', branchStart.x);
+        anchorDot.setAttribute('cy', branchStart.y);
+        anchorDot.setAttribute('r', '3');
+        anchorDot.setAttribute('fill', 'rgba(144, 73, 81, 0.5)');
+        anchorDot.setAttribute('class', 'branch-line-affordance');
+        svg.appendChild(anchorDot);
+
         canvas.appendChild(wrap);
     }
 
