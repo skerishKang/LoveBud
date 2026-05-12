@@ -602,6 +602,41 @@ function isNodeWithinSafeViewport(pos) {
 
         if (viewportState.controlsBound) return;
         viewportState.controlsBound = true;
+
+        const focusBtn = document.getElementById('focusSelectedBtn');
+        const recenterBtn = document.getElementById('recenterCanvasBtn');
+        const zoomInBtn = document.getElementById('zoomInCanvasBtn');
+        const zoomOutBtn = document.getElementById('zoomOutCanvasBtn');
+
+        // Prevent clicks from starting a pan
+        [focusBtn, recenterBtn, zoomInBtn, zoomOutBtn].forEach((button) => {
+            if (!button) return;
+            button.addEventListener('mousedown', (event) => { event.stopPropagation(); });
+            button.addEventListener('touchstart', (event) => { event.stopPropagation(); }, { passive: true });
+        });
+
+        if (focusBtn) {
+            focusBtn.addEventListener('click', () => {
+                const selectedId = document.querySelector('.memory-node.selected')?.dataset?.memoryId;
+                if (selectedId) {
+                    focusNodeById(selectedId);
+                }
+            });
+        }
+
+        if (recenterBtn) {
+            recenterBtn.addEventListener('click', () => {
+                recenterViewport();
+            });
+        }
+
+        if (zoomInBtn && typeof zoomBy === 'function') {
+            zoomInBtn.addEventListener('click', () => { zoomBy(canvasViewport.zoomStep || 1.18); });
+        }
+
+        if (zoomOutBtn && typeof zoomBy === 'function') {
+            zoomOutBtn.addEventListener('click', () => { zoomBy(1 / (canvasViewport.zoomStep || 1.18)); });
+        }
     }
 
     function bindLayoutModeToggle() {
@@ -638,23 +673,47 @@ function isNodeWithinSafeViewport(pos) {
             return;
         }
 
-        // Fallback in-memory binding
+        // Fallback pan/drag binding — structured mode guards added
         if (viewportState.globalsBound) return;
         viewportState.globalsBound = true;
 
-        canvas.addEventListener('mousedown', (event) => {
-            if (event.target.closest('.memory-node') || event.target.closest('#addMemoryForm') || event.target.closest('.memory-add-affordance')) return;
+        canvas.style.cursor = viewportState.layoutMode === 'structured' ? 'default' : 'grab';
 
-            // Disable panning interaction that leads to drag in structured mode
+        canvas.addEventListener('mousedown', (event) => {
+            if (
+                event.target.closest('.memory-node') ||
+                event.target.closest('#addMemoryForm') ||
+                event.target.closest('.memory-add-affordance')
+            ) {
+                return;
+            }
+            // Disable pan in structured mode
             if (viewportState.layoutMode === 'structured') return;
 
             viewportState.isPanning = true;
             viewportState.startX = event.clientX;
             viewportState.startY = event.clientY;
+            canvas.classList.add('panning');
+            canvas.style.cursor = 'grabbing';
         });
 
         window.addEventListener('mousemove', (event) => {
-            if (viewportState.layoutMode !== 'free') return;
+            if (viewportState.isDraggingNode && viewportState.dragNodeId) {
+                const dx = event.clientX - viewportState.dragStartClientX;
+                const dy = event.clientY - viewportState.dragStartClientY;
+                if (Math.abs(dx) > 6 || Math.abs(dy) > 6) {
+                    viewportState.dragMoved = true;
+                }
+                if (!viewportState.dragMoved) return;
+                const scale = viewportState.scale || 1;
+                viewportState.positions[viewportState.dragNodeId] = {
+                    x: Math.round(viewportState.dragStartWorldX + (dx / scale)),
+                    y: Math.round(viewportState.dragStartWorldY + (dy / scale))
+                };
+                initCanvas();
+                return;
+            }
+
             if (!viewportState.isPanning) return;
             const dx = event.clientX - viewportState.startX;
             const dy = event.clientY - viewportState.startY;
@@ -666,9 +725,37 @@ function isNodeWithinSafeViewport(pos) {
         });
 
         window.addEventListener('mouseup', () => {
+            let shouldRender = false;
+            if (viewportState.isDraggingNode && viewportState.dragNodeId) {
+                const draggedId = viewportState.dragNodeId;
+                const moved = viewportState.dragMoved;
+                viewportState.isDraggingNode = false;
+                viewportState.dragNodeId = null;
+                viewportState.dragMoved = false;
+                const draggedEl = document.querySelector(`.memory-node[data-memory-id="${draggedId}"]`);
+                if (draggedEl) {
+                    draggedEl.style.cursor = 'grab';
+                }
+                if (draggedEl && moved) {
+                    draggedEl.dataset.suppressClick = '1';
+                    shouldRender = true;
+                    const toast = document.getElementById('movedToast');
+                    if (toast) {
+                        toast.style.display = 'block';
+                        setTimeout(() => { toast.style.display = 'none'; }, 3000);
+                    }
+                }
+            }
+
             if (viewportState.isPanning) {
-                viewportState.isPanning = false;
+                shouldRender = true;
+            }
+            viewportState.isPanning = false;
+            canvas.classList.remove('panning');
+            canvas.style.cursor = viewportState.layoutMode === 'structured' ? 'default' : 'grab';
+            if (shouldRender) {
                 persistStoredPositions();
+                initCanvas();
             }
         });
     }
@@ -715,3 +802,5 @@ function isNodeWithinSafeViewport(pos) {
         get viewportState() { return viewportState; }
     };
 }
+
+window.createEditorCanvas = createEditorCanvas;
