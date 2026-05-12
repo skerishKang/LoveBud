@@ -19,6 +19,7 @@ function createEditorCanvas(deps) {
         || new URLSearchParams(window.location.search).get('treeId')
         || 'default';
     const layoutStorageKey = 'lovebud_tree_layout_v2_' + treeId;
+    const layoutModeStorageKey = 'lovebud_tree_layout_mode_' + treeId;
     const canvasLayout = window.LoveBudEditorCanvasLayout || {};
     const canvasNode = window.LoveBudEditorCanvasNode || {};
     const canvasInteraction = window.LoveBudEditorCanvasInteraction || {};
@@ -26,6 +27,12 @@ function createEditorCanvas(deps) {
     const canvasViewport = window.LoveBudEditorCanvasViewport || {};
     const canvasLayoutHelpers = window.LoveBudEditorCanvasLayoutHelpers || {};
     const canvasEdges = window.createEditorCanvasEdges({ svg, canvasViewport });
+
+    /** Saved free positions — preserved when switching to structured mode */
+    let savedFreePositions = null;
+
+    /** Stored free positions from localStorage */
+    let storedFreePositions = null;
 
 function loadStoredLayout() {
         if (typeof canvasLayout.createLayoutStore === 'function') {
@@ -55,7 +62,22 @@ function loadStoredLayout() {
         }
     }
 
+    function loadLayoutMode() {
+        try {
+            const raw = localStorage.getItem(layoutModeStorageKey);
+            if (raw === 'structured' || raw === 'free') return raw;
+        } catch (e) {}
+        return 'free';
+    }
+
+    function persistLayoutMode(mode) {
+        try {
+            localStorage.setItem(layoutModeStorageKey, mode);
+        } catch (e) {}
+    }
+
     const storedLayout = loadStoredLayout();
+    storedFreePositions = { ...(storedLayout.positions || {}) };
 
     const viewportState = {
         offsetX: storedLayout.offsetX,
@@ -78,7 +100,9 @@ function loadStoredLayout() {
         resizeTimer: null,
         positions: storedLayout.positions,
         rafScheduled: false,
-        rafFrame: null
+        rafFrame: null,
+        /** Layout mode: 'free' or 'structured' */
+        layoutMode: loadLayoutMode()
     };
     const { NODE_HALF, AFFORDANCE_OFFSET_X, AFFORDANCE_OFFSET_Y, AFFORDANCE_CARD_HALF } = window.EditorCanvasGeometry;
 
@@ -103,6 +127,11 @@ function loadStoredLayout() {
     }
 
     function getWorldPosition(mem) {
+        if (viewportState.layoutMode === 'structured') {
+            return window.EditorCanvasGeometry.getStructuredWorldPosition(
+                mem, getCanonicalRootId, getTreeMemories, isRootMemory, getMetrics
+            );
+        }
         return window.EditorCanvasGeometry.getWorldPosition(mem, viewportState, getCanonicalRootId, getTreeMemories, isRootMemory, getMetrics);
     }
 
@@ -115,6 +144,9 @@ function loadStoredLayout() {
     }
 
     function persistStoredPositions() {
+        // Do not persist positions while in structured mode
+        if (viewportState.layoutMode === 'structured') return;
+
         if (typeof canvasLayout.createLayoutStore === 'function') {
             const store = canvasLayout.createLayoutStore(treeId);
             store.persist(viewportState);
@@ -129,6 +161,76 @@ function loadStoredLayout() {
                 scale: viewportState.scale || 1
             }));
         } catch (e) {}
+    }
+
+    function switchToFreeMode() {
+        viewportState.layoutMode = 'free';
+        persistLayoutMode('free');
+        // Restore saved free positions if available
+        if (savedFreePositions) {
+            viewportState.positions = { ...savedFreePositions };
+            savedFreePositions = null;
+        }
+        // Restore stored free positions if available
+        if (storedFreePositions && Object.keys(viewportState.positions).length === 0) {
+            viewportState.positions = { ...storedFreePositions };
+        }
+        // Restore from localStorage if positions are empty
+        if (Object.keys(viewportState.positions).length === 0) {
+            const stored = loadStoredLayout();
+            if (stored.positions && Object.keys(stored.positions).length > 0) {
+                viewportState.positions = { ...stored.positions };
+            }
+        }
+        document.body.classList.remove('layout-structured');
+        document.body.classList.add('layout-free');
+        updateLayoutToggleUI();
+        initCanvas();
+        persistStoredPositions();
+    }
+
+    function switchToStructuredMode() {
+        // Save current free positions before switching
+        savedFreePositions = { ...viewportState.positions };
+        viewportState.layoutMode = 'structured';
+        persistLayoutMode('structured');
+        document.body.classList.remove('layout-free');
+        document.body.classList.add('layout-structured');
+        updateLayoutToggleUI();
+        initCanvas();
+    }
+
+    function setLayoutMode(mode) {
+        if (mode === 'structured') {
+            switchToStructuredMode();
+        } else {
+            switchToFreeMode();
+        }
+    }
+
+    function toggleLayoutMode() {
+        if (viewportState.layoutMode === 'structured') {
+            switchToFreeMode();
+        } else {
+            switchToStructuredMode();
+        }
+    }
+
+    function updateLayoutToggleUI() {
+        const toggleBtn = document.getElementById('layoutModeToggleBtn');
+        const toggleLabel = document.getElementById('layoutModeToggleLabel');
+        const toggleIcon = document.getElementById('layoutModeToggleIcon');
+        if (!toggleBtn) return;
+        const isStructured = viewportState.layoutMode === 'structured';
+        toggleBtn.classList.toggle('is-active', isStructured);
+        if (toggleLabel) {
+            toggleLabel.textContent = isStructured
+                ? (i18n('editor_layout_structured') || '정리된 트리')
+                : (i18n('editor_layout_free') || '자유 배치');
+        }
+        if (toggleIcon) {
+            toggleIcon.textContent = isStructured ? 'account_tree' : 'auto_awesome';
+        }
     }
 
     const growthAffordance = window.createEditorCanvasGrowthAffordance({
@@ -146,8 +248,6 @@ function loadStoredLayout() {
             AFFORDANCE_CARD_HALF
         }
     });
-
-
 
 
 
@@ -203,7 +303,7 @@ function isNodeWithinSafeViewport(pos) {
     const NODE_TAP_SELECT_THRESHOLD = 8;
 
     function bindNodeDrag(nodeEl, mem) {
-        nodeEl.style.cursor = 'grab';
+        nodeEl.style.cursor = viewportState.layoutMode === 'structured' ? 'default' : 'grab';
         let touchStartPoint = null;
 
         const selectMemoryNode = () => {
@@ -211,6 +311,9 @@ function isNodeWithinSafeViewport(pos) {
         };
 
         nodeEl.addEventListener('mousedown', (e) => {
+            // Disable drag in structured mode
+            if (viewportState.layoutMode === 'structured') return;
+
             if (typeof canvasInteraction.beginNodeDrag === 'function') {
                 canvasInteraction.beginNodeDrag(e, nodeEl, mem, viewportState, getWorldPosition);
                 return;
@@ -288,7 +391,6 @@ function isNodeWithinSafeViewport(pos) {
             selectMemoryNode();
         });
     }
-
 
 
 
@@ -414,6 +516,8 @@ function isNodeWithinSafeViewport(pos) {
         bindCanvasPan();
         bindViewportControls();
         bindResizeHandling();
+        // Bind layout mode toggle on each init to ensure it stays bound after toolbar rebuild
+        bindLayoutModeToggle();
         viewportState.initialized = true;
     };
 
@@ -501,6 +605,15 @@ function isNodeWithinSafeViewport(pos) {
 
         const focusBtn = document.getElementById('focusSelectedBtn');
         const recenterBtn = document.getElementById('recenterCanvasBtn');
+        const zoomInBtn = document.getElementById('zoomInCanvasBtn');
+        const zoomOutBtn = document.getElementById('zoomOutCanvasBtn');
+
+        // Prevent clicks from starting a pan
+        [focusBtn, recenterBtn, zoomInBtn, zoomOutBtn].forEach((button) => {
+            if (!button) return;
+            button.addEventListener('mousedown', (event) => { event.stopPropagation(); });
+            button.addEventListener('touchstart', (event) => { event.stopPropagation(); }, { passive: true });
+        });
 
         if (focusBtn) {
             focusBtn.addEventListener('click', () => {
@@ -516,80 +629,177 @@ function isNodeWithinSafeViewport(pos) {
                 recenterViewport();
             });
         }
+
+        if (zoomInBtn && typeof zoomBy === 'function') {
+            zoomInBtn.addEventListener('click', () => { zoomBy(canvasViewport.zoomStep || 1.18); });
+        }
+
+        if (zoomOutBtn && typeof zoomBy === 'function') {
+            zoomOutBtn.addEventListener('click', () => { zoomBy(1 / (canvasViewport.zoomStep || 1.18)); });
+        }
     }
 
-    function zoomBy(factor) {
-        if (!factor || factor === 1) return;
-        const metrics = getMetrics();
-        const oldScale = viewportState.scale || 1;
-        const minScale = typeof canvasViewport.minScale === 'number' ? canvasViewport.minScale : 0.65;
-        const maxScale = typeof canvasViewport.maxScale === 'number' ? canvasViewport.maxScale : 1.55;
-        const nextScale = Math.min(maxScale, Math.max(minScale, oldScale * factor));
-        if (Math.abs(nextScale - oldScale) < 0.001) return;
+    function bindLayoutModeToggle() {
+        const toggleBtn = document.getElementById('layoutModeToggleBtn');
+        if (!toggleBtn) return;
+        if (toggleBtn.dataset.layoutBound) return;
 
-        const centerX = metrics.width * 0.5;
-        const centerY = metrics.height * 0.5;
-        const centerWorldX = (centerX - viewportState.offsetX) / oldScale;
-        const centerWorldY = (centerY - viewportState.offsetY) / oldScale;
+        // Store current free positions on first structured switch attempt
+        toggleBtn.addEventListener('click', () => {
+            toggleLayoutMode();
+        });
 
-        viewportState.scale = nextScale;
-        viewportState.offsetX = Math.round(centerX - (centerWorldX * nextScale));
-        viewportState.offsetY = Math.round(centerY - (centerWorldY * nextScale));
-        canvas.style.backgroundPosition = `${viewportState.offsetX}px ${viewportState.offsetY}px`;
-        persistStoredPositions();
-        initCanvas();
+        toggleBtn.dataset.layoutBound = '1';
     }
 
-    const bindCanvasPan = () => {
+    function bindCanvasPan() {
         if (typeof canvasInteraction.bind === 'function') {
             canvasInteraction.bind({
                 canvas,
                 viewportState,
-                scheduleRender: scheduleInitCanvas,
+                scheduleRender: () => { if (viewportState.layoutMode === 'free') initCanvas(); },
                 persistStoredPositions,
                 initCanvas,
                 getWorldPosition,
-                getDragTargetElement: (draggedId) => document.querySelector(`.memory-node[data-memory-id="${draggedId}"]`),
+                getDragTargetElement: (id) => document.querySelector(`.memory-node[data-memory-id="${id}"]`),
                 showMovedToast: () => {
-                    if (window.LoveBudUI?.showToast) {
-                        window.LoveBudUI.showToast(i18n('node_position_adjusted') || '순간 위치를 조정했습니다', 'success', 1800);
+                    const toast = document.getElementById('movedToast');
+                    if (toast) {
+                        toast.style.display = 'block';
+                        setTimeout(() => { toast.style.display = 'none'; }, 3000);
                     }
                 }
             });
             return;
         }
 
-        canvasInteractionHelpers.bindFallbackCanvasPan({
-            canvas,
-            viewportState,
-            scheduleInitCanvas,
-            persistStoredPositions,
-            initCanvas,
-            i18n
-        });
-    };
+        // Fallback pan/drag binding — structured mode guards added
+        if (viewportState.globalsBound) return;
+        viewportState.globalsBound = true;
 
-function scheduleInitCanvas() {
-        if (viewportState.rafScheduled) return;
-        viewportState.rafScheduled = true;
-        viewportState.rafFrame = requestAnimationFrame(() => {
-            viewportState.rafScheduled = false;
-            viewportState.rafFrame = null;
-            initCanvas();
+        canvas.style.cursor = viewportState.layoutMode === 'structured' ? 'default' : 'grab';
+
+        canvas.addEventListener('mousedown', (event) => {
+            if (
+                event.target.closest('.memory-node') ||
+                event.target.closest('#addMemoryForm') ||
+                event.target.closest('.memory-add-affordance')
+            ) {
+                return;
+            }
+            // Disable pan in structured mode
+            if (viewportState.layoutMode === 'structured') return;
+
+            viewportState.isPanning = true;
+            viewportState.startX = event.clientX;
+            viewportState.startY = event.clientY;
+            canvas.classList.add('panning');
+            canvas.style.cursor = 'grabbing';
+        });
+
+        window.addEventListener('mousemove', (event) => {
+            if (viewportState.isDraggingNode && viewportState.dragNodeId) {
+                const dx = event.clientX - viewportState.dragStartClientX;
+                const dy = event.clientY - viewportState.dragStartClientY;
+                if (Math.abs(dx) > 6 || Math.abs(dy) > 6) {
+                    viewportState.dragMoved = true;
+                }
+                if (!viewportState.dragMoved) return;
+                const scale = viewportState.scale || 1;
+                viewportState.positions[viewportState.dragNodeId] = {
+                    x: Math.round(viewportState.dragStartWorldX + (dx / scale)),
+                    y: Math.round(viewportState.dragStartWorldY + (dy / scale))
+                };
+                initCanvas();
+                return;
+            }
+
+            if (!viewportState.isPanning) return;
+            const dx = event.clientX - viewportState.startX;
+            const dy = event.clientY - viewportState.startY;
+            viewportState.startX = event.clientX;
+            viewportState.startY = event.clientY;
+            viewportState.offsetX += dx;
+            viewportState.offsetY += dy;
+            canvas.style.backgroundPosition = `${viewportState.offsetX}px ${viewportState.offsetY}px`;
+        });
+
+        window.addEventListener('mouseup', () => {
+            let shouldRender = false;
+            if (viewportState.isDraggingNode && viewportState.dragNodeId) {
+                const draggedId = viewportState.dragNodeId;
+                const moved = viewportState.dragMoved;
+                viewportState.isDraggingNode = false;
+                viewportState.dragNodeId = null;
+                viewportState.dragMoved = false;
+                const draggedEl = document.querySelector(`.memory-node[data-memory-id="${draggedId}"]`);
+                if (draggedEl) {
+                    draggedEl.style.cursor = 'grab';
+                }
+                if (draggedEl && moved) {
+                    draggedEl.dataset.suppressClick = '1';
+                    shouldRender = true;
+                    const toast = document.getElementById('movedToast');
+                    if (toast) {
+                        toast.style.display = 'block';
+                        setTimeout(() => { toast.style.display = 'none'; }, 3000);
+                    }
+                }
+            }
+
+            if (viewportState.isPanning) {
+                shouldRender = true;
+            }
+            viewportState.isPanning = false;
+            canvas.classList.remove('panning');
+            canvas.style.cursor = viewportState.layoutMode === 'structured' ? 'default' : 'grab';
+            if (shouldRender) {
+                persistStoredPositions();
+                initCanvas();
+            }
         });
     }
+
+    function zoomBy(factor) {
+        if (typeof canvasViewport.zoomBy === 'function') {
+            canvasViewport.zoomBy({
+                factor,
+                viewportState,
+                getMetrics,
+                initCanvas
+            });
+            persistStoredPositions();
+            return;
+        }
+
+        const oldScale = viewportState.scale || 1;
+        const newScale = Math.min(1.55, Math.max(0.65, oldScale * factor));
+        if (newScale === oldScale) return;
+        viewportState.scale = newScale;
+        initCanvas();
+        persistStoredPositions();
+    }
+
+    // Initialize layout mode UI on first paint
+    requestAnimationFrame(() => {
+        if (viewportState.layoutMode === 'structured') {
+            document.body.classList.add('layout-structured');
+        } else {
+            document.body.classList.add('layout-free');
+        }
+        updateLayoutToggleUI();
+    });
 
     return {
         calcPosition,
         drawBranch,
         drawNode,
         initCanvas,
-        bindCanvasPan,
-        viewportState,
         focusNodeById,
         recenterViewport,
-        keepSelectionVisible,
-        zoomBy
+        setLayoutMode,
+        getWorldPosition,
+        get viewportState() { return viewportState; }
     };
 }
 

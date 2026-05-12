@@ -300,6 +300,17 @@
     width: 108px;
 }
 
+/* Structured layout: no drag cursor */
+.layout-structured .memory-node {
+    cursor: default !important;
+    user-select: none;
+}
+
+.layout-structured .memory-node:hover {
+    transform: none !important;
+    box-shadow: none !important;
+}
+
 .node-card {
     width: 102px;
     margin: 0 auto;
