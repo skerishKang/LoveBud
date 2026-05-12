@@ -97,6 +97,18 @@
     transform: translateY(-1px);
 }
 
+.editor-canvas-tool-btn:active:not(:disabled) {
+    transform: scale(0.92);
+    background: rgba(144,73,81,0.08);
+    border-color: rgba(144,73,81,0.35);
+    transition: transform 0.08s ease, background 0.08s ease;
+}
+
+.editor-canvas-tool-btn:active:not(:disabled) .material-symbols-outlined {
+    transform: scale(0.88);
+    transition: transform 0.08s ease;
+}
+
 .editor-canvas-tool-btn:focus-visible {
     outline: 2px solid var(--control-focus-ring, rgba(144,73,81,0.32));
     outline-offset: 2px;
@@ -107,6 +119,38 @@
     opacity: 0.46;
     cursor: not-allowed;
     transform: none;
+}
+
+/* Zoom indicator badge */
+.editor-canvas-zoom-indicator {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 46px;
+    height: 28px;
+    padding: 0 8px;
+    border-radius: 8px;
+    background: rgba(144,73,81,0.08);
+    color: var(--primary);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    pointer-events: none;
+    user-select: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.editor-canvas-zoom-indicator.is-hidden {
+    opacity: 0;
+    transform: scale(0.8);
+}
+
+/* Button feedback flash — brief highlight after action */
+.editor-canvas-tool-btn.flash-feedback {
+    background: rgba(144,73,81,0.15);
+    border-color: rgba(144,73,81,0.35);
+    transition: background 0.1s ease, border-color 0.1s ease;
 }
 
 .editor-canvas-tool-btn .material-symbols-outlined {
@@ -158,6 +202,8 @@
 
     .editor-canvas-toolbar-group[aria-label="화면 줌 컨트롤"] {
         flex: 0 0 auto;
+        display: flex;
+        align-items: center;
     }
 
     .editor-canvas-toolbar-group[aria-label="트리 뷰 컨트롤"] {
