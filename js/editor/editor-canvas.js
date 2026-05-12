@@ -535,6 +535,7 @@ function isNodeWithinSafeViewport(pos) {
         viewportState.scale = nextScale;
         viewportState.offsetX = Math.round(centerX - (centerWorldX * nextScale));
         viewportState.offsetY = Math.round(centerY - (centerWorldY * nextScale));
+        canvas.style.backgroundPosition = `${viewportState.offsetX}px ${viewportState.offsetY}px`;
         persistStoredPositions();
         initCanvas();
     }
