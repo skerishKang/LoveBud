@@ -38,6 +38,8 @@ from modal_compute.validation import (
     validate_optional_string,
     validate_required_uuid,
     validate_optional_uuid,
+    validate_required_id,
+    validate_optional_id,
 )
 from modal_compute.public_reads import (
     fetch_latest_public_tree_snapshots,
@@ -162,13 +164,13 @@ def get_public_community_memories(
     treeId: str | None = None,
     limit: int = Query(default=100, ge=1, le=200),
 ) -> list[dict]:
-    safe_tree_id = validate_optional_uuid(treeId, "treeId")
+    safe_tree_id = validate_optional_id(treeId, "treeId")
     return fetch_public_memories(tree_id=safe_tree_id, limit=limit)
 
 
 @web_app.get("/modal/memories/{memory_id}")
 def get_public_memory_detail(memory_id: str) -> dict:
-    safe_memory_id = validate_required_uuid(memory_id, "memoryId")
+    safe_memory_id = validate_required_id(memory_id, "memoryId")
     memory = fetch_public_memory(safe_memory_id)
     if not memory:
         raise HTTPException(status_code=404, detail="Memory not found")
@@ -177,7 +179,7 @@ def get_public_memory_detail(memory_id: str) -> dict:
 
 @web_app.get("/modal/trees/{tree_id}")
 def get_public_tree_detail(tree_id: str) -> dict:
-    safe_tree_id = validate_required_uuid(tree_id, "treeId")
+    safe_tree_id = validate_required_id(tree_id, "treeId")
     tree = fetch_public_tree(safe_tree_id)
     if not tree:
         raise HTTPException(status_code=404, detail="Tree not found")
