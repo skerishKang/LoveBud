@@ -436,6 +436,37 @@ function createEditorDetailUI(deps) {
         });
     }
 
+    /* #1035: Wire up selected moment action buttons */
+    const viewMomentDetailBtn = document.getElementById('viewMomentDetailBtn');
+    if (viewMomentDetailBtn && viewMomentDetailBtn.dataset.bound !== '1') {
+        viewMomentDetailBtn.dataset.bound = '1';
+        viewMomentDetailBtn.addEventListener('click', () => {
+            if (typeof openCurrentMomentDetail === 'function') {
+                openCurrentMomentDetail();
+                return;
+            }
+            if (typeof focusSelectedMoment === 'function') {
+                focusSelectedMoment();
+            }
+        });
+    }
+
+    const continueFromMomentBtn = document.getElementById('continueFromMomentBtn');
+    if (continueFromMomentBtn && continueFromMomentBtn.dataset.bound !== '1') {
+        continueFromMomentBtn.dataset.bound = '1';
+        continueFromMomentBtn.addEventListener('click', () => {
+            /* Trigger add memory form — same as canvas "add memory" affordance */
+            const addBtn = document.getElementById('addMemoryBtn');
+            if (addBtn) {
+                addBtn.click();
+            } else {
+                /* Fallback: try the canvas empty start button */
+                const emptyStartBtn = document.getElementById('canvasEmptyStartBtn');
+                if (emptyStartBtn) emptyStartBtn.click();
+            }
+        });
+    }
+
     return {
         setDetailEmptyState,
         updateFocusSelectedBtn,
