@@ -6,13 +6,35 @@ import time
 import urllib.request
 from typing import Any
 
-import firebase_admin
-import jwt
-from cryptography import x509
-from firebase_admin import credentials, firestore
 from fastapi import HTTPException
 
 from modal_compute.config import get_firebase_project_id
+
+# Lazy imports for modules installed in Modal container via pip_install()
+# These are imported only when needed at runtime inside the Modal container
+_jwt_module: Any = None
+_cryptography_x509: Any = None
+_firebase_admin: Any = None
+_firestore_module: Any = None
+_firebase_credentials: Any = None
+
+
+def _get_jwt_module():
+    """Lazy import PyJWT module at runtime inside Modal container."""
+    global _jwt_module
+    if _jwt_module is None:
+        import jwt as jwt_mod
+        _jwt_module = jwt_mod
+    return _jwt_module
+
+
+def _get_cryptography_x509():
+    """Lazy import cryptography.x509 module at runtime inside Modal container."""
+    global _cryptography_x509
+    if _cryptography_x509 is None:
+        from cryptography import x509 as x509_mod
+        _cryptography_x509 = x509_mod
+    return _cryptography_x509
 
 
 class PlusRequiredError(Exception):
@@ -20,14 +42,44 @@ class PlusRequiredError(Exception):
 
 
 _firebase_cert_cache: dict[str, Any] = {"expires_at": 0, "certs": {}}
-_firebase_admin_app: firebase_admin.App | None = None
-_firestore_client: Any | None = None
+_firebase_admin_app: Any = None
+_firestore_client: Any = None
 
 
-def get_firebase_admin_app() -> firebase_admin.App:
+def _get_firebase_admin_module():
+    """Lazy import firebase_admin module at runtime inside Modal container."""
+    global _firebase_admin
+    if _firebase_admin is None:
+        import firebase_admin as fa
+        _firebase_admin = fa
+    return _firebase_admin
+
+
+def _get_firestore_module():
+    """Lazy import firestore module at runtime inside Modal container."""
+    global _firestore_module
+    if _firestore_module is None:
+        fa = _get_firebase_admin_module()
+        _firestore_module = fa.firestore
+    return _firestore_module
+
+
+def _get_firebase_credentials():
+    """Lazy import firebase_admin.credentials module at runtime inside Modal container."""
+    global _firebase_credentials
+    if _firebase_credentials is None:
+        fa = _get_firebase_admin_module()
+        _firebase_credentials = fa.credentials
+    return _firebase_credentials
+
+
+def get_firebase_admin_app() -> Any:
     global _firebase_admin_app
     if _firebase_admin_app is not None:
         return _firebase_admin_app
+
+    firebase_admin = _get_firebase_admin_module()
+    credentials = _get_firebase_credentials()
 
     raw_service_account = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON")
     if not raw_service_account:
@@ -48,6 +100,7 @@ def get_firebase_admin_app() -> firebase_admin.App:
 def get_firestore_client() -> Any:
     global _firestore_client
     if _firestore_client is None:
+        firestore = _get_firestore_module()
         _firestore_client = firestore.client(app=get_firebase_admin_app())
     return _firestore_client
 
@@ -126,13 +179,15 @@ def require_firebase_user(authorization: str | None) -> dict[str, Any]:
         raise HTTPException(status_code=401, detail="Authentication required")
 
     try:
+        jwt = _get_jwt_module()
+        x509_mod = _get_cryptography_x509()
         header = jwt.get_unverified_header(token)
         cert = get_firebase_certs().get(header.get("kid"))
         if not cert:
             raise HTTPException(status_code=401, detail="Invalid ID token")
 
         project_id = get_firebase_project_id()
-        public_key = x509.load_pem_x509_certificate(cert.encode("utf-8")).public_key()
+        public_key = x509_mod.load_pem_x509_certificate(cert.encode("utf-8")).public_key()
         decoded = jwt.decode(
             token,
             public_key,
