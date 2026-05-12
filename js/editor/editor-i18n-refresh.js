@@ -97,9 +97,7 @@
     setText('editMemoryBtnLabel', 'editor_edit', '순간 수정');
     setText('viewMomentDetailBtnLabel', 'editor_view_moment_detail', '현재 순간 감상하기');
     setText('continueFromMomentBtnLabel', 'editor_continue_from_moment', '이 순간에서 이어가기');
-    setText('branchFromMomentBtnLabel', 'editor_branch_from_moment', '이 순간에서 가지 만들기');
     setText('detailActionsPrimaryLabel', 'editor_actions_primary', '주요 행동');
-    setText('detailActionsSecondaryLabel', 'editor_actions_secondary', '추가 행동');
     setText('deleteMemoryBtn', 'editor_delete', '순간 삭제');
     setText('editTitleLabel', 'editor_memory_title', '순간 제목');
     setText('editMemoLabel', 'editor_note_label', '감정 메모');
