@@ -42,6 +42,7 @@
 | [PRODUCT_BRIEF.md](PRODUCT_BRIEF.md) | 현재 실행 기준 제품 개요 |
 | [DATA_NAMING_RULE.md](DATA_NAMING_RULE.md) | 데이터 명명 규칙 |
 | [READONLY_SHARE_SCOPE.md](READONLY_SHARE_SCOPE.md) | 읽기 전용 공유 범위 |
+| [SELECTED_MOMENT_REACTION_PLACEMENT_CONTRACT.md](SELECTED_MOMENT_REACTION_PLACEMENT_CONTRACT.md) | Editor detail panel selected moment reaction summary placement 및 data grammar 계약 (#1047) |
 | [SHARED_TREE_SUMMARY_CONTRACT.md](SHARED_TREE_SUMMARY_CONTRACT.md) | Browse/My Trees/Editor/Public Viewer/Tree Insights 간 shared Tree Summary grammar 및 data boundary 계약 (#1048) |
 | [VISIBILITY_AND_PRIVATE_STORAGE_POLICY_REVIEW.md](VISIBILITY_AND_PRIVATE_STORAGE_POLICY_REVIEW.md) | visibility/private storage 정책 검토 |
 
