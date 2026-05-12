@@ -57,19 +57,90 @@
     backdrop-filter: blur(8px);
 }
 
+/* ── Toolbar Groups ── */
 .editor-canvas-toolbar-group {
     display: flex;
     align-items: center;
     gap: 4px;
 }
 
-.editor-canvas-toolbar-separator {
-    width: 1px;
-    height: 24px;
-    background: rgba(221,198,184,0.84);
-    margin: 0 4px;
+/* Viewport group: compact surface to visually unite zoom controls */
+.editor-canvas-toolbar-group[aria-label="화면 줌 컨트롤"] {
+    background: rgba(255,255,255,0.5);
+    border-radius: 14px;
+    padding: 2px;
+    gap: 0;
+    border: 1px solid rgba(221,198,184,0.3);
 }
 
+.editor-canvas-toolbar-group[aria-label="화면 줌 컨트롤"] .editor-canvas-tool-btn {
+    background: transparent;
+    border-color: transparent;
+    border-radius: 12px;
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+}
+
+.editor-canvas-toolbar-group[aria-label="화면 줌 컨트롤"] .editor-canvas-tool-btn:hover:not(:disabled) {
+    background: rgba(144,73,81,0.08);
+    border-color: transparent;
+}
+
+/* Navigation group: allow wrap, wide buttons */
+.editor-canvas-toolbar-group[aria-label="트리 뷰 컨트롤"] {
+    gap: 6px;
+}
+
+/* Layout mode group: pill-style toggle */
+.editor-canvas-toolbar-group[aria-label="레이아웃 모드"] {
+    gap: 6px;
+}
+
+/* Layout toggle as a distinct mode pill */
+.editor-canvas-toolbar-group[aria-label="레이아웃 모드"] .editor-canvas-tool-btn-wide {
+    background: rgba(255,255,255,0.6);
+    border: 1.5px solid rgba(144,73,81,0.18);
+    border-radius: 20px;
+    padding: 0 18px 0 14px;
+    height: 38px;
+    color: var(--primary, rgba(144,73,81,0.92));
+    font-weight: 700;
+    gap: 8px;
+    transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.editor-canvas-toolbar-group[aria-label="레이아웃 모드"] .editor-canvas-tool-btn-wide:hover:not(:disabled) {
+    background: rgba(144,73,81,0.08);
+    border-color: rgba(144,73,81,0.35);
+    transform: none;
+}
+
+.editor-canvas-toolbar-group[aria-label="레이아웃 모드"] .editor-canvas-tool-btn-wide.is-active {
+    background: var(--primary, rgba(144,73,81,0.92));
+    border-color: var(--primary, rgba(144,73,81,0.92));
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(144,73,81,0.2);
+}
+
+.editor-canvas-toolbar-group[aria-label="레이아웃 모드"] .editor-canvas-tool-btn-wide.is-active:hover:not(:disabled) {
+    background: var(--primary-hover, rgba(124,59,67,0.92));
+}
+
+.editor-canvas-toolbar-group[aria-label="레이아웃 모드"] .editor-canvas-tool-btn-wide .material-symbols-outlined {
+    font-size: 18px;
+}
+
+/* ── Separators ── */
+.editor-canvas-toolbar-separator {
+    width: 1px;
+    height: 30px;
+    background: rgba(221,198,184,0.5);
+    margin: 0 6px;
+    flex-shrink: 0;
+}
+
+/* ── Base Tool Button ── */
 .editor-canvas-tool-btn {
     position: relative;
     width: 36px;
@@ -87,6 +158,7 @@
     box-shadow: none;
     cursor: pointer;
     transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
+    flex-shrink: 0;
 }
 
 .editor-canvas-tool-btn:hover:not(:disabled),
@@ -189,7 +261,7 @@
     .editor-canvas-topbar {
         left: 16px;
         right: 16px;
-        gap: 12px;
+        gap: 10px;
         flex-direction: column;
         align-items: stretch;
     }
@@ -200,7 +272,7 @@
 
     .editor-canvas-toolbar {
         max-width: 100%;
-        padding: 6px;
+        padding: 6px 8px;
         gap: 8px;
         justify-content: flex-start;
         align-items: stretch;
@@ -217,6 +289,20 @@
         flex: 0 0 auto;
         display: flex;
         align-items: center;
+        background: rgba(255,255,255,0.5);
+        border-radius: 14px;
+        padding: 2px;
+        gap: 0;
+        border: 1px solid rgba(221,198,184,0.3);
+    }
+
+    .editor-canvas-toolbar-group[aria-label="화면 줌 컨트롤"] .editor-canvas-tool-btn {
+        background: transparent;
+        border-color: transparent;
+        border-radius: 12px;
+        width: 36px;
+        height: 36px;
+        min-width: 36px;
     }
 
     .editor-canvas-toolbar-group[aria-label="트리 뷰 컨트롤"] {
@@ -240,10 +326,15 @@
     }
 
     .editor-canvas-tool-btn-wide {
-        width: 100%;
+        width: auto;
         flex: none;
         padding: 0 12px;
         justify-content: center;
+    }
+
+    .editor-canvas-toolbar-group[aria-label="레이아웃 모드"] .editor-canvas-tool-btn-wide {
+        padding: 0 18px 0 14px;
+        height: 38px;
     }
 
     .editor-canvas-tool-label {
