@@ -131,7 +131,7 @@
     border-radius: 999px;
     background: rgba(144, 73, 81, 0.08);
     border: 1px solid rgba(144, 73, 81, 0.12);
-    color: var(--primary, #904951);
+    color: var(--primary);
     font-size: 11px;
     font-weight: 800;
     line-height: 1;
@@ -370,7 +370,7 @@
 .node-skeleton {
     position: absolute;
     inset: 0;
-    background: linear-gradient(135deg, #f5f5f7 0%, #eef0f3 50%, #f5f5f7 100%);
+    background: linear-gradient(135deg, var(--surface-container-low) 0%, var(--surface-container) 50%, var(--surface-container-low) 100%);
     background-size: 200% 200%;
     animation: skeleton-shimmer 2s infinite linear;
     z-index: 1;

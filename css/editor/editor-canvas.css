@@ -1,7 +1,7 @@
 .canvas-area {
     flex: 1;
     position: relative;
-    background-color: #faf8f6;
+    background-color: var(--surface-container-low);
     background-image: radial-gradient(rgba(144, 73, 81, 0.035) 1px, transparent 1px);
     background-size: 34px 34px;
     overflow: hidden;
