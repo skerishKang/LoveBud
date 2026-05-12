@@ -93,7 +93,7 @@
 .tree-card.is-active .tree-card-open-link {
     background: rgba(144, 73, 81, 0.92);
     border-color: rgba(144, 73, 81, 0.22);
-    color: #fffaf8;
+    color: var(--surface-container-lowest);
 }
 
 .tree-card:hover::before,
@@ -508,7 +508,7 @@
 .tree-card-open-link:focus-visible {
     background: rgba(144, 73, 81, 0.92);
     border-color: rgba(144, 73, 81, 0.24);
-    color: #fffaf8;
+    color: var(--surface-container-lowest);
     transform: translateY(-1px);
 }
 

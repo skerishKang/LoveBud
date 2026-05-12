@@ -1,6 +1,6 @@
 .detail-panel {
     width: var(--detail-panel-width);
-    background: #fdfcfb; /* Warm paper tone */
+    background: var(--surface);
     border-left: 1px solid rgba(144, 73, 81, 0.08);
     display: flex;
     flex-direction: column;
@@ -72,7 +72,7 @@
 
 .editor-current-moment-card {
     gap: 9px;
-    background: #ffffff;
+    background: var(--surface-container-lowest);
     border: 1px solid rgba(144, 73, 81, 0.12);
     box-shadow: 0 6px 16px rgba(75, 64, 57, 0.05);
 }
@@ -151,7 +151,7 @@
     border-radius: 999px;
     border-color: rgba(197,146,128,0.30);
     background: rgba(255,255,255,0.78);
-    color: #9b5f58;
+    color: var(--on-surface-soft);
     font-size: 11px;
     font-weight: 800;
     line-height: 1;
@@ -174,14 +174,14 @@
 
 .editor-edit-actions-row .editor-edit-danger-action {
     margin-right: auto;
-    color: #a05a63;
-    border-color: rgba(158,81,88,0.18);
+    color: var(--primary);
+    border-color: rgba(var(--primary-rgb), 0.18);
     background: rgba(255,253,249,0.72);
     box-shadow: none;
 }
 
 .editor-edit-actions-row .editor-edit-danger-action:hover {
-    background: rgba(158,81,88,0.08);
+    background: rgba(var(--primary-rgb), 0.08);
 }
 
 #detailEditMode .detail-info-group {
@@ -228,18 +228,18 @@
     padding: 4px 8px;
     border: none;
     background: none;
-    color: #b08b8b;
+    color: var(--on-surface-note);
     font-size: 12px;
     cursor: pointer;
     border-radius: 6px;
     transition: color 0.15s, background 0.15s;
 }
 .editor-delete-link:hover {
-    color: #b33636;
-    background: rgba(179,54,54,0.06);
+    color: var(--primary-vibrant);
+    background: rgba(var(--primary-rgb), 0.06);
 }
 .editor-delete-link:focus-visible {
-    outline: 2px solid #b33636;
+    outline: 2px solid var(--primary-vibrant);
     outline-offset: 2px;
 }
 
@@ -264,7 +264,7 @@
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 2px;
-    color: #aaa;
+    color: var(--on-surface-note);
     margin-bottom: 7px;
     display: block;
 }

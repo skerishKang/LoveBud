@@ -2,7 +2,7 @@
 .preview-social-shell {
     margin-top: 1rem;
     padding-top: 0.95rem;
-    border-top: 1px solid rgba(111, 76, 68, 0.1);
+    border-top: 1px solid var(--outline-variant);
 }
 
 .preview-social-bar {
@@ -15,9 +15,9 @@
 .preview-social-action {
     appearance: none;
     -webkit-appearance: none;
-    border: 1px solid rgba(159, 78, 91, 0.14);
+    border: 1px solid var(--outline-variant);
     background: rgba(255, 250, 249, 0.72);
-    color: var(--on-surface-variant, #6f5b55);
+    color: var(--on-surface-variant);
     border-radius: 999px;
     min-height: 2.35rem;
     padding: 0.42rem 0.45rem;
@@ -35,12 +35,12 @@
 .preview-social-action .material-symbols-outlined {
     font-size: 1rem;
     line-height: 1;
-    color: var(--primary, #9f4e5b);
+    color: var(--primary);
     font-variation-settings: 'FILL' 0, 'wght' 450, 'GRAD' 0, 'opsz' 20;
 }
 
 .preview-social-action strong {
-    color: var(--primary, #9f4e5b);
+    color: var(--primary);
     font-size: 0.74rem;
     font-weight: 800;
 }
@@ -60,9 +60,9 @@
 
 .preview-social-action:not([disabled]):hover,
 .preview-social-action:not([disabled]):focus-visible {
-    border-color: rgba(159, 78, 91, 0.28);
+    border-color: rgba(var(--primary-rgb), 0.28);
     background: rgba(255, 246, 247, 0.96);
-    color: var(--primary, #9f4e5b);
+    color: var(--primary);
     outline: none;
     transform: translateY(-1px);
 }
@@ -70,16 +70,16 @@
 .preview-comments-panel {
     margin-top: 0.75rem;
     padding: 0.85rem 0.95rem;
-    border: 1px solid rgba(159, 78, 91, 0.12);
+    border: 1px solid var(--outline-variant);
     border-radius: 1rem;
     background: rgba(255, 255, 255, 0.68);
-    color: var(--on-surface-variant, #6f5b55);
+    color: var(--on-surface-variant);
     font-size: 0.78rem;
     line-height: 1.55;
 }
 
 .preview-comments-title {
-    color: var(--on-surface, #3f302c);
+    color: var(--on-surface);
     font-size: 0.82rem;
     font-weight: 900;
     margin-bottom: 0.35rem;

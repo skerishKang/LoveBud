@@ -508,7 +508,7 @@
 }
 
 .preview-media-frame-iframe iframe {
-    background: #201917;
+    background: var(--on-background);
 }
 
 .preview-media-fallback {
@@ -573,8 +573,8 @@
 
 .preview-sidebar.preview-state-empty .preview-badge,
 .preview-sidebar.preview-state-loading .preview-badge {
-    background: rgba(122, 139, 110, 0.10);
-    color: #6f7c61;
+    background: rgba(var(--primary-rgb), 0.10);
+    color: var(--secondary);
 }
 
 .preview-sidebar.preview-state-empty .tree-meta,
