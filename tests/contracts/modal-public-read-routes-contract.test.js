@@ -78,16 +78,16 @@ test('modal public read handlers call their current helper functions', () => {
   assert.ok(hasString(growingHandler, 'fetch_growing_public_tree_snapshots(limit=limit)'));
 
   const memoriesHandler = extractDecoratedHandler(content, '@web_app.get("/modal/community/memories")', 'get_public_community_memories');
-  assert.ok(hasString(memoriesHandler, 'validate_optional_uuid(treeId, "treeId")'));
+  assert.ok(hasString(memoriesHandler, 'validate_optional_id(treeId, "treeId")'));
   assert.ok(hasString(memoriesHandler, 'fetch_public_memories(tree_id=safe_tree_id, limit=limit)'));
 
   const memoryDetailHandler = extractDecoratedHandler(content, '@web_app.get("/modal/memories/{memory_id}")', 'get_public_memory_detail');
-  assert.ok(hasString(memoryDetailHandler, 'validate_required_uuid(memory_id, "memoryId")'));
+  assert.ok(hasString(memoryDetailHandler, 'validate_required_id(memory_id, "memoryId")'));
   assert.ok(hasString(memoryDetailHandler, 'fetch_public_memory(safe_memory_id)'));
   assert.ok(hasString(memoryDetailHandler, 'HTTPException(status_code=404, detail="Memory not found")'));
 
   const treeDetailHandler = extractDecoratedHandler(content, '@web_app.get("/modal/trees/{tree_id}")', 'get_public_tree_detail');
-  assert.ok(hasString(treeDetailHandler, 'validate_required_uuid(tree_id, "treeId")'));
+  assert.ok(hasString(treeDetailHandler, 'validate_required_id(tree_id, "treeId")'));
   assert.ok(hasString(treeDetailHandler, 'fetch_public_tree(safe_tree_id)'));
   assert.ok(hasString(treeDetailHandler, 'HTTPException(status_code=404, detail="Tree not found")'));
 });
