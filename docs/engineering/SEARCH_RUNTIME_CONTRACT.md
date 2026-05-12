@@ -23,12 +23,15 @@ Current orchestrator:
 js/search.js
 ```
 
-Current Search submodules that load before the orchestrator:
+Current Search submodules that load before the orchestrator (including PR #1058 additions):
 
 ```text
 js/search/search-preview-cache.js
 js/search/search-ui.js
 js/search/search-url-state.js
+js/search/search-preview-playable-hub-patch.js
+js/search/search-preview-hub-dom-patch.js
+js/search/search-preview-media-embed-patch.js
 ```
 
 The page is intentionally public-first. Public tree loading must not depend on Firebase Auth readiness. Auth modules load later for shared navigation state, but Search/Browse public data should remain available through same-origin public `/api/community/*` routes.
@@ -51,23 +54,33 @@ The page is intentionally public-first. Public tree loading must not depend on F
 8.  js/search/search-data-adapter.js
 9.  js/search/search-shared-utils.js
 10. js/search/search-card-renderer.js
-11. js/search/search-preview-renderer.js
-12. js/search/search-preview-cache.js
-13. js/search/search-ui.js
-14. js/search/search-url-state.js
-15. js/search.js
+11. js/search/search-preview-media-helper.js
+12. js/search/search-preview-media-embed-patch.js  <!-- PR #1058 -->
+13. js/search/search-preview-copy-helper.js
+14. js/search/search-preview-action-helper.js
+15. js/search/search-preview-renderer-builders.js
+16. js/search/search-preview-renderer.js
+17. js/search/search-preview-playable-hub-patch.js  <!-- PR #1058 -->
+18. js/search/search-preview-hub-dom-patch.js       <!-- PR #1058 -->
+19. js/search/search-preview-cache.js
+20. js/search/search-ui.js
+21. js/search/search-url-state.js
+22. js/search/search-controls.js
+23. js/search/search-data.js
+24. js/search/search-preview-controller.js
+25. js/search/index.js
 
-16. Firebase SDK
-17. js/firebase-config.js
+26. Firebase SDK
+27. js/firebase-config.js
 
-18. i18n dictionaries/core stack
-19. js/i18n.js
-20. js/shared-header.js
+28. i18n dictionaries/core stack
+29. js/i18n.js
+30. js/shared-header.js
 
-21. auth modules
-22. js/auth.js
+31. auth modules
+32. js/auth.js
 
-23. inline LoveTreePageShell.initSharedPage({ renderHeader: true, applyI18n: true })
+33. inline LoveTreePageShell.initSharedPage({ renderHeader: true, applyI18n: true })
 ```
 
 The critical pre-`search.js` chain is:
@@ -82,10 +95,21 @@ cache-utils
 → search/search-data-adapter
 → search/search-shared-utils
 → search/search-card-renderer
+→ search/search-preview-media-helper
+→ search/search-preview-media-embed-patch
+→ search/search-preview-copy-helper
+→ search/search-preview-action-helper
+→ search/search-preview-renderer-builders
 → search/search-preview-renderer
+→ search/search-preview-playable-hub-patch
+→ search/search-preview-hub-dom-patch
 → search/search-preview-cache
 → search/search-ui
 → search/search-url-state
+→ search/search-controls
+→ search/search-data
+→ search/search-preview-controller
+→ search/index
 → search.js
 ```
 
@@ -253,7 +277,14 @@ Owns URL state helpers:
 - `js/search/search-data-adapter.js` owns UI-agnostic tree filtering and legacy data build helpers.
 - `js/search/search-shared-utils.js` owns shared Search helper utilities.
 - `js/search/search-card-renderer.js` owns card HTML and list-state HTML.
+- `js/search/search-preview-media-helper.js` owns media rendering and thumbnail helpers.
+- `js/search/search-preview-media-embed-patch.js` (PR #1058) owns Browse hub YouTube iframe source normalization.
+- `js/search/search-preview-copy-helper.js` owns copy/locale formatting helpers.
+- `js/search/search-preview-action-helper.js` owns CTA/share markup helpers.
+- `js/search/search-preview-renderer-builders.js` owns preview panel builder utilities.
 - `js/search/search-preview-renderer.js` owns preview panel DOM rendering.
+- `js/search/search-preview-playable-hub-patch.js` (PR #1058) owns playable hub media embedding, flow moment switching, and action layout.
+- `js/search/search-preview-hub-dom-patch.js` (PR #1058) owns DOM-level hub final layout patching and social bar wiring.
 - `js/postgres-client.js` owns browser API facade and captures API dependencies at load time.
 
 ---
@@ -456,19 +487,26 @@ onLangChange(callback)
 
 Do not move `search.js` before:
 
-- `cache-utils.js`
-- `api/auth-policy.js`
-- `api/base-api-fetch.js`
-- `api/public-tree-adapter.js`
-- `postgres-client.js`
-- `search/search-title-helper.js`
-- `search/search-data-adapter.js`
-- `search/search-shared-utils.js`
-- `search/search-card-renderer.js`
-- `search/search-preview-renderer.js`
-- `search/search-preview-cache.js`
-- `search/search-ui.js`
-- `search/search-url-state.js`
+|- `cache-utils.js`
+|- `api/auth-policy.js`
+|- `api/base-api-fetch.js`
+|- `api/public-tree-adapter.js`
+|- `postgres-client.js`
+|- `search/search-title-helper.js`
+|- `search/search-data-adapter.js`
+|- `search/search-shared-utils.js`
+|- `search/search-card-renderer.js`
+|- `search/search-preview-media-helper.js`
+|- `search/search-preview-media-embed-patch.js`
+|- `search/search-preview-copy-helper.js`
+|- `search/search-preview-action-helper.js`
+|- `search/search-preview-renderer-builders.js`
+|- `search/search-preview-renderer.js`
+|- `search/search-preview-playable-hub-patch.js`
+|- `search/search-preview-hub-dom-patch.js`
+|- `search/search-preview-cache.js`
+|- `search/search-ui.js`
+|- `search/search-url-state.js`
 
 Additional hard rules:
 
