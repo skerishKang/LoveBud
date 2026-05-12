@@ -178,7 +178,6 @@
                     <div class="editor-current-moment-card">
                         <div class="editor-current-moment-head">
                             <div id="detailCurrentMomentBadge" class="editor-current-moment-badge">...</div>
-                            <button id="editMemoryBtn" class="btn-round btn-outline editor-memory-action-btn editor-moment-edit-chip">...</button>
                         </div>
                         <h4 id="detailCurrentMomentTitle" class="editor-current-moment-title">&nbsp;</h4>
                         <p id="detailCurrentMomentHint" class="editor-current-moment-hint">&nbsp;</p>
@@ -187,6 +186,32 @@
                             <div class="memory-preview-overlay">
                                 <button type="button" class="play-btn" aria-label="재생">재생</button>
                             </div>
+                        </div>
+                    </div>
+
+                    <div class="editor-moment-actions-card">
+                        <div class="editor-section-eyebrow" id="detailActionsPrimaryLabel">주요 행동</div>
+                        <div class="editor-action-list">
+                            <button type="button" class="editor-action-btn editor-action-btn-primary" id="viewMomentDetailBtn">
+                                <span class="material-symbols-outlined" aria-hidden="true">visibility</span>
+                                <span class="editor-action-btn-label" id="viewMomentDetailBtnLabel">현재 순간 감상하기</span>
+                            </button>
+                            <button type="button" class="editor-action-btn editor-action-btn-secondary" id="continueFromMomentBtn">
+                                <span class="material-symbols-outlined" aria-hidden="true">add_circle</span>
+                                <span class="editor-action-btn-label" id="continueFromMomentBtnLabel">이 순간에서 이어가기</span>
+                            </button>
+                        </div>
+                        <div class="editor-action-divider"></div>
+                        <div class="editor-section-eyebrow" id="detailActionsSecondaryLabel">추가 행동</div>
+                        <div class="editor-action-list editor-action-list-compact">
+                            <button type="button" class="editor-action-btn editor-action-btn-ghost" id="editMemoryBtn">
+                                <span class="material-symbols-outlined" aria-hidden="true">edit</span>
+                                <span class="editor-action-btn-label" id="editMemoryBtnLabel">순간 수정</span>
+                            </button>
+                            <button type="button" class="editor-action-btn editor-action-btn-ghost editor-action-btn-disabled" id="branchFromMomentBtn" disabled>
+                                <span class="material-symbols-outlined" aria-hidden="true">account_tree</span>
+                                <span class="editor-action-btn-label" id="branchFromMomentBtnLabel">이 순간에서 가지 만들기</span>
+                            </button>
                         </div>
                     </div>
 
