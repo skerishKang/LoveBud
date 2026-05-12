@@ -26,6 +26,7 @@
 | [BROWSE_TREE_FIRST_DISCOVERY_PLAN.md](BROWSE_TREE_FIRST_DISCOVERY_PLAN.md) | Browse를 tree-first public LoveTree discovery로 발전시키기 위한 card/감상허브/viewer route semantics 계획 |
 | [PUBLIC_VIEWER_SOCIAL_PLACEHOLDER_PLAN.md](PUBLIC_VIEWER_SOCIAL_PLACEHOLDER_PLAN.md) | public LoveTree viewer에서 tree-level / moment-level social placeholder 배치 방향, desktop/mobile placement, empty-state copy, write affordance 분리 기준 |
 | [TREE_MOMENT_SOCIAL_MODEL.md](TREE_MOMENT_SOCIAL_MODEL.md) | public LoveTree의 tree-level / moment-level comments, reactions, permissions, moderation, phased implementation 모델 |
+| [TREE_INSIGHTS_CONTRACT.md](TREE_INSIGHTS_CONTRACT.md) | Tree Insights owner-only page product/UX contract — 범위, 데이터 경계, 상호작용, 검증 기준 (#1046) |
 | [TREE_LEVEL_COMMENTS_READ_CONTRACT.md](TREE_LEVEL_COMMENTS_READ_CONTRACT.md) | public LoveTree 전체에 붙는 tree-level comments의 read contract, visibility guard, safe response, empty/error state 기준 |
 | [MOMENT_LEVEL_COMMENTS_READ_CONTRACT.md](MOMENT_LEVEL_COMMENTS_READ_CONTRACT.md) | public LoveTree 특정 순간에 붙는 moment-level comments의 parent tree / target moment read guard, safe response, empty/error state 기준 |
 | [V01_CTA_EXPOSURE_POLICY.md](V01_CTA_EXPOSURE_POLICY.md) | v0.1 unfinished/partial action 노출 기준과 Ready/Soft/Disabled/Hidden CTA 분류 정책 |
