@@ -6,13 +6,15 @@ import time
 import urllib.request
 from typing import Any
 
-import firebase_admin
 import jwt
 from cryptography import x509
-from firebase_admin import credentials, firestore
 from fastapi import HTTPException
 
 from modal_compute.config import get_firebase_project_id
+
+# Lazy imports for firebase_admin - imported only when needed at runtime inside Modal container
+_firebase_admin: Any = None
+_firestore_module: Any = None
 
 
 class PlusRequiredError(Exception):
@@ -20,14 +22,35 @@ class PlusRequiredError(Exception):
 
 
 _firebase_cert_cache: dict[str, Any] = {"expires_at": 0, "certs": {}}
-_firebase_admin_app: firebase_admin.App | None = None
-_firestore_client: Any | None = None
+_firebase_admin_app: Any = None
+_firestore_client: Any = None
 
 
-def get_firebase_admin_app() -> firebase_admin.App:
+def _get_firebase_admin_module():
+    """Lazy import firebase_admin module at runtime inside Modal container."""
+    global _firebase_admin
+    if _firebase_admin is None:
+        import firebase_admin as fa
+        _firebase_admin = fa
+    return _firebase_admin
+
+
+def _get_firestore_module():
+    """Lazy import firestore module at runtime inside Modal container."""
+    global _firestore_module
+    if _firestore_module is None:
+        from firebase_admin import firestore as fs
+        _firestore_module = fs
+    return _firestore_module
+
+
+def get_firebase_admin_app() -> Any:
     global _firebase_admin_app
     if _firebase_admin_app is not None:
         return _firebase_admin_app
+
+    firebase_admin = _get_firebase_admin_module()
+    from firebase_admin import credentials
 
     raw_service_account = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON")
     if not raw_service_account:
@@ -48,6 +71,7 @@ def get_firebase_admin_app() -> firebase_admin.App:
 def get_firestore_client() -> Any:
     global _firestore_client
     if _firestore_client is None:
+        firestore = _get_firestore_module()
         _firestore_client = firestore.client(app=get_firebase_admin_app())
     return _firestore_client
 
