@@ -1,14 +1,17 @@
 # QA Credentials — Persistent Encrypted Bundle Workflow
 
-> **⚠️ PROCEDURE STATUS (as of 2026-04-29)**
+> **✅ PROCEDURE STATUS (as of 2026-05-12)**
 >
-> **Persistent encrypted bundle: NOT YET COMMITTED TO REPOSITORY**
+> **Persistent encrypted bundle: COMMITTED ✅**
 >
-> The bundle file (`docs/ops/qa-credential-bundle/test-accounts-encrypted.zip`) does not yet exist in the repository.
-> A new verifier **cannot restore credentials from docs alone** until the bundle is committed.
+> The bundle file (`docs/ops/qa-credential-bundle/test-accounts-encrypted.zip`) exists in the repository.
+> A new verifier **can restore credentials** from the bundle using the password obtained via secure channel from the CTO.
 >
-> **Current working method: Temporary handoff via Issue #351**
-> See [Temporary Handoff Workflow](#temporary-handoff-workflow-issue-351) below.
+> **All 13 QA/AI actor accounts are registered in the approved password manager (Bitwarden Free).**
+> See [QA_ACCOUNT_REGISTRY.md](QA_ACCOUNT_REGISTRY.md) for the public-safe inventory.
+>
+> **Current working method: Persistent encrypted bundle**
+> The temporary handoff via Issue #351 is superseded.
 
 ---
 
@@ -150,11 +153,11 @@ For new or repaired local credential files, prefer the object-map schema. Keep `
 This document describes two distinct workflows for managing QA test credentials:
 
 | Workflow | Status | Source of truth |
-|---|---|---|
-| **Persistent encrypted bundle** | ⛔ Bundle not yet committed | This document (future) |
-| **Temporary handoff** | ✅ Currently active | Issue #351 comment |
+|---------|--------|----------------|
+| **Persistent encrypted bundle** | ✅ Bundle committed (v1) | docs/ops/qa-credential-bundle/ |
+| **Temporary handoff** | 🔴 Superseded | Issue #351 (no longer needed) |
 
-Do not conflate these two workflows. The temporary handoff branch (`ops/temp-qa-credential-handoff`) is a transitional mechanism and will be cleaned up. It is **not** the persistent source of truth.
+Do not use the temporary handoff branch (`ops/temp-qa-credential-handoff`). It may be deleted after cleanup. Use the persistent bundle at `docs/ops/qa-credential-bundle/test-accounts-encrypted.zip` instead.
 
 ---
 
@@ -176,30 +179,26 @@ Do not conflate these two workflows. The temporary handoff branch (`ops/temp-qa-
 
 ---
 
-## Persistent Encrypted Bundle Workflow (TARGET STATE)
+## Persistent Encrypted Bundle Workflow (CURRENT)
 
-> **⛔ NOT ACTIVE: Bundle not yet committed.**
-> This section describes the intended persistent workflow once the bundle is added.
+> **✅ ACTIVE: Bundle committed (v1).**
+> This section describes the active persistent workflow.
 
-### Bundle Location (Once Committed)
+### Bundle Location
 
 ```
 docs/ops/qa-credential-bundle/test-accounts-encrypted.zip
 ```
 
-Alternative (age-encrypted):
-```
-docs/ops/qa-credential-bundle/test-accounts.json.age
-```
+The bundle contains a consolidated JSON file with all 13 QA and AI actor accounts. See [QA_ACCOUNT_REGISTRY.md](QA_ACCOUNT_REGISTRY.md) for the full public-safe inventory.
 
-See [`docs/ops/qa-credential-bundle/README.md`](qa-credential-bundle/README.md) for bundle commit status.
-
-### Repository Structure (Target)
+### Repository Structure
 
 ```
 docs/ops/QA_CREDENTIALS.md                              # This documentation
+docs/ops/QA_ACCOUNT_REGISTRY.md                         # Public-safe account inventory
 docs/ops/qa-credential-bundle/README.md                 # Bundle status and path
-docs/ops/qa-credential-bundle/test-accounts-encrypted.zip  # ← NOT YET ADDED
+docs/ops/qa-credential-bundle/test-accounts-encrypted.zip  # ✅ Committed (v1)
 .local/test-accounts.json                               # Runtime credentials (gitignored)
 .local/test-accounts.example.json                       # Example format (committed)
 ```
@@ -243,54 +242,29 @@ Do not print the restored file contents.
 
 ---
 
-## Temporary Handoff Workflow (Issue #351)
+## Temporary Handoff Workflow (Issue #351) — SUPERSEDED
 
-> **✅ CURRENTLY ACTIVE — use this until persistent bundle is committed.**
+> **🔴 NO LONGER ACTIVE — Use the persistent bundle instead.**
 
-### Source
+The temporary handoff workflow via Issue #351 has been superseded by the persistent encrypted bundle at `docs/ops/qa-credential-bundle/test-accounts-encrypted.zip`.
 
-- **Issue**: [#351](https://github.com/skerishKang/LoveBud/issues/351)
-- **Temporary branch**: `ops/temp-qa-credential-handoff`
-- **File in branch**: `test-accounts-encrypted-v2.zip` (or as documented in Issue #351)
-
-### ⚠️ Temporary Handoff Limitations
-
-- This branch **may be deleted** after cleanup. Do not treat it as a permanent source.
-- The file in this branch is a one-time transfer artifact, not a versioned credential store.
-- A new verifier cannot bootstrap solely from this branch without the Issue #351 context and the bundle password.
-- **This is not the source of truth for the persistent workflow.**
-
-### Procedure
-
-1. Read Issue #351 for the current handoff file location and instructions
-2. Obtain bundle password via secure channel
-3. Extract bundle and copy to `.local/test-accounts.json`
-4. Verify credentials are valid without printing values
-5. Report: `credential source: temporary handoff (Issue #351)`
+Do not use the `ops/temp-qa-credential-handoff` branch. It may be deleted during cleanup.
 
 ---
 
 ## For Computer 1 (Bundle Custodian)
 
-### Bundle Creation (Persistent)
-
-1. Prepare credentials file with all 10 slots locally
-2. Create password-protected ZIP bundle
-3. Commit encrypted bundle only to `docs/ops/qa-credential-bundle/test-accounts-encrypted.zip`
-4. Update `docs/ops/qa-credential-bundle/README.md` with commit SHA and date
-5. Distribute bundle password through secure channel
-6. Once persistent bundle is committed, mark Issue #351 temporary handoff as superseded
-
 ### Bundle Update Procedure
 
 When credentials need rotation:
 
-1. Update local credentials file
-2. Create new encrypted bundle
-3. Replace `docs/ops/qa-credential-bundle/test-accounts-encrypted.zip` in repo
-4. Update README with new SHA and date
-5. Notify Computer 2 of new bundle availability
-6. Distribute new password securely
+1. Update the local consolidated credentials file
+2. Create new encrypted bundle: `zip -P <new_password> docs/ops/qa-credential-bundle/test-accounts-encrypted.zip <source.json>`
+3. Update `docs/ops/qa-credential-bundle/README.md` with new SHA and date
+4. Update `docs/ops/QA_ACCOUNT_REGISTRY.md` if account labels or counts changed
+5. Commit the updated bundle and documentation
+6. Notify verifiers of new bundle availability
+7. Distribute new password securely
 
 ---
 
@@ -310,22 +284,23 @@ Final verification for PR #350 must be performed against a **fixed test slot** o
 
 ## Verification Checklist
 
-### Bundle Integrity (when bundle exists)
+### Bundle Integrity
 
-- [ ] Bundle contains all 10 QA slots
-- [ ] Bundle is password-protected
-- [ ] Bundle file is committed to `docs/ops/qa-credential-bundle/`
-- [ ] No plaintext credentials in repository
-- [ ] `docs/ops/qa-credential-bundle/README.md` reflects current bundle SHA
+- [x] Bundle contains all 13 QA/AI actor accounts
+- [x] Bundle is password-protected
+- [x] Bundle file is committed to `docs/ops/qa-credential-bundle/`
+- [x] No plaintext credentials in repository
+- [x] `docs/ops/qa-credential-bundle/README.md` reflects current bundle SHA
+- [x] `docs/ops/QA_ACCOUNT_REGISTRY.md` documents all accounts (public-safe inventory)
 
 ### Local Setup
 
-- [ ] `.local/test-accounts.json` exists
+- [ ] `.local/test-accounts.json` exists (restore from bundle if needed)
 - [ ] `.local/test-accounts.json` is gitignored
 - [ ] File format matches the canonical schema without printing values
-- [ ] `npm run check:auth-credentials -- --key accounts.user` returns `CREDENTIAL_PREFLIGHT_PASS`
-- [ ] All QA slots are populated, reported only as `PRESENT`/`MISSING`
-- [ ] Credentials are valid for testing
+- [ ] `npm run check:auth-credentials -- --key accounts.personaA001` returns `CREDENTIAL_PREFLIGHT_PASS`
+- [ ] All 13 QA slots are populated, reported only as `PRESENT`/`MISSING`
+- [x] All accounts registered in approved password manager (Bitwarden Free)
 
 ### Multi-Repository Usage
 
@@ -415,12 +390,14 @@ credential file gitignored:  YES | NO
 verification environment:    Cloudflare PR Preview | fixed test slot | [other]
 ```
 
-**Example (current state — bundle not yet committed):**
+**Example (current state — bundle committed):**
 ```
-procedure validation result: BLOCKED
-credential source:           temporary handoff (Issue #351)
+procedure validation result: PROCEDURE WORKS
+credential source:           persistent bundle
 secret values exposed:       NO
-bundle committed to repo:    NO
+bundle committed to repo:    YES
+credential file:             EXISTS (restored from bundle) | MISSING
+credential file gitignored:  YES
 verification environment:    fixed test slot
 ```
 
@@ -430,11 +407,10 @@ verification environment:    fixed test slot
 
 - [AGENTS.md](AGENTS.md)
 - [AGENT_SECURITY.md](AGENT_SECURITY.md)
+- [QA_ACCOUNT_REGISTRY.md](QA_ACCOUNT_REGISTRY.md) — public-safe account inventory for password manager registration
 - [qa-credential-bundle/README.md](qa-credential-bundle/README.md) — persistent bundle commit status
 - [LOCAL_BROWSER_VERIFICATION_STARTUP.md](LOCAL_BROWSER_VERIFICATION_STARTUP.md)
 - [GITHUB_AUTH_TOKEN_USAGE.md](GITHUB_AUTH_TOKEN_USAGE.md)
 - [TEST_PREVIEW_SLOTS.md](TEST_PREVIEW_SLOTS.md)
 - [BROWSER_VERIFICATION_URL_POLICY.md](BROWSER_VERIFICATION_URL_POLICY.md)
-- Issue [#351](https://github.com/skerishKang/LoveBud/issues/351) — temporary handoff
-- Issue [#137](https://github.com/skerishKang/LoveBud/issues/137)
-- Issue [#810](https://github.com/skerishKang/LoveBud/issues/810) — password confirmation validation follow-up
+- Issue [#873](https://github.com/skerishKang/LoveBud/issues/873) — QA account registration in approved password manager
