@@ -365,4 +365,20 @@
     .vv-panel {
         padding: 14px;
     }
+    /* Tighten hierarchy leaf labels on small screens */
+    .vv-leaf-label {
+        min-width: 80px;
+        padding: 4px 8px;
+    }
+    .vv-leaf-label-title {
+        font-size: 11px;
+        max-width: 72px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .vv-leaf-label-tag {
+        font-size: 9px;
+        padding: 1px 6px;
+    }
 }
