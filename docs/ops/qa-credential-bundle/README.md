@@ -1,25 +1,27 @@
 # QA Credential Bundle — Status
 
-## Current Status
-
-> **⛔ BUNDLE NOT YET COMMITTED**
-
-The persistent encrypted bundle has not been added to this directory.
-
-A new verifier **cannot restore QA credentials from this path** until the bundle is committed here.
+> ## Current Status
+>
+> **✅ BUNDLE COMMITTED — v1**
+>
+> The persistent encrypted bundle has been added to this directory.
+> A new verifier **can restore QA credentials** from this path using the bundle password obtained via secure channel from the CTO.
 
 ---
 
-## Expected Bundle Path
+## Bundle File
 
 ```
 docs/ops/qa-credential-bundle/test-accounts-encrypted.zip
 ```
 
-Alternative (age-encrypted):
-```
-docs/ops/qa-credential-bundle/test-accounts.json.age
-```
+| Property | Value |
+|----------|-------|
+| Format | Password-protected ZIP |
+| Contents | `qa-test-accounts-consolidated.json` (13 accounts) |
+| SHA-256 | `34dce3c1235e53e36ccbe715c164429137efa06f5b79cf0b2e503e74bff4a7a9` |
+| Created | 2026-05-12 |
+| Status | ✅ Committed (v1) |
 
 ---
 
@@ -27,21 +29,36 @@ docs/ops/qa-credential-bundle/test-accounts.json.age
 
 | Version | Status | Committed by | Date | Commit SHA |
 |---------|--------|--------------|------|------------|
-| v1 | ⛔ Not committed | — | — | — |
-
-Update this table when the bundle is first committed.
+| v1 | ✅ Committed | Issue #873 agent | 2026-05-12 | <!-- SHA inserted on commit --> |
 
 ---
 
-## Current Workaround
+## Restoration Procedure
 
-Until the persistent bundle is committed here, use the **temporary handoff** method:
+1. Pull the latest branch containing the bundle
+2. Locate bundle: `docs/ops/qa-credential-bundle/test-accounts-encrypted.zip`
+3. Obtain the bundle password via secure channel from the CTO / bundle custodian
+4. Extract using the bundle password
+5. Copy extracted `qa-test-accounts-consolidated.json` to `.local/test-accounts.json`
+6. Verify format matches `.local/test-accounts.example.json` without printing values
+7. Run credential preflight: `npm run check:auth-credentials -- --key accounts.personaA001`
 
-- See Issue [#351](https://github.com/skerishKang/LoveBud/issues/351) for current handoff file location
-- Temporary branch: `ops/temp-qa-credential-handoff`
-- Temporary file: `test-accounts-encrypted-v2.zip` (or as documented in Issue #351)
+### Multi-Clone / Worktree Setup
 
-⚠️ **The temporary handoff branch may be deleted after cleanup. Do not treat it as a permanent source.**
+```bash
+# In each repository clone/worktree
+mkdir -p .local
+# Copy restored credentials from your master restore location
+cp /path/to/your/restored/test-accounts.json .local/
+```
+
+Do not print the restored file contents.
+
+---
+
+## Legacy Temporary Handoff
+
+The temporary handoff (Issue #351, branch `ops/temp-qa-credential-handoff`) is **superseded** by this persistent bundle. New verifiers should use this bundle instead.
 
 ---
 
@@ -56,12 +73,12 @@ secret values exposed:       NO
 bundle committed to repo:    YES | NO
 ```
 
-**Current expected result for new verifiers:**
+**Expected result for verifiers with this bundle:**
 ```
-procedure validation result: BLOCKED
-credential source:           temporary handoff (Issue #351)
+procedure validation result: PROCEDURE WORKS
+credential source:           persistent bundle
 secret values exposed:       NO
-bundle committed to repo:    NO
+bundle committed to repo:    YES
 ```
 
 ---
@@ -69,6 +86,6 @@ bundle committed to repo:    NO
 ## Related
 
 - [../QA_CREDENTIALS.md](../QA_CREDENTIALS.md) — full workflow documentation
-- [../QA_CREDENTIALS.txt](../QA_CREDENTIALS.txt) — 한국어 요약
-- Issue [#351](https://github.com/skerishKang/LoveBud/issues/351) — temporary handoff
-- Issue [#137](https://github.com/skerishKang/LoveBud/issues/137)
+- [../QA_ACCOUNT_REGISTRY.md](../QA_ACCOUNT_REGISTRY.md) — public-safe account inventory for password manager registration
+- [../SYNTHETIC_ACTOR_ACCOUNT_STRATEGY.md](../SYNTHETIC_ACTOR_ACCOUNT_STRATEGY.md) — account strategy and three-track model
+- Issue [#873](https://github.com/skerishKang/LoveBud/issues/873) — Qa account registration

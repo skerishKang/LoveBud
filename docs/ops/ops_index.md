@@ -95,7 +95,8 @@
 | [BRANCH_CLEANUP_PLAN.md](BRANCH_CLEANUP_PLAN.md) | PR #49~#58 이후 merged/stale branch cleanup 후보와 보존 branch 분류 기준 |
 | [FLOW_A_QA_CHECKLIST.md](FLOW_A_QA_CHECKLIST.md) | QA 체크리스트 |
 | [PR_CHECKLIST.md](PR_CHECKLIST.md) | PR 점검 기준 |
-| [QA_CREDENTIALS.md](QA_CREDENTIALS.md) | QA credentials — persistent bundle workflow (⛔ bundle not yet committed; use Issue #351 temporary handoff) |
+| [QA_CREDENTIALS.md](QA_CREDENTIALS.md) | QA credentials — persistent encrypted bundle workflow (✅ bundle committed v1; 13 accounts registered in approved password manager) |
+| [QA_ACCOUNT_REGISTRY.md](QA_ACCOUNT_REGISTRY.md) | QA and AI actor account inventory — public-safe registry of all 13 accounts for password manager (Issue #873) |
 | [QA_CREDENTIALS.txt](QA_CREDENTIALS.txt) | QA credentials 한국어 요약 및 현재 상태 |
 | [qa-credential-bundle/README.md](qa-credential-bundle/README.md) | Persistent encrypted bundle commit status and path |
 | [../migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md](../migration/VERCEL_MODAL_MIGRATION_RUNBOOK.md) | Cloudflare Pages / Modal 전환 문서 |
