@@ -137,6 +137,16 @@ window.LoveBudEditorCanvasViewport = {
     viewportState.offsetY = Math.round(metrics.height * 0.38 - (world.y * scale));
     initCanvas();
     reapplySelection(nodeId);
+
+    // Brief scale pulse on the focused node for visual confirmation
+    requestAnimationFrame(() => {
+      const nodeEl = document.querySelector(`.memory-node[data-memory-id="${nodeId}"]`);
+      if (nodeEl) {
+        nodeEl.classList.remove('focus-animate');
+        void nodeEl.offsetWidth;
+        nodeEl.classList.add('focus-animate');
+      }
+    });
   },
 
   recenterViewport(options) {
@@ -168,6 +178,7 @@ window.LoveBudEditorCanvasViewport = {
     const recenterBtn = document.getElementById('recenterCanvasBtn');
     const zoomInBtn = document.getElementById('zoomInCanvasBtn');
     const zoomOutBtn = document.getElementById('zoomOutCanvasBtn');
+    const canvasArea = document.getElementById('canvasArea');
 
     [focusBtn, recenterBtn, zoomInBtn, zoomOutBtn].forEach((button) => {
       if (!button) return;
@@ -179,10 +190,32 @@ window.LoveBudEditorCanvasViewport = {
       }, { passive: true });
     });
 
+    /**
+     * Helper to add brief flash feedback to a button element.
+     */
+    function flashButton(btn) {
+      if (!btn) return;
+      btn.classList.add('flash-feedback');
+      setTimeout(() => {
+        btn.classList.remove('flash-feedback');
+      }, 150);
+    }
+
     if (focusBtn) {
       focusBtn.addEventListener('click', () => {
         const selectedId = document.querySelector('.memory-node.selected')?.dataset?.memoryId;
         if (selectedId) {
+          flashButton(focusBtn);
+          // Add focus flash overlay on canvas
+          if (canvasArea) {
+            canvasArea.classList.remove('focus-flash');
+            // Trigger reflow to restart animation
+            void canvasArea.offsetWidth;
+            canvasArea.classList.add('focus-flash');
+            setTimeout(() => {
+              canvasArea.classList.remove('focus-flash');
+            }, 450);
+          }
           focusNodeById(selectedId);
         }
       });
@@ -190,20 +223,69 @@ window.LoveBudEditorCanvasViewport = {
 
     if (recenterBtn) {
       recenterBtn.addEventListener('click', () => {
+        flashButton(recenterBtn);
+        // Add recenter flash overlay on canvas
+        if (canvasArea) {
+          canvasArea.classList.remove('recenter-flash');
+          void canvasArea.offsetWidth;
+          canvasArea.classList.add('recenter-flash');
+          setTimeout(() => {
+            canvasArea.classList.remove('recenter-flash');
+          }, 400);
+        }
         recenterViewport();
       });
     }
 
+    /**
+     * Update the zoom indicator badge with current scale percentage.
+     */
+    function updateZoomIndicator() {
+      const indicator = document.getElementById('zoomIndicator');
+      if (!indicator) return;
+      const scale = this.getScale(viewportState);
+      const pct = Math.round(scale * 100);
+      indicator.textContent = pct + '%';
+      indicator.classList.remove('is-hidden');
+    }
+
     if (zoomInBtn && typeof zoomBy === 'function') {
       zoomInBtn.addEventListener('click', () => {
+        flashButton(zoomInBtn);
         zoomBy(this.zoomStep);
+        updateZoomIndicator.call(this);
+        // Add zoom pulse overlay
+        if (canvasArea) {
+          canvasArea.classList.remove('zoom-pulse');
+          void canvasArea.offsetWidth;
+          canvasArea.classList.add('zoom-pulse');
+          setTimeout(() => {
+            canvasArea.classList.remove('zoom-pulse');
+          }, 350);
+        }
       });
     }
 
     if (zoomOutBtn && typeof zoomBy === 'function') {
       zoomOutBtn.addEventListener('click', () => {
+        flashButton(zoomOutBtn);
         zoomBy(1 / this.zoomStep);
+        updateZoomIndicator.call(this);
+        // Add zoom pulse overlay
+        if (canvasArea) {
+          canvasArea.classList.remove('zoom-pulse');
+          void canvasArea.offsetWidth;
+          canvasArea.classList.add('zoom-pulse');
+          setTimeout(() => {
+            canvasArea.classList.remove('zoom-pulse');
+          }, 350);
+        }
       });
     }
+
+    // Initialize zoom indicator on first paint
+    requestAnimationFrame(() => {
+      updateZoomIndicator.call(this);
+    });
   }
 };

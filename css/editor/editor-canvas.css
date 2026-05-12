@@ -7,6 +7,7 @@
     overflow: hidden;
     cursor: grab;
     user-select: none;
+    transition: background-position 0.05s linear;
 }
 
 .canvas-area::after {
@@ -19,6 +20,66 @@
 
 .canvas-area.panning {
     cursor: grabbing;
+    transition: none;
+}
+
+/* Zoom pulse overlay — brief flash when zoom changes */
+.canvas-area.zoom-pulse::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(144, 73, 81, 0.03);
+    pointer-events: none;
+    z-index: 5;
+    animation: zoomPulseFade 0.3s ease-out forwards;
+}
+
+@keyframes zoomPulseFade {
+    0% { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+/* Recenter flash — brief highlight when fit-to-view is triggered */
+.canvas-area.recenter-flash::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(144, 73, 81, 0.04);
+    pointer-events: none;
+    z-index: 5;
+    animation: recenterFlashFade 0.35s ease-out forwards;
+}
+
+@keyframes recenterFlashFade {
+    0% { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+/* Focus node flash — brief highlight when focusing a node */
+.canvas-area.focus-flash::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at var(--focus-x, 50%) var(--focus-y, 50%), rgba(144, 73, 81, 0.06), transparent 60%);
+    pointer-events: none;
+    z-index: 5;
+    animation: focusFlashFade 0.4s ease-out forwards;
+}
+
+@keyframes focusFlashFade {
+    0% { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+/* Memory node focus ring animation */
+.memory-node.focus-animate {
+    animation: nodeFocusPulse 0.6s ease-out;
+}
+
+@keyframes nodeFocusPulse {
+    0% { box-shadow: 0 0 0 0 rgba(144, 73, 81, 0.25); transform: scale(1); }
+    50% { box-shadow: 0 0 0 12px rgba(144, 73, 81, 0); transform: scale(1.04); }
+    100% { box-shadow: 0 0 0 0 rgba(144, 73, 81, 0); transform: scale(1); }
 }
 
 .canvas-svg {
