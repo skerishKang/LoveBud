@@ -37,17 +37,12 @@
     var selectedMemory = memories.find(function(m) { return m && m.id === selectedId; }) || memories.find(function(m) { return m && m.id === rootId; }) || null;
     var count = memories.filter(function(m) { return m && m.id !== rootId; }).length;
 
-    var momentCountEl = document.getElementById('sidebarMomentCount');
-    if (momentCountEl) {
-      momentCountEl.textContent = count === 0
-        ? tText('sidebar_moment_count_empty_short', '첫 순간 준비 중')
-        : tText('sidebar_moment_count_short', '총 {count}개의 순간', '{count}').replace('{count}', String(count));
-    }
-
     var flowSummaryEl = document.getElementById('sidebarFlowSummary');
     if (flowSummaryEl) {
       if (!count) {
-        flowSummaryEl.textContent = tText('sidebar_flow_summary_empty', '첫 기억이 심어지면 이곳에 감정의 흐름이 차곡차곡 쌓여요.');
+        flowSummaryEl.textContent = tText('editor_tree_status_empty', '아직 첫 순간을 기다리고 있어요.');
+      } else if (count === 1) {
+        flowSummaryEl.textContent = tText('sidebar_flow_summary_one_moment', '첫 순간이 심어졌어요.');
       } else if (selectedMemory && selectedMemory.title) {
         flowSummaryEl.textContent = tText('sidebar_flow_summary_selected', '지금은 "{title}" 순간에 마음이 머물러 있어요.').replace('{title}', selectedMemory.title);
       } else {
@@ -115,6 +110,10 @@
 
     setAttr('renameTreeBtn', 'aria-label', 'rename_tree_prompt', '새 트리 제목을 입력해 주세요.');
     setAttr('renameTreeBtn', 'title', 'rename_tree_prompt', '새 트리 제목을 입력해 주세요.');
+
+    setText('sidebarPublicViewerLabel', 'sidebar_public_viewer_label', '공개 화면 보기');
+    setText('sidebarInsightsLabel', 'sidebar_insights_label', '트리 인사이트');
+    setText('sidebarInsightsBadge', 'sidebar_insights_disabled_badge', '준비 중');
     setAttr('detailMoreBtn', 'aria-label', 'editor_open_detail', '상세로 보기');
 
     var playBtn = document.querySelector('.play-btn');
