@@ -1,0 +1,196 @@
+/**
+ * LoveBud - Home v3 i18n extension
+ * v20260512-1107-1
+ */
+(function() {
+  'use strict';
+
+  var homeV3 = {
+    'home.v3.eyebrow': {
+      ko: '팬 감정 러브트리 · 따뜻한 디지털 스크랩북',
+      en: 'Fan emotion LoveTree · A warm digital scrapbook'
+    },
+    'home.v3.title.soft': {
+      ko: '첫 순간이 하나의',
+      en: 'Your first moment'
+    },
+    'home.v3.title.warm': {
+      ko: '러브트리로',
+      en: 'grows into'
+    },
+    'home.v3.title.accent': {
+      ko: '이어져요',
+      en: 'a LoveTree'
+    },
+    'home.v3.desc': {
+      ko: '반했던 장면과 오래 남은 마음을, 감정이 이어진 경로로 천천히 남겨 보세요.',
+      en: 'Save the scene that moved you and the feelings that stayed, then trace how those emotions connected over time.'
+    },
+    'home.v3.cta.start': {
+      ko: '내 러브트리 시작하기',
+      en: 'Start My LoveTree'
+    },
+    'home.v3.cta.browse': {
+      ko: '다른 트리 둘러보기',
+      en: 'Browse Other Trees'
+    },
+    'home.v3.note': {
+      ko: '처음에는 단 하나의 순간만 있어도 충분해요.',
+      en: 'One meaningful moment is enough to begin.'
+    },
+    'home.v3.introLink': {
+      ko: '러브트리가 처음이신가요?',
+      en: 'New to LoveTree?'
+    },
+    'home.v3.growth.caption': {
+      ko: '순간 하나가 이어지고, 감정의 가지가 자라나요',
+      en: 'One moment connects, and branches of feeling begin to grow.'
+    },
+    'home.v3.growth.card1.title': {
+      ko: '처음 마음이 움직인 무대',
+      en: 'The stage that first moved you'
+    },
+    'home.v3.growth.card1.copy': {
+      ko: '그날의 장면과 이유를 첫 순간으로 남겨요.',
+      en: 'Save what happened that day, and why it stayed with you.'
+    },
+    'home.v3.growth.card2.title': {
+      ko: '다시 듣게 된 노래',
+      en: 'The song you kept replaying'
+    },
+    'home.v3.growth.card2.copy': {
+      ko: '계속 좋아하게 된 감정을 이어 붙여요.',
+      en: 'Connect the feeling that made you keep coming back.'
+    },
+    'home.v3.growth.card3.title': {
+      ko: '오래 남은 한 문장',
+      en: 'A line that stayed with you'
+    },
+    'home.v3.growth.card3.copy': {
+      ko: '흩어진 기억이 하나의 러브트리가 돼요.',
+      en: 'Scattered memories become one LoveTree.'
+    },
+    'home.v3.paper.title': {
+      ko: '첫 문장',
+      en: 'First note'
+    },
+    'home.v3.paper.copy': {
+      ko: '그날의 떨림은 오래 남아서, 지금도 다시 꺼내 보고 싶어요.',
+      en: 'The feeling from that day still lingers, and I want to open it again.'
+    },
+    'home.v3.card.root.label': {
+      ko: '처음 사랑하게 된 무대',
+      en: 'The stage that started it'
+    },
+    'home.v3.card.root.copy': {
+      ko: '선명한 조명보다 내 마음이 먼저 흔들렸던 밤의 기록',
+      en: 'A night when my heart moved before the lights came into focus'
+    },
+    'home.v3.card.root.chip1': {
+      ko: '대표 순간',
+      en: 'Key moment'
+    },
+    'home.v3.card.root.chip2': {
+      ko: '설렘',
+      en: 'Excitement'
+    },
+    'home.v3.card.root.meta': {
+      ko: '첫 시작 · 기억 1',
+      en: 'First start · Memory 1'
+    },
+    'home.v3.card.top.label': {
+      ko: '문득 다시 듣게 되는 노래',
+      en: 'A song you return to'
+    },
+    'home.v3.card.top.copy': {
+      ko: '지금의 마음을 조용히 껴안아 주는 장면 같은 멜로디',
+      en: 'A melody that quietly holds how you feel now'
+    },
+    'home.v3.card.top.chip1': {
+      ko: '노래',
+      en: 'Song'
+    },
+    'home.v3.card.top.chip2': {
+      ko: '여운',
+      en: 'Afterglow'
+    },
+    'home.v3.card.top.meta': {
+      ko: '기억 2 · 이어진 감정',
+      en: 'Memory 2 · Connected feeling'
+    },
+    'home.v3.card.center.label': {
+      ko: '오늘도 위로가 된 순간',
+      en: 'A moment that comforted you today'
+    },
+    'home.v3.card.center.copy': {
+      ko: '복잡했던 하루를 지나 다시 머무르게 되는 한 장면',
+      en: 'A scene you return to after a complicated day'
+    },
+    'home.v3.card.center.chip1': {
+      ko: '위로',
+      en: 'Comfort'
+    },
+    'home.v3.card.center.chip2': {
+      ko: '흐름',
+      en: 'Flow'
+    },
+    'home.v3.card.center.meta': {
+      ko: '기억 3 · 감정의 가지',
+      en: 'Memory 3 · Branch of feeling'
+    },
+    'home.v3.card.bottom.label': {
+      ko: '오래 남은 한 문장',
+      en: 'A line that lasted'
+    },
+    'home.v3.card.bottom.copy': {
+      ko: '지나간 계절까지 불러오는 짧은 말 한 줄의 잔상',
+      en: 'One short line that brings an old season back'
+    },
+    'home.v3.card.bottom.chip1': {
+      ko: '문장',
+      en: 'Line'
+    },
+    'home.v3.card.bottom.chip2': {
+      ko: '추억',
+      en: 'Memory'
+    },
+    'home.v3.card.bottom.meta': {
+      ko: '기억 4 · 조용한 메모',
+      en: 'Memory 4 · Quiet note'
+    },
+    'home.v3.card.sideTop.label': {
+      ko: '반짝이던 응원봉의 바다',
+      en: 'A sea of glowing lightsticks'
+    },
+    'home.v3.card.sideTop.meta': {
+      ko: '빛나는 기억',
+      en: 'Glowing memory'
+    },
+    'home.v3.card.sideBottom.label': {
+      ko: '다시 보고 싶은 계절',
+      en: 'A season to revisit'
+    },
+    'home.v3.card.sideBottom.meta': {
+      ko: '조용한 여운',
+      en: 'Quiet afterglow'
+    },
+    'home.v3.word.moment': {
+      ko: '순간',
+      en: 'Moment'
+    },
+    'home.v3.word.emotion': {
+      ko: '감정',
+      en: 'Emotion'
+    },
+    'home.v3.word.memory': {
+      ko: '기억',
+      en: 'Memory'
+    },
+    'home.v3.word.flow': {
+      ko: '흐름',
+      en: 'Flow'
+    }
+  };
+
+  window.i18nShared = Object.assign(window.i18nShared || {}, homeV3);
+})();
