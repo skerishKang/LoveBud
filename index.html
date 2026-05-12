@@ -8,7 +8,7 @@
     <link rel="icon" href="/favicon.ico" sizes="32x32">
     <link rel="stylesheet" href="css/global.css?v=20260509-994-1">
     <link rel="stylesheet" href="css/index.css?v=20260426-1">
-    <link rel="stylesheet" href="css/index-visual.css?v=20260426-1">
+    <link rel="stylesheet" href="css/index-visual.css?v=20260426-2">
     <link rel="stylesheet" href="css/page-transitions.css?v=20260430-1">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
 </head>
@@ -22,30 +22,30 @@
             <section class="home-v3-hero page-transition-stagger">
                 <div class="home-v3-copy reveal reveal-up">
                     <div class="home-v3-identity-copy">
-                        <div class="home-v3-eyebrow">팬 감정 러브트리 · 따뜻한 디지털 스크랩북</div>
+                        <div class="home-v3-eyebrow" data-i18n="home.v3.eyebrow">팬 감정 러브트리 · 따뜻한 디지털 스크랩북</div>
                         <h1 class="home-v3-title">
-                            <span class="soft">첫 순간이 하나의</span>
-                            <span class="warm">러브트리로</span>
-                            <span class="accent">이어져요</span>
+                            <span class="soft" data-i18n="home.v3.title.soft">첫 순간이 하나의</span>
+                            <span class="warm" data-i18n="home.v3.title.warm">러브트리로</span>
+                            <span class="accent" data-i18n="home.v3.title.accent">이어져요</span>
                         </h1>
-                        <p class="home-v3-desc">
+                        <p class="home-v3-desc" data-i18n="home.v3.desc">
                             반했던 장면과 오래 남은 마음을, 감정이 이어진 경로로 천천히 남겨 보세요.
                         </p>
                         <div class="home-v3-actions">
-                            <a href="pages/login?redirect=my-trees" class="btn-round btn-primary">내 러브트리 시작하기</a>
-                            <a href="pages/search" class="btn-round btn-outline">다른 트리 둘러보기</a>
+                            <a href="pages/login?redirect=my-trees" class="btn-round btn-primary" data-i18n="home.v3.cta.start">내 러브트리 시작하기</a>
+                            <a href="pages/search" class="btn-round btn-outline" data-i18n="home.v3.cta.browse">다른 트리 둘러보기</a>
                         </div>
-                        <div class="home-v3-note">처음에는 단 하나의 순간만 있어도 충분해요.</div>
+                        <div class="home-v3-note" data-i18n="home.v3.note">처음에는 단 하나의 순간만 있어도 충분해요.</div>
                         <div class="home-intro-entry-wrapper">
-                            <a href="pages/intro" class="home-intro-entry" aria-label="러브트리 서비스 소개 페이지로 이동">러브트리가 처음이신가요?</a>
+                            <a href="pages/intro" class="home-intro-entry" aria-label="러브트리 서비스 소개 페이지로 이동" data-i18n="home.v3.introLink">러브트리가 처음이신가요?</a>
                         </div>
                     </div>
                 </div>
 
-                <div class="home-v3-collage reveal reveal-scale is-video-pending" aria-hidden="true">
+                <div class="home-v3-collage reveal reveal-scale" aria-hidden="true" data-hero-video="disabled">
                     <div class="home-v3-growth-stage">
-                        <video id="hero-growth-video" class="growth-stage-video" autoplay muted playsinline loop preload="metadata" src="/docs/video/home-hero.mp4"></video>
-                        <div class="growth-stage-caption">순간 하나가 이어지고, 감정의 가지가 자라나요</div>
+                        <div class="growth-stage-video-placeholder" aria-hidden="true"></div>
+                        <div class="growth-stage-caption" data-i18n="home.v3.growth.caption">순간 하나가 이어지고, 감정의 가지가 자라나요</div>
                         <svg class="growth-tree-svg" viewBox="0 0 640 700" role="img" aria-label="러브트리가 자라는 애니메이션">
                             <path class="trunk" pathLength="1" d="M320 600 C318 520 322 450 320 360 C318 285 330 232 360 178" />
                             <path class="branch one" pathLength="1" d="M320 380 C250 360 188 336 126 292" />
@@ -53,16 +53,16 @@
                             <path class="branch three" pathLength="1" d="M326 452 C402 456 468 488 540 548" />
                         </svg>
                         <article class="growth-stage-card one">
-                            <strong>처음 마음이 움직인 무대</strong>
-                            <span>그날의 장면과 이유를 첫 순간으로 남겨요.</span>
+                            <strong data-i18n="home.v3.growth.card1.title">처음 마음이 움직인 무대</strong>
+                            <span data-i18n="home.v3.growth.card1.copy">그날의 장면과 이유를 첫 순간으로 남겨요.</span>
                         </article>
                         <article class="growth-stage-card two">
-                            <strong>다시 듣게 된 노래</strong>
-                            <span>계속 좋아하게 된 감정을 이어 붙여요.</span>
+                            <strong data-i18n="home.v3.growth.card2.title">다시 듣게 된 노래</strong>
+                            <span data-i18n="home.v3.growth.card2.copy">계속 좋아하게 된 감정을 이어 붙여요.</span>
                         </article>
                         <article class="growth-stage-card three">
-                            <strong>오래 남은 한 문장</strong>
-                            <span>흩어진 기억이 하나의 러브트리가 돼요.</span>
+                            <strong data-i18n="home.v3.growth.card3.title">오래 남은 한 문장</strong>
+                            <span data-i18n="home.v3.growth.card3.copy">흩어진 기억이 하나의 러브트리가 돼요.</span>
                         </article>
                     </div>
                     <div class="home-v3-halo"></div>
@@ -75,70 +75,70 @@
                     <div class="home-v3-branch branch-f"></div>
 
                     <div class="home-v3-note-paper">
-                        <strong>첫 문장</strong>
-                        <p>그날의 떨림은 오래 남아서, 지금도 다시 꺼내 보고 싶어요.</p>
+                        <strong data-i18n="home.v3.paper.title">첫 문장</strong>
+                        <p data-i18n="home.v3.paper.copy">그날의 떨림은 오래 남아서, 지금도 다시 꺼내 보고 싶어요.</p>
                     </div>
 
                     <div class="home-v3-card card-root">
                         <div class="home-v3-card-inner">
                             <div class="home-v3-photo"></div>
-                            <div class="home-v3-card-label">처음 사랑하게 된 무대</div>
-                            <div class="home-v3-card-copy">선명한 조명보다 내 마음이 먼저 흔들렸던 밤의 기록</div>
-                            <div class="home-v3-chipline"><span>대표 순간</span><span>설렘</span></div>
-                            <div class="home-v3-card-meta">첫 시작 · 기억 1</div>
+                            <div class="home-v3-card-label" data-i18n="home.v3.card.root.label">처음 사랑하게 된 무대</div>
+                            <div class="home-v3-card-copy" data-i18n="home.v3.card.root.copy">선명한 조명보다 내 마음이 먼저 흔들렸던 밤의 기록</div>
+                            <div class="home-v3-chipline"><span data-i18n="home.v3.card.root.chip1">대표 순간</span><span data-i18n="home.v3.card.root.chip2">설렘</span></div>
+                            <div class="home-v3-card-meta" data-i18n="home.v3.card.root.meta">첫 시작 · 기억 1</div>
                         </div>
                     </div>
 
                     <div class="home-v3-card card-top">
                         <div class="home-v3-card-inner">
                             <div class="home-v3-photo"></div>
-                            <div class="home-v3-card-label">문득 다시 듣게 되는 노래</div>
-                            <div class="home-v3-card-copy">지금의 마음을 조용히 껴안아 주는 장면 같은 멜로디</div>
-                            <div class="home-v3-chipline"><span>노래</span><span>여운</span></div>
-                            <div class="home-v3-card-meta">기억 2 · 이어진 감정</div>
+                            <div class="home-v3-card-label" data-i18n="home.v3.card.top.label">문득 다시 듣게 되는 노래</div>
+                            <div class="home-v3-card-copy" data-i18n="home.v3.card.top.copy">지금의 마음을 조용히 껴안아 주는 장면 같은 멜로디</div>
+                            <div class="home-v3-chipline"><span data-i18n="home.v3.card.top.chip1">노래</span><span data-i18n="home.v3.card.top.chip2">여운</span></div>
+                            <div class="home-v3-card-meta" data-i18n="home.v3.card.top.meta">기억 2 · 이어진 감정</div>
                         </div>
                     </div>
 
                     <div class="home-v3-card card-center">
                         <div class="home-v3-card-inner">
                             <div class="home-v3-photo"></div>
-                            <div class="home-v3-card-label">오늘도 위로가 된 순간</div>
-                            <div class="home-v3-card-copy">복잡했던 하루를 지나 다시 머무르게 되는 한 장면</div>
-                            <div class="home-v3-chipline"><span>위로</span><span>흐름</span></div>
-                            <div class="home-v3-card-meta">기억 3 · 감정의 가지</div>
+                            <div class="home-v3-card-label" data-i18n="home.v3.card.center.label">오늘도 위로가 된 순간</div>
+                            <div class="home-v3-card-copy" data-i18n="home.v3.card.center.copy">복잡했던 하루를 지나 다시 머무르게 되는 한 장면</div>
+                            <div class="home-v3-chipline"><span data-i18n="home.v3.card.center.chip1">위로</span><span data-i18n="home.v3.card.center.chip2">흐름</span></div>
+                            <div class="home-v3-card-meta" data-i18n="home.v3.card.center.meta">기억 3 · 감정의 가지</div>
                         </div>
                     </div>
 
                     <div class="home-v3-card card-bottom">
                         <div class="home-v3-card-inner">
                             <div class="home-v3-photo"></div>
-                            <div class="home-v3-card-label">오래 남은 한 문장</div>
-                            <div class="home-v3-card-copy">지나간 계절까지 불러오는 짧은 말 한 줄의 잔상</div>
-                            <div class="home-v3-chipline"><span>문장</span><span>추억</span></div>
-                            <div class="home-v3-card-meta">기억 4 · 조용한 메모</div>
+                            <div class="home-v3-card-label" data-i18n="home.v3.card.bottom.label">오래 남은 한 문장</div>
+                            <div class="home-v3-card-copy" data-i18n="home.v3.card.bottom.copy">지나간 계절까지 불러오는 짧은 말 한 줄의 잔상</div>
+                            <div class="home-v3-chipline"><span data-i18n="home.v3.card.bottom.chip1">문장</span><span data-i18n="home.v3.card.bottom.chip2">추억</span></div>
+                            <div class="home-v3-card-meta" data-i18n="home.v3.card.bottom.meta">기억 4 · 조용한 메모</div>
                         </div>
                     </div>
 
                     <div class="home-v3-card card-side-top">
                         <div class="home-v3-card-inner">
                             <div class="home-v3-photo home-v3-photo-side-top"></div>
-                            <div class="home-v3-card-label">반짝이던 응원봉의 바다</div>
-                            <div class="home-v3-card-meta">빛나는 기억</div>
+                            <div class="home-v3-card-label" data-i18n="home.v3.card.sideTop.label">반짝이던 응원봉의 바다</div>
+                            <div class="home-v3-card-meta" data-i18n="home.v3.card.sideTop.meta">빛나는 기억</div>
                         </div>
                     </div>
 
                     <div class="home-v3-card card-side-bottom">
                         <div class="home-v3-card-inner">
                             <div class="home-v3-photo home-v3-photo-side-bottom"></div>
-                            <div class="home-v3-card-label">다시 보고 싶은 계절</div>
-                            <div class="home-v3-card-meta">조용한 여운</div>
+                            <div class="home-v3-card-label" data-i18n="home.v3.card.sideBottom.label">다시 보고 싶은 계절</div>
+                            <div class="home-v3-card-meta" data-i18n="home.v3.card.sideBottom.meta">조용한 여운</div>
                         </div>
                     </div>
 
-                    <div class="home-v3-word word-a">순간</div>
-                    <div class="home-v3-word word-b">감정</div>
-                    <div class="home-v3-word word-c">기억</div>
-                    <div class="home-v3-word word-d">흐름</div>
+                    <div class="home-v3-word word-a" data-i18n="home.v3.word.moment">순간</div>
+                    <div class="home-v3-word word-b" data-i18n="home.v3.word.emotion">감정</div>
+                    <div class="home-v3-word word-c" data-i18n="home.v3.word.memory">기억</div>
+                    <div class="home-v3-word word-d" data-i18n="home.v3.word.flow">흐름</div>
 
                     <div class="home-v3-dots">
                         <span class="dot-a"></span>
@@ -163,7 +163,8 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="js/firebase-config.js?v=20260417-31"></script>
     <script src="js/i18n/i18n-core.js?v=20260421-1"></script>
-    <script src="js/i18n/i18n-shared.js?v=20260421-4"></script>
+    <script src="js/i18n/i18n-shared.js?v=20260512-1107-1"></script>
+    <script src="js/i18n/i18n-home-v3.js?v=20260512-1107-1"></script>
     <script src="js/i18n/i18n-login.js?v=20260419-2"></script>
     <script src="js/i18n/i18n-intro.js?v=20260421-2"></script>
     <script src="js/i18n/i18n-search.js?v=20260421-1"></script>
