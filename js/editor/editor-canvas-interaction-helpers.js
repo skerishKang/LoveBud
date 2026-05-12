@@ -53,6 +53,8 @@ window.LoveBudEditorCanvasInteractionHelpers = {
       viewportState.startY = event.clientY;
       viewportState.offsetX += dx;
       viewportState.offsetY += dy;
+      // Update background grid position during panning for visual flow feedback
+      canvas.style.backgroundPosition = `${viewportState.offsetX}px ${viewportState.offsetY}px`;
       scheduleInitCanvas();
     });
 
