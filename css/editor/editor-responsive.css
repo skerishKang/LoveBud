@@ -201,7 +201,8 @@
     }
 
     .editor-flow-summary,
-    .editor-sidebar-meta {
+    .editor-sidebar-meta,
+    .editor-sidebar-entrypoints {
         display: none;
     }
 

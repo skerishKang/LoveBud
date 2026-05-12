@@ -123,5 +123,9 @@ Object.assign(window.i18nEditor, {
     sidebar_moment_count_with_visible_short: { ko: '총 {total}개의 저장된 순간 · 캔버스 {visible}개 표시', en: '{total} saved moments · {visible} shown on canvas' },
     sidebar_flow_summary_connected_short: { ko: '이 트리에 {count}개의 순간이 저장되어 있어요', en: '{count} moments are saved in this tree' },
     editor_layout_free: { ko: '자유 배치', en: 'Free layout' },
-    editor_layout_structured: { ko: '정리된 트리', en: 'Structured tree' }
+    editor_layout_structured: { ko: '정리된 트리', en: 'Structured tree' },
+    sidebar_public_viewer_label: { ko: '공개 화면 보기', en: 'Public view' },
+    sidebar_insights_label: { ko: '트리 인사이트', en: 'Tree insights' },
+    sidebar_insights_disabled_badge: { ko: '준비 중', en: 'Coming soon' },
+    sidebar_flow_summary_one_moment: { ko: '첫 순간이 심어졌어요.', en: 'The first moment has been planted.' }
 });
