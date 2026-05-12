@@ -70,18 +70,19 @@ function createEditorMemoryActions(deps) {
 
     const ensureSourceUrlEditField = () => {
         const editMode = document.getElementById('detailEditMode');
-        const memoGroup = document.getElementById('editMemoInput')?.closest('.detail-info-group');
+        const memoGroup = document.getElementById('editMemoInput')?.closest('.editor-form-stack');
         if (!editMode || !memoGroup) return null;
 
         let field = document.getElementById('editSourceUrlGroup');
         if (!field) {
             field = document.createElement('div');
             field.id = 'editSourceUrlGroup';
-            field.className = 'detail-info-group editor-source-url-edit-group';
+            field.className = 'editor-form-stack editor-form-stack-compact editor-source-url-edit-group';
+            field.style.marginTop = '12px';
             field.innerHTML = `
-                <label id="editSourceUrlLabel" for="editSourceUrlInput">${formatI18nText('editor_source_url_label', '영상 또는 출처 링크')}</label>
-                <input type="text" id="editSourceUrlInput" class="editor-edit-input" placeholder="https://www.youtube.com/watch?v=...">
-                <p id="editSourceUrlHint" class="memory-edit-hint editor-source-url-edit-hint">${formatI18nText('editor_source_url_hint', 'YouTube 링크를 바꾸면 저장 후 대표 이미지도 함께 갱신됩니다.')}</p>
+                <label id="editSourceUrlLabel" for="editSourceUrlInput" class="editor-form-label">${formatI18nText('editor_source_url_label', '영상 또는 출처 링크')}</label>
+                <input type="text" id="editSourceUrlInput" class="editor-form-input" placeholder="https://www.youtube.com/watch?v=...">
+                <p id="editSourceUrlHint" class="editor-form-help editor-source-url-edit-hint">${formatI18nText('editor_source_url_hint', 'YouTube 링크를 바꾸면 저장 후 대표 이미지도 함께 갱신됩니다.')}</p>
             `;
             editMode.insertBefore(field, memoGroup);
         }
