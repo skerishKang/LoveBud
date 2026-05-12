@@ -109,11 +109,62 @@
     word-break: keep-all;
 }
 
-/* Quiet-first tree summary card polish.
-   Keep existing editor logic and element IDs intact while reducing visual action noise. */
-.editor-status-card .editor-tree-visibility-pill,
-.editor-status-card #sidebarVisibilityToggleBtn {
-    display: none !important;
+/* Quiet-first tree summary card polish — entrypoints */
+.editor-sidebar-entrypoints {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 10px;
+}
+
+.editor-sidebar-entry-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 9px 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(144, 73, 81, 0.10);
+    background: rgba(144, 73, 81, 0.04);
+    color: var(--primary);
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.4;
+    cursor: pointer;
+    transition: background .18s ease, border-color .18s ease;
+    text-align: left;
+}
+
+.editor-sidebar-entry-btn:hover:not(:disabled) {
+    background: rgba(144, 73, 81, 0.09);
+    border-color: rgba(144, 73, 81, 0.16);
+}
+
+.editor-sidebar-entry-btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+    background: transparent;
+    border-color: rgba(144, 73, 81, 0.06);
+}
+
+.editor-sidebar-entry-btn .material-symbols-outlined {
+    font-size: 18px;
+    opacity: 0.8;
+}
+
+.editor-sidebar-entry-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: var(--surface-container-low);
+    color: var(--on-surface-note);
+    margin-left: auto;
+    line-height: 1.3;
+}
+
+.editor-status-card .editor-flow-summary {
+    display: block !important;
 }
 
 .editor-status-card .editor-title-settings-panel {
