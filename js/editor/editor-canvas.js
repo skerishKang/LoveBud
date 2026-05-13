@@ -433,6 +433,43 @@ function createEditorCanvas(deps) {
         growthAffordance.clearGrowthAffordance();
     }
 
+    function openAddMomentFromCanvas() {
+        growthAffordance.openAddMomentFromCanvas();
+    }
+
+    function getGrowthAffordancePosition(anchorPos) {
+        return growthAffordance.getGrowthAffordancePosition(anchorPos);
+    }
+
+    function drawGrowthAffordanceBranch(startPos, endPos, side) {
+        growthAffordance.drawGrowthAffordanceBranch(startPos, endPos, side);
+    }
+
+    function createGrowthAffordanceElement(anchorMem, labelText, helperText) {
+        growthAffordance.createGrowthAffordanceElement(anchorMem, labelText, helperText);
+    }
+
+    function renderGrowthAffordance(anchorMem, options) {
+        growthAffordance.renderGrowthAffordance(anchorMem, options);
+    }
+
+    /**
+     * Lightweight affordance update — clears and re-renders for the currently
+     * selected node without a full canvas redraw. Called on node selection change.
+     */
+    function updateAffordance() {
+        clearGrowthAffordance();
+        const canonicalRootId = getCanonicalRootId();
+        const treeMemories = getTreeMemories();
+        const selectedId = document.querySelector('.memory-node.selected')?.dataset?.memoryId;
+        if (!selectedId) return;
+        const selectedMem = treeMemories.find((m) => m.id === selectedId);
+        if (!selectedMem) return;
+        const drawableMemories = treeMemories.filter((node) => !isRootMemory(node, canonicalRootId));
+        renderGrowthAffordance(selectedMem, {
+            isFirstStep: drawableMemories.length <= 1
+        });
+    }
     const initCanvas = () => {
         const canonicalRootId = getCanonicalRootId();
         const treeMemories = getTreeMemories();
@@ -768,6 +805,7 @@ function createEditorCanvas(deps) {
         focusNodeById,
         recenterViewport,
         setLayoutMode,
+        updateAffordance,
         getWorldPosition,
         get viewportState() { return viewportState; }
     };

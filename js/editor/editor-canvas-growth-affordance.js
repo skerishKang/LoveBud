@@ -11,13 +11,12 @@ function createEditorCanvasGrowthAffordance(deps) {
     } = deps;
 
     const {
-        NODE_HALF,
-        AFFORDANCE_CARD_HALF
+        NODE_HALF
     } = constants;
-    const AFFORDANCE_SAFE_GAP = 28;
-    const AFFORDANCE_EDGE_PADDING = 28;
-    const AFFORDANCE_MIN_WIDTH = 174;
-    const AFFORDANCE_HEIGHT = 64;
+    const TIP_SIZE = 36;
+    const TIP_HALF = TIP_SIZE / 2;
+    const GAP_FROM_NODE = 10;
+    const CONNECTOR_PEAK_GAP = 6;
 
     function clamp(value, min, max) {
         if (max < min) return min;
@@ -27,6 +26,8 @@ function createEditorCanvasGrowthAffordance(deps) {
     function clearGrowthAffordance() {
         canvas.querySelectorAll('.memory-add-affordance').forEach((el) => el.remove());
         svg.querySelectorAll('.branch-line-affordance').forEach((el) => el.remove());
+        // Remove any affordance tooltip that might be visible
+        documentRef.querySelectorAll('.affordance-tooltip').forEach((el) => el.remove());
     }
 
     function openAddMomentFromCanvas() {
@@ -41,193 +42,281 @@ function createEditorCanvasGrowthAffordance(deps) {
         }
     }
 
-    function getGrowthAffordancePosition(anchorPos) {
+    /**
+     * Determine the best placement for the compact + tip.
+     * Returns position (center of tip) and side ('right'|'left'|'below'|'above').
+     */
+    function getPlusTipPosition(anchorPos) {
         const metrics = getMetrics();
         const viewportWidth = Math.max(canvas.clientWidth || metrics.width, 320);
         const viewportHeight = Math.max(canvas.clientHeight || metrics.height, 320);
-        const width = Math.min(AFFORDANCE_CARD_HALF * 2, Math.max(AFFORDANCE_MIN_WIDTH, viewportWidth - (AFFORDANCE_EDGE_PADDING * 2)));
-        const cardHalf = width / 2;
-        const minCenterX = cardHalf + AFFORDANCE_EDGE_PADDING;
-        const maxCenterX = viewportWidth - cardHalf - AFFORDANCE_EDGE_PADDING;
+
         const nodeLeft = anchorPos.x - NODE_HALF;
         const nodeRight = anchorPos.x + NODE_HALF;
-        const rightCenterX = nodeRight + AFFORDANCE_SAFE_GAP + cardHalf;
-        const leftCenterX = nodeLeft - AFFORDANCE_SAFE_GAP - cardHalf;
-        const hasRightRoom = rightCenterX + cardHalf + AFFORDANCE_EDGE_PADDING <= viewportWidth;
-        const hasLeftRoom = leftCenterX - cardHalf - AFFORDANCE_EDGE_PADDING >= 0;
-        const preferRight = anchorPos.x < viewportWidth * 0.56;
-        let side = preferRight
-            ? (hasRightRoom ? 'right' : (hasLeftRoom ? 'left' : 'below'))
-            : (hasLeftRoom ? 'left' : (hasRightRoom ? 'right' : 'below'));
-        let x = side === 'left' ? leftCenterX : rightCenterX;
-        let y = clamp(anchorPos.y - 10, 110, viewportHeight - 80);
+        const nodeTop = anchorPos.y - NODE_HALF;
+        const nodeBottom = anchorPos.y + NODE_HALF;
 
-        if (side === 'below') {
-            x = clamp(anchorPos.x, minCenterX, maxCenterX);
-            const belowY = anchorPos.y + NODE_HALF + AFFORDANCE_SAFE_GAP + (AFFORDANCE_HEIGHT / 2);
-            const aboveY = anchorPos.y - NODE_HALF - AFFORDANCE_SAFE_GAP - (AFFORDANCE_HEIGHT / 2);
-            y = belowY + (AFFORDANCE_HEIGHT / 2) + AFFORDANCE_EDGE_PADDING <= viewportHeight
-                ? belowY
-                : clamp(aboveY, AFFORDANCE_EDGE_PADDING + (AFFORDANCE_HEIGHT / 2), viewportHeight - AFFORDANCE_EDGE_PADDING - (AFFORDANCE_HEIGHT / 2));
-            side = belowY + (AFFORDANCE_HEIGHT / 2) + AFFORDANCE_EDGE_PADDING <= viewportHeight ? 'below' : 'above';
+        // Calculate available space on each side
+        const spaceRight = viewportWidth - nodeRight;
+        const spaceLeft = nodeLeft;
+        const spaceBelow = viewportHeight - nodeBottom;
+        const spaceAbove = nodeTop;
+
+        // Minimum space needed for tip + gap
+        const needed = TIP_SIZE + GAP_FROM_NODE + CONNECTOR_PEAK_GAP;
+
+        // Score each side based on available space and preference
+        const sides = [];
+
+        // Right: tip to the right of the node
+        if (spaceRight >= needed) {
+            const tipX = nodeRight + GAP_FROM_NODE + TIP_HALF;
+            const tipY = clamp(anchorPos.y, TIP_HALF + 20, viewportHeight - TIP_HALF - 20);
+            sides.push({ x: tipX, y: tipY, side: 'right', score: spaceRight * 1.0 });
         }
 
+        // Left: tip to the left of the node
+        if (spaceLeft >= needed) {
+            const tipX = nodeLeft - GAP_FROM_NODE - TIP_HALF;
+            const tipY = clamp(anchorPos.y, TIP_HALF + 20, viewportHeight - TIP_HALF - 20);
+            sides.push({ x: tipX, y: tipY, side: 'left', score: spaceLeft * 0.85 });
+        }
+
+        // Below: tip below the node
+        if (spaceBelow >= needed) {
+            const tipX = clamp(anchorPos.x, TIP_HALF + 20, viewportWidth - TIP_HALF - 20);
+            const tipY = nodeBottom + GAP_FROM_NODE + TIP_HALF;
+            sides.push({ x: tipX, y: tipY, side: 'below', score: spaceBelow * 0.7 });
+        }
+
+        // Above: tip above the node
+        if (spaceAbove >= needed) {
+            const tipX = clamp(anchorPos.x, TIP_HALF + 20, viewportWidth - TIP_HALF - 20);
+            const tipY = nodeTop - GAP_FROM_NODE - TIP_HALF;
+            sides.push({ x: tipX, y: tipY, side: 'above', score: spaceAbove * 0.6 });
+        }
+
+        // If any side works, pick the best-scoring one
+        if (sides.length) {
+            sides.sort((a, b) => b.score - a.score);
+            return sides[0];
+        }
+
+        // Fallback: place to the right or left, no gap check
+        const preferRight = anchorPos.x < viewportWidth * 0.5;
+        if (preferRight) {
+            return {
+                x: clamp(nodeRight + GAP_FROM_NODE + TIP_HALF, TIP_HALF + 8, viewportWidth - TIP_HALF - 8),
+                y: clamp(anchorPos.y, TIP_HALF + 20, viewportHeight - TIP_HALF - 20),
+                side: 'right'
+            };
+        }
         return {
-            x: clamp(x, minCenterX, maxCenterX),
-            y,
-            side,
-            width,
-            height: AFFORDANCE_HEIGHT,
-            cardHalf
+            x: clamp(nodeLeft - GAP_FROM_NODE - TIP_HALF, TIP_HALF + 8, viewportWidth - TIP_HALF - 8),
+            y: clamp(anchorPos.y, TIP_HALF + 20, viewportHeight - TIP_HALF - 20),
+            side: 'left'
         };
     }
 
-    function drawGrowthAffordanceBranch(startPos, endPos, side) {
+    function drawConnectorLine(anchorPos, tipPos, side) {
         const path = documentRef.createElementNS('http://www.w3.org/2000/svg', 'path');
-        const tension = side === 'left' || side === 'above' ? 0.55 : 0.45;
-        const cp1x = startPos.x + ((endPos.x - startPos.x) * tension);
-        const cp1y = side === 'below'
-            ? Math.max(startPos.y, endPos.y) + 18
-            : Math.min(startPos.y, endPos.y) - 18;
-        const d = `M ${startPos.x},${startPos.y} Q ${cp1x},${cp1y} ${endPos.x},${endPos.y}`;
+
+        // Start from node edge toward the tip
+        let startX, startY;
+        switch (side) {
+            case 'right':
+                startX = anchorPos.x + NODE_HALF;
+                startY = anchorPos.y;
+                break;
+            case 'left':
+                startX = anchorPos.x - NODE_HALF;
+                startY = anchorPos.y;
+                break;
+            case 'below':
+                startX = anchorPos.x;
+                startY = anchorPos.y + NODE_HALF;
+                break;
+            case 'above':
+                startX = anchorPos.x;
+                startY = anchorPos.y - NODE_HALF;
+                break;
+            default:
+                startX = anchorPos.x + NODE_HALF;
+                startY = anchorPos.y;
+        }
+
+        // End point is near the tip circle edge
+        const endX = tipPos.x - (side === 'left' ? TIP_HALF : side === 'right' ? -TIP_HALF : 0);
+        const endY = tipPos.y - (side === 'above' ? TIP_HALF : side === 'below' ? -TIP_HALF : 0);
+
+        // Simple smooth quadratic bezier
+        const cpX = (startX + endX) / 2;
+        const cpY = (startY + endY) / 2;
+        const d = `M ${startX},${startY} Q ${cpX},${cpY} ${endX},${endY}`;
+
         path.setAttribute('d', d);
         path.setAttribute('class', 'branch-line branch-line-affordance');
         path.setAttribute('fill', 'none');
-        path.setAttribute('stroke', 'rgba(144, 73, 81, 0.42)');
-        path.setAttribute('stroke-width', '2');
+        path.setAttribute('stroke', 'rgba(144, 73, 81, 0.35)');
+        path.setAttribute('stroke-width', '1.5');
         path.setAttribute('stroke-linecap', 'round');
-        path.setAttribute('stroke-dasharray', '6 7');
-        path.setAttribute('opacity', '0.95');
+        path.setAttribute('stroke-dasharray', '4 5');
+        path.setAttribute('opacity', '0.85');
         svg.appendChild(path);
     }
 
-    function createGrowthAffordanceElement(anchorMem, labelText, helperText) {
+    function createPlusTipElement(anchorMem, labelText) {
         const anchorPos = calcPosition(anchorMem);
-        const affPos = getGrowthAffordancePosition(anchorPos);
-        const wrap = documentRef.createElement('button');
-        wrap.type = 'button';
-        wrap.className = 'memory-add-affordance';
-        wrap.setAttribute('aria-label', labelText);
-        wrap.style.position = 'absolute';
-        wrap.style.left = `${affPos.x - affPos.cardHalf}px`;
-        wrap.style.top = `${affPos.y - (affPos.height / 2)}px`;
-        wrap.style.zIndex = '4';
-        wrap.style.width = `${affPos.width}px`;
-        wrap.style.minHeight = `${affPos.height}px`;
-        wrap.style.boxSizing = 'border-box';
-        wrap.style.display = 'flex';
-        wrap.style.alignItems = 'center';
-        wrap.style.gap = '10px';
-        wrap.style.padding = '10px 14px 10px 10px';
-        wrap.style.border = '1px solid rgba(144, 73, 81, 0.18)';
-        wrap.style.borderRadius = '999px';
-        wrap.style.background = 'linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,246,244,0.96))';
-        wrap.style.boxShadow = '0 12px 28px rgba(75, 64, 57, 0.10)';
-        wrap.style.cursor = 'pointer';
-        wrap.style.backdropFilter = 'blur(8px)';
-        wrap.style.transition = 'transform 0.18s ease, box-shadow 0.18s ease';
+        const tipPos = getPlusTipPosition(anchorPos);
 
-        const plusBubble = documentRef.createElement('span');
-        plusBubble.textContent = '+';
-        plusBubble.style.width = '32px';
-        plusBubble.style.height = '32px';
-        plusBubble.style.borderRadius = '50%';
-        plusBubble.style.display = 'inline-flex';
-        plusBubble.style.alignItems = 'center';
-        plusBubble.style.justifyContent = 'center';
-        plusBubble.style.background = 'linear-gradient(180deg, rgba(144, 73, 81, 1), rgba(144, 73, 81, 0.88))';
-        plusBubble.style.color = '#fff';
-        plusBubble.style.fontSize = '18px';
-        plusBubble.style.fontWeight = '700';
-        plusBubble.style.flex = '0 0 auto';
-        plusBubble.style.boxShadow = '0 6px 14px rgba(144, 73, 81, 0.22)';
+        // Create the + button
+        const button = documentRef.createElement('button');
+        button.type = 'button';
+        button.className = 'memory-add-affordance';
+        button.setAttribute('aria-label', labelText);
+        button.setAttribute('title', labelText);
+        button.style.position = 'absolute';
+        button.style.left = `${tipPos.x - TIP_HALF}px`;
+        button.style.top = `${tipPos.y - TIP_HALF}px`;
+        button.style.width = `${TIP_SIZE}px`;
+        button.style.height = `${TIP_SIZE}px`;
+        button.style.borderRadius = '50%';
+        button.style.border = 'none';
+        button.style.background = 'rgba(144, 73, 81, 0.92)';
+        button.style.color = '#fff';
+        button.style.fontSize = '20px';
+        button.style.fontWeight = '700';
+        button.style.lineHeight = '1';
+        button.style.cursor = 'pointer';
+        button.style.zIndex = '5';
+        button.style.display = 'flex';
+        button.style.alignItems = 'center';
+        button.style.justifyContent = 'center';
+        button.style.boxShadow = '0 3px 10px rgba(144, 73, 81, 0.25)';
+        button.style.transition = 'transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease';
+        button.textContent = '+';
 
-        const textWrap = documentRef.createElement('span');
-        textWrap.style.display = 'flex';
-        textWrap.style.flexDirection = 'column';
-        textWrap.style.alignItems = 'flex-start';
-        textWrap.style.gap = helperText ? '1px' : '0';
-        textWrap.style.minWidth = '0';
+        // Tooltip element (hidden by default)
+        const tooltip = documentRef.createElement('span');
+        tooltip.className = 'affordance-tooltip';
+        tooltip.textContent = labelText;
+        tooltip.style.position = 'absolute';
+        tooltip.style.whiteSpace = 'nowrap';
+        tooltip.style.fontSize = '12px';
+        tooltip.style.fontWeight = '600';
+        tooltip.style.color = '#fff';
+        tooltip.style.background = 'rgba(60, 50, 45, 0.92)';
+        tooltip.style.padding = '5px 10px';
+        tooltip.style.borderRadius = '6px';
+        tooltip.style.pointerEvents = 'none';
+        tooltip.style.opacity = '0';
+        tooltip.style.transition = 'opacity 0.15s ease';
+        tooltip.style.zIndex = '6';
 
-        const titleEl = documentRef.createElement('span');
-        titleEl.textContent = labelText;
-        titleEl.style.fontSize = '13px';
-        titleEl.style.fontWeight = '700';
-        titleEl.style.color = 'var(--on-surface)';
-        titleEl.style.lineHeight = '1.25';
-        titleEl.style.whiteSpace = 'normal';
-
-        textWrap.appendChild(titleEl);
-
-        if (helperText) {
-            const hintEl = documentRef.createElement('span');
-            hintEl.textContent = helperText;
-            hintEl.style.fontSize = '11px';
-            hintEl.style.fontWeight = '600';
-            hintEl.style.color = 'var(--on-surface-variant)';
-            hintEl.style.lineHeight = '1.25';
-            hintEl.style.opacity = '0.82';
-            hintEl.style.whiteSpace = 'normal';
-            textWrap.appendChild(hintEl);
+        // Position tooltip based on tip side
+        const tooltipGap = 6;
+        switch (tipPos.side) {
+            case 'right':
+                tooltip.style.left = `${TIP_HALF + tooltipGap}px`;
+                tooltip.style.top = '50%';
+                tooltip.style.transform = 'translateY(-50%)';
+                break;
+            case 'left':
+                tooltip.style.right = `${TIP_HALF + tooltipGap}px`;
+                tooltip.style.top = '50%';
+                tooltip.style.transform = 'translateY(-50%)';
+                break;
+            case 'below':
+                tooltip.style.left = '50%';
+                tooltip.style.top = `${TIP_HALF + tooltipGap}px`;
+                tooltip.style.transform = 'translateX(-50%)';
+                break;
+            case 'above':
+                tooltip.style.left = '50%';
+                tooltip.style.bottom = `${TIP_HALF + tooltipGap}px`;
+                tooltip.style.transform = 'translateX(-50%)';
+                break;
         }
 
-        wrap.appendChild(plusBubble);
-        wrap.appendChild(textWrap);
+        button.appendChild(tooltip);
 
-        wrap.addEventListener('mouseenter', () => {
-            wrap.style.transform = 'translateY(-2px)';
-            wrap.style.boxShadow = '0 16px 30px rgba(144, 73, 81, 0.16)';
+        // Hover/focus show tooltip
+        button.addEventListener('mouseenter', () => {
+            button.style.transform = 'scale(1.15)';
+            button.style.boxShadow = '0 5px 16px rgba(144, 73, 81, 0.35)';
+            button.style.background = 'rgba(144, 73, 81, 1)';
+            tooltip.style.opacity = '1';
         });
-        wrap.addEventListener('mouseleave', () => {
-            wrap.style.transform = 'translateY(0)';
-            wrap.style.boxShadow = '0 12px 28px rgba(75, 64, 57, 0.10)';
+        button.addEventListener('mouseleave', () => {
+            button.style.transform = 'scale(1)';
+            button.style.boxShadow = '0 3px 10px rgba(144, 73, 81, 0.25)';
+            button.style.background = 'rgba(144, 73, 81, 0.92)';
+            tooltip.style.opacity = '0';
         });
-        wrap.addEventListener('click', (e) => {
+        button.addEventListener('focus', () => {
+            button.style.transform = 'scale(1.15)';
+            button.style.boxShadow = '0 0 0 3px rgba(144, 73, 81, 0.3), 0 5px 16px rgba(144, 73, 81, 0.35)';
+            button.style.background = 'rgba(144, 73, 81, 1)';
+            tooltip.style.opacity = '1';
+        });
+        button.addEventListener('blur', () => {
+            button.style.transform = 'scale(1)';
+            button.style.boxShadow = '0 3px 10px rgba(144, 73, 81, 0.25)';
+            button.style.background = 'rgba(144, 73, 81, 0.92)';
+            tooltip.style.opacity = '0';
+        });
+
+        // Click/tap action
+        button.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
+            // Brief scale pulse for feedback
+            button.style.transform = 'scale(0.9)';
+            setTimeout(() => {
+                button.style.transform = 'scale(1.15)';
+                setTimeout(() => {
+                    button.style.transform = 'scale(1)';
+                }, 100);
+            }, 80);
             openAddMomentFromCanvas();
         });
+
+        // Prevent pan when interacting
         ['mousedown', 'pointerdown', 'touchstart'].forEach((eventName) => {
-            wrap.addEventListener(eventName, (e) => {
+            button.addEventListener(eventName, (e) => {
                 e.stopPropagation();
             });
         });
 
-        const branchStart = {
-            x: anchorPos.x + (affPos.side === 'left' ? (-NODE_HALF + 2) : (affPos.side === 'right' ? (NODE_HALF - 2) : 0)),
-            y: anchorPos.y + (affPos.side === 'below' ? (NODE_HALF - 2) : (affPos.side === 'above' ? (-NODE_HALF + 2) : 4))
-        };
-        const branchEnd = {
-            x: affPos.x + (affPos.side === 'left' ? affPos.cardHalf - 36 : (affPos.side === 'right' ? -affPos.cardHalf + 36 : 0)),
-            y: affPos.y + (affPos.side === 'below' ? -(affPos.height / 2) : (affPos.side === 'above' ? (affPos.height / 2) : 0))
-        };
+        // Keyboard support
+        button.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                e.stopPropagation();
+                openAddMomentFromCanvas();
+            }
+        });
 
-        drawGrowthAffordanceBranch(
-            branchStart,
-            branchEnd,
-            affPos.side
-        );
-        canvas.appendChild(wrap);
+        // Draw connector line
+        drawConnectorLine(anchorPos, tipPos, tipPos.side);
+
+        canvas.appendChild(button);
     }
 
     function renderGrowthAffordance(anchorMem, options) {
         if (!anchorMem) return;
         const opts = options || {};
         const labelText = opts.labelText || (i18n('editor_add_memory') || '새 순간 이어가기');
-        const isFirstStep = opts.isFirstStep;
-        const helperText = isFirstStep
-            ? (i18n('growth_first_step_hint') || '첫 순간에서 이어지는 감정을 기록해보세요')
-            : (opts.helperText || i18n('growth_continue_hint') || '선택한 순간 뒤로 감정이 이어져요');
 
-        createGrowthAffordanceElement(anchorMem, labelText, helperText);
+        createPlusTipElement(anchorMem, labelText);
     }
 
     return {
         clearGrowthAffordance,
         openAddMomentFromCanvas,
-        getGrowthAffordancePosition,
-        drawGrowthAffordanceBranch,
-        createGrowthAffordanceElement,
+        getGrowthAffordancePosition: getPlusTipPosition,
+        drawGrowthAffordanceBranch: drawConnectorLine,
+        createGrowthAffordanceElement: createPlusTipElement,
         renderGrowthAffordance
     };
 }
