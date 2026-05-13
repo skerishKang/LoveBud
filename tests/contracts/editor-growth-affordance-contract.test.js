@@ -6,6 +6,8 @@ const vm = require('node:vm');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const NODE_HALF = 54;
+const TIP_HALF = 18;
+const TIP_SIZE = 36;
 
 function loadGrowthAffordanceFactory() {
   const source = fs.readFileSync(path.join(ROOT, 'js/editor/editor-canvas-growth-affordance.js'), 'utf8');
@@ -39,10 +41,10 @@ function rectsOverlap(a, b) {
 
 function assertAffordanceClearsNode(position, anchorPos) {
   const affordanceRect = {
-    left: position.x - position.cardHalf,
-    right: position.x + position.cardHalf,
-    top: position.y - (position.height / 2),
-    bottom: position.y + (position.height / 2)
+    left: position.x - TIP_HALF,
+    right: position.x + TIP_HALF,
+    top: position.y - (TIP_SIZE / 2),
+    bottom: position.y + (TIP_SIZE / 2)
   };
   const nodeRect = {
     left: anchorPos.x - NODE_HALF,
@@ -74,8 +76,8 @@ test('growth affordance falls below or above the node on narrow mobile viewports
   const position = growthAffordance.getGrowthAffordancePosition(anchor);
 
   assert.match(position.side, /^(below|above)$/);
-  assert.ok(position.x - position.cardHalf >= 28);
-  assert.ok(position.x + position.cardHalf <= 375 - 28);
+  assert.ok(position.x - TIP_HALF >= TIP_HALF + 20);
+  assert.ok(position.x + TIP_HALF <= 375 - TIP_HALF - 20);
   assertAffordanceClearsNode(position, anchor);
 });
 
