@@ -1,6 +1,6 @@
 /**
  * LoveBud - My Trees UI Helpers
- * v20260421-4
+ * v20260514-1134-1
  *
  * Tree card rendering and summary UI utilities
  */
@@ -45,6 +45,20 @@
       0;
     count = Number(count);
     return Number.isFinite(count) ? count : 0;
+  }
+
+  function getTreeViewCount(tree) {
+    if (!tree) return 0;
+    var keys = [
+      'viewCount', 'viewsCount', 'views', 'view_count', 'views_count',
+      'visitorCount', 'visitorsCount', 'visitCount', 'visitsCount', 'visits',
+      'openCount', 'opensCount', 'open_count'
+    ];
+    for (var i = 0; i < keys.length; i++) {
+      var value = Number(tree[keys[i]]);
+      if (Number.isFinite(value) && value >= 0) return value;
+    }
+    return 0;
   }
 
   function getVisibilityActionLabel(tree, i18n) {
@@ -366,6 +380,8 @@
       normalizedTree.representativeMemo = normalizedTree.representativeMemo || (tree && (tree.representativeMemo || tree.representative_memo || ''));
     }
 
+    var momentCount = Number(normalizedTree.memoryCount) || 0;
+    var viewCount = getTreeViewCount(tree);
     var cardMeta = getTreeCardMeta(normalizedTree, i18n);
     var title = cardMeta.title;
 
@@ -430,6 +446,28 @@
         '</div>',
         '<div class="tree-card-subcopy">' + cardMeta.mood + '</div>',
         cardMeta.privateBadgeHtml,
+      '</div>',
+      '<div class="tree-card-footer">',
+        '<div class="tree-card-footer-left">',
+          '<div class="tree-card-footer-metrics">',
+            '<span class="tree-card-footer-metric" title="' + escapeHtml((i18n('myTrees.moment_count') || '순간') + ' ' + momentCount) + '">',
+              '<span class="material-symbols-outlined" aria-hidden="true">auto_awesome</span>',
+              '<span>' + momentCount + '</span>',
+            '</span>',
+            (viewCount > 0
+              ? '<span class="tree-card-footer-metric" title="' + escapeHtml((i18n('myTrees.view_count') || '조회수') + ' ' + viewCount) + '">'
+                  + '<span class="material-symbols-outlined" aria-hidden="true">visibility</span>'
+                  + '<span>' + viewCount + '</span>'
+                + '</span>'
+              : ''),
+          '</div>',
+        '</div>',
+        '<div class="tree-card-footer-right">',
+          '<span class="tree-card-open-link">',
+            '<span class="material-symbols-outlined" aria-hidden="true">account_tree</span>',
+            (i18n('myTrees.card_open') || '트리 열기'),
+          '</span>',
+        '</div>',
       '</div>'
     ].join('');
 
@@ -636,6 +674,7 @@
     closeAllDropdowns: closeAllDropdowns,
     buildMiniTreeSVG: buildMiniTreeSVG,
     getTreeMomentCount: getTreeMomentCount,
+    getTreeViewCount: getTreeViewCount,
     buildTreeThumbVisual: buildTreeThumbVisual,
     updateManageSummary: updateManageSummary,
     buildTreeCard: buildTreeCard,
