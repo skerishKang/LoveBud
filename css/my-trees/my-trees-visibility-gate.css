@@ -1,0 +1,19 @@
+/*
+ * LoveTree - My Trees visibility gate
+ *
+ * Public/private visibility controls are a future subscription-gated product area.
+ * Hide current MVP-facing visibility controls without changing underlying data.
+ */
+
+.tree-card-dropdown .dropdown-item.visibility,
+.tree-card-visibility,
+#manageVisibilityBtn,
+#publicTreesCount,
+#privateTreesCount,
+[data-i18n="myTrees.manage_visibility"],
+[data-i18n="myTrees.summary_public"],
+[data-i18n="myTrees.summary_private"],
+[data-i18n="visibility_make_public"],
+[data-i18n="visibility_make_private"] {
+  display: none !important;
+}
