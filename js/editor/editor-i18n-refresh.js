@@ -57,7 +57,7 @@
       } else if (selectedMemory.id === rootId) {
         selectionHintEl.textContent = tText('root_moment_hint', '이 순간은 현재 트리의 시작점입니다');
       } else {
-        selectionHintEl.textContent = tText('path_moment_hint', '이 순간은 감정 경로 안에 연결되어 있습니다');
+        selectionHintEl.textContent = '';
       }
     }
   }
