@@ -16,12 +16,6 @@
   // Private state (mirrors/main-tracks selection, synced with my-trees-state)
   var _selectedTreeId = null;
 
-  function closeAllDropdowns() {
-    document.querySelectorAll('.tree-card-dropdown').forEach(function (dd) {
-      dd.classList.remove('show');
-    });
-  }
-
   function getSelectedTreeId(stateModule) {
     if (stateModule && typeof stateModule.getSelectedTreeId === 'function') {
       return stateModule.getSelectedTreeId();
@@ -104,7 +98,6 @@
   }
 
   var api = {
-    closeAllDropdowns: closeAllDropdowns,
     getSelectedTreeId: getSelectedTreeId,
     setSelectedTreeId: setSelectedTreeId,
     getRenderableTrees: getRenderableTrees,
