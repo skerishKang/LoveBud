@@ -17,7 +17,7 @@ function createEditorCanvasGrowthAffordance(deps) {
     const TIP_HALF = TIP_SIZE / 2;
     const GAP_FROM_NODE = 10;
     const CONNECTOR_PEAK_GAP = 6;
-    const BUBBLE_WIDTH = 210;
+    const BUBBLE_WIDTH = 165;
     const BUBBLE_HEIGHT = 42;
     const BUBBLE_GAP = 8;
 
@@ -330,15 +330,15 @@ function createEditorCanvasGrowthAffordance(deps) {
         const plusIcon = documentRef.createElement('span');
         plusIcon.setAttribute('aria-hidden', 'true');
         plusIcon.textContent = '+';
-        plusIcon.style.width = '28px';
-        plusIcon.style.height = '28px';
+        plusIcon.style.width = '32px';
+        plusIcon.style.height = '32px';
         plusIcon.style.borderRadius = '50%';
         plusIcon.style.display = 'inline-flex';
         plusIcon.style.alignItems = 'center';
         plusIcon.style.justifyContent = 'center';
         plusIcon.style.background = 'linear-gradient(180deg, rgba(144, 73, 81, 1), rgba(144, 73, 81, 0.88))';
         plusIcon.style.color = '#fff';
-        plusIcon.style.fontSize = '17px';
+        plusIcon.style.fontSize = '18px';
         plusIcon.style.fontWeight = '700';
         plusIcon.style.flex = '0 0 auto';
         plusIcon.style.boxShadow = '0 6px 14px rgba(144, 73, 81, 0.22)';
@@ -382,10 +382,10 @@ function createEditorCanvasGrowthAffordance(deps) {
             button.style.width = `${BUBBLE_WIDTH}px`;
             button.style.borderRadius = '999px';
             button.style.justifyContent = 'flex-start';
-            button.style.padding = '8px 14px 8px 8px';
+            button.style.padding = '10px 14px 10px 10px';
             button.style.border = '1px solid rgba(144, 73, 81, 0.18)';
             button.style.background = 'linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,246,244,0.96))';
-            button.style.boxShadow = '0 12px 28px rgba(75, 64, 57, 0.13)';
+            button.style.boxShadow = '0 12px 28px rgba(75, 64, 57, 0.10)';
             button.style.backdropFilter = 'blur(8px)';
             textWrap.style.display = 'flex';
             textWrap.style.gap = '1px';
