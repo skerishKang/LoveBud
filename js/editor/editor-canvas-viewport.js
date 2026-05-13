@@ -93,21 +93,41 @@ window.LoveBudEditorCanvasViewport = {
   },
 
   prepareInitialViewport(options) {
-    const { viewportState } = options;
+    const { viewportState, getMetrics } = options;
     this.setScale(viewportState, viewportState.scale || 1);
     if (viewportState.initialViewportApplied) return;
+    viewportState.initialViewportApplied = true;
 
     if (viewportState.hasStoredViewportOffset) {
-      viewportState.initialViewportApplied = true;
+      // Stored viewport exists — validate + correct if extreme
+      const metrics = getMetrics();
+      const margin = Math.max(200, Math.round(metrics.width * 0.25));
+      const minOk = -margin;
+      const maxOk = metrics.width + margin;
+      if (
+        viewportState.offsetX < minOk || viewportState.offsetX > maxOk ||
+        viewportState.offsetY < minOk || viewportState.offsetY > maxOk
+      ) {
+        // Extreme offset — fall back to fit viewport
+        const fitted = this.getFitViewport(options);
+        if (fitted) {
+          this.setScale(viewportState, fitted.scale);
+          viewportState.offsetX = fitted.offsetX;
+          viewportState.offsetY = fitted.offsetY;
+        }
+      }
       return;
     }
 
-    const nextOffset = this.getReadableViewportOffset(options);
-    if (!nextOffset) return;
+    // No stored viewport — apply a fit-to-tree viewport (like recenter)
+    const fitViewport = this.getFitViewport(options) || this.getReadableViewportOffset(options);
+    if (!fitViewport) return;
 
-    viewportState.offsetX = nextOffset.offsetX;
-    viewportState.offsetY = nextOffset.offsetY;
-    viewportState.initialViewportApplied = true;
+    if (typeof fitViewport.scale === 'number') {
+      this.setScale(viewportState, fitViewport.scale);
+    }
+    viewportState.offsetX = fitViewport.offsetX;
+    viewportState.offsetY = fitViewport.offsetY;
   },
 
   drawBranch(svg, startPos, endPos) {

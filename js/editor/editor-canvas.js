@@ -79,10 +79,13 @@ function loadStoredLayout() {
     const storedLayout = loadStoredLayout();
     storedFreePositions = { ...(storedLayout.positions || {}) };
 
+    const hasNonDefaultOffset = storedLayout.offsetX !== 0 || storedLayout.offsetY !== 0;
+    const hasStoredViewportOffset = hasNonDefaultOffset || (storedLayout.scale !== undefined && storedLayout.scale !== 1);
     const viewportState = {
         offsetX: storedLayout.offsetX,
         offsetY: storedLayout.offsetY,
         scale: storedLayout.scale || 1,
+        hasStoredViewportOffset: !!hasStoredViewportOffset,
         initialized: false,
         isPanning: false,
         startX: 0,
@@ -166,6 +169,8 @@ function loadStoredLayout() {
     function switchToFreeMode() {
         viewportState.layoutMode = 'free';
         persistLayoutMode('free');
+        // Allow viewport recalculation for the new layout
+        viewportState.initialViewportApplied = false;
         // Restore saved free positions if available
         if (savedFreePositions) {
             viewportState.positions = { ...savedFreePositions };
@@ -193,6 +198,8 @@ function loadStoredLayout() {
         // Save current free positions before switching
         savedFreePositions = { ...viewportState.positions };
         viewportState.layoutMode = 'structured';
+        // Allow viewport recalculation for the new layout
+        viewportState.initialViewportApplied = false;
         persistLayoutMode('structured');
         document.body.classList.remove('layout-free');
         document.body.classList.add('layout-structured');
