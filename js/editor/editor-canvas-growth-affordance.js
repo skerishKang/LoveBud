@@ -17,7 +17,7 @@ function createEditorCanvasGrowthAffordance(deps) {
     const TIP_HALF = TIP_SIZE / 2;
     const GAP_FROM_NODE = 10;
     const CONNECTOR_PEAK_GAP = 6;
-    const BUBBLE_WIDTH = 164;
+    const BUBBLE_WIDTH = 200;
     const BUBBLE_HEIGHT = 42;
     const BUBBLE_GAP = 8;
 
