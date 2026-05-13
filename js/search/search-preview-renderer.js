@@ -608,5 +608,4 @@
         }
     };
 
-    console.log('[LoveBudSearchPreviewRenderer] Search preview renderer loaded v20260506-1');
 })();

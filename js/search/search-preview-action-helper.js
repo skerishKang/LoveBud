@@ -158,5 +158,4 @@
         renderOpenTreeButton: renderOpenTreeButton
     };
 
-    console.log('[LoveBudSearchPreviewActionHelper] Search preview action helper loaded v20260501-1');
 })();
