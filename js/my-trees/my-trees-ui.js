@@ -1,6 +1,6 @@
 /**
  * LoveBud - My Trees UI Helpers
- * v20260421-4
+ * v20260514-1134-1
  *
  * Tree card rendering and summary UI utilities
  */
@@ -45,6 +45,20 @@
       0;
     count = Number(count);
     return Number.isFinite(count) ? count : 0;
+  }
+
+  function getTreeViewCount(tree) {
+    if (!tree) return 0;
+    var keys = [
+      'viewCount', 'viewsCount', 'views', 'view_count', 'views_count',
+      'visitorCount', 'visitorsCount', 'visitCount', 'visitsCount', 'visits',
+      'openCount', 'opensCount', 'open_count'
+    ];
+    for (var i = 0; i < keys.length; i++) {
+      var value = Number(tree[keys[i]]);
+      if (Number.isFinite(value) && value >= 0) return value;
+    }
+    return 0;
   }
 
   function getVisibilityActionLabel(tree, i18n) {
@@ -164,6 +178,45 @@
     }
   }
 
+
+  function getRepresentativeTextMeta(tree, i18n) {
+    if (!tree) return null;
+
+    var repTitle = clipText(tree.representativeTitle || tree.representative_title || '', 40);
+    var repMemo = clipText(tree.representativeMemo || tree.representative_memo || '', 82);
+
+    if (!repTitle && !repMemo) return null;
+
+    return {
+      title: repTitle || (i18n('editor_default_first_title') || '첫 순간'),
+      memo: repMemo || (i18n('myTrees.card_text_fallback') || '처음 남긴 마음이 이 트리의 시작이 되었어요.')
+    };
+  }
+
+  function buildRepresentativeTextVisual(tree, palette, i18n) {
+    var textMeta = getRepresentativeTextMeta(tree, i18n);
+    if (!textMeta) return '';
+
+    return [
+      '<div class="tree-card-text-visual" style="border-color:' + palette.leafSoft + ';background:rgba(255,255,255,0.84);">',
+        '<div class="tree-card-text-kicker" style="color:' + palette.accent + ';">' + escapeHtml(i18n('myTrees.card_first_moment') || '첫 순간 기록') + '</div>',
+        '<div class="tree-card-text-title">' + escapeHtml(textMeta.title) + '</div>',
+        '<div class="tree-card-text-memo">' + escapeHtml(textMeta.memo) + '</div>',
+      '</div>'
+    ].join('');
+  }
+
+  function getRepresentativeThumbnail(tree) {
+    if (!tree) return '';
+    return tree.representativeThumbnail || tree.representative_thumbnail || tree.thumbnail || '';
+  }
+
+  function clipText(value, maxLength) {
+    var text = String(value || '').trim();
+    if (!text) return '';
+    if (text.length <= maxLength) return text;
+    return text.slice(0, maxLength).trim() + '…';
+  }
 
   function getRepresentativeTextMeta(tree, i18n) {
     if (!tree) return null;
@@ -358,6 +411,8 @@
       normalizedTree.representativeMemo = normalizedTree.representativeMemo || (tree && (tree.representativeMemo || tree.representative_memo || ''));
     }
 
+    var momentCount = Number(normalizedTree.memoryCount) || 0;
+    var viewCount = getTreeViewCount(tree);
     var cardMeta = getTreeCardMeta(normalizedTree, i18n);
     var title = cardMeta.title;
 
@@ -410,6 +465,112 @@
           i18n('delete') || '삭제',
         '</div>',
       '</div>',
+      '<div class="tree-card-info">',
+        '<div class="tree-card-title-row">',
+          '<div class="tree-card-title">' + escapeHtml(title) + '</div>',
+        '</div>',
+        '<div class="tree-card-subcopy">' + cardMeta.mood + '</div>',
+        cardMeta.privateBadgeHtml,
+      '</div>',
+      '<div class="tree-card-footer">',
+        '<div class="tree-card-footer-left">',
+          '<div class="tree-card-footer-metrics">',
+            '<span class="tree-card-footer-metric" title="' + escapeHtml((i18n('myTrees.moment_count') || '순간') + ' ' + momentCount) + '">',
+              '<span class="material-symbols-outlined" aria-hidden="true">auto_awesome</span>',
+              '<span>' + momentCount + '</span>',
+            '</span>',
+            (viewCount > 0
+              ? '<span class="tree-card-footer-metric" title="' + escapeHtml((i18n('myTrees.view_count') || '조회수') + ' ' + viewCount) + '">'
+                  + '<span class="material-symbols-outlined" aria-hidden="true">visibility</span>'
+                  + '<span>' + viewCount + '</span>'
+                + '</span>'
+              : ''),
+          '</div>',
+        '</div>',
+        '<div class="tree-card-footer-right">',
+          '<span class="tree-card-open-link">',
+            '<span class="material-symbols-outlined" aria-hidden="true">account_tree</span>',
+            (i18n('myTrees.card_open') || '트리 열기'),
+          '</span>',
+        '</div>',
+      '</div>'
+    ].join('');
+
+    setTimeout(function () {
+      var menuBtn = document.getElementById(menuBtnId);
+      var dropdown = document.getElementById(dropdownId);
+
+      if (menuBtn && dropdown) {
+        menuBtn.addEventListener('click', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (typeof onSelect === 'function') {
+            onSelect(normalizedTree.id);
+          }
+          closeDropdowns();
+          dropdown.classList.toggle('show');
+        });
+
+        dropdown.querySelectorAll('.dropdown-item').forEach(function (item) {
+          item.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            if (typeof onSelect === 'function') {
+              onSelect(normalizedTree.id);
+            }
+
+            var action = this.getAttribute('data-action');
+            if (action === 'visibility' && typeof onToggleVisibility === 'function') {
+              onToggleVisibility(normalizedTree.id, normalizedTree.visibility);
+            } else if (action === 'rename' && typeof onRename === 'function') {
+              onRename(normalizedTree.id, title);
+            } else if (action === 'delete' && typeof onDelete === 'function') {
+              onDelete(normalizedTree.id, title);
+            }
+
+            closeDropdowns();
+          });
+        });
+      }
+
+    }, 0);
+
+    return card;
+  }
+
+  // Issue #616: first-batch rendering constants
+  var FIRST_BATCH_SIZE = 6;
+  var BATCH_SIZE = 6;
+  var currentVisibleCount = 0;
+  var totalTreesCount = 0;
+  var allTreesData = [];
+  var isLoadingMore = false;
+  var scrollSentinel = null;
+
+  function renderTrees(trees, options) {
+    var container = document.getElementById('state-loaded');
+    if (!container) return;
+
+    var setState = options && options.setState;
+    var stateEnum = options && options.stateEnum;
+    var buildTreeCardFn = (options && options.buildTreeCard) || buildTreeCard;
+    var updateManageSummaryFn = (options && options.updateManageSummary) || updateManageSummary;
+
+    updateManageSummaryFn(trees, options);
+
+    if (!trees || trees.length === 0) {
+      if (typeof setState === 'function' && stateEnum && stateEnum.EMPTY) {
+        setState(stateEnum.EMPTY);
+      }
+      return;
+    }
+
+    // Issue #616: Store all trees and initialize first batch
+    allTreesData = trees;
+    totalTreesCount = trees.length;
+    currentVisibleCount = 0;
+
     var grid = document.getElementById('trees-grid');
     if (!grid) {
       grid = document.createElement('div');
@@ -537,6 +698,7 @@
     escapeHtml: escapeHtml,
     buildMiniTreeSVG: buildMiniTreeSVG,
     getTreeMomentCount: getTreeMomentCount,
+    getTreeViewCount: getTreeViewCount,
     buildTreeThumbVisual: buildTreeThumbVisual,
     updateManageSummary: updateManageSummary,
     buildTreeCard: buildTreeCard,
