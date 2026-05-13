@@ -156,30 +156,7 @@
     showMissingActionError('toggleTreeVisibility');
   }
 
-  function closeAllDropdowns() {
-    if (myTreesUI && typeof myTreesUI.closeAllDropdowns === 'function') {
-      myTreesUI.closeAllDropdowns();
-    } else {
-      document.querySelectorAll('.tree-card-dropdown').forEach(function(dd) {
-        dd.classList.remove('show');
-      });
-    }
-  }
-
   function setupGlobalListeners() {
-    // Esc key to close dropdowns
-    document.addEventListener('keydown', function(e) {
-      if (e.key === 'Escape') {
-        closeAllDropdowns();
-      }
-    });
-
-    // Outside click to close dropdowns
-    document.addEventListener('click', function(e) {
-      if (!e.target.closest('.tree-card-menu') && !e.target.closest('.tree-card-dropdown')) {
-        closeAllDropdowns();
-      }
-    });
   }
 
   function renderTrees(trees) {
