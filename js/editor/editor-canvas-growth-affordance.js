@@ -101,6 +101,16 @@ function createEditorCanvasGrowthAffordance(deps) {
         svg.appendChild(path);
     }
 
+    function drawGrowthAffordanceAnchorDot(startPos) {
+        const anchorDot = documentRef.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        anchorDot.setAttribute('cx', startPos.x);
+        anchorDot.setAttribute('cy', startPos.y);
+        anchorDot.setAttribute('r', '3');
+        anchorDot.setAttribute('fill', 'rgba(144, 73, 81, 0.5)');
+        anchorDot.setAttribute('class', 'branch-line-affordance');
+        svg.appendChild(anchorDot);
+    }
+
     function createGrowthAffordanceElement(anchorMem, labelText, helperText) {
         const anchorPos = calcPosition(anchorMem);
         const affPos = getGrowthAffordancePosition(anchorPos);
@@ -207,6 +217,7 @@ function createEditorCanvasGrowthAffordance(deps) {
             branchEnd,
             affPos.side
         );
+        drawGrowthAffordanceAnchorDot(branchStart);
         canvas.appendChild(wrap);
     }
 
