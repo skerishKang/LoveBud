@@ -88,6 +88,11 @@
           if (stateModule && typeof stateModule.setLastTreesData === 'function') {
             stateModule.setLastTreesData(data);
           }
+          // Also update the original caller's callback so my-trees.js closure
+          // stays in sync (Refs #1126)
+          if (options && typeof options.setLastTreesData === 'function') {
+            options.setLastTreesData(data);
+          }
         }
       });
       return;
