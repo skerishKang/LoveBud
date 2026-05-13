@@ -153,5 +153,4 @@
         start();
     }
 
-    console.log('[LoveBudSearchPreviewHubDomPatch] loaded v20260512-1058');
 })();
