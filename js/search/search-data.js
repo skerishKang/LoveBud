@@ -1,6 +1,6 @@
 /**
  * LoveBud Search Data Loading Module
- * v20260429-1
+ * v20260513-1143-2
  *
  * Extracted from js/search.js (orchestrator).
  * Owns: loadPublicTrees, loadGrowingTrees, hydrateSelectedTreePreview
@@ -36,6 +36,39 @@
     }
 
     function createSearchData({ refs, state, previewCacheApi, ui, CardRenderer, PreviewRenderer, callbacks, cache, PUBLIC_TREES_CACHE_KEY, PREVIEW_CACHE_TTL_MS, getPreviewCacheKey }) {
+        const pendingPreviewHydrations = new Map();
+
+        function getPreviewTreeId(tree) {
+            const rawId = tree?.id ?? tree?.treeId ?? tree?.tree_id;
+            return rawId === null || rawId === undefined || rawId === '' ? '' : String(rawId);
+        }
+
+        async function getHydratedTreePreview(tree) {
+            const treeId = getPreviewTreeId(tree);
+            if (!treeId) return null;
+
+            const cachedPreview = previewCacheApi.readPreviewCache(treeId);
+            if (cachedPreview) {
+                return cachedPreview;
+            }
+
+            if (pendingPreviewHydrations.has(treeId)) {
+                return pendingPreviewHydrations.get(treeId);
+            }
+
+            const pendingPreview = window.apiClient.getPublicTreePreview(tree)
+                .then((hydratedTree) => {
+                    previewCacheApi.writePreviewCache(treeId, hydratedTree);
+                    previewCacheApi.mergeHydratedTree(hydratedTree);
+                    return hydratedTree;
+                })
+                .finally(() => {
+                    pendingPreviewHydrations.delete(treeId);
+                });
+
+            pendingPreviewHydrations.set(treeId, pendingPreview);
+            return pendingPreview;
+        }
 
         // ── Hydrate selected tree preview ──────────────────────────────────────
         async function hydrateSelectedTreePreview(tree) {
@@ -44,11 +77,8 @@
             ui.renderPreviewLoadingState(tree);
 
             try {
-                const cachedPreview = previewCacheApi.readPreviewCache(tree.id);
-                const hydratedTree = cachedPreview || await window.apiClient.getPublicTreePreview(tree);
-
-                previewCacheApi.writePreviewCache(tree.id, hydratedTree);
-                previewCacheApi.mergeHydratedTree(hydratedTree);
+                const hydratedTree = await getHydratedTreePreview(tree);
+                if (!hydratedTree) return;
 
                 if (requestId !== state.currentPreviewRequestId || state.selectedTreeId !== tree.id) {
                     return;
