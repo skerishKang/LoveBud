@@ -37,9 +37,15 @@
   }
 
   function sortTrees(trees, sortBy) {
-    if (!sortBy || !trees) return trees;
+    var source = Array.isArray(trees) ? trees : [];
 
-    var sorted = Array.isArray(trees) ? trees.slice() : [];
+    if (source.length === 0 && Array.isArray(lastTreesData) && lastTreesData.length > 0) {
+      source = lastTreesData;
+    }
+
+    var sorted = source.slice();
+
+    if (!sortBy) return sorted;
 
     switch (sortBy) {
       case 'recent':
