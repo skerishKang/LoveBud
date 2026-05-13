@@ -17,11 +17,6 @@
       .replace(/"/g, '&quot;');
   }
 
-  function closeAllDropdowns() {
-    document.querySelectorAll('.tree-card-dropdown').forEach(function (dd) {
-      dd.classList.remove('show');
-    });
-  }
 
   function hashSeed(value) {
     var source = String(value || 'lovetree');
@@ -342,7 +337,6 @@
     var onNavigate = options && options.onNavigate;
     var onSelect = options && options.onSelect;
     var isSelected = options && options.isSelected;
-    var closeDropdowns = (options && options.closeAllDropdowns) || closeAllDropdowns;
 
     var normalizedTree = typeof normalizeTree === 'function'
       ? normalizeTree(tree)
@@ -369,8 +363,6 @@
     var cardMeta = getTreeCardMeta(normalizedTree, i18n);
     var title = cardMeta.title;
 
-    var menuBtnId = 'menuBtn_' + normalizedTree.id;
-    var dropdownId = 'dropdown_' + normalizedTree.id;
     var selectedClass = typeof isSelected === 'function' && isSelected(normalizedTree.id) ? ' is-selected' : '';
 
     var card = document.createElement('div');
@@ -389,16 +381,10 @@
     };
 
     card.addEventListener('click', function (e) {
-      if (e.target.closest('.tree-card-menu') || e.target.closest('.tree-card-dropdown')) {
-        return;
-      }
       openTree();
     });
 
     card.addEventListener('keydown', function (e) {
-      if (e.target.closest('.tree-card-menu') || e.target.closest('.tree-card-dropdown')) {
-        return;
-      }
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
         openTree();
@@ -407,23 +393,6 @@
 
     card.innerHTML = [
       buildTreeThumbVisual(normalizedTree, i18n),
-      '<button class="tree-card-menu" id="' + menuBtnId + '" type="button" aria-label="' + escapeHtml(i18n('myTrees.card_menu') || '트리 메뉴 열기') + '">',
-        '<span class="material-symbols-outlined" aria-hidden="true">more_vert</span>',
-      '</button>',
-      '<div class="tree-card-dropdown" id="' + dropdownId + '">',
-        '<div class="dropdown-item visibility" data-action="visibility">',
-          '<span class="material-symbols-outlined" style="font-size:16px;">' + cardMeta.visibilityIcon + '</span>',
-          cardMeta.visibilityActionLabel,
-        '</div>',
-        '<div class="dropdown-item rename" data-action="rename">',
-          '<span class="material-symbols-outlined" style="font-size:16px;">edit</span>',
-          i18n('rename') || '이름 변경',
-        '</div>',
-        '<div class="dropdown-item delete" data-action="delete">',
-          '<span class="material-symbols-outlined" style="font-size:16px;">delete</span>',
-          i18n('delete') || '삭제',
-        '</div>',
-      '</div>',
       '<div class="tree-card-info">',
         '<div class="tree-card-title-row">',
           '<div class="tree-card-title">' + escapeHtml(title) + '</div>',
@@ -433,45 +402,6 @@
       '</div>'
     ].join('');
 
-    setTimeout(function () {
-      var menuBtn = document.getElementById(menuBtnId);
-      var dropdown = document.getElementById(dropdownId);
-
-      if (menuBtn && dropdown) {
-        menuBtn.addEventListener('click', function (e) {
-          e.preventDefault();
-          e.stopPropagation();
-          if (typeof onSelect === 'function') {
-            onSelect(normalizedTree.id);
-          }
-          closeDropdowns();
-          dropdown.classList.toggle('show');
-        });
-
-        dropdown.querySelectorAll('.dropdown-item').forEach(function (item) {
-          item.addEventListener('click', function (e) {
-            e.preventDefault();
-            e.stopPropagation();
-
-            if (typeof onSelect === 'function') {
-              onSelect(normalizedTree.id);
-            }
-
-            var action = this.getAttribute('data-action');
-            if (action === 'visibility' && typeof onToggleVisibility === 'function') {
-              onToggleVisibility(normalizedTree.id, normalizedTree.visibility);
-            } else if (action === 'rename' && typeof onRename === 'function') {
-              onRename(normalizedTree.id, title);
-            } else if (action === 'delete' && typeof onDelete === 'function') {
-              onDelete(normalizedTree.id, title);
-            }
-
-            closeDropdowns();
-          });
-        });
-      }
-
-    }, 0);
 
     return card;
   }
@@ -639,7 +569,6 @@
 
   var api = {
     escapeHtml: escapeHtml,
-    closeAllDropdowns: closeAllDropdowns,
     buildMiniTreeSVG: buildMiniTreeSVG,
     getTreeMomentCount: getTreeMomentCount,
     buildTreeThumbVisual: buildTreeThumbVisual,
