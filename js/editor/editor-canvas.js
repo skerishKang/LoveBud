@@ -530,6 +530,8 @@ function createEditorCanvas(deps) {
         if (typeof canvasViewport.recenterViewport === 'function') {
             canvasViewport.recenterViewport({
                 getTreeMemories,
+                getCanonicalRootId,
+                isRootMemory,
                 getWorldPosition,
                 getMetrics,
                 viewportState,

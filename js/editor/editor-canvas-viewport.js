@@ -145,19 +145,28 @@ window.LoveBudEditorCanvasViewport = {
     return true;
   },
 
+  isAlreadyAtFit(viewportState, fitViewport) {
+    if (!fitViewport) return false;
+    const scaleDiff = Math.abs((viewportState.scale || 1) - fitViewport.scale);
+    const offsetDiffX = Math.abs(viewportState.offsetX - fitViewport.offsetX);
+    const offsetDiffY = Math.abs(viewportState.offsetY - fitViewport.offsetY);
+    return scaleDiff < 0.01 && offsetDiffX < 5 && offsetDiffY < 5;
+  },
+
+  showAlreadyAtFitFeedback() {
+    if (window.LoveBudUI && typeof window.LoveBudUI.showToast === 'function') {
+      window.LoveBudUI.showToast('이미 전체 트리가 보이고 있습니다', 'info', 2000);
+    }
+  },
+
   prepareInitialViewport(options) {
     const { viewportState } = options;
     this.setScale(viewportState, viewportState.scale || 1);
     if (viewportState.initialViewportApplied) return;
     viewportState.initialViewportApplied = true;
 
-    if (viewportState.hasStoredViewportOffset) {
-      if (this.isStoredViewportExtreme(options)) {
-        this.applyViewport(viewportState, this.getFitViewport(options), true);
-      }
-      return;
-    }
-
+    // Always fit the full tree viewport on initial load,
+    // regardless of any previously stored viewport offset.
     this.applyViewport(viewportState, this.getFitViewport(options), true);
   },
 
@@ -211,7 +220,15 @@ window.LoveBudEditorCanvasViewport = {
       return;
     }
 
-    this.applyViewport(viewportState, this.getFitViewport(options), true);
+    const fitViewport = this.getFitViewport(options);
+
+    // If already at the optimal tree-fit view, show feedback instead of re-applying
+    if (this.isAlreadyAtFit(viewportState, fitViewport)) {
+      this.showAlreadyAtFitFeedback();
+      return;
+    }
+
+    this.applyViewport(viewportState, fitViewport, true);
     initCanvas();
   },
 
