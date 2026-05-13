@@ -17,7 +17,7 @@ function createEditorCanvasGrowthAffordance(deps) {
     const TIP_HALF = TIP_SIZE / 2;
     const GAP_FROM_NODE = 10;
     const CONNECTOR_PEAK_GAP = 6;
-    const BUBBLE_WIDTH = 200;
+    const BUBBLE_WIDTH = 220;
     const BUBBLE_HEIGHT = 42;
     const BUBBLE_GAP = 8;
 
@@ -378,7 +378,6 @@ function createEditorCanvasGrowthAffordance(deps) {
         button.type = 'button';
         button.className = 'memory-add-affordance';
         button.setAttribute('aria-label', labelText);
-        button.setAttribute('title', labelText);
         button.style.position = 'absolute';
         button.style.left = `${tipPos.x - TIP_HALF}px`;
         button.style.top = `${tipPos.y - TIP_HALF}px`;
@@ -408,9 +407,6 @@ function createEditorCanvasGrowthAffordance(deps) {
         button.appendChild(bubble);
 
         function showBubble() {
-            button.style.transform = 'scale(1.08)';
-            button.style.boxShadow = '0 5px 16px rgba(144, 73, 81, 0.35)';
-            button.style.background = 'rgba(144, 73, 81, 1)';
             bubble.style.opacity = '1';
             bubble.style.pointerEvents = 'none';
             bubble.style.transform = bubble.style.transform.replace('scale(0.96)', 'scale(1)');
@@ -418,9 +414,6 @@ function createEditorCanvasGrowthAffordance(deps) {
         }
 
         function hideBubble() {
-            button.style.transform = 'scale(1)';
-            button.style.boxShadow = '0 3px 10px rgba(144, 73, 81, 0.25)';
-            button.style.background = 'rgba(144, 73, 81, 0.92)';
             bubble.style.opacity = '0';
             bubble.style.pointerEvents = 'none';
             bubble.style.transform = bubble.style.transform.replace('scale(1)', 'scale(0.96)');
@@ -436,10 +429,6 @@ function createEditorCanvasGrowthAffordance(deps) {
         button.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            button.style.transform = 'scale(0.92)';
-            setTimeout(() => {
-                showBubble();
-            }, 80);
             openAddMomentFromCanvas();
         });
 
