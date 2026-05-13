@@ -17,6 +17,9 @@ function createEditorCanvasGrowthAffordance(deps) {
     const TIP_HALF = TIP_SIZE / 2;
     const GAP_FROM_NODE = 10;
     const CONNECTOR_PEAK_GAP = 6;
+    const BUBBLE_WIDTH = 164;
+    const BUBBLE_HEIGHT = 42;
+    const BUBBLE_GAP = 8;
 
     function clamp(value, min, max) {
         if (max < min) return min;
@@ -26,8 +29,6 @@ function createEditorCanvasGrowthAffordance(deps) {
     function clearGrowthAffordance() {
         canvas.querySelectorAll('.memory-add-affordance').forEach((el) => el.remove());
         svg.querySelectorAll('.branch-line-affordance').forEach((el) => el.remove());
-        // Remove any affordance tooltip that might be visible
-        documentRef.querySelectorAll('.affordance-tooltip').forEach((el) => el.remove());
     }
 
     function openAddMomentFromCanvas() {
@@ -42,12 +43,6 @@ function createEditorCanvasGrowthAffordance(deps) {
         }
     }
 
-    /**
-     * Determine the best placement for the compact + tip.
-     * Considers viewport boundaries AND existing node positions
-     * to avoid occluding other nodes in both structured and free layouts.
-     * Returns position (center of tip) and side ('right'|'left'|'below'|'above').
-     */
     function getPlusTipPosition(anchorPos, anchorMem) {
         const metrics = getMetrics();
         const viewportWidth = Math.max(canvas.clientWidth || metrics.width, 320);
@@ -55,14 +50,11 @@ function createEditorCanvasGrowthAffordance(deps) {
         const tipRadius = TIP_HALF;
         const anchorNodeId = anchorMem && anchorMem.id;
 
-        // Collect positions of all OTHER memory nodes currently on canvas
-        // to avoid overlapping them (exclude the anchor node itself)
         var nodeRects = [];
         try {
             var allNodes = canvas.querySelectorAll('.memory-node');
             for (var i = 0; i < allNodes.length; i++) {
                 var el = allNodes[i];
-                // Skip the anchor node — tip is intentionally placed adjacent to it
                 if (anchorNodeId && el.dataset && el.dataset.memoryId === anchorNodeId) continue;
                 var left = parseFloat(el.style.left) || 0;
                 var top = parseFloat(el.style.top) || 0;
@@ -77,50 +69,67 @@ function createEditorCanvasGrowthAffordance(deps) {
                     height: h
                 });
             }
-        } catch (_) { /* silently fall through */ }
+        } catch (_) {}
 
-        /**
-         * Check if a candidate tip (at center x,y with given side)
-         * overlaps with any existing node rect.
-         */
-        function overlapsNodes(tipX, tipY, side) {
-            // Define the tip bounding box
-            var tLeft = tipX - tipRadius;
-            var tRight = tipX + tipRadius;
-            var tTop = tipY - tipRadius;
-            var tBottom = tipY + tipRadius;
-
-            // Expand by a small guard gap
-            var guard = 12;
-            tLeft -= guard;
-            tRight += guard;
-            tTop -= guard;
-            tBottom += guard;
-
-            // Also check tooltip extent on the relevant side
-            var tooltipWidthEstimate = 140;
-            var tooltipHeightEstimate = 26;
-            var tooltipGap = 6;
+        function getBubbleRect(tipX, tipY, side) {
             switch (side) {
                 case 'right':
-                    tRight = Math.max(tRight, tipX + tipRadius + tooltipGap + tooltipWidthEstimate);
-                    break;
+                    return {
+                        left: tipX + TIP_HALF + BUBBLE_GAP,
+                        right: tipX + TIP_HALF + BUBBLE_GAP + BUBBLE_WIDTH,
+                        top: tipY - (BUBBLE_HEIGHT / 2),
+                        bottom: tipY + (BUBBLE_HEIGHT / 2)
+                    };
                 case 'left':
-                    tLeft = Math.min(tLeft, tipX - tipRadius - tooltipGap - tooltipWidthEstimate);
-                    break;
+                    return {
+                        left: tipX - TIP_HALF - BUBBLE_GAP - BUBBLE_WIDTH,
+                        right: tipX - TIP_HALF - BUBBLE_GAP,
+                        top: tipY - (BUBBLE_HEIGHT / 2),
+                        bottom: tipY + (BUBBLE_HEIGHT / 2)
+                    };
                 case 'below':
-                    tBottom = Math.max(tBottom, tipY + tipRadius + tooltipGap + tooltipHeightEstimate);
-                    break;
+                    return {
+                        left: tipX - (BUBBLE_WIDTH / 2),
+                        right: tipX + (BUBBLE_WIDTH / 2),
+                        top: tipY + TIP_HALF + BUBBLE_GAP,
+                        bottom: tipY + TIP_HALF + BUBBLE_GAP + BUBBLE_HEIGHT
+                    };
                 case 'above':
-                    tTop = Math.min(tTop, tipY - tipRadius - tooltipGap - tooltipHeightEstimate);
-                    break;
+                    return {
+                        left: tipX - (BUBBLE_WIDTH / 2),
+                        right: tipX + (BUBBLE_WIDTH / 2),
+                        top: tipY - TIP_HALF - BUBBLE_GAP - BUBBLE_HEIGHT,
+                        bottom: tipY - TIP_HALF - BUBBLE_GAP
+                    };
+                default:
+                    return {
+                        left: tipX + TIP_HALF + BUBBLE_GAP,
+                        right: tipX + TIP_HALF + BUBBLE_GAP + BUBBLE_WIDTH,
+                        top: tipY - (BUBBLE_HEIGHT / 2),
+                        bottom: tipY + (BUBBLE_HEIGHT / 2)
+                    };
             }
+        }
 
-            // Check against all node rects
+        function isRectInViewport(rect) {
+            return rect.left >= 8 && rect.right <= viewportWidth - 8 && rect.top >= 8 && rect.bottom <= viewportHeight - 8;
+        }
+
+        function overlapsNodes(tipX, tipY, side) {
+            var tLeft = tipX - tipRadius - 12;
+            var tRight = tipX + tipRadius + 12;
+            var tTop = tipY - tipRadius - 12;
+            var tBottom = tipY + tipRadius + 12;
+            var bubbleRect = getBubbleRect(tipX, tipY, side);
+            tLeft = Math.min(tLeft, bubbleRect.left);
+            tRight = Math.max(tRight, bubbleRect.right);
+            tTop = Math.min(tTop, bubbleRect.top);
+            tBottom = Math.max(tBottom, bubbleRect.bottom);
+
             for (var j = 0; j < nodeRects.length; j++) {
                 var nr = nodeRects[j];
                 if (tLeft < nr.right && tRight > nr.left && tTop < nr.bottom && tBottom > nr.top) {
-                    return true; // Overlap detected
+                    return true;
                 }
             }
             return false;
@@ -130,86 +139,68 @@ function createEditorCanvasGrowthAffordance(deps) {
         const nodeRight = anchorPos.x + NODE_HALF;
         const nodeTop = anchorPos.y - NODE_HALF;
         const nodeBottom = anchorPos.y + NODE_HALF;
-
-        // Calculate available space on each side
         const spaceRight = viewportWidth - nodeRight;
         const spaceLeft = nodeLeft;
         const spaceBelow = viewportHeight - nodeBottom;
         const spaceAbove = nodeTop;
-
-        // Minimum space needed for tip + gap
         const needed = TIP_SIZE + GAP_FROM_NODE + CONNECTOR_PEAK_GAP;
-
-        // Score each side based on available space, preference, and node occlusion
         var sides = [];
 
         function evaluateSide(side, tipX, tipY, rawScore) {
+            var bubbleRect = getBubbleRect(tipX, tipY, side);
+            var outOfViewport = !isRectInViewport(bubbleRect);
             var occlusion = overlapsNodes(tipX, tipY, side);
-            // Heavily penalize sides that occlude other nodes
-            var score = occlusion ? rawScore * 0.1 : rawScore;
+            var score = rawScore;
+            if (outOfViewport) score *= 0.2;
+            if (occlusion) score *= 0.1;
             sides.push({ x: tipX, y: tipY, side: side, score: score });
         }
 
-        // Right: tip to the right of the node
         if (spaceRight >= needed) {
             var tipX = nodeRight + GAP_FROM_NODE + TIP_HALF;
             var tipY = clamp(anchorPos.y, TIP_HALF + 20, viewportHeight - TIP_HALF - 20);
             evaluateSide('right', tipX, tipY, spaceRight * 1.0);
         }
 
-        // Left: tip to the left of the node
         if (spaceLeft >= needed) {
             var tipX = nodeLeft - GAP_FROM_NODE - TIP_HALF;
             var tipY = clamp(anchorPos.y, TIP_HALF + 20, viewportHeight - TIP_HALF - 20);
             evaluateSide('left', tipX, tipY, spaceLeft * 0.85);
         }
 
-        // Below: tip below the node
         if (spaceBelow >= needed) {
             var tipX = clamp(anchorPos.x, TIP_HALF + 20, viewportWidth - TIP_HALF - 20);
             var tipY = nodeBottom + GAP_FROM_NODE + TIP_HALF;
             evaluateSide('below', tipX, tipY, spaceBelow * 0.7);
         }
 
-        // Above: tip above the node
         if (spaceAbove >= needed) {
             var tipX = clamp(anchorPos.x, TIP_HALF + 20, viewportWidth - TIP_HALF - 20);
             var tipY = nodeTop - GAP_FROM_NODE - TIP_HALF;
             evaluateSide('above', tipX, tipY, spaceAbove * 0.6);
         }
 
-        // If no non-occluded side was found with full space, try any feasible fallback
         if (!sides.length) {
-            // Even if space is tight, attempt placement with lower score
             var fallbacks = [];
-
-            // Try right with tight fit
             if (spaceRight > TIP_HALF + 8) {
                 var tipX = clamp(nodeRight + 4 + TIP_HALF, TIP_HALF + 8, viewportWidth - TIP_HALF - 8);
                 var tipY = clamp(anchorPos.y, TIP_HALF + 20, viewportHeight - TIP_HALF - 20);
-                var occ = overlapsNodes(tipX, tipY, 'right');
-                fallbacks.push({ x: tipX, y: tipY, side: 'right', score: occ ? 5 : 50 });
+                fallbacks.push({ x: tipX, y: tipY, side: 'right', score: overlapsNodes(tipX, tipY, 'right') ? 5 : 50 });
             }
-            // Try left with tight fit
             if (spaceLeft > TIP_HALF + 8) {
                 var tipX = clamp(nodeLeft - 4 - TIP_HALF, TIP_HALF + 8, viewportWidth - TIP_HALF - 8);
                 var tipY = clamp(anchorPos.y, TIP_HALF + 20, viewportHeight - TIP_HALF - 20);
-                var occ = overlapsNodes(tipX, tipY, 'left');
-                fallbacks.push({ x: tipX, y: tipY, side: 'left', score: occ ? 4 : 40 });
+                fallbacks.push({ x: tipX, y: tipY, side: 'left', score: overlapsNodes(tipX, tipY, 'left') ? 4 : 40 });
             }
-            // Try below with tight fit
             if (spaceBelow > TIP_HALF + 8) {
                 var tipX = clamp(anchorPos.x, TIP_HALF + 8, viewportWidth - TIP_HALF - 8);
                 var tipY = clamp(nodeBottom + 4 + TIP_HALF, TIP_HALF + 20, viewportHeight - TIP_HALF - 20);
-                var occ = overlapsNodes(tipX, tipY, 'below');
-                fallbacks.push({ x: tipX, y: tipY, side: 'below', score: occ ? 3 : 30 });
+                fallbacks.push({ x: tipX, y: tipY, side: 'below', score: overlapsNodes(tipX, tipY, 'below') ? 3 : 30 });
             }
-            // Try above with tight fit
             if (spaceAbove > TIP_HALF + 8) {
                 var tipX = clamp(anchorPos.x, TIP_HALF + 8, viewportWidth - TIP_HALF - 8);
                 var tipY = clamp(nodeTop - 4 - TIP_HALF, TIP_HALF + 20, viewportHeight - TIP_HALF - 20);
-                var occ = overlapsNodes(tipX, tipY, 'above');
-                fallbacks.push({ x: tipX, y: tipY, side: 'above', score: occ ? 2 : 20 });
+                fallbacks.push({ x: tipX, y: tipY, side: 'above', score: overlapsNodes(tipX, tipY, 'above') ? 2 : 20 });
             }
 
             if (fallbacks.length) {
@@ -218,13 +209,11 @@ function createEditorCanvasGrowthAffordance(deps) {
             }
         }
 
-        // If any side works, pick the best-scoring one (prefer non-occluded)
         if (sides.length) {
             sides.sort(function (a, b) { return b.score - a.score; });
             return sides[0];
         }
 
-        // Ultimate fallback: place to the right or left, clamped to viewport
         var preferRight = anchorPos.x < viewportWidth * 0.5;
         if (preferRight) {
             return {
@@ -242,8 +231,6 @@ function createEditorCanvasGrowthAffordance(deps) {
 
     function drawConnectorLine(anchorPos, tipPos, side) {
         const path = documentRef.createElementNS('http://www.w3.org/2000/svg', 'path');
-
-        // Start from node edge toward the tip
         let startX, startY;
         switch (side) {
             case 'right':
@@ -267,11 +254,8 @@ function createEditorCanvasGrowthAffordance(deps) {
                 startY = anchorPos.y;
         }
 
-        // End point is near the tip circle edge
         const endX = tipPos.x - (side === 'left' ? TIP_HALF : side === 'right' ? -TIP_HALF : 0);
         const endY = tipPos.y - (side === 'above' ? TIP_HALF : side === 'below' ? -TIP_HALF : 0);
-
-        // Simple smooth quadratic bezier
         const cpX = (startX + endX) / 2;
         const cpY = (startY + endY) / 2;
         const d = `M ${startX},${startY} Q ${cpX},${cpY} ${endX},${endY}`;
@@ -287,11 +271,109 @@ function createEditorCanvasGrowthAffordance(deps) {
         svg.appendChild(path);
     }
 
-    function createPlusTipElement(anchorMem, labelText) {
+    function positionBubble(bubble, tipPos) {
+        if (tipPos.side === 'right') {
+            bubble.style.left = `${TIP_SIZE + BUBBLE_GAP}px`;
+            bubble.style.top = '50%';
+            bubble.style.transform = 'translateY(-50%) scale(0.96)';
+            bubble.style.transformOrigin = 'left center';
+            return;
+        }
+        if (tipPos.side === 'left') {
+            bubble.style.right = `${TIP_SIZE + BUBBLE_GAP}px`;
+            bubble.style.top = '50%';
+            bubble.style.transform = 'translateY(-50%) scale(0.96)';
+            bubble.style.transformOrigin = 'right center';
+            return;
+        }
+        if (tipPos.side === 'below') {
+            bubble.style.left = '50%';
+            bubble.style.top = `${TIP_SIZE + BUBBLE_GAP}px`;
+            bubble.style.transform = 'translateX(-50%) scale(0.96)';
+            bubble.style.transformOrigin = 'top center';
+            return;
+        }
+        bubble.style.left = '50%';
+        bubble.style.bottom = `${TIP_SIZE + BUBBLE_GAP}px`;
+        bubble.style.transform = 'translateX(-50%) scale(0.96)';
+        bubble.style.transformOrigin = 'bottom center';
+    }
+
+    function createBubble(labelText, helperText) {
+        const bubble = documentRef.createElement('span');
+        bubble.className = 'affordance-tooltip affordance-tooltip-bubble';
+        bubble.setAttribute('role', 'tooltip');
+        bubble.setAttribute('aria-hidden', 'true');
+        bubble.style.position = 'absolute';
+        bubble.style.width = `${BUBBLE_WIDTH}px`;
+        bubble.style.minHeight = `${BUBBLE_HEIGHT}px`;
+        bubble.style.boxSizing = 'border-box';
+        bubble.style.display = 'flex';
+        bubble.style.alignItems = 'center';
+        bubble.style.gap = '10px';
+        bubble.style.padding = '8px 12px 8px 10px';
+        bubble.style.border = '1px solid rgba(144, 73, 81, 0.18)';
+        bubble.style.borderRadius = '999px';
+        bubble.style.background = 'linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,246,244,0.96))';
+        bubble.style.boxShadow = '0 12px 28px rgba(75, 64, 57, 0.13)';
+        bubble.style.backdropFilter = 'blur(8px)';
+        bubble.style.opacity = '0';
+        bubble.style.pointerEvents = 'none';
+        bubble.style.zIndex = '6';
+        bubble.style.transition = 'opacity 0.16s ease, transform 0.16s ease';
+
+        const bubblePlus = documentRef.createElement('span');
+        bubblePlus.setAttribute('aria-hidden', 'true');
+        bubblePlus.textContent = '+';
+        bubblePlus.style.width = '28px';
+        bubblePlus.style.height = '28px';
+        bubblePlus.style.borderRadius = '50%';
+        bubblePlus.style.display = 'inline-flex';
+        bubblePlus.style.alignItems = 'center';
+        bubblePlus.style.justifyContent = 'center';
+        bubblePlus.style.background = 'linear-gradient(180deg, rgba(144, 73, 81, 1), rgba(144, 73, 81, 0.88))';
+        bubblePlus.style.color = '#fff';
+        bubblePlus.style.fontSize = '17px';
+        bubblePlus.style.fontWeight = '700';
+        bubblePlus.style.flex = '0 0 auto';
+        bubblePlus.style.boxShadow = '0 6px 14px rgba(144, 73, 81, 0.22)';
+
+        const textWrap = documentRef.createElement('span');
+        textWrap.style.display = 'flex';
+        textWrap.style.flexDirection = 'column';
+        textWrap.style.alignItems = 'flex-start';
+        textWrap.style.minWidth = '0';
+
+        const titleEl = documentRef.createElement('span');
+        titleEl.textContent = labelText;
+        titleEl.style.fontSize = '13px';
+        titleEl.style.fontWeight = '700';
+        titleEl.style.color = 'var(--on-surface)';
+        titleEl.style.lineHeight = '1.25';
+        titleEl.style.whiteSpace = 'nowrap';
+
+        textWrap.appendChild(titleEl);
+
+        if (helperText) {
+            const hintEl = documentRef.createElement('span');
+            hintEl.textContent = helperText;
+            hintEl.style.fontSize = '11px';
+            hintEl.style.fontWeight = '600';
+            hintEl.style.color = 'var(--on-surface-variant)';
+            hintEl.style.lineHeight = '1.25';
+            hintEl.style.opacity = '0.82';
+            hintEl.style.whiteSpace = 'nowrap';
+            textWrap.appendChild(hintEl);
+        }
+
+        bubble.appendChild(bubblePlus);
+        bubble.appendChild(textWrap);
+        return bubble;
+    }
+
+    function createPlusTipElement(anchorMem, labelText, helperText) {
         const anchorPos = calcPosition(anchorMem);
         const tipPos = getPlusTipPosition(anchorPos, anchorMem);
-
-        // Create the + button
         const button = documentRef.createElement('button');
         button.type = 'button';
         button.className = 'memory-add-affordance';
@@ -318,123 +400,68 @@ function createEditorCanvasGrowthAffordance(deps) {
         button.style.transition = 'transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease';
         button.textContent = '+';
 
-        // Tooltip element (hidden by default)
-        const tooltip = documentRef.createElement('span');
-        tooltip.className = 'affordance-tooltip';
-        tooltip.textContent = labelText;
-        tooltip.setAttribute('role', 'tooltip');
-        tooltip.setAttribute('aria-hidden', 'true');
-        tooltip.style.position = 'absolute';
-        tooltip.style.whiteSpace = 'nowrap';
-        tooltip.style.fontSize = '12px';
-        tooltip.style.fontWeight = '600';
-        tooltip.style.color = '#fff';
-        tooltip.style.background = 'rgba(60, 50, 45, 0.92)';
-        tooltip.style.padding = '5px 10px';
-        tooltip.style.borderRadius = '6px';
-        tooltip.style.pointerEvents = 'none';
-        tooltip.style.opacity = '0';
-        tooltip.style.transition = 'opacity 0.15s ease';
-        tooltip.style.zIndex = '6';
+        const bubble = createBubble(labelText, helperText);
+        const bubbleId = 'aff-tip-' + (anchorMem ? anchorMem.id : '0');
+        bubble.setAttribute('id', bubbleId);
+        button.setAttribute('aria-describedby', bubbleId);
+        positionBubble(bubble, tipPos);
+        button.appendChild(bubble);
 
-        // Generate unique ID for aria-describedby linkage
-        var tooltipId = 'aff-tip-' + (anchorMem ? anchorMem.id : '0');
-        tooltip.setAttribute('id', tooltipId);
-
-        // Link button to tooltip for screen reader announcement
-        button.setAttribute('aria-describedby', tooltipId);
-
-        // Position tooltip based on tip side
-        const tooltipGap = 6;
-        switch (tipPos.side) {
-            case 'right':
-                tooltip.style.left = `${TIP_HALF + tooltipGap}px`;
-                tooltip.style.top = '50%';
-                tooltip.style.transform = 'translateY(-50%)';
-                break;
-            case 'left':
-                tooltip.style.right = `${TIP_HALF + tooltipGap}px`;
-                tooltip.style.top = '50%';
-                tooltip.style.transform = 'translateY(-50%)';
-                break;
-            case 'below':
-                tooltip.style.left = '50%';
-                tooltip.style.top = `${TIP_HALF + tooltipGap}px`;
-                tooltip.style.transform = 'translateX(-50%)';
-                break;
-            case 'above':
-                tooltip.style.left = '50%';
-                tooltip.style.bottom = `${TIP_HALF + tooltipGap}px`;
-                tooltip.style.transform = 'translateX(-50%)';
-                break;
-        }
-
-        button.appendChild(tooltip);
-
-        // Hover/focus show tooltip
-        button.addEventListener('mouseenter', () => {
-            button.style.transform = 'scale(1.15)';
+        function showBubble() {
+            button.style.transform = 'scale(1.08)';
             button.style.boxShadow = '0 5px 16px rgba(144, 73, 81, 0.35)';
             button.style.background = 'rgba(144, 73, 81, 1)';
-            tooltip.style.opacity = '1';
-            tooltip.setAttribute('aria-hidden', 'false');
-        });
-        button.addEventListener('mouseleave', () => {
-            button.style.transform = 'scale(1)';
-            button.style.boxShadow = '0 3px 10px rgba(144, 73, 81, 0.25)';
-            button.style.background = 'rgba(144, 73, 81, 0.92)';
-            tooltip.style.opacity = '0';
-            tooltip.setAttribute('aria-hidden', 'true');
-        });
-        button.addEventListener('focus', () => {
-            button.style.transform = 'scale(1.15)';
-            button.style.boxShadow = '0 0 0 3px rgba(144, 73, 81, 0.3), 0 5px 16px rgba(144, 73, 81, 0.35)';
-            button.style.background = 'rgba(144, 73, 81, 1)';
-            tooltip.style.opacity = '1';
-            tooltip.setAttribute('aria-hidden', 'false');
-        });
-        button.addEventListener('blur', () => {
-            button.style.transform = 'scale(1)';
-            button.style.boxShadow = '0 3px 10px rgba(144, 73, 81, 0.25)';
-            button.style.background = 'rgba(144, 73, 81, 0.92)';
-            tooltip.style.opacity = '0';
-            tooltip.setAttribute('aria-hidden', 'true');
-        });
+            bubble.style.opacity = '1';
+            bubble.style.pointerEvents = 'none';
+            bubble.style.transform = bubble.style.transform.replace('scale(0.96)', 'scale(1)');
+            bubble.setAttribute('aria-hidden', 'false');
+        }
 
-        // Click/tap action
+        function hideBubble() {
+            button.style.transform = 'scale(1)';
+            button.style.boxShadow = '0 3px 10px rgba(144, 73, 81, 0.25)';
+            button.style.background = 'rgba(144, 73, 81, 0.92)';
+            bubble.style.opacity = '0';
+            bubble.style.pointerEvents = 'none';
+            bubble.style.transform = bubble.style.transform.replace('scale(1)', 'scale(0.96)');
+            bubble.setAttribute('aria-hidden', 'true');
+        }
+
+        button.addEventListener('mouseenter', showBubble);
+        button.addEventListener('mouseleave', hideBubble);
+        button.addEventListener('focus', showBubble);
+        button.addEventListener('blur', hideBubble);
+        button.addEventListener('touchstart', showBubble, { passive: true });
+
         button.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            // Brief scale pulse for feedback
-            button.style.transform = 'scale(0.9)';
+            button.style.transform = 'scale(0.92)';
             setTimeout(() => {
-                button.style.transform = 'scale(1.15)';
-                setTimeout(() => {
-                    button.style.transform = 'scale(1)';
-                }, 100);
+                showBubble();
             }, 80);
             openAddMomentFromCanvas();
         });
 
-        // Prevent pan when interacting
         ['mousedown', 'pointerdown', 'touchstart'].forEach((eventName) => {
             button.addEventListener(eventName, (e) => {
                 e.stopPropagation();
             });
         });
 
-        // Keyboard support
         button.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
                 e.stopPropagation();
                 openAddMomentFromCanvas();
             }
+            if (e.key === 'Escape') {
+                hideBubble();
+                button.blur();
+            }
         });
 
-        // Draw connector line
         drawConnectorLine(anchorPos, tipPos, tipPos.side);
-
         canvas.appendChild(button);
     }
 
@@ -442,8 +469,9 @@ function createEditorCanvasGrowthAffordance(deps) {
         if (!anchorMem) return;
         const opts = options || {};
         const labelText = opts.labelText || (i18n('editor_add_memory') || '새 순간 이어가기');
+        const helperText = opts.helperText || '';
 
-        createPlusTipElement(anchorMem, labelText);
+        createPlusTipElement(anchorMem, labelText, helperText);
     }
 
     return {
