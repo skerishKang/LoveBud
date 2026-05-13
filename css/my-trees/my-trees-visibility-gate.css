@@ -1,9 +1,20 @@
 /*
- * LoveTree - My Trees visibility gate
+ * LoveTree - My Trees visibility and card action gate
  *
  * Public/private visibility controls are a future subscription-gated product area.
  * Hide current MVP-facing visibility controls without changing underlying data.
+ *
+ * My Trees cards should read as appreciation/gallery surfaces during the MVP.
+ * Suppress the per-card overflow menu entry point while follow-up hub/footer work
+ * defines the approved management surface.
  */
+
+.tree-card-menu,
+.tree-card-dropdown,
+.tree-card-dropdown.show {
+  display: none !important;
+  pointer-events: none !important;
+}
 
 .tree-card-dropdown .dropdown-item.visibility,
 .tree-card-visibility,
