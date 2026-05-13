@@ -299,47 +299,54 @@ function createEditorCanvasGrowthAffordance(deps) {
         bubble.style.transformOrigin = 'bottom center';
     }
 
-    function createBubble(labelText, helperText) {
-        const bubble = documentRef.createElement('span');
-        bubble.className = 'affordance-tooltip affordance-tooltip-bubble';
-        bubble.setAttribute('role', 'tooltip');
-        bubble.setAttribute('aria-hidden', 'true');
-        bubble.style.position = 'absolute';
-        bubble.style.width = `${BUBBLE_WIDTH}px`;
-        bubble.style.minHeight = `${BUBBLE_HEIGHT}px`;
-        bubble.style.boxSizing = 'border-box';
-        bubble.style.display = 'flex';
-        bubble.style.alignItems = 'center';
-        bubble.style.gap = '10px';
-        bubble.style.padding = '8px 12px 8px 10px';
-        bubble.style.border = '1px solid rgba(144, 73, 81, 0.18)';
-        bubble.style.borderRadius = '999px';
-        bubble.style.background = 'linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,246,244,0.96))';
-        bubble.style.boxShadow = '0 12px 28px rgba(75, 64, 57, 0.13)';
-        bubble.style.backdropFilter = 'blur(8px)';
-        bubble.style.opacity = '0';
-        bubble.style.pointerEvents = 'none';
-        bubble.style.zIndex = '6';
-        bubble.style.transition = 'opacity 0.16s ease, transform 0.16s ease';
+    function createPlusTipElement(anchorMem, labelText, helperText) {
+        const anchorPos = calcPosition(anchorMem);
+        const tipPos = getPlusTipPosition(anchorPos, anchorMem);
+        const button = documentRef.createElement('button');
+        button.type = 'button';
+        button.className = 'memory-add-affordance affordance-tooltip-bubble';
+        button.setAttribute('aria-label', labelText);
+        button.style.position = 'absolute';
+        button.style.left = `${tipPos.x - TIP_HALF}px`;
+        button.style.top = `${tipPos.y - TIP_HALF}px`;
+        button.style.width = `${TIP_SIZE}px`;
+        button.style.height = `${TIP_SIZE}px`;
+        button.style.borderRadius = '50%';
+        button.style.border = 'none';
+        button.style.background = 'rgba(144, 73, 81, 0.92)';
+        button.style.color = '#fff';
+        button.style.cursor = 'pointer';
+        button.style.zIndex = '5';
+        button.style.display = 'flex';
+        button.style.alignItems = 'center';
+        button.style.justifyContent = 'center';
+        button.style.boxSizing = 'border-box';
+        button.style.padding = '0';
+        button.style.gap = '10px';
+        button.style.overflow = 'hidden';
+        button.style.boxShadow = '0 3px 10px rgba(144, 73, 81, 0.25)';
+        button.style.transition = 'width 0.16s ease, border-radius 0.16s ease, background 0.16s ease, box-shadow 0.16s ease, padding 0.16s ease';
 
-        const bubblePlus = documentRef.createElement('span');
-        bubblePlus.setAttribute('aria-hidden', 'true');
-        bubblePlus.textContent = '+';
-        bubblePlus.style.width = '28px';
-        bubblePlus.style.height = '28px';
-        bubblePlus.style.borderRadius = '50%';
-        bubblePlus.style.display = 'inline-flex';
-        bubblePlus.style.alignItems = 'center';
-        bubblePlus.style.justifyContent = 'center';
-        bubblePlus.style.background = 'linear-gradient(180deg, rgba(144, 73, 81, 1), rgba(144, 73, 81, 0.88))';
-        bubblePlus.style.color = '#fff';
-        bubblePlus.style.fontSize = '17px';
-        bubblePlus.style.fontWeight = '700';
-        bubblePlus.style.flex = '0 0 auto';
-        bubblePlus.style.boxShadow = '0 6px 14px rgba(144, 73, 81, 0.22)';
+        const plusIcon = documentRef.createElement('span');
+        plusIcon.setAttribute('aria-hidden', 'true');
+        plusIcon.textContent = '+';
+        plusIcon.style.width = '28px';
+        plusIcon.style.height = '28px';
+        plusIcon.style.borderRadius = '50%';
+        plusIcon.style.display = 'inline-flex';
+        plusIcon.style.alignItems = 'center';
+        plusIcon.style.justifyContent = 'center';
+        plusIcon.style.background = 'linear-gradient(180deg, rgba(144, 73, 81, 1), rgba(144, 73, 81, 0.88))';
+        plusIcon.style.color = '#fff';
+        plusIcon.style.fontSize = '17px';
+        plusIcon.style.fontWeight = '700';
+        plusIcon.style.flex = '0 0 auto';
+        plusIcon.style.boxShadow = '0 6px 14px rgba(144, 73, 81, 0.22)';
+        button.appendChild(plusIcon);
 
         const textWrap = documentRef.createElement('span');
-        textWrap.style.display = 'flex';
+        textWrap.className = 'affordance-tip-text';
+        textWrap.style.display = 'none';
         textWrap.style.flexDirection = 'column';
         textWrap.style.alignItems = 'flex-start';
         textWrap.style.minWidth = '0';
@@ -351,7 +358,6 @@ function createEditorCanvasGrowthAffordance(deps) {
         titleEl.style.color = 'var(--on-surface)';
         titleEl.style.lineHeight = '1.25';
         titleEl.style.whiteSpace = 'nowrap';
-
         textWrap.appendChild(titleEl);
 
         if (helperText) {
@@ -366,58 +372,34 @@ function createEditorCanvasGrowthAffordance(deps) {
             textWrap.appendChild(hintEl);
         }
 
-        bubble.appendChild(bubblePlus);
-        bubble.appendChild(textWrap);
-        return bubble;
-    }
+        button.appendChild(textWrap);
 
-    function createPlusTipElement(anchorMem, labelText, helperText) {
-        const anchorPos = calcPosition(anchorMem);
-        const tipPos = getPlusTipPosition(anchorPos, anchorMem);
-        const button = documentRef.createElement('button');
-        button.type = 'button';
-        button.className = 'memory-add-affordance';
-        button.setAttribute('aria-label', labelText);
-        button.style.position = 'absolute';
-        button.style.left = `${tipPos.x - TIP_HALF}px`;
-        button.style.top = `${tipPos.y - TIP_HALF}px`;
-        button.style.width = `${TIP_SIZE}px`;
-        button.style.height = `${TIP_SIZE}px`;
-        button.style.borderRadius = '50%';
-        button.style.border = 'none';
-        button.style.background = 'rgba(144, 73, 81, 0.92)';
-        button.style.color = '#fff';
-        button.style.fontSize = '20px';
-        button.style.fontWeight = '700';
-        button.style.lineHeight = '1';
-        button.style.cursor = 'pointer';
-        button.style.zIndex = '5';
-        button.style.display = 'flex';
-        button.style.alignItems = 'center';
-        button.style.justifyContent = 'center';
-        button.style.boxShadow = '0 3px 10px rgba(144, 73, 81, 0.25)';
-        button.style.transition = 'transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease';
-        button.textContent = '+';
-
-        const bubble = createBubble(labelText, helperText);
-        const bubbleId = 'aff-tip-' + (anchorMem ? anchorMem.id : '0');
-        bubble.setAttribute('id', bubbleId);
-        button.setAttribute('aria-describedby', bubbleId);
-        positionBubble(bubble, tipPos);
-        button.appendChild(bubble);
+        let bubbleExpanded = false;
 
         function showBubble() {
-            bubble.style.opacity = '1';
-            bubble.style.pointerEvents = 'none';
-            bubble.style.transform = bubble.style.transform.replace('scale(0.96)', 'scale(1)');
-            bubble.setAttribute('aria-hidden', 'false');
+            if (bubbleExpanded) return;
+            bubbleExpanded = true;
+            button.style.width = `${BUBBLE_WIDTH}px`;
+            button.style.borderRadius = '999px';
+            button.style.justifyContent = 'flex-start';
+            button.style.padding = '4px 12px 4px 4px';
+            button.style.background = 'linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,246,244,0.96))';
+            button.style.boxShadow = '0 12px 28px rgba(75, 64, 57, 0.13)';
+            textWrap.style.display = 'flex';
+            button.setAttribute('aria-expanded', 'true');
         }
 
         function hideBubble() {
-            bubble.style.opacity = '0';
-            bubble.style.pointerEvents = 'none';
-            bubble.style.transform = bubble.style.transform.replace('scale(1)', 'scale(0.96)');
-            bubble.setAttribute('aria-hidden', 'true');
+            if (!bubbleExpanded) return;
+            bubbleExpanded = false;
+            button.style.width = `${TIP_SIZE}px`;
+            button.style.borderRadius = '50%';
+            button.style.justifyContent = 'center';
+            button.style.padding = '0';
+            button.style.background = 'rgba(144, 73, 81, 0.92)';
+            button.style.boxShadow = '0 3px 10px rgba(144, 73, 81, 0.25)';
+            textWrap.style.display = 'none';
+            button.setAttribute('aria-expanded', 'false');
         }
 
         button.addEventListener('mouseenter', showBubble);
@@ -458,7 +440,12 @@ function createEditorCanvasGrowthAffordance(deps) {
         if (!anchorMem) return;
         const opts = options || {};
         const labelText = opts.labelText || (i18n('editor_add_memory') || '새 순간 이어가기');
-        const helperText = opts.helperText || '';
+        const isFirstStep = opts.isFirstStep;
+        const helperText = opts.helperText
+            || (isFirstStep
+                ? (i18n('growth_first_step_hint') || '첫 순간에서 이어지는 감정을 기록해보세요')
+                : (i18n('growth_continue_hint') || '선택한 순간 뒤로 감정이 이어져요'))
+            || '';
 
         createPlusTipElement(anchorMem, labelText, helperText);
     }

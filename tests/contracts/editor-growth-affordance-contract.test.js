@@ -91,7 +91,7 @@ test('plus tip expands into original bubble style on hover and focus', () => {
   assert.match(source, /button\.addEventListener\('mouseenter', showBubble\)/, 'mouse hover should expand the bubble');
   assert.match(source, /button\.addEventListener\('focus', showBubble\)/, 'keyboard focus should expand the bubble');
   assert.match(source, /button\.addEventListener\('touchstart', showBubble/, 'touch should expose the bubble before activation');
-  assert.match(source, /aria-hidden', 'false'/, 'expanded bubble state should update aria visibility');
+  assert.match(source, /aria-expanded', 'true'/, 'expanded bubble state should update aria visibility');
 });
 
 test('canvas pan binding excludes add affordance presses', () => {
