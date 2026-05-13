@@ -1,6 +1,6 @@
 /**
  * LoveBud Search Data Loading Module
- * v20260513-1143-1
+ * v20260513-1143-2
  *
  * Extracted from js/search.js (orchestrator).
  * Owns: loadPublicTrees, loadGrowingTrees, hydrateSelectedTreePreview
@@ -93,18 +93,6 @@
                 }
                 ui.clearSelectedPreview({ preserveOpenState: false });
             }
-        }
-
-        function prefetchTreePreview(tree) {
-            if (!tree || !tree.id) return;
-            const treeId = getPreviewTreeId(tree);
-            if (!treeId) return;
-            if (Array.isArray(tree.memories) && tree.memories.length > 0) return;
-            if (previewCacheApi.readPreviewCache(treeId)) return;
-
-            getHydratedTreePreview(tree).catch((error) => {
-                console.warn('[search/data] preview prefetch failed:', error.message);
-            });
         }
 
         // ── Load public trees (main browse) ────────────────────────────────────
@@ -234,7 +222,6 @@
         return {
             dedupeTreesById,
             hydrateSelectedTreePreview,
-            prefetchTreePreview,
             loadPublicTrees,
             loadGrowingTrees
         };
