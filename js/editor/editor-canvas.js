@@ -28,10 +28,7 @@ function createEditorCanvas(deps) {
     const canvasLayoutHelpers = window.LoveBudEditorCanvasLayoutHelpers || {};
     const canvasEdges = window.createEditorCanvasEdges({ svg, canvasViewport });
 
-    /** Saved free positions — preserved when switching to structured mode */
     let savedFreePositions = null;
-
-    /** Stored free positions from localStorage */
     let storedFreePositions = null;
 
 function loadStoredLayout() {
@@ -104,7 +101,6 @@ function loadStoredLayout() {
         positions: storedLayout.positions,
         rafScheduled: false,
         rafFrame: null,
-        /** Layout mode: 'free' or 'structured' */
         layoutMode: loadLayoutMode()
     };
     const { NODE_HALF, AFFORDANCE_OFFSET_X, AFFORDANCE_OFFSET_Y, AFFORDANCE_CARD_HALF } = window.EditorCanvasGeometry;
@@ -147,7 +143,6 @@ function loadStoredLayout() {
     }
 
     function persistStoredPositions() {
-        // Do not persist positions while in structured mode
         if (viewportState.layoutMode === 'structured') return;
 
         if (typeof canvasLayout.createLayoutStore === 'function') {
@@ -166,11 +161,6 @@ function loadStoredLayout() {
         } catch (e) {}
     }
 
-    /**
-     * Center viewport on the currently selected node after a layout switch.
-     * Does not reuse previous layout's offset/scale — computes fresh center
-     * based on the selection at the moment of switching.
-     */
     function centerViewportOnSelection() {
         const selectedId = document.querySelector('.memory-node.selected')?.dataset?.memoryId;
         const treeMemories = getTreeMemories();
@@ -180,7 +170,6 @@ function loadStoredLayout() {
             targetNode = treeMemories.find(function (m) { return m.id === selectedId; });
         }
         if (!targetNode && treeMemories.length > 0) {
-            // Fall back to first visible node
             var canonicalRootId = getCanonicalRootId();
             targetNode = treeMemories.find(function (m) { return !isRootMemory(m, canonicalRootId); }) || treeMemories[0];
         }
@@ -188,29 +177,21 @@ function loadStoredLayout() {
         if (targetNode) {
             var world = getWorldPosition(targetNode);
             var metrics = getMetrics();
-
-            // Compute a fresh scale that fits the whole tree (avoids reusing old zoom)
-            var fitScale = 1;
-            if (typeof canvasViewport.getFitViewport === 'function') {
-                var fitVp = canvasViewport.getFitViewport({
-                    getTreeMemories: getTreeMemories,
-                    getWorldPosition: getWorldPosition,
-                    getMetrics: getMetrics,
-                    viewportState: viewportState,
-                    getCanonicalRootId: getCanonicalRootId,
-                    isRootMemory: isRootMemory
-                });
-                if (fitVp && typeof fitVp.scale === 'number') {
-                    fitScale = fitVp.scale;
-                }
+            var nextScale = 1;
+            if (typeof canvasViewport.setScale === 'function') {
+                canvasViewport.setScale(viewportState, nextScale);
+                nextScale = canvasViewport.getScale ? canvasViewport.getScale(viewportState) : viewportState.scale;
+            } else {
+                viewportState.scale = nextScale;
             }
-
-            canvasViewport.setScale(viewportState, fitScale);
-            viewportState.offsetX = Math.round(metrics.width * 0.5 - (world.x * fitScale));
-            viewportState.offsetY = Math.round(metrics.height * 0.38 - (world.y * fitScale));
+            viewportState.offsetX = Math.round(metrics.width * 0.5 - (world.x * nextScale));
+            viewportState.offsetY = Math.round(metrics.height * 0.38 - (world.y * nextScale));
         } else {
-            // No nodes at all — reset to default
-            canvasViewport.setScale(viewportState, 1);
+            if (typeof canvasViewport.setScale === 'function') {
+                canvasViewport.setScale(viewportState, 1);
+            } else {
+                viewportState.scale = 1;
+            }
             viewportState.offsetX = 0;
             viewportState.offsetY = 0;
         }
@@ -219,18 +200,14 @@ function loadStoredLayout() {
     function switchToFreeMode() {
         viewportState.layoutMode = 'free';
         persistLayoutMode('free');
-        // Allow viewport recalculation for the new layout
         viewportState.initialViewportApplied = false;
-        // Restore saved free positions if available
         if (savedFreePositions) {
             viewportState.positions = { ...savedFreePositions };
             savedFreePositions = null;
         }
-        // Restore stored free positions if available
         if (storedFreePositions && Object.keys(viewportState.positions).length === 0) {
             viewportState.positions = { ...storedFreePositions };
         }
-        // Restore from localStorage if positions are empty
         if (Object.keys(viewportState.positions).length === 0) {
             const stored = loadStoredLayout();
             if (stored.positions && Object.keys(stored.positions).length > 0) {
@@ -238,7 +215,6 @@ function loadStoredLayout() {
             }
         }
 
-        // Center on selected node — fresh calculation, no reuse of old offset/scale
         centerViewportOnSelection();
 
         document.body.classList.remove('layout-structured');
@@ -249,14 +225,11 @@ function loadStoredLayout() {
     }
 
     function switchToStructuredMode() {
-        // Save current free positions before switching
         savedFreePositions = { ...viewportState.positions };
         viewportState.layoutMode = 'structured';
-        // Allow viewport recalculation for the new layout
         viewportState.initialViewportApplied = false;
         persistLayoutMode('structured');
 
-        // Center on selected node — fresh calculation, no reuse of old offset/scale
         centerViewportOnSelection();
 
         document.body.classList.remove('layout-free');
@@ -313,10 +286,6 @@ function loadStoredLayout() {
             AFFORDANCE_CARD_HALF
         }
     });
-
-
-
-
 
 function isNodeWithinSafeViewport(pos) {
         const metrics = getMetrics();
@@ -376,7 +345,6 @@ function isNodeWithinSafeViewport(pos) {
         };
 
         nodeEl.addEventListener('mousedown', (e) => {
-            // Disable drag in structured mode
             if (viewportState.layoutMode === 'structured') return;
 
             if (typeof canvasInteraction.beginNodeDrag === 'function') {
@@ -457,11 +425,6 @@ function isNodeWithinSafeViewport(pos) {
         });
     }
 
-
-
-
-
-
     function createNodeElement(mem, pos) {
         if (typeof canvasNode.createNodeElement !== "function") {
             throw new Error("LoveBudEditorCanvasNode.createNodeElement is required");
@@ -494,7 +457,7 @@ function isNodeWithinSafeViewport(pos) {
 
     function reapplySelection(selectedNodeId) {
         if (!selectedNodeId) return;
-        const selectedEl = document.querySelector(`.memory-node[data-memory-id="${selectedNodeId}"]`);
+        const selectedEl = document.querySelector(`.memory-node[data-memory-id=\"${selectedNodeId}\"]`);
         if (selectedEl) {
             selectedEl.classList.add('selected');
         }
@@ -581,7 +544,6 @@ function isNodeWithinSafeViewport(pos) {
         bindCanvasPan();
         bindViewportControls();
         bindResizeHandling();
-        // Bind layout mode toggle on each init to ensure it stays bound after toolbar rebuild
         bindLayoutModeToggle();
         viewportState.initialized = true;
     };
@@ -673,7 +635,6 @@ function isNodeWithinSafeViewport(pos) {
         const zoomInBtn = document.getElementById('zoomInCanvasBtn');
         const zoomOutBtn = document.getElementById('zoomOutCanvasBtn');
 
-        // Prevent clicks from starting a pan
         [focusBtn, recenterBtn, zoomInBtn, zoomOutBtn].forEach((button) => {
             if (!button) return;
             button.addEventListener('mousedown', (event) => { event.stopPropagation(); });
@@ -696,11 +657,11 @@ function isNodeWithinSafeViewport(pos) {
         }
 
         if (zoomInBtn && typeof zoomBy === 'function') {
-            zoomInBtn.addEventListener('click', () => { zoomBy(canvasViewport.zoomStep || 1.18); });
+            zoomInBtn.addEventListener('click', () => { zoomBy(1.01); });
         }
 
         if (zoomOutBtn && typeof zoomBy === 'function') {
-            zoomOutBtn.addEventListener('click', () => { zoomBy(1 / (canvasViewport.zoomStep || 1.18)); });
+            zoomOutBtn.addEventListener('click', () => { zoomBy(0.99); });
         }
     }
 
@@ -709,7 +670,6 @@ function isNodeWithinSafeViewport(pos) {
         if (!toggleBtn) return;
         if (toggleBtn.dataset.layoutBound) return;
 
-        // Store current free positions on first structured switch attempt
         toggleBtn.addEventListener('click', () => {
             toggleLayoutMode();
         });
@@ -726,7 +686,7 @@ function isNodeWithinSafeViewport(pos) {
                 persistStoredPositions,
                 initCanvas,
                 getWorldPosition,
-                getDragTargetElement: (id) => document.querySelector(`.memory-node[data-memory-id="${id}"]`),
+                getDragTargetElement: (id) => document.querySelector(`.memory-node[data-memory-id=\"${id}\"]`),
                 showMovedToast: () => {
                     const toast = document.getElementById('movedToast');
                     if (toast) {
@@ -738,7 +698,6 @@ function isNodeWithinSafeViewport(pos) {
             return;
         }
 
-        // Fallback pan/drag binding — structured mode guards added
         if (viewportState.globalsBound) return;
         viewportState.globalsBound = true;
 
@@ -752,7 +711,6 @@ function isNodeWithinSafeViewport(pos) {
             ) {
                 return;
             }
-            // Disable pan in structured mode
             if (viewportState.layoutMode === 'structured') return;
 
             viewportState.isPanning = true;
@@ -797,7 +755,7 @@ function isNodeWithinSafeViewport(pos) {
                 viewportState.isDraggingNode = false;
                 viewportState.dragNodeId = null;
                 viewportState.dragMoved = false;
-                const draggedEl = document.querySelector(`.memory-node[data-memory-id="${draggedId}"]`);
+                const draggedEl = document.querySelector(`.memory-node[data-memory-id=\"${draggedId}\"]`);
                 if (draggedEl) {
                     draggedEl.style.cursor = 'grab';
                 }
@@ -838,14 +796,13 @@ function isNodeWithinSafeViewport(pos) {
         }
 
         const oldScale = viewportState.scale || 1;
-        const newScale = Math.min(1.55, Math.max(0.65, oldScale * factor));
+        const newScale = factor >= 1 ? Math.min(1.5, oldScale + 0.25) : Math.max(0.5, oldScale - 0.25);
         if (newScale === oldScale) return;
         viewportState.scale = newScale;
         initCanvas();
         persistStoredPositions();
     }
 
-    // Initialize layout mode UI on first paint
     requestAnimationFrame(() => {
         if (viewportState.layoutMode === 'structured') {
             document.body.classList.add('layout-structured');
