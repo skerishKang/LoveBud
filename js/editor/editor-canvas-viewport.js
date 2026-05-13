@@ -1,10 +1,34 @@
 window.LoveBudEditorCanvasViewport = {
-  minScale: 0.65,
-  maxScale: 1.55,
-  zoomStep: 1.18,
+  minScale: 0.2,
+  maxScale: 1.5,
+  zoomLevels: [0.2, 0.35, 0.5, 0.75, 1, 1.25, 1.5],
   readableCenter: {
     x: 0.5,
-    y: 0.38
+    y: 0.42
+  },
+
+  getNearestZoom(scale) {
+    const value = Number(scale);
+    if (!Number.isFinite(value) || value <= 0) return 1;
+    return this.zoomLevels.reduce((best, candidate) => (
+      Math.abs(candidate - value) < Math.abs(best - value) ? candidate : best
+    ), 1);
+  },
+
+  getFitZoom(scale) {
+    const value = Number(scale);
+    if (!Number.isFinite(value) || value <= 0) return 1;
+    const clamped = Math.min(this.maxScale, Math.max(this.minScale, value));
+    return this.zoomLevels.reduce((best, candidate) => (
+      candidate <= clamped && candidate > best ? candidate : best
+    ), this.minScale);
+  },
+
+  getNextZoom(scale, direction) {
+    const current = this.getNearestZoom(scale);
+    const index = this.zoomLevels.indexOf(current);
+    if (direction > 0) return this.zoomLevels[Math.min(this.zoomLevels.length - 1, index + 1)];
+    return this.zoomLevels[Math.max(0, index - 1)];
   },
 
   getScale(viewportState) {
@@ -14,7 +38,11 @@ window.LoveBudEditorCanvasViewport = {
   },
 
   setScale(viewportState, nextScale) {
-    viewportState.scale = Math.min(this.maxScale, Math.max(this.minScale, Number(nextScale) || 1));
+    viewportState.scale = this.getNearestZoom(Math.min(this.maxScale, Math.max(this.minScale, Number(nextScale) || 1)));
+  },
+
+  setFitScale(viewportState, nextScale) {
+    viewportState.scale = this.getFitZoom(nextScale);
   },
 
   projectWorldPosition(world, viewportState) {
@@ -42,12 +70,12 @@ window.LoveBudEditorCanvasViewport = {
     return rootMemory ? [rootMemory] : [];
   },
 
-  getReadableViewportOffset(options) {
+  getReadableViewportOffset(options, preferredScale = 1) {
     const { getWorldPosition, getMetrics } = options;
     const targets = this.getViewportTargets(options);
     if (!targets.length) return null;
 
-    const scale = this.getScale(options.viewportState);
+    const scale = this.getNearestZoom(preferredScale);
     const points = targets.map((memory) => getWorldPosition(memory));
     const minX = Math.min(...points.map((point) => point.x));
     const maxX = Math.max(...points.map((point) => point.x));
@@ -56,6 +84,7 @@ window.LoveBudEditorCanvasViewport = {
     const metrics = getMetrics();
 
     return {
+      scale,
       offsetX: Math.round(metrics.width * this.readableCenter.x - (((minX + maxX) / 2) * scale)),
       offsetY: Math.round(metrics.height * this.readableCenter.y - (((minY + maxY) / 2) * scale))
     };
@@ -74,16 +103,14 @@ window.LoveBudEditorCanvasViewport = {
     const minY = Math.min(...points.map((point) => point.y));
     const maxY = Math.max(...points.map((point) => point.y));
     const metrics = getMetrics();
-    const padding = Math.min(180, Math.max(96, Math.round(metrics.width * 0.12)));
-    const boundsWidth = Math.max(1, maxX - minX + 180);
-    const boundsHeight = Math.max(1, maxY - minY + 180);
-    const fitScale = Math.min(
-      this.maxScale,
-      Math.max(
-        this.minScale,
-        Math.min((metrics.width - padding) / boundsWidth, (metrics.height - padding) / boundsHeight)
-      )
-    );
+    const padding = Math.min(160, Math.max(72, Math.round(metrics.width * 0.10)));
+    const nodeBoundsPadding = 180;
+    const boundsWidth = Math.max(1, maxX - minX + nodeBoundsPadding);
+    const boundsHeight = Math.max(1, maxY - minY + nodeBoundsPadding);
+    const availableWidth = Math.max(1, metrics.width - (padding * 2));
+    const availableHeight = Math.max(1, metrics.height - (padding * 2));
+    const rawFitScale = Math.min(availableWidth / boundsWidth, availableHeight / boundsHeight);
+    const fitScale = this.getFitZoom(rawFitScale);
 
     return {
       scale: fitScale,
@@ -92,22 +119,55 @@ window.LoveBudEditorCanvasViewport = {
     };
   },
 
+  isStoredViewportExtreme(options) {
+    const { viewportState, getMetrics } = options;
+    const metrics = getMetrics();
+    const margin = Math.max(200, Math.round(metrics.width * 0.25));
+    const minOkX = -metrics.width - margin;
+    const maxOkX = metrics.width + margin;
+    const minOkY = -metrics.height - margin;
+    const maxOkY = metrics.height + margin;
+    return (
+      viewportState.offsetX < minOkX || viewportState.offsetX > maxOkX ||
+      viewportState.offsetY < minOkY || viewportState.offsetY > maxOkY
+    );
+  },
+
+  applyViewport(viewportState, nextViewport, useFitScale = false) {
+    if (!nextViewport) return false;
+    if (useFitScale) {
+      this.setFitScale(viewportState, nextViewport.scale);
+    } else {
+      this.setScale(viewportState, nextViewport.scale);
+    }
+    viewportState.offsetX = nextViewport.offsetX;
+    viewportState.offsetY = nextViewport.offsetY;
+    return true;
+  },
+
+  isAlreadyAtFit(viewportState, fitViewport) {
+    if (!fitViewport) return false;
+    const scaleDiff = Math.abs((viewportState.scale || 1) - fitViewport.scale);
+    const offsetDiffX = Math.abs(viewportState.offsetX - fitViewport.offsetX);
+    const offsetDiffY = Math.abs(viewportState.offsetY - fitViewport.offsetY);
+    return scaleDiff < 0.01 && offsetDiffX < 5 && offsetDiffY < 5;
+  },
+
+  showAlreadyAtFitFeedback() {
+    if (window.LoveBudUI && typeof window.LoveBudUI.showToast === 'function') {
+      window.LoveBudUI.showToast('이미 전체 트리가 보이고 있습니다', 'info', 2000);
+    }
+  },
+
   prepareInitialViewport(options) {
     const { viewportState } = options;
     this.setScale(viewportState, viewportState.scale || 1);
     if (viewportState.initialViewportApplied) return;
-
-    if (viewportState.hasStoredViewportOffset) {
-      viewportState.initialViewportApplied = true;
-      return;
-    }
-
-    const nextOffset = this.getReadableViewportOffset(options);
-    if (!nextOffset) return;
-
-    viewportState.offsetX = nextOffset.offsetX;
-    viewportState.offsetY = nextOffset.offsetY;
     viewportState.initialViewportApplied = true;
+
+    // Always fit the full tree viewport on initial load,
+    // regardless of any previously stored viewport offset.
+    this.applyViewport(viewportState, this.getFitViewport(options), true);
   },
 
   drawBranch(svg, startPos, endPos) {
@@ -132,15 +192,15 @@ window.LoveBudEditorCanvasViewport = {
 
     const world = getWorldPosition(target);
     const metrics = getMetrics();
+    this.setScale(viewportState, 1);
     const scale = this.getScale(viewportState);
-    viewportState.offsetX = Math.round(metrics.width * 0.5 - (world.x * scale));
-    viewportState.offsetY = Math.round(metrics.height * 0.38 - (world.y * scale));
+    viewportState.offsetX = Math.round(metrics.width * this.readableCenter.x - (world.x * scale));
+    viewportState.offsetY = Math.round(metrics.height * this.readableCenter.y - (world.y * scale));
     initCanvas();
     reapplySelection(nodeId);
 
-    // Brief scale pulse on the focused node for visual confirmation
     requestAnimationFrame(() => {
-      const nodeEl = document.querySelector(`.memory-node[data-memory-id="${nodeId}"]`);
+      const nodeEl = document.querySelector(`.memory-node[data-memory-id=\"${nodeId}\"]`);
       if (nodeEl) {
         nodeEl.classList.remove('focus-animate');
         void nodeEl.offsetWidth;
@@ -160,12 +220,31 @@ window.LoveBudEditorCanvasViewport = {
       return;
     }
 
-    const nextOffset = this.getFitViewport(options);
-    if (!nextOffset) return;
+    const fitViewport = this.getFitViewport(options);
 
-    this.setScale(viewportState, nextOffset.scale);
-    viewportState.offsetX = nextOffset.offsetX;
-    viewportState.offsetY = nextOffset.offsetY;
+    // If already at the optimal tree-fit view, show feedback instead of re-applying
+    if (this.isAlreadyAtFit(viewportState, fitViewport)) {
+      this.showAlreadyAtFitFeedback();
+      return;
+    }
+
+    this.applyViewport(viewportState, fitViewport, true);
+    initCanvas();
+  },
+
+  zoomBy(options) {
+    const { factor, viewportState, getMetrics, initCanvas } = options;
+    const oldScale = this.getNearestZoom(viewportState.scale || 1);
+    const nextScale = this.getNextZoom(oldScale, factor >= 1 ? 1 : -1);
+    if (nextScale === oldScale) return;
+
+    const metrics = getMetrics();
+    const centerWorldX = (metrics.width * this.readableCenter.x - viewportState.offsetX) / oldScale;
+    const centerWorldY = (metrics.height * this.readableCenter.y - viewportState.offsetY) / oldScale;
+
+    this.setScale(viewportState, nextScale);
+    viewportState.offsetX = Math.round(metrics.width * this.readableCenter.x - (centerWorldX * nextScale));
+    viewportState.offsetY = Math.round(metrics.height * this.readableCenter.y - (centerWorldY * nextScale));
     initCanvas();
   },
 
@@ -190,9 +269,6 @@ window.LoveBudEditorCanvasViewport = {
       }, { passive: true });
     });
 
-    /**
-     * Helper to add brief flash feedback to a button element.
-     */
     function flashButton(btn) {
       if (!btn) return;
       btn.classList.add('flash-feedback');
@@ -206,10 +282,8 @@ window.LoveBudEditorCanvasViewport = {
         const selectedId = document.querySelector('.memory-node.selected')?.dataset?.memoryId;
         if (selectedId) {
           flashButton(focusBtn);
-          // Add focus flash overlay on canvas
           if (canvasArea) {
             canvasArea.classList.remove('focus-flash');
-            // Trigger reflow to restart animation
             void canvasArea.offsetWidth;
             canvasArea.classList.add('focus-flash');
             setTimeout(() => {
@@ -224,7 +298,6 @@ window.LoveBudEditorCanvasViewport = {
     if (recenterBtn) {
       recenterBtn.addEventListener('click', () => {
         flashButton(recenterBtn);
-        // Add recenter flash overlay on canvas
         if (canvasArea) {
           canvasArea.classList.remove('recenter-flash');
           void canvasArea.offsetWidth;
@@ -237,24 +310,19 @@ window.LoveBudEditorCanvasViewport = {
       });
     }
 
-    /**
-     * Update the zoom indicator badge with current scale percentage.
-     */
     function updateZoomIndicator() {
       const indicator = document.getElementById('zoomIndicator');
       if (!indicator) return;
-      const scale = this.getScale(viewportState);
-      const pct = Math.round(scale * 100);
-      indicator.textContent = pct + '%';
+      const scale = this.getNearestZoom(this.getScale(viewportState));
+      indicator.textContent = Math.round(scale * 100) + '%';
       indicator.classList.remove('is-hidden');
     }
 
     if (zoomInBtn && typeof zoomBy === 'function') {
       zoomInBtn.addEventListener('click', () => {
         flashButton(zoomInBtn);
-        zoomBy(this.zoomStep);
+        zoomBy(1.01);
         updateZoomIndicator.call(this);
-        // Add zoom pulse overlay
         if (canvasArea) {
           canvasArea.classList.remove('zoom-pulse');
           void canvasArea.offsetWidth;
@@ -269,9 +337,8 @@ window.LoveBudEditorCanvasViewport = {
     if (zoomOutBtn && typeof zoomBy === 'function') {
       zoomOutBtn.addEventListener('click', () => {
         flashButton(zoomOutBtn);
-        zoomBy(1 / this.zoomStep);
+        zoomBy(0.99);
         updateZoomIndicator.call(this);
-        // Add zoom pulse overlay
         if (canvasArea) {
           canvasArea.classList.remove('zoom-pulse');
           void canvasArea.offsetWidth;
@@ -283,7 +350,6 @@ window.LoveBudEditorCanvasViewport = {
       });
     }
 
-    // Initialize zoom indicator on first paint
     requestAnimationFrame(() => {
       updateZoomIndicator.call(this);
     });
