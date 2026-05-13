@@ -81,6 +81,19 @@ test('growth affordance falls below or above the node on narrow mobile viewports
   assertAffordanceClearsNode(position, anchor);
 });
 
+test('plus tip expands into original bubble style on hover and focus', () => {
+  const source = fs.readFileSync(path.join(ROOT, 'js/editor/editor-canvas-growth-affordance.js'), 'utf8');
+
+  assert.match(source, /TIP_SIZE\s*=\s*36/, 'default visible affordance should remain a compact plus tip');
+  assert.match(source, /BUBBLE_WIDTH\s*=\s*164/, 'expanded bubble width should be defined separately from the plus tip');
+  assert.match(source, /affordance-tooltip-bubble/, 'hover state should render a bubble-style tooltip element');
+  assert.match(source, /linear-gradient\(180deg, rgba\(255,255,255,0\.98\), rgba\(250,246,244,0\.96\)\)/, 'expanded state should use the original light bubble surface');
+  assert.match(source, /button\.addEventListener\('mouseenter', showBubble\)/, 'mouse hover should expand the bubble');
+  assert.match(source, /button\.addEventListener\('focus', showBubble\)/, 'keyboard focus should expand the bubble');
+  assert.match(source, /button\.addEventListener\('touchstart', showBubble/, 'touch should expose the bubble before activation');
+  assert.match(source, /aria-hidden', 'false'/, 'expanded bubble state should update aria visibility');
+});
+
 test('canvas pan binding excludes add affordance presses', () => {
   const interactionSource = fs.readFileSync(path.join(ROOT, 'js/editor/editor-canvas-interaction.js'), 'utf8');
 
