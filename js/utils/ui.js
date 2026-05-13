@@ -156,7 +156,6 @@
      * 로딩 표시 (향후 확장용)
      */
     function showLoading() {
-        console.log('[LoveBudUI] showLoading called (placeholder)');
         // TODO: 향후 구현
     }
 
@@ -164,7 +163,6 @@
      * 로딩 숨김 (향후 확장용)
      */
     function hideLoading() {
-        console.log('[LoveBudUI] hideLoading called (placeholder)');
         // TODO: 향후 구현
     }
 
@@ -183,6 +181,4 @@
         hideLoading,
         showConfirm
     };
-
-    console.log('[LoveBudUI] UI utilities loaded v20260418-1');
 })();
