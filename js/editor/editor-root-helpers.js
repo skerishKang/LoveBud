@@ -43,7 +43,6 @@
                 const bTime = b.createdAt || b.timestamp || '9999';
                 return new Date(aTime) - new Date(bTime);
             })[0];
-            /* console.log('[editor-root-helpers] Multiple parentId=null nodes found, using oldest as root:', oldest.id); — removed: raw id */
             return oldest;
         }
         
@@ -112,5 +111,4 @@
         module.exports = LoveBudEditorUtils;
     }
 
-    /* console.log('[editor-root-helpers] Root memory utilities loaded v1.0.0'); — removed: version banner */
 })();

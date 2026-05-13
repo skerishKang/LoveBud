@@ -59,7 +59,6 @@
                     tree = await apiClient.getTree(urlTreeId);
                     if (tree) {
                         treeLoadStatus = 'loaded';
-                        /* console.log('[editor] Tree from URL loaded:', tree.id); — removed: raw id */
                     }
                 } else {
                     treeLoadStatus = 'api_unavailable';
@@ -93,9 +92,7 @@
                     if (apiTree) {
                         tree = apiTree;
                         treeLoadStatus = 'loaded';
-                        /* console.log('[editor] API tree loaded (getFirstTree)'); — removed: operational log */
                     } else if (apiClient.createTree) {
-                        /* console.log('[editor] No tree found, creating default tree...'); — removed: operational log */
                         const newTree = await apiClient.createTree({
                             title: createDefaultTreeTitle(),
                             visibility: 'public'
@@ -103,7 +100,6 @@
                         tree = newTree;
                         isNewTree = true;
                         treeLoadStatus = 'created';
-                        /* console.log('[editor] Default tree created:', newTree); — removed: raw object */
                     }
                 }
             } catch (e) {
@@ -147,7 +143,6 @@
         const cachedMemories = cache ? cache.get(cacheKey) : null;
 
         if (cachedMemories && Array.isArray(cachedMemories)) {
-            /* console.log('[editor] Using cached memories:', cachedMemories.length); — removed: operational log */
             memories = cachedMemories;
             window.currentTreeMemories = memories.map(normalizeMemory).filter(Boolean);
         }
@@ -157,8 +152,6 @@
                 const apiMemories = await apiClient.getMemoriesByTree(treeId);
                 if (Array.isArray(apiMemories)) {
                     memories = apiMemories;
-                    /* console.log('[editor] API memories loaded:', apiMemories.length); — removed: operational log */
-
                     if (cache) {
                         cache.set(cacheKey, memories, cacheTtlMs);
                     }
@@ -196,7 +189,6 @@
                     const apiMemories = await apiClient.getMemoriesByTree(treeId);
                     if (Array.isArray(apiMemories)) {
                         window.currentTreeMemories = apiMemories.map(normalizeMemory).filter(Boolean);
-                        /* console.log('[editor] Memories refreshed:', window.currentTreeMemories.length); — removed: operational log */
                         onMemoriesUpdated(window.currentTreeMemories);
                     }
                 }
