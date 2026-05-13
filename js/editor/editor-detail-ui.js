@@ -350,10 +350,6 @@ function createEditorDetailUI(deps) {
 
         if (dateEl) {
             dateEl.textContent = isEmptyState ? '' : (data?.timestamp || '');
-            dateEl.style.fontSize = '0.85rem';
-            dateEl.style.color = 'var(--on-surface-variant)';
-            dateEl.style.opacity = '0.8';
-            dateEl.style.fontWeight = '500';
         }
 
         if (tagsContainer) {
