@@ -56,6 +56,4 @@
         resolvePageUrl,
         buildUrl
     };
-
-    console.log('[LoveBudPath] Path utilities loaded v20260418-1');
 })();
