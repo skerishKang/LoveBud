@@ -17,6 +17,11 @@
       .replace(/"/g, '&quot;');
   }
 
+  function closeAllDropdowns() {
+    document.querySelectorAll('.tree-card-dropdown').forEach(function (dd) {
+      dd.classList.remove('show');
+    });
+  }
 
   function hashSeed(value) {
     var source = String(value || 'lovetree');
@@ -133,27 +138,6 @@
     ].join('');
   }
 
-  function buildTreeFlowBridge(tree, i18n) {
-    var momentCount = getTreeMomentCount(tree);
-    var nodeCount = Math.max(1, Math.min(momentCount || 1, 5));
-    var nodes = [];
-    for (var i = 0; i < nodeCount; i++) {
-      var nodeClass = 'tree-card-flow-node';
-      if (i === 0) nodeClass += ' tree-card-flow-node-root';
-      if (i === nodeCount - 1 && nodeCount > 1) nodeClass += ' tree-card-flow-node-end';
-      nodes.push('<span class="' + nodeClass + '"></span>');
-    }
-    var label = momentCount > 0
-      ? (i18n('myTrees.card_flow_label') || '이어진 순간 흐름')
-      : (i18n('myTrees.card_flow_empty_label') || '첫 순간을 기다리는 러브트리 흐름');
-
-    return [
-      '<div class="tree-card-flow-bridge tree-card-flow-count-' + nodeCount + '" role="img" aria-label="' + escapeHtml(label) + '">',
-        '<span class="tree-card-flow-line"></span>',
-        nodes.join(''),
-      '</div>'
-    ].join('');
-  }
 
   function getRepresentativeThumbnail(tree) {
     if (!tree) return '';
@@ -166,6 +150,20 @@
     if (text.length <= maxLength) return text;
     return text.slice(0, maxLength).trim() + '…';
   }
+  function formatDate(dateValue) {
+    if (!dateValue) return '';
+    try {
+      var d = new Date(dateValue);
+      if (isNaN(d.getTime())) return '';
+      var yyyy = d.getFullYear();
+      var mm = String(d.getMonth() + 1).padStart(2, '0');
+      var dd = String(d.getDate()).padStart(2, '0');
+      return yyyy + '-' + mm + '-' + dd;
+    } catch(e) {
+      return '';
+    }
+  }
+
 
   function getRepresentativeTextMeta(tree, i18n) {
     if (!tree) return null;
@@ -215,7 +213,6 @@
             : (textVisual || buildMiniTreeSVG(tree)),
         '</div>',
         (momentCount > 0 ? '<div class="tree-card-thumb-topline"><span class="tree-card-moment-badge" data-count="' + momentCount + '">' + (i18n('myTrees.moment_count_compact') || '순간 {count}개').replace('{count}', String(momentCount)) + '</span></div>' : ''),
-        buildTreeFlowBridge(tree, i18n),
         (momentCount > 0 ? '<div class="tree-card-thumb-caption">' + moodLabel + '</div>' : ''),
       '</div>'
     ].join('');
@@ -337,6 +334,7 @@
     var onNavigate = options && options.onNavigate;
     var onSelect = options && options.onSelect;
     var isSelected = options && options.isSelected;
+    var closeDropdowns = (options && options.closeAllDropdowns) || closeAllDropdowns;
 
     var normalizedTree = typeof normalizeTree === 'function'
       ? normalizeTree(tree)
@@ -363,6 +361,8 @@
     var cardMeta = getTreeCardMeta(normalizedTree, i18n);
     var title = cardMeta.title;
 
+    var menuBtnId = 'menuBtn_' + normalizedTree.id;
+    var dropdownId = 'dropdown_' + normalizedTree.id;
     var selectedClass = typeof isSelected === 'function' && isSelected(normalizedTree.id) ? ' is-selected' : '';
 
     var card = document.createElement('div');
@@ -393,56 +393,23 @@
 
     card.innerHTML = [
       buildTreeThumbVisual(normalizedTree, i18n),
-      '<div class="tree-card-info">',
-        '<div class="tree-card-title-row">',
-          '<div class="tree-card-title">' + escapeHtml(title) + '</div>',
+      '<button class="tree-card-menu" id="' + menuBtnId + '" type="button" aria-label="' + escapeHtml(i18n('myTrees.card_menu') || '트리 메뉴 열기') + '">',
+        '<span class="material-symbols-outlined" aria-hidden="true">more_vert</span>',
+      '</button>',
+      '<div class="tree-card-dropdown" id="' + dropdownId + '">',
+        '<div class="dropdown-item visibility" data-action="visibility">',
+          '<span class="material-symbols-outlined" style="font-size:16px;">' + cardMeta.visibilityIcon + '</span>',
+          cardMeta.visibilityActionLabel,
         '</div>',
-        '<div class="tree-card-subcopy">' + cardMeta.mood + '</div>',
-        cardMeta.privateBadgeHtml,
-      '</div>'
-    ].join('');
-
-
-    return card;
-  }
-
-  // Issue #616: first-batch rendering constants
-  var FIRST_BATCH_SIZE = 4;
-  var BATCH_SIZE = 6;
-  var currentVisibleCount = 0;
-  var totalTreesCount = 0;
-  var allTreesData = [];
-  var isLoadingMore = false;
-  var scrollSentinel = null;
-
-  function renderTrees(trees, options) {
-    var container = document.getElementById('state-loaded');
-    if (!container) return;
-
-    var setState = options && options.setState;
-    var stateEnum = options && options.stateEnum;
-    var buildTreeCardFn = (options && options.buildTreeCard) || buildTreeCard;
-    var updateManageSummaryFn = (options && options.updateManageSummary) || updateManageSummary;
-
-    updateManageSummaryFn(trees, options);
-    // Ensure lastTreesData is always persisted for sort re-use,
-    // regardless of manageSummaryBar existence (Refs #1126)
-    if (options && typeof options.setLastTreesData === 'function') {
-      options.setLastTreesData(trees);
-    }
-
-    if (!trees || trees.length === 0) {
-      if (typeof setState === 'function' && stateEnum && stateEnum.EMPTY) {
-        setState(stateEnum.EMPTY);
-      }
-      return;
-    }
-
-    // Issue #616: Store all trees and initialize first batch
-    allTreesData = trees;
-    totalTreesCount = trees.length;
-    currentVisibleCount = 0;
-
+        '<div class="dropdown-item rename" data-action="rename">',
+          '<span class="material-symbols-outlined" style="font-size:16px;">edit</span>',
+          i18n('rename') || '이름 변경',
+        '</div>',
+        '<div class="dropdown-item delete" data-action="delete">',
+          '<span class="material-symbols-outlined" style="font-size:16px;">delete</span>',
+          i18n('delete') || '삭제',
+        '</div>',
+      '</div>',
     var grid = document.getElementById('trees-grid');
     if (!grid) {
       grid = document.createElement('div');
@@ -467,8 +434,7 @@
   // Issue #616: Render next batch of trees
   function renderNextBatch(grid, buildTreeCardFn, setState, stateEnum) {
     var startIndex = currentVisibleCount;
-    var batchSize = currentVisibleCount === 0 ? FIRST_BATCH_SIZE : BATCH_SIZE;
-    var endIndex = Math.min(startIndex + batchSize, totalTreesCount);
+    var endIndex = Math.min(startIndex + BATCH_SIZE, totalTreesCount);
     
     for (var i = startIndex; i < endIndex; i++) {
       var tree = allTreesData[i];
