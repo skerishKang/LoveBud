@@ -1,19 +1,39 @@
-/*
- * LoveTree - My Trees visibility and card action gate
- *
- * Public/private visibility controls are a future subscription-gated product area.
- * Hide current MVP-facing visibility controls without changing underlying data.
- *
- * My Trees cards should read as appreciation/gallery surfaces during the MVP.
- * Suppress the per-card overflow menu entry point while follow-up hub/footer work
- * defines the approved management surface.
- */
-
 .tree-card-menu,
 .tree-card-dropdown,
 .tree-card-dropdown.show {
   display: none !important;
   pointer-events: none !important;
+}
+
+.tree-card-info {
+  min-height: 136px;
+}
+
+.tree-card-info::after {
+  content: "트리 열기";
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-end;
+  min-width: 96px;
+  min-height: 34px;
+  margin-top: auto;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: var(--primary, #904951);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  box-shadow: 0 10px 22px rgba(144, 73, 81, 0.18);
+  pointer-events: none;
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.tree-card:hover .tree-card-info::after,
+.tree-card:focus-visible .tree-card-info::after {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 26px rgba(144, 73, 81, 0.24);
 }
 
 .tree-card-dropdown .dropdown-item.visibility,
