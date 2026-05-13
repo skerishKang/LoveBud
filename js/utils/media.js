@@ -188,6 +188,4 @@
         validateSourceUrl,
         detectSourceType
     };
-
-    console.log('[LoveBudMedia] Media utilities loaded v20260424-3 (pure)');
 })();
