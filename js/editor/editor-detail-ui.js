@@ -340,7 +340,7 @@ function createEditorDetailUI(deps) {
                 ? formatI18nText('editor_current_moment_empty_hint', '첫 순간이 심어지면 여기서 감정 메모와 다음 행동이 자연스럽게 이어집니다.')
                 : isRootSelected
                     ? formatI18nText('editor_current_moment_root_hint', '이 순간은 트리의 시작점이에요. 다음 장면을 이어 심으며 감정의 흐름을 키워보세요.')
-                    : formatI18nText('editor_current_moment_selected_hint', '지금 선택한 순간을 중심으로 메모를 읽고, 수정하거나 다음 장면을 이어갈 수 있어요.');
+                    : '';
         }
 
         if (imgEl) {
@@ -350,10 +350,6 @@ function createEditorDetailUI(deps) {
 
         if (dateEl) {
             dateEl.textContent = isEmptyState ? '' : (data?.timestamp || '');
-            dateEl.style.fontSize = '0.85rem';
-            dateEl.style.color = 'var(--on-surface-variant)';
-            dateEl.style.opacity = '0.8';
-            dateEl.style.fontWeight = '500';
         }
 
         if (tagsContainer) {
@@ -406,8 +402,6 @@ function createEditorDetailUI(deps) {
                 } else if (data.parentId) {
                     memoHint.style.paddingTop = '12px';
                     memoHint.style.borderTop = '1px solid var(--outline-variant)';
-                    memoHint.style.color = 'var(--on-surface-variant)';
-                    memoHint.innerHTML = `<span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;margin-right:4px;">account_tree</span> ${formatI18nText('path_moment_hint', '이 순간은 감정 경로 안에 연결되어 있습니다')}`;
                 }
 
                 if (memoHint.innerHTML) {
