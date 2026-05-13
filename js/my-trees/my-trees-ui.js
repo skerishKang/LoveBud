@@ -152,24 +152,56 @@
     ].join('');
   }
 
-  function buildTreeFlowBridge(tree, i18n) {
-    var momentCount = getTreeMomentCount(tree);
-    var nodeCount = Math.max(1, Math.min(momentCount || 1, 5));
-    var nodes = [];
-    for (var i = 0; i < nodeCount; i++) {
-      var nodeClass = 'tree-card-flow-node';
-      if (i === 0) nodeClass += ' tree-card-flow-node-root';
-      if (i === nodeCount - 1 && nodeCount > 1) nodeClass += ' tree-card-flow-node-end';
-      nodes.push('<span class="' + nodeClass + '"></span>');
+
+  function getRepresentativeThumbnail(tree) {
+    if (!tree) return '';
+    return tree.representativeThumbnail || tree.representative_thumbnail || tree.thumbnail || '';
+  }
+
+  function clipText(value, maxLength) {
+    var text = String(value || '').trim();
+    if (!text) return '';
+    if (text.length <= maxLength) return text;
+    return text.slice(0, maxLength).trim() + '…';
+  }
+  function formatDate(dateValue) {
+    if (!dateValue) return '';
+    try {
+      var d = new Date(dateValue);
+      if (isNaN(d.getTime())) return '';
+      var yyyy = d.getFullYear();
+      var mm = String(d.getMonth() + 1).padStart(2, '0');
+      var dd = String(d.getDate()).padStart(2, '0');
+      return yyyy + '-' + mm + '-' + dd;
+    } catch(e) {
+      return '';
     }
-    var label = momentCount > 0
-      ? (i18n('myTrees.card_flow_label') || '이어진 순간 흐름')
-      : (i18n('myTrees.card_flow_empty_label') || '첫 순간을 기다리는 러브트리 흐름');
+  }
+
+
+  function getRepresentativeTextMeta(tree, i18n) {
+    if (!tree) return null;
+
+    var repTitle = clipText(tree.representativeTitle || tree.representative_title || '', 40);
+    var repMemo = clipText(tree.representativeMemo || tree.representative_memo || '', 82);
+
+    if (!repTitle && !repMemo) return null;
+
+    return {
+      title: repTitle || (i18n('editor_default_first_title') || '첫 순간'),
+      memo: repMemo || (i18n('myTrees.card_text_fallback') || '처음 남긴 마음이 이 트리의 시작이 되었어요.')
+    };
+  }
+
+  function buildRepresentativeTextVisual(tree, palette, i18n) {
+    var textMeta = getRepresentativeTextMeta(tree, i18n);
+    if (!textMeta) return '';
 
     return [
-      '<div class="tree-card-flow-bridge tree-card-flow-count-' + nodeCount + '" role="img" aria-label="' + escapeHtml(label) + '">',
-        '<span class="tree-card-flow-line"></span>',
-        nodes.join(''),
+      '<div class="tree-card-text-visual" style="border-color:' + palette.leafSoft + ';background:rgba(255,255,255,0.84);">',
+        '<div class="tree-card-text-kicker" style="color:' + palette.accent + ';">' + escapeHtml(i18n('myTrees.card_first_moment') || '첫 순간 기록') + '</div>',
+        '<div class="tree-card-text-title">' + escapeHtml(textMeta.title) + '</div>',
+        '<div class="tree-card-text-memo">' + escapeHtml(textMeta.memo) + '</div>',
       '</div>'
     ].join('');
   }
@@ -234,7 +266,6 @@
             : (textVisual || buildMiniTreeSVG(tree)),
         '</div>',
         (momentCount > 0 ? '<div class="tree-card-thumb-topline"><span class="tree-card-moment-badge" data-count="' + momentCount + '">' + (i18n('myTrees.moment_count_compact') || '순간 {count}개').replace('{count}', String(momentCount)) + '</span></div>' : ''),
-        buildTreeFlowBridge(tree, i18n),
         (momentCount > 0 ? '<div class="tree-card-thumb-caption">' + moodLabel + '</div>' : ''),
       '</div>'
     ].join('');
@@ -405,16 +436,10 @@
     };
 
     card.addEventListener('click', function (e) {
-      if (e.target.closest('.tree-card-menu') || e.target.closest('.tree-card-dropdown')) {
-        return;
-      }
       openTree();
     });
 
     card.addEventListener('keydown', function (e) {
-      if (e.target.closest('.tree-card-menu') || e.target.closest('.tree-card-dropdown')) {
-        return;
-      }
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
         openTree();
@@ -671,7 +696,6 @@
 
   var api = {
     escapeHtml: escapeHtml,
-    closeAllDropdowns: closeAllDropdowns,
     buildMiniTreeSVG: buildMiniTreeSVG,
     getTreeMomentCount: getTreeMomentCount,
     getTreeViewCount: getTreeViewCount,

@@ -16,12 +16,6 @@
   // Private state (mirrors/main-tracks selection, synced with my-trees-state)
   var _selectedTreeId = null;
 
-  function closeAllDropdowns() {
-    document.querySelectorAll('.tree-card-dropdown').forEach(function (dd) {
-      dd.classList.remove('show');
-    });
-  }
-
   function getSelectedTreeId(stateModule) {
     if (stateModule && typeof stateModule.getSelectedTreeId === 'function') {
       return stateModule.getSelectedTreeId();
@@ -88,6 +82,11 @@
           if (stateModule && typeof stateModule.setLastTreesData === 'function') {
             stateModule.setLastTreesData(data);
           }
+          // Also update the original caller's callback so my-trees.js closure
+          // stays in sync (Refs #1126)
+          if (options && typeof options.setLastTreesData === 'function') {
+            options.setLastTreesData(data);
+          }
         }
       });
       return;
@@ -104,7 +103,6 @@
   }
 
   var api = {
-    closeAllDropdowns: closeAllDropdowns,
     getSelectedTreeId: getSelectedTreeId,
     setSelectedTreeId: setSelectedTreeId,
     getRenderableTrees: getRenderableTrees,

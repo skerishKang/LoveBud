@@ -1,9 +1,3 @@
-.tree-card-menu,
-.tree-card-dropdown,
-.tree-card-dropdown.show {
-  display: none !important;
-  pointer-events: none !important;
-}
 
 .tree-card-info {
   min-height: 96px;
@@ -93,7 +87,6 @@
   transform: translateY(-1px);
 }
 
-.tree-card-dropdown .dropdown-item.visibility,
 .tree-card-visibility,
 #manageVisibilityBtn,
 #publicTreesCount,
@@ -105,3 +98,4 @@
 [data-i18n="visibility_make_private"] {
   display: none !important;
 }
+#manageSelectedTreeMeta { display: none !important; }
