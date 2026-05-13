@@ -23,15 +23,13 @@ function createEditorCanvas(deps) {
     const canvasLayout = window.LoveBudEditorCanvasLayout || {};
     const canvasNode = window.LoveBudEditorCanvasNode || {};
     const canvasInteraction = window.LoveBudEditorCanvasInteraction || {};
-    const canvasInteractionHelpers = window.LoveBudEditorCanvasInteractionHelpers || {};
     const canvasViewport = window.LoveBudEditorCanvasViewport || {};
-    const canvasLayoutHelpers = window.LoveBudEditorCanvasLayoutHelpers || {};
     const canvasEdges = window.createEditorCanvasEdges({ svg, canvasViewport });
 
     let savedFreePositions = null;
     let storedFreePositions = null;
 
-function loadStoredLayout() {
+    function loadStoredLayout() {
         if (typeof canvasLayout.createLayoutStore === 'function') {
             const store = canvasLayout.createLayoutStore(treeId);
             const initialState = store.createInitialViewportState();
@@ -109,22 +107,6 @@ function loadStoredLayout() {
         return window.EditorCanvasGeometry.getMetrics(canvas);
     }
 
-    function getRootBasePosition() {
-        return window.EditorCanvasGeometry.getRootBasePosition(getMetrics());
-    }
-
-    function getRadiusL1() {
-        return window.EditorCanvasGeometry.getRadiusL1(getMetrics());
-    }
-
-    function getRadiusL2() {
-        return window.EditorCanvasGeometry.getRadiusL2(getMetrics());
-    }
-
-    function distributeAngles(count, baseAngle = -10) {
-        return window.EditorCanvasGeometry.distributeAngles(count, baseAngle);
-    }
-
     function getWorldPosition(mem) {
         if (viewportState.layoutMode === 'structured') {
             return window.EditorCanvasGeometry.getStructuredWorldPosition(
@@ -161,40 +143,24 @@ function loadStoredLayout() {
         } catch (e) {}
     }
 
-    function centerViewportOnSelection() {
-        const selectedId = document.querySelector('.memory-node.selected')?.dataset?.memoryId;
-        const treeMemories = getTreeMemories();
-
-        let targetNode = null;
-        if (selectedId) {
-            targetNode = treeMemories.find(function (m) { return m.id === selectedId; });
+    function fitViewportToTree() {
+        if (typeof canvasViewport.getFitViewport !== 'function') return;
+        const nextViewport = canvasViewport.getFitViewport({
+            getTreeMemories,
+            getCanonicalRootId,
+            isRootMemory,
+            getWorldPosition,
+            getMetrics,
+            viewportState
+        });
+        if (!nextViewport) return;
+        if (typeof canvasViewport.applyViewport === 'function') {
+            canvasViewport.applyViewport(viewportState, nextViewport, true);
+            return;
         }
-        if (!targetNode && treeMemories.length > 0) {
-            var canonicalRootId = getCanonicalRootId();
-            targetNode = treeMemories.find(function (m) { return !isRootMemory(m, canonicalRootId); }) || treeMemories[0];
-        }
-
-        if (targetNode) {
-            var world = getWorldPosition(targetNode);
-            var metrics = getMetrics();
-            var nextScale = 1;
-            if (typeof canvasViewport.setScale === 'function') {
-                canvasViewport.setScale(viewportState, nextScale);
-                nextScale = canvasViewport.getScale ? canvasViewport.getScale(viewportState) : viewportState.scale;
-            } else {
-                viewportState.scale = nextScale;
-            }
-            viewportState.offsetX = Math.round(metrics.width * 0.5 - (world.x * nextScale));
-            viewportState.offsetY = Math.round(metrics.height * 0.38 - (world.y * nextScale));
-        } else {
-            if (typeof canvasViewport.setScale === 'function') {
-                canvasViewport.setScale(viewportState, 1);
-            } else {
-                viewportState.scale = 1;
-            }
-            viewportState.offsetX = 0;
-            viewportState.offsetY = 0;
-        }
+        viewportState.scale = nextViewport.scale || viewportState.scale || 1;
+        viewportState.offsetX = nextViewport.offsetX;
+        viewportState.offsetY = nextViewport.offsetY;
     }
 
     function switchToFreeMode() {
@@ -215,7 +181,7 @@ function loadStoredLayout() {
             }
         }
 
-        centerViewportOnSelection();
+        fitViewportToTree();
 
         document.body.classList.remove('layout-structured');
         document.body.classList.add('layout-free');
@@ -230,7 +196,7 @@ function loadStoredLayout() {
         viewportState.initialViewportApplied = false;
         persistLayoutMode('structured');
 
-        centerViewportOnSelection();
+        fitViewportToTree();
 
         document.body.classList.remove('layout-free');
         document.body.classList.add('layout-structured');
@@ -287,7 +253,7 @@ function loadStoredLayout() {
         }
     });
 
-function isNodeWithinSafeViewport(pos) {
+    function isNodeWithinSafeViewport(pos) {
         const metrics = getMetrics();
         const padding = 96;
         return pos.x >= padding && pos.x <= metrics.width - padding && pos.y >= padding && pos.y <= metrics.height - padding;
@@ -467,26 +433,6 @@ function isNodeWithinSafeViewport(pos) {
         growthAffordance.clearGrowthAffordance();
     }
 
-    function openAddMomentFromCanvas() {
-        growthAffordance.openAddMomentFromCanvas();
-    }
-
-    function getGrowthAffordancePosition(anchorPos) {
-        return growthAffordance.getGrowthAffordancePosition(anchorPos);
-    }
-
-    function drawGrowthAffordanceBranch(startPos, endPos, side) {
-        growthAffordance.drawGrowthAffordanceBranch(startPos, endPos, side);
-    }
-
-    function createGrowthAffordanceElement(anchorMem, labelText, helperText) {
-        growthAffordance.createGrowthAffordanceElement(anchorMem, labelText, helperText);
-    }
-
-    function renderGrowthAffordance(anchorMem, options) {
-        growthAffordance.renderGrowthAffordance(anchorMem, options);
-    }
-
     const initCanvas = () => {
         const canonicalRootId = getCanonicalRootId();
         const treeMemories = getTreeMemories();
@@ -535,7 +481,7 @@ function isNodeWithinSafeViewport(pos) {
             if (selectedMem) {
                 updateDetailPanel(selectedMem);
                 reapplySelection(selectedMem.id);
-                renderGrowthAffordance(selectedMem, {
+                growthAffordance.renderGrowthAffordance(selectedMem, {
                     isFirstStep: drawableMemories.length <= 1
                 });
             }
@@ -796,7 +742,7 @@ function isNodeWithinSafeViewport(pos) {
         }
 
         const oldScale = viewportState.scale || 1;
-        const newScale = factor >= 1 ? Math.min(1.5, oldScale + 0.25) : Math.max(0.5, oldScale - 0.25);
+        const newScale = factor >= 1 ? Math.min(1.5, oldScale + 0.25) : Math.max(0.2, oldScale - 0.25);
         if (newScale === oldScale) return;
         viewportState.scale = newScale;
         initCanvas();
