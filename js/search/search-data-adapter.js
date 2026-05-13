@@ -168,5 +168,4 @@
         _getYouTubeIdFromThumbnail: getYouTubeIdFromThumbnail
     };
 
-    console.log('[LoveBudSearchAdapter] Search data adapter loaded v20260512-1058-2');
 })();

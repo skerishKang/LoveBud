@@ -420,5 +420,5 @@
         }
     };
 
-    console.log('[LoveBudSearchCardRenderer] Search card renderer loaded v20260513-1135-1');
+
  })();

@@ -214,5 +214,4 @@
         renderPreviewIframe: renderPreviewIframe
     };
 
-    console.log('[LoveBudSearchPreviewMediaHelper] Search preview media helper loaded v20260512-1053');
 })();
