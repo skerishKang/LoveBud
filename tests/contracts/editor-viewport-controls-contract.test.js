@@ -28,17 +28,32 @@ test('editor page mounts viewport control buttons with accessible labels', () =>
   assert.match(html, /aria-label=["']선택한 순간 보기["']/, 'focus selected moment must have an accessible label');
 });
 
-test('editor canvas viewport module owns zoom, fit, and focus math', () => {
+test('editor canvas viewport module owns fit-safe zoom and focus math', () => {
   const source = read('js/editor/editor-canvas-viewport.js');
 
-  assert.match(source, /minScale:\s*0\.65/, 'viewport must bound zoom-out scale');
-  assert.match(source, /maxScale:\s*1\.55/, 'viewport must bound zoom-in scale');
-  assert.match(source, /zoomStep:\s*1\.18/, 'viewport must define a stable zoom step');
+  assert.match(source, /minScale:\s*0\.2/, 'viewport must allow small zoom for large whole-tree fit');
+  assert.match(source, /maxScale:\s*1\.5/, 'viewport must bound zoom-in scale');
+  assert.match(source, /zoomLevels:\s*\[\s*0\.2,\s*0\.35,\s*0\.5,\s*0\.75,\s*1,\s*1\.25,\s*1\.5\s*\]/, 'viewport must define preset zoom levels including small whole-tree fit levels');
+  assert.match(source, /getFitZoom\s*\(/, 'viewport must expose a fit-safe zoom selector');
+  assert.match(source, /candidate <= clamped && candidate > best/, 'fit zoom must not round upward and risk clipping');
   assert.match(source, /projectWorldPosition\s*\(/, 'viewport must project world positions through scale and offset');
   assert.match(source, /getFitViewport\s*\(/, 'viewport must compute fit-whole-tree state');
-  assert.match(source, /focusNodeById\s*\(/, 'viewport must preserve selected/current moment focus');
-  assert.match(source, /zoomBy\(this\.zoomStep\)/, 'zoom in control must delegate to zoomBy');
-  assert.match(source, /zoomBy\(1 \/ this\.zoomStep\)/, 'zoom out control must delegate to zoomBy');
+  assert.match(source, /prepareInitialViewport\s*\(/, 'viewport must own initial viewport preparation');
+  assert.match(source, /this\.applyViewport\(viewportState, this\.getFitViewport\(options\), true\)/, 'initial no-stored viewport must use whole-tree fit');
+  assert.match(source, /this\.applyViewport\(viewportState, this\.getFitViewport\(options\), true\)/, 'offscreen fallback must use whole-tree fit');
+  assert.match(source, /recenterViewport\s*\(/, 'viewport must own recenter behavior');
+  assert.match(source, /focusNodeById\s*\(/, 'viewport must preserve explicit selected/current moment focus');
+  assert.match(source, /getNextZoom/, 'zoom in must delegate to getNextZoom');
+  assert.match(source, /this\.getNextZoom\(.*,\s*factor\s*>=\s*1\s*\?\s*1\s*:\s*-1\)/, 'zoom controls must use directional getNextZoom calls');
+});
+
+test('editor layout switching fits the tree instead of centering selected node by default', () => {
+  const canvas = read('js/editor/editor-canvas.js');
+
+  assert.match(canvas, /function\s+fitViewportToTree\s*\(/, 'canvas must expose a layout-switch tree-fit helper');
+  assert.match(canvas, /fitViewportToTree\(\);[\s\S]*document\.body\.classList\.remove\('layout-structured'\)/, 'switching to free mode should fit the tree before rendering');
+  assert.match(canvas, /fitViewportToTree\(\);[\s\S]*document\.body\.classList\.remove\('layout-free'\)/, 'switching to structured mode should fit the tree before rendering');
+  assert.doesNotMatch(canvas, /function\s+centerViewportOnSelection\s*\(/, 'layout switching must not use selected-node centering by default');
 });
 
 test('editor canvas persists scale and keeps node dragging scale-aware', () => {
