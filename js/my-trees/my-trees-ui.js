@@ -1,6 +1,6 @@
 /**
  * LoveBud - My Trees UI Helpers
- * v20260514-1134-1
+ * v20260421-4
  *
  * Tree card rendering and summary UI utilities
  */
@@ -425,24 +425,26 @@
     card.style.cursor = 'pointer';
     card.setAttribute('role', 'button');
     card.setAttribute('tabindex', '0');
+        card.dataset.treeId = String(normalizedTree.id || '');
     card.dataset.visibility = normalizedTree.visibility;
 
-    var openTree = function () {
-      if (typeof onNavigate === 'function') {
-        onNavigate(normalizedTree);
-      } else {
-        window.location.href = 'editor?treeId=' + encodeURIComponent(normalizedTree.id);
+    var handleCardSelect = function () {
+      if (typeof onSelect === 'function') {
+        onSelect(normalizedTree);
       }
     };
 
     card.addEventListener('click', function (e) {
-      openTree();
+      if (e.target.closest('.tree-card-menu') || e.target.closest('.tree-card-dropdown')) {
+        return;
+      }
+      handleCardSelect();
     });
 
     card.addEventListener('keydown', function (e) {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
-        openTree();
+        handleCardSelect();
       }
     });
 
@@ -505,7 +507,7 @@
           e.preventDefault();
           e.stopPropagation();
           if (typeof onSelect === 'function') {
-            onSelect(normalizedTree.id);
+            onSelect(normalizedTree);
           }
           closeDropdowns();
           dropdown.classList.toggle('show');
@@ -517,7 +519,7 @@
             e.stopPropagation();
 
             if (typeof onSelect === 'function') {
-              onSelect(normalizedTree.id);
+              onSelect(normalizedTree);
             }
 
             var action = this.getAttribute('data-action');
@@ -549,6 +551,7 @@
   var scrollSentinel = null;
 
   function renderTrees(trees, options) {
+    var hubOnSelect = options && options.onSelect;
     var container = document.getElementById('state-loaded');
     if (!container) return;
 
@@ -593,13 +596,13 @@
   }
 
   // Issue #616: Render next batch of trees
-  function renderNextBatch(grid, buildTreeCardFn, setState, stateEnum) {
+  function renderNextBatch(grid, buildTreeCardFn, setState, stateEnum, extraOptions) {
     var startIndex = currentVisibleCount;
     var endIndex = Math.min(startIndex + BATCH_SIZE, totalTreesCount);
     
     for (var i = startIndex; i < endIndex; i++) {
       var tree = allTreesData[i];
-      var card = buildTreeCardFn(tree, {});
+      var card = buildTreeCardFn(tree, { onSelect: onSelect, onNavigate: onNavigate });
       if (!(card instanceof Node)) {
         console.warn('[my-trees-ui] buildTreeCard returned a non-Node value:', card, tree);
         continue;
@@ -628,7 +631,7 @@
   }
 
   // Issue #616: Set up scroll continuation sentinel
-  function setupScrollContinuation(grid, buildTreeCardFn, setState, stateEnum) {
+  function setupScrollContinuation(grid, buildTreeCardFn, setState, stateEnum, extraOptions) {
     // Remove existing sentinel
     if (scrollSentinel) {
       scrollSentinel.remove();
@@ -651,18 +654,19 @@
       var observer = new IntersectionObserver(function(entries) {
         entries.forEach(function(entry) {
           if (entry.isIntersecting && !isLoadingMore && currentVisibleCount < totalTreesCount) {
-            loadMoreBatch(grid, buildTreeCardFn, setState, stateEnum);
+            loadMoreBatch(grid, buildTreeCardFn, setState, stateEnum, { onSelect: hubOnSelect, onNavigate: onNavigate });
           }
         });
       }, { rootMargin: '100px' });
       
+      scrollSentinel._extraOptions = extraOptions;
       observer.observe(scrollSentinel);
       scrollSentinel._observer = observer;
     }
   }
 
   // Issue #616: Load more batch on scroll
-  function loadMoreBatch(grid, buildTreeCardFn, setState, stateEnum) {
+  function loadMoreBatch(grid, buildTreeCardFn, setState, stateEnum, extraOptions) {
     if (isLoadingMore || currentVisibleCount >= totalTreesCount) {
       return;
     }
@@ -674,10 +678,10 @@
       scrollSentinel._observer.disconnect();
     }
     
-    renderNextBatch(grid, buildTreeCardFn, setState, stateEnum);
+    renderNextBatch(grid, buildTreeCardFn, setState, stateEnum, extraOptions);
     
     // Set up new sentinel
-    setupScrollContinuation(grid, buildTreeCardFn, setState, stateEnum);
+    setupScrollContinuation(grid, buildTreeCardFn, setState, stateEnum, extraOptions);
     
     isLoadingMore = false;
   }

@@ -37,7 +37,7 @@
         </div>
       </div>
 
-      <section class="dashboard-main reveal-fade">
+      <section class="dashboard-main reveal-fade my-trees-dashboard-container">
         <div id="treesContainer">
           <div id="state-loading" class="trees-loading">
             <div class="trees-loading-head">
@@ -91,6 +91,61 @@
           <div id="state-loaded"></div>
         </div>
       </section>
+      <!-- My Trees Appreciation Hub -->
+      <aside class="my-trees-hub-panel is-empty" id="myTreesHubPanel">
+        <div class="my-trees-hub-header">
+          <div class="my-trees-hub-title-group">
+            <h3>감상 허브</h3>
+            <span class="my-trees-hub-badge" id="myTreesHubBadge">내 트리</span>
+          </div>
+        </div>
+
+        <!-- Placeholder (no tree selected) -->
+        <div class="my-trees-hub-placeholder" id="myTreesHubPlaceholder">
+          <p>내 러브트리를 고르면</p>
+          <p>이어진 순간의 흐름이 여기에 열려요.</p>
+        </div>
+
+        <!-- Hub content (tree selected) -->
+        <div class="my-trees-hub-content" id="myTreesHubContent" hidden>
+          <div class="my-trees-hub-tree-title" id="myTreesHubTreeTitle"></div>
+          <div class="my-trees-hub-meta-badge" id="myTreesHubMetaBadge"></div>
+
+          <!-- Representative moment block -->
+          <div class="my-trees-hub-rep" id="myTreesHubRep" hidden>
+            <div class="my-trees-hub-rep-label">
+              <span class="material-symbols-outlined">favorite</span>
+              <span>첫 순간 기록</span>
+            </div>
+            <div class="my-trees-hub-rep-title" id="myTreesHubRepTitle"></div>
+            <div class="my-trees-hub-rep-memo" id="myTreesHubRepMemo"></div>
+          </div>
+
+          <!-- Flow preview -->
+          <div class="my-trees-hub-flow" id="myTreesHubFlow" hidden>
+            <div class="my-trees-hub-flow-label">
+              <span class="material-symbols-outlined">route</span>
+              <span>이어진 순간 흐름</span>
+            </div>
+            <div class="my-trees-hub-flow-list" id="myTreesHubFlowList"></div>
+            <div class="my-trees-hub-flow-controls" id="myTreesHubFlowControls"></div>
+          </div>
+
+          <!-- No moments state -->
+          <div class="my-trees-hub-no-moments" id="myTreesHubNoMoments" hidden></div>
+
+          <!-- Summary line -->
+          <div class="my-trees-hub-summary" id="myTreesHubSummary"></div>
+        </div>
+
+        <!-- Actions -->
+        <div class="my-trees-hub-actions" id="myTreesHubActions" hidden>
+          <a href="#" class="my-trees-hub-open-btn" id="myTreesHubOpenBtn">
+            <span class="material-symbols-outlined">account_tree</span>
+            트리 열기
+          </a>
+        </div>
+      </aside>
     </main>
   </div>
   <div class="create-tree-modal-backdrop" id="createTreeModalBackdrop" aria-hidden="true">
@@ -147,6 +202,7 @@
   <script src="../js/my-trees/my-trees-state.js?v=20260421-4"></script>
   <script src="../js/my-trees/my-trees-page.js?v=20260420-1"></script>
     <script src="../js/my-trees/my-trees-render.js?v=20260504-1"></script>
+    <script src="../js/my-trees/my-trees-preview-hub.js?v=20260514-1"></script>
     <script src="../js/my-trees.js?v=20260421-6"></script>
   <script src="../js/my-trees/my-trees-i18n-refresh.js?v=20260509-910-1"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
