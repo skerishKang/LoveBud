@@ -60,5 +60,4 @@
         isSuspiciousYouTubeThumbnailImage: isSuspiciousYouTubeThumbnailImage
     };
 
-    console.log('[LoveBudSearchSharedUtils] Search shared renderer utilities loaded v20260428-1');
 })();

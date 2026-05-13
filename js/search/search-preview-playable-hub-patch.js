@@ -234,5 +234,4 @@
 
     patchRenderer();
     document.addEventListener('DOMContentLoaded', patchRenderer);
-    console.log('[LoveBudSearchPreviewPlayableHubPatch] loaded v20260512-1058-3');
 })();

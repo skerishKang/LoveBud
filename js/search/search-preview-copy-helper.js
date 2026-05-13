@@ -76,5 +76,4 @@
         formatShortDate: formatShortDate
     };
 
-    console.log('[LoveBudSearchPreviewCopyHelper] Search preview copy helper loaded v20260501-1');
 })();

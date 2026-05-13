@@ -288,5 +288,4 @@
         getPreviewSummaryCopy: getPreviewSummaryCopy
     };
 
-    console.log('[LoveBudSearchPreviewBuilders] Preview builder helpers loaded v20260506-1');
 })();
