@@ -4,7 +4,7 @@ window.LoveBudEditorCanvasViewport = {
   zoomLevels: [0.5, 0.75, 1, 1.25, 1.5],
   readableCenter: {
     x: 0.5,
-    y: 0.38
+    y: 0.42
   },
 
   getNearestZoom(scale) {
@@ -160,8 +160,8 @@ window.LoveBudEditorCanvasViewport = {
     const metrics = getMetrics();
     this.setScale(viewportState, 1);
     const scale = this.getScale(viewportState);
-    viewportState.offsetX = Math.round(metrics.width * 0.5 - (world.x * scale));
-    viewportState.offsetY = Math.round(metrics.height * 0.38 - (world.y * scale));
+    viewportState.offsetX = Math.round(metrics.width * this.readableCenter.x - (world.x * scale));
+    viewportState.offsetY = Math.round(metrics.height * this.readableCenter.y - (world.y * scale));
     initCanvas();
     reapplySelection(nodeId);
 
@@ -202,12 +202,12 @@ window.LoveBudEditorCanvasViewport = {
     if (nextScale === oldScale) return;
 
     const metrics = getMetrics();
-    const centerWorldX = (metrics.width * 0.5 - viewportState.offsetX) / oldScale;
-    const centerWorldY = (metrics.height * 0.38 - viewportState.offsetY) / oldScale;
+    const centerWorldX = (metrics.width * this.readableCenter.x - viewportState.offsetX) / oldScale;
+    const centerWorldY = (metrics.height * this.readableCenter.y - viewportState.offsetY) / oldScale;
 
     this.setScale(viewportState, nextScale);
-    viewportState.offsetX = Math.round(metrics.width * 0.5 - (centerWorldX * nextScale));
-    viewportState.offsetY = Math.round(metrics.height * 0.38 - (centerWorldY * nextScale));
+    viewportState.offsetX = Math.round(metrics.width * this.readableCenter.x - (centerWorldX * nextScale));
+    viewportState.offsetY = Math.round(metrics.height * this.readableCenter.y - (centerWorldY * nextScale));
     initCanvas();
   },
 
