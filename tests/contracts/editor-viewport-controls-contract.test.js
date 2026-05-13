@@ -31,14 +31,14 @@ test('editor page mounts viewport control buttons with accessible labels', () =>
 test('editor canvas viewport module owns zoom, fit, and focus math', () => {
   const source = read('js/editor/editor-canvas-viewport.js');
 
-  assert.match(source, /minScale:\s*0\.65/, 'viewport must bound zoom-out scale');
-  assert.match(source, /maxScale:\s*1\.55/, 'viewport must bound zoom-in scale');
-  assert.match(source, /zoomStep:\s*1\.18/, 'viewport must define a stable zoom step');
+  assert.match(source, /minScale:\s*0\.5/, 'viewport must bound zoom-out scale');
+  assert.match(source, /maxScale:\s*1\.5/, 'viewport must bound zoom-in scale');
+  assert.match(source, /zoomLevels:\s*\[\s*0\.5,\s*0\.75,\s*1,\s*1\.25,\s*1\.5\s*\]/, 'viewport must define preset zoom levels');
   assert.match(source, /projectWorldPosition\s*\(/, 'viewport must project world positions through scale and offset');
   assert.match(source, /getFitViewport\s*\(/, 'viewport must compute fit-whole-tree state');
   assert.match(source, /focusNodeById\s*\(/, 'viewport must preserve selected/current moment focus');
-  assert.match(source, /zoomBy\(this\.zoomStep\)/, 'zoom in control must delegate to zoomBy');
-  assert.match(source, /zoomBy\(1 \/ this\.zoomStep\)/, 'zoom out control must delegate to zoomBy');
+  assert.match(source, /getNextZoom/, 'zoom in must delegate to getNextZoom');
+  assert.match(source, /this\.getNextZoom\(.*,\s*factor\s*>=\s*1\s*\?\s*1\s*:\s*-1\)/, 'zoom controls must use directional getNextZoom calls');
 });
 
 test('editor canvas persists scale and keeps node dragging scale-aware', () => {
