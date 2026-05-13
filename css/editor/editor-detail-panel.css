@@ -314,6 +314,38 @@
     color: var(--on-surface);
 }
 
+
+/* Compact metadata row layout (#1129) */
+.detail-info-group.is-compact {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+}
+
+.detail-info-group.is-compact label {
+    margin-bottom: 0;
+    flex-shrink: 0;
+    min-width: 60px;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+}
+
+.detail-info-group.is-compact p,
+.detail-info-group.is-compact .tags-container {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.detail-info-group.is-compact .tags-container {
+    gap: 4px;
+}
+
+.detail-info-group.is-compact .tags-container .tag {
+    padding: 2px 10px;
+    font-size: 11px;
+}
 .tags-container {
     display: flex;
     flex-wrap: wrap;
