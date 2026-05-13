@@ -81,6 +81,7 @@
         onDelete: onDelete,
         onToggleVisibility: onToggleVisibility,
         onNavigate: onNavigate,
+        onSelect: options && options.onSelect,
         buildTreeCard: buildTreeCardFn,
         updateManageSummary: updateManageSummaryFn,
         getSelectedTreeId: function () { return getSelectedTreeId(stateModule); },
