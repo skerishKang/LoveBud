@@ -17,7 +17,7 @@ function createEditorCanvasGrowthAffordance(deps) {
     const TIP_HALF = TIP_SIZE / 2;
     const GAP_FROM_NODE = 10;
     const CONNECTOR_PEAK_GAP = 6;
-    const BUBBLE_WIDTH = 190;
+    const BUBBLE_WIDTH = 210;
     const BUBBLE_HEIGHT = 42;
     const BUBBLE_GAP = 8;
 
@@ -382,10 +382,13 @@ function createEditorCanvasGrowthAffordance(deps) {
             button.style.width = `${BUBBLE_WIDTH}px`;
             button.style.borderRadius = '999px';
             button.style.justifyContent = 'flex-start';
-            button.style.padding = '4px 12px 4px 4px';
+            button.style.padding = '8px 14px 8px 8px';
+            button.style.border = '1px solid rgba(144, 73, 81, 0.18)';
             button.style.background = 'linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,246,244,0.96))';
             button.style.boxShadow = '0 12px 28px rgba(75, 64, 57, 0.13)';
+            button.style.backdropFilter = 'blur(8px)';
             textWrap.style.display = 'flex';
+            textWrap.style.gap = '1px';
             button.setAttribute('aria-expanded', 'true');
         }
 
@@ -396,9 +399,12 @@ function createEditorCanvasGrowthAffordance(deps) {
             button.style.borderRadius = '50%';
             button.style.justifyContent = 'center';
             button.style.padding = '0';
+            button.style.border = 'none';
             button.style.background = 'rgba(144, 73, 81, 0.92)';
             button.style.boxShadow = '0 3px 10px rgba(144, 73, 81, 0.25)';
+            button.style.backdropFilter = 'none';
             textWrap.style.display = 'none';
+            textWrap.style.gap = '0';
             button.setAttribute('aria-expanded', 'false');
         }
 
