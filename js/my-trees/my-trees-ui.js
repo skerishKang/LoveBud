@@ -495,6 +495,11 @@
     var updateManageSummaryFn = (options && options.updateManageSummary) || updateManageSummary;
 
     updateManageSummaryFn(trees, options);
+    // Ensure lastTreesData is always persisted for sort re-use,
+    // regardless of manageSummaryBar existence (Refs #1126)
+    if (options && typeof options.setLastTreesData === 'function') {
+      options.setLastTreesData(trees);
+    }
 
     if (!trees || trees.length === 0) {
       if (typeof setState === 'function' && stateEnum && stateEnum.EMPTY) {
