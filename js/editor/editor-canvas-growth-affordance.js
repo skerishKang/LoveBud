@@ -17,8 +17,8 @@ function createEditorCanvasGrowthAffordance(deps) {
     const TIP_HALF = TIP_SIZE / 2;
     const GAP_FROM_NODE = 10;
     const CONNECTOR_PEAK_GAP = 6;
-    const BUBBLE_WIDTH = 165;
-    const BUBBLE_HEIGHT = 42;
+    const BUBBLE_WIDTH = 188;
+    const BUBBLE_MIN_HEIGHT = 60;
     const BUBBLE_GAP = 8;
 
     function clamp(value, min, max) {
@@ -77,36 +77,36 @@ function createEditorCanvasGrowthAffordance(deps) {
                     return {
                         left: tipX + TIP_HALF + BUBBLE_GAP,
                         right: tipX + TIP_HALF + BUBBLE_GAP + BUBBLE_WIDTH,
-                        top: tipY - (BUBBLE_HEIGHT / 2),
-                        bottom: tipY + (BUBBLE_HEIGHT / 2)
+                        top: tipY - (BUBBLE_MIN_HEIGHT / 2),
+                        bottom: tipY + (BUBBLE_MIN_HEIGHT / 2)
                     };
                 case 'left':
                     return {
                         left: tipX - TIP_HALF - BUBBLE_GAP - BUBBLE_WIDTH,
                         right: tipX - TIP_HALF - BUBBLE_GAP,
-                        top: tipY - (BUBBLE_HEIGHT / 2),
-                        bottom: tipY + (BUBBLE_HEIGHT / 2)
+                        top: tipY - (BUBBLE_MIN_HEIGHT / 2),
+                        bottom: tipY + (BUBBLE_MIN_HEIGHT / 2)
                     };
                 case 'below':
                     return {
                         left: tipX - (BUBBLE_WIDTH / 2),
                         right: tipX + (BUBBLE_WIDTH / 2),
                         top: tipY + TIP_HALF + BUBBLE_GAP,
-                        bottom: tipY + TIP_HALF + BUBBLE_GAP + BUBBLE_HEIGHT
+                        bottom: tipY + TIP_HALF + BUBBLE_GAP + BUBBLE_MIN_HEIGHT
                     };
                 case 'above':
                     return {
                         left: tipX - (BUBBLE_WIDTH / 2),
                         right: tipX + (BUBBLE_WIDTH / 2),
-                        top: tipY - TIP_HALF - BUBBLE_GAP - BUBBLE_HEIGHT,
+                        top: tipY - TIP_HALF - BUBBLE_GAP - BUBBLE_MIN_HEIGHT,
                         bottom: tipY - TIP_HALF - BUBBLE_GAP
                     };
                 default:
                     return {
                         left: tipX + TIP_HALF + BUBBLE_GAP,
                         right: tipX + TIP_HALF + BUBBLE_GAP + BUBBLE_WIDTH,
-                        top: tipY - (BUBBLE_HEIGHT / 2),
-                        bottom: tipY + (BUBBLE_HEIGHT / 2)
+                        top: tipY - (BUBBLE_MIN_HEIGHT / 2),
+                        bottom: tipY + (BUBBLE_MIN_HEIGHT / 2)
                     };
             }
         }
@@ -271,34 +271,6 @@ function createEditorCanvasGrowthAffordance(deps) {
         svg.appendChild(path);
     }
 
-    function positionBubble(bubble, tipPos) {
-        if (tipPos.side === 'right') {
-            bubble.style.left = `${TIP_SIZE + BUBBLE_GAP}px`;
-            bubble.style.top = '50%';
-            bubble.style.transform = 'translateY(-50%) scale(0.96)';
-            bubble.style.transformOrigin = 'left center';
-            return;
-        }
-        if (tipPos.side === 'left') {
-            bubble.style.right = `${TIP_SIZE + BUBBLE_GAP}px`;
-            bubble.style.top = '50%';
-            bubble.style.transform = 'translateY(-50%) scale(0.96)';
-            bubble.style.transformOrigin = 'right center';
-            return;
-        }
-        if (tipPos.side === 'below') {
-            bubble.style.left = '50%';
-            bubble.style.top = `${TIP_SIZE + BUBBLE_GAP}px`;
-            bubble.style.transform = 'translateX(-50%) scale(0.96)';
-            bubble.style.transformOrigin = 'top center';
-            return;
-        }
-        bubble.style.left = '50%';
-        bubble.style.bottom = `${TIP_SIZE + BUBBLE_GAP}px`;
-        bubble.style.transform = 'translateX(-50%) scale(0.96)';
-        bubble.style.transformOrigin = 'bottom center';
-    }
-
     function createPlusTipElement(anchorMem, labelText, helperText) {
         const anchorPos = calcPosition(anchorMem);
         const tipPos = getPlusTipPosition(anchorPos, anchorMem);
@@ -306,10 +278,12 @@ function createEditorCanvasGrowthAffordance(deps) {
         button.type = 'button';
         button.className = 'memory-add-affordance affordance-tooltip-bubble';
         button.setAttribute('aria-label', labelText);
+        button.setAttribute('aria-expanded', 'false');
         button.style.position = 'absolute';
         button.style.left = `${tipPos.x - TIP_HALF}px`;
         button.style.top = `${tipPos.y - TIP_HALF}px`;
         button.style.width = `${TIP_SIZE}px`;
+        button.style.minHeight = `${TIP_SIZE}px`;
         button.style.height = `${TIP_SIZE}px`;
         button.style.borderRadius = '50%';
         button.style.border = 'none';
@@ -325,7 +299,7 @@ function createEditorCanvasGrowthAffordance(deps) {
         button.style.gap = '10px';
         button.style.overflow = 'hidden';
         button.style.boxShadow = '0 3px 10px rgba(144, 73, 81, 0.25)';
-        button.style.transition = 'width 0.16s ease, border-radius 0.16s ease, background 0.16s ease, box-shadow 0.16s ease, padding 0.16s ease';
+        button.style.transition = 'width 0.16s ease, min-height 0.16s ease, height 0.16s ease, border-radius 0.16s ease, background 0.16s ease, box-shadow 0.16s ease, padding 0.16s ease';
 
         const plusIcon = documentRef.createElement('span');
         plusIcon.setAttribute('aria-hidden', 'true');
@@ -350,14 +324,16 @@ function createEditorCanvasGrowthAffordance(deps) {
         textWrap.style.flexDirection = 'column';
         textWrap.style.alignItems = 'flex-start';
         textWrap.style.minWidth = '0';
+        textWrap.style.maxWidth = '126px';
+        textWrap.style.gap = '2px';
 
         const titleEl = documentRef.createElement('span');
         titleEl.textContent = labelText;
         titleEl.style.fontSize = '13px';
         titleEl.style.fontWeight = '700';
         titleEl.style.color = 'var(--on-surface)';
-        titleEl.style.lineHeight = '1.25';
-        titleEl.style.whiteSpace = 'normal';
+        titleEl.style.lineHeight = '1.28';
+        titleEl.style.whiteSpace = 'nowrap';
         textWrap.appendChild(titleEl);
 
         if (helperText) {
@@ -366,9 +342,13 @@ function createEditorCanvasGrowthAffordance(deps) {
             hintEl.style.fontSize = '11px';
             hintEl.style.fontWeight = '600';
             hintEl.style.color = 'var(--on-surface-variant)';
-            hintEl.style.lineHeight = '1.25';
+            hintEl.style.lineHeight = '1.32';
             hintEl.style.opacity = '0.82';
             hintEl.style.whiteSpace = 'normal';
+            hintEl.style.display = '-webkit-box';
+            hintEl.style.webkitLineClamp = '2';
+            hintEl.style.webkitBoxOrient = 'vertical';
+            hintEl.style.overflow = 'hidden';
             textWrap.appendChild(hintEl);
         }
 
@@ -380,6 +360,8 @@ function createEditorCanvasGrowthAffordance(deps) {
             if (bubbleExpanded) return;
             bubbleExpanded = true;
             button.style.width = `${BUBBLE_WIDTH}px`;
+            button.style.minHeight = `${BUBBLE_MIN_HEIGHT}px`;
+            button.style.height = 'auto';
             button.style.borderRadius = '999px';
             button.style.justifyContent = 'flex-start';
             button.style.padding = '10px 14px 10px 10px';
@@ -388,7 +370,6 @@ function createEditorCanvasGrowthAffordance(deps) {
             button.style.boxShadow = '0 12px 28px rgba(75, 64, 57, 0.10)';
             button.style.backdropFilter = 'blur(8px)';
             textWrap.style.display = 'flex';
-            textWrap.style.gap = '1px';
             button.setAttribute('aria-expanded', 'true');
         }
 
@@ -396,6 +377,8 @@ function createEditorCanvasGrowthAffordance(deps) {
             if (!bubbleExpanded) return;
             bubbleExpanded = false;
             button.style.width = `${TIP_SIZE}px`;
+            button.style.minHeight = `${TIP_SIZE}px`;
+            button.style.height = `${TIP_SIZE}px`;
             button.style.borderRadius = '50%';
             button.style.justifyContent = 'center';
             button.style.padding = '0';
@@ -404,7 +387,6 @@ function createEditorCanvasGrowthAffordance(deps) {
             button.style.boxShadow = '0 3px 10px rgba(144, 73, 81, 0.25)';
             button.style.backdropFilter = 'none';
             textWrap.style.display = 'none';
-            textWrap.style.gap = '0';
             button.setAttribute('aria-expanded', 'false');
         }
 
