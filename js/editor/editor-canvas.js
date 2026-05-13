@@ -166,6 +166,56 @@ function loadStoredLayout() {
         } catch (e) {}
     }
 
+    /**
+     * Center viewport on the currently selected node after a layout switch.
+     * Does not reuse previous layout's offset/scale — computes fresh center
+     * based on the selection at the moment of switching.
+     */
+    function centerViewportOnSelection() {
+        const selectedId = document.querySelector('.memory-node.selected')?.dataset?.memoryId;
+        const treeMemories = getTreeMemories();
+
+        let targetNode = null;
+        if (selectedId) {
+            targetNode = treeMemories.find(function (m) { return m.id === selectedId; });
+        }
+        if (!targetNode && treeMemories.length > 0) {
+            // Fall back to first visible node
+            var canonicalRootId = getCanonicalRootId();
+            targetNode = treeMemories.find(function (m) { return !isRootMemory(m, canonicalRootId); }) || treeMemories[0];
+        }
+
+        if (targetNode) {
+            var world = getWorldPosition(targetNode);
+            var metrics = getMetrics();
+
+            // Compute a fresh scale that fits the whole tree (avoids reusing old zoom)
+            var fitScale = 1;
+            if (typeof canvasViewport.getFitViewport === 'function') {
+                var fitVp = canvasViewport.getFitViewport({
+                    getTreeMemories: getTreeMemories,
+                    getWorldPosition: getWorldPosition,
+                    getMetrics: getMetrics,
+                    viewportState: viewportState,
+                    getCanonicalRootId: getCanonicalRootId,
+                    isRootMemory: isRootMemory
+                });
+                if (fitVp && typeof fitVp.scale === 'number') {
+                    fitScale = fitVp.scale;
+                }
+            }
+
+            canvasViewport.setScale(viewportState, fitScale);
+            viewportState.offsetX = Math.round(metrics.width * 0.5 - (world.x * fitScale));
+            viewportState.offsetY = Math.round(metrics.height * 0.38 - (world.y * fitScale));
+        } else {
+            // No nodes at all — reset to default
+            canvasViewport.setScale(viewportState, 1);
+            viewportState.offsetX = 0;
+            viewportState.offsetY = 0;
+        }
+    }
+
     function switchToFreeMode() {
         viewportState.layoutMode = 'free';
         persistLayoutMode('free');
@@ -187,6 +237,10 @@ function loadStoredLayout() {
                 viewportState.positions = { ...stored.positions };
             }
         }
+
+        // Center on selected node — fresh calculation, no reuse of old offset/scale
+        centerViewportOnSelection();
+
         document.body.classList.remove('layout-structured');
         document.body.classList.add('layout-free');
         updateLayoutToggleUI();
@@ -201,6 +255,10 @@ function loadStoredLayout() {
         // Allow viewport recalculation for the new layout
         viewportState.initialViewportApplied = false;
         persistLayoutMode('structured');
+
+        // Center on selected node — fresh calculation, no reuse of old offset/scale
+        centerViewportOnSelection();
+
         document.body.classList.remove('layout-free');
         document.body.classList.add('layout-structured');
         updateLayoutToggleUI();

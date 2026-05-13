@@ -264,7 +264,7 @@ window.LoveBudEditorCanvasViewport = {
       const indicator = document.getElementById('zoomIndicator');
       if (!indicator) return;
       const scale = this.getScale(viewportState);
-      const pct = Math.round(scale * 100);
+      const pct = Math.round(scale * 100 / 5) * 5;
       indicator.textContent = pct + '%';
       indicator.classList.remove('is-hidden');
     }
