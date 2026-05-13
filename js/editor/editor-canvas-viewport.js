@@ -1,7 +1,7 @@
 window.LoveBudEditorCanvasViewport = {
-  minScale: 0.5,
+  minScale: 0.2,
   maxScale: 1.5,
-  zoomLevels: [0.5, 0.75, 1, 1.25, 1.5],
+  zoomLevels: [0.2, 0.35, 0.5, 0.75, 1, 1.25, 1.5],
   readableCenter: {
     x: 0.5,
     y: 0.42
@@ -13,6 +13,15 @@ window.LoveBudEditorCanvasViewport = {
     return this.zoomLevels.reduce((best, candidate) => (
       Math.abs(candidate - value) < Math.abs(best - value) ? candidate : best
     ), 1);
+  },
+
+  getFitZoom(scale) {
+    const value = Number(scale);
+    if (!Number.isFinite(value) || value <= 0) return 1;
+    const clamped = Math.min(this.maxScale, Math.max(this.minScale, value));
+    return this.zoomLevels.reduce((best, candidate) => (
+      candidate <= clamped && candidate > best ? candidate : best
+    ), this.minScale);
   },
 
   getNextZoom(scale, direction) {
@@ -30,6 +39,10 @@ window.LoveBudEditorCanvasViewport = {
 
   setScale(viewportState, nextScale) {
     viewportState.scale = this.getNearestZoom(Math.min(this.maxScale, Math.max(this.minScale, Number(nextScale) || 1)));
+  },
+
+  setFitScale(viewportState, nextScale) {
+    viewportState.scale = this.getFitZoom(nextScale);
   },
 
   projectWorldPosition(world, viewportState) {
@@ -90,11 +103,14 @@ window.LoveBudEditorCanvasViewport = {
     const minY = Math.min(...points.map((point) => point.y));
     const maxY = Math.max(...points.map((point) => point.y));
     const metrics = getMetrics();
-    const padding = Math.min(180, Math.max(96, Math.round(metrics.width * 0.12)));
-    const boundsWidth = Math.max(1, maxX - minX + 180);
-    const boundsHeight = Math.max(1, maxY - minY + 180);
-    const rawFitScale = Math.min((metrics.width - padding) / boundsWidth, (metrics.height - padding) / boundsHeight);
-    const fitScale = this.getNearestZoom(Math.min(this.maxScale, Math.max(0.75, rawFitScale)));
+    const padding = Math.min(160, Math.max(72, Math.round(metrics.width * 0.10)));
+    const nodeBoundsPadding = 180;
+    const boundsWidth = Math.max(1, maxX - minX + nodeBoundsPadding);
+    const boundsHeight = Math.max(1, maxY - minY + nodeBoundsPadding);
+    const availableWidth = Math.max(1, metrics.width - (padding * 2));
+    const availableHeight = Math.max(1, metrics.height - (padding * 2));
+    const rawFitScale = Math.min(availableWidth / boundsWidth, availableHeight / boundsHeight);
+    const fitScale = this.getFitZoom(rawFitScale);
 
     return {
       scale: fitScale,
@@ -103,37 +119,46 @@ window.LoveBudEditorCanvasViewport = {
     };
   },
 
-  prepareInitialViewport(options) {
+  isStoredViewportExtreme(options) {
     const { viewportState, getMetrics } = options;
+    const metrics = getMetrics();
+    const margin = Math.max(200, Math.round(metrics.width * 0.25));
+    const minOkX = -metrics.width - margin;
+    const maxOkX = metrics.width + margin;
+    const minOkY = -metrics.height - margin;
+    const maxOkY = metrics.height + margin;
+    return (
+      viewportState.offsetX < minOkX || viewportState.offsetX > maxOkX ||
+      viewportState.offsetY < minOkY || viewportState.offsetY > maxOkY
+    );
+  },
+
+  applyViewport(viewportState, nextViewport, useFitScale = false) {
+    if (!nextViewport) return false;
+    if (useFitScale) {
+      this.setFitScale(viewportState, nextViewport.scale);
+    } else {
+      this.setScale(viewportState, nextViewport.scale);
+    }
+    viewportState.offsetX = nextViewport.offsetX;
+    viewportState.offsetY = nextViewport.offsetY;
+    return true;
+  },
+
+  prepareInitialViewport(options) {
+    const { viewportState } = options;
     this.setScale(viewportState, viewportState.scale || 1);
     if (viewportState.initialViewportApplied) return;
     viewportState.initialViewportApplied = true;
 
     if (viewportState.hasStoredViewportOffset) {
-      const metrics = getMetrics();
-      const margin = Math.max(200, Math.round(metrics.width * 0.25));
-      const minOk = -margin;
-      const maxOk = metrics.width + margin;
-      if (
-        viewportState.offsetX < minOk || viewportState.offsetX > maxOk ||
-        viewportState.offsetY < minOk || viewportState.offsetY > maxOk
-      ) {
-        const readable = this.getReadableViewportOffset(options, 1);
-        if (readable) {
-          this.setScale(viewportState, readable.scale);
-          viewportState.offsetX = readable.offsetX;
-          viewportState.offsetY = readable.offsetY;
-        }
+      if (this.isStoredViewportExtreme(options)) {
+        this.applyViewport(viewportState, this.getFitViewport(options), true);
       }
       return;
     }
 
-    const readable = this.getReadableViewportOffset(options, 1);
-    if (!readable) return;
-
-    this.setScale(viewportState, readable.scale);
-    viewportState.offsetX = readable.offsetX;
-    viewportState.offsetY = readable.offsetY;
+    this.applyViewport(viewportState, this.getFitViewport(options), true);
   },
 
   drawBranch(svg, startPos, endPos) {
@@ -186,12 +211,7 @@ window.LoveBudEditorCanvasViewport = {
       return;
     }
 
-    const readable = this.getReadableViewportOffset(options, 1);
-    if (!readable) return;
-
-    this.setScale(viewportState, readable.scale);
-    viewportState.offsetX = readable.offsetX;
-    viewportState.offsetY = readable.offsetY;
+    this.applyViewport(viewportState, this.getFitViewport(options), true);
     initCanvas();
   },
 
