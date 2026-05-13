@@ -39,5 +39,5 @@
     window._i18nSetDictionary(mergedDictionary);
   }
 
-  console.log('[i18n-index] Dictionary merged:', Object.keys(mergedDictionary).length, 'keys');
+  /* console.log('[i18n-index] Dictionary merged:', Object.keys(mergedDictionary).length, 'keys'); — removed: operational log */
 })();

@@ -262,7 +262,7 @@
         } else if (cachedUser) {
             // Confirmed session 있으면 즉시 사용자 아바타 표시 (로딩 없음)
             authHTML = '<div id="auth-nav" style="min-width:100px;height:36px;display:flex;align-items:center;justify-content:flex-end;">' + buildCachedUserAvatar(cachedUser) + '</div>';
-            console.log('[shared-header] Rendering cached user immediately:', cachedUser.displayName || cachedUser.email);
+            /* console.log('[shared-header] Rendering cached user immediately:', cachedUser.displayName || cachedUser.email); — removed: user info exposure */
         } else {
             // Session 없으면 로딩 스피너 표시 (auth.js가 나중에 교체)
             authHTML = '<div id="auth-nav" style="min-width:100px;height:36px;display:flex;align-items:center;justify-content:flex-end;"><span class="material-symbols-outlined" style="color:var(--on-surface-variant);animation:spin 1s linear infinite;font-size:20px;">progress_activity</span></div>';
@@ -418,7 +418,7 @@
                 console.error('[shared-header] initAuth after render failed:', e);
             }
         }
-        console.log('[shared-header] Rendered for:', getCurrentPage(), '| context:', getContextType());
+        /* console.log('[shared-header] Rendered for:', getCurrentPage(), '| context:', getContextType()); — removed: operational log */
     };
 
     function bindSettingsReturnLinkCapture() {

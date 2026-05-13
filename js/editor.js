@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const bTime = b.createdAt || b.timestamp || '9999';
                 return new Date(aTime) - new Date(bTime);
             })[0];
-            console.log('[editor] Multiple parentId=null nodes found, using oldest as root:', oldest.id);
+            /* console.log('[editor] Multiple parentId=null nodes found, using oldest as root:', oldest.id); — removed: raw id */
             return oldest;
         }
 
@@ -116,7 +116,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ...tree,
             visibility: tree.visibility || 'public'
         };
-        console.log('[editor] currentTreeData set:', window.currentTreeData.visibility);
+        /* console.log('[editor] currentTreeData set:', window.currentTreeData.visibility); — removed: operational log */
     });
 
     const resolveParentIdForCreate = editorTreeHelpers.resolveParentIdForCreate || ((selectedNodeId, canonicalRootId) => {
@@ -700,7 +700,7 @@ document.addEventListener('DOMContentLoaded', () => {
             editorBindings.bindDetailActionButtons({ editMemoryBtn, deleteMemoryBtn, cancelEditBtn, saveEditBtn, enterEditMode, deleteMemory, exitEditMode, saveMemoryEdit });
         }
 
-        console.log('[editor] Ready for tree:', treeId, 'memories:', treeMemories().length);
+        /* console.log('[editor] Ready for tree:', treeId, 'memories:', treeMemories().length); — removed: raw treeId */
         updateSidebarStatus();
         markEditorReady();
     };
