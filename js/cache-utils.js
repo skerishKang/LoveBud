@@ -181,6 +181,4 @@
     clearAll: clearAllCache,
     status: getCacheStatus
   };
-
-  console.log('[cache-utils] Cache system initialized');
 })();
