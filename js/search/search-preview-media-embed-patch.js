@@ -59,5 +59,4 @@
 
     patchMediaHelper();
     document.addEventListener('DOMContentLoaded', patchMediaHelper);
-    console.log('[LoveBudSearchPreviewMediaEmbedPatch] loaded v20260512-1058');
 })();
