@@ -170,6 +170,11 @@
         onRename: renameTree,
         onDelete: deleteTree,
         onToggleVisibility: toggleTreeVisibility,
+        onSelect: function(tree) {
+          if (window.LoveBudMyTreesPreviewHub && typeof window.LoveBudMyTreesPreviewHub.onCardClick === 'function') {
+            window.LoveBudMyTreesPreviewHub.onCardClick(tree);
+          }
+        },
         setLastTreesData: function(data) {
           lastTreesData = data;
         }
@@ -270,6 +275,20 @@
     if (!user || !user.uid) return;
 
     setupGlobalListeners();
+
+    // Initialize My Trees appreciation hub
+    if (window.LoveBudMyTreesPreviewHub && typeof window.LoveBudMyTreesPreviewHub.init === 'function') {
+      window.LoveBudMyTreesPreviewHub.init({
+        stateModule: myTreesState,
+        onOpenTree: function(tree) {
+          if (tree && tree.id) {
+            var basePath = (typeof window.LoveBudPath !== 'undefined' && window.LoveBudPath.getBasePath)
+              ? window.LoveBudPath.getBasePath() : 'pages/';
+            window.location.href = basePath + 'editor?treeId=' + encodeURIComponent(tree.id);
+          }
+        }
+      });
+    }
 
     var sortSelect = document.getElementById('sortTreesSelect');
     if (sortSelect) {
