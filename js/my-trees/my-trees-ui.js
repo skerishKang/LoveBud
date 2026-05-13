@@ -477,7 +477,7 @@
   }
 
   // Issue #616: first-batch rendering constants
-  var FIRST_BATCH_SIZE = 6;
+  var FIRST_BATCH_SIZE = 4;
   var BATCH_SIZE = 6;
   var currentVisibleCount = 0;
   var totalTreesCount = 0;
@@ -537,7 +537,8 @@
   // Issue #616: Render next batch of trees
   function renderNextBatch(grid, buildTreeCardFn, setState, stateEnum) {
     var startIndex = currentVisibleCount;
-    var endIndex = Math.min(startIndex + BATCH_SIZE, totalTreesCount);
+    var batchSize = currentVisibleCount === 0 ? FIRST_BATCH_SIZE : BATCH_SIZE;
+    var endIndex = Math.min(startIndex + batchSize, totalTreesCount);
     
     for (var i = startIndex; i < endIndex; i++) {
       var tree = allTreesData[i];
