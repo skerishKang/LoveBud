@@ -357,7 +357,7 @@ function createEditorCanvasGrowthAffordance(deps) {
         titleEl.style.fontWeight = '700';
         titleEl.style.color = 'var(--on-surface)';
         titleEl.style.lineHeight = '1.25';
-        titleEl.style.whiteSpace = 'nowrap';
+        titleEl.style.whiteSpace = 'normal';
         textWrap.appendChild(titleEl);
 
         if (helperText) {
@@ -368,7 +368,7 @@ function createEditorCanvasGrowthAffordance(deps) {
             hintEl.style.color = 'var(--on-surface-variant)';
             hintEl.style.lineHeight = '1.25';
             hintEl.style.opacity = '0.82';
-            hintEl.style.whiteSpace = 'nowrap';
+            hintEl.style.whiteSpace = 'normal';
             textWrap.appendChild(hintEl);
         }
 
