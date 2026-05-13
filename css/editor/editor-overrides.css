@@ -226,9 +226,6 @@ body .editor-memory-mode-chip.is-active {
         font-size: 1.35rem;
     }
 
-body .editor-canvas-title h2 {
-        font-size: 1.3rem;
-    }
 }
 
 /* Editor page presentation overrides extracted from pages/editor.html */
