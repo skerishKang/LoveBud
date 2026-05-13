@@ -44,12 +44,87 @@ function createEditorCanvasGrowthAffordance(deps) {
 
     /**
      * Determine the best placement for the compact + tip.
+     * Considers viewport boundaries AND existing node positions
+     * to avoid occluding other nodes in both structured and free layouts.
      * Returns position (center of tip) and side ('right'|'left'|'below'|'above').
      */
-    function getPlusTipPosition(anchorPos) {
+    function getPlusTipPosition(anchorPos, anchorMem) {
         const metrics = getMetrics();
         const viewportWidth = Math.max(canvas.clientWidth || metrics.width, 320);
         const viewportHeight = Math.max(canvas.clientHeight || metrics.height, 320);
+        const tipRadius = TIP_HALF;
+        const anchorNodeId = anchorMem && anchorMem.id;
+
+        // Collect positions of all OTHER memory nodes currently on canvas
+        // to avoid overlapping them (exclude the anchor node itself)
+        var nodeRects = [];
+        try {
+            var allNodes = canvas.querySelectorAll('.memory-node');
+            for (var i = 0; i < allNodes.length; i++) {
+                var el = allNodes[i];
+                // Skip the anchor node — tip is intentionally placed adjacent to it
+                if (anchorNodeId && el.dataset && el.dataset.memoryId === anchorNodeId) continue;
+                var left = parseFloat(el.style.left) || 0;
+                var top = parseFloat(el.style.top) || 0;
+                var w = parseFloat(el.style.width) || (NODE_HALF * 2);
+                var h = parseFloat(el.style.height) || (NODE_HALF * 2);
+                nodeRects.push({
+                    left: left,
+                    right: left + w,
+                    top: top,
+                    bottom: top + h,
+                    width: w,
+                    height: h
+                });
+            }
+        } catch (_) { /* silently fall through */ }
+
+        /**
+         * Check if a candidate tip (at center x,y with given side)
+         * overlaps with any existing node rect.
+         */
+        function overlapsNodes(tipX, tipY, side) {
+            // Define the tip bounding box
+            var tLeft = tipX - tipRadius;
+            var tRight = tipX + tipRadius;
+            var tTop = tipY - tipRadius;
+            var tBottom = tipY + tipRadius;
+
+            // Expand by a small guard gap
+            var guard = 12;
+            tLeft -= guard;
+            tRight += guard;
+            tTop -= guard;
+            tBottom += guard;
+
+            // Also check tooltip extent on the relevant side
+            var tooltipWidthEstimate = 140;
+            var tooltipHeightEstimate = 26;
+            var tooltipGap = 6;
+            switch (side) {
+                case 'right':
+                    tRight = Math.max(tRight, tipX + tipRadius + tooltipGap + tooltipWidthEstimate);
+                    break;
+                case 'left':
+                    tLeft = Math.min(tLeft, tipX - tipRadius - tooltipGap - tooltipWidthEstimate);
+                    break;
+                case 'below':
+                    tBottom = Math.max(tBottom, tipY + tipRadius + tooltipGap + tooltipHeightEstimate);
+                    break;
+                case 'above':
+                    tTop = Math.min(tTop, tipY - tipRadius - tooltipGap - tooltipHeightEstimate);
+                    break;
+            }
+
+            // Check against all node rects
+            for (var j = 0; j < nodeRects.length; j++) {
+                var nr = nodeRects[j];
+                if (tLeft < nr.right && tRight > nr.left && tTop < nr.bottom && tBottom > nr.top) {
+                    return true; // Overlap detected
+                }
+            }
+            return false;
+        }
 
         const nodeLeft = anchorPos.x - NODE_HALF;
         const nodeRight = anchorPos.x + NODE_HALF;
@@ -65,45 +140,92 @@ function createEditorCanvasGrowthAffordance(deps) {
         // Minimum space needed for tip + gap
         const needed = TIP_SIZE + GAP_FROM_NODE + CONNECTOR_PEAK_GAP;
 
-        // Score each side based on available space and preference
-        const sides = [];
+        // Score each side based on available space, preference, and node occlusion
+        var sides = [];
+
+        function evaluateSide(side, tipX, tipY, rawScore) {
+            var occlusion = overlapsNodes(tipX, tipY, side);
+            // Heavily penalize sides that occlude other nodes
+            var score = occlusion ? rawScore * 0.1 : rawScore;
+            sides.push({ x: tipX, y: tipY, side: side, score: score });
+        }
 
         // Right: tip to the right of the node
         if (spaceRight >= needed) {
-            const tipX = nodeRight + GAP_FROM_NODE + TIP_HALF;
-            const tipY = clamp(anchorPos.y, TIP_HALF + 20, viewportHeight - TIP_HALF - 20);
-            sides.push({ x: tipX, y: tipY, side: 'right', score: spaceRight * 1.0 });
+            var tipX = nodeRight + GAP_FROM_NODE + TIP_HALF;
+            var tipY = clamp(anchorPos.y, TIP_HALF + 20, viewportHeight - TIP_HALF - 20);
+            evaluateSide('right', tipX, tipY, spaceRight * 1.0);
         }
 
         // Left: tip to the left of the node
         if (spaceLeft >= needed) {
-            const tipX = nodeLeft - GAP_FROM_NODE - TIP_HALF;
-            const tipY = clamp(anchorPos.y, TIP_HALF + 20, viewportHeight - TIP_HALF - 20);
-            sides.push({ x: tipX, y: tipY, side: 'left', score: spaceLeft * 0.85 });
+            var tipX = nodeLeft - GAP_FROM_NODE - TIP_HALF;
+            var tipY = clamp(anchorPos.y, TIP_HALF + 20, viewportHeight - TIP_HALF - 20);
+            evaluateSide('left', tipX, tipY, spaceLeft * 0.85);
         }
 
         // Below: tip below the node
         if (spaceBelow >= needed) {
-            const tipX = clamp(anchorPos.x, TIP_HALF + 20, viewportWidth - TIP_HALF - 20);
-            const tipY = nodeBottom + GAP_FROM_NODE + TIP_HALF;
-            sides.push({ x: tipX, y: tipY, side: 'below', score: spaceBelow * 0.7 });
+            var tipX = clamp(anchorPos.x, TIP_HALF + 20, viewportWidth - TIP_HALF - 20);
+            var tipY = nodeBottom + GAP_FROM_NODE + TIP_HALF;
+            evaluateSide('below', tipX, tipY, spaceBelow * 0.7);
         }
 
         // Above: tip above the node
         if (spaceAbove >= needed) {
-            const tipX = clamp(anchorPos.x, TIP_HALF + 20, viewportWidth - TIP_HALF - 20);
-            const tipY = nodeTop - GAP_FROM_NODE - TIP_HALF;
-            sides.push({ x: tipX, y: tipY, side: 'above', score: spaceAbove * 0.6 });
+            var tipX = clamp(anchorPos.x, TIP_HALF + 20, viewportWidth - TIP_HALF - 20);
+            var tipY = nodeTop - GAP_FROM_NODE - TIP_HALF;
+            evaluateSide('above', tipX, tipY, spaceAbove * 0.6);
         }
 
-        // If any side works, pick the best-scoring one
+        // If no non-occluded side was found with full space, try any feasible fallback
+        if (!sides.length) {
+            // Even if space is tight, attempt placement with lower score
+            var fallbacks = [];
+
+            // Try right with tight fit
+            if (spaceRight > TIP_HALF + 8) {
+                var tipX = clamp(nodeRight + 4 + TIP_HALF, TIP_HALF + 8, viewportWidth - TIP_HALF - 8);
+                var tipY = clamp(anchorPos.y, TIP_HALF + 20, viewportHeight - TIP_HALF - 20);
+                var occ = overlapsNodes(tipX, tipY, 'right');
+                fallbacks.push({ x: tipX, y: tipY, side: 'right', score: occ ? 5 : 50 });
+            }
+            // Try left with tight fit
+            if (spaceLeft > TIP_HALF + 8) {
+                var tipX = clamp(nodeLeft - 4 - TIP_HALF, TIP_HALF + 8, viewportWidth - TIP_HALF - 8);
+                var tipY = clamp(anchorPos.y, TIP_HALF + 20, viewportHeight - TIP_HALF - 20);
+                var occ = overlapsNodes(tipX, tipY, 'left');
+                fallbacks.push({ x: tipX, y: tipY, side: 'left', score: occ ? 4 : 40 });
+            }
+            // Try below with tight fit
+            if (spaceBelow > TIP_HALF + 8) {
+                var tipX = clamp(anchorPos.x, TIP_HALF + 8, viewportWidth - TIP_HALF - 8);
+                var tipY = clamp(nodeBottom + 4 + TIP_HALF, TIP_HALF + 20, viewportHeight - TIP_HALF - 20);
+                var occ = overlapsNodes(tipX, tipY, 'below');
+                fallbacks.push({ x: tipX, y: tipY, side: 'below', score: occ ? 3 : 30 });
+            }
+            // Try above with tight fit
+            if (spaceAbove > TIP_HALF + 8) {
+                var tipX = clamp(anchorPos.x, TIP_HALF + 8, viewportWidth - TIP_HALF - 8);
+                var tipY = clamp(nodeTop - 4 - TIP_HALF, TIP_HALF + 20, viewportHeight - TIP_HALF - 20);
+                var occ = overlapsNodes(tipX, tipY, 'above');
+                fallbacks.push({ x: tipX, y: tipY, side: 'above', score: occ ? 2 : 20 });
+            }
+
+            if (fallbacks.length) {
+                fallbacks.sort(function (a, b) { return b.score - a.score; });
+                return fallbacks[0];
+            }
+        }
+
+        // If any side works, pick the best-scoring one (prefer non-occluded)
         if (sides.length) {
-            sides.sort((a, b) => b.score - a.score);
+            sides.sort(function (a, b) { return b.score - a.score; });
             return sides[0];
         }
 
-        // Fallback: place to the right or left, no gap check
-        const preferRight = anchorPos.x < viewportWidth * 0.5;
+        // Ultimate fallback: place to the right or left, clamped to viewport
+        var preferRight = anchorPos.x < viewportWidth * 0.5;
         if (preferRight) {
             return {
                 x: clamp(nodeRight + GAP_FROM_NODE + TIP_HALF, TIP_HALF + 8, viewportWidth - TIP_HALF - 8),
@@ -167,7 +289,7 @@ function createEditorCanvasGrowthAffordance(deps) {
 
     function createPlusTipElement(anchorMem, labelText) {
         const anchorPos = calcPosition(anchorMem);
-        const tipPos = getPlusTipPosition(anchorPos);
+        const tipPos = getPlusTipPosition(anchorPos, anchorMem);
 
         // Create the + button
         const button = documentRef.createElement('button');
@@ -200,6 +322,8 @@ function createEditorCanvasGrowthAffordance(deps) {
         const tooltip = documentRef.createElement('span');
         tooltip.className = 'affordance-tooltip';
         tooltip.textContent = labelText;
+        tooltip.setAttribute('role', 'tooltip');
+        tooltip.setAttribute('aria-hidden', 'true');
         tooltip.style.position = 'absolute';
         tooltip.style.whiteSpace = 'nowrap';
         tooltip.style.fontSize = '12px';
@@ -212,6 +336,13 @@ function createEditorCanvasGrowthAffordance(deps) {
         tooltip.style.opacity = '0';
         tooltip.style.transition = 'opacity 0.15s ease';
         tooltip.style.zIndex = '6';
+
+        // Generate unique ID for aria-describedby linkage
+        var tooltipId = 'aff-tip-' + (anchorMem ? anchorMem.id : '0');
+        tooltip.setAttribute('id', tooltipId);
+
+        // Link button to tooltip for screen reader announcement
+        button.setAttribute('aria-describedby', tooltipId);
 
         // Position tooltip based on tip side
         const tooltipGap = 6;
@@ -246,24 +377,28 @@ function createEditorCanvasGrowthAffordance(deps) {
             button.style.boxShadow = '0 5px 16px rgba(144, 73, 81, 0.35)';
             button.style.background = 'rgba(144, 73, 81, 1)';
             tooltip.style.opacity = '1';
+            tooltip.setAttribute('aria-hidden', 'false');
         });
         button.addEventListener('mouseleave', () => {
             button.style.transform = 'scale(1)';
             button.style.boxShadow = '0 3px 10px rgba(144, 73, 81, 0.25)';
             button.style.background = 'rgba(144, 73, 81, 0.92)';
             tooltip.style.opacity = '0';
+            tooltip.setAttribute('aria-hidden', 'true');
         });
         button.addEventListener('focus', () => {
             button.style.transform = 'scale(1.15)';
             button.style.boxShadow = '0 0 0 3px rgba(144, 73, 81, 0.3), 0 5px 16px rgba(144, 73, 81, 0.35)';
             button.style.background = 'rgba(144, 73, 81, 1)';
             tooltip.style.opacity = '1';
+            tooltip.setAttribute('aria-hidden', 'false');
         });
         button.addEventListener('blur', () => {
             button.style.transform = 'scale(1)';
             button.style.boxShadow = '0 3px 10px rgba(144, 73, 81, 0.25)';
             button.style.background = 'rgba(144, 73, 81, 0.92)';
             tooltip.style.opacity = '0';
+            tooltip.setAttribute('aria-hidden', 'true');
         });
 
         // Click/tap action
