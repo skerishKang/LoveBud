@@ -1,6 +1,6 @@
 /**
  * LoveBud Search Card Renderer
- * v20260512-1049
+ * v20260513-1135-1
  * 
  * Rendering layer: tree cards, empty states.
  * DOM-agnostic - returns HTML strings.
@@ -146,7 +146,22 @@
         return {
             likes: getFirstFiniteCount(tree, ['likeCount', 'likesCount', 'likes', 'reactionCount', 'reaction_count']),
             comments: getFirstFiniteCount(tree, ['commentCount', 'commentsCount', 'comments', 'replyCount', 'reply_count']),
-            shares: getFirstFiniteCount(tree, ['shareCount', 'sharesCount', 'shares', 'sharedCount', 'shared_count'])
+            shares: getFirstFiniteCount(tree, ['shareCount', 'sharesCount', 'shares', 'sharedCount', 'shared_count']),
+            views: getFirstFiniteCount(tree, [
+                'viewCount',
+                'viewsCount',
+                'views',
+                'view_count',
+                'views_count',
+                'visitorCount',
+                'visitorsCount',
+                'visitCount',
+                'visitsCount',
+                'visits',
+                'openCount',
+                'opensCount',
+                'open_count'
+            ])
         };
     }
 
@@ -155,7 +170,8 @@
         const metrics = [
             { icon: 'favorite', label: '좋아요', value: counts.likes },
             { icon: 'mode_comment', label: '댓글', value: counts.comments },
-            { icon: 'share', label: '공유', value: counts.shares }
+            { icon: 'share', label: '공유', value: counts.shares },
+            { icon: 'visibility', label: '조회수', value: counts.views }
         ];
 
         return `
@@ -404,5 +420,5 @@
         }
     };
 
-    console.log('[LoveBudSearchCardRenderer] Search card renderer loaded v20260512-1049');
+    console.log('[LoveBudSearchCardRenderer] Search card renderer loaded v20260513-1135-1');
  })();
