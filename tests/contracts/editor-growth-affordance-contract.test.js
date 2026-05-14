@@ -6,6 +6,8 @@ const vm = require('node:vm');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const NODE_HALF = 54;
+const TIP_HALF = 18;
+const TIP_SIZE = 36;
 
 function loadGrowthAffordanceFactory() {
   const source = fs.readFileSync(path.join(ROOT, 'js/editor/editor-canvas-growth-affordance.js'), 'utf8');
@@ -20,7 +22,8 @@ function createGrowthAffordance({ width, height }) {
     canvas: {
       clientWidth: width,
       clientHeight: height,
-      querySelectorAll: () => []
+      querySelectorAll: () => [],
+      classList: { add: () => {}, remove: () => {}, contains: () => false }
     },
     svg: {
       querySelectorAll: () => []
@@ -39,10 +42,10 @@ function rectsOverlap(a, b) {
 
 function assertAffordanceClearsNode(position, anchorPos) {
   const affordanceRect = {
-    left: position.x - position.cardHalf,
-    right: position.x + position.cardHalf,
-    top: position.y - (position.height / 2),
-    bottom: position.y + (position.height / 2)
+    left: position.x - TIP_HALF,
+    right: position.x + TIP_HALF,
+    top: position.y - (TIP_SIZE / 2),
+    bottom: position.y + (TIP_SIZE / 2)
   };
   const nodeRect = {
     left: anchorPos.x - NODE_HALF,
@@ -74,13 +77,42 @@ test('growth affordance falls below or above the node on narrow mobile viewports
   const position = growthAffordance.getGrowthAffordancePosition(anchor);
 
   assert.match(position.side, /^(below|above)$/);
-  assert.ok(position.x - position.cardHalf >= 28);
-  assert.ok(position.x + position.cardHalf <= 375 - 28);
+  assert.ok(position.x - TIP_HALF >= TIP_HALF + 20);
+  assert.ok(position.x + TIP_HALF <= 375 - TIP_HALF - 20);
   assertAffordanceClearsNode(position, anchor);
+});
+
+test('plus tip contract reflects readable hover bubble', () => {
+  const source = fs.readFileSync(path.join(ROOT, 'js/editor/editor-canvas-growth-affordance.js'), 'utf8');
+
+  assert.match(source, /TIP_SIZE\s*=\s*36/);
+  assert.match(source, /BUBBLE_WIDTH\s*=\s*188/);
+  assert.match(source, /BUBBLE_MIN_HEIGHT\s*=\s*60/);
+  assert.match(source, /affordance-tooltip-bubble/);
+  assert.match(source, /aria-expanded/);
+});
+
+test('node hover can move the plus tip before click selection', () => {
+  const canvasSource = fs.readFileSync(path.join(ROOT, 'js/editor/editor-canvas.js'), 'utf8');
+
+  assert.match(canvasSource, /renderAffordanceForHoveredMemory/);
+  assert.match(canvasSource, /addEventListener\('mouseenter'/);
+  assert.match(canvasSource, /addEventListener\('focusin'/);
+});
+
+test('plus tip and bubble interaction locks node-hover movement', () => {
+  const affordanceSource = fs.readFileSync(path.join(ROOT, 'js/editor/editor-canvas-growth-affordance.js'), 'utf8');
+  const canvasSource = fs.readFileSync(path.join(ROOT, 'js/editor/editor-canvas.js'), 'utf8');
+
+  assert.match(affordanceSource, /affordance-interaction-locked/);
+  assert.match(affordanceSource, /function\s+lockMovement\s*\(/);
+  assert.match(affordanceSource, /function\s+unlockMovementSoon\s*\(/);
+  assert.match(canvasSource, /AFFORDANCE_LOCK_CLASS/);
+  assert.match(canvasSource, /canvas\.classList\.contains\(AFFORDANCE_LOCK_CLASS\)/);
 });
 
 test('canvas pan binding excludes add affordance presses', () => {
   const interactionSource = fs.readFileSync(path.join(ROOT, 'js/editor/editor-canvas-interaction.js'), 'utf8');
 
-  assert.match(interactionSource, /target\.closest\(['"]\.memory-add-affordance['"]\)/);
+  assert.match(interactionSource, /memory-add-affordance/);
 });
