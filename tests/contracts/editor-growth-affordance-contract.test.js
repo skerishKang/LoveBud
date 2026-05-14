@@ -116,9 +116,26 @@ test('start moment plus tip avoids connector line', () => {
 
   assert.match(source, /function\s+isStartMoment\s*\(/);
   assert.match(source, /opts\.isFirstStep\s*===\s*true/);
-  assert.match(source, /!anchorMem\.parentId/);
+  assert.match(source, /parentId === null \|\| parentId === undefined \|\| parentId === ''/);
+  assert.match(source, /parentId === opts\.canonicalRootId/);
   assert.match(source, /shouldDrawConnector\s*=\s*!isStartMoment\(anchorMem, options\)/);
-  assert.match(source, /if \(shouldDrawConnector\)\s*{\s*drawConnectorLine/);
+});
+
+test('root-to-start tree branch line is suppressed', () => {
+  const edgesSource = fs.readFileSync(path.join(ROOT, 'js/editor/editor-canvas-edges.js'), 'utf8');
+
+  assert.match(edgesSource, /if \(parentId === canonicalRootId\)\s*{\s*return;\s*}/);
+});
+
+test('expanded bubble keeps plus icon center fixed', () => {
+  const source = fs.readFileSync(path.join(ROOT, 'js/editor/editor-canvas-growth-affordance.js'), 'utf8');
+
+  assert.match(source, /BUBBLE_PADDING_X\s*=\s*10/);
+  assert.match(source, /PLUS_ICON_SIZE\s*=\s*32/);
+  assert.match(source, /button\.style\.left = `\$\{tipPos\.x - BUBBLE_PADDING_X - \(PLUS_ICON_SIZE \/ 2\)\}px`/);
+  assert.match(source, /button\.style\.top = `\$\{tipPos\.y - \(BUBBLE_MIN_HEIGHT \/ 2\)\}px`/);
+  assert.match(source, /button\.style\.left = `\$\{tipPos\.x - TIP_HALF\}px`/);
+  assert.match(source, /button\.style\.top = `\$\{tipPos\.y - TIP_HALF\}px`/);
 });
 
 test('canvas pan binding excludes add affordance presses', () => {
