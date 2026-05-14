@@ -553,6 +553,8 @@ function createEditorCanvas(deps) {
         bindViewportControls();
         bindResizeHandling();
         bindLayoutModeToggle();
+        // Bind compact mode toggle
+        bindCompactModeToggle();
         viewportState.initialized = true;
     };
 
@@ -685,6 +687,41 @@ function createEditorCanvas(deps) {
         });
 
         toggleBtn.dataset.layoutBound = '1';
+    }
+
+    /**
+     * Bind the compact/detail mode toggle for the canvas toolbar.
+     * Toggles .is-compact class on .editor-canvas-toolbar and swaps the toggle icon.
+     * Preference is persisted in localStorage.
+     */
+    function bindCompactModeToggle() {
+        const toggleBtn = document.getElementById('compactModeToggleBtn');
+        const toolbar = document.querySelector('.editor-canvas-toolbar');
+        if (!toggleBtn || !toolbar) return;
+        if (toggleBtn.dataset.compactBound) return;
+
+        // Restore saved preference
+        var saved = localStorage.getItem('lovebud_toolbar_compact');
+        if (saved === 'true') {
+            toolbar.classList.add('is-compact');
+            var icon = toggleBtn.querySelector('.material-symbols-outlined');
+            if (icon) icon.textContent = 'unfold_less';
+        }
+
+        toggleBtn.addEventListener('click', function() {
+            var isCompact = toolbar.classList.toggle('is-compact');
+            var icon = toggleBtn.querySelector('.material-symbols-outlined');
+            if (icon) {
+                icon.textContent = isCompact ? 'unfold_less' : 'unfold_more';
+            }
+            try {
+                localStorage.setItem('lovebud_toolbar_compact', isCompact ? 'true' : 'false');
+            } catch (e) {
+                // localStorage may not be available
+            }
+        });
+
+        toggleBtn.dataset.compactBound = '1';
     }
 
     function bindCanvasPan() {

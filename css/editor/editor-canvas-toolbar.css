@@ -1,103 +1,55 @@
+
 /**
  * LoveBud Editor Canvas Toolbar Styles
  * Issue #515 - Canvas Toolbar CSS Relocation
  * Issue #1041 - Toolbar Cleanup
- * 
- * Extracted from css/editor/overrides.css for better role ownership
- * Contains Editor Canvas Topbar & Toolbar selectors
+ * Issue #1117 - Full-width fixed-cell toolbar with compact mode
  */
-
-/* Editor Canvas Topbar */
 .editor-canvas-topbar {
     position: absolute;
     top: 28px;
     left: 24px;
     right: 24px;
     z-index: 7;
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 18px;
     pointer-events: none;
 }
-
 .editor-canvas-topbar > * {
     pointer-events: auto;
 }
-
-/* Editor Canvas Title & Caption */
-.editor-canvas-title h2 {
-    margin: 10px 0 0;
-    font-size: 1.76rem;
-    line-height: 1.12;
-    letter-spacing: -0.05em;
-    color: var(--on-surface);
-}
-
-.editor-canvas-caption {
-    margin: 7px 0 0;
-    max-width: 360px;
-    color: var(--on-surface-soft);
-    font-size: 13px;
-    line-height: 1.6;
-}
-
-/* Editor Canvas Toolbar */
 .editor-canvas-toolbar {
     display: flex;
     align-items: center;
-    justify-content: flex-end;
-    flex-wrap: wrap;
-    gap: 12px;
-    padding: 6px;
+    justify-content: space-between;
+    width: 100%;
+    gap: 6px;
+    padding: 6px 12px;
     border-radius: 20px;
     background: rgba(255,250,244,0.85);
     border: 1px solid rgba(230,207,194,0.78);
     box-shadow: 0 14px 30px rgba(161,119,96,0.10);
     backdrop-filter: blur(8px);
+    box-sizing: border-box;
 }
-
-/* ── Toolbar Groups ── */
 .editor-canvas-toolbar-group {
     display: flex;
     align-items: center;
     gap: 4px;
+    flex: 0 0 auto;
 }
-
-/* Viewport group: compact surface to visually unite zoom controls */
 .editor-canvas-toolbar-group[aria-label="화면 줌 컨트롤"] {
-    background: rgba(255,255,255,0.5);
-    border-radius: 14px;
-    padding: 2px;
     gap: 0;
-    border: 1px solid rgba(221,198,184,0.3);
 }
-
 .editor-canvas-toolbar-group[aria-label="화면 줌 컨트롤"] .editor-canvas-tool-btn {
-    background: transparent;
-    border-color: transparent;
-    border-radius: 12px;
     width: 34px;
     height: 34px;
     min-width: 34px;
 }
-
-.editor-canvas-toolbar-group[aria-label="화면 줌 컨트롤"] .editor-canvas-tool-btn:hover:not(:disabled) {
-    background: rgba(144,73,81,0.08);
-    border-color: transparent;
-}
-
-/* Navigation group: allow wrap, wide buttons */
 .editor-canvas-toolbar-group[aria-label="트리 뷰 컨트롤"] {
     gap: 6px;
 }
-
-/* Layout mode group: pill-style toggle */
 .editor-canvas-toolbar-group[aria-label="레이아웃 모드"] {
     gap: 6px;
 }
-
-/* Layout toggle as a distinct mode pill */
 .editor-canvas-toolbar-group[aria-label="레이아웃 모드"] .editor-canvas-tool-btn-wide {
     background: rgba(255,255,255,0.6);
     border: 1.5px solid rgba(144,73,81,0.18);
@@ -109,38 +61,30 @@
     gap: 8px;
     transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
-
 .editor-canvas-toolbar-group[aria-label="레이아웃 모드"] .editor-canvas-tool-btn-wide:hover:not(:disabled) {
     background: rgba(144,73,81,0.08);
     border-color: rgba(144,73,81,0.35);
     transform: none;
 }
-
 .editor-canvas-toolbar-group[aria-label="레이아웃 모드"] .editor-canvas-tool-btn-wide.is-active {
     background: var(--primary, rgba(144,73,81,0.92));
     border-color: var(--primary, rgba(144,73,81,0.92));
     color: #fff;
     box-shadow: 0 2px 8px rgba(144,73,81,0.2);
 }
-
 .editor-canvas-toolbar-group[aria-label="레이아웃 모드"] .editor-canvas-tool-btn-wide.is-active:hover:not(:disabled) {
     background: var(--primary-hover, rgba(124,59,67,0.92));
 }
-
 .editor-canvas-toolbar-group[aria-label="레이아웃 모드"] .editor-canvas-tool-btn-wide .material-symbols-outlined {
     font-size: 18px;
 }
-
-/* ── Separators ── */
 .editor-canvas-toolbar-separator {
     width: 1px;
     height: 30px;
     background: rgba(221,198,184,0.5);
-    margin: 0 6px;
+    margin: 0 4px;
     flex-shrink: 0;
 }
-
-/* ── Base Tool Button ── */
 .editor-canvas-tool-btn {
     position: relative;
     width: 36px;
@@ -160,7 +104,6 @@
     transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
     flex-shrink: 0;
 }
-
 .editor-canvas-tool-btn:hover:not(:disabled),
 .editor-canvas-tool-btn:focus-visible:not(:disabled) {
     background: rgba(255,255,255,0.96);
@@ -168,32 +111,26 @@
     color: var(--primary);
     transform: translateY(-1px);
 }
-
 .editor-canvas-tool-btn:active:not(:disabled) {
     transform: scale(0.92);
     background: rgba(144,73,81,0.08);
     border-color: rgba(144,73,81,0.35);
     transition: transform 0.08s ease, background 0.08s ease;
 }
-
 .editor-canvas-tool-btn:active:not(:disabled) .material-symbols-outlined {
     transform: scale(0.88);
     transition: transform 0.08s ease;
 }
-
 .editor-canvas-tool-btn:focus-visible {
     outline: 2px solid var(--control-focus-ring, rgba(144,73,81,0.32));
     outline-offset: 2px;
 }
-
 .editor-canvas-tool-btn:disabled,
 .editor-canvas-tool-btn.is-disabled {
     opacity: 0.46;
     cursor: not-allowed;
     transform: none;
 }
-
-/* Zoom indicator badge */
 .editor-canvas-zoom-indicator {
     display: inline-flex;
     align-items: center;
@@ -212,135 +149,171 @@
     user-select: none;
     transition: opacity 0.2s ease, transform 0.2s ease;
 }
-
 .editor-canvas-zoom-indicator.is-hidden {
     opacity: 0;
     transform: scale(0.8);
 }
-
-/* Button feedback flash — brief highlight after action */
 .editor-canvas-tool-btn.flash-feedback {
     background: rgba(144,73,81,0.15);
     border-color: rgba(144,73,81,0.35);
     transition: background 0.1s ease, border-color 0.1s ease;
 }
-
-/* Active state for layout mode toggle */
 .editor-canvas-tool-btn.is-active {
     background: var(--primary, rgba(144,73,81,0.92));
     border-color: var(--primary, rgba(144,73,81,0.92));
     color: #fff;
 }
-
 .editor-canvas-tool-btn.is-active:hover:not(:disabled) {
     background: var(--primary-hover, rgba(124,59,67,0.92));
     border-color: var(--primary-hover, rgba(124,59,67,0.92));
     color: #fff;
 }
-
 .editor-canvas-tool-btn .material-symbols-outlined {
     font-size: 20px;
     line-height: 1;
 }
-
 .editor-canvas-tool-btn-wide {
     width: auto;
     min-width: 36px;
     max-width: none;
     padding: 0 14px 0 10px;
 }
-
 .editor-canvas-tool-label {
     font-size: 13px;
     font-weight: 700;
     line-height: 1;
     white-space: nowrap;
+    transition: opacity 0.2s ease, width 0.2s ease, margin 0.2s ease;
 }
-
+.editor-canvas-toolbar.is-compact .editor-canvas-tool-label {
+    opacity: 0;
+    width: 0;
+    margin: 0;
+    overflow: hidden;
+    pointer-events: none;
+}
+.editor-canvas-toolbar.is-compact .editor-canvas-zoom-indicator {
+    opacity: 0;
+    transform: scale(0.8);
+    width: 0;
+    min-width: 0;
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+}
+.editor-canvas-toolbar.is-compact .editor-canvas-tool-btn-wide {
+    padding: 0;
+    width: 36px;
+    min-width: 36px;
+    justify-content: center;
+}
+.editor-canvas-toolbar.is-compact .editor-canvas-toolbar-group[aria-label="레이아웃 모드"] .editor-canvas-tool-btn-wide {
+    padding: 0;
+    width: 36px;
+    min-width: 36px;
+    height: 36px;
+    border-radius: 14px;
+    justify-content: center;
+    gap: 0;
+}
+@media (max-width: 1024px) {
+    .editor-canvas-topbar {
+        top: 14px;
+        left: 14px;
+        right: 14px;
+    }
+}
 @media (max-width: 768px) {
     .editor-canvas-topbar {
-        left: 16px;
-        right: 16px;
-        gap: 10px;
-        flex-direction: column;
-        align-items: stretch;
+        left: 12px;
+        right: 12px;
+        top: 12px;
     }
-
-    .editor-canvas-title {
-        text-align: left;
-    }
-
     .editor-canvas-toolbar {
-        max-width: 100%;
-        padding: 6px 8px;
-        gap: 8px;
-        justify-content: flex-start;
-        align-items: stretch;
+        width: 100%;
+        padding: 5px 8px;
+        gap: 4px;
         border-radius: 16px;
+        justify-content: space-between;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
     }
-
     .editor-canvas-toolbar-group {
-        flex-wrap: wrap;
-        flex: 1;
-        gap: 6px;
+        flex: 0 0 auto;
+        flex-wrap: nowrap;
+        gap: 4px;
     }
-
     .editor-canvas-toolbar-group[aria-label="화면 줌 컨트롤"] {
         flex: 0 0 auto;
-        display: flex;
-        align-items: center;
-        background: rgba(255,255,255,0.5);
-        border-radius: 14px;
-        padding: 2px;
         gap: 0;
-        border: 1px solid rgba(221,198,184,0.3);
     }
-
     .editor-canvas-toolbar-group[aria-label="화면 줌 컨트롤"] .editor-canvas-tool-btn {
-        background: transparent;
-        border-color: transparent;
-        border-radius: 12px;
-        width: 36px;
-        height: 36px;
-        min-width: 36px;
+        width: 34px;
+        height: 34px;
+        min-width: 34px;
     }
-
     .editor-canvas-toolbar-group[aria-label="트리 뷰 컨트롤"] {
-        flex: 1 1 auto;
-        flex-direction: column;
+        flex: 0 0 auto;
+        flex-direction: row;
     }
-
     .editor-canvas-toolbar-group[aria-label="레이아웃 모드"] {
         flex: 0 0 auto;
         flex-direction: row;
     }
-
     .editor-canvas-toolbar-separator {
         display: none;
     }
-
     .editor-canvas-tool-btn {
-        width: 40px;
-        height: 40px;
-        min-width: 40px;
+        width: 34px;
+        height: 34px;
+        min-width: 34px;
     }
-
     .editor-canvas-tool-btn-wide {
         width: auto;
         flex: none;
-        padding: 0 12px;
+        padding: 0 10px;
         justify-content: center;
     }
-
     .editor-canvas-toolbar-group[aria-label="레이아웃 모드"] .editor-canvas-tool-btn-wide {
-        padding: 0 18px 0 14px;
-        height: 38px;
+        padding: 0 12px 0 10px;
+        height: 34px;
     }
-
     .editor-canvas-tool-label {
         position: static;
         width: auto;
         height: auto;
         clip: auto;
+    }
+    .editor-canvas-toolbar.is-compact .editor-canvas-tool-label {
+        opacity: 0;
+        width: 0;
+        margin: 0;
+        overflow: hidden;
+        pointer-events: none;
+    }
+    .editor-canvas-toolbar.is-compact .editor-canvas-zoom-indicator {
+        opacity: 0;
+        transform: scale(0.8);
+        width: 0;
+        min-width: 0;
+        padding: 0;
+        margin: 0;
+        overflow: hidden;
+    }
+    .editor-canvas-toolbar.is-compact .editor-canvas-tool-btn-wide {
+        padding: 0;
+        width: 34px;
+        min-width: 34px;
+        justify-content: center;
+    }
+    .editor-canvas-toolbar.is-compact .editor-canvas-toolbar-group[aria-label="레이아웃 모드"] .editor-canvas-tool-btn-wide {
+        padding: 0;
+        width: 34px;
+        min-width: 34px;
+        height: 34px;
+        border-radius: 14px;
+        justify-content: center;
+        gap: 0;
     }
 }
