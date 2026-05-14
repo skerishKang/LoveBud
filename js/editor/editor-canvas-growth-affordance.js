@@ -28,6 +28,12 @@ function createEditorCanvasGrowthAffordance(deps) {
         return Math.max(min, Math.min(value, max));
     }
 
+    function isStartMoment(anchorMem, options) {
+        if (!anchorMem) return false;
+        if (options && options.isFirstStep) return true;
+        return anchorMem.parentId === null || anchorMem.parentId === undefined;
+    }
+
     function clearGrowthAffordance() {
         canvas.querySelectorAll('.memory-add-affordance').forEach((el) => el.remove());
         svg.querySelectorAll('.branch-line-affordance').forEach((el) => el.remove());
@@ -274,7 +280,7 @@ function createEditorCanvasGrowthAffordance(deps) {
         svg.appendChild(path);
     }
 
-    function createPlusTipElement(anchorMem, labelText, helperText) {
+    function createPlusTipElement(anchorMem, labelText, helperText, options) {
         const anchorPos = calcPosition(anchorMem);
         const tipPos = getPlusTipPosition(anchorPos, anchorMem);
         const button = documentRef.createElement('button');
@@ -450,7 +456,11 @@ function createEditorCanvasGrowthAffordance(deps) {
             }
         });
 
-        drawConnectorLine(anchorPos, tipPos, tipPos.side);
+        const shouldDrawConnector = !isStartMoment(anchorMem, options);
+        if (shouldDrawConnector) {
+            drawConnectorLine(anchorPos, tipPos, tipPos.side);
+        }
+
         canvas.appendChild(button);
     }
 
@@ -465,7 +475,7 @@ function createEditorCanvasGrowthAffordance(deps) {
                 : (i18n('growth_continue_hint') || '선택한 순간 뒤로 감정이 이어져요'))
             || '';
 
-        createPlusTipElement(anchorMem, labelText, helperText);
+        createPlusTipElement(anchorMem, labelText, helperText, opts);
     }
 
     return {
