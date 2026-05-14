@@ -20,6 +20,8 @@ function createEditorCanvasGrowthAffordance(deps) {
     const BUBBLE_WIDTH = 188;
     const BUBBLE_MIN_HEIGHT = 60;
     const BUBBLE_GAP = 8;
+    const LOCK_CLASS = 'affordance-interaction-locked';
+    const INTERACTING_CLASS = 'is-interacting';
 
     function clamp(value, min, max) {
         if (max < min) return min;
@@ -29,6 +31,7 @@ function createEditorCanvasGrowthAffordance(deps) {
     function clearGrowthAffordance() {
         canvas.querySelectorAll('.memory-add-affordance').forEach((el) => el.remove());
         svg.querySelectorAll('.branch-line-affordance').forEach((el) => el.remove());
+        canvas.classList.remove(LOCK_CLASS);
     }
 
     function openAddMomentFromCanvas() {
@@ -275,6 +278,7 @@ function createEditorCanvasGrowthAffordance(deps) {
         const anchorPos = calcPosition(anchorMem);
         const tipPos = getPlusTipPosition(anchorPos, anchorMem);
         const button = documentRef.createElement('button');
+        let unlockTimer = null;
         button.type = 'button';
         button.className = 'memory-add-affordance affordance-tooltip-bubble';
         button.setAttribute('aria-label', labelText);
@@ -356,7 +360,26 @@ function createEditorCanvasGrowthAffordance(deps) {
 
         let bubbleExpanded = false;
 
+        function lockMovement() {
+            if (unlockTimer) {
+                clearTimeout(unlockTimer);
+                unlockTimer = null;
+            }
+            button.classList.add(INTERACTING_CLASS);
+            canvas.classList.add(LOCK_CLASS);
+        }
+
+        function unlockMovementSoon(delay) {
+            if (unlockTimer) clearTimeout(unlockTimer);
+            unlockTimer = setTimeout(() => {
+                button.classList.remove(INTERACTING_CLASS);
+                canvas.classList.remove(LOCK_CLASS);
+                unlockTimer = null;
+            }, delay || 140);
+        }
+
         function showBubble() {
+            lockMovement();
             if (bubbleExpanded) return;
             bubbleExpanded = true;
             button.style.width = `${BUBBLE_WIDTH}px`;
@@ -374,7 +397,10 @@ function createEditorCanvasGrowthAffordance(deps) {
         }
 
         function hideBubble() {
-            if (!bubbleExpanded) return;
+            if (!bubbleExpanded) {
+                unlockMovementSoon(120);
+                return;
+            }
             bubbleExpanded = false;
             button.style.width = `${TIP_SIZE}px`;
             button.style.minHeight = `${TIP_SIZE}px`;
@@ -388,13 +414,17 @@ function createEditorCanvasGrowthAffordance(deps) {
             button.style.backdropFilter = 'none';
             textWrap.style.display = 'none';
             button.setAttribute('aria-expanded', 'false');
+            unlockMovementSoon(160);
         }
 
         button.addEventListener('mouseenter', showBubble);
         button.addEventListener('mouseleave', hideBubble);
         button.addEventListener('focus', showBubble);
         button.addEventListener('blur', hideBubble);
-        button.addEventListener('touchstart', showBubble, { passive: true });
+        button.addEventListener('touchstart', () => {
+            showBubble();
+            unlockMovementSoon(700);
+        }, { passive: true });
 
         button.addEventListener('click', (e) => {
             e.preventDefault();
