@@ -311,7 +311,8 @@ function createEditorCanvas(deps) {
         const drawableMemories = getTreeMemories().filter((node) => !isRootMemory(node, canonicalRootId));
         clearGrowthAffordance();
         growthAffordance.renderGrowthAffordance(mem, {
-            isFirstStep: drawableMemories.length <= 1
+            isFirstStep: drawableMemories.length <= 1 || mem.parentId === canonicalRootId,
+            canonicalRootId
         });
     }
 
