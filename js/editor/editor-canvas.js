@@ -497,6 +497,22 @@ function createEditorCanvas(deps) {
         renderAffordanceForMemory(selectedMem);
     }
 
+    function findInitialVisibleMemory(drawableMemories, treeMemories, canonicalRootId) {
+        // Find the hidden system root (parentId === null)
+        const rootMemory = treeMemories.find(function(m) {
+            return m && (m.parentId === null || m.parentId === undefined);
+        });
+        if (rootMemory) {
+            // Find first visible child of the hidden root
+            var firstChild = drawableMemories.find(function(m) {
+                return m && m.parentId === rootMemory.id;
+            });
+            if (firstChild) return firstChild;
+        }
+        // No hidden root or no child found — fall back to first drawable
+        return drawableMemories[0] || null;
+    }
+
     const initCanvas = () => {
         const canonicalRootId = getCanonicalRootId();
         const treeMemories = getTreeMemories();
@@ -543,9 +559,9 @@ function createEditorCanvas(deps) {
                 ? treeMemories.find((m) => m.id === selectedNodeId)
                 : createInitialMemory();
             
-            // Skip root if found; show first drawable memory instead
+            // Skip root if found; show first visible child of hidden root instead
             if (!selectedMem || isRootMemory(selectedMem, canonicalRootId)) {
-                selectedMem = drawableMemories[0];
+                selectedMem = findInitialVisibleMemory(drawableMemories, treeMemories, canonicalRootId);
             }
             
             if (selectedMem) {
