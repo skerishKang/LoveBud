@@ -690,9 +690,8 @@ document.addEventListener('DOMContentLoaded', () => {
         initCanvas();
         updateCanvasEmptyGuide();
         const initialSelection = treeMemories().find((memory) => memory.id === selectedNodeId) || createInitialMemory();
-        if (initialSelection && !isRootMemory(initialSelection, canonicalRootId)) {
+        if (initialSelection) {
             currentEditingMemory = initialSelection;
-            updateDetailPanel(initialSelection);
         }
 
         const editMemoryBtn = document.getElementById('editMemoryBtn');

@@ -539,13 +539,11 @@ function createEditorCanvas(deps) {
         });
 
         if (hasVisibleNodes) {
-            // Ensure selectedMem is a drawable (non-root) memory
             let selectedMem = selectedNodeId
                 ? treeMemories.find((m) => m.id === selectedNodeId)
                 : createInitialMemory();
             
-            // If selectedMem is a root memory or not found, fall back to first drawable memory
-            if (!selectedMem || isRootMemory(selectedMem, canonicalRootId)) {
+            if (!selectedMem) {
                 selectedMem = drawableMemories[0];
             }
             
