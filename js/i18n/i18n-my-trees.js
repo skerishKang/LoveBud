@@ -55,6 +55,7 @@
     'myTrees.card_flow_empty_label': { ko: '첫 순간을 기다리는 러브트리 흐름', en: 'LoveTree flow waiting for the first moment' },
     'myTrees.card_waiting': { ko: '첫 순간을 기다리는 중', en: 'Waiting for the first moment' },
     'myTrees.card_growing': { ko: '차곡차곡 자라는 중', en: 'Growing layer by layer' },
+    'myTrees.moment_count': { ko: '순간', en: 'Moment' },
     'myTrees.moment_count_compact': { ko: '순간 {count}개', en: '{count} moments' },
     'myTrees.create_modal_kicker': { ko: '새 러브트리 시작', en: 'Start a new LoveTree' },
     'myTrees.create_modal_title': { ko: '어떤 러브트리를 남길까요?', en: 'What kind of LoveTree would you like to start?' },
