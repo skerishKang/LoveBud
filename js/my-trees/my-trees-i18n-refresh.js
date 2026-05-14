@@ -71,23 +71,6 @@
       }
     });
 
-    document.querySelectorAll('.tree-card-dropdown').forEach(function(dropdown) {
-      var card = dropdown.closest('.tree-card');
-      var isPublic = card?.dataset?.visibility !== 'private';
-      var visibilityItem = dropdown.querySelector('.dropdown-item.visibility');
-      var renameItem = dropdown.querySelector('.dropdown-item.rename');
-      var deleteItem = dropdown.querySelector('.dropdown-item.delete');
-      if (visibilityItem) {
-        visibilityItem.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px;">' + (isPublic ? 'lock' : 'public') + '</span>' + (isPublic ? tText('visibility_make_private', '비공개로 전환') : tText('visibility_make_public', '공개로 전환'));
-      }
-      if (renameItem) {
-        renameItem.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px;">edit</span>' + tText('rename', '이름 변경');
-      }
-      if (deleteItem) {
-        deleteItem.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px;">delete</span>' + tText('delete', '삭제');
-      }
-    });
-
     document.querySelectorAll('.tree-card-count-pill, .tree-card-moment-badge').forEach(function(el) {
       var count = el.getAttribute('data-count');
       if (count !== null) {
@@ -95,15 +78,6 @@
       }
     });
 
-    document.querySelectorAll('.tree-card-select-btn').forEach(function(el) {
-      el.textContent = el.closest('.tree-card') && el.closest('.tree-card').classList.contains('is-selected')
-        ? tText('myTrees.card_selected', '보고 있는 트리')
-        : tText('myTrees.card_select', '고르기');
-    });
-
-    document.querySelectorAll('.tree-card-open-btn').forEach(function(el) {
-      el.textContent = tText('myTrees.card_open', '트리 열기');
-    });
   }
 
   function refreshMyTreesLanguage() {
