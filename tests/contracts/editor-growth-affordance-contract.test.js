@@ -22,7 +22,8 @@ function createGrowthAffordance({ width, height }) {
     canvas: {
       clientWidth: width,
       clientHeight: height,
-      querySelectorAll: () => []
+      querySelectorAll: () => [],
+      classList: { add: () => {}, remove: () => {}, contains: () => false }
     },
     svg: {
       querySelectorAll: () => []
@@ -97,6 +98,17 @@ test('node hover can move the plus tip before click selection', () => {
   assert.match(canvasSource, /renderAffordanceForHoveredMemory/);
   assert.match(canvasSource, /addEventListener\('mouseenter'/);
   assert.match(canvasSource, /addEventListener\('focusin'/);
+});
+
+test('plus tip and bubble interaction locks node-hover movement', () => {
+  const affordanceSource = fs.readFileSync(path.join(ROOT, 'js/editor/editor-canvas-growth-affordance.js'), 'utf8');
+  const canvasSource = fs.readFileSync(path.join(ROOT, 'js/editor/editor-canvas.js'), 'utf8');
+
+  assert.match(affordanceSource, /affordance-interaction-locked/);
+  assert.match(affordanceSource, /function\s+lockMovement\s*\(/);
+  assert.match(affordanceSource, /function\s+unlockMovementSoon\s*\(/);
+  assert.match(canvasSource, /AFFORDANCE_LOCK_CLASS/);
+  assert.match(canvasSource, /canvas\.classList\.contains\(AFFORDANCE_LOCK_CLASS\)/);
 });
 
 test('canvas pan binding excludes add affordance presses', () => {
