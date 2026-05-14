@@ -543,7 +543,8 @@ function createEditorCanvas(deps) {
                 ? treeMemories.find((m) => m.id === selectedNodeId)
                 : createInitialMemory();
             
-            if (!selectedMem) {
+            // Skip root if found; show first drawable memory instead
+            if (!selectedMem || isRootMemory(selectedMem, canonicalRootId)) {
                 selectedMem = drawableMemories[0];
             }
             
