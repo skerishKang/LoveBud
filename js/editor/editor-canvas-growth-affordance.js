@@ -20,6 +20,9 @@ function createEditorCanvasGrowthAffordance(deps) {
     const BUBBLE_WIDTH = 188;
     const BUBBLE_MIN_HEIGHT = 60;
     const BUBBLE_GAP = 8;
+    const BUBBLE_PADDING_X = 10;
+    const BUBBLE_PADDING_Y = 10;
+    const PLUS_ICON_SIZE = 32;
     const LOCK_CLASS = 'affordance-interaction-locked';
     const INTERACTING_CLASS = 'is-interacting';
 
@@ -32,7 +35,9 @@ function createEditorCanvasGrowthAffordance(deps) {
         const opts = options || {};
         if (opts.isFirstStep === true) return true;
         if (!anchorMem || typeof anchorMem !== 'object') return false;
-        return !anchorMem.parentId;
+        const parentId = anchorMem.parentId;
+        if (parentId === null || parentId === undefined || parentId === '') return true;
+        return !!opts.canonicalRootId && parentId === opts.canonicalRootId;
     }
 
     function clearGrowthAffordance() {
@@ -311,13 +316,13 @@ function createEditorCanvasGrowthAffordance(deps) {
         button.style.gap = '10px';
         button.style.overflow = 'hidden';
         button.style.boxShadow = '0 3px 10px rgba(144, 73, 81, 0.25)';
-        button.style.transition = 'width 0.16s ease, min-height 0.16s ease, height 0.16s ease, border-radius 0.16s ease, background 0.16s ease, box-shadow 0.16s ease, padding 0.16s ease';
+        button.style.transition = 'left 0.16s ease, top 0.16s ease, width 0.16s ease, min-height 0.16s ease, height 0.16s ease, border-radius 0.16s ease, background 0.16s ease, box-shadow 0.16s ease, padding 0.16s ease';
 
         const plusIcon = documentRef.createElement('span');
         plusIcon.setAttribute('aria-hidden', 'true');
         plusIcon.textContent = '+';
-        plusIcon.style.width = '32px';
-        plusIcon.style.height = '32px';
+        plusIcon.style.width = `${PLUS_ICON_SIZE}px`;
+        plusIcon.style.height = `${PLUS_ICON_SIZE}px`;
         plusIcon.style.borderRadius = '50%';
         plusIcon.style.display = 'inline-flex';
         plusIcon.style.alignItems = 'center';
@@ -390,12 +395,14 @@ function createEditorCanvasGrowthAffordance(deps) {
             lockMovement();
             if (bubbleExpanded) return;
             bubbleExpanded = true;
+            button.style.left = `${tipPos.x - BUBBLE_PADDING_X - (PLUS_ICON_SIZE / 2)}px`;
+            button.style.top = `${tipPos.y - (BUBBLE_MIN_HEIGHT / 2)}px`;
             button.style.width = `${BUBBLE_WIDTH}px`;
             button.style.minHeight = `${BUBBLE_MIN_HEIGHT}px`;
-            button.style.height = 'auto';
+            button.style.height = `${BUBBLE_MIN_HEIGHT}px`;
             button.style.borderRadius = '999px';
             button.style.justifyContent = 'flex-start';
-            button.style.padding = '10px 14px 10px 10px';
+            button.style.padding = `${BUBBLE_PADDING_Y}px 14px ${BUBBLE_PADDING_Y}px ${BUBBLE_PADDING_X}px`;
             button.style.border = '1px solid rgba(144, 73, 81, 0.18)';
             button.style.background = 'linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,246,244,0.96))';
             button.style.boxShadow = '0 12px 28px rgba(75, 64, 57, 0.10)';
@@ -410,6 +417,8 @@ function createEditorCanvasGrowthAffordance(deps) {
                 return;
             }
             bubbleExpanded = false;
+            button.style.left = `${tipPos.x - TIP_HALF}px`;
+            button.style.top = `${tipPos.y - TIP_HALF}px`;
             button.style.width = `${TIP_SIZE}px`;
             button.style.minHeight = `${TIP_SIZE}px`;
             button.style.height = `${TIP_SIZE}px`;
