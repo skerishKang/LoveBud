@@ -552,6 +552,7 @@
 
   function renderTrees(trees, options) {
     var hubOnSelect = options && options.onSelect;
+    var hubOnNavigate = options && options.onNavigate;
     var container = document.getElementById('state-loaded');
     if (!container) return;
 
@@ -585,10 +586,10 @@
     grid.innerHTML = '';
 
     // Issue #616: Render first batch only
-    renderNextBatch(grid, buildTreeCardFn, setState, stateEnum);
+    renderNextBatch(grid, buildTreeCardFn, setState, stateEnum, { onSelect: hubOnSelect, onNavigate: hubOnNavigate });
 
     // Issue #616: Set up scroll continuation
-    setupScrollContinuation(grid, buildTreeCardFn, setState, stateEnum);
+    setupScrollContinuation(grid, buildTreeCardFn, setState, stateEnum, { onSelect: hubOnSelect, onNavigate: hubOnNavigate });
 
     if (typeof setState === 'function' && stateEnum && stateEnum.LOADED) {
       setState(stateEnum.LOADED);
@@ -599,6 +600,9 @@
   function renderNextBatch(grid, buildTreeCardFn, setState, stateEnum, extraOptions) {
     var startIndex = currentVisibleCount;
     var endIndex = Math.min(startIndex + BATCH_SIZE, totalTreesCount);
+    
+    var onSelect = extraOptions && extraOptions.onSelect;
+    var onNavigate = extraOptions && extraOptions.onNavigate;
     
     for (var i = startIndex; i < endIndex; i++) {
       var tree = allTreesData[i];
@@ -654,7 +658,7 @@
       var observer = new IntersectionObserver(function(entries) {
         entries.forEach(function(entry) {
           if (entry.isIntersecting && !isLoadingMore && currentVisibleCount < totalTreesCount) {
-            loadMoreBatch(grid, buildTreeCardFn, setState, stateEnum, { onSelect: hubOnSelect, onNavigate: onNavigate });
+            loadMoreBatch(grid, buildTreeCardFn, setState, stateEnum, extraOptions);
           }
         });
       }, { rootMargin: '100px' });
