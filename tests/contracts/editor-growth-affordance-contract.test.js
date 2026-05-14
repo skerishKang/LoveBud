@@ -111,6 +111,16 @@ test('plus tip and bubble interaction locks node-hover movement', () => {
   assert.match(canvasSource, /canvas\.classList\.contains\(AFFORDANCE_LOCK_CLASS\)/);
 });
 
+test('start moment plus tip avoids connector line', () => {
+  const source = fs.readFileSync(path.join(ROOT, 'js/editor/editor-canvas-growth-affordance.js'), 'utf8');
+
+  assert.match(source, /function\s+isStartMoment\s*\(/);
+  assert.match(source, /opts\.isFirstStep\s*===\s*true/);
+  assert.match(source, /!anchorMem\.parentId/);
+  assert.match(source, /shouldDrawConnector\s*=\s*!isStartMoment\(anchorMem, options\)/);
+  assert.match(source, /if \(shouldDrawConnector\)\s*{\s*drawConnectorLine/);
+});
+
 test('canvas pan binding excludes add affordance presses', () => {
   const interactionSource = fs.readFileSync(path.join(ROOT, 'js/editor/editor-canvas-interaction.js'), 'utf8');
 
