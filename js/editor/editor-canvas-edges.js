@@ -37,6 +37,10 @@
             if (!node || typeof calcPosition !== 'function') return;
 
             const parentId = node.parentId || canonicalRootId;
+            if (parentId === canonicalRootId) {
+                return;
+            }
+
             const parent = treeMemories.find((memory) => memory.id === parentId);
             if (parent) {
                 drawBranch(calcPosition(parent), calcPosition(node));
