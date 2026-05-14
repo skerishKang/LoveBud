@@ -30,7 +30,7 @@ function createEditorCanvasGrowthAffordance(deps) {
 
     function isStartMoment(anchorMem, options) {
         if (!anchorMem) return false;
-        if (options && options.isFirstStep) return true;
+        if (options && (options.isStartMoment || options.isFirstStep)) return true;
         return anchorMem.parentId === null || anchorMem.parentId === undefined;
     }
 

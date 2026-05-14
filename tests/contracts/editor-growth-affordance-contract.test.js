@@ -123,7 +123,7 @@ test('start moment detection suppresses connector line', () => {
   assert.match(source, /function\s+isStartMoment\s*\(/);
   assert.match(source, /anchorMem\.parentId\s*===\s*null/);
   assert.match(source, /anchorMem\.parentId\s*===\s*undefined/);
-  assert.match(source, /options\s*&&\s*options\.isFirstStep/);
+  assert.match(source, /options\s*&&\s*\(?\s*options\.isStartMoment/);
   assert.match(source, /shouldDrawConnector/);
   assert.match(source, /if\s*\([^)]*shouldDrawConnector[^)]*\)/);
   assert.match(source, /drawConnectorLine\s*\(/);
@@ -140,5 +140,5 @@ test('growth affordance keeps connector for non-start memories', () => {
 test('isStartMoment handles missing options gracefully', () => {
   const source = fs.readFileSync(path.join(ROOT, 'js/editor/editor-canvas-growth-affordance.js'), 'utf8');
 
-  assert.match(source, /if\s*\([^)]*options\s*&&\s*options\.isFirstStep[^)]*\)/);
+  assert.match(source, /if\s*\([^)]*options\s*&&\s*\([^)]*options\.isStartMoment[^)]*\)/);
 });
