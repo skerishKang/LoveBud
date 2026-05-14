@@ -118,7 +118,7 @@
       }
     });
 
-    console.log('[i18n] Applied to', elements.length, 'elements,', placeholderElements.length, 'placeholders');
+
   }
 
   // 언어 변경 이벤트 리스너
