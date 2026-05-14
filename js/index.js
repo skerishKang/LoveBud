@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     setupBrowseSafePrefetch();
 
-    console.log('Landing Portal Initialized');
+
 });
 
 function setupBrowseSafePrefetch() {
