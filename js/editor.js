@@ -498,7 +498,7 @@ document.addEventListener('DOMContentLoaded', () => {
             updateSidebarStatus();
             if (currentEditingMemory) {
                 const refreshedEditingMemory = treeMemories().find((memory) => memory.id === currentEditingMemory.id);
-                if (refreshedEditingMemory) {
+                if (refreshedEditingMemory && !isRootMemory(refreshedEditingMemory, canonicalRootId)) {
                     currentEditingMemory = refreshedEditingMemory;
                     updateDetailPanel(refreshedEditingMemory);
                 }
@@ -690,9 +690,8 @@ document.addEventListener('DOMContentLoaded', () => {
         initCanvas();
         updateCanvasEmptyGuide();
         const initialSelection = treeMemories().find((memory) => memory.id === selectedNodeId) || createInitialMemory();
-        if (initialSelection) {
+        if (initialSelection && !isRootMemory(initialSelection, canonicalRootId)) {
             currentEditingMemory = initialSelection;
-            updateDetailPanel(initialSelection);
         }
 
         const editMemoryBtn = document.getElementById('editMemoryBtn');
