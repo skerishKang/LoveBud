@@ -116,3 +116,29 @@ test('canvas pan binding excludes add affordance presses', () => {
 
   assert.match(interactionSource, /memory-add-affordance/);
 });
+
+test('start moment detection suppresses connector line', () => {
+  const source = fs.readFileSync(path.join(ROOT, 'js/editor/editor-canvas-growth-affordance.js'), 'utf8');
+
+  assert.match(source, /function\s+isStartMoment\s*\(/);
+  assert.match(source, /anchorMem\.parentId\s*===\s*null/);
+  assert.match(source, /anchorMem\.parentId\s*===\s*undefined/);
+  assert.match(source, /options\s*&&\s*options\.isFirstStep/);
+  assert.match(source, /shouldDrawConnector/);
+  assert.match(source, /if\s*\([^)]*shouldDrawConnector[^)]*\)/);
+  assert.match(source, /drawConnectorLine\s*\(/);
+});
+
+test('growth affordance keeps connector for non-start memories', () => {
+  const source = fs.readFileSync(path.join(ROOT, 'js/editor/editor-canvas-growth-affordance.js'), 'utf8');
+
+  assert.match(source, /const\s+shouldDrawConnector\s*=\s*!isStartMoment/);
+  assert.match(source, /if\s*\([^)]*shouldDrawConnector[^)]*\)/);
+  assert.match(source, /drawConnectorLine\s*\(/);
+});
+
+test('isStartMoment handles missing options gracefully', () => {
+  const source = fs.readFileSync(path.join(ROOT, 'js/editor/editor-canvas-growth-affordance.js'), 'utf8');
+
+  assert.match(source, /if\s*\([^)]*options\s*&&\s*options\.isFirstStep[^)]*\)/);
+});
