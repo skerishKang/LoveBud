@@ -303,6 +303,7 @@ function createEditorCanvas(deps) {
     const clearBranches = requireCanvasEdgeMethod('clearBranches');
     const drawBranchForMemory = requireCanvasEdgeMethod('drawBranchForMemory');
     const NODE_TAP_SELECT_THRESHOLD = 8;
+    const AFFORDANCE_LOCK_CLASS = 'affordance-interaction-locked';
 
     function renderAffordanceForMemory(mem) {
         if (!mem) return;
@@ -316,10 +317,12 @@ function createEditorCanvas(deps) {
 
     function renderAffordanceForHoveredMemory(mem) {
         if (!mem || viewportState.isDraggingNode || viewportState.isPanning) return;
+        if (canvas.classList.contains(AFFORDANCE_LOCK_CLASS)) return;
         if (hoverAffordanceMemoryId === mem.id) return;
         if (hoverAffordanceTimer) clearTimeout(hoverAffordanceTimer);
         hoverAffordanceMemoryId = mem.id;
         hoverAffordanceTimer = setTimeout(() => {
+            if (canvas.classList.contains(AFFORDANCE_LOCK_CLASS)) return;
             renderAffordanceForMemory(mem);
         }, 45);
     }
@@ -461,6 +464,10 @@ function createEditorCanvas(deps) {
 
     function clearGrowthAffordance() {
         hoverAffordanceMemoryId = null;
+        if (hoverAffordanceTimer) {
+            clearTimeout(hoverAffordanceTimer);
+            hoverAffordanceTimer = null;
+        }
         growthAffordance.clearGrowthAffordance();
     }
 
