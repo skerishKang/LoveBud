@@ -28,6 +28,8 @@ function createEditorCanvas(deps) {
 
     let savedFreePositions = null;
     let storedFreePositions = null;
+    let hoverAffordanceTimer = null;
+    let hoverAffordanceMemoryId = null;
 
     function loadStoredLayout() {
         if (typeof canvasLayout.createLayoutStore === 'function') {
@@ -301,6 +303,29 @@ function createEditorCanvas(deps) {
     const clearBranches = requireCanvasEdgeMethod('clearBranches');
     const drawBranchForMemory = requireCanvasEdgeMethod('drawBranchForMemory');
     const NODE_TAP_SELECT_THRESHOLD = 8;
+    const AFFORDANCE_LOCK_CLASS = 'affordance-interaction-locked';
+
+    function renderAffordanceForMemory(mem) {
+        if (!mem) return;
+        const canonicalRootId = getCanonicalRootId();
+        const drawableMemories = getTreeMemories().filter((node) => !isRootMemory(node, canonicalRootId));
+        clearGrowthAffordance();
+        growthAffordance.renderGrowthAffordance(mem, {
+            isFirstStep: drawableMemories.length <= 1
+        });
+    }
+
+    function renderAffordanceForHoveredMemory(mem) {
+        if (!mem || viewportState.isDraggingNode || viewportState.isPanning) return;
+        if (canvas.classList.contains(AFFORDANCE_LOCK_CLASS)) return;
+        if (hoverAffordanceMemoryId === mem.id) return;
+        if (hoverAffordanceTimer) clearTimeout(hoverAffordanceTimer);
+        hoverAffordanceMemoryId = mem.id;
+        hoverAffordanceTimer = setTimeout(() => {
+            if (canvas.classList.contains(AFFORDANCE_LOCK_CLASS)) return;
+            renderAffordanceForMemory(mem);
+        }, 45);
+    }
 
     function bindNodeDrag(nodeEl, mem) {
         nodeEl.style.cursor = viewportState.layoutMode === 'structured' ? 'default' : 'grab';
@@ -309,6 +334,13 @@ function createEditorCanvas(deps) {
         const selectMemoryNode = () => {
             onNodeClick(nodeEl, mem);
         };
+
+        nodeEl.addEventListener('mouseenter', () => {
+            renderAffordanceForHoveredMemory(mem);
+        });
+        nodeEl.addEventListener('focusin', () => {
+            renderAffordanceForHoveredMemory(mem);
+        });
 
         nodeEl.addEventListener('mousedown', (e) => {
             if (viewportState.layoutMode === 'structured') return;
@@ -360,6 +392,7 @@ function createEditorCanvas(deps) {
                 x: touch.clientX,
                 y: touch.clientY
             };
+            renderAffordanceForHoveredMemory(mem);
         }, { passive: true });
 
         nodeEl.addEventListener('touchend', (e) => {
@@ -430,7 +463,38 @@ function createEditorCanvas(deps) {
     }
 
     function clearGrowthAffordance() {
+        hoverAffordanceMemoryId = null;
+        if (hoverAffordanceTimer) {
+            clearTimeout(hoverAffordanceTimer);
+            hoverAffordanceTimer = null;
+        }
         growthAffordance.clearGrowthAffordance();
+    }
+
+    function openAddMomentFromCanvas() {
+        growthAffordance.openAddMomentFromCanvas();
+    }
+
+    function getGrowthAffordancePosition(anchorPos) {
+        return growthAffordance.getGrowthAffordancePosition(anchorPos);
+    }
+
+    function drawGrowthAffordanceBranch(startPos, endPos, side) {
+        growthAffordance.drawGrowthAffordanceBranch(startPos, endPos, side);
+    }
+
+    function createGrowthAffordanceElement(anchorMem, labelText, helperText) {
+        growthAffordance.createGrowthAffordanceElement(anchorMem, labelText, helperText);
+    }
+
+    function renderGrowthAffordance(anchorMem, options) {
+        growthAffordance.renderGrowthAffordance(anchorMem, options);
+    }
+
+    function updateAffordance() {
+        const selectedId = document.querySelector('.memory-node.selected')?.dataset?.memoryId;
+        const selectedMem = selectedId ? getTreeMemories().find((m) => m.id === selectedId) : null;
+        renderAffordanceForMemory(selectedMem);
     }
 
     const initCanvas = () => {
@@ -481,9 +545,7 @@ function createEditorCanvas(deps) {
             if (selectedMem) {
                 updateDetailPanel(selectedMem);
                 reapplySelection(selectedMem.id);
-                growthAffordance.renderGrowthAffordance(selectedMem, {
-                    isFirstStep: drawableMemories.length <= 1
-                });
+                renderAffordanceForMemory(selectedMem);
             }
         }
 
@@ -768,6 +830,7 @@ function createEditorCanvas(deps) {
         focusNodeById,
         recenterViewport,
         setLayoutMode,
+        updateAffordance,
         getWorldPosition,
         get viewportState() { return viewportState; }
     };

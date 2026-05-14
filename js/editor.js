@@ -389,6 +389,11 @@ document.addEventListener('DOMContentLoaded', () => {
             updateDetailPanel(data);
             updateFocusSelectedBtn();
             setDetailEmptyState(false);
+
+            // Immediately update the + tip affordance for the newly selected node
+            if (editorCanvas && typeof editorCanvas.updateAffordance === 'function') {
+                editorCanvas.updateAffordance();
+            }
         };
 
         const focusSelectedMoment = () => {
