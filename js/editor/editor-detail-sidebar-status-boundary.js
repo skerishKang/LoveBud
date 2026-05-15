@@ -5,59 +5,29 @@
             formatI18nText,
             resolveTreeTitleText,
             getCurrentTreeData,
-            getSelectedNodeId,
             getTreeState
         } = deps;
-
-        const getEditorBasePath = () => {
-            return window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
-        };
 
         const updateEntrypoints = () => {
             const publicViewerBtn = document.getElementById('sidebarPublicViewerBtn');
             const insightsBtn = document.getElementById('sidebarInsightsBtn');
-            const currentTreeData = getCurrentTreeData();
-            const treeId = currentTreeData?.id || null;
 
-            // Public viewer entrypoint
+            // Hide sidebar action buttons; replaced by tree summary (#1128)
             if (publicViewerBtn) {
-                if (treeId) {
-                    const publicViewerHref = getEditorBasePath() + 'tree?treeId=' + encodeURIComponent(treeId);
-                    publicViewerBtn.disabled = false;
-                    publicViewerBtn.removeAttribute('aria-disabled');
-                    // Replace button with link-like behavior
-                    publicViewerBtn.onclick = function() {
-                        window.location.href = publicViewerHref;
-                    };
-                } else {
-                    publicViewerBtn.disabled = true;
-                    publicViewerBtn.setAttribute('aria-disabled', 'true');
-                    publicViewerBtn.onclick = null;
-                }
+                publicViewerBtn.style.display = 'none';
             }
-
-            // Insights entrypoint — always disabled (future)
             if (insightsBtn) {
-                insightsBtn.disabled = true;
-                insightsBtn.setAttribute('aria-disabled', 'true');
-                insightsBtn.onclick = null;
+                insightsBtn.style.display = 'none';
             }
         };
 
-        const updateFlowSummary = (treeState, selected) => {
+        const updateFlowSummary = (treeState) => {
             const flowSummaryEl = document.getElementById('sidebarFlowSummary');
             if (!flowSummaryEl) return;
 
             const count = treeState.totalMomentCount || 0;
 
-            if (selected?.title) {
-                // Moment selected — show which moment
-                flowSummaryEl.textContent = formatI18nText(
-                    'sidebar_flow_summary_selected_short',
-                    '지금은 "{title}" 순간을 보고 있어요',
-                    { title: selected.title }
-                );
-            } else if (count === 0) {
+            if (count === 0) {
                 flowSummaryEl.textContent = formatI18nText(
                     'editor_tree_status_empty',
                     '아직 첫 순간을 기다리고 있어요.'
@@ -65,12 +35,12 @@
             } else if (count === 1) {
                 flowSummaryEl.textContent = formatI18nText(
                     'sidebar_flow_summary_one_moment',
-                    '첫 순간이 심어졌어요.'
+                    '첫 순간이 심어진 러브트리예요.'
                 );
             } else {
                 flowSummaryEl.textContent = formatI18nText(
-                    'sidebar_flow_summary_connected_short',
-                    '{count}개의 순간으로 이어지고 있어요.',
+                    'sidebar_flow_summary_connected',
+                    '{count}개의 순간이 이어진 러브트리예요.',
                     { count: String(count) }
                 );
             }
@@ -81,21 +51,30 @@
             const flowSummaryEl = document.getElementById('sidebarFlowSummary');
             const hintEl = document.getElementById('sidebarSelectionHint');
             const currentTreeData = getCurrentTreeData();
-            const selectedNodeId = getSelectedNodeId();
             const treeState = getTreeState();
-            const selected = treeState.treeMemories.find(m => m.id === selectedNodeId);
 
             if (treeTitleEl) {
                 treeTitleEl.textContent = resolveTreeTitleText(i18n, currentTreeData?.title);
             }
 
-            // Contextual flow summary (replaces raw moment count)
-            updateFlowSummary(treeState, selected);
+            // Tree-level summary (replaces moment-selected summary, #1128)
+            updateFlowSummary(treeState);
 
             if (hintEl) {
-                hintEl.textContent = selected?.title
-                    ? formatI18nText('sidebar_canvas_hint_selected', '선택한 순간을 중심으로 트리를 둘러보세요.')
-                    : formatI18nText('sidebar_canvas_hint_empty', '첫 순간을 심으면 감정이 여기서 시작돼요.');
+                // Tree cue based on first visible moment title
+                const firstMoment = treeState.treeMemories.find(m => m.id !== 'root' && m.parentId);
+                if (firstMoment?.title) {
+                    hintEl.textContent = formatI18nText(
+                        'sidebar_flow_cue_first_moment',
+                        '첫 순간 "{title}"에서 이어진 감정 흐름을 정리하고 있어요.',
+                        { title: firstMoment.title }
+                    );
+                } else {
+                    hintEl.textContent = formatI18nText(
+                        'sidebar_flow_cue_empty',
+                        '캔버스에서 순간을 선택하면 오른쪽 패널에서 자세히 볼 수 있어요.'
+                    );
+                }
                 hintEl.style.fontStyle = 'normal';
                 hintEl.style.color = 'var(--on-surface-variant)';
             }
