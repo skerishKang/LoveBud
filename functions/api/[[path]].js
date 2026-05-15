@@ -8,8 +8,6 @@ const SAFE_REQUEST_ID_PATTERN = /^[A-Za-z0-9._:-]+$/;
 const MAX_WRITE_BODY_BYTES = 128 * 1024;
 
 function generateRequestId() {
-  // Generate a non-sensitive request ID (UUID v4 format)
-  // This is safe to log and propagate without exposing user data
   return 'req-' + crypto.randomUUID();
 }
 
@@ -22,13 +20,8 @@ function normalizeRequestId(value) {
 }
 
 function getOrCreateRequestId(request) {
-  // Reuse only short trace-safe client request IDs. Anything malformed is replaced at the boundary.
   const existingRequestId = normalizeRequestId(request.headers.get(REQUEST_ID_HEADER));
-  if (existingRequestId) {
-    return existingRequestId;
-  }
-
-  // Generate new request ID at Cloudflare boundary
+  if (existingRequestId) return existingRequestId;
   return generateRequestId();
 }
 
@@ -40,28 +33,39 @@ function getContentLengthBytes(request) {
   return parsed;
 }
 
-async function exceedsWriteBodyLimit(request) {
+async function readBoundedWriteBody(request) {
   const contentLength = getContentLengthBytes(request);
-  if (contentLength !== null && contentLength > MAX_WRITE_BODY_BYTES) return true;
-  if (!request.body) return false;
+  if (contentLength !== null && contentLength > MAX_WRITE_BODY_BYTES) {
+    return { tooLarge: true, body: null };
+  }
+  if (!request.body) {
+    return { tooLarge: false, body: null };
+  }
 
-  const reader = request.clone().body.getReader();
+  const reader = request.body.getReader();
+  const chunks = [];
   let totalBytes = 0;
 
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) return false;
-      totalBytes += value ? value.byteLength : 0;
-      if (totalBytes > MAX_WRITE_BODY_BYTES) {
-        return true;
-      }
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (!value) continue;
+
+    totalBytes += value.byteLength;
+    if (totalBytes > MAX_WRITE_BODY_BYTES) {
+      return { tooLarge: true, body: null };
     }
-  } finally {
-    try {
-      reader.releaseLock();
-    } catch (e) {}
+    chunks.push(value);
   }
+
+  const body = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+
+  return { tooLarge: false, body };
 }
 
 function buildPayloadTooLargeResponse(requestId = null) {
@@ -70,16 +74,8 @@ function buildPayloadTooLargeResponse(requestId = null) {
     'x-lovebud-upstream': 'cloudflare',
     'x-lovebud-route-status': 'payload-too-large'
   };
-  if (requestId) {
-    headers[REQUEST_ID_HEADER] = requestId;
-  }
-  return new Response(
-    JSON.stringify({ error: 'Request body too large' }),
-    {
-      status: 413,
-      headers
-    }
-  );
+  if (requestId) headers[REQUEST_ID_HEADER] = requestId;
+  return new Response(JSON.stringify({ error: 'Request body too large' }), { status: 413, headers });
 }
 
 function isBrowseSummaryRequest(request) {
@@ -163,13 +159,10 @@ function buildModalUrl(request, env) {
   if (memoryMatch) {
     const memoryId = encodeURIComponent(decodeURIComponent(memoryMatch[1]));
     const isWrite = ['PUT', 'DELETE'].includes(method);
-    target.pathname = isWrite
-      ? `/modal/private/memories/${memoryId}`
-      : `/modal/memories/${memoryId}`;
+    target.pathname = isWrite ? `/modal/private/memories/${memoryId}` : `/modal/memories/${memoryId}`;
     return target;
   }
 
-  // POST /api/trees/:id/fork → /modal/private/trees/:id/fork
   const treeForkMatch = path.match(/^\/api\/trees\/([^/]+)\/fork$/);
   if (treeForkMatch && method === 'POST') {
     const treeId = encodeURIComponent(decodeURIComponent(treeForkMatch[1]));
@@ -181,8 +174,6 @@ function buildModalUrl(request, env) {
   if (treeMatch) {
     const authHeader = request.headers.get('authorization') || request.headers.get('Authorization');
     const isWrite = ['PUT', 'DELETE'].includes(method);
-    // GET: uses private path ONLY IF auth exists (for owner view), else public.
-    // PUT/DELETE: always uses private path (auth failure handled by backend).
     target.pathname = (isWrite || authHeader)
       ? `/modal/private/trees/${encodeURIComponent(decodeURIComponent(treeMatch[1]))}`
       : `/modal/trees/${encodeURIComponent(decodeURIComponent(treeMatch[1]))}`;
@@ -197,18 +188,11 @@ function withUpstreamHeader(response, upstream, requestId = null) {
   headers.set('x-lovebud-upstream', upstream);
   if (requestId) {
     headers.set(REQUEST_ID_HEADER, requestId);
-    // Allow browser to access the request ID header
     const existingExposeHeaders = headers.get('Access-Control-Expose-Headers') || '';
-    const exposeHeaders = existingExposeHeaders
-      ? `${existingExposeHeaders}, ${REQUEST_ID_HEADER}`
-      : REQUEST_ID_HEADER;
+    const exposeHeaders = existingExposeHeaders ? `${existingExposeHeaders}, ${REQUEST_ID_HEADER}` : REQUEST_ID_HEADER;
     headers.set('Access-Control-Expose-Headers', exposeHeaders);
   }
-  return new Response(response.body, {
-    status: response.status,
-    statusText: response.statusText,
-    headers
-  });
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
 
 function isModalOwnedGetRoute(request, env) {
@@ -224,17 +208,14 @@ function isModalOwnedWriteRoute(request, env) {
   const url = new URL(request.url);
   const path = url.pathname.replace(/\/+$/, '');
 
-  // POST /api/trees/:id/fork
   if (method === 'POST' && path.match(/^\/api\/trees\/[^/]+\/fork$/)) {
     return buildModalUrl(request, env || {}) !== null;
   }
 
-  // POST is for collection paths
   if (method === 'POST' && ['/api/trees', '/api/memories'].includes(path)) {
     return buildModalUrl(request, env || {}) !== null;
   }
 
-  // PUT/DELETE are for detail paths
   const isDetail = path.match(/^\/api\/(trees|memories)\/[^/]+$/);
   if (['PUT', 'DELETE'].includes(method) && isDetail) {
     return buildModalUrl(request, env || {}) !== null;
@@ -249,16 +230,8 @@ function buildNotFoundResponse(requestId = null) {
     'x-lovebud-upstream': 'cloudflare',
     'x-lovebud-route-status': 'unhandled'
   };
-  if (requestId) {
-    headers[REQUEST_ID_HEADER] = requestId;
-  }
-  return new Response(
-    JSON.stringify({ error: 'Route not found' }),
-    {
-      status: 404,
-      headers
-    }
-  );
+  if (requestId) headers[REQUEST_ID_HEADER] = requestId;
+  return new Response(JSON.stringify({ error: 'Route not found' }), { status: 404, headers });
 }
 
 function buildMethodNotAllowedResponse(allow = 'GET', requestId = null) {
@@ -269,13 +242,7 @@ function buildMethodNotAllowedResponse(allow = 'GET', requestId = null) {
     'allow': allow,
     [REQUEST_ID_HEADER]: requestId
   };
-  return new Response(
-    JSON.stringify({ error: 'Method not allowed' }),
-    {
-      status: 405,
-      headers
-    }
-  );
+  return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers });
 }
 
 function buildModalUnavailableResponse(requestId = null) {
@@ -284,16 +251,8 @@ function buildModalUnavailableResponse(requestId = null) {
     'x-lovebud-upstream': 'modal',
     'x-lovebud-degraded': 'modal-unavailable'
   };
-  if (requestId) {
-    headers[REQUEST_ID_HEADER] = requestId;
-  }
-  return new Response(
-    JSON.stringify({ error: 'Modal backend unavailable' }),
-    {
-      status: 503,
-      headers
-    }
-  );
+  if (requestId) headers[REQUEST_ID_HEADER] = requestId;
+  return new Response(JSON.stringify({ error: 'Modal backend unavailable' }), { status: 503, headers });
 }
 
 async function tryModalRead(request, env, requestId = null) {
@@ -304,15 +263,10 @@ async function tryModalRead(request, env, requestId = null) {
 
   const headers = {
     accept: 'application/json',
-    ...(request.headers.get('authorization')
-      ? { authorization: request.headers.get('authorization') }
-      : {})
+    ...(request.headers.get('authorization') ? { authorization: request.headers.get('authorization') } : {})
   };
 
-  // Forward request ID to Modal
-  if (requestId) {
-    headers[REQUEST_ID_HEADER] = requestId;
-  }
+  if (requestId) headers[REQUEST_ID_HEADER] = requestId;
 
   const response = await fetch(modalUrl.toString(), { headers });
 
@@ -322,11 +276,7 @@ async function tryModalRead(request, env, requestId = null) {
   if (treeMatch && response.status === 404 && request.headers.get('authorization')) {
     const publicTarget = new URL(stripTrailingSlash(env.MODAL_BASE_URL));
     publicTarget.pathname = `/modal/trees/${encodeURIComponent(decodeURIComponent(treeMatch[1]))}`;
-    const publicResponse = await fetch(publicTarget.toString(), {
-      headers: {
-        accept: 'application/json'
-      }
-    });
+    const publicResponse = await fetch(publicTarget.toString(), { headers: { accept: 'application/json' } });
     return withUpstreamHeader(publicResponse, 'modal', requestId);
   }
 
@@ -338,8 +288,13 @@ async function tryModalWrite(request, env, requestId = null) {
   if (!['POST', 'PUT', 'DELETE'].includes(method)) return null;
   if (!isModalOwnedWriteRoute(request, env || {})) return null;
 
-  if (method !== 'DELETE' && await exceedsWriteBodyLimit(request)) {
-    return buildPayloadTooLargeResponse(requestId);
+  let boundedBody = null;
+  if (method !== 'DELETE') {
+    const bodyCheck = await readBoundedWriteBody(request);
+    if (bodyCheck.tooLarge) {
+      return buildPayloadTooLargeResponse(requestId);
+    }
+    boundedBody = bodyCheck.body;
   }
 
   const modalUrl = buildModalUrl(request, env || {});
@@ -348,20 +303,15 @@ async function tryModalWrite(request, env, requestId = null) {
   const headers = {
     accept: 'application/json',
     'content-type': request.headers.get('content-type') || 'application/json',
-    ...(request.headers.get('authorization')
-      ? { authorization: request.headers.get('authorization') }
-      : {})
+    ...(request.headers.get('authorization') ? { authorization: request.headers.get('authorization') } : {})
   };
 
-  // Forward request ID to Modal
-  if (requestId) {
-    headers[REQUEST_ID_HEADER] = requestId;
-  }
+  if (requestId) headers[REQUEST_ID_HEADER] = requestId;
 
   const response = await fetch(modalUrl.toString(), {
     method,
     headers,
-    body: method !== 'DELETE' ? request.body : null
+    body: method !== 'DELETE' ? boundedBody : null
   });
 
   return withUpstreamHeader(response, 'modal', requestId);
@@ -369,8 +319,6 @@ async function tryModalWrite(request, env, requestId = null) {
 
 export async function onRequest(context) {
   const { request, env } = context;
-
-  // Generate or retrieve request ID at Cloudflare boundary
   const requestId = getOrCreateRequestId(request);
 
   const isModalOwned = isModalOwnedGetRoute(request, env || {});
@@ -390,9 +338,7 @@ export async function onRequest(context) {
     const cache = caches.default;
     const cacheKey = buildBrowseCacheRequest(request);
     const cachedResponse = await cache.match(cacheKey);
-    if (cachedResponse) {
-      return withUpstreamHeader(cachedResponse, 'modal', requestId);
-    }
+    if (cachedResponse) return withUpstreamHeader(cachedResponse, 'modal', requestId);
 
     try {
       const modalResponse = await tryModalRead(request, env || {}, requestId);
