@@ -11,6 +11,15 @@
 (function() {
     'use strict';
 
+    function isEditorDebugEnabled() {
+        return window.LOVEBUD_DEBUG === true || window.LOVEBUD_EDITOR_DEBUG === true;
+    }
+
+    function editorDebugLog() {
+        if (!isEditorDebugEnabled() || !window.console || typeof console.log !== 'function') return;
+        console.log.apply(console, arguments);
+    }
+
     // DOM element ID constants
     const SELECTORS = {
         // Sidebar elements
@@ -170,6 +179,6 @@
         hasElement: hasElement
     };
 
-    // Log successful registration for debugging
-    console.log('[editor-dom-selectors] DOM selector registry loaded');
+    // Debug-only registration trace for local diagnostics.
+    editorDebugLog('[editor-dom-selectors] DOM selector registry loaded');
 })();
