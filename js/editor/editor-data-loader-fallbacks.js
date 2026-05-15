@@ -2,7 +2,17 @@
 // Extracted from js/editor.js to reduce entry file size
 // Used when LoveBudEditorDataLoader is not available
 
-window.LoveBudEditorDataLoaderFallbacks = {
+(function() {
+    function isEditorDebugEnabled() {
+        return window.LOVEBUD_DEBUG === true || window.LOVEBUD_EDITOR_DEBUG === true;
+    }
+
+    function editorDebugLog() {
+        if (!isEditorDebugEnabled() || !window.console || typeof console.log !== 'function') return;
+        console.log.apply(console, arguments);
+    }
+
+    window.LoveBudEditorDataLoaderFallbacks = {
     createInlineNormalizeMemoryFallback: () => (mem) => {
         if (!window.__editorNormalizeWarningShown) {
             console.warn('[editor] LoveBudNormalize not loaded, using local fallback');
@@ -52,7 +62,7 @@ window.LoveBudEditorDataLoaderFallbacks = {
                     tree = await apiClient.getTree(requestedTreeId);
                     if (tree) {
                         treeLoadStatus = 'loaded';
-                        console.log('[editor] Tree from URL loaded:', tree.id);
+                        editorDebugLog('[editor] Tree from URL loaded');
                     }
                 } else {
                     treeLoadStatus = 'api_unavailable';
@@ -84,9 +94,9 @@ window.LoveBudEditorDataLoaderFallbacks = {
                 if (apiTree) {
                     tree = apiTree;
                     treeLoadStatus = 'loaded';
-                    console.log('[editor] API tree loaded (getFirstTree)');
+                    editorDebugLog('[editor] API tree loaded');
                 } else {
-                    console.log('[editor] No tree found, creating default tree...');
+                    editorDebugLog('[editor] No tree found, creating default tree');
                     if (apiClient.createTree) {
                         const newTree = await apiClient.createTree({
                             title: createDefaultTreeTitle(),
@@ -95,7 +105,7 @@ window.LoveBudEditorDataLoaderFallbacks = {
                         tree = newTree;
                         isNewTree = true;
                         treeLoadStatus = 'created';
-                        console.log('[editor] Default tree created:', newTree);
+                        editorDebugLog('[editor] Default tree created');
                     }
                 }
             }
@@ -138,7 +148,7 @@ window.LoveBudEditorDataLoaderFallbacks = {
         const cachedMemories = cache ? cache.get(cacheKey) : null;
 
         if (cachedMemories && Array.isArray(cachedMemories)) {
-            console.log('[editor] Using cached memories:', cachedMemories.length);
+            editorDebugLog('[editor] Using cached memories:', cachedMemories.length);
             memories = cachedMemories;
             window.currentTreeMemories = memories.map(normalizeMemory).filter(Boolean);
         }
@@ -148,7 +158,7 @@ window.LoveBudEditorDataLoaderFallbacks = {
                 const apiMemories = await apiClient.getMemoriesByTree(treeId);
                 if (Array.isArray(apiMemories)) {
                     memories = apiMemories;
-                    console.log('[editor] API memories loaded:', apiMemories.length);
+                    editorDebugLog('[editor] API memories loaded:', apiMemories.length);
                     if (cache) {
                         cache.set(cacheKey, memories, 2 * 60 * 1000);
                     }
@@ -227,7 +237,7 @@ window.LoveBudEditorDataLoaderFallbacks = {
                 const apiMemories = await apiClient.getMemoriesByTree(treeId);
                 if (Array.isArray(apiMemories)) {
                     window.currentTreeMemories = apiMemories.map(normalizeMemory).filter(Boolean);
-                    console.log('[editor] Memories refreshed:', window.currentTreeMemories.length);
+                    editorDebugLog('[editor] Memories refreshed:', window.currentTreeMemories.length);
                     onMemoriesUpdated(window.currentTreeMemories);
                 }
             }
@@ -235,4 +245,5 @@ window.LoveBudEditorDataLoaderFallbacks = {
             console.warn('[editor] Failed to refresh memories:', e.message);
         }
     }
-};
+    };
+})();
