@@ -5,6 +5,7 @@ function stripTrailingSlash(value) {
 const REQUEST_ID_HEADER = 'x-lovebud-request-id';
 const MAX_REQUEST_ID_LENGTH = 80;
 const SAFE_REQUEST_ID_PATTERN = /^[A-Za-z0-9._:-]+$/;
+const MAX_WRITE_BODY_BYTES = 128 * 1024;
 
 function generateRequestId() {
   // Generate a non-sensitive request ID (UUID v4 format)
@@ -29,6 +30,37 @@ function getOrCreateRequestId(request) {
 
   // Generate new request ID at Cloudflare boundary
   return generateRequestId();
+}
+
+function getContentLengthBytes(request) {
+  const raw = request.headers.get('content-length');
+  if (!raw) return null;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed < 0) return null;
+  return parsed;
+}
+
+function exceedsWriteBodyLimit(request) {
+  const contentLength = getContentLengthBytes(request);
+  return contentLength !== null && contentLength > MAX_WRITE_BODY_BYTES;
+}
+
+function buildPayloadTooLargeResponse(requestId = null) {
+  const headers = {
+    'content-type': 'application/json; charset=utf-8',
+    'x-lovebud-upstream': 'cloudflare',
+    'x-lovebud-route-status': 'payload-too-large'
+  };
+  if (requestId) {
+    headers[REQUEST_ID_HEADER] = requestId;
+  }
+  return new Response(
+    JSON.stringify({ error: 'Request body too large' }),
+    {
+      status: 413,
+      headers
+    }
+  );
 }
 
 function isBrowseSummaryRequest(request) {
@@ -286,6 +318,10 @@ async function tryModalWrite(request, env, requestId = null) {
   const method = request.method.toUpperCase();
   if (!['POST', 'PUT', 'DELETE'].includes(method)) return null;
   if (!isModalOwnedWriteRoute(request, env || {})) return null;
+
+  if (method !== 'DELETE' && exceedsWriteBodyLimit(request)) {
+    return buildPayloadTooLargeResponse(requestId);
+  }
 
   const modalUrl = buildModalUrl(request, env || {});
   if (!modalUrl) return null;
