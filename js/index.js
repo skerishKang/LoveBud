@@ -1,4 +1,13 @@
 document.addEventListener('DOMContentLoaded', () => {
+    function isIndexDebugEnabled() {
+        return window.LOVEBUD_DEBUG === true || window.LOVEBUD_INDEX_DEBUG === true;
+    }
+
+    function indexDebugLog() {
+        if (!isIndexDebugEnabled() || !window.console || typeof console.log !== 'function') return;
+        console.log.apply(console, arguments);
+    }
+
     // Reveal Observer for scroll animations
     const observerOptions = {
         threshold: 0.1
@@ -20,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.addEventListener('click', () => {
             langBtns.forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            console.log('Language changed to:', btn.textContent);
+            indexDebugLog('Language changed to:', btn.textContent);
             // In a real app, this would trigger i18n logic
         });
     });
