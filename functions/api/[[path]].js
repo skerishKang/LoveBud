@@ -175,6 +175,7 @@ function buildModalUrl(request, env) {
     return target;
   }
 
+  // POST /api/trees/:id/fork → /modal/private/trees/:id/fork
   const treeForkMatch = path.match(/^\/api\/trees\/([^/]+)\/fork$/);
   if (treeForkMatch && method === 'POST') {
     const treeId = encodeURIComponent(decodeURIComponent(treeForkMatch[1]));
