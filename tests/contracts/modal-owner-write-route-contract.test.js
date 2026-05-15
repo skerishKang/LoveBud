@@ -59,7 +59,7 @@ function assertParseJsonBodyHelperContract() {
 
   assert.match(
     normalized,
-    /payload=awaitrequest\.json\(\)/i,
+    /json\.loads\(body\)/i,
     'parse_json_body must parse request JSON'
   );
 
