@@ -171,7 +171,7 @@ function buildModalUrl(request, env) {
   return null;
 }
 
-function withUpstreamHeader(response, upstream, requestId = null, dbgPath = null) {
+async function withUpstreamHeader(response, upstream, requestId = null, dbgPath = null) {
   const headers = new Headers(response.headers);
   headers.set('x-lovebud-upstream', upstream);
   headers.set('x-lovebud-dbg-entered', '1');
@@ -182,7 +182,18 @@ function withUpstreamHeader(response, upstream, requestId = null, dbgPath = null
     const exposeHeaders = existingExposeHeaders ? `${existingExposeHeaders}, ${REQUEST_ID_HEADER}, x-lovebud-dbg-entered, x-lovebud-dbg-path, x-lovebud-dbg-write` : `${REQUEST_ID_HEADER}, x-lovebud-dbg-entered, x-lovebud-dbg-path, x-lovebud-dbg-write`;
     headers.set('Access-Control-Expose-Headers', exposeHeaders);
   }
-  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+
+  // Critical: buffer body to avoid Cloudflare stream passthrough header stripping
+  // When Response body is a ReadableStream from fetch(), Cloudflare edge may
+  // not respect custom headers set on the new Response wrapper.
+  // Tested: stream body via new Response(response.body, { headers }) drops custom headers.
+  // Workaround: read body into text/bytes and construct Response from buffered data.
+  try {
+    const bodyText = await response.text();
+    return new Response(bodyText, { status: response.status, statusText: response.statusText, headers });
+  } catch (e) {
+    return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+  }
 }
 
 function isModalOwnedGetRoute(request, env) {
@@ -270,10 +281,10 @@ async function tryModalRead(request, env, requestId = null) {
     const publicTarget = new URL(stripTrailingSlash(env.MODAL_BASE_URL));
     publicTarget.pathname = `/modal/trees/${encodeURIComponent(decodeURIComponent(treeMatch[1]))}`;
     const publicResponse = await fetch(publicTarget.toString(), { headers: { accept: 'application/json' } });
-    return withUpstreamHeader(publicResponse, 'modal', requestId, 'read-public-fallback');
+    return await withUpstreamHeader(publicResponse, 'modal', requestId, 'read-public-fallback');
   }
 
-  return withUpstreamHeader(response, 'modal', requestId, 'read');
+  return await withUpstreamHeader(response, 'modal', requestId, 'read');
 }
 
 async function tryModalWrite(request, env, requestId = null) {
@@ -307,7 +318,7 @@ async function tryModalWrite(request, env, requestId = null) {
     body: method !== 'DELETE' ? boundedBody : null
   });
 
-  return withUpstreamHeader(response, 'modal', requestId, 'write');
+  return await withUpstreamHeader(response, 'modal', requestId, 'write');
 }
 
 // Debug: test header passthrough with Modal response
@@ -468,7 +479,7 @@ export async function onRequest(context) {
     const cache = caches.default;
     const cacheKey = buildBrowseCacheRequest(request);
     const cachedResponse = await cache.match(cacheKey);
-    if (cachedResponse) return withUpstreamHeader(cachedResponse, 'modal', requestId, 'read-cache');
+    if (cachedResponse) return await withUpstreamHeader(cachedResponse, 'modal', requestId, 'read-cache');
 
     try {
       const modalResponse = await tryModalRead(request, env || {}, requestId);
@@ -480,9 +491,9 @@ export async function onRequest(context) {
         });
         cacheableResponse.headers.set('Cache-Control', 'public, max-age=420, stale-while-revalidate=120');
         await cache.put(cacheKey, cacheableResponse.clone());
-        return withUpstreamHeader(cacheableResponse, 'modal', requestId, 'read-browse-cacheable');
+        return await withUpstreamHeader(cacheableResponse, 'modal', requestId, 'read-browse-cacheable');
       }
-      if (modalResponse) return withUpstreamHeader(modalResponse, 'modal', requestId, 'read-browse');
+      if (modalResponse) return await withUpstreamHeader(modalResponse, 'modal', requestId, 'read-browse');
     } catch (error) {
       if (isModalOwned) {
         console.warn('[LoveBudCloudflareProxy] Modal read failed, returning 503', error);
@@ -492,7 +503,7 @@ export async function onRequest(context) {
   } else {
     try {
       const modalResponse = await tryModalRead(request, env || {}, requestId);
-      if (modalResponse) return withUpstreamHeader(modalResponse, 'modal', requestId, 'read-nonbrowse');
+      if (modalResponse) return await withUpstreamHeader(modalResponse, 'modal', requestId, 'read-nonbrowse');
     } catch (error) {
       if (isModalOwned) {
         console.warn('[LoveBudCloudflareProxy] Modal read failed, returning 503', error);
