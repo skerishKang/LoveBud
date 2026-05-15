@@ -6,6 +6,15 @@
  */
 
 (function() {
+  function isSettingsDebugEnabled() {
+    return window.LOVEBUD_DEBUG === true || window.LOVEBUD_SETTINGS_DEBUG === true;
+  }
+
+  function settingsDebugLog() {
+    if (!isSettingsDebugEnabled() || !window.console || typeof console.log !== 'function') return;
+    console.log.apply(console, arguments);
+  }
+
   var SETTINGS_KEY = 'lovebud_user_settings';
   var SETTINGS_AUTH_RECOVERY_TIMEOUT_MS = 1200;
   var DEFAULT_SETTINGS = {
@@ -323,7 +332,7 @@
     settingsStarted = true;
     document.body.classList.remove('settings-auth-pending');
 
-    var settings = loadSettings();
+    loadSettings();
     bindCloseInteractions();
 
     setTimeout(function() {
@@ -332,7 +341,7 @@
       applyHeaderNavFallbacks();
     }, 0);
 
-    console.log('[settings] Initialized and staying on settings route:', settings);
+    settingsDebugLog('[settings] Initialized and staying on settings route');
   }
 
   function initSettings() {
