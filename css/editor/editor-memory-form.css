@@ -328,14 +328,20 @@
 
 .node-info-label {
     width: 128px;
-    margin: 6px 0 0;
+    margin: 4px 0 0;
     transform: translateX(-10px);
     text-align: center;
     pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
 }
 
 .node-title,
-.node-date {
+.node-date,
+.node-mood {
+    max-width: 100%;
     margin: 0;
     word-break: keep-all;
     overflow-wrap: anywhere;
@@ -343,20 +349,29 @@
 
 .node-title {
     font-size: 13px;
-    line-height: 1.35;
+    line-height: 1.28;
     font-weight: 700;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
-    min-height: 28px;
+    min-height: 0;
 }
 
 .node-date {
-    margin-top: 2px;
-    font-size: 12px;
-    line-height: 1.3;
+    font-size: 11px;
+    line-height: 1.2;
     color: var(--on-surface-variant);
+}
+
+.node-mood {
+    font-size: 11px;
+    line-height: 1.22;
+    color: var(--on-surface-variant);
+    opacity: 0.78;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .memory-node,
