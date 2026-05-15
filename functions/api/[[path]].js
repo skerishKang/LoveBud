@@ -40,9 +40,31 @@ function getContentLengthBytes(request) {
   return parsed;
 }
 
-function exceedsWriteBodyLimit(request) {
+async function exceedsWriteBodyLimit(request) {
   const contentLength = getContentLengthBytes(request);
-  return contentLength !== null && contentLength > MAX_WRITE_BODY_BYTES;
+  if (contentLength !== null && contentLength > MAX_WRITE_BODY_BYTES) return true;
+  if (!request.body) return false;
+
+  const reader = request.clone().body.getReader();
+  let totalBytes = 0;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) return false;
+      totalBytes += value ? value.byteLength : 0;
+      if (totalBytes > MAX_WRITE_BODY_BYTES) {
+        try {
+          await reader.cancel();
+        } catch (e) {}
+        return true;
+      }
+    }
+  } finally {
+    try {
+      reader.releaseLock();
+    } catch (e) {}
+  }
 }
 
 function buildPayloadTooLargeResponse(requestId = null) {
@@ -319,7 +341,7 @@ async function tryModalWrite(request, env, requestId = null) {
   if (!['POST', 'PUT', 'DELETE'].includes(method)) return null;
   if (!isModalOwnedWriteRoute(request, env || {})) return null;
 
-  if (method !== 'DELETE' && exceedsWriteBodyLimit(request)) {
+  if (method !== 'DELETE' && await exceedsWriteBodyLimit(request)) {
     return buildPayloadTooLargeResponse(requestId);
   }
 
