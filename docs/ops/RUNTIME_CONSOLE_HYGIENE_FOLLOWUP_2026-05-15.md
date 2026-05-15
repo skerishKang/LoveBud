@@ -105,9 +105,11 @@ UI layout PRs remain subject to separate fixed test slot browser verification.
 
 ---
 
-## 7. Remaining Known Hold
+## 7. Resolved Prior Hold
 
-PR #1180 remains draft/open because it changes Editor UI layout. It has CI success, but it still requires fixed test slot browser verification before ready/merge.
+PR #1180 was previously held because it changed Editor UI layout and required fixed test slot browser verification before ready/merge.
+
+That hold is now resolved. PR #1180 was verified separately as an Editor UI polish change and merged after the browser verification requirement was reported as passing.
 
 ---
 
@@ -124,5 +126,5 @@ Future runtime console hygiene should be handled in the same pattern:
 
 ---
 
-**Document version**: 1.0  
+**Document version**: 1.1  
 **Last updated**: 2026-05-15
