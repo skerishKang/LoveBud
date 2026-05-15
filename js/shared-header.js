@@ -291,8 +291,8 @@
             navLinksHTML += '<a href="' + menuConfig.search.href + '"' + activeClass + '>' + t(menuConfig.search.textKey) + '</a>';
         }
 
-        // 내 러브트리 (에디터 페이지에서는 숨김)
-        if (menuConfig.myTrees && !isEditorPage()) {
+        // 내 러브트리
+        if (menuConfig.myTrees) {
             var myTreesClasses = ['nav-highlight'];
             if (activeKey === 'myTrees') myTreesClasses.unshift('active');
             var activeClass = ' class="' + myTreesClasses.join(' ') + '"';
