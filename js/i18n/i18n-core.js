@@ -13,6 +13,23 @@
 
   var I18N_KEY = 'lovebud_lang';
   var DEFAULT_LANG = 'ko';
+  var warnedMissingKeys = {};
+
+  function isI18nDebugEnabled() {
+    return window.LOVEBUD_DEBUG === true || window.LOVEBUD_I18N_DEBUG === true;
+  }
+
+  function debugLog() {
+    if (!isI18nDebugEnabled() || !window.console || typeof console.log !== 'function') return;
+    console.log.apply(console, arguments);
+  }
+
+  function debugWarnOnce(key, message) {
+    if (!isI18nDebugEnabled() || !window.console || typeof console.warn !== 'function') return;
+    if (warnedMissingKeys[key]) return;
+    warnedMissingKeys[key] = true;
+    console.warn(message, key);
+  }
 
   function isSupportedLang(lang) {
     return lang === 'ko' || lang === 'en';
@@ -37,7 +54,7 @@
     if (!queryLang) return;
     try {
       localStorage.setItem(I18N_KEY, queryLang);
-      console.log('[i18n] Language set from query param:', queryLang);
+      debugLog('[i18n] Language set from query param:', queryLang);
     } catch (e) {
       console.warn('[i18n] Failed to save query language:', e);
     }
@@ -66,7 +83,7 @@
     }
     try {
       localStorage.setItem(I18N_KEY, lang);
-      console.log('[i18n] Language set to:', lang);
+      debugLog('[i18n] Language set to:', lang);
       return true;
     } catch (e) {
       console.warn('[i18n] Failed to save language:', e);
@@ -87,7 +104,7 @@
     var lang = getCurrentLang();
     var entry = globalDictionary[key];
     if (!entry) {
-      console.warn('[i18n] Missing key:', key);
+      debugWarnOnce(key, '[i18n] Missing key:');
       return key;
     }
     return entry[lang] || entry[DEFAULT_LANG] || key;
