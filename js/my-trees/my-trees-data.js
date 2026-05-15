@@ -9,6 +9,15 @@
  */
 
 (function() {
+  function isMyTreesDebugEnabled() {
+    return window.LOVEBUD_DEBUG === true || window.LOVEBUD_MY_TREES_DEBUG === true;
+  }
+
+  function myTreesDebugLog() {
+    if (!isMyTreesDebugEnabled() || !window.console || typeof console.log !== 'function') return;
+    console.log.apply(console, arguments);
+  }
+
   function getI18n(options) {
     return options?.i18n || window.t || function(k) { return k; };
   }
@@ -79,7 +88,7 @@
           }));
         }
 
-        console.log('[my-trees-data] Preloaded first tree detail:', treeId, 'memories:', memories ? memories.length : 0);
+        myTreesDebugLog('[my-trees-data] Preloaded first tree detail:', 'memories:', memories ? memories.length : 0);
       }).catch(function(err) {
         console.warn('[my-trees-data] Preload first tree detail failed:', err.message);
       });
@@ -168,7 +177,7 @@
             }));
           }
         } catch (e) {
-          console.warn('[my-trees-data] Failed to fetch memories for tree:', normalizedTree.id, e.message);
+          console.warn('[my-trees-data] Failed to fetch memories for tree:', e.message);
           memories = [];
         }
       }
@@ -223,7 +232,7 @@
     }
 
     if (cachedTrees && Array.isArray(cachedTrees) && typeof renderTrees === 'function') {
-      console.log('[my-trees-data] Rendering cached trees:', cachedTrees.length);
+      myTreesDebugLog('[my-trees-data] Rendering cached trees:', cachedTrees.length);
       renderTrees(cachedTrees);
     } else if (typeof setState === 'function' && stateEnum?.LOADING) {
       setState(stateEnum.LOADING);
@@ -260,14 +269,14 @@
           }, 1000);
         }
       } else {
-        console.error('[my-trees-data] Invalid trees response:', trees);
+        console.error('[my-trees-data] Invalid trees response');
         if (!cachedTrees && typeof setState === 'function' && stateEnum?.ERROR) {
           setState(stateEnum.ERROR, { errorType: 'generic' });
         }
       }
     } catch (e) {
       var errorType = classifyLoadError(e);
-      console.error('[my-trees-data] loadTrees error (type=' + errorType + '):', e);
+      console.error('[my-trees-data] loadTrees error (type=' + errorType + ')');
 
       // auth errors (401/403): do not silently keep stale cache.
       // Show auth error state regardless of cache presence.
@@ -283,7 +292,7 @@
 
       // server / network / generic: keep cached fallback if available
       if (cachedTrees && Array.isArray(cachedTrees)) {
-        console.log('[my-trees-data] Showing cached trees after ' + errorType + ' error');
+        myTreesDebugLog('[my-trees-data] Showing cached trees after ' + errorType + ' error');
         if (typeof renderTrees === 'function') {
           renderTrees(cachedTrees);
         }
