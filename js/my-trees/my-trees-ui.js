@@ -449,6 +449,10 @@
     var buildTreeCardFn = (options && options.buildTreeCard) || buildTreeCard;
     var updateManageSummaryFn = (options && options.updateManageSummary) || updateManageSummary;
 
+    if (options && typeof options.setLastTreesData === 'function') {
+      options.setLastTreesData(Array.isArray(trees) ? trees : []);
+    }
+
     updateManageSummaryFn(trees, options);
 
     if (!trees || trees.length === 0) {
