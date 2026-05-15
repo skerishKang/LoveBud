@@ -38,7 +38,10 @@
 
             const parentId = node.parentId || canonicalRootId;
             const parent = treeMemories.find((memory) => memory.id === parentId);
-            if (parent) {
+
+            // Skip branch if parent is the hidden canonical root — prevents orphan
+            // "tail" lines from invisible root to the first visible memory
+            if (parent && parent.id !== canonicalRootId) {
                 drawBranch(calcPosition(parent), calcPosition(node));
             }
         };
