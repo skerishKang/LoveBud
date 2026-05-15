@@ -2,16 +2,28 @@ function stripTrailingSlash(value) {
   return String(value || '').replace(/\/$/, '');
 }
 
+const REQUEST_ID_HEADER = 'x-lovebud-request-id';
+const MAX_REQUEST_ID_LENGTH = 80;
+const SAFE_REQUEST_ID_PATTERN = /^[A-Za-z0-9._:-]+$/;
+
 function generateRequestId() {
   // Generate a non-sensitive request ID (UUID v4 format)
   // This is safe to log and propagate without exposing user data
   return 'req-' + crypto.randomUUID();
 }
 
+function normalizeRequestId(value) {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.length > MAX_REQUEST_ID_LENGTH) return null;
+  if (!SAFE_REQUEST_ID_PATTERN.test(trimmed)) return null;
+  return trimmed;
+}
+
 function getOrCreateRequestId(request) {
-  // Check if request ID exists in incoming headers
-  const existingRequestId = request.headers.get('x-lovebud-request-id');
-  if (existingRequestId && typeof existingRequestId === 'string' && existingRequestId.length > 0) {
+  // Reuse only short trace-safe client request IDs. Anything malformed is replaced at the boundary.
+  const existingRequestId = normalizeRequestId(request.headers.get(REQUEST_ID_HEADER));
+  if (existingRequestId) {
     return existingRequestId;
   }
 
@@ -133,12 +145,12 @@ function withUpstreamHeader(response, upstream, requestId = null) {
   const headers = new Headers(response.headers);
   headers.set('x-lovebud-upstream', upstream);
   if (requestId) {
-    headers.set('x-lovebud-request-id', requestId);
+    headers.set(REQUEST_ID_HEADER, requestId);
     // Allow browser to access the request ID header
     const existingExposeHeaders = headers.get('Access-Control-Expose-Headers') || '';
     const exposeHeaders = existingExposeHeaders
-      ? `${existingExposeHeaders}, x-lovebud-request-id`
-      : 'x-lovebud-request-id';
+      ? `${existingExposeHeaders}, ${REQUEST_ID_HEADER}`
+      : REQUEST_ID_HEADER;
     headers.set('Access-Control-Expose-Headers', exposeHeaders);
   }
   return new Response(response.body, {
@@ -187,7 +199,7 @@ function buildNotFoundResponse(requestId = null) {
     'x-lovebud-route-status': 'unhandled'
   };
   if (requestId) {
-    headers['x-lovebud-request-id'] = requestId;
+    headers[REQUEST_ID_HEADER] = requestId;
   }
   return new Response(
     JSON.stringify({ error: 'Route not found' }),
@@ -204,7 +216,7 @@ function buildMethodNotAllowedResponse(allow = 'GET', requestId = null) {
     'x-lovebud-upstream': 'cloudflare',
     'x-lovebud-route-status': 'method-not-allowed',
     'allow': allow,
-    'x-lovebud-request-id': requestId
+    [REQUEST_ID_HEADER]: requestId
   };
   return new Response(
     JSON.stringify({ error: 'Method not allowed' }),
@@ -222,7 +234,7 @@ function buildModalUnavailableResponse(requestId = null) {
     'x-lovebud-degraded': 'modal-unavailable'
   };
   if (requestId) {
-    headers['x-lovebud-request-id'] = requestId;
+    headers[REQUEST_ID_HEADER] = requestId;
   }
   return new Response(
     JSON.stringify({ error: 'Modal backend unavailable' }),
@@ -248,7 +260,7 @@ async function tryModalRead(request, env, requestId = null) {
 
   // Forward request ID to Modal
   if (requestId) {
-    headers['x-lovebud-request-id'] = requestId;
+    headers[REQUEST_ID_HEADER] = requestId;
   }
 
   const response = await fetch(modalUrl.toString(), { headers });
@@ -288,7 +300,7 @@ async function tryModalWrite(request, env, requestId = null) {
 
   // Forward request ID to Modal
   if (requestId) {
-    headers['x-lovebud-request-id'] = requestId;
+    headers[REQUEST_ID_HEADER] = requestId;
   }
 
   const response = await fetch(modalUrl.toString(), {
