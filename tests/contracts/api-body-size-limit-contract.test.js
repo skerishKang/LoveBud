@@ -37,10 +37,10 @@ test('Cloudflare write proxy reads and rebuilds a bounded write body without rel
   );
   assert.match(limitBlock, /contentLength\s*!==\s*null/);
   assert.match(limitBlock, /contentLength\s*>\s*MAX_WRITE_BODY_BYTES/);
-  assert.match(limitBlock, /request\.arrayBuffer\(\)/, 'Cloudflare guard must read body with arrayBuffer() for reliable byte length');
-  assert.match(limitBlock, /buffer\.byteLength\s*>\s*MAX_WRITE_BODY_BYTES/);
+  assert.match(limitBlock, /await request\.text\(\)/, 'Cloudflare guard must read body with text() for reliable byte measurement');
+  assert.match(limitBlock, /encoded\.byteLength\s*>\s*MAX_WRITE_BODY_BYTES/);
   assert.match(limitBlock, /tooLarge:\s*true,\s*body:\s*null/);
-  assert.match(limitBlock, /new\s+Uint8Array\(buffer\)/);
+  assert.match(limitBlock, /return\s*\{[^}]*tooLarge:\s*false[^}]*body:\s*encoded\s*\}/);
 });
 
 test('Cloudflare write proxy rejects oversized non-DELETE write requests before forwarding', () => {

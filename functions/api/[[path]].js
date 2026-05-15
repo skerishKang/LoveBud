@@ -42,18 +42,20 @@ async function readBoundedWriteBody(request) {
     return { tooLarge: false, body: null };
   }
 
-  let buffer;
+  let bodyText;
   try {
-    buffer = await request.arrayBuffer();
+    bodyText = await request.text();
   } catch (e) {
     return { tooLarge: true, body: null };
   }
 
-  if (buffer.byteLength > MAX_WRITE_BODY_BYTES) {
+  const encoder = new TextEncoder();
+  const encoded = encoder.encode(bodyText);
+  if (encoded.byteLength > MAX_WRITE_BODY_BYTES) {
     return { tooLarge: true, body: null };
   }
 
-  return { tooLarge: false, body: new Uint8Array(buffer) };
+  return { tooLarge: false, body: encoded };
 }
 
 function buildPayloadTooLargeResponse(requestId = null) {
