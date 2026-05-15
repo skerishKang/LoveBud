@@ -12,6 +12,19 @@
  */
 
 (function() {
+  function isMyTreesDebugEnabled() {
+    return window.LOVEBUD_DEBUG === true || window.LOVEBUD_MY_TREES_DEBUG === true;
+  }
+
+  function myTreesDebugLog() {
+    if (!isMyTreesDebugEnabled() || !window.console || typeof console.log !== 'function') return;
+    console.log.apply(console, arguments);
+  }
+
+  function getErrorMessage(error) {
+    return error && error.message ? error.message : String(error || 'Unknown error');
+  }
+
   var PERSISTENT_TREES_CACHE_KEY = 'lovebud_my_trees_list_cache';
   var createTreeModalState = {
     initialized: false,
@@ -41,7 +54,7 @@
     try {
       localStorage.removeItem(PERSISTENT_TREES_CACHE_KEY);
     } catch (e) {
-      console.warn('[my-trees-actions] Failed to clear persistent trees cache:', e);
+      console.warn('[my-trees-actions] Failed to clear persistent trees cache:', getErrorMessage(e));
     }
   }
 
@@ -257,7 +270,7 @@
         options?.showToast?.(safeText(i18n, 'api_not_available', 'API를 사용할 수 없습니다.'), 'error');
       }
     } catch (e) {
-      console.error('[my-trees-actions] renameTree failed:', e);
+      console.error('[my-trees-actions] renameTree failed:', getErrorMessage(e));
       options?.showToast?.(safeText(i18n, 'rename_fail', '이름 변경에 실패했습니다.'), 'error');
     }
   }
@@ -278,7 +291,7 @@
         options?.showToast?.(safeText(i18n, 'api_not_available', 'API를 사용할 수 없습니다.'), 'error');
       }
     } catch (e) {
-      console.error('[my-trees-actions] deleteTree failed:', e);
+      console.error('[my-trees-actions] deleteTree failed:', getErrorMessage(e));
       options?.showToast?.(safeText(i18n, 'delete_fail', '삭제에 실패했습니다.'), 'error');
     }
   }
@@ -302,7 +315,7 @@
         options?.showToast?.(safeText(i18n, 'api_not_available', 'API를 사용할 수 없습니다.'), 'error');
       }
     } catch (e) {
-      console.error('[my-trees-actions] toggleTreeVisibility failed:', e);
+      console.error('[my-trees-actions] toggleTreeVisibility failed:', getErrorMessage(e));
       options?.showToast?.(safeText(i18n, 'visibility_change_fail', '공개 설정 변경에 실패했습니다.'), 'error');
     }
   }
@@ -319,7 +332,7 @@
 
   function getDefaultVisibility() {
     if (isTestPublicMode()) {
-      console.log('[my-trees-actions] Test public mode ignored: new trees always start public');
+      myTreesDebugLog('[my-trees-actions] Test public mode ignored: new trees always start public');
     }
     return 'public';
   }
@@ -351,7 +364,7 @@
       modal.setSubmitting(true, i18n);
     }
 
-    console.log('[my-trees-actions] Creating tree with visibility: public');
+    myTreesDebugLog('[my-trees-actions] Creating tree with visibility: public');
 
     try {
       var newTree;
@@ -361,7 +374,7 @@
           title: modalResult.title,
           visibility: 'public'
         });
-        console.log('[my-trees-actions] Tree created:', newTree);
+        myTreesDebugLog('[my-trees-actions] Tree created');
       } else {
         newTree = { id: 'tree-' + Date.now(), title: modalResult.title, visibility: 'public' };
         options?.showToast?.(safeText(i18n, 'demo_mode', '데모 모드입니다. 실제 트리는 생성되지 않습니다.'), 'error');
@@ -369,7 +382,7 @@
 
       if (window.LoveBudCache && options?.cacheKey) {
         window.LoveBudCache.clear(options.cacheKey);
-        console.log('[my-trees-actions] Cache cleared after new tree creation');
+        myTreesDebugLog('[my-trees-actions] Cache cleared after new tree creation');
       }
       clearPersistentTreesCache();
 
@@ -384,7 +397,7 @@
         window.location.href = 'editor';
       }
     } catch (e) {
-      console.error('[my-trees-actions] createTree failed:', e);
+      console.error('[my-trees-actions] createTree failed:', getErrorMessage(e));
 
       if (headerBtn) {
         headerBtn.disabled = false;
