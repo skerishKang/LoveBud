@@ -54,9 +54,7 @@ async function exceedsWriteBodyLimit(request) {
       if (done) return false;
       totalBytes += value ? value.byteLength : 0;
       if (totalBytes > MAX_WRITE_BODY_BYTES) {
-        try {
-          await reader.cancel();
-        } catch (e) {}
+        reader.cancel().catch(() => {});
         return true;
       }
     }
