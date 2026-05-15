@@ -1,0 +1,80 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+
+const ROOT = path.resolve(__dirname, '..', '..');
+const CATCHALL_JS = path.join(ROOT, 'functions/api/[[path]].js');
+const MODAL_HELPERS_PY = path.join(ROOT, 'modal_compute/api_response_helpers.py');
+
+function readFile(filePath) {
+  return fs.readFileSync(filePath, 'utf8');
+}
+
+function extractFunctionBlock(content, functionName) {
+  const start = content.indexOf(`function ${functionName}`);
+  assert.notEqual(start, -1, `${functionName} should exist`);
+  const openBrace = content.indexOf('{', start);
+  assert.notEqual(openBrace, -1, `${functionName} should have a body`);
+
+  let depth = 0;
+  for (let index = openBrace; index < content.length; index += 1) {
+    if (content[index] === '{') depth += 1;
+    if (content[index] === '}') depth -= 1;
+    if (depth === 0) return content.slice(openBrace, index + 1);
+  }
+  assert.fail(`${functionName} should close`);
+}
+
+test('Cloudflare write proxy defines and enforces a bounded write body policy', () => {
+  const source = readFile(CATCHALL_JS);
+
+  assert.match(source, /const\s+MAX_WRITE_BODY_BYTES\s*=\s*128\s*\*\s*1024/);
+  assert.match(source, /function\s+getContentLengthBytes\s*\(/);
+  assert.match(source, /function\s+exceedsWriteBodyLimit\s*\(/);
+  assert.match(source, /function\s+buildPayloadTooLargeResponse\s*\(/);
+
+  const limitBlock = extractFunctionBlock(source, 'exceedsWriteBodyLimit');
+  assert.match(limitBlock, /contentLength\s*!==\s*null/);
+  assert.match(limitBlock, /contentLength\s*>\s*MAX_WRITE_BODY_BYTES/);
+});
+
+test('Cloudflare write proxy rejects oversized non-DELETE write requests before forwarding', () => {
+  const source = readFile(CATCHALL_JS);
+  const writeBlock = extractFunctionBlock(source, 'tryModalWrite');
+
+  assert.match(writeBlock, /if\s*\(method\s*!==\s*'DELETE'\s*&&\s*exceedsWriteBodyLimit\(request\)\)/);
+  assert.match(writeBlock, /return\s+buildPayloadTooLargeResponse\(requestId\)/);
+  assert.match(writeBlock, /body:\s*method\s*!==\s*'DELETE'\s*\?\s*request\.body\s*:\s*null/);
+});
+
+test('Cloudflare oversized body response is safe JSON and does not echo request body', () => {
+  const source = readFile(CATCHALL_JS);
+  const responseBlock = extractFunctionBlock(source, 'buildPayloadTooLargeResponse');
+
+  assert.match(responseBlock, /status:\s*413/);
+  assert.match(responseBlock, /Request body too large/);
+  assert.match(responseBlock, /application\/json/);
+  assert.match(responseBlock, /payload-too-large/);
+  assert.doesNotMatch(responseBlock, /request\.body/);
+  assert.doesNotMatch(responseBlock, /await\s+request\.text/);
+  assert.doesNotMatch(responseBlock, /await\s+request\.json/);
+});
+
+test('Modal JSON parser defines the same body size limit before JSON parsing', () => {
+  const source = readFile(MODAL_HELPERS_PY);
+
+  assert.match(source, /MAX_JSON_BODY_BYTES\s*=\s*128\s*\*\s*1024/);
+  assert.match(source, /def\s+_get_content_length\s*\(/);
+  assert.match(source, /def\s+_raise_if_body_too_large\s*\(/);
+  assert.match(source, /content_length\s*>\s*MAX_JSON_BODY_BYTES/);
+  assert.match(source, /HTTPException\(status_code=413,\s*detail="Request body too large"\)/);
+
+  const parseStart = source.indexOf('async def parse_json_body');
+  assert.notEqual(parseStart, -1, 'parse_json_body should exist');
+  const parseBody = source.slice(parseStart);
+  assert.ok(
+    parseBody.indexOf('_raise_if_body_too_large(request)') < parseBody.indexOf('await request.json()'),
+    'Modal parser must enforce body size before JSON parsing'
+  );
+});
