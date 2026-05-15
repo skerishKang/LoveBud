@@ -343,7 +343,8 @@ function createEditorCanvasGrowthAffordance(deps) {
         titleEl.style.fontWeight = '700';
         titleEl.style.color = 'var(--on-surface)';
         titleEl.style.lineHeight = '1.28';
-        titleEl.style.whiteSpace = 'nowrap';
+        titleEl.style.textAlign = 'center';
+        titleEl.style.width = '100%';
         textWrap.appendChild(titleEl);
 
         if (helperText) {
@@ -354,11 +355,8 @@ function createEditorCanvasGrowthAffordance(deps) {
             hintEl.style.color = 'var(--on-surface-variant)';
             hintEl.style.lineHeight = '1.32';
             hintEl.style.opacity = '0.82';
-            hintEl.style.whiteSpace = 'normal';
-            hintEl.style.display = '-webkit-box';
-            hintEl.style.webkitLineClamp = '2';
-            hintEl.style.webkitBoxOrient = 'vertical';
-            hintEl.style.overflow = 'hidden';
+            hintEl.style.whiteSpace = 'pre-line';
+            hintEl.style.display = 'block';
             textWrap.appendChild(hintEl);
         }
 
@@ -472,7 +470,7 @@ function createEditorCanvasGrowthAffordance(deps) {
         const helperText = opts.helperText
             || (isFirstStep
                 ? (i18n('growth_first_step_hint') || '첫 순간에서 이어지는 감정을 기록해보세요')
-                : (i18n('growth_continue_hint') || '선택한 순간 뒤로 감정이 이어져요'))
+                : (i18n('growth_continue_hint') || '선택한 순간 뒤로\n감정이 이어져요'))
             || '';
 
         createPlusTipElement(anchorMem, labelText, helperText, opts);
