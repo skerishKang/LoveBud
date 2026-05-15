@@ -31,10 +31,27 @@ def _get_content_length(request: Request) -> int | None:
     return content_length if content_length >= 0 else None
 
 
-def _raise_if_body_too_large(request: Request) -> None:
+def _raise_if_content_length_too_large(request: Request) -> None:
     content_length = _get_content_length(request)
     if content_length is not None and content_length > MAX_JSON_BODY_BYTES:
         raise HTTPException(status_code=413, detail="Request body too large")
+
+
+async def _read_bounded_body(request: Request) -> bytes:
+    _raise_if_content_length_too_large(request)
+
+    chunks: list[bytes] = []
+    total_size = 0
+
+    async for chunk in request.stream():
+        if not chunk:
+            continue
+        total_size += len(chunk)
+        if total_size > MAX_JSON_BODY_BYTES:
+            raise HTTPException(status_code=413, detail="Request body too large")
+        chunks.append(chunk)
+
+    return b"".join(chunks)
 
 
 async def parse_json_body(request: Request) -> dict:
@@ -46,10 +63,12 @@ async def parse_json_body(request: Request) -> dict:
     Returns:
         dict: Parsed JSON payload (empty dict if body is null/empty).
     """
-    _raise_if_body_too_large(request)
+    body = await _read_bounded_body(request)
+    if not body:
+        return {}
 
     try:
-        payload = await request.json()
+        payload = json.loads(body)
     except json.JSONDecodeError as error:
         raise HTTPException(status_code=400, detail="Invalid JSON body") from error
 
