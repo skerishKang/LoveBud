@@ -290,6 +290,12 @@
       });
     }
 
+    // Apply hub layout: place hub in right sidebar instead of page bottom
+    var hubLayoutShell = document.querySelector('.my-trees-dashboard-grid-shell');
+    if (hubLayoutShell) {
+      hubLayoutShell.classList.add('my-trees-with-hub');
+    }
+
     var sortSelect = document.getElementById('sortTreesSelect');
     if (sortSelect) {
       sortSelect.addEventListener('change', function() {

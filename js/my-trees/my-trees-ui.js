@@ -17,12 +17,6 @@
       .replace(/"/g, '&quot;');
   }
 
-  function closeAllDropdowns() {
-    document.querySelectorAll('.tree-card-dropdown').forEach(function (dd) {
-      dd.classList.remove('show');
-    });
-  }
-
   function hashSeed(value) {
     var source = String(value || 'lovetree');
     var hash = 0;
@@ -206,45 +200,6 @@
     ].join('');
   }
 
-  function getRepresentativeThumbnail(tree) {
-    if (!tree) return '';
-    return tree.representativeThumbnail || tree.representative_thumbnail || tree.thumbnail || '';
-  }
-
-  function clipText(value, maxLength) {
-    var text = String(value || '').trim();
-    if (!text) return '';
-    if (text.length <= maxLength) return text;
-    return text.slice(0, maxLength).trim() + '…';
-  }
-
-  function getRepresentativeTextMeta(tree, i18n) {
-    if (!tree) return null;
-
-    var repTitle = clipText(tree.representativeTitle || tree.representative_title || '', 40);
-    var repMemo = clipText(tree.representativeMemo || tree.representative_memo || '', 82);
-
-    if (!repTitle && !repMemo) return null;
-
-    return {
-      title: repTitle || (i18n('editor_default_first_title') || '첫 순간'),
-      memo: repMemo || (i18n('myTrees.card_text_fallback') || '처음 남긴 마음이 이 트리의 시작이 되었어요.')
-    };
-  }
-
-  function buildRepresentativeTextVisual(tree, palette, i18n) {
-    var textMeta = getRepresentativeTextMeta(tree, i18n);
-    if (!textMeta) return '';
-
-    return [
-      '<div class="tree-card-text-visual" style="border-color:' + palette.leafSoft + ';background:rgba(255,255,255,0.84);">',
-        '<div class="tree-card-text-kicker" style="color:' + palette.accent + ';">' + escapeHtml(i18n('myTrees.card_first_moment') || '첫 순간 기록') + '</div>',
-        '<div class="tree-card-text-title">' + escapeHtml(textMeta.title) + '</div>',
-        '<div class="tree-card-text-memo">' + escapeHtml(textMeta.memo) + '</div>',
-      '</div>'
-    ].join('');
-  }
-
   function buildTreeThumbVisual(tree, i18n) {
     var palette = getTreeMoodPalette(tree);
     var momentCount = getTreeMomentCount(tree);
@@ -381,13 +336,8 @@
   function buildTreeCard(tree, options) {
     var i18n = (options && options.i18n) || window.t || function (k) { return k; };
     var normalizeTree = options && options.normalizeTree;
-    var onRename = options && options.onRename;
-    var onDelete = options && options.onDelete;
-    var onToggleVisibility = options && options.onToggleVisibility;
-    var onNavigate = options && options.onNavigate;
     var onSelect = options && options.onSelect;
     var isSelected = options && options.isSelected;
-    var closeDropdowns = (options && options.closeAllDropdowns) || closeAllDropdowns;
 
     var normalizedTree = typeof normalizeTree === 'function'
       ? normalizeTree(tree)
@@ -416,8 +366,6 @@
     var cardMeta = getTreeCardMeta(normalizedTree, i18n);
     var title = cardMeta.title;
 
-    var menuBtnId = 'menuBtn_' + normalizedTree.id;
-    var dropdownId = 'dropdown_' + normalizedTree.id;
     var selectedClass = typeof isSelected === 'function' && isSelected(normalizedTree.id) ? ' is-selected' : '';
 
     var card = document.createElement('div');
@@ -435,9 +383,6 @@
     };
 
     card.addEventListener('click', function (e) {
-      if (e.target.closest('.tree-card-menu') || e.target.closest('.tree-card-dropdown')) {
-        return;
-      }
       handleCardSelect();
     });
 
@@ -450,23 +395,6 @@
 
     card.innerHTML = [
       buildTreeThumbVisual(normalizedTree, i18n),
-      '<button class="tree-card-menu" id="' + menuBtnId + '" type="button" aria-label="' + escapeHtml(i18n('myTrees.card_menu') || '트리 메뉴 열기') + '">',
-        '<span class="material-symbols-outlined" aria-hidden="true">more_vert</span>',
-      '</button>',
-      '<div class="tree-card-dropdown" id="' + dropdownId + '">',
-        '<div class="dropdown-item visibility" data-action="visibility">',
-          '<span class="material-symbols-outlined" style="font-size:16px;">' + cardMeta.visibilityIcon + '</span>',
-          cardMeta.visibilityActionLabel,
-        '</div>',
-        '<div class="dropdown-item rename" data-action="rename">',
-          '<span class="material-symbols-outlined" style="font-size:16px;">edit</span>',
-          i18n('rename') || '이름 변경',
-        '</div>',
-        '<div class="dropdown-item delete" data-action="delete">',
-          '<span class="material-symbols-outlined" style="font-size:16px;">delete</span>',
-          i18n('delete') || '삭제',
-        '</div>',
-      '</div>',
       '<div class="tree-card-info">',
         '<div class="tree-card-title-row">',
           '<div class="tree-card-title">' + escapeHtml(title) + '</div>',
@@ -497,46 +425,6 @@
         '</div>',
       '</div>'
     ].join('');
-
-    setTimeout(function () {
-      var menuBtn = document.getElementById(menuBtnId);
-      var dropdown = document.getElementById(dropdownId);
-
-      if (menuBtn && dropdown) {
-        menuBtn.addEventListener('click', function (e) {
-          e.preventDefault();
-          e.stopPropagation();
-          if (typeof onSelect === 'function') {
-            onSelect(normalizedTree);
-          }
-          closeDropdowns();
-          dropdown.classList.toggle('show');
-        });
-
-        dropdown.querySelectorAll('.dropdown-item').forEach(function (item) {
-          item.addEventListener('click', function (e) {
-            e.preventDefault();
-            e.stopPropagation();
-
-            if (typeof onSelect === 'function') {
-              onSelect(normalizedTree);
-            }
-
-            var action = this.getAttribute('data-action');
-            if (action === 'visibility' && typeof onToggleVisibility === 'function') {
-              onToggleVisibility(normalizedTree.id, normalizedTree.visibility);
-            } else if (action === 'rename' && typeof onRename === 'function') {
-              onRename(normalizedTree.id, title);
-            } else if (action === 'delete' && typeof onDelete === 'function') {
-              onDelete(normalizedTree.id, title);
-            }
-
-            closeDropdowns();
-          });
-        });
-      }
-
-    }, 0);
 
     return card;
   }
