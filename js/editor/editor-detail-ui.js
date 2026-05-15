@@ -336,11 +336,8 @@ function createEditorDetailUI(deps) {
         }
 
         if (hintEl) {
-            hintEl.textContent = isEmptyState
-                ? formatI18nText('editor_current_moment_empty_hint', '첫 순간이 심어지면 여기서 감정 메모와 다음 행동이 자연스럽게 이어집니다.')
-                : isRootSelected
-                    ? formatI18nText('editor_current_moment_root_hint', '이 순간은 트리의 시작점이에요. 다음 장면을 이어 심으며 감정의 흐름을 키워보세요.')
-                    : '';
+            hintEl.textContent = '';
+            hintEl.hidden = true;
         }
 
         if (imgEl) {
