@@ -429,8 +429,8 @@
     return card;
   }
 
-  // Issue #616: first-batch rendering constants
-  var FIRST_BATCH_SIZE = 6;
+  // Issue #616/#1120: first-batch rendering constants
+  var FIRST_BATCH_SIZE = 4;
   var BATCH_SIZE = 6;
   var currentVisibleCount = 0;
   var totalTreesCount = 0;
@@ -473,7 +473,7 @@
     // Sort change or re-render: clear old cards before appending new ones
     grid.innerHTML = '';
 
-    // Issue #616: Render first batch only
+    // Issue #616/#1120: Render first two-row batch only
     renderNextBatch(grid, buildTreeCardFn, setState, stateEnum, { onSelect: hubOnSelect, onNavigate: hubOnNavigate });
 
     // Issue #616: Set up scroll continuation
@@ -484,10 +484,11 @@
     }
   }
 
-  // Issue #616: Render next batch of trees
+  // Issue #616/#1120: Render next batch of trees
   function renderNextBatch(grid, buildTreeCardFn, setState, stateEnum, extraOptions) {
     var startIndex = currentVisibleCount;
-    var endIndex = Math.min(startIndex + BATCH_SIZE, totalTreesCount);
+    var batchSize = startIndex === 0 ? FIRST_BATCH_SIZE : BATCH_SIZE;
+    var endIndex = Math.min(startIndex + batchSize, totalTreesCount);
     
     var onSelect = extraOptions && extraOptions.onSelect;
     var onNavigate = extraOptions && extraOptions.onNavigate;
