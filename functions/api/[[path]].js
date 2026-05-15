@@ -42,42 +42,18 @@ async function readBoundedWriteBody(request) {
     return { tooLarge: false, body: null };
   }
 
-  const reader = request.body.getReader();
-  const chunks = [];
-  let totalBytes = 0;
-  let tooLarge = false;
-
+  let buffer;
   try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      if (!value) continue;
-
-      totalBytes += value.byteLength;
-      if (totalBytes > MAX_WRITE_BODY_BYTES) {
-        tooLarge = true;
-        break;
-      }
-      chunks.push(value);
-    }
-  } finally {
-    try {
-      reader.releaseLock();
-    } catch (e) {}
-  }
-
-  if (tooLarge) {
+    buffer = await request.arrayBuffer();
+  } catch (e) {
     return { tooLarge: true, body: null };
   }
 
-  const body = new Uint8Array(totalBytes);
-  let offset = 0;
-  for (const chunk of chunks) {
-    body.set(chunk, offset);
-    offset += chunk.byteLength;
+  if (buffer.byteLength > MAX_WRITE_BODY_BYTES) {
+    return { tooLarge: true, body: null };
   }
 
-  return { tooLarge: false, body };
+  return { tooLarge: false, body: new Uint8Array(buffer) };
 }
 
 function buildPayloadTooLargeResponse(requestId = null) {

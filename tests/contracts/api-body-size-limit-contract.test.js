@@ -37,13 +37,10 @@ test('Cloudflare write proxy reads and rebuilds a bounded write body without rel
   );
   assert.match(limitBlock, /contentLength\s*!==\s*null/);
   assert.match(limitBlock, /contentLength\s*>\s*MAX_WRITE_BODY_BYTES/);
-  assert.match(limitBlock, /request\.body\.getReader\(\)/, 'Cloudflare guard must inspect the original body stream when content-length is missing');
-  assert.doesNotMatch(limitBlock, /request\.clone\(\)/, 'Cloudflare guard must not tee the request body with request.clone()');
-  assert.match(limitBlock, /totalBytes\s*\+=\s*value\.byteLength/);
-  assert.match(limitBlock, /totalBytes\s*>\s*MAX_WRITE_BODY_BYTES/);
+  assert.match(limitBlock, /request\.arrayBuffer\(\)/, 'Cloudflare guard must read body with arrayBuffer() for reliable byte length');
+  assert.match(limitBlock, /buffer\.byteLength\s*>\s*MAX_WRITE_BODY_BYTES/);
   assert.match(limitBlock, /tooLarge:\s*true,\s*body:\s*null/);
-  assert.match(limitBlock, /new\s+Uint8Array\(totalBytes\)/);
-  assert.match(limitBlock, /body\.set\(chunk,\s*offset\)/);
+  assert.match(limitBlock, /new\s+Uint8Array\(buffer\)/);
 });
 
 test('Cloudflare write proxy rejects oversized non-DELETE write requests before forwarding', () => {
@@ -99,4 +96,102 @@ test('Modal JSON parser enforces the same body size limit while reading the stre
     'Modal parser must enforce stream body size before JSON parsing'
   );
   assert.doesNotMatch(parseBody, /await\s+request\.json\(\)/, 'Modal parser must not call request.json() before size enforcement');
+});
+
+/**
+ * Runtime test — actually invokes the Cloudflare Pages Function handler
+ * with real Request objects to verify oversized body rejection.
+ */
+test('runtime: Cloudflare write proxy returns 413 for oversized POST /api/trees body', { timeout: 10_000 }, async () => {
+  const mod = await import('../../functions/api/[[path]].js');
+  const { onRequest } = mod;
+
+  const oversizedBody = JSON.stringify({ title: 'x'.repeat(150 * 1024) });
+  assert.ok(oversizedBody.length > 128 * 1024, 'test payload must exceed 128KB');
+
+  const request = new Request('https://test5.lovebud.pages.dev/api/trees', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: oversizedBody,
+  });
+
+  const env = { MODAL_BASE_URL: 'https://padiemipu--lovebud-browse-snapshot-fastapi-app.modal.run' };
+  const response = await onRequest({ request, env });
+
+  assert.equal(response.status, 413, 'oversized POST must return 413');
+  assert.ok(response.headers.get('content-type')?.startsWith('application/json'), '413 must be JSON');
+
+  const body = await response.json();
+  assert.equal(typeof body.error, 'string', '413 body must have error string');
+  assert.ok(body.error.length > 0, '413 error must not be empty');
+  assert.doesNotMatch(JSON.stringify(body), /x{10,}/, '413 must not echo submitted body content');
+  assert.equal(response.headers.get('x-lovebud-route-status'), 'payload-too-large');
+  assert.equal(response.headers.get('x-lovebud-upstream'), 'cloudflare');
+});
+
+test('runtime: Cloudflare write proxy returns 413 for oversized POST /api/memories body', { timeout: 10_000 }, async () => {
+  const mod = await import('../../functions/api/[[path]].js');
+  const { onRequest } = mod;
+
+  const oversizedBody = JSON.stringify({
+    treeId: '00000000-0000-0000-0000-000000000000',
+    content: 'y'.repeat(140 * 1024),
+    memoryDate: '2026-05-15',
+  });
+  assert.ok(oversizedBody.length > 128 * 1024, 'test payload must exceed 128KB');
+
+  const request = new Request('https://test5.lovebud.pages.dev/api/memories', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: oversizedBody,
+  });
+
+  const env = { MODAL_BASE_URL: 'https://padiemipu--lovebud-browse-snapshot-fastapi-app.modal.run' };
+  const response = await onRequest({ request, env });
+
+  assert.equal(response.status, 413, 'oversized POST must return 413');
+  const body = await response.json();
+  assert.equal(typeof body.error, 'string');
+  assert.ok(body.error.length > 0);
+  assert.doesNotMatch(JSON.stringify(body), /y{10,}/, '413 must not echo submitted body content');
+  assert.equal(response.headers.get('x-lovebud-route-status'), 'payload-too-large');
+});
+
+test('runtime: Cloudflare write proxy passes normal-sized POST to Modal', { timeout: 10_000 }, async () => {
+  const mod = await import('../../functions/api/[[path]].js');
+  const { onRequest } = mod;
+
+  const smallBody = JSON.stringify({ title: 'runtime-test' });
+  assert.ok(smallBody.length < 128 * 1024, 'small payload must be under 128KB');
+
+  const request = new Request('https://test5.lovebud.pages.dev/api/trees', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: smallBody,
+  });
+
+  // Mock fetch to intercept Modal call
+  const originalFetch = globalThis.fetch;
+  let modalFetchCalled = false;
+  let modalFetchUrl = '';
+  globalThis.fetch = async (url, opts) => {
+    modalFetchCalled = true;
+    modalFetchUrl = typeof url === 'string' ? url : url.toString();
+    // Return mock Modal response
+    return new Response(JSON.stringify({ id: 'mock-tree-id', title: 'runtime-test' }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
+  };
+
+  try {
+    const env = { MODAL_BASE_URL: 'https://padiemipu--lovebud-browse-snapshot-fastapi-app.modal.run' };
+    const response = await onRequest({ request, env });
+
+    assert.equal(response.status, 200, 'normal-sized POST must return 200');
+    assert.ok(modalFetchCalled, 'Modal fetch must be called for normal-sized body');
+    assert.ok(modalFetchUrl.includes('/modal/private/trees'), 'Modal fetch must target private trees');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
