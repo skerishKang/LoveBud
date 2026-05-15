@@ -32,3 +32,11 @@
 .tree-card-visibility { display: flex; align-items: center; gap: 4px; font-size: 12px; padding: 4px 10px; border-radius: 99px; background: var(--lovetree-chip-bg); border: 1px solid var(--lovetree-chip-border); color: var(--lovetree-chip-text); }
 .tree-card-visibility.public { background: rgba(122, 139, 110, 0.1); color: var(--secondary); }
 .tree-card-visibility.private { background: var(--lovetree-pill-bg); color: var(--lovetree-pill-text); }
+
+/* Issue #1125: keep owner cards focused on representative cover content. */
+.tree-card-thumb-initial,
+.tree-card-thumb-topline,
+.tree-card-thumb-caption,
+.tree-card-flow-bridge {
+  display: none !important;
+}
