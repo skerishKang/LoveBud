@@ -159,7 +159,7 @@
       '<label class="editor-view-option-row"><input type="checkbox" id="editorViewOptionLabels"> <span>' + tText('editor_view_option_labels', '순간 제목·날짜') + '</span></label>',
       '<label class="editor-view-option-row"><input type="checkbox" id="editorViewOptionTips"> <span>' + tText('editor_view_option_tips', '이어가기 팁') + '</span></label>',
       '<label class="editor-view-option-row"><input type="checkbox" id="editorViewOptionBubbles"> <span>' + tText('editor_view_option_bubbles', '말풍선 설명') + '</span></label>',
-      '<div class="editor-view-options-help">' + tText('editor_view_options_help', '표시 옵션은 에디터 화면에만 적용되고 트리 데이터는 바꾸지 않아요.') + '</div>'
+      '<div class="editor-view-options-help">' + tText('editor_view_options_help', '표시 옵션은 에디터 화면에만 적용되고<br>트리 데이터는 바꾸지 않아요.') + '</div>'
     ].join('');
 
     group.appendChild(button);
