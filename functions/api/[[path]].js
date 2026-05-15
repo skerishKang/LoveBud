@@ -34,19 +34,15 @@ function getContentLengthBytes(request) {
 }
 
 async function readBoundedWriteBody(request) {
-  const contentLength = getContentLengthBytes(request);
-  if (contentLength !== null && contentLength > MAX_WRITE_BODY_BYTES) {
-    return { tooLarge: true, body: null };
-  }
-  if (!request.body) {
-    return { tooLarge: false, body: null };
-  }
-
   let bodyText;
   try {
     bodyText = await request.text();
   } catch (e) {
     return { tooLarge: true, body: null };
+  }
+
+  if (!bodyText) {
+    return { tooLarge: false, body: null };
   }
 
   const encoder = new TextEncoder();
