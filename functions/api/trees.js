@@ -12,6 +12,15 @@ function withModalHeader(response) {
   });
 }
 
+const MAX_BODY_SIZE = 131072; // 128KB
+
+function buildPayloadTooLargeResponse() {
+  return new Response(JSON.stringify({ error: 'Payload too large' }), {
+    status: 413,
+    headers: { 'content-type': 'application/json; charset=utf-8' }
+  });
+}
+
 function buildModalUnavailableResponse() {
   return new Response(JSON.stringify({ error: 'Modal service temporarily unavailable' }), {
     status: 503,
@@ -55,6 +64,11 @@ export async function onRequestGet(context) {
 }
 
 export async function onRequestPost(context) {
+  const contentLength = parseInt(context.request.headers.get('content-length') || '0', 10);
+  if (contentLength > MAX_BODY_SIZE) {
+    return buildPayloadTooLargeResponse();
+  }
+
   const modalBaseUrl = stripTrailingSlash(context.env?.MODAL_BASE_URL);
   if (!modalBaseUrl) {
     return new Response(JSON.stringify({ error: 'MODAL_BASE_URL is not configured' }), {
