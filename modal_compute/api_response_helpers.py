@@ -10,6 +10,8 @@ from typing import Any
 
 from fastapi import HTTPException, Request
 
+MAX_JSON_BODY_BYTES = 128 * 1024
+
 
 def add_request_id_to_response(response: Any, request_id: str | None = None) -> Any:
     """Add request ID to response headers if available."""
@@ -18,15 +20,34 @@ def add_request_id_to_response(response: Any, request_id: str | None = None) -> 
     return response
 
 
+def _get_content_length(request: Request) -> int | None:
+    raw_length = request.headers.get("content-length")
+    if raw_length is None:
+        return None
+    try:
+        content_length = int(raw_length)
+    except (TypeError, ValueError):
+        return None
+    return content_length if content_length >= 0 else None
+
+
+def _raise_if_body_too_large(request: Request) -> None:
+    content_length = _get_content_length(request)
+    if content_length is not None and content_length > MAX_JSON_BODY_BYTES:
+        raise HTTPException(status_code=413, detail="Request body too large")
+
+
 async def parse_json_body(request: Request) -> dict:
     """Parse and validate JSON body from request.
 
     Raises:
-        HTTPException: 400 if JSON is invalid.
+        HTTPException: 400 if JSON is invalid, 413 if the body is too large.
 
     Returns:
         dict: Parsed JSON payload (empty dict if body is null/empty).
     """
+    _raise_if_body_too_large(request)
+
     try:
         payload = await request.json()
     except json.JSONDecodeError as error:
