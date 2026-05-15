@@ -4,13 +4,41 @@
   const AUTH_CONFIRMED_KEY = (window.LoveBudAuthState && window.LoveBudAuthState.AUTH_CONFIRMED_KEY) || 'lovebud_auth_confirmed';
   const AUTH_TOKEN_KEY = (window.LoveBudAuthState && window.LoveBudAuthState.AUTH_TOKEN_KEY) || 'lovebud_auth_token';
 
-  function getCachedTokenRecord() {
+  function getTokenStorage() {
     try {
-      const raw = localStorage.getItem(AUTH_TOKEN_KEY);
+      return window.sessionStorage || null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function removeLegacyDurableTokenRecord() {
+    try {
+      localStorage.removeItem(AUTH_TOKEN_KEY);
+    } catch (e) {}
+  }
+
+  function clearCachedTokenRecord() {
+    removeLegacyDurableTokenRecord();
+    try {
+      const storage = getTokenStorage();
+      if (storage) storage.removeItem(AUTH_TOKEN_KEY);
+    } catch (e) {}
+  }
+
+  function getCachedTokenRecord() {
+    removeLegacyDurableTokenRecord();
+    try {
+      const storage = getTokenStorage();
+      if (!storage) return null;
+      const raw = storage.getItem(AUTH_TOKEN_KEY);
       if (!raw || raw === 'null') return null;
       const parsed = JSON.parse(raw);
       if (!parsed || !parsed.token || !parsed.expiresAt) return null;
-      if (Date.now() >= Number(parsed.expiresAt) - 30000) return null;
+      if (Date.now() >= Number(parsed.expiresAt) - 30000) {
+        storage.removeItem(AUTH_TOKEN_KEY);
+        return null;
+      }
       return parsed;
     } catch (e) {
       return null;
@@ -18,9 +46,12 @@
   }
 
   function setCachedTokenRecord(user, tokenResult) {
+    removeLegacyDurableTokenRecord();
     try {
       if (!user || !user.uid || !tokenResult || !tokenResult.token) return;
-      localStorage.setItem(AUTH_TOKEN_KEY, JSON.stringify({
+      const storage = getTokenStorage();
+      if (!storage) return;
+      storage.setItem(AUTH_TOKEN_KEY, JSON.stringify({
         uid: user.uid,
         token: tokenResult.token,
         expiresAt: new Date(tokenResult.expirationTime).getTime()
@@ -51,8 +82,8 @@
     try {
       localStorage.removeItem(AUTH_CACHE_KEY);
       localStorage.removeItem(AUTH_CONFIRMED_KEY);
-      localStorage.removeItem(AUTH_TOKEN_KEY);
     } catch (e) {}
+    clearCachedTokenRecord();
 
     try {
       if (window.clearPrivateCaches) {
@@ -210,8 +241,10 @@
   }
 
   window.LoveTreeBaseApiFetch = {
+    getTokenStorage,
     getCachedTokenRecord,
     setCachedTokenRecord,
+    clearCachedTokenRecord,
     waitForAuthToken,
     waitForAuthBootstrapReady,
     clearConfirmedAuthState,
