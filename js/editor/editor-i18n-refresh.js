@@ -32,9 +32,6 @@
   function updateEditorDynamicSummary() {
     var memories = Array.isArray(window.currentTreeMemories) ? window.currentTreeMemories : [];
     var rootId = getCanonicalRootId(memories);
-    var selectedNodeEl = document.querySelector('.memory-node.selected');
-    var selectedId = selectedNodeEl ? selectedNodeEl.getAttribute('data-memory-id') : rootId;
-    var selectedMemory = memories.find(function(m) { return m && m.id === selectedId; }) || memories.find(function(m) { return m && m.id === rootId; }) || null;
     var count = memories.filter(function(m) { return m && m.id !== rootId; }).length;
 
     var flowSummaryEl = document.getElementById('sidebarFlowSummary');
@@ -42,22 +39,19 @@
       if (!count) {
         flowSummaryEl.textContent = tText('editor_tree_status_empty', '아직 첫 순간을 기다리고 있어요.');
       } else if (count === 1) {
-        flowSummaryEl.textContent = tText('sidebar_flow_summary_one_moment', '첫 순간이 심어졌어요.');
-      } else if (selectedMemory && selectedMemory.title) {
-        flowSummaryEl.textContent = tText('sidebar_flow_summary_selected', '지금은 "{title}" 순간에 마음이 머물러 있어요.').replace('{title}', selectedMemory.title);
+        flowSummaryEl.textContent = tText('sidebar_flow_summary_one_moment', '첫 순간이 심어진 러브트리예요.');
       } else {
-        flowSummaryEl.textContent = tText('sidebar_flow_summary_connected', '{count}개의 순간이 하나의 러브트리로 차곡차곡 이어지고 있어요.').replace('{count}', String(count));
+        flowSummaryEl.textContent = tText('sidebar_flow_summary_connected', '{count}개의 순간이 이어진 러브트리예요.').replace('{count}', String(count));
       }
     }
 
     var selectionHintEl = document.getElementById('sidebarSelectionHint');
     if (selectionHintEl) {
-      if (!selectedMemory) {
-        selectionHintEl.textContent = tText('sidebar_first_moment_hint', '첫 순간을 추가해 트리를 시작해 보세요.');
-      } else if (selectedMemory.id === rootId) {
-        selectionHintEl.textContent = tText('root_moment_hint', '이 순간은 현재 트리의 시작점입니다');
+      var firstMoment = memories.find(function(m) { return m && m.id !== rootId && m.parentId; });
+      if (firstMoment && firstMoment.title) {
+        selectionHintEl.textContent = tText('sidebar_flow_cue_first_moment', '첫 순간 "{title}"에서 이어진 감정 흐름을 정리하고 있어요.').replace('{title}', firstMoment.title);
       } else {
-        selectionHintEl.textContent = '';
+        selectionHintEl.textContent = tText('sidebar_flow_cue_empty', '캔버스에서 순간을 선택하면 오른쪽 패널에서 자세히 볼 수 있어요.');
       }
     }
   }
@@ -70,7 +64,7 @@
     document.title = tText('nav.editor', '러브트리 편집') + ' | LoveTree';
 
     setText('editorFlowHeading', 'sidebar_flow_heading', '트리 정보');
-    setText('editorFlowLead', 'sidebar_flow_lead', '트리 이름과 공개 범위를 이곳에서 가볍게 다듬고, 가운데에서는 감정의 흐름만 따라가 보세요.');
+    setText('editorFlowLead', 'sidebar_flow_lead', '이 트리의 제목과 이어진 순간 흐름을 확인하고 있어요.');
     setText('focusSelectedBtnLabel', 'sidebar_focus_selected', '선택한 순간 보기');
     setText('recenterCanvasBtnLabel', 'sidebar_recenter_tree', '트리 한눈에 보기');
     setText('addMemoryEyebrow', 'editor_add_memory_eyebrow', '다음 순간 심기');
@@ -109,9 +103,6 @@
     setAttr('renameTreeBtn', 'aria-label', 'rename_tree_prompt', '새 트리 제목을 입력해 주세요.');
     setAttr('renameTreeBtn', 'title', 'rename_tree_prompt', '새 트리 제목을 입력해 주세요.');
 
-    setText('sidebarPublicViewerLabel', 'sidebar_public_viewer_label', '공개 화면 보기');
-    setText('sidebarInsightsLabel', 'sidebar_insights_label', '트리 인사이트');
-    setText('sidebarInsightsBadge', 'sidebar_insights_disabled_badge', '준비 중');
     setAttr('detailMoreBtn', 'aria-label', 'editor_open_detail', '상세로 보기');
 
     var playBtn = document.querySelector('.play-btn');
