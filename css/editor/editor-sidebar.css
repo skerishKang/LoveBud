@@ -163,6 +163,13 @@
     line-height: 1.3;
 }
 
+/* Issue #1128: keep the current MVP sidebar focused on tree summary, not placeholder actions. */
+.editor-status-card .editor-sidebar-entrypoints,
+.editor-status-card #sidebarPublicViewerBtn,
+.editor-status-card #sidebarInsightsBtn {
+    display: none !important;
+}
+
 .editor-status-card .editor-flow-summary {
     display: block !important;
 }
