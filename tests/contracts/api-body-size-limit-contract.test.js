@@ -26,24 +26,28 @@ function extractFunctionBlock(content, functionName) {
   assert.fail(`${functionName} should close`);
 }
 
-test('Cloudflare write proxy defines and enforces a bounded write body policy', () => {
+test('Cloudflare write proxy defines a bounded write body policy with stream fallback', () => {
   const source = readFile(CATCHALL_JS);
 
   assert.match(source, /const\s+MAX_WRITE_BODY_BYTES\s*=\s*128\s*\*\s*1024/);
   assert.match(source, /function\s+getContentLengthBytes\s*\(/);
-  assert.match(source, /function\s+exceedsWriteBodyLimit\s*\(/);
+  assert.match(source, /async\s+function\s+exceedsWriteBodyLimit\s*\(/);
   assert.match(source, /function\s+buildPayloadTooLargeResponse\s*\(/);
 
   const limitBlock = extractFunctionBlock(source, 'exceedsWriteBodyLimit');
   assert.match(limitBlock, /contentLength\s*!==\s*null/);
   assert.match(limitBlock, /contentLength\s*>\s*MAX_WRITE_BODY_BYTES/);
+  assert.match(limitBlock, /request\.clone\(\)\.body\.getReader\(\)/, 'Cloudflare guard must inspect a cloned body stream when content-length is missing');
+  assert.match(limitBlock, /totalBytes\s*\+=\s*value\s*\?\s*value\.byteLength\s*:\s*0/);
+  assert.match(limitBlock, /totalBytes\s*>\s*MAX_WRITE_BODY_BYTES/);
+  assert.match(limitBlock, /reader\.cancel\(\)/);
 });
 
 test('Cloudflare write proxy rejects oversized non-DELETE write requests before forwarding', () => {
   const source = readFile(CATCHALL_JS);
   const writeBlock = extractFunctionBlock(source, 'tryModalWrite');
 
-  assert.match(writeBlock, /if\s*\(method\s*!==\s*'DELETE'\s*&&\s*exceedsWriteBodyLimit\(request\)\)/);
+  assert.match(writeBlock, /if\s*\(method\s*!==\s*'DELETE'\s*&&\s*await\s+exceedsWriteBodyLimit\(request\)\)/);
   assert.match(writeBlock, /return\s+buildPayloadTooLargeResponse\(requestId\)/);
   assert.match(writeBlock, /body:\s*method\s*!==\s*'DELETE'\s*\?\s*request\.body\s*:\s*null/);
 });
@@ -61,20 +65,24 @@ test('Cloudflare oversized body response is safe JSON and does not echo request 
   assert.doesNotMatch(responseBlock, /await\s+request\.json/);
 });
 
-test('Modal JSON parser defines the same body size limit before JSON parsing', () => {
+test('Modal JSON parser enforces the same body size limit while reading the stream', () => {
   const source = readFile(MODAL_HELPERS_PY);
 
   assert.match(source, /MAX_JSON_BODY_BYTES\s*=\s*128\s*\*\s*1024/);
   assert.match(source, /def\s+_get_content_length\s*\(/);
-  assert.match(source, /def\s+_raise_if_body_too_large\s*\(/);
-  assert.match(source, /content_length\s*>\s*MAX_JSON_BODY_BYTES/);
+  assert.match(source, /def\s+_raise_if_content_length_too_large\s*\(/);
+  assert.match(source, /async\s+def\s+_read_bounded_body\s*\(/);
+  assert.match(source, /async\s+for\s+chunk\s+in\s+request\.stream\(\)/);
+  assert.match(source, /total_size\s*\+=\s*len\(chunk\)/);
+  assert.match(source, /total_size\s*>\s*MAX_JSON_BODY_BYTES/);
   assert.match(source, /HTTPException\(status_code=413,\s*detail="Request body too large"\)/);
 
   const parseStart = source.indexOf('async def parse_json_body');
   assert.notEqual(parseStart, -1, 'parse_json_body should exist');
   const parseBody = source.slice(parseStart);
   assert.ok(
-    parseBody.indexOf('_raise_if_body_too_large(request)') < parseBody.indexOf('await request.json()'),
-    'Modal parser must enforce body size before JSON parsing'
+    parseBody.indexOf('body = await _read_bounded_body(request)') < parseBody.indexOf('json.loads(body)'),
+    'Modal parser must enforce stream body size before JSON parsing'
   );
+  assert.doesNotMatch(parseBody, /await\s+request\.json\(\)/, 'Modal parser must not call request.json() before size enforcement');
 });
