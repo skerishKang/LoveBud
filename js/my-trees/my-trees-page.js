@@ -10,6 +10,15 @@
  */
 
 (function() {
+  function isMyTreesDebugEnabled() {
+    return window.LOVEBUD_DEBUG === true || window.LOVEBUD_MY_TREES_DEBUG === true;
+  }
+
+  function myTreesDebugLog() {
+    if (!isMyTreesDebugEnabled() || !window.console || typeof console.log !== 'function') return;
+    console.log.apply(console, arguments);
+  }
+
   var STATE = {
     LOADING: 'loading',
     LOADED: 'loaded',
@@ -150,7 +159,7 @@
     if (!btn || typeof onRetry !== 'function') return;
 
     btn.addEventListener('click', function() {
-      console.log('[my-trees] Retry loading trees');
+      myTreesDebugLog('[my-trees] Retry loading trees');
       onRetry();
     });
   }
