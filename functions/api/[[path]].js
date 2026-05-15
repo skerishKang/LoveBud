@@ -310,6 +310,61 @@ async function tryModalWrite(request, env, requestId = null) {
   return withUpstreamHeader(response, 'modal', requestId, 'write');
 }
 
+// Debug: test header passthrough with Modal response
+async function testModalPassthrough(request, env) {
+  const requestId = getOrCreateRequestId(request);
+  const url = new URL(request.url);
+  const targetUrl = url.searchParams.get('url') || '/api/community/trees?view=summary';
+  const method = url.searchParams.get('method') || 'GET';
+  
+  const modalUrl = buildModalUrl(new Request(new URL(targetUrl, request.url), { method }), env || {});
+  if (!modalUrl) {
+    return new Response(JSON.stringify({ error: 'no modal url' }), { status: 400, headers: { 'content-type': 'application/json' }});
+  }
+  
+  const modalResponse = await fetch(modalUrl.toString(), {
+    method,
+    headers: { accept: 'application/json' }
+  });
+  
+  // Test 1: new Response with stream body + custom headers
+  const headers1 = new Headers(modalResponse.headers);
+  headers1.set('x-lovebud-upstream', 'modal');
+  headers1.set('x-lovebud-dbg-entered', '1');
+  headers1.set('x-lovebud-dbg-method', 'stream-passthrough');
+  headers1.set('x-lovebud-test-stream', '1');
+  if (requestId) headers1.set(REQUEST_ID_HEADER, requestId);
+  const resp1 = new Response(modalResponse.body, { status: modalResponse.status, headers: headers1 });
+  
+  // Add special header after construction
+  resp1.headers.set('x-lovebud-dbg-post-construct', '1');
+  
+  // Read body and wrap in response with metadata
+  const bodyText = await resp1.text();
+  const wrap = {
+    meta: {
+      method: 'stream-passthrough',
+      status: modalResponse.status,
+      headersFromConstructor: Array.from(headers1.entries()).reduce((acc, [k,v]) => { acc[k] = v; return acc; }, {}),
+      finalHeaders: Array.from(resp1.headers.entries()).reduce((acc, [k,v]) => { acc[k] = v; return acc; }, {}),
+      bodyLength: bodyText.length
+    },
+    body: bodyText.length > 500 ? bodyText.substring(0, 500) + '...' : bodyText
+  };
+  
+  return new Response(JSON.stringify(wrap, null, 2), {
+    status: 200,
+    headers: {
+      'content-type': 'application/json; charset=utf-8',
+      'x-lovebud-dbg-entered': '1',
+      'x-lovebud-dbg-path': 'passthrough-test',
+      [REQUEST_ID_HEADER]: requestId,
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Expose-Headers': `${REQUEST_ID_HEADER}, x-lovebud-dbg-entered, x-lovebud-dbg-path, x-lovebud-dbg-write`
+    }
+  });
+}
+
 async function handleBodySizeDiagnostic(request) {
   const method = request.method.toUpperCase();
   const url = new URL(request.url);
@@ -387,10 +442,13 @@ export async function onRequest(context) {
   const { request, env } = context;
   const requestId = getOrCreateRequestId(request);
 
-  // Diagnostic endpoint — runs before any routing
+  // Diagnostic endpoints — runs before any routing
   const url = new URL(request.url);
   if (url.pathname === '/api/__diag/body-size') {
     return handleBodySizeDiagnostic(request);
+  }
+  if (url.pathname === '/api/__diag/passthrough') {
+    return testModalPassthrough(request, env);
   }
 
   const isModalOwned = isModalOwnedGetRoute(request, env || {});
