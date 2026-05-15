@@ -40,7 +40,11 @@ test('Cloudflare write proxy defines a bounded write body policy with stream fal
   assert.match(limitBlock, /request\.clone\(\)\.body\.getReader\(\)/, 'Cloudflare guard must inspect a cloned body stream when content-length is missing');
   assert.match(limitBlock, /totalBytes\s*\+=\s*value\s*\?\s*value\.byteLength\s*:\s*0/);
   assert.match(limitBlock, /totalBytes\s*>\s*MAX_WRITE_BODY_BYTES/);
-  assert.match(limitBlock, /reader\.cancel\(\)/);
+  assert.doesNotMatch(
+    limitBlock,
+    /reader\.cancel\(\)/,
+    'Cloudflare guard must not cancel a cloned tee stream before the original body is forwarded'
+  );
 });
 
 test('Cloudflare write proxy rejects oversized non-DELETE write requests before forwarding', () => {
