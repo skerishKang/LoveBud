@@ -7,9 +7,25 @@
 
   window.__onAuthReadyCallbacks = window.__onAuthReadyCallbacks || [];
 
+  function preserveEarlyAuthReadyFallback() {
+    if (typeof window.onAuthReady !== "function") return;
+    if (window.onAuthReady.__lovebudPreservedAuthReadyFallback === true) return;
+
+    var earlyCallback = window.onAuthReady;
+    earlyCallback.__lovebudPreservedAuthReadyFallback = true;
+
+    if (window.__onAuthReadyCallbacks.indexOf(earlyCallback) === -1) {
+      window.__onAuthReadyCallbacks.push(earlyCallback);
+    }
+  }
+
+  preserveEarlyAuthReadyFallback();
+
   function registerOnAuthReady(callback, authReadyFlagKey) {
     if (typeof callback !== "function") return;
-    window.__onAuthReadyCallbacks.push(callback);
+    if (window.__onAuthReadyCallbacks.indexOf(callback) === -1) {
+      window.__onAuthReadyCallbacks.push(callback);
+    }
 
     if (authReadyFlagKey && window[authReadyFlagKey]) {
       var user = window.__lastAuthUser || null;
@@ -38,6 +54,7 @@
 
     return {
       registerOnAuthReady: function (callback) {
+        preserveEarlyAuthReadyFallback();
         registerOnAuthReady(callback, authReadyFlagKey);
       },
       fireAuthReadyCallbacks: fireAuthReadyCallbacks,
@@ -48,5 +65,6 @@
     registerOnAuthReady: registerOnAuthReady,
     fireAuthReadyCallbacks: fireAuthReadyCallbacks,
     createAuthReadyCallbackBridge: createAuthReadyCallbackBridge,
+    preserveEarlyAuthReadyFallback: preserveEarlyAuthReadyFallback,
   };
 })();
