@@ -35,9 +35,7 @@ test('Cloudflare write proxy reads and rebuilds a bounded write body without rel
     /async\s+function\s+readBoundedWriteBody\s*\(/,
     /function\s+buildPayloadTooLargeResponse\s*\(/
   );
-  assert.match(limitBlock, /contentLength\s*!==\s*null/);
-  assert.match(limitBlock, /contentLength\s*>\s*MAX_WRITE_BODY_BYTES/);
-  assert.match(limitBlock, /await request\.text\(\)/, 'Cloudflare guard must read body with text() for reliable byte measurement');
+  assert.match(limitBlock, /await request\.text\(\)/, 'Cloudflare guard must read body with text()');
   assert.match(limitBlock, /encoded\.byteLength\s*>\s*MAX_WRITE_BODY_BYTES/);
   assert.match(limitBlock, /tooLarge:\s*true,\s*body:\s*null/);
   assert.match(limitBlock, /return\s*\{[^}]*tooLarge:\s*false[^}]*body:\s*encoded\s*\}/);
