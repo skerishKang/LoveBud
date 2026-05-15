@@ -65,6 +65,21 @@ function loadInternals(options = {}) {
   return sandbox.window.__LoveBudApiClientInternals;
 }
 
+function createStorageMock(initialState = {}) {
+  const state = new Map(Object.entries(initialState));
+  return {
+    getItem(key) {
+      return state.has(key) ? state.get(key) : null;
+    },
+    setItem(key, value) {
+      state.set(key, String(value));
+    },
+    removeItem(key) {
+      state.delete(key);
+    },
+  };
+}
+
 test('confirmed-session retry policy keeps short wait without confirmed auth session', () => {
   const internals = loadInternals({
     localStorage: {},
@@ -110,21 +125,11 @@ test('community endpoints stay outside auth-required classification', () => {
 });
 
 test('auth headers wait for currentUser when confirmed cache exists', async () => {
-  const localStorageState = new Map([
-    ['lovebud_auth_confirmed', 'true'],
-    ['lovebud_auth_cache', JSON.stringify({ uid: 'test-user' })],
-  ]);
-  const localStorageMock = {
-    getItem(key) {
-      return localStorageState.has(key) ? localStorageState.get(key) : null;
-    },
-    setItem(key, value) {
-      localStorageState.set(key, String(value));
-    },
-    removeItem(key) {
-      localStorageState.delete(key);
-    },
-  };
+  const localStorageMock = createStorageMock({
+    lovebud_auth_confirmed: 'true',
+    lovebud_auth_cache: JSON.stringify({ uid: 'test-user' }),
+  });
+  const sessionStorageMock = createStorageMock();
   const authUser = {
     uid: 'test-user',
     getIdTokenResult: async () => ({
@@ -151,10 +156,12 @@ test('auth headers wait for currentUser when confirmed cache exists', async () =
         whenReady: () => Promise.resolve(null),
       },
       localStorage: localStorageMock,
+      sessionStorage: sessionStorageMock,
       firebase: firebaseMock,
       LoveBudAuthState: null,
     },
     localStorage: localStorageMock,
+    sessionStorage: sessionStorageMock,
     firebase: firebaseMock,
     console,
     setTimeout,
@@ -179,34 +186,26 @@ test('auth headers wait for currentUser when confirmed cache exists', async () =
 });
 
 test('public-read api fetch omits authorization for tree detail even with cached token', async () => {
-  const localStorageState = new Map([
-    ['lovebud_auth_token', JSON.stringify({
+  const localStorageMock = createStorageMock();
+  const sessionStorageMock = createStorageMock({
+    lovebud_auth_token: JSON.stringify({
       uid: 'safe-test-user',
       token: 'safe-test-token',
       expiresAt: Date.now() + 60000,
-    })],
-  ]);
-  const localStorageMock = {
-    getItem(key) {
-      return localStorageState.has(key) ? localStorageState.get(key) : null;
-    },
-    setItem(key, value) {
-      localStorageState.set(key, String(value));
-    },
-    removeItem(key) {
-      localStorageState.delete(key);
-    },
-  };
+    }),
+  });
   let capturedHeaders = null;
   const sandbox = {
     window: {
       __LOVEBUD_AUTH_WAIT_MS: 200,
       __lovebudAuthReady: true,
       localStorage: localStorageMock,
+      sessionStorage: sessionStorageMock,
       firebase: null,
       LoveBudAuthState: null,
     },
     localStorage: localStorageMock,
+    sessionStorage: sessionStorageMock,
     firebase: null,
     console,
     fetch: async (_url, config) => {
@@ -231,35 +230,27 @@ test('public-read api fetch omits authorization for tree detail even with cached
   assert.equal(capturedHeaders.authorization, undefined);
 });
 
-test('private tree api fetch still attaches authorization from cached token', async () => {
-  const localStorageState = new Map([
-    ['lovebud_auth_token', JSON.stringify({
+test('private tree api fetch still attaches authorization from session-scoped cached token', async () => {
+  const localStorageMock = createStorageMock();
+  const sessionStorageMock = createStorageMock({
+    lovebud_auth_token: JSON.stringify({
       uid: 'safe-test-user',
       token: 'safe-test-token',
       expiresAt: Date.now() + 60000,
-    })],
-  ]);
-  const localStorageMock = {
-    getItem(key) {
-      return localStorageState.has(key) ? localStorageState.get(key) : null;
-    },
-    setItem(key, value) {
-      localStorageState.set(key, String(value));
-    },
-    removeItem(key) {
-      localStorageState.delete(key);
-    },
-  };
+    }),
+  });
   let capturedHeaders = null;
   const sandbox = {
     window: {
       __LOVEBUD_AUTH_WAIT_MS: 200,
       __lovebudAuthReady: true,
       localStorage: localStorageMock,
+      sessionStorage: sessionStorageMock,
       firebase: null,
       LoveBudAuthState: null,
     },
     localStorage: localStorageMock,
+    sessionStorage: sessionStorageMock,
     firebase: null,
     console,
     fetch: async (_url, config) => {
