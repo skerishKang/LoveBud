@@ -46,6 +46,24 @@
     } catch (e) {}
   }
 
+  function getTokenStorage() {
+    try {
+      return window.sessionStorage || null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function clearAuthTokenCache(tokenKey) {
+    try {
+      localStorage.removeItem(tokenKey);
+    } catch (e) {}
+    try {
+      var tokenStorage = getTokenStorage();
+      if (tokenStorage) tokenStorage.removeItem(tokenKey);
+    } catch (e) {}
+  }
+
   function getCachedAuthUser(cacheKey, confirmedKey) {
     try {
       if (localStorage.getItem(confirmedKey) !== "true") return null;
@@ -63,8 +81,8 @@
     try {
       localStorage.removeItem(cacheKey);
       localStorage.removeItem(confirmedKey);
-      localStorage.removeItem(tokenKey);
     } catch (e) {}
+    clearAuthTokenCache(tokenKey);
   }
 
   function setConfirmedAuthCache(user, cacheKey, confirmedKey, tokenKey) {
@@ -77,6 +95,7 @@
         };
         localStorage.setItem(cacheKey, JSON.stringify(cacheData));
         localStorage.setItem(confirmedKey, "true");
+        clearAuthTokenCache(tokenKey);
         return;
       }
     } catch (e) {}
@@ -85,11 +104,19 @@
 
   function getCachedAuthToken(tokenKey) {
     try {
-      var raw = localStorage.getItem(tokenKey);
+      localStorage.removeItem(tokenKey);
+    } catch (e) {}
+    try {
+      var tokenStorage = getTokenStorage();
+      if (!tokenStorage) return null;
+      var raw = tokenStorage.getItem(tokenKey);
       if (!raw || raw === "null") return null;
       var parsed = JSON.parse(raw);
       if (!parsed || !parsed.token || !parsed.expiresAt) return null;
-      if (Date.now() >= Number(parsed.expiresAt) - 30000) return null;
+      if (Date.now() >= Number(parsed.expiresAt) - 30000) {
+        tokenStorage.removeItem(tokenKey);
+        return null;
+      }
       return parsed;
     } catch (e) {
       return null;
@@ -120,14 +147,20 @@
       if (typeof user.getIdTokenResult === "function") {
         var tokenResult = await user.getIdTokenResult();
         if (tokenResult && tokenResult.token) {
-          localStorage.setItem(
-            tokenKey,
-            JSON.stringify({
-              uid: user.uid,
-              token: tokenResult.token,
-              expiresAt: new Date(tokenResult.expirationTime).getTime(),
-            })
-          );
+          try {
+            localStorage.removeItem(tokenKey);
+          } catch (e) {}
+          var tokenStorage = getTokenStorage();
+          if (tokenStorage) {
+            tokenStorage.setItem(
+              tokenKey,
+              JSON.stringify({
+                uid: user.uid,
+                token: tokenResult.token,
+                expiresAt: new Date(tokenResult.expirationTime).getTime(),
+              })
+            );
+          }
         }
       }
     } catch (e) {
@@ -164,6 +197,8 @@
   window.LoveBudAuthCache = {
     isInvalidAuthSessionError: isInvalidAuthSessionError,
     clearStaleFirebaseAuthState: clearStaleFirebaseAuthState,
+    getTokenStorage: getTokenStorage,
+    clearAuthTokenCache: clearAuthTokenCache,
     getCachedAuthUser: getCachedAuthUser,
     setConfirmedAuthCache: setConfirmedAuthCache,
     clearConfirmedAuthCache: clearConfirmedAuthCache,
