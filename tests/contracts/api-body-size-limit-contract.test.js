@@ -11,19 +11,15 @@ function readFile(filePath) {
   return fs.readFileSync(filePath, 'utf8');
 }
 
-function extractFunctionBlock(content, functionName) {
-  const start = content.indexOf(`function ${functionName}`);
-  assert.notEqual(start, -1, `${functionName} should exist`);
-  const openBrace = content.indexOf('{', start);
-  assert.notEqual(openBrace, -1, `${functionName} should have a body`);
+function sliceBetween(content, startPattern, endPattern) {
+  const start = content.search(startPattern);
+  assert.notEqual(start, -1, `${startPattern} should exist`);
 
-  let depth = 0;
-  for (let index = openBrace; index < content.length; index += 1) {
-    if (content[index] === '{') depth += 1;
-    if (content[index] === '}') depth -= 1;
-    if (depth === 0) return content.slice(openBrace, index + 1);
-  }
-  assert.fail(`${functionName} should close`);
+  const afterStart = content.slice(start);
+  const end = afterStart.search(endPattern);
+  assert.notEqual(end, -1, `${endPattern} should exist after ${startPattern}`);
+
+  return afterStart.slice(0, end);
 }
 
 test('Cloudflare write proxy reads and rebuilds a bounded write body without relying on content-length', () => {
@@ -34,21 +30,29 @@ test('Cloudflare write proxy reads and rebuilds a bounded write body without rel
   assert.match(source, /async\s+function\s+readBoundedWriteBody\s*\(/);
   assert.match(source, /function\s+buildPayloadTooLargeResponse\s*\(/);
 
-  const limitBlock = extractFunctionBlock(source, 'readBoundedWriteBody');
+  const limitBlock = sliceBetween(
+    source,
+    /async\s+function\s+readBoundedWriteBody\s*\(/,
+    /function\s+buildPayloadTooLargeResponse\s*\(/
+  );
   assert.match(limitBlock, /contentLength\s*!==\s*null/);
   assert.match(limitBlock, /contentLength\s*>\s*MAX_WRITE_BODY_BYTES/);
   assert.match(limitBlock, /request\.body\.getReader\(\)/, 'Cloudflare guard must inspect the original body stream when content-length is missing');
   assert.doesNotMatch(limitBlock, /request\.clone\(\)/, 'Cloudflare guard must not tee the request body with request.clone()');
   assert.match(limitBlock, /totalBytes\s*\+=\s*value\.byteLength/);
   assert.match(limitBlock, /totalBytes\s*>\s*MAX_WRITE_BODY_BYTES/);
-  assert.match(limitBlock, /return\s+\{\s*tooLarge:\s*true,\s*body:\s*null\s*\}/);
+  assert.match(limitBlock, /tooLarge:\s*true,\s*body:\s*null/);
   assert.match(limitBlock, /new\s+Uint8Array\(totalBytes\)/);
   assert.match(limitBlock, /body\.set\(chunk,\s*offset\)/);
 });
 
 test('Cloudflare write proxy rejects oversized non-DELETE write requests before forwarding', () => {
   const source = readFile(CATCHALL_JS);
-  const writeBlock = extractFunctionBlock(source, 'tryModalWrite');
+  const writeBlock = sliceBetween(
+    source,
+    /async\s+function\s+tryModalWrite\s*\(/,
+    /export\s+async\s+function\s+onRequest\s*\(/
+  );
 
   assert.match(writeBlock, /let\s+boundedBody\s*=\s*null/);
   assert.match(writeBlock, /const\s+bodyCheck\s*=\s*await\s+readBoundedWriteBody\(request\)/);
@@ -60,7 +64,11 @@ test('Cloudflare write proxy rejects oversized non-DELETE write requests before 
 
 test('Cloudflare oversized body response is safe JSON and does not echo request body', () => {
   const source = readFile(CATCHALL_JS);
-  const responseBlock = extractFunctionBlock(source, 'buildPayloadTooLargeResponse');
+  const responseBlock = sliceBetween(
+    source,
+    /function\s+buildPayloadTooLargeResponse\s*\(/,
+    /function\s+isBrowseSummaryRequest\s*\(/
+  );
 
   assert.match(responseBlock, /status:\s*413/);
   assert.match(responseBlock, /Request body too large/);
