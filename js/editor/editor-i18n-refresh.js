@@ -1,6 +1,13 @@
 (function() {
   'use strict';
 
+  var VIEW_OPTIONS_STORAGE_KEY = 'lovebud_editor_view_options_v1';
+  var DEFAULT_VIEW_OPTIONS = {
+    labels: true,
+    tips: true,
+    bubbles: true
+  };
+
   function tText(key, fallback) {
     if (typeof window.t === 'function') {
       var translated = window.t(key);
@@ -27,6 +34,231 @@
     if (!Array.isArray(memories) || !memories.length) return 'root';
     var explicitRoot = memories.find(function(m) { return m && (m.parentId === null || m.parentId === undefined); });
     return explicitRoot ? explicitRoot.id : ((memories.find(function(m) { return m && m.id === 'root'; }) || {}).id || 'root');
+  }
+
+  function readViewOptions() {
+    try {
+      var raw = localStorage.getItem(VIEW_OPTIONS_STORAGE_KEY);
+      if (!raw || raw === 'null') return Object.assign({}, DEFAULT_VIEW_OPTIONS);
+      var parsed = JSON.parse(raw);
+      return Object.assign({}, DEFAULT_VIEW_OPTIONS, parsed || {});
+    } catch (e) {
+      return Object.assign({}, DEFAULT_VIEW_OPTIONS);
+    }
+  }
+
+  function writeViewOptions(options) {
+    try {
+      localStorage.setItem(VIEW_OPTIONS_STORAGE_KEY, JSON.stringify(options));
+    } catch (e) {}
+  }
+
+  function ensureViewOptionStyles() {
+    if (document.getElementById('editorViewOptionsStyles')) return;
+    var style = document.createElement('style');
+    style.id = 'editorViewOptionsStyles';
+    style.textContent = [
+      '.editor-canvas-view-options-group{position:relative;}',
+      '.editor-view-options-panel{position:absolute;right:0;top:44px;width:220px;padding:12px;border-radius:16px;background:rgba(255,250,244,0.98);border:1px solid rgba(230,207,194,0.86);box-shadow:0 18px 36px rgba(75,64,57,0.16);backdrop-filter:blur(10px);z-index:30;display:flex;flex-direction:column;gap:10px;}',
+      '.editor-view-options-panel[hidden]{display:none!important;}',
+      '.editor-view-options-title{font-size:12px;font-weight:800;color:var(--primary);letter-spacing:-0.02em;margin-bottom:2px;}',
+      '.editor-view-option-row{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:var(--on-surface);line-height:1.4;cursor:pointer;user-select:none;}',
+      '.editor-view-option-row input{width:15px;height:15px;accent-color:var(--primary);}',
+      '.editor-view-options-help{font-size:11px;line-height:1.5;color:var(--on-surface-variant);border-top:1px solid rgba(221,198,184,0.55);padding-top:9px;}',
+      'body.editor-view-hide-labels .memory-node .node-info-label{display:none!important;}',
+      'body.editor-view-hide-tips .memory-add-affordance,body.editor-view-hide-tips .branch-line-affordance{display:none!important;pointer-events:none!important;}',
+      'body.editor-view-hide-bubbles .memory-add-affordance.affordance-tooltip-bubble{width:36px!important;min-height:36px!important;height:36px!important;border-radius:50%!important;padding:0!important;justify-content:center!important;background:rgba(144,73,81,0.92)!important;border:none!important;box-shadow:0 3px 10px rgba(144,73,81,0.25)!important;}',
+      'body.editor-view-hide-bubbles .memory-add-affordance .affordance-tip-text{display:none!important;}',
+      '.editor-view-option-row input:disabled{opacity:0.35;cursor:not-allowed;}',
+      '.editor-view-option-row input:disabled~span{opacity:0.35;}',
+      '@media (max-width:768px){.editor-view-options-panel{right:auto;left:0;top:42px;width:210px;}}'
+    ].join('\n');
+    document.head.appendChild(style);
+  }
+
+  function applyViewOptions(options) {
+    var opts = Object.assign({}, DEFAULT_VIEW_OPTIONS, options || {});
+    document.body.classList.toggle('editor-view-hide-labels', !opts.labels);
+    document.body.classList.toggle('editor-view-hide-tips', !opts.tips);
+    document.body.classList.toggle('editor-view-hide-bubbles', !opts.bubbles);
+
+    var labelsInput = document.getElementById('editorViewOptionLabels');
+    var tipsInput = document.getElementById('editorViewOptionTips');
+    var bubblesInput = document.getElementById('editorViewOptionBubbles');
+    var allInput = document.getElementById('editorViewOptionAll');
+
+    if (labelsInput) labelsInput.checked = !!opts.labels;
+    if (tipsInput) tipsInput.checked = !!opts.tips;
+    if (bubblesInput) bubblesInput.checked = !!opts.bubbles;
+    if (allInput) {
+      allInput.checked = !!(opts.labels && opts.tips && opts.bubbles);
+      allInput.indeterminate = !(opts.labels && opts.tips && opts.bubbles) && !!(opts.labels || opts.tips || opts.bubbles);
+    }
+
+    var viewBtn = document.getElementById('editorViewOptionsBtn');
+    if (viewBtn) {
+      var isDefault = !!(opts.labels && opts.tips && opts.bubbles);
+      viewBtn.classList.toggle('is-active', !isDefault);
+      viewBtn.setAttribute('aria-pressed', isDefault ? 'false' : 'true');
+    }
+
+    if (bubblesInput && tipsInput) {
+      var tipsOff = !opts.tips;
+      bubblesInput.disabled = tipsOff;
+      if (tipsOff) bubblesInput.checked = false;
+    }
+  }
+
+  function setViewOptions(nextOptions) {
+    var options = Object.assign({}, DEFAULT_VIEW_OPTIONS, nextOptions || {});
+    writeViewOptions(options);
+    applyViewOptions(options);
+  }
+
+  function closeViewOptionsPanel() {
+    var panel = document.getElementById('editorViewOptionsPanel');
+    var button = document.getElementById('editorViewOptionsBtn');
+    if (panel) panel.hidden = true;
+    if (button) button.setAttribute('aria-expanded', 'false');
+  }
+
+  function ensureViewOptionsControl() {
+    var toolbar = document.querySelector('.editor-canvas-toolbar');
+    if (!toolbar || document.getElementById('editorViewOptionsBtn')) {
+      applyViewOptions(readViewOptions());
+      return;
+    }
+
+    ensureViewOptionStyles();
+
+    var separator = document.createElement('div');
+    separator.className = 'editor-canvas-toolbar-separator editor-view-options-separator';
+    separator.setAttribute('aria-hidden', 'true');
+
+    var group = document.createElement('div');
+    group.className = 'editor-canvas-toolbar-group editor-canvas-view-options-group';
+    group.setAttribute('aria-label', tText('editor_view_options_group', '보기 옵션'));
+
+    var button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'editor-canvas-tool-btn editor-canvas-tool-btn-wide';
+    button.id = 'editorViewOptionsBtn';
+    button.setAttribute('aria-label', tText('editor_view_options', '보기 옵션'));
+    button.setAttribute('title', tText('editor_view_options', '보기 옵션'));
+    button.setAttribute('aria-expanded', 'false');
+    button.setAttribute('aria-controls', 'editorViewOptionsPanel');
+    button.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">visibility</span><span class="editor-canvas-tool-label" id="editorViewOptionsBtnLabel">' + tText('editor_view_options_short', '보기') + '</span>';
+
+    var panel = document.createElement('div');
+    panel.id = 'editorViewOptionsPanel';
+    panel.className = 'editor-view-options-panel';
+    panel.hidden = true;
+    panel.innerHTML = [
+      '<div class="editor-view-options-title" id="editorViewOptionsTitle">' + tText('editor_view_options_title', '캔버스 표시') + '</div>',
+      '<label class="editor-view-option-row"><input type="checkbox" id="editorViewOptionAll"> <span>' + tText('editor_view_option_all', '전체 표시') + '</span></label>',
+      '<label class="editor-view-option-row"><input type="checkbox" id="editorViewOptionLabels"> <span>' + tText('editor_view_option_labels', '순간 제목·날짜') + '</span></label>',
+      '<label class="editor-view-option-row"><input type="checkbox" id="editorViewOptionTips"> <span>' + tText('editor_view_option_tips', '이어가기 팁') + '</span></label>',
+      '<label class="editor-view-option-row"><input type="checkbox" id="editorViewOptionBubbles"> <span>' + tText('editor_view_option_bubbles', '말풍선 설명') + '</span></label>',
+      '<div class="editor-view-options-help">' + tText('editor_view_options_help', '표시 옵션은 에디터 화면에만 적용되고 트리 데이터는 바꾸지 않아요.') + '</div>'
+    ].join('');
+
+    group.appendChild(button);
+    group.appendChild(panel);
+
+    var compactGroup = document.getElementById('compactModeToggleBtn');
+    var compactParent = compactGroup ? compactGroup.closest('.editor-canvas-toolbar-group') : null;
+    if (compactParent) {
+      toolbar.insertBefore(separator, compactParent);
+      toolbar.insertBefore(group, compactParent);
+    } else {
+      toolbar.appendChild(separator);
+      toolbar.appendChild(group);
+    }
+
+    button.addEventListener('click', function(event) {
+      event.preventDefault();
+      event.stopPropagation();
+      var isOpen = panel.hidden;
+      panel.hidden = !isOpen;
+      button.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    });
+
+    panel.addEventListener('click', function(event) {
+      event.stopPropagation();
+    });
+
+    document.addEventListener('click', function(event) {
+      if (!group.contains(event.target)) closeViewOptionsPanel();
+    });
+
+    document.addEventListener('keydown', function(event) {
+      if (event.key === 'Escape') closeViewOptionsPanel();
+    });
+
+    var labelsInput = document.getElementById('editorViewOptionLabels');
+    var tipsInput = document.getElementById('editorViewOptionTips');
+    var bubblesInput = document.getElementById('editorViewOptionBubbles');
+    var allInput = document.getElementById('editorViewOptionAll');
+
+    function readInputs() {
+      return {
+        labels: !!(labelsInput && labelsInput.checked),
+        tips: !!(tipsInput && tipsInput.checked),
+        bubbles: !!(bubblesInput && bubblesInput.checked)
+      };
+    }
+
+    if (tipsInput) {
+      tipsInput.addEventListener('change', function() {
+        setViewOptions(readInputs());
+      });
+    }
+
+    if (bubblesInput) {
+      bubblesInput.addEventListener('change', function() {
+        if (tipsInput && !tipsInput.checked) {
+          bubblesInput.checked = false;
+          if (window.LoveBudUI && typeof window.LoveBudUI.showToast === 'function') {
+            window.LoveBudUI.showToast('"이어가기 팁"을 먼저 켜주세요', 'warning', 3000);
+          }
+          return;
+        }
+        setViewOptions(readInputs());
+      });
+    }
+
+    if (labelsInput) {
+      labelsInput.addEventListener('change', function() {
+        setViewOptions(readInputs());
+      });
+    }
+
+    if (allInput) {
+      allInput.addEventListener('change', function() {
+        var checked = !!allInput.checked;
+        setViewOptions({ labels: checked, tips: checked, bubbles: checked });
+      });
+    }
+
+    // Initial sync: if tips is off, disable bubbles
+    if (bubblesInput && tipsInput) {
+      bubblesInput.disabled = !tipsInput.checked;
+      if (!tipsInput.checked) bubblesInput.checked = false;
+    }
+
+    applyViewOptions(readViewOptions());
+  }
+
+  function updateViewOptionsLanguage() {
+    var btnLabel = document.getElementById('editorViewOptionsBtnLabel');
+    var btn = document.getElementById('editorViewOptionsBtn');
+    if (btnLabel) btnLabel.textContent = tText('editor_view_options_short', '보기');
+    if (btn) {
+      btn.setAttribute('aria-label', tText('editor_view_options', '보기 옵션'));
+      btn.setAttribute('title', tText('editor_view_options', '보기 옵션'));
+    }
+    var title = document.getElementById('editorViewOptionsTitle');
+    if (title) title.textContent = tText('editor_view_options_title', '캔버스 표시');
   }
 
   function updateEditorDynamicSummary() {
@@ -123,6 +355,8 @@
       }
     }
 
+    ensureViewOptionsControl();
+    updateViewOptionsLanguage();
     updateEditorDynamicSummary();
   }
 
