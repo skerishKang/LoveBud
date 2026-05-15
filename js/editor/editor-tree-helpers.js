@@ -1,6 +1,15 @@
 (function() {
     const treeHelpers = window.LoveBudEditorTreeHelpers || (window.LoveBudEditorTreeHelpers = {});
 
+    function isEditorDebugEnabled() {
+        return window.LOVEBUD_DEBUG === true || window.LOVEBUD_EDITOR_DEBUG === true;
+    }
+
+    function editorDebugLog() {
+        if (!isEditorDebugEnabled() || !window.console || typeof console.log !== 'function') return;
+        console.log.apply(console, arguments);
+    }
+
     if (!treeHelpers.createInitialMemory) {
         treeHelpers.createInitialMemory = function createInitialMemory(options) {
             const opts = options || {};
@@ -59,7 +68,7 @@
                 ...tree,
                 visibility: tree && tree.visibility ? tree.visibility : 'public'
             };
-            console.log('[editor] currentTreeData set:', window.currentTreeData.visibility);
+            editorDebugLog('[editor] currentTreeData set');
         };
     }
 
