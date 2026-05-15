@@ -69,6 +69,8 @@
       'body.editor-view-hide-tips .memory-add-affordance,body.editor-view-hide-tips .branch-line-affordance{display:none!important;pointer-events:none!important;}',
       'body.editor-view-hide-bubbles .memory-add-affordance.affordance-tooltip-bubble{width:36px!important;min-height:36px!important;height:36px!important;border-radius:50%!important;padding:0!important;justify-content:center!important;background:rgba(144,73,81,0.92)!important;border:none!important;box-shadow:0 3px 10px rgba(144,73,81,0.25)!important;}',
       'body.editor-view-hide-bubbles .memory-add-affordance .affordance-tip-text{display:none!important;}',
+      '.editor-view-option-row input:disabled{opacity:0.35;cursor:not-allowed;}',
+      '.editor-view-option-row input:disabled~span{opacity:0.35;}',
       '@media (max-width:768px){.editor-view-options-panel{right:auto;left:0;top:42px;width:210px;}}'
     ].join('\n');
     document.head.appendChild(style);
@@ -98,6 +100,12 @@
       var isDefault = !!(opts.labels && opts.tips && opts.bubbles);
       viewBtn.classList.toggle('is-active', !isDefault);
       viewBtn.setAttribute('aria-pressed', isDefault ? 'false' : 'true');
+    }
+
+    if (bubblesInput && tipsInput) {
+      var tipsOff = !opts.tips;
+      bubblesInput.disabled = tipsOff;
+      if (tipsOff) bubblesInput.checked = false;
     }
   }
 
@@ -200,18 +208,42 @@
       };
     }
 
-    [labelsInput, tipsInput, bubblesInput].forEach(function(input) {
-      if (!input) return;
-      input.addEventListener('change', function() {
+    if (tipsInput) {
+      tipsInput.addEventListener('change', function() {
         setViewOptions(readInputs());
       });
-    });
+    }
+
+    if (bubblesInput) {
+      bubblesInput.addEventListener('change', function() {
+        if (tipsInput && !tipsInput.checked) {
+          bubblesInput.checked = false;
+          if (window.LoveBudUI && typeof window.LoveBudUI.showToast === 'function') {
+            window.LoveBudUI.showToast('"이어가기 팁"을 먼저 켜주세요', 'warning', 3000);
+          }
+          return;
+        }
+        setViewOptions(readInputs());
+      });
+    }
+
+    if (labelsInput) {
+      labelsInput.addEventListener('change', function() {
+        setViewOptions(readInputs());
+      });
+    }
 
     if (allInput) {
       allInput.addEventListener('change', function() {
         var checked = !!allInput.checked;
         setViewOptions({ labels: checked, tips: checked, bubbles: checked });
       });
+    }
+
+    // Initial sync: if tips is off, disable bubbles
+    if (bubblesInput && tipsInput) {
+      bubblesInput.disabled = !tipsInput.checked;
+      if (!tipsInput.checked) bubblesInput.checked = false;
     }
 
     applyViewOptions(readViewOptions());
