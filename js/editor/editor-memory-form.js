@@ -31,6 +31,15 @@ function createEditorMemoryForm(deps) {
     const timeHelper = window.LoveBudEditorMemoryFormTime;
     const payloadHelper = window.LoveBudEditorMemoryFormPayload;
 
+    function isEditorDebugEnabled() {
+        return window.LOVEBUD_DEBUG === true || window.LOVEBUD_EDITOR_DEBUG === true;
+    }
+
+    function editorDebugLog() {
+        if (!isEditorDebugEnabled() || !window.console || typeof console.log !== 'function') return;
+        console.log.apply(console, arguments);
+    }
+
     let isFormOpen = false;
     let escHandler = null;
     let outsideClickHandler = null;
@@ -312,7 +321,7 @@ function createEditorMemoryForm(deps) {
                 createdMemory = await window.apiClient.createMemory(newMemoryData);
                 useApi = true;
                 setLocalSaveMode(false);
-                console.log('[editor] API createMemory success:', createdMemory);
+                editorDebugLog('[editor] API createMemory success');
             } else {
                 throw new Error('createMemory API not available');
             }
@@ -329,7 +338,7 @@ function createEditorMemoryForm(deps) {
         }
 
         if (!createdMemory || typeof createdMemory !== 'object') {
-            console.log('[editor] Using local fallback memory');
+            editorDebugLog('[editor] Using local fallback memory');
             setLocalSaveMode(true);
             createdMemory = {
                 id: nextMemoryId(),
@@ -376,7 +385,7 @@ function createEditorMemoryForm(deps) {
 
         if (typeof setCachedMemories === 'function' && treeId) {
             setCachedMemories(treeId, getTreeMemories());
-            console.log('[editor] 메모리 추가 후 캐시 갱신', getTreeMemories().length, '개');
+            editorDebugLog('[editor] Memory cache refreshed:', getTreeMemories().length);
         }
 
         updateSidebarStatus();
