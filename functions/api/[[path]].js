@@ -45,17 +45,29 @@ async function readBoundedWriteBody(request) {
   const reader = request.body.getReader();
   const chunks = [];
   let totalBytes = 0;
+  let tooLarge = false;
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    if (!value) continue;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
 
-    totalBytes += value.byteLength;
-    if (totalBytes > MAX_WRITE_BODY_BYTES) {
-      return { tooLarge: true, body: null };
+      totalBytes += value.byteLength;
+      if (totalBytes > MAX_WRITE_BODY_BYTES) {
+        tooLarge = true;
+        break;
+      }
+      chunks.push(value);
     }
-    chunks.push(value);
+  } finally {
+    try {
+      reader.releaseLock();
+    } catch (e) {}
+  }
+
+  if (tooLarge) {
+    return { tooLarge: true, body: null };
   }
 
   const body = new Uint8Array(totalBytes);
