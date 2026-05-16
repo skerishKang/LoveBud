@@ -57,6 +57,10 @@
         return window.LoveBudSearchTitleHelper || null;
     }
 
+    function getSharedUtils() {
+        return window.LoveBudSearchSharedUtils || null;
+    }
+
     function getMomentLabel(memory, fallbackKo, fallbackEn) {
         if (fallbackKo === undefined) fallbackKo = '시작 순간';
         if (fallbackEn === undefined) fallbackEn = 'Starting moment';
