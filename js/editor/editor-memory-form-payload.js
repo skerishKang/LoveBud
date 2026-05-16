@@ -142,6 +142,10 @@
             ? (i18n('editor_default_first_title') || '첫 순간')
             : (i18n('editor_default_next_title') || '이어진 순간');
 
+        const freshCanonicalRootId = window.LoveBudEditorUtils?.getCanonicalRootId
+            ? window.LoveBudEditorUtils.getCanonicalRootId(memories)
+            : getCanonicalRootId();
+
         return {
             ok: true,
             data: {
@@ -152,7 +156,7 @@
                 sourceUrl: mediaSource.embedUrl,
                 sourceType: mediaSource.sourceType,
                 emotionTags: [],
-                parentId: resolveParentIdForCreate(getSelectedNodeId(), getCanonicalRootId()),
+                parentId: resolveParentIdForCreate(getSelectedNodeId(), freshCanonicalRootId),
                 thumbnail: mediaSource.thumbnailUrl,
                 artist: '',
                 source: mediaSource.sourceLabel,
