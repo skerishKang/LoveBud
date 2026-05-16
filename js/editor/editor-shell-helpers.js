@@ -53,10 +53,15 @@ window.LoveBudEditorShellHelpers = {
         setText('saveStatusText', 'save_saved', '저장됨');
         setText('detailMoreBtn', 'editor_open_detail', '상세로 보기');
         setText('detailEmptyStartBtn', 'editor_add_first_memory', '첫 순간 심기');
-        setText('canvasEmptyGuideEyebrow', 'editor_canvas_empty_eyebrow', '첫 순간 준비');
-        setText('canvasEmptyGuideTitle', 'editor_canvas_empty_title', '이 장면에서 러브트리가 시작돼요');
-        setText('canvasEmptyGuideDesc', 'editor_canvas_empty_desc', '첫 순간을 심으면 이 공간에 감정의 흐름이 천천히 뻗어나갑니다.');
+        setText('canvasEmptyGuideEyebrow', 'editor_canvas_empty_eyebrow', '시작하기');
+        setText('canvasEmptyGuideTitle', 'editor_canvas_empty_title', '이 트리의 첫 순간을 기록해볼까요?');
+        setText('canvasEmptyYoutubeLabel', 'editor_youtube_link', 'YouTube 링크');
+        setPlaceholder('canvasEmptyYoutubeInput', 'editor_canvas_empty_youtube_placeholder', 'YouTube 링크를 붙여넣어 첫 순간 심기');
         setText('canvasEmptyStartBtn', 'editor_add_first_memory', '첫 순간 심기');
+        setText('canvasEmptyTextStartBtn', 'editor_canvas_empty_text_start', '텍스트로 시작하기');
+        setText('canvasEmptyGuideHint', 'editor_canvas_empty_hint', '캔버스를 두 번 클릭해도 새 순간을 시작할 수 있어요.');
+        setText('canvasDropZoneTitle', 'editor_canvas_drop_title', 'YouTube 링크를 여기에 놓아주세요');
+        setText('canvasDropZoneHint', 'editor_canvas_drop_hint', '놓은 위치에 첫 순간이 심어져요.');
         setText('addMemoryFormEyebrow', 'editor_add_first_memory', '첫 순간 심기');
         setText('addMemoryFormTitle', 'editor_new_memory', '어떤 순간이 이어졌나요?');
         setText('addMemoryFormIntro', 'editor_add_memory_intro', '지금 마음이 머문 다음 장면을 이어 심어 보세요. 첫 순간이라면 여기서 러브트리가 시작됩니다.');
