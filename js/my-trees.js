@@ -159,6 +159,18 @@
   function setupGlobalListeners() {
   }
 
+  function autoSelectFirstTree(trees) {
+    if (!Array.isArray(trees) || trees.length === 0) return;
+    var previewHub = window.LoveBudMyTreesPreviewHub;
+    if (!previewHub || typeof previewHub.onCardClick !== 'function') return;
+    if (typeof previewHub.getSelectedTree === 'function' && previewHub.getSelectedTree()) return;
+
+    setTimeout(function() {
+      if (typeof previewHub.getSelectedTree === 'function' && previewHub.getSelectedTree()) return;
+      previewHub.onCardClick(trees[0]);
+    }, 0);
+  }
+
   function renderTrees(trees) {
     if (myTreesRender && typeof myTreesRender.renderTrees === 'function') {
       myTreesRender.renderTrees(trees, {
@@ -179,6 +191,7 @@
           lastTreesData = data;
         }
       });
+      autoSelectFirstTree(trees);
       return;
     }
 
@@ -208,6 +221,7 @@
     if (myTreesPage && typeof myTreesPage.setState === 'function') {
       myTreesPage.setState(myTreesPage.STATE.LOADED);
     }
+    autoSelectFirstTree(trees);
   }
 
   function sortTrees(trees, sortBy) {
