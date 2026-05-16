@@ -397,6 +397,8 @@ function getBasePath() {
 window.getBasePath = getBasePath;
 
 function escapeHtml(value) {
+  var sec = window.LoveBudSecurity;
+  if (sec) return sec.escapeHtml(value);
   if (__authUiModule) return __authUiModule.escapeHtml(value);
   return String(value == null ? '' : value)
     .replace(/&/g, '&amp;')
