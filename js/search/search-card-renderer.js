@@ -11,15 +11,11 @@
 (function() {
     'use strict';
 
-    function getSharedUtils() {
-        return window.LoveBudSearchSharedUtils || null;
-    }
-
     function escapeHtml(value) {
-        const utils = getSharedUtils();
-        if (utils?.escapeHtml) {
-            return utils.escapeHtml(value);
-        }
+        var sec = window.LoveBudSecurity;
+        if (sec) return sec.escapeHtml(value);
+        var utils = window.LoveBudSearchSharedUtils;
+        if (utils?.escapeHtml) return utils.escapeHtml(value);
         return String(value == null ? '' : value)
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
@@ -29,16 +25,16 @@
     }
 
     function sanitizeUrl(value) {
-        const utils = getSharedUtils();
-        if (utils?.sanitizeUrl) {
-            return utils.sanitizeUrl(value);
-        }
+        var sec = window.LoveBudSecurity;
+        if (sec) return sec.sanitizeUrl(value);
+        var utils = window.LoveBudSearchSharedUtils;
+        if (utils?.sanitizeUrl) return utils.sanitizeUrl(value);
         if (!value) return '';
-        const raw = String(value).trim();
+        var raw = String(value).trim();
         if (!raw) return '';
         try {
-            const parsed = new URL(raw, window.location.origin);
-            const protocol = parsed.protocol;
+            var parsed = new URL(raw, window.location.origin);
+            var protocol = parsed.protocol;
             if (protocol === 'http:' || protocol === 'https:') {
                 return parsed.href;
             }
@@ -49,7 +45,7 @@
     }
 
     function isSuspiciousYouTubeThumbnailImage(img) {
-        const utils = getSharedUtils();
+        var utils = window.LoveBudSearchSharedUtils;
         if (utils?.isSuspiciousYouTubeThumbnailImage) {
             return utils.isSuspiciousYouTubeThumbnailImage(img);
         }
@@ -85,7 +81,7 @@
     }
 
     function getBasePath() {
-        const utils = getSharedUtils();
+        var utils = window.LoveBudSearchSharedUtils;
         if (utils?.getBasePath) {
             return utils.getBasePath();
         }

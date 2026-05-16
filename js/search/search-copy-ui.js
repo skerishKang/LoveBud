@@ -31,11 +31,14 @@
     }
 
     function escapeHtml(value) {
+        if (window.LoveBudSecurity?.escapeHtml) {
+            return window.LoveBudSecurity.escapeHtml(value);
+        }
         return String(value ?? '')
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;')
-            .replace(new RegExp(String.fromCharCode(34), 'g'), '&quot;')
+            .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
     }
 

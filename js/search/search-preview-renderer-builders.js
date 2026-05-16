@@ -11,12 +11,10 @@
 (function() {
     'use strict';
 
-    function getSharedUtils() {
-        return window.LoveBudSearchSharedUtils || null;
-    }
-
     function escapeHtml(value) {
-        var utils = getSharedUtils();
+        var sec = window.LoveBudSecurity;
+        if (sec) return sec.escapeHtml(value);
+        var utils = window.LoveBudSearchSharedUtils;
         if (utils && utils.escapeHtml) {
             return utils.escapeHtml(value);
         }
