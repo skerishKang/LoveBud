@@ -62,7 +62,7 @@
             '<div class="vv-panel-header">' +
             '  <p class="vv-panel-eyebrow">Tree overview</p>' +
             '  <h2 class="vv-panel-title-lg">' + escape(branch.name) + '</h2>' +
-            '  <p class="vv-panel-meta">' + branch.count + '개의 순간</p>' +
+            '  <p class="vv-panel-meta">' + escape(String(branch.count)) + '개의 순간</p>' +
             '</div>' +
             '<div class="vv-panel-caption">' + escape(branch.caption || '이 가지의 순간들') + '</div>' +
             '<div class="vv-branch-moment-grid">' +
