@@ -137,10 +137,6 @@
         if (!mediaSource.ok) return mediaSource;
 
         const memories = getTreeMemories();
-        const isFirstMoment = !memories || memories.length === 0;
-        const defaultTitle = isFirstMoment
-            ? (i18n('editor_default_first_title') || '첫 순간')
-            : (i18n('editor_default_next_title') || '이어진 순간');
 
         const freshCanonicalRootId = window.LoveBudEditorUtils?.getCanonicalRootId
             ? window.LoveBudEditorUtils.getCanonicalRootId(memories)
@@ -150,7 +146,7 @@
             ok: true,
             data: {
                 treeId,
-                title: titleValue || defaultTitle,
+                title: titleValue || '',
                 memo: memoValue || '',
                 timestamp: todayDateString(),
                 sourceUrl: mediaSource.embedUrl,
