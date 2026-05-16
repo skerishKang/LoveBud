@@ -26,6 +26,16 @@
         return '';
     }
 
+    function sanitizeUrl(value) {
+        var sec = window.LoveBudSecurity;
+        if (sec) return sec.sanitizeUrl(value);
+        if (!value) return '';
+        var raw = String(value).trim();
+        if (!raw) return '';
+        if (!/^https?:\/\//i.test(raw)) return '';
+        try { var parsed = new URL(raw); var p = parsed.protocol.toLowerCase(); if (p === 'http:' || p === 'https:') return parsed.href; return ''; } catch(e) { return ''; }
+    }
+
     function toEmbedUrl(value) {
         var raw = String(value || '').trim();
         if (!raw) return '';
@@ -39,7 +49,8 @@
             embedUrl.searchParams.set('modestbranding', '1');
             return embedUrl.href;
         }
-        return raw + (raw.indexOf('?') === -1 ? '?' : '&') + 'autoplay=0&mute=0&controls=1';
+        // Non-YouTube URLs rejected — only YouTube embeds are supported
+        return '';
     }
 
     function patchMediaHelper() {
