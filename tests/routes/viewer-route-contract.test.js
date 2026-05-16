@@ -85,3 +85,23 @@ test('tree viewer scripts are scoped as viewer code', () => {
     const noEditorMarkers = !content.includes('editorCanvas') && !content.includes('nodeContextMenu') && !content.includes('addMemory');
     assert.ok(noEditorMarkers, 'tree-viewer.js must not reference Editor internals');
 });
+
+test('public-tree-viewer.js uses sanitizeUrl before iframe src insertion', () => {
+    const src = fs.readFileSync('js/viewer/public-tree-viewer.js', 'utf8');
+    const hasSanitizeRef = src.includes('window.LoveBudSecurity') && src.includes('sanitizeUrl');
+    assert.ok(hasSanitizeRef, 'public-tree-viewer.js must reference LoveBudSecurity.sanitizeUrl');
+});
+
+test('public-tree-viewer.js iframe branch has safeEmbedUrl guard', () => {
+    const src = fs.readFileSync('js/viewer/public-tree-viewer.js', 'utf8');
+    assert.ok(src.includes('if (safeEmbedUrl)'),
+        'iframe src must be gated behind safeEmbedUrl check');
+    assert.ok(src.includes('} else if (thumb)'),
+        'iframe rejection must fall back to thumbnail branch');
+});
+
+test('public-tree-viewer.js iframe src uses escapeHtml around safeEmbedUrl', () => {
+    const src = fs.readFileSync('js/viewer/public-tree-viewer.js', 'utf8');
+    assert.ok(src.includes('escapeHtml(safeEmbedUrl)'),
+        'iframe src value must pass through escapeHtml');
+});
