@@ -94,9 +94,6 @@
         const {
             currentInputMode,
             refs,
-            i18n,
-            isFirstMoment,
-            userHasEditedTitle,
             userHasEditedStartTime
         } = options || {};
         if (currentInputMode !== 'link') {
@@ -122,12 +119,6 @@
             refs.thumb.src = typeof media.getThumbnailUrl === 'function'
                 ? (media.getThumbnailUrl(url) || `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`)
                 : `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
-        }
-
-        if (!userHasEditedTitle && refs?.titleInput) {
-            refs.titleInput.value = isFirstMoment
-                ? (i18n('editor_default_first_title') || '첫 순간')
-                : (i18n('editor_default_next_title') || '이어진 순간');
         }
 
         const time = window.LoveBudEditorMemoryFormTime || {};
