@@ -50,6 +50,12 @@ function createEditorMemoryForm(deps) {
     let userHasEditedStartTime = false;
     let userHasEditedTitle = false;
 
+    function getFreshCanonicalRootId() {
+        return window.LoveBudEditorUtils?.getCanonicalRootId
+            ? window.LoveBudEditorUtils.getCanonicalRootId(getTreeMemories())
+            : getCanonicalRootId();
+    }
+
     const refs = {
         addMemoryForm: document.getElementById('addMemoryForm'),
         urlInput: document.getElementById('memoryUrlInput'),
@@ -379,7 +385,9 @@ function createEditorMemoryForm(deps) {
             el.classList.add('new-node-highlight');
             setTimeout(() => el.classList.remove('new-node-highlight'), 2000);
         }
-        if (typeof focusNodeById === 'function') focusNodeById(normalizedMemory.id);
+        const freshCanonicalRootId = getFreshCanonicalRootId();
+        const shouldFocusNewMemory = !freshCanonicalRootId || normalizedMemory.id !== freshCanonicalRootId;
+        if (shouldFocusNewMemory && typeof focusNodeById === 'function') focusNodeById(normalizedMemory.id);
 
         updateSaveStatus('saved', useApi ? i18n('save_saved') : (i18n('save_saved_local') || '로컬 저장됨'));
 
