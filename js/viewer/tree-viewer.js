@@ -27,6 +27,8 @@
     }
 
     function escapeHtml(v) {
+        var sec = window.LoveBudSecurity;
+        if (sec) return sec.escapeHtml(v);
         return String(v == null ? '' : v).replace(/[&<>"']/g, function(c) {
             return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
         });
