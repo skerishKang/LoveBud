@@ -320,8 +320,17 @@
             const ytVideoId = extractYouTubeVideoId(sourceUrl);
             if (ytVideoId) {
                 const embedUrl = `https://www.youtube.com/embed/${ytVideoId}?rel=0&modestbranding=1`;
-                const safeTitle = escapeHtml(memory.title || 'moment video');
-                mediaContainer.innerHTML = `<iframe src="${escapeHtml(embedUrl)}" class="viewer-preview-video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy" title="${safeTitle}"></iframe>`;
+                // Sanitize embed URL before iframe src insertion (defense-in-depth)
+                var sanitizeUrl = window.LoveBudSecurity && window.LoveBudSecurity.sanitizeUrl;
+                var safeEmbedUrl = sanitizeUrl ? sanitizeUrl(embedUrl) : embedUrl;
+                if (safeEmbedUrl) {
+                    var safeTitle = escapeHtml(memory.title || 'moment video');
+                    mediaContainer.innerHTML = '<iframe src="' + escapeHtml(safeEmbedUrl) + '" class="viewer-preview-video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy" title="' + safeTitle + '"></iframe>';
+                } else if (thumb) {
+                    mediaContainer.innerHTML = '<img src="' + escapeHtml(thumb) + '" alt="' + escapeHtml(memory.title || '') + '" class="viewer-preview-image" loading="lazy" />';
+                } else {
+                    mediaContainer.innerHTML = '<div class="viewer-preview-no-media"><span class="material-symbols-outlined">image</span></div>';
+                }
             } else if (thumb) {
                 mediaContainer.innerHTML = `<img src="${escapeHtml(thumb)}" alt="${escapeHtml(memory.title || '')}" class="viewer-preview-image" loading="lazy" />`;
             } else {
