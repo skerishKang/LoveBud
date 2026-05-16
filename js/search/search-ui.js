@@ -526,6 +526,12 @@
 
             // Ensure container listener is bound
             bindDelegatedCardEvents(listElement);
+
+            // Bind image error/load handlers for inline handler migration
+            var cardRenderer = window.LoveBudSearchCardRenderer;
+            if (cardRenderer && cardRenderer.bindCardImageHandlers) {
+                cardRenderer.bindCardImageHandlers(listElement);
+            }
         }
 
         function bindShareCopyHandler() {
