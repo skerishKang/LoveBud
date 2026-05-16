@@ -335,6 +335,11 @@
     loadSettings();
     bindCloseInteractions();
 
+    var logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', handleLogout);
+    }
+
     setTimeout(function() {
       applyI18nText();
       if (typeof window.applyI18n === 'function') window.applyI18n();
