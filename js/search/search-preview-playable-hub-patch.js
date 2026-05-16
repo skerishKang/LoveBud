@@ -123,9 +123,9 @@
         var shares = getCount(tree, ['shareCount', 'sharesCount', 'shares', 'sharedCount', 'shared_count']);
         return '<div class="preview-social-shell" data-preview-social-shell>' +
             '<div class="preview-social-bar" aria-label="트리 반응">' +
-                '<button type="button" class="preview-social-action" data-preview-like disabled aria-label="좋아요 ' + likes + '"><span class="material-symbols-outlined" aria-hidden="true">favorite</span><strong>' + likes + '</strong><span>좋아요</span></button>' +
-                '<button type="button" class="preview-social-action" data-preview-comments aria-expanded="false" aria-label="댓글 ' + comments + '"><span class="material-symbols-outlined" aria-hidden="true">mode_comment</span><strong>' + comments + '</strong><span>댓글</span></button>' +
-                '<button type="button" class="preview-social-action" data-preview-share disabled aria-label="공유 ' + shares + '"><span class="material-symbols-outlined" aria-hidden="true">share</span><strong>' + shares + '</strong><span>공유</span></button>' +
+                '<button type="button" class="preview-social-action" data-preview-like disabled aria-label="좋아요 ' + escapeHtml(String(likes)) + '"><span class="material-symbols-outlined" aria-hidden="true">favorite</span><strong>' + escapeHtml(String(likes)) + '</strong><span>좋아요</span></button>' +
+                '<button type="button" class="preview-social-action" data-preview-comments aria-expanded="false" aria-label="댓글 ' + escapeHtml(String(comments)) + '"><span class="material-symbols-outlined" aria-hidden="true">mode_comment</span><strong>' + escapeHtml(String(comments)) + '</strong><span>댓글</span></button>' +
+                '<button type="button" class="preview-social-action" data-preview-share disabled aria-label="공유 ' + escapeHtml(String(shares)) + '"><span class="material-symbols-outlined" aria-hidden="true">share</span><strong>' + escapeHtml(String(shares)) + '</strong><span>공유</span></button>' +
             '</div>' +
             '<div class="preview-comments-panel" data-preview-comments-panel hidden>' +
                 '<div class="preview-comments-title">댓글</div>' +
