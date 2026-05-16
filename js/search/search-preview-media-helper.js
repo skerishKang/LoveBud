@@ -62,6 +62,10 @@
         return locale === 'en' ? fallbackEn : fallbackKo;
     }
 
+    function getSharedUtils() {
+        return window.LoveBudSearchSharedUtils || null;
+    }
+
     function getMomentLabel(memory, fallbackKo = '시작 순간', fallbackEn = 'Starting moment') {
         const helper = window.LoveBudSearchTitleHelper || null;
         const cleaned = helper?.cleanMomentTitle
