@@ -11,26 +11,26 @@
 (function() {
     'use strict';
 
-    function getSharedUtils() {
-        return window.LoveBudSearchSharedUtils || null;
-    }
-
     function escapeHtml(value) {
-        const utils = getSharedUtils();
-        if (utils?.escapeHtml) {
+        var sec = window.LoveBudSecurity;
+        if (sec) return sec.escapeHtml(value);
+        var utils = window.LoveBudSearchSharedUtils;
+        if (utils && utils.escapeHtml) {
             return utils.escapeHtml(value);
         }
         return String(value == null ? '' : value)
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;')
-            .replace(/\\"/g, '&quot;')
+            .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
     }
 
     function sanitizeUrl(value) {
-        const utils = getSharedUtils();
-        if (utils?.sanitizeUrl) {
+        var sec = window.LoveBudSecurity;
+        if (sec) return sec.sanitizeUrl(value);
+        var utils = window.LoveBudSearchSharedUtils;
+        if (utils && utils.sanitizeUrl) {
             return utils.sanitizeUrl(value);
         }
         if (!value) return '';

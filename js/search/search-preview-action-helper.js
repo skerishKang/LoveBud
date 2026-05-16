@@ -12,23 +12,22 @@
     'use strict';
 
     /**
-     * Get shared utilities from LoveBudSearchSharedUtils
-     * @returns {Object|null} Shared utils instance
-     */
-    function getSharedUtils() {
-        return window.LoveBudSearchSharedUtils || null;
-    }
-
-    /**
      * Escape HTML for safe rendering
+     * Tries LoveBudSecurity first, then LoveBudSearchSharedUtils, then inline regex.
      * @param {string} value - Value to escape
      * @returns {string} Escaped HTML
      */
     function escapeHtml(value) {
-        const utils = getSharedUtils();
-        if (utils?.escapeHtml) {
-            return utils.escapeHtml(value);
-        }
+        try {
+            if (window.LoveBudSecurity?.escapeHtml) {
+                return window.LoveBudSecurity.escapeHtml(value);
+            }
+        } catch (_) {}
+        try {
+            if (window.LoveBudSearchSharedUtils?.escapeHtml) {
+                return window.LoveBudSearchSharedUtils.escapeHtml(value);
+            }
+        } catch (_) {}
         return String(value == null ? '' : value)
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
@@ -42,9 +41,8 @@
      * @returns {string} Base path
      */
     function getBasePath() {
-        const utils = getSharedUtils();
-        if (utils?.getBasePath) {
-            return utils.getBasePath();
+        if (window.LoveBudSearchSharedUtils?.getBasePath) {
+            return window.LoveBudSearchSharedUtils.getBasePath();
         }
         if (window.LoveBudPath?.getBasePath) {
             return window.LoveBudPath.getBasePath();
