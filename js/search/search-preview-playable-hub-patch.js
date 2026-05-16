@@ -55,9 +55,19 @@
         return cleaned || (index === 0 ? '시작 순간' : '이어진 순간');
     }
 
+    function sanitizeUrl(value) {
+        var sec = window.LoveBudSecurity;
+        if (sec) return sec.sanitizeUrl(value);
+        if (!value) return '';
+        var raw = String(value).trim();
+        if (!raw) return '';
+        if (!/^https?:\/\//i.test(raw)) return '';
+        try { var parsed = new URL(raw); var p = parsed.protocol.toLowerCase(); if (p === 'http:' || p === 'https:') return parsed.href; return ''; } catch(e) { return ''; }
+    }
+
     function getCandidateUrlFromMemory(memory) {
         if (!memory) return '';
-        return memory.sourceUrl || memory.videoUrl || memory.videoURL || memory.mediaUrl || memory.mediaURL || memory.linkUrl || memory.linkURL || memory.thumbnail || memory.thumbnailUrl || memory.imageUrl || '';
+        return sanitizeUrl(memory.sourceUrl || memory.videoUrl || memory.videoURL || memory.mediaUrl || memory.mediaURL || memory.linkUrl || memory.linkURL || memory.thumbnail || memory.thumbnailUrl || memory.imageUrl || '');
     }
 
     function getCandidateUrlFromTree(tree, preferredIndex) {
@@ -66,19 +76,19 @@
         var preferredMemory = memories[Number(preferredIndex || 0)];
         var preferredCandidate = getCandidateUrlFromMemory(preferredMemory);
         if (getYouTubeVideoId(preferredCandidate)) return preferredCandidate;
-        if (preferredIndex === 0 && tree.representativeSourceUrl) return tree.representativeSourceUrl;
+        if (preferredIndex === 0 && tree.representativeSourceUrl) return sanitizeUrl(tree.representativeSourceUrl);
         for (var i = 0; i < memories.length; i += 1) {
             var candidate = getCandidateUrlFromMemory(memories[i]);
             if (getYouTubeVideoId(candidate)) return candidate;
         }
-        return tree.representativeThumbnail || tree.thumbnail || '';
+        return sanitizeUrl(tree.representativeThumbnail || tree.thumbnail || '');
     }
 
     function getCandidateUrlFromRenderedDom(container) {
         if (!container) return '';
         var img = container.querySelector('img');
         if (!img) return '';
-        return img.currentSrc || img.src || img.getAttribute('src') || '';
+        return sanitizeUrl(img.currentSrc || img.src || img.getAttribute('src') || '');
     }
 
     function renderIframe(embedUrl, title) {
