@@ -21,6 +21,27 @@ function buildPayloadTooLargeResponse() {
   });
 }
 
+async function readBoundedWriteBody(request) {
+  let bodyText;
+  try {
+    bodyText = await request.text();
+  } catch (e) {
+    return { tooLarge: true, body: null };
+  }
+
+  if (!bodyText) {
+    return { tooLarge: false, body: null };
+  }
+
+  const encoder = new TextEncoder();
+  const encoded = encoder.encode(bodyText);
+  if (encoded.byteLength > MAX_BODY_SIZE) {
+    return { tooLarge: true, body: null };
+  }
+
+  return { tooLarge: false, body: encoded };
+}
+
 function buildModalUnavailableResponse() {
   return new Response(JSON.stringify({ error: 'Modal service temporarily unavailable' }), {
     status: 503,
@@ -64,8 +85,10 @@ export async function onRequestGet(context) {
 }
 
 export async function onRequestPost(context) {
-  const contentLength = parseInt(context.request.headers.get('content-length') || '0', 10);
-  if (contentLength > MAX_BODY_SIZE) {
+  const { request } = context;
+
+  const bodyResult = await readBoundedWriteBody(request);
+  if (bodyResult.tooLarge) {
     return buildPayloadTooLargeResponse();
   }
 
@@ -83,12 +106,12 @@ export async function onRequestPost(context) {
       method: 'POST',
       headers: {
         accept: 'application/json',
-        'content-type': context.request.headers.get('content-type') || 'application/json',
-        ...(context.request.headers.get('authorization')
-          ? { authorization: context.request.headers.get('authorization') }
+        'content-type': request.headers.get('content-type') || 'application/json',
+        ...(request.headers.get('authorization')
+          ? { authorization: request.headers.get('authorization') }
           : {})
       },
-      body: context.request.body
+      body: bodyResult.body
     });
   } catch (error) {
     return buildModalUnavailableResponse();
