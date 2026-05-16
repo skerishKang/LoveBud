@@ -127,12 +127,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const getMyTreesHref = editorPageHelpers.getMyTreesHref || (() => getEditorBasePath() + 'my-trees');
     const createInlineMediaResolversFallbacks = resolverFallbacks.createInlineMediaResolversFallbacks || (() => ({}));
 
-    const escapeHtml = editorHelpers.escapeHtml || ((value) => String(value ?? '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;'));
+    const escapeHtml = editorHelpers.escapeHtml || ((value) => {
+        var sec = window.LoveBudSecurity;
+        if (sec) return sec.escapeHtml(value);
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    });
 
     const inlineMediaResolvers = editorHelpers.safeUrl
         ? editorHelpers

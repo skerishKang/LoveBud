@@ -46,6 +46,8 @@
   }
 
   function escapeHtml(value) {
+    var sec = window.LoveBudSecurity;
+    if (sec) return sec.escapeHtml(value);
     return String(value ?? '')
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
