@@ -368,6 +368,12 @@
     var title = cardMeta.title;
 
     var selectedClass = typeof isSelected === 'function' && isSelected(normalizedTree.id) ? ' is-selected' : '';
+    var basePath = options && typeof options.basePath === 'string'
+      ? options.basePath
+      : ((typeof window.LoveBudPath !== 'undefined' && window.LoveBudPath.getBasePath)
+        ? window.LoveBudPath.getBasePath()
+        : (window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/'));
+    var openHref = basePath + 'editor?treeId=' + encodeURIComponent(normalizedTree.id || '');
 
     var card = document.createElement('div');
     card.className = 'tree-card' + selectedClass;
@@ -419,13 +425,20 @@
           '</div>',
         '</div>',
         '<div class="tree-card-footer-right">',
-          '<span class="tree-card-open-link">',
+          '<a class="tree-card-open-link" href="' + escapeHtml(openHref) + '" target="_self">',
             '<span class="material-symbols-outlined" aria-hidden="true">account_tree</span>',
             (i18n('myTrees.card_open') || '트리 열기'),
-          '</span>',
+          '</a>',
         '</div>',
       '</div>'
     ].join('');
+
+    var openLink = card.querySelector('.tree-card-open-link');
+    if (openLink) {
+      openLink.addEventListener('click', function (e) {
+        e.stopPropagation();
+      });
+    }
 
     return card;
   }
