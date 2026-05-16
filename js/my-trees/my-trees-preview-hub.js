@@ -22,6 +22,8 @@
     /* ── Escape HTML ── */
 
     function escapeHtml(value) {
+        var sec = window.LoveBudSecurity;
+        if (sec) return sec.escapeHtml(value);
         return String(value == null ? '' : value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
