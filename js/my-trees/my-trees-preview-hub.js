@@ -194,6 +194,8 @@
         if (!els) return;
         els.panel.classList.add('is-empty');
         els.panel.classList.remove('is-loaded');
+        if (els.placeholder) els.placeholder.hidden = false;
+        if (els.content) els.content.hidden = true;
         if (els.badge) els.badge.textContent = i18nHub('', '내 트리', 'My Tree');
         _selectedTree = null;
         _expandedFlowKey = null;
@@ -213,6 +215,8 @@
 
         els.panel.classList.remove('is-empty');
         els.panel.classList.add('is-loaded');
+        if (els.placeholder) els.placeholder.hidden = true;
+        if (els.content) els.content.hidden = false;
 
         if (els.badge) {
             els.badge.textContent = hasMemories
@@ -351,6 +355,8 @@
 
         els.panel.classList.remove('is-empty');
         els.panel.classList.add('is-loaded');
+        if (els.placeholder) els.placeholder.hidden = true;
+        if (els.content) els.content.hidden = false;
 
         if (els.treeTitle) {
             els.treeTitle.textContent = String(tree && tree.title || '').trim() || t('default_tree_title', '나의 러브트리');
