@@ -196,7 +196,7 @@
             return renderMediaFallback(tree, titleText);
         }
         return `
-            <img src="${src}" alt="${alt}" loading="lazy" onerror="window.LoveBudSearchCardRenderer?.showImageFallback?.(this)" onload="window.LoveBudSearchCardRenderer?.handleImageLoad?.(this)" style="width:100%;height:100%;object-fit:cover;">
+            <img src="${src}" alt="${alt}" loading="lazy" data-search-card-image="" style="width:100%;height:100%;object-fit:cover;">
             <div data-fallback-container hidden style="width:100%;height:100%;position:absolute;inset:0;">
                 ${renderMediaFallback(tree, titleText)}
             </div>
@@ -397,6 +397,27 @@
         document.head.appendChild(style);
     }
 
+    function handleImageLoad(img) {
+        if (!img) return;
+        if (isSuspiciousYouTubeThumbnailImage(img)) {
+            showImageFallback(img);
+        }
+    }
+
+    function bindCardImageHandlers(root) {
+        if (!root) return;
+        root.querySelectorAll('[data-search-card-image]').forEach(img => {
+            img.addEventListener('error', function onCardImageError() {
+                showImageFallback(this);
+            });
+            img.addEventListener('load', function onCardImageLoad() {
+                if (isSuspiciousYouTubeThumbnailImage(this)) {
+                    showImageFallback(this);
+                }
+            });
+        });
+    }
+
     window.LoveBudSearchCardRenderer = {
         init: init,
         renderTreeCard: renderTreeCard,
@@ -409,11 +430,8 @@
         getBasePath: getBasePath,
         getTreeViewerHref: getTreeViewerHref,
         showImageFallback: showImageFallback,
-        handleImageLoad: (img) => {
-            if (isSuspiciousYouTubeThumbnailImage(img)) {
-                showImageFallback(img);
-            }
-        }
+        handleImageLoad: handleImageLoad,
+        bindCardImageHandlers: bindCardImageHandlers
     };
 
 
