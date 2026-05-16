@@ -224,8 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ['editMemoLabel', 'editor_note_label', '감정 메모'],
             ['editTagsLabel', 'editor_edit_tag_label', '감정 태그 (쉼표로 구분)'],
             ['cancelEditBtn', 'editor_cancel', '취소'],
-            ['saveEditBtn', 'editor_save', '저장하기'],
-            ['detailSubmitBtn', 'editor_record_submit', '내 러브트리에 기록하기']
+            ['saveEditBtn', 'editor_save', '저장하기']
         ];
 
         const placeholderBindings = [
