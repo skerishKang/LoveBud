@@ -329,7 +329,6 @@
     setText('editTagsLabel', 'editor_edit_tag_label', '감정 태그 (쉼표로 구분)');
     setText('cancelEditBtn', 'editor_cancel', '취소');
     setText('saveEditBtn', 'editor_save', '저장하기');
-    setText('detailSubmitBtn', 'editor_record_submit', '내 러브트리에 기록하기');
 
     setAttr('renameTreeBtn', 'aria-label', 'rename_tree_prompt', '새 트리 제목을 입력해 주세요.');
     setAttr('renameTreeBtn', 'title', 'rename_tree_prompt', '새 트리 제목을 입력해 주세요.');

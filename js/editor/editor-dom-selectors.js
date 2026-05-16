@@ -116,7 +116,6 @@
         cancelEditBtn: 'cancelEditBtn',
         saveEditBtn: 'saveEditBtn',
         detailPanelFooter: 'detailPanelFooter',
-        detailSubmitBtn: 'detailSubmitBtn',
 
         // Save status
         saveStatusIndicator: 'saveStatusIndicator',
