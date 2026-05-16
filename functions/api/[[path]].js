@@ -58,8 +58,7 @@ function buildPayloadTooLargeResponse(requestId = null) {
   const headers = {
     'content-type': 'application/json; charset=utf-8',
     'x-lovebud-upstream': 'cloudflare',
-    'x-lovebud-route-status': 'payload-too-large',
-    'x-lovebud-dbg-entered': '1'
+    'x-lovebud-route-status': 'payload-too-large'
   };
   if (requestId) headers[REQUEST_ID_HEADER] = requestId;
   return new Response(JSON.stringify({ error: 'Request body too large' }), { status: 413, headers });
@@ -171,15 +170,13 @@ function buildModalUrl(request, env) {
   return null;
 }
 
-async function withUpstreamHeader(response, upstream, requestId = null, dbgPath = null) {
+async function withUpstreamHeader(response, upstream, requestId = null) {
   const headers = new Headers(response.headers);
   headers.set('x-lovebud-upstream', upstream);
-  headers.set('x-lovebud-dbg-entered', '1');
-  if (dbgPath) headers.set('x-lovebud-dbg-path', dbgPath);
   if (requestId) {
     headers.set(REQUEST_ID_HEADER, requestId);
     const existingExposeHeaders = headers.get('Access-Control-Expose-Headers') || '';
-    const exposeHeaders = existingExposeHeaders ? `${existingExposeHeaders}, ${REQUEST_ID_HEADER}, x-lovebud-dbg-entered, x-lovebud-dbg-path, x-lovebud-dbg-write` : `${REQUEST_ID_HEADER}, x-lovebud-dbg-entered, x-lovebud-dbg-path, x-lovebud-dbg-write`;
+    const exposeHeaders = existingExposeHeaders ? `${existingExposeHeaders}, ${REQUEST_ID_HEADER}` : `${REQUEST_ID_HEADER}`;
     headers.set('Access-Control-Expose-Headers', exposeHeaders);
   }
 
@@ -229,8 +226,7 @@ function buildNotFoundResponse(requestId = null) {
   const headers = {
     'content-type': 'application/json; charset=utf-8',
     'x-lovebud-upstream': 'cloudflare',
-    'x-lovebud-route-status': 'unhandled',
-    'x-lovebud-dbg-entered': '1'
+    'x-lovebud-route-status': 'unhandled'
   };
   if (requestId) headers[REQUEST_ID_HEADER] = requestId;
   return new Response(JSON.stringify({ error: 'Route not found' }), { status: 404, headers });
@@ -241,7 +237,6 @@ function buildMethodNotAllowedResponse(allow = 'GET', requestId = null) {
     'content-type': 'application/json; charset=utf-8',
     'x-lovebud-upstream': 'cloudflare',
     'x-lovebud-route-status': 'method-not-allowed',
-    'x-lovebud-dbg-entered': '1',
     'allow': allow,
     [REQUEST_ID_HEADER]: requestId
   };
@@ -252,7 +247,6 @@ function buildModalUnavailableResponse(requestId = null) {
   const headers = {
     'content-type': 'application/json; charset=utf-8',
     'x-lovebud-upstream': 'modal',
-    'x-lovebud-dbg-entered': '1',
     'x-lovebud-degraded': 'modal-unavailable'
   };
   if (requestId) headers[REQUEST_ID_HEADER] = requestId;
@@ -281,10 +275,10 @@ async function tryModalRead(request, env, requestId = null) {
     const publicTarget = new URL(stripTrailingSlash(env.MODAL_BASE_URL));
     publicTarget.pathname = `/modal/trees/${encodeURIComponent(decodeURIComponent(treeMatch[1]))}`;
     const publicResponse = await fetch(publicTarget.toString(), { headers: { accept: 'application/json' } });
-    return await withUpstreamHeader(publicResponse, 'modal', requestId, 'read-public-fallback');
+    return await withUpstreamHeader(publicResponse, 'modal', requestId);
   }
 
-  return await withUpstreamHeader(response, 'modal', requestId, 'read');
+  return await withUpstreamHeader(response, 'modal', requestId);
 }
 
 async function tryModalWrite(request, env, requestId = null) {
@@ -318,149 +312,12 @@ async function tryModalWrite(request, env, requestId = null) {
     body: method !== 'DELETE' ? boundedBody : null
   });
 
-  return await withUpstreamHeader(response, 'modal', requestId, 'write');
-}
-
-// Debug: test header passthrough with Modal response
-async function testModalPassthrough(request, env) {
-  const requestId = getOrCreateRequestId(request);
-  const url = new URL(request.url);
-  const targetUrl = url.searchParams.get('url') || '/api/community/trees?view=summary';
-  const method = url.searchParams.get('method') || 'GET';
-  
-  const modalUrl = buildModalUrl(new Request(new URL(targetUrl, request.url), { method }), env || {});
-  if (!modalUrl) {
-    return new Response(JSON.stringify({ error: 'no modal url' }), { status: 400, headers: { 'content-type': 'application/json' }});
-  }
-  
-  const modalResponse = await fetch(modalUrl.toString(), {
-    method,
-    headers: { accept: 'application/json' }
-  });
-  
-  // Test 1: new Response with stream body + custom headers
-  const headers1 = new Headers(modalResponse.headers);
-  headers1.set('x-lovebud-upstream', 'modal');
-  headers1.set('x-lovebud-dbg-entered', '1');
-  headers1.set('x-lovebud-dbg-method', 'stream-passthrough');
-  headers1.set('x-lovebud-test-stream', '1');
-  if (requestId) headers1.set(REQUEST_ID_HEADER, requestId);
-  const resp1 = new Response(modalResponse.body, { status: modalResponse.status, headers: headers1 });
-  
-  // Add special header after construction
-  resp1.headers.set('x-lovebud-dbg-post-construct', '1');
-  
-  // Read body and wrap in response with metadata
-  const bodyText = await resp1.text();
-  const wrap = {
-    meta: {
-      method: 'stream-passthrough',
-      status: modalResponse.status,
-      headersFromConstructor: Array.from(headers1.entries()).reduce((acc, [k,v]) => { acc[k] = v; return acc; }, {}),
-      finalHeaders: Array.from(resp1.headers.entries()).reduce((acc, [k,v]) => { acc[k] = v; return acc; }, {}),
-      bodyLength: bodyText.length
-    },
-    body: bodyText.length > 500 ? bodyText.substring(0, 500) + '...' : bodyText
-  };
-  
-  return new Response(JSON.stringify(wrap, null, 2), {
-    status: 200,
-    headers: {
-      'content-type': 'application/json; charset=utf-8',
-      'x-lovebud-dbg-entered': '1',
-      'x-lovebud-dbg-path': 'passthrough-test',
-      [REQUEST_ID_HEADER]: requestId,
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Expose-Headers': `${REQUEST_ID_HEADER}, x-lovebud-dbg-entered, x-lovebud-dbg-path, x-lovebud-dbg-write`
-    }
-  });
-}
-
-async function handleBodySizeDiagnostic(request) {
-  const method = request.method.toUpperCase();
-  const url = new URL(request.url);
-  const requestId = getOrCreateRequestId(request);
-  const readMethod = url.searchParams.get('read') || 'text';
-
-  const diag = {
-    method,
-    path: url.pathname,
-    requestId,
-    readMethod,
-    contentLength: {
-      present: request.headers.get('content-length') !== null,
-      value: (() => { const v = request.headers.get('content-length'); return v !== null ? Number(v) : null; })()
-    },
-    requestBodyPresent: request.body !== null,
-    codePaths: ['diagnostic-endpoint']
-  };
-
-  if (['POST', 'PUT'].includes(method)) {
-    try {
-      if (readMethod === 'text') {
-        const text = await request.text();
-        const encoded = new TextEncoder().encode(text);
-        diag.readResult = {
-          method: 'text()',
-          length: text.length,
-          byteLength: encoded.byteLength,
-          exceeds128KB: encoded.byteLength > 128 * 1024
-        };
-      } else if (readMethod === 'arraybuffer') {
-        const ab = await request.arrayBuffer();
-        diag.readResult = {
-          method: 'arrayBuffer()',
-          byteLength: ab.byteLength,
-          exceeds128KB: ab.byteLength > 128 * 1024
-        };
-      } else if (readMethod === 'stream') {
-        const reader = request.body.getReader();
-        let totalBytes = 0;
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          totalBytes += value.byteLength;
-        }
-        diag.readResult = {
-          method: 'stream.getReader()',
-          byteLength: totalBytes,
-          exceeds128KB: totalBytes > 128 * 1024
-        };
-      }
-    } catch (e) {
-      diag.readError = e.message || String(e);
-      diag.readErrorName = e.name || 'Error';
-    }
-  }
-
-  return new Response(JSON.stringify(diag, null, 2), {
-    status: 200,
-    headers: {
-      'content-type': 'application/json; charset=utf-8',
-      'x-lovebud-upstream': 'cloudflare',
-      'x-lovebud-dbg-entered': '1',
-      'x-lovebud-dbg-path': 'diagnostic',
-      [REQUEST_ID_HEADER]: requestId,
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
-      'Access-Control-Allow-Headers': '*',
-      'Access-Control-Expose-Headers': `${REQUEST_ID_HEADER}, x-lovebud-dbg-entered, x-lovebud-dbg-path, x-lovebud-dbg-write`
-    }
-  });
+  return await withUpstreamHeader(response, 'modal', requestId);
 }
 
 export async function onRequest(context) {
   const { request, env } = context;
   const requestId = getOrCreateRequestId(request);
-
-  // Diagnostic endpoints — runs before any routing
-  const url = new URL(request.url);
-  if (url.pathname === '/api/__diag/body-size') {
-    return handleBodySizeDiagnostic(request);
-  }
-  if (url.pathname === '/api/__diag/passthrough') {
-    return testModalPassthrough(request, env);
-  }
 
   const isModalOwned = isModalOwnedGetRoute(request, env || {});
   const isModalOwnedWrite = isModalOwnedWriteRoute(request, env || {});
@@ -479,7 +336,7 @@ export async function onRequest(context) {
     const cache = caches.default;
     const cacheKey = buildBrowseCacheRequest(request);
     const cachedResponse = await cache.match(cacheKey);
-    if (cachedResponse) return await withUpstreamHeader(cachedResponse, 'modal', requestId, 'read-cache');
+    if (cachedResponse) return await withUpstreamHeader(cachedResponse, 'modal', requestId);
 
     try {
       const modalResponse = await tryModalRead(request, env || {}, requestId);
@@ -491,9 +348,9 @@ export async function onRequest(context) {
         });
         cacheableResponse.headers.set('Cache-Control', 'public, max-age=420, stale-while-revalidate=120');
         await cache.put(cacheKey, cacheableResponse.clone());
-        return await withUpstreamHeader(cacheableResponse, 'modal', requestId, 'read-browse-cacheable');
+        return await withUpstreamHeader(cacheableResponse, 'modal', requestId);
       }
-      if (modalResponse) return await withUpstreamHeader(modalResponse, 'modal', requestId, 'read-browse');
+      if (modalResponse) return await withUpstreamHeader(modalResponse, 'modal', requestId);
     } catch (error) {
       if (isModalOwned) {
         console.warn('[LoveBudCloudflareProxy] Modal read failed, returning 503', error);
@@ -503,7 +360,7 @@ export async function onRequest(context) {
   } else {
     try {
       const modalResponse = await tryModalRead(request, env || {}, requestId);
-      if (modalResponse) return await withUpstreamHeader(modalResponse, 'modal', requestId, 'read-nonbrowse');
+      if (modalResponse) return await withUpstreamHeader(modalResponse, 'modal', requestId);
     } catch (error) {
       if (isModalOwned) {
         console.warn('[LoveBudCloudflareProxy] Modal read failed, returning 503', error);
