@@ -314,7 +314,7 @@
 
         return `
             <div class="preview-media-frame preview-media-frame-thumbnail" style="position:relative;width:100%;height:100%;border-radius:1rem;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.12);">
-                <img src="${thumbnailUrl}" alt="${mediaTitle}" loading="lazy" onerror="window.LoveBudSearchPreviewRenderer?.showPreviewImageFallback?.(this)" onload="window.LoveBudSearchPreviewRenderer?.handlePreviewImageLoad?.(this)" style="width:100%;height:100%;object-fit:cover;display:block;">
+                <img src="${thumbnailUrl}" alt="${mediaTitle}" loading="lazy" data-preview-thumbnail-image="" style="width:100%;height:100%;object-fit:cover;display:block;">
                 <div data-preview-thumbnail-fallback hidden style="position:absolute;inset:0;">${fallbackHtml}</div>
                 <div data-preview-overlay style="position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.72),rgba(0,0,0,0.04) 58%);"></div>
                 <div data-preview-overlay style="position:absolute;left:18px;right:18px;bottom:18px;color:white;">
@@ -365,6 +365,38 @@
         }
         const overlays = wrapper.querySelectorAll('[data-preview-overlay]');
         overlays.forEach(overlay => overlay.style.display = 'none');
+    }
+
+    function bindPreviewThumbnailHandlers(root) {
+        if (!root) return;
+        root.querySelectorAll('[data-preview-thumbnail-image]').forEach(img => {
+            if (img.dataset.previewImageHandlerBound === 'true') return;
+            img.dataset.previewImageHandlerBound = 'true';
+
+            var helper = window.LoveBudSearchPreviewMediaHelper;
+
+            if (img.complete) {
+                if (img.naturalWidth === 0) {
+                    showPreviewImageFallback(img);
+                } else if (helper?.handlePreviewImageLoad) {
+                    helper.handlePreviewImageLoad(img);
+                } else if (isSuspiciousYouTubeThumbnailImage(img)) {
+                    showPreviewImageFallback(img);
+                }
+                return;
+            }
+
+            img.addEventListener('error', function onPreviewError() {
+                showPreviewImageFallback(this);
+            });
+            img.addEventListener('load', function onPreviewLoad() {
+                if (helper?.handlePreviewImageLoad) {
+                    helper.handlePreviewImageLoad(this);
+                } else if (isSuspiciousYouTubeThumbnailImage(this)) {
+                    showPreviewImageFallback(this);
+                }
+            });
+        });
     }
 
      function updatePreview(tree) {
@@ -438,8 +470,9 @@
                          : renderSelectedTreeMediaFallback(safeTreeTitle, displayMemoryCount));
                  }
              }
-             setPreviewState(previewState);
-         }
+            setPreviewState(previewState);
+            bindPreviewThumbnailHandlers(_dom.previewContainer);
+        }
 
         if (_dom.previewTitle) {
             const safeTimeRange = escapeHtml(String(tree?.timeRange || getSearchCopy('search.previewUnknownRange', '아직 흐름이 또렷하지 않아요', 'The flow is not clear yet')).trim());
