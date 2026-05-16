@@ -91,6 +91,5 @@ window.LoveBudEditorShellHelpers = {
         setPlaceholder('editTagsInput', 'editor_edit_tag_placeholder', '#감동, #행복, #그리움');
         setText('cancelEditBtn', 'editor_cancel', '취소');
         setText('saveEditBtn', 'editor_save', '저장하기');
-        setText('detailSubmitBtn', 'editor_record_submit', '내 러브트리에 기록하기');
     }
 };
