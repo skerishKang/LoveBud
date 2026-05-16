@@ -407,13 +407,23 @@
     function bindCardImageHandlers(root) {
         if (!root) return;
         root.querySelectorAll('[data-search-card-image]').forEach(img => {
+            if (img.dataset.searchCardImageHandlerBound === 'true') return;
+            img.dataset.searchCardImageHandlerBound = 'true';
+
+            if (img.complete) {
+                if (img.naturalWidth === 0) {
+                    showImageFallback(img);
+                } else {
+                    handleImageLoad(img);
+                }
+                return;
+            }
+
             img.addEventListener('error', function onCardImageError() {
                 showImageFallback(this);
             });
             img.addEventListener('load', function onCardImageLoad() {
-                if (isSuspiciousYouTubeThumbnailImage(this)) {
-                    showImageFallback(this);
-                }
+                handleImageLoad(this);
             });
         });
     }

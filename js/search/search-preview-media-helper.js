@@ -133,13 +133,23 @@
     function bindPreviewThumbnailHandlers(root) {
         if (!root) return;
         root.querySelectorAll('[data-preview-thumbnail-image]').forEach(img => {
+            if (img.dataset.previewImageHandlerBound === 'true') return;
+            img.dataset.previewImageHandlerBound = 'true';
+
+            if (img.complete) {
+                if (img.naturalWidth === 0) {
+                    showPreviewImageFallback(img);
+                } else {
+                    handlePreviewImageLoad(img);
+                }
+                return;
+            }
+
             img.addEventListener('error', function onPreviewImageError() {
                 showPreviewImageFallback(this);
             });
             img.addEventListener('load', function onPreviewImageLoad() {
-                if (isSuspiciousYouTubeThumbnailImage(this)) {
-                    showPreviewImageFallback(this);
-                }
+                handlePreviewImageLoad(this);
             });
         });
     }
