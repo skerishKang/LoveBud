@@ -13,13 +13,9 @@
 
     const previewBuilders = window.LoveBudSearchPreviewBuilders || {};
 
-    const getSharedUtils = previewBuilders.getSharedUtils || (function() { return window.LoveBudSearchSharedUtils || null; });
-
     function escapeHtml(value) {
-        const utils = getSharedUtils();
-        if (utils?.escapeHtml) {
-            return utils.escapeHtml(value);
-        }
+        var sec = window.LoveBudSecurity;
+        if (sec) return sec.escapeHtml(value);
         return String(value == null ? '' : value)
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
@@ -29,16 +25,14 @@
     }
 
     function sanitizeUrl(value) {
-        const utils = getSharedUtils();
-        if (utils?.sanitizeUrl) {
-            return utils.sanitizeUrl(value);
-        }
+        var sec = window.LoveBudSecurity;
+        if (sec) return sec.sanitizeUrl(value);
         if (!value) return '';
-        const raw = String(value).trim();
+        var raw = String(value).trim();
         if (!raw) return '';
         try {
-            const parsed = new URL(raw, window.location.origin);
-            const protocol = parsed.protocol;
+            var parsed = new URL(raw, window.location.origin);
+            var protocol = parsed.protocol;
             if (protocol === 'http:' || protocol === 'https:') {
                 return parsed.href;
             }
