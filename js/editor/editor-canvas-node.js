@@ -28,7 +28,10 @@
     skeleton.className = 'node-skeleton';
     imgWrapper.appendChild(skeleton);
     var img = document.createElement('img');
-    img.src = typeof resolveThumbnail === 'function' ? resolveThumbnail(mem) : (mem.thumbnail || '');
+    img.src = typeof resolveThumbnail === 'function' ? resolveThumbnail(mem) :
+        (window.LoveBudEditorHelpers && window.LoveBudEditorHelpers.safeUrl
+            ? window.LoveBudEditorHelpers.safeUrl(mem && mem.thumbnail || '')
+            : (mem && mem.thumbnail || ''));
     img.alt = mem.title || '';
     img.draggable = false;
     img.addEventListener('dragstart', function (e) { e.preventDefault(); });

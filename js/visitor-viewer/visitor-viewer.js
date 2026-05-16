@@ -7,6 +7,15 @@
     var panels = window.LoveBudVisitorViewerPanels;
     if (!renderTree || !panels) return;
 
+    function escapeHtml(value) {
+        return String(value == null ? '' : value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/\"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
     function getAllMoments() {
         var results = [];
         var s = data.rootSeed;
@@ -139,8 +148,8 @@
         container.innerHTML =
             '<header class="vv-header">' +
             '  <div><p class="vv-eyebrow">Public LoveTree Viewer IA v4</p>' +
-            '  <h1 class="vv-title">' + data.tree.title + '</h1>' +
-            '  <div class="vv-meta-row"><span>' + data.tree.creator + '</span><span class="vv-dot">·</span><span>' + data.tree.meta + '</span></div></div>' +
+            '  <h1 class="vv-title">' + escapeHtml(data.tree.title) + '</h1>' +
+            '  <div class="vv-meta-row"><span>' + escapeHtml(data.tree.creator) + '</span><span class="vv-dot">·</span><span>' + escapeHtml(data.tree.meta) + '</span></div></div>' +
             '</header>' +
             '<div class="vv-action-dock" data-action-dock>' +
             '  <div class="vv-action-group">' +
