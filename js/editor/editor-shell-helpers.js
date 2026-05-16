@@ -60,8 +60,6 @@ window.LoveBudEditorShellHelpers = {
         setText('canvasEmptyStartBtn', 'editor_add_first_memory', '첫 순간 심기');
         setText('canvasEmptyTextStartBtn', 'editor_canvas_empty_text_start', '텍스트로 시작하기');
         setText('canvasEmptyGuideHint', 'editor_canvas_empty_hint', '캔버스를 두 번 클릭해도 새 순간을 시작할 수 있어요.');
-        setText('canvasDropZoneTitle', 'editor_canvas_drop_title', 'YouTube 링크를 여기에 놓아주세요');
-        setText('canvasDropZoneHint', 'editor_canvas_drop_hint', '놓은 위치에 첫 순간이 심어져요.');
         setText('addMemoryFormEyebrow', 'editor_add_first_memory', '첫 순간 심기');
         setText('addMemoryFormTitle', 'editor_new_memory', '어떤 순간이 이어졌나요?');
         setText('addMemoryFormIntro', 'editor_add_memory_intro', '지금 마음이 머문 다음 장면을 이어 심어 보세요. 첫 순간이라면 여기서 러브트리가 시작됩니다.');

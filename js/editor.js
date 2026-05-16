@@ -686,7 +686,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const canvasEmptyStartBtn = document.getElementById('canvasEmptyStartBtn');
         const canvasEmptyYoutubeInput = document.getElementById('canvasEmptyYoutubeInput');
         const canvasEmptyTextStartBtn = document.getElementById('canvasEmptyTextStartBtn');
-        const canvasDropZone = document.getElementById('canvasDropZone');
         async function createMemoryFromCanvasUrl(options) {
             const rawUrl = options && options.rawUrl;
             const position = options && options.position;
@@ -734,17 +733,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (event.key !== 'Enter') return;
                 event.preventDefault();
                 createMemoryFromCanvasUrl({ rawUrl: canvasEmptyYoutubeInput.value.trim() });
-            });
-        }
-
-        if (window.LoveBudEditorCanvasDragDrop && typeof window.LoveBudEditorCanvasDragDrop.bindCanvasDragDrop === 'function') {
-            window.LoveBudEditorCanvasDragDrop.bindCanvasDragDrop({
-                canvas,
-                dropZone: canvasDropZone,
-                editorCanvas,
-                createMemoryFromUrl: createMemoryFromCanvasUrl,
-                showToast,
-                i18n
             });
         }
 

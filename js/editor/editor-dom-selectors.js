@@ -55,9 +55,6 @@
         canvasEmptyStartBtn: 'canvasEmptyStartBtn',
         canvasEmptyTextStartBtn: 'canvasEmptyTextStartBtn',
         canvasEmptyGuideHint: 'canvasEmptyGuideHint',
-        canvasDropZone: 'canvasDropZone',
-        canvasDropZoneTitle: 'canvasDropZoneTitle',
-        canvasDropZoneHint: 'canvasDropZoneHint',
         recenterCanvasBtn: 'recenterCanvasBtn',
         recenterCanvasBtnLabel: 'recenterCanvasBtnLabel',
 

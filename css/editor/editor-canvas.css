@@ -224,58 +224,6 @@
     line-height: 1.55;
 }
 
-.editor-canvas-drop-zone {
-    position: absolute;
-    inset: 0;
-    display: grid;
-    place-items: center;
-    z-index: 6;
-    pointer-events: none;
-    background: rgba(255,248,244,0.58);
-    backdrop-filter: blur(2px);
-    opacity: 1;
-    transition: opacity 140ms ease;
-}
-
-.editor-canvas-drop-zone-hidden {
-    opacity: 0;
-    visibility: hidden;
-}
-
-.editor-canvas-drop-zone__card {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 7px;
-    min-width: min(330px, calc(100% - 48px));
-    padding: 24px 28px;
-    border: 1px dashed rgba(144,73,81,0.46);
-    border-radius: 28px;
-    background: rgba(255,255,255,0.94);
-    box-shadow: 0 24px 56px rgba(75,64,57,0.12);
-    color: var(--on-surface);
-}
-
-.editor-canvas-drop-zone__icon {
-    display: grid;
-    place-items: center;
-    width: 42px;
-    height: 42px;
-    border-radius: 999px;
-    background: rgba(144,73,81,0.10);
-    color: var(--primary);
-    font-size: 18px;
-}
-
-.editor-canvas-drop-zone__card strong {
-    font-size: 1rem;
-    letter-spacing: -0.02em;
-}
-
-.editor-canvas-drop-zone__card span:last-child {
-    color: var(--on-surface-variant);
-    font-size: 12px;
-}
 
 @keyframes editorCanvasGuideFadeIn {
     from {
