@@ -28,12 +28,16 @@
             return translated;
         };
 
-        const escapeHtml = (value) => String(value ?? '')
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/\"/g, '&quot;')
-            .replace(/'/g, '&#39;');
+        const escapeHtml = (value) => {
+            var sec = window.LoveBudSecurity;
+            if (sec) return sec.escapeHtml(value);
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/\"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        };
 
         const prettifyTagLabel = (tag) => {
             const raw = String(tag ?? '').trim();
