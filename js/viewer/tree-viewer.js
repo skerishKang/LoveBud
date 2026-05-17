@@ -78,7 +78,10 @@
             tag: (memory.emotionTags && memory.emotionTags[0]) || '',
             caption: memory.emotionMemo || memory.title || '',
             emoji: '??',
-            t: tValue
+            t: tValue,
+            channelId: memory.channelId || memory.channel_id || '',
+            channelName: memory.channelName || memory.channel_name || '',
+            channelUrl: memory.channelUrl || memory.channel_url || ''
         };
     }
 
@@ -173,14 +176,9 @@
     function buildBranches(memories) {
         // Group moments into a single main branch with computed positions
         var moments = memories.map(function(m, i) {
-            return {
-                id: 'moment-' + i,
-                title: m.title || m.emotionMemo || '',
-                tag: (m.emotionTags && m.emotionTags[0]) || '',
-                caption: m.emotionMemo || m.title || '',
-                emoji: '✦',
-                t: (i + 0.5) / Math.max(memories.length, 1)
-            };
+            var moment = mapBranchMoment(m, i, (i + 0.5) / Math.max(memories.length, 1));
+            moment.emoji = '✦';
+            return moment;
         });
 
         var branch = {
@@ -304,7 +302,17 @@
                 var results = [];
                 viewerData.branches.forEach(function(branch) {
                     (branch.moments || []).forEach(function(m) {
-                        results.push({ id: m.id, branchId: branch.id, title: m.title, tag: m.tag, caption: m.caption, emoji: m.emoji });
+                        results.push({
+                            id: m.id,
+                            branchId: branch.id,
+                            title: m.title,
+                            tag: m.tag,
+                            caption: m.caption,
+                            emoji: m.emoji,
+                            channelId: m.channelId || '',
+                            channelName: m.channelName || '',
+                            channelUrl: m.channelUrl || ''
+                        });
                     });
                 });
                 return results;
