@@ -14,6 +14,66 @@
             treeContextEl
         } = refs;
 
+        // --- Channel link helpers (copied from public-tree-viewer.js) ---
+        function normalizeYouTubeHost(hostname) {
+            return String(hostname || '')
+                .trim()
+                .toLowerCase()
+                .replace(/^www\./, '')
+                .replace(/^m\./, '');
+        }
+
+        function isSafeYouTubeChannelPath(pathname) {
+            var path = String(pathname || '').trim();
+            return /^\/@[0-9A-Za-z._-]{3,100}$/.test(path) ||
+                /^\/channel\/UC[0-9A-Za-z_-]{10,100}$/.test(path);
+        }
+
+        function sanitizeYouTubeChannelUrl(url) {
+            if (!url || typeof url !== 'string') return '';
+            try {
+                var parsed = new URL(url.trim());
+                var host = normalizeYouTubeHost(parsed.hostname);
+                if (parsed.protocol !== 'https:' || host !== 'youtube.com') return '';
+                if (!isSafeYouTubeChannelPath(parsed.pathname)) return '';
+                parsed.hostname = 'www.youtube.com';
+                parsed.search = '';
+                parsed.hash = '';
+                return parsed.toString();
+            } catch (e) {
+                return '';
+            }
+        }
+
+        function buildChannelUrlFromId(channelId) {
+            var id = String(channelId || '').trim();
+            if (/^@[0-9A-Za-z._-]{3,100}$/.test(id)) {
+                return 'https://www.youtube.com/' + id;
+            }
+            if (/^UC[0-9A-Za-z_-]{10,100}$/.test(id)) {
+                return 'https://www.youtube.com/channel/' + id;
+            }
+            return '';
+        }
+
+        function resolveChannelLabel(memory) {
+            return String(memory && (memory.channelName || memory.channelId) || '').trim();
+        }
+
+        function resolveSafeChannelUrl(memory) {
+            var explicitUrl = sanitizeYouTubeChannelUrl(memory && memory.channelUrl || '');
+            if (explicitUrl) return explicitUrl;
+            return sanitizeYouTubeChannelUrl(buildChannelUrlFromId(memory && memory.channelId || ''));
+        }
+
+        function buildChannelMetaHtml(memory) {
+            var label = resolveChannelLabel(memory);
+            var safeUrl = resolveSafeChannelUrl(memory);
+            if (!label || !safeUrl) return '';
+            return 'from <a class="detail-channel-link" href="' + escapeHtml(safeUrl) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(label) + '</a>';
+        }
+        // --- End channel link helpers ---
+
         const buildEmptyMemoMarkup = () => buildSoftPanelMarkup({
             icon: 'auto_stories',
             kicker: tText('empty_memo_kicker', '남겨진 마음'),
@@ -39,9 +99,8 @@
         setMetaPillVisibility(detailDate, dateText);
 
         // Channel link (from YouTube channel metadata)
-        const channelLinkModule = window.LoveBudPublicViewerChannelLink;
-        if (channelLinkModule && detailChannel && detailChannelPill) {
-            const channelHtml = channelLinkModule.buildChannelMetaHtml(memory);
+        if (detailChannel && detailChannelPill) {
+            const channelHtml = buildChannelMetaHtml(memory);
             if (channelHtml) {
                 detailChannel.innerHTML = channelHtml;
                 detailChannelPill.style.display = '';
