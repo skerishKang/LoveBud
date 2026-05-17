@@ -116,7 +116,9 @@ test('modal public read helpers preserve public visibility filters and normaliza
   const memoryHelper = extractPythonFunction(content, 'fetch_public_memory');
   assert.ok(hasString(memoryHelper, "m.visibility = 'public'"));
   assert.ok(hasString(memoryHelper, "t.visibility = 'public'"));
-  assert.ok(hasString(memoryHelper, 'return normalize_memory_row(row) if row else None'));
+  assert.ok(hasString(memoryHelper, 'return None'));
+  assert.ok(hasString(memoryHelper, 'normalize_memory_row(row)'));
+  assert.ok(hasString(memoryHelper, 'reactionCounts'));
 
   const treeHelper = extractPythonFunction(content, 'fetch_public_tree');
   assert.ok(hasString(treeHelper, "t.visibility = 'public'"));
