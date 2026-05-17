@@ -43,6 +43,16 @@ function createPanelContext() {
   return context;
 }
 
+function renderMomentPanelHtml(context, moment) {
+  return context.window.LoveBudVisitorViewerPanels.renderPanel({
+    activePanel: 'moment',
+    selectedBranchId: 'main',
+    selectedMomentId: moment.id,
+    selectedMoment: moment,
+    panelBranch: { id: 'main', name: 'Main', color: 'rose' }
+  }, {});
+}
+
 test('tree viewer maps channel metadata from public memories into visitor moments', () => {
   const context = createTreeViewerContext();
   const viewerData = context.window.LoveBudTreeViewerTestHooks.buildBranches([
@@ -66,19 +76,15 @@ test('tree viewer maps channel metadata from public memories into visitor moment
 
 test('visitor moment panel renders safe channel link for selected public moment', () => {
   const context = createPanelContext();
-  const html = context.window.LoveBudVisitorViewerPanels.renderPanel({
-    activePanel: 'moment',
-    selectedMoment: {
-      id: 'moment-1',
-      title: 'With Channel Mem',
-      caption: 'caption',
-      emoji: '✦',
-      channelId: '@woowayoung',
-      channelName: '@woowayoung',
-      channelUrl: 'https://www.youtube.com/@woowayoung'
-    },
-    panelBranch: { id: 'main', name: 'Main', color: 'rose' }
-  }, {});
+  const html = renderMomentPanelHtml(context, {
+    id: 'moment-1',
+    title: 'With Channel Mem',
+    caption: 'caption',
+    emoji: '✦',
+    channelId: '@woowayoung',
+    channelName: '@woowayoung',
+    channelUrl: 'https://www.youtube.com/@woowayoung'
+  });
 
   assert.match(html, /vv-moment-channel/);
   assert.match(html, /from <a/);
@@ -90,16 +96,12 @@ test('visitor moment panel renders safe channel link for selected public moment'
 
 test('visitor moment panel does not render stale channel link without channel metadata', () => {
   const context = createPanelContext();
-  const html = context.window.LoveBudVisitorViewerPanels.renderPanel({
-    activePanel: 'moment',
-    selectedMoment: {
-      id: 'moment-2',
-      title: 'No Channel Mem',
-      caption: 'caption',
-      emoji: '✦'
-    },
-    panelBranch: { id: 'main', name: 'Main', color: 'rose' }
-  }, {});
+  const html = renderMomentPanelHtml(context, {
+    id: 'moment-2',
+    title: 'No Channel Mem',
+    caption: 'caption',
+    emoji: '✦'
+  });
 
   assert.doesNotMatch(html, /vv-moment-channel/);
   assert.doesNotMatch(html, /@woowayoung/);
@@ -107,19 +109,15 @@ test('visitor moment panel does not render stale channel link without channel me
 
 test('visitor moment panel escapes channel label and rejects unsafe explicit URL', () => {
   const context = createPanelContext();
-  const html = context.window.LoveBudVisitorViewerPanels.renderPanel({
-    activePanel: 'moment',
-    selectedMoment: {
-      id: 'moment-3',
-      title: 'Unsafe Channel Mem',
-      caption: 'caption',
-      emoji: '✦',
-      channelId: '@woowayoung',
-      channelName: '<img src=x onerror=alert(1)>',
-      channelUrl: 'javascript:alert(1)'
-    },
-    panelBranch: { id: 'main', name: 'Main', color: 'rose' }
-  }, {});
+  const html = renderMomentPanelHtml(context, {
+    id: 'moment-3',
+    title: 'Unsafe Channel Mem',
+    caption: 'caption',
+    emoji: '✦',
+    channelId: '@woowayoung',
+    channelName: '<img src=x onerror=alert(1)>',
+    channelUrl: 'javascript:alert(1)'
+  });
 
   assert.match(html, /href="https:\/\/www\.youtube\.com\/@woowayoung"/);
   assert.match(html, /&lt;img src=x onerror=alert\(1\)&gt;/);
