@@ -62,77 +62,9 @@
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;')
-            .replace(/\"/g, '&quot;')
+            .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
     }
-
-    function normalizeYouTubeHost(hostname) {
-        return String(hostname || '')
-            .trim()
-            .toLowerCase()
-            .replace(/^www\./, '')
-            .replace(/^m\./, '');
-    }
-
-    function isSafeYouTubeChannelPath(pathname) {
-        const path = String(pathname || '').trim();
-        return /^\/@[0-9A-Za-z._-]{3,100}$/.test(path) ||
-            /^\/channel\/UC[0-9A-Za-z_-]{10,100}$/.test(path);
-    }
-
-    function sanitizeYouTubeChannelUrl(url) {
-        if (!url || typeof url !== 'string') return '';
-        try {
-            const parsed = new URL(url.trim());
-            const host = normalizeYouTubeHost(parsed.hostname);
-            if (parsed.protocol !== 'https:' || host !== 'youtube.com') return '';
-            if (!isSafeYouTubeChannelPath(parsed.pathname)) return '';
-            parsed.hostname = 'www.youtube.com';
-            parsed.search = '';
-            parsed.hash = '';
-            return parsed.toString();
-        } catch (e) {
-            return '';
-        }
-    }
-
-    function buildChannelUrlFromId(channelId) {
-        const id = String(channelId || '').trim();
-        if (/^@[0-9A-Za-z._-]{3,100}$/.test(id)) {
-            return `https://www.youtube.com/${id}`;
-        }
-        if (/^UC[0-9A-Za-z_-]{10,100}$/.test(id)) {
-            return `https://www.youtube.com/channel/${id}`;
-        }
-        return '';
-    }
-
-    function resolveChannelLabel(memory) {
-        return String(memory?.channelName || memory?.channelId || '').trim();
-    }
-
-    function resolveSafeChannelUrl(memory) {
-        const explicitUrl = sanitizeYouTubeChannelUrl(memory?.channelUrl || '');
-        if (explicitUrl) return explicitUrl;
-        return sanitizeYouTubeChannelUrl(buildChannelUrlFromId(memory?.channelId || ''));
-    }
-
-    function buildChannelMetaHtml(memory) {
-        const label = resolveChannelLabel(memory);
-        const safeUrl = resolveSafeChannelUrl(memory);
-        if (!label || !safeUrl) return '';
-        return '<span class="viewer-meta-item viewer-channel-meta">from <a class="viewer-channel-link" href="' +
-            escapeHtml(safeUrl) +
-            '" target="_blank" rel="noopener noreferrer">' +
-            escapeHtml(label) +
-            '</a></span>';
-    }
-
-    window.LoveBudPublicViewerChannelLink = {
-        sanitizeYouTubeChannelUrl,
-        buildChannelUrlFromId,
-        buildChannelMetaHtml
-    };
 
     // getCurrentLocale
     function getCurrentLocale() {
@@ -415,16 +347,14 @@
                 .join('');
         }
 
-        // Meta: date/location/channel
+        // Meta: date/location
         const metaContainer = resolveElement(SEL.momentMeta);
         if (metaContainer) {
             const dateStr = formatMemoryDate(memory);
             const location = memory.location || '';
-            const channelMetaHtml = buildChannelMetaHtml(memory);
             metaContainer.innerHTML = `
                 <span class="viewer-meta-item">${escapeHtml(dateStr)}</span>
                 ${location ? `<span class="viewer-meta-divider">•</span><span class="viewer-meta-item">${escapeHtml(location)}</span>` : ''}
-                ${channelMetaHtml ? `<span class="viewer-meta-divider">•</span>${channelMetaHtml}` : ''}
             `;
         }
 
