@@ -90,6 +90,22 @@
                 </div>
             </div>
             <svg class="canvas-svg" id="canvasSvg"></svg>
+
+            <div id="editorFloatingToolbar" class="editor-floating-toolbar is-hidden" role="toolbar" aria-label="선택한 순간 도구" style="display:none;">
+                <button type="button" class="editor-floating-toolbar-btn" id="ftbEditBtn" aria-label="순간 수정" title="순간 수정">
+                    <span class="material-symbols-outlined" aria-hidden="true">edit</span>
+                    <span class="editor-floating-toolbar-label">순간 수정</span>
+                </button>
+                <button type="button" class="editor-floating-toolbar-btn" id="ftbContinueBtn" aria-label="이어가기" title="이어가기">
+                    <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+                    <span class="editor-floating-toolbar-label">이어가기</span>
+                </button>
+                <button type="button" class="editor-floating-toolbar-btn" id="ftbViewBtn" aria-label="감상하기" title="감상하기">
+                    <span class="material-symbols-outlined" aria-hidden="true">visibility</span>
+                    <span class="editor-floating-toolbar-label">감상하기</span>
+                </button>
+            </div>
+
                         <div id="canvasEmptyGuide" class="editor-canvas-empty-guide editor-canvas-empty-guide-hidden" aria-live="polite">
                 <div class="editor-canvas-empty-guide__icon" id="canvasEmptyGuideIcon" aria-hidden="true">🌱</div>
                 <div class="editor-canvas-empty-guide__eyebrow" id="canvasEmptyGuideEyebrow">시작하기</div>
@@ -292,6 +308,7 @@
     <script src="../js/editor/editor-canvas-edges.js?v=20260502-1"></script>
     <script src="../js/editor/editor-canvas-state-boundary.js?v=20260503-1"></script>
     <script src="../js/editor/editor-canvas-growth-affordance.js?v=20260503-1"></script>
+    <script src="../js/editor/editor-floating-toolbar.js?v=20260517-1"></script>
     <script src="../js/editor/editor-canvas-geometry.js?v=20260502-1"></script>
     <script src="../js/editor/editor-canvas.js?v=20260507-655"></script>
     <script src="../js/editor/editor-rename-ui.js?v=20260422-2"></script>
