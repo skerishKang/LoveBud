@@ -42,6 +42,35 @@
         };
     }
 
+    function normalizeChannelMetadata(raw) {
+        if (!raw || typeof raw !== 'object') return null;
+        const channelName = String(raw.channelName || '').trim();
+        const channelUrl = String(raw.channelUrl || '').trim();
+        if (!channelName || !channelUrl) return null;
+        return {
+            channelId: raw.channelId || null,
+            channelName,
+            channelUrl
+        };
+    }
+
+    function createYouTubeApi() {
+        return {
+            getYouTubeOEmbedChannel: async (url) => {
+                const rawUrl = String(url || '').trim();
+                if (!rawUrl) return null;
+                try {
+                    const result = await BaseApiFetch.apiFetch(`/youtube/oembed?url=${encodeURIComponent(rawUrl)}`, {
+                        publicRead: true
+                    });
+                    return normalizeChannelMetadata(result);
+                } catch (e) {
+                    return null;
+                }
+            }
+        };
+    }
+
     function enrichBrowseSummaryTree(rawTree, fallbackTree) {
         const tree = (fallbackTree && typeof fallbackTree === 'object') ? { ...fallbackTree } : {};
         const source = rawTree?.data || rawTree || {};
@@ -177,12 +206,14 @@
     const memoryApi = createMemoryApi();
     const communityApi = createCommunityApi();
     const browseApi = createBrowseApi(communityApi);
+    const youtubeApi = createYouTubeApi();
 
     const apiClient = mergeApiGroupsWithCollisionWarning([
         { name: 'treeApi', api: treeApi },
         { name: 'memoryApi', api: memoryApi },
         { name: 'communityApi', api: communityApi },
-        { name: 'browseApi', api: browseApi }
+        { name: 'browseApi', api: browseApi },
+        { name: 'youtubeApi', api: youtubeApi }
     ]);
 
     window.apiClient = apiClient;
@@ -197,6 +228,7 @@
             getRecordTreeId: PublicTreeAdapter?.getRecordTreeId,
             normalizeBrowseTreeRecord: PublicTreeAdapter?.normalizeBrowseTreeRecord,
             normalizeBrowseMemoryRecord: PublicTreeAdapter?.normalizeBrowseMemoryRecord,
+            normalizeChannelMetadata,
         };
     }
 })();
