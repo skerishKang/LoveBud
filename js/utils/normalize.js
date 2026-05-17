@@ -42,6 +42,9 @@
             sourceUrl: mem.sourceUrl || mem.source_url || '',
             sourceType: mem.sourceType || mem.source_type || 'youtube',
             emotionTags: mem.emotionTags || mem.emotion_tags || [],
+            channelId: mem.channelId || mem.channel_id || null,
+            channelName: mem.channelName || mem.channel_name || null,
+            channelUrl: mem.channelUrl || mem.channel_url || null,
             createdAt: mem.createdAt || mem.created_at || null,
             updatedAt: mem.updatedAt || mem.updated_at || null,
             // Editor-specific fields (optional, undefined if not present)
