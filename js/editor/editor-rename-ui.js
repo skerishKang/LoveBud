@@ -53,30 +53,13 @@ function bindEditorRenameButton(buttonEl) {
     });
 }
 
-function enhanceEditorSidebarHint() {
-    const i18n = getEditorRenameI18n();
-    const legacyButton = document.getElementById('renameTreeSidebarBtn');
-    const hintEl = document.getElementById('sidebarSelectionHint');
-
-    if (legacyButton) {
-        legacyButton.remove();
-    }
-
-    if (!hintEl) return;
-
-    const baseHint = hintEl.dataset.baseHintText || hintEl.textContent || (i18n('sidebar_first_moment_hint') || '첫 순간을 추가해 트리를 시작해 보세요.');
-    hintEl.dataset.baseHintText = baseHint;
-}
-
 function injectEditorRenameButton() {
     bindEditorRenameButton(document.getElementById('renameTreeBtn'));
     bindEditorRenameButton(document.getElementById('sidebarTitleEditBtn'));
-    enhanceEditorSidebarHint();
 }
 
 window.syncEditorTreeTitle = syncEditorTreeTitle;
 window.bindEditorRenameButton = bindEditorRenameButton;
-window.enhanceEditorSidebarHint = enhanceEditorSidebarHint;
 window.injectEditorRenameButton = injectEditorRenameButton;
 
 document.addEventListener('DOMContentLoaded', injectEditorRenameButton);
