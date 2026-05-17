@@ -66,11 +66,13 @@ def create_owner_memory(owner_id: str, payload: dict[str, Any]) -> dict[str, Any
         INSERT INTO memories (
             id, tree_id, parent_id, title, memo, artist, source, source_url,
             source_type, thumbnail, emotion_tags, timestamp, visibility,
+            channel_id, channel_name, channel_url,
             created_at, updated_at
         )
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
         RETURNING id, tree_id, parent_id, title, memo, artist, source, source_url,
                   source_type, thumbnail, emotion_tags, timestamp, visibility,
+                  channel_id, channel_name, channel_url,
                   created_at, updated_at;
     """
     params = (
@@ -87,6 +89,9 @@ def create_owner_memory(owner_id: str, payload: dict[str, Any]) -> dict[str, Any
         json.dumps([str(tag).strip() for tag in emotion_tags if str(tag).strip()]),
         validate_optional_string(payload.get("timestamp"), 100),
         visibility,
+        validate_optional_string(payload.get("channelId"), 100) or None,
+        validate_optional_string(payload.get("channelName"), 200) or None,
+        validate_optional_string(payload.get("channelUrl"), 1000) or None,
     )
 
     with get_db_connection() as conn:
@@ -127,6 +132,7 @@ def fetch_memory_for_owner_check(memory_id: str) -> dict[str, Any] | None:
     query = """
         SELECT m.id, m.tree_id, m.parent_id, m.title, m.memo, m.artist, m.source, m.source_url,
                m.source_type, m.thumbnail, m.emotion_tags, m.timestamp, m.visibility,
+               m.channel_id, m.channel_name, m.channel_url,
                m.created_at, m.updated_at, t.owner_id AS tree_owner_id
         FROM memories m
         INNER JOIN trees t
@@ -263,6 +269,18 @@ def update_owner_memory(owner_id: str, memory_id: str, payload: dict[str, Any]) 
         updates.append("visibility = %s")
         params.append(visibility)
 
+    if "channelId" in payload:
+        updates.append("channel_id = %s")
+        params.append(validate_optional_string(payload.get("channelId"), 100) or None)
+
+    if "channelName" in payload:
+        updates.append("channel_name = %s")
+        params.append(validate_optional_string(payload.get("channelName"), 200) or None)
+
+    if "channelUrl" in payload:
+        updates.append("channel_url = %s")
+        params.append(validate_optional_string(payload.get("channelUrl"), 1000) or None)
+
     if not updates:
         memory = require_memory_owner(safe_memory_id, owner_id)
         return normalize_memory_row(memory)
@@ -279,6 +297,7 @@ def update_owner_memory(owner_id: str, memory_id: str, payload: dict[str, Any]) 
           )
         RETURNING id, tree_id, parent_id, title, memo, artist, source, source_url,
                   source_type, thumbnail, emotion_tags, timestamp, visibility,
+                  channel_id, channel_name, channel_url,
                   created_at, updated_at;
     """
 
@@ -379,7 +398,7 @@ def fork_public_tree(owner_id: str, source_tree_id: str) -> dict[str, Any]:
     # Fetch public memories from source tree
     fetch_source_memories_query = """
         SELECT id, parent_id, title, memo, artist, source, source_url, source_type,
-               thumbnail, emotion_tags, timestamp
+               thumbnail, emotion_tags, timestamp, channel_id, channel_name, channel_url
         FROM memories
         WHERE tree_id = %s
           AND visibility = 'public'
@@ -391,9 +410,10 @@ def fork_public_tree(owner_id: str, source_tree_id: str) -> dict[str, Any]:
         INSERT INTO memories (
             id, tree_id, parent_id, title, memo, artist, source, source_url,
             source_type, thumbnail, emotion_tags, timestamp, visibility,
+            channel_id, channel_name, channel_url,
             created_at, updated_at
         )
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'public', NOW(), NOW());
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'public', %s, %s, %s, NOW(), NOW());
     """
 
     with get_db_connection() as conn:
@@ -431,6 +451,9 @@ def fork_public_tree(owner_id: str, source_tree_id: str) -> dict[str, Any]:
                         mem["thumbnail"],
                         mem["emotion_tags"],
                         mem["timestamp"],
+                        mem.get("channel_id") or None,
+                        mem.get("channel_name") or None,
+                        mem.get("channel_url") or None,
                     ),
                 )
         conn.commit()
