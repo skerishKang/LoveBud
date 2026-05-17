@@ -19,8 +19,14 @@
         return {
             ok: true,
             embedUrl: `https://www.youtube.com/embed/${videoId}`,
-            thumbnailUrl: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`
+            thumbnailUrl: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
+            channelInfo: null
         };
+    }
+
+    function resolveChannelInfo(rawUrl, media) {
+        if (!rawUrl || !media || typeof media.extractYouTubeChannelInfo !== 'function') return null;
+        return media.extractYouTubeChannelInfo(rawUrl);
     }
 
     function buildMediaSource(options) {
@@ -37,7 +43,8 @@
                 embedUrl: '',
                 thumbnailUrl: '',
                 sourceType: 'other',
-                sourceLabel: ''
+                sourceLabel: '',
+                channelInfo: null
             };
         }
 
@@ -89,7 +96,8 @@
             embedUrl,
             thumbnailUrl: media.getThumbnailUrl(rawUrl, 'youtube', 'mqdefault'),
             sourceType: 'youtube',
-            sourceLabel: 'YouTube'
+            sourceLabel: 'YouTube',
+            channelInfo: resolveChannelInfo(rawUrl, media)
         };
     }
 
@@ -142,22 +150,31 @@
             ? window.LoveBudEditorUtils.getCanonicalRootId(memories)
             : getCanonicalRootId();
 
+        const channelInfo = mediaSource.channelInfo || null;
+        const data = {
+            treeId,
+            title: titleValue || '',
+            memo: memoValue || '',
+            timestamp: todayDateString(),
+            sourceUrl: mediaSource.embedUrl,
+            sourceType: mediaSource.sourceType,
+            emotionTags: [],
+            parentId: resolveParentIdForCreate(getSelectedNodeId(), freshCanonicalRootId),
+            thumbnail: mediaSource.thumbnailUrl,
+            artist: '',
+            source: mediaSource.sourceLabel,
+            visibility: 'public'
+        };
+
+        if (channelInfo) {
+            data.channelId = channelInfo.channelId || null;
+            data.channelName = channelInfo.channelName || null;
+            data.channelUrl = channelInfo.channelUrl || null;
+        }
+
         return {
             ok: true,
-            data: {
-                treeId,
-                title: titleValue || '',
-                memo: memoValue || '',
-                timestamp: todayDateString(),
-                sourceUrl: mediaSource.embedUrl,
-                sourceType: mediaSource.sourceType,
-                emotionTags: [],
-                parentId: resolveParentIdForCreate(getSelectedNodeId(), freshCanonicalRootId),
-                thumbnail: mediaSource.thumbnailUrl,
-                artist: '',
-                source: mediaSource.sourceLabel,
-                visibility: 'public'
-            }
+            data
         };
     }
 
