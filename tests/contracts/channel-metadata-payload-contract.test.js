@@ -30,7 +30,7 @@ function createPayloadContext(url) {
     refs: {
       urlInput: { value: url },
       titleInput: { value: 'Channel moment' },
-      memoInput: { value: 'Captured from a channel URL' },
+      memoInput: { value: 'Channel metadata test' },
       startTimeInput: { value: '' },
       endTimeInput: { value: '' }
     },
@@ -58,7 +58,7 @@ test('YouTube handle URL populates optional channel fields in memory payload', (
 });
 
 test('YouTube channel ID URL populates channel id and URL without guessing a display name', () => {
-  const result = createPayloadContext('https://youtube.com/channel/UC1234567890abcdefghi/videos/dQw4w9WgXcQ');
+  const result = createPayloadContext('https://youtube.com/channel/UC1234567890abcdefghi/shorts/dQw4w9WgXcQ');
 
   assert.equal(result.ok, true);
   assert.equal(result.data.channelId, 'UC1234567890abcdefghi');
