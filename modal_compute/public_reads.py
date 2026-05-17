@@ -13,6 +13,13 @@ from modal_compute.validation import (
 )
 
 
+def _build_reaction_counts(counts: dict[str, int]) -> dict[str, int]:
+    """Ensure reaction_counts dict includes the total key."""
+    result = dict(counts)
+    result["total"] = sum(counts.values())
+    return result
+
+
 def fetch_latest_public_tree_snapshots(limit: int = 12, sort: str = "latest") -> list[dict[str, Any]]:
     """Fetch the latest public tree snapshots using a robust join-lateral query."""
 
@@ -167,7 +174,15 @@ def fetch_public_memory(memory_id: str) -> dict[str, Any] | None:
 
     row = run_db_with_retry(operation)
 
-    return normalize_memory_row(row) if row else None
+    if not row:
+        return None
+
+    memory = normalize_memory_row(row)
+    # Add reaction counts
+    from modal_compute.reactions import fetch_reaction_counts
+    counts = fetch_reaction_counts(memory_id)
+    memory["reactionCounts"] = _build_reaction_counts(counts)
+    return memory
 
 
 def fetch_public_tree(tree_id: str) -> dict[str, Any] | None:
