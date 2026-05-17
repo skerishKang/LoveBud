@@ -368,8 +368,7 @@
 
 .editor-form-field,
 .editor-form-field-grid,
-.editor-form-stack,
-.editor-form-field-last {
+.editor-form-stack {
     display: flex;
     flex-direction: column;
     gap: 10px;
