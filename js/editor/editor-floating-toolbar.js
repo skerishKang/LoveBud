@@ -1,9 +1,13 @@
 /**
  * LoveBud Editor — Lightweight Floating Toolbar
- * Issue #1150 — First runtime slice
+ * Issue #1150 — Extended: hover affordances, adaptive toolbar, keyboard shortcuts
  *
  * Displays a contextual toolbar near the selected moment node on the canvas.
- * Reuses existing editor actions: edit, continue from moment, view moment detail.
+ * Extended features:
+ *  - Quick-add "+" affordance near selected node on hover
+ *  - Tooltip showing moment info on hover over toolbar buttons
+ *  - Adaptive mini toolbar: connection mode, "..." more button with dropdown
+ *  - Command interaction (keyboard shortcuts): E, C, V, Delete/Backspace
  *
  * No backend/DB/API/Auth/schema changes.
  * No #1166 branch selector / branch_position work.
@@ -17,13 +21,59 @@
   const EDIT_BTN_ID = 'ftbEditBtn';
   const CONTINUE_BTN_ID = 'ftbContinueBtn';
   const VIEW_BTN_ID = 'ftbViewBtn';
+  const MORE_BTN_ID = 'ftbMoreBtn';
+  const QUICK_ADD_ID = 'ftbQuickAdd';
+  const TOOLTIP_ID = 'ftbTooltip';
+  const DROPDOWN_ID = 'ftbDropdown';
+  const BRANCH_BTN_ID = 'ftbBranchBtn';
+  const FORK_BTN_ID = 'ftbForkBtn';
+  const DELETE_ACTION_ID = 'ftbDeleteAction';
+  const SHARE_ACTION_ID = 'ftbShareAction';
+  const FOCUS_ACTION_ID = 'ftbFocusAction';
   const SELECTED_CLASS = 'selected';
   const NODE_SELECTOR = '.memory-node';
   const IS_VISIBLE_CLASS = 'is-visible';
   const IS_HIDDEN_CLASS = 'is-hidden';
+  const IS_CONNECTING_CLASS = 'is-connecting';
   const COMPACT_CLASS = 'is-compact';
   const MOBILE_BREAKPOINT = 480;
   const POSITION_POLL_INTERVAL = 160;
+  const QUICK_ADD_OFFSET = 12;
+  const AFFORDANCE_SELECTOR = '.memory-add-affordance';
+
+  /**
+   * Check if connection mode is active (user is in a "continue" or "branch" flow).
+   * Detected by presence of growth affordance elements on the canvas.
+   */
+  function isConnectionMode() {
+    var canvas = document.getElementById('canvasArea');
+    if (!canvas) return false;
+    // Connection mode is active when the growth affordance tip or branch lines exist
+    var affordance = canvas.querySelector(AFFORDANCE_SELECTOR);
+    return !!affordance;
+  }
+
+  /**
+   * Resolves the memory object by the selected node element.
+   * Falls back to reading the node's data-memory-id and looking up in global state.
+   */
+  function getSelectedMemory() {
+    var selectedEl = getSelectedNodeEl();
+    if (!selectedEl) return null;
+    var memoryId = selectedEl.dataset.memoryId;
+    if (!memoryId) return null;
+    // Try global editor state
+    if (window.currentTreeMemories && Array.isArray(window.currentTreeMemories)) {
+      return window.currentTreeMemories.find(function (m) {
+        return m.id === memoryId;
+      }) || null;
+    }
+    // Fallback: return minimal info from the node element
+    return {
+      id: memoryId,
+      title: selectedEl.querySelector('.node-title')?.textContent || selectedEl.getAttribute('aria-label') || ''
+    };
+  }
 
   /**
    * Initialize the floating toolbar.
@@ -36,12 +86,24 @@
     var editBtn = document.getElementById(EDIT_BTN_ID);
     var continueBtn = document.getElementById(CONTINUE_BTN_ID);
     var viewBtn = document.getElementById(VIEW_BTN_ID);
+    var moreBtn = document.getElementById(MORE_BTN_ID);
+    var quickAdd = document.getElementById(QUICK_ADD_ID);
+    var tooltip = document.getElementById(TOOLTIP_ID);
+    var dropdown = document.getElementById(DROPDOWN_ID);
+    var branchBtn = document.getElementById(BRANCH_BTN_ID);
+    var forkBtn = document.getElementById(FORK_BTN_ID);
+    var deleteAction = document.getElementById(DELETE_ACTION_ID);
+    var shareAction = document.getElementById(SHARE_ACTION_ID);
+    var focusAction = document.getElementById(FOCUS_ACTION_ID);
 
     if (!editBtn || !continueBtn || !viewBtn) return;
 
     // Prevent double-init
     if (toolbar.dataset.ftbInitialized === '1') return;
     toolbar.dataset.ftbInitialized = '1';
+
+    // Track keyboard shortcut keyup timeout for visual flash feedback
+    var flashTimer = null;
 
     var activeMemoryId = null;
     var positionTimer = null;
@@ -70,7 +132,6 @@
       if (editMode && editMode.style.display !== 'none' && editMode.style.display !== '') return false;
 
       // Check if compact mode is active on the canvas toolbar
-      // (contract says compact mode hides floating toolbar)
       var canvasToolbar = document.querySelector('.editor-canvas-toolbar');
       if (canvasToolbar && canvasToolbar.classList.contains(COMPACT_CLASS)) return false;
 
@@ -79,7 +140,6 @@
       if (bodyClass.indexOf('layout-structured') !== -1) return false;
 
       // Check tree owner / auth context
-      // The editor only loads for authenticated owners, this is implicit
       var canvasEmptyGuide = document.getElementById('canvasEmptyGuide');
       if (canvasEmptyGuide && !canvasEmptyGuide.classList.contains('editor-canvas-empty-guide-hidden')) return false;
 
@@ -88,7 +148,6 @@
 
     /**
      * Get the selected node's world position and convert to canvas-relative position.
-     * Nodes use position:absolute with left/top in canvas coordinates.
      */
     function getSelectedNodePosition() {
       var selectedEl = getSelectedNodeEl();
@@ -106,7 +165,6 @@
         bottom: top + height,
         width: width,
         height: height,
-        // Center of the node (world position)
         centerX: left + width / 2,
         centerY: top + height / 2
       };
@@ -156,18 +214,15 @@
         y = nodePos.bottom + gap;
         // Re-check horizontal overflow
         if (x + toolbarWidth > canvasWidth - 8) {
-          // Both overflow: anchor to bottom-left
           x = nodePos.left - gap - toolbarWidth;
         }
       }
 
       // Check if toolbar exceeds bottom edge
       if (y + toolbarHeight > canvasHeight - 8) {
-        // Try bottom-right first, then bottom-left
         if (x === preferredX && y !== preferredY) {
           // Already repositioned for top, just clamp
         } else {
-          // Move up if bottom exceeds
           if (y > canvasHeight - toolbarHeight - 8) {
             y = Math.max(8, canvasHeight - toolbarHeight - 8);
           }
@@ -191,13 +246,73 @@
     }
 
     /**
+     * Position the quick-add affordance near the bottom-right of the selected node.
+     */
+    function positionQuickAdd() {
+      if (!quickAdd) return;
+      var nodePos = getSelectedNodePosition();
+      if (!nodePos) return;
+
+      var x = nodePos.right - QUICK_ADD_OFFSET;
+      var y = nodePos.bottom - QUICK_ADD_OFFSET;
+
+      quickAdd.style.left = Math.round(x) + 'px';
+      quickAdd.style.top = Math.round(y) + 'px';
+    }
+
+    /**
+     * Position the tooltip near a given element.
+     */
+    function positionTooltip(targetEl) {
+      if (!tooltip || !targetEl) return;
+      var rect = targetEl.getBoundingClientRect();
+      var tooltipW = tooltip.offsetWidth || 120;
+      var tooltipH = tooltip.offsetHeight || 28;
+
+      // Position above the target element
+      var x = rect.left + rect.width / 2 - tooltipW / 2;
+      var y = rect.top - tooltipH - 8;
+
+      // Keep within viewport
+      var maxX = window.innerWidth - tooltipW - 8;
+      var maxY = window.innerHeight - tooltipH - 8;
+      x = Math.max(8, Math.min(x, maxX));
+      y = Math.max(8, Math.min(y, maxY));
+
+      tooltip.style.left = Math.round(x) + 'px';
+      tooltip.style.top = Math.round(y) + 'px';
+    }
+
+    /**
+     * Position the dropdown below/right of the "..." button.
+     */
+    function positionDropdown() {
+      if (!dropdown || !moreBtn) return;
+      var rect = moreBtn.getBoundingClientRect();
+      var ddW = dropdown.offsetWidth || 180;
+
+      // Align the dropdown's right edge with the more button's right edge
+      var x = rect.right - ddW;
+      var y = rect.bottom + 4;
+
+      // Keep within viewport
+      var maxX = window.innerWidth - ddW - 8;
+      x = Math.max(8, Math.min(x, maxX));
+
+      dropdown.style.left = Math.round(x) + 'px';
+      dropdown.style.top = Math.round(y) + 'px';
+    }
+
+    /**
      * Show the floating toolbar.
      */
     function showToolbar() {
       if (!toolbar) return;
       if (toolbar.classList.contains(IS_VISIBLE_CLASS)) return;
 
-      // Remove hidden class and set visible
+      // Update adaptive state before showing
+      updateAdaptiveState();
+
       toolbar.classList.remove(IS_HIDDEN_CLASS);
       toolbar.style.display = '';
       // Force reflow for transition
@@ -205,6 +320,7 @@
       toolbar.classList.add(IS_VISIBLE_CLASS);
 
       positionToolbar();
+      showQuickAdd();
     }
 
     /**
@@ -220,6 +336,118 @@
 
       lastX = -1;
       lastY = -1;
+
+      // Hide associated affordances
+      hideQuickAdd();
+      hideTooltip();
+      hideDropdown();
+    }
+
+    /**
+     * Show the quick-add affordance near the selected node.
+     */
+    function showQuickAdd() {
+      if (!quickAdd) return;
+      if (quickAdd.classList.contains(IS_VISIBLE_CLASS)) return;
+      if (isConnectionMode()) return; // Don't show during connection mode
+
+      quickAdd.classList.remove(IS_HIDDEN_CLASS);
+      quickAdd.style.display = '';
+      void quickAdd.offsetWidth;
+      quickAdd.classList.add(IS_VISIBLE_CLASS);
+      positionQuickAdd();
+    }
+
+    /**
+     * Hide the quick-add affordance.
+     */
+    function hideQuickAdd() {
+      if (!quickAdd) return;
+      if (!quickAdd.classList.contains(IS_VISIBLE_CLASS)) return;
+      quickAdd.classList.remove(IS_VISIBLE_CLASS);
+      quickAdd.classList.add(IS_HIDDEN_CLASS);
+      quickAdd.style.display = 'none';
+    }
+
+    /**
+     * Show the tooltip with moment info near a target element.
+     */
+    function showTooltip(targetEl, text) {
+      if (!tooltip || !targetEl) return;
+      if (!text) text = '';
+      tooltip.textContent = text;
+      tooltip.classList.remove(IS_HIDDEN_CLASS);
+      tooltip.style.display = '';
+      void tooltip.offsetWidth;
+      tooltip.classList.add(IS_VISIBLE_CLASS);
+      positionTooltip(targetEl);
+    }
+
+    /**
+     * Hide the tooltip.
+     */
+    function hideTooltip() {
+      if (!tooltip) return;
+      tooltip.classList.remove(IS_VISIBLE_CLASS);
+      tooltip.classList.add(IS_HIDDEN_CLASS);
+      tooltip.style.display = 'none';
+    }
+
+    /**
+     * Show the secondary actions dropdown.
+     */
+    function showDropdown() {
+      if (!dropdown || !moreBtn) return;
+      dropdown.classList.remove(IS_HIDDEN_CLASS);
+      dropdown.style.display = '';
+      void dropdown.offsetWidth;
+      dropdown.classList.add(IS_VISIBLE_CLASS);
+      moreBtn.setAttribute('aria-expanded', 'true');
+      positionDropdown();
+    }
+
+    /**
+     * Hide the secondary actions dropdown.
+     */
+    function hideDropdown() {
+      if (!dropdown) return;
+      dropdown.classList.remove(IS_VISIBLE_CLASS);
+      dropdown.classList.add(IS_HIDDEN_CLASS);
+      dropdown.style.display = 'none';
+      if (moreBtn) {
+        moreBtn.setAttribute('aria-expanded', 'false');
+      }
+    }
+
+    /**
+     * Toggle the secondary actions dropdown.
+     */
+    function toggleDropdown(e) {
+      if (e) {
+        e.stopPropagation();
+      }
+      if (dropdown && dropdown.classList.contains(IS_VISIBLE_CLASS)) {
+        hideDropdown();
+      } else {
+        showDropdown();
+      }
+    }
+
+    /**
+     * Update the toolbar's adaptive state based on current mode.
+     * Switches between normal mode (edit/continue/view) and connection mode (branch/fork).
+     */
+    function updateAdaptiveState() {
+      if (!toolbar) return;
+      var connecting = isConnectionMode();
+      toolbar.classList.toggle(IS_CONNECTING_CLASS, connecting);
+
+      // Hide quick add in connection mode
+      if (connecting) {
+        hideQuickAdd();
+      } else if (toolbar.classList.contains(IS_VISIBLE_CLASS)) {
+        showQuickAdd();
+      }
     }
 
     /**
@@ -250,6 +478,9 @@
         positionTimer = null;
         if (toolbar && toolbar.classList.contains(IS_VISIBLE_CLASS)) {
           positionToolbar();
+          if (quickAdd && quickAdd.classList.contains(IS_VISIBLE_CLASS)) {
+            positionQuickAdd();
+          }
         }
       }, POSITION_POLL_INTERVAL);
     }
@@ -268,6 +499,33 @@
     function handleSelectionCleared() {
       activeMemoryId = null;
       hideToolbar();
+    }
+
+    /**
+     * Get the moment title for the selected node (for tooltip display).
+     */
+    function getSelectedMomentTitle() {
+      var mem = getSelectedMemory();
+      if (mem && mem.title) return mem.title;
+      // Fallback: extract title from the node element
+      var selectedEl = getSelectedNodeEl();
+      if (!selectedEl) return '';
+      var titleEl = selectedEl.querySelector('.node-title');
+      if (titleEl && titleEl.textContent) return titleEl.textContent.trim();
+      return '';
+    }
+
+    /**
+     * Flash a toolbar button for visual feedback after keyboard activation.
+     */
+    function flashButton(btn) {
+      if (!btn) return;
+      if (flashTimer) clearTimeout(flashTimer);
+      btn.classList.add('flash-feedback');
+      flashTimer = setTimeout(function () {
+        btn.classList.remove('flash-feedback');
+        flashTimer = null;
+      }, 160);
     }
 
     // ─── Event wiring ─────────────────────────────────────
@@ -296,7 +554,9 @@
     });
 
     // Listen for scroll/pan events on the canvas
-    canvas.addEventListener('wheel', scheduleUpdate, { passive: true });
+    if (canvas) {
+      canvas.addEventListener('wheel', scheduleUpdate, { passive: true });
+    }
 
     // Listen for compact mode toggle changes
     var compactToggleBtn = document.getElementById('compactModeToggleBtn');
@@ -317,7 +577,6 @@
     // Listen for edit mode changes
     var editModeContainer = document.getElementById('detailEditMode');
     if (editModeContainer) {
-      // Use mutation observer for edit mode visibility
       var editObserver = new MutationObserver(function () {
         setTimeout(updateToolbar, 50);
       });
@@ -329,24 +588,20 @@
 
     // ─── Button actions ───────────────────────────────────
 
-    // Edit: trigger detail panel edit mode (reuses existing editor-memory-actions flow)
+    // Edit: trigger detail panel edit mode
     editBtn.addEventListener('click', function (e) {
       e.stopPropagation();
       var selectedEl = getSelectedNodeEl();
       if (!selectedEl) return;
 
-      // Click the existing detail panel edit button
       var editMemoryBtn = document.getElementById('editMemoryBtn');
       if (editMemoryBtn) {
         editMemoryBtn.click();
         return;
       }
 
-      // Fallback: try to trigger edit via memory actions
       if (window.createEditorMemoryActions &&
           typeof window.createEditorMemoryActions === 'function') {
-        // Editor memory actions are already bound; use the edit button click
-        // as the canonical trigger path
         console.warn('[floating-toolbar] editMemoryBtn not found, edit may fail');
       }
     });
@@ -354,14 +609,12 @@
     // Continue: trigger "continue from moment" growth affordance behavior
     continueBtn.addEventListener('click', function (e) {
       e.stopPropagation();
-      // Reuse the existing "continue from moment" button in the detail panel
       var continueBtnDetail = document.getElementById('continueFromMomentBtn');
       if (continueBtnDetail) {
         continueBtnDetail.click();
         return;
       }
 
-      // Fallback: try the addMemoryBtn
       var addMemoryBtn = document.getElementById('addMemoryBtn');
       if (addMemoryBtn) {
         addMemoryBtn.click();
@@ -371,7 +624,6 @@
     // View: trigger moment detail view
     viewBtn.addEventListener('click', function (e) {
       e.stopPropagation();
-      // Reuse the existing "view moment detail" button in the detail panel
       var viewDetailBtn = document.getElementById('viewMomentDetailBtn');
       if (viewDetailBtn) {
         viewDetailBtn.click();
@@ -379,7 +631,237 @@
       }
     });
 
-    // ─── Keyboard ─────────────────────────────────────────
+    // ─── More button / dropdown ────────────────────────────
+
+    if (moreBtn) {
+      moreBtn.addEventListener('click', toggleDropdown);
+    }
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function (e) {
+      if (!dropdown) return;
+      if (dropdown.classList.contains(IS_VISIBLE_CLASS) &&
+          !dropdown.contains(e.target) &&
+          moreBtn && !moreBtn.contains(e.target)) {
+        hideDropdown();
+      }
+    });
+
+    // Secondary action: delete
+    if (deleteAction) {
+      deleteAction.addEventListener('click', function (e) {
+        e.stopPropagation();
+        hideDropdown();
+        // Trigger delete confirmation via the existing delete button
+        var deleteMemoryBtn = document.getElementById('deleteMemoryBtn');
+        if (deleteMemoryBtn) {
+          deleteMemoryBtn.click();
+          return;
+        }
+        // Fallback: find any delete trigger
+        var btn = document.querySelector('[data-action="delete-memory"]');
+        if (btn) btn.click();
+      });
+    }
+
+    // Secondary action: share / copy link
+    if (shareAction) {
+      shareAction.addEventListener('click', function (e) {
+        e.stopPropagation();
+        hideDropdown();
+        var shareBtn = document.getElementById('shareMemoryBtn');
+        if (shareBtn) {
+          shareBtn.click();
+          return;
+        }
+        // Fallback: copy current URL
+        var url = window.location.href;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(url).catch(function () {});
+        }
+        if (window.LoveBudUI && window.LoveBudUI.showToast) {
+          window.LoveBudUI.showToast('링크가 복사되었습니다', 'success', 1800);
+        }
+      });
+    }
+
+    // Secondary action: focus on selected moment
+    if (focusAction) {
+      focusAction.addEventListener('click', function (e) {
+        e.stopPropagation();
+        hideDropdown();
+        var focusBtn = document.getElementById('focusSelectedBtn');
+        if (focusBtn) {
+          focusBtn.click();
+        }
+      });
+    }
+
+    // ─── Branch / connection-mode buttons ──────────────────
+
+    if (branchBtn) {
+      branchBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        // Trigger branch via existing branch button in detail panel
+        var createBranchBtn = document.getElementById('createBranchBtn');
+        if (createBranchBtn) {
+          createBranchBtn.click();
+          return;
+        }
+        // Fallback: assume continue flow
+        var continueBtnDetail = document.getElementById('continueFromMomentBtn');
+        if (continueBtnDetail) {
+          continueBtnDetail.click();
+        }
+      });
+    }
+
+    if (forkBtn) {
+      forkBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        // Fork: similar to branch but might trigger a different flow
+        var createBranchBtn = document.getElementById('createBranchBtn');
+        if (createBranchBtn) {
+          createBranchBtn.click();
+          return;
+        }
+      });
+    }
+
+    // ─── Quick-add affordance ─────────────────────────────
+
+    if (quickAdd) {
+      quickAdd.addEventListener('click', function (e) {
+        e.stopPropagation();
+        hideDropdown();
+        // Quick-add triggers continue from the selected moment
+        var continueBtnDetail = document.getElementById('continueFromMomentBtn');
+        if (continueBtnDetail) {
+          continueBtnDetail.click();
+          return;
+        }
+        var addMemoryBtn = document.getElementById('addMemoryBtn');
+        if (addMemoryBtn) {
+          addMemoryBtn.click();
+        }
+      });
+    }
+
+    // ─── Tooltip on hover over toolbar buttons ─────────────
+
+    var tooltipTimer = null;
+    var tooltipTargets = [editBtn, continueBtn, viewBtn];
+    if (moreBtn) tooltipTargets.push(moreBtn);
+    if (branchBtn) tooltipTargets.push(branchBtn);
+    if (forkBtn) tooltipTargets.push(forkBtn);
+
+    tooltipTargets.forEach(function (btn) {
+      if (!btn) return;
+
+      btn.addEventListener('mouseenter', function () {
+        if (tooltipTimer) {
+          clearTimeout(tooltipTimer);
+          tooltipTimer = null;
+        }
+        // Only show tooltip after a brief hover delay
+        tooltipTimer = setTimeout(function () {
+          tooltipTimer = null;
+          if (!toolbar.classList.contains(IS_VISIBLE_CLASS)) return;
+          var title = getSelectedMomentTitle();
+          if (title) {
+            showTooltip(btn, title);
+          }
+        }, 350);
+      });
+
+      btn.addEventListener('mouseleave', function () {
+        if (tooltipTimer) {
+          clearTimeout(tooltipTimer);
+          tooltipTimer = null;
+        }
+        hideTooltip();
+      });
+
+      btn.addEventListener('focus', function () {
+        var title = getSelectedMomentTitle();
+        if (title) {
+          showTooltip(btn, title);
+        }
+      });
+
+      btn.addEventListener('blur', function () {
+        hideTooltip();
+      });
+    });
+
+    // ─── Keyboard shortcuts ──────────────────────────────────
+
+    // Keyboard shortcuts via document-level keydown listener
+    document.addEventListener('keydown', function (e) {
+      // Only process when toolbar is visible
+      if (!toolbar || !toolbar.classList.contains(IS_VISIBLE_CLASS)) return;
+
+      // Don't process if user is typing in an input field
+      var tag = e.target && e.target.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+      var key = e.key;
+
+      // E → Edit selected moment
+      if (key === 'e' || key === 'E') {
+        if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+          e.preventDefault();
+          e.stopPropagation();
+          flashButton(editBtn);
+          editBtn.click();
+          return;
+        }
+      }
+
+      // C → Continue from selected moment
+      if (key === 'c' || key === 'C') {
+        if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+          e.preventDefault();
+          e.stopPropagation();
+          flashButton(continueBtn);
+          continueBtn.click();
+          return;
+        }
+      }
+
+      // V → View selected moment detail
+      if (key === 'v' || key === 'V') {
+        if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+          e.preventDefault();
+          e.stopPropagation();
+          flashButton(viewBtn);
+          viewBtn.click();
+          return;
+        }
+      }
+
+      // Delete/Backspace → Show delete confirmation
+      if (key === 'Delete' || key === 'Backspace') {
+        e.preventDefault();
+        e.stopPropagation();
+        // Trigger delete via the dropdown action button (which triggers the existing flow)
+        if (deleteAction) {
+          // Flash the more button to indicate where to find the delete
+          if (moreBtn) flashButton(moreBtn);
+          deleteAction.click();
+        } else {
+          var deleteMemoryBtn = document.getElementById('deleteMemoryBtn');
+          if (deleteMemoryBtn) {
+            flashButton(deleteAction);
+            deleteMemoryBtn.click();
+          }
+        }
+        return;
+      }
+    });
+
+    // ─── Toolbar keyboard navigation (existing) ────────────
+
     toolbar.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') {
         // Deselect the current node
@@ -398,38 +880,39 @@
             emptySpot.click();
           }
         }
+        // Also hide dropdown if open
+        hideDropdown();
       }
 
       // Arrow keys: navigate between buttons
       if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
         e.preventDefault();
         var next = e.target.nextElementSibling;
-        if (next && next.classList.contains('editor-floating-toolbar-btn')) {
+        if (next && (next.classList.contains('editor-floating-toolbar-btn') || next.classList.contains('editor-ftb-more-btn'))) {
           next.focus();
         } else {
           // Wrap to first
-          var first = toolbar.querySelector('.editor-floating-toolbar-btn');
+          var first = toolbar.querySelector('.editor-floating-toolbar-btn, .editor-ftb-more-btn');
           if (first) first.focus();
         }
       }
       if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
         e.preventDefault();
         var prev = e.target.previousElementSibling;
-        if (prev && prev.classList.contains('editor-floating-toolbar-btn')) {
+        if (prev && (prev.classList.contains('editor-floating-toolbar-btn') || prev.classList.contains('editor-ftb-more-btn'))) {
           prev.focus();
         } else {
           // Wrap to last
-          var buttons = toolbar.querySelectorAll('.editor-floating-toolbar-btn');
+          var buttons = toolbar.querySelectorAll('.editor-floating-toolbar-btn, .editor-ftb-more-btn');
           if (buttons.length) buttons[buttons.length - 1].focus();
         }
       }
     });
 
     // ─── Initial state ────────────────────────────────────
-    // Start hidden; the mutation observer will activate when a node is selected
     hideToolbar();
 
-    console.log('[floating-toolbar] Initialized (Refs #1150)');
+    console.log('[floating-toolbar] Initialized with hover + adaptive + keyboard (Refs #1150)');
   }
 
   // ─── Auto-init on DOM ready ─────────────────────────────
