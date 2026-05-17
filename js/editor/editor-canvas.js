@@ -255,6 +255,21 @@ function createEditorCanvas(deps) {
         }
     });
 
+    const branchPorts = window.createEditorCanvasBranchPorts({
+        canvas,
+        svg,
+        documentRef: document,
+        calcPosition,
+        openAddMoment,
+        getTreeMemories,
+        getCanonicalRootId,
+        isRootMemory,
+        i18n,
+        constants: {
+            NODE_HALF
+        }
+    });
+
     function isNodeWithinSafeViewport(pos) {
         const metrics = getMetrics();
         const padding = 96;
@@ -314,6 +329,9 @@ function createEditorCanvas(deps) {
             isFirstStep: drawableMemories.length <= 1,
             isStartMoment: mem.parentId === canonicalRootId
         });
+        // Show 8-direction branch ports on the selected/hovered node
+        branchPorts.renderPortsForNode(mem);
+        branchPorts.showPortsForMemory(mem);
     }
 
     function renderAffordanceForHoveredMemory(mem) {
@@ -470,6 +488,7 @@ function createEditorCanvas(deps) {
             hoverAffordanceTimer = null;
         }
         growthAffordance.clearGrowthAffordance();
+        branchPorts.clearPorts();
     }
 
     function openAddMomentFromCanvas() {
@@ -559,12 +578,12 @@ function createEditorCanvas(deps) {
             let selectedMem = selectedNodeId
                 ? treeMemories.find((m) => m.id === selectedNodeId)
                 : createInitialMemory();
-            
+
             // Skip root if found; show first visible child of hidden root instead
             if (!selectedMem || isRootMemory(selectedMem, canonicalRootId)) {
                 selectedMem = findInitialVisibleMemory(drawableMemories, treeMemories, canonicalRootId);
             }
-            
+
             if (selectedMem) {
                 updateDetailPanel(selectedMem);
                 reapplySelection(selectedMem.id);

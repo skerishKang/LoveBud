@@ -5,20 +5,85 @@
             canvasViewport = {}
         } = options || {};
 
+        const NODE_HALF = 54;
+        const CLEARANCE = NODE_HALF * 0.6;
+
         const clearBranches = () => {
             svg.querySelectorAll('.branch-line').forEach((line) => line.remove());
         };
 
-        const drawBranch = (startPos, endPos) => {
+        /**
+         * Compute auto-routing bezier curve between two node centers.
+         * Determines best "exit" direction from each node to create
+         * smooth, non-overlapping branch lines.
+         */
+        function computeAutoRoute(startPos, endPos) {
+            var dx = endPos.x - startPos.x;
+            var dy = endPos.y - startPos.y;
+            var absDx = Math.abs(dx);
+            var absDy = Math.abs(dy);
+
+            // Determine exit direction from source node
+            var srcDirX = 0, srcDirY = 0;
+            if (absDx > absDy) {
+                // Horizontal predominance
+                srcDirX = dx > 0 ? 1 : -1;
+                srcDirY = 0;
+            } else {
+                // Vertical predominance
+                srcDirX = 0;
+                srcDirY = dy > 0 ? 1 : -1;
+            }
+
+            // Determine approach direction to target node
+            var tgtDirX = -srcDirX;
+            var tgtDirY = -srcDirY;
+
+            // Control points: exit from source, approach to target
+            var cp1x = startPos.x + srcDirX * CLEARANCE;
+            var cp1y = startPos.y + srcDirY * CLEARANCE;
+            var cp2x = endPos.x + tgtDirX * CLEARANCE;
+            var cp2y = endPos.y + tgtDirY * CLEARANCE;
+
+            // If nodes are close, use a smoother blend
+            var distance = Math.sqrt(dx * dx + dy * dy);
+            if (distance < NODE_HALF * 3) {
+                cp1x = startPos.x + dx * 0.35;
+                cp1y = startPos.y + dy * 0.35;
+                cp2x = endPos.x - dx * 0.35;
+                cp2y = endPos.y - dy * 0.35;
+            }
+
+            return {
+                d: 'M ' + startPos.x + ',' + startPos.y +
+                    ' C ' + cp1x + ',' + cp1y + ' ' +
+                    cp2x + ',' + cp2y + ' ' +
+                    endPos.x + ',' + endPos.y,
+                cp1x: cp1x, cp1y: cp1y,
+                cp2x: cp2x, cp2y: cp2y
+            };
+        }
+
+        /**
+         * Draw a branch line with auto-routing.
+         * If canvasViewport.drawBranch exists, delegates to it.
+         * Otherwise uses cubic bezier auto-routing.
+         */
+        const drawBranch = (startPos, endPos, routeInfo) => {
             if (typeof canvasViewport.drawBranch === 'function') {
                 canvasViewport.drawBranch(svg, startPos, endPos);
                 return;
             }
 
+            var route;
+            if (routeInfo && routeInfo.d) {
+                route = routeInfo;
+            } else {
+                route = computeAutoRoute(startPos, endPos);
+            }
+
             const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            const cp1x = startPos.x + (endPos.x - startPos.x) / 2;
-            const d = `M ${startPos.x},${startPos.y} Q ${cp1x},${startPos.y} ${endPos.x},${endPos.y}`;
-            path.setAttribute('d', d);
+            path.setAttribute('d', route.d);
             path.setAttribute('class', 'branch-line');
             path.setAttribute('fill', 'none');
             path.setAttribute('stroke', 'var(--secondary)');
