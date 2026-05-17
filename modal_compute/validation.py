@@ -85,6 +85,9 @@ def normalize_memory_row(row: dict[str, Any]) -> dict[str, Any]:
         "emotionTags": normalize_tags(row.get("emotion_tags")),
         "timestamp": row.get("timestamp") or "",
         "visibility": row.get("visibility") or "public",
+        "channelId": row.get("channel_id") or None,
+        "channelName": row.get("channel_name") or None,
+        "channelUrl": row.get("channel_url") or None,
         "createdAt": _to_isoformat(row.get("created_at")),
         "updatedAt": _to_isoformat(row.get("updated_at")),
     }
