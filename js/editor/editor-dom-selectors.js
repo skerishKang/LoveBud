@@ -30,12 +30,6 @@
         sidebarTreeTitle: 'sidebarTreeTitle',
         renameTreeBtn: 'renameTreeBtn',
         sidebarFlowSummary: 'sidebarFlowSummary',
-        sidebarSelectionHint: 'sidebarSelectionHint',
-        sidebarPublicViewerBtn: 'sidebarPublicViewerBtn',
-        sidebarPublicViewerLabel: 'sidebarPublicViewerLabel',
-        sidebarInsightsBtn: 'sidebarInsightsBtn',
-        sidebarInsightsLabel: 'sidebarInsightsLabel',
-        sidebarInsightsBadge: 'sidebarInsightsBadge',
 
         // Add memory section
         addMemoryEyebrow: 'addMemoryEyebrow',
