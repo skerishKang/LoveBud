@@ -89,7 +89,6 @@
 
         // Detail panel
         detailPanel: 'detailPanel',
-        detailMoreBtn: 'detailMoreBtn',
         detailEmptyState: 'detailEmptyState',
         detailEmptyTitle: 'detailEmptyTitle',
         detailEmptyDesc: 'detailEmptyDesc',
