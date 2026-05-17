@@ -66,6 +66,15 @@ from modal_compute.owner_writes import (
     delete_owner_memory,
     fork_public_tree,
 )
+from modal_compute.reactions import (
+    toggle_reaction,
+    fetch_reaction_summary,
+    fetch_reaction_counts,
+)
+from modal_compute.comments import (
+    create_comment,
+    fetch_comments,
+)
 
 
 def _allowed_origins() -> list[str]:
@@ -286,6 +295,54 @@ def delete_private_memory(
 ) -> dict:
     user = require_firebase_user(authorization)
     return delete_owner_memory(user["uid"], memory_id)
+
+
+# ---- Reactions ---------------------------------------------------------------
+
+
+@web_app.post("/modal/private/memories/{memory_id}/reactions")
+async def post_memory_reaction(
+    memory_id: str,
+    request: Request,
+    authorization: str | None = Header(default=None),
+) -> dict:
+    user = require_firebase_user(authorization)
+    payload = await parse_json_body(request)
+    reaction_type = payload.get("type", "")
+    return toggle_reaction(memory_id, user["uid"], reaction_type)
+
+
+@web_app.get("/modal/private/memories/{memory_id}/reactions")
+def get_memory_reactions(
+    memory_id: str,
+    authorization: str | None = Header(default=None),
+) -> dict:
+    user = require_firebase_user(authorization)
+    return fetch_reaction_summary(memory_id, user["uid"])
+
+
+# ---- Comments ----------------------------------------------------------------
+
+
+@web_app.post("/modal/private/memories/{memory_id}/comments")
+async def post_memory_comment(
+    memory_id: str,
+    request: Request,
+    authorization: str | None = Header(default=None),
+) -> dict:
+    user = require_firebase_user(authorization)
+    payload = await parse_json_body(request)
+    body = payload.get("body", "")
+    return create_comment(memory_id, user["uid"], body)
+
+
+@web_app.get("/modal/private/memories/{memory_id}/comments")
+def get_memory_comments(
+    memory_id: str,
+    authorization: str | None = Header(default=None),
+) -> list[dict]:
+    user = require_firebase_user(authorization)
+    return fetch_comments(memory_id)
 
 
 @app.function(
