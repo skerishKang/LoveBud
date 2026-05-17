@@ -23,6 +23,77 @@
         return (match && match[2].length === 11) ? match[2] : null;
     }
 
+    function normalizeYouTubeHost(hostname) {
+        return String(hostname || '')
+            .trim()
+            .toLowerCase()
+            .replace(/^www\./, '')
+            .replace(/^m\./, '');
+    }
+
+    function safeDecodePathSegment(segment) {
+        try {
+            return decodeURIComponent(segment || '').trim();
+        } catch (e) {
+            return String(segment || '').trim();
+        }
+    }
+
+    function normalizeYouTubeChannelUrl(channelId) {
+        if (!channelId) return '';
+        if (String(channelId).startsWith('@')) {
+            return `https://www.youtube.com/${channelId}`;
+        }
+        return `https://www.youtube.com/channel/${channelId}`;
+    }
+
+    /**
+     * YouTube URL에서 채널 식별자를 안전하게 추출한다.
+     *
+     * 네트워크/oEmbed 호출 없이 URL 자체에 드러난 채널 정보만 반환한다.
+     * 예: https://www.youtube.com/@woowayoung/shorts/{videoId}
+     * 예: https://www.youtube.com/channel/UCxxxx
+     *
+     * 일반 watch URL은 채널 정보가 URL에 없으므로 null을 반환한다.
+     * @param {string} url - YouTube URL
+     * @returns {{channelId: string, channelName: string, channelUrl: string}|null}
+     */
+    function extractYouTubeChannelInfo(url) {
+        if (!url || typeof url !== 'string') return null;
+        try {
+            const parsed = new URL(url.trim());
+            const host = normalizeYouTubeHost(parsed.hostname);
+            if (host !== 'youtube.com') return null;
+
+            const segments = parsed.pathname
+                .split('/')
+                .map(safeDecodePathSegment)
+                .filter(Boolean);
+            if (!segments.length) return null;
+
+            const first = segments[0];
+            if (/^@[0-9A-Za-z._-]{3,100}$/.test(first)) {
+                return {
+                    channelId: first,
+                    channelName: first,
+                    channelUrl: normalizeYouTubeChannelUrl(first)
+                };
+            }
+
+            if (first === 'channel' && segments[1] && /^UC[0-9A-Za-z_-]{10,100}$/.test(segments[1])) {
+                const channelId = segments[1];
+                return {
+                    channelId,
+                    channelName: '',
+                    channelUrl: normalizeYouTubeChannelUrl(channelId)
+                };
+            }
+        } catch (e) {
+            return null;
+        }
+        return null;
+    }
+
     /**
      * YouTube 시간 문자열을 초 단위로 변환
      * 지원 예: 83, 83초, 1:23, 01:23, 1m23s, 2h1m3s
@@ -180,6 +251,7 @@
     // 전역 노출
     window.LoveBudMedia = {
         extractYouTubeId,
+        extractYouTubeChannelInfo,
         parseYouTubeTimeToSeconds,
         extractYouTubeStartSeconds,
         formatYouTubeStartTime,
