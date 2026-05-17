@@ -413,20 +413,6 @@ function createEditorDetailUI(deps) {
         }
     };
 
-    const detailMoreBtn = document.getElementById('detailMoreBtn');
-    if (detailMoreBtn && detailMoreBtn.dataset.bound !== '1') {
-        detailMoreBtn.dataset.bound = '1';
-        detailMoreBtn.addEventListener('click', () => {
-            if (typeof openCurrentMomentDetail === 'function') {
-                openCurrentMomentDetail();
-                return;
-            }
-            if (typeof focusSelectedMoment === 'function') {
-                focusSelectedMoment();
-            }
-        });
-    }
-
     /* #1035: Wire up selected moment action buttons */
     const viewMomentDetailBtn = document.getElementById('viewMomentDetailBtn');
     if (viewMomentDetailBtn && viewMomentDetailBtn.dataset.bound !== '1') {
