@@ -95,6 +95,50 @@
     display: none !important;
 }
 
+/* Branch port handles — 8-direction connection points on node edges */
+.branch-port-handle {
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+}
+.branch-port-handle:focus-visible {
+    outline: 2px solid rgba(144, 73, 81, 0.5);
+    outline-offset: 2px;
+}
+.branch-port-handle::-moz-focus-inner {
+    border: 0;
+}
+
+/* Connection point dot decoration (pseudo-element ring) */
+.branch-port-handle::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(144, 73, 81, 0.35);
+    transition: background 0.12s ease, transform 0.12s ease;
+    pointer-events: none;
+}
+.branch-port-handle:hover::before {
+    background: rgba(255, 255, 255, 0.9);
+    transform: translate(-50%, -50%) scale(1.4);
+}
+
+/* Hide the + icon text on small port handles by default,
+   only show dot decoration, but show + on hover */
+.branch-port-handle span {
+    display: none !important;
+}
+.branch-port-handle:hover span {
+    display: flex !important;
+}
+.branch-port-handle:hover::before {
+    display: none !important;
+}
+
 .editor-canvas-empty-guide {
     position: absolute;
     left: 50%;
