@@ -51,7 +51,6 @@ window.LoveBudEditorShellHelpers = {
         setText('addMemoryEyebrow', 'editor_add_memory_eyebrow', '다음 순간 심기');
         setText('addMemoryIntro', 'editor_add_memory_intro', '지금 마음이 머문 다음 장면을 이어 심어 보세요. 첫 순간이라면 여기서 러브트리가 시작됩니다.');
         setText('saveStatusText', 'save_saved', '저장됨');
-        setText('detailMoreBtn', 'editor_open_detail', '상세로 보기');
         setText('detailEmptyStartBtn', 'editor_add_first_memory', '첫 순간 심기');
         setText('canvasEmptyGuideEyebrow', 'editor_canvas_empty_eyebrow', '시작하기');
         setText('canvasEmptyGuideTitle', 'editor_canvas_empty_title', '이 트리의 첫 순간을 기록해볼까요?');
