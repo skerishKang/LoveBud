@@ -13,7 +13,7 @@
 
     function isSafeYouTubeChannelPath(pathname) {
         const path = String(pathname || '').trim();
-        return /^\/[0-9A-Za-z._-]*@[0-9A-Za-z._-]{3,100}$/.test(path) ||
+        return /^\/@[0-9A-Za-z._-]{3,100}$/.test(path) ||
             /^\/channel\/UC[0-9A-Za-z_-]{10,100}$/.test(path);
     }
 
