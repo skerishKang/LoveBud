@@ -1,0 +1,47 @@
+/* Editor Canvas Toolbar CSS - Toolbar Surface */
+
+/* === Main Toolbar === */
+.editor-toolbar {
+  position: fixed;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--toolbar-bg);
+  border-radius: 8px;
+  padding: 8px 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  z-index: 90;
+  display: flex;
+  gap: 8px;
+}
+
+/* === Toolbar Buttons === */
+.toolbar-btn {
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.toolbar-btn:hover {
+  background: var(--button-hover);
+}
+
+.toolbar-btn.active {
+  background: var(--primary);
+  color: white;
+}
+
+/* === Toolbar Groups === */
+.toolbar-group {
+  display: flex;
+  gap: 4px;
+  padding: 0 8px;
+  border-right: 1px solid var(--border-color);
+}
+
+.toolbar-group:last-child {
+  border-right: none;
+}

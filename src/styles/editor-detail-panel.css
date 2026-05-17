@@ -1,0 +1,53 @@
+/* Editor Detail Panel CSS - Extracted Sections */
+
+/* === Base Styles === */
+.editor-detail-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 400px;
+  height: 100vh;
+  background: var(--panel-bg);
+  border-left: 1px solid var(--border-color);
+  z-index: 100;
+  transform: translateX(0);
+  transition: transform 0.3s ease;
+}
+
+.editor-detail-panel.collapsed {
+  transform: translateX(100%);
+}
+
+/* === Header === */
+.editor-detail-header {
+  padding: 16px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* === Content === */
+.editor-detail-content {
+  padding: 16px;
+  overflow-y: auto;
+  height: calc(100vh - 60px);
+}
+
+/* === Form Fields === */
+.editor-field {
+  margin-bottom: 16px;
+}
+
+.editor-field-label {
+  display: block;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.editor-field-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--input-border);
+  border-radius: 4px;
+}
