@@ -401,6 +401,30 @@ function createEditorMemoryForm(deps) {
         setDetailEmptyState(false);
     }
 
+    function shouldEnrichChannelMetadata(payload, rawUrl) {
+        if (!payload || payload.sourceType !== 'youtube') return false;
+        if (!rawUrl) return false;
+        if (payload.channelName && payload.channelUrl) return false;
+        return !!(window.apiClient && typeof window.apiClient.getYouTubeOEmbedChannel === 'function');
+    }
+
+    async function enrichPayloadChannelMetadata(payload, rawUrl) {
+        if (!shouldEnrichChannelMetadata(payload, rawUrl)) return payload;
+        try {
+            const channel = await window.apiClient.getYouTubeOEmbedChannel(rawUrl);
+            if (!channel || !channel.channelName || !channel.channelUrl) return payload;
+            return {
+                ...payload,
+                channelId: payload.channelId || channel.channelId || null,
+                channelName: payload.channelName || channel.channelName,
+                channelUrl: payload.channelUrl || channel.channelUrl
+            };
+        } catch (e) {
+            editorDebugLog('[editor] YouTube channel enrichment skipped:', e?.message || e);
+            return payload;
+        }
+    }
+
     const addMemoryFromForm = async () => {
         if (!payloadHelper || typeof payloadHelper.buildMemoryPayload !== 'function') {
             console.error('[editor] memory form payload helper is not loaded');
@@ -408,6 +432,7 @@ function createEditorMemoryForm(deps) {
             return;
         }
 
+        const rawUrl = refs?.urlInput ? refs.urlInput.value.trim() : '';
         const payloadResult = payloadHelper.buildMemoryPayload({
             refs,
             currentInputMode,
@@ -429,7 +454,8 @@ function createEditorMemoryForm(deps) {
         updateSaveStatus('saving', i18n('save_saving'));
         hideAddMemoryForm();
 
-        const { createdMemory, useApi } = await createMemoryWithFallback(payloadResult.data);
+        const enrichedPayload = await enrichPayloadChannelMetadata(payloadResult.data, rawUrl);
+        const { createdMemory, useApi } = await createMemoryWithFallback(enrichedPayload);
         commitMemoryToTree(createdMemory, useApi);
     };
 
@@ -437,7 +463,8 @@ function createEditorMemoryForm(deps) {
         showAddMemoryForm,
         hideAddMemoryForm,
         addMemoryFromForm,
-        isFormOpen: () => isFormOpen
+        isFormOpen: () => isFormOpen,
+        enrichPayloadChannelMetadata
     };
 }
 
