@@ -72,6 +72,7 @@ def fetch_owner_memories(owner_id: str, tree_id: str | None = None, limit: int =
     query = f"""
         SELECT m.id, m.tree_id, m.parent_id, m.title, m.memo, m.artist, m.source, m.source_url,
                m.source_type, m.thumbnail, m.emotion_tags, m.timestamp, m.visibility,
+               m.channel_id, m.channel_name, m.channel_url,
                m.created_at, m.updated_at
         FROM memories m
         INNER JOIN trees t
