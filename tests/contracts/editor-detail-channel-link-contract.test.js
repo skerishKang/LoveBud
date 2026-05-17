@@ -6,7 +6,7 @@ const vm = require('node:vm');
 
 const ROOT = path.join(__dirname, '..', '..');
 
-function createDetailChannelContext() {
+function createDetailChannelContext(options = {}) {
   const elements = new Map();
 
   function createElement(tagName) {
@@ -61,9 +61,9 @@ function createDetailChannelContext() {
   const context = {
     URL,
     window: {
-      createEditorDetailUI: () => ({
+      createEditorDetailUI: options.createEditorDetailUI || (() => ({
         updateDetailPanel: () => {}
-      })
+      }))
     },
     document: {
       createElement,
@@ -100,7 +100,7 @@ test('editor detail channel link renders safe YouTube handle link after title', 
   assert.equal(row.children[2].textContent, '@woowayoung');
 });
 
-test('editor detail channel link does not render unsafe channel URL', () => {
+test('editor detail channel link does not use unsafe explicit channel URL', () => {
   const harness = createDetailChannelContext();
 
   harness.context.window.LoveBudEditorDetailChannelLink.renderDetailChannelLink({
@@ -132,13 +132,12 @@ test('editor detail channel link removes stale row when selected memory lacks ch
 });
 
 test('editor detail channel link patch wraps updateDetailPanel without replacing original behavior', () => {
-  const harness = createDetailChannelContext();
   let originalCalled = false;
-
-  harness.context.window.createEditorDetailUI = () => ({
-    updateDetailPanel: () => { originalCalled = true; }
+  const harness = createDetailChannelContext({
+    createEditorDetailUI: () => ({
+      updateDetailPanel: () => { originalCalled = true; }
+    })
   });
-  vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/editor/editor-detail-channel-link.js'), 'utf8'), harness.context);
 
   const detailUI = harness.context.window.createEditorDetailUI({});
   detailUI.updateDetailPanel({
