@@ -90,6 +90,23 @@
         preview.classList.remove('is-enhanced');
     }
 
+    function resolveChannelPreviewLabel(url, media) {
+        if (!url || !media || typeof media.extractYouTubeChannelInfo !== 'function') return '';
+        const channelInfo = media.extractYouTubeChannelInfo(url);
+        const label = String(channelInfo?.channelName || channelInfo?.channelId || '').trim();
+        if (!label) return '';
+        return `from ${label}`;
+    }
+
+    function buildPreviewHintText(options = {}) {
+        const formatted = options.formatted || '';
+        const channelLabel = options.channelLabel || '';
+        const baseText = formatted
+            ? `${formatted}부터 재생돼요. 제목과 메모를 다듬어 주세요.`
+            : '제목과 메모를 다듬어 주세요.';
+        return channelLabel ? `${channelLabel} · ${baseText}` : baseText;
+    }
+
     function update(options) {
         const {
             currentInputMode,
@@ -132,11 +149,10 @@
         const formatted = typeof time.formatStartTime === 'function'
             ? time.formatStartTime(startSeconds)
             : '';
+        const channelLabel = resolveChannelPreviewLabel(url, media);
 
-        if (refs?.previewHint && formatted) {
-            refs.previewHint.textContent = `${formatted}부터 재생돼요. 제목과 메모를 다듬어 주세요.`;
-        } else if (refs?.previewHint) {
-            refs.previewHint.textContent = '제목과 메모를 다듬어 주세요.';
+        if (refs?.previewHint) {
+            refs.previewHint.textContent = buildPreviewHintText({ formatted, channelLabel });
         }
 
         if (refs?.startTimeHint) {
@@ -147,6 +163,8 @@
     window.LoveBudEditorMemoryFormPreview = {
         applyPreviewStyles,
         hide,
+        resolveChannelPreviewLabel,
+        buildPreviewHintText,
         update
     };
 })();
