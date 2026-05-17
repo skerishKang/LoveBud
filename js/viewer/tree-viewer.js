@@ -78,7 +78,10 @@
             tag: (memory.emotionTags && memory.emotionTags[0]) || '',
             caption: memory.emotionMemo || memory.title || '',
             emoji: '??',
-            t: tValue
+            t: tValue,
+            channelId: memory.channelId || memory.channel_id || '',
+            channelName: memory.channelName || memory.channel_name || '',
+            channelUrl: memory.channelUrl || memory.channel_url || ''
         };
     }
 
@@ -173,14 +176,9 @@
     function buildBranches(memories) {
         // Group moments into a single main branch with computed positions
         var moments = memories.map(function(m, i) {
-            return {
-                id: 'moment-' + i,
-                title: m.title || m.emotionMemo || '',
-                tag: (m.emotionTags && m.emotionTags[0]) || '',
-                caption: m.emotionMemo || m.title || '',
-                emoji: '✦',
-                t: (i + 0.5) / Math.max(memories.length, 1)
-            };
+            var moment = mapBranchMoment(m, i, (i + 0.5) / Math.max(memories.length, 1));
+            moment.emoji = '✦';
+            return moment;
         });
 
         var branch = {
@@ -228,7 +226,7 @@
                 var x3=branch.endX, y3=branch.endY;
                 var mt=1-t;
                 return { x: mt*mt*mt*x0 + 3*mt*mt*t*x1 + 3*mt*t*t*x2 + t*t*t*x3,
-                         y: mt*mt*mt*y0 + 3*mt*mt*t*y1 + 3*mt*t*t*y2 + t*t*t*y3 };
+                         y: mt*mt*mt*y0 + 3*mt*mt*t*y1 + 3*mt*t*t*y2 + t*t*t*x3 };
             },
             tree: {
                 title: (memories[0] && memories[0].treeTitle) || t('viewer.treeTitle', '러브트리', 'LoveTree'),
@@ -304,7 +302,17 @@
                 var results = [];
                 viewerData.branches.forEach(function(branch) {
                     (branch.moments || []).forEach(function(m) {
-                        results.push({ id: m.id, branchId: branch.id, title: m.title, tag: m.tag, caption: m.caption, emoji: m.emoji });
+                        results.push({
+                            id: m.id,
+                            branchId: branch.id,
+                            title: m.title,
+                            tag: m.tag,
+                            caption: m.caption,
+                            emoji: m.emoji,
+                            channelId: m.channelId || '',
+                            channelName: m.channelName || '',
+                            channelUrl: m.channelUrl || ''
+                        });
                     });
                 });
                 return results;
