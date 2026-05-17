@@ -9,12 +9,10 @@
  * - public moments are read from memories.visibility and memories.parent_id
  *
  * Safety:
- * - dry-run is default
+ * - dry-run is default and does not require credentials
  * - no credentials are stored here
- * - owner/operator must provide the runtime owner id through env
+ * - owner/operator must provide runtime environment values only when executing
  */
-
-const { Pool } = require('pg');
 
 const DB_URL = process.env.LOVEBUD_FIXTURE_DB_URL;
 const OWNER_ID = process.env.LOVEBUD_FIXTURE_OWNER_ID;
@@ -38,9 +36,9 @@ const TREE = {
   ]
 };
 
-function validateEnv() {
-  if (!DB_URL) throw new Error('LOVEBUD_FIXTURE_DB_URL is required.');
-  if (!OWNER_ID) throw new Error('LOVEBUD_FIXTURE_OWNER_ID is required.');
+function validateExecutionEnv() {
+  if (!DB_URL) throw new Error('LOVEBUD_FIXTURE_DB_URL is required when execution is enabled.');
+  if (!OWNER_ID) throw new Error('LOVEBUD_FIXTURE_OWNER_ID is required when execution is enabled.');
 }
 
 async function seed(client) {
@@ -123,16 +121,25 @@ async function verify(client) {
   };
 }
 
-async function main() {
-  validateEnv();
+function printPlan() {
   console.log(`Fixture tree: ${TREE.title}`);
   console.log(`Execute: ${EXECUTE ? 'YES' : 'NO'}`);
+  console.log(`Memory count: ${TREE.memories.length}`);
+  console.log('Expected branch groups: root has 2 public children.');
+  console.log(`Route after approved seed: /pages/tree.html?treeId=${TREE.id}`);
+}
+
+async function main() {
+  printPlan();
 
   if (!EXECUTE) {
-    console.log('Dry-run only. Set LOVEBUD_FIXTURE_EXECUTE=true to mutate an approved test DB.');
+    console.log('Dry-run only. No database connection or mutation performed.');
     return;
   }
 
+  validateExecutionEnv();
+
+  const { Pool } = require('pg');
   const pool = new Pool({ connectionString: DB_URL, ssl: { rejectUnauthorized: false } });
   const client = await pool.connect();
   try {
