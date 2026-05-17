@@ -7,6 +7,8 @@
             diaryContent,
             detailArtist,
             detailDate,
+            detailChannel,
+            detailChannelPill,
             detailSubtitle,
             tagsContainer,
             treeContextEl
@@ -35,6 +37,18 @@
         setMetaPillVisibility(detailArtist, memory.artist || '');
         const dateText = (memory.timestamp || '') + (memory.source ? ' · ' + memory.source : '');
         setMetaPillVisibility(detailDate, dateText);
+
+        // Channel link (from YouTube channel metadata)
+        const channelLinkModule = window.LoveBudPublicViewerChannelLink;
+        if (channelLinkModule && detailChannel && detailChannelPill) {
+            const channelHtml = channelLinkModule.buildChannelMetaHtml(memory);
+            if (channelHtml) {
+                detailChannel.innerHTML = channelHtml;
+                detailChannelPill.style.display = '';
+            } else {
+                detailChannelPill.style.display = 'none';
+            }
+        }
         if (detailSubtitle) detailSubtitle.textContent = tText('current_moment_kicker', '지금 감상 중인 순간');
 
         if (tagsContainer) {
