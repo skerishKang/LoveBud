@@ -892,7 +892,8 @@ function createEditorCanvas(deps) {
         setLayoutMode,
         updateAffordance,
         getWorldPosition,
-        get viewportState() { return viewportState; }
+        get viewportState() { return viewportState; },
+        persistStoredPositions
     };
 }
 
