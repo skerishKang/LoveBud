@@ -6,6 +6,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         diaryContent: document.getElementById('diaryContent'),
         detailArtist: document.getElementById('detailArtist'),
         detailDate: document.getElementById('detailDate'),
+        detailChannel: document.getElementById('detailChannel'),
+        detailChannelPill: document.getElementById('detailChannelPill'),
         detailSubtitle: document.getElementById('detailSubtitle'),
         tagsContainer: document.getElementById('tagsContainer'),
         connectedFragments: document.getElementById('connectedFragments'),

@@ -23,6 +23,64 @@
             .replace(/'/g,'&#39;');
     }
 
+    function normalizeYouTubeHost(hostname) {
+        return String(hostname || '')
+            .trim()
+            .toLowerCase()
+            .replace(/^www\./, '')
+            .replace(/^m\./, '');
+    }
+
+    function isSafeYouTubeChannelPath(pathname) {
+        var path = String(pathname || '').trim();
+        return /^\/@[0-9A-Za-z._-]{3,100}$/.test(path) ||
+            /^\/channel\/UC[0-9A-Za-z_-]{10,100}$/.test(path);
+    }
+
+    function sanitizeYouTubeChannelUrl(url) {
+        if (!url || typeof url !== 'string') return '';
+        try {
+            var parsed = new URL(url.trim());
+            var host = normalizeYouTubeHost(parsed.hostname);
+            if (parsed.protocol !== 'https:' || host !== 'youtube.com') return '';
+            if (!isSafeYouTubeChannelPath(parsed.pathname)) return '';
+            parsed.hostname = 'www.youtube.com';
+            parsed.search = '';
+            parsed.hash = '';
+            return parsed.toString();
+        } catch (e) {
+            return '';
+        }
+    }
+
+    function buildChannelUrlFromId(channelId) {
+        var id = String(channelId || '').trim();
+        if (/^@[0-9A-Za-z._-]{3,100}$/.test(id)) {
+            return 'https://www.youtube.com/' + id;
+        }
+        if (/^UC[0-9A-Za-z_-]{10,100}$/.test(id)) {
+            return 'https://www.youtube.com/channel/' + id;
+        }
+        return '';
+    }
+
+    function resolveChannelLabel(moment) {
+        return String(moment && (moment.channelName || moment.channelId) || '').trim();
+    }
+
+    function resolveSafeChannelUrl(moment) {
+        var explicitUrl = sanitizeYouTubeChannelUrl(moment && moment.channelUrl || '');
+        if (explicitUrl) return explicitUrl;
+        return sanitizeYouTubeChannelUrl(buildChannelUrlFromId(moment && moment.channelId || ''));
+    }
+
+    function buildChannelMetaHtml(moment) {
+        var label = resolveChannelLabel(moment);
+        var safeUrl = resolveSafeChannelUrl(moment);
+        if (!label || !safeUrl) return '';
+        return '<p class="vv-moment-channel">from <a class="vv-moment-channel-link" href="' + escape(safeUrl) + '" target="_blank" rel="noopener noreferrer">' + escape(label) + '</a></p>';
+    }
+
     function momentGrad(moment, branch) {
         var pal = getData('palette');
         var p = pal && (pal[branch && branch.color] || pal.rose) || { soft:'#fff1f3', stroke:'#e99aac' };
@@ -88,6 +146,7 @@
         var comments = momentComments[moment.id] || [
             { id: 'mc-empty', author: '@lovetree_viewer', body: '이 장면에 대한 댓글이 이곳에 모입니다.', time: '예시', likes: 0, replies: 0 }
         ];
+        var channelMetaHtml = buildChannelMetaHtml(moment);
         return '<aside class="vv-panel vv-panel-moment">' +
             '<div class="vv-panel-header">' +
             '  <div><p class="vv-panel-eyebrow">Moment detail</p><p class="vv-panel-sub">순간 하나에 대한 media · caption · comments</p></div>' +
@@ -101,6 +160,7 @@
             '    <span class="vv-moment-media-emoji">' + escape(moment.emoji) + '</span></div></div>' +
             '<div class="vv-moment-tags"><span class="vv-moment-tag-branch" style="background:' + (getData('palette') && (getData('palette')[branch.id] || {}).soft || '#fff1f3') + ';color:' + (getData('palette') && (getData('palette')[branch.id] || {}).text || '#be123c') + '">' + escape(branch.name) + '</span>' + (moment.tag ? '<span class="vv-moment-tag-default">' + escape(moment.tag) + '</span>' : '') + '</div>' +
             '<h2 class="vv-moment-title">' + escape(moment.title) + '</h2>' +
+            channelMetaHtml +
             '<p class="vv-moment-caption">' + escape(moment.caption) + '</p>' +
             '<div class="vv-moment-memo"><p class="vv-moment-memo-label">creator memo</p><p class="vv-moment-memo-text">처음으로 이 트리에 꽂아둔, 오래 남은 장면.</p></div>' +
             '<div class="vv-moment-actions">' +
@@ -158,5 +218,9 @@
         return renderEmptyPanel(handlers);
     }
 
-    window.LoveBudVisitorViewerPanels = { renderPanel: renderPanel };
+    window.LoveBudVisitorViewerPanels = {
+        renderPanel: renderPanel,
+        buildChannelMetaHtml: buildChannelMetaHtml,
+        sanitizeYouTubeChannelUrl: sanitizeYouTubeChannelUrl
+    };
 })();
