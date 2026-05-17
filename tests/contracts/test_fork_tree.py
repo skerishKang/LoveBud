@@ -59,6 +59,9 @@ MOCK_SOURCE_MEMORIES = [
         "thumbnail": "https://img.example.com/1.jpg",
         "emotion_tags": json.dumps(["joy"]),
         "timestamp": "1:23",
+        "channel_id": None,
+        "channel_name": None,
+        "channel_url": None,
     },
     {
         "id": str(uuid.uuid4()),
@@ -72,6 +75,9 @@ MOCK_SOURCE_MEMORIES = [
         "thumbnail": None,
         "emotion_tags": json.dumps([]),
         "timestamp": None,
+        "channel_id": None,
+        "channel_name": None,
+        "channel_url": None,
     },
 ]
 

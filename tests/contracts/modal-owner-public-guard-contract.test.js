@@ -67,5 +67,5 @@ test('Modal fork preserves public-only source and copied public memories', () =>
   assert.match(ownerWrites, /AND visibility = 'public'/);
   assert.match(ownerWrites, /id_map/);
   assert.match(ownerWrites, /new_parent_id/);
-  assert.match(ownerWrites, /'public', NOW\(\), NOW\(\)/);
+  assert.match(ownerWrites, /'public', %s, %s, %s, NOW\(\), NOW\(\)/);
 });
