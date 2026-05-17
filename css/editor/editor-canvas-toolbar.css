@@ -418,3 +418,106 @@
         gap: 0;
     }
 }
+
+/**
+ * Floating Editor Toolbar Styles
+ * Issue #1150 — Lightweight floating editor toolbar
+ */
+.editor-floating-toolbar {
+    position: absolute;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 8px;
+    border-radius: 16px;
+    background: rgba(255,250,244,0.92);
+    border: 1px solid rgba(230,207,194,0.78);
+    box-shadow: 0 8px 24px rgba(161,119,96,0.12);
+    backdrop-filter: blur(8px);
+    box-sizing: border-box;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(-4px) scale(0.96);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    white-space: nowrap;
+}
+.editor-floating-toolbar.is-visible {
+    pointer-events: auto;
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+.editor-floating-toolbar.is-hidden {
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(-4px) scale(0.96);
+    transition: opacity 0.18s ease, transform 0.18s ease;
+}
+.editor-floating-toolbar-btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 6px 10px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.8);
+    border: 1px solid rgba(221,198,184,0.4);
+    color: var(--on-surface-soft, #5a4a3e);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+    line-height: 1;
+    flex-shrink: 0;
+}
+.editor-floating-toolbar-btn:hover:not(:disabled),
+.editor-floating-toolbar-btn:focus-visible:not(:disabled) {
+    background: rgba(144,73,81,0.08);
+    border-color: rgba(144,73,81,0.26);
+    color: var(--primary, rgba(144,73,81,0.92));
+}
+.editor-floating-toolbar-btn:active:not(:disabled) {
+    transform: scale(0.94);
+    background: rgba(144,73,81,0.12);
+    border-color: rgba(144,73,81,0.35);
+}
+.editor-floating-toolbar-btn:focus-visible {
+    outline: 2px solid var(--control-focus-ring, rgba(144,73,81,0.32));
+    outline-offset: 2px;
+}
+.editor-floating-toolbar-btn .material-symbols-outlined {
+    font-size: 18px;
+    line-height: 1;
+}
+.editor-floating-toolbar-label {
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+/* Narrow: icon-only, no labels */
+@media (max-width: 1023px) {
+    .editor-floating-toolbar {
+        padding: 5px 6px;
+        gap: 3px;
+    }
+    .editor-floating-toolbar-btn {
+        padding: 6px;
+        min-width: 34px;
+        min-height: 34px;
+    }
+    .editor-floating-toolbar-label {
+        display: none;
+    }
+}
+
+/* Mobile <480px: hidden entirely */
+@media (max-width: 479px) {
+    .editor-floating-toolbar,
+    .editor-floating-toolbar.is-visible,
+    .editor-floating-toolbar.is-hidden {
+        display: none !important;
+    }
+}
