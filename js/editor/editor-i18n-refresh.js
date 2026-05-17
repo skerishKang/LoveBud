@@ -276,16 +276,6 @@
         flowSummaryEl.textContent = tText('sidebar_flow_summary_connected', '{count}개의 순간이 이어진 러브트리예요.').replace('{count}', String(count));
       }
     }
-
-    var selectionHintEl = document.getElementById('sidebarSelectionHint');
-    if (selectionHintEl) {
-      var firstMoment = memories.find(function(m) { return m && m.id !== rootId && m.parentId; });
-      if (firstMoment && firstMoment.title) {
-        selectionHintEl.textContent = tText('sidebar_flow_cue_first_moment', '첫 순간 "{title}"에서 이어진 감정 흐름을 정리하고 있어요.').replace('{title}', firstMoment.title);
-      } else {
-        selectionHintEl.textContent = tText('sidebar_flow_cue_empty', '캔버스에서 순간을 선택하면 오른쪽 패널에서 자세히 볼 수 있어요.');
-      }
-    }
   }
 
   function refreshEditorLanguage() {

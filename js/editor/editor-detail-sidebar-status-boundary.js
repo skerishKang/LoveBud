@@ -8,19 +8,6 @@
             getTreeState
         } = deps;
 
-        const updateEntrypoints = () => {
-            const publicViewerBtn = document.getElementById('sidebarPublicViewerBtn');
-            const insightsBtn = document.getElementById('sidebarInsightsBtn');
-
-            // Hide sidebar action buttons; replaced by tree summary (#1128)
-            if (publicViewerBtn) {
-                publicViewerBtn.style.display = 'none';
-            }
-            if (insightsBtn) {
-                insightsBtn.style.display = 'none';
-            }
-        };
-
         const updateFlowSummary = (treeState) => {
             const flowSummaryEl = document.getElementById('sidebarFlowSummary');
             if (!flowSummaryEl) return;
@@ -48,8 +35,6 @@
 
         const updateSidebarStatus = () => {
             const treeTitleEl = document.getElementById('sidebarTreeTitle');
-            const flowSummaryEl = document.getElementById('sidebarFlowSummary');
-            const hintEl = document.getElementById('sidebarSelectionHint');
             const currentTreeData = getCurrentTreeData();
             const treeState = getTreeState();
 
@@ -59,28 +44,6 @@
 
             // Tree-level summary (replaces moment-selected summary, #1128)
             updateFlowSummary(treeState);
-
-            if (hintEl) {
-                // Tree cue based on first visible moment title
-                const firstMoment = treeState.treeMemories.find(m => m.id !== 'root' && m.parentId);
-                if (firstMoment?.title) {
-                    hintEl.textContent = formatI18nText(
-                        'sidebar_flow_cue_first_moment',
-                        '첫 순간 "{title}"에서 이어진 감정 흐름을 정리하고 있어요.',
-                        { title: firstMoment.title }
-                    );
-                } else {
-                    hintEl.textContent = formatI18nText(
-                        'sidebar_flow_cue_empty',
-                        '캔버스에서 순간을 선택하면 오른쪽 패널에서 자세히 볼 수 있어요.'
-                    );
-                }
-                hintEl.style.fontStyle = 'normal';
-                hintEl.style.color = 'var(--on-surface-variant)';
-            }
-
-            // Update entrypoints (public viewer, insights)
-            updateEntrypoints();
 
             const addMemoryBtnLabel = document.getElementById('addMemoryBtnLabel');
             const addMemoryEyebrow = document.getElementById('addMemoryEyebrow');
