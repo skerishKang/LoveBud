@@ -75,6 +75,18 @@
     }
   }
 
+  function bindButtonOnce(button, bindingKey, handler) {
+    if (!button || typeof handler !== 'function') return false;
+    if (button.dataset[bindingKey] === '1') return false;
+    button.dataset[bindingKey] = '1';
+    button.addEventListener('click', handler);
+    return true;
+  }
+
+  function getDetailButton(id) {
+    return document.getElementById(id);
+  }
+
   function ensureDeleteButtonInCurrentMomentActions(deleteMemoryBtn) {
     // Delete button moved to edit mode — no longer inserted in card view.
     if (deleteMemoryBtn) {
@@ -103,29 +115,52 @@
     if (!editMode) return null;
 
     // Use the existing delete button already in the edit mode HTML
-    var editDeleteBtn = document.getElementById('deleteMemoryBtn');
+    var editDeleteBtn = getDetailButton('deleteMemoryBtn');
     if (!editDeleteBtn || editDeleteBtn.closest('#detailEditMode') !== editMode) return null;
 
-    if (editDeleteBtn.dataset.bound !== '1') {
-      editDeleteBtn.dataset.bound = '1';
-      editDeleteBtn.addEventListener('click', deleteMemory);
-    }
+    bindButtonOnce(editDeleteBtn, 'deleteBound', deleteMemory);
 
     return editDeleteBtn;
   }
 
-  function watchCurrentMemoryViewModeActions(detailPanel, deleteMemoryBtn, deleteMemory) {
+  function bindCurrentDetailActionButtons(options) {
+    var detailPanel = options && options.detailPanel;
+    var enterEditMode = options && options.enterEditMode;
+    var deleteMemory = options && options.deleteMemory;
+    var exitEditMode = options && options.exitEditMode;
+    var saveMemoryEdit = options && options.saveMemoryEdit;
+
+    var editMemoryBtn = getDetailButton('editMemoryBtn');
+    var deleteMemoryBtn = getDetailButton('deleteMemoryBtn');
+    var cancelEditBtn = getDetailButton('cancelEditBtn');
+    var saveEditBtn = getDetailButton('saveEditBtn');
+
+    ensureDeleteButtonInCurrentMomentActions(deleteMemoryBtn);
+    ensureEditModeDeleteButton(deleteMemoryBtn, deleteMemory);
+
+    bindButtonOnce(editMemoryBtn, 'editBound', function(e) {
+      var latestDeleteBtn = getDetailButton('deleteMemoryBtn');
+      hideCurrentMemoryViewModeSecondaryActions(detailPanel, latestDeleteBtn);
+      ensureEditModeDeleteButton(latestDeleteBtn, deleteMemory);
+      enterEditMode(e);
+    });
+
+    bindButtonOnce(deleteMemoryBtn, 'deleteBound', deleteMemory);
+    bindButtonOnce(cancelEditBtn, 'cancelBound', exitEditMode);
+    bindButtonOnce(saveEditBtn, 'saveBound', saveMemoryEdit);
+  }
+
+  function watchCurrentMemoryViewModeActions(options) {
+    var detailPanel = options && options.detailPanel;
     if (!detailPanel || detailPanel.dataset.currentMemoryActionWatchBound === '1') return;
     detailPanel.dataset.currentMemoryActionWatchBound = '1';
 
-    hideCurrentMemoryViewModeSecondaryActions(detailPanel, deleteMemoryBtn);
-    ensureEditModeDeleteButton(deleteMemoryBtn, deleteMemory);
+    bindCurrentDetailActionButtons(options);
 
     if (typeof MutationObserver !== 'function') return;
 
     var observer = new MutationObserver(function() {
-      hideCurrentMemoryViewModeSecondaryActions(detailPanel, deleteMemoryBtn);
-      ensureEditModeDeleteButton(deleteMemoryBtn, deleteMemory);
+      bindCurrentDetailActionButtons(options);
     });
 
     observer.observe(detailPanel, {
@@ -135,36 +170,17 @@
   }
 
   function bindDetailActionButtons(options) {
-    var editMemoryBtn = options && options.editMemoryBtn;
-    var deleteMemoryBtn = options && options.deleteMemoryBtn;
-    var cancelEditBtn = options && options.cancelEditBtn;
-    var saveEditBtn = options && options.saveEditBtn;
-    var enterEditMode = options && options.enterEditMode;
-    var deleteMemory = options && options.deleteMemory;
-    var exitEditMode = options && options.exitEditMode;
-    var saveMemoryEdit = options && options.saveMemoryEdit;
     var detailPanel = document.getElementById('detailPanel');
+    var bindingOptions = {
+      detailPanel: detailPanel,
+      enterEditMode: options && options.enterEditMode,
+      deleteMemory: options && options.deleteMemory,
+      exitEditMode: options && options.exitEditMode,
+      saveMemoryEdit: options && options.saveMemoryEdit
+    };
 
-    ensureDeleteButtonInCurrentMomentActions(deleteMemoryBtn);
-    ensureEditModeDeleteButton(deleteMemoryBtn, deleteMemory);
-    watchCurrentMemoryViewModeActions(detailPanel, deleteMemoryBtn, deleteMemory);
-
-    if (editMemoryBtn && typeof enterEditMode === 'function') {
-      editMemoryBtn.addEventListener('click', function(e) {
-        hideCurrentMemoryViewModeSecondaryActions(detailPanel, deleteMemoryBtn);
-        ensureEditModeDeleteButton(deleteMemoryBtn, deleteMemory);
-        enterEditMode(e);
-      });
-    }
-    if (deleteMemoryBtn && typeof deleteMemory === 'function') {
-      deleteMemoryBtn.addEventListener('click', deleteMemory);
-    }
-    if (cancelEditBtn && typeof exitEditMode === 'function') {
-      cancelEditBtn.addEventListener('click', exitEditMode);
-    }
-    if (saveEditBtn && typeof saveMemoryEdit === 'function') {
-      saveEditBtn.addEventListener('click', saveMemoryEdit);
-    }
+    bindCurrentDetailActionButtons(bindingOptions);
+    watchCurrentMemoryViewModeActions(bindingOptions);
   }
 
   function hideUnimplementedButtons(detailPanel) {
