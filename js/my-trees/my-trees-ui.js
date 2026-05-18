@@ -390,12 +390,32 @@
     };
 
     card.addEventListener('click', function (e) {
+      // Don't hijack clicks on inner interactive elements (buttons, links, menus)
+      if (e.target.closest('.tree-card-open-link, .tree-card-footer a, button, a[href]')) {
+        return;
+      }
+
+      // Mobile <480px: navigate directly to Editor
+      if (window.innerWidth < 480) {
+        window.location.href = openHref;
+        return;
+      }
+
+      // Desktop: existing Hub panel selection behavior
       handleCardSelect();
     });
 
     card.addEventListener('keydown', function (e) {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
+
+        // Mobile <480px: navigate directly to Editor
+        if (window.innerWidth < 480) {
+          window.location.href = openHref;
+          return;
+        }
+
+        // Desktop: existing Hub panel selection behavior
         handleCardSelect();
       }
     });
