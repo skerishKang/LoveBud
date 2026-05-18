@@ -37,18 +37,19 @@ def _table_exists(cur, table_name: str) -> bool:
     return bool(row and row.get("exists"))
 
 
-def _has_legacy_tree_columns(cur) -> bool:
-    """Check if trees table uses legacy column names (name/is_public)."""
+def _table_has_column(cur, table_name: str, column_name: str) -> bool:
+    """Check if a table has a specific column."""
     cur.execute(
         """
         SELECT EXISTS (
             SELECT 1
             FROM information_schema.columns
             WHERE table_schema = 'public'
-              AND table_name = 'trees'
-              AND column_name = 'name'
+              AND table_name = %s
+              AND column_name = %s
         ) AS "exists"
         """,
+        (table_name, column_name),
     )
     row = cur.fetchone()
     return bool(row and row.get("exists"))
@@ -86,27 +87,6 @@ def _legacy_payload_node_to_memory_row(node: dict[str, Any], tree_id: str, row: 
         "updated_at": row.get("updated_at"),
     }
 
-
-def _is_modern_schema(cur) -> bool:
-    """Detect whether the DB uses modern schema (memories table + trees.title)."""
-    has_memories = _table_exists(cur, "memories")
-    if not has_memories:
-        # No memories table at all → legacy
-        return False
-    # Check if trees has title column (modern indicator)
-    cur.execute(
-        """
-        SELECT EXISTS (
-            SELECT 1
-            FROM information_schema.columns
-            WHERE table_schema = 'public'
-              AND table_name = 'trees'
-              AND column_name = 'title'
-        ) AS "exists"
-        """,
-    )
-    row = cur.fetchone()
-    return bool(row and row.get("exists"))
 
 
 def _normalize_legacy_tree_row(row: dict[str, Any], payload: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -312,25 +292,40 @@ def fetch_public_memories(tree_id: str | None = None, limit: int = 100) -> list[
     def operation():
         with get_db_connection() as conn:
             with conn.cursor() as cur:
+                has_title = _table_has_column(cur, "trees", "title")
+                has_visibility = _table_has_column(cur, "trees", "visibility")
+                has_name = _table_has_column(cur, "trees", "name")
+                has_is_public = _table_has_column(cur, "trees", "is_public")
+
+                # Use appropriate column names based on schema
+                if has_title and has_visibility:
+                    tree_cols = "id, title as name, visibility as is_public, payload, created_at, updated_at"
+                    public_filter = "visibility = 'public'"
+                elif has_name and has_is_public:
+                    tree_cols = "id, name, is_public, payload, created_at, updated_at"
+                    public_filter = "is_public = true"
+                else:
+                    return []
+
                 if tree_id:
                     cur.execute(
-                        """
-                        SELECT id, name, is_public, payload, created_at, updated_at
+                        f"""
+                        SELECT {tree_cols}
                         FROM trees
                         WHERE id = %s
-                          AND is_public = true
+                          AND {public_filter}
                         LIMIT 1
                         """,
                         (tree_id,),
                     )
                 else:
                     cur.execute(
-                        """
-                        SELECT id, name, is_public, payload, created_at, updated_at
+                        f"""
+                        SELECT {tree_cols}
                         FROM trees
-                        WHERE is_public = true
+                        WHERE {public_filter}
                         ORDER BY created_at DESC
-                        LIMIT 1
+                        LIMIT 20
                         """,
                     )
                 return cur.fetchall()
@@ -403,11 +398,26 @@ def fetch_public_memory(memory_id: str) -> dict[str, Any] | None:
     def operation():
         with get_db_connection() as conn:
             with conn.cursor() as cur:
+                has_title = _table_has_column(cur, "trees", "title")
+                has_visibility = _table_has_column(cur, "trees", "visibility")
+                has_name = _table_has_column(cur, "trees", "name")
+                has_is_public = _table_has_column(cur, "trees", "is_public")
+
+                # Use appropriate column names based on schema
+                if has_title and has_visibility:
+                    tree_cols = "id, title as name, visibility as is_public, payload, created_at, updated_at"
+                    public_filter = "visibility = 'public'"
+                elif has_name and has_is_public:
+                    tree_cols = "id, name, is_public, payload, created_at, updated_at"
+                    public_filter = "is_public = true"
+                else:
+                    return []
+
                 cur.execute(
-                    """
-                    SELECT id, name, is_public, payload, created_at, updated_at
+                    f"""
+                    SELECT {tree_cols}
                     FROM trees
-                    WHERE is_public = true
+                    WHERE {public_filter}
                     ORDER BY updated_at DESC
                     LIMIT 50
                     """,
@@ -431,58 +441,69 @@ def fetch_public_memory(memory_id: str) -> dict[str, Any] | None:
 def fetch_public_tree(tree_id: str) -> dict[str, Any] | None:
     """Fetch a public tree. Falls back to legacy schema (name/is_public/payload) if modern fails."""
 
-    def try_modern() -> dict[str, Any] | None:
-        """Try the modern tree query."""
-        query = """
-            SELECT t.id, t.title, t.visibility, t.created_at, t.updated_at,
-                   COUNT(m.id)::int AS memory_count
-            FROM trees t
-            LEFT JOIN memories m
-              ON m.tree_id = t.id
-             AND m.visibility = 'public'
-            WHERE t.id = %s
-              AND t.visibility = 'public'
-            GROUP BY t.id, t.title, t.visibility, t.created_at, t.updated_at
-            LIMIT 1;
-        """
-
-        def operation():
-            with get_db_connection() as conn:
-                with conn.cursor() as cur:
-                    if not _table_exists(cur, "memories"):
-                        return None  # Table doesn't exist
-                    cur.execute(query, (tree_id,))
-                    return cur.fetchone()
-
-        row = run_db_with_retry(operation)
-        if row is None:
-            return None
-        # If modern query returned a row but with 0 memory_count and no title, it might be legacy tree
-        # that exists but wasn't caught by modern query
-        return normalize_tree_row(row, row.get("memory_count"), include_owner=False) if row else None
-
-    modern_result = try_modern()
-    if modern_result is not None:
-        return modern_result
-
-    # Legacy fallback
     def operation():
+        """Detect schema, query accordingly, and return raw row."""
         with get_db_connection() as conn:
             with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    SELECT id, name, is_public, payload, created_at, updated_at
-                    FROM trees
-                    WHERE id = %s
-                      AND is_public = true
-                    LIMIT 1;
-                    """,
-                    (tree_id,),
-                )
-                return cur.fetchone()
+                has_memories = _table_exists(cur, "memories")
+                has_title = _table_has_column(cur, "trees", "title")
+                has_name = _table_has_column(cur, "trees", "name")
+
+                if has_memories and has_title:
+                    # Modern path: memories JOIN trees
+                    cur.execute(
+                        """
+                        SELECT t.id, t.title, t.visibility, t.created_at, t.updated_at,
+                               COUNT(m.id)::int AS memory_count
+                        FROM trees t
+                        LEFT JOIN memories m
+                          ON m.tree_id = t.id
+                         AND m.visibility = 'public'
+                        WHERE t.id = %s
+                          AND t.visibility = 'public'
+                        GROUP BY t.id, t.title, t.visibility, t.created_at, t.updated_at
+                        LIMIT 1;
+                        """,
+                        (tree_id,),
+                    )
+                    return cur.fetchone()
+
+                if has_title:
+                    # Modern tree columns + no memories table: query trees directly
+                    cur.execute(
+                        """
+                        SELECT id, title, visibility, created_at, updated_at
+                        FROM trees
+                        WHERE id = %s
+                          AND visibility = 'public'
+                        LIMIT 1;
+                        """,
+                        (tree_id,),
+                    )
+                    return cur.fetchone()
+
+                if has_name:
+                    # Legacy path: name/is_public/payload
+                    cur.execute(
+                        """
+                        SELECT id, name, is_public, payload, created_at, updated_at
+                        FROM trees
+                        WHERE id = %s
+                          AND is_public = true
+                        LIMIT 1;
+                        """,
+                        (tree_id,),
+                    )
+                    return cur.fetchone()
+
+                return None
 
     row = run_db_with_retry(operation)
     if not row:
         return None
 
-    return _normalize_legacy_tree_row(row)
+    # Determine normalizer based on schema: legacy rows have payload/name, modern rows have title
+    if row.get("payload") is not None or row.get("name") is not None:
+        return _normalize_legacy_tree_row(row)
+
+    return normalize_tree_row(row, row.get("memory_count"), include_owner=False)
