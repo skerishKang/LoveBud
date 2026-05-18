@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import uuid
 from typing import Any
 
@@ -25,6 +24,14 @@ from modal_compute.validation import (
     validate_optional_uuid,
     validate_visibility,
 )
+
+
+def _normalize_emotion_tags(value: Any) -> list[str]:
+    emotion_tags = value if isinstance(value, list) else []
+    normalized = [str(tag).strip() for tag in emotion_tags if str(tag).strip()]
+    if len(normalized) > 20:
+        raise HTTPException(status_code=400, detail="emotionTags exceeds maximum of 20 items")
+    return normalized
 
 
 def create_owner_tree(owner_id: str, payload: dict[str, Any]) -> dict[str, Any]:
@@ -60,9 +67,7 @@ def create_owner_memory(owner_id: str, payload: dict[str, Any]) -> dict[str, Any
     if payload.get("parentId"):
         parent_id = validate_required_uuid(payload.get("parentId"), "parentId")
 
-    emotion_tags = payload.get("emotionTags") if isinstance(payload.get("emotionTags"), list) else []
-    if len(emotion_tags) > 20:
-        raise HTTPException(status_code=400, detail="emotionTags exceeds maximum of 20 items")
+    emotion_tags = _normalize_emotion_tags(payload.get("emotionTags"))
 
     query = """
         INSERT INTO memories (
@@ -88,7 +93,7 @@ def create_owner_memory(owner_id: str, payload: dict[str, Any]) -> dict[str, Any
         validate_optional_string(payload.get("sourceUrl"), 1000),
         validate_optional_string(payload.get("sourceType"), 50) or "youtube",
         validate_optional_string(payload.get("thumbnail"), 500),
-        json.dumps([str(tag).strip() for tag in emotion_tags if str(tag).strip()]),
+        emotion_tags,
         validate_optional_string(payload.get("timestamp"), 100),
         visibility,
         validate_optional_string(payload.get("channelId"), 100) or None,
@@ -259,11 +264,9 @@ def update_owner_memory(owner_id: str, memory_id: str, payload: dict[str, Any]) 
         params.append(validate_optional_string(payload.get("thumbnail"), 500))
 
     if "emotionTags" in payload:
-        emotion_tags = payload.get("emotionTags") if isinstance(payload.get("emotionTags"), list) else []
-        if len(emotion_tags) > 20:
-            raise HTTPException(status_code=400, detail="emotionTags exceeds maximum of 20 items")
+        emotion_tags = _normalize_emotion_tags(payload.get("emotionTags"))
         updates.append("emotion_tags = %s")
-        params.append(json.dumps([str(tag).strip() for tag in emotion_tags if str(tag).strip()]))
+        params.append(emotion_tags)
 
     if "visibility" in payload:
         visibility = validate_visibility(payload.get("visibility"), "public")
