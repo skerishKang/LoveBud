@@ -14,6 +14,7 @@ from modal_compute.db import (
 from modal_compute.owner_reads import (
     fetch_owner_tree,
 )
+from modal_compute.owner_users import ensure_owner_user_exists
 from modal_compute.validation import (
     _to_isoformat,
     estimate_stage,
@@ -27,6 +28,7 @@ from modal_compute.validation import (
 
 
 def create_owner_tree(owner_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    ensure_owner_user_exists(owner_id)
     title = validate_optional_string(payload.get("title"), 200) or "My LoveTree"
     visibility = validate_visibility(payload.get("visibility"), "public")
     require_plus_for_private_storage(owner_id, visibility)
@@ -348,6 +350,7 @@ def delete_owner_memory(owner_id: str, memory_id: str) -> dict[str, Any]:
 
 def fork_public_tree(owner_id: str, source_tree_id: str) -> dict[str, Any]:
     """Copy a public LoveTree and its public memories into a new tree owned by owner_id."""
+    ensure_owner_user_exists(owner_id)
     safe_source_id = validate_required_uuid(source_tree_id, "sourceTreeId")
 
     # Fetch source tree — must exist and be public
