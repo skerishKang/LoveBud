@@ -1,4 +1,144 @@
-/* editor-detail-content.css — content display: video, info groups, tags, diary note */
+/**
+ * LoveBud Editor — Detail Panel Content Display Styles
+ * Issue #1279 — CSS split slice 3
+ *
+ * Extracted from editor-detail-panel.css.
+ * Selected moment display/content: cards, video, info groups, tags, diary note, memo heading.
+ */
+
+/* ── Section cards ─────────────────────────────────────── */
+
+.editor-tree-meta-section,
+.editor-current-moment-card,
+.editor-moment-info-card,
+.editor-save-status-card {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+    border-radius: 18px;
+    background: white;
+    border: 1px solid rgba(144, 73, 81, 0.05);
+    box-shadow: 0 4px 12px rgba(75, 64, 57, 0.03);
+}
+
+.editor-tree-meta-section {
+    gap: 8px;
+}
+
+.editor-moment-info-card {
+    background: var(--surface-container-low);
+    border-color: rgba(144,73,81,0.06);
+    box-shadow: none;
+}
+
+.editor-current-moment-card {
+    gap: 9px;
+    background: var(--surface-container-lowest);
+    border: 1px solid rgba(144, 73, 81, 0.12);
+    box-shadow: 0 6px 16px rgba(75, 64, 57, 0.05);
+}
+
+/* ── Section eyebrow ───────────────────────────────────── */
+
+.editor-section-eyebrow {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--on-surface-variant);
+}
+
+/* ── Current moment head ───────────────────────────────── */
+
+.editor-current-moment-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.editor-current-moment-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: rgba(144,73,81,0.10);
+    color: var(--primary);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+}
+
+.editor-current-moment-title {
+    margin: 0;
+    font-size: 1.25rem;
+    line-height: 1.22;
+    font-weight: 900;
+    letter-spacing: -0.03em;
+    color: var(--on-surface);
+}
+
+.editor-current-moment-hint {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--on-surface-variant);
+}
+
+.editor-current-moment-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 0;
+    margin-bottom: 2px;
+}
+
+.editor-current-moment-actions .editor-memory-action-btn {
+    min-height: 36px;
+    padding: 7px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    box-shadow: 0 6px 14px rgba(75,64,57,0.05);
+}
+
+.editor-current-moment-head .editor-moment-edit-chip {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    min-height: 32px;
+    padding: 0 11px;
+    border-radius: 999px;
+    border-color: rgba(197,146,128,0.30);
+    background: rgba(255,255,255,0.78);
+    color: var(--on-surface-soft);
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1;
+    box-shadow: 0 8px 18px rgba(165,124,101,0.08);
+}
+
+.editor-current-moment-head .editor-moment-edit-chip::before {
+    content: 'edit';
+    font-family: 'Material Symbols Outlined';
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1;
+    color: var(--primary);
+    opacity: 0.78;
+}
+
+.editor-current-moment-title .memory-edit-button {
+    display: none !important;
+}
+
+/* ── Detail video ──────────────────────────────────────── */
 
 .detail-video {
     width: 100%;
@@ -16,6 +156,8 @@
     opacity: 0.86;
 }
 
+/* ── Info groups ───────────────────────────────────────── */
+
 .detail-info-group label {
     font-size: 10px;
     font-weight: 800;
@@ -24,6 +166,12 @@
     color: var(--on-surface-note);
     margin-bottom: 7px;
     display: block;
+}
+
+.detail-info-group p {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--on-surface);
 }
 
 .editor-memo-heading-row {
@@ -65,14 +213,8 @@
     background: rgba(144,73,81,0.08);
 }
 
-.detail-info-group p {
-    font-size: 15px;
-    font-weight: 700;
-    color: var(--on-surface);
-}
+/* ── Compact metadata row layout (#1129) ───────────────── */
 
-
-/* Compact metadata row layout (#1129) */
 .detail-info-group.is-compact {
     display: flex;
     flex-direction: row;
@@ -103,6 +245,9 @@
     padding: 2px 10px;
     font-size: 11px;
 }
+
+/* ── Tags ──────────────────────────────────────────────── */
+
 .tags-container {
     display: flex;
     flex-wrap: wrap;
@@ -127,6 +272,8 @@
     border: 1px solid rgba(144, 73, 81, 0.12);
 }
 
+/* ── Diary note ────────────────────────────────────────── */
+
 .diary-note {
     background: var(--surface-container-low);
     padding: 16px 18px;
@@ -137,6 +284,8 @@
     font-size: 0.92rem;
 }
 
+/* ── Empty state ───────────────────────────────────────── */
+
 .editor-empty-state-cta {
     margin-top: 6px;
     align-self: center;
@@ -145,7 +294,19 @@
     font-size: 12px;
 }
 
+/* ── Mobile: Content display responsive overrides ──────── */
+
 @media (max-width: 375px) {
+    .editor-current-moment-head {
+        align-items: flex-start;
+    }
+
+    .editor-current-moment-head .editor-moment-edit-chip {
+        min-height: 30px;
+        padding: 0 10px;
+        font-size: 10.5px;
+    }
+
     .editor-memo-heading-row {
         align-items: flex-start;
     }
