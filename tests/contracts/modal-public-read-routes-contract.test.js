@@ -111,19 +111,21 @@ test('modal public read helpers preserve public visibility filters and normaliza
   assert.ok(hasString(memoriesHelper, "m.visibility = 'public'"));
   assert.ok(hasString(memoriesHelper, "t.visibility = 'public'"));
   assert.ok(hasString(memoriesHelper, 'INNER JOIN trees t'));
-  assert.ok(hasString(memoriesHelper, 'return [normalize_memory_row(row) for row in rows]'));
+  assert.ok(hasString(memoriesHelper, 'normalize_memory_row(row)'));
+  assert.ok(hasString(memoriesHelper, '_legacy_payload_node_to_memory_row'));
 
   const memoryHelper = extractPythonFunction(content, 'fetch_public_memory');
   assert.ok(hasString(memoryHelper, "m.visibility = 'public'"));
   assert.ok(hasString(memoryHelper, "t.visibility = 'public'"));
-  assert.ok(hasString(memoryHelper, 'return None'));
-  assert.ok(hasString(memoryHelper, 'normalize_memory_row(row)'));
+  assert.ok(hasString(memoryHelper, 'normalize_memory_row'));
   assert.ok(hasString(memoryHelper, 'reactionCounts'));
+  assert.ok(hasString(memoryHelper, '_get_legacy_memory_from_payload'));
 
   const treeHelper = extractPythonFunction(content, 'fetch_public_tree');
   assert.ok(hasString(treeHelper, "t.visibility = 'public'"));
   assert.ok(hasString(treeHelper, "m.visibility = 'public'"));
-  assert.ok(hasString(treeHelper, 'return normalize_tree_row(row, row.get("memory_count"), include_owner=False) if row else None'));
+  assert.ok(hasString(treeHelper, 'normalize_tree_row(row, row.get("memory_count"), include_owner=False)'));
+  assert.ok(hasString(treeHelper, '_normalize_legacy_tree_row'));
 });
 
 test('public tree detail helper omits owner identifier from response shape', () => {
