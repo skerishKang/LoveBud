@@ -42,6 +42,15 @@
   const AFFORDANCE_SELECTOR = '.memory-add-affordance';
 
   /**
+   * Find the currently selected memory node element on the canvas.
+   * Kept in outer scope because tooltip helpers run outside initFloatingToolbar's
+   * lexical scope and also need to resolve the selected node.
+   */
+  function getSelectedNodeEl() {
+    return document.querySelector(NODE_SELECTOR + '.' + SELECTED_CLASS);
+  }
+
+  /**
    * Check if connection mode is active (user is in a "continue" or "branch" flow).
    * Detected by presence of growth affordance elements on the canvas.
    */
@@ -109,13 +118,6 @@
     var positionTimer = null;
     var lastX = -1;
     var lastY = -1;
-
-    /**
-     * Find the currently selected memory node element on the canvas.
-     */
-    function getSelectedNodeEl() {
-      return document.querySelector(NODE_SELECTOR + '.' + SELECTED_CLASS);
-    }
 
     /**
      * Check if the floating toolbar should be visible based on contract §4.
