@@ -6,7 +6,13 @@ const vm = require('node:vm');
 
 const ROOT = path.join(__dirname, '..', '..');
 
-function createPayloadContext(url) {
+function createPayloadContext(url, options = {}) {
+  const {
+    titleValue = 'Channel moment',
+    memoValue = 'Channel metadata test',
+    i18n = (key) => key
+  } = options;
+
   const context = {
     console,
     URL,
@@ -29,14 +35,14 @@ function createPayloadContext(url) {
   return context.window.LoveBudEditorMemoryFormPayload.buildMemoryPayload({
     refs: {
       urlInput: { value: url },
-      titleInput: { value: 'Channel moment' },
-      memoInput: { value: 'Channel metadata test' },
+      titleInput: { value: titleValue },
+      memoInput: { value: memoValue },
       startTimeInput: { value: '' },
       endTimeInput: { value: '' }
     },
     currentInputMode: 'link',
     userHasEditedStartTime: false,
-    i18n: (key) => key,
+    i18n,
     treeId: 'tree-1',
     getYouTubeInputErrorMessage: () => 'invalid youtube url',
     getTreeMemories: () => [],
@@ -73,4 +79,20 @@ test('standard YouTube watch URL does not invent channel fields without oEmbed d
   assert.equal(Object.prototype.hasOwnProperty.call(result.data, 'channelId'), false);
   assert.equal(Object.prototype.hasOwnProperty.call(result.data, 'channelName'), false);
   assert.equal(Object.prototype.hasOwnProperty.call(result.data, 'channelUrl'), false);
+});
+
+test('URL-only YouTube payload uses a safe default title when title is empty', () => {
+  const result = createPayloadContext('https://www.youtube.com/watch?v=dQw4w9WgXcQ', {
+    titleValue: '',
+    memoValue: '',
+    i18n: (key) => {
+      if (key === 'editor_url_only_youtube_title') return 'YouTube 순간';
+      if (key === 'editor_url_only_default_title') return '새 순간';
+      return key;
+    }
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.data.title, 'YouTube 순간');
+  assert.equal(result.data.memo, '');
 });
