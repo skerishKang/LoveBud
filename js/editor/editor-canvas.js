@@ -585,9 +585,15 @@ function createEditorCanvas(deps) {
             }
 
             if (selectedMem) {
-                updateDetailPanel(selectedMem);
                 reapplySelection(selectedMem.id);
-                renderAffordanceForMemory(selectedMem);
+
+                const selectedEl = document.querySelector(`.memory-node[data-memory-id="${selectedMem.id}"]`);
+                if (selectedEl && typeof onNodeClick === 'function') {
+                    onNodeClick(selectedEl, selectedMem);
+                } else {
+                    updateDetailPanel(selectedMem);
+                    renderAffordanceForMemory(selectedMem);
+                }
             }
         }
 
