@@ -71,7 +71,6 @@
   line-height: 1;
   text-decoration: none;
   white-space: nowrap;
-  pointer-events: none;
   transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
 }
 
