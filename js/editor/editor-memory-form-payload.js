@@ -101,6 +101,27 @@
         };
     }
 
+    function resolveUrlOnlyDefaultTitle(mediaSource, i18n) {
+        const sourceType = String(mediaSource?.sourceType || '').trim().toLowerCase();
+        const sourceLabel = String(mediaSource?.sourceLabel || '').trim();
+
+        if (sourceType === 'youtube' || /youtube/i.test(sourceLabel)) {
+            return (typeof i18n === 'function' && i18n('editor_url_only_youtube_title')) || 'YouTube 순간';
+        }
+
+        if (sourceLabel) {
+            return sourceLabel + ' 순간';
+        }
+
+        return (typeof i18n === 'function' && i18n('editor_url_only_default_title')) || '새 순간';
+    }
+
+    function resolveMemoryTitle(titleValue, rawUrl, usingLinkMode, mediaSource, i18n) {
+        if (titleValue) return titleValue;
+        if (usingLinkMode && rawUrl) return resolveUrlOnlyDefaultTitle(mediaSource, i18n);
+        return '';
+    }
+
     function buildMemoryPayload(options) {
         const {
             refs,
@@ -144,6 +165,8 @@
         });
         if (!mediaSource.ok) return mediaSource;
 
+        const resolvedTitle = resolveMemoryTitle(titleValue, rawUrl, usingLinkMode, mediaSource, i18n);
+
         const memories = getTreeMemories();
 
         const freshCanonicalRootId = window.LoveBudEditorUtils?.getCanonicalRootId
@@ -153,7 +176,7 @@
         const channelInfo = mediaSource.channelInfo || null;
         const data = {
             treeId,
-            title: titleValue || '',
+            title: resolvedTitle,
             memo: memoValue || '',
             timestamp: todayDateString(),
             sourceUrl: mediaSource.embedUrl,
@@ -180,6 +203,8 @@
 
     window.LoveBudEditorMemoryFormPayload = {
         buildMediaSource,
-        buildMemoryPayload
+        buildMemoryPayload,
+        resolveUrlOnlyDefaultTitle,
+        resolveMemoryTitle
     };
 })();
