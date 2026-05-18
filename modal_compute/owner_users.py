@@ -7,34 +7,52 @@ from fastapi import HTTPException
 from modal_compute.db import get_db_connection, run_db_with_retry
 
 
-_USER_BOOTSTRAP_ALLOWED_COLUMNS = {
+_USER_BOOTSTRAP_INSERT_COLUMNS = {
     "id",
-    "uid",
     "email",
     "created_at",
     "updated_at",
 }
 
 
-def _fetch_users_table_columns(cur: Any) -> set[str]:
+def _fetch_users_table_columns(cur: Any) -> dict[str, dict[str, Any]]:
     cur.execute(
         """
-        SELECT column_name
+        SELECT column_name, is_nullable, column_default
         FROM information_schema.columns
         WHERE table_schema = current_schema()
           AND table_name = 'users';
         """
     )
     rows = cur.fetchall() or []
-    return {
-        str(row.get("column_name") or "").strip()
-        for row in rows
-        if str(row.get("column_name") or "").strip()
-    }
+    columns: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        name = str(row.get("column_name") or "").strip()
+        if not name:
+            continue
+        columns[name] = {
+            "is_nullable": row.get("is_nullable"),
+            "column_default": row.get("column_default"),
+        }
+    return columns
 
 
-def _build_owner_user_upsert_query(columns: set[str], email: str) -> tuple[str, list[Any]] | None:
+def _has_unhandled_required_columns(columns: dict[str, dict[str, Any]]) -> bool:
+    for name, meta in columns.items():
+        if name in _USER_BOOTSTRAP_INSERT_COLUMNS:
+            continue
+        is_nullable = str(meta.get("is_nullable") or "").upper() == "YES"
+        has_default = meta.get("column_default") is not None
+        if not is_nullable and not has_default:
+            return True
+    return False
+
+
+def _build_owner_user_upsert_query(columns: dict[str, dict[str, Any]], email: str) -> tuple[str, list[Any]] | None:
     if "id" not in columns:
+        return None
+
+    if _has_unhandled_required_columns(columns):
         return None
 
     insert_columns: list[str] = ["id"]
@@ -44,6 +62,7 @@ def _build_owner_user_upsert_query(columns: set[str], email: str) -> tuple[str, 
     if "email" in columns:
         insert_columns.append("email")
         value_expressions.append("%s")
+        params.append(email)
 
     if "created_at" in columns:
         insert_columns.append("created_at")
@@ -89,20 +108,11 @@ def ensure_owner_user_exists(uid: str, email: str = "") -> None:
         with get_db_connection() as conn:
             with conn.cursor() as cur:
                 columns = _fetch_users_table_columns(cur)
-                if not columns or "id" not in columns:
-                    return
-
-                unknown_required_columns = columns - _USER_BOOTSTRAP_ALLOWED_COLUMNS
-                if unknown_required_columns:
-                    # Unknown columns are not automatically populated. The upsert below
-                    # still proceeds because columns with defaults or nullable values are safe.
-                    pass
-
                 built = _build_owner_user_upsert_query(columns, safe_email)
                 if not built:
-                    return
+                    raise HTTPException(status_code=500, detail="Owner user bootstrap unavailable")
                 query, params = built
-                cur.execute(query, [safe_uid, *([safe_email] if "email" in columns else []), *params])
+                cur.execute(query, [safe_uid, *params])
             conn.commit()
 
     try:
