@@ -743,3 +743,71 @@
         right: 8px;
     }
 }
+
+/* ─── Mobile Bottom Action Bar (<480px) ───────────────────
+ * Issue #1272 — First slice
+ * Fixed bottom action button for mobile editor viewport.
+ * Hidden on desktop; hidden when form/edit mode is open.
+ */
+.editor-mobile-bottom-bar {
+    display: none;
+}
+
+@media (max-width: 479px) {
+    .editor-mobile-bottom-bar {
+        display: flex;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 100;
+        padding: 12px 16px;
+        padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+        background: var(--surface, #fdfbf7);
+        border-top: 1px solid var(--outline-variant, rgba(144,73,81,0.12));
+        justify-content: center;
+        align-items: center;
+        box-shadow: 0 -4px 20px rgba(75, 64, 57, 0.06);
+        box-sizing: border-box;
+        transition: transform 0.2s ease, opacity 0.2s ease;
+    }
+
+    .editor-mobile-bottom-bar.is-hidden {
+        display: none !important;
+    }
+
+    .editor-mobile-bottom-action {
+        width: 100%;
+        max-width: 280px;
+        padding: 14px 28px;
+        border-radius: var(--radius-full, 9999px);
+        background: var(--primary, #904951);
+        color: var(--on-primary, #ffffff);
+        border: none;
+        font-family: var(--font-body, 'Noto Sans KR', sans-serif);
+        font-size: 16px;
+        font-weight: 600;
+        line-height: 1.4;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        touch-action: manipulation;
+        user-select: none;
+        transition: background 0.15s ease, transform 0.1s ease;
+    }
+
+    .editor-mobile-bottom-action:active {
+        transform: scale(0.97);
+        background: var(--primary-vibrant, #b85c66);
+    }
+
+    /* iOS safe-area: account for home indicator */
+    @supports (padding-bottom: env(safe-area-inset-bottom)) {
+        .editor-mobile-bottom-bar {
+            padding-bottom: calc(12px + env(safe-area-inset-bottom));
+        }
+    }
+}
