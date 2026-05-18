@@ -26,14 +26,6 @@ from modal_compute.validation import (
 )
 
 
-def _normalize_emotion_tags(value: Any) -> list[str]:
-    emotion_tags = value if isinstance(value, list) else []
-    normalized = [str(tag).strip() for tag in emotion_tags if str(tag).strip()]
-    if len(normalized) > 20:
-        raise HTTPException(status_code=400, detail="emotionTags exceeds maximum of 20 items")
-    return normalized
-
-
 def create_owner_tree(owner_id: str, payload: dict[str, Any]) -> dict[str, Any]:
     ensure_owner_user_exists(owner_id)
     title = validate_optional_string(payload.get("title"), 200) or "My LoveTree"
@@ -67,7 +59,10 @@ def create_owner_memory(owner_id: str, payload: dict[str, Any]) -> dict[str, Any
     if payload.get("parentId"):
         parent_id = validate_required_uuid(payload.get("parentId"), "parentId")
 
-    emotion_tags = _normalize_emotion_tags(payload.get("emotionTags"))
+    emotion_tags = payload.get("emotionTags") if isinstance(payload.get("emotionTags"), list) else []
+    if len(emotion_tags) > 20:
+        raise HTTPException(status_code=400, detail="emotionTags exceeds maximum of 20 items")
+    emotion_tags = [str(tag).strip() for tag in emotion_tags if str(tag).strip()]
 
     query = """
         INSERT INTO memories (
@@ -264,7 +259,10 @@ def update_owner_memory(owner_id: str, memory_id: str, payload: dict[str, Any]) 
         params.append(validate_optional_string(payload.get("thumbnail"), 500))
 
     if "emotionTags" in payload:
-        emotion_tags = _normalize_emotion_tags(payload.get("emotionTags"))
+        emotion_tags = payload.get("emotionTags") if isinstance(payload.get("emotionTags"), list) else []
+        if len(emotion_tags) > 20:
+            raise HTTPException(status_code=400, detail="emotionTags exceeds maximum of 20 items")
+        emotion_tags = [str(tag).strip() for tag in emotion_tags if str(tag).strip()]
         updates.append("emotion_tags = %s")
         params.append(emotion_tags)
 
