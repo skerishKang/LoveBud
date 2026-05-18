@@ -66,6 +66,7 @@ from modal_compute.owner_writes import (
     delete_owner_memory,
     fork_public_tree,
 )
+from modal_compute.owner_users import ensure_owner_user_exists
 from modal_compute.reactions import (
     toggle_reaction,
     fetch_reaction_summary,
@@ -211,6 +212,7 @@ async def post_private_tree(
 ) -> dict:
     user = require_firebase_user(authorization)
     payload = await parse_json_body(request)
+    ensure_owner_user_exists(user["uid"], user.get("email") or "")
     return create_owner_tree(user["uid"], payload)
 
 
@@ -233,6 +235,7 @@ def post_fork_tree(
     authorization: str | None = Header(default=None),
 ) -> dict:
     user = require_firebase_user(authorization)
+    ensure_owner_user_exists(user["uid"], user.get("email") or "")
     return fork_public_tree(user["uid"], tree_id)
 
 
