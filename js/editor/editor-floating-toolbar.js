@@ -781,65 +781,17 @@
 
     // Keyboard shortcuts via document-level keydown listener
     document.addEventListener('keydown', function (e) {
-      // Only process when toolbar is visible
-      if (!toolbar || !toolbar.classList.contains(IS_VISIBLE_CLASS)) return;
-
-      // Don't process if user is typing in an input field
-      var tag = e.target && e.target.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
-
-      var key = e.key;
-
-      // E → Edit selected moment
-      if (key === 'e' || key === 'E') {
-        if (!e.ctrlKey && !e.metaKey && !e.altKey) {
-          e.preventDefault();
-          e.stopPropagation();
-          flashButton(editBtn);
-          editBtn.click();
-          return;
-        }
-      }
-
-      // C → Continue from selected moment
-      if (key === 'c' || key === 'C') {
-        if (!e.ctrlKey && !e.metaKey && !e.altKey) {
-          e.preventDefault();
-          e.stopPropagation();
-          flashButton(continueBtn);
-          continueBtn.click();
-          return;
-        }
-      }
-
-      // V → View selected moment detail
-      if (key === 'v' || key === 'V') {
-        if (!e.ctrlKey && !e.metaKey && !e.altKey) {
-          e.preventDefault();
-          e.stopPropagation();
-          flashButton(viewBtn);
-          viewBtn.click();
-          return;
-        }
-      }
-
-      // Delete/Backspace → Show delete confirmation
-      if (key === 'Delete' || key === 'Backspace') {
-        e.preventDefault();
-        e.stopPropagation();
-        // Trigger delete via the dropdown action button (which triggers the existing flow)
-        if (deleteAction) {
-          // Flash the more button to indicate where to find the delete
-          if (moreBtn) flashButton(moreBtn);
-          deleteAction.click();
-        } else {
-          var deleteMemoryBtn = document.getElementById('deleteMemoryBtn');
-          if (deleteMemoryBtn) {
-            flashButton(deleteAction);
-            deleteMemoryBtn.click();
-          }
-        }
-        return;
+      if (window.LoveBudFloatingToolbarKeyboard && window.LoveBudFloatingToolbarKeyboard.handleShortcut) {
+        var context = {
+          isVisible: toolbar && toolbar.classList.contains(IS_VISIBLE_CLASS),
+          editBtn: editBtn,
+          continueBtn: continueBtn,
+          viewBtn: viewBtn,
+          moreBtn: moreBtn,
+          deleteAction: deleteAction,
+          flashButton: flashButton
+        };
+        window.LoveBudFloatingToolbarKeyboard.handleShortcut(e, context);
       }
     });
 
