@@ -481,6 +481,22 @@
                 const interactiveChild = event.target.closest(interactiveSelector);
                 if (interactiveChild && interactiveChild !== card) return;
 
+                // Mobile <480px: navigate directly to public viewer
+                if (window.innerWidth < 480) {
+                    const tree = treeDataMap.get(card);
+                    if (tree && tree.id) {
+                        var cardRenderer = window.LoveBudSearchCardRenderer;
+                        var viewerHref = cardRenderer && typeof cardRenderer.getTreeViewerHref === 'function'
+                            ? cardRenderer.getTreeViewerHref(tree)
+                            : '';
+                        if (viewerHref) {
+                            event.preventDefault();
+                            window.location.href = viewerHref;
+                            return;
+                        }
+                    }
+                }
+
                 const tree = treeDataMap.get(card);
                 if (tree) {
                     callbacks.selectTree(tree, card);
@@ -498,6 +514,22 @@
                 if (interactiveChild && interactiveChild !== card) return;
 
                 event.preventDefault();
+
+                // Mobile <480px: navigate directly to public viewer
+                if (window.innerWidth < 480) {
+                    const tree = treeDataMap.get(card);
+                    if (tree && tree.id) {
+                        var cardRenderer = window.LoveBudSearchCardRenderer;
+                        var viewerHref = cardRenderer && typeof cardRenderer.getTreeViewerHref === 'function'
+                            ? cardRenderer.getTreeViewerHref(tree)
+                            : '';
+                        if (viewerHref) {
+                            window.location.href = viewerHref;
+                            return;
+                        }
+                    }
+                }
+
                 const tree = treeDataMap.get(card);
                 if (tree) {
                     callbacks.selectTree(tree, card);
