@@ -33,6 +33,31 @@
             ['right-bottom','right',  1,   PORT_OFFSET_FRAC]
         ];
 
+        var PORT_DIRECTION_LABELS = {
+            'up-left': '위쪽 왼쪽',
+            'up-right': '위쪽 오른쪽',
+            'down-left': '아래쪽 왼쪽',
+            'down-right': '아래쪽 오른쪽',
+            'left-top': '왼쪽 위',
+            'left-bottom': '왼쪽 아래',
+            'right-top': '오른쪽 위',
+            'right-bottom': '오른쪽 아래'
+        };
+
+        function getPortDirectionLabel(port) {
+            return PORT_DIRECTION_LABELS[port.id] || port.id || port.side || '브랜치';
+        }
+
+        function getAddDirectionAriaLabel(directionLabel) {
+            var template = typeof i18n === 'function'
+                ? i18n('editor_add_memory_direction')
+                : '';
+            if (!template || template === 'editor_add_memory_direction') {
+                template = '{direction} 방향에 새 순간 추가';
+            }
+            return String(template).replace('{direction}', directionLabel);
+        }
+
         function getPortPositions(centerX, centerY) {
             var ports = [];
             for (var i = 0; i < PORT_DEFS.length; i++) {
@@ -60,10 +85,9 @@
             btn.dataset.side = port.side;
             btn.dataset.memoryId = mem.id;
 
-            var sideLabel = port.side;
-            var ariaLabel = (i18n('editor_add_memory_direction') || '{direction}').replace('{direction}', sideLabel);
-            btn.setAttribute('aria-label', ariaLabel);
-            btn.setAttribute('title', sideLabel + ' branch');
+            var directionLabel = getPortDirectionLabel(port);
+            btn.setAttribute('aria-label', getAddDirectionAriaLabel(directionLabel));
+            btn.setAttribute('title', directionLabel + ' 브랜치');
             btn.tabIndex = -1;
 
             // Inline styles for positioning + appearance
