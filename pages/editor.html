@@ -140,6 +140,14 @@
                 </button>
             </div>
 
+            <!-- Mobile bottom action bar (visible only <480px) -->
+            <div id="mobileBottomBar" class="editor-mobile-bottom-bar is-hidden" role="toolbar" aria-label="모바일 하단 도구">
+                <button type="button" id="mobileBottomAction" class="editor-mobile-bottom-action">
+                    <span class="material-symbols-outlined" aria-hidden="true">add</span>
+                    <span id="mobileBottomActionLabel">새 순간 만들기</span>
+                </button>
+            </div>
+
                         <div id="canvasEmptyGuide" class="editor-canvas-empty-guide editor-canvas-empty-guide-hidden" aria-live="polite">
                 <div class="editor-canvas-empty-guide__icon" id="canvasEmptyGuideIcon" aria-hidden="true">🌱</div>
                 <div class="editor-canvas-empty-guide__eyebrow" id="canvasEmptyGuideEyebrow">시작하기</div>
@@ -343,7 +351,8 @@
     <script src="../js/editor/editor-canvas-state-boundary.js?v=20260503-1"></script>
     <script src="../js/editor/editor-canvas-growth-affordance.js?v=20260503-1"></script>
     <script src="../js/editor/editor-canvas-branch-ports.js?v=20260518-1"></script>
-    <script src="../js/editor/editor-floating-toolbar.js?v=20260517-1"></script>
+    <script src="../js/editor/editor-floating-toolbar.js?v=20260518-1"></script>
+    <script src="../js/editor/editor-mobile-bottom-bar.js?v=20260518-1"></script>
     <script src="../js/editor/editor-canvas-geometry.js?v=20260502-1"></script>
     <script src="../js/editor/editor-canvas.js?v=20260507-655"></script>
     <script src="../js/editor/editor-rename-ui.js?v=20260422-2"></script>

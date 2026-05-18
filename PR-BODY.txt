@@ -1,0 +1,37 @@
+Refs #1034
+Refs #1031
+Refs #976
+
+## Problem
+- seed script (PR #1293) successfully inserted fixture data in legacy schema (trees.name, trees.is_public, trees.payload.nodes)
+- But Modal public_reads.py only queries modern schema (trees.title, trees.visibility, memories table)
+- Public Viewer shows empty state despite fixture data existing
+
+## Solution
+Added legacy fallback to all public read functions:
+
+### fetch_public_tree()
+- Modern path unchanged
+- Legacy fallback: queries id/name/is_public/payload, normalizes with _normalize_legacy_tree_row
+
+### fetch_public_memories()
+- Modern path unchanged (memories JOIN trees)
+- Legacy fallback: reads trees.payload.nodes, converts each node to memory row via _legacy_payload_node_to_memory_row
+- Preserves parent_id, order sorting, limit
+
+### fetch_public_memory()
+- Modern path unchanged
+- Legacy fallback: searches payload.nodes across public trees for matching memory_id
+
+## Safety
+- No DB migration
+- No frontend changes
+- No private/owner field exposure
+- Modern path preserved intact
+- 95/95 modal contract tests pass
+
+## Remaining
+- Modal deploy needed (deferred)
+- test5 smoke needed (deferred)
+- #1034 not closed
+- #1031 not ready until smoke passes

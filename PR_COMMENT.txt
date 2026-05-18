@@ -1,0 +1,40 @@
+## PR #1287 해체 감사 요약 (Draft 상태)
+
+### 감사 결과
+
+이 PR은 다음 문제로 인해 merge하지 않음이 결정됨:
+
+### ⚠️ 발견된 문제
+
+**1. 너무 많은 범위가 섞여 있음**
+- DB migration, backend, frontend, CSS, template, docs가 단일 PR에 포함
+- 15개 이슈가 한 PR에 혼재
+
+**2. URL drop / URL quick save 위험**
+- `url-drop-handler.js`: YouTube oEmbed 직접 호출로 CORS 문제 발생 가능
+- `url-quick-save.js`: 브라우저에서 YouTube 직접 fetch 시 운영 환경에서 차단될 수 있음
+
+**3. Mobile bottom action bar 이상**
+- `bottom-action-bar.js`: 하드코딩 breakpoint (768px)
+- 실제 런타임에 연결되지 않은 orphan 코드 가능성
+
+**4. Editor template 미연결**
+- `editor-templates.html`: 실제 editor.html에 로드되지 않음
+
+**5. Backend split 파일 검증 필요**
+- `tree_writes.py`, `memory_writes.py`: placeholder/pass 코드 가능성 존재
+
+### 📊 test5 확인
+- test5는 main 기준(43a003a7)으로 운영 중
+- PR #1287 변경사항은 live에 반영되지 않음
+
+### 🔄 Salvage 권장 순서
+
+1. Auth audit 문서-only PR
+2. DB migration fix PR  
+3. CSS refactor PR
+4. Backend owner write split PR
+5. URL-only creation PR
+6. Mobile bottom action PR
+
+**결론**: PR #1287 폐기. 각 기능을 별도 PR로 재작업.
