@@ -263,29 +263,6 @@
     }
 
     /**
-     * Position the tooltip near a given element.
-     */
-    function positionTooltip(targetEl) {
-      if (!tooltip || !targetEl) return;
-      var rect = targetEl.getBoundingClientRect();
-      var tooltipW = tooltip.offsetWidth || 120;
-      var tooltipH = tooltip.offsetHeight || 28;
-
-      // Position above the target element
-      var x = rect.left + rect.width / 2 - tooltipW / 2;
-      var y = rect.top - tooltipH - 8;
-
-      // Keep within viewport
-      var maxX = window.innerWidth - tooltipW - 8;
-      var maxY = window.innerHeight - tooltipH - 8;
-      x = Math.max(8, Math.min(x, maxX));
-      y = Math.max(8, Math.min(y, maxY));
-
-      tooltip.style.left = Math.round(x) + 'px';
-      tooltip.style.top = Math.round(y) + 'px';
-    }
-
-    /**
      * Position the dropdown below/right of the "..." button.
      */
     function positionDropdown() {
@@ -341,7 +318,7 @@
 
       // Hide associated affordances
       hideQuickAdd();
-      hideTooltip();
+      if (window.LoveBudFloatingToolbarTooltip) window.LoveBudFloatingToolbarTooltip.hide();
       hideDropdown();
     }
 
@@ -369,30 +346,6 @@
       quickAdd.classList.remove(IS_VISIBLE_CLASS);
       quickAdd.classList.add(IS_HIDDEN_CLASS);
       quickAdd.style.display = 'none';
-    }
-
-    /**
-     * Show the tooltip with moment info near a target element.
-     */
-    function showTooltip(targetEl, text) {
-      if (!tooltip || !targetEl) return;
-      if (!text) text = '';
-      tooltip.textContent = text;
-      tooltip.classList.remove(IS_HIDDEN_CLASS);
-      tooltip.style.display = '';
-      void tooltip.offsetWidth;
-      tooltip.classList.add(IS_VISIBLE_CLASS);
-      positionTooltip(targetEl);
-    }
-
-    /**
-     * Hide the tooltip.
-     */
-    function hideTooltip() {
-      if (!tooltip) return;
-      tooltip.classList.remove(IS_VISIBLE_CLASS);
-      tooltip.classList.add(IS_HIDDEN_CLASS);
-      tooltip.style.display = 'none';
     }
 
     /**
@@ -732,50 +685,19 @@
 
     // ─── Tooltip on hover over toolbar buttons ─────────────
 
-    var tooltipTimer = null;
     var tooltipTargets = [editBtn, continueBtn, viewBtn];
     if (moreBtn) tooltipTargets.push(moreBtn);
     if (branchBtn) tooltipTargets.push(branchBtn);
     if (forkBtn) tooltipTargets.push(forkBtn);
 
-    tooltipTargets.forEach(function (btn) {
-      if (!btn) return;
-
-      btn.addEventListener('mouseenter', function () {
-        if (tooltipTimer) {
-          clearTimeout(tooltipTimer);
-          tooltipTimer = null;
-        }
-        // Only show tooltip after a brief hover delay
-        tooltipTimer = setTimeout(function () {
-          tooltipTimer = null;
-          if (!toolbar.classList.contains(IS_VISIBLE_CLASS)) return;
-          var title = getSelectedMomentTitle();
-          if (title) {
-            showTooltip(btn, title);
-          }
-        }, 350);
+    if (window.LoveBudFloatingToolbarTooltip && window.LoveBudFloatingToolbarTooltip.init) {
+      window.LoveBudFloatingToolbarTooltip.init({
+        tooltip: tooltip,
+        toolbar: toolbar,
+        targets: tooltipTargets,
+        getTitle: getSelectedMomentTitle
       });
-
-      btn.addEventListener('mouseleave', function () {
-        if (tooltipTimer) {
-          clearTimeout(tooltipTimer);
-          tooltipTimer = null;
-        }
-        hideTooltip();
-      });
-
-      btn.addEventListener('focus', function () {
-        var title = getSelectedMomentTitle();
-        if (title) {
-          showTooltip(btn, title);
-        }
-      });
-
-      btn.addEventListener('blur', function () {
-        hideTooltip();
-      });
-    });
+    }
 
     // ─── Keyboard shortcuts ──────────────────────────────────
 
