@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import uuid
 from typing import Any
 
@@ -63,6 +62,7 @@ def create_owner_memory(owner_id: str, payload: dict[str, Any]) -> dict[str, Any
     emotion_tags = payload.get("emotionTags") if isinstance(payload.get("emotionTags"), list) else []
     if len(emotion_tags) > 20:
         raise HTTPException(status_code=400, detail="emotionTags exceeds maximum of 20 items")
+    emotion_tags = [str(tag).strip() for tag in emotion_tags if str(tag).strip()]
 
     query = """
         INSERT INTO memories (
@@ -88,7 +88,7 @@ def create_owner_memory(owner_id: str, payload: dict[str, Any]) -> dict[str, Any
         validate_optional_string(payload.get("sourceUrl"), 1000),
         validate_optional_string(payload.get("sourceType"), 50) or "youtube",
         validate_optional_string(payload.get("thumbnail"), 500),
-        json.dumps([str(tag).strip() for tag in emotion_tags if str(tag).strip()]),
+        emotion_tags,
         validate_optional_string(payload.get("timestamp"), 100),
         visibility,
         validate_optional_string(payload.get("channelId"), 100) or None,
@@ -262,8 +262,9 @@ def update_owner_memory(owner_id: str, memory_id: str, payload: dict[str, Any]) 
         emotion_tags = payload.get("emotionTags") if isinstance(payload.get("emotionTags"), list) else []
         if len(emotion_tags) > 20:
             raise HTTPException(status_code=400, detail="emotionTags exceeds maximum of 20 items")
+        emotion_tags = [str(tag).strip() for tag in emotion_tags if str(tag).strip()]
         updates.append("emotion_tags = %s")
-        params.append(json.dumps([str(tag).strip() for tag in emotion_tags if str(tag).strip()]))
+        params.append(emotion_tags)
 
     if "visibility" in payload:
         visibility = validate_visibility(payload.get("visibility"), "public")
