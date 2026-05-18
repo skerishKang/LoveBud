@@ -588,48 +588,29 @@
       });
     }
 
-    // ─── Button actions ───────────────────────────────────
+// ─── Button actions ───────────────────────────────────
 
     // Edit: trigger detail panel edit mode
     editBtn.addEventListener('click', function (e) {
       e.stopPropagation();
-      var selectedEl = getSelectedNodeEl();
-      if (!selectedEl) return;
-
-      var editMemoryBtn = document.getElementById('editMemoryBtn');
-      if (editMemoryBtn) {
-        editMemoryBtn.click();
-        return;
-      }
-
-      if (window.createEditorMemoryActions &&
-          typeof window.createEditorMemoryActions === 'function') {
-        console.warn('[floating-toolbar] editMemoryBtn not found, edit may fail');
+      if (window.LoveBudFloatingToolbarActions && window.LoveBudFloatingToolbarActions.edit) {
+        window.LoveBudFloatingToolbarActions.edit();
       }
     });
 
     // Continue: trigger "continue from moment" growth affordance behavior
     continueBtn.addEventListener('click', function (e) {
       e.stopPropagation();
-      var continueBtnDetail = document.getElementById('continueFromMomentBtn');
-      if (continueBtnDetail) {
-        continueBtnDetail.click();
-        return;
-      }
-
-      var addMemoryBtn = document.getElementById('addMemoryBtn');
-      if (addMemoryBtn) {
-        addMemoryBtn.click();
+      if (window.LoveBudFloatingToolbarActions && window.LoveBudFloatingToolbarActions.continue) {
+        window.LoveBudFloatingToolbarActions.continue();
       }
     });
 
     // View: trigger moment detail view
     viewBtn.addEventListener('click', function (e) {
       e.stopPropagation();
-      var viewDetailBtn = document.getElementById('viewMomentDetailBtn');
-      if (viewDetailBtn) {
-        viewDetailBtn.click();
-        return;
+      if (window.LoveBudFloatingToolbarActions && window.LoveBudFloatingToolbarActions.view) {
+        window.LoveBudFloatingToolbarActions.view();
       }
     });
 
