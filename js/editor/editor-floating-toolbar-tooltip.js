@@ -124,9 +124,40 @@
     });
   }
 
+  /**
+   * Bind tooltip events for all floating toolbar tooltip targets.
+   *
+   * @param {Object} ctx
+   * @param {HTMLElement} ctx.tooltip
+   * @param {HTMLElement} ctx.toolbar
+   * @param {HTMLElement} ctx.editBtn
+   * @param {HTMLElement} ctx.continueBtn
+   * @param {HTMLElement} ctx.viewBtn
+   * @param {HTMLElement} [ctx.moreBtn]
+   * @param {HTMLElement} [ctx.branchBtn]
+   * @param {HTMLElement} [ctx.forkBtn]
+   * @param {Function} ctx.getTitle
+   */
+  function bind(ctx) {
+    if (!ctx || !ctx.tooltip || !ctx.toolbar || !ctx.getTitle) return;
+
+    var targets = [ctx.editBtn, ctx.continueBtn, ctx.viewBtn];
+    if (ctx.moreBtn) targets.push(ctx.moreBtn);
+    if (ctx.branchBtn) targets.push(ctx.branchBtn);
+    if (ctx.forkBtn) targets.push(ctx.forkBtn);
+
+    initTooltipEvents({
+      tooltip: ctx.tooltip,
+      toolbar: ctx.toolbar,
+      targets: targets,
+      getTitle: ctx.getTitle
+    });
+  }
+
   // Export to global namespace
   window.LoveBudFloatingToolbarTooltip = {
     init: initTooltipEvents,
+    bind: bind,
     hide: hideTooltip
   };
 
