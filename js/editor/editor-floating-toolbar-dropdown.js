@@ -1,0 +1,163 @@
+/**
+ * LoveBud Editor — Floating Toolbar Dropdown Helpers
+ * Issue #1275 — Extracted from editor-floating-toolbar.js
+ *
+ * Provides dropdown visibility, positioning, event binding,
+ * and secondary action dispatch for the floating toolbar's "..." menu.
+ *
+ * No behavior change.
+ */
+
+(function () {
+  'use strict';
+
+  var IS_VISIBLE_CLASS = 'is-visible';
+  var IS_HIDDEN_CLASS = 'is-hidden';
+
+  /**
+   * Position the dropdown below/right of the "..." button.
+   */
+  function positionDropdown(dropdown, moreBtn) {
+    if (!dropdown || !moreBtn) return;
+    var rect = moreBtn.getBoundingClientRect();
+    var ddW = dropdown.offsetWidth || 180;
+
+    // Align the dropdown's right edge with the more button's right edge
+    var x = rect.right - ddW;
+    var y = rect.bottom + 4;
+
+    // Keep within viewport
+    var maxX = window.innerWidth - ddW - 8;
+    x = Math.max(8, Math.min(x, maxX));
+
+    dropdown.style.left = Math.round(x) + 'px';
+    dropdown.style.top = Math.round(y) + 'px';
+  }
+
+  /**
+   * Show the secondary actions dropdown.
+   */
+  function showDropdown(dropdown, moreBtn) {
+    if (!dropdown || !moreBtn) return;
+    dropdown.classList.remove(IS_HIDDEN_CLASS);
+    dropdown.style.display = '';
+    void dropdown.offsetWidth;
+    dropdown.classList.add(IS_VISIBLE_CLASS);
+    moreBtn.setAttribute('aria-expanded', 'true');
+    positionDropdown(dropdown, moreBtn);
+  }
+
+  /**
+   * Hide the secondary actions dropdown.
+   */
+  function hideDropdown(dropdown, moreBtn) {
+    if (!dropdown) return;
+    dropdown.classList.remove(IS_VISIBLE_CLASS);
+    dropdown.classList.add(IS_HIDDEN_CLASS);
+    dropdown.style.display = 'none';
+    if (moreBtn) {
+      moreBtn.setAttribute('aria-expanded', 'false');
+    }
+  }
+
+  /**
+   * Toggle the secondary actions dropdown.
+   */
+  function toggleDropdown(dropdown, moreBtn, e) {
+    if (e) {
+      e.stopPropagation();
+    }
+    if (dropdown && dropdown.classList.contains(IS_VISIBLE_CLASS)) {
+      hideDropdown(dropdown, moreBtn);
+    } else {
+      showDropdown(dropdown, moreBtn);
+    }
+  }
+
+  /**
+   * Bind dropdown events: more button click, document click-outside,
+   * and secondary action dispatch (delete, share, focus).
+   */
+  function bindDropdownEvents(ctx) {
+    var dropdown = ctx.dropdown;
+    var moreBtn = ctx.moreBtn;
+    var deleteAction = ctx.deleteAction;
+    var shareAction = ctx.shareAction;
+    var focusAction = ctx.focusAction;
+
+    // More button: toggle dropdown
+    if (moreBtn) {
+      moreBtn.addEventListener('click', function (e) {
+        toggleDropdown(dropdown, moreBtn, e);
+      });
+    }
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function (e) {
+      if (!dropdown) return;
+      if (dropdown.classList.contains(IS_VISIBLE_CLASS) &&
+          !dropdown.contains(e.target) &&
+          moreBtn && !moreBtn.contains(e.target)) {
+        hideDropdown(dropdown, moreBtn);
+      }
+    });
+
+    // Secondary action: delete
+    if (deleteAction) {
+      deleteAction.addEventListener('click', function (e) {
+        e.stopPropagation();
+        hideDropdown(dropdown, moreBtn);
+        // Trigger delete confirmation via the existing delete button
+        var deleteMemoryBtn = document.getElementById('deleteMemoryBtn');
+        if (deleteMemoryBtn) {
+          deleteMemoryBtn.click();
+          return;
+        }
+        // Fallback: find any delete trigger
+        var btn = document.querySelector('[data-action="delete-memory"]');
+        if (btn) btn.click();
+      });
+    }
+
+    // Secondary action: share / copy link
+    if (shareAction) {
+      shareAction.addEventListener('click', function (e) {
+        e.stopPropagation();
+        hideDropdown(dropdown, moreBtn);
+        var shareBtn = document.getElementById('shareMemoryBtn');
+        if (shareBtn) {
+          shareBtn.click();
+          return;
+        }
+        // Fallback: copy current URL
+        var url = window.location.href;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(url).catch(function () {});
+        }
+        if (window.LoveBudUI && window.LoveBudUI.showToast) {
+          window.LoveBudUI.showToast('링크가 복사되었습니다', 'success', 1800);
+        }
+      });
+    }
+
+    // Secondary action: focus on selected moment
+    if (focusAction) {
+      focusAction.addEventListener('click', function (e) {
+        e.stopPropagation();
+        hideDropdown(dropdown, moreBtn);
+        var focusBtn = document.getElementById('focusSelectedBtn');
+        if (focusBtn) {
+          focusBtn.click();
+        }
+      });
+    }
+  }
+
+  // Expose on global namespace
+  window.LoveBudFloatingToolbarDropdown = {
+    show: function (dropdown, moreBtn) { showDropdown(dropdown, moreBtn); },
+    hide: function (dropdown, moreBtn) { hideDropdown(dropdown, moreBtn); },
+    toggle: function (dropdown, moreBtn, e) { toggleDropdown(dropdown, moreBtn, e); },
+    bind: function (ctx) { bindDropdownEvents(ctx); }
+  };
+})();
