@@ -7,9 +7,11 @@ from modal_compute.db import (
     run_db_with_retry,
 )
 from modal_compute.validation import (
+    estimate_stage,
     normalize_row,
     normalize_memory_row,
     normalize_tree_row,
+    parse_tags,
 )
 
 
@@ -147,13 +149,15 @@ def _normalize_legacy_memory_row(node: dict[str, Any], tree_id: str, row: dict[s
 
 
 def fetch_latest_public_tree_snapshots(limit: int = 12, sort: str = "latest") -> list[dict[str, Any]]:
-    """Fetch the latest public tree snapshots using a robust join-lateral query."""
+    """Fetch the latest public tree snapshots using a robust join-lateral query.
+    Falls back to legacy trees.payload format if memories table is missing.
+    """
 
     order_clause = "t.created_at DESC"
     if sort == "popular":
         order_clause = "c.memory_count DESC, t.created_at DESC"
 
-    query = """
+    modern_query = """
         SELECT
             t.id, t.title, t.visibility, t.created_at, t.updated_at,
             c.memory_count,
@@ -190,18 +194,75 @@ def fetch_latest_public_tree_snapshots(limit: int = 12, sort: str = "latest") ->
     def operation() -> list[dict[str, Any]]:
         with get_db_connection() as conn:
             with conn.cursor() as cur:
-                cur.execute(query, (limit,))
-                return cur.fetchall()
+                has_memories = _table_exists(cur, "memories")
+                has_title = _table_has_column(cur, "trees", "title")
 
-    rows = run_db_with_retry(operation)
+                if has_memories and has_title:
+                    cur.execute(modern_query, (limit,))
+                    return [normalize_row(row) for row in cur.fetchall()]
 
-    return [normalize_row(row) for row in rows]
+                # Fallback: legacy schema (name/is_public/payload)
+                has_name = _table_has_column(cur, "trees", "name")
+                has_is_public = _table_has_column(cur, "trees", "is_public")
+                if not has_name or not has_is_public:
+                    return []
+
+                cur.execute(
+                    """SELECT id, name, is_public, payload, created_at, updated_at
+                       FROM trees WHERE is_public = true
+                       ORDER BY created_at DESC LIMIT %s""",
+                    (limit * 2,),
+                )
+                raw_rows = cur.fetchall()
+
+                result: list[dict[str, Any]] = []
+                for row in raw_rows:
+                    payload = row.get("payload") or {}
+                    nodes = payload.get("nodes") or []
+                    public_nodes = [n for n in nodes if n.get("visibility", "public") == "public"]
+                    if len(public_nodes) < 3:
+                        continue  # Quality filter: 3+ public memories
+
+                    all_tags_collected: list[list[str]] = []
+                    rep_thumbnail = ""
+                    rep_source_url = ""
+                    for n in public_nodes:
+                        tags = n.get("emotion_tags") or n.get("emotionTags") or []
+                        if isinstance(tags, list):
+                            all_tags_collected.append(tags)
+                        if not rep_thumbnail and n.get("thumbnail"):
+                            rep_thumbnail = n.get("thumbnail", "")
+                        if not rep_source_url and (n.get("source_url") or n.get("sourceUrl")):
+                            rep_source_url = n.get("source_url") or n.get("sourceUrl") or ""
+
+                    mc = len(public_nodes)
+                    result.append({
+                        "id": str(row["id"]),
+                        "title": row.get("name") or "나의 Lovetree",
+                        "visibility": "public",
+                        "createdAt": _to_isoformat_dt(row.get("created_at")),
+                        "updatedAt": _to_isoformat_dt(row.get("updated_at")),
+                        "representativeThumbnail": rep_thumbnail or rep_source_url or "",
+                        "memoryCount": mc,
+                        "emotionTags": parse_tags(all_tags_collected),
+                        "stage": estimate_stage(mc),
+                        "theme": "LoveTree",
+                        "timeRange": "",
+                        "representativeMemorySourceUrl": rep_source_url or "",
+                    })
+                    if len(result) >= limit:
+                        break
+                return result
+
+    return run_db_with_retry(operation)
 
 
 def fetch_growing_public_tree_snapshots(limit: int = 6) -> list[dict[str, Any]]:
-    """Fetch growing public tree snapshots for trees with 1-2 public memories."""
+    """Fetch growing public tree snapshots for trees with 1-2 public memories.
+    Falls back to legacy trees.payload format if memories table is missing.
+    """
 
-    query = """
+    modern_query = """
         SELECT
             t.id, t.title, t.visibility, t.created_at, t.updated_at,
             c.memory_count,
@@ -236,12 +297,68 @@ def fetch_growing_public_tree_snapshots(limit: int = 6) -> list[dict[str, Any]]:
     def operation() -> list[dict[str, Any]]:
         with get_db_connection() as conn:
             with conn.cursor() as cur:
-                cur.execute(query, (limit,))
-                return cur.fetchall()
+                has_memories = _table_exists(cur, "memories")
+                has_title = _table_has_column(cur, "trees", "title")
 
-    rows = run_db_with_retry(operation)
+                if has_memories and has_title:
+                    cur.execute(modern_query, (limit,))
+                    return [normalize_row(row, stage_override="growing") for row in cur.fetchall()]
 
-    return [normalize_row(row, stage_override="growing") for row in rows]
+                # Fallback: legacy schema (name/is_public/payload)
+                has_name = _table_has_column(cur, "trees", "name")
+                has_is_public = _table_has_column(cur, "trees", "is_public")
+                if not has_name or not has_is_public:
+                    return []
+
+                cur.execute(
+                    """SELECT id, name, is_public, payload, created_at, updated_at
+                       FROM trees WHERE is_public = true
+                       ORDER BY updated_at DESC NULLS LAST, created_at DESC NULLS LAST
+                       LIMIT %s""",
+                    (limit * 3,),
+                )
+                raw_rows = cur.fetchall()
+
+                result: list[dict[str, Any]] = []
+                for row in raw_rows:
+                    payload = row.get("payload") or {}
+                    nodes = payload.get("nodes") or []
+                    public_nodes = [n for n in nodes if n.get("visibility", "public") == "public"]
+                    mc = len(public_nodes)
+                    if mc < 1 or mc > 2:
+                        continue  # Growing filter: 1-2 public memories
+
+                    all_tags_collected: list[list[str]] = []
+                    rep_thumbnail = ""
+                    rep_source_url = ""
+                    for n in public_nodes:
+                        tags = n.get("emotion_tags") or n.get("emotionTags") or []
+                        if isinstance(tags, list):
+                            all_tags_collected.append(tags)
+                        if not rep_thumbnail and n.get("thumbnail"):
+                            rep_thumbnail = n.get("thumbnail", "")
+                        if not rep_source_url and (n.get("source_url") or n.get("sourceUrl")):
+                            rep_source_url = n.get("source_url") or n.get("sourceUrl") or ""
+
+                    result.append({
+                        "id": str(row["id"]),
+                        "title": row.get("name") or "나의 Lovetree",
+                        "visibility": "public",
+                        "createdAt": _to_isoformat_dt(row.get("created_at")),
+                        "updatedAt": _to_isoformat_dt(row.get("updated_at")),
+                        "representativeThumbnail": rep_thumbnail or rep_source_url or "",
+                        "memoryCount": mc,
+                        "emotionTags": parse_tags(all_tags_collected),
+                        "stage": "growing",
+                        "theme": "LoveTree",
+                        "timeRange": "",
+                        "representativeMemorySourceUrl": rep_source_url or "",
+                    })
+                    if len(result) >= limit:
+                        break
+                return result
+
+    return run_db_with_retry(operation)
 
 
 def fetch_public_memories(tree_id: str | None = None, limit: int = 100) -> list[dict[str, Any]]:
