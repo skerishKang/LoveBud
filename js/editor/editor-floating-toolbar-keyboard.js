@@ -187,9 +187,39 @@
     });
   }
 
+  /**
+   * Bind document-level keyboard shortcuts for the floating toolbar.
+   *
+   * @param {Object} ctx
+   * @param {Element} ctx.toolbar
+   * @param {string} ctx.visibleClass
+   * @param {Element} ctx.editBtn
+   * @param {Element} ctx.continueBtn
+   * @param {Element} ctx.viewBtn
+   * @param {Element} [ctx.moreBtn]
+   * @param {Element} [ctx.deleteAction]
+   */
+  function bindDocumentShortcuts(ctx) {
+    if (!ctx || !ctx.toolbar) return;
+
+    document.addEventListener('keydown', function (e) {
+      var context = {
+        isVisible: ctx.toolbar && ctx.toolbar.classList.contains(ctx.visibleClass || 'is-visible'),
+        editBtn: ctx.editBtn,
+        continueBtn: ctx.continueBtn,
+        viewBtn: ctx.viewBtn,
+        moreBtn: ctx.moreBtn,
+        deleteAction: ctx.deleteAction
+      };
+
+      handleShortcut(e, context);
+    });
+  }
+
   // Export to global namespace
   window.LoveBudFloatingToolbarKeyboard = {
     handleShortcut: handleShortcut,
+    bindDocumentShortcuts: bindDocumentShortcuts,
     bindToolbarNavigation: bindToolbarNavigation,
     flashButton: flashButton
   };
