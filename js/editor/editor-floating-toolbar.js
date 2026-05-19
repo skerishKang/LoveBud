@@ -213,14 +213,10 @@
     };
 
     // Delegate event wiring to helper
-    if (window.LoveBudFloatingToolbarEvents && window.LoveBudFloatingToolbarEvents.bind) {
-      window.LoveBudFloatingToolbarEvents.bind({
-        canvas: document.getElementById('canvasArea'),
+    if (window.LoveBudFloatingToolbarEvents && window.LoveBudFloatingToolbarEvents.bindEditorTargets) {
+      window.LoveBudFloatingToolbarEvents.bindEditorTargets({
         updateToolbar: updateToolbar,
-        scheduleUpdate: scheduleUpdate,
-        compactToggleBtn: document.getElementById('compactModeToggleBtn'),
-        layoutToggleBtn: document.getElementById('layoutModeToggleBtn'),
-        editModeContainer: document.getElementById('detailEditMode')
+        scheduleUpdate: scheduleUpdate
       });
     }
 

@@ -82,8 +82,29 @@
     }
   }
 
+  /**
+   * Bind editor floating toolbar events using the standard editor DOM targets.
+   *
+   * @param {Object} ctx
+   * @param {Function} ctx.updateToolbar
+   * @param {Function} ctx.scheduleUpdate
+   */
+  function bindEditorTargets(ctx) {
+    if (!ctx) return;
+
+    bind({
+      canvas: document.getElementById('canvasArea'),
+      updateToolbar: ctx.updateToolbar,
+      scheduleUpdate: ctx.scheduleUpdate,
+      compactToggleBtn: document.getElementById('compactModeToggleBtn'),
+      layoutToggleBtn: document.getElementById('layoutModeToggleBtn'),
+      editModeContainer: document.getElementById('detailEditMode')
+    });
+  }
+
   // Expose on global namespace
   window.LoveBudFloatingToolbarEvents = {
-    bind: bind
+    bind: bind,
+    bindEditorTargets: bindEditorTargets
   };
 })();
