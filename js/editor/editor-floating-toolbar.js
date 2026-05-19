@@ -222,9 +222,8 @@
 
 // ─── Button actions ───────────────────────────────────
 
-    // Delegate primary action button wiring to helper
-    if (window.LoveBudFloatingToolbarActions && window.LoveBudFloatingToolbarActions.bindPrimaryActions) {
-      window.LoveBudFloatingToolbarActions.bindPrimaryActions({
+    if (window.LoveBudFloatingToolbarActions && window.LoveBudFloatingToolbarActions.bind) {
+      window.LoveBudFloatingToolbarActions.bind({
         editBtn: editBtn,
         continueBtn: continueBtn,
         viewBtn: viewBtn
