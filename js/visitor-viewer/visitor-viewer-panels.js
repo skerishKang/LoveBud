@@ -166,7 +166,7 @@
             '<div class="vv-moment-actions">' +
             '  <button type="button" class="vv-moment-action-btn" data-action="moment-like">' + Icon.heart + ' 좋아요 1.2k</button>' +
             '  <button type="button" class="vv-moment-action-btn" data-action="moment-comment">' + Icon.message + ' 순간 댓글 ' + escape(comments.length) + '</button>' +
-            '  <button type="button" class="vv-moment-action-btn" data-action="moment-share">' + Icon.share + ' 공유</button></div>' +
+            '  <button type="button" class="vv-moment-action-btn" data-action="moment-share">' + Icon.share + ' 공유</button><button type="button" class="vv-moment-action-btn" data-action="export-moment-card" aria-label="순간 이미지 카드 저장">이미지 카드 저장</button></div>' +
             '<div class="vv-moment-comments-section">' +
             '  <div class="vv-moment-comments-header"><div><p class="vv-panel-eyebrow">Moment comments</p><h3 class="vv-moment-comments-title">이 순간에 남긴 댓글</h3></div>' +
             '    <button type="button" class="vv-sort-btn">최신순</button></div>' +
