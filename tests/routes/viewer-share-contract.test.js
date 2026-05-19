@@ -662,9 +662,21 @@ test('print CSS must not hide vv-branch-moment-list', () => {
 test('print CSS must preserve vv-branch-moment-item for moment titles', () => {
     const css = fs.readFileSync('css/viewer/public-tree-viewer.css', 'utf8');
     const printSection = css.split('@media print')[1] || '';
+    // Must have explicit visible rules
     assert.ok(printSection.includes('.vv-branch-moment-item'), 'print CSS must have visible rules for vv-branch-moment-item');
+    // Must override any generic hiding with !important
+    const itemFlexMatch = printSection.match(/\.vv-branch-moment-item\s*\{[^}]*display:\s*flex\s*!important[^}]*\}/);
+    assert.ok(itemFlexMatch, 'vv-branch-moment-item must have display:flex !important to override any generic hiding');
     assert.ok(printSection.includes('color: black'), 'moment items must have black color in print');
     assert.ok(printSection.includes('page-break-inside: avoid'), 'moment items must have page-break-avoid');
+});
+
+test('print CSS must not use generic button[data-action] selector', () => {
+    const css = fs.readFileSync('css/viewer/public-tree-viewer.css', 'utf8');
+    const printSection = css.split('@media print')[1] || '';
+    // The hide section is the first block with display:none
+    const hideSection = printSection.split('display: none')[0] || '';
+    assert.equal(hideSection.includes('button[data-action]'), false, 'must not use generic button[data-action] in print hide list');
 });
 
 test('print CSS still hides share/actions/comments', () => {
