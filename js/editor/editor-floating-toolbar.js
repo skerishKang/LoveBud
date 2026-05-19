@@ -56,23 +56,39 @@
    * Self-contained: monitors DOM for selection changes and positions itself.
    */
   function initFloatingToolbar() {
-    var toolbar = document.getElementById(FLOATING_TOOLBAR_ID);
-    if (!toolbar) return;
+    var elements = window.LoveBudFloatingToolbarElements && window.LoveBudFloatingToolbarElements.getElements
+      ? window.LoveBudFloatingToolbarElements.getElements({
+        toolbar: FLOATING_TOOLBAR_ID,
+        editBtn: EDIT_BTN_ID,
+        continueBtn: CONTINUE_BTN_ID,
+        viewBtn: VIEW_BTN_ID,
+        moreBtn: MORE_BTN_ID,
+        quickAdd: QUICK_ADD_ID,
+        tooltip: TOOLTIP_ID,
+        dropdown: DROPDOWN_ID,
+        branchBtn: BRANCH_BTN_ID,
+        forkBtn: FORK_BTN_ID,
+        deleteAction: DELETE_ACTION_ID,
+        shareAction: SHARE_ACTION_ID,
+        focusAction: FOCUS_ACTION_ID
+      })
+      : null;
 
-    var editBtn = document.getElementById(EDIT_BTN_ID);
-    var continueBtn = document.getElementById(CONTINUE_BTN_ID);
-    var viewBtn = document.getElementById(VIEW_BTN_ID);
-    var moreBtn = document.getElementById(MORE_BTN_ID);
-    var quickAdd = document.getElementById(QUICK_ADD_ID);
-    var tooltip = document.getElementById(TOOLTIP_ID);
-    var dropdown = document.getElementById(DROPDOWN_ID);
-    var branchBtn = document.getElementById(BRANCH_BTN_ID);
-    var forkBtn = document.getElementById(FORK_BTN_ID);
-    var deleteAction = document.getElementById(DELETE_ACTION_ID);
-    var shareAction = document.getElementById(SHARE_ACTION_ID);
-    var focusAction = document.getElementById(FOCUS_ACTION_ID);
+    if (!elements) return;
 
-    if (!editBtn || !continueBtn || !viewBtn) return;
+    var toolbar = elements.toolbar;
+    var editBtn = elements.editBtn;
+    var continueBtn = elements.continueBtn;
+    var viewBtn = elements.viewBtn;
+    var moreBtn = elements.moreBtn;
+    var quickAdd = elements.quickAdd;
+    var tooltip = elements.tooltip;
+    var dropdown = elements.dropdown;
+    var branchBtn = elements.branchBtn;
+    var forkBtn = elements.forkBtn;
+    var deleteAction = elements.deleteAction;
+    var shareAction = elements.shareAction;
+    var focusAction = elements.focusAction;
 
     // Prevent double-init
     if (toolbar.dataset.ftbInitialized === '1') return;
