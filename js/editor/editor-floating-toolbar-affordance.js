@@ -128,6 +128,17 @@
     }
   }
 
+  /**
+   * Bind all affordance-related click handlers for the floating toolbar.
+   *
+   * @param {Object} ctx
+   */
+  function bind(ctx) {
+    if (!ctx) return;
+    bindConnectionButtons(ctx);
+    bindQuickAdd(ctx);
+  }
+
   // Expose on global namespace
   window.LoveBudFloatingToolbarAffordance = {
     isConnectionMode: isConnectionMode,
@@ -135,6 +146,7 @@
     hideQuickAdd: hideQuickAdd,
     updateAdaptiveState: updateAdaptiveState,
     bindQuickAdd: bindQuickAdd,
-    bindConnectionButtons: bindConnectionButtons
+    bindConnectionButtons: bindConnectionButtons,
+    bind: bind
   };
 })();
