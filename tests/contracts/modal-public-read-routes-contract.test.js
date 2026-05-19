@@ -98,14 +98,22 @@ test('modal public read helpers preserve public visibility filters and normaliza
   const latestHelper = extractPythonFunction(content, 'fetch_latest_public_tree_snapshots');
   assert.ok(hasString(latestHelper, "t.visibility = 'public'"));
   assert.ok(hasString(latestHelper, "WHERE visibility = 'public'"));
+  assert.ok(hasString(latestHelper, 'normalize_row(row)'));
   assert.ok(hasString(latestHelper, 'HAVING count(*) >= 3'));
-  assert.ok(hasString(latestHelper, 'return [normalize_row(row) for row in rows]'));
+  assert.ok(hasString(latestHelper, 'has_memories'));
+  assert.ok(hasString(latestHelper, '_table_exists(cur, "memories")'));
+  assert.ok(hasString(latestHelper, 'jsonb_agg(emotion_tags)'));
+  assert.ok(!hasString(latestHelper, 'ARRAY_AGG(emotion_tags)'));
 
   const growingHelper = extractPythonFunction(content, 'fetch_growing_public_tree_snapshots');
   assert.ok(hasString(growingHelper, "t.visibility = 'public'"));
   assert.ok(hasString(growingHelper, "WHERE visibility = 'public'"));
+  assert.ok(hasString(growingHelper, 'normalize_row(row, stage_override="growing")'));
   assert.ok(hasString(growingHelper, 'HAVING count(*) BETWEEN 1 AND 2'));
-  assert.ok(hasString(growingHelper, 'return [normalize_row(row, stage_override="growing") for row in rows]'));
+  assert.ok(hasString(growingHelper, 'has_memories'));
+  assert.ok(hasString(growingHelper, '_table_exists'));
+  assert.ok(hasString(growingHelper, 'jsonb_agg(emotion_tags)'));
+  assert.ok(!hasString(growingHelper, 'ARRAY_AGG(emotion_tags)'));
 
   const memoriesHelper = extractPythonFunction(content, 'fetch_public_memories');
   assert.ok(hasString(memoriesHelper, "m.visibility = 'public'"));
