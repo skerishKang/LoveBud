@@ -242,20 +242,6 @@
 
     // ─── Event wiring ─────────────────────────────────────
 
-    // Observe selection changes via DOM mutation
-    var canvas = document.getElementById('canvasArea');
-    if (canvas) {
-      var observer = new MutationObserver(function () {
-        updateToolbar();
-      });
-      observer.observe(canvas, {
-        attributes: true,
-        attributeFilter: ['class'],
-        subtree: true,
-        childList: true
-      });
-    }
-
     // Respond to viewport changes (pan/zoom/resize)
     var scheduleUpdate = function () {
       if (window.LoveBudFloatingToolbarPositioning) {
@@ -263,42 +249,15 @@
       }
     };
 
-    window.addEventListener('resize', function () {
-      scheduleUpdate();
-      // Re-evaluate visibility on resize (e.g., crossing 480px boundary)
-      setTimeout(updateToolbar, 100);
-    });
-
-    // Listen for scroll/pan events on the canvas
-    if (canvas) {
-      canvas.addEventListener('wheel', scheduleUpdate, { passive: true });
-    }
-
-    // Listen for compact mode toggle changes
-    var compactToggleBtn = document.getElementById('compactModeToggleBtn');
-    if (compactToggleBtn) {
-      compactToggleBtn.addEventListener('click', function () {
-        setTimeout(updateToolbar, 50);
-      });
-    }
-
-    // Listen for layout mode toggle changes
-    var layoutToggleBtn = document.getElementById('layoutModeToggleBtn');
-    if (layoutToggleBtn) {
-      layoutToggleBtn.addEventListener('click', function () {
-        setTimeout(updateToolbar, 50);
-      });
-    }
-
-    // Listen for edit mode changes
-    var editModeContainer = document.getElementById('detailEditMode');
-    if (editModeContainer) {
-      var editObserver = new MutationObserver(function () {
-        setTimeout(updateToolbar, 50);
-      });
-      editObserver.observe(editModeContainer, {
-        attributes: true,
-        attributeFilter: ['style']
+    // Delegate event wiring to helper
+    if (window.LoveBudFloatingToolbarEvents && window.LoveBudFloatingToolbarEvents.bind) {
+      window.LoveBudFloatingToolbarEvents.bind({
+        canvas: document.getElementById('canvasArea'),
+        updateToolbar: updateToolbar,
+        scheduleUpdate: scheduleUpdate,
+        compactToggleBtn: document.getElementById('compactModeToggleBtn'),
+        layoutToggleBtn: document.getElementById('layoutModeToggleBtn'),
+        editModeContainer: document.getElementById('detailEditMode')
       });
     }
 
