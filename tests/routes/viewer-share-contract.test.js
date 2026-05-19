@@ -651,3 +651,45 @@ test('existing viewer-state and share modules still present', () => {
     assert.ok(fs.existsSync('js/viewer/viewer-share-export-actions.js'), 'share export helper must still exist');
     assert.ok(fs.existsSync('js/viewer/share-actions.js'), 'share actions module must still exist');
 });
+
+test('print CSS must not hide vv-branch-moment-list', () => {
+    const css = fs.readFileSync('css/viewer/public-tree-viewer.css', 'utf8');
+    const printSection = css.split('@media print')[1] || '';
+    const hideSection = printSection.split('display: none')[0] || '';
+    assert.equal(hideSection.includes('vv-branch-moment-list'), false, 'vv-branch-moment-list must NOT be in display:none section');
+});
+
+test('print CSS must preserve vv-branch-moment-item for moment titles', () => {
+    const css = fs.readFileSync('css/viewer/public-tree-viewer.css', 'utf8');
+    const printSection = css.split('@media print')[1] || '';
+    assert.ok(printSection.includes('.vv-branch-moment-item'), 'print CSS must have visible rules for vv-branch-moment-item');
+    assert.ok(printSection.includes('color: black'), 'moment items must have black color in print');
+    assert.ok(printSection.includes('page-break-inside: avoid'), 'moment items must have page-break-avoid');
+});
+
+test('print CSS still hides share/actions/comments', () => {
+    const css = fs.readFileSync('css/viewer/public-tree-viewer.css', 'utf8');
+    assert.ok(css.includes('vv-share-actions') && css.includes('display: none'), 'share actions must still be hidden in print');
+    assert.ok(css.includes('vv-moment-comments-section'), 'comments section must still be hidden in print');
+    assert.ok(css.includes('vv-action-dock'), 'action dock must still be hidden in print');
+    assert.ok(css.includes('vv-comment-input'), 'comment input must still be hidden in print');
+});
+
+test('print CSS hides vv-branch-moment-open indicator', () => {
+    const css = fs.readFileSync('css/viewer/public-tree-viewer.css', 'utf8');
+    const printSection = css.split('@media print')[1] || '';
+    assert.ok(printSection.includes('.vv-branch-moment-open'), 'print CSS must hide moment open indicator');
+    assert.ok(printSection.includes('display: none'), 'open indicator must be display:none');
+    assert.equal(printSection.includes('vv-branch-moment-open') && printSection.includes('display: none'), true, 'moment open indicator hidden in print');
+});
+
+test('vv-share-note is hidden but not in color-preserve list', () => {
+    const css = fs.readFileSync('css/viewer/public-tree-viewer.css', 'utf8');
+    const printSection = css.split('@media print')[1] || '';
+    // Must be in hide list
+    const hideSection = printSection.split('display: none')[0] || '';
+    assert.ok(hideSection.includes('vv-share-note'), 'vv-share-note must be in hide list');
+    // Must NOT be in color-preserve list (after the display:none section)
+    const afterHideSection = printSection.split('display: none !important')[1] || '';
+    assert.equal(afterHideSection.includes('vv-share-note'), false, 'vv-share-note must not be in color-preserve list');
+});

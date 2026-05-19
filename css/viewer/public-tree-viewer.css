@@ -407,7 +407,6 @@
     .vv-moment-nav,
     .vv-moment-close-hint,
     .vv-branch-moment-btn,
-    .vv-branch-moment-list,
     .vv-sort-tabs,
     .vv-sort-btn,
     .viewer-state,
@@ -455,7 +454,6 @@
     .vv-moment-caption,
     .vv-moment-memo-text,
     .vv-panel-desc,
-    .vv-share-note,
     .vv-moment-memo-label,
     .vv-panel-eyebrow,
     .vv-panel-sub,
@@ -471,6 +469,31 @@
 
     .vv-tree-container {
         page-break-inside: avoid;
+    }
+
+    /* Show branch moment list as plain text in print */
+    .vv-branch-moment-list {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 3px;
+        margin-top: 10px;
+    }
+
+    .vv-branch-moment-item {
+        display: flex !important;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        padding: 4px 0;
+        color: black !important;
+        background: transparent !important;
+        border: none !important;
+        font-size: 13px;
+        page-break-inside: avoid;
+    }
+
+    .vv-branch-moment-open {
+        display: none !important;
     }
 
     /* Show branch metadata */
