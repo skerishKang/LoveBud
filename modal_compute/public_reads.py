@@ -217,9 +217,13 @@ def fetch_latest_public_tree_snapshots(limit: int = 12, sort: str = "latest") ->
 
                 result: list[dict[str, Any]] = []
                 for row in raw_rows:
-                    payload = row.get("payload") or {}
+                    raw_payload = row.get("payload")
+                    payload = raw_payload if isinstance(raw_payload, dict) else {}
                     nodes = payload.get("nodes") or []
-                    public_nodes = [n for n in nodes if n.get("visibility", "public") == "public"]
+                    public_nodes = [
+                        n for n in nodes
+                        if isinstance(n, dict) and n.get("visibility", "public") == "public"
+                    ]
                     if len(public_nodes) < 3:
                         continue  # Quality filter: 3+ public memories
 
@@ -321,9 +325,13 @@ def fetch_growing_public_tree_snapshots(limit: int = 6) -> list[dict[str, Any]]:
 
                 result: list[dict[str, Any]] = []
                 for row in raw_rows:
-                    payload = row.get("payload") or {}
+                    raw_payload = row.get("payload")
+                    payload = raw_payload if isinstance(raw_payload, dict) else {}
                     nodes = payload.get("nodes") or []
-                    public_nodes = [n for n in nodes if n.get("visibility", "public") == "public"]
+                    public_nodes = [
+                        n for n in nodes
+                        if isinstance(n, dict) and n.get("visibility", "public") == "public"
+                    ]
                     mc = len(public_nodes)
                     if mc < 1 or mc > 2:
                         continue  # Growing filter: 1-2 public memories
