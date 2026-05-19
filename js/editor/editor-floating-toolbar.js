@@ -38,33 +38,17 @@
 
   /**
    * Find the currently selected memory node element on the canvas.
-   * Kept in outer scope because tooltip helpers run outside initFloatingToolbar's
-   * lexical scope and also need to resolve the selected node.
+   * Delegates to LoveBudFloatingToolbarSelection helper.
+   * Kept in IIFE scope because other helpers reference it.
    */
   function getSelectedNodeEl() {
-    return document.querySelector(NODE_SELECTOR + '.' + SELECTED_CLASS);
-  }
-
-/**
-   * Resolves the memory object by the selected node element.
-   * Falls back to reading the node's data-memory-id and looking up in global state.
-   */
-  function getSelectedMemory() {
-    var selectedEl = getSelectedNodeEl();
-    if (!selectedEl) return null;
-    var memoryId = selectedEl.dataset.memoryId;
-    if (!memoryId) return null;
-    // Try global editor state
-    if (window.currentTreeMemories && Array.isArray(window.currentTreeMemories)) {
-      return window.currentTreeMemories.find(function (m) {
-        return m.id === memoryId;
-      }) || null;
+    if (window.LoveBudFloatingToolbarSelection && window.LoveBudFloatingToolbarSelection.getSelectedNode) {
+      return window.LoveBudFloatingToolbarSelection.getSelectedNode({
+        nodeSelector: NODE_SELECTOR,
+        selectedClass: SELECTED_CLASS
+      });
     }
-    // Fallback: return minimal info from the node element
-    return {
-      id: memoryId,
-      title: selectedEl.querySelector('.node-title')?.textContent || selectedEl.getAttribute('aria-label') || ''
-    };
+    return document.querySelector(NODE_SELECTOR + '.' + SELECTED_CLASS);
   }
 
   /**
@@ -215,15 +199,15 @@
 
     /**
      * Get the moment title for the selected node (for tooltip display).
+     * Delegates to LoveBudFloatingToolbarSelection helper.
      */
     function getSelectedMomentTitle() {
-      var mem = getSelectedMemory();
-      if (mem && mem.title) return mem.title;
-      // Fallback: extract title from the node element
-      var selectedEl = getSelectedNodeEl();
-      if (!selectedEl) return '';
-      var titleEl = selectedEl.querySelector('.node-title');
-      if (titleEl && titleEl.textContent) return titleEl.textContent.trim();
+      if (window.LoveBudFloatingToolbarSelection && window.LoveBudFloatingToolbarSelection.getSelectedMomentTitle) {
+        return window.LoveBudFloatingToolbarSelection.getSelectedMomentTitle({
+          nodeSelector: NODE_SELECTOR,
+          selectedClass: SELECTED_CLASS
+        });
+      }
       return '';
     }
 
