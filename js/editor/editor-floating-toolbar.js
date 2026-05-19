@@ -265,30 +265,20 @@
       });
     }
 
-    // ─── Keyboard shortcuts ──────────────────────────────────
+    // ─── Keyboard bindings ─────────────────────────────────
 
-    // Keyboard shortcuts via document-level keydown listener
-    if (window.LoveBudFloatingToolbarKeyboard && window.LoveBudFloatingToolbarKeyboard.bindDocumentShortcuts) {
-      window.LoveBudFloatingToolbarKeyboard.bindDocumentShortcuts({
+    if (window.LoveBudFloatingToolbarKeyboard && window.LoveBudFloatingToolbarKeyboard.bind) {
+      window.LoveBudFloatingToolbarKeyboard.bind({
         toolbar: toolbar,
         visibleClass: IS_VISIBLE_CLASS,
         editBtn: editBtn,
         continueBtn: continueBtn,
         viewBtn: viewBtn,
         moreBtn: moreBtn,
-        deleteAction: deleteAction
-      });
-    }
-
-    // ─── Toolbar keyboard navigation ─────────────────────
-
-    if (window.LoveBudFloatingToolbarKeyboard && window.LoveBudFloatingToolbarKeyboard.bindToolbarNavigation) {
-      window.LoveBudFloatingToolbarKeyboard.bindToolbarNavigation({
-        toolbar: toolbar,
+        deleteAction: deleteAction,
         getSelectedNode: getSelectedNodeEl,
         hideToolbar: hideToolbar,
         dropdown: dropdown,
-        moreBtn: moreBtn,
         selectedClass: SELECTED_CLASS
       });
     }
