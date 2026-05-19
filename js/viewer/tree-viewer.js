@@ -373,44 +373,26 @@
                     }
                     refresh();
                 },
-                copyLink: function() {
-                    var Share = window.LoveBudShareActions;
-                    if (!Share) return;
-                    var result = Share.copyLink(handler);
-                    showShareStatus(result);
-                },
-                nativeShare: function() {
-                    var Share = window.LoveBudShareActions;
-                    if (!Share) return;
-                    Share.nativeShare(handler).then(function(result) {
-                        showShareStatus(result);
-                    });
-                },
-                platformShare: function(platform) {
-                    var Share = window.LoveBudShareActions;
-                    if (!Share || typeof Share.shareToPlatform !== 'function') return;
-                    Promise.resolve(Share.shareToPlatform(handler, platform)).then(function(result) {
-                        showShareStatus(result);
-                    });
-                },
-                exportTreeImageCard: function() {
-                    var Share = window.LoveBudShareActions;
-                    if (!Share || typeof Share.exportTreeImageCard !== 'function') return;
-                    Promise.resolve(Share.exportTreeImageCard(handler)).then(function(result) {
-                        showShareStatus(result);
-                    });
-                },
-                exportMomentImageCard: function() {
-                    var Share = window.LoveBudShareActions;
-                    if (!Share || typeof Share.exportMomentImageCard !== 'function') return;
-                    var momentDetails = state.selectedMoment;
-                    var branch = state.panelBranch;
-                    if (!momentDetails) return;
-                    Promise.resolve(Share.exportMomentImageCard(handler, momentDetails, branch)).then(function(result) {
-                        showShareStatus(result);
-                    });
-                }
             };
+
+            // Share/export action bridge extracted to viewer-share-export-actions.js
+            var shareExportHandlers = null;
+            (function() {
+                var SE = window.LoveBudViewerShareExportActions;
+                if (!SE) return;
+                var se = SE.createShareExportHandlers({
+                    handler: handler,
+                    showShareStatus: showShareStatus,
+                    get selectedMoment() { return state.selectedMoment; },
+                    get panelBranch() { return state.panelBranch; }
+                });
+                shareExportHandlers = se;
+                handler.copyLink = se.copyLink;
+                handler.nativeShare = se.nativeShare;
+                handler.platformShare = se.platformShare;
+                handler.exportTreeImageCard = se.exportTreeImageCard;
+                handler.exportMomentImageCard = se.exportMomentImageCard;
+            })();
 
             function showShareStatus(result) {
                 if (!result || !result.message) return;
@@ -434,12 +416,11 @@
                     else if (a === 'toggle-like') { handler.toggleLike(); action.classList.toggle('is-liked'); }
                     else if (a === 'open-tree-comments') handler.openPanel('tree-comments');
                     else if (a === 'open-share') handler.openPanel('share');
-                    else if (a === 'copy-link') handler.copyLink();
-                    else if (a === 'native-share') handler.nativeShare();
-                    else if (a === 'platform-share') handler.platformShare(action.dataset.platform);
-                    else if (a === 'export-tree-card') handler.exportTreeImageCard();
-                    else if (a === 'export-moment-card') handler.exportMomentImageCard();
                     else if (a === 'toggle-layout') handler.onToggleLayout();
+                    else {
+                        var SE = window.LoveBudViewerShareExportActions;
+                        if (SE && shareExportHandlers && SE.handleShareExportAction(action, shareExportHandlers)) {}
+                    }
                     return;
                 }
                 var momentBtn = e.target.closest('[data-moment-id]');
