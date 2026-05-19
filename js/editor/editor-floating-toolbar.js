@@ -37,8 +37,6 @@
   const IS_CONNECTING_CLASS = 'is-connecting';
   const COMPACT_CLASS = 'is-compact';
   const MOBILE_BREAKPOINT = 480;
-  const POSITION_POLL_INTERVAL = 160;
-  const QUICK_ADD_OFFSET = 12;
   const AFFORDANCE_SELECTOR = '.memory-add-affordance';
 
   /**
@@ -115,9 +113,19 @@
     var flashTimer = null;
 
     var activeMemoryId = null;
-    var positionTimer = null;
-    var lastX = -1;
-    var lastY = -1;
+
+    // ─── Positioning context ─────────────────────────────
+    var posCtx = {
+      getSelectedNode: getSelectedNodeEl,
+      toolbar: toolbar,
+      quickAdd: quickAdd,
+      lastX: -1,
+      lastY: -1,
+      positionTimer: null,
+      pollInterval: 160,
+      quickAddOffset: 12,
+      onPositionFail: hideToolbar
+    };
 
     /**
      * Check if the floating toolbar should be visible based on contract §4.
@@ -149,120 +157,6 @@
     }
 
     /**
-     * Get the selected node's world position and convert to canvas-relative position.
-     */
-    function getSelectedNodePosition() {
-      var selectedEl = getSelectedNodeEl();
-      if (!selectedEl) return null;
-
-      var left = parseFloat(selectedEl.style.left) || 0;
-      var top = parseFloat(selectedEl.style.top) || 0;
-      var width = parseFloat(selectedEl.style.width) || 88;
-      var height = parseFloat(selectedEl.style.height) || 88;
-
-      return {
-        left: left,
-        top: top,
-        right: left + width,
-        bottom: top + height,
-        width: width,
-        height: height,
-        centerX: left + width / 2,
-        centerY: top + height / 2
-      };
-    }
-
-    /**
-     * Position the toolbar relative to the selected node.
-     * Anchors to top-right edge, with overflow handling (§6).
-     */
-    function positionToolbar() {
-      if (!toolbar) return;
-
-      var nodePos = getSelectedNodePosition();
-      if (!nodePos) {
-        hideToolbar();
-        return;
-      }
-
-      var canvasArea = document.getElementById('canvasArea');
-      if (!canvasArea) return;
-
-      var canvasWidth = canvasArea.clientWidth;
-      var canvasHeight = canvasArea.clientHeight;
-
-      // Calculate toolbar dimensions (approximate)
-      var toolbarWidth = toolbar.offsetWidth || 260;
-      var toolbarHeight = toolbar.offsetHeight || 42;
-
-      // Anchor to top-right of node: 10px gap from right edge, aligned to top
-      var gap = 10;
-      var preferredX = nodePos.right + gap;
-      var preferredY = nodePos.top;
-
-      // Overflow handling
-      var x = preferredX;
-      var y = preferredY;
-
-      // Check if toolbar exceeds right edge
-      if (x + toolbarWidth > canvasWidth - 8) {
-        // Flip to left side
-        x = nodePos.left - gap - toolbarWidth;
-      }
-
-      // Check if toolbar exceeds top edge
-      if (y < 8) {
-        // Anchor to bottom-right of node
-        y = nodePos.bottom + gap;
-        // Re-check horizontal overflow
-        if (x + toolbarWidth > canvasWidth - 8) {
-          x = nodePos.left - gap - toolbarWidth;
-        }
-      }
-
-      // Check if toolbar exceeds bottom edge
-      if (y + toolbarHeight > canvasHeight - 8) {
-        if (x === preferredX && y !== preferredY) {
-          // Already repositioned for top, just clamp
-        } else {
-          if (y > canvasHeight - toolbarHeight - 8) {
-            y = Math.max(8, canvasHeight - toolbarHeight - 8);
-          }
-        }
-      }
-
-      // Ensure minimum visibility
-      x = Math.max(4, Math.min(x, canvasWidth - toolbarWidth - 4));
-      y = Math.max(4, Math.min(y, canvasHeight - toolbarHeight - 4));
-
-      // Skip if position hasn't changed (optimization)
-      if (Math.abs(x - lastX) < 1 && Math.abs(y - lastY) < 1 && toolbar.classList.contains(IS_VISIBLE_CLASS)) {
-        return;
-      }
-
-      lastX = x;
-      lastY = y;
-
-      toolbar.style.left = Math.round(x) + 'px';
-      toolbar.style.top = Math.round(y) + 'px';
-    }
-
-    /**
-     * Position the quick-add affordance near the bottom-right of the selected node.
-     */
-    function positionQuickAdd() {
-      if (!quickAdd) return;
-      var nodePos = getSelectedNodePosition();
-      if (!nodePos) return;
-
-      var x = nodePos.right - QUICK_ADD_OFFSET;
-      var y = nodePos.bottom - QUICK_ADD_OFFSET;
-
-      quickAdd.style.left = Math.round(x) + 'px';
-      quickAdd.style.top = Math.round(y) + 'px';
-    }
-
-    /**
      * Show the floating toolbar.
      */
     function showToolbar() {
@@ -278,7 +172,9 @@
       void toolbar.offsetWidth;
       toolbar.classList.add(IS_VISIBLE_CLASS);
 
-      positionToolbar();
+      if (window.LoveBudFloatingToolbarPositioning && window.LoveBudFloatingToolbarPositioning.positionToolbar) {
+        window.LoveBudFloatingToolbarPositioning.positionToolbar(posCtx);
+      }
       showQuickAdd();
     }
 
@@ -293,8 +189,8 @@
       toolbar.classList.add(IS_HIDDEN_CLASS);
       toolbar.style.display = 'none';
 
-      lastX = -1;
-      lastY = -1;
+      posCtx.lastX = -1;
+      posCtx.lastY = -1;
 
       // Hide associated affordances
       hideQuickAdd();
@@ -314,7 +210,9 @@
       quickAdd.style.display = '';
       void quickAdd.offsetWidth;
       quickAdd.classList.add(IS_VISIBLE_CLASS);
-      positionQuickAdd();
+      if (window.LoveBudFloatingToolbarPositioning && window.LoveBudFloatingToolbarPositioning.positionQuickAdd) {
+        window.LoveBudFloatingToolbarPositioning.positionQuickAdd(posCtx);
+      }
     }
 
     /**
@@ -353,31 +251,15 @@
 
       if (shouldShowToolbar()) {
         showToolbar();
-        positionToolbar();
+        if (window.LoveBudFloatingToolbarPositioning && window.LoveBudFloatingToolbarPositioning.positionToolbar) {
+          window.LoveBudFloatingToolbarPositioning.positionToolbar(posCtx);
+        }
       } else {
         if (activeMemoryId !== null) {
           activeMemoryId = null;
         }
         hideToolbar();
       }
-    }
-
-    /**
-     * Schedule a position update for animations/transitions.
-     */
-    function schedulePositionUpdate() {
-      if (positionTimer) {
-        clearTimeout(positionTimer);
-      }
-      positionTimer = setTimeout(function () {
-        positionTimer = null;
-        if (toolbar && toolbar.classList.contains(IS_VISIBLE_CLASS)) {
-          positionToolbar();
-          if (quickAdd && quickAdd.classList.contains(IS_VISIBLE_CLASS)) {
-            positionQuickAdd();
-          }
-        }
-      }, POSITION_POLL_INTERVAL);
     }
 
     /**
@@ -440,7 +322,11 @@
     }
 
     // Respond to viewport changes (pan/zoom/resize)
-    var scheduleUpdate = schedulePositionUpdate;
+    var scheduleUpdate = function () {
+      if (window.LoveBudFloatingToolbarPositioning) {
+        window.LoveBudFloatingToolbarPositioning.scheduleUpdate(posCtx);
+      }
+    };
 
     window.addEventListener('resize', function () {
       scheduleUpdate();
