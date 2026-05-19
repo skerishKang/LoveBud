@@ -96,12 +96,23 @@
     }
   }
 
+  /**
+   * Bind all action-related handlers for the floating toolbar.
+   *
+   * @param {Object} ctx
+   */
+  function bind(ctx) {
+    if (!ctx) return;
+    bindPrimaryActions(ctx);
+  }
+
   // Export to global namespace for use by editor-floating-toolbar.js
   window.LoveBudFloatingToolbarActions = {
     edit: toolbarEditAction,
     continue: toolbarContinueAction,
     view: toolbarViewAction,
-    bindPrimaryActions: bindPrimaryActions
+    bindPrimaryActions: bindPrimaryActions,
+    bind: bind
   };
 
   console.log('[toolbar-actions] Initialized (Refs #1275)');
