@@ -262,19 +262,17 @@
     // ─── Keyboard shortcuts ──────────────────────────────────
 
     // Keyboard shortcuts via document-level keydown listener
-    document.addEventListener('keydown', function (e) {
-      if (window.LoveBudFloatingToolbarKeyboard && window.LoveBudFloatingToolbarKeyboard.handleShortcut) {
-        var context = {
-          isVisible: toolbar && toolbar.classList.contains(IS_VISIBLE_CLASS),
-          editBtn: editBtn,
-          continueBtn: continueBtn,
-          viewBtn: viewBtn,
-          moreBtn: moreBtn,
-          deleteAction: deleteAction
-        };
-        window.LoveBudFloatingToolbarKeyboard.handleShortcut(e, context);
-      }
-    });
+    if (window.LoveBudFloatingToolbarKeyboard && window.LoveBudFloatingToolbarKeyboard.bindDocumentShortcuts) {
+      window.LoveBudFloatingToolbarKeyboard.bindDocumentShortcuts({
+        toolbar: toolbar,
+        visibleClass: IS_VISIBLE_CLASS,
+        editBtn: editBtn,
+        continueBtn: continueBtn,
+        viewBtn: viewBtn,
+        moreBtn: moreBtn,
+        deleteAction: deleteAction
+      });
+    }
 
     // ─── Toolbar keyboard navigation ─────────────────────
 
