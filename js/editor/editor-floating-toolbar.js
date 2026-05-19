@@ -34,8 +34,6 @@
   const NODE_SELECTOR = '.memory-node';
   const IS_VISIBLE_CLASS = 'is-visible';
   const IS_HIDDEN_CLASS = 'is-hidden';
-  const COMPACT_CLASS = 'is-compact';
-  const MOBILE_BREAKPOINT = 480;
 
 
   /**
@@ -120,31 +118,16 @@
 
     /**
      * Check if the floating toolbar should be visible based on contract §4.
+     * Delegates to LoveBudFloatingToolbarVisibility helper.
      */
     function shouldShowToolbar() {
-      // Mobile <480px: never show
-      if (window.innerWidth < MOBILE_BREAKPOINT) return false;
-
-      var selectedEl = getSelectedNodeEl();
-      if (!selectedEl) return false;
-
-      // Check if detail panel edit mode is active
-      var editMode = document.getElementById('detailEditMode');
-      if (editMode && editMode.style.display !== 'none' && editMode.style.display !== '') return false;
-
-      // Check if compact mode is active on the canvas toolbar
-      var canvasToolbar = document.querySelector('.editor-canvas-toolbar');
-      if (canvasToolbar && canvasToolbar.classList.contains(COMPACT_CLASS)) return false;
-
-      // Check if we're in structured layout mode
-      var bodyClass = document.body.className;
-      if (bodyClass.indexOf('layout-structured') !== -1) return false;
-
-      // Check tree owner / auth context
-      var canvasEmptyGuide = document.getElementById('canvasEmptyGuide');
-      if (canvasEmptyGuide && !canvasEmptyGuide.classList.contains('editor-canvas-empty-guide-hidden')) return false;
-
-      return true;
+      if (window.LoveBudFloatingToolbarVisibility && window.LoveBudFloatingToolbarVisibility.shouldShow) {
+        return window.LoveBudFloatingToolbarVisibility.shouldShow({
+          getSelectedNode: getSelectedNodeEl
+        });
+      }
+      // Fallback: safe default — do not show
+      return false;
     }
 
     /**
