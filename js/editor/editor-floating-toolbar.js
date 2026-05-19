@@ -330,54 +330,18 @@
       }
     });
 
-    // ─── Toolbar keyboard navigation (existing) ────────────
+    // ─── Toolbar keyboard navigation ─────────────────────
 
-    toolbar.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape') {
-        // Deselect the current node
-        var selectedEl = getSelectedNodeEl();
-        if (selectedEl) {
-          selectedEl.classList.remove(SELECTED_CLASS);
-          selectedEl.blur();
-        }
-        hideToolbar();
-
-        // Also clear detail panel selection by clicking on empty canvas
-        var canvasArea = document.getElementById('canvasArea');
-        if (canvasArea) {
-          var emptySpot = canvasArea.querySelector('.canvas-svg');
-          if (emptySpot) {
-            emptySpot.click();
-          }
-        }
-        // Also hide dropdown if open
-        if (window.LoveBudFloatingToolbarDropdown) window.LoveBudFloatingToolbarDropdown.hide(dropdown, moreBtn);
-      }
-
-      // Arrow keys: navigate between buttons
-      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
-        e.preventDefault();
-        var next = e.target.nextElementSibling;
-        if (next && (next.classList.contains('editor-floating-toolbar-btn') || next.classList.contains('editor-ftb-more-btn'))) {
-          next.focus();
-        } else {
-          // Wrap to first
-          var first = toolbar.querySelector('.editor-floating-toolbar-btn, .editor-ftb-more-btn');
-          if (first) first.focus();
-        }
-      }
-      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
-        e.preventDefault();
-        var prev = e.target.previousElementSibling;
-        if (prev && (prev.classList.contains('editor-floating-toolbar-btn') || prev.classList.contains('editor-ftb-more-btn'))) {
-          prev.focus();
-        } else {
-          // Wrap to last
-          var buttons = toolbar.querySelectorAll('.editor-floating-toolbar-btn, .editor-ftb-more-btn');
-          if (buttons.length) buttons[buttons.length - 1].focus();
-        }
-      }
-    });
+    if (window.LoveBudFloatingToolbarKeyboard && window.LoveBudFloatingToolbarKeyboard.bindToolbarNavigation) {
+      window.LoveBudFloatingToolbarKeyboard.bindToolbarNavigation({
+        toolbar: toolbar,
+        getSelectedNode: getSelectedNodeEl,
+        hideToolbar: hideToolbar,
+        dropdown: dropdown,
+        moreBtn: moreBtn,
+        selectedClass: SELECTED_CLASS
+      });
+    }
 
     // ─── Initial state ────────────────────────────────────
     hideToolbar();
