@@ -247,16 +247,10 @@
       });
     }
 
-    // ─── Branch / connection-mode buttons ──────────────────
+    // ─── Affordance bindings ───────────────────────────────
 
-    if (window.LoveBudFloatingToolbarAffordance && window.LoveBudFloatingToolbarAffordance.bindConnectionButtons) {
-      window.LoveBudFloatingToolbarAffordance.bindConnectionButtons(posCtx);
-    }
-
-    // ─── Quick-add affordance ─────────────────────────────
-
-    if (window.LoveBudFloatingToolbarAffordance && window.LoveBudFloatingToolbarAffordance.bindQuickAdd) {
-      window.LoveBudFloatingToolbarAffordance.bindQuickAdd(posCtx);
+    if (window.LoveBudFloatingToolbarAffordance && window.LoveBudFloatingToolbarAffordance.bind) {
+      window.LoveBudFloatingToolbarAffordance.bind(posCtx);
     }
 
     // ─── Tooltip on hover over toolbar buttons ─────────────
