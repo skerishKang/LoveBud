@@ -261,16 +261,16 @@
 
     // ─── Tooltip on hover over toolbar buttons ─────────────
 
-    var tooltipTargets = [editBtn, continueBtn, viewBtn];
-    if (moreBtn) tooltipTargets.push(moreBtn);
-    if (branchBtn) tooltipTargets.push(branchBtn);
-    if (forkBtn) tooltipTargets.push(forkBtn);
-
-    if (window.LoveBudFloatingToolbarTooltip && window.LoveBudFloatingToolbarTooltip.init) {
-      window.LoveBudFloatingToolbarTooltip.init({
+    if (window.LoveBudFloatingToolbarTooltip && window.LoveBudFloatingToolbarTooltip.bind) {
+      window.LoveBudFloatingToolbarTooltip.bind({
         tooltip: tooltip,
         toolbar: toolbar,
-        targets: tooltipTargets,
+        editBtn: editBtn,
+        continueBtn: continueBtn,
+        viewBtn: viewBtn,
+        moreBtn: moreBtn,
+        branchBtn: branchBtn,
+        forkBtn: forkBtn,
         getTitle: getSelectedMomentTitle
       });
     }
