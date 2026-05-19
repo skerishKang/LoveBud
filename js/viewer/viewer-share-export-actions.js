@@ -13,10 +13,13 @@
      *   - showShareStatus: function(result) to display share status feedback
      *   - selectedMoment: current moment object (or null)
      *   - panelBranch: current branch object (or null)
-     * @returns {Object} With copyLink, nativeShare, platformShare, exportTreeImageCard, exportMomentImageCard
+     * @returns {Object} With copyLink, nativeShare, platformShare, exportTreeImageCard, exportMomentImageCard, printTree
      */
     function createShareExportHandlers(ctx) {
         return {
+            printTree: function() {
+                window.print();
+            },
             copyLink: function() {
                 var Share = window.LoveBudShareActions;
                 if (!Share) return;
@@ -72,6 +75,7 @@
         if (a === 'platform-share') { handlers.platformShare(action.dataset.platform); return true; }
         if (a === 'export-tree-card') { handlers.exportTreeImageCard(); return true; }
         if (a === 'export-moment-card') { handlers.exportMomentImageCard(); return true; }
+        if (a === 'print-tree') { handlers.printTree(); return true; }
         return false;
     }
 
