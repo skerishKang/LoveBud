@@ -78,8 +78,6 @@
     if (toolbar.dataset.ftbInitialized === '1') return;
     toolbar.dataset.ftbInitialized = '1';
 
-    var activeMemoryId = null;
-
     // ─── Positioning context ─────────────────────────────
     var posCtx = {
       getSelectedNode: getSelectedNodeEl,
@@ -171,27 +169,8 @@
           window.LoveBudFloatingToolbarPositioning.positionToolbar(posCtx);
         }
       } else {
-        if (activeMemoryId !== null) {
-          activeMemoryId = null;
-        }
         hideToolbar();
       }
-    }
-
-    /**
-     * Handle node selection: show toolbar.
-     */
-    function handleNodeSelection(memoryId) {
-      activeMemoryId = memoryId || null;
-      updateToolbar();
-    }
-
-    /**
-     * Clear selection: hide toolbar.
-     */
-    function handleSelectionCleared() {
-      activeMemoryId = null;
-      hideToolbar();
     }
 
     /**
