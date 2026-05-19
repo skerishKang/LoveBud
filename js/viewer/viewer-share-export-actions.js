@@ -65,6 +65,7 @@
      * @returns {boolean} true if the action was handled, false otherwise
      */
     function handleShareExportAction(action, handlers) {
+        if (!action || !action.dataset || !handlers) return false;
         var a = action.dataset.action;
         if (a === 'copy-link') { handlers.copyLink(); return true; }
         if (a === 'native-share') { handlers.nativeShare(); return true; }

@@ -277,8 +277,11 @@ test('moment detail panel includes moment image card export button', () => {
 
 test('tree-viewer handles moment image card export action', () => {
     const viewer = fs.readFileSync('js/viewer/tree-viewer.js', 'utf8');
-    assert.ok(viewer.includes('export-moment-card'), 'tree-viewer must handle export-moment-card action');
+    const helper = fs.readFileSync('js/viewer/viewer-share-export-actions.js', 'utf8');
+    assert.ok(helper.includes('export-moment-card'), 'helper module must handle export-moment-card action');
     assert.ok(viewer.includes('exportMomentImageCard'), 'tree-viewer must have exportMomentImageCard handler');
+    assert.ok(viewer.includes('shareExportHandlers'), 'tree-viewer must delegate to shareExportHandlers');
+    assert.ok(helper.includes('handleShareExportAction'), 'helper must delegate action dispatch');
     assert.ok(viewer.includes('state.selectedMoment'), 'tree-viewer must read current moment from state for export');
 });
 

@@ -376,6 +376,7 @@
             };
 
             // Share/export action bridge extracted to viewer-share-export-actions.js
+            var shareExportHandlers = null;
             (function() {
                 var SE = window.LoveBudViewerShareExportActions;
                 if (!SE) return;
@@ -385,6 +386,7 @@
                     get selectedMoment() { return state.selectedMoment; },
                     get panelBranch() { return state.panelBranch; }
                 });
+                shareExportHandlers = se;
                 handler.copyLink = se.copyLink;
                 handler.nativeShare = se.nativeShare;
                 handler.platformShare = se.platformShare;
@@ -414,12 +416,11 @@
                     else if (a === 'toggle-like') { handler.toggleLike(); action.classList.toggle('is-liked'); }
                     else if (a === 'open-tree-comments') handler.openPanel('tree-comments');
                     else if (a === 'open-share') handler.openPanel('share');
-                    else if (a === 'copy-link') handler.copyLink();
-                    else if (a === 'native-share') handler.nativeShare();
-                    else if (a === 'platform-share') handler.platformShare(action.dataset.platform);
-                    else if (a === 'export-tree-card') handler.exportTreeImageCard();
-                    else if (a === 'export-moment-card') handler.exportMomentImageCard();
                     else if (a === 'toggle-layout') handler.onToggleLayout();
+                    else {
+                        var SE = window.LoveBudViewerShareExportActions;
+                        if (SE && shareExportHandlers && SE.handleShareExportAction(action, shareExportHandlers)) {}
+                    }
                     return;
                 }
                 var momentBtn = e.target.closest('[data-moment-id]');
