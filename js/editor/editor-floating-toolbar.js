@@ -34,10 +34,9 @@
   const NODE_SELECTOR = '.memory-node';
   const IS_VISIBLE_CLASS = 'is-visible';
   const IS_HIDDEN_CLASS = 'is-hidden';
-  const IS_CONNECTING_CLASS = 'is-connecting';
   const COMPACT_CLASS = 'is-compact';
   const MOBILE_BREAKPOINT = 480;
-  const AFFORDANCE_SELECTOR = '.memory-add-affordance';
+
 
   /**
    * Find the currently selected memory node element on the canvas.
@@ -48,19 +47,7 @@
     return document.querySelector(NODE_SELECTOR + '.' + SELECTED_CLASS);
   }
 
-  /**
-   * Check if connection mode is active (user is in a "continue" or "branch" flow).
-   * Detected by presence of growth affordance elements on the canvas.
-   */
-  function isConnectionMode() {
-    var canvas = document.getElementById('canvasArea');
-    if (!canvas) return false;
-    // Connection mode is active when the growth affordance tip or branch lines exist
-    var affordance = canvas.querySelector(AFFORDANCE_SELECTOR);
-    return !!affordance;
-  }
-
-  /**
+/**
    * Resolves the memory object by the selected node element.
    * Falls back to reading the node's data-memory-id and looking up in global state.
    */
@@ -119,6 +106,10 @@
       getSelectedNode: getSelectedNodeEl,
       toolbar: toolbar,
       quickAdd: quickAdd,
+      dropdown: dropdown,
+      moreBtn: moreBtn,
+      branchBtn: branchBtn,
+      forkBtn: forkBtn,
       lastX: -1,
       lastY: -1,
       positionTimer: null,
@@ -164,7 +155,9 @@
       if (toolbar.classList.contains(IS_VISIBLE_CLASS)) return;
 
       // Update adaptive state before showing
-      updateAdaptiveState();
+      if (window.LoveBudFloatingToolbarAffordance && window.LoveBudFloatingToolbarAffordance.updateAdaptiveState) {
+        window.LoveBudFloatingToolbarAffordance.updateAdaptiveState(posCtx);
+      }
 
       toolbar.classList.remove(IS_HIDDEN_CLASS);
       toolbar.style.display = '';
@@ -175,7 +168,9 @@
       if (window.LoveBudFloatingToolbarPositioning && window.LoveBudFloatingToolbarPositioning.positionToolbar) {
         window.LoveBudFloatingToolbarPositioning.positionToolbar(posCtx);
       }
-      showQuickAdd();
+      if (window.LoveBudFloatingToolbarAffordance && window.LoveBudFloatingToolbarAffordance.showQuickAdd) {
+        window.LoveBudFloatingToolbarAffordance.showQuickAdd(posCtx);
+      }
     }
 
     /**
@@ -193,54 +188,11 @@
       posCtx.lastY = -1;
 
       // Hide associated affordances
-      hideQuickAdd();
+      if (window.LoveBudFloatingToolbarAffordance && window.LoveBudFloatingToolbarAffordance.hideQuickAdd) {
+        window.LoveBudFloatingToolbarAffordance.hideQuickAdd(posCtx);
+      }
       if (window.LoveBudFloatingToolbarTooltip) window.LoveBudFloatingToolbarTooltip.hide();
       if (window.LoveBudFloatingToolbarDropdown) window.LoveBudFloatingToolbarDropdown.hide(dropdown, moreBtn);
-    }
-
-    /**
-     * Show the quick-add affordance near the selected node.
-     */
-    function showQuickAdd() {
-      if (!quickAdd) return;
-      if (quickAdd.classList.contains(IS_VISIBLE_CLASS)) return;
-      if (isConnectionMode()) return; // Don't show during connection mode
-
-      quickAdd.classList.remove(IS_HIDDEN_CLASS);
-      quickAdd.style.display = '';
-      void quickAdd.offsetWidth;
-      quickAdd.classList.add(IS_VISIBLE_CLASS);
-      if (window.LoveBudFloatingToolbarPositioning && window.LoveBudFloatingToolbarPositioning.positionQuickAdd) {
-        window.LoveBudFloatingToolbarPositioning.positionQuickAdd(posCtx);
-      }
-    }
-
-    /**
-     * Hide the quick-add affordance.
-     */
-    function hideQuickAdd() {
-      if (!quickAdd) return;
-      if (!quickAdd.classList.contains(IS_VISIBLE_CLASS)) return;
-      quickAdd.classList.remove(IS_VISIBLE_CLASS);
-      quickAdd.classList.add(IS_HIDDEN_CLASS);
-      quickAdd.style.display = 'none';
-    }
-
-    /**
-     * Update the toolbar's adaptive state based on current mode.
-     * Switches between normal mode (edit/continue/view) and connection mode (branch/fork).
-     */
-    function updateAdaptiveState() {
-      if (!toolbar) return;
-      var connecting = isConnectionMode();
-      toolbar.classList.toggle(IS_CONNECTING_CLASS, connecting);
-
-      // Hide quick add in connection mode
-      if (connecting) {
-        hideQuickAdd();
-      } else if (toolbar.classList.contains(IS_VISIBLE_CLASS)) {
-        showQuickAdd();
-      }
     }
 
     /**
@@ -407,52 +359,14 @@
 
     // ─── Branch / connection-mode buttons ──────────────────
 
-    if (branchBtn) {
-      branchBtn.addEventListener('click', function (e) {
-        e.stopPropagation();
-        // Trigger branch via existing branch button in detail panel
-        var createBranchBtn = document.getElementById('createBranchBtn');
-        if (createBranchBtn) {
-          createBranchBtn.click();
-          return;
-        }
-        // Fallback: assume continue flow
-        var continueBtnDetail = document.getElementById('continueFromMomentBtn');
-        if (continueBtnDetail) {
-          continueBtnDetail.click();
-        }
-      });
-    }
-
-    if (forkBtn) {
-      forkBtn.addEventListener('click', function (e) {
-        e.stopPropagation();
-        // Fork: similar to branch but might trigger a different flow
-        var createBranchBtn = document.getElementById('createBranchBtn');
-        if (createBranchBtn) {
-          createBranchBtn.click();
-          return;
-        }
-      });
+    if (window.LoveBudFloatingToolbarAffordance && window.LoveBudFloatingToolbarAffordance.bindConnectionButtons) {
+      window.LoveBudFloatingToolbarAffordance.bindConnectionButtons(posCtx);
     }
 
     // ─── Quick-add affordance ─────────────────────────────
 
-    if (quickAdd) {
-      quickAdd.addEventListener('click', function (e) {
-        e.stopPropagation();
-        if (window.LoveBudFloatingToolbarDropdown) window.LoveBudFloatingToolbarDropdown.hide(dropdown, moreBtn);
-        // Quick-add triggers continue from the selected moment
-        var continueBtnDetail = document.getElementById('continueFromMomentBtn');
-        if (continueBtnDetail) {
-          continueBtnDetail.click();
-          return;
-        }
-        var addMemoryBtn = document.getElementById('addMemoryBtn');
-        if (addMemoryBtn) {
-          addMemoryBtn.click();
-        }
-      });
+    if (window.LoveBudFloatingToolbarAffordance && window.LoveBudFloatingToolbarAffordance.bindQuickAdd) {
+      window.LoveBudFloatingToolbarAffordance.bindQuickAdd(posCtx);
     }
 
     // ─── Tooltip on hover over toolbar buttons ─────────────
