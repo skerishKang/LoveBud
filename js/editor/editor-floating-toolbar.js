@@ -78,9 +78,6 @@
     if (toolbar.dataset.ftbInitialized === '1') return;
     toolbar.dataset.ftbInitialized = '1';
 
-    // Track keyboard shortcut keyup timeout for visual flash feedback
-    var flashTimer = null;
-
     var activeMemoryId = null;
 
     // ─── Positioning context ─────────────────────────────
@@ -211,19 +208,6 @@
       return '';
     }
 
-    /**
-     * Flash a toolbar button for visual feedback after keyboard activation.
-     */
-    function flashButton(btn) {
-      if (!btn) return;
-      if (flashTimer) clearTimeout(flashTimer);
-      btn.classList.add('flash-feedback');
-      flashTimer = setTimeout(function () {
-        btn.classList.remove('flash-feedback');
-        flashTimer = null;
-      }, 160);
-    }
-
     // ─── Event wiring ─────────────────────────────────────
 
     // Respond to viewport changes (pan/zoom/resize)
@@ -307,8 +291,7 @@
           continueBtn: continueBtn,
           viewBtn: viewBtn,
           moreBtn: moreBtn,
-          deleteAction: deleteAction,
-          flashButton: flashButton
+          deleteAction: deleteAction
         };
         window.LoveBudFloatingToolbarKeyboard.handleShortcut(e, context);
       }

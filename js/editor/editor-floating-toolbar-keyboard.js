@@ -14,10 +14,27 @@
 (function () {
   'use strict';
 
+  var flashTimer = null;
+
+  /**
+   * Flash a toolbar button for visual feedback after keyboard activation.
+   *
+   * @param {Element|null} btn - Toolbar button to flash
+   */
+  function flashButton(btn) {
+    if (!btn) return;
+    if (flashTimer) clearTimeout(flashTimer);
+    btn.classList.add('flash-feedback');
+    flashTimer = setTimeout(function () {
+      btn.classList.remove('flash-feedback');
+      flashTimer = null;
+    }, 160);
+  }
+
   /**
    * Handle global keyboard shortcuts for the floating toolbar.
    * Processes E, C, V, and Delete/Backspace keys when the toolbar is visible.
-   * 
+   *
    * @param {KeyboardEvent} e - The keydown event
    * @param {Object} context - Context containing state and element references
    * @returns {boolean} - True if the event was handled
@@ -37,7 +54,7 @@
       if (!e.ctrlKey && !e.metaKey && !e.altKey) {
         e.preventDefault();
         e.stopPropagation();
-        if (context.flashButton) context.flashButton(context.editBtn);
+        flashButton(context.editBtn);
         // Prefer using action helper if available
         if (actions && actions.edit) {
           actions.edit();
@@ -53,7 +70,7 @@
       if (!e.ctrlKey && !e.metaKey && !e.altKey) {
         e.preventDefault();
         e.stopPropagation();
-        if (context.flashButton) context.flashButton(context.continueBtn);
+        flashButton(context.continueBtn);
         if (actions && actions.continue) {
           actions.continue();
         } else if (context.continueBtn) {
@@ -68,7 +85,7 @@
       if (!e.ctrlKey && !e.metaKey && !e.altKey) {
         e.preventDefault();
         e.stopPropagation();
-        if (context.flashButton) context.flashButton(context.viewBtn);
+        flashButton(context.viewBtn);
         if (actions && actions.view) {
           actions.view();
         } else if (context.viewBtn) {
@@ -85,14 +102,14 @@
       // Trigger delete via the dropdown action button
       if (context.deleteAction) {
         // Flash the more button to indicate where to find the delete
-        if (context.moreBtn && context.flashButton) {
-          context.flashButton(context.moreBtn);
+        if (context.moreBtn) {
+          flashButton(context.moreBtn);
         }
         context.deleteAction.click();
       } else {
         var deleteMemoryBtn = document.getElementById('deleteMemoryBtn');
         if (deleteMemoryBtn) {
-          if (context.flashButton) context.flashButton(context.deleteAction);
+          flashButton(context.deleteAction);
           deleteMemoryBtn.click();
         }
       }
@@ -173,7 +190,8 @@
   // Export to global namespace
   window.LoveBudFloatingToolbarKeyboard = {
     handleShortcut: handleShortcut,
-    bindToolbarNavigation: bindToolbarNavigation
+    bindToolbarNavigation: bindToolbarNavigation,
+    flashButton: flashButton
   };
 
   console.log('[toolbar-keyboard] Initialized (Refs #1275)');
