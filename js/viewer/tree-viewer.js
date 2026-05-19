@@ -257,8 +257,12 @@
             var RenderTree = window.LoveBudVisitorViewerRenderTree;
             var Panels = window.LoveBudVisitorViewerPanels;
 
+            // State helper (extracted to viewer-state.js)
+            var State = window.LoveBudViewerState;
+            if (!State) throw new Error('Viewer state helper unavailable');
+
             // Render state
-            var state = { selectedBranchId: 'main', selectedMomentId: null, activePanel: 'empty', likedTree: false, layoutMode: 'organic' };
+            var state = State.createInitialState();
 
             show(SEL.treeContainer);
             hide(SEL.loading, SEL.empty, SEL.error);
@@ -298,34 +302,11 @@
                 '  <div class="vv-panel-host"></div>' +
                 '</div>';
 
-            function getAllMoments() {
-                var results = [];
-                viewerData.branches.forEach(function(branch) {
-                    (branch.moments || []).forEach(function(m) {
-                        results.push({
-                            id: m.id,
-                            branchId: branch.id,
-                            title: m.title,
-                            tag: m.tag,
-                            caption: m.caption,
-                            emoji: m.emoji,
-                            channelId: m.channelId || '',
-                            channelName: m.channelName || '',
-                            channelUrl: m.channelUrl || ''
-                        });
-                    });
-                });
-                return results;
-            }
-
-            var allMoments = getAllMoments();
+            var allMoments = State.getAllMoments(viewerData);
 
             function refresh() {
-                var branch = viewerData.branches.find(function(b) { return b.id === state.selectedBranchId; }) || viewerData.branches[0];
-                var moment = allMoments.find(function(m) { return m.id === state.selectedMomentId; });
-                state.selectedBranch = branch;
-                state.selectedMoment = moment;
-                state.panelBranch = moment ? (viewerData.branches.find(function(b) { return b.id === moment.branchId; }) || branch) : branch;
+                var selection = State.resolveSelection(viewerData, allMoments, state);
+                State.applySelection(state, selection);
 
                 var treeBox = container.querySelector('.vv-tree-container');
                 if (treeBox && RenderTree) RenderTree.renderTree(treeBox, state, handler);
