@@ -339,12 +339,12 @@
         // Title
         ctx.fillStyle = '#3e342f';
         ctx.font = '700 44px Outfit, sans-serif';
-        drawWrappedText(ctx, payload.title, 84, branchLabel ? 206 : 190, 560, 52, 2);
+        drawWrappedText(ctx, payload.title, 84, payload.branchLabel ? 206 : 190, 560, 52, 2);
 
         // Caption
         ctx.fillStyle = '#7e6b62';
         ctx.font = '400 22px \"Noto Sans KR\", sans-serif';
-        drawWrappedText(ctx, payload.caption, 84, branchLabel ? 330 : 314, 620, 32, 2);
+        drawWrappedText(ctx, payload.caption, 84, payload.branchLabel ? 330 : 314, 620, 32, 2);
 
         // Brand
         ctx.fillStyle = '#a8a29e';
