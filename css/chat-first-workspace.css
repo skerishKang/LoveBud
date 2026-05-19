@@ -1,0 +1,847 @@
+/* ─────────────────────────────────────────────────────────────
+   Chat-First Workspace Shell — Isolated UX Prototype
+   기준 문서: docs/product/CHAT_FIRST_TREE_WORKSPACE_CONTRACT.md
+   Issue #1321
+   ⚡ Mock data only — no DB/API/AI
+   ───────────────────────────────────────────────────────────── */
+
+/* ── Layout ──────────────────────────────────────────────── */
+.cfw-body {
+  background: var(--background, #fdfbf7);
+  color: var(--on-background, #3e342f);
+  font-family: var(--font-body, 'Noto Sans KR', sans-serif);
+  margin: 0;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+.cfw-screen {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* ── Header (minimal, no shared-header) ────────────────── */
+.cfw-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--lovetree-soft-surface-border, rgba(144,73,81,0.08));
+  background: rgba(253, 251, 247, 0.92);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.cfw-header-logo {
+  font-family: var(--font-heading, 'Outfit', sans-serif);
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--primary, #904951);
+  letter-spacing: -0.3px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cfw-header-logo-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.cfw-header-nav {
+  display: flex;
+  gap: 6px;
+}
+
+.cfw-header-back-btn {
+  background: none;
+  border: 1px solid var(--lovetree-soft-surface-border, rgba(144,73,81,0.08));
+  border-radius: var(--radius-full, 9999px);
+  padding: 6px 14px;
+  font-size: 13px;
+  color: var(--on-surface-variant, #6c5953);
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.18s ease;
+}
+
+.cfw-header-back-btn:hover {
+  background: var(--lovetree-pill-bg, rgba(144,73,81,0.08));
+}
+
+.cfw-header-badge {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 2px 8px;
+  border-radius: var(--radius-full, 9999px);
+  background: rgba(144, 73, 81, 0.08);
+  color: var(--primary, #904951);
+}
+
+/* ── Entry State ────────────────────────────────────────── */
+.cfw-entry {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+}
+
+.cfw-entry-card {
+  max-width: 520px;
+  width: 100%;
+  text-align: center;
+}
+
+.cfw-entry-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  display: block;
+}
+
+.cfw-entry-title {
+  font-family: var(--font-heading, 'Outfit', sans-serif);
+  font-size: clamp(26px, 4vw, 34px);
+  font-weight: 700;
+  color: var(--on-surface, #483934);
+  margin: 0 0 8px;
+  line-height: 1.2;
+}
+
+.cfw-entry-desc {
+  font-size: 15px;
+  color: var(--on-surface-variant, #6c5953);
+  line-height: 1.6;
+  margin: 0 0 28px;
+}
+
+.cfw-entry-input-wrap {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.cfw-entry-input {
+  flex: 1;
+  padding: 14px 18px;
+  border: 1px solid var(--lovetree-soft-surface-border, rgba(144,73,81,0.12));
+  border-radius: var(--radius-lg, 2rem);
+  font-size: 15px;
+  font-family: inherit;
+  background: var(--surface-container, #f2efe9);
+  color: var(--on-surface, #483934);
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.cfw-entry-input:focus {
+  border-color: var(--primary, #904951);
+  box-shadow: 0 0 0 3px rgba(144, 73, 81, 0.12);
+}
+
+.cfw-entry-input::placeholder {
+  color: var(--on-surface-note, #9c8080);
+}
+
+.cfw-entry-submit {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-full, 9999px);
+  border: none;
+  background: var(--primary, #904951);
+  color: var(--on-primary, #ffffff);
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.15s ease, background 0.18s ease;
+}
+
+.cfw-entry-submit:hover {
+  background: var(--primary-vibrant, #b85c66);
+  transform: translateY(-1px);
+}
+
+.cfw-entry-submit:active {
+  transform: translateY(0);
+}
+
+.cfw-entry-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.cfw-action-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 18px;
+  border-radius: var(--radius-full, 9999px);
+  background: var(--lovetree-chip-bg, rgba(255,255,255,0.84));
+  border: 1px solid var(--lovetree-chip-border, rgba(144,73,81,0.12));
+  color: var(--lovetree-chip-text, #6c5953);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.18s ease;
+  user-select: none;
+}
+
+.cfw-action-chip:hover {
+  background: var(--lovetree-pill-bg, rgba(144,73,81,0.08));
+  border-color: var(--lovetree-pill-border, rgba(144,73,81,0.22));
+  color: var(--primary, #904951);
+}
+
+.cfw-action-chip:active {
+  transform: scale(0.97);
+}
+
+.cfw-action-chip-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+
+/* ── Workspace State (desktop 80/20 split) ─────────────── */
+.cfw-workspace {
+  flex: 1;
+  display: none; /* shown via JS */
+  height: calc(100vh - 53px); /* header height */
+}
+
+.cfw-workspace.active {
+  display: flex;
+}
+
+.cfw-workspace-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow-y: auto;
+}
+
+.cfw-workspace-panel {
+  width: 360px;
+  min-width: 300px;
+  max-width: 400px;
+  border-left: 1px solid var(--lovetree-soft-surface-border, rgba(144,73,81,0.08));
+  background: var(--surface-container-low, #f8f5f0);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+/* ── Workspace: Top bar ─────────────────────────────────── */
+.cfw-workspace-topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--lovetree-soft-surface-border, rgba(144,73,81,0.08));
+  flex-shrink: 0;
+}
+
+.cfw-search-box {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: var(--radius-full, 9999px);
+  background: var(--surface-container, #f2efe9);
+  border: 1px solid transparent;
+  transition: border-color 0.2s ease;
+}
+
+.cfw-search-box:focus-within {
+  border-color: var(--primary, #904951);
+}
+
+.cfw-search-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--on-surface, #483934);
+  outline: none;
+}
+
+.cfw-search-input::placeholder {
+  color: var(--on-surface-note, #9c8080);
+}
+
+.cfw-search-icon {
+  color: var(--on-surface-note, #9c8080);
+  font-size: 16px;
+  line-height: 1;
+}
+
+/* ── Workspace: Content grid ────────────────────────────── */
+.cfw-content-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto 1fr auto;
+  gap: 16px;
+  padding: 16px 24px;
+  overflow-y: auto;
+  align-content: start;
+}
+
+.cfw-card {
+  background: var(--lovetree-soft-surface, #f8f5f0);
+  border: 1px solid var(--lovetree-soft-surface-border, rgba(144,73,81,0.08));
+  border-radius: var(--radius-default, 1rem);
+  padding: 18px;
+  box-shadow: var(--lovetree-card-shadow, 0 4px 20px rgba(75,64,57,0.05));
+}
+
+.cfw-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.cfw-card-title {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--on-surface-note, #9c8080);
+}
+
+.cfw-tree-summary {
+  grid-column: 1 / 2;
+  grid-row: 1 / 2;
+}
+
+.cfw-moment-browser {
+  grid-column: 2 / 3;
+  grid-row: 1 / 3;
+}
+
+.cfw-moment-card {
+  grid-column: 1 / 3;
+  grid-row: 3 / 4;
+}
+
+.cfw-tree-viz {
+  grid-column: 1 / 2;
+  grid-row: 2 / 3;
+}
+
+/* ── Tree Summary ───────────────────────────────────────── */
+.cfw-tree-name {
+  font-family: var(--font-heading, 'Outfit', sans-serif);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--on-surface, #483934);
+  margin: 0 0 4px;
+}
+
+.cfw-tree-meta {
+  font-size: 12px;
+  color: var(--on-surface-note, #9c8080);
+  margin: 0 0 12px;
+}
+
+.cfw-tree-stats {
+  display: flex;
+  gap: 16px;
+}
+
+.cfw-stat {
+  text-align: center;
+}
+
+.cfw-stat-value {
+  font-family: var(--font-heading, 'Outfit', sans-serif);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--primary, #904951);
+  display: block;
+}
+
+.cfw-stat-label {
+  font-size: 11px;
+  color: var(--on-surface-note, #9c8080);
+}
+
+/* ── Moment Browser ─────────────────────────────────────── */
+.cfw-moment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cfw-moment-item {
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--surface-container, #f2efe9);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.cfw-moment-item:hover {
+  background: var(--lovetree-pill-bg, rgba(144,73,81,0.08));
+}
+
+.cfw-moment-item.active {
+  background: rgba(144, 73, 81, 0.06);
+  border: 1px solid var(--lovetree-soft-surface-border, rgba(144,73,81,0.18));
+  padding: 9px 11px;
+}
+
+.cfw-moment-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-top: 6px;
+  flex-shrink: 0;
+}
+
+.cfw-moment-dot.warm { background: var(--accent-warm, #c9a87c); }
+.cfw-moment-dot.rose { background: var(--accent-rose, #e8c4c8); }
+.cfw-moment-dot.green { background: var(--secondary, #7a8b6e); }
+
+.cfw-moment-text {
+  font-size: 13px;
+  color: var(--on-surface, #483934);
+  line-height: 1.4;
+}
+
+.cfw-moment-date {
+  font-size: 11px;
+  color: var(--on-surface-note, #9c8080);
+  margin-top: 2px;
+}
+
+/* ── Mini Tree Viz ──────────────────────────────────────── */
+.cfw-tree-viz-canvas {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 0;
+  min-height: 60px;
+}
+
+.cfw-viz-node {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--primary-soft, #d4a5a9);
+  flex-shrink: 0;
+}
+
+.cfw-viz-node.core {
+  width: 18px;
+  height: 18px;
+  background: var(--primary, #904951);
+}
+
+.cfw-viz-node.branch {
+  background: var(--accent-warm, #c9a87c);
+}
+
+.cfw-viz-edge {
+  width: 20px;
+  height: 2px;
+  background: var(--lovetree-soft-surface-border, rgba(144,73,81,0.12));
+  flex-shrink: 0;
+}
+
+/* ── Selected Moment Card ───────────────────────────────── */
+.cfw-selected-moment {
+  display: flex;
+  flex-direction: column;
+}
+
+.cfw-selected-moment-header {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--on-surface, #483934);
+  margin-bottom: 6px;
+}
+
+.cfw-selected-moment-body {
+  font-size: 13px;
+  color: var(--on-surface-variant, #6c5953);
+  line-height: 1.6;
+}
+
+.cfw-selected-moment-tags {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.cfw-moment-tag {
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: var(--radius-full, 9999px);
+  background: var(--lovetree-pill-bg, rgba(144,73,81,0.08));
+  color: var(--primary, #904951);
+}
+
+/* ── Chat Panel (right 20%) ─────────────────────────────── */
+.cfw-chat-header {
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--lovetree-soft-surface-border, rgba(144,73,81,0.08));
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--on-surface, #483934);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.cfw-chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cfw-chat-msg {
+  max-width: 85%;
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.cfw-chat-msg.system {
+  align-self: flex-start;
+  background: var(--lovetree-soft-surface, #f8f5f0);
+  border: 1px solid var(--lovetree-soft-surface-border, rgba(144,73,81,0.08));
+  color: var(--on-surface-variant, #6c5953);
+}
+
+.cfw-chat-msg.user {
+  align-self: flex-end;
+  background: var(--primary, #904951);
+  color: var(--on-primary, #ffffff);
+  border-bottom-right-radius: 4px;
+}
+
+.cfw-chat-msg.lovebud {
+  align-self: flex-start;
+  background: var(--accent-rose, #e8c4c8);
+  color: var(--on-surface, #483934);
+  border-bottom-left-radius: 4px;
+}
+
+.cfw-chat-suggestions {
+  padding: 0 18px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.cfw-chat-suggestion {
+  font-size: 11px;
+  padding: 6px 12px;
+  border-radius: var(--radius-full, 9999px);
+  border: 1px solid var(--lovetree-chip-border, rgba(144,73,81,0.12));
+  background: var(--surface-container, #f2efe9);
+  color: var(--on-surface-variant, #6c5953);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s ease;
+}
+
+.cfw-chat-suggestion:hover {
+  background: var(--lovetree-pill-bg, rgba(144,73,81,0.08));
+  color: var(--primary, #904951);
+  border-color: var(--lovetree-pill-border, rgba(144,73,81,0.22));
+}
+
+.cfw-chat-input-bar {
+  display: flex;
+  gap: 6px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--lovetree-soft-surface-border, rgba(144,73,81,0.08));
+  flex-shrink: 0;
+}
+
+.cfw-chat-input {
+  flex: 1;
+  padding: 10px 14px;
+  border: 1px solid var(--lovetree-soft-surface-border, rgba(144,73,81,0.12));
+  border-radius: var(--radius-lg, 2rem);
+  font-size: 13px;
+  font-family: inherit;
+  background: var(--surface-container, #f2efe9);
+  color: var(--on-surface, #483934);
+  outline: none;
+}
+
+.cfw-chat-input:focus {
+  border-color: var(--primary, #904951);
+}
+
+.cfw-chat-send {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-full, 9999px);
+  border: none;
+  background: var(--primary, #904951);
+  color: var(--on-primary, #ffffff);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.18s ease;
+}
+
+.cfw-chat-send:hover {
+  background: var(--primary-vibrant, #b85c66);
+}
+
+/* ── Mobile Tab Bar ──────────────────────────────────────── */
+.cfw-mobile-tabs {
+  display: none; /* shown on mobile */
+  border-bottom: 1px solid var(--lovetree-soft-surface-border, rgba(144,73,81,0.08));
+  background: var(--surface-container-lowest, #ffffff);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.cfw-mobile-tab {
+  flex: 1;
+  text-align: center;
+  padding: 12px 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--on-surface-variant, #6c5953);
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-family: inherit;
+  position: relative;
+  transition: color 0.18s ease;
+}
+
+.cfw-mobile-tab.active {
+  color: var(--primary, #904951);
+}
+
+.cfw-mobile-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 20%;
+  right: 20%;
+  height: 2px;
+  background: var(--primary, #904951);
+  border-radius: 1px;
+}
+
+/* ── Bottom Sheet ────────────────────────────────────────── */
+.cfw-bottom-sheet {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--surface-container-lowest, #ffffff);
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -4px 30px rgba(75, 64, 57, 0.1);
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+  z-index: 200;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.cfw-bottom-sheet.open {
+  transform: translateY(0);
+}
+
+.cfw-bottom-sheet-handle {
+  width: 40px;
+  height: 4px;
+  background: var(--lovetree-soft-surface-border, rgba(144,73,81,0.15));
+  border-radius: 2px;
+  margin: 10px auto 8px;
+}
+
+.cfw-bottom-sheet-content {
+  padding: 0 20px 24px;
+}
+
+.cfw-bottom-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(60, 50, 40, 0.3);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  z-index: 199;
+}
+
+.cfw-bottom-sheet-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ── Mobile moment strip (default state) ───────────────── */
+.cfw-moment-strip {
+  display: none; /* shown on mobile */
+  padding: 8px 16px;
+  background: var(--surface-container-low, #f8f5f0);
+  border-top: 1px solid var(--lovetree-soft-surface-border, rgba(144,73,81,0.08));
+  font-size: 12px;
+  color: var(--on-surface-variant, #6c5953);
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.cfw-moment-strip-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--primary, #904951);
+  flex-shrink: 0;
+}
+
+.cfw-moment-strip-expand {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--primary, #904951);
+  cursor: pointer;
+  background: none;
+  border: none;
+  font-family: inherit;
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: var(--radius-full, 9999px);
+  transition: background 0.15s ease;
+}
+
+.cfw-moment-strip-expand:hover {
+  background: var(--lovetree-pill-bg, rgba(144,73,81,0.08));
+}
+
+/* ── Mobile tab panels ───────────────────────────────────── */
+.cfw-mobile-panel {
+  display: none;
+}
+
+.cfw-mobile-panel.active {
+  display: block;
+}
+
+/* ── Responsive: Mobile ──────────────────────────────────── */
+@media (max-width: 768px) {
+  .cfw-workspace.active {
+    flex-direction: column;
+  }
+
+  .cfw-workspace-panel {
+    display: none;
+  }
+
+  .cfw-mobile-tabs {
+    display: flex;
+  }
+
+  .cfw-moment-strip {
+    display: flex;
+  }
+
+  .cfw-content-grid {
+    grid-template-columns: 1fr;
+    padding: 12px 16px;
+    gap: 12px;
+  }
+
+  .cfw-tree-summary { grid-column: 1; grid-row: auto; }
+  .cfw-tree-viz { grid-column: 1; grid-row: auto; }
+  .cfw-moment-browser { grid-column: 1; grid-row: auto; }
+  .cfw-moment-card { grid-column: 1; grid-row: auto; }
+
+  .cfw-entry-card {
+    max-width: 100%;
+  }
+
+  .cfw-entry {
+    padding: 24px 16px;
+  }
+
+  .cfw-workspace-topbar {
+    padding: 12px 16px;
+  }
+
+  .cfw-header {
+    padding: 10px 16px;
+  }
+
+  .cfw-chat-messages {
+    max-height: 50vh;
+  }
+}
+
+/* ── Animation helpers ────────────────────────────────────── */
+.cfw-fade-in {
+  animation: cfwFadeIn 0.4s ease both;
+}
+
+@keyframes cfwFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.cfw-stagger > * {
+  animation: cfwFadeIn 0.35s ease both;
+}
+
+.cfw-stagger > *:nth-child(1) { animation-delay: 0.04s; }
+.cfw-stagger > *:nth-child(2) { animation-delay: 0.08s; }
+.cfw-stagger > *:nth-child(3) { animation-delay: 0.12s; }
+.cfw-stagger > *:nth-child(4) { animation-delay: 0.16s; }
+.cfw-stagger > *:nth-child(5) { animation-delay: 0.20s; }
+.cfw-stagger > *:nth-child(6) { animation-delay: 0.24s; }
+
+/* ── State transitions ────────────────────────────────────── */
+.cfw-entry-exit {
+  animation: cfwEntryExit 0.35s ease forwards;
+}
+
+@keyframes cfwEntryExit {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(-12px) scale(0.98); }
+}
+
+.cfw-workspace-enter {
+  animation: cfwWorkspaceEnter 0.4s ease both;
+}
+
+@keyframes cfwWorkspaceEnter {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
