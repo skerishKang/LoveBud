@@ -373,6 +373,7 @@
                 handler.platformShare = se.platformShare;
                 handler.exportTreeImageCard = se.exportTreeImageCard;
                 handler.exportMomentImageCard = se.exportMomentImageCard;
+                handler.printTree = se.printTree;
             })();
 
             function showShareStatus(result) {

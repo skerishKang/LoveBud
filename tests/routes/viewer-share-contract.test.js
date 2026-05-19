@@ -576,3 +576,132 @@ test('tree route loads viewer state helper before tree viewer', () => {
     assert.ok(helperIdx < stateIdx, 'viewer-share-export-actions.js must load before viewer-state.js');
     assert.ok(stateIdx < treeViewerIdx, 'viewer-state.js must load before tree-viewer.js');
 });
+
+// #958 first slice: print/PDF export tests
+
+test('viewer share export helper has print-tree action', () => {
+    const content = fs.readFileSync('js/viewer/viewer-share-export-actions.js', 'utf8');
+    assert.ok(content.includes('print-tree'), 'helper must handle print-tree action');
+    assert.ok(content.includes('printTree'), 'helper must expose printTree handler');
+    assert.ok(content.includes('window.print'), 'printTree handler must call window.print');
+});
+
+test('share panel has print-tree button', () => {
+    const panels = fs.readFileSync('js/visitor-viewer/visitor-viewer-panels.js', 'utf8');
+    assert.ok(panels.includes('data-action="print-tree"'), 'share panel must have print-tree button');
+    assert.ok(panels.includes('aria-label="러브트리 인쇄 또는 PDF 저장"'), 'print button must have accessible label');
+    assert.ok(panels.includes('인쇄/PDF 저장'), 'print button must display correct text');
+});
+
+test('tree-viewer wires printTree handler', () => {
+    const viewer = fs.readFileSync('js/viewer/tree-viewer.js', 'utf8');
+    assert.ok(viewer.includes('printTree'), 'tree-viewer must wire printTree handler');
+});
+
+test('print CSS has @media print', () => {
+    const css = fs.readFileSync('css/viewer/public-tree-viewer.css', 'utf8');
+    assert.ok(css.includes('@media print'), 'public-tree-viewer.css must have print media query');
+    assert.ok(css.includes('display: none'), 'print CSS must hide interactive UI');
+    assert.ok(css.includes('!important'), 'print CSS must use !important overrides');
+    assert.ok(css.includes('page-break-inside'), 'print CSS must have page-break rules');
+});
+
+test('print CSS hides interactive-only UI', () => {
+    const css = fs.readFileSync('css/viewer/public-tree-viewer.css', 'utf8');
+    assert.ok(css.includes('vv-action-dock'), 'print CSS must hide action dock');
+    assert.ok(css.includes('vv-share-actions'), 'print CSS must hide share actions');
+    assert.ok(css.includes('vv-panel-close'), 'print CSS must hide panel close');
+    assert.ok(css.includes('vv-moment-comments-section'), 'print CSS must hide comments section');
+    assert.ok(css.includes('vv-comment-input'), 'print CSS must hide comment input');
+    assert.ok(css.includes('vv-moment-nav'), 'print CSS must hide moment navigation');
+});
+
+test('print CSS preserves public-safe content', () => {
+    const css = fs.readFileSync('css/viewer/public-tree-viewer.css', 'utf8');
+    assert.ok(css.includes('vv-title'), 'print CSS must keep title visible');
+    assert.ok(css.includes('vv-moment-caption'), 'print CSS must keep captions visible');
+});
+
+test('print implementation uses native browser print only', () => {
+    const content = fs.readFileSync('js/viewer/viewer-share-export-actions.js', 'utf8');
+    assert.ok(content.includes('window.print()'), 'print handler must call window.print() directly');
+    assert.equal(content.includes('import'), false, 'no PDF library import in helper');
+    assert.equal(content.includes('require'), false, 'no CommonJS require in helper');
+});
+
+test('custom PDF library not imported', () => {
+    const files = ['js/viewer/viewer-share-export-actions.js', 'js/viewer/tree-viewer.js', 'css/viewer/public-tree-viewer.css'];
+    const jsPdfPattern = /jspdf|pdfkit|pdf-lib|pdfmake|pdfjs/i;
+    files.forEach(function(file) {
+        const content = fs.readFileSync(file, 'utf8');
+        assert.equal(jsPdfPattern.test(content), false, file + ' must not import custom PDF library');
+    });
+});
+
+test('existing tree image-card export still preserved', () => {
+    const content = fs.readFileSync('js/viewer/viewer-share-export-actions.js', 'utf8');
+    assert.ok(content.includes('export-tree-card'), 'tree card export must still exist');
+    assert.ok(content.includes('export-moment-card'), 'moment card export must still exist');
+});
+
+test('existing viewer-state and share modules still present', () => {
+    assert.ok(fs.existsSync('js/viewer/viewer-state.js'), 'viewer-state.js must still exist');
+    const stateContent = fs.readFileSync('js/viewer/viewer-state.js', 'utf8');
+    assert.ok(stateContent.includes('LoveBudViewerState'), 'viewer state must still be exposed');
+    assert.ok(fs.existsSync('js/viewer/viewer-share-export-actions.js'), 'share export helper must still exist');
+    assert.ok(fs.existsSync('js/viewer/share-actions.js'), 'share actions module must still exist');
+});
+
+test('print CSS must not hide vv-branch-moment-list', () => {
+    const css = fs.readFileSync('css/viewer/public-tree-viewer.css', 'utf8');
+    const printSection = css.split('@media print')[1] || '';
+    const hideSection = printSection.split('display: none')[0] || '';
+    assert.equal(hideSection.includes('vv-branch-moment-list'), false, 'vv-branch-moment-list must NOT be in display:none section');
+});
+
+test('print CSS must preserve vv-branch-moment-item for moment titles', () => {
+    const css = fs.readFileSync('css/viewer/public-tree-viewer.css', 'utf8');
+    const printSection = css.split('@media print')[1] || '';
+    // Must have explicit visible rules
+    assert.ok(printSection.includes('.vv-branch-moment-item'), 'print CSS must have visible rules for vv-branch-moment-item');
+    // Must override any generic hiding with !important
+    const itemFlexMatch = printSection.match(/\.vv-branch-moment-item\s*\{[^}]*display:\s*flex\s*!important[^}]*\}/);
+    assert.ok(itemFlexMatch, 'vv-branch-moment-item must have display:flex !important to override any generic hiding');
+    assert.ok(printSection.includes('color: black'), 'moment items must have black color in print');
+    assert.ok(printSection.includes('page-break-inside: avoid'), 'moment items must have page-break-avoid');
+});
+
+test('print CSS must not use generic button[data-action] selector', () => {
+    const css = fs.readFileSync('css/viewer/public-tree-viewer.css', 'utf8');
+    const printSection = css.split('@media print')[1] || '';
+    // The hide section is the first block with display:none
+    const hideSection = printSection.split('display: none')[0] || '';
+    assert.equal(hideSection.includes('button[data-action]'), false, 'must not use generic button[data-action] in print hide list');
+});
+
+test('print CSS still hides share/actions/comments', () => {
+    const css = fs.readFileSync('css/viewer/public-tree-viewer.css', 'utf8');
+    assert.ok(css.includes('vv-share-actions') && css.includes('display: none'), 'share actions must still be hidden in print');
+    assert.ok(css.includes('vv-moment-comments-section'), 'comments section must still be hidden in print');
+    assert.ok(css.includes('vv-action-dock'), 'action dock must still be hidden in print');
+    assert.ok(css.includes('vv-comment-input'), 'comment input must still be hidden in print');
+});
+
+test('print CSS hides vv-branch-moment-open indicator', () => {
+    const css = fs.readFileSync('css/viewer/public-tree-viewer.css', 'utf8');
+    const printSection = css.split('@media print')[1] || '';
+    assert.ok(printSection.includes('.vv-branch-moment-open'), 'print CSS must hide moment open indicator');
+    assert.ok(printSection.includes('display: none'), 'open indicator must be display:none');
+    assert.equal(printSection.includes('vv-branch-moment-open') && printSection.includes('display: none'), true, 'moment open indicator hidden in print');
+});
+
+test('vv-share-note is hidden but not in color-preserve list', () => {
+    const css = fs.readFileSync('css/viewer/public-tree-viewer.css', 'utf8');
+    const printSection = css.split('@media print')[1] || '';
+    // Must be in hide list
+    const hideSection = printSection.split('display: none')[0] || '';
+    assert.ok(hideSection.includes('vv-share-note'), 'vv-share-note must be in hide list');
+    // Must NOT be in color-preserve list (after the display:none section)
+    const afterHideSection = printSection.split('display: none !important')[1] || '';
+    assert.equal(afterHideSection.includes('vv-share-note'), false, 'vv-share-note must not be in color-preserve list');
+});
