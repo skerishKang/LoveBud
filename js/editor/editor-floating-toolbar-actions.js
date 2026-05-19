@@ -55,11 +55,53 @@
     }
   }
 
+  /**
+   * Bind click event wiring for primary action buttons.
+   * Extracted from editor-floating-toolbar.js (Issue #1275).
+   * Each ctx member is optional — missing elements skip their wiring.
+   *
+   * @param {Object}   ctx
+   * @param {Element}  [ctx.editBtn]     - Edit button element
+   * @param {Element}  [ctx.continueBtn] - Continue button element
+   * @param {Element}  [ctx.viewBtn]     - View button element
+   */
+  function bindPrimaryActions(ctx) {
+    if (!ctx) return;
+
+    if (ctx.editBtn) {
+      ctx.editBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (window.LoveBudFloatingToolbarActions && window.LoveBudFloatingToolbarActions.edit) {
+          window.LoveBudFloatingToolbarActions.edit();
+        }
+      });
+    }
+
+    if (ctx.continueBtn) {
+      ctx.continueBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (window.LoveBudFloatingToolbarActions && window.LoveBudFloatingToolbarActions.continue) {
+          window.LoveBudFloatingToolbarActions.continue();
+        }
+      });
+    }
+
+    if (ctx.viewBtn) {
+      ctx.viewBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (window.LoveBudFloatingToolbarActions && window.LoveBudFloatingToolbarActions.view) {
+          window.LoveBudFloatingToolbarActions.view();
+        }
+      });
+    }
+  }
+
   // Export to global namespace for use by editor-floating-toolbar.js
   window.LoveBudFloatingToolbarActions = {
     edit: toolbarEditAction,
     continue: toolbarContinueAction,
-    view: toolbarViewAction
+    view: toolbarViewAction,
+    bindPrimaryActions: bindPrimaryActions
   };
 
   console.log('[toolbar-actions] Initialized (Refs #1275)');
