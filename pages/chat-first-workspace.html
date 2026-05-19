@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>대화로 시작하는 러브트리 | LoveTree Prototype</title>
+  <link rel="icon" href="/assets/favicon/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/favicon.ico" sizes="32x32">
+  <!-- Design system tokens -->
+  <link rel="stylesheet" href="../css/global.css?v=20260509-994-1">
+  <!-- Isolated shell styles -->
+  <link rel="stylesheet" href="../css/chat-first-workspace.css?v=20260518-1">
+  <!-- Material Symbols -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
+</head>
+<body class="cfw-body">
+  <div class="cfw-screen">
+
+    <!-- ─── Minimal Header ─────────────────────────────── -->
+    <header class="cfw-header">
+      <div class="cfw-header-logo">
+        <span class="cfw-header-logo-icon">🌳</span>
+        LoveTree
+        <span class="cfw-header-badge">prototype</span>
+      </div>
+      <nav class="cfw-header-nav">
+        <a href="my-trees" class="cfw-header-back-btn">← 내 러브트리</a>
+      </nav>
+    </header>
+
+    <!-- ─── Entry State ─────────────────────────────────── -->
+    <section class="cfw-entry" id="cfwEntry">
+      <div class="cfw-entry-card cfw-fade-in">
+        <span class="cfw-entry-icon">🌱</span>
+        <h1 class="cfw-entry-title">무엇부터 시작할까요?</h1>
+        <p class="cfw-entry-desc">
+          러브트리에 기록할 순간을 이야기해보세요.<br>
+          대화를 시작하면 트리와 순간들이 펼쳐집니다.
+        </p>
+
+        <div class="cfw-entry-input-wrap">
+          <input
+            type="text"
+            class="cfw-entry-input"
+            id="cfwEntryInput"
+            placeholder="예: 오늘 있었던 따뜻한 순간을 기록하고 싶어"
+            aria-label="대화 입력"
+            autofocus
+          />
+          <button class="cfw-entry-submit" id="cfwEntrySubmit" aria-label="전송">
+            <span class="material-symbols-outlined" style="font-size:22px;">arrow_forward</span>
+          </button>
+        </div>
+
+        <div class="cfw-entry-actions cfw-stagger" id="cfwEntryActions">
+          <button class="cfw-action-chip" data-action="새 러브트리를 시작하고 싶어">
+            <span class="cfw-action-chip-icon">🌿</span>
+            새 러브트리 시작
+          </button>
+          <button class="cfw-action-chip" data-action="예전 순간을 다시 보고 싶어">
+            <span class="cfw-action-chip-icon">🔍</span>
+            기존 순간 이어보기
+          </button>
+          <button class="cfw-action-chip" data-action="기억 속 특별한 순간을 찾아줘">
+            <span class="cfw-action-chip-icon">💭</span>
+            기억 속 순간 찾기
+          </button>
+          <button class="cfw-action-chip" data-action="관계 흐름을 분석해줘">
+            <span class="cfw-action-chip-icon">🔄</span>
+            관계 흐름 살펴보기
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── Workspace State ─────────────────────────────── -->
+    <div class="cfw-workspace" id="cfwWorkspace">
+
+      <!-- Main (left ~80%) -->
+      <div class="cfw-workspace-main">
+        <!-- Top bar with search -->
+        <div class="cfw-workspace-topbar">
+          <div class="cfw-search-box">
+            <span class="cfw-search-icon material-symbols-outlined">search</span>
+            <input type="text" class="cfw-search-input" placeholder="트리와 순간 검색..." aria-label="검색" disabled>
+          </div>
+          <button class="cfw-header-back-btn" id="cfwBackToEntry">← 처음으로</button>
+        </div>
+
+        <!-- Content grid -->
+        <div class="cfw-content-grid cfw-fade-in">
+          <!-- Tree Summary -->
+          <div class="cfw-card cfw-tree-summary">
+            <div class="cfw-card-header">
+              <span class="cfw-card-title">현재 트리</span>
+            </div>
+            <div class="cfw-tree-name" id="cfwTreeName"></div>
+            <div class="cfw-tree-meta" id="cfwTreeMeta"></div>
+            <div class="cfw-tree-stats">
+              <div class="cfw-stat">
+                <span class="cfw-stat-value cfw-stat-moments" id="cfwStatMoments">0</span>
+                <span class="cfw-stat-label">순간</span>
+              </div>
+              <div class="cfw-stat">
+                <span class="cfw-stat-value cfw-stat-branches" id="cfwStatBranches">0</span>
+                <span class="cfw-stat-label">브랜치</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Mini Tree Viz -->
+          <div class="cfw-card cfw-tree-viz">
+            <div class="cfw-card-header">
+              <span class="cfw-card-title">트리 시각화</span>
+            </div>
+            <div class="cfw-tree-viz-canvas">
+              <div class="cfw-viz-node core"></div>
+              <div class="cfw-viz-edge"></div>
+              <div class="cfw-viz-node"></div>
+              <div class="cfw-viz-edge"></div>
+              <div class="cfw-viz-node branch"></div>
+              <div class="cfw-viz-edge"></div>
+              <div class="cfw-viz-node"></div>
+              <div class="cfw-viz-edge"></div>
+              <div class="cfw-viz-node"></div>
+              <div class="cfw-viz-edge"></div>
+              <div class="cfw-viz-node branch"></div>
+            </div>
+          </div>
+
+          <!-- Moment Browser -->
+          <div class="cfw-card cfw-moment-browser">
+            <div class="cfw-card-header">
+              <span class="cfw-card-title">순간 브라우저</span>
+              <span style="font-size:11px;color:var(--on-surface-note);">5개의 순간</span>
+            </div>
+            <div class="cfw-moment-list" id="cfwMomentList"></div>
+          </div>
+
+          <!-- Selected Moment Card -->
+          <div class="cfw-card cfw-moment-card">
+            <div class="cfw-selected-moment">
+              <div class="cfw-selected-moment-header" id="cfwSelectedMomentHeader"></div>
+              <div class="cfw-selected-moment-body" id="cfwSelectedMomentBody"></div>
+              <div class="cfw-selected-moment-tags" id="cfwSelectedMomentTags"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chat Panel (right ~20%) -->
+      <div class="cfw-workspace-panel">
+        <div class="cfw-chat-header">
+          <span class="material-symbols-outlined" style="font-size:18px;color:var(--primary);">forum</span>
+          대화
+        </div>
+        <div class="cfw-chat-messages" id="cfwChatMessages"></div>
+        <div class="cfw-chat-suggestions" id="cfwChatSuggestions">
+          <button class="cfw-chat-suggestion">이 순간을 기록해줘</button>
+          <button class="cfw-chat-suggestion">비슷한 순간 찾아줘</button>
+          <button class="cfw-chat-suggestion">관계 흐름 알려줘</button>
+          <button class="cfw-chat-suggestion">새 브랜치 제안해줘</button>
+        </div>
+        <div class="cfw-chat-input-bar">
+          <input type="text" class="cfw-chat-input" id="cfwChatInput" placeholder="메시지 입력..." aria-label="채팅 입력">
+          <button class="cfw-chat-send" id="cfwChatSend" aria-label="전송">
+            <span class="material-symbols-outlined" style="font-size:18px;">send</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ─── Mobile Elements ──────────────────────────────── -->
+
+      <!-- Mobile Tab Bar -->
+      <div class="cfw-mobile-tabs" id="cfwMobileTabs">
+        <button class="cfw-mobile-tab active" data-tab="chat">
+          <span class="material-symbols-outlined" style="font-size:18px;display:block;margin:0 auto 2px;">forum</span>
+          대화
+        </button>
+        <button class="cfw-mobile-tab" data-tab="tree">
+          <span class="material-symbols-outlined" style="font-size:18px;display:block;margin:0 auto 2px;">account_tree</span>
+          트리
+        </button>
+        <button class="cfw-mobile-tab" data-tab="moments">
+          <span class="material-symbols-outlined" style="font-size:18px;display:block;margin:0 auto 2px;">auto_stories</span>
+          순간
+        </button>
+      </div>
+
+      <!-- Mobile Moment Strip (default state) -->
+      <div class="cfw-moment-strip" id="cfwMomentStrip">
+        <div class="cfw-moment-strip-dot"></div>
+        <span class="cfw-moment-strip-name" id="cfwMomentStripName">—</span>
+        <button class="cfw-moment-strip-expand" id="cfwMomentStripExpand">
+          펼쳐보기 <span style="font-size:10px;">▲</span>
+        </button>
+      </div>
+
+      <!-- Mobile panels -->
+      <div class="cfw-mobile-panel active" data-panel="chat">
+        <!-- Chat is shown inline on mobile -->
+      </div>
+      <div class="cfw-mobile-panel" data-panel="tree">
+        <div class="cfw-content-grid" style="padding:12px 16px;grid-template-columns:1fr;gap:12px;">
+          <div class="cfw-card"><div class="cfw-card-title" style="margin-bottom:8px;">현재 트리</div><div class="cfw-tree-name" style="margin-bottom:4px;"></div><div class="cfw-tree-viz-canvas" style="padding:8px 0;">트리 시각화 영역</div></div>
+        </div>
+      </div>
+      <div class="cfw-mobile-panel" data-panel="moments">
+        <div class="cfw-content-grid" style="padding:12px 16px;grid-template-columns:1fr;gap:12px;">
+          <div class="cfw-card"><div class="cfw-card-title" style="margin-bottom:8px;">순간 목록</div><div class="cfw-moment-list" id="cfwMomentListMobile"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Bottom Sheet (mobile expanded state) ────────── -->
+    <div class="cfw-bottom-sheet-overlay" id="cfwBottomSheetOverlay"></div>
+    <div class="cfw-bottom-sheet" id="cfwBottomSheet">
+      <div class="cfw-bottom-sheet-handle"></div>
+      <div class="cfw-bottom-sheet-content" id="cfwBottomSheetContent">
+        <!-- filled by JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Script (deferred for performance) -->
+  <script src="../js/chat-first-workspace.js?v=20260518-1"></script>
+</body>
+</html>
