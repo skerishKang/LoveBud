@@ -170,7 +170,7 @@ def fetch_latest_public_tree_snapshots(limit: int = 12, sort: str = "latest") ->
             SELECT
                 tree_id,
                 count(*) as memory_count,
-                ARRAY_AGG(emotion_tags) as all_tags
+                jsonb_agg(emotion_tags) as all_tags
             FROM memories
             WHERE visibility = 'public'
             GROUP BY tree_id
@@ -278,7 +278,7 @@ def fetch_growing_public_tree_snapshots(limit: int = 6) -> list[dict[str, Any]]:
             SELECT
                 tree_id,
                 count(*) as memory_count,
-                ARRAY_AGG(emotion_tags) as all_tags
+                jsonb_agg(emotion_tags) as all_tags
             FROM memories
             WHERE visibility = 'public'
             GROUP BY tree_id
