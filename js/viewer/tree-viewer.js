@@ -399,6 +399,16 @@
                     Promise.resolve(Share.exportTreeImageCard(handler)).then(function(result) {
                         showShareStatus(result);
                     });
+                },
+                exportMomentImageCard: function() {
+                    var Share = window.LoveBudShareActions;
+                    if (!Share || typeof Share.exportMomentImageCard !== 'function') return;
+                    var momentDetails = state.selectedMoment;
+                    var branch = state.panelBranch;
+                    if (!momentDetails) return;
+                    Promise.resolve(Share.exportMomentImageCard(handler, momentDetails, branch)).then(function(result) {
+                        showShareStatus(result);
+                    });
                 }
             };
 
@@ -428,6 +438,7 @@
                     else if (a === 'native-share') handler.nativeShare();
                     else if (a === 'platform-share') handler.platformShare(action.dataset.platform);
                     else if (a === 'export-tree-card') handler.exportTreeImageCard();
+                    else if (a === 'export-moment-card') handler.exportMomentImageCard();
                     else if (a === 'toggle-layout') handler.onToggleLayout();
                     return;
                 }

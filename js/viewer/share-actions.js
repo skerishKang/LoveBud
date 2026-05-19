@@ -277,6 +277,104 @@
         }
     }
 
+    function getMomentCardPayload(momentDetails, branch) {
+        var title = sanitizeCardText(momentDetails && momentDetails.title, '러브트리 순간', 50);
+        var caption = sanitizeCardText(momentDetails && momentDetails.caption, '공개 순간', 80);
+        var branchLabel = sanitizeCardText(branch && branch.name, '', 24);
+        var tag = sanitizeCardText(momentDetails && momentDetails.tag, '', 20);
+
+        return {
+            title: title,
+            caption: caption,
+            branchLabel: branchLabel,
+            tag: tag,
+            brand: 'LoveBud / LoveTree',
+            routeLabel: 'Public Moment'
+        };
+    }
+
+    function renderMomentCardCanvas(payload) {
+        if (typeof document === 'undefined' || typeof document.createElement !== 'function') return null;
+        var canvas = document.createElement('canvas');
+        if (!canvas || typeof canvas.getContext !== 'function') return null;
+        var ctx = canvas.getContext('2d');
+        if (!ctx) return null;
+
+        canvas.width = 800;
+        canvas.height = 420;
+
+        // Background gradient
+        var gradient = ctx.createLinearGradient(0, 0, 800, 420);
+        gradient.addColorStop(0, '#fefce8');
+        gradient.addColorStop(0.45, '#fff1f3');
+        gradient.addColorStop(1, '#fdfbf7');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, 800, 420);
+
+        // Card inner border
+        ctx.fillStyle = 'rgba(255,255,255,0.80)';
+        ctx.strokeStyle = 'rgba(194,124,126,0.20)';
+        ctx.lineWidth = 2;
+        roundedRect(ctx, 40, 36, 720, 348, 30);
+        ctx.fill();
+        ctx.stroke();
+
+        // Route label
+        ctx.fillStyle = '#c27c7e';
+        ctx.font = '700 22px Outfit, sans-serif';
+        ctx.fillText(payload.routeLabel, 84, 92);
+
+        // Branch label if present
+        if (payload.branchLabel) {
+            ctx.fillStyle = '#be123c';
+            ctx.font = '500 18px Outfit, sans-serif';
+            roundedRect(ctx, 84, 110, ctx.measureText(payload.branchLabel).width + 20, 30, 8);
+            ctx.fillStyle = 'rgba(190,18,60,0.08)';
+            ctx.fill();
+            ctx.fillStyle = '#be123c';
+            ctx.font = '500 14px \"Noto Sans KR\", sans-serif';
+            ctx.fillText(payload.branchLabel, 94, 130);
+        }
+
+        // Title
+        ctx.fillStyle = '#3e342f';
+        ctx.font = '700 44px Outfit, sans-serif';
+        drawWrappedText(ctx, payload.title, 84, payload.branchLabel ? 206 : 190, 560, 52, 2);
+
+        // Caption
+        ctx.fillStyle = '#7e6b62';
+        ctx.font = '400 22px \"Noto Sans KR\", sans-serif';
+        drawWrappedText(ctx, payload.caption, 84, payload.branchLabel ? 330 : 314, 620, 32, 2);
+
+        // Brand
+        ctx.fillStyle = '#a8a29e';
+        ctx.font = '500 18px Outfit, sans-serif';
+        ctx.fillText(payload.brand, 530, 348);
+
+        // Decorative heart
+        ctx.fillStyle = 'rgba(194,124,126,0.10)';
+        ctx.beginPath();
+        ctx.arc(688, 142, 48, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#c27c7e';
+        ctx.font = '600 36px Outfit, sans-serif';
+        ctx.fillText('♡', 676, 156);
+
+        return canvas;
+    }
+
+    function exportMomentImageCard(handlers, momentDetails, branch) {
+        try {
+            var payload = getMomentCardPayload(momentDetails, branch);
+            var canvas = renderMomentCardCanvas(payload);
+            return downloadCanvas(canvas, payload).catch(function() {
+                return copyLink(handlers);
+            });
+        } catch(e) {
+            return Promise.resolve(copyLink(handlers));
+        }
+    }
+
     function exportTreeImageCard(handlers) {
         try {
             var payload = getTreeCardPayload();
@@ -295,7 +393,9 @@
          getPlatformIntent: getPlatformIntent,
          shareToPlatform: shareToPlatform,
          getTreeCardPayload: getTreeCardPayload,
-         exportTreeImageCard: exportTreeImageCard
+         exportTreeImageCard: exportTreeImageCard,
+         getMomentCardPayload: getMomentCardPayload,
+         exportMomentImageCard: exportMomentImageCard
      };
 
      // Temporary performance optimization: hide eager video/player loads
