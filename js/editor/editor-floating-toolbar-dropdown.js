@@ -153,11 +153,34 @@
     }
   }
 
+  /**
+   * Bind dropdown events for the floating toolbar using toolbar element context.
+   *
+   * @param {Object} ctx
+   * @param {HTMLElement} [ctx.dropdown]
+   * @param {HTMLElement} [ctx.moreBtn]
+   * @param {HTMLElement} [ctx.deleteAction]
+   * @param {HTMLElement} [ctx.shareAction]
+   * @param {HTMLElement} [ctx.focusAction]
+   */
+  function bindToolbarDropdown(ctx) {
+    if (!ctx) return;
+
+    bindDropdownEvents({
+      dropdown: ctx.dropdown,
+      moreBtn: ctx.moreBtn,
+      deleteAction: ctx.deleteAction,
+      shareAction: ctx.shareAction,
+      focusAction: ctx.focusAction
+    });
+  }
+
   // Expose on global namespace
   window.LoveBudFloatingToolbarDropdown = {
     show: function (dropdown, moreBtn) { showDropdown(dropdown, moreBtn); },
     hide: function (dropdown, moreBtn) { hideDropdown(dropdown, moreBtn); },
     toggle: function (dropdown, moreBtn, e) { toggleDropdown(dropdown, moreBtn, e); },
-    bind: function (ctx) { bindDropdownEvents(ctx); }
+    bind: function (ctx) { bindDropdownEvents(ctx); },
+    bindToolbarDropdown: bindToolbarDropdown
   };
 })();
