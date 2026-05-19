@@ -216,11 +216,23 @@
     });
   }
 
+  /**
+   * Bind all keyboard-related handlers for the floating toolbar.
+   *
+   * @param {Object} ctx
+   */
+  function bind(ctx) {
+    if (!ctx) return;
+    bindDocumentShortcuts(ctx);
+    bindToolbarNavigation(ctx);
+  }
+
   // Export to global namespace
   window.LoveBudFloatingToolbarKeyboard = {
     handleShortcut: handleShortcut,
     bindDocumentShortcuts: bindDocumentShortcuts,
     bindToolbarNavigation: bindToolbarNavigation,
+    bind: bind,
     flashButton: flashButton
   };
 
