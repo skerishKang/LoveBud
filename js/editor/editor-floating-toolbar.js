@@ -263,29 +263,14 @@
 
 // ─── Button actions ───────────────────────────────────
 
-    // Edit: trigger detail panel edit mode
-    editBtn.addEventListener('click', function (e) {
-      e.stopPropagation();
-      if (window.LoveBudFloatingToolbarActions && window.LoveBudFloatingToolbarActions.edit) {
-        window.LoveBudFloatingToolbarActions.edit();
-      }
-    });
-
-    // Continue: trigger "continue from moment" growth affordance behavior
-    continueBtn.addEventListener('click', function (e) {
-      e.stopPropagation();
-      if (window.LoveBudFloatingToolbarActions && window.LoveBudFloatingToolbarActions.continue) {
-        window.LoveBudFloatingToolbarActions.continue();
-      }
-    });
-
-    // View: trigger moment detail view
-    viewBtn.addEventListener('click', function (e) {
-      e.stopPropagation();
-      if (window.LoveBudFloatingToolbarActions && window.LoveBudFloatingToolbarActions.view) {
-        window.LoveBudFloatingToolbarActions.view();
-      }
-    });
+    // Delegate primary action button wiring to helper
+    if (window.LoveBudFloatingToolbarActions && window.LoveBudFloatingToolbarActions.bindPrimaryActions) {
+      window.LoveBudFloatingToolbarActions.bindPrimaryActions({
+        editBtn: editBtn,
+        continueBtn: continueBtn,
+        viewBtn: viewBtn
+      });
+    }
 
     // ─── More button / dropdown ────────────────────────────
 
