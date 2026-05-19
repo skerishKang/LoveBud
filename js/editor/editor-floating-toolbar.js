@@ -232,8 +232,8 @@
 
     // ─── More button / dropdown ────────────────────────────
 
-    if (window.LoveBudFloatingToolbarDropdown) {
-      window.LoveBudFloatingToolbarDropdown.bind({
+    if (window.LoveBudFloatingToolbarDropdown && window.LoveBudFloatingToolbarDropdown.bindToolbarDropdown) {
+      window.LoveBudFloatingToolbarDropdown.bindToolbarDropdown({
         dropdown: dropdown,
         moreBtn: moreBtn,
         deleteAction: deleteAction,
