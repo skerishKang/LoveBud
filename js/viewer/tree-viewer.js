@@ -373,44 +373,24 @@
                     }
                     refresh();
                 },
-                copyLink: function() {
-                    var Share = window.LoveBudShareActions;
-                    if (!Share) return;
-                    var result = Share.copyLink(handler);
-                    showShareStatus(result);
-                },
-                nativeShare: function() {
-                    var Share = window.LoveBudShareActions;
-                    if (!Share) return;
-                    Share.nativeShare(handler).then(function(result) {
-                        showShareStatus(result);
-                    });
-                },
-                platformShare: function(platform) {
-                    var Share = window.LoveBudShareActions;
-                    if (!Share || typeof Share.shareToPlatform !== 'function') return;
-                    Promise.resolve(Share.shareToPlatform(handler, platform)).then(function(result) {
-                        showShareStatus(result);
-                    });
-                },
-                exportTreeImageCard: function() {
-                    var Share = window.LoveBudShareActions;
-                    if (!Share || typeof Share.exportTreeImageCard !== 'function') return;
-                    Promise.resolve(Share.exportTreeImageCard(handler)).then(function(result) {
-                        showShareStatus(result);
-                    });
-                },
-                exportMomentImageCard: function() {
-                    var Share = window.LoveBudShareActions;
-                    if (!Share || typeof Share.exportMomentImageCard !== 'function') return;
-                    var momentDetails = state.selectedMoment;
-                    var branch = state.panelBranch;
-                    if (!momentDetails) return;
-                    Promise.resolve(Share.exportMomentImageCard(handler, momentDetails, branch)).then(function(result) {
-                        showShareStatus(result);
-                    });
-                }
             };
+
+            // Share/export action bridge extracted to viewer-share-export-actions.js
+            (function() {
+                var SE = window.LoveBudViewerShareExportActions;
+                if (!SE) return;
+                var se = SE.createShareExportHandlers({
+                    handler: handler,
+                    showShareStatus: showShareStatus,
+                    get selectedMoment() { return state.selectedMoment; },
+                    get panelBranch() { return state.panelBranch; }
+                });
+                handler.copyLink = se.copyLink;
+                handler.nativeShare = se.nativeShare;
+                handler.platformShare = se.platformShare;
+                handler.exportTreeImageCard = se.exportTreeImageCard;
+                handler.exportMomentImageCard = se.exportMomentImageCard;
+            })();
 
             function showShareStatus(result) {
                 if (!result || !result.message) return;

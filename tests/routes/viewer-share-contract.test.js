@@ -392,3 +392,43 @@ test('moment card export does not draw external images into canvas', () => {
     const content = fs.readFileSync('js/viewer/share-actions.js', 'utf8');
     assert.equal(content.includes('drawImage'), false, 'must avoid external image draw paths');
 });
+
+// #1282 first slice: viewer-share-export-actions.js tests
+
+test('viewer share export helper module exists', () => {
+    assert.ok(fs.existsSync('js/viewer/viewer-share-export-actions.js'), 'viewer-share-export-actions.js must exist');
+});
+
+test('viewer share export helper has expected API', () => {
+    const content = fs.readFileSync('js/viewer/viewer-share-export-actions.js', 'utf8');
+    assert.ok(content.includes('LoveBudViewerShareExportActions'), 'must expose LoveBudViewerShareExportActions');
+    assert.ok(content.includes('createShareExportHandlers'), 'must expose createShareExportHandlers');
+    assert.ok(content.includes('handleShareExportAction'), 'must expose handleShareExportAction');
+});
+
+test('viewer share export helper preserves action strings', () => {
+    const content = fs.readFileSync('js/viewer/viewer-share-export-actions.js', 'utf8');
+    assert.ok(content.includes('copy-link'), 'must handle copy-link');
+    assert.ok(content.includes('native-share'), 'must handle native-share');
+    assert.ok(content.includes('platform-share'), 'must handle platform-share');
+    assert.ok(content.includes('export-tree-card'), 'must handle export-tree-card');
+    assert.ok(content.includes('export-moment-card'), 'must handle export-moment-card');
+});
+
+test('tree-viewer uses viewer-share-export-actions', () => {
+    const viewer = fs.readFileSync('js/viewer/tree-viewer.js', 'utf8');
+    assert.ok(viewer.includes('LoveBudViewerShareExportActions'), 'tree-viewer must reference the new share export helper');
+    assert.ok(viewer.includes('createShareExportHandlers'), 'tree-viewer must create handlers via new helper');
+});
+
+test('tree route loads share export helper between share actions and tree viewer', () => {
+    const html = fs.readFileSync('pages/tree.html', 'utf8');
+    const shareActionsIdx = html.indexOf('../js/viewer/share-actions.js');
+    const helperIdx = html.indexOf('../js/viewer/viewer-share-export-actions.js');
+    const treeViewerIdx = html.indexOf('../js/viewer/tree-viewer.js');
+    assert.notEqual(shareActionsIdx, -1, 'tree.html must load share-actions.js');
+    assert.notEqual(helperIdx, -1, 'tree.html must load viewer-share-export-actions.js');
+    assert.notEqual(treeViewerIdx, -1, 'tree.html must load tree-viewer.js');
+    assert.ok(shareActionsIdx < helperIdx, 'share-actions.js must load before viewer-share-export-actions.js');
+    assert.ok(helperIdx < treeViewerIdx, 'viewer-share-export-actions.js must load before tree-viewer.js');
+});
