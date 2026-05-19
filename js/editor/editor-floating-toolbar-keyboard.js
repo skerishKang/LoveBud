@@ -102,9 +102,78 @@
     return false;
   }
 
+  /**
+   * Bind toolbar-level keyboard navigation (Escape + arrow keys).
+   * Extracted from editor-floating-toolbar.js (Issue #1275).
+   *
+   * @param {Object}   ctx
+   * @param {Element}  ctx.toolbar        - Floating toolbar element
+   * @param {Function} ctx.getSelectedNode- Returns selected node element or null
+   * @param {Function} ctx.hideToolbar    - Hides the floating toolbar
+   * @param {Element}  [ctx.dropdown]     - Dropdown element
+   * @param {Element}  [ctx.moreBtn]      - More/overflow button element
+   * @param {string}   [ctx.selectedClass]- Selected node CSS class (default: 'selected')
+   */
+  function bindToolbarNavigation(ctx) {
+    if (!ctx || !ctx.toolbar) return;
+
+    var selectedClass = ctx.selectedClass || 'selected';
+    var btnSelector = '.editor-floating-toolbar-btn, .editor-ftb-more-btn';
+
+    ctx.toolbar.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') {
+        // Deselect the current node
+        var selectedEl = ctx.getSelectedNode ? ctx.getSelectedNode() : null;
+        if (selectedEl) {
+          selectedEl.classList.remove(selectedClass);
+          selectedEl.blur();
+        }
+        if (ctx.hideToolbar) ctx.hideToolbar();
+
+        // Also clear detail panel selection by clicking on empty canvas
+        var canvasArea = document.getElementById('canvasArea');
+        if (canvasArea) {
+          var emptySpot = canvasArea.querySelector('.canvas-svg');
+          if (emptySpot) {
+            emptySpot.click();
+          }
+        }
+        // Also hide dropdown if open
+        if (window.LoveBudFloatingToolbarDropdown) {
+          window.LoveBudFloatingToolbarDropdown.hide(ctx.dropdown, ctx.moreBtn);
+        }
+      }
+
+      // Arrow keys: navigate between buttons
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        var next = e.target.nextElementSibling;
+        if (next && (next.classList.contains('editor-floating-toolbar-btn') || next.classList.contains('editor-ftb-more-btn'))) {
+          next.focus();
+        } else {
+          // Wrap to first
+          var first = ctx.toolbar.querySelector(btnSelector);
+          if (first) first.focus();
+        }
+      }
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        var prev = e.target.previousElementSibling;
+        if (prev && (prev.classList.contains('editor-floating-toolbar-btn') || prev.classList.contains('editor-ftb-more-btn'))) {
+          prev.focus();
+        } else {
+          // Wrap to last
+          var buttons = ctx.toolbar.querySelectorAll(btnSelector);
+          if (buttons.length) buttons[buttons.length - 1].focus();
+        }
+      }
+    });
+  }
+
   // Export to global namespace
   window.LoveBudFloatingToolbarKeyboard = {
-    handleShortcut: handleShortcut
+    handleShortcut: handleShortcut,
+    bindToolbarNavigation: bindToolbarNavigation
   };
 
   console.log('[toolbar-keyboard] Initialized (Refs #1275)');
