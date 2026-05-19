@@ -435,3 +435,144 @@ test('tree route loads share export helper between share actions and tree viewer
     assert.ok(shareActionsIdx < helperIdx, 'share-actions.js must load before viewer-share-export-actions.js');
     assert.ok(helperIdx < treeViewerIdx, 'viewer-share-export-actions.js must load before tree-viewer.js');
 });
+
+// #1282 second slice: viewer-state.js tests
+
+function loadViewerState() {
+    const source = fs.readFileSync('js/viewer/viewer-state.js', 'utf8');
+    const context = {
+        window: {},
+        console: { log: function() {}, warn: function() {}, error: function() {} }
+    };
+    context.window.window = context.window;
+    vm.runInNewContext(source, context);
+    return context.window.LoveBudViewerState;
+}
+
+test('viewer state helper module exists', () => {
+    assert.ok(fs.existsSync('js/viewer/viewer-state.js'), 'viewer-state.js must exist');
+});
+
+test('viewer state helper has expected API', () => {
+    const content = fs.readFileSync('js/viewer/viewer-state.js', 'utf8');
+    assert.ok(content.includes('LoveBudViewerState'), 'must expose LoveBudViewerState');
+    assert.ok(content.includes('createInitialState'), 'must expose createInitialState');
+    assert.ok(content.includes('getAllMoments'), 'must expose getAllMoments');
+    assert.ok(content.includes('resolveSelection'), 'must expose resolveSelection');
+    assert.ok(content.includes('applySelection'), 'must expose applySelection');
+});
+
+test('viewer state helper creates correct initial state', () => {
+    const State = loadViewerState();
+    const state = State.createInitialState();
+    assert.equal(state.selectedBranchId, 'main', 'default branch is main');
+    assert.equal(state.selectedMomentId, null, 'default moment is null');
+    assert.equal(state.activePanel, 'empty', 'default panel is empty');
+    assert.equal(state.likedTree, false, 'default liked is false');
+    assert.equal(state.layoutMode, 'organic', 'default layout is organic');
+});
+
+test('viewer state helper getAllMoments flattens branches', () => {
+    const State = loadViewerState();
+    const viewerData = {
+        branches: [
+            { id: 'b1', moments: [{ id: 'm1', title: 'M1', caption: 'C1', tag: 't1', emoji: '🌟' }] },
+            { id: 'b2', moments: [{ id: 'm2', title: 'M2', caption: 'C2', tag: 't2', emoji: '⭐' }] }
+        ]
+    };
+    const allMoments = State.getAllMoments(viewerData);
+    assert.equal(allMoments.length, 2, 'must return all moments');
+    assert.equal(allMoments[0].id, 'm1', 'first moment id preserved');
+    assert.equal(allMoments[0].branchId, 'b1', 'branch id assigned');
+    assert.equal(allMoments[1].id, 'm2', 'second moment id preserved');
+    assert.equal(allMoments[1].branchId, 'b2', 'branch id assigned');
+});
+
+test('viewer state helper resolveSelection returns correct branch and moment', () => {
+    const State = loadViewerState();
+    const viewerData = {
+        branches: [
+            { id: 'b1', name: 'Branch 1', moments: [{ id: 'm1', title: 'M1' }] },
+            { id: 'b2', name: 'Branch 2', moments: [{ id: 'm2', title: 'M2' }] }
+        ]
+    };
+    const allMoments = State.getAllMoments(viewerData);
+    const state = State.createInitialState();
+
+    state.selectedBranchId = 'b1';
+    var sel = State.resolveSelection(viewerData, allMoments, state);
+    assert.equal(sel.selectedBranch.id, 'b1', 'correct branch');
+    assert.equal(sel.selectedMoment, undefined, 'no moment selected');
+    assert.equal(sel.panelBranch.id, 'b1', 'panel branch matches branch');
+
+    state.selectedBranchId = 'b2';
+    state.selectedMomentId = 'm2';
+    sel = State.resolveSelection(viewerData, allMoments, state);
+    assert.equal(sel.selectedBranch.id, 'b2', 'correct branch');
+    assert.equal(sel.selectedMoment.id, 'm2', 'correct moment');
+    assert.equal(sel.panelBranch.id, 'b2', 'panel branch matches moment branch');
+});
+
+test('viewer state helper resolveSelection falls back to first branch', () => {
+    const State = loadViewerState();
+    const viewerData = {
+        branches: [
+            { id: 'b-default', name: 'Default', moments: [{ id: 'm1', title: 'M1' }] }
+        ]
+    };
+    const allMoments = State.getAllMoments(viewerData);
+    var state = { selectedBranchId: 'nonexistent', selectedMomentId: null };
+    var sel = State.resolveSelection(viewerData, allMoments, state);
+    assert.equal(sel.selectedBranch.id, 'b-default', 'falls back to first branch');
+    assert.equal(sel.selectedMoment, undefined, 'no moment');
+    assert.equal(sel.panelBranch.id, 'b-default', 'panel branch falls back');
+});
+
+test('viewer state helper applySelection mutates state correctly', () => {
+    const State = loadViewerState();
+    var state = { selectedBranchId: 'b1' };
+    var selection = {
+        selectedBranch: { id: 'b1', name: 'Branch 1' },
+        selectedMoment: { id: 'm1', title: 'Moment 1' },
+        panelBranch: { id: 'b1', name: 'Branch 1' }
+    };
+    State.applySelection(state, selection);
+    assert.equal(state.selectedBranch.id, 'b1', 'branch applied');
+    assert.equal(state.selectedMoment.id, 'm1', 'moment applied');
+    assert.equal(state.panelBranch.id, 'b1', 'panel branch applied');
+});
+
+test('viewer state helper handles empty / missing branches gracefully', () => {
+    const State = loadViewerState();
+    assert.equal(State.getAllMoments(null).length, 0, 'null viewerData returns empty');
+    assert.equal(State.getAllMoments({}).length, 0, 'empty object returns empty');
+    assert.equal(State.getAllMoments({ branches: [] }).length, 0, 'no branches returns empty');
+    assert.equal(State.getAllMoments({ branches: [{}] }).length, 0, 'branch without moments returns empty');
+});
+
+test('tree-viewer uses viewer-state helper', () => {
+    const viewer = fs.readFileSync('js/viewer/tree-viewer.js', 'utf8');
+    assert.ok(viewer.includes('LoveBudViewerState'), 'tree-viewer must reference LoveBudViewerState');
+    assert.ok(viewer.includes('State.createInitialState()'), 'tree-viewer must call createInitialState');
+    assert.ok(viewer.includes('State.getAllMoments('), 'tree-viewer must call getAllMoments');
+    assert.ok(viewer.includes('State.resolveSelection('), 'tree-viewer must call resolveSelection');
+    assert.ok(viewer.includes('State.applySelection('), 'tree-viewer must call applySelection');
+});
+
+test('inline getAllMoments function removed from tree-viewer', () => {
+    const viewer = fs.readFileSync('js/viewer/tree-viewer.js', 'utf8');
+    assert.equal(viewer.includes('function getAllMoments'), false, 'inline getAllMoments must be removed from tree-viewer.js');
+});
+
+test('tree route loads viewer state helper before tree viewer', () => {
+    const html = fs.readFileSync('pages/tree.html', 'utf8');
+    const stateIdx = html.indexOf('../js/viewer/viewer-state.js');
+    const shareActionsIdx = html.indexOf('../js/viewer/share-actions.js');
+    const helperIdx = html.indexOf('../js/viewer/viewer-share-export-actions.js');
+    const treeViewerIdx = html.indexOf('../js/viewer/tree-viewer.js');
+
+    assert.notEqual(stateIdx, -1, 'tree.html must load viewer-state.js');
+    assert.ok(shareActionsIdx < helperIdx, 'share-actions.js must load before viewer-share-export-actions.js');
+    assert.ok(helperIdx < stateIdx, 'viewer-share-export-actions.js must load before viewer-state.js');
+    assert.ok(stateIdx < treeViewerIdx, 'viewer-state.js must load before tree-viewer.js');
+});
