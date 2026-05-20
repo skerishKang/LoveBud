@@ -48,16 +48,34 @@ test('search UI module preserves orchestrator contract methods', () => {
   const uiModule = read('js/search/search-ui.js');
   const requiredMethods = [
     'syncStaticBrowseCopy',
-    'clearSelectedPreview',
-    'markActiveCard',
     'setMobilePreviewOpen',
-    'renderLoadErrorState',
     'ensureBrowseControls',
     'syncBrowseHead',
   ];
 
   for (const method of requiredMethods) {
     assert.match(uiModule, new RegExp(`\\b${method}\\b`));
+  }
+});
+
+test('search preview state helper exposes state management contract', () => {
+  const helperModule = read('js/search/search-preview-state.js');
+  const requiredMethods = [
+    'getCardContainers',
+    'markActiveCard',
+    'findActiveCard',
+    'syncActiveCard',
+    'clearSelectedPreview',
+    'renderLoadErrorState',
+    'createPreviewStateController',
+    'patchSearchUIFactory',
+  ];
+  const exportMatch = helperModule.match(/window\.LoveBudSearchPreviewState\s*=\s*\{([^}]+)\}/s);
+  assert.ok(exportMatch, 'LoveBudSearchPreviewState export object not found');
+  const exported = exportMatch[1];
+
+  for (const method of requiredMethods) {
+    assert.match(exported, new RegExp(`\\b${method}\\b`), `Missing export: ${method}`);
   }
 });
 

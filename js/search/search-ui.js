@@ -39,47 +39,34 @@
         }
 
         function _showSheetOverlay() {
-            // Guard: already open — do not re-lock or re-save scrollY
             if (sheetOverlay) return;
 
-            // Save current scroll position BEFORE applying position:fixed
             savedScrollY = window.scrollY || window.pageYOffset || 0;
-
-            // Apply scroll lock: position:fixed is set by CSS body.preview-sheet-open;
-            // we set top so the viewport stays visually in place (iOS Safari pattern)
             document.body.style.top = '-' + savedScrollY + 'px';
             document.body.classList.add('preview-sheet-open');
-
-            // NOTE: No scroll restoration during open phase
-            // position:fixed + top:-savedScrollY maintains visual position
-            // Scroll restoration only happens in close phase
 
             sheetOverlay = document.createElement('div');
             sheetOverlay.className = 'preview-sheet-overlay';
             sheetOverlay.setAttribute('aria-hidden', 'true');
             sheetOverlay.addEventListener('click', () => {
-                clearSelectedPreview();
+                requestPreviewClear();
             });
             document.body.appendChild(sheetOverlay);
         }
 
         function _hideSheetOverlay() {
-            // Remove overlay DOM
             if (sheetOverlay) {
                 sheetOverlay.remove();
                 sheetOverlay = null;
             }
             document.querySelectorAll('.preview-sheet-overlay').forEach((overlay) => overlay.remove());
 
-            // Release scroll lock: clear class and inline top BEFORE scrollTo
             document.body.classList.remove('preview-sheet-open');
             document.body.style.top = '';
 
-            // Restore original scroll position using requestAnimationFrame for better timing
             const restoreY = savedScrollY;
             savedScrollY = 0;
             if (restoreY > 0) {
-                // Use requestAnimationFrame to ensure DOM updates complete before scroll
                 window.requestAnimationFrame(() => {
                     window.scrollTo(0, restoreY);
                 });
@@ -95,9 +82,6 @@
             } else {
                 _hideSheetOverlay();
             }
-
-            // scrollIntoView completely disabled for mobile to prevent scroll hijack
-            // Preview opens as fixed bottom sheet without scrolling page to top
         }
 
         function syncPreviewVisibility() {
@@ -107,20 +91,23 @@
                 setMobilePreviewOpen(shouldStayOpen);
                 return;
             }
-            // Desktop / resize from mobile: clean up overlay + scroll lock safely
             _hideSheetOverlay();
             previewSidebar.classList.remove('is-open');
         }
 
-        function clearSelectedPreview(options = {}) {
-            const { preserveOpenState = false } = options;
-            state.selectedTreeId = null;
-            state.currentPreviewRequestId += 1;
-            markActiveCard(null);
-            PreviewRenderer.resetPreview();
-            if (!preserveOpenState && isMobilePreviewMode()) {
-                setMobilePreviewOpen(false);
-            }
+        function requestPreviewClear(options = {}) {
+            const PreviewState = window.LoveBudSearchPreviewState;
+            if (!PreviewState || typeof PreviewState.clearSelectedPreview !== 'function') return;
+
+            return PreviewState.clearSelectedPreview({
+                refs,
+                state,
+                PreviewRenderer,
+                ui: {
+                    isMobilePreviewMode,
+                    setMobilePreviewOpen
+                }
+            }, options);
         }
 
         function getSearchCopy(key, fallbackKo, fallbackEn) {
@@ -434,51 +421,6 @@
             syncControlsFromState();
         }
 
-        function markActiveCard(activeCard) {
-            const allCardContainers = [resultsList, growingList].filter(Boolean);
-            allCardContainers.forEach(container => {
-                container.querySelectorAll('.tree-card.is-active').forEach((card) => {
-                    card.classList.remove('is-active');
-                    card.setAttribute('aria-pressed', 'false');
-                });
-            });
-            if (activeCard) {
-                activeCard.classList.add('is-active');
-                activeCard.setAttribute('aria-pressed', 'true');
-            }
-        }
-
-        function syncActiveCard() {
-            const allCardContainers = [resultsList, growingList].filter(Boolean);
-            let activeCard = null;
-            for (const container of allCardContainers) {
-                const cards = container.querySelectorAll('.tree-card');
-                activeCard = Array.from(cards).find(card => card.dataset.treeId === state.selectedTreeId);
-                if (activeCard) break;
-            }
-            markActiveCard(activeCard || null);
-        }
-
-        function renderLoadErrorState() {
-            resultsList.innerHTML = `
-                <div class="search-empty-state">
-                    <span class="material-symbols-outlined search-error-icon" aria-hidden="true">cloud_off</span>
-                    <h3 class="search-empty-heading">${getSearchCopy('search.errorHeading', '불러오지 못했어요', 'Could not load')}</h3>
-                    <p class="search-empty-body">${getSearchCopy('search.errorBody', '네트워크 상태를 확인하고 다시 시도해 주세요.', 'Check your connection and try again.')}</p>
-                    <div class="search-empty-actions">
-                        <button type="button" id="retryLoadBtn" class="btn-round btn-primary">${getSearchCopy('search.retryButton', '다시 시도', 'Retry')}</button>
-                    </div>
-                </div>
-            `;
-
-            const retryBtn = document.getElementById('retryLoadBtn');
-            if (retryBtn) {
-                retryBtn.addEventListener('click', () => window.location.reload());
-            }
-
-            clearSelectedPreview();
-        }
-
         function renderPreviewLoadingState(tree) {
             if (typeof PreviewRenderer.renderLoadingPreview === 'function') {
                 PreviewRenderer.renderLoadingPreview(tree);
@@ -498,7 +440,7 @@
         function bindMobilePreviewHandlers() {
             if (refs.previewMobileClose) {
                 refs.previewMobileClose.addEventListener('click', () => {
-                    clearSelectedPreview();
+                    requestPreviewClear();
                 });
             }
 
@@ -519,15 +461,11 @@
             isMobilePreviewMode,
             setMobilePreviewOpen,
             syncPreviewVisibility,
-            clearSelectedPreview,
             syncStaticBrowseCopy,
             syncBrowseHead,
             ensureResultsHead,
             syncControlsFromState,
             ensureBrowseControls,
-            markActiveCard,
-            syncActiveCard,
-            renderLoadErrorState,
             renderPreviewLoadingState,
             bindMobilePreviewHandlers
         };
