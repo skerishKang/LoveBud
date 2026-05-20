@@ -12,7 +12,6 @@
         const ScrollLoad = window.LoveBudSearchScrollLoad || {};
 
         let scrollLoadSentinel = null;
-        let scrollLoadObserver = null;
         let scrollCheckRaf = 0;
         let isScrollLoadQueued = false;
         let hasUserScrolledTowardFeed = false;
@@ -250,37 +249,12 @@
 
         function ensureScrollLoadSentinel() {
             if (!resultsList || scrollLoadSentinel) return;
+            if (typeof ScrollLoad.ensureScrollLoadSentinel !== 'function') return;
 
-            if (typeof ScrollLoad.createScrollLoadSentinel === 'function') {
-                scrollLoadSentinel = ScrollLoad.createScrollLoadSentinel(document);
-            } else {
-                scrollLoadSentinel = document.createElement('div');
-                scrollLoadSentinel.id = 'browseScrollLoadSentinel';
-                scrollLoadSentinel.className = 'browse-scroll-load-sentinel';
-                scrollLoadSentinel.innerHTML = `
-                <span class="material-symbols-outlined" aria-hidden="true">progress_activity</span>
-                <span data-scroll-load-label></span>
-            `;
-            }
-
-            resultsList.insertAdjacentElement('afterend', scrollLoadSentinel);
-            syncScrollLoadSentinel();
-
-            if ('IntersectionObserver' in window) {
-                scrollLoadObserver = new IntersectionObserver((entries) => {
-                    if (entries.some(entry => entry.isIntersecting)) {
-                        scheduleScrollLoadCheck();
-                    }
-                }, {
-                    root: null,
-                    rootMargin: '720px 0px 720px 0px',
-                    threshold: 0
-                });
-                scrollLoadObserver.observe(scrollLoadSentinel);
-            }
-
-            bindScrollLoadIntentHandlers();
-            scheduleScrollLoadCheck();
+            scrollLoadSentinel = ScrollLoad.ensureScrollLoadSentinel(resultsList, state, {
+                scheduleScrollLoadCheck,
+                bindScrollLoadIntentHandlers
+            });
         }
 
         function ensureBrowseControls() {
