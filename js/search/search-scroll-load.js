@@ -170,6 +170,25 @@
         window.addEventListener('pageshow', scheduleCheck);
     }
 
+    function createScrollLoadRequestController(options) {
+        options = options || {};
+        var getQueued = typeof options.getQueued === 'function' ? options.getQueued : function() { return false; };
+        var setQueued = typeof options.setQueued === 'function' ? options.setQueued : function() {};
+        var getIntent = typeof options.getIntent === 'function' ? options.getIntent : function() { return false; };
+        var setIntent = typeof options.setIntent === 'function' ? options.setIntent : function() {};
+        var requestMore = typeof options.requestMore === 'function' ? options.requestMore : function() {};
+        var scheduleCheck = typeof options.scheduleCheck === 'function' ? options.scheduleCheck : function() {};
+
+        return {
+            getQueued: getQueued,
+            setQueued: setQueued,
+            getIntent: getIntent,
+            setIntent: setIntent,
+            requestMore: requestMore,
+            scheduleCheck: scheduleCheck
+        };
+    }
+
     // Internal state for helper usage
     var scrollLoadSentinel = null;
     var scrollLoadObserver = null;
@@ -210,6 +229,7 @@
         markScrollLoadIntent: markScrollLoadIntent,
         handleScrollLoadKeydown: handleScrollLoadKeydown,
         bindScrollLoadIntentHandlers: bindScrollLoadIntentHandlers,
+        createScrollLoadRequestController: createScrollLoadRequestController,
         patchSearchUIFactory: patchSearchUIFactory
     };
 
