@@ -24,6 +24,7 @@ test('search runtime submodules load after existing search helpers and before se
   const searchEntrypointIndex = indexOf('../js/search/index.js');
   const expectedModules = [
     '../js/search/search-preview-cache.js',
+    '../js/search/search-copy.js',
     '../js/search/search-ui.js',
     '../js/search/search-url-state.js',
   ];
@@ -58,6 +59,18 @@ test('search UI module preserves orchestrator contract methods', () => {
   for (const method of requiredMethods) {
     assert.match(uiModule, new RegExp(`\\b${method}\\b`));
   }
+});
+
+test('search copy helper exposes namespace contract', () => {
+  const copyModule = read('js/search/search-copy.js');
+  assert.match(copyModule, /window\.LoveBudSearchCopy/);
+  assert.match(copyModule, /getCurrentLocale/);
+  assert.match(copyModule, /getSearchCopy/);
+});
+
+test('search UI module references LoveBudSearchCopy helper', () => {
+  const uiModule = read('js/search/search-ui.js');
+  assert.match(uiModule, /window\.LoveBudSearchCopy/);
 });
 
 test('browse feed controls do not expose batch strategy as product UI', () => {
