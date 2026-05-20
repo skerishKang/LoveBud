@@ -133,16 +133,27 @@
         }
     }
 
-    function bindScrollLoadIntentHandlers() {
+    function bindScrollLoadIntentHandlers(options) {
         if (scrollLoadIntentBound) return;
         scrollLoadIntentBound = true;
 
-        window.addEventListener('scroll', scheduleScrollLoadCheck, { passive: true });
-        window.addEventListener('wheel', markScrollLoadIntent, { passive: true });
-        window.addEventListener('touchmove', markScrollLoadIntent, { passive: true });
-        window.addEventListener('keydown', handleScrollLoadKeydown);
-        window.addEventListener('resize', scheduleScrollLoadCheck, { passive: true });
-        window.addEventListener('pageshow', scheduleScrollLoadCheck);
+        options = options || {};
+        var scheduleCheck = typeof options.scheduleScrollLoadCheck === 'function'
+            ? options.scheduleScrollLoadCheck
+            : scheduleScrollLoadCheck;
+        var markIntent = typeof options.markScrollLoadIntent === 'function'
+            ? options.markScrollLoadIntent
+            : markScrollLoadIntent;
+        var handleKeydown = typeof options.handleScrollLoadKeydown === 'function'
+            ? options.handleScrollLoadKeydown
+            : handleScrollLoadKeydown;
+
+        window.addEventListener('scroll', scheduleCheck, { passive: true });
+        window.addEventListener('wheel', markIntent, { passive: true });
+        window.addEventListener('touchmove', markIntent, { passive: true });
+        window.addEventListener('keydown', handleKeydown);
+        window.addEventListener('resize', scheduleCheck, { passive: true });
+        window.addEventListener('pageshow', scheduleCheck);
     }
 
     // Internal state for helper usage
