@@ -188,6 +188,17 @@
             }
         }
 
+        // Helper wiring context builder - prepares state/callbacks/flags for future migration
+        function createScrollLoadHelperContext(state, callbacks) {
+            return {
+                state,
+                callbacks,
+                flags: {
+                    isQueued: isScrollLoadQueued
+                }
+            };
+        }
+
         function scheduleScrollLoadCheck() {
             if (typeof ScrollLoad.scheduleScrollLoadCheckWrapper === 'function') {
                 ScrollLoad.scheduleScrollLoadCheckWrapper(
