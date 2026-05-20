@@ -15,6 +15,7 @@
         const { PreviewRenderer } = renderers;
         const treeDataMap = new WeakMap();
         const boundContainers = new WeakSet();
+        const ScrollLoad = window.LoveBudSearchScrollLoad || {};
 
         // overlay element reference + saved scroll position for lock/restore
         let sheetOverlay = null;
@@ -242,6 +243,12 @@
         }
 
         function canLoadMorePublicTrees() {
+            if (typeof ScrollLoad.canLoadMorePublicTrees === 'function') {
+                return ScrollLoad.canLoadMorePublicTrees(state, callbacks, {
+                    isQueued: isScrollLoadQueued
+                });
+            }
+
             return Boolean(
                 callbacks.loadMorePublicTrees
                 && state.apiTreesLoaded
@@ -253,6 +260,11 @@
         }
 
         function syncScrollLoadSentinel() {
+            if (typeof ScrollLoad.syncScrollLoadSentinel === 'function') {
+                ScrollLoad.syncScrollLoadSentinel(scrollLoadSentinel, state);
+                return;
+            }
+
             if (!scrollLoadSentinel) return;
 
             const isDone = !state.apiTreesLoaded || state.currentLimit >= 60 || !state.hasMoreTrees;
@@ -274,6 +286,10 @@
         }
 
         function isSentinelNearViewport() {
+            if (typeof ScrollLoad.isSentinelNearViewport === 'function') {
+                return ScrollLoad.isSentinelNearViewport(scrollLoadSentinel, window);
+            }
+
             if (!scrollLoadSentinel || scrollLoadSentinel.hidden) return false;
             const rect = scrollLoadSentinel.getBoundingClientRect();
             return rect.top <= window.innerHeight + 720 && rect.bottom >= -240;
@@ -309,8 +325,11 @@
         }
 
         function handleScrollLoadKeydown(event) {
-            const scrollingKeys = [' ', 'PageDown', 'End', 'ArrowDown'];
-            if (scrollingKeys.includes(event.key)) {
+            const isIntentKey = typeof ScrollLoad.isScrollIntentKey === 'function'
+                ? ScrollLoad.isScrollIntentKey(event)
+                : [' ', 'PageDown', 'End', 'ArrowDown'].includes(event.key);
+
+            if (isIntentKey) {
                 markScrollLoadIntent();
             }
         }
@@ -330,13 +349,17 @@
         function ensureScrollLoadSentinel() {
             if (!resultsList || scrollLoadSentinel) return;
 
-            scrollLoadSentinel = document.createElement('div');
-            scrollLoadSentinel.id = 'browseScrollLoadSentinel';
-            scrollLoadSentinel.className = 'browse-scroll-load-sentinel';
-            scrollLoadSentinel.innerHTML = `
+            if (typeof ScrollLoad.createScrollLoadSentinel === 'function') {
+                scrollLoadSentinel = ScrollLoad.createScrollLoadSentinel(document);
+            } else {
+                scrollLoadSentinel = document.createElement('div');
+                scrollLoadSentinel.id = 'browseScrollLoadSentinel';
+                scrollLoadSentinel.className = 'browse-scroll-load-sentinel';
+                scrollLoadSentinel.innerHTML = `
                 <span class="material-symbols-outlined" aria-hidden="true">progress_activity</span>
                 <span data-scroll-load-label></span>
             `;
+            }
 
             resultsList.insertAdjacentElement('afterend', scrollLoadSentinel);
             syncScrollLoadSentinel();
