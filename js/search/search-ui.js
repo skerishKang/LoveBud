@@ -210,6 +210,16 @@
             }
         }
 
+        // Helper wiring context builder - prepares migration context without runtime connection
+        // This context is not yet connected to the helper requestScrollLoadMore
+        function createScrollLoadHelperContext() {
+            return {
+                state,
+                callbacks,
+                flags: { isQueued: isScrollLoadQueued }
+            };
+        }
+
         function scheduleScrollLoadCheck() {
             if (scrollCheckRaf) return;
             scrollCheckRaf = window.requestAnimationFrame(() => {

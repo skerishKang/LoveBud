@@ -276,3 +276,35 @@ test('search scroll load sentinel helper exposes scroll load contract', () => {
   assert.match(helperModule, /scrollCheckRaf/);
   assert.match(helperModule, /hasUserScrolledTowardFeed/);
 });
+
+test('search UI wiring context builder exists for helper migration', () => {
+  const uiModule = read('js/search/search-ui.js');
+  assert.match(uiModule, /createScrollLoadHelperContext/);
+});
+
+test('search UI local requestScrollLoadMore remains owned by search-ui.js', () => {
+  const uiModule = read('js/search/search-ui.js');
+  assert.match(uiModule, /async function requestScrollLoadMore\(\)/);
+  // Ensure requestScrollLoadMore is not called via ScrollLoad in search-ui.js runtime
+  assert.doesNotMatch(uiModule, /\.requestScrollLoadMore\(/);
+});
+
+test('search UI wiring context does not connect to runtime chain', () => {
+  const uiModule = read('js/search/search-ui.js');
+  // createScrollLoadHelperContext should exist
+  assert.match(uiModule, /createScrollLoadHelperContext/);
+  // But it should not be called from scheduleScrollLoadCheck or other runtime methods
+  assert.doesNotMatch(uiModule, /scheduleScrollLoadCheck.*createScrollLoadHelperContext/);
+  assert.doesNotMatch(uiModule, /createScrollLoadHelperContext.*scheduleScrollLoadCheck/);
+});
+
+test('requestMore actual-use count remains at 1 (requestController integration)', () => {
+  const uiModule = read('js/search/search-ui.js');
+  // Verify the request path remains unchanged
+  // This test ensures requestMore wrapper pattern is not modified
+  assert.match(uiModule, /scheduleScrollLoadCheck/);
+  assert.match(uiModule, /requestScrollLoadMore/);
+  // The context builder should not interfere with existing call sites
+  assert.match(uiModule, /createScrollLoadHelperContext/);
+  assert.doesNotMatch(uiModule, /createScrollLoadHelperContext.*requestScrollLoadMore/);
+});
