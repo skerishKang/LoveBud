@@ -311,3 +311,44 @@ test('search scroll load sentinel helper exposes scroll load contract', () => {
   assert.match(helperModule, /options\.markScrollLoadIntent/);
   assert.match(helperModule, /options\.handleScrollLoadKeydown/);
 });
+
+test('search UI scroll load requestMore returns true to prevent fallback double-call', () => {
+  const uiModule = read('js/search/search-ui.js');
+
+  // Contract: requestMore must call requestScrollLoadMore and return true
+  // so that the || fallback in scheduleScrollLoadCheckWrapper callback does not fire
+  assert.match(uiModule, /requestMore:\s*\(\)\s*=>\s*\{\s*requestScrollLoadMore\(\);\s*return true;\s*\}/);
+});
+
+test('search UI scroll load requestController fallback path uses optional chaining', () => {
+  const uiModule = read('js/search/search-ui.js');
+
+  // Contract: requestController?.requestMore?.() || requestScrollLoadMore()
+  // When requestController is null or requestMore is missing, fallback fires
+  assert.match(uiModule, /requestController\?\.requestMore\?\.\(\)\s*\|\|\s*requestScrollLoadMore\(\)/);
+});
+
+test('search UI scroll load requestController is created when createScrollLoadRequestController exists', () => {
+  const uiModule = read('js/search/search-ui.js');
+
+  // requestController is created conditionally
+  assert.match(uiModule, /const requestController = typeof ScrollLoad\.createScrollLoadRequestController === 'function'/);
+  // Falls back to null when factory is missing
+  assert.match(uiModule, /:\s*null;/);
+});
+
+test('search scroll load createScrollLoadRequestController preserves requestMore contract', () => {
+  const helperModule = read('js/search/search-scroll-load.js');
+
+  // createScrollLoadRequestController stores the requestMore option
+  assert.match(helperModule, /var requestMore = typeof options\.requestMore === 'function' \? options\.requestMore : function\(\) \{\};/);
+  // Returned object exposes requestMore
+  assert.match(helperModule, /requestMore:\s*requestMore/);
+});
+
+test('search scroll load scheduleScrollLoadCheckWrapper delegates to requestLoadMore callback', () => {
+  const helperModule = read('js/search/search-scroll-load.js');
+
+  // scheduleScrollLoadCheckWrapper calls requestLoadMore if it is a function
+  assert.match(helperModule, /if \(typeof requestLoadMore === 'function'\) \{\s*requestLoadMore\(\);\s*\}/);
+});
