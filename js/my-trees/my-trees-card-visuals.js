@@ -1,0 +1,224 @@
+(function () {
+  'use strict';
+
+  function getUtils() {
+    return window.LoveBudMyTreesUtils || {};
+  }
+
+  function escapeHtml(str) {
+    var Utils = getUtils();
+    if (typeof Utils.escapeHtml === 'function') {
+      return Utils.escapeHtml(str);
+    }
+    if (str == null) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function hashSeed(value) {
+    var Utils = getUtils();
+    if (typeof Utils.hashSeed === 'function') {
+      return Utils.hashSeed(value);
+    }
+    var source = String(value || 'lovetree');
+    var hash = 0;
+    for (var i = 0; i < source.length; i++) {
+      hash = ((hash << 5) - hash) + source.charCodeAt(i);
+      hash |= 0;
+    }
+    return Math.abs(hash);
+  }
+
+  function getTreeMomentCount(tree) {
+    var Utils = getUtils();
+    if (typeof Utils.getTreeMomentCount === 'function') {
+      return Utils.getTreeMomentCount(tree);
+    }
+    if (!tree) return 0;
+    var count =
+      tree.memoryCount ??
+      tree.memory_count ??
+      tree.nodeCount ??
+      tree.node_count ??
+      (Array.isArray(tree.memories) ? tree.memories.length : undefined) ??
+      (Array.isArray(tree.nodes) ? tree.nodes.length : undefined) ??
+      0;
+    count = Number(count);
+    return Number.isFinite(count) ? count : 0;
+  }
+
+  function clipText(value, maxLength) {
+    var Utils = getUtils();
+    if (typeof Utils.clipText === 'function') {
+      return Utils.clipText(value, maxLength);
+    }
+    var text = String(value || '').trim();
+    if (!text) return '';
+    if (text.length <= maxLength) return text;
+    return text.slice(0, maxLength).trim() + '\u2026';
+  }
+
+  function getVisibilityActionLabel(tree, i18n) {
+    return tree && tree.visibility === 'public'
+      ? (i18n('visibility_make_private') || '비공개로 전환')
+      : (i18n('visibility_make_public') || '공개로 전환');
+  }
+
+  function getTreeCardMeta(tree, i18n) {
+    var visibility = tree && tree.visibility === 'public' ? 'public' : 'private';
+    var visibilityLabel = visibility === 'public' ? (i18n('myTrees.summary_public') || '공개') : (i18n('myTrees.summary_private') || '비공개');
+
+    return {
+      visibilityIcon: visibility === 'public' ? 'lock' : 'public',
+      visibilityActionLabel: getVisibilityActionLabel(tree, i18n),
+      title: tree && tree.title,
+      mood: getTreeMomentCount(tree) > 0 ? (i18n('myTrees.card_growing') || '차곡차곡 자라는 중') : (i18n('myTrees.card_waiting') || '첫 순간을 기다리는 중'),
+      privateBadgeHtml: visibility === 'private' ? '<div class="tree-card-meta"><span class="tree-card-visibility private"><span class="material-symbols-outlined" style="font-size:12px;">lock</span>' + visibilityLabel + '</span></div>' : ''
+    };
+  }
+
+  function getTreeMoodPalette(tree) {
+    var seed = hashSeed((tree && tree.id) || (tree && tree.title) || 'lovetree');
+    var palettes = [
+      {
+        background: 'linear-gradient(135deg, #fff3f6 0%, #f8e4ea 42%, #f6efe8 100%)',
+        leaf: '#d8839a',
+        leafSoft: 'rgba(216, 131, 154, 0.18)',
+        accent: '#904951'
+      },
+      {
+        background: 'linear-gradient(135deg, #fdf6ea 0%, #f7ebd7 46%, #f5f0f7 100%)',
+        leaf: '#c79d68',
+        leafSoft: 'rgba(199, 157, 104, 0.18)',
+        accent: '#9d6b4d'
+      },
+      {
+        background: 'linear-gradient(135deg, #f2f6ef 0%, #e4efe1 48%, #f8efe8 100%)',
+        leaf: '#7a8b6e',
+        leafSoft: 'rgba(122, 139, 110, 0.18)',
+        accent: '#5d6f52'
+      },
+      {
+        background: 'linear-gradient(135deg, #f6f0fb 0%, #ece4f7 42%, #fdf2f3 100%)',
+        leaf: '#9f7ec2',
+        leafSoft: 'rgba(159, 126, 194, 0.18)',
+        accent: '#7d5ba6'
+      }
+    ];
+
+    return palettes[seed % palettes.length];
+  }
+
+  function buildMiniTreeSVG(tree) {
+    var palette = getTreeMoodPalette(tree);
+    var momentCount = Math.max(0, Math.min(6, getTreeMomentCount(tree)));
+    var leafDots = [];
+    var positions = [
+      { x: 58, y: 58, r: 10 },
+      { x: 150, y: 50, r: 10 },
+      { x: 72, y: 26, r: 8 },
+      { x: 102, y: 58, r: 11 },
+      { x: 132, y: 88, r: 8 },
+      { x: 84, y: 104, r: 7 }
+    ];
+
+    for (var i = 0; i < positions.length; i++) {
+      var pos = positions[i];
+      var isFilled = i < momentCount;
+      leafDots.push(
+        '<circle cx="' + pos.x + '" cy="' + pos.y + '" r="' + pos.r + '" fill="' + (isFilled ? palette.leafSoft : 'rgba(255,255,255,0.82)') + '" stroke="' + palette.leaf + '" stroke-width="1.5"/>'
+      );
+    }
+
+    return [
+      '<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">',
+        '<defs>',
+          '<linearGradient id="trunkGrad-' + hashSeed((tree && tree.id) || 'trunk') + '" x1="0%" y1="0%" x2="100%" y2="0%">',
+            '<stop offset="0%" style="stop-color:#904951;stop-opacity:1" />',
+            '<stop offset="50%" style="stop-color:#b85c66;stop-opacity:1" />',
+            '<stop offset="100%" style="stop-color:#904951;stop-opacity:1" />',
+          '</linearGradient>',
+        '</defs>',
+        '<path d="M 100 182 Q 98 142 100 112 Q 102 82 95 52" stroke="url(#trunkGrad-' + hashSeed((tree && tree.id) || 'trunk') + ')" stroke-width="6" fill="none" stroke-linecap="round"/>',
+        '<path d="M 100 132 Q 72 122 56 98 Q 46 80 52 58" stroke="' + palette.leaf + '" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.78"/>',
+        '<path d="M 100 112 Q 128 102 145 84 Q 157 70 152 50" stroke="' + palette.leaf + '" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.78"/>',
+        '<path d="M 98 82 Q 78 72 68 52 Q 60 38 66 24" stroke="' + palette.leaf + '" stroke-width="2.2" fill="none" stroke-linecap="round" opacity="0.7"/>',
+        leafDots.join(''),
+        '<ellipse cx="100" cy="172" rx="34" ry="11" fill="none" stroke="' + palette.accent + '" stroke-width="1" opacity="0.15" stroke-dasharray="4,4"/>',
+      '</svg>'
+    ].join('');
+  }
+
+  function getRepresentativeThumbnail(tree) {
+    if (!tree) return '';
+    return tree.representativeThumbnail || tree.representative_thumbnail || tree.thumbnail || '';
+  }
+
+  function getRepresentativeTextMeta(tree, i18n) {
+    if (!tree) return null;
+
+    var repTitle = clipText(tree.representativeTitle || tree.representative_title || '', 40);
+    var repMemo = clipText(tree.representativeMemo || tree.representative_memo || '', 82);
+
+    if (!repTitle && !repMemo) return null;
+
+    return {
+      title: repTitle || (i18n('editor_default_first_title') || '첫 순간'),
+      memo: repMemo || (i18n('myTrees.card_text_fallback') || '처음 남긴 마음이 이 트리의 시작이 되었어요.')
+    };
+  }
+
+  function buildRepresentativeTextVisual(tree, palette, i18n) {
+    var textMeta = getRepresentativeTextMeta(tree, i18n);
+    if (!textMeta) return '';
+
+    return [
+      '<div class="tree-card-text-visual" style="border-color:' + palette.leafSoft + ';background:rgba(255,255,255,0.84);">',
+        '<div class="tree-card-text-kicker" style="color:' + palette.accent + ';">' + escapeHtml(i18n('myTrees.card_first_moment') || '첫 순간 기록') + '</div>',
+        '<div class="tree-card-text-title">' + escapeHtml(textMeta.title) + '</div>',
+        '<div class="tree-card-text-memo">' + escapeHtml(textMeta.memo) + '</div>',
+      '</div>'
+    ].join('');
+  }
+
+  function buildTreeThumbVisual(tree, i18n) {
+    var palette = getTreeMoodPalette(tree);
+    var momentCount = getTreeMomentCount(tree);
+    var title = (tree && tree.title) || (i18n('default_tree_title') || '나의 러브트리');
+    var initial = escapeHtml(title.charAt(0).toUpperCase());
+    var moodLabel = momentCount > 1
+      ? (i18n('myTrees.card_growing') || '차곡차곡 자라는 중')
+      : (i18n('myTrees.card_waiting') || '첫 순간을 기다리는 중');
+    var thumbnail = getRepresentativeThumbnail(tree);
+    var textVisual = !thumbnail ? buildRepresentativeTextVisual(tree, palette, i18n) : '';
+
+    return [
+      '<div class="tree-card-thumb" style="background:' + palette.background + ';">',
+        '<div class="tree-card-thumb-glow" style="background:' + palette.leafSoft + ';"></div>',
+        '<div class="tree-card-thumb-initial" style="color:' + palette.accent + ';border-color:' + palette.leafSoft + ';">' + initial + '</div>',
+        '<div class="tree-card-thumb-art">',
+          thumbnail
+            ? '<img class="tree-card-thumb-image" src="' + escapeHtml(thumbnail) + '" alt="' + escapeHtml(title) + '">'
+            : (textVisual || buildMiniTreeSVG(tree)),
+        '</div>',
+        (momentCount > 0 ? '<div class="tree-card-thumb-topline"><span class="tree-card-moment-badge" data-count="' + momentCount + '">' + (i18n('myTrees.moment_count_compact') || '순간 {count}개').replace('{count}', String(momentCount)) + '</span></div>' : ''),
+        (momentCount > 0 ? '<div class="tree-card-thumb-caption">' + moodLabel + '</div>' : ''),
+      '</div>'
+    ].join('');
+  }
+
+  window.LoveBudMyTreesCardVisuals = {
+    getVisibilityActionLabel: getVisibilityActionLabel,
+    getTreeCardMeta: getTreeCardMeta,
+    getTreeMoodPalette: getTreeMoodPalette,
+    buildMiniTreeSVG: buildMiniTreeSVG,
+    getRepresentativeThumbnail: getRepresentativeThumbnail,
+    getRepresentativeTextMeta: getRepresentativeTextMeta,
+    buildRepresentativeTextVisual: buildRepresentativeTextVisual,
+    buildTreeThumbVisual: buildTreeThumbVisual
+  };
+})();
