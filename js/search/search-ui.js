@@ -597,41 +597,6 @@
             }
         }
 
-        function bindShareCopyHandler() {
-            document.addEventListener('click', async (event) => {
-                const shareButton = event.target.closest('[data-share-tree-link]');
-                if (!shareButton) return;
-
-                event.preventDefault();
-
-                const treeId = shareButton.dataset.shareTreeLink;
-                if (!treeId) return;
-
-                const labelSpan = shareButton.querySelector('[data-share-tree-link-label]');
-                if (!labelSpan) return;
-
-                const originalText = labelSpan.textContent;
-                const copiedText = getSearchCopy('search.previewShareLinkCopied', '링크가 복사됐어요', 'Link copied');
-                const failedText = getSearchCopy('search.previewShareLinkFailed', '복사하지 못했어요', 'Copy failed');
-
-                try {
-                    const url = new URL('/pages/search', window.location.origin);
-                    url.searchParams.set('tree', treeId);
-                    await navigator.clipboard.writeText(url.toString());
-                    labelSpan.textContent = copiedText;
-                    setTimeout(() => {
-                        labelSpan.textContent = originalText;
-                    }, 1500);
-                } catch (error) {
-                    console.warn('[search] clipboard copy failed:', error.message);
-                    labelSpan.textContent = failedText;
-                    setTimeout(() => {
-                        labelSpan.textContent = originalText;
-                    }, 1500);
-                }
-            });
-        }
-
         function bindMobilePreviewHandlers() {
             if (refs.previewMobileClose) {
                 refs.previewMobileClose.addEventListener('click', () => {
@@ -667,7 +632,6 @@
             renderLoadErrorState,
             renderPreviewLoadingState,
             attachCardEvents,
-            bindShareCopyHandler,
             bindMobilePreviewHandlers
         };
     }
