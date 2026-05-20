@@ -116,10 +116,27 @@
             if (!ui) return ui;
 
             var controller = createSheetController(config || {}, ui);
+            var originalClearSelectedPreview = ui.clearSelectedPreview;
             ui.isMobilePreviewMode = controller.isMobilePreviewMode;
             ui.setMobilePreviewOpen = controller.setMobilePreviewOpen;
             ui.syncPreviewVisibility = controller.syncPreviewVisibility;
             ui.bindMobilePreviewHandlers = controller.bindMobilePreviewHandlers;
+
+            if (typeof originalClearSelectedPreview === 'function') {
+                ui.clearSelectedPreview = function (options) {
+                    var nextOptions = options || {};
+                    var result = originalClearSelectedPreview(Object.assign({}, nextOptions, {
+                        preserveOpenState: true
+                    }));
+
+                    if (!nextOptions.preserveOpenState) {
+                        controller.setMobilePreviewOpen(false);
+                    }
+
+                    return result;
+                };
+            }
+
             ui.__mobilePreviewSheetPatched = true;
             return ui;
         };
