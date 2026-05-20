@@ -202,7 +202,11 @@
 
         function markScrollLoadIntent() {
             hasUserScrolledTowardFeed = true;
-            scheduleScrollLoadCheck();
+            if (requestController && typeof requestController.scheduleCheck === 'function') {
+                requestController.scheduleCheck();
+            } else {
+                scheduleScrollLoadCheck();
+            }
         }
 
         function handleScrollLoadKeydown(event) {
