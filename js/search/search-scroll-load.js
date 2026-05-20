@@ -96,14 +96,14 @@
         return scrollLoadSentinel;
     }
 
-    function requestScrollLoadMore(state, callbacks, flags) {
+    async function requestScrollLoadMore(state, callbacks, flags) {
         flags = flags || {};
         if (!hasUserScrolledTowardFeed || !isSentinelNearViewport(scrollLoadSentinel, window) || !canLoadMorePublicTrees(state, callbacks, flags)) return;
 
         flags.isQueued = true;
         syncScrollLoadSentinel(scrollLoadSentinel, state);
         try {
-            callbacks.loadMorePublicTrees({ source: 'scroll' });
+            await callbacks.loadMorePublicTrees({ source: 'scroll' });
         } finally {
             flags.isQueued = false;
             syncScrollLoadSentinel(scrollLoadSentinel, state);

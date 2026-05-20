@@ -405,7 +405,7 @@ test('search scroll load helper requestScrollLoadMore uses state/callback/flags 
   const helperModule = read('js/search/search-scroll-load.js');
 
   // Takes (state, callbacks, flags) for parameter-driven injection (not closure-scoped)
-  assert.match(helperModule, /function requestScrollLoadMore\(state,\s*callbacks,\s*flags\)/);
+  assert.match(helperModule, /async function requestScrollLoadMore\(state,\s*callbacks,\s*flags\)/);
   // Uses flags.isQueued for queue state
   assert.match(helperModule, /flags\.isQueued = true/);
   assert.match(helperModule, /flags\.isQueued = false/);
@@ -425,14 +425,14 @@ test('search scroll load helper requestScrollLoadMore handles core concerns thro
   assert.match(helperModule, /syncScrollLoadSentinel\(scrollLoadSentinel,\s*state\)/);
   // API fetch: delegated to callbacks parameter
   assert.match(helperModule, /callbacks\.loadMorePublicTrees\(\{/);
-  // Cleanup: try/finally guards the fetch
-  assert.match(helperModule, /try \{[\s\S]*?callbacks\.loadMorePublicTrees[\s\S]*?\} finally/);
+  // Cleanup: try/finally guards the fetch with await
+  assert.match(helperModule, /try \{[\s\S]*?await callbacks\.loadMorePublicTrees[\s\S]*?\} finally/);
 });
 
 test('search scroll load helper requestScrollLoadMore does not directly own DOM or API endpoint strings', () => {
   const helperModule = read('js/search/search-scroll-load.js');
 
-  const fnMatch = helperModule.match(/function requestScrollLoadMore\([^)]*\) \{([\s\S]*?)\n    \}/);
+  const fnMatch = helperModule.match(/(?:async )?function requestScrollLoadMore\([^)]*\) \{([\s\S]*?)\n    \}/);
   assert.ok(fnMatch, 'requestScrollLoadMore function body not found');
   const fnBody = fnMatch[1];
 
@@ -445,6 +445,25 @@ test('search scroll load helper requestScrollLoadMore does not directly own DOM 
   assert.doesNotMatch(fnBody, /https?:\/\//);
   // DOM work is delegated to syncScrollLoadSentinel
   assert.match(fnBody, /syncScrollLoadSentinel\(/);
+});
+
+test('search scroll load helper requestScrollLoadMore async contract matches local counterpart', () => {
+  const helperModule = read('js/search/search-scroll-load.js');
+  const uiModule = read('js/search/search-ui.js');
+
+  // Helper is now async (parity with local version)
+  assert.match(helperModule, /async function requestScrollLoadMore\(state,\s*callbacks,\s*flags\)/);
+  // Helper awaits loadMorePublicTrees callback
+  assert.match(helperModule, /await callbacks\.loadMorePublicTrees\(\{/);
+  // Local version remains async
+  assert.match(uiModule, /async function requestScrollLoadMore/);
+  // Helper is NOT yet connected to runtime chain
+  assert.doesNotMatch(uiModule, /ScrollLoad\.requestScrollLoadMore/);
+  // requestMore actual-use is still exactly 1 call site
+  const requestMoreCount = (uiModule.match(/\brequestMore\b/g) || []).length;
+  assert.equal(requestMoreCount, 2,
+    'requestMore must remain at exactly 2 references (1 creation + 1 call site)'
+  );
 });
 
 test('search scroll load helper requestScrollLoadMore is not reached from main runtime chain', () => {
