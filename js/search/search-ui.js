@@ -2,22 +2,15 @@
     function createSearchUI({ refs, state, renderers, callbacks }) {
         const {
             resultsList,
-            previewSidebar,
             previewMobileClose,
             previewContainer,
             previewTitle,
             previewDesc,
-            previewEmotionTags,
-            tagChips,
-            growingList,
-            mobilePreviewMediaQuery
+            previewEmotionTags
         } = refs;
         const { PreviewRenderer } = renderers;
         const ScrollLoad = window.LoveBudSearchScrollLoad || {};
 
-        // overlay element reference + saved scroll position for lock/restore
-        let sheetOverlay = null;
-        let savedScrollY = 0;
         let scrollLoadSentinel = null;
         let scrollLoadObserver = null;
         let scrollCheckRaf = 0;
@@ -32,82 +25,6 @@
             }
             const locale = window.i18n?.currentLang || window.getCurrentLang?.() || document.documentElement?.lang || 'ko';
             return String(locale).toLowerCase().startsWith('en') ? 'en' : 'ko';
-        }
-
-        function isMobilePreviewMode() {
-            return Boolean(mobilePreviewMediaQuery?.matches);
-        }
-
-        function _showSheetOverlay() {
-            if (sheetOverlay) return;
-
-            savedScrollY = window.scrollY || window.pageYOffset || 0;
-            document.body.style.top = '-' + savedScrollY + 'px';
-            document.body.classList.add('preview-sheet-open');
-
-            sheetOverlay = document.createElement('div');
-            sheetOverlay.className = 'preview-sheet-overlay';
-            sheetOverlay.setAttribute('aria-hidden', 'true');
-            sheetOverlay.addEventListener('click', () => {
-                requestPreviewClear();
-            });
-            document.body.appendChild(sheetOverlay);
-        }
-
-        function _hideSheetOverlay() {
-            if (sheetOverlay) {
-                sheetOverlay.remove();
-                sheetOverlay = null;
-            }
-            document.querySelectorAll('.preview-sheet-overlay').forEach((overlay) => overlay.remove());
-
-            document.body.classList.remove('preview-sheet-open');
-            document.body.style.top = '';
-
-            const restoreY = savedScrollY;
-            savedScrollY = 0;
-            if (restoreY > 0) {
-                window.requestAnimationFrame(() => {
-                    window.scrollTo(0, restoreY);
-                });
-            }
-        }
-
-        function setMobilePreviewOpen(isOpen) {
-            if (!previewSidebar || !isMobilePreviewMode()) return;
-            previewSidebar.classList.toggle('is-open', Boolean(isOpen));
-
-            if (isOpen) {
-                _showSheetOverlay();
-            } else {
-                _hideSheetOverlay();
-            }
-        }
-
-        function syncPreviewVisibility() {
-            if (!previewSidebar) return;
-            if (isMobilePreviewMode()) {
-                const shouldStayOpen = previewSidebar.classList.contains('is-open') && Boolean(state.selectedTreeId);
-                setMobilePreviewOpen(shouldStayOpen);
-                return;
-            }
-            _hideSheetOverlay();
-            previewSidebar.classList.remove('is-open');
-        }
-
-        function requestPreviewClear(options = {}) {
-            const PreviewState = window.LoveBudSearchPreviewState;
-            if (!PreviewState || typeof PreviewState.clearSelectedPreview !== 'function') return;
-
-            return PreviewState.clearSelectedPreview({
-                refs,
-                state,
-                PreviewRenderer,
-                ui: {
-                    isMobilePreviewMode,
-                    setMobilePreviewOpen
-                }
-            }, options);
         }
 
         function getSearchCopy(key, fallbackKo, fallbackEn) {
@@ -437,37 +354,15 @@
             }
         }
 
-        function bindMobilePreviewHandlers() {
-            if (refs.previewMobileClose) {
-                refs.previewMobileClose.addEventListener('click', () => {
-                    requestPreviewClear();
-                });
-            }
-
-            if (mobilePreviewMediaQuery?.addEventListener) {
-                mobilePreviewMediaQuery.addEventListener('change', () => {
-                    syncPreviewVisibility();
-                });
-            } else if (mobilePreviewMediaQuery?.addListener) {
-                mobilePreviewMediaQuery.addListener(() => {
-                    syncPreviewVisibility();
-                });
-            }
-        }
-
         return {
             getCurrentLocale,
             getSearchCopy,
-            isMobilePreviewMode,
-            setMobilePreviewOpen,
-            syncPreviewVisibility,
             syncStaticBrowseCopy,
             syncBrowseHead,
             ensureResultsHead,
             syncControlsFromState,
             ensureBrowseControls,
-            renderPreviewLoadingState,
-            bindMobilePreviewHandlers
+            renderPreviewLoadingState
         };
     }
 
