@@ -142,9 +142,21 @@ test('search UI wires scroll load sentinel lifecycle through helper ownership', 
 
   assert.match(uiModule, /ScrollLoad\.ensureScrollLoadSentinel\(resultsList,\s*state,\s*\{/);
   assert.match(uiModule, /scheduleScrollLoadCheck/);
-  assert.match(uiModule, /bindScrollLoadIntentHandlers/);
+  assert.match(uiModule, /ScrollLoad\.bindScrollLoadIntentHandlers\(\{/);
   assert.doesNotMatch(uiModule, /document\.createElement\(['"]div['"]\)[\s\S]*?browse-scroll-load-sentinel/);
   assert.doesNotMatch(uiModule, /new IntersectionObserver/);
+});
+
+test('search UI delegates scroll load intent listener binding to helper', () => {
+  const uiModule = read('js/search/search-ui.js');
+
+  assert.doesNotMatch(uiModule, /let scrollLoadIntentBound/);
+  assert.doesNotMatch(uiModule, /window\.addEventListener\(['"]scroll['"],\s*scheduleScrollLoadCheck/);
+  assert.doesNotMatch(uiModule, /window\.addEventListener\(['"]wheel['"],\s*markScrollLoadIntent/);
+  assert.match(uiModule, /markScrollLoadIntent/);
+  assert.match(uiModule, /handleScrollLoadKeydown/);
+  assert.match(uiModule, /requestScrollLoadMore/);
+  assert.match(uiModule, /scheduleScrollLoadCheck/);
 });
 
 test('browse filter and sort changes reset pagination state without changing feed cards', () => {
@@ -286,4 +298,6 @@ test('search scroll load sentinel helper exposes scroll load contract', () => {
   assert.match(helperModule, /scrollLoadObserver/);
   assert.match(helperModule, /scrollCheckRaf/);
   assert.match(helperModule, /hasUserScrolledTowardFeed/);
+  assert.match(helperModule, /options\.markScrollLoadIntent/);
+  assert.match(helperModule, /options\.handleScrollLoadKeydown/);
 });
