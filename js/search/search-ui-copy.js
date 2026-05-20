@@ -1,23 +1,21 @@
 (function () {
     'use strict';
 
-    function getBaseCopy() {
-        return window.LoveBudSearchCopy || {};
-    }
+    var previousCopy = window.LoveBudSearchCopy || {};
+    var previousGetCurrentLocale = previousCopy.getCurrentLocale;
+    var previousGetSearchCopy = previousCopy.getSearchCopy;
 
     function getCurrentLocale() {
-        var baseCopy = getBaseCopy();
-        if (baseCopy && baseCopy !== api && typeof baseCopy.getCurrentLocale === 'function') {
-            return baseCopy.getCurrentLocale();
+        if (typeof previousGetCurrentLocale === 'function' && previousGetCurrentLocale !== getCurrentLocale) {
+            return previousGetCurrentLocale();
         }
         var locale = window.i18n?.currentLang || window.getCurrentLang?.() || document.documentElement?.lang || 'ko';
         return String(locale).toLowerCase().startsWith('en') ? 'en' : 'ko';
     }
 
     function getSearchCopy(key, fallbackKo, fallbackEn) {
-        var baseCopy = getBaseCopy();
-        if (baseCopy && baseCopy !== api && typeof baseCopy.getSearchCopy === 'function') {
-            return baseCopy.getSearchCopy(key, fallbackKo, fallbackEn);
+        if (typeof previousGetSearchCopy === 'function' && previousGetSearchCopy !== getSearchCopy) {
+            return previousGetSearchCopy(key, fallbackKo, fallbackEn);
         }
         var locale = getCurrentLocale();
         var dict = window.i18nSearch?.[key];
@@ -39,7 +37,6 @@
         };
     }
 
-    var previousCopy = getBaseCopy();
     var api = {
         getCurrentLocale: getCurrentLocale,
         getSearchCopy: getSearchCopy,
