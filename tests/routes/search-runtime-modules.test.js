@@ -26,6 +26,7 @@ test('search runtime submodules load after existing search helpers and before se
     '../js/search/search-preview-cache.js',
     '../js/search/search-copy.js',
     '../js/search/search-ui.js',
+    '../js/search/search-scroll-load.js',
     '../js/search/search-url-state.js',
   ];
   const moduleIndexes = expectedModules.map(indexOf);
@@ -132,8 +133,38 @@ test('browse feed controls do not expose batch strategy as product UI', () => {
   assert.doesNotMatch(uiModule, /getElementById\(['"]browseLoadMoreBtn['"]\)/);
   assert.match(uiModule, /refs\.resultsBadge\.hidden = true/);
   assert.match(uiModule, /refs\.resultsBadge\.textContent = ''/);
-  assert.match(uiModule, /browseScrollLoadSentinel/);
+  assert.match(uiModule, /ScrollLoad\.ensureScrollLoadSentinel/);
   assert.match(uiModule, /callbacks\.loadMorePublicTrees/);
+});
+
+test('search UI wires scroll load sentinel lifecycle through helper ownership', () => {
+  const uiModule = read('js/search/search-ui.js');
+
+  assert.match(uiModule, /ScrollLoad\.ensureScrollLoadSentinel\(resultsList,\s*state,\s*\{/);
+  assert.match(uiModule, /scheduleScrollLoadCheck/);
+  assert.match(uiModule, /ScrollLoad\.bindScrollLoadIntentHandlers\(\{/);
+  assert.doesNotMatch(uiModule, /document\.createElement\(['"]div['"]\)[\s\S]*?browse-scroll-load-sentinel/);
+  assert.doesNotMatch(uiModule, /new IntersectionObserver/);
+});
+
+test('search UI delegates scroll load intent listener binding to helper', () => {
+  const uiModule = read('js/search/search-ui.js');
+
+  assert.doesNotMatch(uiModule, /let scrollLoadIntentBound/);
+  assert.doesNotMatch(uiModule, /window\.addEventListener\(['"]scroll['"],\s*scheduleScrollLoadCheck/);
+  assert.doesNotMatch(uiModule, /window\.addEventListener\(['"]wheel['"],\s*markScrollLoadIntent/);
+  assert.match(uiModule, /markScrollLoadIntent/);
+  assert.match(uiModule, /handleScrollLoadKeydown/);
+  assert.match(uiModule, /requestScrollLoadMore/);
+  assert.match(uiModule, /scheduleScrollLoadCheck/);
+  assert.match(uiModule, /ScrollLoad\.scheduleScrollLoadCheckWrapper/);
+  assert.doesNotMatch(uiModule, /window\.requestAnimationFrame/);
+  assert.match(uiModule, /ScrollLoad\.createScrollLoadRequestController/);
+  assert.match(uiModule, /requestController(?:\?\.|\.)scheduleCheck/);
+  assert.match(uiModule, /getQueued/);
+  assert.match(uiModule, /setQueued/);
+  assert.match(uiModule, /getIntent/);
+  assert.match(uiModule, /setIntent/);
 });
 
 test('browse filter and sort changes reset pagination state without changing feed cards', () => {
@@ -255,9 +286,11 @@ test('search scroll load sentinel helper exposes scroll load contract', () => {
     'ensureScrollLoadSentinel',
     'requestScrollLoadMore',
     'scheduleScrollLoadCheck',
+    'scheduleScrollLoadCheckWrapper',
     'markScrollLoadIntent',
     'handleScrollLoadKeydown',
     'bindScrollLoadIntentHandlers',
+    'createScrollLoadRequestController',
     'patchSearchUIFactory',
   ];
   const exportMatch = helperModule.match(/window\.LoveBudSearchScrollLoad\s*=\s*\{([^}]+)\}/s);
@@ -275,6 +308,162 @@ test('search scroll load sentinel helper exposes scroll load contract', () => {
   assert.match(helperModule, /scrollLoadObserver/);
   assert.match(helperModule, /scrollCheckRaf/);
   assert.match(helperModule, /hasUserScrolledTowardFeed/);
+  assert.match(helperModule, /options\.markScrollLoadIntent/);
+  assert.match(helperModule, /options\.handleScrollLoadKeydown/);
+});
+
+test('search UI scroll load requestMore returns true to prevent fallback double-call', () => {
+  const uiModule = read('js/search/search-ui.js');
+
+  // Contract: requestMore must call requestScrollLoadMore and return true
+  // so that the || fallback in scheduleScrollLoadCheckWrapper callback does not fire
+  assert.match(uiModule, /requestMore:\s*\(\)\s*=>\s*\{\s*requestScrollLoadMore\(\);\s*return true;\s*\}/);
+});
+
+test('search UI scroll load requestController fallback path uses optional chaining', () => {
+  const uiModule = read('js/search/search-ui.js');
+
+  // Contract: requestController?.requestMore?.() || requestScrollLoadMore()
+  // When requestController is null or requestMore is missing, fallback fires
+  assert.match(uiModule, /requestController\?\.requestMore\?\.\(\)\s*\|\|\s*requestScrollLoadMore\(\)/);
+});
+
+test('search UI scroll load requestController is created when createScrollLoadRequestController exists', () => {
+  const uiModule = read('js/search/search-ui.js');
+
+  // requestController is created conditionally
+  assert.match(uiModule, /const requestController = typeof ScrollLoad\.createScrollLoadRequestController === 'function'/);
+  // Falls back to null when factory is missing
+  assert.match(uiModule, /:\s*null;/);
+});
+
+test('search scroll load createScrollLoadRequestController preserves requestMore contract', () => {
+  const helperModule = read('js/search/search-scroll-load.js');
+
+  // createScrollLoadRequestController stores the requestMore option
+  assert.match(helperModule, /var requestMore = typeof options\.requestMore === 'function' \? options\.requestMore : function\(\) \{\};/);
+  // Returned object exposes requestMore
+  assert.match(helperModule, /requestMore:\s*requestMore/);
+});
+
+test('search scroll load scheduleScrollLoadCheckWrapper delegates to requestLoadMore callback', () => {
+  const helperModule = read('js/search/search-scroll-load.js');
+
+  // scheduleScrollLoadCheckWrapper calls requestLoadMore if it is a function
+  assert.match(helperModule, /if \(typeof requestLoadMore === 'function'\) \{\s*requestLoadMore\(\);\s*\}/);
+});
+
+test('search UI requestScrollLoadMore retains full ownership of fetch, queue, and sentinel sync', () => {
+  const uiModule = read('js/search/search-ui.js');
+
+  // requestScrollLoadMore body is defined with full implementation in search-ui.js
+  assert.match(uiModule, /async function requestScrollLoadMore/);
+  // Owns scroll intent guard check
+  assert.match(uiModule, /if \(!hasUserScrolledTowardFeed/);
+  // Owns queue state toggle (true before fetch, false after)
+  assert.match(uiModule, /isScrollLoadQueued = true/);
+  assert.match(uiModule, /isScrollLoadQueued = false/);
+  // Owns sentinel rendering sync before and after fetch
+  assert.match(uiModule, /syncScrollLoadSentinel\(\)/);
+  // Owns API fetch via callback
+  assert.match(uiModule, /callbacks\.loadMorePublicTrees\(\{/);
+  // Uses try/finally for queue cleanup (isScrollLoadQueued inside finally block)
+  assert.match(uiModule, /try \{[\s\S]*?\} finally \{[\s\S]*?isScrollLoadQueued/);
+});
+
+test('search UI requestController.requestMore has exactly one actual-use call site', () => {
+  const uiModule = read('js/search/search-ui.js');
+
+  // \brequestMore\b must appear exactly twice:
+  // 1. Creation: requestMore: () => { ... }
+  // 2. Call: requestController?.requestMore?.()
+  const count = (uiModule.match(/\brequestMore\b/g) || []).length;
+  assert.equal(count, 2,
+    'Expected exactly 2 requestMore references (1 creation + 1 call site)'
+  );
+});
+
+test('search UI scroll load path does not delegate requestScrollLoadMore to helper', () => {
+  const uiModule = read('js/search/search-ui.js');
+  const helperModule = read('js/search/search-scroll-load.js');
+
+  // search-ui.js uses its own local requestScrollLoadMore, not helper's exported version
+  assert.doesNotMatch(uiModule, /ScrollLoad\.requestScrollLoadMore/);
+  // Helper does export requestScrollLoadMore but it is not reached from the main runtime chain
+  assert.match(helperModule, /LoveBudSearchScrollLoad[\s\S]*?requestScrollLoadMore/);
+});
+
+test('search scroll load helper requestScrollLoadMore is exported in LoveBudSearchScrollLoad', () => {
+  const helperModule = read('js/search/search-scroll-load.js');
+
+  const exportMatch = helperModule.match(/window\.LoveBudSearchScrollLoad\s*=\s*\{([^}]+)\}/s);
+  assert.ok(exportMatch, 'LoveBudSearchScrollLoad export object not found');
+  assert.match(exportMatch[1], /\brequestScrollLoadMore\b/);
+});
+
+test('search scroll load helper requestScrollLoadMore uses state/callback/flags parameter signature', () => {
+  const helperModule = read('js/search/search-scroll-load.js');
+
+  // Takes (state, callbacks, flags) for parameter-driven injection (not closure-scoped)
+  assert.match(helperModule, /async function requestScrollLoadMore\(state,\s*callbacks,\s*flags\)/);
+  // Uses flags.isQueued for queue state
+  assert.match(helperModule, /flags\.isQueued = true/);
+  assert.match(helperModule, /flags\.isQueued = false/);
+  // Uses callbacks parameter for fetch delegation
+  assert.match(helperModule, /callbacks\.loadMorePublicTrees\(\{/);
+});
+
+test('search scroll load helper requestScrollLoadMore handles core concerns through callback delegation', () => {
+  const helperModule = read('js/search/search-scroll-load.js');
+
+  // Guard: scroll intent + sentinel viewport + canLoadMore
+  assert.match(helperModule, /!hasUserScrolledTowardFeed.*!isSentinelNearViewport.*!canLoadMorePublicTrees/);
+  // Queue: flags-based state management
+  assert.match(helperModule, /flags\.isQueued = true/);
+  assert.match(helperModule, /flags\.isQueued = false/);
+  // Sentinel sync: delegated with explicit params
+  assert.match(helperModule, /syncScrollLoadSentinel\(scrollLoadSentinel,\s*state\)/);
+  // API fetch: delegated to callbacks parameter
+  assert.match(helperModule, /callbacks\.loadMorePublicTrees\(\{/);
+  // Cleanup: try/finally guards the fetch with await
+  assert.match(helperModule, /try \{[\s\S]*?await callbacks\.loadMorePublicTrees[\s\S]*?\} finally/);
+});
+
+test('search scroll load helper requestScrollLoadMore does not directly own DOM or API endpoint strings', () => {
+  const helperModule = read('js/search/search-scroll-load.js');
+
+  const fnMatch = helperModule.match(/(?:async )?function requestScrollLoadMore\([^)]*\) \{([\s\S]*?)\n    \}/);
+  assert.ok(fnMatch, 'requestScrollLoadMore function body not found');
+  const fnBody = fnMatch[1];
+
+  // No direct DOM manipulation
+  assert.doesNotMatch(fnBody, /\.innerHTML\s*=/);
+  assert.doesNotMatch(fnBody, /textContent\s*=/);
+  assert.doesNotMatch(fnBody, /insertAdjacentHTML/);
+  // No hardcoded API endpoint strings
+  assert.doesNotMatch(fnBody, /\/api\//);
+  assert.doesNotMatch(fnBody, /https?:\/\//);
+  // DOM work is delegated to syncScrollLoadSentinel
+  assert.match(fnBody, /syncScrollLoadSentinel\(/);
+});
+
+test('search scroll load helper requestScrollLoadMore async contract matches local counterpart', () => {
+  const helperModule = read('js/search/search-scroll-load.js');
+  const uiModule = read('js/search/search-ui.js');
+
+  // Helper is now async (parity with local version)
+  assert.match(helperModule, /async function requestScrollLoadMore\(state,\s*callbacks,\s*flags\)/);
+  // Helper awaits loadMorePublicTrees callback
+  assert.match(helperModule, /await callbacks\.loadMorePublicTrees\(\{/);
+  // Local version remains async
+  assert.match(uiModule, /async function requestScrollLoadMore/);
+  // Helper is NOT yet connected to runtime chain
+  assert.doesNotMatch(uiModule, /ScrollLoad\.requestScrollLoadMore/);
+  // requestMore actual-use is still exactly 1 call site
+  const requestMoreCount = (uiModule.match(/\brequestMore\b/g) || []).length;
+  assert.equal(requestMoreCount, 2,
+    'requestMore must remain at exactly 2 references (1 creation + 1 call site)'
+  );
 });
 
 test('search UI wiring context builder exists for helper migration', () => {
@@ -298,13 +487,3 @@ test('search UI wiring context does not connect to runtime chain', () => {
   assert.doesNotMatch(uiModule, /createScrollLoadHelperContext.*scheduleScrollLoadCheck/);
 });
 
-test('requestMore actual-use count remains at 1 (requestController integration)', () => {
-  const uiModule = read('js/search/search-ui.js');
-  // Verify the request path remains unchanged
-  // This test ensures requestMore wrapper pattern is not modified
-  assert.match(uiModule, /scheduleScrollLoadCheck/);
-  assert.match(uiModule, /requestScrollLoadMore/);
-  // The context builder should not interfere with existing call sites
-  assert.match(uiModule, /createScrollLoadHelperContext/);
-  assert.doesNotMatch(uiModule, /createScrollLoadHelperContext.*requestScrollLoadMore/);
-});

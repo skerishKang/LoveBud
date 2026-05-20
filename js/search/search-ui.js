@@ -12,11 +12,20 @@
         const ScrollLoad = window.LoveBudSearchScrollLoad || {};
 
         let scrollLoadSentinel = null;
-        let scrollLoadObserver = null;
         let scrollCheckRaf = 0;
         let isScrollLoadQueued = false;
         let hasUserScrolledTowardFeed = false;
-        let scrollLoadIntentBound = false;
+
+        const requestController = typeof ScrollLoad.createScrollLoadRequestController === 'function'
+            ? ScrollLoad.createScrollLoadRequestController({
+                getQueued: () => isScrollLoadQueued,
+                setQueued: (val) => { isScrollLoadQueued = val; },
+                getIntent: () => hasUserScrolledTowardFeed,
+                setIntent: (val) => { hasUserScrolledTowardFeed = val; },
+                requestMore: () => { requestScrollLoadMore(); return true; },
+                scheduleCheck: () => scheduleScrollLoadCheck()
+            })
+            : null;
 
         function getCurrentLocale() {
             var SearchCopy = window.LoveBudSearchCopy;
@@ -150,51 +159,20 @@
                     isQueued: isScrollLoadQueued
                 });
             }
-
-            return Boolean(
-                callbacks.loadMorePublicTrees
-                && state.apiTreesLoaded
-                && state.hasMoreTrees
-                && !state.isLoadingMore
-                && !isScrollLoadQueued
-                && state.currentLimit < 60
-            );
+            return false;
         }
 
         function syncScrollLoadSentinel() {
             if (typeof ScrollLoad.syncScrollLoadSentinel === 'function') {
                 ScrollLoad.syncScrollLoadSentinel(scrollLoadSentinel, state);
-                return;
             }
-
-            if (!scrollLoadSentinel) return;
-
-            const isDone = !state.apiTreesLoaded || state.currentLimit >= 60 || !state.hasMoreTrees;
-            scrollLoadSentinel.hidden = isDone;
-            scrollLoadSentinel.classList.toggle('is-loading', Boolean(state.isLoadingMore));
-            scrollLoadSentinel.classList.toggle('is-idle', !isDone && !state.isLoadingMore);
-            scrollLoadSentinel.setAttribute('aria-hidden', isDone ? 'true' : 'false');
-
-            const icon = scrollLoadSentinel.querySelector('.material-symbols-outlined');
-            if (icon) {
-                icon.hidden = !state.isLoadingMore;
-            }
-
-            const text = scrollLoadSentinel.querySelector('[data-scroll-load-label]');
-            if (!text) return;
-            text.textContent = state.isLoadingMore
-                ? 'Loading more LoveTrees...'
-                : '';
         }
 
         function isSentinelNearViewport() {
             if (typeof ScrollLoad.isSentinelNearViewport === 'function') {
                 return ScrollLoad.isSentinelNearViewport(scrollLoadSentinel, window);
             }
-
-            if (!scrollLoadSentinel || scrollLoadSentinel.hidden) return false;
-            const rect = scrollLoadSentinel.getBoundingClientRect();
-            return rect.top <= window.innerHeight + 720 && rect.bottom >= -240;
+            return false;
         }
 
         async function requestScrollLoadMore() {
@@ -221,19 +199,24 @@
         }
 
         function scheduleScrollLoadCheck() {
-            if (scrollCheckRaf) return;
-            scrollCheckRaf = window.requestAnimationFrame(() => {
-                scrollCheckRaf = 0;
-                if ((window.scrollY || window.pageYOffset || 0) > 80) {
-                    hasUserScrolledTowardFeed = true;
-                }
-                requestScrollLoadMore();
-            });
+            if (typeof ScrollLoad.scheduleScrollLoadCheckWrapper === 'function') {
+                ScrollLoad.scheduleScrollLoadCheckWrapper(
+                    () => scrollCheckRaf,
+                    (val) => { scrollCheckRaf = val; },
+                    () => { hasUserScrolledTowardFeed = true; },
+                    () => requestController?.requestMore?.() || requestScrollLoadMore(),
+                    window
+                );
+            }
         }
 
         function markScrollLoadIntent() {
             hasUserScrolledTowardFeed = true;
-            scheduleScrollLoadCheck();
+            if (requestController && typeof requestController.scheduleCheck === 'function') {
+                requestController.scheduleCheck();
+            } else {
+                scheduleScrollLoadCheck();
+            }
         }
 
         function handleScrollLoadKeydown(event) {
@@ -246,51 +229,20 @@
             }
         }
 
-        function bindScrollLoadIntentHandlers() {
-            if (scrollLoadIntentBound) return;
-            scrollLoadIntentBound = true;
-
-            window.addEventListener('scroll', scheduleScrollLoadCheck, { passive: true });
-            window.addEventListener('wheel', markScrollLoadIntent, { passive: true });
-            window.addEventListener('touchmove', markScrollLoadIntent, { passive: true });
-            window.addEventListener('keydown', handleScrollLoadKeydown);
-            window.addEventListener('resize', scheduleScrollLoadCheck, { passive: true });
-            window.addEventListener('pageshow', scheduleScrollLoadCheck);
-        }
-
         function ensureScrollLoadSentinel() {
             if (!resultsList || scrollLoadSentinel) return;
+            if (typeof ScrollLoad.ensureScrollLoadSentinel !== 'function') return;
 
-            if (typeof ScrollLoad.createScrollLoadSentinel === 'function') {
-                scrollLoadSentinel = ScrollLoad.createScrollLoadSentinel(document);
-            } else {
-                scrollLoadSentinel = document.createElement('div');
-                scrollLoadSentinel.id = 'browseScrollLoadSentinel';
-                scrollLoadSentinel.className = 'browse-scroll-load-sentinel';
-                scrollLoadSentinel.innerHTML = `
-                <span class="material-symbols-outlined" aria-hidden="true">progress_activity</span>
-                <span data-scroll-load-label></span>
-            `;
-            }
-
-            resultsList.insertAdjacentElement('afterend', scrollLoadSentinel);
-            syncScrollLoadSentinel();
-
-            if ('IntersectionObserver' in window) {
-                scrollLoadObserver = new IntersectionObserver((entries) => {
-                    if (entries.some(entry => entry.isIntersecting)) {
-                        scheduleScrollLoadCheck();
-                    }
-                }, {
-                    root: null,
-                    rootMargin: '720px 0px 720px 0px',
-                    threshold: 0
-                });
-                scrollLoadObserver.observe(scrollLoadSentinel);
-            }
-
-            bindScrollLoadIntentHandlers();
-            scheduleScrollLoadCheck();
+            scrollLoadSentinel = ScrollLoad.ensureScrollLoadSentinel(resultsList, state, {
+                scheduleScrollLoadCheck,
+                bindScrollLoadIntentHandlers: () => {
+                    ScrollLoad.bindScrollLoadIntentHandlers({
+                        scheduleScrollLoadCheck,
+                        markScrollLoadIntent,
+                        handleScrollLoadKeydown
+                    });
+                }
+            });
         }
 
         function ensureBrowseControls() {

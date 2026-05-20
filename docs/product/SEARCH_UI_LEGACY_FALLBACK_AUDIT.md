@@ -19,65 +19,33 @@ The #1379 cleanup is intentionally incremental. Each behavior area should be rem
 | Preview state | `js/search/search-preview-state.js` | Completed by #1384 and #1385. The helper now owns `markActiveCard`, `syncActiveCard`, `clearSelectedPreview`, and `renderLoadErrorState`; the base preview state fallback was removed from `search-ui.js`. |
 | Mobile sheet | `js/search/search-mobile-preview-sheet.js` | Completed by #1386. The base mobile sheet fallback was removed from `search-ui.js`, and the static test now validates the helper contract. |
 
+| Scroll-load sentinel & intent | `js/search/search-scroll-load.js` | Partial. Ownership of sentinel creation, observer lifecycle, RAF scheduling wrapper, and intent binding are moved to the helper (PRs #1388 - #1391). Fallback implementations for `isSentinelNearViewport`, `syncScrollLoadSentinel`, and `canLoadMorePublicTrees` were removed from `search-ui.js`. |
+
 ## Remaining fallback area in `search-ui.js`
 
-### Scroll-load orchestration
+### Scroll-load request orchestration
 
-`search-ui.js` still owns the scroll-load runtime orchestration. This is the only large remaining cleanup area from the original #1379 list.
+`search-ui.js` still owns the core scroll-load state and request queueing orchestration. This is the last remaining cleanup area from the original #1379 list.
 
-Current local state in `search-ui.js`:
+Current local state preserved in `search-ui.js`:
 
-- `scrollLoadSentinel`
-- `scrollLoadObserver`
-- `scrollCheckRaf`
+- `scrollCheckRaf` (managed via helper getter/setter)
 - `isScrollLoadQueued`
 - `hasUserScrolledTowardFeed`
-- `scrollLoadIntentBound`
 
-Current local functions in `search-ui.js`:
+Current orchestration functions preserved in `search-ui.js`:
 
-- `canLoadMorePublicTrees`
-- `syncScrollLoadSentinel`
-- `isSentinelNearViewport`
-- `requestScrollLoadMore`
-- `scheduleScrollLoadCheck`
+- `requestScrollLoadMore` (core API call queueing)
+- `scheduleScrollLoadCheck` (delegates to helper wrapper but holds scope)
 - `markScrollLoadIntent`
 - `handleScrollLoadKeydown`
-- `bindScrollLoadIntentHandlers`
-- `ensureScrollLoadSentinel`
+- `ensureScrollLoadSentinel` (delegates to helper)
 
-Current helper coverage in `js/search/search-scroll-load.js`:
+## Recommended next scroll-load cleanup steps
 
-- `canLoadMorePublicTrees(state, callbacks, flags)`
-- `getSentinelDoneState(state)`
-- `syncScrollLoadSentinel(sentinel, state)`
-- `isSentinelNearViewport(sentinel, win)`
-- `createScrollLoadSentinel(doc)`
-- `isScrollIntentKey(event)`
-- `patchSearchUIFactory()`
-
-## Why scroll-load must be split carefully
-
-The scroll-load area is not a simple shadowed fallback. It combines:
-
-- DOM ownership of the sentinel element;
-- IntersectionObserver setup and lifecycle;
-- requestAnimationFrame throttling;
-- user scroll-intent tracking;
-- loading queue state;
-- call-through to `callbacks.loadMorePublicTrees({ source: 'scroll' })`;
-- interaction with sort/filter pagination state through `ensureBrowseControls()` and `syncControlsFromState()`.
-
-Removing this as one large cleanup would be riskier than the previous share/card/preview/mobile slices.
-
-## Recommended scroll-load cleanup order
-
-1. Expand `search-scroll-load.js` with a controller/factory that owns only the local scroll-load state object and pure event handlers.
-2. Patch `LoveBudSearchUI.createSearchUI` so the helper can provide `ensureScrollLoadSentinel` and `syncScrollLoadSentinel` while preserving existing call sites in `search-ui.js`.
-3. Move sentinel creation and sync into the helper while leaving `requestScrollLoadMore` in `search-ui.js`.
-4. Move intent handlers and IntersectionObserver setup into the helper.
-5. Move queueing and `callbacks.loadMorePublicTrees({ source: 'scroll' })` only after a browser smoke proves pagination behavior is unchanged.
-6. Remove the remaining base scroll-load fallback from `search-ui.js` only after the helper owns the full path.
+1. (Completed in #1393) Expand `search-scroll-load.js` with a controller/factory contract (`createScrollLoadRequestController`) for request orchestration.
+2. Move `requestScrollLoadMore` queueing logic and `callbacks.loadMorePublicTrees({ source: 'scroll' })` call into the helper.
+3. Remove the remaining orchestration and intent binding wrappers from `search-ui.js` only after a browser smoke proves pagination behavior is unchanged.
 
 ## Required validation for scroll-load code PRs
 
