@@ -94,7 +94,69 @@
     });
   }
 
-  window.LoveBudMyTreesPreviewState = {
+  function patchPreviewHub(hub) {
+    if (!hub || hub.__previewStatePatched) return hub;
+
+    var originalInit = hub.init;
+    var originalShowPlaceholder = hub.showPlaceholder;
+    var originalShowContent = hub.showContent;
+    var originalShowLoading = hub.showLoading;
+    var originalOnCardClick = hub.onCardClick;
+    var originalSetTreeGridContainer = hub.setTreeGridContainer;
+
+    if (typeof originalInit === 'function') {
+      hub.init = function (options) {
+        options = options || {};
+        setStateModule(options.stateModule || window.LoveBudMyTreesState || null);
+        return originalInit.call(hub, options);
+      };
+    }
+
+    if (typeof originalShowPlaceholder === 'function') {
+      hub.showPlaceholder = function () {
+        clearSelection();
+        return originalShowPlaceholder.call(hub);
+      };
+    }
+
+    if (typeof originalShowContent === 'function') {
+      hub.showContent = function (tree) {
+        setSelectedTree(tree);
+        return originalShowContent.call(hub, tree);
+      };
+    }
+
+    if (typeof originalShowLoading === 'function') {
+      hub.showLoading = function (tree) {
+        setSelectedTree(tree);
+        return originalShowLoading.call(hub, tree);
+      };
+    }
+
+    if (typeof originalOnCardClick === 'function') {
+      hub.onCardClick = function (tree, event) {
+        setSelectedTree(tree);
+        if (tree && tree.id != null) {
+          markSelectedCard(tree.id);
+          syncSelectedTreeId(tree.id);
+        }
+        return originalOnCardClick.call(hub, tree, event);
+      };
+    }
+
+    if (typeof originalSetTreeGridContainer === 'function') {
+      hub.setTreeGridContainer = function (selectorOrEl) {
+        setTreeGridContainer(selectorOrEl);
+        return originalSetTreeGridContainer.call(hub, selectorOrEl);
+      };
+    }
+
+    hub.getSelectedTree = getSelectedTree;
+    hub.__previewStatePatched = true;
+    return hub;
+  }
+
+  var api = {
     getTreeKey: getTreeKey,
     setTreeGridContainer: setTreeGridContainer,
     getTreeGridContainer: getTreeGridContainer,
@@ -108,6 +170,11 @@
     isFlowExpanded: isFlowExpanded,
     toggleFlowExpanded: toggleFlowExpanded,
     syncSelectedTreeId: syncSelectedTreeId,
-    markSelectedCard: markSelectedCard
+    markSelectedCard: markSelectedCard,
+    patchPreviewHub: patchPreviewHub
   };
+
+  window.LoveBudMyTreesPreviewState = api;
+  patchPreviewHub(window.LoveBudMyTreesPreviewHub);
+  patchPreviewHub(window.LoveTreeMyTreesPreviewHub);
 })();
