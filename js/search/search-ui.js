@@ -186,17 +186,7 @@
                     requestScrollLoadMore,
                     window
                 );
-                return;
             }
-
-            if (scrollCheckRaf) return;
-            scrollCheckRaf = window.requestAnimationFrame(() => {
-                scrollCheckRaf = 0;
-                if ((window.scrollY || window.pageYOffset || 0) > 80) {
-                    hasUserScrolledTowardFeed = true;
-                }
-                requestScrollLoadMore();
-            });
         }
 
         function markScrollLoadIntent() {
