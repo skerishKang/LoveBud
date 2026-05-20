@@ -11,10 +11,18 @@ function loadHooks() {
         __LOVE_BUD_TREE_VIEWER_SKIP_INIT__: true,
         i18nViewer: {},
         i18n: { currentLang: 'en' },
-        location: { href: 'https://example.test/pages/tree.html' }
+        location: { href: 'https://example.test/pages/tree.html', search: '?treeId=public-route-ref' }
     };
     window.window = window;
 
+    var routeScript = fs.readFileSync('js/viewer/viewer-route.js', 'utf8');
+    vm.runInNewContext(routeScript, {
+        URLSearchParams,
+        window,
+        console,
+        setTimeout,
+        clearTimeout
+    });
     vm.runInNewContext(dtScript, {
         window,
         console,
@@ -97,6 +105,12 @@ test('missing public parent relation falls back to one main branch', () => {
 
     assert.equal(viewerData.branches.length, 1);
     assert.equal(viewerData.branches[0].id, 'main');
+});
+
+test('viewer route helper is exposed for route tests', () => {
+    const hooks = loadHooks();
+    assert.equal(typeof hooks.getTreeId, 'function');
+    assert.equal(hooks.getTreeId({ search: '?treeId=public-route-ref' }), 'public-route-ref');
 });
 
 test('viewer shell render helper is exposed for route tests', () => {
