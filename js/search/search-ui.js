@@ -22,7 +22,7 @@
                 setQueued: (val) => { isScrollLoadQueued = val; },
                 getIntent: () => hasUserScrolledTowardFeed,
                 setIntent: (val) => { hasUserScrolledTowardFeed = val; },
-                requestMore: () => requestScrollLoadMore(),
+                requestMore: () => { requestScrollLoadMore(); return true; },
                 scheduleCheck: () => scheduleScrollLoadCheck()
             })
             : null;
@@ -194,7 +194,7 @@
                     () => scrollCheckRaf,
                     (val) => { scrollCheckRaf = val; },
                     () => { hasUserScrolledTowardFeed = true; },
-                    requestScrollLoadMore,
+                    () => requestController?.requestMore?.() || requestScrollLoadMore(),
                     window
                 );
             }
