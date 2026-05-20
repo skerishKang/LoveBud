@@ -13,8 +13,6 @@
             mobilePreviewMediaQuery
         } = refs;
         const { PreviewRenderer } = renderers;
-        const treeDataMap = new WeakMap();
-        const boundContainers = new WeakSet();
         const ScrollLoad = window.LoveBudSearchScrollLoad || {};
 
         // overlay element reference + saved scroll position for lock/restore
@@ -497,106 +495,6 @@
             }
         }
 
-        function bindDelegatedCardEvents(container) {
-            if (!container || boundContainers.has(container)) return;
-            boundContainers.add(container);
-
-            container.addEventListener('click', (event) => {
-                if (event.defaultPrevented) return;
-
-                const card = event.target.closest('.tree-card[data-tree-id]');
-                if (!card || !container.contains(card)) return;
-
-                // Ignore clicks on nested interactive elements
-                const interactiveSelector = 'a, button, input, select, textarea, [data-share-tree-link], [data-action], [role="button"]';
-                const interactiveChild = event.target.closest(interactiveSelector);
-                if (interactiveChild && interactiveChild !== card) return;
-
-                // Mobile <480px: navigate directly to public viewer
-                if (window.innerWidth < 480) {
-                    const tree = treeDataMap.get(card);
-                    if (tree && tree.id) {
-                        var cardRenderer = window.LoveBudSearchCardRenderer;
-                        var viewerHref = cardRenderer && typeof cardRenderer.getTreeViewerHref === 'function'
-                            ? cardRenderer.getTreeViewerHref(tree)
-                            : '';
-                        if (viewerHref) {
-                            event.preventDefault();
-                            window.location.href = viewerHref;
-                            return;
-                        }
-                    }
-                }
-
-                const tree = treeDataMap.get(card);
-                if (tree) {
-                    callbacks.selectTree(tree, card);
-                }
-            });
-
-            container.addEventListener('keydown', (event) => {
-                if (event.defaultPrevented || (event.key !== 'Enter' && event.key !== ' ')) return;
-
-                const card = event.target.closest('.tree-card[data-tree-id]');
-                if (!card || !container.contains(card)) return;
-
-                const interactiveSelector = 'a, button, input, select, textarea, [data-share-tree-link], [data-action], [role="button"]';
-                const interactiveChild = event.target.closest(interactiveSelector);
-                if (interactiveChild && interactiveChild !== card) return;
-
-                event.preventDefault();
-
-                // Mobile <480px: navigate directly to public viewer
-                if (window.innerWidth < 480) {
-                    const tree = treeDataMap.get(card);
-                    if (tree && tree.id) {
-                        var cardRenderer = window.LoveBudSearchCardRenderer;
-                        var viewerHref = cardRenderer && typeof cardRenderer.getTreeViewerHref === 'function'
-                            ? cardRenderer.getTreeViewerHref(tree)
-                            : '';
-                        if (viewerHref) {
-                            window.location.href = viewerHref;
-                            return;
-                        }
-                    }
-                }
-
-                const tree = treeDataMap.get(card);
-                if (tree) {
-                    callbacks.selectTree(tree, card);
-                }
-            });
-        }
-
-        function attachCardEvents(listElement, trees) {
-            if (!listElement) return;
-            const cards = listElement.querySelectorAll('.tree-card');
-            cards.forEach((card) => {
-                const treeId = card.dataset.treeId;
-                const tree = trees.find(t => t.id === treeId);
-                if (!tree) return;
-
-                // Set accessibility attributes for delegation
-                card.setAttribute('tabindex', '0');
-                card.setAttribute('role', 'button');
-
-                // Sync initial aria-pressed state
-                card.setAttribute('aria-pressed', tree.id === state.selectedTreeId ? 'true' : 'false');
-
-                // Map tree data for delegated event handler
-                treeDataMap.set(card, tree);
-            });
-
-            // Ensure container listener is bound
-            bindDelegatedCardEvents(listElement);
-
-            // Bind image error/load handlers for inline handler migration
-            var cardRenderer = window.LoveBudSearchCardRenderer;
-            if (cardRenderer && cardRenderer.bindCardImageHandlers) {
-                cardRenderer.bindCardImageHandlers(listElement);
-            }
-        }
-
         function bindMobilePreviewHandlers() {
             if (refs.previewMobileClose) {
                 refs.previewMobileClose.addEventListener('click', () => {
@@ -631,7 +529,6 @@
             syncActiveCard,
             renderLoadErrorState,
             renderPreviewLoadingState,
-            attachCardEvents,
             bindMobilePreviewHandlers
         };
     }
