@@ -42,7 +42,7 @@
         var originalCreateSearchUI = SearchUI.createSearchUI;
         SearchUI.createSearchUI = function (config) {
             var ui = originalCreateSearchUI(config);
-            if (!ui || typeof ui.attachCardEvents !== 'function') return ui;
+            if (!ui) return ui;
 
             var refs = (config && config.refs) || {};
             var state = (config && config.state) || {};
