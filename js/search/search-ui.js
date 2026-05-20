@@ -15,7 +15,6 @@
         let scrollCheckRaf = 0;
         let isScrollLoadQueued = false;
         let hasUserScrolledTowardFeed = false;
-        let scrollLoadIntentBound = false;
 
         function getCurrentLocale() {
             var SearchCopy = window.LoveBudSearchCopy;
@@ -235,25 +234,19 @@
             }
         }
 
-        function bindScrollLoadIntentHandlers() {
-            if (scrollLoadIntentBound) return;
-            scrollLoadIntentBound = true;
-
-            window.addEventListener('scroll', scheduleScrollLoadCheck, { passive: true });
-            window.addEventListener('wheel', markScrollLoadIntent, { passive: true });
-            window.addEventListener('touchmove', markScrollLoadIntent, { passive: true });
-            window.addEventListener('keydown', handleScrollLoadKeydown);
-            window.addEventListener('resize', scheduleScrollLoadCheck, { passive: true });
-            window.addEventListener('pageshow', scheduleScrollLoadCheck);
-        }
-
         function ensureScrollLoadSentinel() {
             if (!resultsList || scrollLoadSentinel) return;
             if (typeof ScrollLoad.ensureScrollLoadSentinel !== 'function') return;
 
             scrollLoadSentinel = ScrollLoad.ensureScrollLoadSentinel(resultsList, state, {
                 scheduleScrollLoadCheck,
-                bindScrollLoadIntentHandlers
+                bindScrollLoadIntentHandlers: () => {
+                    ScrollLoad.bindScrollLoadIntentHandlers({
+                        scheduleScrollLoadCheck,
+                        markScrollLoadIntent,
+                        handleScrollLoadKeydown
+                    });
+                }
             });
         }
 
