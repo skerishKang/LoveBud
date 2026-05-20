@@ -98,20 +98,20 @@ test('browse filter and sort changes reset pagination state without changing fee
   assert.match(uiModule, /state\.hasMoreTrees = true/);
 });
 
-test('search UI module implements card accessibility and event delegation', () => {
-  const uiModule = read('js/search/search-ui.js');
+test('search card events helper implements card accessibility and event delegation', () => {
+  const cardEventsModule = read('js/search/search-card-events.js');
   const cardRenderer = read('js/search/search-card-renderer.js');
-  
-  // Verify accessibility attributes are set
-  assert.match(uiModule, /card\.setAttribute\(['"]tabindex['"],\s*['"]0['"]\)/);
-  assert.match(uiModule, /card\.setAttribute\(['"]role['"],\s*['"]button['"]\)/);
+
+  // Verify accessibility attributes are set by the helper that now owns card activation.
+  assert.match(cardEventsModule, /card\.setAttribute\(['"]tabindex['"],\s*['"]0['"]\)/);
+  assert.match(cardEventsModule, /card\.setAttribute\(['"]role['"],\s*['"]button['"]\)/);
   assert.match(cardRenderer, /aria-label="\$\{escapeHtml\(cardSelectLabel\)\}"/);
-  
-  // Verify event delegation pattern
-  assert.match(uiModule, /container\.addEventListener\(['"]click['"]/);
-  assert.match(uiModule, /container\.addEventListener\(['"]keydown['"]/);
-  assert.match(uiModule, /event\.target\.closest\(['"]\.tree-card\[data-tree-id\]['"]\)/);
-  assert.match(uiModule, /const interactiveSelector = ['"]a, button,/);
+
+  // Verify event delegation pattern in the helper module.
+  assert.match(cardEventsModule, /container\.addEventListener\(['"]click['"]/);
+  assert.match(cardEventsModule, /container\.addEventListener\(['"]keydown['"]/);
+  assert.match(cardEventsModule, /event\.target\.closest\(['"]\.tree-card\[data-tree-id\]['"]\)/);
+  assert.match(cardEventsModule, /var interactiveSelector = ['"]a, button,/);
 });
 
 test('browse cards expose a truthful public tree viewer bridge', () => {
