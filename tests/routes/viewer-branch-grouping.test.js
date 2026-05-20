@@ -28,6 +28,13 @@ function loadHooks() {
         setTimeout,
         clearTimeout
     });
+    var shellScript = fs.readFileSync('js/viewer/viewer-shell-render.js', 'utf8');
+    vm.runInNewContext(shellScript, {
+        window,
+        console,
+        setTimeout,
+        clearTimeout
+    });
     vm.runInNewContext(script, {
         window,
         console,
@@ -90,4 +97,9 @@ test('missing public parent relation falls back to one main branch', () => {
 
     assert.equal(viewerData.branches.length, 1);
     assert.equal(viewerData.branches[0].id, 'main');
+});
+
+test('viewer shell render helper is exposed for route tests', () => {
+    const hooks = loadHooks();
+    assert.equal(typeof hooks.renderShell, 'function');
 });
