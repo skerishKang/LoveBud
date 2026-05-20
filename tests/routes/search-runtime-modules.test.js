@@ -352,3 +352,43 @@ test('search scroll load scheduleScrollLoadCheckWrapper delegates to requestLoad
   // scheduleScrollLoadCheckWrapper calls requestLoadMore if it is a function
   assert.match(helperModule, /if \(typeof requestLoadMore === 'function'\) \{\s*requestLoadMore\(\);\s*\}/);
 });
+
+test('search UI requestScrollLoadMore retains full ownership of fetch, queue, and sentinel sync', () => {
+  const uiModule = read('js/search/search-ui.js');
+
+  // requestScrollLoadMore body is defined with full implementation in search-ui.js
+  assert.match(uiModule, /async function requestScrollLoadMore/);
+  // Owns scroll intent guard check
+  assert.match(uiModule, /if \(!hasUserScrolledTowardFeed/);
+  // Owns queue state toggle (true before fetch, false after)
+  assert.match(uiModule, /isScrollLoadQueued = true/);
+  assert.match(uiModule, /isScrollLoadQueued = false/);
+  // Owns sentinel rendering sync before and after fetch
+  assert.match(uiModule, /syncScrollLoadSentinel\(\)/);
+  // Owns API fetch via callback
+  assert.match(uiModule, /callbacks\.loadMorePublicTrees\(\{/);
+  // Uses try/finally for queue cleanup (isScrollLoadQueued inside finally block)
+  assert.match(uiModule, /try \{[\s\S]*?\} finally \{[\s\S]*?isScrollLoadQueued/);
+});
+
+test('search UI requestController.requestMore has exactly one actual-use call site', () => {
+  const uiModule = read('js/search/search-ui.js');
+
+  // \brequestMore\b must appear exactly twice:
+  // 1. Creation: requestMore: () => { ... }
+  // 2. Call: requestController?.requestMore?.()
+  const count = (uiModule.match(/\brequestMore\b/g) || []).length;
+  assert.equal(count, 2,
+    'Expected exactly 2 requestMore references (1 creation + 1 call site)'
+  );
+});
+
+test('search UI scroll load path does not delegate requestScrollLoadMore to helper', () => {
+  const uiModule = read('js/search/search-ui.js');
+  const helperModule = read('js/search/search-scroll-load.js');
+
+  // search-ui.js uses its own local requestScrollLoadMore, not helper's exported version
+  assert.doesNotMatch(uiModule, /ScrollLoad\.requestScrollLoadMore/);
+  // Helper does export requestScrollLoadMore but it is not reached from the main runtime chain
+  assert.match(helperModule, /LoveBudSearchScrollLoad[\s\S]*?requestScrollLoadMore/);
+});
