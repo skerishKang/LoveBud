@@ -48,7 +48,6 @@ test('search UI module preserves orchestrator contract methods', () => {
   const uiModule = read('js/search/search-ui.js');
   const requiredMethods = [
     'syncStaticBrowseCopy',
-    'setMobilePreviewOpen',
     'ensureBrowseControls',
     'syncBrowseHead',
   ];
@@ -77,6 +76,39 @@ test('search preview state helper exposes state management contract', () => {
   for (const method of requiredMethods) {
     assert.match(exported, new RegExp(`\\b${method}\\b`), `Missing export: ${method}`);
   }
+});
+
+test('search mobile preview sheet helper exposes sheet contract', () => {
+  const helperModule = read('js/search/search-mobile-preview-sheet.js');
+  const requiredMethods = [
+    'createSheetController',
+    'patchSearchUIFactory',
+  ];
+  const controllerMethods = [
+    'isMobilePreviewMode',
+    'showSheetOverlay',
+    'hideSheetOverlay',
+    'setMobilePreviewOpen',
+    'syncPreviewVisibility',
+    'bindMobilePreviewHandlers',
+  ];
+
+  const exportMatch = helperModule.match(/window\.LoveBudSearchMobilePreviewSheet\s*=\s*\{([^}]+)\}/s);
+  assert.ok(exportMatch, 'LoveBudSearchMobilePreviewSheet export object not found');
+  const exported = exportMatch[1];
+
+  for (const method of requiredMethods) {
+    assert.match(exported, new RegExp(`\\b${method}\\b`), `Missing export: ${method}`);
+  }
+
+  for (const method of controllerMethods) {
+    assert.match(helperModule, new RegExp(`\\b${method}\\b`), `Missing controller method: ${method}`);
+  }
+
+  assert.match(helperModule, /preview-sheet-open/);
+  assert.match(helperModule, /preview-sheet-overlay/);
+  assert.match(helperModule, /ui\.setMobilePreviewOpen = controller\.setMobilePreviewOpen/);
+  assert.match(helperModule, /ui\.bindMobilePreviewHandlers = controller\.bindMobilePreviewHandlers/);
 });
 
 test('search copy helper exposes namespace contract', () => {
@@ -120,12 +152,10 @@ test('search card events helper implements card accessibility and event delegati
   const cardEventsModule = read('js/search/search-card-events.js');
   const cardRenderer = read('js/search/search-card-renderer.js');
 
-  // Verify accessibility attributes are set by the helper that now owns card activation.
   assert.match(cardEventsModule, /card\.setAttribute\(['"]tabindex['"],\s*['"]0['"]\)/);
   assert.match(cardEventsModule, /card\.setAttribute\(['"]role['"],\s*['"]button['"]\)/);
   assert.match(cardRenderer, /aria-label="\$\{escapeHtml\(cardSelectLabel\)\}"/);
 
-  // Verify event delegation pattern in the helper module.
   assert.match(cardEventsModule, /container\.addEventListener\(['"]click['"]/);
   assert.match(cardEventsModule, /container\.addEventListener\(['"]keydown['"]/);
   assert.match(cardEventsModule, /event\.target\.closest\(['"]\.tree-card\[data-tree-id\]['"]\)/);
