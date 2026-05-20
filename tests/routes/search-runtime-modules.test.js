@@ -159,6 +159,11 @@ test('search UI delegates scroll load intent listener binding to helper', () => 
   assert.match(uiModule, /scheduleScrollLoadCheck/);
   assert.match(uiModule, /ScrollLoad\.scheduleScrollLoadCheckWrapper/);
   assert.doesNotMatch(uiModule, /window\.requestAnimationFrame/);
+  assert.match(uiModule, /ScrollLoad\.createScrollLoadRequestController/);
+  assert.match(uiModule, /getQueued/);
+  assert.match(uiModule, /setQueued/);
+  assert.match(uiModule, /getIntent/);
+  assert.match(uiModule, /setIntent/);
 });
 
 test('browse filter and sort changes reset pagination state without changing feed cards', () => {
