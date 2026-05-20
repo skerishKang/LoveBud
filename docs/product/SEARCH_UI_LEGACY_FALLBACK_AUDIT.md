@@ -43,7 +43,7 @@ Current orchestration functions preserved in `search-ui.js`:
 
 ## Recommended next scroll-load cleanup steps
 
-1. Expand `search-scroll-load.js` with a controller/factory that owns the local `isScrollLoadQueued` and `hasUserScrolledTowardFeed` states completely.
+1. (Completed in #1393) Expand `search-scroll-load.js` with a controller/factory contract (`createScrollLoadRequestController`) for request orchestration.
 2. Move `requestScrollLoadMore` queueing logic and `callbacks.loadMorePublicTrees({ source: 'scroll' })` call into the helper.
 3. Remove the remaining orchestration and intent binding wrappers from `search-ui.js` only after a browser smoke proves pagination behavior is unchanged.
 
