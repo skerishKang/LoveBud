@@ -27,6 +27,10 @@
         let scrollLoadIntentBound = false;
 
         function getCurrentLocale() {
+            var SearchCopy = window.LoveBudSearchCopy;
+            if (SearchCopy && typeof SearchCopy.getCurrentLocale === 'function') {
+                return SearchCopy.getCurrentLocale();
+            }
             const locale = window.i18n?.currentLang || window.getCurrentLang?.() || document.documentElement?.lang || 'ko';
             return String(locale).toLowerCase().startsWith('en') ? 'en' : 'ko';
         }
@@ -121,6 +125,10 @@
         }
 
         function getSearchCopy(key, fallbackKo, fallbackEn) {
+            var SearchCopy = window.LoveBudSearchCopy;
+            if (SearchCopy && typeof SearchCopy.getSearchCopy === 'function') {
+                return SearchCopy.getSearchCopy(key, fallbackKo, fallbackEn);
+            }
             const locale = getCurrentLocale();
             const dict = window.i18nSearch?.[key];
             if (dict && typeof dict === 'object') {
