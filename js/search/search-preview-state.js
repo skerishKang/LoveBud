@@ -66,6 +66,42 @@
         }
     }
 
+    function getSearchCopy(ctx, key, fallbackKo, fallbackEn) {
+        var ui = ctx && ctx.ui;
+        if (ui && typeof ui.getSearchCopy === 'function') {
+            return ui.getSearchCopy(key, fallbackKo, fallbackEn);
+        }
+        return fallbackKo;
+    }
+
+    function renderLoadErrorState(ctx) {
+        ctx = ctx || {};
+        var refs = ctx.refs || {};
+        var resultsList = refs.resultsList;
+        if (!resultsList) return;
+
+        resultsList.innerHTML = `
+                <div class="search-empty-state">
+                    <span class="material-symbols-outlined search-error-icon" aria-hidden="true">cloud_off</span>
+                    <h3 class="search-empty-heading">${getSearchCopy(ctx, 'search.errorHeading', '불러오지 못했어요', 'Could not load')}</h3>
+                    <p class="search-empty-body">${getSearchCopy(ctx, 'search.errorBody', '네트워크 상태를 확인하고 다시 시도해 주세요.', 'Check your connection and try again.')}</p>
+                    <div class="search-empty-actions">
+                        <button type="button" id="retryLoadBtn" class="btn-round btn-primary">${getSearchCopy(ctx, 'search.retryButton', '다시 시도', 'Retry')}</button>
+                    </div>
+                </div>
+            `;
+
+        var doc = resultsList.ownerDocument || document;
+        var retryBtn = doc.getElementById('retryLoadBtn');
+        if (retryBtn) {
+            retryBtn.addEventListener('click', function () {
+                window.location.reload();
+            });
+        }
+
+        clearSelectedPreview(ctx);
+    }
+
     function createPreviewStateController(config, ui) {
         config = config || {};
         var refs = config.refs || {};
@@ -88,6 +124,9 @@
             },
             clearSelectedPreview: function (options) {
                 return clearSelectedPreview(ctx, options);
+            },
+            renderLoadErrorState: function () {
+                return renderLoadErrorState(ctx);
             }
         };
     }
@@ -105,6 +144,7 @@
             ui.markActiveCard = controller.markActiveCard;
             ui.syncActiveCard = controller.syncActiveCard;
             ui.clearSelectedPreview = controller.clearSelectedPreview;
+            ui.renderLoadErrorState = controller.renderLoadErrorState;
             ui.__previewStatePatched = true;
             return ui;
         };
@@ -118,6 +158,7 @@
         findActiveCard: findActiveCard,
         syncActiveCard: syncActiveCard,
         clearSelectedPreview: clearSelectedPreview,
+        renderLoadErrorState: renderLoadErrorState,
         createPreviewStateController: createPreviewStateController,
         patchSearchUIFactory: patchSearchUIFactory
     };
