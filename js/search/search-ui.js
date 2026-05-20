@@ -16,6 +16,17 @@
         let isScrollLoadQueued = false;
         let hasUserScrolledTowardFeed = false;
 
+        const requestController = typeof ScrollLoad.createScrollLoadRequestController === 'function'
+            ? ScrollLoad.createScrollLoadRequestController({
+                getQueued: () => isScrollLoadQueued,
+                setQueued: (val) => { isScrollLoadQueued = val; },
+                getIntent: () => hasUserScrolledTowardFeed,
+                setIntent: (val) => { hasUserScrolledTowardFeed = val; },
+                requestMore: () => requestScrollLoadMore(),
+                scheduleCheck: () => scheduleScrollLoadCheck()
+            })
+            : null;
+
         function getCurrentLocale() {
             var SearchCopy = window.LoveBudSearchCopy;
             if (SearchCopy && typeof SearchCopy.getCurrentLocale === 'function') {
