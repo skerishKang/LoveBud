@@ -53,6 +53,7 @@ test('search page keeps Search helper and renderer modules before the Search ent
     '../js/search/search-preview-cache.js',
     '../js/search/search-copy.js',
     '../js/search/search-ui.js',
+    '../js/search/search-scroll-load.js',
     '../js/search/search-url-state.js',
     '../js/search/search-controls.js',
     '../js/search/search-data.js',

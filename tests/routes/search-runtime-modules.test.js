@@ -26,6 +26,7 @@ test('search runtime submodules load after existing search helpers and before se
     '../js/search/search-preview-cache.js',
     '../js/search/search-copy.js',
     '../js/search/search-ui.js',
+    '../js/search/search-scroll-load.js',
     '../js/search/search-url-state.js',
   ];
   const moduleIndexes = expectedModules.map(indexOf);
@@ -132,8 +133,18 @@ test('browse feed controls do not expose batch strategy as product UI', () => {
   assert.doesNotMatch(uiModule, /getElementById\(['"]browseLoadMoreBtn['"]\)/);
   assert.match(uiModule, /refs\.resultsBadge\.hidden = true/);
   assert.match(uiModule, /refs\.resultsBadge\.textContent = ''/);
-  assert.match(uiModule, /browseScrollLoadSentinel/);
+  assert.match(uiModule, /ScrollLoad\.ensureScrollLoadSentinel/);
   assert.match(uiModule, /callbacks\.loadMorePublicTrees/);
+});
+
+test('search UI wires scroll load sentinel lifecycle through helper ownership', () => {
+  const uiModule = read('js/search/search-ui.js');
+
+  assert.match(uiModule, /ScrollLoad\.ensureScrollLoadSentinel\(resultsList,\s*state,\s*\{/);
+  assert.match(uiModule, /scheduleScrollLoadCheck/);
+  assert.match(uiModule, /bindScrollLoadIntentHandlers/);
+  assert.doesNotMatch(uiModule, /document\.createElement\(['"]div['"]\)[\s\S]*?browse-scroll-load-sentinel/);
+  assert.doesNotMatch(uiModule, /new IntersectionObserver/);
 });
 
 test('browse filter and sort changes reset pagination state without changing feed cards', () => {
