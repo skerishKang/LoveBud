@@ -22,6 +22,7 @@ function createTreeViewerContext() {
     }
   };
   vm.createContext(context);
+  vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/viewer/viewer-data-transform.js'), 'utf8'), context);
   vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/viewer/tree-viewer.js'), 'utf8'), context);
   return context;
 }
