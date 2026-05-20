@@ -9,10 +9,12 @@ const ROOT = path.join(__dirname, '..', '..');
 function createTreeViewerContext() {
   const context = {
     URL,
+    URLSearchParams,
     console,
     window: {
       __LOVE_BUD_TREE_VIEWER_TEST_HOOKS__: true,
-      __LOVE_BUD_TREE_VIEWER_SKIP_INIT__: true
+      __LOVE_BUD_TREE_VIEWER_SKIP_INIT__: true,
+      location: { search: '?treeId=public-route-ref' }
     },
     document: {
       readyState: 'loading',
@@ -22,6 +24,7 @@ function createTreeViewerContext() {
     }
   };
   vm.createContext(context);
+  vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/viewer/viewer-route.js'), 'utf8'), context);
   vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/viewer/viewer-data-transform.js'), 'utf8'), context);
   vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/viewer/viewer-render-state.js'), 'utf8'), context);
   vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/viewer/viewer-shell-render.js'), 'utf8'), context);
