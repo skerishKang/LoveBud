@@ -9,6 +9,10 @@
   if (window.LoveBudMyTreesUI) return;
 
   function escapeHtml(str) {
+    var Utils = window.LoveBudMyTreesUtils;
+    if (Utils && typeof Utils.escapeHtml === 'function') {
+      return Utils.escapeHtml(str);
+    }
     if (str == null) return '';
     return String(str)
       .replace(/&/g, '&amp;')
@@ -19,6 +23,10 @@
   }
 
   function hashSeed(value) {
+    var Utils = window.LoveBudMyTreesUtils;
+    if (Utils && typeof Utils.hashSeed === 'function') {
+      return Utils.hashSeed(value);
+    }
     var source = String(value || 'lovetree');
     var hash = 0;
     for (var i = 0; i < source.length; i++) {
@@ -29,6 +37,10 @@
   }
 
   function getTreeMomentCount(tree) {
+    var Utils = window.LoveBudMyTreesUtils;
+    if (Utils && typeof Utils.getTreeMomentCount === 'function') {
+      return Utils.getTreeMomentCount(tree);
+    }
     if (!tree) return 0;
     var count =
       tree.memoryCount ??
@@ -43,6 +55,10 @@
   }
 
   function getTreeViewCount(tree) {
+    var Utils = window.LoveBudMyTreesUtils;
+    if (Utils && typeof Utils.getTreeViewCount === 'function') {
+      return Utils.getTreeViewCount(tree);
+    }
     if (!tree) return 0;
     var keys = [
       'viewCount', 'viewsCount', 'views', 'view_count', 'views_count',
@@ -154,12 +170,20 @@
   }
 
   function clipText(value, maxLength) {
+    var Utils = window.LoveBudMyTreesUtils;
+    if (Utils && typeof Utils.clipText === 'function') {
+      return Utils.clipText(value, maxLength);
+    }
     var text = String(value || '').trim();
     if (!text) return '';
     if (text.length <= maxLength) return text;
-    return text.slice(0, maxLength).trim() + '…';
+    return text.slice(0, maxLength).trim() + '\u2026';
   }
   function formatDate(dateValue) {
+    var Utils = window.LoveBudMyTreesUtils;
+    if (Utils && typeof Utils.formatDate === 'function') {
+      return Utils.formatDate(dateValue);
+    }
     if (!dateValue) return '';
     try {
       var d = new Date(dateValue);
