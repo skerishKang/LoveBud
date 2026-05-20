@@ -278,6 +278,7 @@ test('search scroll load sentinel helper exposes scroll load contract', () => {
     'ensureScrollLoadSentinel',
     'requestScrollLoadMore',
     'scheduleScrollLoadCheck',
+    'scheduleScrollLoadCheckWrapper',
     'markScrollLoadIntent',
     'handleScrollLoadKeydown',
     'bindScrollLoadIntentHandlers',

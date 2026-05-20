@@ -110,6 +110,20 @@
         }
     }
 
+    function scheduleScrollLoadCheckWrapper(getRaf, setRaf, markScrolled, requestLoadMore, win) {
+        var targetWindow = win || window;
+        if (getRaf()) return;
+        setRaf(targetWindow.requestAnimationFrame(() => {
+            setRaf(0);
+            if ((targetWindow.scrollY || targetWindow.pageYOffset || 0) > 80) {
+                markScrolled();
+            }
+            if (typeof requestLoadMore === 'function') {
+                requestLoadMore();
+            }
+        }));
+    }
+
     function scheduleScrollLoadCheck(state) {
         if (scrollCheckRaf) return;
         scrollCheckRaf = window.requestAnimationFrame(() => {
@@ -192,6 +206,7 @@
         ensureScrollLoadSentinel: ensureScrollLoadSentinel,
         requestScrollLoadMore: requestScrollLoadMore,
         scheduleScrollLoadCheck: scheduleScrollLoadCheck,
+        scheduleScrollLoadCheckWrapper: scheduleScrollLoadCheckWrapper,
         markScrollLoadIntent: markScrollLoadIntent,
         handleScrollLoadKeydown: handleScrollLoadKeydown,
         bindScrollLoadIntentHandlers: bindScrollLoadIntentHandlers,
