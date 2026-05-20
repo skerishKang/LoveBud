@@ -62,6 +62,90 @@
         return !!event && [' ', 'PageDown', 'End', 'ArrowDown'].indexOf(event.key) !== -1;
     }
 
+    // Sentinel lifecycle helpers - ownership extension for preparation
+    function ensureScrollLoadSentinel(resultsList, state, callbacks) {
+        if (!resultsList || scrollLoadSentinel) return scrollLoadSentinel;
+
+        scrollLoadSentinel = createScrollLoadSentinel(document);
+        resultsList.insertAdjacentElement('afterend', scrollLoadSentinel);
+        syncScrollLoadSentinel(scrollLoadSentinel, state);
+
+        if ('IntersectionObserver' in window) {
+            scrollLoadObserver = new IntersectionObserver((entries) => {
+                if (entries.some(entry => entry.isIntersecting)) {
+                    scheduleScrollLoadCheck();
+                }
+            }, {
+                root: null,
+                rootMargin: '720px 0px 720px 0px',
+                threshold: 0
+            });
+            scrollLoadObserver.observe(scrollLoadSentinel);
+        }
+
+        bindScrollLoadIntentHandlers();
+        scheduleScrollLoadCheck();
+        return scrollLoadSentinel;
+    }
+
+    function requestScrollLoadMore(state, callbacks, flags) {
+        flags = flags || {};
+        if (!hasUserScrolledTowardFeed || !isSentinelNearViewport(scrollLoadSentinel, window) || !canLoadMorePublicTrees(state, callbacks, flags)) return;
+
+        flags.isQueued = true;
+        syncScrollLoadSentinel(scrollLoadSentinel, state);
+        try {
+            callbacks.loadMorePublicTrees({ source: 'scroll' });
+        } finally {
+            flags.isQueued = false;
+            syncScrollLoadSentinel(scrollLoadSentinel, state);
+        }
+    }
+
+    function scheduleScrollLoadCheck(state) {
+        if (scrollCheckRaf) return;
+        scrollCheckRaf = window.requestAnimationFrame(() => {
+            scrollCheckRaf = 0;
+            if ((window.scrollY || window.pageYOffset || 0) > 80) {
+                hasUserScrolledTowardFeed = true;
+            }
+            requestScrollLoadMore(state, callbacks, {});
+        });
+    }
+
+    function markScrollLoadIntent() {
+        hasUserScrolledTowardFeed = true;
+        scheduleScrollLoadCheck();
+    }
+
+    function handleScrollLoadKeydown(event) {
+        var isIntentKey = isScrollIntentKey(event);
+        if (isIntentKey) {
+            markScrollLoadIntent();
+        }
+    }
+
+    function bindScrollLoadIntentHandlers() {
+        if (scrollLoadIntentBound) return;
+        scrollLoadIntentBound = true;
+
+        window.addEventListener('scroll', scheduleScrollLoadCheck, { passive: true });
+        window.addEventListener('wheel', markScrollLoadIntent, { passive: true });
+        window.addEventListener('touchmove', markScrollLoadIntent, { passive: true });
+        window.addEventListener('keydown', handleScrollLoadKeydown);
+        window.addEventListener('resize', scheduleScrollLoadCheck, { passive: true });
+        window.addEventListener('pageshow', scheduleScrollLoadCheck);
+    }
+
+    // Internal state for helper usage
+    var scrollLoadSentinel = null;
+    var scrollLoadObserver = null;
+    var scrollCheckRaf = 0;
+    var isScrollLoadQueued = false;
+    var hasUserScrolledTowardFeed = false;
+    var scrollLoadIntentBound = false;
+    var callbacks = {};
+
     function patchSearchUIFactory() {
         var SearchUI = window.LoveBudSearchUI;
         if (!SearchUI || typeof SearchUI.createSearchUI !== 'function' || SearchUI.__scrollLoadHelperPatched) return;
@@ -85,6 +169,13 @@
         isSentinelNearViewport: isSentinelNearViewport,
         createScrollLoadSentinel: createScrollLoadSentinel,
         isScrollIntentKey: isScrollIntentKey,
+        // Sentinel lifecycle helpers
+        ensureScrollLoadSentinel: ensureScrollLoadSentinel,
+        requestScrollLoadMore: requestScrollLoadMore,
+        scheduleScrollLoadCheck: scheduleScrollLoadCheck,
+        markScrollLoadIntent: markScrollLoadIntent,
+        handleScrollLoadKeydown: handleScrollLoadKeydown,
+        bindScrollLoadIntentHandlers: bindScrollLoadIntentHandlers,
         patchSearchUIFactory: patchSearchUIFactory
     };
 
