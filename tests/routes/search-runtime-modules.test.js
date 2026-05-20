@@ -392,3 +392,69 @@ test('search UI scroll load path does not delegate requestScrollLoadMore to help
   // Helper does export requestScrollLoadMore but it is not reached from the main runtime chain
   assert.match(helperModule, /LoveBudSearchScrollLoad[\s\S]*?requestScrollLoadMore/);
 });
+
+test('search scroll load helper requestScrollLoadMore is exported in LoveBudSearchScrollLoad', () => {
+  const helperModule = read('js/search/search-scroll-load.js');
+
+  const exportMatch = helperModule.match(/window\.LoveBudSearchScrollLoad\s*=\s*\{([^}]+)\}/s);
+  assert.ok(exportMatch, 'LoveBudSearchScrollLoad export object not found');
+  assert.match(exportMatch[1], /\brequestScrollLoadMore\b/);
+});
+
+test('search scroll load helper requestScrollLoadMore uses state/callback/flags parameter signature', () => {
+  const helperModule = read('js/search/search-scroll-load.js');
+
+  // Takes (state, callbacks, flags) for parameter-driven injection (not closure-scoped)
+  assert.match(helperModule, /function requestScrollLoadMore\(state,\s*callbacks,\s*flags\)/);
+  // Uses flags.isQueued for queue state
+  assert.match(helperModule, /flags\.isQueued = true/);
+  assert.match(helperModule, /flags\.isQueued = false/);
+  // Uses callbacks parameter for fetch delegation
+  assert.match(helperModule, /callbacks\.loadMorePublicTrees\(\{/);
+});
+
+test('search scroll load helper requestScrollLoadMore handles core concerns through callback delegation', () => {
+  const helperModule = read('js/search/search-scroll-load.js');
+
+  // Guard: scroll intent + sentinel viewport + canLoadMore
+  assert.match(helperModule, /!hasUserScrolledTowardFeed.*!isSentinelNearViewport.*!canLoadMorePublicTrees/);
+  // Queue: flags-based state management
+  assert.match(helperModule, /flags\.isQueued = true/);
+  assert.match(helperModule, /flags\.isQueued = false/);
+  // Sentinel sync: delegated with explicit params
+  assert.match(helperModule, /syncScrollLoadSentinel\(scrollLoadSentinel,\s*state\)/);
+  // API fetch: delegated to callbacks parameter
+  assert.match(helperModule, /callbacks\.loadMorePublicTrees\(\{/);
+  // Cleanup: try/finally guards the fetch
+  assert.match(helperModule, /try \{[\s\S]*?callbacks\.loadMorePublicTrees[\s\S]*?\} finally/);
+});
+
+test('search scroll load helper requestScrollLoadMore does not directly own DOM or API endpoint strings', () => {
+  const helperModule = read('js/search/search-scroll-load.js');
+
+  const fnMatch = helperModule.match(/function requestScrollLoadMore\([^)]*\) \{([\s\S]*?)\n    \}/);
+  assert.ok(fnMatch, 'requestScrollLoadMore function body not found');
+  const fnBody = fnMatch[1];
+
+  // No direct DOM manipulation
+  assert.doesNotMatch(fnBody, /\.innerHTML\s*=/);
+  assert.doesNotMatch(fnBody, /textContent\s*=/);
+  assert.doesNotMatch(fnBody, /insertAdjacentHTML/);
+  // No hardcoded API endpoint strings
+  assert.doesNotMatch(fnBody, /\/api\//);
+  assert.doesNotMatch(fnBody, /https?:\/\//);
+  // DOM work is delegated to syncScrollLoadSentinel
+  assert.match(fnBody, /syncScrollLoadSentinel\(/);
+});
+
+test('search scroll load helper requestScrollLoadMore is not reached from main runtime chain', () => {
+  const uiModule = read('js/search/search-ui.js');
+  const helperModule = read('js/search/search-scroll-load.js');
+
+  // search-ui.js does not call helper's requestScrollLoadMore
+  assert.doesNotMatch(uiModule, /ScrollLoad\.requestScrollLoadMore/);
+  // search-ui.js does not call helper's scheduleScrollLoadCheck (which calls helper's requestScrollLoadMore with empty callbacks)
+  assert.doesNotMatch(uiModule, /ScrollLoad\.scheduleScrollLoadCheck\b/);
+  // Helper's own scheduleScrollLoadCheck calls requestScrollLoadMore with closure callbacks (dead code path)
+  assert.match(helperModule, /scheduleScrollLoadCheck\(state\)[\s\S]*?requestScrollLoadMore\(state,\s*callbacks,\s*\{\}\)/);
+});
