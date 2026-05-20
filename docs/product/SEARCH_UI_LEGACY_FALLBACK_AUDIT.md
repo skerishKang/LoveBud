@@ -1,102 +1,102 @@
 # Browse/Search UI legacy fallback audit
 
 Issue: #1379
-Baseline main: `807e0d0804886f651c5d6c90464387795c896a34`
+Original audit baseline: `807e0d0804886f651c5d6c90464387795c896a34`
+Current post-cleanup baseline: `49875888407b12d574fa52ab50123e8b1a6e59fe`
 
 ## Purpose
 
-This document records the remaining legacy or fallback implementations in `js/search/search-ui.js` after the #1281 Browse/Search runtime split.
+This document tracks the legacy or fallback implementations in `js/search/search-ui.js` after the #1281 Browse/Search runtime split.
 
-The current runtime split is behavior-preserving and helper based. The helper modules patch `window.LoveBudSearchUI.createSearchUI` and replace specific UI methods after the base UI object is created.
+The #1379 cleanup is intentionally incremental. Each behavior area should be removed only after its helper module owns the runtime path and browser smoke verifies no behavior change.
 
-## Helper modules now active
+## Completed cleanup slices
 
-| Area | Helper file | Current role |
+| Area | Helper file | Cleanup status |
 | --- | --- | --- |
-| Card activation | `js/search/search-card-events.js` | Replaces `ui.attachCardEvents` and centralizes click, keyboard, interactive target, and narrow mobile direct-open behavior. |
-| Preview state | `js/search/search-preview-state.js` | Replaces `ui.markActiveCard`, `ui.syncActiveCard`, and `ui.clearSelectedPreview`. |
-| Mobile sheet | `js/search/search-mobile-preview-sheet.js` | Replaces mobile sheet open, close, sync, and bind behavior; also wraps `clearSelectedPreview` close flow. |
-| Scroll-load helpers | `js/search/search-scroll-load.js` | Provides sentinel, viewport, load-eligibility, and scroll-intent helpers used by `search-ui.js`. |
-| Share link | `js/search/search-share-link.js` | Replaces `ui.bindShareCopyHandler` with helper-based share URL, status text, and label restore behavior. |
+| Share link | `js/search/search-share-link.js` | Completed by #1381. The base `bindShareCopyHandler` fallback was removed from `search-ui.js`. |
+| Card activation | `js/search/search-card-events.js` | Completed by #1382 and #1383. The helper no longer depends on a base `ui.attachCardEvents`, and the base card event fallback was removed from `search-ui.js`. |
+| Preview state | `js/search/search-preview-state.js` | Completed by #1384 and #1385. The helper now owns `markActiveCard`, `syncActiveCard`, `clearSelectedPreview`, and `renderLoadErrorState`; the base preview state fallback was removed from `search-ui.js`. |
+| Mobile sheet | `js/search/search-mobile-preview-sheet.js` | Completed by #1386. The base mobile sheet fallback was removed from `search-ui.js`, and the static test now validates the helper contract. |
 
-## Remaining fallback areas in `search-ui.js`
+## Remaining fallback area in `search-ui.js`
 
-### 1. Mobile sheet fallback
+### Scroll-load orchestration
 
-`search-ui.js` still defines local mobile sheet state and functions:
+`search-ui.js` still owns the scroll-load runtime orchestration. This is the only large remaining cleanup area from the original #1379 list.
 
-- `sheetOverlay`
-- `savedScrollY`
-- `isMobilePreviewMode`
-- `_showSheetOverlay`
-- `_hideSheetOverlay`
-- `setMobilePreviewOpen`
-- `syncPreviewVisibility`
-- `bindMobilePreviewHandlers`
+Current local state in `search-ui.js`:
 
-These are currently shadowed by `search-mobile-preview-sheet.js` after factory patching. Removal needs care because local functions are still referenced by local fallback functions such as `clearSelectedPreview`.
+- `scrollLoadSentinel`
+- `scrollLoadObserver`
+- `scrollCheckRaf`
+- `isScrollLoadQueued`
+- `hasUserScrolledTowardFeed`
+- `scrollLoadIntentBound`
 
-### 2. Preview state fallback
-
-`search-ui.js` still defines:
-
-- `markActiveCard`
-- `syncActiveCard`
-- `clearSelectedPreview`
-
-These are shadowed by `search-preview-state.js`, but `renderLoadErrorState` still calls the local lexical `clearSelectedPreview`. Removing this area should begin by changing that local call path or proving it is unreachable after patching.
-
-### 3. Card events fallback
-
-`search-ui.js` still defines:
-
-- `treeDataMap`
-- `boundContainers`
-- `bindDelegatedCardEvents`
-- `attachCardEvents`
-
-These are shadowed by `search-card-events.js`. This area is a candidate for a later cleanup slice after confirming no internal local references remain.
-
-### 4. Share link fallback
-
-`search-ui.js` still defines `bindShareCopyHandler`. This is shadowed by `search-share-link.js`.
-
-This is likely one of the safest future cleanup candidates, because the helper fully replaces `ui.bindShareCopyHandler`. A first code cleanup slice can remove the local implementation only if static and browser checks confirm the patched method is always available before `index.js` calls it.
-
-### 5. Scroll-load fallback
-
-`search-ui.js` still owns scroll-load orchestration and keeps fallback logic around the helper calls:
+Current local functions in `search-ui.js`:
 
 - `canLoadMorePublicTrees`
 - `syncScrollLoadSentinel`
 - `isSentinelNearViewport`
+- `requestScrollLoadMore`
+- `scheduleScrollLoadCheck`
+- `markScrollLoadIntent`
 - `handleScrollLoadKeydown`
+- `bindScrollLoadIntentHandlers`
 - `ensureScrollLoadSentinel`
 
-This should not be removed as a single slice. Scroll-load still has orchestration state in `search-ui.js`, including queue state and scroll intent state.
+Current helper coverage in `js/search/search-scroll-load.js`:
 
-## Recommended cleanup order
+- `canLoadMorePublicTrees(state, callbacks, flags)`
+- `getSentinelDoneState(state)`
+- `syncScrollLoadSentinel(sentinel, state)`
+- `isSentinelNearViewport(sentinel, win)`
+- `createScrollLoadSentinel(doc)`
+- `isScrollIntentKey(event)`
+- `patchSearchUIFactory()`
 
-1. Share link fallback cleanup.
-2. Card events fallback cleanup.
-3. Preview state fallback cleanup.
-4. Mobile sheet fallback cleanup.
-5. Scroll-load fallback cleanup, only after a separate design check.
+## Why scroll-load must be split carefully
 
-## Required validation for any code cleanup PR
+The scroll-load area is not a simple shadowed fallback. It combines:
 
-Each cleanup PR should remain small and must verify:
+- DOM ownership of the sentinel element;
+- IntersectionObserver setup and lifecycle;
+- requestAnimationFrame throttling;
+- user scroll-intent tracking;
+- loading queue state;
+- call-through to `callbacks.loadMorePublicTrees({ source: 'scroll' })`;
+- interaction with sort/filter pagination state through `ensureBrowseControls()` and `syncControlsFromState()`.
+
+Removing this as one large cleanup would be riskier than the previous share/card/preview/mobile slices.
+
+## Recommended scroll-load cleanup order
+
+1. Expand `search-scroll-load.js` with a controller/factory that owns only the local scroll-load state object and pure event handlers.
+2. Patch `LoveBudSearchUI.createSearchUI` so the helper can provide `ensureScrollLoadSentinel` and `syncScrollLoadSentinel` while preserving existing call sites in `search-ui.js`.
+3. Move sentinel creation and sync into the helper while leaving `requestScrollLoadMore` in `search-ui.js`.
+4. Move intent handlers and IntersectionObserver setup into the helper.
+5. Move queueing and `callbacks.loadMorePublicTrees({ source: 'scroll' })` only after a browser smoke proves pagination behavior is unchanged.
+6. Remove the remaining base scroll-load fallback from `search-ui.js` only after the helper owns the full path.
+
+## Required validation for scroll-load code PRs
+
+Each scroll-load PR should remain small and must verify:
 
 - changed files are limited to the intended frontend files;
 - no backend/API/Auth/DB/schema changes;
 - no PR #7/prototype/reference/demo/variant path changes;
 - Browse/Search loads without fatal console errors;
+- scroll-load sentinel is created once;
+- sentinel hidden/loading/idle classes update correctly;
+- user scroll intent gates auto-load correctly;
+- repeated scroll does not double-queue loads;
+- sort/filter changes still reset pagination state correctly;
 - desktop selected preview behavior is unchanged;
-- mobile sheet behavior is unchanged where applicable;
+- mobile sheet behavior is unchanged;
 - narrow mobile direct navigation remains unchanged;
-- share behavior remains unchanged where applicable;
-- card keyboard/accessibility behavior remains unchanged where applicable.
+- share behavior remains unchanged.
 
 ## CTO note
 
-Do not remove all fallback implementations in one PR. The remaining local functions are not just dead code; some are still lexical fallback paths. Cleanup should be incremental and smoke-tested after every slice.
+#1379 is close to completion, but scroll-load should be treated as its own mini-sequence. The next code PR should be a preparation slice in `search-scroll-load.js`, not a direct deletion of the remaining scroll-load functions from `search-ui.js`.
