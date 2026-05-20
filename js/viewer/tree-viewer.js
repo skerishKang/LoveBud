@@ -17,6 +17,8 @@
 
     var currentTreeId = null;
 
+    var RS = window.LoveBudViewerRenderState.create(SEL);
+
     var DT = window.LoveBudViewerDataTransform;
     function escapeHtml(v) {
         var sec = window.LoveBudSecurity;
@@ -25,24 +27,6 @@
             return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
         });
     }
-
-    function qs(sel) { return document.querySelector(sel); }
-    function show() {
-        for (var i = 0; i < arguments.length; i++) {
-            var el = qs(arguments[i]);
-            if (el) { el.style.display = ''; el.removeAttribute('hidden'); }
-        }
-    }
-    function hide() {
-        for (var i = 0; i < arguments.length; i++) {
-            var el = qs(arguments[i]);
-            if (el) el.style.display = 'none';
-        }
-    }
-
-    function showLoading() { hide(SEL.treeContainer, SEL.empty, SEL.error); show(SEL.loading); }
-    function renderEmpty() { hide(SEL.treeContainer, SEL.loading, SEL.error); show(SEL.empty); }
-    function renderError() { hide(SEL.treeContainer, SEL.loading, SEL.empty); show(SEL.error); }
 
     async function loadPublicData(treeId) {
         var getMemories = window.apiClient &&
@@ -58,13 +42,13 @@
     async function initViewer() {
         var params = new URLSearchParams(window.location.search);
         var treeId = params.get('treeId');
-        if (!treeId) { renderEmpty(); return; }
+        if (!treeId) { RS.renderEmpty(); return; }
         currentTreeId = treeId;
-        showLoading();
+        RS.showLoading();
 
         try {
             var memories = await loadPublicData(treeId);
-            if (!memories || memories.length === 0) { renderEmpty(); return; }
+            if (!memories || memories.length === 0) { RS.renderEmpty(); return; }
 
             var viewerData = DT.buildBranches(memories);
 
@@ -81,10 +65,10 @@
             // Render state
             var state = State.createInitialState();
 
-            show(SEL.treeContainer);
-            hide(SEL.loading, SEL.empty, SEL.error);
+            RS.show(SEL.treeContainer);
+            RS.hide(SEL.loading, SEL.empty, SEL.error);
 
-            var container = qs('#viewerTreeContainer');
+            var container = RS.qs('#viewerTreeContainer');
             if (!container) return;
 
             var treeTitle = viewerData.tree.title;
@@ -234,7 +218,7 @@
 
         } catch (error) {
             console.error('[tree-viewer] load failed:', error);
-            renderError();
+            RS.renderError();
         }
     }
 

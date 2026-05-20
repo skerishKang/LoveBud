@@ -21,6 +21,13 @@ function loadHooks() {
         setTimeout,
         clearTimeout
     });
+    var rsScript = fs.readFileSync('js/viewer/viewer-render-state.js', 'utf8');
+    vm.runInNewContext(rsScript, {
+        window,
+        console,
+        setTimeout,
+        clearTimeout
+    });
     vm.runInNewContext(script, {
         window,
         console,
