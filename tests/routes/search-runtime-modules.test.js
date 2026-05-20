@@ -160,6 +160,7 @@ test('search UI delegates scroll load intent listener binding to helper', () => 
   assert.match(uiModule, /ScrollLoad\.scheduleScrollLoadCheckWrapper/);
   assert.doesNotMatch(uiModule, /window\.requestAnimationFrame/);
   assert.match(uiModule, /ScrollLoad\.createScrollLoadRequestController/);
+  assert.match(uiModule, /requestController(?:\?\.|\.)scheduleCheck/);
   assert.match(uiModule, /getQueued/);
   assert.match(uiModule, /setQueued/);
   assert.match(uiModule, /getIntent/);
