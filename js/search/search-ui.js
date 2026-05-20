@@ -188,13 +188,14 @@
             }
         }
 
-        // Helper wiring context builder - prepares migration context without runtime connection
-        // This context is not yet connected to the helper requestScrollLoadMore
-        function createScrollLoadHelperContext() {
+        // Helper wiring context builder - prepares state/callbacks/flags for future migration
+        function createScrollLoadHelperContext(state, callbacks) {
             return {
                 state,
                 callbacks,
-                flags: { isQueued: isScrollLoadQueued }
+                flags: {
+                    isQueued: isScrollLoadQueued
+                }
             };
         }
 

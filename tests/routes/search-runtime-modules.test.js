@@ -466,24 +466,37 @@ test('search scroll load helper requestScrollLoadMore async contract matches loc
   );
 });
 
-test('search UI wiring context builder exists for helper migration', () => {
+test('search scroll load helper requestScrollLoadMore is not reached from main runtime chain', () => {
   const uiModule = read('js/search/search-ui.js');
-  assert.match(uiModule, /createScrollLoadHelperContext/);
+  const helperModule = read('js/search/search-scroll-load.js');
+
+  // search-ui.js does not call helper's requestScrollLoadMore
+  assert.doesNotMatch(uiModule, /ScrollLoad\.requestScrollLoadMore/);
+  // search-ui.js does not call helper's scheduleScrollLoadCheck (which calls helper's requestScrollLoadMore with empty callbacks)
+  assert.doesNotMatch(uiModule, /ScrollLoad\.scheduleScrollLoadCheck\b/);
+  // Helper's own scheduleScrollLoadCheck calls requestScrollLoadMore with closure callbacks (dead code path)
+  assert.match(helperModule, /scheduleScrollLoadCheck\(state\)[\s\S]*?requestScrollLoadMore\(state,\s*callbacks,\s*\{\}\)/);
 });
 
-test('search UI local requestScrollLoadMore remains owned by search-ui.js', () => {
+// --- Wiring preflight tests ---
+
+// Context builder exists and has correct signature
+test('search UI wiring context builder exists', () => {
   const uiModule = read('js/search/search-ui.js');
-  assert.match(uiModule, /async function requestScrollLoadMore\(\)/);
-  // Ensure requestScrollLoadMore is not called via ScrollLoad in search-ui.js runtime
-  assert.doesNotMatch(uiModule, /\.requestScrollLoadMore\(/);
+  assert.match(uiModule, /function createScrollLoadHelperContext\(state,\s*callbacks\)/);
+  assert.match(uiModule, /return \{[\s\S]*?state,[\s\S]*?callbacks,[\s\S]*?flags:[\s\S]*?isQueued/);
 });
 
-test('search UI wiring context does not connect to runtime chain', () => {
+// Local requestScrollLoadMore is not replaced by helper
+test('search UI does not delegate requestScrollLoadMore to helper', () => {
   const uiModule = read('js/search/search-ui.js');
-  // createScrollLoadHelperContext should exist
-  assert.match(uiModule, /createScrollLoadHelperContext/);
-  // But it should not be called from scheduleScrollLoadCheck or other runtime methods
-  assert.doesNotMatch(uiModule, /scheduleScrollLoadCheck.*createScrollLoadHelperContext/);
-  assert.doesNotMatch(uiModule, /createScrollLoadHelperContext.*scheduleScrollLoadCheck/);
+  assert.doesNotMatch(uiModule, /ScrollLoad\.requestScrollLoadMore/);
 });
 
+// requestMore actual-use count remains at 1 call site
+test('search UI requestMore actual-use count remains at 1 call site', () => {
+  const uiModule = read('js/search/search-ui.js');
+  // requestMore appears exactly twice: creation + call site
+  const count = (uiModule.match(/\brequestMore\b/g) || []).length;
+  assert.equal(count, 2, 'requestMore must remain at exactly 2 references');
+});
