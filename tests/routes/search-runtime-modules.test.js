@@ -242,3 +242,37 @@ test('browse selected hub exposes focus-stage shell without changing route helpe
   assert.match(actionHelper, /tree\?treeId=/);
   assert.match(actionHelper, /data-share-tree-link/);
 });
+
+test('search scroll load sentinel helper exposes scroll load contract', () => {
+  const helperModule = read('js/search/search-scroll-load.js');
+  const requiredMethods = [
+    'canLoadMorePublicTrees',
+    'getSentinelDoneState',
+    'syncScrollLoadSentinel',
+    'isSentinelNearViewport',
+    'createScrollLoadSentinel',
+    'isScrollIntentKey',
+    'ensureScrollLoadSentinel',
+    'requestScrollLoadMore',
+    'scheduleScrollLoadCheck',
+    'markScrollLoadIntent',
+    'handleScrollLoadKeydown',
+    'bindScrollLoadIntentHandlers',
+    'patchSearchUIFactory',
+  ];
+  const exportMatch = helperModule.match(/window\.LoveBudSearchScrollLoad\s*=\s*\{([^}]+)\}/s);
+  assert.ok(exportMatch, 'LoveBudSearchScrollLoad export object not found');
+  const exported = exportMatch[1];
+
+  for (const method of requiredMethods) {
+    assert.match(exported, new RegExp(`\\b${method}\\b`), `Missing export: ${method}`);
+  }
+
+  assert.match(helperModule, /browse-scroll-load-sentinel/);
+  assert.match(helperModule, /IntersectionObserver/);
+  assert.match(helperModule, /requestAnimationFrame/);
+  assert.match(helperModule, /scrollLoadSentinel/);
+  assert.match(helperModule, /scrollLoadObserver/);
+  assert.match(helperModule, /scrollCheckRaf/);
+  assert.match(helperModule, /hasUserScrolledTowardFeed/);
+});
