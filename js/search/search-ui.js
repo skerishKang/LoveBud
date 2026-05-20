@@ -148,51 +148,20 @@
                     isQueued: isScrollLoadQueued
                 });
             }
-
-            return Boolean(
-                callbacks.loadMorePublicTrees
-                && state.apiTreesLoaded
-                && state.hasMoreTrees
-                && !state.isLoadingMore
-                && !isScrollLoadQueued
-                && state.currentLimit < 60
-            );
+            return false;
         }
 
         function syncScrollLoadSentinel() {
             if (typeof ScrollLoad.syncScrollLoadSentinel === 'function') {
                 ScrollLoad.syncScrollLoadSentinel(scrollLoadSentinel, state);
-                return;
             }
-
-            if (!scrollLoadSentinel) return;
-
-            const isDone = !state.apiTreesLoaded || state.currentLimit >= 60 || !state.hasMoreTrees;
-            scrollLoadSentinel.hidden = isDone;
-            scrollLoadSentinel.classList.toggle('is-loading', Boolean(state.isLoadingMore));
-            scrollLoadSentinel.classList.toggle('is-idle', !isDone && !state.isLoadingMore);
-            scrollLoadSentinel.setAttribute('aria-hidden', isDone ? 'true' : 'false');
-
-            const icon = scrollLoadSentinel.querySelector('.material-symbols-outlined');
-            if (icon) {
-                icon.hidden = !state.isLoadingMore;
-            }
-
-            const text = scrollLoadSentinel.querySelector('[data-scroll-load-label]');
-            if (!text) return;
-            text.textContent = state.isLoadingMore
-                ? 'Loading more LoveTrees...'
-                : '';
         }
 
         function isSentinelNearViewport() {
             if (typeof ScrollLoad.isSentinelNearViewport === 'function') {
                 return ScrollLoad.isSentinelNearViewport(scrollLoadSentinel, window);
             }
-
-            if (!scrollLoadSentinel || scrollLoadSentinel.hidden) return false;
-            const rect = scrollLoadSentinel.getBoundingClientRect();
-            return rect.top <= window.innerHeight + 720 && rect.bottom >= -240;
+            return false;
         }
 
         async function requestScrollLoadMore() {
@@ -209,6 +178,17 @@
         }
 
         function scheduleScrollLoadCheck() {
+            if (typeof ScrollLoad.scheduleScrollLoadCheckWrapper === 'function') {
+                ScrollLoad.scheduleScrollLoadCheckWrapper(
+                    () => scrollCheckRaf,
+                    (val) => { scrollCheckRaf = val; },
+                    () => { hasUserScrolledTowardFeed = true; },
+                    requestScrollLoadMore,
+                    window
+                );
+                return;
+            }
+
             if (scrollCheckRaf) return;
             scrollCheckRaf = window.requestAnimationFrame(() => {
                 scrollCheckRaf = 0;
