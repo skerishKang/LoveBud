@@ -4,6 +4,7 @@ const fs = require('fs');
 const vm = require('vm');
 
 function loadHooks() {
+    const dtScript = fs.readFileSync('js/viewer/viewer-data-transform.js', 'utf8');
     const script = fs.readFileSync('js/viewer/tree-viewer.js', 'utf8');
     const window = {
         __LOVE_BUD_TREE_VIEWER_TEST_HOOKS__: true,
@@ -14,6 +15,12 @@ function loadHooks() {
     };
     window.window = window;
 
+    vm.runInNewContext(dtScript, {
+        window,
+        console,
+        setTimeout,
+        clearTimeout
+    });
     vm.runInNewContext(script, {
         window,
         console,
