@@ -284,6 +284,7 @@ test('search scroll load sentinel helper exposes scroll load contract', () => {
     'markScrollLoadIntent',
     'handleScrollLoadKeydown',
     'bindScrollLoadIntentHandlers',
+    'createScrollLoadRequestController',
     'patchSearchUIFactory',
   ];
   const exportMatch = helperModule.match(/window\.LoveBudSearchScrollLoad\s*=\s*\{([^}]+)\}/s);
