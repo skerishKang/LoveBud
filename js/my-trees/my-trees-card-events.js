@@ -39,11 +39,83 @@
     return openLink;
   }
 
-  window.LoveBudMyTreesCardEvents = {
+  function resolveOpenHref(card, tree) {
+    var openLink = card && card.querySelector ? card.querySelector('.tree-card-open-link') : null;
+    if (openLink && openLink.getAttribute('href')) {
+      return openLink.getAttribute('href');
+    }
+
+    var basePath = (typeof window.LoveBudPath !== 'undefined' && window.LoveBudPath.getBasePath)
+      ? window.LoveBudPath.getBasePath()
+      : (window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/');
+    return basePath + 'editor?treeId=' + encodeURIComponent((tree && tree.id) || '');
+  }
+
+  function cloneCardWithoutListeners(card) {
+    if (!card || typeof card.cloneNode !== 'function') return card;
+    return card.cloneNode(true);
+  }
+
+  function attachTreeCardEvents(card, tree, options) {
+    var onSelect = options && options.onSelect;
+    var openHref = resolveOpenHref(card, tree);
+
+    card.addEventListener('click', function (event) {
+      var action = getCardActivationAction(event, window);
+      if (action === 'ignore') return;
+      if (action === 'open') {
+        window.location.href = openHref;
+        return;
+      }
+      if (typeof onSelect === 'function') {
+        onSelect(tree);
+      }
+    });
+
+    card.addEventListener('keydown', function (event) {
+      var action = getCardActivationAction(event, window);
+      if (action === 'ignore') return;
+      event.preventDefault();
+      if (action === 'open') {
+        window.location.href = openHref;
+        return;
+      }
+      if (typeof onSelect === 'function') {
+        onSelect(tree);
+      }
+    });
+
+    stopOpenLinkPropagation(card);
+    return card;
+  }
+
+  function patchBuildTreeCard(UI) {
+    if (!UI || typeof UI.buildTreeCard !== 'function' || UI.__cardEventsPatched) return UI;
+
+    var originalBuildTreeCard = UI.buildTreeCard;
+    UI.buildTreeCard = function (tree, options) {
+      var originalCard = originalBuildTreeCard(tree, options);
+      var cleanCard = cloneCardWithoutListeners(originalCard);
+      return attachTreeCardEvents(cleanCard, tree, options || {});
+    };
+    UI.__cardEventsPatched = true;
+
+    return UI;
+  }
+
+  var api = {
     isInteractiveTarget: isInteractiveTarget,
     isActivationKey: isActivationKey,
     shouldUseMobileOpen: shouldUseMobileOpen,
     getCardActivationAction: getCardActivationAction,
-    stopOpenLinkPropagation: stopOpenLinkPropagation
+    stopOpenLinkPropagation: stopOpenLinkPropagation,
+    resolveOpenHref: resolveOpenHref,
+    cloneCardWithoutListeners: cloneCardWithoutListeners,
+    attachTreeCardEvents: attachTreeCardEvents,
+    patchBuildTreeCard: patchBuildTreeCard
   };
+
+  window.LoveBudMyTreesCardEvents = api;
+  patchBuildTreeCard(window.LoveBudMyTreesUI);
+  patchBuildTreeCard(window.LoveTreeMyTreesUI);
 })();
