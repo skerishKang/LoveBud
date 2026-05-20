@@ -63,8 +63,16 @@
     }
 
     // Sentinel lifecycle helpers - ownership extension for preparation
-    function ensureScrollLoadSentinel(resultsList, state, callbacks) {
+    function ensureScrollLoadSentinel(resultsList, state, options) {
         if (!resultsList || scrollLoadSentinel) return scrollLoadSentinel;
+
+        options = options || {};
+        var scheduleCheck = typeof options.scheduleScrollLoadCheck === 'function'
+            ? options.scheduleScrollLoadCheck
+            : scheduleScrollLoadCheck;
+        var bindIntentHandlers = typeof options.bindScrollLoadIntentHandlers === 'function'
+            ? options.bindScrollLoadIntentHandlers
+            : bindScrollLoadIntentHandlers;
 
         scrollLoadSentinel = createScrollLoadSentinel(document);
         resultsList.insertAdjacentElement('afterend', scrollLoadSentinel);
@@ -73,7 +81,7 @@
         if ('IntersectionObserver' in window) {
             scrollLoadObserver = new IntersectionObserver((entries) => {
                 if (entries.some(entry => entry.isIntersecting)) {
-                    scheduleScrollLoadCheck();
+                    scheduleCheck();
                 }
             }, {
                 root: null,
@@ -83,8 +91,8 @@
             scrollLoadObserver.observe(scrollLoadSentinel);
         }
 
-        bindScrollLoadIntentHandlers();
-        scheduleScrollLoadCheck();
+        bindIntentHandlers();
+        scheduleCheck();
         return scrollLoadSentinel;
     }
 
