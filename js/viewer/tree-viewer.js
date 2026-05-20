@@ -19,6 +19,7 @@
 
     var RS = window.LoveBudViewerRenderState.create(SEL);
 
+    var Route = window.LoveBudViewerRoute;
     var DT = window.LoveBudViewerDataTransform;
     var ShellRender = window.LoveBudViewerShellRender;
 
@@ -34,8 +35,7 @@
     }
 
     async function initViewer() {
-        var params = new URLSearchParams(window.location.search);
-        var treeId = params.get('treeId');
+        var treeId = Route.getTreeId();
         if (!treeId) { RS.renderEmpty(); return; }
         currentTreeId = treeId;
         RS.showLoading();
@@ -195,6 +195,7 @@
     if (window.__LOVE_BUD_TREE_VIEWER_TEST_HOOKS__ && DT) {
         window.LoveBudTreeViewerTestHooks = {
             buildBranches: DT.buildBranches,
+            getTreeId: Route && Route.getTreeId,
             renderShell: ShellRender && ShellRender.renderShell
         };
     }
