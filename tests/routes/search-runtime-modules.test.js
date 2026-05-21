@@ -284,8 +284,7 @@ test('search scroll load sentinel helper exposes scroll load contract', () => {
     'createScrollLoadSentinel',
     'isScrollIntentKey',
     'ensureScrollLoadSentinel',
-    'requestScrollLoadMore',
-    'scheduleScrollLoadCheck',
+    'requestScrollLoadMoreWithContext',
     'scheduleScrollLoadCheckWrapper',
     'markScrollLoadIntent',
     'handleScrollLoadKeydown',
@@ -389,93 +388,71 @@ test('search UI scroll load path does not delegate requestScrollLoadMore to help
 
   // search-ui.js uses its own local requestScrollLoadMore, not helper's exported version
   assert.doesNotMatch(uiModule, /ScrollLoad\.requestScrollLoadMore\(/);
-  // Helper does export requestScrollLoadMore but it is not reached from the main runtime chain
-  assert.match(helperModule, /LoveBudSearchScrollLoad[\s\S]*?requestScrollLoadMore/);
+  // Helper no longer exports the legacy requestScrollLoadMore
+  assert.doesNotMatch(helperModule, /LoveBudSearchScrollLoad[\s\S]*?\brequestScrollLoadMore\b/);
 });
 
-test('search scroll load helper requestScrollLoadMore is exported in LoveBudSearchScrollLoad', () => {
+test('search scroll load helper requestScrollLoadMore is no longer exported', () => {
   const helperModule = read('js/search/search-scroll-load.js');
 
   const exportMatch = helperModule.match(/window\.LoveBudSearchScrollLoad\s*=\s*\{([^}]+)\}/s);
   assert.ok(exportMatch, 'LoveBudSearchScrollLoad export object not found');
-  assert.match(exportMatch[1], /\brequestScrollLoadMore\b/);
+  assert.doesNotMatch(exportMatch[1], /\brequestScrollLoadMore\b/);
 });
 
-test('search scroll load helper requestScrollLoadMore uses state/callback/flags parameter signature', () => {
+test('search scroll load legacy requestScrollLoadMore is removed', () => {
   const helperModule = read('js/search/search-scroll-load.js');
 
-  // Takes (state, callbacks, flags) for parameter-driven injection (not closure-scoped)
-  assert.match(helperModule, /async function requestScrollLoadMore\(state,\s*callbacks,\s*flags\)/);
-  // Uses flags.isQueued for queue state
+  // Legacy requestScrollLoadMore(state, callbacks, flags) is removed
+  assert.doesNotMatch(helperModule, /async function requestScrollLoadMore\(state,\s*callbacks,\s*flags\)/);
+  // requestScrollLoadMoreWithContext remains
+  assert.match(helperModule, /async function requestScrollLoadMoreWithContext\(context\)/);
+});
+
+test('search scroll load legacy requestScrollLoadMore core concerns path removed', () => {
+  const helperModule = read('js/search/search-scroll-load.js');
+
+  // Legacy requestScrollLoadMore function is removed
+  assert.doesNotMatch(helperModule, /async function requestScrollLoadMore\(state,\s*callbacks,\s*flags\)/);
+  // Queue: flags-based state management still exists in requestScrollLoadMoreWithContext
   assert.match(helperModule, /flags\.isQueued = true/);
   assert.match(helperModule, /flags\.isQueued = false/);
-  // Uses callbacks parameter for fetch delegation
-  assert.match(helperModule, /callbacks\.loadMorePublicTrees\(\{/);
 });
 
-test('search scroll load helper requestScrollLoadMore handles core concerns through callback delegation', () => {
+test('search scroll load legacy requestScrollLoadMore DOM isolation path removed', () => {
   const helperModule = read('js/search/search-scroll-load.js');
 
-  // Guard: scroll intent + sentinel viewport + canLoadMore
-  assert.match(helperModule, /!hasUserScrolledTowardFeed.*!isSentinelNearViewport.*!canLoadMorePublicTrees/);
-  // Queue: flags-based state management
-  assert.match(helperModule, /flags\.isQueued = true/);
-  assert.match(helperModule, /flags\.isQueued = false/);
-  // Sentinel sync: delegated with explicit params
-  assert.match(helperModule, /syncScrollLoadSentinel\(scrollLoadSentinel,\s*state\)/);
-  // API fetch: delegated to callbacks parameter
-  assert.match(helperModule, /callbacks\.loadMorePublicTrees\(\{/);
-  // Cleanup: try/finally guards the fetch with await
-  assert.match(helperModule, /try \{[\s\S]*?await callbacks\.loadMorePublicTrees[\s\S]*?\} finally/);
+  // Legacy requestScrollLoadMore function body is removed
+  assert.doesNotMatch(helperModule, /async function requestScrollLoadMore\(/);
 });
 
-test('search scroll load helper requestScrollLoadMore does not directly own DOM or API endpoint strings', () => {
-  const helperModule = read('js/search/search-scroll-load.js');
-
-  const fnMatch = helperModule.match(/(?:async )?function requestScrollLoadMore\([^)]*\) \{([\s\S]*?)\n    \}/);
-  assert.ok(fnMatch, 'requestScrollLoadMore function body not found');
-  const fnBody = fnMatch[1];
-
-  // No direct DOM manipulation
-  assert.doesNotMatch(fnBody, /\.innerHTML\s*=/);
-  assert.doesNotMatch(fnBody, /textContent\s*=/);
-  assert.doesNotMatch(fnBody, /insertAdjacentHTML/);
-  // No hardcoded API endpoint strings
-  assert.doesNotMatch(fnBody, /\/api\//);
-  assert.doesNotMatch(fnBody, /https?:\/\//);
-  // DOM work is delegated to syncScrollLoadSentinel
-  assert.match(fnBody, /syncScrollLoadSentinel\(/);
-});
-
-test('search scroll load helper requestScrollLoadMore async contract matches local counterpart', () => {
+test('search scroll load legacy async contract path removed', () => {
   const helperModule = read('js/search/search-scroll-load.js');
   const uiModule = read('js/search/search-ui.js');
 
-  // Helper is now async (parity with local version)
-  assert.match(helperModule, /async function requestScrollLoadMore\(state,\s*callbacks,\s*flags\)/);
-  // Helper awaits loadMorePublicTrees callback
-  assert.match(helperModule, /await callbacks\.loadMorePublicTrees\(\{/);
+  // Legacy helper requestScrollLoadMore is removed
+  assert.doesNotMatch(helperModule, /async function requestScrollLoadMore\(state,\s*callbacks,\s*flags\)/);
   // Local version remains async
   assert.match(uiModule, /async function requestScrollLoadMore/);
-  // Helper is NOT yet connected to runtime chain
+  // Helper is NOT called from main runtime
   assert.doesNotMatch(uiModule, /ScrollLoad\.requestScrollLoadMore\(/);
-  // requestMore actual-use is still exactly 1 call site
+  // requestMore actual-use is still exactly 2 references
   const requestMoreCount = (uiModule.match(/\brequestMore\b/g) || []).length;
   assert.equal(requestMoreCount, 2,
     'requestMore must remain at exactly 2 references (1 creation + 1 call site)'
   );
 });
 
-test('search scroll load helper requestScrollLoadMore is not reached from main runtime chain', () => {
+test('search scroll load legacy request path fully removed from runtime chain', () => {
   const uiModule = read('js/search/search-ui.js');
   const helperModule = read('js/search/search-scroll-load.js');
 
   // search-ui.js does not call helper's requestScrollLoadMore
   assert.doesNotMatch(uiModule, /ScrollLoad\.requestScrollLoadMore\(/);
-  // search-ui.js does not call helper's scheduleScrollLoadCheck (which calls helper's requestScrollLoadMore with empty callbacks)
+  // search-ui.js does not call helper's scheduleScrollLoadCheck
   assert.doesNotMatch(uiModule, /ScrollLoad\.scheduleScrollLoadCheck\b/);
-  // Helper's own scheduleScrollLoadCheck calls requestScrollLoadMore with closure callbacks (dead code path)
-  assert.match(helperModule, /scheduleScrollLoadCheck\(state\)[\s\S]*?requestScrollLoadMore\(state,\s*callbacks,\s*\{\}\)/);
+  // Legacy helper-internal scheduleScrollLoadCheck is removed
+  assert.doesNotMatch(helperModule, /scheduleScrollLoadCheck\(state\)/);
 });
 
 // --- Wiring preflight tests ---
@@ -954,11 +931,11 @@ test('search UI does not call legacy helper scheduleScrollLoadCheck', () => {
   assert.match(uiModule, /ScrollLoad\.scheduleScrollLoadCheckWrapper\(/);
 });
 
-test('search scroll load legacy request path retained but helper-internal only', () => {
+test('search scroll load legacy request path removed', () => {
   const helperModule = read('js/search/search-scroll-load.js');
-  assert.match(helperModule, /async function requestScrollLoadMore\(state, callbacks, flags\)/);
-  assert.match(helperModule, /function scheduleScrollLoadCheck\(state\)/);
-  assert.match(helperModule, /requestScrollLoadMore\(state, callbacks, \{\}\)/);
+  assert.doesNotMatch(helperModule, /async function requestScrollLoadMore\(state, callbacks, flags\)/);
+  assert.doesNotMatch(helperModule, /function scheduleScrollLoadCheck\(state\)/);
+  assert.doesNotMatch(helperModule, /requestScrollLoadMore\(state, callbacks, \{\}\)/);
   assert.match(helperModule, /async function requestScrollLoadMoreWithContext\(context\)/);
 });
 
@@ -966,22 +943,22 @@ test('search scroll load legacy request path retained but helper-internal only',
 // Verify that legacy vs current adapter paths are clearly marked with comments
 // so future removal can rely on unambiguous code markers.
 
-test('search scroll load legacy helper-internal request path has isolation comment', () => {
+test('search scroll load legacy isolation comments removed, current kept', () => {
   const helperModule = read('js/search/search-scroll-load.js');
-  assert.match(helperModule, /Legacy helper-internal request path \(not reached from main runtime\)/);
+  assert.doesNotMatch(helperModule, /Legacy helper-internal request path/);
   assert.match(helperModule, /Current adapter request path \(used by main runtime via context\)/);
 });
 
-test('search scroll load legacy helper-internal schedule path has isolation comment', () => {
+test('search scroll load current schedule path comment kept', () => {
   const helperModule = read('js/search/search-scroll-load.js');
-  assert.match(helperModule, /Legacy helper-internal schedule path \(not reached from main runtime\)/);
+  assert.doesNotMatch(helperModule, /Legacy helper-internal schedule path/);
   assert.match(helperModule, /Current adapter schedule path \(used by main runtime\)/);
 });
 
-test('search scroll load export block disambiguates legacy vs current paths', () => {
+test('search scroll load export block no longer contains legacy paths', () => {
   const helperModule = read('js/search/search-scroll-load.js');
-  assert.match(helperModule, /requestScrollLoadMore: requestScrollLoadMore, \/\/ Legacy helper-internal/);
+  assert.doesNotMatch(helperModule, /requestScrollLoadMore:\s*requestScrollLoadMore/);
   assert.match(helperModule, /requestScrollLoadMoreWithContext: requestScrollLoadMoreWithContext, \/\/ Current adapter path/);
-  assert.match(helperModule, /scheduleScrollLoadCheck: scheduleScrollLoadCheck, \/\/ Legacy helper-internal/);
+  assert.doesNotMatch(helperModule, /scheduleScrollLoadCheck:\s*scheduleScrollLoadCheck/);
   assert.match(helperModule, /scheduleScrollLoadCheckWrapper: scheduleScrollLoadCheckWrapper, \/\/ Current adapter path/);
 });
