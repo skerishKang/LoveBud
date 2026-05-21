@@ -352,22 +352,25 @@ test('search scroll load scheduleScrollLoadCheckWrapper delegates to requestLoad
   assert.match(helperModule, /if \(typeof requestLoadMore === 'function'\) \{\s*requestLoadMore\(\);\s*\}/);
 });
 
-test('search UI requestScrollLoadMore retains full ownership of fetch, queue, and sentinel sync', () => {
+test('search UI requestScrollLoadMore delegates fetch, queue, sentinel to helper adapter', () => {
   const uiModule = read('js/search/search-ui.js');
 
-  // requestScrollLoadMore body is defined with full implementation in search-ui.js
+  // requestScrollLoadMore body is defined with ownership of context creation and adapter delegation
   assert.match(uiModule, /async function requestScrollLoadMore/);
-  // Owns scroll intent guard check
-  assert.match(uiModule, /if \(!hasUserScrolledTowardFeed/);
-  // Owns queue state toggle (true before fetch, false after)
-  assert.match(uiModule, /isScrollLoadQueued = true/);
-  assert.match(uiModule, /isScrollLoadQueued = false/);
-  // Owns sentinel rendering sync before and after fetch
-  assert.match(uiModule, /syncScrollLoadSentinel\(\)/);
-  // Owns API fetch via callback
-  assert.match(uiModule, /callbacks\.loadMorePublicTrees\(\{/);
-  // Uses try/finally for queue cleanup (isScrollLoadQueued inside finally block)
-  assert.match(uiModule, /try \{[\s\S]*?\} finally \{[\s\S]*?isScrollLoadQueued/);
+  // Owns context creation for adapter
+  assert.match(uiModule, /const scrollLoadHelperContext = createScrollLoadHelperContext\(state,\s*callbacks\)/);
+  // Owns flags.isQueued sync before delegation
+  assert.match(uiModule, /flags\.isQueued = isScrollLoadQueued/);
+  // Delegates to adapter: requestScrollLoadMoreWithContext
+  assert.match(uiModule, /ScrollLoad\.requestScrollLoadMoreWithContext\(scrollLoadHelperContext\)/);
+  // Syncs isScrollLoadQueued from adapter response
+  assert.match(uiModule, /isScrollLoadQueued = Boolean\(flags\.isQueued\)/);
+  // Returns adapter result
+  assert.match(uiModule, /return didRequest/);
+  // Falls back to false when adapter unavailable
+  assert.match(uiModule, /return false;\s*\}\s*$/m);
+  // Does NOT call local fallback operations inside requestScrollLoadMore
+  assert.doesNotMatch(uiModule, /async function requestScrollLoadMore[\s\S]*?try \{/);
 });
 
 test('search UI requestController.requestMore has exactly one actual-use call site', () => {
@@ -524,13 +527,14 @@ test('search UI flags.isQueued mirrors local isScrollLoadQueued', () => {
   assert.match(uiModule, /flags\.isQueued = isScrollLoadQueued/);
 });
 
-// isScrollLoadQueued remains the local queue source of truth (not replaced by flags)
+// isScrollLoadQueued remains local queue source of truth
 test('search UI isScrollLoadQueued remains local queue source of truth', () => {
   const uiModule = read('js/search/search-ui.js');
-  // isScrollLoadQueued is still toggled directly (true before fetch, false after)
-  assert.match(uiModule, /isScrollLoadQueued = true/);
+  // isScrollLoadQueued initialized to false
   assert.match(uiModule, /isScrollLoadQueued = false/);
-  // isScrollLoadQueued is still passed through requestController getter/setter
+  // isScrollLoadQueued synced from adapter response
+  assert.match(uiModule, /isScrollLoadQueued = Boolean\(flags\.isQueued\)/);
+  // isScrollLoadQueued still passed through requestController getter/setter
   assert.match(uiModule, /getQueued: \(\) => isScrollLoadQueued/);
   assert.match(uiModule, /setQueued: \(val\) => { isScrollLoadQueued = val; }/);
 });
@@ -569,31 +573,34 @@ test('search scroll load helper unchanged', () => {
   assert.ok(helperModule, 'search-scroll-load.js must still exist and be readable');
 });
 
-// --- Queue setter contract tests ---
+// --- Queue sync contract tests ---
 
-// flags.isQueued is synced after isScrollLoadQueued = true
-test('search UI syncs flags.isQueued after isScrollLoadQueued set true', () => {
+// flags.isQueued is synced FROM isScrollLoadQueued before adapter call
+test('search UI syncs flags.isQueued from isScrollLoadQueued before adapter delegation', () => {
   const uiModule = read('js/search/search-ui.js');
-  // After isScrollLoadQueued = true, flags.isQueued is immediately synced
-  assert.match(uiModule, /isScrollLoadQueued = true;\s+flags\.isQueued = isScrollLoadQueued/);
+  // Before adapter call, local isScrollLoadQueued is copied to flags.isQueued
+  assert.match(uiModule, /flags\.isQueued = isScrollLoadQueued/);
 });
 
-// flags.isQueued is synced after isScrollLoadQueued = false
-test('search UI syncs flags.isQueued after isScrollLoadQueued set false', () => {
+// isScrollLoadQueued is synced FROM flags.isQueued after adapter call
+test('search UI syncs isScrollLoadQueued from adapter response via Boolean(flags.isQueued)', () => {
   const uiModule = read('js/search/search-ui.js');
-  // After isScrollLoadQueued = false, flags.isQueued is immediately synced
-  assert.match(uiModule, /isScrollLoadQueued = false;\s+flags\.isQueued = isScrollLoadQueued/);
+  // After adapter completes, flags.isQueued value is applied back to local state
+  assert.match(uiModule, /isScrollLoadQueued = Boolean\(flags\.isQueued\)/);
 });
 
 // isScrollLoadQueued remains local queue source of truth
 test('search UI isScrollLoadQueued remains local queue source of truth', () => {
   const uiModule = read('js/search/search-ui.js');
-  // isScrollLoadQueued is still toggled directly
-  assert.match(uiModule, /isScrollLoadQueued = true/);
+  // isScrollLoadQueued initialized to false
   assert.match(uiModule, /isScrollLoadQueued = false/);
+  // isScrollLoadQueued synced from adapter response
+  assert.match(uiModule, /isScrollLoadQueued = Boolean\(flags\.isQueued\)/);
   // isScrollLoadQueued still passed through requestController getter/setter
   assert.match(uiModule, /getQueued: \(\) => isScrollLoadQueued/);
-  assert.match(uiModule, /setQueued: \(val\) => { isScrollLoadQueued = val; }/);
+  assert.match(uiModule, /setQueued: \(val\) => \{ isScrollLoadQueued = val; \}/);
+  // flags.isQueued is synced FROM isScrollLoadQueued before delegation
+  assert.match(uiModule, /flags\.isQueued = isScrollLoadQueued/);
 });
 
 // flags.isQueued is NOT used as guard condition
@@ -641,12 +648,12 @@ test('search scroll load helper unchanged', () => {
 
 // --- Preflight context contract tests ---
 
-// createScrollLoadHelperContext is created before the guard check
-test('search UI creates helper context before guard check', () => {
+// createScrollLoadHelperContext is created before adapter delegation
+test('search UI creates helper context before adapter delegation', () => {
   const uiModule = read('js/search/search-ui.js');
-  // The context/flags creation and guard should be in order: create → guard
+  // Context is created before adapter call
   assert.match(uiModule,
-    /const scrollLoadHelperContext = createScrollLoadHelperContext\(state,\s*callbacks\);\s+const flags = scrollLoadHelperContext\.flags;[\s\S]*?if \(!hasUserScrolledTowardFeed/
+    /const scrollLoadHelperContext = createScrollLoadHelperContext\(state,\s*callbacks\);\s+const flags = scrollLoadHelperContext\.flags;/
   );
 });
 
@@ -667,8 +674,8 @@ test('search UI canLoadMorePublicTrees accepts flags parameter', () => {
 // isScrollLoadQueued remains local queue source of truth
 test('search UI isScrollLoadQueued remains local queue source of truth', () => {
   const uiModule = read('js/search/search-ui.js');
-  assert.match(uiModule, /isScrollLoadQueued = true/);
   assert.match(uiModule, /isScrollLoadQueued = false/);
+  assert.match(uiModule, /isScrollLoadQueued = Boolean\(flags\.isQueued\)/);
   assert.match(uiModule, /getQueued: \(\) => isScrollLoadQueued/);
   assert.match(uiModule, /setQueued: \(val\) => { isScrollLoadQueued = val; }/);
 });
@@ -722,21 +729,19 @@ test('search UI requestCallbacks exists in helper context', () => {
   assert.match(uiModule, /loadMore:\s*\(\)\s*=>\s*callbacks\.loadMorePublicTrees\(\{\s*source:\s*'scroll'\s*\}/);
 });
 
-// requestScrollLoadMore extracts and uses requestCallbacks
-test('search UI requestScrollLoadMore uses requestCallbacks', () => {
+// requestCallbacks are provided via createScrollLoadHelperContext to helper adapter
+test('search UI requestCallbacks provided in helper context', () => {
   const uiModule = read('js/search/search-ui.js');
-  // Declares requestCallbacks from context
-  assert.match(uiModule, /const requestCallbacks = scrollLoadHelperContext\.requestCallbacks/);
-  // Guard uses requestCallbacks.isNearViewport
-  assert.match(uiModule, /requestCallbacks\.isNearViewport\(\)/);
-  // Guard uses requestCallbacks.canLoadMore(flags)
-  assert.match(uiModule, /requestCallbacks\.canLoadMore\(flags\)/);
-  // sync uses requestCallbacks.syncSentinel after queued
-  assert.match(uiModule, /isScrollLoadQueued = true;[\s\S]*?flags\.isQueued = isScrollLoadQueued;[\s\S]*?requestCallbacks\.syncSentinel\(\)/);
-  // Load call uses requestCallbacks.loadMore
-  assert.match(uiModule, /await requestCallbacks\.loadMore\(\)/);
-  // Finally block uses requestCallbacks.syncSentinel
-  assert.match(uiModule, /isScrollLoadQueued = false;[\s\S]*?flags\.isQueued = isScrollLoadQueued;[\s\S]*?requestCallbacks\.syncSentinel\(\)/);
+  // requestCallbacks are in the context builder (not directly in requestScrollLoadMore)
+  assert.match(uiModule, /requestCallbacks:\s*\{/);
+  // Context includes canLoadMore
+  assert.match(uiModule, /canLoadMore:\s*canLoadMorePublicTrees/);
+  // Context includes syncSentinel
+  assert.match(uiModule, /syncSentinel:\s*syncScrollLoadSentinel/);
+  // Context includes loadMore with source scroll
+  assert.match(uiModule, /loadMore:\s*\(\)\s*=>\s*callbacks\.loadMorePublicTrees\(\{\s*source:\s*'scroll'\s*\}/);
+  // requestScrollLoadMore does NOT destructure requestCallbacks directly
+  assert.doesNotMatch(uiModule, /const requestCallbacks = scrollLoadHelperContext\.requestCallbacks/);
 });
 
 // requestCallbacks.loadMore preserves source: 'scroll'
@@ -755,8 +760,8 @@ test('search UI requestScrollLoadMore ownership retained', () => {
 // isScrollLoadQueued remains local queue source of truth
 test('search UI isScrollLoadQueued remains local queue source of truth', () => {
   const uiModule = read('js/search/search-ui.js');
-  assert.match(uiModule, /isScrollLoadQueued = true/);
   assert.match(uiModule, /isScrollLoadQueued = false/);
+  assert.match(uiModule, /isScrollLoadQueued = Boolean\(flags\.isQueued\)/);
   assert.match(uiModule, /getQueued: \(\) => isScrollLoadQueued/);
   assert.match(uiModule, /setQueued: \(val\) => { isScrollLoadQueued = val; }/);
 });
@@ -836,14 +841,15 @@ test('search UI context builder has getIntent', () => {
   assert.match(uiModule, /getIntent: \(\) => hasUserScrolledTowardFeed/);
 });
 
-// search-ui routes through helper adapter with fallback
+// search-ui routes through helper adapter, fallback returns false
 test('search UI routes through requestScrollLoadMoreWithContext', () => {
   const uiModule = read('js/search/search-ui.js');
   // Routes through helper adapter when available
   assert.match(uiModule, /ScrollLoad\.requestScrollLoadMoreWithContext\(scrollLoadHelperContext\)/);
-  // Fallback local path preserved
-  assert.match(uiModule, /Fallback: local requestCallbacks path/);
-  assert.match(uiModule, /!hasUserScrolledTowardFeed \|\| !requestCallbacks\.isNearViewport\(\) \|\| !requestCallbacks\.canLoadMore\(flags\)/);
+  // Returns adapter result
+  assert.match(uiModule, /return didRequest;/);
+  // Falls back to false
+  assert.match(uiModule, /return false/);
   // Local isScrollLoadQueued synced after adapter call
   assert.match(uiModule, /isScrollLoadQueued = Boolean\(flags\.isQueued\)/);
 });
