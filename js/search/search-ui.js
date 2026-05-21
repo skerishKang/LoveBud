@@ -183,6 +183,15 @@
             // Stabilize contract: flags.isQueued mirrors local queue state
             flags.isQueued = isScrollLoadQueued;
 
+            // Removed local requestCallbacks fallback reference for audit history:
+            // const requestCallbacks = scrollLoadHelperContext.requestCallbacks
+            // if (!hasUserScrolledTowardFeed || !requestCallbacks.isNearViewport() || !requestCallbacks.canLoadMore(flags)) return;
+            // canLoadMorePublicTrees(flags);
+            // isScrollLoadQueued = true;
+            // flags.isQueued = isScrollLoadQueued;
+            // requestCallbacks.syncSentinel();
+            // try { await requestCallbacks.loadMore(); } finally { isScrollLoadQueued = false; flags.isQueued = isScrollLoadQueued; requestCallbacks.syncSentinel(); }
+
             if (typeof ScrollLoad.requestScrollLoadMoreWithContext !== 'function') return false;
 
             const didRequest = await ScrollLoad.requestScrollLoadMoreWithContext(scrollLoadHelperContext);
