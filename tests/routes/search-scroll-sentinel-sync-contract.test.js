@@ -43,3 +43,21 @@ test('scroll helper owns syncScrollLoadSentinel implementation and export', () =
   assert.match(helperModule, /sentinel\.classList\.toggle\(['"]is-loading['"]/);
   assert.match(helperModule, /sentinel\.setAttribute\(['"]aria-hidden['"]/);
 });
+
+test('search UI delegates sentinel viewport check directly to helper', () => {
+  const uiModule = read('js/search/search-ui.js');
+  const body = extractFunctionBody(uiModule, 'isSentinelNearViewport');
+
+  assert.match(body, /return ScrollLoad\.isSentinelNearViewport\(scrollLoadSentinel,\s*window\)/);
+  assert.doesNotMatch(body, /typeof\s+ScrollLoad\.isSentinelNearViewport\s*===\s*['"]function['"]/);
+  assert.doesNotMatch(body, /return false/);
+});
+
+test('scroll helper owns isSentinelNearViewport implementation and export', () => {
+  const helperModule = read('js/search/search-scroll-load.js');
+
+  assert.match(helperModule, /function isSentinelNearViewport\(sentinel,\s*win\)/);
+  assert.match(helperModule, /isSentinelNearViewport:\s*isSentinelNearViewport/);
+  assert.match(helperModule, /getBoundingClientRect/);
+  assert.match(helperModule, /innerHeight\s*\+?\s*720/);
+});
