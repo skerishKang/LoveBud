@@ -8,7 +8,7 @@ test('editor.html keeps active editor page shell contracts', () => {
     // 1. Root & shell containers
     assert.ok(html.includes('id="shared-header"'), 'must have shared-header');
     assert.ok(html.includes('class="editor-layout'), 'must have editor-layout');
-    assert.ok(html.includes('class="sidebar'), 'must have sidebar');
+    assert.ok(html.includes('id="editorSidebarTemplateMount"'), 'must have editorSidebarTemplateMount');
     assert.ok(html.includes('id="canvasArea"'), 'must have canvasArea');
     assert.ok(html.includes('class="canvas-svg"'), 'must have canvas-svg');
     
@@ -89,7 +89,8 @@ test('editor.html exposes stable static template extraction candidates', () => {
     assert.ok(html.includes('id="canvasEmptyGuide"'), 'Candidate: Empty Guide');
     // 5. Add Memory Form Modal (`<div id="addMemoryForm">`) - EXTRACTED (see editor-add-memory-form-template-contract.test.js)
     assert.ok(html.includes('id="addMemoryFormTemplateMount"'), 'Candidate: Add Memory Form Modal is extracted to mount');
-    assert.ok(html.includes('class="editor-status-section"'), 'Candidate: Sidebar sections');
+    // 6. Sidebar sections (`<aside class="sidebar">`) - EXTRACTED (see editor-sidebar-template-contract.test.js)
+    assert.ok(html.includes('id="editorSidebarTemplateMount"'), 'Candidate: Sidebar is extracted to mount');
     assert.ok(html.includes('id="detailViewMode"'), 'Candidate: Detail Panel View Mode');
     assert.ok(html.includes('id="detailEditMode"'), 'Candidate: Detail Panel Edit Mode');
     
