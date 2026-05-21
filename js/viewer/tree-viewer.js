@@ -22,6 +22,10 @@
     var Route = window.LoveBudViewerRoute;
     var DT = window.LoveBudViewerDataTransform;
     var ShellRender = window.LoveBudViewerShellRender;
+    var ShareStatusUI = window.LoveBudViewerShareStatusUI;
+    var showShareStatus = ShareStatusUI && typeof ShareStatusUI.showShareStatus === 'function'
+        ? ShareStatusUI.showShareStatus
+        : function() {};
 
     async function loadPublicData(treeId) {
         var getMemories = window.apiClient &&
@@ -141,19 +145,6 @@
                 handler.exportMomentImageCard = se.exportMomentImageCard;
                 handler.printTree = se.printTree;
             })();
-
-            function showShareStatus(result) {
-                if (!result || !result.message) return;
-                var statusEl = document.getElementById('vvShareStatus');
-                if (!statusEl) return;
-                statusEl.textContent = result.message;
-                statusEl.className = 'vv-share-status ' + (result.success ? 'is-success' : 'is-error');
-                clearTimeout(statusEl._hideTimer);
-                statusEl._hideTimer = setTimeout(function() {
-                    statusEl.textContent = '';
-                    statusEl.className = 'vv-share-status';
-                }, 3000);
-            }
 
             container.addEventListener('click', function(e) {
                 var action = e.target.closest('[data-action]');
