@@ -176,37 +176,21 @@
         }
 
         async function requestScrollLoadMore() {
-            // Create helper wiring context for future migration readiness
+            // Create helper wiring context for adapter delegation
             const scrollLoadHelperContext = createScrollLoadHelperContext(state, callbacks);
             const flags = scrollLoadHelperContext.flags;
-            const requestCallbacks = scrollLoadHelperContext.requestCallbacks;
 
             // Stabilize contract: flags.isQueued mirrors local queue state
             flags.isQueued = isScrollLoadQueued;
 
-            // Route through helper adapter when available (safe fallback otherwise)
-            if (typeof ScrollLoad.requestScrollLoadMoreWithContext === 'function') {
-                const didRequest = await ScrollLoad.requestScrollLoadMoreWithContext(scrollLoadHelperContext);
-                isScrollLoadQueued = Boolean(flags.isQueued);
-                return didRequest;
-            }
+            if (typeof ScrollLoad.requestScrollLoadMoreWithContext !== 'function') return false;
 
-            // Fallback: local requestCallbacks path
-            if (!hasUserScrolledTowardFeed || !requestCallbacks.isNearViewport() || !requestCallbacks.canLoadMore(flags)) return;
-
-            isScrollLoadQueued = true;
-            flags.isQueued = isScrollLoadQueued;
-            requestCallbacks.syncSentinel();
-            try {
-                await requestCallbacks.loadMore();
-            } finally {
-                isScrollLoadQueued = false;
-                flags.isQueued = isScrollLoadQueued;
-                requestCallbacks.syncSentinel();
-            }
+            const didRequest = await ScrollLoad.requestScrollLoadMoreWithContext(scrollLoadHelperContext);
+            isScrollLoadQueued = Boolean(flags.isQueued);
+            return didRequest;
         }
 
-        // Helper wiring context builder - prepares state/callbacks/flags for future migration
+        // Helper wiring context builder - prepares state/callbacks/flags for adapter delegation
         function createScrollLoadHelperContext(state, callbacks) {
             return {
                 state,
