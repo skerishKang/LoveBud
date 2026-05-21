@@ -79,46 +79,17 @@
                 if (panelHost && Panels) panelHost.innerHTML = Panels.renderPanel(state, handler);
             }
 
-            var handler = {
+            var HandlerFactory = window.LoveBudViewerHandlerFactory;
+            if (!HandlerFactory || typeof HandlerFactory.createHandler !== 'function') {
+                throw new Error('Viewer handler factory helper unavailable');
+            }
+            var handler = HandlerFactory.createHandler({
+                state: state,
+                viewerData: viewerData,
+                refresh: refresh,
                 getShareUrl: function() { return window.location.href; },
-                onSelectBranch: function(branchId) {
-                    state.selectedBranchId = branchId;
-                    state.selectedMomentId = null;
-                    state.activePanel = 'branch';
-                    refresh();
-                },
-                onSelectMoment: function(momentId, branchId) {
-                    if (viewerData.rootSeed && momentId === viewerData.rootSeed.id) {
-                        handler.onSelectBranch(branchId || viewerData.rootSeed.branchId || 'main');
-                        return;
-                    }
-                    state.selectedBranchId = branchId;
-                    state.selectedMomentId = momentId;
-                    state.activePanel = 'moment';
-                    refresh();
-                },
-                closeMoment: function() {
-                    state.selectedMomentId = null;
-                    state.activePanel = 'branch';
-                    refresh();
-                },
-                openPanel: function(panel) { state.activePanel = panel; refresh(); },
-                closePanel: function() {
-                    if (state.selectedMomentId) state.activePanel = 'moment';
-                    else if (state.selectedBranchId) state.activePanel = 'branch';
-                    else state.activePanel = 'empty';
-                    refresh();
-                },
-                toggleLike: function() { state.likedTree = !state.likedTree; },
-                onToggleLayout: function() {
-                    state.layoutMode = state.layoutMode === 'organic' ? 'hierarchy' : 'organic';
-                    var toggleLabel = document.getElementById('vvLayoutToggleLabel');
-                    if (toggleLabel) {
-                        toggleLabel.textContent = state.layoutMode === 'hierarchy' ? '유기적 보기' : '구조 보기';
-                    }
-                    refresh();
-                },
-            };
+                documentRef: document
+            });
 
             // Share/export action bridge extracted to viewer-share-export-actions.js
             var shareExportHandlers = null;
