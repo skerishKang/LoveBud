@@ -550,13 +550,12 @@ test('viewer state helper handles empty / missing branches gracefully', () => {
     assert.equal(State.getAllMoments({ branches: [{}] }).length, 0, 'branch without moments returns empty');
 });
 
-test('tree-viewer uses viewer-state helper', () => {
-    const viewer = fs.readFileSync('js/viewer/tree-viewer.js', 'utf8');
-    assert.ok(viewer.includes('LoveBudViewerState'), 'tree-viewer must reference LoveBudViewerState');
-    assert.ok(viewer.includes('State.createInitialState()'), 'tree-viewer must call createInitialState');
-    assert.ok(viewer.includes('State.getAllMoments('), 'tree-viewer must call getAllMoments');
-    assert.ok(viewer.includes('State.resolveSelection('), 'tree-viewer must call resolveSelection');
-    assert.ok(viewer.includes('State.applySelection('), 'tree-viewer must call applySelection');
+test('viewer-init-flow uses viewer-state helper', () => {
+    const viewer = fs.readFileSync('js/viewer/viewer-init-flow.js', 'utf8');
+    assert.ok(viewer.includes('State.createInitialState()'), 'viewer-init-flow must call createInitialState');
+    assert.ok(viewer.includes('State.getAllMoments('), 'viewer-init-flow must call getAllMoments');
+    assert.ok(viewer.includes('State.resolveSelection('), 'viewer-init-flow must call resolveSelection');
+    assert.ok(viewer.includes('State.applySelection('), 'viewer-init-flow must call applySelection');
 });
 
 test('inline getAllMoments function removed from tree-viewer', () => {

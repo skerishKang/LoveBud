@@ -24,6 +24,7 @@ test('tree-viewer.js keeps only orchestration-level public viewer flow', () => {
 
     assert.ok(tvCode.includes('window.LoveBudViewerHandlerFactory'), 'must reference HandlerFactory');
     assert.ok(tvCode.includes('window.LoveBudViewerShareExportBridge'), 'must reference ShareExportBridge');
+    assert.ok(tvCode.includes('window.LoveBudViewerInitFlow'), 'must reference InitFlow');
 
     // Ensure extracted details are gone
     assert.ok(!tvCode.includes("a === 'close-moment'"), 'must not have manual close-moment string');
@@ -32,20 +33,20 @@ test('tree-viewer.js keeps only orchestration-level public viewer flow', () => {
     assert.ok(!tvCode.includes("state.layoutMode = state.layoutMode ==="), 'must not manually construct handler object');
 });
 
-test('tree-viewer.js still owns init and refresh orchestration pending next slice', () => {
+test('tree-viewer.js delegates init and refresh orchestration to InitFlow helper', () => {
     const tvCode = fs.readFileSync('js/viewer/tree-viewer.js', 'utf8');
     
-    assert.ok(tvCode.includes('async function initViewer()'), 'must own initViewer function');
-    assert.ok(tvCode.includes('function refresh()'), 'must own refresh function');
-    assert.ok(tvCode.includes('State.createInitialState()'), 'must call createInitialState');
-    assert.ok(tvCode.includes('State.resolveSelection('), 'must call resolveSelection');
-    assert.ok(tvCode.includes('State.applySelection('), 'must call applySelection');
-    assert.ok(tvCode.includes('RenderTree.renderTree('), 'must orchestrate RenderTree');
-    assert.ok(tvCode.includes('Panels.renderPanel('), 'must orchestrate Panels');
+    assert.ok(!tvCode.includes('async function initViewer()'), 'must not own initViewer function');
+    assert.ok(!tvCode.includes('function refresh()'), 'must not own refresh function');
+    assert.ok(!tvCode.includes('State.createInitialState()'), 'must not call createInitialState directly');
+    assert.ok(!tvCode.includes('State.resolveSelection('), 'must not call resolveSelection directly');
+    assert.ok(!tvCode.includes('State.applySelection('), 'must not call applySelection directly');
+    assert.ok(!tvCode.includes('RenderTree.renderTree('), 'must not orchestrate RenderTree directly');
+    assert.ok(!tvCode.includes('Panels.renderPanel('), 'must not orchestrate Panels directly');
 });
 
 test('remaining public viewer split candidates are explicit', () => {
-    // 1. init/render flow helper (initViewer, refresh)
-    // NOTE: viewer-state.js, viewer-data-loader.js, viewer-handler-factory.js, and viewer-share-export-bridge.js are already extracted and NOT candidates.
+    // 1. final audit / smoke guard
+    // NOTE: viewer-state.js, viewer-data-loader.js, viewer-handler-factory.js, viewer-share-export-bridge.js, and viewer-init-flow.js are already extracted.
     assert.ok(true, 'The candidates are documented in the test comments');
 });

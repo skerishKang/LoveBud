@@ -50,6 +50,13 @@ function loadHooks() {
         setTimeout,
         clearTimeout
     });
+    var initScript = fs.readFileSync('js/viewer/viewer-init-flow.js', 'utf8');
+    vm.runInNewContext(initScript, {
+        window,
+        console,
+        setTimeout,
+        clearTimeout
+    });
     vm.runInNewContext(script, {
         window,
         console,
