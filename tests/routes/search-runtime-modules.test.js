@@ -730,3 +730,78 @@ test('search scroll load helper unchanged', () => {
   const helperModule = read('js/search/search-scroll-load.js');
   assert.ok(helperModule, 'search-scroll-load.js must still exist and be readable');
 });
+
+// --- Request callbacks contract tests ---
+
+// createScrollLoadHelperContext returns requestCallbacks object
+test('search UI requestCallbacks exists in helper context', () => {
+  const uiModule = read('js/search/search-ui.js');
+  // Return object must include requestCallbacks
+  assert.match(uiModule, /requestCallbacks:\s*\{/);
+  // requestCallbacks must have all 4 methods
+  assert.match(uiModule, /canLoadMore:\s*canLoadMorePublicTrees/);
+  assert.match(uiModule, /isNearViewport:\s*isSentinelNearViewport/);
+  assert.match(uiModule, /syncSentinel:\s*syncScrollLoadSentinel/);
+  assert.match(uiModule, /loadMore:\s*\(\)\s*=>\s*callbacks\.loadMorePublicTrees\(\{\s*source:\s*'scroll'\s*\}/);
+});
+
+// requestScrollLoadMore extracts and uses requestCallbacks
+test('search UI requestScrollLoadMore uses requestCallbacks', () => {
+  const uiModule = read('js/search/search-ui.js');
+  // Declares requestCallbacks from context
+  assert.match(uiModule, /const requestCallbacks = scrollLoadHelperContext\.requestCallbacks/);
+  // Guard uses requestCallbacks.isNearViewport
+  assert.match(uiModule, /requestCallbacks\.isNearViewport\(\)/);
+  // Guard uses requestCallbacks.canLoadMore(flags)
+  assert.match(uiModule, /requestCallbacks\.canLoadMore\(flags\)/);
+  // sync uses requestCallbacks.syncSentinel after queued
+  assert.match(uiModule, /isScrollLoadQueued = true;[\s\S]*?flags\.isQueued = isScrollLoadQueued;[\s\S]*?requestCallbacks\.syncSentinel\(\)/);
+  // Load call uses requestCallbacks.loadMore
+  assert.match(uiModule, /await requestCallbacks\.loadMore\(\)/);
+  // Finally block uses requestCallbacks.syncSentinel
+  assert.match(uiModule, /isScrollLoadQueued = false;[\s\S]*?flags\.isQueued = isScrollLoadQueued;[\s\S]*?requestCallbacks\.syncSentinel\(\)/);
+});
+
+// requestCallbacks.loadMore preserves source: 'scroll'
+test('search UI requestCallbacks.loadMore preserves source scroll', () => {
+  const uiModule = read('js/search/search-ui.js');
+  assert.match(uiModule, /loadMore:\s*\(\)\s*=>\s*callbacks\.loadMorePublicTrees\(\{\s*source:\s*'scroll'\s*\}/);
+});
+
+// requestScrollLoadMore remains in search-ui.js
+test('search UI requestScrollLoadMore ownership retained', () => {
+  const uiModule = read('js/search/search-ui.js');
+  assert.match(uiModule, /async function requestScrollLoadMore\(\)/);
+  assert.doesNotMatch(uiModule, /ScrollLoad\.requestScrollLoadMore/);
+});
+
+// isScrollLoadQueued remains local queue source of truth
+test('search UI isScrollLoadQueued remains local queue source of truth', () => {
+  const uiModule = read('js/search/search-ui.js');
+  assert.match(uiModule, /isScrollLoadQueued = true/);
+  assert.match(uiModule, /isScrollLoadQueued = false/);
+  assert.match(uiModule, /getQueued: \(\) => isScrollLoadQueued/);
+  assert.match(uiModule, /setQueued: \(val\) => { isScrollLoadQueued = val; }/);
+});
+
+// flags.isQueued not used as direct guard condition
+test('search UI flags.isQueued not used as direct guard condition', () => {
+  const uiModule = read('js/search/search-ui.js');
+  assert.doesNotMatch(uiModule, /\bif\s*\([^)]*flags\.isQueued/);
+  assert.doesNotMatch(uiModule, /!\s*flags\.isQueued/);
+  assert.doesNotMatch(uiModule, /\|\|\s*flags\.isQueued/);
+  assert.doesNotMatch(uiModule, /&&\s*flags\.isQueued/);
+});
+
+// requestMore actual-use count remains at 1 call site
+test('search UI requestMore actual-use count remains at 1 call site', () => {
+  const uiModule = read('js/search/search-ui.js');
+  const count = (uiModule.match(/\brequestMore\b/g) || []).length;
+  assert.equal(count, 2, 'requestMore must remain at exactly 2 references');
+});
+
+// search-scroll-load.js unchanged
+test('search scroll load helper unchanged', () => {
+  const helperModule = read('js/search/search-scroll-load.js');
+  assert.ok(helperModule, 'search-scroll-load.js must still exist and be readable');
+});
