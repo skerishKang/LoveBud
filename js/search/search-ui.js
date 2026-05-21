@@ -241,8 +241,6 @@
             hasUserScrolledTowardFeed = true;
             if (requestController && typeof requestController.scheduleCheck === 'function') {
                 requestController.scheduleCheck();
-            } else {
-                scheduleScrollLoadCheck();
             }
         }
 
