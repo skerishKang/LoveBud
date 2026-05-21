@@ -163,9 +163,7 @@
         }
 
         function syncScrollLoadSentinel() {
-            if (typeof ScrollLoad.syncScrollLoadSentinel === 'function') {
-                ScrollLoad.syncScrollLoadSentinel(scrollLoadSentinel, state);
-            }
+            ScrollLoad.syncScrollLoadSentinel(scrollLoadSentinel, state);
         }
 
         function isSentinelNearViewport() {
