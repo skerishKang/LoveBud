@@ -220,7 +220,8 @@
                     syncSentinel: syncScrollLoadSentinel,
                     loadMore: () => callbacks.loadMorePublicTrees({ source: 'scroll' })
                 },
-                getIntent: () => hasUserScrolledTowardFeed
+                getIntent: () => hasUserScrolledTowardFeed,
+                setQueued: (val) => { isScrollLoadQueued = val; }
             };
         }
 

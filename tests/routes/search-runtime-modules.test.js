@@ -889,3 +889,27 @@ test('requestCallbacks.loadMore preserves source scroll', () => {
   const uiModule = read('js/search/search-ui.js');
   assert.match(uiModule, /loadMore: \(\) => callbacks\.loadMorePublicTrees\(\{ source: 'scroll' \}\)/);
 });
+
+// createScrollLoadHelperContext returns setQueued
+test('search UI context builder returns setQueued', () => {
+  const uiModule = read('js/search/search-ui.js');
+  assert.match(uiModule, /setQueued: \(val\) => { isScrollLoadQueued = val; }/);
+});
+
+// requestScrollLoadMoreWithContext reads context.setQueued
+test('helper adapter reads context.setQueued', () => {
+  const helperModule = read('js/search/search-scroll-load.js');
+  assert.match(helperModule, /context\.setQueued/);
+});
+
+// requestScrollLoadMoreWithContext calls setQueued(true) before flags.isQueued = true
+test('helper adapter calls setQueued(true) before flags.isQueued = true', () => {
+  const helperModule = read('js/search/search-scroll-load.js');
+  assert.match(helperModule, /setQueued\(true\);\s+flags\.isQueued = true/);
+});
+
+// requestScrollLoadMoreWithContext calls setQueued(false) in finally before flags.isQueued = false
+test('helper adapter calls setQueued(false) in finally before flags.isQueued = false', () => {
+  const helperModule = read('js/search/search-scroll-load.js');
+  assert.match(helperModule, /setQueued\(false\);\s+flags\.isQueued = false/);
+});

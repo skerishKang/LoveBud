@@ -114,6 +114,9 @@
         context = context || {};
         var flags = context.flags || {};
         var requestCallbacks = context.requestCallbacks || {};
+        var setQueued = typeof context.setQueued === 'function'
+            ? context.setQueued
+            : function () {};
         var getIntent = typeof context.getIntent === 'function'
             ? context.getIntent
             : function () { return false; };
@@ -128,6 +131,7 @@
             return false;
         }
 
+        setQueued(true);
         flags.isQueued = true;
         if (typeof requestCallbacks.syncSentinel === 'function') {
             requestCallbacks.syncSentinel();
@@ -138,6 +142,7 @@
                 await requestCallbacks.loadMore();
             }
         } finally {
+            setQueued(false);
             flags.isQueued = false;
             if (typeof requestCallbacks.syncSentinel === 'function') {
                 requestCallbacks.syncSentinel();
