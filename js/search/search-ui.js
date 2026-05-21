@@ -178,6 +178,10 @@
         async function requestScrollLoadMore() {
             if (!hasUserScrolledTowardFeed || !isSentinelNearViewport() || !canLoadMorePublicTrees()) return;
 
+            // Create helper wiring context for future migration readiness
+            const scrollLoadHelperContext = createScrollLoadHelperContext(state, callbacks);
+            const flags = scrollLoadHelperContext.flags;
+
             isScrollLoadQueued = true;
             syncScrollLoadSentinel();
             try {
