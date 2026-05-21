@@ -935,3 +935,29 @@ test('helper adapter try block uses direct await requestCallbacks.loadMore()', (
   // Direct await in try block
   assert.match(helperModule, /try \{\s+await requestCallbacks\.loadMore\(\)/);
 });
+
+// --- Legacy request path audit (pre-removal contract freeze) ---
+// These tests document the current state before any legacy request path removal.
+// They freeze the contract that main runtime uses requestScrollLoadMoreWithContext,
+// NOT the legacy requestScrollLoadMore or legacy scheduleScrollLoadCheck.
+// Removal of the audit-listed items requires updating these tests first.
+
+test('search UI routes scroll load through context adapter, not legacy request', () => {
+  const uiModule = read('js/search/search-ui.js');
+  assert.match(uiModule, /ScrollLoad\.requestScrollLoadMoreWithContext\(scrollLoadHelperContext\)/);
+  assert.doesNotMatch(uiModule, /ScrollLoad\.requestScrollLoadMore\(/);
+});
+
+test('search UI does not call legacy helper scheduleScrollLoadCheck', () => {
+  const uiModule = read('js/search/search-ui.js');
+  assert.doesNotMatch(uiModule, /ScrollLoad\.scheduleScrollLoadCheck\(/);
+  assert.match(uiModule, /ScrollLoad\.scheduleScrollLoadCheckWrapper\(/);
+});
+
+test('search scroll load legacy request path retained but helper-internal only', () => {
+  const helperModule = read('js/search/search-scroll-load.js');
+  assert.match(helperModule, /async function requestScrollLoadMore\(state, callbacks, flags\)/);
+  assert.match(helperModule, /function scheduleScrollLoadCheck\(state\)/);
+  assert.match(helperModule, /requestScrollLoadMore\(state, callbacks, \{\}\)/);
+  assert.match(helperModule, /async function requestScrollLoadMoreWithContext\(context\)/);
+});
