@@ -69,7 +69,7 @@
         options = options || {};
         var scheduleCheck = typeof options.scheduleScrollLoadCheck === 'function'
             ? options.scheduleScrollLoadCheck
-            : scheduleScrollLoadCheck;
+            : function() {};
         var bindIntentHandlers = typeof options.bindScrollLoadIntentHandlers === 'function'
             ? options.bindScrollLoadIntentHandlers
             : bindScrollLoadIntentHandlers;
@@ -94,21 +94,6 @@
         bindIntentHandlers();
         scheduleCheck();
         return scrollLoadSentinel;
-    }
-
-    // Legacy helper-internal request path (not reached from main runtime)
-    async function requestScrollLoadMore(state, callbacks, flags) {
-        flags = flags || {};
-        if (!hasUserScrolledTowardFeed || !isSentinelNearViewport(scrollLoadSentinel, window) || !canLoadMorePublicTrees(state, callbacks, flags)) return;
-
-        flags.isQueued = true;
-        syncScrollLoadSentinel(scrollLoadSentinel, state);
-        try {
-            await callbacks.loadMorePublicTrees({ source: 'scroll' });
-        } finally {
-            flags.isQueued = false;
-            syncScrollLoadSentinel(scrollLoadSentinel, state);
-        }
     }
 
     // Current adapter request path (used by main runtime via context)
@@ -168,21 +153,9 @@
         }));
     }
 
-    // Legacy helper-internal schedule path (not reached from main runtime)
-    function scheduleScrollLoadCheck(state) {
-        if (scrollCheckRaf) return;
-        scrollCheckRaf = window.requestAnimationFrame(() => {
-            scrollCheckRaf = 0;
-            if ((window.scrollY || window.pageYOffset || 0) > 80) {
-                hasUserScrolledTowardFeed = true;
-            }
-            requestScrollLoadMore(state, callbacks, {});
-        });
-    }
-
     function markScrollLoadIntent() {
         hasUserScrolledTowardFeed = true;
-        scheduleScrollLoadCheck();
+        // schedule path is handled externally via requestController
     }
 
     function handleScrollLoadKeydown(event) {
@@ -199,7 +172,7 @@
         options = options || {};
         var scheduleCheck = typeof options.scheduleScrollLoadCheck === 'function'
             ? options.scheduleScrollLoadCheck
-            : scheduleScrollLoadCheck;
+            : function() {};
         var markIntent = typeof options.markScrollLoadIntent === 'function'
             ? options.markScrollLoadIntent
             : markScrollLoadIntent;
@@ -268,9 +241,7 @@
         isScrollIntentKey: isScrollIntentKey,
         // Sentinel lifecycle helpers
         ensureScrollLoadSentinel: ensureScrollLoadSentinel,
-        requestScrollLoadMore: requestScrollLoadMore, // Legacy helper-internal
         requestScrollLoadMoreWithContext: requestScrollLoadMoreWithContext, // Current adapter path
-        scheduleScrollLoadCheck: scheduleScrollLoadCheck, // Legacy helper-internal
         scheduleScrollLoadCheckWrapper: scheduleScrollLoadCheckWrapper, // Current adapter path
         markScrollLoadIntent: markScrollLoadIntent,
         handleScrollLoadKeydown: handleScrollLoadKeydown,
