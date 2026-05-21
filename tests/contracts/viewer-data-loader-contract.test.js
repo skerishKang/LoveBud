@@ -1,11 +1,6 @@
 /**
  * LoveBud Viewer Data Loader Contract Tests
  * Issue #1282
- * 
- * #1282의 다음 helper extraction 전에 loadPublicData의 API/data-shape 계약을 
- * 고정하는 static contract test.
- * 아직 viewer-data-loader.js는 존재하지 않음. 
- * 이 테스트는 helper extraction의 사전 안전장치임.
  */
 
 const test = require('node:test');
@@ -17,42 +12,50 @@ function extractFunctionBody(code, funcName) {
     return match ? match[1] : '';
 }
 
-test('viewer loadPublicData uses community cached memories API with flat fallback', () => {
-    const code = fs.readFileSync('js/viewer/tree-viewer.js', 'utf8');
+test('tree-viewer.js no longer contains async function loadPublicData', () => {
+    const tvCode = fs.readFileSync('js/viewer/tree-viewer.js', 'utf8');
+    assert.ok(!tvCode.includes('async function loadPublicData'), 'tree-viewer.js must not contain loadPublicData');
+    assert.ok(tvCode.includes('window.LoveBudViewerDataLoader'), 'tree-viewer.js must bind DataLoader');
+    assert.ok(tvCode.includes('DataLoader.loadPublicData(treeId)'), 'tree-viewer.js must call DataLoader');
+});
+
+test('viewer-data-loader.js loadPublicData uses community cached memories API with flat fallback', () => {
+    const code = fs.readFileSync('js/viewer/viewer-data-loader.js', 'utf8');
     assert.ok(code.includes('async function loadPublicData(treeId)'), 'async function loadPublicData(treeId) must exist');
+    assert.ok(code.includes('window.LoveBudViewerDataLoader'), 'must export namespace');
     
     const body = extractFunctionBody(code, 'loadPublicData');
     assert.ok(body.includes('window.apiClient.communityApi.getCachedCommunityMemories'), 'primary API path must exist');
     assert.ok(body.includes('window.apiClient.getCachedCommunityMemories'), 'fallback API path must exist');
 });
 
-test('viewer loadPublicData throws when community memories API is unavailable', () => {
-    const code = fs.readFileSync('js/viewer/tree-viewer.js', 'utf8');
+test('viewer-data-loader.js loadPublicData throws when community memories API is unavailable', () => {
+    const code = fs.readFileSync('js/viewer/viewer-data-loader.js', 'utf8');
     const body = extractFunctionBody(code, 'loadPublicData');
     assert.ok(body.includes("throw new Error('Community API not available')"), 'must throw correctly when API unavailable');
 });
 
-test('viewer loadPublicData requests tree memories with limit 100', () => {
-    const code = fs.readFileSync('js/viewer/tree-viewer.js', 'utf8');
+test('viewer-data-loader.js loadPublicData requests tree memories with limit 100', () => {
+    const code = fs.readFileSync('js/viewer/viewer-data-loader.js', 'utf8');
     const body = extractFunctionBody(code, 'loadPublicData');
     assert.ok(body.includes('{ treeId: treeId, limit: 100 }'), 'must request with treeId and limit 100');
 });
 
-test('viewer loadPublicData filters public memories only', () => {
-    const code = fs.readFileSync('js/viewer/tree-viewer.js', 'utf8');
+test('viewer-data-loader.js loadPublicData filters public memories only', () => {
+    const code = fs.readFileSync('js/viewer/viewer-data-loader.js', 'utf8');
     const body = extractFunctionBody(code, 'loadPublicData');
     assert.ok(body.includes("m.visibility === 'public'"), 'must filter by public visibility');
 });
 
-test('viewer loadPublicData returns empty array for non-array responses', () => {
-    const code = fs.readFileSync('js/viewer/tree-viewer.js', 'utf8');
+test('viewer-data-loader.js loadPublicData returns empty array for non-array responses', () => {
+    const code = fs.readFileSync('js/viewer/viewer-data-loader.js', 'utf8');
     const body = extractFunctionBody(code, 'loadPublicData');
     assert.ok(body.includes('Array.isArray(memories)'), 'must check if memories is an array');
     assert.ok(body.includes('[]'), 'must fallback to empty array');
 });
 
-test('viewer loadPublicData does not leak orchestration responsibilities', () => {
-    const code = fs.readFileSync('js/viewer/tree-viewer.js', 'utf8');
+test('viewer-data-loader.js loadPublicData does not leak orchestration responsibilities', () => {
+    const code = fs.readFileSync('js/viewer/viewer-data-loader.js', 'utf8');
     const body = extractFunctionBody(code, 'loadPublicData');
     assert.ok(!body.includes('DT.buildBranches'), 'must not call DT.buildBranches directly');
     assert.ok(!body.includes('State.'), 'must not mutate or create viewer State directly');
