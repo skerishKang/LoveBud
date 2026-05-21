@@ -167,10 +167,7 @@
         }
 
         function isSentinelNearViewport() {
-            if (typeof ScrollLoad.isSentinelNearViewport === 'function') {
-                return ScrollLoad.isSentinelNearViewport(scrollLoadSentinel, window);
-            }
-            return false;
+            return ScrollLoad.isSentinelNearViewport(scrollLoadSentinel, window);
         }
 
         async function requestScrollLoadMore() {
