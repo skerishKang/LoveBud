@@ -85,7 +85,8 @@ test('editor.html exposes stable static template extraction candidates', () => {
      */
 
     // Ensure candidates exist to be extracted later
-    assert.ok(html.includes('class="editor-canvas-topbar"'), 'Candidate: Canvas Topbar');
+    // 7. Canvas Topbar (`<div class="editor-canvas-topbar">`) - EXTRACTED (see editor-canvas-topbar-template-contract.test.js)
+    assert.ok(html.includes('id="editorCanvasTopbarTemplateMount"'), 'Candidate: Canvas Topbar is extracted to mount');
     assert.ok(html.includes('id="canvasEmptyGuide"'), 'Candidate: Empty Guide');
     // 5. Add Memory Form Modal (`<div id="addMemoryForm">`) - EXTRACTED (see editor-add-memory-form-template-contract.test.js)
     assert.ok(html.includes('id="addMemoryFormTemplateMount"'), 'Candidate: Add Memory Form Modal is extracted to mount');
