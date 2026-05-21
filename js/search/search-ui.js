@@ -16,16 +16,14 @@
         let isScrollLoadQueued = false;
         let hasUserScrolledTowardFeed = false;
 
-        const requestController = typeof ScrollLoad.createScrollLoadRequestController === 'function'
-            ? ScrollLoad.createScrollLoadRequestController({
-                getQueued: () => isScrollLoadQueued,
-                setQueued: (val) => { isScrollLoadQueued = val; },
-                getIntent: () => hasUserScrolledTowardFeed,
-                setIntent: (val) => { hasUserScrolledTowardFeed = val; },
-                requestMore: () => { requestScrollLoadMore(); return true; },
-                scheduleCheck: () => scheduleScrollLoadCheck()
-            })
-            : null;
+        const requestController = ScrollLoad.createScrollLoadRequestController({
+            getQueued: () => isScrollLoadQueued,
+            setQueued: (val) => { isScrollLoadQueued = val; },
+            getIntent: () => hasUserScrolledTowardFeed,
+            setIntent: (val) => { hasUserScrolledTowardFeed = val; },
+            requestMore: () => { requestScrollLoadMore(); return true; },
+            scheduleCheck: () => scheduleScrollLoadCheck()
+        });
 
         function getCurrentLocale() {
             var SearchCopy = window.LoveBudSearchCopy;
