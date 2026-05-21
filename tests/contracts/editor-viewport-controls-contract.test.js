@@ -10,7 +10,7 @@ function read(file) {
 }
 
 test('editor page mounts viewport control buttons with accessible labels', () => {
-  const html = read('pages/editor.html');
+  const html = read('pages/editor.html') + read('js/editor/templates/editor-canvas-topbar-template.js');
 
   for (const id of [
     'zoomOutCanvasBtn',
