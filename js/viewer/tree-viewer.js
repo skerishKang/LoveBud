@@ -173,8 +173,10 @@
     }
 
     function setupRetry() {
-        var btn = document.getElementById('viewerRetryBtn');
-        if (btn) btn.addEventListener('click', function() { if (currentTreeId) initViewer(); });
+        var RetrySetup = window.LoveBudViewerRetrySetup;
+        if (RetrySetup && typeof RetrySetup.setupRetry === 'function') {
+            RetrySetup.setupRetry(function() { return currentTreeId; }, initViewer);
+        }
     }
 
     if (window.__LOVE_BUD_TREE_VIEWER_TEST_HOOKS__ && DT) {
