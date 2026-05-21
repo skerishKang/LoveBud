@@ -247,11 +247,8 @@
         }
 
         function handleScrollLoadKeydown(event) {
-            const isIntentKey = typeof ScrollLoad.isScrollIntentKey === 'function'
-                ? ScrollLoad.isScrollIntentKey(event)
-                : [' ', 'PageDown', 'End', 'ArrowDown'].includes(event.key);
-
-            if (isIntentKey) {
+            if (typeof ScrollLoad.isScrollIntentKey !== 'function') return;
+            if (ScrollLoad.isScrollIntentKey(event)) {
                 markScrollLoadIntent();
             }
         }
