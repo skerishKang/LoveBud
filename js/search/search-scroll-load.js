@@ -96,6 +96,7 @@
         return scrollLoadSentinel;
     }
 
+    // Legacy helper-internal request path (not reached from main runtime)
     async function requestScrollLoadMore(state, callbacks, flags) {
         flags = flags || {};
         if (!hasUserScrolledTowardFeed || !isSentinelNearViewport(scrollLoadSentinel, window) || !canLoadMorePublicTrees(state, callbacks, flags)) return;
@@ -110,6 +111,7 @@
         }
     }
 
+    // Current adapter request path (used by main runtime via context)
     async function requestScrollLoadMoreWithContext(context) {
         context = context || {};
         var flags = context.flags || {};
@@ -151,6 +153,7 @@
         return true;
     }
 
+    // Current adapter schedule path (used by main runtime)
     function scheduleScrollLoadCheckWrapper(getRaf, setRaf, markScrolled, requestLoadMore, win) {
         var targetWindow = win || window;
         if (getRaf()) return;
@@ -165,6 +168,7 @@
         }));
     }
 
+    // Legacy helper-internal schedule path (not reached from main runtime)
     function scheduleScrollLoadCheck(state) {
         if (scrollCheckRaf) return;
         scrollCheckRaf = window.requestAnimationFrame(() => {
@@ -264,10 +268,10 @@
         isScrollIntentKey: isScrollIntentKey,
         // Sentinel lifecycle helpers
         ensureScrollLoadSentinel: ensureScrollLoadSentinel,
-        requestScrollLoadMore: requestScrollLoadMore,
-        requestScrollLoadMoreWithContext: requestScrollLoadMoreWithContext,
-        scheduleScrollLoadCheck: scheduleScrollLoadCheck,
-        scheduleScrollLoadCheckWrapper: scheduleScrollLoadCheckWrapper,
+        requestScrollLoadMore: requestScrollLoadMore, // Legacy helper-internal
+        requestScrollLoadMoreWithContext: requestScrollLoadMoreWithContext, // Current adapter path
+        scheduleScrollLoadCheck: scheduleScrollLoadCheck, // Legacy helper-internal
+        scheduleScrollLoadCheckWrapper: scheduleScrollLoadCheckWrapper, // Current adapter path
         markScrollLoadIntent: markScrollLoadIntent,
         handleScrollLoadKeydown: handleScrollLoadKeydown,
         bindScrollLoadIntentHandlers: bindScrollLoadIntentHandlers,
