@@ -110,6 +110,43 @@
         }
     }
 
+    async function requestScrollLoadMoreWithContext(context) {
+        context = context || {};
+        var flags = context.flags || {};
+        var requestCallbacks = context.requestCallbacks || {};
+        var getIntent = typeof context.getIntent === 'function'
+            ? context.getIntent
+            : function () { return false; };
+
+        if (
+            !getIntent()
+            || typeof requestCallbacks.isNearViewport !== 'function'
+            || typeof requestCallbacks.canLoadMore !== 'function'
+            || !requestCallbacks.isNearViewport()
+            || !requestCallbacks.canLoadMore(flags)
+        ) {
+            return false;
+        }
+
+        flags.isQueued = true;
+        if (typeof requestCallbacks.syncSentinel === 'function') {
+            requestCallbacks.syncSentinel();
+        }
+
+        try {
+            if (typeof requestCallbacks.loadMore === 'function') {
+                await requestCallbacks.loadMore();
+            }
+        } finally {
+            flags.isQueued = false;
+            if (typeof requestCallbacks.syncSentinel === 'function') {
+                requestCallbacks.syncSentinel();
+            }
+        }
+
+        return true;
+    }
+
     function scheduleScrollLoadCheckWrapper(getRaf, setRaf, markScrolled, requestLoadMore, win) {
         var targetWindow = win || window;
         if (getRaf()) return;
@@ -224,6 +261,7 @@
         // Sentinel lifecycle helpers
         ensureScrollLoadSentinel: ensureScrollLoadSentinel,
         requestScrollLoadMore: requestScrollLoadMore,
+        requestScrollLoadMoreWithContext: requestScrollLoadMoreWithContext,
         scheduleScrollLoadCheck: scheduleScrollLoadCheck,
         scheduleScrollLoadCheckWrapper: scheduleScrollLoadCheckWrapper,
         markScrollLoadIntent: markScrollLoadIntent,

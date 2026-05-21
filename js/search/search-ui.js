@@ -184,6 +184,14 @@
             // Stabilize contract: flags.isQueued mirrors local queue state
             flags.isQueued = isScrollLoadQueued;
 
+            // Route through helper adapter when available (safe fallback otherwise)
+            if (typeof ScrollLoad.requestScrollLoadMoreWithContext === 'function') {
+                const didRequest = await ScrollLoad.requestScrollLoadMoreWithContext(scrollLoadHelperContext);
+                isScrollLoadQueued = Boolean(flags.isQueued);
+                return didRequest;
+            }
+
+            // Fallback: local requestCallbacks path
             if (!hasUserScrolledTowardFeed || !requestCallbacks.isNearViewport() || !requestCallbacks.canLoadMore(flags)) return;
 
             isScrollLoadQueued = true;
@@ -211,7 +219,8 @@
                     isNearViewport: isSentinelNearViewport,
                     syncSentinel: syncScrollLoadSentinel,
                     loadMore: () => callbacks.loadMorePublicTrees({ source: 'scroll' })
-                }
+                },
+                getIntent: () => hasUserScrolledTowardFeed
             };
         }
 
