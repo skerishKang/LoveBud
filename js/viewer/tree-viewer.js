@@ -27,16 +27,7 @@
         ? ShareStatusUI.showShareStatus
         : function() {};
 
-    async function loadPublicData(treeId) {
-        var getMemories = window.apiClient &&
-            (window.apiClient.communityApi && window.apiClient.communityApi.getCachedCommunityMemories ||
-             window.apiClient.getCachedCommunityMemories);
-
-        if (typeof getMemories !== 'function') throw new Error('Community API not available');
-
-        var memories = await getMemories({ treeId: treeId, limit: 100 });
-        return Array.isArray(memories) ? memories.filter(function(m) { return m && m.visibility === 'public'; }) : [];
-    }
+    var DataLoader = window.LoveBudViewerDataLoader;
 
     async function initViewer() {
         var treeId = Route.getTreeId();
@@ -45,7 +36,10 @@
         RS.showLoading();
 
         try {
-            var memories = await loadPublicData(treeId);
+            if (!DataLoader || typeof DataLoader.loadPublicData !== 'function') {
+                throw new Error('Viewer data loader helper unavailable');
+            }
+            var memories = await DataLoader.loadPublicData(treeId);
             if (!memories || memories.length === 0) { RS.renderEmpty(); return; }
 
             var viewerData = DT.buildBranches(memories);
