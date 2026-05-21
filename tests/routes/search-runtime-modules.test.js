@@ -388,7 +388,7 @@ test('search UI scroll load path does not delegate requestScrollLoadMore to help
   const helperModule = read('js/search/search-scroll-load.js');
 
   // search-ui.js uses its own local requestScrollLoadMore, not helper's exported version
-  assert.doesNotMatch(uiModule, /ScrollLoad\.requestScrollLoadMore/);
+  assert.doesNotMatch(uiModule, /ScrollLoad\.requestScrollLoadMore\(/);
   // Helper does export requestScrollLoadMore but it is not reached from the main runtime chain
   assert.match(helperModule, /LoveBudSearchScrollLoad[\s\S]*?requestScrollLoadMore/);
 });
@@ -458,7 +458,7 @@ test('search scroll load helper requestScrollLoadMore async contract matches loc
   // Local version remains async
   assert.match(uiModule, /async function requestScrollLoadMore/);
   // Helper is NOT yet connected to runtime chain
-  assert.doesNotMatch(uiModule, /ScrollLoad\.requestScrollLoadMore/);
+  assert.doesNotMatch(uiModule, /ScrollLoad\.requestScrollLoadMore\(/);
   // requestMore actual-use is still exactly 1 call site
   const requestMoreCount = (uiModule.match(/\brequestMore\b/g) || []).length;
   assert.equal(requestMoreCount, 2,
@@ -471,7 +471,7 @@ test('search scroll load helper requestScrollLoadMore is not reached from main r
   const helperModule = read('js/search/search-scroll-load.js');
 
   // search-ui.js does not call helper's requestScrollLoadMore
-  assert.doesNotMatch(uiModule, /ScrollLoad\.requestScrollLoadMore/);
+  assert.doesNotMatch(uiModule, /ScrollLoad\.requestScrollLoadMore\(/);
   // search-ui.js does not call helper's scheduleScrollLoadCheck (which calls helper's requestScrollLoadMore with empty callbacks)
   assert.doesNotMatch(uiModule, /ScrollLoad\.scheduleScrollLoadCheck\b/);
   // Helper's own scheduleScrollLoadCheck calls requestScrollLoadMore with closure callbacks (dead code path)
@@ -490,7 +490,7 @@ test('search UI wiring context builder exists', () => {
 // Local requestScrollLoadMore is not replaced by helper
 test('search UI does not delegate requestScrollLoadMore to helper', () => {
   const uiModule = read('js/search/search-ui.js');
-  assert.doesNotMatch(uiModule, /ScrollLoad\.requestScrollLoadMore/);
+  assert.doesNotMatch(uiModule, /ScrollLoad\.requestScrollLoadMore\(/);
 });
 
 // requestMore actual-use count remains at 1 call site
@@ -515,7 +515,7 @@ test('search UI creates helper wiring context in runtime path', () => {
 test('search UI local requestScrollLoadMore remains in search-ui.js', () => {
   const uiModule = read('js/search/search-ui.js');
   assert.match(uiModule, /async function requestScrollLoadMore\(\)/);
-  assert.doesNotMatch(uiModule, /ScrollLoad\.requestScrollLoadMore/);
+  assert.doesNotMatch(uiModule, /ScrollLoad\.requestScrollLoadMore\(/);
 });
 
 // callbacks.loadMorePublicTrees({ source: 'scroll' }) is still in search-ui.js
@@ -570,7 +570,7 @@ test('search UI helper wiring context actual-use maintained', () => {
 test('search UI local requestScrollLoadMore ownership retained', () => {
   const uiModule = read('js/search/search-ui.js');
   assert.match(uiModule, /async function requestScrollLoadMore\(\)/);
-  assert.doesNotMatch(uiModule, /ScrollLoad\.requestScrollLoadMore/);
+  assert.doesNotMatch(uiModule, /ScrollLoad\.requestScrollLoadMore\(/);
 });
 
 // callbacks.loadMorePublicTrees({ source: 'scroll' }) is still in search-ui.js
@@ -640,7 +640,7 @@ test('search UI helper wiring context actual-use maintained', () => {
 test('search UI local requestScrollLoadMore ownership retained', () => {
   const uiModule = read('js/search/search-ui.js');
   assert.match(uiModule, /async function requestScrollLoadMore\(\)/);
-  assert.doesNotMatch(uiModule, /ScrollLoad\.requestScrollLoadMore/);
+  assert.doesNotMatch(uiModule, /ScrollLoad\.requestScrollLoadMore\(/);
 });
 
 // callbacks.loadMorePublicTrees remains in search-ui.js
@@ -709,7 +709,7 @@ test('search UI flags.isQueued not used as direct guard condition', () => {
 test('search UI local requestScrollLoadMore ownership retained', () => {
   const uiModule = read('js/search/search-ui.js');
   assert.match(uiModule, /async function requestScrollLoadMore\(\)/);
-  assert.doesNotMatch(uiModule, /ScrollLoad\.requestScrollLoadMore/);
+  assert.doesNotMatch(uiModule, /ScrollLoad\.requestScrollLoadMore\(/);
 });
 
 // callbacks.loadMorePublicTrees remains in search-ui.js
@@ -772,7 +772,7 @@ test('search UI requestCallbacks.loadMore preserves source scroll', () => {
 test('search UI requestScrollLoadMore ownership retained', () => {
   const uiModule = read('js/search/search-ui.js');
   assert.match(uiModule, /async function requestScrollLoadMore\(\)/);
-  assert.doesNotMatch(uiModule, /ScrollLoad\.requestScrollLoadMore/);
+  assert.doesNotMatch(uiModule, /ScrollLoad\.requestScrollLoadMore\(/);
 });
 
 // isScrollLoadQueued remains local queue source of truth
@@ -804,4 +804,112 @@ test('search UI requestMore actual-use count remains at 1 call site', () => {
 test('search scroll load helper unchanged', () => {
   const helperModule = read('js/search/search-scroll-load.js');
   assert.ok(helperModule, 'search-scroll-load.js must still exist and be readable');
+});
+
+// --- Helper adapter contract tests ---
+
+// requestScrollLoadMoreWithContext exists in search-scroll-load.js
+test('search scroll load helper has requestScrollLoadMoreWithContext', () => {
+  const helperModule = read('js/search/search-scroll-load.js');
+  assert.match(helperModule, /async function requestScrollLoadMoreWithContext\(context\)/);
+});
+
+// requestScrollLoadMoreWithContext is exported in LoveBudSearchScrollLoad
+test('search scroll load helper exports requestScrollLoadMoreWithContext', () => {
+  const helperModule = read('js/search/search-scroll-load.js');
+  const exportMatch = helperModule.match(/window\.LoveBudSearchScrollLoad\s*=\s*\{([^}]+)\}/s);
+  assert.ok(exportMatch, 'LoveBudSearchScrollLoad export object not found');
+  assert.match(exportMatch[1], /\brequestScrollLoadMoreWithContext\b/);
+});
+
+// requestScrollLoadMoreWithContext uses requestCallbacks
+test('requestScrollLoadMoreWithContext uses requestCallbacks', () => {
+  const helperModule = read('js/search/search-scroll-load.js');
+  assert.match(helperModule, /context\.requestCallbacks/);
+  assert.match(helperModule, /requestCallbacks\.isNearViewport\(\)/);
+  assert.match(helperModule, /requestCallbacks\.canLoadMore\(flags\)/);
+  assert.match(helperModule, /requestCallbacks\.syncSentinel\(\)/);
+  assert.match(helperModule, /await requestCallbacks\.loadMore\(\)/);
+});
+
+// requestScrollLoadMoreWithContext uses context.getIntent
+test('requestScrollLoadMoreWithContext uses getIntent', () => {
+  const helperModule = read('js/search/search-scroll-load.js');
+  assert.match(helperModule, /context\.getIntent/);
+  assert.match(helperModule, /getIntent\(\)/);
+});
+
+// requestScrollLoadMoreWithContext manages flags.isQueued
+test('requestScrollLoadMoreWithContext manages flags.isQueued', () => {
+  const helperModule = read('js/search/search-scroll-load.js');
+  assert.match(helperModule, /flags\.isQueued = true/);
+  assert.match(helperModule, /flags\.isQueued = false/);
+});
+
+// requestScrollLoadMoreWithContext returns true/false
+test('requestScrollLoadMoreWithContext returns boolean', () => {
+  const helperModule = read('js/search/search-scroll-load.js');
+  assert.match(helperModule, /return false/);
+  assert.match(helperModule, /return true/);
+});
+
+// createScrollLoadHelperContext has getIntent
+test('search UI context builder has getIntent', () => {
+  const uiModule = read('js/search/search-ui.js');
+  assert.match(uiModule, /getIntent: \(\) => hasUserScrolledTowardFeed/);
+});
+
+// search-ui routes through helper adapter with fallback
+test('search UI routes through requestScrollLoadMoreWithContext', () => {
+  const uiModule = read('js/search/search-ui.js');
+  // Routes through helper adapter when available
+  assert.match(uiModule, /ScrollLoad\.requestScrollLoadMoreWithContext\(scrollLoadHelperContext\)/);
+  // Fallback local path preserved
+  assert.match(uiModule, /Fallback: local requestCallbacks path/);
+  assert.match(uiModule, /!hasUserScrolledTowardFeed \|\| !requestCallbacks\.isNearViewport\(\) \|\| !requestCallbacks\.canLoadMore\(flags\)/);
+  // Local isScrollLoadQueued synced after adapter call
+  assert.match(uiModule, /isScrollLoadQueued = Boolean\(flags\.isQueued\)/);
+});
+
+// Still uses own local async function
+test('search UI own requestScrollLoadMore retained', () => {
+  const uiModule = read('js/search/search-ui.js');
+  assert.match(uiModule, /async function requestScrollLoadMore/);
+});
+
+// requestMore count unchanged
+test('search UI requestMore count unchanged', () => {
+  const uiModule = read('js/search/search-ui.js');
+  const count = (uiModule.match(/\brequestMore\b/g) || []).length;
+  assert.equal(count, 2, 'requestMore must remain at exactly 2 references');
+});
+
+// loadMore source preserved
+test('requestCallbacks.loadMore preserves source scroll', () => {
+  const uiModule = read('js/search/search-ui.js');
+  assert.match(uiModule, /loadMore: \(\) => callbacks\.loadMorePublicTrees\(\{ source: 'scroll' \}\)/);
+});
+
+// createScrollLoadHelperContext returns setQueued
+test('search UI context builder returns setQueued', () => {
+  const uiModule = read('js/search/search-ui.js');
+  assert.match(uiModule, /setQueued: \(val\) => { isScrollLoadQueued = val; }/);
+});
+
+// requestScrollLoadMoreWithContext reads context.setQueued
+test('helper adapter reads context.setQueued', () => {
+  const helperModule = read('js/search/search-scroll-load.js');
+  assert.match(helperModule, /context\.setQueued/);
+});
+
+// requestScrollLoadMoreWithContext calls setQueued(true) before flags.isQueued = true
+test('helper adapter calls setQueued(true) before flags.isQueued = true', () => {
+  const helperModule = read('js/search/search-scroll-load.js');
+  assert.match(helperModule, /setQueued\(true\);\s+flags\.isQueued = true/);
+});
+
+// requestScrollLoadMoreWithContext calls setQueued(false) in finally before flags.isQueued = false
+test('helper adapter calls setQueued(false) in finally before flags.isQueued = false', () => {
+  const helperModule = read('js/search/search-scroll-load.js');
+  assert.match(helperModule, /setQueued\(false\);\s+flags\.isQueued = false/);
 });
