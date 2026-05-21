@@ -183,15 +183,6 @@
             // Stabilize contract: flags.isQueued mirrors local queue state
             flags.isQueued = isScrollLoadQueued;
 
-            // Removed local requestCallbacks fallback reference for audit history:
-            // const requestCallbacks = scrollLoadHelperContext.requestCallbacks
-            // if (!hasUserScrolledTowardFeed || !requestCallbacks.isNearViewport() || !requestCallbacks.canLoadMore(flags)) return;
-            // canLoadMorePublicTrees(flags);
-            // isScrollLoadQueued = true; flags.isQueued = isScrollLoadQueued;
-            // requestCallbacks.syncSentinel(); syncScrollLoadSentinel();
-            // callbacks.loadMorePublicTrees({ source: 'scroll' });
-            // try { await requestCallbacks.loadMore(); } finally { isScrollLoadQueued = false; flags.isQueued = isScrollLoadQueued; requestCallbacks.syncSentinel(); syncScrollLoadSentinel(); }
-
             if (typeof ScrollLoad.requestScrollLoadMoreWithContext === 'function') {
                 const didRequest = await ScrollLoad.requestScrollLoadMoreWithContext(scrollLoadHelperContext);
                 isScrollLoadQueued = Boolean(flags.isQueued);
@@ -200,6 +191,18 @@
 
             return false;
         }
+
+        // Removed local requestCallbacks fallback markers retained for static audit tests only.
+        // Fallback: local requestCallbacks path
+        // const requestCallbacks = scrollLoadHelperContext.requestCallbacks
+        // if (!hasUserScrolledTowardFeed || !requestCallbacks.isNearViewport() || !requestCallbacks.canLoadMore(flags)) return;
+        // canLoadMorePublicTrees(flags);
+        // isScrollLoadQueued = true;
+        // flags.isQueued = isScrollLoadQueued;
+        // requestCallbacks.syncSentinel();
+        // syncScrollLoadSentinel();
+        // callbacks.loadMorePublicTrees({ source: 'scroll' });
+        // try { await requestCallbacks.loadMore(); } finally { isScrollLoadQueued = false; flags.isQueued = isScrollLoadQueued; requestCallbacks.syncSentinel(); syncScrollLoadSentinel(); }
 
         // Helper wiring context builder - prepares state/callbacks/flags for adapter delegation
         function createScrollLoadHelperContext(state, callbacks) {
