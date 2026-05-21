@@ -85,6 +85,18 @@ test('tree viewer route loads data loader before active tree-viewer entry', () =
     );
 });
 
+test('tree viewer route loads retry setup helper before active tree-viewer entry', () => {
+    const scripts = getTreeHtmlScriptSrcs();
+    const retrySetupIndex = findScriptIndex(scripts, 'js/viewer/viewer-retry-setup.js');
+    const treeViewerIndex = findScriptIndex(scripts, 'js/viewer/tree-viewer.js');
+
+    assert.notEqual(retrySetupIndex, -1, 'pages/tree.html must load js/viewer/viewer-retry-setup.js');
+    assert.ok(
+        retrySetupIndex < treeViewerIndex,
+        'viewer-retry-setup.js must load before js/viewer/tree-viewer.js'
+    );
+});
+
 test('viewer share status UI helper preserves status message behavior contract', () => {
     const src = fs.readFileSync('js/viewer/viewer-share-status-ui.js', 'utf8');
 
