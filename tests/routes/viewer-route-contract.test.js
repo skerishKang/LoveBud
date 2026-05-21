@@ -109,20 +109,27 @@ test('tree viewer route loads test hooks helper before active tree-viewer entry'
     );
 });
 
-test('tree viewer route loads click actions helper between share-export and active tree-viewer entry', () => {
+test('tree viewer route loads helper scripts in correct order before active entry', () => {
     const scripts = getTreeHtmlScriptSrcs();
     const shareExportIndex = findScriptIndex(scripts, 'js/viewer/viewer-share-export-actions.js');
     const clickActionsIndex = findScriptIndex(scripts, 'js/viewer/viewer-click-actions.js');
+    const handlerFactoryIndex = findScriptIndex(scripts, 'js/viewer/viewer-handler-factory.js');
     const treeViewerIndex = findScriptIndex(scripts, 'js/viewer/tree-viewer.js');
 
     assert.notEqual(clickActionsIndex, -1, 'pages/tree.html must load js/viewer/viewer-click-actions.js');
+    assert.notEqual(handlerFactoryIndex, -1, 'pages/tree.html must load js/viewer/viewer-handler-factory.js');
+    
     assert.ok(
         shareExportIndex < clickActionsIndex,
         'viewer-click-actions.js must load after viewer-share-export-actions.js'
     );
     assert.ok(
-        clickActionsIndex < treeViewerIndex,
-        'viewer-click-actions.js must load before js/viewer/tree-viewer.js'
+        clickActionsIndex < handlerFactoryIndex,
+        'viewer-handler-factory.js must load after viewer-click-actions.js'
+    );
+    assert.ok(
+        handlerFactoryIndex < treeViewerIndex,
+        'viewer-handler-factory.js must load before js/viewer/tree-viewer.js'
     );
 });
 
