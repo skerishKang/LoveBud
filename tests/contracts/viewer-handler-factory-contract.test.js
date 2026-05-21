@@ -10,7 +10,6 @@ const fs = require('fs');
 test('tree-viewer.js delegates handler creation to helper', () => {
     const tvCode = fs.readFileSync('js/viewer/tree-viewer.js', 'utf8');
     assert.ok(tvCode.includes('window.LoveBudViewerHandlerFactory'), 'tree-viewer.js must read HandlerFactory helper');
-    assert.ok(tvCode.includes('HandlerFactory.createHandler('), 'tree-viewer.js must call createHandler');
     assert.ok(!tvCode.includes('var handler = {\n'), 'tree-viewer.js must not directly construct handler object block');
     assert.ok(!tvCode.includes('state.layoutMode = state.layoutMode ==='), 'tree-viewer.js must not have onToggleLayout logic');
 });

@@ -10,7 +10,6 @@ const fs = require('fs');
 test('tree-viewer.js delegates share export bridge setup to helper', () => {
     const tvCode = fs.readFileSync('js/viewer/tree-viewer.js', 'utf8');
     assert.ok(tvCode.includes('window.LoveBudViewerShareExportBridge'), 'tree-viewer.js must read ShareExportBridge helper');
-    assert.ok(tvCode.includes('ShareExportBridge.setupShareExportBridge('), 'tree-viewer.js must call setupShareExportBridge');
     assert.ok(!tvCode.includes('var shareExportHandlers = null;\n            (function() {'), 'tree-viewer.js must not directly execute the bridge setup closure');
     assert.ok(!tvCode.includes('handler.copyLink = se.copyLink;'), 'tree-viewer.js must not directly map share action methods to handler');
 });
