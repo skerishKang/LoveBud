@@ -572,7 +572,7 @@ test('tree route loads viewer state helper before tree viewer', () => {
 
     assert.notEqual(stateIdx, -1, 'tree.html must load viewer-state.js');
     assert.ok(shareActionsIdx < helperIdx, 'share-actions.js must load before viewer-share-export-actions.js');
-    assert.ok(helperIdx < stateIdx, 'viewer-share-export-actions.js must load before viewer-state.js');
+    assert.ok(stateIdx < helperIdx, 'viewer-state.js must load before viewer-share-export-actions.js');
     assert.ok(stateIdx < treeViewerIdx, 'viewer-state.js must load before tree-viewer.js');
 });
 

@@ -60,17 +60,11 @@ test('tree viewer route loads share status UI before active tree-viewer entry', 
     const shareStatusIndex = findScriptIndex(scripts, 'js/viewer/viewer-share-status-ui.js');
     const treeViewerIndex = findScriptIndex(scripts, 'js/viewer/tree-viewer.js');
 
-    assert.notEqual(shareExportIndex, -1, 'pages/tree.html must load js/viewer/viewer-share-export-actions.js');
-    assert.notEqual(shareStatusIndex, -1, 'pages/tree.html must load js/viewer/viewer-share-status-ui.js');
-    assert.notEqual(treeViewerIndex, -1, 'pages/tree.html must load js/viewer/tree-viewer.js');
-    assert.ok(
-        shareStatusIndex > shareExportIndex,
-        'viewer-share-status-ui.js should load after viewer-share-export-actions.js'
-    );
-    assert.ok(
-        shareStatusIndex < treeViewerIndex,
-        'viewer-share-status-ui.js must load before js/viewer/tree-viewer.js'
-    );
+    assert.notEqual(shareStatusIndex, -1, 'tree.html must load viewer-share-status-ui.js');
+    assert.notEqual(shareExportIndex, -1, 'tree.html must load viewer-share-export-actions.js');
+    assert.notEqual(treeViewerIndex, -1, 'tree.html must load tree-viewer.js');
+    assert.ok(shareStatusIndex < shareExportIndex, 'viewer-share-status-ui.js should load before viewer-share-export-actions.js');
+    assert.ok(shareStatusIndex < treeViewerIndex, 'viewer-share-status-ui.js must load before tree-viewer.js');
 });
 
 test('tree viewer route loads data loader before active tree-viewer entry', () => {
