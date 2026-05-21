@@ -179,12 +179,12 @@
         }
     }
 
-    if (window.__LOVE_BUD_TREE_VIEWER_TEST_HOOKS__ && DT) {
-        window.LoveBudTreeViewerTestHooks = {
-            buildBranches: DT.buildBranches,
-            getTreeId: Route && Route.getTreeId,
-            renderShell: ShellRender && ShellRender.renderShell
-        };
+    if (window.LoveBudViewerTestHooks) {
+        window.LoveBudViewerTestHooks.exportTestHooks({
+            DT: DT,
+            Route: Route,
+            ShellRender: ShellRender
+        });
     }
 
     if (window.__LOVE_BUD_TREE_VIEWER_SKIP_INIT__) return;
