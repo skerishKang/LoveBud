@@ -154,12 +154,9 @@
         }
 
         function canLoadMorePublicTrees(flags) {
-            if (typeof ScrollLoad.canLoadMorePublicTrees === 'function') {
-                return ScrollLoad.canLoadMorePublicTrees(state, callbacks, flags || {
-                    isQueued: isScrollLoadQueued
-                });
-            }
-            return false;
+            return ScrollLoad.canLoadMorePublicTrees(state, callbacks, flags || {
+                isQueued: isScrollLoadQueued
+            });
         }
 
         function syncScrollLoadSentinel() {
