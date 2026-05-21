@@ -73,6 +73,18 @@ test('tree viewer route loads share status UI before active tree-viewer entry', 
     );
 });
 
+test('tree viewer route loads data loader before active tree-viewer entry', () => {
+    const scripts = getTreeHtmlScriptSrcs();
+    const dataLoaderIndex = findScriptIndex(scripts, 'js/viewer/viewer-data-loader.js');
+    const treeViewerIndex = findScriptIndex(scripts, 'js/viewer/tree-viewer.js');
+
+    assert.notEqual(dataLoaderIndex, -1, 'pages/tree.html must load js/viewer/viewer-data-loader.js');
+    assert.ok(
+        dataLoaderIndex < treeViewerIndex,
+        'viewer-data-loader.js must load before js/viewer/tree-viewer.js'
+    );
+});
+
 test('viewer share status UI helper preserves status message behavior contract', () => {
     const src = fs.readFileSync('js/viewer/viewer-share-status-ui.js', 'utf8');
 
