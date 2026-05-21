@@ -175,13 +175,9 @@
             // Stabilize contract: flags.isQueued mirrors local queue state
             flags.isQueued = isScrollLoadQueued;
 
-            if (typeof ScrollLoad.requestScrollLoadMoreWithContext === 'function') {
-                const didRequest = await ScrollLoad.requestScrollLoadMoreWithContext(scrollLoadHelperContext);
-                isScrollLoadQueued = Boolean(flags.isQueued);
-                return didRequest;
-            }
-
-            return false;
+            const didRequest = await ScrollLoad.requestScrollLoadMoreWithContext(scrollLoadHelperContext);
+            isScrollLoadQueued = Boolean(flags.isQueued);
+            return didRequest;
         }
 
         // Helper wiring context builder - prepares state/callbacks/flags for adapter delegation
