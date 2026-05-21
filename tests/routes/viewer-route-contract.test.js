@@ -14,12 +14,40 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
 
+function getTreeHtmlScriptSrcs() {
+    const html = fs.readFileSync('pages/tree.html', 'utf8');
+    return [...html.matchAll(/<script\s+src="([^"]+)"/g)].map((match) => match[1]);
+}
+
 test('tree viewer route page exists', () => {
     assert.ok(fs.existsSync('pages/tree.html'), 'pages/tree.html must exist');
 });
 
 test('tree viewer orchestrator JS exists', () => {
     assert.ok(fs.existsSync('js/viewer/tree-viewer.js'), 'js/viewer/tree-viewer.js must exist');
+});
+
+test('tree-viewer.js is the active public viewer entry for tree.html', () => {
+    const scripts = getTreeHtmlScriptSrcs();
+
+    assert.ok(
+        scripts.some((src) => src.includes('js/viewer/tree-viewer.js')),
+        'pages/tree.html must load js/viewer/tree-viewer.js as the active public viewer entry'
+    );
+});
+
+test('public-tree-viewer.js remains legacy/static and is not loaded by tree.html', () => {
+    const scripts = getTreeHtmlScriptSrcs();
+
+    assert.ok(
+        fs.existsSync('js/viewer/public-tree-viewer.js'),
+        'legacy/static js/viewer/public-tree-viewer.js should remain available for guardrail tests'
+    );
+    assert.equal(
+        scripts.some((src) => src.includes('js/viewer/public-tree-viewer.js')),
+        false,
+        'pages/tree.html must not load legacy/static js/viewer/public-tree-viewer.js'
+    );
 });
 
 test('tree viewer route does not load editor entry script', () => {
