@@ -17,7 +17,7 @@ test('editor.html keeps active editor page shell contracts', () => {
     assert.ok(html.includes('id="ftbDropdown"'), 'must have ftbDropdown');
     
     // 3. Modals & Forms
-    assert.ok(html.includes('id="addMemoryForm"'), 'must have addMemoryForm');
+    assert.ok(html.includes('id="addMemoryFormTemplateMount"'), 'must have addMemoryFormTemplateMount');
     
     // 4. Detail Panel
     assert.ok(html.includes('id="detailPanel"'), 'must have detailPanel');
@@ -87,7 +87,8 @@ test('editor.html exposes stable static template extraction candidates', () => {
     // Ensure candidates exist to be extracted later
     assert.ok(html.includes('class="editor-canvas-topbar"'), 'Candidate: Canvas Topbar');
     assert.ok(html.includes('id="canvasEmptyGuide"'), 'Candidate: Empty Guide');
-    assert.ok(html.includes('id="addMemoryForm"'), 'Candidate: Add Memory Form Modal');
+    // 5. Add Memory Form Modal (`<div id="addMemoryForm">`) - EXTRACTED (see editor-add-memory-form-template-contract.test.js)
+    assert.ok(html.includes('id="addMemoryFormTemplateMount"'), 'Candidate: Add Memory Form Modal is extracted to mount');
     assert.ok(html.includes('class="editor-status-section"'), 'Candidate: Sidebar sections');
     assert.ok(html.includes('id="detailViewMode"'), 'Candidate: Detail Panel View Mode');
     assert.ok(html.includes('id="detailEditMode"'), 'Candidate: Detail Panel Edit Mode');
