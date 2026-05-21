@@ -121,13 +121,13 @@ test('tree route loads share actions before tree viewer', () => {
     assert.ok(shareActionsIndex < treeViewerIndex, 'share-actions.js must load before tree-viewer.js');
 });
 
-test('tree-viewer handles share actions', () => {
-    const viewer = fs.readFileSync('js/viewer/tree-viewer.js', 'utf8');
-    assert.ok(viewer.includes('copy-link') || viewer.includes('copyLink'), 'tree-viewer must handle copy-link');
-    assert.ok(viewer.includes('native-share') || viewer.includes('nativeShare'), 'tree-viewer must handle native-share');
-    assert.ok(viewer.includes('platform-share') || viewer.includes('platformShare'), 'tree-viewer must handle platform-share');
-    assert.ok(viewer.includes('export-tree-card') || viewer.includes('exportTreeImageCard'), 'tree-viewer must handle tree image card export');
-    assert.ok(viewer.includes('showShareStatus'), 'tree-viewer must have share status feedback');
+test('share export bridge handles share actions', () => {
+    const viewer = fs.readFileSync('js/viewer/viewer-share-export-bridge.js', 'utf8');
+    assert.ok(viewer.includes('copy-link') || viewer.includes('copyLink'), 'bridge must handle copy-link');
+    assert.ok(viewer.includes('native-share') || viewer.includes('nativeShare'), 'bridge must handle native-share');
+    assert.ok(viewer.includes('platform-share') || viewer.includes('platformShare'), 'bridge must handle platform-share');
+    assert.ok(viewer.includes('export-tree-card') || viewer.includes('exportTreeImageCard'), 'bridge must handle tree image card export');
+    assert.ok(viewer.includes('showShareStatus'), 'bridge must have share status feedback');
 });
 
 test('share actions module does not expose private identifiers', () => {
@@ -275,14 +275,14 @@ test('moment detail panel includes moment image card export button', () => {
     assert.ok(panels.includes('aria-label="순간 이미지 카드 저장"'), 'moment export button must have accessible label');
 });
 
-test('tree-viewer handles moment image card export action', () => {
-    const viewer = fs.readFileSync('js/viewer/tree-viewer.js', 'utf8');
+test('share export bridge handles moment image card export action', () => {
+    const viewer = fs.readFileSync('js/viewer/viewer-share-export-bridge.js', 'utf8');
     const helper = fs.readFileSync('js/viewer/viewer-share-export-actions.js', 'utf8');
     assert.ok(helper.includes('export-moment-card'), 'helper module must handle export-moment-card action');
-    assert.ok(viewer.includes('exportMomentImageCard'), 'tree-viewer must have exportMomentImageCard handler');
-    assert.ok(viewer.includes('shareExportHandlers'), 'tree-viewer must delegate to shareExportHandlers');
+    assert.ok(viewer.includes('exportMomentImageCard'), 'bridge must have exportMomentImageCard handler');
+    assert.ok(viewer.includes('shareExportHandlers'), 'bridge must delegate to shareExportHandlers');
     assert.ok(helper.includes('handleShareExportAction'), 'helper must delegate action dispatch');
-    assert.ok(viewer.includes('state.selectedMoment'), 'tree-viewer must read current moment from state for export');
+    assert.ok(viewer.includes('state.selectedMoment'), 'bridge must read current moment from state for export');
 });
 
 test('moment card payload uses public-safe content only', () => {
@@ -418,10 +418,10 @@ test('viewer share export helper preserves action strings', () => {
     assert.ok(content.includes('export-moment-card'), 'must handle export-moment-card');
 });
 
-test('tree-viewer uses viewer-share-export-actions', () => {
-    const viewer = fs.readFileSync('js/viewer/tree-viewer.js', 'utf8');
-    assert.ok(viewer.includes('LoveBudViewerShareExportActions'), 'tree-viewer must reference the new share export helper');
-    assert.ok(viewer.includes('createShareExportHandlers'), 'tree-viewer must create handlers via new helper');
+test('share export bridge uses viewer-share-export-actions', () => {
+    const viewer = fs.readFileSync('js/viewer/viewer-share-export-bridge.js', 'utf8');
+    assert.ok(viewer.includes('LoveBudViewerShareExportActions'), 'bridge must reference the new share export helper');
+    assert.ok(viewer.includes('createShareExportHandlers'), 'bridge must create handlers via new helper');
 });
 
 test('tree route loads share export helper between share actions and tree viewer', () => {
@@ -593,9 +593,9 @@ test('share panel has print-tree button', () => {
     assert.ok(panels.includes('인쇄/PDF 저장'), 'print button must display correct text');
 });
 
-test('tree-viewer wires printTree handler', () => {
-    const viewer = fs.readFileSync('js/viewer/tree-viewer.js', 'utf8');
-    assert.ok(viewer.includes('printTree'), 'tree-viewer must wire printTree handler');
+test('share export bridge wires printTree handler', () => {
+    const viewer = fs.readFileSync('js/viewer/viewer-share-export-bridge.js', 'utf8');
+    assert.ok(viewer.includes('printTree'), 'bridge must wire printTree handler');
 });
 
 test('print CSS has @media print', () => {

@@ -91,25 +91,15 @@
                 documentRef: document
             });
 
-            // Share/export action bridge extracted to viewer-share-export-actions.js
-            var shareExportHandlers = null;
-            (function() {
-                var SE = window.LoveBudViewerShareExportActions;
-                if (!SE) return;
-                var se = SE.createShareExportHandlers({
-                    handler: handler,
-                    showShareStatus: showShareStatus,
-                    get selectedMoment() { return state.selectedMoment; },
-                    get panelBranch() { return state.panelBranch; }
-                });
-                shareExportHandlers = se;
-                handler.copyLink = se.copyLink;
-                handler.nativeShare = se.nativeShare;
-                handler.platformShare = se.platformShare;
-                handler.exportTreeImageCard = se.exportTreeImageCard;
-                handler.exportMomentImageCard = se.exportMomentImageCard;
-                handler.printTree = se.printTree;
-            })();
+            var ShareExportBridge = window.LoveBudViewerShareExportBridge;
+            if (!ShareExportBridge || typeof ShareExportBridge.setupShareExportBridge !== 'function') {
+                throw new Error('Viewer share export bridge helper unavailable');
+            }
+            var shareExportHandlers = ShareExportBridge.setupShareExportBridge({
+                handler: handler,
+                showShareStatus: showShareStatus,
+                state: state
+            });
 
             var ClickActions = window.LoveBudViewerClickActions;
             if (!ClickActions || typeof ClickActions.attachClickActions !== 'function') {
