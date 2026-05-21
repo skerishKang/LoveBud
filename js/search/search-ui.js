@@ -204,15 +204,13 @@
         }
 
         function scheduleScrollLoadCheck() {
-            if (typeof ScrollLoad.scheduleScrollLoadCheckWrapper === 'function') {
-                ScrollLoad.scheduleScrollLoadCheckWrapper(
-                    () => scrollCheckRaf,
-                    (val) => { scrollCheckRaf = val; },
-                    () => { hasUserScrolledTowardFeed = true; },
-                    () => requestController?.requestMore?.() || requestScrollLoadMore(),
-                    window
-                );
-            }
+            ScrollLoad.scheduleScrollLoadCheckWrapper(
+                () => scrollCheckRaf,
+                (val) => { scrollCheckRaf = val; },
+                () => { hasUserScrolledTowardFeed = true; },
+                () => requestController?.requestMore?.() || requestScrollLoadMore(),
+                window
+            );
         }
 
         function markScrollLoadIntent() {
