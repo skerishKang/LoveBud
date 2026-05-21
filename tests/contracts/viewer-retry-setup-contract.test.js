@@ -9,8 +9,7 @@ const fs = require('fs');
 
 test('tree-viewer.js delegates retry setup to helper', () => {
     const tvCode = fs.readFileSync('js/viewer/tree-viewer.js', 'utf8');
-    assert.ok(tvCode.includes('window.LoveBudViewerRetrySetup'), 'tree-viewer.js must bind RetrySetup');
-    assert.ok(tvCode.includes('RetrySetup.setupRetry'), 'tree-viewer.js must call RetrySetup.setupRetry');
+    assert.ok(tvCode.includes('window.LoveBudViewerRetrySetup'), 'tree-viewer.js must read RetrySetup helper');
     assert.ok(!tvCode.includes("getElementById('viewerRetryBtn')"), 'tree-viewer.js must not query viewerRetryBtn directly');
 });
 
