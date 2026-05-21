@@ -115,11 +115,13 @@ test('tree viewer route loads helper scripts in correct order before active entr
     const clickActionsIndex = findScriptIndex(scripts, 'js/viewer/viewer-click-actions.js');
     const handlerFactoryIndex = findScriptIndex(scripts, 'js/viewer/viewer-handler-factory.js');
     const shareExportBridgeIndex = findScriptIndex(scripts, 'js/viewer/viewer-share-export-bridge.js');
+    const initFlowIndex = findScriptIndex(scripts, 'js/viewer/viewer-init-flow.js');
     const treeViewerIndex = findScriptIndex(scripts, 'js/viewer/tree-viewer.js');
 
     assert.notEqual(clickActionsIndex, -1, 'pages/tree.html must load js/viewer/viewer-click-actions.js');
     assert.notEqual(handlerFactoryIndex, -1, 'pages/tree.html must load js/viewer/viewer-handler-factory.js');
     assert.notEqual(shareExportBridgeIndex, -1, 'pages/tree.html must load js/viewer/viewer-share-export-bridge.js');
+    assert.notEqual(initFlowIndex, -1, 'pages/tree.html must load js/viewer/viewer-init-flow.js');
     
     assert.ok(
         shareExportIndex < clickActionsIndex,
@@ -134,8 +136,12 @@ test('tree viewer route loads helper scripts in correct order before active entr
         'viewer-share-export-bridge.js must load after viewer-handler-factory.js'
     );
     assert.ok(
-        shareExportBridgeIndex < treeViewerIndex,
-        'viewer-share-export-bridge.js must load before js/viewer/tree-viewer.js'
+        shareExportBridgeIndex < initFlowIndex,
+        'viewer-init-flow.js must load after viewer-share-export-bridge.js'
+    );
+    assert.ok(
+        initFlowIndex < treeViewerIndex,
+        'viewer-init-flow.js must load before js/viewer/tree-viewer.js'
     );
 });
 

@@ -7,13 +7,12 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 
-test('tree-viewer.js delegates test hooks export to helper', () => {
-    const tvCode = fs.readFileSync('js/viewer/tree-viewer.js', 'utf8');
-    assert.ok(tvCode.includes('window.LoveBudViewerTestHooks'), 'tree-viewer.js must bind TestHooks helper');
-    assert.ok(tvCode.includes('window.LoveBudViewerTestHooks.exportTestHooks'), 'tree-viewer.js must call exportTestHooks');
-    assert.ok(tvCode.includes('DT: DT'), 'tree-viewer.js must pass DT to test hooks helper');
-    assert.ok(tvCode.includes('Route: Route'), 'tree-viewer.js must pass Route to test hooks helper');
-    assert.ok(tvCode.includes('ShellRender: ShellRender'), 'tree-viewer.js must pass ShellRender to test hooks helper');
+test('viewer-init-flow.js delegates test hooks export to helper', () => {
+    const tvCode = fs.readFileSync('js/viewer/viewer-init-flow.js', 'utf8');
+    assert.ok(tvCode.includes('TestHooks.exportTestHooks'), 'viewer-init-flow.js must call exportTestHooks');
+    assert.ok(tvCode.includes('DT: DT'), 'viewer-init-flow.js must pass DT to test hooks helper');
+    assert.ok(tvCode.includes('Route: Route'), 'viewer-init-flow.js must pass Route to test hooks helper');
+    assert.ok(tvCode.includes('ShellRender: ShellRender'), 'viewer-init-flow.js must pass ShellRender to test hooks helper');
 });
 
 test('viewer-test-hooks.js correctly implements test hooks contract', () => {

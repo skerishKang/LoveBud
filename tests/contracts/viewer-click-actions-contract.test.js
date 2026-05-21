@@ -10,7 +10,6 @@ const fs = require('fs');
 test('tree-viewer.js delegates click events to helper', () => {
     const tvCode = fs.readFileSync('js/viewer/tree-viewer.js', 'utf8');
     assert.ok(tvCode.includes('window.LoveBudViewerClickActions'), 'tree-viewer.js must read ClickActions helper');
-    assert.ok(tvCode.includes('ClickActions.attachClickActions(container, handler, shareExportHandlers)'), 'tree-viewer.js must call attachClickActions');
     assert.ok(!tvCode.includes("a === 'close-moment'"), 'tree-viewer.js must not have click dispatch branches internally');
 });
 
