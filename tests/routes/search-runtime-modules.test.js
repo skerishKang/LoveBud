@@ -500,3 +500,40 @@ test('search UI requestMore actual-use count remains at 1 call site', () => {
   const count = (uiModule.match(/\brequestMore\b/g) || []).length;
   assert.equal(count, 2, 'requestMore must remain at exactly 2 references');
 });
+
+// --- Context use tests ---
+
+// createScrollLoadHelperContext is called in runtime path
+test('search UI creates helper wiring context in runtime path', () => {
+  const uiModule = read('js/search/search-ui.js');
+  // context builder is called inside requestScrollLoadMore
+  assert.match(uiModule, /const scrollLoadHelperContext = createScrollLoadHelperContext\(state,\s*callbacks\)/);
+  assert.match(uiModule, /const flags = scrollLoadHelperContext\.flags/);
+});
+
+// Local requestScrollLoadMore is still owned by search-ui.js (not delegated)
+test('search UI local requestScrollLoadMore remains in search-ui.js', () => {
+  const uiModule = read('js/search/search-ui.js');
+  assert.match(uiModule, /async function requestScrollLoadMore\(\)/);
+  assert.doesNotMatch(uiModule, /ScrollLoad\.requestScrollLoadMore/);
+});
+
+// callbacks.loadMorePublicTrees({ source: 'scroll' }) is still in search-ui.js
+test('search UI callbacks.loadMorePublicTrees remains in search-ui.js', () => {
+  const uiModule = read('js/search/search-ui.js');
+  assert.match(uiModule, /callbacks\.loadMorePublicTrees\(\{ source: 'scroll' \}\)/);
+});
+
+// requestMore actual-use count is unchanged
+test('search UI requestMore actual-use count remains at 1 call site', () => {
+  const uiModule = read('js/search/search-ui.js');
+  // requestMore appears exactly twice: creation + call site
+  const count = (uiModule.match(/\brequestMore\b/g) || []).length;
+  assert.equal(count, 2, 'requestMore must remain at exactly 2 references');
+});
+
+// search-scroll-load.js is unchanged
+test('search scroll load helper is not modified', () => {
+  const helperModule = read('js/search/search-scroll-load.js');
+  assert.ok(helperModule, 'search-scroll-load.js must still exist');
+});
