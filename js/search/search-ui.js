@@ -182,6 +182,9 @@
             const scrollLoadHelperContext = createScrollLoadHelperContext(state, callbacks);
             const flags = scrollLoadHelperContext.flags;
 
+            // Stabilize contract: flags.isQueued mirrors local queue state
+            flags.isQueued = isScrollLoadQueued;
+
             isScrollLoadQueued = true;
             syncScrollLoadSentinel();
             try {
