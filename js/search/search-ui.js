@@ -179,21 +179,22 @@
             // Create helper wiring context for future migration readiness
             const scrollLoadHelperContext = createScrollLoadHelperContext(state, callbacks);
             const flags = scrollLoadHelperContext.flags;
+            const requestCallbacks = scrollLoadHelperContext.requestCallbacks;
 
             // Stabilize contract: flags.isQueued mirrors local queue state
             flags.isQueued = isScrollLoadQueued;
 
-            if (!hasUserScrolledTowardFeed || !isSentinelNearViewport() || !canLoadMorePublicTrees(flags)) return;
+            if (!hasUserScrolledTowardFeed || !requestCallbacks.isNearViewport() || !requestCallbacks.canLoadMore(flags)) return;
 
             isScrollLoadQueued = true;
             flags.isQueued = isScrollLoadQueued;
-            syncScrollLoadSentinel();
+            requestCallbacks.syncSentinel();
             try {
-                await callbacks.loadMorePublicTrees({ source: 'scroll' });
+                await requestCallbacks.loadMore();
             } finally {
                 isScrollLoadQueued = false;
                 flags.isQueued = isScrollLoadQueued;
-                syncScrollLoadSentinel();
+                requestCallbacks.syncSentinel();
             }
         }
 
@@ -204,6 +205,12 @@
                 callbacks,
                 flags: {
                     isQueued: isScrollLoadQueued
+                },
+                requestCallbacks: {
+                    canLoadMore: canLoadMorePublicTrees,
+                    isNearViewport: isSentinelNearViewport,
+                    syncSentinel: syncScrollLoadSentinel,
+                    loadMore: () => callbacks.loadMorePublicTrees({ source: 'scroll' })
                 }
             };
         }
