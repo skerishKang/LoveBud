@@ -92,7 +92,10 @@ test('[INVENTORY] REMOVED: requestScrollLoadMore no local requestCallbacks fallb
   // Only remains: flags.isQueued = isScrollLoadQueued, isScrollLoadQueued = Boolean(flags.isQueued)
   assert.match(body, /isScrollLoadQueued = Boolean\(flags\.isQueued\)/);
   assert.match(body, /flags\.isQueued = isScrollLoadQueued/);
-  assert.match(body, /return false;\s*$/m);
+  // Direct delegation: no return false fallback, no typeof guard
+  assert.match(body, /return didRequest;/);
+  assert.doesNotMatch(body, /return false/);
+  assert.doesNotMatch(body, /typeof ScrollLoad\.requestScrollLoadMoreWithContext/);
 });
 
 test('[INVENTORY] REMOVED: no legacy internal request path in search-scroll-load.js (PR #1417)', () => {
@@ -110,14 +113,18 @@ test('[INVENTORY] REMOVED: no legacy internal request path in search-scroll-load
 // FOLLOW-UP issue, NOT immediate removal.
 // ────────────────────────────────────────────────────────────
 
-test('[INVENTORY] REMAINING (NEXT CANDIDATE): requestScrollLoadMore typeof guard for adapter', () => {
+test('[INVENTORY] REMOVED: requestScrollLoadMore no typeof guard or return false fallback (current PR)', () => {
   const uiModule = read('js/search/search-ui.js');
   const body = extractFunctionBody(uiModule, 'requestScrollLoadMore');
 
-  // Last typeof guard inside requestScrollLoadMore
-  assert.match(body, /typeof ScrollLoad\.requestScrollLoadMoreWithContext === 'function'/);
-  // Falls back to return false (theoretical, never reached at runtime)
-  assert.match(body, /return false/);
+  assert.match(body, /await ScrollLoad\.requestScrollLoadMoreWithContext\(scrollLoadHelperContext\)/);
+  assert.match(body, /isScrollLoadQueued = Boolean\(flags\.isQueued\)/);
+  assert.match(body, /return didRequest;/);
+  assert.doesNotMatch(body, /typeof ScrollLoad\.requestScrollLoadMoreWithContext === 'function'/);
+  assert.doesNotMatch(body, /return false/);
+  // Context creation and flags sync still preserved
+  assert.match(body, /const scrollLoadHelperContext = createScrollLoadHelperContext\(state,\s*callbacks\)/);
+  assert.match(body, /flags\.isQueued = isScrollLoadQueued/);
 });
 
 test('[INVENTORY] REMOVED: scheduleScrollLoadCheck no typeof guard (current PR)', () => {

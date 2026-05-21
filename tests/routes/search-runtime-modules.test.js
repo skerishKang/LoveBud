@@ -367,10 +367,9 @@ test('search UI requestScrollLoadMore delegates fetch, queue, sentinel to helper
   assert.match(uiModule, /isScrollLoadQueued = Boolean\(flags\.isQueued\)/);
   // Returns adapter result
   assert.match(uiModule, /return didRequest/);
-  // Falls back to false when adapter unavailable
-  assert.match(uiModule, /return false;\s*\}\s*$/m);
-  // Does NOT call local fallback operations inside requestScrollLoadMore
-  assert.doesNotMatch(uiModule, /async function requestScrollLoadMore[\s\S]*?try \{/);
+  // Direct delegation without typeof guard or fallback
+  assert.doesNotMatch(uiModule, /typeof ScrollLoad\.requestScrollLoadMoreWithContext/);
+  assert.doesNotMatch(uiModule, /async function requestScrollLoadMore[\s\S]*?return false/);
 });
 
 test('search UI requestController.requestMore has exactly one actual-use call site', () => {
@@ -848,8 +847,9 @@ test('search UI routes through requestScrollLoadMoreWithContext', () => {
   assert.match(uiModule, /ScrollLoad\.requestScrollLoadMoreWithContext\(scrollLoadHelperContext\)/);
   // Returns adapter result
   assert.match(uiModule, /return didRequest;/);
-  // Falls back to false
-  assert.match(uiModule, /return false/);
+  // No fallback — always delegates to helper
+  assert.doesNotMatch(uiModule, /typeof ScrollLoad\.requestScrollLoadMoreWithContext/);
+  assert.doesNotMatch(uiModule, /async function requestScrollLoadMore[\s\S]*?return false/);
   // Local isScrollLoadQueued synced after adapter call
   assert.match(uiModule, /isScrollLoadQueued = Boolean\(flags\.isQueued\)/);
 });
