@@ -477,3 +477,26 @@ test('search scroll load helper requestScrollLoadMore is not reached from main r
   // Helper's own scheduleScrollLoadCheck calls requestScrollLoadMore with closure callbacks (dead code path)
   assert.match(helperModule, /scheduleScrollLoadCheck\(state\)[\s\S]*?requestScrollLoadMore\(state,\s*callbacks,\s*\{\}\)/);
 });
+
+// --- Wiring preflight tests ---
+
+// Context builder exists and has correct signature
+test('search UI wiring context builder exists', () => {
+  const uiModule = read('js/search/search-ui.js');
+  assert.match(uiModule, /function createScrollLoadHelperContext\(state,\s*callbacks\)/);
+  assert.match(uiModule, /return \{[\s\S]*?state,[\s\S]*?callbacks,[\s\S]*?flags:[\s\S]*?isQueued/);
+});
+
+// Local requestScrollLoadMore is not replaced by helper
+test('search UI does not delegate requestScrollLoadMore to helper', () => {
+  const uiModule = read('js/search/search-ui.js');
+  assert.doesNotMatch(uiModule, /ScrollLoad\.requestScrollLoadMore/);
+});
+
+// requestMore actual-use count remains at 1 call site
+test('search UI requestMore actual-use count remains at 1 call site', () => {
+  const uiModule = read('js/search/search-ui.js');
+  // requestMore appears exactly twice: creation + call site
+  const count = (uiModule.match(/\brequestMore\b/g) || []).length;
+  assert.equal(count, 2, 'requestMore must remain at exactly 2 references');
+});
