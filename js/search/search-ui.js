@@ -186,11 +186,13 @@
             flags.isQueued = isScrollLoadQueued;
 
             isScrollLoadQueued = true;
+            flags.isQueued = isScrollLoadQueued;
             syncScrollLoadSentinel();
             try {
                 await callbacks.loadMorePublicTrees({ source: 'scroll' });
             } finally {
                 isScrollLoadQueued = false;
+                flags.isQueued = isScrollLoadQueued;
                 syncScrollLoadSentinel();
             }
         }
