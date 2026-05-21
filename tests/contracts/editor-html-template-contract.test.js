@@ -13,8 +13,7 @@ test('editor.html keeps active editor page shell contracts', () => {
     assert.ok(html.includes('class="canvas-svg"'), 'must have canvas-svg');
     
     // 2. Toolbar & Floating UI
-    assert.ok(html.includes('id="editorFloatingToolbar"'), 'must have editorFloatingToolbar');
-    assert.ok(html.includes('id="ftbDropdown"'), 'must have ftbDropdown');
+    assert.ok(html.includes('id="editorFloatingToolbarTemplateMount"'), 'must have editorFloatingToolbarTemplateMount');
     
     // 3. Modals & Forms
     assert.ok(html.includes('id="addMemoryFormTemplateMount"'), 'must have addMemoryFormTemplateMount');
