@@ -19,6 +19,10 @@ function getTreeHtmlScriptSrcs() {
     return [...html.matchAll(/<script\s+src="([^"]+)"/g)].map((match) => match[1]);
 }
 
+function findScriptIndex(scripts, needle) {
+    return scripts.findIndex((src) => src.includes(needle));
+}
+
 test('tree viewer route page exists', () => {
     assert.ok(fs.existsSync('pages/tree.html'), 'pages/tree.html must exist');
 });
@@ -48,6 +52,47 @@ test('public-tree-viewer.js remains legacy/static and is not loaded by tree.html
         false,
         'pages/tree.html must not load legacy/static js/viewer/public-tree-viewer.js'
     );
+});
+
+test('tree viewer route loads share status UI before active tree-viewer entry', () => {
+    const scripts = getTreeHtmlScriptSrcs();
+    const shareExportIndex = findScriptIndex(scripts, 'js/viewer/viewer-share-export-actions.js');
+    const shareStatusIndex = findScriptIndex(scripts, 'js/viewer/viewer-share-status-ui.js');
+    const treeViewerIndex = findScriptIndex(scripts, 'js/viewer/tree-viewer.js');
+
+    assert.notEqual(shareExportIndex, -1, 'pages/tree.html must load js/viewer/viewer-share-export-actions.js');
+    assert.notEqual(shareStatusIndex, -1, 'pages/tree.html must load js/viewer/viewer-share-status-ui.js');
+    assert.notEqual(treeViewerIndex, -1, 'pages/tree.html must load js/viewer/tree-viewer.js');
+    assert.ok(
+        shareStatusIndex > shareExportIndex,
+        'viewer-share-status-ui.js should load after viewer-share-export-actions.js'
+    );
+    assert.ok(
+        shareStatusIndex < treeViewerIndex,
+        'viewer-share-status-ui.js must load before js/viewer/tree-viewer.js'
+    );
+});
+
+test('viewer share status UI helper preserves status message behavior contract', () => {
+    const src = fs.readFileSync('js/viewer/viewer-share-status-ui.js', 'utf8');
+
+    assert.match(src, /window\.LoveBudViewerShareStatusUI/, 'helper must export LoveBudViewerShareStatusUI namespace');
+    assert.match(src, /showShareStatus:\s*showShareStatus/, 'helper must export showShareStatus');
+    assert.match(src, /getElementById\(['"]vvShareStatus['"]\)/, 'helper must target #vvShareStatus');
+    assert.ok(src.includes("'vv-share-status ' + (result.success ? 'is-success' : 'is-error')"),
+        'helper must preserve success/error class assignment');
+    assert.match(src, /clearTimeout\(statusEl\._hideTimer\)/, 'helper must clear the previous hide timer');
+    assert.match(src, /statusEl\._hideTimer\s*=\s*setTimeout/, 'helper must store the hide timer');
+    assert.match(src, /},\s*3000\)/, 'helper must reset after 3000ms');
+});
+
+test('tree-viewer.js delegates share status UI instead of owning DOM status updates', () => {
+    const src = fs.readFileSync('js/viewer/tree-viewer.js', 'utf8');
+
+    assert.match(src, /window\.LoveBudViewerShareStatusUI/, 'tree-viewer.js must read the share status UI helper');
+    assert.doesNotMatch(src, /getElementById\(['"]vvShareStatus['"]\)/,
+        'tree-viewer.js must not directly query #vvShareStatus');
+    assert.doesNotMatch(src, /_hideTimer/, 'tree-viewer.js must not own the share status hide timer');
 });
 
 test('tree viewer route does not load editor entry script', () => {
