@@ -106,15 +106,17 @@ test('scroll load helper patcher wraps LoveBudSearchUI.createSearchUI at load ti
 
 // --- 3. requestScrollLoadMore() adapter priority ---
 
-test('requestScrollLoadMore uses helper adapter with requestScrollLoadMoreWithContext first', () => {
+test('requestScrollLoadMore delegates directly to helper adapter without guard', () => {
   const uiModule = read('js/search/search-ui.js');
 
-  assert.match(uiModule,
-    /typeof ScrollLoad\.requestScrollLoadMoreWithContext\s*===\s*['"]function['"]/);
   assert.match(uiModule,
     /ScrollLoad\.requestScrollLoadMoreWithContext\(scrollLoadHelperContext\)/);
   assert.match(uiModule,
     /return didRequest;/);
+  assert.doesNotMatch(uiModule,
+    /typeof ScrollLoad\.requestScrollLoadMoreWithContext\s*===\s*['"]function['"]/);
+  assert.doesNotMatch(uiModule,
+    /return false[\s\S]*?}\s*}\s*\)/);
 });
 
 // --- 4. Local fallback path removal contract ---
@@ -127,7 +129,8 @@ test('requestScrollLoadMore executable local fallback path is removed', () => {
   assert.doesNotMatch(body, /if \(!hasUserScrolledTowardFeed \|\| !requestCallbacks\.isNearViewport\(\) \|\| !requestCallbacks\.canLoadMore\(flags\)\) return;/);
   assert.doesNotMatch(body, /await requestCallbacks\.loadMore\(\)/);
   assert.doesNotMatch(body, /requestCallbacks\.syncSentinel\(\)/);
-  assert.match(body, /return false;/);
+  assert.doesNotMatch(body, /return false/);
+  assert.doesNotMatch(body, /typeof ScrollLoad\.requestScrollLoadMoreWithContext/);
 });
 
 test('requestScrollLoadMore helper adapter path returns on success', () => {
