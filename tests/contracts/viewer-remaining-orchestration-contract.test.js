@@ -23,10 +23,13 @@ test('tree-viewer.js keeps only orchestration-level public viewer flow', () => {
     assert.ok(tvCode.includes('window.LoveBudViewerShareExportActions'), 'must reference ShareExportActions');
     assert.ok(tvCode.includes('window.LoveBudViewerState'), 'must reference ViewerState');
 
+    assert.ok(tvCode.includes('window.LoveBudViewerHandlerFactory'), 'must reference HandlerFactory');
+
     // Ensure extracted details are gone
     assert.ok(!tvCode.includes("a === 'close-moment'"), 'must not have manual close-moment string');
     assert.ok(!tvCode.includes("container.addEventListener('click'"), 'must not manually bind click actions block');
     assert.ok(!tvCode.includes("window.LoveBudTreeViewerTestHooks = {"), 'must not manually construct test hooks object');
+    assert.ok(!tvCode.includes("state.layoutMode = state.layoutMode ==="), 'must not manually construct handler object');
 });
 
 test('tree-viewer.js still owns init and refresh orchestration pending next slice', () => {
@@ -43,8 +46,7 @@ test('tree-viewer.js still owns init and refresh orchestration pending next slic
 
 test('remaining public viewer split candidates are explicit', () => {
     // 1. init/render flow helper (initViewer, refresh)
-    // 2. handler factory helper (creating the `handler` object)
-    // 3. share export bridge setup (setup bridge between handler and share modules)
-    // NOTE: viewer-state.js and viewer-data-loader.js are already extracted and NOT candidates.
+    // 2. share export bridge setup (setup bridge between handler and share modules)
+    // NOTE: viewer-state.js, viewer-data-loader.js, and viewer-handler-factory.js are already extracted and NOT candidates.
     assert.ok(true, 'The candidates are documented in the test comments');
 });
