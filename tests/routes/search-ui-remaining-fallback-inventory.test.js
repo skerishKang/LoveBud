@@ -120,11 +120,13 @@ test('[INVENTORY] REMAINING (NEXT CANDIDATE): requestScrollLoadMore typeof guard
   assert.match(body, /return false/);
 });
 
-test('[INVENTORY] REMAINING (NEXT CANDIDATE): scheduleScrollLoadCheck typeof guard', () => {
+test('[INVENTORY] REMOVED: scheduleScrollLoadCheck no typeof guard (current PR)', () => {
   const uiModule = read('js/search/search-ui.js');
   const body = extractFunctionBody(uiModule, 'scheduleScrollLoadCheck');
 
-  assert.match(body, /typeof ScrollLoad\.scheduleScrollLoadCheckWrapper === 'function'/);
+  assert.match(body, /ScrollLoad\.scheduleScrollLoadCheckWrapper\(/);
+  assert.doesNotMatch(body, /typeof ScrollLoad\.scheduleScrollLoadCheckWrapper === 'function'/);
+  assert.doesNotMatch(body, /typeof ScrollLoad\.scheduleScrollLoadCheckWrapper !== 'undefined'/);
 });
 
 test('[INVENTORY] REMAINING (NEXT CANDIDATE): requestController typeof guard', () => {
