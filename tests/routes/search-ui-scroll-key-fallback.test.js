@@ -39,3 +39,19 @@ test('search UI scroll key fallback returns early when helper unavailable', () =
   assert.ok(uiModule.includes("typeof ScrollLoad.isScrollIntentKey !== 'function'"));
   assert.ok(uiModule.includes('return;'));
 });
+
+test('search UI markScrollLoadIntent has no scheduleScrollLoadCheck fallback', () => {
+  const uiModule = read('js/search/search-ui.js');
+
+  // markScrollLoadIntent still exists
+  assert.ok(uiModule.includes('function markScrollLoadIntent'));
+  // requestController.scheduleCheck() is still called
+  assert.ok(uiModule.includes('requestController.scheduleCheck()'));
+  // scheduleScrollLoadCheck() function still referenced elsewhere (in ensureScrollLoadSentinel)
+  assert.ok(uiModule.includes('scheduleScrollLoadCheck'));
+  // The else branch calling scheduleScrollLoadCheck() inside markScrollLoadIntent is removed
+  assert.doesNotMatch(uiModule, /else\s*\{\s*scheduleScrollLoadCheck\(\)/);
+  // requestMore count preserved
+  const requestMoreCount = (uiModule.match(/\brequestMore\b/g) || []).length;
+  assert.equal(requestMoreCount, 2, 'requestMore must remain at exactly 2 references');
+});
