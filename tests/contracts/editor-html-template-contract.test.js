@@ -20,6 +20,7 @@ test('editor.html keeps active editor page shell contracts', () => {
     
     // 4. Detail Panel
     assert.ok(html.includes('id="detailPanel"'), 'must have detailPanel');
+    assert.ok(html.includes('id="editorDetailEmptyStateTemplateMount"'), 'must have editorDetailEmptyStateTemplateMount');
     
     // 5. Mobile UI
     assert.ok(html.includes('id="mobileBottomBar"'), 'must have mobileBottomBar');
@@ -92,6 +93,8 @@ test('editor.html exposes stable static template extraction candidates', () => {
     assert.ok(html.includes('id="addMemoryFormTemplateMount"'), 'Candidate: Add Memory Form Modal is extracted to mount');
     // 6. Sidebar sections (`<aside class="sidebar">`) - EXTRACTED (see editor-sidebar-template-contract.test.js)
     assert.ok(html.includes('id="editorSidebarTemplateMount"'), 'Candidate: Sidebar is extracted to mount');
+    // 9. Detail Empty State (`<div id="detailEmptyState">`) - EXTRACTED (see editor-detail-empty-state-template-contract.test.js)
+    assert.ok(html.includes('id="editorDetailEmptyStateTemplateMount"'), 'must have editorDetailEmptyStateTemplateMount');
     assert.ok(html.includes('id="detailViewMode"'), 'Candidate: Detail Panel View Mode');
     assert.ok(html.includes('id="detailEditMode"'), 'Candidate: Detail Panel Edit Mode');
     
