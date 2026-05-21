@@ -136,10 +136,12 @@ test('[INVENTORY] REMOVED: scheduleScrollLoadCheck no typeof guard (current PR)'
   assert.doesNotMatch(body, /typeof ScrollLoad\.scheduleScrollLoadCheckWrapper !== 'undefined'/);
 });
 
-test('[INVENTORY] REMAINING (NEXT CANDIDATE): requestController typeof guard', () => {
+test('[INVENTORY] REMOVED: requestController is created directly without typeof/null fallback', () => {
   const uiModule = read('js/search/search-ui.js');
 
-  assert.match(uiModule, /typeof ScrollLoad\.createScrollLoadRequestController === 'function'/);
+  assert.match(uiModule, /const requestController = ScrollLoad\.createScrollLoadRequestController\(\{/);
+  assert.doesNotMatch(uiModule, /typeof ScrollLoad\.createScrollLoadRequestController === 'function'/);
+  assert.doesNotMatch(uiModule, /const requestController =[\s\S]*?:\s*null;/);
 });
 
 // ────────────────────────────────────────────────────────────
