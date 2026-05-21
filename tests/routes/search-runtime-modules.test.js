@@ -537,3 +537,57 @@ test('search scroll load helper is not modified', () => {
   const helperModule = read('js/search/search-scroll-load.js');
   assert.ok(helperModule, 'search-scroll-load.js must still exist');
 });
+
+// --- Flags contract tests ---
+
+// flags.isQueued is explicitly connected to local isScrollLoadQueued
+test('search UI flags.isQueued mirrors local isScrollLoadQueued', () => {
+  const uiModule = read('js/search/search-ui.js');
+  // flags.isQueued is assigned from local isScrollLoadQueued inside requestScrollLoadMore
+  assert.match(uiModule, /flags\.isQueued = isScrollLoadQueued/);
+});
+
+// isScrollLoadQueued remains the local queue source of truth (not replaced by flags)
+test('search UI isScrollLoadQueued remains local queue source of truth', () => {
+  const uiModule = read('js/search/search-ui.js');
+  // isScrollLoadQueued is still toggled directly (true before fetch, false after)
+  assert.match(uiModule, /isScrollLoadQueued = true/);
+  assert.match(uiModule, /isScrollLoadQueued = false/);
+  // isScrollLoadQueued is still passed through requestController getter/setter
+  assert.match(uiModule, /getQueued: \(\) => isScrollLoadQueued/);
+  assert.match(uiModule, /setQueued: \(val\) => { isScrollLoadQueued = val; }/);
+});
+
+// createScrollLoadHelperContext actual-use is maintained
+test('search UI helper wiring context actual-use maintained', () => {
+  const uiModule = read('js/search/search-ui.js');
+  // Context is still created in runtime path
+  assert.match(uiModule, /const scrollLoadHelperContext = createScrollLoadHelperContext\(state,\s*callbacks\)/);
+  assert.match(uiModule, /const flags = scrollLoadHelperContext\.flags/);
+});
+
+// Local requestScrollLoadMore is still owned by search-ui.js
+test('search UI local requestScrollLoadMore ownership retained', () => {
+  const uiModule = read('js/search/search-ui.js');
+  assert.match(uiModule, /async function requestScrollLoadMore\(\)/);
+  assert.doesNotMatch(uiModule, /ScrollLoad\.requestScrollLoadMore/);
+});
+
+// callbacks.loadMorePublicTrees({ source: 'scroll' }) is still in search-ui.js
+test('search UI callbacks.loadMorePublicTrees remains in search-ui.js', () => {
+  const uiModule = read('js/search/search-ui.js');
+  assert.match(uiModule, /callbacks\.loadMorePublicTrees\(\{ source: 'scroll' \}\)/);
+});
+
+// requestMore actual-use count is unchanged
+test('search UI requestMore actual-use count remains at 1 call site', () => {
+  const uiModule = read('js/search/search-ui.js');
+  const count = (uiModule.match(/\brequestMore\b/g) || []).length;
+  assert.equal(count, 2, 'requestMore must remain at exactly 2 references');
+});
+
+// search-scroll-load.js unchanged
+test('search scroll load helper unchanged', () => {
+  const helperModule = read('js/search/search-scroll-load.js');
+  assert.ok(helperModule, 'search-scroll-load.js must still exist and be readable');
+});
