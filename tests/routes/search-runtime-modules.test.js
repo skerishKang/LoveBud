@@ -661,3 +661,72 @@ test('search scroll load helper unchanged', () => {
   const helperModule = read('js/search/search-scroll-load.js');
   assert.ok(helperModule, 'search-scroll-load.js must still exist and be readable');
 });
+
+// --- Preflight context contract tests ---
+
+// createScrollLoadHelperContext is created before the guard check
+test('search UI creates helper context before guard check', () => {
+  const uiModule = read('js/search/search-ui.js');
+  // The context/flags creation and guard should be in order: create → guard
+  assert.match(uiModule,
+    /const scrollLoadHelperContext = createScrollLoadHelperContext\(state,\s*callbacks\);\s+const flags = scrollLoadHelperContext\.flags;[\s\S]*?if \(!hasUserScrolledTowardFeed/
+  );
+});
+
+// canLoadMorePublicTrees receives the same flags object
+test('search UI passes flags to canLoadMorePublicTrees in guard', () => {
+  const uiModule = read('js/search/search-ui.js');
+  assert.match(uiModule, /canLoadMorePublicTrees\(flags\)/);
+});
+
+// canLoadMorePublicTrees accepts optional flags parameter
+test('search UI canLoadMorePublicTrees accepts flags parameter', () => {
+  const uiModule = read('js/search/search-ui.js');
+  assert.match(uiModule, /function canLoadMorePublicTrees\(flags\)/);
+  // Falls back to inline object when flags is not provided
+  assert.match(uiModule, /flags \|\| \{\s*isQueued: isScrollLoadQueued\s*\}/);
+});
+
+// isScrollLoadQueued remains local queue source of truth
+test('search UI isScrollLoadQueued remains local queue source of truth', () => {
+  const uiModule = read('js/search/search-ui.js');
+  assert.match(uiModule, /isScrollLoadQueued = true/);
+  assert.match(uiModule, /isScrollLoadQueued = false/);
+  assert.match(uiModule, /getQueued: \(\) => isScrollLoadQueued/);
+  assert.match(uiModule, /setQueued: \(val\) => { isScrollLoadQueued = val; }/);
+});
+
+// flags.isQueued is NOT used as guard condition directly
+test('search UI flags.isQueued not used as direct guard condition', () => {
+  const uiModule = read('js/search/search-ui.js');
+  assert.doesNotMatch(uiModule, /\bif\s*\([^)]*flags\.isQueued/);
+  assert.doesNotMatch(uiModule, /!\s*flags\.isQueued/);
+  assert.doesNotMatch(uiModule, /\|\|\s*flags\.isQueued/);
+  assert.doesNotMatch(uiModule, /&&\s*flags\.isQueued/);
+});
+
+// Local requestScrollLoadMore ownership retained
+test('search UI local requestScrollLoadMore ownership retained', () => {
+  const uiModule = read('js/search/search-ui.js');
+  assert.match(uiModule, /async function requestScrollLoadMore\(\)/);
+  assert.doesNotMatch(uiModule, /ScrollLoad\.requestScrollLoadMore/);
+});
+
+// callbacks.loadMorePublicTrees remains in search-ui.js
+test('search UI callbacks.loadMorePublicTrees remains in search-ui.js', () => {
+  const uiModule = read('js/search/search-ui.js');
+  assert.match(uiModule, /callbacks\.loadMorePublicTrees\(\{ source: 'scroll' \}\)/);
+});
+
+// requestMore actual-use count remains at 1 call site
+test('search UI requestMore actual-use count remains at 1 call site', () => {
+  const uiModule = read('js/search/search-ui.js');
+  const count = (uiModule.match(/\brequestMore\b/g) || []).length;
+  assert.equal(count, 2, 'requestMore must remain at exactly 2 references');
+});
+
+// search-scroll-load.js unchanged
+test('search scroll load helper unchanged', () => {
+  const helperModule = read('js/search/search-scroll-load.js');
+  assert.ok(helperModule, 'search-scroll-load.js must still exist and be readable');
+});
