@@ -319,21 +319,20 @@ test('search UI scroll load requestMore returns true to prevent fallback double-
   assert.match(uiModule, /requestMore:\s*\(\)\s*=>\s*\{\s*requestScrollLoadMore\(\);\s*return true;\s*\}/);
 });
 
-test('search UI scroll load requestController fallback path uses optional chaining', () => {
+test('search UI scroll load requestController requestMore call site stays narrow', () => {
   const uiModule = read('js/search/search-ui.js');
 
   // Contract: requestController?.requestMore?.() || requestScrollLoadMore()
-  // When requestController is null or requestMore is missing, fallback fires
+  // The optional call site is intentionally left unchanged in this cleanup.
   assert.match(uiModule, /requestController\?\.requestMore\?\.\(\)\s*\|\|\s*requestScrollLoadMore\(\)/);
 });
 
-test('search UI scroll load requestController is created when createScrollLoadRequestController exists', () => {
+test('search UI scroll load requestController is created directly', () => {
   const uiModule = read('js/search/search-ui.js');
 
-  // requestController is created conditionally
-  assert.match(uiModule, /const requestController = typeof ScrollLoad\.createScrollLoadRequestController === 'function'/);
-  // Falls back to null when factory is missing
-  assert.match(uiModule, /:\s*null;/);
+  assert.match(uiModule, /const requestController = ScrollLoad\.createScrollLoadRequestController\(\{/);
+  assert.doesNotMatch(uiModule, /typeof ScrollLoad\.createScrollLoadRequestController === 'function'/);
+  assert.doesNotMatch(uiModule, /const requestController =[\s\S]*?:\s*null;/);
 });
 
 test('search scroll load createScrollLoadRequestController preserves requestMore contract', () => {
