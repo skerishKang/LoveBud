@@ -46,7 +46,8 @@ test('tree-viewer.js delegates init and refresh orchestration to InitFlow helper
 });
 
 test('remaining public viewer split candidates are explicit', () => {
-    // 1. final audit / smoke guard
+    // 1. final audit / smoke guard done
     // NOTE: viewer-state.js, viewer-data-loader.js, viewer-handler-factory.js, viewer-share-export-bridge.js, and viewer-init-flow.js are already extracted.
+    // NOTE: issue #1282 is pending final closure review.
     assert.ok(true, 'The candidates are documented in the test comments');
 });
