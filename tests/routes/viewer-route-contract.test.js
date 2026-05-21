@@ -109,6 +109,23 @@ test('tree viewer route loads test hooks helper before active tree-viewer entry'
     );
 });
 
+test('tree viewer route loads click actions helper between share-export and active tree-viewer entry', () => {
+    const scripts = getTreeHtmlScriptSrcs();
+    const shareExportIndex = findScriptIndex(scripts, 'js/viewer/viewer-share-export-actions.js');
+    const clickActionsIndex = findScriptIndex(scripts, 'js/viewer/viewer-click-actions.js');
+    const treeViewerIndex = findScriptIndex(scripts, 'js/viewer/tree-viewer.js');
+
+    assert.notEqual(clickActionsIndex, -1, 'pages/tree.html must load js/viewer/viewer-click-actions.js');
+    assert.ok(
+        shareExportIndex < clickActionsIndex,
+        'viewer-click-actions.js must load after viewer-share-export-actions.js'
+    );
+    assert.ok(
+        clickActionsIndex < treeViewerIndex,
+        'viewer-click-actions.js must load before js/viewer/tree-viewer.js'
+    );
+});
+
 test('viewer share status UI helper preserves status message behavior contract', () => {
     const src = fs.readFileSync('js/viewer/viewer-share-status-ui.js', 'utf8');
 
