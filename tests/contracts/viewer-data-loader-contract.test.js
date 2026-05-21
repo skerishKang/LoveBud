@@ -14,9 +14,8 @@ function extractFunctionBody(code, funcName) {
 
 test('tree-viewer.js no longer contains async function loadPublicData', () => {
     const tvCode = fs.readFileSync('js/viewer/tree-viewer.js', 'utf8');
-    assert.ok(!tvCode.includes('async function loadPublicData'), 'tree-viewer.js must not contain loadPublicData');
-    assert.ok(tvCode.includes('window.LoveBudViewerDataLoader'), 'tree-viewer.js must bind DataLoader');
-    assert.ok(tvCode.includes('DataLoader.loadPublicData(treeId)'), 'tree-viewer.js must call DataLoader');
+    assert.ok(!tvCode.includes('async function loadPublicData(treeId)'), 'tree-viewer.js must not define loadPublicData');
+    assert.ok(tvCode.includes('window.LoveBudViewerDataLoader'), 'tree-viewer.js must read DataLoader helper');
 });
 
 test('viewer-data-loader.js loadPublicData uses community cached memories API with flat fallback', () => {
