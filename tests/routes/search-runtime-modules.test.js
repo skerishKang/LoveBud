@@ -913,3 +913,25 @@ test('helper adapter calls setQueued(false) in finally before flags.isQueued = f
   const helperModule = read('js/search/search-scroll-load.js');
   assert.match(helperModule, /setQueued\(false\);\s+flags\.isQueued = false/);
 });
+
+// requestScrollLoadMoreWithContext guards against missing loadMore
+test('helper adapter guard checks requestCallbacks.loadMore is function', () => {
+  const helperModule = read('js/search/search-scroll-load.js');
+  // loadMore guard check is BEFORE setQueued(true) — no queue lock if loadMore missing
+  const guardBeforeSetQueued = helperModule.indexOf("requestCallbacks.loadMore !== 'function'");
+  const setQueuedTruePos = helperModule.indexOf('setQueued(true)');
+  assert.ok(guardBeforeSetQueued >= 0, 'loadMore guard must exist');
+  assert.ok(setQueuedTruePos >= 0, 'setQueued(true) must exist');
+  assert.ok(guardBeforeSetQueued < setQueuedTruePos, 'loadMore guard must appear before setQueued(true)');
+});
+
+// try block directly awaits loadMore (defensive re-check removed, guard ensures it)
+test('helper adapter try block uses direct await requestCallbacks.loadMore()', () => {
+  const helperModule = read('js/search/search-scroll-load.js');
+  // Guard ensures loadMore is a function before queue lock
+  assert.match(helperModule, /typeof requestCallbacks\.loadMore !== 'function'/);
+  // Defensive check inside try is removed — guard does the job
+  assert.doesNotMatch(helperModule, /if \(typeof requestCallbacks\.loadMore === 'function'\)/);
+  // Direct await in try block
+  assert.match(helperModule, /try \{\s+await requestCallbacks\.loadMore\(\)/);
+});

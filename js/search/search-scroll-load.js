@@ -125,6 +125,7 @@
             !getIntent()
             || typeof requestCallbacks.isNearViewport !== 'function'
             || typeof requestCallbacks.canLoadMore !== 'function'
+            || typeof requestCallbacks.loadMore !== 'function'
             || !requestCallbacks.isNearViewport()
             || !requestCallbacks.canLoadMore(flags)
         ) {
@@ -138,9 +139,7 @@
         }
 
         try {
-            if (typeof requestCallbacks.loadMore === 'function') {
-                await requestCallbacks.loadMore();
-            }
+            await requestCallbacks.loadMore();
         } finally {
             setQueued(false);
             flags.isQueued = false;
