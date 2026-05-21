@@ -153,9 +153,9 @@
             syncScrollLoadSentinel();
         }
 
-        function canLoadMorePublicTrees() {
+        function canLoadMorePublicTrees(flags) {
             if (typeof ScrollLoad.canLoadMorePublicTrees === 'function') {
-                return ScrollLoad.canLoadMorePublicTrees(state, callbacks, {
+                return ScrollLoad.canLoadMorePublicTrees(state, callbacks, flags || {
                     isQueued: isScrollLoadQueued
                 });
             }
@@ -176,14 +176,14 @@
         }
 
         async function requestScrollLoadMore() {
-            if (!hasUserScrolledTowardFeed || !isSentinelNearViewport() || !canLoadMorePublicTrees()) return;
-
             // Create helper wiring context for future migration readiness
             const scrollLoadHelperContext = createScrollLoadHelperContext(state, callbacks);
             const flags = scrollLoadHelperContext.flags;
 
             // Stabilize contract: flags.isQueued mirrors local queue state
             flags.isQueued = isScrollLoadQueued;
+
+            if (!hasUserScrolledTowardFeed || !isSentinelNearViewport() || !canLoadMorePublicTrees(flags)) return;
 
             isScrollLoadQueued = true;
             flags.isQueued = isScrollLoadQueued;
