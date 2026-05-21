@@ -97,6 +97,18 @@ test('tree viewer route loads retry setup helper before active tree-viewer entry
     );
 });
 
+test('tree viewer route loads test hooks helper before active tree-viewer entry', () => {
+    const scripts = getTreeHtmlScriptSrcs();
+    const testHooksIndex = findScriptIndex(scripts, 'js/viewer/viewer-test-hooks.js');
+    const treeViewerIndex = findScriptIndex(scripts, 'js/viewer/tree-viewer.js');
+
+    assert.notEqual(testHooksIndex, -1, 'pages/tree.html must load js/viewer/viewer-test-hooks.js');
+    assert.ok(
+        testHooksIndex < treeViewerIndex,
+        'viewer-test-hooks.js must load before js/viewer/tree-viewer.js'
+    );
+});
+
 test('viewer share status UI helper preserves status message behavior contract', () => {
     const src = fs.readFileSync('js/viewer/viewer-share-status-ui.js', 'utf8');
 
