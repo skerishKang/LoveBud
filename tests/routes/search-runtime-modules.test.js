@@ -961,3 +961,27 @@ test('search scroll load legacy request path retained but helper-internal only',
   assert.match(helperModule, /requestScrollLoadMore\(state, callbacks, \{\}\)/);
   assert.match(helperModule, /async function requestScrollLoadMoreWithContext\(context\)/);
 });
+
+// --- Legacy path isolation comments ---
+// Verify that legacy vs current adapter paths are clearly marked with comments
+// so future removal can rely on unambiguous code markers.
+
+test('search scroll load legacy helper-internal request path has isolation comment', () => {
+  const helperModule = read('js/search/search-scroll-load.js');
+  assert.match(helperModule, /Legacy helper-internal request path \(not reached from main runtime\)/);
+  assert.match(helperModule, /Current adapter request path \(used by main runtime via context\)/);
+});
+
+test('search scroll load legacy helper-internal schedule path has isolation comment', () => {
+  const helperModule = read('js/search/search-scroll-load.js');
+  assert.match(helperModule, /Legacy helper-internal schedule path \(not reached from main runtime\)/);
+  assert.match(helperModule, /Current adapter schedule path \(used by main runtime\)/);
+});
+
+test('search scroll load export block disambiguates legacy vs current paths', () => {
+  const helperModule = read('js/search/search-scroll-load.js');
+  assert.match(helperModule, /requestScrollLoadMore: requestScrollLoadMore, \/\/ Legacy helper-internal/);
+  assert.match(helperModule, /requestScrollLoadMoreWithContext: requestScrollLoadMoreWithContext, \/\/ Current adapter path/);
+  assert.match(helperModule, /scheduleScrollLoadCheck: scheduleScrollLoadCheck, \/\/ Legacy helper-internal/);
+  assert.match(helperModule, /scheduleScrollLoadCheckWrapper: scheduleScrollLoadCheckWrapper, \/\/ Current adapter path/);
+});
