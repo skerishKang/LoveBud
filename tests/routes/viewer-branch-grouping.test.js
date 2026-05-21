@@ -43,6 +43,13 @@ function loadHooks() {
         setTimeout,
         clearTimeout
     });
+    var hooksScript = fs.readFileSync('js/viewer/viewer-test-hooks.js', 'utf8');
+    vm.runInNewContext(hooksScript, {
+        window,
+        console,
+        setTimeout,
+        clearTimeout
+    });
     vm.runInNewContext(script, {
         window,
         console,
