@@ -416,9 +416,13 @@ document.addEventListener('DOMContentLoaded', () => {
             openAddMoment: () => showAddMemoryForm()
         });
 
+        // Store instance for global bridge
+        if (canvas) canvas.__editorCanvasInstance = editorCanvas;
+
         const { calcPosition, drawBranch, drawNode, initCanvas } = editorCanvas;
 
         const handleMemoriesUpdated = () => {
+            console.log(`[editor] Memories updated. Initializing canvas...`);
             initCanvas();
             updateSidebarStatus();
             if (currentEditingMemory) {
@@ -544,10 +548,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         initCanvas();
+        console.log(`[editor] Canvas initialized. treeMemories count: ${treeMemories().length}`);
         updateCanvasEmptyGuide();
         const initialSelection = treeMemories().find((memory) => memory.id === selectedNodeId) || createInitialMemory();
         if (initialSelection && !isRootMemory(initialSelection, canonicalRootId)) {
             currentEditingMemory = initialSelection;
+            console.log(`[editor] Initial selection: ${initialSelection.id}`);
+        } else {
+            console.log(`[editor] No initial selection or root selected.`);
         }
 
         const editMemoryBtn = document.getElementById('editMemoryBtn');

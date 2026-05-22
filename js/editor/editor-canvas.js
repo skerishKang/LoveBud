@@ -663,6 +663,9 @@ function createEditorCanvas(deps) {
         try {
             const canonicalRootId = getCanonicalRootId();
             const treeMemories = getTreeMemories();
+            
+            console.log(`[editor-canvas] initCanvas starting. treeId=${treeId}, memories=${treeMemories.length}, layoutMode=${viewportState.layoutMode}`);
+
             if (typeof selectionUtils.getSelectedMemoryId === 'function') {
                 selectedNodeId = selectionUtils.getSelectedMemoryId(document);
             } else {
@@ -672,6 +675,9 @@ function createEditorCanvas(deps) {
             const rootMemory = treeMemories.find((node) => isRootMemory(node, canonicalRootId)) || null;
             const shouldRenderRootNode = drawableMemories.length === 0 && !!rootMemory;
             const hasVisibleNodes = drawableMemories.length > 0 || shouldRenderRootNode;
+
+            console.log(`[editor-canvas] Drawable nodes: ${drawableMemories.length}, Root found: ${!!rootMemory}, hasVisibleNodes: ${hasVisibleNodes}`);
+
             if (hasVisibleNodes && typeof canvasViewport.prepareInitialViewport === 'function') {
                 canvasViewport.prepareInitialViewport({
                     getTreeMemories,
@@ -698,6 +704,7 @@ function createEditorCanvas(deps) {
             updateFocusSelectedBtn();
 
             if (shouldRenderRootNode) {
+                console.log(`[editor-canvas] Drawing root node: ${rootMemory.id}`);
                 drawNode(rootMemory);
             }
 
@@ -721,6 +728,7 @@ function createEditorCanvas(deps) {
                 }
 
                 if (selectedMem) {
+                    console.log(`[editor-canvas] Reapplying selection: ${selectedMem.id}`);
                     reapplySelection(selectedMem.id);
 
                     const selectedEl = document.querySelector(`.memory-node[data-memory-id="${selectedMem.id}"]`);
@@ -740,6 +748,7 @@ function createEditorCanvas(deps) {
             // Bind compact mode toggle
             bindCompactModeToggle();
             viewportState.initialized = true;
+            console.log(`[editor-canvas] initCanvas complete. Nodes rendered: ${document.querySelectorAll('.memory-node').length}`);
         } catch (error) {
             console.error(`[editor-canvas] initCanvas failed to render nodes. Context: treeId=${treeId}, layoutMode=${viewportState.layoutMode}, selectedNodeId=${selectedNodeId}`, error);
             if (typeof setDetailEmptyState === 'function') {
@@ -1113,4 +1122,33 @@ function createEditorCanvas(deps) {
     };
 }
 
+// Bridge to window for legacy editor.js compatibility
 window.createEditorCanvas = createEditorCanvas;
+window.LoveBudEditorCanvas = {
+    createEditorCanvas,
+    initCanvas: () => {
+        const instance = document.querySelector('#canvasArea')?.__editorCanvasInstance;
+        if (instance) instance.initCanvas();
+    }
+};
+
+// Global Editor Bridge for legacy/external triggers (Refs #1495)
+window.LoveBudEditor = {
+    initCanvas: () => window.LoveBudEditorCanvas.initCanvas(),
+    refresh: () => window.LoveBudEditorCanvas.initCanvas(),
+    render: () => window.LoveBudEditorCanvas.initCanvas()
+};
+
+/**
+ * SELF-INITIALIZATION GUARD
+ * If this module loads AFTER editor.js has already attempted to start,
+ * and we have data ready in the global window, trigger a re-render.
+ */
+(function() {
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        if (window.currentTreeMemories && window.currentTreeMemories.length > 0) {
+            console.log('[editor-canvas] Late module load detected with existing data. Triggering bridge init...');
+            setTimeout(() => window.LoveBudEditorCanvas.initCanvas(), 100);
+        }
+    }
+})();
