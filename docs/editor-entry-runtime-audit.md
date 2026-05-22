@@ -1,98 +1,78 @@
 # LoveBud Editor Entry Runtime Audit
 
-**Date**: 2026-05-22
+**Date**: 2026-05-23
 **Target File**: `js/editor.js`
-**Objective**: Inventory responsibilities, analyze coupling, and define a safe extraction roadmap for issue #1276.
+**Objective**: Update inventory after phase 1 extraction, analyze remaining responsibilities, and define a roadmap for high-risk extractions (issue #1276).
 
 ---
 
-## 1. Responsibility Inventory
+## 1. Responsibility Inventory (Updated)
 
-The `js/editor.js` file acts as the monolithic orchestrator for the editor page, spanning over 700 lines. Its responsibilities include:
+The `js/editor.js` orchestrator has been significantly slimmed down. Current state:
 
-1. **Global Fallback & Utilities**:
-   - Initializing `LoveBudEditorUtils` (`findRootMemory`, `isRootMemory`, etc.).
-   - Initializing auth, i18n, toast, redirect helpers, and `escapeHtml`.
-   - **Inline Logic**: `getYouTubeInputErrorMessage` for URL parsing and validation.
-2. **Data Loading & Sync**:
+1. **Global Fallback & Utilities** (Partially Extracted):
+   - Auth, i18n, toast, redirect helpers, and `escapeHtml` initialization remain.
+   - *Extracted*: `getYouTubeInputErrorMessage` pure function.
+2. **Data Loading & Sync** (Remains):
    - Orchestrating `loadInitialEditorTree` and `loadEditorMemories`.
    - Handling tree load errors (not found, access denied) and rendering fallbacks.
    - Injecting `normalizeMemory` dependencies.
-3. **Sub-module Orchestration & Wiring**:
+3. **Sub-module Orchestration & Wiring** (Remains):
    - Bootstrapping sub-modules via `createEditorDetailUI`, `createEditorCanvas`, `createEditorMemoryActions`, and `createEditorMemoryForm`.
-   - Wiring callbacks between these modules (e.g., passing `initCanvas` to form/actions).
-   - **Inline Logic**: `createEditorSaveStatusOrchestration` controlling save status DOM elements directly.
-4. **DOM Event Binding**:
-   - Sidebar tree visibility toggle (Public/Private switch).
-   - Canvas empty state guide buttons and YouTube input parsing (`canvasEmptyStartBtn`, `canvasEmptyYoutubeInput`, `canvasEmptyTextStartBtn`).
-   - Detail panel buttons and form control bindings.
-5. **Application Lifecycle**:
+   - Wiring callbacks between these modules.
+   - *Extracted*: `createEditorSaveStatusOrchestration` is now delegated.
+4. **DOM Event Binding** (Partially Extracted):
+   - Detail panel buttons and form control bindings remain.
+   - *Extracted*: Sidebar tree visibility toggle (`updateSidebarTreeActions`, `bindSidebarVisibilityToggle`).
+   - *Extracted*: Canvas empty state guide buttons and YouTube input parsing (`createMemoryFromCanvasUrl`).
+5. **Application Lifecycle** (Remains):
    - Defining `startEditor` and guarding it with `tryStartEditor`.
    - Binding the application start to `onAuthReady` or `registerOnAuthReady`.
 
 ---
 
-## 2. CTO Directives & Additional Investigations
+## 2. Completed Extractions Summary (Phase 1)
 
-### Extraction Candidate Re-classification
-
-| Candidate | CTO Assessment | Reason |
-|---|---|---|
-| `getYouTubeInputErrorMessage` | ✅ **Priority 1 Extraction** | Completely pure function, zero external state dependencies. |
-| Canvas Empty Guide Handlers | ⚠️ **Medium Risk** | `createMemoryFromCanvasUrl` directly mutates `editorCanvas.viewportState.positions` and invokes `initCanvas`/`focusNodeById`. Highly coupled to canvas state. |
-| Sidebar Visibility Toggle | ⚠️ **Medium Risk** | Contains critical business logic (calling `updateTreeVisibility` API) and integrates with publication guards (409 errors). |
-
-### Additional Investigations
-
-**1. DOM Control in `createEditorSaveStatusOrchestration`**
-- **Findings**: The orchestration heavily manipulates DOM elements (`saveStatusIndicator`, `saveStatusIcon`, `saveStatusText`, `lastSavedTime`).
-- **Verdict**: It **CAN** be safely extracted to a separate module (e.g., `editor-save-status-ui.js`). It only depends on pure functions (`i18n`, `formatTimeAgo`), so it doesn't need to stay in the orchestrator.
-
-**2. `startEditor` Entry Point Analysis**
-- **Findings**: The only invocation path to `startEditor` is through the `tryStartEditor` function.
-- **Verdict**: `tryStartEditor` is strictly bound to `window.registerOnAuthReady` (or `window.onAuthReady` fallback). There are **no other** entry points. It relies exclusively on the authentication state resolution.
-
-**3. Boundary Contract: `js/editor.js` ↔ `js/editor/editor-canvas.js`**
-- **editor.js → editor-canvas.js (Downstream Calls)**:
-  - `editorCanvas.initCanvas()` (Triggered after data changes or memory creation)
-  - `editorCanvas.focusNodeById()` (Triggered from detail panel or empty canvas guide)
-  - `editorCanvas.calcPosition`, `editorCanvas.drawNode`, `editorCanvas.drawBranch` (Passed to memory form module)
-  - `editorCanvas.viewportState.positions` (Direct mutation by empty canvas guide)
-  - `editorCanvas.persistStoredPositions()`
-  - `editorCanvas.updateAffordance()`
-- **editor-canvas.js → editor.js (Upstream Callbacks)**:
-  - `getTreeMemories`, `getCanonicalRootId`, `isRootMemory` (State reads)
-  - `resolveMemoryThumbnail` (Helper dependency)
-  - `updateDetailPanel`, `setDetailEmptyState`, `updateFocusSelectedBtn` (UI synchronizations)
-  - `createInitialMemory` (State mutation factory)
-  - `onNodeClick` (Event delegation)
-  - `openAddMoment` (Event delegation)
+| Order | Module | PR | Extraction Rationale | Applied Pattern |
+|---|---|---|---|---|
+| 1 | `editor-utils.js` | #1473 | `getYouTubeInputErrorMessage` is a pure function with no external state dependencies. | `window.LoveBudEditorUtils` namespace with inline fallback. |
+| 2 | `editor-save-status-ui.js` | #1474 | `createEditorSaveStatusOrchestration` directly manipulated DOM, cluttering entrypoint. | `window.LoveBudEditorSaveStatusUI` namespace, pure UI updates injected with dependencies. |
+| 3 | `editor-sidebar-ui.js` | #1475 | Sidebar visibility toggle coupled UI with 409 API logic. | Injected `updateTreeVisibility` via closure-safe getter `getTreeId: () => treeId` to avoid stale state. |
+| Pre | `addNodePosition` setter | #1476 | `viewportState.positions` was mutated directly by empty guide logic. | Added robust setter in `editor-canvas.js` to ensure encapsulation. |
+| 4 | `editor-empty-guide-ui.js` | #1477 | Event bindings for empty canvas guide mutated canvas state and cluttered orchestration. | Removed direct mutation fallback, ensuring `addNodePosition` is used. DOM refs fetched inside module. |
 
 ---
 
-## 3. Coupling Risk Analysis
+## 3. Residual Responsibility Analysis
 
-- **Canvas State Mutation**: Inline functions like `createMemoryFromCanvasUrl` directly mutate `editorCanvas.viewportState.positions`. Moving this requires defining a clear API contract on `editor-canvas` to handle new node placement.
-- **Event Listener Bindings**: Handlers for sidebar and empty canvas are bound directly to DOM IDs inside `editor.js`. 
-- **API Call Inline Integration**: The visibility toggle integrates UI loading states directly with `updateTreeVisibility`.
+### A. Data Loading & Sync (Extraction Feasibility: ⚠️ Medium/High)
+- `loadInitialEditorTree` and `loadEditorMemories` are tightly coupled to the initial state preparation and error handling (e.g., rendering "Tree Not Found").
+- Extracting this into a `data-loader.js` module is feasible but requires careful handling of the `editorStarted` flag and error states to ensure the UI doesn't hang.
 
----
+### B. Sub-module Orchestration / Instantiation (Extraction Feasibility: 🛑 High)
+- Instantiating `editorCanvas`, `detailUI`, `memoryActions`, and `memoryForm` is the core role of `editor.js`.
+- These modules require deeply interdependent callbacks (e.g., `initCanvas` must be passed to form actions, but form actions must be bound to the canvas UI).
+- Completely removing this from `editor.js` might over-engineer the orchestrator into a complex DI container. It is recommended to keep basic wiring here while keeping it "thin".
 
-## 4. Safest Extraction Order
-
-1. **`editor-utils.js` (Pure Helpers)**
-   - Extract `getYouTubeInputErrorMessage` immediately.
-2. **`editor-save-status-ui.js` (DOM Feedback)**
-   - Extract `createEditorSaveStatusOrchestration` to remove hardcoded DOM updates from the entrypoint.
-3. **`editor-sidebar-ui.js` (Stateful UI Components)**
-   - Extract visibility toggle logic, injecting `updateTreeVisibility` and `showToast` as dependencies.
-4. **`editor-empty-guide-ui.js` (Canvas Integration)**
-   - Extract canvas empty state logic, ensuring `viewportState` mutation is replaced by a safer setter method on the canvas module.
+### C. Application Lifecycle (`startEditor`) (Extraction Feasibility: 🛑 High)
+- Tied directly to `onAuthReady`. Moving `tryStartEditor` out of `editor.js` risks breaking the initialization sequence, especially considering Firebase auth timing.
+- **Verdict**: Lifecycle entry points should remain in `editor.js` to act as the ultimate `main()` function.
 
 ---
 
-## 5. Dangerous Regression Points
+## 4. Future Refactoring Roadmap
 
-- **Modifying `startEditor` Timing**: Altering when `startEditor` fires relative to `onAuthReady` can cause race conditions with Firebase auth initialization.
-- **Breaking `window` Callbacks**: Fallbacks check for `window.LoveBudEditorCanvas`, etc. Any extraction must properly register to `window` for backward compatibility.
-- **Circular Dependencies**: Passing `initCanvas` into form logic while form logic triggers `createMemory` could easily lead to infinite renders if not careful.
+To tackle the high-risk residual areas, the following roadmap is proposed:
+
+1. **Refine Sub-module Contracts (Pre-requisite for further extraction)**:
+   - Eliminate circular dependencies where `module A` requires a callback from `module B`, but `module B` needs `module A` to be initialized.
+   - Use event emitters or explicit setter methods (like `addNodePosition` from PR #1476) instead of passing raw functions during initialization.
+2. **Extract Data Fetching (`editor-data-loader.js`)**:
+   - Extract `loadInitialEditorTree` and `loadEditorMemories` into a dedicated service.
+   - **Prerequisite**: Define a clear state interface so that `editor.js` only receives `(treeData, memoriesData)` or an `errorState`, without dealing with the `fetch` API directly.
+3. **Thin out `editor.js` completely**:
+   - Limit `editor.js` to only:
+     - Auth listener binding.
+     - Calling the data loader.
+     - Instantiating sub-modules with resolved data.
+     - Global error catching.
