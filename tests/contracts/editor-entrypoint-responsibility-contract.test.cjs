@@ -58,9 +58,11 @@ test('js/editor.js contains specific responsibility areas (Audit candidates)', (
     assert.ok(js.includes('updateSidebarTreeActions'), 'Candidate: sidebar visibility actions');
     
     // 4. Event Wiring (Direct DOM binding)
-    assert.ok(js.includes('sidebarVisibilityToggleBtn.addEventListener'), 'Candidate: sidebar toggle binding');
-    assert.ok(js.includes('canvasEmptyStartBtn.addEventListener'), 'Candidate: canvas empty start binding');
-    assert.ok(js.includes('canvasEmptyYoutubeInput.addEventListener'), 'Candidate: canvas empty input binding');
+    assert.ok(!js.includes('sidebarVisibilityToggleBtn.addEventListener'), 'EXTRACTED: sidebar toggle binding');
+    assert.ok(js.includes('window.LoveBudEditorSidebarUI'), 'must use sidebar UI namespace');
+    assert.ok(!js.includes('canvasEmptyStartBtn.addEventListener'), 'EXTRACTED: canvas empty start binding');
+    assert.ok(js.includes('window.LoveBudEditorEmptyGuideUI'), 'must use editor empty guide UI namespace');
+    assert.ok(!js.includes('canvasEmptyYoutubeInput.addEventListener'), 'EXTRACTED: canvas empty input binding');
 
     // 5. Save Status orchestration
     assert.ok(!js.includes('function updateSaveStatus(status, message) {'), 'EXTRACTED: updateSaveStatus should not be inline');

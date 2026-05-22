@@ -6,6 +6,13 @@ const path = require('node:path');
 const ROOT = path.resolve(__dirname, '..', '..');
 
 function readRepoFile(relativePath) {
+  if (relativePath.startsWith('modal_compute/')) {
+    const dir = path.join(ROOT, 'modal_compute');
+    return fs.readdirSync(dir)
+      .filter(f => f.endsWith('.py'))
+      .map(f => fs.readFileSync(path.join(dir, f), 'utf8'))
+      .join('\n');
+  }
   return fs.readFileSync(path.join(ROOT, relativePath), 'utf8');
 }
 

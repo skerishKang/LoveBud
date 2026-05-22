@@ -10,4 +10,4 @@ if (!process.env.NETLIFY_DATABASE_URL && process.env.DATABASE_URL) {
 
 process.env.DRY_RUN = 'true';
 process.env.SEED_STAGE = 'phase1';
-require('./seed-public-trees.js');
+require('./seed-public-trees.cjs');

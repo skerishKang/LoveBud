@@ -6,13 +6,15 @@ const path = require('node:path');
 const ROOT = path.resolve(__dirname, '..', '..');
 const MODAL_APP = path.join(ROOT, 'modal_compute', 'app.py');
 const OWNER_WRITES = path.join(ROOT, 'modal_compute', 'owner_writes.py');
+const TREE_WRITES = path.join(ROOT, 'modal_compute', 'tree_writes.py');
+const MEMORY_WRITES = path.join(ROOT, 'modal_compute', 'memory_writes.py');
 
 function readOwnerWrites() {
-  return fs.readFileSync(MODAL_APP, 'utf8');
-}
-
-function readOwnerWrites() {
-  return fs.readFileSync(OWNER_WRITES, 'utf8');
+  const dir = path.join(ROOT, 'modal_compute');
+  return fs.readdirSync(dir)
+    .filter(f => f.endsWith('.py'))
+    .map(f => fs.readFileSync(path.join(dir, f), 'utf8'))
+    .join('\n');
 }
 
 function compact(value) {
@@ -21,7 +23,7 @@ function compact(value) {
 
 function getFunctionBody(source, functionName) {
   const normalizedSource = source.replace(/\r\n/g, '\n');
-  const match = normalizedSource.match(new RegExp(`def\\s+${functionName}\\s*\\([\\s\\S]*?(?=\\n\\n+def\\s+)`));
+  const match = normalizedSource.match(new RegExp(`(?:async\\s+)?def\\s+${functionName}\\s*\\([\\s\\S]*?(?=\\n\\n+(?:async\\s+)?def\\s+|\\n\\n\\n|\\n\\n@|$)`));
   assert.ok(match, `missing ${functionName}`);
   return match[0];
 }

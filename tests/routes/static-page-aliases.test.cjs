@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { allAliases, aliasTargetExists } = require('../helpers/route-aliases');
+const { allAliases, aliasTargetExists } = require('../helpers/route-aliases.cjs');
 
 test('static page aliases: target pages exist', (t) => {
   const aliases = allAliases();

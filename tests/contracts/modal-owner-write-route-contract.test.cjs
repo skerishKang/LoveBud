@@ -6,6 +6,8 @@ const path = require('node:path');
 const ROOT = path.resolve(__dirname, '..', '..');
 const MODAL_APP = path.join(ROOT, 'modal_compute', 'app.py');
 const OWNER_WRITES = path.join(ROOT, 'modal_compute', 'owner_writes.py');
+const TREE_WRITES = path.join(ROOT, 'modal_compute', 'tree_writes.py');
+const MEMORY_WRITES = path.join(ROOT, 'modal_compute', 'memory_writes.py');
 const API_RESPONSE_HELPERS = path.join(ROOT, 'modal_compute', 'api_response_helpers.py');
 
 function readModalApp() {
@@ -13,7 +15,11 @@ function readModalApp() {
 }
 
 function readOwnerWrites() {
-  return fs.readFileSync(OWNER_WRITES, 'utf8');
+  const dir = path.join(ROOT, 'modal_compute');
+  return fs.readdirSync(dir)
+    .filter(f => f.endsWith('.py'))
+    .map(f => fs.readFileSync(path.join(dir, f), 'utf8'))
+    .join('\n');
 }
 
 function readApiResponseHelpers() {

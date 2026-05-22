@@ -16,7 +16,6 @@
 
 const fs = require('fs');
 const path = require('path');
-const vm = require('vm');
 const { execSync } = require('child_process');
 
 const ROOT = path.resolve(__dirname, '..');
@@ -56,8 +55,8 @@ function collectJsFiles(dir, results) {
 }
 
 function checkJsSyntaxFile(file) {
-  const source = fs.readFileSync(file, 'utf8');
-  new vm.Script(source, { filename: file });
+  // Use node --check for both CJS and ESM support
+  execSync(`node --check "${file}"`, { stdio: 'pipe' });
 }
 
 // ── 1. JS 구문 검사 (node --check) ───────────────────────────────────────────
