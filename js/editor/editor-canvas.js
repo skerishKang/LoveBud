@@ -329,7 +329,7 @@ function createEditorCanvas(deps) {
 
     function isNodeWithinSafeViewport(pos) {
         if (typeof utils.isNodeWithinSafeViewport === 'function') {
-            return utils.isNodeWithinSafeViewport(pos, getMetrics());
+            return utils.isNodeWithinSafeViewport(pos, getMetrics);
         }
         // Fallback
         const metrics = getMetrics();
