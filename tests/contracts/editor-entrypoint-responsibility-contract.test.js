@@ -38,8 +38,11 @@ test('js/editor.js contains specific responsibility areas (Audit candidates)', (
     const js = fs.readFileSync('js/editor.js', 'utf8');
 
     // 1. Bootstrapping / Shell Copy
-    assert.ok(js.includes('const createEditorShellCopyApplier'), 'Candidate: shell copy applier');
-    assert.ok(js.includes('const prepareEditorShell'), 'Candidate: prepare editor shell');
+    assert.ok(!js.includes('const createEditorShellCopyApplier = ({ safeI18nText, i18n }) => {'), 'EXTRACTED: shell copy applier should not be inline');
+    assert.ok(!js.includes('const prepareEditorShell = () => {'), 'EXTRACTED: prepare editor shell should not be inline');
+    
+    // Instead it uses the namespace
+    assert.ok(js.includes('window.LoveBudEditorShellCopyApplier'), 'must use shell copy applier namespace');
 
     // 2. Data Loading Orchestration
     assert.ok(js.includes('loadInitialEditorTree'), 'Candidate: initial tree loading');
