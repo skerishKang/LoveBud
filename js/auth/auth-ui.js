@@ -102,13 +102,17 @@
     return /[A-Z0-9가-힣]/.test(firstChar) ? firstChar : "L";
   }
 
-  function buildUserDropdown(user) {
+  function buildUserDropdown(user, options) {
+    var escapeFn = (options && typeof options.escapeHtml === 'function') 
+      ? options.escapeHtml 
+      : escapeHtml;
+
     var userName = "";
     var hasPhoto = !!(user && user.photoURL);
     if (user) userName = user.displayName || user.email || "";
 
-    var safeUserName = escapeHtml(userName);
-    var safePhotoUrl = hasPhoto ? escapeHtml(user.photoURL) : "";
+    var safeUserName = escapeFn(userName);
+    var safePhotoUrl = hasPhoto ? escapeFn(user.photoURL) : "";
     var isPagesContext = window.location.pathname.indexOf("/pages/") !== -1;
     var myTreesHref = isPagesContext ? "my-trees.html" : "pages/my-trees.html";
     var settingsHref = isPagesContext ? "settings.html" : "pages/settings.html";
@@ -120,7 +124,7 @@
         safePhotoUrl +
         '" alt="" class="user-avatar-image" referrerpolicy="no-referrer">'
       : '<span class="user-avatar-initial" aria-hidden="true">' +
-        escapeHtml(avatarInitial) +
+        escapeFn(avatarInitial) +
         "</span>";
 
     return [
@@ -170,7 +174,7 @@
         typeof buildUserDropdownFn === "function"
           ? buildUserDropdownFn
           : buildUserDropdown
-      )(user);
+      )(user, { escapeHtml: escapeHtml });
       if (authNav) authNav.innerHTML = userHtml;
       if (authContainer) authContainer.innerHTML = userHtml;
     } else {
