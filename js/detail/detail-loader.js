@@ -229,7 +229,73 @@
             });
 
             configureBackButton(sourceContext, canonicalTreeId);
+            loadDetailReactions(memoryId);
         };
+
+        function loadDetailReactions(memoryId) {
+            const bar = document.getElementById('detailReactionsBar');
+            const likeBtn = document.getElementById('detailLikeBtn');
+            const likeCount = document.getElementById('detailLikeCount');
+            const commentCount = document.getElementById('detailCommentCount');
+            if (!bar || !likeBtn || !likeCount || !commentCount) return;
+
+            // 1. 인증 여부 확인
+            const isAuthed = window.LoveTreeAuthPolicy?.hasConfirmedAuthSession?.() ?? false;
+
+            // 2. 리액션 요약 로드
+            if (!window.apiClient?.fetchReactionSummary) return;
+            window.apiClient.fetchReactionSummary(memoryId)
+                .then(summary => {
+                    if (!summary) return;
+                    likeCount.textContent = summary.like_count ?? summary.likeCount ?? 0;
+                    commentCount.textContent = summary.comment_count ?? summary.commentCount ?? 0;
+
+                    const userReacted = summary.user_reacted ?? summary.userReacted ?? false;
+                    likeBtn.dataset.reacted = userReacted ? 'true' : 'false';
+                    likeBtn.querySelector('.detail-reaction-like-icon').textContent = userReacted ? '❤️' : '🤍';
+
+                    // 3. 인증된 사용자만 좋아요 버튼 활성화
+                    if (isAuthed) {
+                        likeBtn.disabled = false;
+                        likeBtn.onclick = async () => {
+                            const wasReacted = likeBtn.dataset.reacted === 'true';
+                            const prevCount = parseInt(likeCount.textContent) || 0;
+                            const nextReacted = !wasReacted;
+                            const nextCount = nextReacted ? prevCount + 1 : Math.max(0, prevCount - 1);
+
+                            // 낙관적 업데이트
+                            likeBtn.dataset.reacted = nextReacted ? 'true' : 'false';
+                            likeBtn.querySelector('.detail-reaction-like-icon').textContent = nextReacted ? '❤️' : '🤍';
+                            likeCount.textContent = nextCount;
+
+                            try {
+                                const result = await window.apiClient.toggleReaction(memoryId, 'like');
+                                if (result) {
+                                    likeCount.textContent = result.like_count ?? result.likeCount ?? nextCount;
+                                    const serverReacted = result.user_reacted ?? result.userReacted ?? nextReacted;
+                                    likeBtn.dataset.reacted = serverReacted ? 'true' : 'false';
+                                    likeBtn.querySelector('.detail-reaction-like-icon').textContent = serverReacted ? '❤️' : '🤍';
+                                }
+                            } catch (e) {
+                                // 롤백
+                                likeBtn.dataset.reacted = wasReacted ? 'true' : 'false';
+                                likeBtn.querySelector('.detail-reaction-like-icon').textContent = wasReacted ? '❤️' : '🤍';
+                                likeCount.textContent = prevCount;
+                            }
+                        };
+                    } else {
+                        // 비인증 — 카운트만 표시, 버튼 비활성
+                        likeBtn.disabled = true;
+                        likeBtn.title = '로그인 후 좋아요를 남길 수 있어요';
+                    }
+
+                    // 4. 데이터 준비 완료 후 표시
+                    bar.style.display = '';
+                })
+                .catch(() => {
+                    // 리액션 로드 실패 — bar 숨김 유지, 조용히 처리
+                });
+        }
 
         return {
             configureBackButton,
