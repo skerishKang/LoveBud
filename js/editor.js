@@ -160,12 +160,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const renderTreeLoadError = editorPageHelpers.renderTreeLoadError ||
         entryFallbacks.createInlineRenderTreeLoadErrorFallback({ getMyTreesHref });
-    const createInlineNormalizeMemoryFallback = dataLoaderFallbacks.createInlineNormalizeMemoryFallback || (() => (mem) => mem);
-    const createInlineLoadInitialTreeFallback = dataLoaderFallbacks.createInlineLoadInitialTreeFallback || (() => async () => ({}));
-    const createInlineLoadEditorMemoriesFallback = dataLoaderFallbacks.createInlineLoadEditorMemoriesFallback || (() => async () => ({}));
-    const createInlineCreateInitialMemoryFallback = dataLoaderFallbacks.createInlineCreateInitialMemoryFallback || ((options) => () => ({}));
     const createInlineNextMemoryIdFallback = dataLoaderFallbacks.createInlineNextMemoryIdFallback || ((options) => () => 'm1');
-    const createInlineRefreshMemoriesFallback = dataLoaderFallbacks.createInlineRefreshMemoriesFallback || ((options) => async () => {});
     const createInlineFormatTimeAgoFallback = entryFallbacks.createInlineFormatTimeAgoFallback;
 
     const markEditorReady = () => document.body?.classList.remove('editor-preload');
@@ -208,7 +203,11 @@ document.addEventListener('DOMContentLoaded', () => {
         let MEMORIES_CACHE_KEY = 'memories_default';
         let isLocalSaveMode = false;
 
-        const loadInitialTree = editorDataLoader.loadInitialEditorTree || createInlineLoadInitialTreeFallback();
+        const loadInitialTree = editorDataLoader.loadInitialEditorTree;
+        if (typeof loadInitialTree !== 'function') {
+            console.error('[editor] LoveBudEditorDataLoader.loadInitialEditorTree is not loaded');
+            return;
+        }
         const treeLoadResult = await loadInitialTree({
             urlTreeId,
             apiClient: window.apiClient,
@@ -252,11 +251,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const treeId = tree.id || null;
         MEMORIES_CACHE_KEY = 'memories_' + (treeId || 'default');
 
-        const normalizeMemory = editorDataLoader.createNormalizeMemory
-            ? editorDataLoader.createNormalizeMemory({ sharedNormalize: window.LoveBudNormalize?.normalizeMemory })
-            : (window.LoveBudNormalize?.normalizeMemory || createInlineNormalizeMemoryFallback());
+        if (typeof editorDataLoader.createNormalizeMemory !== 'function') {
+            console.error('[editor] LoveBudEditorDataLoader.createNormalizeMemory is not loaded');
+            return;
+        }
+        const normalizeMemory = editorDataLoader.createNormalizeMemory({ sharedNormalize: window.LoveBudNormalize?.normalizeMemory });
 
-        await (editorDataLoader.loadEditorMemories || createInlineLoadEditorMemoriesFallback())({
+        if (typeof editorDataLoader.loadEditorMemories !== 'function') {
+            console.error('[editor] LoveBudEditorDataLoader.loadEditorMemories is not loaded');
+            return;
+        }
+        await editorDataLoader.loadEditorMemories({
             treeId,
             cache,
             cacheKey: MEMORIES_CACHE_KEY,
@@ -265,7 +270,6 @@ document.addEventListener('DOMContentLoaded', () => {
             i18n,
             normalizeMemory
         });
-
         const treeMemories = () => (window.currentTreeMemories || []).map(normalizeMemory).filter(Boolean);
         const canonicalRootId = getCanonicalRootId(treeMemories());
         let selectedNodeId = canonicalRootId;
@@ -281,9 +285,11 @@ document.addEventListener('DOMContentLoaded', () => {
             return memoryActions.updateSelectedMemoryFields(...args);
         };
 
-        const createInitialMemory = editorTreeHelpers.createInitialMemory
-            ? () => editorTreeHelpers.createInitialMemory({ getTreeMemories: () => treeMemories(), findRootMemory, canonicalRootId, treeId, i18n })
-            : createInlineCreateInitialMemoryFallback({ treeMemories, findRootMemory, canonicalRootId, treeId, i18n });
+        if (typeof editorTreeHelpers.createInitialMemory !== 'function') {
+            console.error('[editor] LoveBudEditorTreeHelpers.createInitialMemory is not loaded');
+            return;
+        }
+        const createInitialMemory = () => editorTreeHelpers.createInitialMemory({ getTreeMemories: () => treeMemories(), findRootMemory, canonicalRootId, treeId, i18n });
 
         const nextMemoryId = editorTreeHelpers.nextMemoryIdFromMemories
             ? () => editorTreeHelpers.nextMemoryIdFromMemories(treeMemories())
@@ -413,9 +419,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
-        const refreshMemories = editorDataLoader.createRefreshMemories
-            ? editorDataLoader.createRefreshMemories({ treeId, apiClient: window.apiClient, normalizeMemory, onMemoriesUpdated: handleMemoriesUpdated })
-            : createInlineRefreshMemoriesFallback({ treeId, apiClient: window.apiClient, normalizeMemory, onMemoriesUpdated: handleMemoriesUpdated });
+        if (typeof editorDataLoader.createRefreshMemories !== 'function') {
+            console.error('[editor] LoveBudEditorDataLoader.createRefreshMemories is not loaded');
+            return;
+        }
+        const refreshMemories = editorDataLoader.createRefreshMemories({ treeId, apiClient: window.apiClient, normalizeMemory, onMemoriesUpdated: handleMemoriesUpdated });
         window.refreshMemories = refreshMemories;
 
         const formatTimeAgo = editorSaveStatus.formatTimeAgo || createInlineFormatTimeAgoFallback();
