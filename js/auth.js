@@ -1,4 +1,4 @@
-﻿/**
+/**
  * LoveBud - Authentication Module (Firebase Auth)
  * v20260422-3
  *
@@ -386,8 +386,11 @@ function markAuthReady() {
 
 // ── UI Builders ───────────────────────────────────────────────────────────────
 
+var __authUiTemplates = window.LoveBudAuthUiTemplates || null;
+
 function getBasePath() {
   if (__authUiModule) return __authUiModule.getBasePath();
+  if (__authUiTemplates) return __authUiTemplates.getBasePath();
   var path = window.location.pathname;
   var isPagesContext = path.indexOf('/pages/') !== -1;
   return isPagesContext ? '' : 'pages/';
@@ -400,6 +403,7 @@ function escapeHtml(value) {
   var sec = window.LoveBudSecurity;
   if (sec) return sec.escapeHtml(value);
   if (__authUiModule) return __authUiModule.escapeHtml(value);
+  if (__authUiTemplates) return __authUiTemplates.escapeHtml(value);
   return String(value == null ? '' : value)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -410,6 +414,7 @@ function escapeHtml(value) {
 
 function buildLoginButton() {
   if (__authUiModule) return __authUiModule.buildLoginButton();
+  if (__authUiTemplates) return __authUiTemplates.buildLoginButton();
   var basePath = getBasePath();
   var loginHref = basePath + 'login.html';
   return '<a href="' + loginHref + '" class="btn-round btn-outline" style="text-decoration:none;padding:8px 20px;font-size:14px;">로그인</a>';
@@ -417,6 +422,7 @@ function buildLoginButton() {
 
 function getUserAvatarInitial(user) {
   if (__authUiModule) return __authUiModule.getUserAvatarInitial(user);
+  if (__authUiTemplates) return __authUiTemplates.getUserAvatarInitial(user);
   var source = '';
 
   if (user) {
@@ -439,6 +445,7 @@ function getUserAvatarInitial(user) {
  */
 function buildUserDropdown(user) {
   if (__authUiModule) return __authUiModule.buildUserDropdown(user);
+  if (__authUiTemplates) return __authUiTemplates.buildUserDropdown(user);
   var userName = '';
   var hasPhoto = !!(user && user.photoURL);
 
