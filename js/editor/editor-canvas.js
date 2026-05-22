@@ -128,8 +128,6 @@ function createEditorCanvas(deps) {
         return window.EditorCanvasGeometry.getMetrics(canvas);
     }
 
-    const utils = window.LoveBudEditorCanvasUtils || {};
-
     function getWorldPosition(mem) {
         if (typeof utils.getWorldPosition === 'function') {
             return utils.getWorldPosition(mem, {
@@ -187,8 +185,6 @@ function createEditorCanvas(deps) {
             }));
         } catch (e) {}
     }
-
-    const panzoomUtils = window.LoveBudEditorCanvasPanzoom || {};
 
     function fitViewportToTree() {
         let nextViewport = null;
@@ -337,8 +333,6 @@ function createEditorCanvas(deps) {
         return pos.x >= padding && pos.x <= metrics.width - padding && pos.y >= padding && pos.y <= metrics.height - padding;
     }
 
-    const selectionUtils = window.LoveBudEditorCanvasSelection || {};
-
     function keepSelectionVisible() {
         let selectedId = null;
         let target = null;
@@ -389,8 +383,6 @@ function createEditorCanvas(deps) {
     const drawBranchForMemory = requireCanvasEdgeMethod('drawBranchForMemory');
     const NODE_TAP_SELECT_THRESHOLD = 8;
     const AFFORDANCE_LOCK_CLASS = 'affordance-interaction-locked';
-
-    const renderUtils = window.LoveBudEditorCanvasRenderer || {};
 
     function renderAffordanceForMemory(mem) {
         if (!mem) return;
@@ -667,86 +659,93 @@ function createEditorCanvas(deps) {
      * - Ensure `hasVisibleNodes` check controls Empty State rendering.
      */
     const initCanvas = () => {
-        const canonicalRootId = getCanonicalRootId();
-        const treeMemories = getTreeMemories();
         let selectedNodeId = null;
-        if (typeof selectionUtils.getSelectedMemoryId === 'function') {
-            selectedNodeId = selectionUtils.getSelectedMemoryId(document);
-        } else {
-            selectedNodeId = document.querySelector('.memory-node.selected')?.dataset?.memoryId || null;
-        }
-        const drawableMemories = treeMemories.filter((node) => !isRootMemory(node, canonicalRootId));
-        const rootMemory = treeMemories.find((node) => isRootMemory(node, canonicalRootId)) || null;
-        const shouldRenderRootNode = drawableMemories.length === 0 && !!rootMemory;
-        const hasVisibleNodes = drawableMemories.length > 0 || shouldRenderRootNode;
-        if (hasVisibleNodes && typeof canvasViewport.prepareInitialViewport === 'function') {
-            canvasViewport.prepareInitialViewport({
-                getTreeMemories,
-                getCanonicalRootId,
-                isRootMemory,
-                getWorldPosition,
-                getMetrics,
-                viewportState
-            });
-        }
-        canvas.style.backgroundPosition = `${viewportState.offsetX}px ${viewportState.offsetY}px`;
+        try {
+            const canonicalRootId = getCanonicalRootId();
+            const treeMemories = getTreeMemories();
+            if (typeof selectionUtils.getSelectedMemoryId === 'function') {
+                selectedNodeId = selectionUtils.getSelectedMemoryId(document);
+            } else {
+                selectedNodeId = document.querySelector('.memory-node.selected')?.dataset?.memoryId || null;
+            }
+            const drawableMemories = treeMemories.filter((node) => !isRootMemory(node, canonicalRootId));
+            const rootMemory = treeMemories.find((node) => isRootMemory(node, canonicalRootId)) || null;
+            const shouldRenderRootNode = drawableMemories.length === 0 && !!rootMemory;
+            const hasVisibleNodes = drawableMemories.length > 0 || shouldRenderRootNode;
+            if (hasVisibleNodes && typeof canvasViewport.prepareInitialViewport === 'function') {
+                canvasViewport.prepareInitialViewport({
+                    getTreeMemories,
+                    getCanonicalRootId,
+                    isRootMemory,
+                    getWorldPosition,
+                    getMetrics,
+                    viewportState
+                });
+            }
+            canvas.style.backgroundPosition = `${viewportState.offsetX}px ${viewportState.offsetY}px`;
 
-        if (typeof renderUtils.clearCanvasNodes === 'function') {
-            renderUtils.clearCanvasNodes(canvas);
-        } else {
-            // Fallback
-            canvas.querySelectorAll('.memory-node').forEach((node) => node.remove());
-            canvas.querySelectorAll('#emptyTreeMessage').forEach((el) => el.remove());
-        }
-        clearBranches();
-        clearGrowthAffordance();
+            if (typeof renderUtils.clearCanvasNodes === 'function') {
+                renderUtils.clearCanvasNodes(canvas);
+            } else {
+                // Fallback
+                canvas.querySelectorAll('.memory-node').forEach((node) => node.remove());
+                canvas.querySelectorAll('#emptyTreeMessage').forEach((el) => el.remove());
+            }
+            clearBranches();
+            clearGrowthAffordance();
 
-        setDetailEmptyState(!hasVisibleNodes);
-        updateFocusSelectedBtn();
+            setDetailEmptyState(!hasVisibleNodes);
+            updateFocusSelectedBtn();
 
-        if (shouldRenderRootNode) {
-            drawNode(rootMemory);
-        }
-
-        drawableMemories.forEach((node) => {
-            drawNode(node);
-            drawBranchForMemory(node, {
-                treeMemories,
-                canonicalRootId,
-                calcPosition
-            });
-        });
-
-        if (hasVisibleNodes) {
-            let selectedMem = selectedNodeId
-                ? treeMemories.find((m) => m.id === selectedNodeId)
-                : createInitialMemory();
-
-            // Skip root if found; show first visible child of hidden root instead
-            if (!selectedMem || isRootMemory(selectedMem, canonicalRootId)) {
-                selectedMem = findInitialVisibleMemory(drawableMemories, treeMemories, canonicalRootId);
+            if (shouldRenderRootNode) {
+                drawNode(rootMemory);
             }
 
-            if (selectedMem) {
-                reapplySelection(selectedMem.id);
+            drawableMemories.forEach((node) => {
+                drawNode(node);
+                drawBranchForMemory(node, {
+                    treeMemories,
+                    canonicalRootId,
+                    calcPosition
+                });
+            });
 
-                const selectedEl = document.querySelector(`.memory-node[data-memory-id="${selectedMem.id}"]`);
-                if (selectedEl && typeof onNodeClick === 'function') {
-                    onNodeClick(selectedEl, selectedMem);
-                } else {
-                    updateDetailPanel(selectedMem);
-                    renderAffordanceForMemory(selectedMem);
+            if (hasVisibleNodes) {
+                let selectedMem = selectedNodeId
+                    ? treeMemories.find((m) => m.id === selectedNodeId)
+                    : createInitialMemory();
+
+                // Skip root if found; show first visible child of hidden root instead
+                if (!selectedMem || isRootMemory(selectedMem, canonicalRootId)) {
+                    selectedMem = findInitialVisibleMemory(drawableMemories, treeMemories, canonicalRootId);
+                }
+
+                if (selectedMem) {
+                    reapplySelection(selectedMem.id);
+
+                    const selectedEl = document.querySelector(`.memory-node[data-memory-id="${selectedMem.id}"]`);
+                    if (selectedEl && typeof onNodeClick === 'function') {
+                        onNodeClick(selectedEl, selectedMem);
+                    } else {
+                        updateDetailPanel(selectedMem);
+                        renderAffordanceForMemory(selectedMem);
+                    }
                 }
             }
-        }
 
-        bindCanvasPan();
-        bindViewportControls();
-        bindResizeHandling();
-        bindLayoutModeToggle();
-        // Bind compact mode toggle
-        bindCompactModeToggle();
-        viewportState.initialized = true;
+            bindCanvasPan();
+            bindViewportControls();
+            bindResizeHandling();
+            bindLayoutModeToggle();
+            // Bind compact mode toggle
+            bindCompactModeToggle();
+            viewportState.initialized = true;
+        } catch (error) {
+            console.error(`[editor-canvas] initCanvas failed to render nodes. Context: treeId=${treeId}, layoutMode=${viewportState.layoutMode}, selectedNodeId=${selectedNodeId}`, error);
+            if (typeof setDetailEmptyState === 'function') {
+                setDetailEmptyState(true);
+            }
+        }
     };
 
     function focusNodeById(nodeId) {
