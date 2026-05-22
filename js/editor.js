@@ -508,57 +508,20 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        const canvasEmptyStartBtn = document.getElementById('canvasEmptyStartBtn');
-        const canvasEmptyYoutubeInput = document.getElementById('canvasEmptyYoutubeInput');
-        const canvasEmptyTextStartBtn = document.getElementById('canvasEmptyTextStartBtn');
-        async function createMemoryFromCanvasUrl(options) {
-            const rawUrl = options && options.rawUrl;
-            const position = options && options.position;
-            if (!rawUrl) {
-                showAddMemoryForm();
-                return;
-            }
-            showAddMemoryForm();
-            if (memoryUrlInput) {
-                memoryUrlInput.value = rawUrl;
-                memoryUrlInput.dispatchEvent(new Event('input', { bubbles: true }));
-            }
-            if (memoryModeLinkBtn) memoryModeLinkBtn.click();
-            const beforeIds = new Set(treeMemories().map((memory) => memory && memory.id));
-            await addMemoryFromForm();
-            const createdMemory = treeMemories().find((memory) => memory && !beforeIds.has(memory.id));
-            if (createdMemory && position && editorCanvas && editorCanvas.viewportState) {
-                editorCanvas.viewportState.positions[createdMemory.id] = position;
-                if (typeof editorCanvas.persistStoredPositions === 'function') editorCanvas.persistStoredPositions();
-                if (typeof editorCanvas.initCanvas === 'function') editorCanvas.initCanvas();
-                if (typeof editorCanvas.focusNodeById === 'function') editorCanvas.focusNodeById(createdMemory.id);
-            }
-        }
-
-        if (canvasEmptyStartBtn) {
-            canvasEmptyStartBtn.addEventListener('click', () => {
-                const rawUrl = canvasEmptyYoutubeInput ? canvasEmptyYoutubeInput.value.trim() : '';
-                if (rawUrl) {
-                    createMemoryFromCanvasUrl({ rawUrl });
-                    return;
-                }
-                showAddMemoryForm();
+        const emptyGuideUIHelper = window.LoveBudEditorEmptyGuideUI || {};
+        let createMemoryFromCanvasUrl = () => {};
+        if (emptyGuideUIHelper.bindEmptyGuideEvents) {
+            const guideResult = emptyGuideUIHelper.bindEmptyGuideEvents({
+                getEditorCanvas: () => editorCanvas,
+                showAddMemoryForm,
+                addMemoryFromForm,
+                getTreeMemories: treeMemories,
+                showToast,
+                i18n
             });
-        }
-
-        if (canvasEmptyTextStartBtn) {
-            canvasEmptyTextStartBtn.addEventListener('click', () => {
-                showAddMemoryForm();
-                if (memoryModeTextBtn) memoryModeTextBtn.click();
-            });
-        }
-
-        if (canvasEmptyYoutubeInput) {
-            canvasEmptyYoutubeInput.addEventListener('keydown', (event) => {
-                if (event.key !== 'Enter') return;
-                event.preventDefault();
-                createMemoryFromCanvasUrl({ rawUrl: canvasEmptyYoutubeInput.value.trim() });
-            });
+            if (guideResult && guideResult.createMemoryFromCanvasUrl) {
+                createMemoryFromCanvasUrl = guideResult.createMemoryFromCanvasUrl;
+            }
         }
 
         initCanvas();
