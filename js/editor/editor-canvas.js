@@ -120,7 +120,20 @@ function createEditorCanvas(deps) {
         return window.EditorCanvasGeometry.getMetrics(canvas);
     }
 
+    const utils = window.LoveBudEditorCanvasUtils || {};
+
     function getWorldPosition(mem) {
+        if (typeof utils.getWorldPosition === 'function') {
+            return utils.getWorldPosition(mem, {
+                layoutMode: viewportState.layoutMode,
+                viewportState,
+                getCanonicalRootId,
+                getTreeMemories,
+                isRootMemory,
+                getMetrics
+            });
+        }
+        // Fallback
         if (viewportState.layoutMode === 'structured') {
             return window.EditorCanvasGeometry.getStructuredWorldPosition(
                 mem, getCanonicalRootId, getTreeMemories, isRootMemory, getMetrics
@@ -130,6 +143,14 @@ function createEditorCanvas(deps) {
     }
 
     function calcPosition(mem) {
+        if (typeof utils.calcPosition === 'function') {
+            return utils.calcPosition(mem, {
+                getWorldPosition: getWorldPosition,
+                canvasViewport,
+                viewportState
+            });
+        }
+        // Fallback
         const world = getWorldPosition(mem);
         if (typeof canvasViewport.projectWorldPosition === 'function') {
             return canvasViewport.projectWorldPosition(world, viewportState);
@@ -285,6 +306,10 @@ function createEditorCanvas(deps) {
     });
 
     function isNodeWithinSafeViewport(pos) {
+        if (typeof utils.isNodeWithinSafeViewport === 'function') {
+            return utils.isNodeWithinSafeViewport(pos, getMetrics());
+        }
+        // Fallback
         const metrics = getMetrics();
         const padding = 96;
         return pos.x >= padding && pos.x <= metrics.width - padding && pos.y >= padding && pos.y <= metrics.height - padding;
@@ -532,18 +557,19 @@ function createEditorCanvas(deps) {
     }
 
     function findInitialVisibleMemory(drawableMemories, treeMemories, canonicalRootId) {
-        // Find the hidden system root (parentId === null)
+        if (typeof utils.findInitialVisibleMemory === 'function') {
+            return utils.findInitialVisibleMemory(drawableMemories, treeMemories, canonicalRootId);
+        }
+        // Fallback
         const rootMemory = treeMemories.find(function(m) {
             return m && (m.parentId === null || m.parentId === undefined);
         });
         if (rootMemory) {
-            // Find first visible child of the hidden root
             var firstChild = drawableMemories.find(function(m) {
                 return m && m.parentId === rootMemory.id;
             });
             if (firstChild) return firstChild;
         }
-        // No hidden root or no child found — fall back to first drawable
         return drawableMemories[0] || null;
     }
 
