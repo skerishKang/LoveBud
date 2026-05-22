@@ -1,4 +1,4 @@
-/* Issue #1058/#1489: DOM-level Browse hub final layout patch. */
+/* Issue #1058/#1489/#1490: DOM-level Browse hub final layout patch. */
 (function() {
     'use strict';
 
@@ -48,6 +48,7 @@
         }
     }
 
+    // Issue #1489 #1490: 소셔바 셸 — 좋아요 → 댓글 → 조회수 순서 (공유 제거)
     function renderSocialShell() {
         return '' +
             '<div class="preview-social-shell" data-preview-social-shell>' +
