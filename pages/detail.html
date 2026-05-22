@@ -76,6 +76,23 @@
             </section>
 
             <aside class="detail-secondary-stack">
+                <div class="detail-reactions-bar" id="detailReactionsBar" style="display:none;">
+                  <button
+                    class="detail-reaction-like-btn"
+                    id="detailLikeBtn"
+                    aria-label="좋아요"
+                    data-reacted="false"
+                    disabled
+                  >
+                    <span class="detail-reaction-like-icon">🤍</span>
+                    <span class="detail-reaction-like-count" id="detailLikeCount">0</span>
+                  </button>
+                  <div class="detail-reaction-comment-count-wrap">
+                    <span class="detail-reaction-comment-icon">💬</span>
+                    <span id="detailCommentCount">0</span>
+                  </div>
+                </div>
+
                 <div class="connected-section">
                     <div class="connected-heading">
                         <span id="connectedKicker" class="connected-kicker">&nbsp;</span>
