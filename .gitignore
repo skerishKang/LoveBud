@@ -81,8 +81,9 @@ debug-logs/
 scratch/
 
 # Screenshots
-# Ignore only test resulting screenshots to save repo space
-docs/test-scenarios/results/**/screenshots/
+# Ignore test scenarios and verification folders (local-only)
+docs/test-scenarios/
+docs/verification/
 
 # Drive temp folders (AGENTS.md: never touch)
 .tmp.drivedownload/

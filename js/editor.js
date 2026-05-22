@@ -75,8 +75,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const getHttpStatus = (error) => Number(error?.status || error?.statusCode || error?.response?.status || 0);
 
-
-
     const createInlineShowToastFallback = shellHelpers.createInlineShowToastFallback ||
         entryFallbacks.createInlineShowToastFallback;
 
@@ -191,364 +189,430 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const prepareEditorShell = createPrepareEditorShell({ applyEditorShellCopy, safeI18nText, i18n, getMyTreesHref });
 
-
     const startEditor = async () => {
-        const { canvas, svg, detailPanel, addBtn } = createEditorDomRefs();
-        const urlParams = new URLSearchParams(window.location.search);
-        const urlTreeId = urlParams.get('treeId');
+        window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] };
+        const log = (msg) => {
+            const entry = `[editor-main] ${new Date().toISOString().split('T')[1]} ${msg}`;
+            console.log(entry);
+            window.LoveBudEditorDebug.logs.push(entry);
+        };
+        const reportError = (msg, err) => {
+            console.error(`[editor-main] ERROR: ${msg}`, err);
+            window.LoveBudEditorDebug.errors.push({ msg, error: err?.message || err });
+        };
 
-        prepareEditorShell();
+        log('startEditor sequence initiated');
 
-        const cache = window.LoveBudCache || null;
-        let MEMORIES_CACHE_KEY = 'memories_default';
-        let isLocalSaveMode = false;
+        const waitForGlobal = async (name) => {
+            log(`Waiting for ${name}...`);
+            let count = 0;
+            while (typeof window[name] !== 'function' && count < 100) {
+                await new Promise(r => setTimeout(r, 50));
+                count++;
+            }
+            if (typeof window[name] !== 'function') {
+                reportError(`${name} not found after 5s`);
+                return false;
+            }
+            log(`${name} found.`);
+            return true;
+        };
 
-        const loadInitialTree = editorDataLoader.loadInitialEditorTree;
-        if (typeof loadInitialTree !== 'function') {
-            console.error('[editor] LoveBudEditorDataLoader.loadInitialEditorTree is not loaded');
-            return;
-        }
-        const treeLoadResult = await loadInitialTree({
-            urlTreeId,
-            apiClient: window.apiClient,
-            createDefaultTreeTitle: () => safeI18nText(i18n, 'default_tree_title', '러브트리'),
-            getConfirmedSessionUser
-        });
+        if (!await waitForGlobal('createEditorCanvas')) return;
+        if (!await waitForGlobal('createEditorDetailUI')) return;
+        if (!await waitForGlobal('createEditorMemoryActions')) return;
+        if (!await waitForGlobal('createEditorMemoryForm')) return;
 
-        let tree = treeLoadResult.tree || null;
-        if (!tree) {
-            if (treeLoadResult.authRequired) {
-                showToast(i18n('need_login'), 'error');
-                redirectToEditorLogin(2000);
+        try {
+            const { canvas, svg, detailPanel, addBtn } = createEditorDomRefs();
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlTreeId = urlParams.get('treeId');
+
+            log('DOM refs and URL params prepared');
+            prepareEditorShell();
+            log('Editor shell mounted');
+
+            const cache = window.LoveBudCache || null;
+            let MEMORIES_CACHE_KEY = 'memories_default';
+            let isLocalSaveMode = false;
+
+            const loadInitialTree = editorDataLoader.loadInitialEditorTree;
+            if (typeof loadInitialTree !== 'function') {
+                reportError('LoveBudEditorDataLoader.loadInitialEditorTree missing');
                 return;
             }
-            if (urlTreeId) {
-                const treeLoadStatus = treeLoadResult.treeLoadStatus || 'not_found';
-                const treeLoadErrorMessage = treeLoadResult.treeLoadErrorMessage || '';
-                const errorTitle = treeLoadStatus === 'api_unavailable'
-                    ? (i18n('tree_load_fail_title') || '트리를 불러올 수 없어요')
-                    : /Access denied/i.test(treeLoadErrorMessage)
-                        ? (i18n('tree_access_denied_title') || '이 러브트리를 열 권한이 없어요')
-                        : treeLoadStatus === 'error'
-                            ? (i18n('tree_load_error_title') || '트리를 여는 중 문제가 발생했어요')
-                            : (i18n('tree_not_found_title') || '트리를 찾을 수 없어요');
-                const errorDesc = treeLoadStatus === 'api_unavailable'
-                    ? (i18n('tree_load_api_unavailable') || '트리 조회 API를 사용할 수 없는 상태입니다. 잠시 후 다시 시도해 주세요.')
-                    : /Access denied/i.test(treeLoadErrorMessage)
-                        ? (i18n('tree_access_denied_desc') || '비공개 러브트리이거나 내 계정에 권한이 없어요. 다시 확인하거나 다른 계정으로 로그인해 보세요.')
-                        : treeLoadStatus === 'error'
-                            ? (i18n('tree_load_error_desc') || '일시적인 서버 문제 또는 접근 권한 문제일 수 있습니다. 다시 시도하거나 트리 목록으로 돌아가 주세요.')
-                            : (i18n('tree_load_not_found_desc') || '잘못된 링크이거나 접근 권한이 없는 트리입니다.');
-                renderTreeLoadError({ canvas, addBtn, errorTitle, errorDesc, i18n, escapeHtml, setDetailEmptyState: null });
+            
+            log('Loading initial tree data...');
+            const treeLoadResult = await loadInitialTree({
+                urlTreeId,
+                apiClient: window.apiClient,
+                createDefaultTreeTitle: () => safeI18nText(i18n, 'default_tree_title', '러브트리'),
+                getConfirmedSessionUser
+            });
+
+            let tree = treeLoadResult.tree || null;
+            if (!tree) {
+                log('Tree not found or auth required');
+                if (treeLoadResult.authRequired) {
+                    showToast(i18n('need_login'), 'error');
+                    redirectToEditorLogin(2000);
+                    return;
+                }
+                if (urlTreeId) {
+                    const treeLoadStatus = treeLoadResult.treeLoadStatus || 'not_found';
+                    const treeLoadErrorMessage = treeLoadResult.treeLoadErrorMessage || '';
+                    const errorTitle = treeLoadStatus === 'api_unavailable'
+                        ? (i18n('tree_load_fail_title') || '트리를 불러올 수 없어요')
+                        : /Access denied/i.test(treeLoadErrorMessage)
+                            ? (i18n('tree_access_denied_title') || '이 러브트리를 열 권한이 없어요')
+                            : treeLoadStatus === 'error'
+                                ? (i18n('tree_load_error_title') || '트리를 여는 중 문제가 발생했어요')
+                                : (i18n('tree_not_found_title') || '트리를 찾을 수 없어요');
+                    const errorDesc = treeLoadStatus === 'api_unavailable'
+                        ? (i18n('tree_load_api_unavailable') || '트리 조회 API를 사용할 수 없는 상태입니다. 잠시 후 다시 시도해 주세요.')
+                        : /Access denied/i.test(treeLoadErrorMessage)
+                            ? (i18n('tree_access_denied_desc') || '비공개 러브트리이거나 내 계정에 권한이 없어요. 다시 확인하거나 다른 계정으로 로그인해 보세요.')
+                            : treeLoadStatus === 'error'
+                                ? (i18n('tree_load_error_desc') || '일시적인 서버 문제 또는 접근 권한 문제일 수 있습니다. 다시 시도하거나 트리 목록으로 돌아가 주세요.')
+                                : (i18n('tree_load_not_found_desc') || '잘못된 링크이거나 접근 권한이 없는 트리입니다.');
+                    renderTreeLoadError({ canvas, addBtn, errorTitle, errorDesc, i18n, escapeHtml, setDetailEmptyState: null });
+                    markEditorReady();
+                    return;
+                }
                 markEditorReady();
                 return;
             }
-            markEditorReady();
-            return;
-        }
 
-        syncCurrentTreeData(tree);
-        const treeId = tree.id || null;
-        MEMORIES_CACHE_KEY = 'memories_' + (treeId || 'default');
+            syncCurrentTreeData(tree);
+            const treeId = tree.id || null;
+            MEMORIES_CACHE_KEY = 'memories_' + (treeId || 'default');
+            log(`Tree loaded: ${treeId}`);
 
-        if (typeof editorDataLoader.createNormalizeMemory !== 'function') {
-            console.error('[editor] LoveBudEditorDataLoader.createNormalizeMemory is not loaded');
-            return;
-        }
-        const normalizeMemory = editorDataLoader.createNormalizeMemory({ sharedNormalize: window.LoveBudNormalize?.normalizeMemory });
-
-        if (typeof editorDataLoader.loadEditorMemories !== 'function') {
-            console.error('[editor] LoveBudEditorDataLoader.loadEditorMemories is not loaded');
-            return;
-        }
-        await editorDataLoader.loadEditorMemories({
-            treeId,
-            cache,
-            cacheKey: MEMORIES_CACHE_KEY,
-            apiClient: window.apiClient,
-            showToast,
-            i18n,
-            normalizeMemory
-        });
-        const treeMemories = () => (window.currentTreeMemories || []).map(normalizeMemory).filter(Boolean);
-        const canonicalRootId = getCanonicalRootId(treeMemories());
-        let selectedNodeId = canonicalRootId;
-        let currentEditingMemory = null;
-        let editorCanvas = null;
-
-        let memoryActions = null;
-        const updateSelectedMemoryFields = async (...args) => {
-            if (!memoryActions || typeof memoryActions.updateSelectedMemoryFields !== 'function') {
-                console.warn('[editor] updateSelectedMemoryFields called before memory actions are ready');
-                return false;
+            if (typeof editorDataLoader.createNormalizeMemory !== 'function') {
+                reportError('LoveBudEditorDataLoader.createNormalizeMemory missing');
+                return;
             }
-            return memoryActions.updateSelectedMemoryFields(...args);
-        };
+            const normalizeMemory = editorDataLoader.createNormalizeMemory({ sharedNormalize: window.LoveBudNormalize?.normalizeMemory });
 
-        if (typeof editorTreeHelpers.createInitialMemory !== 'function') {
-            console.error('[editor] LoveBudEditorTreeHelpers.createInitialMemory is not loaded');
-            return;
-        }
-        const createInitialMemory = () => editorTreeHelpers.createInitialMemory({ getTreeMemories: () => treeMemories(), findRootMemory, canonicalRootId, treeId, i18n });
-
-        const nextMemoryId = editorTreeHelpers.nextMemoryIdFromMemories
-            ? () => editorTreeHelpers.nextMemoryIdFromMemories(treeMemories())
-            : createInlineNextMemoryIdFallback({ treeMemories });
-
-        const updateCanvasEmptyGuide = () => {
-            const guide = document.getElementById('canvasEmptyGuide');
-            if (!guide) return;
-            const hasMoments = treeMemories().length > 0;
-            guide.classList.toggle('editor-canvas-empty-guide-hidden', hasMoments);
-        };
-
-        const selectNode = (el, data) => {
-            if (!data) return;
-            selectedNodeId = data.id;
-            currentEditingMemory = data;
-            document.querySelectorAll('.memory-node').forEach(n => n.classList.remove('selected'));
-            if (el) el.classList.add('selected');
-
-            const indicator = document.getElementById('saveStatusIndicator');
-            if (indicator && saveStatusData.timer) {
-                clearTimeout(saveStatusData.timer);
-                saveStatusData.timer = null;
+            if (typeof editorDataLoader.loadEditorMemories !== 'function') {
+                reportError('LoveBudEditorDataLoader.loadEditorMemories missing');
+                return;
             }
-            if (indicator) indicator.style.display = 'none';
-
-            updateDetailPanel(data);
-            updateFocusSelectedBtn();
-            setDetailEmptyState(false);
-
-            // Immediately update the + tip affordance for the newly selected node
-            if (editorCanvas && typeof editorCanvas.updateAffordance === 'function') {
-                editorCanvas.updateAffordance();
-            }
-        };
-
-        const focusSelectedMoment = () => {
-            if (editorCanvas && typeof editorCanvas.focusNodeById === 'function' && selectedNodeId) {
-                editorCanvas.focusNodeById(selectedNodeId);
-            }
-        };
-
-        const openCurrentMomentDetail = () => {
-            const activeMemory = currentEditingMemory || treeMemories().find((m) => m.id === selectedNodeId) || createInitialMemory();
-            if (!activeMemory || !activeMemory.id || !treeId) return;
-            const detailHref = getEditorBasePath() + 'detail.html?id=' + encodeURIComponent(activeMemory.id) + '&tree=' + encodeURIComponent(treeId) + '&from=editor';
-            window.location.href = detailHref;
-        };
-
-        const updateTreeVisibility = async (nextVisibility) => {
-            if (!treeId || !window.apiClient || typeof window.apiClient.updateTree !== 'function') {
-                throw new Error('updateTree not available');
-            }
-            const updatedTree = await window.apiClient.updateTree(treeId, { visibility: nextVisibility });
-            window.currentTreeData = {
-                ...(window.currentTreeData || {}),
-                ...(updatedTree || {}),
-                visibility: updatedTree?.visibility || nextVisibility
-            };
-            updateSidebarStatus();
-            if (currentEditingMemory) updateDetailPanel(currentEditingMemory);
-        };
-
-        const detailUI = window.createEditorDetailUI({
-            detailPanel,
-            i18n,
-            resolveTreeTitleText,
-            resolveHintText,
-            resolveInfoText,
-            resolveMemoryThumbnail,
-            escapeHtml,
-            isRootMemory,
-            getCanonicalRootId: () => canonicalRootId,
-            getSelectedNodeId: () => selectedNodeId,
-            getTreeMemories: () => treeMemories(),
-            getCurrentTreeData: () => window.currentTreeData || {},
-            getLocalSaveMode: () => isLocalSaveMode,
-            showToast,
-            updateTreeVisibility,
-            openCurrentMomentDetail,
-            focusSelectedMoment,
-            updateSelectedMemoryFields
-        });
-
-        const { setDetailEmptyState, updateFocusSelectedBtn, updateSidebarStatus: updateSidebarStatusBase, updateDetailPanel } = detailUI;
-        window.updateDetailPanel = updateDetailPanel;
-
-        const sidebarUIHelper = window.LoveBudEditorSidebarUI || {};
-        const updateSidebarTreeActions = () => {
-            if (sidebarUIHelper.updateSidebarTreeActions) {
-                sidebarUIHelper.updateSidebarTreeActions({ i18n, safeI18nText, getTreeId: () => treeId });
-            }
-        };
-
-        const updateSidebarStatus = () => {
-            updateSidebarStatusBase();
-            updateCanvasEmptyGuide();
-            updateSidebarTreeActions();
-        };
-
-        editorCanvas = window.createEditorCanvas({
-            canvas,
-            svg,
-            getTreeMemories: () => treeMemories(),
-            getCanonicalRootId: () => canonicalRootId,
-            isRootMemory,
-            resolveMemoryThumbnail,
-            updateDetailPanel,
-            setDetailEmptyState,
-            updateFocusSelectedBtn,
-            createInitialMemory,
-            onNodeClick: selectNode,
-            openAddMoment: () => showAddMemoryForm()
-        });
-
-        const { calcPosition, drawBranch, drawNode, initCanvas } = editorCanvas;
-
-        const handleMemoriesUpdated = () => {
-            initCanvas();
-            updateSidebarStatus();
-            if (currentEditingMemory) {
-                const refreshedEditingMemory = treeMemories().find((memory) => memory.id === currentEditingMemory.id);
-                if (refreshedEditingMemory && !isRootMemory(refreshedEditingMemory, canonicalRootId)) {
-                    currentEditingMemory = refreshedEditingMemory;
-                    updateDetailPanel(refreshedEditingMemory);
-                }
-            }
-        };
-
-        if (typeof editorDataLoader.createRefreshMemories !== 'function') {
-            console.error('[editor] LoveBudEditorDataLoader.createRefreshMemories is not loaded');
-            return;
-        }
-        const refreshMemories = editorDataLoader.createRefreshMemories({ treeId, apiClient: window.apiClient, normalizeMemory, onMemoriesUpdated: handleMemoriesUpdated });
-        window.refreshMemories = refreshMemories;
-
-        const formatTimeAgo = editorSaveStatus.formatTimeAgo || createInlineFormatTimeAgoFallback();
-
-        const saveStatusOrchestrationHelper = window.LoveBudEditorSaveStatusOrchestration || {};
-        const createEditorSaveStatusOrchestration = saveStatusOrchestrationHelper.createEditorSaveStatusOrchestration || (() => {
-            console.warn('[editor] LoveBudEditorSaveStatusOrchestration not loaded, using minimal fallback');
-            let saveStatusData = { status: 'saved', lastSaved: null, timer: null };
-            return {
-                saveStatusData,
-                updateSaveStatus: (status, message) => {
-                    saveStatusData.status = status;
-                }
-            };
-        });
-
-        const { saveStatusData, updateSaveStatus } = createEditorSaveStatusOrchestration({ editorSaveStatus, i18n, formatTimeAgo });
-
-        memoryActions = window.createEditorMemoryActions({
-            i18n,
-            updateSaveStatus,
-            updateDetailPanel,
-            updateSidebarStatus,
-            showToast,
-            getCurrentEditingMemory: () => currentEditingMemory,
-            setCurrentEditingMemory: (value) => { currentEditingMemory = value; },
-            getTreeMemories: () => window.currentTreeMemories || [],
-            setTreeMemories: (value) => { window.currentTreeMemories = value; },
-            getSelectedNodeId: () => selectedNodeId,
-            setSelectedNodeId: (value) => { selectedNodeId = value; },
-            getCanonicalRootId: () => canonicalRootId,
-            isRootMemory,
-            findRootMemory,
-            detailPanel,
-            svg,
-            calcPosition,
-            setDetailEmptyState,
-            rerenderCanvas: () => initCanvas(),
-            getCurrentTreeData: () => window.currentTreeData || {},
-            isLocalSaveMode: () => isLocalSaveMode
-        });
-
-        const { enterEditMode, exitEditMode, saveMemoryEdit, deleteMemory } = memoryActions;
-
-        const memoryForm = window.createEditorMemoryForm({
-            i18n,
-            treeId,
-            getSelectedNodeId: () => selectedNodeId,
-            getCanonicalRootId: () => canonicalRootId,
-            resolveParentIdForCreate,
-            updateSaveStatus,
-            showToast,
-            getYouTubeInputErrorMessage: (rawUrl) => getYouTubeInputErrorMessage(i18n, rawUrl),
-            nextMemoryId,
-            normalizeMemory,
-            getTreeMemories: () => window.currentTreeMemories || [],
-            setTreeMemories: (value) => { window.currentTreeMemories = value; },
-            setLocalSaveMode: (value) => { isLocalSaveMode = value; },
-            getLocalSaveMode: () => isLocalSaveMode,
-            drawNode,
-            drawBranch,
-            calcPosition,
-            updateSidebarStatus,
-            updateFocusSelectedBtn,
-            setDetailEmptyState,
-            selectNode,
-            treeMemories,
-            setCachedMemories: window.setCachedMemories,
-            canvasArea: canvas,
-            rerenderCanvas: () => initCanvas(),
-            focusNodeById: (id) => editorCanvas.focusNodeById(id)
-        });
-
-        const { showAddMemoryForm, hideAddMemoryForm, addMemoryFromForm } = memoryForm;
-        const { urlInput, titleInput, memoInput, cancelBtn, confirmBtn } = createEditorFormRefs();
-        if (sidebarUIHelper.bindSidebarVisibilityToggle) {
-            sidebarUIHelper.bindSidebarVisibilityToggle({
-                getTreeId: () => treeId, updateTreeVisibility, showToast, safeI18nText, i18n, getHttpStatus, updateSidebarStatus
-            });
-        }
-
-        if (editorBindings.bindMemoryCreateControls) {
-            editorBindings.bindMemoryCreateControls({ addBtn, cancelBtn, confirmBtn, urlInput, titleInput, memoInput, showAddMemoryForm, hideAddMemoryForm, addMemoryFromForm, updateSaveStatus, showToast, i18n });
-        }
-
-        const detailEmptyStartBtn = document.getElementById('detailEmptyStartBtn');
-        if (detailEmptyStartBtn) {
-            detailEmptyStartBtn.addEventListener('click', () => {
-                showAddMemoryForm();
-            });
-        }
-
-        const emptyGuideUIHelper = window.LoveBudEditorEmptyGuideUI || {};
-        let createMemoryFromCanvasUrl = () => {};
-        if (emptyGuideUIHelper.bindEmptyGuideEvents) {
-            const guideResult = emptyGuideUIHelper.bindEmptyGuideEvents({
-                getEditorCanvas: () => editorCanvas,
-                showAddMemoryForm,
-                addMemoryFromForm,
-                getTreeMemories: () => treeMemories(),
+            
+            log('Loading editor memories...');
+            await editorDataLoader.loadEditorMemories({
+                treeId,
+                cache,
+                cacheKey: MEMORIES_CACHE_KEY,
+                apiClient: window.apiClient,
                 showToast,
-                i18n
+                i18n,
+                normalizeMemory
             });
-            if (guideResult && guideResult.createMemoryFromCanvasUrl) {
-                createMemoryFromCanvasUrl = guideResult.createMemoryFromCanvasUrl;
+            
+            const treeMemories = () => (window.currentTreeMemories || []).map(normalizeMemory).filter(Boolean);
+            const memoriesCount = treeMemories().length;
+            log(`Memories loaded: ${memoriesCount}`);
+            
+            const canonicalRootId = getCanonicalRootId(treeMemories());
+            let selectedNodeId = canonicalRootId;
+            let currentEditingMemory = null;
+            let editorCanvas = null;
+
+            let memoryActions = null;
+            const updateSelectedMemoryFields = async (...args) => {
+                if (!memoryActions || typeof memoryActions.updateSelectedMemoryFields !== 'function') {
+                    console.warn('[editor] updateSelectedMemoryFields called before memory actions are ready');
+                    return false;
+                }
+                return memoryActions.updateSelectedMemoryFields(...args);
+            };
+
+            if (typeof editorTreeHelpers.createInitialMemory !== 'function') {
+                reportError('LoveBudEditorTreeHelpers.createInitialMemory missing');
+                return;
             }
-        }
+            const createInitialMemory = () => editorTreeHelpers.createInitialMemory({ getTreeMemories: () => treeMemories(), findRootMemory, canonicalRootId, treeId, i18n });
 
-        initCanvas();
-        updateCanvasEmptyGuide();
-        const initialSelection = treeMemories().find((memory) => memory.id === selectedNodeId) || createInitialMemory();
-        if (initialSelection && !isRootMemory(initialSelection, canonicalRootId)) {
-            currentEditingMemory = initialSelection;
-        }
+            const nextMemoryId = editorTreeHelpers.nextMemoryIdFromMemories
+                ? () => editorTreeHelpers.nextMemoryIdFromMemories(treeMemories())
+                : createInlineNextMemoryIdFallback({ treeMemories });
 
-        const editMemoryBtn = document.getElementById('editMemoryBtn');
-        const deleteMemoryBtn = document.getElementById('deleteMemoryBtn');
-        const cancelEditBtn = document.getElementById('cancelEditBtn');
-        const saveEditBtn = document.getElementById('saveEditBtn');
-        if (editorBindings.bindDetailActionButtons) {
-            editorBindings.bindDetailActionButtons({ editMemoryBtn, deleteMemoryBtn, cancelEditBtn, saveEditBtn, enterEditMode, deleteMemory, exitEditMode, saveMemoryEdit });
-        }
+            const updateCanvasEmptyGuide = () => {
+                const guide = document.getElementById('canvasEmptyGuide');
+                if (!guide) {
+                    log('WARNING: #canvasEmptyGuide not found during update attempt');
+                    return;
+                }
+                const hasMoments = treeMemories().length > 0;
+                log(`Updating empty guide visibility. hasMoments=${hasMoments}`);
+                guide.classList.toggle('editor-canvas-empty-guide-hidden', hasMoments);
+            };
+            
+            // Bridge this back to LoveBudEditor so canvas can call it
+            window.LoveBudEditor = window.LoveBudEditor || {};
+            window.LoveBudEditor.updateCanvasEmptyGuide = updateCanvasEmptyGuide;
 
-        updateSidebarStatus();
-        markEditorReady();
+            const selectNode = (el, data) => {
+                if (!data) return;
+                selectedNodeId = data.id;
+                currentEditingMemory = data;
+                document.querySelectorAll('.memory-node').forEach(n => n.classList.remove('selected'));
+                if (el) el.classList.add('selected');
+
+                const indicator = document.getElementById('saveStatusIndicator');
+                if (indicator && saveStatusData.timer) {
+                    clearTimeout(saveStatusData.timer);
+                    saveStatusData.timer = null;
+                }
+                if (indicator) indicator.style.display = 'none';
+
+                updateDetailPanel(data);
+                updateFocusSelectedBtn();
+                setDetailEmptyState(false);
+
+                if (editorCanvas && typeof editorCanvas.updateAffordance === 'function') {
+                    editorCanvas.updateAffordance();
+                }
+            };
+
+            const focusSelectedMoment = () => {
+                if (editorCanvas && typeof editorCanvas.focusNodeById === 'function' && selectedNodeId) {
+                    editorCanvas.focusNodeById(selectedNodeId);
+                }
+            };
+
+            const openCurrentMomentDetail = () => {
+                const activeMemory = currentEditingMemory || treeMemories().find((m) => m.id === selectedNodeId) || createInitialMemory();
+                if (!activeMemory || !activeMemory.id || !treeId) return;
+                const detailHref = getEditorBasePath() + 'detail.html?id=' + encodeURIComponent(activeMemory.id) + '&tree=' + encodeURIComponent(treeId) + '&from=editor';
+                window.location.href = detailHref;
+            };
+
+            const updateTreeVisibility = async (nextVisibility) => {
+                if (!treeId || !window.apiClient || typeof window.apiClient.updateTree !== 'function') {
+                    throw new Error('updateTree not available');
+                }
+                const updatedTree = await window.apiClient.updateTree(treeId, { visibility: nextVisibility });
+                window.currentTreeData = {
+                    ...(window.currentTreeData || {}),
+                    ...(updatedTree || {}),
+                    visibility: updatedTree?.visibility || nextVisibility
+                };
+                updateSidebarStatus();
+                if (currentEditingMemory) updateDetailPanel(currentEditingMemory);
+            };
+
+            log('Initializing Detail UI...');
+            const detailUI = window.createEditorDetailUI({
+                detailPanel,
+                i18n,
+                resolveTreeTitleText,
+                resolveHintText,
+                resolveInfoText,
+                resolveMemoryThumbnail,
+                escapeHtml,
+                isRootMemory,
+                getCanonicalRootId: () => canonicalRootId,
+                getSelectedNodeId: () => selectedNodeId,
+                getTreeMemories: () => treeMemories(),
+                getCurrentTreeData: () => window.currentTreeData || {},
+                getLocalSaveMode: () => isLocalSaveMode,
+                showToast,
+                updateTreeVisibility,
+                openCurrentMomentDetail,
+                focusSelectedMoment,
+                updateSelectedMemoryFields
+            });
+
+            const { setDetailEmptyState, updateFocusSelectedBtn, updateSidebarStatus: updateSidebarStatusBase, updateDetailPanel } = detailUI;
+            window.updateDetailPanel = updateDetailPanel;
+
+            const sidebarUIHelper = window.LoveBudEditorSidebarUI || {};
+            const updateSidebarTreeActions = () => {
+                if (sidebarUIHelper.updateSidebarTreeActions) {
+                    sidebarUIHelper.updateSidebarTreeActions({ i18n, safeI18nText, getTreeId: () => treeId });
+                }
+            };
+
+            const updateSidebarStatus = () => {
+                updateSidebarStatusBase();
+                updateCanvasEmptyGuide();
+                updateSidebarTreeActions();
+            };
+
+            log('Creating Editor Canvas Instance...');
+            editorCanvas = window.createEditorCanvas({
+                canvas,
+                svg,
+                getTreeMemories: () => treeMemories(),
+                getCanonicalRootId: () => canonicalRootId,
+                isRootMemory,
+                resolveMemoryThumbnail,
+                updateDetailPanel,
+                setDetailEmptyState,
+                updateFocusSelectedBtn,
+                createInitialMemory,
+                onNodeClick: selectNode,
+                openAddMoment: () => showAddMemoryForm()
+            });
+
+            // Store instance for global bridge
+            if (canvas) canvas.__editorCanvasInstance = editorCanvas;
+            log('Canvas instance bound to DOM');
+
+            const { calcPosition, drawBranch, drawNode, initCanvas } = editorCanvas;
+
+            const handleMemoriesUpdated = () => {
+                log('Memories updated externally. Rerendering...');
+                initCanvas();
+                updateSidebarStatus();
+                if (currentEditingMemory) {
+                    const refreshedEditingMemory = treeMemories().find((memory) => memory.id === currentEditingMemory.id);
+                    if (refreshedEditingMemory && !isRootMemory(refreshedEditingMemory, canonicalRootId)) {
+                        currentEditingMemory = refreshedEditingMemory;
+                        updateDetailPanel(refreshedEditingMemory);
+                    }
+                }
+            };
+
+            if (typeof editorDataLoader.createRefreshMemories !== 'function') {
+                reportError('LoveBudEditorDataLoader.createRefreshMemories missing');
+                return;
+            }
+            const refreshMemories = editorDataLoader.createRefreshMemories({ treeId, apiClient: window.apiClient, normalizeMemory, onMemoriesUpdated: handleMemoriesUpdated });
+            window.refreshMemories = refreshMemories;
+
+            const formatTimeAgo = editorSaveStatus.formatTimeAgo || createInlineFormatTimeAgoFallback();
+
+            const saveStatusOrchestrationHelper = window.LoveBudEditorSaveStatusOrchestration || {};
+            const createEditorSaveStatusOrchestration = saveStatusOrchestrationHelper.createEditorSaveStatusOrchestration || (() => {
+                console.warn('[editor] LoveBudEditorSaveStatusOrchestration not loaded, using minimal fallback');
+                let saveStatusData = { status: 'saved', lastSaved: null, timer: null };
+                return {
+                    saveStatusData,
+                    updateSaveStatus: (status, message) => {
+                        saveStatusData.status = status;
+                    }
+                };
+            });
+
+            const { saveStatusData, updateSaveStatus } = createEditorSaveStatusOrchestration({ editorSaveStatus, i18n, formatTimeAgo });
+
+            log('Initializing Memory Actions...');
+            memoryActions = window.createEditorMemoryActions({
+                i18n,
+                updateSaveStatus,
+                updateDetailPanel,
+                updateSidebarStatus,
+                showToast,
+                getCurrentEditingMemory: () => currentEditingMemory,
+                setCurrentEditingMemory: (value) => { currentEditingMemory = value; },
+                getTreeMemories: () => window.currentTreeMemories || [],
+                setTreeMemories: (value) => { window.currentTreeMemories = value; },
+                getSelectedNodeId: () => selectedNodeId,
+                setSelectedNodeId: (value) => { selectedNodeId = value; },
+                getCanonicalRootId: () => canonicalRootId,
+                isRootMemory,
+                findRootMemory,
+                detailPanel,
+                svg,
+                calcPosition,
+                setDetailEmptyState,
+                rerenderCanvas: () => initCanvas(),
+                getCurrentTreeData: () => window.currentTreeData || {},
+                isLocalSaveMode: () => isLocalSaveMode
+            });
+
+            const { enterEditMode, exitEditMode, saveMemoryEdit, deleteMemory } = memoryActions;
+
+            log('Initializing Memory Form...');
+            const memoryForm = window.createEditorMemoryForm({
+                i18n,
+                treeId,
+                getSelectedNodeId: () => selectedNodeId,
+                getCanonicalRootId: () => canonicalRootId,
+                resolveParentIdForCreate,
+                updateSaveStatus,
+                showToast,
+                getYouTubeInputErrorMessage: (rawUrl) => getYouTubeInputErrorMessage(i18n, rawUrl),
+                nextMemoryId,
+                normalizeMemory,
+                getTreeMemories: () => window.currentTreeMemories || [],
+                setTreeMemories: (value) => { window.currentTreeMemories = value; },
+                setLocalSaveMode: (value) => { isLocalSaveMode = value; },
+                getLocalSaveMode: () => isLocalSaveMode,
+                drawNode,
+                drawBranch,
+                calcPosition,
+                updateSidebarStatus,
+                updateFocusSelectedBtn,
+                setDetailEmptyState,
+                selectNode,
+                treeMemories,
+                setCachedMemories: window.setCachedMemories,
+                canvasArea: canvas,
+                rerenderCanvas: () => initCanvas(),
+                focusNodeById: (id) => editorCanvas.focusNodeById(id)
+            });
+
+            const { showAddMemoryForm, hideAddMemoryForm, addMemoryFromForm } = memoryForm;
+            const { urlInput, titleInput, memoInput, cancelBtn, confirmBtn } = createEditorFormRefs();
+            
+            log('Binding events...');
+            if (sidebarUIHelper.bindSidebarVisibilityToggle) {
+                sidebarUIHelper.bindSidebarVisibilityToggle({
+                    getTreeId: () => treeId, updateTreeVisibility, showToast, safeI18nText, i18n, getHttpStatus, updateSidebarStatus
+                });
+            }
+
+            if (editorBindings.bindMemoryCreateControls) {
+                editorBindings.bindMemoryCreateControls({ addBtn, cancelBtn, confirmBtn, urlInput, titleInput, memoInput, showAddMemoryForm, hideAddMemoryForm, addMemoryFromForm, updateSaveStatus, showToast, i18n });
+            }
+
+            const detailEmptyStartBtn = document.getElementById('detailEmptyStartBtn');
+            if (detailEmptyStartBtn) {
+                detailEmptyStartBtn.addEventListener('click', () => {
+                    showAddMemoryForm();
+                });
+            }
+
+            const emptyGuideUIHelper = window.LoveBudEditorEmptyGuideUI || {};
+            if (emptyGuideUIHelper.bindEmptyGuideEvents) {
+                emptyGuideUIHelper.bindEmptyGuideEvents({
+                    getEditorCanvas: () => editorCanvas,
+                    showAddMemoryForm,
+                    addMemoryFromForm,
+                    getTreeMemories: () => treeMemories(),
+                    showToast,
+                    i18n
+                });
+            }
+
+            log('Final Canvas Initialization...');
+            initCanvas();
+            updateCanvasEmptyGuide();
+            
+            const initialSelection = treeMemories().find((memory) => memory.id === selectedNodeId) || createInitialMemory();
+            if (initialSelection && !isRootMemory(initialSelection, canonicalRootId)) {
+                currentEditingMemory = initialSelection;
+                log(`Initial selection set: ${initialSelection.id}`);
+            }
+
+            const editMemoryBtn = document.getElementById('editMemoryBtn');
+            const deleteMemoryBtn = document.getElementById('deleteMemoryBtn');
+            const cancelEditBtn = document.getElementById('cancelEditBtn');
+            const saveEditBtn = document.getElementById('saveEditBtn');
+            if (editorBindings.bindDetailActionButtons) {
+                editorBindings.bindDetailActionButtons({ editMemoryBtn, deleteMemoryBtn, cancelEditBtn, saveEditBtn, enterEditMode, deleteMemory, exitEditMode, saveMemoryEdit });
+            }
+
+            updateSidebarStatus();
+            markEditorReady();
+            log('startEditor complete. Ready.');
+        } catch (error) {
+            reportError('CRITICAL: Exception in startEditor', error);
+        }
     };
 
     var editorStarted = false;

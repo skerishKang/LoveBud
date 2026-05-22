@@ -1,0 +1,51 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+
+const ROOT = path.resolve(__dirname, '..', '..');
+
+function read(file) {
+  return fs.readFileSync(path.join(ROOT, file), 'utf8');
+}
+
+test('detail route target page exists', () => {
+  const detailPath = path.join(ROOT, 'pages', 'detail.html');
+  assert.ok(fs.existsSync(detailPath), 'pages/detail.html should exist');
+});
+
+test('search preview action helper still targets detail.html alias path', () => {
+  const previewActionHelperJs = read('js/search/search-preview-action-helper.js');
+  assert.match(previewActionHelperJs, /detail\.html\?id=/);
+});
+
+test('search preview renderer delegates detail CTA href to action helper', () => {
+  const previewRendererJs = read('js/search/search-preview-renderer.js');
+  assert.match(previewRendererJs, /LoveBudSearchPreviewActionHelper/);
+  assert.match(previewRendererJs, /helper\?\.getTreeDetailHref/);
+});
+
+test('detail runtime submodules load after API client and before detail entrypoint', () => {
+  const html = read('pages/detail.html');
+  const scripts = [...html.matchAll(/<script src="([^"]+)"/g)].map((match) => match[1]);
+  const indexOf = (needle) => scripts.findIndex((src) => src.includes(needle));
+
+  const postgresIndex = indexOf('../js/postgres-client.js');
+  const detailEntrypointIndex = indexOf('../js/detail.js');
+  const expectedModules = [
+    '../js/detail/detail-utils.js',
+    '../js/detail/detail-video.js',
+    '../js/detail/detail-copy.js',
+    '../js/detail/detail-render.js',
+    '../js/detail/detail-connected.js',
+    '../js/detail/detail-loader.js',
+    '../js/detail/detail-loading-error-boundary.js',
+  ];
+  const moduleIndexes = expectedModules.map(indexOf);
+
+  assert.ok(postgresIndex >= 0);
+  assert.ok(detailEntrypointIndex >= 0);
+  assert.deepEqual(moduleIndexes, moduleIndexes.toSorted((a, b) => a - b));
+  assert.ok(moduleIndexes.every((index) => index > postgresIndex));
+  assert.ok(moduleIndexes.every((index) => index < detailEntrypointIndex));
+});
