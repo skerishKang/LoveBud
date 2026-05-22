@@ -382,16 +382,30 @@ function createEditorCanvas(deps) {
     const NODE_TAP_SELECT_THRESHOLD = 8;
     const AFFORDANCE_LOCK_CLASS = 'affordance-interaction-locked';
 
+    const renderUtils = window.LoveBudEditorCanvasRenderer || {};
+
     function renderAffordanceForMemory(mem) {
         if (!mem) return;
         const canonicalRootId = getCanonicalRootId();
+        
+        if (typeof renderUtils.renderAffordancesForMemory === 'function') {
+            renderUtils.renderAffordancesForMemory(mem, {
+                growthAffordance,
+                branchPorts,
+                getTreeMemories,
+                canonicalRootId,
+                isRootMemory
+            });
+            return;
+        }
+
+        // Fallback
         const drawableMemories = getTreeMemories().filter((node) => !isRootMemory(node, canonicalRootId));
         clearGrowthAffordance();
         growthAffordance.renderGrowthAffordance(mem, {
             isFirstStep: drawableMemories.length <= 1,
             isStartMoment: mem.parentId === canonicalRootId
         });
-        // Show 8-direction branch ports on the selected/hovered node
         branchPorts.renderPortsForNode(mem);
         branchPorts.showPortsForMemory(mem);
     }
@@ -506,6 +520,14 @@ function createEditorCanvas(deps) {
     }
 
     function createNodeElement(mem, pos) {
+        if (typeof renderUtils.createNodeElement === 'function') {
+            return renderUtils.createNodeElement(mem, pos, canvasNode, {
+                resolveMemoryThumbnail: resolveMemoryThumbnail,
+                NODE_HALF: NODE_HALF,
+                scale: viewportState.scale || 1
+            });
+        }
+        // Fallback
         if (typeof canvasNode.createNodeElement !== "function") {
             throw new Error("LoveBudEditorCanvasNode.createNodeElement is required");
         }
@@ -517,6 +539,11 @@ function createEditorCanvas(deps) {
     }
 
     function attachNodeInfo(nodeEl, mem) {
+        if (typeof renderUtils.attachNodeInfo === 'function') {
+            renderUtils.attachNodeInfo(canvas, nodeEl, mem, canvasNode);
+            return;
+        }
+        // Fallback
         if (typeof canvasNode.appendNodeInfo === 'function') {
             canvasNode.appendNodeInfo(nodeEl, mem);
         }
@@ -554,6 +581,11 @@ function createEditorCanvas(deps) {
             clearTimeout(hoverAffordanceTimer);
             hoverAffordanceTimer = null;
         }
+        if (typeof renderUtils.clearGrowthAffordances === 'function') {
+            renderUtils.clearGrowthAffordances(growthAffordance, branchPorts);
+            return;
+        }
+        // Fallback
         growthAffordance.clearGrowthAffordance();
         branchPorts.clearPorts();
     }
@@ -631,8 +663,13 @@ function createEditorCanvas(deps) {
         }
         canvas.style.backgroundPosition = `${viewportState.offsetX}px ${viewportState.offsetY}px`;
 
-        canvas.querySelectorAll('.memory-node').forEach((node) => node.remove());
-        canvas.querySelectorAll('#emptyTreeMessage').forEach((el) => el.remove());
+        if (typeof renderUtils.clearCanvasNodes === 'function') {
+            renderUtils.clearCanvasNodes(canvas);
+        } else {
+            // Fallback
+            canvas.querySelectorAll('.memory-node').forEach((node) => node.remove());
+            canvas.querySelectorAll('#emptyTreeMessage').forEach((el) => el.remove());
+        }
         clearBranches();
         clearGrowthAffordance();
 
