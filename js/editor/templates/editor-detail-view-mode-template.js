@@ -56,6 +56,26 @@
                         </div>
                     </div>
 
+                    <div class="editor-moment-reactions-card" id="momentReactionsCard">
+                        <button
+                            class="editor-reaction-like-btn"
+                            id="momentLikeBtn"
+                            aria-label="좋아요"
+                            data-reacted="false"
+                        >
+                            <span class="editor-reaction-like-icon">🤍</span>
+                            <span class="editor-reaction-like-count" id="momentLikeCount">0</span>
+                        </button>
+                        <button
+                            class="editor-reaction-comment-btn"
+                            id="momentCommentBtn"
+                            aria-label="코멘트 보기"
+                        >
+                            <span class="editor-reaction-comment-icon">💬</span>
+                            <span class="editor-reaction-comment-count" id="momentCommentCount">0</span>
+                        </button>
+                    </div>
+
                     <div class="editor-save-status-card">
                         <div id="saveStatusIndicator" class="save-status-indicator save-status editor-save-status-wrap" aria-live="polite">
                             <span id="saveStatusIcon" class="editor-save-status-icon-hidden"></span>
