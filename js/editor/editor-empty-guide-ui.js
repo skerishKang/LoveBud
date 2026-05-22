@@ -44,8 +44,6 @@
             if (createdMemory && position && editorCanvas) {
                 if (typeof editorCanvas.addNodePosition === 'function') {
                     editorCanvas.addNodePosition(createdMemory.id, position);
-                } else if (editorCanvas.viewportState && editorCanvas.viewportState.positions) {
-                    editorCanvas.viewportState.positions[createdMemory.id] = position;
                 }
                 
                 if (typeof editorCanvas.persistStoredPositions === 'function') editorCanvas.persistStoredPositions();

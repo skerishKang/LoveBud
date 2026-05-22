@@ -515,7 +515,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 getEditorCanvas: () => editorCanvas,
                 showAddMemoryForm,
                 addMemoryFromForm,
-                getTreeMemories: treeMemories,
+                getTreeMemories: () => treeMemories(),
                 showToast,
                 i18n
             });
