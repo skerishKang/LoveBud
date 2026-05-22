@@ -99,9 +99,10 @@ test('editor.html exposes stable static template extraction candidates', () => {
     // 11. Detail Edit Mode (`<div id="detailEditMode">`) - EXTRACTED (see editor-detail-edit-mode-template-contract.test.js)
     // Now handled inside Detail Panel Shell mount
     
-    // AREAS NOT TO EXTRACT YET:
-    // - canvas SVG rendering logic
-    // - reaction/comment UI (not present here yet)
+    // AREAS NOT TO EXTRACT YET (Remaining shells):
+    // - canvas SVG rendering logic (id="canvasSvg"): tightly coupled to editor runtime SVG engine.
+    // - main app wrapper (id="canvasArea", class="editor-layout"): base shell, extraction brings little value.
+    // - mobileBottomBar: explicitly non-goal for this issue.
     // - save status indicator logic
 });
 
