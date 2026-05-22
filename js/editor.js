@@ -178,20 +178,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     applyEditorShellCopy(safeI18nText, i18n);
 
-    const createEditorDomRefs = () => ({
+    const editorDomRefsBuilder = window.LoveBudEditorDomRefsBuilder || {};
+    const createEditorDomRefs = editorDomRefsBuilder.createEditorDomRefs || (() => ({
         canvas: document.getElementById('canvasArea'),
         svg: document.getElementById('canvasSvg'),
         detailPanel: document.getElementById('detailPanel'),
         addBtn: document.getElementById('addMemoryBtn')
-    });
-
-    const createEditorFormRefs = () => ({
+    }));
+    const createEditorFormRefs = editorDomRefsBuilder.createEditorFormRefs || (() => ({
         urlInput: document.getElementById('memoryUrlInput'),
         titleInput: document.getElementById('memoryTitleInput'),
         memoInput: document.getElementById('memoryMemoInput'),
         cancelBtn: document.getElementById('cancelAddMemory'),
         confirmBtn: document.getElementById('confirmAddMemory')
-    });
+    }));
 
     const prepareEditorShell = createPrepareEditorShell({ applyEditorShellCopy, safeI18nText, i18n, getMyTreesHref });
 

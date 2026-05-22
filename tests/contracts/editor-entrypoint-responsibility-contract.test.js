@@ -32,6 +32,11 @@ test('js/editor.js retains its legacy entrypoint markers', () => {
     // Global exposure (temporary compat)
     assert.ok(js.includes('window.updateDetailPanel = updateDetailPanel'), 'exposes updateDetailPanel globally');
     assert.ok(js.includes('window.refreshMemories = refreshMemories'), 'exposes refreshMemories globally');
+
+    // Extracted responsibilities
+    assert.ok(!js.includes('const createEditorDomRefs = () => ({'), 'EXTRACTED: createEditorDomRefs should not be inline');
+    assert.ok(!js.includes('const createEditorFormRefs = () => ({'), 'EXTRACTED: createEditorFormRefs should not be inline');
+    assert.ok(js.includes('window.LoveBudEditorDomRefsBuilder'), 'must use DOM refs builder namespace');
 });
 
 test('js/editor.js contains specific responsibility areas (Audit candidates)', () => {
