@@ -1,4 +1,4 @@
-/* Issue #1053/#1058/#1489: playable Browse hub media, flow moment switching, and final hub action layout. */
+/* Issue #1053/#1058/#1489/#1490: playable Browse hub media, flow moment switching, and final hub action layout. */
 (function() {
     'use strict';
 
@@ -120,15 +120,16 @@
         return 0;
     }
 
+    // Issue #1489 #1490: 조회수→좋아요→댓글 순서, 공유 제거, totalViewCount 우선
     function renderSocialBar(tree) {
+        var views    = getCount(tree, ['totalViewCount', 'viewCount', 'view_count', 'views']);
         var likes    = getCount(tree, ['likeCount', 'likesCount', 'likes', 'reactionCount', 'reaction_count']);
         var comments = getCount(tree, ['commentCount', 'commentsCount', 'comments', 'replyCount', 'reply_count']);
-        var views    = getCount(tree, ['totalViewCount', 'viewCount', 'view_count', 'views']);
         return '<div class="preview-social-shell" data-preview-social-shell>' +
             '<div class="preview-social-bar" aria-label="트리 반응">' +
+                '<div class="preview-social-action preview-social-stat" aria-label="조회수 ' + escapeHtml(String(views)) + '" role="status"><span class="material-symbols-outlined" aria-hidden="true">visibility</span><strong>' + escapeHtml(String(views)) + '</strong><span>조회수</span></div>' +
                 '<button type="button" class="preview-social-action" data-preview-like disabled aria-label="좋아요 ' + escapeHtml(String(likes)) + '"><span class="material-symbols-outlined" aria-hidden="true">favorite</span><strong>' + escapeHtml(String(likes)) + '</strong><span>좋아요</span></button>' +
                 '<button type="button" class="preview-social-action" data-preview-comments aria-expanded="false" aria-label="댓글 ' + escapeHtml(String(comments)) + '"><span class="material-symbols-outlined" aria-hidden="true">mode_comment</span><strong>' + escapeHtml(String(comments)) + '</strong><span>댓글</span></button>' +
-                '<div class="preview-social-action preview-social-stat" aria-label="조회수 ' + escapeHtml(String(views)) + '" role="status"><span class="material-symbols-outlined" aria-hidden="true">visibility</span><strong>' + escapeHtml(String(views)) + '</strong><span>조회수</span></div>' +
             '</div>' +
             '<div class="preview-comments-panel" data-preview-comments-panel hidden>' +
                 '<div class="preview-comments-title">댓글</div>' +
