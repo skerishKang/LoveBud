@@ -4,6 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>러브트리 편집 | LoveTree</title>
+    <script>
+    window.addEventListener('error', function(e) {
+        if (e.target && e.target.tagName === 'SCRIPT') {
+            console.error('Script load failed:', e.target.src);
+            window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] };
+            window.LoveBudEditorDebug.errors.push({ msg: 'Script load failed', src: e.target.src });
+        }
+    }, true);
+    </script>
     <link rel="icon" href="/assets/favicon/favicon.svg" type="image/svg+xml">
     <link rel="icon" href="/favicon.ico" sizes="32x32">
     <link rel="stylesheet" href="../css/editor.css?v=20260510-1006">
@@ -85,12 +94,8 @@
     <script src="../js/editor/editor-sidebar-ui.js?v=20260523-1276"></script>
     <script src="../js/editor/editor-empty-guide-ui.js?v=20260523-1276"></script>
     <script src="../js/editor/editor-canvas-geometry.js?v=20260502-1"></script>
-    <script src="../js/editor/editor-canvas-utils.js?v=20260522-1277"></script>
     <script src="../js/editor/editor-canvas-layout-storage.js?v=20260522-1277"></script>
-    <script src="../js/editor/editor-canvas-panzoom.js?v=20260522-1277"></script>
-    <script src="../js/editor/editor-canvas-selection.js?v=20260522-1277"></script>
-    <script src="../js/editor/editor-canvas-renderer.js?v=20260522-1277"></script>
-    <script src="../js/editor/editor-canvas.js?v=20260507-655"></script>
+    <script type="module" src="../js/editor/editor-canvas.js?v=20260507-655"></script>
     <script src="../js/editor/editor-rename-ui.js?v=20260422-2"></script>
     <script src="../js/editor/editor-detail-tree-meta.js?v=20260502-1"></script>
     <script src="../js/editor/editor-detail-inline-edit.js?v=20260504-627"></script>
