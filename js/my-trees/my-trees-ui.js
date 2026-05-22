@@ -1,6 +1,6 @@
 /**
  * LoveBud - My Trees UI Helpers
- * v20260421-4
+ * v20260523-1
  *
  * Tree card rendering and summary UI utilities
  */
@@ -492,12 +492,10 @@
               '<span class="material-symbols-outlined" aria-hidden="true">auto_awesome</span>',
               '<span>' + momentCount + '</span>',
             '</span>',
-            (viewCount > 0
-              ? '<span class="tree-card-footer-metric" title="' + escapeHtml((i18n('myTrees.view_count') || '조회수') + ' ' + viewCount) + '">'
-                  + '<span class="material-symbols-outlined" aria-hidden="true">visibility</span>'
-                  + '<span>' + viewCount + '</span>'
-                + '</span>'
-              : ''),
+            '<span class="tree-card-footer-metric" title="' + escapeHtml((i18n('myTrees.view_count') || '조회수') + ' ' + viewCount) + '">',
+              '<span class="material-symbols-outlined" aria-hidden="true">visibility</span>',
+              '<span>' + viewCount + '</span>',
+            '</span>',
           '</div>',
         '</div>',
         '<div class="tree-card-footer-right">',
