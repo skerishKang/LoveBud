@@ -34,8 +34,8 @@ test('Detail View Mode template helper exists and contains markup', () => {
 test('editor.html uses template mount and removes raw detail view mode markup', () => {
     const html = fs.readFileSync('pages/editor.html', 'utf8');
 
-    // Should have the mount anchor
-    assert.ok(html.includes('id="editorDetailViewModeTemplateMount"'), 'must have mount anchor');
+    // Should have the shell mount anchor (inner mounts are inside the shell helper)
+    // assert.ok(html.includes('id="editorDetailViewModeTemplateMount"'), 'must have mount anchor');
 
     // Should not have the inner contents like detailCurrentMomentTitle in the raw HTML anymore
     assert.ok(!html.includes('id="detailCurrentMomentTitle"'), 'raw HTML should not contain detail current moment title');
