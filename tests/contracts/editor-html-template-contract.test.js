@@ -18,11 +18,9 @@ test('editor.html keeps active editor page shell contracts', () => {
     // 3. Modals & Forms
     assert.ok(html.includes('id="addMemoryFormTemplateMount"'), 'must have addMemoryFormTemplateMount');
     
-    // 4. Detail Panel
-    assert.ok(html.includes('id="detailPanel"'), 'must have detailPanel');
-    assert.ok(html.includes('id="editorDetailEmptyStateTemplateMount"'), 'must have editorDetailEmptyStateTemplateMount');
-    assert.ok(html.includes('id="editorDetailViewModeTemplateMount"'), 'must have editorDetailViewModeTemplateMount');
-    assert.ok(html.includes('id="editorDetailEditModeTemplateMount"'), 'must have editorDetailEditModeTemplateMount');
+    // 4. Detail Panel (extracted to editorDetailPanelShellTemplateMount)
+    assert.ok(html.includes('id="editorDetailPanelShellTemplateMount"'), 'must have editorDetailPanelShellTemplateMount');
+    assert.ok(!html.includes('id="detailPanel"'), 'detailPanel must not be in raw HTML');
     
     // 5. Mobile UI
     assert.ok(html.includes('id="mobileBottomBar"'), 'must have mobileBottomBar');
@@ -96,11 +94,10 @@ test('editor.html exposes stable static template extraction candidates', () => {
     // 6. Sidebar sections (`<aside class="sidebar">`) - EXTRACTED (see editor-sidebar-template-contract.test.js)
     assert.ok(html.includes('id="editorSidebarTemplateMount"'), 'Candidate: Sidebar is extracted to mount');
     // 9. Detail Empty State (`<div id="detailEmptyState">`) - EXTRACTED (see editor-detail-empty-state-template-contract.test.js)
-    assert.ok(html.includes('id="editorDetailEmptyStateTemplateMount"'), 'must have editorDetailEmptyStateTemplateMount');
     // 10. Detail View Mode (`<div id="detailViewMode">`) - EXTRACTED (see editor-detail-view-mode-template-contract.test.js)
-    assert.ok(html.includes('id="editorDetailViewModeTemplateMount"'), 'must have editorDetailViewModeTemplateMount');
+    // Now handled inside Detail Panel Shell mount
     // 11. Detail Edit Mode (`<div id="detailEditMode">`) - EXTRACTED (see editor-detail-edit-mode-template-contract.test.js)
-    assert.ok(html.includes('id="editorDetailEditModeTemplateMount"'), 'must have editorDetailEditModeTemplateMount');
+    // Now handled inside Detail Panel Shell mount
     
     // AREAS NOT TO EXTRACT YET:
     // - canvas SVG rendering logic
