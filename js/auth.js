@@ -402,7 +402,6 @@ function escapeHtml(value) {
   var sec = window.LoveBudSecurity;
   if (sec) return sec.escapeHtml(value);
   if (__authUiModule) return __authUiModule.escapeHtml(value);
-  if (__authUiTemplates) return __authUiTemplates.escapeHtml(value);
   return String(value == null ? '' : value)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -443,8 +442,9 @@ function getUserAvatarInitial(user) {
  * @param {Object} user - Firebase user object
  */
 function buildUserDropdown(user) {
-  if (__authUiModule) return __authUiModule.buildUserDropdown(user);
-  if (__authUiTemplates) return __authUiTemplates.buildUserDropdown(user);
+  var options = { escapeHtml: escapeHtml };
+  if (__authUiModule) return __authUiModule.buildUserDropdown(user, options);
+  if (__authUiTemplates) return __authUiTemplates.buildUserDropdown(user, options);
   var userName = '';
   var hasPhoto = !!(user && user.photoURL);
 

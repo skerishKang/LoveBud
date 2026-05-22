@@ -5,10 +5,7 @@
     return isPagesContext ? '' : 'pages/';
   }
 
-  function escapeHtml(value) {
-    // TODO: Consider dependency injection for escapeHtml in the future for a pure template module
-    var sec = window.LoveBudSecurity;
-    if (sec) return sec.escapeHtml(value);
+  function fallbackEscapeHtml(value) {
     return String(value == null ? '' : value)
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
@@ -33,7 +30,11 @@
     return /[A-Z0-9가-힣]/.test(firstChar) ? firstChar : 'L';
   }
 
-  function buildUserDropdown(user) {
+  function buildUserDropdown(user, options) {
+    var escapeHtml = (options && typeof options.escapeHtml === 'function') 
+      ? options.escapeHtml 
+      : fallbackEscapeHtml;
+
     var userName = '';
     var hasPhoto = !!(user && user.photoURL);
 
@@ -74,7 +75,8 @@
 
   window.LoveBudAuthUiTemplates = {
     getBasePath: getBasePath,
-    escapeHtml: escapeHtml,
+    escapeHtml: fallbackEscapeHtml,
+    fallbackEscapeHtml: fallbackEscapeHtml,
     buildLoginButton: buildLoginButton,
     getUserAvatarInitial: getUserAvatarInitial,
     buildUserDropdown: buildUserDropdown
