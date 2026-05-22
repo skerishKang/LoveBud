@@ -144,7 +144,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const resolveMemoryThumbnail = editorHelpers.resolveMemoryThumbnail || inlineMediaResolvers.resolveMemoryThumbnail;
 
-    const getYouTubeInputErrorMessage = editorHelpers.getYouTubeInputErrorMessage || ((rawUrl) => {
+    const getYouTubeInputErrorMessage = rootUtils.getYouTubeInputErrorMessage || ((i18n, rawUrl) => {
+        warnRootHelperFallback();
         const value = String(rawUrl || '').trim();
         if (!value) return i18n('enter_youtube') || 'YouTube 링크를 입력해 주세요.';
         const looksLikeUrl = /^(https?:\/\/|www\.)/i.test(value);
