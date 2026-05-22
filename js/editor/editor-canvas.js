@@ -31,7 +31,12 @@ function createEditorCanvas(deps) {
     let hoverAffordanceTimer = null;
     let hoverAffordanceMemoryId = null;
 
+    const storageUtils = window.LoveBudEditorCanvasLayoutStorage || {};
+
     function loadStoredLayout() {
+        if (typeof storageUtils.loadStoredLayout === 'function') {
+            return storageUtils.loadStoredLayout(treeId, layoutStorageKey, canvasLayout);
+        }
         if (typeof canvasLayout.createLayoutStore === 'function') {
             const store = canvasLayout.createLayoutStore(treeId);
             const initialState = store.createInitialViewportState();
@@ -60,6 +65,9 @@ function createEditorCanvas(deps) {
     }
 
     function loadLayoutMode() {
+        if (typeof storageUtils.loadLayoutMode === 'function') {
+            return storageUtils.loadLayoutMode(layoutModeStorageKey);
+        }
         try {
             const raw = localStorage.getItem(layoutModeStorageKey);
             if (raw === 'structured' || raw === 'free') return raw;
@@ -68,6 +76,9 @@ function createEditorCanvas(deps) {
     }
 
     function persistLayoutMode(mode) {
+        if (typeof storageUtils.persistLayoutMode === 'function') {
+            return storageUtils.persistLayoutMode(mode, layoutModeStorageKey);
+        }
         try {
             localStorage.setItem(layoutModeStorageKey, mode);
         } catch (e) {}
@@ -127,6 +138,9 @@ function createEditorCanvas(deps) {
     }
 
     function persistStoredPositions() {
+        if (typeof storageUtils.persistStoredPositions === 'function') {
+            return storageUtils.persistStoredPositions(viewportState, treeId, layoutStorageKey, canvasLayout);
+        }
         if (viewportState.layoutMode === 'structured') return;
 
         if (typeof canvasLayout.createLayoutStore === 'function') {
