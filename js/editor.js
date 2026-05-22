@@ -268,8 +268,7 @@ document.addEventListener('DOMContentLoaded', () => {
             apiClient: window.apiClient,
             showToast,
             i18n,
-            normalizeMemory,
-            cacheTtlMs: 2 * 60 * 1000
+            normalizeMemory
         });
         const treeMemories = () => (window.currentTreeMemories || []).map(normalizeMemory).filter(Boolean);
         const canonicalRootId = getCanonicalRootId(treeMemories());

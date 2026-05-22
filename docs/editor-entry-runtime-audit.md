@@ -64,15 +64,12 @@ The `js/editor.js` orchestrator has been significantly slimmed down. Current sta
 
 To tackle the high-risk residual areas, the following roadmap is proposed:
 
-1. **Refine Sub-module Contracts (Pre-requisite for further extraction)**:
+1. **Phase 2 (Completed)**: Extract Data Fetching (`editor-data-loader.js`)
+   - Removed 5 fallback factories and successfully delegated to `editorDataLoader` with fail-fast patterns.
+2. **Phase 3 (On Hold)**: Thin out `editor.js` completely
+   - **Status**: Hold
+   - **Rationale**: The remaining 580 lines are primarily core orchestrator responsibilities (instantiating sub-modules, wiring callbacks, handling lifecycle). Further extraction risks over-engineering the entrypoint into a complex DI container.
+   - **Resolution**: Adopt 580 lines as the new healthy baseline for `editor.js` instead of the original 500-line goal.
+3. **Refine Sub-module Contracts (Ongoing Technical Debt)**:
    - Eliminate circular dependencies where `module A` requires a callback from `module B`, but `module B` needs `module A` to be initialized.
    - Use event emitters or explicit setter methods (like `addNodePosition` from PR #1476) instead of passing raw functions during initialization.
-2. **Extract Data Fetching (`editor-data-loader.js`)**:
-   - Extract `loadInitialEditorTree` and `loadEditorMemories` into a dedicated service.
-   - **Prerequisite**: Define a clear state interface so that `editor.js` only receives `(treeData, memoriesData)` or an `errorState`, without dealing with the `fetch` API directly.
-3. **Thin out `editor.js` completely**:
-   - Limit `editor.js` to only:
-     - Auth listener binding.
-     - Calling the data loader.
-     - Instantiating sub-modules with resolved data.
-     - Global error catching.
