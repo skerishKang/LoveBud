@@ -22,6 +22,7 @@ test('editor.html keeps active editor page shell contracts', () => {
     assert.ok(html.includes('id="detailPanel"'), 'must have detailPanel');
     assert.ok(html.includes('id="editorDetailEmptyStateTemplateMount"'), 'must have editorDetailEmptyStateTemplateMount');
     assert.ok(html.includes('id="editorDetailViewModeTemplateMount"'), 'must have editorDetailViewModeTemplateMount');
+    assert.ok(html.includes('id="editorDetailEditModeTemplateMount"'), 'must have editorDetailEditModeTemplateMount');
     
     // 5. Mobile UI
     assert.ok(html.includes('id="mobileBottomBar"'), 'must have mobileBottomBar');
@@ -98,7 +99,8 @@ test('editor.html exposes stable static template extraction candidates', () => {
     assert.ok(html.includes('id="editorDetailEmptyStateTemplateMount"'), 'must have editorDetailEmptyStateTemplateMount');
     // 10. Detail View Mode (`<div id="detailViewMode">`) - EXTRACTED (see editor-detail-view-mode-template-contract.test.js)
     assert.ok(html.includes('id="editorDetailViewModeTemplateMount"'), 'must have editorDetailViewModeTemplateMount');
-    assert.ok(html.includes('id="detailEditMode"'), 'Candidate: Detail Panel Edit Mode');
+    // 11. Detail Edit Mode (`<div id="detailEditMode">`) - EXTRACTED (see editor-detail-edit-mode-template-contract.test.js)
+    assert.ok(html.includes('id="editorDetailEditModeTemplateMount"'), 'must have editorDetailEditModeTemplateMount');
     
     // AREAS NOT TO EXTRACT YET:
     // - canvas SVG rendering logic
