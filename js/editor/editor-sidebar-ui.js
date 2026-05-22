@@ -4,7 +4,7 @@
     sidebarUI.updateSidebarTreeActions = function(options) {
         const i18n = options.i18n;
         const safeI18nText = options.safeI18nText;
-        const treeId = options.treeId;
+        const treeId = typeof options.getTreeId === 'function' ? options.getTreeId() : options.treeId;
 
         const visibilityToggleBtn = document.getElementById('sidebarVisibilityToggleBtn');
         const visibilityToggleLabel = document.getElementById('sidebarVisibilityToggleBtnLabel');
@@ -29,7 +29,6 @@
     };
 
     sidebarUI.bindSidebarVisibilityToggle = function(options) {
-        const treeId = options.treeId;
         const updateTreeVisibility = options.updateTreeVisibility;
         const showToast = options.showToast;
         const safeI18nText = options.safeI18nText;
@@ -44,7 +43,8 @@
         if (sidebarVisibilityToggleBtn && sidebarVisibilityToggleBtn.dataset.bound !== '1') {
             sidebarVisibilityToggleBtn.dataset.bound = '1';
             sidebarVisibilityToggleBtn.addEventListener('click', async () => {
-                if (!treeId) return;
+                const currentTreeId = typeof options.getTreeId === 'function' ? options.getTreeId() : options.treeId;
+                if (!currentTreeId) return;
                 const currentVisibility = window.currentTreeData?.visibility || 'public';
                 const isCurrentlyPublic = currentVisibility === 'public';
                 const idleLabel = sidebarVisibilityToggleBtn.dataset.idleLabel || sidebarVisibilityToggleBtnLabel?.textContent || '';

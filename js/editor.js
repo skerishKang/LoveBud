@@ -374,7 +374,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const sidebarUIHelper = window.LoveBudEditorSidebarUI || {};
         const updateSidebarTreeActions = () => {
             if (sidebarUIHelper.updateSidebarTreeActions) {
-                sidebarUIHelper.updateSidebarTreeActions({ i18n, safeI18nText, treeId });
+                sidebarUIHelper.updateSidebarTreeActions({ i18n, safeI18nText, getTreeId: () => treeId });
             }
         };
 
@@ -493,7 +493,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const { urlInput, titleInput, memoInput, cancelBtn, confirmBtn } = createEditorFormRefs();
         if (sidebarUIHelper.bindSidebarVisibilityToggle) {
             sidebarUIHelper.bindSidebarVisibilityToggle({
-                treeId, updateTreeVisibility, showToast, safeI18nText, i18n, getHttpStatus, updateSidebarStatus
+                getTreeId: () => treeId, updateTreeVisibility, showToast, safeI18nText, i18n, getHttpStatus, updateSidebarStatus
             });
         }
 
