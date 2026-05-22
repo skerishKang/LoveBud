@@ -407,6 +407,79 @@ function createEditorDetailUI(deps) {
             }
         }
 
+        // --- 1288 Phase B: Reactions & Comments ---
+        const reactionsCard = document.getElementById('momentReactionsCard');
+        if (reactionsCard) {
+            if (isRootMemory(data, canonicalRootId)) {
+                reactionsCard.style.display = 'none';
+            } else {
+                reactionsCard.style.display = '';
+
+                const likeBtn = document.getElementById('momentLikeBtn');
+                const likeCount = document.getElementById('momentLikeCount');
+                const commentCount = document.getElementById('momentCommentCount');
+                
+                if (likeBtn && likeCount && commentCount) {
+                    likeBtn.dataset.reacted = 'false';
+                    likeBtn.querySelector('.editor-reaction-like-icon').textContent = '🤍';
+                    likeCount.textContent = '0';
+                    commentCount.textContent = '0';
+
+                    if (window.apiClient?.fetchReactionSummary) {
+                        window.apiClient.fetchReactionSummary(data.id)
+                            .then(summary => {
+                                if (!summary) return;
+                                likeCount.textContent = summary.like_count ?? summary.likeCount ?? 0;
+                                commentCount.textContent = summary.comment_count ?? summary.commentCount ?? 0;
+                                const userReacted = summary.user_reacted ?? summary.userReacted ?? false;
+                                likeBtn.dataset.reacted = userReacted ? 'true' : 'false';
+                                likeBtn.querySelector('.editor-reaction-like-icon').textContent = userReacted ? '❤️' : '🤍';
+                            })
+                            .catch(() => {});
+                    }
+
+                    likeBtn.onclick = async () => {
+                        const wasReacted = likeBtn.dataset.reacted === 'true';
+                        const prevCount = parseInt(likeCount.textContent) || 0;
+
+                        const nextReacted = !wasReacted;
+                        const nextCount = nextReacted ? prevCount + 1 : Math.max(0, prevCount - 1);
+                        likeBtn.dataset.reacted = nextReacted ? 'true' : 'false';
+                        likeBtn.querySelector('.editor-reaction-like-icon').textContent = nextReacted ? '❤️' : '🤍';
+                        likeCount.textContent = nextCount;
+
+                        try {
+                            const result = await window.apiClient.toggleReaction(data.id, 'like');
+                            if (result) {
+                                likeCount.textContent = result.like_count ?? result.likeCount ?? nextCount;
+                                const serverReacted = result.user_reacted ?? result.userReacted ?? nextReacted;
+                                likeBtn.dataset.reacted = serverReacted ? 'true' : 'false';
+                                likeBtn.querySelector('.editor-reaction-like-icon').textContent = serverReacted ? '❤️' : '🤍';
+                            }
+                        } catch (e) {
+                            likeBtn.dataset.reacted = wasReacted ? 'true' : 'false';
+                            likeBtn.querySelector('.editor-reaction-like-icon').textContent = wasReacted ? '❤️' : '🤍';
+                            likeCount.textContent = prevCount;
+                            showToast(i18n('reaction_failed') || '반응을 저장하지 못했어요.', 'error');
+                        }
+                    };
+
+                    const commentBtn = document.getElementById('momentCommentBtn');
+                    if (commentBtn) {
+                        commentBtn.onclick = () => {
+                            if (!data.id || !treeId) return;
+                            const basePath = typeof window.getEditorBasePath === 'function' ? window.getEditorBasePath() : '../pages/';
+                            window.location.href = basePath
+                                + 'detail.html?id=' + encodeURIComponent(data.id)
+                                + '&tree=' + encodeURIComponent(treeId)
+                                + '&from=editor';
+                        };
+                    }
+                }
+            }
+        }
+        // --- End Reactions ---
+
         if (memoryActions) {
             memoryActions.style.display = isEmptyState ? 'none' : 'flex';
             memoryActions.style.marginTop = '4px';
