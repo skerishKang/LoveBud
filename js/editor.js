@@ -193,6 +193,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     const startEditor = async () => {
+        // Wait for ESM module (editor-canvas.js) to be loaded
+        let retryCount = 0;
+        while (typeof window.createEditorCanvas !== 'function' && retryCount < 50) {
+            await new Promise(resolve => setTimeout(resolve, 50));
+            retryCount++;
+        }
+        if (typeof window.createEditorCanvas !== 'function') {
+            console.error('[editor] window.createEditorCanvas is not loaded in time. ESM loading may have failed.');
+            return;
+        }
+
         const { canvas, svg, detailPanel, addBtn } = createEditorDomRefs();
         const urlParams = new URLSearchParams(window.location.search);
         const urlTreeId = urlParams.get('treeId');

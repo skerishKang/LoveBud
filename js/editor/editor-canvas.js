@@ -1,3 +1,8 @@
+import * as utils from './editor-canvas-utils.js';
+import * as panzoomUtils from './editor-canvas-panzoom.js';
+import * as selectionUtils from './editor-canvas-selection.js';
+import * as renderUtils from './editor-canvas-renderer.js';
+
 function createEditorCanvas(deps) {
     const {
         canvas,
@@ -27,12 +32,7 @@ function createEditorCanvas(deps) {
     const canvasViewport = window.LoveBudEditorCanvasViewport || {};
     const canvasEdges = window.createEditorCanvasEdges({ svg, canvasViewport });
 
-    // Extracted Helpers (Issue #1277 Modularization)
-    const utils = window.LoveBudEditorCanvasUtils || {};
     const layoutStorage = window.LoveBudEditorCanvasLayoutStorage || {};
-    const panzoomUtils = window.LoveBudEditorCanvasPanzoom || {};
-    const selectionUtils = window.LoveBudEditorCanvasSelection || {};
-    const renderUtils = window.LoveBudEditorCanvasRenderer || {};
 
     let savedFreePositions = null;
     let storedFreePositions = null;
