@@ -20,11 +20,19 @@ function createEditorCanvas(deps) {
         || 'default';
     const layoutStorageKey = 'lovebud_tree_layout_v2_' + treeId;
     const layoutModeStorageKey = 'lovebud_tree_layout_mode_' + treeId;
+    // External Module Delegates (Legacy Global Dependencies)
     const canvasLayout = window.LoveBudEditorCanvasLayout || {};
     const canvasNode = window.LoveBudEditorCanvasNode || {};
     const canvasInteraction = window.LoveBudEditorCanvasInteraction || {};
     const canvasViewport = window.LoveBudEditorCanvasViewport || {};
     const canvasEdges = window.createEditorCanvasEdges({ svg, canvasViewport });
+
+    // Extracted Helpers (Issue #1277 Modularization)
+    const utils = window.LoveBudEditorCanvasUtils || {};
+    const layoutStorage = window.LoveBudEditorCanvasLayoutStorage || {};
+    const panzoomUtils = window.LoveBudEditorCanvasPanzoom || {};
+    const selectionUtils = window.LoveBudEditorCanvasSelection || {};
+    const renderUtils = window.LoveBudEditorCanvasRenderer || {};
 
     let savedFreePositions = null;
     let storedFreePositions = null;
@@ -640,6 +648,14 @@ function createEditorCanvas(deps) {
         return drawableMemories[0] || null;
     }
 
+    /**
+     * DOM RENDER ORCHESTRATION BOUNDARY
+     * High-risk regression point:
+     * - Do NOT move DOM creation/deletion loop outside this module.
+     * - Preserve render ordering to prevent duplicate nodes.
+     * - Preserve affordance and detail panel synchronization.
+     * - Ensure `hasVisibleNodes` check controls Empty State rendering.
+     */
     const initCanvas = () => {
         const canonicalRootId = getCanonicalRootId();
         const treeMemories = getTreeMemories();
@@ -810,6 +826,12 @@ function createEditorCanvas(deps) {
         persistStoredPositions();
     }
 
+    /**
+     * EVENT LIFECYCLE BOUNDARY
+     * High-risk regression point:
+     * - Do NOT move global listener bindings outside this module.
+     * - Ensure `viewportState.controlsBound` correctly prevents duplicate bindings.
+     */
     function bindViewportControls() {
         if (typeof canvasViewport.bindControls === 'function') {
             canvasViewport.bindControls({
@@ -912,6 +934,12 @@ function createEditorCanvas(deps) {
         toggleBtn.dataset.compactBound = '1';
     }
 
+    /**
+     * EVENT LIFECYCLE BOUNDARY
+     * High-risk regression point:
+     * - Do NOT extract pan state mutations without passing viewportState by reference.
+     * - Ensure `viewportState.globalsBound` is strictly respected to avoid ghost dragging.
+     */
     function bindCanvasPan() {
         if (typeof canvasInteraction.bind === 'function') {
             canvasInteraction.bind({
