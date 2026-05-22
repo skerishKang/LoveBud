@@ -21,6 +21,7 @@ var __authStateModule = __authBootstrapCompat
 var __authUiModule = __authBootstrapCompat
   ? __authBootstrapCompat.authUiModule
   : (window.LoveBudAuthUI || null);
+var __authUiTemplates = window.LoveBudAuthUiTemplates || null;
 var __authSessionModule = __authBootstrapCompat
   ? __authBootstrapCompat.authSessionModule
   : (window.LoveBudAuthSession || null);
@@ -385,8 +386,6 @@ function markAuthReady() {
 }
 
 // ── UI Builders ───────────────────────────────────────────────────────────────
-
-var __authUiTemplates = window.LoveBudAuthUiTemplates || null;
 
 function getBasePath() {
   if (__authUiModule) return __authUiModule.getBasePath();

@@ -6,6 +6,7 @@
   }
 
   function escapeHtml(value) {
+    // TODO: Consider dependency injection for escapeHtml in the future for a pure template module
     var sec = window.LoveBudSecurity;
     if (sec) return sec.escapeHtml(value);
     return String(value == null ? '' : value)
@@ -44,7 +45,7 @@
     var safePhotoUrl = hasPhoto ? escapeHtml(user.photoURL) : '';
 
     var isPagesContext = window.location.pathname.indexOf('/pages/') !== -1;
-    var settingsHref = isPagesContext ? 'settings.html' : 'pages/settings.html';
+    // TODO: settings not yet implemented
     var myTreesHref = isPagesContext ? 'my-trees.html' : 'pages/my-trees.html';
 
     var avatarInitial = getUserAvatarInitial(user);
