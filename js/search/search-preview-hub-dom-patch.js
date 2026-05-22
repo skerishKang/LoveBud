@@ -1,4 +1,4 @@
-/* Issue #1058: DOM-level Browse hub final layout patch. */
+/* Issue #1058/#1489: DOM-level Browse hub final layout patch. */
 (function() {
     'use strict';
 
@@ -54,7 +54,7 @@
                 '<div class="preview-social-bar" aria-label="트리 반응">' +
                     '<button type="button" class="preview-social-action" data-preview-like disabled aria-label="좋아요 0"><span class="material-symbols-outlined" aria-hidden="true">favorite</span><strong>0</strong><span>좋아요</span></button>' +
                     '<button type="button" class="preview-social-action" data-preview-comments aria-expanded="false" aria-label="댓글 0"><span class="material-symbols-outlined" aria-hidden="true">mode_comment</span><strong>0</strong><span>댓글</span></button>' +
-                    '<button type="button" class="preview-social-action" data-preview-share disabled aria-label="공유 0"><span class="material-symbols-outlined" aria-hidden="true">share</span><strong>0</strong><span>공유</span></button>' +
+                    '<div class="preview-social-action preview-social-stat" aria-label="조회수" role="status"><span class="material-symbols-outlined" aria-hidden="true">visibility</span><strong>0</strong><span>조회수</span></div>' +
                 '</div>' +
                 '<div class="preview-comments-panel" data-preview-comments-panel hidden>' +
                     '<div class="preview-comments-title">댓글</div>' +
