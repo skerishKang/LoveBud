@@ -1,6 +1,6 @@
 /**
  * LoveBud Search Card Renderer
- * v20260513-1135-1
+ * v20260523-1490-1
  * 
  * Rendering layer: tree cards, empty states.
  * DOM-agnostic - returns HTML strings.
@@ -142,8 +142,8 @@
         return {
             likes: getFirstFiniteCount(tree, ['likeCount', 'likesCount', 'likes', 'reactionCount', 'reaction_count']),
             comments: getFirstFiniteCount(tree, ['commentCount', 'commentsCount', 'comments', 'replyCount', 'reply_count']),
-            shares: getFirstFiniteCount(tree, ['shareCount', 'sharesCount', 'shares', 'sharedCount', 'shared_count']),
             views: getFirstFiniteCount(tree, [
+                'totalViewCount',
                 'viewCount',
                 'viewsCount',
                 'views',
@@ -163,11 +163,10 @@
 
     function renderTreeReactionMetrics(tree) {
         const counts = getTreeReactionCounts(tree);
+        // 순서: 조회수 → 좋아요 (필터 탭 순서와 일치, #1490)
         const metrics = [
-            { icon: 'favorite', label: '좋아요', value: counts.likes },
-            { icon: 'mode_comment', label: '댓글', value: counts.comments },
-            { icon: 'share', label: '공유', value: counts.shares },
-            { icon: 'visibility', label: '조회수', value: counts.views }
+            { icon: 'visibility', label: '조회수', value: counts.views },
+            { icon: 'favorite', label: '좋아요', value: counts.likes }
         ];
 
         return `
