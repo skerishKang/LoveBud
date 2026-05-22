@@ -37,7 +37,7 @@ This document inventories the responsibilities, lifecycle boundaries, and extrac
 
 To stabilize and modularize `auth.js` safely, the extraction should follow an outside-in approach, extracting pure UI and stateless logic first:
 
-1.  **UI & Template Builders**: Extract `buildUserDropdown`, `buildLoginButton`, `escapeHtml`, and `getUserAvatarInitial` into a UI rendering module (e.g., `js/auth/auth-ui-templates.js`).
+1.  **UI & Template Builders (COMPLETED in #1467)**: Extracted `buildUserDropdown`, `buildLoginButton`, `escapeHtml`, and `getUserAvatarInitial` into a UI rendering module (`js/auth/auth-ui-templates.js`). `auth.js` now bridges this via `__authUiTemplates`.
 2.  **Auth Form & Auth Mode Config**: Extract the email form configurations (`syncEmailAuthModeUi`, `setupLoginPageAuthUi`) and UI setup triggers (`setupEmailAuthForm`, `setupSignupForm`) into a login-page specific module (e.g., `js/auth/auth-login-forms.js`).
 3.  **Redirect & Session Management**: Extract `getRedirectTarget` and `preloadRedirectTargetData` into a session routing module (e.g., `js/auth/auth-redirects.js`).
 4.  **Core Orchestration**: Keep the remaining `initAuth`, `updateNavUI` (the DOM replacement part), `signInWithGoogle`, and `signOut` orchestration inside `auth.js`.
