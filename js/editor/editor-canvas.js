@@ -145,16 +145,30 @@ function createEditorCanvas(deps) {
         } catch (e) {}
     }
 
+    const panzoomUtils = window.LoveBudEditorCanvasPanzoom || {};
+
     function fitViewportToTree() {
-        if (typeof canvasViewport.getFitViewport !== 'function') return;
-        const nextViewport = canvasViewport.getFitViewport({
-            getTreeMemories,
-            getCanonicalRootId,
-            isRootMemory,
-            getWorldPosition,
-            getMetrics,
-            viewportState
-        });
+        let nextViewport = null;
+        if (typeof panzoomUtils.getFitViewportIfAvailable === 'function') {
+            nextViewport = panzoomUtils.getFitViewportIfAvailable(canvasViewport, {
+                getTreeMemories,
+                getCanonicalRootId,
+                isRootMemory,
+                getWorldPosition,
+                getMetrics,
+                viewportState
+            });
+        } else if (typeof canvasViewport.getFitViewport === 'function') {
+            nextViewport = canvasViewport.getFitViewport({
+                getTreeMemories,
+                getCanonicalRootId,
+                isRootMemory,
+                getWorldPosition,
+                getMetrics,
+                viewportState
+            });
+        }
+        
         if (!nextViewport) return;
         if (typeof canvasViewport.applyViewport === 'function') {
             canvasViewport.applyViewport(viewportState, nextViewport, true);
@@ -631,8 +645,17 @@ function createEditorCanvas(deps) {
         const world = getWorldPosition(target);
         const metrics = getMetrics();
         const scale = viewportState.scale || 1;
-        viewportState.offsetX = Math.round(metrics.width * 0.5 - (world.x * scale));
-        viewportState.offsetY = Math.round(metrics.height * 0.38 - (world.y * scale));
+        
+        if (typeof panzoomUtils.calculateFocusOffset === 'function') {
+            const offset = panzoomUtils.calculateFocusOffset(world.x, world.y, scale, metrics);
+            viewportState.offsetX = offset.offsetX;
+            viewportState.offsetY = offset.offsetY;
+        } else {
+            // Fallback
+            viewportState.offsetX = Math.round(metrics.width * 0.5 - (world.x * scale));
+            viewportState.offsetY = Math.round(metrics.height * 0.38 - (world.y * scale));
+        }
+        
         initCanvas();
         reapplySelection(nodeId);
         persistStoredPositions();
@@ -664,14 +687,22 @@ function createEditorCanvas(deps) {
         }
 
         const points = treeMemories.map((mem) => getWorldPosition(mem));
-        const minX = Math.min(...points.map((p) => p.x));
-        const maxX = Math.max(...points.map((p) => p.x));
-        const minY = Math.min(...points.map((p) => p.y));
-        const maxY = Math.max(...points.map((p) => p.y));
         const metrics = getMetrics();
+        
+        if (typeof panzoomUtils.calculateRecenterOffset === 'function') {
+            const offset = panzoomUtils.calculateRecenterOffset(points, metrics);
+            viewportState.offsetX = offset.offsetX;
+            viewportState.offsetY = offset.offsetY;
+        } else {
+            // Fallback
+            const minX = Math.min(...points.map((p) => p.x));
+            const maxX = Math.max(...points.map((p) => p.x));
+            const minY = Math.min(...points.map((p) => p.y));
+            const maxY = Math.max(...points.map((p) => p.y));
+            viewportState.offsetX = Math.round(metrics.width * 0.5 - ((minX + maxX) / 2));
+            viewportState.offsetY = Math.round(metrics.height * 0.38 - ((minY + maxY) / 2));
+        }
 
-        viewportState.offsetX = Math.round(metrics.width * 0.5 - ((minX + maxX) / 2));
-        viewportState.offsetY = Math.round(metrics.height * 0.38 - ((minY + maxY) / 2));
         initCanvas();
         persistStoredPositions();
     }
@@ -890,10 +921,18 @@ function createEditorCanvas(deps) {
             return;
         }
 
-        const oldScale = viewportState.scale || 1;
-        const newScale = factor >= 1 ? Math.min(1.5, oldScale + 0.25) : Math.max(0.2, oldScale - 0.25);
-        if (newScale === oldScale) return;
-        viewportState.scale = newScale;
+        if (typeof panzoomUtils.calculateZoomScale === 'function') {
+            const newScale = panzoomUtils.calculateZoomScale(viewportState.scale, factor);
+            if (newScale === viewportState.scale) return;
+            viewportState.scale = newScale;
+        } else {
+            // Fallback
+            const oldScale = viewportState.scale || 1;
+            const newScale = factor >= 1 ? Math.min(1.5, oldScale + 0.25) : Math.max(0.2, oldScale - 0.25);
+            if (newScale === oldScale) return;
+            viewportState.scale = newScale;
+        }
+
         initCanvas();
         persistStoredPositions();
     }
