@@ -57,7 +57,7 @@
             viewportState
         } = deps;
 
-        const world = getWorldPosition(mem);
+        const world = getWorldPosition(mem, deps);
         if (canvasViewport && typeof canvasViewport.projectWorldPosition === 'function') {
             return canvasViewport.projectWorldPosition(world, viewportState);
         }
