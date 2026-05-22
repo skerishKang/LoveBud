@@ -1,8 +1,9 @@
 /**
  * LoveBud - My Trees UI Helpers
- * v20260523-1
+ * v20260523-1488-1
  *
  * Tree card rendering and summary UI utilities
+ * Issue #1488: 나의트리 카드 메트릭을 좋아요 + 조회수로 둘러보기와 통일
  */
 
 (function () {
@@ -54,6 +55,7 @@
     return Number.isFinite(count) ? count : 0;
   }
 
+  // Issue #1488: totalViewCount 우선 fallback
   function getTreeViewCount(tree) {
     var Utils = window.LoveBudMyTreesUtils;
     if (Utils && typeof Utils.getTreeViewCount === 'function') {
@@ -61,6 +63,7 @@
     }
     if (!tree) return 0;
     var keys = [
+      'totalViewCount',
       'viewCount', 'viewsCount', 'views', 'view_count', 'views_count',
       'visitorCount', 'visitorsCount', 'visitCount', 'visitsCount', 'visits',
       'openCount', 'opensCount', 'open_count'
@@ -70,6 +73,25 @@
       if (Number.isFinite(value) && value >= 0) return value;
     }
     return 0;
+  }
+
+  // Issue #1488: 좋아요 수 읽기
+  function getTreeLikeCount(tree) {
+    if (!tree) return 0;
+    var keys = ['likeCount', 'likesCount', 'likes', 'reactionCount', 'reaction_count'];
+    for (var i = 0; i < keys.length; i++) {
+      var value = Number(tree[keys[i]]);
+      if (Number.isFinite(value) && value >= 0) return value;
+    }
+    return 0;
+  }
+
+  function formatCompactCount(value) {
+    var count = Number(value || 0);
+    if (!Number.isFinite(count) || count <= 0) return '0';
+    if (count >= 1000000) return (Math.floor(count / 100000) / 10) + 'M';
+    if (count >= 1000) return (Math.floor(count / 100) / 10) + 'K';
+    return String(count);
   }
 
   function getVisibilityActionLabel(tree, i18n) {
@@ -418,7 +440,8 @@
       normalizedTree.representativeMemo = normalizedTree.representativeMemo || (tree && (tree.representativeMemo || tree.representative_memo || ''));
     }
 
-    var momentCount = Number(normalizedTree.memoryCount) || 0;
+    // Issue #1488: 좋아요 + 조회수로 둘러보기와 통일 (순간수 제거)
+    var likeCount = getTreeLikeCount(tree);
     var viewCount = getTreeViewCount(tree);
     var cardMeta = getTreeCardMeta(normalizedTree, i18n);
     var title = cardMeta.title;
@@ -446,32 +469,23 @@
     };
 
     card.addEventListener('click', function (e) {
-      // Don't hijack clicks on inner interactive elements (buttons, links, menus)
       if (e.target.closest('.tree-card-open-link, .tree-card-footer a, button, a[href]')) {
         return;
       }
-
-      // Mobile <480px: navigate directly to Editor
       if (window.innerWidth < 480) {
         window.location.href = openHref;
         return;
       }
-
-      // Desktop: existing Hub panel selection behavior
       handleCardSelect();
     });
 
     card.addEventListener('keydown', function (e) {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
-
-        // Mobile <480px: navigate directly to Editor
         if (window.innerWidth < 480) {
           window.location.href = openHref;
           return;
         }
-
-        // Desktop: existing Hub panel selection behavior
         handleCardSelect();
       }
     });
@@ -487,14 +501,15 @@
       '</div>',
       '<div class="tree-card-footer">',
         '<div class="tree-card-footer-left">',
+          // Issue #1488 #1490: 조회수→좋아요 순서, 순간수 제거
           '<div class="tree-card-footer-metrics">',
-            '<span class="tree-card-footer-metric" title="' + escapeHtml((i18n('myTrees.moment_count') || '순간') + ' ' + momentCount) + '">',
-              '<span class="material-symbols-outlined" aria-hidden="true">auto_awesome</span>',
-              '<span>' + momentCount + '</span>',
-            '</span>',
-            '<span class="tree-card-footer-metric" title="' + escapeHtml((i18n('myTrees.view_count') || '조회수') + ' ' + viewCount) + '">',
+            '<span class="tree-card-footer-metric" title="' + escapeHtml((i18n('myTrees.view_count') || '조회수') + ' ' + formatCompactCount(viewCount)) + '">',
               '<span class="material-symbols-outlined" aria-hidden="true">visibility</span>',
-              '<span>' + viewCount + '</span>',
+              '<span>' + formatCompactCount(viewCount) + '</span>',
+            '</span>',
+            '<span class="tree-card-footer-metric" title="' + escapeHtml((i18n('myTrees.like_count') || '좋아요') + ' ' + formatCompactCount(likeCount)) + '">',
+              '<span class="material-symbols-outlined" aria-hidden="true">favorite</span>',
+              '<span>' + formatCompactCount(likeCount) + '</span>',
             '</span>',
           '</div>',
         '</div>',
@@ -550,7 +565,6 @@
       return;
     }
 
-    // Issue #616: Store all trees and initialize first batch
     allTreesData = trees;
     totalTreesCount = trees.length;
     currentVisibleCount = 0;
@@ -562,13 +576,9 @@
       grid.id = 'trees-grid';
       container.appendChild(grid);
     }
-    // Sort change or re-render: clear old cards before appending new ones
     grid.innerHTML = '';
 
-    // Issue #616/#1120: Render first two-row batch only
     renderNextBatch(grid, buildTreeCardFn, setState, stateEnum, { onSelect: hubOnSelect, onNavigate: hubOnNavigate });
-
-    // Issue #616: Set up scroll continuation
     setupScrollContinuation(grid, buildTreeCardFn, setState, stateEnum, { onSelect: hubOnSelect, onNavigate: hubOnNavigate });
 
     if (typeof setState === 'function' && stateEnum && stateEnum.LOADED) {
@@ -576,7 +586,6 @@
     }
   }
 
-  // Issue #616/#1120: Render next batch of trees
   function renderNextBatch(grid, buildTreeCardFn, setState, stateEnum, extraOptions) {
     var startIndex = currentVisibleCount;
     var batchSize = startIndex === 0 ? FIRST_BATCH_SIZE : BATCH_SIZE;
@@ -596,7 +605,6 @@
       card.classList.add('tree-card-batch-pending');
       grid.appendChild(card);
       
-      // Fade-in animation
       setTimeout(function(c) {
         c.style.transition = 'opacity 0.2s ease-in';
         c.style.opacity = '1';
@@ -606,7 +614,6 @@
     
     currentVisibleCount = endIndex;
     
-    // Update manage summary with total count (not just visible)
     var summary = document.getElementById('trees-manage-summary');
     if (summary) {
       var i18n = window.i18nMyTrees || {};
@@ -615,26 +622,21 @@
     }
   }
 
-  // Issue #616: Set up scroll continuation sentinel
   function setupScrollContinuation(grid, buildTreeCardFn, setState, stateEnum, extraOptions) {
-    // Remove existing sentinel
     if (scrollSentinel) {
       scrollSentinel.remove();
     }
     
-    // Check if more trees available
     if (currentVisibleCount >= totalTreesCount) {
       return;
     }
     
-    // Create sentinel element
     scrollSentinel = document.createElement('div');
     scrollSentinel.id = 'trees-scroll-sentinel';
     scrollSentinel.style.height = '20px';
     scrollSentinel.style.gridColumn = '1 / -1';
     grid.appendChild(scrollSentinel);
     
-    // IntersectionObserver for scroll continuation
     if ('IntersectionObserver' in window) {
       var observer = new IntersectionObserver(function(entries) {
         entries.forEach(function(entry) {
@@ -650,7 +652,6 @@
     }
   }
 
-  // Issue #616: Load more batch on scroll
   function loadMoreBatch(grid, buildTreeCardFn, setState, stateEnum, extraOptions) {
     if (isLoadingMore || currentVisibleCount >= totalTreesCount) {
       return;
@@ -658,20 +659,16 @@
     
     isLoadingMore = true;
     
-    // Remove old sentinel observer
     if (scrollSentinel && scrollSentinel._observer) {
       scrollSentinel._observer.disconnect();
     }
     
     renderNextBatch(grid, buildTreeCardFn, setState, stateEnum, extraOptions);
-    
-    // Set up new sentinel
     setupScrollContinuation(grid, buildTreeCardFn, setState, stateEnum, extraOptions);
     
     isLoadingMore = false;
   }
 
-  // Issue #616: Reset batch state on sort change or reload
   function resetBatchState() {
     var grid = document.getElementById('trees-grid');
     if (grid) {
@@ -688,13 +685,13 @@
     buildMiniTreeSVG: buildMiniTreeSVG,
     getTreeMomentCount: getTreeMomentCount,
     getTreeViewCount: getTreeViewCount,
+    getTreeLikeCount: getTreeLikeCount,
     buildTreeThumbVisual: buildTreeThumbVisual,
     updateManageSummary: updateManageSummary,
     buildTreeCard: buildTreeCard,
     renderTrees: renderTrees
   };
 
-  // Backward-compat: older page scripts referenced "LoveTree*" namespaces.
   window.LoveBudMyTreesUI = api;
   window.LoveTreeMyTreesUI = api;
 })();
