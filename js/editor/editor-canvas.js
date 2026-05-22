@@ -329,19 +329,28 @@ function createEditorCanvas(deps) {
         return pos.x >= padding && pos.x <= metrics.width - padding && pos.y >= padding && pos.y <= metrics.height - padding;
     }
 
+    const selectionUtils = window.LoveBudEditorCanvasSelection || {};
+
     function keepSelectionVisible() {
-        const selectedId = document.querySelector('.memory-node.selected')?.dataset?.memoryId;
-        if (selectedId) {
-            const target = getTreeMemories().find((memory) => memory.id === selectedId);
-            if (target) {
-                const currentPos = calcPosition(target);
-                if (!isNodeWithinSafeViewport(currentPos)) {
-                    focusNodeById(selectedId);
-                    return;
-                }
-                initCanvas();
+        let selectedId = null;
+        let target = null;
+
+        if (typeof selectionUtils.getSelectedMemoryId === 'function') {
+            selectedId = selectionUtils.getSelectedMemoryId(document);
+            target = selectionUtils.getSelectedMemory(document, getTreeMemories());
+        } else {
+            selectedId = document.querySelector('.memory-node.selected')?.dataset?.memoryId;
+            target = selectedId ? getTreeMemories().find((memory) => memory.id === selectedId) : null;
+        }
+
+        if (selectedId && target) {
+            const currentPos = calcPosition(target);
+            if (!isNodeWithinSafeViewport(currentPos)) {
+                focusNodeById(selectedId);
                 return;
             }
+            initCanvas();
+            return;
         }
         recenterViewport();
     }
@@ -528,7 +537,12 @@ function createEditorCanvas(deps) {
 
     function reapplySelection(selectedNodeId) {
         if (!selectedNodeId) return;
-        const selectedEl = document.querySelector(`.memory-node[data-memory-id=\"${selectedNodeId}\"]`);
+        if (typeof selectionUtils.reapplySelection === 'function') {
+            selectionUtils.reapplySelection(selectedNodeId, document);
+            return;
+        }
+        // Fallback
+        const selectedEl = document.querySelector(`.memory-node[data-memory-id="${selectedNodeId}"]`);
         if (selectedEl) {
             selectedEl.classList.add('selected');
         }
@@ -565,8 +579,13 @@ function createEditorCanvas(deps) {
     }
 
     function updateAffordance() {
-        const selectedId = document.querySelector('.memory-node.selected')?.dataset?.memoryId;
-        const selectedMem = selectedId ? getTreeMemories().find((m) => m.id === selectedId) : null;
+        let selectedMem = null;
+        if (typeof selectionUtils.getSelectedMemory === 'function') {
+            selectedMem = selectionUtils.getSelectedMemory(document, getTreeMemories());
+        } else {
+            const selectedId = document.querySelector('.memory-node.selected')?.dataset?.memoryId;
+            selectedMem = selectedId ? getTreeMemories().find((m) => m.id === selectedId) : null;
+        }
         renderAffordanceForMemory(selectedMem);
     }
 
@@ -590,7 +609,12 @@ function createEditorCanvas(deps) {
     const initCanvas = () => {
         const canonicalRootId = getCanonicalRootId();
         const treeMemories = getTreeMemories();
-        const selectedNodeId = document.querySelector('.memory-node.selected')?.dataset?.memoryId || null;
+        let selectedNodeId = null;
+        if (typeof selectionUtils.getSelectedMemoryId === 'function') {
+            selectedNodeId = selectionUtils.getSelectedMemoryId(document);
+        } else {
+            selectedNodeId = document.querySelector('.memory-node.selected')?.dataset?.memoryId || null;
+        }
         const drawableMemories = treeMemories.filter((node) => !isRootMemory(node, canonicalRootId));
         const rootMemory = treeMemories.find((node) => isRootMemory(node, canonicalRootId)) || null;
         const shouldRenderRootNode = drawableMemories.length === 0 && !!rootMemory;
@@ -774,7 +798,13 @@ function createEditorCanvas(deps) {
 
         if (focusBtn) {
             focusBtn.addEventListener('click', () => {
-                const selectedId = document.querySelector('.memory-node.selected')?.dataset?.memoryId;
+                let selectedId = null;
+                if (typeof selectionUtils.getSelectedMemoryId === 'function') {
+                    selectedId = selectionUtils.getSelectedMemoryId(document);
+                } else {
+                    selectedId = document.querySelector('.memory-node.selected')?.dataset?.memoryId;
+                }
+                
                 if (selectedId) {
                     focusNodeById(selectedId);
                 }
