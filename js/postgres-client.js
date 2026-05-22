@@ -38,7 +38,11 @@
             getMemoriesByTree: async (treeId) => BaseApiFetch.apiFetch(`/memories?treeId=${encodeURIComponent(treeId)}`),
             createMemory: async (payload) => BaseApiFetch.apiFetch('/memories', { method: 'POST', body: JSON.stringify(payload) }),
             updateMemory: async (memoryId, payload) => BaseApiFetch.apiFetch(`/memories/${memoryId}`, { method: 'PUT', body: JSON.stringify(payload) }),
-            deleteMemory: async (memoryId) => BaseApiFetch.apiFetch(`/memories/${memoryId}`, { method: 'DELETE' })
+            deleteMemory: async (memoryId) => BaseApiFetch.apiFetch(`/memories/${memoryId}`, { method: 'DELETE' }),
+            toggleReaction: async (memoryId, type = 'like') => BaseApiFetch.apiFetch(`/memories/${memoryId}/reactions`, { method: 'POST', body: JSON.stringify({ type }) }),
+            fetchReactionSummary: async (memoryId) => BaseApiFetch.apiFetch(`/memories/${memoryId}/reactions`),
+            createComment: async (memoryId, body) => BaseApiFetch.apiFetch(`/memories/${memoryId}/comments`, { method: 'POST', body: JSON.stringify({ body }) }),
+            fetchComments: async (memoryId) => BaseApiFetch.apiFetch(`/memories/${memoryId}/comments`)
         };
     }
 
