@@ -63,5 +63,6 @@ test('js/editor.js contains specific responsibility areas (Audit candidates)', (
     assert.ok(js.includes('canvasEmptyYoutubeInput.addEventListener'), 'Candidate: canvas empty input binding');
 
     // 5. Save Status orchestration
-    assert.ok(js.includes('function updateSaveStatus'), 'Candidate: save status updating logic');
+    assert.ok(!js.includes('function updateSaveStatus(status, message) {'), 'EXTRACTED: updateSaveStatus should not be inline');
+    assert.ok(js.includes('window.LoveBudEditorSaveStatusOrchestration'), 'must use save status orchestration namespace');
 });
