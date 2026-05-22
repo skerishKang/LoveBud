@@ -1084,6 +1084,11 @@ function createEditorCanvas(deps) {
         persistStoredPositions();
     }
 
+    function addNodePosition(memoryId, pos) {
+        if (!memoryId || !pos) return;
+        viewportState.positions[memoryId] = pos;
+    }
+
     requestAnimationFrame(() => {
         if (viewportState.layoutMode === 'structured') {
             document.body.classList.add('layout-structured');
@@ -1094,6 +1099,7 @@ function createEditorCanvas(deps) {
     });
 
     return {
+        addNodePosition,
         calcPosition,
         drawBranch,
         drawNode,
