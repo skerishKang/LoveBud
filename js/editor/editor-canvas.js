@@ -648,6 +648,16 @@ function createEditorCanvas(deps) {
         return drawableMemories[0] || null;
     }
 
+    let _rafPending = false;
+    function scheduleRender() {
+        if (_rafPending) return;
+        _rafPending = true;
+        requestAnimationFrame(() => {
+            _rafPending = false;
+            initCanvas();
+        });
+    }
+
     /**
      * DOM RENDER ORCHESTRATION BOUNDARY
      * High-risk regression point:
@@ -749,7 +759,7 @@ function createEditorCanvas(deps) {
                 getWorldPosition,
                 getMetrics,
                 viewportState,
-                initCanvas,
+                initCanvas: scheduleRender,
                 reapplySelection
             });
             persistStoredPositions();
@@ -775,7 +785,7 @@ function createEditorCanvas(deps) {
             viewportState.offsetY = Math.round(metrics.height * 0.38 - (world.y * scale));
         }
         
-        initCanvas();
+        scheduleRender();
         reapplySelection(nodeId);
         persistStoredPositions();
     }
@@ -789,7 +799,7 @@ function createEditorCanvas(deps) {
                 getWorldPosition,
                 getMetrics,
                 viewportState,
-                initCanvas
+                initCanvas: scheduleRender
             });
             persistStoredPositions();
             return;
@@ -800,7 +810,7 @@ function createEditorCanvas(deps) {
             viewportState.offsetX = 0;
             viewportState.offsetY = 0;
             viewportState.scale = 1;
-            initCanvas();
+            scheduleRender();
             persistStoredPositions();
             return;
         }
@@ -822,7 +832,7 @@ function createEditorCanvas(deps) {
             viewportState.offsetY = Math.round(metrics.height * 0.38 - ((minY + maxY) / 2));
         }
 
-        initCanvas();
+        scheduleRender();
         persistStoredPositions();
     }
 
@@ -1052,7 +1062,7 @@ function createEditorCanvas(deps) {
                 factor,
                 viewportState,
                 getMetrics,
-                initCanvas
+                initCanvas: scheduleRender
             });
             persistStoredPositions();
             return;
@@ -1070,7 +1080,7 @@ function createEditorCanvas(deps) {
             viewportState.scale = newScale;
         }
 
-        initCanvas();
+        scheduleRender();
         persistStoredPositions();
     }
 
