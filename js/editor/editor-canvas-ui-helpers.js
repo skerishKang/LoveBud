@@ -304,15 +304,14 @@ export function bindNodeDragStart(nodeEl, getLayoutMode, onDragStart) {
 }
 
 /**
- * Binds global pointer move events for canvas interactions (drag and pan).
- * @param {Function} onPointerMove - Callback executed on pointer move.
+ * Checks if the drag distance exceeds the threshold for considering it a node drag movement.
+ * @param {number} dx - The distance moved along the X axis.
+ * @param {number} dy - The distance moved along the Y axis.
+ * @param {number} threshold - The threshold distance (default: 6).
+ * @returns {boolean} True if the threshold is exceeded, false otherwise.
  */
-export function bindDocumentPointerMove(onPointerMove) {
-    if (typeof onPointerMove !== 'function') return;
-
-    window.addEventListener('mousemove', (e) => {
-        onPointerMove(e);
-    });
+export function hasExceededNodeDragThreshold(dx, dy, threshold = 6) {
+    return Math.abs(dx) > threshold || Math.abs(dy) > threshold;
 }
 
 /**
