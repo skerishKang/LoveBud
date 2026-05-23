@@ -826,7 +826,7 @@ function createEditorCanvas(deps) {
             canvas.style.cursor = 'grabbing';
         });
 
-        window.addEventListener('mousemove', (event) => {
+        uiHelpers.bindDocumentPointerMove((event) => {
             if (viewportState.isDraggingNode && viewportState.dragNodeId) {
                 const dx = event.clientX - viewportState.dragStartClientX;
                 const dy = event.clientY - viewportState.dragStartClientY;

@@ -304,6 +304,18 @@ export function bindNodeDragStart(nodeEl, getLayoutMode, onDragStart) {
 }
 
 /**
+ * Binds global pointer move events for canvas interactions (drag and pan).
+ * @param {Function} onPointerMove - Callback executed on pointer move.
+ */
+export function bindDocumentPointerMove(onPointerMove) {
+    if (typeof onPointerMove !== 'function') return;
+
+    window.addEventListener('mousemove', (e) => {
+        onPointerMove(e);
+    });
+}
+
+/**
  * Determines whether a mousedown event on the canvas should initiate panning.
  * Returns false if the event target is on a memory node, the add memory form,
  * or a growth affordance element (these should handle their own interactions).
