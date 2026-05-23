@@ -51,6 +51,7 @@
 33. [SEARCH_ROOT_LEGACY_MOVE_PREFLIGHT_656.md](./SEARCH_ROOT_LEGACY_MOVE_PREFLIGHT_656.md) - #656 PR-C preflight for moving root Search legacy files under js/search/
 34. [SEARCH_DUPLICATE_RENDERER_SOURCE_OF_TRUTH_656.md](./SEARCH_DUPLICATE_RENDERER_SOURCE_OF_TRUTH_656.md) - #656 Search duplicate renderer source-of-truth comparison
 35. [LARGE_RUNTIME_DECOMPOSITION_STATUS_656.md](./LARGE_RUNTIME_DECOMPOSITION_STATUS_656.md) - #656 current-main large runtime decomposition status after Search duplicate renderer cleanup
+36. [VIEWPORT_ORCHESTRATION_HOLD_DECISION.md](./VIEWPORT_ORCHESTRATION_HOLD_DECISION.md) - Viewport orchestration split 완료 및 constants/readableCenter hold 판단 기준
 
 ---
 
@@ -94,6 +95,7 @@
 | [FIREBASE_CONFIG_GLOBAL_MIGRATION_STRATEGY.md](./FIREBASE_CONFIG_GLOBAL_MIGRATION_STRATEGY.md) | Firebase config/global migration staged strategy |
 | [FIREBASE_CONFIG_CONTRACT.md](./FIREBASE_CONFIG_CONTRACT.md) | Firebase config/init global contract |
 | [CTO_REPORT_20260418.md](./CTO_REPORT_20260418.md) | 특정 시점 워크플로우 요약 |
+| [VIEWPORT_ORCHESTRATION_HOLD_DECISION.md](./VIEWPORT_ORCHESTRATION_HOLD_DECISION.md) | Viewport orchestration split 완료 및 constants/readableCenter hold 판단 문서 |
 
 ---
 
