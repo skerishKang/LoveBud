@@ -58,11 +58,15 @@ window.LoveBudEditorCanvasViewport = {
   },
 
   projectWorldPosition(world, viewportState) {
-    const scale = this.getScale(viewportState);
-    return {
-      x: world.x * scale + viewportState.offsetX,
-      y: world.y * scale + viewportState.offsetY
-    };
+    if (!window.LoveBudEditorCanvasViewportProjection ||
+        typeof window.LoveBudEditorCanvasViewportProjection.projectWorldPosition !== 'function') {
+      const scale = this.getScale(viewportState);
+      return {
+        x: world.x * scale + viewportState.offsetX,
+        y: world.y * scale + viewportState.offsetY
+      };
+    }
+    return window.LoveBudEditorCanvasViewportProjection.projectWorldPosition(this, world, viewportState);
   },
 
   getViewportTargets(options) {
