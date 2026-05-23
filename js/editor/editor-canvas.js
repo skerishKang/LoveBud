@@ -827,11 +827,7 @@ function createEditorCanvas(deps) {
             focusNodeById
         );
 
-        if (recenterBtn) {
-            recenterBtn.addEventListener('click', () => {
-                recenterViewport();
-            });
-        }
+        uiHelpers.bindRecenterControl(recenterBtn, recenterViewport);
 
         if (zoomInBtn && typeof zoomBy === 'function') {
             zoomInBtn.addEventListener('click', () => { zoomBy(1.01); });
