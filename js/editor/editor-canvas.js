@@ -400,12 +400,7 @@ function createEditorCanvas(deps) {
             onNodeClick(nodeEl, mem);
         };
 
-        nodeEl.addEventListener('mouseenter', () => {
-            renderAffordanceForHoveredMemory(mem);
-        });
-        nodeEl.addEventListener('focusin', () => {
-            renderAffordanceForHoveredMemory(mem);
-        });
+        uiHelpers.bindNodeHoverAffordance(nodeEl, mem, renderAffordanceForHoveredMemory);
 
         nodeEl.addEventListener('mousedown', (e) => {
             if (viewportState.layoutMode === 'structured') return;
@@ -481,12 +476,7 @@ function createEditorCanvas(deps) {
             touchStartPoint = null;
         });
 
-        nodeEl.addEventListener('keydown', (e) => {
-            if (e.key !== 'Enter' && e.key !== ' ') return;
-            e.preventDefault();
-            e.stopPropagation();
-            selectMemoryNode();
-        });
+        uiHelpers.bindNodeControlShortcuts(nodeEl, selectMemoryNode);
     }
 
     function createNodeElement(mem, pos) {
