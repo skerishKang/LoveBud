@@ -1140,3 +1140,217 @@ test('focusNodeById — skips animation class toggle when node element is missin
   assert.equal(rafCalls, 1);
   assert.equal(querySelectorCalls, 1);
 });
+
+// ---------------------------------------------------------------------------
+// bindControls - helpers
+// ---------------------------------------------------------------------------
+
+function createMockElement(id) {
+  const el = {
+    id: id || '',
+    classList: {
+      _classes: new Set(),
+      add(cls) { this._classes.add(cls); },
+      remove(cls) { this._classes.delete(cls); },
+      contains(cls) { return this._classes.has(cls); },
+    },
+    dataset: {},
+    textContent: '',
+    _listeners: {},
+    addEventListener(type, handler) {
+      if (!this._listeners[type]) this._listeners[type] = [];
+      this._listeners[type].push(handler);
+    },
+    click() {
+      if (this._listeners.click) this._listeners.click.forEach(function (fn) { fn(); });
+    },
+    get offsetWidth() { return 100; },
+  };
+  return el;
+}
+
+function setupBindControlsContext(options) {
+  const { context } = createViewportContext();
+  const vp = context.window.LoveBudEditorCanvasViewport;
+  const els = {};
+  const counters = { rafCalls: 0, timeoutCalls: 0 };
+
+  context.requestAnimationFrame = (cb) => { counters.rafCalls += 1; cb(); };
+  context.setTimeout = (cb, ms) => { counters.timeoutCalls += 1; return 1; };
+  context.document = {
+    getElementById: (id) => els[id] || null,
+    querySelector: (sel) => null,
+  };
+
+  return { vp, context, els, counters };
+}
+
+// ---------------------------------------------------------------------------
+// bindControls
+// ---------------------------------------------------------------------------
+test('bindControls — binds controls once and schedules initial zoom indicator update', () => {
+  const { vp, context, els, counters } = setupBindControlsContext();
+  const viewportState = { scale: 1, offsetX: 0, offsetY: 0 };
+
+  const focusBtn = createMockElement('focusSelectedBtn');
+  const recenterBtn = createMockElement('recenterCanvasBtn');
+  const zoomInBtn = createMockElement('zoomInCanvasBtn');
+  const zoomOutBtn = createMockElement('zoomOutCanvasBtn');
+  const canvasArea = createMockElement('canvasArea');
+  const indicator = createMockElement('zoomIndicator');
+  els.focusSelectedBtn = focusBtn;
+  els.recenterCanvasBtn = recenterBtn;
+  els.zoomInCanvasBtn = zoomInBtn;
+  els.zoomOutCanvasBtn = zoomOutBtn;
+  els.canvasArea = canvasArea;
+  els.zoomIndicator = indicator;
+
+  let focusCalls = 0;
+  let recenterCalls = 0;
+  let zoomCalls = 0;
+
+  vp.bindControls({
+    viewportState,
+    focusNodeById: () => { focusCalls += 1; },
+    recenterViewport: () => { recenterCalls += 1; },
+    zoomBy: () => { zoomCalls += 1; },
+  });
+
+  assert.equal(viewportState.controlsBound, true);
+  assert.equal(counters.rafCalls, 1);
+  assert.equal(indicator.textContent, '100%');
+  assert.equal(indicator.classList.contains('is-hidden'), false);
+  assert.equal(focusCalls, 0);
+  assert.equal(recenterCalls, 0);
+  assert.equal(zoomCalls, 0);
+});
+
+test('bindControls — does not bind again when controlsBound is already true', () => {
+  const { context } = createViewportContext();
+  const vp = context.window.LoveBudEditorCanvasViewport;
+  const viewportState = { scale: 1, controlsBound: true };
+
+  // If bindControls tries to access DOM, it should throw because we didn't set up mocks
+  vp.bindControls({
+    viewportState,
+    focusNodeById: () => { throw new Error('should not be called'); },
+    recenterViewport: () => { throw new Error('should not be called'); },
+    zoomBy: () => { throw new Error('should not be called'); },
+  });
+
+  // controlsBound stays true, no side effects
+  assert.equal(viewportState.controlsBound, true);
+});
+
+test('bindControls — focus button calls focusNodeById for selected node', () => {
+  const { vp, context, els } = setupBindControlsContext();
+  const viewportState = { scale: 1, offsetX: 0, offsetY: 0 };
+
+  const focusBtn = createMockElement('focusSelectedBtn');
+  const canvasArea = createMockElement('canvasArea');
+  els.focusSelectedBtn = focusBtn;
+  els.canvasArea = canvasArea;
+
+  // mock .memory-node.selected
+  const selectedNode = { dataset: { memoryId: 'node-42' } };
+  context.document.querySelector = (sel) => {
+    if (sel === '.memory-node.selected') return selectedNode;
+    return null;
+  };
+
+  let focusNodeId = '';
+
+  vp.bindControls({
+    viewportState,
+    focusNodeById: (id) => { focusNodeId = id; },
+    recenterViewport: () => {},
+    zoomBy: () => {},
+  });
+
+  focusBtn.click();
+
+  assert.equal(focusNodeId, 'node-42');
+  assert.ok(canvasArea.classList.contains('focus-flash'));
+  assert.ok(focusBtn.classList.contains('flash-feedback'));
+});
+
+test('bindControls — focus button skips focus when no selected node exists', () => {
+  const { vp, context, els } = setupBindControlsContext();
+  const viewportState = { scale: 1 };
+  let focusCalls = 0;
+
+  const focusBtn = createMockElement('focusSelectedBtn');
+  els.focusSelectedBtn = focusBtn;
+
+  // querySelector returns null for .memory-node.selected
+  context.document.querySelector = () => null;
+
+  vp.bindControls({
+    viewportState,
+    focusNodeById: () => { focusCalls += 1; },
+    recenterViewport: () => {},
+    zoomBy: () => {},
+  });
+
+  focusBtn.click();
+
+  assert.equal(focusCalls, 0);
+});
+
+test('bindControls — recenter button calls recenterViewport and flashes canvas', () => {
+  const { vp, context, els } = setupBindControlsContext();
+  const viewportState = { scale: 1 };
+  let recenterCalls = 0;
+
+  const recenterBtn = createMockElement('recenterCanvasBtn');
+  const canvasArea = createMockElement('canvasArea');
+  els.recenterCanvasBtn = recenterBtn;
+  els.canvasArea = canvasArea;
+
+  vp.bindControls({
+    viewportState,
+    focusNodeById: () => {},
+    recenterViewport: () => { recenterCalls += 1; },
+    zoomBy: () => {},
+  });
+
+  recenterBtn.click();
+
+  assert.equal(recenterCalls, 1);
+  assert.ok(canvasArea.classList.contains('recenter-flash'));
+  assert.ok(recenterBtn.classList.contains('flash-feedback'));
+});
+
+test('bindControls — zoom buttons call zoomBy and update indicator', () => {
+  const { vp, context, els, counters } = setupBindControlsContext();
+  const viewportState = { scale: 1, offsetX: 0, offsetY: 0 };
+  let zoomFactors = [];
+
+  const zoomInBtn = createMockElement('zoomInCanvasBtn');
+  const zoomOutBtn = createMockElement('zoomOutCanvasBtn');
+  const canvasArea = createMockElement('canvasArea');
+  const indicator = createMockElement('zoomIndicator');
+  els.zoomInCanvasBtn = zoomInBtn;
+  els.zoomOutCanvasBtn = zoomOutBtn;
+  els.canvasArea = canvasArea;
+  els.zoomIndicator = indicator;
+
+  vp.bindControls({
+    viewportState,
+    focusNodeById: () => {},
+    recenterViewport: () => {},
+    zoomBy: (factor) => { zoomFactors.push(factor); },
+  });
+
+  // indicator initialized to 100% from initial RAF
+  assert.equal(indicator.textContent, '100%');
+
+  zoomInBtn.click();
+  assert.deepEqual(zoomFactors, [1.01]);
+  assert.equal(indicator.textContent, '100%'); // scale=1, nearest=1
+  assert.ok(canvasArea.classList.contains('zoom-pulse'));
+
+  zoomOutBtn.click();
+  assert.deepEqual(zoomFactors, [1.01, 0.99]);
+  assert.ok(canvasArea.classList.contains('zoom-pulse'));
+});
