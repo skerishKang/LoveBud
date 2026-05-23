@@ -8,41 +8,53 @@ window.LoveBudEditorCanvasViewport = {
   },
 
   getNearestZoom(scale) {
-    const value = Number(scale);
-    if (!Number.isFinite(value) || value <= 0) return 1;
-    return this.zoomLevels.reduce((best, candidate) => (
-      Math.abs(candidate - value) < Math.abs(best - value) ? candidate : best
-    ), 1);
+    if (!window.LoveBudEditorCanvasViewportScale ||
+        typeof window.LoveBudEditorCanvasViewportScale.getNearestZoom !== 'function') {
+      return 1;
+    }
+    return window.LoveBudEditorCanvasViewportScale.getNearestZoom(this, scale);
   },
 
   getFitZoom(scale) {
-    const value = Number(scale);
-    if (!Number.isFinite(value) || value <= 0) return 1;
-    const clamped = Math.min(this.maxScale, Math.max(this.minScale, value));
-    return this.zoomLevels.reduce((best, candidate) => (
-      candidate <= clamped && candidate > best ? candidate : best
-    ), this.minScale);
+    if (!window.LoveBudEditorCanvasViewportScale ||
+        typeof window.LoveBudEditorCanvasViewportScale.getFitZoom !== 'function') {
+      return 1;
+    }
+    return window.LoveBudEditorCanvasViewportScale.getFitZoom(this, scale);
   },
 
   getNextZoom(scale, direction) {
-    const current = this.getNearestZoom(scale);
-    const index = this.zoomLevels.indexOf(current);
-    if (direction > 0) return this.zoomLevels[Math.min(this.zoomLevels.length - 1, index + 1)];
-    return this.zoomLevels[Math.max(0, index - 1)];
+    if (!window.LoveBudEditorCanvasViewportScale ||
+        typeof window.LoveBudEditorCanvasViewportScale.getNextZoom !== 'function') {
+      return this.getNearestZoom(scale);
+    }
+    return window.LoveBudEditorCanvasViewportScale.getNextZoom(this, scale, direction);
   },
 
   getScale(viewportState) {
-    const scale = Number(viewportState && viewportState.scale);
-    if (!Number.isFinite(scale) || scale <= 0) return 1;
-    return Math.min(this.maxScale, Math.max(this.minScale, scale));
+    if (!window.LoveBudEditorCanvasViewportScale ||
+        typeof window.LoveBudEditorCanvasViewportScale.getScale !== 'function') {
+      return 1;
+    }
+    return window.LoveBudEditorCanvasViewportScale.getScale(this, viewportState);
   },
 
   setScale(viewportState, nextScale) {
-    viewportState.scale = this.getNearestZoom(Math.min(this.maxScale, Math.max(this.minScale, Number(nextScale) || 1)));
+    if (!window.LoveBudEditorCanvasViewportScale ||
+        typeof window.LoveBudEditorCanvasViewportScale.setScale !== 'function') {
+      if (viewportState) viewportState.scale = 1;
+      return;
+    }
+    return window.LoveBudEditorCanvasViewportScale.setScale(this, viewportState, nextScale);
   },
 
   setFitScale(viewportState, nextScale) {
-    viewportState.scale = this.getFitZoom(nextScale);
+    if (!window.LoveBudEditorCanvasViewportScale ||
+        typeof window.LoveBudEditorCanvasViewportScale.setFitScale !== 'function') {
+      if (viewportState) viewportState.scale = 1;
+      return;
+    }
+    return window.LoveBudEditorCanvasViewportScale.setFitScale(this, viewportState, nextScale);
   },
 
   projectWorldPosition(world, viewportState) {

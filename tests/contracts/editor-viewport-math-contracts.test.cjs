@@ -6,6 +6,7 @@ const vm = require('node:vm');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const VIEWPORT_PATH = path.join(ROOT, 'js/editor/editor-canvas-viewport.js');
+const VIEWPORT_SCALE_PATH = path.join(ROOT, 'js/editor/editor-canvas-viewport-scale.js');
 const VIEWPORT_FEEDBACK_PATH = path.join(ROOT, 'js/editor/editor-canvas-viewport-feedback.js');
 const VIEWPORT_STATE_PATH = path.join(ROOT, 'js/editor/editor-canvas-viewport-state.js');
 const VIEWPORT_FIT_PATH = path.join(ROOT, 'js/editor/editor-canvas-viewport-fit.js');
@@ -23,7 +24,10 @@ function createViewport() {
   vm.createContext(context);
   vm.runInContext(fs.readFileSync(VIEWPORT_PATH, 'utf8'), context);
   // Load helper modules so thin wrappers can delegate to extracted implementations.
-  // Load order matches editor.html: viewport → feedback → state → fit → initial → branches → actions → controls
+  // Load order matches editor.html: viewport → scale → feedback → state → fit → initial → branches → actions → controls
+  if (fs.existsSync(VIEWPORT_SCALE_PATH)) {
+    vm.runInContext(fs.readFileSync(VIEWPORT_SCALE_PATH, 'utf8'), context);
+  }
   if (fs.existsSync(VIEWPORT_FEEDBACK_PATH)) {
     vm.runInContext(fs.readFileSync(VIEWPORT_FEEDBACK_PATH, 'utf8'), context);
   }
@@ -56,7 +60,10 @@ function createViewportContext() {
   const context = { window: {} };
   vm.createContext(context);
   vm.runInContext(fs.readFileSync(VIEWPORT_PATH, 'utf8'), context);
-  // Load order matches editor.html: viewport → feedback → state → fit → initial → branches → actions → controls
+  // Load order matches editor.html: viewport → scale → feedback → state → fit → initial → branches → actions → controls
+  if (fs.existsSync(VIEWPORT_SCALE_PATH)) {
+    vm.runInContext(fs.readFileSync(VIEWPORT_SCALE_PATH, 'utf8'), context);
+  }
   if (fs.existsSync(VIEWPORT_FEEDBACK_PATH)) {
     vm.runInContext(fs.readFileSync(VIEWPORT_FEEDBACK_PATH, 'utf8'), context);
   }
@@ -1616,4 +1623,41 @@ test('viewport initial helper — wrapper on LoveBudEditorCanvasViewport.prepare
   const { viewport: vp } = createViewportContext();
   assert.equal(typeof vp.prepareInitialViewport, 'function');
   assert.equal(vp.prepareInitialViewport.length, 1); // (options)
+});
+
+// ---------------------------------------------------------------------------
+// viewport scale helper — namespace check
+// ---------------------------------------------------------------------------
+test('viewport scale helper — exposes LoveBudEditorCanvasViewportScale methods', () => {
+  const { context } = createViewportContext();
+  const scale = context.window.LoveBudEditorCanvasViewportScale;
+  assert.ok(scale, 'namespace must exist');
+  assert.equal(typeof scale.getNearestZoom, 'function');
+  assert.equal(typeof scale.getFitZoom, 'function');
+  assert.equal(typeof scale.getNextZoom, 'function');
+  assert.equal(typeof scale.getScale, 'function');
+  assert.equal(typeof scale.setScale, 'function');
+  assert.equal(typeof scale.setFitScale, 'function');
+  assert.equal(scale.getNearestZoom.length, 2); // (viewportApi, scale)
+  assert.equal(scale.getFitZoom.length, 2); // (viewportApi, scale)
+  assert.equal(scale.getNextZoom.length, 3); // (viewportApi, scale, direction)
+  assert.equal(scale.getScale.length, 2); // (viewportApi, viewportState)
+  assert.equal(scale.setScale.length, 3); // (viewportApi, viewportState, nextScale)
+  assert.equal(scale.setFitScale.length, 3); // (viewportApi, viewportState, nextScale)
+});
+
+test('viewport scale helper — wrappers on LoveBudEditorCanvasViewport are preserved', () => {
+  const { viewport: vp } = createViewportContext();
+  assert.equal(typeof vp.getNearestZoom, 'function');
+  assert.equal(typeof vp.getFitZoom, 'function');
+  assert.equal(typeof vp.getNextZoom, 'function');
+  assert.equal(typeof vp.getScale, 'function');
+  assert.equal(typeof vp.setScale, 'function');
+  assert.equal(typeof vp.setFitScale, 'function');
+  assert.equal(vp.getNearestZoom.length, 1);
+  assert.equal(vp.getFitZoom.length, 1);
+  assert.equal(vp.getNextZoom.length, 2);
+  assert.equal(vp.getScale.length, 1);
+  assert.equal(vp.setScale.length, 2);
+  assert.equal(vp.setFitScale.length, 2);
 });
