@@ -30,6 +30,7 @@ test('editor page mounts viewport control buttons with accessible labels', () =>
 
 test('editor canvas viewport module owns fit-safe zoom and focus math', () => {
   const source = read('js/editor/editor-canvas-viewport.js');
+  const actionsSource = read('js/editor/editor-canvas-viewport-actions.js');
 
   assert.match(source, /minScale:\s*0\.2/, 'viewport must allow small zoom for large whole-tree fit');
   assert.match(source, /maxScale:\s*1\.5/, 'viewport must bound zoom-in scale');
@@ -44,7 +45,8 @@ test('editor canvas viewport module owns fit-safe zoom and focus math', () => {
   assert.match(source, /recenterViewport\s*\(/, 'viewport must own recenter behavior');
   assert.match(source, /focusNodeById\s*\(/, 'viewport must preserve explicit selected/current moment focus');
   assert.match(source, /getNextZoom/, 'zoom in must delegate to getNextZoom');
-  assert.match(source, /this\.getNextZoom\(.*,\s*factor\s*>=\s*1\s*\?\s*1\s*:\s*-1\)/, 'zoom controls must use directional getNextZoom calls');
+  // The zoomBy implementation moved to editor-canvas-viewport-actions.js (Stage 36)
+  assert.match(actionsSource, /getNextZoom\(oldScale,\s*factor\s*>=\s*1\s*\?\s*1\s*:\s*-1\)/, 'zoom controls must use directional getNextZoom calls (in actions helper)');
 });
 
 test('editor layout switching fits the tree instead of centering selected node by default', () => {

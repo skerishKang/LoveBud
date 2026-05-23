@@ -184,68 +184,27 @@ window.LoveBudEditorCanvasViewport = {
   },
 
   focusNodeById(options) {
-    const { nodeId, getTreeMemories, getWorldPosition, getMetrics, viewportState, initCanvas, reapplySelection } = options;
-    if (!nodeId) return;
-    const treeMemories = getTreeMemories();
-    const target = treeMemories.find((memory) => memory.id === nodeId);
-    if (!target) return;
-
-    const world = getWorldPosition(target);
-    const metrics = getMetrics();
-    this.setScale(viewportState, 1);
-    const scale = this.getScale(viewportState);
-    viewportState.offsetX = Math.round(metrics.width * this.readableCenter.x - (world.x * scale));
-    viewportState.offsetY = Math.round(metrics.height * this.readableCenter.y - (world.y * scale));
-    initCanvas();
-    reapplySelection(nodeId);
-
-    requestAnimationFrame(() => {
-      const nodeEl = document.querySelector(`.memory-node[data-memory-id=\"${nodeId}\"]`);
-      if (nodeEl) {
-        nodeEl.classList.remove('focus-animate');
-        void nodeEl.offsetWidth;
-        nodeEl.classList.add('focus-animate');
-      }
-    });
+    if (!window.LoveBudEditorCanvasViewportActions ||
+        typeof window.LoveBudEditorCanvasViewportActions.focusNodeById !== 'function') {
+      return;
+    }
+    return window.LoveBudEditorCanvasViewportActions.focusNodeById(this, options);
   },
 
   recenterViewport(options) {
-    const { getTreeMemories, viewportState, initCanvas } = options;
-    const treeMemories = getTreeMemories();
-    if (!treeMemories.length) {
-      viewportState.offsetX = 0;
-      viewportState.offsetY = 0;
-      this.setScale(viewportState, 1);
-      initCanvas();
+    if (!window.LoveBudEditorCanvasViewportActions ||
+        typeof window.LoveBudEditorCanvasViewportActions.recenterViewport !== 'function') {
       return;
     }
-
-    const fitViewport = this.getFitViewport(options);
-
-    // If already at the optimal tree-fit view, show feedback instead of re-applying
-    if (this.isAlreadyAtFit(viewportState, fitViewport)) {
-      this.showAlreadyAtFitFeedback();
-      return;
-    }
-
-    this.applyViewport(viewportState, fitViewport, true);
-    initCanvas();
+    return window.LoveBudEditorCanvasViewportActions.recenterViewport(this, options);
   },
 
   zoomBy(options) {
-    const { factor, viewportState, getMetrics, initCanvas } = options;
-    const oldScale = this.getNearestZoom(viewportState.scale || 1);
-    const nextScale = this.getNextZoom(oldScale, factor >= 1 ? 1 : -1);
-    if (nextScale === oldScale) return;
-
-    const metrics = getMetrics();
-    const centerWorldX = (metrics.width * this.readableCenter.x - viewportState.offsetX) / oldScale;
-    const centerWorldY = (metrics.height * this.readableCenter.y - viewportState.offsetY) / oldScale;
-
-    this.setScale(viewportState, nextScale);
-    viewportState.offsetX = Math.round(metrics.width * this.readableCenter.x - (centerWorldX * nextScale));
-    viewportState.offsetY = Math.round(metrics.height * this.readableCenter.y - (centerWorldY * nextScale));
-    initCanvas();
+    if (!window.LoveBudEditorCanvasViewportActions ||
+        typeof window.LoveBudEditorCanvasViewportActions.zoomBy !== 'function') {
+      return;
+    }
+    return window.LoveBudEditorCanvasViewportActions.zoomBy(this, options);
   },
 
   bindControls(options) {
