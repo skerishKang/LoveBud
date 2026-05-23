@@ -344,6 +344,17 @@ export function shouldStartCanvasPan(event) {
 }
 
 /**
+ * Updates the canvas background position during panning.
+ * @param {HTMLElement} canvasEl - The canvas element.
+ * @param {number} offsetX - The current pan offset X.
+ * @param {number} offsetY - The current pan offset Y.
+ */
+export function updateCanvasPanBackgroundPosition(canvasEl, offsetX, offsetY) {
+    if (!canvasEl) return;
+    canvasEl.style.backgroundPosition = `${offsetX}px ${offsetY}px`;
+}
+
+/**
  * Resets the cursor of a dragged memory node to 'grab' on mouseup.
  * @param {Document} documentRef - The document reference for DOM queries (pass `document`).
  * @param {string} draggedId - The data-memory-id of the dragged node.
