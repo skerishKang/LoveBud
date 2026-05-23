@@ -1,10 +1,10 @@
 window.LoveBudEditorCanvasViewportFit = {
-  getReadableViewportOffset(viewportApi, options, preferredScale) {
+  getReadableViewportOffset(viewportNamespace, options, preferredScale = 1) {
     const { getWorldPosition, getMetrics } = options;
-    const targets = viewportApi.getViewportTargets(options);
+    const targets = viewportNamespace.getViewportTargets(options);
     if (!targets.length) return null;
 
-    const scale = viewportApi.getNearestZoom(preferredScale);
+    const scale = viewportNamespace.getNearestZoom(preferredScale);
     const points = targets.map((memory) => getWorldPosition(memory));
     const minX = Math.min(...points.map((point) => point.x));
     const maxX = Math.max(...points.map((point) => point.x));
@@ -14,14 +14,14 @@ window.LoveBudEditorCanvasViewportFit = {
 
     return {
       scale,
-      offsetX: Math.round(metrics.width * viewportApi.readableCenter.x - (((minX + maxX) / 2) * scale)),
-      offsetY: Math.round(metrics.height * viewportApi.readableCenter.y - (((minY + maxY) / 2) * scale)),
+      offsetX: Math.round(metrics.width * viewportNamespace.readableCenter.x - (((minX + maxX) / 2) * scale)),
+      offsetY: Math.round(metrics.height * viewportNamespace.readableCenter.y - (((minY + maxY) / 2) * scale))
     };
   },
 
-  getFitViewport(viewportApi, options) {
+  getFitViewport(viewportNamespace, options) {
     const { getWorldPosition, getMetrics } = options;
-    const targets = viewportApi.getViewportTargets(options);
+    const targets = viewportNamespace.getViewportTargets(options);
     if (!targets.length) {
       return { scale: 1, offsetX: 0, offsetY: 0 };
     }
@@ -39,12 +39,12 @@ window.LoveBudEditorCanvasViewportFit = {
     const availableWidth = Math.max(1, metrics.width - (padding * 2));
     const availableHeight = Math.max(1, metrics.height - (padding * 2));
     const rawFitScale = Math.min(availableWidth / boundsWidth, availableHeight / boundsHeight);
-    const fitScale = viewportApi.getFitZoom(rawFitScale);
+    const fitScale = viewportNamespace.getFitZoom(rawFitScale);
 
     return {
       scale: fitScale,
-      offsetX: Math.round(metrics.width * viewportApi.readableCenter.x - (((minX + maxX) / 2) * fitScale)),
-      offsetY: Math.round(metrics.height * viewportApi.readableCenter.y - (((minY + maxY) / 2) * fitScale)),
+      offsetX: Math.round(metrics.width * viewportNamespace.readableCenter.x - (((minX + maxX) / 2) * fitScale)),
+      offsetY: Math.round(metrics.height * viewportNamespace.readableCenter.y - (((minY + maxY) / 2) * fitScale))
     };
-  },
+  }
 };
