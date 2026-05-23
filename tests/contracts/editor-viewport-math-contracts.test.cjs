@@ -356,7 +356,7 @@ test('getFitViewport — uses visible non-root nodes before canonical root', () 
   // nodeBoundsPadding = 180
   // boundsWidth = 180, boundsHeight = 180
   // availableWidth = 800, availableHeight = 400
-  // rawFitScale = min(800/180, 400/180) = 4.444...
+  // rawFitScale = min(800 / 180, 400 / 180) = min(4.444..., 2.222...) = 2.222...
   // getFitZoom(rawFitScale) = 1.5
   // offsetX = round(1000 * 0.5 - 200 * 1.5) = 200
   // offsetY = round(600 * 0.42 - 100 * 1.5) = 102
@@ -380,7 +380,8 @@ test('getFitViewport — falls back to canonical root when no visible nodes exis
   // root only
   // padding = 100, boundsWidth = 180, boundsHeight = 180
   // availableWidth = 800, availableHeight = 400
-  // rawFitScale = 4.444..., getFitZoom = 1.5
+  // rawFitScale = min(800 / 180, 400 / 180) = min(4.444..., 2.222...) = 2.222...
+  // getFitZoom(rawFitScale) = 1.5
   // offsetX = round(1000 * 0.5 - 0 * 1.5) = 500
   // offsetY = round(600 * 0.42 - 0 * 1.5) = 252
   
