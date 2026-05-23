@@ -1354,3 +1354,72 @@ test('bindControls — zoom buttons call zoomBy and update indicator', () => {
   assert.deepEqual(zoomFactors, [1.01, 0.99]);
   assert.ok(canvasArea.classList.contains('zoom-pulse'));
 });
+
+// ---------------------------------------------------------------------------
+// bindControls — stopPropagation
+// ---------------------------------------------------------------------------
+test('bindControls — stopPropagation handlers prevent mouse event bubbling', () => {
+  const { vp, els } = setupBindControlsContext();
+  const viewportState = { scale: 1 };
+
+  const focusBtn = createMockElement('focusSelectedBtn');
+  const recenterBtn = createMockElement('recenterCanvasBtn');
+  const zoomInBtn = createMockElement('zoomInCanvasBtn');
+  const zoomOutBtn = createMockElement('zoomOutCanvasBtn');
+  els.focusSelectedBtn = focusBtn;
+  els.recenterCanvasBtn = recenterBtn;
+  els.zoomInCanvasBtn = zoomInBtn;
+  els.zoomOutCanvasBtn = zoomOutBtn;
+
+  vp.bindControls({
+    viewportState,
+    focusNodeById: () => { throw new Error('should not be called'); },
+    recenterViewport: () => { throw new Error('should not be called'); },
+    zoomBy: () => { throw new Error('should not be called'); },
+  });
+
+  const buttons = [focusBtn, recenterBtn, zoomInBtn, zoomOutBtn];
+  let stopCalls = 0;
+  const event = { stopPropagation: () => { stopCalls += 1; } };
+
+  buttons.forEach((btn) => {
+    assert.ok(btn._listeners.mousedown, `mousedown listener missing on ${btn.id}`);
+    assert.equal(btn._listeners.mousedown.length, 1);
+    btn._listeners.mousedown[0](event);
+  });
+
+  assert.equal(stopCalls, 4);
+});
+
+test('bindControls — stopPropagation handlers prevent touch event bubbling', () => {
+  const { vp, els } = setupBindControlsContext();
+  const viewportState = { scale: 1 };
+
+  const focusBtn = createMockElement('focusSelectedBtn');
+  const recenterBtn = createMockElement('recenterCanvasBtn');
+  const zoomInBtn = createMockElement('zoomInCanvasBtn');
+  const zoomOutBtn = createMockElement('zoomOutCanvasBtn');
+  els.focusSelectedBtn = focusBtn;
+  els.recenterCanvasBtn = recenterBtn;
+  els.zoomInCanvasBtn = zoomInBtn;
+  els.zoomOutCanvasBtn = zoomOutBtn;
+
+  vp.bindControls({
+    viewportState,
+    focusNodeById: () => { throw new Error('should not be called'); },
+    recenterViewport: () => { throw new Error('should not be called'); },
+    zoomBy: () => { throw new Error('should not be called'); },
+  });
+
+  const buttons = [focusBtn, recenterBtn, zoomInBtn, zoomOutBtn];
+  let stopCalls = 0;
+  const event = { stopPropagation: () => { stopCalls += 1; } };
+
+  buttons.forEach((btn) => {
+    assert.ok(btn._listeners.touchstart, `touchstart listener missing on ${btn.id}`);
+    assert.equal(btn._listeners.touchstart.length, 1);
+    btn._listeners.touchstart[0](event);
+  });
+
+  assert.equal(stopCalls, 4);
+});
