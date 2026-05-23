@@ -6,6 +6,7 @@ const vm = require('node:vm');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const VIEWPORT_PATH = path.join(ROOT, 'js/editor/editor-canvas-viewport.js');
+const VIEWPORT_FEEDBACK_PATH = path.join(ROOT, 'js/editor/editor-canvas-viewport-feedback.js');
 const VIEWPORT_STATE_PATH = path.join(ROOT, 'js/editor/editor-canvas-viewport-state.js');
 const VIEWPORT_FIT_PATH = path.join(ROOT, 'js/editor/editor-canvas-viewport-fit.js');
 const VIEWPORT_BRANCHES_PATH = path.join(ROOT, 'js/editor/editor-canvas-viewport-branches.js');
@@ -21,7 +22,10 @@ function createViewport() {
   vm.createContext(context);
   vm.runInContext(fs.readFileSync(VIEWPORT_PATH, 'utf8'), context);
   // Load helper modules so thin wrappers can delegate to extracted implementations.
-  // Load order matches editor.html: viewport → state → fit → branches → actions → controls
+  // Load order matches editor.html: viewport → feedback → state → fit → branches → actions → controls
+  if (fs.existsSync(VIEWPORT_FEEDBACK_PATH)) {
+    vm.runInContext(fs.readFileSync(VIEWPORT_FEEDBACK_PATH, 'utf8'), context);
+  }
   if (fs.existsSync(VIEWPORT_STATE_PATH)) {
     vm.runInContext(fs.readFileSync(VIEWPORT_STATE_PATH, 'utf8'), context);
   }
@@ -48,7 +52,10 @@ function createViewportContext() {
   const context = { window: {} };
   vm.createContext(context);
   vm.runInContext(fs.readFileSync(VIEWPORT_PATH, 'utf8'), context);
-  // Load order matches editor.html: viewport → state → fit → branches → actions → controls
+  // Load order matches editor.html: viewport → feedback → state → fit → branches → actions → controls
+  if (fs.existsSync(VIEWPORT_FEEDBACK_PATH)) {
+    vm.runInContext(fs.readFileSync(VIEWPORT_FEEDBACK_PATH, 'utf8'), context);
+  }
   if (fs.existsSync(VIEWPORT_STATE_PATH)) {
     vm.runInContext(fs.readFileSync(VIEWPORT_STATE_PATH, 'utf8'), context);
   }
@@ -1561,4 +1568,28 @@ test('viewport state helper — wrappers on LoveBudEditorCanvasViewport are pres
   assert.equal(vp.applyViewport.length, 2); // (viewportState, nextViewport) — useFitScale has default
   assert.equal(typeof vp.isAlreadyAtFit, 'function');
   assert.equal(vp.isAlreadyAtFit.length, 2); // (viewportState, fitViewport)
+});
+
+// ---------------------------------------------------------------------------
+// viewport feedback helper — namespace check
+// ---------------------------------------------------------------------------
+test('viewport feedback helper — exposes LoveBudEditorCanvasViewportFeedback.showAlreadyAtFitFeedback', () => {
+  const { context } = createViewportContext();
+  const feedback = context.window.LoveBudEditorCanvasViewportFeedback;
+  assert.ok(feedback, 'namespace must exist');
+  assert.equal(typeof feedback.showAlreadyAtFitFeedback, 'function');
+  assert.equal(feedback.showAlreadyAtFitFeedback.length, 0);
+});
+
+test('viewport feedback helper — wrapper on LoveBudEditorCanvasViewport.showAlreadyAtFitFeedback is preserved', () => {
+  const { viewport: vp } = createViewportContext();
+  assert.equal(typeof vp.showAlreadyAtFitFeedback, 'function');
+  assert.equal(vp.showAlreadyAtFitFeedback.length, 0);
+});
+
+test('viewport feedback helper — original Korean string is preserved in source', () => {
+  const source = fs.readFileSync(VIEWPORT_FEEDBACK_PATH, 'utf8');
+  assert.match(source, /이미 전체 트리가 보이고 있습니다/, 'Korean toast must be literal, not unicode-escaped');
+  assert.match(source, /'info'/, 'toast type must be info');
+  assert.match(source, /2000/, 'toast duration must be 2000');
 });
