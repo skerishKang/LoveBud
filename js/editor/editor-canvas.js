@@ -816,13 +816,7 @@ function createEditorCanvas(deps) {
         canvas.style.cursor = viewportState.layoutMode === 'structured' ? 'default' : 'grab';
 
         canvas.addEventListener('mousedown', (event) => {
-            if (
-                event.target.closest('.memory-node') ||
-                event.target.closest('#addMemoryForm') ||
-                event.target.closest('.memory-add-affordance')
-            ) {
-                return;
-            }
+            if (!uiHelpers.shouldStartCanvasPan(event)) return;
             if (viewportState.layoutMode === 'structured') return;
 
             viewportState.isPanning = true;
