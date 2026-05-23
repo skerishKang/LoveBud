@@ -302,3 +302,21 @@ export function bindNodeDragStart(nodeEl, getLayoutMode, onDragStart) {
         }
     });
 }
+
+/**
+ * Determines whether a mousedown event on the canvas should initiate panning.
+ * Returns false if the event target is on a memory node, the add memory form,
+ * or a growth affordance element (these should handle their own interactions).
+ * @param {Event} event - The mousedown event.
+ * @returns {boolean} True if canvas panning should start, false if blocked.
+ */
+export function shouldStartCanvasPan(event) {
+    if (
+        event.target.closest('.memory-node') ||
+        event.target.closest('#addMemoryForm') ||
+        event.target.closest('.memory-add-affordance')
+    ) {
+        return false;
+    }
+    return true;
+}
