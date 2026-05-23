@@ -592,3 +592,112 @@ test('isStoredViewportExtreme — uses minimum 200px margin for narrow viewports
     viewportState: { offsetX: 0, offsetY: 501 },
   }), true);
 });
+
+// ---------------------------------------------------------------------------
+// zoomBy
+// ---------------------------------------------------------------------------
+test('zoomBy — zooms in one preset and preserves readable center world point', () => {
+  const vp = createViewport();
+  let initCalls = 0;
+  const viewportState = { scale: 1, offsetX: 100, offsetY: 50 };
+
+  vp.zoomBy({
+    factor: 1.2,
+    viewportState,
+    getMetrics: () => ({ width: 1000, height: 600 }),
+    initCanvas: () => { initCalls += 1; },
+  });
+
+  // oldScale = 1, nextScale = 1.25
+  // centerWorldX = (500 - 100) / 1 = 400
+  // centerWorldY = (252 - 50) / 1 = 202
+  // offsetX = round(500 - 400 * 1.25) = 0
+  // offsetY = round(252 - 202 * 1.25) = 0
+  assert.equal(viewportState.scale, 1.25);
+  assert.equal(Math.abs(viewportState.offsetX), 0);
+  assert.equal(Math.abs(viewportState.offsetY), 0);
+  assert.equal(initCalls, 1);
+});
+
+test('zoomBy — zooms out one preset and preserves readable center world point', () => {
+  const vp = createViewport();
+  let initCalls = 0;
+  const viewportState = { scale: 1, offsetX: 100, offsetY: 50 };
+
+  vp.zoomBy({
+    factor: 0.8,
+    viewportState,
+    getMetrics: () => ({ width: 1000, height: 600 }),
+    initCanvas: () => { initCalls += 1; },
+  });
+
+  // oldScale = 1, nextScale = 0.75
+  // centerWorldX = (500 - 100) / 1 = 400
+  // centerWorldY = (252 - 50) / 1 = 202
+  // offsetX = round(500 - 400 * 0.75) = 200
+  // offsetY = round(252 - 202 * 0.75) = 101
+  assert.equal(viewportState.scale, 0.75);
+  assert.equal(viewportState.offsetX, 200);
+  assert.equal(viewportState.offsetY, 101);
+  assert.equal(initCalls, 1);
+});
+
+test('zoomBy — does nothing at maximum zoom when zooming in', () => {
+  const vp = createViewport();
+  let initCalls = 0;
+  const viewportState = { scale: 1.5, offsetX: 100, offsetY: 50 };
+
+  vp.zoomBy({
+    factor: 1.2,
+    viewportState,
+    getMetrics: () => ({ width: 1000, height: 600 }),
+    initCanvas: () => { initCalls += 1; },
+  });
+
+  assert.equal(viewportState.scale, 1.5);
+  assert.equal(viewportState.offsetX, 100);
+  assert.equal(viewportState.offsetY, 50);
+  assert.equal(initCalls, 0);
+});
+
+test('zoomBy — does nothing at minimum zoom when zooming out', () => {
+  const vp = createViewport();
+  let initCalls = 0;
+  const viewportState = { scale: 0.2, offsetX: 100, offsetY: 50 };
+
+  vp.zoomBy({
+    factor: 0.8,
+    viewportState,
+    getMetrics: () => ({ width: 1000, height: 600 }),
+    initCanvas: () => { initCalls += 1; },
+  });
+
+  assert.equal(viewportState.scale, 0.2);
+  assert.equal(viewportState.offsetX, 100);
+  assert.equal(viewportState.offsetY, 50);
+  assert.equal(initCalls, 0);
+});
+
+test('zoomBy — snaps non-preset scale before stepping', () => {
+  const vp = createViewport();
+  let initCalls = 0;
+  // 0.76 → getNearestZoom = 0.75
+  const viewportState = { scale: 0.76, offsetX: 100, offsetY: 50 };
+
+  vp.zoomBy({
+    factor: 1.2,
+    viewportState,
+    getMetrics: () => ({ width: 1000, height: 600 }),
+    initCanvas: () => { initCalls += 1; },
+  });
+
+  // oldScale = 0.75, nextScale = 1
+  // centerWorldX = (500 - 100) / 0.75 = 533.333...
+  // centerWorldY = (252 - 50) / 0.75 = 269.333...
+  // offsetX = round(500 - 533.333... * 1) = -33
+  // offsetY = round(252 - 269.333... * 1) = -17
+  assert.equal(viewportState.scale, 1);
+  assert.equal(viewportState.offsetX, -33);
+  assert.equal(viewportState.offsetY, -17);
+  assert.equal(initCalls, 1);
+});
