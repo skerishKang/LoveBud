@@ -32,12 +32,13 @@ test('editor canvas viewport module owns fit-safe zoom and focus math', () => {
   const source = read('js/editor/editor-canvas-viewport.js');
   const actionsSource = read('js/editor/editor-canvas-viewport-actions.js');
   const initialSource = read('js/editor/editor-canvas-viewport-initial.js');
+  const scaleSource = read('js/editor/editor-canvas-viewport-scale.js');
 
   assert.match(source, /minScale:\s*0\.2/, 'viewport must allow small zoom for large whole-tree fit');
   assert.match(source, /maxScale:\s*1\.5/, 'viewport must bound zoom-in scale');
   assert.match(source, /zoomLevels:\s*\[\s*0\.2,\s*0\.35,\s*0\.5,\s*0\.75,\s*1,\s*1\.25,\s*1\.5\s*\]/, 'viewport must define preset zoom levels including small whole-tree fit levels');
   assert.match(source, /getFitZoom\s*\(/, 'viewport must expose a fit-safe zoom selector');
-  assert.match(source, /candidate <= clamped && candidate > best/, 'fit zoom must not round upward and risk clipping');
+  assert.match(scaleSource, /candidate <= clamped && candidate > best/, 'fit zoom must not round upward and risk clipping');
   assert.match(source, /projectWorldPosition\s*\(/, 'viewport must project world positions through scale and offset');
   assert.match(source, /getFitViewport\s*\(/, 'viewport must compute fit-whole-tree state');
   assert.match(source, /prepareInitialViewport\s*\(/, 'viewport must own initial viewport preparation');
