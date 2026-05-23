@@ -325,3 +325,190 @@ test('layout mode transition — transition helper loaded before editor-canvas.j
   assert.ok(transitionIdx < canvasIdx, 'transition helper must be loaded before editor-canvas.js');
 });
 
+// ---------------------------------------------------------------------------
+// 12. Render refresh contracts — Stage 55
+// ---------------------------------------------------------------------------
+
+test('render refresh — switchToFreeMode calls initCanvas', () => {
+  const block = canvasSource.slice(
+    canvasSource.indexOf('function switchToFreeMode'),
+    canvasSource.indexOf('function switchToStructuredMode')
+  );
+  assert.match(
+    block,
+    /initCanvas\s*\(\s*\)/,
+    'switchToFreeMode must call initCanvas()'
+  );
+});
+
+test('render refresh — switchToStructuredMode calls initCanvas', () => {
+  const block = canvasSource.slice(
+    canvasSource.indexOf('function switchToStructuredMode'),
+    canvasSource.indexOf('function setLayoutMode')
+  );
+  assert.match(
+    block,
+    /initCanvas\s*\(\s*\)/,
+    'switchToStructuredMode must call initCanvas()'
+  );
+});
+
+test('render refresh — switchToFreeMode calls fitViewportToTree', () => {
+  const block = canvasSource.slice(
+    canvasSource.indexOf('function switchToFreeMode'),
+    canvasSource.indexOf('function switchToStructuredMode')
+  );
+  assert.match(
+    block,
+    /fitViewportToTree\s*\(\s*\)/,
+    'switchToFreeMode must call fitViewportToTree()'
+  );
+});
+
+test('render refresh — switchToStructuredMode calls fitViewportToTree', () => {
+  const block = canvasSource.slice(
+    canvasSource.indexOf('function switchToStructuredMode'),
+    canvasSource.indexOf('function setLayoutMode')
+  );
+  assert.match(
+    block,
+    /fitViewportToTree\s*\(\s*\)/,
+    'switchToStructuredMode must call fitViewportToTree()'
+  );
+});
+
+test('render refresh — switchToFreeMode calls persistStoredPositions', () => {
+  const block = canvasSource.slice(
+    canvasSource.indexOf('function switchToFreeMode'),
+    canvasSource.indexOf('function switchToStructuredMode')
+  );
+  assert.match(
+    block,
+    /persistStoredPositions\s*\(\s*\)/,
+    'switchToFreeMode must call persistStoredPositions()'
+  );
+});
+
+test('render refresh — switchToStructuredMode does NOT call persistStoredPositions (asymmetry preserved)', () => {
+  const block = canvasSource.slice(
+    canvasSource.indexOf('function switchToStructuredMode'),
+    canvasSource.indexOf('function setLayoutMode')
+  );
+  assert.doesNotMatch(
+    block,
+    /persistStoredPositions/,
+    'switchToStructuredMode must not call persistStoredPositions()'
+  );
+});
+
+test('render refresh — initCanvas is NOT delegated to transition helper', () => {
+  assert.doesNotMatch(
+    canvasSource,
+    /layoutTransition\.initCanvas/,
+    'initCanvas must NOT be delegated to layoutTransition helper'
+  );
+});
+
+test('render refresh — fitViewportToTree is NOT delegated to transition helper', () => {
+  assert.doesNotMatch(
+    canvasSource,
+    /layoutTransition\.fitViewportToTree/,
+    'fitViewportToTree must NOT be delegated to layoutTransition helper'
+  );
+});
+
+test('render refresh — persistStoredPositions is NOT delegated to transition helper', () => {
+  assert.doesNotMatch(
+    canvasSource,
+    /layoutTransition\.persistStoredPositions/,
+    'persistStoredPositions must NOT be delegated to layoutTransition helper'
+  );
+});
+
+test('render refresh — initCanvas call order: after class toggle and persistence delegation in switchToFreeMode', () => {
+  const block = canvasSource.slice(
+    canvasSource.indexOf('function switchToFreeMode'),
+    canvasSource.indexOf('function switchToStructuredMode')
+  );
+  const classToggleIdx = block.search(/applyLayoutModeClasses/);
+  const initCanvasIdx = block.search(/initCanvas\s*\(\s*\)/);
+  assert.ok(classToggleIdx >= 0, 'applyLayoutModeClasses must appear in switchToFreeMode');
+  assert.ok(initCanvasIdx >= 0, 'initCanvas must appear in switchToFreeMode');
+  assert.ok(classToggleIdx < initCanvasIdx, 'initCanvas must come after class toggle in switchToFreeMode');
+});
+
+test('render refresh — initCanvas call order: after class toggle and persistence delegation in switchToStructuredMode', () => {
+  const block = canvasSource.slice(
+    canvasSource.indexOf('function switchToStructuredMode'),
+    canvasSource.indexOf('function setLayoutMode')
+  );
+  const classToggleIdx = block.search(/applyLayoutModeClasses/);
+  const initCanvasIdx = block.search(/initCanvas\s*\(\s*\)/);
+  assert.ok(classToggleIdx >= 0, 'applyLayoutModeClasses must appear in switchToStructuredMode');
+  assert.ok(initCanvasIdx >= 0, 'initCanvas must appear in switchToStructuredMode');
+  assert.ok(classToggleIdx < initCanvasIdx, 'initCanvas must come after class toggle in switchToStructuredMode');
+});
+
+test('render refresh — setLayoutMode/toggleLayoutMode public API preserved', () => {
+  assert.match(
+    canvasSource,
+    /setLayoutMode\s*,/,
+    'setLayoutMode must be in public API'
+  );
+});
+
+test('render refresh — createEditorCanvas(deps) signature preserved', () => {
+  assert.match(
+    canvasSource,
+    /function createEditorCanvas\s*\(\s*deps\s*\)/,
+    'createEditorCanvas(deps) signature must be preserved'
+  );
+});
+
+test('render refresh — LoveBudEditorCanvasLayoutTransition.persistLayoutMode helper API maintained', () => {
+  const transitionSrc = fs.readFileSync(
+    path.join(ROOT, 'js/editor/editor-canvas-layout-transition.js'),
+    'utf8'
+  );
+  assert.match(
+    transitionSrc,
+    /persistLayoutMode:\s*persistLayoutMode/,
+    'persistLayoutMode must be exported on namespace'
+  );
+});
+
+test('render refresh — script order unchanged: transition helper before canvas.js', () => {
+  const transitionIdx = editorHtml.indexOf('editor-canvas-layout-transition.js');
+  const canvasIdx = editorHtml.indexOf('editor-canvas.js');
+  assert.ok(transitionIdx < canvasIdx, 'transition helper must load before editor-canvas.js');
+});
+
+test('render refresh — helper missing fallback: uiHelpers.applyLayoutModeClasses preserved', () => {
+  assert.match(
+    canvasSource,
+    /uiHelpers\.applyLayoutModeClasses/,
+    'uiHelpers.applyLayoutModeClasses fallback must remain'
+  );
+});
+
+test('render refresh — helper missing fallback: uiHelpers.updateLayoutToggleUI preserved', () => {
+  assert.match(
+    canvasSource,
+    /uiHelpers\.updateLayoutToggleUI/,
+    'uiHelpers.updateLayoutToggleUI fallback must remain'
+  );
+});
+
+test('render refresh — helper missing fallback: direct persistLayoutMode call preserved', () => {
+  assert.match(
+    canvasSource,
+    /else\s*\{[\s\S]*?persistLayoutMode\s*\(\s*['"]free['"]\s*\)/,
+    'direct persistLayoutMode("free") fallback must remain'
+  );
+  assert.match(
+    canvasSource,
+    /else\s*\{[\s\S]*?persistLayoutMode\s*\(\s*['"]structured['"]\s*\)/,
+    'direct persistLayoutMode("structured") fallback must remain'
+  );
+});
+
