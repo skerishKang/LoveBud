@@ -96,8 +96,7 @@ test('node hover can move the plus tip before click selection', () => {
   const canvasSource = fs.readFileSync(path.join(ROOT, 'js/editor/editor-canvas.js'), 'utf8');
 
   assert.match(canvasSource, /renderAffordanceForHoveredMemory/);
-  assert.match(canvasSource, /addEventListener\('mouseenter'/);
-  assert.match(canvasSource, /addEventListener\('focusin'/);
+  assert.match(canvasSource, /bindNodeHoverAffordance/);
 });
 
 test('plus tip and bubble interaction locks node-hover movement', () => {

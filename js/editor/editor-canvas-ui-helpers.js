@@ -190,3 +190,34 @@ export function bindZoomControls(zoomInBtn, zoomOutBtn, onZoom) {
         zoomOutBtn.addEventListener('click', () => { onZoom(0.99); });
     }
 }
+
+/**
+ * Binds keyboard shortcuts (Enter, Space) on a node element to trigger selection.
+ * @param {HTMLElement} nodeEl - The memory node element.
+ * @param {Function} onSelect - Callback to trigger when a shortcut is pressed.
+ */
+export function bindNodeControlShortcuts(nodeEl, onSelect) {
+    if (!nodeEl) return;
+    nodeEl.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof onSelect === 'function') onSelect();
+    });
+}
+
+/**
+ * Binds hover and focus events on a node element to trigger affordance rendering.
+ * @param {HTMLElement} nodeEl - The memory node element.
+ * @param {Object} mem - The memory data object.
+ * @param {Function} onHover - Callback to trigger affordance render.
+ */
+export function bindNodeHoverAffordance(nodeEl, mem, onHover) {
+    if (!nodeEl || typeof onHover !== 'function') return;
+    nodeEl.addEventListener('mouseenter', () => {
+        onHover(mem);
+    });
+    nodeEl.addEventListener('focusin', () => {
+        onHover(mem);
+    });
+}
