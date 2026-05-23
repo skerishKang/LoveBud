@@ -304,6 +304,17 @@ export function bindNodeDragStart(nodeEl, getLayoutMode, onDragStart) {
 }
 
 /**
+ * Checks if the drag distance exceeds the threshold for considering it a node drag movement.
+ * @param {number} dx - The distance moved along the X axis.
+ * @param {number} dy - The distance moved along the Y axis.
+ * @param {number} threshold - The threshold distance (default: 6).
+ * @returns {boolean} True if the threshold is exceeded, false otherwise.
+ */
+export function hasExceededNodeDragThreshold(dx, dy, threshold = 6) {
+    return Math.abs(dx) > threshold || Math.abs(dy) > threshold;
+}
+
+/**
  * Determines whether a mousedown event on the canvas should initiate panning.
  * Returns false if the event target is on a memory node, the add memory form,
  * or a growth affordance element (these should handle their own interactions).

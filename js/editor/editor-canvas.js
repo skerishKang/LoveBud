@@ -830,7 +830,7 @@ function createEditorCanvas(deps) {
             if (viewportState.isDraggingNode && viewportState.dragNodeId) {
                 const dx = event.clientX - viewportState.dragStartClientX;
                 const dy = event.clientY - viewportState.dragStartClientY;
-                if (Math.abs(dx) > 6 || Math.abs(dy) > 6) {
+                if (uiHelpers.hasExceededNodeDragThreshold(dx, dy)) {
                     viewportState.dragMoved = true;
                 }
                 if (!viewportState.dragMoved) return;
