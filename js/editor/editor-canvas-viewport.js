@@ -112,7 +112,7 @@ window.LoveBudEditorCanvasViewport = {
 
   showAlreadyAtFitFeedback() {
     if (window.LoveBudUI && typeof window.LoveBudUI.showToast === 'function') {
-      window.LoveBudUI.showToast('\uC774\uBBF8 \uC804\uCCB4 \uD2B8\uB9AC\uAC00 \uBCF4\uC774\uACE0 \uC788\uC2B5\uB2C8\uB2E4', 'info', 2000);
+      window.LoveBudUI.showToast('이미 전체 트리가 보이고 있습니다', 'info', 2000);
     }
   },
 
@@ -121,6 +121,9 @@ window.LoveBudEditorCanvasViewport = {
     this.setScale(viewportState, viewportState.scale || 1);
     if (viewportState.initialViewportApplied) return;
     viewportState.initialViewportApplied = true;
+
+    // Always fit the full tree viewport on initial load,
+    // regardless of any previously stored viewport offset.
     this.applyViewport(viewportState, this.getFitViewport(options), true);
   },
 
