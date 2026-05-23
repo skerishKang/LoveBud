@@ -6,6 +6,7 @@ const vm = require('node:vm');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const VIEWPORT_PATH = path.join(ROOT, 'js/editor/editor-canvas-viewport.js');
+const VIEWPORT_STATE_PATH = path.join(ROOT, 'js/editor/editor-canvas-viewport-state.js');
 const VIEWPORT_FIT_PATH = path.join(ROOT, 'js/editor/editor-canvas-viewport-fit.js');
 const VIEWPORT_BRANCHES_PATH = path.join(ROOT, 'js/editor/editor-canvas-viewport-branches.js');
 const VIEWPORT_ACTIONS_PATH = path.join(ROOT, 'js/editor/editor-canvas-viewport-actions.js');
@@ -19,9 +20,11 @@ function createViewport() {
   const context = { window: {} };
   vm.createContext(context);
   vm.runInContext(fs.readFileSync(VIEWPORT_PATH, 'utf8'), context);
-  // Load helper modules so thin wrappers (getReadableViewportOffset, getFitViewport, drawBranch, etc.)
-  // can delegate to the extracted implementations.
-  // Load order matches editor.html: viewport → fit → branches → actions → controls
+  // Load helper modules so thin wrappers can delegate to extracted implementations.
+  // Load order matches editor.html: viewport → state → fit → branches → actions → controls
+  if (fs.existsSync(VIEWPORT_STATE_PATH)) {
+    vm.runInContext(fs.readFileSync(VIEWPORT_STATE_PATH, 'utf8'), context);
+  }
   if (fs.existsSync(VIEWPORT_FIT_PATH)) {
     vm.runInContext(fs.readFileSync(VIEWPORT_FIT_PATH, 'utf8'), context);
   }
@@ -45,19 +48,19 @@ function createViewportContext() {
   const context = { window: {} };
   vm.createContext(context);
   vm.runInContext(fs.readFileSync(VIEWPORT_PATH, 'utf8'), context);
-  // Load viewport fit helper (order matches editor.html: viewport → fit → branches → actions → controls)
+  // Load order matches editor.html: viewport → state → fit → branches → actions → controls
+  if (fs.existsSync(VIEWPORT_STATE_PATH)) {
+    vm.runInContext(fs.readFileSync(VIEWPORT_STATE_PATH, 'utf8'), context);
+  }
   if (fs.existsSync(VIEWPORT_FIT_PATH)) {
     vm.runInContext(fs.readFileSync(VIEWPORT_FIT_PATH, 'utf8'), context);
   }
-  // Load viewport branches helper
   if (fs.existsSync(VIEWPORT_BRANCHES_PATH)) {
     vm.runInContext(fs.readFileSync(VIEWPORT_BRANCHES_PATH, 'utf8'), context);
   }
-  // Load viewport actions helper
   if (fs.existsSync(VIEWPORT_ACTIONS_PATH)) {
     vm.runInContext(fs.readFileSync(VIEWPORT_ACTIONS_PATH, 'utf8'), context);
   }
-  // Load viewport controls helper
   if (fs.existsSync(VIEWPORT_CONTROLS_PATH)) {
     vm.runInContext(fs.readFileSync(VIEWPORT_CONTROLS_PATH, 'utf8'), context);
   }
@@ -1533,4 +1536,29 @@ test('viewport fit helper — wrappers on LoveBudEditorCanvasViewport are preser
   assert.equal(vp.getReadableViewportOffset.length, 1); // (options) — preferredScale has default, not counted by Function.length
   assert.equal(typeof vp.getFitViewport, 'function');
   assert.equal(vp.getFitViewport.length, 1); // (options)
+});
+
+// ---------------------------------------------------------------------------
+// viewport state helper — namespace check
+// ---------------------------------------------------------------------------
+test('viewport state helper — exposes LoveBudEditorCanvasViewportState methods', () => {
+  const { context } = createViewportContext();
+  const state = context.window.LoveBudEditorCanvasViewportState;
+  assert.ok(state, 'namespace must exist');
+  assert.equal(typeof state.isStoredViewportExtreme, 'function');
+  assert.equal(typeof state.applyViewport, 'function');
+  assert.equal(typeof state.isAlreadyAtFit, 'function');
+  assert.equal(state.isStoredViewportExtreme.length, 2); // (viewportApi, options)
+  assert.equal(state.applyViewport.length, 4); // (viewportApi, viewportState, nextViewport, useFitScale)
+  assert.equal(state.isAlreadyAtFit.length, 3); // (viewportApi, viewportState, fitViewport)
+});
+
+test('viewport state helper — wrappers on LoveBudEditorCanvasViewport are preserved', () => {
+  const { viewport: vp } = createViewportContext();
+  assert.equal(typeof vp.isStoredViewportExtreme, 'function');
+  assert.equal(vp.isStoredViewportExtreme.length, 1); // (options)
+  assert.equal(typeof vp.applyViewport, 'function');
+  assert.equal(vp.applyViewport.length, 2); // (viewportState, nextViewport) — useFitScale has default
+  assert.equal(typeof vp.isAlreadyAtFit, 'function');
+  assert.equal(vp.isAlreadyAtFit.length, 2); // (viewportState, fitViewport)
 });

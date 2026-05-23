@@ -70,6 +70,30 @@ window.LoveBudEditorCanvasViewport = {
     return rootMemory ? [rootMemory] : [];
   },
 
+  isStoredViewportExtreme(options) {
+    if (!window.LoveBudEditorCanvasViewportState ||
+        typeof window.LoveBudEditorCanvasViewportState.isStoredViewportExtreme !== 'function') {
+      return false;
+    }
+    return window.LoveBudEditorCanvasViewportState.isStoredViewportExtreme(this, options);
+  },
+
+  applyViewport(viewportState, nextViewport, useFitScale = false) {
+    if (!window.LoveBudEditorCanvasViewportState ||
+        typeof window.LoveBudEditorCanvasViewportState.applyViewport !== 'function') {
+      return false;
+    }
+    return window.LoveBudEditorCanvasViewportState.applyViewport(this, viewportState, nextViewport, useFitScale);
+  },
+
+  isAlreadyAtFit(viewportState, fitViewport) {
+    if (!window.LoveBudEditorCanvasViewportState ||
+        typeof window.LoveBudEditorCanvasViewportState.isAlreadyAtFit !== 'function') {
+      return false;
+    }
+    return window.LoveBudEditorCanvasViewportState.isAlreadyAtFit(this, viewportState, fitViewport);
+  },
+
   getReadableViewportOffset(options, preferredScale = 1) {
     if (!window.LoveBudEditorCanvasViewportFit ||
         typeof window.LoveBudEditorCanvasViewportFit.getReadableViewportOffset !== 'function') {
@@ -84,40 +108,6 @@ window.LoveBudEditorCanvasViewport = {
       return { scale: 1, offsetX: 0, offsetY: 0 };
     }
     return window.LoveBudEditorCanvasViewportFit.getFitViewport(this, options);
-  },
-
-  isStoredViewportExtreme(options) {
-    const { viewportState, getMetrics } = options;
-    const metrics = getMetrics();
-    const margin = Math.max(200, Math.round(metrics.width * 0.25));
-    const minOkX = -metrics.width - margin;
-    const maxOkX = metrics.width + margin;
-    const minOkY = -metrics.height - margin;
-    const maxOkY = metrics.height + margin;
-    return (
-      viewportState.offsetX < minOkX || viewportState.offsetX > maxOkX ||
-      viewportState.offsetY < minOkY || viewportState.offsetY > maxOkY
-    );
-  },
-
-  applyViewport(viewportState, nextViewport, useFitScale = false) {
-    if (!nextViewport) return false;
-    if (useFitScale) {
-      this.setFitScale(viewportState, nextViewport.scale);
-    } else {
-      this.setScale(viewportState, nextViewport.scale);
-    }
-    viewportState.offsetX = nextViewport.offsetX;
-    viewportState.offsetY = nextViewport.offsetY;
-    return true;
-  },
-
-  isAlreadyAtFit(viewportState, fitViewport) {
-    if (!fitViewport) return false;
-    const scaleDiff = Math.abs((viewportState.scale || 1) - fitViewport.scale);
-    const offsetDiffX = Math.abs(viewportState.offsetX - fitViewport.offsetX);
-    const offsetDiffY = Math.abs(viewportState.offsetY - fitViewport.offsetY);
-    return scaleDiff < 0.01 && offsetDiffX < 5 && offsetDiffY < 5;
   },
 
   showAlreadyAtFitFeedback() {
