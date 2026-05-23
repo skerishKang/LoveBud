@@ -1,0 +1,184 @@
+/* ── Mobile Tab Bar ──────────────────────────────────────── */
+.cfw-mobile-tabs {
+  display: none; /* shown on mobile */
+  border-bottom: 1px solid var(--lovetree-soft-surface-border, rgba(144,73,81,0.08));
+  background: var(--surface-container-lowest, #ffffff);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.cfw-mobile-tab {
+  flex: 1;
+  text-align: center;
+  padding: 12px 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--on-surface-variant, #6c5953);
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-family: inherit;
+  position: relative;
+  transition: color 0.18s ease;
+}
+
+.cfw-mobile-tab.active {
+  color: var(--primary, #904951);
+}
+
+.cfw-mobile-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 20%;
+  right: 20%;
+  height: 2px;
+  background: var(--primary, #904951);
+  border-radius: 1px;
+}
+
+/* ── Bottom Sheet ────────────────────────────────────────── */
+.cfw-bottom-sheet {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--surface-container-lowest, #ffffff);
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -4px 30px rgba(75, 64, 57, 0.1);
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+  z-index: 200;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.cfw-bottom-sheet.open {
+  transform: translateY(0);
+}
+
+.cfw-bottom-sheet-handle {
+  width: 40px;
+  height: 4px;
+  background: var(--lovetree-soft-surface-border, rgba(144,73,81,0.15));
+  border-radius: 2px;
+  margin: 10px auto 8px;
+}
+
+.cfw-bottom-sheet-content {
+  padding: 0 20px 24px;
+}
+
+.cfw-bottom-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(60, 50, 40, 0.3);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  z-index: 199;
+}
+
+.cfw-bottom-sheet-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ── Mobile moment strip (default state) ───────────────── */
+.cfw-moment-strip {
+  display: none; /* shown on mobile */
+  padding: 8px 16px;
+  background: var(--surface-container-low, #f8f5f0);
+  border-top: 1px solid var(--lovetree-soft-surface-border, rgba(144,73,81,0.08));
+  font-size: 12px;
+  color: var(--on-surface-variant, #6c5953);
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.cfw-moment-strip-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--primary, #904951);
+  flex-shrink: 0;
+}
+
+.cfw-moment-strip-expand {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--primary, #904951);
+  cursor: pointer;
+  background: none;
+  border: none;
+  font-family: inherit;
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: var(--radius-full, 9999px);
+  transition: background 0.15s ease;
+}
+
+.cfw-moment-strip-expand:hover {
+  background: var(--lovetree-pill-bg, rgba(144,73,81,0.08));
+}
+
+/* ── Mobile tab panels ───────────────────────────────────── */
+.cfw-mobile-panel {
+  display: none;
+}
+
+.cfw-mobile-panel.active {
+  display: block;
+}
+
+/* ── Responsive: Mobile ──────────────────────────────────── */
+@media (max-width: 768px) {
+  .cfw-workspace.active {
+    flex-direction: column;
+  }
+
+  .cfw-workspace-panel {
+    display: none;
+  }
+
+  .cfw-mobile-tabs {
+    display: flex;
+  }
+
+  .cfw-moment-strip {
+    display: flex;
+  }
+
+  .cfw-content-grid {
+    grid-template-columns: 1fr;
+    padding: 12px 16px;
+    gap: 12px;
+  }
+
+  .cfw-tree-summary { grid-column: 1; grid-row: auto; }
+  .cfw-tree-viz { grid-column: 1; grid-row: auto; }
+  .cfw-moment-browser { grid-column: 1; grid-row: auto; }
+  .cfw-moment-card { grid-column: 1; grid-row: auto; }
+
+  .cfw-entry-card {
+    max-width: 100%;
+  }
+
+  .cfw-entry {
+    padding: 24px 16px;
+  }
+
+  .cfw-workspace-topbar {
+    padding: 12px 16px;
+  }
+
+  .cfw-header {
+    padding: 10px 16px;
+  }
+
+  .cfw-chat-messages {
+    max-height: 50vh;
+  }
+}

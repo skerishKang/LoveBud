@@ -1,0 +1,119 @@
+/* ── Moment Browser ─────────────────────────────────────── */
+.cfw-moment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cfw-moment-item {
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--surface-container, #f2efe9);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.cfw-moment-item:hover {
+  background: var(--lovetree-pill-bg, rgba(144,73,81,0.08));
+}
+
+.cfw-moment-item.active {
+  background: rgba(144, 73, 81, 0.06);
+  border: 1px solid var(--lovetree-soft-surface-border, rgba(144,73,81,0.18));
+  padding: 9px 11px;
+}
+
+.cfw-moment-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-top: 6px;
+  flex-shrink: 0;
+}
+
+.cfw-moment-dot.warm { background: var(--accent-warm, #c9a87c); }
+.cfw-moment-dot.rose { background: var(--accent-rose, #e8c4c8); }
+.cfw-moment-dot.green { background: var(--secondary, #7a8b6e); }
+
+.cfw-moment-text {
+  font-size: 13px;
+  color: var(--on-surface, #483934);
+  line-height: 1.4;
+}
+
+.cfw-moment-date {
+  font-size: 11px;
+  color: var(--on-surface-note, #9c8080);
+  margin-top: 2px;
+}
+
+/* ── Mini Tree Viz ──────────────────────────────────────── */
+.cfw-tree-viz-canvas {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 0;
+  min-height: 60px;
+}
+
+.cfw-viz-node {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--primary-soft, #d4a5a9);
+  flex-shrink: 0;
+}
+
+.cfw-viz-node.core {
+  width: 18px;
+  height: 18px;
+  background: var(--primary, #904951);
+}
+
+.cfw-viz-node.branch {
+  background: var(--accent-warm, #c9a87c);
+}
+
+.cfw-viz-edge {
+  width: 20px;
+  height: 2px;
+  background: var(--lovetree-soft-surface-border, rgba(144,73,81,0.12));
+  flex-shrink: 0;
+}
+
+/* ── Selected Moment Card ───────────────────────────────── */
+.cfw-selected-moment {
+  display: flex;
+  flex-direction: column;
+}
+
+.cfw-selected-moment-header {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--on-surface, #483934);
+  margin-bottom: 6px;
+}
+
+.cfw-selected-moment-body {
+  font-size: 13px;
+  color: var(--on-surface-variant, #6c5953);
+  line-height: 1.6;
+}
+
+.cfw-selected-moment-tags {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.cfw-moment-tag {
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: var(--radius-full, 9999px);
+  background: var(--lovetree-pill-bg, rgba(144,73,81,0.08));
+  color: var(--primary, #904951);
+}
