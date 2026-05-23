@@ -687,3 +687,69 @@ test('persistStoredPositions precise fallback — initCanvas NOT delegated to la
   );
 });
 
+// ---------------------------------------------------------------------------
+// 15. Layout mode init canvas order — Stage 59
+// ---------------------------------------------------------------------------
+
+test('layout mode init canvas order — switchToFreeMode sequence check', () => {
+  const block = canvasSource.slice(
+    canvasSource.indexOf('function switchToFreeMode'),
+    canvasSource.indexOf('function switchToStructuredMode')
+  );
+
+  const idxLayoutMode = block.indexOf("viewportState.layoutMode = 'free'");
+  const idxPersistLayout = block.search(/persistLayoutMode/);
+  const idxRestorePositions = block.indexOf('viewportState.positions = { ...');
+  const idxFitViewport = block.search(/fitViewportToTree/);
+  const idxApplyClasses = block.search(/applyLayoutModeClasses/);
+  const idxUpdateUI = block.search(/updateLayoutToggleUI/);
+  const idxInitCanvas = block.search(/initCanvas\s*\(\s*\)/);
+  const idxPersistPositions = block.search(/persistStoredPositions/);
+
+  assert.ok(idxLayoutMode >= 0, 'layoutMode set to free must exist');
+  assert.ok(idxPersistLayout > idxLayoutMode, 'persistLayoutMode must follow layoutMode assignment');
+  assert.ok(idxRestorePositions > idxPersistLayout, 'positions restoration must follow persistLayoutMode');
+  assert.ok(idxFitViewport > idxRestorePositions, 'fitViewportToTree must follow positions restoration');
+  assert.ok(idxApplyClasses > idxFitViewport, 'applyLayoutModeClasses must follow fitViewportToTree');
+  assert.ok(idxUpdateUI > idxApplyClasses, 'updateLayoutToggleUI must follow applyLayoutModeClasses');
+  assert.ok(idxInitCanvas > idxUpdateUI, 'initCanvas must follow updateLayoutToggleUI');
+  assert.ok(idxPersistPositions > idxInitCanvas, 'persistStoredPositions must follow initCanvas in free mode');
+});
+
+test('layout mode init canvas order — switchToStructuredMode sequence check', () => {
+  const block = canvasSource.slice(
+    canvasSource.indexOf('function switchToStructuredMode'),
+    canvasSource.indexOf('function setLayoutMode')
+  );
+
+  const idxSavePositions = block.indexOf('savedFreePositions = { ...');
+  const idxLayoutMode = block.indexOf("viewportState.layoutMode = 'structured'");
+  const idxPersistLayout = block.search(/persistLayoutMode/);
+  const idxFitViewport = block.search(/fitViewportToTree/);
+  const idxApplyClasses = block.search(/applyLayoutModeClasses/);
+  const idxUpdateUI = block.search(/updateLayoutToggleUI/);
+  const idxInitCanvas = block.search(/initCanvas\s*\(\s*\)/);
+
+  assert.ok(idxSavePositions >= 0, 'free positions must be saved');
+  assert.ok(idxLayoutMode > idxSavePositions, 'layoutMode set to structured must follow positions saving');
+  assert.ok(idxPersistLayout > idxLayoutMode, 'persistLayoutMode must follow layoutMode assignment');
+  assert.ok(idxFitViewport > idxPersistLayout, 'fitViewportToTree must follow persistLayoutMode');
+  assert.ok(idxApplyClasses > idxFitViewport, 'applyLayoutModeClasses must follow fitViewportToTree');
+  assert.ok(idxUpdateUI > idxApplyClasses, 'updateLayoutToggleUI must follow applyLayoutModeClasses');
+  assert.ok(idxInitCanvas > idxUpdateUI, 'initCanvas must follow updateLayoutToggleUI');
+
+  assert.doesNotMatch(
+    block,
+    /persistStoredPositions/,
+    'switchToStructuredMode must not call persistStoredPositions'
+  );
+});
+
+test('layout mode init canvas order — initCanvas remains non-delegated', () => {
+  assert.doesNotMatch(
+    canvasSource,
+    /layoutTransition\.initCanvas/,
+    'initCanvas must NOT be delegated to layoutTransition helper yet'
+  );
+});
+
