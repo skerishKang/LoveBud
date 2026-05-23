@@ -8,6 +8,7 @@ const ROOT = path.resolve(__dirname, '..', '..');
 const VIEWPORT_PATH = path.join(ROOT, 'js/editor/editor-canvas-viewport.js');
 const VIEWPORT_SCALE_PATH = path.join(ROOT, 'js/editor/editor-canvas-viewport-scale.js');
 const VIEWPORT_PROJECTION_PATH = path.join(ROOT, 'js/editor/editor-canvas-viewport-projection.js');
+const VIEWPORT_TARGETS_PATH = path.join(ROOT, 'js/editor/editor-canvas-viewport-targets.js');
 const VIEWPORT_FEEDBACK_PATH = path.join(ROOT, 'js/editor/editor-canvas-viewport-feedback.js');
 const VIEWPORT_STATE_PATH = path.join(ROOT, 'js/editor/editor-canvas-viewport-state.js');
 const VIEWPORT_FIT_PATH = path.join(ROOT, 'js/editor/editor-canvas-viewport-fit.js');
@@ -25,12 +26,15 @@ function createViewport() {
   vm.createContext(context);
   vm.runInContext(fs.readFileSync(VIEWPORT_PATH, 'utf8'), context);
   // Load helper modules so thin wrappers can delegate to extracted implementations.
-  // Load order matches editor.html: viewport → scale → projection → feedback → state → fit → initial → branches → actions → controls
+  // Load order matches editor.html: viewport → scale → projection → targets → feedback → state → fit → initial → branches → actions → controls
   if (fs.existsSync(VIEWPORT_SCALE_PATH)) {
     vm.runInContext(fs.readFileSync(VIEWPORT_SCALE_PATH, 'utf8'), context);
   }
   if (fs.existsSync(VIEWPORT_PROJECTION_PATH)) {
     vm.runInContext(fs.readFileSync(VIEWPORT_PROJECTION_PATH, 'utf8'), context);
+  }
+  if (fs.existsSync(VIEWPORT_TARGETS_PATH)) {
+    vm.runInContext(fs.readFileSync(VIEWPORT_TARGETS_PATH, 'utf8'), context);
   }
   if (fs.existsSync(VIEWPORT_FEEDBACK_PATH)) {
     vm.runInContext(fs.readFileSync(VIEWPORT_FEEDBACK_PATH, 'utf8'), context);
@@ -64,12 +68,15 @@ function createViewportContext() {
   const context = { window: {} };
   vm.createContext(context);
   vm.runInContext(fs.readFileSync(VIEWPORT_PATH, 'utf8'), context);
-  // Load order matches editor.html: viewport → scale → projection → feedback → state → fit → initial → branches → actions → controls
+  // Load order matches editor.html: viewport → scale → projection → targets → feedback → state → fit → initial → branches → actions → controls
   if (fs.existsSync(VIEWPORT_SCALE_PATH)) {
     vm.runInContext(fs.readFileSync(VIEWPORT_SCALE_PATH, 'utf8'), context);
   }
   if (fs.existsSync(VIEWPORT_PROJECTION_PATH)) {
     vm.runInContext(fs.readFileSync(VIEWPORT_PROJECTION_PATH, 'utf8'), context);
+  }
+  if (fs.existsSync(VIEWPORT_TARGETS_PATH)) {
+    vm.runInContext(fs.readFileSync(VIEWPORT_TARGETS_PATH, 'utf8'), context);
   }
   if (fs.existsSync(VIEWPORT_FEEDBACK_PATH)) {
     vm.runInContext(fs.readFileSync(VIEWPORT_FEEDBACK_PATH, 'utf8'), context);
@@ -1691,4 +1698,28 @@ test('viewport projection helper — check calculations and API delegation in so
   assert.match(source, /world\.x\s*\*\s*scale\s*\+\s*viewportState\.offsetX/, 'x projection calculation must match formula');
   assert.match(source, /world\.y\s*\*\s*scale\s*\+\s*viewportState\.offsetY/, 'y projection calculation must match formula');
   assert.match(source, /viewportApi\.getScale\(viewportState\)/, 'projection helper must call scale API');
+});
+
+// ---------------------------------------------------------------------------
+// viewport targets helper — namespace check
+// ---------------------------------------------------------------------------
+test('viewport targets helper — exposes LoveBudEditorCanvasViewportTargets.getViewportTargets', () => {
+  const { context } = createViewportContext();
+  const targets = context.window.LoveBudEditorCanvasViewportTargets;
+  assert.ok(targets, 'namespace must exist');
+  assert.equal(typeof targets.getViewportTargets, 'function');
+  assert.equal(targets.getViewportTargets.length, 2); // (viewportApi, options)
+});
+
+test('viewport targets helper — wrapper on LoveBudEditorCanvasViewport.getViewportTargets is preserved', () => {
+  const { viewport: vp } = createViewportContext();
+  assert.equal(typeof vp.getViewportTargets, 'function');
+  assert.equal(vp.getViewportTargets.length, 1); // (options)
+});
+
+test('viewport targets helper — check delegation and guards in source code', () => {
+  const source = fs.readFileSync(VIEWPORT_TARGETS_PATH, 'utf8');
+  assert.match(source, /getTreeMemories\(\)/, 'targets helper must retrieve memories');
+  assert.match(source, /typeof getCanonicalRootId\s*!==\s*['"]function['"]\s*\|\|\s*typeof isRootMemory\s*!==\s*['"]function['"]/, 'targets helper must guard root check functions');
+  assert.match(source, /visibleNodes\.length/, 'targets helper must prioritize visible nodes');
 });
