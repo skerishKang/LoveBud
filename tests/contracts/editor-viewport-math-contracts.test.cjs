@@ -9,6 +9,7 @@ const VIEWPORT_PATH = path.join(ROOT, 'js/editor/editor-canvas-viewport.js');
 const VIEWPORT_FEEDBACK_PATH = path.join(ROOT, 'js/editor/editor-canvas-viewport-feedback.js');
 const VIEWPORT_STATE_PATH = path.join(ROOT, 'js/editor/editor-canvas-viewport-state.js');
 const VIEWPORT_FIT_PATH = path.join(ROOT, 'js/editor/editor-canvas-viewport-fit.js');
+const VIEWPORT_INITIAL_PATH = path.join(ROOT, 'js/editor/editor-canvas-viewport-initial.js');
 const VIEWPORT_BRANCHES_PATH = path.join(ROOT, 'js/editor/editor-canvas-viewport-branches.js');
 const VIEWPORT_ACTIONS_PATH = path.join(ROOT, 'js/editor/editor-canvas-viewport-actions.js');
 const VIEWPORT_CONTROLS_PATH = path.join(ROOT, 'js/editor/editor-canvas-viewport-controls.js');
@@ -22,7 +23,7 @@ function createViewport() {
   vm.createContext(context);
   vm.runInContext(fs.readFileSync(VIEWPORT_PATH, 'utf8'), context);
   // Load helper modules so thin wrappers can delegate to extracted implementations.
-  // Load order matches editor.html: viewport → feedback → state → fit → branches → actions → controls
+  // Load order matches editor.html: viewport → feedback → state → fit → initial → branches → actions → controls
   if (fs.existsSync(VIEWPORT_FEEDBACK_PATH)) {
     vm.runInContext(fs.readFileSync(VIEWPORT_FEEDBACK_PATH, 'utf8'), context);
   }
@@ -31,6 +32,9 @@ function createViewport() {
   }
   if (fs.existsSync(VIEWPORT_FIT_PATH)) {
     vm.runInContext(fs.readFileSync(VIEWPORT_FIT_PATH, 'utf8'), context);
+  }
+  if (fs.existsSync(VIEWPORT_INITIAL_PATH)) {
+    vm.runInContext(fs.readFileSync(VIEWPORT_INITIAL_PATH, 'utf8'), context);
   }
   if (fs.existsSync(VIEWPORT_BRANCHES_PATH)) {
     vm.runInContext(fs.readFileSync(VIEWPORT_BRANCHES_PATH, 'utf8'), context);
@@ -52,7 +56,7 @@ function createViewportContext() {
   const context = { window: {} };
   vm.createContext(context);
   vm.runInContext(fs.readFileSync(VIEWPORT_PATH, 'utf8'), context);
-  // Load order matches editor.html: viewport → feedback → state → fit → branches → actions → controls
+  // Load order matches editor.html: viewport → feedback → state → fit → initial → branches → actions → controls
   if (fs.existsSync(VIEWPORT_FEEDBACK_PATH)) {
     vm.runInContext(fs.readFileSync(VIEWPORT_FEEDBACK_PATH, 'utf8'), context);
   }
@@ -61,6 +65,9 @@ function createViewportContext() {
   }
   if (fs.existsSync(VIEWPORT_FIT_PATH)) {
     vm.runInContext(fs.readFileSync(VIEWPORT_FIT_PATH, 'utf8'), context);
+  }
+  if (fs.existsSync(VIEWPORT_INITIAL_PATH)) {
+    vm.runInContext(fs.readFileSync(VIEWPORT_INITIAL_PATH, 'utf8'), context);
   }
   if (fs.existsSync(VIEWPORT_BRANCHES_PATH)) {
     vm.runInContext(fs.readFileSync(VIEWPORT_BRANCHES_PATH, 'utf8'), context);
@@ -1592,4 +1599,21 @@ test('viewport feedback helper — original Korean string is preserved in source
   assert.match(source, /이미 전체 트리가 보이고 있습니다/, 'Korean toast must be literal, not unicode-escaped');
   assert.match(source, /'info'/, 'toast type must be info');
   assert.match(source, /2000/, 'toast duration must be 2000');
+});
+
+// ---------------------------------------------------------------------------
+// viewport initial helper — namespace check
+// ---------------------------------------------------------------------------
+test('viewport initial helper — exposes LoveBudEditorCanvasViewportInitial.prepareInitialViewport', () => {
+  const { context } = createViewportContext();
+  const initial = context.window.LoveBudEditorCanvasViewportInitial;
+  assert.ok(initial, 'namespace must exist');
+  assert.equal(typeof initial.prepareInitialViewport, 'function');
+  assert.equal(initial.prepareInitialViewport.length, 2); // (viewportApi, options)
+});
+
+test('viewport initial helper — wrapper on LoveBudEditorCanvasViewport.prepareInitialViewport is preserved', () => {
+  const { viewport: vp } = createViewportContext();
+  assert.equal(typeof vp.prepareInitialViewport, 'function');
+  assert.equal(vp.prepareInitialViewport.length, 1); // (options)
 });

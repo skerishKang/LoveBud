@@ -119,14 +119,11 @@ window.LoveBudEditorCanvasViewport = {
   },
 
   prepareInitialViewport(options) {
-    const { viewportState } = options;
-    this.setScale(viewportState, viewportState.scale || 1);
-    if (viewportState.initialViewportApplied) return;
-    viewportState.initialViewportApplied = true;
-
-    // Always fit the full tree viewport on initial load,
-    // regardless of any previously stored viewport offset.
-    this.applyViewport(viewportState, this.getFitViewport(options), true);
+    if (!window.LoveBudEditorCanvasViewportInitial ||
+        typeof window.LoveBudEditorCanvasViewportInitial.prepareInitialViewport !== 'function') {
+      return;
+    }
+    return window.LoveBudEditorCanvasViewportInitial.prepareInitialViewport(this, options);
   },
 
   drawBranch(svg, startPos, endPos) {
