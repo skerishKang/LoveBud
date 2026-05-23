@@ -1,0 +1,17 @@
+.home-v3-collage {
+    position: relative;
+    min-height: 680px;
+}
+
+.home-v3-halo {
+    position: absolute;
+    inset: 76px 70px 120px 70px;
+    border-radius: 48px;
+    background:
+        radial-gradient(circle at 28% 30%, rgba(255,255,255,0.92), transparent 25%),
+        radial-gradient(circle at 76% 22%, rgba(242, 212, 220, 0.82), transparent 18%),
+        radial-gradient(circle at 50% 70%, rgba(243, 226, 209, 0.72), transparent 22%),
+        linear-gradient(160deg, rgba(255,255,255,0.52), rgba(250, 235, 229, 0.74));
+    border: 1px solid rgba(144, 73, 81, 0.08);
+    box-shadow: 0 28px 80px rgba(101, 75, 71, 0.12);
+}
