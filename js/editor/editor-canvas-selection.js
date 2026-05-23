@@ -22,16 +22,21 @@ export function getSelectedMemory(documentRef, treeMemories) {
 }
 
 /**
- * Applies the 'selected' class to a memory node in the DOM.
+ * Applies the 'selected' class to a memory node in the DOM and optionally triggers affordance rendering.
  * @param {string} selectedNodeId - The ID of the node to select
  * @param {Document} documentRef - The document context
+ * @param {Object} deps - Optional dependencies for affordance rendering (renderAffordanceForMemory, getTreeMemories)
  */
-export function reapplySelection(selectedNodeId, documentRef) {
+export function reapplySelection(selectedNodeId, documentRef, deps) {
     if (!selectedNodeId) return;
     const doc = documentRef || document;
     const selectedEl = doc.querySelector(`.memory-node[data-memory-id="${selectedNodeId}"]`);
     if (selectedEl) {
         selectedEl.classList.add('selected');
+        if (deps && typeof deps.renderAffordanceForMemory === 'function') {
+            const mem = deps.getTreeMemories().find(m => m.id === selectedNodeId);
+            if (mem) deps.renderAffordanceForMemory(mem);
+        }
     }
 }
 
