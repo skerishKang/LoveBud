@@ -30,6 +30,7 @@ test('editor page mounts viewport control buttons with accessible labels', () =>
 
 test('editor canvas viewport module owns fit-safe zoom and focus math', () => {
   const source = read('js/editor/editor-canvas-viewport.js');
+  const initialSource = read('js/editor/editor-canvas-viewport-initial.js');
 
   assert.match(source, /minScale:\s*0\.2/, 'viewport must allow small zoom for large whole-tree fit');
   assert.match(source, /maxScale:\s*1\.5/, 'viewport must bound zoom-in scale');
@@ -39,8 +40,8 @@ test('editor canvas viewport module owns fit-safe zoom and focus math', () => {
   assert.match(source, /projectWorldPosition\s*\(/, 'viewport must project world positions through scale and offset');
   assert.match(source, /getFitViewport\s*\(/, 'viewport must compute fit-whole-tree state');
   assert.match(source, /prepareInitialViewport\s*\(/, 'viewport must own initial viewport preparation');
-  assert.match(source, /this\.applyViewport\(viewportState, this\.getFitViewport\(options\), true\)/, 'initial no-stored viewport must use whole-tree fit');
-  assert.match(source, /this\.applyViewport\(viewportState, this\.getFitViewport\(options\), true\)/, 'offscreen fallback must use whole-tree fit');
+  assert.match(initialSource, /viewportApi\.applyViewport\(viewportState, viewportApi\.getFitViewport\(options\), true\)/, 'initial no-stored viewport must use whole-tree fit');
+  assert.match(initialSource, /viewportApi\.applyViewport\(viewportState, viewportApi\.getFitViewport\(options\), true\)/, 'offscreen fallback must use whole-tree fit');
   assert.match(source, /recenterViewport\s*\(/, 'viewport must own recenter behavior');
   assert.match(source, /focusNodeById\s*\(/, 'viewport must preserve explicit selected/current moment focus');
   assert.match(source, /getNextZoom/, 'zoom in must delegate to getNextZoom');
