@@ -48,3 +48,15 @@ export function applyLayoutModeClasses(layoutMode) {
         document.body.classList.add('layout-free');
     }
 }
+
+/**
+ * Looks up and returns the standard viewport control buttons from the DOM.
+ */
+export function getViewportControlButtons() {
+    return {
+        focusBtn: document.getElementById('focusSelectedBtn'),
+        recenterBtn: document.getElementById('recenterCanvasBtn'),
+        zoomInBtn: document.getElementById('zoomInCanvasBtn'),
+        zoomOutBtn: document.getElementById('zoomOutCanvasBtn')
+    };
+}
