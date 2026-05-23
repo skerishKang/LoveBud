@@ -83,9 +83,11 @@ The generated token value must remain local to the operator and must not be past
 
 ## Fixed slot deployment rule
 
-When a task requires fixed slot browser verification, agents must treat Wrangler direct deploy as the standard deployment path before reporting final browser verification.
+When a task requires fixed slot browser verification, agents must treat **local Wrangler OAuth direct deploy** as the standard deployment path before reporting final browser verification.
 
 Use the fixed slot deploy procedure in [FIXED_SLOT_DEPLOY_WITH_WRANGLER.md](FIXED_SLOT_DEPLOY_WITH_WRANGLER.md). Do not rely on a plain `git push` to a slot branch as the only deployment signal when fresh assets are required.
+
+Do not use GitHub Actions fixed-slot deployment. The former workflow path is deprecated and is not part of the active verification process. Missing GitHub Actions Cloudflare secrets must not be reported as fixed-slot deployment blockers when local Wrangler OAuth deploy is available.
 
 Required safe reporting status values include:
 
@@ -97,6 +99,14 @@ Required safe reporting status values include:
 Agents must not use empty commits, version bumps, unrelated source edits, or workflow changes merely to trigger fixed slot deployment. If the deploy output indicates stale asset risk, such as `Uploaded 0 files`, report `BLOCKED_BY_STALE_ASSET` instead of final PASS.
 
 For fixed slot URLs, agents must use the `test1` through `test10` domain format defined in [TEST_PREVIEW_SLOTS.md](TEST_PREVIEW_SLOTS.md). Example: slot `test4` must use `https://test4.lovebud.pages.dev`. Do not use `https://test-slot-4.lovebud.pages.dev` for LoveBud fixed slot verification. Always report the exact URL used.
+
+Fixed-slot verification reports should use this wording:
+
+```text
+fixed-slot deploy path: local Wrangler OAuth
+GitHub Actions fixed-slot deploy: not used / deprecated
+Cloudflare GitHub Actions secrets: not required for this verification
+```
 
 ## Forbidden actions
 
