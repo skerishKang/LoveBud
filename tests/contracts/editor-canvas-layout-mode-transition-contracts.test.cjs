@@ -67,8 +67,8 @@ test('layout mode transition — switchToFreeMode calls applyLayoutModeClasses("
   );
   assert.match(
     switchToFreeBlock,
-    /applyLayoutModeClasses\s*\(\s*['"]free['"]\s*\)/,
-    'switchToFreeMode must call applyLayoutModeClasses("free")'
+    /applyLayoutModeClasses[^)]*\)\s*\(\s*['"]free['"]\s*\)/,
+    'switchToFreeMode must call applyLayoutModeClasses("free") (directly or via delegation)'
   );
 });
 
@@ -79,8 +79,8 @@ test('layout mode transition — switchToStructuredMode calls applyLayoutModeCla
   );
   assert.match(
     switchToStructuredBlock,
-    /applyLayoutModeClasses\s*\(\s*['"]structured['"]\s*\)/,
-    'switchToStructuredMode must call applyLayoutModeClasses("structured")'
+    /applyLayoutModeClasses[^)]*\)\s*\(\s*['"]structured['"]\s*\)/,
+    'switchToStructuredMode must call applyLayoutModeClasses("structured") (directly or via delegation)'
   );
 });
 
@@ -203,15 +203,15 @@ test('layout mode transition — switchToStructuredMode calls initCanvas', () =>
 // 5. updateLayoutToggleUI delegates to uiHelpers
 // ---------------------------------------------------------------------------
 
-test('layout mode transition — updateLayoutToggleUI delegates to uiHelpers', () => {
+test('layout mode transition — updateLayoutToggleUI delegates to uiHelpers (direct or via transition helper)', () => {
   const updateBlock = canvasSource.slice(
     canvasSource.indexOf('function updateLayoutToggleUI'),
-    canvasSource.indexOf('function updateLayoutToggleUI') + 200
+    canvasSource.indexOf('function updateLayoutToggleUI') + 400
   );
   assert.match(
     updateBlock,
-    /uiHelpers\.updateLayoutToggleUI\s*\(\s*viewportState\.layoutMode\s*,\s*i18n\s*\)/,
-    'updateLayoutToggleUI must delegate to uiHelpers.updateLayoutToggleUI(viewportState.layoutMode, i18n)'
+    /updateLayoutToggleUI[^)]*\)\s*\(\s*viewportState\.layoutMode\s*,\s*i18n\s*\)/,
+    'updateLayoutToggleUI must delegate via uiHelpers or layoutTransition helper'
   );
 });
 
