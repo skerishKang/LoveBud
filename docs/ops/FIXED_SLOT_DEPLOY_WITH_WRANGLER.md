@@ -2,11 +2,19 @@
 
 ## Purpose
 
-This document defines the standard manual deployment path for LoveBud fixed test slots before browser verification.
+This document defines the active deployment path for LoveBud fixed test slots before browser verification.
 
 Use this procedure when a PR or issue requires a deployed fixed slot such as `test4`, `test5`, or another CTO-assigned fixed test slot before Browse, Search, Editor, My Trees, Auth, or API-dependent browser verification.
 
 This is a docs-only operational procedure. It does not implement a GitHub workflow and does not change runtime behavior.
+
+## Active policy
+
+The fixed slot deployment standard is **local Wrangler OAuth direct deploy**.
+
+Do not use GitHub Actions for fixed-slot browser verification. The former `.github/workflows/deploy-test-slot.yml` workflow is deprecated and removed from active workflows. It is retained only as historical text under `docs/ops/archive/deploy-test-slot.workflow.yml.txt`.
+
+Cloudflare GitHub Actions secrets are not required for fixed-slot verification when local Wrangler OAuth deployment is available. Missing repository secrets such as `CLOUDFLARE_API_TOKEN` or `CLOUDFLARE_ACCOUNT_ID` must not be reported as a blocker for the current fixed-slot process.
 
 ## Related context
 
@@ -14,12 +22,9 @@ This is a docs-only operational procedure. It does not implement a GitHub workfl
 - Issue #694 tracks the fixed slot deployment procedure and stale asset guardrail.
 - [FIXED_SLOT_MANUAL_E2E_GATE.md](FIXED_SLOT_MANUAL_E2E_GATE.md) remains the assignment, SHA provenance, and evidence gate.
 - [TEST_PREVIEW_SLOTS.md](TEST_PREVIEW_SLOTS.md) is the source of truth for the LoveBud fixed slot domain format.
+- [FIXED_SLOT_WORKFLOW_SECRET_SETUP.md](FIXED_SLOT_WORKFLOW_SECRET_SETUP.md) is deprecated and must not be used as the active deploy path.
 
 ## Standard deployment path
-
-The fixed slot deployment standard is **Wrangler direct deploy**.
-
-Do not rely on a normal `git push` to a slot branch as the only deployment signal when the verification depends on fresh static assets. Git push based slot deploy can leave a slot serving stale assets or an older static bundle even when the branch pointer appears correct.
 
 Use Wrangler direct deploy after the slot assignment and before browser verification.
 
@@ -66,16 +71,17 @@ Browser verification evidence must report the exact URL that was actually loaded
 3. Confirm the source branch and source head SHA that should be deployed.
 4. Check out the intended source tree locally.
 5. Run the expected local static checks for the PR scope.
-6. Run Wrangler direct deploy:
+6. Confirm Wrangler browser/OAuth login is available on the operator machine.
+7. Run Wrangler direct deploy:
 
    ```bash
    npx wrangler pages deploy . --project-name lovebud --branch testX
    ```
 
-7. Confirm the Wrangler output reports a successful deploy.
-8. Open the expected fixed slot URL, such as `https://testX.lovebud.pages.dev`.
-9. Perform the browser verification only after the Wrangler deployment succeeds.
-10. Report the deployed SHA/source branch, exact URL, viewport, browser, console/pageerror status, and final status.
+8. Confirm the Wrangler output reports a successful deploy.
+9. Open the expected fixed slot URL, such as `https://testX.lovebud.pages.dev`.
+10. Perform the browser verification only after the Wrangler deployment succeeds.
+11. Report the deployed SHA/source branch, exact URL, viewport, browser, console/pageerror status, and final status.
 
 ## Stale asset guardrail
 
@@ -95,10 +101,11 @@ final status: BLOCKED_BY_STALE_ASSET
 
 ## What not to use as deploy triggers
 
-Do not use source branch mutations as a workaround for stale fixed slot deployment.
+Do not use source branch mutations, GitHub Actions workflow dispatch, or workflow edits as a workaround for fixed-slot deployment.
 
 Avoid:
 
+- GitHub Actions fixed-slot deploy;
 - empty commits;
 - source branch version bumps;
 - arbitrary timestamp or cache-busting changes;
@@ -118,6 +125,19 @@ Use these status values in handoff and verification reports:
 | `WRANGLER_DIRECT_DEPLOYED` | Wrangler direct deploy completed for the assigned fixed slot. |
 | `FIXED_SLOT_VERIFIED` | Browser verification completed against the expected fixed slot URL after Wrangler deploy. |
 | `BLOCKED_BY_STALE_ASSET` | Deployment did not provide a reliable fresh asset signal, such as `Uploaded 0 files`. |
+
+## Correct report language
+
+Use this wording in fixed-slot verification reports:
+
+```text
+fixed-slot deploy path: local Wrangler OAuth
+command: npx wrangler pages deploy . --project-name lovebud --branch <slot>
+GitHub Actions fixed-slot deploy: not used / deprecated
+Cloudflare GitHub Actions secrets: not required for this verification
+```
+
+Do not write that GitHub Actions deployment failed unless an operator explicitly attempted an obsolete workflow by mistake. Even then, classify it as `DEPRECATED_PATH_NOT_USED`, not as a blocker for fixed-slot verification.
 
 ## Browse verification rule
 
