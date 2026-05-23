@@ -816,13 +816,10 @@ function createEditorCanvas(deps) {
         if (viewportState.controlsBound) return;
         viewportState.controlsBound = true;
 
-        const { focusBtn, recenterBtn, zoomInBtn, zoomOutBtn } = uiHelpers.getViewportControlButtons();
+        const buttons = uiHelpers.getViewportControlButtons();
+        const { focusBtn, recenterBtn, zoomInBtn, zoomOutBtn } = buttons;
 
-        [focusBtn, recenterBtn, zoomInBtn, zoomOutBtn].forEach((button) => {
-            if (!button) return;
-            button.addEventListener('mousedown', (event) => { event.stopPropagation(); });
-            button.addEventListener('touchstart', (event) => { event.stopPropagation(); }, { passive: true });
-        });
+        uiHelpers.bindViewportControlPropagationGuards(buttons);
 
         if (focusBtn) {
             focusBtn.addEventListener('click', () => {
