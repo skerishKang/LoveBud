@@ -822,3 +822,112 @@ test('prepareInitialViewport — defaults invalid or missing stored scale before
   assert.equal(viewportState.offsetY, 80);
   assert.equal(viewportState.initialViewportApplied, true);
 });
+
+// ---------------------------------------------------------------------------
+// recenterViewport
+// ---------------------------------------------------------------------------
+test('recenterViewport — resets viewport and initializes canvas for empty tree', () => {
+  const vp = createViewport();
+  const viewportState = { scale: 0.76, offsetX: 99, offsetY: -88 };
+  let initCalls = 0;
+
+  vp.recenterViewport({
+    getTreeMemories: () => [],
+    viewportState,
+    initCanvas: () => { initCalls += 1; },
+  });
+
+  // empty tree → reset to origin
+  assert.equal(viewportState.scale, 1);
+  assert.equal(viewportState.offsetX, 0);
+  assert.equal(viewportState.offsetY, 0);
+  assert.equal(initCalls, 1);
+});
+
+test('recenterViewport — shows feedback and skips init when already at fit', () => {
+  const vp = createViewport();
+  const viewportState = { scale: 1, offsetX: 10, offsetY: 20 };
+  let initCalls = 0;
+  let feedbackCalls = 0;
+
+  vp.getFitViewport = () => ({ scale: 1, offsetX: 10, offsetY: 20 });
+  vp.showAlreadyAtFitFeedback = () => { feedbackCalls += 1; };
+
+  vp.recenterViewport({
+    getTreeMemories: () => [{ id: 'root' }],
+    viewportState,
+    initCanvas: () => { initCalls += 1; },
+  });
+
+  assert.equal(feedbackCalls, 1);
+  assert.equal(initCalls, 0);
+  assert.equal(viewportState.scale, 1);
+  assert.equal(viewportState.offsetX, 10);
+  assert.equal(viewportState.offsetY, 20);
+});
+
+test('recenterViewport — applies fit viewport and initializes canvas when not already at fit', () => {
+  const vp = createViewport();
+  const viewportState = { scale: 1, offsetX: 0, offsetY: 0 };
+  let initCalls = 0;
+
+  vp.getFitViewport = () => ({ scale: 0.36, offsetX: 50, offsetY: 60 });
+  vp.showAlreadyAtFitFeedback = () => { throw new Error('should not be called'); };
+
+  vp.recenterViewport({
+    getTreeMemories: () => [{ id: 'child' }],
+    viewportState,
+    initCanvas: () => { initCalls += 1; },
+  });
+
+  // applyViewport(..., true) → setFitScale(0.36) → getFitZoom(0.36) = 0.35
+  assert.equal(viewportState.scale, 0.35);
+  assert.equal(viewportState.offsetX, 50);
+  assert.equal(viewportState.offsetY, 60);
+  assert.equal(initCalls, 1);
+});
+
+test('recenterViewport — treats near-fit viewport as already at fit via tolerance', () => {
+  const vp = createViewport();
+  const viewportState = { scale: 0.995, offsetX: 12, offsetY: 22 };
+  let initCalls = 0;
+  let feedbackCalls = 0;
+
+  vp.getFitViewport = () => ({ scale: 1, offsetX: 10, offsetY: 20 });
+  vp.showAlreadyAtFitFeedback = () => { feedbackCalls += 1; };
+
+  vp.recenterViewport({
+    getTreeMemories: () => [{ id: 'root' }],
+    viewportState,
+    initCanvas: () => { initCalls += 1; },
+  });
+
+  // scale diff = 0.005 < 0.01, offset diff = 2 < 5 → already at fit
+  assert.equal(feedbackCalls, 1);
+  assert.equal(initCalls, 0);
+  assert.equal(viewportState.scale, 0.995);
+  assert.equal(viewportState.offsetX, 12);
+  assert.equal(viewportState.offsetY, 22);
+});
+
+test('recenterViewport — re-applies fit viewport when offset tolerance is exceeded', () => {
+  const vp = createViewport();
+  const viewportState = { scale: 1, offsetX: 15, offsetY: 20 };
+  let initCalls = 0;
+
+  vp.getFitViewport = () => ({ scale: 1, offsetX: 10, offsetY: 20 });
+  vp.showAlreadyAtFitFeedback = () => { throw new Error('should not be called'); };
+
+  vp.recenterViewport({
+    getTreeMemories: () => [{ id: 'child' }],
+    viewportState,
+    initCanvas: () => { initCalls += 1; },
+  });
+
+  // offsetX diff = 5 so tolerance (offsetDiffX < 5) is not satisfied
+  // scale = 1, getFitZoom(1) = 1
+  assert.equal(viewportState.scale, 1);
+  assert.equal(viewportState.offsetX, 10);
+  assert.equal(viewportState.offsetY, 20);
+  assert.equal(initCalls, 1);
+});
