@@ -850,10 +850,7 @@ function createEditorCanvas(deps) {
         if (viewportState.controlsBound) return;
         viewportState.controlsBound = true;
 
-        const focusBtn = document.getElementById('focusSelectedBtn');
-        const recenterBtn = document.getElementById('recenterCanvasBtn');
-        const zoomInBtn = document.getElementById('zoomInCanvasBtn');
-        const zoomOutBtn = document.getElementById('zoomOutCanvasBtn');
+        const { focusBtn, recenterBtn, zoomInBtn, zoomOutBtn } = uiHelpers.getViewportControlButtons();
 
         [focusBtn, recenterBtn, zoomInBtn, zoomOutBtn].forEach((button) => {
             if (!button) return;
