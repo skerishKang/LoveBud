@@ -336,17 +336,9 @@ function createEditorCanvas(deps) {
     }
 
     function bindResizeHandling() {
-        if (viewportState.resizeBound) return;
-        viewportState.resizeBound = true;
-
-        window.addEventListener('resize', () => {
-            if (viewportState.resizeTimer) {
-                clearTimeout(viewportState.resizeTimer);
-            }
-            viewportState.resizeTimer = setTimeout(() => {
-                keepSelectionVisible();
-                persistStoredPositions();
-            }, 120);
+        uiHelpers.bindResizeHandling(viewportState, () => {
+            keepSelectionVisible();
+            persistStoredPositions();
         });
     }
 

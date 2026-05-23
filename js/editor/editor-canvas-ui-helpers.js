@@ -113,3 +113,22 @@ export function bindLayoutModeToggle(onToggleLayoutMode) {
 
     toggleBtn.dataset.layoutBound = '1';
 }
+
+/**
+ * Binds the window resize event with a debounce timer.
+ * @param {Object} state - The viewport state to track binding and timer.
+ * @param {Function} onResize - Callback to trigger after the debounce period.
+ */
+export function bindResizeHandling(state, onResize) {
+    if (state.resizeBound) return;
+    state.resizeBound = true;
+
+    window.addEventListener('resize', () => {
+        if (state.resizeTimer) {
+            clearTimeout(state.resizeTimer);
+        }
+        state.resizeTimer = setTimeout(() => {
+            if (typeof onResize === 'function') onResize();
+        }, 120);
+    });
+}
