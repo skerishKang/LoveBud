@@ -1,0 +1,105 @@
+.video-main {
+    width: 100%;
+    aspect-ratio: 16/9;
+    background: linear-gradient(135deg, rgba(51, 42, 43, 0.96), rgba(107, 77, 80, 0.9));
+    border-radius: 2rem;
+    overflow: hidden;
+    box-shadow: 0 22px 54px -22px rgba(0,0,0,0.16);
+    margin-bottom: 16px;
+}
+
+.detail-media-loading {
+    width: 100%;
+    height: 100%;
+    min-height: 220px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    color: rgba(255,255,255,0.88);
+    font-size: 0.95rem;
+    font-weight: 800;
+    background:
+        radial-gradient(circle at 20% 18%, rgba(255,255,255,0.14), transparent 28%),
+        linear-gradient(135deg, rgba(51,42,43,0.92), rgba(107,77,80,0.88));
+}
+
+.detail-media-loading .material-symbols-outlined {
+    font-size: 22px;
+    color: rgba(255,255,255,0.9);
+}
+
+.detail-memory-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    font-size: 12px;
+    color: var(--on-surface-variant);
+}
+
+.detail-meta-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 11px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.72);
+    border: 1px solid rgba(144, 73, 81, 0.07);
+}
+
+.detail-meta-pill .material-symbols-outlined {
+    font-size: 15px;
+    color: var(--primary);
+}
+
+.moment-card {
+    background: rgba(255,255,255,0.94);
+    padding: 18px;
+    border-radius: 1.55rem;
+    border: 1px solid rgba(0,0,0,0.03);
+    box-shadow: 0 9px 24px rgba(0,0,0,0.018);
+    display: flex;
+    gap: 18px;
+    align-items: center;
+    margin-bottom: 16px;
+    transition: all 0.3s;
+    cursor: pointer;
+    min-width: 0;
+}
+
+.moment-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--outline-variant);
+    box-shadow: var(--shadow-whisper);
+}
+
+.growth-visualization {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 28px;
+}
+
+.growth-line {
+    width: 4px; height: 44px;
+    background: linear-gradient(to bottom, var(--primary), var(--secondary));
+    opacity: 0.16;
+    border-radius: 99px;
+    margin-bottom: 10px;
+}
+
+.growth-dot {
+    width: 18px; height: 18px;
+    background: var(--primary);
+    border-radius: 50%;
+    box-shadow: 0 0 0 8px rgba(144, 73, 81, 0.08);
+}
+
+.growth-label {
+    margin-top: 14px;
+    color: var(--primary);
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
