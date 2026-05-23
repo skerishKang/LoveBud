@@ -9,79 +9,107 @@
         const showToast = options.showToast;
         const i18n = options.i18n;
 
-        const canvasEmptyStartBtn = document.getElementById('canvasEmptyStartBtn');
-        const canvasEmptyYoutubeInput = document.getElementById('canvasEmptyYoutubeInput');
-        const canvasEmptyTextStartBtn = document.getElementById('canvasEmptyTextStartBtn');
+        const canvasEmptyVideoBtn = document.getElementById('canvasEmptyVideoBtn');
+        const canvasEmptyTextBtn = document.getElementById('canvasEmptyTextBtn');
+        const canvasEmptyQuickInput = document.getElementById('canvasEmptyQuickInput');
 
-        // 의존성 DOM (문자열 등 추출을 위해 직접 탐색)
         const memoryUrlInput = document.getElementById('memoryUrlInput');
+        const memoryTitleInput = document.getElementById('memoryTitleInput');
         const memoryModeLinkBtn = document.getElementById('memoryModeLinkBtn');
         const memoryModeTextBtn = document.getElementById('memoryModeTextBtn');
 
-        async function createMemoryFromCanvasUrl(createOptions) {
-            const rawUrl = createOptions && createOptions.rawUrl;
-            const position = createOptions && createOptions.position;
-            if (!rawUrl) {
-                if (typeof showAddMemoryForm === 'function') showAddMemoryForm();
+        function isYoutubeUrl(url) {
+            return /(youtube\.com|youtu\.be|youtube\.com\/shorts\/)/i.test(url || '');
+        }
+
+        async function fetchYoutubeTitle(url) {
+            try {
+                const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`;
+                const response = await fetch(oembedUrl);
+                if (!response.ok) return '';
+                const data = await response.json();
+                return data && data.title ? data.title : '';
+            } catch (error) {
+                console.warn('[editor] YouTube oEmbed title lookup failed', error);
+                return '';
+            }
+        }
+
+        async function createMemoryFromQuickYoutube(rawUrl) {
+            const url = (rawUrl || '').trim();
+            if (!url) return;
+            if (!isYoutubeUrl(url)) {
+                if (typeof showToast === 'function') {
+                    showToast(i18n('invalid_youtube') || '유효한 YouTube 링크를 입력해 주세요.', 'warn');
+                }
                 return;
             }
-            if (typeof showAddMemoryForm === 'function') showAddMemoryForm();
+
+            if (typeof showToast === 'function') {
+                showToast(i18n('saving') || '기록 중...', 'info');
+            }
+
+            const title = await fetchYoutubeTitle(url);
+            if (memoryModeLinkBtn) memoryModeLinkBtn.click();
             if (memoryUrlInput) {
-                memoryUrlInput.value = rawUrl;
+                memoryUrlInput.value = url;
                 memoryUrlInput.dispatchEvent(new Event('input', { bubbles: true }));
             }
-            if (memoryModeLinkBtn) memoryModeLinkBtn.click();
-            
+            if (memoryTitleInput && title) {
+                memoryTitleInput.value = title;
+                memoryTitleInput.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+
             const memories = typeof getTreeMemories === 'function' ? getTreeMemories() : [];
             const beforeIds = new Set(memories.map((memory) => memory && memory.id));
-            
+
             if (typeof addMemoryFromForm === 'function') await addMemoryFromForm();
-            
+
             const updatedMemories = typeof getTreeMemories === 'function' ? getTreeMemories() : [];
             const createdMemory = updatedMemories.find((memory) => memory && !beforeIds.has(memory.id));
-            
             const editorCanvas = typeof getEditorCanvas === 'function' ? getEditorCanvas() : null;
-            if (createdMemory && position && editorCanvas) {
-                if (typeof editorCanvas.addNodePosition === 'function') {
-                    editorCanvas.addNodePosition(createdMemory.id, position);
-                }
-                
-                if (typeof editorCanvas.persistStoredPositions === 'function') editorCanvas.persistStoredPositions();
+            if (createdMemory && editorCanvas) {
                 if (typeof editorCanvas.initCanvas === 'function') editorCanvas.initCanvas();
                 if (typeof editorCanvas.focusNodeById === 'function') editorCanvas.focusNodeById(createdMemory.id);
             }
+
+            if (canvasEmptyQuickInput) canvasEmptyQuickInput.value = '';
         }
 
-        if (canvasEmptyStartBtn && canvasEmptyStartBtn.dataset.bound !== '1') {
-            canvasEmptyStartBtn.dataset.bound = '1';
-            canvasEmptyStartBtn.addEventListener('click', () => {
-                const rawUrl = canvasEmptyYoutubeInput ? canvasEmptyYoutubeInput.value.trim() : '';
-                if (rawUrl) {
-                    createMemoryFromCanvasUrl({ rawUrl });
-                    return;
-                }
+        if (canvasEmptyVideoBtn && canvasEmptyVideoBtn.dataset.bound !== '1') {
+            canvasEmptyVideoBtn.dataset.bound = '1';
+            canvasEmptyVideoBtn.addEventListener('click', () => {
                 if (typeof showAddMemoryForm === 'function') showAddMemoryForm();
+                if (memoryModeLinkBtn) memoryModeLinkBtn.click();
             });
         }
 
-        if (canvasEmptyTextStartBtn && canvasEmptyTextStartBtn.dataset.bound !== '1') {
-            canvasEmptyTextStartBtn.dataset.bound = '1';
-            canvasEmptyTextStartBtn.addEventListener('click', () => {
+        if (canvasEmptyTextBtn && canvasEmptyTextBtn.dataset.bound !== '1') {
+            canvasEmptyTextBtn.dataset.bound = '1';
+            canvasEmptyTextBtn.addEventListener('click', () => {
                 if (typeof showAddMemoryForm === 'function') showAddMemoryForm();
                 if (memoryModeTextBtn) memoryModeTextBtn.click();
             });
         }
 
-        if (canvasEmptyYoutubeInput && canvasEmptyYoutubeInput.dataset.bound !== '1') {
-            canvasEmptyYoutubeInput.dataset.bound = '1';
-            canvasEmptyYoutubeInput.addEventListener('keydown', (event) => {
+        if (canvasEmptyQuickInput && canvasEmptyQuickInput.dataset.bound !== '1') {
+            canvasEmptyQuickInput.dataset.bound = '1';
+            canvasEmptyQuickInput.addEventListener('paste', (event) => {
+                const clipboard = event.clipboardData || window.clipboardData;
+                const pastedText = clipboard ? clipboard.getData('text') : '';
+                if (!pastedText) return;
+                event.preventDefault();
+                canvasEmptyQuickInput.value = pastedText.trim();
+                createMemoryFromQuickYoutube(pastedText);
+            });
+            canvasEmptyQuickInput.addEventListener('keydown', (event) => {
                 if (event.key !== 'Enter') return;
                 event.preventDefault();
-                createMemoryFromCanvasUrl({ rawUrl: canvasEmptyYoutubeInput.value.trim() });
+                createMemoryFromQuickYoutube(canvasEmptyQuickInput.value);
             });
         }
 
-        return { createMemoryFromCanvasUrl };
+        return { createMemoryFromQuickYoutube, fetchYoutubeTitle };
     };
 
     window.LoveBudEditorEmptyGuideUI = emptyGuideUI;

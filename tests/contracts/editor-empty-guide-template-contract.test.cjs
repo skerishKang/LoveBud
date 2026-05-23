@@ -2,28 +2,33 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 
-test('Empty Guide template helper exists and contains markup', () => {
+test('Empty Guide template helper exists and contains updated structured quick-start markup', () => {
     const helperPath = 'js/editor/templates/editor-empty-guide-template.js';
     assert.ok(fs.existsSync(helperPath), 'template helper file must exist');
 
     const helperCode = fs.readFileSync(helperPath, 'utf8');
     assert.ok(helperCode.includes('id="canvasEmptyGuide"'), 'must include empty guide root id');
     assert.ok(helperCode.includes('class="editor-canvas-empty-guide editor-canvas-empty-guide-hidden"'), 'must include root classes');
-    assert.ok(helperCode.includes('id="canvasEmptyGuideIcon"'), 'must preserve icon');
-    assert.ok(helperCode.includes('id="canvasEmptyGuideTitle"'), 'must preserve title');
-    assert.ok(helperCode.includes('id="canvasEmptyYoutubeInput"'), 'must preserve youtube input');
-    assert.ok(helperCode.includes('id="canvasEmptyStartBtn"'), 'must preserve start button');
-    assert.ok(helperCode.includes('id="canvasEmptyTextStartBtn"'), 'must preserve text start button');
+    assert.ok(!helperCode.includes('id="canvasEmptyGuideIcon"'), 'must remove the decorative sprout icon');
+    assert.ok(helperCode.includes('id="canvasEmptyGuideTitle"'), 'must preserve title id');
+    assert.ok(helperCode.includes('이 트리의 첫 순간을 기록해볼까요?'), 'must include updated title copy');
+    assert.ok(helperCode.includes('소중한 영상이나 글로 시작해보세요.'), 'must include updated description copy');
+    assert.ok(helperCode.includes('id="canvasEmptyVideoBtn"'), 'must include structured video button');
+    assert.ok(helperCode.includes('영상으로 첫 순간 심기'), 'must include structured video button copy');
+    assert.ok(helperCode.includes('id="canvasEmptyTextBtn"'), 'must include structured text button');
+    assert.ok(helperCode.includes('텍스트로 첫 순간 심기'), 'must include structured text button copy');
+    assert.ok(helperCode.includes('id="canvasEmptyQuickInput"'), 'must include quick YouTube input');
+    assert.ok(helperCode.includes('YouTube 링크를 붙여넣어 바로 시작하기'), 'must include quick input placeholder');
+    assert.ok(helperCode.includes('붙이는 순간 바로 순간이 만들어져요.'), 'must explain quick paste behavior');
 });
 
 test('editor.html uses template mount and removes raw empty guide markup', () => {
     const html = fs.readFileSync('pages/editor.html', 'utf8');
 
-    // Should have the mount anchor
     assert.ok(html.includes('id="editorEmptyGuideTemplateMount"'), 'must have mount anchor');
-
-    // Should not have the inner contents like canvasEmptyTextStartBtn in the raw HTML anymore
-    assert.ok(!html.includes('id="canvasEmptyTextStartBtn"'), 'raw HTML should not contain empty guide inner contents');
+    assert.ok(!html.includes('id="canvasEmptyVideoBtn"'), 'raw HTML should not contain empty guide inner contents');
+    assert.ok(!html.includes('id="canvasEmptyTextBtn"'), 'raw HTML should not contain empty guide inner contents');
+    assert.ok(!html.includes('id="canvasEmptyQuickInput"'), 'raw HTML should not contain empty guide inner contents');
 });
 
 test('editor.html loads template helper before editor runtime in correct order', () => {
@@ -39,7 +44,7 @@ test('editor.html loads template helper before editor runtime in correct order',
     assert.notEqual(addMemoryHelperIndex, -1, 'editor.html must still load the add memory form helper');
     assert.notEqual(sidebarHelperIndex, -1, 'editor.html must still load the sidebar helper script');
     assert.notEqual(topbarHelperIndex, -1, 'editor.html must still load the canvas topbar helper script');
-    assert.notEqual(emptyGuideHelperIndex, -1, 'editor.html must load the new empty guide helper script');
+    assert.notEqual(emptyGuideHelperIndex, -1, 'editor.html must load the empty guide helper script');
 
     assert.ok(emptyGuideHelperIndex < domSelectorsIndex, 'empty guide helper must load before dom selectors');
     assert.ok(emptyGuideHelperIndex < editorJsIndex, 'empty guide helper must load before js/editor.js');
