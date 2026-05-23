@@ -51,8 +51,17 @@
         persistFn(layoutMode);
     }
 
+    /**
+     * Delegates viewport fit call after layout mode switch.
+     * @param {Function} fitFn - the local fitViewportToTree function
+     */
+    function fitViewportToTree(fitFn) {
+        fitFn();
+    }
+
     window.LoveBudEditorCanvasLayoutTransition = {
         applyLayoutModeClasses: applyLayoutModeClasses,
+        fitViewportToTree: fitViewportToTree,
         persistLayoutMode: persistLayoutMode,
         updateLayoutToggleUI: updateLayoutToggleUI
     };
