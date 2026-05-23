@@ -7,6 +7,7 @@ const vm = require('node:vm');
 const ROOT = path.resolve(__dirname, '..', '..');
 const VIEWPORT_PATH = path.join(ROOT, 'js/editor/editor-canvas-viewport.js');
 const VIEWPORT_SCALE_PATH = path.join(ROOT, 'js/editor/editor-canvas-viewport-scale.js');
+const VIEWPORT_PROJECTION_PATH = path.join(ROOT, 'js/editor/editor-canvas-viewport-projection.js');
 const VIEWPORT_FEEDBACK_PATH = path.join(ROOT, 'js/editor/editor-canvas-viewport-feedback.js');
 const VIEWPORT_STATE_PATH = path.join(ROOT, 'js/editor/editor-canvas-viewport-state.js');
 const VIEWPORT_FIT_PATH = path.join(ROOT, 'js/editor/editor-canvas-viewport-fit.js');
@@ -24,9 +25,12 @@ function createViewport() {
   vm.createContext(context);
   vm.runInContext(fs.readFileSync(VIEWPORT_PATH, 'utf8'), context);
   // Load helper modules so thin wrappers can delegate to extracted implementations.
-  // Load order matches editor.html: viewport → scale → feedback → state → fit → initial → branches → actions → controls
+  // Load order matches editor.html: viewport → scale → projection → feedback → state → fit → initial → branches → actions → controls
   if (fs.existsSync(VIEWPORT_SCALE_PATH)) {
     vm.runInContext(fs.readFileSync(VIEWPORT_SCALE_PATH, 'utf8'), context);
+  }
+  if (fs.existsSync(VIEWPORT_PROJECTION_PATH)) {
+    vm.runInContext(fs.readFileSync(VIEWPORT_PROJECTION_PATH, 'utf8'), context);
   }
   if (fs.existsSync(VIEWPORT_FEEDBACK_PATH)) {
     vm.runInContext(fs.readFileSync(VIEWPORT_FEEDBACK_PATH, 'utf8'), context);
@@ -60,9 +64,12 @@ function createViewportContext() {
   const context = { window: {} };
   vm.createContext(context);
   vm.runInContext(fs.readFileSync(VIEWPORT_PATH, 'utf8'), context);
-  // Load order matches editor.html: viewport → scale → feedback → state → fit → initial → branches → actions → controls
+  // Load order matches editor.html: viewport → scale → projection → feedback → state → fit → initial → branches → actions → controls
   if (fs.existsSync(VIEWPORT_SCALE_PATH)) {
     vm.runInContext(fs.readFileSync(VIEWPORT_SCALE_PATH, 'utf8'), context);
+  }
+  if (fs.existsSync(VIEWPORT_PROJECTION_PATH)) {
+    vm.runInContext(fs.readFileSync(VIEWPORT_PROJECTION_PATH, 'utf8'), context);
   }
   if (fs.existsSync(VIEWPORT_FEEDBACK_PATH)) {
     vm.runInContext(fs.readFileSync(VIEWPORT_FEEDBACK_PATH, 'utf8'), context);
@@ -1660,4 +1667,28 @@ test('viewport scale helper — wrappers on LoveBudEditorCanvasViewport are pres
   assert.equal(vp.getScale.length, 1);
   assert.equal(vp.setScale.length, 2);
   assert.equal(vp.setFitScale.length, 2);
+});
+
+// ---------------------------------------------------------------------------
+// viewport projection helper — namespace check
+// ---------------------------------------------------------------------------
+test('viewport projection helper — exposes LoveBudEditorCanvasViewportProjection.projectWorldPosition', () => {
+  const { context } = createViewportContext();
+  const proj = context.window.LoveBudEditorCanvasViewportProjection;
+  assert.ok(proj, 'namespace must exist');
+  assert.equal(typeof proj.projectWorldPosition, 'function');
+  assert.equal(proj.projectWorldPosition.length, 3); // (viewportApi, world, viewportState)
+});
+
+test('viewport projection helper — wrapper on LoveBudEditorCanvasViewport.projectWorldPosition is preserved', () => {
+  const { viewport: vp } = createViewportContext();
+  assert.equal(typeof vp.projectWorldPosition, 'function');
+  assert.equal(vp.projectWorldPosition.length, 2); // (world, viewportState)
+});
+
+test('viewport projection helper — check calculations and API delegation in source code', () => {
+  const source = fs.readFileSync(VIEWPORT_PROJECTION_PATH, 'utf8');
+  assert.match(source, /world\.x\s*\*\s*scale\s*\+\s*viewportState\.offsetX/, 'x projection calculation must match formula');
+  assert.match(source, /world\.y\s*\*\s*scale\s*\+\s*viewportState\.offsetY/, 'y projection calculation must match formula');
+  assert.match(source, /viewportApi\.getScale\(viewportState\)/, 'projection helper must call scale API');
 });
