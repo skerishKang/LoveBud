@@ -331,3 +331,18 @@ export function shouldStartCanvasPan(event) {
     }
     return true;
 }
+
+/**
+ * Resets the cursor of a dragged memory node to 'grab' on mouseup.
+ * @param {Document} documentRef - The document reference for DOM queries (pass `document`).
+ * @param {string} draggedId - The data-memory-id of the dragged node.
+ * @returns {HTMLElement|null} The dragged element if found, null otherwise.
+ */
+export function resetDraggedNodeCursor(documentRef, draggedId) {
+    if (!documentRef || !draggedId) return null;
+    const draggedEl = documentRef.querySelector(`.memory-node[data-memory-id="${draggedId}"]`);
+    if (draggedEl) {
+        draggedEl.style.cursor = 'grab';
+    }
+    return draggedEl;
+}
