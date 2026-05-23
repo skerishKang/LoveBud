@@ -1,0 +1,9 @@
+@media (max-width: 768px) {
+    .login-shell {
+        padding: 16px;
+    }
+
+    .login-card {
+        padding: 32px 16px;
+    }
+}
