@@ -145,3 +145,19 @@ export function bindViewportControlPropagationGuards(buttons) {
         button.addEventListener('touchstart', (event) => { event.stopPropagation(); }, { passive: true });
     });
 }
+
+/**
+ * Binds the click handler for the Focus Selected button.
+ * @param {HTMLElement} focusBtn - The button element.
+ * @param {Function} getSelectedId - Callback to retrieve the currently selected node ID.
+ * @param {Function} onFocusSelected - Callback to trigger focus on a specific node ID.
+ */
+export function bindFocusSelectedControl(focusBtn, getSelectedId, onFocusSelected) {
+    if (!focusBtn) return;
+    focusBtn.addEventListener('click', () => {
+        const selectedId = typeof getSelectedId === 'function' ? getSelectedId() : null;
+        if (selectedId && typeof onFocusSelected === 'function') {
+            onFocusSelected(selectedId);
+        }
+    });
+}
