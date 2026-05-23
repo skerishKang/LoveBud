@@ -1,0 +1,128 @@
+/* ── Entry State ────────────────────────────────────────── */
+.cfw-entry {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+}
+
+.cfw-entry-card {
+  max-width: 520px;
+  width: 100%;
+  text-align: center;
+}
+
+.cfw-entry-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  display: block;
+}
+
+.cfw-entry-title {
+  font-family: var(--font-heading, 'Outfit', sans-serif);
+  font-size: clamp(26px, 4vw, 34px);
+  font-weight: 700;
+  color: var(--on-surface, #483934);
+  margin: 0 0 8px;
+  line-height: 1.2;
+}
+
+.cfw-entry-desc {
+  font-size: 15px;
+  color: var(--on-surface-variant, #6c5953);
+  line-height: 1.6;
+  margin: 0 0 28px;
+}
+
+.cfw-entry-input-wrap {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.cfw-entry-input {
+  flex: 1;
+  padding: 14px 18px;
+  border: 1px solid var(--lovetree-soft-surface-border, rgba(144,73,81,0.12));
+  border-radius: var(--radius-lg, 2rem);
+  font-size: 15px;
+  font-family: inherit;
+  background: var(--surface-container, #f2efe9);
+  color: var(--on-surface, #483934);
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.cfw-entry-input:focus {
+  border-color: var(--primary, #904951);
+  box-shadow: 0 0 0 3px rgba(144, 73, 81, 0.12);
+}
+
+.cfw-entry-input::placeholder {
+  color: var(--on-surface-note, #9c8080);
+}
+
+.cfw-entry-submit {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-full, 9999px);
+  border: none;
+  background: var(--primary, #904951);
+  color: var(--on-primary, #ffffff);
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.15s ease, background 0.18s ease;
+}
+
+.cfw-entry-submit:hover {
+  background: var(--primary-vibrant, #b85c66);
+  transform: translateY(-1px);
+}
+
+.cfw-entry-submit:active {
+  transform: translateY(0);
+}
+
+.cfw-entry-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.cfw-action-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 18px;
+  border-radius: var(--radius-full, 9999px);
+  background: var(--lovetree-chip-bg, rgba(255,255,255,0.84));
+  border: 1px solid var(--lovetree-chip-border, rgba(144,73,81,0.12));
+  color: var(--lovetree-chip-text, #6c5953);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.18s ease;
+  user-select: none;
+}
+
+.cfw-action-chip:hover {
+  background: var(--lovetree-pill-bg, rgba(144,73,81,0.08));
+  border-color: var(--lovetree-pill-border, rgba(144,73,81,0.22));
+  color: var(--primary, #904951);
+}
+
+.cfw-action-chip:active {
+  transform: scale(0.97);
+}
+
+.cfw-action-chip-icon {
+  font-size: 16px;
+  line-height: 1;
+}
