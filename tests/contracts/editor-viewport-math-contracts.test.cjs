@@ -6,6 +6,7 @@ const vm = require('node:vm');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const VIEWPORT_PATH = path.join(ROOT, 'js/editor/editor-canvas-viewport.js');
+const VIEWPORT_CONTROLS_PATH = path.join(ROOT, 'js/editor/editor-canvas-viewport-controls.js');
 
 /**
  * Creates a fresh instance of the viewport module in a sandboxed context.
@@ -26,6 +27,10 @@ function createViewportContext() {
   const context = { window: {} };
   vm.createContext(context);
   vm.runInContext(fs.readFileSync(VIEWPORT_PATH, 'utf8'), context);
+  // Load viewport controls helper in the same context (order matches editor.html)
+  if (fs.existsSync(VIEWPORT_CONTROLS_PATH)) {
+    vm.runInContext(fs.readFileSync(VIEWPORT_CONTROLS_PATH, 'utf8'), context);
+  }
   return {
     context,
     viewport: context.window.LoveBudEditorCanvasViewport,
@@ -1422,4 +1427,20 @@ test('bindControls — stopPropagation handlers prevent touch event bubbling', (
   });
 
   assert.equal(stopCalls, 4);
+});
+
+// ---------------------------------------------------------------------------
+// viewport controls helper — namespace check
+// ---------------------------------------------------------------------------
+test('viewport controls helper — exposes LoveBudEditorCanvasViewportControls.bindControls', () => {
+  const { context } = createViewportContext();
+  assert.ok(context.window.LoveBudEditorCanvasViewportControls, 'namespace must exist');
+  assert.equal(
+    typeof context.window.LoveBudEditorCanvasViewportControls.bindControls,
+    'function'
+  );
+  assert.equal(
+    context.window.LoveBudEditorCanvasViewportControls.bindControls.length,
+    2, // (viewportApi, options)
+  );
 });
