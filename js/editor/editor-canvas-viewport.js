@@ -70,6 +70,30 @@ window.LoveBudEditorCanvasViewport = {
     return rootMemory ? [rootMemory] : [];
   },
 
+  isStoredViewportExtreme(options) {
+    if (!window.LoveBudEditorCanvasViewportState ||
+        typeof window.LoveBudEditorCanvasViewportState.isStoredViewportExtreme !== 'function') {
+      return false;
+    }
+    return window.LoveBudEditorCanvasViewportState.isStoredViewportExtreme(this, options);
+  },
+
+  applyViewport(viewportState, nextViewport, useFitScale = false) {
+    if (!window.LoveBudEditorCanvasViewportState ||
+        typeof window.LoveBudEditorCanvasViewportState.applyViewport !== 'function') {
+      return false;
+    }
+    return window.LoveBudEditorCanvasViewportState.applyViewport(this, viewportState, nextViewport, useFitScale);
+  },
+
+  isAlreadyAtFit(viewportState, fitViewport) {
+    if (!window.LoveBudEditorCanvasViewportState ||
+        typeof window.LoveBudEditorCanvasViewportState.isAlreadyAtFit !== 'function') {
+      return false;
+    }
+    return window.LoveBudEditorCanvasViewportState.isAlreadyAtFit(this, viewportState, fitViewport);
+  },
+
   getReadableViewportOffset(options, preferredScale = 1) {
     if (!window.LoveBudEditorCanvasViewportFit ||
         typeof window.LoveBudEditorCanvasViewportFit.getReadableViewportOffset !== 'function') {
@@ -86,43 +110,9 @@ window.LoveBudEditorCanvasViewport = {
     return window.LoveBudEditorCanvasViewportFit.getFitViewport(this, options);
   },
 
-  isStoredViewportExtreme(options) {
-    const { viewportState, getMetrics } = options;
-    const metrics = getMetrics();
-    const margin = Math.max(200, Math.round(metrics.width * 0.25));
-    const minOkX = -metrics.width - margin;
-    const maxOkX = metrics.width + margin;
-    const minOkY = -metrics.height - margin;
-    const maxOkY = metrics.height + margin;
-    return (
-      viewportState.offsetX < minOkX || viewportState.offsetX > maxOkX ||
-      viewportState.offsetY < minOkY || viewportState.offsetY > maxOkY
-    );
-  },
-
-  applyViewport(viewportState, nextViewport, useFitScale = false) {
-    if (!nextViewport) return false;
-    if (useFitScale) {
-      this.setFitScale(viewportState, nextViewport.scale);
-    } else {
-      this.setScale(viewportState, nextViewport.scale);
-    }
-    viewportState.offsetX = nextViewport.offsetX;
-    viewportState.offsetY = nextViewport.offsetY;
-    return true;
-  },
-
-  isAlreadyAtFit(viewportState, fitViewport) {
-    if (!fitViewport) return false;
-    const scaleDiff = Math.abs((viewportState.scale || 1) - fitViewport.scale);
-    const offsetDiffX = Math.abs(viewportState.offsetX - fitViewport.offsetX);
-    const offsetDiffY = Math.abs(viewportState.offsetY - fitViewport.offsetY);
-    return scaleDiff < 0.01 && offsetDiffX < 5 && offsetDiffY < 5;
-  },
-
   showAlreadyAtFitFeedback() {
     if (window.LoveBudUI && typeof window.LoveBudUI.showToast === 'function') {
-      window.LoveBudUI.showToast('이미 전체 트리가 보이고 있습니다', 'info', 2000);
+      window.LoveBudUI.showToast('\uC774\uBBF8 \uC804\uCCB4 \uD2B8\uB9AC\uAC00 \uBCF4\uC774\uACE0 \uC788\uC2B5\uB2C8\uB2E4', 'info', 2000);
     }
   },
 
@@ -131,9 +121,6 @@ window.LoveBudEditorCanvasViewport = {
     this.setScale(viewportState, viewportState.scale || 1);
     if (viewportState.initialViewportApplied) return;
     viewportState.initialViewportApplied = true;
-
-    // Always fit the full tree viewport on initial load,
-    // regardless of any previously stored viewport offset.
     this.applyViewport(viewportState, this.getFitViewport(options), true);
   },
 
