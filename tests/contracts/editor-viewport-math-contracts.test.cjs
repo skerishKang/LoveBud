@@ -701,3 +701,124 @@ test('zoomBy — snaps non-preset scale before stepping', () => {
   assert.equal(viewportState.offsetY, -17);
   assert.equal(initCalls, 1);
 });
+
+// ---------------------------------------------------------------------------
+// prepareInitialViewport
+// ---------------------------------------------------------------------------
+test('prepareInitialViewport — applies fallback fit viewport on first load with empty tree', () => {
+  const vp = createViewport();
+  const viewportState = { scale: 0.76, offsetX: 999, offsetY: -999 };
+
+  vp.prepareInitialViewport({
+    viewportState,
+    getTreeMemories: () => [],
+    getWorldPosition: () => { throw new Error('should not be called'); },
+    getMetrics: () => { throw new Error('should not be called'); },
+    getCanonicalRootId: undefined,
+    isRootMemory: undefined,
+  });
+
+  // empty tree → fallback { scale: 1, offsetX: 0, offsetY: 0 }
+  // applyViewport(..., true) → setFitScale(1) → getFitZoom(1) = 1
+  assert.equal(viewportState.initialViewportApplied, true);
+  assert.equal(viewportState.scale, 1);
+  assert.equal(viewportState.offsetX, 0);
+  assert.equal(viewportState.offsetY, 0);
+});
+
+test('prepareInitialViewport — skips fit viewport after initial viewport was already applied', () => {
+  const vp = createViewport();
+  const viewportState = {
+    scale: 0.76,
+    offsetX: 12,
+    offsetY: 34,
+    initialViewportApplied: true,
+  };
+
+  // getFitViewport/getWorldPosition/getMetrics should NOT be called
+  vp.prepareInitialViewport({
+    viewportState,
+    getTreeMemories: () => { throw new Error('should not be called'); },
+    getWorldPosition: () => { throw new Error('should not be called'); },
+    getMetrics: () => { throw new Error('should not be called'); },
+  });
+
+  // setScale(0.76) → nearest zoom = 0.75
+  assert.equal(viewportState.scale, 0.75);
+  assert.equal(viewportState.offsetX, 12);
+  assert.equal(viewportState.offsetY, 34);
+  assert.equal(viewportState.initialViewportApplied, true);
+});
+
+test('prepareInitialViewport — marks initial viewport as applied before computing fit viewport', () => {
+  const vp = createViewport();
+  const viewportState = { scale: 1, offsetX: 0, offsetY: 0 };
+  let fitViewportCalled = false;
+
+  vp.getFitViewport = (options) => {
+    // initialViewportApplied must already be true when getFitViewport is called
+    assert.equal(options.viewportState.initialViewportApplied, true);
+    fitViewportCalled = true;
+    return { scale: 1, offsetX: 10, offsetY: 20 };
+  };
+
+  vp.prepareInitialViewport({
+    viewportState,
+    getTreeMemories: () => [],
+    getWorldPosition: () => { throw new Error('should not be called'); },
+    getMetrics: () => { throw new Error('should not be called'); },
+    getCanonicalRootId: undefined,
+    isRootMemory: undefined,
+  });
+
+  assert.equal(viewportState.initialViewportApplied, true);
+  assert.equal(viewportState.offsetX, 10);
+  assert.equal(viewportState.offsetY, 20);
+  assert.equal(fitViewportCalled, true);
+});
+
+test('prepareInitialViewport — applies fit viewport with fit-scale snapping', () => {
+  const vp = createViewport();
+  const viewportState = { scale: 1, offsetX: 0, offsetY: 0 };
+
+  vp.getFitViewport = () => ({ scale: 0.36, offsetX: 50, offsetY: 60 });
+
+  vp.prepareInitialViewport({
+    viewportState,
+    getTreeMemories: () => [],
+    getWorldPosition: () => { throw new Error('should not be called'); },
+    getMetrics: () => { throw new Error('should not be called'); },
+    getCanonicalRootId: undefined,
+    isRootMemory: undefined,
+  });
+
+  // applyViewport(..., true) → setFitScale(0.36) → getFitZoom(0.36) = 0.35
+  assert.equal(viewportState.scale, 0.35);
+  assert.equal(viewportState.offsetX, 50);
+  assert.equal(viewportState.offsetY, 60);
+  assert.equal(viewportState.initialViewportApplied, true);
+});
+
+test('prepareInitialViewport — defaults invalid or missing stored scale before first fit', () => {
+  const vp = createViewport();
+  // scale missing → setScale(..., undefined || 1) → setScale(..., 1)
+  const viewportState = { offsetX: 5, offsetY: 6 };
+
+  vp.getFitViewport = () => ({ scale: 1.4, offsetX: 70, offsetY: 80 });
+
+  vp.prepareInitialViewport({
+    viewportState,
+    getTreeMemories: () => [],
+    getWorldPosition: () => { throw new Error('should not be called'); },
+    getMetrics: () => { throw new Error('should not be called'); },
+    getCanonicalRootId: undefined,
+    isRootMemory: undefined,
+  });
+
+  // setScale(..., 1) → scale = 1
+  // applyViewport(..., true): setFitScale(1.4) → getFitZoom(1.4) = 1.25
+  assert.equal(viewportState.scale, 1.25);
+  assert.equal(viewportState.offsetX, 70);
+  assert.equal(viewportState.offsetY, 80);
+  assert.equal(viewportState.initialViewportApplied, true);
+});
