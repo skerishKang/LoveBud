@@ -283,3 +283,22 @@ export function bindNodePointerSelection(nodeEl, options) {
         touchStartPoint = null;
     });
 }
+
+/**
+ * Binds mouse down event on a node to initiate drag.
+ * @param {HTMLElement} nodeEl - The memory node element.
+ * @param {Function} getLayoutMode - Function returning current layout mode ('structured' or 'free').
+ * @param {Function} onDragStart - Callback executed to begin the drag operation.
+ */
+export function bindNodeDragStart(nodeEl, getLayoutMode, onDragStart) {
+    if (!nodeEl) return;
+
+    nodeEl.addEventListener('mousedown', (e) => {
+        const layoutMode = typeof getLayoutMode === 'function' ? getLayoutMode() : null;
+        if (layoutMode === 'structured') return;
+        
+        if (typeof onDragStart === 'function') {
+            onDragStart(e);
+        }
+    });
+}
