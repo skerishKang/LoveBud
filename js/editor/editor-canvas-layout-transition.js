@@ -59,10 +59,20 @@
         fitFn();
     }
 
+    /**
+     * Delegates free-mode position persistence call.
+     * Only called from switchToFreeMode; structured mode does not persist positions.
+     * @param {Function} persistFn - the local persistStoredPositions function
+     */
+    function persistStoredPositions(persistFn) {
+        persistFn();
+    }
+
     window.LoveBudEditorCanvasLayoutTransition = {
         applyLayoutModeClasses: applyLayoutModeClasses,
         fitViewportToTree: fitViewportToTree,
         persistLayoutMode: persistLayoutMode,
+        persistStoredPositions: persistStoredPositions,
         updateLayoutToggleUI: updateLayoutToggleUI
     };
 })();
