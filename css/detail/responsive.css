@@ -1,0 +1,28 @@
+@media (max-width: 1180px) {
+    .detail-page-shell { padding: 22px 24px 40px; }
+    .detail-layout { grid-template-columns: 1fr; gap: 28px; }
+    .connected-section { margin-top: 0; }
+    .diary-container { padding: 32px 30px; }
+    .detail-title-main { font-size: 2.25rem; }
+}
+
+@media (max-width: 768px) {
+    .detail-page-shell { padding: 16px 16px 30px; }
+    .detail-topbar { align-items: flex-start; flex-direction: column; margin-bottom: 12px; }
+    .detail-hero { padding: 15px 16px; border-radius: 1.2rem; margin-bottom: 14px; gap: 7px; }
+    .detail-hero-title { font-size: 1.45rem; line-height: 1.2; }
+    .detail-hero-desc { font-size: 0.88rem; line-height: 1.5; }
+    .detail-layout { gap: 22px; }
+    .detail-title-block { gap: 10px; }
+    .detail-title-main { font-size: 1.85rem; line-height: 1.16; }
+    .video-main { border-radius: 1.3rem; margin-bottom: 14px; }
+    .diary-container { padding: 26px 20px; border-radius: 1.5rem; }
+    .moment-card { padding: 14px; gap: 14px; }
+    .moment-card img { width: 60px !important; height: 60px !important; }
+    .growth-visualization { margin-top: 24px; }
+    #connectedFragments { grid-template-columns: 1fr !important; gap: 14px !important; min-width: 0; }
+    #memoryTitle {
+        font-size: 2.2rem !important;
+        line-height: 1.2;
+    }
+}

@@ -1,0 +1,51 @@
+/*
+ * LoveBud Detail page styles
+ * Extracted from pages/detail.html.
+ * Page-specific only. Do not move these rules into global.css.
+ */
+
+.detail-page-shell {
+    max-width: 1480px;
+    margin: 0 auto;
+    padding: 22px 40px 56px;
+}
+
+.detail-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 14px;
+}
+
+.detail-back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--on-surface-variant);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 700;
+    transition: color 0.2s ease;
+}
+
+.detail-back-link:hover { color: var(--primary); }
+.detail-back-link .material-symbols-outlined { font-size: 18px; }
+
+.detail-view-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.74);
+    border: 1px solid rgba(144, 73, 81, 0.08);
+    color: var(--on-surface-variant);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.detail-view-chip .material-symbols-outlined {
+    font-size: 16px;
+    color: var(--primary);
+}
