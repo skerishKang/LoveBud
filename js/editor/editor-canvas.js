@@ -2,6 +2,7 @@ import * as utils from './editor-canvas-utils.js';
 import * as panzoomUtils from './editor-canvas-panzoom.js';
 import * as selectionUtils from './editor-canvas-selection.js';
 import * as renderUtils from './editor-canvas-renderer.js';
+import * as uiHelpers from './editor-canvas-ui-helpers.js';
 
 function createEditorCanvas(deps) {
     const {
@@ -238,8 +239,7 @@ function createEditorCanvas(deps) {
 
         fitViewportToTree();
 
-        document.body.classList.remove('layout-structured');
-        document.body.classList.add('layout-free');
+        uiHelpers.applyLayoutModeClasses('free');
         updateLayoutToggleUI();
         initCanvas();
         persistStoredPositions();
@@ -253,8 +253,7 @@ function createEditorCanvas(deps) {
 
         fitViewportToTree();
 
-        document.body.classList.remove('layout-free');
-        document.body.classList.add('layout-structured');
+        uiHelpers.applyLayoutModeClasses('structured');
         updateLayoutToggleUI();
         initCanvas();
     }
@@ -276,20 +275,7 @@ function createEditorCanvas(deps) {
     }
 
     function updateLayoutToggleUI() {
-        const toggleBtn = document.getElementById('layoutModeToggleBtn');
-        const toggleLabel = document.getElementById('layoutModeToggleLabel');
-        const toggleIcon = document.getElementById('layoutModeToggleIcon');
-        if (!toggleBtn) return;
-        const isStructured = viewportState.layoutMode === 'structured';
-        toggleBtn.classList.toggle('is-active', isStructured);
-        if (toggleLabel) {
-            toggleLabel.textContent = isStructured
-                ? (i18n('editor_layout_structured') || '정리된 트리')
-                : (i18n('editor_layout_free') || '자유 배치');
-        }
-        if (toggleIcon) {
-            toggleIcon.textContent = isStructured ? 'account_tree' : 'auto_awesome';
-        }
+        uiHelpers.updateLayoutToggleUI(viewportState.layoutMode, i18n);
     }
 
     const growthAffordance = window.createEditorCanvasGrowthAffordance({
@@ -968,13 +954,7 @@ function createEditorCanvas(deps) {
                 initCanvas,
                 getWorldPosition,
                 getDragTargetElement: (id) => document.querySelector(`.memory-node[data-memory-id=\"${id}\"]`),
-                showMovedToast: () => {
-                    const toast = document.getElementById('movedToast');
-                    if (toast) {
-                        toast.style.display = 'block';
-                        setTimeout(() => { toast.style.display = 'none'; }, 3000);
-                    }
-                }
+                showMovedToast: uiHelpers.showMovedToast
             });
             return;
         }
@@ -1098,11 +1078,7 @@ function createEditorCanvas(deps) {
     }
 
     requestAnimationFrame(() => {
-        if (viewportState.layoutMode === 'structured') {
-            document.body.classList.add('layout-structured');
-        } else {
-            document.body.classList.add('layout-free');
-        }
+        uiHelpers.applyLayoutModeClasses(viewportState.layoutMode);
         updateLayoutToggleUI();
     });
 
