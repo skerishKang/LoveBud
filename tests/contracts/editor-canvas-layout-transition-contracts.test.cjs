@@ -225,7 +225,99 @@ test('layout transition helper — uses IIFE pattern', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 11. switchToFreeMode / switchToStructuredMode still exist in editor-canvas.js
+// 11. persistLayoutMode helper delegation (Stage 54)
+// ---------------------------------------------------------------------------
+
+test('layout transition helper — persistLayoutMode is exported on namespace', () => {
+  assert.match(
+    transitionSource,
+    /persistLayoutMode:\s*persistLayoutMode/,
+    'persistLayoutMode must be exported on window.LoveBudEditorCanvasLayoutTransition'
+  );
+});
+
+test('layout transition helper — persistLayoutMode function is defined', () => {
+  assert.match(
+    transitionSource,
+    /function\s+persistLayoutMode\s*\(\s*persistFn/,
+    'persistLayoutMode must be defined with persistFn parameter'
+  );
+});
+
+test('editor-canvas.js — switchToFreeMode delegates persistLayoutMode via transition helper', () => {
+  const switchToFreeBlock = canvasSource.slice(
+    canvasSource.indexOf('function switchToFreeMode'),
+    canvasSource.indexOf('function switchToStructuredMode')
+  );
+  assert.match(
+    switchToFreeBlock,
+    /layoutTransition\.persistLayoutMode\s*\(\s*persistLayoutMode\s*,\s*['"]free['"]\s*\)/,
+    'switchToFreeMode must delegate persistence via layoutTransition.persistLayoutMode'
+  );
+});
+
+test('editor-canvas.js — switchToStructuredMode delegates persistLayoutMode via transition helper', () => {
+  const switchToStructuredBlock = canvasSource.slice(
+    canvasSource.indexOf('function switchToStructuredMode'),
+    canvasSource.indexOf('function setLayoutMode')
+  );
+  assert.match(
+    switchToStructuredBlock,
+    /layoutTransition\.persistLayoutMode\s*\(\s*persistLayoutMode\s*,\s*['"]structured['"]\s*\)/,
+    'switchToStructuredMode must delegate persistence via layoutTransition.persistLayoutMode'
+  );
+});
+
+test('editor-canvas.js — switchToFreeMode has fallback to direct persistLayoutMode', () => {
+  const switchToFreeBlock = canvasSource.slice(
+    canvasSource.indexOf('function switchToFreeMode'),
+    canvasSource.indexOf('function switchToStructuredMode')
+  );
+  assert.match(
+    switchToFreeBlock,
+    /else\s*\{[\s\S]*?persistLayoutMode\s*\(\s*['"]free['"]\s*\)/,
+    'switchToFreeMode must have fallback to direct persistLayoutMode call'
+  );
+});
+
+test('editor-canvas.js — switchToStructuredMode has fallback to direct persistLayoutMode', () => {
+  const switchToStructuredBlock = canvasSource.slice(
+    canvasSource.indexOf('function switchToStructuredMode'),
+    canvasSource.indexOf('function setLayoutMode')
+  );
+  assert.match(
+    switchToStructuredBlock,
+    /else\s*\{[\s\S]*?persistLayoutMode\s*\(\s*['"]structured['"]\s*\)/,
+    'switchToStructuredMode must have fallback to direct persistLayoutMode call'
+  );
+});
+
+test('editor-canvas.js — persistStoredPositions is NOT delegated to transition helper', () => {
+  assert.doesNotMatch(
+    canvasSource,
+    /layoutTransition\.persistStoredPositions/,
+    'persistStoredPositions must NOT be delegated to transition helper'
+  );
+});
+
+test('editor-canvas.js — initCanvas is NOT delegated to transition helper', () => {
+  assert.doesNotMatch(
+    canvasSource,
+    /layoutTransition\.initCanvas/,
+    'initCanvas must NOT be delegated to transition helper'
+  );
+});
+
+test('editor-canvas.js — fitViewportToTree is NOT delegated to transition helper', () => {
+  assert.doesNotMatch(
+    canvasSource,
+    /layoutTransition\.fitViewportToTree/,
+    'fitViewportToTree must NOT be delegated to transition helper'
+  );
+});
+
+// ---------------------------------------------------------------------------
+// 12. switchToFreeMode / switchToStructuredMode still exist in editor-canvas.js
 // ---------------------------------------------------------------------------
 
 test('layout transition — switchToFreeMode still exists in editor-canvas.js', () => {

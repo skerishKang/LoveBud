@@ -191,7 +191,11 @@ function createEditorCanvas(deps) {
 
     function switchToFreeMode() {
         viewportState.layoutMode = 'free';
-        persistLayoutMode('free');
+        if (typeof layoutTransition.persistLayoutMode === 'function') {
+            layoutTransition.persistLayoutMode(persistLayoutMode, 'free');
+        } else {
+            persistLayoutMode('free');
+        }
         viewportState.initialViewportApplied = false;
         if (savedFreePositions) {
             viewportState.positions = { ...savedFreePositions };
@@ -221,7 +225,11 @@ function createEditorCanvas(deps) {
         savedFreePositions = { ...viewportState.positions };
         viewportState.layoutMode = 'structured';
         viewportState.initialViewportApplied = false;
-        persistLayoutMode('structured');
+        if (typeof layoutTransition.persistLayoutMode === 'function') {
+            layoutTransition.persistLayoutMode(persistLayoutMode, 'structured');
+        } else {
+            persistLayoutMode('structured');
+        }
 
         fitViewportToTree();
 

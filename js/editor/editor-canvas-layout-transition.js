@@ -42,8 +42,18 @@
         }
     }
 
+    /**
+     * Delegates layout mode persistence call.
+     * @param {Function} persistFn - the local persistLayoutMode function
+     * @param {string} layoutMode - 'structured' or 'free'
+     */
+    function persistLayoutMode(persistFn, layoutMode) {
+        persistFn(layoutMode);
+    }
+
     window.LoveBudEditorCanvasLayoutTransition = {
         applyLayoutModeClasses: applyLayoutModeClasses,
+        persistLayoutMode: persistLayoutMode,
         updateLayoutToggleUI: updateLayoutToggleUI
     };
 })();
