@@ -52,6 +52,8 @@
 34. [SEARCH_DUPLICATE_RENDERER_SOURCE_OF_TRUTH_656.md](./SEARCH_DUPLICATE_RENDERER_SOURCE_OF_TRUTH_656.md) - #656 Search duplicate renderer source-of-truth comparison
 35. [LARGE_RUNTIME_DECOMPOSITION_STATUS_656.md](./LARGE_RUNTIME_DECOMPOSITION_STATUS_656.md) - #656 current-main large runtime decomposition status after Search duplicate renderer cleanup
 36. [VIEWPORT_ORCHESTRATION_HOLD_DECISION.md](./VIEWPORT_ORCHESTRATION_HOLD_DECISION.md) - Viewport orchestration split 완료 및 constants/readableCenter hold 판단 기준
+37. [FRONTEND_SPLIT_PROGRESS_1505.md](../refactor/FRONTEND_SPLIT_PROGRESS_1505.md) - Issue #1505 frontend split 전체 진행 상태 및 차기 후보
+
 
 ---
 
@@ -96,6 +98,7 @@
 | [FIREBASE_CONFIG_CONTRACT.md](./FIREBASE_CONFIG_CONTRACT.md) | Firebase config/init global contract |
 | [CTO_REPORT_20260418.md](./CTO_REPORT_20260418.md) | 특정 시점 워크플로우 요약 |
 | [VIEWPORT_ORCHESTRATION_HOLD_DECISION.md](./VIEWPORT_ORCHESTRATION_HOLD_DECISION.md) | Viewport orchestration split 완료 및 constants/readableCenter hold 판단 문서 |
+| [FRONTEND_SPLIT_PROGRESS_1505.md](../refactor/FRONTEND_SPLIT_PROGRESS_1505.md) | Issue #1505 frontend split 전체 진행 상태 및 차기 후보 |
 
 ---
 
