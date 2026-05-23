@@ -3,6 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
 
+// Verification contracts for Stage 67 settings CSS split
 const ROOT = path.resolve(__dirname, '..', '..');
 const MANIFEST_PATH = path.join(ROOT, 'css', 'settings.css');
 const HTML_PATH = path.join(ROOT, 'pages', 'settings.html');
