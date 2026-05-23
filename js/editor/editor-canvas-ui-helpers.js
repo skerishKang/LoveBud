@@ -315,6 +315,17 @@ export function hasExceededNodeDragThreshold(dx, dy, threshold = 6) {
 }
 
 /**
+ * Resets the canvas UI state (class and cursor) after panning ends.
+ * @param {HTMLElement} canvasEl - The canvas element.
+ * @param {string} layoutMode - The current layout mode ('structured' or 'free').
+ */
+export function resetCanvasPanUI(canvasEl, layoutMode) {
+    if (!canvasEl) return;
+    canvasEl.classList.remove('panning');
+    canvasEl.style.cursor = layoutMode === 'structured' ? 'default' : 'grab';
+}
+
+/**
  * Determines whether a mousedown event on the canvas should initiate panning.
  * Returns false if the event target is on a memory node, the add memory form,
  * or a growth affordance element (these should handle their own interactions).
