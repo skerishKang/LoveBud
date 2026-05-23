@@ -850,7 +850,7 @@ function createEditorCanvas(deps) {
             viewportState.startY = event.clientY;
             viewportState.offsetX += dx;
             viewportState.offsetY += dy;
-            canvas.style.backgroundPosition = `${viewportState.offsetX}px ${viewportState.offsetY}px`;
+            uiHelpers.updateCanvasPanBackgroundPosition(canvas, viewportState.offsetX, viewportState.offsetY);
         });
 
         window.addEventListener('mouseup', () => {
