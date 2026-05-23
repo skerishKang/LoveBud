@@ -50,6 +50,8 @@ Following the completion of the viewport track, future stages under Issue #1505 
 
 ### Recommendations for Future Stages
 1. **Stage 48 Preflight Audit**: Conducted a responsibility-mapping audit on `js/editor/editor-canvas.js` (the largest remaining file) prior to structural refactoring. See [EDITOR_CANVAS_PREFLIGHT_AUDIT_1505.md](./EDITOR_CANVAS_PREFLIGHT_AUDIT_1505.md).
+2. **Stage 49 Layout Storage Extraction**: Simplified inline `localStorage` fallbacks in `js/editor/editor-canvas.js` by delegating to the existing storage helper module. Verified via contracts test.
+3. **Stage 50 Layout Mode Transition Preflight Audit**: Documented layout mode transitions dependency structure and risk profile. See [LAYOUT_MODE_TRANSITION_PREFLIGHT_AUDIT_1505.md](./LAYOUT_MODE_TRANSITION_PREFLIGHT_AUDIT_1505.md).
 
-2. **Strict PR Boundaries**: Ensure each PR represents exactly one narrow delegation step.
-3. **No Direct Import/Module Transition**: Maintain the existing global-load orchestrator script-tag model unless explicit permissions are given.
+4. **Strict PR Boundaries**: Ensure each PR represents exactly one narrow delegation step.
+5. **No Direct Import/Module Transition**: Maintain the existing global-load orchestrator script-tag model unless explicit permissions are given.
