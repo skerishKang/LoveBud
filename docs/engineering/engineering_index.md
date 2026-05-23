@@ -53,6 +53,8 @@
 35. [LARGE_RUNTIME_DECOMPOSITION_STATUS_656.md](./LARGE_RUNTIME_DECOMPOSITION_STATUS_656.md) - #656 current-main large runtime decomposition status after Search duplicate renderer cleanup
 36. [VIEWPORT_ORCHESTRATION_HOLD_DECISION.md](./VIEWPORT_ORCHESTRATION_HOLD_DECISION.md) - Viewport orchestration split 완료 및 constants/readableCenter hold 판단 기준
 37. [FRONTEND_SPLIT_PROGRESS_1505.md](../refactor/FRONTEND_SPLIT_PROGRESS_1505.md) - Issue #1505 frontend split 전체 진행 상태 및 차기 후보
+38. [EDITOR_CANVAS_PREFLIGHT_AUDIT_1505.md](../refactor/EDITOR_CANVAS_PREFLIGHT_AUDIT_1505.md) - js/editor/editor-canvas.js 모듈 분리 preflight audit
+
 
 
 ---
@@ -99,6 +101,8 @@
 | [CTO_REPORT_20260418.md](./CTO_REPORT_20260418.md) | 특정 시점 워크플로우 요약 |
 | [VIEWPORT_ORCHESTRATION_HOLD_DECISION.md](./VIEWPORT_ORCHESTRATION_HOLD_DECISION.md) | Viewport orchestration split 완료 및 constants/readableCenter hold 판단 문서 |
 | [FRONTEND_SPLIT_PROGRESS_1505.md](../refactor/FRONTEND_SPLIT_PROGRESS_1505.md) | Issue #1505 frontend split 전체 진행 상태 및 차기 후보 |
+| [EDITOR_CANVAS_PREFLIGHT_AUDIT_1505.md](../refactor/EDITOR_CANVAS_PREFLIGHT_AUDIT_1505.md) | js/editor/editor-canvas.js 모듈 분리 preflight audit |
+
 
 ---
 

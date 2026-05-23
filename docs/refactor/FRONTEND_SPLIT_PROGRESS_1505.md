@@ -49,6 +49,7 @@ Following the completion of the viewport track, future stages under Issue #1505 
 | `js/search/search-preview-renderer.js` | 638 | JS | Medium | Browse flow card templates, preview panel toggle state handlers |
 
 ### Recommendations for Future Stages
-1. **Stage 48 Preflight Audit**: Conduct a responsibility-mapping audit on `js/editor/editor-canvas.js` (the largest remaining file) before attempting modular split.
+1. **Stage 48 Preflight Audit**: Conducted a responsibility-mapping audit on `js/editor/editor-canvas.js` (the largest remaining file) prior to structural refactoring. See [EDITOR_CANVAS_PREFLIGHT_AUDIT_1505.md](./EDITOR_CANVAS_PREFLIGHT_AUDIT_1505.md).
+
 2. **Strict PR Boundaries**: Ensure each PR represents exactly one narrow delegation step.
 3. **No Direct Import/Module Transition**: Maintain the existing global-load orchestrator script-tag model unless explicit permissions are given.
