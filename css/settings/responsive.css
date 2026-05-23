@@ -1,0 +1,19 @@
+/* Mobile */
+@media (max-width: 640px) {
+  .settings-content {
+    padding: 24px 16px;
+  }
+
+  .settings-card {
+    padding: 32px 24px;
+  }
+
+  .settings-card h1 {
+    font-size: 1.5rem;
+  }
+
+  .settings-close-btn {
+    top: 14px;
+    right: 14px;
+  }
+}
