@@ -1,0 +1,54 @@
+/* Responsive */
+@media (max-width: 768px) {
+    .viewer-layout {
+        flex-direction: column;
+        padding: 16px;
+        gap: 16px;
+    }
+
+    .viewer-tree-shell,
+    .viewer-preview-container {
+        min-height: auto;
+    }
+
+    .viewer-preview-section {
+        width: 100%;
+        max-width: none;
+        min-width: 0;
+    }
+
+    .viewer-preview-sticky {
+        position: static;
+    }
+
+    .viewer-topbar {
+        padding: 10px 16px;
+    }
+
+    .viewer-back-link {
+        font-size: 13px;
+    }
+}
+
+/* Ensure no overflow on mobile */
+@media (max-width: 375px) {
+    .viewer-layout {
+        padding: 12px;
+    }
+
+    .viewer-tree-shell,
+    .viewer-preview-container {
+        padding: 16px;
+    }
+
+    .viewer-node-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+
+    .viewer-moment-tags,
+    .viewer-node-tags {
+        gap: 4px;
+    }
+}

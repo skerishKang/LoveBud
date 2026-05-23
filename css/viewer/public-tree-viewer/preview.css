@@ -1,0 +1,137 @@
+/* Preview section (right) */
+.viewer-preview-section {
+    width: 360px;
+    min-width: 320px;
+    max-width: 400px;
+}
+
+.viewer-preview-sticky {
+    position: sticky;
+    top: 80px;
+}
+
+.viewer-preview-header {
+    margin-bottom: 16px;
+}
+
+.viewer-preview-header h3 {
+    font-size: 1.125rem;
+    font-weight: 800;
+    color: var(--on-surface);
+    margin: 0;
+}
+
+.viewer-preview-container {
+    background: var(--surface);
+    border: 1px solid var(--outline-variant);
+    border-radius: 16px;
+    min-height: 400px;
+    display: flex;
+    flex-direction: column;
+}
+
+.viewer-preview-empty,
+.viewer-preview-content {
+    padding: 24px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.viewer-preview-empty p {
+    color: var(--on-surface-variant);
+    text-align: center;
+    margin-top: 40px;
+}
+
+.viewer-preview-media {
+    margin-bottom: 16px;
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--surface-variant);
+    min-height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.viewer-preview-image {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.viewer-preview-video {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border: none;
+    border-radius: 12px;
+    background: #000;
+    display: block;
+}
+
+.viewer-preview-no-media {
+    color: var(--on-surface-variant);
+    font-size: 48px;
+    opacity: 0.5;
+}
+
+.viewer-preview-details {
+    flex: 1;
+}
+
+.viewer-moment-title {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--on-surface);
+    margin: 0 0 12px 0;
+}
+
+.viewer-moment-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 16px;
+}
+
+.viewer-preview-tag {
+    font-size: 11px;
+    padding: 2px 8px;
+    background: var(--tertiary-container);
+    color: var(--on-tertiary-container);
+    border-radius: 999px;
+    font-weight: 800;
+}
+
+.viewer-moment-meta {
+    font-size: 13px;
+    color: var(--on-surface-variant);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.viewer-meta-divider {
+    margin: 0 4px;
+}
+
+.viewer-moment-diary {
+    border-top: 1px solid var(--outline-variant);
+    padding-top: 16px;
+}
+
+.viewer-diary-quote {
+    font-style: italic;
+    color: var(--on-surface);
+    margin: 0 0 8px 0;
+    font-size: 1rem;
+    line-height: 1.6;
+}
+
+.viewer-diary-content {
+    color: var(--on-surface-variant);
+    font-size: 14px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+}
