@@ -221,3 +221,65 @@ export function bindNodeHoverAffordance(nodeEl, mem, onHover) {
         onHover(mem);
     });
 }
+
+/**
+ * Binds pointer selection events (click, touch) to trigger memory selection.
+ * @param {HTMLElement} nodeEl - The memory node element.
+ * @param {Object} options - Handlers and configuration.
+ * @param {Function} options.onSelect - Callback to trigger memory selection.
+ * @param {Function} options.onHover - Callback to trigger affordance on touch start.
+ * @param {Object} options.mem - The memory data object.
+ * @param {number} [options.tapThreshold=6] - The threshold for touch tap vs drag.
+ */
+export function bindNodePointerSelection(nodeEl, options) {
+    if (!nodeEl) return;
+    const { onSelect, onHover, mem, tapThreshold = 6 } = options;
+    let touchStartPoint = null;
+
+    nodeEl.addEventListener('click', (e) => {
+        if (nodeEl.dataset.skipNextClick === '1') {
+            nodeEl.dataset.skipNextClick = '';
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+        }
+        if (nodeEl.dataset.suppressClick === '1') {
+            nodeEl.dataset.suppressClick = '';
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+        }
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof onSelect === 'function') onSelect();
+    });
+
+    nodeEl.addEventListener('touchstart', (e) => {
+        if (e.target.closest('button')) return;
+        const touch = e.changedTouches && e.changedTouches[0];
+        if (!touch) return;
+        touchStartPoint = { x: touch.clientX, y: touch.clientY };
+        if (typeof onHover === 'function') onHover(mem);
+    }, { passive: true });
+
+    nodeEl.addEventListener('touchend', (e) => {
+        if (!touchStartPoint) return;
+        const touch = e.changedTouches && e.changedTouches[0];
+        if (!touch) {
+            touchStartPoint = null;
+            return;
+        }
+        const dx = touch.clientX - touchStartPoint.x;
+        const dy = touch.clientY - touchStartPoint.y;
+        touchStartPoint = null;
+        if (Math.abs(dx) > tapThreshold || Math.abs(dy) > tapThreshold) return;
+        e.preventDefault();
+        e.stopPropagation();
+        nodeEl.dataset.skipNextClick = '1';
+        if (typeof onSelect === 'function') onSelect();
+    }, { passive: false });
+
+    nodeEl.addEventListener('touchcancel', () => {
+        touchStartPoint = null;
+    });
+}
