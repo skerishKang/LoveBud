@@ -821,14 +821,11 @@ function createEditorCanvas(deps) {
 
         uiHelpers.bindViewportControlPropagationGuards(buttons);
 
-        if (focusBtn) {
-            focusBtn.addEventListener('click', () => {
-                const selectedId = selectionUtils.getSelectedMemoryId(document);
-                if (selectedId) {
-                    focusNodeById(selectedId);
-                }
-            });
-        }
+        uiHelpers.bindFocusSelectedControl(
+            focusBtn,
+            () => selectionUtils.getSelectedMemoryId(document),
+            focusNodeById
+        );
 
         if (recenterBtn) {
             recenterBtn.addEventListener('click', () => {
