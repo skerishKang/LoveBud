@@ -1723,3 +1723,126 @@ test('viewport targets helper — check delegation and guards in source code', (
   assert.match(source, /typeof getCanonicalRootId\s*!==\s*['"]function['"]\s*\|\|\s*typeof isRootMemory\s*!==\s*['"]function['"]/, 'targets helper must guard root check functions');
   assert.match(source, /visibleNodes\.length/, 'targets helper must prioritize visible nodes');
 });
+
+// ---------------------------------------------------------------------------
+// Stage 45 — Viewport Wrapper Contract Reinforcement
+// ---------------------------------------------------------------------------
+
+test('viewport constants contract — zoomLevels and boundaries', () => {
+  const vp = createViewport();
+  assert.equal(vp.minScale, 0.2, 'minScale must be 0.2');
+  assert.equal(vp.maxScale, 1.5, 'maxScale must be 1.5');
+  assert.equal(JSON.stringify(vp.zoomLevels), JSON.stringify([0.2, 0.35, 0.5, 0.75, 1, 1.25, 1.5]), 'zoomLevels must preserve exact preset array');
+});
+
+test('viewport constants contract — readableCenter configuration', () => {
+  const vp = createViewport();
+  assert.ok(vp.readableCenter, 'readableCenter must exist on viewport');
+  assert.equal(vp.readableCenter.x, 0.5, 'readableCenter.x must be 0.5');
+  assert.equal(vp.readableCenter.y, 0.42, 'readableCenter.y must be 0.42');
+});
+
+test('viewport wrapper fallback contract — missing namespaces fallbacks', () => {
+  // Test fallback behavior by creating a context that ONLY loads editor-canvas-viewport.js
+  const context = { window: {} };
+  vm.createContext(context);
+  vm.runInContext(fs.readFileSync(VIEWPORT_PATH, 'utf8'), context);
+  const vp = context.window.LoveBudEditorCanvasViewport;
+
+  // 1. Scale fallback
+  assert.equal(vp.getNearestZoom(0.5), 1, 'getNearestZoom fallback must return 1');
+  assert.equal(vp.getFitZoom(0.5), 1, 'getFitZoom fallback must return 1');
+  assert.equal(vp.getNextZoom(0.5, 1), 1, 'getNextZoom fallback must delegate to fallback getNearestZoom → 1');
+  assert.equal(vp.getScale({}), 1, 'getScale fallback must return 1');
+  
+  const dummyState1 = { scale: 0.5 };
+  vp.setScale(dummyState1, 1.2);
+  assert.equal(dummyState1.scale, 1, 'setScale fallback must reset scale to 1');
+
+  const dummyState2 = { scale: 0.5 };
+  vp.setFitScale(dummyState2, 1.2);
+  assert.equal(dummyState2.scale, 1, 'setFitScale fallback must reset scale to 1');
+
+  // 2. Projection fallback
+  const world = { x: 100, y: 200 };
+  const viewportState = { scale: 0.5, offsetX: 50, offsetY: 60 };
+  // projectWorldPosition fallback formula: world.x * scale + offsetX
+  // In the fallback context, getScale(viewportState) returns 1 (fallback value).
+  // x: 100 * 1 + 50 = 150
+  // y: 200 * 1 + 60 = 260
+  const proj = vp.projectWorldPosition(world, viewportState);
+  assert.equal(proj.x, 150, 'projectWorldPosition fallback must calculate x using inline formula');
+  assert.equal(proj.y, 260, 'projectWorldPosition fallback must calculate y using inline formula');
+
+  // 3. Targets fallback
+  const options = {
+    getTreeMemories: () => [{ id: 'm1' }, { id: 'm2' }]
+  };
+  const targets = vp.getViewportTargets(options);
+  assert.equal(targets.length, 2, 'getViewportTargets fallback must return memories array length');
+  assert.equal(targets[0].id, 'm1');
+  assert.equal(targets[1].id, 'm2');
+
+  // Other namespace missing checks do not crash and return false/empty
+  assert.equal(vp.isStoredViewportExtreme({}), false);
+  assert.equal(vp.applyViewport({}, {}), false);
+  assert.equal(vp.isAlreadyAtFit({}, {}), false);
+  assert.equal(vp.getReadableViewportOffset({}), null);
+  
+  const fit = vp.getFitViewport({});
+  assert.equal(fit.scale, 1);
+  assert.equal(fit.offsetX, 0);
+  assert.equal(fit.offsetY, 0);
+});
+
+test('viewport wrapper arity contract — check signatures', () => {
+  const vp = createViewport();
+  assert.equal(vp.getNearestZoom.length, 1, 'getNearestZoom(scale)');
+  assert.equal(vp.getFitZoom.length, 1, 'getFitZoom(scale)');
+  assert.equal(vp.getNextZoom.length, 2, 'getNextZoom(scale, direction)');
+  assert.equal(vp.getScale.length, 1, 'getScale(viewportState)');
+  assert.equal(vp.setScale.length, 2, 'setScale(viewportState, nextScale)');
+  assert.equal(vp.setFitScale.length, 2, 'setFitScale(viewportState, nextScale)');
+  assert.equal(vp.projectWorldPosition.length, 2, 'projectWorldPosition(world, viewportState)');
+  assert.equal(vp.getViewportTargets.length, 1, 'getViewportTargets(options)');
+  assert.equal(vp.isStoredViewportExtreme.length, 1, 'isStoredViewportExtreme(options)');
+  assert.equal(vp.applyViewport.length, 2, 'applyViewport(viewportState, nextViewport, useFitScale = false) has arity 2 due to default parameter');
+  assert.equal(vp.isAlreadyAtFit.length, 2, 'isAlreadyAtFit(viewportState, fitViewport)');
+  assert.equal(vp.getReadableViewportOffset.length, 1, 'getReadableViewportOffset(options, preferredScale = 1) has arity 1 due to default parameter');
+  assert.equal(vp.getFitViewport.length, 1, 'getFitViewport(options)');
+  assert.equal(vp.showAlreadyAtFitFeedback.length, 0, 'showAlreadyAtFitFeedback()');
+  assert.equal(vp.prepareInitialViewport.length, 1, 'prepareInitialViewport(options)');
+  assert.equal(vp.drawBranch.length, 3, 'drawBranch(svg, startPos, endPos)');
+  assert.equal(vp.focusNodeById.length, 1, 'focusNodeById(options)');
+  assert.equal(vp.recenterViewport.length, 1, 'recenterViewport(options)');
+  assert.equal(vp.zoomBy.length, 1, 'zoomBy(options)');
+  assert.equal(vp.bindControls.length, 1, 'bindControls(options)');
+});
+
+test('script order integrity contract — pages/editor.html script load order', () => {
+  const editorHtmlPath = path.join(ROOT, 'pages/editor.html');
+  const htmlContent = fs.readFileSync(editorHtmlPath, 'utf8');
+
+  // Extract all editor-canvas-viewport scripts in order
+  const matches = [...htmlContent.matchAll(/editor-canvas-(?:viewport|edges)[^"?]*/g)]
+    .map(match => match[0])
+    .filter(Boolean);
+
+  const expectedOrder = [
+    'editor-canvas-viewport.js',
+    'editor-canvas-viewport-scale.js',
+    'editor-canvas-viewport-projection.js',
+    'editor-canvas-viewport-targets.js',
+    'editor-canvas-viewport-feedback.js',
+    'editor-canvas-viewport-state.js',
+    'editor-canvas-viewport-fit.js',
+    'editor-canvas-viewport-initial.js',
+    'editor-canvas-viewport-branches.js',
+    'editor-canvas-viewport-actions.js',
+    'editor-canvas-viewport-controls.js',
+    'editor-canvas-edges.js'
+  ];
+
+  assert.deepEqual(matches, expectedOrder, 'editor.html script order must match exactly');
+});
+
