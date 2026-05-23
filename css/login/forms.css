@@ -1,0 +1,128 @@
+.login-form {
+    text-align: left;
+}
+
+.login-form-group {
+    margin-bottom: 12px;
+}
+
+.login-form-group-large {
+    margin-bottom: 16px;
+}
+
+.login-form-group-xl {
+    margin-bottom: 20px;
+}
+
+.login-form-label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 700;
+    font-size: 0.85rem;
+}
+
+.login-form-input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--outline-variant);
+    border-radius: 0.75rem;
+    font-size: 1rem;
+}
+
+.login-form-error {
+    margin: -4px 0 14px;
+    padding: 10px 12px;
+    border: 1px solid rgba(144, 73, 81, 0.18);
+    border-radius: 0.9rem;
+    background: rgba(144, 73, 81, 0.07);
+    color: var(--primary);
+    font-size: 0.86rem;
+    font-weight: 700;
+    line-height: 1.45;
+    text-align: left;
+}
+
+.login-form-error[hidden] {
+    display: none;
+}
+
+.login-submit-button {
+    width: 100%;
+    padding: 14px;
+    background: var(--secondary);
+    color: white;
+    border: none;
+    border-radius: 1rem;
+    font-weight: 700;
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+.login-submit-button-primary {
+    background: var(--primary);
+}
+
+.login-email-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+}
+
+.login-email-modal-card {
+    background: white;
+    border-radius: 2rem;
+    padding: 48px;
+    max-width: 420px;
+    width: 90%;
+    text-align: center;
+    position: relative;
+}
+
+.login-email-close {
+    position: absolute;
+    top: 16px;
+    right: 20px;
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: var(--on-surface-variant);
+    opacity: 0.6;
+}
+
+.login-auth-mode-badge {
+    display: inline-block;
+    background: var(--primary);
+    color: white;
+    font-size: 11px;
+    font-weight: 800;
+    padding: 4px 12px;
+    border-radius: 99px;
+    margin-bottom: 12px;
+}
+
+.login-email-title {
+    font-size: 1.4rem;
+    font-weight: 900;
+    margin-bottom: 8px;
+}
+
+.login-email-helper {
+    color: var(--on-surface-variant);
+    margin-bottom: 24px;
+    font-size: 0.9rem;
+}
+
+.login-email-toggle {
+    margin-top: 20px;
+    background: none;
+    border: none;
+    color: var(--primary);
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+    text-decoration: underline;
+}
