@@ -1,0 +1,19 @@
+@keyframes introStemGrow {
+  from { transform: translateX(-50%) scaleY(0); opacity: 0.3; }
+  to   { transform: translateX(-50%) scaleY(1); opacity: 1; }
+}
+
+@keyframes introBranchIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes introNodeIn {
+  from { opacity: 0; transform: scale(0); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes introMomentIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
