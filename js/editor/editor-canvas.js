@@ -46,7 +46,7 @@ function createEditorCanvas(deps) {
         if (typeof storageUtils.loadStoredLayout === 'function') {
             return storageUtils.loadStoredLayout(treeId, layoutStorageKey, canvasLayout);
         }
-        if (typeof canvasLayout.createLayoutStore === 'function') {
+        if (canvasLayout && typeof canvasLayout.createLayoutStore === 'function') {
             const store = canvasLayout.createLayoutStore(treeId);
             const initialState = store.createInitialViewportState();
             return {
@@ -56,31 +56,13 @@ function createEditorCanvas(deps) {
                 scale: initialState.scale
             };
         }
-
-        try {
-            const raw = localStorage.getItem(layoutStorageKey);
-            if (!raw || raw === 'null') return { positions: {}, offsetX: 0, offsetY: 0, scale: 1 };
-            const parsed = JSON.parse(raw);
-            if (!parsed || typeof parsed !== 'object') return { positions: {}, offsetX: 0, offsetY: 0, scale: 1 };
-            return {
-                positions: (parsed.positions && typeof parsed.positions === 'object') ? parsed.positions : {},
-                offsetX: typeof parsed.offsetX === 'number' ? parsed.offsetX : 0,
-                offsetY: typeof parsed.offsetY === 'number' ? parsed.offsetY : 0,
-                scale: typeof parsed.scale === 'number' ? parsed.scale : 1
-            };
-        } catch (e) {
-            return { positions: {}, offsetX: 0, offsetY: 0, scale: 1 };
-        }
+        return { positions: {}, offsetX: 0, offsetY: 0, scale: 1 };
     }
 
     function loadLayoutMode() {
         if (typeof storageUtils.loadLayoutMode === 'function') {
             return storageUtils.loadLayoutMode(layoutModeStorageKey);
         }
-        try {
-            const raw = localStorage.getItem(layoutModeStorageKey);
-            if (raw === 'structured' || raw === 'free') return raw;
-        } catch (e) {}
         return 'free';
     }
 
@@ -88,9 +70,6 @@ function createEditorCanvas(deps) {
         if (typeof storageUtils.persistLayoutMode === 'function') {
             return storageUtils.persistLayoutMode(mode, layoutModeStorageKey);
         }
-        try {
-            localStorage.setItem(layoutModeStorageKey, mode);
-        } catch (e) {}
     }
 
     const storedLayout = loadStoredLayout();
@@ -171,20 +150,10 @@ function createEditorCanvas(deps) {
         }
         if (viewportState.layoutMode === 'structured') return;
 
-        if (typeof canvasLayout.createLayoutStore === 'function') {
+        if (canvasLayout && typeof canvasLayout.createLayoutStore === 'function') {
             const store = canvasLayout.createLayoutStore(treeId);
             store.persist(viewportState);
-            return;
         }
-
-        try {
-            localStorage.setItem(layoutStorageKey, JSON.stringify({
-                positions: viewportState.positions,
-                offsetX: viewportState.offsetX,
-                offsetY: viewportState.offsetY,
-                scale: viewportState.scale || 1
-            }));
-        } catch (e) {}
     }
 
     function fitViewportToTree() {
