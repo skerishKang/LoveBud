@@ -220,7 +220,9 @@ function createEditorCanvas(deps) {
             : uiHelpers.applyLayoutModeClasses)('free');
         updateLayoutToggleUI();
         initCanvas();
-        persistStoredPositions();
+        (typeof layoutTransition.persistStoredPositions === 'function'
+            ? layoutTransition.persistStoredPositions(persistStoredPositions)
+            : persistStoredPositions());
     }
 
     function switchToStructuredMode() {
