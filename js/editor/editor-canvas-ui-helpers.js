@@ -161,3 +161,17 @@ export function bindFocusSelectedControl(focusBtn, getSelectedId, onFocusSelecte
         }
     });
 }
+
+/**
+ * Binds the click handler for the Recenter button.
+ * @param {HTMLElement} recenterBtn - The button element.
+ * @param {Function} onRecenter - Callback to trigger the recenter logic.
+ */
+export function bindRecenterControl(recenterBtn, onRecenter) {
+    if (!recenterBtn) return;
+    recenterBtn.addEventListener('click', () => {
+        if (typeof onRecenter === 'function') {
+            onRecenter();
+        }
+    });
+}
