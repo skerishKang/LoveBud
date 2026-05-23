@@ -159,8 +159,9 @@ Reference 문서는 `docs/reference/` 아래에 정리됩니다.
  - [PUBLIC_TREE_ADAPTER_BOUNDARY_AUDIT.md](./engineering/PUBLIC_TREE_ADAPTER_BOUNDARY_AUDIT.md) - #412 public tree adapter helper boundaries, export contract, loading-order risk, preview implications audit
  - [AUTH_EDITOR_RUNTIME_INVENTORY_834.md](./engineering/AUTH_EDITOR_RUNTIME_INVENTORY_834.md) - #834 auth/editor runtime inventory, dependency mapping, naming consistency audit, decomposition candidates
  - [VIEWPORT_ORCHESTRATION_HOLD_DECISION.md](./engineering/VIEWPORT_ORCHESTRATION_HOLD_DECISION.md) - Viewport orchestration split 완료 및 constants/readableCenter hold 판단 문서
-  - [FRONTEND_SPLIT_PROGRESS_1505.md](./refactor/FRONTEND_SPLIT_PROGRESS_1505.md) - Issue #1505 frontend split 전체 진행 상태 및 차기 후보
-  - [EDITOR_CANVAS_PREFLIGHT_AUDIT_1505.md](./refactor/EDITOR_CANVAS_PREFLIGHT_AUDIT_1505.md) - js/editor/editor-canvas.js 모듈 분리 preflight audit
+   - [FRONTEND_SPLIT_PROGRESS_1505.md](./refactor/FRONTEND_SPLIT_PROGRESS_1505.md) - Issue #1505 frontend split 전체 진행 상태 및 차기 후보
+   - [EDITOR_CANVAS_PREFLIGHT_AUDIT_1505.md](./refactor/EDITOR_CANVAS_PREFLIGHT_AUDIT_1505.md) - js/editor/editor-canvas.js 모듈 분리 preflight audit
+   - [LAYOUT_MODE_TRANSITION_PREFLIGHT_AUDIT_1505.md](./refactor/LAYOUT_MODE_TRANSITION_PREFLIGHT_AUDIT_1505.md) - js/editor/editor-canvas.js 레이아웃 모드 전환 모듈 분리 preflight audit
 
 ## security 문서군
 
