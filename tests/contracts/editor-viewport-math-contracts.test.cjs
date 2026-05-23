@@ -18,6 +18,20 @@ function createViewport() {
   return context.window.LoveBudEditorCanvasViewport;
 }
 
+/**
+ * Creates a fresh instance with access to the sandboxed context.
+ * Use this for tests that need to mock globals (requestAnimationFrame, document, etc.).
+ */
+function createViewportContext() {
+  const context = { window: {} };
+  vm.createContext(context);
+  vm.runInContext(fs.readFileSync(VIEWPORT_PATH, 'utf8'), context);
+  return {
+    context,
+    viewport: context.window.LoveBudEditorCanvasViewport,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // getNearestZoom
 // ---------------------------------------------------------------------------
@@ -930,4 +944,199 @@ test('recenterViewport — re-applies fit viewport when offset tolerance is exce
   assert.equal(viewportState.offsetX, 10);
   assert.equal(viewportState.offsetY, 20);
   assert.equal(initCalls, 1);
+});
+
+// ---------------------------------------------------------------------------
+// focusNodeById
+// ---------------------------------------------------------------------------
+test('focusNodeById — returns without side effects when nodeId is missing', () => {
+  const { viewport: vp } = createViewportContext();
+  const viewportState = { scale: 1, offsetX: 100, offsetY: 200 };
+  let sideEffectCalls = 0;
+
+  vp.focusNodeById({
+    nodeId: '',
+    getTreeMemories: () => { sideEffectCalls += 1; return []; },
+    getWorldPosition: () => { throw new Error('should not be called'); },
+    getMetrics: () => { throw new Error('should not be called'); },
+    viewportState,
+    initCanvas: () => { sideEffectCalls += 1; },
+    reapplySelection: () => { sideEffectCalls += 1; },
+  });
+
+  assert.equal(viewportState.scale, 1);
+  assert.equal(viewportState.offsetX, 100);
+  assert.equal(viewportState.offsetY, 200);
+  assert.equal(sideEffectCalls, 0);
+});
+
+test('focusNodeById — returns without side effects when target node is missing', () => {
+  const { viewport: vp } = createViewportContext();
+  const viewportState = { scale: 1, offsetX: 100, offsetY: 200 };
+  let sideEffectCalls = 0;
+
+  vp.focusNodeById({
+    nodeId: 'missing',
+    getTreeMemories: () => [{ id: 'root' }],
+    getWorldPosition: () => { throw new Error('should not be called'); },
+    getMetrics: () => { throw new Error('should not be called'); },
+    viewportState,
+    initCanvas: () => { sideEffectCalls += 1; },
+    reapplySelection: () => { sideEffectCalls += 1; },
+  });
+
+  assert.equal(viewportState.scale, 1);
+  assert.equal(viewportState.offsetX, 100);
+  assert.equal(viewportState.offsetY, 200);
+  assert.equal(sideEffectCalls, 0);
+});
+
+test('focusNodeById — centers target at readable center and reapplies selection', () => {
+  const { context, viewport: vp } = createViewportContext();
+  const viewportState = { scale: 1, offsetX: 0, offsetY: 0 };
+  let initCalls = 0;
+  let reapplyCalls = 0;
+  let lastReapplyNodeId = '';
+  let rafCalls = 0;
+
+  context.requestAnimationFrame = (cb) => { rafCalls += 1; cb(); };
+  context.document = { querySelector: () => null };
+
+  vp.focusNodeById({
+    nodeId: 'child',
+    getTreeMemories: () => [{ id: 'root' }, { id: 'child' }],
+    getWorldPosition: (target) => target.id === 'child' ? { x: 200, y: 100 } : { x: 0, y: 0 },
+    getMetrics: () => ({ width: 1000, height: 600 }),
+    viewportState,
+    initCanvas: () => { initCalls += 1; },
+    reapplySelection: (nodeId) => { reapplyCalls += 1; lastReapplyNodeId = nodeId; },
+  });
+
+  // readable center: x=500, y=252
+  // offsetX = round(500 - 200 * 1) = 300
+  // offsetY = round(252 - 100 * 1) = 152
+  assert.equal(viewportState.scale, 1);
+  assert.equal(viewportState.offsetX, 300);
+  assert.equal(viewportState.offsetY, 152);
+  assert.equal(initCalls, 1);
+  assert.equal(reapplyCalls, 1);
+  assert.equal(lastReapplyNodeId, 'child');
+  assert.equal(rafCalls, 1);
+});
+
+test('focusNodeById — normalizes scale to 1 before centering', () => {
+  const { context, viewport: vp } = createViewportContext();
+  const viewportState = { scale: 0.76, offsetX: 999, offsetY: -999 };
+  let initCalls = 0;
+  let reapplyCalls = 0;
+  let rafCalls = 0;
+
+  context.requestAnimationFrame = (cb) => { rafCalls += 1; cb(); };
+  context.document = { querySelector: () => null };
+
+  vp.focusNodeById({
+    nodeId: 'child',
+    getTreeMemories: () => [{ id: 'child' }],
+    getWorldPosition: () => ({ x: 400, y: 200 }),
+    getMetrics: () => ({ width: 1000, height: 600 }),
+    viewportState,
+    initCanvas: () => { initCalls += 1; },
+    reapplySelection: () => { reapplyCalls += 1; },
+  });
+
+  // setScale(..., 1) → nearest = 1
+  // offsetX = round(500 - 400 * 1) = 100
+  // offsetY = round(252 - 200 * 1) = 52
+  assert.equal(viewportState.scale, 1);
+  assert.equal(viewportState.offsetX, 100);
+  assert.equal(viewportState.offsetY, 52);
+  assert.equal(initCalls, 1);
+  assert.equal(reapplyCalls, 1);
+  assert.equal(rafCalls, 1);
+});
+
+test('focusNodeById — toggles focus animation class when node element exists', () => {
+  const { context, viewport: vp } = createViewportContext();
+  const viewportState = { scale: 1, offsetX: 0, offsetY: 0 };
+  let rafCalls = 0;
+  let capturedSelector = '';
+  let removeCalls = 0;
+  let addCalls = 0;
+  let offsetWidthReads = 0;
+
+  const fakeNodeEl = {
+    classList: {
+      remove: (className) => {
+        if (className === 'focus-animate') removeCalls += 1;
+      },
+      add: (className) => {
+        if (className === 'focus-animate') addCalls += 1;
+      },
+    },
+    get offsetWidth() {
+      offsetWidthReads += 1;
+      return 100;
+    },
+  };
+
+  context.requestAnimationFrame = (callback) => {
+    rafCalls += 1;
+    callback();
+  };
+
+  context.document = {
+    querySelector: (selector) => {
+      capturedSelector = selector;
+      return fakeNodeEl;
+    },
+  };
+
+  vp.focusNodeById({
+    nodeId: 'child',
+    getTreeMemories: () => [{ id: 'child' }],
+    getWorldPosition: () => ({ x: 200, y: 100 }),
+    getMetrics: () => ({ width: 1000, height: 600 }),
+    viewportState,
+    initCanvas: () => {},
+    reapplySelection: () => {},
+  });
+
+  assert.ok(capturedSelector.includes('data-memory-id="child"'));
+  assert.equal(removeCalls, 1);
+  assert.equal(offsetWidthReads, 1);
+  assert.equal(addCalls, 1);
+  assert.equal(rafCalls, 1);
+});
+
+test('focusNodeById — skips animation class toggle when node element is missing', () => {
+  const { context, viewport: vp } = createViewportContext();
+  const viewportState = { scale: 1, offsetX: 0, offsetY: 0 };
+  let rafCalls = 0;
+  let querySelectorCalls = 0;
+
+  context.requestAnimationFrame = (callback) => {
+    rafCalls += 1;
+    callback();
+  };
+
+  context.document = {
+    querySelector: (selector) => {
+      querySelectorCalls += 1;
+      return null;
+    },
+  };
+
+  vp.focusNodeById({
+    nodeId: 'child',
+    getTreeMemories: () => [{ id: 'child' }],
+    getWorldPosition: () => ({ x: 200, y: 100 }),
+    getMetrics: () => ({ width: 1000, height: 600 }),
+    viewportState,
+    initCanvas: () => {},
+    reapplySelection: () => {},
+  });
+
+  // RAF ran but classList not touched because nodeEl was null
+  assert.equal(rafCalls, 1);
+  assert.equal(querySelectorCalls, 1);
 });
