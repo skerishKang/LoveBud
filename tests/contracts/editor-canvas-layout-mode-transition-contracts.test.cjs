@@ -589,3 +589,101 @@ test('persistStoredPositions delegation — helper missing fallback: direct pers
   );
 });
 
+// ---------------------------------------------------------------------------
+// 14. persistStoredPositions precise fallback contract — Stage 58
+// ---------------------------------------------------------------------------
+
+test('persistStoredPositions precise fallback — switchToFreeMode has exact ternary delegation for persistStoredPositions', () => {
+  const switchToFreeBlock = canvasSource.slice(
+    canvasSource.indexOf('function switchToFreeMode'),
+    canvasSource.indexOf('function switchToStructuredMode')
+  );
+  assert.match(
+    switchToFreeBlock,
+    /typeof\s+layoutTransition\.persistStoredPositions\s*===\s*['"]function['"]\s*\?[\s\S]*?layoutTransition\.persistStoredPositions\s*\(\s*persistStoredPositions\s*\)[\s\S]*?:[\s\S]*?persistStoredPositions\s*\(\s*\)/,
+    'switchToFreeMode must have precise ternary delegation for persistStoredPositions'
+  );
+});
+
+test('persistStoredPositions precise fallback — switchToFreeMode fallback only applies to persistStoredPositions, not persistLayoutMode', () => {
+  const switchToFreeBlock = canvasSource.slice(
+    canvasSource.indexOf('function switchToFreeMode'),
+    canvasSource.indexOf('function switchToStructuredMode')
+  );
+  // Find the persistLayoutMode if/else block - it should contain persistLayoutMode but NOT persistStoredPositions
+  const persistLayoutMatch = switchToFreeBlock.match(
+    /if\s*\(\s*typeof\s+layoutTransition\.persistLayoutMode\s*===\s*['"]function['"]\s*\)\s*\{[\s\S]*?\}[\s\S]*?else\s*\{[\s\S]*?\}/
+  );
+  assert.ok(persistLayoutMatch, 'persistLayoutMode if/else should exist in switchToFreeMode');
+  
+  // Within the persistLayoutMode if/else block, there should be NO persistStoredPositions call
+  const persistLayoutBlock = persistLayoutMatch[0];
+  assert.doesNotMatch(
+    persistLayoutBlock,
+    /persistStoredPositions/,
+    'persistLayoutMode if/else block must not contain persistStoredPositions'
+  );
+});
+
+test('persistStoredPositions precise fallback — switchToStructuredMode has NO persistStoredPositions delegation or fallback', () => {
+  const switchToStructuredBlock = canvasSource.slice(
+    canvasSource.indexOf('function switchToStructuredMode'),
+    canvasSource.indexOf('function setLayoutMode')
+  );
+  assert.doesNotMatch(
+    switchToStructuredBlock,
+    /persistStoredPositions/,
+    'switchToStructuredMode must have NO persistStoredPositions calls at all (asymmetry preserved)'
+  );
+});
+
+test('persistStoredPositions precise fallback — switchToStructuredMode maintains structured-only flow without position removal', () => {
+  const switchToStructuredBlock = canvasSource.slice(
+    canvasSource.indexOf('function switchToStructuredMode'),
+    canvasSource.indexOf('function setLayoutMode')
+  );
+  // Structured mode saves free positions but does NOT persist them
+  assert.match(
+    switchToStructuredBlock,
+    /savedFreePositions\s*=\s*\{\s*\.\.\.viewportState\.positions\s*\}/,
+    'switchToStructuredMode must save free positions to savedFreePositions'
+  );
+  assert.doesNotMatch(
+    switchToStructuredBlock,
+    /removeStoredPositions/,
+    'switchToStructuredMode must not call removeStoredPositions'
+  );
+});
+
+test('persistStoredPositions precise fallback — Stage 56 fitViewportToTree delegation remains intact', () => {
+  const freeBlock = canvasSource.slice(
+    canvasSource.indexOf('function switchToFreeMode'),
+    canvasSource.indexOf('function switchToStructuredMode')
+  );
+  assert.match(
+    freeBlock,
+    /typeof\s+layoutTransition\.fitViewportToTree\s*===\s*['"]function['"]\s*\?[\s\S]*?layoutTransition\.fitViewportToTree\s*\(\s*fitViewportToTree\s*\)[\s\S]*?:[\s\S]*?fitViewportToTree\s*\(\s*\)/,
+    'Stage 56 fitViewportToTree ternary delegation must remain precise in switchToFreeMode'
+  );
+});
+
+test('persistStoredPositions precise fallback — Stage 56 fitViewportToTree delegation remains in switchToStructuredMode', () => {
+  const structuredBlock = canvasSource.slice(
+    canvasSource.indexOf('function switchToStructuredMode'),
+    canvasSource.indexOf('function setLayoutMode')
+  );
+  assert.match(
+    structuredBlock,
+    /typeof\s+layoutTransition\.fitViewportToTree\s*===\s*['"]function['"]\s*\?[\s\S]*?layoutTransition\.fitViewportToTree\s*\(\s*fitViewportToTree\s*\)[\s\S]*?:[\s\S]*?fitViewportToTree\s*\(\s*\)/,
+    'Stage 56 fitViewportToTree ternary delegation must remain precise in switchToStructuredMode'
+  );
+});
+
+test('persistStoredPositions precise fallback — initCanvas NOT delegated to layoutTransition', () => {
+  assert.doesNotMatch(
+    canvasSource,
+    /layoutTransition\.initCanvas/,
+    'initCanvas must NOT be delegated to layoutTransition helper'
+  );
+});
+
