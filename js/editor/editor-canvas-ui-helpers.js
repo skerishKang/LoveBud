@@ -175,3 +175,18 @@ export function bindRecenterControl(recenterBtn, onRecenter) {
         }
     });
 }
+
+/**
+ * Binds the zoom in/out button events.
+ * @param {HTMLElement} zoomInBtn - The zoom in button element.
+ * @param {HTMLElement} zoomOutBtn - The zoom out button element.
+ * @param {Function} onZoom - Callback to trigger zoom logic with a factor.
+ */
+export function bindZoomControls(zoomInBtn, zoomOutBtn, onZoom) {
+    if (zoomInBtn && typeof onZoom === 'function') {
+        zoomInBtn.addEventListener('click', () => { onZoom(1.01); });
+    }
+    if (zoomOutBtn && typeof onZoom === 'function') {
+        zoomOutBtn.addEventListener('click', () => { onZoom(0.99); });
+    }
+}

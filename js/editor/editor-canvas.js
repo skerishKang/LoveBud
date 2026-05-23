@@ -829,13 +829,7 @@ function createEditorCanvas(deps) {
 
         uiHelpers.bindRecenterControl(recenterBtn, recenterViewport);
 
-        if (zoomInBtn && typeof zoomBy === 'function') {
-            zoomInBtn.addEventListener('click', () => { zoomBy(1.01); });
-        }
-
-        if (zoomOutBtn && typeof zoomBy === 'function') {
-            zoomOutBtn.addEventListener('click', () => { zoomBy(0.99); });
-        }
+        uiHelpers.bindZoomControls(zoomInBtn, zoomOutBtn, zoomBy);
     }
 
     function bindLayoutModeToggle() {
