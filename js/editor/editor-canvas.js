@@ -401,9 +401,7 @@ function createEditorCanvas(deps) {
 
         uiHelpers.bindNodeHoverAffordance(nodeEl, mem, renderAffordanceForHoveredMemory);
 
-        nodeEl.addEventListener('mousedown', (e) => {
-            if (viewportState.layoutMode === 'structured') return;
-
+        uiHelpers.bindNodeDragStart(nodeEl, () => viewportState.layoutMode, (e) => {
             if (typeof canvasInteraction.beginNodeDrag === 'function') {
                 canvasInteraction.beginNodeDrag(e, nodeEl, mem, viewportState, getWorldPosition);
                 return;
