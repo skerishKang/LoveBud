@@ -132,3 +132,16 @@ export function bindResizeHandling(state, onResize) {
         }, 120);
     });
 }
+
+/**
+ * Binds stopPropagation to viewport control buttons to prevent canvas pan interference.
+ * @param {Object|Array} buttons - Collection of button elements.
+ */
+export function bindViewportControlPropagationGuards(buttons) {
+    const btnList = Array.isArray(buttons) ? buttons : Object.values(buttons);
+    btnList.forEach((button) => {
+        if (!button) return;
+        button.addEventListener('mousedown', (event) => { event.stopPropagation(); });
+        button.addEventListener('touchstart', (event) => { event.stopPropagation(); }, { passive: true });
+    });
+}
