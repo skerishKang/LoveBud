@@ -462,7 +462,7 @@ test('getViewportTargets — empty memories returns empty array', () => {
     isRootMemory: () => true,
   });
 
-  assert.deepEqual(result, []);
+  assert.deepEqual(Array.from(result), []);
 });
 
 test('getViewportTargets — missing root helpers returns all memories', () => {
@@ -475,7 +475,7 @@ test('getViewportTargets — missing root helpers returns all memories', () => {
     isRootMemory: undefined,
   });
 
-  assert.deepEqual(result, memories);
+  assert.deepEqual(Array.from(result), memories);
 });
 
 test('getViewportTargets — returns visible non-root nodes before canonical root', () => {
@@ -488,7 +488,7 @@ test('getViewportTargets — returns visible non-root nodes before canonical roo
     isRootMemory: (memory, canonicalRootId) => memory.id === canonicalRootId,
   });
 
-  assert.deepEqual(result, [{ id: 'child-1' }, { id: 'child-2' }]);
+  assert.deepEqual(Array.from(result), [{ id: 'child-1' }, { id: 'child-2' }]);
 });
 
 test('getViewportTargets — falls back to canonical root when no visible nodes exist', () => {
@@ -501,5 +501,5 @@ test('getViewportTargets — falls back to canonical root when no visible nodes 
     isRootMemory: (memory, canonicalRootId) => memory.id === canonicalRootId,
   });
 
-  assert.deepEqual(result, [{ id: 'root' }]);
+  assert.deepEqual(Array.from(result), [{ id: 'root' }]);
 });
