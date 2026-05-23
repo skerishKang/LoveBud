@@ -211,7 +211,9 @@ function createEditorCanvas(deps) {
             }
         }
 
-        fitViewportToTree();
+        (typeof layoutTransition.fitViewportToTree === 'function'
+            ? layoutTransition.fitViewportToTree(fitViewportToTree)
+            : fitViewportToTree());
 
         (typeof layoutTransition.applyLayoutModeClasses === 'function'
             ? layoutTransition.applyLayoutModeClasses
@@ -231,7 +233,9 @@ function createEditorCanvas(deps) {
             persistLayoutMode('structured');
         }
 
-        fitViewportToTree();
+        (typeof layoutTransition.fitViewportToTree === 'function'
+            ? layoutTransition.fitViewportToTree(fitViewportToTree)
+            : fitViewportToTree());
 
         (typeof layoutTransition.applyLayoutModeClasses === 'function'
             ? layoutTransition.applyLayoutModeClasses

@@ -409,11 +409,11 @@ test('render refresh — initCanvas is NOT delegated to transition helper', () =
   );
 });
 
-test('render refresh — fitViewportToTree is NOT delegated to transition helper', () => {
-  assert.doesNotMatch(
+test('render refresh — fitViewportToTree delegated to transition helper with fallback', () => {
+  assert.match(
     canvasSource,
     /layoutTransition\.fitViewportToTree/,
-    'fitViewportToTree must NOT be delegated to layoutTransition helper'
+    'fitViewportToTree must be delegated to layoutTransition helper'
   );
 });
 
