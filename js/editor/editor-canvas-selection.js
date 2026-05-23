@@ -34,4 +34,3 @@ export function reapplySelection(selectedNodeId, documentRef) {
         selectedEl.classList.add('selected');
     }
 }
-

@@ -320,16 +320,8 @@ function createEditorCanvas(deps) {
     }
 
     function keepSelectionVisible() {
-        let selectedId = null;
-        let target = null;
-
-        if (typeof selectionUtils.getSelectedMemoryId === 'function') {
-            selectedId = selectionUtils.getSelectedMemoryId(document);
-            target = selectionUtils.getSelectedMemory(document, getTreeMemories());
-        } else {
-            selectedId = document.querySelector('.memory-node.selected')?.dataset?.memoryId;
-            target = selectedId ? getTreeMemories().find((memory) => memory.id === selectedId) : null;
-        }
+        const selectedId = selectionUtils.getSelectedMemoryId(document);
+        const target = selectionUtils.getSelectedMemory(document, getTreeMemories());
 
         if (selectedId && target) {
             const currentPos = calcPosition(target);
@@ -549,16 +541,10 @@ function createEditorCanvas(deps) {
     };
 
     function reapplySelection(selectedNodeId) {
-        if (!selectedNodeId) return;
-        if (typeof selectionUtils.reapplySelection === 'function') {
-            selectionUtils.reapplySelection(selectedNodeId, document);
-            return;
-        }
-        // Fallback
-        const selectedEl = document.querySelector(`.memory-node[data-memory-id="${selectedNodeId}"]`);
-        if (selectedEl) {
-            selectedEl.classList.add('selected');
-        }
+        selectionUtils.reapplySelection(selectedNodeId, document, {
+            renderAffordanceForMemory,
+            getTreeMemories
+        });
     }
 
     function clearGrowthAffordance() {
@@ -599,13 +585,7 @@ function createEditorCanvas(deps) {
     }
 
     function updateAffordance() {
-        let selectedMem = null;
-        if (typeof selectionUtils.getSelectedMemory === 'function') {
-            selectedMem = selectionUtils.getSelectedMemory(document, getTreeMemories());
-        } else {
-            const selectedId = document.querySelector('.memory-node.selected')?.dataset?.memoryId;
-            selectedMem = selectedId ? getTreeMemories().find((m) => m.id === selectedId) : null;
-        }
+        const selectedMem = selectionUtils.getSelectedMemory(document, getTreeMemories());
         renderAffordanceForMemory(selectedMem);
     }
 
@@ -649,14 +629,8 @@ function createEditorCanvas(deps) {
         try {
             const canonicalRootId = getCanonicalRootId();
             const treeMemories = getTreeMemories();
-            
-            console.log(`[editor-canvas] initCanvas starting. treeId=${treeId}, memories=${treeMemories.length}, layoutMode=${viewportState.layoutMode}`);
+            selectedNodeId = selectionUtils.getSelectedMemoryId(document);
 
-            if (typeof selectionUtils.getSelectedMemoryId === 'function') {
-                selectedNodeId = selectionUtils.getSelectedMemoryId(document);
-            } else {
-                selectedNodeId = document.querySelector('.memory-node.selected')?.dataset?.memoryId || null;
-            }
             const drawableMemories = treeMemories.filter((node) => !isRootMemory(node, canonicalRootId));
             const rootMemory = treeMemories.find((node) => isRootMemory(node, canonicalRootId)) || null;
             const shouldRenderRootNode = drawableMemories.length === 0 && !!rootMemory;
@@ -860,13 +834,7 @@ function createEditorCanvas(deps) {
 
         if (focusBtn) {
             focusBtn.addEventListener('click', () => {
-                let selectedId = null;
-                if (typeof selectionUtils.getSelectedMemoryId === 'function') {
-                    selectedId = selectionUtils.getSelectedMemoryId(document);
-                } else {
-                    selectedId = document.querySelector('.memory-node.selected')?.dataset?.memoryId;
-                }
-                
+                const selectedId = selectionUtils.getSelectedMemoryId(document);
                 if (selectedId) {
                     focusNodeById(selectedId);
                 }
