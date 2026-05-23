@@ -6,6 +6,7 @@ const vm = require('node:vm');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const VIEWPORT_PATH = path.join(ROOT, 'js/editor/editor-canvas-viewport.js');
+const VIEWPORT_BRANCHES_PATH = path.join(ROOT, 'js/editor/editor-canvas-viewport-branches.js');
 const VIEWPORT_ACTIONS_PATH = path.join(ROOT, 'js/editor/editor-canvas-viewport-actions.js');
 const VIEWPORT_CONTROLS_PATH = path.join(ROOT, 'js/editor/editor-canvas-viewport-controls.js');
 
@@ -17,8 +18,11 @@ function createViewport() {
   const context = { window: {} };
   vm.createContext(context);
   vm.runInContext(fs.readFileSync(VIEWPORT_PATH, 'utf8'), context);
-  // Load helper modules so thin wrappers (focusNodeById, recenterViewport, etc.)
+  // Load helper modules so thin wrappers (drawBranch, focusNodeById, etc.)
   // can delegate to the extracted implementations.
+  if (fs.existsSync(VIEWPORT_BRANCHES_PATH)) {
+    vm.runInContext(fs.readFileSync(VIEWPORT_BRANCHES_PATH, 'utf8'), context);
+  }
   if (fs.existsSync(VIEWPORT_ACTIONS_PATH)) {
     vm.runInContext(fs.readFileSync(VIEWPORT_ACTIONS_PATH, 'utf8'), context);
   }
@@ -36,7 +40,11 @@ function createViewportContext() {
   const context = { window: {} };
   vm.createContext(context);
   vm.runInContext(fs.readFileSync(VIEWPORT_PATH, 'utf8'), context);
-  // Load viewport actions helper (order matches editor.html: viewport → actions → controls)
+  // Load viewport branches helper (order matches editor.html: viewport → branches → actions → controls)
+  if (fs.existsSync(VIEWPORT_BRANCHES_PATH)) {
+    vm.runInContext(fs.readFileSync(VIEWPORT_BRANCHES_PATH, 'utf8'), context);
+  }
+  // Load viewport actions helper
   if (fs.existsSync(VIEWPORT_ACTIONS_PATH)) {
     vm.runInContext(fs.readFileSync(VIEWPORT_ACTIONS_PATH, 'utf8'), context);
   }
@@ -1478,4 +1486,21 @@ test('viewport actions helper — wrappers on LoveBudEditorCanvasViewport are pr
   assert.equal(typeof vp.focusNodeById, 'function');
   assert.equal(typeof vp.recenterViewport, 'function');
   assert.equal(typeof vp.zoomBy, 'function');
+});
+
+// ---------------------------------------------------------------------------
+// viewport branches helper — namespace check
+// ---------------------------------------------------------------------------
+test('viewport branches helper — exposes LoveBudEditorCanvasViewportBranches.drawBranch', () => {
+  const { context } = createViewportContext();
+  const branches = context.window.LoveBudEditorCanvasViewportBranches;
+  assert.ok(branches, 'namespace must exist');
+  assert.equal(typeof branches.drawBranch, 'function');
+  assert.equal(branches.drawBranch.length, 3); // (svg, startPos, endPos)
+});
+
+test('viewport branches helper — wrapper on LoveBudEditorCanvasViewport.drawBranch is preserved', () => {
+  const { viewport: vp } = createViewportContext();
+  assert.equal(typeof vp.drawBranch, 'function');
+  assert.equal(vp.drawBranch.length, 3); // (svg, startPos, endPos)
 });
