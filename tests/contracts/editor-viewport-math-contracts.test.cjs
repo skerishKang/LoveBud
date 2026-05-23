@@ -389,3 +389,63 @@ test('getFitViewport — falls back to canonical root when no visible nodes exis
   assert.equal(result.offsetX, 500);
   assert.equal(result.offsetY, 252);
 });
+
+// ---------------------------------------------------------------------------
+// getReadableViewportOffset
+// ---------------------------------------------------------------------------
+test('getReadableViewportOffset — no targets returns null', () => {
+  const vp = createViewport();
+
+  const result = vp.getReadableViewportOffset({
+    getWorldPosition: () => { throw new Error('should not be called'); },
+    getMetrics: () => { throw new Error('should not be called'); },
+    getTreeMemories: () => [],
+    getCanonicalRootId: () => undefined,
+    isRootMemory: () => false,
+  });
+
+  assert.equal(result, null);
+});
+
+test('getReadableViewportOffset — snaps preferred scale and centers target bounds', () => {
+  const vp = createViewport();
+
+  const result = vp.getReadableViewportOffset({
+    getWorldPosition: (mem) => mem.id === 'A' ? { x: 0, y: 0 } : { x: 420, y: 220 },
+    getMetrics: () => ({ width: 1200, height: 800 }),
+    getTreeMemories: () => [{ id: 'A' }, { id: 'B' }],
+    getCanonicalRootId: () => undefined,
+    isRootMemory: () => false,
+  }, 0.76); // preferredScale = 0.76
+
+  // getNearestZoom(0.76) = 0.75
+  // centerX = (0 + 420) / 2 = 210
+  // centerY = (0 + 220) / 2 = 110
+  // offsetX = round(1200 * 0.5 - 210 * 0.75) = round(600 - 157.5) = 443
+  // offsetY = round(800 * 0.42 - 110 * 0.75) = round(336 - 82.5) = 254
+  
+  assert.equal(result.scale, 0.75);
+  assert.equal(result.offsetX, 443);
+  assert.equal(result.offsetY, 254);
+});
+
+test('getReadableViewportOffset — uses visible non-root nodes before canonical root', () => {
+  const vp = createViewport();
+
+  const result = vp.getReadableViewportOffset({
+    getWorldPosition: (mem) => mem.id === 'root' ? { x: -1000, y: -1000 } : { x: 200, y: 100 },
+    getMetrics: () => ({ width: 1000, height: 600 }),
+    getTreeMemories: () => [{ id: 'root' }, { id: 'child' }],
+    getCanonicalRootId: () => 'root',
+    isRootMemory: (mem, canonicalRootId) => mem.id === canonicalRootId,
+  }, 1.4); // preferredScale = 1.4
+
+  // getNearestZoom(1.4) = 1.5
+  // child only: centerX = 200, centerY = 100
+  // offsetX = round(1000 * 0.5 - 200 * 1.5) = 200
+  // offsetY = round(600 * 0.42 - 100 * 1.5) = 102
+  
+  assert.equal(result.scale, 1.5);
+  assert.equal(result.offsetX, 200);
+  assert.equal(result.offsetY, 102);
+});
