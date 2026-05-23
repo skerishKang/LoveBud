@@ -34,6 +34,7 @@ function createEditorCanvas(deps) {
     const canvasEdges = window.createEditorCanvasEdges({ svg, canvasViewport });
 
     const layoutStorage = window.LoveBudEditorCanvasLayoutStorage || {};
+    const layoutTransition = window.LoveBudEditorCanvasLayoutTransition || {};
 
     let savedFreePositions = null;
     let storedFreePositions = null;
@@ -208,7 +209,9 @@ function createEditorCanvas(deps) {
 
         fitViewportToTree();
 
-        uiHelpers.applyLayoutModeClasses('free');
+        (typeof layoutTransition.applyLayoutModeClasses === 'function'
+            ? layoutTransition.applyLayoutModeClasses
+            : uiHelpers.applyLayoutModeClasses)('free');
         updateLayoutToggleUI();
         initCanvas();
         persistStoredPositions();
@@ -222,7 +225,9 @@ function createEditorCanvas(deps) {
 
         fitViewportToTree();
 
-        uiHelpers.applyLayoutModeClasses('structured');
+        (typeof layoutTransition.applyLayoutModeClasses === 'function'
+            ? layoutTransition.applyLayoutModeClasses
+            : uiHelpers.applyLayoutModeClasses)('structured');
         updateLayoutToggleUI();
         initCanvas();
     }
@@ -244,7 +249,9 @@ function createEditorCanvas(deps) {
     }
 
     function updateLayoutToggleUI() {
-        uiHelpers.updateLayoutToggleUI(viewportState.layoutMode, i18n);
+        (typeof layoutTransition.updateLayoutToggleUI === 'function'
+            ? layoutTransition.updateLayoutToggleUI
+            : uiHelpers.updateLayoutToggleUI)(viewportState.layoutMode, i18n);
     }
 
     const growthAffordance = window.createEditorCanvasGrowthAffordance({
@@ -884,7 +891,9 @@ function createEditorCanvas(deps) {
     }
 
     requestAnimationFrame(() => {
-        uiHelpers.applyLayoutModeClasses(viewportState.layoutMode);
+        (typeof layoutTransition.applyLayoutModeClasses === 'function'
+            ? layoutTransition.applyLayoutModeClasses
+            : uiHelpers.applyLayoutModeClasses)(viewportState.layoutMode);
         updateLayoutToggleUI();
     });
 

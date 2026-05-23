@@ -55,8 +55,8 @@ test('editor layout switching fits the tree instead of centering selected node b
   const canvas = read('js/editor/editor-canvas.js');
 
   assert.match(canvas, /function\s+fitViewportToTree\s*\(/, 'canvas must expose a layout-switch tree-fit helper');
-  assert.match(canvas, /fitViewportToTree\(\);[\s\S]*uiHelpers\.applyLayoutModeClasses\('free'\)/, 'switching to free mode should fit the tree before rendering');
-  assert.match(canvas, /fitViewportToTree\(\);[\s\S]*uiHelpers\.applyLayoutModeClasses\('structured'\)/, 'switching to structured mode should fit the tree before rendering');
+  assert.match(canvas, /fitViewportToTree\(\);[\s\S]*applyLayoutModeClasses[^)]*\)\s*\(\s*'free'\s*\)/, 'switching to free mode should fit the tree before rendering');
+  assert.match(canvas, /fitViewportToTree\(\);[\s\S]*applyLayoutModeClasses[^)]*\)\s*\(\s*'structured'\s*\)/, 'switching to structured mode should fit the tree before rendering');
   assert.doesNotMatch(canvas, /function\s+centerViewportOnSelection\s*\(/, 'layout switching must not use selected-node centering by default');
 });
 
