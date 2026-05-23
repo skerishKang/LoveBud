@@ -95,3 +95,19 @@ export function bindCompactModeToggle() {
 
     toggleBtn.dataset.compactBound = '1';
 }
+
+/**
+ * Binds the layout mode toggle button event.
+ * @param {Function} onToggle - Callback to trigger when the button is clicked.
+ */
+export function bindLayoutModeToggle(onToggle) {
+    const toggleBtn = document.getElementById('layoutModeToggleBtn');
+    if (!toggleBtn) return;
+    if (toggleBtn.dataset.layoutBound) return;
+
+    toggleBtn.addEventListener('click', () => {
+        if (typeof onToggle === 'function') onToggle();
+    });
+
+    toggleBtn.dataset.layoutBound = '1';
+}

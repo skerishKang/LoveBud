@@ -857,15 +857,9 @@ function createEditorCanvas(deps) {
     }
 
     function bindLayoutModeToggle() {
-        const toggleBtn = document.getElementById('layoutModeToggleBtn');
-        if (!toggleBtn) return;
-        if (toggleBtn.dataset.layoutBound) return;
-
-        toggleBtn.addEventListener('click', () => {
+        uiHelpers.bindLayoutModeToggle(() => {
             toggleLayoutMode();
         });
-
-        toggleBtn.dataset.layoutBound = '1';
     }
 
     /**
