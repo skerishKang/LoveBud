@@ -861,10 +861,7 @@ function createEditorCanvas(deps) {
                 viewportState.isDraggingNode = false;
                 viewportState.dragNodeId = null;
                 viewportState.dragMoved = false;
-                const draggedEl = document.querySelector(`.memory-node[data-memory-id=\"${draggedId}\"]`);
-                if (draggedEl) {
-                    draggedEl.style.cursor = 'grab';
-                }
+                const draggedEl = uiHelpers.resetDraggedNodeCursor(document, draggedId);
                 if (draggedEl && moved) {
                     draggedEl.dataset.suppressClick = '1';
                     shouldRender = true;
