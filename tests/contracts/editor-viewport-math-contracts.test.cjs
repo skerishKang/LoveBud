@@ -311,3 +311,80 @@ test('getFitViewport — no targets returns fallback viewport', () => {
   assert.equal(result.offsetX, 0);
   assert.equal(result.offsetY, 0);
 });
+
+test('getFitViewport — target bounds calculate fit scale and readable offset', () => {
+  const vp = createViewport();
+
+  const result = vp.getFitViewport({
+    getWorldPosition: (mem) => mem.id === 'A' ? { x: 0, y: 0 } : { x: 420, y: 220 },
+    getMetrics: () => ({ width: 1200, height: 800 }),
+    getTreeMemories: () => [{ id: 'A' }, { id: 'B' }],
+    getCanonicalRootId: () => undefined,
+    isRootMemory: () => false,
+  });
+
+  // padding = min(160, max(72, round(1200 * 0.10))) = 120
+  // nodeBoundsPadding = 180
+  // boundsWidth = 420 - 0 + 180 = 600
+  // boundsHeight = 220 - 0 + 180 = 400
+  // availableWidth = 1200 - 240 = 960
+  // availableHeight = 800 - 240 = 560
+  // rawFitScale = min(960 / 600, 560 / 400) = min(1.6, 1.4) = 1.4
+  // getFitZoom(1.4) = 1.25
+  // centerX = 210, centerY = 110
+  // offsetX = round(1200 * 0.5 - 210 * 1.25) = 338
+  // offsetY = round(800 * 0.42 - 110 * 1.25) = 199
+  
+  assert.equal(result.scale, 1.25);
+  assert.equal(result.offsetX, 338);
+  assert.equal(result.offsetY, 199);
+});
+
+test('getFitViewport — uses visible non-root nodes before canonical root', () => {
+  const vp = createViewport();
+
+  const result = vp.getFitViewport({
+    getWorldPosition: (mem) => mem.id === 'root' ? { x: -1000, y: -1000 } : { x: 200, y: 100 },
+    getMetrics: () => ({ width: 1000, height: 600 }),
+    getTreeMemories: () => [{ id: 'root' }, { id: 'child' }],
+    getCanonicalRootId: () => 'root',
+    isRootMemory: (mem, canonicalRootId) => mem.id === canonicalRootId,
+  });
+
+  // child only
+  // padding = min(160, max(72, round(1000 * 0.10))) = 100
+  // nodeBoundsPadding = 180
+  // boundsWidth = 180, boundsHeight = 180
+  // availableWidth = 800, availableHeight = 400
+  // rawFitScale = min(800/180, 400/180) = 4.444...
+  // getFitZoom(rawFitScale) = 1.5
+  // offsetX = round(1000 * 0.5 - 200 * 1.5) = 200
+  // offsetY = round(600 * 0.42 - 100 * 1.5) = 102
+  
+  assert.equal(result.scale, 1.5);
+  assert.equal(result.offsetX, 200);
+  assert.equal(result.offsetY, 102);
+});
+
+test('getFitViewport — falls back to canonical root when no visible nodes exist', () => {
+  const vp = createViewport();
+
+  const result = vp.getFitViewport({
+    getWorldPosition: (mem) => ({ x: 0, y: 0 }), // root position
+    getMetrics: () => ({ width: 1000, height: 600 }),
+    getTreeMemories: () => [{ id: 'root' }],
+    getCanonicalRootId: () => 'root',
+    isRootMemory: (mem, canonicalRootId) => mem.id === canonicalRootId,
+  });
+
+  // root only
+  // padding = 100, boundsWidth = 180, boundsHeight = 180
+  // availableWidth = 800, availableHeight = 400
+  // rawFitScale = 4.444..., getFitZoom = 1.5
+  // offsetX = round(1000 * 0.5 - 0 * 1.5) = 500
+  // offsetY = round(600 * 0.42 - 0 * 1.5) = 252
+  
+  assert.equal(result.scale, 1.5);
+  assert.equal(result.offsetX, 500);
+  assert.equal(result.offsetY, 252);
+});
