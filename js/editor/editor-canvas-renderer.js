@@ -30,12 +30,13 @@
             branchPorts,
             getTreeMemories,
             canonicalRootId,
-            isRootMemory
+            isRootMemory,
+            clearGrowthAffordance
         } = deps;
 
         const drawableMemories = getTreeMemories().filter((node) => !isRootMemory(node, canonicalRootId));
         
-        clearGrowthAffordances(growthAffordance, branchPorts);
+        clearGrowthAffordance();
 
         if (growthAffordance && typeof growthAffordance.renderGrowthAffordance === 'function') {
             growthAffordance.renderGrowthAffordance(mem, {
@@ -76,11 +77,30 @@
         }
     }
 
+    /**
+     * Core rendering loop for drawing a node.
+     */
+    function drawNode(mem, deps) {
+        const {
+            calcPosition,
+            createNodeElement,
+            attachNodeInfo,
+            attachNodeBehavior
+        } = deps;
+
+        const pos = calcPosition(mem);
+        const nodeEl = createNodeElement(mem, pos);
+        attachNodeInfo(nodeEl, mem);
+        attachNodeBehavior(nodeEl, mem);
+        return nodeEl;
+    }
+
     window.LoveBudEditorCanvasRenderer = {
         clearCanvasNodes,
         clearGrowthAffordances,
         renderAffordancesForMemory,
         createNodeElement,
-        attachNodeInfo
+        attachNodeInfo,
+        drawNode
     };
 })();

@@ -12,6 +12,7 @@
                 return m && m.parentId === rootMemory.id;
             });
             if (firstChild) return firstChild;
+            return rootMemory;
         }
         return drawableMemories[0] || null;
     }
@@ -19,7 +20,8 @@
     /**
      * Checks if a specific position is within the safe viewport padding.
      */
-    function isNodeWithinSafeViewport(pos, metrics) {
+    function isNodeWithinSafeViewport(pos, getMetrics) {
+        const metrics = getMetrics();
         const padding = 96;
         return pos.x >= padding && pos.x <= metrics.width - padding && pos.y >= padding && pos.y <= metrics.height - padding;
     }

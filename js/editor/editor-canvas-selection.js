@@ -27,18 +27,52 @@
      * @param {string} selectedNodeId - The ID of the node to select
      * @param {Document} documentRef - The document context
      */
-    function reapplySelection(selectedNodeId, documentRef) {
+    function reapplySelection(selectedNodeId, documentRef, deps) {
         if (!selectedNodeId) return;
         const doc = documentRef || document;
         const selectedEl = doc.querySelector(`.memory-node[data-memory-id="${selectedNodeId}"]`);
         if (selectedEl) {
             selectedEl.classList.add('selected');
+            if (deps && typeof deps.renderAffordanceForMemory === 'function') {
+                const mem = deps.getTreeMemories().find(m => m.id === selectedNodeId);
+                if (mem) deps.renderAffordanceForMemory(mem);
+            }
         }
+    }
+
+    /**
+     * Ensures the selection remains visible in the viewport.
+     */
+    function keepSelectionVisible(deps) {
+        const {
+            selectionUtils,
+            getTreeMemories,
+            calcPosition,
+            isNodeWithinSafeViewport,
+            focusNodeById,
+            initCanvas,
+            recenterViewport
+        } = deps;
+
+        let selectedId = selectionUtils.getSelectedMemoryId(document);
+        let target = selectionUtils.getSelectedMemory(document, getTreeMemories());
+
+        if (selectedId && target) {
+            const currentPos = calcPosition(target);
+            if (!isNodeWithinSafeViewport(currentPos)) {
+                focusNodeById(selectedId);
+                return;
+            }
+            initCanvas();
+            return;
+        }
+        recenterViewport();
     }
 
     window.LoveBudEditorCanvasSelection = {
         getSelectedMemoryId,
         getSelectedMemory,
-        reapplySelection
+        reapplySelection,
+        keepSelectionVisible
     };
 })();

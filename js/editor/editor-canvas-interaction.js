@@ -1,7 +1,10 @@
-const NODE_DRAG_INTENT_THRESHOLD = 6;
+(function() {
+  const NODE_DRAG_INTENT_THRESHOLD = 6;
 
-window.LoveBudEditorCanvasInteraction = {
-  bind(options) {
+  /**
+   * Binds general canvas interactions like panning.
+   */
+  function bindCanvasPan(options) {
     const {
       canvas,
       viewportState,
@@ -106,26 +109,141 @@ window.LoveBudEditorCanvasInteraction = {
         initCanvas();
       }
     });
-  },
-
-  beginNodeDrag(event, nodeEl, memory, viewportState, getWorldPosition) {
-    // Disable node drag in structured mode
-    if (viewportState.layoutMode === 'structured') return false;
-
-    if (event.button !== 0) return false;
-    if (event.target.closest('button')) return false;
-    event.preventDefault();
-    event.stopPropagation();
-
-    const startWorld = getWorldPosition(memory);
-    viewportState.isDraggingNode = true;
-    viewportState.dragNodeId = memory.id;
-    viewportState.dragStartClientX = event.clientX;
-    viewportState.dragStartClientY = event.clientY;
-    viewportState.dragStartWorldX = startWorld.x;
-    viewportState.dragStartWorldY = startWorld.y;
-    viewportState.dragMoved = false;
-    nodeEl.style.cursor = 'grabbing';
-    return true;
   }
-};
+
+  /**
+   * Binds node-specific interactions like dragging and selection.
+   */
+  function bindNodeDrag(deps) {
+    const {
+        nodeEl,
+        mem,
+        viewportState,
+        canvasInteraction,
+        getWorldPosition,
+        renderAffordanceForHoveredMemory,
+        onNodeClick,
+        NODE_TAP_SELECT_THRESHOLD
+    } = deps;
+
+    nodeEl.style.cursor = viewportState.layoutMode === 'structured' ? 'default' : 'grab';
+    let touchStartPoint = null;
+
+    const selectMemoryNode = () => {
+        onNodeClick(nodeEl, mem);
+    };
+
+    nodeEl.addEventListener('mouseenter', () => {
+        renderAffordanceForHoveredMemory(mem);
+    });
+    nodeEl.addEventListener('focusin', () => {
+        renderAffordanceForHoveredMemory(mem);
+    });
+
+    nodeEl.addEventListener('mousedown', (e) => {
+        if (viewportState.layoutMode === 'structured') return;
+
+        if (typeof canvasInteraction.beginNodeDrag === 'function') {
+            canvasInteraction.beginNodeDrag(e, nodeEl, mem, viewportState, getWorldPosition);
+            return;
+        }
+
+        if (e.button !== 0) return;
+        if (e.target.closest('button')) return;
+        e.preventDefault();
+        e.stopPropagation();
+
+        const startWorld = getWorldPosition(mem);
+        viewportState.isDraggingNode = true;
+        viewportState.dragNodeId = mem.id;
+        viewportState.dragStartClientX = e.clientX;
+        viewportState.dragStartClientY = e.clientY;
+        viewportState.dragStartWorldX = startWorld.x;
+        viewportState.dragStartWorldY = startWorld.y;
+        viewportState.dragMoved = false;
+        nodeEl.style.cursor = 'grabbing';
+    });
+
+    nodeEl.addEventListener('click', (e) => {
+        if (nodeEl.dataset.skipNextClick === '1') {
+            nodeEl.dataset.skipNextClick = '';
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+        }
+        if (nodeEl.dataset.suppressClick === '1') {
+            nodeEl.dataset.suppressClick = '';
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+        }
+        e.preventDefault();
+        e.stopPropagation();
+        selectMemoryNode();
+    });
+
+    nodeEl.addEventListener('touchstart', (e) => {
+        if (e.target.closest('button')) return;
+        const touch = e.changedTouches && e.changedTouches[0];
+        if (!touch) return;
+        touchStartPoint = {
+            x: touch.clientX,
+            y: touch.clientY
+        };
+        renderAffordanceForHoveredMemory(mem);
+    }, { passive: true });
+
+    nodeEl.addEventListener('touchend', (e) => {
+        if (!touchStartPoint) return;
+        const touch = e.changedTouches && e.changedTouches[0];
+        if (!touch) {
+            touchStartPoint = null;
+            return;
+        }
+        const dx = touch.clientX - touchStartPoint.x;
+        const dy = touch.clientY - touchStartPoint.y;
+        touchStartPoint = null;
+        if (Math.abs(dx) > NODE_TAP_SELECT_THRESHOLD || Math.abs(dy) > NODE_TAP_SELECT_THRESHOLD) return;
+        e.preventDefault();
+        e.stopPropagation();
+        nodeEl.dataset.skipNextClick = '1';
+        selectMemoryNode();
+    }, { passive: false });
+
+    nodeEl.addEventListener('touchcancel', () => {
+        touchStartPoint = null;
+    });
+
+    nodeEl.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        e.preventDefault();
+        e.stopPropagation();
+        selectMemoryNode();
+    });
+  }
+
+  window.LoveBudEditorCanvasInteraction = {
+    bind: bindCanvasPan,
+    bindNodeDrag,
+    beginNodeDrag(event, nodeEl, memory, viewportState, getWorldPosition) {
+        // Disable node drag in structured mode
+        if (viewportState.layoutMode === 'structured') return false;
+
+        if (event.button !== 0) return false;
+        if (event.target.closest('button')) return false;
+        event.preventDefault();
+        event.stopPropagation();
+
+        const startWorld = getWorldPosition(memory);
+        viewportState.isDraggingNode = true;
+        viewportState.dragNodeId = memory.id;
+        viewportState.dragStartClientX = event.clientX;
+        viewportState.dragStartClientY = event.clientY;
+        viewportState.dragStartWorldX = startWorld.x;
+        viewportState.dragStartWorldY = startWorld.y;
+        viewportState.dragMoved = false;
+        nodeEl.style.cursor = 'grabbing';
+        return true;
+    }
+  };
+})();
