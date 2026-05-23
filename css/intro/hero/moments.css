@@ -1,0 +1,316 @@
+.intro-tree-stem {
+  position: absolute;
+  left: 51%;
+  bottom: 44px;
+  width: 19px;
+  height: 196px;
+  transform-origin: bottom center;
+  border-radius: 999px;
+  background:
+    linear-gradient(90deg, rgba(255, 236, 230, 0.24), transparent 32%),
+    linear-gradient(180deg, #c9968d 0%, #aa646d 48%, #904951 100%);
+  box-shadow: 0 12px 26px rgba(144, 73, 81, 0.18), 0 0 0 5px rgba(144, 73, 81, 0.035);
+  animation: introStemGrow 0.7s cubic-bezier(0.34, 1.3, 0.64, 1) 0.15s both;
+}
+
+.intro-tree-stem::before,
+.intro-tree-stem::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
+.intro-tree-stem::before {
+  left: 4px;
+  top: 14px;
+  bottom: 18px;
+  width: 3px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255, 241, 235, 0.42), rgba(255, 241, 235, 0));
+}
+
+.intro-tree-stem::after {
+  left: 50%;
+  bottom: -8px;
+  width: 42px;
+  height: 18px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(144, 73, 81, 0.16), transparent 68%);
+  transform: translateX(-50%);
+}
+
+.intro-tree-branch {
+  position: absolute;
+  left: 51%;
+  height: 9px;
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(255, 242, 236, 0.24), transparent 58%),
+    linear-gradient(90deg, #aa646d 0%, #c18b83 66%, #deb3aa 100%);
+  transform-origin: 0 50%;
+  box-shadow: 0 5px 14px rgba(144, 73, 81, 0.11);
+  animation: introBranchIn 0.45s ease both;
+}
+
+.intro-tree-branch::before {
+  content: "";
+  position: absolute;
+  right: 18%;
+  top: 50%;
+  width: 28px;
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(193, 139, 131, 0.7), rgba(222, 179, 170, 0));
+  transform: translateY(-50%) rotate(var(--twig-rotate, 22deg));
+  transform-origin: left center;
+  opacity: 0.7;
+}
+
+.intro-tree-branch::after {
+  content: "";
+  position: absolute;
+  right: -6px;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 28%, #fff9f5 0 24%, #eccbc0 25% 60%, #c18b83 61% 100%);
+  border: 1px solid rgba(255, 255, 255, 0.76);
+  box-shadow: 0 7px 16px rgba(144, 73, 81, 0.15), 0 0 0 5px rgba(144, 73, 81, 0.045);
+  transform: translateY(-50%);
+}
+
+.intro-tree-branch.one {
+  bottom: 206px;
+  width: 132px;
+  transform: translateX(1px) rotate(-31deg);
+  --twig-rotate: -28deg;
+  animation-delay: 0.75s;
+}
+
+.intro-tree-branch.two {
+  bottom: 174px;
+  width: 126px;
+  transform: translateX(-4px) rotate(209deg);
+  --twig-rotate: 28deg;
+  animation-delay: 1.0s;
+}
+
+.intro-tree-branch.three {
+  bottom: 142px;
+  width: 116px;
+  transform: translateX(0) rotate(29deg);
+  --twig-rotate: 24deg;
+  animation-delay: 1.25s;
+}
+
+.intro-tree-branch.four {
+  bottom: 112px;
+  width: 104px;
+  transform: translateX(-5px) rotate(202deg);
+  --twig-rotate: -24deg;
+  animation-delay: 1.5s;
+}
+
+.intro-tree-branch.five {
+  bottom: 84px;
+  width: 94px;
+  transform: translateX(1px) rotate(25deg);
+  --twig-rotate: 22deg;
+  animation-delay: 1.75s;
+}
+
+.intro-tree-node {
+  position: absolute;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 26%, #fffaf6 0 22%, #eac9bf 23% 58%, #c18b83 59% 100%);
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  box-shadow: 0 7px 18px rgba(144, 73, 81, 0.2), 0 0 0 6px rgba(144, 73, 81, 0.045);
+  animation: introNodeIn 0.3s ease both;
+}
+
+.intro-tree-node::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border-radius: inherit;
+  background: radial-gradient(circle at 36% 28%, rgba(255, 255, 255, 0.82), transparent 58%);
+  pointer-events: none;
+}
+
+.intro-tree-node.node-1 {
+  left: 70%;
+  bottom: 262px;
+  animation-delay: 1.8s;
+}
+
+.intro-tree-node.node-2 {
+  left: 25%;
+  bottom: 211px;
+  animation-delay: 1.95s;
+}
+
+.intro-tree-node.node-3 {
+  left: 76%;
+  bottom: 176px;
+  animation-delay: 2.1s;
+}
+
+.intro-tree-node.node-4 {
+  left: 28%;
+  bottom: 142px;
+  animation-delay: 2.25s;
+}
+
+.intro-tree-node.node-5 {
+  left: 68%;
+  bottom: 111px;
+  animation-delay: 2.4s;
+}
+
+.intro-tree-node.node-6 {
+  left: 50%;
+  bottom: 236px;
+  animation-delay: 2.55s;
+}
+
+.intro-tree-node.node-7 {
+  left: 55%;
+  bottom: 70px;
+  animation-delay: 2.7s;
+}
+
+.intro-tree-moment {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 11px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(144, 73, 81, 0.1);
+  box-shadow: 0 12px 24px rgba(75, 64, 57, 0.08);
+  color: var(--on-surface);
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+  animation: introMomentIn 0.4s ease both;
+}
+
+.intro-tree-moment::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: var(--connector-width, 42px);
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(144, 73, 81, 0.03), rgba(193, 139, 131, 0.24), rgba(144, 73, 81, 0.08));
+  opacity: 0.72;
+  transform: translateY(-50%) rotate(var(--connector-rotate, 0deg));
+  transform-origin: var(--connector-origin, center);
+  pointer-events: none;
+}
+
+.intro-tree-moment::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 28%, #fffaf6 0 26%, #e8c4c8 27% 66%, #c18b83 67% 100%);
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  box-shadow: 0 6px 14px rgba(144, 73, 81, 0.14), 0 0 0 4px rgba(144, 73, 81, 0.04);
+  opacity: 0.92;
+  transform: translateY(calc(-50% + var(--anchor-y, 0px)));
+  pointer-events: none;
+}
+
+.intro-tree-moment.first {
+  left: 76px;
+  bottom: 54px;
+  color: var(--primary);
+  --connector-width: 92px;
+  --connector-rotate: 3deg;
+  --connector-origin: left center;
+  --anchor-y: 2px;
+  animation-delay: 1.5s;
+}
+
+.intro-tree-moment.first::before,
+.intro-tree-moment.shared::before,
+.intro-tree-moment.lasting::before {
+  left: calc(100% - 4px);
+}
+
+.intro-tree-moment.first::after,
+.intro-tree-moment.shared::after,
+.intro-tree-moment.lasting::after {
+  left: calc(100% + var(--connector-width, 42px) - 8px);
+}
+
+.intro-tree-moment.saved::before,
+.intro-tree-moment.revisit::before {
+  right: calc(100% - 4px);
+  transform: translateY(-50%) rotate(var(--connector-rotate, 0deg));
+}
+
+.intro-tree-moment.saved::after,
+.intro-tree-moment.revisit::after {
+  right: calc(100% + var(--connector-width, 42px) - 8px);
+}
+
+.intro-tree-moment.saved {
+  right: 34px;
+  top: 88px;
+  --connector-width: 72px;
+  --connector-rotate: 6deg;
+  --connector-origin: right center;
+  --anchor-y: 4px;
+  animation-delay: 1.75s;
+}
+
+.intro-tree-moment.shared {
+  left: 34px;
+  top: 154px;
+  color: #667a55;
+  --connector-width: 70px;
+  --connector-rotate: -4deg;
+  --connector-origin: left center;
+  --anchor-y: -3px;
+  animation-delay: 2.0s;
+}
+
+.intro-tree-moment.revisit {
+  right: 38px;
+  bottom: 96px;
+  color: #8b7355;
+  --connector-width: 64px;
+  --connector-rotate: -4deg;
+  --connector-origin: right center;
+  --anchor-y: -3px;
+  animation-delay: 2.25s;
+}
+
+.intro-tree-moment.lasting {
+  left: 82px;
+  top: 86px;
+  color: #a67c52;
+  --connector-width: 92px;
+  --connector-rotate: 1deg;
+  --connector-origin: left center;
+  --anchor-y: 1px;
+  animation-delay: 2.5s;
+}
+
+.intro-tree-caption {
+  margin: 12px 4px 0;
+  color: var(--on-surface-variant);
+  font-size: 0.84rem;
+  font-weight: 700;
+  line-height: 1.5;
+  word-break: keep-all;
+}

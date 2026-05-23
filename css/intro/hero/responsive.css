@@ -1,0 +1,161 @@
+/* Mobile consistency with landing */
+@media (max-width: 1220px) {
+  .intro-hero {
+    grid-template-columns: 1fr;
+    min-height: auto;
+    padding-top: 36px;
+  }
+}
+
+@media (max-width: 920px) {
+  .intro-hero h1 {
+    font-size: clamp(2.95rem, 10vw, 4.3rem);
+  }
+}
+
+@media (max-width: 640px) {
+  .intro-hero {
+    padding: 24px var(--page-pad-mobile, 16px) 12px;
+  }
+
+  .intro-hero h1 {
+    margin-top: 16px;
+    font-size: clamp(2.25rem, 10vw, 2.8rem);
+    line-height: 1.04;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  .intro-hero .lead {
+    font-size: 0.96rem;
+    line-height: 1.72;
+    max-width: 100%;
+  }
+
+  .intro-hero-actions {
+    flex-direction: column;
+    margin-top: 20px;
+  }
+
+  .intro-hero-actions .btn-round {
+    width: 100%;
+    min-height: 54px;
+  }
+
+  .intro-hero-visual {
+    padding: 14px !important;
+    border-radius: 26px;
+  }
+
+  /* Mobile: keep the tree as the primary object while reducing label noise */
+  .intro-tree-scene {
+    min-height: 330px !important;
+    border-radius: 20px;
+  }
+
+  .intro-tree-scene::before,
+  .intro-tree-scene::after,
+  .intro-tree-moment::before,
+  .intro-tree-moment::after {
+    display: none;
+  }
+
+  .intro-tree-stem {
+    left: 52%;
+    width: 16px;
+    height: 154px;
+    bottom: 34px;
+  }
+
+  .intro-tree-branch {
+    height: 7px;
+  }
+
+  .intro-tree-branch.one {
+    bottom: 178px;
+    width: 96px;
+  }
+
+  .intro-tree-branch.two {
+    bottom: 148px;
+    width: 92px;
+  }
+
+  .intro-tree-branch.three {
+    bottom: 120px;
+    width: 86px;
+  }
+
+  .intro-tree-branch.four {
+    bottom: 94px;
+    width: 78px;
+  }
+
+  .intro-tree-branch.five {
+    bottom: 70px;
+    width: 70px;
+  }
+
+  .intro-tree-node {
+    width: 14px;
+    height: 14px;
+  }
+
+  .intro-tree-node.node-1 {
+    left: 72%;
+    bottom: 226px;
+  }
+
+  .intro-tree-node.node-2 {
+    left: 22%;
+    bottom: 176px;
+  }
+
+  .intro-tree-node.node-3 {
+    left: 76%;
+    bottom: 148px;
+  }
+
+  .intro-tree-node.node-4 {
+    left: 25%;
+    bottom: 118px;
+  }
+
+  .intro-tree-node.node-5 {
+    left: 69%;
+    bottom: 92px;
+  }
+
+  .intro-tree-node.node-6 {
+    left: 45%;
+    bottom: 236px;
+  }
+
+  .intro-tree-node.node-7 {
+    left: 58%;
+    bottom: 48px;
+  }
+
+  .intro-tree-moment.revisit,
+  .intro-tree-moment.lasting {
+    display: none;
+  }
+
+  .intro-tree-moment.first {
+    left: 12px;
+    bottom: 48px;
+    font-size: 11px;
+  }
+
+  .intro-tree-moment.saved {
+    right: 10px;
+    top: 38px;
+    font-size: 11px;
+  }
+
+  .intro-tree-moment.shared {
+    left: 14px;
+    top: 62px;
+    font-size: 11px;
+  }
+}
