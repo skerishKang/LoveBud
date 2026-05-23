@@ -865,11 +865,7 @@ function createEditorCanvas(deps) {
                 if (draggedEl && moved) {
                     draggedEl.dataset.suppressClick = '1';
                     shouldRender = true;
-                    const toast = document.getElementById('movedToast');
-                    if (toast) {
-                        toast.style.display = 'block';
-                        setTimeout(() => { toast.style.display = 'none'; }, 3000);
-                    }
+                    uiHelpers.showMovedToast();
                 }
             }
 
