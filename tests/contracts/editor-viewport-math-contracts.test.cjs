@@ -503,3 +503,92 @@ test('getViewportTargets — falls back to canonical root when no visible nodes 
 
   assert.deepEqual(Array.from(result), [{ id: 'root' }]);
 });
+
+// ---------------------------------------------------------------------------
+// isStoredViewportExtreme
+// ---------------------------------------------------------------------------
+test('isStoredViewportExtreme — returns false within calculated bounds', () => {
+  const vp = createViewport();
+  // metrics: { width: 1000, height: 600 }
+  // margin = max(200, round(1000 * 0.25)) = 250
+  // X 허용: -1250 ~ 1250
+  // Y 허용: -850 ~ 850
+  assert.equal(vp.isStoredViewportExtreme({
+    viewportState: { offsetX: 0, offsetY: 0 },
+    getMetrics: () => ({ width: 1000, height: 600 }),
+  }), false);
+});
+
+test('isStoredViewportExtreme — treats exact boundary values as not extreme', () => {
+  const vp = createViewport();
+  const opts = {
+    getMetrics: () => ({ width: 1000, height: 600 }),
+  };
+  // margin = 250, X bounds: -1250~1250, Y bounds: -850~850
+  assert.equal(vp.isStoredViewportExtreme({
+    ...opts,
+    viewportState: { offsetX: -1250, offsetY: -850 },
+  }), false);
+  assert.equal(vp.isStoredViewportExtreme({
+    ...opts,
+    viewportState: { offsetX: 1250, offsetY: 850 },
+  }), false);
+});
+
+test('isStoredViewportExtreme — returns true when x offset is outside bounds', () => {
+  const vp = createViewport();
+  const opts = {
+    getMetrics: () => ({ width: 1000, height: 600 }),
+  };
+  // margin = 250, X bounds: -1250~1250
+  assert.equal(vp.isStoredViewportExtreme({
+    ...opts,
+    viewportState: { offsetX: -1251, offsetY: 0 },
+  }), true);
+  assert.equal(vp.isStoredViewportExtreme({
+    ...opts,
+    viewportState: { offsetX: 1251, offsetY: 0 },
+  }), true);
+});
+
+test('isStoredViewportExtreme — returns true when y offset is outside bounds', () => {
+  const vp = createViewport();
+  const opts = {
+    getMetrics: () => ({ width: 1000, height: 600 }),
+  };
+  // margin = 250, Y bounds: -850~850
+  assert.equal(vp.isStoredViewportExtreme({
+    ...opts,
+    viewportState: { offsetX: 0, offsetY: -851 },
+  }), true);
+  assert.equal(vp.isStoredViewportExtreme({
+    ...opts,
+    viewportState: { offsetX: 0, offsetY: 851 },
+  }), true);
+});
+
+test('isStoredViewportExtreme — uses minimum 200px margin for narrow viewports', () => {
+  const vp = createViewport();
+  // metrics: { width: 400, height: 300 }
+  // width * 0.25 = 100 < 200 → margin = 200
+  // X 허용: -600 ~ 600
+  // Y 허용: -500 ~ 500
+  const opts = {
+    getMetrics: () => ({ width: 400, height: 300 }),
+  };
+  // exact boundary → false
+  assert.equal(vp.isStoredViewportExtreme({
+    ...opts,
+    viewportState: { offsetX: 600, offsetY: 500 },
+  }), false);
+  // outside X → true
+  assert.equal(vp.isStoredViewportExtreme({
+    ...opts,
+    viewportState: { offsetX: 601, offsetY: 0 },
+  }), true);
+  // outside Y → true
+  assert.equal(vp.isStoredViewportExtreme({
+    ...opts,
+    viewportState: { offsetX: 0, offsetY: 501 },
+  }), true);
+});
