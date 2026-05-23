@@ -1,0 +1,39 @@
+/* ── Animation helpers ────────────────────────────────────── */
+.cfw-fade-in {
+  animation: cfwFadeIn 0.4s ease both;
+}
+
+@keyframes cfwFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.cfw-stagger > * {
+  animation: cfwFadeIn 0.35s ease both;
+}
+
+.cfw-stagger > *:nth-child(1) { animation-delay: 0.04s; }
+.cfw-stagger > *:nth-child(2) { animation-delay: 0.08s; }
+.cfw-stagger > *:nth-child(3) { animation-delay: 0.12s; }
+.cfw-stagger > *:nth-child(4) { animation-delay: 0.16s; }
+.cfw-stagger > *:nth-child(5) { animation-delay: 0.20s; }
+.cfw-stagger > *:nth-child(6) { animation-delay: 0.24s; }
+
+/* ── State transitions ────────────────────────────────────── */
+.cfw-entry-exit {
+  animation: cfwEntryExit 0.35s ease forwards;
+}
+
+@keyframes cfwEntryExit {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(-12px) scale(0.98); }
+}
+
+.cfw-workspace-enter {
+  animation: cfwWorkspaceEnter 0.4s ease both;
+}
+
+@keyframes cfwWorkspaceEnter {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
