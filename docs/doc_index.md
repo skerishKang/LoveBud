@@ -158,6 +158,7 @@ Reference 문서는 `docs/reference/` 아래에 정리됩니다.
 - [RECENT_REFACTORING.md](./engineering/RECENT_REFACTORING.md) - 최근 코드 구조 정리 이력
  - [PUBLIC_TREE_ADAPTER_BOUNDARY_AUDIT.md](./engineering/PUBLIC_TREE_ADAPTER_BOUNDARY_AUDIT.md) - #412 public tree adapter helper boundaries, export contract, loading-order risk, preview implications audit
  - [AUTH_EDITOR_RUNTIME_INVENTORY_834.md](./engineering/AUTH_EDITOR_RUNTIME_INVENTORY_834.md) - #834 auth/editor runtime inventory, dependency mapping, naming consistency audit, decomposition candidates
+ - [VIEWPORT_ORCHESTRATION_HOLD_DECISION.md](./engineering/VIEWPORT_ORCHESTRATION_HOLD_DECISION.md) - Viewport orchestration split 완료 및 constants/readableCenter hold 판단 문서
 
 ## security 문서군
 
