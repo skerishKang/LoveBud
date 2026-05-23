@@ -6,6 +6,7 @@ const vm = require('node:vm');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const VIEWPORT_PATH = path.join(ROOT, 'js/editor/editor-canvas-viewport.js');
+const VIEWPORT_FIT_PATH = path.join(ROOT, 'js/editor/editor-canvas-viewport-fit.js');
 const VIEWPORT_BRANCHES_PATH = path.join(ROOT, 'js/editor/editor-canvas-viewport-branches.js');
 const VIEWPORT_ACTIONS_PATH = path.join(ROOT, 'js/editor/editor-canvas-viewport-actions.js');
 const VIEWPORT_CONTROLS_PATH = path.join(ROOT, 'js/editor/editor-canvas-viewport-controls.js');
@@ -18,8 +19,12 @@ function createViewport() {
   const context = { window: {} };
   vm.createContext(context);
   vm.runInContext(fs.readFileSync(VIEWPORT_PATH, 'utf8'), context);
-  // Load helper modules so thin wrappers (drawBranch, focusNodeById, etc.)
+  // Load helper modules so thin wrappers (getReadableViewportOffset, getFitViewport, drawBranch, etc.)
   // can delegate to the extracted implementations.
+  // Load order matches editor.html: viewport → fit → branches → actions → controls
+  if (fs.existsSync(VIEWPORT_FIT_PATH)) {
+    vm.runInContext(fs.readFileSync(VIEWPORT_FIT_PATH, 'utf8'), context);
+  }
   if (fs.existsSync(VIEWPORT_BRANCHES_PATH)) {
     vm.runInContext(fs.readFileSync(VIEWPORT_BRANCHES_PATH, 'utf8'), context);
   }
@@ -40,7 +45,11 @@ function createViewportContext() {
   const context = { window: {} };
   vm.createContext(context);
   vm.runInContext(fs.readFileSync(VIEWPORT_PATH, 'utf8'), context);
-  // Load viewport branches helper (order matches editor.html: viewport → branches → actions → controls)
+  // Load viewport fit helper (order matches editor.html: viewport → fit → branches → actions → controls)
+  if (fs.existsSync(VIEWPORT_FIT_PATH)) {
+    vm.runInContext(fs.readFileSync(VIEWPORT_FIT_PATH, 'utf8'), context);
+  }
+  // Load viewport branches helper
   if (fs.existsSync(VIEWPORT_BRANCHES_PATH)) {
     vm.runInContext(fs.readFileSync(VIEWPORT_BRANCHES_PATH, 'utf8'), context);
   }
@@ -1503,4 +1512,25 @@ test('viewport branches helper — wrapper on LoveBudEditorCanvasViewport.drawBr
   const { viewport: vp } = createViewportContext();
   assert.equal(typeof vp.drawBranch, 'function');
   assert.equal(vp.drawBranch.length, 3); // (svg, startPos, endPos)
+});
+
+// ---------------------------------------------------------------------------
+// viewport fit helper — namespace check
+// ---------------------------------------------------------------------------
+test('viewport fit helper — exposes LoveBudEditorCanvasViewportFit methods', () => {
+  const { context } = createViewportContext();
+  const fit = context.window.LoveBudEditorCanvasViewportFit;
+  assert.ok(fit, 'namespace must exist');
+  assert.equal(typeof fit.getReadableViewportOffset, 'function');
+  assert.equal(typeof fit.getFitViewport, 'function');
+  assert.equal(fit.getReadableViewportOffset.length, 3); // (viewportApi, options, preferredScale)
+  assert.equal(fit.getFitViewport.length, 2); // (viewportApi, options)
+});
+
+test('viewport fit helper — wrappers on LoveBudEditorCanvasViewport are preserved', () => {
+  const { viewport: vp } = createViewportContext();
+  assert.equal(typeof vp.getReadableViewportOffset, 'function');
+  assert.equal(vp.getReadableViewportOffset.length, 1); // (options) — preferredScale has default, not counted by Function.length
+  assert.equal(typeof vp.getFitViewport, 'function');
+  assert.equal(vp.getFitViewport.length, 1); // (options)
 });
