@@ -292,11 +292,11 @@ test('editor-canvas.js — switchToStructuredMode has fallback to direct persist
   );
 });
 
-test('editor-canvas.js — persistStoredPositions is NOT delegated to transition helper', () => {
-  assert.doesNotMatch(
+test('editor-canvas.js — persistStoredPositions delegated to transition helper with fallback (free-mode only)', () => {
+  assert.match(
     canvasSource,
     /layoutTransition\.persistStoredPositions/,
-    'persistStoredPositions must NOT be delegated to transition helper'
+    'persistStoredPositions must be delegated to layoutTransition helper'
   );
 });
 
@@ -392,16 +392,80 @@ test('editor-canvas.js — initCanvas is still NOT delegated to transition helpe
   );
 });
 
-test('editor-canvas.js — persistStoredPositions is still NOT delegated to transition helper', () => {
-  assert.doesNotMatch(
+test('editor-canvas.js — persistStoredPositions still delegated to transition helper with fallback', () => {
+  assert.match(
     canvasSource,
     /layoutTransition\.persistStoredPositions/,
-    'persistStoredPositions must NOT be delegated to layoutTransition helper'
+    'persistStoredPositions must be delegated to layoutTransition helper'
   );
 });
 
 // ---------------------------------------------------------------------------
-// 13. switchToFreeMode / switchToStructuredMode still exist in editor-canvas.js
+// 13. persistStoredPositions helper delegation (Stage 57)
+// ---------------------------------------------------------------------------
+
+test('layout transition helper — persistStoredPositions is exported on namespace', () => {
+  assert.match(
+    transitionSource,
+    /persistStoredPositions:\s*persistStoredPositions/,
+    'persistStoredPositions must be exported on window.LoveBudEditorCanvasLayoutTransition'
+  );
+});
+
+test('layout transition helper — persistStoredPositions function is defined', () => {
+  assert.match(
+    transitionSource,
+    /function\s+persistStoredPositions\s*\(\s*persistFn\s*\)/,
+    'persistStoredPositions must be defined with persistFn parameter'
+  );
+});
+
+test('editor-canvas.js — switchToFreeMode delegates persistStoredPositions via transition helper', () => {
+  const block = canvasSource.slice(
+    canvasSource.indexOf('function switchToFreeMode'),
+    canvasSource.indexOf('function switchToStructuredMode')
+  );
+  assert.match(
+    block,
+    /layoutTransition\.persistStoredPositions\s*\(\s*persistStoredPositions\s*\)/,
+    'switchToFreeMode must delegate persistStoredPositions via layoutTransition helper'
+  );
+});
+
+test('editor-canvas.js — switchToFreeMode has fallback to direct persistStoredPositions', () => {
+  const block = canvasSource.slice(
+    canvasSource.indexOf('function switchToFreeMode'),
+    canvasSource.indexOf('function switchToStructuredMode')
+  );
+  assert.match(
+    block,
+    /else\s*\{[\s\S]*?persistStoredPositions\s*\(\s*\)/,
+    'switchToFreeMode must have fallback to direct persistStoredPositions()'
+  );
+});
+
+test('editor-canvas.js — switchToStructuredMode still does NOT call persistStoredPositions', () => {
+  const block = canvasSource.slice(
+    canvasSource.indexOf('function switchToStructuredMode'),
+    canvasSource.indexOf('function setLayoutMode')
+  );
+  assert.doesNotMatch(
+    block,
+    /persistStoredPositions/,
+    'switchToStructuredMode must not call persistStoredPositions() (asymmetry preserved)'
+  );
+});
+
+test('editor-canvas.js — initCanvas is still NOT delegated to transition helper', () => {
+  assert.doesNotMatch(
+    canvasSource,
+    /layoutTransition\.initCanvas/,
+    'initCanvas must NOT be delegated to layoutTransition helper'
+  );
+});
+
+// ---------------------------------------------------------------------------
+// 14. switchToFreeMode / switchToStructuredMode still exist in editor-canvas.js
 // ---------------------------------------------------------------------------
 
 test('layout transition — switchToFreeMode still exists in editor-canvas.js', () => {

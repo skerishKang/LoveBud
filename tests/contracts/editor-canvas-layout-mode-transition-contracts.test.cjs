@@ -417,11 +417,11 @@ test('render refresh — fitViewportToTree delegated to transition helper with f
   );
 });
 
-test('render refresh — persistStoredPositions is NOT delegated to transition helper', () => {
-  assert.doesNotMatch(
+test('render refresh — persistStoredPositions delegated to transition helper with fallback (free-mode only)', () => {
+  assert.match(
     canvasSource,
     /layoutTransition\.persistStoredPositions/,
-    'persistStoredPositions must NOT be delegated to layoutTransition helper'
+    'persistStoredPositions must be delegated to layoutTransition helper'
   );
 });
 
@@ -509,6 +509,83 @@ test('render refresh — helper missing fallback: direct persistLayoutMode call 
     canvasSource,
     /else\s*\{[\s\S]*?persistLayoutMode\s*\(\s*['"]structured['"]\s*\)/,
     'direct persistLayoutMode("structured") fallback must remain'
+  );
+});
+
+// ---------------------------------------------------------------------------
+// 13. persistStoredPositions delegation contracts — Stage 57
+// ---------------------------------------------------------------------------
+
+test('persistStoredPositions delegation — switchToFreeMode calls persistStoredPositions via helper', () => {
+  const block = canvasSource.slice(
+    canvasSource.indexOf('function switchToFreeMode'),
+    canvasSource.indexOf('function switchToStructuredMode')
+  );
+  assert.match(
+    block,
+    /layoutTransition\.persistStoredPositions\s*\(\s*persistStoredPositions\s*\)/,
+    'switchToFreeMode must delegate persistStoredPositions via layoutTransition helper'
+  );
+});
+
+test('persistStoredPositions delegation — switchToFreeMode has fallback to direct persistStoredPositions', () => {
+  const block = canvasSource.slice(
+    canvasSource.indexOf('function switchToFreeMode'),
+    canvasSource.indexOf('function switchToStructuredMode')
+  );
+  assert.match(
+    block,
+    /else\s*\{[\s\S]*?persistStoredPositions\s*\(\s*\)/,
+    'switchToFreeMode must have fallback to direct persistStoredPositions() call'
+  );
+});
+
+test('persistStoredPositions delegation — switchToStructuredMode still does NOT call persistStoredPositions', () => {
+  const block = canvasSource.slice(
+    canvasSource.indexOf('function switchToStructuredMode'),
+    canvasSource.indexOf('function setLayoutMode')
+  );
+  assert.doesNotMatch(
+    block,
+    /persistStoredPositions/,
+    'switchToStructuredMode must not call persistStoredPositions() (asymmetry preserved)'
+  );
+});
+
+test('persistStoredPositions delegation — fitViewportToTree delegation from Stage 56 not broken', () => {
+  const freeBlock = canvasSource.slice(
+    canvasSource.indexOf('function switchToFreeMode'),
+    canvasSource.indexOf('function switchToStructuredMode')
+  );
+  assert.match(
+    freeBlock,
+    /layoutTransition\.fitViewportToTree\s*\(\s*fitViewportToTree\s*\)/,
+    'Stage 56 fitViewportToTree delegation must remain in switchToFreeMode'
+  );
+  const structuredBlock = canvasSource.slice(
+    canvasSource.indexOf('function switchToStructuredMode'),
+    canvasSource.indexOf('function setLayoutMode')
+  );
+  assert.match(
+    structuredBlock,
+    /layoutTransition\.fitViewportToTree\s*\(\s*fitViewportToTree\s*\)/,
+    'Stage 56 fitViewportToTree delegation must remain in switchToStructuredMode'
+  );
+});
+
+test('persistStoredPositions delegation — initCanvas is NOT delegated to transition helper', () => {
+  assert.doesNotMatch(
+    canvasSource,
+    /layoutTransition\.initCanvas/,
+    'initCanvas must NOT be delegated to layoutTransition helper'
+  );
+});
+
+test('persistStoredPositions delegation — helper missing fallback: direct persistStoredPositions preserved', () => {
+  assert.match(
+    canvasSource,
+    /else\s*\{[\s\S]*?persistStoredPositions\s*\(\s*\)/,
+    'direct persistStoredPositions() fallback must remain'
   );
 });
 
