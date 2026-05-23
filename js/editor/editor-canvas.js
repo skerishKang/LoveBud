@@ -873,8 +873,7 @@ function createEditorCanvas(deps) {
                 shouldRender = true;
             }
             viewportState.isPanning = false;
-            canvas.classList.remove('panning');
-            canvas.style.cursor = viewportState.layoutMode === 'structured' ? 'default' : 'grab';
+            uiHelpers.resetCanvasPanUI(canvas, viewportState.layoutMode);
             if (shouldRender) {
                 persistStoredPositions();
                 initCanvas();
