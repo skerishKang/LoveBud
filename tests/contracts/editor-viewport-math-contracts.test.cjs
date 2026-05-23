@@ -6,6 +6,7 @@ const vm = require('node:vm');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const VIEWPORT_PATH = path.join(ROOT, 'js/editor/editor-canvas-viewport.js');
+const VIEWPORT_ACTIONS_PATH = path.join(ROOT, 'js/editor/editor-canvas-viewport-actions.js');
 const VIEWPORT_CONTROLS_PATH = path.join(ROOT, 'js/editor/editor-canvas-viewport-controls.js');
 
 /**
@@ -16,6 +17,14 @@ function createViewport() {
   const context = { window: {} };
   vm.createContext(context);
   vm.runInContext(fs.readFileSync(VIEWPORT_PATH, 'utf8'), context);
+  // Load helper modules so thin wrappers (focusNodeById, recenterViewport, etc.)
+  // can delegate to the extracted implementations.
+  if (fs.existsSync(VIEWPORT_ACTIONS_PATH)) {
+    vm.runInContext(fs.readFileSync(VIEWPORT_ACTIONS_PATH, 'utf8'), context);
+  }
+  if (fs.existsSync(VIEWPORT_CONTROLS_PATH)) {
+    vm.runInContext(fs.readFileSync(VIEWPORT_CONTROLS_PATH, 'utf8'), context);
+  }
   return context.window.LoveBudEditorCanvasViewport;
 }
 
@@ -27,7 +36,11 @@ function createViewportContext() {
   const context = { window: {} };
   vm.createContext(context);
   vm.runInContext(fs.readFileSync(VIEWPORT_PATH, 'utf8'), context);
-  // Load viewport controls helper in the same context (order matches editor.html)
+  // Load viewport actions helper (order matches editor.html: viewport → actions → controls)
+  if (fs.existsSync(VIEWPORT_ACTIONS_PATH)) {
+    vm.runInContext(fs.readFileSync(VIEWPORT_ACTIONS_PATH, 'utf8'), context);
+  }
+  // Load viewport controls helper
   if (fs.existsSync(VIEWPORT_CONTROLS_PATH)) {
     vm.runInContext(fs.readFileSync(VIEWPORT_CONTROLS_PATH, 'utf8'), context);
   }
@@ -1443,4 +1456,26 @@ test('viewport controls helper — exposes LoveBudEditorCanvasViewportControls.b
     context.window.LoveBudEditorCanvasViewportControls.bindControls.length,
     2, // (viewportApi, options)
   );
+});
+
+// ---------------------------------------------------------------------------
+// viewport actions helper — namespace check
+// ---------------------------------------------------------------------------
+test('viewport actions helper — exposes LoveBudEditorCanvasViewportActions methods', () => {
+  const { context } = createViewportContext();
+  const actions = context.window.LoveBudEditorCanvasViewportActions;
+  assert.ok(actions, 'namespace must exist');
+  assert.equal(typeof actions.focusNodeById, 'function');
+  assert.equal(typeof actions.recenterViewport, 'function');
+  assert.equal(typeof actions.zoomBy, 'function');
+  assert.equal(actions.focusNodeById.length, 2); // (viewportApi, options)
+  assert.equal(actions.recenterViewport.length, 2);
+  assert.equal(actions.zoomBy.length, 2);
+});
+
+test('viewport actions helper — wrappers on LoveBudEditorCanvasViewport are preserved', () => {
+  const { viewport: vp } = createViewportContext();
+  assert.equal(typeof vp.focusNodeById, 'function');
+  assert.equal(typeof vp.recenterViewport, 'function');
+  assert.equal(typeof vp.zoomBy, 'function');
 });
