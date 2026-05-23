@@ -300,3 +300,28 @@ test('layout mode transition — createEditorCanvas function signature is preser
     'createEditorCanvas(deps) function signature must be preserved'
   );
 });
+
+// ---------------------------------------------------------------------------
+// 11. Additional stabilization contracts for Stage 53
+// ---------------------------------------------------------------------------
+
+test('layout mode transition — switchToStructuredMode does NOT call persistStoredPositions', () => {
+  const switchToStructuredBlock = canvasSource.slice(
+    canvasSource.indexOf('function switchToStructuredMode'),
+    canvasSource.indexOf('function setLayoutMode')
+  );
+  assert.doesNotMatch(
+    switchToStructuredBlock,
+    /persistStoredPositions/,
+    'switchToStructuredMode must not call persistStoredPositions()'
+  );
+});
+
+test('layout mode transition — transition helper loaded before editor-canvas.js in editor.html', () => {
+  const transitionIdx = editorHtml.indexOf('editor-canvas-layout-transition.js');
+  const canvasIdx = editorHtml.indexOf('editor-canvas.js');
+  assert.ok(transitionIdx >= 0, 'editor-canvas-layout-transition.js must be present in editor.html');
+  assert.ok(canvasIdx >= 0, 'editor-canvas.js must be present in editor.html');
+  assert.ok(transitionIdx < canvasIdx, 'transition helper must be loaded before editor-canvas.js');
+});
+
