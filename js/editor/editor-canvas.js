@@ -394,7 +394,6 @@ function createEditorCanvas(deps) {
 
     function bindNodeDrag(nodeEl, mem) {
         nodeEl.style.cursor = viewportState.layoutMode === 'structured' ? 'default' : 'grab';
-        let touchStartPoint = null;
 
         const selectMemoryNode = () => {
             onNodeClick(nodeEl, mem);
@@ -426,54 +425,11 @@ function createEditorCanvas(deps) {
             nodeEl.style.cursor = 'grabbing';
         });
 
-        nodeEl.addEventListener('click', (e) => {
-            if (nodeEl.dataset.skipNextClick === '1') {
-                nodeEl.dataset.skipNextClick = '';
-                e.preventDefault();
-                e.stopPropagation();
-                return;
-            }
-            if (nodeEl.dataset.suppressClick === '1') {
-                nodeEl.dataset.suppressClick = '';
-                e.preventDefault();
-                e.stopPropagation();
-                return;
-            }
-            e.preventDefault();
-            e.stopPropagation();
-            selectMemoryNode();
-        });
-
-        nodeEl.addEventListener('touchstart', (e) => {
-            if (e.target.closest('button')) return;
-            const touch = e.changedTouches && e.changedTouches[0];
-            if (!touch) return;
-            touchStartPoint = {
-                x: touch.clientX,
-                y: touch.clientY
-            };
-            renderAffordanceForHoveredMemory(mem);
-        }, { passive: true });
-
-        nodeEl.addEventListener('touchend', (e) => {
-            if (!touchStartPoint) return;
-            const touch = e.changedTouches && e.changedTouches[0];
-            if (!touch) {
-                touchStartPoint = null;
-                return;
-            }
-            const dx = touch.clientX - touchStartPoint.x;
-            const dy = touch.clientY - touchStartPoint.y;
-            touchStartPoint = null;
-            if (Math.abs(dx) > NODE_TAP_SELECT_THRESHOLD || Math.abs(dy) > NODE_TAP_SELECT_THRESHOLD) return;
-            e.preventDefault();
-            e.stopPropagation();
-            nodeEl.dataset.skipNextClick = '1';
-            selectMemoryNode();
-        }, { passive: false });
-
-        nodeEl.addEventListener('touchcancel', () => {
-            touchStartPoint = null;
+        uiHelpers.bindNodePointerSelection(nodeEl, {
+            onSelect: selectMemoryNode,
+            onHover: renderAffordanceForHoveredMemory,
+            mem: mem,
+            tapThreshold: NODE_TAP_SELECT_THRESHOLD
         });
 
         uiHelpers.bindNodeControlShortcuts(nodeEl, selectMemoryNode);
