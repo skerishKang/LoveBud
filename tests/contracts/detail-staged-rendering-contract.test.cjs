@@ -24,7 +24,7 @@ test('detail loader renders current memory before tree and connected fetches set
 
 test('detail page exposes explicit initial media loading state', () => {
   const html = read('pages/detail.html');
-  const css = read('css/detail.css');
+  const css = read('css/detail/components.css');
 
   assert.match(html, /class="detail-media-loading"/);
   assert.match(html, /대표 장면을 준비하고 있어요/);
