@@ -401,11 +401,11 @@ test('render refresh — switchToStructuredMode does NOT call persistStoredPosit
   );
 });
 
-test('render refresh — initCanvas is NOT delegated to transition helper', () => {
-  assert.doesNotMatch(
+test('render refresh — initCanvas is delegated to transition helper with fallback', () => {
+  assert.match(
     canvasSource,
     /layoutTransition\.initCanvas/,
-    'initCanvas must NOT be delegated to layoutTransition helper'
+    'initCanvas must be delegated to layoutTransition helper'
   );
 });
 
@@ -573,11 +573,11 @@ test('persistStoredPositions delegation — fitViewportToTree delegation from St
   );
 });
 
-test('persistStoredPositions delegation — initCanvas is NOT delegated to transition helper', () => {
-  assert.doesNotMatch(
+test('persistStoredPositions delegation — initCanvas is delegated to transition helper', () => {
+  assert.match(
     canvasSource,
     /layoutTransition\.initCanvas/,
-    'initCanvas must NOT be delegated to layoutTransition helper'
+    'initCanvas must be delegated to layoutTransition helper'
   );
 });
 
@@ -679,11 +679,16 @@ test('persistStoredPositions precise fallback — Stage 56 fitViewportToTree del
   );
 });
 
-test('persistStoredPositions precise fallback — initCanvas NOT delegated to layoutTransition', () => {
-  assert.doesNotMatch(
+test('persistStoredPositions precise fallback — helper missing fallback: direct initCanvas preserved', () => {
+  assert.match(
     canvasSource,
-    /layoutTransition\.initCanvas/,
-    'initCanvas must NOT be delegated to layoutTransition helper'
+    /else\s*\{[\s\S]*?initCanvas\s*\(\s*\)/,
+    'direct initCanvas() fallback is handled by ternary directly, but checking its existence'
+  );
+  assert.match(
+    canvasSource,
+    /:\s*initCanvas\s*\(\s*\)/,
+    'initCanvas() must be called as a ternary fallback'
   );
 });
 
@@ -745,11 +750,31 @@ test('layout mode init canvas order — switchToStructuredMode sequence check', 
   );
 });
 
-test('layout mode init canvas order — initCanvas remains non-delegated', () => {
-  assert.doesNotMatch(
-    canvasSource,
-    /layoutTransition\.initCanvas/,
-    'initCanvas must NOT be delegated to layoutTransition helper yet'
+// ---------------------------------------------------------------------------
+// 16. Layout mode init canvas delegation — Stage 60
+// ---------------------------------------------------------------------------
+
+test('layout mode init canvas delegation — switchToFreeMode has precise ternary delegation', () => {
+  const block = canvasSource.slice(
+    canvasSource.indexOf('function switchToFreeMode'),
+    canvasSource.indexOf('function switchToStructuredMode')
+  );
+  assert.match(
+    block,
+    /typeof\s+layoutTransition\.initCanvas\s*===\s*['"]function['"]\s*\?[\s\S]*?layoutTransition\.initCanvas\s*\(\s*initCanvas\s*\)[\s\S]*?:[\s\S]*?initCanvas\s*\(\s*\)/,
+    'switchToFreeMode must delegate initCanvas precisely with a ternary fallback'
+  );
+});
+
+test('layout mode init canvas delegation — switchToStructuredMode has precise ternary delegation', () => {
+  const block = canvasSource.slice(
+    canvasSource.indexOf('function switchToStructuredMode'),
+    canvasSource.indexOf('function setLayoutMode')
+  );
+  assert.match(
+    block,
+    /typeof\s+layoutTransition\.initCanvas\s*===\s*['"]function['"]\s*\?[\s\S]*?layoutTransition\.initCanvas\s*\(\s*initCanvas\s*\)[\s\S]*?:[\s\S]*?initCanvas\s*\(\s*\)/,
+    'switchToStructuredMode must delegate initCanvas precisely with a ternary fallback'
   );
 });
 
