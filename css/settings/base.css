@@ -1,0 +1,60 @@
+/*
+ * LoveBud Settings page styles
+ * Extracted from pages/settings.html.
+ * Page-specific only. Do not move these rules into global.css.
+ */
+
+.settings-layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+}
+
+.settings-card {
+  width: 100%;
+  max-width: 480px;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--outline-variant);
+  box-shadow: var(--shadow-whisper);
+  padding: 48px;
+  position: relative;
+}
+
+.settings-card h1 {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--on-surface);
+  margin-bottom: 8px;
+  letter-spacing: -0.03em;
+}
+
+.settings-subtitle {
+  color: var(--on-surface-variant);
+  font-size: 0.95rem;
+  margin-bottom: 40px;
+  line-height: 1.5;
+  max-width: 320px;
+}
+
+.settings-section {
+  margin-bottom: 32px;
+}
+
+.settings-section:last-of-type {
+  margin-bottom: 0;
+}
+
+.settings-divider {
+  height: 1px;
+  background: var(--outline-variant);
+  margin: 32px 0;
+}
