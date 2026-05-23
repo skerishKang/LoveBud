@@ -1,0 +1,15 @@
+.home-v3-branch {
+    position: absolute;
+    height: 7px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, rgba(198, 154, 137, 0.28), rgba(157, 173, 147, 0.45));
+    transform-origin: left center;
+    opacity: 0.8;
+}
+
+.branch-a { left: 124px; top: 424px; width: 236px; transform: rotate(-15deg); }
+.branch-b { left: 338px; top: 334px; width: 188px; transform: rotate(7deg); }
+.branch-c { left: 340px; top: 338px; width: 218px; transform: rotate(-55deg); }
+.branch-d { left: 346px; top: 344px; width: 204px; transform: rotate(53deg); }
+.branch-e { left: 188px; top: 514px; width: 198px; transform: rotate(-40deg); }
+.branch-f { left: 434px; top: 410px; width: 164px; transform: rotate(-29deg); }
