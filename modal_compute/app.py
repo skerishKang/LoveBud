@@ -172,27 +172,71 @@ def get_growing_browse_snapshot(
 def get_public_community_memories(
     treeId: str | None = None,
     limit: int = Query(default=100, ge=1, le=200),
+    x_lovebud_request_id: str | None = Header(default=None),
 ) -> list[dict]:
-    safe_tree_id = validate_optional_id(treeId, "treeId")
-    return fetch_public_memories(tree_id=safe_tree_id, limit=limit)
+    logger = RequestLogger(
+        request_id=x_lovebud_request_id,
+        route="/modal/community/memories",
+        method="GET",
+    )
+    try:
+        safe_tree_id = validate_optional_id(treeId, "treeId")
+        result = fetch_public_memories(tree_id=safe_tree_id, limit=limit)
+        logger.log_success(status_code=200)
+        return result
+    except Exception:
+        logger.log_error(status_code=500, error_category="UNEXPECTED_ERROR")
+        raise
 
 
 @web_app.get("/modal/memories/{memory_id}")
-def get_public_memory_detail(memory_id: str) -> dict:
-    safe_memory_id = validate_required_id(memory_id, "memoryId")
-    memory = fetch_public_memory(safe_memory_id)
-    if not memory:
-        raise HTTPException(status_code=404, detail="Memory not found")
-    return memory
+def get_public_memory_detail(
+    memory_id: str,
+    x_lovebud_request_id: str | None = Header(default=None),
+) -> dict:
+    logger = RequestLogger(
+        request_id=x_lovebud_request_id,
+        route="/modal/memories/id",
+        method="GET",
+    )
+    try:
+        safe_memory_id = validate_required_id(memory_id, "memoryId")
+        memory = fetch_public_memory(safe_memory_id)
+        if not memory:
+            logger.log_error(status_code=404, error_category="NOT_FOUND")
+            raise HTTPException(status_code=404, detail="Memory not found")
+        logger.log_success(status_code=200)
+        return memory
+    except HTTPException:
+        raise
+    except Exception:
+        logger.log_error(status_code=500, error_category="UNEXPECTED_ERROR")
+        raise
 
 
 @web_app.get("/modal/trees/{tree_id}")
-def get_public_tree_detail(tree_id: str) -> dict:
-    safe_tree_id = validate_required_id(tree_id, "treeId")
-    tree = fetch_public_tree(safe_tree_id)
-    if not tree:
-        raise HTTPException(status_code=404, detail="Tree not found")
-    return tree
+def get_public_tree_detail(
+    tree_id: str,
+    x_lovebud_request_id: str | None = Header(default=None),
+) -> dict:
+    logger = RequestLogger(
+        request_id=x_lovebud_request_id,
+        route="/modal/trees/id",
+        method="GET",
+    )
+    try:
+        safe_tree_id = validate_required_id(tree_id, "treeId")
+        tree = fetch_public_tree(safe_tree_id)
+        if not tree:
+            logger.log_error(status_code=404, error_category="NOT_FOUND")
+            raise HTTPException(status_code=404, detail="Tree not found")
+        logger.log_success(status_code=200)
+        return tree
+    except HTTPException:
+        raise
+    except Exception:
+        logger.log_error(status_code=500, error_category="UNEXPECTED_ERROR")
+        raise
 
 
 @web_app.get("/modal/private/trees")

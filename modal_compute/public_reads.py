@@ -198,8 +198,12 @@ def fetch_latest_public_tree_snapshots(limit: int = 12, sort: str = "latest") ->
                 has_title = _table_has_column(cur, "trees", "title")
 
                 if has_memories and has_title:
+                    q_start = time.time()
                     cur.execute(modern_query, (limit,))
-                    return [normalize_row(row) for row in cur.fetchall()]
+                    rows = cur.fetchall()
+                    q_duration = (time.time() - q_start) * 1000
+                    print(f"[LoveBudModal] Latest browse query took {q_duration:.2f}ms (limit={limit})")
+                    return [normalize_row(row) for row in rows]
 
                 # Fallback: legacy schema (name/is_public/payload)
                 has_name = _table_has_column(cur, "trees", "name")
@@ -305,8 +309,12 @@ def fetch_growing_public_tree_snapshots(limit: int = 6) -> list[dict[str, Any]]:
                 has_title = _table_has_column(cur, "trees", "title")
 
                 if has_memories and has_title:
+                    q_start = time.time()
                     cur.execute(modern_query, (limit,))
-                    return [normalize_row(row, stage_override="growing") for row in cur.fetchall()]
+                    rows = cur.fetchall()
+                    q_duration = (time.time() - q_start) * 1000
+                    print(f"[LoveBudModal] Growing browse query took {q_duration:.2f}ms (limit={limit})")
+                    return [normalize_row(row, stage_override="growing") for row in rows]
 
                 # Fallback: legacy schema (name/is_public/payload)
                 has_name = _table_has_column(cur, "trees", "name")
