@@ -1,0 +1,115 @@
+.tree-card-preview-strip {
+    position: absolute;
+    pointer-events: none;
+    z-index: 3;
+    height: 42px;
+    color: rgba(255, 248, 245, 0.92);
+}
+
+.tree-card-preview-strip[hidden] {
+    display: none !important;
+}
+
+.tree-card-preview-strip-media {
+    left: 18px;
+    right: 18px;
+    bottom: 13px;
+    color: rgba(255, 248, 245, 0.9);
+    filter: drop-shadow(0 7px 12px rgba(50, 38, 35, 0.26));
+}
+
+.tree-card-preview-strip-fallback {
+    left: 50%;
+    top: 32px;
+    width: 112px;
+    transform: translateX(-50%);
+    color: rgba(144, 73, 81, 0.72);
+    filter: none;
+}
+
+.tree-card-preview-line,
+.tree-card-preview-node {
+    position: absolute;
+    display: block;
+}
+
+.tree-card-preview-line {
+    height: 2px;
+    border-radius: 999px;
+    background: currentColor;
+    opacity: 0.74;
+    transform-origin: left center;
+}
+
+.tree-card-preview-line-main {
+    left: 10px;
+    right: 10px;
+    top: 23px;
+}
+
+.tree-card-preview-line-branch {
+    left: 44%;
+    top: 22px;
+    width: 34px;
+    transform: rotate(-32deg);
+    opacity: 0.58;
+}
+
+.tree-card-preview-node {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: currentColor;
+    box-shadow:
+        0 0 0 5px rgba(255, 248, 245, 0.15),
+        0 6px 14px rgba(50, 38, 35, 0.16);
+}
+
+.tree-card-preview-strip-fallback .tree-card-preview-node {
+    box-shadow: 0 0 0 5px rgba(144, 73, 81, 0.08);
+}
+
+.tree-card-preview-node-root {
+    left: 8px;
+    top: 18px;
+}
+
+.tree-card-preview-node-branch {
+    left: 45%;
+    top: 8px;
+    color: rgba(255, 222, 219, 0.92);
+}
+
+.tree-card-preview-strip-fallback .tree-card-preview-node-branch {
+    color: rgba(122, 139, 110, 0.68);
+}
+
+.tree-card-preview-node-leaf {
+    left: 58%;
+    top: 18px;
+    color: rgba(255, 232, 227, 0.94);
+}
+
+.tree-card-preview-strip-fallback .tree-card-preview-node-leaf {
+    color: rgba(200, 116, 128, 0.66);
+}
+
+.tree-card-preview-node-end {
+    right: 8px;
+    top: 18px;
+}
+
+.tree-card-preview-empty .tree-card-preview-node-branch,
+.tree-card-preview-empty .tree-card-preview-node-leaf,
+.tree-card-preview-empty .tree-card-preview-line-branch {
+    opacity: 0.28;
+}
+
+.tree-card-preview-sprout .tree-card-preview-node-end {
+    opacity: 0.38;
+}
+
+.tree-card-preview-full .tree-card-preview-line-branch,
+.tree-card-preview-full .tree-card-preview-node-branch {
+    opacity: 0.92;
+}

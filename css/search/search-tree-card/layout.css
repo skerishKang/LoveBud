@@ -1,0 +1,102 @@
+.tree-card {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding: 14px;
+    background:
+        radial-gradient(circle at 30% 20%, rgba(255, 248, 245, 0.92), transparent 52%),
+        linear-gradient(145deg, rgba(255, 255, 255, 0.86), rgba(255, 248, 245, 0.64)),
+        rgba(255, 255, 255, 0.82);
+    border-radius: 1.85rem;
+    border: 1px solid rgba(144, 73, 81, 0.08);
+    margin-bottom: 0;
+    transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    box-shadow:
+        0 20px 48px rgba(75, 64, 57, 0.1),
+        0 0 0 1px rgba(255, 255, 255, 0.62) inset;
+    min-width: 0;
+    height: 336px;
+}
+
+.tree-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, rgba(200,116,128,0.6), rgba(240,193,198,0.6));
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.tree-card::after {
+    content: '';
+    position: absolute;
+    top: 26px;
+    right: 0;
+    bottom: 26px;
+    width: 4px;
+    border-radius: 999px 0 0 999px;
+    background: linear-gradient(180deg, rgba(144, 73, 81, 0.80), rgba(122, 139, 110, 0.68));
+    box-shadow:
+        -10px 0 22px rgba(144, 73, 81, 0.12),
+        -4px 0 12px rgba(122, 139, 110, 0.10);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(4px);
+    transition: opacity 0.24s ease, transform 0.24s ease;
+}
+
+.tree-card:hover {
+    transform: translateY(-3px);
+    border-color: rgba(144,73,81,0.16);
+    box-shadow:
+        0 24px 56px rgba(75, 64, 57, 0.14),
+        0 0 0 1px rgba(255, 255, 255, 0.82) inset;
+}
+
+.tree-card:focus-visible {
+    outline: 2px solid rgba(122, 139, 110, 0.48);
+    outline-offset: 4px;
+    border-color: rgba(122, 139, 110, 0.24);
+}
+
+.tree-card:hover .tree-card-media::before,
+.tree-card.is-active .tree-card-media::before {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+.tree-card.is-active {
+    background:
+        radial-gradient(circle at 30% 20%, rgba(255, 248, 245, 0.96), transparent 52%),
+        linear-gradient(145deg, rgba(255, 255, 255, 0.90), rgba(255, 246, 243, 0.76)),
+        rgba(255, 255, 255, 0.86);
+    border-color: rgba(144, 73, 81, 0.22);
+    box-shadow:
+        0 26px 60px rgba(144, 73, 81, 0.13),
+        0 0 0 1px rgba(255, 255, 255, 0.52) inset,
+        0 0 0 3px rgba(200, 116, 128, 0.10);
+}
+
+.tree-card.is-active::after {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.tree-card.is-active .tree-card-open-link {
+    background: rgba(144, 73, 81, 0.92);
+    border-color: rgba(144, 73, 81, 0.22);
+    color: var(--surface-container-lowest);
+}
+
+.tree-card:hover::before,
+.tree-card.is-active::before {
+    opacity: 1;
+}
