@@ -1,0 +1,98 @@
+/* ── Hub moment flow list ── */
+
+.my-trees-hub-flow {
+    margin-top: 16px;
+}
+
+.my-trees-hub-flow-label {
+    font-size: 12px;
+    font-weight: 800;
+    color: var(--on-surface-variant);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.my-trees-hub-flow-label .material-symbols-outlined {
+    font-size: 14px;
+}
+
+.my-trees-hub-flow-list {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 7px;
+    min-width: 0;
+    max-width: 100%;
+    align-items: stretch;
+}
+
+.my-trees-hub-flow-stage {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    min-width: 0;
+    max-width: 100%;
+    min-height: 42px !important;
+    justify-content: flex-start;
+    overflow: hidden;
+    width: 100%;
+    padding: 8px 10px !important;
+    border-radius: 12px !important;
+    background: rgba(255, 255, 255, 0.56) !important;
+    border: 1px solid rgba(144, 73, 81, 0.08);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.66);
+    color: var(--on-surface-variant) !important;
+    font-size: 12.5px !important;
+    line-height: 1.35;
+}
+
+.my-trees-hub-flow-stage-icon {
+    font-size: 14px;
+    flex: 0 0 auto;
+}
+
+.my-trees-hub-flow-stage-label {
+    min-width: 0;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    text-overflow: ellipsis;
+    word-break: break-word;
+    line-height: 1.35;
+}
+
+/* ── Hub flow controls ── */
+
+.my-trees-hub-flow-controls {
+    margin-top: 11px;
+}
+
+.my-trees-hub-flow-toggle {
+    display: inline;
+    color: var(--primary);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.2;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    padding: 0;
+    margin: 0;
+    text-decoration: underline;
+    text-decoration-color: rgba(144, 73, 81, 0.25);
+    text-underline-offset: 3px;
+}
+
+.my-trees-hub-flow-toggle:hover {
+    color: var(--primary-vibrant);
+    text-decoration-color: var(--primary);
+}
+
+.my-trees-hub-flow-toggle:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+    border-radius: 2px;
+}
