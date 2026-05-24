@@ -1,0 +1,78 @@
+/* ── Visitor Viewer Panel: Header & Metadata ── */
+
+.vv-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.vv-panel-eyebrow {
+    margin: 0 0 6px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: #9a7468;
+    opacity: 0.62;
+}
+
+.vv-panel-title {
+    margin: 0 0 8px;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #3f302b;
+}
+
+.vv-panel-title-lg {
+    margin: 4px 0 2px;
+    font-size: 1.04rem;
+    font-weight: 700;
+    color: #3f302b;
+}
+
+.vv-panel-sub {
+    margin: 2px 0 0;
+    font-size: 12px;
+    color: #9a8a82;
+}
+
+.vv-panel-desc {
+    margin: 0 0 12px;
+    font-size: 0.8rem;
+    line-height: 1.6;
+    color: #9a8a82;
+}
+
+.vv-panel-close {
+    flex: 0 0 auto;
+    border: 1px solid #e7e5e4;
+    border-radius: 999px;
+    background: #fff;
+    padding: 8px;
+    color: #78716c;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+    transition: all 0.2s;
+}
+
+.vv-panel-close:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.vv-panel-meta {
+    margin: 2px 0 0;
+    font-size: 13px;
+    color: #9a8a82;
+}
+
+.vv-panel-caption {
+    margin-top: 8px;
+    padding: 9px 10px;
+    border-radius: 13px;
+    background: rgba(255,241,243,0.34);
+    font-size: 12px;
+    line-height: 1.6;
+    color: #8a7a72;
+}
