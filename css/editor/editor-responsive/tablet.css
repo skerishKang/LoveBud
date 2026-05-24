@@ -1,0 +1,97 @@
+/* ── Editor responsive — tablet breakpoint (1024px) ────── */
+
+@media (max-width: 1024px) {
+    .editor-layout {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        width: 100%;
+        height: auto;
+        flex-direction: column;
+        padding: 12px 14px;
+        border-right: none;
+        border-bottom: 1px solid var(--outline-variant);
+        gap: 10px;
+        overflow: visible;
+    }
+
+    .editor-sidebar-back-wrap {
+        margin-bottom: 2px;
+    }
+
+    .editor-status-section,
+    .editor-add-section {
+        width: 100%;
+    }
+
+    .editor-add-section {
+        position: static;
+        margin-top: 0;
+        padding-top: 6px;
+        background: none;
+    }
+
+    .tool-group {
+        flex-direction: row;
+        gap: 8px;
+    }
+
+    .tool-group h3 {
+        display: none;
+    }
+
+    .tool-item {
+        width: auto;
+        flex-direction: row;
+        gap: 4px;
+        padding: 8px 12px;
+        background: var(--surface-container-low);
+        border-radius: 99px;
+    }
+
+    .tool-item .material-symbols-outlined {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+    }
+
+    .tool-item span:not(.material-symbols-outlined) {
+        font-size: 12px;
+    }
+
+    .detail-panel {
+        position: fixed;
+        right: 0;
+        top: 0;
+        height: 100vh;
+        width: 90%;
+        max-width: 400px;
+        z-index: 2000;
+        transform: translateX(100%);
+        transition: transform 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+        border-left: 1px solid var(--outline-variant);
+    }
+
+    .detail-panel.open {
+        transform: translateX(0);
+    }
+
+    .canvas-area {
+        height: 50vh;
+        min-height: 320px;
+    }
+
+    .editor-canvas-empty-guide {
+        top: 50%;
+    }
+
+    .node-card {
+        padding: 4px;
+    }
+
+    .node-img-wrapper {
+        width: 70px;
+        height: 70px;
+    }
+}
