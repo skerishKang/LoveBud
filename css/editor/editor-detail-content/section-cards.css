@@ -1,0 +1,42 @@
+/* ── Section cards ─────────────────────────────────────── */
+
+.editor-tree-meta-section,
+.editor-current-moment-card,
+.editor-moment-info-card,
+.editor-save-status-card {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+    border-radius: 18px;
+    background: white;
+    border: 1px solid rgba(144, 73, 81, 0.05);
+    box-shadow: 0 4px 12px rgba(75, 64, 57, 0.03);
+}
+
+.editor-tree-meta-section {
+    gap: 8px;
+}
+
+.editor-moment-info-card {
+    background: var(--surface-container-low);
+    border-color: rgba(144,73,81,0.06);
+    box-shadow: none;
+}
+
+.editor-current-moment-card {
+    gap: 9px;
+    background: var(--surface-container-lowest);
+    border: 1px solid rgba(144, 73, 81, 0.12);
+    box-shadow: 0 6px 16px rgba(75, 64, 57, 0.05);
+}
+
+/* ── Section eyebrow ───────────────────────────────────── */
+
+.editor-section-eyebrow {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--on-surface-variant);
+}
