@@ -1,0 +1,15 @@
+/* ── Status & Add section common ───────────────────────── */
+
+.editor-status-section,
+.editor-add-section {
+    width: 100%;
+}
+
+.editor-status-section h3,
+.editor-add-section h3 {
+    margin: 0 0 6px;
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1.4;
+    color: var(--on-surface);
+}
