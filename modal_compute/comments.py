@@ -14,6 +14,7 @@ from modal_compute.validation import (
     validate_required_uuid,
     validate_optional_string,
 )
+from modal_compute.write_validation import require_memory_visible_or_owner
 
 
 def normalize_comment_row(row: dict[str, Any]) -> dict[str, Any]:
@@ -31,6 +32,7 @@ def normalize_comment_row(row: dict[str, Any]) -> dict[str, Any]:
 def create_comment(memory_id: str, owner_id: str, body: str) -> dict[str, Any]:
     """Create a new comment on a memory."""
     safe_memory_id = validate_required_uuid(memory_id, "memoryId")
+    require_memory_visible_or_owner(safe_memory_id, owner_id)
 
     safe_body = validate_optional_string(body, 5000)
     if not safe_body:
@@ -53,9 +55,10 @@ def create_comment(memory_id: str, owner_id: str, body: str) -> dict[str, Any]:
     return normalize_comment_row(row)
 
 
-def fetch_comments(memory_id: str, limit: int = 50) -> list[dict[str, Any]]:
+def fetch_comments(memory_id: str, requester_uid: str, limit: int = 50) -> list[dict[str, Any]]:
     """Fetch comments for a memory, ordered by creation time."""
     safe_memory_id = validate_required_uuid(memory_id, "memoryId")
+    require_memory_visible_or_owner(safe_memory_id, requester_uid)
     safe_limit = max(1, min(limit, 200))
 
     def operation():

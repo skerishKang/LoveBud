@@ -52,3 +52,21 @@ def require_memory_owner(memory_id: str, owner_id: str) -> dict[str, Any]:
     if str(memory.get("tree_owner_id") or "") != owner_id:
         raise HTTPException(status_code=403, detail="Access denied: not your memory")
     return memory
+
+
+def require_memory_visible_or_owner(memory_id: str, requester_uid: str) -> dict[str, Any]:
+    """Allow access if the memory is public or the requester is the tree owner.
+
+    Private memories return 404 to avoid leaking existence to non-owners.
+    """
+    memory = fetch_memory_for_owner_check(memory_id)
+    if not memory:
+        raise HTTPException(status_code=404, detail="Memory not found")
+
+    visibility = str(memory.get("visibility") or "public")
+    is_owner = str(memory.get("tree_owner_id") or "") == requester_uid
+
+    if visibility == "private" and not is_owner:
+        raise HTTPException(status_code=404, detail="Memory not found")
+
+    return memory
