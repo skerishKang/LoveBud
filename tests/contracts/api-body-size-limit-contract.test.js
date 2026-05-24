@@ -109,7 +109,7 @@ test('runtime: Cloudflare write proxy returns 413 for oversized POST /api/trees 
 
   const request = new Request('https://test5.lovebud.pages.dev/api/trees', {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', 'authorization': 'Bearer mock-test-token' },
     body: oversizedBody,
   });
 
@@ -140,7 +140,7 @@ test('runtime: Cloudflare write proxy returns 413 for oversized POST /api/memori
 
   const request = new Request('https://test5.lovebud.pages.dev/api/memories', {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', 'authorization': 'Bearer mock-test-token' },
     body: oversizedBody,
   });
 
@@ -164,7 +164,7 @@ test('runtime: Cloudflare write proxy passes normal-sized POST to Modal', { time
 
   const request = new Request('https://test5.lovebud.pages.dev/api/trees', {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', 'authorization': 'Bearer mock-test-token' },
     body: smallBody,
   });
 
