@@ -1,0 +1,23 @@
+/* ── Mobile: Content display responsive overrides ──────── */
+
+@media (max-width: 375px) {
+    .editor-current-moment-head {
+        align-items: flex-start;
+    }
+
+    .editor-current-moment-head .editor-moment-edit-chip {
+        min-height: 30px;
+        padding: 0 10px;
+        font-size: 10.5px;
+    }
+
+    .editor-memo-heading-row {
+        align-items: flex-start;
+    }
+
+    .editor-memo-heading-edit-button {
+        min-height: 28px;
+        padding: 4px 8px;
+        font-size: 10.5px;
+    }
+}
