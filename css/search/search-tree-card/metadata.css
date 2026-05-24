@@ -1,0 +1,56 @@
+.tree-meta-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(144,73,81,0.08);
+    font-size: 13px;
+    color: var(--on-surface-variant);
+    margin-top: auto;
+    min-width: 0;
+}
+
+.tree-meta-left,
+.tree-meta-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.tree-meta-right {
+    justify-content: flex-end;
+    overflow: hidden;
+    flex: 1 1 auto;
+    gap: 6px;
+}
+
+.tree-meta-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 28px;
+    padding: 0 10px;
+    border-radius: 999px;
+    background: rgba(250,244,245,0.92);
+    color: var(--primary);
+    font-size: 12px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.tree-meta-chip .material-symbols-outlined {
+    font-size: 14px;
+}
+
+.tree-moment-count {
+    color: var(--on-surface-variant);
+    font-size: 12.5px;
+    font-weight: 720;
+    line-height: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
