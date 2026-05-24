@@ -6,6 +6,7 @@ const REQUEST_ID_HEADER = 'x-lovebud-request-id';
 const MAX_REQUEST_ID_LENGTH = 80;
 const SAFE_REQUEST_ID_PATTERN = /^[A-Za-z0-9._:-]+$/;
 const MAX_WRITE_BODY_BYTES = 128 * 1024;
+const MODAL_FETCH_TIMEOUT_MS = 25000;
 
 function generateRequestId() {
   return 'req-' + crypto.randomUUID();
@@ -172,19 +173,18 @@ function buildModalUrl(request, env) {
 
 async function withUpstreamHeader(response, upstream, requestId = null) {
   const headers = new Headers(response.headers);
-  headers.set('x-lovebud-upstream', upstream);
+  if (upstream && !headers.has('x-lovebud-upstream')) {
+    headers.set('x-lovebud-upstream', upstream);
+  }
   if (requestId) {
     headers.set(REQUEST_ID_HEADER, requestId);
     const existingExposeHeaders = headers.get('Access-Control-Expose-Headers') || '';
-    const exposeHeaders = existingExposeHeaders ? `${existingExposeHeaders}, ${REQUEST_ID_HEADER}` : `${REQUEST_ID_HEADER}`;
-    headers.set('Access-Control-Expose-Headers', exposeHeaders);
+    if (!existingExposeHeaders.includes(REQUEST_ID_HEADER)) {
+      const exposeHeaders = existingExposeHeaders ? `${existingExposeHeaders}, ${REQUEST_ID_HEADER}` : `${REQUEST_ID_HEADER}`;
+      headers.set('Access-Control-Expose-Headers', exposeHeaders);
+    }
   }
 
-  // Critical: buffer body to avoid Cloudflare stream passthrough header stripping
-  // When Response body is a ReadableStream from fetch(), Cloudflare edge may
-  // not respect custom headers set on the new Response wrapper.
-  // Tested: stream body via new Response(response.body, { headers }) drops custom headers.
-  // Workaround: read body into text/bytes and construct Response from buffered data.
   try {
     const bodyText = await response.text();
     return new Response(bodyText, { status: response.status, statusText: response.statusText, headers });
@@ -253,6 +253,37 @@ function buildModalUnavailableResponse(requestId = null) {
   return new Response(JSON.stringify({ error: 'Modal backend unavailable' }), { status: 503, headers });
 }
 
+function buildModalTimeoutResponse(requestId = null) {
+  const headers = {
+    'content-type': 'application/json; charset=utf-8',
+    'x-lovebud-upstream': 'modal',
+    'x-lovebud-route-status': 'modal-timeout'
+  };
+  if (requestId) headers[REQUEST_ID_HEADER] = requestId;
+  return new Response(JSON.stringify({ error: 'Modal upstream timeout' }), { status: 504, headers });
+}
+
+function getSafeUrlLog(url) {
+  if (!url) return 'null';
+  try {
+    const u = new URL(url.toString());
+    return `${u.origin}${u.pathname}`;
+  } catch (e) {
+    return 'invalid-url';
+  }
+}
+
+async function fetchWithTimeout(url, options = {}) {
+  const { timeout = MODAL_FETCH_TIMEOUT_MS, ...fetchOptions } = options;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+  try {
+    return await fetch(url, { ...fetchOptions, signal: controller.signal });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 async function tryModalRead(request, env, requestId = null) {
   if (request.method.toUpperCase() !== 'GET') return null;
 
@@ -266,7 +297,19 @@ async function tryModalRead(request, env, requestId = null) {
 
   if (requestId) headers[REQUEST_ID_HEADER] = requestId;
 
-  const response = await fetch(modalUrl.toString(), { headers });
+  const urlLog = getSafeUrlLog(modalUrl);
+  console.log(`[LoveBudCloudflareProxy] GET -> ${urlLog} (id=${requestId})`);
+
+  let response;
+  try {
+    response = await fetchWithTimeout(modalUrl.toString(), { headers });
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      console.warn(`[LoveBudCloudflareProxy] Modal read timeout (25s): ${urlLog} (id=${requestId})`);
+      return buildModalTimeoutResponse(requestId);
+    }
+    throw error;
+  }
 
   const sourceUrl = new URL(request.url);
   const path = sourceUrl.pathname.replace(/\/+$/, '');
@@ -274,11 +317,20 @@ async function tryModalRead(request, env, requestId = null) {
   if (treeMatch && response.status === 404 && request.headers.get('authorization')) {
     const publicTarget = new URL(stripTrailingSlash(env.MODAL_BASE_URL));
     publicTarget.pathname = `/modal/trees/${encodeURIComponent(decodeURIComponent(treeMatch[1]))}`;
-    const publicResponse = await fetch(publicTarget.toString(), { headers: { accept: 'application/json' } });
-    return await withUpstreamHeader(publicResponse, 'modal', requestId);
+    const publicUrlLog = getSafeUrlLog(publicTarget);
+    console.log(`[LoveBudCloudflareProxy] 404 Fallback GET -> ${publicUrlLog} (id=${requestId})`);
+    try {
+      return await fetchWithTimeout(publicTarget.toString(), { headers: { accept: 'application/json' } });
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        console.warn(`[LoveBudCloudflareProxy] Modal fallback read timeout (25s): ${publicUrlLog} (id=${requestId})`);
+        return buildModalTimeoutResponse(requestId);
+      }
+      throw error;
+    }
   }
 
-  return await withUpstreamHeader(response, 'modal', requestId);
+  return response;
 }
 
 async function tryModalWrite(request, env, requestId = null) {
@@ -306,13 +358,22 @@ async function tryModalWrite(request, env, requestId = null) {
 
   if (requestId) headers[REQUEST_ID_HEADER] = requestId;
 
-  const response = await fetch(modalUrl.toString(), {
-    method,
-    headers,
-    body: method !== 'DELETE' ? boundedBody : null
-  });
+  const urlLog = getSafeUrlLog(modalUrl);
+  console.log(`[LoveBudCloudflareProxy] ${method} -> ${urlLog} (id=${requestId})`);
 
-  return await withUpstreamHeader(response, 'modal', requestId);
+  try {
+    return await fetchWithTimeout(modalUrl.toString(), {
+      method,
+      headers,
+      body: method !== 'DELETE' ? boundedBody : null
+    });
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      console.warn(`[LoveBudCloudflareProxy] Modal write timeout (25s): ${urlLog} (id=${requestId})`);
+      return buildModalTimeoutResponse(requestId);
+    }
+    throw error;
+  }
 }
 
 export async function onRequest(context) {
@@ -325,7 +386,7 @@ export async function onRequest(context) {
   if (isModalOwnedWrite) {
     try {
       const modalResponse = await tryModalWrite(request, env || {}, requestId);
-      if (modalResponse) return modalResponse;
+      if (modalResponse) return await withUpstreamHeader(modalResponse, 'modal', requestId);
     } catch (error) {
       console.warn('[LoveBudCloudflareProxy] Modal write failed, returning 503', error);
       return buildModalUnavailableResponse(requestId);
