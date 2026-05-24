@@ -1,0 +1,68 @@
+/*
+ * Editor memory form sidebar add-section styles.
+ *
+ * Extracted from editor-memory-form.css. Covers the sidebar
+ * add-memory section layout and related visual elements.
+ */
+
+.sidebar {
+    padding-bottom: 14px;
+}
+
+.editor-add-section {
+    margin-top: auto;
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    padding-top: 12px;
+    background: linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.92) 18%, rgba(255,255,255,1) 42%);
+}
+
+.editor-add-card {
+    padding: 16px;
+    border-radius: 20px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,246,244,0.96));
+    box-shadow: 0 6px 20px rgba(75, 64, 57, 0.06);
+    border: 1px solid rgba(144, 73, 81, 0.10);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.editor-add-eyebrow {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--primary);
+    margin-bottom: 4px;
+}
+
+.editor-add-intro {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.58;
+    color: var(--on-surface-variant);
+}
+
+.editor-status-card p {
+    margin: 8px 0 0;
+}
+
+.editor-sidebar-meta {
+    margin-top: 12px;
+    padding-top: 10px;
+    line-height: 1.55;
+}
+
+.editor-flow-lead,
+.editor-form-support-note-hidden {
+    display: none !important;
+}
+
+.editor-flow-lead {
+    margin: -6px 0 0;
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--on-surface-variant);
+}
