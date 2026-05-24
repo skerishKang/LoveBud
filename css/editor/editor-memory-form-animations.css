@@ -1,0 +1,19 @@
+/*
+ * Editor memory form animation keyframes.
+ *
+ * Extracted from editor-memory-form.css to keep animation definitions
+ * in a dedicated file. Selector-level animation properties remain in
+ * editor-memory-form.css.
+ *
+ * Keyframe names: skeleton-shimmer, newNodePulse
+ */
+
+@keyframes skeleton-shimmer {
+    0% { background-position: 100% 100%; }
+    100% { background-position: 0% 0%; }
+}
+
+@keyframes newNodePulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+}

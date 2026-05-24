@@ -418,11 +418,6 @@
     opacity: 0.3;
 }
 
-@keyframes skeleton-shimmer {
-    0% { background-position: 100% 100%; }
-    100% { background-position: 0% 0%; }
-}
-
 .memory-node:hover .node-card,
 .memory-node.selected .node-card {
     transform: scale(1.03);
@@ -436,7 +431,3 @@
     box-shadow: 0 0 0 4px rgba(144, 73, 81, 0.3), 0 25px 50px rgba(144, 73, 81, 0.2) !important;
 }
 
-@keyframes newNodePulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.15); }
-}
