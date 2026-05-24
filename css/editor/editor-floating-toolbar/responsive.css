@@ -1,0 +1,42 @@
+/* Narrow: icon-only, no labels */
+@media (max-width: 1023px) {
+    .editor-floating-toolbar {
+        padding: 5px 6px;
+        gap: 3px;
+    }
+    .editor-floating-toolbar-btn {
+        padding: 6px;
+        min-width: 34px;
+        min-height: 34px;
+    }
+    .editor-floating-toolbar-label {
+        display: none;
+    }
+    /* Hide branch labels on narrow too */
+    .editor-ftb-branch-btn .editor-floating-toolbar-label {
+        display: none;
+    }
+    /* Hide More label on narrow */
+    .editor-ftb-more-btn .editor-floating-toolbar-label {
+        display: none;
+    }
+    /* Narrow toolbar dropdown positioning */
+    .editor-ftb-dropdown {
+        min-width: 160px;
+        right: 8px;
+    }
+}
+
+/* Mobile <480px: hidden entirely */
+@media (max-width: 479px) {
+    .editor-floating-toolbar,
+    .editor-floating-toolbar.is-visible,
+    .editor-floating-toolbar.is-hidden {
+        display: none !important;
+    }
+    .editor-floating-quick-add,
+    .editor-floating-quick-add.is-visible,
+    .editor-floating-quick-add.is-hidden {
+        display: none !important;
+    }
+}

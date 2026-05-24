@@ -1,0 +1,29 @@
+/**
+ * Hover Affordance — Tooltip showing moment info
+ * Issue #1150 — Hover affordances
+ */
+.editor-floating-tooltip {
+    position: fixed;
+    z-index: 15;
+    padding: 6px 12px;
+    border-radius: 10px;
+    background: rgba(60,45,40,0.92);
+    border: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    color: #f5efe8;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.4;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(3px);
+    transition: opacity 0.16s ease, transform 0.16s ease;
+    max-width: 220px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.editor-floating-tooltip.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
