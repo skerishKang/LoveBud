@@ -1,0 +1,86 @@
+/**
+ * Adaptive "..." More button — only icon on desktop
+ */
+.editor-ftb-more-btn {
+    padding: 6px 8px;
+    min-width: 34px;
+}
+.editor-ftb-more-btn .material-symbols-outlined {
+    font-size: 20px;
+}
+
+/**
+ * Secondary actions dropdown (triggered by "..." button)
+ */
+.editor-ftb-dropdown {
+    position: fixed;
+    z-index: 15;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 6px;
+    border-radius: 14px;
+    background: rgba(255,250,244,0.98);
+    border: 1px solid rgba(230,207,194,0.78);
+    box-shadow: 0 10px 28px rgba(75,64,57,0.16);
+    backdrop-filter: blur(10px);
+    min-width: 180px;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(-4px) scale(0.96);
+    transition: opacity 0.16s ease, transform 0.16s ease;
+    transform-origin: top right;
+}
+.editor-ftb-dropdown.is-visible {
+    pointer-events: auto;
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+.editor-ftb-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: transparent;
+    border: none;
+    color: var(--on-surface-soft, #5a4a3e);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.12s ease, color 0.12s ease;
+    line-height: 1;
+    text-align: left;
+    width: 100%;
+}
+.editor-ftb-dropdown-item:hover,
+.editor-ftb-dropdown-item:focus-visible {
+    background: rgba(144,73,81,0.08);
+    color: var(--primary, rgba(144,73,81,0.92));
+}
+.editor-ftb-dropdown-item:active {
+    background: rgba(144,73,81,0.14);
+    transform: scale(0.98);
+}
+.editor-ftb-dropdown-item .material-symbols-outlined {
+    font-size: 18px;
+    flex-shrink: 0;
+}
+.editor-ftb-dropdown-item:focus-visible {
+    outline: 2px solid var(--control-focus-ring, rgba(144,73,81,0.32));
+    outline-offset: -2px;
+}
+
+/* Shortcut hint badge inside dropdown items */
+.editor-ftb-shortcut-hint {
+    margin-left: auto;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: rgba(144,73,81,0.08);
+    color: var(--primary, rgba(144,73,81,0.72));
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    line-height: 1.6;
+    flex-shrink: 0;
+}

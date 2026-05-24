@@ -1,0 +1,49 @@
+/**
+ * Hover Affordance — Quick-add "+" button near selected node
+ * Issue #1150 — Hover affordances
+ */
+.editor-floating-quick-add {
+    position: absolute;
+    z-index: 11;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+    min-height: 28px;
+    padding: 0;
+    border-radius: 50%;
+    background: rgba(144,73,81,0.88);
+    border: none;
+    color: #fff;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(144,73,81,0.24);
+    pointer-events: none;
+    opacity: 0;
+    transform: scale(0.6);
+    transition: opacity 0.2s ease, transform 0.2s ease, background 0.16s ease;
+    line-height: 1;
+}
+.editor-floating-quick-add .material-symbols-outlined {
+    font-size: 16px;
+    line-height: 1;
+}
+.editor-floating-quick-add.is-visible {
+    pointer-events: auto;
+    opacity: 1;
+    transform: scale(1);
+}
+.editor-floating-quick-add:hover,
+.editor-floating-quick-add:focus-visible {
+    background: rgba(124,59,67,0.94);
+    transform: scale(1.12);
+}
+.editor-floating-quick-add:active {
+    transform: scale(0.88);
+    background: rgba(144,73,81,0.96);
+}
+.editor-floating-quick-add:focus-visible {
+    outline: 2px solid var(--control-focus-ring, rgba(144,73,81,0.32));
+    outline-offset: 2px;
+}
