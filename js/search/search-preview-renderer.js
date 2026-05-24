@@ -182,13 +182,10 @@
     }
 
     function getPreviewMediaMemory(memories) {
-        const helper = window.LoveBudSearchPreviewMediaHelper;
-        if (helper?.getPreviewMediaMemory) {
-            return helper.getPreviewMediaMemory(memories);
-        }
-        return (Array.isArray(memories) ? memories : []).find(memory => {
-            return sanitizeUrl(memory?.sourceUrl || '') || sanitizeUrl(memory?.thumbnail || '');
-        }) || null;
+        return window.LoveBudSearchPreviewMediaHelper?.getPreviewMediaMemory(memories)
+            || (Array.isArray(memories) ? memories : []).find(memory => {
+                return sanitizeUrl(memory?.sourceUrl || '') || sanitizeUrl(memory?.thumbnail || '');
+            }) || null;
     }
 
     const renderEmotionTags = previewBuilders.renderEmotionTags || function(tags) { return ''; };
@@ -275,20 +272,14 @@
     const renderPreviewThumbnailFallback = previewBuilders.renderPreviewThumbnailFallback || function(title, subtitle) { return ''; };
 
     function renderPreviewThumbnailMedia(thumbnailUrl, mediaTitle, treeTitle) {
-        const helper = window.LoveBudSearchPreviewMediaHelper;
-        if (helper?.renderPreviewThumbnailMedia) {
-            return helper.renderPreviewThumbnailMedia(thumbnailUrl, mediaTitle, treeTitle);
-        }
-
-        const fallbackHtml = renderPreviewThumbnailFallback(
-            treeTitle,
-            getSearchCopy('search.previewNoMomentBody', '시작 순간이 더해지면 이 감상 허브에서 가장 먼저 열어볼 수 있어요.', 'Once the starting moment is added, you will be able to open it here first.')
-        );
-
-        return `
+        return window.LoveBudSearchPreviewMediaHelper?.renderPreviewThumbnailMedia(thumbnailUrl, mediaTitle, treeTitle)
+            || `
             <div class="preview-media-frame preview-media-frame-thumbnail" style="position:relative;width:100%;height:100%;border-radius:1rem;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.12);">
                 <img src="${thumbnailUrl}" alt="${mediaTitle}" loading="lazy" data-preview-thumbnail-image="" style="width:100%;height:100%;object-fit:cover;display:block;">
-                <div data-preview-thumbnail-fallback hidden style="position:absolute;inset:0;">${fallbackHtml}</div>
+                <div data-preview-thumbnail-fallback hidden style="position:absolute;inset:0;">${renderPreviewThumbnailFallback(
+                    treeTitle,
+                    getSearchCopy('search.previewNoMomentBody', '시작 순간이 더해지면 이 감상 허브에서 가장 먼저 열어볼 수 있어요.', 'Once the starting moment is added, you will be able to open it here first.')
+                )}</div>
                 <div data-preview-overlay style="position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.72),rgba(0,0,0,0.04) 58%);"></div>
                 <div data-preview-overlay style="position:absolute;left:18px;right:18px;bottom:18px;color:white;">
                     <div style="display:inline-flex;align-items:center;gap:6px;min-height:28px;padding:0 10px;border-radius:999px;background:rgba(255,255,255,0.18);backdrop-filter:blur(10px);font-size:12px;font-weight:800;margin-bottom:10px;">
@@ -321,9 +312,8 @@
     }
 
     function showPreviewImageFallback(img) {
-        const helper = window.LoveBudSearchPreviewMediaHelper;
-        if (helper?.showPreviewImageFallback) {
-            return helper.showPreviewImageFallback(img);
+        if (window.LoveBudSearchPreviewMediaHelper?.showPreviewImageFallback) {
+            return window.LoveBudSearchPreviewMediaHelper.showPreviewImageFallback(img);
         }
 
         if (!img) return;
