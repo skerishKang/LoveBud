@@ -5,7 +5,7 @@ Refs #1505
 This document outlines the decisions regarding the remaining CSS tail files and the planning for the eventual splitting of the global CSS files, following the successful split of `search-tree-card.css` in PR #1584.
 
 ## PR #1584 Merge Commit
-- **SHA**: `b812e1564700d11c7590d9841f3e9c5225ab11a3`
+- **SHA**: `b812e15684a7fb7ca2d1d0874799cf4d49f6bd28`
 
 ## Remaining Large CSS Files (Top 5)
 Following the completion of Stage 73, the largest remaining CSS files are:
