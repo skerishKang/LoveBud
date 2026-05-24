@@ -13,6 +13,7 @@ from modal_compute.validation import (
     _to_isoformat,
     validate_required_uuid,
 )
+from modal_compute.write_validation import require_memory_visible_or_owner
 
 
 def normalize_reaction_row(row: dict[str, Any]) -> dict[str, Any]:
@@ -57,6 +58,7 @@ def toggle_reaction(memory_id: str, owner_id: str, reaction_type: str) -> dict[s
     or active=False if removed.
     """
     safe_memory_id = validate_required_uuid(memory_id, "memoryId")
+    require_memory_visible_or_owner(safe_memory_id, owner_id)
 
     if not reaction_type or not isinstance(reaction_type, str):
         raise HTTPException(status_code=400, detail="Reaction type is required")
@@ -112,6 +114,7 @@ def fetch_reaction_summary(memory_id: str, owner_id: str) -> dict[str, Any]:
     Returns counts by type and which types the requesting user has reacted with.
     """
     safe_memory_id = validate_required_uuid(memory_id, "memoryId")
+    require_memory_visible_or_owner(safe_memory_id, owner_id)
 
     def operation() -> list[dict[str, Any]]:
         with get_db_connection() as conn:
