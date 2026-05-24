@@ -120,23 +120,6 @@
     background: transparent;
 }
 
-.editor-memory-form-modal .memory-link-preview.is-enhanced {
-    max-height: 54px;
-    margin-top: 0 !important;
-}
-
-.editor-memory-form-modal .editor-form-actions {
-    flex-shrink: 0;
-    margin-top: 0;
-    padding: 12px 24px 16px;
-    border-top: 1px solid rgba(144, 73, 81, 0.10);
-    background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(250,246,244,0.995));
-    box-shadow: 0 -10px 22px rgba(75,64,57,0.06);
-    position: sticky;
-    bottom: 0;
-    z-index: 2;
-}
-
 @media (max-width: 560px) {
     #addMemoryForm.editor-memory-form-modal.is-open {
         top: 10px;
@@ -148,10 +131,6 @@
 
     .editor-memory-form-body {
         padding: 16px 14px 9px;
-    }
-
-    .editor-memory-form-modal .editor-form-actions {
-        padding: 10px 16px 14px;
     }
 }
 
