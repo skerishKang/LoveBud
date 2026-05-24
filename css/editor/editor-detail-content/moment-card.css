@@ -1,0 +1,88 @@
+/* ── Current moment head ───────────────────────────────── */
+
+.editor-current-moment-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.editor-current-moment-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: rgba(144,73,81,0.10);
+    color: var(--primary);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+}
+
+.editor-current-moment-title {
+    margin: 0;
+    font-size: 1.25rem;
+    line-height: 1.22;
+    font-weight: 900;
+    letter-spacing: -0.03em;
+    color: var(--on-surface);
+}
+
+.editor-current-moment-hint {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--on-surface-variant);
+}
+
+.editor-current-moment-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 0;
+    margin-bottom: 2px;
+}
+
+.editor-current-moment-actions .editor-memory-action-btn {
+    min-height: 36px;
+    padding: 7px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    box-shadow: 0 6px 14px rgba(75,64,57,0.05);
+}
+
+.editor-current-moment-head .editor-moment-edit-chip {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    min-height: 32px;
+    padding: 0 11px;
+    border-radius: 999px;
+    border-color: rgba(197,146,128,0.30);
+    background: rgba(255,255,255,0.78);
+    color: var(--on-surface-soft);
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1;
+    box-shadow: 0 8px 18px rgba(165,124,101,0.08);
+}
+
+.editor-current-moment-head .editor-moment-edit-chip::before {
+    content: 'edit';
+    font-family: 'Material Symbols Outlined';
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1;
+    color: var(--primary);
+    opacity: 0.78;
+}
+
+.editor-current-moment-title .memory-edit-button {
+    display: none !important;
+}
