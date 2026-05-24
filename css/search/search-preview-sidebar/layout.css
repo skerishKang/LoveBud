@@ -1,0 +1,70 @@
+.preview-sidebar {
+    position: sticky;
+    top: 96px;
+    height: fit-content;
+    width: 100%;
+    max-width: 100%;
+    background:
+        radial-gradient(circle at 28% 12%, rgba(255, 248, 246, 0.96), transparent 38%),
+        radial-gradient(circle at 80% 22%, rgba(242, 234, 228, 0.72), transparent 28%),
+        linear-gradient(180deg, rgba(255, 249, 245, 0.92), rgba(244, 248, 238, 0.96));
+    padding: 30px 24px;
+    border-radius: 2.25rem;
+    border: 1px solid rgba(144, 73, 81, 0.1);
+    box-shadow:
+        0 24px 60px rgba(75, 64, 57, 0.12),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(14px);
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+/* Issue #455 PR C: selected-tree hub preview polish. */
+.preview-sidebar {
+    overflow: hidden;
+}
+
+.preview-sidebar::before {
+    content: none;
+    position: absolute;
+    top: 92px;
+    right: 20px;
+    width: 118px;
+    height: 156px;
+    border-radius: 999px;
+    background:
+        radial-gradient(circle at 64% 18%, rgba(144, 73, 81, 0.16) 0 6px, transparent 7px),
+        radial-gradient(circle at 28% 34%, rgba(122, 139, 110, 0.14) 0 5px, transparent 6px),
+        radial-gradient(circle at 52% 48%, rgba(200, 116, 128, 0.14) 0 5px, transparent 6px),
+        linear-gradient(24deg, transparent 42%, rgba(144, 73, 81, 0.12) 43% 47%, transparent 48%),
+        linear-gradient(148deg, transparent 39%, rgba(122, 139, 110, 0.10) 40% 45%, transparent 46%);
+    opacity: 0.78;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.preview-sidebar::after {
+    content: none;
+    position: absolute;
+    top: 146px;
+    right: 72px;
+    width: 8px;
+    height: 104px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, rgba(193, 139, 131, 0.28), rgba(144, 73, 81, 0.18));
+    pointer-events: none;
+    z-index: 0;
+}
+
+.preview-sidebar > * {
+    position: relative;
+    z-index: 1;
+}
+
+/* Mobile bottom sheet: body scroll lock when sheet is open */
+body.preview-sheet-open {
+    overflow: hidden;
+    /* prevent iOS bounce scroll on body */
+    position: fixed;
+    width: 100%;
+}
