@@ -1,0 +1,52 @@
+@media (min-width: 1500px) {
+    .vv-viewer-layout {
+        grid-template-columns: minmax(1080px, 1fr) clamp(240px, 15vw, 288px);
+    }
+
+    .vv-tree-container,
+    .vv-tree-canvas {
+        min-height: clamp(760px, calc(100vh - 168px), 940px);
+    }
+}
+
+@media (max-width: 900px) {
+    .viewer-layout { padding: 14px; }
+    .visitor-viewer-shell { padding: 16px; }
+    .vv-header { margin-bottom: 10px; padding: 0 4px; }
+    .vv-title { font-size: clamp(1.42rem, 7vw, 2rem); }
+    .vv-viewer-layout { display: block; }
+    .vv-tree-container { min-height: min(660px, 72vh); border-radius: 26px; }
+    .vv-tree-canvas { min-height: min(660px, 72vh); }
+    .vv-panel-host { margin-top: 16px; }
+    .vv-panel { box-shadow: 0 4px 16px rgba(111,70,44,0.03); border-radius: 20px; }
+    .vv-mobile-note { display: block; }
+    .vv-action-group { gap: 6px; }
+    .vv-action-btn { padding: 6px 12px; font-size: 12px; }
+}
+
+@media (max-width: 375px) {
+    .viewer-layout { padding: 12px 10px 24px; }
+    .vv-tree-container,
+    .vv-tree-canvas {
+        min-height: 620px;
+    }
+    .vv-panel {
+        padding: 14px;
+    }
+    /* Tighten hierarchy leaf labels on small screens */
+    .vv-leaf-label {
+        min-width: 80px;
+        padding: 4px 8px;
+    }
+    .vv-leaf-label-title {
+        font-size: 11px;
+        max-width: 72px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .vv-leaf-label-tag {
+        font-size: 9px;
+        padding: 1px 6px;
+    }
+}

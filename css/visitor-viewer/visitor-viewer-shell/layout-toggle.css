@@ -1,0 +1,64 @@
+/* Layout toggle button */
+.vv-header-actions {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.vv-layout-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border: 1px solid rgba(144, 73, 81, 0.14);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.72);
+    color: var(--primary);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all .18s ease;
+    white-space: nowrap;
+}
+
+.vv-layout-toggle:hover {
+    background: #fff;
+    border-color: rgba(144, 73, 81, 0.22);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(111, 70, 44, 0.08);
+}
+
+.vv-layout-toggle:active {
+    transform: translateY(0);
+}
+
+.vv-layout-toggle-label {
+    pointer-events: none;
+}
+
+/* Hierarchy layout adjustments */
+.vv-tree-canvas[data-layout="hierarchy"] .vv-media-leaf {
+    pointer-events: auto;
+}
+
+.vv-tree-canvas[data-layout="hierarchy"] .vv-media-leaf .vv-leaf-shape {
+    width: clamp(48px, 4vw, 64px) !important;
+    height: clamp(62px, 5vw, 80px) !important;
+}
+
+.vv-tree-canvas[data-layout="hierarchy"] .vv-media-leaf .vv-leaf-emoji {
+    font-size: clamp(18px, 1.6vw, 24px);
+}
+
+@media (max-width: 900px) {
+    .vv-header-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+    .vv-layout-toggle {
+        font-size: 11px;
+        padding: 5px 10px;
+    }
+}
+
