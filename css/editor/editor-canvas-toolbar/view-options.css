@@ -1,0 +1,64 @@
+.editor-canvas-view-options-group {
+    position: relative;
+    margin-left: auto;
+}
+.editor-canvas-view-options-group .editor-canvas-tool-btn-wide {
+    min-width: 92px;
+    padding: 0 16px 0 12px;
+    justify-content: center;
+    background: rgba(255,255,255,0.72);
+    border-color: rgba(144,73,81,0.18);
+    color: var(--primary, rgba(144,73,81,0.92));
+    gap: 8px;
+}
+.editor-canvas-view-options-group .editor-canvas-tool-btn-wide[aria-expanded="true"],
+.editor-canvas-view-options-group .editor-canvas-tool-btn-wide.is-active {
+    background: rgba(144,73,81,0.10);
+    border-color: rgba(144,73,81,0.34);
+    color: var(--primary, rgba(144,73,81,0.92));
+    box-shadow: inset 0 0 0 1px rgba(144,73,81,0.08);
+}
+.editor-canvas-view-options-group .editor-canvas-tool-btn-wide[aria-expanded="true"] .material-symbols-outlined,
+.editor-canvas-view-options-group .editor-canvas-tool-btn-wide.is-active .material-symbols-outlined {
+    font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24;
+}
+.editor-canvas-toolbar .editor-canvas-view-options-group .editor-view-options-panel {
+    left: auto;
+    right: 0;
+    top: calc(100% + 10px);
+    width: 240px;
+    padding: 14px;
+    border-radius: 18px;
+    background: rgba(255,250,244,0.98);
+    border: 1px solid rgba(230,207,194,0.9);
+    box-shadow: 0 18px 38px rgba(75,64,57,0.18);
+    backdrop-filter: blur(12px);
+    gap: 9px;
+}
+.editor-canvas-toolbar .editor-canvas-view-options-group .editor-view-options-title {
+    margin-bottom: 4px;
+    font-size: 12px;
+    font-weight: 850;
+    color: var(--primary, rgba(144,73,81,0.92));
+}
+.editor-canvas-toolbar .editor-canvas-view-options-group .editor-view-option-row {
+    min-height: 28px;
+    padding: 4px 6px;
+    border-radius: 10px;
+    transition: background 0.16s ease, color 0.16s ease;
+}
+.editor-canvas-toolbar .editor-canvas-view-options-group .editor-view-option-row:hover,
+.editor-canvas-toolbar .editor-canvas-view-options-group .editor-view-option-row:focus-within {
+    background: rgba(144,73,81,0.08);
+}
+.editor-canvas-toolbar .editor-canvas-view-options-group .editor-view-option-row input {
+    flex: 0 0 auto;
+}
+.editor-canvas-toolbar .editor-canvas-view-options-group .editor-view-options-help {
+    margin-top: 2px;
+    padding-top: 10px;
+    text-align: left;
+}
+.editor-view-options-separator {
+    margin-left: 8px;
+}

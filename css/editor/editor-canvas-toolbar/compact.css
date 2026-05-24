@@ -1,0 +1,34 @@
+.editor-canvas-toolbar.is-compact .editor-canvas-tool-label {
+    opacity: 0;
+    width: 0;
+    margin: 0;
+    overflow: hidden;
+    pointer-events: none;
+}
+.editor-canvas-toolbar.is-compact .editor-canvas-zoom-indicator {
+    opacity: 0;
+    transform: scale(0.8);
+    width: 0;
+    min-width: 0;
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+}
+.editor-canvas-toolbar.is-compact .editor-canvas-tool-btn-wide {
+    padding: 0;
+    width: 36px;
+    min-width: 36px;
+    justify-content: center;
+}
+.editor-canvas-toolbar.is-compact .editor-canvas-toolbar-group[aria-label="트리 뷰 컨트롤"] .editor-canvas-tool-btn-wide {
+    flex: 0 0 auto;
+}
+.editor-canvas-toolbar.is-compact .editor-canvas-toolbar-group[aria-label="레이아웃 모드"] .editor-canvas-tool-btn-wide {
+    padding: 0;
+    width: 36px;
+    min-width: 36px;
+    height: 36px;
+    border-radius: 14px;
+    justify-content: center;
+    gap: 0;
+}

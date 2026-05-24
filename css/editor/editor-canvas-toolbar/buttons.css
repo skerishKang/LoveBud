@@ -1,0 +1,107 @@
+.editor-canvas-toolbar-separator {
+    width: 1px;
+    height: 30px;
+    background: rgba(221,198,184,0.5);
+    margin: 0 4px;
+    flex-shrink: 0;
+}
+.editor-canvas-tool-btn {
+    position: relative;
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 0;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.74);
+    border: 1px solid rgba(221,198,184,0.5);
+    color: var(--on-surface-soft);
+    box-shadow: none;
+    cursor: pointer;
+    transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
+    flex-shrink: 0;
+}
+.editor-canvas-tool-btn:hover:not(:disabled),
+.editor-canvas-tool-btn:focus-visible:not(:disabled) {
+    background: rgba(255,255,255,0.96);
+    border-color: rgba(144,73,81,0.26);
+    color: var(--primary);
+    transform: translateY(-1px);
+}
+.editor-canvas-tool-btn:active:not(:disabled) {
+    transform: scale(0.92);
+    background: rgba(144,73,81,0.08);
+    border-color: rgba(144,73,81,0.35);
+    transition: transform 0.08s ease, background 0.08s ease;
+}
+.editor-canvas-tool-btn:active:not(:disabled) .material-symbols-outlined {
+    transform: scale(0.88);
+    transition: transform 0.08s ease;
+}
+.editor-canvas-tool-btn:focus-visible {
+    outline: 2px solid var(--control-focus-ring, rgba(144,73,81,0.32));
+    outline-offset: 2px;
+}
+.editor-canvas-tool-btn:disabled,
+.editor-canvas-tool-btn.is-disabled {
+    opacity: 0.46;
+    cursor: not-allowed;
+    transform: none;
+}
+.editor-canvas-zoom-indicator {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 46px;
+    height: 28px;
+    padding: 0 8px;
+    border-radius: 8px;
+    background: rgba(144,73,81,0.08);
+    color: var(--primary);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    pointer-events: none;
+    user-select: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.editor-canvas-zoom-indicator.is-hidden {
+    opacity: 0;
+    transform: scale(0.8);
+}
+.editor-canvas-tool-btn.flash-feedback {
+    background: rgba(144,73,81,0.15);
+    border-color: rgba(144, 73, 81, 0.35);
+    transition: background 0.1s ease, border-color 0.1s ease;
+}
+.editor-canvas-tool-btn.is-active {
+    background: var(--primary, rgba(144,73,81,0.92));
+    border-color: var(--primary, rgba(144,73,81,0.92));
+    color: #fff;
+}
+.editor-canvas-tool-btn.is-active:hover:not(:disabled) {
+    background: var(--primary-hover, rgba(124,59,67,0.92));
+    border-color: var(--primary-hover, rgba(124,59,67,0.92));
+    color: #fff;
+}
+.editor-canvas-tool-btn .material-symbols-outlined {
+    font-size: 20px;
+    line-height: 1;
+}
+.editor-canvas-tool-btn-wide {
+    width: auto;
+    min-width: 36px;
+    max-width: none;
+    padding: 0 14px 0 10px;
+}
+.editor-canvas-tool-label {
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1;
+    white-space: nowrap;
+    transition: opacity 0.2s ease, width 0.2s ease, margin 0.2s ease;
+}
