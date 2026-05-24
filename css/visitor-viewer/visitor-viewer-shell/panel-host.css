@@ -1,0 +1,16 @@
+.vv-panel-host {
+    min-width: 0;
+    align-self: start;
+    position: sticky;
+    top: 88px;
+}
+
+.vv-panel {
+    background: rgba(255,255,255,0.56);
+    border: 1px solid rgba(144,73,81,0.07);
+    border-radius: 24px;
+    padding: 16px;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 10px 26px rgba(111,70,44,0.035);
+}
+
