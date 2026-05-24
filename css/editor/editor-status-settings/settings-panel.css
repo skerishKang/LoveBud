@@ -1,0 +1,40 @@
+/* ── Title settings panel ──────────────────────────────── */
+
+.editor-title-settings-panel {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.editor-mini-setting-btn {
+    min-height: 36px;
+    padding: 7px 10px;
+    border-radius: 12px;
+    border: 1px solid rgba(144,73,81,0.06);
+    background: rgba(255,253,249,0.62);
+    color: var(--on-surface-variant);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.35;
+    text-align: center;
+    cursor: pointer;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+
+.editor-mini-setting-btn .material-symbols-outlined {
+    font-size: 14px;
+    flex: 0 0 auto;
+    color: var(--primary);
+    opacity: 0.7;
+}
+
+.editor-mini-setting-btn:hover {
+    transform: translateY(-1px);
+    background: rgba(255,253,249,0.82);
+    border-color: rgba(144,73,81,0.12);
+}
