@@ -49,6 +49,16 @@
     return 0;
   }
 
+  function getTreeLikeCount(tree) {
+    if (!tree) return 0;
+    var keys = ['likeCount', 'likesCount', 'likes', 'reactionCount', 'reaction_count'];
+    for (var i = 0; i < keys.length; i++) {
+      var value = Number(tree[keys[i]]);
+      if (Number.isFinite(value) && value >= 0) return value;
+    }
+    return 0;
+  }
+
   function clipText(value, maxLength) {
     var text = String(value || '').trim();
     if (!text) return '';
@@ -70,12 +80,22 @@
     }
   }
 
+  function formatCompactCount(value) {
+    var count = Number(value || 0);
+    if (!Number.isFinite(count) || count <= 0) return '0';
+    if (count >= 1000000) return (Math.floor(count / 100000) / 10) + 'M';
+    if (count >= 1000) return (Math.floor(count / 100) / 10) + 'K';
+    return String(count);
+  }
+
   window.LoveBudMyTreesUtils = {
     escapeHtml: escapeHtml,
     hashSeed: hashSeed,
     getTreeMomentCount: getTreeMomentCount,
     getTreeViewCount: getTreeViewCount,
+    getTreeLikeCount: getTreeLikeCount,
     clipText: clipText,
-    formatDate: formatDate
+    formatDate: formatDate,
+    formatCompactCount: formatCompactCount
   };
 })();
