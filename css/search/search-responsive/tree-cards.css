@@ -1,0 +1,155 @@
+/* ── Search responsive — tree card overrides (375px) ────── */
+
+@media (max-width: 375px) {
+    .tree-card {
+        height: 324px;
+        padding: 12px;
+    }
+
+    .tree-card-featured .tree-card-media,
+    .tree-card-media {
+        height: 122px;
+        min-height: 122px;
+        margin: 0 0 12px;
+    }
+
+    .tree-card-body {
+        grid-template-rows: 2.7rem 2.34rem 20px auto;
+        row-gap: 7px;
+        padding: 4px;
+    }
+
+    .tree-title {
+        font-size: 1.24rem;
+        line-height: 1.14;
+        min-height: 2.28em;
+        max-height: 2.28em;
+    }
+
+    .tree-subtitle {
+        font-size: 0.88rem;
+        line-height: 1.46;
+        min-height: 2.86em;
+        max-height: 2.86em;
+    }
+
+    .tree-card-flow-bridge {
+        height: 20px;
+        padding: 0 7px;
+    }
+
+    .tree-card-flow-node {
+        width: 6px;
+        height: 6px;
+        box-shadow: 0 0 0 3px rgba(200, 116, 128, 0.10);
+    }
+
+    .tree-meta-row {
+        padding-top: 10px;
+        font-size: 12px;
+        gap: 7px;
+    }
+
+    .tree-meta-chip {
+        font-size: 11px;
+        padding: 0 8px;
+        min-height: 24px;
+    }
+
+    .tree-meta-left {
+        flex: 0 1 auto;
+        max-width: 42%;
+    }
+
+    .tree-meta-right {
+        gap: 5px;
+        min-width: 0;
+    }
+
+    .tree-moment-count {
+        font-size: 11px;
+    }
+
+    .tree-card-open-link {
+        min-height: 24px;
+        padding: 0 7px;
+        font-size: 10.5px;
+    }
+
+    .tree-card-open-link .material-symbols-outlined {
+        font-size: 13px;
+    }
+
+    .tree-card-media-fallback {
+        gap: 8px;
+        padding: 12px;
+    }
+
+    .tree-card-media::before {
+        right: 10px;
+        bottom: 10px;
+        width: 54px;
+        height: 40px;
+        opacity: 0.62;
+    }
+
+    .tree-card-preview-strip-media {
+        left: 14px;
+        right: 14px;
+        bottom: 10px;
+        height: 34px;
+    }
+
+    .tree-card-preview-strip-fallback {
+        top: 28px;
+        width: 98px;
+        height: 36px;
+    }
+
+    .tree-card-preview-line-main {
+        top: 20px;
+    }
+
+    .tree-card-preview-line-branch {
+        top: 19px;
+        width: 28px;
+    }
+
+    .tree-card-preview-node {
+        width: 7px;
+        height: 7px;
+        box-shadow:
+            0 0 0 4px rgba(255, 248, 245, 0.14),
+            0 5px 10px rgba(50, 38, 35, 0.14);
+    }
+
+    .tree-card-preview-node-root,
+    .tree-card-preview-node-leaf,
+    .tree-card-preview-node-end {
+        top: 17px;
+    }
+
+    .tree-card-preview-node-branch {
+        top: 8px;
+    }
+
+    .tree-card-media-fallback::before {
+        top: 20px;
+        width: 74px;
+        height: 62px;
+    }
+
+    .tree-card-media-fallback .fallback-title {
+        font-size: 12px;
+    }
+
+    .tree-card-media-fallback .fallback-dots {
+        top: 47px;
+        gap: 20px;
+    }
+
+    .tree-card-media-fallback .fallback-dots span {
+        width: 5px;
+        height: 5px;
+    }
+}
