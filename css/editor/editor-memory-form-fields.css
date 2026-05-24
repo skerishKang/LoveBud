@@ -1,0 +1,72 @@
+/*
+ * Editor memory form field styles.
+ *
+ * Extracted from editor-memory-form.css. Covers form label pills,
+ * field layout, input/textarea appearance, and help text within
+ * the memory form modal.
+ */
+
+.editor-memory-form-modal .editor-modal-eyebrow,
+.editor-memory-form-modal .editor-form-label {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    height: 26px;
+    min-height: 26px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: rgba(144, 73, 81, 0.08);
+    border: 1px solid rgba(144, 73, 81, 0.12);
+    color: var(--primary);
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: .02em;
+    box-sizing: border-box;
+}
+
+.editor-memory-form-modal .editor-form-field,
+.editor-memory-form-modal .editor-form-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.editor-memory-form-modal .editor-memory-mode-group {
+    margin: 0 0 2px;
+}
+
+.editor-memory-form-modal .editor-form-field-grid {
+    gap: 12px;
+}
+
+.editor-memory-form-modal .editor-form-input,
+.editor-memory-form-modal .editor-form-textarea {
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 400;
+    min-height: 42px;
+    box-sizing: border-box;
+}
+
+.editor-memory-form-modal .editor-form-input::placeholder,
+.editor-memory-form-modal .editor-form-textarea::placeholder {
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 400;
+    color: rgba(75, 64, 57, 0.45);
+}
+
+.editor-memory-form-modal .editor-form-textarea {
+    min-height: 72px;
+    max-height: 112px;
+    resize: vertical;
+}
+
+.editor-memory-form-modal .editor-form-help {
+    margin: -2px 0 0;
+    font-size: 11px;
+    font-weight: 700;
+    color: rgba(144, 73, 81, 0.62);
+    line-height: 1.25;
+}
