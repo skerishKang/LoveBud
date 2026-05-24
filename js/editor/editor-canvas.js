@@ -219,7 +219,9 @@ function createEditorCanvas(deps) {
             ? layoutTransition.applyLayoutModeClasses
             : uiHelpers.applyLayoutModeClasses)('free');
         updateLayoutToggleUI();
-        initCanvas();
+        (typeof layoutTransition.initCanvas === 'function'
+            ? layoutTransition.initCanvas(initCanvas)
+            : initCanvas());
         (typeof layoutTransition.persistStoredPositions === 'function'
             ? layoutTransition.persistStoredPositions(persistStoredPositions)
             : persistStoredPositions());
@@ -243,7 +245,9 @@ function createEditorCanvas(deps) {
             ? layoutTransition.applyLayoutModeClasses
             : uiHelpers.applyLayoutModeClasses)('structured');
         updateLayoutToggleUI();
-        initCanvas();
+        (typeof layoutTransition.initCanvas === 'function'
+            ? layoutTransition.initCanvas(initCanvas)
+            : initCanvas());
     }
 
     function setLayoutMode(mode) {
