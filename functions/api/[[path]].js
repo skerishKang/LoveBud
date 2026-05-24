@@ -253,6 +253,20 @@ function buildModalUnavailableResponse(requestId = null) {
   return new Response(JSON.stringify({ error: 'Modal backend unavailable' }), { status: 503, headers });
 }
 
+function hasAuthorizationHeader(request) {
+  return !!(request.headers.get('authorization') || request.headers.get('Authorization'));
+}
+
+function buildMissingAuthorizationResponse(requestId = null) {
+  const headers = {
+    'content-type': 'application/json; charset=utf-8',
+    'x-lovebud-upstream': 'cloudflare',
+    'x-lovebud-route-status': 'missing-authorization'
+  };
+  if (requestId) headers[REQUEST_ID_HEADER] = requestId;
+  return new Response(JSON.stringify({ error: 'Authorization required' }), { status: 401, headers });
+}
+
 function buildModalTimeoutResponse(requestId = null) {
   const headers = {
     'content-type': 'application/json; charset=utf-8',
@@ -337,6 +351,12 @@ async function tryModalWrite(request, env, requestId = null) {
   const method = request.method.toUpperCase();
   if (!['POST', 'PUT', 'DELETE'].includes(method)) return null;
   if (!isModalOwnedWriteRoute(request, env || {})) return null;
+
+  // Reject private write without Authorization before body read
+  if (!hasAuthorizationHeader(request)) {
+    console.warn(`[LoveBudCloudflareProxy] Missing auth for ${method} private write (id=${requestId})`);
+    return buildMissingAuthorizationResponse(requestId);
+  }
 
   let boundedBody = null;
   if (method !== 'DELETE') {
