@@ -1,0 +1,70 @@
+.video-container {
+    width: 100%;
+    aspect-ratio: 16/9;
+    background: linear-gradient(135deg, rgba(144, 73, 81, 0.08), rgba(122, 139, 110, 0.08));
+    border-radius: 1.55rem;
+    overflow: hidden;
+    margin-bottom: 20px;
+    border: 1px solid rgba(144,73,81,0.06);
+    box-shadow: none;
+}
+
+.video-container {
+    position: relative;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    box-shadow: 0 16px 38px rgba(75, 64, 57, 0.10);
+}
+
+.video-container.preview-state-empty,
+.video-container.preview-state-loading,
+.video-container.preview-state-no-moments {
+    background:
+        radial-gradient(circle at 50% 42%, rgba(255, 255, 255, 0.72), transparent 58%),
+        linear-gradient(135deg, rgba(144, 73, 81, 0.08), rgba(122, 139, 110, 0.09));
+    border-color: rgba(144, 73, 81, 0.08);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78);
+}
+
+.video-container.preview-state-loading::before {
+    opacity: 0.45;
+}
+
+.video-container.preview-state-media,
+.video-container.preview-state-thumbnail {
+    box-shadow: 0 14px 30px rgba(75, 64, 57, 0.10);
+}
+
+.preview-media-frame {
+    background: var(--surface-container-low);
+}
+
+.preview-media-frame-iframe iframe {
+    background: var(--on-background);
+}
+
+.preview-media-fallback {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.video-container::before {
+    content: '';
+    position: absolute;
+    left: 18px;
+    top: 15px;
+    width: 76px;
+    height: 50px;
+    border-radius: 999px;
+    background:
+        radial-gradient(circle at 70% 25%, rgba(144, 73, 81, 0.70) 0 5px, transparent 6px),
+        radial-gradient(circle at 36% 48%, rgba(122, 139, 110, 0.62) 0 5px, transparent 6px),
+        radial-gradient(circle at 50% 28%, rgba(200, 116, 128, 0.56) 0 4px, transparent 5px),
+        linear-gradient(32deg, transparent 39%, rgba(144, 73, 81, 0.48) 40% 44%, transparent 45%),
+        linear-gradient(150deg, transparent 43%, rgba(122, 139, 110, 0.36) 44% 48%, transparent 49%),
+        rgba(255, 255, 255, 0.82);
+    border: 1px solid rgba(144, 73, 81, 0.14);
+    box-shadow: 0 12px 24px rgba(50, 38, 35, 0.14);
+    pointer-events: none;
+    z-index: 2;
+}

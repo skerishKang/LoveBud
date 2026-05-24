@@ -1,0 +1,8 @@
+.preview-primary-action,
+.preview-share-action {
+    box-shadow: 0 12px 24px rgba(75, 64, 57, 0.08);
+}
+
+.preview-share-action {
+    box-shadow: none;
+}
