@@ -1,3 +1,10 @@
+/*
+ * Editor memory form canvas suppression styles.
+ *
+ * Extracted from editor-memory-form.css. Covers the hiding of
+ * canvas guide and topbar while the memory form modal is open.
+ */
+
 .canvas-area.is-memory-form-open .editor-canvas-empty-guide,
 .editor-canvas-empty-guide-form-suppressed {
     display: none;
@@ -8,4 +15,3 @@
     opacity: 0;
     pointer-events: none;
 }
-
