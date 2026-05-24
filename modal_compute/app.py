@@ -56,15 +56,18 @@ from modal_compute.owner_reads import (
 from modal_compute.owner_writes import (
     create_owner_tree,
     create_owner_memory,
-    fetch_tree_for_owner_check,
-    require_tree_owner,
-    fetch_memory_for_owner_check,
-    require_memory_owner,
     update_owner_tree,
     delete_owner_tree,
     update_owner_memory,
     delete_owner_memory,
     fork_public_tree,
+)
+
+from modal_compute.write_validation import (
+    fetch_tree_for_owner_check,
+    require_tree_owner,
+    fetch_memory_for_owner_check,
+    require_memory_owner,
 )
 from modal_compute.reactions import (
     toggle_reaction,
