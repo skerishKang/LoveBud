@@ -1,0 +1,75 @@
+/* 러브트리란 섹션 강화 */
+.intro-what-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  margin-bottom: 14px;
+  border-radius: 999px;
+  background: rgba(144, 73, 81, 0.08);
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.intro-section.intro-what-is h2 {
+  font-size: 2rem;
+  letter-spacing: -0.02em;
+}
+
+.intro-what-lead {
+  font-size: 1.05rem !important;
+  color: var(--on-surface-variant);
+  line-height: 1.7 !important;
+  margin-bottom: 1.5rem !important;
+}
+
+.intro-what-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 14px;
+}
+
+.intro-what-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 18px 20px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,246,244,0.96));
+  border-radius: 18px;
+  border: 1px solid rgba(144, 73, 81, 0.08);
+  box-shadow: 0 8px 20px rgba(75, 64, 57, 0.04);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.intro-what-item:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 28px rgba(144, 73, 81, 0.08);
+}
+
+.intro-what-icon {
+  font-size: 1.4rem;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.intro-what-item strong {
+  display: block;
+  font-size: 0.97rem;
+  font-weight: 800;
+  color: var(--on-surface);
+  margin-bottom: 4px;
+}
+
+.intro-what-item p {
+  font-size: 0.87rem !important;
+  color: var(--on-surface-variant);
+  line-height: 1.55 !important;
+  margin: 0 !important;
+  max-width: none !important;
+}

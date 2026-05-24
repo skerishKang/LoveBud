@@ -1,0 +1,41 @@
+.intro-section {
+  padding: 44px var(--lovetree-page-pad-desktop);
+  max-width: var(--lovetree-page-shell-max);
+  margin: 0 auto;
+  width: 100%;
+  border-top: 1px solid var(--outline-variant);
+}
+
+.intro-section.intro-section-wide {
+  max-width: var(--lovetree-page-shell-max);
+}
+
+.intro-section h2 {
+  font-size: clamp(2.4rem, 4vw, 3.4rem);
+  font-weight: 900;
+  color: var(--primary);
+  margin-bottom: 1.25rem;
+  line-height: 1.08;
+  letter-spacing: -0.04em;
+}
+
+.intro-section p {
+  font-size: 1rem;
+  color: var(--on-surface-variant);
+  line-height: 1.75;
+  margin-bottom: 0;
+}
+
+.intro-grid-layout {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 64px;
+  align-items: start;
+}
+
+.intro-section-text {
+  position: static;
+  max-height: none;
+  overflow-y: visible;
+  padding-right: 1rem;
+}
