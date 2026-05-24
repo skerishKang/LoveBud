@@ -194,31 +194,23 @@
     const renderEmotionTags = previewBuilders.renderEmotionTags || function(tags) { return ''; };
 
     function getTimelineLabel(tree, memories) {
-        if (previewBuilders.getTimelineLabel) {
-            return previewBuilders.getTimelineLabel(tree, memories);
-        }
-        return getSearchCopy('search.previewTimelineUnavailable', '아직 시작 순간을 기다리는 중이에요', 'Still waiting for the first moment');
+        return previewBuilders.getTimelineLabel?.(tree, memories)
+            || getSearchCopy('search.previewTimelineUnavailable', '아직 시작 순간을 기다리는 중이에요', 'Still waiting for the first moment');
     }
 
     const getDefaultTreeName = previewBuilders.getDefaultTreeName || function() { return '러브트리'; };
 
     function getPreviewTimeRange(tree) {
-        if (previewBuilders.getPreviewTimeRange) {
-            return previewBuilders.getPreviewTimeRange(tree);
-        }
-        const raw = String(tree?.timeRange || '').trim();
-        return raw || '';
+        return previewBuilders.getPreviewTimeRange?.(tree)
+            || (String(tree?.timeRange || '').trim() || '');
     }
 
     function getPreviewSummaryCopy(tree, memories) {
-        if (previewBuilders.getPreviewSummaryCopy) {
-            return previewBuilders.getPreviewSummaryCopy(tree, memories);
-        }
-        const displayTitle = String(tree?.title || '').trim() || '러브트리';
-        return formatSearchCopy('search.previewSummaryNoRange',
-            { title: escapeHtml(displayTitle), count: Number(tree?.memoryCount || 0) },
-            '<strong style="color:var(--on-surface);">{title}</strong>에 담긴 <span style="color:var(--primary);font-weight:700;">{count}개의 순간</span>이 이어졌어요.',
-            '<strong style="color:var(--on-surface);">{count} moments</strong> in <strong style="color:var(--on-surface);">{title}</strong> are connected.');
+        return previewBuilders.getPreviewSummaryCopy?.(tree, memories)
+            || formatSearchCopy('search.previewSummaryNoRange',
+                { title: escapeHtml(String(tree?.title || '').trim() || '러브트리'), count: Number(tree?.memoryCount || 0) },
+                '<strong style="color:var(--on-surface);">{title}</strong>에 담긴 <span style="color:var(--primary);font-weight:700;">{count}개의 순간</span>이 이어졌어요.',
+                '<strong style="color:var(--on-surface);">{count} moments</strong> in <strong style="color:var(--on-surface);">{title}</strong> are connected.');
     }
 
     const renderSectionHeading = previewBuilders.renderSectionHeading || function(icon, label) { return ''; };
