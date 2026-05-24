@@ -300,11 +300,11 @@ test('editor-canvas.js — persistStoredPositions delegated to transition helper
   );
 });
 
-test('editor-canvas.js — initCanvas is NOT delegated to transition helper', () => {
-  assert.doesNotMatch(
+test('editor-canvas.js — initCanvas is delegated to transition helper', () => {
+  assert.match(
     canvasSource,
     /layoutTransition\.initCanvas/,
-    'initCanvas must NOT be delegated to transition helper'
+    'initCanvas must be delegated to transition helper'
   );
 });
 
@@ -384,11 +384,11 @@ test('editor-canvas.js — switchToStructuredMode has fallback to direct fitView
   );
 });
 
-test('editor-canvas.js — initCanvas is still NOT delegated to transition helper', () => {
-  assert.doesNotMatch(
+test('editor-canvas.js — initCanvas is delegated to transition helper', () => {
+  assert.match(
     canvasSource,
     /layoutTransition\.initCanvas/,
-    'initCanvas must NOT be delegated to layoutTransition helper'
+    'initCanvas must be delegated to layoutTransition helper'
   );
 });
 
@@ -456,11 +456,11 @@ test('editor-canvas.js — switchToStructuredMode still does NOT call persistSto
   );
 });
 
-test('editor-canvas.js — initCanvas is still NOT delegated to transition helper', () => {
-  assert.doesNotMatch(
+test('editor-canvas.js — initCanvas is delegated to transition helper', () => {
+  assert.match(
     canvasSource,
     /layoutTransition\.initCanvas/,
-    'initCanvas must NOT be delegated to layoutTransition helper'
+    'initCanvas must be delegated to layoutTransition helper'
   );
 });
 

@@ -68,9 +68,21 @@
         persistFn();
     }
 
+    /**
+     * Delegates canvas initialization/refresh call.
+     * @param {Function} initFn - the local initCanvas function
+     */
+    function initCanvas(initFn) {
+        if (typeof initFn !== 'function') {
+            return;
+        }
+        initFn();
+    }
+
     window.LoveBudEditorCanvasLayoutTransition = {
         applyLayoutModeClasses: applyLayoutModeClasses,
         fitViewportToTree: fitViewportToTree,
+        initCanvas: initCanvas,
         persistLayoutMode: persistLayoutMode,
         persistStoredPositions: persistStoredPositions,
         updateLayoutToggleUI: updateLayoutToggleUI
