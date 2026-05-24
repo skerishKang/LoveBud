@@ -1,0 +1,122 @@
+/* Print/PDF export styles */
+@media print {
+    /* Hide interactive-only UI */
+    .viewer-topbar,
+    .viewer-back-link,
+    .viewer-badge,
+    .noise-overlay,
+    .vv-action-dock,
+    .vv-action-group,
+    .vv-header-actions,
+    .vv-layout-toggle,
+    .vv-share-actions,
+    .vv-share-btn,
+    .vv-share-status,
+    .vv-share-note,
+    #vvShareStatus,
+    .vv-panel-close,
+    .vv-panel-header button,
+    .vv-moment-action-btn,
+    .vv-moment-comments-section,
+    .vv-comment-input,
+    .vv-moment-nav,
+    .vv-moment-close-hint,
+    .vv-branch-moment-btn,
+    .vv-sort-tabs,
+    .vv-sort-btn,
+    .viewer-state,
+    .vv-comment-like-btn,
+    .vv-comment-replies-btn,
+    button.vv-action-btn,
+    button.vv-share-btn,
+    button.vv-panel-close {
+        display: none !important;
+    }
+
+    /* Reset backgrounds for print */
+    body,
+    .viewer-page-shell,
+    .viewer-layout,
+    .viewer-tree-shell,
+    .vv-panel,
+    .viewer-preview-container {
+        background: white !important;
+        color: black !important;
+        border-color: #ddd !important;
+        box-shadow: none !important;
+    }
+
+    .viewer-tree-shell {
+        border: none !important;
+        padding: 0 !important;
+    }
+
+    .viewer-layout {
+        padding: 20px !important;
+        max-width: 100% !important;
+    }
+
+    /* Ensure tree content and panel text are visible */
+    .vv-title,
+    .vv-moment-title,
+    .vv-share-title,
+    .viewer-tree-title,
+    .viewer-moment-title {
+        color: black !important;
+    }
+
+    .vv-moment-caption,
+    .vv-moment-memo-text,
+    .vv-panel-desc,
+    .vv-moment-memo-label,
+    .vv-panel-eyebrow,
+    .vv-panel-sub,
+    .vv-meta-row {
+        color: #333 !important;
+    }
+
+    /* Panel content should be visible */
+    .vv-panel {
+        border: 1px solid #ddd !important;
+        page-break-inside: avoid;
+    }
+
+    .vv-tree-container {
+        page-break-inside: avoid;
+    }
+
+    /* Show branch moment list as plain text in print */
+    .vv-branch-moment-list {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 3px;
+        margin-top: 10px;
+    }
+
+    .vv-branch-moment-item {
+        display: flex !important;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        padding: 4px 0;
+        color: black !important;
+        background: transparent !important;
+        border: none !important;
+        font-size: 13px;
+        page-break-inside: avoid;
+    }
+
+    .vv-branch-moment-open {
+        display: none !important;
+    }
+
+    /* Show branch metadata */
+    .vv-branch-label {
+        color: black !important;
+    }
+
+    /* Branding */
+    .vv-header .vv-eyebrow {
+        color: #666 !important;
+    }
+}
