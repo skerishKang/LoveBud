@@ -45,38 +45,19 @@
     const isSuspiciousYouTubeThumbnailImage = previewBuilders.isSuspiciousYouTubeThumbnailImage || function(img) { return false; };
 
     function getCurrentLocale() {
-        const helper = window.LoveBudSearchPreviewCopyHelper;
-        if (helper?.getCurrentLocale) {
-            return helper.getCurrentLocale();
-        }
-        const locale = window.i18n?.currentLang || document.documentElement?.lang || 'ko';
-        return String(locale).toLowerCase().startsWith('en') ? 'en' : 'ko';
+        return window.LoveBudSearchPreviewCopyHelper?.getCurrentLocale() || 'ko';
     }
 
     function getSearchCopy(key, fallbackKo, fallbackEn) {
-        const helper = window.LoveBudSearchPreviewCopyHelper;
-        if (helper?.getSearchCopy) {
-            return helper.getSearchCopy(key, fallbackKo, fallbackEn);
-        }
-        const locale = getCurrentLocale();
-        const dict = window.i18nSearch?.[key];
-        if (dict && typeof dict === 'object') {
-            return dict[locale] || dict.ko || dict.en || fallbackKo;
-        }
-        return locale === 'en' ? fallbackEn : fallbackKo;
+        return window.LoveBudSearchPreviewCopyHelper?.getSearchCopy(key, fallbackKo, fallbackEn)
+            || (getCurrentLocale() === 'en' ? fallbackEn : fallbackKo);
     }
 
     function formatSearchCopy(key, replacements, fallbackKo, fallbackEn) {
-        const helper = window.LoveBudSearchPreviewCopyHelper;
-        if (helper?.formatSearchCopy) {
-            return helper.formatSearchCopy(key, replacements, fallbackKo, fallbackEn);
-        }
-        const template = getSearchCopy(key, fallbackKo, fallbackEn);
-        return String(template).replace(/\{(\w+)\}/g, (_, token) => {
-            return Object.prototype.hasOwnProperty.call(replacements, token)
-                ? String(replacements[token])
-                : '';
-        });
+        return window.LoveBudSearchPreviewCopyHelper?.formatSearchCopy(key, replacements, fallbackKo, fallbackEn)
+            || String(getSearchCopy(key, fallbackKo, fallbackEn)).replace(/\{(\w+)\}/g, (_, token) => {
+                return Object.prototype.hasOwnProperty.call(replacements, token) ? String(replacements[token]) : '';
+            });
     }
 
     function getPreviewStatsElement() {
