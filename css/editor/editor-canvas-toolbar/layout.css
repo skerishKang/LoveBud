@@ -1,0 +1,25 @@
+.editor-canvas-topbar {
+    position: absolute;
+    top: 18px;
+    left: 24px;
+    right: 24px;
+    z-index: 7;
+    pointer-events: none;
+}
+.editor-canvas-topbar > * {
+    pointer-events: auto;
+}
+.editor-canvas-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    width: 100%;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    background: rgba(255,250,244,0.85);
+    border: 1px solid rgba(230,207,194,0.78);
+    box-shadow: 0 14px 30px rgba(161,119,96,0.10);
+    backdrop-filter: blur(8px);
+    box-sizing: border-box;
+}

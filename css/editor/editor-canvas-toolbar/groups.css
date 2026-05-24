@@ -1,0 +1,57 @@
+.editor-canvas-toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex: 0 0 auto;
+}
+.editor-canvas-toolbar-group[aria-label="화면 줌 컨트롤"] {
+    gap: 0;
+}
+.editor-canvas-toolbar-group[aria-label="화면 줌 컨트롤"] .editor-canvas-tool-btn {
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+}
+.editor-canvas-toolbar-group[aria-label="트리 뷰 컨트롤"] {
+    gap: 6px;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+.editor-canvas-toolbar-group[aria-label="트리 뷰 컨트롤"] .editor-canvas-tool-btn-wide {
+    flex: 1 1 0;
+    min-width: 150px;
+    justify-content: center;
+}
+.editor-canvas-toolbar-group[aria-label="레이아웃 모드"] {
+    gap: 6px;
+}
+.editor-canvas-toolbar-group[aria-label="레이아웃 모드"] .editor-canvas-tool-btn-wide {
+    background: rgba(255,255,255,0.6);
+    border: 1.5px solid rgba(144,73,81,0.18);
+    border-radius: 20px;
+    padding: 0 18px 0 14px;
+    height: 38px;
+    min-width: 128px;
+    justify-content: center;
+    color: var(--primary, rgba(144,73,81,0.92));
+    font-weight: 700;
+    gap: 8px;
+    transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.editor-canvas-toolbar-group[aria-label="레이아웃 모드"] .editor-canvas-tool-btn-wide:hover:not(:disabled) {
+    background: rgba(144, 73, 81, 0.08);
+    border-color: rgba(144, 73, 81, 0.35);
+    transform: none;
+}
+.editor-canvas-toolbar-group[aria-label="레이아웃 모드"] .editor-canvas-tool-btn-wide.is-active {
+    background: var(--primary, rgba(144,73,81,0.92));
+    border-color: var(--primary, rgba(144,73,81,0.92));
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(144,73,81,0.2);
+}
+.editor-canvas-toolbar-group[aria-label="레이아웃 모드"] .editor-canvas-tool-btn-wide.is-active:hover:not(:disabled) {
+    background: var(--primary-hover, rgba(124,59,67,0.92));
+}
+.editor-canvas-toolbar-group[aria-label="레이아웃 모드"] .editor-canvas-tool-btn-wide .material-symbols-outlined {
+    font-size: 18px;
+}
