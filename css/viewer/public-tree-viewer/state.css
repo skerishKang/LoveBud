@@ -1,0 +1,32 @@
+/* State views */
+.viewer-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 300px;
+}
+
+.viewer-tree-shell [hidden] {
+    display: none !important;
+}
+
+.viewer-state-content {
+    text-align: center;
+    color: var(--on-surface-variant);
+}
+
+.viewer-state-content .material-symbols-outlined {
+    font-size: 64px;
+    margin-bottom: 16px;
+    opacity: 0.6;
+    display: block;
+}
+
+.viewer-state-content p {
+    margin: 0;
+    font-size: 1rem;
+}
+
+#viewerRetryBtn {
+    margin-top: 24px;
+}
