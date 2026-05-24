@@ -342,7 +342,7 @@ def get_memory_comments(
     authorization: str | None = Header(default=None),
 ) -> list[dict]:
     user = require_firebase_user(authorization)
-    return fetch_comments(memory_id)
+    return fetch_comments(memory_id, user["uid"])
 
 
 @app.function(

@@ -2,8 +2,7 @@
  * Security contract tests for comments and reactions access boundaries.
  *
  * These tests verify that comments and reactions endpoints enforce
- * memory visibility and owner checks. They document the expected
- * security policy and identify gaps in the current implementation.
+ * memory visibility and owner checks via shared guard helpers.
  *
  * Refs: #1621
  */
@@ -32,6 +31,7 @@ function hasRegex(content, regex) {
 const COMMENTS_PY = path.join(ROOT, 'modal_compute', 'comments.py');
 const REACTIONS_PY = path.join(ROOT, 'modal_compute', 'reactions.py');
 const APP_PY = path.join(ROOT, 'modal_compute', 'app.py');
+const WRITE_VALIDATION_PY = path.join(ROOT, 'modal_compute', 'write_validation.py');
 
 // ─── FILE EXISTENCE ────────────────────────────────────────────────────────────
 
@@ -45,6 +45,47 @@ test('reactions.py exists', () => {
 
 test('app.py exists', () => {
   assert.ok(fs.existsSync(APP_PY), 'modal_compute/app.py should exist');
+});
+
+test('write_validation.py exists', () => {
+  assert.ok(fs.existsSync(WRITE_VALIDATION_PY), 'modal_compute/write_validation.py should exist');
+});
+
+// ─── SHARED GUARD DEFINITION CONTRACTS ─────────────────────────────────────────
+
+test('write_validation.py defines require_memory_visible_or_owner', () => {
+  const content = readFileContent(WRITE_VALIDATION_PY);
+
+  assert.ok(
+    hasString(content, 'def require_memory_visible_or_owner('),
+    'require_memory_visible_or_owner should be defined in write_validation.py'
+  );
+});
+
+test('require_memory_visible_or_owner checks visibility and ownership', () => {
+  const content = readFileContent(WRITE_VALIDATION_PY);
+
+  assert.ok(
+    hasString(content, 'visibility'),
+    'require_memory_visible_or_owner should check memory visibility'
+  );
+  assert.ok(
+    hasRegex(content, /tree_owner_id.*==.*requester_uid|requester_uid.*==.*tree_owner_id/),
+    'require_memory_visible_or_owner should compare tree_owner_id with requester_uid'
+  );
+});
+
+test('require_memory_visible_or_owner returns 404 for private non-owner access', () => {
+  const content = readFileContent(WRITE_VALIDATION_PY);
+
+  assert.ok(
+    hasRegex(content, /private.*not\s*is_owner|not\s*is_owner.*private/),
+    'require_memory_visible_or_owner should reject private memory for non-owners'
+  );
+  assert.ok(
+    hasRegex(content, /status_code=404.*Memory not found|Memory not found.*status_code=404/),
+    'require_memory_visible_or_owner should return 404 for private non-owner access'
+  );
 });
 
 // ─── ROUTE DEFINITION CONTRACTS ────────────────────────────────────────────────
@@ -80,11 +121,9 @@ test('reactions routes are defined in app.py', () => {
 test('comments POST route requires firebase auth', () => {
   const content = readFileContent(APP_PY);
 
-  // Find the post_memory_comment function
   const commentPostMatch = content.indexOf('async def post_memory_comment(');
   assert.notEqual(commentPostMatch, -1, 'post_memory_comment function should exist');
 
-  // Check that require_firebase_user is called
   const commentPostBlock = content.slice(commentPostMatch, commentPostMatch + 500);
   assert.ok(
     hasString(commentPostBlock, 'require_firebase_user(authorization)'),
@@ -131,119 +170,89 @@ test('reactions GET route requires firebase auth', () => {
   );
 });
 
-// ─── VISIBILITY/OWNER CHECK CONTRACTS ──────────────────────────────────────────
+// ─── FORWARD-LOOKING GUARD CONTRACTS ───────────────────────────────────────────
 
-test('comments create_comment does not check memory visibility', () => {
+test('comments.py imports require_memory_visible_or_owner', () => {
   const content = readFileContent(COMMENTS_PY);
 
-  // Check if create_comment checks memory visibility
-  const hasVisibilityCheck = hasString(content, 'visibility') ||
-    hasString(content, 'is_private') ||
-    hasString(content, 'check_owner') ||
-    hasString(content, 'is_owner') ||
-    hasString(content, 'memory_owner') ||
-    hasString(content, 'fetch_memory_for_owner_check');
-
-  // This test documents the gap - if it fails, visibility checks have been added
   assert.ok(
-    !hasVisibilityCheck,
-    'SECURITY GAP: create_comment should check memory visibility/ownership but does not'
+    hasString(content, 'from modal_compute.write_validation import require_memory_visible_or_owner'),
+    'comments.py should import require_memory_visible_or_owner'
   );
 });
 
-test('comments fetch_comments does not check memory visibility', () => {
+test('create_comment calls require_memory_visible_or_owner', () => {
   const content = readFileContent(COMMENTS_PY);
 
-  const hasVisibilityCheck = hasString(content, 'visibility') ||
-    hasString(content, 'is_private') ||
-    hasString(content, 'check_owner') ||
-    hasString(content, 'is_owner') ||
-    hasString(content, 'memory_owner') ||
-    hasString(content, 'fetch_memory_for_owner_check');
-
   assert.ok(
-    !hasVisibilityCheck,
-    'SECURITY GAP: fetch_comments should check memory visibility/ownership but does not'
+    hasString(content, 'require_memory_visible_or_owner(safe_memory_id, owner_id)'),
+    'create_comment should call require_memory_visible_or_owner'
   );
 });
 
-test('reactions toggle_reaction does not check memory visibility', () => {
+test('fetch_comments calls require_memory_visible_or_owner', () => {
+  const content = readFileContent(COMMENTS_PY);
+
+  assert.ok(
+    hasString(content, 'require_memory_visible_or_owner(safe_memory_id, requester_uid)'),
+    'fetch_comments should call require_memory_visible_or_owner'
+  );
+});
+
+test('fetch_comments accepts requester_uid parameter', () => {
+  const content = readFileContent(COMMENTS_PY);
+
+  assert.ok(
+    hasRegex(content, /def fetch_comments\(memory_id.*requester_uid/),
+    'fetch_comments should accept requester_uid parameter'
+  );
+});
+
+test('reactions.py imports require_memory_visible_or_owner', () => {
   const content = readFileContent(REACTIONS_PY);
 
-  const hasVisibilityCheck = hasString(content, 'visibility') ||
-    hasString(content, 'is_private') ||
-    hasString(content, 'check_owner') ||
-    hasString(content, 'is_owner') ||
-    hasString(content, 'memory_owner') ||
-    hasString(content, 'fetch_memory_for_owner_check');
-
   assert.ok(
-    !hasVisibilityCheck,
-    'SECURITY GAP: toggle_reaction should check memory visibility/ownership but does not'
+    hasString(content, 'from modal_compute.write_validation import require_memory_visible_or_owner'),
+    'reactions.py should import require_memory_visible_or_owner'
   );
 });
 
-test('reactions fetch_reaction_summary does not check memory visibility', () => {
+test('toggle_reaction calls require_memory_visible_or_owner', () => {
   const content = readFileContent(REACTIONS_PY);
 
-  const hasVisibilityCheck = hasString(content, 'visibility') ||
-    hasString(content, 'is_private') ||
-    hasString(content, 'check_owner') ||
-    hasString(content, 'is_owner') ||
-    hasString(content, 'memory_owner') ||
-    hasString(content, 'fetch_memory_for_owner_check');
-
   assert.ok(
-    !hasVisibilityCheck,
-    'SECURITY GAP: fetch_reaction_summary should check memory visibility/ownership but does not'
+    hasString(content, 'require_memory_visible_or_owner(safe_memory_id, owner_id)'),
+    'toggle_reaction should call require_memory_visible_or_owner'
   );
 });
 
-// ─── ROUTE-LEVEL VISIBILITY CHECK CONTRACTS ────────────────────────────────────
+test('fetch_reaction_summary calls require_memory_visible_or_owner', () => {
+  const content = readFileContent(REACTIONS_PY);
 
-test('comments POST route does not verify memory ownership before create', () => {
+  assert.ok(
+    hasString(content, 'require_memory_visible_or_owner(safe_memory_id, owner_id)'),
+    'fetch_reaction_summary should call require_memory_visible_or_owner'
+  );
+});
+
+// ─── ROUTE-LEVEL GUARD CONSISTENCY ────────────────────────────────────────────
+
+test('comments GET route passes requester_uid to fetch_comments', () => {
   const content = readFileContent(APP_PY);
 
-  const commentPostMatch = content.indexOf('async def post_memory_comment(');
-  assert.notEqual(commentPostMatch, -1, 'post_memory_comment function should exist');
+  const commentGetMatch = content.indexOf('def get_memory_comments(');
+  assert.notEqual(commentGetMatch, -1, 'get_memory_comments function should exist');
 
-  const commentPostBlock = content.slice(commentPostMatch, commentPostMatch + 800);
-  const hasOwnerCheck = hasString(commentPostBlock, 'fetch_memory_for_owner_check') ||
-    hasString(commentPostBlock, 'check_owner') ||
-    hasString(commentPostBlock, 'is_owner') ||
-    hasString(commentPostBlock, 'memory_owner');
-
+  const commentGetBlock = content.slice(commentGetMatch, commentGetMatch + 500);
   assert.ok(
-    !hasOwnerCheck,
-    'SECURITY GAP: comments POST route should verify memory ownership but does not'
+    hasString(commentGetBlock, 'fetch_comments(memory_id, user["uid"])'),
+    'comments GET route should pass user uid to fetch_comments'
   );
 });
-
-test('reactions POST route does not verify memory ownership before toggle', () => {
-  const content = readFileContent(APP_PY);
-
-  const reactionPostMatch = content.indexOf('async def post_memory_reaction(');
-  assert.notEqual(reactionPostMatch, -1, 'post_memory_reaction function should exist');
-
-  const reactionPostBlock = content.slice(reactionPostMatch, reactionPostMatch + 800);
-  const hasOwnerCheck = hasString(reactionPostBlock, 'fetch_memory_for_owner_check') ||
-    hasString(reactionPostBlock, 'check_owner') ||
-    hasString(reactionPostBlock, 'is_owner') ||
-    hasString(reactionPostBlock, 'memory_owner');
-
-  assert.ok(
-    !hasOwnerCheck,
-    'SECURITY GAP: reactions POST route should verify memory ownership but does not'
-  );
-});
-
-// ─── COMPARISON WITH MEMORY ROUTES ─────────────────────────────────────────────
 
 test('memory PUT/DELETE routes delegate to owner-checked functions', () => {
   const content = readFileContent(APP_PY);
 
-  // Memory routes delegate to update_owner_memory/delete_owner_memory
-  // which internally call require_memory_owner
   const memoryPutMatch = content.indexOf('async def put_private_memory(');
   assert.notEqual(memoryPutMatch, -1, 'put_private_memory function should exist');
 
@@ -260,34 +269,6 @@ test('memory PUT/DELETE routes delegate to owner-checked functions', () => {
   assert.ok(
     hasString(memoryDeleteBlock, 'delete_owner_memory('),
     'memory DELETE route should delegate to delete_owner_memory'
-  );
-});
-
-test('comments/reactions routes do NOT delegate to owner-checked functions', () => {
-  const content = readFileContent(APP_PY);
-
-  // Comments route calls create_comment directly without owner check
-  const commentPostMatch = content.indexOf('async def post_memory_comment(');
-  const commentPostBlock = content.slice(commentPostMatch, commentPostMatch + 800);
-  const hasCommentOwnerCheck = hasString(commentPostBlock, 'require_memory_owner') ||
-    hasString(commentPostBlock, 'fetch_memory_for_owner_check') ||
-    hasString(commentPostBlock, 'update_owner_memory');
-
-  // Reactions route calls toggle_reaction directly without owner check
-  const reactionPostMatch = content.indexOf('async def post_memory_reaction(');
-  const reactionPostBlock = content.slice(reactionPostMatch, reactionPostMatch + 800);
-  const hasReactionOwnerCheck = hasString(reactionPostBlock, 'require_memory_owner') ||
-    hasString(reactionPostBlock, 'fetch_memory_for_owner_check') ||
-    hasString(reactionPostBlock, 'update_owner_memory');
-
-  // Document the gap
-  assert.ok(
-    !hasCommentOwnerCheck,
-    'SECURITY GAP: comments POST route should verify memory ownership but does not'
-  );
-  assert.ok(
-    !hasReactionOwnerCheck,
-    'SECURITY GAP: reactions POST route should verify memory ownership but does not'
   );
 });
 
@@ -374,53 +355,20 @@ test('toggle_reaction validates reaction_type length', () => {
 test('normalize_comment_row returns expected fields', () => {
   const content = readFileContent(COMMENTS_PY);
 
-  assert.ok(
-    hasString(content, '"id"'),
-    'normalize_comment_row should include id'
-  );
-  assert.ok(
-    hasString(content, '"memoryId"'),
-    'normalize_comment_row should include memoryId'
-  );
-  assert.ok(
-    hasString(content, '"ownerId"'),
-    'normalize_comment_row should include ownerId'
-  );
-  assert.ok(
-    hasString(content, '"body"'),
-    'normalize_comment_row should include body'
-  );
-  assert.ok(
-    hasString(content, '"createdAt"'),
-    'normalize_comment_row should include createdAt'
-  );
-  assert.ok(
-    hasString(content, '"updatedAt"'),
-    'normalize_comment_row should include updatedAt'
-  );
+  assert.ok(hasString(content, '"id"'), 'normalize_comment_row should include id');
+  assert.ok(hasString(content, '"memoryId"'), 'normalize_comment_row should include memoryId');
+  assert.ok(hasString(content, '"ownerId"'), 'normalize_comment_row should include ownerId');
+  assert.ok(hasString(content, '"body"'), 'normalize_comment_row should include body');
+  assert.ok(hasString(content, '"createdAt"'), 'normalize_comment_row should include createdAt');
+  assert.ok(hasString(content, '"updatedAt"'), 'normalize_comment_row should include updatedAt');
 });
 
 test('normalize_reaction_row returns expected fields', () => {
   const content = readFileContent(REACTIONS_PY);
 
-  assert.ok(
-    hasString(content, '"id"'),
-    'normalize_reaction_row should include id'
-  );
-  assert.ok(
-    hasString(content, '"memoryId"'),
-    'normalize_reaction_row should include memoryId'
-  );
-  assert.ok(
-    hasString(content, '"ownerId"'),
-    'normalize_reaction_row should include ownerId'
-  );
-  assert.ok(
-    hasString(content, '"type"'),
-    'normalize_reaction_row should include type'
-  );
-  assert.ok(
-    hasString(content, '"createdAt"'),
-    'normalize_reaction_row should include createdAt'
-  );
+  assert.ok(hasString(content, '"id"'), 'normalize_reaction_row should include id');
+  assert.ok(hasString(content, '"memoryId"'), 'normalize_reaction_row should include memoryId');
+  assert.ok(hasString(content, '"ownerId"'), 'normalize_reaction_row should include ownerId');
+  assert.ok(hasString(content, '"type"'), 'normalize_reaction_row should include type');
+  assert.ok(hasString(content, '"createdAt"'), 'normalize_reaction_row should include createdAt');
 });
