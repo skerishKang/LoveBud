@@ -1,0 +1,103 @@
+/* ── Visitor Viewer Panel: Moment Details (Media, Title, Memo) ── */
+
+.vv-moment-media {
+    margin-top: 12px;
+}
+
+.vv-moment-media-inner {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    border-radius: 18px;
+    border: 1px solid rgba(255,255,255,0.68);
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.vv-moment-media-border {
+    position: absolute;
+    inset: 10px;
+    border-radius: 15px;
+    border: 1px solid rgba(255,255,255,0.5);
+}
+
+.vv-moment-media-badge {
+    position: absolute;
+    left: 14px;
+    top: 14px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.7);
+    font-size: 11px;
+    font-weight: 500;
+    color: #6b5850;
+}
+
+.vv-moment-play-btn {
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    width: 56px;
+    height: 56px;
+    border: 1px solid rgba(255,255,255,0.8);
+    border-radius: 999px;
+    background: rgba(255,255,255,0.7);
+    font-size: 18px;
+    color: #881337;
+    cursor: pointer;
+    backdrop-filter: blur(4px);
+}
+
+.vv-moment-media-emoji {
+    position: absolute;
+    bottom: 18px;
+    right: 18px;
+    font-size: 46px;
+    opacity: 0.55;
+}
+
+.vv-moment-tags {
+    display: flex;
+    gap: 6px;
+    margin-top: 18px;
+}
+
+.vv-moment-title {
+    margin: 12px 0 5px;
+    font-size: 1.18rem;
+    font-weight: 700;
+    color: #3f302b;
+}
+
+.vv-moment-caption {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.62;
+    color: #6b5850;
+}
+
+.vv-moment-memo {
+    margin-top: 12px;
+    padding: 10px;
+    border-radius: 15px;
+    background: rgba(255,241,243,0.36);
+    border: 1px solid rgba(144,73,81,0.07);
+}
+
+.vv-moment-memo-label {
+    margin: 0 0 6px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: #904951;
+    opacity: 0.7;
+}
+
+.vv-moment-memo-text {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #6b5850;
+}
