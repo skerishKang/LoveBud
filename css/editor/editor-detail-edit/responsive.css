@@ -1,0 +1,46 @@
+/* ── Mobile: Edit mode responsive overrides ────────────── */
+
+@media (max-width: 375px) {
+    #detailEditMode .editor-form-actions {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+        margin-top: 20px;
+    }
+
+    #detailEditMode .editor-form-action-btn {
+        width: 100%;
+        min-width: 0;
+    }
+
+    #detailEditMode .editor-form-action-btn:first-child {
+        order: 2;
+    }
+
+    #detailEditMode .editor-form-action-btn:last-child {
+        order: 1;
+    }
+
+    .editor-edit-actions-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+        margin-top: 22px;
+        padding-top: 16px;
+    }
+
+    .editor-edit-actions-row .editor-edit-action-btn,
+    .editor-edit-actions-row .editor-edit-danger-action {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .editor-edit-actions-row .editor-edit-action-btn {
+        order: 1;
+    }
+
+    .editor-edit-actions-row .editor-edit-danger-action {
+        order: 2;
+        margin: 8px 0 0;
+    }
+}

@@ -1,0 +1,72 @@
+/* ── Edit actions row ──────────────────────────────────── */
+
+.editor-edit-actions-row .editor-edit-danger-action {
+    margin-right: auto;
+    color: var(--primary);
+    border-color: rgba(var(--primary-rgb), 0.18);
+    background: rgba(255,253,249,0.72);
+    box-shadow: none;
+}
+
+.editor-edit-actions-row .editor-edit-danger-action:hover {
+    background: rgba(var(--primary-rgb), 0.08);
+}
+
+#detailEditMode .editor-form-stack {
+    margin: 0;
+}
+
+#detailEditMode .editor-form-stack + .editor-form-stack {
+    margin-top: 18px;
+}
+
+#detailEditMode .editor-form-stack:nth-of-type(3) {
+    margin-top: 20px;
+}
+
+.editor-edit-actions-row {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 24px;
+    padding-top: 18px;
+    border-top: 1px solid rgba(144,73,81,0.10);
+}
+
+.editor-edit-actions-row .editor-edit-action-btn,
+.editor-edit-actions-row .editor-edit-danger-action {
+    min-height: 42px;
+    padding-inline: 16px;
+}
+
+/**
+ * Delete action — moved to edit mode as de-emphasized link
+ */
+.editor-delete-row {
+    margin-top: 16px;
+    display: flex;
+    justify-content: center;
+}
+.editor-delete-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border: none;
+    background: none;
+    color: var(--on-surface-note);
+    font-size: 12px;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: color 0.15s, background 0.15s;
+}
+.editor-delete-link:hover {
+    color: var(--primary-vibrant);
+    background: rgba(var(--primary-rgb), 0.06);
+}
+.editor-delete-link:focus-visible {
+    outline: 2px solid var(--primary-vibrant);
+    outline-offset: 2px;
+}
