@@ -1,0 +1,62 @@
+#addMemoryForm.editor-memory-form-modal.is-open {
+    display: flex !important;
+    flex-direction: column;
+    gap: 0;
+    position: absolute;
+    left: 50%;
+    top: clamp(18px, 4vh, 30px);
+    bottom: auto;
+    transform: translateX(-50%);
+    width: min(620px, calc(100% - 32px));
+    max-width: 620px;
+    max-height: calc(100% - 36px);
+    padding: 0;
+    overflow: hidden;
+    z-index: 30;
+    border-radius: 30px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.995), rgba(250,246,244,0.985));
+    border: 1px solid rgba(144,73,81,0.12);
+    box-shadow: 0 26px 68px rgba(75,64,57,0.18);
+    cursor: default;
+    user-select: text;
+}
+
+.editor-memory-form-body {
+    display: flex;
+    flex: 0 1 auto;
+    flex-direction: column;
+    gap: 9px;
+    min-height: 0;
+    padding: 18px 24px 10px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(144,73,81,0.22) transparent;
+}
+
+.editor-memory-form-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+.editor-memory-form-body::-webkit-scrollbar-thumb {
+    background: rgba(144,73,81,0.18);
+    border-radius: 999px;
+}
+
+.editor-memory-form-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+@media (max-width: 560px) {
+    #addMemoryForm.editor-memory-form-modal.is-open {
+        top: 10px;
+        bottom: auto;
+        width: calc(100% - 20px);
+        max-height: calc(100% - 20px);
+        border-radius: 22px;
+    }
+
+    .editor-memory-form-body {
+        padding: 16px 14px 9px;
+    }
+}
