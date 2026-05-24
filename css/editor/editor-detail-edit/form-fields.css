@@ -1,0 +1,128 @@
+/* ── Memory form modal ──────────────────────────────────── */
+
+.editor-memory-form-modal {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.editor-modal-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: rgba(144,73,81,0.10);
+    color: var(--primary);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+}
+
+.editor-modal-title {
+    margin: 0;
+    font-size: 1.32rem;
+    letter-spacing: -0.03em;
+    line-height: 1.28;
+}
+
+.editor-modal-intro {
+    margin: -6px 0 0;
+    font-size: 12px;
+    line-height: 1.62;
+    color: var(--on-surface-variant);
+}
+
+.editor-form-field,
+.editor-form-field-grid,
+.editor-form-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+#memoryStartTimeField {
+    margin-top: 10px;
+}
+
+.editor-form-help {
+    margin: 6px 0 0;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--on-surface-variant);
+}
+
+.editor-form-field-primary {
+    gap: 10px;
+}
+
+.editor-form-field-grid {
+    gap: 14px;
+}
+
+.editor-form-stack {
+    padding: 12px;
+    border-radius: 18px;
+    background: rgba(255,255,255,0.72);
+    border: 1px solid rgba(144,73,81,0.08);
+}
+
+.editor-form-stack-compact {
+    gap: 8px;
+}
+
+.editor-form-stack-roomy {
+    gap: 10px;
+}
+
+.editor-form-label {
+    font-size: 12px;
+    font-weight: 800;
+    color: var(--on-surface);
+}
+
+.editor-form-input,
+.editor-form-textarea,
+.editor-edit-input,
+.editor-edit-textarea {
+    width: 100%;
+    border: 1px solid rgba(144,73,81,0.10);
+    border-radius: 18px;
+    padding: 13px 15px;
+    background: rgba(255,255,255,0.96);
+    color: var(--on-surface);
+    font-size: 14px;
+    line-height: 1.6;
+    box-sizing: border-box;
+    box-shadow: inset 0 1px 2px rgba(75,64,57,0.03);
+}
+
+.editor-form-input:focus,
+.editor-form-textarea:focus,
+.editor-edit-input:focus,
+.editor-edit-textarea:focus {
+    outline: none;
+    border-color: rgba(144,73,81,0.28);
+    box-shadow: 0 0 0 4px rgba(144,73,81,0.08);
+}
+
+.editor-form-textarea,
+.editor-edit-textarea {
+    min-height: 132px;
+    resize: vertical;
+}
+
+.editor-form-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 10px;
+    margin-top: 2px;
+    padding-top: 2px;
+}
+
+.editor-form-action-btn {
+    min-width: 136px;
+    min-height: 44px;
+}
