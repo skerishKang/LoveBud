@@ -70,8 +70,25 @@ export async function onRequestGet(context) {
   return withModalHeader(response);
 }
 
+function hasAuthorizationHeader(request) {
+  return !!(request.headers.get('authorization') || request.headers.get('Authorization'));
+}
+
+function buildMissingAuthorizationResponse() {
+  const headers = {
+    'content-type': 'application/json; charset=utf-8',
+    'x-lovebud-upstream': 'cloudflare',
+    'x-lovebud-route-status': 'missing-authorization'
+  };
+  return new Response(JSON.stringify({ error: 'Authorization required' }), { status: 401, headers });
+}
+
 export async function onRequestPost(context) {
   const { request } = context;
+
+  if (!hasAuthorizationHeader(request)) {
+    return buildMissingAuthorizationResponse();
+  }
 
   const bodyResult = await readBoundedWriteBody(request);
   if (bodyResult.tooLarge) {
