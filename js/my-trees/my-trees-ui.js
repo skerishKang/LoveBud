@@ -11,82 +11,39 @@
 
   function escapeHtml(str) {
     var Utils = window.LoveBudMyTreesUtils;
-    if (Utils && typeof Utils.escapeHtml === 'function') {
-      return Utils.escapeHtml(str);
-    }
-    if (str == null) return '';
-    return String(str)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
+    if (Utils && typeof Utils.escapeHtml === 'function') return Utils.escapeHtml(str);
+    return str == null ? '' : String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
   function hashSeed(value) {
     var Utils = window.LoveBudMyTreesUtils;
-    if (Utils && typeof Utils.hashSeed === 'function') {
-      return Utils.hashSeed(value);
-    }
-    var source = String(value || 'lovetree');
-    var hash = 0;
-    for (var i = 0; i < source.length; i++) {
-      hash = ((hash << 5) - hash) + source.charCodeAt(i);
-      hash |= 0;
-    }
-    return Math.abs(hash);
+    if (Utils && typeof Utils.hashSeed === 'function') return Utils.hashSeed(value);
+    return 0;
   }
 
   function getTreeMomentCount(tree) {
     var Utils = window.LoveBudMyTreesUtils;
-    if (Utils && typeof Utils.getTreeMomentCount === 'function') {
-      return Utils.getTreeMomentCount(tree);
-    }
-    if (!tree) return 0;
-    var count =
-      tree.memoryCount ??
-      tree.memory_count ??
-      tree.nodeCount ??
-      tree.node_count ??
-      (Array.isArray(tree.memories) ? tree.memories.length : undefined) ??
-      (Array.isArray(tree.nodes) ? tree.nodes.length : undefined) ??
-      0;
-    count = Number(count);
-    return Number.isFinite(count) ? count : 0;
+    if (Utils && typeof Utils.getTreeMomentCount === 'function') return Utils.getTreeMomentCount(tree);
+    return tree ? Number(tree.memoryCount ?? tree.memory_count ?? tree.nodeCount ?? tree.node_count ?? 0) : 0;
   }
 
   // Issue #1488: totalViewCount 우선 fallback
   function getTreeViewCount(tree) {
     var Utils = window.LoveBudMyTreesUtils;
-    if (Utils && typeof Utils.getTreeViewCount === 'function') {
-      return Utils.getTreeViewCount(tree);
-    }
-    if (!tree) return 0;
-    var keys = [
-      'totalViewCount',
-      'viewCount', 'viewsCount', 'views', 'view_count', 'views_count',
-      'visitorCount', 'visitorsCount', 'visitCount', 'visitsCount', 'visits',
-      'openCount', 'opensCount', 'open_count'
-    ];
-    for (var i = 0; i < keys.length; i++) {
-      var value = Number(tree[keys[i]]);
-      if (Number.isFinite(value) && value >= 0) return value;
-    }
-    return 0;
+    if (Utils && typeof Utils.getTreeViewCount === 'function') return Utils.getTreeViewCount(tree);
+    return tree ? Number(tree.totalViewCount || tree.viewCount || 0) : 0;
   }
 
   // Issue #1488: 좋아요 수 읽기
   function getTreeLikeCount(tree) {
-    if (!tree) return 0;
-    var keys = ['likeCount', 'likesCount', 'likes', 'reactionCount', 'reaction_count'];
-    for (var i = 0; i < keys.length; i++) {
-      var value = Number(tree[keys[i]]);
-      if (Number.isFinite(value) && value >= 0) return value;
-    }
-    return 0;
+    var Utils = window.LoveBudMyTreesUtils;
+    if (Utils && typeof Utils.getTreeLikeCount === 'function') return Utils.getTreeLikeCount(tree);
+    return tree ? Number(tree.likeCount || tree.likes || 0) : 0;
   }
 
   function formatCompactCount(value) {
+    var Utils = window.LoveBudMyTreesUtils;
+    if (Utils && typeof Utils.formatCompactCount === 'function') return Utils.formatCompactCount(value);
     var count = Number(value || 0);
     if (!Number.isFinite(count) || count <= 0) return '0';
     if (count >= 1000000) return (Math.floor(count / 100000) / 10) + 'M';
@@ -96,22 +53,15 @@
 
   function getVisibilityActionLabel(tree, i18n) {
     var Visuals = window.LoveBudMyTreesCardVisuals;
-    if (Visuals && typeof Visuals.getVisibilityActionLabel === 'function') {
-      return Visuals.getVisibilityActionLabel(tree, i18n);
-    }
-    return tree && tree.visibility === 'public'
-      ? (i18n('visibility_make_private') || '비공개로 전환')
-      : (i18n('visibility_make_public') || '공개로 전환');
+    if (Visuals && typeof Visuals.getVisibilityActionLabel === 'function') return Visuals.getVisibilityActionLabel(tree, i18n);
+    return tree && tree.visibility === 'public' ? (i18n('visibility_make_private') || '비공개로 전환') : (i18n('visibility_make_public') || '공개로 전환');
   }
 
   function getTreeCardMeta(tree, i18n) {
     var Visuals = window.LoveBudMyTreesCardVisuals;
-    if (Visuals && typeof Visuals.getTreeCardMeta === 'function') {
-      return Visuals.getTreeCardMeta(tree, i18n);
-    }
+    if (Visuals && typeof Visuals.getTreeCardMeta === 'function') return Visuals.getTreeCardMeta(tree, i18n);
     var visibility = tree && tree.visibility === 'public' ? 'public' : 'private';
     var visibilityLabel = visibility === 'public' ? (i18n('myTrees.summary_public') || '공개') : (i18n('myTrees.summary_private') || '비공개');
-
     return {
       visibilityIcon: visibility === 'public' ? 'lock' : 'public',
       visibilityActionLabel: getVisibilityActionLabel(tree, i18n),
@@ -142,7 +92,6 @@
     return '<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"></svg>';
   }
 
-
   function getRepresentativeThumbnail(tree) {
     var Visuals = window.LoveBudMyTreesCardVisuals;
     if (Visuals && typeof Visuals.getRepresentativeThumbnail === 'function') {
@@ -154,27 +103,18 @@
 
   function clipText(value, maxLength) {
     var Utils = window.LoveBudMyTreesUtils;
-    if (Utils && typeof Utils.clipText === 'function') {
-      return Utils.clipText(value, maxLength);
-    }
+    if (Utils && typeof Utils.clipText === 'function') return Utils.clipText(value, maxLength);
     var text = String(value || '').trim();
-    if (!text) return '';
-    if (text.length <= maxLength) return text;
-    return text.slice(0, maxLength).trim() + '\u2026';
+    return text.length <= maxLength ? text : text.slice(0, maxLength).trim() + '\u2026';
   }
+
   function formatDate(dateValue) {
     var Utils = window.LoveBudMyTreesUtils;
-    if (Utils && typeof Utils.formatDate === 'function') {
-      return Utils.formatDate(dateValue);
-    }
+    if (Utils && typeof Utils.formatDate === 'function') return Utils.formatDate(dateValue);
     if (!dateValue) return '';
     try {
       var d = new Date(dateValue);
-      if (isNaN(d.getTime())) return '';
-      var yyyy = d.getFullYear();
-      var mm = String(d.getMonth() + 1).padStart(2, '0');
-      var dd = String(d.getDate()).padStart(2, '0');
-      return yyyy + '-' + mm + '-' + dd;
+      return isNaN(d.getTime()) ? '' : d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
     } catch(e) {
       return '';
     }
