@@ -22,17 +22,33 @@
       ko: '러브트리는 첫 장면, 마음 메모, 다시 보고 싶은 순간을<br class="pc-only">하나의 감정 경로로 묶어 보여주는 공간입니다.',
       en: 'LoveTree connects the first scene, heart notes, and moments worth revisiting<br class="pc-only">into one emotional path.'
     },
+    'intro.heroTitle1': {
+      ko: '<span class="title-line">첫 순간이 하나의</span><span class="title-line title-accent">러브트리로</span><span class="title-line">이어져요</span>',
+      en: '<span class="title-line">The first spark</span><span class="title-line title-accent">connects into</span><span class="title-line">one LoveTree</span>'
+    },
+    'intro.heroLead1': {
+      ko: '반했던 장면과 오래 남은 마음을,<br class="pc-only">감정이 이어진 경로로 천천히 남겨 보세요.',
+      en: 'Slowly document your cherished scenes and lasting thoughts along an emotional path.'
+    },
+    'intro.heroTitle2': {
+      ko: '<span class="title-line">다시 보고 싶은 장면이</span><span class="title-line title-accent">마음의 가지로</span><span class="title-line">자라나요</span>',
+      en: '<span class="title-line">Scenes you want to revisit</span><span class="title-line title-accent">grow into branches</span><span class="title-line">of the heart</span>'
+    },
+    'intro.heroLead2': {
+      ko: '스쳐간 순간 하나가 오래 머무는 마음이 되도록,<br class="pc-only">나만의 러브트리에 담아 보세요.',
+      en: 'Capture fleeting moments into your own LoveTree, letting them linger in your heart.'
+    },
     'intro.heroPrimaryCta': {
       ko: '내 러브트리 시작하기',
       en: 'Start My LoveTree'
     },
     'intro.ctaSecondary': {
-      ko: '다른 트리 둘러보기',
-      en: 'Browse Other Trees'
+      ko: '다른 러브트리 둘러보기',
+      en: 'Browse Other LoveTrees'
     },
     'intro.heroBrowseCta': {
-      ko: '다른 트리 둘러보기',
-      en: 'Browse Other Trees'
+      ko: '다른 러브트리 둘러보기',
+      en: 'Browse Other LoveTrees'
     },
     'intro.sceneFirst': {
       ko: '🌱 첫 설렘',

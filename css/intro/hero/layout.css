@@ -140,3 +140,40 @@
   opacity: 1;
   transform: scale(1.08);
 }
+
+
+/* Hero Copy Loop Animation */
+.hero-loop-container {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-items: start;
+}
+
+.hero-copy-set {
+  grid-area: 1 / 1;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+  pointer-events: none;
+}
+
+.hero-copy-set.active {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-copy-set {
+    transition: none !important;
+    transform: none !important;
+  }
+  #hero-set-1 {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+  #hero-set-2 {
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+}
