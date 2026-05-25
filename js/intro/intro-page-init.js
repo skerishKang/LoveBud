@@ -23,25 +23,13 @@ if (langBtn) {
   langBtn.classList.add('active');
 }
 
-// Two-message hero copy loop animation
+// Intro page keeps a stable explanatory hero. The rotating hero copy belongs on the landing page.
 var set1 = document.getElementById('hero-set-1');
 var set2 = document.getElementById('hero-set-2');
 if (set1 && set2) {
-  var isReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (!isReducedMotion) {
-    var activeSet = 1;
-    setInterval(function toggleHeroCopy() {
-      if (activeSet === 1) {
-        set1.classList.remove('active');
-        set2.classList.add('active');
-        activeSet = 2;
-      } else {
-        set2.classList.remove('active');
-        set1.classList.add('active');
-        activeSet = 1;
-      }
-    }, 3500);
-  }
+  set1.classList.add('active');
+  set2.classList.remove('active');
+  set2.setAttribute('hidden', '');
 }
 
 });

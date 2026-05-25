@@ -49,6 +49,43 @@
     transform: scale(1.08);
 }
 
+.home-hero-loop-container {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: start;
+}
+
+.home-hero-copy-set {
+    grid-area: 1 / 1;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+    pointer-events: none;
+}
+
+.home-hero-copy-set.active {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .home-hero-copy-set {
+        transition: none !important;
+        transform: none !important;
+    }
+
+    #home-hero-set-1 {
+        opacity: 1 !important;
+        pointer-events: auto !important;
+    }
+
+    #home-hero-set-2 {
+        opacity: 0 !important;
+        pointer-events: none !important;
+    }
+}
+
 .home-intro-entry-wrapper {
     margin-top: 20px;
     display: block;
