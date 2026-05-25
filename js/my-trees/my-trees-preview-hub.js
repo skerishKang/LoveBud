@@ -196,7 +196,7 @@
         els.panel.classList.remove('is-loaded');
         if (els.placeholder) els.placeholder.hidden = false;
         if (els.content) els.content.hidden = true;
-        if (els.badge) els.badge.textContent = i18nHub('', '내 트리', 'My Tree');
+        if (els.badge) els.badge.textContent = i18nHub('', '내 러브트리', 'My LoveTrees');
         _selectedTree = null;
         _expandedFlowKey = null;
     }
@@ -220,7 +220,7 @@
 
         if (els.badge) {
             els.badge.textContent = hasMemories
-                ? i18nHub('', '내 트리', 'My Tree')
+                ? i18nHub('', '내 러브트리', 'My LoveTrees')
                 : i18nHub('', '트리', 'Tree');
         }
 

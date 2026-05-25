@@ -15,7 +15,7 @@
       en: 'Home'
     },
     'nav.intro': {
-      ko: '러브트리',
+      ko: '러브트리 소개',
       en: 'About'
     },
     'nav.search': {
@@ -23,8 +23,8 @@
       en: 'Browse'
     },
     'nav.myTrees': {
-      ko: '나의트리',
-      en: 'My Trees'
+      ko: '내 러브트리',
+      en: 'My LoveTrees'
     },
     'nav.editor': {
       ko: '편집하기',
