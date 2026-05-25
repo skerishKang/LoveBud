@@ -180,19 +180,17 @@ test('tree viewer route does not reference Editor/Builder page', () => {
     assert.ok(noEditorPage, 'tree.html must not load any Editor module');
 });
 
-test('Browse tree-open CTA targets extensionless tree route with treeId param', () => {
+test('Browse tree-open CTA targets public-canvas read-only route with treeId param', () => {
     const helper = fs.readFileSync('js/search/search-preview-action-helper.js', 'utf8');
-    const hasTreeUrl = helper.includes('tree?treeId=');
-    assert.ok(hasTreeUrl, 'search-preview-action-helper.js must use tree?treeId= for tree-open CTA');
-    assert.ok(!helper.includes('tree.html?treeId='), 'search-preview-action-helper.js must not use .html tree route for tree-open CTA');
+    const hasCanvasUrl = helper.includes('public-canvas.html?treeId=');
+    assert.ok(hasCanvasUrl, 'search-preview-action-helper.js must use public-canvas.html?treeId= for tree-open CTA');
     const noDetailUrl = !helper.includes('detail.html?tree=');
     assert.ok(noDetailUrl, 'search-preview-action-helper.js must not use detail.html?tree= for tree-open CTA');
 });
 
-test('Browse card renderer targets extensionless tree route with treeId param', () => {
+test('Browse card renderer targets public-canvas read-only route with treeId param', () => {
     const renderer = fs.readFileSync('js/search/search-card-renderer.js', 'utf8');
-    assert.ok(renderer.includes('tree?treeId='), 'search-card-renderer.js must use tree?treeId= for card tree-open link');
-    assert.ok(!renderer.includes('tree.html?treeId='), 'search-card-renderer.js must not use .html tree route for card tree-open link');
+    assert.ok(renderer.includes('public-canvas.html?treeId='), 'search-card-renderer.js must use public-canvas.html?treeId= for card tree-open link');
 });
 
 test('My Trees owner routes target extensionless editor route with treeId param', () => {
