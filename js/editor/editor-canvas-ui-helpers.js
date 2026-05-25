@@ -293,14 +293,17 @@ export function bindNodePointerSelection(nodeEl, options) {
 export function bindNodeDragStart(nodeEl, getLayoutMode, onDragStart) {
     if (!nodeEl) return;
 
-    nodeEl.addEventListener('mousedown', (e) => {
+    function handleDragStart(e) {
         const layoutMode = typeof getLayoutMode === 'function' ? getLayoutMode() : null;
         if (layoutMode === 'structured') return;
-        
+
         if (typeof onDragStart === 'function') {
             onDragStart(e);
         }
-    });
+    }
+
+    nodeEl.addEventListener('mousedown', handleDragStart);
+    nodeEl.addEventListener('pointerdown', handleDragStart);
 }
 
 /**
