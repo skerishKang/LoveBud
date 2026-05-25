@@ -4,7 +4,7 @@
     width: min(100%, var(--page-shell-max));
     max-width: var(--page-shell-max);
     margin: 0 auto;
-    padding: 28px var(--page-pad-desktop) 58px;
+    padding: 52px var(--page-pad-desktop) 58px;
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(360px, 400px);
     gap: var(--hero-gap);

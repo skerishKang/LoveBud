@@ -14,12 +14,12 @@
       en: 'Browse LoveTrees'
     },
     'search.title': {
-      ko: '<span class="title-accent">러브트리</span> 둘러보기',
-      en: 'Browse <span class="title-accent">LoveTrees</span>'
+      ko: '<span class="title-line">다른 사람의</span><span class="title-line title-accent">러브트리를</span><span class="title-line">둘러보세요</span>',
+      en: '<span class="title-line">Gently explore</span><span class="title-line title-accent">other people\'s</span><span class="title-line">LoveTrees</span>'
     },
     'search.subtitle': {
-      ko: '다른 사람이 남긴 순간의 흐름을 가볍게 살펴보세요.',
-      en: 'Lightly explore the flow of moments others have shared.'
+      ko: '첫 순간과 이어진 마음,<br class="pc-only">깊어진 감정의 흐름을 가볍게 살펴보세요.',
+      en: 'Gently explore the first moments, connected hearts,<br class="pc-only">and the deepening flow of emotion.'
     },
     'search.resultsHeading': {
       ko: '둘러볼 러브트리',
