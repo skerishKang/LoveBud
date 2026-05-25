@@ -7,32 +7,32 @@
 
   var homeV3 = {
     'home.v3.eyebrow': {
-      ko: '팬 감정 러브트리 · 따뜻한 디지털 스크랩북',
-      en: 'Fan emotion LoveTree · A warm digital scrapbook'
+      ko: '러브트리가 마음을 엮는 방식',
+      en: 'How LoveTree weaves the heart'
     },
     'home.v3.title.soft': {
-      ko: '첫 순간이 하나의',
-      en: 'Your first moment'
+      ko: '좋아하게 된',
+      en: 'Read the flow'
     },
     'home.v3.title.warm': {
-      ko: '러브트리로',
-      en: 'grows into'
+      ko: '마음의 흐름을',
+      en: 'of affection'
     },
     'home.v3.title.accent': {
-      ko: '이어져요',
-      en: 'a LoveTree'
+      ko: '러브트리로 읽어보세요',
+      en: 'as a LoveTree'
     },
     'home.v3.desc': {
-      ko: '반했던 장면과 오래 남은 마음을, 감정이 이어진 경로로 천천히 남겨 보세요.',
-      en: 'Save the scene that moved you and the feelings that stayed, then trace how those emotions connected over time.'
+      ko: '첫 장면과 다시 보고 싶은 순간, 그때의 마음까지 감정의 경로로 엮어 보여줍니다.',
+      en: 'It weaves the first scene, moments to revisit, and the heart at that time into an emotional path.'
     },
     'home.v3.cta.start': {
       ko: '내 러브트리 시작하기',
       en: 'Start My LoveTree'
     },
     'home.v3.cta.browse': {
-      ko: '다른 트리 둘러보기',
-      en: 'Browse Other Trees'
+      ko: '다른 러브트리 둘러보기',
+      en: 'Browse Other LoveTrees'
     },
     'home.v3.note': {
       ko: '처음에는 단 하나의 순간만 있어도 충분해요.',

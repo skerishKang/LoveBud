@@ -38,10 +38,11 @@
 
 .home-v3-title {
     margin: 20px 0 14px;
-    font-size: clamp(3.55rem, 6vw, 5.4rem);
-    line-height: 0.98;
-    letter-spacing: -0.055em;
+    font-size: clamp(3.45rem, 5.8vw, 5.15rem);
+    line-height: 0.99;
+    letter-spacing: -0.052em;
     color: var(--on-surface);
+    word-break: keep-all;
 }
 
 .home-v3-title .soft {
@@ -65,7 +66,7 @@
     margin: 0;
     max-width: 520px;
     font-size: 1.02rem;
-    line-height: 1.8;
+    line-height: 1.78;
     color: var(--on-surface-variant);
 }
 
