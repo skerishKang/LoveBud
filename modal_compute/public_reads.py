@@ -304,7 +304,10 @@ def fetch_growing_public_tree_snapshots(limit: int = 6) -> list[dict[str, Any]]:
     """
 
     def operation() -> list[dict[str, Any]]:
+        conn_start = time.time()
         with get_db_connection() as conn:
+            conn_acquire_ms = (time.time() - conn_start) * 1000
+            print(f"[LoveBudModal] [TIMING] DB connection acquisition took {conn_acquire_ms:.2f}ms")
             with conn.cursor() as cur:
                 has_memories = _table_exists(cur, "memories")
                 has_title = _table_has_column(cur, "trees", "title")
@@ -314,8 +317,13 @@ def fetch_growing_public_tree_snapshots(limit: int = 6) -> list[dict[str, Any]]:
                     cur.execute(modern_query, (limit,))
                     rows = cur.fetchall()
                     q_duration = (time.time() - q_start) * 1000
-                    print(f"[LoveBudModal] Growing browse query took {q_duration:.2f}ms (limit={limit})")
-                    return [normalize_row(row, stage_override="growing") for row in rows]
+                    print(f"[LoveBudModal] [TIMING] SQL execution took {q_duration:.2f}ms (limit={limit})")
+                    
+                    map_start = time.time()
+                    res = [normalize_row(row, stage_override="growing") for row in rows]
+                    map_duration = (time.time() - map_start) * 1000
+                    print(f"[LoveBudModal] [TIMING] Result mapping/normalization took {map_duration:.2f}ms")
+                    return res
 
                 # Fallback: legacy schema (name/is_public/payload)
                 has_name = _table_has_column(cur, "trees", "name")
@@ -323,6 +331,7 @@ def fetch_growing_public_tree_snapshots(limit: int = 6) -> list[dict[str, Any]]:
                 if not has_name or not has_is_public:
                     return []
 
+                q_start = time.time()
                 cur.execute(
                     """SELECT id, name, is_public, payload, created_at, updated_at
                        FROM trees WHERE is_public = true
@@ -331,7 +340,10 @@ def fetch_growing_public_tree_snapshots(limit: int = 6) -> list[dict[str, Any]]:
                     (limit * 3,),
                 )
                 raw_rows = cur.fetchall()
+                q_duration = (time.time() - q_start) * 1000
+                print(f"[LoveBudModal] [TIMING] Legacy fallback SQL execution took {q_duration:.2f}ms")
 
+                map_start = time.time()
                 result: list[dict[str, Any]] = []
                 for row in raw_rows:
                     raw_payload = row.get("payload")
@@ -373,6 +385,8 @@ def fetch_growing_public_tree_snapshots(limit: int = 6) -> list[dict[str, Any]]:
                     })
                     if len(result) >= limit:
                         break
+                map_duration = (time.time() - map_start) * 1000
+                print(f"[LoveBudModal] [TIMING] Legacy fallback result mapping/normalization took {map_duration:.2f}ms")
                 return result
 
     return run_db_with_retry(operation)

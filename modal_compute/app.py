@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import time
 import uuid
 from datetime import datetime
 from typing import Any
@@ -157,6 +158,8 @@ def get_growing_browse_snapshot(
     limit: int = Query(default=6, ge=3, le=12),
     x_lovebud_request_id: str | None = Header(default=None),
 ) -> list[dict]:
+    handler_start = time.time()
+    print(f"[LoveBudModal] [TIMING] /modal/browse/growing handler entry")
     logger = RequestLogger(
         request_id=x_lovebud_request_id,
         route="/modal/browse/growing",
@@ -164,7 +167,17 @@ def get_growing_browse_snapshot(
     )
     try:
         result = fetch_growing_public_tree_snapshots(limit=limit)
+
+        serialize_start = time.time()
+        serialized_data = json.dumps(result)
+        serialize_duration = (time.time() - serialize_start) * 1000
+        print(f"[LoveBudModal] [TIMING] Result serialization (json.dumps) took {serialize_duration:.2f}ms (size={len(serialized_data)} bytes)")
+
         logger.log_success(status_code=200)
+
+        total_elapsed = (time.time() - handler_start) * 1000
+        print(f"[LoveBudModal] [TIMING] /modal/browse/growing handler response return. Total elapsed: {total_elapsed:.2f}ms")
+
         return result
     except Exception:
         logger.log_error(status_code=500, error_category="UNEXPECTED_ERROR")
