@@ -35,8 +35,8 @@
       en: 'Settings'
     },
     'nav.browseOthers': {
-      ko: '다른 트리 둘러보기',
-      en: 'Browse Other Trees'
+      ko: '다른 러브트리 둘러보기',
+      en: 'Browse Other LoveTrees'
     },
 
     // 홈 화면 (home.*)
