@@ -222,6 +222,16 @@
                 }
 
                 console.log('[public-canvas] Canvas initialized successfully');
+
+                // Auto-enable compact mode on narrow viewports (toolbar labels would overflow)
+                var compactMql = window.matchMedia('(max-width: 480px)');
+                function updateToolbarCompact(e) {
+                    var tb = document.querySelector('.editor-canvas-toolbar');
+                    if (!tb) return;
+                    tb.classList.toggle('is-compact', e.matches);
+                }
+                updateToolbarCompact(compactMql);
+                compactMql.addEventListener('change', updateToolbarCompact);
             }
 
             waitForModules(0);
