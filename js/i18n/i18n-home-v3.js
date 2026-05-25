@@ -22,9 +22,25 @@
       ko: '러브트리로 읽어보세요',
       en: 'as a LoveTree'
     },
+    'home.v3.title2.soft': {
+      ko: '첫 순간이 하나의',
+      en: 'One first moment'
+    },
+    'home.v3.title2.warm': {
+      ko: '러브트리로',
+      en: 'becomes'
+    },
+    'home.v3.title2.accent': {
+      ko: '이어져요',
+      en: 'a LoveTree'
+    },
     'home.v3.desc': {
       ko: '첫 장면과 다시 보고 싶은 순간, 그때의 마음까지 감정의 경로로 엮어 보여줍니다.',
       en: 'It weaves the first scene, moments to revisit, and the heart at that time into an emotional path.'
+    },
+    'home.v3.desc2': {
+      ko: '반했던 장면과 오래 남은 마음을, 감정이 이어진 경로로 천천히 남겨 보세요.',
+      en: 'Save the scene that stayed with you and the feelings that followed as one gentle path.'
     },
     'home.v3.cta.start': {
       ko: '내 러브트리 시작하기',
