@@ -1,7 +1,7 @@
 (function() {
     'use strict';
 
-    var MARKER = 'LoveBudPublicCanvasTestInitLoaded';
+    var MARKER = 'LoveBudPublicCanvasInitLoaded';
     if (window[MARKER]) return;
     window[MARKER] = true;
 
@@ -16,7 +16,7 @@
             .replace(/'/g, '&#39;');
     }
 
-    function initTestPage() {
+    function initPublicCanvas() {
         var params = new URLSearchParams(window.location.search);
         var treeId = params.get('treeId');
         if (!treeId) {
@@ -33,7 +33,7 @@
 
         var bridge = window.LoveBudPublicCanvasBridge;
         if (!bridge || typeof bridge.loadPublicTreeData !== 'function') {
-            console.error('[public-canvas-test] Bridge not loaded');
+            console.error('[public-canvas] Bridge not loaded');
             return;
         }
 
@@ -43,7 +43,7 @@
 
             // Normalize to canvas shape
             var normalized = bridge.normalizeForCanvas(tree, memories);
-            console.log('[public-canvas-test] Loaded tree:', normalized.treeData.id, 'memories:', normalized.treeMemories.length);
+            console.log('[public-canvas] Loaded tree:', normalized.treeData.id, 'memories:', normalized.treeMemories.length);
 
             // Wait for all required modules
             var maxWait = 100;
@@ -51,7 +51,7 @@
 
             function waitForModules(attempt) {
                 if (attempt >= maxWait) {
-                    console.error('[public-canvas-test] Timeout waiting for editor modules');
+                    console.error('[public-canvas] Timeout waiting for editor modules');
                     return;
                 }
 
@@ -73,7 +73,7 @@
                 var detailPanel = document.getElementById('detailPanel');
 
                 if (!canvas || !svg) {
-                    console.error('[public-canvas-test] Canvas or SVG element not found');
+                    console.error('[public-canvas] Canvas or SVG element not found');
                     return;
                 }
 
@@ -121,7 +121,7 @@
 
                 // Initialize detail UI
                 var formatI18nText = function(key, fallback) { return fallback || key; };
-                var showToast = function(msg) { console.log('[public-canvas-toast]', msg); };
+                var showToast = function(msg) { console.log('[public-canvas]', msg); };
 
                 var detailUIBuilders = window.createEditorDetailUIBuilders({ formatI18nText: formatI18nText });
                 var treeMetaBoundary = window.createEditorDetailTreeMetaBoundary({
@@ -221,12 +221,12 @@
                     setDetailEmptyState(false);
                 }
 
-                console.log('[public-canvas-test] Canvas initialized successfully');
+                console.log('[public-canvas] Canvas initialized successfully');
             }
 
             waitForModules(0);
         }).catch(function(error) {
-            console.error('[public-canvas-test] Load failed:', error);
+            console.error('[public-canvas] Load failed:', error);
             var container = document.getElementById('canvasArea');
             if (container) {
                 var errState = document.createElement('div');
@@ -242,8 +242,8 @@
     }
 
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initTestPage);
+        document.addEventListener('DOMContentLoaded', initPublicCanvas);
     } else {
-        initTestPage();
+        initPublicCanvas();
     }
 })();

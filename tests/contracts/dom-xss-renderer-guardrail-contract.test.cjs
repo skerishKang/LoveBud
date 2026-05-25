@@ -17,7 +17,7 @@
  * per file, which is more stable than line-level matching across
  * code changes.
  *
- * v20260525-1
+ * v20260525-2
  */
 
 const test = require('node:test');
@@ -124,9 +124,9 @@ const FILE_ALLOWLIST = {
     count: 11, classification: 'safe',
     reason: 'All user content escaped via escapeHtml/sanitizeUrl; clear-container for list; static no-media divs'
   },
-  'js/viewer/public-canvas-test-init.js': {
+  'js/viewer/public-canvas-init.js': {
     count: 1, classification: 'safe',
-    reason: 'Dev test page. innerHTML on fresh element with escapeHtml for all user content; uses textContent for primary error'
+    reason: 'Public read-only canvas route. innerHTML on fresh error element with escapeHtml for user-visible error message; uses textContent for primary error'
   },
   'js/viewer/viewer-init-flow.js': {
     count: 1, classification: 'safe',
