@@ -408,8 +408,9 @@
 
     /* ── Card selection handler ── */
 
-    function onCardClick(tree, event) {
+    function onCardClick(tree, options) {
         if (!tree) return;
+        options = options || {};
 
         // Update visual selection state
         var grid = document.getElementById('trees-grid');
@@ -432,19 +433,16 @@
         }
 
         // Show appreciation hub
-        var hasMemories = Array.isArray(tree.memories) && tree.memories.length > 0;
-        if (hasMemories) {
-            showContent(tree);
-        } else {
-            showContent(tree);
-        }
+        showContent(tree);
 
-        // Scroll to hub on mobile
-        var panel = document.getElementById('myTreesHubPanel');
-        if (panel && window.innerWidth <= 768) {
-            setTimeout(function () {
-                panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }, 100);
+        // Scroll to hub on mobile (skip for initial auto-select)
+        if (!options.skipScroll) {
+            var panel = document.getElementById('myTreesHubPanel');
+            if (panel && window.innerWidth <= 768) {
+                setTimeout(function () {
+                    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 100);
+            }
         }
     }
 

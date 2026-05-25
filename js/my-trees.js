@@ -167,7 +167,7 @@
 
     setTimeout(function() {
       if (typeof previewHub.getSelectedTree === 'function' && previewHub.getSelectedTree()) return;
-      previewHub.onCardClick(trees[0]);
+      previewHub.onCardClick(trees[0], { skipScroll: true });
     }, 0);
   }
 
