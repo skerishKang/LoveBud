@@ -55,4 +55,7 @@
 .editor-readonly .editor-moment-edit-chip,
 .editor-readonly [data-action="delete"],
 .editor-readonly #ftbBranchBtn,
-.editor-readonly #ftbForkBtn { display: none !important; }
+.editor-readonly #ftbForkBtn,
+.editor-readonly #ftbContinueBtn,
+.editor-readonly #continueFromMomentBtn,
+.editor-readonly .branch-port-handle { display: none !important; }
