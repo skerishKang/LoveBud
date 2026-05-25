@@ -52,19 +52,19 @@
 }
 
 .search-panel-header h1 .title-accent {
-    color: var(--hero-warm-color, var(--primary));
-    font-weight: 900;
+    color: var(--primary);
+    font-weight: 780;
     letter-spacing: -0.03em;
 }
 
 .search-panel-header h1 .title-line:nth-child(3) {
-    color: #5f504a;
-    font-weight: 800;
+    color: #b85c66;
+    font-weight: 900;
 }
 
 .search-panel-header .title-accent {
-    color: var(--hero-warm-color, var(--primary));
-    font-weight: 900;
+    color: var(--primary);
+    font-weight: 780;
 }
 
 .search-panel-header p {
