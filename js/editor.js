@@ -15,39 +15,46 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    const findRootMemory = rootUtils.findRootMemory || function(memories) {
+    const findRootMemory = function(memories) {
+        if (typeof rootUtils.findRootMemory === 'function') {
+            return rootUtils.findRootMemory(memories);
+        }
         warnRootHelperFallback();
         if (!Array.isArray(memories)) return null;
-
         const parentNullNodes = memories.filter(m => m.parentId === null || m.parentId === undefined);
-        if (parentNullNodes.length === 1) {
-            return parentNullNodes[0];
-        }
+        if (parentNullNodes.length === 1) return parentNullNodes[0];
         if (parentNullNodes.length > 1) {
-            const oldest = parentNullNodes.sort((a, b) => {
+            return parentNullNodes.sort((a, b) => {
                 const aTime = a.createdAt || a.timestamp || '9999';
                 const bTime = b.createdAt || b.timestamp || '9999';
                 return new Date(aTime) - new Date(bTime);
             })[0];
-            return oldest;
         }
-
         return memories.find(m => m.id === 'root') || null;
     };
 
-    const getRootId = rootUtils.getRootId || function(memories) {
+    const getRootId = function(memories) {
+        if (typeof rootUtils.getRootId === 'function') {
+            return rootUtils.getRootId(memories);
+        }
         warnRootHelperFallback();
         const root = findRootMemory(memories);
         return root ? root.id : 'root';
     };
 
-    const getCanonicalRootId = rootUtils.getCanonicalRootId || function(memories) {
+    const getCanonicalRootId = function(memories) {
+        if (typeof rootUtils.getCanonicalRootId === 'function') {
+            return rootUtils.getCanonicalRootId(memories);
+        }
         warnRootHelperFallback();
         const root = findRootMemory(memories);
         return root ? root.id : 'root';
     };
 
-    const isRootMemory = rootUtils.isRootMemory || function(mem, rootId) {
+    const isRootMemory = function(mem, rootId) {
+        if (typeof rootUtils.isRootMemory === 'function') {
+            return rootUtils.isRootMemory(mem, rootId);
+        }
         warnRootHelperFallback();
         return !!(mem && rootId && mem.id === rootId);
     };
@@ -142,19 +149,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const resolveMemoryThumbnail = editorHelpers.resolveMemoryThumbnail || inlineMediaResolvers.resolveMemoryThumbnail;
 
-    const getYouTubeInputErrorMessage = rootUtils.getYouTubeInputErrorMessage || ((i18n, rawUrl) => {
+    const getYouTubeInputErrorMessage = function(i18n, rawUrl) {
+        if (typeof rootUtils.getYouTubeInputErrorMessage === 'function') {
+            return rootUtils.getYouTubeInputErrorMessage(i18n, rawUrl);
+        }
         warnRootHelperFallback();
         const value = String(rawUrl || '').trim();
         if (!value) return i18n('enter_youtube') || 'YouTube 링크를 입력해 주세요.';
-        const looksLikeUrl = /^(https?:\/\/|www\.)/i.test(value);
-        const hasYouTubeHint = /(youtube\.com|youtu\.be|youtube\.com\/shorts\/)/i.test(value);
-        const idLikeMatch = value.match(/(?:v=|\/|youtu\.be\/|shorts\/)([0-9A-Za-z_-]+)/i);
-        const candidateId = idLikeMatch ? idLikeMatch[1] : '';
-        if (!looksLikeUrl) return i18n('invalid_youtube_format') || '전체 YouTube 링크를 붙여 넣어 주세요.';
-        if (!hasYouTubeHint) return i18n('invalid_youtube_unsupported') || 'YouTube 링크만 지원합니다. youtube.com 또는 youtu.be 링크를 사용해 주세요.';
-        if (candidateId && candidateId.length !== 11) return i18n('invalid_youtube_id_length') || '링크가 중간에 잘린 것 같아요. 전체 YouTube 링크를 다시 복사해 주세요.';
+        if (!/^(https?:\/\/|www\.)/i.test(value)) return i18n('invalid_youtube_format') || '전체 YouTube 링크를 붙여 넣어 주세요.';
+        if (!/(youtube\.com|youtu\.be|youtube\.com\/shorts\/)/i.test(value)) return i18n('invalid_youtube_unsupported') || 'YouTube 링크만 지원합니다. youtube.com 또는 youtu.be 링크를 사용해 주세요.';
+        const match = value.match(/(?:v=|\/|youtu\.be\/|shorts\/)([0-9A-Za-z_-]+)/i);
+        if (match && match[1].length !== 11) return i18n('invalid_youtube_id_length') || '링크가 중간에 잘린 것 같아요. 전체 YouTube 링크를 다시 복사해 주세요.';
         return i18n('invalid_youtube') || '유효한 YouTube 링크를 입력해 주세요.';
-    });
+    };
 
     const renderTreeLoadError = editorPageHelpers.renderTreeLoadError ||
         entryFallbacks.createInlineRenderTreeLoadErrorFallback({ getMyTreesHref });
