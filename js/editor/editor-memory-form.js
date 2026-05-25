@@ -23,7 +23,8 @@ function createEditorMemoryForm(deps) {
         treeMemories,
         setCachedMemories,
         rerenderCanvas,
-        focusNodeById
+        focusNodeById,
+        canEdit
     } = deps;
 
     const modeHelper = window.LoveBudEditorMemoryFormMode;
@@ -257,6 +258,7 @@ function createEditorMemoryForm(deps) {
     }
 
     const showAddMemoryForm = () => {
+        if (canEdit === false) return;
         const form = refs.addMemoryForm;
         if (!form) return;
         resetFormValues();
@@ -426,6 +428,7 @@ function createEditorMemoryForm(deps) {
     }
 
     const addMemoryFromForm = async () => {
+        if (canEdit === false) return;
         if (!payloadHelper || typeof payloadHelper.buildMemoryPayload !== 'function') {
             console.error('[editor] memory form payload helper is not loaded');
             showToast(i18n('save_failed') || '저장 준비에 실패했어요. 페이지를 새로고침해 주세요.', 'error');

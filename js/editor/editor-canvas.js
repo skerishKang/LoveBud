@@ -17,7 +17,8 @@ function createEditorCanvas(deps) {
         updateFocusSelectedBtn,
         createInitialMemory,
         onNodeClick,
-        openAddMoment
+        openAddMoment,
+        canEdit
     } = deps;
 
     const i18n = window.t || function(key) { return key; };
@@ -68,8 +69,9 @@ function createEditorCanvas(deps) {
     }
 
     function persistLayoutMode(mode) {
+        if (canEdit === false) return;
         if (typeof storageUtils.persistLayoutMode === 'function') {
-            return storageUtils.persistLayoutMode(mode, layoutModeStorageKey);
+            return storageUtils.persistLayoutMode(mode, layoutModeStorageKey, canEdit);
         }
     }
 
@@ -146,8 +148,9 @@ function createEditorCanvas(deps) {
     }
 
     function persistStoredPositions() {
+        if (canEdit === false) return;
         if (typeof storageUtils.persistStoredPositions === 'function') {
-            return storageUtils.persistStoredPositions(viewportState, treeId, layoutStorageKey, canvasLayout);
+            return storageUtils.persistStoredPositions(viewportState, treeId, layoutStorageKey, canvasLayout, canEdit);
         }
         if (viewportState.layoutMode === 'structured') return;
 
@@ -285,7 +288,8 @@ function createEditorCanvas(deps) {
             AFFORDANCE_OFFSET_X,
             AFFORDANCE_OFFSET_Y,
             AFFORDANCE_CARD_HALF
-        }
+        },
+        canEdit
     });
 
     const branchPorts = window.createEditorCanvasBranchPorts({
@@ -387,7 +391,7 @@ function createEditorCanvas(deps) {
     }
 
     function bindNodeDrag(nodeEl, mem) {
-        nodeEl.style.cursor = viewportState.layoutMode === 'structured' ? 'default' : 'grab';
+        nodeEl.style.cursor = canEdit !== false && viewportState.layoutMode === 'structured' ? 'default' : 'grab';
 
         const selectMemoryNode = () => {
             onNodeClick(nodeEl, mem);
@@ -395,27 +399,29 @@ function createEditorCanvas(deps) {
 
         uiHelpers.bindNodeHoverAffordance(nodeEl, mem, renderAffordanceForHoveredMemory);
 
-        uiHelpers.bindNodeDragStart(nodeEl, () => viewportState.layoutMode, (e) => {
-            if (typeof canvasInteraction.beginNodeDrag === 'function') {
-                canvasInteraction.beginNodeDrag(e, nodeEl, mem, viewportState, getWorldPosition);
-                return;
-            }
+        if (canEdit !== false) {
+            uiHelpers.bindNodeDragStart(nodeEl, () => viewportState.layoutMode, (e) => {
+                if (typeof canvasInteraction.beginNodeDrag === 'function') {
+                    canvasInteraction.beginNodeDrag(e, nodeEl, mem, viewportState, getWorldPosition, canEdit);
+                    return;
+                }
 
-            if (e.button !== 0) return;
-            if (e.target.closest('button')) return;
-            e.preventDefault();
-            e.stopPropagation();
+                if (e.button !== 0) return;
+                if (e.target.closest('button')) return;
+                e.preventDefault();
+                e.stopPropagation();
 
-            const startWorld = getWorldPosition(mem);
-            viewportState.isDraggingNode = true;
-            viewportState.dragNodeId = mem.id;
-            viewportState.dragStartClientX = e.clientX;
-            viewportState.dragStartClientY = e.clientY;
-            viewportState.dragStartWorldX = startWorld.x;
-            viewportState.dragStartWorldY = startWorld.y;
-            viewportState.dragMoved = false;
-            nodeEl.style.cursor = 'grabbing';
-        });
+                const startWorld = getWorldPosition(mem);
+                viewportState.isDraggingNode = true;
+                viewportState.dragNodeId = mem.id;
+                viewportState.dragStartClientX = e.clientX;
+                viewportState.dragStartClientY = e.clientY;
+                viewportState.dragStartWorldX = startWorld.x;
+                viewportState.dragStartWorldY = startWorld.y;
+                viewportState.dragMoved = false;
+                nodeEl.style.cursor = 'grabbing';
+            });
+        }
 
         uiHelpers.bindNodePointerSelection(nodeEl, {
             onSelect: selectMemoryNode,

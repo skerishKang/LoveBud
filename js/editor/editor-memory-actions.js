@@ -20,7 +20,8 @@ function createEditorMemoryActions(deps) {
         setDetailEmptyState,
         rerenderCanvas,
         getCurrentTreeData,
-        isLocalSaveMode
+        isLocalSaveMode,
+        canEdit
     } = deps;
 
     let isEditMode = false;
@@ -91,6 +92,7 @@ function createEditorMemoryActions(deps) {
     };
 
     const enterEditMode = () => {
+        if (canEdit === false) return;
         const currentEditingMemory = getCurrentEditingMemory();
         if (!currentEditingMemory) return;
         isEditMode = true;
@@ -124,6 +126,7 @@ function createEditorMemoryActions(deps) {
     };
 
     const saveMemoryEdit = async () => {
+        if (canEdit === false) return;
         const currentEditingMemory = getCurrentEditingMemory();
         if (!currentEditingMemory) return;
 
@@ -226,6 +229,7 @@ function createEditorMemoryActions(deps) {
     };
 
     const updateSelectedMemoryFields = async (updates) => {
+        if (canEdit === false) return false;
         const currentEditingMemory = getCurrentEditingMemory();
         const selectedNodeId = getSelectedNodeId() || currentEditingMemory?.id;
         if (!selectedNodeId) {
@@ -306,6 +310,7 @@ function createEditorMemoryActions(deps) {
     };
 
     const deleteMemory = async () => {
+        if (canEdit === false) return;
         const currentEditingMemory = getCurrentEditingMemory();
         if (!currentEditingMemory) return;
 

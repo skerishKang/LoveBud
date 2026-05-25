@@ -33,3 +33,26 @@
 @import url("./editor/editor-memory-edit.css");
 @import url("./editor/editor-overrides.css");
 @import url("./editor/editor-responsive-tail.css");
+
+/* Editor read-only mode — hides mutation controls when .editor-readonly class is on body */
+.editor-readonly #addMemoryBtn,
+.editor-readonly #addMemoryForm,
+.editor-readonly #mobileBottomBar,
+.editor-readonly .editor-add-section,
+.editor-readonly #editMemoryBtn,
+.editor-readonly #renameTreeBtn,
+.editor-readonly #sidebarVisibilityToggleBtn,
+.editor-readonly #deleteMemoryBtn,
+.editor-readonly #cancelEditBtn,
+.editor-readonly #saveEditBtn,
+.editor-readonly #ftbEditBtn,
+.editor-readonly #ftbQuickAdd,
+.editor-readonly .memory-add-affordance,
+.editor-readonly #ftbDeleteAction,
+.editor-readonly .editor-save-status-card,
+.editor-readonly #detailEmptyStartBtn,
+.editor-readonly .editor-rename-btn,
+.editor-readonly .editor-moment-edit-chip,
+.editor-readonly [data-action="delete"],
+.editor-readonly #ftbBranchBtn,
+.editor-readonly #ftbForkBtn { display: none !important; }
