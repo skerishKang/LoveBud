@@ -197,7 +197,7 @@ test('browse cards expose a truthful public tree viewer bridge', () => {
   const cardRenderer = read('js/search/search-card-renderer.js');
 
   assert.match(cardRenderer, /function getTreeViewerHref\(tree\)/);
-  assert.match(cardRenderer, /tree\?treeId=/);
+  assert.match(cardRenderer, /public-canvas\.html\?treeId=/);
   assert.match(cardRenderer, /encodeURIComponent\(tree\.id\)/);
   assert.match(cardRenderer, /tree-card-open-link/);
   assert.match(cardRenderer, /트리 열기/);
@@ -234,7 +234,7 @@ test('browse selected hub primary tree CTA and secondary viewing CTA keep truthf
   assert.match(i18nSearch, /'search\.previewOpenViewingCta'/);
   assert.match(i18nSearch, /ko:\s*'감상 열기'/);
   assert.match(actionHelper, /renderOpenTreeButton/);
-  assert.match(actionHelper, /tree\?treeId=/);
+  assert.match(actionHelper, /public-canvas\.html\?treeId=/);
   assert.match(actionHelper, /preview-primary-action/);
   assert.match(actionHelper, /search\.previewOpenTreeCta/);
   assert.match(previewRenderer, /renderOpenTreeButton/);
@@ -270,7 +270,7 @@ test('browse selected hub exposes focus-stage shell without changing route helpe
   assert.match(previewCss, /Issue #907: focus-stage selected hub shell/);
   assert.match(previewCss, /preview-sidebar\.preview-state-media \.video-container|preview-sidebar\.preview-state-media[\s\S]*?\.video-container/);
   assert.match(previewCss, /preview-sidebar \.preview-primary-action/);
-  assert.match(actionHelper, /tree\?treeId=/);
+  assert.match(actionHelper, /public-canvas\.html\?treeId=/);
   assert.match(actionHelper, /data-share-tree-link/);
 });
 
