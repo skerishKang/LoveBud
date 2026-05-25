@@ -34,6 +34,11 @@ function getContentLengthBytes(request) {
   return parsed;
 }
 
+function isWriteContentLengthTooLarge(request) {
+  const contentLengthBytes = getContentLengthBytes(request);
+  return contentLengthBytes !== null && contentLengthBytes > MAX_WRITE_BODY_BYTES;
+}
+
 async function readBoundedWriteBody(request) {
   let bodyText;
   try {
@@ -360,6 +365,10 @@ async function tryModalWrite(request, env, requestId = null) {
 
   let boundedBody = null;
   if (method !== 'DELETE') {
+    if (isWriteContentLengthTooLarge(request)) {
+      return buildPayloadTooLargeResponse(requestId);
+    }
+
     const bodyCheck = await readBoundedWriteBody(request);
     if (bodyCheck.tooLarge) {
       return buildPayloadTooLargeResponse(requestId);
