@@ -338,7 +338,6 @@ html:not(.material-symbols-ready) .mobile-nav-toggle .material-symbols-outlined 
         position: absolute;
         top: calc(100% + 10px);
         right: 16px;
-        left: 16px;
         flex-direction: column;
         align-items: stretch;
         gap: 14px;
@@ -348,7 +347,7 @@ html:not(.material-symbols-ready) .mobile-nav-toggle .material-symbols-outlined 
         border-radius: 20px;
         box-shadow: 0 16px 40px rgba(75, 64, 57, 0.12);
         backdrop-filter: blur(18px);
-        width: auto;
+        width: min(82vw, 320px);
     }
 
     .main-nav-panel.show {
@@ -391,10 +390,10 @@ html:not(.material-symbols-ready) .mobile-nav-toggle .material-symbols-outlined 
     }
 
     .main-nav-panel {
-        left: 12px;
         right: 12px;
         top: calc(100% + 8px);
         padding: 14px;
+        width: min(84vw, 300px);
     }
 
     .nav-actions {
