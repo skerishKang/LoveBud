@@ -413,34 +413,17 @@ function escapeHtml(value) {
 function buildLoginButton() {
   if (__authUiModule) return __authUiModule.buildLoginButton();
   if (__authUiTemplates) return __authUiTemplates.buildLoginButton();
-  var basePath = getBasePath();
-  var loginHref = basePath + 'login.html';
-  return '<a href="' + loginHref + '" class="btn-round btn-outline" style="text-decoration:none;padding:8px 20px;font-size:14px;">로그인</a>';
+  return '<a href="' + (getBasePath() + 'login.html') + '" class="btn-round btn-outline" style="text-decoration:none;padding:8px 20px;font-size:14px;">로그인</a>';
 }
 
 function getUserAvatarInitial(user) {
   if (__authUiModule) return __authUiModule.getUserAvatarInitial(user);
   if (__authUiTemplates) return __authUiTemplates.getUserAvatarInitial(user);
-  var source = '';
-
-  if (user) {
-    source = String(user.displayName || user.email || '').trim();
-  }
-
-  if (!source) return 'L';
-
-  var firstChar = source.charAt(0).toUpperCase();
-  return /[A-Z0-9가-힣]/.test(firstChar) ? firstChar : 'L';
+  var src = String(user ? (user.displayName || user.email || '') : '').trim();
+  var first = src.charAt(0).toUpperCase();
+  return /[A-Z0-9가-힣]/.test(first) ? first : 'L';
 }
 
-/**
- * Build user dropdown HTML.
- *
- * Fixed avatar shell that stays in place - only inner content changes.
- * This prevents visual "flicker" when photoURL loads.
- *
- * @param {Object} user - Firebase user object
- */
 function buildUserDropdown(user) {
   var options = { escapeHtml: escapeHtml };
   if (__authUiModule) return __authUiModule.buildUserDropdown(user, options);
@@ -455,14 +438,11 @@ function buildUserDropdown(user) {
   var safeUserName = escapeHtml(userName);
   var safePhotoUrl = hasPhoto ? escapeHtml(user.photoURL) : '';
 
-  // Determine context (root vs pages folder)
   var isPagesContext = window.location.pathname.indexOf('/pages/') !== -1;
-  var settingsHref = isPagesContext ? 'settings.html' : 'pages/settings.html';
   var myTreesHref = isPagesContext ? 'my-trees.html' : 'pages/my-trees.html';
 
   var avatarInitial = getUserAvatarInitial(user);
 
-  // Shell stays constant - only content inside changes
   var avatarContent = hasPhoto
     ? '<img src="' + safePhotoUrl + '" alt="" class="user-avatar-image" referrerpolicy="no-referrer">'
     : '<span class="user-avatar-initial" aria-hidden="true">' + escapeHtml(avatarInitial) + '</span>';
