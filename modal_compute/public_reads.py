@@ -23,8 +23,14 @@ def _build_reaction_counts(counts: dict[str, int]) -> dict[str, int]:
     return result
 
 
+_TABLE_EXISTS_CACHE: dict[str, bool] = {}
+_TABLE_HAS_COLUMN_CACHE: dict[tuple[str, str], bool] = {}
+
+
 def _table_exists(cur, table_name: str) -> bool:
     """Check if a table exists in the public schema."""
+    if table_name in _TABLE_EXISTS_CACHE:
+        return _TABLE_EXISTS_CACHE[table_name]
     cur.execute(
         """
         SELECT EXISTS (
@@ -37,11 +43,16 @@ def _table_exists(cur, table_name: str) -> bool:
         (table_name,),
     )
     row = cur.fetchone()
-    return bool(row and row.get("exists"))
+    res = bool(row and row.get("exists"))
+    _TABLE_EXISTS_CACHE[table_name] = res
+    return res
 
 
 def _table_has_column(cur, table_name: str, column_name: str) -> bool:
     """Check if a table has a specific column."""
+    cache_key = (table_name, column_name)
+    if cache_key in _TABLE_HAS_COLUMN_CACHE:
+        return _TABLE_HAS_COLUMN_CACHE[cache_key]
     cur.execute(
         """
         SELECT EXISTS (
@@ -55,7 +66,9 @@ def _table_has_column(cur, table_name: str, column_name: str) -> bool:
         (table_name, column_name),
     )
     row = cur.fetchone()
-    return bool(row and row.get("exists"))
+    res = bool(row and row.get("exists"))
+    _TABLE_HAS_COLUMN_CACHE[cache_key] = res
+    return res
 
 
 def _get_legacy_memory_from_payload(payload: dict[str, Any], memory_id: str) -> dict[str, Any] | None:
