@@ -7,7 +7,8 @@ function createEditorCanvasGrowthAffordance(deps) {
         calcPosition,
         openAddMoment,
         i18n,
-        constants
+        constants,
+        canEdit
     } = deps;
 
     const {
@@ -463,6 +464,7 @@ function createEditorCanvasGrowthAffordance(deps) {
     }
 
     function renderGrowthAffordance(anchorMem, options) {
+        if (canEdit === false) return;
         if (!anchorMem) return;
         const opts = options || {};
         const labelText = opts.labelText || (i18n('editor_add_memory') || '새 순간 이어가기');

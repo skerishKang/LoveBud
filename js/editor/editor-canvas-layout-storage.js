@@ -35,14 +35,16 @@
         return 'free';
     }
 
-    function persistLayoutMode(mode, layoutModeStorageKey) {
+    function persistLayoutMode(mode, layoutModeStorageKey, canEdit) {
+        if (canEdit === false) return;
         try {
             localStorage.setItem(layoutModeStorageKey, mode);
         } catch (e) {}
     }
 
-    function persistStoredPositions(viewportState, treeId, layoutStorageKey, canvasLayout) {
+    function persistStoredPositions(viewportState, treeId, layoutStorageKey, canvasLayout, canEdit) {
         if (viewportState.layoutMode === 'structured') return;
+        if (canEdit === false) return;
 
         if (canvasLayout && typeof canvasLayout.createLayoutStore === 'function') {
             const store = canvasLayout.createLayoutStore(treeId);

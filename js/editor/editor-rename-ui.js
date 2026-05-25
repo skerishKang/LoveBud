@@ -11,8 +11,12 @@ function syncEditorTreeTitle(nextTitle) {
     });
 }
 
-function bindEditorRenameButton(buttonEl) {
+function bindEditorRenameButton(buttonEl, canEdit) {
     if (!buttonEl || buttonEl.dataset.renameBound === '1') return;
+    if (canEdit === false) {
+        buttonEl.style.display = 'none';
+        return;
+    }
     buttonEl.dataset.renameBound = '1';
 
     buttonEl.addEventListener('click', async () => {
@@ -53,9 +57,12 @@ function bindEditorRenameButton(buttonEl) {
     });
 }
 
-function injectEditorRenameButton() {
-    bindEditorRenameButton(document.getElementById('renameTreeBtn'));
-    bindEditorRenameButton(document.getElementById('sidebarTitleEditBtn'));
+function injectEditorRenameButton(canEdit) {
+    if (canEdit === undefined) {
+        canEdit = window.LoveBudEditor?.canEdit;
+    }
+    bindEditorRenameButton(document.getElementById('renameTreeBtn'), canEdit);
+    bindEditorRenameButton(document.getElementById('sidebarTitleEditBtn'), canEdit);
 }
 
 window.syncEditorTreeTitle = syncEditorTreeTitle;

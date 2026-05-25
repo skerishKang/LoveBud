@@ -227,10 +227,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const { canvas, svg, detailPanel, addBtn } = createEditorDomRefs();
             const urlParams = new URLSearchParams(window.location.search);
             const urlTreeId = urlParams.get('treeId');
+            const canEdit = urlParams.get('readonly') !== '1';
 
             log('DOM refs and URL params prepared');
             prepareEditorShell();
             log('Editor shell mounted');
+
+            // Expose canEdit for modules that read it after DOMContentLoaded
+            window.LoveBudEditor = window.LoveBudEditor || {};
+            window.LoveBudEditor.canEdit = canEdit;
+            document.body.classList.toggle('editor-readonly', !canEdit);
 
             const cache = window.LoveBudCache || null;
             let MEMORIES_CACHE_KEY = 'memories_default';
@@ -390,6 +396,7 @@ document.addEventListener('DOMContentLoaded', () => {
             };
 
             const updateTreeVisibility = async (nextVisibility) => {
+                if (canEdit === false) return;
                 if (!treeId || !window.apiClient || typeof window.apiClient.updateTree !== 'function') {
                     throw new Error('updateTree not available');
                 }
@@ -454,7 +461,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateFocusSelectedBtn,
                 createInitialMemory,
                 onNodeClick: selectNode,
-                openAddMoment: () => showAddMemoryForm()
+                openAddMoment: () => showAddMemoryForm(),
+                canEdit
             });
 
             // Store instance for global bridge
@@ -521,7 +529,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 setDetailEmptyState,
                 rerenderCanvas: () => initCanvas(),
                 getCurrentTreeData: () => window.currentTreeData || {},
-                isLocalSaveMode: () => isLocalSaveMode
+                isLocalSaveMode: () => isLocalSaveMode,
+                canEdit
             });
 
             const { enterEditMode, exitEditMode, saveMemoryEdit, deleteMemory } = memoryActions;
@@ -553,25 +562,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 setCachedMemories: window.setCachedMemories,
                 canvasArea: canvas,
                 rerenderCanvas: () => initCanvas(),
-                focusNodeById: (id) => editorCanvas.focusNodeById(id)
+                focusNodeById: (id) => editorCanvas.focusNodeById(id),
+                canEdit
             });
 
             const { showAddMemoryForm, hideAddMemoryForm, addMemoryFromForm } = memoryForm;
             const { urlInput, titleInput, memoInput, cancelBtn, confirmBtn } = createEditorFormRefs();
             
             log('Binding events...');
-            if (sidebarUIHelper.bindSidebarVisibilityToggle) {
+            if (canEdit && sidebarUIHelper.bindSidebarVisibilityToggle) {
                 sidebarUIHelper.bindSidebarVisibilityToggle({
                     getTreeId: () => treeId, updateTreeVisibility, showToast, safeI18nText, i18n, getHttpStatus, updateSidebarStatus
                 });
             }
 
-            if (editorBindings.bindMemoryCreateControls) {
+            if (canEdit && editorBindings.bindMemoryCreateControls) {
                 editorBindings.bindMemoryCreateControls({ addBtn, cancelBtn, confirmBtn, urlInput, titleInput, memoInput, showAddMemoryForm, hideAddMemoryForm, addMemoryFromForm, updateSaveStatus, showToast, i18n });
             }
 
             const detailEmptyStartBtn = document.getElementById('detailEmptyStartBtn');
-            if (detailEmptyStartBtn) {
+            if (detailEmptyStartBtn && canEdit) {
                 detailEmptyStartBtn.addEventListener('click', () => {
                     showAddMemoryForm();
                 });
@@ -603,7 +613,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const deleteMemoryBtn = document.getElementById('deleteMemoryBtn');
             const cancelEditBtn = document.getElementById('cancelEditBtn');
             const saveEditBtn = document.getElementById('saveEditBtn');
-            if (editorBindings.bindDetailActionButtons) {
+            if (canEdit && editorBindings.bindDetailActionButtons) {
                 editorBindings.bindDetailActionButtons({ editMemoryBtn, deleteMemoryBtn, cancelEditBtn, saveEditBtn, enterEditMode, deleteMemory, exitEditMode, saveMemoryEdit });
             }
 

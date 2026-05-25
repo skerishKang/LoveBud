@@ -28,8 +28,8 @@ test('canvas layout storage helper — functions accept expected parameter lengt
   const storage = createStorageContext();
   assert.equal(storage.loadStoredLayout.length, 3, 'loadStoredLayout(treeId, layoutStorageKey, canvasLayout)');
   assert.equal(storage.loadLayoutMode.length, 1, 'loadLayoutMode(layoutModeStorageKey)');
-  assert.equal(storage.persistLayoutMode.length, 2, 'persistLayoutMode(mode, layoutModeStorageKey)');
-  assert.equal(storage.persistStoredPositions.length, 4, 'persistStoredPositions(viewportState, treeId, layoutStorageKey, canvasLayout)');
+  assert.equal(storage.persistLayoutMode.length, 3, 'persistLayoutMode(mode, layoutModeStorageKey, canEdit)');
+  assert.equal(storage.persistStoredPositions.length, 5, 'persistStoredPositions(viewportState, treeId, layoutStorageKey, canvasLayout, canEdit)');
 });
 
 test('canvas layout storage helper — editor-canvas.js uses thin delegation wrappers', () => {

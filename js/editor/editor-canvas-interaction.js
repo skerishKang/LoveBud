@@ -108,9 +108,10 @@ window.LoveBudEditorCanvasInteraction = {
     });
   },
 
-  beginNodeDrag(event, nodeEl, memory, viewportState, getWorldPosition) {
-    // Disable node drag in structured mode
+  beginNodeDrag(event, nodeEl, memory, viewportState, getWorldPosition, canEdit) {
+    // Disable node drag in structured mode or read-only mode
     if (viewportState.layoutMode === 'structured') return false;
+    if (canEdit === false) return false;
 
     if (event.pointerType === 'mouse' && event.button !== 0) return false;
     if (event.target.closest('button')) return false;
