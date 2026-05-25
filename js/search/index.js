@@ -259,6 +259,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
+        // Show error fallback if error state exists
+        const errorEl = document.getElementById('growingTreesError');
+        if (errorEl) errorEl.hidden = true;
+
         refs.growingSection.hidden = false;
         refs.growingList.innerHTML = state.growingTrees
             .slice(0, 3)
@@ -269,10 +273,25 @@ document.addEventListener('DOMContentLoaded', async () => {
         ui.syncActiveCard();
     }
 
+    function renderGrowingLoading() {
+        if (!refs.growingSection || !refs.growingList) return;
+        // Show skeleton cards (already in HTML) while loading
+        refs.growingSection.hidden = false;
+    }
+
+    function renderGrowingError() {
+        if (!refs.growingSection) return;
+        const errorEl = document.getElementById('growingTreesError');
+        if (errorEl) errorEl.hidden = false;
+        refs.growingList.innerHTML = '';
+    }
+
     callbacks.selectTree = previewController.selectTree;
     callbacks.loadPublicTrees = dataApi.loadPublicTrees;
     callbacks.renderResults = renderResults;
     callbacks.renderGrowingResults = renderGrowingResults;
+    callbacks.renderGrowingLoading = renderGrowingLoading;
+    callbacks.renderGrowingError = renderGrowingError;
     callbacks.updateUrlState = urlState.updateUrlState;
 
     callbacks.loadMorePublicTrees = async () => {

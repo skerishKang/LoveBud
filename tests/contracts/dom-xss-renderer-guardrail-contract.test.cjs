@@ -169,8 +169,8 @@ const FILE_ALLOWLIST = {
     reason: 'CardRenderer.* and state.growingTrees use approved template renderers with escapeHtml; clear-container'
   },
   'js/search/index.js': {
-    count: 6, classification: 'safe',
-    reason: 'CardRenderer.* and state.growingTrees use approved template renderers with escapeHtml; clear-container'
+    count: 7, classification: 'safe',
+    reason: 'CardRenderer.* and state.growingTrees use approved template renderers with escapeHtml; renderGrowingError clear-container innerHTML'
   },
   'js/search.js': {
     count: 6, classification: 'safe',
