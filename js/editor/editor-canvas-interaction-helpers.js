@@ -15,7 +15,7 @@ window.LoveBudEditorCanvasInteractionHelpers = {
     canvas.style.cursor = 'grab';
     canvas.style.touchAction = 'none';
 
-    canvas.addEventListener('mousedown', (event) => {
+    canvas.addEventListener('pointerdown', (event) => {
       if (
         event.target.closest('.memory-node') ||
         event.target.closest('#addMemoryForm') ||
@@ -30,7 +30,7 @@ window.LoveBudEditorCanvasInteractionHelpers = {
       canvas.style.cursor = 'grabbing';
     });
 
-    window.addEventListener('mousemove', (event) => {
+    window.addEventListener('pointermove', (event) => {
       if (viewportState.isDraggingNode && viewportState.dragNodeId) {
         const dx = event.clientX - viewportState.dragStartClientX;
         const dy = event.clientY - viewportState.dragStartClientY;
@@ -58,7 +58,7 @@ window.LoveBudEditorCanvasInteractionHelpers = {
       scheduleInitCanvas();
     });
 
-    window.addEventListener('mouseup', () => {
+    window.addEventListener('pointerup', () => {
       const currentFrame = viewportState.rafFrame;
       if (currentFrame) {
         cancelAnimationFrame(currentFrame);

@@ -19,7 +19,7 @@ window.LoveBudEditorCanvasInteraction = {
     canvas.style.cursor = viewportState.layoutMode === 'structured' ? 'default' : 'grab';
     canvas.style.touchAction = 'none';
 
-    canvas.addEventListener('mousedown', (event) => {
+    canvas.addEventListener('pointerdown', (event) => {
       if (
         event.target.closest('.memory-node') ||
         event.target.closest('#addMemoryForm') ||
@@ -38,7 +38,7 @@ window.LoveBudEditorCanvasInteraction = {
       canvas.style.cursor = 'grabbing';
     });
 
-    window.addEventListener('mousemove', (event) => {
+    window.addEventListener('pointermove', (event) => {
       if (viewportState.isDraggingNode && viewportState.dragNodeId) {
         const dx = event.clientX - viewportState.dragStartClientX;
         const dy = event.clientY - viewportState.dragStartClientY;
@@ -67,7 +67,7 @@ window.LoveBudEditorCanvasInteraction = {
       scheduleRender();
     });
 
-    window.addEventListener('mouseup', () => {
+    window.addEventListener('pointerup', () => {
       const currentFrame = viewportState.rafFrame;
       if (currentFrame) {
         cancelAnimationFrame(currentFrame);
@@ -112,7 +112,7 @@ window.LoveBudEditorCanvasInteraction = {
     // Disable node drag in structured mode
     if (viewportState.layoutMode === 'structured') return false;
 
-    if (event.button !== 0) return false;
+    if (event.pointerType === 'mouse' && event.button !== 0) return false;
     if (event.target.closest('button')) return false;
     event.preventDefault();
     event.stopPropagation();
