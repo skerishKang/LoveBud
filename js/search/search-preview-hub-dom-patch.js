@@ -5,6 +5,18 @@
     var lastPatchedTitle = '';
     var socialBound = false;
 
+    function escapeHtml(value) {
+        if (window.LoveBudSecurity && typeof window.LoveBudSecurity.escapeHtml === 'function') {
+            return window.LoveBudSecurity.escapeHtml(value);
+        }
+        return String(value == null ? '' : value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
     function hide(el) {
         if (!el) return;
         el.hidden = true;
@@ -43,7 +55,7 @@
         if (!copy.querySelector('.preview-summary-line')) {
             var summaryText = getSummaryText();
             if (summaryText) {
-                copy.innerHTML = '<p class="preview-summary-line">' + summaryText + '</p>';
+                copy.innerHTML = '<p class="preview-summary-line">' + escapeHtml(summaryText) + '</p>';
             }
         }
     }
