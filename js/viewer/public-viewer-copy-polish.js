@@ -1,28 +1,42 @@
 (function() {
     'use strict';
 
+    var copyApplyScheduled = false;
+
     function setText(selector, text) {
         var el = document.querySelector(selector);
-        if (!el) return;
+        if (!el) return false;
+        if (el.textContent === text) return false;
         el.textContent = text;
+        return true;
     }
 
     function hide(selector) {
         var el = document.querySelector(selector);
-        if (!el) return;
+        if (!el) return false;
+        if (el.hidden && el.style.display === 'none') return false;
         el.hidden = true;
         el.style.display = 'none';
+        return true;
     }
 
     function replaceRawLayoutLabel() {
         var label = document.getElementById('layoutModeToggleLabel');
-        if (!label) return;
+        if (!label) return false;
         var value = String(label.textContent || '').trim();
-        if (value === 'editor_layout_free') label.textContent = '자유 배치';
-        if (value === 'editor_layout_structured') label.textContent = '구조 보기';
+        if (value === 'editor_layout_free') {
+            label.textContent = '자유 배치';
+            return true;
+        }
+        if (value === 'editor_layout_structured') {
+            label.textContent = '구조 보기';
+            return true;
+        }
+        return false;
     }
 
     function applyPublicViewerCopy() {
+        copyApplyScheduled = false;
         if (!document.body.classList.contains('editor-readonly')) return;
 
         setText('.editor-panel-headline', '선택한 순간');
@@ -43,23 +57,38 @@
         replaceRawLayoutLabel();
     }
 
+    function scheduleCopyApply() {
+        if (copyApplyScheduled) return;
+        copyApplyScheduled = true;
+        window.requestAnimationFrame(applyPublicViewerCopy);
+    }
+
     function installCopyObserver() {
         applyPublicViewerCopy();
-        var target = document.getElementById('detailPanel') || document.body;
-        if (!target || target.__publicViewerCopyObserverInstalled) return;
-        var observer = new MutationObserver(function() {
-            applyPublicViewerCopy();
-        });
-        observer.observe(target, { childList: true, subtree: true, characterData: true });
+        var target = document.getElementById('detailPanel');
+        if (!target) return false;
+        if (target.__publicViewerCopyObserverInstalled) return true;
+        var observer = new MutationObserver(scheduleCopyApply);
+        observer.observe(target, { childList: true, subtree: true });
         target.__publicViewerCopyObserverInstalled = true;
+        return true;
+    }
+
+    function retryInstallCopyObserver() {
+        var tries = 0;
+        var timer = window.setInterval(function() {
+            tries += 1;
+            if (installCopyObserver() || tries > 40) {
+                window.clearInterval(timer);
+            }
+        }, 100);
     }
 
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', installCopyObserver);
+        document.addEventListener('DOMContentLoaded', retryInstallCopyObserver);
     } else {
-        installCopyObserver();
+        retryInstallCopyObserver();
     }
 
-    window.setTimeout(installCopyObserver, 250);
-    window.setTimeout(applyPublicViewerCopy, 800);
+    window.setTimeout(scheduleCopyApply, 800);
 })();
