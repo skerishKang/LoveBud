@@ -51,10 +51,12 @@ test('public canvas route keeps public viewer bootstrap scripts in required orde
   const scripts = getScriptSrcs();
 
   assertScriptOrder(scripts, 'js/viewer/public-canvas-bridge.js', 'js/viewer/public-canvas-init.js');
-  assertScriptOrder(scripts, 'js/viewer/public-canvas-init.js', 'js/viewer/public-viewer-copy-polish.js');
+  assertScriptOrder(scripts, 'js/viewer/public-canvas-init.js', 'js/viewer/public-viewer-copy-helper.js');
+  assertScriptOrder(scripts, 'js/viewer/public-viewer-copy-helper.js', 'js/viewer/public-viewer-copy-polish.js');
 
   assert.ok(scriptIncludes(scripts, 'js/viewer/public-canvas-bridge.js'), 'view.html must load public canvas bridge');
   assert.ok(scriptIncludes(scripts, 'js/viewer/public-canvas-init.js'), 'view.html must load public canvas init');
+  assert.ok(scriptIncludes(scripts, 'js/viewer/public-viewer-copy-helper.js'), 'view.html must load public viewer copy helper before copy polish');
   assert.ok(scriptIncludes(scripts, 'js/viewer/public-viewer-copy-polish.js'), 'view.html must load public viewer copy polish until viewer-only copy rendering replaces it');
 });
 
@@ -157,6 +159,30 @@ test('public canvas route currently uses editor detail UI stack before public in
     assert.ok(scriptIncludes(scripts, needle), `view.html currently loads detail dependency: ${needle}`);
     assertScriptOrder(scripts, needle, 'js/viewer/public-canvas-init.js');
   });
+});
+
+test('public viewer copy helper centralizes viewer copy and hidden-control rules', () => {
+  const helperSrc = fs.readFileSync('js/viewer/public-viewer-copy-helper.js', 'utf8');
+  const polishSrc = fs.readFileSync('js/viewer/public-viewer-copy-polish.js', 'utf8');
+
+  assert.ok(helperSrc.includes('window.LoveBudPublicViewerCopyHelper'), 'copy helper must export LoveBudPublicViewerCopyHelper');
+  assert.ok(helperSrc.includes('getTextRules: getTextRules'), 'copy helper must expose getTextRules');
+  assert.ok(helperSrc.includes('getHideSelectors: getHideSelectors'), 'copy helper must expose getHideSelectors');
+  assert.ok(helperSrc.includes('getRawLayoutLabel: getRawLayoutLabel'), 'copy helper must expose getRawLayoutLabel');
+
+  ['선택한 순간', '러브트리 정보', '감상 동선', '순간 자세히 보기', '순간 기록', '감정 태그', '남긴 메모'].forEach((copy) => {
+    assert.ok(helperSrc.includes(copy), `copy helper must own viewer copy: ${copy}`);
+    assert.equal(polishSrc.includes(copy), false, `copy polish must not hard-code viewer copy: ${copy}`);
+  });
+
+  ['#editMemoryBtn', '#continueFromMomentBtn', '.editor-save-status-card'].forEach((selector) => {
+    assert.ok(helperSrc.includes(selector), `copy helper must own hidden selector: ${selector}`);
+  });
+
+  assert.ok(polishSrc.includes('LoveBudPublicViewerCopyHelper'), 'copy polish must delegate to the helper');
+  assert.ok(polishSrc.includes('helper.getTextRules'), 'copy polish must apply helper text rules');
+  assert.ok(polishSrc.includes('helper.getHideSelectors'), 'copy polish must apply helper hidden selectors');
+  assert.ok(polishSrc.includes('helper.getRawLayoutLabel'), 'copy polish must use helper raw layout label map');
 });
 
 test('public canvas route has an executable mobile smoke npm script', () => {
