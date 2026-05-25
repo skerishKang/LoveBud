@@ -24,6 +24,7 @@
     "test:e2e:login-success": "node scripts/e2e-login-success-smoke.cjs",
     "test:e2e:login-timeout": "node scripts/e2e-login-timeout-smoke.cjs",
     "test:e2e:ui-regression": "node scripts/e2e-ui-regression-smoke.cjs",
+    "test:e2e:public-viewer-mobile": "node scripts/e2e-public-viewer-mobile-smoke.cjs",
     "test:e2e:ci": "npm run test:e2e:search-detail && npm run test:e2e:login-timeout && npm run test:e2e:ui-regression",
     "smoke:cloudflare": "node scripts/cloudflare-supplied-url-smoke.cjs",
     "check:auth-credentials": "node scripts/ops-auth-credential-preflight.cjs",
