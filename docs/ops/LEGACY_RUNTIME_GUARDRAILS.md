@@ -81,3 +81,11 @@ Runtime PRs that touch active files:
 - relevant contract tests;
 - Cloudflare Preview or fixed-slot smoke where API/Auth/data-loaded behavior is affected;
 - report verified and unverified items separately.
+
+## Related documentation
+
+- `docs/ops/LEGACY_DEPLOYMENT_ARTIFACT_AUDIT.md` — legacy deployment artifact classification, ownership, and artifact-specific rules
+- `docs/ops/RUNTIME_ROUTING_TRANSITIONAL_AUDIT.md` — runtime routing transitional layer audit (prerequisite for routing changes)
+- `docs/engineering/CLOUDFLARE_API_ROUTE_MAPPING_AUDIT.md` — Cloudflare Pages same-origin `/api/*` route mapping audit
+- `netlify/README.md` — legacy Netlify path ownership and prohibition rules
+- `README.md` — project-level service description, naming conventions, and full doc index

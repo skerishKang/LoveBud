@@ -3,6 +3,7 @@
 **Status:** Audit map
 **Owner:** CTO / Ops
 **Related issue:** #221
+**Guardrail contract source:** `tests/contracts/runtime-boundary-guardrail-contract.test.cjs` (CI-enforced static checks documented in `docs/ops/LEGACY_RUNTIME_GUARDRAILS.md`)
 **Scope:** docs-only audit; no runtime, routing, deployment, or config behavior changes
 
 ---
