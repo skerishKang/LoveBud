@@ -167,13 +167,36 @@
       ? (i18n('myTrees.card_growing') || '차곡차곡 자라는 중')
       : (i18n('myTrees.card_waiting') || '첫 순간을 기다리는 중');
     var thumbnail = getRepresentativeThumbnail(tree);
-    var textVisual = !thumbnail ? buildRepresentativeTextVisual(tree, palette, i18n) : '';
+
+    var isEnglish = String(window.i18n?.currentLang || '').toLowerCase().startsWith('en');
+    var pill1 = isEnglish ? 'First Moment' : '첫 순간';
+    var pill2 = isEnglish ? 'Memory Note' : '마음 메모';
+    var pill3 = isEnglish ? 'Favorite Scene' : '다시 보고 싶은 장면';
+
+    var fallbackSvg = '';
+    if (Visuals && typeof Visuals.buildPremiumFallbackSVG === 'function') {
+      fallbackSvg = Visuals.buildPremiumFallbackSVG(tree, palette);
+    } else {
+      fallbackSvg = buildMiniTreeSVG(tree);
+    }
+
+    var fallbackHtml = '<div class="tree-card-media-fallback" style="width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; padding: 16px; box-sizing: border-box;">' +
+      '<div class="fallback-svg-container">' +
+      fallbackSvg +
+      '</div>' +
+      '<div class="fallback-pills">' +
+      '<span class="fallback-pill" style="color: ' + palette.accent + ';">' + pill1 + '</span>' +
+      '<span class="fallback-pill" style="color: ' + palette.accent + ';">' + pill2 + '</span>' +
+      '<span class="fallback-pill" style="color: ' + palette.accent + ';">' + pill3 + '</span>' +
+      '</div>' +
+      '<div class="fallback-title" style="display:none !important;"></div>' +
+      '</div>';
 
     return '<div class="tree-card-thumb" style="background:' + palette.background + ';">' +
       '<div class="tree-card-thumb-glow" style="background:' + palette.leafSoft + ';"></div>' +
       '<div class="tree-card-thumb-initial" style="color:' + palette.accent + ';border-color:' + palette.leafSoft + ';">' + initial + '</div>' +
       '<div class="tree-card-thumb-art">' +
-      (thumbnail ? '<img class="tree-card-thumb-image" src="' + escapeHtml(thumbnail) + '" alt="' + escapeHtml(title) + '">' : (textVisual || buildMiniTreeSVG(tree))) +
+      (thumbnail ? '<img class="tree-card-thumb-image" src="' + escapeHtml(thumbnail) + '" alt="' + escapeHtml(title) + '">' : fallbackHtml) +
       '</div>' +
       (momentCount > 0 ? '<div class="tree-card-thumb-topline"><span class="tree-card-moment-badge" data-count="' + momentCount + '">' + (i18n('myTrees.moment_count_compact') || '순간 {count}개').replace('{count}', String(momentCount)) + '</span></div>' : '') +
       (momentCount > 0 ? '<div class="tree-card-thumb-caption">' + moodLabel + '</div>' : '') +

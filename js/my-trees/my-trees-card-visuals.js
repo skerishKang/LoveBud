@@ -185,6 +185,64 @@
     ].join('');
   }
 
+  function buildPremiumFallbackSVG(tree, palette) {
+    var seed = hashSeed((tree && tree.id) || (tree && tree.title) || 'lovetree');
+    var trunkId = 'trunkGrad-' + seed;
+
+    var branches = [
+      '<path d="M 100 178 Q 98 142 100 112 Q 102 82 95 52" stroke="url(#' + trunkId + ')" stroke-width="5" fill="none" stroke-linecap="round"/>',
+      '<path d="M 100 132 Q 72 122 56 98 Q 46 80 52 58" stroke="' + palette.leaf + '" stroke-width="2.5" fill="none" stroke-linecap="round" opacity="0.85"/>',
+      '<path d="M 100 112 Q 128 102 145 84 Q 157 70 152 50" stroke="' + palette.leaf + '" stroke-width="2.5" fill="none" stroke-linecap="round" opacity="0.85"/>',
+      '<path d="M 98 82 Q 78 72 68 52 Q 60 38 66 24" stroke="' + palette.leaf + '" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.75"/>'
+    ].join('');
+
+    var nodePositions = [
+      { x: 52, y: 58, type: 'heart', r: 8 },
+      { x: 152, y: 50, type: 'pearl', r: 7 },
+      { x: 66, y: 24, type: 'pearl', r: 6 },
+      { x: 102, y: 52, type: 'heart', r: 8 },
+      { x: 138, y: 84, type: 'pearl', r: 6 },
+      { x: 80, y: 104, type: 'heart', r: 7 }
+    ];
+
+    var nodesHtml = [];
+    for (var i = 0; i < nodePositions.length; i++) {
+      var pos = nodePositions[i];
+      if (pos.type === 'heart') {
+        var scale = (pos.r / 10).toFixed(2);
+        nodesHtml.push(
+          '<g transform="translate(' + pos.x + ', ' + (pos.y - 5) + ') scale(' + scale + ')" opacity="0.95">' +
+            '<path d="M0,3 C-3,-3 -10,-3 -10,3 C-10,9 0,16 0,18 C0,16 10,9 10,3 C10,-3 3,-3 0,3 Z" fill="' + palette.accent + '" opacity="0.85"/>' +
+            '<path d="M0,3 C-3,-3 -10,-3 -10,3 C-10,9 0,16 0,18 C0,16 10,9 10,3 C10,-3 3,-3 0,3 Z" fill="#ffb4c1" transform="scale(0.85)"/>' +
+          '</g>'
+        );
+      } else {
+        nodesHtml.push(
+          '<g opacity="0.95">' +
+            '<circle cx="' + pos.x + '" cy="' + pos.y + '" r="' + pos.r + '" fill="' + palette.leafSoft + '" stroke="' + palette.leaf + '" stroke-width="1.5"/>' +
+            '<circle cx="' + pos.x + '" cy="' + pos.y + '" r="' + (pos.r * 0.7).toFixed(1) + '" fill="rgba(255, 255, 255, 0.9)"/>' +
+            '<circle cx="' + (pos.x - pos.r * 0.2).toFixed(1) + '" cy="' + (pos.y - pos.r * 0.2).toFixed(1) + '" r="' + (pos.r * 0.25).toFixed(1) + '" fill="#ffffff"/>' +
+          '</g>'
+        );
+      }
+    }
+
+    return [
+      '<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="width: 100%; height: 100%; max-height: 120px; display: block; margin: 0 auto;">',
+        '<defs>',
+          '<linearGradient id="' + trunkId + '" x1="0%" y1="0%" x2="100%" y2="0%">',
+            '<stop offset="0%" style="stop-color:#904951;stop-opacity:1" />',
+            '<stop offset="50%" style="stop-color:#c87480;stop-opacity:1" />',
+            '<stop offset="100%" style="stop-color:#904951;stop-opacity:1" />',
+          '</linearGradient>',
+        '</defs>',
+        branches,
+        nodesHtml.join(''),
+        '<ellipse cx="100" cy="176" rx="34" ry="8" fill="none" stroke="' + palette.accent + '" stroke-width="1" opacity="0.15" stroke-dasharray="4,4"/>',
+      '</svg>'
+    ].join('');
+  }
+
   function buildTreeThumbVisual(tree, i18n) {
     var palette = getTreeMoodPalette(tree);
     var momentCount = getTreeMomentCount(tree);
@@ -194,7 +252,25 @@
       ? (i18n('myTrees.card_growing') || '차곡차곡 자라는 중')
       : (i18n('myTrees.card_waiting') || '첫 순간을 기다리는 중');
     var thumbnail = getRepresentativeThumbnail(tree);
-    var textVisual = !thumbnail ? buildRepresentativeTextVisual(tree, palette, i18n) : '';
+
+    var isEnglish = String(window.i18n?.currentLang || '').toLowerCase().startsWith('en');
+    var pill1 = isEnglish ? 'First Moment' : '첫 순간';
+    var pill2 = isEnglish ? 'Memory Note' : '마음 메모';
+    var pill3 = isEnglish ? 'Favorite Scene' : '다시 보고 싶은 장면';
+
+    var fallbackHtml = [
+      '<div class="tree-card-media-fallback" style="width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; padding: 16px; box-sizing: border-box;">',
+        '<div class="fallback-svg-container">',
+          buildPremiumFallbackSVG(tree, palette),
+        '</div>',
+        '<div class="fallback-pills">',
+          '<span class="fallback-pill" style="color: ' + palette.accent + ';">' + pill1 + '</span>',
+          '<span class="fallback-pill" style="color: ' + palette.accent + ';">' + pill2 + '</span>',
+          '<span class="fallback-pill" style="color: ' + palette.accent + ';">' + pill3 + '</span>',
+        '</div>',
+        '<div class="fallback-title" style="display:none !important;"></div>',
+      '</div>'
+    ].join('');
 
     return [
       '<div class="tree-card-thumb" style="background:' + palette.background + ';">',
@@ -203,7 +279,7 @@
         '<div class="tree-card-thumb-art">',
           thumbnail
             ? '<img class="tree-card-thumb-image" src="' + escapeHtml(thumbnail) + '" alt="' + escapeHtml(title) + '">'
-            : (textVisual || buildMiniTreeSVG(tree)),
+            : fallbackHtml,
         '</div>',
         (momentCount > 0 ? '<div class="tree-card-thumb-topline"><span class="tree-card-moment-badge" data-count="' + momentCount + '">' + (i18n('myTrees.moment_count_compact') || '순간 {count}개').replace('{count}', String(momentCount)) + '</span></div>' : ''),
         (momentCount > 0 ? '<div class="tree-card-thumb-caption">' + moodLabel + '</div>' : ''),
@@ -216,6 +292,7 @@
     getTreeCardMeta: getTreeCardMeta,
     getTreeMoodPalette: getTreeMoodPalette,
     buildMiniTreeSVG: buildMiniTreeSVG,
+    buildPremiumFallbackSVG: buildPremiumFallbackSVG,
     getRepresentativeThumbnail: getRepresentativeThumbnail,
     getRepresentativeTextMeta: getRepresentativeTextMeta,
     buildRepresentativeTextVisual: buildRepresentativeTextVisual,
