@@ -13,6 +13,14 @@
     <style>
         body { min-height: 100vh; display: flex; flex-direction: column; overflow-x: hidden; }
         .editor-layout { flex: 1; }
+        @media (max-width: 560px) {
+            body.editor-readonly .editor-layout { height: calc(100vh - 44px); }
+            body.editor-readonly .canvas-area { min-height: calc(100vh - 44px); }
+            body.editor-readonly .node-info-label { display: flex; }
+            body.editor-readonly .node-title { font-size: 12px; }
+            body.editor-readonly .node-date,
+            body.editor-readonly .node-mood { font-size: 10px; }
+        }
     </style>
 </head>
 <body class="editor-preload">
@@ -59,6 +67,7 @@
     <script src="../js/editor/editor-canvas-viewport-state.js?v=20260524-1505"></script>
     <script src="../js/editor/editor-canvas-viewport-fit.js?v=20260524-1505"></script>
     <script src="../js/editor/editor-canvas-viewport-initial.js?v=20260524-1505"></script>
+    <script src="../js/viewer/public-canvas-mobile-profile.js?v=20260525-2"></script>
     <script src="../js/editor/editor-canvas-viewport-branches.js?v=20260523-1505"></script>
     <script src="../js/editor/editor-canvas-viewport-actions.js?v=20260523-1505"></script>
     <script src="../js/editor/editor-canvas-viewport-controls.js?v=20260523-1505"></script>
