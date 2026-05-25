@@ -235,7 +235,7 @@ test('public-tree-viewer.js iframe branch has safeEmbedUrl guard', () => {
     const src = fs.readFileSync('js/viewer/public-tree-viewer.js', 'utf8');
     assert.ok(src.includes('if (safeEmbedUrl)'),
         'iframe src must be gated behind safeEmbedUrl check');
-    assert.ok(src.includes('} else if (thumb)'),
+    assert.ok(src.includes('} else if (safeThumb)'),
         'iframe rejection must fall back to thumbnail branch');
 });
 
