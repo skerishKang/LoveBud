@@ -194,6 +194,11 @@
         async function loadGrowingTrees() {
             if (!window.LoveTreeBaseApiFetch || typeof window.LoveTreeBaseApiFetch.apiFetch !== 'function') return;
 
+            // Show loading state immediately
+            state.growingLoading = true;
+            state.growingError = null;
+            if (callbacks.renderGrowingLoading) callbacks.renderGrowingLoading();
+
             try {
                 const apiResponse = await window.LoveTreeBaseApiFetch.apiFetch('/community/growing-trees?limit=3');
                 const rawTrees = Array.isArray(apiResponse)
@@ -212,10 +217,13 @@
                     };
                 });
 
+                state.growingLoading = false;
                 callbacks.renderGrowingResults();
             } catch (error) {
+                state.growingLoading = false;
+                state.growingError = error;
                 console.warn('[search/data] growing trees load failed:', error.message);
-                if (refs.growingSection) refs.growingSection.style.display = 'none';
+                if (callbacks.renderGrowingError) callbacks.renderGrowingError();
             }
         }
 

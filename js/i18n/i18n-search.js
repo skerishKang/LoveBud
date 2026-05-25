@@ -45,6 +45,10 @@
       ko: '자라는 중',
       en: 'Growing'
     },
+    'search.growingTreesError': {
+      ko: '새로 자라는 트리를 불러오지 못했어요. 나중에 다시 확인해 주세요.',
+      en: 'Could not load growing trees. Please check again later.'
+    },
 
     // 빈 상태 / 오류 상태
     'search.noTreesHeading': {
