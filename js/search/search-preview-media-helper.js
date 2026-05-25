@@ -36,8 +36,9 @@
         if (!value) return '';
         const raw = String(value).trim();
         if (!raw) return '';
+        if (!/^https?:\/\//i.test(raw)) return '';
         try {
-            const parsed = new URL(raw, window.location.origin);
+            const parsed = new URL(raw);
             const protocol = parsed.protocol;
             if (protocol === 'http:' || protocol === 'https:') {
                 return parsed.href;
