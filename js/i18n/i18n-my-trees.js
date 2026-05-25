@@ -32,7 +32,7 @@
     'myTrees.page_title': { ko: '내 러브트리', en: 'My LoveTrees' },
     'myTrees.page_eyebrow': { ko: '내가 키우는 러브트리', en: 'Growing LoveTrees' },
     'myTrees.page_desc': { ko: '첫 순간부터 이어진 마음까지 다시 열어보세요', en: 'Reopen everything from first moments to feelings that followed' },
-    'myTrees.header_create': { ko: '새 트리', en: 'New tree' },
+    'myTrees.header_create': { ko: '새 러브트리', en: 'New LoveTree' },
     'myTrees.summary_total_suffix': { ko: '개의 트리', en: ' trees' },
     'myTrees.summary_public': { ko: '공개', en: 'Public' },
     'myTrees.summary_private': { ko: '비공개', en: 'Private' },
