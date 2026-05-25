@@ -185,8 +185,8 @@ const FILE_ALLOWLIST = {
     reason: 'escapeHtml for title in summary lines; renderIframe/renderSocialBar approved for URLs with sanitizeUrl'
   },
   'js/search/search-preview-hub-dom-patch.js': {
-    count: 2, classification: 'review_needed',
-    reason: 'Line 46: summaryText from textContent() re-injected without escapeHtml (entity decode XSS). Line 72: renderSocialShell static template — safe.'
+    count: 2, classification: 'safe',
+    reason: 'summaryText is escaped with escapeHtml before preview-summary-line innerHTML reinsertion; renderSocialShell is static template markup.'
   },
   'js/search/search-preview-state.js': {
     count: 1, classification: 'safe',
@@ -292,10 +292,6 @@ const FILE_ALLOWLIST = {
 // These are pre-existing issues that should be fixed in follow-up PRs.
 
 const KNOWN_ISSUES = new Set([
-  // search-preview-hub-dom-patch.js:46 — entity decode re-injection XSS
-  // SummaryText from DOM textContent() re-injected via innerHTML without escapeHtml
-  'js/search/search-preview-hub-dom-patch.js',
-
   // chat-first-workspace.js — prototype file, lines 132, 271
   // User content (mom.type/text/date) concatenated into innerHTML without escaping
   'js/chat-first-workspace.js',
