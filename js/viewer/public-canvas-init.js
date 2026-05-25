@@ -39,6 +39,15 @@
         geometry.__publicViewMetricsInstalled = true;
     }
 
+    function installPublicViewportProfile() {
+        var viewport = window.LoveBudEditorCanvasViewport;
+        if (!viewport || viewport.__publicViewProfileInstalled) return;
+        viewport.minScale = Math.max(Number(viewport.minScale) || 0.2, 0.5);
+        viewport.zoomLevels = [0.5, 0.75, 1, 1.25, 1.5];
+        viewport.readableCenter = { x: 0.5, y: 0.46 };
+        viewport.__publicViewProfileInstalled = true;
+    }
+
     function initPublicCanvas() {
         var params = new URLSearchParams(window.location.search);
         var treeId = params.get('treeId');
@@ -81,7 +90,6 @@
                 var canvasReady = typeof window.createEditorCanvas === 'function';
                 var detailReady = typeof window.createEditorDetailUI === 'function';
                 var detailUIBuildersReady = typeof window.createEditorDetailUIBuilders === 'function';
-                var edgesReady = typeof window.createEditorCanvasEdges === 'function';
 
                 if (canvasReady && detailReady && detailUIBuildersReady) {
                     startCanvas();
@@ -101,6 +109,7 @@
                 }
 
                 installPublicMetrics(canvas);
+                installPublicViewportProfile();
 
                 // Set up empty guide UI
                 var emptyGuideHelper = window.LoveBudEditorEmptyGuideUI || {};
