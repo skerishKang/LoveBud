@@ -66,6 +66,25 @@
             .replace(/'/g, '&#39;');
     }
 
+    // sanitizeUrl
+    function sanitizeUrl(value) {
+        var sec = window.LoveBudSecurity;
+        if (sec && typeof sec.sanitizeUrl === 'function') {
+            return sec.sanitizeUrl(value);
+        }
+        if (!value) return '';
+        var raw = String(value).trim();
+        if (!raw) return '';
+        if (!/^https?:\/\//i.test(raw)) return '';
+        try {
+            var parsed = new URL(raw);
+            var protocol = String(parsed.protocol).toLowerCase();
+            return protocol === 'http:' || protocol === 'https:' ? parsed.href : '';
+        } catch (e) {
+            return '';
+        }
+    }
+
     // getCurrentLocale
     function getCurrentLocale() {
         const locale = window.i18n?.currentLang || 'ko';
@@ -316,23 +335,25 @@
             const sourceUrl = memory.sourceUrl || memory.originalUrl || '';
             const thumb = memory.representativeThumbnail || memory.thumbnail || '';
 
+            const safeSourceUrl = sanitizeUrl(sourceUrl);
+            const safeThumb = sanitizeUrl(thumb);
+
             // Check for YouTube embed URL
-            const ytVideoId = extractYouTubeVideoId(sourceUrl);
+            const ytVideoId = extractYouTubeVideoId(safeSourceUrl);
             if (ytVideoId) {
                 const embedUrl = `https://www.youtube.com/embed/${ytVideoId}?rel=0&modestbranding=1`;
                 // Sanitize embed URL before iframe src insertion (defense-in-depth)
-                var sanitizeUrl = window.LoveBudSecurity && window.LoveBudSecurity.sanitizeUrl;
-                var safeEmbedUrl = sanitizeUrl ? sanitizeUrl(embedUrl) : embedUrl;
+                var safeEmbedUrl = sanitizeUrl(embedUrl);
                 if (safeEmbedUrl) {
                     var safeTitle = escapeHtml(memory.title || 'moment video');
                     mediaContainer.innerHTML = '<iframe src="' + escapeHtml(safeEmbedUrl) + '" class="viewer-preview-video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy" title="' + safeTitle + '"></iframe>';
-                } else if (thumb) {
-                    mediaContainer.innerHTML = '<img src="' + escapeHtml(thumb) + '" alt="' + escapeHtml(memory.title || '') + '" class="viewer-preview-image" loading="lazy" />';
+                } else if (safeThumb) {
+                    mediaContainer.innerHTML = '<img src="' + escapeHtml(safeThumb) + '" alt="' + escapeHtml(memory.title || '') + '" class="viewer-preview-image" loading="lazy" />';
                 } else {
                     mediaContainer.innerHTML = '<div class="viewer-preview-no-media"><span class="material-symbols-outlined">image</span></div>';
                 }
-            } else if (thumb) {
-                mediaContainer.innerHTML = `<img src="${escapeHtml(thumb)}" alt="${escapeHtml(memory.title || '')}" class="viewer-preview-image" loading="lazy" />`;
+            } else if (safeThumb) {
+                mediaContainer.innerHTML = `<img src="${escapeHtml(safeThumb)}" alt="${escapeHtml(memory.title || '')}" class="viewer-preview-image" loading="lazy" />`;
             } else {
                 mediaContainer.innerHTML = `<div class="viewer-preview-no-media"><span class="material-symbols-outlined">image</span></div>`;
             }
