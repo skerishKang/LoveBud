@@ -1,4 +1,52 @@
 (function() {
+    const title = document.querySelector('.home-v3-title');
+    const desc = document.querySelector('.home-v3-desc');
+    const actions = document.querySelector('.home-v3-actions');
+    if (!title || !desc || !actions || document.getElementById('home-hero-set-2')) return;
+
+    const loop = document.createElement('div');
+    loop.className = 'home-hero-loop-container';
+
+    const set1 = document.createElement('div');
+    set1.className = 'home-hero-copy-set active';
+    set1.id = 'home-hero-set-1';
+    set1.appendChild(title);
+    set1.appendChild(desc);
+
+    const set2 = document.createElement('div');
+    set2.className = 'home-hero-copy-set';
+    set2.id = 'home-hero-set-2';
+    set2.innerHTML = [
+        '<h1 class="home-v3-title">',
+        '<span class="soft" data-i18n="home.v3.title2.soft">첫 순간이 하나의</span>',
+        '<span class="warm" data-i18n="home.v3.title2.warm">러브트리로</span>',
+        '<span class="accent" data-i18n="home.v3.title2.accent">이어져요</span>',
+        '</h1>',
+        '<p class="home-v3-desc" data-i18n="home.v3.desc2">반했던 장면과 오래 남은 마음을, 감정이 이어진 경로로 천천히 남겨 보세요.</p>'
+    ].join('');
+
+    loop.appendChild(set1);
+    loop.appendChild(set2);
+    actions.parentNode.insertBefore(loop, actions);
+
+    const isReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (isReducedMotion) return;
+
+    let activeSet = 1;
+    window.setInterval(function toggleHomeHeroCopy() {
+        if (activeSet === 1) {
+            set1.classList.remove('active');
+            set2.classList.add('active');
+            activeSet = 2;
+        } else {
+            set2.classList.remove('active');
+            set1.classList.add('active');
+            activeSet = 1;
+        }
+    }, 3500);
+})();
+
+(function() {
     const cards = Array.from(document.querySelectorAll('.growth-stage-card'));
     if (!cards.length || typeof fetch !== 'function') return;
     if (document.getElementById('hero-growth-video')) return;
