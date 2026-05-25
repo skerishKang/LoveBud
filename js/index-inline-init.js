@@ -4,6 +4,22 @@
     const actions = document.querySelector('.home-v3-actions');
     if (!title || !desc || !actions || document.getElementById('home-hero-set-2')) return;
 
+    const createI18nSpan = (className, key, fallback) => {
+        const span = document.createElement('span');
+        span.className = className;
+        span.setAttribute('data-i18n', key);
+        span.textContent = fallback;
+        return span;
+    };
+
+    const createI18nParagraph = (key, fallback) => {
+        const paragraph = document.createElement('p');
+        paragraph.className = 'home-v3-desc';
+        paragraph.setAttribute('data-i18n', key);
+        paragraph.textContent = fallback;
+        return paragraph;
+    };
+
     const loop = document.createElement('div');
     loop.className = 'home-hero-loop-container';
 
@@ -16,14 +32,15 @@
     const set2 = document.createElement('div');
     set2.className = 'home-hero-copy-set';
     set2.id = 'home-hero-set-2';
-    set2.innerHTML = [
-        '<h1 class="home-v3-title">',
-        '<span class="soft" data-i18n="home.v3.title2.soft">첫 순간이 하나의</span>',
-        '<span class="warm" data-i18n="home.v3.title2.warm">러브트리로</span>',
-        '<span class="accent" data-i18n="home.v3.title2.accent">이어져요</span>',
-        '</h1>',
-        '<p class="home-v3-desc" data-i18n="home.v3.desc2">반했던 장면과 오래 남은 마음을, 감정이 이어진 경로로 천천히 남겨 보세요.</p>'
-    ].join('');
+
+    const alternateTitle = document.createElement('h1');
+    alternateTitle.className = 'home-v3-title';
+    alternateTitle.appendChild(createI18nSpan('soft', 'home.v3.title2.soft', '첫 순간이 하나의'));
+    alternateTitle.appendChild(createI18nSpan('warm', 'home.v3.title2.warm', '러브트리로'));
+    alternateTitle.appendChild(createI18nSpan('accent', 'home.v3.title2.accent', '이어져요'));
+
+    set2.appendChild(alternateTitle);
+    set2.appendChild(createI18nParagraph('home.v3.desc2', '반했던 장면과 오래 남은 마음을, 감정이 이어진 경로로 천천히 남겨 보세요.'));
 
     loop.appendChild(set1);
     loop.appendChild(set2);
