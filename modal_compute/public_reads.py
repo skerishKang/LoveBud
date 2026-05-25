@@ -195,8 +195,11 @@ def fetch_latest_public_tree_snapshots(limit: int = 12, sort: str = "latest") ->
     def operation() -> list[dict[str, Any]]:
         with get_db_connection() as conn:
             with conn.cursor() as cur:
+                meta_start = time.time()
                 has_memories = _table_exists(cur, "memories")
                 has_title = _table_has_column(cur, "trees", "title")
+                meta_duration = (time.time() - meta_start) * 1000
+                print(f"[LoveBudModal] [TIMING] Schema metadata check took {meta_duration:.2f}ms")
 
                 if has_memories and has_title:
                     q_start = time.time()
@@ -309,8 +312,11 @@ def fetch_growing_public_tree_snapshots(limit: int = 6) -> list[dict[str, Any]]:
             conn_acquire_ms = (time.time() - conn_start) * 1000
             print(f"[LoveBudModal] [TIMING] DB connection acquisition took {conn_acquire_ms:.2f}ms")
             with conn.cursor() as cur:
+                meta_start = time.time()
                 has_memories = _table_exists(cur, "memories")
                 has_title = _table_has_column(cur, "trees", "title")
+                meta_duration = (time.time() - meta_start) * 1000
+                print(f"[LoveBudModal] [TIMING] Schema metadata check took {meta_duration:.2f}ms")
 
                 if has_memories and has_title:
                     q_start = time.time()
