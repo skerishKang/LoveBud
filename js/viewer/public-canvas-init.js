@@ -88,18 +88,21 @@
 
                 // Resolve root helpers
                 var rootUtils = window.LoveBudEditorUtils || {};
-                var getCanonicalRootId = rootUtils.getCanonicalRootId || (function() {
-                    var mems = function() { return normalized.treeMemories; };
-                    return function() {
-                        var root = mems().filter(function(m) { return m.parentId === null || m.parentId === undefined; });
-                        if (root.length === 0) return 'root';
-                        return root.sort(function(a, b) {
-                            return (a.createdAt || '9999') > (b.createdAt || '9999') ? 1 : -1;
-                        })[0].id;
-                    };
-                })();
+                var getCanonicalRootId = function() {
+                    if (typeof rootUtils.getCanonicalRootId === 'function') {
+                        return rootUtils.getCanonicalRootId(normalized.treeMemories);
+                    }
+                    var roots = normalized.treeMemories.filter(function(m) { return m.parentId === null || m.parentId === undefined; });
+                    if (roots.length === 0) return 'root';
+                    return roots.sort(function(a, b) {
+                        return (a.createdAt || '9999') > (b.createdAt || '9999') ? 1 : -1;
+                    })[0].id;
+                };
 
-                var isRootMemory = rootUtils.isRootMemory || function(mem, rootId) {
+                var isRootMemory = function(mem, rootId) {
+                    if (typeof rootUtils.isRootMemory === 'function') {
+                        return rootUtils.isRootMemory(mem, rootId);
+                    }
                     return !!(mem && rootId && mem.id === rootId);
                 };
 
@@ -183,7 +186,7 @@
                     setDetailEmptyState: setDetailEmptyState,
                     updateFocusSelectedBtn: updateFocusSelectedBtn,
                     createInitialMemory: function() {
-                        return { id: 'root', title: normalized.treeData.title || '러브트리', parentId: null };
+                        return { id: canonicalRootId, title: normalized.treeData.title || '러브트리', parentId: null };
                     },
                     onNodeClick: function(el, data) {
                         if (!data) return;
