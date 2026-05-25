@@ -9,6 +9,8 @@
 (function () {
   if (window.LoveBudMyTreesUI) return;
 
+  var _manageSummary = window.LoveBudMyTreesManageSummary || null;
+
   function escapeHtml(str) {
     var Utils = window.LoveBudMyTreesUtils;
     if (Utils && typeof Utils.escapeHtml === 'function') return Utils.escapeHtml(str);
@@ -204,6 +206,9 @@
   }
 
   function updateManageSummary(trees, options) {
+    if (_manageSummary && typeof _manageSummary.updateManageSummary === 'function') {
+      return _manageSummary.updateManageSummary(trees, options);
+    }
     var summaryBar = document.getElementById('manageSummaryBar');
     if (!summaryBar || !trees || trees.length === 0) {
       if (summaryBar) {
