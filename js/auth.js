@@ -428,10 +428,41 @@ function buildUserDropdown(user) {
   var options = { escapeHtml: escapeHtml };
   if (__authUiModule) return __authUiModule.buildUserDropdown(user, options);
   if (__authUiTemplates) return __authUiTemplates.buildUserDropdown(user, options);
-  var isPages = window.location.pathname.indexOf('/pages/') !== -1;
-  var myTreesHref = isPages ? 'my-trees.html' : 'pages/my-trees.html';
-  var initial = getUserAvatarInitial(user);
-  return '<div class="user-dropdown" id="userDropdown"><button class="user-dropdown-trigger user-dropdown-trigger-icon" aria-label="내 계정 메뉴"><span class="user-avatar-shell"><span class="user-avatar-initial" aria-hidden="true">' + escapeHtml(initial) + '</span></span></button><div class="user-dropdown-menu"><a href="' + myTreesHref + '" class="user-dropdown-item"><span class="material-symbols-outlined">account_tree</span>내 러브트리</a><div class="dropdown-divider"></div><button type="button" class="user-dropdown-item" data-auth-action="logout"><span class="material-symbols-outlined">logout</span>로그아웃</button></div></div>';
+  var userName = '';
+  var hasPhoto = !!(user && user.photoURL);
+
+  if (user) {
+    userName = user.displayName || user.email || '';
+  }
+
+  var safeUserName = escapeHtml(userName);
+  var safePhotoUrl = hasPhoto ? escapeHtml(user.photoURL) : '';
+
+  var isPagesContext = window.location.pathname.indexOf('/pages/') !== -1;
+  var myTreesHref = isPagesContext ? 'my-trees.html' : 'pages/my-trees.html';
+
+  var avatarInitial = getUserAvatarInitial(user);
+
+  var avatarContent = hasPhoto
+    ? '<img src="' + safePhotoUrl + '" alt="" class="user-avatar-image" referrerpolicy="no-referrer">'
+    : '<span class="user-avatar-initial" aria-hidden="true">' + escapeHtml(avatarInitial) + '</span>';
+
+  return [
+    '<div class="user-dropdown" id="userDropdown">',
+    '<button class="user-dropdown-trigger user-dropdown-trigger-icon" aria-label="내 계정 메뉴">',
+    '<span class="user-avatar-shell">',
+    avatarContent,
+    '</span>',
+    '</button>',
+    '<div class="user-dropdown-menu">',
+    safeUserName ? '<div class="user-dropdown-meta">' + safeUserName + '</div>' : '',
+    '<a href="' + myTreesHref + '" class="user-dropdown-item"><span class="material-symbols-outlined">account_tree</span>내 러브트리</a>',
+    '<button class="user-dropdown-item" disabled style="cursor:default;opacity:0.6;"><span class="material-symbols-outlined">settings</span>설정</button>',
+    '<div class="dropdown-divider"></div>',
+    '<button type="button" class="user-dropdown-item" data-auth-action="logout"><span class="material-symbols-outlined">logout</span>로그아웃</button>',
+    '</div>',
+    '</div>'
+  ].join('');
 }
 
 // ── Auth State → Nav UI ───────────────────────────────────────────────────────
