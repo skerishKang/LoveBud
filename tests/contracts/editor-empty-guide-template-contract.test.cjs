@@ -14,12 +14,15 @@ test('Empty Guide template helper exists and contains updated structured quick-s
     assert.ok(helperCode.includes('이 트리의 첫 순간을 기록해볼까요?'), 'must include updated title copy');
     assert.ok(helperCode.includes('소중한 영상이나 글로 시작해보세요.'), 'must include updated description copy');
     assert.ok(helperCode.includes('id="canvasEmptyVideoBtn"'), 'must include structured video button');
-    assert.ok(helperCode.includes('영상으로 첫 순간 심기'), 'must include structured video button copy');
+    assert.ok(helperCode.includes('🎬 영상으로 시작하기'), 'must include structured video button copy with emoji');
     assert.ok(helperCode.includes('id="canvasEmptyTextBtn"'), 'must include structured text button');
-    assert.ok(helperCode.includes('텍스트로 첫 순간 심기'), 'must include structured text button copy');
+    assert.ok(helperCode.includes('📝 텍스트로 시작하기'), 'must include structured text button copy with emoji');
     assert.ok(helperCode.includes('id="canvasEmptyQuickInput"'), 'must include quick YouTube input');
-    assert.ok(helperCode.includes('YouTube 링크를 붙여넣어 바로 시작하기'), 'must include quick input placeholder');
-    assert.ok(helperCode.includes('붙이는 순간 바로 순간이 만들어져요.'), 'must explain quick paste behavior');
+    assert.ok(helperCode.includes('YouTube 링크 붙여넣기'), 'must include quick input placeholder');
+    assert.ok(helperCode.includes('붙여넣는 순간 바로 생성돼요.'), 'must explain quick paste behavior');
+    assert.ok(helperCode.includes('class="editor-canvas-empty-guide__section-heading"'), 'must include visible section heading element');
+    assert.ok(helperCode.includes('체계적으로 입력하기'), 'must include structured section visible heading text');
+    assert.ok(helperCode.includes('빠르게 바로 시작하기'), 'must include quick section visible heading text');
 });
 
 test('editor.html uses template mount and removes raw empty guide markup', () => {
