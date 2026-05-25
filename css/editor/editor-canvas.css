@@ -199,6 +199,14 @@
     margin-top: 8px;
 }
 
+.editor-canvas-empty-guide__section-heading {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    color: var(--on-surface-variant);
+    text-align: center;
+}
+
 .editor-canvas-empty-guide__structured .btn-round,
 .editor-canvas-empty-guide__structured-btn {
     flex: 1 1 0;
