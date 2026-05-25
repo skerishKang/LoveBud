@@ -111,7 +111,7 @@
 
     function getTreeViewerHref(tree) {
         if (!tree?.id) return '';
-        return `${getBasePath()}public-canvas.html?treeId=${encodeURIComponent(tree.id)}`;
+        return `${getBasePath()}view.html?treeId=${encodeURIComponent(tree.id)}`;
     }
 
     function getTreePreviewTone(tree) {
