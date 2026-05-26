@@ -28,5 +28,7 @@ test('public viewer keeps detail and canvas shells for the current implementatio
   assert.ok(html.includes('id="editorDetailPanelShellTemplateMount"'), 'detail panel shell mount is still used by public viewer');
   assert.ok(scripts.includes('../js/editor/templates/editor-canvas-topbar-template.js'), 'canvas topbar template remains loaded');
   assert.ok(scripts.includes('../js/viewer/public-viewer-detail-panel-shell-template.js'), 'viewer detail panel shell template is loaded');
+  assert.ok(scripts.includes('../js/viewer/public-viewer-detail-empty-state-template.js'), 'viewer detail empty state template is loaded');
   assert.equal(scripts.includes('../js/editor/templates/editor-detail-panel-shell-template.js'), false, 'public view must not load the editor detail panel shell template');
+  assert.equal(scripts.includes('../js/editor/templates/editor-detail-empty-state-template.js'), false, 'public view must not load the editor detail empty state template');
 });
