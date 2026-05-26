@@ -112,10 +112,30 @@ test('public canvas route currently depends on editor canvas runtime before publ
   });
 });
 
-test('public canvas route documents editor-only candidates still loaded by current implementation', () => {
+test('public canvas route documents remaining editor-only candidates still loaded by current implementation', () => {
   const scripts = getScriptSrcs();
 
-  const editorOnlyCandidates = [
+  const remainingEditorOnlyCandidates = [
+    'js/editor/editor-mobile-bottom-bar.js',
+    'js/editor/editor-url-drop.js',
+    'js/editor/editor-save-status-ui.js',
+    'js/editor/editor-empty-guide-ui.js',
+    'js/editor/editor-canvas-growth-affordance.js',
+    'js/editor/editor-canvas-branch-ports.js',
+  ];
+
+  remainingEditorOnlyCandidates.forEach((needle) => {
+    assert.ok(
+      scriptIncludes(scripts, needle),
+      `view.html still loads editor-only candidate ${needle}; remove this assertion when viewer-only replacement safely removes it`
+    );
+  });
+});
+
+test('public canvas route keeps removed floating toolbar runtime scripts out of public view', () => {
+  const scripts = getScriptSrcs();
+
+  const removedFloatingToolbarRuntimeScripts = [
     'js/editor/editor-floating-toolbar-actions.js',
     'js/editor/editor-floating-toolbar-keyboard.js',
     'js/editor/editor-floating-toolbar-tooltip.js',
@@ -127,20 +147,19 @@ test('public canvas route documents editor-only candidates still loaded by curre
     'js/editor/editor-floating-toolbar-selection.js',
     'js/editor/editor-floating-toolbar-elements.js',
     'js/editor/editor-floating-toolbar.js',
-    'js/editor/editor-mobile-bottom-bar.js',
-    'js/editor/editor-url-drop.js',
-    'js/editor/editor-save-status-ui.js',
-    'js/editor/editor-empty-guide-ui.js',
-    'js/editor/editor-canvas-growth-affordance.js',
-    'js/editor/editor-canvas-branch-ports.js',
   ];
 
-  editorOnlyCandidates.forEach((needle) => {
-    assert.ok(
+  removedFloatingToolbarRuntimeScripts.forEach((needle) => {
+    assert.equal(
       scriptIncludes(scripts, needle),
-      `view.html still loads editor-only candidate ${needle}; remove this assertion when viewer-only replacement safely removes it`
+      false,
+      `view.html must not reload removed floating toolbar runtime script ${needle}`
     );
   });
+  assert.ok(
+    scriptIncludes(scripts, 'js/editor/templates/editor-floating-toolbar-template.js'),
+    'floating toolbar template stays until mount/template cleanup is split into a later viewer-only shell slice'
+  );
 });
 
 test('public canvas route currently uses editor detail UI stack before public init', () => {

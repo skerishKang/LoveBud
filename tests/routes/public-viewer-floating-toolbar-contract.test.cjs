@@ -42,11 +42,7 @@ function scriptIncludes(scripts, needle) {
   return scripts.some((src) => stripVersion(src).includes(needle));
 }
 
-function fileIncludes(filePath, needle) {
-  return fs.readFileSync(filePath, 'utf8').includes(needle);
-}
-
-test('public viewer still loads the floating toolbar stack only as a documented removal candidate', () => {
+test('public viewer removes floating toolbar runtime scripts while leaving shell cleanup for a later slice', () => {
   const html = getViewHtml();
   const scripts = getScriptSrcs();
 
@@ -56,13 +52,14 @@ test('public viewer still loads the floating toolbar stack only as a documented 
   );
   assert.ok(
     scriptIncludes(scripts, 'js/editor/templates/editor-floating-toolbar-template.js'),
-    'view.html still loads the floating toolbar template as a removal candidate'
+    'view.html still loads the floating toolbar template until mount/template cleanup is split into a later slice'
   );
 
   FLOATING_TOOLBAR_SCRIPTS.forEach((needle) => {
-    assert.ok(
+    assert.equal(
       scriptIncludes(scripts, needle),
-      `view.html still loads floating toolbar candidate ${needle}; update this contract when removing it intentionally`
+      false,
+      `public view must not load floating toolbar runtime script after removal: ${needle}`
     );
   });
 });
@@ -96,19 +93,9 @@ test('public canvas init only references the canvas topbar toolbar, not the floa
   );
 });
 
-test('floating toolbar scripts are not part of the viewer bootstrap order contract', () => {
+test('floating toolbar scripts stay outside the viewer bootstrap order contract', () => {
   const dependencyContract = fs.readFileSync('tests/routes/public-canvas-route-dependency-contract.test.cjs', 'utf8');
 
-  assert.ok(
-    dependencyContract.includes('editor-only candidate'),
-    'route dependency contract should classify editor-only candidates separately from required viewer bootstrap scripts'
-  );
-  FLOATING_TOOLBAR_SCRIPTS.forEach((needle) => {
-    assert.ok(
-      dependencyContract.includes(needle),
-      `route dependency contract should keep documenting floating toolbar candidate ${needle}`
-    );
-  });
   assert.equal(
     dependencyContract.includes("assertScriptOrder(scripts, 'js/editor/editor-floating-toolbar"),
     false,
