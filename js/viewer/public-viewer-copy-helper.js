@@ -14,12 +14,6 @@
         { selector: '#detailMemoLabel', text: '남긴 메모' }
     ];
 
-    var HIDE_SELECTORS = [
-        '#editMemoryBtn',
-        '#continueFromMomentBtn',
-        '.editor-save-status-card'
-    ];
-
     var RAW_LAYOUT_LABELS = {
         editor_layout_free: '자유 배치',
         editor_layout_structured: '구조 보기'
@@ -36,17 +30,12 @@
         return TEXT_RULES.map(cloneTextRule);
     }
 
-    function getHideSelectors() {
-        return HIDE_SELECTORS.slice();
-    }
-
     function getRawLayoutLabel(value) {
         return RAW_LAYOUT_LABELS[String(value || '').trim()] || null;
     }
 
     window.LoveBudPublicViewerCopyHelper = {
         getTextRules: getTextRules,
-        getHideSelectors: getHideSelectors,
         getRawLayoutLabel: getRawLayoutLabel
     };
 })();
