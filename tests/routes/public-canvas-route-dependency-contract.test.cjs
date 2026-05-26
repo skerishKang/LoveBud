@@ -168,6 +168,8 @@ test('public canvas route keeps removed editor-only runtime scripts and unused s
     'js/editor/editor-empty-guide-ui.js',
     'js/editor/editor-canvas-growth-affordance.js',
     'js/editor/editor-canvas-branch-ports.js',
+    'js/editor/editor-detail-inline-edit.js',
+    'js/editor/editor-detail-sidebar-status-boundary.js',
     'js/editor/templates/editor-floating-toolbar-template.js',
     'js/editor/templates/editor-empty-guide-template.js',
   ];
@@ -181,13 +183,11 @@ test('public canvas route keeps removed editor-only runtime scripts and unused s
   });
 });
 
-test('public canvas route currently uses editor detail UI stack before public init', () => {
+test('public canvas route currently uses remaining editor detail UI stack before public init', () => {
   const scripts = getScriptSrcs();
 
   const detailScripts = [
     'js/editor/editor-detail-tree-meta.js',
-    'js/editor/editor-detail-inline-edit.js',
-    'js/editor/editor-detail-sidebar-status-boundary.js',
     'js/editor/editor-detail-ui-builders.js',
     'js/editor/editor-detail-ui.js',
     'js/editor/editor-detail-channel-link.js',
