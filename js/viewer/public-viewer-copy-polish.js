@@ -7,6 +7,10 @@
         return window.LoveBudPublicViewerCopyHelper || null;
     }
 
+    function getVisibilityHelper() {
+        return window.LoveBudPublicViewerControlVisibilityHelper || null;
+    }
+
     function setText(selector, text) {
         var el = document.querySelector(selector);
         if (!el) return false;
@@ -43,9 +47,9 @@
         });
     }
 
-    function applyHideRules(helper) {
-        if (!helper || typeof helper.getHideSelectors !== 'function') return;
-        helper.getHideSelectors().forEach(hide);
+    function applyVisibilityRules(helper) {
+        if (!helper || typeof helper.getControlSelectors !== 'function') return;
+        helper.getControlSelectors().forEach(hide);
     }
 
     function applyPublicViewerCopy() {
@@ -54,7 +58,7 @@
 
         var helper = getCopyHelper();
         applyTextRules(helper);
-        applyHideRules(helper);
+        applyVisibilityRules(getVisibilityHelper());
         replaceRawLayoutLabel();
     }
 
