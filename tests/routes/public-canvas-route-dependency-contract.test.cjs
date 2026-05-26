@@ -170,6 +170,7 @@ test('public canvas route keeps removed editor-only runtime scripts and unused s
     'js/editor/editor-canvas-branch-ports.js',
     'js/editor/editor-detail-inline-edit.js',
     'js/editor/editor-detail-sidebar-status-boundary.js',
+    'js/editor/editor-detail-channel-link.js',
     'js/editor/templates/editor-floating-toolbar-template.js',
     'js/editor/templates/editor-empty-guide-template.js',
   ];
@@ -183,20 +184,38 @@ test('public canvas route keeps removed editor-only runtime scripts and unused s
   });
 });
 
-test('public canvas route currently uses remaining editor detail UI stack before public init', () => {
+test('public canvas route currently uses remaining editor detail UI core stack before public init', () => {
   const scripts = getScriptSrcs();
 
   const detailScripts = [
     'js/editor/editor-detail-tree-meta.js',
     'js/editor/editor-detail-ui-builders.js',
     'js/editor/editor-detail-ui.js',
-    'js/editor/editor-detail-channel-link.js',
   ];
 
   detailScripts.forEach((needle) => {
     assert.ok(scriptIncludes(scripts, needle), `view.html currently loads detail dependency: ${needle}`);
     assertScriptOrder(scripts, needle, 'js/viewer/public-canvas-init.js');
   });
+});
+
+test('public canvas route delegates detail channel link patch to viewer helper', () => {
+  const scripts = getScriptSrcs();
+  const helperSrc = fs.readFileSync('js/viewer/public-viewer-detail-channel-link.js', 'utf8');
+
+  assert.equal(
+    scriptIncludes(scripts, 'js/editor/editor-detail-channel-link.js'),
+    false,
+    'view.html must not load editor detail channel link patch'
+  );
+  assert.ok(
+    scriptIncludes(scripts, 'js/viewer/public-viewer-detail-channel-link.js'),
+    'view.html must load viewer detail channel link helper'
+  );
+  assertScriptOrder(scripts, 'js/editor/editor-detail-ui.js', 'js/viewer/public-viewer-detail-channel-link.js');
+  assertScriptOrder(scripts, 'js/viewer/public-viewer-detail-channel-link.js', 'js/viewer/public-canvas-init.js');
+  assert.ok(helperSrc.includes('window.LoveBudPublicViewerDetailChannelLink'), 'viewer channel link helper must expose inspectable namespace');
+  assert.ok(helperSrc.includes('__publicViewerChannelLinkPatched'), 'viewer channel link helper must mark the patched detail factory');
 });
 
 test('public viewer copy helper centralizes viewer copy and hidden-control rules', () => {

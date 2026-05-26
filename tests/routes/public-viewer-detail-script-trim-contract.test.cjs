@@ -28,9 +28,14 @@ test('public viewer keeps detail UI builders before detail UI for fallback bound
   assert.ok(buildersIndex < detailUiIndex, 'detail UI builders must load before detail UI so fallback boundaries exist');
 });
 
-
-test('public viewer keeps channel link patch until viewer-only detail rendering owns it', () => {
+test('public viewer delegates channel link patch to viewer-owned helper', () => {
   const scripts = getScriptSrcs();
+  const detailUiIndex = scripts.findIndex((src) => src.includes('js/editor/editor-detail-ui.js'));
+  const helperIndex = scripts.findIndex((src) => src.includes('js/viewer/public-viewer-detail-channel-link.js'));
 
-  assert.ok(scripts.includes('../js/editor/editor-detail-channel-link.js'), 'channel link patch remains loaded for public detail display');
+  assert.equal(scripts.includes('../js/editor/editor-detail-channel-link.js'), false, 'public view must not load editor detail channel link patch');
+  assert.ok(scripts.includes('../js/viewer/public-viewer-detail-channel-link.js'), 'public view must load viewer detail channel link helper');
+  assert.notEqual(detailUiIndex, -1, 'public view must load detail UI');
+  assert.notEqual(helperIndex, -1, 'public view must load viewer channel link helper');
+  assert.ok(detailUiIndex < helperIndex, 'viewer channel link helper must load after detail UI so it can patch the factory');
 });
