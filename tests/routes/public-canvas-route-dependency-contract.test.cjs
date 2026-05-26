@@ -31,7 +31,7 @@ function assertScriptOrder(scripts, beforeNeedle, afterNeedle) {
   assert.ok(beforeIndex < afterIndex, `${beforeNeedle} must load before ${afterNeedle}`);
 }
 
-test('public canvas route page exists and uses editor-shell mount points until viewer-only shell exists', () => {
+test('public canvas route page exists and avoids unused editor shell mounts after viewer shell cleanup', () => {
   const html = getViewHtml();
 
   assert.ok(html.includes('<main class="canvas-area'), 'view.html must expose the canvas area');
@@ -41,9 +41,15 @@ test('public canvas route page exists and uses editor-shell mount points until v
     html.includes('id="editorDetailPanelShellTemplateMount"'),
     'view.html currently uses the editor detail shell mount; update this contract when viewer-only shell replaces it'
   );
-  assert.ok(
+  assert.equal(
     html.includes('id="editorFloatingToolbarTemplateMount"'),
-    'view.html currently includes the editor floating toolbar mount; update this contract before removing related dependencies'
+    false,
+    'view.html must not carry the floating toolbar mount after public viewer shell cleanup'
+  );
+  assert.equal(
+    html.includes('id="editorEmptyGuideTemplateMount"'),
+    false,
+    'view.html must not carry the empty guide mount after public viewer shell cleanup'
   );
 });
 
@@ -141,7 +147,7 @@ test('public canvas route has no remaining tracked editor-only runtime candidate
   });
 });
 
-test('public canvas route keeps removed editor-only runtime scripts out of public view', () => {
+test('public canvas route keeps removed editor-only runtime scripts and unused shell templates out of public view', () => {
   const scripts = getScriptSrcs();
 
   const removedEditorOnlyRuntimeScripts = [
@@ -162,23 +168,17 @@ test('public canvas route keeps removed editor-only runtime scripts out of publi
     'js/editor/editor-empty-guide-ui.js',
     'js/editor/editor-canvas-growth-affordance.js',
     'js/editor/editor-canvas-branch-ports.js',
+    'js/editor/templates/editor-floating-toolbar-template.js',
+    'js/editor/templates/editor-empty-guide-template.js',
   ];
 
   removedEditorOnlyRuntimeScripts.forEach((needle) => {
     assert.equal(
       scriptIncludes(scripts, needle),
       false,
-      `view.html must not reload removed editor-only runtime script ${needle}`
+      `view.html must not reload removed editor-only runtime/template script ${needle}`
     );
   });
-  assert.ok(
-    scriptIncludes(scripts, 'js/editor/templates/editor-floating-toolbar-template.js'),
-    'floating toolbar template stays until mount/template cleanup is split into a later viewer-only shell slice'
-  );
-  assert.ok(
-    scriptIncludes(scripts, 'js/editor/templates/editor-empty-guide-template.js'),
-    'empty guide template stays until mount/template cleanup is split into a later viewer-only shell slice'
-  );
 });
 
 test('public canvas route currently uses editor detail UI stack before public init', () => {
