@@ -322,17 +322,93 @@ test('DOM XSS renderer guardrail: per-file sink count signed', () => {
       if (rel.startsWith('utils/') && rel !== 'js/utils/ui.js' && rel !== 'js/utils/security.js') continue;
     }
 
-    const expected = FILE_ALLOWLIST[rel];
-    if (!expected) {
-      if (actualCount > 0) unlistedFiles.push({ rel, actualCount, sinks });
-      continue;
-    }
+    if (sinks.length === 0) continue; // no sinks in this file
 
-    if (actualCount !== expected.count) {
-      mismatchedFiles.push({ rel, expected: expected.count, actualCount, sinks, reason: expected.reason });
+    const expected = FILE_ALLOWLIST[rel];
+
+    if (!expected) {
+      unlistedFiles.push({
+        file: rel,
+        count: actualCount,
+        sinks: sinks.map(s => `  L${s.line}: ${s.text.slice(0, 80)}`).join('\n'),
+      });
+    } else if (expected.count !== actualCount) {
+      mismatchedFiles.push({
+        file: rel,
+        expected: expected.count,
+        actual: actualCount,
+        sinks: sinks.map(s => `  L${s.line}: ${s.text.slice(0, 80)}`).join('\n'),
+      });
     }
   }
 
-  assert.deepEqual(unlistedFiles, [], `Unlisted DOM sinks found:\n${JSON.stringify(unlistedFiles, null, 2)}`);
-  assert.deepEqual(mismatchedFiles, [], `DOM sink count mismatch:\n${JSON.stringify(mismatchedFiles, null, 2)}`);
+  // Build error report
+  const errors = [];
+  if (unlistedFiles.length > 0) {
+    errors.push(
+      `\n=== FILES NOT IN ALLOWLIST ===\n` +
+      unlistedFiles.map(f =>
+        `\n📁 ${f.file} (${f.count} sink(s))\n${f.sinks}`
+      ).join('\n') +
+      `\n\nAdd entries to FILE_ALLOWLIST in this test file with classification and reason.`
+    );
+  }
+
+  if (mismatchedFiles.length > 0) {
+    errors.push(
+      `\n=== SINK COUNT MISMATCH ===\n` +
+      mismatchedFiles.map(f =>
+        `\n📁 ${f.file}: expected ${f.expected} sinks, found ${f.actual}\n${f.sinks}`
+      ).join('\n') +
+      `\n\nUpdate the count in FILE_ALLOWLIST. If adding a new sink, document the reason.`
+    );
+  }
+
+  if (errors.length > 0) {
+    assert.fail(errors.join('\n\n'));
+  }
+
+  // Report known issues
+  const knownFound = [];
+  for (const filePath of jsFiles) {
+    const rel = relPath(filePath);
+    if (KNOWN_ISSUES.has(rel)) {
+      knownFound.push(rel);
+    }
+  }
+
+  if (knownFound.length > 0) {
+    console.log('\n⚠️  KNOWN ISSUES (review needed in follow-up PRs):');
+    for (const file of knownFound) {
+      const expected = FILE_ALLOWLIST[file];
+      console.log(`   📁 ${file} (${expected.reason})`);
+    }
+  }
+
+  // Summary
+  const totalSinks = Object.values(FILE_ALLOWLIST).reduce((sum, e) => sum + e.count, 0);
+  const safeCount = Object.entries(FILE_ALLOWLIST).filter(([, v]) => v.classification === 'safe').length;
+  const reviewCount = Object.entries(FILE_ALLOWLIST).filter(([, v]) => v.classification === 'review_needed').length;
+  const mockCount = Object.entries(FILE_ALLOWLIST).filter(([, v]) => v.classification === 'mock').length;
+
+  console.log(`\n✅ DOM XSS guardrail passed.`);
+  console.log(`   Total documented sinks: ${totalSinks} across ${Object.keys(FILE_ALLOWLIST).length} files`);
+  console.log(`   - Safe: ${safeCount} files`);
+  console.log(`   - Review needed: ${reviewCount} files`);
+  console.log(`   - Mock/prototype: ${mockCount} files`);
+  console.log(`   All ${Object.keys(FILE_ALLOWLIST).length} file counts match.`);
+});
+
+test('DOM XSS guardrail: known issues documented', () => {
+  // Ensure KNOWN_ISSUES entries exist in FILE_ALLOWLIST
+  for (const file of KNOWN_ISSUES) {
+    assert.ok(
+      FILE_ALLOWLIST[file] !== undefined,
+      `KNOWN_ISSUES entry "${file}" must exist in FILE_ALLOWLIST`
+    );
+    assert.ok(
+      FILE_ALLOWLIST[file].classification === 'review_needed' || FILE_ALLOWLIST[file].classification === 'mock',
+      `KNOWN_ISSUES "${file}" must be classified as review_needed or mock`
+    );
+  }
 });
