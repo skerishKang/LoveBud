@@ -82,6 +82,18 @@ test('public canvas route documents current mobile public-viewer patches', () =>
   assertScriptOrder(scripts, 'js/viewer/public-canvas-mobile-layout.js', 'js/editor/editor-canvas.js');
 });
 
+test('public canvas route loads affordance fallback before editor canvas module', () => {
+  const scripts = getScriptSrcs();
+  const fallbackSrc = fs.readFileSync('js/viewer/public-canvas-affordance-fallback.js', 'utf8');
+
+  assert.ok(scriptIncludes(scripts, 'js/viewer/public-canvas-affordance-fallback.js'), 'view.html must load public canvas affordance fallback');
+  assertScriptOrder(scripts, 'js/editor/editor-canvas-layout-transition.js', 'js/viewer/public-canvas-affordance-fallback.js');
+  assertScriptOrder(scripts, 'js/viewer/public-canvas-affordance-fallback.js', 'js/editor/editor-canvas.js');
+  assert.ok(fallbackSrc.includes('window.createEditorCanvasGrowthAffordance'), 'fallback must define missing growth affordance constructor');
+  assert.ok(fallbackSrc.includes('window.createEditorCanvasBranchPorts'), 'fallback must define missing branch ports constructor');
+  assert.ok(fallbackSrc.includes('LoveBudPublicCanvasAffordanceFallback'), 'fallback must expose an inspectable namespace');
+});
+
 test('public canvas route currently depends on editor canvas runtime before public init', () => {
   const scripts = getScriptSrcs();
 
