@@ -1,0 +1,36 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('fs');
+
+function getViewHtml() {
+  return fs.readFileSync('pages/view.html', 'utf8');
+}
+
+function getScriptSrcs() {
+  const html = getViewHtml();
+  return [...html.matchAll(/<script(?:\s+type="module")?\s+src="([^"]+)"/g)].map((match) => String(match[1] || '').split('?')[0]);
+}
+
+test('public viewer does not load editor detail edit/status boundary scripts', () => {
+  const scripts = getScriptSrcs();
+
+  assert.equal(scripts.includes('../js/editor/editor-detail-inline-edit.js'), false, 'public view must not load editor detail inline edit boundary runtime');
+  assert.equal(scripts.includes('../js/editor/editor-detail-sidebar-status-boundary.js'), false, 'public view must not load editor detail sidebar status boundary runtime');
+});
+
+test('public viewer keeps detail UI builders before detail UI for fallback boundaries', () => {
+  const scripts = getScriptSrcs();
+  const buildersIndex = scripts.findIndex((src) => src.includes('js/editor/editor-detail-ui-builders.js'));
+  const detailUiIndex = scripts.findIndex((src) => src.includes('js/editor/editor-detail-ui.js'));
+
+  assert.notEqual(buildersIndex, -1, 'public view must load detail UI builders');
+  assert.notEqual(detailUiIndex, -1, 'public view must load detail UI');
+  assert.ok(buildersIndex < detailUiIndex, 'detail UI builders must load before detail UI so fallback boundaries exist');
+});
+
+
+test('public viewer keeps channel link patch until viewer-only detail rendering owns it', () => {
+  const scripts = getScriptSrcs();
+
+  assert.ok(scripts.includes('../js/editor/editor-detail-channel-link.js'), 'channel link patch remains loaded for public detail display');
+});
