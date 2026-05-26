@@ -1,4 +1,29 @@
 (function () {
+    function noop() {}
+
+    function createNoopInlineEditBoundary() {
+        return {
+            createTitleEditBoundary: noop,
+            createMemoEditBoundary: noop
+        };
+    }
+
+    function createNoopSidebarStatusBoundary() {
+        return {
+            updateSidebarStatus: noop
+        };
+    }
+
+    function installPublicDetailBoundaryFallbacks() {
+        if (typeof window.createEditorDetailInlineEditBoundary !== 'function') {
+            window.createEditorDetailInlineEditBoundary = createNoopInlineEditBoundary;
+        }
+
+        if (typeof window.createEditorDetailSidebarStatusBoundary !== 'function') {
+            window.createEditorDetailSidebarStatusBoundary = createNoopSidebarStatusBoundary;
+        }
+    }
+
     function createEditorDetailUIBuilders({ formatI18nText }) {
         const createInlineIcon = (name, size = '12px') => {
             const icon = document.createElement('span');
@@ -45,5 +70,11 @@
         };
     }
 
+    installPublicDetailBoundaryFallbacks();
+
     window.createEditorDetailUIBuilders = createEditorDetailUIBuilders;
+    window.LoveBudEditorDetailBoundaryFallbacks = {
+        createNoopInlineEditBoundary,
+        createNoopSidebarStatusBoundary
+    };
 })();
