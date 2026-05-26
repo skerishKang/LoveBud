@@ -18,14 +18,15 @@ test('public viewer does not load editor detail edit/status boundary scripts', (
   assert.equal(scripts.includes('../js/editor/editor-detail-sidebar-status-boundary.js'), false, 'public view must not load editor detail sidebar status boundary runtime');
 });
 
-test('public viewer keeps detail UI builders before detail UI for fallback boundaries', () => {
+test('public viewer keeps viewer detail builders before detail UI for fallback boundaries', () => {
   const scripts = getScriptSrcs();
-  const buildersIndex = scripts.findIndex((src) => src.includes('js/editor/editor-detail-ui-builders.js'));
+  const buildersIndex = scripts.findIndex((src) => src.includes('js/viewer/public-viewer-detail-builders.js'));
   const detailUiIndex = scripts.findIndex((src) => src.includes('js/editor/editor-detail-ui.js'));
 
-  assert.notEqual(buildersIndex, -1, 'public view must load detail UI builders');
+  assert.equal(scripts.includes('../js/editor/editor-detail-ui-builders.js'), false, 'public view must not load editor detail UI builders');
+  assert.notEqual(buildersIndex, -1, 'public view must load viewer detail builders');
   assert.notEqual(detailUiIndex, -1, 'public view must load detail UI');
-  assert.ok(buildersIndex < detailUiIndex, 'detail UI builders must load before detail UI so fallback boundaries exist');
+  assert.ok(buildersIndex < detailUiIndex, 'viewer detail builders must load before detail UI so fallback boundaries exist');
 });
 
 test('public viewer delegates channel link patch to viewer-owned helper', () => {
