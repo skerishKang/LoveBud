@@ -1,0 +1,50 @@
+(function() {
+    const template = `
+            <div class="editor-canvas-topbar" aria-label="러브트리 캔버스 도구">
+                
+                <div class="editor-canvas-toolbar" role="toolbar" aria-label="트리 화면 조정">
+                    <div class="editor-canvas-toolbar-group" aria-label="화면 줌 컨트롤">
+                        <button type="button" class="editor-canvas-tool-btn" id="zoomOutCanvasBtn" aria-label="축소" title="축소">
+                            <span class="material-symbols-outlined" aria-hidden="true">zoom_out</span>
+                        </button>
+                        <span class="editor-canvas-zoom-indicator is-hidden" id="zoomIndicator" aria-live="polite" aria-atomic="true">100%</span>
+                        <button type="button" class="editor-canvas-tool-btn" id="zoomInCanvasBtn" aria-label="확대" title="확대">
+                            <span class="material-symbols-outlined" aria-hidden="true">zoom_in</span>
+                        </button>
+                    </div>
+                    <div class="editor-canvas-toolbar-separator" aria-hidden="true"></div>
+                    <div class="editor-canvas-toolbar-group" aria-label="트리 뷰 컨트롤">
+                        <button type="button" class="editor-canvas-tool-btn editor-canvas-tool-btn-wide" id="recenterCanvasBtn" aria-label="트리 한눈에 보기" title="트리 한눈에 보기">
+                            <span class="material-symbols-outlined" aria-hidden="true">fit_screen</span>
+                            <span class="editor-canvas-tool-label" id="recenterCanvasBtnLabel">트리 한눈에 보기</span>
+                        </button>
+                        <button type="button" class="editor-canvas-tool-btn editor-canvas-tool-btn-wide" id="focusSelectedBtn" aria-label="선택한 순간 보기" title="선택한 순간 보기" disabled>
+                            <span class="material-symbols-outlined" aria-hidden="true">center_focus_strong</span>
+                            <span class="editor-canvas-tool-label" id="focusSelectedBtnLabel">선택한 순간 보기</span>
+                        </button>
+                    </div>
+                    <div class="editor-canvas-toolbar-separator" aria-hidden="true"></div>
+                    <div class="editor-canvas-toolbar-group" aria-label="레이아웃 모드">
+                        <button type="button" class="editor-canvas-tool-btn editor-canvas-tool-btn-wide" id="layoutModeToggleBtn" aria-label="레이아웃 전환" title="레이아웃 전환">
+                            <span class="material-symbols-outlined" aria-hidden="true" id="layoutModeToggleIcon">auto_awesome</span>
+                            <span class="editor-canvas-tool-label" id="layoutModeToggleLabel">자유 배치</span>
+                        </button>
+                    </div>
+                    <div class="editor-canvas-toolbar-separator" aria-hidden="true"></div>
+                    <div class="editor-canvas-toolbar-group" aria-label="툴바 표시 모드">
+                        <button type="button" class="editor-canvas-tool-btn" id="compactModeToggleBtn" aria-label="간략 모드 전환" title="간략 모드 전환">
+                            <span class="material-symbols-outlined" aria-hidden="true">unfold_more</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+    `;
+    const mount = document.getElementById('editorCanvasTopbarTemplateMount');
+    if (mount) {
+        mount.outerHTML = template;
+    }
+
+    window.LoveBudPublicViewerCanvasTopbarTemplate = {
+        mountId: 'editorCanvasTopbarTemplateMount'
+    };
+})();
