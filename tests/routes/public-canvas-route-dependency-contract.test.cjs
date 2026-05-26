@@ -116,8 +116,6 @@ test('public canvas route documents remaining editor-only candidates still loade
   const scripts = getScriptSrcs();
 
   const remainingEditorOnlyCandidates = [
-    'js/editor/editor-save-status-ui.js',
-    'js/editor/editor-empty-guide-ui.js',
     'js/editor/editor-canvas-growth-affordance.js',
     'js/editor/editor-canvas-branch-ports.js',
   ];
@@ -147,6 +145,8 @@ test('public canvas route keeps removed editor-only runtime scripts out of publi
     'js/editor/editor-floating-toolbar.js',
     'js/editor/editor-mobile-bottom-bar.js',
     'js/editor/editor-url-drop.js',
+    'js/editor/editor-save-status-ui.js',
+    'js/editor/editor-empty-guide-ui.js',
   ];
 
   removedEditorOnlyRuntimeScripts.forEach((needle) => {
@@ -159,6 +159,10 @@ test('public canvas route keeps removed editor-only runtime scripts out of publi
   assert.ok(
     scriptIncludes(scripts, 'js/editor/templates/editor-floating-toolbar-template.js'),
     'floating toolbar template stays until mount/template cleanup is split into a later viewer-only shell slice'
+  );
+  assert.ok(
+    scriptIncludes(scripts, 'js/editor/templates/editor-empty-guide-template.js'),
+    'empty guide template stays until mount/template cleanup is split into a later viewer-only shell slice'
   );
 });
 
