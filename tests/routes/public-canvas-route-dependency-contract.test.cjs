@@ -173,6 +173,7 @@ test('public canvas route keeps removed editor-only runtime scripts and unused s
     'js/editor/editor-detail-inline-edit.js',
     'js/editor/editor-detail-sidebar-status-boundary.js',
     'js/editor/editor-detail-channel-link.js',
+    'js/editor/editor-detail-tree-meta.js',
     'js/editor/templates/editor-floating-toolbar-template.js',
     'js/editor/templates/editor-empty-guide-template.js',
   ];
@@ -190,7 +191,7 @@ test('public canvas route currently uses remaining editor detail UI core stack b
   const scripts = getScriptSrcs();
 
   const detailScripts = [
-    'js/editor/editor-detail-tree-meta.js',
+    'js/viewer/public-viewer-detail-tree-meta.js',
     'js/editor/editor-detail-ui-builders.js',
     'js/editor/editor-detail-ui.js',
   ];
@@ -199,6 +200,8 @@ test('public canvas route currently uses remaining editor detail UI core stack b
     assert.ok(scriptIncludes(scripts, needle), `view.html currently loads detail dependency: ${needle}`);
     assertScriptOrder(scripts, needle, 'js/viewer/public-canvas-init.js');
   });
+
+  assertScriptOrder(scripts, 'js/viewer/public-viewer-detail-tree-meta.js', 'js/editor/editor-detail-ui.js');
 });
 
 test('public canvas route delegates detail channel link patch to viewer helper', () => {
