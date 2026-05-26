@@ -124,7 +124,7 @@ test('public canvas route currently depends on editor canvas runtime before publ
   });
 });
 
-test('public canvas route documents remaining editor-only candidates still loaded by current implementation', () => {
+test('public canvas route has no remaining tracked editor-only runtime candidates loaded by current implementation', () => {
   const scripts = getScriptSrcs();
 
   const remainingEditorOnlyCandidates = [
@@ -133,9 +133,10 @@ test('public canvas route documents remaining editor-only candidates still loade
   ];
 
   remainingEditorOnlyCandidates.forEach((needle) => {
-    assert.ok(
+    assert.equal(
       scriptIncludes(scripts, needle),
-      `view.html still loads editor-only candidate ${needle}; remove this assertion when viewer-only replacement safely removes it`
+      false,
+      `view.html must not reload removed editor-only candidate ${needle}`
     );
   });
 });
@@ -159,6 +160,8 @@ test('public canvas route keeps removed editor-only runtime scripts out of publi
     'js/editor/editor-url-drop.js',
     'js/editor/editor-save-status-ui.js',
     'js/editor/editor-empty-guide-ui.js',
+    'js/editor/editor-canvas-growth-affordance.js',
+    'js/editor/editor-canvas-branch-ports.js',
   ];
 
   removedEditorOnlyRuntimeScripts.forEach((needle) => {
