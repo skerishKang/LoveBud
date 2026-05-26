@@ -116,8 +116,6 @@ test('public canvas route documents remaining editor-only candidates still loade
   const scripts = getScriptSrcs();
 
   const remainingEditorOnlyCandidates = [
-    'js/editor/editor-mobile-bottom-bar.js',
-    'js/editor/editor-url-drop.js',
     'js/editor/editor-save-status-ui.js',
     'js/editor/editor-empty-guide-ui.js',
     'js/editor/editor-canvas-growth-affordance.js',
@@ -132,10 +130,10 @@ test('public canvas route documents remaining editor-only candidates still loade
   });
 });
 
-test('public canvas route keeps removed floating toolbar runtime scripts out of public view', () => {
+test('public canvas route keeps removed editor-only runtime scripts out of public view', () => {
   const scripts = getScriptSrcs();
 
-  const removedFloatingToolbarRuntimeScripts = [
+  const removedEditorOnlyRuntimeScripts = [
     'js/editor/editor-floating-toolbar-actions.js',
     'js/editor/editor-floating-toolbar-keyboard.js',
     'js/editor/editor-floating-toolbar-tooltip.js',
@@ -147,13 +145,15 @@ test('public canvas route keeps removed floating toolbar runtime scripts out of 
     'js/editor/editor-floating-toolbar-selection.js',
     'js/editor/editor-floating-toolbar-elements.js',
     'js/editor/editor-floating-toolbar.js',
+    'js/editor/editor-mobile-bottom-bar.js',
+    'js/editor/editor-url-drop.js',
   ];
 
-  removedFloatingToolbarRuntimeScripts.forEach((needle) => {
+  removedEditorOnlyRuntimeScripts.forEach((needle) => {
     assert.equal(
       scriptIncludes(scripts, needle),
       false,
-      `view.html must not reload removed floating toolbar runtime script ${needle}`
+      `view.html must not reload removed editor-only runtime script ${needle}`
     );
   });
   assert.ok(
