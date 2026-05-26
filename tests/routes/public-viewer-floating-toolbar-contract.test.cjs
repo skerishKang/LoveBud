@@ -42,17 +42,19 @@ function scriptIncludes(scripts, needle) {
   return scripts.some((src) => stripVersion(src).includes(needle));
 }
 
-test('public viewer removes floating toolbar runtime scripts while leaving shell cleanup for a later slice', () => {
+test('public viewer does not load floating toolbar runtime, template, or mount shell', () => {
   const html = getViewHtml();
   const scripts = getScriptSrcs();
 
-  assert.ok(
+  assert.equal(
     html.includes('id="editorFloatingToolbarTemplateMount"'),
-    'view.html still carries the floating toolbar mount until a viewer-only shell removes it intentionally'
+    false,
+    'view.html must not carry the floating toolbar mount after public viewer shell cleanup'
   );
-  assert.ok(
+  assert.equal(
     scriptIncludes(scripts, 'js/editor/templates/editor-floating-toolbar-template.js'),
-    'view.html still loads the floating toolbar template until mount/template cleanup is split into a later slice'
+    false,
+    'view.html must not load the floating toolbar template after public viewer shell cleanup'
   );
 
   FLOATING_TOOLBAR_SCRIPTS.forEach((needle) => {
