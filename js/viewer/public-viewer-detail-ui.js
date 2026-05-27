@@ -18,6 +18,40 @@
 
     function updatePublicViewerSidebarStatus() {}
 
+    function createPublicViewerEmptyStateContent() {
+        var wrap = document.createElement('div');
+        var icon = document.createElement('span');
+        var title = document.createElement('p');
+        var description = document.createElement('p');
+
+        wrap.style.textAlign = 'center';
+        wrap.style.padding = '40px 24px';
+        wrap.style.color = 'var(--on-surface-variant)';
+
+        icon.className = 'material-symbols-outlined';
+        icon.style.fontSize = '48px';
+        icon.style.opacity = '0.4';
+        icon.style.marginBottom = '16px';
+        icon.style.display = 'block';
+        icon.textContent = 'sentiment_satisfied';
+
+        title.style.fontSize = '1rem';
+        title.style.fontWeight = '700';
+        title.style.marginBottom = '8px';
+        title.style.color = 'var(--on-surface)';
+        title.textContent = '첫 순간이 트리를 깨워요';
+
+        description.style.fontSize = '0.9rem';
+        description.style.opacity = '0.78';
+        description.style.lineHeight = '1.6';
+        description.textContent = '첫 순간을 심으면 이 패널이 현재 순간 허브로 바뀝니다.';
+
+        wrap.appendChild(icon);
+        wrap.appendChild(title);
+        wrap.appendChild(description);
+        return wrap;
+    }
+
     function createPublicViewerSetDetailEmptyState(deps) {
         return function setPublicViewerDetailEmptyState(isEmpty) {
             var detailContent = document.getElementById('detailContent');
@@ -27,7 +61,7 @@
             if (!emptyState) {
                 emptyState = document.createElement('div');
                 emptyState.id = 'detailEmptyState';
-                emptyState.innerHTML = '<div style="text-align:center;padding:40px 24px;color:var(--on-surface-variant);"><span class="material-symbols-outlined" style="font-size:48px;opacity:0.4;margin-bottom:16px;display:block;">sentiment_satisfied</span><p style="font-size:1rem;font-weight:700;margin-bottom:8px;color:var(--on-surface);">첫 순간이 트리를 깨워요</p><p style="font-size:0.9rem;opacity:0.78;line-height:1.6;">첫 순간을 심으면 이 패널이 현재 순간 허브로 바뀝니다.</p></div>';
+                emptyState.appendChild(createPublicViewerEmptyStateContent());
                 detailContent.appendChild(emptyState);
             }
 
