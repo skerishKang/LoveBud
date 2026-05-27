@@ -76,7 +76,6 @@ test('public viewer detail UI adapter owns empty state', () => {
   assert.ok(source.includes('detailUI.setDetailEmptyState = createPublicViewerSetDetailEmptyState(deps)'), 'viewer adapter overrides setDetailEmptyState');
   assert.ok(source.includes('LoveBudPublicViewerDetailUI'), 'viewer adapter exposes the inspectable namespace');
   assert.ok(source.includes('createPublicViewerSetDetailEmptyState'), 'viewer adapter publishes empty state factory on namespace');
-  assert.equal(source.includes('detailUI.updateDetailPanel ='), false, 'viewer adapter does NOT override updateDetailPanel — still delegates to editor detail core');
 });
 
 test('public viewer detail UI adapter exposes read-only reaction summary boundary', () => {
@@ -91,7 +90,16 @@ test('public viewer detail UI adapter exposes read-only reaction summary boundar
   assert.ok(boundarySource.includes('fetchReactionSummary'), 'read-only reactions boundary may fetch summary data');
   assert.equal(boundarySource.includes('toggleReaction'), false, 'read-only reactions boundary must not write reaction state');
   assert.equal(boundarySource.includes('from=editor'), false, 'read-only reactions boundary must not navigate through editor detail context');
-  assert.equal(source.includes('detailUI.updateDetailPanel ='), false, 'viewer adapter still does not override updateDetailPanel');
+});
+
+test('public viewer detail UI adapter wraps detail panel updates with read-only reactions', () => {
+  const source = fs.readFileSync('js/viewer/public-viewer-detail-ui.js', 'utf8');
+
+  assert.ok(source.includes('var delegatedUpdateDetailPanel = typeof detailUI.updateDetailPanel === \'function\''), 'viewer adapter captures delegated detail panel update');
+  assert.ok(source.includes('var updateReadOnlyReactionSummary = createPublicViewerReadOnlyReactionSummaryBoundary(deps)'), 'viewer adapter creates the read-only reaction updater');
+  assert.ok(source.includes('detailUI.updateDetailPanel = function updatePublicViewerDetailPanel(data)'), 'viewer adapter wraps updateDetailPanel for public viewer');
+  assert.ok(source.includes('delegatedUpdateDetailPanel(data);'), 'viewer wrapper runs delegated detail rendering first');
+  assert.ok(source.includes('updateReadOnlyReactionSummary(data);'), 'viewer wrapper applies read-only reactions after delegated rendering');
 });
 
 test('public viewer keeps extracted detail helpers on viewer-owned paths', () => {
