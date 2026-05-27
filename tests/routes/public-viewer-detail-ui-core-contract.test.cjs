@@ -79,6 +79,21 @@ test('public viewer detail UI adapter owns empty state', () => {
   assert.equal(source.includes('detailUI.updateDetailPanel ='), false, 'viewer adapter does NOT override updateDetailPanel — still delegates to editor detail core');
 });
 
+test('public viewer detail UI adapter exposes read-only reaction summary boundary', () => {
+  const source = fs.readFileSync('js/viewer/public-viewer-detail-ui.js', 'utf8');
+  const boundaryStart = source.indexOf('function createPublicViewerReadOnlyReactionSummaryBoundary(deps)');
+  const boundaryEnd = source.indexOf('function createPublicViewerDetailUI(deps)');
+  const boundarySource = source.slice(boundaryStart, boundaryEnd);
+
+  assert.notEqual(boundaryStart, -1, 'viewer adapter exposes read-only reactions boundary factory');
+  assert.notEqual(boundaryEnd, -1, 'viewer adapter keeps the public detail factory after the reactions boundary');
+  assert.ok(source.includes('createPublicViewerReadOnlyReactionSummaryBoundary: createPublicViewerReadOnlyReactionSummaryBoundary'), 'viewer adapter publishes read-only reactions boundary on namespace');
+  assert.ok(boundarySource.includes('fetchReactionSummary'), 'read-only reactions boundary may fetch summary data');
+  assert.equal(boundarySource.includes('toggleReaction'), false, 'read-only reactions boundary must not write reaction state');
+  assert.equal(boundarySource.includes('from=editor'), false, 'read-only reactions boundary must not navigate through editor detail context');
+  assert.equal(source.includes('detailUI.updateDetailPanel ='), false, 'viewer adapter still does not override updateDetailPanel');
+});
+
 test('public viewer keeps extracted detail helpers on viewer-owned paths', () => {
   const scripts = getScriptSrcs();
 
@@ -102,6 +117,8 @@ test('editor detail UI core contract remains explicit for future viewer renderer
   assert.ok(source.includes('updateFocusSelectedBtn'), 'detail UI core return contract includes updateFocusSelectedBtn');
   assert.ok(source.includes('updateSidebarStatus'), 'detail UI core return contract includes updateSidebarStatus');
   assert.ok(source.includes('updateDetailPanel'), 'detail UI core return contract includes updateDetailPanel');
+  assert.ok(source.includes('toggleReaction'), 'editor detail core still owns full reaction write behavior');
+  assert.ok(source.includes('from=editor'), 'editor detail core still owns editor detail navigation context');
   assert.ok(source.includes('window.createEditorDetailTreeMetaBoundary'), 'detail UI core depends on tree meta boundary');
   assert.ok(source.includes('window.createEditorDetailUIBuilders'), 'detail UI core depends on detail UI builders');
   assert.ok(source.includes('window.createEditorDetailInlineEditBoundary'), 'detail UI core depends on inline edit boundary fallback');
