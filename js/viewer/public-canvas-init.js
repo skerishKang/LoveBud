@@ -89,9 +89,8 @@
 
                 var canvasReady = typeof window.createEditorCanvas === 'function';
                 var detailReady = typeof window.createPublicViewerDetailUI === 'function';
-                var detailUIBuildersReady = typeof window.createEditorDetailUIBuilders === 'function';
 
-                if (canvasReady && detailReady && detailUIBuildersReady) {
+                if (canvasReady && detailReady) {
                     startCanvas();
                     return;
                 }
