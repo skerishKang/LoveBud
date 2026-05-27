@@ -40,6 +40,7 @@ test('public canvas init uses the viewer detail UI adapter factory', () => {
   assert.ok(source.includes('typeof window.createPublicViewerDetailUI === \'function\''), 'public canvas init waits for the viewer detail adapter');
   assert.ok(source.includes('window.createPublicViewerDetailUI({'), 'public canvas init creates detail UI through the viewer adapter');
   assert.equal(source.includes('window.createEditorDetailUI({'), false, 'public canvas init does not call the editor detail factory directly');
+  assert.equal(source.includes('window.createEditorDetailTreeMetaBoundary({'), false, 'public canvas init does not create an unused tree meta boundary');
 });
 
 test('public viewer detail UI adapter owns focus selected button updates', () => {
