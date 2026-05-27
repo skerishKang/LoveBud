@@ -87,6 +87,21 @@
         hintEl.hidden = true;
     }
 
+    function createPublicViewerCurrentMomentImageBoundary(deps) {
+        var resolveMemoryThumbnail = deps && typeof deps.resolveMemoryThumbnail === 'function'
+            ? deps.resolveMemoryThumbnail
+            : function() { return ''; };
+
+        return function updatePublicViewerCurrentMomentImage(data) {
+            var imgEl = document.getElementById('detailImg') || document.querySelector('.detail-video img');
+            if (!imgEl) return;
+
+            var isEmptyState = !!(data && data.isNewTree);
+            imgEl.src = resolveMemoryThumbnail(data);
+            imgEl.alt = isEmptyState ? '' : ((data && data.title) || '');
+        };
+    }
+
     function createPublicViewerReadOnlyReactionSummaryBoundary(deps) {
         var isRootMemory = deps && typeof deps.isRootMemory === 'function'
             ? deps.isRootMemory
@@ -153,6 +168,7 @@
 
         var detailUI = window.createEditorDetailUI(deps);
         var updateCurrentMomentBadge = createPublicViewerCurrentMomentBadgeBoundary(deps);
+        var updateCurrentMomentImage = createPublicViewerCurrentMomentImageBoundary(deps);
         var updateReadOnlyReactionSummary = createPublicViewerReadOnlyReactionSummaryBoundary(deps);
         var delegatedUpdateDetailPanel = typeof detailUI.updateDetailPanel === 'function'
             ? detailUI.updateDetailPanel
@@ -165,6 +181,7 @@
             delegatedUpdateDetailPanel(data);
             updateCurrentMomentBadge(data);
             updatePublicViewerCurrentMomentHint();
+            updateCurrentMomentImage(data);
             updateReadOnlyReactionSummary(data);
         };
         return detailUI;
@@ -178,6 +195,7 @@
         createPublicViewerSetDetailEmptyState: createPublicViewerSetDetailEmptyState,
         createPublicViewerCurrentMomentBadgeBoundary: createPublicViewerCurrentMomentBadgeBoundary,
         updatePublicViewerCurrentMomentHint: updatePublicViewerCurrentMomentHint,
+        createPublicViewerCurrentMomentImageBoundary: createPublicViewerCurrentMomentImageBoundary,
         createPublicViewerReadOnlyReactionSummaryBoundary: createPublicViewerReadOnlyReactionSummaryBoundary,
         delegatesToEditorDetailUI: true
     };
