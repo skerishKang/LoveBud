@@ -128,6 +128,10 @@ const FILE_ALLOWLIST = {
     count: 1, classification: 'safe',
     reason: 'Public read-only canvas route. innerHTML on fresh error element with escapeHtml for user-visible error message; uses textContent for primary error'
   },
+  'js/viewer/public-viewer-detail-ui.js': {
+    count: 1, classification: 'safe',
+    reason: 'emptyState.innerHTML — static public viewer detail empty state template with hardcoded Korean text, no user content'
+  },
   'js/viewer/public-viewer-detail-view-mode-template.js': {
     count: 1, classification: 'safe',
     reason: 'mount.outerHTML = template — static public viewer detail view template, no user content'

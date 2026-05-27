@@ -69,6 +69,16 @@ test('public viewer detail UI adapter owns sidebar status as noop', () => {
   assert.ok(source.includes('updatePublicViewerSidebarStatus: updatePublicViewerSidebarStatus'), 'viewer adapter publishes sidebar status noop for inspection');
 });
 
+test('public viewer detail UI adapter owns empty state', () => {
+  const source = fs.readFileSync('js/viewer/public-viewer-detail-ui.js', 'utf8');
+
+  assert.ok(source.includes('function createPublicViewerSetDetailEmptyState(deps)'), 'viewer adapter exposes empty state factory');
+  assert.ok(source.includes('detailUI.setDetailEmptyState = createPublicViewerSetDetailEmptyState(deps)'), 'viewer adapter overrides setDetailEmptyState');
+  assert.ok(source.includes('LoveBudPublicViewerDetailUI'), 'viewer adapter exposes the inspectable namespace');
+  assert.ok(source.includes('createPublicViewerSetDetailEmptyState'), 'viewer adapter publishes empty state factory on namespace');
+  assert.equal(source.includes('detailUI.updateDetailPanel ='), false, 'viewer adapter does NOT override updateDetailPanel — still delegates to editor detail core');
+});
+
 test('public viewer keeps extracted detail helpers on viewer-owned paths', () => {
   const scripts = getScriptSrcs();
 
