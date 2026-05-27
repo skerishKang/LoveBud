@@ -78,6 +78,21 @@ test('public viewer detail UI adapter owns empty state', () => {
   assert.ok(source.includes('createPublicViewerSetDetailEmptyState'), 'viewer adapter publishes empty state factory on namespace');
 });
 
+test('public viewer detail UI adapter exposes current moment badge boundary', () => {
+  const source = fs.readFileSync('js/viewer/public-viewer-detail-ui.js', 'utf8');
+  const boundaryStart = source.indexOf('function createPublicViewerCurrentMomentBadgeBoundary(deps)');
+  const boundaryEnd = source.indexOf('function createPublicViewerReadOnlyReactionSummaryBoundary(deps)');
+  const boundarySource = source.slice(boundaryStart, boundaryEnd);
+
+  assert.notEqual(boundaryStart, -1, 'viewer adapter exposes current moment badge boundary factory');
+  assert.notEqual(boundaryEnd, -1, 'viewer adapter keeps badge boundary before reactions boundary');
+  assert.ok(source.includes('createPublicViewerCurrentMomentBadgeBoundary: createPublicViewerCurrentMomentBadgeBoundary'), 'viewer adapter publishes badge boundary on namespace');
+  assert.ok(boundarySource.includes('detailCurrentMomentBadge'), 'badge boundary targets the current moment badge mount');
+  assert.ok(boundarySource.includes('waiting_first_moment'), 'badge boundary covers waiting first moment state');
+  assert.ok(boundarySource.includes('start_moment'), 'badge boundary covers root moment state');
+  assert.ok(boundarySource.includes('selected_moment'), 'badge boundary covers selected moment state');
+});
+
 test('public viewer detail UI adapter exposes read-only reaction summary boundary', () => {
   const source = fs.readFileSync('js/viewer/public-viewer-detail-ui.js', 'utf8');
   const boundaryStart = source.indexOf('function createPublicViewerReadOnlyReactionSummaryBoundary(deps)');
@@ -92,14 +107,16 @@ test('public viewer detail UI adapter exposes read-only reaction summary boundar
   assert.equal(boundarySource.includes('from=editor'), false, 'read-only reactions boundary must not navigate through editor detail context');
 });
 
-test('public viewer detail UI adapter wraps detail panel updates with read-only reactions', () => {
+test('public viewer detail UI adapter wraps detail panel updates with viewer-owned post-processing', () => {
   const source = fs.readFileSync('js/viewer/public-viewer-detail-ui.js', 'utf8');
 
   assert.ok(source.includes('var delegatedUpdateDetailPanel = typeof detailUI.updateDetailPanel === \'function\''), 'viewer adapter captures delegated detail panel update');
+  assert.ok(source.includes('var updateCurrentMomentBadge = createPublicViewerCurrentMomentBadgeBoundary(deps)'), 'viewer adapter creates the badge updater');
   assert.ok(source.includes('var updateReadOnlyReactionSummary = createPublicViewerReadOnlyReactionSummaryBoundary(deps)'), 'viewer adapter creates the read-only reaction updater');
   assert.ok(source.includes('detailUI.updateDetailPanel = function updatePublicViewerDetailPanel(data)'), 'viewer adapter wraps updateDetailPanel for public viewer');
   assert.ok(source.includes('delegatedUpdateDetailPanel(data);'), 'viewer wrapper runs delegated detail rendering first');
-  assert.ok(source.includes('updateReadOnlyReactionSummary(data);'), 'viewer wrapper applies read-only reactions after delegated rendering');
+  assert.ok(source.includes('updateCurrentMomentBadge(data);'), 'viewer wrapper applies badge post-processing after delegated rendering');
+  assert.ok(source.includes('updateReadOnlyReactionSummary(data);'), 'viewer wrapper applies read-only reactions after badge post-processing');
 });
 
 test('public viewer keeps extracted detail helpers on viewer-owned paths', () => {
