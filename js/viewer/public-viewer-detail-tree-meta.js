@@ -5,8 +5,7 @@
             formatI18nText,
             resolveTreeTitleText,
             createInlineIcon,
-            showToast,
-            openCurrentMomentDetail
+            showToast
         } = deps;
 
         const createPillButton = ({ label, icon, tone = 'soft' }) => {
@@ -30,16 +29,7 @@
             btn.style.background = tone === 'primary'
                 ? 'linear-gradient(180deg, rgba(144,73,81,0.98), rgba(144,73,81,0.90))'
                 : 'linear-gradient(180deg, rgba(255,255,255,0.98), rgba(247,242,239,0.96))';
-            btn.style.color = tone === 'primary'
-                ? '#fff'
-                : tone === 'ghost'
-                    ? 'var(--on-surface-variant)'
-                    : 'var(--primary)';
-
-            if (tone === 'ghost') {
-                btn.style.background = 'rgba(255,255,255,0.72)';
-                btn.style.borderColor = 'rgba(144,73,81,0.08)';
-            }
+            btn.style.color = tone === 'primary' ? '#fff' : 'var(--primary)';
 
             if (icon) btn.appendChild(createInlineIcon(icon, '14px'));
             btn.appendChild(document.createTextNode(label));
@@ -60,12 +50,6 @@
             tone: 'soft'
         });
 
-        const createOpenDetailButton = () => createPillButton({
-            label: formatI18nText('editor_open_detail', '상세로 보기'),
-            icon: 'open_in_new',
-            tone: 'ghost'
-        });
-
         const bindShareButton = ({ btn, data, treeId }) => {
             if (!btn || !data?.id) return;
             if (btn.dataset.shareBound === '1') return;
@@ -83,15 +67,6 @@
             });
         };
 
-        const bindOpenDetailButton = (btn) => {
-            if (!btn || typeof openCurrentMomentDetail !== 'function') return;
-            if (btn.dataset.openDetailBound === '1') return;
-            btn.dataset.openDetailBound = '1';
-            btn.addEventListener('click', () => {
-                openCurrentMomentDetail();
-            });
-        };
-
         const createTreeMetaBlock = ({
             displayTreeTitle,
             visIcon,
@@ -99,8 +74,7 @@
             visInfo,
             isPublic,
             countLabel,
-            shareButtonEl = null,
-            openDetailButtonEl = null
+            shareButtonEl = null
         }) => {
             const wrap = document.createElement('div');
             wrap.style.padding = '20px 20px 18px';
@@ -192,7 +166,6 @@
             actionsRow.style.paddingTop = '2px';
 
             if (shareButtonEl) actionsRow.appendChild(shareButtonEl);
-            if (openDetailButtonEl) actionsRow.appendChild(openDetailButtonEl);
 
             if (actionsRow.children.length > 0) {
                 wrap.appendChild(actionsRow);
@@ -235,9 +208,7 @@
                 isPublic,
                 countLabel: localBadgeText ? `${treeCountLabel} · ${localBadgeText}` : treeCountLabel,
                 shareButtonEl: shareBtn,
-                openDetailButtonEl: null,
-                shareBtn,
-                openDetailBtn: null
+                shareBtn
             };
         };
 
@@ -252,8 +223,7 @@
                 visInfo: model.visInfo,
                 isPublic: model.isPublic,
                 countLabel: model.countLabel,
-                shareButtonEl: model.shareButtonEl,
-                openDetailButtonEl: model.openDetailButtonEl
+                shareButtonEl: model.shareButtonEl
             }));
 
             if (model.shareBtn) {
@@ -263,7 +233,6 @@
                     treeId
                 });
             }
-            bindOpenDetailButton(model.openDetailBtn);
         };
 
         return {
