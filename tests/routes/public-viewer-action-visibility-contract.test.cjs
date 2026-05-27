@@ -6,15 +6,17 @@ function readFile(path) {
   return fs.readFileSync(path, 'utf8');
 }
 
-test('public viewer detail template omits editor-only controls', () => {
+test('public viewer detail template omits editor-only and noop controls', () => {
   const templateSrc = readFile('js/viewer/public-viewer-detail-view-mode-template.js');
 
   assert.equal(templateSrc.includes('id="editMemoryBtn"'), false, 'public viewer detail template must not render the editor memory edit action');
   assert.equal(templateSrc.includes('id="continueFromMomentBtn"'), false, 'public viewer detail template must not render the editor continue-from-moment action');
   assert.equal(templateSrc.includes('id="saveStatusIndicator"'), false, 'public viewer detail template must not render the editor save-status indicator');
   assert.equal(templateSrc.includes('class="editor-save-status-card"'), false, 'public viewer detail template must not render the editor save-status card');
-  assert.ok(templateSrc.includes('id="viewMomentDetailBtn"'), 'public viewer detail template keeps the read-only detail viewing action');
+  assert.equal(templateSrc.includes('id="viewMomentDetailBtn"'), false, 'public viewer detail template must not render a noop read-only detail action');
+  assert.equal(templateSrc.includes('id="viewMomentDetailBtnLabel"'), false, 'public viewer detail template must not render noop detail action label');
   assert.ok(templateSrc.includes('id="momentReactionsCard"'), 'public viewer detail template keeps the reactions summary area');
+  assert.ok(templateSrc.includes('id="detailMemo"'), 'public viewer detail template keeps memo rendering mount');
 });
 
 test('public viewer control visibility helper no longer carries stale editor-only fallback selectors', () => {
