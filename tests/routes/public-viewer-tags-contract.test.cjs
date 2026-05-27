@@ -4,27 +4,48 @@ const fs = require('fs');
 
 const source = fs.readFileSync('js/viewer/public-viewer-detail-ui.js', 'utf8');
 
-test('viewer tags helper is exposed', () => {
+function getTagsBoundary() {
+  const start = source.indexOf('function createPublicViewerCurrentMomentTagsBoundary(deps)');
+  const end = source.indexOf('function createPublicViewerReadOnlyReactionSummaryBoundary(deps)');
+  assert.notEqual(start, -1);
+  assert.notEqual(end, -1);
+  return source.slice(start, end);
+}
+
+test('viewer tags boundary is exposed', () => {
   assert.ok(source.includes('function createPublicViewerCurrentMomentTagsBoundary(deps)'));
   assert.ok(source.includes('createPublicViewerCurrentMomentTagsBoundary: createPublicViewerCurrentMomentTagsBoundary'));
-  assert.ok(source.includes('detailTags'));
-  assert.ok(source.includes('createEditorDetailUIBuilders'));
-});
-
-test('viewer tags helper clears tags without innerHTML', () => {
-  assert.ok(source.includes('while (tagsContainer.firstChild)'));
-  assert.ok(source.includes('tagsContainer.removeChild(tagsContainer.firstChild)'));
-  assert.ok(!source.includes("tagsContainer.innerHTML = '';"));
-});
-
-test('viewer tags helper renders tag spans', () => {
-  assert.ok(source.includes("tagEl.className = 'tag tag-primary'"));
-  assert.ok(source.includes('tagEl.textContent = tag'));
-  assert.ok(source.includes('tagsContainer.appendChild(tagEl)'));
-});
-
-test('viewer tags helper is called by detail wrapper', () => {
   assert.ok(source.includes('var updateCurrentMomentTags = createPublicViewerCurrentMomentTagsBoundary(deps)'));
-  assert.ok(source.includes('updatePublicViewerCurrentMomentDate(data);'));
   assert.ok(source.includes('updateCurrentMomentTags(data);'));
+});
+
+test('viewer tags boundary clears safely and writes text nodes', () => {
+  const boundary = getTagsBoundary();
+
+  assert.ok(boundary.includes('detailTags'));
+  assert.ok(boundary.includes('while (tagsContainer.firstChild)'));
+  assert.ok(boundary.includes('tagsContainer.removeChild(tagsContainer.firstChild)'));
+  assert.equal(boundary.includes('innerHTML'), false);
+  assert.ok(boundary.includes("document.createElement('span')"));
+  assert.ok(boundary.includes("tagEl.className = 'tag tag-primary'"));
+  assert.ok(boundary.includes('tagEl.textContent = tag'));
+});
+
+test('viewer tags boundary keeps fallback and builder paths', () => {
+  const boundary = getTagsBoundary();
+
+  assert.ok(boundary.includes('window.createEditorDetailUIBuilders'));
+  assert.ok(boundary.includes('builders.getDisplayEmotionTags'));
+  assert.ok(boundary.includes('createFallbackTags(data, options)'));
+  assert.ok(boundary.includes('editor_root_emotion_tag'));
+  assert.ok(boundary.includes("trimmed === '기록'"));
+});
+
+test('viewer tags boundary runs after memo and before reactions', () => {
+  const memoIndex = source.indexOf('updateMemoBody(data);');
+  const tagsIndex = source.indexOf('updateCurrentMomentTags(data);');
+  const reactionsIndex = source.indexOf('updateReadOnlyReactionSummary(data);');
+
+  assert.ok(memoIndex < tagsIndex);
+  assert.ok(tagsIndex < reactionsIndex);
 });
