@@ -41,7 +41,6 @@ test('editor detail core still owns the current detail output rendering contract
     'detailCurrentMomentBadge',
     'detailCurrentMomentTitle',
     'detailCurrentMomentHint',
-    'detailImg',
     'detailDateText',
     'detailTags',
     'detailMemo',
@@ -50,6 +49,7 @@ test('editor detail core still owns the current detail output rendering contract
     assert.ok(editorDetailSrc.includes(id), `editor detail core still references #${id}`);
   });
 
+  assert.ok(editorDetailSrc.includes("detailPanel.querySelector('.detail-video img')"), 'editor detail core still targets the detail image mount');
   assert.ok(editorDetailSrc.includes('updateDetailPanel'), 'editor detail core still exposes updateDetailPanel');
   assert.ok(editorDetailSrc.includes('window.createEditorDetailUI = createEditorDetailUI'), 'editor detail core still publishes its factory');
 });
