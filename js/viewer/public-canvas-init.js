@@ -160,21 +160,6 @@
                 var formatI18nText = function(key, fallback) { return fallback || key; };
                 var showToast = function(msg) { console.log('[public-canvas]', msg); };
 
-                var detailUIBuilders = window.createEditorDetailUIBuilders({ formatI18nText: formatI18nText });
-                var treeMetaBoundary = window.createEditorDetailTreeMetaBoundary({
-                    i18n: function(k) { return k; },
-                    formatI18nText: formatI18nText,
-                    resolveTreeTitleText: function() { return normalized.treeData.title || '러브트리'; },
-                    createInlineIcon: detailUIBuilders.createInlineIcon,
-                    showToast: showToast,
-                    openCurrentMomentDetail: function() {
-                        var mem = currentEditingMemory || findFirstSelectableMemory();
-                        if (mem && mem.id) {
-                            window.location.href = 'detail.html?id=' + encodeURIComponent(mem.id) + '&tree=' + encodeURIComponent(treeId) + '&from=public';
-                        }
-                    }
-                });
-
                 var detailUI = window.createPublicViewerDetailUI({
                     detailPanel: detailPanel,
                     i18n: function(k) { return k; },
