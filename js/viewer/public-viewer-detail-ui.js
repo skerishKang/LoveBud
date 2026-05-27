@@ -40,6 +40,65 @@
         };
     }
 
+    function createPublicViewerReadOnlyReactionSummaryBoundary(deps) {
+        var isRootMemory = deps && typeof deps.isRootMemory === 'function'
+            ? deps.isRootMemory
+            : function() { return false; };
+        var getCanonicalRootId = deps && typeof deps.getCanonicalRootId === 'function'
+            ? deps.getCanonicalRootId
+            : function() { return null; };
+
+        function resetSummary(likeBtn, likeCount, commentCount) {
+            if (likeBtn) {
+                likeBtn.dataset.reacted = 'false';
+                var icon = likeBtn.querySelector('.editor-reaction-like-icon');
+                if (icon) icon.textContent = '🤍';
+                likeBtn.onclick = null;
+            }
+            if (likeCount) likeCount.textContent = '0';
+            if (commentCount) commentCount.textContent = '0';
+        }
+
+        return function updatePublicViewerReadOnlyReactionSummary(data) {
+            var reactionsCard = document.getElementById('momentReactionsCard');
+            if (!reactionsCard) return;
+
+            var rootId = getCanonicalRootId();
+            if (!data || isRootMemory(data, rootId)) {
+                reactionsCard.style.display = 'none';
+                return;
+            }
+
+            reactionsCard.style.display = '';
+
+            var likeBtn = document.getElementById('momentLikeBtn');
+            var likeCount = document.getElementById('momentLikeCount');
+            var commentCount = document.getElementById('momentCommentCount');
+            var commentBtn = document.getElementById('momentCommentBtn');
+
+            resetSummary(likeBtn, likeCount, commentCount);
+            if (commentBtn) commentBtn.onclick = null;
+
+            if (!data.id || !window.apiClient || typeof window.apiClient.fetchReactionSummary !== 'function') {
+                return;
+            }
+
+            window.apiClient.fetchReactionSummary(data.id)
+                .then(function(summary) {
+                    if (!summary) return;
+                    if (likeCount) likeCount.textContent = summary.like_count ?? summary.likeCount ?? 0;
+                    if (commentCount) commentCount.textContent = summary.comment_count ?? summary.commentCount ?? 0;
+                    var userReacted = summary.user_reacted ?? summary.userReacted ?? false;
+                    if (likeBtn) {
+                        likeBtn.dataset.reacted = userReacted ? 'true' : 'false';
+                        var icon = likeBtn.querySelector('.editor-reaction-like-icon');
+                        if (icon) icon.textContent = userReacted ? '❤️' : '🤍';
+                    }
+                })
+                .catch(function() {});
+        };
+    }
+
     function createPublicViewerDetailUI(deps) {
         if (typeof window.createEditorDetailUI !== 'function') {
             throw new Error('createEditorDetailUI is required for public viewer detail UI adapter');
@@ -58,6 +117,7 @@
         createPublicViewerUpdateFocusSelectedBtn: createPublicViewerUpdateFocusSelectedBtn,
         updatePublicViewerSidebarStatus: updatePublicViewerSidebarStatus,
         createPublicViewerSetDetailEmptyState: createPublicViewerSetDetailEmptyState,
+        createPublicViewerReadOnlyReactionSummaryBoundary: createPublicViewerReadOnlyReactionSummaryBoundary,
         delegatesToEditorDetailUI: true
     };
 })();
