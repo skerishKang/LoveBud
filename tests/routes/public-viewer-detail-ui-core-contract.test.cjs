@@ -39,14 +39,18 @@ test('public canvas init uses the viewer detail UI adapter factory', () => {
 
   assert.ok(source.includes('typeof window.createPublicViewerDetailUI === \'function\''), 'public canvas init waits for the viewer detail adapter');
   assert.ok(source.includes('window.createPublicViewerDetailUI({'), 'public canvas init creates detail UI through the viewer adapter');
-  assert.equal(source.includes('window.createEditorDetailUI({'), false, 'public canvas init no longer creates detail UI through the editor factory call site');
+  assert.equal(source.includes('window.createEditorDetailUI({'), false, 'public canvas init does not call the editor detail factory directly');
 });
 
-test('public viewer detail UI adapter delegates to the current detail UI core', () => {
+test('public viewer detail UI adapter owns focus selected button updates', () => {
   const source = fs.readFileSync('js/viewer/public-viewer-detail-ui.js', 'utf8');
 
   assert.ok(source.includes('function createPublicViewerDetailUI(deps)'), 'viewer detail adapter exposes createPublicViewerDetailUI');
   assert.ok(source.includes('window.createEditorDetailUI(deps)'), 'viewer detail adapter delegates to current detail UI core');
+  assert.ok(source.includes('function createPublicViewerUpdateFocusSelectedBtn(deps)'), 'viewer detail adapter exposes focus updater factory');
+  assert.ok(source.includes('detailUI.updateFocusSelectedBtn = createPublicViewerUpdateFocusSelectedBtn(deps)'), 'viewer detail adapter assigns focus updater');
+  assert.ok(source.includes('document.getElementById(\'focusSelectedBtn\')'), 'viewer focus updater targets focusSelectedBtn');
+  assert.ok(source.includes('btn.classList.toggle(\'is-disabled\', !hasSelection)'), 'viewer focus updater preserves disabled class behavior');
   assert.ok(source.includes('window.createPublicViewerDetailUI = createPublicViewerDetailUI'), 'viewer detail adapter publishes the public factory');
   assert.ok(source.includes('LoveBudPublicViewerDetailUI'), 'viewer detail adapter exposes an inspectable namespace');
 });
