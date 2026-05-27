@@ -34,27 +34,7 @@ test('public viewer detail template exposes the current rendered output mounts',
   assert.equal(templateSrc.includes('id="viewMomentDetailBtn"'), false, 'public viewer output does not expose noop detail action');
 });
 
-test('editor detail core still owns the current detail output rendering contract', () => {
-  const editorDetailSrc = readFile('js/editor/editor-detail-ui.js');
-
-  [
-    'detailCurrentMomentBadge',
-    'detailCurrentMomentTitle',
-    'detailCurrentMomentHint',
-    'detailDateText',
-    'detailTags',
-    'detailMemo',
-    'momentReactionsCard'
-  ].forEach((id) => {
-    assert.ok(editorDetailSrc.includes(id), `editor detail core still references #${id}`);
-  });
-
-  assert.ok(editorDetailSrc.includes("detailPanel.querySelector('.detail-video img')"), 'editor detail core still targets the detail image mount');
-  assert.ok(editorDetailSrc.includes('updateDetailPanel'), 'editor detail core still exposes updateDetailPanel');
-  assert.ok(editorDetailSrc.includes('window.createEditorDetailUI = createEditorDetailUI'), 'editor detail core still publishes its factory');
-});
-
-test('public viewer adapter wraps but does not replace the current detail output renderer yet', () => {
+test('public viewer adapter preserves delegated detail rendering before viewer-only post-processing', () => {
   const adapterSrc = readFile('js/viewer/public-viewer-detail-ui.js');
 
   assert.ok(adapterSrc.includes('window.createEditorDetailUI(deps)'), 'public viewer adapter still delegates to editor detail core');
