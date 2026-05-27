@@ -124,10 +124,6 @@ const FILE_ALLOWLIST = {
     count: 11, classification: 'safe',
     reason: 'All user content escaped via escapeHtml/sanitizeUrl; clear-container for list; static no-media divs'
   },
-  'js/viewer/public-canvas-init.js': {
-    count: 1, classification: 'safe',
-    reason: 'Public read-only canvas route. innerHTML on fresh error element with escapeHtml for user-visible error message; uses textContent for primary error'
-  },
 
   'js/viewer/public-viewer-detail-view-mode-template.js': {
     count: 1, classification: 'safe',
