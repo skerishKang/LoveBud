@@ -32,9 +32,20 @@ test('public viewer memo body boundary does not wire editor memo editing or hint
   assert.equal(boundary.includes('memoHint'), false);
 });
 
-test('public viewer memo body boundary is called by detail wrapper', () => {
-  assert.ok(source.includes('var updateMemoBody = createPublicViewerMemoBodyBoundary(deps)'));
-  assert.ok(source.includes('updateMemoBody(data);'));
-  assert.ok(source.indexOf('updatePublicViewerCurrentMomentDate(data);') < source.indexOf('updateMemoBody(data);'));
-  assert.ok(source.indexOf('updateMemoBody(data);') < source.indexOf('updateCurrentMomentTags(data);'));
+test('public viewer memo body boundary post-processes delegated editor detail rendering', () => {
+  const delegatedIndex = source.indexOf('delegatedUpdateDetailPanel(data);');
+  const dateIndex = source.indexOf('updatePublicViewerCurrentMomentDate(data);');
+  const memoIndex = source.indexOf('updateMemoBody(data);');
+  const tagsIndex = source.indexOf('updateCurrentMomentTags(data);');
+  const reactionsIndex = source.indexOf('updateReadOnlyReactionSummary(data);');
+
+  assert.notEqual(delegatedIndex, -1, 'viewer wrapper delegates to editor detail rendering first');
+  assert.notEqual(dateIndex, -1, 'viewer wrapper updates current moment date');
+  assert.notEqual(memoIndex, -1, 'viewer wrapper updates memo body');
+  assert.notEqual(tagsIndex, -1, 'viewer wrapper updates tags after memo body');
+  assert.notEqual(reactionsIndex, -1, 'viewer wrapper updates read-only reactions after tags');
+  assert.ok(delegatedIndex < memoIndex, 'memo body must run after delegated editor render to replace editor memo hint/edit output');
+  assert.ok(dateIndex < memoIndex, 'date boundary should run before memo boundary');
+  assert.ok(memoIndex < tagsIndex, 'memo boundary should run before tags boundary');
+  assert.ok(tagsIndex < reactionsIndex, 'tags boundary should run before read-only reactions');
 });
