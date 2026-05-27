@@ -40,6 +40,46 @@
         };
     }
 
+    function createPublicViewerCurrentMomentBadgeBoundary(deps) {
+        var i18n = deps && typeof deps.i18n === 'function'
+            ? deps.i18n
+            : function() { return ''; };
+        var isRootMemory = deps && typeof deps.isRootMemory === 'function'
+            ? deps.isRootMemory
+            : function() { return false; };
+        var getCanonicalRootId = deps && typeof deps.getCanonicalRootId === 'function'
+            ? deps.getCanonicalRootId
+            : function() { return null; };
+        var getTreeMemories = deps && typeof deps.getTreeMemories === 'function'
+            ? deps.getTreeMemories
+            : function() { return []; };
+
+        function getText(key, fallback) {
+            var text = i18n(key);
+            return text && text !== key ? text : fallback;
+        }
+
+        function hasAnyMoments() {
+            var memories = getTreeMemories();
+            return Array.isArray(memories) && memories.length > 0;
+        }
+
+        return function updatePublicViewerCurrentMomentBadge(data) {
+            var badgeEl = document.getElementById('detailCurrentMomentBadge');
+            if (!badgeEl) return;
+
+            var isEmptyState = !!(data && data.isNewTree) && !hasAnyMoments();
+            var rootId = getCanonicalRootId();
+            var isRootSelected = !isEmptyState && !!data && isRootMemory(data, rootId);
+
+            badgeEl.textContent = isEmptyState
+                ? getText('waiting_first_moment', '첫 순간을 기다리고 있어요')
+                : isRootSelected
+                    ? getText('start_moment', '시작 순간')
+                    : getText('selected_moment', '선택된 순간');
+        };
+    }
+
     function createPublicViewerReadOnlyReactionSummaryBoundary(deps) {
         var isRootMemory = deps && typeof deps.isRootMemory === 'function'
             ? deps.isRootMemory
@@ -105,6 +145,7 @@
         }
 
         var detailUI = window.createEditorDetailUI(deps);
+        var updateCurrentMomentBadge = createPublicViewerCurrentMomentBadgeBoundary(deps);
         var updateReadOnlyReactionSummary = createPublicViewerReadOnlyReactionSummaryBoundary(deps);
         var delegatedUpdateDetailPanel = typeof detailUI.updateDetailPanel === 'function'
             ? detailUI.updateDetailPanel
@@ -115,6 +156,7 @@
         detailUI.setDetailEmptyState = createPublicViewerSetDetailEmptyState(deps);
         detailUI.updateDetailPanel = function updatePublicViewerDetailPanel(data) {
             delegatedUpdateDetailPanel(data);
+            updateCurrentMomentBadge(data);
             updateReadOnlyReactionSummary(data);
         };
         return detailUI;
@@ -126,6 +168,7 @@
         createPublicViewerUpdateFocusSelectedBtn: createPublicViewerUpdateFocusSelectedBtn,
         updatePublicViewerSidebarStatus: updatePublicViewerSidebarStatus,
         createPublicViewerSetDetailEmptyState: createPublicViewerSetDetailEmptyState,
+        createPublicViewerCurrentMomentBadgeBoundary: createPublicViewerCurrentMomentBadgeBoundary,
         createPublicViewerReadOnlyReactionSummaryBoundary: createPublicViewerReadOnlyReactionSummaryBoundary,
         delegatesToEditorDetailUI: true
     };
