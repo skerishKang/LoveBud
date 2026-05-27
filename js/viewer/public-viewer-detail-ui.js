@@ -105,9 +105,18 @@
         }
 
         var detailUI = window.createEditorDetailUI(deps);
+        var updateReadOnlyReactionSummary = createPublicViewerReadOnlyReactionSummaryBoundary(deps);
+        var delegatedUpdateDetailPanel = typeof detailUI.updateDetailPanel === 'function'
+            ? detailUI.updateDetailPanel
+            : function() {};
+
         detailUI.updateFocusSelectedBtn = createPublicViewerUpdateFocusSelectedBtn(deps);
         detailUI.updateSidebarStatus = updatePublicViewerSidebarStatus;
         detailUI.setDetailEmptyState = createPublicViewerSetDetailEmptyState(deps);
+        detailUI.updateDetailPanel = function updatePublicViewerDetailPanel(data) {
+            delegatedUpdateDetailPanel(data);
+            updateReadOnlyReactionSummary(data);
+        };
         return detailUI;
     }
 
