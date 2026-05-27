@@ -4,31 +4,55 @@ const fs = require('fs');
 
 const source = fs.readFileSync('js/viewer/public-viewer-detail-ui.js', 'utf8');
 
-test('viewer title helper is exposed', () => {
+function getTitleBoundary() {
+  const start = source.indexOf('function createPublicViewerCurrentMomentTitleBoundary(deps)');
+  const end = source.indexOf('function updatePublicViewerCurrentMomentHint()');
+  assert.notEqual(start, -1);
+  assert.notEqual(end, -1);
+  return source.slice(start, end);
+}
+
+test('viewer title boundary is exposed', () => {
   assert.ok(source.includes('function createPublicViewerCurrentMomentTitleBoundary(deps)'));
   assert.ok(source.includes('createPublicViewerCurrentMomentTitleBoundary: createPublicViewerCurrentMomentTitleBoundary'));
   assert.ok(source.includes('detailCurrentMomentTitle'));
 });
 
-test('viewer title helper clears title without innerHTML', () => {
-  assert.ok(source.includes('while (titleEl.firstChild)'));
-  assert.ok(source.includes('titleEl.removeChild(titleEl.firstChild)'));
-  assert.ok(!source.includes("titleEl.innerHTML = '';"));
+test('viewer title boundary clears with removeChild loop, not innerHTML', () => {
+  const boundary = getTitleBoundary();
+
+  assert.ok(boundary.includes('while (titleEl.firstChild)'));
+  assert.ok(boundary.includes('titleEl.removeChild(titleEl.firstChild)'));
+  assert.equal(boundary.includes("titleEl.innerHTML = '';"), false);
 });
 
-test('viewer title helper does not wire editor inline edit', () => {
-  const start = source.indexOf('function createPublicViewerCurrentMomentTitleBoundary(deps)');
-  const end = source.indexOf('function updatePublicViewerCurrentMomentHint()');
-  const boundary = source.slice(start, end);
+test('viewer title boundary creates memory-inline-edit container and writes via textContent', () => {
+  const boundary = getTitleBoundary();
 
-  assert.ok(!boundary.includes('createTitleEditBoundary'));
-  assert.ok(!boundary.includes('updateSelectedMemoryFields'));
-  assert.ok(boundary.includes('memory-inline-edit'));
+  assert.ok(boundary.includes("document.createElement('div')"));
+  assert.ok(boundary.includes("document.createElement('span')"));
+  assert.ok(boundary.includes("className = 'memory-inline-edit'"));
+  assert.ok(boundary.includes('.textContent ='));
+  assert.equal(boundary.includes('innerHTML'), false);
 });
 
-test('viewer title helper is called by detail wrapper', () => {
-  assert.ok(source.includes('var updateCurrentMomentTitle = createPublicViewerCurrentMomentTitleBoundary(deps)'));
-  assert.ok(source.includes('updateCurrentMomentBadge(data);'));
-  assert.ok(source.includes('updateCurrentMomentTitle(data);'));
-  assert.ok(source.indexOf('updateCurrentMomentBadge(data);') < source.indexOf('updateCurrentMomentTitle(data);'));
+test('viewer title boundary does not wire editor inline edit', () => {
+  const boundary = getTitleBoundary();
+
+  assert.equal(boundary.includes('createTitleEditBoundary'), false);
+  assert.equal(boundary.includes('updateSelectedMemoryFields'), false);
+});
+
+test('viewer title boundary runs after badge and before hint in updatePublicViewerDetailPanel', () => {
+  const wrapperStart = source.indexOf('detailUI.updateDetailPanel = function updatePublicViewerDetailPanel(data)');
+  const badgeCall = source.indexOf('updateCurrentMomentBadge(data);', wrapperStart);
+  const titleCall = source.indexOf('updateCurrentMomentTitle(data);', wrapperStart);
+  const hintCall = source.indexOf('updatePublicViewerCurrentMomentHint();', wrapperStart);
+
+  assert.notEqual(wrapperStart, -1);
+  assert.notEqual(badgeCall, -1);
+  assert.notEqual(titleCall, -1);
+  assert.notEqual(hintCall, -1);
+  assert.ok(badgeCall < titleCall);
+  assert.ok(titleCall < hintCall);
 });
