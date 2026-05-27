@@ -17,14 +17,15 @@ test('public viewer detail template omits editor-only controls', () => {
   assert.ok(templateSrc.includes('id="momentReactionsCard"'), 'public viewer detail template keeps the reactions summary area');
 });
 
-test('public viewer control visibility helper retains fallback rules while templates are being trimmed', () => {
+test('public viewer control visibility helper no longer carries stale editor-only fallback selectors', () => {
   const helperSrc = readFile('js/viewer/public-viewer-control-visibility-helper.js');
 
   assert.ok(helperSrc.includes('LoveBudPublicViewerControlVisibilityHelper'), 'public viewer control visibility helper must expose an inspectable namespace');
   assert.ok(helperSrc.includes('getControlSelectors'), 'public viewer control visibility helper must expose control selector rules');
-  assert.ok(helperSrc.includes("'#editMemoryBtn'"), 'public viewer fallback may still hide the editor memory edit action');
-  assert.ok(helperSrc.includes("'#continueFromMomentBtn'"), 'public viewer fallback may still hide the editor continue-from-moment action');
-  assert.ok(helperSrc.includes("'.editor-save-status-card'"), 'public viewer fallback may still hide the editor save-status card');
+  assert.equal(helperSrc.includes("'#editMemoryBtn'"), false, 'public viewer helper must not keep the stale editor memory edit selector');
+  assert.equal(helperSrc.includes("'#continueFromMomentBtn'"), false, 'public viewer helper must not keep the stale continue-from-moment selector');
+  assert.equal(helperSrc.includes("'.editor-save-status-card'"), false, 'public viewer helper must not keep the stale save-status selector');
+  assert.ok(helperSrc.includes('return [];'), 'public viewer helper should currently return no fallback control selectors');
 });
 
 test('public viewer copy helper remains focused on copy rules', () => {
