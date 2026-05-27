@@ -48,6 +48,30 @@
         viewport.__publicViewProfileInstalled = true;
     }
 
+    function createLoadFailureState(message) {
+        var errState = document.createElement('div');
+        var icon = document.createElement('span');
+        var title = document.createElement('h2');
+        var description = document.createElement('p');
+
+        errState.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:2rem;text-align:center;';
+
+        icon.className = 'material-symbols-outlined';
+        icon.style.cssText = 'font-size:48px;color:var(--error);margin-bottom:16px;';
+        icon.textContent = 'error_outline';
+
+        title.style.cssText = 'margin:0 0 8px;';
+        title.textContent = '트리를 불러올 수 없어요';
+
+        description.style.cssText = 'margin:0;color:var(--on-surface-variant);';
+        description.textContent = message || 'Public endpoint returned an error';
+
+        errState.appendChild(icon);
+        errState.appendChild(title);
+        errState.appendChild(description);
+        return errState;
+    }
+
     function initPublicCanvas() {
         var params = new URLSearchParams(window.location.search);
         var treeId = params.get('treeId');
@@ -258,14 +282,8 @@
             console.error('[public-canvas] Load failed:', error);
             var container = document.getElementById('canvasArea');
             if (container) {
-                var errState = document.createElement('div');
-                errState.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:2rem;text-align:center;';
-                errState.innerHTML =
-                    '<span class="material-symbols-outlined" style="font-size:48px;color:var(--error);margin-bottom:16px;">error_outline</span>' +
-                    '<h2 style="margin:0 0 8px;">' + escapeHtml('트리를 불러올 수 없어요') + '</h2>' +
-                    '<p style="margin:0;color:var(--on-surface-variant);">' + escapeHtml(error.message || 'Public endpoint returned an error') + '</p>';
                 container.textContent = '';
-                container.appendChild(errState);
+                container.appendChild(createLoadFailureState(error && error.message));
             }
         });
     }
