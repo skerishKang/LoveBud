@@ -110,6 +110,70 @@
         dateEl.textContent = isEmptyState ? '' : ((data && data.timestamp) || '');
     }
 
+    function createPublicViewerCurrentMomentTagsBoundary(deps) {
+        var i18n = deps && typeof deps.i18n === 'function'
+            ? deps.i18n
+            : function() { return ''; };
+        var isRootMemory = deps && typeof deps.isRootMemory === 'function'
+            ? deps.isRootMemory
+            : function() { return false; };
+        var getCanonicalRootId = deps && typeof deps.getCanonicalRootId === 'function'
+            ? deps.getCanonicalRootId
+            : function() { return null; };
+
+        function formatI18nText(key, fallback) {
+            var text = i18n(key) || fallback;
+            return !text || text === key ? fallback : text;
+        }
+
+        function createFallbackTags(data, options) {
+            var opts = options || {};
+            var isRootSelected = !!opts.isRootSelected;
+            var isEmptyState = !!opts.isEmptyState;
+            var rawTags = Array.isArray(data && data.emotionTags) ? data.emotionTags.filter(Boolean) : [];
+            var normalizedTags = rawTags.map(function(tag) {
+                var trimmed = String(tag || '').trim();
+                if (!trimmed) return '';
+                return trimmed === '기록' ? formatI18nText('editor_root_emotion_tag', '첫 마음') : trimmed;
+            }).filter(Boolean);
+
+            if (normalizedTags.length > 0) return normalizedTags;
+            if (!isEmptyState && isRootSelected) return [formatI18nText('editor_root_emotion_tag', '첫 마음')];
+            return [];
+        }
+
+        function getDisplayTags(data, options) {
+            if (typeof window.createEditorDetailUIBuilders === 'function') {
+                var builders = window.createEditorDetailUIBuilders({ formatI18nText: formatI18nText });
+                if (builders && typeof builders.getDisplayEmotionTags === 'function') {
+                    return builders.getDisplayEmotionTags(data, options);
+                }
+            }
+            return createFallbackTags(data, options);
+        }
+
+        return function updatePublicViewerCurrentMomentTags(data) {
+            var tagsContainer = document.getElementById('detailTags');
+            if (!tagsContainer) return;
+
+            var isEmptyState = !!(data && data.isNewTree);
+            var rootId = getCanonicalRootId();
+            var isRootSelected = !isEmptyState && !!data && isRootMemory(data, rootId);
+            var displayTags = getDisplayTags(data, { isRootSelected: isRootSelected, isEmptyState: isEmptyState });
+
+            while (tagsContainer.firstChild) {
+                tagsContainer.removeChild(tagsContainer.firstChild);
+            }
+
+            displayTags.forEach(function(tag) {
+                var tagEl = document.createElement('span');
+                tagEl.className = 'tag tag-primary';
+                tagEl.textContent = tag;
+                tagsContainer.appendChild(tagEl);
+            });
+        };
+    }
+
     function createPublicViewerReadOnlyReactionSummaryBoundary(deps) {
         var isRootMemory = deps && typeof deps.isRootMemory === 'function'
             ? deps.isRootMemory
@@ -177,6 +241,7 @@
         var detailUI = window.createEditorDetailUI(deps);
         var updateCurrentMomentBadge = createPublicViewerCurrentMomentBadgeBoundary(deps);
         var updateCurrentMomentImage = createPublicViewerCurrentMomentImageBoundary(deps);
+        var updateCurrentMomentTags = createPublicViewerCurrentMomentTagsBoundary(deps);
         var updateReadOnlyReactionSummary = createPublicViewerReadOnlyReactionSummaryBoundary(deps);
         var delegatedUpdateDetailPanel = typeof detailUI.updateDetailPanel === 'function'
             ? detailUI.updateDetailPanel
@@ -191,6 +256,7 @@
             updatePublicViewerCurrentMomentHint();
             updateCurrentMomentImage(data);
             updatePublicViewerCurrentMomentDate(data);
+            updateCurrentMomentTags(data);
             updateReadOnlyReactionSummary(data);
         };
         return detailUI;
@@ -206,6 +272,7 @@
         updatePublicViewerCurrentMomentHint: updatePublicViewerCurrentMomentHint,
         createPublicViewerCurrentMomentImageBoundary: createPublicViewerCurrentMomentImageBoundary,
         updatePublicViewerCurrentMomentDate: updatePublicViewerCurrentMomentDate,
+        createPublicViewerCurrentMomentTagsBoundary: createPublicViewerCurrentMomentTagsBoundary,
         createPublicViewerReadOnlyReactionSummaryBoundary: createPublicViewerReadOnlyReactionSummaryBoundary,
         delegatesToEditorDetailUI: true
     };
