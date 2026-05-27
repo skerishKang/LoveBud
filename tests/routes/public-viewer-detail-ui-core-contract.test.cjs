@@ -55,6 +55,14 @@ test('public viewer detail UI adapter owns focus selected button updates', () =>
   assert.ok(source.includes('LoveBudPublicViewerDetailUI'), 'viewer detail adapter exposes an inspectable namespace');
 });
 
+test('public viewer detail UI adapter owns sidebar status as noop', () => {
+  const source = fs.readFileSync('js/viewer/public-viewer-detail-ui.js', 'utf8');
+
+  assert.ok(source.includes('function updatePublicViewerSidebarStatus() {}'), 'viewer adapter exposes a sidebar status noop');
+  assert.ok(source.includes('detailUI.updateSidebarStatus = updatePublicViewerSidebarStatus'), 'viewer adapter assigns sidebar status noop');
+  assert.ok(source.includes('updatePublicViewerSidebarStatus: updatePublicViewerSidebarStatus'), 'viewer adapter publishes sidebar status noop for inspection');
+});
+
 test('public viewer keeps extracted detail helpers on viewer-owned paths', () => {
   const scripts = getScriptSrcs();
 

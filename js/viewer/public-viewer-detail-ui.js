@@ -16,6 +16,8 @@
         };
     }
 
+    function updatePublicViewerSidebarStatus() {}
+
     function createPublicViewerDetailUI(deps) {
         if (typeof window.createEditorDetailUI !== 'function') {
             throw new Error('createEditorDetailUI is required for public viewer detail UI adapter');
@@ -23,6 +25,7 @@
 
         var detailUI = window.createEditorDetailUI(deps);
         detailUI.updateFocusSelectedBtn = createPublicViewerUpdateFocusSelectedBtn(deps);
+        detailUI.updateSidebarStatus = updatePublicViewerSidebarStatus;
         return detailUI;
     }
 
@@ -30,6 +33,7 @@
     window.LoveBudPublicViewerDetailUI = {
         createPublicViewerDetailUI: createPublicViewerDetailUI,
         createPublicViewerUpdateFocusSelectedBtn: createPublicViewerUpdateFocusSelectedBtn,
+        updatePublicViewerSidebarStatus: updatePublicViewerSidebarStatus,
         delegatesToEditorDetailUI: true
     };
 })();
