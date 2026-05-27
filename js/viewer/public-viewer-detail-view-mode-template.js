@@ -9,9 +9,6 @@
                     <div class="editor-current-moment-card">
                         <div class="editor-current-moment-head">
                             <div id="detailCurrentMomentBadge" class="editor-current-moment-badge">...</div>
-                            <button type="button" class="editor-moment-edit-chip" id="editMemoryBtn" aria-label="순간 수정">
-                                <span class="editor-action-btn-label" id="editMemoryBtnLabel">순간 수정</span>
-                            </button>
                         </div>
                         <h4 id="detailCurrentMomentTitle" class="editor-current-moment-title">&nbsp;</h4>
                         <p id="detailCurrentMomentHint" class="editor-current-moment-hint">&nbsp;</p>
@@ -29,10 +26,6 @@
                             <button type="button" class="editor-action-btn editor-action-btn-primary" id="viewMomentDetailBtn">
                                 <span class="material-symbols-outlined" aria-hidden="true">visibility</span>
                                 <span class="editor-action-btn-label" id="viewMomentDetailBtnLabel">현재 순간 감상하기</span>
-                            </button>
-                            <button type="button" class="editor-action-btn editor-action-btn-secondary" id="continueFromMomentBtn">
-                                <span class="material-symbols-outlined" aria-hidden="true">add_circle</span>
-                                <span class="editor-action-btn-label" id="continueFromMomentBtnLabel">이 순간에서 이어가기</span>
                             </button>
                         </div>
                     </div>
@@ -74,14 +67,6 @@
                             <span class="editor-reaction-comment-icon">💬</span>
                             <span class="editor-reaction-comment-count" id="momentCommentCount">0</span>
                         </button>
-                    </div>
-
-                    <div class="editor-save-status-card">
-                        <div id="saveStatusIndicator" class="save-status-indicator save-status editor-save-status-wrap" aria-live="polite">
-                            <span id="saveStatusIcon" class="editor-save-status-icon-hidden"></span>
-                            <span id="saveStatusText">저장됨</span>
-                            <span id="lastSavedTime" class="last-saved-time"></span>
-                        </div>
                     </div>
                 </div>
     `;
