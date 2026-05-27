@@ -112,7 +112,6 @@
                 installPublicViewportProfile();
 
                 // Set up empty guide UI
-                var emptyGuideHelper = window.LoveBudEditorEmptyGuideUI || {};
                 var updateCanvasEmptyGuide = function() {
                     var guide = document.getElementById('canvasEmptyGuide');
                     if (!guide) return;
@@ -157,7 +156,6 @@
                 }
 
                 // Initialize detail UI
-                var formatI18nText = function(key, fallback) { return fallback || key; };
                 var showToast = function(msg) { console.log('[public-canvas]', msg); };
 
                 var detailUI = window.createPublicViewerDetailUI({
