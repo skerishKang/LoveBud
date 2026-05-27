@@ -15,23 +15,43 @@ function indexOfScript(scripts, needle) {
   return scripts.findIndex((src) => src.includes(needle));
 }
 
-test('public viewer still loads editor detail UI core behind viewer-owned boundaries', () => {
+test('public viewer loads detail UI through the viewer adapter layer', () => {
   const scripts = getScriptSrcs();
   const detailTreeMetaIndex = indexOfScript(scripts, 'js/viewer/public-viewer-detail-tree-meta.js');
   const detailBuildersIndex = indexOfScript(scripts, 'js/viewer/public-viewer-detail-builders.js');
-  const detailUiIndex = indexOfScript(scripts, 'js/editor/editor-detail-ui.js');
+  const editorDetailUiIndex = indexOfScript(scripts, 'js/editor/editor-detail-ui.js');
+  const viewerDetailUiIndex = indexOfScript(scripts, 'js/viewer/public-viewer-detail-ui.js');
   const channelLinkIndex = indexOfScript(scripts, 'js/viewer/public-viewer-detail-channel-link.js');
 
-  assert.notEqual(detailTreeMetaIndex, -1, 'viewer tree meta helper must load');
-  assert.notEqual(detailBuildersIndex, -1, 'viewer detail builders helper must load');
-  assert.notEqual(detailUiIndex, -1, 'editor detail UI core remains the current detail renderer');
-  assert.notEqual(channelLinkIndex, -1, 'viewer channel link helper must load');
-  assert.ok(detailTreeMetaIndex < detailUiIndex, 'viewer tree meta helper must load before detail UI core');
-  assert.ok(detailBuildersIndex < detailUiIndex, 'viewer detail builders helper must load before detail UI core');
-  assert.ok(detailUiIndex < channelLinkIndex, 'viewer channel link helper patches after detail UI core');
+  assert.notEqual(detailTreeMetaIndex, -1, 'viewer tree meta helper is loaded');
+  assert.notEqual(detailBuildersIndex, -1, 'viewer detail builders helper is loaded');
+  assert.notEqual(editorDetailUiIndex, -1, 'editor detail UI core is still loaded for now');
+  assert.notEqual(viewerDetailUiIndex, -1, 'viewer detail UI adapter is loaded');
+  assert.notEqual(channelLinkIndex, -1, 'viewer channel link helper is loaded');
+  assert.ok(detailTreeMetaIndex < editorDetailUiIndex, 'tree meta helper loads before detail UI core');
+  assert.ok(detailBuildersIndex < editorDetailUiIndex, 'detail builders helper loads before detail UI core');
+  assert.ok(editorDetailUiIndex < viewerDetailUiIndex, 'viewer detail UI adapter loads after detail UI core');
+  assert.ok(viewerDetailUiIndex < channelLinkIndex, 'channel link helper loads after viewer detail adapter');
 });
 
-test('public viewer has moved extracted detail helpers out of editor namespace', () => {
+test('public canvas init uses the viewer detail UI adapter factory', () => {
+  const source = fs.readFileSync('js/viewer/public-canvas-init.js', 'utf8');
+
+  assert.ok(source.includes('typeof window.createPublicViewerDetailUI === \'function\''), 'public canvas init waits for the viewer detail adapter');
+  assert.ok(source.includes('window.createPublicViewerDetailUI({'), 'public canvas init creates detail UI through the viewer adapter');
+  assert.equal(source.includes('window.createEditorDetailUI({'), false, 'public canvas init no longer creates detail UI through the editor factory call site');
+});
+
+test('public viewer detail UI adapter delegates to the current detail UI core', () => {
+  const source = fs.readFileSync('js/viewer/public-viewer-detail-ui.js', 'utf8');
+
+  assert.ok(source.includes('function createPublicViewerDetailUI(deps)'), 'viewer detail adapter exposes createPublicViewerDetailUI');
+  assert.ok(source.includes('window.createEditorDetailUI(deps)'), 'viewer detail adapter delegates to current detail UI core');
+  assert.ok(source.includes('window.createPublicViewerDetailUI = createPublicViewerDetailUI'), 'viewer detail adapter publishes the public factory');
+  assert.ok(source.includes('LoveBudPublicViewerDetailUI'), 'viewer detail adapter exposes an inspectable namespace');
+});
+
+test('public viewer keeps extracted detail helpers on viewer-owned paths', () => {
   const scripts = getScriptSrcs();
 
   [
@@ -41,21 +61,21 @@ test('public viewer has moved extracted detail helpers out of editor namespace',
     '../js/editor/editor-detail-sidebar-status-boundary.js',
     '../js/editor/editor-detail-channel-link.js'
   ].forEach((src) => {
-    assert.equal(scripts.includes(src), false, `public view must not load ${src}`);
+    assert.equal(scripts.includes(src), false, `unexpected public-view script: ${src}`);
   });
 });
 
 test('editor detail UI core contract remains explicit for future viewer renderer replacement', () => {
   const source = fs.readFileSync('js/editor/editor-detail-ui.js', 'utf8');
 
-  assert.ok(source.includes('function createEditorDetailUI(deps)'), 'detail UI core must expose createEditorDetailUI factory');
-  assert.ok(source.includes('window.createEditorDetailUI = createEditorDetailUI'), 'detail UI core must publish factory on window');
-  assert.ok(source.includes('setDetailEmptyState'), 'detail UI core return contract must include setDetailEmptyState');
-  assert.ok(source.includes('updateFocusSelectedBtn'), 'detail UI core return contract must include updateFocusSelectedBtn');
-  assert.ok(source.includes('updateSidebarStatus'), 'detail UI core return contract must include updateSidebarStatus');
-  assert.ok(source.includes('updateDetailPanel'), 'detail UI core return contract must include updateDetailPanel');
-  assert.ok(source.includes('window.createEditorDetailTreeMetaBoundary'), 'detail UI core currently depends on the tree meta boundary');
-  assert.ok(source.includes('window.createEditorDetailUIBuilders'), 'detail UI core currently depends on detail UI builders');
-  assert.ok(source.includes('window.createEditorDetailInlineEditBoundary'), 'detail UI core currently depends on inline edit boundary fallback');
-  assert.ok(source.includes('window.createEditorDetailSidebarStatusBoundary'), 'detail UI core currently depends on sidebar status boundary fallback');
+  assert.ok(source.includes('function createEditorDetailUI(deps)'), 'detail UI core exposes createEditorDetailUI factory');
+  assert.ok(source.includes('window.createEditorDetailUI = createEditorDetailUI'), 'detail UI core publishes factory on window');
+  assert.ok(source.includes('setDetailEmptyState'), 'detail UI core return contract includes setDetailEmptyState');
+  assert.ok(source.includes('updateFocusSelectedBtn'), 'detail UI core return contract includes updateFocusSelectedBtn');
+  assert.ok(source.includes('updateSidebarStatus'), 'detail UI core return contract includes updateSidebarStatus');
+  assert.ok(source.includes('updateDetailPanel'), 'detail UI core return contract includes updateDetailPanel');
+  assert.ok(source.includes('window.createEditorDetailTreeMetaBoundary'), 'detail UI core depends on tree meta boundary');
+  assert.ok(source.includes('window.createEditorDetailUIBuilders'), 'detail UI core depends on detail UI builders');
+  assert.ok(source.includes('window.createEditorDetailInlineEditBoundary'), 'detail UI core depends on inline edit boundary fallback');
+  assert.ok(source.includes('window.createEditorDetailSidebarStatusBoundary'), 'detail UI core depends on sidebar status boundary fallback');
 });
