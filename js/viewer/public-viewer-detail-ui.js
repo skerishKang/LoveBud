@@ -155,6 +155,61 @@
         dateEl.textContent = isEmptyState ? '' : ((data && data.timestamp) || '');
     }
 
+    function createPublicViewerMemoBodyBoundary(deps) {
+        var i18n = deps && typeof deps.i18n === 'function'
+            ? deps.i18n
+            : function() { return ''; };
+        var getTreeMemories = deps && typeof deps.getTreeMemories === 'function'
+            ? deps.getTreeMemories
+            : function() { return []; };
+
+        function formatI18nText(key, fallback) {
+            var text = i18n(key) || fallback;
+            return !text || text === key ? fallback : text;
+        }
+
+        function hasAnyMoments() {
+            var memories = getTreeMemories();
+            return Array.isArray(memories) && memories.length > 0;
+        }
+
+        function getMemoFallbackText(options) {
+            if (typeof window.createEditorDetailUIBuilders === 'function') {
+                var builders = window.createEditorDetailUIBuilders({ formatI18nText: formatI18nText });
+                if (builders && typeof builders.getMemoFallbackText === 'function') {
+                    return builders.getMemoFallbackText(options);
+                }
+            }
+            return formatI18nText('emptyMemoryNote', '아직 메모가 남겨지지 않았어요');
+        }
+
+        return function updatePublicViewerMemoBody(data) {
+            var noteEl = document.getElementById('detailMemo') || document.querySelector('.diary-note');
+            if (!noteEl) return;
+
+            var isEmptyState = !!(data && data.isNewTree) && !hasAnyMoments();
+            var memoContainer = document.createElement('div');
+            var memoBody = document.createElement('div');
+
+            while (noteEl.firstChild) {
+                noteEl.removeChild(noteEl.firstChild);
+            }
+
+            memoContainer.style.width = '100%';
+
+            memoBody.style.lineHeight = '1.8';
+            memoBody.style.fontSize = '0.95rem';
+            memoBody.style.color = 'var(--on-surface)';
+            memoBody.style.whiteSpace = 'pre-line';
+            memoBody.textContent = isEmptyState
+                ? getMemoFallbackText({ isEmptyState: true })
+                : ((data && data.memo) || formatI18nText('emptyMemoryNote', '아직 메모가 남겨지지 않았어요'));
+
+            memoContainer.appendChild(memoBody);
+            noteEl.appendChild(memoContainer);
+        };
+    }
+
     function createPublicViewerCurrentMomentTagsBoundary(deps) {
         var i18n = deps && typeof deps.i18n === 'function'
             ? deps.i18n
@@ -287,6 +342,7 @@
         var updateCurrentMomentBadge = createPublicViewerCurrentMomentBadgeBoundary(deps);
         var updateCurrentMomentTitle = createPublicViewerCurrentMomentTitleBoundary(deps);
         var updateCurrentMomentImage = createPublicViewerCurrentMomentImageBoundary(deps);
+        var updateMemoBody = createPublicViewerMemoBodyBoundary(deps);
         var updateCurrentMomentTags = createPublicViewerCurrentMomentTagsBoundary(deps);
         var updateReadOnlyReactionSummary = createPublicViewerReadOnlyReactionSummaryBoundary(deps);
         var delegatedUpdateDetailPanel = typeof detailUI.updateDetailPanel === 'function'
@@ -303,6 +359,7 @@
             updatePublicViewerCurrentMomentHint();
             updateCurrentMomentImage(data);
             updatePublicViewerCurrentMomentDate(data);
+            updateMemoBody(data);
             updateCurrentMomentTags(data);
             updateReadOnlyReactionSummary(data);
         };
@@ -320,6 +377,7 @@
         updatePublicViewerCurrentMomentHint: updatePublicViewerCurrentMomentHint,
         createPublicViewerCurrentMomentImageBoundary: createPublicViewerCurrentMomentImageBoundary,
         updatePublicViewerCurrentMomentDate: updatePublicViewerCurrentMomentDate,
+        createPublicViewerMemoBodyBoundary: createPublicViewerMemoBodyBoundary,
         createPublicViewerCurrentMomentTagsBoundary: createPublicViewerCurrentMomentTagsBoundary,
         createPublicViewerReadOnlyReactionSummaryBoundary: createPublicViewerReadOnlyReactionSummaryBoundary,
         delegatesToEditorDetailUI: true
