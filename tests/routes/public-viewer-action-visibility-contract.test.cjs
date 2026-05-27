@@ -30,13 +30,17 @@ test('public viewer control visibility helper no longer carries stale editor-onl
   assert.ok(helperSrc.includes('return [];'), 'public viewer helper should currently return no fallback control selectors');
 });
 
-test('public viewer copy helper remains focused on copy rules', () => {
+test('public viewer copy helper remains focused on active copy rules', () => {
   const copyHelperSrc = readFile('js/viewer/public-viewer-copy-helper.js');
 
   assert.ok(copyHelperSrc.includes('LoveBudPublicViewerCopyHelper'), 'public viewer copy helper must expose an inspectable namespace');
   assert.ok(copyHelperSrc.includes('getTextRules'), 'public viewer copy helper must still expose text rules');
   assert.ok(copyHelperSrc.includes('getRawLayoutLabel'), 'public viewer copy helper must still expose layout label fallback rules');
   assert.equal(copyHelperSrc.includes('getHideSelectors'), false, 'copy helper must not own control visibility selector rules');
+  assert.equal(copyHelperSrc.includes('#detailActionsPrimaryLabel'), false, 'copy helper must not keep stale action card copy');
+  assert.equal(copyHelperSrc.includes('#viewMomentDetailBtnLabel'), false, 'copy helper must not keep stale detail action copy');
+  assert.ok(copyHelperSrc.includes('#detailMomentInfoLabel'), 'copy helper keeps active moment info copy');
+  assert.ok(copyHelperSrc.includes('#detailMemoLabel'), 'copy helper keeps active memo label copy');
 });
 
 test('public viewer copy polish applies control visibility rules only in readonly viewer mode', () => {
