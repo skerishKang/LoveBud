@@ -80,6 +80,51 @@
         };
     }
 
+    function createPublicViewerCurrentMomentTitleBoundary(deps) {
+        var i18n = deps && typeof deps.i18n === 'function'
+            ? deps.i18n
+            : function() { return ''; };
+        var getTreeMemories = deps && typeof deps.getTreeMemories === 'function'
+            ? deps.getTreeMemories
+            : function() { return []; };
+
+        function getText(key, fallback) {
+            var text = i18n(key);
+            return text && text !== key ? text : fallback;
+        }
+
+        function hasAnyMoments() {
+            var memories = getTreeMemories();
+            return Array.isArray(memories) && memories.length > 0;
+        }
+
+        return function updatePublicViewerCurrentMomentTitle(data) {
+            var titleEl = document.getElementById('detailCurrentMomentTitle');
+            if (!titleEl) return;
+
+            var isEmptyState = !!(data && data.isNewTree) && !hasAnyMoments();
+            var titleContainer = document.createElement('div');
+            var titleText = document.createElement('span');
+
+            while (titleEl.firstChild) {
+                titleEl.removeChild(titleEl.firstChild);
+            }
+
+            titleContainer.className = 'memory-inline-edit';
+            titleContainer.style.width = '100%';
+            titleContainer.style.display = 'flex';
+            titleContainer.style.alignItems = 'flex-start';
+
+            titleText.style.flex = '1';
+            titleText.textContent = isEmptyState
+                ? getText('editor_current_moment_empty_title', '이 트리의 첫 장면을 심어 보세요')
+                : ((data && data.title) || getText('editor_current_moment_title', '지금 마음이 머문 장면'));
+
+            titleContainer.appendChild(titleText);
+            titleEl.appendChild(titleContainer);
+        };
+    }
+
     function updatePublicViewerCurrentMomentHint() {
         var hintEl = document.getElementById('detailCurrentMomentHint');
         if (!hintEl) return;
@@ -240,6 +285,7 @@
 
         var detailUI = window.createEditorDetailUI(deps);
         var updateCurrentMomentBadge = createPublicViewerCurrentMomentBadgeBoundary(deps);
+        var updateCurrentMomentTitle = createPublicViewerCurrentMomentTitleBoundary(deps);
         var updateCurrentMomentImage = createPublicViewerCurrentMomentImageBoundary(deps);
         var updateCurrentMomentTags = createPublicViewerCurrentMomentTagsBoundary(deps);
         var updateReadOnlyReactionSummary = createPublicViewerReadOnlyReactionSummaryBoundary(deps);
@@ -253,6 +299,7 @@
         detailUI.updateDetailPanel = function updatePublicViewerDetailPanel(data) {
             delegatedUpdateDetailPanel(data);
             updateCurrentMomentBadge(data);
+            updateCurrentMomentTitle(data);
             updatePublicViewerCurrentMomentHint();
             updateCurrentMomentImage(data);
             updatePublicViewerCurrentMomentDate(data);
@@ -269,6 +316,7 @@
         updatePublicViewerSidebarStatus: updatePublicViewerSidebarStatus,
         createPublicViewerSetDetailEmptyState: createPublicViewerSetDetailEmptyState,
         createPublicViewerCurrentMomentBadgeBoundary: createPublicViewerCurrentMomentBadgeBoundary,
+        createPublicViewerCurrentMomentTitleBoundary: createPublicViewerCurrentMomentTitleBoundary,
         updatePublicViewerCurrentMomentHint: updatePublicViewerCurrentMomentHint,
         createPublicViewerCurrentMomentImageBoundary: createPublicViewerCurrentMomentImageBoundary,
         updatePublicViewerCurrentMomentDate: updatePublicViewerCurrentMomentDate,
