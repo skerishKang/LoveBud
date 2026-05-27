@@ -6,8 +6,6 @@
         { selector: '#detailTreeStatusLabel', text: '러브트리 정보' },
         { selector: '#detailCurrentMomentBadge', text: '선택한 순간' },
         { selector: '#detailCurrentMomentHint', text: '이 순간의 장면과 메모를 감상해 보세요.' },
-        { selector: '#detailActionsPrimaryLabel', text: '감상 동선' },
-        { selector: '#viewMomentDetailBtnLabel', text: '순간 자세히 보기' },
         { selector: '#detailMomentInfoLabel', text: '순간 기록' },
         { selector: '#detailDateLabel', text: '기록일' },
         { selector: '#detailTagsLabel', text: '감정 태그' },
