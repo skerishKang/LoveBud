@@ -6,14 +6,25 @@ function readFile(path) {
   return fs.readFileSync(path, 'utf8');
 }
 
-test('public viewer control visibility helper declares editor action and status rules', () => {
+test('public viewer detail template omits editor-only controls', () => {
+  const templateSrc = readFile('js/viewer/public-viewer-detail-view-mode-template.js');
+
+  assert.equal(templateSrc.includes('id="editMemoryBtn"'), false, 'public viewer detail template must not render the editor memory edit action');
+  assert.equal(templateSrc.includes('id="continueFromMomentBtn"'), false, 'public viewer detail template must not render the editor continue-from-moment action');
+  assert.equal(templateSrc.includes('id="saveStatusIndicator"'), false, 'public viewer detail template must not render the editor save-status indicator');
+  assert.equal(templateSrc.includes('class="editor-save-status-card"'), false, 'public viewer detail template must not render the editor save-status card');
+  assert.ok(templateSrc.includes('id="viewMomentDetailBtn"'), 'public viewer detail template keeps the read-only detail viewing action');
+  assert.ok(templateSrc.includes('id="momentReactionsCard"'), 'public viewer detail template keeps the reactions summary area');
+});
+
+test('public viewer control visibility helper retains fallback rules while templates are being trimmed', () => {
   const helperSrc = readFile('js/viewer/public-viewer-control-visibility-helper.js');
 
   assert.ok(helperSrc.includes('LoveBudPublicViewerControlVisibilityHelper'), 'public viewer control visibility helper must expose an inspectable namespace');
   assert.ok(helperSrc.includes('getControlSelectors'), 'public viewer control visibility helper must expose control selector rules');
-  assert.ok(helperSrc.includes("'#editMemoryBtn'"), 'public viewer must hide the editor memory edit action');
-  assert.ok(helperSrc.includes("'#continueFromMomentBtn'"), 'public viewer must hide the editor continue-from-moment action');
-  assert.ok(helperSrc.includes("'.editor-save-status-card'"), 'public viewer must hide the editor save-status card');
+  assert.ok(helperSrc.includes("'#editMemoryBtn'"), 'public viewer fallback may still hide the editor memory edit action');
+  assert.ok(helperSrc.includes("'#continueFromMomentBtn'"), 'public viewer fallback may still hide the editor continue-from-moment action');
+  assert.ok(helperSrc.includes("'.editor-save-status-card'"), 'public viewer fallback may still hide the editor save-status card');
 });
 
 test('public viewer copy helper remains focused on copy rules', () => {
