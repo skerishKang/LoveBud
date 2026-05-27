@@ -20,16 +20,6 @@
                         </div>
                     </div>
 
-                    <div class="editor-moment-actions-card">
-                        <div class="editor-section-eyebrow" id="detailActionsPrimaryLabel">주요 행동</div>
-                        <div class="editor-action-list">
-                            <button type="button" class="editor-action-btn editor-action-btn-primary" id="viewMomentDetailBtn">
-                                <span class="material-symbols-outlined" aria-hidden="true">visibility</span>
-                                <span class="editor-action-btn-label" id="viewMomentDetailBtnLabel">현재 순간 감상하기</span>
-                            </button>
-                        </div>
-                    </div>
-
                     <div class="editor-moment-info-card">
                         <div class="editor-section-eyebrow" id="detailMomentInfoLabel">...</div>
 
