@@ -102,6 +102,14 @@
         };
     }
 
+    function updatePublicViewerCurrentMomentDate(data) {
+        var dateEl = document.getElementById('detailDateText');
+        if (!dateEl) return;
+
+        var isEmptyState = !!(data && data.isNewTree);
+        dateEl.textContent = isEmptyState ? '' : ((data && data.timestamp) || '');
+    }
+
     function createPublicViewerReadOnlyReactionSummaryBoundary(deps) {
         var isRootMemory = deps && typeof deps.isRootMemory === 'function'
             ? deps.isRootMemory
@@ -182,6 +190,7 @@
             updateCurrentMomentBadge(data);
             updatePublicViewerCurrentMomentHint();
             updateCurrentMomentImage(data);
+            updatePublicViewerCurrentMomentDate(data);
             updateReadOnlyReactionSummary(data);
         };
         return detailUI;
@@ -196,6 +205,7 @@
         createPublicViewerCurrentMomentBadgeBoundary: createPublicViewerCurrentMomentBadgeBoundary,
         updatePublicViewerCurrentMomentHint: updatePublicViewerCurrentMomentHint,
         createPublicViewerCurrentMomentImageBoundary: createPublicViewerCurrentMomentImageBoundary,
+        updatePublicViewerCurrentMomentDate: updatePublicViewerCurrentMomentDate,
         createPublicViewerReadOnlyReactionSummaryBoundary: createPublicViewerReadOnlyReactionSummaryBoundary,
         delegatesToEditorDetailUI: true
     };
