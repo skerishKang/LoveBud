@@ -88,7 +88,7 @@
                 }
 
                 var canvasReady = typeof window.createEditorCanvas === 'function';
-                var detailReady = typeof window.createEditorDetailUI === 'function';
+                var detailReady = typeof window.createPublicViewerDetailUI === 'function';
                 var detailUIBuildersReady = typeof window.createEditorDetailUIBuilders === 'function';
 
                 if (canvasReady && detailReady && detailUIBuildersReady) {
@@ -175,7 +175,7 @@
                     }
                 });
 
-                var detailUI = window.createEditorDetailUI({
+                var detailUI = window.createPublicViewerDetailUI({
                     detailPanel: detailPanel,
                     i18n: function(k) { return k; },
                     resolveTreeTitleText: function() { return normalized.treeData.title || '러브트리'; },
