@@ -223,10 +223,8 @@
                 : formatI18nText('editor_tree_status_empty', '아직 첫 순간을 기다리고 있어요.');
 
             let shareBtn = null;
-            let openDetailBtn = null;
             if (!isEmptyState && data?.id) {
                 shareBtn = createShareTreeButton();
-                openDetailBtn = createOpenDetailButton();
             }
 
             return {
@@ -237,9 +235,9 @@
                 isPublic,
                 countLabel: localBadgeText ? `${treeCountLabel} · ${localBadgeText}` : treeCountLabel,
                 shareButtonEl: shareBtn,
-                openDetailButtonEl: openDetailBtn,
+                openDetailButtonEl: null,
                 shareBtn,
-                openDetailBtn
+                openDetailBtn: null
             };
         };
 
