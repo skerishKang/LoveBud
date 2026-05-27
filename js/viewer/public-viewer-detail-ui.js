@@ -80,6 +80,13 @@
         };
     }
 
+    function updatePublicViewerCurrentMomentHint() {
+        var hintEl = document.getElementById('detailCurrentMomentHint');
+        if (!hintEl) return;
+        hintEl.textContent = '';
+        hintEl.hidden = true;
+    }
+
     function createPublicViewerReadOnlyReactionSummaryBoundary(deps) {
         var isRootMemory = deps && typeof deps.isRootMemory === 'function'
             ? deps.isRootMemory
@@ -157,6 +164,7 @@
         detailUI.updateDetailPanel = function updatePublicViewerDetailPanel(data) {
             delegatedUpdateDetailPanel(data);
             updateCurrentMomentBadge(data);
+            updatePublicViewerCurrentMomentHint();
             updateReadOnlyReactionSummary(data);
         };
         return detailUI;
@@ -169,6 +177,7 @@
         updatePublicViewerSidebarStatus: updatePublicViewerSidebarStatus,
         createPublicViewerSetDetailEmptyState: createPublicViewerSetDetailEmptyState,
         createPublicViewerCurrentMomentBadgeBoundary: createPublicViewerCurrentMomentBadgeBoundary,
+        updatePublicViewerCurrentMomentHint: updatePublicViewerCurrentMomentHint,
         createPublicViewerReadOnlyReactionSummaryBoundary: createPublicViewerReadOnlyReactionSummaryBoundary,
         delegatesToEditorDetailUI: true
     };

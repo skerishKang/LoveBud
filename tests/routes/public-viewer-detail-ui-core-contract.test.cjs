@@ -81,16 +81,30 @@ test('public viewer detail UI adapter owns empty state', () => {
 test('public viewer detail UI adapter exposes current moment badge boundary', () => {
   const source = fs.readFileSync('js/viewer/public-viewer-detail-ui.js', 'utf8');
   const boundaryStart = source.indexOf('function createPublicViewerCurrentMomentBadgeBoundary(deps)');
-  const boundaryEnd = source.indexOf('function createPublicViewerReadOnlyReactionSummaryBoundary(deps)');
+  const boundaryEnd = source.indexOf('function updatePublicViewerCurrentMomentHint()');
   const boundarySource = source.slice(boundaryStart, boundaryEnd);
 
   assert.notEqual(boundaryStart, -1, 'viewer adapter exposes current moment badge boundary factory');
-  assert.notEqual(boundaryEnd, -1, 'viewer adapter keeps badge boundary before reactions boundary');
+  assert.notEqual(boundaryEnd, -1, 'viewer adapter keeps hint boundary after badge boundary');
   assert.ok(source.includes('createPublicViewerCurrentMomentBadgeBoundary: createPublicViewerCurrentMomentBadgeBoundary'), 'viewer adapter publishes badge boundary on namespace');
   assert.ok(boundarySource.includes('detailCurrentMomentBadge'), 'badge boundary targets the current moment badge mount');
   assert.ok(boundarySource.includes('waiting_first_moment'), 'badge boundary covers waiting first moment state');
   assert.ok(boundarySource.includes('start_moment'), 'badge boundary covers root moment state');
   assert.ok(boundarySource.includes('selected_moment'), 'badge boundary covers selected moment state');
+});
+
+test('public viewer detail UI adapter owns current moment hint boundary', () => {
+  const source = fs.readFileSync('js/viewer/public-viewer-detail-ui.js', 'utf8');
+  const boundaryStart = source.indexOf('function updatePublicViewerCurrentMomentHint()');
+  const boundaryEnd = source.indexOf('function createPublicViewerReadOnlyReactionSummaryBoundary(deps)');
+  const boundarySource = source.slice(boundaryStart, boundaryEnd);
+
+  assert.notEqual(boundaryStart, -1, 'viewer adapter exposes current moment hint boundary');
+  assert.notEqual(boundaryEnd, -1, 'viewer adapter keeps hint boundary before reactions boundary');
+  assert.ok(source.includes('updatePublicViewerCurrentMomentHint: updatePublicViewerCurrentMomentHint'), 'viewer adapter publishes hint boundary on namespace');
+  assert.ok(boundarySource.includes('detailCurrentMomentHint'), 'hint boundary targets the current moment hint mount');
+  assert.ok(boundarySource.includes("hintEl.textContent = ''"), 'hint boundary clears hint text');
+  assert.ok(boundarySource.includes('hintEl.hidden = true'), 'hint boundary hides the hint mount');
 });
 
 test('public viewer detail UI adapter exposes read-only reaction summary boundary', () => {
@@ -116,7 +130,8 @@ test('public viewer detail UI adapter wraps detail panel updates with viewer-own
   assert.ok(source.includes('detailUI.updateDetailPanel = function updatePublicViewerDetailPanel(data)'), 'viewer adapter wraps updateDetailPanel for public viewer');
   assert.ok(source.includes('delegatedUpdateDetailPanel(data);'), 'viewer wrapper runs delegated detail rendering first');
   assert.ok(source.includes('updateCurrentMomentBadge(data);'), 'viewer wrapper applies badge post-processing after delegated rendering');
-  assert.ok(source.includes('updateReadOnlyReactionSummary(data);'), 'viewer wrapper applies read-only reactions after badge post-processing');
+  assert.ok(source.includes('updatePublicViewerCurrentMomentHint();'), 'viewer wrapper applies hint post-processing after badge post-processing');
+  assert.ok(source.includes('updateReadOnlyReactionSummary(data);'), 'viewer wrapper applies read-only reactions after hint post-processing');
 });
 
 test('public viewer keeps extracted detail helpers on viewer-owned paths', () => {
