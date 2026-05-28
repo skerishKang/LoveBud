@@ -482,6 +482,31 @@
         };
     }
 
+    function createPublicViewerMemoryActionsBoundary(deps) {
+        var getTreeMemories = deps && typeof deps.getTreeMemories === 'function'
+            ? deps.getTreeMemories
+            : function() { return []; };
+
+        function hasAnyMoments() {
+            var memories = getTreeMemories();
+            return Array.isArray(memories) && memories.length > 0;
+        }
+
+        return function updatePublicViewerMemoryActions(data) {
+            var isEmptyState = !!(data && data.isNewTree) && !hasAnyMoments();
+
+            var memoryActions = document.querySelector('.memory-actions');
+            if (memoryActions) {
+                memoryActions.style.display = isEmptyState ? 'none' : '';
+            }
+
+            var footer = document.getElementById('detailPanelFooter');
+            if (footer) {
+                footer.style.display = isEmptyState ? 'none' : '';
+            }
+        };
+    }
+
     function createPublicViewerSelectedMomentActionsBoundary(deps) {
         var openCurrentMomentDetail = deps && typeof deps.openCurrentMomentDetail === 'function'
             ? deps.openCurrentMomentDetail
@@ -527,6 +552,7 @@
         var updateCurrentMomentImage = createPublicViewerCurrentMomentImageBoundary(deps);
         var updateMemoBody = createPublicViewerMemoBodyBoundary(deps);
         var updateCurrentMomentTags = createPublicViewerCurrentMomentTagsBoundary(deps);
+        var updateMemoryActions = createPublicViewerMemoryActionsBoundary(deps);
         var updateReadOnlyReactionSummary = createPublicViewerReadOnlyReactionSummaryBoundary(deps);
         var delegatedUpdateDetailPanel = typeof detailUI.updateDetailPanel === 'function'
             ? detailUI.updateDetailPanel
@@ -548,6 +574,7 @@
             updatePublicViewerCurrentMomentDate(data);
             updateMemoBody(data);
             updateCurrentMomentTags(data);
+            updateMemoryActions(data);
             updateReadOnlyReactionSummary(data);
         };
         return detailUI;
@@ -567,6 +594,7 @@
         updatePublicViewerCurrentMomentDate: updatePublicViewerCurrentMomentDate,
         createPublicViewerMemoBodyBoundary: createPublicViewerMemoBodyBoundary,
         createPublicViewerCurrentMomentTagsBoundary: createPublicViewerCurrentMomentTagsBoundary,
+        createPublicViewerMemoryActionsBoundary: createPublicViewerMemoryActionsBoundary,
         createPublicViewerReadOnlyReactionSummaryBoundary: createPublicViewerReadOnlyReactionSummaryBoundary,
         createPublicViewerTreeMetaBoundary: createPublicViewerTreeMetaBoundary,
         createPublicViewerSelectedMomentActionsBoundary: createPublicViewerSelectedMomentActionsBoundary,
