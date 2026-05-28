@@ -178,6 +178,7 @@ test('public canvas route keeps removed editor-only runtime scripts and unused s
     'js/editor/editor-detail-ui.js',
     'js/editor/editor-dom-selectors.js',
     'js/editor/editor-canvas-interaction-helpers.js',
+    'js/editor/editor-canvas-state-boundary.js',
     'js/editor/templates/editor-floating-toolbar-template.js',
     'js/editor/templates/editor-empty-guide-template.js',
   ];
