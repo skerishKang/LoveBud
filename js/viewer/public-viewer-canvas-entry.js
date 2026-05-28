@@ -64,6 +64,44 @@
         };
     }
 
+    function createMemorySelectors(treeMemories) {
+        var memories = Array.isArray(treeMemories) ? treeMemories : [];
+        var rootUtils = globalObject.LoveBudEditorUtils || {};
+
+        function getCanonicalRootId() {
+            if (typeof rootUtils.getCanonicalRootId === 'function') {
+                return rootUtils.getCanonicalRootId(memories);
+            }
+            var roots = memories.filter(function(memory) {
+                return memory.parentId === null || memory.parentId === undefined;
+            });
+            if (roots.length === 0) return 'root';
+            return roots.sort(function(a, b) {
+                return (a.createdAt || '9999') > (b.createdAt || '9999') ? 1 : -1;
+            })[0].id;
+        }
+
+        function isRootMemory(memory, rootId) {
+            if (typeof rootUtils.isRootMemory === 'function') {
+                return rootUtils.isRootMemory(memory, rootId);
+            }
+            return !!(memory && rootId && memory.id === rootId);
+        }
+
+        function findFirstSelectableMemory(rootId) {
+            var nonRoot = memories.filter(function(memory) {
+                return !isRootMemory(memory, rootId);
+            });
+            return nonRoot.length > 0 ? nonRoot[0] : memories[0] || null;
+        }
+
+        return {
+            getCanonicalRootId: getCanonicalRootId,
+            isRootMemory: isRootMemory,
+            findFirstSelectableMemory: findFirstSelectableMemory
+        };
+    }
+
     function getBoundaryState() {
         return {
             hasCanvasRuntime: hasCanvasRuntime(),
@@ -81,6 +119,7 @@
         installPublicMetrics: installPublicMetrics,
         installPublicViewportProfile: installPublicViewportProfile,
         createReadOnlyActions: createReadOnlyActions,
+        createMemorySelectors: createMemorySelectors,
         getBoundaryState: getBoundaryState
     });
 })();

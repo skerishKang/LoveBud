@@ -243,6 +243,10 @@ test('public canvas entry wrapper exposes boundary and setup methods', () => {
   assert.ok(entrySrc.includes('isDetailRuntimeReady'), 'entry wrapper must expose isDetailRuntimeReady');
   assert.ok(entrySrc.includes('getBoundaryState'), 'entry wrapper must expose getBoundaryState');
   assert.ok(entrySrc.includes('createReadOnlyActions'), 'entry wrapper must expose createReadOnlyActions');
+  assert.ok(entrySrc.includes('createMemorySelectors'), 'entry wrapper must expose createMemorySelectors');
+  assert.ok(entrySrc.includes('getCanonicalRootId'), 'entry wrapper createMemorySelectors must expose getCanonicalRootId');
+  assert.ok(entrySrc.includes('isRootMemory'), 'entry wrapper createMemorySelectors must expose isRootMemory');
+  assert.ok(entrySrc.includes('findFirstSelectableMemory'), 'entry wrapper createMemorySelectors must expose findFirstSelectableMemory');
   assert.ok(entrySrc.includes('Object.freeze'), 'entry wrapper must freeze the exported namespace');
 });
 
@@ -261,4 +265,7 @@ test('public canvas init delegates metrics/profile setup through entry wrapper',
   assert.ok(initSrc.includes('readOnlyActions.noopAsync'), 'public canvas init must delegate noopAsync through readOnlyActions');
   assert.ok(initSrc.includes('readOnlyActions.noop'), 'public canvas init must delegate noop through readOnlyActions');
   assert.ok(initSrc.includes('readOnlyActions.noopFalseAsync'), 'public canvas init must delegate noopFalseAsync through readOnlyActions');
+  assert.ok(initSrc.includes('createMemorySelectors'), 'public canvas init must delegate createMemorySelectors through entry wrapper');
+  assert.ok(initSrc.includes('memorySelectors'), 'public canvas init must consume memorySelectors from wrapper');
+  assert.ok(initSrc.includes('findFirstSelectableMemory'), 'public canvas init must delegate findFirstSelectableMemory through memorySelectors');
 });
