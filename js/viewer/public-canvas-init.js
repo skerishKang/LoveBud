@@ -71,6 +71,23 @@
         return false;
     }
 
+    function isPublicRuntimeReady() {
+        var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
+        if (canvasEntry && typeof canvasEntry.isPublicRuntimeReady === 'function') {
+            return canvasEntry.isPublicRuntimeReady();
+        }
+
+        var canvasRuntimeReady = canvasEntry && typeof canvasEntry.isCanvasRuntimeReady === 'function'
+            ? canvasEntry.isCanvasRuntimeReady()
+            : typeof window.createEditorCanvas === 'function';
+
+        var detailRuntimeReady = canvasEntry && typeof canvasEntry.isDetailRuntimeReady === 'function'
+            ? canvasEntry.isDetailRuntimeReady()
+            : typeof window.createPublicViewerDetailUI === 'function';
+
+        return canvasRuntimeReady && detailRuntimeReady;
+    }
+
     function initPublicCanvas() {
         var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
         var routeSetup = canvasEntry && typeof canvasEntry.setupPublicRoute === 'function'
@@ -127,17 +144,7 @@
                     return;
                 }
 
-                var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
-                var runtimeReady = canvasEntry && typeof canvasEntry.isPublicRuntimeReady === 'function'
-                    ? canvasEntry.isPublicRuntimeReady()
-                    : (
-                        (canvasEntry && typeof canvasEntry.isCanvasRuntimeReady === 'function'
-                            ? canvasEntry.isCanvasRuntimeReady()
-                            : typeof window.createEditorCanvas === 'function')
-                        && (canvasEntry && typeof canvasEntry.isDetailRuntimeReady === 'function'
-                            ? canvasEntry.isDetailRuntimeReady()
-                            : typeof window.createPublicViewerDetailUI === 'function')
-                    );
+                var runtimeReady = isPublicRuntimeReady();
 
                 if (runtimeReady) {
                     startCanvas();
