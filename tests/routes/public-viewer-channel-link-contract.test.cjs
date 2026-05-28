@@ -41,8 +41,10 @@ test('viewer channel link renders DOM nodes without html sinks', () => {
 });
 
 test('viewer channel link patch loads after detail adapter', () => {
-  assert.ok(source.includes('window.createEditorDetailUI = patchedFactory'));
+  assert.ok(source.includes('const originalFactory = window.createPublicViewerDetailUI'));
+  assert.ok(source.includes('window.createPublicViewerDetailUI = patchedFactory'));
   assert.ok(source.includes('originalUpdateDetailPanel(data);'));
   assert.ok(source.includes('renderDetailChannelLink(data);'));
+  assert.equal(source.includes('window.createEditorDetailUI = patchedFactory'), false);
   assert.ok(viewHtml.indexOf('js/viewer/public-viewer-detail-ui.js') < viewHtml.indexOf('js/viewer/public-viewer-detail-channel-link.js'));
 });

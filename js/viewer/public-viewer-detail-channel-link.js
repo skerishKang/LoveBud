@@ -107,7 +107,7 @@
     }
 
     function installDetailChannelLinkPatch() {
-        const originalFactory = window.createEditorDetailUI;
+        const originalFactory = window.createPublicViewerDetailUI;
         if (typeof originalFactory !== 'function' || originalFactory.__publicViewerChannelLinkPatched) return;
 
         const patchedFactory = function(deps) {
@@ -124,7 +124,7 @@
         };
 
         patchedFactory.__publicViewerChannelLinkPatched = true;
-        window.createEditorDetailUI = patchedFactory;
+        window.createPublicViewerDetailUI = patchedFactory;
     }
 
     window.LoveBudPublicViewerDetailChannelLink = {
