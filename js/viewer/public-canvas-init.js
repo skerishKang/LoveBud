@@ -367,7 +367,11 @@
                         createEditorCanvas: window.createEditorCanvas,
                         canvasOptions: canvasOptions
                     })
-                    : window.createEditorCanvas(canvasOptions);
+                    : null;
+
+                if (!editorCanvas) {
+                    editorCanvas = window.createEditorCanvas(canvasOptions);
+                }
 
                 // Store instance and public read-only editor state
                 if (canvasEntry && typeof canvasEntry.installPublicEditorReadOnlyState === 'function') {

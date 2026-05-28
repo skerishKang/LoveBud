@@ -30,6 +30,7 @@ function assertScriptOrder(scripts, beforeNeedle, afterNeedle) {
 test('public viewer canvas adapter script order in view.html', () => {
   const scripts = getScriptSrcs();
 
+  assertScriptOrder(scripts, 'js/editor/editor-canvas.js', 'js/viewer/public-viewer-canvas-adapter.js');
   assertScriptOrder(scripts, 'js/viewer/public-viewer-canvas-entry.js', 'js/viewer/public-viewer-canvas-adapter.js');
   assertScriptOrder(scripts, 'js/viewer/public-viewer-canvas-adapter.js', 'js/viewer/public-canvas-init.js');
 });
@@ -49,4 +50,6 @@ test('public canvas init references the viewer canvas adapter', () => {
   assert.ok(initSrc.includes('LoveBudPublicViewerCanvasAdapter'), 'public canvas init must reference LoveBudPublicViewerCanvasAdapter');
   assert.ok(initSrc.includes('createPublicViewerCanvas'), 'public canvas init must call createPublicViewerCanvas');
   assert.ok(initSrc.includes('window.createEditorCanvas'), 'public canvas init must keep window.createEditorCanvas fallback');
+  assert.ok(initSrc.includes('if (!editorCanvas)'), 'public canvas init must have if (!editorCanvas) fallback guard');
+  assert.ok(initSrc.includes('editorCanvas = window.createEditorCanvas(canvasOptions);'), 'public canvas init must maintain direct fallback assignment');
 });
