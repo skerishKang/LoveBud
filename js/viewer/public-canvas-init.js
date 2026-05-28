@@ -185,9 +185,35 @@
                         showToast: function(msg) { console.log('[public-canvas]', msg); }
                     };
 
-                // Initially select first non-root memory or first memory
-                var selectedNodeId = canonicalRootId;
-                var currentEditingMemory = null;
+                // Delegate selection state to entry wrapper with fallback
+                var selectionState = canvasEntry && typeof canvasEntry.createSelectionState === 'function'
+                    ? canvasEntry.createSelectionState(canonicalRootId)
+                    : (function() {
+                        var selectedNodeId = canonicalRootId;
+                        var currentEditingMemory = null;
+
+                        return {
+                            getSelectedNodeId: function() {
+                                return selectedNodeId;
+                            },
+                            setSelectedNodeId: function(nextSelectedNodeId) {
+                                selectedNodeId = nextSelectedNodeId || null;
+                                return selectedNodeId;
+                            },
+                            getCurrentEditingMemory: function() {
+                                return currentEditingMemory;
+                            },
+                            setCurrentEditingMemory: function(memory) {
+                                currentEditingMemory = memory || null;
+                                return currentEditingMemory;
+                            },
+                            selectMemory: function(memory) {
+                                currentEditingMemory = memory || null;
+                                selectedNodeId = memory && memory.id ? memory.id : selectedNodeId;
+                                return currentEditingMemory;
+                            }
+                        };
+                    })();
 
                 // Initialize detail UI
 
@@ -201,7 +227,7 @@
                     escapeHtml: escapeHtml,
                     isRootMemory: isRootMemory,
                     getCanonicalRootId: function() { return canonicalRootId; },
-                    getSelectedNodeId: function() { return selectedNodeId; },
+                    getSelectedNodeId: selectionState.getSelectedNodeId,
                     getTreeMemories: publicCanvasConfig.getTreeMemories,
                     getCurrentTreeData: publicCanvasConfig.getCurrentTreeData,
                     getLocalSaveMode: readOnlyActions.getLocalSaveMode,
@@ -220,8 +246,7 @@
                 // Select first memory
                 var firstSelectable = findFirstSelectableMemory();
                 if (firstSelectable) {
-                    selectedNodeId = firstSelectable.id;
-                    currentEditingMemory = firstSelectable;
+                    selectionState.selectMemory(firstSelectable);
                 }
 
                 // Create canvas instance
@@ -240,8 +265,7 @@
                     },
                     onNodeClick: function(el, data) {
                         if (!data) return;
-                        selectedNodeId = data.id;
-                        currentEditingMemory = data;
+                        selectionState.selectMemory(data);
                         document.querySelectorAll('.memory-node').forEach(function(n) { n.classList.remove('selected'); });
                         if (el) el.classList.add('selected');
                         updateDetailPanel(data);
@@ -269,6 +293,7 @@
                 updateSidebarStatus();
 
                 // Select first memory in detail panel
+                var currentEditingMemory = selectionState.getCurrentEditingMemory();
                 if (currentEditingMemory) {
                     updateDetailPanel(currentEditingMemory);
                     setDetailEmptyState(false);
