@@ -389,6 +389,17 @@
         return bridge.normalizeForCanvas(tree, memories);
     }
 
+    function appendPublicLoadFailureState(container, error) {
+        if (!container) return false;
+        container.textContent = '';
+        var errEl = createLoadFailureState(error && error.message);
+        if (errEl) {
+            container.appendChild(errEl);
+            return true;
+        }
+        return false;
+    }
+
     globalObject.LoveBudPublicViewerCanvasEntry = Object.freeze({
         getCanvasRuntime: getCanvasRuntime,
         hasCanvasRuntime: hasCanvasRuntime,
@@ -412,6 +423,7 @@
         installToolbarCompactMode: installToolbarCompactMode,
         getBoundaryState: getBoundaryState,
         getPublicCanvasBridge: getPublicCanvasBridge,
-        normalizePublicCanvasData: normalizePublicCanvasData
+        normalizePublicCanvasData: normalizePublicCanvasData,
+        appendPublicLoadFailureState: appendPublicLoadFailureState
     });
 })();

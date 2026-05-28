@@ -305,6 +305,9 @@ test('public canvas entry wrapper exposes boundary and setup methods', () => {
   assert.ok(entrySrc.includes('normalizePublicCanvasData'), 'entry wrapper must expose normalizePublicCanvasData');
   assert.ok(entrySrc.includes('bridge.normalizeForCanvas(tree, memories)'), 'entry wrapper normalization helper must call bridge.normalizeForCanvas');
   assert.ok(entrySrc.includes("typeof bridge.normalizeForCanvas !== 'function'"), 'entry wrapper normalization helper must guard normalizeForCanvas');
+  assert.ok(entrySrc.includes('appendPublicLoadFailureState'), 'entry wrapper must expose appendPublicLoadFailureState');
+  assert.ok(entrySrc.includes("container.textContent = ''"), 'entry wrapper load failure append must clear container');
+  assert.ok(entrySrc.includes('container.appendChild'), 'entry wrapper load failure append must append error element');
 });
 
 test('public canvas init delegates metrics/profile setup through entry wrapper', () => {
@@ -427,4 +430,11 @@ test('public canvas init delegates metrics/profile setup through entry wrapper',
   assert.ok(initSrc.includes('function startCanvas'), 'public canvas init must keep startCanvas local');
   assert.ok(initSrc.includes('var onPublicCanvasNodeClick = function(el, data)'), 'public canvas init must keep node click flow local');
   assert.ok(initSrc.includes('editorCanvas.initCanvas();'), 'public canvas init must keep editorCanvas init call local');
+  assert.ok(initSrc.includes('appendPublicLoadFailureState'), 'public canvas init must delegate load failure appending through entry wrapper');
+  assert.ok(initSrc.includes('canvasEntry.appendPublicLoadFailureState'), 'public canvas init must call delegated load failure append helper');
+  assert.ok(initSrc.includes('container.appendChild(createLoadFailureState(error && error.message))'), 'public canvas init must retain load failure appending fallback');
+  assert.ok(
+    initSrc.indexOf('appendPublicLoadFailureState') < initSrc.indexOf('initPublicCanvas()'),
+    'local load failure append helper must be defined before init public canvas function'
+  );
 });
