@@ -16,38 +16,6 @@
             .replace(/'/g, '&#39;');
     }
 
-    function installPublicMetrics(canvas) {
-        var geometry = window.EditorCanvasGeometry;
-        if (!geometry || typeof geometry.getMetrics !== 'function') return;
-        if (geometry.__publicViewMetricsInstalled) return;
-        var originalGetMetrics = geometry.getMetrics;
-        geometry.getMetrics = function(targetCanvas) {
-            var node = targetCanvas || canvas;
-            var rect = node && typeof node.getBoundingClientRect === 'function'
-                ? node.getBoundingClientRect()
-                : null;
-            var width = Math.round((rect && rect.width) || (node && node.clientWidth) || window.innerWidth || 0);
-            var height = Math.round((rect && rect.height) || (node && node.clientHeight) || window.innerHeight || 0);
-            if (width > 0 && height > 0) {
-                return {
-                    width: Math.max(width, 320),
-                    height: Math.max(height, 420)
-                };
-            }
-            return originalGetMetrics(targetCanvas);
-        };
-        geometry.__publicViewMetricsInstalled = true;
-    }
-
-    function installPublicViewportProfile() {
-        var viewport = window.LoveBudEditorCanvasViewport;
-        if (!viewport || viewport.__publicViewProfileInstalled) return;
-        viewport.minScale = Math.max(Number(viewport.minScale) || 0.2, 0.5);
-        viewport.zoomLevels = [0.5, 0.75, 1, 1.25, 1.5];
-        viewport.readableCenter = { x: 0.5, y: 0.46 };
-        viewport.__publicViewProfileInstalled = true;
-    }
-
     function createLoadFailureState(message) {
         var errState = document.createElement('div');
         var icon = document.createElement('span');
@@ -111,8 +79,13 @@
                     return;
                 }
 
-                var canvasReady = typeof window.createEditorCanvas === 'function';
-                var detailReady = typeof window.createPublicViewerDetailUI === 'function';
+                var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
+                var canvasReady = canvasEntry && typeof canvasEntry.isCanvasRuntimeReady === 'function'
+                    ? canvasEntry.isCanvasRuntimeReady()
+                    : typeof window.createEditorCanvas === 'function';
+                var detailReady = canvasEntry && typeof canvasEntry.isDetailRuntimeReady === 'function'
+                    ? canvasEntry.isDetailRuntimeReady()
+                    : typeof window.createPublicViewerDetailUI === 'function';
 
                 if (canvasReady && detailReady) {
                     startCanvas();
@@ -131,8 +104,13 @@
                     return;
                 }
 
-                installPublicMetrics(canvas);
-                installPublicViewportProfile();
+                var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
+                if (canvasEntry && typeof canvasEntry.installPublicMetrics === 'function') {
+                    canvasEntry.installPublicMetrics(canvas);
+                }
+                if (canvasEntry && typeof canvasEntry.installPublicViewportProfile === 'function') {
+                    canvasEntry.installPublicViewportProfile();
+                }
 
                 // Set up empty guide UI
                 var updateCanvasEmptyGuide = function() {
