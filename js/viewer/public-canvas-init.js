@@ -316,10 +316,14 @@
 
                 var editorCanvas = window.createEditorCanvas(canvasOptions);
 
-                // Store instance
-                if (canvas) canvas.__editorCanvasInstance = editorCanvas;
-                window.LoveBudEditor = window.LoveBudEditor || {};
-                window.LoveBudEditor.canEdit = false;
+                // Store instance and public read-only editor state
+                if (canvasEntry && typeof canvasEntry.installPublicEditorReadOnlyState === 'function') {
+                    canvasEntry.installPublicEditorReadOnlyState(canvas, editorCanvas);
+                } else {
+                    if (canvas) canvas.__editorCanvasInstance = editorCanvas;
+                    window.LoveBudEditor = window.LoveBudEditor || {};
+                    window.LoveBudEditor.canEdit = false;
+                }
 
                 // Initialize canvas
                 if (editorCanvas && typeof editorCanvas.initCanvas === 'function') {
