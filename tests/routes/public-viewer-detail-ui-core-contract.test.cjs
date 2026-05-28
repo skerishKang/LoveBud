@@ -136,6 +136,27 @@ test('public viewer detail UI adapter exposes read-only reaction summary boundar
   assert.equal(boundarySource.includes('from=editor'), false, 'read-only reactions boundary must not navigate through editor detail context');
 });
 
+test('public viewer detail UI adapter renders channel link via viewer namespace', () => {
+  const source = fs.readFileSync('js/viewer/public-viewer-detail-ui.js', 'utf8');
+
+  assert.ok(source.includes('function updatePublicViewerDetailChannelLink(data)'), 'viewer adapter exposes channel link updater');
+  assert.ok(source.includes('window.LoveBudPublicViewerDetailChannelLink'), 'viewer adapter reads channel link helper namespace');
+  assert.ok(source.includes('helper.renderDetailChannelLink(data)'), 'viewer adapter delegates channel link rendering to helper');
+  assert.ok(source.includes('updatePublicViewerDetailChannelLink(data);'), 'viewer adapter runs channel link update in detail panel flow');
+  assert.ok(source.includes('updatePublicViewerDetailChannelLink: updatePublicViewerDetailChannelLink'), 'viewer adapter publishes channel link updater');
+
+  const panelStart = source.indexOf('detailUI.updateDetailPanel = function');
+  const panelEnd = source.indexOf('};', panelStart);
+  const panelSource = source.slice(panelStart, panelEnd);
+
+  const titleIndex = panelSource.indexOf('updateCurrentMomentTitle(data);');
+  const channelLinkIndex = panelSource.indexOf('updatePublicViewerDetailChannelLink(data);');
+  const hintIndex = panelSource.indexOf('updatePublicViewerCurrentMomentHint();');
+
+  assert.ok(titleIndex < channelLinkIndex, 'channel link runs after title update');
+  assert.ok(channelLinkIndex < hintIndex, 'channel link runs before hint update');
+});
+
 test('public viewer detail UI adapter wraps detail panel updates with viewer-owned post-processing', () => {
   const source = fs.readFileSync('js/viewer/public-viewer-detail-ui.js', 'utf8');
 

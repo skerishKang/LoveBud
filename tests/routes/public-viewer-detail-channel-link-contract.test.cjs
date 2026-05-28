@@ -139,21 +139,20 @@ test('public viewer detail channel link removes stale row when selected memory l
   assert.equal(harness.getChannelRow(), null);
 });
 
-test('public viewer detail channel link patch wraps updateDetailPanel without replacing original behavior', () => {
-  let originalCalled = false;
-  const harness = createPublicViewerDetailChannelContext({
-    createPublicViewerDetailUI: () => ({
-      updateDetailPanel: () => { originalCalled = true; }
-    })
-  });
+test('public viewer detail channel link helper renders channel row via direct namespace call', () => {
+  const harness = createPublicViewerDetailChannelContext();
 
-  const detailUI = harness.context.window.createPublicViewerDetailUI({});
-  detailUI.updateDetailPanel({
+  const helper = harness.context.window.LoveBudPublicViewerDetailChannelLink;
+  assert.equal(typeof helper.renderDetailChannelLink, 'function');
+
+  helper.renderDetailChannelLink({
     channelId: '@woowayoung',
     channelName: '@woowayoung',
     channelUrl: 'https://www.youtube.com/@woowayoung'
   });
 
-  assert.equal(originalCalled, true);
-  assert.ok(harness.getChannelRow());
+  const row = harness.getChannelRow();
+  assert.ok(row);
+  assert.equal(row.children[2].tagName, 'A');
+  assert.equal(row.children[2].href, 'https://www.youtube.com/@woowayoung');
 });
