@@ -85,14 +85,18 @@
                 }
 
                 var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
-                var canvasReady = canvasEntry && typeof canvasEntry.isCanvasRuntimeReady === 'function'
-                    ? canvasEntry.isCanvasRuntimeReady()
-                    : typeof window.createEditorCanvas === 'function';
-                var detailReady = canvasEntry && typeof canvasEntry.isDetailRuntimeReady === 'function'
-                    ? canvasEntry.isDetailRuntimeReady()
-                    : typeof window.createPublicViewerDetailUI === 'function';
+                var runtimeReady = canvasEntry && typeof canvasEntry.isPublicRuntimeReady === 'function'
+                    ? canvasEntry.isPublicRuntimeReady()
+                    : (
+                        (canvasEntry && typeof canvasEntry.isCanvasRuntimeReady === 'function'
+                            ? canvasEntry.isCanvasRuntimeReady()
+                            : typeof window.createEditorCanvas === 'function')
+                        && (canvasEntry && typeof canvasEntry.isDetailRuntimeReady === 'function'
+                            ? canvasEntry.isDetailRuntimeReady()
+                            : typeof window.createPublicViewerDetailUI === 'function')
+                    );
 
-                if (canvasReady && detailReady) {
+                if (runtimeReady) {
                     startCanvas();
                     return;
                 }
