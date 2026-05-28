@@ -330,14 +330,24 @@
                     editorCanvas.initCanvas();
                 }
 
-                updateCanvasEmptyGuide();
-                updateSidebarStatus();
+                // Refresh public canvas UI after initialization
+                if (canvasEntry && typeof canvasEntry.runPublicPostInitRefresh === 'function') {
+                    canvasEntry.runPublicPostInitRefresh({
+                        updateCanvasEmptyGuide: updateCanvasEmptyGuide,
+                        updateSidebarStatus: updateSidebarStatus,
+                        selectionState: selectionState,
+                        updateDetailPanel: updateDetailPanel,
+                        setDetailEmptyState: setDetailEmptyState
+                    });
+                } else {
+                    updateCanvasEmptyGuide();
+                    updateSidebarStatus();
 
-                // Select first memory in detail panel
-                var currentEditingMemory = selectionState.getCurrentEditingMemory();
-                if (currentEditingMemory) {
-                    updateDetailPanel(currentEditingMemory);
-                    setDetailEmptyState(false);
+                    var currentEditingMemory = selectionState.getCurrentEditingMemory();
+                    if (currentEditingMemory) {
+                        updateDetailPanel(currentEditingMemory);
+                        setDetailEmptyState(false);
+                    }
                 }
 
                 console.log('[public-canvas] Canvas initialized successfully');
