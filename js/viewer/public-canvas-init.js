@@ -88,6 +88,22 @@
         return canvasRuntimeReady && detailRuntimeReady;
     }
 
+    function createPublicEditorCanvas(canvasOptions) {
+        var adapter = window.LoveBudPublicViewerCanvasAdapter;
+        var editorCanvas = adapter && typeof adapter.createPublicViewerCanvas === 'function'
+            ? adapter.createPublicViewerCanvas({
+                createEditorCanvas: window.createEditorCanvas,
+                canvasOptions: canvasOptions
+            })
+            : null;
+
+        if (!editorCanvas) {
+            editorCanvas = window.createEditorCanvas(canvasOptions);
+        }
+
+        return editorCanvas;
+    }
+
     function initPublicCanvas() {
         var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
         var routeSetup = canvasEntry && typeof canvasEntry.setupPublicRoute === 'function'
@@ -368,17 +384,7 @@
                         canEdit: false
                     };
 
-                var adapter = window.LoveBudPublicViewerCanvasAdapter;
-                var editorCanvas = adapter && typeof adapter.createPublicViewerCanvas === 'function'
-                    ? adapter.createPublicViewerCanvas({
-                        createEditorCanvas: window.createEditorCanvas,
-                        canvasOptions: canvasOptions
-                    })
-                    : null;
-
-                if (!editorCanvas) {
-                    editorCanvas = window.createEditorCanvas(canvasOptions);
-                }
+                var editorCanvas = createPublicEditorCanvas(canvasOptions);
 
                 // Store instance and public read-only editor state
                 if (canvasEntry && typeof canvasEntry.installPublicEditorReadOnlyState === 'function') {
