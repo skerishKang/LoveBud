@@ -361,7 +361,17 @@
                         canEdit: false
                     };
 
-                var editorCanvas = window.createEditorCanvas(canvasOptions);
+                var adapter = window.LoveBudPublicViewerCanvasAdapter;
+                var editorCanvas = adapter && typeof adapter.createPublicViewerCanvas === 'function'
+                    ? adapter.createPublicViewerCanvas({
+                        createEditorCanvas: window.createEditorCanvas,
+                        canvasOptions: canvasOptions
+                    })
+                    : null;
+
+                if (!editorCanvas) {
+                    editorCanvas = window.createEditorCanvas(canvasOptions);
+                }
 
                 // Store instance and public read-only editor state
                 if (canvasEntry && typeof canvasEntry.installPublicEditorReadOnlyState === 'function') {
