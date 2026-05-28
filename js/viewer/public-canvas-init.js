@@ -112,6 +112,21 @@
                     canvasEntry.installPublicViewportProfile();
                 }
 
+                // Delegate public canvas config helpers to entry wrapper
+                var publicCanvasConfig = canvasEntry && typeof canvasEntry.createPublicCanvasConfig === 'function'
+                    ? canvasEntry.createPublicCanvasConfig(normalized)
+                    : {
+                        resolveTreeTitleText: function() { return normalized.treeData.title || '러브트리'; },
+                        resolveHintText: function() { return ''; },
+                        resolveInfoText: function() { return ''; },
+                        resolveMemoryThumbnail: function(mem) { return mem && mem.thumbnail ? mem.thumbnail : ''; },
+                        getTreeMemories: function() { return normalized.treeMemories; },
+                        getCurrentTreeData: function() { return window.currentTreeData || {}; },
+                        createInitialMemory: function(rootId) {
+                            return { id: rootId, title: normalized.treeData.title || '러브트리', parentId: null };
+                        }
+                    };
+
                 // Set up empty guide UI
                 var updateCanvasEmptyGuide = function() {
                     var guide = document.getElementById('canvasEmptyGuide');
@@ -177,16 +192,16 @@
                 var detailUI = window.createPublicViewerDetailUI({
                     detailPanel: detailPanel,
                     i18n: function(k) { return k; },
-                    resolveTreeTitleText: function() { return normalized.treeData.title || '러브트리'; },
-                    resolveHintText: function() { return ''; },
-                    resolveInfoText: function() { return ''; },
-                    resolveMemoryThumbnail: function(mem) { return mem && mem.thumbnail ? mem.thumbnail : ''; },
+                    resolveTreeTitleText: publicCanvasConfig.resolveTreeTitleText,
+                    resolveHintText: publicCanvasConfig.resolveHintText,
+                    resolveInfoText: publicCanvasConfig.resolveInfoText,
+                    resolveMemoryThumbnail: publicCanvasConfig.resolveMemoryThumbnail,
                     escapeHtml: escapeHtml,
                     isRootMemory: isRootMemory,
                     getCanonicalRootId: function() { return canonicalRootId; },
                     getSelectedNodeId: function() { return selectedNodeId; },
-                    getTreeMemories: function() { return normalized.treeMemories; },
-                    getCurrentTreeData: function() { return window.currentTreeData || {}; },
+                    getTreeMemories: publicCanvasConfig.getTreeMemories,
+                    getCurrentTreeData: publicCanvasConfig.getCurrentTreeData,
                     getLocalSaveMode: readOnlyActions.getLocalSaveMode,
                     showToast: readOnlyActions.showToast,
                     updateTreeVisibility: readOnlyActions.noopAsync,
@@ -211,15 +226,15 @@
                 var editorCanvas = window.createEditorCanvas({
                     canvas: canvas,
                     svg: svg,
-                    getTreeMemories: function() { return normalized.treeMemories; },
+                    getTreeMemories: publicCanvasConfig.getTreeMemories,
                     getCanonicalRootId: function() { return canonicalRootId; },
                     isRootMemory: isRootMemory,
-                    resolveMemoryThumbnail: function(mem) { return mem && mem.thumbnail ? mem.thumbnail : ''; },
+                    resolveMemoryThumbnail: publicCanvasConfig.resolveMemoryThumbnail,
                     updateDetailPanel: updateDetailPanel,
                     setDetailEmptyState: setDetailEmptyState,
                     updateFocusSelectedBtn: updateFocusSelectedBtn,
                     createInitialMemory: function() {
-                        return { id: canonicalRootId, title: normalized.treeData.title || '러브트리', parentId: null };
+                        return publicCanvasConfig.createInitialMemory(canonicalRootId);
                     },
                     onNodeClick: function(el, data) {
                         if (!data) return;

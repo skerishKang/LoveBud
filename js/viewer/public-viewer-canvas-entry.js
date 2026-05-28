@@ -102,6 +102,50 @@
         };
     }
 
+    function createPublicCanvasConfig(normalized) {
+        var payload = normalized || {};
+        var treeData = payload.treeData || {};
+        var treeMemories = Array.isArray(payload.treeMemories) ? payload.treeMemories : [];
+
+        function resolveTreeTitleText() {
+            return treeData.title || '러브트리';
+        }
+
+        function resolveHintText() {
+            return '';
+        }
+
+        function resolveInfoText() {
+            return '';
+        }
+
+        function resolveMemoryThumbnail(memory) {
+            return memory && memory.thumbnail ? memory.thumbnail : '';
+        }
+
+        function getTreeMemories() {
+            return treeMemories;
+        }
+
+        function getCurrentTreeData() {
+            return globalObject.currentTreeData || {};
+        }
+
+        function createInitialMemory(rootId) {
+            return { id: rootId, title: treeData.title || '러브트리', parentId: null };
+        }
+
+        return {
+            resolveTreeTitleText: resolveTreeTitleText,
+            resolveHintText: resolveHintText,
+            resolveInfoText: resolveInfoText,
+            resolveMemoryThumbnail: resolveMemoryThumbnail,
+            getTreeMemories: getTreeMemories,
+            getCurrentTreeData: getCurrentTreeData,
+            createInitialMemory: createInitialMemory
+        };
+    }
+
     function getBoundaryState() {
         return {
             hasCanvasRuntime: hasCanvasRuntime(),
@@ -120,6 +164,7 @@
         installPublicViewportProfile: installPublicViewportProfile,
         createReadOnlyActions: createReadOnlyActions,
         createMemorySelectors: createMemorySelectors,
+        createPublicCanvasConfig: createPublicCanvasConfig,
         getBoundaryState: getBoundaryState
     });
 })();

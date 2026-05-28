@@ -244,6 +244,10 @@ test('public canvas entry wrapper exposes boundary and setup methods', () => {
   assert.ok(entrySrc.includes('getBoundaryState'), 'entry wrapper must expose getBoundaryState');
   assert.ok(entrySrc.includes('createReadOnlyActions'), 'entry wrapper must expose createReadOnlyActions');
   assert.ok(entrySrc.includes('createMemorySelectors'), 'entry wrapper must expose createMemorySelectors');
+  assert.ok(entrySrc.includes('createPublicCanvasConfig'), 'entry wrapper must expose createPublicCanvasConfig');
+  assert.ok(entrySrc.includes('resolveTreeTitleText'), 'entry wrapper createPublicCanvasConfig must expose resolveTreeTitleText');
+  assert.ok(entrySrc.includes('resolveMemoryThumbnail'), 'entry wrapper createPublicCanvasConfig must expose resolveMemoryThumbnail');
+  assert.ok(entrySrc.includes('createInitialMemory'), 'entry wrapper createPublicCanvasConfig must expose createInitialMemory');
   assert.ok(entrySrc.includes('getCanonicalRootId'), 'entry wrapper createMemorySelectors must expose getCanonicalRootId');
   assert.ok(entrySrc.includes('isRootMemory'), 'entry wrapper createMemorySelectors must expose isRootMemory');
   assert.ok(entrySrc.includes('findFirstSelectableMemory'), 'entry wrapper createMemorySelectors must expose findFirstSelectableMemory');
@@ -268,4 +272,9 @@ test('public canvas init delegates metrics/profile setup through entry wrapper',
   assert.ok(initSrc.includes('createMemorySelectors'), 'public canvas init must delegate createMemorySelectors through entry wrapper');
   assert.ok(initSrc.includes('memorySelectors'), 'public canvas init must consume memorySelectors from wrapper');
   assert.ok(initSrc.includes('findFirstSelectableMemory'), 'public canvas init must delegate findFirstSelectableMemory through memorySelectors');
+  assert.ok(initSrc.includes('createPublicCanvasConfig'), 'public canvas init must delegate createPublicCanvasConfig through entry wrapper');
+  assert.ok(initSrc.includes('publicCanvasConfig'), 'public canvas init must consume publicCanvasConfig from wrapper');
+  assert.ok(initSrc.includes('publicCanvasConfig.resolveTreeTitleText'), 'public canvas init must use delegated tree title resolver');
+  assert.ok(initSrc.includes('publicCanvasConfig.resolveMemoryThumbnail'), 'public canvas init must use delegated thumbnail resolver');
+  assert.ok(initSrc.includes('publicCanvasConfig.createInitialMemory'), 'public canvas init must use delegated initial memory builder');
 });
