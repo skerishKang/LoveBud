@@ -25,7 +25,7 @@ test('viewer channel link helper restricts youtube channel urls', () => {
 
 test('viewer channel link renders DOM nodes without html sinks', () => {
   const start = source.indexOf('function renderDetailChannelLink(data)');
-  const end = source.indexOf('function installDetailChannelLinkPatch()');
+  const end = source.indexOf('window.LoveBudPublicViewerDetailChannelLink');
   const boundary = source.slice(start, end);
 
   assert.notEqual(start, -1);
@@ -41,10 +41,10 @@ test('viewer channel link renders DOM nodes without html sinks', () => {
 });
 
 test('viewer channel link patch loads after detail adapter', () => {
-  assert.ok(source.includes('const originalFactory = window.createPublicViewerDetailUI'));
-  assert.ok(source.includes('window.createPublicViewerDetailUI = patchedFactory'));
-  assert.ok(source.includes('originalUpdateDetailPanel(data);'));
-  assert.ok(source.includes('renderDetailChannelLink(data);'));
-  assert.equal(source.includes('window.createEditorDetailUI = patchedFactory'), false);
+  assert.equal(source.includes('createPublicViewerDetailUI = patchedFactory'), false);
+  assert.equal(source.includes('createEditorDetailUI = patchedFactory'), false);
+  assert.equal(source.includes('originalUpdateDetailPanel'), false);
+  assert.ok(source.includes('renderDetailChannelLink'));
   assert.ok(viewHtml.indexOf('js/viewer/public-viewer-detail-ui.js') < viewHtml.indexOf('js/viewer/public-viewer-detail-channel-link.js'));
+  assert.ok(viewHtml.indexOf('js/viewer/public-viewer-detail-channel-link.js') < viewHtml.indexOf('js/viewer/public-canvas-init.js'));
 });

@@ -206,7 +206,7 @@ test('public canvas route currently uses remaining editor detail UI core stack b
   assertScriptOrder(scripts, 'js/viewer/public-viewer-detail-builders.js', 'js/editor/editor-detail-ui.js');
 });
 
-test('public canvas route delegates detail channel link patch to viewer helper', () => {
+test('public canvas route delegates detail channel link rendering to viewer helper', () => {
   const scripts = getScriptSrcs();
   const helperSrc = fs.readFileSync('js/viewer/public-viewer-detail-channel-link.js', 'utf8');
 
@@ -222,5 +222,6 @@ test('public canvas route delegates detail channel link patch to viewer helper',
   assertScriptOrder(scripts, 'js/editor/editor-detail-ui.js', 'js/viewer/public-viewer-detail-channel-link.js');
   assertScriptOrder(scripts, 'js/viewer/public-viewer-detail-channel-link.js', 'js/viewer/public-canvas-init.js');
   assert.ok(helperSrc.includes('window.LoveBudPublicViewerDetailChannelLink'), 'viewer channel link helper must expose inspectable namespace');
-  assert.ok(helperSrc.includes('__publicViewerChannelLinkPatched'), 'viewer channel link helper must mark the patched detail factory');
+  assert.ok(helperSrc.includes('renderDetailChannelLink'), 'viewer channel link helper must expose renderDetailChannelLink');
+  assert.equal(helperSrc.includes('createPublicViewerDetailUI'), false, 'viewer channel link helper must not patch the viewer detail adapter');
 });

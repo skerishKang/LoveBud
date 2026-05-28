@@ -106,32 +106,9 @@
         titleEl.insertAdjacentElement('afterend', row);
     }
 
-    function installDetailChannelLinkPatch() {
-        const originalFactory = window.createPublicViewerDetailUI;
-        if (typeof originalFactory !== 'function' || originalFactory.__publicViewerChannelLinkPatched) return;
-
-        const patchedFactory = function(deps) {
-            const detailUI = originalFactory(deps);
-            if (!detailUI || typeof detailUI.updateDetailPanel !== 'function') return detailUI;
-
-            const originalUpdateDetailPanel = detailUI.updateDetailPanel;
-            detailUI.updateDetailPanel = function(data) {
-                originalUpdateDetailPanel(data);
-                renderDetailChannelLink(data);
-            };
-
-            return detailUI;
-        };
-
-        patchedFactory.__publicViewerChannelLinkPatched = true;
-        window.createPublicViewerDetailUI = patchedFactory;
-    }
-
     window.LoveBudPublicViewerDetailChannelLink = {
         renderDetailChannelLink,
         sanitizeYouTubeChannelUrl,
         buildChannelUrlFromId
     };
-
-    installDetailChannelLinkPatch();
 })();

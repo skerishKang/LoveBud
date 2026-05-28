@@ -166,6 +166,12 @@
         hintEl.hidden = true;
     }
 
+    function updatePublicViewerDetailChannelLink(data) {
+        var helper = window.LoveBudPublicViewerDetailChannelLink;
+        if (!helper || typeof helper.renderDetailChannelLink !== 'function') return;
+        helper.renderDetailChannelLink(data);
+    }
+
     function createPublicViewerCurrentMomentImageBoundary(deps) {
         var resolveMemoryThumbnail = deps && typeof deps.resolveMemoryThumbnail === 'function'
             ? deps.resolveMemoryThumbnail
@@ -390,6 +396,7 @@
             delegatedUpdateDetailPanel(data);
             updateCurrentMomentBadge(data);
             updateCurrentMomentTitle(data);
+            updatePublicViewerDetailChannelLink(data);
             updatePublicViewerCurrentMomentHint();
             updateCurrentMomentImage(data);
             updatePublicViewerCurrentMomentDate(data);
@@ -409,6 +416,7 @@
         createPublicViewerCurrentMomentBadgeBoundary: createPublicViewerCurrentMomentBadgeBoundary,
         createPublicViewerCurrentMomentTitleBoundary: createPublicViewerCurrentMomentTitleBoundary,
         updatePublicViewerCurrentMomentHint: updatePublicViewerCurrentMomentHint,
+        updatePublicViewerDetailChannelLink: updatePublicViewerDetailChannelLink,
         createPublicViewerCurrentMomentImageBoundary: createPublicViewerCurrentMomentImageBoundary,
         updatePublicViewerCurrentMomentDate: updatePublicViewerCurrentMomentDate,
         createPublicViewerMemoBodyBoundary: createPublicViewerMemoBodyBoundary,
