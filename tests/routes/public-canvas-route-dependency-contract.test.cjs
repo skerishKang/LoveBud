@@ -276,6 +276,10 @@ test('public canvas entry wrapper exposes boundary and setup methods', () => {
   assert.ok(entrySrc.includes('트리를 불러올 수 없어요'), 'entry wrapper load failure state must preserve Korean failure title');
   assert.ok(entrySrc.includes('Public endpoint returned an error'), 'entry wrapper load failure state must preserve fallback failure message');
   assert.ok(entrySrc.includes('error_outline'), 'entry wrapper load failure state must preserve failure icon');
+  assert.ok(entrySrc.includes('installPublicEditorReadOnlyState'), 'entry wrapper must expose installPublicEditorReadOnlyState');
+  assert.ok(entrySrc.includes('__editorCanvasInstance'), 'entry wrapper read-only state helper must store editor canvas instance');
+  assert.ok(entrySrc.includes('LoveBudEditor'), 'entry wrapper read-only state helper must preserve LoveBudEditor global state');
+  assert.ok(entrySrc.includes('canEdit = false'), 'entry wrapper read-only state helper must force canEdit false');
   assert.ok(entrySrc.includes('Object.freeze'), 'entry wrapper must freeze the exported namespace');
 });
 
@@ -329,4 +333,12 @@ test('public canvas init delegates metrics/profile setup through entry wrapper',
   assert.ok(initSrc.includes('canvasEntry.createLoadFailureState'), 'public canvas init must delegate load failure state through entry wrapper');
   assert.ok(initSrc.includes('typeof canvasEntry.createLoadFailureState === \'function\''), 'public canvas init must guard delegated load failure state helper');
   assert.ok(initSrc.includes('document.createElement'), 'public canvas init must retain fallback load failure DOM builder');
+  assert.ok(initSrc.includes('installPublicEditorReadOnlyState'), 'public canvas init must delegate public editor read-only state through entry wrapper');
+  assert.ok(initSrc.includes('canvasEntry.installPublicEditorReadOnlyState(canvas, editorCanvas)'), 'public canvas init must pass canvas and editorCanvas to delegated read-only state helper');
+  assert.ok(initSrc.includes('window.LoveBudEditor.canEdit = false'), 'public canvas init must retain fallback canEdit false assignment');
+  assert.ok(initSrc.includes('canvas.__editorCanvasInstance = editorCanvas'), 'public canvas init must retain fallback canvas instance storage');
+  assert.ok(
+    initSrc.indexOf('installPublicEditorReadOnlyState') < initSrc.indexOf('editorCanvas.initCanvas'),
+    'public read-only state setup must remain before editorCanvas.initCanvas'
+  );
 });

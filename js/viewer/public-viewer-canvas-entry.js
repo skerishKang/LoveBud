@@ -260,6 +260,13 @@
         return errState;
     }
 
+    function installPublicEditorReadOnlyState(canvas, editorCanvas) {
+        if (canvas) canvas.__editorCanvasInstance = editorCanvas;
+        globalObject.LoveBudEditor = globalObject.LoveBudEditor || {};
+        globalObject.LoveBudEditor.canEdit = false;
+        return globalObject.LoveBudEditor;
+    }
+
     function createEmptyGuideUpdater(treeMemories) {
         var memories = Array.isArray(treeMemories) ? treeMemories : [];
 
@@ -321,6 +328,7 @@
         createDetailUIOptions: createDetailUIOptions,
         createCanvasOptions: createCanvasOptions,
         createLoadFailureState: createLoadFailureState,
+        installPublicEditorReadOnlyState: installPublicEditorReadOnlyState,
         createEmptyGuideUpdater: createEmptyGuideUpdater,
         installToolbarCompactMode: installToolbarCompactMode,
         getBoundaryState: getBoundaryState
