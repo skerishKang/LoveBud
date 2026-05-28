@@ -36,7 +36,7 @@ test('public canvas init uses the viewer detail UI adapter factory', () => {
   const source = fs.readFileSync('js/viewer/public-canvas-init.js', 'utf8');
 
   assert.ok(source.includes('typeof window.createPublicViewerDetailUI === \'function\''), 'public canvas init waits for the viewer detail adapter');
-  assert.ok(source.includes('window.createPublicViewerDetailUI({'), 'public canvas init creates detail UI through the viewer adapter');
+  assert.ok(source.includes('window.createPublicViewerDetailUI(detailUIOptions)'), 'public canvas init creates detail UI through the viewer adapter with delegated options');
   assert.equal(
     source.includes('typeof window.createEditorDetailUIBuilders === \'function\''),
     false,

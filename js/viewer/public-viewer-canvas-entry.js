@@ -183,6 +183,34 @@
         };
     }
 
+    function createDetailUIOptions(ctx) {
+        var options = ctx || {};
+        var cfg = options.publicCanvasConfig || {};
+        var roa = options.readOnlyActions || {};
+        var sel = options.selectionState || {};
+
+        return {
+            detailPanel: options.detailPanel,
+            i18n: options.i18n,
+            resolveTreeTitleText: cfg.resolveTreeTitleText,
+            resolveHintText: cfg.resolveHintText,
+            resolveInfoText: cfg.resolveInfoText,
+            resolveMemoryThumbnail: cfg.resolveMemoryThumbnail,
+            escapeHtml: options.escapeHtml,
+            isRootMemory: options.isRootMemory,
+            getCanonicalRootId: options.getCanonicalRootId,
+            getSelectedNodeId: sel.getSelectedNodeId,
+            getTreeMemories: cfg.getTreeMemories,
+            getCurrentTreeData: cfg.getCurrentTreeData,
+            getLocalSaveMode: roa.getLocalSaveMode,
+            showToast: roa.showToast,
+            updateTreeVisibility: roa.noopAsync,
+            openCurrentMomentDetail: roa.noop,
+            focusSelectedMoment: roa.noop,
+            updateSelectedMemoryFields: roa.noopFalseAsync
+        };
+    }
+
     function createEmptyGuideUpdater(treeMemories) {
         var memories = Array.isArray(treeMemories) ? treeMemories : [];
 
@@ -241,6 +269,7 @@
         createMemorySelectors: createMemorySelectors,
         createPublicCanvasConfig: createPublicCanvasConfig,
         createSelectionState: createSelectionState,
+        createDetailUIOptions: createDetailUIOptions,
         createEmptyGuideUpdater: createEmptyGuideUpdater,
         installToolbarCompactMode: installToolbarCompactMode,
         getBoundaryState: getBoundaryState
