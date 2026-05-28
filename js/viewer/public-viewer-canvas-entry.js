@@ -26,6 +26,24 @@
         return isCanvasRuntimeReady() && isDetailRuntimeReady();
     }
 
+    function setupPublicRoute(ctx) {
+        var options = ctx || {};
+        var loc = options.location || globalObject.location || {};
+        var doc = options.document || globalObject.document;
+        var body = options.body || (doc && doc.body) || null;
+        var params = new globalObject.URLSearchParams(loc.search || '');
+        var treeId = params.get('treeId');
+
+        if (body && body.classList) {
+            body.classList.add('editor-readonly');
+            body.classList.remove('editor-preload');
+        }
+
+        return {
+            treeId: treeId
+        };
+    }
+
     function installPublicMetrics(canvas) {
         var geometry = globalObject.EditorCanvasGeometry;
         if (!geometry || typeof geometry.getMetrics !== 'function') return;
@@ -352,6 +370,7 @@
         isCanvasRuntimeReady: isCanvasRuntimeReady,
         isDetailRuntimeReady: isDetailRuntimeReady,
         isPublicRuntimeReady: isPublicRuntimeReady,
+        setupPublicRoute: setupPublicRoute,
         installPublicMetrics: installPublicMetrics,
         installPublicViewportProfile: installPublicViewportProfile,
         createReadOnlyActions: createReadOnlyActions,

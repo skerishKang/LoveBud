@@ -46,8 +46,19 @@
     }
 
     function initPublicCanvas() {
-        var params = new URLSearchParams(window.location.search);
-        var treeId = params.get('treeId');
+        var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
+        var routeSetup = canvasEntry && typeof canvasEntry.setupPublicRoute === 'function'
+            ? canvasEntry.setupPublicRoute()
+            : (function() {
+                var params = new URLSearchParams(window.location.search);
+                var treeId = params.get('treeId');
+                document.body.classList.add('editor-readonly');
+                document.body.classList.remove('editor-preload');
+                return { treeId: treeId };
+            })();
+
+        var treeId = routeSetup && routeSetup.treeId;
+
         if (!treeId) {
             var errEl = document.createElement('div');
             errEl.style.cssText = 'padding:2rem;text-align:center;font-size:1.2rem;';
@@ -55,10 +66,6 @@
             document.body.appendChild(errEl);
             return;
         }
-
-        // Apply editor-readonly class for CSS hiding of mutation controls
-        document.body.classList.add('editor-readonly');
-        document.body.classList.remove('editor-preload');
 
         var bridge = window.LoveBudPublicCanvasBridge;
         if (!bridge || typeof bridge.loadPublicTreeData !== 'function') {
