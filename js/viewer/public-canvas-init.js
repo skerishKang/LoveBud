@@ -79,7 +79,10 @@
             return;
         }
 
-        var bridge = window.LoveBudPublicCanvasBridge;
+        var bridge = canvasEntry && typeof canvasEntry.getPublicCanvasBridge === 'function'
+            ? canvasEntry.getPublicCanvasBridge()
+            : window.LoveBudPublicCanvasBridge;
+
         if (!bridge || typeof bridge.loadPublicTreeData !== 'function') {
             console.error('[public-canvas] Bridge not loaded');
             return;
