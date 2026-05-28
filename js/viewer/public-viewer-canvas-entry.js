@@ -267,6 +267,34 @@
         return globalObject.LoveBudEditor;
     }
 
+    function runPublicPostInitRefresh(ctx) {
+        var options = ctx || {};
+        var selectionState = options.selectionState || {};
+
+        if (typeof options.updateCanvasEmptyGuide === 'function') {
+            options.updateCanvasEmptyGuide();
+        }
+
+        if (typeof options.updateSidebarStatus === 'function') {
+            options.updateSidebarStatus();
+        }
+
+        var currentEditingMemory = typeof selectionState.getCurrentEditingMemory === 'function'
+            ? selectionState.getCurrentEditingMemory()
+            : null;
+
+        if (currentEditingMemory) {
+            if (typeof options.updateDetailPanel === 'function') {
+                options.updateDetailPanel(currentEditingMemory);
+            }
+            if (typeof options.setDetailEmptyState === 'function') {
+                options.setDetailEmptyState(false);
+            }
+        }
+
+        return currentEditingMemory || null;
+    }
+
     function createEmptyGuideUpdater(treeMemories) {
         var memories = Array.isArray(treeMemories) ? treeMemories : [];
 
@@ -329,6 +357,7 @@
         createCanvasOptions: createCanvasOptions,
         createLoadFailureState: createLoadFailureState,
         installPublicEditorReadOnlyState: installPublicEditorReadOnlyState,
+        runPublicPostInitRefresh: runPublicPostInitRefresh,
         createEmptyGuideUpdater: createEmptyGuideUpdater,
         installToolbarCompactMode: installToolbarCompactMode,
         getBoundaryState: getBoundaryState

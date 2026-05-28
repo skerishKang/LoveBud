@@ -280,6 +280,11 @@ test('public canvas entry wrapper exposes boundary and setup methods', () => {
   assert.ok(entrySrc.includes('__editorCanvasInstance'), 'entry wrapper read-only state helper must store editor canvas instance');
   assert.ok(entrySrc.includes('LoveBudEditor'), 'entry wrapper read-only state helper must preserve LoveBudEditor global state');
   assert.ok(entrySrc.includes('canEdit = false'), 'entry wrapper read-only state helper must force canEdit false');
+  assert.ok(entrySrc.includes('runPublicPostInitRefresh'), 'entry wrapper must expose runPublicPostInitRefresh');
+  assert.ok(entrySrc.includes('updateCanvasEmptyGuide'), 'entry wrapper post-init refresh must call empty guide updater');
+  assert.ok(entrySrc.includes('updateSidebarStatus'), 'entry wrapper post-init refresh must call sidebar status updater');
+  assert.ok(entrySrc.includes('getCurrentEditingMemory'), 'entry wrapper post-init refresh must read current editing memory');
+  assert.ok(entrySrc.includes('setDetailEmptyState(false)'), 'entry wrapper post-init refresh must preserve non-empty detail state update');
   assert.ok(entrySrc.includes('Object.freeze'), 'entry wrapper must freeze the exported namespace');
 });
 
@@ -340,5 +345,17 @@ test('public canvas init delegates metrics/profile setup through entry wrapper',
   assert.ok(
     initSrc.indexOf('installPublicEditorReadOnlyState') < initSrc.indexOf('editorCanvas.initCanvas'),
     'public read-only state setup must remain before editorCanvas.initCanvas'
+  );
+  assert.ok(initSrc.includes('runPublicPostInitRefresh'), 'public canvas init must delegate post-init refresh through entry wrapper');
+  assert.ok(initSrc.includes('canvasEntry.runPublicPostInitRefresh'), 'public canvas init must call delegated post-init refresh helper');
+  assert.ok(initSrc.includes('updateCanvasEmptyGuide: updateCanvasEmptyGuide'), 'public canvas init must pass empty guide updater into post-init refresh helper');
+  assert.ok(initSrc.includes('updateSidebarStatus: updateSidebarStatus'), 'public canvas init must pass sidebar updater into post-init refresh helper');
+  assert.ok(initSrc.includes('selectionState: selectionState'), 'public canvas init must pass selectionState into post-init refresh helper');
+  assert.ok(initSrc.includes('updateDetailPanel: updateDetailPanel'), 'public canvas init must pass detail panel updater into post-init refresh helper');
+  assert.ok(initSrc.includes('setDetailEmptyState: setDetailEmptyState'), 'public canvas init must pass empty-state updater into post-init refresh helper');
+  assert.ok(initSrc.includes('var currentEditingMemory = selectionState.getCurrentEditingMemory();'), 'public canvas init must retain fallback current memory refresh');
+  assert.ok(
+    initSrc.indexOf('editorCanvas.initCanvas') < initSrc.indexOf('runPublicPostInitRefresh'),
+    'public post-init refresh must remain after editorCanvas.initCanvas'
   );
 });
