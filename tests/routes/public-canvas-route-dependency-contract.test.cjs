@@ -272,6 +272,10 @@ test('public canvas entry wrapper exposes boundary and setup methods', () => {
   assert.ok(entrySrc.includes('resolveMemoryThumbnail'), 'entry wrapper canvas options must preserve thumbnail resolver');
   assert.ok(entrySrc.includes('openAddMoment'), 'entry wrapper canvas options must preserve read-only add moment callback');
   assert.ok(entrySrc.includes('canEdit: false'), 'entry wrapper canvas options must force read-only mode');
+  assert.ok(entrySrc.includes('createLoadFailureState'), 'entry wrapper must expose createLoadFailureState');
+  assert.ok(entrySrc.includes('트리를 불러올 수 없어요'), 'entry wrapper load failure state must preserve Korean failure title');
+  assert.ok(entrySrc.includes('Public endpoint returned an error'), 'entry wrapper load failure state must preserve fallback failure message');
+  assert.ok(entrySrc.includes('error_outline'), 'entry wrapper load failure state must preserve failure icon');
   assert.ok(entrySrc.includes('Object.freeze'), 'entry wrapper must freeze the exported namespace');
 });
 
@@ -321,4 +325,8 @@ test('public canvas init delegates metrics/profile setup through entry wrapper',
     false,
     'public canvas init should not construct editor canvas options inline'
   );
+  assert.ok(initSrc.includes('createLoadFailureState'), 'public canvas init must keep createLoadFailureState call path');
+  assert.ok(initSrc.includes('canvasEntry.createLoadFailureState'), 'public canvas init must delegate load failure state through entry wrapper');
+  assert.ok(initSrc.includes('typeof canvasEntry.createLoadFailureState === \'function\''), 'public canvas init must guard delegated load failure state helper');
+  assert.ok(initSrc.includes('document.createElement'), 'public canvas init must retain fallback load failure DOM builder');
 });

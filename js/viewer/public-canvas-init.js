@@ -17,6 +17,11 @@
     }
 
     function createLoadFailureState(message) {
+        var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
+        if (canvasEntry && typeof canvasEntry.createLoadFailureState === 'function') {
+            return canvasEntry.createLoadFailureState(message);
+        }
+
         var errState = document.createElement('div');
         var icon = document.createElement('span');
         var title = document.createElement('h2');
