@@ -146,6 +146,43 @@
         };
     }
 
+    function createSelectionState(initialSelectedNodeId) {
+        var selectedNodeId = initialSelectedNodeId || null;
+        var currentEditingMemory = null;
+
+        function getSelectedNodeId() {
+            return selectedNodeId;
+        }
+
+        function setSelectedNodeId(nextSelectedNodeId) {
+            selectedNodeId = nextSelectedNodeId || null;
+            return selectedNodeId;
+        }
+
+        function getCurrentEditingMemory() {
+            return currentEditingMemory;
+        }
+
+        function setCurrentEditingMemory(memory) {
+            currentEditingMemory = memory || null;
+            return currentEditingMemory;
+        }
+
+        function selectMemory(memory) {
+            currentEditingMemory = memory || null;
+            selectedNodeId = memory && memory.id ? memory.id : selectedNodeId;
+            return currentEditingMemory;
+        }
+
+        return {
+            getSelectedNodeId: getSelectedNodeId,
+            setSelectedNodeId: setSelectedNodeId,
+            getCurrentEditingMemory: getCurrentEditingMemory,
+            setCurrentEditingMemory: setCurrentEditingMemory,
+            selectMemory: selectMemory
+        };
+    }
+
     function createEmptyGuideUpdater(treeMemories) {
         var memories = Array.isArray(treeMemories) ? treeMemories : [];
 
@@ -203,6 +240,7 @@
         createReadOnlyActions: createReadOnlyActions,
         createMemorySelectors: createMemorySelectors,
         createPublicCanvasConfig: createPublicCanvasConfig,
+        createSelectionState: createSelectionState,
         createEmptyGuideUpdater: createEmptyGuideUpdater,
         installToolbarCompactMode: installToolbarCompactMode,
         getBoundaryState: getBoundaryState
