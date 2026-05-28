@@ -1,0 +1,77 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('fs');
+
+function getScriptSrcs() {
+  const html = fs.readFileSync('pages/view.html', 'utf8');
+  return [...html.matchAll(/<script(?:\s+type="module")?\s+src="([^"]+)"/g)]
+    .map((match) => String(match[1] || '').split('?')[0]);
+}
+
+function hasScript(scripts, needle) {
+  return scripts.some((src) => src.includes(needle));
+}
+
+test('public viewer keeps intentional shared canvas runtime scripts', () => {
+  const scripts = getScriptSrcs();
+
+  const sharedCanvasRuntime = [
+    'js/editor/editor-root-helpers.js',
+    'js/editor/editor-canvas-layout.js',
+    'js/editor/editor-canvas-node.js',
+    'js/editor/editor-canvas-interaction.js',
+    'js/editor/editor-canvas-viewport.js',
+    'js/editor/editor-canvas-viewport-scale.js',
+    'js/editor/editor-canvas-viewport-projection.js',
+    'js/editor/editor-canvas-viewport-targets.js',
+    'js/editor/editor-canvas-viewport-feedback.js',
+    'js/editor/editor-canvas-viewport-state.js',
+    'js/editor/editor-canvas-viewport-fit.js',
+    'js/editor/editor-canvas-viewport-initial.js',
+    'js/editor/editor-canvas-viewport-branches.js',
+    'js/editor/editor-canvas-viewport-actions.js',
+    'js/editor/editor-canvas-viewport-controls.js',
+    'js/editor/editor-canvas-edges.js',
+    'js/editor/editor-utils.js',
+    'js/editor/editor-canvas-geometry.js',
+    'js/editor/editor-canvas-layout-storage.js',
+    'js/editor/editor-canvas-layout-transition.js',
+    'js/editor/editor-canvas.js',
+  ];
+
+  sharedCanvasRuntime.forEach((needle) => {
+    assert.ok(
+      hasScript(scripts, needle),
+      `pages/view.html intentionally keeps shared canvas runtime until a viewer canvas adapter replaces it: ${needle}`
+    );
+  });
+});
+
+test('public viewer excludes editor authoring-only script stacks', () => {
+  const scripts = getScriptSrcs();
+
+  const blockedEditorOnlyScripts = [
+    'js/editor/editor-floating-toolbar-actions.js',
+    'js/editor/editor-floating-toolbar-keyboard.js',
+    'js/editor/editor-floating-toolbar-tooltip.js',
+    'js/editor/editor-floating-toolbar-dropdown.js',
+    'js/editor/editor-floating-toolbar-positioning.js',
+    'js/editor/editor-floating-toolbar.js',
+    'js/editor/editor-mobile-bottom-bar.js',
+    'js/editor/editor-url-drop.js',
+    'js/editor/editor-save-status-ui.js',
+    'js/editor/editor-empty-guide-ui.js',
+    'js/editor/editor-detail-inline-edit.js',
+    'js/editor/editor-detail-ui.js',
+    'js/editor/templates/editor-floating-toolbar-template.js',
+    'js/editor/templates/editor-empty-guide-template.js',
+  ];
+
+  blockedEditorOnlyScripts.forEach((needle) => {
+    assert.equal(
+      hasScript(scripts, needle),
+      false,
+      `pages/view.html must not load editor authoring-only script: ${needle}`
+    );
+  });
+});
