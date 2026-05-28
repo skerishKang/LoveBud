@@ -146,6 +146,20 @@
         };
     }
 
+    function createEmptyGuideUpdater(treeMemories) {
+        var memories = Array.isArray(treeMemories) ? treeMemories : [];
+
+        return function updateCanvasEmptyGuide() {
+            var doc = globalObject.document;
+            var guide = doc && typeof doc.getElementById === 'function'
+                ? doc.getElementById('canvasEmptyGuide')
+                : null;
+            if (!guide) return;
+            var hasMoments = memories.length > 0;
+            guide.classList.toggle('editor-canvas-empty-guide-hidden', hasMoments);
+        };
+    }
+
     function getBoundaryState() {
         return {
             hasCanvasRuntime: hasCanvasRuntime(),
@@ -165,6 +179,7 @@
         createReadOnlyActions: createReadOnlyActions,
         createMemorySelectors: createMemorySelectors,
         createPublicCanvasConfig: createPublicCanvasConfig,
+        createEmptyGuideUpdater: createEmptyGuideUpdater,
         getBoundaryState: getBoundaryState
     });
 })();

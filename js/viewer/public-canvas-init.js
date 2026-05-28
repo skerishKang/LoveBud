@@ -128,12 +128,14 @@
                     };
 
                 // Set up empty guide UI
-                var updateCanvasEmptyGuide = function() {
-                    var guide = document.getElementById('canvasEmptyGuide');
-                    if (!guide) return;
-                    var hasMoments = normalized.treeMemories.length > 0;
-                    guide.classList.toggle('editor-canvas-empty-guide-hidden', hasMoments);
-                };
+                var updateCanvasEmptyGuide = canvasEntry && typeof canvasEntry.createEmptyGuideUpdater === 'function'
+                    ? canvasEntry.createEmptyGuideUpdater(normalized.treeMemories)
+                    : function() {
+                        var guide = document.getElementById('canvasEmptyGuide');
+                        if (!guide) return;
+                        var hasMoments = normalized.treeMemories.length > 0;
+                        guide.classList.toggle('editor-canvas-empty-guide-hidden', hasMoments);
+                    };
 
                 // Resolve root helpers via entry wrapper with fallback
                 var rootUtils = window.LoveBudEditorUtils || {};
