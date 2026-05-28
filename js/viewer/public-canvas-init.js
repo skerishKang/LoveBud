@@ -93,7 +93,14 @@
             var memories = result.memories;
 
             // Normalize to canvas shape
-            var normalized = bridge.normalizeForCanvas(tree, memories);
+            var normalized = canvasEntry && typeof canvasEntry.normalizePublicCanvasData === 'function'
+                ? canvasEntry.normalizePublicCanvasData(bridge, tree, memories)
+                : bridge.normalizeForCanvas(tree, memories);
+
+            if (!normalized) {
+                normalized = bridge.normalizeForCanvas(tree, memories);
+            }
+
             console.log('[public-canvas] Loaded tree:', normalized.treeData.id, 'memories:', normalized.treeMemories.length);
 
             // Wait for all required modules

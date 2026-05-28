@@ -382,6 +382,13 @@
         return bridge;
     }
 
+    function normalizePublicCanvasData(bridge, tree, memories) {
+        if (!bridge || typeof bridge.normalizeForCanvas !== 'function') {
+            return null;
+        }
+        return bridge.normalizeForCanvas(tree, memories);
+    }
+
     globalObject.LoveBudPublicViewerCanvasEntry = Object.freeze({
         getCanvasRuntime: getCanvasRuntime,
         hasCanvasRuntime: hasCanvasRuntime,
@@ -404,6 +411,7 @@
         createEmptyGuideUpdater: createEmptyGuideUpdater,
         installToolbarCompactMode: installToolbarCompactMode,
         getBoundaryState: getBoundaryState,
-        getPublicCanvasBridge: getPublicCanvasBridge
+        getPublicCanvasBridge: getPublicCanvasBridge,
+        normalizePublicCanvasData: normalizePublicCanvasData
     });
 })();
