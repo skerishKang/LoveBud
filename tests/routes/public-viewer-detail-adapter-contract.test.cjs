@@ -29,13 +29,14 @@ function getDetailAdapterSlice() {
   return source.slice(start, end);
 }
 
-test('public viewer detail adapter keeps explicit editor detail UI delegation seam', () => {
+test('public viewer detail adapter owns detail UI object shell', () => {
   const adapter = getDetailAdapterSlice();
 
-  assert.ok(adapter.includes("typeof window.createEditorDetailUI !== 'function'"));
-  assert.ok(adapter.includes("throw new Error('createEditorDetailUI is required for public viewer detail UI adapter')"));
-  assert.ok(adapter.includes('var detailUI = window.createEditorDetailUI(deps);'));
-  assert.ok(source.includes('delegatesToEditorDetailUI: true'));
+  assert.ok(adapter.includes("var detailUI = {};"), 'public viewer adapter creates its own detail UI shell');
+  assert.equal(adapter.includes('window.createEditorDetailUI(deps)'), false, 'public viewer adapter no longer constructs through editor detail factory');
+  assert.equal(adapter.includes('delegatedUpdateDetailPanel(data);'), false, 'public viewer adapter no longer delegates detail panel rendering');
+  assert.ok(source.includes('delegatesToEditorDetailUI: false'), 'public viewer adapter marks editor detail delegation as removed');
+  assert.ok(adapter.includes('detailUI.updateDetailPanel = function updatePublicViewerDetailPanel(data)'), 'public viewer adapter owns the updateDetailPanel function');
 });
 
 test('public viewer detail adapter owns detail render flow from heading boundary', () => {

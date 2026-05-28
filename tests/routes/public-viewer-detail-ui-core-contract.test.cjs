@@ -52,7 +52,8 @@ test('public viewer detail UI adapter owns focus selected button updates', () =>
   const source = fs.readFileSync('js/viewer/public-viewer-detail-ui.js', 'utf8');
 
   assert.ok(source.includes('function createPublicViewerDetailUI(deps)'), 'viewer detail adapter exposes createPublicViewerDetailUI');
-  assert.ok(source.includes('window.createEditorDetailUI(deps)'), 'viewer detail adapter delegates to current detail UI core');
+  assert.ok(source.includes("var detailUI = {};"), 'viewer detail adapter creates its own detail UI object');
+  assert.equal(source.includes('window.createEditorDetailUI(deps)'), false, 'viewer detail adapter no longer constructs through editor detail factory');
   assert.ok(source.includes('function createPublicViewerUpdateFocusSelectedBtn(deps)'), 'viewer detail adapter exposes focus updater factory');
   assert.ok(source.includes('detailUI.updateFocusSelectedBtn = createPublicViewerUpdateFocusSelectedBtn(deps)'), 'viewer detail adapter assigns focus updater');
   assert.ok(source.includes('document.getElementById(\'focusSelectedBtn\')'), 'viewer focus updater targets focusSelectedBtn');
@@ -249,9 +250,10 @@ test('public viewer detail UI adapter owns visible detail heading boundary', () 
 test('public viewer detail UI adapter owns detail panel render flow', () => {
   const source = fs.readFileSync('js/viewer/public-viewer-detail-ui.js', 'utf8');
 
-  assert.ok(source.includes('var detailUI = window.createEditorDetailUI(deps)'), 'viewer adapter still creates detail UI object through editor factory for now');
+  assert.ok(source.includes("var detailUI = {};"), 'viewer adapter creates its own detail UI shell');
   assert.equal(source.includes('var delegatedUpdateDetailPanel'), false, 'viewer adapter no longer captures delegated detail panel renderer');
   assert.equal(source.includes('delegatedUpdateDetailPanel(data);'), false, 'viewer adapter no longer delegates detail panel rendering');
+  assert.ok(source.includes('delegatesToEditorDetailUI: false'), 'viewer adapter marks editor detail delegation as removed');
   assert.ok(source.includes('var updateTreeMeta = createPublicViewerTreeMetaBoundary(deps)'), 'viewer adapter creates tree meta updater');
   assert.ok(source.includes('var updateCurrentMomentBadge = createPublicViewerCurrentMomentBadgeBoundary(deps)'), 'viewer adapter creates the badge updater');
   assert.ok(source.includes('var updateCurrentMomentImage = createPublicViewerCurrentMomentImageBoundary(deps)'), 'viewer adapter creates the image updater');

@@ -37,7 +37,8 @@ test('public viewer detail template exposes the current rendered output mounts',
 test('public viewer adapter no longer delegates detail rendering to editor core', () => {
   const adapterSrc = readFile('js/viewer/public-viewer-detail-ui.js');
 
-  assert.ok(adapterSrc.includes('window.createEditorDetailUI(deps)'), 'public viewer adapter still creates detail UI via editor factory');
+  assert.ok(adapterSrc.includes("var detailUI = {};"), 'public viewer adapter creates its own detail UI shell');
+  assert.equal(adapterSrc.includes('window.createEditorDetailUI(deps)'), false, 'public viewer adapter no longer constructs through editor detail factory');
   assert.equal(adapterSrc.includes('var delegatedUpdateDetailPanel'), false, 'public viewer adapter no longer captures delegated detail update');
   assert.equal(adapterSrc.includes('delegatedUpdateDetailPanel(data);'), false, 'public viewer adapter no longer delegates detail rendering to editor core');
   assert.ok(adapterSrc.includes('updateReadOnlyReactionSummary(data);'), 'public viewer adapter applies read-only reaction summary');
