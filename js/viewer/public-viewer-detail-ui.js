@@ -507,6 +507,26 @@
         };
     }
 
+    function createPublicViewerDetailHeadingBoundary(deps) {
+        var detailPanel = deps && deps.detailPanel;
+        var i18n = deps && typeof deps.i18n === 'function'
+            ? deps.i18n
+            : function() { return ''; };
+
+        function getText(key, fallback) {
+            var text = i18n(key);
+            return text && text !== key ? text : fallback;
+        }
+
+        return function updatePublicViewerDetailHeading() {
+            var headerEl = detailPanel && typeof detailPanel.querySelector === 'function'
+                ? detailPanel.querySelector('h3')
+                : document.querySelector('#detailPanel h3');
+            if (!headerEl) return;
+            headerEl.textContent = getText('editor_current_hub_heading', '현재 순간 허브');
+        };
+    }
+
     function createPublicViewerSelectedMomentActionsBoundary(deps) {
         var openCurrentMomentDetail = deps && typeof deps.openCurrentMomentDetail === 'function'
             ? deps.openCurrentMomentDetail
@@ -546,6 +566,7 @@
         }
 
         var detailUI = window.createEditorDetailUI(deps);
+        var updateDetailHeading = createPublicViewerDetailHeadingBoundary(deps);
         var updateTreeMeta = createPublicViewerTreeMetaBoundary(deps);
         var updateCurrentMomentBadge = createPublicViewerCurrentMomentBadgeBoundary(deps);
         var updateCurrentMomentTitle = createPublicViewerCurrentMomentTitleBoundary(deps);
@@ -565,6 +586,7 @@
         installSelectedMomentActions();
         detailUI.updateDetailPanel = function updatePublicViewerDetailPanel(data) {
             delegatedUpdateDetailPanel(data);
+            updateDetailHeading();
             updateTreeMeta(data);
             updateCurrentMomentBadge(data);
             updateCurrentMomentTitle(data);
@@ -583,6 +605,7 @@
     window.createPublicViewerDetailUI = createPublicViewerDetailUI;
     window.LoveBudPublicViewerDetailUI = {
         createPublicViewerDetailUI: createPublicViewerDetailUI,
+        createPublicViewerDetailHeadingBoundary: createPublicViewerDetailHeadingBoundary,
         createPublicViewerUpdateFocusSelectedBtn: createPublicViewerUpdateFocusSelectedBtn,
         updatePublicViewerSidebarStatus: updatePublicViewerSidebarStatus,
         createPublicViewerSetDetailEmptyState: createPublicViewerSetDetailEmptyState,

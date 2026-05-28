@@ -218,6 +218,31 @@ test('public viewer detail UI adapter owns memory actions display boundary', () 
   assert.ok(delegatedIndex < memoryActionsIndex, 'memory actions update runs after delegated detail render');
 });
 
+test('public viewer detail UI adapter owns visible detail heading boundary', () => {
+  const source = fs.readFileSync('js/viewer/public-viewer-detail-ui.js', 'utf8');
+
+  assert.ok(source.includes('function createPublicViewerDetailHeadingBoundary(deps)'), 'viewer adapter exposes detail heading boundary factory');
+  assert.ok(source.includes("detailPanel.querySelector('h3')"), 'heading boundary uses detailPanel h3 querySelector');
+  assert.ok(source.includes("document.querySelector('#detailPanel h3')"), 'heading boundary has fallback selector');
+  assert.ok(source.includes('editor_current_hub_heading'), 'heading boundary references editor_current_hub_heading i18n key');
+  assert.ok(source.includes("'현재 순간 허브'"), 'heading boundary has explicit fallback text');
+  assert.ok(source.includes('headerEl.textContent'), 'heading boundary uses textContent to set heading');
+  assert.ok(source.includes('createPublicViewerDetailHeadingBoundary: createPublicViewerDetailHeadingBoundary'), 'viewer adapter publishes heading boundary on namespace');
+  assert.ok(source.includes('var updateDetailHeading = createPublicViewerDetailHeadingBoundary(deps)'), 'viewer adapter creates heading updater');
+  assert.ok(source.includes('updateDetailHeading();'), 'viewer adapter runs heading update in detail panel flow');
+
+  const panelStart = source.indexOf('detailUI.updateDetailPanel = function');
+  const panelEnd = source.indexOf('};', panelStart);
+  const panelSource = source.slice(panelStart, panelEnd);
+
+  const delegatedIndex = panelSource.indexOf('delegatedUpdateDetailPanel(data);');
+  const headingIndex = panelSource.indexOf('updateDetailHeading();');
+  const treeMetaIndex = panelSource.indexOf('updateTreeMeta(data);');
+
+  assert.ok(delegatedIndex < headingIndex, 'heading update runs after delegated detail render');
+  assert.ok(headingIndex < treeMetaIndex, 'heading update runs before tree meta post-processing');
+});
+
 test('public viewer detail UI adapter wraps detail panel updates with viewer-owned post-processing', () => {
   const source = fs.readFileSync('js/viewer/public-viewer-detail-ui.js', 'utf8');
 
@@ -227,9 +252,11 @@ test('public viewer detail UI adapter wraps detail panel updates with viewer-own
   assert.ok(source.includes('var updateCurrentMomentImage = createPublicViewerCurrentMomentImageBoundary(deps)'), 'viewer adapter creates the image updater');
   assert.ok(source.includes('var updateReadOnlyReactionSummary = createPublicViewerReadOnlyReactionSummaryBoundary(deps)'), 'viewer adapter creates the read-only reaction updater');
   assert.ok(source.includes('var updateMemoryActions = createPublicViewerMemoryActionsBoundary(deps)'), 'viewer adapter creates memory actions updater');
+  assert.ok(source.includes('var updateDetailHeading = createPublicViewerDetailHeadingBoundary(deps)'), 'viewer adapter creates heading updater');
   assert.ok(source.includes('detailUI.updateDetailPanel = function updatePublicViewerDetailPanel(data)'), 'viewer adapter wraps updateDetailPanel for public viewer');
   assert.ok(source.includes('delegatedUpdateDetailPanel(data);'), 'viewer wrapper runs delegated detail rendering first');
-  assert.ok(source.includes('updateTreeMeta(data);'), 'viewer wrapper applies tree meta post-processing after delegated rendering');
+  assert.ok(source.includes('updateDetailHeading();'), 'viewer wrapper applies heading post-processing after delegated render');
+  assert.ok(source.includes('updateTreeMeta(data);'), 'viewer wrapper applies tree meta post-processing after heading');
   assert.ok(source.includes('updateCurrentMomentBadge(data);'), 'viewer wrapper applies badge post-processing after delegated rendering');
   assert.ok(source.includes('updatePublicViewerCurrentMomentHint();'), 'viewer wrapper applies hint post-processing after badge post-processing');
   assert.ok(source.includes('updateCurrentMomentImage(data);'), 'viewer wrapper applies image post-processing after hint post-processing');
