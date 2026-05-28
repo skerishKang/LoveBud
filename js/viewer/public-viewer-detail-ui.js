@@ -373,12 +373,122 @@
         };
     }
 
+    function createPublicViewerTreeMetaBoundary(deps) {
+        var i18n = deps && typeof deps.i18n === 'function'
+            ? deps.i18n
+            : function() { return ''; };
+        var resolveTreeTitleText = deps && typeof deps.resolveTreeTitleText === 'function'
+            ? deps.resolveTreeTitleText
+            : function(title) { return title || '러브트리'; };
+        var isRootMemory = deps && typeof deps.isRootMemory === 'function'
+            ? deps.isRootMemory
+            : function() { return false; };
+        var getCanonicalRootId = deps && typeof deps.getCanonicalRootId === 'function'
+            ? deps.getCanonicalRootId
+            : function() { return null; };
+        var getTreeMemories = deps && typeof deps.getTreeMemories === 'function'
+            ? deps.getTreeMemories
+            : function() { return []; };
+        var getCurrentTreeData = deps && typeof deps.getCurrentTreeData === 'function'
+            ? deps.getCurrentTreeData
+            : function() { return {}; };
+        var getLocalSaveMode = deps && typeof deps.getLocalSaveMode === 'function'
+            ? deps.getLocalSaveMode
+            : function() { return false; };
+        var showToast = deps && typeof deps.showToast === 'function'
+            ? deps.showToast
+            : function() {};
+
+        function formatI18nText(key, fallback, replacements) {
+            var text = i18n(key) || fallback;
+            if (!text || text === key) text = fallback;
+            if (replacements && typeof replacements === 'object') {
+                Object.keys(replacements).forEach(function(name) {
+                    text = String(text).replace(new RegExp('\\{' + name + '\\}', 'g'), String(replacements[name] ?? ''));
+                });
+            }
+            return text;
+        }
+
+        function createInlineIcon(name, size) {
+            if (typeof window.createEditorDetailUIBuilders === 'function') {
+                var builders = window.createEditorDetailUIBuilders({ formatI18nText: formatI18nText });
+                if (builders && typeof builders.createInlineIcon === 'function') {
+                    return builders.createInlineIcon(name, size);
+                }
+            }
+
+            var icon = document.createElement('span');
+            icon.className = 'material-symbols-outlined';
+            icon.style.fontSize = size || '12px';
+            icon.textContent = name;
+            return icon;
+        }
+
+        function getTreeState() {
+            var canonicalRootId = getCanonicalRootId();
+            var treeMemories = getTreeMemories();
+            var rootMemory = treeMemories.find(function(memory) {
+                return isRootMemory(memory, canonicalRootId);
+            }) || null;
+            var nonRootMemories = treeMemories.filter(function(memory) {
+                return !isRootMemory(memory, canonicalRootId);
+            });
+            var totalMomentCount = treeMemories.length;
+            var visibleMomentCount = nonRootMemories.length > 0 ? nonRootMemories.length : (rootMemory ? 1 : 0);
+
+            return {
+                canonicalRootId: canonicalRootId,
+                treeMemories: treeMemories,
+                rootMemory: rootMemory,
+                nonRootMemories: nonRootMemories,
+                totalMomentCount: totalMomentCount,
+                visibleMomentCount: visibleMomentCount,
+                hasMoments: totalMomentCount > 0,
+                hasVisibleMoments: visibleMomentCount > 0
+            };
+        }
+
+        var boundary = null;
+        if (typeof window.createEditorDetailTreeMetaBoundary === 'function') {
+            boundary = window.createEditorDetailTreeMetaBoundary({
+                i18n: i18n,
+                formatI18nText: formatI18nText,
+                resolveTreeTitleText: resolveTreeTitleText,
+                createInlineIcon: createInlineIcon,
+                showToast: showToast
+            });
+        }
+
+        return function updatePublicViewerTreeMeta(data) {
+            var treeMetaMount = document.getElementById('detailTreeMetaMount');
+            if (!treeMetaMount || !boundary) return;
+
+            var currentTree = getCurrentTreeData() || {};
+            var treeState = getTreeState();
+            var isEmptyState = !!(data && data.isNewTree) && !treeState.hasMoments;
+            var localSaveMode = getLocalSaveMode();
+            var treeId = currentTree.id || new URLSearchParams(window.location.search).get('tree');
+
+            var model = boundary.buildTreeMetaRenderModel({
+                currentTree: currentTree,
+                treeState: treeState,
+                data: data,
+                isEmptyState: isEmptyState,
+                localSaveMode: localSaveMode
+            });
+
+            boundary.renderTreeMetaBoundary(treeMetaMount, model, treeId, data);
+        };
+    }
+
     function createPublicViewerDetailUI(deps) {
         if (typeof window.createEditorDetailUI !== 'function') {
             throw new Error('createEditorDetailUI is required for public viewer detail UI adapter');
         }
 
         var detailUI = window.createEditorDetailUI(deps);
+        var updateTreeMeta = createPublicViewerTreeMetaBoundary(deps);
         var updateCurrentMomentBadge = createPublicViewerCurrentMomentBadgeBoundary(deps);
         var updateCurrentMomentTitle = createPublicViewerCurrentMomentTitleBoundary(deps);
         var updateCurrentMomentImage = createPublicViewerCurrentMomentImageBoundary(deps);
@@ -394,6 +504,7 @@
         detailUI.setDetailEmptyState = createPublicViewerSetDetailEmptyState(deps);
         detailUI.updateDetailPanel = function updatePublicViewerDetailPanel(data) {
             delegatedUpdateDetailPanel(data);
+            updateTreeMeta(data);
             updateCurrentMomentBadge(data);
             updateCurrentMomentTitle(data);
             updatePublicViewerDetailChannelLink(data);
@@ -422,6 +533,7 @@
         createPublicViewerMemoBodyBoundary: createPublicViewerMemoBodyBoundary,
         createPublicViewerCurrentMomentTagsBoundary: createPublicViewerCurrentMomentTagsBoundary,
         createPublicViewerReadOnlyReactionSummaryBoundary: createPublicViewerReadOnlyReactionSummaryBoundary,
+        createPublicViewerTreeMetaBoundary: createPublicViewerTreeMetaBoundary,
         delegatesToEditorDetailUI: true
     };
 })();

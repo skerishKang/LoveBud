@@ -136,6 +136,28 @@ test('public viewer detail UI adapter exposes read-only reaction summary boundar
   assert.equal(boundarySource.includes('from=editor'), false, 'read-only reactions boundary must not navigate through editor detail context');
 });
 
+test('public viewer detail UI adapter renders tree meta via viewer boundary after delegated render', () => {
+  const source = fs.readFileSync('js/viewer/public-viewer-detail-ui.js', 'utf8');
+
+  assert.ok(source.includes('function createPublicViewerTreeMetaBoundary(deps)'), 'viewer adapter exposes tree meta boundary factory');
+  assert.ok(source.includes('window.createEditorDetailTreeMetaBoundary'), 'viewer adapter uses the viewer-provided tree meta boundary');
+  assert.ok(source.includes('detailTreeMetaMount'), 'tree meta boundary targets detailTreeMetaMount');
+  assert.ok(source.includes('boundary.buildTreeMetaRenderModel'), 'tree meta boundary builds the render model');
+  assert.ok(source.includes('boundary.renderTreeMetaBoundary'), 'tree meta boundary renders the model');
+  assert.ok(source.includes('createPublicViewerTreeMetaBoundary: createPublicViewerTreeMetaBoundary'), 'viewer adapter publishes tree meta boundary factory');
+
+  const panelStart = source.indexOf('detailUI.updateDetailPanel = function');
+  const panelEnd = source.indexOf('};', panelStart);
+  const panelSource = source.slice(panelStart, panelEnd);
+
+  const delegatedIndex = panelSource.indexOf('delegatedUpdateDetailPanel(data);');
+  const treeMetaIndex = panelSource.indexOf('updateTreeMeta(data);');
+  const badgeIndex = panelSource.indexOf('updateCurrentMomentBadge(data);');
+
+  assert.ok(delegatedIndex < treeMetaIndex, 'tree meta runs after delegated detail render');
+  assert.ok(treeMetaIndex < badgeIndex, 'tree meta runs before badge post-processing');
+});
+
 test('public viewer detail UI adapter renders channel link via viewer namespace', () => {
   const source = fs.readFileSync('js/viewer/public-viewer-detail-ui.js', 'utf8');
 
@@ -161,11 +183,13 @@ test('public viewer detail UI adapter wraps detail panel updates with viewer-own
   const source = fs.readFileSync('js/viewer/public-viewer-detail-ui.js', 'utf8');
 
   assert.ok(source.includes('var delegatedUpdateDetailPanel = typeof detailUI.updateDetailPanel === \'function\''), 'viewer adapter captures delegated detail panel update');
+  assert.ok(source.includes('var updateTreeMeta = createPublicViewerTreeMetaBoundary(deps)'), 'viewer adapter creates tree meta updater');
   assert.ok(source.includes('var updateCurrentMomentBadge = createPublicViewerCurrentMomentBadgeBoundary(deps)'), 'viewer adapter creates the badge updater');
   assert.ok(source.includes('var updateCurrentMomentImage = createPublicViewerCurrentMomentImageBoundary(deps)'), 'viewer adapter creates the image updater');
   assert.ok(source.includes('var updateReadOnlyReactionSummary = createPublicViewerReadOnlyReactionSummaryBoundary(deps)'), 'viewer adapter creates the read-only reaction updater');
   assert.ok(source.includes('detailUI.updateDetailPanel = function updatePublicViewerDetailPanel(data)'), 'viewer adapter wraps updateDetailPanel for public viewer');
   assert.ok(source.includes('delegatedUpdateDetailPanel(data);'), 'viewer wrapper runs delegated detail rendering first');
+  assert.ok(source.includes('updateTreeMeta(data);'), 'viewer wrapper applies tree meta post-processing after delegated rendering');
   assert.ok(source.includes('updateCurrentMomentBadge(data);'), 'viewer wrapper applies badge post-processing after delegated rendering');
   assert.ok(source.includes('updatePublicViewerCurrentMomentHint();'), 'viewer wrapper applies hint post-processing after badge post-processing');
   assert.ok(source.includes('updateCurrentMomentImage(data);'), 'viewer wrapper applies image post-processing after hint post-processing');
