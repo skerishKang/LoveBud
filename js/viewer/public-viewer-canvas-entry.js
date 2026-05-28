@@ -54,6 +54,16 @@
         viewport.__publicViewProfileInstalled = true;
     }
 
+    function createReadOnlyActions() {
+        return {
+            noop: function() {},
+            noopAsync: function() { return Promise.resolve(); },
+            noopFalseAsync: function() { return Promise.resolve(false); },
+            getLocalSaveMode: function() { return false; },
+            showToast: function(msg) { console.log('[public-canvas]', msg); }
+        };
+    }
+
     function getBoundaryState() {
         return {
             hasCanvasRuntime: hasCanvasRuntime(),
@@ -70,6 +80,7 @@
         isDetailRuntimeReady: isDetailRuntimeReady,
         installPublicMetrics: installPublicMetrics,
         installPublicViewportProfile: installPublicViewportProfile,
+        createReadOnlyActions: createReadOnlyActions,
         getBoundaryState: getBoundaryState
     });
 })();

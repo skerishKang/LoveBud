@@ -142,10 +142,16 @@
 
                 var canonicalRootId = getCanonicalRootId();
 
-                // Create noop stubs for mutation functions
-                var noop = function() {};
-                var noopAsync = function() { return Promise.resolve(); };
-                var noopFalseAsync = function() { return Promise.resolve(false); };
+                // Delegate read-only/no-op actions to entry wrapper
+                var readOnlyActions = canvasEntry && typeof canvasEntry.createReadOnlyActions === 'function'
+                    ? canvasEntry.createReadOnlyActions()
+                    : {
+                        noop: function() {},
+                        noopAsync: function() { return Promise.resolve(); },
+                        noopFalseAsync: function() { return Promise.resolve(false); },
+                        getLocalSaveMode: function() { return false; },
+                        showToast: function(msg) { console.log('[public-canvas]', msg); }
+                    };
 
                 // Initially select first non-root memory or first memory
                 var selectedNodeId = canonicalRootId;
@@ -157,7 +163,6 @@
                 }
 
                 // Initialize detail UI
-                var showToast = function(msg) { console.log('[public-canvas]', msg); };
 
                 var detailUI = window.createPublicViewerDetailUI({
                     detailPanel: detailPanel,
@@ -172,12 +177,12 @@
                     getSelectedNodeId: function() { return selectedNodeId; },
                     getTreeMemories: function() { return normalized.treeMemories; },
                     getCurrentTreeData: function() { return window.currentTreeData || {}; },
-                    getLocalSaveMode: function() { return false; },
-                    showToast: showToast,
-                    updateTreeVisibility: noopAsync,
-                    openCurrentMomentDetail: noop,
-                    focusSelectedMoment: noop,
-                    updateSelectedMemoryFields: noopFalseAsync
+                    getLocalSaveMode: readOnlyActions.getLocalSaveMode,
+                    showToast: readOnlyActions.showToast,
+                    updateTreeVisibility: readOnlyActions.noopAsync,
+                    openCurrentMomentDetail: readOnlyActions.noop,
+                    focusSelectedMoment: readOnlyActions.noop,
+                    updateSelectedMemoryFields: readOnlyActions.noopFalseAsync
                 });
 
                 var setDetailEmptyState = detailUI.setDetailEmptyState;
@@ -219,7 +224,7 @@
                             editorCanvas.updateAffordance();
                         }
                     },
-                    openAddMoment: noop,
+                    openAddMoment: readOnlyActions.noop,
                     canEdit: false
                 });
 
