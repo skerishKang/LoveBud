@@ -175,6 +175,7 @@ test('public canvas route keeps removed editor-only runtime scripts and unused s
     'js/editor/editor-detail-channel-link.js',
     'js/editor/editor-detail-tree-meta.js',
     'js/editor/editor-detail-ui-builders.js',
+    'js/editor/editor-detail-ui.js',
     'js/editor/templates/editor-floating-toolbar-template.js',
     'js/editor/templates/editor-empty-guide-template.js',
   ];
@@ -188,22 +189,24 @@ test('public canvas route keeps removed editor-only runtime scripts and unused s
   });
 });
 
-test('public canvas route currently uses remaining editor detail UI core stack before public init', () => {
+test('public canvas route loads viewer detail helpers before public init', () => {
   const scripts = getScriptSrcs();
 
-  const detailScripts = [
+  const detailHelperScripts = [
     'js/viewer/public-viewer-detail-tree-meta.js',
     'js/viewer/public-viewer-detail-builders.js',
-    'js/editor/editor-detail-ui.js',
   ];
 
-  detailScripts.forEach((needle) => {
-    assert.ok(scriptIncludes(scripts, needle), `view.html currently loads detail dependency: ${needle}`);
+  detailHelperScripts.forEach((needle) => {
+    assert.ok(scriptIncludes(scripts, needle), `view.html loads detail helper: ${needle}`);
     assertScriptOrder(scripts, needle, 'js/viewer/public-canvas-init.js');
   });
 
-  assertScriptOrder(scripts, 'js/viewer/public-viewer-detail-tree-meta.js', 'js/editor/editor-detail-ui.js');
-  assertScriptOrder(scripts, 'js/viewer/public-viewer-detail-builders.js', 'js/editor/editor-detail-ui.js');
+  assertScriptOrder(scripts, 'js/viewer/public-viewer-detail-tree-meta.js', 'js/viewer/public-viewer-detail-ui.js');
+  assertScriptOrder(scripts, 'js/viewer/public-viewer-detail-builders.js', 'js/viewer/public-viewer-detail-ui.js');
+  assertScriptOrder(scripts, 'js/viewer/public-viewer-detail-ui.js', 'js/viewer/public-viewer-detail-channel-link.js');
+  assert.ok(scriptIncludes(scripts, 'js/viewer/public-viewer-detail-ui.js'), 'view.html loads viewer detail UI adapter');
+  assert.ok(scriptIncludes(scripts, 'js/viewer/public-viewer-detail-channel-link.js'), 'view.html loads viewer detail channel link helper');
 });
 
 test('public canvas route delegates detail channel link rendering to viewer helper', () => {
@@ -219,7 +222,7 @@ test('public canvas route delegates detail channel link rendering to viewer help
     scriptIncludes(scripts, 'js/viewer/public-viewer-detail-channel-link.js'),
     'view.html must load viewer detail channel link helper'
   );
-  assertScriptOrder(scripts, 'js/editor/editor-detail-ui.js', 'js/viewer/public-viewer-detail-channel-link.js');
+  assertScriptOrder(scripts, 'js/viewer/public-viewer-detail-ui.js', 'js/viewer/public-viewer-detail-channel-link.js');
   assertScriptOrder(scripts, 'js/viewer/public-viewer-detail-channel-link.js', 'js/viewer/public-canvas-init.js');
   assert.ok(helperSrc.includes('window.LoveBudPublicViewerDetailChannelLink'), 'viewer channel link helper must expose inspectable namespace');
   assert.ok(helperSrc.includes('renderDetailChannelLink'), 'viewer channel link helper must expose renderDetailChannelLink');

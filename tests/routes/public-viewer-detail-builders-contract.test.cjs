@@ -19,6 +19,6 @@ test('public viewer detail builders provide editor core compatibility without ed
   assert.ok(buildersSource.includes('window.createEditorDetailSidebarStatusBoundary = createNoopSidebarStatusBoundary'), 'sidebar status fallback is published only when missing');
   assert.equal(viewHtml.includes('js/editor/editor-detail-inline-edit.js'), false, 'public viewer does not load editor inline edit helper');
   assert.equal(viewHtml.includes('js/editor/editor-detail-sidebar-status-boundary.js'), false, 'public viewer does not load editor sidebar status helper');
-  assert.ok(viewHtml.includes('js/viewer/public-viewer-detail-builders.js'), 'public viewer loads viewer detail builders before editor detail core');
-  assert.ok(viewHtml.indexOf('js/viewer/public-viewer-detail-builders.js') < viewHtml.indexOf('js/editor/editor-detail-ui.js'), 'fallbacks load before editor detail core');
+  assert.ok(viewHtml.includes('js/viewer/public-viewer-detail-builders.js'), 'public viewer loads viewer detail builders before viewer detail adapter');
+  assert.ok(viewHtml.indexOf('js/viewer/public-viewer-detail-builders.js') < viewHtml.indexOf('js/viewer/public-viewer-detail-ui.js'), 'fallbacks load before viewer detail adapter');
 });

@@ -21,22 +21,22 @@ test('public viewer does not load editor detail edit/status boundary scripts', (
 test('public viewer keeps viewer detail builders before detail UI for fallback boundaries', () => {
   const scripts = getScriptSrcs();
   const buildersIndex = scripts.findIndex((src) => src.includes('js/viewer/public-viewer-detail-builders.js'));
-  const detailUiIndex = scripts.findIndex((src) => src.includes('js/editor/editor-detail-ui.js'));
+  const detailUiIndex = scripts.findIndex((src) => src.includes('js/viewer/public-viewer-detail-ui.js'));
 
   assert.equal(scripts.includes('../js/editor/editor-detail-ui-builders.js'), false, 'public view must not load editor detail UI builders');
   assert.notEqual(buildersIndex, -1, 'public view must load viewer detail builders');
-  assert.notEqual(detailUiIndex, -1, 'public view must load detail UI');
-  assert.ok(buildersIndex < detailUiIndex, 'viewer detail builders must load before detail UI so fallback boundaries exist');
+  assert.notEqual(detailUiIndex, -1, 'public view must load viewer detail UI adapter');
+  assert.ok(buildersIndex < detailUiIndex, 'viewer detail builders must load before viewer detail UI adapter so fallback boundaries exist');
 });
 
 test('public viewer delegates channel link patch to viewer-owned helper', () => {
   const scripts = getScriptSrcs();
-  const detailUiIndex = scripts.findIndex((src) => src.includes('js/editor/editor-detail-ui.js'));
+  const detailUiIndex = scripts.findIndex((src) => src.includes('js/viewer/public-viewer-detail-ui.js'));
   const helperIndex = scripts.findIndex((src) => src.includes('js/viewer/public-viewer-detail-channel-link.js'));
 
   assert.equal(scripts.includes('../js/editor/editor-detail-channel-link.js'), false, 'public view must not load editor detail channel link patch');
   assert.ok(scripts.includes('../js/viewer/public-viewer-detail-channel-link.js'), 'public view must load viewer detail channel link helper');
-  assert.notEqual(detailUiIndex, -1, 'public view must load detail UI');
+  assert.notEqual(detailUiIndex, -1, 'public view must load viewer detail UI adapter');
   assert.notEqual(helperIndex, -1, 'public view must load viewer channel link helper');
-  assert.ok(detailUiIndex < helperIndex, 'viewer channel link helper must load after detail UI so it can patch the factory');
+  assert.ok(detailUiIndex < helperIndex, 'viewer channel link helper must load after viewer detail adapter so it can patch the factory');
 });
