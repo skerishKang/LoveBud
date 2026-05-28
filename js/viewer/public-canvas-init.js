@@ -57,6 +57,20 @@
         return errEl;
     }
 
+    function appendPublicLoadFailureState(container, error) {
+        var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
+        if (canvasEntry && typeof canvasEntry.appendPublicLoadFailureState === 'function') {
+            return canvasEntry.appendPublicLoadFailureState(container, error);
+        }
+
+        if (container) {
+            container.textContent = '';
+            container.appendChild(createLoadFailureState(error && error.message));
+            return true;
+        }
+        return false;
+    }
+
     function initPublicCanvas() {
         var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
         var routeSetup = canvasEntry && typeof canvasEntry.setupPublicRoute === 'function'
@@ -404,10 +418,7 @@
         }).catch(function(error) {
             console.error('[public-canvas] Load failed:', error);
             var container = document.getElementById('canvasArea');
-            if (container) {
-                container.textContent = '';
-                container.appendChild(createLoadFailureState(error && error.message));
-            }
+            appendPublicLoadFailureState(container, error);
         });
     }
 
