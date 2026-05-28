@@ -287,6 +287,10 @@ test('public canvas entry wrapper exposes boundary and setup methods', () => {
   assert.ok(entrySrc.includes('setDetailEmptyState(false)'), 'entry wrapper post-init refresh must preserve non-empty detail state update');
   assert.ok(entrySrc.includes('isPublicRuntimeReady'), 'entry wrapper must expose isPublicRuntimeReady');
   assert.ok(entrySrc.includes('isCanvasRuntimeReady() && isDetailRuntimeReady()'), 'entry wrapper runtime readiness must combine canvas and detail readiness');
+  assert.ok(entrySrc.includes('setupPublicRoute'), 'entry wrapper must expose setupPublicRoute');
+  assert.ok(entrySrc.includes('URLSearchParams'), 'entry wrapper route helper must use URLSearchParams');
+  assert.ok(entrySrc.includes('classList.add(\'editor-readonly\')'), 'entry wrapper route helper must add editor-readonly class');
+  assert.ok(entrySrc.includes('classList.remove(\'editor-preload\')'), 'entry wrapper route helper must remove editor-preload class');
   assert.ok(entrySrc.includes('Object.freeze'), 'entry wrapper must freeze the exported namespace');
 });
 
@@ -370,4 +374,12 @@ test('public canvas init delegates metrics/profile setup through entry wrapper',
   );
   assert.ok(initSrc.includes('function waitForModules'), 'public canvas init must keep waitForModules orchestration local');
   assert.ok(initSrc.includes('function startCanvas'), 'public canvas init must keep startCanvas orchestration local');
+  assert.ok(initSrc.includes('setupPublicRoute'), 'public canvas init must delegate public route setup through entry wrapper');
+  assert.ok(initSrc.includes('canvasEntry.setupPublicRoute()'), 'public canvas init must call delegated route setup helper');
+  assert.ok(initSrc.includes('document.body.classList.add(\'editor-readonly\')'), 'public canvas init must retain fallback body class add');
+  assert.ok(initSrc.includes('document.body.classList.remove(\'editor-preload\')'), 'public canvas init must retain fallback body class remove');
+  assert.ok(
+    initSrc.indexOf('setupPublicRoute') < initSrc.indexOf('bridge.loadPublicTreeData'),
+    'public route setup must remain before bridge loading start'
+  );
 });
