@@ -302,6 +302,9 @@ test('public canvas entry wrapper exposes boundary and setup methods', () => {
   assert.ok(entrySrc.includes('getPublicCanvasBridge'), 'entry wrapper must expose getPublicCanvasBridge');
   assert.ok(entrySrc.includes('LoveBudPublicCanvasBridge'), 'entry wrapper bridge lookup must reference LoveBudPublicCanvasBridge');
   assert.ok(entrySrc.includes('loadPublicTreeData'), 'entry wrapper bridge lookup must verify loadPublicTreeData');
+  assert.ok(entrySrc.includes('normalizePublicCanvasData'), 'entry wrapper must expose normalizePublicCanvasData');
+  assert.ok(entrySrc.includes('bridge.normalizeForCanvas(tree, memories)'), 'entry wrapper normalization helper must call bridge.normalizeForCanvas');
+  assert.ok(entrySrc.includes("typeof bridge.normalizeForCanvas !== 'function'"), 'entry wrapper normalization helper must guard normalizeForCanvas');
 });
 
 test('public canvas init delegates metrics/profile setup through entry wrapper', () => {
@@ -409,7 +412,19 @@ test('public canvas init delegates metrics/profile setup through entry wrapper',
     'public bridge lookup must remain before bridge data load'
   );
   assert.ok(initSrc.includes('bridge.loadPublicTreeData(treeId).then(function(result)'), 'public canvas init must keep data load promise chain local');
-  assert.ok(initSrc.includes('bridge.normalizeForCanvas(tree, memories)'), 'public canvas init must keep normalization local');
+  assert.ok(initSrc.includes('normalizePublicCanvasData'), 'public canvas init must delegate public normalization through entry wrapper');
+  assert.ok(initSrc.includes('canvasEntry.normalizePublicCanvasData'), 'public canvas init must call delegated normalization helper');
+  assert.ok(initSrc.includes('bridge.normalizeForCanvas(tree, memories)'), 'public canvas init must retain normalization fallback');
+  assert.ok(
+    initSrc.indexOf('bridge.loadPublicTreeData(treeId).then(function(result)') < initSrc.indexOf('normalizePublicCanvasData'),
+    'public data load promise chain must remain before normalization delegation'
+  );
+  assert.ok(
+    initSrc.indexOf('normalizePublicCanvasData') < initSrc.indexOf("console.log('[public-canvas] Loaded tree:'"),
+    'public normalization must remain before loaded tree log'
+  );
   assert.ok(initSrc.includes('function waitForModules'), 'public canvas init must keep waitForModules local');
   assert.ok(initSrc.includes('function startCanvas'), 'public canvas init must keep startCanvas local');
+  assert.ok(initSrc.includes('var onPublicCanvasNodeClick = function(el, data)'), 'public canvas init must keep node click flow local');
+  assert.ok(initSrc.includes('editorCanvas.initCanvas();'), 'public canvas init must keep editorCanvas init call local');
 });
