@@ -61,7 +61,7 @@ function createPublicViewerDetailChannelContext(options = {}) {
   const context = {
     URL,
     window: {
-      createEditorDetailUI: options.createEditorDetailUI || (() => ({
+      createPublicViewerDetailUI: options.createPublicViewerDetailUI || (() => ({
         updateDetailPanel: () => {}
       }))
     },
@@ -142,12 +142,12 @@ test('public viewer detail channel link removes stale row when selected memory l
 test('public viewer detail channel link patch wraps updateDetailPanel without replacing original behavior', () => {
   let originalCalled = false;
   const harness = createPublicViewerDetailChannelContext({
-    createEditorDetailUI: () => ({
+    createPublicViewerDetailUI: () => ({
       updateDetailPanel: () => { originalCalled = true; }
     })
   });
 
-  const detailUI = harness.context.window.createEditorDetailUI({});
+  const detailUI = harness.context.window.createPublicViewerDetailUI({});
   detailUI.updateDetailPanel({
     channelId: '@woowayoung',
     channelName: '@woowayoung',
