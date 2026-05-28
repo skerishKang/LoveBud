@@ -19,18 +19,16 @@ test('public viewer loads detail UI through the viewer adapter layer', () => {
   const scripts = getScriptSrcs();
   const detailTreeMetaIndex = indexOfScript(scripts, 'js/viewer/public-viewer-detail-tree-meta.js');
   const detailBuildersIndex = indexOfScript(scripts, 'js/viewer/public-viewer-detail-builders.js');
-  const editorDetailUiIndex = indexOfScript(scripts, 'js/editor/editor-detail-ui.js');
   const viewerDetailUiIndex = indexOfScript(scripts, 'js/viewer/public-viewer-detail-ui.js');
   const channelLinkIndex = indexOfScript(scripts, 'js/viewer/public-viewer-detail-channel-link.js');
 
   assert.notEqual(detailTreeMetaIndex, -1, 'viewer tree meta helper is loaded');
   assert.notEqual(detailBuildersIndex, -1, 'viewer detail builders helper is loaded');
-  assert.notEqual(editorDetailUiIndex, -1, 'editor detail UI core is still loaded for now');
   assert.notEqual(viewerDetailUiIndex, -1, 'viewer detail UI adapter is loaded');
   assert.notEqual(channelLinkIndex, -1, 'viewer channel link helper is loaded');
-  assert.ok(detailTreeMetaIndex < editorDetailUiIndex, 'tree meta helper loads before detail UI core');
-  assert.ok(detailBuildersIndex < editorDetailUiIndex, 'detail builders helper loads before detail UI core');
-  assert.ok(editorDetailUiIndex < viewerDetailUiIndex, 'viewer detail UI adapter loads after detail UI core');
+  assert.equal(scripts.some(function(s) { return s.includes('js/editor/editor-detail-ui.js'); }), false, 'editor detail UI core is no longer loaded');
+  assert.ok(detailTreeMetaIndex < viewerDetailUiIndex, 'tree meta helper loads before viewer detail UI adapter');
+  assert.ok(detailBuildersIndex < viewerDetailUiIndex, 'detail builders helper loads before viewer detail UI adapter');
   assert.ok(viewerDetailUiIndex < channelLinkIndex, 'channel link helper loads after viewer detail adapter');
 });
 

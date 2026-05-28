@@ -66,11 +66,11 @@ test('public viewer detail adapter owns detail render flow from heading boundary
   assert.ok(tagsCall < reactionsCall);
 });
 
-test('public viewer detail adapter loads after editor detail UI core and before channel patch', () => {
+test('public viewer detail adapter loads after viewer helper scripts and before channel patch', () => {
   const scripts = getScriptSrcs();
 
-  assertScriptOrder(scripts, 'js/viewer/public-viewer-detail-tree-meta.js', 'js/editor/editor-detail-ui.js');
-  assertScriptOrder(scripts, 'js/viewer/public-viewer-detail-builders.js', 'js/editor/editor-detail-ui.js');
-  assertScriptOrder(scripts, 'js/editor/editor-detail-ui.js', 'js/viewer/public-viewer-detail-ui.js');
+  assert.equal(scriptIndex(scripts, 'js/editor/editor-detail-ui.js'), -1, 'public viewer no longer loads editor detail UI core script');
+  assertScriptOrder(scripts, 'js/viewer/public-viewer-detail-tree-meta.js', 'js/viewer/public-viewer-detail-ui.js');
+  assertScriptOrder(scripts, 'js/viewer/public-viewer-detail-builders.js', 'js/viewer/public-viewer-detail-ui.js');
   assertScriptOrder(scripts, 'js/viewer/public-viewer-detail-ui.js', 'js/viewer/public-viewer-detail-channel-link.js');
 });
