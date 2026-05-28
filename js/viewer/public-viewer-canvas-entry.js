@@ -233,6 +233,33 @@
         };
     }
 
+    function createLoadFailureState(message) {
+        var doc = globalObject.document;
+        if (!doc || typeof doc.createElement !== 'function') return null;
+
+        var errState = doc.createElement('div');
+        var icon = doc.createElement('span');
+        var title = doc.createElement('h2');
+        var description = doc.createElement('p');
+
+        errState.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:2rem;text-align:center;';
+
+        icon.className = 'material-symbols-outlined';
+        icon.style.cssText = 'font-size:48px;color:var(--error);margin-bottom:16px;';
+        icon.textContent = 'error_outline';
+
+        title.style.cssText = 'margin:0 0 8px;';
+        title.textContent = '트리를 불러올 수 없어요';
+
+        description.style.cssText = 'margin:0;color:var(--on-surface-variant);';
+        description.textContent = message || 'Public endpoint returned an error';
+
+        errState.appendChild(icon);
+        errState.appendChild(title);
+        errState.appendChild(description);
+        return errState;
+    }
+
     function createEmptyGuideUpdater(treeMemories) {
         var memories = Array.isArray(treeMemories) ? treeMemories : [];
 
@@ -293,6 +320,7 @@
         createSelectionState: createSelectionState,
         createDetailUIOptions: createDetailUIOptions,
         createCanvasOptions: createCanvasOptions,
+        createLoadFailureState: createLoadFailureState,
         createEmptyGuideUpdater: createEmptyGuideUpdater,
         installToolbarCompactMode: installToolbarCompactMode,
         getBoundaryState: getBoundaryState
