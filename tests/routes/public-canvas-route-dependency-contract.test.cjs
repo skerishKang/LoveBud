@@ -107,7 +107,6 @@ test('public canvas route currently depends on editor canvas runtime before publ
 
   const requiredCanvasScripts = [
     'js/editor/editor-canvas-layout.js',
-    'js/editor/editor-canvas-layout-helpers.js',
     'js/editor/editor-canvas-node.js',
     'js/editor/editor-canvas-interaction.js',
     'js/editor/editor-canvas-viewport.js',
@@ -179,6 +178,7 @@ test('public canvas route keeps removed editor-only runtime scripts and unused s
     'js/editor/editor-dom-selectors.js',
     'js/editor/editor-canvas-interaction-helpers.js',
     'js/editor/editor-canvas-state-boundary.js',
+    'js/editor/editor-canvas-layout-helpers.js',
     'js/editor/templates/editor-floating-toolbar-template.js',
     'js/editor/templates/editor-empty-guide-template.js',
   ];
