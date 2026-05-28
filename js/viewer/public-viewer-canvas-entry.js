@@ -282,6 +282,16 @@
         return errState;
     }
 
+    function createMissingRouteState() {
+        var doc = globalObject.document;
+        if (!doc || typeof doc.createElement !== 'function') return null;
+
+        var errEl = doc.createElement('div');
+        errEl.style.cssText = 'padding:2rem;text-align:center;font-size:1.2rem;';
+        errEl.textContent = 'treeId parameter required. Usage: ?treeId=<id>';
+        return errEl;
+    }
+
     function installPublicEditorReadOnlyState(canvas, editorCanvas) {
         if (canvas) canvas.__editorCanvasInstance = editorCanvas;
         globalObject.LoveBudEditor = globalObject.LoveBudEditor || {};
@@ -380,6 +390,7 @@
         createDetailUIOptions: createDetailUIOptions,
         createCanvasOptions: createCanvasOptions,
         createLoadFailureState: createLoadFailureState,
+        createMissingRouteState: createMissingRouteState,
         installPublicEditorReadOnlyState: installPublicEditorReadOnlyState,
         runPublicPostInitRefresh: runPublicPostInitRefresh,
         createEmptyGuideUpdater: createEmptyGuideUpdater,
