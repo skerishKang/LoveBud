@@ -17,17 +17,15 @@ test('public viewer reaction summary boundary stays read-only', () => {
   assert.equal(boundary.includes('from=editor'), false, 'public viewer does not use editor comment context');
 });
 
-test('public viewer reaction summary runs after other detail post-processing', () => {
-  const delegatedIndex = source.indexOf('delegatedUpdateDetailPanel(data);');
+test('public viewer reaction summary runs after memo and tags post-processing', () => {
   const memoIndex = source.indexOf('updateMemoBody(data);');
   const tagsIndex = source.indexOf('updateCurrentMomentTags(data);');
   const reactionsIndex = source.indexOf('updateReadOnlyReactionSummary(data);');
 
-  assert.notEqual(delegatedIndex, -1, 'delegated render exists');
   assert.notEqual(memoIndex, -1, 'memo post-processing exists');
   assert.notEqual(tagsIndex, -1, 'tags post-processing exists');
   assert.notEqual(reactionsIndex, -1, 'reaction post-processing exists');
-  assert.ok(delegatedIndex < reactionsIndex, 'reaction summary follows delegated render');
+  assert.equal(source.indexOf('delegatedUpdateDetailPanel(data);'), -1, 'delegated editor detail render call is removed');
   assert.ok(memoIndex < reactionsIndex, 'reaction summary follows memo post-processing');
   assert.ok(tagsIndex < reactionsIndex, 'reaction summary follows tag post-processing');
 });

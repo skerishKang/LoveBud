@@ -34,11 +34,11 @@ test('public viewer detail template exposes the current rendered output mounts',
   assert.equal(templateSrc.includes('id="viewMomentDetailBtn"'), false, 'public viewer output does not expose noop detail action');
 });
 
-test('public viewer adapter preserves delegated detail rendering before viewer-only post-processing', () => {
+test('public viewer adapter no longer delegates detail rendering to editor core', () => {
   const adapterSrc = readFile('js/viewer/public-viewer-detail-ui.js');
 
-  assert.ok(adapterSrc.includes('window.createEditorDetailUI(deps)'), 'public viewer adapter still delegates to editor detail core');
-  assert.ok(adapterSrc.includes('var delegatedUpdateDetailPanel = typeof detailUI.updateDetailPanel === \'function\''), 'public viewer adapter captures the delegated detail update');
-  assert.ok(adapterSrc.includes('delegatedUpdateDetailPanel(data);'), 'public viewer adapter preserves delegated detail rendering first');
-  assert.ok(adapterSrc.includes('updateReadOnlyReactionSummary(data);'), 'public viewer adapter applies read-only reaction summary after rendering');
+  assert.ok(adapterSrc.includes('window.createEditorDetailUI(deps)'), 'public viewer adapter still creates detail UI via editor factory');
+  assert.equal(adapterSrc.includes('var delegatedUpdateDetailPanel'), false, 'public viewer adapter no longer captures delegated detail update');
+  assert.equal(adapterSrc.includes('delegatedUpdateDetailPanel(data);'), false, 'public viewer adapter no longer delegates detail rendering to editor core');
+  assert.ok(adapterSrc.includes('updateReadOnlyReactionSummary(data);'), 'public viewer adapter applies read-only reaction summary');
 });
