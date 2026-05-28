@@ -232,3 +232,25 @@ test('public canvas route delegates detail channel link rendering to viewer help
   assert.ok(helperSrc.includes('renderDetailChannelLink'), 'viewer channel link helper must expose renderDetailChannelLink');
   assert.equal(helperSrc.includes('createPublicViewerDetailUI'), false, 'viewer channel link helper must not patch the viewer detail adapter');
 });
+
+test('public canvas entry wrapper exposes boundary and setup methods', () => {
+  const entrySrc = fs.readFileSync('js/viewer/public-viewer-canvas-entry.js', 'utf8');
+
+  assert.ok(entrySrc.includes('LoveBudPublicViewerCanvasEntry'), 'entry wrapper must expose LoveBudPublicViewerCanvasEntry namespace');
+  assert.ok(entrySrc.includes('installPublicMetrics'), 'entry wrapper must expose installPublicMetrics');
+  assert.ok(entrySrc.includes('installPublicViewportProfile'), 'entry wrapper must expose installPublicViewportProfile');
+  assert.ok(entrySrc.includes('isCanvasRuntimeReady'), 'entry wrapper must expose isCanvasRuntimeReady');
+  assert.ok(entrySrc.includes('isDetailRuntimeReady'), 'entry wrapper must expose isDetailRuntimeReady');
+  assert.ok(entrySrc.includes('getBoundaryState'), 'entry wrapper must expose getBoundaryState');
+  assert.ok(entrySrc.includes('Object.freeze'), 'entry wrapper must freeze the exported namespace');
+});
+
+test('public canvas init delegates metrics/profile setup through entry wrapper', () => {
+  const initSrc = fs.readFileSync('js/viewer/public-canvas-init.js', 'utf8');
+
+  assert.ok(initSrc.includes('LoveBudPublicViewerCanvasEntry'), 'public canvas init must reference the entry wrapper');
+  assert.ok(initSrc.includes('installPublicMetrics'), 'public canvas init must delegate installPublicMetrics through entry wrapper');
+  assert.ok(initSrc.includes('installPublicViewportProfile'), 'public canvas init must delegate installPublicViewportProfile through entry wrapper');
+  assert.ok(initSrc.includes('isCanvasRuntimeReady'), 'public canvas init must delegate isCanvasRuntimeReady through entry wrapper');
+  assert.ok(initSrc.includes('isDetailRuntimeReady'), 'public canvas init must delegate isDetailRuntimeReady through entry wrapper');
+});
