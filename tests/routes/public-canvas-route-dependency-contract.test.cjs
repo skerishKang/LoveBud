@@ -259,6 +259,11 @@ test('public canvas entry wrapper exposes boundary and setup methods', () => {
   assert.ok(entrySrc.includes('getSelectedNodeId'), 'entry wrapper selection state must expose getSelectedNodeId');
   assert.ok(entrySrc.includes('getCurrentEditingMemory'), 'entry wrapper selection state must expose getCurrentEditingMemory');
   assert.ok(entrySrc.includes('selectMemory'), 'entry wrapper selection state must expose selectMemory');
+  assert.ok(entrySrc.includes('createDetailUIOptions'), 'entry wrapper must expose createDetailUIOptions');
+  assert.ok(entrySrc.includes('publicCanvasConfig'), 'entry wrapper detail UI options must consume publicCanvasConfig');
+  assert.ok(entrySrc.includes('readOnlyActions'), 'entry wrapper detail UI options must consume readOnlyActions');
+  assert.ok(entrySrc.includes('selectionState'), 'entry wrapper detail UI options must consume selectionState');
+  assert.ok(entrySrc.includes('updateSelectedMemoryFields'), 'entry wrapper detail UI options must preserve read-only detail update callback');
   assert.ok(entrySrc.includes('getCanonicalRootId'), 'entry wrapper createMemorySelectors must expose getCanonicalRootId');
   assert.ok(entrySrc.includes('isRootMemory'), 'entry wrapper createMemorySelectors must expose isRootMemory');
   assert.ok(entrySrc.includes('findFirstSelectableMemory'), 'entry wrapper createMemorySelectors must expose findFirstSelectableMemory');
@@ -297,4 +302,8 @@ test('public canvas init delegates metrics/profile setup through entry wrapper',
   assert.ok(initSrc.includes('selectionState.getSelectedNodeId'), 'public canvas init must use delegated selected node getter');
   assert.ok(initSrc.includes('selectionState.selectMemory'), 'public canvas init must use delegated memory selector');
   assert.ok(initSrc.includes('selectionState.getCurrentEditingMemory'), 'public canvas init must use delegated current memory getter');
+  assert.ok(initSrc.includes('createDetailUIOptions'), 'public canvas init must delegate detail UI options through entry wrapper');
+  assert.ok(initSrc.includes('detailUIOptions'), 'public canvas init must consume detailUIOptions from wrapper');
+  assert.ok(initSrc.includes('window.createPublicViewerDetailUI(detailUIOptions)'), 'public canvas init must pass delegated options into detail UI factory');
+  assert.ok(initSrc.includes('getSelectedNodeId: selectionState.getSelectedNodeId'), 'fallback detail UI options must keep delegated selected node getter');
 });

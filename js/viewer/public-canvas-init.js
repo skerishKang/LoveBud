@@ -215,28 +215,40 @@
                         };
                     })();
 
-                // Initialize detail UI
+                // Delegate detail UI options to entry wrapper with fallback
+                var detailUIOptions = canvasEntry && typeof canvasEntry.createDetailUIOptions === 'function'
+                    ? canvasEntry.createDetailUIOptions({
+                        detailPanel: detailPanel,
+                        i18n: function(k) { return k; },
+                        publicCanvasConfig: publicCanvasConfig,
+                        readOnlyActions: readOnlyActions,
+                        selectionState: selectionState,
+                        escapeHtml: escapeHtml,
+                        isRootMemory: isRootMemory,
+                        getCanonicalRootId: function() { return canonicalRootId; }
+                    })
+                    : {
+                        detailPanel: detailPanel,
+                        i18n: function(k) { return k; },
+                        resolveTreeTitleText: publicCanvasConfig.resolveTreeTitleText,
+                        resolveHintText: publicCanvasConfig.resolveHintText,
+                        resolveInfoText: publicCanvasConfig.resolveInfoText,
+                        resolveMemoryThumbnail: publicCanvasConfig.resolveMemoryThumbnail,
+                        escapeHtml: escapeHtml,
+                        isRootMemory: isRootMemory,
+                        getCanonicalRootId: function() { return canonicalRootId; },
+                        getSelectedNodeId: selectionState.getSelectedNodeId,
+                        getTreeMemories: publicCanvasConfig.getTreeMemories,
+                        getCurrentTreeData: publicCanvasConfig.getCurrentTreeData,
+                        getLocalSaveMode: readOnlyActions.getLocalSaveMode,
+                        showToast: readOnlyActions.showToast,
+                        updateTreeVisibility: readOnlyActions.noopAsync,
+                        openCurrentMomentDetail: readOnlyActions.noop,
+                        focusSelectedMoment: readOnlyActions.noop,
+                        updateSelectedMemoryFields: readOnlyActions.noopFalseAsync
+                    };
 
-                var detailUI = window.createPublicViewerDetailUI({
-                    detailPanel: detailPanel,
-                    i18n: function(k) { return k; },
-                    resolveTreeTitleText: publicCanvasConfig.resolveTreeTitleText,
-                    resolveHintText: publicCanvasConfig.resolveHintText,
-                    resolveInfoText: publicCanvasConfig.resolveInfoText,
-                    resolveMemoryThumbnail: publicCanvasConfig.resolveMemoryThumbnail,
-                    escapeHtml: escapeHtml,
-                    isRootMemory: isRootMemory,
-                    getCanonicalRootId: function() { return canonicalRootId; },
-                    getSelectedNodeId: selectionState.getSelectedNodeId,
-                    getTreeMemories: publicCanvasConfig.getTreeMemories,
-                    getCurrentTreeData: publicCanvasConfig.getCurrentTreeData,
-                    getLocalSaveMode: readOnlyActions.getLocalSaveMode,
-                    showToast: readOnlyActions.showToast,
-                    updateTreeVisibility: readOnlyActions.noopAsync,
-                    openCurrentMomentDetail: readOnlyActions.noop,
-                    focusSelectedMoment: readOnlyActions.noop,
-                    updateSelectedMemoryFields: readOnlyActions.noopFalseAsync
-                });
+                var detailUI = window.createPublicViewerDetailUI(detailUIOptions);
 
                 var setDetailEmptyState = detailUI.setDetailEmptyState;
                 var updateFocusSelectedBtn = detailUI.updateFocusSelectedBtn;
