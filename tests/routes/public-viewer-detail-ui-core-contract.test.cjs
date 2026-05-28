@@ -198,6 +198,26 @@ test('public viewer detail UI adapter owns selected moment action button boundar
   assert.ok(source.includes('installSelectedMomentActions();'), 'viewer adapter runs selected action installer at construction');
 });
 
+test('public viewer detail UI adapter owns memory actions display boundary', () => {
+  const source = fs.readFileSync('js/viewer/public-viewer-detail-ui.js', 'utf8');
+
+  assert.ok(source.includes('function createPublicViewerMemoryActionsBoundary(deps)'), 'viewer adapter exposes memory actions boundary factory');
+  assert.ok(source.includes("document.querySelector('.memory-actions')"), 'viewer memory actions boundary targets .memory-actions');
+  assert.ok(source.includes("document.getElementById('detailPanelFooter')"), 'viewer memory actions boundary targets detailPanelFooter');
+  assert.ok(source.includes('createPublicViewerMemoryActionsBoundary: createPublicViewerMemoryActionsBoundary'), 'viewer adapter publishes memory actions boundary on namespace');
+  assert.ok(source.includes('var updateMemoryActions = createPublicViewerMemoryActionsBoundary(deps)'), 'viewer adapter creates memory actions updater');
+  assert.ok(source.includes('updateMemoryActions(data);'), 'viewer adapter runs memory actions update in detail panel flow');
+
+  const panelStart = source.indexOf('detailUI.updateDetailPanel = function');
+  const panelEnd = source.indexOf('};', panelStart);
+  const panelSource = source.slice(panelStart, panelEnd);
+
+  const delegatedIndex = panelSource.indexOf('delegatedUpdateDetailPanel(data);');
+  const memoryActionsIndex = panelSource.indexOf('updateMemoryActions(data);');
+
+  assert.ok(delegatedIndex < memoryActionsIndex, 'memory actions update runs after delegated detail render');
+});
+
 test('public viewer detail UI adapter wraps detail panel updates with viewer-owned post-processing', () => {
   const source = fs.readFileSync('js/viewer/public-viewer-detail-ui.js', 'utf8');
 
@@ -206,12 +226,14 @@ test('public viewer detail UI adapter wraps detail panel updates with viewer-own
   assert.ok(source.includes('var updateCurrentMomentBadge = createPublicViewerCurrentMomentBadgeBoundary(deps)'), 'viewer adapter creates the badge updater');
   assert.ok(source.includes('var updateCurrentMomentImage = createPublicViewerCurrentMomentImageBoundary(deps)'), 'viewer adapter creates the image updater');
   assert.ok(source.includes('var updateReadOnlyReactionSummary = createPublicViewerReadOnlyReactionSummaryBoundary(deps)'), 'viewer adapter creates the read-only reaction updater');
+  assert.ok(source.includes('var updateMemoryActions = createPublicViewerMemoryActionsBoundary(deps)'), 'viewer adapter creates memory actions updater');
   assert.ok(source.includes('detailUI.updateDetailPanel = function updatePublicViewerDetailPanel(data)'), 'viewer adapter wraps updateDetailPanel for public viewer');
   assert.ok(source.includes('delegatedUpdateDetailPanel(data);'), 'viewer wrapper runs delegated detail rendering first');
   assert.ok(source.includes('updateTreeMeta(data);'), 'viewer wrapper applies tree meta post-processing after delegated rendering');
   assert.ok(source.includes('updateCurrentMomentBadge(data);'), 'viewer wrapper applies badge post-processing after delegated rendering');
   assert.ok(source.includes('updatePublicViewerCurrentMomentHint();'), 'viewer wrapper applies hint post-processing after badge post-processing');
   assert.ok(source.includes('updateCurrentMomentImage(data);'), 'viewer wrapper applies image post-processing after hint post-processing');
+  assert.ok(source.includes('updateMemoryActions(data);'), 'viewer wrapper applies memory actions display after image post-processing');
   assert.ok(source.includes('updateReadOnlyReactionSummary(data);'), 'viewer wrapper applies read-only reactions after image post-processing');
 });
 
