@@ -22,6 +22,10 @@
         return typeof globalObject.createPublicViewerDetailUI === 'function';
     }
 
+    function isPublicRuntimeReady() {
+        return isCanvasRuntimeReady() && isDetailRuntimeReady();
+    }
+
     function installPublicMetrics(canvas) {
         var geometry = globalObject.EditorCanvasGeometry;
         if (!geometry || typeof geometry.getMetrics !== 'function') return;
@@ -347,6 +351,7 @@
         hasCanvasRuntime: hasCanvasRuntime,
         isCanvasRuntimeReady: isCanvasRuntimeReady,
         isDetailRuntimeReady: isDetailRuntimeReady,
+        isPublicRuntimeReady: isPublicRuntimeReady,
         installPublicMetrics: installPublicMetrics,
         installPublicViewportProfile: installPublicViewportProfile,
         createReadOnlyActions: createReadOnlyActions,

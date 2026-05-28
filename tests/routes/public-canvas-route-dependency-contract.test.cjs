@@ -285,6 +285,8 @@ test('public canvas entry wrapper exposes boundary and setup methods', () => {
   assert.ok(entrySrc.includes('updateSidebarStatus'), 'entry wrapper post-init refresh must call sidebar status updater');
   assert.ok(entrySrc.includes('getCurrentEditingMemory'), 'entry wrapper post-init refresh must read current editing memory');
   assert.ok(entrySrc.includes('setDetailEmptyState(false)'), 'entry wrapper post-init refresh must preserve non-empty detail state update');
+  assert.ok(entrySrc.includes('isPublicRuntimeReady'), 'entry wrapper must expose isPublicRuntimeReady');
+  assert.ok(entrySrc.includes('isCanvasRuntimeReady() && isDetailRuntimeReady()'), 'entry wrapper runtime readiness must combine canvas and detail readiness');
   assert.ok(entrySrc.includes('Object.freeze'), 'entry wrapper must freeze the exported namespace');
 });
 
@@ -358,4 +360,14 @@ test('public canvas init delegates metrics/profile setup through entry wrapper',
     initSrc.indexOf('editorCanvas.initCanvas') < initSrc.indexOf('runPublicPostInitRefresh'),
     'public post-init refresh must remain after editorCanvas.initCanvas'
   );
+  assert.ok(initSrc.includes('isPublicRuntimeReady'), 'public canvas init must delegate combined runtime readiness through entry wrapper');
+  assert.ok(initSrc.includes('canvasEntry.isPublicRuntimeReady'), 'public canvas init must call delegated runtime readiness helper');
+  assert.ok(initSrc.includes('typeof window.createEditorCanvas === \'function\''), 'public canvas init must retain canvas runtime fallback readiness check');
+  assert.ok(initSrc.includes('typeof window.createPublicViewerDetailUI === \'function\''), 'public canvas init must retain detail runtime fallback readiness check');
+  assert.ok(
+    initSrc.indexOf('isPublicRuntimeReady') < initSrc.indexOf('startCanvas();'),
+    'public runtime readiness check must remain before startCanvas call'
+  );
+  assert.ok(initSrc.includes('function waitForModules'), 'public canvas init must keep waitForModules orchestration local');
+  assert.ok(initSrc.includes('function startCanvas'), 'public canvas init must keep startCanvas orchestration local');
 });
