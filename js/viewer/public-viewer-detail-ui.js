@@ -561,11 +561,7 @@
     }
 
     function createPublicViewerDetailUI(deps) {
-        if (typeof window.createEditorDetailUI !== 'function') {
-            throw new Error('createEditorDetailUI is required for public viewer detail UI adapter');
-        }
-
-        var detailUI = window.createEditorDetailUI(deps);
+        var detailUI = {};
         var updateDetailHeading = createPublicViewerDetailHeadingBoundary(deps);
         var updateTreeMeta = createPublicViewerTreeMetaBoundary(deps);
         var updateCurrentMomentBadge = createPublicViewerCurrentMomentBadgeBoundary(deps);
@@ -617,6 +613,6 @@
         createPublicViewerReadOnlyReactionSummaryBoundary: createPublicViewerReadOnlyReactionSummaryBoundary,
         createPublicViewerTreeMetaBoundary: createPublicViewerTreeMetaBoundary,
         createPublicViewerSelectedMomentActionsBoundary: createPublicViewerSelectedMomentActionsBoundary,
-        delegatesToEditorDetailUI: true
+        delegatesToEditorDetailUI: false
     };
 })();
