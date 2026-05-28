@@ -56,7 +56,8 @@ test('public canvas route page exists and avoids unused editor shell mounts afte
 test('public canvas route keeps public viewer bootstrap scripts in required order', () => {
   const scripts = getScriptSrcs();
 
-  assertScriptOrder(scripts, 'js/viewer/public-canvas-bridge.js', 'js/viewer/public-canvas-init.js');
+  assertScriptOrder(scripts, 'js/viewer/public-canvas-bridge.js', 'js/viewer/public-viewer-canvas-entry.js');
+  assertScriptOrder(scripts, 'js/viewer/public-viewer-canvas-entry.js', 'js/viewer/public-canvas-init.js');
   assertScriptOrder(scripts, 'js/viewer/public-canvas-init.js', 'js/viewer/public-viewer-copy-helper.js');
   assertScriptOrder(scripts, 'js/viewer/public-viewer-copy-helper.js', 'js/viewer/public-viewer-control-visibility-helper.js');
   assertScriptOrder(scripts, 'js/viewer/public-viewer-control-visibility-helper.js', 'js/viewer/public-viewer-copy-polish.js');
