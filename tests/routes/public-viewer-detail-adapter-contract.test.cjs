@@ -38,9 +38,9 @@ test('public viewer detail adapter keeps explicit editor detail UI delegation se
   assert.ok(source.includes('delegatesToEditorDetailUI: true'));
 });
 
-test('public viewer detail adapter post-processes only after delegated detail render', () => {
+test('public viewer detail adapter owns detail render flow from heading boundary', () => {
   const adapter = getDetailAdapterSlice();
-  const delegatedCall = adapter.indexOf('delegatedUpdateDetailPanel(data);');
+  const headingCall = adapter.indexOf('updateDetailHeading();');
   const badgeCall = adapter.indexOf('updateCurrentMomentBadge(data);');
   const titleCall = adapter.indexOf('updateCurrentMomentTitle(data);');
   const hintCall = adapter.indexOf('updatePublicViewerCurrentMomentHint();');
@@ -50,19 +50,12 @@ test('public viewer detail adapter post-processes only after delegated detail re
   const tagsCall = adapter.indexOf('updateCurrentMomentTags(data);');
   const reactionsCall = adapter.indexOf('updateReadOnlyReactionSummary(data);');
 
-  [
-    delegatedCall,
-    badgeCall,
-    titleCall,
-    hintCall,
-    imageCall,
-    dateCall,
-    memoCall,
-    tagsCall,
-    reactionsCall
-  ].forEach((index) => assert.notEqual(index, -1));
+  assert.equal(adapter.indexOf('delegatedUpdateDetailPanel(data);'), -1, 'adapter no longer delegates detail panel rendering');
 
-  assert.ok(delegatedCall < badgeCall);
+  [headingCall, badgeCall, titleCall, hintCall, imageCall, dateCall, memoCall, tagsCall, reactionsCall]
+    .forEach((index) => assert.notEqual(index, -1));
+
+  assert.ok(headingCall < badgeCall);
   assert.ok(badgeCall < titleCall);
   assert.ok(titleCall < hintCall);
   assert.ok(hintCall < imageCall);

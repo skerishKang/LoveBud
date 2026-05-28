@@ -575,9 +575,6 @@
         var updateCurrentMomentTags = createPublicViewerCurrentMomentTagsBoundary(deps);
         var updateMemoryActions = createPublicViewerMemoryActionsBoundary(deps);
         var updateReadOnlyReactionSummary = createPublicViewerReadOnlyReactionSummaryBoundary(deps);
-        var delegatedUpdateDetailPanel = typeof detailUI.updateDetailPanel === 'function'
-            ? detailUI.updateDetailPanel
-            : function() {};
 
         detailUI.updateFocusSelectedBtn = createPublicViewerUpdateFocusSelectedBtn(deps);
         detailUI.updateSidebarStatus = updatePublicViewerSidebarStatus;
@@ -585,7 +582,6 @@
         var installSelectedMomentActions = createPublicViewerSelectedMomentActionsBoundary(deps);
         installSelectedMomentActions();
         detailUI.updateDetailPanel = function updatePublicViewerDetailPanel(data) {
-            delegatedUpdateDetailPanel(data);
             updateDetailHeading();
             updateTreeMeta(data);
             updateCurrentMomentBadge(data);
