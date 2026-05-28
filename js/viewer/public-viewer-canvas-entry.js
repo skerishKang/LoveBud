@@ -374,6 +374,14 @@
         };
     }
 
+    function getPublicCanvasBridge() {
+        var bridge = globalObject.LoveBudPublicCanvasBridge;
+        if (!bridge || typeof bridge.loadPublicTreeData !== 'function') {
+            return null;
+        }
+        return bridge;
+    }
+
     globalObject.LoveBudPublicViewerCanvasEntry = Object.freeze({
         getCanvasRuntime: getCanvasRuntime,
         hasCanvasRuntime: hasCanvasRuntime,
@@ -395,6 +403,7 @@
         runPublicPostInitRefresh: runPublicPostInitRefresh,
         createEmptyGuideUpdater: createEmptyGuideUpdater,
         installToolbarCompactMode: installToolbarCompactMode,
-        getBoundaryState: getBoundaryState
+        getBoundaryState: getBoundaryState,
+        getPublicCanvasBridge: getPublicCanvasBridge
     });
 })();

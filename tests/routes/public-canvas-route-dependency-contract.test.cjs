@@ -299,6 +299,9 @@ test('public canvas entry wrapper exposes boundary and setup methods', () => {
   assert.ok(missingRouteSrc.includes('textContent'), 'missing route helper must use textContent');
   assert.equal(missingRouteSrc.includes('innerHTML'), false, 'missing route helper must not use innerHTML');
   assert.ok(entrySrc.includes('Object.freeze'), 'entry wrapper must freeze the exported namespace');
+  assert.ok(entrySrc.includes('getPublicCanvasBridge'), 'entry wrapper must expose getPublicCanvasBridge');
+  assert.ok(entrySrc.includes('LoveBudPublicCanvasBridge'), 'entry wrapper bridge lookup must reference LoveBudPublicCanvasBridge');
+  assert.ok(entrySrc.includes('loadPublicTreeData'), 'entry wrapper bridge lookup must verify loadPublicTreeData');
 });
 
 test('public canvas init delegates metrics/profile setup through entry wrapper', () => {
@@ -397,4 +400,16 @@ test('public canvas init delegates metrics/profile setup through entry wrapper',
     'missing route state helper must be defined before bridge lookup path'
   );
   assert.ok(initSrc.includes('treeId parameter required. Usage: ?treeId=<id>'), 'public canvas init must retain fallback missing treeId message');
+  assert.ok(initSrc.includes('getPublicCanvasBridge'), 'public canvas init must delegate public bridge lookup through entry wrapper');
+  assert.ok(initSrc.includes('canvasEntry.getPublicCanvasBridge'), 'public canvas init must call delegated bridge lookup helper');
+  assert.ok(initSrc.includes('window.LoveBudPublicCanvasBridge'), 'public canvas init must retain bridge lookup fallback');
+  assert.ok(initSrc.includes("console.error('[public-canvas] Bridge not loaded')"), 'public canvas init must preserve bridge missing error log');
+  assert.ok(
+    initSrc.indexOf('getPublicCanvasBridge') < initSrc.indexOf('bridge.loadPublicTreeData(treeId)'),
+    'public bridge lookup must remain before bridge data load'
+  );
+  assert.ok(initSrc.includes('bridge.loadPublicTreeData(treeId).then(function(result)'), 'public canvas init must keep data load promise chain local');
+  assert.ok(initSrc.includes('bridge.normalizeForCanvas(tree, memories)'), 'public canvas init must keep normalization local');
+  assert.ok(initSrc.includes('function waitForModules'), 'public canvas init must keep waitForModules local');
+  assert.ok(initSrc.includes('function startCanvas'), 'public canvas init must keep startCanvas local');
 });
