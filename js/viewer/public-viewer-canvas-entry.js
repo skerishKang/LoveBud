@@ -211,6 +211,28 @@
         };
     }
 
+    function createCanvasOptions(ctx) {
+        var options = ctx || {};
+        var publicCanvasConfig = options.publicCanvasConfig || {};
+        var readOnlyActions = options.readOnlyActions || {};
+
+        return {
+            canvas: options.canvas,
+            svg: options.svg,
+            getTreeMemories: publicCanvasConfig.getTreeMemories,
+            getCanonicalRootId: options.getCanonicalRootId,
+            isRootMemory: options.isRootMemory,
+            resolveMemoryThumbnail: publicCanvasConfig.resolveMemoryThumbnail,
+            updateDetailPanel: options.updateDetailPanel,
+            setDetailEmptyState: options.setDetailEmptyState,
+            updateFocusSelectedBtn: options.updateFocusSelectedBtn,
+            createInitialMemory: options.createInitialMemory,
+            onNodeClick: options.onNodeClick,
+            openAddMoment: readOnlyActions.noop,
+            canEdit: false
+        };
+    }
+
     function createEmptyGuideUpdater(treeMemories) {
         var memories = Array.isArray(treeMemories) ? treeMemories : [];
 
@@ -270,6 +292,7 @@
         createPublicCanvasConfig: createPublicCanvasConfig,
         createSelectionState: createSelectionState,
         createDetailUIOptions: createDetailUIOptions,
+        createCanvasOptions: createCanvasOptions,
         createEmptyGuideUpdater: createEmptyGuideUpdater,
         installToolbarCompactMode: installToolbarCompactMode,
         getBoundaryState: getBoundaryState

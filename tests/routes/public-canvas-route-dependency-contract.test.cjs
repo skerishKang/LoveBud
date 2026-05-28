@@ -267,6 +267,11 @@ test('public canvas entry wrapper exposes boundary and setup methods', () => {
   assert.ok(entrySrc.includes('getCanonicalRootId'), 'entry wrapper createMemorySelectors must expose getCanonicalRootId');
   assert.ok(entrySrc.includes('isRootMemory'), 'entry wrapper createMemorySelectors must expose isRootMemory');
   assert.ok(entrySrc.includes('findFirstSelectableMemory'), 'entry wrapper createMemorySelectors must expose findFirstSelectableMemory');
+  assert.ok(entrySrc.includes('createCanvasOptions'), 'entry wrapper must expose createCanvasOptions');
+  assert.ok(entrySrc.includes('getTreeMemories'), 'entry wrapper canvas options must preserve getTreeMemories');
+  assert.ok(entrySrc.includes('resolveMemoryThumbnail'), 'entry wrapper canvas options must preserve thumbnail resolver');
+  assert.ok(entrySrc.includes('openAddMoment'), 'entry wrapper canvas options must preserve read-only add moment callback');
+  assert.ok(entrySrc.includes('canEdit: false'), 'entry wrapper canvas options must force read-only mode');
   assert.ok(entrySrc.includes('Object.freeze'), 'entry wrapper must freeze the exported namespace');
 });
 
@@ -306,4 +311,14 @@ test('public canvas init delegates metrics/profile setup through entry wrapper',
   assert.ok(initSrc.includes('detailUIOptions'), 'public canvas init must consume detailUIOptions from wrapper');
   assert.ok(initSrc.includes('window.createPublicViewerDetailUI(detailUIOptions)'), 'public canvas init must pass delegated options into detail UI factory');
   assert.ok(initSrc.includes('getSelectedNodeId: selectionState.getSelectedNodeId'), 'fallback detail UI options must keep delegated selected node getter');
+  assert.ok(initSrc.includes('createCanvasOptions'), 'public canvas init must delegate canvas options through entry wrapper');
+  assert.ok(initSrc.includes('canvasOptions'), 'public canvas init must consume canvasOptions from wrapper');
+  assert.ok(initSrc.includes('window.createEditorCanvas(canvasOptions)'), 'public canvas init must pass delegated options into canvas factory');
+  assert.ok(initSrc.includes('onPublicCanvasNodeClick'), 'public canvas init must keep public canvas node click callback in init');
+  assert.ok(initSrc.includes('editorCanvas.updateAffordance'), 'public canvas init must preserve affordance refresh in node click flow');
+  assert.equal(
+    initSrc.includes('window.createEditorCanvas({'),
+    false,
+    'public canvas init should not construct editor canvas options inline'
+  );
 });
