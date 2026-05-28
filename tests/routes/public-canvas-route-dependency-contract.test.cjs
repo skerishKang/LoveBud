@@ -242,6 +242,7 @@ test('public canvas entry wrapper exposes boundary and setup methods', () => {
   assert.ok(entrySrc.includes('isCanvasRuntimeReady'), 'entry wrapper must expose isCanvasRuntimeReady');
   assert.ok(entrySrc.includes('isDetailRuntimeReady'), 'entry wrapper must expose isDetailRuntimeReady');
   assert.ok(entrySrc.includes('getBoundaryState'), 'entry wrapper must expose getBoundaryState');
+  assert.ok(entrySrc.includes('createReadOnlyActions'), 'entry wrapper must expose createReadOnlyActions');
   assert.ok(entrySrc.includes('Object.freeze'), 'entry wrapper must freeze the exported namespace');
 });
 
@@ -253,4 +254,11 @@ test('public canvas init delegates metrics/profile setup through entry wrapper',
   assert.ok(initSrc.includes('installPublicViewportProfile'), 'public canvas init must delegate installPublicViewportProfile through entry wrapper');
   assert.ok(initSrc.includes('isCanvasRuntimeReady'), 'public canvas init must delegate isCanvasRuntimeReady through entry wrapper');
   assert.ok(initSrc.includes('isDetailRuntimeReady'), 'public canvas init must delegate isDetailRuntimeReady through entry wrapper');
+  assert.ok(initSrc.includes('createReadOnlyActions'), 'public canvas init must delegate createReadOnlyActions through entry wrapper');
+  assert.ok(initSrc.includes('readOnlyActions'), 'public canvas init must consume readOnlyActions from wrapper');
+  assert.ok(initSrc.includes('readOnlyActions.getLocalSaveMode'), 'public canvas init must delegate getLocalSaveMode through readOnlyActions');
+  assert.ok(initSrc.includes('readOnlyActions.showToast'), 'public canvas init must delegate showToast through readOnlyActions');
+  assert.ok(initSrc.includes('readOnlyActions.noopAsync'), 'public canvas init must delegate noopAsync through readOnlyActions');
+  assert.ok(initSrc.includes('readOnlyActions.noop'), 'public canvas init must delegate noop through readOnlyActions');
+  assert.ok(initSrc.includes('readOnlyActions.noopFalseAsync'), 'public canvas init must delegate noopFalseAsync through readOnlyActions');
 });
