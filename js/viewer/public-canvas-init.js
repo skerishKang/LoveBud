@@ -45,6 +45,18 @@
         return errState;
     }
 
+    function createMissingRouteState() {
+        var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
+        if (canvasEntry && typeof canvasEntry.createMissingRouteState === 'function') {
+            return canvasEntry.createMissingRouteState();
+        }
+
+        var errEl = document.createElement('div');
+        errEl.style.cssText = 'padding:2rem;text-align:center;font-size:1.2rem;';
+        errEl.textContent = 'treeId parameter required. Usage: ?treeId=<id>';
+        return errEl;
+    }
+
     function initPublicCanvas() {
         var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
         var routeSetup = canvasEntry && typeof canvasEntry.setupPublicRoute === 'function'
@@ -60,10 +72,10 @@
         var treeId = routeSetup && routeSetup.treeId;
 
         if (!treeId) {
-            var errEl = document.createElement('div');
-            errEl.style.cssText = 'padding:2rem;text-align:center;font-size:1.2rem;';
-            errEl.textContent = 'treeId parameter required. Usage: ?treeId=<id>';
-            document.body.appendChild(errEl);
+            var errEl = createMissingRouteState();
+            if (errEl) {
+                document.body.appendChild(errEl);
+            }
             return;
         }
 

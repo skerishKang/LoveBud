@@ -291,6 +291,13 @@ test('public canvas entry wrapper exposes boundary and setup methods', () => {
   assert.ok(entrySrc.includes('URLSearchParams'), 'entry wrapper route helper must use URLSearchParams');
   assert.ok(entrySrc.includes('classList.add(\'editor-readonly\')'), 'entry wrapper route helper must add editor-readonly class');
   assert.ok(entrySrc.includes('classList.remove(\'editor-preload\')'), 'entry wrapper route helper must remove editor-preload class');
+  const missingRouteMatch = entrySrc.match(/function createMissingRouteState\(\) \{[\s\S]*?\n    \}/);
+  assert.ok(missingRouteMatch, 'entry wrapper must define createMissingRouteState');
+  const missingRouteSrc = missingRouteMatch[0];
+  assert.ok(missingRouteSrc.includes('document') || missingRouteSrc.includes('globalObject.document'), 'missing route helper must use document safely');
+  assert.ok(missingRouteSrc.includes('createElement'), 'missing route helper must create DOM nodes safely');
+  assert.ok(missingRouteSrc.includes('textContent'), 'missing route helper must use textContent');
+  assert.equal(missingRouteSrc.includes('innerHTML'), false, 'missing route helper must not use innerHTML');
   assert.ok(entrySrc.includes('Object.freeze'), 'entry wrapper must freeze the exported namespace');
 });
 
@@ -382,4 +389,12 @@ test('public canvas init delegates metrics/profile setup through entry wrapper',
     initSrc.indexOf('setupPublicRoute') < initSrc.indexOf('bridge.loadPublicTreeData'),
     'public route setup must remain before bridge loading start'
   );
+  assert.ok(initSrc.includes('createMissingRouteState'), 'public canvas init must delegate missing route state creation');
+  assert.ok(initSrc.includes('canvasEntry.createMissingRouteState'), 'public canvas init must call delegated missing route state helper');
+  assert.ok(initSrc.includes('document.body.appendChild(errEl)'), 'public canvas init must keep appending missing route state locally');
+  assert.ok(
+    initSrc.indexOf('createMissingRouteState') < initSrc.indexOf('LoveBudPublicCanvasBridge'),
+    'missing route state helper must be defined before bridge lookup path'
+  );
+  assert.ok(initSrc.includes('treeId parameter required. Usage: ?treeId=<id>'), 'public canvas init must retain fallback missing treeId message');
 });
