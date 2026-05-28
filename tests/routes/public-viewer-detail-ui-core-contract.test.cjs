@@ -179,6 +179,25 @@ test('public viewer detail UI adapter renders channel link via viewer namespace'
   assert.ok(channelLinkIndex < hintIndex, 'channel link runs before hint update');
 });
 
+test('public viewer detail UI adapter owns selected moment action button boundary', () => {
+  const source = fs.readFileSync('js/viewer/public-viewer-detail-ui.js', 'utf8');
+
+  assert.ok(source.includes('function createPublicViewerSelectedMomentActionsBoundary(deps)'), 'viewer adapter exposes selected action boundary factory');
+  assert.ok(source.includes("document.getElementById('viewMomentDetailBtn')"), 'viewer action boundary targets viewMomentDetailBtn');
+  assert.ok(source.includes("document.getElementById('continueFromMomentBtn')"), 'viewer action boundary targets continueFromMomentBtn');
+  assert.ok(source.includes("viewMomentDetailBtn.dataset.publicViewerBound !== '1'"), 'viewer action boundary uses dataset dedup flag');
+  assert.ok(source.includes("continueFromMomentBtn.dataset.publicViewerBound !== '1'"), 'viewer action boundary uses dataset dedup flag for continue btn');
+  assert.ok(source.includes('typeof openCurrentMomentDetail === \'function\''), 'viewer action boundary checks openCurrentMomentDetail fallback');
+  assert.ok(source.includes('typeof focusSelectedMoment === \'function\''), 'viewer action boundary checks focusSelectedMoment fallback');
+  assert.ok(source.includes('addEventListener'), 'viewer action boundary attaches event listeners');
+  assert.equal(source.includes("openCurrentMomentDetail();"), true, 'viewer action boundary calls openCurrentMomentDetail when available');
+  assert.equal(source.includes("document.getElementById('addMemoryBtn')"), false, 'viewer action boundary must not reference addMemoryBtn');
+  assert.equal(source.includes("document.getElementById('canvasEmptyStartBtn')"), false, 'viewer action boundary must not reference canvasEmptyStartBtn');
+  assert.ok(source.includes('createPublicViewerSelectedMomentActionsBoundary: createPublicViewerSelectedMomentActionsBoundary'), 'viewer adapter publishes selected action boundary on namespace');
+  assert.ok(source.includes('var installSelectedMomentActions = createPublicViewerSelectedMomentActionsBoundary(deps)'), 'viewer adapter creates selected action installer');
+  assert.ok(source.includes('installSelectedMomentActions();'), 'viewer adapter runs selected action installer at construction');
+});
+
 test('public viewer detail UI adapter wraps detail panel updates with viewer-owned post-processing', () => {
   const source = fs.readFileSync('js/viewer/public-viewer-detail-ui.js', 'utf8');
 
