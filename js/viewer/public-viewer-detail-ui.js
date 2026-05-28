@@ -482,6 +482,39 @@
         };
     }
 
+    function createPublicViewerSelectedMomentActionsBoundary(deps) {
+        var openCurrentMomentDetail = deps && typeof deps.openCurrentMomentDetail === 'function'
+            ? deps.openCurrentMomentDetail
+            : null;
+        var focusSelectedMoment = deps && typeof deps.focusSelectedMoment === 'function'
+            ? deps.focusSelectedMoment
+            : null;
+
+        return function installSelectedMomentActions() {
+            var viewMomentDetailBtn = document.getElementById('viewMomentDetailBtn');
+            if (viewMomentDetailBtn && viewMomentDetailBtn.dataset.publicViewerBound !== '1') {
+                viewMomentDetailBtn.dataset.publicViewerBound = '1';
+                viewMomentDetailBtn.addEventListener('click', function() {
+                    if (typeof openCurrentMomentDetail === 'function') {
+                        openCurrentMomentDetail();
+                        return;
+                    }
+                    if (typeof focusSelectedMoment === 'function') {
+                        focusSelectedMoment();
+                    }
+                });
+            }
+
+            var continueFromMomentBtn = document.getElementById('continueFromMomentBtn');
+            if (continueFromMomentBtn && continueFromMomentBtn.dataset.publicViewerBound !== '1') {
+                continueFromMomentBtn.dataset.publicViewerBound = '1';
+                continueFromMomentBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                });
+            }
+        };
+    }
+
     function createPublicViewerDetailUI(deps) {
         if (typeof window.createEditorDetailUI !== 'function') {
             throw new Error('createEditorDetailUI is required for public viewer detail UI adapter');
@@ -502,6 +535,8 @@
         detailUI.updateFocusSelectedBtn = createPublicViewerUpdateFocusSelectedBtn(deps);
         detailUI.updateSidebarStatus = updatePublicViewerSidebarStatus;
         detailUI.setDetailEmptyState = createPublicViewerSetDetailEmptyState(deps);
+        var installSelectedMomentActions = createPublicViewerSelectedMomentActionsBoundary(deps);
+        installSelectedMomentActions();
         detailUI.updateDetailPanel = function updatePublicViewerDetailPanel(data) {
             delegatedUpdateDetailPanel(data);
             updateTreeMeta(data);
@@ -534,6 +569,7 @@
         createPublicViewerCurrentMomentTagsBoundary: createPublicViewerCurrentMomentTagsBoundary,
         createPublicViewerReadOnlyReactionSummaryBoundary: createPublicViewerReadOnlyReactionSummaryBoundary,
         createPublicViewerTreeMetaBoundary: createPublicViewerTreeMetaBoundary,
+        createPublicViewerSelectedMomentActionsBoundary: createPublicViewerSelectedMomentActionsBoundary,
         delegatesToEditorDetailUI: true
     };
 })();
