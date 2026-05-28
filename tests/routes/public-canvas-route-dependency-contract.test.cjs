@@ -251,6 +251,10 @@ test('public canvas entry wrapper exposes boundary and setup methods', () => {
   assert.ok(entrySrc.includes('createEmptyGuideUpdater'), 'entry wrapper must expose createEmptyGuideUpdater');
   assert.ok(entrySrc.includes('canvasEmptyGuide'), 'entry wrapper empty guide updater must target canvasEmptyGuide');
   assert.ok(entrySrc.includes('editor-canvas-empty-guide-hidden'), 'entry wrapper empty guide updater must toggle hidden empty guide class');
+  assert.ok(entrySrc.includes('installToolbarCompactMode'), 'entry wrapper must expose installToolbarCompactMode');
+  assert.ok(entrySrc.includes('matchMedia'), 'entry wrapper toolbar compact helper must use matchMedia');
+  assert.ok(entrySrc.includes('editor-canvas-toolbar'), 'entry wrapper toolbar compact helper must target editor canvas toolbar');
+  assert.ok(entrySrc.includes('is-compact'), 'entry wrapper toolbar compact helper must toggle compact toolbar class');
   assert.ok(entrySrc.includes('getCanonicalRootId'), 'entry wrapper createMemorySelectors must expose getCanonicalRootId');
   assert.ok(entrySrc.includes('isRootMemory'), 'entry wrapper createMemorySelectors must expose isRootMemory');
   assert.ok(entrySrc.includes('findFirstSelectableMemory'), 'entry wrapper createMemorySelectors must expose findFirstSelectableMemory');
@@ -282,4 +286,6 @@ test('public canvas init delegates metrics/profile setup through entry wrapper',
   assert.ok(initSrc.includes('publicCanvasConfig.createInitialMemory'), 'public canvas init must use delegated initial memory builder');
   assert.ok(initSrc.includes('createEmptyGuideUpdater'), 'public canvas init must delegate createEmptyGuideUpdater through entry wrapper');
   assert.ok(initSrc.includes('updateCanvasEmptyGuide'), 'public canvas init must keep updateCanvasEmptyGuide call path');
+  assert.ok(initSrc.includes('installToolbarCompactMode'), 'public canvas init must delegate toolbar compact mode through entry wrapper');
+  assert.ok(initSrc.includes('canvasEntry.installToolbarCompactMode'), 'public canvas init must call delegated toolbar compact helper');
 });

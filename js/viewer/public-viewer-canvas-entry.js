@@ -160,6 +160,30 @@
         };
     }
 
+    function installToolbarCompactMode() {
+        var mql = globalObject.matchMedia
+            ? globalObject.matchMedia('(max-width: 480px)')
+            : null;
+
+        function updateToolbarCompact(eventOrQuery) {
+            var doc = globalObject.document;
+            var toolbar = doc && typeof doc.querySelector === 'function'
+                ? doc.querySelector('.editor-canvas-toolbar')
+                : null;
+            if (!toolbar || !eventOrQuery) return;
+            toolbar.classList.toggle('is-compact', Boolean(eventOrQuery.matches));
+        }
+
+        if (!mql) return;
+        updateToolbarCompact(mql);
+
+        if (typeof mql.addEventListener === 'function') {
+            mql.addEventListener('change', updateToolbarCompact);
+        } else if (typeof mql.addListener === 'function') {
+            mql.addListener(updateToolbarCompact);
+        }
+    }
+
     function getBoundaryState() {
         return {
             hasCanvasRuntime: hasCanvasRuntime(),
@@ -180,6 +204,7 @@
         createMemorySelectors: createMemorySelectors,
         createPublicCanvasConfig: createPublicCanvasConfig,
         createEmptyGuideUpdater: createEmptyGuideUpdater,
+        installToolbarCompactMode: installToolbarCompactMode,
         getBoundaryState: getBoundaryState
     });
 })();
