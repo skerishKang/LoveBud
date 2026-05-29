@@ -160,6 +160,23 @@
         }
     }
 
+    function createPublicCanvasConfig(normalized) {
+        var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
+        return canvasEntry && typeof canvasEntry.createPublicCanvasConfig === 'function'
+            ? canvasEntry.createPublicCanvasConfig(normalized)
+            : {
+                resolveTreeTitleText: function() { return normalized.treeData.title || '러브트리'; },
+                resolveHintText: function() { return ''; },
+                resolveInfoText: function() { return ''; },
+                resolveMemoryThumbnail: function(mem) { return mem && mem.thumbnail ? mem.thumbnail : ''; },
+                getTreeMemories: function() { return normalized.treeMemories; },
+                getCurrentTreeData: function() { return window.currentTreeData || {}; },
+                createInitialMemory: function(rootId) {
+                    return { id: rootId, title: normalized.treeData.title || '러브트리', parentId: null };
+                }
+            };
+    }
+
     function setupPublicRoute() {
         var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
         if (canvasEntry && typeof canvasEntry.setupPublicRoute === 'function') {
@@ -225,20 +242,7 @@
                 var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
                 installPublicCanvasRuntimeProfile(canvas);
 
-                // Delegate public canvas config helpers to entry wrapper
-                var publicCanvasConfig = canvasEntry && typeof canvasEntry.createPublicCanvasConfig === 'function'
-                    ? canvasEntry.createPublicCanvasConfig(normalized)
-                    : {
-                        resolveTreeTitleText: function() { return normalized.treeData.title || '러브트리'; },
-                        resolveHintText: function() { return ''; },
-                        resolveInfoText: function() { return ''; },
-                        resolveMemoryThumbnail: function(mem) { return mem && mem.thumbnail ? mem.thumbnail : ''; },
-                        getTreeMemories: function() { return normalized.treeMemories; },
-                        getCurrentTreeData: function() { return window.currentTreeData || {}; },
-                        createInitialMemory: function(rootId) {
-                            return { id: rootId, title: normalized.treeData.title || '러브트리', parentId: null };
-                        }
-                    };
+                var publicCanvasConfig = createPublicCanvasConfig(normalized);
 
                 // Set up empty guide UI
                 var updateCanvasEmptyGuide = canvasEntry && typeof canvasEntry.createEmptyGuideUpdater === 'function'
