@@ -67,6 +67,23 @@ test('public canvas route keeps public viewer bootstrap scripts in required orde
   assert.ok(scriptIncludes(scripts, 'js/viewer/public-viewer-copy-helper.js'), 'view.html must load public viewer copy helper before copy polish');
   assert.ok(scriptIncludes(scripts, 'js/viewer/public-viewer-control-visibility-helper.js'), 'view.html must load public viewer control visibility helper before copy polish');
   assert.ok(scriptIncludes(scripts, 'js/viewer/public-viewer-copy-polish.js'), 'view.html must load public viewer copy polish until viewer-only copy rendering replaces it');
+
+  assert.ok(
+    scriptIncludes(scripts, 'js/editor/editor-root-helpers.js'),
+    'view.html must keep editor-root-helpers while public canvas memory/root helpers still depend on LoveBudEditorUtils'
+  );
+
+  assert.equal(
+    scriptIncludes(scripts, 'js/editor/editor-utils.js'),
+    false,
+    'view.html must not load editor-utils.js on the public viewer route'
+  );
+
+  assertScriptOrder(
+    scripts,
+    'js/editor/editor-root-helpers.js',
+    'js/viewer/public-canvas-init.js'
+  );
 });
 
 test('public canvas route loads API and i18n dependencies before public viewer init', () => {
