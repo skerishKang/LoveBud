@@ -51,7 +51,6 @@ test('public viewer canvas runtime boundary stays documented and ordered', () =>
     'js/editor/editor-canvas-viewport-actions.js',
     'js/editor/editor-canvas-viewport-controls.js',
     'js/editor/editor-canvas-edges.js',
-    'js/editor/editor-utils.js',
     'js/editor/editor-canvas-geometry.js',
     'js/editor/editor-canvas-layout-storage.js',
     'js/editor/editor-canvas-layout-transition.js',
