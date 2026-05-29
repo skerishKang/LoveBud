@@ -132,4 +132,8 @@ test('public canvas init keeps detail UI options behind a local helper', () => {
     initSrc.indexOf('var detailUIOptions = createPublicCanvasDetailUIOptions({') < initSrc.indexOf('var detailUI = window.createPublicViewerDetailUI(detailUIOptions);'),
     'detail UI options must remain before detail UI creation'
   );
+  assert.ok(
+    initSrc.indexOf('var detailUI = window.createPublicViewerDetailUI(detailUIOptions);') < initSrc.indexOf('var canvasOptions = createPublicCanvasOptions({'),
+    'detail UI creation must remain before canvas options creation'
+  );
 });
