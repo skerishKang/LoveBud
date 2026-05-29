@@ -66,11 +66,9 @@
             }
 
             var viewMode = document.getElementById('detailViewMode');
-            var footer = document.getElementById('detailPanelFooter');
 
             if (emptyState) emptyState.style.display = isEmpty ? 'block' : 'none';
             if (viewMode) viewMode.style.display = isEmpty ? 'none' : 'block';
-            if (footer) footer.style.display = isEmpty ? 'none' : '';
         };
     }
 

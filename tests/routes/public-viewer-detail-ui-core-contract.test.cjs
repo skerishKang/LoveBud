@@ -75,6 +75,27 @@ test('public viewer detail UI adapter owns empty state', () => {
   assert.ok(source.includes('detailUI.setDetailEmptyState = createPublicViewerSetDetailEmptyState(deps)'), 'viewer adapter overrides setDetailEmptyState');
   assert.ok(source.includes('LoveBudPublicViewerDetailUI'), 'viewer adapter exposes the inspectable namespace');
   assert.ok(source.includes('createPublicViewerSetDetailEmptyState'), 'viewer adapter publishes empty state factory on namespace');
+
+  assert.ok(
+    source.includes("document.getElementById('detailContent')"),
+    'empty-state boundary keeps detailContent lookup'
+  );
+
+  assert.ok(
+    source.includes("document.getElementById('detailEmptyState')"),
+    'empty-state boundary keeps detailEmptyState lookup'
+  );
+
+  assert.ok(
+    source.includes("document.getElementById('detailViewMode')"),
+    'empty-state boundary keeps detailViewMode lookup'
+  );
+
+  assert.equal(
+    source.includes("document.getElementById('detailPanelFooter')"),
+    false,
+    'public viewer detail adapter should not reference detailPanelFooter'
+  );
 });
 
 test('public viewer detail UI adapter exposes current moment badge boundary', () => {
