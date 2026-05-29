@@ -64,7 +64,7 @@ test('public canvas init keeps editor canvas initialization behind a local helpe
     'editor canvas init must remain after read-only state installation'
   );
   assert.ok(
-    initSrc.indexOf('initializePublicEditorCanvas(editorCanvas);') < initSrc.indexOf('// Refresh public canvas UI after initialization'),
+    initSrc.indexOf('initializePublicEditorCanvas(editorCanvas);') < initSrc.indexOf('runPublicCanvasPostInitRefresh({'),
     'editor canvas init must remain before post-init refresh'
   );
 });

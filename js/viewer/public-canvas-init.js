@@ -374,6 +374,36 @@
         return false;
     }
 
+    function runPublicCanvasPostInitRefresh(ctx) {
+        var updateCanvasEmptyGuide = ctx.updateCanvasEmptyGuide;
+        var updateSidebarStatus = ctx.updateSidebarStatus;
+        var selectionState = ctx.selectionState;
+        var updateDetailPanel = ctx.updateDetailPanel;
+        var setDetailEmptyState = ctx.setDetailEmptyState;
+
+        var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
+        if (canvasEntry && typeof canvasEntry.runPublicPostInitRefresh === 'function') {
+            canvasEntry.runPublicPostInitRefresh({
+                updateCanvasEmptyGuide: updateCanvasEmptyGuide,
+                updateSidebarStatus: updateSidebarStatus,
+                selectionState: selectionState,
+                updateDetailPanel: updateDetailPanel,
+                setDetailEmptyState: setDetailEmptyState
+            });
+            return true;
+        }
+
+        updateCanvasEmptyGuide();
+        updateSidebarStatus();
+
+        var currentEditingMemory = selectionState.getCurrentEditingMemory();
+        if (currentEditingMemory) {
+            updateDetailPanel(currentEditingMemory);
+            setDetailEmptyState(false);
+        }
+        return false;
+    }
+
     function setupPublicRoute() {
         var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
         if (canvasEntry && typeof canvasEntry.setupPublicRoute === 'function') {
@@ -509,25 +539,13 @@
 
                 initializePublicEditorCanvas(editorCanvas);
 
-                // Refresh public canvas UI after initialization
-                if (canvasEntry && typeof canvasEntry.runPublicPostInitRefresh === 'function') {
-                    canvasEntry.runPublicPostInitRefresh({
-                        updateCanvasEmptyGuide: updateCanvasEmptyGuide,
-                        updateSidebarStatus: updateSidebarStatus,
-                        selectionState: selectionState,
-                        updateDetailPanel: updateDetailPanel,
-                        setDetailEmptyState: setDetailEmptyState
-                    });
-                } else {
-                    updateCanvasEmptyGuide();
-                    updateSidebarStatus();
-
-                    var currentEditingMemory = selectionState.getCurrentEditingMemory();
-                    if (currentEditingMemory) {
-                        updateDetailPanel(currentEditingMemory);
-                        setDetailEmptyState(false);
-                    }
-                }
+                runPublicCanvasPostInitRefresh({
+                    updateCanvasEmptyGuide: updateCanvasEmptyGuide,
+                    updateSidebarStatus: updateSidebarStatus,
+                    selectionState: selectionState,
+                    updateDetailPanel: updateDetailPanel,
+                    setDetailEmptyState: setDetailEmptyState
+                });
 
                 console.log('[public-canvas] Canvas initialized successfully');
 
