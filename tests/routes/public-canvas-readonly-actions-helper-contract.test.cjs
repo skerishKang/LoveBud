@@ -65,7 +65,7 @@ test('public canvas init keeps read-only actions behind a local helper', () => {
     'read-only actions must remain after memory helper setup'
   );
   assert.ok(
-    initSrc.indexOf('var readOnlyActions = createPublicCanvasReadOnlyActions();') < initSrc.indexOf('// Delegate selection state to entry wrapper with fallback'),
+    initSrc.indexOf('var readOnlyActions = createPublicCanvasReadOnlyActions();') < initSrc.indexOf('var selectionState = createPublicCanvasSelectionState(canonicalRootId);'),
     'read-only actions must remain before selection state setup'
   );
 });
