@@ -138,6 +138,13 @@
         return !!(bridge && typeof bridge.loadPublicTreeData === 'function');
     }
 
+    function extractPublicCanvasResult(result) {
+        return {
+            tree: result.tree,
+            memories: result.memories
+        };
+    }
+
     function initPublicCanvas() {
         var routeSetup = setupPublicRoute();
         var treeId = routeSetup && routeSetup.treeId;
@@ -155,8 +162,9 @@
         }
 
         bridge.loadPublicTreeData(treeId).then(function(result) {
-            var tree = result.tree;
-            var memories = result.memories;
+            var publicCanvasResult = extractPublicCanvasResult(result);
+            var tree = publicCanvasResult.tree;
+            var memories = publicCanvasResult.memories;
 
             // Normalize to canvas shape
             var normalized = normalizePublicCanvasData(bridge, tree, memories);
