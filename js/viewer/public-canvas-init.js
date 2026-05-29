@@ -57,6 +57,15 @@
         return errEl;
     }
 
+    function appendMissingRouteState() {
+        var errEl = createMissingRouteState();
+        if (errEl) {
+            document.body.appendChild(errEl);
+            return true;
+        }
+        return false;
+    }
+
     function appendPublicLoadFailureState(container, error) {
         var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
         if (canvasEntry && typeof canvasEntry.appendPublicLoadFailureState === 'function') {
@@ -130,10 +139,7 @@
         var treeId = routeSetup && routeSetup.treeId;
 
         if (!treeId) {
-            var errEl = createMissingRouteState();
-            if (errEl) {
-                document.body.appendChild(errEl);
-            }
+            appendMissingRouteState();
             return;
         }
 
