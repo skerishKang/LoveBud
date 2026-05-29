@@ -189,6 +189,52 @@
             };
     }
 
+    function createPublicCanvasMemoryHelpers(treeMemories) {
+        var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
+        var rootUtils = window.LoveBudEditorUtils || {};
+        var memorySelectors = canvasEntry && typeof canvasEntry.createMemorySelectors === 'function'
+            ? canvasEntry.createMemorySelectors(treeMemories)
+            : null;
+
+        var getCanonicalRootId = memorySelectors && typeof memorySelectors.getCanonicalRootId === 'function'
+            ? function() { return memorySelectors.getCanonicalRootId(); }
+            : function() {
+                if (typeof rootUtils.getCanonicalRootId === 'function') {
+                    return rootUtils.getCanonicalRootId(treeMemories);
+                }
+                var roots = treeMemories.filter(function(m) { return m.parentId === null || m.parentId === undefined; });
+                if (roots.length === 0) return 'root';
+                return roots.sort(function(a, b) {
+                    return (a.createdAt || '9999') > (b.createdAt || '9999') ? 1 : -1;
+                })[0].id;
+            };
+
+        var isRootMemory = memorySelectors && typeof memorySelectors.isRootMemory === 'function'
+            ? function(mem, rootId) { return memorySelectors.isRootMemory(mem, rootId); }
+            : function(mem, rootId) {
+                if (typeof rootUtils.isRootMemory === 'function') {
+                    return rootUtils.isRootMemory(mem, rootId);
+                }
+                return !!(mem && rootId && mem.id === rootId);
+            };
+
+        var canonicalRootId = getCanonicalRootId();
+
+        var findFirstSelectableMemory = memorySelectors && typeof memorySelectors.findFirstSelectableMemory === 'function'
+            ? function() { return memorySelectors.findFirstSelectableMemory(canonicalRootId); }
+            : function() {
+                var nonRoot = treeMemories.filter(function(m) { return !isRootMemory(m, canonicalRootId); });
+                return nonRoot.length > 0 ? nonRoot[0] : treeMemories[0] || null;
+            };
+
+        return {
+            getCanonicalRootId: getCanonicalRootId,
+            isRootMemory: isRootMemory,
+            canonicalRootId: canonicalRootId,
+            findFirstSelectableMemory: findFirstSelectableMemory
+        };
+    }
+
     function setupPublicRoute() {
         var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
         if (canvasEntry && typeof canvasEntry.setupPublicRoute === 'function') {
@@ -258,42 +304,11 @@
 
                 var updateCanvasEmptyGuide = createPublicCanvasEmptyGuideUpdater(normalized.treeMemories);
 
-                // Resolve root helpers via entry wrapper with fallback
-                var rootUtils = window.LoveBudEditorUtils || {};
-                var memorySelectors = canvasEntry && typeof canvasEntry.createMemorySelectors === 'function'
-                    ? canvasEntry.createMemorySelectors(normalized.treeMemories)
-                    : null;
-
-                var getCanonicalRootId = memorySelectors && typeof memorySelectors.getCanonicalRootId === 'function'
-                    ? function() { return memorySelectors.getCanonicalRootId(); }
-                    : function() {
-                        if (typeof rootUtils.getCanonicalRootId === 'function') {
-                            return rootUtils.getCanonicalRootId(normalized.treeMemories);
-                        }
-                        var roots = normalized.treeMemories.filter(function(m) { return m.parentId === null || m.parentId === undefined; });
-                        if (roots.length === 0) return 'root';
-                        return roots.sort(function(a, b) {
-                            return (a.createdAt || '9999') > (b.createdAt || '9999') ? 1 : -1;
-                        })[0].id;
-                    };
-
-                var isRootMemory = memorySelectors && typeof memorySelectors.isRootMemory === 'function'
-                    ? function(mem, rootId) { return memorySelectors.isRootMemory(mem, rootId); }
-                    : function(mem, rootId) {
-                        if (typeof rootUtils.isRootMemory === 'function') {
-                            return rootUtils.isRootMemory(mem, rootId);
-                        }
-                        return !!(mem && rootId && mem.id === rootId);
-                    };
-
-                var canonicalRootId = getCanonicalRootId();
-
-                var findFirstSelectableMemory = memorySelectors && typeof memorySelectors.findFirstSelectableMemory === 'function'
-                    ? function() { return memorySelectors.findFirstSelectableMemory(canonicalRootId); }
-                    : function() {
-                        var nonRoot = normalized.treeMemories.filter(function(m) { return !isRootMemory(m, canonicalRootId); });
-                        return nonRoot.length > 0 ? nonRoot[0] : normalized.treeMemories[0] || null;
-                    };
+                var memoryHelpers = createPublicCanvasMemoryHelpers(normalized.treeMemories);
+                var getCanonicalRootId = memoryHelpers.getCanonicalRootId;
+                var isRootMemory = memoryHelpers.isRootMemory;
+                var canonicalRootId = memoryHelpers.canonicalRootId;
+                var findFirstSelectableMemory = memoryHelpers.findFirstSelectableMemory;
 
                 // Delegate read-only/no-op actions to entry wrapper
                 var readOnlyActions = canvasEntry && typeof canvasEntry.createReadOnlyActions === 'function'
