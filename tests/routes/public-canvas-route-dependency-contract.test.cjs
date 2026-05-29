@@ -365,7 +365,7 @@ test('public canvas init delegates metrics/profile setup through entry wrapper',
   assert.ok(initSrc.includes('window.LoveBudEditor.canEdit = false'), 'public canvas init must retain fallback canEdit false assignment');
   assert.ok(initSrc.includes('canvas.__editorCanvasInstance = editorCanvas'), 'public canvas init must retain fallback canvas instance storage');
   assert.ok(
-    initSrc.indexOf('installPublicCanvasReadOnlyState(canvas, editorCanvas);') < initSrc.indexOf('editorCanvas.initCanvas'),
+    initSrc.indexOf('installPublicCanvasReadOnlyState(canvas, editorCanvas);') < initSrc.indexOf('initializePublicEditorCanvas(editorCanvas);'),
     'public read-only state setup must remain before editorCanvas.initCanvas'
   );
   assert.ok(initSrc.includes('runPublicPostInitRefresh'), 'public canvas init must delegate post-init refresh through entry wrapper');
