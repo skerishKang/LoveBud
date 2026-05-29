@@ -366,6 +366,14 @@
         return false;
     }
 
+    function initializePublicEditorCanvas(editorCanvas) {
+        if (editorCanvas && typeof editorCanvas.initCanvas === 'function') {
+            editorCanvas.initCanvas();
+            return true;
+        }
+        return false;
+    }
+
     function setupPublicRoute() {
         var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
         if (canvasEntry && typeof canvasEntry.setupPublicRoute === 'function') {
@@ -499,10 +507,7 @@
 
                 installPublicCanvasReadOnlyState(canvas, editorCanvas);
 
-                // Initialize canvas
-                if (editorCanvas && typeof editorCanvas.initCanvas === 'function') {
-                    editorCanvas.initCanvas();
-                }
+                initializePublicEditorCanvas(editorCanvas);
 
                 // Refresh public canvas UI after initialization
                 if (canvasEntry && typeof canvasEntry.runPublicPostInitRefresh === 'function') {

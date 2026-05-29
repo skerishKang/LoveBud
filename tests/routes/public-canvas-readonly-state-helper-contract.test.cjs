@@ -58,8 +58,12 @@ test('public canvas init keeps read-only editor state install behind a local hel
     'read-only state install must remain after editor canvas creation'
   );
   assert.ok(
-    initSrc.indexOf('installPublicCanvasReadOnlyState(canvas, editorCanvas);') < initSrc.indexOf('// Initialize canvas'),
+    initSrc.indexOf('installPublicCanvasReadOnlyState(canvas, editorCanvas);') < initSrc.indexOf('initializePublicEditorCanvas(editorCanvas);'),
     'read-only state install must remain before canvas initialization'
+  );
+  assert.ok(
+    initSrc.indexOf('initializePublicEditorCanvas(editorCanvas);') < initSrc.indexOf('// Refresh public canvas UI after initialization'),
+    'editor canvas initialization must remain before post-init refresh'
   );
 
   assert.equal(
