@@ -24,7 +24,7 @@
         }
     }
 
-    function createEditorDetailUIBuilders({ formatI18nText }) {
+    function createPublicViewerDetailUIBuilders({ formatI18nText }) {
         const createInlineIcon = (name, size = '12px') => {
             const icon = document.createElement('span');
             icon.className = 'material-symbols-outlined';
@@ -70,10 +70,14 @@
         };
     }
 
+    const createEditorDetailUIBuilders = createPublicViewerDetailUIBuilders;
+
     installPublicDetailBoundaryFallbacks();
 
+    window.createPublicViewerDetailUIBuilders = createPublicViewerDetailUIBuilders;
     window.createEditorDetailUIBuilders = createEditorDetailUIBuilders;
     window.LoveBudPublicViewerDetailBuilders = {
+        createPublicViewerDetailUIBuilders,
         createEditorDetailUIBuilders,
         createNoopInlineEditBoundary,
         createNoopSidebarStatusBoundary
