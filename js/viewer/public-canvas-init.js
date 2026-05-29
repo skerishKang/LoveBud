@@ -235,6 +235,19 @@
         };
     }
 
+    function createPublicCanvasReadOnlyActions() {
+        var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
+        return canvasEntry && typeof canvasEntry.createReadOnlyActions === 'function'
+            ? canvasEntry.createReadOnlyActions()
+            : {
+                noop: function() {},
+                noopAsync: function() { return Promise.resolve(); },
+                noopFalseAsync: function() { return Promise.resolve(false); },
+                getLocalSaveMode: function() { return false; },
+                showToast: function(msg) { console.log('[public-canvas]', msg); }
+            };
+    }
+
     function setupPublicRoute() {
         var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
         if (canvasEntry && typeof canvasEntry.setupPublicRoute === 'function') {
@@ -310,16 +323,7 @@
                 var canonicalRootId = memoryHelpers.canonicalRootId;
                 var findFirstSelectableMemory = memoryHelpers.findFirstSelectableMemory;
 
-                // Delegate read-only/no-op actions to entry wrapper
-                var readOnlyActions = canvasEntry && typeof canvasEntry.createReadOnlyActions === 'function'
-                    ? canvasEntry.createReadOnlyActions()
-                    : {
-                        noop: function() {},
-                        noopAsync: function() { return Promise.resolve(); },
-                        noopFalseAsync: function() { return Promise.resolve(false); },
-                        getLocalSaveMode: function() { return false; },
-                        showToast: function(msg) { console.log('[public-canvas]', msg); }
-                    };
+                var readOnlyActions = createPublicCanvasReadOnlyActions();
 
                 // Delegate selection state to entry wrapper with fallback
                 var selectionState = canvasEntry && typeof canvasEntry.createSelectionState === 'function'
