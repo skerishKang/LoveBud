@@ -79,6 +79,12 @@ test('public canvas route keeps public viewer bootstrap scripts in required orde
     'view.html must not load editor-utils.js on the public viewer route'
   );
 
+  assert.equal(
+    scriptIncludes(scripts, 'js/cache-utils.js'),
+    false,
+    'view.html must not load cache-utils.js on the public viewer route'
+  );
+
   assertScriptOrder(
     scripts,
     'js/editor/editor-root-helpers.js',
