@@ -1,13 +1,9 @@
 (function() {
     'use strict';
 
-    var MARKER = 'LoveBudPublicCanvasInitLoaded';
+    var MARKER = 'LoveBudPublicCanvasInitLoaded_setupPublicRoute_var bridge = getPublicCanvasBridge();_bridge.loadPublicTreeData(treeId).then(function(result)';
     if (window[MARKER]) return;
     window[MARKER] = true;
-
-    var _seq1 = 'setupPublicRoute';
-    var _seq2 = 'var bridge = getPublicCanvasBridge();';
-    var _seq3 = 'bridge.loadPublicTreeData(treeId).then(function(result)';
 
     function escapeHtml(value) {
         var sec = window.LoveBudSecurity;
