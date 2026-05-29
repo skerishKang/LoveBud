@@ -51,7 +51,7 @@ test('public canvas init keeps DOM target lookup behind a local helper', () => {
     'target lookup helper must be defined before initPublicCanvas'
   );
   assert.ok(
-    initSrc.indexOf('var targets = resolvePublicCanvasTargets();') < initSrc.indexOf('installPublicMetrics'),
+    initSrc.indexOf('var targets = resolvePublicCanvasTargets();') < initSrc.indexOf('installPublicCanvasRuntimeProfile(canvas);'),
     'target lookup must happen before metrics installation'
   );
 });

@@ -150,6 +150,16 @@
         };
     }
 
+    function installPublicCanvasRuntimeProfile(canvas) {
+        var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
+        if (canvasEntry && typeof canvasEntry.installPublicMetrics === 'function') {
+            canvasEntry.installPublicMetrics(canvas);
+        }
+        if (canvasEntry && typeof canvasEntry.installPublicViewportProfile === 'function') {
+            canvasEntry.installPublicViewportProfile();
+        }
+    }
+
     function setupPublicRoute() {
         var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
         if (canvasEntry && typeof canvasEntry.setupPublicRoute === 'function') {
@@ -213,12 +223,7 @@
                 }
 
                 var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
-                if (canvasEntry && typeof canvasEntry.installPublicMetrics === 'function') {
-                    canvasEntry.installPublicMetrics(canvas);
-                }
-                if (canvasEntry && typeof canvasEntry.installPublicViewportProfile === 'function') {
-                    canvasEntry.installPublicViewportProfile();
-                }
+                installPublicCanvasRuntimeProfile(canvas);
 
                 // Delegate public canvas config helpers to entry wrapper
                 var publicCanvasConfig = canvasEntry && typeof canvasEntry.createPublicCanvasConfig === 'function'
