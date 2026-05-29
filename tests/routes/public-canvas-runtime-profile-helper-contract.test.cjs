@@ -49,7 +49,7 @@ test('public canvas init keeps runtime profile installation behind a local helpe
     'runtime profile installation must remain after canvas/svg guard'
   );
   assert.ok(
-    initSrc.indexOf('installPublicCanvasRuntimeProfile(canvas);') < initSrc.indexOf('var publicCanvasConfig = canvasEntry && typeof canvasEntry.createPublicCanvasConfig'),
+    initSrc.indexOf('installPublicCanvasRuntimeProfile(canvas);') < initSrc.indexOf('var publicCanvasConfig = createPublicCanvasConfig(normalized);'),
     'runtime profile installation must remain before public canvas config creation'
   );
 });
