@@ -61,7 +61,7 @@ test('public canvas init keeps empty guide updater behind a local helper', () =>
     'empty guide updater creation must remain after public canvas config creation'
   );
   assert.ok(
-    initSrc.indexOf('var updateCanvasEmptyGuide = createPublicCanvasEmptyGuideUpdater(normalized.treeMemories);') < initSrc.indexOf('// Resolve root helpers via entry wrapper with fallback'),
+    initSrc.indexOf('var updateCanvasEmptyGuide = createPublicCanvasEmptyGuideUpdater(normalized.treeMemories);') < initSrc.indexOf('var memoryHelpers = createPublicCanvasMemoryHelpers(normalized.treeMemories);'),
     'empty guide updater creation must remain before root helper setup'
   );
 });
