@@ -101,7 +101,7 @@ test('public canvas init keeps memory/root helpers behind a local helper', () =>
     'memory helpers must remain after empty guide setup'
   );
   assert.ok(
-    initSrc.indexOf('var memoryHelpers = createPublicCanvasMemoryHelpers(normalized.treeMemories);') < initSrc.indexOf('// Delegate read-only/no-op actions to entry wrapper'),
+    initSrc.indexOf('var memoryHelpers = createPublicCanvasMemoryHelpers(normalized.treeMemories);') < initSrc.indexOf('var readOnlyActions = createPublicCanvasReadOnlyActions();'),
     'memory helpers must remain before read-only action setup'
   );
 });
