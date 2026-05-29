@@ -179,23 +179,49 @@ test('public viewer detail UI adapter renders channel link via viewer namespace'
   assert.ok(channelLinkIndex < hintIndex, 'channel link runs before hint update');
 });
 
-test('public viewer detail UI adapter owns selected moment action button boundary', () => {
+test('public viewer detail UI adapter does not bind removed selected action buttons', () => {
   const source = fs.readFileSync('js/viewer/public-viewer-detail-ui.js', 'utf8');
 
-  assert.ok(source.includes('function createPublicViewerSelectedMomentActionsBoundary(deps)'), 'viewer adapter exposes selected action boundary factory');
-  assert.ok(source.includes("document.getElementById('viewMomentDetailBtn')"), 'viewer action boundary targets viewMomentDetailBtn');
-  assert.ok(source.includes("document.getElementById('continueFromMomentBtn')"), 'viewer action boundary targets continueFromMomentBtn');
-  assert.ok(source.includes("viewMomentDetailBtn.dataset.publicViewerBound !== '1'"), 'viewer action boundary uses dataset dedup flag');
-  assert.ok(source.includes("continueFromMomentBtn.dataset.publicViewerBound !== '1'"), 'viewer action boundary uses dataset dedup flag for continue btn');
-  assert.ok(source.includes('typeof openCurrentMomentDetail === \'function\''), 'viewer action boundary checks openCurrentMomentDetail fallback');
-  assert.ok(source.includes('typeof focusSelectedMoment === \'function\''), 'viewer action boundary checks focusSelectedMoment fallback');
-  assert.ok(source.includes('addEventListener'), 'viewer action boundary attaches event listeners');
-  assert.equal(source.includes("openCurrentMomentDetail();"), true, 'viewer action boundary calls openCurrentMomentDetail when available');
-  assert.equal(source.includes("document.getElementById('addMemoryBtn')"), false, 'viewer action boundary must not reference addMemoryBtn');
-  assert.equal(source.includes("document.getElementById('canvasEmptyStartBtn')"), false, 'viewer action boundary must not reference canvasEmptyStartBtn');
-  assert.ok(source.includes('createPublicViewerSelectedMomentActionsBoundary: createPublicViewerSelectedMomentActionsBoundary'), 'viewer adapter publishes selected action boundary on namespace');
-  assert.ok(source.includes('var installSelectedMomentActions = createPublicViewerSelectedMomentActionsBoundary(deps)'), 'viewer adapter creates selected action installer');
-  assert.ok(source.includes('installSelectedMomentActions();'), 'viewer adapter runs selected action installer at construction');
+  assert.equal(
+    source.includes('function createPublicViewerSelectedMomentActionsBoundary(deps)'),
+    false,
+    'viewer detail adapter should not expose selected action button boundary'
+  );
+  assert.equal(
+    source.includes("document.getElementById('viewMomentDetailBtn')"),
+    false,
+    'viewer detail adapter should not target viewMomentDetailBtn'
+  );
+  assert.equal(
+    source.includes("document.getElementById('continueFromMomentBtn')"),
+    false,
+    'viewer detail adapter should not target continueFromMomentBtn'
+  );
+  assert.equal(
+    source.includes('installSelectedMomentActions'),
+    false,
+    'viewer detail adapter should not install selected action button handlers'
+  );
+  assert.equal(
+    source.includes('openCurrentMomentDetail();'),
+    false,
+    'viewer detail adapter should not call openCurrentMomentDetail from a removed button handler'
+  );
+  assert.equal(
+    source.includes('createPublicViewerSelectedMomentActionsBoundary: createPublicViewerSelectedMomentActionsBoundary'),
+    false,
+    'viewer detail adapter namespace should not publish removed selected action boundary'
+  );
+  assert.equal(
+    source.includes("document.getElementById('addMemoryBtn')"),
+    false,
+    'viewer detail adapter must not reference addMemoryBtn'
+  );
+  assert.equal(
+    source.includes("document.getElementById('canvasEmptyStartBtn')"),
+    false,
+    'viewer detail adapter must not reference canvasEmptyStartBtn'
+  );
 });
 
 test('public viewer detail UI adapter owns memory actions display boundary', () => {
