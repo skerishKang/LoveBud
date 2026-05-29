@@ -73,7 +73,7 @@ test('public canvas init keeps public canvas config behind a local helper', () =
     'public canvas config creation must remain after runtime profile setup'
   );
   assert.ok(
-    initSrc.indexOf('var publicCanvasConfig = createPublicCanvasConfig(normalized);') < initSrc.indexOf('// Set up empty guide UI'),
+    initSrc.indexOf('var publicCanvasConfig = createPublicCanvasConfig(normalized);') < initSrc.indexOf('var updateCanvasEmptyGuide = createPublicCanvasEmptyGuideUpdater(normalized.treeMemories);'),
     'public canvas config creation must remain before empty guide setup'
   );
 });

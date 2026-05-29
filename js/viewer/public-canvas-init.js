@@ -177,6 +177,18 @@
             };
     }
 
+    function createPublicCanvasEmptyGuideUpdater(treeMemories) {
+        var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
+        return canvasEntry && typeof canvasEntry.createEmptyGuideUpdater === 'function'
+            ? canvasEntry.createEmptyGuideUpdater(treeMemories)
+            : function() {
+                var guide = document.getElementById('canvasEmptyGuide');
+                if (!guide) return;
+                var hasMoments = treeMemories.length > 0;
+                guide.classList.toggle('editor-canvas-empty-guide-hidden', hasMoments);
+            };
+    }
+
     function setupPublicRoute() {
         var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
         if (canvasEntry && typeof canvasEntry.setupPublicRoute === 'function') {
@@ -244,15 +256,7 @@
 
                 var publicCanvasConfig = createPublicCanvasConfig(normalized);
 
-                // Set up empty guide UI
-                var updateCanvasEmptyGuide = canvasEntry && typeof canvasEntry.createEmptyGuideUpdater === 'function'
-                    ? canvasEntry.createEmptyGuideUpdater(normalized.treeMemories)
-                    : function() {
-                        var guide = document.getElementById('canvasEmptyGuide');
-                        if (!guide) return;
-                        var hasMoments = normalized.treeMemories.length > 0;
-                        guide.classList.toggle('editor-canvas-empty-guide-hidden', hasMoments);
-                    };
+                var updateCanvasEmptyGuide = createPublicCanvasEmptyGuideUpdater(normalized.treeMemories);
 
                 // Resolve root helpers via entry wrapper with fallback
                 var rootUtils = window.LoveBudEditorUtils || {};
