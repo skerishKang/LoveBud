@@ -1,5 +1,5 @@
 (function () {
-    function createEditorDetailTreeMetaBoundary(deps) {
+    function createPublicViewerDetailTreeMetaBoundary(deps) {
         const {
             i18n,
             formatI18nText,
@@ -241,8 +241,12 @@
         };
     }
 
+    const createEditorDetailTreeMetaBoundary = createPublicViewerDetailTreeMetaBoundary;
+
+    window.createPublicViewerDetailTreeMetaBoundary = createPublicViewerDetailTreeMetaBoundary;
     window.createEditorDetailTreeMetaBoundary = createEditorDetailTreeMetaBoundary;
     window.LoveBudPublicViewerDetailTreeMeta = {
+        createPublicViewerDetailTreeMetaBoundary,
         createEditorDetailTreeMetaBoundary
     };
 })();
