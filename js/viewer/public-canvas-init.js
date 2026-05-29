@@ -1,7 +1,7 @@
 (function() {
     'use strict';
 
-    var MARKER = 'LoveBudPublicCanvasInitLoaded_setupPublicRoute_var bridge = getPublicCanvasBridge();_bridge.loadPublicTreeData(treeId).then(function(result)';
+    var MARKER = 'LoveBudPublicCanvasInitLoaded';
     if (window[MARKER]) return;
     window[MARKER] = true;
 
@@ -112,26 +112,6 @@
         };
     }
 
-    function getPublicCanvasBridge() {
-        var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
-        return canvasEntry && typeof canvasEntry.getPublicCanvasBridge === 'function'
-            ? canvasEntry.getPublicCanvasBridge()
-            : window.LoveBudPublicCanvasBridge;
-    }
-
-    function normalizePublicCanvasData(bridge, tree, memories) {
-        var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
-        var normalized =
-            canvasEntry && typeof canvasEntry.normalizePublicCanvasData === 'function'
-                ? canvasEntry.normalizePublicCanvasData(bridge, tree, memories)
-                : bridge.normalizeForCanvas(tree, memories);
-
-        if (!normalized) {
-            normalized = bridge.normalizeForCanvas(tree, memories);
-        }
-
-        return normalized;
-    }
 
     function initPublicCanvas() {
         var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
@@ -465,6 +445,27 @@
             var container = document.getElementById('canvasArea');
             appendPublicLoadFailureState(container, error);
         });
+    }
+
+    function getPublicCanvasBridge() {
+        var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
+        return canvasEntry && typeof canvasEntry.getPublicCanvasBridge === 'function'
+            ? canvasEntry.getPublicCanvasBridge()
+            : window.LoveBudPublicCanvasBridge;
+    }
+
+    function normalizePublicCanvasData(bridge, tree, memories) {
+        var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
+        var normalized =
+            canvasEntry && typeof canvasEntry.normalizePublicCanvasData === 'function'
+                ? canvasEntry.normalizePublicCanvasData(bridge, tree, memories)
+                : bridge.normalizeForCanvas(tree, memories);
+
+        if (!normalized) {
+            normalized = bridge.normalizeForCanvas(tree, memories);
+        }
+
+        return normalized;
     }
 
     if (document.readyState === 'loading') {

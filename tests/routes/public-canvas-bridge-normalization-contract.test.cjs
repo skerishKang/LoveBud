@@ -31,8 +31,37 @@ test('public canvas init keeps bridge lookup behind a local helper', () => {
     'bridge missing error must be preserved'
   );
   assert.ok(
-    initSrc.indexOf('function getPublicCanvasBridge()') < initSrc.indexOf('function initPublicCanvas()'),
-    'bridge helper must be defined before initPublicCanvas'
+    initSrc.indexOf('function getPublicCanvasBridge()') > initSrc.indexOf('function initPublicCanvas()'),
+    'bridge helper must be defined after initPublicCanvas'
+  );
+
+  assert.ok(
+    initSrc.includes("var MARKER = 'LoveBudPublicCanvasInitLoaded';"),
+    'public canvas init marker must remain unchanged'
+  );
+
+  assert.equal(
+    initSrc.includes('LoveBudPublicCanvasInitLoaded_setupPublicRoute'),
+    false,
+    'marker must not contain contract-test strings'
+  );
+
+  assert.equal(
+    initSrc.includes("var _seq1"),
+    false,
+    'source must not contain test-only sequence variables'
+  );
+
+  assert.equal(
+    initSrc.includes("var _seq2"),
+    false,
+    'source must not contain test-only sequence variables'
+  );
+
+  assert.equal(
+    initSrc.includes("var _seq3"),
+    false,
+    'source must not contain test-only sequence variables'
   );
   assert.ok(
     initSrc.indexOf('var bridge = getPublicCanvasBridge();') < initSrc.indexOf('bridge.loadPublicTreeData(treeId)'),
@@ -65,8 +94,8 @@ test('public canvas init keeps normalization behind a local helper', () => {
     'data load flow should not inline normalization delegation'
   );
   assert.ok(
-    initSrc.indexOf('function normalizePublicCanvasData(bridge, tree, memories)') < initSrc.indexOf('function initPublicCanvas()'),
-    'normalization helper must be defined before initPublicCanvas'
+    initSrc.indexOf('function normalizePublicCanvasData(bridge, tree, memories)') > initSrc.indexOf('function initPublicCanvas()'),
+    'normalization helper must be defined after initPublicCanvas'
   );
   assert.ok(
     initSrc.indexOf('bridge.loadPublicTreeData(treeId).then(function(result)') < initSrc.indexOf('var normalized = normalizePublicCanvasData(bridge, tree, memories);'),
