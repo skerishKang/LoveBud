@@ -134,6 +134,10 @@
         return { treeId: treeId };
     }
 
+    function isPublicCanvasBridgeReady(bridge) {
+        return !!(bridge && typeof bridge.loadPublicTreeData === 'function');
+    }
+
     function initPublicCanvas() {
         var routeSetup = setupPublicRoute();
         var treeId = routeSetup && routeSetup.treeId;
@@ -145,7 +149,7 @@
 
         var bridge = getPublicCanvasBridge();
 
-        if (!bridge || typeof bridge.loadPublicTreeData !== 'function') {
+        if (!isPublicCanvasBridgeReady(bridge)) {
             console.error('[public-canvas] Bridge not loaded');
             return;
         }
