@@ -428,7 +428,7 @@ test('public canvas init delegates metrics/profile setup through entry wrapper',
   );
   assert.ok(initSrc.includes('function waitForModules'), 'public canvas init must keep waitForModules local');
   assert.ok(initSrc.includes('function startCanvas'), 'public canvas init must keep startCanvas local');
-  assert.ok(initSrc.includes('var onPublicCanvasNodeClick = function(el, data)'), 'public canvas init must keep node click flow local');
+  assert.ok(initSrc.includes('var onPublicCanvasNodeClick = createPublicCanvasNodeClickHandler({'), 'public canvas init must keep node click flow local');
   assert.ok(initSrc.includes('editorCanvas.initCanvas();'), 'public canvas init must keep editorCanvas init call local');
   assert.ok(initSrc.includes('appendPublicLoadFailureState'), 'public canvas init must delegate load failure appending through entry wrapper');
   assert.ok(initSrc.includes('canvasEntry.appendPublicLoadFailureState'), 'public canvas init must call delegated load failure append helper');

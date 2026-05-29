@@ -101,15 +101,15 @@ test('public canvas init keeps canvas options behind a local helper', () => {
     'canvas options helper must be defined before initPublicCanvas'
   );
   assert.ok(
-    initSrc.indexOf('var onPublicCanvasNodeClick = function(el, data)') < initSrc.indexOf('var canvasOptions = createPublicCanvasOptions({'),
-    'canvas options must remain after public canvas click handler'
+    initSrc.indexOf('var onPublicCanvasNodeClick = createPublicCanvasNodeClickHandler({') < initSrc.indexOf('var canvasOptions = createPublicCanvasOptions({'),
+    'node click handler must remain before canvas options creation'
   );
   assert.ok(
-    initSrc.indexOf('var canvasOptions = createPublicCanvasOptions({') < initSrc.indexOf('var editorCanvas = createPublicEditorCanvas(canvasOptions);'),
-    'canvas options must remain before editor canvas creation'
+    initSrc.indexOf('var canvasOptions = createPublicCanvasOptions({') < initSrc.indexOf('editorCanvas = createPublicEditorCanvas(canvasOptions);'),
+    'canvas options must remain before editor canvas assignment'
   );
   assert.ok(
-    initSrc.indexOf('var editorCanvas = createPublicEditorCanvas(canvasOptions);') < initSrc.indexOf('installPublicCanvasReadOnlyState(canvas, editorCanvas);'),
+    initSrc.indexOf('editorCanvas = createPublicEditorCanvas(canvasOptions);') < initSrc.indexOf('installPublicCanvasReadOnlyState(canvas, editorCanvas);'),
     'editor canvas creation must remain before read-only state install'
   );
 });

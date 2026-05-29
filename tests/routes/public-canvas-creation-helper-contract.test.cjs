@@ -30,7 +30,7 @@ test('public canvas init keeps canvas creation behind a local helper', () => {
     'canvas creation helper must return the created editor canvas'
   );
   assert.ok(
-    initSrc.includes('var editorCanvas = createPublicEditorCanvas(canvasOptions);'),
+    initSrc.includes('editorCanvas = createPublicEditorCanvas(canvasOptions);'),
     'startCanvas must consume the local canvas creation helper'
   );
   assert.equal(
@@ -43,7 +43,7 @@ test('public canvas init keeps canvas creation behind a local helper', () => {
     'canvas creation helper must be defined before initPublicCanvas'
   );
   assert.ok(
-    initSrc.indexOf('var editorCanvas = createPublicEditorCanvas(canvasOptions);') < initSrc.indexOf('installPublicCanvasReadOnlyState(canvas, editorCanvas);'),
+    initSrc.indexOf('editorCanvas = createPublicEditorCanvas(canvasOptions);') < initSrc.indexOf('installPublicCanvasReadOnlyState(canvas, editorCanvas);'),
     'canvas must be created before read-only state installation'
   );
   assert.ok(
