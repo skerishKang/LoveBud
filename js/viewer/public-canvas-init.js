@@ -316,6 +316,43 @@
             };
     }
 
+    function createPublicCanvasOptions(ctx) {
+        var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
+        return canvasEntry && typeof canvasEntry.createCanvasOptions === 'function'
+            ? canvasEntry.createCanvasOptions({
+                canvas: ctx.canvas,
+                svg: ctx.svg,
+                publicCanvasConfig: ctx.publicCanvasConfig,
+                readOnlyActions: ctx.readOnlyActions,
+                getCanonicalRootId: function() { return ctx.canonicalRootId; },
+                isRootMemory: ctx.isRootMemory,
+                updateDetailPanel: ctx.updateDetailPanel,
+                setDetailEmptyState: ctx.setDetailEmptyState,
+                updateFocusSelectedBtn: ctx.updateFocusSelectedBtn,
+                createInitialMemory: function() {
+                    return ctx.publicCanvasConfig.createInitialMemory(ctx.canonicalRootId);
+                },
+                onNodeClick: ctx.onNodeClick
+            })
+            : {
+                canvas: ctx.canvas,
+                svg: ctx.svg,
+                getTreeMemories: ctx.publicCanvasConfig.getTreeMemories,
+                getCanonicalRootId: function() { return ctx.canonicalRootId; },
+                isRootMemory: ctx.isRootMemory,
+                resolveMemoryThumbnail: ctx.publicCanvasConfig.resolveMemoryThumbnail,
+                updateDetailPanel: ctx.updateDetailPanel,
+                setDetailEmptyState: ctx.setDetailEmptyState,
+                updateFocusSelectedBtn: ctx.updateFocusSelectedBtn,
+                createInitialMemory: function() {
+                    return ctx.publicCanvasConfig.createInitialMemory(ctx.canonicalRootId);
+                },
+                onNodeClick: ctx.onNodeClick,
+                openAddMoment: ctx.readOnlyActions.noop,
+                canEdit: false
+            };
+    }
+
     function setupPublicRoute() {
         var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
         if (canvasEntry && typeof canvasEntry.setupPublicRoute === 'function') {
@@ -432,39 +469,18 @@
                     }
                 };
 
-                var canvasOptions = canvasEntry && typeof canvasEntry.createCanvasOptions === 'function'
-                    ? canvasEntry.createCanvasOptions({
-                        canvas: canvas,
-                        svg: svg,
-                        publicCanvasConfig: publicCanvasConfig,
-                        readOnlyActions: readOnlyActions,
-                        getCanonicalRootId: function() { return canonicalRootId; },
-                        isRootMemory: isRootMemory,
-                        updateDetailPanel: updateDetailPanel,
-                        setDetailEmptyState: setDetailEmptyState,
-                        updateFocusSelectedBtn: updateFocusSelectedBtn,
-                        createInitialMemory: function() {
-                            return publicCanvasConfig.createInitialMemory(canonicalRootId);
-                        },
-                        onNodeClick: onPublicCanvasNodeClick
-                    })
-                    : {
-                        canvas: canvas,
-                        svg: svg,
-                        getTreeMemories: publicCanvasConfig.getTreeMemories,
-                        getCanonicalRootId: function() { return canonicalRootId; },
-                        isRootMemory: isRootMemory,
-                        resolveMemoryThumbnail: publicCanvasConfig.resolveMemoryThumbnail,
-                        updateDetailPanel: updateDetailPanel,
-                        setDetailEmptyState: setDetailEmptyState,
-                        updateFocusSelectedBtn: updateFocusSelectedBtn,
-                        createInitialMemory: function() {
-                            return publicCanvasConfig.createInitialMemory(canonicalRootId);
-                        },
-                        onNodeClick: onPublicCanvasNodeClick,
-                        openAddMoment: readOnlyActions.noop,
-                        canEdit: false
-                    };
+                var canvasOptions = createPublicCanvasOptions({
+                    canvas: canvas,
+                    svg: svg,
+                    publicCanvasConfig: publicCanvasConfig,
+                    readOnlyActions: readOnlyActions,
+                    canonicalRootId: canonicalRootId,
+                    isRootMemory: isRootMemory,
+                    updateDetailPanel: updateDetailPanel,
+                    setDetailEmptyState: setDetailEmptyState,
+                    updateFocusSelectedBtn: updateFocusSelectedBtn,
+                    onNodeClick: onPublicCanvasNodeClick
+                });
 
                 var editorCanvas = createPublicEditorCanvas(canvasOptions);
 
