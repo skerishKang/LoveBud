@@ -10,7 +10,7 @@ test('public canvas init keeps read-only editor state install behind a local hel
     'public canvas init must expose a local read-only state helper'
   );
   assert.ok(
-    initSrc.includes("canvasEntry[method](canvas, editorCanvas);"),
+    initSrc.includes("canvasEntry.installPublicEditorReadOnlyState(canvas, editorCanvas);"),
     'read-only state helper must delegate to entry wrapper when available'
   );
   assert.ok(
@@ -29,8 +29,9 @@ test('public canvas init keeps read-only editor state install behind a local hel
     initSrc.includes('installPublicCanvasReadOnlyState(canvas, editorCanvas);'),
     'startCanvas must consume the local read-only state helper'
   );
+  const startCanvasSrc = initSrc.substring(initSrc.indexOf('function startCanvas()'), initSrc.indexOf('var editorCanvas = createPublicEditorCanvas(canvasOptions);'));
   assert.equal(
-    initSrc.includes("if (canvasEntry && typeof canvasEntry.installPublicEditorReadOnlyState === 'function')"),
+    startCanvasSrc.includes("if (canvasEntry && typeof canvasEntry.installPublicEditorReadOnlyState === 'function')"),
     false,
     'startCanvas should not inline read-only editor state installation'
   );
@@ -59,5 +60,17 @@ test('public canvas init keeps read-only editor state install behind a local hel
   assert.ok(
     initSrc.indexOf('installPublicCanvasReadOnlyState(canvas, editorCanvas);') < initSrc.indexOf('// Initialize canvas'),
     'read-only state install must remain before canvas initialization'
+  );
+
+  assert.equal(
+    initSrc.includes('var method = "installPublicEditor" + "ReadOnlyState";'),
+    false,
+    'source must not hide installPublicEditorReadOnlyState behind dynamic method construction'
+  );
+
+  assert.equal(
+    initSrc.includes('// canvasEntry.installPublicEditorReadOnlyState(canvas, editorCanvas)'),
+    false,
+    'source must not keep trace comments only for contract tests'
   );
 });

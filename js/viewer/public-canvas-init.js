@@ -355,9 +355,8 @@
 
     function installPublicCanvasReadOnlyState(canvas, editorCanvas) {
         var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
-        var method = "installPublicEditor" + "ReadOnlyState";
-        if (canvasEntry && typeof canvasEntry[method] === "function") {
-            canvasEntry[method](canvas, editorCanvas);
+        if (canvasEntry && typeof canvasEntry.installPublicEditorReadOnlyState === 'function') {
+            canvasEntry.installPublicEditorReadOnlyState(canvas, editorCanvas);
             return true;
         }
 
@@ -498,7 +497,7 @@
 
                 var editorCanvas = createPublicEditorCanvas(canvasOptions);
 
-                installPublicCanvasReadOnlyState(canvas, editorCanvas); // canvasEntry.installPublicEditorReadOnlyState(canvas, editorCanvas)
+                installPublicCanvasReadOnlyState(canvas, editorCanvas);
 
                 // Initialize canvas
                 if (editorCanvas && typeof editorCanvas.initCanvas === 'function') {
