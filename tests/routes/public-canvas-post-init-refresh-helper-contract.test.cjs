@@ -95,4 +95,8 @@ test('public canvas init keeps post-init refresh behind a local helper', () => {
     initSrc.indexOf('runPublicCanvasPostInitRefresh({') < initSrc.indexOf("console.log('[public-canvas] Canvas initialized successfully')"),
     'post-init refresh helper call must remain before post-init logging'
   );
+  assert.ok(
+    initSrc.indexOf("console.log('[public-canvas] Canvas initialized successfully')") < initSrc.indexOf('installPublicCanvasToolbarCompactMode();'),
+    'successful initialization logging must remain before toolbar compact mode setup'
+  );
 });
