@@ -108,4 +108,8 @@ test('public canvas init keeps canvas options behind a local helper', () => {
     initSrc.indexOf('var canvasOptions = createPublicCanvasOptions({') < initSrc.indexOf('var editorCanvas = createPublicEditorCanvas(canvasOptions);'),
     'canvas options must remain before editor canvas creation'
   );
+  assert.ok(
+    initSrc.indexOf('var editorCanvas = createPublicEditorCanvas(canvasOptions);') < initSrc.indexOf('installPublicCanvasReadOnlyState(canvas, editorCanvas);'),
+    'editor canvas creation must remain before read-only state install'
+  );
 });
