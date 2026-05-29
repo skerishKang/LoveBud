@@ -97,6 +97,29 @@
         return canvasRuntimeReady && detailRuntimeReady;
     }
 
+    function waitForPublicRuntime(startCanvas) {
+        var maxWait = 100;
+        var waitInterval = 50;
+
+        function waitForModules(attempt) {
+            if (attempt >= maxWait) {
+                console.error('[public-canvas] Timeout waiting for editor modules');
+                return;
+            }
+
+            var runtimeReady = isPublicRuntimeReady();
+
+            if (runtimeReady) {
+                startCanvas();
+                return;
+            }
+
+            setTimeout(function() { waitForModules(attempt + 1); }, waitInterval);
+        }
+
+        waitForModules(0);
+    }
+
     function createPublicEditorCanvas(canvasOptions) {
         var adapter = window.LoveBudPublicViewerCanvasAdapter;
         var editorCanvas = adapter && typeof adapter.createPublicViewerCanvas === 'function'
@@ -171,24 +194,6 @@
 
             console.log('[public-canvas] Loaded tree:', normalized.treeData.id, 'memories:', normalized.treeMemories.length);
 
-            // Wait for all required modules
-            var maxWait = 100;
-            var waitInterval = 50;
-
-            function waitForModules(attempt) {
-                if (attempt >= maxWait) {
-                    console.error('[public-canvas] Timeout waiting for editor modules');
-                    return;
-                }
-
-                var runtimeReady = isPublicRuntimeReady();
-
-                if (runtimeReady) {
-                    startCanvas();
-                    return;
-                }
-                setTimeout(function() { waitForModules(attempt + 1); }, waitInterval);
-            }
 
             function startCanvas() {
                 var targets = resolvePublicCanvasTargets();
@@ -459,7 +464,7 @@
                 }
             }
 
-            waitForModules(0);
+            waitForPublicRuntime(startCanvas);
         }).catch(function(error) {
             console.error('[public-canvas] Load failed:', error);
             var container = document.getElementById('canvasArea');
