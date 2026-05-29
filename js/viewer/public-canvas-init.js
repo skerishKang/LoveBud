@@ -424,6 +424,23 @@
         return false;
     }
 
+    function createPublicCanvasNodeClickHandler(ctx) {
+        return function(el, data) {
+            if (!data) return;
+            ctx.selectionState.selectMemory(data);
+            document.querySelectorAll('.memory-node').forEach(function(n) { n.classList.remove('selected'); });
+            if (el) el.classList.add('selected');
+            ctx.updateDetailPanel(data);
+            ctx.updateFocusSelectedBtn();
+            ctx.setDetailEmptyState(false);
+
+            var editorCanvas = typeof ctx.getEditorCanvas === 'function' ? ctx.getEditorCanvas() : null;
+            if (editorCanvas && typeof editorCanvas.updateAffordance === 'function') {
+                editorCanvas.updateAffordance();
+            }
+        };
+    }
+
     function setupPublicRoute() {
         var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
         if (canvasEntry && typeof canvasEntry.setupPublicRoute === 'function') {
@@ -527,18 +544,14 @@
                 }
 
                 // Create canvas instance
-                var onPublicCanvasNodeClick = function(el, data) {
-                    if (!data) return;
-                    selectionState.selectMemory(data);
-                    document.querySelectorAll('.memory-node').forEach(function(n) { n.classList.remove('selected'); });
-                    if (el) el.classList.add('selected');
-                    updateDetailPanel(data);
-                    updateFocusSelectedBtn();
-                    setDetailEmptyState(false);
-                    if (editorCanvas && typeof editorCanvas.updateAffordance === 'function') {
-                        editorCanvas.updateAffordance();
-                    }
-                };
+                var editorCanvas;
+                var onPublicCanvasNodeClick = createPublicCanvasNodeClickHandler({
+                    selectionState: selectionState,
+                    updateDetailPanel: updateDetailPanel,
+                    updateFocusSelectedBtn: updateFocusSelectedBtn,
+                    setDetailEmptyState: setDetailEmptyState,
+                    getEditorCanvas: function() { return editorCanvas; }
+                });
 
                 var canvasOptions = createPublicCanvasOptions({
                     canvas: canvas,
@@ -553,7 +566,7 @@
                     onNodeClick: onPublicCanvasNodeClick
                 });
 
-                var editorCanvas = createPublicEditorCanvas(canvasOptions);
+                editorCanvas = createPublicEditorCanvas(canvasOptions);
 
                 installPublicCanvasReadOnlyState(canvas, editorCanvas);
 

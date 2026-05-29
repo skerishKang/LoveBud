@@ -29,7 +29,7 @@ test('public canvas init keeps read-only editor state install behind a local hel
     initSrc.includes('installPublicCanvasReadOnlyState(canvas, editorCanvas);'),
     'startCanvas must consume the local read-only state helper'
   );
-  const startCanvasSrc = initSrc.substring(initSrc.indexOf('function startCanvas()'), initSrc.indexOf('var editorCanvas = createPublicEditorCanvas(canvasOptions);'));
+  const startCanvasSrc = initSrc.substring(initSrc.indexOf('function startCanvas()'), initSrc.indexOf('editorCanvas = createPublicEditorCanvas(canvasOptions);'));
   assert.equal(
     startCanvasSrc.includes("if (canvasEntry && typeof canvasEntry.installPublicEditorReadOnlyState === 'function')"),
     false,
@@ -54,7 +54,7 @@ test('public canvas init keeps read-only editor state install behind a local hel
     'read-only state helper must be defined before initPublicCanvas'
   );
   assert.ok(
-    initSrc.indexOf('var editorCanvas = createPublicEditorCanvas(canvasOptions);') < initSrc.indexOf('installPublicCanvasReadOnlyState(canvas, editorCanvas);'),
+    initSrc.indexOf('editorCanvas = createPublicEditorCanvas(canvasOptions);') < initSrc.indexOf('installPublicCanvasReadOnlyState(canvas, editorCanvas);'),
     'read-only state install must remain after editor canvas creation'
   );
   assert.ok(
