@@ -112,19 +112,21 @@
         };
     }
 
+    function setupPublicRoute() {
+        var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
+        if (canvasEntry && typeof canvasEntry.setupPublicRoute === 'function') {
+            return canvasEntry.setupPublicRoute();
+        }
+
+        var params = new URLSearchParams(window.location.search);
+        var treeId = params.get('treeId');
+        document.body.classList.add('editor-readonly');
+        document.body.classList.remove('editor-preload');
+        return { treeId: treeId };
+    }
 
     function initPublicCanvas() {
-        var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
-        var routeSetup = canvasEntry && typeof canvasEntry.setupPublicRoute === 'function'
-            ? canvasEntry.setupPublicRoute()
-            : (function() {
-                var params = new URLSearchParams(window.location.search);
-                var treeId = params.get('treeId');
-                document.body.classList.add('editor-readonly');
-                document.body.classList.remove('editor-preload');
-                return { treeId: treeId };
-            })();
-
+        var routeSetup = setupPublicRoute();
         var treeId = routeSetup && routeSetup.treeId;
 
         if (!treeId) {
