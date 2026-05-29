@@ -80,6 +80,12 @@
         return false;
     }
 
+    function handlePublicCanvasLoadFailure(error) {
+        console.error('[public-canvas] Load failed:', error);
+        var container = document.getElementById('canvasArea');
+        appendPublicLoadFailureState(container, error);
+    }
+
     function isPublicRuntimeReady() {
         var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
         if (canvasEntry && typeof canvasEntry.isPublicRuntimeReady === 'function') {
@@ -465,11 +471,7 @@
             }
 
             waitForPublicRuntime(startCanvas);
-        }).catch(function(error) {
-            console.error('[public-canvas] Load failed:', error);
-            var container = document.getElementById('canvasArea');
-            appendPublicLoadFailureState(container, error);
-        });
+        }).catch(handlePublicCanvasLoadFailure);
     }
 
     function getPublicCanvasBridge() {
