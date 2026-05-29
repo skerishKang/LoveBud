@@ -2,9 +2,9 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 
-const treeMetaSrc = fs.readFileSync('js/viewer/public-viewer-detail-tree-meta.js', 'utf8');
-const buildersSrc = fs.readFileSync('js/viewer/public-viewer-detail-builders.js', 'utf8');
-const detailUiSrc = fs.readFileSync('js/viewer/public-viewer-detail-ui.js', 'utf8');
+const treeMetaSrc = fs.readFileSync('js/viewer/public-viewer-detail-tree-meta.js', 'utf8').replace(/\r/g, '');
+const buildersSrc = fs.readFileSync('js/viewer/public-viewer-detail-builders.js', 'utf8').replace(/\r/g, '');
+const detailUiSrc = fs.readFileSync('js/viewer/public-viewer-detail-ui.js', 'utf8').replace(/\r/g, '');
 
 test('public viewer detail tree meta exposes viewer-named helper with legacy alias', () => {
   assert.ok(
@@ -52,5 +52,24 @@ test('public viewer detail UI remains viewer-owned and does not delegate to edit
   assert.ok(
     detailUiSrc.includes('delegatesToEditorDetailUI: false'),
     'public viewer detail UI must remain detached from editor detail UI delegation'
+  );
+});
+
+test('public viewer detail UI prefers viewer-named helper aliases before legacy aliases', () => {
+  assert.ok(
+    detailUiSrc.includes('window.createPublicViewerDetailUIBuilders'),
+    'public viewer detail UI should prefer the viewer-named detail builder factory'
+  );
+  assert.ok(
+    detailUiSrc.includes('window.createPublicViewerDetailTreeMetaBoundary'),
+    'public viewer detail UI should prefer the viewer-named tree meta factory'
+  );
+  assert.ok(
+    detailUiSrc.includes('window.createEditorDetailUIBuilders'),
+    'public viewer detail UI should keep the legacy builder fallback while compatibility alias remains'
+  );
+  assert.ok(
+    detailUiSrc.includes('window.createEditorDetailTreeMetaBoundary'),
+    'public viewer detail UI should keep the legacy tree meta fallback while compatibility alias remains'
   );
 });

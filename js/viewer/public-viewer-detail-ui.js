@@ -214,8 +214,12 @@
         }
 
         function getMemoFallbackText(options) {
-            if (typeof window.createEditorDetailUIBuilders === 'function') {
-                var builders = window.createEditorDetailUIBuilders({ formatI18nText: formatI18nText });
+            var createDetailUIBuilders = typeof window.createPublicViewerDetailUIBuilders === 'function'
+                ? window.createPublicViewerDetailUIBuilders
+                : window.createEditorDetailUIBuilders;
+
+            if (typeof createDetailUIBuilders === 'function') {
+                var builders = createDetailUIBuilders({ formatI18nText: formatI18nText });
                 if (builders && typeof builders.getMemoFallbackText === 'function') {
                     return builders.getMemoFallbackText(options);
                 }
@@ -283,8 +287,12 @@
         }
 
         function getDisplayTags(data, options) {
-            if (typeof window.createEditorDetailUIBuilders === 'function') {
-                var builders = window.createEditorDetailUIBuilders({ formatI18nText: formatI18nText });
+            var createDetailUIBuilders = typeof window.createPublicViewerDetailUIBuilders === 'function'
+                ? window.createPublicViewerDetailUIBuilders
+                : window.createEditorDetailUIBuilders;
+
+            if (typeof createDetailUIBuilders === 'function') {
+                var builders = createDetailUIBuilders({ formatI18nText: formatI18nText });
                 if (builders && typeof builders.getDisplayEmotionTags === 'function') {
                     return builders.getDisplayEmotionTags(data, options);
                 }
@@ -411,8 +419,12 @@
         }
 
         function createInlineIcon(name, size) {
-            if (typeof window.createEditorDetailUIBuilders === 'function') {
-                var builders = window.createEditorDetailUIBuilders({ formatI18nText: formatI18nText });
+            var createDetailUIBuilders = typeof window.createPublicViewerDetailUIBuilders === 'function'
+                ? window.createPublicViewerDetailUIBuilders
+                : window.createEditorDetailUIBuilders;
+
+            if (typeof createDetailUIBuilders === 'function') {
+                var builders = createDetailUIBuilders({ formatI18nText: formatI18nText });
                 if (builders && typeof builders.createInlineIcon === 'function') {
                     return builders.createInlineIcon(name, size);
                 }
@@ -449,9 +461,13 @@
             };
         }
 
+        var createTreeMetaBoundary = typeof window.createPublicViewerDetailTreeMetaBoundary === 'function'
+            ? window.createPublicViewerDetailTreeMetaBoundary
+            : window.createEditorDetailTreeMetaBoundary;
+
         var boundary = null;
-        if (typeof window.createEditorDetailTreeMetaBoundary === 'function') {
-            boundary = window.createEditorDetailTreeMetaBoundary({
+        if (typeof createTreeMetaBoundary === 'function') {
+            boundary = createTreeMetaBoundary({
                 i18n: i18n,
                 formatI18nText: formatI18nText,
                 resolveTreeTitleText: resolveTreeTitleText,
