@@ -104,6 +104,14 @@
         return editorCanvas;
     }
 
+    function resolvePublicCanvasTargets() {
+        return {
+            canvas: document.getElementById('canvasArea'),
+            svg: document.getElementById('canvasSvg'),
+            detailPanel: document.getElementById('detailPanel')
+        };
+    }
+
     function initPublicCanvas() {
         var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
         var routeSetup = canvasEntry && typeof canvasEntry.setupPublicRoute === 'function'
@@ -170,9 +178,10 @@
             }
 
             function startCanvas() {
-                var canvas = document.getElementById('canvasArea');
-                var svg = document.getElementById('canvasSvg');
-                var detailPanel = document.getElementById('detailPanel');
+                var targets = resolvePublicCanvasTargets();
+                var canvas = targets.canvas;
+                var svg = targets.svg;
+                var detailPanel = targets.detailPanel;
 
                 if (!canvas || !svg) {
                     console.error('[public-canvas] Canvas or SVG element not found');
