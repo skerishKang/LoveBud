@@ -224,26 +224,42 @@ test('public viewer detail UI adapter does not bind removed selected action butt
   );
 });
 
-test('public viewer detail UI adapter owns memory actions display boundary', () => {
+test('public viewer detail UI adapter does not bind removed memory action mounts', () => {
   const source = fs.readFileSync('js/viewer/public-viewer-detail-ui.js', 'utf8');
 
-  assert.ok(source.includes('function createPublicViewerMemoryActionsBoundary(deps)'), 'viewer adapter exposes memory actions boundary factory');
-  assert.ok(source.includes("document.querySelector('.memory-actions')"), 'viewer memory actions boundary targets .memory-actions');
-  assert.ok(source.includes("document.getElementById('detailPanelFooter')"), 'viewer memory actions boundary targets detailPanelFooter');
-  assert.ok(source.includes('createPublicViewerMemoryActionsBoundary: createPublicViewerMemoryActionsBoundary'), 'viewer adapter publishes memory actions boundary on namespace');
-  assert.ok(source.includes('var updateMemoryActions = createPublicViewerMemoryActionsBoundary(deps)'), 'viewer adapter creates memory actions updater');
-  assert.ok(source.includes('updateMemoryActions(data);'), 'viewer adapter runs memory actions update in detail panel flow');
+  assert.equal(
+    source.includes('function createPublicViewerMemoryActionsBoundary(deps)'),
+    false,
+    'viewer detail adapter should not expose memory actions boundary'
+  );
+  assert.equal(
+    source.includes("document.querySelector('.memory-actions')"),
+    false,
+    'viewer detail adapter should not target .memory-actions'
+  );
+  assert.equal(
+    source.includes('var updateMemoryActions = createPublicViewerMemoryActionsBoundary(deps)'),
+    false,
+    'viewer detail adapter should not create memory action updater'
+  );
+  assert.equal(
+    source.includes('updateMemoryActions(data);'),
+    false,
+    'viewer detail adapter should not run memory action updater'
+  );
+  assert.equal(
+    source.includes('createPublicViewerMemoryActionsBoundary: createPublicViewerMemoryActionsBoundary'),
+    false,
+    'viewer detail adapter namespace should not publish removed memory actions boundary'
+  );
 
   const panelStart = source.indexOf('detailUI.updateDetailPanel = function');
   const panelEnd = source.indexOf('};', panelStart);
   const panelSource = source.slice(panelStart, panelEnd);
 
-  const memoryActionsIndex = panelSource.indexOf('updateMemoryActions(data);');
   const reactionsIndex = panelSource.indexOf('updateReadOnlyReactionSummary(data);');
 
-  assert.notEqual(memoryActionsIndex, -1, 'memory actions update is present');
-  assert.notEqual(reactionsIndex, -1, 'reactions update is present after memory actions');
-  assert.ok(memoryActionsIndex < reactionsIndex, 'memory actions update runs before reactions');
+  assert.notEqual(reactionsIndex, -1, 'read-only reactions update remains present');
 });
 
 test('public viewer detail UI adapter owns visible detail heading boundary', () => {
@@ -282,7 +298,6 @@ test('public viewer detail UI adapter owns detail panel render flow', () => {
   assert.ok(source.includes('var updateCurrentMomentBadge = createPublicViewerCurrentMomentBadgeBoundary(deps)'), 'viewer adapter creates the badge updater');
   assert.ok(source.includes('var updateCurrentMomentImage = createPublicViewerCurrentMomentImageBoundary(deps)'), 'viewer adapter creates the image updater');
   assert.ok(source.includes('var updateReadOnlyReactionSummary = createPublicViewerReadOnlyReactionSummaryBoundary(deps)'), 'viewer adapter creates the read-only reaction updater');
-  assert.ok(source.includes('var updateMemoryActions = createPublicViewerMemoryActionsBoundary(deps)'), 'viewer adapter creates memory actions updater');
   assert.ok(source.includes('var updateDetailHeading = createPublicViewerDetailHeadingBoundary(deps)'), 'viewer adapter creates heading updater');
   assert.ok(source.includes('detailUI.updateDetailPanel = function updatePublicViewerDetailPanel(data)'), 'viewer adapter owns the updateDetailPanel function');
   assert.ok(source.includes('updateDetailHeading();'), 'viewer flow starts with heading update');
@@ -290,7 +305,6 @@ test('public viewer detail UI adapter owns detail panel render flow', () => {
   assert.ok(source.includes('updateCurrentMomentBadge(data);'), 'viewer flow applies badge post-processing');
   assert.ok(source.includes('updatePublicViewerCurrentMomentHint();'), 'viewer flow applies hint post-processing');
   assert.ok(source.includes('updateCurrentMomentImage(data);'), 'viewer flow applies image post-processing');
-  assert.ok(source.includes('updateMemoryActions(data);'), 'viewer flow applies memory actions display');
   assert.ok(source.includes('updateReadOnlyReactionSummary(data);'), 'viewer flow applies read-only reactions');
 });
 
