@@ -404,6 +404,26 @@
         return false;
     }
 
+    function installPublicCanvasToolbarCompactMode() {
+        var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
+        if (canvasEntry && typeof canvasEntry.installToolbarCompactMode === 'function') {
+            canvasEntry.installToolbarCompactMode();
+            return true;
+        }
+
+        var compactMql = window.matchMedia('(max-width: 480px)');
+
+        function updateToolbarCompact(e) {
+            var tb = document.querySelector('.editor-canvas-toolbar');
+            if (!tb) return;
+            tb.classList.toggle('is-compact', e.matches);
+        }
+
+        updateToolbarCompact(compactMql);
+        compactMql.addEventListener('change', updateToolbarCompact);
+        return false;
+    }
+
     function setupPublicRoute() {
         var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
         if (canvasEntry && typeof canvasEntry.setupPublicRoute === 'function') {
@@ -549,19 +569,7 @@
 
                 console.log('[public-canvas] Canvas initialized successfully');
 
-                // Auto-enable compact mode on narrow viewports (toolbar labels would overflow)
-                if (canvasEntry && typeof canvasEntry.installToolbarCompactMode === 'function') {
-                    canvasEntry.installToolbarCompactMode();
-                } else {
-                    var compactMql = window.matchMedia('(max-width: 480px)');
-                    function updateToolbarCompact(e) {
-                        var tb = document.querySelector('.editor-canvas-toolbar');
-                        if (!tb) return;
-                        tb.classList.toggle('is-compact', e.matches);
-                    }
-                    updateToolbarCompact(compactMql);
-                    compactMql.addEventListener('change', updateToolbarCompact);
-                }
+                installPublicCanvasToolbarCompactMode();
             }
 
             waitForPublicRuntime(startCanvas);
