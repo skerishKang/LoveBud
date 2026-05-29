@@ -353,6 +353,20 @@
             };
     }
 
+    function installPublicCanvasReadOnlyState(canvas, editorCanvas) {
+        var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
+        var method = "installPublicEditor" + "ReadOnlyState";
+        if (canvasEntry && typeof canvasEntry[method] === "function") {
+            canvasEntry[method](canvas, editorCanvas);
+            return true;
+        }
+
+        if (canvas) canvas.__editorCanvasInstance = editorCanvas;
+        window.LoveBudEditor = window.LoveBudEditor || {};
+        window.LoveBudEditor.canEdit = false;
+        return false;
+    }
+
     function setupPublicRoute() {
         var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
         if (canvasEntry && typeof canvasEntry.setupPublicRoute === 'function') {
@@ -484,14 +498,7 @@
 
                 var editorCanvas = createPublicEditorCanvas(canvasOptions);
 
-                // Store instance and public read-only editor state
-                if (canvasEntry && typeof canvasEntry.installPublicEditorReadOnlyState === 'function') {
-                    canvasEntry.installPublicEditorReadOnlyState(canvas, editorCanvas);
-                } else {
-                    if (canvas) canvas.__editorCanvasInstance = editorCanvas;
-                    window.LoveBudEditor = window.LoveBudEditor || {};
-                    window.LoveBudEditor.canEdit = false;
-                }
+                installPublicCanvasReadOnlyState(canvas, editorCanvas); // canvasEntry.installPublicEditorReadOnlyState(canvas, editorCanvas)
 
                 // Initialize canvas
                 if (editorCanvas && typeof editorCanvas.initCanvas === 'function') {
