@@ -85,7 +85,7 @@ test('public canvas init keeps selection state behind a local helper', () => {
     'selection state must remain after read-only actions setup'
   );
   assert.ok(
-    initSrc.indexOf('var selectionState = createPublicCanvasSelectionState(canonicalRootId);') < initSrc.indexOf('// Delegate detail UI options to entry wrapper with fallback'),
+    initSrc.indexOf('var selectionState = createPublicCanvasSelectionState(canonicalRootId);') < initSrc.indexOf('var detailUIOptions = createPublicCanvasDetailUIOptions({'),
     'selection state must remain before detail UI options setup'
   );
 });

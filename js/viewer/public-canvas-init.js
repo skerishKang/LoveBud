@@ -280,6 +280,42 @@
             })();
     }
 
+    function createPublicCanvasDetailUIOptions(ctx) {
+        var selectionState = ctx.selectionState;
+        var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
+        return canvasEntry && typeof canvasEntry.createDetailUIOptions === 'function'
+            ? canvasEntry.createDetailUIOptions({
+                detailPanel: ctx.detailPanel,
+                i18n: function(k) { return k; },
+                publicCanvasConfig: ctx.publicCanvasConfig,
+                readOnlyActions: ctx.readOnlyActions,
+                selectionState: ctx.selectionState,
+                escapeHtml: ctx.escapeHtml,
+                isRootMemory: ctx.isRootMemory,
+                getCanonicalRootId: function() { return ctx.canonicalRootId; }
+            })
+            : {
+                detailPanel: ctx.detailPanel,
+                i18n: function(k) { return k; },
+                resolveTreeTitleText: ctx.publicCanvasConfig.resolveTreeTitleText,
+                resolveHintText: ctx.publicCanvasConfig.resolveHintText,
+                resolveInfoText: ctx.publicCanvasConfig.resolveInfoText,
+                resolveMemoryThumbnail: ctx.publicCanvasConfig.resolveMemoryThumbnail,
+                escapeHtml: ctx.escapeHtml,
+                isRootMemory: ctx.isRootMemory,
+                getCanonicalRootId: function() { return ctx.canonicalRootId; },
+                getSelectedNodeId: selectionState.getSelectedNodeId,
+                getTreeMemories: ctx.publicCanvasConfig.getTreeMemories,
+                getCurrentTreeData: ctx.publicCanvasConfig.getCurrentTreeData,
+                getLocalSaveMode: ctx.readOnlyActions.getLocalSaveMode,
+                showToast: ctx.readOnlyActions.showToast,
+                updateTreeVisibility: ctx.readOnlyActions.noopAsync,
+                openCurrentMomentDetail: ctx.readOnlyActions.noop,
+                focusSelectedMoment: ctx.readOnlyActions.noop,
+                updateSelectedMemoryFields: ctx.readOnlyActions.noopFalseAsync
+            };
+    }
+
     function setupPublicRoute() {
         var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
         if (canvasEntry && typeof canvasEntry.setupPublicRoute === 'function') {
@@ -359,38 +395,15 @@
 
                 var selectionState = createPublicCanvasSelectionState(canonicalRootId);
 
-                // Delegate detail UI options to entry wrapper with fallback
-                var detailUIOptions = canvasEntry && typeof canvasEntry.createDetailUIOptions === 'function'
-                    ? canvasEntry.createDetailUIOptions({
-                        detailPanel: detailPanel,
-                        i18n: function(k) { return k; },
-                        publicCanvasConfig: publicCanvasConfig,
-                        readOnlyActions: readOnlyActions,
-                        selectionState: selectionState,
-                        escapeHtml: escapeHtml,
-                        isRootMemory: isRootMemory,
-                        getCanonicalRootId: function() { return canonicalRootId; }
-                    })
-                    : {
-                        detailPanel: detailPanel,
-                        i18n: function(k) { return k; },
-                        resolveTreeTitleText: publicCanvasConfig.resolveTreeTitleText,
-                        resolveHintText: publicCanvasConfig.resolveHintText,
-                        resolveInfoText: publicCanvasConfig.resolveInfoText,
-                        resolveMemoryThumbnail: publicCanvasConfig.resolveMemoryThumbnail,
-                        escapeHtml: escapeHtml,
-                        isRootMemory: isRootMemory,
-                        getCanonicalRootId: function() { return canonicalRootId; },
-                        getSelectedNodeId: selectionState.getSelectedNodeId,
-                        getTreeMemories: publicCanvasConfig.getTreeMemories,
-                        getCurrentTreeData: publicCanvasConfig.getCurrentTreeData,
-                        getLocalSaveMode: readOnlyActions.getLocalSaveMode,
-                        showToast: readOnlyActions.showToast,
-                        updateTreeVisibility: readOnlyActions.noopAsync,
-                        openCurrentMomentDetail: readOnlyActions.noop,
-                        focusSelectedMoment: readOnlyActions.noop,
-                        updateSelectedMemoryFields: readOnlyActions.noopFalseAsync
-                    };
+                var detailUIOptions = createPublicCanvasDetailUIOptions({
+                    detailPanel: detailPanel,
+                    publicCanvasConfig: publicCanvasConfig,
+                    readOnlyActions: readOnlyActions,
+                    selectionState: selectionState,
+                    escapeHtml: escapeHtml,
+                    isRootMemory: isRootMemory,
+                    canonicalRootId: canonicalRootId
+                });
 
                 var detailUI = window.createPublicViewerDetailUI(detailUIOptions);
 
