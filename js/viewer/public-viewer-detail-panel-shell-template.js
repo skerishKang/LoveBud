@@ -25,12 +25,8 @@
     const viewMount = document.createElement('div');
     viewMount.id = 'editorDetailViewModeTemplateMount';
 
-    const editMount = document.createElement('div');
-    editMount.id = 'editorDetailEditModeTemplateMount';
-
     content.appendChild(emptyMount);
     content.appendChild(viewMount);
-    content.appendChild(editMount);
 
     panel.appendChild(header);
     panel.appendChild(content);
