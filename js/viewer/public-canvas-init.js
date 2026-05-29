@@ -248,6 +248,38 @@
             };
     }
 
+    function createPublicCanvasSelectionState(canonicalRootId) {
+        var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
+        return canvasEntry && typeof canvasEntry.createSelectionState === 'function'
+            ? canvasEntry.createSelectionState(canonicalRootId)
+            : (function() {
+                var selectedNodeId = canonicalRootId;
+                var currentEditingMemory = null;
+
+                return {
+                    getSelectedNodeId: function() {
+                        return selectedNodeId;
+                    },
+                    setSelectedNodeId: function(nextSelectedNodeId) {
+                        selectedNodeId = nextSelectedNodeId || null;
+                        return selectedNodeId;
+                    },
+                    getCurrentEditingMemory: function() {
+                        return currentEditingMemory;
+                    },
+                    setCurrentEditingMemory: function(memory) {
+                        currentEditingMemory = memory || null;
+                        return currentEditingMemory;
+                    },
+                    selectMemory: function(memory) {
+                        currentEditingMemory = memory || null;
+                        selectedNodeId = memory && memory.id ? memory.id : selectedNodeId;
+                        return currentEditingMemory;
+                    }
+                };
+            })();
+    }
+
     function setupPublicRoute() {
         var canvasEntry = window.LoveBudPublicViewerCanvasEntry;
         if (canvasEntry && typeof canvasEntry.setupPublicRoute === 'function') {
@@ -325,35 +357,7 @@
 
                 var readOnlyActions = createPublicCanvasReadOnlyActions();
 
-                // Delegate selection state to entry wrapper with fallback
-                var selectionState = canvasEntry && typeof canvasEntry.createSelectionState === 'function'
-                    ? canvasEntry.createSelectionState(canonicalRootId)
-                    : (function() {
-                        var selectedNodeId = canonicalRootId;
-                        var currentEditingMemory = null;
-
-                        return {
-                            getSelectedNodeId: function() {
-                                return selectedNodeId;
-                            },
-                            setSelectedNodeId: function(nextSelectedNodeId) {
-                                selectedNodeId = nextSelectedNodeId || null;
-                                return selectedNodeId;
-                            },
-                            getCurrentEditingMemory: function() {
-                                return currentEditingMemory;
-                            },
-                            setCurrentEditingMemory: function(memory) {
-                                currentEditingMemory = memory || null;
-                                return currentEditingMemory;
-                            },
-                            selectMemory: function(memory) {
-                                currentEditingMemory = memory || null;
-                                selectedNodeId = memory && memory.id ? memory.id : selectedNodeId;
-                                return currentEditingMemory;
-                            }
-                        };
-                    })();
+                var selectionState = createPublicCanvasSelectionState(canonicalRootId);
 
                 // Delegate detail UI options to entry wrapper with fallback
                 var detailUIOptions = canvasEntry && typeof canvasEntry.createDetailUIOptions === 'function'
