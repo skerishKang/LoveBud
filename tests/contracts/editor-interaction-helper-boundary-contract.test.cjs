@@ -22,29 +22,46 @@ test('editor shell helpers expose interaction helper boundaries', () => {
   }
 });
 
-test('editor entrypoint resolves selected moment focus through required shell helper boundary', () => {
-  assert.match(
-    editorSource,
-    /const\s+createSelectedMomentFocusHandler\s*=\s*shellHelpers\.createSelectedMomentFocusHandler/
-  );
-  assert.doesNotMatch(
-    editorSource,
-    /const\s+createSelectedMomentFocusHandler\s*=\s*shellHelpers\.createSelectedMomentFocusHandler\s*\|\|/
-  );
+const requiredInteractionHelpers = [
+  'createSelectedMomentFocusHandler',
+  'createSidebarTreeActionsUpdater'
+];
+
+test('editor entrypoint resolves required interaction helpers through shell helper boundary', () => {
+  for (const helperName of requiredInteractionHelpers) {
+    assert.match(
+      editorSource,
+      new RegExp(`const\\s+${helperName}\\s*=\\s*shellHelpers\\.${helperName}`)
+    );
+    assert.doesNotMatch(
+      editorSource,
+      new RegExp(`const\\s+${helperName}\\s*=\\s*shellHelpers\\.${helperName}\\s*\\|\\|`)
+    );
+  }
 });
 
 const fallbackInteractionHelpers = [
-  'createSidebarTreeActionsUpdater',
   'createCurrentMomentDetailOpener'
 ];
 
-test('editor entrypoint keeps remaining interaction helper fallbacks intact', () => {
+test('editor entrypoint keeps remaining interaction helper fallback intact', () => {
   for (const helperName of fallbackInteractionHelpers) {
     assert.match(
       editorSource,
       new RegExp(`const\\s+${helperName}\\s*=\\s*shellHelpers\\.${helperName}\\s*\\|\\|`)
     );
   }
+});
+
+test('editor entrypoint guards missing sidebar tree actions helper before creation', () => {
+  assert.match(
+    editorSource,
+    /LoveBudEditorShellHelpers\.createSidebarTreeActionsUpdater missing/
+  );
+  assert.match(
+    editorSource,
+    /const\s+updateSidebarTreeActions\s*=\s*createSidebarTreeActionsUpdater\(\{/
+  );
 });
 
 test('editor html loads shell helpers before editor entrypoint for interaction helpers', () => {
