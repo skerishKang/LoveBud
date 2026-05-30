@@ -360,6 +360,13 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     });
 
+    const exposeRefreshMemoriesBridge = shellHelpers.exposeRefreshMemoriesBridge || ((options) => {
+        const opts = options || {};
+        const windowRef = opts.windowRef || window;
+        windowRef.refreshMemories = opts.refreshMemories;
+        return windowRef;
+    });
+
     const startEditor = async () => {
         const { log, reportError } = createEditorDebugReporter();
 
@@ -654,7 +661,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             const refreshMemories = editorDataLoader.createRefreshMemories({ treeId, apiClient: window.apiClient, normalizeMemory, onMemoriesUpdated: handleMemoriesUpdated });
-            window.refreshMemories = refreshMemories;
+            exposeRefreshMemoriesBridge({ refreshMemories });
 
             const formatTimeAgo = editorSaveStatus.formatTimeAgo || createInlineFormatTimeAgoFallback();
 

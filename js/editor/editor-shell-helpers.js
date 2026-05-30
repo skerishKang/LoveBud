@@ -48,6 +48,17 @@ window.LoveBudEditorShellHelpers = {
         return windowRef;
     },
 
+    // Refresh memories bridge utility
+    exposeRefreshMemoriesBridge: function(options) {
+        var opts = options || {};
+        var windowRef = opts.windowRef || window;
+        var refreshMemories = opts.refreshMemories;
+
+        windowRef.refreshMemories = refreshMemories;
+
+        return windowRef;
+    },
+
     // Toast fallback
     createInlineShowToastFallback: function() {
         return (message, type = 'info') => {
