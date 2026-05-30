@@ -26,6 +26,17 @@ window.LoveBudEditorShellHelpers = {
         );
     },
 
+    // Canvas empty guide bridge utility
+    exposeCanvasEmptyGuideUpdater: function(options) {
+        var opts = options || {};
+        var editorNamespace = opts.editorNamespace || (window.LoveBudEditor = window.LoveBudEditor || {});
+        var updateCanvasEmptyGuide = opts.updateCanvasEmptyGuide;
+
+        editorNamespace.updateCanvasEmptyGuide = updateCanvasEmptyGuide;
+
+        return editorNamespace;
+    },
+
     // Toast fallback
     createInlineShowToastFallback: function() {
         return (message, type = 'info') => {

@@ -239,6 +239,13 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     });
 
+    const exposeCanvasEmptyGuideUpdater = shellHelpers.exposeCanvasEmptyGuideUpdater || ((options) => {
+        const opts = options || {};
+        const editorNamespace = opts.editorNamespace || (window.LoveBudEditor = window.LoveBudEditor || {});
+        editorNamespace.updateCanvasEmptyGuide = opts.updateCanvasEmptyGuide;
+        return editorNamespace;
+    });
+
     const startEditor = async () => {
         const { log, reportError } = createEditorDebugReporter();
 
@@ -395,8 +402,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
             
             // Bridge this back to LoveBudEditor so canvas can call it
-            window.LoveBudEditor = window.LoveBudEditor || {};
-            window.LoveBudEditor.updateCanvasEmptyGuide = updateCanvasEmptyGuide;
+            exposeCanvasEmptyGuideUpdater({ updateCanvasEmptyGuide });
 
             const selectNode = (el, data) => {
                 if (!data) return;
