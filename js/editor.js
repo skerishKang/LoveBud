@@ -263,23 +263,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const createSelectedMomentFocusHandler = shellHelpers.createSelectedMomentFocusHandler;
 
-    const createSidebarTreeActionsUpdater = shellHelpers.createSidebarTreeActionsUpdater || ((options) => {
-        const opts = options || {};
-        const sidebarUIHelper = opts.sidebarUIHelper || {};
-        const i18n = opts.i18n;
-        const safeI18nText = opts.safeI18nText;
-        const getTreeId = opts.getTreeId || (() => null);
-
-        return function updateSidebarTreeActions() {
-            if (sidebarUIHelper.updateSidebarTreeActions) {
-                sidebarUIHelper.updateSidebarTreeActions({
-                    i18n,
-                    safeI18nText,
-                    getTreeId
-                });
-            }
-        };
-    });
+    const createSidebarTreeActionsUpdater = shellHelpers.createSidebarTreeActionsUpdater;
 
     const createMemoryActionsReadinessWrapper = shellHelpers.createMemoryActionsReadinessWrapper || ((options) => {
         const opts = options || {};
@@ -624,6 +608,11 @@ document.addEventListener('DOMContentLoaded', () => {
             exposeDetailPanelUpdater({ updateDetailPanel });
 
             const sidebarUIHelper = window.LoveBudEditorSidebarUI || {};
+            if (typeof createSidebarTreeActionsUpdater !== 'function') {
+                reportError('LoveBudEditorShellHelpers.createSidebarTreeActionsUpdater missing');
+                return;
+            }
+
             const updateSidebarTreeActions = createSidebarTreeActionsUpdater({
                 sidebarUIHelper,
                 i18n,
