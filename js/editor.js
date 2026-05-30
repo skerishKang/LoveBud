@@ -67,6 +67,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const editorPageEventBindings = window.LoveBudEditorPageEventBindings || {};
     const bindEditorPageEvents = editorPageEventBindings.bindEditorPageEvents;
     const editorDataLoader = window.LoveBudEditorDataLoader || {};
+    const editorStartupContext = window.LoveBudEditorStartupContext || {};
+    const createEditorStartupContext = editorStartupContext.createEditorStartupContext;
     const editorAuthHelpers = window.LoveBudEditorAuthHelpers || {};
     const readConfirmedAuthCacheFromHelper = () => (
         window.LoveBudEditorAuthHelpers?.readConfirmedAuthCache?.() || null
@@ -394,11 +396,24 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        if (typeof createEditorStartupContext !== 'function') {
+            reportError('LoveBudEditorStartupContext.createEditorStartupContext missing');
+            return;
+        }
+
         try {
-            const { canvas, svg, detailPanel, addBtn } = createEditorDomRefs();
-            const urlParams = new URLSearchParams(window.location.search);
-            const urlTreeId = urlParams.get('treeId');
-            const canEdit = urlParams.get('readonly') !== '1';
+            const {
+                canvas,
+                svg,
+                detailPanel,
+                addBtn,
+                urlTreeId,
+                canEdit
+            } = createEditorStartupContext({
+                createEditorDomRefs,
+                locationRef: window.location,
+                URLSearchParamsRef: URLSearchParams
+            });
 
             log('DOM refs and URL params prepared');
             prepareEditorShell();
