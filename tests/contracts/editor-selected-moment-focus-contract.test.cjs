@@ -19,9 +19,10 @@ test('selected moment focus helper preserves focusNodeById guard', () => {
   assert.match(shellHelpersSource, /editorCanvas\.focusNodeById\(selectedNodeId\)/);
 });
 
-test('editor delegates selected moment focus handler with fallback', () => {
-  assert.match(editorSource, /shellHelpers\.createSelectedMomentFocusHandler/);
-  assert.match(editorSource, /const createSelectedMomentFocusHandler\s*=/);
+test('editor delegates selected moment focus handler through required shell helper', () => {
+  assert.match(editorSource, /const createSelectedMomentFocusHandler\s*=\s*shellHelpers\.createSelectedMomentFocusHandler/);
+  assert.doesNotMatch(editorSource, /createSelectedMomentFocusHandler\s*=\s*shellHelpers\.createSelectedMomentFocusHandler\s*\|\|/);
+  assert.match(editorSource, /LoveBudEditorShellHelpers\.createSelectedMomentFocusHandler missing/);
   assert.match(editorSource, /const focusSelectedMoment\s*=\s*createSelectedMomentFocusHandler\(\{/);
   assert.match(editorSource, /getEditorCanvas:\s*\(\)\s*=>\s*editorCanvas/);
   assert.match(editorSource, /getSelectedNodeId:\s*\(\)\s*=>\s*selectedNodeId/);
