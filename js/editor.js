@@ -272,6 +272,24 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     });
 
+    const createSidebarTreeActionsUpdater = shellHelpers.createSidebarTreeActionsUpdater || ((options) => {
+        const opts = options || {};
+        const sidebarUIHelper = opts.sidebarUIHelper || {};
+        const i18n = opts.i18n;
+        const safeI18nText = opts.safeI18nText;
+        const getTreeId = opts.getTreeId || (() => null);
+
+        return function updateSidebarTreeActions() {
+            if (sidebarUIHelper.updateSidebarTreeActions) {
+                sidebarUIHelper.updateSidebarTreeActions({
+                    i18n,
+                    safeI18nText,
+                    getTreeId
+                });
+            }
+        };
+    });
+
     const startEditor = async () => {
         const { log, reportError } = createEditorDebugReporter();
 
@@ -520,11 +538,12 @@ document.addEventListener('DOMContentLoaded', () => {
             exposeDetailPanelUpdater({ updateDetailPanel });
 
             const sidebarUIHelper = window.LoveBudEditorSidebarUI || {};
-            const updateSidebarTreeActions = () => {
-                if (sidebarUIHelper.updateSidebarTreeActions) {
-                    sidebarUIHelper.updateSidebarTreeActions({ i18n, safeI18nText, getTreeId: () => treeId });
-                }
-            };
+            const updateSidebarTreeActions = createSidebarTreeActionsUpdater({
+                sidebarUIHelper,
+                i18n,
+                safeI18nText,
+                getTreeId: () => treeId
+            });
 
             const updateSidebarStatus = () => {
                 updateSidebarStatusBase();

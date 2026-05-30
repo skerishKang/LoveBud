@@ -249,5 +249,24 @@ window.LoveBudEditorShellHelpers = {
                 editorCanvas.focusNodeById(selectedNodeId);
             }
         };
+    },
+
+    // Sidebar tree actions updater factory
+    createSidebarTreeActionsUpdater: function(options) {
+        var opts = options || {};
+        var sidebarUIHelper = opts.sidebarUIHelper || {};
+        var i18n = opts.i18n;
+        var safeI18nText = opts.safeI18nText;
+        var getTreeId = opts.getTreeId || function() { return null; };
+
+        return function updateSidebarTreeActions() {
+            if (sidebarUIHelper.updateSidebarTreeActions) {
+                sidebarUIHelper.updateSidebarTreeActions({
+                    i18n: i18n,
+                    safeI18nText: safeI18nText,
+                    getTreeId: getTreeId
+                });
+            }
+        };
     }
 };
