@@ -67,6 +67,35 @@
     return href;
   }
 
+  function buildTreeLoadErrorCopy(options) {
+    var opts = options || {};
+    var treeLoadStatus = opts.treeLoadStatus || opts.status || 'not_found';
+    var treeLoadErrorMessage = opts.treeLoadErrorMessage || opts.errorMessage || '';
+    var i18n = opts.i18n || function(key) { return key; };
+    var isAccessDenied = /Access denied/i.test(treeLoadErrorMessage);
+
+    var errorTitle = treeLoadStatus === 'api_unavailable'
+      ? (i18n('tree_load_fail_title') || '트리를 불러올 수 없어요')
+      : isAccessDenied
+        ? (i18n('tree_access_denied_title') || '이 러브트리를 열 권한이 없어요')
+        : treeLoadStatus === 'error'
+          ? (i18n('tree_load_error_title') || '트리를 여는 중 문제가 발생했어요')
+          : (i18n('tree_not_found_title') || '트리를 찾을 수 없어요');
+
+    var errorDesc = treeLoadStatus === 'api_unavailable'
+      ? (i18n('tree_load_api_unavailable') || '트리 조회 API를 사용할 수 없는 상태입니다. 잠시 후 다시 시도해 주세요.')
+      : isAccessDenied
+        ? (i18n('tree_access_denied_desc') || '비공개 러브트리이거나 내 계정에 권한이 없어요. 다시 확인하거나 다른 계정으로 로그인해 보세요.')
+        : treeLoadStatus === 'error'
+          ? (i18n('tree_load_error_desc') || '일시적인 서버 문제 또는 접근 권한 문제일 수 있습니다. 다시 시도하거나 트리 목록으로 돌아가 주세요.')
+          : (i18n('tree_load_not_found_desc') || '잘못된 링크이거나 접근 권한이 없는 트리입니다.');
+
+    return {
+      errorTitle: errorTitle,
+      errorDesc: errorDesc
+    };
+  }
+
   function renderTreeLoadError(options) {
     var canvas = options && options.canvas;
     var addBtn = options && options.addBtn;
@@ -121,6 +150,7 @@
     getMyTreesHref: getMyTreesHref,
     buildMomentDetailHref: buildMomentDetailHref,
     openMomentDetail: openMomentDetail,
+    buildTreeLoadErrorCopy: buildTreeLoadErrorCopy,
     renderTreeLoadError: renderTreeLoadError
   };
 })();
