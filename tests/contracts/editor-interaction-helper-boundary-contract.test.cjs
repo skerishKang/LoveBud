@@ -24,7 +24,8 @@ test('editor shell helpers expose interaction helper boundaries', () => {
 
 const requiredInteractionHelpers = [
   'createSelectedMomentFocusHandler',
-  'createSidebarTreeActionsUpdater'
+  'createSidebarTreeActionsUpdater',
+  'createCurrentMomentDetailOpener'
 ];
 
 test('editor entrypoint resolves required interaction helpers through shell helper boundary', () => {
@@ -40,13 +41,9 @@ test('editor entrypoint resolves required interaction helpers through shell help
   }
 });
 
-const fallbackInteractionHelpers = [
-  'createCurrentMomentDetailOpener'
-];
-
-test('editor entrypoint keeps remaining interaction helper fallback intact', () => {
-  for (const helperName of fallbackInteractionHelpers) {
-    assert.match(
+test('editor entrypoint has no remaining interaction helper local fallbacks', () => {
+  for (const helperName of interactionHelpers) {
+    assert.doesNotMatch(
       editorSource,
       new RegExp(`const\\s+${helperName}\\s*=\\s*shellHelpers\\.${helperName}\\s*\\|\\|`)
     );
@@ -61,6 +58,17 @@ test('editor entrypoint guards missing sidebar tree actions helper before creati
   assert.match(
     editorSource,
     /const\s+updateSidebarTreeActions\s*=\s*createSidebarTreeActionsUpdater\(\{/
+  );
+});
+
+test('editor entrypoint guards missing current moment detail opener before creation', () => {
+  assert.match(
+    editorSource,
+    /LoveBudEditorShellHelpers\.createCurrentMomentDetailOpener missing/
+  );
+  assert.match(
+    editorSource,
+    /const\s+openCurrentMomentDetail\s*=\s*createCurrentMomentDetailOpener\(\{/
   );
 });
 

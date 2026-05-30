@@ -162,10 +162,18 @@ test('current moment detail opener reports missing page helper instead of routin
   assert.deepEqual(errors, ['LoveBudEditorPageHelpers.openMomentDetail missing']);
 });
 
-test('editor entrypoint keeps current moment detail opener fallback before runtime removal slice', () => {
+test('editor entrypoint delegates current moment detail opener through required shell helper', () => {
   assert.match(
     editorSource,
+    /const\s+createCurrentMomentDetailOpener\s*=\s*shellHelpers\.createCurrentMomentDetailOpener/
+  );
+  assert.doesNotMatch(
+    editorSource,
     /const\s+createCurrentMomentDetailOpener\s*=\s*shellHelpers\.createCurrentMomentDetailOpener\s*\|\|/
+  );
+  assert.match(
+    editorSource,
+    /LoveBudEditorShellHelpers\.createCurrentMomentDetailOpener missing/
   );
   assert.match(
     editorSource,
