@@ -4,10 +4,11 @@ const test = require('node:test');
 
 const editorSource = fs.readFileSync('js/editor.js', 'utf8');
 const pageHelpersSource = fs.readFileSync('js/editor/editor-page-helpers.js', 'utf8');
+const shellHelpersSource = fs.readFileSync('js/editor/editor-shell-helpers.js', 'utf8');
 const editorHtml = fs.readFileSync('pages/editor.html', 'utf8');
 
 function extractOpenCurrentMomentDetailBlock(source) {
-  const marker = 'const openCurrentMomentDetail = () => {';
+  const marker = 'const openCurrentMomentDetail = createCurrentMomentDetailOpener({';
   const start = source.indexOf(marker);
   assert.notEqual(start, -1, 'openCurrentMomentDetail block must exist');
 
@@ -40,26 +41,31 @@ test('openMomentDetail delegates navigation through locationRef', () => {
   assert.match(pageHelpersSource, /return href/);
 });
 
-test('editor openCurrentMomentDetail delegates href creation and navigation to page helper', () => {
+test('editor openCurrentMomentDetail delegates to current moment detail opener factory', () => {
   const block = extractOpenCurrentMomentDetailBlock(editorSource);
 
-  assert.match(block, /editorPageHelpers\.openMomentDetail/);
-  assert.match(block, /memoryId:\s*activeMemory\.id/);
-  assert.match(block, /treeId,/);
-  assert.match(block, /getEditorBasePath,/);
+  assert.match(block, /createCurrentMomentDetailOpener\(\{/);
+  assert.match(block, /getCurrentEditingMemory:\s*\(\)\s*=>\s*currentEditingMemory/);
+  assert.match(block, /getTreeMemories:\s*\(\)\s*=>\s*treeMemories\(\)/);
+  assert.match(block, /getSelectedNodeId:\s*\(\)\s*=>\s*selectedNodeId/);
+  assert.match(block, /createInitialMemory/);
+  assert.match(block, /getTreeId:\s*\(\)\s*=>\s*treeId/);
   assert.match(block, /locationRef:\s*window\.location/);
-  assert.match(block, /LoveBudEditorPageHelpers\.openMomentDetail missing/);
 });
 
-test('editor openCurrentMomentDetail preserves active memory selection order', () => {
-  const block = extractOpenCurrentMomentDetailBlock(editorSource);
-
+test('shell helper preserves active memory selection order and guards', () => {
+  assert.match(shellHelpersSource, /createCurrentMomentDetailOpener:\s*function\(options\)/);
   assert.match(
-    block,
-    /const activeMemory\s*=\s*currentEditingMemory\s*\|\|\s*treeMemories\(\)\.find\(\(m\)\s*=>\s*m\.id\s*===\s*selectedNodeId\)\s*\|\|\s*createInitialMemory\(\)/
+    shellHelpersSource,
+    /var activeMemory\s*=\s*getCurrentEditingMemory\(\)\s*\|\|/
   );
-
-  assert.match(block, /if \(!activeMemory \|\| !activeMemory\.id \|\| !treeId\) return/);
+  assert.match(
+    shellHelpersSource,
+    /treeMemories\.find\(function\(memory\)\s*\{ return memory\.id === selectedNodeId; \}\)/
+  );
+  assert.match(shellHelpersSource, /if \(!activeMemory \|\| !activeMemory\.id \|\| !treeId\) return/);
+  assert.match(shellHelpersSource, /typeof editorPageHelpers\.openMomentDetail === 'function'/);
+  assert.match(shellHelpersSource, /memoryId:\s*activeMemory\.id/);
 });
 
 test('editor no longer builds detail href inline in entrypoint', () => {

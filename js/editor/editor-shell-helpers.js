@@ -287,5 +287,41 @@ window.LoveBudEditorShellHelpers = {
 
             return memoryActions.updateSelectedMemoryFields.apply(memoryActions, args);
         };
+    },
+
+    // Current moment detail opener factory
+    createCurrentMomentDetailOpener: function(options) {
+        var opts = options || {};
+        var getCurrentEditingMemory = opts.getCurrentEditingMemory || function() { return null; };
+        var getTreeMemories = opts.getTreeMemories || function() { return []; };
+        var getSelectedNodeId = opts.getSelectedNodeId || function() { return null; };
+        var createInitialMemory = opts.createInitialMemory || function() { return null; };
+        var getTreeId = opts.getTreeId || function() { return null; };
+        var editorPageHelpers = opts.editorPageHelpers || {};
+        var getEditorBasePath = opts.getEditorBasePath;
+        var locationRef = opts.locationRef || window.location;
+        var reportError = opts.reportError || function() {};
+
+        return function openCurrentMomentDetail() {
+            var selectedNodeId = getSelectedNodeId();
+            var treeMemories = getTreeMemories();
+            var activeMemory = getCurrentEditingMemory()
+                || treeMemories.find(function(memory) { return memory.id === selectedNodeId; })
+                || createInitialMemory();
+            var treeId = getTreeId();
+
+            if (!activeMemory || !activeMemory.id || !treeId) return;
+
+            if (typeof editorPageHelpers.openMomentDetail === 'function') {
+                editorPageHelpers.openMomentDetail({
+                    memoryId: activeMemory.id,
+                    treeId: treeId,
+                    getEditorBasePath: getEditorBasePath,
+                    locationRef: locationRef
+                });
+            } else {
+                reportError('LoveBudEditorPageHelpers.openMomentDetail missing');
+            }
+        };
     }
 };
