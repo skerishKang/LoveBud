@@ -18,7 +18,8 @@ test('markEditorReady removes editor preload class through classList', () => {
 
 test('editor delegates ready marker to shell helper with fallback', () => {
   assert.match(editorSource, /shellHelpers\.markEditorReady/);
-  assert.match(editorSource, /document\.body\?\.classList\.remove\('editor-preload'\)/);
+  assert.doesNotMatch(editorSource, /document\.body\?\.classList\.remove\('editor-preload'\)/);
+  assert.match(editorSource, /LoveBudEditorShellHelpers\.markEditorReady missing/);
 });
 
 test('editor ready marker call sites remain intact', () => {

@@ -177,7 +177,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const createInlineNextMemoryIdFallback = dataLoaderFallbacks.createInlineNextMemoryIdFallback || ((options) => () => 'm1');
     const createInlineFormatTimeAgoFallback = entryFallbacks.createInlineFormatTimeAgoFallback;
 
-    const markEditorReady = shellHelpers.markEditorReady || (() => document.body?.classList.remove('editor-preload'));
+    const markEditorReady = shellHelpers.markEditorReady;
 
     const applyEditorEditabilityState = shellHelpers.applyEditorEditabilityState || ((options) => {
         const opts = options || {};
@@ -267,6 +267,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const startEditor = async () => {
         const { log, reportError } = createEditorDebugReporter();
+
+        if (typeof markEditorReady !== 'function') {
+            reportError('LoveBudEditorShellHelpers.markEditorReady missing');
+            return;
+        }
 
         log('startEditor sequence initiated');
 
