@@ -93,5 +93,15 @@ window.LoveBudEditorShellHelpers = {
         setPlaceholder('editTagsInput', 'editor_edit_tag_placeholder', '#감동, #행복, #그리움');
         setText('cancelEditBtn', 'editor_cancel', '취소');
         setText('saveEditBtn', 'editor_save', '저장하기');
+    },
+
+    // Editor ready marker
+    markEditorReady: function(options) {
+        var opts = options || {};
+        var body = opts.body || document.body;
+
+        if (body && body.classList && typeof body.classList.remove === 'function') {
+            body.classList.remove('editor-preload');
+        }
     }
 };
