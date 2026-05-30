@@ -62,6 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const editorSaveStatus = window.LoveBudEditorSaveStatus || {};
     const editorPageHelpers = window.LoveBudEditorPageHelpers || {};
     const editorTreeHelpers = window.LoveBudEditorTreeHelpers || {};
+    const editorSelectionUI = window.LoveBudEditorSelectionUI || {};
     const editorBindings = window.LoveBudEditorBindings || {};
     const editorDataLoader = window.LoveBudEditorDataLoader || {};
     const editorAuthHelpers = window.LoveBudEditorAuthHelpers || {};
@@ -362,8 +363,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!data) return;
                 selectedNodeId = data.id;
                 currentEditingMemory = data;
-                document.querySelectorAll('.memory-node').forEach(n => n.classList.remove('selected'));
-                if (el) el.classList.add('selected');
+
+                if (typeof editorSelectionUI.applySelectedMemoryNode === 'function') {
+                    editorSelectionUI.applySelectedMemoryNode(el);
+                } else {
+                    reportError('LoveBudEditorSelectionUI.applySelectedMemoryNode missing');
+                }
 
                 if (typeof editorSaveStatus.hideSaveStatusIndicator === 'function') {
                     editorSaveStatus.hideSaveStatusIndicator(saveStatusData);
