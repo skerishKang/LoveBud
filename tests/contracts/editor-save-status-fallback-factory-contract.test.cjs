@@ -24,13 +24,34 @@ test('save status fallback preserves minimal updateSaveStatus behavior', () => {
   assert.match(shellHelpersSource, /saveStatusData\.status\s*=\s*status/);
 });
 
-test('editor delegates save status fallback while preserving primary orchestration priority', () => {
-  assert.match(editorSource, /shellHelpers\.createSaveStatusOrchestrationFallback/);
-  assert.match(editorSource, /const createSaveStatusOrchestrationFallback\s*=/);
-  assert.match(editorSource, /const saveStatusOrchestrationHelper\s*=\s*window\.LoveBudEditorSaveStatusOrchestration\s*\|\|\s*\{\}/);
+test('editor delegates save status fallback through required shell helper while preserving primary orchestration priority', () => {
   assert.match(
     editorSource,
-    /const createEditorSaveStatusOrchestration\s*=\s*saveStatusOrchestrationHelper\.createEditorSaveStatusOrchestration\s*\|\|\s*createSaveStatusOrchestrationFallback\(\)/
+    /const\s+createSaveStatusOrchestrationFallback\s*=\s*shellHelpers\.createSaveStatusOrchestrationFallback/
+  );
+  assert.doesNotMatch(
+    editorSource,
+    /const\s+createSaveStatusOrchestrationFallback\s*=\s*shellHelpers\.createSaveStatusOrchestrationFallback\s*\|\|/
+  );
+  assert.match(
+    editorSource,
+    /const\s+saveStatusOrchestrationHelper\s*=\s*window\.LoveBudEditorSaveStatusOrchestration\s*\|\|\s*\{\}/
+  );
+  assert.match(
+    editorSource,
+    /let\s+createEditorSaveStatusOrchestration\s*=\s*saveStatusOrchestrationHelper\.createEditorSaveStatusOrchestration/
+  );
+  assert.match(
+    editorSource,
+    /typeof\s+createEditorSaveStatusOrchestration\s*!==\s*'function'/
+  );
+  assert.match(
+    editorSource,
+    /LoveBudEditorShellHelpers\.createSaveStatusOrchestrationFallback missing/
+  );
+  assert.match(
+    editorSource,
+    /createEditorSaveStatusOrchestration\s*=\s*createSaveStatusOrchestrationFallback\(\)/
   );
 });
 
@@ -43,8 +64,18 @@ test('editor no longer owns inline save status fallback body', () => {
 
   const block = editorSource.slice(start, end);
   assert.match(block, /createSaveStatusOrchestrationFallback\(\)/);
+  assert.match(block, /LoveBudEditorShellHelpers\.createSaveStatusOrchestrationFallback missing/);
   assert.doesNotMatch(block, /console\.warn\('\[editor\] LoveBudEditorSaveStatusOrchestration not loaded, using minimal fallback'\)/);
   assert.doesNotMatch(block, /let saveStatusData\s*=\s*\{\s*status:\s*'saved',\s*lastSaved:\s*null,\s*timer:\s*null\s*\}/);
+});
+
+test('editor guards missing save status fallback factory before fallback creation', () => {
+  const guardIndex = editorSource.indexOf('LoveBudEditorShellHelpers.createSaveStatusOrchestrationFallback missing');
+  const fallbackIndex = editorSource.indexOf('createEditorSaveStatusOrchestration = createSaveStatusOrchestrationFallback();');
+
+  assert.ok(guardIndex !== -1, 'missing save status fallback factory guard must exist');
+  assert.ok(fallbackIndex !== -1, 'fallback factory assignment must exist');
+  assert.ok(guardIndex < fallbackIndex, 'guard must run before fallback factory assignment');
 });
 
 test('editor keeps save status orchestration invocation intact', () => {
