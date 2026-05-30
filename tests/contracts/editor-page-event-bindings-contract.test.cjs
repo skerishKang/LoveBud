@@ -179,11 +179,13 @@ test('bindEditorPageEvents tolerates missing helper methods without throwing', (
   });
 });
 
-test('editor entrypoint still owns local event binding block until follow-up callsite PR', () => {
-  assert.match(editorSource, /sidebarUIHelper\.bindSidebarVisibilityToggle/);
-  assert.match(editorSource, /editorBindings\.bindMemoryCreateControlsFromDom/);
-  assert.match(editorSource, /editorBindings\.bindDetailEmptyStartButton/);
-  assert.match(editorSource, /emptyGuideUIHelper\.bindEmptyGuideEvents/);
-  assert.match(editorSource, /editorBindings\.bindDetailActionButtons/);
-  assert.doesNotMatch(editorSource, /LoveBudEditorPageEventBindings/);
+test('editor entrypoint delegates event binding to editor page event bindings helper', () => {
+  assert.match(editorSource, /LoveBudEditorPageEventBindings/);
+  assert.match(editorSource, /bindEditorPageEvents\s*\(\{/);
+
+  assert.doesNotMatch(editorSource, /sidebarUIHelper\.bindSidebarVisibilityToggle\(/);
+  assert.doesNotMatch(editorSource, /editorBindings\.bindMemoryCreateControlsFromDom\(/);
+  assert.doesNotMatch(editorSource, /editorBindings\.bindDetailEmptyStartButton\(/);
+  assert.doesNotMatch(editorSource, /emptyGuideUIHelper\.bindEmptyGuideEvents\(/);
+  assert.doesNotMatch(editorSource, /editorBindings\.bindDetailActionButtons\(/);
 });

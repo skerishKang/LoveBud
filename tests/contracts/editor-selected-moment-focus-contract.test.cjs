@@ -42,7 +42,7 @@ test('editor no longer owns inline selected moment focus body near selectNode', 
 
 test('editor keeps focusSelectedMoment consumers intact', () => {
   assert.match(editorSource, /focusSelectedMoment/);
-  assert.match(editorSource, /bindDetailActionButtons/);
+  assert.match(editorSource, /bindEditorPageEvents/);
   assert.match(editorSource, /openCurrentMomentDetail,\s*focusSelectedMoment/);
 });
 

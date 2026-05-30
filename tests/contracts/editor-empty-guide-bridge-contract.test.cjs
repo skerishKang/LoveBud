@@ -39,7 +39,7 @@ test('editor no longer assigns canvas empty guide bridge inline', () => {
 
 test('editor keeps empty guide updater creation and event binding intact', () => {
   assert.match(editorSource, /emptyGuideUIHelper\.createCanvasEmptyGuideUpdater/);
-  assert.match(editorSource, /emptyGuideUIHelper\.bindEmptyGuideEvents/);
+  assert.match(editorSource, /bindEditorPageEvents/);
   assert.match(editorSource, /updateCanvasEmptyGuide\(\)/);
 });
 

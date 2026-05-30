@@ -64,6 +64,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const editorTreeHelpers = window.LoveBudEditorTreeHelpers || {};
     const editorSelectionUI = window.LoveBudEditorSelectionUI || {};
     const editorBindings = window.LoveBudEditorBindings || {};
+    const editorPageEventBindings = window.LoveBudEditorPageEventBindings || {};
+    const bindEditorPageEvents = editorPageEventBindings.bindEditorPageEvents;
     const editorDataLoader = window.LoveBudEditorDataLoader || {};
     const editorAuthHelpers = window.LoveBudEditorAuthHelpers || {};
     const readConfirmedAuthCacheFromHelper = () => (
@@ -744,28 +746,29 @@ document.addEventListener('DOMContentLoaded', () => {
             const { showAddMemoryForm, hideAddMemoryForm, addMemoryFromForm } = memoryForm;
 
             log('Binding events...');
-            if (canEdit && sidebarUIHelper.bindSidebarVisibilityToggle) {
-                sidebarUIHelper.bindSidebarVisibilityToggle({
-                    getTreeId: () => treeId, updateTreeVisibility, showToast, safeI18nText, i18n, getHttpStatus, updateSidebarStatus
-                });
-            }
-
-            if (canEdit && editorBindings.bindMemoryCreateControlsFromDom) {
-                editorBindings.bindMemoryCreateControlsFromDom({ showAddMemoryForm, hideAddMemoryForm, addMemoryFromForm, updateSaveStatus, showToast, i18n });
-            }
-
-            if (canEdit && editorBindings.bindDetailEmptyStartButton) {
-                editorBindings.bindDetailEmptyStartButton({ showAddMemoryForm });
-            }
-
-            if (emptyGuideUIHelper.bindEmptyGuideEvents) {
-                emptyGuideUIHelper.bindEmptyGuideEvents({
-                    getEditorCanvas: () => editorCanvas,
-                    showAddMemoryForm,
-                    addMemoryFromForm,
-                    getTreeMemories: () => treeMemories(),
+            if (typeof bindEditorPageEvents === 'function') {
+                bindEditorPageEvents({
+                    canEdit,
+                    sidebarUIHelper,
+                    editorBindings,
+                    emptyGuideUIHelper,
+                    getTreeId: () => treeId,
+                    updateTreeVisibility,
                     showToast,
-                    i18n
+                    safeI18nText,
+                    i18n,
+                    getHttpStatus,
+                    updateSidebarStatus,
+                    showAddMemoryForm,
+                    hideAddMemoryForm,
+                    addMemoryFromForm,
+                    updateSaveStatus,
+                    getEditorCanvas: () => editorCanvas,
+                    getTreeMemories: () => treeMemories(),
+                    enterEditMode,
+                    deleteMemory,
+                    exitEditMode,
+                    saveMemoryEdit
                 });
             }
 
@@ -777,10 +780,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (initialSelection && !isRootMemory(initialSelection, canonicalRootId)) {
                 currentEditingMemory = initialSelection;
                 log(`Initial selection set: ${initialSelection.id}`);
-            }
-
-            if (canEdit && editorBindings.bindDetailActionButtons) {
-                editorBindings.bindDetailActionButtons({ enterEditMode, deleteMemory, exitEditMode, saveMemoryEdit });
             }
 
             updateSidebarStatus();

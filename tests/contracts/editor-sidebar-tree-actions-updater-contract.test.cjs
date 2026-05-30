@@ -57,7 +57,7 @@ test('editor keeps updateSidebarStatus orchestration intact', () => {
 });
 
 test('editor keeps sidebar visibility binding injection intact', () => {
-  assert.match(editorSource, /bindSidebarVisibilityToggle\(\{/);
+  assert.match(editorSource, /bindEditorPageEvents\s*\(\{/);
   assert.match(editorSource, /getTreeId:\s*\(\)\s*=>\s*treeId/);
   assert.match(editorSource, /updateTreeVisibility/);
   assert.match(editorSource, /updateSidebarStatus/);
