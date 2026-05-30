@@ -91,9 +91,25 @@
     return saveStatusData;
   }
 
+  function hideSaveStatusIndicator(saveStatusData) {
+    var indicator = document.getElementById('saveStatusIndicator');
+
+    if (indicator && saveStatusData && saveStatusData.timer) {
+      clearTimeout(saveStatusData.timer);
+      saveStatusData.timer = null;
+    }
+
+    if (indicator) {
+      indicator.style.display = 'none';
+    }
+
+    return saveStatusData;
+  }
+
   window.LoveBudEditorSaveStatus = {
     createSaveStatusState: createSaveStatusState,
     formatTimeAgo: formatTimeAgo,
-    updateSaveStatus: updateSaveStatus
+    updateSaveStatus: updateSaveStatus,
+    hideSaveStatusIndicator: hideSaveStatusIndicator
   };
 })();
