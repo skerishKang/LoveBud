@@ -365,12 +365,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.querySelectorAll('.memory-node').forEach(n => n.classList.remove('selected'));
                 if (el) el.classList.add('selected');
 
-                const indicator = document.getElementById('saveStatusIndicator');
-                if (indicator && saveStatusData.timer) {
-                    clearTimeout(saveStatusData.timer);
-                    saveStatusData.timer = null;
+                if (typeof editorSaveStatus.hideSaveStatusIndicator === 'function') {
+                    editorSaveStatus.hideSaveStatusIndicator(saveStatusData);
                 }
-                if (indicator) indicator.style.display = 'none';
 
                 updateDetailPanel(data);
                 updateFocusSelectedBtn();
