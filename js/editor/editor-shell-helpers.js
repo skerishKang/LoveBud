@@ -144,5 +144,38 @@ window.LoveBudEditorShellHelpers = {
             log: log,
             reportError: reportError
         };
+    },
+
+    // Editor startup dependency waiter factory
+    createEditorStartupDependencyWaiter: function(options) {
+        var opts = options || {};
+        var log = opts.log || function() {};
+        var reportError = opts.reportError || function() {};
+        var windowRef = opts.windowRef || window;
+        var wait = opts.wait || function(ms) {
+            return new Promise(function(resolve) {
+                setTimeout(resolve, ms);
+            });
+        };
+        var maxAttempts = opts.maxAttempts || 100;
+        var intervalMs = opts.intervalMs || 50;
+
+        return async function waitForGlobal(name) {
+            log('Waiting for ' + name + '...');
+            var count = 0;
+
+            while (typeof windowRef[name] !== 'function' && count < maxAttempts) {
+                await wait(intervalMs);
+                count++;
+            }
+
+            if (typeof windowRef[name] !== 'function') {
+                reportError(name + ' not found after 5s');
+                return false;
+            }
+
+            log(name + ' found.');
+            return true;
+        };
     }
 };
