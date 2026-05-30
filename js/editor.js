@@ -290,6 +290,23 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     });
 
+    const createMemoryActionsReadinessWrapper = shellHelpers.createMemoryActionsReadinessWrapper || ((options) => {
+        const opts = options || {};
+        const getMemoryActions = opts.getMemoryActions || (() => null);
+        const consoleRef = opts.consoleRef || console;
+
+        return async function updateSelectedMemoryFields(...args) {
+            const memoryActions = getMemoryActions();
+
+            if (!memoryActions || typeof memoryActions.updateSelectedMemoryFields !== 'function') {
+                consoleRef.warn('[editor] updateSelectedMemoryFields called before memory actions are ready');
+                return false;
+            }
+
+            return memoryActions.updateSelectedMemoryFields(...args);
+        };
+    });
+
     const startEditor = async () => {
         const { log, reportError } = createEditorDebugReporter();
 
@@ -417,13 +434,9 @@ document.addEventListener('DOMContentLoaded', () => {
             let editorCanvas = null;
 
             let memoryActions = null;
-            const updateSelectedMemoryFields = async (...args) => {
-                if (!memoryActions || typeof memoryActions.updateSelectedMemoryFields !== 'function') {
-                    console.warn('[editor] updateSelectedMemoryFields called before memory actions are ready');
-                    return false;
-                }
-                return memoryActions.updateSelectedMemoryFields(...args);
-            };
+            const updateSelectedMemoryFields = createMemoryActionsReadinessWrapper({
+                getMemoryActions: () => memoryActions
+            });
 
             if (typeof editorTreeHelpers.createInitialMemory !== 'function') {
                 reportError('LoveBudEditorTreeHelpers.createInitialMemory missing');

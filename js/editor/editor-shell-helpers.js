@@ -268,5 +268,24 @@ window.LoveBudEditorShellHelpers = {
                 });
             }
         };
+    },
+
+    // Memory actions readiness wrapper factory
+    createMemoryActionsReadinessWrapper: function(options) {
+        var opts = options || {};
+        var getMemoryActions = opts.getMemoryActions || function() { return null; };
+        var consoleRef = opts.consoleRef || console;
+
+        return async function updateSelectedMemoryFields() {
+            var memoryActions = getMemoryActions();
+            var args = Array.prototype.slice.call(arguments);
+
+            if (!memoryActions || typeof memoryActions.updateSelectedMemoryFields !== 'function') {
+                consoleRef.warn('[editor] updateSelectedMemoryFields called before memory actions are ready');
+                return false;
+            }
+
+            return memoryActions.updateSelectedMemoryFields.apply(memoryActions, args);
+        };
     }
 };
