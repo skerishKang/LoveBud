@@ -367,6 +367,14 @@ document.addEventListener('DOMContentLoaded', () => {
         return windowRef;
     });
 
+    const resolveSaveStatusTimeFormatter = shellHelpers.resolveSaveStatusTimeFormatter || ((options) => {
+        const opts = options || {};
+        const editorSaveStatus = opts.editorSaveStatus || {};
+        const createInlineFormatTimeAgoFallback = opts.createInlineFormatTimeAgoFallback || (() => () => '');
+
+        return editorSaveStatus.formatTimeAgo || createInlineFormatTimeAgoFallback();
+    });
+
     const startEditor = async () => {
         const { log, reportError } = createEditorDebugReporter();
 
@@ -663,7 +671,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const refreshMemories = editorDataLoader.createRefreshMemories({ treeId, apiClient: window.apiClient, normalizeMemory, onMemoriesUpdated: handleMemoriesUpdated });
             exposeRefreshMemoriesBridge({ refreshMemories });
 
-            const formatTimeAgo = editorSaveStatus.formatTimeAgo || createInlineFormatTimeAgoFallback();
+            const formatTimeAgo = resolveSaveStatusTimeFormatter({
+                editorSaveStatus,
+                createInlineFormatTimeAgoFallback
+            });
 
             const saveStatusOrchestrationHelper = window.LoveBudEditorSaveStatusOrchestration || {};
             const createEditorSaveStatusOrchestration = saveStatusOrchestrationHelper.createEditorSaveStatusOrchestration

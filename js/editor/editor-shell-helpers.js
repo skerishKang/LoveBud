@@ -59,6 +59,17 @@ window.LoveBudEditorShellHelpers = {
         return windowRef;
     },
 
+    // Save status time formatter resolution
+    resolveSaveStatusTimeFormatter: function(options) {
+        var opts = options || {};
+        var editorSaveStatus = opts.editorSaveStatus || {};
+        var createInlineFormatTimeAgoFallback = opts.createInlineFormatTimeAgoFallback || function() {
+            return function() { return ''; };
+        };
+
+        return editorSaveStatus.formatTimeAgo || createInlineFormatTimeAgoFallback();
+    },
+
     // Toast fallback
     createInlineShowToastFallback: function() {
         return (message, type = 'info') => {
