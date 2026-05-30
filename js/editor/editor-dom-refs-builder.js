@@ -1,17 +1,23 @@
 (function() {
+    const domSelectors = window.LoveBudEditorDomSelectors || {};
+    const SELECTORS = domSelectors.SELECTORS || {};
+    const getElement = typeof domSelectors.getElement === 'function'
+        ? domSelectors.getElement
+        : (id) => document.getElementById(id);
+
     const createEditorDomRefs = () => ({
-        canvas: document.getElementById('canvasArea'),
-        svg: document.getElementById('canvasSvg'),
-        detailPanel: document.getElementById('detailPanel'),
-        addBtn: document.getElementById('addMemoryBtn')
+        canvas: getElement(SELECTORS.canvasArea || 'canvasArea'),
+        svg: getElement(SELECTORS.canvasSvg || 'canvasSvg'),
+        detailPanel: getElement(SELECTORS.detailPanel || 'detailPanel'),
+        addBtn: getElement(SELECTORS.addMemoryBtn || 'addMemoryBtn')
     });
 
     const createEditorFormRefs = () => ({
-        urlInput: document.getElementById('memoryUrlInput'),
-        titleInput: document.getElementById('memoryTitleInput'),
-        memoInput: document.getElementById('memoryMemoInput'),
-        cancelBtn: document.getElementById('cancelAddMemory'),
-        confirmBtn: document.getElementById('confirmAddMemory')
+        urlInput: getElement(SELECTORS.memoryUrlInput || 'memoryUrlInput'),
+        titleInput: getElement(SELECTORS.memoryTitleInput || 'memoryTitleInput'),
+        memoInput: getElement(SELECTORS.memoryMemoInput || 'memoryMemoInput'),
+        cancelBtn: getElement(SELECTORS.cancelAddMemory || 'cancelAddMemory'),
+        confirmBtn: getElement(SELECTORS.confirmAddMemory || 'confirmAddMemory')
     });
 
     window.LoveBudEditorDomRefsBuilder = {
