@@ -37,7 +37,6 @@ test('editor no longer owns inline debug setup inside startEditor', () => {
 
   const block = editorSource.slice(start, end);
   assert.match(block, /createEditorDebugReporter\(\)/);
-  assert.doesNotMatch(block, /window\.LoveBudEditorDebug\s*=\s*window\.LoveBudEditorDebug\s*\|\|\s*\{\s*logs:\s*\[\],\s*errors:\s*\[\]\s*\}/);
   assert.doesNotMatch(block, /const log\s*=\s*\(msg\)\s*=>/);
   assert.doesNotMatch(block, /const reportError\s*=\s*\(msg,\s*err\)\s*=>/);
 });

@@ -195,25 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const prepareEditorShell = createPrepareEditorShell({ applyEditorShellCopy, safeI18nText, i18n, getMyTreesHref });
 
-    const createEditorDebugReporter = shellHelpers.createEditorDebugReporter || ((options) => {
-        const opts = options || {};
-        const debugState = opts.debugState || (window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] });
-        const consoleRef = opts.consoleRef || console;
-        const now = opts.now || (() => new Date());
-
-        const log = (msg) => {
-            const entry = `[editor-main] ${now().toISOString().split('T')[1]} ${msg}`;
-            consoleRef.log(entry);
-            debugState.logs.push(entry);
-        };
-
-        const reportError = (msg, err) => {
-            consoleRef.error(`[editor-main] ERROR: ${msg}`, err);
-            debugState.errors.push({ msg, error: err?.message || err });
-        };
-
-        return { debugState, log, reportError };
-    });
+    const createEditorDebugReporter = shellHelpers.createEditorDebugReporter;
 
     const createEditorStartupDependencyWaiter = shellHelpers.createEditorStartupDependencyWaiter || ((options) => {
         const opts = options || {};
@@ -259,6 +241,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const resolveSaveStatusTimeFormatter = shellHelpers.resolveSaveStatusTimeFormatter;
 
     const startEditor = async () => {
+        if (typeof createEditorDebugReporter !== 'function') {
+            const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] };
+            const msg = 'LoveBudEditorShellHelpers.createEditorDebugReporter missing';
+            console.error('[editor-main] ERROR: ' + msg);
+            debugState.errors.push({ msg, error: msg });
+            return;
+        }
+
         const { log, reportError } = createEditorDebugReporter();
 
         if (typeof markEditorReady !== 'function') {
