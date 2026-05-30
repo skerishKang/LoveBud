@@ -31,7 +31,7 @@ test('js/editor.js retains its legacy entrypoint markers', () => {
 
     // Global exposure (temporary compat)
     assert.ok(js.includes('exposeDetailPanelUpdater'), 'delegates updateDetailPanel global exposure');
-    assert.ok(js.includes('window.refreshMemories = refreshMemories'), 'exposes refreshMemories globally');
+    assert.ok(js.includes('exposeRefreshMemoriesBridge'), 'delegates refreshMemories global exposure via bridge helper');
 
     // Extracted responsibilities
     assert.ok(!js.includes('const createEditorDomRefs = () => ({'), 'EXTRACTED: createEditorDomRefs should not be inline');
