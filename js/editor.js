@@ -186,13 +186,6 @@ document.addEventListener('DOMContentLoaded', () => {
         detailPanel: document.getElementById('detailPanel'),
         addBtn: document.getElementById('addMemoryBtn')
     }));
-    const createEditorFormRefs = editorDomRefsBuilder.createEditorFormRefs || (() => ({
-        urlInput: document.getElementById('memoryUrlInput'),
-        titleInput: document.getElementById('memoryTitleInput'),
-        memoInput: document.getElementById('memoryMemoInput'),
-        cancelBtn: document.getElementById('cancelAddMemory'),
-        confirmBtn: document.getElementById('confirmAddMemory')
-    }));
 
     const prepareEditorShell = createPrepareEditorShell({ applyEditorShellCopy, safeI18nText, i18n, getMyTreesHref });
 
@@ -574,8 +567,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             const { showAddMemoryForm, hideAddMemoryForm, addMemoryFromForm } = memoryForm;
-            const { urlInput, titleInput, memoInput, cancelBtn, confirmBtn } = createEditorFormRefs();
-            
+
             log('Binding events...');
             if (canEdit && sidebarUIHelper.bindSidebarVisibilityToggle) {
                 sidebarUIHelper.bindSidebarVisibilityToggle({
@@ -583,8 +575,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
 
-            if (canEdit && editorBindings.bindMemoryCreateControls) {
-                editorBindings.bindMemoryCreateControls({ addBtn, cancelBtn, confirmBtn, urlInput, titleInput, memoInput, showAddMemoryForm, hideAddMemoryForm, addMemoryFromForm, updateSaveStatus, showToast, i18n });
+            if (canEdit && editorBindings.bindMemoryCreateControlsFromDom) {
+                editorBindings.bindMemoryCreateControlsFromDom({ showAddMemoryForm, hideAddMemoryForm, addMemoryFromForm, updateSaveStatus, showToast, i18n });
             }
 
             if (canEdit && editorBindings.bindDetailEmptyStartButton) {
