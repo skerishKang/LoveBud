@@ -43,9 +43,9 @@ test('editor keeps empty guide updater creation and event binding intact', () =>
   assert.match(editorSource, /updateCanvasEmptyGuide\(\)/);
 });
 
-test('editor detail panel bridge is delegated to shell helper in this slice', () => {
-  assert.match(editorSource, /exposeDetailPanelUpdater\(\{\s*updateDetailPanel\s*\}\)/);
-  assert.match(editorSource, /windowRef\.updateDetailPanel\s*=\s*opts\.updateDetailPanel/);
+test('editor detail panel bridge is delegated to required shell helper in this slice', () => {
+  assert.match(editorSource, /exposeDetailPanelUpdater\(\{\s*updateDetailPanel\s*\}/);
+  assert.match(editorSource, /LoveBudEditorShellHelpers\.exposeDetailPanelUpdater missing/);
 });
 
 test('editor shell helpers load before editor entrypoint', () => {

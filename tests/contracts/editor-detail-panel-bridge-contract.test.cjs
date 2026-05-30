@@ -18,24 +18,46 @@ test('detail panel bridge helper keeps testable window hook', () => {
   assert.match(shellHelpersSource, /opts\.updateDetailPanel/);
 });
 
-test('editor delegates detail panel bridge with fallback', () => {
-  assert.match(editorSource, /shellHelpers\.exposeDetailPanelUpdater/);
-  assert.match(editorSource, /const exposeDetailPanelUpdater\s*=/);
-  assert.match(editorSource, /exposeDetailPanelUpdater\(\{\s*updateDetailPanel\s*\}\)/);
-  assert.match(editorSource, /windowRef\.updateDetailPanel\s*=\s*opts\.updateDetailPanel/);
-});
+test('editor delegates detail panel bridge through required shell helper', () => {
+    assert.match(
+      editorSource,
+      /const\s+exposeDetailPanelUpdater\s*=\s*shellHelpers\.exposeDetailPanelUpdater/
+    );
+    assert.doesNotMatch(
+      editorSource,
+      /const\s+exposeDetailPanelUpdater\s*=\s*shellHelpers\.exposeDetailPanelUpdater\s*\|\|/
+    );
+    assert.match(
+      editorSource,
+      /LoveBudEditorShellHelpers\.exposeDetailPanelUpdater missing/
+    );
+    assert.match(
+      editorSource,
+      /exposeDetailPanelUpdater\(\{\s*updateDetailPanel\s*\}\)/
+    );
+  });
 
 test('editor no longer assigns detail panel bridge inline', () => {
-  const start = editorSource.indexOf('const { setDetailEmptyState, updateFocusSelectedBtn');
-  assert.notEqual(start, -1, 'detailUI destructuring must exist');
+    const start = editorSource.indexOf('const { setDetailEmptyState, updateFocusSelectedBtn');
+    assert.notEqual(start, -1, 'detailUI destructuring must exist');
 
-  const end = editorSource.indexOf('const sidebarUIHelper =', start);
-  assert.notEqual(end, -1, 'sidebar helper setup must follow detail bridge setup');
+    const end = editorSource.indexOf('const sidebarUIHelper =', start);
+    assert.notEqual(end, -1, 'sidebar helper setup must follow detail bridge setup');
 
-  const block = editorSource.slice(start, end);
-  assert.match(block, /exposeDetailPanelUpdater\(\{\s*updateDetailPanel\s*\}\)/);
-  assert.doesNotMatch(block, /window\.updateDetailPanel\s*=\s*updateDetailPanel/);
-});
+    const block = editorSource.slice(start, end);
+    assert.match(block, /exposeDetailPanelUpdater\(\{\s*updateDetailPanel\s*\}/);
+    assert.doesNotMatch(block, /window\.updateDetailPanel\s*=\s*updateDetailPanel/);
+    assert.doesNotMatch(block, /windowRef\.updateDetailPanel\s*=/);
+  });
+
+test('editor guards missing detail panel bridge before exposure', () => {
+    const guardIndex = editorSource.indexOf('LoveBudEditorShellHelpers.exposeDetailPanelUpdater missing');
+    const exposeIndex = editorSource.indexOf('exposeDetailPanelUpdater({ updateDetailPanel });');
+
+    assert.ok(guardIndex !== -1, 'missing detail panel bridge guard must exist');
+    assert.ok(exposeIndex !== -1, 'detail panel bridge exposure must exist');
+    assert.ok(guardIndex < exposeIndex, 'guard must run before detail panel bridge exposure');
+  });
 
 test('editor keeps detail panel destructuring and canvas injection intact', () => {
   assert.match(

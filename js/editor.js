@@ -254,12 +254,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return editorNamespace;
     });
 
-    const exposeDetailPanelUpdater = shellHelpers.exposeDetailPanelUpdater || ((options) => {
-        const opts = options || {};
-        const windowRef = opts.windowRef || window;
-        windowRef.updateDetailPanel = opts.updateDetailPanel;
-        return windowRef;
-    });
+    const exposeDetailPanelUpdater = shellHelpers.exposeDetailPanelUpdater;
 
     const createSelectedMomentFocusHandler = shellHelpers.createSelectedMomentFocusHandler;
 
@@ -563,6 +558,11 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             const { setDetailEmptyState, updateFocusSelectedBtn, updateSidebarStatus: updateSidebarStatusBase, updateDetailPanel } = detailUI;
+            if (typeof exposeDetailPanelUpdater !== 'function') {
+                reportError('LoveBudEditorShellHelpers.exposeDetailPanelUpdater missing');
+                return;
+            }
+
             exposeDetailPanelUpdater({ updateDetailPanel });
 
             const sidebarUIHelper = window.LoveBudEditorSidebarUI || {};
