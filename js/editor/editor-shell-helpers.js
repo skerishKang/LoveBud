@@ -37,6 +37,17 @@ window.LoveBudEditorShellHelpers = {
         return editorNamespace;
     },
 
+    // Detail panel bridge utility
+    exposeDetailPanelUpdater: function(options) {
+        var opts = options || {};
+        var windowRef = opts.windowRef || window;
+        var updateDetailPanel = opts.updateDetailPanel;
+
+        windowRef.updateDetailPanel = updateDetailPanel;
+
+        return windowRef;
+    },
+
     // Toast fallback
     createInlineShowToastFallback: function() {
         return (message, type = 'info') => {
