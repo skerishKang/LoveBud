@@ -180,12 +180,7 @@ document.addEventListener('DOMContentLoaded', () => {
     applyEditorShellCopy(safeI18nText, i18n);
 
     const editorDomRefsBuilder = window.LoveBudEditorDomRefsBuilder || {};
-    const createEditorDomRefs = editorDomRefsBuilder.createEditorDomRefs || (() => ({
-        canvas: document.getElementById('canvasArea'),
-        svg: document.getElementById('canvasSvg'),
-        detailPanel: document.getElementById('detailPanel'),
-        addBtn: document.getElementById('addMemoryBtn')
-    }));
+    const createEditorDomRefs = editorDomRefsBuilder.createEditorDomRefs;
 
     const prepareEditorShell = createPrepareEditorShell({ applyEditorShellCopy, safeI18nText, i18n, getMyTreesHref });
 
@@ -222,6 +217,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!await waitForGlobal('createEditorDetailUI')) return;
         if (!await waitForGlobal('createEditorMemoryActions')) return;
         if (!await waitForGlobal('createEditorMemoryForm')) return;
+
+        if (typeof createEditorDomRefs !== 'function') {
+            reportError('LoveBudEditorDomRefsBuilder.createEditorDomRefs missing');
+            return;
+        }
 
         try {
             const { canvas, svg, detailPanel, addBtn } = createEditorDomRefs();
