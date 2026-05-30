@@ -171,6 +171,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const markEditorReady = shellHelpers.markEditorReady || (() => document.body?.classList.remove('editor-preload'));
 
+    const applyEditorEditabilityState = shellHelpers.applyEditorEditabilityState || ((options) => {
+        const opts = options || {};
+        const nextCanEdit = opts.canEdit !== false;
+        window.LoveBudEditor = window.LoveBudEditor || {};
+        window.LoveBudEditor.canEdit = nextCanEdit;
+        document.body?.classList?.toggle('editor-readonly', !nextCanEdit);
+        return window.LoveBudEditor;
+    });
+
     const editorShellCopyApplier = window.LoveBudEditorShellCopyApplier || {};
     const createEditorShellCopyApplier = editorShellCopyApplier.createEditorShellCopyApplier || (() => () => {});
     const createPrepareEditorShell = editorShellCopyApplier.createPrepareEditorShell || (() => () => {});
@@ -235,9 +244,7 @@ document.addEventListener('DOMContentLoaded', () => {
             log('Editor shell mounted');
 
             // Expose canEdit for modules that read it after DOMContentLoaded
-            window.LoveBudEditor = window.LoveBudEditor || {};
-            window.LoveBudEditor.canEdit = canEdit;
-            document.body.classList.toggle('editor-readonly', !canEdit);
+            applyEditorEditabilityState({ canEdit });
 
             const cache = window.LoveBudCache || null;
             let MEMORIES_CACHE_KEY = 'memories_default';
