@@ -169,7 +169,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const createInlineNextMemoryIdFallback = dataLoaderFallbacks.createInlineNextMemoryIdFallback || ((options) => () => 'm1');
     const createInlineFormatTimeAgoFallback = entryFallbacks.createInlineFormatTimeAgoFallback;
 
-    const markEditorReady = () => document.body?.classList.remove('editor-preload');
+    const markEditorReady = shellHelpers.markEditorReady || (() => document.body?.classList.remove('editor-preload'));
 
     const editorShellCopyApplier = window.LoveBudEditorShellCopyApplier || {};
     const createEditorShellCopyApplier = editorShellCopyApplier.createEditorShellCopyApplier || (() => () => {});
