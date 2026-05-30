@@ -246,6 +246,13 @@ document.addEventListener('DOMContentLoaded', () => {
         return editorNamespace;
     });
 
+    const exposeDetailPanelUpdater = shellHelpers.exposeDetailPanelUpdater || ((options) => {
+        const opts = options || {};
+        const windowRef = opts.windowRef || window;
+        windowRef.updateDetailPanel = opts.updateDetailPanel;
+        return windowRef;
+    });
+
     const startEditor = async () => {
         const { log, reportError } = createEditorDebugReporter();
 
@@ -492,7 +499,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             const { setDetailEmptyState, updateFocusSelectedBtn, updateSidebarStatus: updateSidebarStatusBase, updateDetailPanel } = detailUI;
-            window.updateDetailPanel = updateDetailPanel;
+            exposeDetailPanelUpdater({ updateDetailPanel });
 
             const sidebarUIHelper = window.LoveBudEditorSidebarUI || {};
             const updateSidebarTreeActions = () => {

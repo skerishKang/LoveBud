@@ -30,7 +30,7 @@ test('js/editor.js retains its legacy entrypoint markers', () => {
     assert.ok(js.includes('window.registerOnAuthReady'), 'should hook into auth ready');
 
     // Global exposure (temporary compat)
-    assert.ok(js.includes('window.updateDetailPanel = updateDetailPanel'), 'exposes updateDetailPanel globally');
+    assert.ok(js.includes('exposeDetailPanelUpdater'), 'delegates updateDetailPanel global exposure');
     assert.ok(js.includes('window.refreshMemories = refreshMemories'), 'exposes refreshMemories globally');
 
     // Extracted responsibilities
