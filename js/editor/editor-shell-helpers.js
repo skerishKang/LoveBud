@@ -103,5 +103,21 @@ window.LoveBudEditorShellHelpers = {
         if (body && body.classList && typeof body.classList.remove === 'function') {
             body.classList.remove('editor-preload');
         }
+    },
+
+    // Editor editability shell state
+    applyEditorEditabilityState: function(options) {
+        var opts = options || {};
+        var canEdit = opts.canEdit !== false;
+        var editorNamespace = opts.editorNamespace || (window.LoveBudEditor = window.LoveBudEditor || {});
+        var body = opts.body || document.body;
+
+        editorNamespace.canEdit = canEdit;
+
+        if (body && body.classList && typeof body.classList.toggle === 'function') {
+            body.classList.toggle('editor-readonly', !canEdit);
+        }
+
+        return editorNamespace;
     }
 };
