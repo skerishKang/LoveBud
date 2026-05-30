@@ -613,12 +613,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 log(`Initial selection set: ${initialSelection.id}`);
             }
 
-            const editMemoryBtn = document.getElementById('editMemoryBtn');
-            const deleteMemoryBtn = document.getElementById('deleteMemoryBtn');
-            const cancelEditBtn = document.getElementById('cancelEditBtn');
-            const saveEditBtn = document.getElementById('saveEditBtn');
             if (canEdit && editorBindings.bindDetailActionButtons) {
-                editorBindings.bindDetailActionButtons({ editMemoryBtn, deleteMemoryBtn, cancelEditBtn, saveEditBtn, enterEditMode, deleteMemory, exitEditMode, saveMemoryEdit });
+                editorBindings.bindDetailActionButtons({ enterEditMode, deleteMemory, exitEditMode, saveMemoryEdit });
             }
 
             updateSidebarStatus();
