@@ -265,22 +265,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const createSidebarTreeActionsUpdater = shellHelpers.createSidebarTreeActionsUpdater;
 
-    const createMemoryActionsReadinessWrapper = shellHelpers.createMemoryActionsReadinessWrapper || ((options) => {
-        const opts = options || {};
-        const getMemoryActions = opts.getMemoryActions || (() => null);
-        const consoleRef = opts.consoleRef || console;
-
-        return async function updateSelectedMemoryFields(...args) {
-            const memoryActions = getMemoryActions();
-
-            if (!memoryActions || typeof memoryActions.updateSelectedMemoryFields !== 'function') {
-                consoleRef.warn('[editor] updateSelectedMemoryFields called before memory actions are ready');
-                return false;
-            }
-
-            return memoryActions.updateSelectedMemoryFields(...args);
-        };
-    });
+    const createMemoryActionsReadinessWrapper = shellHelpers.createMemoryActionsReadinessWrapper;
 
     const createCurrentMomentDetailOpener = shellHelpers.createCurrentMomentDetailOpener;
 
@@ -457,6 +442,12 @@ document.addEventListener('DOMContentLoaded', () => {
             let editorCanvas = null;
 
             let memoryActions = null;
+
+            if (typeof createMemoryActionsReadinessWrapper !== 'function') {
+                reportError('LoveBudEditorShellHelpers.createMemoryActionsReadinessWrapper missing');
+                return;
+            }
+
             const updateSelectedMemoryFields = createMemoryActionsReadinessWrapper({
                 getMemoryActions: () => memoryActions
             });
