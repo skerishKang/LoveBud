@@ -81,7 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     const hasConfirmedSessionUser = editorAuthHelpers.hasConfirmedSessionUser || (() => !!getConfirmedSessionUser());
 
-    const getHttpStatus = (error) => Number(error?.status || error?.statusCode || error?.response?.status || 0);
+    const getHttpStatus = shellHelpers.getHttpStatus || ((error) => Number(error?.status || error?.statusCode || error?.response?.status || 0));
 
     const createInlineShowToastFallback = shellHelpers.createInlineShowToastFallback ||
         entryFallbacks.createInlineShowToastFallback;

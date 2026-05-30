@@ -16,6 +16,16 @@ window.LoveBudEditorShellHelpers = {
         return this.getEditorBasePath() + 'editor' + (window.location.search || '');
     },
 
+    // HTTP status resolver
+    getHttpStatus: function(error) {
+        return Number(
+            (error && error.status) ||
+            (error && error.statusCode) ||
+            (error && error.response && error.response.status) ||
+            0
+        );
+    },
+
     // Toast fallback
     createInlineShowToastFallback: function() {
         return (message, type = 'info') => {
