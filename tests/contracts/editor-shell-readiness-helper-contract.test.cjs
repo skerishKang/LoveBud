@@ -144,8 +144,19 @@ test('createEditorStartupDependencyWaiter calls reportError and returns false wh
 
 // --- 6. editor.js still keeps local fallbacks (test-only, not removing) ---
 
-test('editor.js still keeps markEditorReady local fallback', () => {
-  assert.match(editorSource, /shellHelpers\.markEditorReady\s*\|\|/);
+test('editor.js delegates markEditorReady through required shell helper', () => {
+  assert.match(
+    editorSource,
+    /const\s+markEditorReady\s*=\s*shellHelpers\.markEditorReady/
+  );
+  assert.doesNotMatch(
+    editorSource,
+    /const\s+markEditorReady\s*=\s*shellHelpers\.markEditorReady\s*\|\|/
+  );
+  assert.match(
+    editorSource,
+    /LoveBudEditorShellHelpers\.markEditorReady missing/
+  );
 });
 
 test('editor.js still keeps applyEditorEditabilityState local fallback', () => {
@@ -176,6 +187,18 @@ test('editor.js calls applyEditorEditabilityState with canEdit', () => {
 
 test('editor.js calls markEditorReady in startup completion', () => {
   assert.match(editorSource, /markEditorReady\(\)/);
+});
+
+test('editor.js guards missing markEditorReady before startup proceeds', () => {
+  const guardIndex = editorSource.indexOf('LoveBudEditorShellHelpers.markEditorReady missing');
+  const logIndex = editorSource.indexOf("log('startEditor sequence initiated')");
+  const waiterIndex = editorSource.indexOf('const waitForGlobal = createEditorStartupDependencyWaiter({ log, reportError });');
+
+  assert.ok(guardIndex !== -1, 'missing markEditorReady guard must exist');
+  assert.ok(logIndex !== -1, 'startup log must exist');
+  assert.ok(waiterIndex !== -1, 'dependency waiter setup must exist');
+  assert.ok(guardIndex < logIndex, 'markEditorReady guard must run before startup log');
+  assert.ok(guardIndex < waiterIndex, 'markEditorReady guard must run before dependency waiter setup');
 });
 
 // --- 8. VM-based runtime behavior tests ---
