@@ -40,11 +40,11 @@ test('editor entrypoint uses dom refs builder without inline fallback', () => {
 
 test('editor entrypoint reports missing dom refs builder before calling it', () => {
   const guardIndex = editorSource.indexOf("typeof createEditorDomRefs !== 'function'");
-  const callIndex = editorSource.indexOf('const { canvas, svg, detailPanel, addBtn } = createEditorDomRefs();');
+  const startupContextCallIndex = editorSource.indexOf('createEditorStartupContext({');
 
   assert.notEqual(guardIndex, -1, 'missing createEditorDomRefs guard must exist');
-  assert.notEqual(callIndex, -1, 'createEditorDomRefs call must remain');
-  assert.ok(guardIndex < callIndex, 'missing createEditorDomRefs guard must run before call');
+  assert.notEqual(startupContextCallIndex, -1, 'startup context call must exist');
+  assert.ok(guardIndex < startupContextCallIndex, 'missing createEditorDomRefs guard must run before startup context call');
 
   assert.match(
     editorSource,

@@ -105,10 +105,15 @@ test('createEditorStartupContext throws when createEditorDomRefs is missing', ()
   assert.throws(() => helper.createEditorStartupContext({}), /createEditorDomRefs must be a function/);
 });
 
-test('editor startup context helper is not wired into editor entrypoint yet', () => {
-  assert.doesNotMatch(editorSource, /LoveBudEditorStartupContext/);
-  assert.match(editorSource, /createEditorDomRefs\(\)/);
-  assert.match(editorSource, /new URLSearchParams\(window\.location\.search\)/);
-  assert.match(editorSource, /urlParams\.get\('treeId'\)/);
-  assert.match(editorSource, /urlParams\.get\('readonly'\) !== '1'/);
+test('editor entrypoint delegates startup context preparation to helper', () => {
+  assert.match(editorSource, /LoveBudEditorStartupContext/);
+  assert.match(editorSource, /createEditorStartupContext/);
+  assert.match(editorSource, /createEditorStartupContext\(\{/);
+  assert.match(editorSource, /createEditorDomRefs/);
+  assert.match(editorSource, /locationRef:\s*window\.location/);
+  assert.match(editorSource, /URLSearchParamsRef:\s*URLSearchParams/);
+
+  assert.doesNotMatch(editorSource, /new URLSearchParams\(window\.location\.search\)/);
+  assert.doesNotMatch(editorSource, /urlParams\.get\('treeId'\)/);
+  assert.doesNotMatch(editorSource, /urlParams\.get\('readonly'\) !== '1'/);
 });

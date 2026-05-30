@@ -26,14 +26,14 @@ test('editor delegates editability shell state with fallback', () => {
 });
 
 test('editor no longer applies editability state inline in start flow', () => {
-  const start = editorSource.indexOf('const canEdit = urlParams.get');
-  assert.notEqual(start, -1, 'canEdit calculation must exist');
+  const start = editorSource.indexOf('createEditorStartupContext({');
+  assert.notEqual(start, -1, 'createEditorStartupContext call must exist in start flow');
 
   const end = editorSource.indexOf('const cache = window.LoveBudCache || null;', start);
   assert.notEqual(end, -1, 'cache setup must follow editability state setup');
 
   const block = editorSource.slice(start, end);
-  assert.match(block, /applyEditorEditabilityState\(\{\s*canEdit\s*\}\)/);
+  assert.match(block, /applyEditorEditabilityState\(\{\s*canEdit\s*\}/);
   assert.doesNotMatch(block, /window\.LoveBudEditor\s*=\s*window\.LoveBudEditor\s*\|\|\s*\{\}/);
   assert.doesNotMatch(block, /document\.body\.classList\.toggle\('editor-readonly'/);
 });
