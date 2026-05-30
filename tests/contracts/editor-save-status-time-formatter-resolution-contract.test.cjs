@@ -23,11 +23,27 @@ test('save status time formatter resolver preserves primary formatter priority',
   assert.match(block, /return editorSaveStatus\.formatTimeAgo \|\| createInlineFormatTimeAgoFallback\(\)/);
 });
 
-test('editor delegates save status time formatter resolution with fallback', () => {
-  assert.match(editorSource, /shellHelpers\.resolveSaveStatusTimeFormatter/);
-  assert.match(editorSource, /const resolveSaveStatusTimeFormatter\s*=/);
-  assert.match(editorSource, /const formatTimeAgo\s*=\s*resolveSaveStatusTimeFormatter\(\{/);
-  assert.match(editorSource, /editorSaveStatus,\s*createInlineFormatTimeAgoFallback/);
+test('editor delegates save status time formatter resolution through required shell helper', () => {
+  assert.match(
+    editorSource,
+    /const\s+resolveSaveStatusTimeFormatter\s*=\s*shellHelpers\.resolveSaveStatusTimeFormatter/
+  );
+  assert.doesNotMatch(
+    editorSource,
+    /const\s+resolveSaveStatusTimeFormatter\s*=\s*shellHelpers\.resolveSaveStatusTimeFormatter\s*\|\|/
+  );
+  assert.match(
+    editorSource,
+    /LoveBudEditorShellHelpers\.resolveSaveStatusTimeFormatter missing/
+  );
+  assert.match(
+    editorSource,
+    /const\s+formatTimeAgo\s*=\s*resolveSaveStatusTimeFormatter\(\{/
+  );
+  assert.match(
+    editorSource,
+    /editorSaveStatus,\s*createInlineFormatTimeAgoFallback/
+  );
 });
 
 test('editor no longer owns inline save status time formatter resolver', () => {
@@ -39,7 +55,17 @@ test('editor no longer owns inline save status time formatter resolver', () => {
 
   const block = editorSource.slice(start, end);
   assert.match(block, /const formatTimeAgo\s*=\s*resolveSaveStatusTimeFormatter\(\{/);
+  assert.match(block, /LoveBudEditorShellHelpers\.resolveSaveStatusTimeFormatter missing/);
   assert.doesNotMatch(block, /const formatTimeAgo\s*=\s*editorSaveStatus\.formatTimeAgo\s*\|\|\s*createInlineFormatTimeAgoFallback\(\)/);
+});
+
+test('editor guards missing save status time formatter before resolution', () => {
+  const guardIndex = editorSource.indexOf('LoveBudEditorShellHelpers.resolveSaveStatusTimeFormatter missing');
+  const formatIndex = editorSource.indexOf('const formatTimeAgo = resolveSaveStatusTimeFormatter({');
+
+  assert.ok(guardIndex !== -1, 'missing save status time formatter guard must exist');
+  assert.ok(formatIndex !== -1, 'formatTimeAgo resolution must exist');
+  assert.ok(guardIndex < formatIndex, 'guard must run before formatTimeAgo resolution');
 });
 
 test('editor keeps createInlineFormatTimeAgoFallback available and unchanged by boundary', () => {

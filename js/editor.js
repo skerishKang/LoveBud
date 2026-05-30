@@ -263,13 +263,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const exposeRefreshMemoriesBridge = shellHelpers.exposeRefreshMemoriesBridge;
 
-    const resolveSaveStatusTimeFormatter = shellHelpers.resolveSaveStatusTimeFormatter || ((options) => {
-        const opts = options || {};
-        const editorSaveStatus = opts.editorSaveStatus || {};
-        const createInlineFormatTimeAgoFallback = opts.createInlineFormatTimeAgoFallback || (() => () => '');
-
-        return editorSaveStatus.formatTimeAgo || createInlineFormatTimeAgoFallback();
-    });
+    const resolveSaveStatusTimeFormatter = shellHelpers.resolveSaveStatusTimeFormatter;
 
     const startEditor = async () => {
         const { log, reportError } = createEditorDebugReporter();
@@ -616,6 +610,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             exposeRefreshMemoriesBridge({ refreshMemories });
+
+            if (typeof resolveSaveStatusTimeFormatter !== 'function') {
+                reportError('LoveBudEditorShellHelpers.resolveSaveStatusTimeFormatter missing');
+                return;
+            }
 
             const formatTimeAgo = resolveSaveStatusTimeFormatter({
                 editorSaveStatus,
