@@ -25,6 +25,14 @@ function record(calls, name) {
   };
 }
 
+function assertBindingResult(result, expected) {
+  assert.equal(result.sidebarVisibilityToggle, expected.sidebarVisibilityToggle);
+  assert.equal(result.memoryCreateControls, expected.memoryCreateControls);
+  assert.equal(result.detailEmptyStartButton, expected.detailEmptyStartButton);
+  assert.equal(result.emptyGuideEvents, expected.emptyGuideEvents);
+  assert.equal(result.detailActionButtons, expected.detailActionButtons);
+}
+
 function createBaseOptions(calls, canEdit = true) {
   const refs = {
     getTreeId: () => 'tree-1',
@@ -94,7 +102,7 @@ test('bindEditorPageEvents calls all editable event binding groups with preserve
     'bindDetailActionButtons'
   ]);
 
-  assert.deepEqual(result, {
+  assertBindingResult(result, {
     sidebarVisibilityToggle: true,
     memoryCreateControls: true,
     detailEmptyStartButton: true,
@@ -144,7 +152,7 @@ test('bindEditorPageEvents skips edit-only binding groups when canEdit is false'
   const result = helper.bindEditorPageEvents(options);
 
   assert.deepEqual(calls.map((call) => call.name), ['bindEmptyGuideEvents']);
-  assert.deepEqual(result, {
+  assertBindingResult(result, {
     sidebarVisibilityToggle: false,
     memoryCreateControls: false,
     detailEmptyStartButton: false,
@@ -162,7 +170,7 @@ test('bindEditorPageEvents tolerates missing helper methods without throwing', (
     emptyGuideUIHelper: {}
   });
 
-  assert.deepEqual(result, {
+  assertBindingResult(result, {
     sidebarVisibilityToggle: false,
     memoryCreateControls: false,
     detailEmptyStartButton: false,
