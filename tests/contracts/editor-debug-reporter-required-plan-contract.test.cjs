@@ -5,10 +5,14 @@ const test = require('node:test');
 const shellHelpersSource = fs.readFileSync('js/editor/editor-shell-helpers.js', 'utf8');
 const editorSource = fs.readFileSync('js/editor.js', 'utf8');
 
-// --- 1. Current state: local fallback retained ---
+// --- 1. Current state: local fallback removed, required boundary ---
 
-test('editor.js currently keeps createEditorDebugReporter local fallback', () => {
+test('editor.js now uses createEditorDebugReporter required shell helper without fallback', () => {
   assert.match(
+    editorSource,
+    /const\s+createEditorDebugReporter\s*=\s*shellHelpers\.createEditorDebugReporter[^|]/
+  );
+  assert.doesNotMatch(
     editorSource,
     /const\s+createEditorDebugReporter\s*=\s*shellHelpers\.createEditorDebugReporter\s*\|\|/
   );
