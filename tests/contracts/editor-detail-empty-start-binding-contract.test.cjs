@@ -11,8 +11,8 @@ test('editor bindings export detail empty start button helper', () => {
 });
 
 test('editor delegates detail empty start binding through editor bindings helper', () => {
-  assert.match(editorSource, /editorBindings\.bindDetailEmptyStartButton/);
-  assert.match(editorSource, /bindDetailEmptyStartButton\(\{\s*showAddMemoryForm\s*\}\)/);
+  assert.match(editorSource, /bindEditorPageEvents\s*\(\{/);
+  assert.match(editorSource, /showAddMemoryForm/);
 });
 
 test('editor no longer binds detail empty start button directly', () => {

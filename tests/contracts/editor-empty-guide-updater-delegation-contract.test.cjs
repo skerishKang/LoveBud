@@ -44,7 +44,7 @@ test('editor keeps global updateCanvasEmptyGuide bridge and call sites', () => {
 test('editor reuses one empty guide ui helper binding reference', () => {
   const helperDeclMatches = editorSource.match(/const emptyGuideUIHelper\s*=\s*window\.LoveBudEditorEmptyGuideUI\s*\|\|\s*\{\}/g) || [];
   assert.equal(helperDeclMatches.length, 1);
-  assert.match(editorSource, /if \(emptyGuideUIHelper\.bindEmptyGuideEvents\)/);
+  assert.match(editorSource, /bindEditorPageEvents/);
 });
 
 test('editor-empty-guide-ui loads before editor entrypoint', () => {

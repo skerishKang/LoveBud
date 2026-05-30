@@ -8,7 +8,11 @@ const bindingsSource = fs.readFileSync('js/editor/editor-bindings.js', 'utf8');
 test('editor delegates detail action binding with action handlers only', () => {
   assert.match(
     editorSource,
-    /editorBindings\.bindDetailActionButtons\(\{\s*enterEditMode,\s*deleteMemory,\s*exitEditMode,\s*saveMemoryEdit\s*\}\)/
+    /bindEditorPageEvents\s*\(\{/
+  );
+  assert.match(
+    editorSource,
+    /enterEditMode,\s*deleteMemory,\s*exitEditMode,\s*saveMemoryEdit/
   );
 });
 

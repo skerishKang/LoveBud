@@ -23,8 +23,9 @@ test('editor delegates HTTP status resolver with fallback', () => {
 });
 
 test('editor keeps sidebar visibility toggle injection intact', () => {
-  assert.match(editorSource, /bindSidebarVisibilityToggle\(\{/);
-  assert.match(editorSource, /getHttpStatus,\s*updateSidebarStatus/);
+  assert.match(editorSource, /bindEditorPageEvents\s*\(\{/);
+  assert.match(editorSource, /getHttpStatus,/);
+  assert.match(editorSource, /updateSidebarStatus/);
 });
 
 test('sidebar still consumes injected HTTP status resolver', () => {

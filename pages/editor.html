@@ -1,54 +1,77 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>러브트리 편집 | LoveTree</title>
     <script>
-    window.addEventListener('error', function(e) {
-        if (e.target && e.target.tagName === 'SCRIPT') {
-            console.error('Script load failed:', e.target.src);
-            window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] };
-            window.LoveBudEditorDebug.errors.push({ msg: 'Script load failed', src: e.target.src });
-        }
-    }, true);
+      window.addEventListener(
+        "error",
+        function (e) {
+          if (e.target && e.target.tagName === "SCRIPT") {
+            console.error("Script load failed:", e.target.src);
+            window.LoveBudEditorDebug = window.LoveBudEditorDebug || {
+              logs: [],
+              errors: [],
+            };
+            window.LoveBudEditorDebug.errors.push({
+              msg: "Script load failed",
+              src: e.target.src,
+            });
+          }
+        },
+        true,
+      );
     </script>
-    <link rel="icon" href="/assets/favicon/favicon.svg" type="image/svg+xml">
-    <link rel="icon" href="/favicon.ico" sizes="32x32">
-    <link rel="stylesheet" href="../css/editor.css?v=20260510-1006">
-    <link rel="stylesheet" href="../css/page-transitions.css?v=20260430-1">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
-</head>
-<body class="editor-preload">
+    <link rel="icon" href="/assets/favicon/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="stylesheet" href="../css/editor.css?v=20260510-1006" />
+    <link rel="stylesheet" href="../css/page-transitions.css?v=20260430-1" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+    />
+  </head>
+  <body class="editor-preload">
     <div class="noise-overlay"></div>
 
     <div id="shared-header"></div>
 
     <div class="editor-layout page-transition-enter">
-        <div id="editorSidebarTemplateMount"></div>
+      <div id="editorSidebarTemplateMount"></div>
 
-        <main class="canvas-area reveal-scale reveal-up" id="canvasArea">
-            <div id="editorCanvasTopbarTemplateMount"></div>
-            <svg class="canvas-svg" id="canvasSvg"></svg>
+      <main class="canvas-area reveal-scale reveal-up" id="canvasArea">
+        <div id="editorCanvasTopbarTemplateMount"></div>
+        <svg class="canvas-svg" id="canvasSvg"></svg>
 
-            <div id="editorFloatingToolbarTemplateMount"></div>
+        <div id="editorFloatingToolbarTemplateMount"></div>
 
-            <!-- Mobile bottom action bar (visible only <480px) -->
-            <div id="mobileBottomBar" class="editor-mobile-bottom-bar is-hidden" role="toolbar" aria-label="모바일 하단 도구">
-                <button type="button" id="mobileBottomAction" class="editor-mobile-bottom-action">
-                    <span class="material-symbols-outlined" aria-hidden="true">add</span>
-                    <span id="mobileBottomActionLabel">새 순간 만들기</span>
-                </button>
-            </div>
+        <!-- Mobile bottom action bar (visible only <480px) -->
+        <div
+          id="mobileBottomBar"
+          class="editor-mobile-bottom-bar is-hidden"
+          role="toolbar"
+          aria-label="모바일 하단 도구"
+        >
+          <button
+            type="button"
+            id="mobileBottomAction"
+            class="editor-mobile-bottom-action"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true"
+              >add</span
+            >
+            <span id="mobileBottomActionLabel">새 순간 만들기</span>
+          </button>
+        </div>
 
-            <div id="editorEmptyGuideTemplateMount"></div>
+        <div id="editorEmptyGuideTemplateMount"></div>
 
-            <div id="addMemoryFormTemplateMount"></div>
-        </main>
+        <div id="addMemoryFormTemplateMount"></div>
+      </main>
 
-        <div id="editorDetailPanelShellTemplateMount"></div>
+      <div id="editorDetailPanelShellTemplateMount"></div>
     </div>
-
 
     <script src="../js/cache-utils.js?v=20260418-1"></script>
     <script src="../js/utils/normalize.js?v=20260422-1"></script>
@@ -106,7 +129,10 @@
     <script src="../js/editor/editor-canvas-geometry.js?v=20260502-1"></script>
     <script src="../js/editor/editor-canvas-layout-storage.js?v=20260522-1277"></script>
     <script src="../js/editor/editor-canvas-layout-transition.js?v=20260524-1"></script>
-    <script type="module" src="../js/editor/editor-canvas.js?v=20260507-655"></script>
+    <script
+      type="module"
+      src="../js/editor/editor-canvas.js?v=20260507-655"
+    ></script>
     <script src="../js/editor/editor-rename-ui.js?v=20260422-2"></script>
     <script src="../js/editor/editor-detail-tree-meta.js?v=20260502-1"></script>
     <script src="../js/editor/editor-detail-inline-edit.js?v=20260504-627"></script>
@@ -137,6 +163,7 @@
     <script src="../js/editor/editor-shell-copy-applier.js?v=20260522-1276"></script>
     <script src="../js/editor/editor-dom-refs-builder.js?v=20260522-1276"></script>
     <script src="../js/editor/editor-save-status-orchestration.js?v=20260522-1276"></script>
+    <script src="../js/editor/editor-page-event-bindings.js?v=20260530-1698"></script>
 
     <script src="../js/editor.js?v=20260502-1"></script>
     <script src="../js/editor/editor-i18n-refresh.js?v=20260422-2"></script>
@@ -151,14 +178,26 @@
     <script src="../js/i18n/i18n-detail.js?v=20260421-5"></script>
     <script src="../js/i18n/i18n-editor.js?v=20260504-633"></script>
     <script>
-        window.i18nEditor = Object.assign(window.i18nEditor || {}, {
-            editor_sidebar_public_tree: { ko: '공개', en: 'Public' },
-            editor_sidebar_private_tree: { ko: '비공개', en: 'Private' },
-            detail_empty_title: { ko: '아직 선택한 순간이 없어요', en: 'No moment selected yet.' },
-            detail_empty_desc: { ko: '첫 순간은 가운데에서 시작하세요.', en: 'Start the first moment from the canvas.' },
-            editor_current_moment_empty_title: { ko: '아직 선택한 순간이 없어요', en: 'No moment selected yet.' },
-            editor_current_moment_empty_hint: { ko: '첫 순간은 가운데 캔버스에서 시작하세요.', en: 'Start the first moment from the center canvas.' }
-        });
+      window.i18nEditor = Object.assign(window.i18nEditor || {}, {
+        editor_sidebar_public_tree: { ko: "공개", en: "Public" },
+        editor_sidebar_private_tree: { ko: "비공개", en: "Private" },
+        detail_empty_title: {
+          ko: "아직 선택한 순간이 없어요",
+          en: "No moment selected yet.",
+        },
+        detail_empty_desc: {
+          ko: "첫 순간은 가운데에서 시작하세요.",
+          en: "Start the first moment from the canvas.",
+        },
+        editor_current_moment_empty_title: {
+          ko: "아직 선택한 순간이 없어요",
+          en: "No moment selected yet.",
+        },
+        editor_current_moment_empty_hint: {
+          ko: "첫 순간은 가운데 캔버스에서 시작하세요.",
+          en: "Start the first moment from the center canvas.",
+        },
+      });
     </script>
     <script src="../js/i18n/i18n-my-trees.js?v=20260421-5"></script>
     <script src="../js/i18n/i18n-index.js?v=20260421-1"></script>
@@ -174,6 +213,8 @@
     <script src="../js/auth.js?v=20260422-3"></script>
     <script src="../js/auth/auth-protected-route.js?v=20260505-828"></script>
     <script src="../js/page-transitions.js?v=20260430-1"></script>
-    <script>renderSharedHeader();</script>
-</body>
+    <script>
+      renderSharedHeader();
+    </script>
+  </body>
 </html>

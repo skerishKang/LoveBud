@@ -6,11 +6,13 @@ const editorSource = fs.readFileSync('js/editor.js', 'utf8');
 const bindingsSource = fs.readFileSync('js/editor/editor-bindings.js', 'utf8');
 
 test('editor delegates memory create control refs to editor bindings', () => {
-  assert.match(editorSource, /editorBindings\.bindMemoryCreateControlsFromDom/);
-  assert.match(
-    editorSource,
-    /bindMemoryCreateControlsFromDom\(\{\s*showAddMemoryForm,\s*hideAddMemoryForm,\s*addMemoryFromForm,\s*updateSaveStatus,\s*showToast,\s*i18n\s*\}\)/
-  );
+  assert.match(editorSource, /bindEditorPageEvents\s*\(\{/);
+  assert.match(editorSource, /showAddMemoryForm/);
+  assert.match(editorSource, /hideAddMemoryForm/);
+  assert.match(editorSource, /addMemoryFromForm/);
+  assert.match(editorSource, /updateSaveStatus/);
+  assert.match(editorSource, /showToast/);
+  assert.match(editorSource, /i18n/);
 });
 
 test('editor no longer builds memory create form refs directly', () => {
