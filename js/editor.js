@@ -179,14 +179,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const markEditorReady = shellHelpers.markEditorReady;
 
-    const applyEditorEditabilityState = shellHelpers.applyEditorEditabilityState || ((options) => {
-        const opts = options || {};
-        const nextCanEdit = opts.canEdit !== false;
-        window.LoveBudEditor = window.LoveBudEditor || {};
-        window.LoveBudEditor.canEdit = nextCanEdit;
-        document.body?.classList?.toggle('editor-readonly', !nextCanEdit);
-        return window.LoveBudEditor;
-    });
+    const applyEditorEditabilityState = shellHelpers.applyEditorEditabilityState;
 
     const editorShellCopyApplier = window.LoveBudEditorShellCopyApplier || {};
     const createEditorShellCopyApplier = editorShellCopyApplier.createEditorShellCopyApplier || (() => () => {});
@@ -309,6 +302,11 @@ document.addEventListener('DOMContentLoaded', () => {
             log('DOM refs and URL params prepared');
             prepareEditorShell();
             log('Editor shell mounted');
+
+            if (typeof applyEditorEditabilityState !== 'function') {
+                reportError('LoveBudEditorShellHelpers.applyEditorEditabilityState missing');
+                return;
+            }
 
             // Expose canEdit for modules that read it after DOMContentLoaded
             applyEditorEditabilityState({ canEdit });
