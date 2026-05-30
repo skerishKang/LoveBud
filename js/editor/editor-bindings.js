@@ -87,6 +87,17 @@
     return document.getElementById(id);
   }
 
+  function bindDetailEmptyStartButton(options) {
+    var showAddMemoryForm = options && options.showAddMemoryForm;
+    var detailEmptyStartBtn = getDetailButton('detailEmptyStartBtn');
+
+    bindButtonOnce(detailEmptyStartBtn, 'detailEmptyStartBound', function() {
+      if (typeof showAddMemoryForm === 'function') {
+        showAddMemoryForm();
+      }
+    });
+  }
+
   function ensureDeleteButtonInCurrentMomentActions(deleteMemoryBtn) {
     // Delete button moved to edit mode — no longer inserted in card view.
     if (deleteMemoryBtn) {
@@ -195,6 +206,7 @@
 
   window.LoveBudEditorBindings = {
     bindMemoryCreateControls: bindMemoryCreateControls,
+    bindDetailEmptyStartButton: bindDetailEmptyStartButton,
     bindDetailActionButtons: bindDetailActionButtons,
     hideUnimplementedButtons: hideUnimplementedButtons
   };
