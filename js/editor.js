@@ -344,16 +344,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 ? () => editorTreeHelpers.nextMemoryIdFromMemories(treeMemories())
                 : createInlineNextMemoryIdFallback({ treeMemories });
 
-            const updateCanvasEmptyGuide = () => {
-                const guide = document.getElementById('canvasEmptyGuide');
-                if (!guide) {
-                    log('WARNING: #canvasEmptyGuide not found during update attempt');
-                    return;
-                }
-                const hasMoments = treeMemories().length > 0;
-                log(`Updating empty guide visibility. hasMoments=${hasMoments}`);
-                guide.classList.toggle('editor-canvas-empty-guide-hidden', hasMoments);
-            };
+            const emptyGuideUIHelper = window.LoveBudEditorEmptyGuideUI || {};
+            const updateCanvasEmptyGuide = emptyGuideUIHelper.createCanvasEmptyGuideUpdater
+                ? emptyGuideUIHelper.createCanvasEmptyGuideUpdater({
+                    getTreeMemories: () => treeMemories(),
+                    log
+                })
+                : () => {
+                    log('WARNING: LoveBudEditorEmptyGuideUI.createCanvasEmptyGuideUpdater missing');
+                };
             
             // Bridge this back to LoveBudEditor so canvas can call it
             window.LoveBudEditor = window.LoveBudEditor || {};
@@ -583,7 +582,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 editorBindings.bindDetailEmptyStartButton({ showAddMemoryForm });
             }
 
-            const emptyGuideUIHelper = window.LoveBudEditorEmptyGuideUI || {};
             if (emptyGuideUIHelper.bindEmptyGuideEvents) {
                 emptyGuideUIHelper.bindEmptyGuideEvents({
                     getEditorCanvas: () => editorCanvas,

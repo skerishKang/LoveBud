@@ -1,6 +1,30 @@
 (function () {
     const emptyGuideUI = window.LoveBudEditorEmptyGuideUI || {};
 
+    emptyGuideUI.createCanvasEmptyGuideUpdater = function(options) {
+        const getTreeMemories = options && options.getTreeMemories;
+        const log = options && options.log;
+
+        return function updateCanvasEmptyGuide() {
+            const guide = document.getElementById('canvasEmptyGuide');
+            if (!guide) {
+                if (typeof log === 'function') {
+                    log('WARNING: #canvasEmptyGuide not found during update attempt');
+                }
+                return;
+            }
+
+            const memories = typeof getTreeMemories === 'function' ? getTreeMemories() : [];
+            const hasMoments = memories.length > 0;
+
+            if (typeof log === 'function') {
+                log(`Updating empty guide visibility. hasMoments=${hasMoments}`);
+            }
+
+            guide.classList.toggle('editor-canvas-empty-guide-hidden', hasMoments);
+        };
+    };
+
     emptyGuideUI.bindEmptyGuideEvents = function(options) {
         const getEditorCanvas = options.getEditorCanvas;
         const showAddMemoryForm = options.showAddMemoryForm;
