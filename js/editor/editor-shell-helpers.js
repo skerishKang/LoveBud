@@ -323,5 +323,28 @@ window.LoveBudEditorShellHelpers = {
                 reportError('LoveBudEditorPageHelpers.openMomentDetail missing');
             }
         };
+    },
+
+    // Save status orchestration fallback factory
+    createSaveStatusOrchestrationFallback: function(options) {
+        var opts = options || {};
+        var consoleRef = opts.consoleRef || console;
+
+        return function createEditorSaveStatusOrchestrationFallback() {
+            consoleRef.warn('[editor] LoveBudEditorSaveStatusOrchestration not loaded, using minimal fallback');
+
+            var saveStatusData = {
+                status: 'saved',
+                lastSaved: null,
+                timer: null
+            };
+
+            return {
+                saveStatusData: saveStatusData,
+                updateSaveStatus: function(status, message) {
+                    saveStatusData.status = status;
+                }
+            };
+        };
     }
 };

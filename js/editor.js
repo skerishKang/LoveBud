@@ -342,6 +342,24 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     });
 
+    const createSaveStatusOrchestrationFallback = shellHelpers.createSaveStatusOrchestrationFallback || ((options) => {
+        const opts = options || {};
+        const consoleRef = opts.consoleRef || console;
+
+        return function createEditorSaveStatusOrchestrationFallback() {
+            consoleRef.warn('[editor] LoveBudEditorSaveStatusOrchestration not loaded, using minimal fallback');
+
+            let saveStatusData = { status: 'saved', lastSaved: null, timer: null };
+
+            return {
+                saveStatusData,
+                updateSaveStatus: (status, message) => {
+                    saveStatusData.status = status;
+                }
+            };
+        };
+    });
+
     const startEditor = async () => {
         const { log, reportError } = createEditorDebugReporter();
 
@@ -641,16 +659,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const formatTimeAgo = editorSaveStatus.formatTimeAgo || createInlineFormatTimeAgoFallback();
 
             const saveStatusOrchestrationHelper = window.LoveBudEditorSaveStatusOrchestration || {};
-            const createEditorSaveStatusOrchestration = saveStatusOrchestrationHelper.createEditorSaveStatusOrchestration || (() => {
-                console.warn('[editor] LoveBudEditorSaveStatusOrchestration not loaded, using minimal fallback');
-                let saveStatusData = { status: 'saved', lastSaved: null, timer: null };
-                return {
-                    saveStatusData,
-                    updateSaveStatus: (status, message) => {
-                        saveStatusData.status = status;
-                    }
-                };
-            });
+            const createEditorSaveStatusOrchestration = saveStatusOrchestrationHelper.createEditorSaveStatusOrchestration
+                || createSaveStatusOrchestrationFallback();
 
             const { saveStatusData, updateSaveStatus } = createEditorSaveStatusOrchestration({ editorSaveStatus, i18n, formatTimeAgo });
 
