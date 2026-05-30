@@ -587,11 +587,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 editorBindings.bindMemoryCreateControls({ addBtn, cancelBtn, confirmBtn, urlInput, titleInput, memoInput, showAddMemoryForm, hideAddMemoryForm, addMemoryFromForm, updateSaveStatus, showToast, i18n });
             }
 
-            const detailEmptyStartBtn = document.getElementById('detailEmptyStartBtn');
-            if (detailEmptyStartBtn && canEdit) {
-                detailEmptyStartBtn.addEventListener('click', () => {
-                    showAddMemoryForm();
-                });
+            if (canEdit && editorBindings.bindDetailEmptyStartButton) {
+                editorBindings.bindDetailEmptyStartButton({ showAddMemoryForm });
             }
 
             const emptyGuideUIHelper = window.LoveBudEditorEmptyGuideUI || {};
