@@ -38,6 +38,35 @@
     return getEditorBasePath() + 'my-trees';
   }
 
+  function buildMomentDetailHref(options) {
+    var opts = options || {};
+    var memoryId = opts.memoryId || opts.id;
+    var treeId = opts.treeId;
+    var basePathResolver = opts.getEditorBasePath || getEditorBasePath;
+
+    if (!memoryId || !treeId) return '';
+
+    return (
+      basePathResolver() +
+      'detail.html?id=' +
+      encodeURIComponent(memoryId) +
+      '&tree=' +
+      encodeURIComponent(treeId) +
+      '&from=editor'
+    );
+  }
+
+  function openMomentDetail(options) {
+    var opts = options || {};
+    var href = buildMomentDetailHref(opts);
+    var locationRef = opts.locationRef || window.location;
+
+    if (!href || !locationRef) return '';
+
+    locationRef.href = href;
+    return href;
+  }
+
   function renderTreeLoadError(options) {
     var canvas = options && options.canvas;
     var addBtn = options && options.addBtn;
@@ -90,6 +119,8 @@
     buildEditorRedirectTarget: buildEditorRedirectTarget,
     redirectToEditorLogin: redirectToEditorLogin,
     getMyTreesHref: getMyTreesHref,
+    buildMomentDetailHref: buildMomentDetailHref,
+    openMomentDetail: openMomentDetail,
     renderTreeLoadError: renderTreeLoadError
   };
 })();

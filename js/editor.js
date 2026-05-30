@@ -392,8 +392,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const openCurrentMomentDetail = () => {
                 const activeMemory = currentEditingMemory || treeMemories().find((m) => m.id === selectedNodeId) || createInitialMemory();
                 if (!activeMemory || !activeMemory.id || !treeId) return;
-                const detailHref = getEditorBasePath() + 'detail.html?id=' + encodeURIComponent(activeMemory.id) + '&tree=' + encodeURIComponent(treeId) + '&from=editor';
-                window.location.href = detailHref;
+
+                if (typeof editorPageHelpers.openMomentDetail === 'function') {
+                    editorPageHelpers.openMomentDetail({
+                        memoryId: activeMemory.id,
+                        treeId,
+                        getEditorBasePath,
+                        locationRef: window.location
+                    });
+                } else {
+                    reportError('LoveBudEditorPageHelpers.openMomentDetail missing');
+                }
             };
 
             const updateTreeVisibility = async (nextVisibility) => {
