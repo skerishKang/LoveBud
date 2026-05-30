@@ -35,10 +35,10 @@ test('editor entrypoint no longer owns canvas empty guide dom toggle implementat
 });
 
 test('editor keeps global updateCanvasEmptyGuide bridge and call sites', () => {
-  assert.match(editorSource, /exposeCanvasEmptyGuideUpdater\(\{\s*updateCanvasEmptyGuide\s*\}\)/);
+  assert.match(editorSource, /exposeCanvasEmptyGuideUpdater\(\{\s*updateCanvasEmptyGuide\s*\}/);
   assert.match(editorSource, /updateCanvasEmptyGuide\(\);/);
   assert.match(editorSource, /updateSidebarStatus\(\);/);
-  assert.match(editorSource, /editorNamespace\.updateCanvasEmptyGuide\s*=\s*opts\.updateCanvasEmptyGuide/);
+  assert.match(editorSource, /LoveBudEditorShellHelpers\.exposeCanvasEmptyGuideUpdater missing/);
 });
 
 test('editor reuses one empty guide ui helper binding reference', () => {
