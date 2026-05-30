@@ -11,7 +11,7 @@ function extractSelectNodeBlock(source) {
   const start = source.indexOf(marker);
   assert.notEqual(start, -1, 'selectNode block must exist');
 
-  const end = source.indexOf('            const focusSelectedMoment = () => {', start);
+  const end = source.indexOf('            const focusSelectedMoment = createSelectedMomentFocusHandler({', start);
   assert.notEqual(end, -1, 'focusSelectedMoment marker must follow selectNode');
 
   return source.slice(start, end);
