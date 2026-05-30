@@ -209,5 +209,29 @@ window.LoveBudEditorShellHelpers = {
             log(name + ' found.');
             return true;
         };
+    },
+
+    // YouTube input validation fallback
+    getYouTubeInputErrorMessageFallback: function(i18n, rawUrl) {
+        var value = String(rawUrl || '').trim();
+
+        if (!value) {
+            return i18n('enter_youtube') || 'YouTube 링크를 입력해 주세요.';
+        }
+
+        if (!/^(https?:\/\/|www\.)/i.test(value)) {
+            return i18n('invalid_youtube_format') || '전체 YouTube 링크를 붙여 넣어 주세요.';
+        }
+
+        if (!/(youtube\.com|youtu\.be|youtube\.com\/shorts\/)/i.test(value)) {
+            return i18n('invalid_youtube_unsupported') || 'YouTube 링크만 지원합니다. youtube.com 또는 youtu.be 링크를 사용해 주세요.';
+        }
+
+        var match = value.match(/(?:v=|\/|youtu\.be\/|shorts\/)([0-9A-Za-z_-]+)/i);
+        if (match && match[1].length !== 11) {
+            return i18n('invalid_youtube_id_length') || '링크가 중간에 잘린 것 같아요. 전체 YouTube 링크를 다시 복사해 주세요.';
+        }
+
+        return i18n('invalid_youtube') || '유효한 YouTube 링크를 입력해 주세요.';
     }
 };
