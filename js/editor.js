@@ -411,11 +411,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     throw new Error('updateTree not available');
                 }
                 const updatedTree = await window.apiClient.updateTree(treeId, { visibility: nextVisibility });
-                window.currentTreeData = {
-                    ...(window.currentTreeData || {}),
-                    ...(updatedTree || {}),
-                    visibility: updatedTree?.visibility || nextVisibility
-                };
+                if (typeof editorTreeHelpers.applyUpdatedTreeVisibility === 'function') {
+                    editorTreeHelpers.applyUpdatedTreeVisibility({
+                        updatedTree,
+                        nextVisibility,
+                        currentTreeData: window.currentTreeData || {}
+                    });
+                } else {
+                    reportError('LoveBudEditorTreeHelpers.applyUpdatedTreeVisibility missing');
+                }
                 updateSidebarStatus();
                 if (currentEditingMemory) updateDetailPanel(currentEditingMemory);
             };

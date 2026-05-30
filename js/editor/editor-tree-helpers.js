@@ -72,6 +72,24 @@
         };
     }
 
+    if (!treeHelpers.applyUpdatedTreeVisibility) {
+        treeHelpers.applyUpdatedTreeVisibility = function applyUpdatedTreeVisibility(options) {
+            var opts = options || {};
+            var updatedTree = opts.updatedTree || {};
+            var nextVisibility = opts.nextVisibility;
+            var currentTreeData = opts.currentTreeData || window.currentTreeData || {};
+
+            window.currentTreeData = {
+                ...currentTreeData,
+                ...updatedTree,
+                visibility: updatedTree && updatedTree.visibility ? updatedTree.visibility : nextVisibility
+            };
+
+            editorDebugLog('[editor] currentTreeData visibility updated');
+            return window.currentTreeData;
+        };
+    }
+
     if (!treeHelpers.resolveParentIdForCreate) {
         treeHelpers.resolveParentIdForCreate = function resolveParentIdForCreate(selectedNodeId, canonicalRootId) {
             if (!selectedNodeId || selectedNodeId === canonicalRootId) {
