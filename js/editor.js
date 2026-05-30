@@ -257,6 +257,21 @@ document.addEventListener('DOMContentLoaded', () => {
         return windowRef;
     });
 
+    const createSelectedMomentFocusHandler = shellHelpers.createSelectedMomentFocusHandler || ((options) => {
+        const opts = options || {};
+        const getEditorCanvas = opts.getEditorCanvas || (() => null);
+        const getSelectedNodeId = opts.getSelectedNodeId || (() => null);
+
+        return function focusSelectedMoment() {
+            const editorCanvas = getEditorCanvas();
+            const selectedNodeId = getSelectedNodeId();
+
+            if (editorCanvas && typeof editorCanvas.focusNodeById === 'function' && selectedNodeId) {
+                editorCanvas.focusNodeById(selectedNodeId);
+            }
+        };
+    });
+
     const startEditor = async () => {
         const { log, reportError } = createEditorDebugReporter();
 
@@ -439,11 +454,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             };
 
-            const focusSelectedMoment = () => {
-                if (editorCanvas && typeof editorCanvas.focusNodeById === 'function' && selectedNodeId) {
-                    editorCanvas.focusNodeById(selectedNodeId);
-                }
-            };
+            const focusSelectedMoment = createSelectedMomentFocusHandler({
+                getEditorCanvas: () => editorCanvas,
+                getSelectedNodeId: () => selectedNodeId
+            });
 
             const openCurrentMomentDetail = () => {
                 const activeMemory = currentEditingMemory || treeMemories().find((m) => m.id === selectedNodeId) || createInitialMemory();

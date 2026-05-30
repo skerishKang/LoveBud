@@ -233,5 +233,21 @@ window.LoveBudEditorShellHelpers = {
         }
 
         return i18n('invalid_youtube') || '유효한 YouTube 링크를 입력해 주세요.';
+    },
+
+    // Selected moment focus handler factory
+    createSelectedMomentFocusHandler: function(options) {
+        var opts = options || {};
+        var getEditorCanvas = opts.getEditorCanvas || function() { return null; };
+        var getSelectedNodeId = opts.getSelectedNodeId || function() { return null; };
+
+        return function focusSelectedMoment() {
+            var editorCanvas = getEditorCanvas();
+            var selectedNodeId = getSelectedNodeId();
+
+            if (editorCanvas && typeof editorCanvas.focusNodeById === 'function' && selectedNodeId) {
+                editorCanvas.focusNodeById(selectedNodeId);
+            }
+        };
     }
 };
