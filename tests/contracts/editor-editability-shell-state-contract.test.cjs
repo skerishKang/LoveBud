@@ -21,8 +21,9 @@ test('editor delegates editability shell state with fallback', () => {
   assert.match(editorSource, /shellHelpers\.applyEditorEditabilityState/);
   assert.match(editorSource, /const applyEditorEditabilityState\s*=/);
   assert.match(editorSource, /applyEditorEditabilityState\(\{\s*canEdit\s*\}\)/);
-  assert.match(editorSource, /window\.LoveBudEditor\.canEdit\s*=\s*nextCanEdit/);
-  assert.match(editorSource, /classList\?\.toggle\('editor-readonly',\s*!nextCanEdit\)/);
+  assert.doesNotMatch(editorSource, /window\.LoveBudEditor\.canEdit\s*=\s*nextCanEdit/);
+  assert.doesNotMatch(editorSource, /classList\?\.toggle\('editor-readonly',\s*!nextCanEdit\)/);
+  assert.match(editorSource, /LoveBudEditorShellHelpers\.applyEditorEditabilityState missing/);
 });
 
 test('editor no longer applies editability state inline in start flow', () => {
