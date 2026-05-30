@@ -75,6 +75,36 @@
     }
   }
 
+  function getMemoryCreateControlRefs() {
+    return {
+      addBtn: document.getElementById('addMemoryBtn'),
+      cancelBtn: document.getElementById('cancelAddMemory'),
+      confirmBtn: document.getElementById('confirmAddMemory'),
+      urlInput: document.getElementById('memoryUrlInput'),
+      titleInput: document.getElementById('memoryTitleInput'),
+      memoInput: document.getElementById('memoryMemoInput')
+    };
+  }
+
+  function bindMemoryCreateControlsFromDom(options) {
+    var refs = getMemoryCreateControlRefs();
+
+    bindMemoryCreateControls({
+      addBtn: refs.addBtn,
+      cancelBtn: refs.cancelBtn,
+      confirmBtn: refs.confirmBtn,
+      urlInput: refs.urlInput,
+      titleInput: refs.titleInput,
+      memoInput: refs.memoInput,
+      showAddMemoryForm: options && options.showAddMemoryForm,
+      hideAddMemoryForm: options && options.hideAddMemoryForm,
+      addMemoryFromForm: options && options.addMemoryFromForm,
+      updateSaveStatus: options && options.updateSaveStatus,
+      showToast: options && options.showToast,
+      i18n: options && options.i18n
+    });
+  }
+
   function bindButtonOnce(button, bindingKey, handler) {
     if (!button || typeof handler !== 'function') return false;
     if (button.dataset[bindingKey] === '1') return false;
@@ -206,6 +236,7 @@
 
   window.LoveBudEditorBindings = {
     bindMemoryCreateControls: bindMemoryCreateControls,
+    bindMemoryCreateControlsFromDom: bindMemoryCreateControlsFromDom,
     bindDetailEmptyStartButton: bindDetailEmptyStartButton,
     bindDetailActionButtons: bindDetailActionButtons,
     hideUnimplementedButtons: hideUnimplementedButtons
