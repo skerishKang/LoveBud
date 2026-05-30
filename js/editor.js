@@ -282,40 +282,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     });
 
-    const createCurrentMomentDetailOpener = shellHelpers.createCurrentMomentDetailOpener || ((options) => {
-        const opts = options || {};
-        const getCurrentEditingMemory = opts.getCurrentEditingMemory || (() => null);
-        const getTreeMemories = opts.getTreeMemories || (() => []);
-        const getSelectedNodeId = opts.getSelectedNodeId || (() => null);
-        const createInitialMemory = opts.createInitialMemory || (() => null);
-        const getTreeId = opts.getTreeId || (() => null);
-        const editorPageHelpers = opts.editorPageHelpers || {};
-        const getEditorBasePath = opts.getEditorBasePath;
-        const locationRef = opts.locationRef || window.location;
-        const reportError = opts.reportError || (() => {});
-
-        return function openCurrentMomentDetail() {
-            const selectedNodeId = getSelectedNodeId();
-            const treeMemories = getTreeMemories();
-            const activeMemory = getCurrentEditingMemory()
-                || treeMemories.find((memory) => memory.id === selectedNodeId)
-                || createInitialMemory();
-            const treeId = getTreeId();
-
-            if (!activeMemory || !activeMemory.id || !treeId) return;
-
-            if (typeof editorPageHelpers.openMomentDetail === 'function') {
-                editorPageHelpers.openMomentDetail({
-                    memoryId: activeMemory.id,
-                    treeId,
-                    getEditorBasePath,
-                    locationRef
-                });
-            } else {
-                reportError('LoveBudEditorPageHelpers.openMomentDetail missing');
-            }
-        };
-    });
+    const createCurrentMomentDetailOpener = shellHelpers.createCurrentMomentDetailOpener;
 
     const createSaveStatusOrchestrationFallback = shellHelpers.createSaveStatusOrchestrationFallback || ((options) => {
         const opts = options || {};
@@ -550,6 +517,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 getEditorCanvas: () => editorCanvas,
                 getSelectedNodeId: () => selectedNodeId
             });
+
+            if (typeof createCurrentMomentDetailOpener !== 'function') {
+                reportError('LoveBudEditorShellHelpers.createCurrentMomentDetailOpener missing');
+                return;
+            }
 
             const openCurrentMomentDetail = createCurrentMomentDetailOpener({
                 getCurrentEditingMemory: () => currentEditingMemory,
