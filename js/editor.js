@@ -261,20 +261,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return windowRef;
     });
 
-    const createSelectedMomentFocusHandler = shellHelpers.createSelectedMomentFocusHandler || ((options) => {
-        const opts = options || {};
-        const getEditorCanvas = opts.getEditorCanvas || (() => null);
-        const getSelectedNodeId = opts.getSelectedNodeId || (() => null);
-
-        return function focusSelectedMoment() {
-            const editorCanvas = getEditorCanvas();
-            const selectedNodeId = getSelectedNodeId();
-
-            if (editorCanvas && typeof editorCanvas.focusNodeById === 'function' && selectedNodeId) {
-                editorCanvas.focusNodeById(selectedNodeId);
-            }
-        };
-    });
+    const createSelectedMomentFocusHandler = shellHelpers.createSelectedMomentFocusHandler;
 
     const createSidebarTreeActionsUpdater = shellHelpers.createSidebarTreeActionsUpdater || ((options) => {
         const opts = options || {};
@@ -569,6 +556,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     editorCanvas.updateAffordance();
                 }
             };
+
+            if (typeof createSelectedMomentFocusHandler !== 'function') {
+                reportError('LoveBudEditorShellHelpers.createSelectedMomentFocusHandler missing');
+                return;
+            }
 
             const focusSelectedMoment = createSelectedMomentFocusHandler({
                 getEditorCanvas: () => editorCanvas,

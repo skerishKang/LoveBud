@@ -22,12 +22,27 @@ test('editor shell helpers expose interaction helper boundaries', () => {
   }
 });
 
-test('editor entrypoint resolves interaction helpers through shell helper boundary', () => {
-  for (const helperName of interactionHelpers) {
+test('editor entrypoint resolves selected moment focus through required shell helper boundary', () => {
+  assert.match(
+    editorSource,
+    /const\s+createSelectedMomentFocusHandler\s*=\s*shellHelpers\.createSelectedMomentFocusHandler/
+  );
+  assert.doesNotMatch(
+    editorSource,
+    /const\s+createSelectedMomentFocusHandler\s*=\s*shellHelpers\.createSelectedMomentFocusHandler\s*\|\|/
+  );
+});
+
+const fallbackInteractionHelpers = [
+  'createSidebarTreeActionsUpdater',
+  'createCurrentMomentDetailOpener'
+];
+
+test('editor entrypoint keeps remaining interaction helper fallbacks intact', () => {
+  for (const helperName of fallbackInteractionHelpers) {
     assert.match(
       editorSource,
-      new RegExp(`const\\s+${helperName}\\s*=\\s*shellHelpers\\.${helperName}\\s*\\|\\|`),
-      `${helperName} should resolve through shellHelpers before local fallback`
+      new RegExp(`const\\s+${helperName}\\s*=\\s*shellHelpers\\.${helperName}\\s*\\|\\|`)
     );
   }
 });
