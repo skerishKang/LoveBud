@@ -64,8 +64,8 @@ test('editor selectNode keeps selection and detail update flow intact', () => {
 
   assert.match(selectNodeBlock, /selectedNodeId\s*=\s*data\.id/);
   assert.match(selectNodeBlock, /currentEditingMemory\s*=\s*data/);
-  assert.match(selectNodeBlock, /document\.querySelectorAll\('\.memory-node'\)/);
-  assert.match(selectNodeBlock, /if \(el\) el\.classList\.add\('selected'\)/);
+  assert.match(selectNodeBlock, /editorSelectionUI\.applySelectedMemoryNode\(el\)/);
+  assert.match(selectNodeBlock, /editorSaveStatus\.hideSaveStatusIndicator\(saveStatusData\)/);
   assert.match(selectNodeBlock, /updateDetailPanel\(data\)/);
   assert.match(selectNodeBlock, /updateFocusSelectedBtn\(\)/);
   assert.match(selectNodeBlock, /setDetailEmptyState\(false\)/);
