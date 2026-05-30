@@ -18,11 +18,23 @@ test('refresh memories bridge helper keeps testable window hook', () => {
   assert.match(shellHelpersSource, /opts\.refreshMemories/);
 });
 
-test('editor delegates refresh memories bridge with fallback', () => {
-  assert.match(editorSource, /shellHelpers\.exposeRefreshMemoriesBridge/);
-  assert.match(editorSource, /const exposeRefreshMemoriesBridge\s*=/);
-  assert.match(editorSource, /windowRef\.refreshMemories\s*=\s*opts\.refreshMemories/);
-  assert.match(editorSource, /exposeRefreshMemoriesBridge\(\{\s*refreshMemories\s*\}\)/);
+test('editor delegates refresh memories bridge through required shell helper', () => {
+  assert.match(
+    editorSource,
+    /const\s+exposeRefreshMemoriesBridge\s*=\s*shellHelpers\.exposeRefreshMemoriesBridge/
+  );
+  assert.doesNotMatch(
+    editorSource,
+    /const\s+exposeRefreshMemoriesBridge\s*=\s*shellHelpers\.exposeRefreshMemoriesBridge\s*\|\|/
+  );
+  assert.match(
+    editorSource,
+    /LoveBudEditorShellHelpers\.exposeRefreshMemoriesBridge missing/
+  );
+  assert.match(
+    editorSource,
+    /exposeRefreshMemoriesBridge\(\{\s*refreshMemories\s*\}\)/
+  );
 });
 
 test('editor no longer assigns refresh memories bridge inline', () => {
@@ -35,6 +47,7 @@ test('editor no longer assigns refresh memories bridge inline', () => {
   const block = editorSource.slice(start, end);
   assert.match(block, /exposeRefreshMemoriesBridge\(\{\s*refreshMemories\s*\}\)/);
   assert.doesNotMatch(block, /window\.refreshMemories\s*=\s*refreshMemories/);
+  assert.doesNotMatch(block, /windowRef\.refreshMemories\s*=/);
 });
 
 test('editor keeps refresh memories factory invocation intact', () => {
@@ -59,4 +72,13 @@ test('editor keeps handleMemoriesUpdated orchestration intact', () => {
   assert.match(block, /updateSidebarStatus\(\)/);
   assert.match(block, /currentEditingMemory\s*=\s*refreshedEditingMemory/);
   assert.match(block, /updateDetailPanel\(refreshedEditingMemory\)/);
+});
+
+test('editor guards missing refresh memories bridge before exposure', () => {
+  const guardIndex = editorSource.indexOf('LoveBudEditorShellHelpers.exposeRefreshMemoriesBridge missing');
+  const exposeIndex = editorSource.indexOf('exposeRefreshMemoriesBridge({ refreshMemories });');
+
+  assert.ok(guardIndex !== -1, 'missing refresh memories bridge guard must exist');
+  assert.ok(exposeIndex !== -1, 'refresh memories bridge exposure must exist');
+  assert.ok(guardIndex < exposeIndex, 'guard must run before refresh memories bridge exposure');
 });

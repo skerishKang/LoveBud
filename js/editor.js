@@ -287,12 +287,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     });
 
-    const exposeRefreshMemoriesBridge = shellHelpers.exposeRefreshMemoriesBridge || ((options) => {
-        const opts = options || {};
-        const windowRef = opts.windowRef || window;
-        windowRef.refreshMemories = opts.refreshMemories;
-        return windowRef;
-    });
+    const exposeRefreshMemoriesBridge = shellHelpers.exposeRefreshMemoriesBridge;
 
     const resolveSaveStatusTimeFormatter = shellHelpers.resolveSaveStatusTimeFormatter || ((options) => {
         const opts = options || {};
@@ -630,6 +625,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             const refreshMemories = editorDataLoader.createRefreshMemories({ treeId, apiClient: window.apiClient, normalizeMemory, onMemoriesUpdated: handleMemoriesUpdated });
+
+            if (typeof exposeRefreshMemoriesBridge !== 'function') {
+                reportError('LoveBudEditorShellHelpers.exposeRefreshMemoriesBridge missing');
+                return;
+            }
+
             exposeRefreshMemoriesBridge({ refreshMemories });
 
             const formatTimeAgo = resolveSaveStatusTimeFormatter({
