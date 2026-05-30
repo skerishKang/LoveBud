@@ -194,17 +194,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const prepareEditorShell = createPrepareEditorShell({ applyEditorShellCopy, safeI18nText, i18n, getMyTreesHref });
 
-    const startEditor = async () => {
-        window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] };
+    const createEditorDebugReporter = shellHelpers.createEditorDebugReporter || ((options) => {
+        const opts = options || {};
+        const debugState = opts.debugState || (window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] });
+        const consoleRef = opts.consoleRef || console;
+        const now = opts.now || (() => new Date());
+
         const log = (msg) => {
-            const entry = `[editor-main] ${new Date().toISOString().split('T')[1]} ${msg}`;
-            console.log(entry);
-            window.LoveBudEditorDebug.logs.push(entry);
+            const entry = `[editor-main] ${now().toISOString().split('T')[1]} ${msg}`;
+            consoleRef.log(entry);
+            debugState.logs.push(entry);
         };
+
         const reportError = (msg, err) => {
-            console.error(`[editor-main] ERROR: ${msg}`, err);
-            window.LoveBudEditorDebug.errors.push({ msg, error: err?.message || err });
+            consoleRef.error(`[editor-main] ERROR: ${msg}`, err);
+            debugState.errors.push({ msg, error: err?.message || err });
         };
+
+        return { debugState, log, reportError };
+    });
+
+    const startEditor = async () => {
+        const { log, reportError } = createEditorDebugReporter();
 
         log('startEditor sequence initiated');
 

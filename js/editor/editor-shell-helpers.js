@@ -119,5 +119,30 @@ window.LoveBudEditorShellHelpers = {
         }
 
         return editorNamespace;
+    },
+
+    // Editor debug reporter factory
+    createEditorDebugReporter: function(options) {
+        var opts = options || {};
+        var debugState = opts.debugState || (window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] });
+        var consoleRef = opts.consoleRef || console;
+        var now = opts.now || function() { return new Date(); };
+
+        var log = function(msg) {
+            var entry = '[editor-main] ' + now().toISOString().split('T')[1] + ' ' + msg;
+            consoleRef.log(entry);
+            debugState.logs.push(entry);
+        };
+
+        var reportError = function(msg, err) {
+            consoleRef.error('[editor-main] ERROR: ' + msg, err);
+            debugState.errors.push({ msg: msg, error: err && err.message ? err.message : err });
+        };
+
+        return {
+            debugState: debugState,
+            log: log,
+            reportError: reportError
+        };
     }
 };
