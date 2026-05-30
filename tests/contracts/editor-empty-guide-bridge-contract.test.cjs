@@ -18,11 +18,23 @@ test('canvas empty guide bridge helper keeps testable namespace hook', () => {
   assert.match(shellHelpersSource, /opts\.updateCanvasEmptyGuide/);
 });
 
-test('editor delegates canvas empty guide bridge with fallback', () => {
-  assert.match(editorSource, /shellHelpers\.exposeCanvasEmptyGuideUpdater/);
-  assert.match(editorSource, /const exposeCanvasEmptyGuideUpdater\s*=/);
-  assert.match(editorSource, /exposeCanvasEmptyGuideUpdater\(\{\s*updateCanvasEmptyGuide\s*\}\)/);
-  assert.match(editorSource, /editorNamespace\.updateCanvasEmptyGuide\s*=\s*opts\.updateCanvasEmptyGuide/);
+test('editor delegates canvas empty guide bridge through required shell helper', () => {
+  assert.match(
+    editorSource,
+    /const\s+exposeCanvasEmptyGuideUpdater\s*=\s*shellHelpers\.exposeCanvasEmptyGuideUpdater/
+  );
+  assert.doesNotMatch(
+    editorSource,
+    /const\s+exposeCanvasEmptyGuideUpdater\s*=\s*shellHelpers\.exposeCanvasEmptyGuideUpdater\s*\|\|/
+  );
+  assert.match(
+    editorSource,
+    /LoveBudEditorShellHelpers\.exposeCanvasEmptyGuideUpdater missing/
+  );
+  assert.match(
+    editorSource,
+    /exposeCanvasEmptyGuideUpdater\(\{\s*updateCanvasEmptyGuide\s*\}\)/
+  );
 });
 
 test('editor no longer assigns canvas empty guide bridge inline', () => {
@@ -33,8 +45,18 @@ test('editor no longer assigns canvas empty guide bridge inline', () => {
   assert.notEqual(end, -1, 'selectNode must follow empty guide bridge setup');
 
   const block = editorSource.slice(start, end);
-  assert.match(block, /exposeCanvasEmptyGuideUpdater\(\{\s*updateCanvasEmptyGuide\s*\}\)/);
+  assert.match(block, /exposeCanvasEmptyGuideUpdater\(\{\s*updateCanvasEmptyGuide\s*\}/);
   assert.doesNotMatch(block, /window\.LoveBudEditor\.updateCanvasEmptyGuide\s*=\s*updateCanvasEmptyGuide/);
+  assert.doesNotMatch(block, /editorNamespace\.updateCanvasEmptyGuide\s*=/);
+});
+
+test('editor guards missing canvas empty guide bridge before exposure', () => {
+  const guardIndex = editorSource.indexOf('LoveBudEditorShellHelpers.exposeCanvasEmptyGuideUpdater missing');
+  const exposeIndex = editorSource.indexOf('exposeCanvasEmptyGuideUpdater({ updateCanvasEmptyGuide });');
+
+  assert.ok(guardIndex !== -1, 'missing canvas empty guide bridge guard must exist');
+  assert.ok(exposeIndex !== -1, 'canvas empty guide bridge exposure must exist');
+  assert.ok(guardIndex < exposeIndex, 'guard must run before canvas empty guide bridge exposure');
 });
 
 test('editor keeps empty guide updater creation and event binding intact', () => {

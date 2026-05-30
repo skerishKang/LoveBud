@@ -247,12 +247,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     });
 
-    const exposeCanvasEmptyGuideUpdater = shellHelpers.exposeCanvasEmptyGuideUpdater || ((options) => {
-        const opts = options || {};
-        const editorNamespace = opts.editorNamespace || (window.LoveBudEditor = window.LoveBudEditor || {});
-        editorNamespace.updateCanvasEmptyGuide = opts.updateCanvasEmptyGuide;
-        return editorNamespace;
-    });
+    const exposeCanvasEmptyGuideUpdater = shellHelpers.exposeCanvasEmptyGuideUpdater;
 
     const exposeDetailPanelUpdater = shellHelpers.exposeDetailPanelUpdater;
 
@@ -463,6 +458,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
             
             // Bridge this back to LoveBudEditor so canvas can call it
+            if (typeof exposeCanvasEmptyGuideUpdater !== 'function') {
+                reportError('LoveBudEditorShellHelpers.exposeCanvasEmptyGuideUpdater missing');
+                return;
+            }
+
             exposeCanvasEmptyGuideUpdater({ updateCanvasEmptyGuide });
 
             const selectNode = (el, data) => {
