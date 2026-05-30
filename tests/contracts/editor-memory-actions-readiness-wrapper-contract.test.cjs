@@ -24,11 +24,27 @@ test('memory actions readiness wrapper preserves argument forwarding', () => {
   assert.match(shellHelpersSource, /memoryActions\.updateSelectedMemoryFields\.apply\(memoryActions,\s*args\)/);
 });
 
-test('editor delegates memory actions readiness wrapper with fallback', () => {
-  assert.match(editorSource, /shellHelpers\.createMemoryActionsReadinessWrapper/);
-  assert.match(editorSource, /const createMemoryActionsReadinessWrapper\s*=/);
-  assert.match(editorSource, /const updateSelectedMemoryFields\s*=\s*createMemoryActionsReadinessWrapper\(\{/);
-  assert.match(editorSource, /getMemoryActions:\s*\(\)\s*=>\s*memoryActions/);
+test('editor delegates memory actions readiness wrapper through required shell helper', () => {
+  assert.match(
+    editorSource,
+    /const\s+createMemoryActionsReadinessWrapper\s*=\s*shellHelpers\.createMemoryActionsReadinessWrapper/
+  );
+  assert.doesNotMatch(
+    editorSource,
+    /const\s+createMemoryActionsReadinessWrapper\s*=\s*shellHelpers\.createMemoryActionsReadinessWrapper\s*\|\|/
+  );
+  assert.match(
+    editorSource,
+    /LoveBudEditorShellHelpers\.createMemoryActionsReadinessWrapper missing/
+  );
+  assert.match(
+    editorSource,
+    /const\s+updateSelectedMemoryFields\s*=\s*createMemoryActionsReadinessWrapper\(\{/
+  );
+  assert.match(
+    editorSource,
+    /getMemoryActions:\s*\(\)\s*=>\s*memoryActions/
+  );
 });
 
 test('editor no longer owns inline memory actions readiness wrapper near memoryActions declaration', () => {
@@ -53,4 +69,13 @@ test('editor keeps detail UI updateSelectedMemoryFields injection intact', () =>
 test('editor keeps memory actions creation and assignment intact', () => {
   assert.match(editorSource, /memoryActions\s*=\s*window\.createEditorMemoryActions\(\{/);
   assert.match(editorSource, /const \{\s*enterEditMode,\s*exitEditMode,\s*saveMemoryEdit,\s*deleteMemory\s*\}\s*=\s*memoryActions/);
+});
+
+test('editor guards missing memory actions readiness wrapper before creation', () => {
+  const guardIndex = editorSource.indexOf('LoveBudEditorShellHelpers.createMemoryActionsReadinessWrapper missing');
+  const createIndex = editorSource.indexOf('const updateSelectedMemoryFields = createMemoryActionsReadinessWrapper({');
+
+  assert.ok(guardIndex !== -1, 'missing wrapper guard must exist');
+  assert.ok(createIndex !== -1, 'updateSelectedMemoryFields creation must exist');
+  assert.ok(guardIndex < createIndex, 'guard must run before updateSelectedMemoryFields creation');
 });
