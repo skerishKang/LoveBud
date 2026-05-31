@@ -63,11 +63,8 @@ window.LoveBudEditorShellHelpers = {
     resolveSaveStatusTimeFormatter: function(options) {
         var opts = options || {};
         var editorSaveStatus = opts.editorSaveStatus || {};
-        var createInlineFormatTimeAgoFallback = opts.createInlineFormatTimeAgoFallback || function() {
-            return function() { return ''; };
-        };
 
-        return editorSaveStatus.formatTimeAgo || createInlineFormatTimeAgoFallback();
+        return editorSaveStatus.formatTimeAgo;
     },
 
     // Toast fallback

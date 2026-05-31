@@ -9,10 +9,10 @@ const saveStatusOrchestrationSource = fs.readFileSync('js/editor/editor-save-sta
 test('editor shell helpers expose save status time formatter resolver', () => {
   assert.match(shellHelpersSource, /resolveSaveStatusTimeFormatter:\s*function\(options\)/);
   assert.match(shellHelpersSource, /var editorSaveStatus\s*=\s*opts\.editorSaveStatus\s*\|\|\s*\{\}/);
-  assert.match(shellHelpersSource, /var createInlineFormatTimeAgoFallback\s*=\s*opts\.createInlineFormatTimeAgoFallback/);
+  assert.doesNotMatch(shellHelpersSource, /createInlineFormatTimeAgoFallback/);
 });
 
-test('save status time formatter resolver preserves primary formatter priority', () => {
+test('save status time formatter resolver returns editorSaveStatus.formatTimeAgo', () => {
   const start = shellHelpersSource.indexOf('resolveSaveStatusTimeFormatter');
   assert.notEqual(start, -1, 'resolver must exist');
 
@@ -20,7 +20,8 @@ test('save status time formatter resolver preserves primary formatter priority',
   assert.notEqual(end, -1, 'resolver must end');
 
   const block = shellHelpersSource.slice(start, end);
-  assert.match(block, /return editorSaveStatus\.formatTimeAgo \|\| createInlineFormatTimeAgoFallback\(\)/);
+  assert.match(block, /return editorSaveStatus\.formatTimeAgo/);
+  assert.doesNotMatch(block, /createInlineFormatTimeAgoFallback/);
 });
 
 test('editor delegates save status time formatter resolution through required shell helper', () => {
@@ -38,11 +39,15 @@ test('editor delegates save status time formatter resolution through required sh
   );
   assert.match(
     editorSource,
-    /const\s+formatTimeAgo\s*=\s*resolveSaveStatusTimeFormatter\(\{/
+    /const\s+formatTimeAgo\s*=\s*resolveSaveStatusTimeFormatter\(\s*\{/
+  );
+  assert.doesNotMatch(
+    editorSource,
+    /createInlineFormatTimeAgoFallback/
   );
   assert.match(
     editorSource,
-    /editorSaveStatus,\s*createInlineFormatTimeAgoFallback/
+    /LoveBudEditorSaveStatus\.formatTimeAgo missing/
   );
 });
 
@@ -68,9 +73,20 @@ test('editor guards missing save status time formatter before resolution', () =>
   assert.ok(guardIndex < formatIndex, 'guard must run before formatTimeAgo resolution');
 });
 
-test('editor keeps createInlineFormatTimeAgoFallback available and unchanged by boundary', () => {
-  assert.match(editorSource, /createInlineFormatTimeAgoFallback/);
+test('editor.js removes createInlineFormatTimeAgoFallback and requires formatTimeAgo helper', () => {
+  assert.doesNotMatch(editorSource, /createInlineFormatTimeAgoFallback/);
+  assert.doesNotMatch(editorSource, /entryFallbacks\.createInlineFormatTimeAgoFallback/);
+  assert.match(editorSource, /LoveBudEditorSaveStatus\.formatTimeAgo missing/);
   assert.match(editorSource, /const formatTimeAgo\s*=\s*resolveSaveStatusTimeFormatter/);
+});
+
+test('editor.js formatTimeAgo guard uses reportError', () => {
+  const guardIndex = editorSource.indexOf('LoveBudEditorSaveStatus.formatTimeAgo missing');
+  assert.ok(guardIndex !== -1, 'missing formatTimeAgo guard must exist');
+  const guardReportStart = editorSource.indexOf('reportError(', guardIndex - 50);
+  assert.ok(guardReportStart !== -1, 'guard must use reportError');
+  const guardReportExpr = editorSource.slice(guardReportStart, editorSource.indexOf(')', guardReportStart) + 1);
+  assert.match(guardReportExpr, /reportError\(['"]LoveBudEditorSaveStatus\.formatTimeAgo missing['"]\)/);
 });
 
 test('editor keeps save status orchestration invocation intact', () => {

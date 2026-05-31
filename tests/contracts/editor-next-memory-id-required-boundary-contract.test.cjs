@@ -48,7 +48,6 @@ test('editor.js delegates nextMemoryId through required tree helper', () => {
   );
 });
 
-test('editor.js keeps createInlineFormatTimeAgoFallback and redirectToEditorLogin fallbacks intact', () => {
-  assert.match(editorSource, /createInlineFormatTimeAgoFallback/);
+test('editor.js keeps redirectToEditorLogin fallback intact', () => {
   assert.match(editorSource, /redirectToEditorLogin/);
 });

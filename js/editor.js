@@ -230,7 +230,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const nextMemoryIdFromMemories = editorTreeHelpers.nextMemoryIdFromMemories;
-    const createInlineFormatTimeAgoFallback = entryFallbacks.createInlineFormatTimeAgoFallback;
 
     const markEditorReady = shellHelpers.markEditorReady;
 
@@ -663,9 +662,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
+            if (typeof editorSaveStatus.formatTimeAgo !== 'function') {
+                reportError('LoveBudEditorSaveStatus.formatTimeAgo missing');
+                return;
+            }
+
             const formatTimeAgo = resolveSaveStatusTimeFormatter({
-                editorSaveStatus,
-                createInlineFormatTimeAgoFallback
+                editorSaveStatus
             });
 
             const saveStatusOrchestrationHelper = window.LoveBudEditorSaveStatusOrchestration || {};
