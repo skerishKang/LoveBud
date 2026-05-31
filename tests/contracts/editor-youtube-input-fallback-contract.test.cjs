@@ -61,15 +61,14 @@ test('editor.js delegates getYouTubeInputErrorMessageFallback through required s
     editorSource,
     /LoveBudEditorShellHelpers\.getYouTubeInputErrorMessageFallback missing/
   );
-  assert.match(editorSource, /if \(typeof rootUtils\.getYouTubeInputErrorMessage === 'function'\)/);
-  assert.match(editorSource, /return rootUtils\.getYouTubeInputErrorMessage\(i18n,\s*rawUrl\)/);
-  assert.match(editorSource, /warnRootHelperFallback\(\)/);
-  assert.match(editorSource, /return getYouTubeInputErrorMessageFallback\(i18n,\s*rawUrl\)/);
+  assert.match(editorSource, /const\s+getYouTubeInputErrorMessage\s*=\s*typeof rootUtils\.getYouTubeInputErrorMessage === 'function'/);
+  assert.match(editorSource, /rootUtils\.getYouTubeInputErrorMessage\s*:\s*getYouTubeInputErrorMessageFallback/);
+  assert.doesNotMatch(editorSource, /warnRootHelperFallback\(\)/);
 });
 
 test('editor.js guards missing getYouTubeInputErrorMessageFallback before wrapper creation and without reportError', () => {
   const guardIndex = editorSource.indexOf('LoveBudEditorShellHelpers.getYouTubeInputErrorMessageFallback missing');
-  const wrapperIndex = editorSource.indexOf('const getYouTubeInputErrorMessage = function(i18n, rawUrl)');
+  const wrapperIndex = editorSource.indexOf('const getYouTubeInputErrorMessage = typeof rootUtils.getYouTubeInputErrorMessage');
 
   assert.ok(guardIndex !== -1, 'missing getYouTubeInputErrorMessageFallback guard must exist');
   assert.ok(wrapperIndex !== -1, 'getYouTubeInputErrorMessage wrapper must exist');
@@ -80,14 +79,14 @@ test('editor.js guards missing getYouTubeInputErrorMessageFallback before wrappe
 });
 
 test('editor no longer owns local YouTube validation body inside wrapper', () => {
-  const start = editorSource.indexOf('const getYouTubeInputErrorMessage = function(i18n, rawUrl)');
+  const start = editorSource.indexOf('const getYouTubeInputErrorMessage = typeof rootUtils.getYouTubeInputErrorMessage');
   assert.notEqual(start, -1, 'editor wrapper must exist');
 
   const end = editorSource.indexOf('const renderTreeLoadError', start);
   assert.notEqual(end, -1, 'renderTreeLoadError setup must follow YouTube wrapper');
 
   const block = editorSource.slice(start, end);
-  assert.match(block, /return getYouTubeInputErrorMessageFallback\(i18n,\s*rawUrl\)/);
+  assert.match(block, /getYouTubeInputErrorMessageFallback/);
   assert.doesNotMatch(block, /String\(rawUrl \|\| ''\)\.trim\(\)/);
   assert.doesNotMatch(block, /invalid_youtube_unsupported/);
   assert.doesNotMatch(block, /invalid_youtube_id_length/);
