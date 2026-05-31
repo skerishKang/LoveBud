@@ -50,10 +50,28 @@ test('inline show toast fallback preserves console log fallback format', () => {
   );
 });
 
-test('editor entrypoint keeps toast fallback helper resolution intact', () => {
-  assert.match(editorSource, /shellHelpers\.createInlineShowToastFallback/);
-  assert.match(editorSource, /const createInlineShowToastFallback\s*=/);
-  assert.match(editorSource, /: createInlineShowToastFallback\(\)/);
+test('editor entrypoint requires createInlineShowToastFallback shell helper', () => {
+  assert.match(
+    editorSource,
+    /const\s+createInlineShowToastFallback\s*=\s*shellHelpers\.createInlineShowToastFallback/
+  );
+  assert.doesNotMatch(
+    editorSource,
+    /const\s+createInlineShowToastFallback\s*=\s*shellHelpers\.createInlineShowToastFallback\s*\|\|/
+  );
+  assert.match(
+    editorSource,
+    /LoveBudEditorShellHelpers\.createInlineShowToastFallback missing/
+  );
+
+  const guardStart = editorSource.indexOf('LoveBudEditorShellHelpers.createInlineShowToastFallback missing');
+  assert.notEqual(guardStart, -1, 'createInlineShowToastFallback missing guard must exist');
+  const guardEnd = editorSource.indexOf('const showToast =', guardStart);
+  assert.notEqual(guardEnd, -1, 'showToast initialization must exist after guard');
+  const guardBlock = editorSource.slice(guardStart, guardEnd);
+  assert.doesNotMatch(guardBlock, /reportError/);
+
+  assert.match(editorSource, /const showToast\s*=/);
 });
 
 test('editor html loads shell helpers before editor entrypoint for toast fallback availability', () => {

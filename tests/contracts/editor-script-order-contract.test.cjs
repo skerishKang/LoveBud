@@ -153,7 +153,6 @@ test('editor entry delegates entry fallback factories through boundary', () => {
   assert.match(editor, /window\.LoveBudEditorEntryFallbacks/, 'editor entry must read the entry fallback boundary');
 
   for (const factory of [
-    'createInlineShowToastFallback',
     'createInlineRedirectToEditorLoginFallback',
     'createInlineRenderTreeLoadErrorFallback',
     'createInlineFormatTimeAgoFallback',
@@ -161,6 +160,8 @@ test('editor entry delegates entry fallback factories through boundary', () => {
     assert.match(boundary, new RegExp(`${factory}\\s*:`), `entry fallback boundary must expose ${factory}`);
     assert.match(editor, new RegExp(`entryFallbacks\\.${factory}`), `editor entry must delegate ${factory}`);
   }
+
+  assert.match(editor, /shellHelpers\.createInlineShowToastFallback/, 'editor entry must require toast fallback from shell helpers');
 });
 
 test('shell helpers are explicitly mounted before editor entry', () => {
