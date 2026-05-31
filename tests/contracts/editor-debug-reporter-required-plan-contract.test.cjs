@@ -35,53 +35,38 @@ test('editor-shell-helpers.js createEditorDebugReporter pushes to debugState.err
   assert.match(shellHelpersSource, /debugState\.errors\.push\(/);
 });
 
-// --- 3. Missing-helper runtime removal plan guard shape ---
+// --- 3. Missing-helper guard moved to bootstrap section ---
 
-const expectedRuntimeGuard = `
-if (typeof createEditorDebugReporter !== 'function') {
-    const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] };
-    const msg = 'LoveBudEditorShellHelpers.createEditorDebugReporter missing';
-    console.error('[editor-main] ERROR: ' + msg);
-    debugState.errors.push({ msg, error: msg });
-    return;
-}
-`;
+test('editor.js has createEditorDebugReporter bootstrap guard with console.error', () => {
+  const guardIndex = editorSource.indexOf('LoveBudEditorShellHelpers.createEditorDebugReporter missing');
+  assert.ok(guardIndex !== -1, 'missing createEditorDebugReporter guard must exist');
 
-test('planned createEditorDebugReporter required path uses typeof guard', () => {
-  assert.match(expectedRuntimeGuard, /typeof createEditorDebugReporter !== 'function'/);
+  const guardContextStart = editorSource.lastIndexOf('console.error', guardIndex);
+  assert.ok(guardContextStart !== -1, 'guard must use console.error');
+
+  const guardBlock = editorSource.slice(guardContextStart - 100, guardIndex + 200);
+  assert.match(guardBlock, /typeof createEditorDebugReporter !== 'function'/);
+  assert.match(guardBlock, /debugState\.errors\.push/);
+  assert.match(guardBlock, /return;/);
+  assert.doesNotMatch(guardBlock, /reportError\(/);
 });
 
-test('planned createEditorDebugReporter required path reports missing helper message', () => {
-  assert.match(expectedRuntimeGuard, /LoveBudEditorShellHelpers\.createEditorDebugReporter missing/);
+test('editor.js createEditorDebugReporter bootstrap guard is before startEditor definition', () => {
+  const guardIndex = editorSource.indexOf('LoveBudEditorShellHelpers.createEditorDebugReporter missing');
+  const startEditorIndex = editorSource.indexOf('const startEditor = async () => {');
+
+  assert.ok(guardIndex !== -1, 'missing createEditorDebugReporter guard must exist');
+  assert.ok(startEditorIndex !== -1, 'startEditor must exist');
+  assert.ok(guardIndex < startEditorIndex, 'guard must be before startEditor');
 });
 
-test('planned createEditorDebugReporter required path uses console.error for bootstrap reporting', () => {
-  assert.match(expectedRuntimeGuard, /console\.error/);
+test('editor.js no longer guards createEditorDebugReporter inside startEditor', () => {
+  const startEditorIndex = editorSource.indexOf('const startEditor = async () => {');
+  const guardInside = editorSource.indexOf('createEditorDebugReporter missing', startEditorIndex);
+  assert.equal(guardInside, -1, 'there must be no createEditorDebugReporter missing guard inside startEditor');
 });
 
-test('planned createEditorDebugReporter required path initializes LoveBudEditorDebug namespace', () => {
-  assert.match(expectedRuntimeGuard, /LoveBudEditorDebug/);
-});
-
-test('planned createEditorDebugReporter required path pushes to debugState.errors', () => {
-  assert.match(expectedRuntimeGuard, /debugState\.errors\.push/);
-});
-
-test('planned createEditorDebugReporter required path returns early on missing helper', () => {
-  assert.match(expectedRuntimeGuard, /return;/);
-});
-
-// --- 4. Forbidden patterns in the planned guard ---
-
-test('planned debug reporter removal must not depend on reportError before reporter exists', () => {
-  assert.doesNotMatch(
-    expectedRuntimeGuard,
-    /reportError\(/,
-    'missing debug reporter guard must not call reportError before createEditorDebugReporter runs'
-  );
-});
-
-// --- 5. Startup dependency waiter now also required ---
+// --- 4. Startup dependency waiter unchanged ---
 
 test('editor.js now uses createEditorStartupDependencyWaiter as required helper without fallback', () => {
   assert.match(
@@ -99,4 +84,10 @@ test('editor.js guards missing createEditorStartupDependencyWaiter before use', 
     editorSource,
     /LoveBudEditorShellHelpers\.createEditorStartupDependencyWaiter missing/
   );
+});
+
+// --- 5. Debug reporter call and log/reportError flow preserved ---
+
+test('editor.js calls createEditorDebugReporter inside startEditor', () => {
+  assert.match(editorSource, /const\s*\{\s*log,\s*reportError\s*\}\s*=\s*createEditorDebugReporter\(\)/);
 });

@@ -268,6 +268,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const createEditorDebugReporter = shellHelpers.createEditorDebugReporter;
 
+    if (typeof createEditorDebugReporter !== 'function') {
+        const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] };
+        const msg = 'LoveBudEditorShellHelpers.createEditorDebugReporter missing';
+        console.error('[editor-main] ERROR: ' + msg);
+        debugState.errors.push({ msg, error: msg });
+        return;
+    }
+
     const createEditorStartupDependencyWaiter = shellHelpers.createEditorStartupDependencyWaiter;
 
     const exposeCanvasEmptyGuideUpdater = shellHelpers.exposeCanvasEmptyGuideUpdater;
@@ -289,14 +297,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const resolveSaveStatusTimeFormatter = shellHelpers.resolveSaveStatusTimeFormatter;
 
     const startEditor = async () => {
-        if (typeof createEditorDebugReporter !== 'function') {
-            const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] };
-            const msg = 'LoveBudEditorShellHelpers.createEditorDebugReporter missing';
-            console.error('[editor-main] ERROR: ' + msg);
-            debugState.errors.push({ msg, error: msg });
-            return;
-        }
-
         const { log, reportError } = createEditorDebugReporter();
 
         if (typeof markEditorReady !== 'function') {
