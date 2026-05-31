@@ -232,6 +232,16 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
+    const buildTreeLoadErrorCopy = editorPageHelpers.buildTreeLoadErrorCopy;
+
+    if (typeof buildTreeLoadErrorCopy !== 'function') {
+        const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] };
+        const msg = 'LoveBudEditorPageHelpers.buildTreeLoadErrorCopy missing';
+        console.error('[editor-main] ERROR: ' + msg);
+        debugState.errors.push({ msg, error: msg });
+        return;
+    }
+
     const nextMemoryIdFromMemories = editorTreeHelpers.nextMemoryIdFromMemories;
 
     const markEditorReady = shellHelpers.markEditorReady;
@@ -383,20 +393,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (urlTreeId) {
                     const treeLoadStatus = treeLoadResult.treeLoadStatus || 'not_found';
                     const treeLoadErrorMessage = treeLoadResult.treeLoadErrorMessage || '';
-                    let treeLoadErrorCopy = {
-                        errorTitle: i18n('tree_not_found_title') || '트리를 찾을 수 없어요',
-                        errorDesc: i18n('tree_load_not_found_desc') || '잘못된 링크이거나 접근 권한이 없는 트리입니다.'
-                    };
-
-                    if (typeof editorPageHelpers.buildTreeLoadErrorCopy === 'function') {
-                        treeLoadErrorCopy = editorPageHelpers.buildTreeLoadErrorCopy({
-                            treeLoadStatus,
-                            treeLoadErrorMessage,
-                            i18n
-                        });
-                    } else {
-                        reportError('LoveBudEditorPageHelpers.buildTreeLoadErrorCopy missing');
-                    }
+                    const treeLoadErrorCopy = buildTreeLoadErrorCopy({
+                        treeLoadStatus,
+                        treeLoadErrorMessage,
+                        i18n
+                    });
 
                     renderTreeLoadError({
                         canvas,
