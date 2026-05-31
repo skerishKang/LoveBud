@@ -197,30 +197,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const createEditorDebugReporter = shellHelpers.createEditorDebugReporter;
 
-    const createEditorStartupDependencyWaiter = shellHelpers.createEditorStartupDependencyWaiter || ((options) => {
-        const opts = options || {};
-        const log = opts.log || (() => {});
-        const reportError = opts.reportError || (() => {});
-        const windowRef = opts.windowRef || window;
-        const wait = opts.wait || ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
-        const maxAttempts = opts.maxAttempts || 100;
-        const intervalMs = opts.intervalMs || 50;
-
-        return async function waitForGlobal(name) {
-            log(`Waiting for ${name}...`);
-            let count = 0;
-            while (typeof windowRef[name] !== 'function' && count < maxAttempts) {
-                await wait(intervalMs);
-                count++;
-            }
-            if (typeof windowRef[name] !== 'function') {
-                reportError(`${name} not found after 5s`);
-                return false;
-            }
-            log(`${name} found.`);
-            return true;
-        };
-    });
+    const createEditorStartupDependencyWaiter = shellHelpers.createEditorStartupDependencyWaiter;
 
     const exposeCanvasEmptyGuideUpdater = shellHelpers.exposeCanvasEmptyGuideUpdater;
 
@@ -257,6 +234,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         log('startEditor sequence initiated');
+
+        if (typeof createEditorStartupDependencyWaiter !== 'function') {
+            reportError('LoveBudEditorShellHelpers.createEditorStartupDependencyWaiter missing');
+            return;
+        }
 
         const waitForGlobal = createEditorStartupDependencyWaiter({ log, reportError });
 

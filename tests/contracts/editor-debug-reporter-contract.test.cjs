@@ -42,9 +42,9 @@ test('editor no longer owns inline debug setup inside startEditor', () => {
 });
 
 test('waitForGlobal behavior remains in editor start flow', () => {
-  assert.match(editorSource, /return async function waitForGlobal\(name\)/);
-  assert.match(editorSource, /while\s*\(typeof windowRef\[name\] !== 'function' && count < maxAttempts\)/);
-  assert.match(editorSource, /reportError\(`/);
+  assert.match(shellHelpersSource, /return async function waitForGlobal\(name\)/);
+  assert.match(shellHelpersSource, /while\s*\(typeof windowRef\[name\] !== 'function' && count < maxAttempts\)/);
+  assert.match(editorSource, /createEditorStartupDependencyWaiter\(\{/);
 });
 
 test('editor shell helpers load before editor entrypoint', () => {

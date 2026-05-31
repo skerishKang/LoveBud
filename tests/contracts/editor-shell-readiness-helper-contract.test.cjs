@@ -179,8 +179,9 @@ test('editor.js now uses createEditorDebugReporter as required helper without fa
   assert.doesNotMatch(editorSource, /shellHelpers\.createEditorDebugReporter\s*\|\|/);
 });
 
-test('editor.js still keeps createEditorStartupDependencyWaiter local fallback', () => {
-  assert.match(editorSource, /shellHelpers\.createEditorStartupDependencyWaiter\s*\|\|/);
+test('editor.js now uses createEditorStartupDependencyWaiter as required helper without fallback', () => {
+  assert.match(editorSource, /shellHelpers\.createEditorStartupDependencyWaiter;/);
+  assert.doesNotMatch(editorSource, /shellHelpers\.createEditorStartupDependencyWaiter\s*\|\|/);
 });
 
 // --- 7. editor.js uses helpers in startup path ---

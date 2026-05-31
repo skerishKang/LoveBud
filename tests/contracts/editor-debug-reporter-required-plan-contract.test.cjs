@@ -81,11 +81,22 @@ test('planned debug reporter removal must not depend on reportError before repor
   );
 });
 
-// --- 5. Startup dependency waiter remains separate fallback group ---
+// --- 5. Startup dependency waiter now also required ---
 
-test('startup dependency waiter remains a separate fallback group', () => {
+test('editor.js now uses createEditorStartupDependencyWaiter as required helper without fallback', () => {
   assert.match(
     editorSource,
+    /const\s+createEditorStartupDependencyWaiter\s*=\s*shellHelpers\.createEditorStartupDependencyWaiter;/
+  );
+  assert.doesNotMatch(
+    editorSource,
     /const\s+createEditorStartupDependencyWaiter\s*=\s*shellHelpers\.createEditorStartupDependencyWaiter\s*\|\|/
+  );
+});
+
+test('editor.js guards missing createEditorStartupDependencyWaiter before use', () => {
+  assert.match(
+    editorSource,
+    /LoveBudEditorShellHelpers\.createEditorStartupDependencyWaiter missing/
   );
 });
