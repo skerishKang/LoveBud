@@ -104,8 +104,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     const i18n = getI18n();
 
-    const getEditorBasePath = shellHelpers.getEditorBasePath || (() =>
-        window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/');
+    const getEditorBasePath = shellHelpers.getEditorBasePath;
+    if (typeof getEditorBasePath !== 'function') {
+        const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] };
+        const msg = 'LoveBudEditorShellHelpers.getEditorBasePath missing';
+        console.error('[editor-main] ERROR: ' + msg);
+        debugState.errors.push({ msg, error: msg });
+        return;
+    }
 
     const buildEditorRedirectTarget = shellHelpers.buildEditorRedirectTarget || (() =>
         getEditorBasePath() + 'editor' + (window.location.search || ''));
