@@ -128,12 +128,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     const buildEditorRedirectTarget = () => buildEditorRedirectTargetHelper.call(shellHelpers);
 
-    const createInlineRedirectToEditorLoginFallback = entryFallbacks.createInlineRedirectToEditorLoginFallback;
+    const redirectToEditorLogin = editorPageHelpers.redirectToEditorLogin;
 
-    const redirectToEditorLogin = editorPageHelpers.redirectToEditorLogin || createInlineRedirectToEditorLoginFallback({
-        getEditorBasePath,
-        buildEditorRedirectTarget
-    });
+    if (typeof redirectToEditorLogin !== 'function') {
+        const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] };
+        const msg = 'LoveBudEditorPageHelpers.redirectToEditorLogin missing';
+        console.error('[editor-main] ERROR: ' + msg);
+        debugState.errors.push({ msg, error: msg });
+        return;
+    }
 
     const safeI18nText = editorHelpers.safeI18nText;
     const resolveHintText = editorHelpers.resolveHintText;
