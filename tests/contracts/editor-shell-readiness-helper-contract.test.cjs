@@ -214,6 +214,49 @@ test('editor.js guards missing markEditorReady before startup proceeds', () => {
   assert.ok(guardIndex < waiterIndex, 'markEditorReady guard must run before dependency waiter setup');
 });
 
+test('editor.js guards missing createEditorStartupDependencyWaiter after debug reporter creation', () => {
+  const reporterCall = editorSource.indexOf('createEditorDebugReporter()');
+  const waiterGuard = editorSource.indexOf('LoveBudEditorShellHelpers.createEditorStartupDependencyWaiter missing');
+
+  assert.ok(reporterCall !== -1, 'createEditorDebugReporter() call must exist');
+  assert.ok(waiterGuard !== -1, 'createEditorStartupDependencyWaiter missing guard must exist');
+  assert.ok(reporterCall < waiterGuard, 'debug reporter must be created before waiter guard');
+});
+
+test('editor.js guards missing createEditorStartupDependencyWaiter before markEditorReady guard', () => {
+  const waiterGuard = editorSource.indexOf('LoveBudEditorShellHelpers.createEditorStartupDependencyWaiter missing');
+  const markGuard = editorSource.indexOf('LoveBudEditorShellHelpers.markEditorReady missing');
+
+  assert.ok(waiterGuard !== -1, 'createEditorStartupDependencyWaiter missing guard must exist');
+  assert.ok(markGuard !== -1, 'markEditorReady missing guard must exist');
+  assert.ok(waiterGuard < markGuard, 'waiter guard must run before markEditorReady guard');
+});
+
+test('editor.js does not use console.error for createEditorStartupDependencyWaiter missing guard at top level', () => {
+  const topBootSection = editorSource.slice(0, editorSource.indexOf('const startEditor'));
+  const consoleErrorPattern = /console\.error\(.*createEditorStartupDependencyWaiter missing/;
+  assert.doesNotMatch(topBootSection, consoleErrorPattern,
+    'createEditorStartupDependencyWaiter missing must use reportError, not top-level console.error');
+});
+
+test('editor.js maintains waitForGlobal dependency order in startEditor', () => {
+  const startSection = editorSource.slice(editorSource.indexOf('const waitForGlobal'));
+  const waitLines = [
+    "waitForGlobal('createEditorCanvas')",
+    "waitForGlobal('createEditorDetailUI')",
+    "waitForGlobal('createEditorMemoryActions')",
+    "waitForGlobal('createEditorMemoryForm')"
+  ];
+
+  let prevIndex = -1;
+  for (const line of waitLines) {
+    const idx = startSection.indexOf(line);
+    assert.ok(idx !== -1, `Editor must call ${line}`);
+    assert.ok(idx > prevIndex, `Wait order must be preserved: ${line} after previous`);
+    prevIndex = idx;
+  }
+});
+
 test('editor.js guards missing applyEditorEditabilityState before applying editability state', () => {
   const guardIndex = editorSource.indexOf('LoveBudEditorShellHelpers.applyEditorEditabilityState missing');
   const applyIndex = editorSource.indexOf('applyEditorEditabilityState({ canEdit });');

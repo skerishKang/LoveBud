@@ -299,17 +299,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const startEditor = async () => {
         const { log, reportError } = createEditorDebugReporter();
 
+        if (typeof createEditorStartupDependencyWaiter !== 'function') {
+            reportError('LoveBudEditorShellHelpers.createEditorStartupDependencyWaiter missing');
+            return;
+        }
+
         if (typeof markEditorReady !== 'function') {
             reportError('LoveBudEditorShellHelpers.markEditorReady missing');
             return;
         }
 
         log('startEditor sequence initiated');
-
-        if (typeof createEditorStartupDependencyWaiter !== 'function') {
-            reportError('LoveBudEditorShellHelpers.createEditorStartupDependencyWaiter missing');
-            return;
-        }
 
         const waitForGlobal = createEditorStartupDependencyWaiter({ log, reportError });
 
