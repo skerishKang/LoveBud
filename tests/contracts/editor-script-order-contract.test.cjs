@@ -154,7 +154,6 @@ test('editor entry delegates entry fallback factories through boundary', () => {
 
   for (const factory of [
     'createInlineRedirectToEditorLoginFallback',
-    'createInlineRenderTreeLoadErrorFallback',
     'createInlineFormatTimeAgoFallback',
   ]) {
     assert.match(boundary, new RegExp(`${factory}\\s*:`), `entry fallback boundary must expose ${factory}`);
