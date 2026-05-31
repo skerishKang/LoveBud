@@ -17,7 +17,8 @@ const TEMPLATE_SCRIPTS = [
 ];
 
 const MODULE_TEMPLATE_SCRIPTS = [
-    'js/editor/templates/editor-add-memory-form-template.js'
+    'js/editor/templates/editor-add-memory-form-template.js',
+    'js/editor/templates/editor-canvas-topbar-template.js'
 ];
 
 function isModuleTemplate(script) {
@@ -175,8 +176,8 @@ test('editor-add-memory-form-template.js defines buildAddMemoryFormTemplate buil
 
 test('editor-canvas-topbar-template.js defines buildCanvasTopbarTemplate builder', () => {
     const content = fs.readFileSync('js/editor/templates/editor-canvas-topbar-template.js', 'utf8');
-    assert.match(content, /function buildCanvasTopbarTemplate\(\)/,
-        'must define buildCanvasTopbarTemplate function');
+    assert.match(content, /export\s+function buildCanvasTopbarTemplate\(\)/,
+        'must define buildCanvasTopbarTemplate as exported function');
     assert.match(content, /mount\.outerHTML\s*=\s*buildCanvasTopbarTemplate\(\)/,
         'must call buildCanvasTopbarTemplate() for mount.outerHTML');
 });
@@ -255,7 +256,13 @@ test('editor-add-memory-form-template.js is loaded as type="module" in editor.ht
         'editor-add-memory-form-template.js must be loaded with type="module"');
 });
 
-test('remaining 8 template scripts are NOT loaded as type="module"', () => {
+test('editor-canvas-topbar-template.js is loaded as type="module" in editor.html', () => {
+    const modulePattern = /<script\s+type="module"\s+src="[^"]*editor-canvas-topbar-template\.js/;
+    assert.match(html, modulePattern,
+        'editor-canvas-topbar-template.js must be loaded with type="module"');
+});
+
+test('remaining 7 template scripts are NOT loaded as type="module"', () => {
     const classicTemplates = TEMPLATE_SCRIPTS.filter(s => !isModuleTemplate(s));
     for (const script of classicTemplates) {
         const scriptTagPattern = new RegExp(`<script\\s+src="[^"]*${script.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`);
