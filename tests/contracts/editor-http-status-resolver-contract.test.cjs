@@ -16,10 +16,19 @@ test('editor shell helpers expose HTTP status resolver', () => {
   assert.match(shellHelpersSource, /\|\|\s*0/);
 });
 
-test('editor delegates HTTP status resolver with fallback', () => {
-  assert.match(editorSource, /shellHelpers\.getHttpStatus/);
-  assert.match(editorSource, /const getHttpStatus\s*=/);
-  assert.match(editorSource, /Number\(error\?\.status \|\| error\?\.statusCode \|\| error\?\.response\?\.status \|\| 0\)/);
+test('editor delegates HTTP status resolver through required shell helper', () => {
+  assert.match(
+    editorSource,
+    /const\s+getHttpStatus\s*=\s*shellHelpers\.getHttpStatus/
+  );
+  assert.doesNotMatch(
+    editorSource,
+    /const\s+getHttpStatus\s*=\s*shellHelpers\.getHttpStatus\s*\|\|/
+  );
+  assert.match(
+    editorSource,
+    /LoveBudEditorShellHelpers\.getHttpStatus missing/
+  );
 });
 
 test('editor keeps sidebar visibility toggle injection intact', () => {

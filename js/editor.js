@@ -85,7 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     const hasConfirmedSessionUser = editorAuthHelpers.hasConfirmedSessionUser || (() => !!getConfirmedSessionUser());
 
-    const getHttpStatus = shellHelpers.getHttpStatus || ((error) => Number(error?.status || error?.statusCode || error?.response?.status || 0));
+    const getHttpStatus = shellHelpers.getHttpStatus;
 
     const createInlineShowToastFallback = shellHelpers.createInlineShowToastFallback ||
         entryFallbacks.createInlineShowToastFallback;
@@ -672,6 +672,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const { showAddMemoryForm, hideAddMemoryForm, addMemoryFromForm } = memoryForm;
 
             log('Binding events...');
+            if (typeof getHttpStatus !== 'function') {
+                reportError('LoveBudEditorShellHelpers.getHttpStatus missing');
+                return;
+            }
+
             if (typeof bindEditorPageEvents === 'function') {
                 bindEditorPageEvents({
                     canEdit,
