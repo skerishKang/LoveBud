@@ -213,6 +213,14 @@ test('editor-detail-view-mode-template.js defines buildDetailViewModeTemplate bu
         'must call buildDetailViewModeTemplate() for mount.outerHTML');
 });
 
+test('editor-detail-edit-mode-template.js defines buildDetailEditModeTemplate builder', () => {
+    const content = fs.readFileSync('js/editor/templates/editor-detail-edit-mode-template.js', 'utf8');
+    assert.match(content, /function buildDetailEditModeTemplate\(\)/,
+        'must define buildDetailEditModeTemplate function');
+    assert.match(content, /mount\.outerHTML\s*=\s*buildDetailEditModeTemplate\(\)/,
+        'must call buildDetailEditModeTemplate() for mount.outerHTML');
+});
+
 // --- 11. Template script count matches expected ---
 
 test('exactly 9 template scripts are loaded in editor.html', () => {

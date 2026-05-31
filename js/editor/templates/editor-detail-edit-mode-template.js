@@ -1,5 +1,6 @@
 (function() {
-    const template = `
+    function buildDetailEditModeTemplate() {
+        return `
                 <div id="detailEditMode" class="editor-hidden-initial">
                     <div class="editor-form-stack editor-form-stack-compact">
                         <label id="editTitleLabel" class="editor-form-label">...</label>
@@ -24,9 +25,11 @@
                         <button id="deleteMemoryBtn" class="editor-delete-link">...</button>
                     </div>
                 </div>
-    `;
+        `;
+    }
+
     const mount = document.getElementById('editorDetailEditModeTemplateMount');
     if (mount) {
-        mount.outerHTML = template;
+        mount.outerHTML = buildDetailEditModeTemplate();
     }
 })();
