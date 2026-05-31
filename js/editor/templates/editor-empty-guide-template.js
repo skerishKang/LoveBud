@@ -1,6 +1,5 @@
-(function() {
-    function buildEmptyGuideTemplate() {
-        return `
+export function buildEmptyGuideTemplate() {
+    return `
                         <div id="canvasEmptyGuide" class="editor-canvas-empty-guide editor-canvas-empty-guide-hidden" aria-live="polite">
                 <div class="editor-canvas-empty-guide__eyebrow" id="canvasEmptyGuideEyebrow">시작하기</div>
                 <h3 class="editor-canvas-empty-guide__title" id="canvasEmptyGuideTitle">이 트리의 첫 순간을 기록해볼까요?</h3>
@@ -21,11 +20,10 @@
                 </div>
                 <p class="editor-canvas-empty-guide__hint" id="canvasEmptyGuideHint">붙여넣는 순간 바로 생성돼요.</p>
             </div>
-        `;
-    }
+    `;
+}
 
-    const mount = document.getElementById('editorEmptyGuideTemplateMount');
-    if (mount) {
-        mount.outerHTML = buildEmptyGuideTemplate();
-    }
-})();
+const mount = document.getElementById('editorEmptyGuideTemplateMount');
+if (mount) {
+    mount.outerHTML = buildEmptyGuideTemplate();
+}

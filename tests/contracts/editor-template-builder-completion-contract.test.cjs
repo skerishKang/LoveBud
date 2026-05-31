@@ -19,7 +19,7 @@ const TEMPLATE_BUILDERS = [
     path: 'js/editor/templates/editor-empty-guide-template.js',
     builder: 'buildEmptyGuideTemplate',
     mountId: 'editorEmptyGuideTemplateMount',
-    module: false
+    module: true
   },
   {
     path: 'js/editor/templates/editor-sidebar-template.js',
