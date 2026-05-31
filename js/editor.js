@@ -229,7 +229,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    const createInlineNextMemoryIdFallback = dataLoaderFallbacks.createInlineNextMemoryIdFallback || ((options) => () => 'm1');
+    const nextMemoryIdFromMemories = editorTreeHelpers.nextMemoryIdFromMemories;
     const createInlineFormatTimeAgoFallback = entryFallbacks.createInlineFormatTimeAgoFallback;
 
     const markEditorReady = shellHelpers.markEditorReady;
@@ -465,9 +465,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             const createInitialMemory = () => editorTreeHelpers.createInitialMemory({ getTreeMemories: () => treeMemories(), findRootMemory, canonicalRootId, treeId, i18n });
 
-            const nextMemoryId = editorTreeHelpers.nextMemoryIdFromMemories
-                ? () => editorTreeHelpers.nextMemoryIdFromMemories(treeMemories())
-                : createInlineNextMemoryIdFallback({ treeMemories });
+            if (typeof nextMemoryIdFromMemories !== 'function') {
+                reportError('LoveBudEditorTreeHelpers.nextMemoryIdFromMemories missing');
+                return;
+            }
+
+            const nextMemoryId = () => nextMemoryIdFromMemories(treeMemories());
 
             const emptyGuideUIHelper = window.LoveBudEditorEmptyGuideUI || {};
             const updateCanvasEmptyGuide = emptyGuideUIHelper.createCanvasEmptyGuideUpdater

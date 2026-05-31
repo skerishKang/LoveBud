@@ -60,7 +60,7 @@ test('editor.js renderTreeLoadError guard does not use reportError', () => {
   const guardStart = editorSource.indexOf("if (typeof renderTreeLoadError !== 'function')");
   assert.notEqual(guardStart, -1, 'renderTreeLoadError guard must exist');
 
-  const guardEnd = editorSource.indexOf("const createInlineNextMemoryIdFallback", guardStart);
+  const guardEnd = editorSource.indexOf("const nextMemoryIdFromMemories", guardStart);
   assert.notEqual(guardEnd, -1, 'guard end marker must exist after guard');
 
   const guardBody = editorSource.slice(guardStart, guardEnd);
