@@ -157,6 +157,7 @@
                 editorShellCopyApplier,
                 editorDomRefsBuilder,
                 getConfirmedSessionUser,
+                readConfirmedAuthCache: readConfirmedAuthCacheFromHelper,
                 hasConfirmedSessionUser: editorAuthHelpers.hasConfirmedSessionUser || (() => !!getConfirmedSessionUser()),
                 getHttpStatus: shellHelpers.getHttpStatus,
                 showToast,

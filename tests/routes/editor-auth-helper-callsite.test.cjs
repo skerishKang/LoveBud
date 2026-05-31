@@ -9,11 +9,17 @@ function read(file) {
   return fs.readFileSync(path.join(ROOT, file), 'utf8');
 }
 
-test('editor auth cache reader is called through the helper namespace binding', () => {
+test('editor auth cache reader is resolved from entry dependencies', () => {
   const editor = read('js/editor.js');
+  const deps = read('js/editor/editor-entry-dependencies.js');
 
-  assert.match(editor, /const\s+editorAuthHelpers\s*=\s*window\.LoveBudEditorAuthHelpers\s*\|\|\s*\{\}/);
-  assert.match(editor, /readConfirmedAuthCacheFromHelper\s*=\s*\(\)\s*=>\s*\(/);
-  assert.match(editor, /window\.LoveBudEditorAuthHelpers\?\.readConfirmedAuthCache\?\.\(\)/);
-  assert.doesNotMatch(editor, /[^.\w]readConfirmedAuthCache\s*\(/);
+  // editor.js should get readConfirmedAuthCache from deps
+  assert.match(editor, /const\s+readConfirmedAuthCache\s*=\s*deps\.readConfirmedAuthCache/);
+
+  // editor-entry-dependencies.js should expose readConfirmedAuthCache
+  assert.match(deps, /readConfirmedAuthCache:\s*readConfirmedAuthCacheFromHelper/);
+
+  // editor-entry-dependencies.js should define readConfirmedAuthCacheFromHelper internally
+  assert.match(deps, /readConfirmedAuthCacheFromHelper\s*=\s*\(\)\s*=>\s*\(/);
+  assert.match(deps, /windowRef\.LoveBudEditorAuthHelpers\?\.readConfirmedAuthCache\?\.\(\)/);
 });

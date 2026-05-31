@@ -44,9 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const createEditorRefreshSaveRuntime = editorRefreshSaveRuntime.createEditorRefreshSaveRuntime;
     const createEditorStartupContext = editorStartupContext.createEditorStartupContext;
     const getConfirmedSessionUser = deps.getConfirmedSessionUser;
-    const readConfirmedAuthCacheFromHelper = () => (
-        window.LoveBudEditorAuthHelpers?.readConfirmedAuthCache?.() || null
-    );
+    const readConfirmedAuthCache = deps.readConfirmedAuthCache;
     const getHttpStatus = shellHelpers.getHttpStatus;
     const createInlineShowToastFallback = shellHelpers.createInlineShowToastFallback;
     if (typeof createInlineShowToastFallback !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.createInlineShowToastFallback missing'); return; }
@@ -501,6 +499,6 @@ document.addEventListener('DOMContentLoaded', () => {
         windowRef: window,
         startEditor: startEditor,
         redirectToEditorLogin: redirectToEditorLogin,
-        readConfirmedAuthCache: readConfirmedAuthCacheFromHelper
+        readConfirmedAuthCache: readConfirmedAuthCache
     });
 });
