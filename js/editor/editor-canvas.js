@@ -358,18 +358,7 @@ function createEditorCanvas(deps) {
     }
 
     function createNodeElement(mem, pos) {
-        if (typeof renderUtils.createNodeElement === 'function') {
-            return renderUtils.createNodeElement(mem, pos, canvasNode, {
-                resolveMemoryThumbnail: resolveMemoryThumbnail,
-                NODE_HALF: NODE_HALF,
-                scale: viewportState.scale || 1
-            });
-        }
-        // Fallback
-        if (typeof canvasNode.createNodeElement !== "function") {
-            throw new Error("LoveBudEditorCanvasNode.createNodeElement is required");
-        }
-        return canvasNode.createNodeElement(mem, pos, {
+        return renderUtils.createNodeElement(mem, pos, canvasNode, {
             resolveMemoryThumbnail: resolveMemoryThumbnail,
             NODE_HALF: NODE_HALF,
             scale: viewportState.scale || 1
@@ -377,15 +366,7 @@ function createEditorCanvas(deps) {
     }
 
     function attachNodeInfo(nodeEl, mem) {
-        if (typeof renderUtils.attachNodeInfo === 'function') {
-            renderUtils.attachNodeInfo(canvas, nodeEl, mem, canvasNode);
-            return;
-        }
-        // Fallback
-        if (typeof canvasNode.appendNodeInfo === 'function') {
-            canvasNode.appendNodeInfo(nodeEl, mem);
-        }
-        canvas.appendChild(nodeEl);
+        renderUtils.attachNodeInfo(canvas, nodeEl, mem, canvasNode);
     }
 
     function attachNodeBehavior(nodeEl, mem) {
