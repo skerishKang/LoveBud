@@ -1,7 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     const dataLoaderFallbacks = window.LoveBudEditorDataLoaderFallbacks || {};
     const entryFallbacks = window.LoveBudEditorEntryFallbacks || {};
-    const resolverFallbacks = window.LoveBudEditorResolverFallbacks || {};
     const shellHelpers = window.LoveBudEditorShellHelpers || {};
 
     let rootHelperWarningShown = false;
@@ -184,24 +183,23 @@ document.addEventListener('DOMContentLoaded', () => {
         debugState.errors.push({ msg, error: msg });
         return;
     }
-    const createInlineMediaResolversFallbacks = resolverFallbacks.createInlineMediaResolversFallbacks || (() => ({}));
+    const escapeHtml = editorHelpers.escapeHtml;
+    const safeUrl = editorHelpers.safeUrl;
+    const resolveMemoryThumbnail = editorHelpers.resolveMemoryThumbnail;
 
-    const escapeHtml = editorHelpers.escapeHtml || ((value) => {
-        var sec = window.LoveBudSecurity;
-        if (sec) return sec.escapeHtml(value);
-        return String(value ?? '')
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-    });
+    const missingMediaResolvers = [
+        ['LoveBudEditorHelpers.escapeHtml', escapeHtml],
+        ['LoveBudEditorHelpers.safeUrl', safeUrl],
+        ['LoveBudEditorHelpers.resolveMemoryThumbnail', resolveMemoryThumbnail]
+    ].filter(([, helper]) => typeof helper !== 'function');
 
-    const inlineMediaResolvers = editorHelpers.safeUrl
-        ? editorHelpers
-        : createInlineMediaResolversFallbacks();
-
-    const resolveMemoryThumbnail = editorHelpers.resolveMemoryThumbnail || inlineMediaResolvers.resolveMemoryThumbnail;
+    if (missingMediaResolvers.length) {
+        const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] };
+        const msg = missingMediaResolvers.map(([name]) => name + ' missing').join('; ');
+        console.error('[editor-main] ERROR: ' + msg);
+        debugState.errors.push({ msg, error: msg });
+        return;
+    }
 
     const getYouTubeInputErrorMessageFallback = shellHelpers.getYouTubeInputErrorMessageFallback;
 
