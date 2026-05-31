@@ -418,20 +418,7 @@ function createEditorCanvas(deps) {
     }
 
     function findInitialVisibleMemory(drawableMemories, treeMemories, canonicalRootId) {
-        if (typeof utils.findInitialVisibleMemory === 'function') {
-            return utils.findInitialVisibleMemory(drawableMemories, treeMemories, canonicalRootId);
-        }
-        // Fallback
-        const rootMemory = treeMemories.find(function(m) {
-            return m && (m.parentId === null || m.parentId === undefined);
-        });
-        if (rootMemory) {
-            var firstChild = drawableMemories.find(function(m) {
-                return m && m.parentId === rootMemory.id;
-            });
-            if (firstChild) return firstChild;
-        }
-        return drawableMemories[0] || null;
+        return utils.findInitialVisibleMemory(drawableMemories, treeMemories, canonicalRootId);
     }
 
     let _rafPending = false;
