@@ -51,7 +51,7 @@ test('editor no longer owns inline memory actions readiness wrapper near memoryA
   const start = editorSource.indexOf('let memoryActions = null;');
   assert.notEqual(start, -1, 'memoryActions declaration must exist');
 
-  const end = editorSource.indexOf("if (typeof editorTreeHelpers.createInitialMemory !== 'function')", start);
+  const end = editorSource.indexOf("ensureStartEditorDependency(editorTreeHelpers.createInitialMemory,", start);
   assert.notEqual(end, -1, 'createInitialMemory guard must follow memory actions readiness setup');
 
   const block = editorSource.slice(start, end);
