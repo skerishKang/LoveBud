@@ -20,7 +20,8 @@ const MODULE_TEMPLATE_SCRIPTS = [
     'js/editor/templates/editor-add-memory-form-template.js',
     'js/editor/templates/editor-canvas-topbar-template.js',
     'js/editor/templates/editor-empty-guide-template.js',
-    'js/editor/templates/editor-sidebar-template.js'
+    'js/editor/templates/editor-sidebar-template.js',
+    'js/editor/templates/editor-floating-toolbar-template.js'
 ];
 
 function isModuleTemplate(script) {
@@ -202,8 +203,8 @@ test('editor-sidebar-template.js defines buildSidebarTemplate builder', () => {
 
 test('editor-floating-toolbar-template.js defines buildFloatingToolbarTemplate builder', () => {
     const content = fs.readFileSync('js/editor/templates/editor-floating-toolbar-template.js', 'utf8');
-    assert.match(content, /function buildFloatingToolbarTemplate\(\)/,
-        'must define buildFloatingToolbarTemplate function');
+    assert.match(content, /export\s+function buildFloatingToolbarTemplate\(\)/,
+        'must define buildFloatingToolbarTemplate as exported function');
     assert.match(content, /mount\.outerHTML\s*=\s*buildFloatingToolbarTemplate\(\)/,
         'must call buildFloatingToolbarTemplate() for mount.outerHTML');
 });
@@ -276,7 +277,13 @@ test('editor-sidebar-template.js is loaded as type="module" in editor.html', () 
         'editor-sidebar-template.js must be loaded with type="module"');
 });
 
-test('remaining 5 template scripts are NOT loaded as type="module"', () => {
+test('editor-floating-toolbar-template.js is loaded as type="module" in editor.html', () => {
+    const modulePattern = /<script\s+type="module"\s+src="[^"]*editor-floating-toolbar-template\.js/;
+    assert.match(html, modulePattern,
+        'editor-floating-toolbar-template.js must be loaded with type="module"');
+});
+
+test('remaining 4 template scripts are NOT loaded as type="module"', () => {
     const classicTemplates = TEMPLATE_SCRIPTS.filter(s => !isModuleTemplate(s));
     for (const script of classicTemplates) {
         const scriptTagPattern = new RegExp(`<script\\s+src="[^"]*${script.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`);
