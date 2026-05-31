@@ -22,3 +22,32 @@ test('editor.html loads editor-shell-copy-applier.js before editor.js', () => {
     assert.notEqual(editorJsIndex, -1, 'editor.js must be loaded');
     assert.ok(applierIndex < editorJsIndex, 'applier must load before editor.js');
 });
+
+const editorSource = fs.readFileSync('js/editor.js', 'utf8');
+
+test('editor.js delegates createPrepareEditorShell through required shell copy applier', () => {
+  assert.match(
+    editorSource,
+    /const\s+createPrepareEditorShell\s*=\s*editorShellCopyApplier\.createPrepareEditorShell/
+  );
+  assert.doesNotMatch(
+    editorSource,
+    /const\s+createPrepareEditorShell\s*=\s*editorShellCopyApplier\.createPrepareEditorShell\s*\|\|/
+  );
+  assert.match(
+    editorSource,
+    /LoveBudEditorShellCopyApplier\.createPrepareEditorShell missing/
+  );
+});
+
+test('editor.js guards missing createPrepareEditorShell before call and without reportError', () => {
+  const guardIndex = editorSource.indexOf('LoveBudEditorShellCopyApplier.createPrepareEditorShell missing');
+  const callIndex = editorSource.indexOf('createPrepareEditorShell({ applyEditorShellCopy, safeI18nText, i18n, getMyTreesHref })');
+
+  assert.ok(guardIndex !== -1, 'missing createPrepareEditorShell guard must exist');
+  assert.ok(callIndex !== -1, 'createPrepareEditorShell call must exist');
+  assert.ok(guardIndex < callIndex, 'guard must run before createPrepareEditorShell call');
+
+  const guardBlock = editorSource.slice(guardIndex - 100, guardIndex + 200);
+  assert.doesNotMatch(guardBlock, /reportError\(/);
+});

@@ -224,7 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const editorShellCopyApplier = window.LoveBudEditorShellCopyApplier || {};
     const createEditorShellCopyApplier = editorShellCopyApplier.createEditorShellCopyApplier || (() => () => {});
-    const createPrepareEditorShell = editorShellCopyApplier.createPrepareEditorShell || (() => () => {});
+    const createPrepareEditorShell = editorShellCopyApplier.createPrepareEditorShell;
 
     const applyEditorShellCopy = shellHelpers.applyEditorShellCopy ||
         createEditorShellCopyApplier({ safeI18nText, i18n });
@@ -233,6 +233,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const editorDomRefsBuilder = window.LoveBudEditorDomRefsBuilder || {};
     const createEditorDomRefs = editorDomRefsBuilder.createEditorDomRefs;
+
+    if (typeof createPrepareEditorShell !== 'function') {
+        const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] };
+        const msg = 'LoveBudEditorShellCopyApplier.createPrepareEditorShell missing';
+        console.error('[editor-main] ERROR: ' + msg);
+        debugState.errors.push({ msg, error: msg });
+        return;
+    }
 
     const prepareEditorShell = createPrepareEditorShell({ applyEditorShellCopy, safeI18nText, i18n, getMyTreesHref });
 
