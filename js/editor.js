@@ -94,7 +94,14 @@ document.addEventListener('DOMContentLoaded', () => {
         ? editorHelpers.createToast({ warningKey: '__editorToastWarningShown' })
         : createInlineShowToastFallback();
 
-    const getI18n = shellHelpers.getI18n || (() => window.t || ((k) => k));
+    const getI18n = shellHelpers.getI18n;
+    if (typeof getI18n !== 'function') {
+        const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] };
+        const msg = 'LoveBudEditorShellHelpers.getI18n missing';
+        console.error('[editor-main] ERROR: ' + msg);
+        debugState.errors.push({ msg, error: msg });
+        return;
+    }
     const i18n = getI18n();
 
     const getEditorBasePath = shellHelpers.getEditorBasePath || (() =>
