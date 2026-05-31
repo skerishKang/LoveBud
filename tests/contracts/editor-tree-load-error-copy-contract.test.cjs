@@ -17,8 +17,10 @@ function extractTreeLoadFailureBlock(source) {
   return source.slice(start, end);
 }
 
+// --- 1. Page helper exports buildTreeLoadErrorCopy ---
+
 test('editor page helpers expose tree load error copy helper', () => {
-  assert.match(pageHelpersSource, /function buildTreeLoadErrorCopy\(options\)/);
+  assert.match(pageHelpersSource, /function buildTreeLoadErrorCopy\(/);
   assert.match(pageHelpersSource, /buildTreeLoadErrorCopy:\s*buildTreeLoadErrorCopy/);
 });
 
@@ -43,14 +45,58 @@ test('tree load error copy helper returns title and desc object', () => {
   assert.match(pageHelpersSource, /errorDesc:\s*errorDesc/);
 });
 
-test('editor tree load failure delegates copy creation to page helper', () => {
+// --- 2. editor.js uses required reference without fallback ---
+
+test('editor.js uses buildTreeLoadErrorCopy required reference', () => {
+  assert.match(
+    editorSource,
+    /const\s+buildTreeLoadErrorCopy\s*=\s*editorPageHelpers\.buildTreeLoadErrorCopy/
+  );
+  assert.doesNotMatch(
+    editorSource,
+    /const\s+buildTreeLoadErrorCopy\s*=\s*editorPageHelpers\.buildTreeLoadErrorCopy\s*\|\|/
+  );
+});
+
+test('editor.js has bootstrap guard for missing buildTreeLoadErrorCopy', () => {
+  assert.match(
+    editorSource,
+    /LoveBudEditorPageHelpers\.buildTreeLoadErrorCopy missing/
+  );
+});
+
+test('editor.js buildTreeLoadErrorCopy guard uses console.error pattern', () => {
+  const guardStart = editorSource.indexOf("if (typeof buildTreeLoadErrorCopy !== 'function')");
+  assert.notEqual(guardStart, -1, 'buildTreeLoadErrorCopy guard must exist');
+
+  const guardEnd = editorSource.indexOf('const nextMemoryIdFromMemories', guardStart);
+  assert.notEqual(guardEnd, -1, 'guard end marker must exist after guard');
+
+  const guardBody = editorSource.slice(guardStart, guardEnd);
+
+  assert.match(guardBody, /console\.error/);
+  assert.match(guardBody, /LoveBudEditorDebug/);
+  assert.match(guardBody, /debugState\.errors\.push/);
+  assert.doesNotMatch(guardBody, /reportError\(/);
+});
+
+// --- 3. Tree-load failure block delegates to required helper ---
+
+test('editor tree load failure delegates copy creation to required helper', () => {
   const block = extractTreeLoadFailureBlock(editorSource);
 
-  assert.match(block, /editorPageHelpers\.buildTreeLoadErrorCopy/);
+  assert.match(block, /buildTreeLoadErrorCopy\(\{/);
   assert.match(block, /treeLoadStatus,/);
   assert.match(block, /treeLoadErrorMessage,/);
   assert.match(block, /i18n/);
-  assert.match(block, /LoveBudEditorPageHelpers\.buildTreeLoadErrorCopy missing/);
+});
+
+test('editor tree load failure block no longer has inline fallback or optional check', () => {
+  const block = extractTreeLoadFailureBlock(editorSource);
+
+  assert.doesNotMatch(block, /let\s+treeLoadErrorCopy\s*=\s*\{/);
+  assert.doesNotMatch(block, /typeof editorPageHelpers\.buildTreeLoadErrorCopy/);
+  assert.doesNotMatch(block, /reportError\('LoveBudEditorPageHelpers\.buildTreeLoadErrorCopy missing'\)/);
 });
 
 test('editor no longer owns tree load status copy branching inline', () => {
@@ -63,6 +109,8 @@ test('editor no longer owns tree load status copy branching inline', () => {
   assert.doesNotMatch(block, /treeLoadStatus === 'error'\s*\?/);
 });
 
+// --- 4. Auth redirect and render flow preserved ---
+
 test('editor tree load failure keeps auth redirect and render flow intact', () => {
   const block = extractTreeLoadFailureBlock(editorSource);
 
@@ -74,6 +122,8 @@ test('editor tree load failure keeps auth redirect and render flow intact', () =
   assert.match(block, /errorDesc:\s*treeLoadErrorCopy\.errorDesc/);
   assert.match(block, /markEditorReady\(\)/);
 });
+
+// --- 5. Load order contract preserved ---
 
 test('editor page helpers load before editor entrypoint', () => {
   const pageHelpersIndex = editorHtml.indexOf('js/editor/editor-page-helpers.js');
