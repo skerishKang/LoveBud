@@ -13,7 +13,7 @@ const TEMPLATE_BUILDERS = [
     path: 'js/editor/templates/editor-canvas-topbar-template.js',
     builder: 'buildCanvasTopbarTemplate',
     mountId: 'editorCanvasTopbarTemplateMount',
-    module: false
+    module: true
   },
   {
     path: 'js/editor/templates/editor-empty-guide-template.js',
