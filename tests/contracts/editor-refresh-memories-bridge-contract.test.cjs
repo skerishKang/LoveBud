@@ -4,6 +4,7 @@ const test = require('node:test');
 
 const editorSource = fs.readFileSync('js/editor.js', 'utf8');
 const shellHelpersSource = fs.readFileSync('js/editor/editor-shell-helpers.js', 'utf8');
+const refreshSaveRuntimeSource = fs.readFileSync('js/editor/editor-refresh-save-runtime.js', 'utf8');
 
 test('editor shell helpers expose refresh memories bridge helper', () => {
   assert.match(shellHelpersSource, /exposeRefreshMemoriesBridge:\s*function\(options\)/);
@@ -27,56 +28,54 @@ test('editor delegates refresh memories bridge through required shell helper', (
     editorSource,
     /const\s+exposeRefreshMemoriesBridge\s*=\s*shellHelpers\.exposeRefreshMemoriesBridge\s*\|\|/
   );
+  assert.match(refreshSaveRuntimeSource, /LoveBudEditorShellHelpers\.exposeRefreshMemoriesBridge missing/);
   assert.match(
-    editorSource,
-    /LoveBudEditorShellHelpers\.exposeRefreshMemoriesBridge missing/
-  );
-  assert.match(
-    editorSource,
+    refreshSaveRuntimeSource,
     /exposeRefreshMemoriesBridge\(\{\s*refreshMemories\s*\}\)/
   );
 });
 
-test('editor no longer assigns refresh memories bridge inline', () => {
-  const start = editorSource.indexOf('const refreshMemories = editorDataLoader.createRefreshMemories');
+test('refresh save runtime assigns refresh memories bridge without inline window mutation', () => {
+  const start = refreshSaveRuntimeSource.indexOf('const refreshMemories = editorDataLoader.createRefreshMemories');
   assert.notEqual(start, -1, 'refreshMemories creation must exist');
 
-  const end = editorSource.indexOf('const formatTimeAgo =', start);
+  const end = refreshSaveRuntimeSource.indexOf('const formatTimeAgo =', start);
   assert.notEqual(end, -1, 'formatTimeAgo setup must follow refresh bridge setup');
 
-  const block = editorSource.slice(start, end);
+  const block = refreshSaveRuntimeSource.slice(start, end);
   assert.match(block, /exposeRefreshMemoriesBridge\(\{\s*refreshMemories\s*\}\)/);
   assert.doesNotMatch(block, /window\.refreshMemories\s*=\s*refreshMemories/);
   assert.doesNotMatch(block, /windowRef\.refreshMemories\s*=/);
+  assert.doesNotMatch(editorSource, /const\s+refreshMemories\s*=\s*editorDataLoader\.createRefreshMemories/);
 });
 
-test('editor keeps refresh memories factory invocation intact', () => {
-  assert.match(editorSource, /if \(typeof editorDataLoader\.createRefreshMemories !== 'function'\)/);
-  assert.match(editorSource, /reportError\('LoveBudEditorDataLoader\.createRefreshMemories missing'\)/);
+test('refresh save runtime keeps refresh memories factory invocation intact', () => {
+  assert.match(refreshSaveRuntimeSource, /typeof editorDataLoader\.createRefreshMemories !== 'function'/);
+  assert.match(refreshSaveRuntimeSource, /LoveBudEditorDataLoader\.createRefreshMemories missing/);
   assert.match(
-    editorSource,
-    /const refreshMemories\s*=\s*editorDataLoader\.createRefreshMemories\(\{\s*treeId,\s*apiClient:\s*window\.apiClient,\s*normalizeMemory,\s*onMemoriesUpdated:\s*handleMemoriesUpdated\s*\}\)/
+    refreshSaveRuntimeSource,
+    /const refreshMemories\s*=\s*editorDataLoader\.createRefreshMemories\(\{\s*treeId,\s*apiClient,\s*normalizeMemory,\s*onMemoriesUpdated:\s*handleMemoriesUpdated\s*\}\)/
   );
 });
 
-test('editor keeps handleMemoriesUpdated orchestration intact', () => {
-  const start = editorSource.indexOf('const handleMemoriesUpdated =');
+test('refresh save runtime keeps handleMemoriesUpdated orchestration intact', () => {
+  const start = refreshSaveRuntimeSource.indexOf('const handleMemoriesUpdated =');
   assert.notEqual(start, -1, 'handleMemoriesUpdated must exist');
 
-  const end = editorSource.indexOf('if (typeof editorDataLoader.createRefreshMemories', start);
+  const end = refreshSaveRuntimeSource.indexOf('const refreshMemories = editorDataLoader.createRefreshMemories', start);
   assert.notEqual(end, -1, 'refresh factory guard must follow handleMemoriesUpdated');
 
-  const block = editorSource.slice(start, end);
+  const block = refreshSaveRuntimeSource.slice(start, end);
   assert.match(block, /log\('Memories updated externally\. Rerendering\.\.\.'\)/);
   assert.match(block, /initCanvas\(\)/);
   assert.match(block, /updateSidebarStatus\(\)/);
-  assert.match(block, /currentEditingMemory\s*=\s*refreshedEditingMemory/);
+  assert.match(block, /setCurrentEditingMemory\(refreshedEditingMemory\)/);
   assert.match(block, /updateDetailPanel\(refreshedEditingMemory\)/);
 });
 
-test('editor guards missing refresh memories bridge before exposure', () => {
-  const guardIndex = editorSource.indexOf('LoveBudEditorShellHelpers.exposeRefreshMemoriesBridge missing');
-  const exposeIndex = editorSource.indexOf('exposeRefreshMemoriesBridge({ refreshMemories });');
+test('refresh save runtime guards missing refresh memories bridge before exposure', () => {
+  const guardIndex = refreshSaveRuntimeSource.indexOf('LoveBudEditorShellHelpers.exposeRefreshMemoriesBridge missing');
+  const exposeIndex = refreshSaveRuntimeSource.indexOf('exposeRefreshMemoriesBridge({ refreshMemories });');
 
   assert.ok(guardIndex !== -1, 'missing refresh memories bridge guard must exist');
   assert.ok(exposeIndex !== -1, 'refresh memories bridge exposure must exist');
