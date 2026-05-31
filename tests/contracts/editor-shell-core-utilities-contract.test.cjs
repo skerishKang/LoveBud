@@ -45,6 +45,7 @@ test('buildEditorRedirectTarget preserves editor redirect composition', () => {
 });
 
 test('editor entrypoint keeps core utility fallback resolution intact', () => {
+  // getI18n
   assert.match(
     editorSource,
     /const\s+getI18n\s*=\s*shellHelpers\.getI18n/
@@ -58,17 +59,37 @@ test('editor entrypoint keeps core utility fallback resolution intact', () => {
     /LoveBudEditorShellHelpers\.getI18n missing/
   );
 
-  // Guard must not use reportError
-  const guardStart = editorSource.indexOf('LoveBudEditorShellHelpers.getI18n missing');
-  assert.notEqual(guardStart, -1, 'getI18n missing guard must exist');
-  const guardEnd = editorSource.indexOf('const i18n = getI18n();', guardStart);
-  assert.notEqual(guardEnd, -1, 'i18n initialization must exist after guard');
-  const guardBlock = editorSource.slice(guardStart, guardEnd);
-  assert.doesNotMatch(guardBlock, /reportError/);
+  const i18nGuardStart = editorSource.indexOf('LoveBudEditorShellHelpers.getI18n missing');
+  assert.notEqual(i18nGuardStart, -1, 'getI18n missing guard must exist');
+  const i18nGuardEnd = editorSource.indexOf('const i18n = getI18n();', i18nGuardStart);
+  assert.notEqual(i18nGuardEnd, -1, 'i18n initialization must exist after guard');
+  const i18nGuardBlock = editorSource.slice(i18nGuardStart, i18nGuardEnd);
+  assert.doesNotMatch(i18nGuardBlock, /reportError/);
 
   assert.match(editorSource, /const i18n\s*=\s*getI18n\(\)/);
 
-  assert.match(editorSource, /shellHelpers\.getEditorBasePath \|\|/);
+  // getEditorBasePath
+  assert.match(
+    editorSource,
+    /const\s+getEditorBasePath\s*=\s*shellHelpers\.getEditorBasePath/
+  );
+  assert.doesNotMatch(
+    editorSource,
+    /const\s+getEditorBasePath\s*=\s*shellHelpers\.getEditorBasePath\s*\|\|/
+  );
+  assert.match(
+    editorSource,
+    /LoveBudEditorShellHelpers\.getEditorBasePath missing/
+  );
+
+  const bpGuardStart = editorSource.indexOf('LoveBudEditorShellHelpers.getEditorBasePath missing');
+  assert.notEqual(bpGuardStart, -1, 'getEditorBasePath missing guard must exist');
+  const bpGuardEnd = editorSource.indexOf('const buildEditorRedirectTarget =', bpGuardStart);
+  assert.notEqual(bpGuardEnd, -1, 'buildEditorRedirectTarget must exist after base path guard');
+  const bpGuardBlock = editorSource.slice(bpGuardStart, bpGuardEnd);
+  assert.doesNotMatch(bpGuardBlock, /reportError/);
+
+  // buildEditorRedirectTarget (fallback still active)
   assert.match(editorSource, /shellHelpers\.buildEditorRedirectTarget \|\|/);
 });
 
