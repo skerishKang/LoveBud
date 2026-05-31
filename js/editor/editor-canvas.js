@@ -193,80 +193,19 @@ function createEditorCanvas(deps) {
     }
 
     function switchToFreeMode() {
-        viewportState.layoutMode = 'free';
-        if (typeof layoutTransition.persistLayoutMode === 'function') {
-            layoutTransition.persistLayoutMode(persistLayoutMode, 'free');
-        } else {
-            persistLayoutMode('free');
-        }
-        viewportState.initialViewportApplied = false;
-        if (savedFreePositions) {
-            viewportState.positions = { ...savedFreePositions };
-            savedFreePositions = null;
-        }
-        if (storedFreePositions && Object.keys(viewportState.positions).length === 0) {
-            viewportState.positions = { ...storedFreePositions };
-        }
-        if (Object.keys(viewportState.positions).length === 0) {
-            const stored = loadStoredLayout();
-            if (stored.positions && Object.keys(stored.positions).length > 0) {
-                viewportState.positions = { ...stored.positions };
-            }
-        }
-
-        (typeof layoutTransition.fitViewportToTree === 'function'
-            ? layoutTransition.fitViewportToTree(fitViewportToTree)
-            : fitViewportToTree());
-
-        (typeof layoutTransition.applyLayoutModeClasses === 'function'
-            ? layoutTransition.applyLayoutModeClasses
-            : uiHelpers.applyLayoutModeClasses)('free');
-        updateLayoutToggleUI();
-        (typeof layoutTransition.initCanvas === 'function'
-            ? layoutTransition.initCanvas(initCanvas)
-            : initCanvas());
-        (typeof layoutTransition.persistStoredPositions === 'function'
-            ? layoutTransition.persistStoredPositions(persistStoredPositions)
-            : persistStoredPositions());
+        if (layoutModeSwitcher) { layoutModeSwitcher.switchToFreeMode(); }
     }
 
     function switchToStructuredMode() {
-        savedFreePositions = { ...viewportState.positions };
-        viewportState.layoutMode = 'structured';
-        viewportState.initialViewportApplied = false;
-        if (typeof layoutTransition.persistLayoutMode === 'function') {
-            layoutTransition.persistLayoutMode(persistLayoutMode, 'structured');
-        } else {
-            persistLayoutMode('structured');
-        }
-
-        (typeof layoutTransition.fitViewportToTree === 'function'
-            ? layoutTransition.fitViewportToTree(fitViewportToTree)
-            : fitViewportToTree());
-
-        (typeof layoutTransition.applyLayoutModeClasses === 'function'
-            ? layoutTransition.applyLayoutModeClasses
-            : uiHelpers.applyLayoutModeClasses)('structured');
-        updateLayoutToggleUI();
-        (typeof layoutTransition.initCanvas === 'function'
-            ? layoutTransition.initCanvas(initCanvas)
-            : initCanvas());
+        if (layoutModeSwitcher) { layoutModeSwitcher.switchToStructuredMode(); }
     }
 
     function setLayoutMode(mode) {
-        if (mode === 'structured') {
-            switchToStructuredMode();
-        } else {
-            switchToFreeMode();
-        }
+        if (layoutModeSwitcher) { layoutModeSwitcher.setLayoutMode(mode); }
     }
 
     function toggleLayoutMode() {
-        if (viewportState.layoutMode === 'structured') {
-            switchToFreeMode();
-        } else {
-            switchToStructuredMode();
-        }
+        if (layoutModeSwitcher) { layoutModeSwitcher.toggleLayoutMode(); }
     }
 
     function updateLayoutToggleUI() {
@@ -652,6 +591,22 @@ function createEditorCanvas(deps) {
             }
         }
     };
+
+    const layoutModeSwitcher = typeof layoutTransition.createLayoutModeSwitcher === 'function'
+        ? layoutTransition.createLayoutModeSwitcher({
+            viewportState,
+            loadStoredLayout,
+            persistLayoutMode,
+            persistStoredPositions,
+            fitViewportToTree,
+            initCanvas,
+            updateLayoutToggleUI,
+            getSavedFreePositions: () => savedFreePositions,
+            setSavedFreePositions: (value) => { savedFreePositions = value; },
+            getStoredFreePositions: () => storedFreePositions,
+            setStoredFreePositions: (value) => { storedFreePositions = value; }
+        })
+        : null;
 
     function focusNodeById(nodeId) {
         if (typeof canvasViewport.focusNodeById === 'function') {

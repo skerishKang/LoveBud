@@ -53,10 +53,14 @@ test('editor canvas viewport module owns fit-safe zoom and focus math', () => {
 
 test('editor layout switching fits the tree instead of centering selected node by default', () => {
   const canvas = read('js/editor/editor-canvas.js');
+  const transition = read('js/editor/editor-canvas-layout-transition.js');
 
   assert.match(canvas, /function\s+fitViewportToTree\s*\(/, 'canvas must expose a layout-switch tree-fit helper');
-  assert.match(canvas, /fitViewportToTree[^)]*\)[\s\S]*applyLayoutModeClasses[^)]*\)\s*\(\s*'free'\s*\)/, 'switching to free mode should fit the tree before rendering');
-  assert.match(canvas, /fitViewportToTree[^)]*\)[\s\S]*applyLayoutModeClasses[^)]*\)\s*\(\s*'structured'\s*\)/, 'switching to structured mode should fit the tree before rendering');
+  // After delegation to layoutModeSwitcher, switchToFreeMode/switchToStructuredMode delegate to factory
+  assert.match(canvas, /layoutModeSwitcher\.switchToFreeMode\(\)/, 'switchToFreeMode must delegate to layoutModeSwitcher');
+  assert.match(canvas, /layoutModeSwitcher\.switchToStructuredMode\(\)/, 'switchToStructuredMode must delegate to layoutModeSwitcher');
+  // The factory ensures fitViewportToTree runs before applyLayoutModeClasses
+  assert.match(transition, /fitViewportToTree[^)]*\)[\s\S]*applyLayoutModeClasses/, 'factory must fit the tree before applying layout classes');
   assert.doesNotMatch(canvas, /function\s+centerViewportOnSelection\s*\(/, 'layout switching must not use selected-node centering by default');
 });
 

@@ -79,12 +79,92 @@
         initFn();
     }
 
+    function createLayoutModeSwitcher(options) {
+        var viewportState = options.viewportState;
+        var loadStoredLayout = options.loadStoredLayout;
+        var persistLayoutModeLocal = options.persistLayoutMode;
+        var persistStoredPositionsLocal = options.persistStoredPositions;
+        var fitViewportToTreeLocal = options.fitViewportToTree;
+        var initCanvasLocal = options.initCanvas;
+        var updateLayoutToggleUILocal = options.updateLayoutToggleUI;
+        var getSavedFreePositions = options.getSavedFreePositions;
+        var setSavedFreePositions = options.setSavedFreePositions;
+        var getStoredFreePositions = options.getStoredFreePositions;
+        var setStoredFreePositions = options.setStoredFreePositions;
+
+        function switchToFreeMode() {
+            viewportState.layoutMode = 'free';
+            persistLayoutModeLocal('free');
+            viewportState.initialViewportApplied = false;
+
+            var saved = getSavedFreePositions();
+            if (saved) {
+                viewportState.positions = { ...saved };
+                setSavedFreePositions(null);
+            }
+
+            var stored = getStoredFreePositions();
+            if (stored && Object.keys(viewportState.positions).length === 0) {
+                viewportState.positions = { ...stored };
+            }
+
+            if (Object.keys(viewportState.positions).length === 0) {
+                var loaded = loadStoredLayout();
+                if (loaded.positions && Object.keys(loaded.positions).length > 0) {
+                    viewportState.positions = { ...loaded.positions };
+                }
+            }
+
+            fitViewportToTreeLocal();
+            applyLayoutModeClasses('free');
+            updateLayoutToggleUILocal();
+            initCanvasLocal();
+            persistStoredPositionsLocal();
+        }
+
+        function switchToStructuredMode() {
+            setSavedFreePositions({ ...viewportState.positions });
+            viewportState.layoutMode = 'structured';
+            viewportState.initialViewportApplied = false;
+            persistLayoutModeLocal('structured');
+
+            fitViewportToTreeLocal();
+            applyLayoutModeClasses('structured');
+            updateLayoutToggleUILocal();
+            initCanvasLocal();
+        }
+
+        function setLayoutMode(mode) {
+            if (mode === 'structured') {
+                switchToStructuredMode();
+            } else {
+                switchToFreeMode();
+            }
+        }
+
+        function toggleLayoutMode() {
+            if (viewportState.layoutMode === 'structured') {
+                switchToFreeMode();
+            } else {
+                switchToStructuredMode();
+            }
+        }
+
+        return {
+            switchToFreeMode: switchToFreeMode,
+            switchToStructuredMode: switchToStructuredMode,
+            setLayoutMode: setLayoutMode,
+            toggleLayoutMode: toggleLayoutMode
+        };
+    }
+
     window.LoveBudEditorCanvasLayoutTransition = {
         applyLayoutModeClasses: applyLayoutModeClasses,
         fitViewportToTree: fitViewportToTree,
         initCanvas: initCanvas,
         persistLayoutMode: persistLayoutMode,
         persistStoredPositions: persistStoredPositions,
-        updateLayoutToggleUI: updateLayoutToggleUI
+        updateLayoutToggleUI: updateLayoutToggleUI,
+        createLayoutModeSwitcher: createLayoutModeSwitcher
     };
 })();
