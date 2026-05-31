@@ -197,6 +197,18 @@ window.LoveBudEditorShellHelpers = {
         };
     },
 
+    // Editor start dependency guard factory
+    createEditorStartDependencyGuard: function(options) {
+        var opts = options || {};
+        var reportError = opts.reportError || function() {};
+
+        return function ensureStartEditorDependency(dependency, message) {
+            if (typeof dependency === 'function') return true;
+            reportError(message);
+            return false;
+        };
+    },
+
     // Editor startup dependency waiter factory
     createEditorStartupDependencyWaiter: function(options) {
         var opts = options || {};
