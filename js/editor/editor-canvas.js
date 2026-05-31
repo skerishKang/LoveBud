@@ -683,23 +683,15 @@ function createEditorCanvas(deps) {
             return;
         }
 
-        if (viewportState.controlsBound) return;
-        viewportState.controlsBound = true;
-
-        const buttons = uiHelpers.getViewportControlButtons();
-        const { focusBtn, recenterBtn, zoomInBtn, zoomOutBtn } = buttons;
-
-        uiHelpers.bindViewportControlPropagationGuards(buttons);
-
-        uiHelpers.bindFocusSelectedControl(
-            focusBtn,
-            () => selectionUtils.getSelectedMemoryId(document),
-            focusNodeById
-        );
-
-        uiHelpers.bindRecenterControl(recenterBtn, recenterViewport);
-
-        uiHelpers.bindZoomControls(zoomInBtn, zoomOutBtn, zoomBy);
+        if (typeof uiHelpers.bindViewportControlsFallback === 'function') {
+            uiHelpers.bindViewportControlsFallback({
+                viewportState,
+                getSelectedMemoryId: () => selectionUtils.getSelectedMemoryId(document),
+                focusNodeById,
+                recenterViewport,
+                zoomBy
+            });
+        }
     }
 
     function bindLayoutModeToggle() {

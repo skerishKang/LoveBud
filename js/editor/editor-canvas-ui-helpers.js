@@ -192,6 +192,46 @@ export function bindZoomControls(zoomInBtn, zoomOutBtn, onZoom) {
 }
 
 /**
+ * Fallback orchestration for binding all viewport control buttons
+ * when the external canvasViewport.bindControls delegate is unavailable.
+ * @param {Object} options
+ * @param {Object} options.viewportState - Viewport state (controlsBound flag).
+ * @param {Function} options.getSelectedMemoryId - Returns currently selected memory ID.
+ * @param {Function} options.focusNodeById - Focuses on a node by ID.
+ * @param {Function} options.recenterViewport - Recenters the viewport.
+ * @param {Function} options.zoomBy - Zooms by a factor.
+ * @returns {boolean} True if controls were bound, false if already bound.
+ */
+export function bindViewportControlsFallback(options) {
+    const {
+        viewportState,
+        getSelectedMemoryId,
+        focusNodeById,
+        recenterViewport,
+        zoomBy
+    } = options;
+
+    if (viewportState.controlsBound) return false;
+    viewportState.controlsBound = true;
+
+    const buttons = getViewportControlButtons();
+    const { focusBtn, recenterBtn, zoomInBtn, zoomOutBtn } = buttons;
+
+    bindViewportControlPropagationGuards(buttons);
+
+    bindFocusSelectedControl(
+        focusBtn,
+        getSelectedMemoryId,
+        focusNodeById
+    );
+
+    bindRecenterControl(recenterBtn, recenterViewport);
+    bindZoomControls(zoomInBtn, zoomOutBtn, zoomBy);
+
+    return true;
+}
+
+/**
  * Binds keyboard shortcuts (Enter, Space) on a node element to trigger selection.
  * @param {HTMLElement} nodeEl - The memory node element.
  * @param {Function} onSelect - Callback to trigger when a shortcut is pressed.
