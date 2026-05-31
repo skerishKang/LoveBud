@@ -16,6 +16,14 @@ const TEMPLATE_SCRIPTS = [
     'js/editor/templates/editor-detail-edit-mode-template.js'
 ];
 
+const MODULE_TEMPLATE_SCRIPTS = [
+    'js/editor/templates/editor-add-memory-form-template.js'
+];
+
+function isModuleTemplate(script) {
+    return MODULE_TEMPLATE_SCRIPTS.includes(script);
+}
+
 // Mount IDs that exist directly in editor.html (top-level)
 const HTML_MOUNT_IDS = [
     'addMemoryFormTemplateMount',
@@ -102,11 +110,19 @@ test('template files use IIFE pattern with mount.outerHTML replacement', () => {
     for (const script of TEMPLATE_SCRIPTS) {
         const filePath = script;
         const content = fs.readFileSync(filePath, 'utf8');
-        assert.match(content, /^\(function\(\)\s*\{/,
-            `template ${script} must start with IIFE pattern`);
-        // Accept both direct template variable and builder function call
-        assert.match(content, /mount\.outerHTML\s*=\s*(template|build\w+Template\(\))/,
-            `template ${script} must use mount.outerHTML = template or builder call`);
+        if (isModuleTemplate(script)) {
+            // Module templates use export function instead of IIFE
+            assert.match(content, /export\s+function\s+build\w+Template\s*\(/,
+                `module template ${script} must use export function builder`);
+            assert.doesNotMatch(content, /^\(function\(\)\s*\{/,
+                `module template ${script} must not use IIFE wrapper`);
+        } else {
+            assert.match(content, /^\(function\(\)\s*\{/,
+                `template ${script} must start with IIFE pattern`);
+        }
+        // All templates: mount.outerHTML = builder call
+        assert.match(content, /mount\.outerHTML\s*=\s*build\w+Template\(\)/,
+            `template ${script} must use mount.outerHTML = buildXxxTemplate()`);
         assert.match(content, /document\.getElementById\(.*TemplateMount/,
             `template ${script} must reference a TemplateMount element`);
     }
@@ -151,8 +167,8 @@ test('no duplicate template script references in editor.html', () => {
 
 test('editor-add-memory-form-template.js defines buildAddMemoryFormTemplate builder', () => {
     const content = fs.readFileSync('js/editor/templates/editor-add-memory-form-template.js', 'utf8');
-    assert.match(content, /function buildAddMemoryFormTemplate\(\)/,
-        'must define buildAddMemoryFormTemplate function');
+    assert.match(content, /export\s+function buildAddMemoryFormTemplate\(\)/,
+        'must define buildAddMemoryFormTemplate as exported function');
     assert.match(content, /mount\.outerHTML\s*=\s*buildAddMemoryFormTemplate\(\)/,
         'must call buildAddMemoryFormTemplate() for mount.outerHTML');
 });
@@ -229,4 +245,23 @@ test('exactly 9 template scripts are loaded in editor.html', () => {
         if (html.indexOf(script) !== -1) count++;
     }
     assert.equal(count, 9, 'editor.html must load exactly 9 template scripts');
+});
+
+// --- 12. Module script type verification in editor.html ---
+
+test('editor-add-memory-form-template.js is loaded as type="module" in editor.html', () => {
+    const modulePattern = /<script\s+type="module"\s+src="[^"]*editor-add-memory-form-template\.js/;
+    assert.match(html, modulePattern,
+        'editor-add-memory-form-template.js must be loaded with type="module"');
+});
+
+test('remaining 8 template scripts are NOT loaded as type="module"', () => {
+    const classicTemplates = TEMPLATE_SCRIPTS.filter(s => !isModuleTemplate(s));
+    for (const script of classicTemplates) {
+        const scriptTagPattern = new RegExp(`<script\\s+src="[^"]*${script.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`);
+        const match = html.match(scriptTagPattern);
+        assert.ok(match, `editor.html must contain script tag for ${script}`);
+        assert.ok(!match[0].includes('type="module"'),
+            `${script} must not be loaded as type="module"`);
+    }
 });
