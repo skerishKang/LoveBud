@@ -19,7 +19,8 @@ const TEMPLATE_SCRIPTS = [
 const MODULE_TEMPLATE_SCRIPTS = [
     'js/editor/templates/editor-add-memory-form-template.js',
     'js/editor/templates/editor-canvas-topbar-template.js',
-    'js/editor/templates/editor-empty-guide-template.js'
+    'js/editor/templates/editor-empty-guide-template.js',
+    'js/editor/templates/editor-sidebar-template.js'
 ];
 
 function isModuleTemplate(script) {
@@ -193,8 +194,8 @@ test('editor-empty-guide-template.js defines buildEmptyGuideTemplate builder', (
 
 test('editor-sidebar-template.js defines buildSidebarTemplate builder', () => {
     const content = fs.readFileSync('js/editor/templates/editor-sidebar-template.js', 'utf8');
-    assert.match(content, /function buildSidebarTemplate\(\)/,
-        'must define buildSidebarTemplate function');
+    assert.match(content, /export\s+function buildSidebarTemplate\(\)/,
+        'must define buildSidebarTemplate as exported function');
     assert.match(content, /mount\.outerHTML\s*=\s*buildSidebarTemplate\(\)/,
         'must call buildSidebarTemplate() for mount.outerHTML');
 });
@@ -269,7 +270,13 @@ test('editor-empty-guide-template.js is loaded as type="module" in editor.html',
         'editor-empty-guide-template.js must be loaded with type="module"');
 });
 
-test('remaining 6 template scripts are NOT loaded as type="module"', () => {
+test('editor-sidebar-template.js is loaded as type="module" in editor.html', () => {
+    const modulePattern = /<script\s+type="module"\s+src="[^"]*editor-sidebar-template\.js/;
+    assert.match(html, modulePattern,
+        'editor-sidebar-template.js must be loaded with type="module"');
+});
+
+test('remaining 5 template scripts are NOT loaded as type="module"', () => {
     const classicTemplates = TEMPLATE_SCRIPTS.filter(s => !isModuleTemplate(s));
     for (const script of classicTemplates) {
         const scriptTagPattern = new RegExp(`<script\\s+src="[^"]*${script.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`);
