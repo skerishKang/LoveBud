@@ -173,6 +173,14 @@ test('editor-empty-guide-template.js defines buildEmptyGuideTemplate builder', (
         'must call buildEmptyGuideTemplate() for mount.outerHTML');
 });
 
+test('editor-sidebar-template.js defines buildSidebarTemplate builder', () => {
+    const content = fs.readFileSync('js/editor/templates/editor-sidebar-template.js', 'utf8');
+    assert.match(content, /function buildSidebarTemplate\(\)/,
+        'must define buildSidebarTemplate function');
+    assert.match(content, /mount\.outerHTML\s*=\s*buildSidebarTemplate\(\)/,
+        'must call buildSidebarTemplate() for mount.outerHTML');
+});
+
 // --- 11. Template script count matches expected ---
 
 test('exactly 9 template scripts are loaded in editor.html', () => {
