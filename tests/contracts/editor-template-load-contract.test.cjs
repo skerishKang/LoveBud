@@ -104,8 +104,9 @@ test('template files use IIFE pattern with mount.outerHTML replacement', () => {
         const content = fs.readFileSync(filePath, 'utf8');
         assert.match(content, /^\(function\(\)\s*\{/,
             `template ${script} must start with IIFE pattern`);
-        assert.match(content, /mount\.outerHTML\s*=\s*template/,
-            `template ${script} must use mount.outerHTML = template`);
+        // Accept both direct template variable and builder function call
+        assert.match(content, /mount\.outerHTML\s*=\s*(template|build\w+Template\(\))/,
+            `template ${script} must use mount.outerHTML = template or builder call`);
         assert.match(content, /document\.getElementById\(.*TemplateMount/,
             `template ${script} must reference a TemplateMount element`);
     }
@@ -146,7 +147,17 @@ test('no duplicate template script references in editor.html', () => {
     }
 });
 
-// --- 9. Template script count matches expected ---
+// --- 10. Add-memory form template uses builder function ---
+
+test('editor-add-memory-form-template.js defines buildAddMemoryFormTemplate builder', () => {
+    const content = fs.readFileSync('js/editor/templates/editor-add-memory-form-template.js', 'utf8');
+    assert.match(content, /function buildAddMemoryFormTemplate\(\)/,
+        'must define buildAddMemoryFormTemplate function');
+    assert.match(content, /mount\.outerHTML\s*=\s*buildAddMemoryFormTemplate\(\)/,
+        'must call buildAddMemoryFormTemplate() for mount.outerHTML');
+});
+
+// --- 11. Template script count matches expected ---
 
 test('exactly 9 template scripts are loaded in editor.html', () => {
     let count = 0;

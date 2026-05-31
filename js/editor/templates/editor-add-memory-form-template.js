@@ -1,5 +1,6 @@
 (function() {
-    const template = `
+    function buildAddMemoryFormTemplate() {
+        return `
             <div id="addMemoryForm" class="memory-create-section editor-memory-form-modal" style="display:none;">
                 <div class="editor-memory-form-body">
                     <div class="editor-modal-eyebrow" id="addMemoryFormEyebrow">첫 순간 시작</div>
@@ -61,9 +62,11 @@
                     <button id="confirmAddMemory" class="btn-round btn-primary editor-form-action-btn">...</button>
                 </div>
             </div>
-    `;
+        `;
+    }
+
     const mount = document.getElementById('addMemoryFormTemplateMount');
     if (mount) {
-        mount.outerHTML = template;
+        mount.outerHTML = buildAddMemoryFormTemplate();
     }
 })();
