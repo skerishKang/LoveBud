@@ -113,8 +113,15 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    const buildEditorRedirectTarget = shellHelpers.buildEditorRedirectTarget || (() =>
-        getEditorBasePath() + 'editor' + (window.location.search || ''));
+    const buildEditorRedirectTargetHelper = shellHelpers.buildEditorRedirectTarget;
+    if (typeof buildEditorRedirectTargetHelper !== 'function') {
+        const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] };
+        const msg = 'LoveBudEditorShellHelpers.buildEditorRedirectTarget missing';
+        console.error('[editor-main] ERROR: ' + msg);
+        debugState.errors.push({ msg, error: msg });
+        return;
+    }
+    const buildEditorRedirectTarget = () => buildEditorRedirectTargetHelper.call(shellHelpers);
 
     const createInlineRedirectToEditorLoginFallback = entryFallbacks.createInlineRedirectToEditorLoginFallback;
 
