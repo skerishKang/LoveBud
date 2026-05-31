@@ -1,6 +1,5 @@
-(function() {
-    function buildCanvasTopbarTemplate() {
-        return `
+export function buildCanvasTopbarTemplate() {
+    return `
             <div class="editor-canvas-topbar" aria-label="러브트리 캔버스 도구">
                 
                 <div class="editor-canvas-toolbar" role="toolbar" aria-label="트리 화면 조정">
@@ -39,11 +38,10 @@
                     </div>
                 </div>
             </div>
-        `;
-    }
+    `;
+}
 
-    const mount = document.getElementById('editorCanvasTopbarTemplateMount');
-    if (mount) {
-        mount.outerHTML = buildCanvasTopbarTemplate();
-    }
-})();
+const mount = document.getElementById('editorCanvasTopbarTemplateMount');
+if (mount) {
+    mount.outerHTML = buildCanvasTopbarTemplate();
+}
