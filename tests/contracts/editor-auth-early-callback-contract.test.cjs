@@ -11,17 +11,23 @@ function readRepoFile(relativePath) {
 
 test('auth callbacks preserve editor onAuthReady fallback registered before auth bootstrap loads', () => {
   const editorSource = readRepoFile('js/editor.js');
+  const pageHelpersSource = readRepoFile('js/editor/editor-page-helpers.js');
   const callbacksSource = readRepoFile('js/auth/auth-callbacks.js');
 
   assert.match(
     editorSource,
-    /if\s*\(typeof\s+window\.registerOnAuthReady\s*===\s*['"]function['"]\)/,
-    'Editor must prefer registerOnAuthReady when auth callbacks are already available'
+    /registerEditorAuthStart/,
+    'Editor must delegate auth start to page helpers'
   );
   assert.match(
-    editorSource,
-    /window\.onAuthReady\s*=\s*tryStartEditor/,
-    'Editor currently falls back to window.onAuthReady when loaded before auth callbacks'
+    pageHelpersSource,
+    /if\s*\(typeof\s+windowRef\.registerOnAuthReady\s*===\s*['"]function['"]\)/,
+    'Page helpers must prefer registerOnAuthReady when auth callbacks are already available'
+  );
+  assert.match(
+    pageHelpersSource,
+    /windowRef\.onAuthReady\s*=\s*tryStartEditor/,
+    'Page helpers currently falls back to window.onAuthReady when loaded before auth callbacks'
   );
 
   assert.match(

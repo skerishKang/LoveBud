@@ -94,6 +94,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof renderTreeLoadError !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorPageHelpers.renderTreeLoadError missing'); return; }
     const buildTreeLoadErrorCopy = editorPageHelpers.buildTreeLoadErrorCopy;
     if (typeof buildTreeLoadErrorCopy !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorPageHelpers.buildTreeLoadErrorCopy missing'); return; }
+    const registerEditorAuthStart = editorPageHelpers.registerEditorAuthStart;
+    if (typeof registerEditorAuthStart !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorPageHelpers.registerEditorAuthStart missing'); return; }
     const applyEditorShellCopy = shellHelpers.applyEditorShellCopy;
     if (typeof applyEditorShellCopy !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.applyEditorShellCopy missing'); return; }
     applyEditorShellCopy(safeI18nText, i18n);
@@ -495,29 +497,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    var editorStarted = false;
-
-    function tryStartEditor(user) {
-        if (editorStarted) {
-            if (user && (!window.currentTreeMemories || window.currentTreeMemories.length <= 1)) {
-                if (window.refreshMemories) window.refreshMemories();
-            }
-            return;
-        }
-        if (!user) {
-            var cachedUser = readConfirmedAuthCacheFromHelper();
-            if (!cachedUser || !cachedUser.uid) {
-                redirectToEditorLogin();
-                return;
-            }
-        }
-        editorStarted = true;
-        startEditor();
-    }
-
-    if (typeof window.registerOnAuthReady === 'function') {
-        window.registerOnAuthReady(tryStartEditor);
-    } else {
-        window.onAuthReady = tryStartEditor;
-    }
+    registerEditorAuthStart({
+        windowRef: window,
+        startEditor: startEditor,
+        redirectToEditorLogin: redirectToEditorLogin,
+        readConfirmedAuthCache: readConfirmedAuthCacheFromHelper
+    });
 });
