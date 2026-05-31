@@ -3,60 +3,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const entryFallbacks = window.LoveBudEditorEntryFallbacks || {};
     const shellHelpers = window.LoveBudEditorShellHelpers || {};
 
-    let rootHelperWarningShown = false;
     const rootUtils = window.LoveBudEditorUtils || {};
     const editorHelpers = window.LoveBudEditorHelpers || {};
 
-    const warnRootHelperFallback = () => {
-        if (!rootHelperWarningShown) {
-            console.warn('[editor] LoveBudEditorUtils not loaded, using local fallback for root helpers');
-            rootHelperWarningShown = true;
-        }
-    };
+    const findRootMemory = rootUtils.findRootMemory,
+        getCanonicalRootId = rootUtils.getCanonicalRootId,
+        isRootMemory = rootUtils.isRootMemory;
 
-    const findRootMemory = function(memories) {
-        if (typeof rootUtils.findRootMemory === 'function') {
-            return rootUtils.findRootMemory(memories);
-        }
-        warnRootHelperFallback();
-        if (!Array.isArray(memories)) return null;
-        const parentNullNodes = memories.filter(m => m.parentId === null || m.parentId === undefined);
-        if (parentNullNodes.length === 1) return parentNullNodes[0];
-        if (parentNullNodes.length > 1) {
-            return parentNullNodes.sort((a, b) => {
-                const aTime = a.createdAt || a.timestamp || '9999';
-                const bTime = b.createdAt || b.timestamp || '9999';
-                return new Date(aTime) - new Date(bTime);
-            })[0];
-        }
-        return memories.find(m => m.id === 'root') || null;
-    };
+    const missingRootHelpers = [
+        ['LoveBudEditorUtils.findRootMemory', findRootMemory],
+        ['LoveBudEditorUtils.getCanonicalRootId', getCanonicalRootId],
+        ['LoveBudEditorUtils.isRootMemory', isRootMemory]
+    ].filter(([, helper]) => typeof helper !== 'function');
 
-    const getRootId = function(memories) {
-        if (typeof rootUtils.getRootId === 'function') {
-            return rootUtils.getRootId(memories);
-        }
-        warnRootHelperFallback();
-        const root = findRootMemory(memories);
-        return root ? root.id : 'root';
-    };
-
-    const getCanonicalRootId = function(memories) {
-        if (typeof rootUtils.getCanonicalRootId === 'function') {
-            return rootUtils.getCanonicalRootId(memories);
-        }
-        warnRootHelperFallback();
-        const root = findRootMemory(memories);
-        return root ? root.id : 'root';
-    };
-
-    const isRootMemory = function(mem, rootId) {
-        if (typeof rootUtils.isRootMemory === 'function') {
-            return rootUtils.isRootMemory(mem, rootId);
-        }
-        warnRootHelperFallback();
-        return !!(mem && rootId && mem.id === rootId);
-    };
+    if (missingRootHelpers.length) {
+        const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] },
+            msg = missingRootHelpers.map(([name]) => name + ' missing').join('; ');
+        console.error('[editor-main] ERROR: ' + msg);
+        debugState.errors.push({ msg, error: msg });
+        return;
+    }
 
     const editorSaveStatus = window.LoveBudEditorSaveStatus || {};
     const editorPageHelpers = window.LoveBudEditorPageHelpers || {};
@@ -216,13 +182,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    const getYouTubeInputErrorMessage = function(i18n, rawUrl) {
-        if (typeof rootUtils.getYouTubeInputErrorMessage === 'function') {
-            return rootUtils.getYouTubeInputErrorMessage(i18n, rawUrl);
-        }
-        warnRootHelperFallback();
-        return getYouTubeInputErrorMessageFallback(i18n, rawUrl);
-    };
+    const getYouTubeInputErrorMessage = typeof rootUtils.getYouTubeInputErrorMessage === 'function' ? rootUtils.getYouTubeInputErrorMessage : getYouTubeInputErrorMessageFallback;
 
     const renderTreeLoadError = editorPageHelpers.renderTreeLoadError;
 
