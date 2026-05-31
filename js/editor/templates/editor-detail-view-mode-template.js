@@ -1,5 +1,6 @@
 (function() {
-    const template = `
+    function buildDetailViewModeTemplate() {
+        return `
                 <div id="detailViewMode" class="editor-hidden-initial">
                     <div class="editor-tree-meta-section" aria-hidden="true">
                         <div class="editor-section-eyebrow" id="detailTreeStatusLabel">현재 트리</div>
@@ -84,10 +85,12 @@
                         </div>
                     </div>
                 </div>
-    `;
+        `;
+    }
+
     const mount = document.getElementById('editorDetailViewModeTemplateMount');
     if (mount) {
-        mount.outerHTML = template;
+        mount.outerHTML = buildDetailViewModeTemplate();
     }
 })();
 // cache bust
