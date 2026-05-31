@@ -197,6 +197,14 @@ test('editor-detail-panel-shell-template.js defines buildDetailPanelShellTemplat
         'must call buildDetailPanelShellTemplate() for mount.outerHTML');
 });
 
+test('editor-detail-empty-state-template.js defines buildDetailEmptyStateTemplate builder', () => {
+    const content = fs.readFileSync('js/editor/templates/editor-detail-empty-state-template.js', 'utf8');
+    assert.match(content, /function buildDetailEmptyStateTemplate\(\)/,
+        'must define buildDetailEmptyStateTemplate function');
+    assert.match(content, /mount\.outerHTML\s*=\s*buildDetailEmptyStateTemplate\(\)/,
+        'must call buildDetailEmptyStateTemplate() for mount.outerHTML');
+});
+
 // --- 11. Template script count matches expected ---
 
 test('exactly 9 template scripts are loaded in editor.html', () => {
