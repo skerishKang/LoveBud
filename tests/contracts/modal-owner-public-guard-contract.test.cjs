@@ -42,7 +42,7 @@ test('Modal owner writes preserve tree owner write boundary', () => {
   assert.match(ownerWrites, /def require_tree_owner/);
   assert.match(ownerWrites, /fetch_tree_for_owner_check/);
   assert.match(ownerWrites, /tree\.get\("owner_id"\)/);
-  assert.match(ownerWrites, /WHERE id = %s\n\s+AND owner_id = %s/);
+  assert.match(ownerWrites, /WHERE id = %s\r?\n\s+AND owner_id = %s/);
   assert.match(ownerWrites, /DELETE FROM trees WHERE id = %s AND owner_id = %s/);
 });
 
@@ -52,7 +52,7 @@ test('Modal owner writes preserve memory owner precheck and write boundary', () 
   assert.match(ownerWrites, /def require_memory_owner/);
   assert.match(ownerWrites, /t\.owner_id AS tree_owner_id/);
   assert.match(ownerWrites, /memory\.get\("tree_owner_id"\)/);
-  assert.match(ownerWrites, /EXISTS \(\n\s+SELECT 1\n\s+FROM trees t\n\s+WHERE t\.id = memories\.tree_id\n\s+AND t\.owner_id = %s/);
+  assert.match(ownerWrites, /EXISTS \(\r?\n\s+SELECT 1\r?\n\s+FROM trees t\r?\n\s+WHERE t\.id = memories\.tree_id\r?\n\s+AND t\.owner_id = %s/);
 });
 
 test('Modal owner writes preserve private storage entitlement guard', () => {

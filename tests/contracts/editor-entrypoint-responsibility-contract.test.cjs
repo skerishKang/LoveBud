@@ -41,6 +41,7 @@ test('js/editor.js retains its legacy entrypoint markers', () => {
 
 test('js/editor.js contains specific responsibility areas (Audit candidates)', () => {
     const js = fs.readFileSync('js/editor.js', 'utf8');
+    const initialLoadFlow = fs.readFileSync('js/editor/editor-initial-load-flow.js', 'utf8');
 
     // 1. Bootstrapping / Shell Copy
     assert.ok(!js.includes('const createEditorShellCopyApplier = ({ safeI18nText, i18n }) => {'), 'EXTRACTED: shell copy applier should not be inline');
@@ -50,8 +51,11 @@ test('js/editor.js contains specific responsibility areas (Audit candidates)', (
     assert.ok(js.includes('window.LoveBudEditorShellCopyApplier'), 'must use shell copy applier namespace');
 
     // 2. Data Loading Orchestration
-    assert.ok(js.includes('loadInitialEditorTree'), 'Candidate: initial tree loading');
-    assert.ok(js.includes('loadEditorMemories'), 'Candidate: editor memories loading');
+    assert.ok(!js.includes('const loadInitialTree = editorDataLoader.loadInitialEditorTree'), 'EXTRACTED: initial tree loading should not be inline');
+    assert.ok(!js.includes('await editorDataLoader.loadEditorMemories'), 'EXTRACTED: editor memories loading should not be inline');
+    assert.ok(js.includes('runEditorInitialLoadFlow'), 'must delegate initial tree/memory load flow');
+    assert.ok(initialLoadFlow.includes('loadInitialEditorTree'), 'initial load helper owns initial tree loading');
+    assert.ok(initialLoadFlow.includes('loadEditorMemories'), 'initial load helper owns editor memories loading');
 
     // 3. UI Orchestration / Detail flow
     assert.ok(js.includes('updateCanvasEmptyGuide'), 'Candidate: empty guide logic');

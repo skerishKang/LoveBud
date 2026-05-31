@@ -4,6 +4,7 @@ const test = require('node:test');
 
 const editorSource = fs.readFileSync('js/editor.js', 'utf8');
 const shellHelpersSource = fs.readFileSync('js/editor/editor-shell-helpers.js', 'utf8');
+const initialLoadFlowSource = fs.readFileSync('js/editor/editor-initial-load-flow.js', 'utf8');
 const editorHtml = fs.readFileSync('pages/editor.html', 'utf8');
 
 test('editor shell helpers expose markEditorReady helper', () => {
@@ -23,7 +24,7 @@ test('editor delegates ready marker to shell helper with fallback', () => {
 });
 
 test('editor ready marker call sites remain intact', () => {
-  const matches = editorSource.match(/markEditorReady\(\)/g) || [];
+  const matches = (editorSource + initialLoadFlowSource).match(/markEditorReady\(\)/g) || [];
   assert.ok(matches.length >= 2, 'existing markEditorReady call sites should remain');
 });
 
