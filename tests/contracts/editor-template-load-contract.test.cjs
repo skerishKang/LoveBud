@@ -22,7 +22,8 @@ const MODULE_TEMPLATE_SCRIPTS = [
     'js/editor/templates/editor-empty-guide-template.js',
     'js/editor/templates/editor-sidebar-template.js',
     'js/editor/templates/editor-floating-toolbar-template.js',
-    'js/editor/templates/editor-detail-panel-shell-template.js'
+    'js/editor/templates/editor-detail-panel-shell-template.js',
+    'js/editor/templates/editor-detail-empty-state-template.js'
 ];
 
 function isModuleTemplate(script) {
@@ -220,8 +221,8 @@ test('editor-detail-panel-shell-template.js defines buildDetailPanelShellTemplat
 
 test('editor-detail-empty-state-template.js defines buildDetailEmptyStateTemplate builder', () => {
     const content = fs.readFileSync('js/editor/templates/editor-detail-empty-state-template.js', 'utf8');
-    assert.match(content, /function buildDetailEmptyStateTemplate\(\)/,
-        'must define buildDetailEmptyStateTemplate function');
+    assert.match(content, /export\s+function buildDetailEmptyStateTemplate\(\)/,
+        'must define buildDetailEmptyStateTemplate as exported function');
     assert.match(content, /mount\.outerHTML\s*=\s*buildDetailEmptyStateTemplate\(\)/,
         'must call buildDetailEmptyStateTemplate() for mount.outerHTML');
 });
@@ -290,7 +291,13 @@ test('editor-detail-panel-shell-template.js is loaded as type="module" in editor
         'editor-detail-panel-shell-template.js must be loaded with type="module"');
 });
 
-test('remaining 3 template scripts are NOT loaded as type="module"', () => {
+test('editor-detail-empty-state-template.js is loaded as type="module" in editor.html', () => {
+    const modulePattern = /<script\s+type="module"\s+src="[^"]*editor-detail-empty-state-template\.js/;
+    assert.match(html, modulePattern,
+        'editor-detail-empty-state-template.js must be loaded with type="module"');
+});
+
+test('remaining 2 template scripts are NOT loaded as type="module"', () => {
     const classicTemplates = TEMPLATE_SCRIPTS.filter(s => !isModuleTemplate(s));
     for (const script of classicTemplates) {
         const scriptTagPattern = new RegExp(`<script\\s+src="[^"]*${script.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`);
