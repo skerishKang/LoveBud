@@ -1,6 +1,5 @@
-(function() {
-    function buildSidebarTemplate() {
-        return `
+export function buildSidebarTemplate() {
+    return `
         <aside class="sidebar reveal-fade">
             <div class="editor-sidebar-back-wrap">
                 <a id="backToMyTreesLink" href="my-trees" class="editor-sidebar-back-link">
@@ -34,11 +33,10 @@
                 </div>
             </section>
         </aside>
-        `;
-    }
+    `;
+}
 
-    const mount = document.getElementById('editorSidebarTemplateMount');
-    if (mount) {
-        mount.outerHTML = buildSidebarTemplate();
-    }
-})();
+const mount = document.getElementById('editorSidebarTemplateMount');
+if (mount) {
+    mount.outerHTML = buildSidebarTemplate();
+}

@@ -25,7 +25,7 @@ const TEMPLATE_BUILDERS = [
     path: 'js/editor/templates/editor-sidebar-template.js',
     builder: 'buildSidebarTemplate',
     mountId: 'editorSidebarTemplateMount',
-    module: false
+    module: true
   },
   {
     path: 'js/editor/templates/editor-floating-toolbar-template.js',
