@@ -37,7 +37,7 @@ const TEMPLATE_BUILDERS = [
     path: 'js/editor/templates/editor-detail-panel-shell-template.js',
     builder: 'buildDetailPanelShellTemplate',
     mountId: 'editorDetailPanelShellTemplateMount',
-    module: false
+    module: true
   },
   {
     path: 'js/editor/templates/editor-detail-empty-state-template.js',
