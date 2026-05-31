@@ -48,13 +48,35 @@ test('YouTube fallback preserves validation order and regex checks', () => {
   assert.match(block, /\(\[0-9A-Za-z_-\]\+\)/);
 });
 
-test('editor delegates local YouTube fallback while keeping rootUtils priority', () => {
-  assert.match(editorSource, /shellHelpers\.getYouTubeInputErrorMessageFallback/);
-  assert.match(editorSource, /const getYouTubeInputErrorMessageFallback\s*=/);
+test('editor.js delegates getYouTubeInputErrorMessageFallback through required shell helper', () => {
+  assert.match(
+    editorSource,
+    /const\s+getYouTubeInputErrorMessageFallback\s*=\s*shellHelpers\.getYouTubeInputErrorMessageFallback/
+  );
+  assert.doesNotMatch(
+    editorSource,
+    /const\s+getYouTubeInputErrorMessageFallback\s*=\s*shellHelpers\.getYouTubeInputErrorMessageFallback\s*\|\|/
+  );
+  assert.match(
+    editorSource,
+    /LoveBudEditorShellHelpers\.getYouTubeInputErrorMessageFallback missing/
+  );
   assert.match(editorSource, /if \(typeof rootUtils\.getYouTubeInputErrorMessage === 'function'\)/);
   assert.match(editorSource, /return rootUtils\.getYouTubeInputErrorMessage\(i18n,\s*rawUrl\)/);
   assert.match(editorSource, /warnRootHelperFallback\(\)/);
   assert.match(editorSource, /return getYouTubeInputErrorMessageFallback\(i18n,\s*rawUrl\)/);
+});
+
+test('editor.js guards missing getYouTubeInputErrorMessageFallback before wrapper creation and without reportError', () => {
+  const guardIndex = editorSource.indexOf('LoveBudEditorShellHelpers.getYouTubeInputErrorMessageFallback missing');
+  const wrapperIndex = editorSource.indexOf('const getYouTubeInputErrorMessage = function(i18n, rawUrl)');
+
+  assert.ok(guardIndex !== -1, 'missing getYouTubeInputErrorMessageFallback guard must exist');
+  assert.ok(wrapperIndex !== -1, 'getYouTubeInputErrorMessage wrapper must exist');
+  assert.ok(guardIndex < wrapperIndex, 'guard must run before wrapper creation');
+
+  const guardBlock = editorSource.slice(guardIndex - 100, guardIndex + 200);
+  assert.doesNotMatch(guardBlock, /reportError\(/);
 });
 
 test('editor no longer owns local YouTube validation body inside wrapper', () => {
