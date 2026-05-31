@@ -819,20 +819,14 @@ function createEditorCanvas(deps) {
             return;
         }
 
-        if (typeof panzoomUtils.calculateZoomScale === 'function') {
-            const newScale = panzoomUtils.calculateZoomScale(viewportState.scale, factor);
-            if (newScale === viewportState.scale) return;
-            viewportState.scale = newScale;
-        } else {
-            // Fallback
-            const oldScale = viewportState.scale || 1;
-            const newScale = factor >= 1 ? Math.min(1.5, oldScale + 0.25) : Math.max(0.2, oldScale - 0.25);
-            if (newScale === oldScale) return;
-            viewportState.scale = newScale;
+        if (typeof panzoomUtils.zoomByFallback === 'function') {
+            panzoomUtils.zoomByFallback({
+                factor,
+                viewportState,
+                scheduleRender,
+                persistStoredPositions
+            });
         }
-
-        scheduleRender();
-        persistStoredPositions();
     }
 
     function addNodePosition(memoryId, pos) {

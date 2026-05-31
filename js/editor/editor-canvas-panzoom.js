@@ -118,3 +118,27 @@ export function recenterViewportFallback(options) {
     return true;
 }
 
+/**
+ * Fallback orchestration for zoomBy when no canvasViewport delegate exists.
+ * Returns true if the zoom was applied, false if scale didn't change.
+ */
+export function zoomByFallback(options) {
+    const {
+        factor,
+        viewportState,
+        scheduleRender,
+        persistStoredPositions
+    } = options;
+
+    const oldScale = viewportState.scale || 1;
+    const newScale = calculateZoomScale(oldScale, factor);
+
+    if (newScale === oldScale) return false;
+
+    viewportState.scale = newScale;
+    scheduleRender();
+    persistStoredPositions();
+
+    return true;
+}
+
