@@ -1,274 +1,127 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const dataLoaderFallbacks = window.LoveBudEditorDataLoaderFallbacks || {};
-    const entryFallbacks = window.LoveBudEditorEntryFallbacks || {};
-    const shellHelpers = window.LoveBudEditorShellHelpers || {};
+    const entryDependencies = window.LoveBudEditorEntryDependencies || {};
+    const resolveEditorEntryDependencies = entryDependencies.resolveEditorEntryDependencies;
 
-    const rootUtils = window.LoveBudEditorUtils || {};
-    const editorHelpers = window.LoveBudEditorHelpers || {};
-
-    const findRootMemory = rootUtils.findRootMemory,
-        getCanonicalRootId = rootUtils.getCanonicalRootId,
-        isRootMemory = rootUtils.isRootMemory;
-
-    const missingRootHelpers = [
-        ['LoveBudEditorUtils.findRootMemory', findRootMemory],
-        ['LoveBudEditorUtils.getCanonicalRootId', getCanonicalRootId],
-        ['LoveBudEditorUtils.isRootMemory', isRootMemory]
-    ].filter(([, helper]) => typeof helper !== 'function');
-
-    if (missingRootHelpers.length) {
-        const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] },
-            msg = missingRootHelpers.map(([name]) => name + ' missing').join('; ');
+    if (typeof resolveEditorEntryDependencies !== 'function') {
+        const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] };
+        const msg = 'LoveBudEditorEntryDependencies.resolveEditorEntryDependencies missing';
         console.error('[editor-main] ERROR: ' + msg);
         debugState.errors.push({ msg, error: msg });
         return;
     }
 
-    const editorSaveStatus = window.LoveBudEditorSaveStatus || {};
-    const editorPageHelpers = window.LoveBudEditorPageHelpers || {};
-    const editorTreeHelpers = window.LoveBudEditorTreeHelpers || {};
+    const entryDependenciesResult = resolveEditorEntryDependencies({
+        windowRef: window,
+        URLSearchParamsRef: URLSearchParams
+    });
+
+    if (entryDependenciesResult.status === 'stopped') return;
+
+    const deps = entryDependenciesResult.deps;
+    const dataLoaderFallbacks = window.LoveBudEditorDataLoaderFallbacks || deps.dataLoaderFallbacks;
+    const entryFallbacks = window.LoveBudEditorEntryFallbacks || deps.entryFallbacks;
+    const shellHelpers = window.LoveBudEditorShellHelpers || deps.shellHelpers;
+    const rootUtils = window.LoveBudEditorUtils || {};
+    const editorHelpers = deps.editorHelpers;
+    const editorSaveStatus = deps.editorSaveStatus;
+    const editorPageHelpers = deps.editorPageHelpers;
+    const editorTreeHelpers = deps.editorTreeHelpers;
     const editorSelectionUI = window.LoveBudEditorSelectionUI || {};
-    const editorBindings = window.LoveBudEditorBindings || {};
-    const editorPageEventBindings = window.LoveBudEditorPageEventBindings || {};
-    const bindEditorPageEvents = editorPageEventBindings.bindEditorPageEvents;
-    const editorDataLoader = window.LoveBudEditorDataLoader || {};
-    const editorInitialLoadFlow = window.LoveBudEditorInitialLoadFlow || {};
-    const runEditorInitialLoadFlow = editorInitialLoadFlow.runEditorInitialLoadFlow;
-    const editorRefreshSaveRuntime = window.LoveBudEditorRefreshSaveRuntime || {},
-        createEditorRefreshSaveRuntime = editorRefreshSaveRuntime.createEditorRefreshSaveRuntime;
-    const editorStartupContext = window.LoveBudEditorStartupContext || {};
-    const createEditorStartupContext = editorStartupContext.createEditorStartupContext;
+    const editorBindings = deps.editorBindings;
+    const editorPageEventBindings = window.LoveBudEditorPageEventBindings || deps.editorPageEventBindings;
+    const editorDataLoader = deps.editorDataLoader;
+    const editorInitialLoadFlow = deps.editorInitialLoadFlow;
+    const editorRefreshSaveRuntime = window.LoveBudEditorRefreshSaveRuntime || deps.editorRefreshSaveRuntime;
+    const editorStartupContext = deps.editorStartupContext;
     const editorAuthHelpers = window.LoveBudEditorAuthHelpers || {};
+    const editorShellCopyApplier = window.LoveBudEditorShellCopyApplier || deps.editorShellCopyApplier;
+    const editorDomRefsBuilder = window.LoveBudEditorDomRefsBuilder || deps.editorDomRefsBuilder;
+    const bindEditorPageEvents = editorPageEventBindings.bindEditorPageEvents;
+    const runEditorInitialLoadFlow = editorInitialLoadFlow.runEditorInitialLoadFlow;
+    const createEditorRefreshSaveRuntime = editorRefreshSaveRuntime.createEditorRefreshSaveRuntime;
+    const createEditorStartupContext = editorStartupContext.createEditorStartupContext;
+    const getConfirmedSessionUser = deps.getConfirmedSessionUser;
     const readConfirmedAuthCacheFromHelper = () => (
         window.LoveBudEditorAuthHelpers?.readConfirmedAuthCache?.() || null
     );
-    const getConfirmedSessionUser = function() {
-        try {
-            if (window.LoveBudProtectedRoute) {
-                var state = window.LoveBudProtectedRoute.getAuthState();
-                if (state.ready && state.user) return state.user;
-            }
-            if (window.getConfirmedAuthUser) return window.getConfirmedAuthUser();
-        } catch (e) {}
-        return readConfirmedAuthCacheFromHelper();
-    };
-    const hasConfirmedSessionUser = editorAuthHelpers.hasConfirmedSessionUser || (() => !!getConfirmedSessionUser());
-
     const getHttpStatus = shellHelpers.getHttpStatus;
-
     const createInlineShowToastFallback = shellHelpers.createInlineShowToastFallback;
-    if (typeof createInlineShowToastFallback !== 'function') {
-        const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] };
-        const msg = 'LoveBudEditorShellHelpers.createInlineShowToastFallback missing';
-        console.error('[editor-main] ERROR: ' + msg);
-        debugState.errors.push({ msg, error: msg });
-        return;
-    }
-
-    const showToast = editorHelpers.createToast
-        ? editorHelpers.createToast({ warningKey: '__editorToastWarningShown' })
-        : createInlineShowToastFallback();
-
+    if (typeof createInlineShowToastFallback !== 'function') { const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] }; const msg = 'LoveBudEditorShellHelpers.createInlineShowToastFallback missing'; console.error('[editor-main] ERROR: ' + msg); debugState.errors.push({ msg, error: msg }); return; }
+    const showToast = deps.showToast;
     const getI18n = shellHelpers.getI18n;
-    if (typeof getI18n !== 'function') {
-        const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] };
-        const msg = 'LoveBudEditorShellHelpers.getI18n missing';
-        console.error('[editor-main] ERROR: ' + msg);
-        debugState.errors.push({ msg, error: msg });
-        return;
-    }
+    if (typeof getI18n !== 'function') { const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] }; const msg = 'LoveBudEditorShellHelpers.getI18n missing'; console.error('[editor-main] ERROR: ' + msg); debugState.errors.push({ msg, error: msg }); return; }
     const i18n = getI18n();
-
     const getEditorBasePath = shellHelpers.getEditorBasePath;
-    if (typeof getEditorBasePath !== 'function') {
-        const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] };
-        const msg = 'LoveBudEditorShellHelpers.getEditorBasePath missing';
-        console.error('[editor-main] ERROR: ' + msg);
-        debugState.errors.push({ msg, error: msg });
-        return;
-    }
-
+    if (typeof getEditorBasePath !== 'function') { const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] }; const msg = 'LoveBudEditorShellHelpers.getEditorBasePath missing'; console.error('[editor-main] ERROR: ' + msg); debugState.errors.push({ msg, error: msg }); return; }
     const buildEditorRedirectTargetHelper = shellHelpers.buildEditorRedirectTarget;
-    if (typeof buildEditorRedirectTargetHelper !== 'function') {
-        const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] };
-        const msg = 'LoveBudEditorShellHelpers.buildEditorRedirectTarget missing';
-        console.error('[editor-main] ERROR: ' + msg);
-        debugState.errors.push({ msg, error: msg });
-        return;
-    }
-    const buildEditorRedirectTarget = () => buildEditorRedirectTargetHelper.call(shellHelpers);
-
+    if (typeof buildEditorRedirectTargetHelper !== 'function') { const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] }; const msg = 'LoveBudEditorShellHelpers.buildEditorRedirectTarget missing'; console.error('[editor-main] ERROR: ' + msg); debugState.errors.push({ msg, error: msg }); return; }
+    const buildEditorRedirectTarget = buildEditorRedirectTargetHelper.call(shellHelpers);
     const redirectToEditorLogin = editorPageHelpers.redirectToEditorLogin;
-
-    if (typeof redirectToEditorLogin !== 'function') {
-        const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] };
-        const msg = 'LoveBudEditorPageHelpers.redirectToEditorLogin missing';
-        console.error('[editor-main] ERROR: ' + msg);
-        debugState.errors.push({ msg, error: msg });
-        return;
-    }
-
+    if (typeof redirectToEditorLogin !== 'function') { const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] }; const msg = 'LoveBudEditorPageHelpers.redirectToEditorLogin missing'; console.error('[editor-main] ERROR: ' + msg); debugState.errors.push({ msg, error: msg }); return; }
     const safeI18nText = editorHelpers.safeI18nText;
     const resolveHintText = editorHelpers.resolveHintText;
     const resolveTreeTitleText = editorHelpers.resolveTreeTitleText;
     const resolveInfoText = editorHelpers.resolveInfoText;
-
     const missingTextResolvers = [
         ['LoveBudEditorHelpers.safeI18nText', safeI18nText],
         ['LoveBudEditorHelpers.resolveHintText', resolveHintText],
         ['LoveBudEditorHelpers.resolveTreeTitleText', resolveTreeTitleText],
         ['LoveBudEditorHelpers.resolveInfoText', resolveInfoText]
     ].filter(([, helper]) => typeof helper !== 'function');
-
-    if (missingTextResolvers.length) {
-        const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] };
-        const msg = missingTextResolvers.map(([name]) => name + ' missing').join('; ');
-        console.error('[editor-main] ERROR: ' + msg);
-        debugState.errors.push({ msg, error: msg });
-        return;
-    }
-
+    if (missingTextResolvers.length) { const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] }; const msg = missingTextResolvers.map(([name]) => name + ' missing').join('; '); console.error('[editor-main] ERROR: ' + msg); debugState.errors.push({ msg, error: msg }); return; }
     const syncCurrentTreeData = editorTreeHelpers.syncCurrentTreeData;
-
-    if (typeof syncCurrentTreeData !== 'function') {
-        const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] };
-        const msg = 'LoveBudEditorTreeHelpers.syncCurrentTreeData missing';
-        console.error('[editor-main] ERROR: ' + msg);
-        debugState.errors.push({ msg, error: msg });
-        return;
-    }
-
+    if (typeof syncCurrentTreeData !== 'function') { const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] }; const msg = 'LoveBudEditorTreeHelpers.syncCurrentTreeData missing'; console.error('[editor-main] ERROR: ' + msg); debugState.errors.push({ msg, error: msg }); return; }
     const resolveParentIdForCreate = editorTreeHelpers.resolveParentIdForCreate;
-
-    if (typeof resolveParentIdForCreate !== 'function') {
-        const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] };
-        const msg = 'LoveBudEditorTreeHelpers.resolveParentIdForCreate missing';
-        console.error('[editor-main] ERROR: ' + msg);
-        debugState.errors.push({ msg, error: msg });
-        return;
-    }
-
+    if (typeof resolveParentIdForCreate !== 'function') { const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] }; const msg = 'LoveBudEditorTreeHelpers.resolveParentIdForCreate missing'; console.error('[editor-main] ERROR: ' + msg); debugState.errors.push({ msg, error: msg }); return; }
     const getMyTreesHref = editorPageHelpers.getMyTreesHref;
-    if (typeof getMyTreesHref !== 'function') {
-        const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] };
-        const msg = 'LoveBudEditorPageHelpers.getMyTreesHref missing';
-        console.error('[editor-main] ERROR: ' + msg);
-        debugState.errors.push({ msg, error: msg });
-        return;
-    }
+    if (typeof getMyTreesHref !== 'function') { const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] }; const msg = 'LoveBudEditorPageHelpers.getMyTreesHref missing'; console.error('[editor-main] ERROR: ' + msg); debugState.errors.push({ msg, error: msg }); return; }
     const escapeHtml = editorHelpers.escapeHtml;
     const safeUrl = editorHelpers.safeUrl;
     const resolveMemoryThumbnail = editorHelpers.resolveMemoryThumbnail;
-
     const missingMediaResolvers = [
         ['LoveBudEditorHelpers.escapeHtml', escapeHtml],
         ['LoveBudEditorHelpers.safeUrl', safeUrl],
         ['LoveBudEditorHelpers.resolveMemoryThumbnail', resolveMemoryThumbnail]
     ].filter(([, helper]) => typeof helper !== 'function');
-
-    if (missingMediaResolvers.length) {
-        const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] };
-        const msg = missingMediaResolvers.map(([name]) => name + ' missing').join('; ');
-        console.error('[editor-main] ERROR: ' + msg);
-        debugState.errors.push({ msg, error: msg });
-        return;
-    }
-
+    if (missingMediaResolvers.length) { const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] }; const msg = missingMediaResolvers.map(([name]) => name + ' missing').join('; '); console.error('[editor-main] ERROR: ' + msg); debugState.errors.push({ msg, error: msg }); return; }
     const getYouTubeInputErrorMessageFallback = shellHelpers.getYouTubeInputErrorMessageFallback;
-
-    if (typeof getYouTubeInputErrorMessageFallback !== 'function') {
-        const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] };
-        const msg = 'LoveBudEditorShellHelpers.getYouTubeInputErrorMessageFallback missing';
-        console.error('[editor-main] ERROR: ' + msg);
-        debugState.errors.push({ msg, error: msg });
-        return;
-    }
-
+    if (typeof getYouTubeInputErrorMessageFallback !== 'function') { const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] }; const msg = 'LoveBudEditorShellHelpers.getYouTubeInputErrorMessageFallback missing'; console.error('[editor-main] ERROR: ' + msg); debugState.errors.push({ msg, error: msg }); return; }
     const getYouTubeInputErrorMessage = typeof rootUtils.getYouTubeInputErrorMessage === 'function' ? rootUtils.getYouTubeInputErrorMessage : getYouTubeInputErrorMessageFallback;
-
     const renderTreeLoadError = editorPageHelpers.renderTreeLoadError;
-
-    if (typeof renderTreeLoadError !== 'function') {
-        const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] };
-        const msg = 'LoveBudEditorPageHelpers.renderTreeLoadError missing';
-        console.error('[editor-main] ERROR: ' + msg);
-        debugState.errors.push({ msg, error: msg });
-        return;
-    }
-
+    if (typeof renderTreeLoadError !== 'function') { const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] }; const msg = 'LoveBudEditorPageHelpers.renderTreeLoadError missing'; console.error('[editor-main] ERROR: ' + msg); debugState.errors.push({ msg, error: msg }); return; }
     const buildTreeLoadErrorCopy = editorPageHelpers.buildTreeLoadErrorCopy;
-
-    if (typeof buildTreeLoadErrorCopy !== 'function') {
-        const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] };
-        const msg = 'LoveBudEditorPageHelpers.buildTreeLoadErrorCopy missing';
-        console.error('[editor-main] ERROR: ' + msg);
-        debugState.errors.push({ msg, error: msg });
-        return;
-    }
-
-    const nextMemoryIdFromMemories = editorTreeHelpers.nextMemoryIdFromMemories;
-
-    const markEditorReady = shellHelpers.markEditorReady;
-
-    const applyEditorEditabilityState = shellHelpers.applyEditorEditabilityState;
-
-    const editorShellCopyApplier = window.LoveBudEditorShellCopyApplier || {};
-    const createPrepareEditorShell = editorShellCopyApplier.createPrepareEditorShell;
-
+    if (typeof buildTreeLoadErrorCopy !== 'function') { const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] }; const msg = 'LoveBudEditorPageHelpers.buildTreeLoadErrorCopy missing'; console.error('[editor-main] ERROR: ' + msg); debugState.errors.push({ msg, error: msg }); return; }
     const applyEditorShellCopy = shellHelpers.applyEditorShellCopy;
-
-    if (typeof applyEditorShellCopy !== 'function') {
-        const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] };
-        const msg = 'LoveBudEditorShellHelpers.applyEditorShellCopy missing';
-        console.error('[editor-main] ERROR: ' + msg);
-        debugState.errors.push({ msg, error: msg });
-        return;
-    }
-
+    if (typeof applyEditorShellCopy !== 'function') { const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] }; const msg = 'LoveBudEditorShellHelpers.applyEditorShellCopy missing'; console.error('[editor-main] ERROR: ' + msg); debugState.errors.push({ msg, error: msg }); return; }
     applyEditorShellCopy(safeI18nText, i18n);
-
-    const editorDomRefsBuilder = window.LoveBudEditorDomRefsBuilder || {};
-    const createEditorDomRefs = editorDomRefsBuilder.createEditorDomRefs;
-
-    if (typeof createPrepareEditorShell !== 'function') {
-        const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] };
-        const msg = 'LoveBudEditorShellCopyApplier.createPrepareEditorShell missing';
-        console.error('[editor-main] ERROR: ' + msg);
-        debugState.errors.push({ msg, error: msg });
-        return;
-    }
-
+    const createPrepareEditorShell = editorShellCopyApplier.createPrepareEditorShell;
+    if (typeof createPrepareEditorShell !== 'function') { const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] }; const msg = 'LoveBudEditorShellCopyApplier.createPrepareEditorShell missing'; console.error('[editor-main] ERROR: ' + msg); debugState.errors.push({ msg, error: msg }); return; }
     const prepareEditorShell = createPrepareEditorShell({ applyEditorShellCopy, safeI18nText, i18n, getMyTreesHref });
-
+    const nextMemoryIdFromMemories = editorTreeHelpers.nextMemoryIdFromMemories;
+    const markEditorReady = shellHelpers.markEditorReady;
+    const applyEditorEditabilityState = shellHelpers.applyEditorEditabilityState;
+    const createEditorDomRefs = editorDomRefsBuilder.createEditorDomRefs;
     const createEditorDebugReporter = shellHelpers.createEditorDebugReporter;
-
-    if (typeof createEditorDebugReporter !== 'function') {
-        const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] };
-        const msg = 'LoveBudEditorShellHelpers.createEditorDebugReporter missing';
-        console.error('[editor-main] ERROR: ' + msg);
-        debugState.errors.push({ msg, error: msg });
-        return;
-    }
-
+    if (typeof createEditorDebugReporter !== 'function') { const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] }; const msg = 'LoveBudEditorShellHelpers.createEditorDebugReporter missing'; console.error('[editor-main] ERROR: ' + msg); debugState.errors.push({ msg, error: msg }); return; }
     const createEditorStartupDependencyWaiter = shellHelpers.createEditorStartupDependencyWaiter;
-
     const exposeCanvasEmptyGuideUpdater = shellHelpers.exposeCanvasEmptyGuideUpdater;
-
     const exposeDetailPanelUpdater = shellHelpers.exposeDetailPanelUpdater;
-
     const createSelectedMomentFocusHandler = shellHelpers.createSelectedMomentFocusHandler;
-
     const createSidebarTreeActionsUpdater = shellHelpers.createSidebarTreeActionsUpdater;
-
     const createMemoryActionsReadinessWrapper = shellHelpers.createMemoryActionsReadinessWrapper;
-
     const createCurrentMomentDetailOpener = shellHelpers.createCurrentMomentDetailOpener;
-
     const createSaveStatusOrchestrationFallback = shellHelpers.createSaveStatusOrchestrationFallback;
-
     const exposeRefreshMemoriesBridge = shellHelpers.exposeRefreshMemoriesBridge;
-
     const resolveSaveStatusTimeFormatter = shellHelpers.resolveSaveStatusTimeFormatter;
+    const findRootMemory = rootUtils.findRootMemory;
+    const getCanonicalRootId = rootUtils.getCanonicalRootId;
+    const isRootMemory = rootUtils.isRootMemory;
+    const missingRootHelpers = [
+        ['LoveBudEditorUtils.findRootMemory', findRootMemory],
+        ['LoveBudEditorUtils.getCanonicalRootId', getCanonicalRootId],
+        ['LoveBudEditorUtils.isRootMemory', isRootMemory]
+    ].filter(([, helper]) => typeof helper !== 'function');
+    if (missingRootHelpers.length) { const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] }; const msg = missingRootHelpers.map(([name]) => name + ' missing').join('; '); console.error('[editor-main] ERROR: ' + msg); debugState.errors.push({ msg, error: msg }); return; }
 
     const startEditor = async () => {
         const { log, reportError } = createEditorDebugReporter();
