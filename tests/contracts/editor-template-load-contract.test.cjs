@@ -165,6 +165,14 @@ test('editor-canvas-topbar-template.js defines buildCanvasTopbarTemplate builder
         'must call buildCanvasTopbarTemplate() for mount.outerHTML');
 });
 
+test('editor-empty-guide-template.js defines buildEmptyGuideTemplate builder', () => {
+    const content = fs.readFileSync('js/editor/templates/editor-empty-guide-template.js', 'utf8');
+    assert.match(content, /function buildEmptyGuideTemplate\(\)/,
+        'must define buildEmptyGuideTemplate function');
+    assert.match(content, /mount\.outerHTML\s*=\s*buildEmptyGuideTemplate\(\)/,
+        'must call buildEmptyGuideTemplate() for mount.outerHTML');
+});
+
 // --- 11. Template script count matches expected ---
 
 test('exactly 9 template scripts are loaded in editor.html', () => {
