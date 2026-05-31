@@ -205,8 +205,16 @@ document.addEventListener('DOMContentLoaded', () => {
         return getYouTubeInputErrorMessageFallback(i18n, rawUrl);
     };
 
-    const renderTreeLoadError = editorPageHelpers.renderTreeLoadError ||
-        entryFallbacks.createInlineRenderTreeLoadErrorFallback({ getMyTreesHref });
+    const renderTreeLoadError = editorPageHelpers.renderTreeLoadError;
+
+    if (typeof renderTreeLoadError !== 'function') {
+        const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] };
+        const msg = 'LoveBudEditorPageHelpers.renderTreeLoadError missing';
+        console.error('[editor-main] ERROR: ' + msg);
+        debugState.errors.push({ msg, error: msg });
+        return;
+    }
+
     const createInlineNextMemoryIdFallback = dataLoaderFallbacks.createInlineNextMemoryIdFallback || ((options) => () => 'm1');
     const createInlineFormatTimeAgoFallback = entryFallbacks.createInlineFormatTimeAgoFallback;
 

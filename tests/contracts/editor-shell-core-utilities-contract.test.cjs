@@ -157,10 +157,6 @@ test('editor entrypoint requires getMyTreesHref page helper', () => {
   // check parameter passing is intact
   assert.match(
     editorSource,
-    /entryFallbacks\.createInlineRenderTreeLoadErrorFallback\(\{\s*getMyTreesHref\s*\}\)/
-  );
-  assert.match(
-    editorSource,
-    /createPrepareEditorShell\(\{\s*applyEditorShellCopy,\s*safeI18nText,\s*i18n,\s*getMyTreesHref\s*\}\)/
+    /createPrepareEditorShell\(\{\s*applyEditorShellCopy,\s*safeI18nText,\s*i18n,\s*getMyTreesHref\s*\}/
   );
 });
