@@ -12,7 +12,7 @@ function extractOpenCurrentMomentDetailBlock(source) {
   const start = source.indexOf(marker);
   assert.notEqual(start, -1, 'openCurrentMomentDetail block must exist');
 
-  const end = source.indexOf('            const updateTreeVisibility = async', start);
+  const end = source.indexOf('            const updateTreeVisibility = editorTreeHelpers.createTreeVisibilityUpdater({', start);
   assert.notEqual(end, -1, 'updateTreeVisibility marker must follow openCurrentMomentDetail');
 
   return source.slice(start, end);

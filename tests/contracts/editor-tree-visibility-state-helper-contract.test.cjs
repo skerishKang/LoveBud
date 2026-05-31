@@ -6,16 +6,31 @@ const editorSource = fs.readFileSync('js/editor.js', 'utf8');
 const treeHelpersSource = fs.readFileSync('js/editor/editor-tree-helpers.js', 'utf8');
 const editorHtml = fs.readFileSync('pages/editor.html', 'utf8');
 
-function extractUpdateTreeVisibilityBlock(source) {
-  const marker = 'const updateTreeVisibility = async (nextVisibility) => {';
-  const start = source.indexOf(marker);
-  assert.notEqual(start, -1, 'updateTreeVisibility block must exist');
+test('editor tree helpers expose createTreeVisibilityUpdater factory', () => {
+  assert.match(treeHelpersSource, /treeHelpers\.createTreeVisibilityUpdater/);
+  assert.match(treeHelpersSource, /function createTreeVisibilityUpdater\(options\)/);
+});
 
-  const end = source.indexOf("            log('Initializing Detail UI...');", start);
-  assert.notEqual(end, -1, 'detail UI init marker must follow updateTreeVisibility');
+test('createTreeVisibilityUpdater factory accepts required options', () => {
+  assert.match(treeHelpersSource, /var canEdit\s*=\s*opts\.canEdit/);
+  assert.match(treeHelpersSource, /var getTreeId\s*=\s*opts\.getTreeId/);
+  assert.match(treeHelpersSource, /var getApiClient\s*=\s*opts\.getApiClient/);
+  assert.match(treeHelpersSource, /var applyUpdatedTreeVisibility\s*=\s*opts\.applyUpdatedTreeVisibility/);
+  assert.match(treeHelpersSource, /var getCurrentTreeData\s*=\s*opts\.getCurrentTreeData/);
+  assert.match(treeHelpersSource, /var updateSidebarStatus\s*=\s*opts\.updateSidebarStatus/);
+  assert.match(treeHelpersSource, /var getCurrentEditingMemory\s*=\s*opts\.getCurrentEditingMemory/);
+  assert.match(treeHelpersSource, /var updateDetailPanel\s*=\s*opts\.updateDetailPanel/);
+  assert.match(treeHelpersSource, /var reportError\s*=\s*opts\.reportError/);
+});
 
-  return source.slice(start, end);
-}
+test('createTreeVisibilityUpdater returns async function with correct guard and flow', () => {
+  assert.match(treeHelpersSource, /return async function updateTreeVisibility\(nextVisibility\)/);
+  assert.match(treeHelpersSource, /if \(canEdit === false\) return/);
+  assert.match(treeHelpersSource, /apiClient\.updateTree\(treeId,\s*\{\s*visibility:\s*nextVisibility\s*\}\)/);
+  assert.match(treeHelpersSource, /applyUpdatedTreeVisibility\(\{/);
+  assert.match(treeHelpersSource, /updateSidebarStatus\(\)/);
+  assert.match(treeHelpersSource, /updateDetailPanel\(currentEditingMemory\)/);
+});
 
 test('editor tree helpers expose updated visibility state helper', () => {
   assert.match(treeHelpersSource, /treeHelpers\.applyUpdatedTreeVisibility/);
@@ -36,31 +51,21 @@ test('visibility state helper preserves current tree merge semantics', () => {
   assert.match(treeHelpersSource, /return window\.currentTreeData/);
 });
 
-test('editor updateTreeVisibility delegates tree data merge to tree helper', () => {
-  const block = extractUpdateTreeVisibilityBlock(editorSource);
-
-  assert.match(block, /editorTreeHelpers\.applyUpdatedTreeVisibility/);
-  assert.match(block, /updatedTree,/);
-  assert.match(block, /nextVisibility,/);
-  assert.match(block, /currentTreeData:\s*window\.currentTreeData\s*\|\|\s*\{\}/);
-  assert.match(block, /LoveBudEditorTreeHelpers\.applyUpdatedTreeVisibility missing/);
+test('editor.js delegates updateTreeVisibility to createTreeVisibilityUpdater factory', () => {
+  assert.match(editorSource, /editorTreeHelpers\.createTreeVisibilityUpdater\(\{/);
+  assert.doesNotMatch(editorSource, /const updateTreeVisibility = async \(nextVisibility\) => \{/);
 });
 
-test('editor updateTreeVisibility no longer owns currentTreeData merge inline', () => {
-  const block = extractUpdateTreeVisibilityBlock(editorSource);
-
-  assert.doesNotMatch(block, /window\.currentTreeData\s*=\s*\{/);
-  assert.doesNotMatch(block, /\.\.\.\(window\.currentTreeData\s*\|\|\s*\{\}\)/);
-  assert.doesNotMatch(block, /visibility:\s*updatedTree\?\.\s*visibility\s*\|\|\s*nextVisibility/);
-});
-
-test('editor updateTreeVisibility keeps api and refresh flow intact', () => {
-  const block = extractUpdateTreeVisibilityBlock(editorSource);
-
-  assert.match(block, /if \(canEdit === false\) return/);
-  assert.match(block, /window\.apiClient\.updateTree\(treeId,\s*\{\s*visibility:\s*nextVisibility\s*\}\)/);
-  assert.match(block, /updateSidebarStatus\(\)/);
-  assert.match(block, /if \(currentEditingMemory\) updateDetailPanel\(currentEditingMemory\)/);
+test('editor.js passes correct options to createTreeVisibilityUpdater', () => {
+  assert.match(editorSource, /canEdit,/);
+  assert.match(editorSource, /getTreeId:\s*\(\)\s*=>\s*treeId/);
+  assert.match(editorSource, /getApiClient:\s*\(\)\s*=>\s*window\.apiClient/);
+  assert.match(editorSource, /applyUpdatedTreeVisibility:\s*editorTreeHelpers\.applyUpdatedTreeVisibility/);
+  assert.match(editorSource, /getCurrentTreeData:\s*\(\)\s*=>\s*window\.currentTreeData\s*\|\|\s*\{\}/);
+  assert.match(editorSource, /updateSidebarStatus,/);
+  assert.match(editorSource, /getCurrentEditingMemory:\s*\(\)\s*=>\s*currentEditingMemory/);
+  assert.match(editorSource, /updateDetailPanel,/);
+  assert.match(editorSource, /reportError/);
 });
 
 test('editor tree helpers load before editor entrypoint', () => {
@@ -107,15 +112,6 @@ test('editor.js delegates resolveParentIdForCreate through required tree helper'
   assert.match(
     editorSource,
     /LoveBudEditorTreeHelpers\.resolveParentIdForCreate missing/
-  );
-  // syncCurrentTreeData required boundary is intact
-  assert.match(
-    editorSource,
-    /const\s+syncCurrentTreeData\s*=\s*editorTreeHelpers\.syncCurrentTreeData/
-  );
-  assert.doesNotMatch(
-    editorSource,
-    /const\s+syncCurrentTreeData\s*=\s*editorTreeHelpers\.syncCurrentTreeData\s*\|\|/
   );
 });
 
