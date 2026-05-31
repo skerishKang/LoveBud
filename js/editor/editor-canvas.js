@@ -465,13 +465,7 @@ function createEditorCanvas(deps) {
             }
             canvas.style.backgroundPosition = `${viewportState.offsetX}px ${viewportState.offsetY}px`;
 
-            if (typeof renderUtils.clearCanvasNodes === 'function') {
-                renderUtils.clearCanvasNodes(canvas);
-            } else {
-                // Fallback
-                canvas.querySelectorAll('.memory-node').forEach((node) => node.remove());
-                canvas.querySelectorAll('#emptyTreeMessage').forEach((el) => el.remove());
-            }
+            renderUtils.clearCanvasNodes(canvas);
             clearBranches();
             clearGrowthAffordance();
 
