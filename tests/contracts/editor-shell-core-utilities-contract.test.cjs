@@ -45,7 +45,27 @@ test('buildEditorRedirectTarget preserves editor redirect composition', () => {
 });
 
 test('editor entrypoint keeps core utility fallback resolution intact', () => {
-  assert.match(editorSource, /shellHelpers\.getI18n \|\|/);
+  assert.match(
+    editorSource,
+    /const\s+getI18n\s*=\s*shellHelpers\.getI18n/
+  );
+  assert.doesNotMatch(
+    editorSource,
+    /const\s+getI18n\s*=\s*shellHelpers\.getI18n\s*\|\|/
+  );
+  assert.match(
+    editorSource,
+    /LoveBudEditorShellHelpers\.getI18n missing/
+  );
+
+  // Guard must not use reportError
+  const guardStart = editorSource.indexOf('LoveBudEditorShellHelpers.getI18n missing');
+  assert.notEqual(guardStart, -1, 'getI18n missing guard must exist');
+  const guardEnd = editorSource.indexOf('const i18n = getI18n();', guardStart);
+  assert.notEqual(guardEnd, -1, 'i18n initialization must exist after guard');
+  const guardBlock = editorSource.slice(guardStart, guardEnd);
+  assert.doesNotMatch(guardBlock, /reportError/);
+
   assert.match(editorSource, /const i18n\s*=\s*getI18n\(\)/);
 
   assert.match(editorSource, /shellHelpers\.getEditorBasePath \|\|/);
