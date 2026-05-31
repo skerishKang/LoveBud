@@ -95,20 +95,38 @@ test('editor.js delegates syncCurrentTreeData through required tree helper', () 
   );
 });
 
-test('editor.js guards missing syncCurrentTreeData and keeps resolveParentIdForCreate fallback', () => {
-  const guardIndex = editorSource.indexOf('LoveBudEditorTreeHelpers.syncCurrentTreeData missing');
-  const callIndex = editorSource.indexOf('syncCurrentTreeData(tree);');
+test('editor.js delegates resolveParentIdForCreate through required tree helper', () => {
+  assert.match(
+    editorSource,
+    /const\s+resolveParentIdForCreate\s*=\s*editorTreeHelpers\.resolveParentIdForCreate/
+  );
+  assert.doesNotMatch(
+    editorSource,
+    /const\s+resolveParentIdForCreate\s*=\s*editorTreeHelpers\.resolveParentIdForCreate\s*\|\|/
+  );
+  assert.match(
+    editorSource,
+    /LoveBudEditorTreeHelpers\.resolveParentIdForCreate missing/
+  );
+  // syncCurrentTreeData required boundary is intact
+  assert.match(
+    editorSource,
+    /const\s+syncCurrentTreeData\s*=\s*editorTreeHelpers\.syncCurrentTreeData/
+  );
+  assert.doesNotMatch(
+    editorSource,
+    /const\s+syncCurrentTreeData\s*=\s*editorTreeHelpers\.syncCurrentTreeData\s*\|\|/
+  );
+});
 
-  assert.ok(guardIndex !== -1, 'missing syncCurrentTreeData guard must exist');
-  assert.ok(callIndex !== -1, 'syncCurrentTreeData call must exist');
-  assert.ok(guardIndex < callIndex, 'guard must run before syncCurrentTreeData call');
+test('editor.js guards missing resolveParentIdForCreate without reportError', () => {
+  const guardIndex = editorSource.indexOf('LoveBudEditorTreeHelpers.resolveParentIdForCreate missing');
+  const usageIndex = editorSource.indexOf('resolveParentIdForCreate,');
+
+  assert.ok(guardIndex !== -1, 'missing resolveParentIdForCreate guard must exist');
+  assert.ok(usageIndex !== -1, 'resolveParentIdForCreate usage must exist');
+  assert.ok(guardIndex < usageIndex, 'guard must run before resolveParentIdForCreate usage');
 
   const guardBlock = editorSource.slice(guardIndex - 100, guardIndex + 200);
   assert.doesNotMatch(guardBlock, /reportError\(/);
-
-  // resolveParentIdForCreate fallback is still present
-  assert.match(
-    editorSource,
-    /resolveParentIdForCreate\s*=\s*editorTreeHelpers\.resolveParentIdForCreate\s*\|\|/
-  );
 });

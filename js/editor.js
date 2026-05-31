@@ -156,12 +156,15 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    const resolveParentIdForCreate = editorTreeHelpers.resolveParentIdForCreate || ((selectedNodeId, canonicalRootId) => {
-        if (!selectedNodeId || selectedNodeId === canonicalRootId) {
-            return canonicalRootId === 'root' ? null : canonicalRootId;
-        }
-        return selectedNodeId;
-    });
+    const resolveParentIdForCreate = editorTreeHelpers.resolveParentIdForCreate;
+
+    if (typeof resolveParentIdForCreate !== 'function') {
+        const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] };
+        const msg = 'LoveBudEditorTreeHelpers.resolveParentIdForCreate missing';
+        console.error('[editor-main] ERROR: ' + msg);
+        debugState.errors.push({ msg, error: msg });
+        return;
+    }
 
     const getMyTreesHref = editorPageHelpers.getMyTreesHref;
     if (typeof getMyTreesHref !== 'function') {
