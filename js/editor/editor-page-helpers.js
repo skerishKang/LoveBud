@@ -143,6 +143,43 @@
     if (addBtn) addBtn.disabled = true;
   }
 
+  function registerEditorAuthStart(options) {
+    var windowRef = options.windowRef;
+    var startEditor = options.startEditor;
+    var redirectToEditorLogin = options.redirectToEditorLogin;
+    var readConfirmedAuthCache = options.readConfirmedAuthCache;
+
+    var editorStarted = false;
+
+    function tryStartEditor(user) {
+      if (editorStarted) {
+        if (user && (!windowRef.currentTreeMemories || windowRef.currentTreeMemories.length <= 1)) {
+          if (windowRef.refreshMemories) windowRef.refreshMemories();
+        }
+        return;
+      }
+
+      if (!user) {
+        var cachedUser = readConfirmedAuthCache();
+        if (!cachedUser || !cachedUser.uid) {
+          redirectToEditorLogin();
+          return;
+        }
+      }
+
+      editorStarted = true;
+      startEditor();
+    }
+
+    if (typeof windowRef.registerOnAuthReady === 'function') {
+      windowRef.registerOnAuthReady(tryStartEditor);
+    } else {
+      windowRef.onAuthReady = tryStartEditor;
+    }
+
+    return tryStartEditor;
+  }
+
   window.LoveBudEditorPageHelpers = {
     getEditorBasePath: getEditorBasePath,
     buildEditorRedirectTarget: buildEditorRedirectTarget,
@@ -151,6 +188,7 @@
     buildMomentDetailHref: buildMomentDetailHref,
     openMomentDetail: openMomentDetail,
     buildTreeLoadErrorCopy: buildTreeLoadErrorCopy,
-    renderTreeLoadError: renderTreeLoadError
+    renderTreeLoadError: renderTreeLoadError,
+    registerEditorAuthStart: registerEditorAuthStart
   };
 })();

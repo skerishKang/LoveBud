@@ -23,11 +23,10 @@ test('js/editor.js retains its legacy entrypoint markers', () => {
     // Initialization markers
     assert.ok(js.includes("document.addEventListener('DOMContentLoaded'"), 'should wait for DOMContentLoaded');
     assert.ok(js.includes('const startEditor = async () => {'), 'should have startEditor async function');
-    assert.ok(js.includes('function tryStartEditor(user)'), 'should have tryStartEditor wrapper');
+    assert.ok(js.includes('registerEditorAuthStart'), 'should delegate auth start to page helpers');
 
     // Compatibility glue markers
     assert.ok(js.includes('window.LoveBudEditorDataLoaderFallbacks'), 'should read global fallbacks');
-    assert.ok(js.includes('window.registerOnAuthReady'), 'should hook into auth ready');
 
     // Global exposure (temporary compat)
     assert.ok(js.includes('exposeDetailPanelUpdater'), 'delegates updateDetailPanel global exposure');
