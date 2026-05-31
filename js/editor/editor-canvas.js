@@ -132,19 +132,11 @@ function createEditorCanvas(deps) {
     }
 
     function calcPosition(mem) {
-        if (typeof utils.calcPosition === 'function') {
-            return utils.calcPosition(mem, {
-                getWorldPosition: getWorldPosition,
-                canvasViewport,
-                viewportState
-            });
-        }
-        // Fallback
-        const world = getWorldPosition(mem);
-        if (typeof canvasViewport.projectWorldPosition === 'function') {
-            return canvasViewport.projectWorldPosition(world, viewportState);
-        }
-        return { x: world.x + viewportState.offsetX, y: world.y + viewportState.offsetY };
+        return utils.calcPosition(mem, {
+            getWorldPosition: getWorldPosition,
+            canvasViewport,
+            viewportState
+        });
     }
 
     function persistStoredPositions() {
