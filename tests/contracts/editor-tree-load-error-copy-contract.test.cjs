@@ -70,14 +70,12 @@ test('editor.js buildTreeLoadErrorCopy guard uses console.error pattern', () => 
   const guardStart = editorSource.indexOf("if (typeof buildTreeLoadErrorCopy !== 'function')");
   assert.notEqual(guardStart, -1, 'buildTreeLoadErrorCopy guard must exist');
 
-  const guardEnd = editorSource.indexOf('const nextMemoryIdFromMemories', guardStart);
+  const guardEnd = editorSource.indexOf('const applyEditorShellCopy', guardStart);
   assert.notEqual(guardEnd, -1, 'guard end marker must exist after guard');
 
   const guardBody = editorSource.slice(guardStart, guardEnd);
 
-  assert.match(guardBody, /console\.error/);
-  assert.match(guardBody, /LoveBudEditorDebug/);
-  assert.match(guardBody, /debugState\.errors\.push/);
+  assert.match(guardBody, /reportEditorBootstrapMissingDependency/);
   assert.doesNotMatch(guardBody, /reportError\(/);
 });
 

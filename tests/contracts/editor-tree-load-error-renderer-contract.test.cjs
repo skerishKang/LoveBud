@@ -61,14 +61,12 @@ test('editor.js renderTreeLoadError guard does not use reportError', () => {
   const guardStart = editorSource.indexOf("if (typeof renderTreeLoadError !== 'function')");
   assert.notEqual(guardStart, -1, 'renderTreeLoadError guard must exist');
 
-  const guardEnd = editorSource.indexOf("const nextMemoryIdFromMemories", guardStart);
+  const guardEnd = editorSource.indexOf("const buildTreeLoadErrorCopy", guardStart);
   assert.notEqual(guardEnd, -1, 'guard end marker must exist after guard');
 
   const guardBody = editorSource.slice(guardStart, guardEnd);
 
-  assert.match(guardBody, /console\.error/);
-  assert.match(guardBody, /LoveBudEditorDebug/);
-  assert.match(guardBody, /debugState\.errors\.push/);
+  assert.match(guardBody, /reportEditorBootstrapMissingDependency/);
   assert.doesNotMatch(guardBody, /reportError\(/);
 });
 

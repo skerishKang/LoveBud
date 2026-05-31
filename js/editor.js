@@ -2,11 +2,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const entryDependencies = window.LoveBudEditorEntryDependencies || {};
     const resolveEditorEntryDependencies = entryDependencies.resolveEditorEntryDependencies;
 
-    if (typeof resolveEditorEntryDependencies !== 'function') {
+    function reportEditorBootstrapMissingDependency(msg) {
         const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] };
-        const msg = 'LoveBudEditorEntryDependencies.resolveEditorEntryDependencies missing';
         console.error('[editor-main] ERROR: ' + msg);
         debugState.errors.push({ msg, error: msg });
+    }
+
+    if (typeof resolveEditorEntryDependencies !== 'function') {
+        reportEditorBootstrapMissingDependency('LoveBudEditorEntryDependencies.resolveEditorEntryDependencies missing');
         return;
     }
 
@@ -46,18 +49,18 @@ document.addEventListener('DOMContentLoaded', () => {
     );
     const getHttpStatus = shellHelpers.getHttpStatus;
     const createInlineShowToastFallback = shellHelpers.createInlineShowToastFallback;
-    if (typeof createInlineShowToastFallback !== 'function') { const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] }; const msg = 'LoveBudEditorShellHelpers.createInlineShowToastFallback missing'; console.error('[editor-main] ERROR: ' + msg); debugState.errors.push({ msg, error: msg }); return; }
+    if (typeof createInlineShowToastFallback !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.createInlineShowToastFallback missing'); return; }
     const showToast = deps.showToast;
     const getI18n = shellHelpers.getI18n;
-    if (typeof getI18n !== 'function') { const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] }; const msg = 'LoveBudEditorShellHelpers.getI18n missing'; console.error('[editor-main] ERROR: ' + msg); debugState.errors.push({ msg, error: msg }); return; }
+    if (typeof getI18n !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.getI18n missing'); return; }
     const i18n = getI18n();
     const getEditorBasePath = shellHelpers.getEditorBasePath;
-    if (typeof getEditorBasePath !== 'function') { const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] }; const msg = 'LoveBudEditorShellHelpers.getEditorBasePath missing'; console.error('[editor-main] ERROR: ' + msg); debugState.errors.push({ msg, error: msg }); return; }
+    if (typeof getEditorBasePath !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.getEditorBasePath missing'); return; }
     const buildEditorRedirectTargetHelper = shellHelpers.buildEditorRedirectTarget;
-    if (typeof buildEditorRedirectTargetHelper !== 'function') { const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] }; const msg = 'LoveBudEditorShellHelpers.buildEditorRedirectTarget missing'; console.error('[editor-main] ERROR: ' + msg); debugState.errors.push({ msg, error: msg }); return; }
+    if (typeof buildEditorRedirectTargetHelper !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.buildEditorRedirectTarget missing'); return; }
     const buildEditorRedirectTarget = () => buildEditorRedirectTargetHelper.call(shellHelpers);
     const redirectToEditorLogin = editorPageHelpers.redirectToEditorLogin;
-    if (typeof redirectToEditorLogin !== 'function') { const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] }; const msg = 'LoveBudEditorPageHelpers.redirectToEditorLogin missing'; console.error('[editor-main] ERROR: ' + msg); debugState.errors.push({ msg, error: msg }); return; }
+    if (typeof redirectToEditorLogin !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorPageHelpers.redirectToEditorLogin missing'); return; }
     const safeI18nText = editorHelpers.safeI18nText;
     const resolveHintText = editorHelpers.resolveHintText;
     const resolveTreeTitleText = editorHelpers.resolveTreeTitleText;
@@ -68,13 +71,13 @@ document.addEventListener('DOMContentLoaded', () => {
         ['LoveBudEditorHelpers.resolveTreeTitleText', resolveTreeTitleText],
         ['LoveBudEditorHelpers.resolveInfoText', resolveInfoText]
     ].filter(([, helper]) => typeof helper !== 'function');
-    if (missingTextResolvers.length) { const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] }; const msg = missingTextResolvers.map(([name]) => name + ' missing').join('; '); console.error('[editor-main] ERROR: ' + msg); debugState.errors.push({ msg, error: msg }); return; }
+    if (missingTextResolvers.length) { reportEditorBootstrapMissingDependency(missingTextResolvers.map(([name]) => name + ' missing').join('; ')); return; }
     const syncCurrentTreeData = editorTreeHelpers.syncCurrentTreeData;
-    if (typeof syncCurrentTreeData !== 'function') { const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] }; const msg = 'LoveBudEditorTreeHelpers.syncCurrentTreeData missing'; console.error('[editor-main] ERROR: ' + msg); debugState.errors.push({ msg, error: msg }); return; }
+    if (typeof syncCurrentTreeData !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorTreeHelpers.syncCurrentTreeData missing'); return; }
     const resolveParentIdForCreate = editorTreeHelpers.resolveParentIdForCreate;
-    if (typeof resolveParentIdForCreate !== 'function') { const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] }; const msg = 'LoveBudEditorTreeHelpers.resolveParentIdForCreate missing'; console.error('[editor-main] ERROR: ' + msg); debugState.errors.push({ msg, error: msg }); return; }
+    if (typeof resolveParentIdForCreate !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorTreeHelpers.resolveParentIdForCreate missing'); return; }
     const getMyTreesHref = editorPageHelpers.getMyTreesHref;
-    if (typeof getMyTreesHref !== 'function') { const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] }; const msg = 'LoveBudEditorPageHelpers.getMyTreesHref missing'; console.error('[editor-main] ERROR: ' + msg); debugState.errors.push({ msg, error: msg }); return; }
+    if (typeof getMyTreesHref !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorPageHelpers.getMyTreesHref missing'); return; }
     const escapeHtml = editorHelpers.escapeHtml;
     const safeUrl = editorHelpers.safeUrl;
     const resolveMemoryThumbnail = editorHelpers.resolveMemoryThumbnail;
@@ -83,26 +86,26 @@ document.addEventListener('DOMContentLoaded', () => {
         ['LoveBudEditorHelpers.safeUrl', safeUrl],
         ['LoveBudEditorHelpers.resolveMemoryThumbnail', resolveMemoryThumbnail]
     ].filter(([, helper]) => typeof helper !== 'function');
-    if (missingMediaResolvers.length) { const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] }; const msg = missingMediaResolvers.map(([name]) => name + ' missing').join('; '); console.error('[editor-main] ERROR: ' + msg); debugState.errors.push({ msg, error: msg }); return; }
+    if (missingMediaResolvers.length) { reportEditorBootstrapMissingDependency(missingMediaResolvers.map(([name]) => name + ' missing').join('; ')); return; }
     const getYouTubeInputErrorMessageFallback = shellHelpers.getYouTubeInputErrorMessageFallback;
-    if (typeof getYouTubeInputErrorMessageFallback !== 'function') { const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] }; const msg = 'LoveBudEditorShellHelpers.getYouTubeInputErrorMessageFallback missing'; console.error('[editor-main] ERROR: ' + msg); debugState.errors.push({ msg, error: msg }); return; }
+    if (typeof getYouTubeInputErrorMessageFallback !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.getYouTubeInputErrorMessageFallback missing'); return; }
     const getYouTubeInputErrorMessage = typeof rootUtils.getYouTubeInputErrorMessage === 'function' ? rootUtils.getYouTubeInputErrorMessage : getYouTubeInputErrorMessageFallback;
     const renderTreeLoadError = editorPageHelpers.renderTreeLoadError;
-    if (typeof renderTreeLoadError !== 'function') { const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] }; const msg = 'LoveBudEditorPageHelpers.renderTreeLoadError missing'; console.error('[editor-main] ERROR: ' + msg); debugState.errors.push({ msg, error: msg }); return; }
+    if (typeof renderTreeLoadError !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorPageHelpers.renderTreeLoadError missing'); return; }
     const buildTreeLoadErrorCopy = editorPageHelpers.buildTreeLoadErrorCopy;
-    if (typeof buildTreeLoadErrorCopy !== 'function') { const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] }; const msg = 'LoveBudEditorPageHelpers.buildTreeLoadErrorCopy missing'; console.error('[editor-main] ERROR: ' + msg); debugState.errors.push({ msg, error: msg }); return; }
+    if (typeof buildTreeLoadErrorCopy !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorPageHelpers.buildTreeLoadErrorCopy missing'); return; }
     const applyEditorShellCopy = shellHelpers.applyEditorShellCopy;
-    if (typeof applyEditorShellCopy !== 'function') { const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] }; const msg = 'LoveBudEditorShellHelpers.applyEditorShellCopy missing'; console.error('[editor-main] ERROR: ' + msg); debugState.errors.push({ msg, error: msg }); return; }
+    if (typeof applyEditorShellCopy !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.applyEditorShellCopy missing'); return; }
     applyEditorShellCopy(safeI18nText, i18n);
     const createPrepareEditorShell = editorShellCopyApplier.createPrepareEditorShell;
-    if (typeof createPrepareEditorShell !== 'function') { const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] }; const msg = 'LoveBudEditorShellCopyApplier.createPrepareEditorShell missing'; console.error('[editor-main] ERROR: ' + msg); debugState.errors.push({ msg, error: msg }); return; }
+    if (typeof createPrepareEditorShell !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorShellCopyApplier.createPrepareEditorShell missing'); return; }
     const prepareEditorShell = createPrepareEditorShell({ applyEditorShellCopy, safeI18nText, i18n, getMyTreesHref });
     const nextMemoryIdFromMemories = editorTreeHelpers.nextMemoryIdFromMemories;
     const markEditorReady = shellHelpers.markEditorReady;
     const applyEditorEditabilityState = shellHelpers.applyEditorEditabilityState;
     const createEditorDomRefs = editorDomRefsBuilder.createEditorDomRefs;
     const createEditorDebugReporter = shellHelpers.createEditorDebugReporter;
-    if (typeof createEditorDebugReporter !== 'function') { const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] }; const msg = 'LoveBudEditorShellHelpers.createEditorDebugReporter missing'; console.error('[editor-main] ERROR: ' + msg); debugState.errors.push({ msg, error: msg }); return; }
+    if (typeof createEditorDebugReporter !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.createEditorDebugReporter missing'); return; }
     const createEditorStartupDependencyWaiter = shellHelpers.createEditorStartupDependencyWaiter;
     const exposeCanvasEmptyGuideUpdater = shellHelpers.exposeCanvasEmptyGuideUpdater;
     const exposeDetailPanelUpdater = shellHelpers.exposeDetailPanelUpdater;
@@ -121,7 +124,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ['LoveBudEditorUtils.getCanonicalRootId', getCanonicalRootId],
         ['LoveBudEditorUtils.isRootMemory', isRootMemory]
     ].filter(([, helper]) => typeof helper !== 'function');
-    if (missingRootHelpers.length) { const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] }; const msg = missingRootHelpers.map(([name]) => name + ' missing').join('; '); console.error('[editor-main] ERROR: ' + msg); debugState.errors.push({ msg, error: msg }); return; }
+    if (missingRootHelpers.length) { reportEditorBootstrapMissingDependency(missingRootHelpers.map(([name]) => name + ' missing').join('; ')); return; }
 
     const startEditor = async () => {
         const { log, reportError } = createEditorDebugReporter();
