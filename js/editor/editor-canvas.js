@@ -247,13 +247,7 @@ function createEditorCanvas(deps) {
     });
 
     function isNodeWithinSafeViewport(pos) {
-        if (typeof utils.isNodeWithinSafeViewport === 'function') {
-            return utils.isNodeWithinSafeViewport(pos, getMetrics);
-        }
-        // Fallback
-        const metrics = getMetrics();
-        const padding = 96;
-        return pos.x >= padding && pos.x <= metrics.width - padding && pos.y >= padding && pos.y <= metrics.height - padding;
+        return utils.isNodeWithinSafeViewport(pos, getMetrics);
     }
 
     function keepSelectionVisible() {
