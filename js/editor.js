@@ -223,11 +223,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const applyEditorEditabilityState = shellHelpers.applyEditorEditabilityState;
 
     const editorShellCopyApplier = window.LoveBudEditorShellCopyApplier || {};
-    const createEditorShellCopyApplier = editorShellCopyApplier.createEditorShellCopyApplier || (() => () => {});
     const createPrepareEditorShell = editorShellCopyApplier.createPrepareEditorShell;
 
-    const applyEditorShellCopy = shellHelpers.applyEditorShellCopy ||
-        createEditorShellCopyApplier({ safeI18nText, i18n });
+    const applyEditorShellCopy = shellHelpers.applyEditorShellCopy;
+
+    if (typeof applyEditorShellCopy !== 'function') {
+        const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] };
+        const msg = 'LoveBudEditorShellHelpers.applyEditorShellCopy missing';
+        console.error('[editor-main] ERROR: ' + msg);
+        debugState.errors.push({ msg, error: msg });
+        return;
+    }
 
     applyEditorShellCopy(safeI18nText, i18n);
 

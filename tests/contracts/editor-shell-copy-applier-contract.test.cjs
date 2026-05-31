@@ -51,3 +51,42 @@ test('editor.js guards missing createPrepareEditorShell before call and without 
   const guardBlock = editorSource.slice(guardIndex - 100, guardIndex + 200);
   assert.doesNotMatch(guardBlock, /reportError\(/);
 });
+
+test('editor.js delegates applyEditorShellCopy through required shell helper', () => {
+  assert.match(
+    editorSource,
+    /const\s+applyEditorShellCopy\s*=\s*shellHelpers\.applyEditorShellCopy/
+  );
+  assert.doesNotMatch(
+    editorSource,
+    /const\s+applyEditorShellCopy\s*=\s*shellHelpers\.applyEditorShellCopy\s*\|\|/
+  );
+  assert.doesNotMatch(
+    editorSource,
+    /createEditorShellCopyApplier\(\{\s*safeI18nText,\s*i18n\s*\}\)/
+  );
+  assert.match(
+    editorSource,
+    /LoveBudEditorShellHelpers\.applyEditorShellCopy missing/
+  );
+  assert.match(
+    editorSource,
+    /applyEditorShellCopy\(safeI18nText,\s*i18n\)/
+  );
+  assert.match(
+    editorSource,
+    /createPrepareEditorShell\(\{\s*applyEditorShellCopy,\s*safeI18nText,\s*i18n,\s*getMyTreesHref\s*\}/
+  );
+});
+
+test('editor.js guards missing applyEditorShellCopy before call and without reportError', () => {
+  const guardIndex = editorSource.indexOf('LoveBudEditorShellHelpers.applyEditorShellCopy missing');
+  const callIndex = editorSource.indexOf('applyEditorShellCopy(safeI18nText, i18n)');
+
+  assert.ok(guardIndex !== -1, 'missing applyEditorShellCopy guard must exist');
+  assert.ok(callIndex !== -1, 'applyEditorShellCopy call must exist');
+  assert.ok(guardIndex < callIndex, 'guard must run before applyEditorShellCopy call');
+
+  const guardBlock = editorSource.slice(guardIndex - 100, guardIndex + 200);
+  assert.doesNotMatch(guardBlock, /reportError\(/);
+});
