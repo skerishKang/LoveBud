@@ -189,6 +189,14 @@ test('editor-floating-toolbar-template.js defines buildFloatingToolbarTemplate b
         'must call buildFloatingToolbarTemplate() for mount.outerHTML');
 });
 
+test('editor-detail-panel-shell-template.js defines buildDetailPanelShellTemplate builder', () => {
+    const content = fs.readFileSync('js/editor/templates/editor-detail-panel-shell-template.js', 'utf8');
+    assert.match(content, /function buildDetailPanelShellTemplate\(\)/,
+        'must define buildDetailPanelShellTemplate function');
+    assert.match(content, /mount\.outerHTML\s*=\s*buildDetailPanelShellTemplate\(\)/,
+        'must call buildDetailPanelShellTemplate() for mount.outerHTML');
+});
+
 // --- 11. Template script count matches expected ---
 
 test('exactly 9 template scripts are loaded in editor.html', () => {
