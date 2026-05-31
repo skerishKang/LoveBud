@@ -43,3 +43,78 @@ export function getFitViewportIfAvailable(canvasViewport, deps) {
     return canvasViewport.getFitViewport(deps);
 }
 
+/**
+ * Fallback orchestration for focusNodeById when no canvasViewport delegate exists.
+ * Returns true if the focus was applied, false otherwise.
+ */
+export function focusNodeByIdFallback(options) {
+    const {
+        nodeId,
+        getTreeMemories,
+        getWorldPosition,
+        getMetrics,
+        viewportState,
+        scheduleRender,
+        reapplySelection,
+        persistStoredPositions
+    } = options;
+
+    if (!nodeId) return false;
+
+    const treeMemories = getTreeMemories();
+    const target = treeMemories.find((memory) => memory.id === nodeId);
+    if (!target) return false;
+
+    const world = getWorldPosition(target);
+    const metrics = getMetrics();
+    const scale = viewportState.scale || 1;
+    const offset = calculateFocusOffset(world.x, world.y, scale, metrics);
+
+    viewportState.offsetX = offset.offsetX;
+    viewportState.offsetY = offset.offsetY;
+
+    scheduleRender();
+    reapplySelection(nodeId);
+    persistStoredPositions();
+
+    return true;
+}
+
+/**
+ * Fallback orchestration for recenterViewport when no canvasViewport delegate exists.
+ * Returns true when recenter was applied.
+ */
+export function recenterViewportFallback(options) {
+    const {
+        getTreeMemories,
+        getWorldPosition,
+        getMetrics,
+        viewportState,
+        scheduleRender,
+        persistStoredPositions
+    } = options;
+
+    const treeMemories = getTreeMemories();
+
+    if (!treeMemories.length) {
+        viewportState.offsetX = 0;
+        viewportState.offsetY = 0;
+        viewportState.scale = 1;
+        scheduleRender();
+        persistStoredPositions();
+        return true;
+    }
+
+    const points = treeMemories.map((memory) => getWorldPosition(memory));
+    const metrics = getMetrics();
+    const offset = calculateRecenterOffset(points, metrics);
+
+    viewportState.offsetX = offset.offsetX;
+    viewportState.offsetY = offset.offsetY;
+
+    scheduleRender();
+    persistStoredPositions();
+
+    return true;
+}
+

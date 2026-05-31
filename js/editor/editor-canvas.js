@@ -625,28 +625,18 @@ function createEditorCanvas(deps) {
             return;
         }
 
-        if (!nodeId) return;
-        const treeMemories = getTreeMemories();
-        const target = treeMemories.find((m) => m.id === nodeId);
-        if (!target) return;
-
-        const world = getWorldPosition(target);
-        const metrics = getMetrics();
-        const scale = viewportState.scale || 1;
-        
-        if (typeof panzoomUtils.calculateFocusOffset === 'function') {
-            const offset = panzoomUtils.calculateFocusOffset(world.x, world.y, scale, metrics);
-            viewportState.offsetX = offset.offsetX;
-            viewportState.offsetY = offset.offsetY;
-        } else {
-            // Fallback
-            viewportState.offsetX = Math.round(metrics.width * 0.5 - (world.x * scale));
-            viewportState.offsetY = Math.round(metrics.height * 0.38 - (world.y * scale));
+        if (typeof panzoomUtils.focusNodeByIdFallback === 'function') {
+            panzoomUtils.focusNodeByIdFallback({
+                nodeId,
+                getTreeMemories,
+                getWorldPosition,
+                getMetrics,
+                viewportState,
+                scheduleRender,
+                reapplySelection,
+                persistStoredPositions
+            });
         }
-        
-        scheduleRender();
-        reapplySelection(nodeId);
-        persistStoredPositions();
     }
 
     function recenterViewport() {
@@ -664,35 +654,16 @@ function createEditorCanvas(deps) {
             return;
         }
 
-        const treeMemories = getTreeMemories();
-        if (!treeMemories.length) {
-            viewportState.offsetX = 0;
-            viewportState.offsetY = 0;
-            viewportState.scale = 1;
-            scheduleRender();
-            persistStoredPositions();
-            return;
+        if (typeof panzoomUtils.recenterViewportFallback === 'function') {
+            panzoomUtils.recenterViewportFallback({
+                getTreeMemories,
+                getWorldPosition,
+                getMetrics,
+                viewportState,
+                scheduleRender,
+                persistStoredPositions
+            });
         }
-
-        const points = treeMemories.map((mem) => getWorldPosition(mem));
-        const metrics = getMetrics();
-        
-        if (typeof panzoomUtils.calculateRecenterOffset === 'function') {
-            const offset = panzoomUtils.calculateRecenterOffset(points, metrics);
-            viewportState.offsetX = offset.offsetX;
-            viewportState.offsetY = offset.offsetY;
-        } else {
-            // Fallback
-            const minX = Math.min(...points.map((p) => p.x));
-            const maxX = Math.max(...points.map((p) => p.x));
-            const minY = Math.min(...points.map((p) => p.y));
-            const maxY = Math.max(...points.map((p) => p.y));
-            viewportState.offsetX = Math.round(metrics.width * 0.5 - ((minX + maxX) / 2));
-            viewportState.offsetY = Math.round(metrics.height * 0.38 - ((minY + maxY) / 2));
-        }
-
-        scheduleRender();
-        persistStoredPositions();
     }
 
     /**
