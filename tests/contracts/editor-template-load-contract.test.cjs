@@ -147,7 +147,7 @@ test('no duplicate template script references in editor.html', () => {
     }
 });
 
-// --- 10. Add-memory form template uses builder function ---
+// --- 10. Templates with builder functions ---
 
 test('editor-add-memory-form-template.js defines buildAddMemoryFormTemplate builder', () => {
     const content = fs.readFileSync('js/editor/templates/editor-add-memory-form-template.js', 'utf8');
@@ -155,6 +155,14 @@ test('editor-add-memory-form-template.js defines buildAddMemoryFormTemplate buil
         'must define buildAddMemoryFormTemplate function');
     assert.match(content, /mount\.outerHTML\s*=\s*buildAddMemoryFormTemplate\(\)/,
         'must call buildAddMemoryFormTemplate() for mount.outerHTML');
+});
+
+test('editor-canvas-topbar-template.js defines buildCanvasTopbarTemplate builder', () => {
+    const content = fs.readFileSync('js/editor/templates/editor-canvas-topbar-template.js', 'utf8');
+    assert.match(content, /function buildCanvasTopbarTemplate\(\)/,
+        'must define buildCanvasTopbarTemplate function');
+    assert.match(content, /mount\.outerHTML\s*=\s*buildCanvasTopbarTemplate\(\)/,
+        'must call buildCanvasTopbarTemplate() for mount.outerHTML');
 });
 
 // --- 11. Template script count matches expected ---
