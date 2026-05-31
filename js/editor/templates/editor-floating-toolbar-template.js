@@ -1,5 +1,6 @@
 (function() {
-    const template = `
+    function buildFloatingToolbarTemplate() {
+        return `
             <div id="editorFloatingToolbar" class="editor-floating-toolbar is-hidden" role="toolbar" aria-label="선택한 순간 도구" style="display:none;">
                 <button type="button" class="editor-floating-toolbar-btn" id="ftbEditBtn" aria-label="순간 수정" title="순간 수정">
                     <span class="material-symbols-outlined" aria-hidden="true">edit</span>
@@ -48,9 +49,11 @@
                     <span>선택한 순간 보기</span>
                 </button>
             </div>
-    `;
+        `;
+    }
+
     const mount = document.getElementById('editorFloatingToolbarTemplateMount');
     if (mount) {
-        mount.outerHTML = template;
+        mount.outerHTML = buildFloatingToolbarTemplate();
     }
 })();

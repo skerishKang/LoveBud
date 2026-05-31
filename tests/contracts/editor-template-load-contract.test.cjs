@@ -181,6 +181,14 @@ test('editor-sidebar-template.js defines buildSidebarTemplate builder', () => {
         'must call buildSidebarTemplate() for mount.outerHTML');
 });
 
+test('editor-floating-toolbar-template.js defines buildFloatingToolbarTemplate builder', () => {
+    const content = fs.readFileSync('js/editor/templates/editor-floating-toolbar-template.js', 'utf8');
+    assert.match(content, /function buildFloatingToolbarTemplate\(\)/,
+        'must define buildFloatingToolbarTemplate function');
+    assert.match(content, /mount\.outerHTML\s*=\s*buildFloatingToolbarTemplate\(\)/,
+        'must call buildFloatingToolbarTemplate() for mount.outerHTML');
+});
+
 // --- 11. Template script count matches expected ---
 
 test('exactly 9 template scripts are loaded in editor.html', () => {
