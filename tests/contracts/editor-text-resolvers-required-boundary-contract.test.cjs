@@ -66,9 +66,40 @@ test('editor.js adds missing-text-resolvers guard without reportError', () => {
   assert.doesNotMatch(guardBlock, /reportError\(/);
 });
 
-test('editor.js keeps media resolver fallbacks intact', () => {
-  assert.match(editorSource, /createInlineMediaResolversFallbacks/);
-  assert.match(editorSource, /resolverFallbacks\.createInlineMediaResolversFallbacks\s*\|\|/);
-  assert.match(editorSource, /escapeHtml\s*=\s*editorHelpers\.escapeHtml\s*\|\|/);
-  assert.match(editorSource, /resolveMemoryThumbnail\s*=\s*editorHelpers\.resolveMemoryThumbnail\s*\|\|/);
+test('editor.js requires media resolver helpers through required boundaries', () => {
+  // Three media resolvers now required via direct assignment
+  assert.match(editorSource, /const\s+escapeHtml\s*=\s*editorHelpers\.escapeHtml\b[^|]/);
+  assert.match(editorSource, /const\s+safeUrl\s*=\s*editorHelpers\.safeUrl\b[^|]/);
+  assert.match(editorSource, /const\s+resolveMemoryThumbnail\s*=\s*editorHelpers\.resolveMemoryThumbnail\b[^|]/);
+
+  // No more fallback via ||
+  assert.doesNotMatch(editorSource, /escapeHtml\s*=\s*editorHelpers\.escapeHtml\s*\|\|/);
+  assert.doesNotMatch(editorSource, /resolveMemoryThumbnail\s*=\s*editorHelpers\.resolveMemoryThumbnail\s*\|\|/);
+
+  // Adapter pattern removed
+  assert.doesNotMatch(editorSource, /createInlineMediaResolversFallbacks/);
+  assert.doesNotMatch(editorSource, /resolverFallbacks\.createInlineMediaResolversFallbacks/);
+  assert.doesNotMatch(editorSource, /inlineMediaResolvers/);
+
+  // Missing-helper guard exists
+  assert.match(editorSource, /missingMediaResolvers/);
+  assert.match(editorSource, /LoveBudEditorHelpers\.escapeHtml/);
+  assert.match(editorSource, /LoveBudEditorHelpers\.safeUrl/);
+  assert.match(editorSource, /LoveBudEditorHelpers\.resolveMemoryThumbnail/);
+
+  // Guard does not use reportError
+  const guardStart = editorSource.indexOf('missingMediaResolvers');
+  assert.notEqual(guardStart, -1, 'guard must exist');
+  const guardEnd = editorSource.indexOf('const getYouTubeInputErrorMessageFallback', guardStart);
+  assert.notEqual(guardEnd, -1, 'getYouTubeInputErrorMessageFallback must follow guard');
+  const guardBlock = editorSource.slice(guardStart, guardEnd);
+  assert.doesNotMatch(guardBlock, /reportError\(/);
+});
+
+test('editor.js keeps text resolver required boundaries intact', () => {
+  assert.match(editorSource, /const\s+safeI18nText\s*=\s*editorHelpers\.safeI18nText/);
+  assert.match(editorSource, /const\s+resolveHintText\s*=\s*editorHelpers\.resolveHintText/);
+  assert.match(editorSource, /const\s+resolveTreeTitleText\s*=\s*editorHelpers\.resolveTreeTitleText/);
+  assert.match(editorSource, /const\s+resolveInfoText\s*=\s*editorHelpers\.resolveInfoText/);
+  assert.match(editorSource, /missingTextResolvers/);
 });
