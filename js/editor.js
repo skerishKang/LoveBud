@@ -136,15 +136,25 @@ document.addEventListener('DOMContentLoaded', () => {
         buildEditorRedirectTarget
     });
 
-    const createInlineTextResolversFallbacks = resolverFallbacks.createInlineTextResolversFallbacks || (() => ({}));
-    const inlineTextResolvers = editorHelpers.safeI18nText
-        ? editorHelpers
-        : createInlineTextResolversFallbacks();
+    const safeI18nText = editorHelpers.safeI18nText;
+    const resolveHintText = editorHelpers.resolveHintText;
+    const resolveTreeTitleText = editorHelpers.resolveTreeTitleText;
+    const resolveInfoText = editorHelpers.resolveInfoText;
 
-    const safeI18nText = editorHelpers.safeI18nText || inlineTextResolvers.safeI18nText;
-    const resolveHintText = editorHelpers.resolveHintText || inlineTextResolvers.resolveHintText;
-    const resolveTreeTitleText = editorHelpers.resolveTreeTitleText || inlineTextResolvers.resolveTreeTitleText;
-    const resolveInfoText = editorHelpers.resolveInfoText || inlineTextResolvers.resolveInfoText;
+    const missingTextResolvers = [
+        ['LoveBudEditorHelpers.safeI18nText', safeI18nText],
+        ['LoveBudEditorHelpers.resolveHintText', resolveHintText],
+        ['LoveBudEditorHelpers.resolveTreeTitleText', resolveTreeTitleText],
+        ['LoveBudEditorHelpers.resolveInfoText', resolveInfoText]
+    ].filter(([, helper]) => typeof helper !== 'function');
+
+    if (missingTextResolvers.length) {
+        const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] };
+        const msg = missingTextResolvers.map(([name]) => name + ' missing').join('; ');
+        console.error('[editor-main] ERROR: ' + msg);
+        debugState.errors.push({ msg, error: msg });
+        return;
+    }
 
     const syncCurrentTreeData = editorTreeHelpers.syncCurrentTreeData;
 
