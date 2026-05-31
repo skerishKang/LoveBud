@@ -129,22 +129,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const startEditor = async () => {
         const { log, reportError } = createEditorDebugReporter();
 
-        if (typeof createEditorStartupDependencyWaiter !== 'function') {
-            reportError('LoveBudEditorShellHelpers.createEditorStartupDependencyWaiter missing');
-            return;
-        }
+        const ensureStartEditorDependency = (dependency, message) => {
+            if (typeof dependency === 'function') return true;
+            reportError(message);
+            return false;
+        };
 
-        if (typeof markEditorReady !== 'function') {
-            reportError('LoveBudEditorShellHelpers.markEditorReady missing');
-            return;
-        }
+        if (!ensureStartEditorDependency(createEditorStartupDependencyWaiter, 'LoveBudEditorShellHelpers.createEditorStartupDependencyWaiter missing')) return;
 
-        if (typeof runEditorInitialLoadFlow !== 'function') {
-            reportError('LoveBudEditorInitialLoadFlow.runEditorInitialLoadFlow missing');
-            return;
-        }
+        if (!ensureStartEditorDependency(markEditorReady, 'LoveBudEditorShellHelpers.markEditorReady missing')) return;
 
-        if (typeof createEditorRefreshSaveRuntime !== 'function') { reportError('LoveBudEditorRefreshSaveRuntime.createEditorRefreshSaveRuntime missing'); return; }
+        if (!ensureStartEditorDependency(runEditorInitialLoadFlow, 'LoveBudEditorInitialLoadFlow.runEditorInitialLoadFlow missing')) return;
+
+        if (!ensureStartEditorDependency(createEditorRefreshSaveRuntime, 'LoveBudEditorRefreshSaveRuntime.createEditorRefreshSaveRuntime missing')) return;
 
         log('startEditor sequence initiated');
 
@@ -155,15 +152,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!await waitForGlobal('createEditorMemoryActions')) return;
         if (!await waitForGlobal('createEditorMemoryForm')) return;
 
-        if (typeof createEditorDomRefs !== 'function') {
-            reportError('LoveBudEditorDomRefsBuilder.createEditorDomRefs missing');
-            return;
-        }
+        if (!ensureStartEditorDependency(createEditorDomRefs, 'LoveBudEditorDomRefsBuilder.createEditorDomRefs missing')) return;
 
-        if (typeof createEditorStartupContext !== 'function') {
-            reportError('LoveBudEditorStartupContext.createEditorStartupContext missing');
-            return;
-        }
+        if (!ensureStartEditorDependency(createEditorStartupContext, 'LoveBudEditorStartupContext.createEditorStartupContext missing')) return;
 
         try {
             const {
@@ -183,10 +174,7 @@ document.addEventListener('DOMContentLoaded', () => {
             prepareEditorShell();
             log('Editor shell mounted');
 
-            if (typeof applyEditorEditabilityState !== 'function') {
-                reportError('LoveBudEditorShellHelpers.applyEditorEditabilityState missing');
-                return;
-            }
+            if (!ensureStartEditorDependency(applyEditorEditabilityState, 'LoveBudEditorShellHelpers.applyEditorEditabilityState missing')) return;
 
             // Expose canEdit for modules that read it after DOMContentLoaded
             applyEditorEditabilityState({ canEdit });
@@ -231,25 +219,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
             let memoryActions = null;
 
-            if (typeof createMemoryActionsReadinessWrapper !== 'function') {
-                reportError('LoveBudEditorShellHelpers.createMemoryActionsReadinessWrapper missing');
-                return;
-            }
+            if (!ensureStartEditorDependency(createMemoryActionsReadinessWrapper, 'LoveBudEditorShellHelpers.createMemoryActionsReadinessWrapper missing')) return;
 
             const updateSelectedMemoryFields = createMemoryActionsReadinessWrapper({
                 getMemoryActions: () => memoryActions
             });
 
-            if (typeof editorTreeHelpers.createInitialMemory !== 'function') {
-                reportError('LoveBudEditorTreeHelpers.createInitialMemory missing');
-                return;
-            }
+            if (!ensureStartEditorDependency(editorTreeHelpers.createInitialMemory, 'LoveBudEditorTreeHelpers.createInitialMemory missing')) return;
             const createInitialMemory = () => editorTreeHelpers.createInitialMemory({ getTreeMemories: () => treeMemories(), findRootMemory, canonicalRootId, treeId, i18n });
 
-            if (typeof nextMemoryIdFromMemories !== 'function') {
-                reportError('LoveBudEditorTreeHelpers.nextMemoryIdFromMemories missing');
-                return;
-            }
+            if (!ensureStartEditorDependency(nextMemoryIdFromMemories, 'LoveBudEditorTreeHelpers.nextMemoryIdFromMemories missing')) return;
 
             const nextMemoryId = () => nextMemoryIdFromMemories(treeMemories());
 
@@ -264,10 +243,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
             
             // Bridge this back to LoveBudEditor so canvas can call it
-            if (typeof exposeCanvasEmptyGuideUpdater !== 'function') {
-                reportError('LoveBudEditorShellHelpers.exposeCanvasEmptyGuideUpdater missing');
-                return;
-            }
+            if (!ensureStartEditorDependency(exposeCanvasEmptyGuideUpdater, 'LoveBudEditorShellHelpers.exposeCanvasEmptyGuideUpdater missing')) return;
 
             exposeCanvasEmptyGuideUpdater({ updateCanvasEmptyGuide });
 
@@ -295,20 +271,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             };
 
-            if (typeof createSelectedMomentFocusHandler !== 'function') {
-                reportError('LoveBudEditorShellHelpers.createSelectedMomentFocusHandler missing');
-                return;
-            }
+            if (!ensureStartEditorDependency(createSelectedMomentFocusHandler, 'LoveBudEditorShellHelpers.createSelectedMomentFocusHandler missing')) return;
 
             const focusSelectedMoment = createSelectedMomentFocusHandler({
                 getEditorCanvas: () => editorCanvas,
                 getSelectedNodeId: () => selectedNodeId
             });
 
-            if (typeof createCurrentMomentDetailOpener !== 'function') {
-                reportError('LoveBudEditorShellHelpers.createCurrentMomentDetailOpener missing');
-                return;
-            }
+            if (!ensureStartEditorDependency(createCurrentMomentDetailOpener, 'LoveBudEditorShellHelpers.createCurrentMomentDetailOpener missing')) return;
 
             const openCurrentMomentDetail = createCurrentMomentDetailOpener({
                 getCurrentEditingMemory: () => currentEditingMemory,
@@ -364,18 +334,12 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             const { setDetailEmptyState, updateFocusSelectedBtn, updateSidebarStatus: updateSidebarStatusBase, updateDetailPanel } = detailUI;
-            if (typeof exposeDetailPanelUpdater !== 'function') {
-                reportError('LoveBudEditorShellHelpers.exposeDetailPanelUpdater missing');
-                return;
-            }
+            if (!ensureStartEditorDependency(exposeDetailPanelUpdater, 'LoveBudEditorShellHelpers.exposeDetailPanelUpdater missing')) return;
 
             exposeDetailPanelUpdater({ updateDetailPanel });
 
             const sidebarUIHelper = window.LoveBudEditorSidebarUI || {};
-            if (typeof createSidebarTreeActionsUpdater !== 'function') {
-                reportError('LoveBudEditorShellHelpers.createSidebarTreeActionsUpdater missing');
-                return;
-            }
+            if (!ensureStartEditorDependency(createSidebarTreeActionsUpdater, 'LoveBudEditorShellHelpers.createSidebarTreeActionsUpdater missing')) return;
 
             const updateSidebarTreeActions = createSidebarTreeActionsUpdater({
                 sidebarUIHelper,
@@ -485,10 +449,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const { showAddMemoryForm, hideAddMemoryForm, addMemoryFromForm } = memoryForm;
 
             log('Binding events...');
-            if (typeof getHttpStatus !== 'function') {
-                reportError('LoveBudEditorShellHelpers.getHttpStatus missing');
-                return;
-            }
+            if (!ensureStartEditorDependency(getHttpStatus, 'LoveBudEditorShellHelpers.getHttpStatus missing')) return;
 
             if (typeof bindEditorPageEvents === 'function') {
                 bindEditorPageEvents({

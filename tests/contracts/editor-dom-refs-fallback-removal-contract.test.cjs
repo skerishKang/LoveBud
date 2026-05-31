@@ -39,7 +39,7 @@ test('editor entrypoint uses dom refs builder without inline fallback', () => {
 });
 
 test('editor entrypoint reports missing dom refs builder before calling it', () => {
-  const guardIndex = editorSource.indexOf("typeof createEditorDomRefs !== 'function'");
+  const guardIndex = editorSource.indexOf("ensureStartEditorDependency(createEditorDomRefs,");
   const startupContextCallIndex = editorSource.indexOf('createEditorStartupContext({');
 
   assert.notEqual(guardIndex, -1, 'missing createEditorDomRefs guard must exist');
@@ -48,7 +48,7 @@ test('editor entrypoint reports missing dom refs builder before calling it', () 
 
   assert.match(
     editorSource,
-    /reportError\('LoveBudEditorDomRefsBuilder\.createEditorDomRefs missing'\)/
+    /ensureStartEditorDependency\(createEditorDomRefs,\s*'LoveBudEditorDomRefsBuilder\.createEditorDomRefs missing'\)/
   );
 });
 

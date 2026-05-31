@@ -27,14 +27,10 @@ test('editor.js removes createInlineNextMemoryIdFallback', () => {
 });
 
 test('editor.js guards missing nextMemoryIdFromMemories with reportError', () => {
-  const guardIndex = editorSource.indexOf('LoveBudEditorTreeHelpers.nextMemoryIdFromMemories missing');
-  const guardReportStart = editorSource.indexOf('reportError(', guardIndex - 50);
-  const guardReportEnd = editorSource.indexOf(')', guardReportStart) + 1;
-  const guardReportExpr = editorSource.slice(guardReportStart, guardReportEnd);
-
-  assert.ok(guardIndex !== -1, 'missing nextMemoryIdFromMemories guard must exist');
-  assert.ok(guardReportStart !== -1, 'guard must use reportError');
-  assert.match(guardReportExpr, /reportError\(['"]LoveBudEditorTreeHelpers\.nextMemoryIdFromMemories missing['"]\)/);
+  assert.match(
+    editorSource,
+    /ensureStartEditorDependency\(nextMemoryIdFromMemories,\s*'LoveBudEditorTreeHelpers\.nextMemoryIdFromMemories missing'\)/
+  );
 });
 
 test('editor.js delegates nextMemoryId through required tree helper', () => {
