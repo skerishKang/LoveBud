@@ -87,8 +87,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const getHttpStatus = shellHelpers.getHttpStatus;
 
-    const createInlineShowToastFallback = shellHelpers.createInlineShowToastFallback ||
-        entryFallbacks.createInlineShowToastFallback;
+    const createInlineShowToastFallback = shellHelpers.createInlineShowToastFallback;
+    if (typeof createInlineShowToastFallback !== 'function') {
+        const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] };
+        const msg = 'LoveBudEditorShellHelpers.createInlineShowToastFallback missing';
+        console.error('[editor-main] ERROR: ' + msg);
+        debugState.errors.push({ msg, error: msg });
+        return;
+    }
 
     const showToast = editorHelpers.createToast
         ? editorHelpers.createToast({ warningKey: '__editorToastWarningShown' })
