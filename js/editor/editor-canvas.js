@@ -293,28 +293,13 @@ function createEditorCanvas(deps) {
 
     function renderAffordanceForMemory(mem) {
         if (!mem) return;
-        const canonicalRootId = getCanonicalRootId();
-        
-        if (typeof renderUtils.renderAffordancesForMemory === 'function') {
-            renderUtils.renderAffordancesForMemory(mem, {
-                growthAffordance,
-                branchPorts,
-                getTreeMemories,
-                canonicalRootId,
-                isRootMemory
-            });
-            return;
-        }
-
-        // Fallback
-        const drawableMemories = getTreeMemories().filter((node) => !isRootMemory(node, canonicalRootId));
-        clearGrowthAffordance();
-        growthAffordance.renderGrowthAffordance(mem, {
-            isFirstStep: drawableMemories.length <= 1,
-            isStartMoment: mem.parentId === canonicalRootId
+        renderUtils.renderAffordancesForMemory(mem, {
+            growthAffordance,
+            branchPorts,
+            getTreeMemories,
+            canonicalRootId: getCanonicalRootId(),
+            isRootMemory
         });
-        branchPorts.renderPortsForNode(mem);
-        branchPorts.showPortsForMemory(mem);
     }
 
     function renderAffordanceForHoveredMemory(mem) {
