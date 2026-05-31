@@ -1,6 +1,5 @@
-(function() {
-    function buildDetailPanelShellTemplate() {
-        return `
+export function buildDetailPanelShellTemplate() {
+    return `
         <aside class="detail-panel memory-detail-section reveal-fade" id="detailPanel">
             <div class="panel-header">
                 <h3 class="headline editor-panel-headline"></h3>
@@ -15,11 +14,10 @@
             </div>
 
         </aside>
-        `;
-    }
+    `;
+}
 
-    const mount = document.getElementById('editorDetailPanelShellTemplateMount');
-    if (mount) {
-        mount.outerHTML = buildDetailPanelShellTemplate();
-    }
-})();
+const mount = document.getElementById('editorDetailPanelShellTemplateMount');
+if (mount) {
+    mount.outerHTML = buildDetailPanelShellTemplate();
+}
