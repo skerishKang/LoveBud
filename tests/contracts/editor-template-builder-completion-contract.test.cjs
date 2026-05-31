@@ -49,7 +49,7 @@ const TEMPLATE_BUILDERS = [
     path: 'js/editor/templates/editor-detail-view-mode-template.js',
     builder: 'buildDetailViewModeTemplate',
     mountId: 'editorDetailViewModeTemplateMount',
-    module: false
+    module: true
   },
   {
     path: 'js/editor/templates/editor-detail-edit-mode-template.js',
