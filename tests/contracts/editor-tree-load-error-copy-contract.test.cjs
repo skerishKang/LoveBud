@@ -4,6 +4,7 @@ const test = require('node:test');
 
 const editorSource = fs.readFileSync('js/editor.js', 'utf8');
 const pageHelpersSource = fs.readFileSync('js/editor/editor-page-helpers.js', 'utf8');
+const initialLoadFlowSource = fs.readFileSync('js/editor/editor-initial-load-flow.js', 'utf8');
 const editorHtml = fs.readFileSync('pages/editor.html', 'utf8');
 
 function extractTreeLoadFailureBlock(source) {
@@ -11,7 +12,7 @@ function extractTreeLoadFailureBlock(source) {
   const start = source.indexOf(marker);
   assert.notEqual(start, -1, 'tree load failure block must exist');
 
-  const end = source.indexOf('            syncCurrentTreeData(tree);', start);
+  const end = source.indexOf('        opts.syncCurrentTreeData(tree);', start);
   assert.notEqual(end, -1, 'syncCurrentTreeData marker must follow tree load failure block');
 
   return source.slice(start, end);
@@ -83,7 +84,7 @@ test('editor.js buildTreeLoadErrorCopy guard uses console.error pattern', () => 
 // --- 3. Tree-load failure block delegates to required helper ---
 
 test('editor tree load failure delegates copy creation to required helper', () => {
-  const block = extractTreeLoadFailureBlock(editorSource);
+  const block = extractTreeLoadFailureBlock(initialLoadFlowSource);
 
   assert.match(block, /buildTreeLoadErrorCopy\(\{/);
   assert.match(block, /treeLoadStatus,/);
@@ -92,7 +93,7 @@ test('editor tree load failure delegates copy creation to required helper', () =
 });
 
 test('editor tree load failure block no longer has inline fallback or optional check', () => {
-  const block = extractTreeLoadFailureBlock(editorSource);
+  const block = extractTreeLoadFailureBlock(initialLoadFlowSource);
 
   assert.doesNotMatch(block, /let\s+treeLoadErrorCopy\s*=\s*\{/);
   assert.doesNotMatch(block, /typeof editorPageHelpers\.buildTreeLoadErrorCopy/);
@@ -100,7 +101,7 @@ test('editor tree load failure block no longer has inline fallback or optional c
 });
 
 test('editor no longer owns tree load status copy branching inline', () => {
-  const block = extractTreeLoadFailureBlock(editorSource);
+  const block = extractTreeLoadFailureBlock(initialLoadFlowSource);
 
   assert.doesNotMatch(block, /const errorTitle\s*=/);
   assert.doesNotMatch(block, /const errorDesc\s*=/);
@@ -112,24 +113,27 @@ test('editor no longer owns tree load status copy branching inline', () => {
 // --- 4. Auth redirect and render flow preserved ---
 
 test('editor tree load failure keeps auth redirect and render flow intact', () => {
-  const block = extractTreeLoadFailureBlock(editorSource);
+  const block = extractTreeLoadFailureBlock(initialLoadFlowSource);
 
   assert.match(block, /if \(treeLoadResult\.authRequired\)/);
-  assert.match(block, /showToast\(i18n\('need_login'\), 'error'\)/);
-  assert.match(block, /redirectToEditorLogin\(2000\)/);
-  assert.match(block, /renderTreeLoadError\(\{/);
+  assert.match(block, /opts\.showToast\(opts\.i18n\('need_login'\), 'error'\)/);
+  assert.match(block, /opts\.redirectToEditorLogin\(2000\)/);
+  assert.match(block, /opts\.renderTreeLoadError\(\{/);
   assert.match(block, /errorTitle:\s*treeLoadErrorCopy\.errorTitle/);
   assert.match(block, /errorDesc:\s*treeLoadErrorCopy\.errorDesc/);
-  assert.match(block, /markEditorReady\(\)/);
+  assert.match(block, /opts\.markEditorReady\(\)/);
 });
 
 // --- 5. Load order contract preserved ---
 
 test('editor page helpers load before editor entrypoint', () => {
   const pageHelpersIndex = editorHtml.indexOf('js/editor/editor-page-helpers.js');
+  const initialLoadFlowIndex = editorHtml.indexOf('js/editor/editor-initial-load-flow.js');
   const editorJsIndex = editorHtml.indexOf('js/editor.js');
 
   assert.notEqual(pageHelpersIndex, -1, 'editor-page-helpers.js must be loaded');
+  assert.notEqual(initialLoadFlowIndex, -1, 'editor-initial-load-flow.js must be loaded');
   assert.notEqual(editorJsIndex, -1, 'editor.js must be loaded');
   assert.ok(pageHelpersIndex < editorJsIndex, 'editor-page-helpers.js must load before editor.js');
+  assert.ok(initialLoadFlowIndex < editorJsIndex, 'editor-initial-load-flow.js must load before editor.js');
 });

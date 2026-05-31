@@ -4,6 +4,7 @@ const test = require('node:test');
 
 const editorSource = fs.readFileSync('js/editor.js', 'utf8');
 const pageHelpersSource = fs.readFileSync('js/editor/editor-page-helpers.js', 'utf8');
+const initialLoadFlowSource = fs.readFileSync('js/editor/editor-initial-load-flow.js', 'utf8');
 
 // --- 1. Page helper exports renderTreeLoadError ---
 
@@ -73,17 +74,17 @@ test('editor.js renderTreeLoadError guard does not use reportError', () => {
 
 // --- 4. Render call options structure preserved ---
 
-test('editor.js renderTreeLoadError call preserves options keys', () => {
-  const callStart = editorSource.indexOf('renderTreeLoadError({');
+test('initial load flow renderTreeLoadError call preserves options keys', () => {
+  const callStart = initialLoadFlowSource.indexOf('opts.renderTreeLoadError({');
   assert.notEqual(callStart, -1, 'renderTreeLoadError call must exist');
-  const callEnd = editorSource.indexOf('});', callStart);
-  const callBody = editorSource.slice(callStart, callEnd + 3);
+  const callEnd = initialLoadFlowSource.indexOf('});', callStart);
+  const callBody = initialLoadFlowSource.slice(callStart, callEnd + 3);
 
-  assert.match(callBody, /canvas,/);
-  assert.match(callBody, /addBtn,/);
+  assert.match(callBody, /canvas:/);
+  assert.match(callBody, /addBtn:/);
   assert.match(callBody, /errorTitle:/);
   assert.match(callBody, /errorDesc:/);
-  assert.match(callBody, /i18n,/);
-  assert.match(callBody, /escapeHtml,/);
+  assert.match(callBody, /i18n:/);
+  assert.match(callBody, /escapeHtml:/);
   assert.match(callBody, /setDetailEmptyState:/);
 });

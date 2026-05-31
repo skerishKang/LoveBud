@@ -30,8 +30,8 @@ test('editor no longer applies editability state inline in start flow', () => {
   const start = editorSource.indexOf('createEditorStartupContext({');
   assert.notEqual(start, -1, 'createEditorStartupContext call must exist in start flow');
 
-  const end = editorSource.indexOf('const cache = window.LoveBudCache || null;', start);
-  assert.notEqual(end, -1, 'cache setup must follow editability state setup');
+  const end = editorSource.indexOf('const initialLoadResult = await runEditorInitialLoadFlow({', start);
+  assert.notEqual(end, -1, 'initial load flow setup must follow editability state setup');
 
   const block = editorSource.slice(start, end);
   assert.match(block, /applyEditorEditabilityState\(\{\s*canEdit\s*\}/);

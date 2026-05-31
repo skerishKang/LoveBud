@@ -66,6 +66,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const editorPageEventBindings = window.LoveBudEditorPageEventBindings || {};
     const bindEditorPageEvents = editorPageEventBindings.bindEditorPageEvents;
     const editorDataLoader = window.LoveBudEditorDataLoader || {};
+    const editorInitialLoadFlow = window.LoveBudEditorInitialLoadFlow || {};
+    const runEditorInitialLoadFlow = editorInitialLoadFlow.runEditorInitialLoadFlow;
     const editorStartupContext = window.LoveBudEditorStartupContext || {};
     const createEditorStartupContext = editorStartupContext.createEditorStartupContext;
     const editorAuthHelpers = window.LoveBudEditorAuthHelpers || {};
@@ -319,6 +321,11 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        if (typeof runEditorInitialLoadFlow !== 'function') {
+            reportError('LoveBudEditorInitialLoadFlow.runEditorInitialLoadFlow missing');
+            return;
+        }
+
         log('startEditor sequence initiated');
 
         const waitForGlobal = createEditorStartupDependencyWaiter({ log, reportError });
@@ -364,87 +371,38 @@ document.addEventListener('DOMContentLoaded', () => {
             // Expose canEdit for modules that read it after DOMContentLoaded
             applyEditorEditabilityState({ canEdit });
 
-            const cache = window.LoveBudCache || null;
-            let MEMORIES_CACHE_KEY = 'memories_default';
             let isLocalSaveMode = false;
 
-            const loadInitialTree = editorDataLoader.loadInitialEditorTree;
-            if (typeof loadInitialTree !== 'function') {
-                reportError('LoveBudEditorDataLoader.loadInitialEditorTree missing');
-                return;
-            }
-            
-            log('Loading initial tree data...');
-            const treeLoadResult = await loadInitialTree({
+            const initialLoadResult = await runEditorInitialLoadFlow({
                 urlTreeId,
+                canvas,
+                addBtn,
+                cache: window.LoveBudCache || null,
+                i18n,
                 apiClient: window.apiClient,
                 createDefaultTreeTitle: () => safeI18nText(i18n, 'default_tree_title', '러브트리'),
-                getConfirmedSessionUser
-            });
-
-            let tree = treeLoadResult.tree || null;
-            if (!tree) {
-                log('Tree not found or auth required');
-                if (treeLoadResult.authRequired) {
-                    showToast(i18n('need_login'), 'error');
-                    redirectToEditorLogin(2000);
-                    return;
-                }
-                if (urlTreeId) {
-                    const treeLoadStatus = treeLoadResult.treeLoadStatus || 'not_found';
-                    const treeLoadErrorMessage = treeLoadResult.treeLoadErrorMessage || '';
-                    const treeLoadErrorCopy = buildTreeLoadErrorCopy({
-                        treeLoadStatus,
-                        treeLoadErrorMessage,
-                        i18n
-                    });
-
-                    renderTreeLoadError({
-                        canvas,
-                        addBtn,
-                        errorTitle: treeLoadErrorCopy.errorTitle,
-                        errorDesc: treeLoadErrorCopy.errorDesc,
-                        i18n,
-                        escapeHtml,
-                        setDetailEmptyState: null
-                    });
-                    markEditorReady();
-                    return;
-                }
-                markEditorReady();
-                return;
-            }
-
-            syncCurrentTreeData(tree);
-            const treeId = tree.id || null;
-            MEMORIES_CACHE_KEY = 'memories_' + (treeId || 'default');
-            log(`Tree loaded: ${treeId}`);
-
-            if (typeof editorDataLoader.createNormalizeMemory !== 'function') {
-                reportError('LoveBudEditorDataLoader.createNormalizeMemory missing');
-                return;
-            }
-            const normalizeMemory = editorDataLoader.createNormalizeMemory({ sharedNormalize: window.LoveBudNormalize?.normalizeMemory });
-
-            if (typeof editorDataLoader.loadEditorMemories !== 'function') {
-                reportError('LoveBudEditorDataLoader.loadEditorMemories missing');
-                return;
-            }
-            
-            log('Loading editor memories...');
-            await editorDataLoader.loadEditorMemories({
-                treeId,
-                cache,
-                cacheKey: MEMORIES_CACHE_KEY,
-                apiClient: window.apiClient,
+                getConfirmedSessionUser,
                 showToast,
-                i18n,
-                normalizeMemory
+                redirectToEditorLogin,
+                buildTreeLoadErrorCopy,
+                renderTreeLoadError,
+                markEditorReady,
+                syncCurrentTreeData,
+                editorDataLoader,
+                sharedNormalize: window.LoveBudNormalize?.normalizeMemory,
+                escapeHtml,
+                log,
+                reportError
             });
-            
-            const treeMemories = () => (window.currentTreeMemories || []).map(normalizeMemory).filter(Boolean);
-            const memoriesCount = treeMemories().length;
-            log(`Memories loaded: ${memoriesCount}`);
+
+            if (initialLoadResult.status === 'stopped') {
+                return;
+            }
+
+            const tree = initialLoadResult.tree;
+            const treeId = initialLoadResult.treeId;
+            const normalizeMemory = initialLoadResult.normalizeMemory;
+            const treeMemories = initialLoadResult.treeMemories;
             
             const canonicalRootId = getCanonicalRootId(treeMemories());
             let selectedNodeId = canonicalRootId;
