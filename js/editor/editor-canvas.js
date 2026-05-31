@@ -395,14 +395,7 @@ function createEditorCanvas(deps) {
             hoverAffordanceTimer = null;
         }
 
-        if (typeof renderUtils.clearGrowthAffordances === 'function') {
-            renderUtils.clearGrowthAffordances(growthAffordance, branchPorts);
-            return;
-        }
-
-        // Fallback
-        if (growthAffordance) growthAffordance.clearGrowthAffordance();
-        if (branchPorts) branchPorts.clearPorts();
+        renderUtils.clearGrowthAffordances(growthAffordance, branchPorts);
     }
 
     function openAddMomentFromCanvas() {
