@@ -39,6 +39,22 @@ function createEditorCanvas(deps) {
 
     let savedFreePositions = null;
     let storedFreePositions = null;
+
+    const layoutModeSwitcher = typeof layoutTransition.createLayoutModeSwitcher === 'function'
+        ? layoutTransition.createLayoutModeSwitcher({
+            viewportState,
+            loadStoredLayout,
+            persistLayoutMode,
+            persistStoredPositions,
+            fitViewportToTree,
+            initCanvas,
+            updateLayoutToggleUI,
+            getSavedFreePositions: () => savedFreePositions,
+            setSavedFreePositions: (value) => { savedFreePositions = value; },
+            getStoredFreePositions: () => storedFreePositions,
+            setStoredFreePositions: (value) => { storedFreePositions = value; }
+        })
+        : null;
     let hoverAffordanceTimer = null;
     let hoverAffordanceMemoryId = null;
 
@@ -193,6 +209,10 @@ function createEditorCanvas(deps) {
     }
 
     function switchToFreeMode() {
+        if (layoutModeSwitcher) {
+            layoutModeSwitcher.switchToFreeMode();
+            return;
+        }
         viewportState.layoutMode = 'free';
         if (typeof layoutTransition.persistLayoutMode === 'function') {
             layoutTransition.persistLayoutMode(persistLayoutMode, 'free');
@@ -231,6 +251,10 @@ function createEditorCanvas(deps) {
     }
 
     function switchToStructuredMode() {
+        if (layoutModeSwitcher) {
+            layoutModeSwitcher.switchToStructuredMode();
+            return;
+        }
         savedFreePositions = { ...viewportState.positions };
         viewportState.layoutMode = 'structured';
         viewportState.initialViewportApplied = false;
@@ -254,6 +278,10 @@ function createEditorCanvas(deps) {
     }
 
     function setLayoutMode(mode) {
+        if (layoutModeSwitcher) {
+            layoutModeSwitcher.setLayoutMode(mode);
+            return;
+        }
         if (mode === 'structured') {
             switchToStructuredMode();
         } else {
@@ -262,6 +290,10 @@ function createEditorCanvas(deps) {
     }
 
     function toggleLayoutMode() {
+        if (layoutModeSwitcher) {
+            layoutModeSwitcher.toggleLayoutMode();
+            return;
+        }
         if (viewportState.layoutMode === 'structured') {
             switchToFreeMode();
         } else {
