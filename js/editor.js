@@ -106,6 +106,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const createEditorDomRefs = editorDomRefsBuilder.createEditorDomRefs;
     const createEditorDebugReporter = shellHelpers.createEditorDebugReporter;
     if (typeof createEditorDebugReporter !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.createEditorDebugReporter missing'); return; }
+    const createEditorStartDependencyGuard = shellHelpers.createEditorStartDependencyGuard;
+    if (typeof createEditorStartDependencyGuard !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.createEditorStartDependencyGuard missing'); return; }
     const createEditorStartupDependencyWaiter = shellHelpers.createEditorStartupDependencyWaiter;
     const exposeCanvasEmptyGuideUpdater = shellHelpers.exposeCanvasEmptyGuideUpdater;
     const exposeDetailPanelUpdater = shellHelpers.exposeDetailPanelUpdater;
@@ -129,11 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const startEditor = async () => {
         const { log, reportError } = createEditorDebugReporter();
 
-        const ensureStartEditorDependency = (dependency, message) => {
-            if (typeof dependency === 'function') return true;
-            reportError(message);
-            return false;
-        };
+        const ensureStartEditorDependency = createEditorStartDependencyGuard({ reportError });
 
         if (!ensureStartEditorDependency(createEditorStartupDependencyWaiter, 'LoveBudEditorShellHelpers.createEditorStartupDependencyWaiter missing')) return;
 
