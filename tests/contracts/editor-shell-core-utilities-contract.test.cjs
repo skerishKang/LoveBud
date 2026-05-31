@@ -3,6 +3,7 @@ const fs = require('node:fs');
 const test = require('node:test');
 
 const shellHelpersSource = fs.readFileSync('js/editor/editor-shell-helpers.js', 'utf8');
+const pageHelpersSource = fs.readFileSync('js/editor/editor-page-helpers.js', 'utf8');
 const editorSource = fs.readFileSync('js/editor.js', 'utf8');
 const editorHtmlSource = fs.readFileSync('pages/editor.html', 'utf8');
 
@@ -124,4 +125,42 @@ test('editor html loads shell helpers before editor entrypoint for core utilitie
   assert.notEqual(shellHelpersIndex, -1, 'editor-shell-helpers.js script must exist');
   assert.notEqual(editorIndex, -1, 'editor.js script must exist');
   assert.ok(shellHelpersIndex < editorIndex, 'editor-shell-helpers.js must load before editor.js');
+});
+
+test('editor page helpers expose getMyTreesHref', () => {
+  assert.match(pageHelpersSource, /function\s+getMyTreesHref\s*\(\)/);
+  assert.match(pageHelpersSource, /getMyTreesHref:\s*getMyTreesHref/);
+});
+
+test('editor entrypoint requires getMyTreesHref page helper', () => {
+  assert.match(
+    editorSource,
+    /const\s+getMyTreesHref\s*=\s*editorPageHelpers\.getMyTreesHref/
+  );
+  assert.doesNotMatch(
+    editorSource,
+    /const\s+getMyTreesHref\s*=\s*editorPageHelpers\.getMyTreesHref\s*\|\|/
+  );
+  assert.match(
+    editorSource,
+    /LoveBudEditorPageHelpers\.getMyTreesHref missing/
+  );
+
+  // Guard must not use reportError
+  const guardStart = editorSource.indexOf('LoveBudEditorPageHelpers.getMyTreesHref missing');
+  assert.notEqual(guardStart, -1, 'getMyTreesHref missing guard must exist');
+  const guardEnd = editorSource.indexOf('const createInlineMediaResolversFallbacks =', guardStart);
+  assert.notEqual(guardEnd, -1, 'next fallback block must follow getMyTreesHref guard');
+  const guardBlock = editorSource.slice(guardStart, guardEnd);
+  assert.doesNotMatch(guardBlock, /reportError/);
+
+  // check parameter passing is intact
+  assert.match(
+    editorSource,
+    /entryFallbacks\.createInlineRenderTreeLoadErrorFallback\(\{\s*getMyTreesHref\s*\}\)/
+  );
+  assert.match(
+    editorSource,
+    /createPrepareEditorShell\(\{\s*applyEditorShellCopy,\s*safeI18nText,\s*i18n,\s*getMyTreesHref\s*\}\)/
+  );
 });
