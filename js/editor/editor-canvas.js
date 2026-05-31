@@ -112,23 +112,14 @@ function createEditorCanvas(deps) {
     }
 
     function getWorldPosition(mem) {
-        if (typeof utils.getWorldPosition === 'function') {
-            return utils.getWorldPosition(mem, {
-                layoutMode: viewportState.layoutMode,
-                viewportState,
-                getCanonicalRootId,
-                getTreeMemories,
-                isRootMemory,
-                getMetrics
-            });
-        }
-        // Fallback
-        if (viewportState.layoutMode === 'structured') {
-            return window.EditorCanvasGeometry.getStructuredWorldPosition(
-                mem, getCanonicalRootId, getTreeMemories, isRootMemory, getMetrics
-            );
-        }
-        return window.EditorCanvasGeometry.getWorldPosition(mem, viewportState, getCanonicalRootId, getTreeMemories, isRootMemory, getMetrics);
+        return utils.getWorldPosition(mem, {
+            layoutMode: viewportState.layoutMode,
+            viewportState,
+            getCanonicalRootId,
+            getTreeMemories,
+            isRootMemory,
+            getMetrics
+        });
     }
 
     function calcPosition(mem) {
