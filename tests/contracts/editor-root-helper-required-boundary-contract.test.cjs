@@ -78,10 +78,12 @@ test('editor entry requires preloaded root helper utilities without inline fallb
 
 test('editor entry keeps root helper usage contracts', () => {
   const editor = read('js/editor.js');
+  const refreshSaveRuntime = read('js/editor/editor-refresh-save-runtime.js');
+  const runtimeSources = `${editor}\n${refreshSaveRuntime}`;
 
   assert.match(editor, /createInitialMemory[\s\S]*findRootMemory/);
   assert.match(editor, /canonicalRootId\s*=\s*getCanonicalRootId\(treeMemories\(\)\)/);
-  assert.match(editor, /isRootMemory\(refreshedEditingMemory,\s*canonicalRootId\)/);
+  assert.match(runtimeSources, /isRootMemory\(refreshedEditingMemory,\s*canonicalRootId\)/);
   assert.match(editor, /isRootMemory\(initialSelection,\s*canonicalRootId\)/);
   assert.match(editor, /memoryActions[\s\S]*isRootMemory[\s\S]*findRootMemory/);
   assert.match(editor, /detailUI[\s\S]*isRootMemory/);

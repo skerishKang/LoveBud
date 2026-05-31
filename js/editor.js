@@ -34,6 +34,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const editorDataLoader = window.LoveBudEditorDataLoader || {};
     const editorInitialLoadFlow = window.LoveBudEditorInitialLoadFlow || {};
     const runEditorInitialLoadFlow = editorInitialLoadFlow.runEditorInitialLoadFlow;
+    const editorRefreshSaveRuntime = window.LoveBudEditorRefreshSaveRuntime || {},
+        createEditorRefreshSaveRuntime = editorRefreshSaveRuntime.createEditorRefreshSaveRuntime;
     const editorStartupContext = window.LoveBudEditorStartupContext || {};
     const createEditorStartupContext = editorStartupContext.createEditorStartupContext;
     const editorAuthHelpers = window.LoveBudEditorAuthHelpers || {};
@@ -285,6 +287,8 @@ document.addEventListener('DOMContentLoaded', () => {
             reportError('LoveBudEditorInitialLoadFlow.runEditorInitialLoadFlow missing');
             return;
         }
+
+        if (typeof createEditorRefreshSaveRuntime !== 'function') { reportError('LoveBudEditorRefreshSaveRuntime.createEditorRefreshSaveRuntime missing'); return; }
 
         log('startEditor sequence initiated');
 
@@ -553,59 +557,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const { calcPosition, drawBranch, drawNode, initCanvas } = editorCanvas;
 
-            const handleMemoriesUpdated = () => {
-                log('Memories updated externally. Rerendering...');
-                initCanvas();
-                updateSidebarStatus();
-                if (currentEditingMemory) {
-                    const refreshedEditingMemory = treeMemories().find((memory) => memory.id === currentEditingMemory.id);
-                    if (refreshedEditingMemory && !isRootMemory(refreshedEditingMemory, canonicalRootId)) {
-                        currentEditingMemory = refreshedEditingMemory;
-                        updateDetailPanel(refreshedEditingMemory);
-                    }
-                }
-            };
-
-            if (typeof editorDataLoader.createRefreshMemories !== 'function') {
-                reportError('LoveBudEditorDataLoader.createRefreshMemories missing');
-                return;
-            }
-            const refreshMemories = editorDataLoader.createRefreshMemories({ treeId, apiClient: window.apiClient, normalizeMemory, onMemoriesUpdated: handleMemoriesUpdated });
-
-            if (typeof exposeRefreshMemoriesBridge !== 'function') {
-                reportError('LoveBudEditorShellHelpers.exposeRefreshMemoriesBridge missing');
-                return;
-            }
-
-            exposeRefreshMemoriesBridge({ refreshMemories });
-
-            if (typeof resolveSaveStatusTimeFormatter !== 'function') {
-                reportError('LoveBudEditorShellHelpers.resolveSaveStatusTimeFormatter missing');
-                return;
-            }
-
-            if (typeof editorSaveStatus.formatTimeAgo !== 'function') {
-                reportError('LoveBudEditorSaveStatus.formatTimeAgo missing');
-                return;
-            }
-
-            const formatTimeAgo = resolveSaveStatusTimeFormatter({
-                editorSaveStatus
+            const refreshSaveRuntime = createEditorRefreshSaveRuntime({
+                log, reportError, editorDataLoader, treeId, apiClient: window.apiClient, normalizeMemory, treeMemories,
+                getCurrentEditingMemory: () => currentEditingMemory, setCurrentEditingMemory: (value) => { currentEditingMemory = value; },
+                isRootMemory, canonicalRootId, updateDetailPanel, updateSidebarStatus, initCanvas, exposeRefreshMemoriesBridge,
+                resolveSaveStatusTimeFormatter, editorSaveStatus, i18n, createSaveStatusOrchestrationFallback, saveStatusOrchestrationHelper: window.LoveBudEditorSaveStatusOrchestration || {}
             });
 
-            const saveStatusOrchestrationHelper = window.LoveBudEditorSaveStatusOrchestration || {};
-            let createEditorSaveStatusOrchestration = saveStatusOrchestrationHelper.createEditorSaveStatusOrchestration;
-
-            if (typeof createEditorSaveStatusOrchestration !== 'function') {
-                if (typeof createSaveStatusOrchestrationFallback !== 'function') {
-                    reportError('LoveBudEditorShellHelpers.createSaveStatusOrchestrationFallback missing');
-                    return;
-                }
-
-                createEditorSaveStatusOrchestration = createSaveStatusOrchestrationFallback();
-            }
-
-            const { saveStatusData, updateSaveStatus } = createEditorSaveStatusOrchestration({ editorSaveStatus, i18n, formatTimeAgo });
+            if (refreshSaveRuntime.status === 'stopped') return;
+            const { saveStatusData, updateSaveStatus } = refreshSaveRuntime;
 
             log('Initializing Memory Actions...');
             memoryActions = window.createEditorMemoryActions({

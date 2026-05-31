@@ -64,6 +64,7 @@ test('editor helper scripts load before the editor entry script', () => {
     'js/editor/editor-auth-helpers.js',
     'js/editor/editor-data-loader.js',
     'js/editor/editor-data-loader-fallbacks.js',
+    'js/editor/editor-refresh-save-runtime.js',
   ];
 
   for (const helper of helpers) {
