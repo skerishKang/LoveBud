@@ -154,7 +154,14 @@ document.addEventListener('DOMContentLoaded', () => {
         return selectedNodeId;
     });
 
-    const getMyTreesHref = editorPageHelpers.getMyTreesHref || (() => getEditorBasePath() + 'my-trees');
+    const getMyTreesHref = editorPageHelpers.getMyTreesHref;
+    if (typeof getMyTreesHref !== 'function') {
+        const debugState = window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] };
+        const msg = 'LoveBudEditorPageHelpers.getMyTreesHref missing';
+        console.error('[editor-main] ERROR: ' + msg);
+        debugState.errors.push({ msg, error: msg });
+        return;
+    }
     const createInlineMediaResolversFallbacks = resolverFallbacks.createInlineMediaResolversFallbacks || (() => ({}));
 
     const escapeHtml = editorHelpers.escapeHtml || ((value) => {
