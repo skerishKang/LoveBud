@@ -24,7 +24,8 @@ const MODULE_TEMPLATE_SCRIPTS = [
     'js/editor/templates/editor-floating-toolbar-template.js',
     'js/editor/templates/editor-detail-panel-shell-template.js',
     'js/editor/templates/editor-detail-empty-state-template.js',
-    'js/editor/templates/editor-detail-view-mode-template.js'
+    'js/editor/templates/editor-detail-view-mode-template.js',
+    'js/editor/templates/editor-detail-edit-mode-template.js'
 ];
 
 function isModuleTemplate(script) {
@@ -238,8 +239,8 @@ test('editor-detail-view-mode-template.js defines buildDetailViewModeTemplate bu
 
 test('editor-detail-edit-mode-template.js defines buildDetailEditModeTemplate builder', () => {
     const content = fs.readFileSync('js/editor/templates/editor-detail-edit-mode-template.js', 'utf8');
-    assert.match(content, /function buildDetailEditModeTemplate\(\)/,
-        'must define buildDetailEditModeTemplate function');
+    assert.match(content, /export\s+function buildDetailEditModeTemplate\(\)/,
+        'must define buildDetailEditModeTemplate as exported function');
     assert.match(content, /mount\.outerHTML\s*=\s*buildDetailEditModeTemplate\(\)/,
         'must call buildDetailEditModeTemplate() for mount.outerHTML');
 });
@@ -304,13 +305,20 @@ test('editor-detail-view-mode-template.js is loaded as type="module" in editor.h
         'editor-detail-view-mode-template.js must be loaded with type="module"');
 });
 
-test('remaining 1 template scripts are NOT loaded as type="module"', () => {
-    const classicTemplates = TEMPLATE_SCRIPTS.filter(s => !isModuleTemplate(s));
-    for (const script of classicTemplates) {
-        const scriptTagPattern = new RegExp(`<script\\s+src="[^"]*${script.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`);
-        const match = html.match(scriptTagPattern);
-        assert.ok(match, `editor.html must contain script tag for ${script}`);
-        assert.ok(!match[0].includes('type="module"'),
-            `${script} must not be loaded as type="module"`);
+test('editor-detail-edit-mode-template.js is loaded as type="module" in editor.html', () => {
+    const modulePattern = /<script\s+type="module"\s+src="[^"]*editor-detail-edit-mode-template\.js/;
+    assert.match(html, modulePattern,
+        'editor-detail-edit-mode-template.js must be loaded with type="module"');
+});
+
+test('all 9 template scripts are loaded as type="module"', () => {
+    for (const script of TEMPLATE_SCRIPTS) {
+        assert.ok(isModuleTemplate(script), `template ${script} must be in MODULE_TEMPLATE_SCRIPTS`);
     }
+    assert.equal(MODULE_TEMPLATE_SCRIPTS.length, 9, 'all 9 templates must be ESM modules');
+});
+
+test('remaining 0 template scripts are NOT loaded as type="module"', () => {
+    const classicTemplates = TEMPLATE_SCRIPTS.filter(s => !isModuleTemplate(s));
+    assert.equal(classicTemplates.length, 0, 'no classic templates should remain');
 });
