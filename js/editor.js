@@ -292,24 +292,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 reportError
             });
 
-            const updateTreeVisibility = async (nextVisibility) => {
-                if (canEdit === false) return;
-                if (!treeId || !window.apiClient || typeof window.apiClient.updateTree !== 'function') {
-                    throw new Error('updateTree not available');
-                }
-                const updatedTree = await window.apiClient.updateTree(treeId, { visibility: nextVisibility });
-                if (typeof editorTreeHelpers.applyUpdatedTreeVisibility === 'function') {
-                    editorTreeHelpers.applyUpdatedTreeVisibility({
-                        updatedTree,
-                        nextVisibility,
-                        currentTreeData: window.currentTreeData || {}
-                    });
-                } else {
-                    reportError('LoveBudEditorTreeHelpers.applyUpdatedTreeVisibility missing');
-                }
-                updateSidebarStatus();
-                if (currentEditingMemory) updateDetailPanel(currentEditingMemory);
-            };
+            const updateTreeVisibility = editorTreeHelpers.createTreeVisibilityUpdater({
+                canEdit,
+                getTreeId: () => treeId,
+                getApiClient: () => window.apiClient,
+                applyUpdatedTreeVisibility: editorTreeHelpers.applyUpdatedTreeVisibility,
+                getCurrentTreeData: () => window.currentTreeData || {},
+                updateSidebarStatus,
+                getCurrentEditingMemory: () => currentEditingMemory,
+                updateDetailPanel,
+                reportError
+            });
 
             log('Initializing Detail UI...');
             const detailUI = window.createEditorDetailUI({

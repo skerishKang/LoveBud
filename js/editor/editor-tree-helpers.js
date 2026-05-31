@@ -114,4 +114,48 @@
             return 'm' + (max + 1);
         };
     }
+
+    if (!treeHelpers.createTreeVisibilityUpdater) {
+        treeHelpers.createTreeVisibilityUpdater = function createTreeVisibilityUpdater(options) {
+            var opts = options || {};
+            var canEdit = opts.canEdit;
+            var getTreeId = opts.getTreeId || function() { return null; };
+            var getApiClient = opts.getApiClient || function() { return window.apiClient; };
+            var applyUpdatedTreeVisibility = opts.applyUpdatedTreeVisibility;
+            var getCurrentTreeData = opts.getCurrentTreeData || function() { return window.currentTreeData || {}; };
+            var updateSidebarStatus = opts.updateSidebarStatus;
+            var getCurrentEditingMemory = opts.getCurrentEditingMemory || function() { return null; };
+            var updateDetailPanel = opts.updateDetailPanel;
+            var reportError = opts.reportError || function() {};
+
+            return async function updateTreeVisibility(nextVisibility) {
+                if (canEdit === false) return;
+                var treeId = getTreeId();
+                var apiClient = getApiClient();
+
+                if (!treeId || !apiClient || typeof apiClient.updateTree !== 'function') {
+                    throw new Error('updateTree not available');
+                }
+
+                var updatedTree = await apiClient.updateTree(treeId, { visibility: nextVisibility });
+
+                if (typeof applyUpdatedTreeVisibility === 'function') {
+                    applyUpdatedTreeVisibility({
+                        updatedTree: updatedTree,
+                        nextVisibility: nextVisibility,
+                        currentTreeData: getCurrentTreeData()
+                    });
+                } else {
+                    reportError('LoveBudEditorTreeHelpers.applyUpdatedTreeVisibility missing');
+                }
+
+                if (typeof updateSidebarStatus === 'function') updateSidebarStatus();
+
+                var currentEditingMemory = getCurrentEditingMemory();
+                if (currentEditingMemory && typeof updateDetailPanel === 'function') {
+                    updateDetailPanel(currentEditingMemory);
+                }
+            };
+        };
+    }
 })();
