@@ -48,7 +48,11 @@ test('canvas empty guide bridge dependency slice leaves focus and detail opener 
   );
   assert.match(
     editorSource,
-    /ensureStartEditorDependency\(createCurrentMomentDetailOpener, 'LoveBudEditorShellHelpers\.createCurrentMomentDetailOpener missing'\)/
+    /checkEditorCurrentMomentDetailDependencies\(\)/
+  );
+  assert.match(
+    editorSource,
+    /LoveBudEditorShellHelpers\.createCurrentMomentDetailOpener missing/
   );
   assert.match(editorSource, /createEditorRefreshSaveRuntime\(\{/);
   assert.doesNotMatch(editorSource, /pan\/drag lifecycle/);

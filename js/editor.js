@@ -400,7 +400,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 getSelectedNodeId: () => selectedNodeId
             });
 
-            if (!ensureStartEditorDependency(createCurrentMomentDetailOpener, 'LoveBudEditorShellHelpers.createCurrentMomentDetailOpener missing')) return;
+            const checkEditorCurrentMomentDetailDependencies = createEditorStartDependencyChecker({
+                ensureStartEditorDependency,
+                dependencies: [
+                    {
+                        value: createCurrentMomentDetailOpener,
+                        message: 'LoveBudEditorShellHelpers.createCurrentMomentDetailOpener missing'
+                    }
+                ]
+            });
+
+            if (!checkEditorCurrentMomentDetailDependencies()) return;
 
             const openCurrentMomentDetail = createCurrentMomentDetailOpener({
                 getCurrentEditingMemory: () => currentEditingMemory,
