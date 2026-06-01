@@ -17,10 +17,11 @@ test('editability shell state helper keeps testable body and namespace hooks', (
   assert.match(shellHelpersSource, /opts\.body/);
 });
 
-test('editor delegates editability shell state with fallback', () => {
+test('editor delegates editability shell state through startup shell applier', () => {
   assert.match(editorSource, /shellHelpers\.applyEditorEditabilityState/);
   assert.match(editorSource, /const applyEditorEditabilityState\s*=/);
-  assert.match(editorSource, /applyEditorEditabilityState\(\{\s*canEdit\s*\}\)/);
+  assert.match(editorSource, /applyEditorEditabilityState,\s*canEdit,\s*log/s);
+  assert.match(editorSource, /applyEditorStartupShell\(\);/);
   assert.doesNotMatch(editorSource, /window\.LoveBudEditor\.canEdit\s*=\s*nextCanEdit/);
   assert.doesNotMatch(editorSource, /classList\?\.toggle\('editor-readonly',\s*!nextCanEdit\)/);
   assert.match(editorSource, /LoveBudEditorShellHelpers\.applyEditorEditabilityState missing/);
@@ -34,7 +35,7 @@ test('editor no longer applies editability state inline in start flow', () => {
   assert.notEqual(end, -1, 'initial load flow setup must follow editability state setup');
 
   const block = editorSource.slice(start, end);
-  assert.match(block, /applyEditorEditabilityState\(\{\s*canEdit\s*\}/);
+  assert.match(block, /applyEditorStartupShell\(\);/);
   assert.doesNotMatch(block, /window\.LoveBudEditor\s*=\s*window\.LoveBudEditor\s*\|\|\s*\{\}/);
   assert.doesNotMatch(block, /document\.body\.classList\.toggle\('editor-readonly'/);
 });
