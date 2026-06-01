@@ -71,11 +71,13 @@ test('editor keeps memory actions creation and assignment intact', () => {
   assert.match(editorSource, /const \{\s*enterEditMode,\s*exitEditMode,\s*saveMemoryEdit,\s*deleteMemory\s*\}\s*=\s*memoryActions/);
 });
 
-test('editor guards missing memory actions readiness wrapper before creation', () => {
-  const guardIndex = editorSource.indexOf('LoveBudEditorShellHelpers.createMemoryActionsReadinessWrapper missing');
+test('editor delegates missing memory actions readiness wrapper guard before creation', () => {
+  const checkerIndex = editorSource.indexOf('checkEditorMemoryActionsReadinessDependencies');
   const createIndex = editorSource.indexOf('const updateSelectedMemoryFields = createMemoryActionsReadinessWrapper({');
 
-  assert.ok(guardIndex !== -1, 'missing wrapper guard must exist');
+  assert.ok(checkerIndex !== -1, 'memory actions readiness dependency checker must exist');
   assert.ok(createIndex !== -1, 'updateSelectedMemoryFields creation must exist');
-  assert.ok(guardIndex < createIndex, 'guard must run before updateSelectedMemoryFields creation');
+  assert.ok(checkerIndex < createIndex, 'dependency checker must run before updateSelectedMemoryFields creation');
+
+  assert.match(editorSource, /LoveBudEditorShellHelpers\.createMemoryActionsReadinessWrapper missing/);
 });
