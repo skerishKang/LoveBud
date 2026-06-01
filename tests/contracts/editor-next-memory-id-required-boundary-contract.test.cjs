@@ -33,10 +33,10 @@ test('editor.js guards missing nextMemoryIdFromMemories with reportError', () =>
   );
 });
 
-test('editor.js delegates nextMemoryId through required tree helper', () => {
+test('editor.js delegates nextMemoryId through shell helper factory', () => {
   assert.match(
     editorSource,
-    /const\s+nextMemoryId\s*=\s*\(\s*\)\s*=>\s*nextMemoryIdFromMemories\(treeMemories\(\)\)/
+    /const\s+nextMemoryId\s*=\s*createEditorNextMemoryIdProvider\(/
   );
   assert.doesNotMatch(
     editorSource,

@@ -135,6 +135,11 @@ document.addEventListener('DOMContentLoaded', () => {
         reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.createEditorInitialMemoryProvider missing');
         return;
     }
+    const createEditorNextMemoryIdProvider = shellHelpers.createEditorNextMemoryIdProvider;
+    if (typeof createEditorNextMemoryIdProvider !== 'function') {
+        reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.createEditorNextMemoryIdProvider missing');
+        return;
+    }
     const createSaveStatusOrchestrationFallback = shellHelpers.createSaveStatusOrchestrationFallback;
     const exposeRefreshMemoriesBridge = shellHelpers.exposeRefreshMemoriesBridge;
     const resolveSaveStatusTimeFormatter = shellHelpers.resolveSaveStatusTimeFormatter;
@@ -255,7 +260,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (!ensureStartEditorDependency(nextMemoryIdFromMemories, 'LoveBudEditorTreeHelpers.nextMemoryIdFromMemories missing')) return;
 
-            const nextMemoryId = () => nextMemoryIdFromMemories(treeMemories());
+            const nextMemoryId = createEditorNextMemoryIdProvider({
+                nextMemoryIdFromMemories,
+                getTreeMemories: () => treeMemories()
+            });
 
             const emptyGuideUIHelper = window.LoveBudEditorEmptyGuideUI || {};
             const updateCanvasEmptyGuide = createEditorCanvasEmptyGuideUpdater({
