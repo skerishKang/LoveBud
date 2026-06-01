@@ -41,7 +41,11 @@ test('selected moment focus dependency delegation preserves focus handler constr
 test('selected moment focus dependency slice leaves detail opener and sidebar guards intact', () => {
   assert.match(
     editorSource,
-    /ensureStartEditorDependency\(createCurrentMomentDetailOpener, 'LoveBudEditorShellHelpers\.createCurrentMomentDetailOpener missing'\)/
+    /checkEditorCurrentMomentDetailDependencies\(\)/
+  );
+  assert.match(
+    editorSource,
+    /LoveBudEditorShellHelpers\.createCurrentMomentDetailOpener missing/
   );
   assert.match(
     editorSource,

@@ -61,15 +61,15 @@ test('editor entrypoint guards missing sidebar tree actions helper before creati
   );
 });
 
-test('editor entrypoint guards missing current moment detail opener before creation', () => {
-  assert.match(
-    editorSource,
-    /LoveBudEditorShellHelpers\.createCurrentMomentDetailOpener missing/
-  );
-  assert.match(
-    editorSource,
-    /const\s+openCurrentMomentDetail\s*=\s*createCurrentMomentDetailOpener\(/
-  );
+test('editor entrypoint delegates missing current moment detail opener guard before creation', () => {
+  const checkerIndex = editorSource.indexOf('checkEditorCurrentMomentDetailDependencies');
+  const createIndex = editorSource.indexOf('const openCurrentMomentDetail = createCurrentMomentDetailOpener({');
+
+  assert.ok(checkerIndex !== -1, 'current moment detail dependency checker must exist');
+  assert.ok(createIndex !== -1, 'current moment detail opener creation must exist');
+  assert.ok(checkerIndex < createIndex, 'dependency checker must run before current moment detail opener creation');
+
+  assert.match(editorSource, /LoveBudEditorShellHelpers\.createCurrentMomentDetailOpener missing/);
 });
 
 test('editor entrypoint delegates missing selected moment focus helper guard before creation', () => {
