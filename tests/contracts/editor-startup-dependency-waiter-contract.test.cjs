@@ -38,19 +38,28 @@ test('editor no longer owns inline startup dependency waiter inside startEditor'
   const start = editorSource.indexOf('const startEditor = async () => {');
   assert.notEqual(start, -1, 'startEditor must exist');
 
-  const end = editorSource.indexOf("if (!await waitForGlobal('createEditorCanvas')) return;", start);
-  assert.notEqual(end, -1, 'dependency wait call must remain');
+  const end = editorSource.indexOf("if (!await waitForEditorRequiredGlobals()) return;", start);
+  assert.notEqual(end, -1, 'required global wait call must remain');
 
   const block = editorSource.slice(start, end);
   assert.match(block, /createEditorStartupDependencyWaiter\(\{\s*log,\s*reportError\s*\}\)/);
   assert.doesNotMatch(block, /const waitForGlobal\s*=\s*async\s*\(name\)\s*=>/);
 });
 
-test('editor keeps startup dependency call sequence intact', () => {
-  assert.match(editorSource, /if \(!await waitForGlobal\('createEditorCanvas'\)\) return;/);
-  assert.match(editorSource, /if \(!await waitForGlobal\('createEditorDetailUI'\)\) return;/);
-  assert.match(editorSource, /if \(!await waitForGlobal\('createEditorMemoryActions'\)\) return;/);
-  assert.match(editorSource, /if \(!await waitForGlobal\('createEditorMemoryForm'\)\) return;/);
+test('editor shell helper owns required global wait sequence', () => {
+  assert.match(shellHelpersSource, /createEditorRequiredGlobalWaiter:\s*function\(options\)/);
+  assert.match(shellHelpersSource, /'createEditorCanvas'/);
+  assert.match(shellHelpersSource, /'createEditorDetailUI'/);
+  assert.match(shellHelpersSource, /'createEditorMemoryActions'/);
+  assert.match(shellHelpersSource, /'createEditorMemoryForm'/);
+});
+
+test('editor delegates required global waits through shell helper', () => {
+  assert.match(editorSource, /const createEditorRequiredGlobalWaiter\s*=\s*shellHelpers\.createEditorRequiredGlobalWaiter/);
+  assert.match(editorSource, /LoveBudEditorShellHelpers\.createEditorRequiredGlobalWaiter missing/);
+  assert.match(editorSource, /const waitForEditorRequiredGlobals\s*=\s*createEditorRequiredGlobalWaiter\(\{\s*waitForGlobal\s*\}\)/);
+  assert.match(editorSource, /if \(!await waitForEditorRequiredGlobals\(\)\) return;/);
+  assert.doesNotMatch(editorSource, /if \(!await waitForGlobal\('createEditorCanvas'\)\) return;/);
 });
 
 test('editor shell helpers load before editor entrypoint', () => {

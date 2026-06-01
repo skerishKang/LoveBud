@@ -240,20 +240,27 @@ test('editor.js does not use console.error for createEditorStartupDependencyWait
     'createEditorStartupDependencyWaiter missing must use reportError, not top-level console.error');
 });
 
-test('editor.js maintains waitForGlobal dependency order in startEditor', () => {
-  const startSection = editorSource.slice(editorSource.indexOf('const waitForGlobal'));
-  const waitLines = [
-    "waitForGlobal('createEditorCanvas')",
-    "waitForGlobal('createEditorDetailUI')",
-    "waitForGlobal('createEditorMemoryActions')",
-    "waitForGlobal('createEditorMemoryForm')"
+test('editor.js delegates waitForGlobal dependency order to shell helper', () => {
+  assert.match(shellHelpersSource, /'createEditorCanvas'/);
+  assert.match(shellHelpersSource, /'createEditorDetailUI'/);
+  assert.match(shellHelpersSource, /'createEditorMemoryActions'/);
+  assert.match(shellHelpersSource, /'createEditorMemoryForm'/);
+
+  const waiterStart = shellHelpersSource.indexOf('createEditorRequiredGlobalWaiter');
+  assert.ok(waiterStart !== -1, 'shell helper must define createEditorRequiredGlobalWaiter');
+
+  const globals = [
+    'createEditorCanvas',
+    'createEditorDetailUI',
+    'createEditorMemoryActions',
+    'createEditorMemoryForm'
   ];
 
   let prevIndex = -1;
-  for (const line of waitLines) {
-    const idx = startSection.indexOf(line);
-    assert.ok(idx !== -1, `Editor must call ${line}`);
-    assert.ok(idx > prevIndex, `Wait order must be preserved: ${line} after previous`);
+  for (const global of globals) {
+    const idx = shellHelpersSource.indexOf(global, waiterStart);
+    assert.ok(idx !== -1, `Shell helper must reference ${global}`);
+    assert.ok(idx > prevIndex, `Wait order must be preserved: ${global} after previous`);
     prevIndex = idx;
   }
 });
