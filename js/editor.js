@@ -140,6 +140,11 @@ document.addEventListener('DOMContentLoaded', () => {
         reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.createEditorNextMemoryIdProvider missing');
         return;
     }
+    const createEditorInitialSelectionApplier = shellHelpers.createEditorInitialSelectionApplier;
+    if (typeof createEditorInitialSelectionApplier !== 'function') {
+        reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.createEditorInitialSelectionApplier missing');
+        return;
+    }
     const createSaveStatusOrchestrationFallback = shellHelpers.createSaveStatusOrchestrationFallback;
     const exposeRefreshMemoriesBridge = shellHelpers.exposeRefreshMemoriesBridge;
     const resolveSaveStatusTimeFormatter = shellHelpers.resolveSaveStatusTimeFormatter;
@@ -492,12 +497,18 @@ document.addEventListener('DOMContentLoaded', () => {
             log('Final Canvas Initialization...');
             initCanvas();
             updateCanvasEmptyGuide();
-            
-            const initialSelection = treeMemories().find((memory) => memory.id === selectedNodeId) || createInitialMemory();
-            if (initialSelection && !isRootMemory(initialSelection, canonicalRootId)) {
-                currentEditingMemory = initialSelection;
-                log(`Initial selection set: ${initialSelection.id}`);
-            }
+
+            const applyEditorInitialSelection = createEditorInitialSelectionApplier({
+                getTreeMemories: () => treeMemories(),
+                getSelectedNodeId: () => selectedNodeId,
+                createInitialMemory,
+                isRootMemory,
+                getCanonicalRootId: () => canonicalRootId,
+                setCurrentEditingMemory: (value) => { currentEditingMemory = value; },
+                log
+            });
+
+            applyEditorInitialSelection();
 
             updateSidebarStatus();
             markEditorReady();

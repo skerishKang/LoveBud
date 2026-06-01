@@ -83,8 +83,8 @@ test('editor entry keeps root helper usage contracts', () => {
 
   assert.match(editor, /createInitialMemory[\s\S]*findRootMemory/);
   assert.match(editor, /canonicalRootId\s*=\s*getCanonicalRootId\(treeMemories\(\)\)/);
+  assert.match(editor, /applyEditorInitialSelection\(\);/);
   assert.match(runtimeSources, /isRootMemory\(refreshedEditingMemory,\s*canonicalRootId\)/);
-  assert.match(editor, /isRootMemory\(initialSelection,\s*canonicalRootId\)/);
   assert.match(editor, /memoryActions[\s\S]*isRootMemory[\s\S]*findRootMemory/);
   assert.match(editor, /detailUI[\s\S]*isRootMemory/);
   assert.match(editor, /editorCanvas[\s\S]*isRootMemory/);
