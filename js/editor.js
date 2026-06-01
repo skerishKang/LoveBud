@@ -103,6 +103,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof createEditorDebugReporter !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.createEditorDebugReporter missing'); return; }
     const createEditorStartDependencyGuard = shellHelpers.createEditorStartDependencyGuard;
     if (typeof createEditorStartDependencyGuard !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.createEditorStartDependencyGuard missing'); return; }
+    const createEditorStartDependencyChecker = shellHelpers.createEditorStartDependencyChecker;
+    if (typeof createEditorStartDependencyChecker !== 'function') {
+        reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.createEditorStartDependencyChecker missing');
+        return;
+    }
     const createEditorStartupDependencyWaiter = shellHelpers.createEditorStartupDependencyWaiter;
     const createEditorRequiredGlobalWaiter = shellHelpers.createEditorRequiredGlobalWaiter;
     if (typeof createEditorRequiredGlobalWaiter !== 'function') {
@@ -173,13 +178,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const ensureStartEditorDependency = createEditorStartDependencyGuard({ reportError });
 
-        if (!ensureStartEditorDependency(createEditorStartupDependencyWaiter, 'LoveBudEditorShellHelpers.createEditorStartupDependencyWaiter missing')) return;
+        const checkEditorStartDependencies = createEditorStartDependencyChecker({
+            ensureStartEditorDependency,
+            dependencies: [
+                {
+                    value: createEditorStartupDependencyWaiter,
+                    message: 'LoveBudEditorShellHelpers.createEditorStartupDependencyWaiter missing'
+                },
+                {
+                    value: markEditorReady,
+                    message: 'LoveBudEditorShellHelpers.markEditorReady missing'
+                },
+                {
+                    value: runEditorInitialLoadFlow,
+                    message: 'LoveBudEditorInitialLoadFlow.runEditorInitialLoadFlow missing'
+                },
+                {
+                    value: createEditorRefreshSaveRuntime,
+                    message: 'LoveBudEditorRefreshSaveRuntime.createEditorRefreshSaveRuntime missing'
+                }
+            ]
+        });
 
-        if (!ensureStartEditorDependency(markEditorReady, 'LoveBudEditorShellHelpers.markEditorReady missing')) return;
-
-        if (!ensureStartEditorDependency(runEditorInitialLoadFlow, 'LoveBudEditorInitialLoadFlow.runEditorInitialLoadFlow missing')) return;
-
-        if (!ensureStartEditorDependency(createEditorRefreshSaveRuntime, 'LoveBudEditorRefreshSaveRuntime.createEditorRefreshSaveRuntime missing')) return;
+        if (!checkEditorStartDependencies()) return;
 
         log('startEditor sequence initiated');
 

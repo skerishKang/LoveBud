@@ -209,6 +209,24 @@ window.LoveBudEditorShellHelpers = {
         };
     },
 
+    // Editor start dependency checker factory
+    createEditorStartDependencyChecker: function(options) {
+        var opts = options || {};
+        var ensureStartEditorDependency = opts.ensureStartEditorDependency || function() { return false; };
+        var dependencies = opts.dependencies || [];
+
+        return function checkEditorStartDependencies() {
+            for (var i = 0; i < dependencies.length; i += 1) {
+                var dependency = dependencies[i];
+                if (!ensureStartEditorDependency(dependency.value, dependency.message)) {
+                    return false;
+                }
+            }
+
+            return true;
+        };
+    },
+
     // Editor startup dependency waiter factory
     createEditorStartupDependencyWaiter: function(options) {
         var opts = options || {};
