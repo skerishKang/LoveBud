@@ -211,9 +211,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!await waitForEditorRequiredGlobals()) return;
 
-        if (!ensureStartEditorDependency(createEditorDomRefs, 'LoveBudEditorDomRefsBuilder.createEditorDomRefs missing')) return;
+        const checkEditorStartupContextDependencies = createEditorStartDependencyChecker({
+            ensureStartEditorDependency,
+            dependencies: [
+                {
+                    value: createEditorDomRefs,
+                    message: 'LoveBudEditorDomRefsBuilder.createEditorDomRefs missing'
+                },
+                {
+                    value: createEditorStartupContext,
+                    message: 'LoveBudEditorStartupContext.createEditorStartupContext missing'
+                }
+            ]
+        });
 
-        if (!ensureStartEditorDependency(createEditorStartupContext, 'LoveBudEditorStartupContext.createEditorStartupContext missing')) return;
+        if (!checkEditorStartupContextDependencies()) return;
 
         try {
             const {
