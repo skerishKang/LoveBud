@@ -68,8 +68,19 @@ test('editor entrypoint guards missing current moment detail opener before creat
   );
   assert.match(
     editorSource,
-    /const\s+openCurrentMomentDetail\s*=\s*createCurrentMomentDetailOpener\(\{/
+    /const\s+openCurrentMomentDetail\s*=\s*createCurrentMomentDetailOpener\(/
   );
+});
+
+test('editor entrypoint delegates missing selected moment focus helper guard before creation', () => {
+  const checkerIndex = editorSource.indexOf('checkEditorSelectedMomentFocusDependencies');
+  const createIndex = editorSource.indexOf('const focusSelectedMoment = createSelectedMomentFocusHandler({');
+
+  assert.ok(checkerIndex !== -1, 'selected moment focus dependency checker must exist');
+  assert.ok(createIndex !== -1, 'selected moment focus creation must exist');
+  assert.ok(checkerIndex < createIndex, 'dependency checker must run before selected moment focus creation');
+
+  assert.match(editorSource, /LoveBudEditorShellHelpers\.createSelectedMomentFocusHandler missing/);
 });
 
 test('editor html loads shell helpers before editor entrypoint for interaction helpers', () => {
