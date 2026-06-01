@@ -40,7 +40,11 @@ test('canvas empty guide bridge dependency delegation preserves bridge exposure 
 test('canvas empty guide bridge dependency slice leaves focus and detail opener guards intact', () => {
   assert.match(
     editorSource,
-    /ensureStartEditorDependency\(createSelectedMomentFocusHandler, 'LoveBudEditorShellHelpers\.createSelectedMomentFocusHandler missing'\)/
+    /checkEditorSelectedMomentFocusDependencies\(\)/
+  );
+  assert.match(
+    editorSource,
+    /LoveBudEditorShellHelpers\.createSelectedMomentFocusHandler missing/
   );
   assert.match(
     editorSource,

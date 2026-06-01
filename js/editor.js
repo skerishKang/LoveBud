@@ -383,7 +383,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 reportError
             });
 
-            if (!ensureStartEditorDependency(createSelectedMomentFocusHandler, 'LoveBudEditorShellHelpers.createSelectedMomentFocusHandler missing')) return;
+            const checkEditorSelectedMomentFocusDependencies = createEditorStartDependencyChecker({
+                ensureStartEditorDependency,
+                dependencies: [
+                    {
+                        value: createSelectedMomentFocusHandler,
+                        message: 'LoveBudEditorShellHelpers.createSelectedMomentFocusHandler missing'
+                    }
+                ]
+            });
+
+            if (!checkEditorSelectedMomentFocusDependencies()) return;
 
             const focusSelectedMoment = createSelectedMomentFocusHandler({
                 getEditorCanvas: () => editorCanvas,
