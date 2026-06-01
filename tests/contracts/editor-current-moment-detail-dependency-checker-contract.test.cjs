@@ -43,7 +43,11 @@ test('current moment detail dependency delegation preserves opener construction 
 test('current moment detail dependency slice leaves sidebar guard and downstream detail UI intact', () => {
   assert.match(
     editorSource,
-    /ensureStartEditorDependency\(createSidebarTreeActionsUpdater, 'LoveBudEditorShellHelpers\.createSidebarTreeActionsUpdater missing'\)/
+    /checkEditorSidebarTreeActionsDependencies\(\)/
+  );
+  assert.match(
+    editorSource,
+    /LoveBudEditorShellHelpers\.createSidebarTreeActionsUpdater missing/
   );
   assert.match(editorSource, /const updateTreeVisibility\s*=\s*editorTreeHelpers\.createTreeVisibilityUpdater\(/);
   assert.match(editorSource, /window\.createEditorDetailUI\(/);

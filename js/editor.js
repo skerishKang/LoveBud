@@ -464,7 +464,17 @@ document.addEventListener('DOMContentLoaded', () => {
             exposeDetailPanelUpdater({ updateDetailPanel });
 
             const sidebarUIHelper = window.LoveBudEditorSidebarUI || {};
-            if (!ensureStartEditorDependency(createSidebarTreeActionsUpdater, 'LoveBudEditorShellHelpers.createSidebarTreeActionsUpdater missing')) return;
+            const checkEditorSidebarTreeActionsDependencies = createEditorStartDependencyChecker({
+                ensureStartEditorDependency,
+                dependencies: [
+                    {
+                        value: createSidebarTreeActionsUpdater,
+                        message: 'LoveBudEditorShellHelpers.createSidebarTreeActionsUpdater missing'
+                    }
+                ]
+            });
+
+            if (!checkEditorSidebarTreeActionsDependencies()) return;
 
             const updateSidebarTreeActions = createSidebarTreeActionsUpdater({
                 sidebarUIHelper,
