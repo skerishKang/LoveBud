@@ -462,6 +462,32 @@ window.LoveBudEditorShellHelpers = {
         };
     },
 
+    // Editor initial selection applier factory
+    createEditorInitialSelectionApplier: function(options) {
+        var opts = options || {};
+        var getTreeMemories = opts.getTreeMemories || function() { return []; };
+        var getSelectedNodeId = opts.getSelectedNodeId || function() { return null; };
+        var createInitialMemory = opts.createInitialMemory || function() { return null; };
+        var isRootMemory = opts.isRootMemory || function() { return false; };
+        var getCanonicalRootId = opts.getCanonicalRootId || function() { return null; };
+        var setCurrentEditingMemory = opts.setCurrentEditingMemory || function() {};
+        var log = opts.log || function() {};
+
+        return function applyEditorInitialSelection() {
+            var selectedNodeId = getSelectedNodeId();
+            var initialSelection = getTreeMemories().find(function(memory) {
+                return memory.id === selectedNodeId;
+            }) || createInitialMemory();
+
+            if (initialSelection && !isRootMemory(initialSelection, getCanonicalRootId())) {
+                setCurrentEditingMemory(initialSelection);
+                log('Initial selection set: ' + initialSelection.id);
+            }
+
+            return initialSelection;
+        };
+    },
+
     // Save status orchestration fallback factory
     createSaveStatusOrchestrationFallback: function(options) {
         var opts = options || {};
