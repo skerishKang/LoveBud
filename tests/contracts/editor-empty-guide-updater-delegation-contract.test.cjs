@@ -16,9 +16,9 @@ test('editor empty guide ui exposes canvas empty guide updater helper', () => {
   assert.match(emptyGuideSource, /getTreeMemories/);
 });
 
-test('editor entrypoint delegates canvas empty guide updater to empty guide ui helper', () => {
+test('editor entrypoint delegates canvas empty guide updater to shell helper factory', () => {
   assert.match(editorSource, /const emptyGuideUIHelper\s*=\s*window\.LoveBudEditorEmptyGuideUI\s*\|\|\s*\{\}/);
-  assert.match(editorSource, /emptyGuideUIHelper\.createCanvasEmptyGuideUpdater/);
+  assert.match(editorSource, /createEditorCanvasEmptyGuideUpdater\(\{/);
   assert.match(editorSource, /getTreeMemories:\s*\(\)\s*=>\s*treeMemories\(\)/);
   assert.match(editorSource, /log\s*\}/);
 });

@@ -242,6 +242,25 @@ window.LoveBudEditorShellHelpers = {
         };
     },
 
+    // Editor canvas empty guide updater factory
+    createEditorCanvasEmptyGuideUpdater: function(options) {
+        var opts = options || {};
+        var emptyGuideUIHelper = opts.emptyGuideUIHelper || {};
+        var getTreeMemories = opts.getTreeMemories || function() { return []; };
+        var log = opts.log || function() {};
+
+        if (typeof emptyGuideUIHelper.createCanvasEmptyGuideUpdater === 'function') {
+            return emptyGuideUIHelper.createCanvasEmptyGuideUpdater({
+                getTreeMemories: getTreeMemories,
+                log: log
+            });
+        }
+
+        return function updateCanvasEmptyGuide() {
+            log('WARNING: LoveBudEditorEmptyGuideUI.createCanvasEmptyGuideUpdater missing');
+        };
+    },
+
     // YouTube input validation fallback
     getYouTubeInputErrorMessageFallback: function(i18n, rawUrl) {
         var value = String(rawUrl || '').trim();

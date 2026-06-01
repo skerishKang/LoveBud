@@ -60,7 +60,7 @@ test('editor guards missing canvas empty guide bridge before exposure', () => {
 });
 
 test('editor keeps empty guide updater creation and event binding intact', () => {
-  assert.match(editorSource, /emptyGuideUIHelper\.createCanvasEmptyGuideUpdater/);
+  assert.match(editorSource, /createEditorCanvasEmptyGuideUpdater\(/);
   assert.match(editorSource, /bindEditorPageEvents/);
   assert.match(editorSource, /updateCanvasEmptyGuide\(\)/);
 });
