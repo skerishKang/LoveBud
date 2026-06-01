@@ -194,8 +194,9 @@ test('editor.js calls createEditorStartupDependencyWaiter with log and reportErr
   assert.match(editorSource, /createEditorStartupDependencyWaiter\(\{\s*log,\s*reportError\s*\}\)/);
 });
 
-test('editor.js calls applyEditorEditabilityState with canEdit', () => {
-  assert.match(editorSource, /applyEditorEditabilityState\(\{\s*canEdit\s*\}\)/);
+test('editor.js delegates applyEditorEditabilityState to startup shell applier', () => {
+  assert.match(editorSource, /applyEditorEditabilityState,\s*canEdit,\s*log/s);
+  assert.match(editorSource, /applyEditorStartupShell\(\);/);
 });
 
 test('editor.js delegates markEditorReady to ready finalizer factory', () => {
@@ -265,13 +266,13 @@ test('editor.js delegates waitForGlobal dependency order to shell helper', () =>
   }
 });
 
-test('editor.js guards missing applyEditorEditabilityState before applying editability state', () => {
+test('editor.js guards missing applyEditorEditabilityState before startup shell applier', () => {
   const guardIndex = editorSource.indexOf('LoveBudEditorShellHelpers.applyEditorEditabilityState missing');
-  const applyIndex = editorSource.indexOf('applyEditorEditabilityState({ canEdit });');
+  const applierIndex = editorSource.indexOf('const applyEditorStartupShell = createEditorStartupShellApplier({');
 
   assert.ok(guardIndex !== -1, 'missing applyEditorEditabilityState guard must exist');
-  assert.ok(applyIndex !== -1, 'applyEditorEditabilityState call must exist');
-  assert.ok(guardIndex < applyIndex, 'guard must run before editability state application');
+  assert.ok(applierIndex !== -1, 'startup shell applier construction must exist');
+  assert.ok(guardIndex < applierIndex, 'guard must run before startup shell applier construction');
 });
 
 // --- 8. VM-based runtime behavior tests ---

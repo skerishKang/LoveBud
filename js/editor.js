@@ -109,6 +109,11 @@ document.addEventListener('DOMContentLoaded', () => {
         reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.createEditorRequiredGlobalWaiter missing');
         return;
     }
+    const createEditorStartupShellApplier = shellHelpers.createEditorStartupShellApplier;
+    if (typeof createEditorStartupShellApplier !== 'function') {
+        reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.createEditorStartupShellApplier missing');
+        return;
+    }
     const exposeCanvasEmptyGuideUpdater = shellHelpers.exposeCanvasEmptyGuideUpdater;
     const createEditorCanvasEmptyGuideUpdater = shellHelpers.createEditorCanvasEmptyGuideUpdater;
     if (typeof createEditorCanvasEmptyGuideUpdater !== 'function') {
@@ -203,14 +208,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 URLSearchParamsRef: URLSearchParams
             });
 
-            log('DOM refs and URL params prepared');
-            prepareEditorShell();
-            log('Editor shell mounted');
-
             if (!ensureStartEditorDependency(applyEditorEditabilityState, 'LoveBudEditorShellHelpers.applyEditorEditabilityState missing')) return;
 
-            // Expose canEdit for modules that read it after DOMContentLoaded
-            applyEditorEditabilityState({ canEdit });
+            const applyEditorStartupShell = createEditorStartupShellApplier({
+                prepareEditorShell,
+                applyEditorEditabilityState,
+                canEdit,
+                log
+            });
+
+            applyEditorStartupShell();
 
             let isLocalSaveMode = false;
 

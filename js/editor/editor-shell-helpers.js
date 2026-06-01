@@ -524,6 +524,22 @@ window.LoveBudEditorShellHelpers = {
         };
     },
 
+    // Editor startup shell applier factory
+    createEditorStartupShellApplier: function(options) {
+        var opts = options || {};
+        var prepareEditorShell = opts.prepareEditorShell || function() {};
+        var applyEditorEditabilityState = opts.applyEditorEditabilityState || function() {};
+        var canEdit = opts.canEdit;
+        var log = opts.log || function() {};
+
+        return function applyEditorStartupShell() {
+            log('DOM refs and URL params prepared');
+            prepareEditorShell();
+            log('Editor shell mounted');
+            applyEditorEditabilityState({ canEdit: canEdit });
+        };
+    },
+
     // Save status orchestration fallback factory
     createSaveStatusOrchestrationFallback: function(options) {
         var opts = options || {};
