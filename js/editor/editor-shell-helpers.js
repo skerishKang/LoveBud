@@ -430,6 +430,27 @@ window.LoveBudEditorShellHelpers = {
         };
     },
 
+    // Editor initial memory provider factory
+    createEditorInitialMemoryProvider: function(options) {
+        var opts = options || {};
+        var editorTreeHelpers = opts.editorTreeHelpers || {};
+        var getTreeMemories = opts.getTreeMemories || function() { return []; };
+        var findRootMemory = opts.findRootMemory || function() { return null; };
+        var canonicalRootId = opts.canonicalRootId;
+        var treeId = opts.treeId;
+        var i18n = opts.i18n || {};
+
+        return function createInitialMemory() {
+            return editorTreeHelpers.createInitialMemory({
+                getTreeMemories: getTreeMemories,
+                findRootMemory: findRootMemory,
+                canonicalRootId: canonicalRootId,
+                treeId: treeId,
+                i18n: i18n
+            });
+        };
+    },
+
     // Save status orchestration fallback factory
     createSaveStatusOrchestrationFallback: function(options) {
         var opts = options || {};
