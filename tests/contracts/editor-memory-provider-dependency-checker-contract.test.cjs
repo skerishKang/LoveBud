@@ -48,10 +48,8 @@ test('memory provider dependency delegation preserves provider construction path
 });
 
 test('memory provider dependency slice leaves readiness wrapper and runtime boundaries intact', () => {
-  assert.match(
-    editorSource,
-    /ensureStartEditorDependency\(createMemoryActionsReadinessWrapper, 'LoveBudEditorShellHelpers\.createMemoryActionsReadinessWrapper missing'\)/
-  );
+  assert.match(editorSource, /LoveBudEditorShellHelpers\.createMemoryActionsReadinessWrapper missing/);
+  assert.match(editorSource, /checkEditorMemoryActionsReadinessDependencies\(\)/);
   assert.match(editorSource, /createMemoryActionsReadinessWrapper\(\{\s*getMemoryActions:\s*\(\)\s*=>\s*memoryActions\s*\}\)/s);
   assert.match(editorSource, /runEditorInitialLoadFlow\(\{/);
   assert.match(editorSource, /createEditorRefreshSaveRuntime\(\{/);

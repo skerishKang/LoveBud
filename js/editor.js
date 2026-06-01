@@ -302,7 +302,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
             let memoryActions = null;
 
-            if (!ensureStartEditorDependency(createMemoryActionsReadinessWrapper, 'LoveBudEditorShellHelpers.createMemoryActionsReadinessWrapper missing')) return;
+            const checkEditorMemoryActionsReadinessDependencies = createEditorStartDependencyChecker({
+                ensureStartEditorDependency,
+                dependencies: [
+                    {
+                        value: createMemoryActionsReadinessWrapper,
+                        message: 'LoveBudEditorShellHelpers.createMemoryActionsReadinessWrapper missing'
+                    }
+                ]
+            });
+
+            if (!checkEditorMemoryActionsReadinessDependencies()) return;
 
             const updateSelectedMemoryFields = createMemoryActionsReadinessWrapper({
                 getMemoryActions: () => memoryActions
