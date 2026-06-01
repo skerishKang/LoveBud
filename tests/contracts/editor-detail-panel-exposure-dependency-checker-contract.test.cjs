@@ -45,7 +45,11 @@ test('detail panel exposure dependency slice leaves sidebar and event binding bo
   assert.match(editorSource, /const updateSidebarTreeActions\s*=\s*createSidebarTreeActionsUpdater\(/);
   assert.match(
     editorSource,
-    /ensureStartEditorDependency\(getHttpStatus, 'LoveBudEditorShellHelpers\.getHttpStatus missing'\)/
+    /checkEditorPageEventStatusDependencies\(\)/
+  );
+  assert.match(
+    editorSource,
+    /LoveBudEditorShellHelpers\.getHttpStatus missing/
   );
   assert.match(editorSource, /bindEditorPageEvents\(\{/);
   assert.match(editorSource, /createEditorRefreshSaveRuntime\(/);

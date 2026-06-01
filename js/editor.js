@@ -594,7 +594,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const { showAddMemoryForm, hideAddMemoryForm, addMemoryFromForm } = memoryForm;
 
             log('Binding events...');
-            if (!ensureStartEditorDependency(getHttpStatus, 'LoveBudEditorShellHelpers.getHttpStatus missing')) return;
+            const checkEditorPageEventStatusDependencies = createEditorStartDependencyChecker({
+                ensureStartEditorDependency,
+                dependencies: [
+                    {
+                        value: getHttpStatus,
+                        message: 'LoveBudEditorShellHelpers.getHttpStatus missing'
+                    }
+                ]
+            });
+
+            if (!checkEditorPageEventStatusDependencies()) return;
 
             if (typeof bindEditorPageEvents === 'function') {
                 bindEditorPageEvents({
