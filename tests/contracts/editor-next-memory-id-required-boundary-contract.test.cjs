@@ -40,7 +40,7 @@ test('editor.js delegates nextMemoryId through shell helper factory', () => {
   );
   assert.doesNotMatch(
     editorSource,
-    /createInlineNextMemoryIdFallback\( \{/
+    /createInlineNextMemoryIdFallback\(\{/
   );
 });
 
