@@ -110,6 +110,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof createEditorStartDependencyGuard !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.createEditorStartDependencyGuard missing'); return; }
     const createEditorStartupDependencyWaiter = shellHelpers.createEditorStartupDependencyWaiter;
     const exposeCanvasEmptyGuideUpdater = shellHelpers.exposeCanvasEmptyGuideUpdater;
+    const createEditorCanvasEmptyGuideUpdater = shellHelpers.createEditorCanvasEmptyGuideUpdater;
+    if (typeof createEditorCanvasEmptyGuideUpdater !== 'function') {
+        reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.createEditorCanvasEmptyGuideUpdater missing');
+        return;
+    }
     const exposeDetailPanelUpdater = shellHelpers.exposeDetailPanelUpdater;
     const createSelectedMomentFocusHandler = shellHelpers.createSelectedMomentFocusHandler;
     const createEditorSelectNodeHandler = shellHelpers.createEditorSelectNodeHandler;
@@ -241,14 +246,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const nextMemoryId = () => nextMemoryIdFromMemories(treeMemories());
 
             const emptyGuideUIHelper = window.LoveBudEditorEmptyGuideUI || {};
-            const updateCanvasEmptyGuide = emptyGuideUIHelper.createCanvasEmptyGuideUpdater
-                ? emptyGuideUIHelper.createCanvasEmptyGuideUpdater({
-                    getTreeMemories: () => treeMemories(),
-                    log
-                })
-                : () => {
-                    log('WARNING: LoveBudEditorEmptyGuideUI.createCanvasEmptyGuideUpdater missing');
-                };
+            const updateCanvasEmptyGuide = createEditorCanvasEmptyGuideUpdater({
+                emptyGuideUIHelper,
+                getTreeMemories: () => treeMemories(),
+                log
+            });
             
             // Bridge this back to LoveBudEditor so canvas can call it
             if (!ensureStartEditorDependency(exposeCanvasEmptyGuideUpdater, 'LoveBudEditorShellHelpers.exposeCanvasEmptyGuideUpdater missing')) return;
