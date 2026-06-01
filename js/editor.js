@@ -130,6 +130,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     const createMemoryActionsReadinessWrapper = shellHelpers.createMemoryActionsReadinessWrapper;
     const createCurrentMomentDetailOpener = shellHelpers.createCurrentMomentDetailOpener;
+    const createEditorInitialMemoryProvider = shellHelpers.createEditorInitialMemoryProvider;
+    if (typeof createEditorInitialMemoryProvider !== 'function') {
+        reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.createEditorInitialMemoryProvider missing');
+        return;
+    }
     const createSaveStatusOrchestrationFallback = shellHelpers.createSaveStatusOrchestrationFallback;
     const exposeRefreshMemoriesBridge = shellHelpers.exposeRefreshMemoriesBridge;
     const resolveSaveStatusTimeFormatter = shellHelpers.resolveSaveStatusTimeFormatter;
@@ -239,7 +244,14 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             if (!ensureStartEditorDependency(editorTreeHelpers.createInitialMemory, 'LoveBudEditorTreeHelpers.createInitialMemory missing')) return;
-            const createInitialMemory = () => editorTreeHelpers.createInitialMemory({ getTreeMemories: () => treeMemories(), findRootMemory, canonicalRootId, treeId, i18n });
+            const createInitialMemory = createEditorInitialMemoryProvider({
+                editorTreeHelpers,
+                getTreeMemories: () => treeMemories(),
+                findRootMemory,
+                canonicalRootId,
+                treeId,
+                i18n
+            });
 
             if (!ensureStartEditorDependency(nextMemoryIdFromMemories, 'LoveBudEditorTreeHelpers.nextMemoryIdFromMemories missing')) return;
 
