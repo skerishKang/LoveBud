@@ -151,8 +151,9 @@ test('entry fallback boundary is explicitly mounted before editor entry', () => 
 test('editor entry delegates entry fallback factories through boundary', () => {
   const editor = read('js/editor.js');
   const boundary = read('js/editor/editor-entry-fallbacks.js');
+  const entryDeps = read('js/editor/editor-entry-dependencies.js');
 
-  assert.match(editor, /window\.LoveBudEditorEntryFallbacks/, 'editor entry must read the entry fallback boundary');
+  assert.match(entryDeps, /windowRef\.LoveBudEditorEntryFallbacks/, 'entry dependencies must resolve the entry fallback boundary');
 
   assert.match(boundary, /createInlineRedirectToEditorLoginFallback\s*:/, 'entry fallback boundary must expose createInlineRedirectToEditorLoginFallback');
   assert.doesNotMatch(editor, /entryFallbacks\.createInlineRedirectToEditorLoginFallback/, 'editor entry no longer delegates createInlineRedirectToEditorLoginFallback through entryFallbacks');
