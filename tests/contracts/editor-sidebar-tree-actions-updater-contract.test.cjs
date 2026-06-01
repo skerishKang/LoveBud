@@ -43,7 +43,7 @@ test('editor no longer owns inline sidebar tree actions wrapper', () => {
   assert.doesNotMatch(block, /sidebarUIHelper\.updateSidebarTreeActions\(\{\s*i18n,\s*safeI18nText,\s*getTreeId:\s*\(\)\s*=>\s*treeId\s*\}\)/);
 });
 
-test('editor keeps updateSidebarStatus orchestration intact', () => {
+test('editor keeps updateSidebarStatus orchestration intact via factory delegation', () => {
   const start = editorSource.indexOf('const updateSidebarStatus =');
   assert.notEqual(start, -1, 'updateSidebarStatus must exist');
 
@@ -51,9 +51,8 @@ test('editor keeps updateSidebarStatus orchestration intact', () => {
   assert.notEqual(end, -1, 'canvas creation log must follow sidebar status setup');
 
   const block = editorSource.slice(start, end);
-  assert.match(block, /updateSidebarStatusBase\(\)/);
-  assert.match(block, /updateCanvasEmptyGuide\(\)/);
-  assert.match(block, /updateSidebarTreeActions\(\)/);
+  assert.match(block, /createEditorSidebarStatusUpdater\(/);
+  assert.match(block, /updateSidebarStatusBase,\s*updateCanvasEmptyGuide,\s*updateSidebarTreeActions/);
 });
 
 test('editor keeps sidebar visibility binding injection intact', () => {

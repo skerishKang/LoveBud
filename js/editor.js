@@ -118,6 +118,11 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
     const createSidebarTreeActionsUpdater = shellHelpers.createSidebarTreeActionsUpdater;
+    const createEditorSidebarStatusUpdater = shellHelpers.createEditorSidebarStatusUpdater;
+    if (typeof createEditorSidebarStatusUpdater !== 'function') {
+        reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.createEditorSidebarStatusUpdater missing');
+        return;
+    }
     const createMemoryActionsReadinessWrapper = shellHelpers.createMemoryActionsReadinessWrapper;
     const createCurrentMomentDetailOpener = shellHelpers.createCurrentMomentDetailOpener;
     const createSaveStatusOrchestrationFallback = shellHelpers.createSaveStatusOrchestrationFallback;
@@ -333,11 +338,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 getTreeId: () => treeId
             });
 
-            const updateSidebarStatus = () => {
-                updateSidebarStatusBase();
-                updateCanvasEmptyGuide();
-                updateSidebarTreeActions();
-            };
+            const updateSidebarStatus = createEditorSidebarStatusUpdater({
+                updateSidebarStatusBase,
+                updateCanvasEmptyGuide,
+                updateSidebarTreeActions
+            });
 
             log('Creating Editor Canvas Instance...');
             editorCanvas = window.createEditorCanvas({
