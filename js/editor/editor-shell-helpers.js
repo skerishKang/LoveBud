@@ -488,6 +488,20 @@ window.LoveBudEditorShellHelpers = {
         };
     },
 
+    // Editor final ready marker factory
+    createEditorReadyFinalizer: function(options) {
+        var opts = options || {};
+        var updateSidebarStatus = opts.updateSidebarStatus || function() {};
+        var markEditorReady = opts.markEditorReady || function() {};
+        var log = opts.log || function() {};
+
+        return function finalizeEditorReady() {
+            updateSidebarStatus();
+            markEditorReady();
+            log('startEditor complete. Ready.');
+        };
+    },
+
     // Save status orchestration fallback factory
     createSaveStatusOrchestrationFallback: function(options) {
         var opts = options || {};

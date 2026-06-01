@@ -198,8 +198,9 @@ test('editor.js calls applyEditorEditabilityState with canEdit', () => {
   assert.match(editorSource, /applyEditorEditabilityState\(\{\s*canEdit\s*\}\)/);
 });
 
-test('editor.js calls markEditorReady in startup completion', () => {
-  assert.match(editorSource, /markEditorReady\(\)/);
+test('editor.js delegates markEditorReady to ready finalizer factory', () => {
+  assert.match(editorSource, /markEditorReady,\s*\r?\n\s*log\r?\n\s*\}/);
+  assert.match(editorSource, /finalizeEditorReady\(\);/);
 });
 
 test('editor.js guards missing markEditorReady before startup proceeds', () => {
