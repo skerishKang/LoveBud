@@ -356,7 +356,17 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             
             // Bridge this back to LoveBudEditor so canvas can call it
-            if (!ensureStartEditorDependency(exposeCanvasEmptyGuideUpdater, 'LoveBudEditorShellHelpers.exposeCanvasEmptyGuideUpdater missing')) return;
+            const checkEditorCanvasEmptyGuideBridgeDependencies = createEditorStartDependencyChecker({
+                ensureStartEditorDependency,
+                dependencies: [
+                    {
+                        value: exposeCanvasEmptyGuideUpdater,
+                        message: 'LoveBudEditorShellHelpers.exposeCanvasEmptyGuideUpdater missing'
+                    }
+                ]
+            });
+
+            if (!checkEditorCanvasEmptyGuideBridgeDependencies()) return;
 
             exposeCanvasEmptyGuideUpdater({ updateCanvasEmptyGuide });
 
