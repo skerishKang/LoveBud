@@ -26,11 +26,12 @@ test('editor.js removes createInlineNextMemoryIdFallback', () => {
   assert.doesNotMatch(editorSource, /dataLoaderFallbacks\.createInlineNextMemoryIdFallback/);
 });
 
-test('editor.js guards missing nextMemoryIdFromMemories with reportError', () => {
+test('editor.js guards missing nextMemoryIdFromMemories through delegated checker', () => {
   assert.match(
     editorSource,
-    /ensureStartEditorDependency\(nextMemoryIdFromMemories,\s*'LoveBudEditorTreeHelpers\.nextMemoryIdFromMemories missing'\)/
+    /LoveBudEditorTreeHelpers\.nextMemoryIdFromMemories missing/
   );
+  assert.match(editorSource, /checkEditorMemoryProviderDependencies\(\)/);
 });
 
 test('editor.js delegates nextMemoryId through shell helper factory', () => {
