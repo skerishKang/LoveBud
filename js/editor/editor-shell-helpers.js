@@ -282,6 +282,47 @@ window.LoveBudEditorShellHelpers = {
         };
     },
 
+    // Editor select node handler factory
+    createEditorSelectNodeHandler: function(options) {
+        var opts = options || {};
+        var getEditorCanvas = opts.getEditorCanvas || function() { return null; };
+        var getSaveStatusData = opts.getSaveStatusData || function() { return null; };
+        var editorSelectionUI = opts.editorSelectionUI || {};
+        var editorSaveStatus = opts.editorSaveStatus || {};
+        var setSelectedNodeId = opts.setSelectedNodeId || function() {};
+        var setCurrentEditingMemory = opts.setCurrentEditingMemory || function() {};
+        var updateDetailPanel = opts.updateDetailPanel || function() {};
+        var updateFocusSelectedBtn = opts.updateFocusSelectedBtn || function() {};
+        var setDetailEmptyState = opts.setDetailEmptyState || function() {};
+        var reportError = opts.reportError || function() {};
+
+        return function selectNode(el, data) {
+            if (!data) return;
+
+            setSelectedNodeId(data.id);
+            setCurrentEditingMemory(data);
+
+            if (typeof editorSelectionUI.applySelectedMemoryNode === 'function') {
+                editorSelectionUI.applySelectedMemoryNode(el);
+            } else {
+                reportError('LoveBudEditorSelectionUI.applySelectedMemoryNode missing');
+            }
+
+            if (typeof editorSaveStatus.hideSaveStatusIndicator === 'function') {
+                editorSaveStatus.hideSaveStatusIndicator(getSaveStatusData());
+            }
+
+            updateDetailPanel(data);
+            updateFocusSelectedBtn();
+            setDetailEmptyState(false);
+
+            var editorCanvas = getEditorCanvas();
+            if (editorCanvas && typeof editorCanvas.updateAffordance === 'function') {
+                editorCanvas.updateAffordance();
+            }
+        };
+    },
+
     // Sidebar tree actions updater factory
     createSidebarTreeActionsUpdater: function(options) {
         var opts = options || {};

@@ -112,6 +112,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const exposeCanvasEmptyGuideUpdater = shellHelpers.exposeCanvasEmptyGuideUpdater;
     const exposeDetailPanelUpdater = shellHelpers.exposeDetailPanelUpdater;
     const createSelectedMomentFocusHandler = shellHelpers.createSelectedMomentFocusHandler;
+    const createEditorSelectNodeHandler = shellHelpers.createEditorSelectNodeHandler;
+    if (typeof createEditorSelectNodeHandler !== 'function') {
+        reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.createEditorSelectNodeHandler missing');
+        return;
+    }
     const createSidebarTreeActionsUpdater = shellHelpers.createSidebarTreeActionsUpdater;
     const createMemoryActionsReadinessWrapper = shellHelpers.createMemoryActionsReadinessWrapper;
     const createCurrentMomentDetailOpener = shellHelpers.createCurrentMomentDetailOpener;
@@ -245,29 +250,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
             exposeCanvasEmptyGuideUpdater({ updateCanvasEmptyGuide });
 
-            const selectNode = (el, data) => {
-                if (!data) return;
-                selectedNodeId = data.id;
-                currentEditingMemory = data;
-
-                if (typeof editorSelectionUI.applySelectedMemoryNode === 'function') {
-                    editorSelectionUI.applySelectedMemoryNode(el);
-                } else {
-                    reportError('LoveBudEditorSelectionUI.applySelectedMemoryNode missing');
-                }
-
-                if (typeof editorSaveStatus.hideSaveStatusIndicator === 'function') {
-                    editorSaveStatus.hideSaveStatusIndicator(saveStatusData);
-                }
-
-                updateDetailPanel(data);
-                updateFocusSelectedBtn();
-                setDetailEmptyState(false);
-
-                if (editorCanvas && typeof editorCanvas.updateAffordance === 'function') {
-                    editorCanvas.updateAffordance();
-                }
-            };
+            const selectNode = createEditorSelectNodeHandler({
+                getEditorCanvas: () => editorCanvas,
+                getSaveStatusData: () => saveStatusData,
+                editorSelectionUI,
+                editorSaveStatus,
+                setSelectedNodeId: (value) => { selectedNodeId = value; },
+                setCurrentEditingMemory: (value) => { currentEditingMemory = value; },
+                updateDetailPanel,
+                updateFocusSelectedBtn,
+                setDetailEmptyState,
+                reportError
+            });
 
             if (!ensureStartEditorDependency(createSelectedMomentFocusHandler, 'LoveBudEditorShellHelpers.createSelectedMomentFocusHandler missing')) return;
 
