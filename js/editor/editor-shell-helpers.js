@@ -451,6 +451,17 @@ window.LoveBudEditorShellHelpers = {
         };
     },
 
+    // Editor next memory id provider factory
+    createEditorNextMemoryIdProvider: function(options) {
+        var opts = options || {};
+        var nextMemoryIdFromMemories = opts.nextMemoryIdFromMemories;
+        var getTreeMemories = opts.getTreeMemories || function() { return []; };
+
+        return function nextMemoryId() {
+            return nextMemoryIdFromMemories(getTreeMemories());
+        };
+    },
+
     // Save status orchestration fallback factory
     createSaveStatusOrchestrationFallback: function(options) {
         var opts = options || {};
