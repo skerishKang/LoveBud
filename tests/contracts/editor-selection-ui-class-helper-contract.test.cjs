@@ -3,18 +3,20 @@ const fs = require('node:fs');
 const test = require('node:test');
 
 const editorSource = fs.readFileSync('js/editor.js', 'utf8');
+const shellHelpersSource = fs.readFileSync('js/editor/editor-shell-helpers.js', 'utf8');
 const selectionUISource = fs.readFileSync('js/editor/editor-selection-ui.js', 'utf8');
 const editorHtml = fs.readFileSync('pages/editor.html', 'utf8');
 
 function extractSelectNodeBlock(source) {
-  const marker = 'const selectNode = (el, data) => {';
+  const marker = 'createEditorSelectNodeHandler: function(options) {';
   const start = source.indexOf(marker);
-  assert.notEqual(start, -1, 'selectNode block must exist');
+  assert.notEqual(start, -1, 'selectNode factory block must exist');
 
-  const end = source.indexOf('            const focusSelectedMoment = createSelectedMomentFocusHandler({', start);
-  assert.notEqual(end, -1, 'focusSelectedMoment marker must follow selectNode');
+  const end = source.indexOf('    },', start);
+  const blockEnd = source.indexOf('    },', end + 1);
+  assert.notEqual(blockEnd, -1, 'factory closing marker must follow');
 
-  return source.slice(start, end);
+  return source.slice(start, blockEnd + 6);
 }
 
 test('editor selection ui exposes selected memory node helper', () => {
@@ -28,16 +30,15 @@ test('editor selection ui exposes selected memory node helper', () => {
 });
 
 test('editor selectNode delegates selected class handling to selection ui helper', () => {
-  const selectNodeBlock = extractSelectNodeBlock(editorSource);
+  const selectNodeBlock = extractSelectNodeBlock(shellHelpersSource);
 
-  assert.match(editorSource, /const editorSelectionUI\s*=\s*window\.LoveBudEditorSelectionUI\s*\|\|\s*\{\}/);
   assert.match(selectNodeBlock, /typeof editorSelectionUI\.applySelectedMemoryNode === 'function'/);
   assert.match(selectNodeBlock, /editorSelectionUI\.applySelectedMemoryNode\(el\)/);
   assert.match(selectNodeBlock, /LoveBudEditorSelectionUI\.applySelectedMemoryNode missing/);
 });
 
 test('editor selectNode no longer owns selected class dom mutation inline', () => {
-  const selectNodeBlock = extractSelectNodeBlock(editorSource);
+  const selectNodeBlock = extractSelectNodeBlock(shellHelpersSource);
 
   assert.doesNotMatch(
     selectNodeBlock,
@@ -56,15 +57,23 @@ test('editor selectNode no longer owns selected class dom mutation inline', () =
 });
 
 test('editor selectNode keeps state detail and affordance flow intact', () => {
-  const selectNodeBlock = extractSelectNodeBlock(editorSource);
+  const selectNodeBlock = extractSelectNodeBlock(shellHelpersSource);
 
-  assert.match(selectNodeBlock, /selectedNodeId\s*=\s*data\.id/);
-  assert.match(selectNodeBlock, /currentEditingMemory\s*=\s*data/);
-  assert.match(selectNodeBlock, /editorSaveStatus\.hideSaveStatusIndicator\(saveStatusData\)/);
+  assert.match(selectNodeBlock, /setSelectedNodeId\(data\.id\)/);
+  assert.match(selectNodeBlock, /setCurrentEditingMemory\(data\)/);
+  assert.match(selectNodeBlock, /editorSaveStatus\.hideSaveStatusIndicator\(getSaveStatusData\(\)\)/);
   assert.match(selectNodeBlock, /updateDetailPanel\(data\)/);
   assert.match(selectNodeBlock, /updateFocusSelectedBtn\(\)/);
   assert.match(selectNodeBlock, /setDetailEmptyState\(false\)/);
   assert.match(selectNodeBlock, /editorCanvas\.updateAffordance\(\)/);
+});
+
+test('editor entrypoint delegates selectNode construction to shell helper', () => {
+  assert.match(editorSource, /const createEditorSelectNodeHandler\s*=\s*shellHelpers\.createEditorSelectNodeHandler/);
+  assert.match(editorSource, /LoveBudEditorShellHelpers\.createEditorSelectNodeHandler missing/);
+  assert.match(editorSource, /const selectNode\s*=\s*createEditorSelectNodeHandler\(\{/);
+  assert.match(editorSource, /getEditorCanvas:\s*\(\)\s*=>\s*editorCanvas/);
+  assert.match(editorSource, /getSaveStatusData:\s*\(\)\s*=>\s*saveStatusData/);
 });
 
 test('editor-selection-ui loads before editor entrypoint', () => {

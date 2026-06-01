@@ -3,18 +3,20 @@ const fs = require('node:fs');
 const test = require('node:test');
 
 const editorSource = fs.readFileSync('js/editor.js', 'utf8');
+const shellHelpersSource = fs.readFileSync('js/editor/editor-shell-helpers.js', 'utf8');
 const saveStatusSource = fs.readFileSync('js/editor/editor-save-status.js', 'utf8');
 const editorHtml = fs.readFileSync('pages/editor.html', 'utf8');
 
 function extractSelectNodeBlock(source) {
-  const marker = 'const selectNode = (el, data) => {';
+  const marker = 'createEditorSelectNodeHandler: function(options) {';
   const start = source.indexOf(marker);
-  assert.notEqual(start, -1, 'selectNode block must exist');
+  assert.notEqual(start, -1, 'selectNode factory block must exist');
 
-  const end = source.indexOf('            const focusSelectedMoment = createSelectedMomentFocusHandler({', start);
-  assert.notEqual(end, -1, 'focusSelectedMoment marker must follow selectNode');
+  const end = source.indexOf('    },', start);
+  const blockEnd = source.indexOf('    },', end + 1);
+  assert.notEqual(blockEnd, -1, 'factory closing marker must follow');
 
-  return source.slice(start, end);
+  return source.slice(start, blockEnd + 6);
 }
 
 test('editor save status exposes selection hide helper', () => {
@@ -27,11 +29,11 @@ test('editor save status exposes selection hide helper', () => {
 });
 
 test('editor selectNode delegates save status hide to save status helper', () => {
-  const selectNodeBlock = extractSelectNodeBlock(editorSource);
+  const selectNodeBlock = extractSelectNodeBlock(shellHelpersSource);
 
   assert.match(
     selectNodeBlock,
-    /editorSaveStatus\.hideSaveStatusIndicator\(saveStatusData\)/
+    /editorSaveStatus\.hideSaveStatusIndicator\(getSaveStatusData\(\)\)/
   );
 
   assert.match(
@@ -41,7 +43,7 @@ test('editor selectNode delegates save status hide to save status helper', () =>
 });
 
 test('editor selectNode no longer owns save status indicator dom hide logic', () => {
-  const selectNodeBlock = extractSelectNodeBlock(editorSource);
+  const selectNodeBlock = extractSelectNodeBlock(shellHelpersSource);
 
   assert.doesNotMatch(
     selectNodeBlock,
@@ -60,12 +62,12 @@ test('editor selectNode no longer owns save status indicator dom hide logic', ()
 });
 
 test('editor selectNode keeps selection and detail update flow intact', () => {
-  const selectNodeBlock = extractSelectNodeBlock(editorSource);
+  const selectNodeBlock = extractSelectNodeBlock(shellHelpersSource);
 
-  assert.match(selectNodeBlock, /selectedNodeId\s*=\s*data\.id/);
-  assert.match(selectNodeBlock, /currentEditingMemory\s*=\s*data/);
+  assert.match(selectNodeBlock, /setSelectedNodeId\(data\.id\)/);
+  assert.match(selectNodeBlock, /setCurrentEditingMemory\(data\)/);
   assert.match(selectNodeBlock, /editorSelectionUI\.applySelectedMemoryNode\(el\)/);
-  assert.match(selectNodeBlock, /editorSaveStatus\.hideSaveStatusIndicator\(saveStatusData\)/);
+  assert.match(selectNodeBlock, /editorSaveStatus\.hideSaveStatusIndicator\(getSaveStatusData\(\)\)/);
   assert.match(selectNodeBlock, /updateDetailPanel\(data\)/);
   assert.match(selectNodeBlock, /updateFocusSelectedBtn\(\)/);
   assert.match(selectNodeBlock, /setDetailEmptyState\(false\)/);
