@@ -25,8 +25,10 @@ test('js/editor.js retains its legacy entrypoint markers', () => {
     assert.ok(js.includes('const startEditor = async () => {'), 'should have startEditor async function');
     assert.ok(js.includes('registerEditorAuthStart'), 'should delegate auth start to page helpers');
 
-    // Compatibility glue markers
-    assert.ok(js.includes('window.LoveBudEditorDataLoaderFallbacks'), 'should read global fallbacks');
+    // Compatibility glue markers — dataLoaderFallbacks moved to entry-dependencies
+    const deps = fs.readFileSync('js/editor/editor-entry-dependencies.js', 'utf8');
+    assert.ok(deps.includes('LoveBudEditorDataLoaderFallbacks'), 'entry dependencies should resolve data loader fallbacks');
+    assert.ok(!js.includes('const dataLoaderFallbacks ='), 'editor.js should not keep unused dataLoaderFallbacks local');
 
     // Global exposure (temporary compat)
     assert.ok(js.includes('exposeDetailPanelUpdater'), 'delegates updateDetailPanel global exposure');

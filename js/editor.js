@@ -21,8 +21,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (entryDependenciesResult.status === 'stopped') return;
 
     const deps = entryDependenciesResult.deps;
-    const dataLoaderFallbacks = window.LoveBudEditorDataLoaderFallbacks || deps.dataLoaderFallbacks;
-    const entryFallbacks = window.LoveBudEditorEntryFallbacks || deps.entryFallbacks;
     const shellHelpers = window.LoveBudEditorShellHelpers || deps.shellHelpers;
     const rootUtils = window.LoveBudEditorUtils || {};
     const editorHelpers = deps.editorHelpers;
@@ -36,7 +34,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const editorInitialLoadFlow = deps.editorInitialLoadFlow;
     const editorRefreshSaveRuntime = window.LoveBudEditorRefreshSaveRuntime || deps.editorRefreshSaveRuntime;
     const editorStartupContext = deps.editorStartupContext;
-    const editorAuthHelpers = window.LoveBudEditorAuthHelpers || {};
     const editorShellCopyApplier = window.LoveBudEditorShellCopyApplier || deps.editorShellCopyApplier;
     const editorDomRefsBuilder = window.LoveBudEditorDomRefsBuilder || deps.editorDomRefsBuilder;
     const bindEditorPageEvents = editorPageEventBindings.bindEditorPageEvents;

@@ -11,9 +11,12 @@ function read(file) {
 
 test('editor auth cache reader is called through the helper namespace binding', () => {
   const editor = read('js/editor.js');
+  const entryDeps = read('js/editor/editor-entry-dependencies.js');
 
-  assert.match(editor, /const\s+editorAuthHelpers\s*=\s*window\.LoveBudEditorAuthHelpers\s*\|\|\s*\{\}/);
-  assert.match(editor, /readConfirmedAuthCacheFromHelper\s*=\s*\(\)\s*=>\s*\(/);
-  assert.match(editor, /window\.LoveBudEditorAuthHelpers\?\.readConfirmedAuthCache\?\.\(\)/);
-  assert.doesNotMatch(editor, /[^.\w]readConfirmedAuthCache\s*\(/);
+  // editor.js should get readConfirmedAuthCache from deps (not directly from window)
+  assert.match(editor, /const\s+readConfirmedAuthCache\s*=\s*deps\.readConfirmedAuthCache/);
+  assert.doesNotMatch(editor, /const\s+editorAuthHelpers\s*=\s*window\.LoveBudEditorAuthHelpers/);
+
+  // entry-dependencies.js should resolve the auth helpers namespace
+  assert.match(entryDeps, /windowRef\.LoveBudEditorAuthHelpers\?\.readConfirmedAuthCache\?\.\(\)/);
 });

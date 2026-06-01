@@ -149,8 +149,9 @@ test('entry fallback boundary is explicitly mounted before editor entry', () => 
 test('editor entry delegates entry fallback factories through boundary', () => {
   const editor = read('js/editor.js');
   const boundary = read('js/editor/editor-entry-fallbacks.js');
+  const entryDeps = read('js/editor/editor-entry-dependencies.js');
 
-  assert.match(editor, /window\.LoveBudEditorEntryFallbacks/, 'editor entry must read the entry fallback boundary');
+  assert.match(entryDeps, /window\.LoveBudEditorEntryFallbacks/, 'entry dependencies must resolve the entry fallback boundary');
 
   for (const factory of [
     'createInlineShowToastFallback',
@@ -159,7 +160,7 @@ test('editor entry delegates entry fallback factories through boundary', () => {
     'createInlineFormatTimeAgoFallback',
   ]) {
     assert.match(boundary, new RegExp(`${factory}\\s*:`), `entry fallback boundary must expose ${factory}`);
-    assert.match(editor, new RegExp(`entryFallbacks\\.${factory}`), `editor entry must delegate ${factory}`);
+    assert.doesNotMatch(editor, new RegExp(`entryFallbacks\\.${factory}`), `editor entry no longer delegates ${factory} through entryFallbacks`);
   }
 });
 
