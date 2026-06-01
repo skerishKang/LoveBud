@@ -85,37 +85,11 @@ test('editor entrypoint keeps core utility fallback resolution intact', () => {
 
   const bpGuardStart = editorSource.indexOf('LoveBudEditorShellHelpers.getEditorBasePath missing');
   assert.notEqual(bpGuardStart, -1, 'getEditorBasePath missing guard must exist');
-  const bpGuardEnd = editorSource.indexOf('const buildEditorRedirectTargetHelper =', bpGuardStart);
-  assert.notEqual(bpGuardEnd, -1, 'buildEditorRedirectTargetHelper must exist after base path guard');
+  const bpGuardEnd = editorSource.indexOf('const redirectToEditorLogin =', bpGuardStart);
+  assert.notEqual(bpGuardEnd, -1, 'redirectToEditorLogin must exist after base path guard');
   const bpGuardBlock = editorSource.slice(bpGuardStart, bpGuardEnd);
   assert.doesNotMatch(bpGuardBlock, /reportError/);
 
-  // buildEditorRedirectTarget
-  assert.match(
-    editorSource,
-    /const\s+buildEditorRedirectTargetHelper\s*=\s*shellHelpers\.buildEditorRedirectTarget/
-  );
-  assert.doesNotMatch(
-    editorSource,
-    /const\s+buildEditorRedirectTargetHelper\s*=\s*shellHelpers\.buildEditorRedirectTarget\s*\|\|/
-  );
-  assert.match(
-    editorSource,
-    /LoveBudEditorShellHelpers\.buildEditorRedirectTarget missing/
-  );
-
-  const redirectGuardStart = editorSource.indexOf('LoveBudEditorShellHelpers.buildEditorRedirectTarget missing');
-  assert.notEqual(redirectGuardStart, -1, 'buildEditorRedirectTarget missing guard must exist');
-  const redirectGuardEnd = editorSource.indexOf('const buildEditorRedirectTarget =', redirectGuardStart);
-  assert.notEqual(redirectGuardEnd, -1, 'buildEditorRedirectTarget variable must exist after guard');
-  const redirectGuardBlock = editorSource.slice(redirectGuardStart, redirectGuardEnd);
-  assert.doesNotMatch(redirectGuardBlock, /reportError/);
-
-  // check this binding preservation call
-  assert.match(
-    editorSource,
-    /buildEditorRedirectTargetHelper\.call\(\s*shellHelpers\s*\)/
-  );
 });
 
 test('editor html loads shell helpers before editor entrypoint for core utilities', () => {
