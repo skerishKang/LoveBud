@@ -49,7 +49,11 @@ test('selected moment focus dependency slice leaves detail opener and sidebar gu
   );
   assert.match(
     editorSource,
-    /ensureStartEditorDependency\(createSidebarTreeActionsUpdater, 'LoveBudEditorShellHelpers\.createSidebarTreeActionsUpdater missing'\)/
+    /checkEditorSidebarTreeActionsDependencies\(\)/
+  );
+  assert.match(
+    editorSource,
+    /LoveBudEditorShellHelpers\.createSidebarTreeActionsUpdater missing/
   );
   assert.match(editorSource, /createEditorRefreshSaveRuntime\(/);
   assert.doesNotMatch(editorSource, /pan\/drag lifecycle/);

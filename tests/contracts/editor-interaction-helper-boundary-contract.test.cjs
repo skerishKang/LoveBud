@@ -50,15 +50,15 @@ test('editor entrypoint has no remaining interaction helper local fallbacks', ()
   }
 });
 
-test('editor entrypoint guards missing sidebar tree actions helper before creation', () => {
-  assert.match(
-    editorSource,
-    /LoveBudEditorShellHelpers\.createSidebarTreeActionsUpdater missing/
-  );
-  assert.match(
-    editorSource,
-    /const\s+updateSidebarTreeActions\s*=\s*createSidebarTreeActionsUpdater\(\{/
-  );
+test('editor entrypoint delegates missing sidebar tree actions helper guard before creation', () => {
+  const checkerIndex = editorSource.indexOf('checkEditorSidebarTreeActionsDependencies');
+  const createIndex = editorSource.indexOf('const updateSidebarTreeActions = createSidebarTreeActionsUpdater({');
+
+  assert.ok(checkerIndex !== -1, 'sidebar tree actions dependency checker must exist');
+  assert.ok(createIndex !== -1, 'sidebar tree actions updater creation must exist');
+  assert.ok(checkerIndex < createIndex, 'dependency checker must run before sidebar tree actions updater creation');
+
+  assert.match(editorSource, /LoveBudEditorShellHelpers\.createSidebarTreeActionsUpdater missing/);
 });
 
 test('editor entrypoint delegates missing current moment detail opener guard before creation', () => {
