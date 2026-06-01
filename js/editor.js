@@ -459,7 +459,17 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             const { setDetailEmptyState, updateFocusSelectedBtn, updateSidebarStatus: updateSidebarStatusBase, updateDetailPanel } = detailUI;
-            if (!ensureStartEditorDependency(exposeDetailPanelUpdater, 'LoveBudEditorShellHelpers.exposeDetailPanelUpdater missing')) return;
+            const checkEditorDetailPanelExposureDependencies = createEditorStartDependencyChecker({
+                ensureStartEditorDependency,
+                dependencies: [
+                    {
+                        value: exposeDetailPanelUpdater,
+                        message: 'LoveBudEditorShellHelpers.exposeDetailPanelUpdater missing'
+                    }
+                ]
+            });
+
+            if (!checkEditorDetailPanelExposureDependencies()) return;
 
             exposeDetailPanelUpdater({ updateDetailPanel });
 
