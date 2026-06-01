@@ -54,9 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const i18n = getI18n();
     const getEditorBasePath = shellHelpers.getEditorBasePath;
     if (typeof getEditorBasePath !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.getEditorBasePath missing'); return; }
-    const buildEditorRedirectTargetHelper = shellHelpers.buildEditorRedirectTarget;
-    if (typeof buildEditorRedirectTargetHelper !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.buildEditorRedirectTarget missing'); return; }
-    const buildEditorRedirectTarget = () => buildEditorRedirectTargetHelper.call(shellHelpers);
+
     const redirectToEditorLogin = editorPageHelpers.redirectToEditorLogin;
     if (typeof redirectToEditorLogin !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorPageHelpers.redirectToEditorLogin missing'); return; }
     const safeI18nText = editorHelpers.safeI18nText;
