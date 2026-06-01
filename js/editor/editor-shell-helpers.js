@@ -242,6 +242,28 @@ window.LoveBudEditorShellHelpers = {
         };
     },
 
+    // Editor required global waiter factory
+    createEditorRequiredGlobalWaiter: function(options) {
+        var opts = options || {};
+        var waitForGlobal = opts.waitForGlobal || async function() { return false; };
+        var requiredGlobals = opts.requiredGlobals || [
+            'createEditorCanvas',
+            'createEditorDetailUI',
+            'createEditorMemoryActions',
+            'createEditorMemoryForm'
+        ];
+
+        return async function waitForEditorRequiredGlobals() {
+            for (var i = 0; i < requiredGlobals.length; i += 1) {
+                if (!await waitForGlobal(requiredGlobals[i])) {
+                    return false;
+                }
+            }
+
+            return true;
+        };
+    },
+
     // Editor canvas empty guide updater factory
     createEditorCanvasEmptyGuideUpdater: function(options) {
         var opts = options || {};

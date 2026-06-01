@@ -104,6 +104,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const createEditorStartDependencyGuard = shellHelpers.createEditorStartDependencyGuard;
     if (typeof createEditorStartDependencyGuard !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.createEditorStartDependencyGuard missing'); return; }
     const createEditorStartupDependencyWaiter = shellHelpers.createEditorStartupDependencyWaiter;
+    const createEditorRequiredGlobalWaiter = shellHelpers.createEditorRequiredGlobalWaiter;
+    if (typeof createEditorRequiredGlobalWaiter !== 'function') {
+        reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.createEditorRequiredGlobalWaiter missing');
+        return;
+    }
     const exposeCanvasEmptyGuideUpdater = shellHelpers.exposeCanvasEmptyGuideUpdater;
     const createEditorCanvasEmptyGuideUpdater = shellHelpers.createEditorCanvasEmptyGuideUpdater;
     if (typeof createEditorCanvasEmptyGuideUpdater !== 'function') {
@@ -174,11 +179,11 @@ document.addEventListener('DOMContentLoaded', () => {
         log('startEditor sequence initiated');
 
         const waitForGlobal = createEditorStartupDependencyWaiter({ log, reportError });
+        const waitForEditorRequiredGlobals = createEditorRequiredGlobalWaiter({
+            waitForGlobal
+        });
 
-        if (!await waitForGlobal('createEditorCanvas')) return;
-        if (!await waitForGlobal('createEditorDetailUI')) return;
-        if (!await waitForGlobal('createEditorMemoryActions')) return;
-        if (!await waitForGlobal('createEditorMemoryForm')) return;
+        if (!await waitForEditorRequiredGlobals()) return;
 
         if (!ensureStartEditorDependency(createEditorDomRefs, 'LoveBudEditorDomRefsBuilder.createEditorDomRefs missing')) return;
 
