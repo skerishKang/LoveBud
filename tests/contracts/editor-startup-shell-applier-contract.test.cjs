@@ -48,13 +48,15 @@ test('editor entrypoint delegates startup shell preparation to shell helper', ()
   assert.match(editorSource, /applyEditorStartupShell\(\);/);
 });
 
-test('editor keeps applyEditorEditabilityState dependency guard before startup shell applier', () => {
-  const guardIndex = editorSource.indexOf("LoveBudEditorShellHelpers.applyEditorEditabilityState missing");
+test('editor delegates applyEditorEditabilityState dependency guard before startup shell applier', () => {
+  const checkerIndex = editorSource.indexOf('checkEditorStartupShellDependencies');
   const applyIndex = editorSource.indexOf('const applyEditorStartupShell = createEditorStartupShellApplier({');
 
-  assert.ok(guardIndex !== -1, 'applyEditorEditabilityState guard must exist');
+  assert.ok(checkerIndex !== -1, 'startup shell dependency checker must exist');
   assert.ok(applyIndex !== -1, 'startup shell applier construction must exist');
-  assert.ok(guardIndex < applyIndex, 'guard must run before startup shell applier construction');
+  assert.ok(checkerIndex < applyIndex, 'dependency checker must run before startup shell applier construction');
+
+  assert.match(editorSource, /LoveBudEditorShellHelpers\.applyEditorEditabilityState missing/);
 });
 
 test('editor no longer owns inline startup shell preparation block', () => {

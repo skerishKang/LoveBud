@@ -241,7 +241,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 URLSearchParamsRef: URLSearchParams
             });
 
-            if (!ensureStartEditorDependency(applyEditorEditabilityState, 'LoveBudEditorShellHelpers.applyEditorEditabilityState missing')) return;
+            const checkEditorStartupShellDependencies = createEditorStartDependencyChecker({
+                ensureStartEditorDependency,
+                dependencies: [
+                    {
+                        value: applyEditorEditabilityState,
+                        message: 'LoveBudEditorShellHelpers.applyEditorEditabilityState missing'
+                    }
+                ]
+            });
+
+            if (!checkEditorStartupShellDependencies()) return;
 
             const applyEditorStartupShell = createEditorStartupShellApplier({
                 prepareEditorShell,
