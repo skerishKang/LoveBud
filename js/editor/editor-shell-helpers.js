@@ -342,6 +342,20 @@ window.LoveBudEditorShellHelpers = {
         };
     },
 
+    // Editor sidebar status updater factory
+    createEditorSidebarStatusUpdater: function(options) {
+        var opts = options || {};
+        var updateSidebarStatusBase = opts.updateSidebarStatusBase || function() {};
+        var updateCanvasEmptyGuide = opts.updateCanvasEmptyGuide || function() {};
+        var updateSidebarTreeActions = opts.updateSidebarTreeActions || function() {};
+
+        return function updateSidebarStatus() {
+            updateSidebarStatusBase();
+            updateCanvasEmptyGuide();
+            updateSidebarTreeActions();
+        };
+    },
+
     // Memory actions readiness wrapper factory
     createMemoryActionsReadinessWrapper: function(options) {
         var opts = options || {};
