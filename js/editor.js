@@ -290,7 +290,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            const tree = initialLoadResult.tree;
             const treeId = initialLoadResult.treeId;
             const normalizeMemory = initialLoadResult.normalizeMemory;
             const treeMemories = initialLoadResult.treeMemories;
