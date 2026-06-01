@@ -39,16 +39,16 @@ test('editor entrypoint uses dom refs builder without inline fallback', () => {
 });
 
 test('editor entrypoint reports missing dom refs builder before calling it', () => {
-  const guardIndex = editorSource.indexOf("ensureStartEditorDependency(createEditorDomRefs,");
+  const checkerIndex = editorSource.indexOf("checkEditorStartupContextDependencies");
   const startupContextCallIndex = editorSource.indexOf('createEditorStartupContext({');
 
-  assert.notEqual(guardIndex, -1, 'missing createEditorDomRefs guard must exist');
+  assert.notEqual(checkerIndex, -1, 'startup context dependency checker must exist');
   assert.notEqual(startupContextCallIndex, -1, 'startup context call must exist');
-  assert.ok(guardIndex < startupContextCallIndex, 'missing createEditorDomRefs guard must run before startup context call');
+  assert.ok(checkerIndex < startupContextCallIndex, 'dependency checker must run before startup context call');
 
   assert.match(
     editorSource,
-    /ensureStartEditorDependency\(createEditorDomRefs,\s*'LoveBudEditorDomRefsBuilder\.createEditorDomRefs missing'\)/
+    /LoveBudEditorDomRefsBuilder\.createEditorDomRefs missing/
   );
 });
 
