@@ -35,9 +35,9 @@ test('editor entrypoint no longer owns canvas empty guide dom toggle implementat
 });
 
 test('editor keeps global updateCanvasEmptyGuide bridge and call sites', () => {
-  assert.match(editorSource, /exposeCanvasEmptyGuideUpdater\(\{\s*updateCanvasEmptyGuide\s*\}/);
+  assert.match(editorSource, /exposeCanvasEmptyGuideUpdater\(\{\s*updateCanvasEmptyGuide\s*\}\)/);
   assert.match(editorSource, /updateCanvasEmptyGuide\(\);/);
-  assert.match(editorSource, /updateSidebarStatus\(\);/);
+  assert.match(editorSource, /updateSidebarStatus,\s*\r?\n\s*markEditorReady,\s*\r?\n\s*log\r?\n\s*\}/);
   assert.match(editorSource, /LoveBudEditorShellHelpers\.exposeCanvasEmptyGuideUpdater missing/);
 });
 

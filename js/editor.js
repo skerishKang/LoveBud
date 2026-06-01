@@ -140,6 +140,11 @@ document.addEventListener('DOMContentLoaded', () => {
         reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.createEditorInitialSelectionApplier missing');
         return;
     }
+    const createEditorReadyFinalizer = shellHelpers.createEditorReadyFinalizer;
+    if (typeof createEditorReadyFinalizer !== 'function') {
+        reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.createEditorReadyFinalizer missing');
+        return;
+    }
     const createSaveStatusOrchestrationFallback = shellHelpers.createSaveStatusOrchestrationFallback;
     const exposeRefreshMemoriesBridge = shellHelpers.exposeRefreshMemoriesBridge;
     const resolveSaveStatusTimeFormatter = shellHelpers.resolveSaveStatusTimeFormatter;
@@ -505,9 +510,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             applyEditorInitialSelection();
 
-            updateSidebarStatus();
-            markEditorReady();
-            log('startEditor complete. Ready.');
+            const finalizeEditorReady = createEditorReadyFinalizer({
+                updateSidebarStatus,
+                markEditorReady,
+                log
+            });
+
+            finalizeEditorReady();
         } catch (error) {
             reportError('CRITICAL: Exception in startEditor', error);
         }
