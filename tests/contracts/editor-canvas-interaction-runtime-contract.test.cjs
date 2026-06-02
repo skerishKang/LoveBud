@@ -8,6 +8,10 @@ const ROOT = path.resolve(__dirname, '..', '..');
 const INTERACTION_PATH = path.join(ROOT, 'js/editor/editor-canvas-interaction.js');
 const interactionSource = fs.readFileSync(INTERACTION_PATH, 'utf8');
 
+function toPlain(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
 function createClassList() {
   const classes = new Set();
   return {
@@ -268,7 +272,7 @@ test('editor canvas interaction runtime — pointermove below drag threshold doe
   dispatchWindow(harness, 'pointermove', createPointerEvent({ clientX: 105, clientY: 105 }));
 
   assert.equal(harness.viewportState.dragMoved, false);
-  assert.deepEqual(harness.viewportState.positions, {});
+  assert.deepEqual(toPlain(harness.viewportState.positions), {});
   assert.deepEqual(harness.calls, []);
 });
 
@@ -290,7 +294,7 @@ test('editor canvas interaction runtime — pointermove above drag threshold upd
   dispatchWindow(harness, 'pointermove', createPointerEvent({ clientX: 114, clientY: 110 }));
 
   assert.equal(harness.viewportState.dragMoved, true);
-  assert.deepEqual(harness.viewportState.positions['node-1'], { x: 27, y: 35 });
+  assert.deepEqual(toPlain(harness.viewportState.positions['node-1']), { x: 27, y: 35 });
   assert.deepEqual(harness.calls, ['scheduleRender']);
 });
 
