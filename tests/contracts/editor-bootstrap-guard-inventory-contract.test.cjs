@@ -71,7 +71,7 @@ test('editor bootstrap aggregated text resolver guard inventory is frozen', () =
   assert.match(editorSource, /\['LoveBudEditorHelpers\.resolveInfoText', resolveInfoText\]/);
   assert.match(
     editorSource,
-    /if \(missingTextResolvers\.length\) \{ reportEditorBootstrapMissingDependency\(missingTextResolvers\.map\(\(\[name\]\) => name \+ ' missing'\)\.join\('; '\)\); return; \}/
+    /if \(missingTextResolvers\.length\) \{ reportEditorBootstrapMissingList\(missingTextResolvers\); return; \}/
   );
 });
 
@@ -82,7 +82,7 @@ test('editor bootstrap aggregated media resolver guard inventory is frozen', () 
   assert.match(editorSource, /\['LoveBudEditorHelpers\.resolveMemoryThumbnail', resolveMemoryThumbnail\]/);
   assert.match(
     editorSource,
-    /if \(missingMediaResolvers\.length\) \{ reportEditorBootstrapMissingDependency\(missingMediaResolvers\.map\(\(\[name\]\) => name \+ ' missing'\)\.join\('; '\)\); return; \}/
+    /if \(missingMediaResolvers\.length\) \{ reportEditorBootstrapMissingList\(missingMediaResolvers\); return; \}/
   );
 });
 
@@ -93,7 +93,7 @@ test('editor bootstrap aggregated root helper guard inventory is frozen', () => 
   assert.match(editorSource, /\['LoveBudEditorUtils\.isRootMemory', isRootMemory\]/);
   assert.match(
     editorSource,
-    /if \(missingRootHelpers\.length\) \{ reportEditorBootstrapMissingDependency\(missingRootHelpers\.map\(\(\[name\]\) => name \+ ' missing'\)\.join\('; '\)\); return; \}/
+    /if \(missingRootHelpers\.length\) \{ reportEditorBootstrapMissingList\(missingRootHelpers\); return; \}/
   );
 });
 
@@ -107,7 +107,7 @@ test('all editor bootstrap guard calls stay before startEditor', () => {
     .map((match) => match.index)
     .filter((index) => index !== declarationIndex);
 
-  assert.equal(callIndexes.length, 29);
+  assert.equal(callIndexes.length, 27);
 
   for (const index of callIndexes) {
     assert.ok(index < startEditorIndex, 'bootstrap guard call must be before startEditor');
