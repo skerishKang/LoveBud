@@ -53,9 +53,9 @@ test('editor.js adds missing-text-resolvers guard without reportError', () => {
   assert.match(editorSource, /LoveBudEditorHelpers\.resolveHintText/);
   assert.match(editorSource, /LoveBudEditorHelpers\.resolveTreeTitleText/);
   assert.match(editorSource, /LoveBudEditorHelpers\.resolveInfoText/);
-  // Dynamic join creates 'name missing' for each
+  // Dynamic join creates 'name missing' for each (inside reportEditorBootstrapMissingList helper)
   assert.match(editorSource, /name\s*\+\s*' missing'/);
-  assert.match(editorSource, /missingTextResolvers\.map\(/);
+  assert.match(editorSource, /reportEditorBootstrapMissingList\(missingTextResolvers\)/);
 
   const guardStart = editorSource.indexOf('missingTextResolvers');
   assert.notEqual(guardStart, -1, 'guard must exist');

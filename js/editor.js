@@ -8,6 +8,10 @@ document.addEventListener('DOMContentLoaded', () => {
         debugState.errors.push({ msg, error: msg });
     }
 
+    function reportEditorBootstrapMissingList(missingHelpers) {
+        reportEditorBootstrapMissingDependency(missingHelpers.map(([name]) => name + ' missing').join('; '));
+    }
+
     if (typeof resolveEditorEntryDependencies !== 'function') {
         reportEditorBootstrapMissingDependency('LoveBudEditorEntryDependencies.resolveEditorEntryDependencies missing');
         return;
@@ -64,7 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ['LoveBudEditorHelpers.resolveTreeTitleText', resolveTreeTitleText],
         ['LoveBudEditorHelpers.resolveInfoText', resolveInfoText]
     ].filter(([, helper]) => typeof helper !== 'function');
-    if (missingTextResolvers.length) { reportEditorBootstrapMissingDependency(missingTextResolvers.map(([name]) => name + ' missing').join('; ')); return; }
+    if (missingTextResolvers.length) { reportEditorBootstrapMissingList(missingTextResolvers); return; }
     const syncCurrentTreeData = editorTreeHelpers.syncCurrentTreeData;
     if (typeof syncCurrentTreeData !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorTreeHelpers.syncCurrentTreeData missing'); return; }
     const resolveParentIdForCreate = editorTreeHelpers.resolveParentIdForCreate;
@@ -79,7 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ['LoveBudEditorHelpers.safeUrl', safeUrl],
         ['LoveBudEditorHelpers.resolveMemoryThumbnail', resolveMemoryThumbnail]
     ].filter(([, helper]) => typeof helper !== 'function');
-    if (missingMediaResolvers.length) { reportEditorBootstrapMissingDependency(missingMediaResolvers.map(([name]) => name + ' missing').join('; ')); return; }
+    if (missingMediaResolvers.length) { reportEditorBootstrapMissingList(missingMediaResolvers); return; }
     const getYouTubeInputErrorMessageFallback = shellHelpers.getYouTubeInputErrorMessageFallback;
     if (typeof getYouTubeInputErrorMessageFallback !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.getYouTubeInputErrorMessageFallback missing'); return; }
     const getYouTubeInputErrorMessage = typeof rootUtils.getYouTubeInputErrorMessage === 'function' ? rootUtils.getYouTubeInputErrorMessage : getYouTubeInputErrorMessageFallback;
@@ -171,7 +175,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ['LoveBudEditorUtils.getCanonicalRootId', getCanonicalRootId],
         ['LoveBudEditorUtils.isRootMemory', isRootMemory]
     ].filter(([, helper]) => typeof helper !== 'function');
-    if (missingRootHelpers.length) { reportEditorBootstrapMissingDependency(missingRootHelpers.map(([name]) => name + ' missing').join('; ')); return; }
+    if (missingRootHelpers.length) { reportEditorBootstrapMissingList(missingRootHelpers); return; }
 
     const startEditor = async () => {
         const { log, reportError } = createEditorDebugReporter();

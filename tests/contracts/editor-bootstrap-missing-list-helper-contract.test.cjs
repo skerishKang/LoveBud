@@ -40,7 +40,7 @@ function assertMissingListGuard({ varName, entries }) {
   assert.match(
     block,
     new RegExp(
-      `if \\(${varName}\\.length\\) \\{ reportEditorBootstrapMissingDependency\\(${varName}\\.map\\(\\(\\[name\\]\\) => name \\+ ' missing'\\)\\.join\\('; '\\)\\); return;`
+      `if \\(${varName}\\.length\\) \\{ reportEditorBootstrapMissingList\\(${varName}\\); return;`
     )
   );
 }
