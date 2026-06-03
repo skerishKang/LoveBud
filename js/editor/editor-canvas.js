@@ -136,15 +136,6 @@ function createEditorCanvas(deps) {
                 getMetrics,
                 viewportState
             });
-        } else if (typeof canvasViewport.getFitViewport === 'function') {
-            nextViewport = canvasViewport.getFitViewport({
-                getTreeMemories,
-                getCanonicalRootId,
-                isRootMemory,
-                getWorldPosition,
-                getMetrics,
-                viewportState
-            });
         }
         
         if (!nextViewport) return;
@@ -152,9 +143,6 @@ function createEditorCanvas(deps) {
             canvasViewport.applyViewport(viewportState, nextViewport, true);
             return;
         }
-        viewportState.scale = nextViewport.scale || viewportState.scale || 1;
-        viewportState.offsetX = nextViewport.offsetX;
-        viewportState.offsetY = nextViewport.offsetY;
     }
 
     function switchToFreeMode() {
