@@ -37,38 +37,21 @@ const inputDeps = [
 
 // ── 1. delegation order inside fitViewportToTree ──────────────────────────
 
-test('editor canvas fit viewport delegation — panzoomUtils path preferred over canvasViewport.getFitViewport', () => {
-  const panzoomCallIndex = indexOfRequired(fitViewportBlock, 'panzoomUtils.getFitViewportIfAvailable(canvasViewport, {');
-  const canvasGetCallIndex = indexOfRequired(fitViewportBlock, 'canvasViewport.getFitViewport({');
-
-  assert.ok(panzoomCallIndex < canvasGetCallIndex,
-    'panzoomUtils.getFitViewportIfAvailable must be tried before canvasViewport.getFitViewport fallback');
+test('editor canvas fit viewport delegation — panzoomUtils path remains primary', () => {
+  assert.match(fitViewportBlock, /panzoomUtils\.getFitViewportIfAvailable\(canvasViewport, \{/);
 });
 
-test('editor canvas fit viewport delegation — both paths receive the same 6 dependency inputs', () => {
+test('editor canvas fit viewport delegation — panzoomUtils path receives the 6 dependency inputs', () => {
   const panzoomBlockStart = indexOfRequired(fitViewportBlock, 'panzoomUtils.getFitViewportIfAvailable(canvasViewport, {');
   const panzoomBlockEnd = indexOfRequired(fitViewportBlock.slice(panzoomBlockStart), '});');
   const panzoomInputs = fitViewportBlock.slice(panzoomBlockStart, panzoomBlockStart + panzoomBlockEnd);
 
-  const canvasBlockStart = indexOfRequired(fitViewportBlock, 'canvasViewport.getFitViewport({');
-  const canvasBlockEnd = indexOfRequired(fitViewportBlock.slice(canvasBlockStart), '});');
-  const canvasInputs = fitViewportBlock.slice(canvasBlockStart, canvasBlockStart + canvasBlockEnd);
-
   for (const dep of inputDeps) {
     assert.match(panzoomInputs, new RegExp(dep.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
-    assert.match(canvasInputs, new RegExp(dep.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   }
 });
 
-// ── 2. apply path order ──────────────────────────────────────────────────
-
-test('editor canvas fit viewport delegation — canvasViewport.applyViewport preferred over direct viewportState mutation', () => {
-  const applyCallIndex = indexOfRequired(fitViewportBlock, 'canvasViewport.applyViewport(viewportState, nextViewport, true);');
-  const scaleIndex = fitViewportBlock.indexOf('viewportState.scale = nextViewport.scale');
-
-  assert.ok(applyCallIndex < scaleIndex,
-    'canvasViewport.applyViewport must be tried before direct viewportState mutation');
-});
+// ── 2. apply path ────────────────────────────────────────────────────────
 
 test('editor canvas fit viewport delegation — applyViewport called with (viewportState, nextViewport, true)', () => {
   assert.match(fitViewportBlock, /canvasViewport\.applyViewport\(viewportState,\s*nextViewport,\s*true\);/);
@@ -76,14 +59,14 @@ test('editor canvas fit viewport delegation — applyViewport called with (viewp
 
 // ── 3. secondary compatibility paths still exist ─────────────────────────
 
-test('editor canvas fit viewport delegation — secondary canvasViewport.getFitViewport path remains present', () => {
-  assert.match(fitViewportBlock, /canvasViewport\.getFitViewport\(\{/);
+test('editor canvas fit viewport delegation — secondary canvasViewport.getFitViewport path stays removed', () => {
+  assert.doesNotMatch(fitViewportBlock, /canvasViewport\.getFitViewport\(\{/);
 });
 
-test('editor canvas fit viewport delegation — direct viewportState mutation paths remain present', () => {
-  assert.match(fitViewportBlock, /viewportState\.scale\s*=\s*nextViewport\.scale/);
-  assert.match(fitViewportBlock, /viewportState\.offsetX\s*=\s*nextViewport\.offsetX/);
-  assert.match(fitViewportBlock, /viewportState\.offsetY\s*=\s*nextViewport\.offsetY/);
+test('editor canvas fit viewport delegation — direct viewportState mutation paths stay removed', () => {
+  assert.doesNotMatch(fitViewportBlock, /viewportState\.scale\s*=\s*nextViewport\.scale/);
+  assert.doesNotMatch(fitViewportBlock, /viewportState\.offsetX\s*=\s*nextViewport\.offsetX/);
+  assert.doesNotMatch(fitViewportBlock, /viewportState\.offsetY\s*=\s*nextViewport\.offsetY/);
 });
 
 // ── 4. helper / load order ──────────────────────────────────────────────
