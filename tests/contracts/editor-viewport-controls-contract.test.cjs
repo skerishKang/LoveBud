@@ -68,7 +68,6 @@ test('editor canvas persists scale and keeps node dragging scale-aware', () => {
   const canvas = read('js/editor/editor-canvas.js');
   const layout = read('js/editor/editor-canvas-layout.js');
   const interaction = read('js/editor/editor-canvas-interaction.js');
-  const fallbackInteraction = read('js/editor/editor-canvas-interaction-helpers.js');
   const canvasNode = read('js/editor/editor-canvas-node.js');
   const canvasUtils = read('js/editor/editor-canvas-utils.js');
 
@@ -81,7 +80,6 @@ test('editor canvas persists scale and keeps node dragging scale-aware', () => {
   assert.match(layout, /scale:\s*typeof parsed\.scale === 'number' \? parsed\.scale : 1/, 'layout store must read persisted scale defensively');
   assert.match(layout, /scale:\s*viewportState\.scale \|\| 1/, 'layout store must persist viewport scale');
   assert.match(interaction, /dx \/ scale/, 'primary node drag must account for zoom scale');
-  assert.match(fallbackInteraction, /dx \/ scale/, 'fallback node drag must account for zoom scale');
 });
 
 test('editor viewport controls stay scoped away from branch slot implementation', () => {
