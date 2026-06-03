@@ -33,17 +33,15 @@ const helperPath = 'js/editor/editor-canvas-interaction-helpers.js';
 const canvasPath = 'js/editor/editor-canvas.js';
 const primaryInteractionPath = 'js/editor/editor-canvas-interaction.js';
 
-test('interaction helper removal readiness — helper only defines fallback namespace', () => {
-  const helperSource = read(helperPath);
-
-  assert.match(helperSource, /window\.LoveBudEditorCanvasInteractionHelpers\s*=/);
-  assert.match(helperSource, /bindFallbackCanvasPan\s*\(options\)/);
-  assert.match(helperSource, /viewportState\.globalsBound/);
-  assert.match(helperSource, /persistStoredPositions\(\)/);
-  assert.match(helperSource, /initCanvas\(\)/);
+test('interaction helper removal confirmed — helper file is deleted', () => {
+  assert.equal(
+    fs.existsSync(path.join(ROOT, 'js/editor/editor-canvas-interaction-helpers.js')),
+    false,
+    'editor-canvas-interaction-helpers.js must be deleted as part of the removal'
+  );
 });
 
-test('interaction helper removal readiness — editor canvas does not consume helper namespace', () => {
+test('interaction helper removal confirmed — editor canvas does not consume helper namespace', () => {
   const canvasSource = read(canvasPath);
 
   assert.equal(
@@ -58,7 +56,7 @@ test('interaction helper removal readiness — editor canvas does not consume he
   );
 });
 
-test('interaction helper removal readiness — bindFallbackCanvasPan has no callsites outside helper file', () => {
+test('interaction helper removal confirmed — bindFallbackCanvasPan has no remaining callsites', () => {
   const filesToScan = [
     canvasPath,
     primaryInteractionPath,
@@ -77,24 +75,15 @@ test('interaction helper removal readiness — bindFallbackCanvasPan has no call
   assert.deepEqual(references, []);
 });
 
-test('interaction helper removal readiness — editor routes still load helper before editor canvas', () => {
+test('interaction helper removal confirmed — editor routes no longer load the helper script', () => {
   const editorScripts = scriptSources(read('pages/editor.html'));
   const publicCanvasScripts = scriptSources(read('pages/public-canvas.html'));
 
-  assert.ok(scriptIncludes(editorScripts, helperPath), 'editor.html currently loads interaction helpers');
-  assert.ok(scriptIncludes(publicCanvasScripts, helperPath), 'public-canvas.html currently loads interaction helpers');
-
-  assert.ok(
-    scriptIndex(editorScripts, helperPath) < scriptIndex(editorScripts, canvasPath),
-    'editor.html must load interaction helpers before editor-canvas.js while present'
-  );
-  assert.ok(
-    scriptIndex(publicCanvasScripts, helperPath) < scriptIndex(publicCanvasScripts, canvasPath),
-    'public-canvas.html must load interaction helpers before editor-canvas.js while present'
-  );
+  assert.equal(scriptIncludes(editorScripts, helperPath), false, 'editor.html must not load the removed interaction helpers');
+  assert.equal(scriptIncludes(publicCanvasScripts, helperPath), false, 'public-canvas.html must not load the removed interaction helpers');
 });
 
-test('interaction helper removal readiness — public viewer route continues to exclude helper', () => {
+test('interaction helper removal confirmed — public viewer route continues to exclude helper', () => {
   const viewScripts = scriptSources(read('pages/view.html'));
   const publicRouteContract = read('tests/routes/public-canvas-route-dependency-contract.test.cjs');
 
@@ -106,7 +95,7 @@ test('interaction helper removal readiness — public viewer route continues to 
   );
 });
 
-test('interaction helper removal readiness — primary interaction runtime remains independently protected', () => {
+test('interaction helper removal confirmed — primary interaction runtime remains independently protected', () => {
   const runtimeContract = read('tests/contracts/editor-canvas-interaction-runtime-contract.test.cjs');
 
   assert.match(runtimeContract, /LoveBudEditorCanvasInteraction/);
