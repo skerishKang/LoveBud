@@ -22,14 +22,11 @@ test('editor canvas node drag delegation — bindNodeDrag prefers primary intera
   const guardIndex = indexOfRequired(bindNodeDragBlock, "if (typeof canvasInteraction.beginNodeDrag === 'function') {");
   const callIndex = indexOfRequired(bindNodeDragBlock, 'canvasInteraction.beginNodeDrag(e, nodeEl, mem, viewportState, getWorldPosition, canEdit);');
   const returnIndex = indexOfRequired(bindNodeDragBlock, 'return;');
-  const fallbackIndex = indexOfRequired(bindNodeDragBlock, 'const startWorld = getWorldPosition(mem);');
-
   assert.ok(guardIndex < callIndex);
   assert.ok(callIndex < returnIndex);
-  assert.ok(returnIndex < fallbackIndex);
 });
 
-test('editor canvas node drag delegation — local fallback remains present for now', () => {
+test('editor canvas node drag delegation — local fallback is removed after primary delegation', () => {
   for (const fallbackLine of [
     'if (e.button !== 0) return;',
     "if (e.target.closest('button')) return;",
@@ -45,7 +42,7 @@ test('editor canvas node drag delegation — local fallback remains present for 
     'viewportState.dragMoved = false;',
     "nodeEl.style.cursor = 'grabbing';"
   ]) {
-    assert.match(bindNodeDragBlock, new RegExp(fallbackLine.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+    assert.doesNotMatch(bindNodeDragBlock, new RegExp(fallbackLine.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   }
 });
 
