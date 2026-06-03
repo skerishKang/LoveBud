@@ -526,19 +526,6 @@ function createEditorCanvas(deps) {
             persistStoredPositions();
             return;
         }
-
-        if (typeof panzoomUtils.focusNodeByIdFallback === 'function') {
-            panzoomUtils.focusNodeByIdFallback({
-                nodeId,
-                getTreeMemories,
-                getWorldPosition,
-                getMetrics,
-                viewportState,
-                scheduleRender,
-                reapplySelection,
-                persistStoredPositions
-            });
-        }
     }
 
     function recenterViewport() {
@@ -554,17 +541,6 @@ function createEditorCanvas(deps) {
             });
             persistStoredPositions();
             return;
-        }
-
-        if (typeof panzoomUtils.recenterViewportFallback === 'function') {
-            panzoomUtils.recenterViewportFallback({
-                getTreeMemories,
-                getWorldPosition,
-                getMetrics,
-                viewportState,
-                scheduleRender,
-                persistStoredPositions
-            });
         }
     }
 
@@ -641,15 +617,6 @@ function createEditorCanvas(deps) {
             });
             persistStoredPositions();
             return;
-        }
-
-        if (typeof panzoomUtils.zoomByFallback === 'function') {
-            panzoomUtils.zoomByFallback({
-                factor,
-                viewportState,
-                scheduleRender,
-                persistStoredPositions
-            });
         }
     }
 
