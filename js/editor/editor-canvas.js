@@ -560,16 +560,6 @@ function createEditorCanvas(deps) {
             });
             return;
         }
-
-        if (typeof uiHelpers.bindViewportControlsFallback === 'function') {
-            uiHelpers.bindViewportControlsFallback({
-                viewportState,
-                getSelectedMemoryId: () => selectionUtils.getSelectedMemoryId(document),
-                focusNodeById,
-                recenterViewport,
-                zoomBy
-            });
-        }
     }
 
     function bindLayoutModeToggle() {

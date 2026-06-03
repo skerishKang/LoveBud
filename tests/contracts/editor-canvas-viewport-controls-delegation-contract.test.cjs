@@ -28,11 +28,9 @@ test('editor canvas viewport controls delegation — bindViewportControls prefer
   const guardIndex = indexOfRequired(bindViewportControlsBlock, "if (typeof canvasViewport.bindControls === 'function') {");
   const callIndex = indexOfRequired(bindViewportControlsBlock, 'canvasViewport.bindControls({');
   const returnIndex = indexOfRequired(bindViewportControlsBlock, 'return;');
-  const fallbackIndex = indexOfRequired(bindViewportControlsBlock, 'uiHelpers.bindViewportControlsFallback({');
 
   assert.ok(guardIndex < callIndex);
   assert.ok(callIndex < returnIndex);
-  assert.ok(returnIndex < fallbackIndex);
 });
 
 test('editor canvas viewport controls delegation — primary bind receives expected dependencies', () => {
@@ -46,9 +44,9 @@ test('editor canvas viewport controls delegation — primary bind receives expec
   }
 });
 
-test('editor canvas viewport controls delegation — secondary fallback path remains present', () => {
-  assert.match(bindViewportControlsBlock, /uiHelpers\.bindViewportControlsFallback\(\{/);
-  assert.match(bindViewportControlsBlock, /getSelectedMemoryId:/);
+test('editor canvas viewport controls delegation — legacy secondary path stays removed', () => {
+  assert.doesNotMatch(bindViewportControlsBlock, /uiHelpers\.bindViewportControlsFallback\(\{/);
+  assert.doesNotMatch(bindViewportControlsBlock, /getSelectedMemoryId:/);
 });
 
 test('editor canvas viewport controls delegation — viewport bindControls wrapper exists', () => {
