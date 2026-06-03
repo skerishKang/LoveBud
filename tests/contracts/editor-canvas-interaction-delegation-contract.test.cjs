@@ -22,11 +22,8 @@ test('editor canvas interaction delegation — bindCanvasPan prefers primary int
   const guardIndex = indexOfRequired(bindCanvasPanBlock, "if (typeof canvasInteraction.bind === 'function') {");
   const callIndex = indexOfRequired(bindCanvasPanBlock, 'canvasInteraction.bind({');
   const returnIndex = indexOfRequired(bindCanvasPanBlock, 'return;');
-  const fallbackIndex = indexOfRequired(bindCanvasPanBlock, "canvas.addEventListener('mousedown'");
-
   assert.ok(guardIndex < callIndex);
   assert.ok(callIndex < returnIndex);
-  assert.ok(returnIndex < fallbackIndex);
 });
 
 test('editor canvas interaction delegation — primary bind receives expected dependencies', () => {
@@ -44,11 +41,9 @@ test('editor canvas interaction delegation — primary bind receives expected de
   }
 });
 
-test('editor canvas interaction delegation — mouse fallback remains present for now', () => {
-  assert.match(bindCanvasPanBlock, /canvas\.addEventListener\('mousedown'/);
-  assert.match(bindCanvasPanBlock, /window\.addEventListener\('mousemove'/);
-  assert.match(bindCanvasPanBlock, /window\.addEventListener\('mouseup'/);
-  assert.match(bindCanvasPanBlock, /viewportState\.globalsBound/);
-  assert.match(bindCanvasPanBlock, /persistStoredPositions\(\)/);
-  assert.match(bindCanvasPanBlock, /initCanvas\(\)/);
+test('editor canvas interaction delegation — mouse fallback is removed after primary delegation', () => {
+  assert.doesNotMatch(bindCanvasPanBlock, /canvas\.addEventListener\('mousedown'/);
+  assert.doesNotMatch(bindCanvasPanBlock, /window\.addEventListener\('mousemove'/);
+  assert.doesNotMatch(bindCanvasPanBlock, /window\.addEventListener\('mouseup'/);
+  assert.doesNotMatch(bindCanvasPanBlock, /viewportState\.globalsBound/);
 });
