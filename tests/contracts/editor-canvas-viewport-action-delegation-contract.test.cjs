@@ -38,12 +38,10 @@ test('editor canvas viewport action delegation — focusNodeById prefers viewpor
   const callIndex = indexOfRequired(focusNodeByIdBlock, 'canvasViewport.focusNodeById({');
   const persistIndex = indexOfRequired(focusNodeByIdBlock, 'persistStoredPositions();');
   const returnIndex = indexOfRequired(focusNodeByIdBlock, 'return;');
-  const fallbackIndex = indexOfRequired(focusNodeByIdBlock, 'panzoomUtils.focusNodeByIdFallback({');
 
   assert.ok(guardIndex < callIndex);
   assert.ok(callIndex < persistIndex);
   assert.ok(persistIndex < returnIndex);
-  assert.ok(returnIndex < fallbackIndex);
 });
 
 test('editor canvas viewport action delegation — focusNodeById passes expected dependencies', () => {
@@ -67,12 +65,10 @@ test('editor canvas viewport action delegation — recenterViewport prefers view
   const callIndex = indexOfRequired(recenterViewportBlock, 'canvasViewport.recenterViewport({');
   const persistIndex = indexOfRequired(recenterViewportBlock, 'persistStoredPositions();');
   const returnIndex = indexOfRequired(recenterViewportBlock, 'return;');
-  const fallbackIndex = indexOfRequired(recenterViewportBlock, 'panzoomUtils.recenterViewportFallback({');
 
   assert.ok(guardIndex < callIndex);
   assert.ok(callIndex < persistIndex);
   assert.ok(persistIndex < returnIndex);
-  assert.ok(returnIndex < fallbackIndex);
 });
 
 test('editor canvas viewport action delegation — recenterViewport passes expected dependencies', () => {
@@ -94,12 +90,10 @@ test('editor canvas viewport action delegation — zoomBy prefers viewport actio
   const callIndex = indexOfRequired(zoomByBlock, 'canvasViewport.zoomBy({');
   const persistIndex = indexOfRequired(zoomByBlock, 'persistStoredPositions();');
   const returnIndex = indexOfRequired(zoomByBlock, 'return;');
-  const fallbackIndex = indexOfRequired(zoomByBlock, 'panzoomUtils.zoomByFallback({');
 
   assert.ok(guardIndex < callIndex);
   assert.ok(callIndex < persistIndex);
   assert.ok(persistIndex < returnIndex);
-  assert.ok(returnIndex < fallbackIndex);
 });
 
 test('editor canvas viewport action delegation — zoomBy passes expected dependencies', () => {
@@ -113,10 +107,10 @@ test('editor canvas viewport action delegation — zoomBy passes expected depend
   }
 });
 
-test('editor canvas viewport action delegation — current secondary paths remain present', () => {
-  assert.match(focusNodeByIdBlock, /panzoomUtils\.focusNodeByIdFallback\(\{/);
-  assert.match(recenterViewportBlock, /panzoomUtils\.recenterViewportFallback\(\{/);
-  assert.match(zoomByBlock, /panzoomUtils\.zoomByFallback\(\{/);
+test('editor canvas viewport action delegation — legacy secondary paths stay removed', () => {
+  assert.doesNotMatch(focusNodeByIdBlock, /panzoomUtils\.focusNodeByIdFallback\(\{/);
+  assert.doesNotMatch(recenterViewportBlock, /panzoomUtils\.recenterViewportFallback\(\{/);
+  assert.doesNotMatch(zoomByBlock, /panzoomUtils\.zoomByFallback\(\{/);
 });
 
 test('editor canvas viewport action wrappers remain exposed', () => {
