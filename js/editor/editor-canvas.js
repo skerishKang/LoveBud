@@ -306,7 +306,6 @@ function createEditorCanvas(deps) {
                     canvasInteraction.beginNodeDrag(e, nodeEl, mem, viewportState, getWorldPosition, canEdit);
                     return;
                 }
-
             });
         }
 
@@ -630,7 +629,6 @@ function createEditorCanvas(deps) {
             });
             return;
         }
-
     }
 
     function zoomBy(factor) {
