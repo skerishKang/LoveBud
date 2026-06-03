@@ -48,24 +48,12 @@ function createEditorCanvas(deps) {
         if (typeof storageUtils.loadStoredLayout === 'function') {
             return storageUtils.loadStoredLayout(treeId, layoutStorageKey, canvasLayout);
         }
-        if (canvasLayout && typeof canvasLayout.createLayoutStore === 'function') {
-            const store = canvasLayout.createLayoutStore(treeId);
-            const initialState = store.createInitialViewportState();
-            return {
-                positions: initialState.positions,
-                offsetX: initialState.offsetX,
-                offsetY: initialState.offsetY,
-                scale: initialState.scale
-            };
-        }
-        return { positions: {}, offsetX: 0, offsetY: 0, scale: 1 };
     }
 
     function loadLayoutMode() {
         if (typeof storageUtils.loadLayoutMode === 'function') {
             return storageUtils.loadLayoutMode(layoutModeStorageKey);
         }
-        return 'free';
     }
 
     function persistLayoutMode(mode) {
@@ -134,12 +122,6 @@ function createEditorCanvas(deps) {
         if (canEdit === false) return;
         if (typeof storageUtils.persistStoredPositions === 'function') {
             return storageUtils.persistStoredPositions(viewportState, treeId, layoutStorageKey, canvasLayout, canEdit);
-        }
-        if (viewportState.layoutMode === 'structured') return;
-
-        if (canvasLayout && typeof canvasLayout.createLayoutStore === 'function') {
-            const store = canvasLayout.createLayoutStore(treeId);
-            store.persist(viewportState);
         }
     }
 
