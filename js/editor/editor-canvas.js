@@ -307,20 +307,6 @@ function createEditorCanvas(deps) {
                     return;
                 }
 
-                if (e.button !== 0) return;
-                if (e.target.closest('button')) return;
-                e.preventDefault();
-                e.stopPropagation();
-
-                const startWorld = getWorldPosition(mem);
-                viewportState.isDraggingNode = true;
-                viewportState.dragNodeId = mem.id;
-                viewportState.dragStartClientX = e.clientX;
-                viewportState.dragStartClientY = e.clientY;
-                viewportState.dragStartWorldX = startWorld.x;
-                viewportState.dragStartWorldY = startWorld.y;
-                viewportState.dragMoved = false;
-                nodeEl.style.cursor = 'grabbing';
             });
         }
 
