@@ -40,8 +40,6 @@ test('direct deps function aliases remain inventoried', () => {
   const editor = read('js/editor.js');
 
   const expectedDirectAliases = [
-    'const getConfirmedSessionUser = deps.getConfirmedSessionUser;',
-    'const readConfirmedAuthCache = deps.readConfirmedAuthCache;',
     'const showToast = deps.showToast;',
     'const i18n = deps.i18n;',
     'const getEditorBasePath = deps.getEditorBasePath;',
@@ -160,7 +158,9 @@ test('remaining helper method aliases: none — all 20 helper method aliases hav
     'const escapeHtml = deps.escapeHtml;',
     'const findRootMemory = deps.findRootMemory;',
     'const getCanonicalRootId = deps.getCanonicalRootId;',
-    'const isRootMemory = deps.isRootMemory;'
+    'const isRootMemory = deps.isRootMemory;',
+    'const getConfirmedSessionUser = deps.getConfirmedSessionUser;',
+    'const readConfirmedAuthCache = deps.readConfirmedAuthCache;'
   ];
 
   for (const alias of forbiddenLocalAliases) {
@@ -169,6 +169,8 @@ test('remaining helper method aliases: none — all 20 helper method aliases hav
 
   // Verify direct deps usage for the last cleaned up alias
   assert.ok(editor.includes('deps.registerEditorAuthStart'), 'editor should use deps.registerEditorAuthStart directly');
+  assert.ok(editor.includes('deps.getConfirmedSessionUser'), 'editor should use deps.getConfirmedSessionUser directly');
+  assert.ok(editor.includes('deps.readConfirmedAuthCache'), 'editor should use deps.readConfirmedAuthCache directly');
 });
 
 test('resolver-owned duplicate bootstrap guards remain removed after cleanup', () => {

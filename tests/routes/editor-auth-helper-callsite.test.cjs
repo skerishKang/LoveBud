@@ -13,8 +13,8 @@ test('editor auth cache reader is resolved from entry dependencies', () => {
   const editor = read('js/editor.js');
   const deps = read('js/editor/editor-entry-dependencies.js');
 
-  // editor.js should get readConfirmedAuthCache from deps
-  assert.match(editor, /const\s+readConfirmedAuthCache\s*=\s*deps\.readConfirmedAuthCache/);
+  // editor.js should get readConfirmedAuthCache from deps at call site
+  assert.match(editor, /deps\.registerEditorAuthStart\(\{[\s\S]*readConfirmedAuthCache:\s*deps\.readConfirmedAuthCache/);
 
   // editor-entry-dependencies.js should expose readConfirmedAuthCache
   assert.match(deps, /readConfirmedAuthCache:\s*readConfirmedAuthCacheFromHelper/);
