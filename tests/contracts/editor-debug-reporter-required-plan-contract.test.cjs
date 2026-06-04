@@ -65,11 +65,11 @@ test('editor.js no longer guards createEditorDebugReporter inside startEditor', 
 test('editor.js now uses createEditorStartupDependencyWaiter as required helper without fallback', () => {
   assert.match(
     editorSource,
-    /const\s+createEditorStartupDependencyWaiter\s*=\s*shellHelpers\.createEditorStartupDependencyWaiter;/
+    /const\s+createEditorStartupDependencyWaiter\s*=\s*deps\.createEditorStartupDependencyWaiter;/
   );
   assert.doesNotMatch(
     editorSource,
-    /const\s+createEditorStartupDependencyWaiter\s*=\s*shellHelpers\.createEditorStartupDependencyWaiter\s*\|\|/
+    /const\s+createEditorStartupDependencyWaiter\s*=\s*deps\.createEditorStartupDependencyWaiter\s*\|\|/
   );
 });
 

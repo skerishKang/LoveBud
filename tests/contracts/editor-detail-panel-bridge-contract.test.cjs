@@ -21,11 +21,11 @@ test('detail panel bridge helper keeps testable window hook', () => {
 test('editor delegates detail panel bridge through required shell helper', () => {
     assert.match(
       editorSource,
-      /const\s+exposeDetailPanelUpdater\s*=\s*shellHelpers\.exposeDetailPanelUpdater/
+      /const\s+exposeDetailPanelUpdater\s*=\s*deps\.exposeDetailPanelUpdater/
     );
     assert.doesNotMatch(
       editorSource,
-      /const\s+exposeDetailPanelUpdater\s*=\s*shellHelpers\.exposeDetailPanelUpdater\s*\|\|/
+      /const\s+exposeDetailPanelUpdater\s*=\s*deps\.exposeDetailPanelUpdater\s*\|\|/
     );
     assert.match(
       editorSource,

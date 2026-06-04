@@ -79,7 +79,13 @@ test('first batch helper method aliases now use direct deps aliases', () => {
     'const runEditorInitialLoadFlow = deps.runEditorInitialLoadFlow;',
     'const createEditorRefreshSaveRuntime = deps.createEditorRefreshSaveRuntime;',
     'const createEditorStartupContext = deps.createEditorStartupContext;',
-    'const createEditorDomRefs = deps.createEditorDomRefs;'
+    'const createEditorDomRefs = deps.createEditorDomRefs;',
+    'const markEditorReady = deps.markEditorReady;',
+    'const applyEditorEditabilityState = deps.applyEditorEditabilityState;',
+    'const createEditorStartupDependencyWaiter = deps.createEditorStartupDependencyWaiter;',
+    'const exposeCanvasEmptyGuideUpdater = deps.exposeCanvasEmptyGuideUpdater;',
+    'const exposeDetailPanelUpdater = deps.exposeDetailPanelUpdater;',
+    'const resolveSaveStatusTimeFormatter = deps.resolveSaveStatusTimeFormatter;'
   ];
 
   for (const alias of cleanupConfirmedDirectDepsAliases) {
@@ -95,7 +101,13 @@ test('first batch namespace-derived aliases are removed', () => {
     'const runEditorInitialLoadFlow = editorInitialLoadFlow.runEditorInitialLoadFlow;',
     'const createEditorRefreshSaveRuntime = editorRefreshSaveRuntime.createEditorRefreshSaveRuntime;',
     'const createEditorStartupContext = editorStartupContext.createEditorStartupContext;',
-    'const createEditorDomRefs = editorDomRefsBuilder.createEditorDomRefs;'
+    'const createEditorDomRefs = editorDomRefsBuilder.createEditorDomRefs;',
+    'const markEditorReady = shellHelpers.markEditorReady;',
+    'const applyEditorEditabilityState = shellHelpers.applyEditorEditabilityState;',
+    'const createEditorStartupDependencyWaiter = shellHelpers.createEditorStartupDependencyWaiter;',
+    'const exposeCanvasEmptyGuideUpdater = shellHelpers.exposeCanvasEmptyGuideUpdater;',
+    'const exposeDetailPanelUpdater = shellHelpers.exposeDetailPanelUpdater;',
+    'const resolveSaveStatusTimeFormatter = shellHelpers.resolveSaveStatusTimeFormatter;'
   ];
 
   for (const alias of removedNamespaceDerivedAliases) {
@@ -110,19 +122,13 @@ test('remaining helper method aliases stay as potential cleanup candidates', () 
     // editorTreeHelpers.*
     'const nextMemoryIdFromMemories = editorTreeHelpers.nextMemoryIdFromMemories;',
     // shellHelpers.* (non-guarded)
-    'const markEditorReady = shellHelpers.markEditorReady;',
-    'const applyEditorEditabilityState = shellHelpers.applyEditorEditabilityState;',
     'const getHttpStatus = shellHelpers.getHttpStatus;',
-    'const createEditorStartupDependencyWaiter = shellHelpers.createEditorStartupDependencyWaiter;',
-    'const exposeCanvasEmptyGuideUpdater = shellHelpers.exposeCanvasEmptyGuideUpdater;',
-    'const exposeDetailPanelUpdater = shellHelpers.exposeDetailPanelUpdater;',
     'const createSelectedMomentFocusHandler = shellHelpers.createSelectedMomentFocusHandler;',
     'const createSidebarTreeActionsUpdater = shellHelpers.createSidebarTreeActionsUpdater;',
     'const createMemoryActionsReadinessWrapper = shellHelpers.createMemoryActionsReadinessWrapper;',
     'const createCurrentMomentDetailOpener = shellHelpers.createCurrentMomentDetailOpener;',
     'const createSaveStatusOrchestrationFallback = shellHelpers.createSaveStatusOrchestrationFallback;',
     'const exposeRefreshMemoriesBridge = shellHelpers.exposeRefreshMemoriesBridge;',
-    'const resolveSaveStatusTimeFormatter = shellHelpers.resolveSaveStatusTimeFormatter;',
     // editorPageHelpers.* (non-guarded)
     'const registerEditorAuthStart = editorPageHelpers.registerEditorAuthStart;'
   ];

@@ -29,7 +29,7 @@ test('startup dependency waiter keeps testable hooks', () => {
 });
 
 test('editor delegates startup dependency waiter with fallback', () => {
-  assert.match(editorSource, /shellHelpers\.createEditorStartupDependencyWaiter/);
+  assert.match(editorSource, /deps\.createEditorStartupDependencyWaiter/);
   assert.match(editorSource, /const createEditorStartupDependencyWaiter\s*=/);
   assert.match(editorSource, /const waitForGlobal\s*=\s*createEditorStartupDependencyWaiter\(\{\s*log,\s*reportError\s*\}\)/);
 });

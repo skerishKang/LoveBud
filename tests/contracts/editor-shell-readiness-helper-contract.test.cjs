@@ -147,11 +147,11 @@ test('createEditorStartupDependencyWaiter calls reportError and returns false wh
 test('editor.js delegates markEditorReady through required shell helper', () => {
   assert.match(
     editorSource,
-    /const\s+markEditorReady\s*=\s*shellHelpers\.markEditorReady/
+    /const\s+markEditorReady\s*=\s*deps\.markEditorReady/
   );
   assert.doesNotMatch(
     editorSource,
-    /const\s+markEditorReady\s*=\s*shellHelpers\.markEditorReady\s*\|\|/
+    /const\s+markEditorReady\s*=\s*deps\.markEditorReady\s*\|\|/
   );
   assert.match(
     editorSource,
@@ -162,11 +162,11 @@ test('editor.js delegates markEditorReady through required shell helper', () => 
 test('editor.js delegates applyEditorEditabilityState through required shell helper', () => {
   assert.match(
     editorSource,
-    /const\s+applyEditorEditabilityState\s*=\s*shellHelpers\.applyEditorEditabilityState/
+    /const\s+applyEditorEditabilityState\s*=\s*deps\.applyEditorEditabilityState/
   );
   assert.doesNotMatch(
     editorSource,
-    /const\s+applyEditorEditabilityState\s*=\s*shellHelpers\.applyEditorEditabilityState\s*\|\|/
+    /const\s+applyEditorEditabilityState\s*=\s*deps\.applyEditorEditabilityState\s*\|\|/
   );
   assert.match(
     editorSource,
@@ -180,8 +180,8 @@ test('editor.js now uses createEditorDebugReporter as required deps helper witho
 });
 
 test('editor.js now uses createEditorStartupDependencyWaiter as required helper without fallback', () => {
-  assert.match(editorSource, /shellHelpers\.createEditorStartupDependencyWaiter;/);
-  assert.doesNotMatch(editorSource, /shellHelpers\.createEditorStartupDependencyWaiter\s*\|\|/);
+  assert.match(editorSource, /deps\.createEditorStartupDependencyWaiter;/);
+  assert.doesNotMatch(editorSource, /deps\.createEditorStartupDependencyWaiter\s*\|\|/);
 });
 
 // --- 7. editor.js uses helpers in startup path ---
