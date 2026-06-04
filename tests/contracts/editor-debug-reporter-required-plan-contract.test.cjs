@@ -7,14 +7,14 @@ const editorSource = fs.readFileSync('js/editor.js', 'utf8');
 
 // --- 1. Current state: local fallback removed, required boundary ---
 
-test('editor.js now uses createEditorDebugReporter required shell helper without fallback', () => {
+test('editor.js now uses createEditorDebugReporter required deps helper without fallback', () => {
   assert.match(
     editorSource,
-    /const\s+createEditorDebugReporter\s*=\s*shellHelpers\.createEditorDebugReporter[^|]/
+    /const\s+createEditorDebugReporter\s*=\s*deps\.createEditorDebugReporter/
   );
   assert.doesNotMatch(
     editorSource,
-    /const\s+createEditorDebugReporter\s*=\s*shellHelpers\.createEditorDebugReporter\s*\|\|/
+    /const\s+createEditorDebugReporter\s*=\s*deps\.createEditorDebugReporter\s*\|\|/
   );
 });
 
@@ -37,27 +37,21 @@ test('editor-shell-helpers.js createEditorDebugReporter pushes to debugState.err
 
 // --- 3. Missing-helper guard moved to bootstrap section ---
 
-test('editor.js has createEditorDebugReporter bootstrap guard with console.error', () => {
-  const guardIndex = editorSource.indexOf('LoveBudEditorShellHelpers.createEditorDebugReporter missing');
-  assert.ok(guardIndex !== -1, 'missing createEditorDebugReporter guard must exist');
+test('editor.js resolves createEditorDebugReporter through deps in bootstrap section', () => {
+  const editorDebugIndex = editorSource.indexOf('createEditorDebugReporter = deps.createEditorDebugReporter');
+  assert.ok(editorDebugIndex !== -1, 'createEditorDebugReporter must be resolved through deps');
 
-  const guardContextStart = editorSource.lastIndexOf('console.error', guardIndex);
-  assert.ok(guardContextStart !== -1, 'guard must use console.error');
-
-  const guardBlock = editorSource.slice(guardContextStart - 100, guardIndex + 200);
-  assert.match(guardBlock, /typeof createEditorDebugReporter !== 'function'/);
-  assert.match(guardBlock, /debugState\.errors\.push/);
-  assert.match(guardBlock, /return;/);
-  assert.doesNotMatch(guardBlock, /reportError\(/);
+  const guardContextStart = editorSource.lastIndexOf('reportEditorBootstrapMissingDependency', editorDebugIndex);
+  assert.ok(guardContextStart !== -1, 'reportEditorBootstrapMissingDependency must exist before deps resolution');
 });
 
-test('editor.js createEditorDebugReporter bootstrap guard is before startEditor definition', () => {
-  const guardIndex = editorSource.indexOf('LoveBudEditorShellHelpers.createEditorDebugReporter missing');
+test('editor.js createEditorDebugReporter deps resolution is before startEditor definition', () => {
+  const editorDebugIndex = editorSource.indexOf('createEditorDebugReporter = deps.createEditorDebugReporter');
   const startEditorIndex = editorSource.indexOf('const startEditor = async () => {');
 
-  assert.ok(guardIndex !== -1, 'missing createEditorDebugReporter guard must exist');
+  assert.ok(editorDebugIndex !== -1, 'createEditorDebugReporter deps resolution must exist');
   assert.ok(startEditorIndex !== -1, 'startEditor must exist');
-  assert.ok(guardIndex < startEditorIndex, 'guard must be before startEditor');
+  assert.ok(editorDebugIndex < startEditorIndex, 'deps resolution must be before startEditor');
 });
 
 test('editor.js no longer guards createEditorDebugReporter inside startEditor', () => {

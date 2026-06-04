@@ -46,62 +46,33 @@ document.addEventListener('DOMContentLoaded', () => {
     const getConfirmedSessionUser = deps.getConfirmedSessionUser;
     const readConfirmedAuthCache = deps.readConfirmedAuthCache;
     const getHttpStatus = shellHelpers.getHttpStatus;
-    const createInlineShowToastFallback = shellHelpers.createInlineShowToastFallback;
-    if (typeof createInlineShowToastFallback !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.createInlineShowToastFallback missing'); return; }
     const showToast = deps.showToast;
-    const getI18n = shellHelpers.getI18n;
-    if (typeof getI18n !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.getI18n missing'); return; }
-    const i18n = getI18n();
-    const getEditorBasePath = shellHelpers.getEditorBasePath;
-    if (typeof getEditorBasePath !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.getEditorBasePath missing'); return; }
-
-    const redirectToEditorLogin = editorPageHelpers.redirectToEditorLogin;
-    if (typeof redirectToEditorLogin !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorPageHelpers.redirectToEditorLogin missing'); return; }
-    const safeI18nText = editorHelpers.safeI18nText;
-    const resolveHintText = editorHelpers.resolveHintText;
-    const resolveTreeTitleText = editorHelpers.resolveTreeTitleText;
-    const resolveInfoText = editorHelpers.resolveInfoText;
-    const missingTextResolvers = [
-        ['LoveBudEditorHelpers.safeI18nText', safeI18nText],
-        ['LoveBudEditorHelpers.resolveHintText', resolveHintText],
-        ['LoveBudEditorHelpers.resolveTreeTitleText', resolveTreeTitleText],
-        ['LoveBudEditorHelpers.resolveInfoText', resolveInfoText]
-    ].filter(([, helper]) => typeof helper !== 'function');
-    if (missingTextResolvers.length) { reportEditorBootstrapMissingList(missingTextResolvers); return; }
-    const syncCurrentTreeData = editorTreeHelpers.syncCurrentTreeData;
-    if (typeof syncCurrentTreeData !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorTreeHelpers.syncCurrentTreeData missing'); return; }
-    const resolveParentIdForCreate = editorTreeHelpers.resolveParentIdForCreate;
-    if (typeof resolveParentIdForCreate !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorTreeHelpers.resolveParentIdForCreate missing'); return; }
-    const getMyTreesHref = editorPageHelpers.getMyTreesHref;
-    if (typeof getMyTreesHref !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorPageHelpers.getMyTreesHref missing'); return; }
-    const escapeHtml = editorHelpers.escapeHtml;
-    const safeUrl = editorHelpers.safeUrl;
-    const resolveMemoryThumbnail = editorHelpers.resolveMemoryThumbnail;
-    const missingMediaResolvers = [
-        ['LoveBudEditorHelpers.escapeHtml', escapeHtml],
-        ['LoveBudEditorHelpers.safeUrl', safeUrl],
-        ['LoveBudEditorHelpers.resolveMemoryThumbnail', resolveMemoryThumbnail]
-    ].filter(([, helper]) => typeof helper !== 'function');
-    if (missingMediaResolvers.length) { reportEditorBootstrapMissingList(missingMediaResolvers); return; }
+    const i18n = deps.i18n;
+    const getEditorBasePath = deps.getEditorBasePath;
+    const redirectToEditorLogin = deps.redirectToEditorLogin;
+    const safeI18nText = deps.safeI18nText;
+    const resolveHintText = deps.resolveHintText;
+    const resolveTreeTitleText = deps.resolveTreeTitleText;
+    const resolveInfoText = deps.resolveInfoText;
+    const syncCurrentTreeData = deps.syncCurrentTreeData;
+    const resolveParentIdForCreate = deps.resolveParentIdForCreate;
+    const getMyTreesHref = deps.getMyTreesHref;
+    const escapeHtml = deps.escapeHtml;
+    const resolveMemoryThumbnail = deps.resolveMemoryThumbnail;
     const getYouTubeInputErrorMessage = deps.getYouTubeInputErrorMessage;
-    const renderTreeLoadError = editorPageHelpers.renderTreeLoadError;
-    if (typeof renderTreeLoadError !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorPageHelpers.renderTreeLoadError missing'); return; }
-    const buildTreeLoadErrorCopy = editorPageHelpers.buildTreeLoadErrorCopy;
-    if (typeof buildTreeLoadErrorCopy !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorPageHelpers.buildTreeLoadErrorCopy missing'); return; }
+    const renderTreeLoadError = deps.renderTreeLoadError;
+    const buildTreeLoadErrorCopy = deps.buildTreeLoadErrorCopy;
     const registerEditorAuthStart = editorPageHelpers.registerEditorAuthStart;
     if (typeof registerEditorAuthStart !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorPageHelpers.registerEditorAuthStart missing'); return; }
-    const applyEditorShellCopy = shellHelpers.applyEditorShellCopy;
-    if (typeof applyEditorShellCopy !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.applyEditorShellCopy missing'); return; }
+    const applyEditorShellCopy = deps.applyEditorShellCopy;
     applyEditorShellCopy(safeI18nText, i18n);
-    const createPrepareEditorShell = editorShellCopyApplier.createPrepareEditorShell;
-    if (typeof createPrepareEditorShell !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorShellCopyApplier.createPrepareEditorShell missing'); return; }
+    const createPrepareEditorShell = deps.createPrepareEditorShell;
     const prepareEditorShell = createPrepareEditorShell({ applyEditorShellCopy, safeI18nText, i18n, getMyTreesHref });
     const nextMemoryIdFromMemories = editorTreeHelpers.nextMemoryIdFromMemories;
     const markEditorReady = shellHelpers.markEditorReady;
     const applyEditorEditabilityState = shellHelpers.applyEditorEditabilityState;
     const createEditorDomRefs = editorDomRefsBuilder.createEditorDomRefs;
-    const createEditorDebugReporter = shellHelpers.createEditorDebugReporter;
-    if (typeof createEditorDebugReporter !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.createEditorDebugReporter missing'); return; }
+    const createEditorDebugReporter = deps.createEditorDebugReporter;
     const createEditorStartDependencyGuard = shellHelpers.createEditorStartDependencyGuard;
     if (typeof createEditorStartDependencyGuard !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.createEditorStartDependencyGuard missing'); return; }
     const createEditorStartDependencyChecker = shellHelpers.createEditorStartDependencyChecker;
@@ -167,12 +138,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const findRootMemory = deps.findRootMemory;
     const getCanonicalRootId = deps.getCanonicalRootId;
     const isRootMemory = deps.isRootMemory;
-    const missingRootHelpers = [
-        ['LoveBudEditorUtils.findRootMemory', findRootMemory],
-        ['LoveBudEditorUtils.getCanonicalRootId', getCanonicalRootId],
-        ['LoveBudEditorUtils.isRootMemory', isRootMemory]
-    ].filter(([, helper]) => typeof helper !== 'function');
-    if (missingRootHelpers.length) { reportEditorBootstrapMissingList(missingRootHelpers); return; }
 
     const startEditor = async () => {
         const { log, reportError } = createEditorDebugReporter();

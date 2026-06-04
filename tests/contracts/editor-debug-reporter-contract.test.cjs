@@ -21,8 +21,8 @@ test('debug reporter preserves console formats and test hooks', () => {
   assert.match(shellHelpersSource, /opts\.now/);
 });
 
-test('editor delegates debug reporter setup with fallback', () => {
-  assert.match(editorSource, /shellHelpers\.createEditorDebugReporter/);
+test('editor delegates debug reporter setup through deps', () => {
+  assert.match(editorSource, /deps\.createEditorDebugReporter/);
   assert.match(editorSource, /const createEditorDebugReporter\s*=/);
   assert.match(editorSource, /const\s*\{\s*log,\s*reportError\s*\}\s*=\s*createEditorDebugReporter\(\)/);
   assert.match(editorSource, /window\.LoveBudEditorDebug\s*=\s*window\.LoveBudEditorDebug\s*\|\|\s*\{\s*logs:\s*\[\],\s*errors:\s*\[\]\s*\}/);

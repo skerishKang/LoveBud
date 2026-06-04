@@ -48,35 +48,40 @@ test('tree load error copy helper returns title and desc object', () => {
 
 // --- 2. editor.js uses required reference without fallback ---
 
-test('editor.js uses buildTreeLoadErrorCopy required reference', () => {
+test('editor.js uses buildTreeLoadErrorCopy required reference from deps', () => {
   assert.match(
     editorSource,
-    /const\s+buildTreeLoadErrorCopy\s*=\s*editorPageHelpers\.buildTreeLoadErrorCopy/
+    /const\s+buildTreeLoadErrorCopy\s*=\s*deps\.buildTreeLoadErrorCopy/
   );
   assert.doesNotMatch(
     editorSource,
-    /const\s+buildTreeLoadErrorCopy\s*=\s*editorPageHelpers\.buildTreeLoadErrorCopy\s*\|\|/
+    /const\s+buildTreeLoadErrorCopy\s*=\s*deps\.buildTreeLoadErrorCopy\s*\|\|/
+  );
+  // No typeof guard for buildTreeLoadErrorCopy (resolved through deps)
+  assert.doesNotMatch(
+    editorSource,
+    /typeof\s+buildTreeLoadErrorCopy\s*!==\s*'function'/
   );
 });
 
-test('editor.js has bootstrap guard for missing buildTreeLoadErrorCopy', () => {
-  assert.match(
+test('editor.js no longer has bootstrap guard for missing buildTreeLoadErrorCopy (guard removed, resolved through deps)', () => {
+  assert.doesNotMatch(
     editorSource,
     /LoveBudEditorPageHelpers\.buildTreeLoadErrorCopy missing/
   );
+  assert.doesNotMatch(
+    editorSource,
+    /typeof buildTreeLoadErrorCopy !== 'function'/
+  );
 });
 
-test('editor.js buildTreeLoadErrorCopy guard uses console.error pattern', () => {
-  const guardStart = editorSource.indexOf("if (typeof buildTreeLoadErrorCopy !== 'function')");
-  assert.notEqual(guardStart, -1, 'buildTreeLoadErrorCopy guard must exist');
-
-  const guardEnd = editorSource.indexOf('const applyEditorShellCopy', guardStart);
-  assert.notEqual(guardEnd, -1, 'guard end marker must exist after guard');
-
-  const guardBody = editorSource.slice(guardStart, guardEnd);
-
-  assert.match(guardBody, /reportEditorBootstrapMissingDependency/);
-  assert.doesNotMatch(guardBody, /reportError\(/);
+test('editor.js buildTreeLoadErrorCopy guard no longer exists (typeof guard removed with duplicate guard cleanup)', () => {
+  // Guard block was removed — no typeof guard should exist
+  assert.equal(
+    editorSource.indexOf("if (typeof buildTreeLoadErrorCopy !== 'function')"),
+    -1,
+    'buildTreeLoadErrorCopy typeof guard must not exist'
+  );
 });
 
 // --- 3. Tree-load failure block delegates to required helper ---

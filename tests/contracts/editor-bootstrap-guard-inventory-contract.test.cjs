@@ -6,19 +6,7 @@ const editorSource = fs.readFileSync('js/editor.js', 'utf8');
 
 const expectedDirectMessages = [
   'LoveBudEditorEntryDependencies.resolveEditorEntryDependencies missing',
-  'LoveBudEditorShellHelpers.createInlineShowToastFallback missing',
-  'LoveBudEditorShellHelpers.getI18n missing',
-  'LoveBudEditorShellHelpers.getEditorBasePath missing',
-  'LoveBudEditorPageHelpers.redirectToEditorLogin missing',
-  'LoveBudEditorTreeHelpers.syncCurrentTreeData missing',
-  'LoveBudEditorTreeHelpers.resolveParentIdForCreate missing',
-  'LoveBudEditorPageHelpers.getMyTreesHref missing',
-  'LoveBudEditorPageHelpers.renderTreeLoadError missing',
-  'LoveBudEditorPageHelpers.buildTreeLoadErrorCopy missing',
   'LoveBudEditorPageHelpers.registerEditorAuthStart missing',
-  'LoveBudEditorShellHelpers.applyEditorShellCopy missing',
-  'LoveBudEditorShellCopyApplier.createPrepareEditorShell missing',
-  'LoveBudEditorShellHelpers.createEditorDebugReporter missing',
   'LoveBudEditorShellHelpers.createEditorStartDependencyGuard missing',
   'LoveBudEditorShellHelpers.createEditorStartDependencyChecker missing',
   'LoveBudEditorShellHelpers.createEditorRequiredGlobalWaiter missing',
@@ -59,41 +47,22 @@ test('editor bootstrap direct guard count remains frozen', () => {
     ...editorSource.matchAll(/reportEditorBootstrapMissingDependency\('([^']+)'\)/g)
   ].map((match) => match[1]);
 
-  assert.equal(directMessages.length, 25);
+  assert.equal(directMessages.length, 13);
 });
 
-test('editor bootstrap aggregated text resolver guard inventory is frozen', () => {
-  assert.match(editorSource, /const missingTextResolvers\s*=\s*\[/);
-  assert.match(editorSource, /\['LoveBudEditorHelpers\.safeI18nText', safeI18nText\]/);
-  assert.match(editorSource, /\['LoveBudEditorHelpers\.resolveHintText', resolveHintText\]/);
-  assert.match(editorSource, /\['LoveBudEditorHelpers\.resolveTreeTitleText', resolveTreeTitleText\]/);
-  assert.match(editorSource, /\['LoveBudEditorHelpers\.resolveInfoText', resolveInfoText\]/);
-  assert.match(
-    editorSource,
-    /if \(missingTextResolvers\.length\) \{ reportEditorBootstrapMissingList\(missingTextResolvers\); return; \}/
-  );
+test('editor bootstrap aggregated text resolver guard inventory is removed', () => {
+  assert.doesNotMatch(editorSource, /const missingTextResolvers\s*=\s*\[/);
+  assert.doesNotMatch(editorSource, /LoveBudEditorHelpers\.safeI18nText.*missing/);
 });
 
-test('editor bootstrap aggregated media resolver guard inventory is frozen', () => {
-  assert.match(editorSource, /const missingMediaResolvers\s*=\s*\[/);
-  assert.match(editorSource, /\['LoveBudEditorHelpers\.escapeHtml', escapeHtml\]/);
-  assert.match(editorSource, /\['LoveBudEditorHelpers\.safeUrl', safeUrl\]/);
-  assert.match(editorSource, /\['LoveBudEditorHelpers\.resolveMemoryThumbnail', resolveMemoryThumbnail\]/);
-  assert.match(
-    editorSource,
-    /if \(missingMediaResolvers\.length\) \{ reportEditorBootstrapMissingList\(missingMediaResolvers\); return; \}/
-  );
+test('editor bootstrap aggregated media resolver guard inventory is removed', () => {
+  assert.doesNotMatch(editorSource, /const missingMediaResolvers\s*=\s*\[/);
+  assert.doesNotMatch(editorSource, /LoveBudEditorHelpers\.escapeHtml.*missing/);
 });
 
-test('editor bootstrap aggregated root helper guard inventory is frozen', () => {
-  assert.match(editorSource, /const missingRootHelpers\s*=\s*\[/);
-  assert.match(editorSource, /\['LoveBudEditorUtils\.findRootMemory', findRootMemory\]/);
-  assert.match(editorSource, /\['LoveBudEditorUtils\.getCanonicalRootId', getCanonicalRootId\]/);
-  assert.match(editorSource, /\['LoveBudEditorUtils\.isRootMemory', isRootMemory\]/);
-  assert.match(
-    editorSource,
-    /if \(missingRootHelpers\.length\) \{ reportEditorBootstrapMissingList\(missingRootHelpers\); return; \}/
-  );
+test('editor bootstrap aggregated root helper guard inventory is removed', () => {
+  assert.doesNotMatch(editorSource, /const missingRootHelpers\s*=\s*\[/);
+  assert.doesNotMatch(editorSource, /LoveBudEditorUtils\.findRootMemory.*missing/);
 });
 
 test('all editor bootstrap guard calls stay before startEditor', () => {
@@ -106,7 +75,7 @@ test('all editor bootstrap guard calls stay before startEditor', () => {
     .map((match) => match.index)
     .filter((index) => index !== declarationIndex);
 
-  assert.equal(callIndexes.length, 26);
+  assert.equal(callIndexes.length, 14);
 
   for (const index of callIndexes) {
     assert.ok(index < startEditorIndex, 'bootstrap guard call must be before startEditor');

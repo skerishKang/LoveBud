@@ -157,10 +157,10 @@ test('editor entry delegates entry fallback factories through boundary', () => {
 
   assert.match(boundary, /createInlineRedirectToEditorLoginFallback\s*:/, 'entry fallback boundary must expose createInlineRedirectToEditorLoginFallback');
   assert.doesNotMatch(editor, /entryFallbacks\.createInlineRedirectToEditorLoginFallback/, 'editor entry no longer delegates createInlineRedirectToEditorLoginFallback through entryFallbacks');
-  assert.match(editor, /redirectToEditorLogin\s*=\s*editorPageHelpers\.redirectToEditorLogin/, 'editor entry requires redirectToEditorLogin from page helpers');
-  assert.match(editor, /LoveBudEditorPageHelpers\.redirectToEditorLogin missing/, 'editor entry guards missing redirectToEditorLogin');
+  assert.match(editor, /redirectToEditorLogin\s*=\s*deps\.redirectToEditorLogin/, 'editor entry requires redirectToEditorLogin from deps');
+  assert.doesNotMatch(editor, /LoveBudEditorPageHelpers\.redirectToEditorLogin missing/, 'redirectToEditorLogin guard no longer in editor.js');
 
-  assert.match(editor, /shellHelpers\.createInlineShowToastFallback/, 'editor entry must require toast fallback from shell helpers');
+  assert.match(editor, /showToast\s*=\s*deps\.showToast/, 'editor entry requires showToast from deps');
 });
 
 test('shell helpers are explicitly mounted before editor entry', () => {

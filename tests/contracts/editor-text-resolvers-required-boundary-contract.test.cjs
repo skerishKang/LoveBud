@@ -18,25 +18,37 @@ test('editor helpers expose text resolver functions', () => {
 
 test('editor.js delegates all four text resolvers through required helpers', () => {
   const requiredPattern = [
-    /const\s+safeI18nText\s*=\s*editorHelpers\.safeI18nText/,
-    /const\s+resolveHintText\s*=\s*editorHelpers\.resolveHintText/,
-    /const\s+resolveTreeTitleText\s*=\s*editorHelpers\.resolveTreeTitleText/,
-    /const\s+resolveInfoText\s*=\s*editorHelpers\.resolveInfoText/
+    /const\s+safeI18nText\s*=\s*deps\.safeI18nText/,
+    /const\s+resolveHintText\s*=\s*deps\.resolveHintText/,
+    /const\s+resolveTreeTitleText\s*=\s*deps\.resolveTreeTitleText/,
+    /const\s+resolveInfoText\s*=\s*deps\.resolveInfoText/
   ];
 
   requiredPattern.forEach((pattern) => {
     assert.match(editorSource, pattern);
   });
 
-  // No fallback via || for any of them
+  // No fallback via || for any of them (deps pattern ensures no fallback)
   const fallbackPatterns = [
-    /const\s+safeI18nText\s*=\s*editorHelpers\.safeI18nText\s*\|\|/,
-    /const\s+resolveHintText\s*=\s*editorHelpers\.resolveHintText\s*\|\|/,
-    /const\s+resolveTreeTitleText\s*=\s*editorHelpers\.resolveTreeTitleText\s*\|\|/,
-    /const\s+resolveInfoText\s*=\s*editorHelpers\.resolveInfoText\s*\|\|/
+    /const\s+safeI18nText\s*=\s*deps\.safeI18nText\s*\|\|/,
+    /const\s+resolveHintText\s*=\s*deps\.resolveHintText\s*\|\|/,
+    /const\s+resolveTreeTitleText\s*=\s*deps\.resolveTreeTitleText\s*\|\|/,
+    /const\s+resolveInfoText\s*=\s*deps\.resolveInfoText\s*\|\|/
   ];
 
   fallbackPatterns.forEach((pattern) => {
+    assert.doesNotMatch(editorSource, pattern);
+  });
+
+  // No typeof guards for text resolvers (they come through deps now)
+  const typeOfGuardPatterns = [
+    /typeof\s+safeI18nText\s*!==\s*'function'/,
+    /typeof\s+resolveHintText\s*!==\s*'function'/,
+    /typeof\s+resolveTreeTitleText\s*!==\s*'function'/,
+    /typeof\s+resolveInfoText\s*!==\s*'function'/
+  ];
+
+  typeOfGuardPatterns.forEach((pattern) => {
     assert.doesNotMatch(editorSource, pattern);
   });
 });
@@ -46,60 +58,48 @@ test('editor.js removes createInlineTextResolversFallbacks and inlineTextResolve
   assert.doesNotMatch(editorSource, /inlineTextResolvers/);
 });
 
-test('editor.js adds missing-text-resolvers guard without reportError', () => {
-  assert.match(editorSource, /missingTextResolvers/);
-  // Array entries with helper names
-  assert.match(editorSource, /LoveBudEditorHelpers\.safeI18nText/);
-  assert.match(editorSource, /LoveBudEditorHelpers\.resolveHintText/);
-  assert.match(editorSource, /LoveBudEditorHelpers\.resolveTreeTitleText/);
-  assert.match(editorSource, /LoveBudEditorHelpers\.resolveInfoText/);
-  // Dynamic join creates 'name missing' for each (inside reportEditorBootstrapMissingList helper)
-  assert.match(editorSource, /name\s*\+\s*' missing'/);
-  assert.match(editorSource, /reportEditorBootstrapMissingList\(missingTextResolvers\)/);
-
-  const guardStart = editorSource.indexOf('missingTextResolvers');
-  assert.notEqual(guardStart, -1, 'guard must exist');
-  const guardEnd = editorSource.indexOf('const syncCurrentTreeData', guardStart);
-  assert.notEqual(guardEnd, -1, 'syncCurrentTreeData must follow guard');
-
-  const guardBlock = editorSource.slice(guardStart, guardEnd);
-  assert.doesNotMatch(guardBlock, /reportError\(/);
+test('editor.js no longer has missing-text-resolvers aggregate guard (guard removed in favor of direct deps)', () => {
+  assert.doesNotMatch(editorSource, /missingTextResolvers/);
+  assert.doesNotMatch(editorSource, /LoveBudEditorHelpers\.safeI18nText/);
+  assert.doesNotMatch(editorSource, /LoveBudEditorHelpers\.resolveHintText/);
+  assert.doesNotMatch(editorSource, /LoveBudEditorHelpers\.resolveTreeTitleText/);
+  assert.doesNotMatch(editorSource, /LoveBudEditorHelpers\.resolveInfoText/);
+  assert.doesNotMatch(editorSource, /reportEditorBootstrapMissingList\(missingTextResolvers\)/);
 });
 
 test('editor.js requires media resolver helpers through required boundaries', () => {
-  // Three media resolvers now required via direct assignment
-  assert.match(editorSource, /const\s+escapeHtml\s*=\s*editorHelpers\.escapeHtml\b[^|]/);
-  assert.match(editorSource, /const\s+safeUrl\s*=\s*editorHelpers\.safeUrl\b[^|]/);
-  assert.match(editorSource, /const\s+resolveMemoryThumbnail\s*=\s*editorHelpers\.resolveMemoryThumbnail\b[^|]/);
+  // escapeHtml and resolveMemoryThumbnail now via deps pattern
+  assert.match(editorSource, /const\s+escapeHtml\s*=\s*deps\.escapeHtml/);
+  assert.match(editorSource, /const\s+resolveMemoryThumbnail\s*=\s*deps\.resolveMemoryThumbnail/);
+  // safeUrl is no longer directly referenced in editor.js (used internally by editor-helpers.js)
+  assert.doesNotMatch(editorSource, /safeUrl/);
 
   // No more fallback via ||
-  assert.doesNotMatch(editorSource, /escapeHtml\s*=\s*editorHelpers\.escapeHtml\s*\|\|/);
-  assert.doesNotMatch(editorSource, /resolveMemoryThumbnail\s*=\s*editorHelpers\.resolveMemoryThumbnail\s*\|\|/);
+  assert.doesNotMatch(editorSource, /escapeHtml\s*=\s*deps\.escapeHtml\s*\|\|/);
+  assert.doesNotMatch(editorSource, /resolveMemoryThumbnail\s*=\s*deps\.resolveMemoryThumbnail\s*\|\|/);
 
   // Adapter pattern removed
   assert.doesNotMatch(editorSource, /createInlineMediaResolversFallbacks/);
   assert.doesNotMatch(editorSource, /resolverFallbacks\.createInlineMediaResolversFallbacks/);
   assert.doesNotMatch(editorSource, /inlineMediaResolvers/);
 
-  // Missing-helper guard exists
-  assert.match(editorSource, /missingMediaResolvers/);
-  assert.match(editorSource, /LoveBudEditorHelpers\.escapeHtml/);
-  assert.match(editorSource, /LoveBudEditorHelpers\.safeUrl/);
-  assert.match(editorSource, /LoveBudEditorHelpers\.resolveMemoryThumbnail/);
+  // No aggregate missing-media-resolvers guard (removed in favor of direct deps)
+  assert.doesNotMatch(editorSource, /missingMediaResolvers/);
+  assert.doesNotMatch(editorSource, /LoveBudEditorHelpers\.escapeHtml/);
+  assert.doesNotMatch(editorSource, /LoveBudEditorHelpers\.safeUrl/);
+  assert.doesNotMatch(editorSource, /LoveBudEditorHelpers\.resolveMemoryThumbnail/);
 
-  // Guard does not use reportError
-  const guardStart = editorSource.indexOf('missingMediaResolvers');
-  assert.notEqual(guardStart, -1, 'guard must exist');
-  const guardEnd = editorSource.indexOf('const getYouTubeInputErrorMessage = deps.getYouTubeInputErrorMessage;', guardStart);
-  assert.notEqual(guardEnd, -1, 'getYouTubeInputErrorMessageFallback must follow guard');
-  const guardBlock = editorSource.slice(guardStart, guardEnd);
-  assert.doesNotMatch(guardBlock, /reportError\(/);
+  // No typeof guards for media resolvers
+  assert.doesNotMatch(editorSource, /typeof\s+escapeHtml\s*!==\s*'function'/);
+  assert.doesNotMatch(editorSource, /typeof\s+safeUrl\s*!==\s*'function'/);
+  assert.doesNotMatch(editorSource, /typeof\s+resolveMemoryThumbnail\s*!==\s*'function'/);
 });
 
 test('editor.js keeps text resolver required boundaries intact', () => {
-  assert.match(editorSource, /const\s+safeI18nText\s*=\s*editorHelpers\.safeI18nText/);
-  assert.match(editorSource, /const\s+resolveHintText\s*=\s*editorHelpers\.resolveHintText/);
-  assert.match(editorSource, /const\s+resolveTreeTitleText\s*=\s*editorHelpers\.resolveTreeTitleText/);
-  assert.match(editorSource, /const\s+resolveInfoText\s*=\s*editorHelpers\.resolveInfoText/);
-  assert.match(editorSource, /missingTextResolvers/);
+  assert.match(editorSource, /const\s+safeI18nText\s*=\s*deps\.safeI18nText/);
+  assert.match(editorSource, /const\s+resolveHintText\s*=\s*deps\.resolveHintText/);
+  assert.match(editorSource, /const\s+resolveTreeTitleText\s*=\s*deps\.resolveTreeTitleText/);
+  assert.match(editorSource, /const\s+resolveInfoText\s*=\s*deps\.resolveInfoText/);
+  assert.doesNotMatch(editorSource, /missingTextResolvers/);
+  assert.doesNotMatch(editorSource, /typeof\s+safeI18nText/);
 });

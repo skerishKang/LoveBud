@@ -46,50 +46,30 @@ test('buildEditorRedirectTarget preserves editor redirect composition', () => {
 });
 
 test('editor entrypoint keeps core utility fallback resolution intact', () => {
-  // getI18n
+  // getI18n removed — i18n now comes directly from deps.i18n
+  assert.doesNotMatch(
+    editorSource,
+    /shellHelpers\.getI18n/
+  );
+  assert.match(editorSource, /const i18n\s*=\s*deps\.i18n/);
+
+  // getEditorBasePath now from deps
   assert.match(
     editorSource,
-    /const\s+getI18n\s*=\s*shellHelpers\.getI18n/
+    /const\s+getEditorBasePath\s*=\s*deps\.getEditorBasePath/
   );
   assert.doesNotMatch(
     editorSource,
-    /const\s+getI18n\s*=\s*shellHelpers\.getI18n\s*\|\|/
-  );
-  assert.match(
-    editorSource,
-    /LoveBudEditorShellHelpers\.getI18n missing/
-  );
-
-  const i18nGuardStart = editorSource.indexOf('LoveBudEditorShellHelpers.getI18n missing');
-  assert.notEqual(i18nGuardStart, -1, 'getI18n missing guard must exist');
-  const i18nGuardEnd = editorSource.indexOf('const i18n = getI18n();', i18nGuardStart);
-  assert.notEqual(i18nGuardEnd, -1, 'i18n initialization must exist after guard');
-  const i18nGuardBlock = editorSource.slice(i18nGuardStart, i18nGuardEnd);
-  assert.doesNotMatch(i18nGuardBlock, /reportError/);
-
-  assert.match(editorSource, /const i18n\s*=\s*getI18n\(\)/);
-
-  // getEditorBasePath
-  assert.match(
-    editorSource,
-    /const\s+getEditorBasePath\s*=\s*shellHelpers\.getEditorBasePath/
+    /const\s+getEditorBasePath\s*=\s*deps\.getEditorBasePath\s*\|\|/
   );
   assert.doesNotMatch(
-    editorSource,
-    /const\s+getEditorBasePath\s*=\s*shellHelpers\.getEditorBasePath\s*\|\|/
-  );
-  assert.match(
     editorSource,
     /LoveBudEditorShellHelpers\.getEditorBasePath missing/
   );
-
-  const bpGuardStart = editorSource.indexOf('LoveBudEditorShellHelpers.getEditorBasePath missing');
-  assert.notEqual(bpGuardStart, -1, 'getEditorBasePath missing guard must exist');
-  const bpGuardEnd = editorSource.indexOf('const redirectToEditorLogin =', bpGuardStart);
-  assert.notEqual(bpGuardEnd, -1, 'redirectToEditorLogin must exist after base path guard');
-  const bpGuardBlock = editorSource.slice(bpGuardStart, bpGuardEnd);
-  assert.doesNotMatch(bpGuardBlock, /reportError/);
-
+  assert.doesNotMatch(
+    editorSource,
+    /typeof\s+getEditorBasePath\s*!==/
+  );
 });
 
 test('editor html loads shell helpers before editor entrypoint for core utilities', () => {
@@ -106,27 +86,25 @@ test('editor page helpers expose getMyTreesHref', () => {
   assert.match(pageHelpersSource, /getMyTreesHref:\s*getMyTreesHref/);
 });
 
-test('editor entrypoint requires getMyTreesHref page helper', () => {
+test('editor entrypoint requires getMyTreesHref through deps pattern', () => {
   assert.match(
     editorSource,
-    /const\s+getMyTreesHref\s*=\s*editorPageHelpers\.getMyTreesHref/
+    /const\s+getMyTreesHref\s*=\s*deps\.getMyTreesHref/
   );
   assert.doesNotMatch(
     editorSource,
-    /const\s+getMyTreesHref\s*=\s*editorPageHelpers\.getMyTreesHref\s*\|\|/
+    /const\s+getMyTreesHref\s*=\s*deps\.getMyTreesHref\s*\|\|/
   );
-  assert.match(
+  assert.doesNotMatch(
     editorSource,
     /LoveBudEditorPageHelpers\.getMyTreesHref missing/
   );
 
-  // Guard must not use reportError
-  const guardStart = editorSource.indexOf('LoveBudEditorPageHelpers.getMyTreesHref missing');
-  assert.notEqual(guardStart, -1, 'getMyTreesHref missing guard must exist');
-  const guardEnd = editorSource.indexOf('const getYouTubeInputErrorMessage = deps.getYouTubeInputErrorMessage;', guardStart);
-  assert.notEqual(guardEnd, -1, 'next fallback block must follow getMyTreesHref guard');
-  const guardBlock = editorSource.slice(guardStart, guardEnd);
-  assert.doesNotMatch(guardBlock, /reportError/);
+  // No typeof guard for getMyTreesHref
+  assert.doesNotMatch(
+    editorSource,
+    /typeof\s+getMyTreesHref\s*!==/
+  );
 
   // check parameter passing is intact
   assert.match(
