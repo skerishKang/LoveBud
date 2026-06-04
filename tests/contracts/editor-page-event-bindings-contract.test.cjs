@@ -180,7 +180,7 @@ test('bindEditorPageEvents tolerates missing helper methods without throwing', (
 });
 
 test('editor entrypoint delegates event binding to editor page event bindings helper', () => {
-  assert.match(editorSource, /LoveBudEditorPageEventBindings/);
+  assert.match(editorSource, /deps\.editorPageEventBindings/);
   assert.match(editorSource, /bindEditorPageEvents\s*\(\{/);
 
   assert.doesNotMatch(editorSource, /sidebarUIHelper\.bindSidebarVisibilityToggle\(/);
