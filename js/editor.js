@@ -56,8 +56,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const getMyTreesHref = deps.getMyTreesHref;
     const resolveMemoryThumbnail = deps.resolveMemoryThumbnail;
     const getYouTubeInputErrorMessage = deps.getYouTubeInputErrorMessage;
-    const renderTreeLoadError = deps.renderTreeLoadError;
-    const buildTreeLoadErrorCopy = deps.buildTreeLoadErrorCopy;
     if (typeof deps.registerEditorAuthStart !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorPageHelpers.registerEditorAuthStart missing'); return; }
     const applyEditorShellCopy = deps.applyEditorShellCopy;
     applyEditorShellCopy(safeI18nText, i18n);
@@ -230,8 +228,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 getConfirmedSessionUser: deps.getConfirmedSessionUser,
                 showToast,
                 redirectToEditorLogin,
-                buildTreeLoadErrorCopy,
-                renderTreeLoadError,
+                buildTreeLoadErrorCopy: deps.buildTreeLoadErrorCopy,
+                renderTreeLoadError: deps.renderTreeLoadError,
                 markEditorReady,
                 syncCurrentTreeData,
                 editorDataLoader,

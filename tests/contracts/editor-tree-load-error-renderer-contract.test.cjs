@@ -30,10 +30,10 @@ test('editor-page-helpers.js renderTreeLoadError uses canvas, addBtn, errorTitle
 
 // --- 2. editor.js uses required pattern without fallback ---
 
-test('editor.js uses renderTreeLoadError required assignment from deps without fallback', () => {
+test('editor.js uses renderTreeLoadError required assignment from deps at call site without fallback', () => {
   assert.match(
     editorSource,
-    /const\s+renderTreeLoadError\s*=\s*deps\.renderTreeLoadError;/
+    /renderTreeLoadError:\s*deps\.renderTreeLoadError/
   );
   assert.doesNotMatch(
     editorSource,
