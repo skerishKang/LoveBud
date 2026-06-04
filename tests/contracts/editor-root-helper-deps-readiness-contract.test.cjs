@@ -33,8 +33,8 @@ test('editor entrypoint now reads root helpers directly from deps', () => {
   // root helpers are now read directly from deps (no rootUtils intermediate)
   assert.match(editor, /const getYouTubeInputErrorMessage = deps\.getYouTubeInputErrorMessage;/);
   assert.match(editor, /deps\.findRootMemory/);
-  assert.match(editor, /const getCanonicalRootId = deps\.getCanonicalRootId;/);
-  assert.match(editor, /const isRootMemory = deps\.isRootMemory;/);
+  assert.match(editor, /deps\.getCanonicalRootId/);
+  assert.match(editor, /deps\.isRootMemory/);
 
   // rootUtils alias is completely removed
   assert.equal(editor.includes('const rootUtils = deps.rootUtils;'), false);

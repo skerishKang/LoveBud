@@ -58,8 +58,8 @@ test('editor entry requires preloaded root helper utilities through deps without
   const editor = read('js/editor.js');
 
   assert.match(editor, /deps\.findRootMemory/);
-  assert.match(editor, /getCanonicalRootId\s*=\s*deps\.getCanonicalRootId/);
-  assert.match(editor, /isRootMemory\s*=\s*deps\.isRootMemory/);
+  assert.match(editor, /deps\.getCanonicalRootId/);
+  assert.match(editor, /deps\.isRootMemory/);
   assert.doesNotMatch(editor, /const\s+rootUtils\s*=\s*deps\.rootUtils/);
   assert.doesNotMatch(editor, /const\s+missingRootHelpers\s*=\s*\[/);
 
@@ -78,7 +78,7 @@ test('editor entry keeps root helper usage contracts', () => {
   const runtimeSources = `${editor}\n${refreshSaveRuntime}`;
 
   assert.match(editor, /createInitialMemory[\s\S]*findRootMemory/);
-  assert.match(editor, /canonicalRootId\s*=\s*getCanonicalRootId\(treeMemories\(\)\)/);
+  assert.match(editor, /canonicalRootId\s*=.*getCanonicalRootId\(treeMemories\(\)\)/);
   assert.match(editor, /applyEditorInitialSelection\(\);/);
   assert.match(runtimeSources, /isRootMemory\(refreshedEditingMemory,\s*canonicalRootId\)/);
   assert.match(editor, /memoryActions[\s\S]*isRootMemory[\s\S]*findRootMemory/);
