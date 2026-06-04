@@ -9,7 +9,7 @@ const editorHtml = fs.readFileSync('pages/editor.html', 'utf8');
 test('editor entrypoint uses dom refs builder without inline fallback', () => {
   assert.match(
     editorSource,
-    /const createEditorDomRefs\s*=\s*editorDomRefsBuilder\.createEditorDomRefs/
+    /const createEditorDomRefs\s*=\s*deps\.createEditorDomRefs/
   );
 
   assert.doesNotMatch(

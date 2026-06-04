@@ -50,7 +50,7 @@ test('selector registry defines all ids consumed by dom refs builder', () => {
 });
 
 test('editor entrypoint still delegates initial refs through dom refs builder', () => {
-  assert.match(editorSource, /const createEditorDomRefs\s*=\s*editorDomRefsBuilder\.createEditorDomRefs/);
+  assert.match(editorSource, /const createEditorDomRefs\s*=\s*deps\.createEditorDomRefs/);
   assert.match(editorSource, /LoveBudEditorDomRefsBuilder\.createEditorDomRefs missing/);
   assert.match(editorSource, /checkEditorStartupContextDependencies\(\)/);
   assert.match(editorSource, /createEditorStartupContext\(\{\s*createEditorDomRefs,/);
