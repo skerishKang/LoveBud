@@ -118,7 +118,8 @@ test('first batch namespace-derived aliases are removed', () => {
     'const createCurrentMomentDetailOpener = shellHelpers.createCurrentMomentDetailOpener;',
     'const createSaveStatusOrchestrationFallback = shellHelpers.createSaveStatusOrchestrationFallback;',
     'const exposeRefreshMemoriesBridge = shellHelpers.exposeRefreshMemoriesBridge;',
-    'const getHttpStatus = shellHelpers.getHttpStatus;'
+    'const getHttpStatus = shellHelpers.getHttpStatus;',
+    'const nextMemoryIdFromMemories = editorTreeHelpers.nextMemoryIdFromMemories;'
   ];
 
   for (const alias of removedNamespaceDerivedAliases) {
@@ -130,8 +131,6 @@ test('remaining helper method aliases stay as potential cleanup candidates', () 
   const editor = read('js/editor.js');
 
   const remainingHelperMethodAliasCandidates = [
-    // editorTreeHelpers.*
-    'const nextMemoryIdFromMemories = editorTreeHelpers.nextMemoryIdFromMemories;',
     // editorPageHelpers.* (non-guarded)
     'const registerEditorAuthStart = editorPageHelpers.registerEditorAuthStart;'
   ];

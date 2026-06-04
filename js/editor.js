@@ -67,7 +67,6 @@ document.addEventListener('DOMContentLoaded', () => {
     applyEditorShellCopy(safeI18nText, i18n);
     const createPrepareEditorShell = deps.createPrepareEditorShell;
     const prepareEditorShell = createPrepareEditorShell({ applyEditorShellCopy, safeI18nText, i18n, getMyTreesHref });
-    const nextMemoryIdFromMemories = editorTreeHelpers.nextMemoryIdFromMemories;
     const markEditorReady = deps.markEditorReady;
     const applyEditorEditabilityState = deps.applyEditorEditabilityState;
     const createEditorDomRefs = deps.createEditorDomRefs;
@@ -288,7 +287,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         message: 'LoveBudEditorTreeHelpers.createInitialMemory missing'
                     },
                     {
-                        value: nextMemoryIdFromMemories,
+                        value: deps.nextMemoryIdFromMemories,
                         message: 'LoveBudEditorTreeHelpers.nextMemoryIdFromMemories missing'
                     }
                 ]
@@ -306,7 +305,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             const nextMemoryId = createEditorNextMemoryIdProvider({
-                nextMemoryIdFromMemories,
+                nextMemoryIdFromMemories: deps.nextMemoryIdFromMemories,
                 getTreeMemories: () => treeMemories()
             });
 

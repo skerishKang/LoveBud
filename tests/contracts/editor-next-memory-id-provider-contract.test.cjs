@@ -40,7 +40,7 @@ test('editor entrypoint delegates next memory id provider construction to shell 
   assert.match(editorSource, /const createEditorNextMemoryIdProvider\s*=\s*shellHelpers\.createEditorNextMemoryIdProvider/);
   assert.match(editorSource, /LoveBudEditorShellHelpers\.createEditorNextMemoryIdProvider missing/);
   assert.match(editorSource, /const nextMemoryId\s*=\s*createEditorNextMemoryIdProvider\(\{/);
-  assert.match(editorSource, /nextMemoryIdFromMemories,\s*getTreeMemories:\s*\(\)\s*=>\s*treeMemories\(\)/s);
+  assert.match(editorSource, /nextMemoryIdFromMemories:\s*deps\.nextMemoryIdFromMemories,\s*getTreeMemories:\s*\(\)\s*=>\s*treeMemories\(\)/s);
 });
 
 test('editor preserves required tree helper guard before provider construction', () => {

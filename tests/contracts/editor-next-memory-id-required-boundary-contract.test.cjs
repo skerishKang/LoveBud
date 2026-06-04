@@ -10,14 +10,18 @@ test('editor tree helpers expose nextMemoryIdFromMemories', () => {
   assert.match(treeHelpersSource, /function nextMemoryIdFromMemories\(memories\)/);
 });
 
-test('editor.js requires nextMemoryIdFromMemories through required tree helper', () => {
+test('editor.js requires nextMemoryIdFromMemories through deps', () => {
   assert.match(
     editorSource,
-    /const\s+nextMemoryIdFromMemories\s*=\s*editorTreeHelpers\.nextMemoryIdFromMemories/
+    /deps\.nextMemoryIdFromMemories/
   );
   assert.doesNotMatch(
     editorSource,
     /const\s+nextMemoryIdFromMemories\s*=\s*editorTreeHelpers\.nextMemoryIdFromMemories\s*\|\|/
+  );
+  assert.doesNotMatch(
+    editorSource,
+    /const\s+nextMemoryIdFromMemories\s*=\s*editorTreeHelpers\.nextMemoryIdFromMemories/
   );
 });
 
