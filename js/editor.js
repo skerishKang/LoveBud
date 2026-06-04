@@ -129,8 +129,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
     const resolveSaveStatusTimeFormatter = deps.resolveSaveStatusTimeFormatter;
-    const getCanonicalRootId = deps.getCanonicalRootId;
-    const isRootMemory = deps.isRootMemory;
 
     const startEditor = async () => {
         const { log, reportError } = createEditorDebugReporter();
@@ -253,7 +251,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const normalizeMemory = initialLoadResult.normalizeMemory;
             const treeMemories = initialLoadResult.treeMemories;
             
-            const canonicalRootId = getCanonicalRootId(treeMemories());
+            const canonicalRootId = deps.getCanonicalRootId(treeMemories());
             let selectedNodeId = canonicalRootId;
             let currentEditingMemory = null;
             let editorCanvas = null;
@@ -403,7 +401,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 resolveInfoText,
                 resolveMemoryThumbnail,
                 escapeHtml: deps.escapeHtml,
-                isRootMemory,
+                isRootMemory: deps.isRootMemory,
                 getCanonicalRootId: () => canonicalRootId,
                 getSelectedNodeId: () => selectedNodeId,
                 getTreeMemories: () => treeMemories(),
@@ -463,7 +461,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 svg,
                 getTreeMemories: () => treeMemories(),
                 getCanonicalRootId: () => canonicalRootId,
-                isRootMemory,
+                isRootMemory: deps.isRootMemory,
                 resolveMemoryThumbnail,
                 updateDetailPanel,
                 setDetailEmptyState,
@@ -483,7 +481,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const refreshSaveRuntime = createEditorRefreshSaveRuntime({
                 log, reportError, editorDataLoader, treeId, apiClient: window.apiClient, normalizeMemory, treeMemories,
                 getCurrentEditingMemory: () => currentEditingMemory, setCurrentEditingMemory: (value) => { currentEditingMemory = value; },
-                isRootMemory, canonicalRootId, updateDetailPanel, updateSidebarStatus, initCanvas, exposeRefreshMemoriesBridge: deps.exposeRefreshMemoriesBridge,
+                isRootMemory: deps.isRootMemory, canonicalRootId, updateDetailPanel, updateSidebarStatus, initCanvas, exposeRefreshMemoriesBridge: deps.exposeRefreshMemoriesBridge,
                 resolveSaveStatusTimeFormatter, editorSaveStatus, i18n, createSaveStatusOrchestrationFallback: deps.createSaveStatusOrchestrationFallback, saveStatusOrchestrationHelper: window.LoveBudEditorSaveStatusOrchestration || {}
             });
 
@@ -504,7 +502,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 getSelectedNodeId: () => selectedNodeId,
                 setSelectedNodeId: (value) => { selectedNodeId = value; },
                 getCanonicalRootId: () => canonicalRootId,
-                isRootMemory,
+                isRootMemory: deps.isRootMemory,
                 findRootMemory: deps.findRootMemory,
                 detailPanel,
                 svg,
@@ -598,7 +596,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 getTreeMemories: () => treeMemories(),
                 getSelectedNodeId: () => selectedNodeId,
                 createInitialMemory,
-                isRootMemory,
+                isRootMemory: deps.isRootMemory,
                 getCanonicalRootId: () => canonicalRootId,
                 setCurrentEditingMemory: (value) => { currentEditingMemory = value; },
                 log

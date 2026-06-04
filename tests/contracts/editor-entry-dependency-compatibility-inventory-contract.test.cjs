@@ -42,8 +42,8 @@ test('editor entry compatibility — shellHelpers and root helpers resolved excl
   // rootUtils intermediate alias has been removed; root helpers read directly from deps
   assert.match(editor, /const getYouTubeInputErrorMessage = deps\.getYouTubeInputErrorMessage;/);
   assert.match(editor, /deps\.findRootMemory/);
-  assert.match(editor, /const getCanonicalRootId = deps\.getCanonicalRootId;/);
-  assert.match(editor, /const isRootMemory = deps\.isRootMemory;/);
+  assert.match(editor, /deps\.getCanonicalRootId/);
+  assert.match(editor, /deps\.isRootMemory/);
 
   assert.doesNotMatch(editor, /window\.LoveBudEditorShellHelpers/);
   assert.doesNotMatch(editor, /window\.LoveBudEditorUtils/);
@@ -70,8 +70,8 @@ test('editor entry compatibility — root helper method aliases use deps directl
   const editor = read('js/editor.js');
 
   assert.match(editor, /deps\.findRootMemory/);
-  assert.match(editor, /const getCanonicalRootId = deps\.getCanonicalRootId;/);
-  assert.match(editor, /const isRootMemory = deps\.isRootMemory;/);
+  assert.match(editor, /deps\.getCanonicalRootId/);
+  assert.match(editor, /deps\.isRootMemory/);
 
   assert.doesNotMatch(editor, /const rootUtils = deps\.rootUtils;/);
   assert.doesNotMatch(editor, /rootUtils\.findRootMemory/);

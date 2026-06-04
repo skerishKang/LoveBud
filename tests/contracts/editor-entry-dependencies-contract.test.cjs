@@ -53,8 +53,8 @@ test('editor entry delegates dependency resolution to helper', () => {
   assert.match(editor, /const\s+createEditorDebugReporter\s*=\s*deps\.createEditorDebugReporter/);
   // findRootMemory now used inline
   assert.match(editor, /deps\.findRootMemory/);
-  assert.match(editor, /const\s+getCanonicalRootId\s*=\s*deps\.getCanonicalRootId;/);
-  assert.match(editor, /const\s+isRootMemory\s*=\s*deps\.isRootMemory;/);
+  assert.match(editor, /deps\.getCanonicalRootId/);
+  assert.match(editor, /deps\.isRootMemory/);
   assert.match(editor, /const\s+\{\s*log,\s*reportError\s*\}\s*=\s*createEditorDebugReporter\(\)/);
   assert.match(editor, /prepareEditorShell,\s*applyEditorEditabilityState,\s*canEdit,\s*log/s);
   assert.match(editor, /applyEditorStartupShell\(\);/);
