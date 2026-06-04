@@ -27,22 +27,23 @@ test('editor entry dependencies resolver validates root helpers before returning
   assert.match(helper, /isRootMemory.*=.*rootUtils\.isRootMemory/);
 });
 
-test('editor entrypoint still reads root helpers through rootUtils intermediate alias', () => {
+test('editor entrypoint now reads root helpers directly from deps', () => {
   const editor = read('js/editor.js');
 
-  // rootUtils is resolved from deps (not window global)
-  assert.match(editor, /const rootUtils = deps\.rootUtils;/);
+  // root helpers are now read directly from deps (no rootUtils intermediate)
+  assert.match(editor, /const getYouTubeInputErrorMessage = deps\.getYouTubeInputErrorMessage;/);
+  assert.match(editor, /const findRootMemory = deps\.findRootMemory;/);
+  assert.match(editor, /const getCanonicalRootId = deps\.getCanonicalRootId;/);
+  assert.match(editor, /const isRootMemory = deps\.isRootMemory;/);
 
-  // The 4 root helpers are still read through rootUtils.*
-  assert.match(editor, /typeof rootUtils\.getYouTubeInputErrorMessage === 'function'/);
-  assert.match(editor, /const findRootMemory = rootUtils\.findRootMemory;/);
-  assert.match(editor, /const getCanonicalRootId = rootUtils\.getCanonicalRootId;/);
-  assert.match(editor, /const isRootMemory = rootUtils\.isRootMemory;/);
+  // rootUtils alias is completely removed
+  assert.equal(editor.includes('const rootUtils = deps.rootUtils;'), false);
 
-  // They are NOT yet read directly from deps
-  assert.doesNotMatch(editor, /const findRootMemory = deps\.findRootMemory;/);
-  assert.doesNotMatch(editor, /const getCanonicalRootId = deps\.getCanonicalRootId;/);
-  assert.doesNotMatch(editor, /const isRootMemory = deps\.isRootMemory;/);
+  // No residual rootUtils.* usage for root helpers
+  assert.equal(editor.includes('rootUtils.getYouTubeInputErrorMessage'), false);
+  assert.equal(editor.includes('rootUtils.findRootMemory'), false);
+  assert.equal(editor.includes('rootUtils.getCanonicalRootId'), false);
+  assert.equal(editor.includes('rootUtils.isRootMemory'), false);
 });
 
 test('editor entrypoint does not re-read rootUtils from window global', () => {
@@ -51,10 +52,10 @@ test('editor entrypoint does not re-read rootUtils from window global', () => {
   assert.doesNotMatch(editor, /const rootUtils = window\.LoveBudEditorUtils/);
 });
 
-test('editor entrypoint uses rootUtils intermediate alias for downstream calls', () => {
+test('editor entrypoint uses root helpers from deps for downstream calls', () => {
   const editor = read('js/editor.js');
 
-  // Downstream sites pass rootUtils-derived helpers as arguments
+  // Downstream sites still pass root helper values (now from deps) as arguments
   assert.match(editor, /createEditorRefreshSaveRuntime\(\{[\s\S]*?isRootMemory/);
   assert.match(editor, /createEditorRefreshSaveRuntime\(\{[\s\S]*?canonicalRootId/);
   assert.match(editor, /window\.createEditorMemoryActions\(\{[\s\S]*?isRootMemory/);
