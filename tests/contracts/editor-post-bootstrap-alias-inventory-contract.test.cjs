@@ -63,8 +63,7 @@ test('direct deps function aliases remain inventoried', () => {
     'const createEditorDebugReporter = deps.createEditorDebugReporter;',
     'const findRootMemory = deps.findRootMemory;',
     'const getCanonicalRootId = deps.getCanonicalRootId;',
-    'const isRootMemory = deps.isRootMemory;',
-    'const getHttpStatus = deps.getHttpStatus;'
+    'const isRootMemory = deps.isRootMemory;'
   ];
 
   for (const alias of expectedDirectAliases) {

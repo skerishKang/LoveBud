@@ -45,7 +45,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const createEditorStartupContext = deps.createEditorStartupContext;
     const getConfirmedSessionUser = deps.getConfirmedSessionUser;
     const readConfirmedAuthCache = deps.readConfirmedAuthCache;
-    const getHttpStatus = deps.getHttpStatus;
     const showToast = deps.showToast;
     const i18n = deps.i18n;
     const getEditorBasePath = deps.getEditorBasePath;
@@ -561,7 +560,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 ensureStartEditorDependency,
                 dependencies: [
                     {
-                        value: getHttpStatus,
+                        value: deps.getHttpStatus,
                         message: 'LoveBudEditorShellHelpers.getHttpStatus missing'
                     }
                 ]
@@ -580,7 +579,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     showToast,
                     safeI18nText,
                     i18n,
-                    getHttpStatus,
+                    getHttpStatus: deps.getHttpStatus,
                     updateSidebarStatus,
                     showAddMemoryForm,
                     hideAddMemoryForm,

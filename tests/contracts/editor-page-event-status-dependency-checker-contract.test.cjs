@@ -34,7 +34,7 @@ test('editor no longer owns inline getHttpStatus start dependency check', () => 
 test('page event status dependency delegation preserves event binding payload', () => {
   assert.match(editorSource, /if \(typeof bindEditorPageEvents === 'function'\) \{/);
   assert.match(editorSource, /bindEditorPageEvents\(\{/);
-  assert.match(editorSource, /getHttpStatus,/);
+  assert.match(editorSource, /getHttpStatus:\s*deps\.getHttpStatus/);
   assert.match(editorSource, /showAddMemoryForm,/);
   assert.match(editorSource, /hideAddMemoryForm,/);
   assert.match(editorSource, /addMemoryFromForm,/);
