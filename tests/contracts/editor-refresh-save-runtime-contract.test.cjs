@@ -44,9 +44,9 @@ test('editor refresh/save runtime exports createEditorRefreshSaveRuntime', () =>
 test('editor entry delegates refresh/save runtime wiring', () => {
   const editor = read('js/editor.js');
 
-  assert.match(editor, /window\.LoveBudEditorRefreshSaveRuntime/);
+  assert.match(editor, /deps\.editorRefreshSaveRuntime/);
   assert.match(editor, /createEditorRefreshSaveRuntime\s*=\s*editorRefreshSaveRuntime\.createEditorRefreshSaveRuntime/);
-  assert.match(editor, /LoveBudEditorRefreshSaveRuntime\.createEditorRefreshSaveRuntime missing/);
+  assert.match(editor, /LoveBudEditorRefreshSaveRuntime\.createEditorRefreshSaveRuntime/);
   assert.match(editor, /createEditorRefreshSaveRuntime\(\{/);
   assert.match(editor, /getCurrentEditingMemory:\s*\(\)\s*=>\s*currentEditingMemory/);
   assert.match(editor, /setCurrentEditingMemory:\s*\(value\)\s*=>\s*\{\s*currentEditingMemory\s*=\s*value;\s*\}/);

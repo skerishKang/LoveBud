@@ -15,42 +15,63 @@ function indexOfRequired(source, needle) {
   return index;
 }
 
-test('editor entry compatibility inventory — resolver-owned dependency fallbacks remain explicit', () => {
+test('editor entry compatibility paths removed — no redundant window global re-reads', () => {
   const editor = read('js/editor.js');
 
-  const resolverCallIndex = indexOfRequired(editor, 'resolveEditorEntryDependencies({');
-  const depsIndex = indexOfRequired(editor, 'const deps = entryDependenciesResult.deps;');
-
-  assert.ok(resolverCallIndex < depsIndex, 'editor.js must resolve dependencies before local aliases');
-
-  const compatibilityAliases = [
-    'const shellHelpers = window.LoveBudEditorShellHelpers || deps.shellHelpers;',
-    'const editorSelectionUI = window.LoveBudEditorSelectionUI || {};',
-    'const editorPageEventBindings = window.LoveBudEditorPageEventBindings || deps.editorPageEventBindings;',
-    'const editorRefreshSaveRuntime = window.LoveBudEditorRefreshSaveRuntime || deps.editorRefreshSaveRuntime;',
-    'const editorShellCopyApplier = window.LoveBudEditorShellCopyApplier || deps.editorShellCopyApplier;',
-    'const editorDomRefsBuilder = window.LoveBudEditorDomRefsBuilder || deps.editorDomRefsBuilder;'
+  const removedPatterns = [
+    /window\.LoveBudEditorShellHelpers\s*\|\|\s*deps\./,
+    /window\.LoveBudEditorSelectionUI\s*\|\|\s*\{}/,
+    /window\.LoveBudEditorPageEventBindings\s*\|\|\s*deps\./,
+    /window\.LoveBudEditorRefreshSaveRuntime\s*\|\|\s*deps\./,
+    /window\.LoveBudEditorShellCopyApplier\s*\|\|\s*deps\./,
+    /window\.LoveBudEditorDomRefsBuilder\s*\|\|\s*deps\./
   ];
 
-  for (const alias of compatibilityAliases) {
-    const aliasIndex = indexOfRequired(editor, alias);
-    assert.ok(depsIndex < aliasIndex, `${alias} must remain after resolver output is available`);
+  for (const pattern of removedPatterns) {
+    assert.doesNotMatch(editor, pattern, `compatibility path pattern ${pattern} must be removed`);
   }
 });
 
-test('editor entry compatibility inventory — root helper globals are still re-read locally', () => {
+test('editor entry compatibility — shellHelpers and rootUtils resolved exclusively from deps', () => {
   const editor = read('js/editor.js');
   const depsIndex = indexOfRequired(editor, 'const deps = entryDependenciesResult.deps;');
-  const rootUtilsAlias = 'const rootUtils = window.LoveBudEditorUtils || {};';
-  const rootUtilsIndex = indexOfRequired(editor, rootUtilsAlias);
 
-  assert.ok(depsIndex < rootUtilsIndex, 'root helper compatibility alias must remain after resolver output');
+  const shellAliasIndex = indexOfRequired(editor, 'const shellHelpers = deps.shellHelpers;');
+  assert.ok(depsIndex < shellAliasIndex, 'shellHelpers alias must come after deps resolution');
+
+  const rootAliasIndex = indexOfRequired(editor, 'const rootUtils = deps.rootUtils;');
+  assert.ok(depsIndex < rootAliasIndex, 'rootUtils alias must come after deps resolution');
+
+  assert.doesNotMatch(editor, /window\.LoveBudEditorShellHelpers/);
+  assert.doesNotMatch(editor, /window\.LoveBudEditorUtils/);
+});
+
+test('editor entry compatibility — editor-specific modules resolved exclusively from deps', () => {
+  const editor = read('js/editor.js');
+
+  assert.match(editor, /const editorSelectionUI = deps\.editorSelectionUI;/);
+  assert.match(editor, /const editorPageEventBindings = deps\.editorPageEventBindings;/);
+  assert.match(editor, /const editorRefreshSaveRuntime = deps\.editorRefreshSaveRuntime;/);
+  assert.match(editor, /const editorShellCopyApplier = deps\.editorShellCopyApplier;/);
+  assert.match(editor, /const editorDomRefsBuilder = deps\.editorDomRefsBuilder;/);
+
+  assert.doesNotMatch(editor, /window\.LoveBudEditorSelectionUI/);
+  assert.doesNotMatch(editor, /window\.LoveBudEditorPageEventBindings/);
+  assert.doesNotMatch(editor, /window\.LoveBudEditorRefreshSaveRuntime/);
+  assert.doesNotMatch(editor, /window\.LoveBudEditorShellCopyApplier/);
+  assert.doesNotMatch(editor, /window\.LoveBudEditorDomRefsBuilder/);
+});
+
+test('editor entry compatibility — root helper method aliases use rootUtils from deps', () => {
+  const editor = read('js/editor.js');
+
+  // rootUtils now comes from deps.rootUtils (not window.LoveBudEditorUtils || {})
+  assert.match(editor, /const rootUtils = deps\.rootUtils;/);
+
+  // Method aliases still use rootUtils.* (now backed by deps)
   assert.match(editor, /const\s+findRootMemory\s*=\s*rootUtils\.findRootMemory;/);
   assert.match(editor, /const\s+getCanonicalRootId\s*=\s*rootUtils\.getCanonicalRootId;/);
   assert.match(editor, /const\s+isRootMemory\s*=\s*rootUtils\.isRootMemory;/);
-  assert.doesNotMatch(editor, /const\s+findRootMemory\s*=\s*deps\.findRootMemory;/);
-  assert.doesNotMatch(editor, /const\s+getCanonicalRootId\s*=\s*deps\.getCanonicalRootId;/);
-  assert.doesNotMatch(editor, /const\s+isRootMemory\s*=\s*deps\.isRootMemory;/);
 });
 
 test('editor entry compatibility inventory — resolver already returns cleanup-ready dependency aliases', () => {

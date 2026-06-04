@@ -37,7 +37,7 @@ test('js/editor.js retains its legacy entrypoint markers', () => {
     // Extracted responsibilities
     assert.ok(!js.includes('const createEditorDomRefs = () => ({'), 'EXTRACTED: createEditorDomRefs should not be inline');
     assert.ok(!js.includes('const createEditorFormRefs = () => ({'), 'EXTRACTED: createEditorFormRefs should not be inline');
-    assert.ok(js.includes('window.LoveBudEditorDomRefsBuilder'), 'must use DOM refs builder namespace');
+    assert.ok(js.includes('deps.editorDomRefsBuilder'), 'must use DOM refs builder namespace via deps');
 });
 
 test('js/editor.js contains specific responsibility areas (Audit candidates)', () => {
@@ -49,7 +49,7 @@ test('js/editor.js contains specific responsibility areas (Audit candidates)', (
     assert.ok(!js.includes('const prepareEditorShell = () => {'), 'EXTRACTED: prepare editor shell should not be inline');
     
     // Instead it uses the namespace
-    assert.ok(js.includes('window.LoveBudEditorShellCopyApplier'), 'must use shell copy applier namespace');
+    assert.ok(js.includes('deps.editorShellCopyApplier'), 'must use shell copy applier namespace via deps');
 
     // 2. Data Loading Orchestration
     assert.ok(!js.includes('const loadInitialTree = editorDataLoader.loadInitialEditorTree'), 'EXTRACTED: initial tree loading should not be inline');
