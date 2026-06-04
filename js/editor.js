@@ -129,7 +129,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
     const resolveSaveStatusTimeFormatter = deps.resolveSaveStatusTimeFormatter;
-    const findRootMemory = deps.findRootMemory;
     const getCanonicalRootId = deps.getCanonicalRootId;
     const isRootMemory = deps.isRootMemory;
 
@@ -296,7 +295,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const createInitialMemory = createEditorInitialMemoryProvider({
                 editorTreeHelpers,
                 getTreeMemories: () => treeMemories(),
-                findRootMemory,
+                findRootMemory: deps.findRootMemory,
                 canonicalRootId,
                 treeId,
                 i18n
@@ -506,7 +505,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 setSelectedNodeId: (value) => { selectedNodeId = value; },
                 getCanonicalRootId: () => canonicalRootId,
                 isRootMemory,
-                findRootMemory,
+                findRootMemory: deps.findRootMemory,
                 detailPanel,
                 svg,
                 calcPosition,

@@ -32,7 +32,7 @@ test('editor entrypoint now reads root helpers directly from deps', () => {
 
   // root helpers are now read directly from deps (no rootUtils intermediate)
   assert.match(editor, /const getYouTubeInputErrorMessage = deps\.getYouTubeInputErrorMessage;/);
-  assert.match(editor, /const findRootMemory = deps\.findRootMemory;/);
+  assert.match(editor, /deps\.findRootMemory/);
   assert.match(editor, /const getCanonicalRootId = deps\.getCanonicalRootId;/);
   assert.match(editor, /const isRootMemory = deps\.isRootMemory;/);
 
