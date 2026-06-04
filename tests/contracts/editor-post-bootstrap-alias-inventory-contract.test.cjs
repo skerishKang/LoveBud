@@ -45,8 +45,6 @@ test('direct deps function aliases remain inventoried', () => {
     'const getEditorBasePath = deps.getEditorBasePath;',
     'const redirectToEditorLogin = deps.redirectToEditorLogin;',
     'const safeI18nText = deps.safeI18nText;',
-    'const syncCurrentTreeData = deps.syncCurrentTreeData;',
-    'const resolveParentIdForCreate = deps.resolveParentIdForCreate;',
     'const getMyTreesHref = deps.getMyTreesHref;',
     'const resolveMemoryThumbnail = deps.resolveMemoryThumbnail;',
     'const getYouTubeInputErrorMessage = deps.getYouTubeInputErrorMessage;',
@@ -56,6 +54,8 @@ test('direct deps function aliases remain inventoried', () => {
   for (const alias of expectedDirectAliases) {
     assert.ok(editor.includes(alias), `direct deps alias should remain: ${alias}`);
   }
+
+  assert.equal(expectedDirectAliases.length, 9, 'exactly 9 direct deps function aliases');
 });
 
 test('first batch helper method aliases now use direct deps aliases', () => {
@@ -160,7 +160,9 @@ test('remaining helper method aliases: none — all 20 helper method aliases hav
     'const createPrepareEditorShell = deps.createPrepareEditorShell;',
     'const resolveHintText = deps.resolveHintText;',
     'const resolveTreeTitleText = deps.resolveTreeTitleText;',
-    'const resolveInfoText = deps.resolveInfoText;'
+    'const resolveInfoText = deps.resolveInfoText;',
+    'const syncCurrentTreeData = deps.syncCurrentTreeData;',
+    'const resolveParentIdForCreate = deps.resolveParentIdForCreate;'
   ];
 
   for (const alias of forbiddenLocalAliases) {
@@ -178,6 +180,8 @@ test('remaining helper method aliases: none — all 20 helper method aliases hav
   assert.ok(editor.includes('deps.resolveHintText'), 'editor should use deps.resolveHintText directly');
   assert.ok(editor.includes('deps.resolveTreeTitleText'), 'editor should use deps.resolveTreeTitleText directly');
   assert.ok(editor.includes('deps.resolveInfoText'), 'editor should use deps.resolveInfoText directly');
+  assert.ok(editor.includes('deps.syncCurrentTreeData'), 'editor should use deps.syncCurrentTreeData directly');
+  assert.ok(editor.includes('deps.resolveParentIdForCreate'), 'editor should use deps.resolveParentIdForCreate directly');
 
   // Verify call site context for tree load error helpers
   assert.match(editor, /buildTreeLoadErrorCopy:\s*deps\.buildTreeLoadErrorCopy/);
@@ -192,6 +196,10 @@ test('remaining helper method aliases: none — all 20 helper method aliases hav
   assert.match(editor, /createEditorDetailUI\(\{[\s\S]*resolveTreeTitleText:\s*deps\.resolveTreeTitleText/);
   assert.match(editor, /createEditorDetailUI\(\{[\s\S]*resolveHintText:\s*deps\.resolveHintText/);
   assert.match(editor, /createEditorDetailUI\(\{[\s\S]*resolveInfoText:\s*deps\.resolveInfoText/);
+
+  // Verify call site context for tree helpers
+  assert.match(editor, /runEditorInitialLoadFlow\(\{[\s\S]*syncCurrentTreeData:\s*deps\.syncCurrentTreeData/);
+  assert.match(editor, /resolveParentIdForCreate:\s*deps\.resolveParentIdForCreate/);
 });
 
 test('resolver-owned duplicate bootstrap guards remain removed after cleanup', () => {

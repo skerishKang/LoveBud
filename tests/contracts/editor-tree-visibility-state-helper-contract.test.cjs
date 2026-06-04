@@ -85,14 +85,14 @@ test('editor tree helpers expose syncCurrentTreeData', () => {
   assert.match(treeHelpersSource, /visibility:\s*tree\s*&&\s*tree\.visibility/);
 });
 
-test('editor.js delegates syncCurrentTreeData through required deps pattern', () => {
+test('editor.js delegates syncCurrentTreeData through direct deps pattern', () => {
   assert.match(
     editorSource,
-    /const\s+syncCurrentTreeData\s*=\s*deps\.syncCurrentTreeData/
+    /syncCurrentTreeData:\s*deps\.syncCurrentTreeData/
   );
   assert.doesNotMatch(
     editorSource,
-    /const\s+syncCurrentTreeData\s*=\s*deps\.syncCurrentTreeData\s*\|\|/
+    /const\s+syncCurrentTreeData\s*=\s*deps\.syncCurrentTreeData/
   );
   assert.doesNotMatch(
     editorSource,
@@ -100,14 +100,14 @@ test('editor.js delegates syncCurrentTreeData through required deps pattern', ()
   );
 });
 
-test('editor.js delegates resolveParentIdForCreate through required deps pattern', () => {
+test('editor.js delegates resolveParentIdForCreate through direct deps pattern', () => {
   assert.match(
     editorSource,
-    /const\s+resolveParentIdForCreate\s*=\s*deps\.resolveParentIdForCreate/
+    /resolveParentIdForCreate:\s*deps\.resolveParentIdForCreate/
   );
   assert.doesNotMatch(
     editorSource,
-    /const\s+resolveParentIdForCreate\s*=\s*deps\.resolveParentIdForCreate\s*\|\|/
+    /const\s+resolveParentIdForCreate\s*=\s*deps\.resolveParentIdForCreate/
   );
   assert.doesNotMatch(
     editorSource,
