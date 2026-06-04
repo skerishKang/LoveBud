@@ -26,7 +26,7 @@ test('editor still consumes resolved dependency outputs that remain active', () 
 
 test('unused fallback namespace cleanup avoids runtime behavior changes', () => {
   assert.match(editorSource, /runEditorInitialLoadFlow\(\{/);
-  assert.match(editorSource, /registerEditorAuthStart\(\{/);
+  assert.match(editorSource, /deps\.registerEditorAuthStart\(\{/);
   assert.doesNotMatch(editorSource, /initCanvas\s*=\s*/);
   assert.doesNotMatch(editorSource, /pan\/drag lifecycle/);
 });

@@ -26,7 +26,7 @@ test('redirect login still encodes editor redirect target through page helper', 
 
 test('unused redirect wrapper slice avoids runtime behavior changes', () => {
   assert.match(editorSource, /const redirectToEditorLogin\s*=\s*deps\.redirectToEditorLogin/);
-  assert.match(editorSource, /registerEditorAuthStart\(\{/);
+  assert.match(editorSource, /deps\.registerEditorAuthStart\(\{/);
   assert.doesNotMatch(editorSource, /initCanvas\s*=\s*/);
   assert.doesNotMatch(editorSource, /pan\/drag lifecycle/);
 });
