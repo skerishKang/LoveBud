@@ -53,7 +53,6 @@ test('direct deps function aliases remain inventoried', () => {
     'const syncCurrentTreeData = deps.syncCurrentTreeData;',
     'const resolveParentIdForCreate = deps.resolveParentIdForCreate;',
     'const getMyTreesHref = deps.getMyTreesHref;',
-    'const escapeHtml = deps.escapeHtml;',
     'const resolveMemoryThumbnail = deps.resolveMemoryThumbnail;',
     'const getYouTubeInputErrorMessage = deps.getYouTubeInputErrorMessage;',
     'const renderTreeLoadError = deps.renderTreeLoadError;',
@@ -160,7 +159,8 @@ test('remaining helper method aliases: none — all 20 helper method aliases hav
     'const exposeRefreshMemoriesBridge = shellHelpers.exposeRefreshMemoriesBridge;',
     'const getHttpStatus = shellHelpers.getHttpStatus;',
     'const nextMemoryIdFromMemories = editorTreeHelpers.nextMemoryIdFromMemories;',
-    'const registerEditorAuthStart = editorPageHelpers.registerEditorAuthStart;'
+    'const registerEditorAuthStart = editorPageHelpers.registerEditorAuthStart;',
+    'const escapeHtml = deps.escapeHtml;'
   ];
 
   for (const alias of forbiddenLocalAliases) {

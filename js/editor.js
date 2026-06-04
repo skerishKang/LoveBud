@@ -56,7 +56,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const syncCurrentTreeData = deps.syncCurrentTreeData;
     const resolveParentIdForCreate = deps.resolveParentIdForCreate;
     const getMyTreesHref = deps.getMyTreesHref;
-    const escapeHtml = deps.escapeHtml;
     const resolveMemoryThumbnail = deps.resolveMemoryThumbnail;
     const getYouTubeInputErrorMessage = deps.getYouTubeInputErrorMessage;
     const renderTreeLoadError = deps.renderTreeLoadError;
@@ -242,7 +241,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 syncCurrentTreeData,
                 editorDataLoader,
                 sharedNormalize: window.LoveBudNormalize?.normalizeMemory,
-                escapeHtml,
+                escapeHtml: deps.escapeHtml,
                 log,
                 reportError
             });
@@ -404,7 +403,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 resolveHintText,
                 resolveInfoText,
                 resolveMemoryThumbnail,
-                escapeHtml,
+                escapeHtml: deps.escapeHtml,
                 isRootMemory,
                 getCanonicalRootId: () => canonicalRootId,
                 getSelectedNodeId: () => selectedNodeId,
