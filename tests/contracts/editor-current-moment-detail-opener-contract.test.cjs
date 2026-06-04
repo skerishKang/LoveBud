@@ -165,11 +165,11 @@ test('current moment detail opener reports missing page helper instead of routin
 test('editor entrypoint delegates current moment detail opener through required shell helper', () => {
   assert.match(
     editorSource,
-    /const\s+createCurrentMomentDetailOpener\s*=\s*shellHelpers\.createCurrentMomentDetailOpener/
+    /const\s+createCurrentMomentDetailOpener\s*=\s*deps\.createCurrentMomentDetailOpener/
   );
   assert.doesNotMatch(
     editorSource,
-    /const\s+createCurrentMomentDetailOpener\s*=\s*shellHelpers\.createCurrentMomentDetailOpener\s*\|\|/
+    /const\s+createCurrentMomentDetailOpener\s*=\s*deps\.createCurrentMomentDetailOpener\s*\|\|/
   );
   assert.match(
     editorSource,

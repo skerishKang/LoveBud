@@ -23,7 +23,7 @@ test('sidebar tree actions updater preserves guarded call and payload', () => {
 });
 
 test('editor delegates sidebar tree actions updater with fallback', () => {
-  assert.match(editorSource, /shellHelpers\.createSidebarTreeActionsUpdater/);
+  assert.match(editorSource, /deps\.createSidebarTreeActionsUpdater/);
   assert.match(editorSource, /const createSidebarTreeActionsUpdater\s*=/);
   assert.match(editorSource, /const updateSidebarTreeActions\s*=\s*createSidebarTreeActionsUpdater\(\{/);
   assert.match(editorSource, /sidebarUIHelper,\s*i18n,\s*safeI18nText/);

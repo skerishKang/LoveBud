@@ -27,11 +27,11 @@ test('memory actions readiness wrapper preserves argument forwarding', () => {
 test('editor delegates memory actions readiness wrapper through required shell helper', () => {
   assert.match(
     editorSource,
-    /const\s+createMemoryActionsReadinessWrapper\s*=\s*shellHelpers\.createMemoryActionsReadinessWrapper/
+    /const\s+createMemoryActionsReadinessWrapper\s*=\s*deps\.createMemoryActionsReadinessWrapper/
   );
   assert.doesNotMatch(
     editorSource,
-    /const\s+createMemoryActionsReadinessWrapper\s*=\s*shellHelpers\.createMemoryActionsReadinessWrapper\s*\|\|/
+    /const\s+createMemoryActionsReadinessWrapper\s*=\s*deps\.createMemoryActionsReadinessWrapper\s*\|\|/
   );
   assert.match(
     editorSource,

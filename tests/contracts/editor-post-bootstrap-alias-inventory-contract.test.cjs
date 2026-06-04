@@ -85,7 +85,11 @@ test('first batch helper method aliases now use direct deps aliases', () => {
     'const createEditorStartupDependencyWaiter = deps.createEditorStartupDependencyWaiter;',
     'const exposeCanvasEmptyGuideUpdater = deps.exposeCanvasEmptyGuideUpdater;',
     'const exposeDetailPanelUpdater = deps.exposeDetailPanelUpdater;',
-    'const resolveSaveStatusTimeFormatter = deps.resolveSaveStatusTimeFormatter;'
+    'const resolveSaveStatusTimeFormatter = deps.resolveSaveStatusTimeFormatter;',
+    'const createSelectedMomentFocusHandler = deps.createSelectedMomentFocusHandler;',
+    'const createSidebarTreeActionsUpdater = deps.createSidebarTreeActionsUpdater;',
+    'const createMemoryActionsReadinessWrapper = deps.createMemoryActionsReadinessWrapper;',
+    'const createCurrentMomentDetailOpener = deps.createCurrentMomentDetailOpener;'
   ];
 
   for (const alias of cleanupConfirmedDirectDepsAliases) {
@@ -107,7 +111,11 @@ test('first batch namespace-derived aliases are removed', () => {
     'const createEditorStartupDependencyWaiter = shellHelpers.createEditorStartupDependencyWaiter;',
     'const exposeCanvasEmptyGuideUpdater = shellHelpers.exposeCanvasEmptyGuideUpdater;',
     'const exposeDetailPanelUpdater = shellHelpers.exposeDetailPanelUpdater;',
-    'const resolveSaveStatusTimeFormatter = shellHelpers.resolveSaveStatusTimeFormatter;'
+    'const resolveSaveStatusTimeFormatter = shellHelpers.resolveSaveStatusTimeFormatter;',
+    'const createSelectedMomentFocusHandler = shellHelpers.createSelectedMomentFocusHandler;',
+    'const createSidebarTreeActionsUpdater = shellHelpers.createSidebarTreeActionsUpdater;',
+    'const createMemoryActionsReadinessWrapper = shellHelpers.createMemoryActionsReadinessWrapper;',
+    'const createCurrentMomentDetailOpener = shellHelpers.createCurrentMomentDetailOpener;'
   ];
 
   for (const alias of removedNamespaceDerivedAliases) {
@@ -123,10 +131,6 @@ test('remaining helper method aliases stay as potential cleanup candidates', () 
     'const nextMemoryIdFromMemories = editorTreeHelpers.nextMemoryIdFromMemories;',
     // shellHelpers.* (non-guarded)
     'const getHttpStatus = shellHelpers.getHttpStatus;',
-    'const createSelectedMomentFocusHandler = shellHelpers.createSelectedMomentFocusHandler;',
-    'const createSidebarTreeActionsUpdater = shellHelpers.createSidebarTreeActionsUpdater;',
-    'const createMemoryActionsReadinessWrapper = shellHelpers.createMemoryActionsReadinessWrapper;',
-    'const createCurrentMomentDetailOpener = shellHelpers.createCurrentMomentDetailOpener;',
     'const createSaveStatusOrchestrationFallback = shellHelpers.createSaveStatusOrchestrationFallback;',
     'const exposeRefreshMemoriesBridge = shellHelpers.exposeRefreshMemoriesBridge;',
     // editorPageHelpers.* (non-guarded)
