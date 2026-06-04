@@ -50,7 +50,7 @@ test('editor entry delegates dependency resolution to helper', () => {
   assert.match(editor, /resolveEditorEntryDependencies\(\{\s*windowRef:\s*window,\s*URLSearchParamsRef:\s*URLSearchParams\s*\}\)/);
   assert.match(editor, /entryDependenciesResult\.status\s*===\s*'stopped'/);
   assert.match(editor, /const\s+deps\s*=\s*entryDependenciesResult\.deps/);
-  assert.match(editor, /const\s+createEditorDebugReporter\s*=\s*shellHelpers\.createEditorDebugReporter/);
+  assert.match(editor, /const\s+createEditorDebugReporter\s*=\s*deps\.createEditorDebugReporter/);
   assert.match(editor, /const\s+findRootMemory\s*=\s*deps\.findRootMemory;/);
   assert.match(editor, /const\s+getCanonicalRootId\s*=\s*deps\.getCanonicalRootId;/);
   assert.match(editor, /const\s+isRootMemory\s*=\s*deps\.isRootMemory;/);
@@ -58,13 +58,13 @@ test('editor entry delegates dependency resolution to helper', () => {
   assert.match(editor, /prepareEditorShell,\s*applyEditorEditabilityState,\s*canEdit,\s*log/s);
   assert.match(editor, /applyEditorStartupShell\(\);/);
 
-  assert.match(editor, /const\s+missingTextResolvers\s*=\s*\[/);
-  assert.match(editor, /const\s+missingMediaResolvers\s*=\s*\[/);
-  assert.match(editor, /const\s+missingRootHelpers\s*=\s*\[/);
-  assert.match(editor, /LoveBudEditorPageHelpers\.renderTreeLoadError missing/);
-  assert.match(editor, /LoveBudEditorPageHelpers\.buildTreeLoadErrorCopy missing/);
-  assert.match(editor, /LoveBudEditorShellHelpers\.applyEditorShellCopy missing/);
-  assert.match(editor, /LoveBudEditorShellCopyApplier\.createPrepareEditorShell missing/);
+  assert.match(editor, /reportEditorBootstrapMissingDependency\('LoveBudEditorPageHelpers\.registerEditorAuthStart missing'\)/);
+  assert.match(editor, /reportEditorBootstrapMissingDependency\('LoveBudEditorShellHelpers\.createEditorStartDependencyGuard missing'\)/);
+  assert.match(editor, /reportEditorBootstrapMissingDependency\('LoveBudEditorShellHelpers\.createEditorInitialMemoryProvider missing'\)/);
+  assert.match(editor, /reportEditorBootstrapMissingDependency\('LoveBudEditorShellHelpers\.createEditorReadyFinalizer missing'\)/);
+  assert.doesNotMatch(editor, /const\s+missingTextResolvers\s*=\s*\[/);
+  assert.doesNotMatch(editor, /const\s+missingRootHelpers\s*=\s*\[/);
+  assert.match(editor, /createEditorStartDependencyChecker\s*=\s*shellHelpers\.createEditorStartDependencyChecker/);
 });
 
 test('entry dependencies helper preserves bootstrap missing-helper messages', () => {

@@ -85,44 +85,45 @@ test('editor tree helpers expose syncCurrentTreeData', () => {
   assert.match(treeHelpersSource, /visibility:\s*tree\s*&&\s*tree\.visibility/);
 });
 
-test('editor.js delegates syncCurrentTreeData through required tree helper', () => {
+test('editor.js delegates syncCurrentTreeData through required deps pattern', () => {
   assert.match(
     editorSource,
-    /const\s+syncCurrentTreeData\s*=\s*editorTreeHelpers\.syncCurrentTreeData/
+    /const\s+syncCurrentTreeData\s*=\s*deps\.syncCurrentTreeData/
   );
   assert.doesNotMatch(
     editorSource,
-    /const\s+syncCurrentTreeData\s*=\s*editorTreeHelpers\.syncCurrentTreeData\s*\|\|/
+    /const\s+syncCurrentTreeData\s*=\s*deps\.syncCurrentTreeData\s*\|\|/
   );
-  assert.match(
+  assert.doesNotMatch(
     editorSource,
     /LoveBudEditorTreeHelpers\.syncCurrentTreeData missing/
   );
 });
 
-test('editor.js delegates resolveParentIdForCreate through required tree helper', () => {
+test('editor.js delegates resolveParentIdForCreate through required deps pattern', () => {
   assert.match(
     editorSource,
-    /const\s+resolveParentIdForCreate\s*=\s*editorTreeHelpers\.resolveParentIdForCreate/
+    /const\s+resolveParentIdForCreate\s*=\s*deps\.resolveParentIdForCreate/
   );
   assert.doesNotMatch(
     editorSource,
-    /const\s+resolveParentIdForCreate\s*=\s*editorTreeHelpers\.resolveParentIdForCreate\s*\|\|/
+    /const\s+resolveParentIdForCreate\s*=\s*deps\.resolveParentIdForCreate\s*\|\|/
   );
-  assert.match(
+  assert.doesNotMatch(
     editorSource,
     /LoveBudEditorTreeHelpers\.resolveParentIdForCreate missing/
   );
 });
 
-test('editor.js guards missing resolveParentIdForCreate without reportError', () => {
-  const guardIndex = editorSource.indexOf('LoveBudEditorTreeHelpers.resolveParentIdForCreate missing');
-  const usageIndex = editorSource.indexOf('resolveParentIdForCreate,');
-
-  assert.ok(guardIndex !== -1, 'missing resolveParentIdForCreate guard must exist');
-  assert.ok(usageIndex !== -1, 'resolveParentIdForCreate usage must exist');
-  assert.ok(guardIndex < usageIndex, 'guard must run before resolveParentIdForCreate usage');
-
-  const guardBlock = editorSource.slice(guardIndex - 100, guardIndex + 200);
-  assert.doesNotMatch(guardBlock, /reportError\(/);
+test('editor.js no longer has guard for missing resolveParentIdForCreate (resolved through deps)', () => {
+  assert.equal(
+    editorSource.indexOf('LoveBudEditorTreeHelpers.resolveParentIdForCreate missing'),
+    -1,
+    'missing resolveParentIdForCreate guard must not exist'
+  );
+  assert.equal(
+    editorSource.indexOf('typeof resolveParentIdForCreate'),
+    -1,
+    'typeof guard for resolveParentIdForCreate must not exist'
+  );
 });

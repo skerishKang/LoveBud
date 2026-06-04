@@ -30,14 +30,18 @@ test('editor-page-helpers.js renderTreeLoadError uses canvas, addBtn, errorTitle
 
 // --- 2. editor.js uses required pattern without fallback ---
 
-test('editor.js uses renderTreeLoadError required assignment without fallback', () => {
+test('editor.js uses renderTreeLoadError required assignment from deps without fallback', () => {
   assert.match(
     editorSource,
-    /const\s+renderTreeLoadError\s*=\s*editorPageHelpers\.renderTreeLoadError;/
+    /const\s+renderTreeLoadError\s*=\s*deps\.renderTreeLoadError;/
   );
   assert.doesNotMatch(
     editorSource,
-    /const\s+renderTreeLoadError\s*=\s*editorPageHelpers\.renderTreeLoadError\s*\|\|/
+    /const\s+renderTreeLoadError\s*=\s*deps\.renderTreeLoadError\s*\|\|/
+  );
+  assert.doesNotMatch(
+    editorSource,
+    /typeof\s+renderTreeLoadError\s*!==\s*'function'/
   );
 });
 
@@ -50,24 +54,19 @@ test('editor.js no longer references entryFallbacks.createInlineRenderTreeLoadEr
 
 // --- 3. Bootstrap guard exists and uses console.error ---
 
-test('editor.js guards missing renderTreeLoadError before use', () => {
-  assert.match(
+test('editor.js no longer guards missing renderTreeLoadError before use (resolved through deps)', () => {
+  assert.doesNotMatch(
     editorSource,
     /LoveBudEditorPageHelpers\.renderTreeLoadError missing/
   );
 });
 
-test('editor.js renderTreeLoadError guard does not use reportError', () => {
-  const guardStart = editorSource.indexOf("if (typeof renderTreeLoadError !== 'function')");
-  assert.notEqual(guardStart, -1, 'renderTreeLoadError guard must exist');
-
-  const guardEnd = editorSource.indexOf("const buildTreeLoadErrorCopy", guardStart);
-  assert.notEqual(guardEnd, -1, 'guard end marker must exist after guard');
-
-  const guardBody = editorSource.slice(guardStart, guardEnd);
-
-  assert.match(guardBody, /reportEditorBootstrapMissingDependency/);
-  assert.doesNotMatch(guardBody, /reportError\(/);
+test('editor.js renderTreeLoadError typeof guard no longer exists (removed with duplicate guard cleanup)', () => {
+  assert.equal(
+    editorSource.indexOf("if (typeof renderTreeLoadError !== 'function')"),
+    -1,
+    'renderTreeLoadError typeof guard must not exist'
+  );
 });
 
 // --- 4. Render call options structure preserved ---

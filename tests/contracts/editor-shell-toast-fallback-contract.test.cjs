@@ -50,28 +50,26 @@ test('inline show toast fallback preserves console log fallback format', () => {
   );
 });
 
-test('editor entrypoint requires createInlineShowToastFallback shell helper', () => {
+test('editor entrypoint requires showToast through deps (createInlineShowToastFallback removed, replaced with deps.showToast)', () => {
   assert.match(
     editorSource,
-    /const\s+createInlineShowToastFallback\s*=\s*shellHelpers\.createInlineShowToastFallback/
+    /const\s+showToast\s*=\s*deps\.showToast/
   );
   assert.doesNotMatch(
     editorSource,
-    /const\s+createInlineShowToastFallback\s*=\s*shellHelpers\.createInlineShowToastFallback\s*\|\|/
+    /const\s+showToast\s*=\s*deps\.showToast\s*\|\|/
   );
-  assert.match(
+  assert.doesNotMatch(
     editorSource,
     /LoveBudEditorShellHelpers\.createInlineShowToastFallback missing/
   );
 
-  const guardStart = editorSource.indexOf('LoveBudEditorShellHelpers.createInlineShowToastFallback missing');
-  assert.notEqual(guardStart, -1, 'createInlineShowToastFallback missing guard must exist');
-  const guardEnd = editorSource.indexOf('const showToast =', guardStart);
-  assert.notEqual(guardEnd, -1, 'showToast initialization must exist after guard');
-  const guardBlock = editorSource.slice(guardStart, guardEnd);
-  assert.doesNotMatch(guardBlock, /reportError/);
-
-  assert.match(editorSource, /const showToast\s*=/);
+  // No typeof guard for showToast
+  assert.equal(
+    editorSource.indexOf("if (typeof showToast !== 'function')"),
+    -1,
+    'showToast typeof guard must not exist'
+  );
 });
 
 test('editor html loads shell helpers before editor entrypoint for toast fallback availability', () => {

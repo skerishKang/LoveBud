@@ -174,9 +174,9 @@ test('editor.js delegates applyEditorEditabilityState through required shell hel
   );
 });
 
-test('editor.js now uses createEditorDebugReporter as required helper without fallback', () => {
-  assert.match(editorSource, /shellHelpers\.createEditorDebugReporter;/);
-  assert.doesNotMatch(editorSource, /shellHelpers\.createEditorDebugReporter\s*\|\|/);
+test('editor.js now uses createEditorDebugReporter as required deps helper without fallback', () => {
+  assert.match(editorSource, /deps\.createEditorDebugReporter;/);
+  assert.doesNotMatch(editorSource, /deps\.createEditorDebugReporter\s*\|\|/);
 });
 
 test('editor.js now uses createEditorStartupDependencyWaiter as required helper without fallback', () => {

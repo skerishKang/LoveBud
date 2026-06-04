@@ -9,143 +9,130 @@ function read(file) {
   return fs.readFileSync(path.join(ROOT, file), 'utf8');
 }
 
-/**
- * Contract-only inventory: duplicate bootstrap guards between
- * editor-entry-dependencies.js and editor.js.
- *
- * The entry dependency resolver already validates many required
- * dependencies before returning status: 'ready'. editor.js repeats
- * some of these same guards after receiving deps.
- *
- * This contract freezes the current state so a later production
- * cleanup can safely remove proven duplicate guards.
- */
-
-const resolverGuardedSingles = [
-  'LoveBudEditorShellHelpers.createInlineShowToastFallback',
-  'LoveBudEditorShellHelpers.getI18n',
-  'LoveBudEditorShellHelpers.getEditorBasePath',
-  'LoveBudEditorPageHelpers.redirectToEditorLogin',
-  'LoveBudEditorTreeHelpers.syncCurrentTreeData',
-  'LoveBudEditorTreeHelpers.resolveParentIdForCreate',
-  'LoveBudEditorPageHelpers.getMyTreesHref',
-  'LoveBudEditorShellHelpers.getYouTubeInputErrorMessageFallback',
-  'LoveBudEditorPageHelpers.renderTreeLoadError',
-  'LoveBudEditorPageHelpers.buildTreeLoadErrorCopy',
-  'LoveBudEditorShellHelpers.applyEditorShellCopy',
-  'LoveBudEditorShellCopyApplier.createPrepareEditorShell',
-  'LoveBudEditorShellHelpers.createEditorDebugReporter'
-];
-
-const resolverGuardedAggregates = [
-  'LoveBudEditorUtils.findRootMemory',
-  'LoveBudEditorUtils.getCanonicalRootId',
-  'LoveBudEditorUtils.isRootMemory',
-  'LoveBudEditorHelpers.safeI18nText',
-  'LoveBudEditorHelpers.resolveHintText',
-  'LoveBudEditorHelpers.resolveTreeTitleText',
-  'LoveBudEditorHelpers.resolveInfoText',
-  'LoveBudEditorHelpers.escapeHtml',
-  'LoveBudEditorHelpers.safeUrl',
-  'LoveBudEditorHelpers.resolveMemoryThumbnail'
-];
-
-const editorRepeatedSingles = [
-  'LoveBudEditorShellHelpers.createInlineShowToastFallback missing',
-  'LoveBudEditorShellHelpers.getI18n missing',
-  'LoveBudEditorShellHelpers.getEditorBasePath missing',
-  'LoveBudEditorPageHelpers.redirectToEditorLogin missing',
-  'LoveBudEditorTreeHelpers.syncCurrentTreeData missing',
-  'LoveBudEditorTreeHelpers.resolveParentIdForCreate missing',
-  'LoveBudEditorPageHelpers.getMyTreesHref missing',
-  'LoveBudEditorPageHelpers.renderTreeLoadError missing',
-  'LoveBudEditorPageHelpers.buildTreeLoadErrorCopy missing',
-  'LoveBudEditorShellHelpers.applyEditorShellCopy missing',
-  'LoveBudEditorShellCopyApplier.createPrepareEditorShell missing',
-  'LoveBudEditorShellHelpers.createEditorDebugReporter missing'
-];
-
-const editorExclusiveSingles = [
-  'LoveBudEditorEntryDependencies.resolveEditorEntryDependencies missing',
-  'LoveBudEditorPageHelpers.registerEditorAuthStart missing',
-  'LoveBudEditorShellHelpers.createEditorStartDependencyGuard missing',
-  'LoveBudEditorShellHelpers.createEditorStartDependencyChecker missing',
-  'LoveBudEditorShellHelpers.createEditorRequiredGlobalWaiter missing',
-  'LoveBudEditorShellHelpers.createEditorStartupShellApplier missing',
-  'LoveBudEditorShellHelpers.createEditorCanvasEmptyGuideUpdater missing',
-  'LoveBudEditorShellHelpers.createEditorSelectNodeHandler missing',
-  'LoveBudEditorShellHelpers.createEditorSidebarStatusUpdater missing',
-  'LoveBudEditorShellHelpers.createEditorInitialMemoryProvider missing',
-  'LoveBudEditorShellHelpers.createEditorNextMemoryIdProvider missing',
-  'LoveBudEditorShellHelpers.createEditorInitialSelectionApplier missing',
-  'LoveBudEditorShellHelpers.createEditorReadyFinalizer missing'
-];
-
-test('entry dependency resolver guards individual bootstrap dependencies', () => {
+test('entry dependency resolver still guards individual bootstrap dependencies', () => {
   const resolver = read('js/editor/editor-entry-dependencies.js');
 
-  for (const marker of resolverGuardedSingles) {
+  const resolverGuarded = [
+    'LoveBudEditorShellHelpers.createInlineShowToastFallback',
+    'LoveBudEditorShellHelpers.getI18n',
+    'LoveBudEditorShellHelpers.getEditorBasePath',
+    'LoveBudEditorPageHelpers.redirectToEditorLogin',
+    'LoveBudEditorTreeHelpers.syncCurrentTreeData',
+    'LoveBudEditorTreeHelpers.resolveParentIdForCreate',
+    'LoveBudEditorPageHelpers.getMyTreesHref',
+    'LoveBudEditorPageHelpers.renderTreeLoadError',
+    'LoveBudEditorPageHelpers.buildTreeLoadErrorCopy',
+    'LoveBudEditorShellHelpers.applyEditorShellCopy',
+    'LoveBudEditorShellCopyApplier.createPrepareEditorShell',
+    'LoveBudEditorShellHelpers.createEditorDebugReporter'
+  ];
+
+  for (const marker of resolverGuarded) {
     assert.ok(resolver.includes(marker), `entry-dependencies must guard ${marker}`);
   }
 });
 
-test('entry dependency resolver guards aggregated bootstrap dependencies', () => {
+test('entry dependency resolver still guards aggregated bootstrap dependencies', () => {
   const resolver = read('js/editor/editor-entry-dependencies.js');
 
-  for (const marker of resolverGuardedAggregates) {
+  const resolverAggregated = [
+    'LoveBudEditorUtils.findRootMemory',
+    'LoveBudEditorUtils.getCanonicalRootId',
+    'LoveBudEditorUtils.isRootMemory',
+    'LoveBudEditorHelpers.safeI18nText',
+    'LoveBudEditorHelpers.resolveHintText',
+    'LoveBudEditorHelpers.resolveTreeTitleText',
+    'LoveBudEditorHelpers.resolveInfoText',
+    'LoveBudEditorHelpers.escapeHtml',
+    'LoveBudEditorHelpers.safeUrl',
+    'LoveBudEditorHelpers.resolveMemoryThumbnail'
+  ];
+
+  for (const marker of resolverAggregated) {
     assert.ok(resolver.includes(marker), `entry-dependencies must guard ${marker}`);
   }
 });
 
-test('editor entry repeats resolver-owned individual bootstrap guards', () => {
+test('resolver-owned duplicate bootstrap guards are removed from editor entry', () => {
   const editor = read('js/editor.js');
 
-  for (const marker of editorRepeatedSingles) {
-    assert.ok(editor.includes(marker), `editor.js still repeats ${marker}`);
+  const removedMarkers = [
+    'LoveBudEditorShellHelpers.createInlineShowToastFallback missing',
+    'LoveBudEditorShellHelpers.getI18n missing',
+    'LoveBudEditorShellHelpers.getEditorBasePath missing',
+    'LoveBudEditorPageHelpers.redirectToEditorLogin missing',
+    'LoveBudEditorTreeHelpers.syncCurrentTreeData missing',
+    'LoveBudEditorTreeHelpers.resolveParentIdForCreate missing',
+    'LoveBudEditorPageHelpers.getMyTreesHref missing',
+    'LoveBudEditorPageHelpers.renderTreeLoadError missing',
+    'LoveBudEditorPageHelpers.buildTreeLoadErrorCopy missing',
+    'LoveBudEditorShellHelpers.applyEditorShellCopy missing',
+    'LoveBudEditorShellCopyApplier.createPrepareEditorShell missing',
+    'LoveBudEditorShellHelpers.createEditorDebugReporter missing'
+  ];
+
+  for (const marker of removedMarkers) {
+    assert.equal(editor.includes(marker), false, `${marker} should be removed from editor.js`);
+  }
+
+  assert.equal(editor.includes('const missingTextResolvers = ['), false);
+  assert.equal(editor.includes('const missingMediaResolvers = ['), false);
+  assert.equal(editor.includes('const missingRootHelpers = ['), false);
+});
+
+test('resolver-owned aliases now read directly from deps in editor entry', () => {
+  const editor = read('js/editor.js');
+
+  assert.match(editor, /const showToast = deps\.showToast;/);
+  assert.match(editor, /const i18n = deps\.i18n;/);
+  assert.match(editor, /const getEditorBasePath = deps\.getEditorBasePath;/);
+  assert.match(editor, /const redirectToEditorLogin = deps\.redirectToEditorLogin;/);
+  assert.match(editor, /const safeI18nText = deps\.safeI18nText;/);
+  assert.match(editor, /const syncCurrentTreeData = deps\.syncCurrentTreeData;/);
+  assert.match(editor, /const renderTreeLoadError = deps\.renderTreeLoadError;/);
+  assert.match(editor, /const buildTreeLoadErrorCopy = deps\.buildTreeLoadErrorCopy;/);
+  assert.match(editor, /const applyEditorShellCopy = deps\.applyEditorShellCopy;/);
+  assert.match(editor, /const createPrepareEditorShell = deps\.createPrepareEditorShell;/);
+  assert.match(editor, /const createEditorDebugReporter = deps\.createEditorDebugReporter;/);
+
+  assert.doesNotMatch(editor, /const createInlineShowToastFallback = shellHelpers\./);
+  assert.doesNotMatch(editor, /const getI18n = shellHelpers\./);
+  assert.doesNotMatch(editor, /const getEditorBasePath = shellHelpers\./);
+});
+
+test('editor-owned bootstrap guards remain in editor entry', () => {
+  const editor = read('js/editor.js');
+
+  const retainedMarkers = [
+    'LoveBudEditorEntryDependencies.resolveEditorEntryDependencies missing',
+    'LoveBudEditorPageHelpers.registerEditorAuthStart missing',
+    'LoveBudEditorShellHelpers.createEditorStartDependencyGuard missing',
+    'LoveBudEditorShellHelpers.createEditorStartDependencyChecker missing',
+    'LoveBudEditorShellHelpers.createEditorRequiredGlobalWaiter missing',
+    'LoveBudEditorShellHelpers.createEditorStartupShellApplier missing',
+    'LoveBudEditorShellHelpers.createEditorCanvasEmptyGuideUpdater missing',
+    'LoveBudEditorShellHelpers.createEditorSelectNodeHandler missing',
+    'LoveBudEditorShellHelpers.createEditorSidebarStatusUpdater missing',
+    'LoveBudEditorShellHelpers.createEditorInitialMemoryProvider missing',
+    'LoveBudEditorShellHelpers.createEditorNextMemoryIdProvider missing',
+    'LoveBudEditorShellHelpers.createEditorInitialSelectionApplier missing',
+    'LoveBudEditorShellHelpers.createEditorReadyFinalizer missing'
+  ];
+
+  for (const marker of retainedMarkers) {
+    assert.ok(editor.includes(marker), `${marker} should remain in editor.js`);
   }
 });
 
-test('editor entry maintains editor-exclusive bootstrap guards', () => {
-  const editor = read('js/editor.js');
-
-  for (const marker of editorExclusiveSingles) {
-    assert.ok(editor.includes(marker), `editor.js must keep ${marker}`);
-  }
-});
-
-test('editor entry repeats aggregated resolver-owned guards via missingTextResolvers and missingMediaResolvers', () => {
-  const editor = read('js/editor.js');
-
-  assert.ok(editor.includes('const missingTextResolvers = ['));
-  assert.ok(editor.includes('const missingMediaResolvers = ['));
-  assert.ok(editor.includes('LoveBudEditorHelpers.safeI18nText'));
-  assert.ok(editor.includes('LoveBudEditorHelpers.resolveHintText'));
-  assert.ok(editor.includes('LoveBudEditorHelpers.resolveTreeTitleText'));
-  assert.ok(editor.includes('LoveBudEditorHelpers.resolveInfoText'));
-  assert.ok(editor.includes('LoveBudEditorHelpers.escapeHtml'));
-  assert.ok(editor.includes('LoveBudEditorHelpers.safeUrl'));
-  assert.ok(editor.includes('LoveBudEditorHelpers.resolveMemoryThumbnail'));
-});
-
-test('editor entry repeats aggregated root helper guards', () => {
-  const editor = read('js/editor.js');
-
-  assert.ok(editor.includes('const missingRootHelpers = ['));
-  assert.ok(editor.includes('LoveBudEditorUtils.findRootMemory'));
-  assert.ok(editor.includes('LoveBudEditorUtils.getCanonicalRootId'));
-  assert.ok(editor.includes('LoveBudEditorUtils.isRootMemory'));
-});
-
-test('duplicate guard readiness contract does not remove runtime checks yet', () => {
-  const editor = read('js/editor.js');
-
-  assert.ok(editor.includes('reportEditorBootstrapMissingDependency'));
-  assert.ok(editor.includes('reportEditorBootstrapMissingList'));
-  assert.ok(editor.includes("entryDependenciesResult.status === 'stopped'"));
-});
-
-test('getYouTubeInputErrorMessageFallback guard is no longer repeated (removed in #2119)', () => {
+test('getYouTubeInputErrorMessageFallback guard remains removed', () => {
   const editor = read('js/editor.js');
 
   assert.ok(!editor.includes('getYouTubeInputErrorMessageFallback'));
+});
+
+test('runtime checks still present in editor entry', () => {
+  const editor = read('js/editor.js');
+
+  assert.ok(editor.includes('reportEditorBootstrapMissingDependency'));
+  assert.ok(editor.includes("entryDependenciesResult.status === 'stopped'"));
 });

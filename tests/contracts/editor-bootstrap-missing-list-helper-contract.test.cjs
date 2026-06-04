@@ -4,93 +4,83 @@ const test = require('node:test');
 
 const editorSource = fs.readFileSync('js/editor.js', 'utf8');
 
-function getGuardBlock(varName) {
-  const arrayStart = editorSource.indexOf(`const ${varName} = [`);
-  assert.notEqual(arrayStart, -1, `${varName} array must exist`);
-
-  const nextGuardStart = editorSource.indexOf(`if (${varName}.length)`, arrayStart);
-  assert.notEqual(nextGuardStart, -1, `${varName} guard must exist`);
-
-  const returnEnd = editorSource.indexOf('return;', nextGuardStart);
-  assert.notEqual(returnEnd, -1, `${varName} guard must return`);
-
-  return editorSource.slice(arrayStart, returnEnd + 'return;'.length);
+function verifyGuardExists(guardMsg) {
+  const guardIndex = editorSource.indexOf(guardMsg);
+  assert.notEqual(guardIndex, -1, `${guardMsg} guard must exist`);
+  return guardIndex;
 }
 
-function assertMissingListGuard({ varName, entries }) {
-  const block = getGuardBlock(varName);
+function verifyGuardPattern(guardMsg) {
+  const guardIndex = editorSource.indexOf(guardMsg);
+  assert.notEqual(guardIndex, -1, `${guardMsg} guard must exist`);
 
-  assert.match(
-    block,
-    new RegExp(`const\\s+${varName}\\s*=\\s*\\[`)
-  );
+  // Find the enclosing typeof check before this guard message
+  const blockStart = editorSource.lastIndexOf("if (typeof ", guardIndex);
+  assert.notEqual(blockStart, -1, `typeof check must precede ${guardMsg}`);
 
-  for (const [name, binding] of entries) {
-    assert.match(
-      block,
-      new RegExp(`\\['${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}',\\s*${binding}\\]`)
-    );
+  const block = editorSource.slice(blockStart, guardIndex + guardMsg.length + 30);
+  assert.match(block, /typeof \w+ !== 'function'/);
+  assert.match(block, /reportEditorBootstrapMissingDependency\(/);
+  assert.match(block, /return/);
+}
+
+test('editor bootstrap has reportEditorBootstrapMissingDependency and reportEditorBootstrapMissingList helpers', () => {
+  assert.match(editorSource, /function reportEditorBootstrapMissingDependency\(msg\)/);
+  assert.match(editorSource, /function reportEditorBootstrapMissingList\(missingHelpers\)/);
+  assert.match(editorSource, /console\.error\('\[editor-main\] ERROR: ' \+ msg\)/);
+  assert.match(editorSource, /debugState\.errors\.push\(\{ msg, error: msg \}\)/);
+});
+
+test('editor bootstrap guards shell helper functions using typeof check with reportEditorBootstrapMissingDependency', () => {
+  const guards = [
+    'LoveBudEditorShellHelpers.createEditorStartDependencyGuard missing',
+    'LoveBudEditorShellHelpers.createEditorStartDependencyChecker missing',
+    'LoveBudEditorShellHelpers.createEditorRequiredGlobalWaiter missing',
+    'LoveBudEditorShellHelpers.createEditorStartupShellApplier missing',
+    'LoveBudEditorShellHelpers.createEditorCanvasEmptyGuideUpdater missing',
+    'LoveBudEditorShellHelpers.createEditorSelectNodeHandler missing',
+    'LoveBudEditorShellHelpers.createEditorSidebarStatusUpdater missing',
+    'LoveBudEditorShellHelpers.createEditorInitialMemoryProvider missing',
+    'LoveBudEditorShellHelpers.createEditorNextMemoryIdProvider missing',
+    'LoveBudEditorShellHelpers.createEditorInitialSelectionApplier missing',
+    'LoveBudEditorShellHelpers.createEditorReadyFinalizer missing',
+    'LoveBudEditorPageHelpers.registerEditorAuthStart missing'
+  ];
+
+  for (const guard of guards) {
+    verifyGuardPattern(guard);
   }
-
-  assert.match(
-    block,
-    /\.filter\(\(\[, helper\]\) => typeof helper !== 'function'\)/
-  );
-
-  assert.match(
-    block,
-    new RegExp(
-      `if \\(${varName}\\.length\\) \\{ reportEditorBootstrapMissingList\\(${varName}\\); return;`
-    )
-  );
-}
-
-test('editor bootstrap text resolver missing-list guard uses shared structure', () => {
-  assertMissingListGuard({
-    varName: 'missingTextResolvers',
-    entries: [
-      ['LoveBudEditorHelpers.safeI18nText', 'safeI18nText'],
-      ['LoveBudEditorHelpers.resolveHintText', 'resolveHintText'],
-      ['LoveBudEditorHelpers.resolveTreeTitleText', 'resolveTreeTitleText'],
-      ['LoveBudEditorHelpers.resolveInfoText', 'resolveInfoText']
-    ]
-  });
 });
 
-test('editor bootstrap media resolver missing-list guard uses shared structure', () => {
-  assertMissingListGuard({
-    varName: 'missingMediaResolvers',
-    entries: [
-      ['LoveBudEditorHelpers.escapeHtml', 'escapeHtml'],
-      ['LoveBudEditorHelpers.safeUrl', 'safeUrl'],
-      ['LoveBudEditorHelpers.resolveMemoryThumbnail', 'resolveMemoryThumbnail']
-    ]
-  });
-});
-
-test('editor bootstrap root helper missing-list guard uses shared structure', () => {
-  assertMissingListGuard({
-    varName: 'missingRootHelpers',
-    entries: [
-      ['LoveBudEditorUtils.findRootMemory', 'findRootMemory'],
-      ['LoveBudEditorUtils.getCanonicalRootId', 'getCanonicalRootId'],
-      ['LoveBudEditorUtils.isRootMemory', 'isRootMemory']
-    ]
-  });
-});
-
-test('editor bootstrap missing-list guards stay before startEditor', () => {
+test('editor bootstrap typeof guards stay before startEditor', () => {
   const startEditorIndex = editorSource.indexOf('const startEditor = async () => {');
   assert.notEqual(startEditorIndex, -1, 'startEditor must exist');
 
-  for (const varName of ['missingTextResolvers', 'missingMediaResolvers', 'missingRootHelpers']) {
-    const guardIndex = editorSource.indexOf(`const ${varName} = [`);
-    assert.notEqual(guardIndex, -1, `${varName} must exist`);
-    assert.ok(guardIndex < startEditorIndex, `${varName} guard must stay before startEditor`);
+  const guards = [
+    'createEditorStartDependencyGuard',
+    'createEditorStartDependencyChecker',
+    'createEditorRequiredGlobalWaiter',
+    'createEditorStartupShellApplier',
+    'registerEditorAuthStart'
+  ];
+
+  for (const funcName of guards) {
+    const guardIndex = editorSource.indexOf(`typeof ${funcName} !== 'function'`);
+    if (guardIndex !== -1) {
+      assert.ok(guardIndex < startEditorIndex,
+        `${funcName} typeof guard must stay before startEditor`);
+    }
   }
 });
 
-test('editor bootstrap missing-list contract stays in bootstrap domain only', () => {
+test('editor bootstrap old missing-list arrays are removed', () => {
+  assert.doesNotMatch(editorSource, /const missingTextResolvers = \[/);
+  assert.doesNotMatch(editorSource, /const missingMediaResolvers = \[/);
+  assert.doesNotMatch(editorSource, /const missingRootHelpers = \[/);
+  assert.doesNotMatch(editorSource, /\.filter\(\(\[, helper\]\) => typeof helper !== 'function'\)/);
+});
+
+test('editor bootstrap old missing-list patterns do not leak into startEditor', () => {
   const startEditorIndex = editorSource.indexOf('const startEditor = async () => {');
   const startEditorBody = editorSource.slice(startEditorIndex);
 

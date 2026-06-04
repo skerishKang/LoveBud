@@ -127,8 +127,8 @@ test('applyEditorShellCopy preserves detail panel copy targets', () => {
   }
 });
 
-test('editor entrypoint invokes applyEditorShellCopy with safe i18n helpers', () => {
-  assert.match(editorSource, /shellHelpers\.applyEditorShellCopy/);
+test('editor entrypoint invokes applyEditorShellCopy with safe i18n helpers via deps', () => {
+  assert.match(editorSource, /deps\.applyEditorShellCopy/);
   assert.match(editorSource, /applyEditorShellCopy\(safeI18nText,\s*i18n\)/);
 });
 
