@@ -92,8 +92,10 @@ test('resolver-owned aliases now read directly from deps in editor entry', () =>
   // renderTreeLoadError and buildTreeLoadErrorCopy are inlined at call site
   assert.match(editor, /renderTreeLoadError:\s*deps\.renderTreeLoadError/);
   assert.match(editor, /buildTreeLoadErrorCopy:\s*deps\.buildTreeLoadErrorCopy/);
-  assert.match(editor, /const applyEditorShellCopy = deps\.applyEditorShellCopy;/);
-  assert.match(editor, /const createPrepareEditorShell = deps\.createPrepareEditorShell;/);
+  // applyEditorShellCopy and createPrepareEditorShell are inlined at call site
+  assert.match(editor, /deps\.applyEditorShellCopy\(safeI18nText,\s*i18n\);/);
+  assert.match(editor, /deps\.createPrepareEditorShell\(\{/);
+  assert.match(editor, /applyEditorShellCopy:\s*deps\.applyEditorShellCopy/);
   assert.match(editor, /const createEditorDebugReporter = deps\.createEditorDebugReporter;/);
 
   assert.doesNotMatch(editor, /const createInlineShowToastFallback = shellHelpers\./);
