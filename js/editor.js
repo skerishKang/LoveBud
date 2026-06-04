@@ -48,8 +48,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const getEditorBasePath = deps.getEditorBasePath;
     const redirectToEditorLogin = deps.redirectToEditorLogin;
     const safeI18nText = deps.safeI18nText;
-    const syncCurrentTreeData = deps.syncCurrentTreeData;
-    const resolveParentIdForCreate = deps.resolveParentIdForCreate;
     const getMyTreesHref = deps.getMyTreesHref;
     const resolveMemoryThumbnail = deps.resolveMemoryThumbnail;
     const getYouTubeInputErrorMessage = deps.getYouTubeInputErrorMessage;
@@ -231,7 +229,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 buildTreeLoadErrorCopy: deps.buildTreeLoadErrorCopy,
                 renderTreeLoadError: deps.renderTreeLoadError,
                 markEditorReady,
-                syncCurrentTreeData,
+                syncCurrentTreeData: deps.syncCurrentTreeData,
                 editorDataLoader,
                 sharedNormalize: window.LoveBudNormalize?.normalizeMemory,
                 escapeHtml: deps.escapeHtml,
@@ -518,7 +516,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 treeId,
                 getSelectedNodeId: () => selectedNodeId,
                 getCanonicalRootId: () => canonicalRootId,
-                resolveParentIdForCreate,
+                resolveParentIdForCreate: deps.resolveParentIdForCreate,
                 updateSaveStatus,
                 showToast,
                 getYouTubeInputErrorMessage: (rawUrl) => getYouTubeInputErrorMessage(i18n, rawUrl),

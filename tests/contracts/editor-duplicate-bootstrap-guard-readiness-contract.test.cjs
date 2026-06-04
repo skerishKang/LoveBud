@@ -88,7 +88,9 @@ test('resolver-owned aliases now read directly from deps in editor entry', () =>
   assert.match(editor, /const getEditorBasePath = deps\.getEditorBasePath;/);
   assert.match(editor, /const redirectToEditorLogin = deps\.redirectToEditorLogin;/);
   assert.match(editor, /const safeI18nText = deps\.safeI18nText;/);
-  assert.match(editor, /const syncCurrentTreeData = deps\.syncCurrentTreeData;/);
+  // syncCurrentTreeData and resolveParentIdForCreate are inlined at call site
+  assert.match(editor, /syncCurrentTreeData:\s*deps\.syncCurrentTreeData/);
+  assert.match(editor, /resolveParentIdForCreate:\s*deps\.resolveParentIdForCreate/);
   // renderTreeLoadError and buildTreeLoadErrorCopy are inlined at call site
   assert.match(editor, /renderTreeLoadError:\s*deps\.renderTreeLoadError/);
   assert.match(editor, /buildTreeLoadErrorCopy:\s*deps\.buildTreeLoadErrorCopy/);
@@ -101,6 +103,8 @@ test('resolver-owned aliases now read directly from deps in editor entry', () =>
   assert.doesNotMatch(editor, /const createInlineShowToastFallback = shellHelpers\./);
   assert.doesNotMatch(editor, /const getI18n = shellHelpers\./);
   assert.doesNotMatch(editor, /const getEditorBasePath = shellHelpers\./);
+  assert.doesNotMatch(editor, /const syncCurrentTreeData = deps\.syncCurrentTreeData;/);
+  assert.doesNotMatch(editor, /const resolveParentIdForCreate = deps\.resolveParentIdForCreate;/);
 });
 
 test('editor-owned bootstrap guards remain in editor entry', () => {
