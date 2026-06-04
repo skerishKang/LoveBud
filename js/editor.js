@@ -48,9 +48,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const getEditorBasePath = deps.getEditorBasePath;
     const redirectToEditorLogin = deps.redirectToEditorLogin;
     const safeI18nText = deps.safeI18nText;
-    const resolveHintText = deps.resolveHintText;
-    const resolveTreeTitleText = deps.resolveTreeTitleText;
-    const resolveInfoText = deps.resolveInfoText;
     const syncCurrentTreeData = deps.syncCurrentTreeData;
     const resolveParentIdForCreate = deps.resolveParentIdForCreate;
     const getMyTreesHref = deps.getMyTreesHref;
@@ -395,9 +392,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const detailUI = window.createEditorDetailUI({
                 detailPanel,
                 i18n,
-                resolveTreeTitleText,
-                resolveHintText,
-                resolveInfoText,
+                resolveTreeTitleText: deps.resolveTreeTitleText,
+                resolveHintText: deps.resolveHintText,
+                resolveInfoText: deps.resolveInfoText,
                 resolveMemoryThumbnail,
                 escapeHtml: deps.escapeHtml,
                 isRootMemory: deps.isRootMemory,

@@ -45,9 +45,6 @@ test('direct deps function aliases remain inventoried', () => {
     'const getEditorBasePath = deps.getEditorBasePath;',
     'const redirectToEditorLogin = deps.redirectToEditorLogin;',
     'const safeI18nText = deps.safeI18nText;',
-    'const resolveHintText = deps.resolveHintText;',
-    'const resolveTreeTitleText = deps.resolveTreeTitleText;',
-    'const resolveInfoText = deps.resolveInfoText;',
     'const syncCurrentTreeData = deps.syncCurrentTreeData;',
     'const resolveParentIdForCreate = deps.resolveParentIdForCreate;',
     'const getMyTreesHref = deps.getMyTreesHref;',
@@ -160,7 +157,10 @@ test('remaining helper method aliases: none — all 20 helper method aliases hav
     'const renderTreeLoadError = deps.renderTreeLoadError;',
     'const buildTreeLoadErrorCopy = deps.buildTreeLoadErrorCopy;',
     'const applyEditorShellCopy = deps.applyEditorShellCopy;',
-    'const createPrepareEditorShell = deps.createPrepareEditorShell;'
+    'const createPrepareEditorShell = deps.createPrepareEditorShell;',
+    'const resolveHintText = deps.resolveHintText;',
+    'const resolveTreeTitleText = deps.resolveTreeTitleText;',
+    'const resolveInfoText = deps.resolveInfoText;'
   ];
 
   for (const alias of forbiddenLocalAliases) {
@@ -175,6 +175,9 @@ test('remaining helper method aliases: none — all 20 helper method aliases hav
   assert.ok(editor.includes('deps.buildTreeLoadErrorCopy'), 'editor should use deps.buildTreeLoadErrorCopy directly');
   assert.ok(editor.includes('deps.applyEditorShellCopy'), 'editor should use deps.applyEditorShellCopy directly');
   assert.ok(editor.includes('deps.createPrepareEditorShell'), 'editor should use deps.createPrepareEditorShell directly');
+  assert.ok(editor.includes('deps.resolveHintText'), 'editor should use deps.resolveHintText directly');
+  assert.ok(editor.includes('deps.resolveTreeTitleText'), 'editor should use deps.resolveTreeTitleText directly');
+  assert.ok(editor.includes('deps.resolveInfoText'), 'editor should use deps.resolveInfoText directly');
 
   // Verify call site context for tree load error helpers
   assert.match(editor, /buildTreeLoadErrorCopy:\s*deps\.buildTreeLoadErrorCopy/);
@@ -184,6 +187,11 @@ test('remaining helper method aliases: none — all 20 helper method aliases hav
   assert.match(editor, /deps\.applyEditorShellCopy\(safeI18nText,\s*i18n\);/);
   assert.match(editor, /deps\.createPrepareEditorShell\(\{/);
   assert.match(editor, /applyEditorShellCopy:\s*deps\.applyEditorShellCopy/);
+
+  // Verify call site context for text resolver helpers
+  assert.match(editor, /createEditorDetailUI\(\{[\s\S]*resolveTreeTitleText:\s*deps\.resolveTreeTitleText/);
+  assert.match(editor, /createEditorDetailUI\(\{[\s\S]*resolveHintText:\s*deps\.resolveHintText/);
+  assert.match(editor, /createEditorDetailUI\(\{[\s\S]*resolveInfoText:\s*deps\.resolveInfoText/);
 });
 
 test('resolver-owned duplicate bootstrap guards remain removed after cleanup', () => {
