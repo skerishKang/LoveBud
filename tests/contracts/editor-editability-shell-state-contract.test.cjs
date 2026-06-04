@@ -18,7 +18,7 @@ test('editability shell state helper keeps testable body and namespace hooks', (
 });
 
 test('editor delegates editability shell state through startup shell applier', () => {
-  assert.match(editorSource, /shellHelpers\.applyEditorEditabilityState/);
+  assert.match(editorSource, /deps\.applyEditorEditabilityState/);
   assert.match(editorSource, /const applyEditorEditabilityState\s*=/);
   assert.match(editorSource, /applyEditorEditabilityState,\s*canEdit,\s*log/s);
   assert.match(editorSource, /applyEditorStartupShell\(\);/);

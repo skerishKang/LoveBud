@@ -28,11 +28,11 @@ test('save status time formatter resolver returns editorSaveStatus.formatTimeAgo
 test('editor delegates save status time formatter resolution through required shell helper', () => {
   assert.match(
     editorSource,
-    /const\s+resolveSaveStatusTimeFormatter\s*=\s*shellHelpers\.resolveSaveStatusTimeFormatter/
+    /const\s+resolveSaveStatusTimeFormatter\s*=\s*deps\.resolveSaveStatusTimeFormatter/
   );
   assert.doesNotMatch(
     editorSource,
-    /const\s+resolveSaveStatusTimeFormatter\s*=\s*shellHelpers\.resolveSaveStatusTimeFormatter\s*\|\|/
+    /const\s+resolveSaveStatusTimeFormatter\s*=\s*deps\.resolveSaveStatusTimeFormatter\s*\|\|/
   );
   assert.match(refreshSaveRuntimeSource, /LoveBudEditorShellHelpers\.resolveSaveStatusTimeFormatter missing/);
   assert.match(

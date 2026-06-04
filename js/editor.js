@@ -69,8 +69,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const createPrepareEditorShell = deps.createPrepareEditorShell;
     const prepareEditorShell = createPrepareEditorShell({ applyEditorShellCopy, safeI18nText, i18n, getMyTreesHref });
     const nextMemoryIdFromMemories = editorTreeHelpers.nextMemoryIdFromMemories;
-    const markEditorReady = shellHelpers.markEditorReady;
-    const applyEditorEditabilityState = shellHelpers.applyEditorEditabilityState;
+    const markEditorReady = deps.markEditorReady;
+    const applyEditorEditabilityState = deps.applyEditorEditabilityState;
     const createEditorDomRefs = deps.createEditorDomRefs;
     const createEditorDebugReporter = deps.createEditorDebugReporter;
     const createEditorStartDependencyGuard = shellHelpers.createEditorStartDependencyGuard;
@@ -80,7 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
         reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.createEditorStartDependencyChecker missing');
         return;
     }
-    const createEditorStartupDependencyWaiter = shellHelpers.createEditorStartupDependencyWaiter;
+    const createEditorStartupDependencyWaiter = deps.createEditorStartupDependencyWaiter;
     const createEditorRequiredGlobalWaiter = shellHelpers.createEditorRequiredGlobalWaiter;
     if (typeof createEditorRequiredGlobalWaiter !== 'function') {
         reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.createEditorRequiredGlobalWaiter missing');
@@ -91,13 +91,13 @@ document.addEventListener('DOMContentLoaded', () => {
         reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.createEditorStartupShellApplier missing');
         return;
     }
-    const exposeCanvasEmptyGuideUpdater = shellHelpers.exposeCanvasEmptyGuideUpdater;
+    const exposeCanvasEmptyGuideUpdater = deps.exposeCanvasEmptyGuideUpdater;
     const createEditorCanvasEmptyGuideUpdater = shellHelpers.createEditorCanvasEmptyGuideUpdater;
     if (typeof createEditorCanvasEmptyGuideUpdater !== 'function') {
         reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.createEditorCanvasEmptyGuideUpdater missing');
         return;
     }
-    const exposeDetailPanelUpdater = shellHelpers.exposeDetailPanelUpdater;
+    const exposeDetailPanelUpdater = deps.exposeDetailPanelUpdater;
     const createSelectedMomentFocusHandler = shellHelpers.createSelectedMomentFocusHandler;
     const createEditorSelectNodeHandler = shellHelpers.createEditorSelectNodeHandler;
     if (typeof createEditorSelectNodeHandler !== 'function') {
@@ -134,7 +134,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     const createSaveStatusOrchestrationFallback = shellHelpers.createSaveStatusOrchestrationFallback;
     const exposeRefreshMemoriesBridge = shellHelpers.exposeRefreshMemoriesBridge;
-    const resolveSaveStatusTimeFormatter = shellHelpers.resolveSaveStatusTimeFormatter;
+    const resolveSaveStatusTimeFormatter = deps.resolveSaveStatusTimeFormatter;
     const findRootMemory = deps.findRootMemory;
     const getCanonicalRootId = deps.getCanonicalRootId;
     const isRootMemory = deps.isRootMemory;
