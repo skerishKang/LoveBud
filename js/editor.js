@@ -57,10 +57,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const resolveMemoryThumbnail = deps.resolveMemoryThumbnail;
     const getYouTubeInputErrorMessage = deps.getYouTubeInputErrorMessage;
     if (typeof deps.registerEditorAuthStart !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorPageHelpers.registerEditorAuthStart missing'); return; }
-    const applyEditorShellCopy = deps.applyEditorShellCopy;
-    applyEditorShellCopy(safeI18nText, i18n);
-    const createPrepareEditorShell = deps.createPrepareEditorShell;
-    const prepareEditorShell = createPrepareEditorShell({ applyEditorShellCopy, safeI18nText, i18n, getMyTreesHref });
+    deps.applyEditorShellCopy(safeI18nText, i18n);
+    const prepareEditorShell = deps.createPrepareEditorShell({
+        applyEditorShellCopy: deps.applyEditorShellCopy,
+        safeI18nText,
+        i18n,
+        getMyTreesHref
+    });
     const markEditorReady = deps.markEditorReady;
     const applyEditorEditabilityState = deps.applyEditorEditabilityState;
     const createEditorDomRefs = deps.createEditorDomRefs;

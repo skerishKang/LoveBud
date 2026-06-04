@@ -28,7 +28,7 @@ const editorSource = fs.readFileSync('js/editor.js', 'utf8');
 test('editor.js delegates createPrepareEditorShell through required deps pattern', () => {
   assert.match(
     editorSource,
-    /const\s+createPrepareEditorShell\s*=\s*deps\.createPrepareEditorShell/
+    /deps\.createPrepareEditorShell\(\{/
   );
   assert.doesNotMatch(
     editorSource,
@@ -46,18 +46,19 @@ test('editor.js no longer guards missing createPrepareEditorShell before call (r
     -1,
     'missing createPrepareEditorShell guard must not exist'
   );
-  // The call still exists
+  // The call still exists with direct deps
   assert.notEqual(
-    editorSource.indexOf('createPrepareEditorShell({ applyEditorShellCopy, safeI18nText, i18n, getMyTreesHref })'),
+    editorSource.indexOf('deps.createPrepareEditorShell({'),
     -1,
     'createPrepareEditorShell call must exist'
   );
+  assert.ok(editorSource.includes('applyEditorShellCopy: deps.applyEditorShellCopy'), 'applyEditorShellCopy passed to createPrepareEditorShell');
 });
 
 test('editor.js delegates applyEditorShellCopy through required deps pattern', () => {
   assert.match(
     editorSource,
-    /const\s+applyEditorShellCopy\s*=\s*deps\.applyEditorShellCopy/
+    /deps\.applyEditorShellCopy\(safeI18nText,\s*i18n\)/
   );
   assert.doesNotMatch(
     editorSource,
@@ -73,11 +74,11 @@ test('editor.js delegates applyEditorShellCopy through required deps pattern', (
   );
   assert.match(
     editorSource,
-    /applyEditorShellCopy\(safeI18nText,\s*i18n\)/
+    /applyEditorShellCopy:\s*deps\.applyEditorShellCopy/
   );
   assert.match(
     editorSource,
-    /createPrepareEditorShell\(\{\s*applyEditorShellCopy,\s*safeI18nText,\s*i18n,\s*getMyTreesHref\s*\}/
+    /deps\.createPrepareEditorShell\(\{\s*applyEditorShellCopy:\s*deps\.applyEditorShellCopy,\s*safeI18nText,\s*i18n,\s*getMyTreesHref\s*\}/
   );
 });
 
@@ -88,7 +89,7 @@ test('editor.js no longer guards missing applyEditorShellCopy before call (resol
     'missing applyEditorShellCopy guard must not exist'
   );
   assert.notEqual(
-    editorSource.indexOf('applyEditorShellCopy(safeI18nText, i18n)'),
+    editorSource.indexOf('deps.applyEditorShellCopy(safeI18nText, i18n)'),
     -1,
     'applyEditorShellCopy call must exist'
   );

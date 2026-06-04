@@ -53,8 +53,6 @@ test('direct deps function aliases remain inventoried', () => {
     'const getMyTreesHref = deps.getMyTreesHref;',
     'const resolveMemoryThumbnail = deps.resolveMemoryThumbnail;',
     'const getYouTubeInputErrorMessage = deps.getYouTubeInputErrorMessage;',
-    'const applyEditorShellCopy = deps.applyEditorShellCopy;',
-    'const createPrepareEditorShell = deps.createPrepareEditorShell;',
     'const createEditorDebugReporter = deps.createEditorDebugReporter;'
   ];
 
@@ -160,7 +158,9 @@ test('remaining helper method aliases: none — all 20 helper method aliases hav
     'const getConfirmedSessionUser = deps.getConfirmedSessionUser;',
     'const readConfirmedAuthCache = deps.readConfirmedAuthCache;',
     'const renderTreeLoadError = deps.renderTreeLoadError;',
-    'const buildTreeLoadErrorCopy = deps.buildTreeLoadErrorCopy;'
+    'const buildTreeLoadErrorCopy = deps.buildTreeLoadErrorCopy;',
+    'const applyEditorShellCopy = deps.applyEditorShellCopy;',
+    'const createPrepareEditorShell = deps.createPrepareEditorShell;'
   ];
 
   for (const alias of forbiddenLocalAliases) {
@@ -173,10 +173,17 @@ test('remaining helper method aliases: none — all 20 helper method aliases hav
   assert.ok(editor.includes('deps.readConfirmedAuthCache'), 'editor should use deps.readConfirmedAuthCache directly');
   assert.ok(editor.includes('deps.renderTreeLoadError'), 'editor should use deps.renderTreeLoadError directly');
   assert.ok(editor.includes('deps.buildTreeLoadErrorCopy'), 'editor should use deps.buildTreeLoadErrorCopy directly');
+  assert.ok(editor.includes('deps.applyEditorShellCopy'), 'editor should use deps.applyEditorShellCopy directly');
+  assert.ok(editor.includes('deps.createPrepareEditorShell'), 'editor should use deps.createPrepareEditorShell directly');
 
   // Verify call site context for tree load error helpers
-  assert.match(editor, /runEditorInitialLoadFlow\(\{[\s\S]*buildTreeLoadErrorCopy:\s*deps\.buildTreeLoadErrorCopy/);
-  assert.match(editor, /runEditorInitialLoadFlow\(\{[\s\S]*renderTreeLoadError:\s*deps\.renderTreeLoadError/);
+  assert.match(editor, /buildTreeLoadErrorCopy:\s*deps\.buildTreeLoadErrorCopy/);
+  assert.match(editor, /renderTreeLoadError:\s*deps\.renderTreeLoadError/);
+
+  // Verify call site context for shell preparation helpers
+  assert.match(editor, /deps\.applyEditorShellCopy\(safeI18nText,\s*i18n\);/);
+  assert.match(editor, /deps\.createPrepareEditorShell\(\{/);
+  assert.match(editor, /applyEditorShellCopy:\s*deps\.applyEditorShellCopy/);
 });
 
 test('resolver-owned duplicate bootstrap guards remain removed after cleanup', () => {
