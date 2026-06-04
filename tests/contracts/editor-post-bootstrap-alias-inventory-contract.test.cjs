@@ -71,20 +71,42 @@ test('direct deps function aliases remain inventoried', () => {
   }
 });
 
-test('helper method aliases through namespace objects remain as potential cleanup candidates', () => {
+test('first batch helper method aliases now use direct deps aliases', () => {
   const editor = read('js/editor.js');
 
-  const helperMethodAliases = [
-    // editorPageEventBindings.*
+  const cleanupConfirmedDirectDepsAliases = [
+    'const bindEditorPageEvents = deps.bindEditorPageEvents;',
+    'const runEditorInitialLoadFlow = deps.runEditorInitialLoadFlow;',
+    'const createEditorRefreshSaveRuntime = deps.createEditorRefreshSaveRuntime;',
+    'const createEditorStartupContext = deps.createEditorStartupContext;',
+    'const createEditorDomRefs = deps.createEditorDomRefs;'
+  ];
+
+  for (const alias of cleanupConfirmedDirectDepsAliases) {
+    assert.ok(editor.includes(alias), `${alias} should use direct deps alias after cleanup`);
+  }
+});
+
+test('first batch namespace-derived aliases are removed', () => {
+  const editor = read('js/editor.js');
+
+  const removedNamespaceDerivedAliases = [
     'const bindEditorPageEvents = editorPageEventBindings.bindEditorPageEvents;',
-    // editorInitialLoadFlow.*
     'const runEditorInitialLoadFlow = editorInitialLoadFlow.runEditorInitialLoadFlow;',
-    // editorRefreshSaveRuntime.*
     'const createEditorRefreshSaveRuntime = editorRefreshSaveRuntime.createEditorRefreshSaveRuntime;',
-    // editorStartupContext.*
     'const createEditorStartupContext = editorStartupContext.createEditorStartupContext;',
-    // editorDomRefsBuilder.*
-    'const createEditorDomRefs = editorDomRefsBuilder.createEditorDomRefs;',
+    'const createEditorDomRefs = editorDomRefsBuilder.createEditorDomRefs;'
+  ];
+
+  for (const alias of removedNamespaceDerivedAliases) {
+    assert.equal(editor.includes(alias), false, `${alias} should be removed`);
+  }
+});
+
+test('remaining helper method aliases stay as potential cleanup candidates', () => {
+  const editor = read('js/editor.js');
+
+  const remainingHelperMethodAliasCandidates = [
     // editorTreeHelpers.*
     'const nextMemoryIdFromMemories = editorTreeHelpers.nextMemoryIdFromMemories;',
     // shellHelpers.* (non-guarded)
@@ -105,8 +127,8 @@ test('helper method aliases through namespace objects remain as potential cleanu
     'const registerEditorAuthStart = editorPageHelpers.registerEditorAuthStart;'
   ];
 
-  for (const alias of helperMethodAliases) {
-    assert.ok(editor.includes(alias), `helper method alias should remain inventoried: ${alias}`);
+  for (const alias of remainingHelperMethodAliasCandidates) {
+    assert.ok(editor.includes(alias), `${alias} should remain a future cleanup candidate`);
   }
 });
 
