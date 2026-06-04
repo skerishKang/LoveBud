@@ -89,7 +89,7 @@ test('editor ready sequence preserves ready finalizer payload', () => {
 
 test('editor ready sequence remains before auth registration exits entrypoint', () => {
   const readyFinalizerCallIndex = indexOfRequired(editorSource, 'finalizeEditorReady();');
-  const registerIndex = indexOfRequired(editorSource, 'registerEditorAuthStart({');
+  const registerIndex = indexOfRequired(editorSource, 'deps.registerEditorAuthStart({');
 
   assert.ok(
     readyFinalizerCallIndex < registerIndex,

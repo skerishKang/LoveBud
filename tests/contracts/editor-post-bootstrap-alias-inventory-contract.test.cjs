@@ -127,17 +127,48 @@ test('first batch namespace-derived aliases are removed', () => {
   }
 });
 
-test('remaining helper method aliases stay as potential cleanup candidates', () => {
+test('remaining helper method aliases: none — all 20 helper method aliases have been cleaned up', () => {
   const editor = read('js/editor.js');
 
-  const remainingHelperMethodAliasCandidates = [
-    // editorPageHelpers.* (non-guarded)
+  // All 20 helper method aliases have been removed or inlined:
+  //  - 5 first batch (PR #2127)
+  //  - 6 second batch (PR #2129)
+  //  - 4 third batch (PR #2131)
+  //  - 2 fourth batch (PR #2133)
+  //  - 1 http status (PR #2135)
+  //  - 1 inline http status deps alias (PR #2137)
+  //  - 1 memory id (PR #2139)
+  //  - 1 auth start (PR #2141)
+
+  const forbiddenLocalAliases = [
+    'const bindEditorPageEvents = editorPageEventBindings.bindEditorPageEvents;',
+    'const runEditorInitialLoadFlow = editorInitialLoadFlow.runEditorInitialLoadFlow;',
+    'const createEditorRefreshSaveRuntime = editorRefreshSaveRuntime.createEditorRefreshSaveRuntime;',
+    'const createEditorStartupContext = editorStartupContext.createEditorStartupContext;',
+    'const createEditorDomRefs = editorDomRefsBuilder.createEditorDomRefs;',
+    'const markEditorReady = shellHelpers.markEditorReady;',
+    'const applyEditorEditabilityState = shellHelpers.applyEditorEditabilityState;',
+    'const createEditorStartupDependencyWaiter = shellHelpers.createEditorStartupDependencyWaiter;',
+    'const exposeCanvasEmptyGuideUpdater = shellHelpers.exposeCanvasEmptyGuideUpdater;',
+    'const exposeDetailPanelUpdater = shellHelpers.exposeDetailPanelUpdater;',
+    'const resolveSaveStatusTimeFormatter = shellHelpers.resolveSaveStatusTimeFormatter;',
+    'const createSelectedMomentFocusHandler = shellHelpers.createSelectedMomentFocusHandler;',
+    'const createSidebarTreeActionsUpdater = shellHelpers.createSidebarTreeActionsUpdater;',
+    'const createMemoryActionsReadinessWrapper = shellHelpers.createMemoryActionsReadinessWrapper;',
+    'const createCurrentMomentDetailOpener = shellHelpers.createCurrentMomentDetailOpener;',
+    'const createSaveStatusOrchestrationFallback = shellHelpers.createSaveStatusOrchestrationFallback;',
+    'const exposeRefreshMemoriesBridge = shellHelpers.exposeRefreshMemoriesBridge;',
+    'const getHttpStatus = shellHelpers.getHttpStatus;',
+    'const nextMemoryIdFromMemories = editorTreeHelpers.nextMemoryIdFromMemories;',
     'const registerEditorAuthStart = editorPageHelpers.registerEditorAuthStart;'
   ];
 
-  for (const alias of remainingHelperMethodAliasCandidates) {
-    assert.ok(editor.includes(alias), `${alias} should remain a future cleanup candidate`);
+  for (const alias of forbiddenLocalAliases) {
+    assert.equal(editor.includes(alias), false, `${alias} should be removed`);
   }
+
+  // Verify direct deps usage for the last cleaned up alias
+  assert.ok(editor.includes('deps.registerEditorAuthStart'), 'editor should use deps.registerEditorAuthStart directly');
 });
 
 test('resolver-owned duplicate bootstrap guards remain removed after cleanup', () => {
@@ -212,7 +243,11 @@ test('editor-owned guard boundaries remain with typeof check before startEditor'
 
   for (const { name, marker } of guardedBoundaries) {
     const pattern = `typeof ${marker} !== 'function'`;
-    assert.ok(editor.includes(pattern), `typeof guard should exist for ${name}: ${pattern}`);
+    if (name === 'registerEditorAuthStart') {
+      assert.ok(editor.includes('typeof deps.registerEditorAuthStart !== \'function\''), `typeof deps guard should exist for ${name}`);
+    } else {
+      assert.ok(editor.includes(pattern), `typeof guard should exist for ${name}: ${pattern}`);
+    }
   }
 });
 

@@ -19,7 +19,7 @@ function verifyGuardPattern(guardMsg) {
   assert.notEqual(blockStart, -1, `typeof check must precede ${guardMsg}`);
 
   const block = editorSource.slice(blockStart, guardIndex + guardMsg.length + 30);
-  assert.match(block, /typeof \w+ !== 'function'/);
+  assert.match(block, /typeof [\w.]+ !== 'function'/);
   assert.match(block, /reportEditorBootstrapMissingDependency\(/);
   assert.match(block, /return/);
 }

@@ -23,7 +23,7 @@ test('js/editor.js retains its legacy entrypoint markers', () => {
     // Initialization markers
     assert.ok(js.includes("document.addEventListener('DOMContentLoaded'"), 'should wait for DOMContentLoaded');
     assert.ok(js.includes('const startEditor = async () => {'), 'should have startEditor async function');
-    assert.ok(js.includes('registerEditorAuthStart'), 'should delegate auth start to page helpers');
+    assert.ok(js.includes('deps.registerEditorAuthStart'), 'should delegate auth start to page helpers through deps');
 
     // Compatibility glue markers — dataLoaderFallbacks moved to entry-dependencies
     const deps = fs.readFileSync('js/editor/editor-entry-dependencies.js', 'utf8');

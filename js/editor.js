@@ -61,8 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const getYouTubeInputErrorMessage = deps.getYouTubeInputErrorMessage;
     const renderTreeLoadError = deps.renderTreeLoadError;
     const buildTreeLoadErrorCopy = deps.buildTreeLoadErrorCopy;
-    const registerEditorAuthStart = editorPageHelpers.registerEditorAuthStart;
-    if (typeof registerEditorAuthStart !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorPageHelpers.registerEditorAuthStart missing'); return; }
+    if (typeof deps.registerEditorAuthStart !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorPageHelpers.registerEditorAuthStart missing'); return; }
     const applyEditorShellCopy = deps.applyEditorShellCopy;
     applyEditorShellCopy(safeI18nText, i18n);
     const createPrepareEditorShell = deps.createPrepareEditorShell;
@@ -621,7 +620,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    registerEditorAuthStart({
+    deps.registerEditorAuthStart({
         windowRef: window,
         startEditor: startEditor,
         redirectToEditorLogin: redirectToEditorLogin,
