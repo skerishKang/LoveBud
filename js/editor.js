@@ -43,8 +43,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const runEditorInitialLoadFlow = deps.runEditorInitialLoadFlow;
     const createEditorRefreshSaveRuntime = deps.createEditorRefreshSaveRuntime;
     const createEditorStartupContext = deps.createEditorStartupContext;
-    const getConfirmedSessionUser = deps.getConfirmedSessionUser;
-    const readConfirmedAuthCache = deps.readConfirmedAuthCache;
     const showToast = deps.showToast;
     const i18n = deps.i18n;
     const getEditorBasePath = deps.getEditorBasePath;
@@ -229,7 +227,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 i18n,
                 apiClient: window.apiClient,
                 createDefaultTreeTitle: () => safeI18nText(i18n, 'default_tree_title', '러브트리'),
-                getConfirmedSessionUser,
+                getConfirmedSessionUser: deps.getConfirmedSessionUser,
                 showToast,
                 redirectToEditorLogin,
                 buildTreeLoadErrorCopy,
@@ -620,6 +618,6 @@ document.addEventListener('DOMContentLoaded', () => {
         windowRef: window,
         startEditor: startEditor,
         redirectToEditorLogin: redirectToEditorLogin,
-        readConfirmedAuthCache: readConfirmedAuthCache
+        readConfirmedAuthCache: deps.readConfirmedAuthCache
     });
 });
