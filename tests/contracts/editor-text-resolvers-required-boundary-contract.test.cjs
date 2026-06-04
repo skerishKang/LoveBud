@@ -90,7 +90,7 @@ test('editor.js requires media resolver helpers through required boundaries', ()
   // Guard does not use reportError
   const guardStart = editorSource.indexOf('missingMediaResolvers');
   assert.notEqual(guardStart, -1, 'guard must exist');
-  const guardEnd = editorSource.indexOf('const getYouTubeInputErrorMessageFallback', guardStart);
+  const guardEnd = editorSource.indexOf('const getYouTubeInputErrorMessage = deps.getYouTubeInputErrorMessage;', guardStart);
   assert.notEqual(guardEnd, -1, 'getYouTubeInputErrorMessageFallback must follow guard');
   const guardBlock = editorSource.slice(guardStart, guardEnd);
   assert.doesNotMatch(guardBlock, /reportError\(/);

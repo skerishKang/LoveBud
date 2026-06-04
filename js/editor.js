@@ -26,7 +26,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const deps = entryDependenciesResult.deps;
     const shellHelpers = deps.shellHelpers;
-    const rootUtils = deps.rootUtils;
     const editorHelpers = deps.editorHelpers;
     const editorSaveStatus = deps.editorSaveStatus;
     const editorPageHelpers = deps.editorPageHelpers;
@@ -84,9 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ['LoveBudEditorHelpers.resolveMemoryThumbnail', resolveMemoryThumbnail]
     ].filter(([, helper]) => typeof helper !== 'function');
     if (missingMediaResolvers.length) { reportEditorBootstrapMissingList(missingMediaResolvers); return; }
-    const getYouTubeInputErrorMessageFallback = shellHelpers.getYouTubeInputErrorMessageFallback;
-    if (typeof getYouTubeInputErrorMessageFallback !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.getYouTubeInputErrorMessageFallback missing'); return; }
-    const getYouTubeInputErrorMessage = typeof rootUtils.getYouTubeInputErrorMessage === 'function' ? rootUtils.getYouTubeInputErrorMessage : getYouTubeInputErrorMessageFallback;
+    const getYouTubeInputErrorMessage = deps.getYouTubeInputErrorMessage;
     const renderTreeLoadError = editorPageHelpers.renderTreeLoadError;
     if (typeof renderTreeLoadError !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorPageHelpers.renderTreeLoadError missing'); return; }
     const buildTreeLoadErrorCopy = editorPageHelpers.buildTreeLoadErrorCopy;
@@ -167,9 +164,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const createSaveStatusOrchestrationFallback = shellHelpers.createSaveStatusOrchestrationFallback;
     const exposeRefreshMemoriesBridge = shellHelpers.exposeRefreshMemoriesBridge;
     const resolveSaveStatusTimeFormatter = shellHelpers.resolveSaveStatusTimeFormatter;
-    const findRootMemory = rootUtils.findRootMemory;
-    const getCanonicalRootId = rootUtils.getCanonicalRootId;
-    const isRootMemory = rootUtils.isRootMemory;
+    const findRootMemory = deps.findRootMemory;
+    const getCanonicalRootId = deps.getCanonicalRootId;
+    const isRootMemory = deps.isRootMemory;
     const missingRootHelpers = [
         ['LoveBudEditorUtils.findRootMemory', findRootMemory],
         ['LoveBudEditorUtils.getCanonicalRootId', getCanonicalRootId],

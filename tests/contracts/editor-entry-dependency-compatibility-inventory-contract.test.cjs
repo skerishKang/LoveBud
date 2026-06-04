@@ -32,18 +32,22 @@ test('editor entry compatibility paths removed — no redundant window global re
   }
 });
 
-test('editor entry compatibility — shellHelpers and rootUtils resolved exclusively from deps', () => {
+test('editor entry compatibility — shellHelpers and root helpers resolved exclusively from deps', () => {
   const editor = read('js/editor.js');
   const depsIndex = indexOfRequired(editor, 'const deps = entryDependenciesResult.deps;');
 
   const shellAliasIndex = indexOfRequired(editor, 'const shellHelpers = deps.shellHelpers;');
   assert.ok(depsIndex < shellAliasIndex, 'shellHelpers alias must come after deps resolution');
 
-  const rootAliasIndex = indexOfRequired(editor, 'const rootUtils = deps.rootUtils;');
-  assert.ok(depsIndex < rootAliasIndex, 'rootUtils alias must come after deps resolution');
+  // rootUtils intermediate alias has been removed; root helpers read directly from deps
+  assert.match(editor, /const getYouTubeInputErrorMessage = deps\.getYouTubeInputErrorMessage;/);
+  assert.match(editor, /const findRootMemory = deps\.findRootMemory;/);
+  assert.match(editor, /const getCanonicalRootId = deps\.getCanonicalRootId;/);
+  assert.match(editor, /const isRootMemory = deps\.isRootMemory;/);
 
   assert.doesNotMatch(editor, /window\.LoveBudEditorShellHelpers/);
   assert.doesNotMatch(editor, /window\.LoveBudEditorUtils/);
+  assert.doesNotMatch(editor, /const rootUtils = deps\.rootUtils;/);
 });
 
 test('editor entry compatibility — editor-specific modules resolved exclusively from deps', () => {
@@ -62,16 +66,17 @@ test('editor entry compatibility — editor-specific modules resolved exclusivel
   assert.doesNotMatch(editor, /window\.LoveBudEditorDomRefsBuilder/);
 });
 
-test('editor entry compatibility — root helper method aliases use rootUtils from deps', () => {
+test('editor entry compatibility — root helper method aliases use deps directly', () => {
   const editor = read('js/editor.js');
 
-  // rootUtils now comes from deps.rootUtils (not window.LoveBudEditorUtils || {})
-  assert.match(editor, /const rootUtils = deps\.rootUtils;/);
+  assert.match(editor, /const findRootMemory = deps\.findRootMemory;/);
+  assert.match(editor, /const getCanonicalRootId = deps\.getCanonicalRootId;/);
+  assert.match(editor, /const isRootMemory = deps\.isRootMemory;/);
 
-  // Method aliases still use rootUtils.* (now backed by deps)
-  assert.match(editor, /const\s+findRootMemory\s*=\s*rootUtils\.findRootMemory;/);
-  assert.match(editor, /const\s+getCanonicalRootId\s*=\s*rootUtils\.getCanonicalRootId;/);
-  assert.match(editor, /const\s+isRootMemory\s*=\s*rootUtils\.isRootMemory;/);
+  assert.doesNotMatch(editor, /const rootUtils = deps\.rootUtils;/);
+  assert.doesNotMatch(editor, /rootUtils\.findRootMemory/);
+  assert.doesNotMatch(editor, /rootUtils\.getCanonicalRootId/);
+  assert.doesNotMatch(editor, /rootUtils\.isRootMemory/);
 });
 
 test('editor entry compatibility inventory — resolver already returns cleanup-ready dependency aliases', () => {

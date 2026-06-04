@@ -123,7 +123,7 @@ test('editor entrypoint requires getMyTreesHref page helper', () => {
   // Guard must not use reportError
   const guardStart = editorSource.indexOf('LoveBudEditorPageHelpers.getMyTreesHref missing');
   assert.notEqual(guardStart, -1, 'getMyTreesHref missing guard must exist');
-  const guardEnd = editorSource.indexOf('const getYouTubeInputErrorMessageFallback =', guardStart);
+  const guardEnd = editorSource.indexOf('const getYouTubeInputErrorMessage = deps.getYouTubeInputErrorMessage;', guardStart);
   assert.notEqual(guardEnd, -1, 'next fallback block must follow getMyTreesHref guard');
   const guardBlock = editorSource.slice(guardStart, guardEnd);
   assert.doesNotMatch(guardBlock, /reportError/);

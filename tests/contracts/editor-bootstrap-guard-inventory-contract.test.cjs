@@ -13,7 +13,6 @@ const expectedDirectMessages = [
   'LoveBudEditorTreeHelpers.syncCurrentTreeData missing',
   'LoveBudEditorTreeHelpers.resolveParentIdForCreate missing',
   'LoveBudEditorPageHelpers.getMyTreesHref missing',
-  'LoveBudEditorShellHelpers.getYouTubeInputErrorMessageFallback missing',
   'LoveBudEditorPageHelpers.renderTreeLoadError missing',
   'LoveBudEditorPageHelpers.buildTreeLoadErrorCopy missing',
   'LoveBudEditorPageHelpers.registerEditorAuthStart missing',
@@ -60,7 +59,7 @@ test('editor bootstrap direct guard count remains frozen', () => {
     ...editorSource.matchAll(/reportEditorBootstrapMissingDependency\('([^']+)'\)/g)
   ].map((match) => match[1]);
 
-  assert.equal(directMessages.length, 26);
+  assert.equal(directMessages.length, 25);
 });
 
 test('editor bootstrap aggregated text resolver guard inventory is frozen', () => {
@@ -107,7 +106,7 @@ test('all editor bootstrap guard calls stay before startEditor', () => {
     .map((match) => match.index)
     .filter((index) => index !== declarationIndex);
 
-  assert.equal(callIndexes.length, 27);
+  assert.equal(callIndexes.length, 26);
 
   for (const index of callIndexes) {
     assert.ok(index < startEditorIndex, 'bootstrap guard call must be before startEditor');

@@ -48,48 +48,31 @@ test('YouTube fallback preserves validation order and regex checks', () => {
   assert.match(block, /\(\[0-9A-Za-z_-\]\+\)/);
 });
 
-test('editor.js delegates getYouTubeInputErrorMessageFallback through required shell helper', () => {
+test('editor.js delegates getYouTubeInputErrorMessage directly from deps', () => {
   assert.match(
     editorSource,
-    /const\s+getYouTubeInputErrorMessageFallback\s*=\s*shellHelpers\.getYouTubeInputErrorMessageFallback/
+    /const\s+getYouTubeInputErrorMessage\s*=\s*deps\.getYouTubeInputErrorMessage;/
   );
   assert.doesNotMatch(
     editorSource,
-    /const\s+getYouTubeInputErrorMessageFallback\s*=\s*shellHelpers\.getYouTubeInputErrorMessageFallback\s*\|\|/
+    /const\s+getYouTubeInputErrorMessage\s*=\s*typeof rootUtils\.getYouTubeInputErrorMessage/
   );
-  assert.match(
+  assert.doesNotMatch(
     editorSource,
-    /LoveBudEditorShellHelpers\.getYouTubeInputErrorMessageFallback missing/
+    /getYouTubeInputErrorMessageFallback/
   );
-  assert.match(editorSource, /const\s+getYouTubeInputErrorMessage\s*=\s*typeof rootUtils\.getYouTubeInputErrorMessage === 'function'/);
-  assert.match(editorSource, /rootUtils\.getYouTubeInputErrorMessage\s*:\s*getYouTubeInputErrorMessageFallback/);
-  assert.doesNotMatch(editorSource, /warnRootHelperFallback\(\)/);
 });
 
-test('editor.js guards missing getYouTubeInputErrorMessageFallback before wrapper creation and without reportError', () => {
-  const guardIndex = editorSource.indexOf('LoveBudEditorShellHelpers.getYouTubeInputErrorMessageFallback missing');
-  const wrapperIndex = editorSource.indexOf('const getYouTubeInputErrorMessage = typeof rootUtils.getYouTubeInputErrorMessage');
-
-  assert.ok(guardIndex !== -1, 'missing getYouTubeInputErrorMessageFallback guard must exist');
-  assert.ok(wrapperIndex !== -1, 'getYouTubeInputErrorMessage wrapper must exist');
-  assert.ok(guardIndex < wrapperIndex, 'guard must run before wrapper creation');
-
-  const guardBlock = editorSource.slice(guardIndex - 100, guardIndex + 200);
-  assert.doesNotMatch(guardBlock, /reportError\(/);
+test('editor.js no longer owns getYouTubeInputErrorMessageFallback guard or wrapper', () => {
+  assert.doesNotMatch(editorSource, /getYouTubeInputErrorMessageFallback/);
+  assert.doesNotMatch(editorSource, /typeof rootUtils\.getYouTubeInputErrorMessage/);
+  assert.doesNotMatch(editorSource, /LoveBudEditorShellHelpers\.getYouTubeInputErrorMessageFallback missing/);
 });
 
 test('editor no longer owns local YouTube validation body inside wrapper', () => {
-  const start = editorSource.indexOf('const getYouTubeInputErrorMessage = typeof rootUtils.getYouTubeInputErrorMessage');
-  assert.notEqual(start, -1, 'editor wrapper must exist');
-
-  const end = editorSource.indexOf('const renderTreeLoadError', start);
-  assert.notEqual(end, -1, 'renderTreeLoadError setup must follow YouTube wrapper');
-
-  const block = editorSource.slice(start, end);
-  assert.match(block, /getYouTubeInputErrorMessageFallback/);
-  assert.doesNotMatch(block, /String\(rawUrl \|\| ''\)\.trim\(\)/);
-  assert.doesNotMatch(block, /invalid_youtube_unsupported/);
-  assert.doesNotMatch(block, /invalid_youtube_id_length/);
+  assert.doesNotMatch(editorSource, /String\(rawUrl \|\| ''\)\.trim\(\)/);
+  assert.doesNotMatch(editorSource, /invalid_youtube_unsupported/);
+  assert.doesNotMatch(editorSource, /invalid_youtube_id_length/);
 });
 
 test('memory form keeps YouTube input error message injection intact', () => {
