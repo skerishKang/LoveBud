@@ -53,8 +53,6 @@ test('direct deps function aliases remain inventoried', () => {
     'const getMyTreesHref = deps.getMyTreesHref;',
     'const resolveMemoryThumbnail = deps.resolveMemoryThumbnail;',
     'const getYouTubeInputErrorMessage = deps.getYouTubeInputErrorMessage;',
-    'const renderTreeLoadError = deps.renderTreeLoadError;',
-    'const buildTreeLoadErrorCopy = deps.buildTreeLoadErrorCopy;',
     'const applyEditorShellCopy = deps.applyEditorShellCopy;',
     'const createPrepareEditorShell = deps.createPrepareEditorShell;',
     'const createEditorDebugReporter = deps.createEditorDebugReporter;'
@@ -160,7 +158,9 @@ test('remaining helper method aliases: none — all 20 helper method aliases hav
     'const getCanonicalRootId = deps.getCanonicalRootId;',
     'const isRootMemory = deps.isRootMemory;',
     'const getConfirmedSessionUser = deps.getConfirmedSessionUser;',
-    'const readConfirmedAuthCache = deps.readConfirmedAuthCache;'
+    'const readConfirmedAuthCache = deps.readConfirmedAuthCache;',
+    'const renderTreeLoadError = deps.renderTreeLoadError;',
+    'const buildTreeLoadErrorCopy = deps.buildTreeLoadErrorCopy;'
   ];
 
   for (const alias of forbiddenLocalAliases) {
@@ -171,6 +171,12 @@ test('remaining helper method aliases: none — all 20 helper method aliases hav
   assert.ok(editor.includes('deps.registerEditorAuthStart'), 'editor should use deps.registerEditorAuthStart directly');
   assert.ok(editor.includes('deps.getConfirmedSessionUser'), 'editor should use deps.getConfirmedSessionUser directly');
   assert.ok(editor.includes('deps.readConfirmedAuthCache'), 'editor should use deps.readConfirmedAuthCache directly');
+  assert.ok(editor.includes('deps.renderTreeLoadError'), 'editor should use deps.renderTreeLoadError directly');
+  assert.ok(editor.includes('deps.buildTreeLoadErrorCopy'), 'editor should use deps.buildTreeLoadErrorCopy directly');
+
+  // Verify call site context for tree load error helpers
+  assert.match(editor, /runEditorInitialLoadFlow\(\{[\s\S]*buildTreeLoadErrorCopy:\s*deps\.buildTreeLoadErrorCopy/);
+  assert.match(editor, /runEditorInitialLoadFlow\(\{[\s\S]*renderTreeLoadError:\s*deps\.renderTreeLoadError/);
 });
 
 test('resolver-owned duplicate bootstrap guards remain removed after cleanup', () => {

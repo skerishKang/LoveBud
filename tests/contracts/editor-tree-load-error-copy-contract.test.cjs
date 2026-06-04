@@ -48,10 +48,10 @@ test('tree load error copy helper returns title and desc object', () => {
 
 // --- 2. editor.js uses required reference without fallback ---
 
-test('editor.js uses buildTreeLoadErrorCopy required reference from deps', () => {
+test('editor.js uses buildTreeLoadErrorCopy required reference from deps at call site', () => {
   assert.match(
     editorSource,
-    /const\s+buildTreeLoadErrorCopy\s*=\s*deps\.buildTreeLoadErrorCopy/
+    /buildTreeLoadErrorCopy:\s*deps\.buildTreeLoadErrorCopy/
   );
   assert.doesNotMatch(
     editorSource,
