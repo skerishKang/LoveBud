@@ -28,7 +28,7 @@ test('save status fallback preserves minimal updateSaveStatus behavior', () => {
 test('editor delegates save status fallback through required shell helper while preserving primary orchestration priority', () => {
   assert.match(
     editorSource,
-    /const\s+createSaveStatusOrchestrationFallback\s*=\s*shellHelpers\.createSaveStatusOrchestrationFallback/
+    /createSaveStatusOrchestrationFallback:\s*deps\.createSaveStatusOrchestrationFallback/
   );
   assert.doesNotMatch(
     editorSource,

@@ -132,8 +132,6 @@ document.addEventListener('DOMContentLoaded', () => {
         reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.createEditorReadyFinalizer missing');
         return;
     }
-    const createSaveStatusOrchestrationFallback = shellHelpers.createSaveStatusOrchestrationFallback;
-    const exposeRefreshMemoriesBridge = shellHelpers.exposeRefreshMemoriesBridge;
     const resolveSaveStatusTimeFormatter = deps.resolveSaveStatusTimeFormatter;
     const findRootMemory = deps.findRootMemory;
     const getCanonicalRootId = deps.getCanonicalRootId;
@@ -490,8 +488,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const refreshSaveRuntime = createEditorRefreshSaveRuntime({
                 log, reportError, editorDataLoader, treeId, apiClient: window.apiClient, normalizeMemory, treeMemories,
                 getCurrentEditingMemory: () => currentEditingMemory, setCurrentEditingMemory: (value) => { currentEditingMemory = value; },
-                isRootMemory, canonicalRootId, updateDetailPanel, updateSidebarStatus, initCanvas, exposeRefreshMemoriesBridge,
-                resolveSaveStatusTimeFormatter, editorSaveStatus, i18n, createSaveStatusOrchestrationFallback, saveStatusOrchestrationHelper: window.LoveBudEditorSaveStatusOrchestration || {}
+                isRootMemory, canonicalRootId, updateDetailPanel, updateSidebarStatus, initCanvas, exposeRefreshMemoriesBridge: deps.exposeRefreshMemoriesBridge,
+                resolveSaveStatusTimeFormatter, editorSaveStatus, i18n, createSaveStatusOrchestrationFallback: deps.createSaveStatusOrchestrationFallback, saveStatusOrchestrationHelper: window.LoveBudEditorSaveStatusOrchestration || {}
             });
 
             if (refreshSaveRuntime.status === 'stopped') return;

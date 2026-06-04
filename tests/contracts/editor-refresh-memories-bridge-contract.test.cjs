@@ -22,7 +22,7 @@ test('refresh memories bridge helper keeps testable window hook', () => {
 test('editor delegates refresh memories bridge through required shell helper', () => {
   assert.match(
     editorSource,
-    /const\s+exposeRefreshMemoriesBridge\s*=\s*shellHelpers\.exposeRefreshMemoriesBridge/
+    /exposeRefreshMemoriesBridge:\s*deps\.exposeRefreshMemoriesBridge/
   );
   assert.doesNotMatch(
     editorSource,

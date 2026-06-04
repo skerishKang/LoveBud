@@ -115,7 +115,9 @@ test('first batch namespace-derived aliases are removed', () => {
     'const createSelectedMomentFocusHandler = shellHelpers.createSelectedMomentFocusHandler;',
     'const createSidebarTreeActionsUpdater = shellHelpers.createSidebarTreeActionsUpdater;',
     'const createMemoryActionsReadinessWrapper = shellHelpers.createMemoryActionsReadinessWrapper;',
-    'const createCurrentMomentDetailOpener = shellHelpers.createCurrentMomentDetailOpener;'
+    'const createCurrentMomentDetailOpener = shellHelpers.createCurrentMomentDetailOpener;',
+    'const createSaveStatusOrchestrationFallback = shellHelpers.createSaveStatusOrchestrationFallback;',
+    'const exposeRefreshMemoriesBridge = shellHelpers.exposeRefreshMemoriesBridge;'
   ];
 
   for (const alias of removedNamespaceDerivedAliases) {
@@ -131,8 +133,6 @@ test('remaining helper method aliases stay as potential cleanup candidates', () 
     'const nextMemoryIdFromMemories = editorTreeHelpers.nextMemoryIdFromMemories;',
     // shellHelpers.* (non-guarded)
     'const getHttpStatus = shellHelpers.getHttpStatus;',
-    'const createSaveStatusOrchestrationFallback = shellHelpers.createSaveStatusOrchestrationFallback;',
-    'const exposeRefreshMemoriesBridge = shellHelpers.exposeRefreshMemoriesBridge;',
     // editorPageHelpers.* (non-guarded)
     'const registerEditorAuthStart = editorPageHelpers.registerEditorAuthStart;'
   ];
