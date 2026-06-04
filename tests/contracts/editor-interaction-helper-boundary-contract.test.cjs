@@ -32,11 +32,11 @@ test('editor entrypoint resolves required interaction helpers through shell help
   for (const helperName of requiredInteractionHelpers) {
     assert.match(
       editorSource,
-      new RegExp(`const\\s+${helperName}\\s*=\\s*shellHelpers\\.${helperName}`)
+      new RegExp(`const\\s+${helperName}\\s*=\\s*deps\\.${helperName}`)
     );
     assert.doesNotMatch(
       editorSource,
-      new RegExp(`const\\s+${helperName}\\s*=\\s*shellHelpers\\.${helperName}\\s*\\|\\|`)
+      new RegExp(`const\\s+${helperName}\\s*=\\s*deps\\.${helperName}\\s*\\|\\|`)
     );
   }
 });
@@ -45,7 +45,7 @@ test('editor entrypoint has no remaining interaction helper local fallbacks', ()
   for (const helperName of interactionHelpers) {
     assert.doesNotMatch(
       editorSource,
-      new RegExp(`const\\s+${helperName}\\s*=\\s*shellHelpers\\.${helperName}\\s*\\|\\|`)
+      new RegExp(`const\\s+${helperName}\\s*=\\s*deps\\.${helperName}\\s*\\|\\|`)
     );
   }
 });

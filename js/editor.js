@@ -98,20 +98,20 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
     const exposeDetailPanelUpdater = deps.exposeDetailPanelUpdater;
-    const createSelectedMomentFocusHandler = shellHelpers.createSelectedMomentFocusHandler;
+    const createSelectedMomentFocusHandler = deps.createSelectedMomentFocusHandler;
     const createEditorSelectNodeHandler = shellHelpers.createEditorSelectNodeHandler;
     if (typeof createEditorSelectNodeHandler !== 'function') {
         reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.createEditorSelectNodeHandler missing');
         return;
     }
-    const createSidebarTreeActionsUpdater = shellHelpers.createSidebarTreeActionsUpdater;
+    const createSidebarTreeActionsUpdater = deps.createSidebarTreeActionsUpdater;
     const createEditorSidebarStatusUpdater = shellHelpers.createEditorSidebarStatusUpdater;
     if (typeof createEditorSidebarStatusUpdater !== 'function') {
         reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.createEditorSidebarStatusUpdater missing');
         return;
     }
-    const createMemoryActionsReadinessWrapper = shellHelpers.createMemoryActionsReadinessWrapper;
-    const createCurrentMomentDetailOpener = shellHelpers.createCurrentMomentDetailOpener;
+    const createMemoryActionsReadinessWrapper = deps.createMemoryActionsReadinessWrapper;
+    const createCurrentMomentDetailOpener = deps.createCurrentMomentDetailOpener;
     const createEditorInitialMemoryProvider = shellHelpers.createEditorInitialMemoryProvider;
     if (typeof createEditorInitialMemoryProvider !== 'function') {
         reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.createEditorInitialMemoryProvider missing');
