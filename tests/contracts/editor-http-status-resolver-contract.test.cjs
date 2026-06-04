@@ -19,11 +19,11 @@ test('editor shell helpers expose HTTP status resolver', () => {
 test('editor delegates HTTP status resolver through required shell helper', () => {
   assert.match(
     editorSource,
-    /const\s+getHttpStatus\s*=\s*shellHelpers\.getHttpStatus/
+    /const\s+getHttpStatus\s*=\s*deps\.getHttpStatus/
   );
   assert.doesNotMatch(
     editorSource,
-    /const\s+getHttpStatus\s*=\s*shellHelpers\.getHttpStatus\s*\|\|/
+    /const\s+getHttpStatus\s*=\s*deps\.getHttpStatus\s*\|\|/
   );
   assert.match(
     editorSource,

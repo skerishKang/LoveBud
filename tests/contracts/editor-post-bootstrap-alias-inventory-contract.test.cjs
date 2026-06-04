@@ -63,7 +63,8 @@ test('direct deps function aliases remain inventoried', () => {
     'const createEditorDebugReporter = deps.createEditorDebugReporter;',
     'const findRootMemory = deps.findRootMemory;',
     'const getCanonicalRootId = deps.getCanonicalRootId;',
-    'const isRootMemory = deps.isRootMemory;'
+    'const isRootMemory = deps.isRootMemory;',
+    'const getHttpStatus = deps.getHttpStatus;'
   ];
 
   for (const alias of expectedDirectAliases) {
@@ -117,7 +118,8 @@ test('first batch namespace-derived aliases are removed', () => {
     'const createMemoryActionsReadinessWrapper = shellHelpers.createMemoryActionsReadinessWrapper;',
     'const createCurrentMomentDetailOpener = shellHelpers.createCurrentMomentDetailOpener;',
     'const createSaveStatusOrchestrationFallback = shellHelpers.createSaveStatusOrchestrationFallback;',
-    'const exposeRefreshMemoriesBridge = shellHelpers.exposeRefreshMemoriesBridge;'
+    'const exposeRefreshMemoriesBridge = shellHelpers.exposeRefreshMemoriesBridge;',
+    'const getHttpStatus = shellHelpers.getHttpStatus;'
   ];
 
   for (const alias of removedNamespaceDerivedAliases) {
@@ -131,8 +133,6 @@ test('remaining helper method aliases stay as potential cleanup candidates', () 
   const remainingHelperMethodAliasCandidates = [
     // editorTreeHelpers.*
     'const nextMemoryIdFromMemories = editorTreeHelpers.nextMemoryIdFromMemories;',
-    // shellHelpers.* (non-guarded)
-    'const getHttpStatus = shellHelpers.getHttpStatus;',
     // editorPageHelpers.* (non-guarded)
     'const registerEditorAuthStart = editorPageHelpers.registerEditorAuthStart;'
   ];
