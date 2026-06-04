@@ -19,7 +19,7 @@ test('editor shell helpers expose HTTP status resolver', () => {
 test('editor delegates HTTP status resolver through required shell helper', () => {
   assert.match(
     editorSource,
-    /const\s+getHttpStatus\s*=\s*deps\.getHttpStatus/
+    /deps\.getHttpStatus/
   );
   assert.doesNotMatch(
     editorSource,
@@ -33,7 +33,7 @@ test('editor delegates HTTP status resolver through required shell helper', () =
 
 test('editor keeps sidebar visibility toggle injection intact', () => {
   assert.match(editorSource, /bindEditorPageEvents\s*\(\{/);
-  assert.match(editorSource, /getHttpStatus,/);
+  assert.match(editorSource, /getHttpStatus:\s*deps\.getHttpStatus/);
   assert.match(editorSource, /updateSidebarStatus/);
 });
 
