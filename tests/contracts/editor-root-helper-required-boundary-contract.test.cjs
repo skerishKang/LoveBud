@@ -57,7 +57,7 @@ test('root helpers export root utilities and editor utils preserve the namespace
 test('editor entry requires preloaded root helper utilities through deps without inline fallbacks', () => {
   const editor = read('js/editor.js');
 
-  assert.match(editor, /findRootMemory\s*=\s*deps\.findRootMemory/);
+  assert.match(editor, /deps\.findRootMemory/);
   assert.match(editor, /getCanonicalRootId\s*=\s*deps\.getCanonicalRootId/);
   assert.match(editor, /isRootMemory\s*=\s*deps\.isRootMemory/);
   assert.doesNotMatch(editor, /const\s+rootUtils\s*=\s*deps\.rootUtils/);

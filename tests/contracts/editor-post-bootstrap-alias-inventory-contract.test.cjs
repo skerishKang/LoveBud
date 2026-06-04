@@ -60,7 +60,6 @@ test('direct deps function aliases remain inventoried', () => {
     'const applyEditorShellCopy = deps.applyEditorShellCopy;',
     'const createPrepareEditorShell = deps.createPrepareEditorShell;',
     'const createEditorDebugReporter = deps.createEditorDebugReporter;',
-    'const findRootMemory = deps.findRootMemory;',
     'const getCanonicalRootId = deps.getCanonicalRootId;',
     'const isRootMemory = deps.isRootMemory;'
   ];
@@ -160,7 +159,8 @@ test('remaining helper method aliases: none — all 20 helper method aliases hav
     'const getHttpStatus = shellHelpers.getHttpStatus;',
     'const nextMemoryIdFromMemories = editorTreeHelpers.nextMemoryIdFromMemories;',
     'const registerEditorAuthStart = editorPageHelpers.registerEditorAuthStart;',
-    'const escapeHtml = deps.escapeHtml;'
+    'const escapeHtml = deps.escapeHtml;',
+    'const findRootMemory = deps.findRootMemory;'
   ];
 
   for (const alias of forbiddenLocalAliases) {

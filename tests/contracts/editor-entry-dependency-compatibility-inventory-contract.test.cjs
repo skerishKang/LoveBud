@@ -41,7 +41,7 @@ test('editor entry compatibility — shellHelpers and root helpers resolved excl
 
   // rootUtils intermediate alias has been removed; root helpers read directly from deps
   assert.match(editor, /const getYouTubeInputErrorMessage = deps\.getYouTubeInputErrorMessage;/);
-  assert.match(editor, /const findRootMemory = deps\.findRootMemory;/);
+  assert.match(editor, /deps\.findRootMemory/);
   assert.match(editor, /const getCanonicalRootId = deps\.getCanonicalRootId;/);
   assert.match(editor, /const isRootMemory = deps\.isRootMemory;/);
 
@@ -69,7 +69,7 @@ test('editor entry compatibility — editor-specific modules resolved exclusivel
 test('editor entry compatibility — root helper method aliases use deps directly', () => {
   const editor = read('js/editor.js');
 
-  assert.match(editor, /const findRootMemory = deps\.findRootMemory;/);
+  assert.match(editor, /deps\.findRootMemory/);
   assert.match(editor, /const getCanonicalRootId = deps\.getCanonicalRootId;/);
   assert.match(editor, /const isRootMemory = deps\.isRootMemory;/);
 
