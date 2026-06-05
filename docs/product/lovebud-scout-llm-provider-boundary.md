@@ -245,5 +245,5 @@ class ScoutStubSuggestionProvider {
 
 - **Created**: 2026-06-05
 - **Author**: Audit follow-up for #1882
-- **Status**: Draft → needs PR review
-- **Next Review**: After Phase B implementation decision
+- **Status**: Phase A (audit) complete, Phase B (stub contract) implemented
+- **Next Review**: After Phase B UI wiring decision
