@@ -14,26 +14,19 @@ test('post-bootstrap namespace-level deps aliases remain inventoried', () => {
 
   const expectedNamespaceAliases = [
     'const shellHelpers = deps.shellHelpers;',
-    'const editorHelpers = deps.editorHelpers;',
     'const editorSaveStatus = deps.editorSaveStatus;',
     'const editorPageHelpers = deps.editorPageHelpers;',
     'const editorTreeHelpers = deps.editorTreeHelpers;',
     'const editorSelectionUI = deps.editorSelectionUI;',
     'const editorBindings = deps.editorBindings;',
-    'const editorPageEventBindings = deps.editorPageEventBindings;',
-    'const editorDataLoader = deps.editorDataLoader;',
-    'const editorInitialLoadFlow = deps.editorInitialLoadFlow;',
-    'const editorRefreshSaveRuntime = deps.editorRefreshSaveRuntime;',
-    'const editorStartupContext = deps.editorStartupContext;',
-    'const editorShellCopyApplier = deps.editorShellCopyApplier;',
-    'const editorDomRefsBuilder = deps.editorDomRefsBuilder;'
+    'const editorDataLoader = deps.editorDataLoader;'
   ];
 
   for (const alias of expectedNamespaceAliases) {
     assert.ok(editor.includes(alias), `namespace alias should remain after #2123: ${alias}`);
   }
 
-  assert.equal(expectedNamespaceAliases.length, 14, 'exactly 14 namespace-level deps aliases');
+  assert.equal(expectedNamespaceAliases.length, 7, 'exactly 7 namespace deps aliases should remain');
 });
 
 test('direct deps function aliases remain inventoried', () => {
@@ -162,7 +155,14 @@ test('remaining helper method aliases: none — all 20 helper method aliases hav
     'const redirectToEditorLogin = deps.redirectToEditorLogin;',
     'const showToast = deps.showToast;',
     'const safeI18nText = deps.safeI18nText;',
-    'const i18n = deps.i18n;'
+    'const i18n = deps.i18n;',
+    'const editorHelpers = deps.editorHelpers;',
+    'const editorPageEventBindings = deps.editorPageEventBindings;',
+    'const editorInitialLoadFlow = deps.editorInitialLoadFlow;',
+    'const editorRefreshSaveRuntime = deps.editorRefreshSaveRuntime;',
+    'const editorStartupContext = deps.editorStartupContext;',
+    'const editorShellCopyApplier = deps.editorShellCopyApplier;',
+    'const editorDomRefsBuilder = deps.editorDomRefsBuilder;'
   ];
 
   for (const alias of forbiddenLocalAliases) {
