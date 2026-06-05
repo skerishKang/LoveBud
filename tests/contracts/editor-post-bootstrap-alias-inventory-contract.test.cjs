@@ -40,15 +40,14 @@ test('direct deps function aliases remain inventoried', () => {
   const editor = read('js/editor.js');
 
   const expectedDirectAliases = [
-    'const i18n = deps.i18n;',
-    'const safeI18nText = deps.safeI18nText;'
+    'const i18n = deps.i18n;'
   ];
 
   for (const alias of expectedDirectAliases) {
     assert.ok(editor.includes(alias), `direct deps alias should remain: ${alias}`);
   }
 
-  assert.equal(expectedDirectAliases.length, 2, 'exactly 2 direct deps function aliases');
+  assert.equal(expectedDirectAliases.length, 1, 'exactly 1 direct deps function aliases');
 });
 
 test('first batch helper method aliases now use direct deps aliases', () => {
@@ -162,7 +161,8 @@ test('remaining helper method aliases: none — all 20 helper method aliases hav
     'const createEditorDebugReporter = deps.createEditorDebugReporter;',
     'const getEditorBasePath = deps.getEditorBasePath;',
     'const redirectToEditorLogin = deps.redirectToEditorLogin;',
-    'const showToast = deps.showToast;'
+    'const showToast = deps.showToast;',
+    'const safeI18nText = deps.safeI18nText;'
   ];
 
   for (const alias of forbiddenLocalAliases) {
@@ -189,13 +189,14 @@ test('remaining helper method aliases: none — all 20 helper method aliases hav
   assert.ok(editor.includes('deps.getEditorBasePath'), 'editor should use deps.getEditorBasePath directly');
   assert.ok(editor.includes('deps.redirectToEditorLogin'), 'editor should use deps.redirectToEditorLogin directly');
   assert.ok(editor.includes('deps.showToast'), 'editor should use deps.showToast directly');
+  assert.ok(editor.includes('deps.safeI18nText'), 'editor should use deps.safeI18nText directly');
 
   // Verify call site context for tree load error helpers
   assert.match(editor, /buildTreeLoadErrorCopy:\s*deps\.buildTreeLoadErrorCopy/);
   assert.match(editor, /renderTreeLoadError:\s*deps\.renderTreeLoadError/);
 
   // Verify call site context for shell preparation helpers
-  assert.match(editor, /deps\.applyEditorShellCopy\(safeI18nText,\s*i18n\);/);
+  assert.match(editor, /deps\.applyEditorShellCopy\(deps\.safeI18nText,\s*i18n\);/);
   assert.match(editor, /deps\.createPrepareEditorShell\(\{/);
   assert.match(editor, /applyEditorShellCopy:\s*deps\.applyEditorShellCopy/);
 
@@ -213,6 +214,7 @@ test('remaining helper method aliases: none — all 20 helper method aliases hav
   assert.match(editor, /createEditorCanvas\(\{[\s\S]*resolveMemoryThumbnail:\s*deps\.resolveMemoryThumbnail/);
 
   // Verify call site context for my-trees href resolver
+  assert.match(editor, /deps\.createPrepareEditorShell\(\{[\s\S]*safeI18nText:\s*deps\.safeI18nText/);
   assert.match(editor, /deps\.createPrepareEditorShell\(\{[\s\S]*getMyTreesHref:\s*deps\.getMyTreesHref/);
 
   // Verify call site context for YouTube input error resolver
@@ -233,6 +235,13 @@ test('remaining helper method aliases: none — all 20 helper method aliases hav
   assert.match(editor, /createEditorMemoryActions\(\{[\s\S]*showToast:\s*deps\.showToast/);
   assert.match(editor, /createEditorMemoryForm\(\{[\s\S]*showToast:\s*deps\.showToast/);
   assert.match(editor, /bindEditorPageEvents\(\{[\s\S]*showToast:\s*deps\.showToast/);
+
+  // Verify call site context for safeI18nText DI
+  assert.match(editor, /deps\.applyEditorShellCopy\(deps\.safeI18nText,\s*i18n\);/);
+  assert.match(editor, /deps\.createPrepareEditorShell\(\{[\s\S]*safeI18nText:\s*deps\.safeI18nText/);
+  assert.match(editor, /createDefaultTreeTitle:\s*\(\)\s*=>\s*deps\.safeI18nText\(i18n,\s*'default_tree_title',\s*'러브트리'\)/);
+  assert.match(editor, /createSidebarTreeActionsUpdater\(\{[\s\S]*safeI18nText:\s*deps\.safeI18nText/);
+  assert.match(editor, /bindEditorPageEvents\(\{[\s\S]*safeI18nText:\s*deps\.safeI18nText/);
 });
 
 test('resolver-owned duplicate bootstrap guards remain removed after cleanup', () => {

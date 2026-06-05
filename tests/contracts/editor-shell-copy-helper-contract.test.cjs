@@ -129,7 +129,7 @@ test('applyEditorShellCopy preserves detail panel copy targets', () => {
 
 test('editor entrypoint invokes applyEditorShellCopy with safe i18n helpers via deps', () => {
   assert.match(editorSource, /deps\.applyEditorShellCopy/);
-  assert.match(editorSource, /applyEditorShellCopy\(safeI18nText,\s*i18n\)/);
+  assert.match(editorSource, /applyEditorShellCopy\(deps\.safeI18nText,\s*i18n\)/);
 });
 
 test('editor html loads shell helpers before editor entrypoint', () => {
