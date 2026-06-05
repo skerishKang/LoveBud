@@ -49,7 +49,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const redirectToEditorLogin = deps.redirectToEditorLogin;
     const safeI18nText = deps.safeI18nText;
     const getMyTreesHref = deps.getMyTreesHref;
-    const resolveMemoryThumbnail = deps.resolveMemoryThumbnail;
     const getYouTubeInputErrorMessage = deps.getYouTubeInputErrorMessage;
     if (typeof deps.registerEditorAuthStart !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorPageHelpers.registerEditorAuthStart missing'); return; }
     deps.applyEditorShellCopy(safeI18nText, i18n);
@@ -393,7 +392,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 resolveTreeTitleText: deps.resolveTreeTitleText,
                 resolveHintText: deps.resolveHintText,
                 resolveInfoText: deps.resolveInfoText,
-                resolveMemoryThumbnail,
+                resolveMemoryThumbnail: deps.resolveMemoryThumbnail,
                 escapeHtml: deps.escapeHtml,
                 isRootMemory: deps.isRootMemory,
                 getCanonicalRootId: () => canonicalRootId,
@@ -456,7 +455,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 getTreeMemories: () => treeMemories(),
                 getCanonicalRootId: () => canonicalRootId,
                 isRootMemory: deps.isRootMemory,
-                resolveMemoryThumbnail,
+                resolveMemoryThumbnail: deps.resolveMemoryThumbnail,
                 updateDetailPanel,
                 setDetailEmptyState,
                 updateFocusSelectedBtn,
