@@ -5,18 +5,20 @@ const vm = require('node:vm');
 
 const editorSource = fs.readFileSync('js/editor.js', 'utf8');
 const shellHelpersSource = fs.readFileSync('js/editor/editor-shell-helpers.js', 'utf8');
+const shellCanvasUISource = fs.readFileSync('js/editor/editor-shell-canvas-ui.js', 'utf8');
 
 function loadShellHelpers() {
   const context = { window: {}, console };
   context.window.window = context.window;
   vm.createContext(context);
+  vm.runInContext(shellCanvasUISource, context);
   vm.runInContext(shellHelpersSource, context);
   return context.window.LoveBudEditorShellHelpers;
 }
 
-test('editor shell helpers expose initial selection applier factory', () => {
-  assert.match(shellHelpersSource, /createEditorInitialSelectionApplier:\s*function\(options\)/);
-  assert.match(shellHelpersSource, /return function applyEditorInitialSelection\(\)/);
+test('canvas ui fix editor shell helpers expose initial selection applier factory', () => {
+  assert.match(shellCanvasUISource, /createEditorInitialSelectionApplier:\s*function\(options\)/);
+  assert.match(shellCanvasUISource, /return function applyEditorInitialSelection\(\)/);
 });
 
 test('initial selection applier sets non-root selected memory and logs it', () => {

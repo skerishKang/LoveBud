@@ -5,6 +5,7 @@ const test = require('node:test');
 const editorSource = fs.readFileSync('js/editor.js', 'utf8');
 const pageHelpersSource = fs.readFileSync('js/editor/editor-page-helpers.js', 'utf8');
 const shellHelpersSource = fs.readFileSync('js/editor/editor-shell-helpers.js', 'utf8');
+const shellMemorySource = fs.readFileSync('js/editor/editor-shell-memory.js', 'utf8');
 const editorHtml = fs.readFileSync('pages/editor.html', 'utf8');
 
 function extractOpenCurrentMomentDetailBlock(source) {
@@ -53,19 +54,19 @@ test('editor openCurrentMomentDetail delegates to current moment detail opener f
   assert.match(block, /locationRef:\s*window\.location/);
 });
 
-test('shell helper preserves active memory selection order and guards', () => {
-  assert.match(shellHelpersSource, /createCurrentMomentDetailOpener:\s*function\(options\)/);
+test('memory fix shell helper preserves active memory selection order and guards', () => {
+  assert.match(shellMemorySource, /createCurrentMomentDetailOpener:\s*function\(options\)/);
   assert.match(
-    shellHelpersSource,
+    shellMemorySource,
     /var activeMemory\s*=\s*getCurrentEditingMemory\(\)\s*\|\|/
   );
   assert.match(
-    shellHelpersSource,
+    shellMemorySource,
     /treeMemories\.find\(function\(memory\)\s*\{ return memory\.id === selectedNodeId; \}\)/
   );
-  assert.match(shellHelpersSource, /if \(!activeMemory \|\| !activeMemory\.id \|\| !treeId\) return/);
-  assert.match(shellHelpersSource, /typeof editorPageHelpers\.openMomentDetail === 'function'/);
-  assert.match(shellHelpersSource, /memoryId:\s*activeMemory\.id/);
+  assert.match(shellMemorySource, /if \(!activeMemory \|\| !activeMemory\.id \|\| !treeId\) return/);
+  assert.match(shellMemorySource, /typeof editorPageHelpers\.openMomentDetail === 'function'/);
+  assert.match(shellMemorySource, /memoryId:\s*activeMemory\.id/);
 });
 
 test('editor no longer builds detail href inline in entrypoint', () => {

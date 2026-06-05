@@ -4,6 +4,7 @@ const test = require('node:test');
 
 const editorSource = fs.readFileSync('js/editor.js', 'utf8');
 const shellHelpersSource = fs.readFileSync('js/editor/editor-shell-helpers.js', 'utf8');
+const shellCanvasUISource = fs.readFileSync('js/editor/editor-shell-canvas-ui.js', 'utf8');
 const selectionUISource = fs.readFileSync('js/editor/editor-selection-ui.js', 'utf8');
 const editorHtml = fs.readFileSync('pages/editor.html', 'utf8');
 
@@ -29,16 +30,16 @@ test('editor selection ui exposes selected memory node helper', () => {
   assert.match(selectionUISource, /classList\.add\(selectedClass\)/);
 });
 
-test('editor selectNode delegates selected class handling to selection ui helper', () => {
-  const selectNodeBlock = extractSelectNodeBlock(shellHelpersSource);
+test('canvas ui fix editor selectNode delegates selected class handling to selection ui helper', () => {
+  const selectNodeBlock = extractSelectNodeBlock(shellCanvasUISource);
 
   assert.match(selectNodeBlock, /typeof editorSelectionUI\.applySelectedMemoryNode === 'function'/);
   assert.match(selectNodeBlock, /editorSelectionUI\.applySelectedMemoryNode\(el\)/);
   assert.match(selectNodeBlock, /LoveBudEditorSelectionUI\.applySelectedMemoryNode missing/);
 });
 
-test('editor selectNode no longer owns selected class dom mutation inline', () => {
-  const selectNodeBlock = extractSelectNodeBlock(shellHelpersSource);
+test('canvas ui fix editor selectNode no longer owns selected class dom mutation inline', () => {
+  const selectNodeBlock = extractSelectNodeBlock(shellCanvasUISource);
 
   assert.doesNotMatch(
     selectNodeBlock,
@@ -56,8 +57,8 @@ test('editor selectNode no longer owns selected class dom mutation inline', () =
   );
 });
 
-test('editor selectNode keeps state detail and affordance flow intact', () => {
-  const selectNodeBlock = extractSelectNodeBlock(shellHelpersSource);
+test('canvas ui fix editor selectNode keeps state detail and affordance flow intact', () => {
+  const selectNodeBlock = extractSelectNodeBlock(shellCanvasUISource);
 
   assert.match(selectNodeBlock, /setSelectedNodeId\(data\.id\)/);
   assert.match(selectNodeBlock, /setCurrentEditingMemory\(data\)/);

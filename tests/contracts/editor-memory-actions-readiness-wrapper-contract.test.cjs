@@ -4,24 +4,25 @@ const test = require('node:test');
 
 const editorSource = fs.readFileSync('js/editor.js', 'utf8');
 const shellHelpersSource = fs.readFileSync('js/editor/editor-shell-helpers.js', 'utf8');
+const shellMemorySource = fs.readFileSync('js/editor/editor-shell-memory.js', 'utf8');
 
-test('editor shell helpers expose memory actions readiness wrapper factory', () => {
-  assert.match(shellHelpersSource, /createMemoryActionsReadinessWrapper:\s*function\(options\)/);
-  assert.match(shellHelpersSource, /var getMemoryActions\s*=\s*opts\.getMemoryActions/);
-  assert.match(shellHelpersSource, /var consoleRef\s*=\s*opts\.consoleRef\s*\|\|\s*console/);
-  assert.match(shellHelpersSource, /return async function updateSelectedMemoryFields\(\)/);
+test('memory fix editor shell helpers expose memory actions readiness wrapper factory', () => {
+  assert.match(shellMemorySource, /createMemoryActionsReadinessWrapper:\s*function\(options\)/);
+  assert.match(shellMemorySource, /var getMemoryActions\s*=\s*opts\.getMemoryActions/);
+  assert.match(shellMemorySource, /var consoleRef\s*=\s*opts\.consoleRef\s*\|\|\s*console/);
+  assert.match(shellMemorySource, /return async function updateSelectedMemoryFields\(\)/);
 });
 
-test('memory actions readiness wrapper preserves guard warning and false return', () => {
-  assert.match(shellHelpersSource, /var memoryActions\s*=\s*getMemoryActions\(\)/);
-  assert.match(shellHelpersSource, /typeof memoryActions\.updateSelectedMemoryFields !== 'function'/);
-  assert.match(shellHelpersSource, /consoleRef\.warn\('\[editor\] updateSelectedMemoryFields called before memory actions are ready'\)/);
-  assert.match(shellHelpersSource, /return false/);
+test('memory fix memory actions readiness wrapper preserves guard warning and false return', () => {
+  assert.match(shellMemorySource, /var memoryActions\s*=\s*getMemoryActions\(\)/);
+  assert.match(shellMemorySource, /typeof memoryActions\.updateSelectedMemoryFields !== 'function'/);
+  assert.match(shellMemorySource, /consoleRef\.warn\('\[editor\] updateSelectedMemoryFields called before memory actions are ready'\)/);
+  assert.match(shellMemorySource, /return false/);
 });
 
-test('memory actions readiness wrapper preserves argument forwarding', () => {
-  assert.match(shellHelpersSource, /Array\.prototype\.slice\.call\(arguments\)/);
-  assert.match(shellHelpersSource, /memoryActions\.updateSelectedMemoryFields\.apply\(memoryActions,\s*args\)/);
+test('memory fix memory actions readiness wrapper preserves argument forwarding', () => {
+  assert.match(shellMemorySource, /Array\.prototype\.slice\.call\(arguments\)/);
+  assert.match(shellMemorySource, /memoryActions\.updateSelectedMemoryFields\.apply\(memoryActions,\s*args\)/);
 });
 
 test('editor delegates memory actions readiness wrapper through required shell helper', () => {
