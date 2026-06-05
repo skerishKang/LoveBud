@@ -113,6 +113,6 @@ test('editor entrypoint requires getMyTreesHref through direct deps pattern', ()
   // check parameter passing is intact
   assert.match(
     editorSource,
-    /deps\.createPrepareEditorShell\(\{\s*applyEditorShellCopy:\s*deps\.applyEditorShellCopy,\s*safeI18nText,\s*i18n,\s*getMyTreesHref:\s*deps\.getMyTreesHref\s*\}/
+    /deps\.createPrepareEditorShell\(\{\s*applyEditorShellCopy:\s*deps\.applyEditorShellCopy,\s*safeI18nText:\s*deps\.safeI18nText,\s*i18n,\s*getMyTreesHref:\s*deps\.getMyTreesHref\s*\}\)/
   );
 });

@@ -58,7 +58,7 @@ test('editor.js no longer guards missing createPrepareEditorShell before call (r
 test('editor.js delegates applyEditorShellCopy through required deps pattern', () => {
   assert.match(
     editorSource,
-    /deps\.applyEditorShellCopy\(safeI18nText,\s*i18n\)/
+    /deps\.applyEditorShellCopy\(deps\.safeI18nText,\s*i18n\)/
   );
   assert.doesNotMatch(
     editorSource,
@@ -78,7 +78,7 @@ test('editor.js delegates applyEditorShellCopy through required deps pattern', (
   );
   assert.match(
     editorSource,
-    /deps\.createPrepareEditorShell\(\{\s*applyEditorShellCopy:\s*deps\.applyEditorShellCopy,\s*safeI18nText,\s*i18n,\s*getMyTreesHref:\s*deps\.getMyTreesHref\s*\}/
+    /deps\.createPrepareEditorShell\(\{\s*applyEditorShellCopy:\s*deps\.applyEditorShellCopy,\s*safeI18nText:\s*deps\.safeI18nText,\s*i18n,\s*getMyTreesHref:\s*deps\.getMyTreesHref\s*\}\)/
   );
 });
 
@@ -89,7 +89,7 @@ test('editor.js no longer guards missing applyEditorShellCopy before call (resol
     'missing applyEditorShellCopy guard must not exist'
   );
   assert.notEqual(
-    editorSource.indexOf('deps.applyEditorShellCopy(safeI18nText, i18n)'),
+    editorSource.indexOf('deps.applyEditorShellCopy(deps.safeI18nText, i18n)'),
     -1,
     'applyEditorShellCopy call must exist'
   );

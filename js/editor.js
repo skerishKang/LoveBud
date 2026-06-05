@@ -44,12 +44,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const createEditorRefreshSaveRuntime = deps.createEditorRefreshSaveRuntime;
     const createEditorStartupContext = deps.createEditorStartupContext;
     const i18n = deps.i18n;
-    const safeI18nText = deps.safeI18nText;
     if (typeof deps.registerEditorAuthStart !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorPageHelpers.registerEditorAuthStart missing'); return; }
-    deps.applyEditorShellCopy(safeI18nText, i18n);
+    deps.applyEditorShellCopy(deps.safeI18nText, i18n);
     const prepareEditorShell = deps.createPrepareEditorShell({
         applyEditorShellCopy: deps.applyEditorShellCopy,
-        safeI18nText,
+        safeI18nText: deps.safeI18nText,
         i18n,
         getMyTreesHref: deps.getMyTreesHref
     });
@@ -215,7 +214,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 cache: window.LoveBudCache || null,
                 i18n,
                 apiClient: window.apiClient,
-                createDefaultTreeTitle: () => safeI18nText(i18n, 'default_tree_title', '러브트리'),
+                createDefaultTreeTitle: () => deps.safeI18nText(i18n, 'default_tree_title', '러브트리'),
                 getConfirmedSessionUser: deps.getConfirmedSessionUser,
                 showToast: deps.showToast,
                 redirectToEditorLogin: deps.redirectToEditorLogin,
@@ -432,7 +431,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const updateSidebarTreeActions = createSidebarTreeActionsUpdater({
                 sidebarUIHelper,
                 i18n,
-                safeI18nText,
+                safeI18nText: deps.safeI18nText,
                 getTreeId: () => treeId
             });
 
@@ -558,7 +557,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     getTreeId: () => treeId,
                     updateTreeVisibility,
                     showToast: deps.showToast,
-                    safeI18nText,
+                    safeI18nText: deps.safeI18nText,
                     i18n,
                     getHttpStatus: deps.getHttpStatus,
                     updateSidebarStatus,

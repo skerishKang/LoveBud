@@ -17,9 +17,9 @@ test('editor helpers expose text resolver functions', () => {
 });
 
 test('editor.js delegates all four text resolvers through required helpers', () => {
-  // safeI18nText still has local alias
-  assert.match(editorSource, /const\s+safeI18nText\s*=\s*deps\.safeI18nText/);
-  assert.doesNotMatch(editorSource, /const\s+safeI18nText\s*=\s*deps\.safeI18nText\s*\|\|/);
+  // safeI18nText now uses direct deps (no local alias)
+  assert.match(editorSource, /safeI18nText:\s*deps\.safeI18nText/);
+  assert.doesNotMatch(editorSource, /const\s+safeI18nText\s*=\s*deps\.safeI18nText/);
   assert.doesNotMatch(editorSource, /typeof\s+safeI18nText\s*!==\s*'function'/);
 
   // resolveHintText, resolveTreeTitleText, resolveInfoText: used directly at call site
@@ -99,7 +99,8 @@ test('editor.js requires media resolver helpers through required boundaries', ()
 });
 
 test('editor.js keeps text resolver required boundaries intact', () => {
-  assert.match(editorSource, /const\s+safeI18nText\s*=\s*deps\.safeI18nText/);
+  assert.match(editorSource, /safeI18nText:\s*deps\.safeI18nText/);
+  assert.doesNotMatch(editorSource, /const\s+safeI18nText\s*=\s*deps\.safeI18nText/);
   assert.doesNotMatch(editorSource, /const\s+resolveHintText\s*=\s*deps\.resolveHintText/);
   assert.doesNotMatch(editorSource, /const\s+resolveTreeTitleText\s*=\s*deps\.resolveTreeTitleText/);
   assert.doesNotMatch(editorSource, /const\s+resolveInfoText\s*=\s*deps\.resolveInfoText/);
