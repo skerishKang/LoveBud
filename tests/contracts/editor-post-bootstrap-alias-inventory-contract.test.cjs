@@ -13,17 +13,16 @@ test('post-bootstrap namespace-level deps aliases remain inventoried', () => {
   const editor = read('js/editor.js');
 
   const expectedNamespaceAliases = [
-    'const shellHelpers = deps.shellHelpers;',
-    'const editorSaveStatus = deps.editorSaveStatus;',
+    'const editorDataLoader = deps.editorDataLoader;',
     'const editorTreeHelpers = deps.editorTreeHelpers;',
-    'const editorDataLoader = deps.editorDataLoader;'
+    'const shellHelpers = deps.shellHelpers;'
   ];
 
   for (const alias of expectedNamespaceAliases) {
     assert.ok(editor.includes(alias), `namespace alias should remain after #2123: ${alias}`);
   }
 
-  assert.equal(expectedNamespaceAliases.length, 4, 'exactly 4 namespace deps aliases should remain');
+  assert.equal(expectedNamespaceAliases.length, 3, 'exactly 3 namespace deps aliases should remain');
 });
 
 test('direct deps function aliases remain inventoried', () => {
@@ -162,7 +161,8 @@ test('remaining helper method aliases: none — all 20 helper method aliases hav
     'const editorDomRefsBuilder = deps.editorDomRefsBuilder;',
     'const editorPageHelpers = deps.editorPageHelpers;',
     'const editorSelectionUI = deps.editorSelectionUI;',
-    'const editorBindings = deps.editorBindings;'
+    'const editorBindings = deps.editorBindings;',
+    'const editorSaveStatus = deps.editorSaveStatus;'
   ];
 
   for (const alias of forbiddenLocalAliases) {
@@ -194,6 +194,7 @@ test('remaining helper method aliases: none — all 20 helper method aliases hav
   assert.ok(editor.includes('deps.editorPageHelpers'), 'editor should use deps.editorPageHelpers directly');
   assert.ok(editor.includes('deps.editorSelectionUI'), 'editor should use deps.editorSelectionUI directly');
   assert.ok(editor.includes('deps.editorBindings'), 'editor should use deps.editorBindings directly');
+  assert.ok(editor.includes('deps.editorSaveStatus'), 'editor should use deps.editorSaveStatus directly');
 
   // Verify call site context for tree load error helpers
   assert.match(editor, /buildTreeLoadErrorCopy:\s*deps\.buildTreeLoadErrorCopy/);
@@ -217,6 +218,14 @@ test('remaining helper method aliases: none — all 20 helper method aliases hav
 
   // Verify call site context for bindings
   assert.match(editor, /editorBindings:\s*deps\.editorBindings/);
+
+  // Verify call site context for save status (2 call sites)
+  assert.match(editor, /editorSaveStatus:\s*deps\.editorSaveStatus/);
+  assert.equal(
+    (editor.match(/editorSaveStatus:\s*deps\.editorSaveStatus/g) || []).length,
+    2,
+    'editor should pass deps.editorSaveStatus directly at both save status call sites'
+  );
 
   // Verify call site context for tree helpers
   assert.match(editor, /runEditorInitialLoadFlow\(\{[\s\S]*syncCurrentTreeData:\s*deps\.syncCurrentTreeData/);

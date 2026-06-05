@@ -26,7 +26,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const deps = entryDependenciesResult.deps;
     const shellHelpers = deps.shellHelpers;
-    const editorSaveStatus = deps.editorSaveStatus;
     const editorTreeHelpers = deps.editorTreeHelpers;
     const editorDataLoader = deps.editorDataLoader;
     const bindEditorPageEvents = deps.bindEditorPageEvents;
@@ -305,7 +304,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 getEditorCanvas: () => editorCanvas,
                 getSaveStatusData: () => saveStatusData,
                 editorSelectionUI: deps.editorSelectionUI,
-                editorSaveStatus,
+                editorSaveStatus: deps.editorSaveStatus,
                 setSelectedNodeId: (value) => { selectedNodeId = value; },
                 setCurrentEditingMemory: (value) => { currentEditingMemory = value; },
                 updateDetailPanel,
@@ -457,7 +456,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 log, reportError, editorDataLoader, treeId, apiClient: window.apiClient, normalizeMemory, treeMemories,
                 getCurrentEditingMemory: () => currentEditingMemory, setCurrentEditingMemory: (value) => { currentEditingMemory = value; },
                 isRootMemory: deps.isRootMemory, canonicalRootId, updateDetailPanel, updateSidebarStatus, initCanvas, exposeRefreshMemoriesBridge: deps.exposeRefreshMemoriesBridge,
-                resolveSaveStatusTimeFormatter, editorSaveStatus, i18n: deps.i18n, createSaveStatusOrchestrationFallback: deps.createSaveStatusOrchestrationFallback, saveStatusOrchestrationHelper: window.LoveBudEditorSaveStatusOrchestration || {}
+                resolveSaveStatusTimeFormatter, editorSaveStatus: deps.editorSaveStatus, i18n: deps.i18n, createSaveStatusOrchestrationFallback: deps.createSaveStatusOrchestrationFallback, saveStatusOrchestrationHelper: window.LoveBudEditorSaveStatusOrchestration || {}
             });
 
             if (refreshSaveRuntime.status === 'stopped') return;
