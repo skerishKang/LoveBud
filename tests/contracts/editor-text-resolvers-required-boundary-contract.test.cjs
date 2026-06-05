@@ -73,7 +73,7 @@ test('editor.js no longer has missing-text-resolvers aggregate guard (guard remo
 test('editor.js requires media resolver helpers through required boundaries', () => {
   // escapeHtml now via inline deps pattern, resolveMemoryThumbnail via deps pattern
   assert.match(editorSource, /deps\.escapeHtml/);
-  assert.match(editorSource, /const\s+resolveMemoryThumbnail\s*=\s*deps\.resolveMemoryThumbnail/);
+  assert.match(editorSource, /resolveMemoryThumbnail:\s*deps\.resolveMemoryThumbnail/);
   // safeUrl is no longer directly referenced in editor.js (used internally by editor-helpers.js)
   assert.doesNotMatch(editorSource, /safeUrl/);
 
