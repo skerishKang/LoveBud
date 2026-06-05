@@ -160,7 +160,7 @@ test('editor entry delegates entry fallback factories through boundary', () => {
   assert.match(editor, /redirectToEditorLogin:\s*deps\.redirectToEditorLogin/, 'editor entry requires redirectToEditorLogin from deps');
   assert.doesNotMatch(editor, /LoveBudEditorPageHelpers\.redirectToEditorLogin missing/, 'redirectToEditorLogin guard no longer in editor.js');
 
-  assert.match(editor, /showToast\s*=\s*deps\.showToast/, 'editor entry requires showToast from deps');
+  assert.match(editor, /showToast:\s*deps\.showToast/, 'editor entry requires showToast from deps');
 });
 
 test('shell helpers are explicitly mounted before editor entry', () => {

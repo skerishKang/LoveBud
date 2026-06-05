@@ -40,7 +40,6 @@ test('direct deps function aliases remain inventoried', () => {
   const editor = read('js/editor.js');
 
   const expectedDirectAliases = [
-    'const showToast = deps.showToast;',
     'const i18n = deps.i18n;',
     'const safeI18nText = deps.safeI18nText;'
   ];
@@ -49,7 +48,7 @@ test('direct deps function aliases remain inventoried', () => {
     assert.ok(editor.includes(alias), `direct deps alias should remain: ${alias}`);
   }
 
-  assert.equal(expectedDirectAliases.length, 3, 'exactly 3 direct deps function aliases');
+  assert.equal(expectedDirectAliases.length, 2, 'exactly 2 direct deps function aliases');
 });
 
 test('first batch helper method aliases now use direct deps aliases', () => {
@@ -162,7 +161,8 @@ test('remaining helper method aliases: none — all 20 helper method aliases hav
     'const getYouTubeInputErrorMessage = deps.getYouTubeInputErrorMessage;',
     'const createEditorDebugReporter = deps.createEditorDebugReporter;',
     'const getEditorBasePath = deps.getEditorBasePath;',
-    'const redirectToEditorLogin = deps.redirectToEditorLogin;'
+    'const redirectToEditorLogin = deps.redirectToEditorLogin;',
+    'const showToast = deps.showToast;'
   ];
 
   for (const alias of forbiddenLocalAliases) {
@@ -188,6 +188,7 @@ test('remaining helper method aliases: none — all 20 helper method aliases hav
   assert.ok(editor.includes('deps.createEditorDebugReporter'), 'editor should use deps.createEditorDebugReporter directly');
   assert.ok(editor.includes('deps.getEditorBasePath'), 'editor should use deps.getEditorBasePath directly');
   assert.ok(editor.includes('deps.redirectToEditorLogin'), 'editor should use deps.redirectToEditorLogin directly');
+  assert.ok(editor.includes('deps.showToast'), 'editor should use deps.showToast directly');
 
   // Verify call site context for tree load error helpers
   assert.match(editor, /buildTreeLoadErrorCopy:\s*deps\.buildTreeLoadErrorCopy/);
@@ -225,6 +226,13 @@ test('remaining helper method aliases: none — all 20 helper method aliases hav
 
   // Verify call site context for login redirect
   assert.match(editor, /deps\.registerEditorAuthStart\(\{[\s\S]*redirectToEditorLogin:\s*deps\.redirectToEditorLogin/);
+
+  // Verify call site context for showToast DI
+  assert.match(editor, /runEditorInitialLoadFlow\(\{[\s\S]*showToast:\s*deps\.showToast/);
+  assert.match(editor, /createEditorDetailUI\(\{[\s\S]*showToast:\s*deps\.showToast/);
+  assert.match(editor, /createEditorMemoryActions\(\{[\s\S]*showToast:\s*deps\.showToast/);
+  assert.match(editor, /createEditorMemoryForm\(\{[\s\S]*showToast:\s*deps\.showToast/);
+  assert.match(editor, /bindEditorPageEvents\(\{[\s\S]*showToast:\s*deps\.showToast/);
 });
 
 test('resolver-owned duplicate bootstrap guards remain removed after cleanup', () => {

@@ -83,7 +83,8 @@ test('resolver-owned duplicate bootstrap guards are removed from editor entry', 
 test('resolver-owned aliases now read directly from deps in editor entry', () => {
   const editor = read('js/editor.js');
 
-  assert.match(editor, /const showToast = deps\.showToast;/);
+  assert.match(editor, /showToast:\s*deps\.showToast/);
+  assert.doesNotMatch(editor, /const showToast = deps\.showToast;/);
   assert.match(editor, /const i18n = deps\.i18n;/);
   assert.match(editor, /getEditorBasePath:\s*deps\.getEditorBasePath/);
   assert.doesNotMatch(editor, /const getEditorBasePath = deps\.getEditorBasePath;/);
