@@ -43,13 +43,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const runEditorInitialLoadFlow = deps.runEditorInitialLoadFlow;
     const createEditorRefreshSaveRuntime = deps.createEditorRefreshSaveRuntime;
     const createEditorStartupContext = deps.createEditorStartupContext;
-    const i18n = deps.i18n;
     if (typeof deps.registerEditorAuthStart !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorPageHelpers.registerEditorAuthStart missing'); return; }
-    deps.applyEditorShellCopy(deps.safeI18nText, i18n);
+    deps.applyEditorShellCopy(deps.safeI18nText, deps.i18n);
     const prepareEditorShell = deps.createPrepareEditorShell({
         applyEditorShellCopy: deps.applyEditorShellCopy,
         safeI18nText: deps.safeI18nText,
-        i18n,
+        i18n: deps.i18n,
         getMyTreesHref: deps.getMyTreesHref
     });
     const markEditorReady = deps.markEditorReady;
@@ -212,9 +211,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 canvas,
                 addBtn,
                 cache: window.LoveBudCache || null,
-                i18n,
+                i18n: deps.i18n,
                 apiClient: window.apiClient,
-                createDefaultTreeTitle: () => deps.safeI18nText(i18n, 'default_tree_title', '러브트리'),
+                createDefaultTreeTitle: () => deps.safeI18nText(deps.i18n, 'default_tree_title', '러브트리'),
                 getConfirmedSessionUser: deps.getConfirmedSessionUser,
                 showToast: deps.showToast,
                 redirectToEditorLogin: deps.redirectToEditorLogin,
@@ -282,7 +281,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 findRootMemory: deps.findRootMemory,
                 canonicalRootId,
                 treeId,
-                i18n
+                i18n: deps.i18n
             });
 
             const nextMemoryId = createEditorNextMemoryIdProvider({
@@ -381,7 +380,7 @@ document.addEventListener('DOMContentLoaded', () => {
             log('Initializing Detail UI...');
             const detailUI = window.createEditorDetailUI({
                 detailPanel,
-                i18n,
+                i18n: deps.i18n,
                 resolveTreeTitleText: deps.resolveTreeTitleText,
                 resolveHintText: deps.resolveHintText,
                 resolveInfoText: deps.resolveInfoText,
@@ -430,7 +429,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const updateSidebarTreeActions = createSidebarTreeActionsUpdater({
                 sidebarUIHelper,
-                i18n,
+                i18n: deps.i18n,
                 safeI18nText: deps.safeI18nText,
                 getTreeId: () => treeId
             });
@@ -468,7 +467,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 log, reportError, editorDataLoader, treeId, apiClient: window.apiClient, normalizeMemory, treeMemories,
                 getCurrentEditingMemory: () => currentEditingMemory, setCurrentEditingMemory: (value) => { currentEditingMemory = value; },
                 isRootMemory: deps.isRootMemory, canonicalRootId, updateDetailPanel, updateSidebarStatus, initCanvas, exposeRefreshMemoriesBridge: deps.exposeRefreshMemoriesBridge,
-                resolveSaveStatusTimeFormatter, editorSaveStatus, i18n, createSaveStatusOrchestrationFallback: deps.createSaveStatusOrchestrationFallback, saveStatusOrchestrationHelper: window.LoveBudEditorSaveStatusOrchestration || {}
+                resolveSaveStatusTimeFormatter, editorSaveStatus, i18n: deps.i18n, createSaveStatusOrchestrationFallback: deps.createSaveStatusOrchestrationFallback, saveStatusOrchestrationHelper: window.LoveBudEditorSaveStatusOrchestration || {}
             });
 
             if (refreshSaveRuntime.status === 'stopped') return;
@@ -476,7 +475,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             log('Initializing Memory Actions...');
             memoryActions = window.createEditorMemoryActions({
-                i18n,
+                i18n: deps.i18n,
                 updateSaveStatus,
                 updateDetailPanel,
                 updateSidebarStatus,
@@ -504,14 +503,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
             log('Initializing Memory Form...');
             const memoryForm = window.createEditorMemoryForm({
-                i18n,
+                i18n: deps.i18n,
                 treeId,
                 getSelectedNodeId: () => selectedNodeId,
                 getCanonicalRootId: () => canonicalRootId,
                 resolveParentIdForCreate: deps.resolveParentIdForCreate,
                 updateSaveStatus,
                 showToast: deps.showToast,
-                getYouTubeInputErrorMessage: (rawUrl) => deps.getYouTubeInputErrorMessage(i18n, rawUrl),
+                getYouTubeInputErrorMessage: (rawUrl) => deps.getYouTubeInputErrorMessage(deps.i18n, rawUrl),
                 nextMemoryId,
                 normalizeMemory,
                 getTreeMemories: () => window.currentTreeMemories || [],
@@ -558,7 +557,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     updateTreeVisibility,
                     showToast: deps.showToast,
                     safeI18nText: deps.safeI18nText,
-                    i18n,
+                    i18n: deps.i18n,
                     getHttpStatus: deps.getHttpStatus,
                     updateSidebarStatus,
                     showAddMemoryForm,

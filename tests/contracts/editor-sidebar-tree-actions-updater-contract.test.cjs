@@ -26,7 +26,7 @@ test('editor delegates sidebar tree actions updater with fallback', () => {
   assert.match(editorSource, /deps\.createSidebarTreeActionsUpdater/);
   assert.match(editorSource, /const createSidebarTreeActionsUpdater\s*=/);
   assert.match(editorSource, /const updateSidebarTreeActions\s*=\s*createSidebarTreeActionsUpdater\(\{/);
-  assert.match(editorSource, /sidebarUIHelper,\s*i18n,\s*safeI18nText:\s*deps\.safeI18nText/);
+  assert.match(editorSource, /sidebarUIHelper,\s*i18n:\s*deps\.i18n,\s*safeI18nText:\s*deps\.safeI18nText/);
   assert.match(editorSource, /getTreeId:\s*\(\)\s*=>\s*treeId/);
 });
 

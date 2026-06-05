@@ -93,7 +93,7 @@ test('entry dependencies helper preserves bootstrap missing-helper messages', ()
 
 test('entry dependencies helper preserves shell copy side effect before prepare shell return', () => {
   const editor = read('js/editor.js');
-  const applyIndex = editor.indexOf('deps.applyEditorShellCopy(deps.safeI18nText, i18n);');
+  const applyIndex = editor.indexOf('deps.applyEditorShellCopy(deps.safeI18nText, deps.i18n);');
   const prepareIndex = editor.indexOf('const prepareEditorShell = deps.createPrepareEditorShell');
 
   assert.notEqual(applyIndex, -1, 'applyEditorShellCopy side effect must remain');
