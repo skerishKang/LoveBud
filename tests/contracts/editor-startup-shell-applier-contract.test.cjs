@@ -4,19 +4,21 @@ const test = require('node:test');
 const vm = require('node:vm');
 
 const editorSource = fs.readFileSync('js/editor.js', 'utf8');
+const shellStartupSource = fs.readFileSync('js/editor/editor-shell-startup.js', 'utf8');
 const shellHelpersSource = fs.readFileSync('js/editor/editor-shell-helpers.js', 'utf8');
 
 function loadShellHelpers() {
   const context = { window: {}, console, setTimeout };
   context.window.window = context.window;
   vm.createContext(context);
+  vm.runInContext(shellStartupSource, context);
   vm.runInContext(shellHelpersSource, context);
   return context.window.LoveBudEditorShellHelpers;
 }
 
-test('editor shell helpers expose startup shell applier factory', () => {
-  assert.match(shellHelpersSource, /createEditorStartupShellApplier:\s*function\(options\)/);
-  assert.match(shellHelpersSource, /return function applyEditorStartupShell\(\)/);
+test('editor shell startup sub-module exposes startup shell applier factory', () => {
+  assert.match(shellStartupSource, /createEditorStartupShellApplier:\s*function\(options\)/);
+  assert.match(shellStartupSource, /return function applyEditorStartupShell\(\)/);
 });
 
 test('startup shell applier preserves log, shell preparation, and editability order', () => {
@@ -43,7 +45,7 @@ test('startup shell applier preserves log, shell preparation, and editability or
 test('editor entrypoint delegates startup shell preparation to shell helper', () => {
   assert.match(editorSource, /const createEditorStartupShellApplier\s*=\s*deps\.shellHelpers\.createEditorStartupShellApplier/);
   assert.match(editorSource, /LoveBudEditorShellHelpers\.createEditorStartupShellApplier missing/);
-  assert.match(editorSource, /const applyEditorStartupShell\s*=\s*createEditorStartupShellApplier\(\{/);
+  assert.match(editorSource, /const applyEditorStartupShell\s*=\s*createEditorStartupShellApplier\({/);
   assert.match(editorSource, /prepareEditorShell,\s*applyEditorEditabilityState,\s*canEdit,\s*log/s);
   assert.match(editorSource, /applyEditorStartupShell\(\);/);
 });
@@ -61,12 +63,12 @@ test('editor delegates applyEditorEditabilityState dependency guard before start
 
 test('editor no longer owns inline startup shell preparation block', () => {
   assert.doesNotMatch(editorSource, /log\('DOM refs and URL params prepared'\);\s*prepareEditorShell\(\);\s*log\('Editor shell mounted'\);/);
-  assert.doesNotMatch(editorSource, /applyEditorEditabilityState\(\{\s*canEdit\s*\}\);/);
+  assert.doesNotMatch(editorSource, /applyEditorEditabilityState\(\{\s*canEdit\s*\}\)/);
 });
 
 test('startup shell applier slice avoids load, canvas, and refresh-save runtime changes', () => {
-  assert.match(editorSource, /runEditorInitialLoadFlow\(\{/);
-  assert.match(editorSource, /createEditorStartupContext\(\{/);
-  assert.match(editorSource, /createEditorRefreshSaveRuntime\(\{/);
+  assert.match(editorSource, /runEditorInitialLoadFlow\({/);
+  assert.match(editorSource, /createEditorStartupContext\({/);
+  assert.match(editorSource, /createEditorRefreshSaveRuntime\({/);
   assert.doesNotMatch(editorSource, /pan\/drag lifecycle/);
 });

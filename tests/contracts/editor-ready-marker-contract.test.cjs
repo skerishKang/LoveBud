@@ -6,15 +6,16 @@ const editorSource = fs.readFileSync('js/editor.js', 'utf8');
 const shellHelpersSource = fs.readFileSync('js/editor/editor-shell-helpers.js', 'utf8');
 const initialLoadFlowSource = fs.readFileSync('js/editor/editor-initial-load-flow.js', 'utf8');
 const editorHtml = fs.readFileSync('pages/editor.html', 'utf8');
+const startupSource = fs.readFileSync('js/editor/editor-shell-startup.js', 'utf8');
 
-test('editor shell helpers expose markEditorReady helper', () => {
-  assert.match(shellHelpersSource, /markEditorReady:\s*function/);
-  assert.match(shellHelpersSource, /classList\.remove\('editor-preload'\)/);
+test('editor shell startup sub-module exposes markEditorReady helper', () => {
+  assert.match(startupSource, /markEditorReady:\s*function/);
+  assert.match(startupSource, /classList\.remove\('editor-preload'\)/);
 });
 
 test('markEditorReady removes editor preload class through classList', () => {
-  assert.match(shellHelpersSource, /body\.classList\.remove\(/);
-  assert.match(shellHelpersSource, /'editor-preload'/);
+  assert.match(startupSource, /body\.classList\.remove\(/);
+  assert.match(startupSource, /'editor-preload'/);
 });
 
 test('editor delegates ready marker to shell helper with fallback', () => {

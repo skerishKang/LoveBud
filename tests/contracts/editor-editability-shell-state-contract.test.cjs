@@ -5,16 +5,17 @@ const test = require('node:test');
 const editorSource = fs.readFileSync('js/editor.js', 'utf8');
 const shellHelpersSource = fs.readFileSync('js/editor/editor-shell-helpers.js', 'utf8');
 const editorHtml = fs.readFileSync('pages/editor.html', 'utf8');
+const startupSource = fs.readFileSync('js/editor/editor-shell-startup.js', 'utf8');
 
-test('editor shell helpers expose editability shell state helper', () => {
-  assert.match(shellHelpersSource, /applyEditorEditabilityState:\s*function/);
-  assert.match(shellHelpersSource, /editorNamespace\.canEdit\s*=\s*canEdit/);
-  assert.match(shellHelpersSource, /classList\.toggle\('editor-readonly',\s*!canEdit\)/);
+test('editor shell startup sub-module exposes editability shell state helper', () => {
+  assert.match(startupSource, /applyEditorEditabilityState:\s*function/);
+  assert.match(startupSource, /editorNamespace\.canEdit\s*=\s*canEdit/);
+  assert.match(startupSource, /classList\.toggle\('editor-readonly',\s*!canEdit\)/);
 });
 
 test('editability shell state helper keeps testable body and namespace hooks', () => {
-  assert.match(shellHelpersSource, /opts\.editorNamespace/);
-  assert.match(shellHelpersSource, /opts\.body/);
+  assert.match(startupSource, /opts\.editorNamespace/);
+  assert.match(startupSource, /opts\.body/);
 });
 
 test('editor delegates editability shell state through startup shell applier', () => {

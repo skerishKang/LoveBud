@@ -4,26 +4,26 @@ const test = require('node:test');
 const vm = require('node:vm');
 
 const editorSource = fs.readFileSync('js/editor.js', 'utf8');
-const shellHelpersSource = fs.readFileSync('js/editor/editor-shell-helpers.js', 'utf8');
+const shellGuardsSource = fs.readFileSync('js/editor/editor-shell-guards.js', 'utf8');
 
-function loadShellHelpers() {
+function loadShellGuards() {
   const context = { window: {}, console, setTimeout };
   context.window.window = context.window;
   vm.createContext(context);
-  vm.runInContext(shellHelpersSource, context);
-  return context.window.LoveBudEditorShellHelpers;
+  vm.runInContext(shellGuardsSource, context);
+  return context.window.LoveBudEditorShellGuards;
 }
 
-test('editor shell helpers expose start dependency checker factory', () => {
-  assert.match(shellHelpersSource, /createEditorStartDependencyChecker:\s*function\(options\)/);
-  assert.match(shellHelpersSource, /return function checkEditorStartDependencies\(\)/);
+test('editor shell guards sub-module expose start dependency checker factory', () => {
+  assert.match(shellGuardsSource, /createEditorStartDependencyChecker:\s*function\(options\)/);
+  assert.match(shellGuardsSource, /return function checkEditorStartDependencies\(\)/);
 });
 
 test('start dependency checker preserves order and returns true when all dependencies exist', () => {
-  const shellHelpers = loadShellHelpers();
+  const shellGuards = loadShellGuards();
   const calls = [];
 
-  const checkEditorStartDependencies = shellHelpers.createEditorStartDependencyChecker({
+  const checkEditorStartDependencies = shellGuards.createEditorStartDependencyChecker({
     ensureStartEditorDependency: (value, message) => {
       calls.push([value, message]);
       return typeof value === 'function';
@@ -41,10 +41,10 @@ test('start dependency checker preserves order and returns true when all depende
 });
 
 test('start dependency checker stops at first missing dependency', () => {
-  const shellHelpers = loadShellHelpers();
+  const shellGuards = loadShellGuards();
   const calls = [];
 
-  const checkEditorStartDependencies = shellHelpers.createEditorStartDependencyChecker({
+  const checkEditorStartDependencies = shellGuards.createEditorStartDependencyChecker({
     ensureStartEditorDependency: (value, message) => {
       calls.push([value, message]);
       return Boolean(value);

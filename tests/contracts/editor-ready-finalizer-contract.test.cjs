@@ -4,19 +4,20 @@ const test = require('node:test');
 const vm = require('node:vm');
 
 const editorSource = fs.readFileSync('js/editor.js', 'utf8');
+const shellStartupSource = fs.readFileSync('js/editor/editor-shell-startup.js', 'utf8');
 const shellHelpersSource = fs.readFileSync('js/editor/editor-shell-helpers.js', 'utf8');
 
 function loadShellHelpers() {
   const context = { window: {}, console };
   context.window.window = context.window;
   vm.createContext(context);
+  vm.runInContext(shellStartupSource, context);
   vm.runInContext(shellHelpersSource, context);
   return context.window.LoveBudEditorShellHelpers;
 }
 
-test('editor shell helpers expose ready finalizer factory', () => {
-  assert.match(shellHelpersSource, /createEditorReadyFinalizer:\s*function\(options\)/);
-  assert.match(shellHelpersSource, /return function finalizeEditorReady\(\)/);
+test('editor shell startup sub-module exposes ready finalizer factory', () => {
+  assert.match(shellStartupSource, /createEditorReadyFinalizer:\s*function\(options\)/);
 });
 
 test('ready finalizer preserves sidebar update, ready marker, and final log order', () => {
@@ -49,8 +50,7 @@ test('editor entrypoint delegates final ready block to shell helper', () => {
 test('editor no longer owns inline final ready block', () => {
   assert.doesNotMatch(
     editorSource,
-    /updateSidebarStatus\(\);\s*markEditorReady\(\);\s*log\('startEditor complete\. Ready\.'\);/
-  );
+    /updateSidebarStatus\(\);\s*markEditorReady\(\);\s*log\('startEditor complete\. Ready\.'\);/);
 });
 
 test('ready finalizer runs after initial selection application', () => {
@@ -65,6 +65,6 @@ test('ready finalizer runs after initial selection application', () => {
 test('ready finalizer slice avoids canvas and refresh-save runtime changes', () => {
   assert.match(editorSource, /initCanvas\(\);/);
   assert.match(editorSource, /updateCanvasEmptyGuide\(\);/);
-  assert.match(editorSource, /createEditorRefreshSaveRuntime\(\{/);
+  assert.match(editorSource, /createEditorRefreshSaveRuntime\({/);
   assert.doesNotMatch(editorSource, /pan\/drag lifecycle/);
 });

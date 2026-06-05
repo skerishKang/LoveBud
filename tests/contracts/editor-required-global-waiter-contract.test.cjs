@@ -4,19 +4,21 @@ const test = require('node:test');
 const vm = require('node:vm');
 
 const editorSource = fs.readFileSync('js/editor.js', 'utf8');
+const shellGuardsSource = fs.readFileSync('js/editor/editor-shell-guards.js', 'utf8');
 const shellHelpersSource = fs.readFileSync('js/editor/editor-shell-helpers.js', 'utf8');
 
 function loadShellHelpers() {
   const context = { window: {}, console, setTimeout };
   context.window.window = context.window;
   vm.createContext(context);
+  vm.runInContext(shellGuardsSource, context);
   vm.runInContext(shellHelpersSource, context);
   return context.window.LoveBudEditorShellHelpers;
 }
 
-test('editor shell helpers expose required global waiter factory', () => {
-  assert.match(shellHelpersSource, /createEditorRequiredGlobalWaiter:\s*function\(options\)/);
-  assert.match(shellHelpersSource, /return async function waitForEditorRequiredGlobals\(\)/);
+test('editor shell guards sub-module exposes required global waiter factory', () => {
+  assert.match(shellGuardsSource, /createEditorRequiredGlobalWaiter:\s*function\(options\)/);
+  assert.match(shellGuardsSource, /return async function waitForEditorRequiredGlobals\(\)/);
 });
 
 test('required global waiter preserves default global wait order', async () => {
@@ -77,7 +79,7 @@ test('editor no longer owns inline required global wait sequence', () => {
 
 test('required global waiter slice avoids runtime behavior changes', () => {
   assert.match(editorSource, /createEditorStartupDependencyWaiter\(\{\s*log,\s*reportError\s*\}\)/);
-  assert.match(editorSource, /createEditorStartupContext\(\{/);
-  assert.match(editorSource, /createEditorRefreshSaveRuntime\(\{/);
+  assert.match(editorSource, /createEditorStartupContext\({/);
+  assert.match(editorSource, /createEditorRefreshSaveRuntime\({/);
   assert.doesNotMatch(editorSource, /pan\/drag lifecycle/);
 });
