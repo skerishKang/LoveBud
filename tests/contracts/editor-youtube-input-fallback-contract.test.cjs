@@ -51,6 +51,10 @@ test('YouTube fallback preserves validation order and regex checks', () => {
 test('editor.js delegates getYouTubeInputErrorMessage directly from deps', () => {
   assert.match(
     editorSource,
+    /deps\.getYouTubeInputErrorMessage/
+  );
+  assert.doesNotMatch(
+    editorSource,
     /const\s+getYouTubeInputErrorMessage\s*=\s*deps\.getYouTubeInputErrorMessage;/
   );
   assert.doesNotMatch(
@@ -78,6 +82,6 @@ test('editor no longer owns local YouTube validation body inside wrapper', () =>
 test('memory form keeps YouTube input error message injection intact', () => {
   assert.match(
     editorSource,
-    /getYouTubeInputErrorMessage:\s*\(rawUrl\)\s*=>\s*getYouTubeInputErrorMessage\(i18n,\s*rawUrl\)/
+    /getYouTubeInputErrorMessage:\s*\(rawUrl\)\s*=>\s*deps\.getYouTubeInputErrorMessage\(i18n,\s*rawUrl\)/
   );
 });

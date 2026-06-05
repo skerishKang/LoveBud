@@ -40,7 +40,7 @@ test('editor entry compatibility — shellHelpers and root helpers resolved excl
   assert.ok(depsIndex < shellAliasIndex, 'shellHelpers alias must come after deps resolution');
 
   // rootUtils intermediate alias has been removed; root helpers read directly from deps
-  assert.match(editor, /const getYouTubeInputErrorMessage = deps\.getYouTubeInputErrorMessage;/);
+  assert.match(editor, /deps\.getYouTubeInputErrorMessage/);
   assert.match(editor, /deps\.findRootMemory/);
   assert.match(editor, /deps\.getCanonicalRootId/);
   assert.match(editor, /deps\.isRootMemory/);
