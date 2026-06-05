@@ -45,7 +45,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const createEditorStartupContext = deps.createEditorStartupContext;
     const showToast = deps.showToast;
     const i18n = deps.i18n;
-    const redirectToEditorLogin = deps.redirectToEditorLogin;
     const safeI18nText = deps.safeI18nText;
     if (typeof deps.registerEditorAuthStart !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorPageHelpers.registerEditorAuthStart missing'); return; }
     deps.applyEditorShellCopy(safeI18nText, i18n);
@@ -220,7 +219,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 createDefaultTreeTitle: () => safeI18nText(i18n, 'default_tree_title', '러브트리'),
                 getConfirmedSessionUser: deps.getConfirmedSessionUser,
                 showToast,
-                redirectToEditorLogin,
+                redirectToEditorLogin: deps.redirectToEditorLogin,
                 buildTreeLoadErrorCopy: deps.buildTreeLoadErrorCopy,
                 renderTreeLoadError: deps.renderTreeLoadError,
                 markEditorReady,
@@ -608,7 +607,7 @@ document.addEventListener('DOMContentLoaded', () => {
     deps.registerEditorAuthStart({
         windowRef: window,
         startEditor: startEditor,
-        redirectToEditorLogin: redirectToEditorLogin,
+        redirectToEditorLogin: deps.redirectToEditorLogin,
         readConfirmedAuthCache: deps.readConfirmedAuthCache
     });
 });
