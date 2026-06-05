@@ -27,7 +27,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const deps = entryDependenciesResult.deps;
     const shellHelpers = deps.shellHelpers;
     const editorSaveStatus = deps.editorSaveStatus;
-    const editorPageHelpers = deps.editorPageHelpers;
     const editorTreeHelpers = deps.editorTreeHelpers;
     const editorSelectionUI = deps.editorSelectionUI;
     const editorBindings = deps.editorBindings;
@@ -352,7 +351,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 getSelectedNodeId: () => selectedNodeId,
                 createInitialMemory,
                 getTreeId: () => treeId,
-                editorPageHelpers,
+                editorPageHelpers: deps.editorPageHelpers,
                 getEditorBasePath: deps.getEditorBasePath,
                 locationRef: window.location,
                 reportError
