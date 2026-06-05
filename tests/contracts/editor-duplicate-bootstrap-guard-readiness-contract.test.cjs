@@ -85,7 +85,8 @@ test('resolver-owned aliases now read directly from deps in editor entry', () =>
 
   assert.match(editor, /const showToast = deps\.showToast;/);
   assert.match(editor, /const i18n = deps\.i18n;/);
-  assert.match(editor, /const getEditorBasePath = deps\.getEditorBasePath;/);
+  assert.match(editor, /getEditorBasePath:\s*deps\.getEditorBasePath/);
+  assert.doesNotMatch(editor, /const getEditorBasePath = deps\.getEditorBasePath;/);
   assert.match(editor, /const redirectToEditorLogin = deps\.redirectToEditorLogin;/);
   assert.match(editor, /const safeI18nText = deps\.safeI18nText;/);
   // syncCurrentTreeData and resolveParentIdForCreate are inlined at call site
