@@ -54,10 +54,10 @@ test('editor entry compatibility — editor-specific modules resolved exclusivel
   const editor = read('js/editor.js');
 
   assert.match(editor, /const editorSelectionUI = deps\.editorSelectionUI;/);
-  assert.match(editor, /const editorPageEventBindings = deps\.editorPageEventBindings;/);
-  assert.match(editor, /const editorRefreshSaveRuntime = deps\.editorRefreshSaveRuntime;/);
-  assert.match(editor, /const editorShellCopyApplier = deps\.editorShellCopyApplier;/);
-  assert.match(editor, /const editorDomRefsBuilder = deps\.editorDomRefsBuilder;/);
+  assert.doesNotMatch(editor, /const editorPageEventBindings = deps\.editorPageEventBindings;/);
+  assert.doesNotMatch(editor, /const editorRefreshSaveRuntime = deps\.editorRefreshSaveRuntime;/);
+  assert.doesNotMatch(editor, /const editorShellCopyApplier = deps\.editorShellCopyApplier;/);
+  assert.doesNotMatch(editor, /const editorDomRefsBuilder = deps\.editorDomRefsBuilder;/);
 
   assert.doesNotMatch(editor, /window\.LoveBudEditorSelectionUI/);
   assert.doesNotMatch(editor, /window\.LoveBudEditorPageEventBindings/);
