@@ -27,7 +27,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const deps = entryDependenciesResult.deps;
     const shellHelpers = deps.shellHelpers;
     const editorTreeHelpers = deps.editorTreeHelpers;
-    const editorDataLoader = deps.editorDataLoader;
     const bindEditorPageEvents = deps.bindEditorPageEvents;
     const runEditorInitialLoadFlow = deps.runEditorInitialLoadFlow;
     const createEditorRefreshSaveRuntime = deps.createEditorRefreshSaveRuntime;
@@ -210,7 +209,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderTreeLoadError: deps.renderTreeLoadError,
                 markEditorReady,
                 syncCurrentTreeData: deps.syncCurrentTreeData,
-                editorDataLoader,
+                editorDataLoader: deps.editorDataLoader,
                 sharedNormalize: window.LoveBudNormalize?.normalizeMemory,
                 escapeHtml: deps.escapeHtml,
                 log,
@@ -453,7 +452,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const { calcPosition, drawBranch, drawNode, initCanvas } = editorCanvas;
 
             const refreshSaveRuntime = createEditorRefreshSaveRuntime({
-                log, reportError, editorDataLoader, treeId, apiClient: window.apiClient, normalizeMemory, treeMemories,
+                log, reportError, editorDataLoader: deps.editorDataLoader, treeId, apiClient: window.apiClient, normalizeMemory, treeMemories,
                 getCurrentEditingMemory: () => currentEditingMemory, setCurrentEditingMemory: (value) => { currentEditingMemory = value; },
                 isRootMemory: deps.isRootMemory, canonicalRootId, updateDetailPanel, updateSidebarStatus, initCanvas, exposeRefreshMemoriesBridge: deps.exposeRefreshMemoriesBridge,
                 resolveSaveStatusTimeFormatter, editorSaveStatus: deps.editorSaveStatus, i18n: deps.i18n, createSaveStatusOrchestrationFallback: deps.createSaveStatusOrchestrationFallback, saveStatusOrchestrationHelper: window.LoveBudEditorSaveStatusOrchestration || {}
