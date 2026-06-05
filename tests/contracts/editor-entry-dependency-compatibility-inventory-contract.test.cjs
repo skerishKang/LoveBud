@@ -53,7 +53,7 @@ test('editor entry compatibility — shellHelpers and root helpers resolved excl
 test('editor entry compatibility — editor-specific modules resolved exclusively from deps', () => {
   const editor = read('js/editor.js');
 
-  assert.match(editor, /const editorSelectionUI = deps\.editorSelectionUI;/);
+  assert.doesNotMatch(editor, /const editorSelectionUI = deps\.editorSelectionUI;/);
   assert.doesNotMatch(editor, /const editorPageEventBindings = deps\.editorPageEventBindings;/);
   assert.doesNotMatch(editor, /const editorRefreshSaveRuntime = deps\.editorRefreshSaveRuntime;/);
   assert.doesNotMatch(editor, /const editorShellCopyApplier = deps\.editorShellCopyApplier;/);

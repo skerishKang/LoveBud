@@ -28,7 +28,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const shellHelpers = deps.shellHelpers;
     const editorSaveStatus = deps.editorSaveStatus;
     const editorTreeHelpers = deps.editorTreeHelpers;
-    const editorSelectionUI = deps.editorSelectionUI;
     const editorBindings = deps.editorBindings;
     const editorDataLoader = deps.editorDataLoader;
     const bindEditorPageEvents = deps.bindEditorPageEvents;
@@ -306,7 +305,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const selectNode = createEditorSelectNodeHandler({
                 getEditorCanvas: () => editorCanvas,
                 getSaveStatusData: () => saveStatusData,
-                editorSelectionUI,
+                editorSelectionUI: deps.editorSelectionUI,
                 editorSaveStatus,
                 setSelectedNodeId: (value) => { selectedNodeId = value; },
                 setCurrentEditingMemory: (value) => { currentEditingMemory = value; },
