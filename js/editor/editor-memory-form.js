@@ -462,10 +462,53 @@ function createEditorMemoryForm(deps) {
         commitMemoryToTree(createdMemory, useApi);
     };
 
+    const addMemoryFromScoutPayload = async (payload, draft) => {
+        if (canEdit === false) return;
+
+        // Switch to text mode - Scout payload is text-based, not YouTube link
+        currentInputMode = 'text';
+
+        // Reset form values first
+        resetFormValues();
+
+        // Populate form fields from Scout payload
+        // Keep urlInput empty - existing link mode expects YouTube URLs
+        if (refs.urlInput) refs.urlInput.value = '';
+
+        // Set title
+        const title = payload.title || (draft && draft.excerpt ? draft.excerpt.slice(0, 50) : '') || 'Scout moment';
+        if (refs.titleInput) refs.titleInput.value = title;
+
+        // Build memo with attribution
+        let memoParts = [];
+        if (draft && draft.memo) memoParts.push(draft.memo);
+        if (payload.sourceUrl) memoParts.push(`Source: ${payload.sourceUrl}`);
+        if (draft && draft.emotionTags && draft.emotionTags.length > 0) {
+            memoParts.push(`Tags: ${draft.emotionTags.join(', ')}`);
+        }
+        memoParts.push('Saved via LoveBud Scout');
+        const fullMemo = memoParts.join('\n\n');
+        if (refs.memoInput) refs.memoInput.value = fullMemo;
+
+        // Show form and submit via existing flow
+        const form = refs.addMemoryForm;
+        if (!form) return;
+        applyFormOpenStyles();
+        setEmptyGuideSuppressed(true);
+        isFormOpen = true;
+
+        // No preview for Scout - hide link preview
+        hideLinkPreview();
+
+        // Submit using the existing addMemoryFromForm logic
+        await addMemoryFromForm();
+    };
+
     return {
         showAddMemoryForm,
         hideAddMemoryForm,
         addMemoryFromForm,
+        addMemoryFromScoutPayload,
         isFormOpen: () => isFormOpen,
         enrichPayloadChannelMetadata
     };

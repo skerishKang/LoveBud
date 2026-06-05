@@ -48,10 +48,10 @@ test('page event status dependency delegation preserves event binding payload', 
 });
 
 test('page event status dependency slice leaves runtime and canvas boundaries intact', () => {
-  assert.match(editorSource, /const refreshSaveRuntime\s*=\s*createEditorRefreshSaveRuntime\(\{/);
-  assert.match(editorSource, /memoryActions\s*=\s*window\.createEditorMemoryActions\(\{/);
-  assert.match(editorSource, /const memoryForm\s*=\s*window\.createEditorMemoryForm\(\{/);
-  assert.match(editorSource, /const \{ showAddMemoryForm, hideAddMemoryForm, addMemoryFromForm \}\s*=\s*memoryForm;/);
+  assert.match(editorSource, /const refreshSaveRuntime\s*=\s*createEditorRefreshSaveRuntime\(/);
+  assert.match(editorSource, /memoryActions\s*=\s*window\.createEditorMemoryActions\(/);
+  assert.match(editorSource, /const memoryForm\s*=\s*window\.createEditorMemoryForm\(/);
+  assert.match(editorSource, /const \{ showAddMemoryForm, hideAddMemoryForm, addMemoryFromForm, addMemoryFromScoutPayload \}\s*=\s*memoryForm;/);
   assert.match(editorSource, /initCanvas\(\);/);
   assert.match(editorSource, /updateCanvasEmptyGuide\(\);/);
   assert.doesNotMatch(editorSource, /pan\/drag lifecycle/);
