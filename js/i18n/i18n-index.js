@@ -19,7 +19,8 @@
     window.i18nDetail,
     window.i18nEditor,
     window.i18nMyTrees,
-    window.i18nIndex
+    window.i18nIndex,
+    window.i18nScout
   ];
 
   dictModules.forEach(function(module) {

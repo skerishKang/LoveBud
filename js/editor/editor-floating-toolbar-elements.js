@@ -38,7 +38,8 @@
       forkBtn: byId(ids.forkBtn),
       deleteAction: byId(ids.deleteAction),
       shareAction: byId(ids.shareAction),
-      focusAction: byId(ids.focusAction)
+      focusAction: byId(ids.focusAction),
+      scoutAction: byId(ids.scoutAction)
     };
 
     if (!elements.editBtn || !elements.continueBtn || !elements.viewBtn) return null;

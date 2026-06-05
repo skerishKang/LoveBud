@@ -30,6 +30,7 @@
   const DELETE_ACTION_ID = 'ftbDeleteAction';
   const SHARE_ACTION_ID = 'ftbShareAction';
   const FOCUS_ACTION_ID = 'ftbFocusAction';
+  const SCOUT_ACTION_ID = 'ftbScoutAction';
   const SELECTED_CLASS = 'selected';
   const NODE_SELECTOR = '.memory-node';
   const IS_VISIBLE_CLASS = 'is-visible';
@@ -70,7 +71,8 @@
         forkBtn: FORK_BTN_ID,
         deleteAction: DELETE_ACTION_ID,
         shareAction: SHARE_ACTION_ID,
-        focusAction: FOCUS_ACTION_ID
+        focusAction: FOCUS_ACTION_ID,
+        scoutAction: SCOUT_ACTION_ID
       })
       : null;
 
@@ -89,6 +91,7 @@
     var deleteAction = elements.deleteAction;
     var shareAction = elements.shareAction;
     var focusAction = elements.focusAction;
+    var scoutAction = elements.scoutAction;
 
     // Prevent double-init
     if (toolbar.dataset.ftbInitialized === '1') return;
@@ -238,7 +241,9 @@
         moreBtn: moreBtn,
         deleteAction: deleteAction,
         shareAction: shareAction,
-        focusAction: focusAction
+        focusAction: focusAction,
+        scoutAction: scoutAction,
+        selectedNode: getSelectedNodeEl()
       });
     }
 
