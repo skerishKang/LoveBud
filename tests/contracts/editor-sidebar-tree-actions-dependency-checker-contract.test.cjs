@@ -41,7 +41,7 @@ test('sidebar tree actions dependency delegation preserves updater construction 
 });
 
 test('sidebar tree actions dependency slice leaves upstream detail and downstream runtime boundaries intact', () => {
-  assert.match(editorSource, /const updateTreeVisibility\s*=\s*editorTreeHelpers\.createTreeVisibilityUpdater\(/);
+  assert.match(editorSource, /const updateTreeVisibility\s*=\s*deps\.editorTreeHelpers\.createTreeVisibilityUpdater\(/);
   assert.match(editorSource, /window\.createEditorDetailUI\(/);
   assert.match(editorSource, /exposeDetailPanelUpdater\(\{ updateDetailPanel \}\)/);
   assert.match(editorSource, /createEditorRefreshSaveRuntime\(/);

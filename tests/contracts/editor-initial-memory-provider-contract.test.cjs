@@ -25,7 +25,7 @@ test('editor entrypoint delegates initial memory provider construction to shell 
   assert.match(editorSource, /const createInitialMemory\s*=\s*createEditorInitialMemoryProvider\(/);
   assert.match(editorSource, /getTreeMemories:\s*\(\)\s*=>\s*treeMemories\(\)/);
   assert.match(editorSource, /findRootMemory,/);
-  assert.match(editorSource, /editorTreeHelpers,/);
+  assert.match(editorSource, /editorTreeHelpers: deps\.editorTreeHelpers,/);
 });
 
 test('editor keeps initial memory provider guard before factory call', () => {

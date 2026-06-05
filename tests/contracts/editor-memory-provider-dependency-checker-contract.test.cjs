@@ -41,7 +41,7 @@ test('editor no longer owns inline memory provider dependency checks', () => {
 
 test('memory provider dependency delegation preserves provider construction paths', () => {
   assert.match(editorSource, /const createInitialMemory\s*=\s*createEditorInitialMemoryProvider\(\{/);
-  assert.match(editorSource, /editorTreeHelpers,\s*getTreeMemories:\s*\(\)\s*=>\s*treeMemories\(\),\s*findRootMemory:\s*deps\.findRootMemory,\s*canonicalRootId,\s*treeId,\s*i18n:\s*deps\.i18n/s);
+  assert.match(editorSource, /editorTreeHelpers:\s*deps\.editorTreeHelpers,\s*getTreeMemories:\s*\(\)\s*=>\s*treeMemories\(\),\s*findRootMemory:\s*deps\.findRootMemory,\s*canonicalRootId,\s*treeId,\s*i18n:\s*deps\.i18n/s);
 
   assert.match(editorSource, /const nextMemoryId\s*=\s*createEditorNextMemoryIdProvider\(\{/);
   assert.match(editorSource, /nextMemoryIdFromMemories:\s*deps\.nextMemoryIdFromMemories,\s*getTreeMemories:\s*\(\)\s*=>\s*treeMemories\(\)/s);

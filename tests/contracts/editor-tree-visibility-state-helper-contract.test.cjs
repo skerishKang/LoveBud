@@ -52,7 +52,7 @@ test('visibility state helper preserves current tree merge semantics', () => {
 });
 
 test('editor.js delegates updateTreeVisibility to createTreeVisibilityUpdater factory', () => {
-  assert.match(editorSource, /editorTreeHelpers\.createTreeVisibilityUpdater\(\{/);
+  assert.match(editorSource, /deps\.editorTreeHelpers\.createTreeVisibilityUpdater\(\{/);
   assert.doesNotMatch(editorSource, /const updateTreeVisibility = async \(nextVisibility\) => \{/);
 });
 
@@ -60,7 +60,7 @@ test('editor.js passes correct options to createTreeVisibilityUpdater', () => {
   assert.match(editorSource, /canEdit,/);
   assert.match(editorSource, /getTreeId:\s*\(\)\s*=>\s*treeId/);
   assert.match(editorSource, /getApiClient:\s*\(\)\s*=>\s*window\.apiClient/);
-  assert.match(editorSource, /applyUpdatedTreeVisibility:\s*editorTreeHelpers\.applyUpdatedTreeVisibility/);
+  assert.match(editorSource, /applyUpdatedTreeVisibility:\s*deps\.editorTreeHelpers\.applyUpdatedTreeVisibility/);
   assert.match(editorSource, /getCurrentTreeData:\s*\(\)\s*=>\s*window\.currentTreeData\s*\|\|\s*\{\}/);
   assert.match(editorSource, /updateSidebarStatus,/);
   assert.match(editorSource, /getCurrentEditingMemory:\s*\(\)\s*=>\s*currentEditingMemory/);

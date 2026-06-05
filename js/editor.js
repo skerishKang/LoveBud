@@ -26,7 +26,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const deps = entryDependenciesResult.deps;
     const shellHelpers = deps.shellHelpers;
-    const editorTreeHelpers = deps.editorTreeHelpers;
     const bindEditorPageEvents = deps.bindEditorPageEvents;
     const runEditorInitialLoadFlow = deps.runEditorInitialLoadFlow;
     const createEditorRefreshSaveRuntime = deps.createEditorRefreshSaveRuntime;
@@ -251,7 +250,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 ensureStartEditorDependency,
                 dependencies: [
                     {
-                        value: editorTreeHelpers.createInitialMemory,
+                        value: deps.editorTreeHelpers.createInitialMemory,
                         message: 'LoveBudEditorTreeHelpers.createInitialMemory missing'
                     },
                     {
@@ -264,7 +263,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!checkEditorMemoryProviderDependencies()) return;
 
             const createInitialMemory = createEditorInitialMemoryProvider({
-                editorTreeHelpers,
+                editorTreeHelpers: deps.editorTreeHelpers,
                 getTreeMemories: () => treeMemories(),
                 findRootMemory: deps.findRootMemory,
                 canonicalRootId,
@@ -353,11 +352,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 reportError
             });
 
-            const updateTreeVisibility = editorTreeHelpers.createTreeVisibilityUpdater({
+            const updateTreeVisibility = deps.editorTreeHelpers.createTreeVisibilityUpdater({
                 canEdit,
                 getTreeId: () => treeId,
                 getApiClient: () => window.apiClient,
-                applyUpdatedTreeVisibility: editorTreeHelpers.applyUpdatedTreeVisibility,
+                applyUpdatedTreeVisibility: deps.editorTreeHelpers.applyUpdatedTreeVisibility,
                 getCurrentTreeData: () => window.currentTreeData || {},
                 updateSidebarStatus,
                 getCurrentEditingMemory: () => currentEditingMemory,
