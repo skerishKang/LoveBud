@@ -247,13 +247,55 @@
         };
     }
 
+    // ─── Availability Helper ───────────────────────────────────────────────────────
+
+    /**
+     * Checks the availability of Scout suggestion providers.
+     * Used by UI to determine if suggestions are available, pending configuration, or unavailable.
+     *
+     * @param {string} [mode] - Optional mode to check: 'stub' (default), 'live', or any future provider type
+     * @returns {Object} Availability info with available (boolean), mode (string), message (string)
+     */
+    function getScoutSuggestionAvailability(mode) {
+        // Default to stub mode if not specified
+        const requestedMode = mode || 'stub';
+
+        // Stub provider is always available (deterministic, no network, no config)
+        if (requestedMode === 'stub') {
+            return {
+                available: true,
+                mode: 'stub',
+                message: 'AI 제안이 활성화되었습니다. (스텁 모드)'
+            };
+        }
+
+        // Future live provider modes are pending configuration
+        // In the future, this would check for valid API keys, endpoint config, etc.
+        // For now, any non-stub mode returns pending_configuration
+        if (requestedMode === 'live' || requestedMode !== 'stub') {
+            return {
+                available: false,
+                mode: 'pending_configuration',
+                message: 'AI 제안 설정이 아직 준비되지 않았습니다. 직접 입력 후 저장할 수 있습니다.'
+            };
+        }
+
+        // Fallback - should not reach here
+        return {
+            available: false,
+            mode: 'unavailable',
+            message: 'AI 제안을 사용할 수 없습니다. 직접 입력 후 저장할 수 있습니다.'
+        };
+    }
+
     // ─── Export ───────────────────────────────────────────────────────────────
 
     window.LoveBudScoutSuggestionProvider = {
         createScoutSuggestionProvider,
         createScoutStubSuggestionProvider,
         normalizeScoutSuggestionInput,
-        normalizeScoutSuggestionOutput
+        normalizeScoutSuggestionOutput,
+        getScoutSuggestionAvailability
     };
 
     scoutSuggestionDebugLog('[LoveBudScoutSuggestionProvider] Module loaded');
