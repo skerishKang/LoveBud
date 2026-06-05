@@ -4,19 +4,20 @@ const test = require('node:test');
 
 const editorSource = fs.readFileSync('js/editor.js', 'utf8');
 const shellHelpersSource = fs.readFileSync('js/editor/editor-shell-helpers.js', 'utf8');
+const shellCanvasUISource = fs.readFileSync('js/editor/editor-shell-canvas-ui.js', 'utf8');
 
-test('editor shell helpers expose selected moment focus handler factory', () => {
-  assert.match(shellHelpersSource, /createSelectedMomentFocusHandler:\s*function\(options\)/);
-  assert.match(shellHelpersSource, /var getEditorCanvas\s*=\s*opts\.getEditorCanvas/);
-  assert.match(shellHelpersSource, /var getSelectedNodeId\s*=\s*opts\.getSelectedNodeId/);
-  assert.match(shellHelpersSource, /return function focusSelectedMoment\(\)/);
+test('canvas ui fix editor shell helpers expose selected moment focus handler factory', () => {
+  assert.match(shellCanvasUISource, /createSelectedMomentFocusHandler:\s*function\(options\)/);
+  assert.match(shellCanvasUISource, /var getEditorCanvas\s*=\s*opts\.getEditorCanvas/);
+  assert.match(shellCanvasUISource, /var getSelectedNodeId\s*=\s*opts\.getSelectedNodeId/);
+  assert.match(shellCanvasUISource, /return function focusSelectedMoment\(\)/);
 });
 
-test('selected moment focus helper preserves focusNodeById guard', () => {
-  assert.match(shellHelpersSource, /var editorCanvas\s*=\s*getEditorCanvas\(\)/);
-  assert.match(shellHelpersSource, /var selectedNodeId\s*=\s*getSelectedNodeId\(\)/);
-  assert.match(shellHelpersSource, /editorCanvas && typeof editorCanvas\.focusNodeById === 'function' && selectedNodeId/);
-  assert.match(shellHelpersSource, /editorCanvas\.focusNodeById\(selectedNodeId\)/);
+test('canvas ui fix selected moment focus helper preserves focusNodeById guard', () => {
+  assert.match(shellCanvasUISource, /var editorCanvas\s*=\s*getEditorCanvas\(\)/);
+  assert.match(shellCanvasUISource, /var selectedNodeId\s*=\s*getSelectedNodeId\(\)/);
+  assert.match(shellCanvasUISource, /editorCanvas && typeof editorCanvas\.focusNodeById === 'function' && selectedNodeId/);
+  assert.match(shellCanvasUISource, /editorCanvas\.focusNodeById\(selectedNodeId\)/);
 });
 
 test('editor delegates selected moment focus handler through required shell helper', () => {

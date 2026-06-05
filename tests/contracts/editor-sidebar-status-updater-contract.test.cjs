@@ -4,20 +4,21 @@ const test = require('node:test');
 
 const editorSource = fs.readFileSync('js/editor.js', 'utf8');
 const shellHelpersSource = fs.readFileSync('js/editor/editor-shell-helpers.js', 'utf8');
+const shellCanvasUISource = fs.readFileSync('js/editor/editor-shell-canvas-ui.js', 'utf8');
 
-test('editor shell helpers expose sidebar status updater factory', () => {
-  assert.match(shellHelpersSource, /createEditorSidebarStatusUpdater:\s*function\(options\)/);
-  assert.match(shellHelpersSource, /return function updateSidebarStatus\(\)/);
+test('canvas ui fix editor shell helpers expose sidebar status updater factory', () => {
+  assert.match(shellCanvasUISource, /createEditorSidebarStatusUpdater:\s*function\(options\)/);
+  assert.match(shellCanvasUISource, /return function updateSidebarStatus\(\)/);
 });
 
-test('sidebar status updater preserves call order', () => {
-  const start = shellHelpersSource.indexOf('createEditorSidebarStatusUpdater: function(options)');
+test('canvas ui fix sidebar status updater preserves call order', () => {
+  const start = shellCanvasUISource.indexOf('createEditorSidebarStatusUpdater: function(options)');
   assert.notEqual(start, -1, 'sidebar status updater factory must exist');
 
-  const end = shellHelpersSource.indexOf('    },', shellHelpersSource.indexOf('return function updateSidebarStatus()', start));
+  const end = shellCanvasUISource.indexOf('    },', shellCanvasUISource.indexOf('return function updateSidebarStatus()', start));
   assert.notEqual(end, -1, 'sidebar status updater factory must close');
 
-  const block = shellHelpersSource.slice(start, end);
+  const block = shellCanvasUISource.slice(start, end);
   const baseIndex = block.indexOf('updateSidebarStatusBase();');
   const guideIndex = block.indexOf('updateCanvasEmptyGuide();');
   const actionsIndex = block.indexOf('updateSidebarTreeActions();');

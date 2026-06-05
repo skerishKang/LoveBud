@@ -4,6 +4,7 @@ const test = require('node:test');
 const vm = require('node:vm');
 
 const shellHelpersSource = fs.readFileSync('js/editor/editor-shell-helpers.js', 'utf8');
+const shellMemorySource = fs.readFileSync('js/editor/editor-shell-memory.js', 'utf8');
 const editorSource = fs.readFileSync('js/editor.js', 'utf8');
 
 function loadShellHelpers() {
@@ -15,24 +16,25 @@ function loadShellHelpers() {
   };
   context.window.window = context.window;
   vm.createContext(context);
+  vm.runInContext(shellMemorySource, context);
   vm.runInContext(shellHelpersSource, context);
   return context.window.LoveBudEditorShellHelpers;
 }
 
-test('shell helpers expose current moment detail opener factory contract', () => {
-  assert.match(shellHelpersSource, /createCurrentMomentDetailOpener:\s*function\(options\)/);
-  assert.match(shellHelpersSource, /var getCurrentEditingMemory\s*=\s*opts\.getCurrentEditingMemory/);
-  assert.match(shellHelpersSource, /var getTreeMemories\s*=\s*opts\.getTreeMemories/);
-  assert.match(shellHelpersSource, /var getSelectedNodeId\s*=\s*opts\.getSelectedNodeId/);
-  assert.match(shellHelpersSource, /var createInitialMemory\s*=\s*opts\.createInitialMemory/);
-  assert.match(shellHelpersSource, /var getTreeId\s*=\s*opts\.getTreeId/);
-  assert.match(shellHelpersSource, /var editorPageHelpers\s*=\s*opts\.editorPageHelpers/);
+test('memory fix shell helpers expose current moment detail opener factory contract', () => {
+  assert.match(shellMemorySource, /createCurrentMomentDetailOpener:\s*function\(options\)/);
+  assert.match(shellMemorySource, /var getCurrentEditingMemory\s*=\s*opts\.getCurrentEditingMemory/);
+  assert.match(shellMemorySource, /var getTreeMemories\s*=\s*opts\.getTreeMemories/);
+  assert.match(shellMemorySource, /var getSelectedNodeId\s*=\s*opts\.getSelectedNodeId/);
+  assert.match(shellMemorySource, /var createInitialMemory\s*=\s*opts\.createInitialMemory/);
+  assert.match(shellMemorySource, /var getTreeId\s*=\s*opts\.getTreeId/);
+  assert.match(shellMemorySource, /var editorPageHelpers\s*=\s*opts\.editorPageHelpers/);
 });
 
-test('current moment detail opener preserves active memory selection order', () => {
-  const currentIndex = shellHelpersSource.indexOf('getCurrentEditingMemory()');
-  const selectedIndex = shellHelpersSource.indexOf('treeMemories.find');
-  const initialIndex = shellHelpersSource.indexOf('createInitialMemory()');
+test('memory fix current moment detail opener preserves active memory selection order', () => {
+  const currentIndex = shellMemorySource.indexOf('getCurrentEditingMemory()');
+  const selectedIndex = shellMemorySource.indexOf('treeMemories.find');
+  const initialIndex = shellMemorySource.indexOf('createInitialMemory()');
 
   assert.ok(currentIndex !== -1);
   assert.ok(selectedIndex !== -1);

@@ -4,21 +4,22 @@ const test = require('node:test');
 
 const editorSource = fs.readFileSync('js/editor.js', 'utf8');
 const shellHelpersSource = fs.readFileSync('js/editor/editor-shell-helpers.js', 'utf8');
+const shellCanvasUISource = fs.readFileSync('js/editor/editor-shell-canvas-ui.js', 'utf8');
 
-test('editor shell helpers expose canvas empty guide updater factory', () => {
-  assert.match(shellHelpersSource, /createEditorCanvasEmptyGuideUpdater:\s*function\(options\)/);
-  assert.match(shellHelpersSource, /emptyGuideUIHelper\.createCanvasEmptyGuideUpdater/);
+test('canvas ui fix editor shell helpers expose canvas empty guide updater factory', () => {
+  assert.match(shellCanvasUISource, /createEditorCanvasEmptyGuideUpdater:\s*function\(options\)/);
+  assert.match(shellCanvasUISource, /emptyGuideUIHelper\.createCanvasEmptyGuideUpdater/);
 });
 
-test('canvas empty guide updater preserves helper call', () => {
-  assert.match(shellHelpersSource, /return emptyGuideUIHelper\.createCanvasEmptyGuideUpdater\(\{/);
-  assert.match(shellHelpersSource, /getTreeMemories:\s*getTreeMemories/);
-  assert.match(shellHelpersSource, /log:\s*log/);
+test('canvas ui fix canvas empty guide updater preserves helper call', () => {
+  assert.match(shellCanvasUISource, /return emptyGuideUIHelper\.createCanvasEmptyGuideUpdater\({/);
+  assert.match(shellCanvasUISource, /getTreeMemories:\s*getTreeMemories/);
+  assert.match(shellCanvasUISource, /log:\s*log/);
 });
 
-test('canvas empty guide updater preserves warning fallback', () => {
-  assert.match(shellHelpersSource, /return function updateCanvasEmptyGuide\(\)/);
-  assert.match(shellHelpersSource, /WARNING: LoveBudEditorEmptyGuideUI\.createCanvasEmptyGuideUpdater missing/);
+test('canvas ui fix canvas empty guide updater preserves warning fallback', () => {
+  assert.match(shellCanvasUISource, /return function updateCanvasEmptyGuide\(\)/);
+  assert.match(shellCanvasUISource, /WARNING: LoveBudEditorEmptyGuideUI\.createCanvasEmptyGuideUpdater missing/);
 });
 
 test('editor entrypoint delegates canvas empty guide updater construction to shell helper', () => {

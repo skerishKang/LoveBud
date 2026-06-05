@@ -4,31 +4,32 @@ const test = require('node:test');
 
 const editorSource = fs.readFileSync('js/editor.js', 'utf8');
 const shellHelpersSource = fs.readFileSync('js/editor/editor-shell-helpers.js', 'utf8');
+const shellCanvasUISource = fs.readFileSync('js/editor/editor-shell-canvas-ui.js', 'utf8');
 
-test('editor shell helpers expose select node handler factory', () => {
-  assert.match(shellHelpersSource, /createEditorSelectNodeHandler:\s*function\(options\)/);
-  assert.match(shellHelpersSource, /return function selectNode\(el,\s*data\)/);
-  assert.match(shellHelpersSource, /if \(!data\) return;/);
+test('canvas ui fix editor shell helpers expose select node handler factory', () => {
+  assert.match(shellCanvasUISource, /createEditorSelectNodeHandler:\s*function\(options\)/);
+  assert.match(shellCanvasUISource, /return function selectNode\(el,\s*data\)/);
+  assert.match(shellCanvasUISource, /if \(!data\) return;/);
 });
 
-test('select node handler preserves state update callbacks', () => {
-  assert.match(shellHelpersSource, /setSelectedNodeId\(data\.id\)/);
-  assert.match(shellHelpersSource, /setCurrentEditingMemory\(data\)/);
+test('canvas ui fix select node handler preserves state update callbacks', () => {
+  assert.match(shellCanvasUISource, /setSelectedNodeId\(data\.id\)/);
+  assert.match(shellCanvasUISource, /setCurrentEditingMemory\(data\)/);
 });
 
-test('select node handler preserves delegated UI and save-status flow', () => {
-  assert.match(shellHelpersSource, /editorSelectionUI\.applySelectedMemoryNode\(el\)/);
-  assert.match(shellHelpersSource, /LoveBudEditorSelectionUI\.applySelectedMemoryNode missing/);
-  assert.match(shellHelpersSource, /editorSaveStatus\.hideSaveStatusIndicator\(getSaveStatusData\(\)\)/);
-  assert.match(shellHelpersSource, /updateDetailPanel\(data\)/);
-  assert.match(shellHelpersSource, /updateFocusSelectedBtn\(\)/);
-  assert.match(shellHelpersSource, /setDetailEmptyState\(false\)/);
+test('canvas ui fix select node handler preserves delegated UI and save-status flow', () => {
+  assert.match(shellCanvasUISource, /editorSelectionUI\.applySelectedMemoryNode\(el\)/);
+  assert.match(shellCanvasUISource, /LoveBudEditorSelectionUI\.applySelectedMemoryNode missing/);
+  assert.match(shellCanvasUISource, /editorSaveStatus\.hideSaveStatusIndicator\(getSaveStatusData\(\)\)/);
+  assert.match(shellCanvasUISource, /updateDetailPanel\(data\)/);
+  assert.match(shellCanvasUISource, /updateFocusSelectedBtn\(\)/);
+  assert.match(shellCanvasUISource, /setDetailEmptyState\(false\)/);
 });
 
-test('select node handler preserves canvas affordance refresh guard', () => {
-  assert.match(shellHelpersSource, /var editorCanvas\s*=\s*getEditorCanvas\(\)/);
-  assert.match(shellHelpersSource, /editorCanvas && typeof editorCanvas\.updateAffordance === 'function'/);
-  assert.match(shellHelpersSource, /editorCanvas\.updateAffordance\(\)/);
+test('canvas ui fix select node handler preserves canvas affordance refresh guard', () => {
+  assert.match(shellCanvasUISource, /var editorCanvas\s*=\s*getEditorCanvas\(\)/);
+  assert.match(shellCanvasUISource, /editorCanvas && typeof editorCanvas\.updateAffordance === 'function'/);
+  assert.match(shellCanvasUISource, /editorCanvas\.updateAffordance\(\)/);
 });
 
 test('editor entrypoint delegates selectNode construction to shell helper', () => {

@@ -4,6 +4,7 @@ const test = require('node:test');
 
 const editorSource = fs.readFileSync('js/editor.js', 'utf8');
 const shellHelpersSource = fs.readFileSync('js/editor/editor-shell-helpers.js', 'utf8');
+const shellCanvasUISource = fs.readFileSync('js/editor/editor-shell-canvas-ui.js', 'utf8');
 const saveStatusSource = fs.readFileSync('js/editor/editor-save-status.js', 'utf8');
 const editorHtml = fs.readFileSync('pages/editor.html', 'utf8');
 
@@ -28,8 +29,8 @@ test('editor save status exposes selection hide helper', () => {
   assert.match(saveStatusSource, /hideSaveStatusIndicator:\s*hideSaveStatusIndicator/);
 });
 
-test('editor selectNode delegates save status hide to save status helper', () => {
-  const selectNodeBlock = extractSelectNodeBlock(shellHelpersSource);
+test('canvas ui fix editor selectNode delegates save status hide to save status helper', () => {
+  const selectNodeBlock = extractSelectNodeBlock(shellCanvasUISource);
 
   assert.match(
     selectNodeBlock,
@@ -42,8 +43,8 @@ test('editor selectNode delegates save status hide to save status helper', () =>
   );
 });
 
-test('editor selectNode no longer owns save status indicator dom hide logic', () => {
-  const selectNodeBlock = extractSelectNodeBlock(shellHelpersSource);
+test('canvas ui fix editor selectNode no longer owns save status indicator dom hide logic', () => {
+  const selectNodeBlock = extractSelectNodeBlock(shellCanvasUISource);
 
   assert.doesNotMatch(
     selectNodeBlock,
@@ -61,8 +62,8 @@ test('editor selectNode no longer owns save status indicator dom hide logic', ()
   );
 });
 
-test('editor selectNode keeps selection and detail update flow intact', () => {
-  const selectNodeBlock = extractSelectNodeBlock(shellHelpersSource);
+test('canvas ui fix editor selectNode keeps selection and detail update flow intact', () => {
+  const selectNodeBlock = extractSelectNodeBlock(shellCanvasUISource);
 
   assert.match(selectNodeBlock, /setSelectedNodeId\(data\.id\)/);
   assert.match(selectNodeBlock, /setCurrentEditingMemory\(data\)/);

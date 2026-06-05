@@ -5,18 +5,20 @@ const vm = require('node:vm');
 
 const editorSource = fs.readFileSync('js/editor.js', 'utf8');
 const shellHelpersSource = fs.readFileSync('js/editor/editor-shell-helpers.js', 'utf8');
+const shellMemorySource = fs.readFileSync('js/editor/editor-shell-memory.js', 'utf8');
 
 function loadShellHelpers() {
   const context = { window: {}, console };
   context.window.window = context.window;
   vm.createContext(context);
+  vm.runInContext(shellMemorySource, context);
   vm.runInContext(shellHelpersSource, context);
   return context.window.LoveBudEditorShellHelpers;
 }
 
-test('editor shell helpers expose next memory id provider factory', () => {
-  assert.match(shellHelpersSource, /createEditorNextMemoryIdProvider:\s*function\(options\)/);
-  assert.match(shellHelpersSource, /return function nextMemoryId\(\)/);
+test('memory fix editor shell helpers expose next memory id provider factory', () => {
+  assert.match(shellMemorySource, /createEditorNextMemoryIdProvider:\s*function\(options\)/);
+  assert.match(shellMemorySource, /return function nextMemoryId\(\)/);
 });
 
 test('next memory id provider delegates to tree helper with current memories', () => {

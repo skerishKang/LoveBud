@@ -4,22 +4,23 @@ const test = require('node:test');
 
 const editorSource = fs.readFileSync('js/editor.js', 'utf8');
 const shellHelpersSource = fs.readFileSync('js/editor/editor-shell-helpers.js', 'utf8');
+const shellCanvasUISource = fs.readFileSync('js/editor/editor-shell-canvas-ui.js', 'utf8');
 
-test('editor shell helpers expose sidebar tree actions updater factory', () => {
-  assert.match(shellHelpersSource, /createSidebarTreeActionsUpdater:\s*function\(options\)/);
-  assert.match(shellHelpersSource, /var sidebarUIHelper\s*=\s*opts\.sidebarUIHelper\s*\|\|\s*\{\}/);
-  assert.match(shellHelpersSource, /var i18n\s*=\s*opts\.i18n/);
-  assert.match(shellHelpersSource, /var safeI18nText\s*=\s*opts\.safeI18nText/);
-  assert.match(shellHelpersSource, /var getTreeId\s*=\s*opts\.getTreeId/);
-  assert.match(shellHelpersSource, /return function updateSidebarTreeActions\(\)/);
+test('canvas ui fix editor shell helpers expose sidebar tree actions updater factory', () => {
+  assert.match(shellCanvasUISource, /createSidebarTreeActionsUpdater:\s*function\(options\)/);
+  assert.match(shellCanvasUISource, /var sidebarUIHelper\s*=\s*opts\.sidebarUIHelper\s*\|\|\s*\{\}/);
+  assert.match(shellCanvasUISource, /var i18n\s*=\s*opts\.i18n/);
+  assert.match(shellCanvasUISource, /var safeI18nText\s*=\s*opts\.safeI18nText/);
+  assert.match(shellCanvasUISource, /var getTreeId\s*=\s*opts\.getTreeId/);
+  assert.match(shellCanvasUISource, /return function updateSidebarTreeActions\(\)/);
 });
 
-test('sidebar tree actions updater preserves guarded call and payload', () => {
-  assert.match(shellHelpersSource, /if \(sidebarUIHelper\.updateSidebarTreeActions\)/);
-  assert.match(shellHelpersSource, /sidebarUIHelper\.updateSidebarTreeActions\(\{/);
-  assert.match(shellHelpersSource, /i18n:\s*i18n/);
-  assert.match(shellHelpersSource, /safeI18nText:\s*safeI18nText/);
-  assert.match(shellHelpersSource, /getTreeId:\s*getTreeId/);
+test('canvas ui fix sidebar tree actions updater preserves guarded call and payload', () => {
+  assert.match(shellCanvasUISource, /if \(sidebarUIHelper\.updateSidebarTreeActions\)/);
+  assert.match(shellCanvasUISource, /sidebarUIHelper\.updateSidebarTreeActions\({/);
+  assert.match(shellCanvasUISource, /i18n:\s*i18n/);
+  assert.match(shellCanvasUISource, /safeI18nText:\s*safeI18nText/);
+  assert.match(shellCanvasUISource, /getTreeId:\s*getTreeId/);
 });
 
 test('editor delegates sidebar tree actions updater with fallback', () => {

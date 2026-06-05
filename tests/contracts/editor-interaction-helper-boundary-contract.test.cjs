@@ -3,21 +3,41 @@ const fs = require('node:fs');
 const test = require('node:test');
 
 const shellHelpersSource = fs.readFileSync('js/editor/editor-shell-helpers.js', 'utf8');
+const shellCanvasUISource = fs.readFileSync('js/editor/editor-shell-canvas-ui.js', 'utf8');
+const shellMemorySource = fs.readFileSync('js/editor/editor-shell-memory.js', 'utf8');
 const editorSource = fs.readFileSync('js/editor.js', 'utf8');
 const editorHtmlSource = fs.readFileSync('pages/editor.html', 'utf8');
 
-const interactionHelpers = [
+const canvasUIInteractionHelpers = [
   'createSelectedMomentFocusHandler',
-  'createSidebarTreeActionsUpdater',
+  'createSidebarTreeActionsUpdater'
+];
+
+const memoryInteractionHelpers = [
   'createCurrentMomentDetailOpener'
 ];
 
-test('editor shell helpers expose interaction helper boundaries', () => {
-  for (const helperName of interactionHelpers) {
+const interactionHelpers = [
+  ...canvasUIInteractionHelpers,
+  ...memoryInteractionHelpers
+];
+
+test('canvas-ui editor shell helpers expose interaction helper boundaries', () => {
+  for (const helperName of canvasUIInteractionHelpers) {
     assert.match(
-      shellHelpersSource,
+      shellCanvasUISource,
       new RegExp(`${helperName}:\\s*function\\s*\\(`),
-      `${helperName} must be exported from LoveBudEditorShellHelpers`
+      `${helperName} must be exported from LoveBudEditorShellCanvasUI`
+    );
+  }
+});
+
+test('memory editor shell helpers expose interaction helper boundaries', () => {
+  for (const helperName of memoryInteractionHelpers) {
+    assert.match(
+      shellMemorySource,
+      new RegExp(`${helperName}:\\s*function\\s*\\(`),
+      `${helperName} must be exported from LoveBudEditorShellMemory`
     );
   }
 });
@@ -84,21 +104,35 @@ test('editor entrypoint delegates missing selected moment focus helper guard bef
 });
 
 test('editor html loads shell helpers before editor entrypoint for interaction helpers', () => {
+  const canvasUIIndex = editorHtmlSource.indexOf('js/editor/editor-shell-canvas-ui.js');
+  const memoryIndex = editorHtmlSource.indexOf('js/editor/editor-shell-memory.js');
   const shellHelpersIndex = editorHtmlSource.indexOf('js/editor/editor-shell-helpers.js');
   const editorIndex = editorHtmlSource.indexOf('js/editor.js');
 
+  assert.notEqual(canvasUIIndex, -1, 'editor-shell-canvas-ui.js script must exist');
+  assert.notEqual(memoryIndex, -1, 'editor-shell-memory.js script must exist');
   assert.notEqual(shellHelpersIndex, -1, 'editor-shell-helpers.js script must exist');
   assert.notEqual(editorIndex, -1, 'editor.js script must exist');
+
+  assert.ok(canvasUIIndex < shellHelpersIndex, 'editor-shell-canvas-ui.js must load before editor-shell-helpers.js');
+  assert.ok(memoryIndex < shellHelpersIndex, 'editor-shell-memory.js must load before editor-shell-helpers.js');
   assert.ok(shellHelpersIndex < editorIndex, 'editor-shell-helpers.js must load before editor.js');
 });
 
 test('interaction helper boundary contract avoids canvas auth data and persistence modules', () => {
+  const helperToSource = {
+    'createSelectedMomentFocusHandler': shellCanvasUISource,
+    'createSidebarTreeActionsUpdater': shellCanvasUISource,
+    'createCurrentMomentDetailOpener': shellMemorySource
+  };
+
   const combinedBoundaryText = interactionHelpers
     .map((helperName) => {
-      const start = shellHelpersSource.indexOf(`${helperName}: function`);
+      const source = helperToSource[helperName];
+      const start = source.indexOf(`${helperName}: function`);
       assert.notEqual(start, -1, `${helperName} must exist`);
-      const nextExport = shellHelpersSource.indexOf('\n        ', start + helperName.length + 1);
-      return nextExport === -1 ? shellHelpersSource.slice(start) : shellHelpersSource.slice(start, nextExport);
+      const nextExport = source.indexOf('\n        ', start + helperName.length + 1);
+      return nextExport === -1 ? source.slice(start) : source.slice(start, nextExport);
     })
     .join('\n');
 
