@@ -59,7 +59,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const markEditorReady = deps.markEditorReady;
     const applyEditorEditabilityState = deps.applyEditorEditabilityState;
     const createEditorDomRefs = deps.createEditorDomRefs;
-    const createEditorDebugReporter = deps.createEditorDebugReporter;
     const createEditorStartDependencyGuard = shellHelpers.createEditorStartDependencyGuard;
     if (typeof createEditorStartDependencyGuard !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.createEditorStartDependencyGuard missing'); return; }
     const createEditorStartDependencyChecker = shellHelpers.createEditorStartDependencyChecker;
@@ -122,7 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const resolveSaveStatusTimeFormatter = deps.resolveSaveStatusTimeFormatter;
 
     const startEditor = async () => {
-        const { log, reportError } = createEditorDebugReporter();
+        const { log, reportError } = deps.createEditorDebugReporter();
 
         const ensureStartEditorDependency = createEditorStartDependencyGuard({ reportError });
 

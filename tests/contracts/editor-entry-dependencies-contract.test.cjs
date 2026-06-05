@@ -50,12 +50,13 @@ test('editor entry delegates dependency resolution to helper', () => {
   assert.match(editor, /resolveEditorEntryDependencies\(\{\s*windowRef:\s*window,\s*URLSearchParamsRef:\s*URLSearchParams\s*\}\)/);
   assert.match(editor, /entryDependenciesResult\.status\s*===\s*'stopped'/);
   assert.match(editor, /const\s+deps\s*=\s*entryDependenciesResult\.deps/);
-  assert.match(editor, /const\s+createEditorDebugReporter\s*=\s*deps\.createEditorDebugReporter/);
+  assert.match(editor, /deps\.createEditorDebugReporter/);
+  assert.doesNotMatch(editor, /const\s+createEditorDebugReporter\s*=\s*deps\.createEditorDebugReporter/);
   // findRootMemory now used inline
   assert.match(editor, /deps\.findRootMemory/);
   assert.match(editor, /deps\.getCanonicalRootId/);
   assert.match(editor, /deps\.isRootMemory/);
-  assert.match(editor, /const\s+\{\s*log,\s*reportError\s*\}\s*=\s*createEditorDebugReporter\(\)/);
+  assert.match(editor, /const\s+\{\s*log,\s*reportError\s*\}\s*=\s*deps\.createEditorDebugReporter\(\)/);
   assert.match(editor, /prepareEditorShell,\s*applyEditorEditabilityState,\s*canEdit,\s*log/s);
   assert.match(editor, /applyEditorStartupShell\(\);/);
 

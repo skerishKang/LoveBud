@@ -98,7 +98,8 @@ test('resolver-owned aliases now read directly from deps in editor entry', () =>
   assert.match(editor, /deps\.applyEditorShellCopy\(safeI18nText,\s*i18n\);/);
   assert.match(editor, /deps\.createPrepareEditorShell\(\{/);
   assert.match(editor, /applyEditorShellCopy:\s*deps\.applyEditorShellCopy/);
-  assert.match(editor, /const createEditorDebugReporter = deps\.createEditorDebugReporter;/);
+  assert.match(editor, /deps\.createEditorDebugReporter/);
+  assert.doesNotMatch(editor, /const createEditorDebugReporter = deps\.createEditorDebugReporter;/);
 
   assert.doesNotMatch(editor, /const createInlineShowToastFallback = shellHelpers\./);
   assert.doesNotMatch(editor, /const getI18n = shellHelpers\./);

@@ -23,8 +23,7 @@ test('debug reporter preserves console formats and test hooks', () => {
 
 test('editor delegates debug reporter setup through deps', () => {
   assert.match(editorSource, /deps\.createEditorDebugReporter/);
-  assert.match(editorSource, /const createEditorDebugReporter\s*=/);
-  assert.match(editorSource, /const\s*\{\s*log,\s*reportError\s*\}\s*=\s*createEditorDebugReporter\(\)/);
+  assert.match(editorSource, /const\s*\{\s*log,\s*reportError\s*\}\s*=\s*deps\.createEditorDebugReporter\(\);/);
   assert.match(editorSource, /window\.LoveBudEditorDebug\s*=\s*window\.LoveBudEditorDebug\s*\|\|\s*\{\s*logs:\s*\[\],\s*errors:\s*\[\]\s*\}/);
 });
 
@@ -36,7 +35,7 @@ test('editor no longer owns inline debug setup inside startEditor', () => {
   assert.notEqual(end, -1, 'startEditor initial log must remain');
 
   const block = editorSource.slice(start, end);
-  assert.match(block, /createEditorDebugReporter\(\)/);
+  assert.match(block, /deps\.createEditorDebugReporter\(\)/);
   assert.doesNotMatch(block, /const log\s*=\s*\(msg\)\s*=>/);
   assert.doesNotMatch(block, /const reportError\s*=\s*\(msg,\s*err\)\s*=>/);
 });
