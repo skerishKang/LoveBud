@@ -62,7 +62,7 @@ test('start dependency checker stops at first missing dependency', () => {
 });
 
 test('editor entrypoint delegates start dependency checks to shell helper', () => {
-  assert.match(editorSource, /const createEditorStartDependencyChecker\s*=\s*shellHelpers\.createEditorStartDependencyChecker/);
+  assert.match(editorSource, /const createEditorStartDependencyChecker\s*=\s*deps\.shellHelpers\.createEditorStartDependencyChecker/);
   assert.match(editorSource, /LoveBudEditorShellHelpers\.createEditorStartDependencyChecker missing/);
   assert.match(editorSource, /const checkEditorStartDependencies\s*=\s*createEditorStartDependencyChecker\(\{/);
   assert.match(editorSource, /ensureStartEditorDependency,\s*dependencies:\s*\[/s);

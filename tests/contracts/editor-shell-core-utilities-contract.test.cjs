@@ -49,7 +49,7 @@ test('editor entrypoint keeps core utility fallback resolution intact', () => {
   // getI18n removed — i18n now comes directly from deps.i18n
   assert.doesNotMatch(
     editorSource,
-    /shellHelpers\.getI18n/
+    /deps\.shellHelpers\.getI18n/
   );
   assert.doesNotMatch(editorSource, /const i18n\s*=\s*deps\.i18n/);
 

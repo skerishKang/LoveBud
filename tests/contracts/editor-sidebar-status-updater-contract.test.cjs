@@ -30,7 +30,7 @@ test('sidebar status updater preserves call order', () => {
 });
 
 test('editor entrypoint delegates sidebar status updater construction to shell helper', () => {
-  assert.match(editorSource, /const createEditorSidebarStatusUpdater\s*=\s*shellHelpers\.createEditorSidebarStatusUpdater/);
+  assert.match(editorSource, /const createEditorSidebarStatusUpdater\s*=\s*deps\.shellHelpers\.createEditorSidebarStatusUpdater/);
   assert.match(editorSource, /LoveBudEditorShellHelpers\.createEditorSidebarStatusUpdater missing/);
   assert.match(editorSource, /const updateSidebarStatus\s*=\s*createEditorSidebarStatusUpdater\(\{/);
   assert.match(editorSource, /updateSidebarStatusBase,\s*updateCanvasEmptyGuide,\s*updateSidebarTreeActions/s);

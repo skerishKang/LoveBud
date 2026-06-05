@@ -36,8 +36,8 @@ test('editor entry compatibility — shellHelpers and root helpers resolved excl
   const editor = read('js/editor.js');
   const depsIndex = indexOfRequired(editor, 'const deps = entryDependenciesResult.deps;');
 
-  const shellAliasIndex = indexOfRequired(editor, 'const shellHelpers = deps.shellHelpers;');
-  assert.ok(depsIndex < shellAliasIndex, 'shellHelpers alias must come after deps resolution');
+  // shellHelpers namespace alias has been removed; all shell helpers read from deps.shellHelpers directly
+  assert.doesNotMatch(editor, /const\s+shellHelpers\s*=\s*deps\.shellHelpers;/);
 
   // rootUtils intermediate alias has been removed; root helpers read directly from deps
   assert.match(editor, /deps\.getYouTubeInputErrorMessage/);
@@ -83,8 +83,7 @@ test('editor entry compatibility inventory — resolver already returns cleanup-
   const helper = read('js/editor/editor-entry-dependencies.js');
 
   const returnedAliases = [
-    'shellHelpers,',
-    'rootUtils,',
+    'rootUtils',
     'editorSelectionUI,',
     'editorPageEventBindings,',
     'editorRefreshSaveRuntime,',

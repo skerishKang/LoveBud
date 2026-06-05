@@ -62,7 +62,7 @@ test('required global waiter stops on first missing global', async () => {
 });
 
 test('editor entrypoint delegates required global waits to shell helper', () => {
-  assert.match(editorSource, /const createEditorRequiredGlobalWaiter\s*=\s*shellHelpers\.createEditorRequiredGlobalWaiter/);
+  assert.match(editorSource, /const createEditorRequiredGlobalWaiter\s*=\s*deps\.shellHelpers\.createEditorRequiredGlobalWaiter/);
   assert.match(editorSource, /LoveBudEditorShellHelpers\.createEditorRequiredGlobalWaiter missing/);
   assert.match(editorSource, /const waitForEditorRequiredGlobals\s*=\s*createEditorRequiredGlobalWaiter\(\{\s*waitForGlobal\s*\}\)/);
   assert.match(editorSource, /if \(!await waitForEditorRequiredGlobals\(\)\) return;/);

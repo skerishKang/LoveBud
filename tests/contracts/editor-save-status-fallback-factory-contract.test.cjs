@@ -32,7 +32,7 @@ test('editor delegates save status fallback through required shell helper while 
   );
   assert.doesNotMatch(
     editorSource,
-    /const\s+createSaveStatusOrchestrationFallback\s*=\s*shellHelpers\.createSaveStatusOrchestrationFallback\s*\|\|/
+    /const\s+createSaveStatusOrchestrationFallback\s*=\s*deps\.shellHelpers\.createSaveStatusOrchestrationFallback\s*\|\|/
   );
   assert.match(
     editorSource,

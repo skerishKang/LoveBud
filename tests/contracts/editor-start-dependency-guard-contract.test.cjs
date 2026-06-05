@@ -14,7 +14,7 @@ test('editor shell helpers expose start dependency guard factory', () => {
 });
 
 test('editor entrypoint resolves start dependency guard from shell helpers', () => {
-  assert.match(editorSource, /const createEditorStartDependencyGuard = shellHelpers\.createEditorStartDependencyGuard;/);
+  assert.match(editorSource, /const createEditorStartDependencyGuard = deps\.shellHelpers\.createEditorStartDependencyGuard;/);
   assert.match(editorSource, /LoveBudEditorShellHelpers\.createEditorStartDependencyGuard missing/);
 });
 

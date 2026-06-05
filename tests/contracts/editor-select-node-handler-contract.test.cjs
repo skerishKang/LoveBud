@@ -32,7 +32,7 @@ test('select node handler preserves canvas affordance refresh guard', () => {
 });
 
 test('editor entrypoint delegates selectNode construction to shell helper', () => {
-  assert.match(editorSource, /const createEditorSelectNodeHandler\s*=\s*shellHelpers\.createEditorSelectNodeHandler/);
+  assert.match(editorSource, /const createEditorSelectNodeHandler\s*=\s*deps\.shellHelpers\.createEditorSelectNodeHandler/);
   assert.match(editorSource, /LoveBudEditorShellHelpers\.createEditorSelectNodeHandler missing/);
   assert.match(editorSource, /const selectNode\s*=\s*createEditorSelectNodeHandler\(\{/);
   assert.match(editorSource, /getEditorCanvas:\s*\(\)\s*=>\s*editorCanvas/);

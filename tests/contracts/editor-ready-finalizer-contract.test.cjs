@@ -39,7 +39,7 @@ test('ready finalizer preserves sidebar update, ready marker, and final log orde
 });
 
 test('editor entrypoint delegates final ready block to shell helper', () => {
-  assert.match(editorSource, /const createEditorReadyFinalizer\s*=\s*shellHelpers\.createEditorReadyFinalizer/);
+  assert.match(editorSource, /const createEditorReadyFinalizer\s*=\s*deps\.shellHelpers\.createEditorReadyFinalizer/);
   assert.match(editorSource, /LoveBudEditorShellHelpers\.createEditorReadyFinalizer missing/);
   assert.match(editorSource, /const finalizeEditorReady\s*=\s*createEditorReadyFinalizer\(\{/);
   assert.match(editorSource, /updateSidebarStatus,\s*markEditorReady,\s*log/s);
