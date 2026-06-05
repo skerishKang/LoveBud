@@ -157,7 +157,7 @@ test('editor entry delegates entry fallback factories through boundary', () => {
 
   assert.match(boundary, /createInlineRedirectToEditorLoginFallback\s*:/, 'entry fallback boundary must expose createInlineRedirectToEditorLoginFallback');
   assert.doesNotMatch(editor, /entryFallbacks\.createInlineRedirectToEditorLoginFallback/, 'editor entry no longer delegates createInlineRedirectToEditorLoginFallback through entryFallbacks');
-  assert.match(editor, /redirectToEditorLogin\s*=\s*deps\.redirectToEditorLogin/, 'editor entry requires redirectToEditorLogin from deps');
+  assert.match(editor, /redirectToEditorLogin:\s*deps\.redirectToEditorLogin/, 'editor entry requires redirectToEditorLogin from deps');
   assert.doesNotMatch(editor, /LoveBudEditorPageHelpers\.redirectToEditorLogin missing/, 'redirectToEditorLogin guard no longer in editor.js');
 
   assert.match(editor, /showToast\s*=\s*deps\.showToast/, 'editor entry requires showToast from deps');

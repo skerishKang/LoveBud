@@ -42,7 +42,6 @@ test('direct deps function aliases remain inventoried', () => {
   const expectedDirectAliases = [
     'const showToast = deps.showToast;',
     'const i18n = deps.i18n;',
-    'const redirectToEditorLogin = deps.redirectToEditorLogin;',
     'const safeI18nText = deps.safeI18nText;'
   ];
 
@@ -50,7 +49,7 @@ test('direct deps function aliases remain inventoried', () => {
     assert.ok(editor.includes(alias), `direct deps alias should remain: ${alias}`);
   }
 
-  assert.equal(expectedDirectAliases.length, 4, 'exactly 4 direct deps function aliases');
+  assert.equal(expectedDirectAliases.length, 3, 'exactly 3 direct deps function aliases');
 });
 
 test('first batch helper method aliases now use direct deps aliases', () => {
@@ -162,7 +161,8 @@ test('remaining helper method aliases: none — all 20 helper method aliases hav
     'const getMyTreesHref = deps.getMyTreesHref;',
     'const getYouTubeInputErrorMessage = deps.getYouTubeInputErrorMessage;',
     'const createEditorDebugReporter = deps.createEditorDebugReporter;',
-    'const getEditorBasePath = deps.getEditorBasePath;'
+    'const getEditorBasePath = deps.getEditorBasePath;',
+    'const redirectToEditorLogin = deps.redirectToEditorLogin;'
   ];
 
   for (const alias of forbiddenLocalAliases) {
@@ -187,6 +187,7 @@ test('remaining helper method aliases: none — all 20 helper method aliases hav
   assert.ok(editor.includes('deps.getYouTubeInputErrorMessage'), 'editor should use deps.getYouTubeInputErrorMessage directly');
   assert.ok(editor.includes('deps.createEditorDebugReporter'), 'editor should use deps.createEditorDebugReporter directly');
   assert.ok(editor.includes('deps.getEditorBasePath'), 'editor should use deps.getEditorBasePath directly');
+  assert.ok(editor.includes('deps.redirectToEditorLogin'), 'editor should use deps.redirectToEditorLogin directly');
 
   // Verify call site context for tree load error helpers
   assert.match(editor, /buildTreeLoadErrorCopy:\s*deps\.buildTreeLoadErrorCopy/);
@@ -221,6 +222,9 @@ test('remaining helper method aliases: none — all 20 helper method aliases hav
 
   // Verify call site context for base path
   assert.match(editor, /createCurrentMomentDetailOpener\(\{[\s\S]*getEditorBasePath:\s*deps\.getEditorBasePath/);
+
+  // Verify call site context for login redirect
+  assert.match(editor, /deps\.registerEditorAuthStart\(\{[\s\S]*redirectToEditorLogin:\s*deps\.redirectToEditorLogin/);
 });
 
 test('resolver-owned duplicate bootstrap guards remain removed after cleanup', () => {
