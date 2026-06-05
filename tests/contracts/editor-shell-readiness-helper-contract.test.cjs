@@ -4,8 +4,10 @@ const test = require('node:test');
 const vm = require('node:vm');
 
 const shellUtilsSource = fs.readFileSync('js/editor/editor-shell-utils.js', 'utf8');
+const shellGuardsSource = fs.readFileSync('js/editor/editor-shell-guards.js', 'utf8');
+const shellStartupSource = fs.readFileSync('js/editor/editor-shell-startup.js', 'utf8');
 const shellHelpersSource = fs.readFileSync('js/editor/editor-shell-helpers.js', 'utf8');
-const combinedShellSource = shellUtilsSource + '\n' + shellHelpersSource;
+const combinedShellSource = shellUtilsSource + '\n' + shellGuardsSource + '\n' + shellStartupSource + '\n' + shellHelpersSource;
 const editorSource = fs.readFileSync('js/editor.js', 'utf8');
 
 function loadShellHelpers(overrides = {}) {
@@ -38,6 +40,8 @@ function loadShellHelpers(overrides = {}) {
   context.window.window = context.window;
   vm.createContext(context);
   vm.runInContext(shellUtilsSource, context);
+  vm.runInContext(shellGuardsSource, context);
+  vm.runInContext(shellStartupSource, context);
   vm.runInContext(shellHelpersSource, context);
 
   return {
@@ -48,32 +52,32 @@ function loadShellHelpers(overrides = {}) {
   };
 }
 
-// --- 1. Shell helpers export check ---
+// --- 1. Sub-module export checks ---
 
-test('editor shell helpers export markEditorReady', () => {
-  assert.match(shellHelpersSource, /markEditorReady:\s*function\(options\)/);
+test('editor shell startup sub-module exports markEditorReady', () => {
+  assert.match(shellStartupSource, /markEditorReady:\s*function\(options\)/);
 });
 
-test('editor shell helpers export applyEditorEditabilityState', () => {
-  assert.match(shellHelpersSource, /applyEditorEditabilityState:\s*function\(options\)/);
+test('editor shell startup sub-module exports applyEditorEditabilityState', () => {
+  assert.match(shellStartupSource, /applyEditorEditabilityState:\s*function\(options\)/);
 });
 
-test('editor shell helpers export createEditorDebugReporter', () => {
+test('editor shell utils sub-module exports createEditorDebugReporter', () => {
   assert.match(combinedShellSource, /createEditorDebugReporter:\s*function\(options\)/);
 });
 
-test('editor shell helpers export createEditorStartupDependencyWaiter', () => {
-  assert.match(shellHelpersSource, /createEditorStartupDependencyWaiter:\s*function\(options\)/);
+test('editor shell guards sub-module exports createEditorStartupDependencyWaiter', () => {
+  assert.match(shellGuardsSource, /createEditorStartupDependencyWaiter:\s*function\(options\)/);
 });
 
 // --- 2. markEditorReady behavior ---
 
 test('markEditorReady removes editor-preload class from body', () => {
-  const start = shellHelpersSource.indexOf('markEditorReady: function(options)');
+  const start = shellStartupSource.indexOf('markEditorReady: function(options)');
   assert.notEqual(start, -1, 'markEditorReady must exist');
 
-  const end = shellHelpersSource.indexOf('},', start);
-  const block = shellHelpersSource.slice(start, end);
+  const end = shellStartupSource.indexOf('},', start);
+  const block = shellStartupSource.slice(start, end);
 
   assert.match(block, /body\.classList\.remove\('editor-preload'\)/);
 });
@@ -81,65 +85,65 @@ test('markEditorReady removes editor-preload class from body', () => {
 // --- 3. applyEditorEditabilityState behavior ---
 
 test('applyEditorEditabilityState sets editorNamespace.canEdit', () => {
-  const start = shellHelpersSource.indexOf('applyEditorEditabilityState: function(options)');
+  const start = shellStartupSource.indexOf('applyEditorEditabilityState: function(options)');
   assert.notEqual(start, -1, 'applyEditorEditabilityState must exist');
 
-  const end = shellHelpersSource.indexOf('},', start);
-  const block = shellHelpersSource.slice(start, end);
+  const end = shellStartupSource.indexOf('},', start);
+  const block = shellStartupSource.slice(start, end);
 
   assert.match(block, /editorNamespace\.canEdit\s*=\s*canEdit/);
 });
 
 test('applyEditorEditabilityState toggles editor-readonly class', () => {
-  const start = shellHelpersSource.indexOf('applyEditorEditabilityState: function(options)');
-  const end = shellHelpersSource.indexOf('},', start);
-  const block = shellHelpersSource.slice(start, end);
+  const start = shellStartupSource.indexOf('applyEditorEditabilityState: function(options)');
+  const end = shellStartupSource.indexOf('},', start);
+  const block = shellStartupSource.slice(start, end);
 
   assert.match(block, /body\.classList\.toggle\('editor-readonly',\s*!canEdit\)/);
 });
 
 test('applyEditorEditabilityState defaults canEdit to true', () => {
-  const start = shellHelpersSource.indexOf('applyEditorEditabilityState: function(options)');
-  const end = shellHelpersSource.indexOf('},', start);
-  const block = shellHelpersSource.slice(start, end);
+  const start = shellStartupSource.indexOf('applyEditorEditabilityState: function(options)');
+  const end = shellStartupSource.indexOf('},', start);
+  const block = shellStartupSource.slice(start, end);
 
   assert.match(block, /opts\.canEdit\s*!==\s*false/);
 });
 
-// --- 4. createEditorDebugReporter behavior ---
+// --- 4. createEditorDebugReporter behavior (in utils sub-module) ---
 
 test('createEditorDebugReporter logs entries to debugState.logs', () => {
-  const start = combinedShellSource.indexOf('createEditorDebugReporter: function(options)');
+  const start = shellUtilsSource.indexOf('createEditorDebugReporter: function(options)');
   assert.notEqual(start, -1, 'createEditorDebugReporter must exist');
 
-  const end = combinedShellSource.indexOf('createEditorStartDependencyGuard:', start);
-  const block = combinedShellSource.slice(start, end);
+  const end = shellUtilsSource.indexOf('},', start);
+  const block = shellUtilsSource.slice(start, end);
 
   assert.match(block, /debugState\.logs\.push\(entry\)/);
 });
 
 test('createEditorDebugReporter records error entries to debugState.errors', () => {
-  const start = combinedShellSource.indexOf('createEditorDebugReporter: function(options)');
-  const end = combinedShellSource.indexOf('createEditorStartDependencyGuard:', start);
-  const block = combinedShellSource.slice(start, end);
+  const start = shellUtilsSource.indexOf('createEditorDebugReporter: function(options)');
+  const end = shellUtilsSource.indexOf('},', start);
+  const block = shellUtilsSource.slice(start, end);
 
   assert.match(block, /debugState\.errors\.push\(/);
 });
 
-// --- 5. createEditorStartupDependencyWaiter behavior ---
+// --- 5. createEditorStartupDependencyWaiter behavior (in guards sub-module) ---
 
 test('createEditorStartupDependencyWaiter returns true when dependency exists', () => {
-  const start = shellHelpersSource.indexOf('createEditorStartupDependencyWaiter: function(options)');
+  const start = shellGuardsSource.indexOf('createEditorStartupDependencyWaiter: function(options)');
   assert.notEqual(start, -1, 'createEditorStartupDependencyWaiter must exist');
 
-  const block = shellHelpersSource.slice(start);
+  const block = shellGuardsSource.slice(start);
 
   assert.match(block, /return true/);
 });
 
 test('createEditorStartupDependencyWaiter calls reportError and returns false when dependency missing', () => {
-  const start = shellHelpersSource.indexOf('createEditorStartupDependencyWaiter: function(options)');
-  const block = shellHelpersSource.slice(start);
+  const start = shellGuardsSource.indexOf('createEditorStartupDependencyWaiter: function(options)');
+  const block = shellGuardsSource.slice(start);
 
   assert.match(block, /reportError\(name \+ ' not found after 5s'\)/);
   assert.match(block, /return false/);
@@ -245,12 +249,12 @@ test('editor.js does not use console.error for createEditorStartupDependencyWait
 });
 
 test('editor.js delegates waitForGlobal dependency order to shell helper', () => {
-  assert.match(shellHelpersSource, /'createEditorCanvas'/);
-  assert.match(shellHelpersSource, /'createEditorDetailUI'/);
-  assert.match(shellHelpersSource, /'createEditorMemoryActions'/);
-  assert.match(shellHelpersSource, /'createEditorMemoryForm'/);
+  assert.match(shellGuardsSource, /'createEditorCanvas'/);
+  assert.match(shellGuardsSource, /'createEditorDetailUI'/);
+  assert.match(shellGuardsSource, /'createEditorMemoryActions'/);
+  assert.match(shellGuardsSource, /'createEditorMemoryForm'/);
 
-  const waiterStart = shellHelpersSource.indexOf('createEditorRequiredGlobalWaiter');
+  const waiterStart = shellGuardsSource.indexOf('createEditorRequiredGlobalWaiter');
   assert.ok(waiterStart !== -1, 'shell helper must define createEditorRequiredGlobalWaiter');
 
   const globals = [
@@ -262,7 +266,7 @@ test('editor.js delegates waitForGlobal dependency order to shell helper', () =>
 
   let prevIndex = -1;
   for (const global of globals) {
-    const idx = shellHelpersSource.indexOf(global, waiterStart);
+    const idx = shellGuardsSource.indexOf(global, waiterStart);
     assert.ok(idx !== -1, `Shell helper must reference ${global}`);
     assert.ok(idx > prevIndex, `Wait order must be preserved: ${global} after previous`);
     prevIndex = idx;

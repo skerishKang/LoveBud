@@ -2,22 +2,22 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const test = require('node:test');
 
-const shellHelpersSource = fs.readFileSync('js/editor/editor-shell-helpers.js', 'utf8');
+const shellStartupSource = fs.readFileSync('js/editor/editor-shell-startup.js', 'utf8');
 const editorSource = fs.readFileSync('js/editor.js', 'utf8');
 const editorHtmlSource = fs.readFileSync('pages/editor.html', 'utf8');
 
 function getApplyEditorShellCopyBlock() {
-  const start = shellHelpersSource.indexOf('applyEditorShellCopy: function(safeI18nText, i18n)');
+  const start = shellStartupSource.indexOf('applyEditorShellCopy: function(safeI18nText, i18n)');
   assert.notEqual(start, -1, 'applyEditorShellCopy helper must exist');
 
-  const end = shellHelpersSource.indexOf('markEditorReady:', start);
+  const end = shellStartupSource.indexOf('markEditorReady:', start);
   assert.notEqual(end, -1, 'applyEditorShellCopy block must end before markEditorReady');
 
-  return shellHelpersSource.slice(start, end);
+  return shellStartupSource.slice(start, end);
 }
 
-test('editor shell helpers expose applyEditorShellCopy helper', () => {
-  assert.match(shellHelpersSource, /applyEditorShellCopy:\s*function\(safeI18nText,\s*i18n\)/);
+test('editor shell startup sub-module exposes applyEditorShellCopy helper', () => {
+  assert.match(shellStartupSource, /applyEditorShellCopy:\s*function\(safeI18nText,\s*i18n\)/);
 });
 
 test('applyEditorShellCopy preserves setText and setPlaceholder helper patterns', () => {

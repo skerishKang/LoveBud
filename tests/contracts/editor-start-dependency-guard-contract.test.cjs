@@ -3,14 +3,14 @@ const fs = require('node:fs');
 const test = require('node:test');
 
 const editorSource = fs.readFileSync('js/editor.js', 'utf8');
-const shellHelpersSource = fs.readFileSync('js/editor/editor-shell-helpers.js', 'utf8');
+const shellGuardsSource = fs.readFileSync('js/editor/editor-shell-guards.js', 'utf8');
 
-test('editor shell helpers expose start dependency guard factory', () => {
-  assert.match(shellHelpersSource, /createEditorStartDependencyGuard:\s*function\(options\)/);
-  assert.match(shellHelpersSource, /return function ensureStartEditorDependency\(dependency,\s*message\)/);
-  assert.match(shellHelpersSource, /if \(typeof dependency === 'function'\) return true;/);
-  assert.match(shellHelpersSource, /reportError\(message\);/);
-  assert.match(shellHelpersSource, /return false;/);
+test('editor shell guards sub-module exposes start dependency guard factory', () => {
+  assert.match(shellGuardsSource, /createEditorStartDependencyGuard:\s*function\(options\)/);
+  assert.match(shellGuardsSource, /return function ensureStartEditorDependency\(dependency,\s*message\)/);
+  assert.match(shellGuardsSource, /if \(typeof dependency === 'function'\) return true;/);
+  assert.match(shellGuardsSource, /reportError\(message\);/);
+  assert.match(shellGuardsSource, /return false;/);
 });
 
 test('editor entrypoint resolves start dependency guard from shell helpers', () => {

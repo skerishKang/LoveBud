@@ -6,23 +6,24 @@ const editorSource = fs.readFileSync('js/editor.js', 'utf8');
 const shellHelpersSource = fs.readFileSync('js/editor/editor-shell-helpers.js', 'utf8');
 const saveStatusOrchestrationSource = fs.readFileSync('js/editor/editor-save-status-orchestration.js', 'utf8');
 const refreshSaveRuntimeSource = fs.readFileSync('js/editor/editor-refresh-save-runtime.js', 'utf8');
+const startupSource = fs.readFileSync('js/editor/editor-shell-startup.js', 'utf8');
 
-test('editor shell helpers expose save status orchestration fallback factory', () => {
-  assert.match(shellHelpersSource, /createSaveStatusOrchestrationFallback:\s*function\(options\)/);
-  assert.match(shellHelpersSource, /var consoleRef\s*=\s*opts\.consoleRef\s*\|\|\s*console/);
-  assert.match(shellHelpersSource, /return function createEditorSaveStatusOrchestrationFallback\(\)/);
+test('editor shell startup sub-module exposes save status orchestration fallback factory', () => {
+  assert.match(startupSource, /createSaveStatusOrchestrationFallback:\s*function\(options\)/);
+  assert.match(startupSource, /var consoleRef\s*=\s*opts\.consoleRef\s*\|\|\s*console/);
+  assert.match(startupSource, /return function createEditorSaveStatusOrchestrationFallback\(\)/);
 });
 
 test('save status fallback preserves warning and initial state shape', () => {
-  assert.match(shellHelpersSource, /consoleRef\.warn\('\[editor\] LoveBudEditorSaveStatusOrchestration not loaded, using minimal fallback'\)/);
-  assert.match(shellHelpersSource, /status:\s*'saved'/);
-  assert.match(shellHelpersSource, /lastSaved:\s*null/);
-  assert.match(shellHelpersSource, /timer:\s*null/);
+  assert.match(startupSource, /consoleRef\.warn\('\[editor\] LoveBudEditorSaveStatusOrchestration not loaded, using minimal fallback'\)/);
+  assert.match(startupSource, /status:\s*'saved'/);
+  assert.match(startupSource, /lastSaved:\s*null/);
+  assert.match(startupSource, /timer:\s*null/);
 });
 
 test('save status fallback preserves minimal updateSaveStatus behavior', () => {
-  assert.match(shellHelpersSource, /updateSaveStatus:\s*function\(status,\s*message\)/);
-  assert.match(shellHelpersSource, /saveStatusData\.status\s*=\s*status/);
+  assert.match(startupSource, /updateSaveStatus:\s*function\(status,\s*message\)/);
+  assert.match(startupSource, /saveStatusData\.status\s*=\s*status/);
 });
 
 test('editor delegates save status fallback through required shell helper while preserving primary orchestration priority', () => {
