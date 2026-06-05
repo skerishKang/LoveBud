@@ -19,7 +19,7 @@ test('entry dependency resolver still owns fallback namespace resolution', () =>
 
 test('editor still consumes resolved dependency outputs that remain active', () => {
   assert.match(editorSource, /const\s+deps\s*=\s*entryDependenciesResult\.deps/);
-  assert.match(editorSource, /const\s+editorDataLoader\s*=\s*deps\.editorDataLoader/);
+  assert.doesNotMatch(editorSource, /const\s+editorDataLoader\s*=\s*deps\.editorDataLoader/);
   assert.match(editorSource, /getConfirmedSessionUser:\s*deps\.getConfirmedSessionUser/);
   assert.match(editorSource, /readConfirmedAuthCache:\s*deps\.readConfirmedAuthCache/);
 });
