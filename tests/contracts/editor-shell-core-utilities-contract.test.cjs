@@ -86,14 +86,14 @@ test('editor page helpers expose getMyTreesHref', () => {
   assert.match(pageHelpersSource, /getMyTreesHref:\s*getMyTreesHref/);
 });
 
-test('editor entrypoint requires getMyTreesHref through deps pattern', () => {
+test('editor entrypoint requires getMyTreesHref through direct deps pattern', () => {
   assert.match(
     editorSource,
-    /const\s+getMyTreesHref\s*=\s*deps\.getMyTreesHref/
+    /getMyTreesHref:\s*deps\.getMyTreesHref/
   );
   assert.doesNotMatch(
     editorSource,
-    /const\s+getMyTreesHref\s*=\s*deps\.getMyTreesHref\s*\|\|/
+    /const\s+getMyTreesHref\s*=\s*deps\.getMyTreesHref/
   );
   assert.doesNotMatch(
     editorSource,
@@ -109,6 +109,6 @@ test('editor entrypoint requires getMyTreesHref through deps pattern', () => {
   // check parameter passing is intact
   assert.match(
     editorSource,
-    /deps\.createPrepareEditorShell\(\{\s*applyEditorShellCopy:\s*deps\.applyEditorShellCopy,\s*safeI18nText,\s*i18n,\s*getMyTreesHref\s*\}/
+    /deps\.createPrepareEditorShell\(\{\s*applyEditorShellCopy:\s*deps\.applyEditorShellCopy,\s*safeI18nText,\s*i18n,\s*getMyTreesHref:\s*deps\.getMyTreesHref\s*\}/
   );
 });

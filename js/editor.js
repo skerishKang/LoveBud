@@ -48,7 +48,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const getEditorBasePath = deps.getEditorBasePath;
     const redirectToEditorLogin = deps.redirectToEditorLogin;
     const safeI18nText = deps.safeI18nText;
-    const getMyTreesHref = deps.getMyTreesHref;
     const getYouTubeInputErrorMessage = deps.getYouTubeInputErrorMessage;
     if (typeof deps.registerEditorAuthStart !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorPageHelpers.registerEditorAuthStart missing'); return; }
     deps.applyEditorShellCopy(safeI18nText, i18n);
@@ -56,7 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
         applyEditorShellCopy: deps.applyEditorShellCopy,
         safeI18nText,
         i18n,
-        getMyTreesHref
+        getMyTreesHref: deps.getMyTreesHref
     });
     const markEditorReady = deps.markEditorReady;
     const applyEditorEditabilityState = deps.applyEditorEditabilityState;
