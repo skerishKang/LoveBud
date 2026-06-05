@@ -518,7 +518,37 @@ document.addEventListener('DOMContentLoaded', () => {
                 canEdit
             });
 
-            const { showAddMemoryForm, hideAddMemoryForm, addMemoryFromForm } = memoryForm;
+            const { showAddMemoryForm, hideAddMemoryForm, addMemoryFromForm, addMemoryFromScoutPayload } = memoryForm;
+
+            // Initialize Scout Draft UI singleton with onDraftSave callback
+            if (
+                window.LoveBudScoutDraftUI &&
+                typeof window.LoveBudScoutDraftUI.createScoutDraftUI === 'function' &&
+                typeof addMemoryFromScoutPayload === 'function'
+            ) {
+                const scoutDraftUI = window.LoveBudScoutDraftUI.createScoutDraftUI({
+                    treeId,
+                    getSelectedNodeId: () => selectedNodeId,
+                    getCanonicalRootId: () => canonicalRootId,
+                    resolveParentIdForCreate: deps.resolveParentIdForCreate,
+                    showToast: deps.showToast,
+                    i18n: deps.i18n,
+                    onDraftSave: async (payload, draft) => {
+                        await addMemoryFromScoutPayload(payload, draft);
+                    }
+                });
+
+                // Bridge singleton methods
+                window.LoveBudScoutDraftUI.open = function () {
+                    return scoutDraftUI.open();
+                };
+                window.LoveBudScoutDraftUI.close = function () {
+                    return scoutDraftUI.close();
+                };
+                window.LoveBudScoutDraftUI.isOpen = function () {
+                    return scoutDraftUI.isOpen();
+                };
+            }
 
             log('Binding events...');
             const checkEditorPageEventStatusDependencies = createEditorStartDependencyChecker({
