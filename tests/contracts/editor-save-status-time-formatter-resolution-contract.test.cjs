@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const test = require('node:test');
 
 const editorSource = fs.readFileSync('js/editor.js', 'utf8');
-const shellHelpersSource = fs.readFileSync('js/editor/editor-shell-helpers.js', 'utf8');
+const shellHelpersSource = fs.readFileSync('js/editor/editor-shell-utils.js', 'utf8');
 const saveStatusOrchestrationSource = fs.readFileSync('js/editor/editor-save-status-orchestration.js', 'utf8');
 const refreshSaveRuntimeSource = fs.readFileSync('js/editor/editor-refresh-save-runtime.js', 'utf8');
 

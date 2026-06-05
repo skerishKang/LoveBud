@@ -166,6 +166,8 @@ test('editor entry delegates entry fallback factories through boundary', () => {
 test('shell helpers are explicitly mounted before editor entry', () => {
   const sources = scriptSources(editorHtml());
 
+  assertLoadedBefore(sources, 'js/editor/editor-shell-utils.js', 'js/editor.js');
+  assertLoadedBefore(sources, 'js/editor/editor-shell-bridges.js', 'js/editor.js');
   assertLoadedBefore(sources, 'js/editor/editor-shell-helpers.js', 'js/editor.js');
 });
 

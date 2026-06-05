@@ -1,88 +1,18 @@
 // Editor Shell Helpers - Entry-only shell utilities
 // Provides fallbacks and utilities for editor initialization without affecting runtime behavior
+//
+// Aggregator: merges sub-modules with remaining inline functions
 
-window.LoveBudEditorShellHelpers = {
-    // i18n utility
-    getI18n: function() {
-        return window.t || ((k) => k);
-    },
+(function () {
+    'use strict';
 
-    // Editor base path utilities
-    getEditorBasePath: function() {
-        return window.location.pathname.indexOf('/pages/') !== -1 ? '' : 'pages/';
-    },
+    const shellUtils = window.LoveBudEditorShellUtils || {};
+    const shellBridges = window.LoveBudEditorShellBridges || {};
 
-    buildEditorRedirectTarget: function() {
-        return this.getEditorBasePath() + 'editor' + (window.location.search || '');
-    },
+    window.LoveBudEditorShellHelpers = {
+        ...shellUtils,
+        ...shellBridges,
 
-    // HTTP status resolver
-    getHttpStatus: function(error) {
-        return Number(
-            (error && error.status) ||
-            (error && error.statusCode) ||
-            (error && error.response && error.response.status) ||
-            0
-        );
-    },
-
-    // Canvas empty guide bridge utility
-    exposeCanvasEmptyGuideUpdater: function(options) {
-        var opts = options || {};
-        var editorNamespace = opts.editorNamespace || (window.LoveBudEditor = window.LoveBudEditor || {});
-        var updateCanvasEmptyGuide = opts.updateCanvasEmptyGuide;
-
-        editorNamespace.updateCanvasEmptyGuide = updateCanvasEmptyGuide;
-
-        return editorNamespace;
-    },
-
-    // Detail panel bridge utility
-    exposeDetailPanelUpdater: function(options) {
-        var opts = options || {};
-        var windowRef = opts.windowRef || window;
-        var updateDetailPanel = opts.updateDetailPanel;
-
-        windowRef.updateDetailPanel = updateDetailPanel;
-
-        return windowRef;
-    },
-
-    // Refresh memories bridge utility
-    exposeRefreshMemoriesBridge: function(options) {
-        var opts = options || {};
-        var windowRef = opts.windowRef || window;
-        var refreshMemories = opts.refreshMemories;
-
-        windowRef.refreshMemories = refreshMemories;
-
-        return windowRef;
-    },
-
-    // Save status time formatter resolution
-    resolveSaveStatusTimeFormatter: function(options) {
-        var opts = options || {};
-        var editorSaveStatus = opts.editorSaveStatus || {};
-
-        return editorSaveStatus.formatTimeAgo;
-    },
-
-    // Toast fallback
-    createInlineShowToastFallback: function() {
-        return (message, type = 'info') => {
-            if (window.LoveBudUI?.showToast) {
-                window.LoveBudUI.showToast(message, type, 3000);
-            } else {
-                if (!window.__editorToastWarningShown) {
-                    console.warn('[editor] LoveBudUI not loaded, toast degraded to console');
-                    window.__editorToastWarningShown = true;
-                }
-                console.log(`[Toast ${type}] ${message}`);
-            }
-        };
-    },
-
-    // Shell copy application
     applyEditorShellCopy: function(safeI18nText, i18n) {
         const setText = (id, key, fallback) => {
             const el = document.getElementById(id);
@@ -146,7 +76,6 @@ window.LoveBudEditorShellHelpers = {
         setText('saveEditBtn', 'editor_save', '저장하기');
     },
 
-    // Editor ready marker
     markEditorReady: function(options) {
         var opts = options || {};
         var body = opts.body || document.body;
@@ -156,7 +85,6 @@ window.LoveBudEditorShellHelpers = {
         }
     },
 
-    // Editor editability shell state
     applyEditorEditabilityState: function(options) {
         var opts = options || {};
         var canEdit = opts.canEdit !== false;
@@ -172,32 +100,6 @@ window.LoveBudEditorShellHelpers = {
         return editorNamespace;
     },
 
-    // Editor debug reporter factory
-    createEditorDebugReporter: function(options) {
-        var opts = options || {};
-        var debugState = opts.debugState || (window.LoveBudEditorDebug = window.LoveBudEditorDebug || { logs: [], errors: [] });
-        var consoleRef = opts.consoleRef || console;
-        var now = opts.now || function() { return new Date(); };
-
-        var log = function(msg) {
-            var entry = '[editor-main] ' + now().toISOString().split('T')[1] + ' ' + msg;
-            consoleRef.log(entry);
-            debugState.logs.push(entry);
-        };
-
-        var reportError = function(msg, err) {
-            consoleRef.error('[editor-main] ERROR: ' + msg, err);
-            debugState.errors.push({ msg: msg, error: err && err.message ? err.message : err });
-        };
-
-        return {
-            debugState: debugState,
-            log: log,
-            reportError: reportError
-        };
-    },
-
-    // Editor start dependency guard factory
     createEditorStartDependencyGuard: function(options) {
         var opts = options || {};
         var reportError = opts.reportError || function() {};
@@ -209,7 +111,6 @@ window.LoveBudEditorShellHelpers = {
         };
     },
 
-    // Editor start dependency checker factory
     createEditorStartDependencyChecker: function(options) {
         var opts = options || {};
         var ensureStartEditorDependency = opts.ensureStartEditorDependency || function() { return false; };
@@ -227,7 +128,6 @@ window.LoveBudEditorShellHelpers = {
         };
     },
 
-    // Editor startup dependency waiter factory
     createEditorStartupDependencyWaiter: function(options) {
         var opts = options || {};
         var log = opts.log || function() {};
@@ -260,7 +160,6 @@ window.LoveBudEditorShellHelpers = {
         };
     },
 
-    // Editor required global waiter factory
     createEditorRequiredGlobalWaiter: function(options) {
         var opts = options || {};
         var waitForGlobal = opts.waitForGlobal || async function() { return false; };
@@ -282,7 +181,6 @@ window.LoveBudEditorShellHelpers = {
         };
     },
 
-    // Editor canvas empty guide updater factory
     createEditorCanvasEmptyGuideUpdater: function(options) {
         var opts = options || {};
         var emptyGuideUIHelper = opts.emptyGuideUIHelper || {};
@@ -301,31 +199,6 @@ window.LoveBudEditorShellHelpers = {
         };
     },
 
-    // YouTube input validation fallback
-    getYouTubeInputErrorMessageFallback: function(i18n, rawUrl) {
-        var value = String(rawUrl || '').trim();
-
-        if (!value) {
-            return i18n('enter_youtube') || 'YouTube 링크를 입력해 주세요.';
-        }
-
-        if (!/^(https?:\/\/|www\.)/i.test(value)) {
-            return i18n('invalid_youtube_format') || '전체 YouTube 링크를 붙여 넣어 주세요.';
-        }
-
-        if (!/(youtube\.com|youtu\.be|youtube\.com\/shorts\/)/i.test(value)) {
-            return i18n('invalid_youtube_unsupported') || 'YouTube 링크만 지원합니다. youtube.com 또는 youtu.be 링크를 사용해 주세요.';
-        }
-
-        var match = value.match(/(?:v=|\/|youtu\.be\/|shorts\/)([0-9A-Za-z_-]+)/i);
-        if (match && match[1].length !== 11) {
-            return i18n('invalid_youtube_id_length') || '링크가 중간에 잘린 것 같아요. 전체 YouTube 링크를 다시 복사해 주세요.';
-        }
-
-        return i18n('invalid_youtube') || '유효한 YouTube 링크를 입력해 주세요.';
-    },
-
-    // Selected moment focus handler factory
     createSelectedMomentFocusHandler: function(options) {
         var opts = options || {};
         var getEditorCanvas = opts.getEditorCanvas || function() { return null; };
@@ -341,7 +214,6 @@ window.LoveBudEditorShellHelpers = {
         };
     },
 
-    // Editor select node handler factory
     createEditorSelectNodeHandler: function(options) {
         var opts = options || {};
         var getEditorCanvas = opts.getEditorCanvas || function() { return null; };
@@ -382,7 +254,6 @@ window.LoveBudEditorShellHelpers = {
         };
     },
 
-    // Sidebar tree actions updater factory
     createSidebarTreeActionsUpdater: function(options) {
         var opts = options || {};
         var sidebarUIHelper = opts.sidebarUIHelper || {};
@@ -401,7 +272,6 @@ window.LoveBudEditorShellHelpers = {
         };
     },
 
-    // Editor sidebar status updater factory
     createEditorSidebarStatusUpdater: function(options) {
         var opts = options || {};
         var updateSidebarStatusBase = opts.updateSidebarStatusBase || function() {};
@@ -415,7 +285,6 @@ window.LoveBudEditorShellHelpers = {
         };
     },
 
-    // Memory actions readiness wrapper factory
     createMemoryActionsReadinessWrapper: function(options) {
         var opts = options || {};
         var getMemoryActions = opts.getMemoryActions || function() { return null; };
@@ -434,7 +303,6 @@ window.LoveBudEditorShellHelpers = {
         };
     },
 
-    // Current moment detail opener factory
     createCurrentMomentDetailOpener: function(options) {
         var opts = options || {};
         var getCurrentEditingMemory = opts.getCurrentEditingMemory || function() { return null; };
@@ -470,7 +338,6 @@ window.LoveBudEditorShellHelpers = {
         };
     },
 
-    // Editor initial memory provider factory
     createEditorInitialMemoryProvider: function(options) {
         var opts = options || {};
         var editorTreeHelpers = opts.editorTreeHelpers || {};
@@ -491,7 +358,6 @@ window.LoveBudEditorShellHelpers = {
         };
     },
 
-    // Editor next memory id provider factory
     createEditorNextMemoryIdProvider: function(options) {
         var opts = options || {};
         var nextMemoryIdFromMemories = opts.nextMemoryIdFromMemories;
@@ -502,7 +368,6 @@ window.LoveBudEditorShellHelpers = {
         };
     },
 
-    // Editor initial selection applier factory
     createEditorInitialSelectionApplier: function(options) {
         var opts = options || {};
         var getTreeMemories = opts.getTreeMemories || function() { return []; };
@@ -528,7 +393,6 @@ window.LoveBudEditorShellHelpers = {
         };
     },
 
-    // Editor final ready marker factory
     createEditorReadyFinalizer: function(options) {
         var opts = options || {};
         var updateSidebarStatus = opts.updateSidebarStatus || function() {};
@@ -542,7 +406,6 @@ window.LoveBudEditorShellHelpers = {
         };
     },
 
-    // Editor startup shell applier factory
     createEditorStartupShellApplier: function(options) {
         var opts = options || {};
         var prepareEditorShell = opts.prepareEditorShell || function() {};
@@ -558,7 +421,6 @@ window.LoveBudEditorShellHelpers = {
         };
     },
 
-    // Save status orchestration fallback factory
     createSaveStatusOrchestrationFallback: function(options) {
         var opts = options || {};
         var consoleRef = opts.consoleRef || console;
@@ -579,5 +441,6 @@ window.LoveBudEditorShellHelpers = {
                 }
             };
         };
-    }
-};
+    },
+    };
+})();

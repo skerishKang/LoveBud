@@ -3,20 +3,22 @@ const fs = require('node:fs');
 const test = require('node:test');
 
 const editorSource = fs.readFileSync('js/editor.js', 'utf8');
+const shellBridgesSource = fs.readFileSync('js/editor/editor-shell-bridges.js', 'utf8');
 const shellHelpersSource = fs.readFileSync('js/editor/editor-shell-helpers.js', 'utf8');
+const combinedShellSource = shellBridgesSource + '\n' + shellHelpersSource;
 const refreshSaveRuntimeSource = fs.readFileSync('js/editor/editor-refresh-save-runtime.js', 'utf8');
 
 test('editor shell helpers expose refresh memories bridge helper', () => {
-  assert.match(shellHelpersSource, /exposeRefreshMemoriesBridge:\s*function\(options\)/);
-  assert.match(shellHelpersSource, /var windowRef\s*=\s*opts\.windowRef\s*\|\|\s*window/);
-  assert.match(shellHelpersSource, /var refreshMemories\s*=\s*opts\.refreshMemories/);
-  assert.match(shellHelpersSource, /windowRef\.refreshMemories\s*=\s*refreshMemories/);
-  assert.match(shellHelpersSource, /return windowRef/);
+  assert.match(combinedShellSource, /exposeRefreshMemoriesBridge:\s*function\(options\)/);
+  assert.match(combinedShellSource, /var windowRef\s*=\s*opts\.windowRef\s*\|\|\s*window/);
+  assert.match(combinedShellSource, /var refreshMemories\s*=\s*opts\.refreshMemories/);
+  assert.match(combinedShellSource, /windowRef\.refreshMemories\s*=\s*refreshMemories/);
+  assert.match(combinedShellSource, /return windowRef/);
 });
 
 test('refresh memories bridge helper keeps testable window hook', () => {
-  assert.match(shellHelpersSource, /opts\.windowRef/);
-  assert.match(shellHelpersSource, /opts\.refreshMemories/);
+  assert.match(combinedShellSource, /opts\.windowRef/);
+  assert.match(combinedShellSource, /opts\.refreshMemories/);
 });
 
 test('editor delegates refresh memories bridge through required shell helper', () => {

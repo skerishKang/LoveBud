@@ -3,19 +3,21 @@ const fs = require('node:fs');
 const test = require('node:test');
 
 const editorSource = fs.readFileSync('js/editor.js', 'utf8');
+const shellBridgesSource = fs.readFileSync('js/editor/editor-shell-bridges.js', 'utf8');
 const shellHelpersSource = fs.readFileSync('js/editor/editor-shell-helpers.js', 'utf8');
+const combinedShellSource = shellBridgesSource + '\n' + shellHelpersSource;
 const editorHtml = fs.readFileSync('pages/editor.html', 'utf8');
 
 test('editor shell helpers expose detail panel bridge helper', () => {
-  assert.match(shellHelpersSource, /exposeDetailPanelUpdater:\s*function\(options\)/);
-  assert.match(shellHelpersSource, /var windowRef\s*=\s*opts\.windowRef\s*\|\|\s*window/);
-  assert.match(shellHelpersSource, /windowRef\.updateDetailPanel\s*=\s*updateDetailPanel/);
-  assert.match(shellHelpersSource, /return windowRef/);
+  assert.match(combinedShellSource, /exposeDetailPanelUpdater:\s*function\(options\)/);
+  assert.match(combinedShellSource, /var windowRef\s*=\s*opts\.windowRef\s*\|\|\s*window/);
+  assert.match(combinedShellSource, /windowRef\.updateDetailPanel\s*=\s*updateDetailPanel/);
+  assert.match(combinedShellSource, /return windowRef/);
 });
 
 test('detail panel bridge helper keeps testable window hook', () => {
-  assert.match(shellHelpersSource, /opts\.windowRef/);
-  assert.match(shellHelpersSource, /opts\.updateDetailPanel/);
+  assert.match(combinedShellSource, /opts\.windowRef/);
+  assert.match(combinedShellSource, /opts\.updateDetailPanel/);
 });
 
 test('editor delegates detail panel bridge through required shell helper', () => {

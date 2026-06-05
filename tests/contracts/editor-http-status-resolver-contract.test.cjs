@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const test = require('node:test');
 
 const editorSource = fs.readFileSync('js/editor.js', 'utf8');
-const shellHelpersSource = fs.readFileSync('js/editor/editor-shell-helpers.js', 'utf8');
+const shellHelpersSource = fs.readFileSync('js/editor/editor-shell-utils.js', 'utf8');
 const sidebarSource = fs.readFileSync('js/editor/editor-sidebar-ui.js', 'utf8');
 const editorHtml = fs.readFileSync('pages/editor.html', 'utf8');
 

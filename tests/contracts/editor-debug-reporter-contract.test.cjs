@@ -3,22 +3,24 @@ const fs = require('node:fs');
 const test = require('node:test');
 
 const editorSource = fs.readFileSync('js/editor.js', 'utf8');
+const shellUtilsSource = fs.readFileSync('js/editor/editor-shell-utils.js', 'utf8');
 const shellHelpersSource = fs.readFileSync('js/editor/editor-shell-helpers.js', 'utf8');
+const combinedShellSource = shellUtilsSource + '\n' + shellHelpersSource;
 const editorHtml = fs.readFileSync('pages/editor.html', 'utf8');
 
 test('editor shell helpers expose debug reporter factory', () => {
-  assert.match(shellHelpersSource, /createEditorDebugReporter:\s*function/);
-  assert.match(shellHelpersSource, /window\.LoveBudEditorDebug\s*=\s*window\.LoveBudEditorDebug\s*\|\|\s*\{\s*logs:\s*\[\],\s*errors:\s*\[\]\s*\}/);
-  assert.match(shellHelpersSource, /debugState\.logs\.push\(entry\)/);
-  assert.match(shellHelpersSource, /debugState\.errors\.push\(\{/);
+  assert.match(combinedShellSource, /createEditorDebugReporter:\s*function/);
+  assert.match(combinedShellSource, /window\.LoveBudEditorDebug\s*=\s*window\.LoveBudEditorDebug\s*\|\|\s*\{\s*logs:\s*\[\],\s*errors:\s*\[\]\s*\}/);
+  assert.match(combinedShellSource, /debugState\.logs\.push\(entry\)/);
+  assert.match(combinedShellSource, /debugState\.errors\.push\(\{/);
 });
 
 test('debug reporter preserves console formats and test hooks', () => {
-  assert.match(shellHelpersSource, /\[editor-main\]/);
-  assert.match(shellHelpersSource, /ERROR:/);
-  assert.match(shellHelpersSource, /opts\.debugState/);
-  assert.match(shellHelpersSource, /opts\.consoleRef/);
-  assert.match(shellHelpersSource, /opts\.now/);
+  assert.match(combinedShellSource, /\[editor-main\]/);
+  assert.match(combinedShellSource, /ERROR:/);
+  assert.match(combinedShellSource, /opts\.debugState/);
+  assert.match(combinedShellSource, /opts\.consoleRef/);
+  assert.match(combinedShellSource, /opts\.now/);
 });
 
 test('editor delegates debug reporter setup through deps', () => {
@@ -41,8 +43,8 @@ test('editor no longer owns inline debug setup inside startEditor', () => {
 });
 
 test('waitForGlobal behavior remains in editor start flow', () => {
-  assert.match(shellHelpersSource, /return async function waitForGlobal\(name\)/);
-  assert.match(shellHelpersSource, /while\s*\(typeof windowRef\[name\] !== 'function' && count < maxAttempts\)/);
+  assert.match(combinedShellSource, /return async function waitForGlobal\(name\)/);
+  assert.match(combinedShellSource, /while\s*\(typeof windowRef\[name\] !== 'function' && count < maxAttempts\)/);
   assert.match(editorSource, /createEditorStartupDependencyWaiter\(\{/);
 });
 

@@ -2,7 +2,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const test = require('node:test');
 
-const shellHelpersSource = fs.readFileSync('js/editor/editor-shell-helpers.js', 'utf8');
+const shellHelpersSource = fs.readFileSync('js/editor/editor-shell-utils.js', 'utf8');
 const pageHelpersSource = fs.readFileSync('js/editor/editor-page-helpers.js', 'utf8');
 const editorSource = fs.readFileSync('js/editor.js', 'utf8');
 const editorHtmlSource = fs.readFileSync('pages/editor.html', 'utf8');
@@ -11,8 +11,8 @@ function getCoreUtilitiesBlock() {
   const start = shellHelpersSource.indexOf('getI18n: function()');
   assert.notEqual(start, -1, 'getI18n helper must exist');
 
-  const end = shellHelpersSource.indexOf('// HTTP status resolver', start);
-  assert.notEqual(end, -1, 'core utility block must end before HTTP status resolver');
+  const end = shellHelpersSource.indexOf('getHttpStatus:', start);
+  assert.notEqual(end, -1, 'core utility block must end before getHttpStatus');
 
   return shellHelpersSource.slice(start, end);
 }

@@ -40,6 +40,8 @@ test('editor.html keeps script loading order before editor runtime', () => {
         'js/editor/editor-rename-ui.js',
         'js/editor/editor-detail-ui.js',
         'js/editor/editor-memory-form.js',
+        'js/editor/editor-shell-utils.js',
+        'js/editor/editor-shell-bridges.js',
         'js/editor/editor-shell-helpers.js',
         'js/editor.js',
         'js/editor/editor-i18n-refresh.js'
