@@ -29,7 +29,8 @@
     const i18n = window.t || function(key) { return key; };
 
     // Track suggestion state for UI
-    let suggestionState = 'idle'; // idle, loading, success, error, unavailable
+    let suggestionState = 'idle'; // idle, loading, success, error, unavailable, pending_configuration
+    let suggestionAvailability = null; // cached availability check
 
     function createScoutDraftUI(deps) {
         const {
@@ -401,8 +402,21 @@
         }
 
         async function handleSuggest() {
-            if (!ScoutSuggestionProvider || !ScoutSuggestionProvider.createScoutStubSuggestionProvider) {
-                setSuggestionState('unavailable', t('scout_suggest_unavailable') || 'AI 제안을 불러오지 못했습니다. 직접 입력 후 저장할 수 있습니다.');
+            // Check availability first
+            if (!ScoutSuggestionProvider || !ScoutSuggestionProvider.getScoutSuggestionAvailability) {
+                setSuggestionState('unavailable', t('scout_suggest_unavailable') || 'AI 제안을 사용할 수 없습니다. 직접 입력 후 저장할 수 있습니다.');
+                return;
+            }
+
+            // Check availability - defaults to stub mode
+            const availability = ScoutSuggestionProvider.getScoutSuggestionAvailability('stub');
+            suggestionAvailability = availability;
+
+            if (!availability.available) {
+                const fallbackMsg = availability.mode === 'pending_configuration'
+                    ? (t('scout_suggest_pending') || availability.message)
+                    : (t('scout_suggest_unavailable') || availability.message);
+                setSuggestionState(availability.mode, fallbackMsg);
                 return;
             }
 

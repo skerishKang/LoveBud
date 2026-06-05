@@ -2,8 +2,8 @@
 
 ## Baseline
 
-- **current main HEAD**: `7d1e5a48`
-- **related PRs**: #2203 (Scout Draft Manual MVP), #2205 (toolbar wiring + validation hotfix), #2207 (save-flow boundary audit), #2209 (add-memory flow integration)
+- **current main HEAD**: `8f814273`
+- **related PRs**: #2203 (Scout Draft Manual MVP), #2205 (toolbar wiring + validation hotfix), #2207 (save-flow boundary audit), #2209 (add-memory flow integration), #2211 (LLM provider boundary document), #2213 (Scout stub suggestion provider + contract), #2215 (Scout Draft modal stub suggestion UI wiring)
 - **related issues**: #1882 (PRODUCT: Explore LoveBud Scout link-based fan assistant MVP), #1661 (DB/API: Add tree-level social counts for Browse sorting)
 - **current Scout capabilities**: Manual draft entry with user-provided source URL, excerpt, memo, emotion tags → save to LoveTree via existing add-memory flow
 

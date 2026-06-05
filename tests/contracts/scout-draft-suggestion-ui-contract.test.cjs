@@ -175,11 +175,13 @@ console.log('🧪 Scout Draft Suggestion UI Contracts\n');
 // Test 9: Safe fallback when provider unavailable
 {
     const ui = readFileSafe(EDITOR_UI_PATH);
-    
-    assert.ok(ui.includes('unavailable'), 'Should handle unavailable state');
-    assert.ok(ui.includes('AI 제안을 불러오지 못했습니다'), 'Should have Korean fallback message');
-    
-    console.log('  ✅ Safe fallback when provider unavailable');
+    const provider = readFileSafe(PROVIDER_PATH);
+
+    assert.ok(ui.includes('getScoutSuggestionAvailability'), 'UI should check provider availability');
+    assert.ok(ui.includes('pending_configuration') || provider.includes('pending_configuration'), 'unavailable/pending boundary should exist');
+    assert.ok(ui.includes('scout_suggest_pending') || ui.includes('scout_suggest_unavailable'), 'Should reference pending/unavailable fallback messages');
+
+    console.log(' ✅ Safe fallback when provider unavailable');
 }
 
 // Test 10: Suggestion feedback area in DOM
@@ -193,8 +195,72 @@ console.log('🧪 Scout Draft Suggestion UI Contracts\n');
     // CSS for feedback area
     assert.ok(css.includes('.scout-suggest-feedback'), 'CSS should style suggestion feedback area');
     
-    console.log('  ✅ Suggestion feedback area in DOM and CSS');
-}
+    console.log(' ✅ Suggestion feedback area in DOM and CSS');
+    }
+
+    // Test 11: Unavailable/pending does not auto-save or close modal
+    {
+       const ui = readFileSafe(EDITOR_UI_PATH);
+
+       const handleSuggest = ui.match(/async\s*function\s+handleSuggest[\s\S]*?}\s*}/);
+       assert.ok(handleSuggest, 'handleSuggest function should exist');
+
+       const handleSuggestContent = handleSuggest[0];
+
+       // Ensure unavailable/pending branches do not trigger persistence
+       assert.ok(!handleSuggestContent.includes('onDraftSave('), 'handleSuggest unavailable branch should NOT call onDraftSave');
+       assert.ok(!handleSuggestContent.includes('closeModal('), 'handleSuggest unavailable branch should NOT close modal');
+
+       console.log(' ✅ Unavailable/pending states do not auto-save or close');
+    }
+
+    // Test 12: Suggestion failure preserves manual draft values
+    {
+        const ui = readFileSafe(EDITOR_UI_PATH);
+
+        // Verify the explicit form reset helper exists for manual resets
+        assert.ok(ui.includes('function resetForm'), 'resetForm should exist for explicit form reset');
+
+        // Ensure handleSuggest does not reset the form when suggestion fails
+        const handleSuggestMatch = ui.match(/async\s*function\s*handleSuggest\s*\([\s\S]*?^\s*\}\s*\/\//m)
+          || ui.match(/async\s*function\s*handleSuggest\s*\([\s\S]*?^\s*\}\s*$/m);
+        const handleSuggestBody = handleSuggestMatch ? handleSuggestMatch[0] : '';
+        assert.ok(!handleSuggestBody.includes('resetForm()'), 'handleSuggest should not reset form on suggestion failure');
+
+        console.log(' ✅ Suggestion failure preserves manual draft values');
+    }
+
+    // Test 13: Manual save flow still exists
+    {
+       const ui = readFileSafe(EDITOR_UI_PATH);
+
+       assert.ok(ui.includes('function handleSave'), 'handleSave should still exist');
+       assert.ok(ui.includes('refs.saveBtn.onclick = handleSave'), 'save button should still be wired');
+
+       console.log(' ✅ Manual save flow preserved');
+    }
+
+    // Test 14: No real AI provider usage
+    {
+       const ui = readFileSafe(EDITOR_UI_PATH);
+
+       const realAiPatterns = [
+           /openai/i,
+           /anthropic/i,
+           /claude/i,
+           /gemini/i,
+           /groq/i,
+           /mistral/i,
+           /nvidia ai/i,
+           /process\.env\./
+       ];
+
+       for (const pattern of realAiPatterns) {
+           assert.ok(!pattern.test(ui), `UI should not reference real AI provider: ${pattern}`);
+       }
+
+       console.log(' ✅ No real AI provider usage');
+    }
 
 console.log('\n✅ All Scout Draft Suggestion UI contracts passed.');
 console.log('Guardrails verified: no innerHTML, no network, no real AI provider, no auto-save.\n');

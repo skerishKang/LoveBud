@@ -38,6 +38,7 @@ test('Scout Suggestion Provider Contract', async () => {
         assert.strictEqual(typeof Provider.createScoutSuggestionProvider, 'function', 'createScoutSuggestionProvider should be a function');
         assert.strictEqual(typeof Provider.normalizeScoutSuggestionInput, 'function', 'normalizeScoutSuggestionInput should be a function');
         assert.strictEqual(typeof Provider.normalizeScoutSuggestionOutput, 'function', 'normalizeScoutSuggestionOutput should be a function');
+        assert.strictEqual(typeof Provider.getScoutSuggestionAvailability, 'function', 'getScoutSuggestionAvailability should be a function');
     }
 
     // Test 2: stub provider creation
@@ -268,4 +269,37 @@ test('Scout Suggestion Provider Contract', async () => {
             /Provider implementation must have async suggest/
         );
     }
-});
+
+    // Test 14: availability helper schema
+    {
+        const result = Provider.getScoutSuggestionAvailability('stub');
+        assert.ok(typeof result.available === 'boolean', 'availability result must include available boolean');
+        assert.ok(typeof result.mode === 'string', 'availability result must include mode string');
+        assert.ok(typeof result.message === 'string', 'availability result must include message string');
+    }
+
+    // Test 15: stub mode is available
+    {
+        const result = Provider.getScoutSuggestionAvailability('stub');
+        assert.strictEqual(result.available, true, 'stub mode should be available');
+        assert.strictEqual(result.mode, 'stub', 'stub mode should report stub');
+    }
+ 
+    // Test 16: pending configuration for live/unknown mode
+    {
+        const liveResult = Provider.getScoutSuggestionAvailability('live');
+        assert.strictEqual(liveResult.available, false, 'live mode should not be available yet');
+        assert.strictEqual(liveResult.mode, 'pending_configuration', 'live mode should be pending_configuration');
+
+        const unknownResult = Provider.getScoutSuggestionAvailability('unknown-mode');
+        assert.strictEqual(unknownResult.available, false, 'unknown mode should not be available');
+        assert.strictEqual(unknownResult.mode, 'pending_configuration', 'unknown mode should be pending_configuration');
+    }
+
+    // Test 17: default when mode is omitted
+    {
+        const result = Provider.getScoutSuggestionAvailability();
+        assert.strictEqual(result.available, true, 'default should be available');
+        assert.strictEqual(result.mode, 'stub', 'default should be stub');
+    }
+    }); 

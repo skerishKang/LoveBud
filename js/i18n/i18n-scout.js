@@ -156,6 +156,14 @@
         'scout_suggest_error': {
             ko: 'AI 제안을 불러오지 못했습니다.',
             en: 'Failed to get AI suggestion.'
+        },
+        'scout_suggest_pending': {
+            ko: 'AI 제안 설정이 아직 준비되지 않았습니다. 직접 입력 후 저장할 수 있습니다.',
+            en: 'AI suggestions are not configured yet. You can enter content and save manually.'
+        },
+        'scout_suggest_manual_available': {
+            ko: '직접 입력 후 저장하실 수 있습니다.',
+            en: 'You can enter content and save manually.'
         }
     };
 })();
