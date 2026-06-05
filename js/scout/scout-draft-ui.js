@@ -1,7 +1,7 @@
 /**
  * LoveBud Scout Draft UI Module
- * Phase 1: Manual draft entrypoint UI
- * v20260605-1
+ * Phase 2: Stub suggestion provider wiring (manual save still required)
+ * v20260615-1
  *
  * Provides the UI for:
  * - Public source URL input
@@ -9,6 +9,7 @@
  * - Memo textarea
  * - Emotion tags input
  * - Save/preview actions
+ * - AI 제안 받기 button wired to stub provider
  */
 
 (function() {
@@ -24,7 +25,11 @@
     }
 
     const ScoutDraft = window.LoveBudScoutDraft;
+    const ScoutSuggestionProvider = window.LoveBudScoutSuggestionProvider;
     const i18n = window.t || function(key) { return key; };
+
+    // Track suggestion state for UI
+    let suggestionState = 'idle'; // idle, loading, success, error, unavailable
 
     function createScoutDraftUI(deps) {
         const {
@@ -57,7 +62,9 @@
                 cancelBtn: document.getElementById('scoutDraftCancelBtn'),
                 closeBtn: document.getElementById('scoutDraftCloseBtn'),
                 sourceUrlError: document.getElementById('scoutSourceUrlError'),
-                previewBtn: document.getElementById('scoutDraftPreviewBtn')
+                previewBtn: document.getElementById('scoutDraftPreviewBtn'),
+                suggestBtn: document.getElementById('scoutDraftSuggestBtn'),
+                suggestFeedback: document.getElementById('scoutSuggestFeedback')
             };
         }
 
@@ -79,19 +86,189 @@
             });
         }
 
+        function setSuggestionState(state, message) {
+            suggestionState = state;
+            if (refs.suggestBtn) {
+                refs.suggestBtn.disabled = state === 'loading';
+            }
+            if (refs.suggestFeedback) {
+                if (state === 'success' || state === 'error' || state === 'unavailable') {
+                    refs.suggestFeedback.style.display = 'block';
+                    refs.suggestFeedback.textContent = message || '';
+                } else {
+                    refs.suggestFeedback.style.display = 'none';
+                    refs.suggestFeedback.textContent = '';
+                }
+            }
+        }
+
         function resetForm() {
             refs.sourceUrlInput.value = '';
             refs.excerptTextarea.value = '';
             refs.memoTextarea.value = '';
             refs.emotionTagsInput.value = '';
+            suggestionState = 'idle';
+            setSuggestionState('idle', '');
             clearAllErrors();
+        }
+
+        function createModalInDOM() {
+            const mount = document.body;
+
+            // Overlay
+            const overlay = document.createElement('div');
+            overlay.className = 'scout-draft-modal-overlay';
+            overlay.id = 'scoutDraftModal';
+
+            // Modal
+            const modal = document.createElement('div');
+            modal.className = 'scout-draft-modal';
+
+            // Header
+            const header = document.createElement('div');
+            header.className = 'scout-draft-header';
+            const h2 = document.createElement('h2');
+            h2.textContent = t('scout_draft_title') || 'Scout 순간 저장';
+            header.appendChild(h2);
+            const closeBtn = document.createElement('button');
+            closeBtn.type = 'button';
+            closeBtn.className = 'scout-draft-close-btn';
+            closeBtn.id = 'scoutDraftCloseBtn';
+            closeBtn.setAttribute('aria-label', '닫기');
+            closeBtn.textContent = '×';
+            header.appendChild(closeBtn);
+            modal.appendChild(header);
+
+            // Form
+            const form = document.createElement('form');
+            form.className = 'scout-draft-form';
+
+            // Source URL field
+            const sourceField = document.createElement('div');
+            sourceField.className = 'scout-field';
+            const sourceLabel = document.createElement('label');
+            sourceLabel.htmlFor = 'scoutSourceUrlInput';
+            sourceLabel.textContent = t('scout_source_url_label') || '출처 링크';
+            const sourceInput = document.createElement('input');
+            sourceInput.type = 'url';
+            sourceInput.id = 'scoutSourceUrlInput';
+            sourceInput.className = 'scout-input';
+            sourceInput.placeholder = 'https://';
+            const sourceHint = document.createElement('div');
+            sourceHint.className = 'field-hint';
+            sourceHint.textContent = t('scout_source_url_hint') || 'URL 또는 발췌/메모 중 하나를 입력하세요';
+            const sourceError = document.createElement('div');
+            sourceError.className = 'scout-error';
+            sourceError.id = 'scoutSourceUrlError';
+            sourceField.appendChild(sourceLabel);
+            sourceField.appendChild(sourceInput);
+            sourceField.appendChild(sourceHint);
+            sourceField.appendChild(sourceError);
+            form.appendChild(sourceField);
+
+            // Excerpt field
+            const excerptField = document.createElement('div');
+            excerptField.className = 'scout-field';
+            const excerptLabel = document.createElement('label');
+            excerptLabel.htmlFor = 'scoutExcerptTextarea';
+            excerptLabel.textContent = t('scout_excerpt_label') || '발췌';
+            const excerptTextarea = document.createElement('textarea');
+            excerptTextarea.id = 'scoutExcerptTextarea';
+            excerptTextarea.className = 'scout-textarea';
+            excerptTextarea.placeholder = t('scout_excerpt_placeholder') || '핵심 내용을 발췌하세요';
+            excerptTextarea.rows = 3;
+            excerptField.appendChild(excerptLabel);
+            excerptField.appendChild(excerptTextarea);
+            form.appendChild(excerptField);
+
+            // Memo field
+            const memoField = document.createElement('div');
+            memoField.className = 'scout-field';
+            const memoLabel = document.createElement('label');
+            memoLabel.htmlFor = 'scoutMemoTextarea';
+            memoLabel.textContent = t('scout_memo_label') || '메모';
+            const memoTextarea = document.createElement('textarea');
+            memoTextarea.id = 'scoutMemoTextarea';
+            memoTextarea.className = 'scout-textarea';
+            memoTextarea.placeholder = t('scout_memo_placeholder') || '개인 메모를 입력하세요';
+            memoTextarea.rows = 3;
+            memoField.appendChild(memoLabel);
+            memoField.appendChild(memoTextarea);
+            form.appendChild(memoField);
+
+            // Emotion tags field
+            const tagsField = document.createElement('div');
+            tagsField.className = 'scout-field';
+            const tagsLabel = document.createElement('label');
+            tagsLabel.htmlFor = 'scoutEmotionTagsInput';
+            tagsLabel.textContent = t('scout_emotion_tags_label') || '감정 태그';
+            const tagsInput = document.createElement('input');
+            tagsInput.type = 'text';
+            tagsInput.id = 'scoutEmotionTagsInput';
+            tagsInput.className = 'scout-input';
+            tagsInput.placeholder = t('scout_emotion_tags_placeholder') || '태그1, 태그2, 태그3';
+            const tagsHint = document.createElement('div');
+            tagsHint.className = 'field-hint';
+            tagsHint.textContent = t('scout_emotion_tags_hint') || '최대 4개, 각 20자 이내';
+            tagsField.appendChild(tagsLabel);
+            tagsField.appendChild(tagsInput);
+            tagsField.appendChild(tagsHint);
+            form.appendChild(tagsField);
+
+            // Suggestion feedback area
+            const feedbackDiv = document.createElement('div');
+            feedbackDiv.className = 'scout-field scout-suggest-feedback';
+            feedbackDiv.id = 'scoutSuggestFeedback';
+            feedbackDiv.style.display = 'none';
+            form.appendChild(feedbackDiv);
+
+            modal.appendChild(form);
+
+            // Actions
+            const actions = document.createElement('div');
+            actions.className = 'scout-draft-actions';
+
+            const suggestBtn = document.createElement('button');
+            suggestBtn.type = 'button';
+            suggestBtn.className = 'scout-btn scout-btn-secondary';
+            suggestBtn.id = 'scoutDraftSuggestBtn';
+            suggestBtn.textContent = t('scout_suggest_btn') || 'AI 제안 받기';
+            actions.appendChild(suggestBtn);
+
+            const cancelBtn = document.createElement('button');
+            cancelBtn.type = 'button';
+            cancelBtn.className = 'scout-btn scout-btn-outline';
+            cancelBtn.id = 'scoutDraftCancelBtn';
+            cancelBtn.textContent = t('cancel') || '취소';
+            actions.appendChild(cancelBtn);
+
+            const previewBtn = document.createElement('button');
+            previewBtn.type = 'button';
+            previewBtn.className = 'scout-btn scout-btn-outline';
+            previewBtn.id = 'scoutDraftPreviewBtn';
+            previewBtn.textContent = t('preview') || '미리보기';
+            actions.appendChild(previewBtn);
+
+            const saveBtn = document.createElement('button');
+            saveBtn.type = 'button';
+            saveBtn.className = 'scout-btn scout-btn-primary';
+            saveBtn.id = 'scoutDraftSaveBtn';
+            saveBtn.textContent = t('save') || '저장';
+            actions.appendChild(saveBtn);
+
+            modal.appendChild(actions);
+            overlay.appendChild(modal);
+            mount.appendChild(overlay);
+
+            scoutUIDebugLog('[ScoutDraftUI] Modal rendered dynamically');
         }
 
         function openModal() {
             refs = getRefs();
             if (!refs.modal) {
-                scoutUIDebugLog('[ScoutDraftUI] Modal not found in DOM');
-                return false;
+                createModalInDOM();
+                refs = getRefs();
+                scoutUIDebugLog('[ScoutDraftUI] Modal created dynamically');
             }
             resetForm();
             refs.modal.style.display = 'flex';
@@ -123,6 +300,16 @@
             // Bind save
             if (refs.saveBtn) {
                 refs.saveBtn.onclick = handleSave;
+            }
+
+            // Bind preview
+            if (refs.previewBtn) {
+                refs.previewBtn.onclick = handlePreview;
+            }
+
+            // Bind suggest button
+            if (refs.suggestBtn) {
+                refs.suggestBtn.onclick = handleSuggest;
             }
 
             // Bind cancel/close
@@ -211,6 +398,49 @@
             }
 
             scoutUIDebugLog('[ScoutDraftUI] Draft saved', payloadResult.data);
+        }
+
+        async function handleSuggest() {
+            if (!ScoutSuggestionProvider || !ScoutSuggestionProvider.createScoutStubSuggestionProvider) {
+                setSuggestionState('unavailable', t('scout_suggest_unavailable') || 'AI 제안을 불러오지 못했습니다. 직접 입력 후 저장할 수 있습니다.');
+                return;
+            }
+
+            const sourceUrl = refs.sourceUrlInput?.value || '';
+            const excerpt = refs.excerptTextarea?.value || '';
+            const memo = refs.memoTextarea?.value || '';
+
+            setSuggestionState('loading');
+
+            try {
+                const provider = ScoutSuggestionProvider.createScoutStubSuggestionProvider();
+                const suggestion = await provider.suggest({
+                    sourceUrl: sourceUrl,
+                    excerpt: excerpt,
+                    summary: excerpt,
+                    memo: memo,
+                    requestedLanguage: t.getLocale ? t.getLocale() : 'ko',
+                    desiredTone: 'neutral',
+                    maxOutputLength: 200
+                });
+
+                // Apply suggestions to editable fields (excerpt/memo only, no auto-save)
+                if (suggestion.summarySuggestion && refs.excerptTextarea) {
+                    refs.excerptTextarea.value = suggestion.summarySuggestion;
+                }
+                if (suggestion.memoSuggestion && refs.memoTextarea) {
+                    refs.memoTextarea.value = suggestion.memoSuggestion;
+                }
+                if (suggestion.emotionTags && suggestion.emotionTags.length && refs.emotionTagsInput) {
+                    refs.emotionTagsInput.value = suggestion.emotionTags.join(', ');
+                }
+
+                setSuggestionState('success', t('scout_suggest_applied') || '제안이 적용되었습니다.');
+                scoutUIDebugLog('[ScoutDraftUI] Stub suggestion applied', suggestion);
+            } catch (err) {
+                setSuggestionState('error', t('scout_suggest_error') || 'AI 제안을 불러오지 못했습니다.');
+                scoutUIDebugLog('[ScoutDraftUI] Suggestion error', err);
+            }
         }
 
         function handlePreview() {
