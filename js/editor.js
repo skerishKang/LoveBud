@@ -45,7 +45,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const createEditorStartupContext = deps.createEditorStartupContext;
     const showToast = deps.showToast;
     const i18n = deps.i18n;
-    const getEditorBasePath = deps.getEditorBasePath;
     const redirectToEditorLogin = deps.redirectToEditorLogin;
     const safeI18nText = deps.safeI18nText;
     if (typeof deps.registerEditorAuthStart !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorPageHelpers.registerEditorAuthStart missing'); return; }
@@ -365,7 +364,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 createInitialMemory,
                 getTreeId: () => treeId,
                 editorPageHelpers,
-                getEditorBasePath,
+                getEditorBasePath: deps.getEditorBasePath,
                 locationRef: window.location,
                 reportError
             });

@@ -53,8 +53,12 @@ test('editor entrypoint keeps core utility fallback resolution intact', () => {
   );
   assert.match(editorSource, /const i18n\s*=\s*deps\.i18n/);
 
-  // getEditorBasePath now from deps
+  // getEditorBasePath now from deps (direct usage, no alias)
   assert.match(
+    editorSource,
+    /getEditorBasePath:\s*deps\.getEditorBasePath/
+  );
+  assert.doesNotMatch(
     editorSource,
     /const\s+getEditorBasePath\s*=\s*deps\.getEditorBasePath/
   );
