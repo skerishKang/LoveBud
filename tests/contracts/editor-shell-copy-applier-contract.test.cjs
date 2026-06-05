@@ -78,7 +78,7 @@ test('editor.js delegates applyEditorShellCopy through required deps pattern', (
   );
   assert.match(
     editorSource,
-    /deps\.createPrepareEditorShell\(\{\s*applyEditorShellCopy:\s*deps\.applyEditorShellCopy,\s*safeI18nText,\s*i18n,\s*getMyTreesHref\s*\}/
+    /deps\.createPrepareEditorShell\(\{\s*applyEditorShellCopy:\s*deps\.applyEditorShellCopy,\s*safeI18nText,\s*i18n,\s*getMyTreesHref:\s*deps\.getMyTreesHref\s*\}/
   );
 });
 
