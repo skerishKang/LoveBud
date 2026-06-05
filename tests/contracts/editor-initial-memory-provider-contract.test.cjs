@@ -20,7 +20,7 @@ test('initial memory provider preserves delegate call', () => {
 });
 
 test('editor entrypoint delegates initial memory provider construction to shell helper', () => {
-  assert.match(editorSource, /const createEditorInitialMemoryProvider\s*=\s*shellHelpers\.createEditorInitialMemoryProvider/);
+  assert.match(editorSource, /const createEditorInitialMemoryProvider\s*=\s*deps\.shellHelpers\.createEditorInitialMemoryProvider/);
   assert.match(editorSource, /LoveBudEditorShellHelpers\.createEditorInitialMemoryProvider missing/);
   assert.match(editorSource, /const createInitialMemory\s*=\s*createEditorInitialMemoryProvider\(/);
   assert.match(editorSource, /getTreeMemories:\s*\(\)\s*=>\s*treeMemories\(\)/);

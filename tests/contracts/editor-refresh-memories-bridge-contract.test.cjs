@@ -26,7 +26,7 @@ test('editor delegates refresh memories bridge through required shell helper', (
   );
   assert.doesNotMatch(
     editorSource,
-    /const\s+exposeRefreshMemoriesBridge\s*=\s*shellHelpers\.exposeRefreshMemoriesBridge\s*\|\|/
+    /const\s+exposeRefreshMemoriesBridge\s*=\s*deps\.shellHelpers\.exposeRefreshMemoriesBridge\s*\|\|/
   );
   assert.match(refreshSaveRuntimeSource, /LoveBudEditorShellHelpers\.exposeRefreshMemoriesBridge missing/);
   assert.match(

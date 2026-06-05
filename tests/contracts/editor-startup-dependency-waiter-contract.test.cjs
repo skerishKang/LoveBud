@@ -55,7 +55,7 @@ test('editor shell helper owns required global wait sequence', () => {
 });
 
 test('editor delegates required global waits through shell helper', () => {
-  assert.match(editorSource, /const createEditorRequiredGlobalWaiter\s*=\s*shellHelpers\.createEditorRequiredGlobalWaiter/);
+  assert.match(editorSource, /const createEditorRequiredGlobalWaiter\s*=\s*deps\.shellHelpers\.createEditorRequiredGlobalWaiter/);
   assert.match(editorSource, /LoveBudEditorShellHelpers\.createEditorRequiredGlobalWaiter missing/);
   assert.match(editorSource, /const waitForEditorRequiredGlobals\s*=\s*createEditorRequiredGlobalWaiter\(\{\s*waitForGlobal\s*\}\)/);
   assert.match(editorSource, /if \(!await waitForEditorRequiredGlobals\(\)\) return;/);

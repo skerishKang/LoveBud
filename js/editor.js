@@ -25,7 +25,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (entryDependenciesResult.status === 'stopped') return;
 
     const deps = entryDependenciesResult.deps;
-    const shellHelpers = deps.shellHelpers;
     const bindEditorPageEvents = deps.bindEditorPageEvents;
     const runEditorInitialLoadFlow = deps.runEditorInitialLoadFlow;
     const createEditorRefreshSaveRuntime = deps.createEditorRefreshSaveRuntime;
@@ -41,61 +40,61 @@ document.addEventListener('DOMContentLoaded', () => {
     const markEditorReady = deps.markEditorReady;
     const applyEditorEditabilityState = deps.applyEditorEditabilityState;
     const createEditorDomRefs = deps.createEditorDomRefs;
-    const createEditorStartDependencyGuard = shellHelpers.createEditorStartDependencyGuard;
+    const createEditorStartDependencyGuard = deps.shellHelpers.createEditorStartDependencyGuard;
     if (typeof createEditorStartDependencyGuard !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.createEditorStartDependencyGuard missing'); return; }
-    const createEditorStartDependencyChecker = shellHelpers.createEditorStartDependencyChecker;
+    const createEditorStartDependencyChecker = deps.shellHelpers.createEditorStartDependencyChecker;
     if (typeof createEditorStartDependencyChecker !== 'function') {
         reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.createEditorStartDependencyChecker missing');
         return;
     }
     const createEditorStartupDependencyWaiter = deps.createEditorStartupDependencyWaiter;
-    const createEditorRequiredGlobalWaiter = shellHelpers.createEditorRequiredGlobalWaiter;
+    const createEditorRequiredGlobalWaiter = deps.shellHelpers.createEditorRequiredGlobalWaiter;
     if (typeof createEditorRequiredGlobalWaiter !== 'function') {
         reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.createEditorRequiredGlobalWaiter missing');
         return;
     }
-    const createEditorStartupShellApplier = shellHelpers.createEditorStartupShellApplier;
+    const createEditorStartupShellApplier = deps.shellHelpers.createEditorStartupShellApplier;
     if (typeof createEditorStartupShellApplier !== 'function') {
         reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.createEditorStartupShellApplier missing');
         return;
     }
     const exposeCanvasEmptyGuideUpdater = deps.exposeCanvasEmptyGuideUpdater;
-    const createEditorCanvasEmptyGuideUpdater = shellHelpers.createEditorCanvasEmptyGuideUpdater;
+    const createEditorCanvasEmptyGuideUpdater = deps.shellHelpers.createEditorCanvasEmptyGuideUpdater;
     if (typeof createEditorCanvasEmptyGuideUpdater !== 'function') {
         reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.createEditorCanvasEmptyGuideUpdater missing');
         return;
     }
     const exposeDetailPanelUpdater = deps.exposeDetailPanelUpdater;
     const createSelectedMomentFocusHandler = deps.createSelectedMomentFocusHandler;
-    const createEditorSelectNodeHandler = shellHelpers.createEditorSelectNodeHandler;
+    const createEditorSelectNodeHandler = deps.shellHelpers.createEditorSelectNodeHandler;
     if (typeof createEditorSelectNodeHandler !== 'function') {
         reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.createEditorSelectNodeHandler missing');
         return;
     }
     const createSidebarTreeActionsUpdater = deps.createSidebarTreeActionsUpdater;
-    const createEditorSidebarStatusUpdater = shellHelpers.createEditorSidebarStatusUpdater;
+    const createEditorSidebarStatusUpdater = deps.shellHelpers.createEditorSidebarStatusUpdater;
     if (typeof createEditorSidebarStatusUpdater !== 'function') {
         reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.createEditorSidebarStatusUpdater missing');
         return;
     }
     const createMemoryActionsReadinessWrapper = deps.createMemoryActionsReadinessWrapper;
     const createCurrentMomentDetailOpener = deps.createCurrentMomentDetailOpener;
-    const createEditorInitialMemoryProvider = shellHelpers.createEditorInitialMemoryProvider;
+    const createEditorInitialMemoryProvider = deps.shellHelpers.createEditorInitialMemoryProvider;
     if (typeof createEditorInitialMemoryProvider !== 'function') {
         reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.createEditorInitialMemoryProvider missing');
         return;
     }
-    const createEditorNextMemoryIdProvider = shellHelpers.createEditorNextMemoryIdProvider;
+    const createEditorNextMemoryIdProvider = deps.shellHelpers.createEditorNextMemoryIdProvider;
     if (typeof createEditorNextMemoryIdProvider !== 'function') {
         reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.createEditorNextMemoryIdProvider missing');
         return;
     }
-    const createEditorInitialSelectionApplier = shellHelpers.createEditorInitialSelectionApplier;
+    const createEditorInitialSelectionApplier = deps.shellHelpers.createEditorInitialSelectionApplier;
     if (typeof createEditorInitialSelectionApplier !== 'function') {
         reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.createEditorInitialSelectionApplier missing');
         return;
     }
-    const createEditorReadyFinalizer = shellHelpers.createEditorReadyFinalizer;
+    const createEditorReadyFinalizer = deps.shellHelpers.createEditorReadyFinalizer;
     if (typeof createEditorReadyFinalizer !== 'function') {
         reportEditorBootstrapMissingDependency('LoveBudEditorShellHelpers.createEditorReadyFinalizer missing');
         return;

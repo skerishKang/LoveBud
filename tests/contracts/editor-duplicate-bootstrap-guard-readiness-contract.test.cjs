@@ -105,9 +105,9 @@ test('resolver-owned aliases now read directly from deps in editor entry', () =>
   assert.match(editor, /deps\.createEditorDebugReporter/);
   assert.doesNotMatch(editor, /const createEditorDebugReporter = deps\.createEditorDebugReporter;/);
 
-  assert.doesNotMatch(editor, /const createInlineShowToastFallback = shellHelpers\./);
-  assert.doesNotMatch(editor, /const getI18n = shellHelpers\./);
-  assert.doesNotMatch(editor, /const getEditorBasePath = shellHelpers\./);
+  assert.doesNotMatch(editor, /const createInlineShowToastFallback = deps\.shellHelpers\./);
+  assert.doesNotMatch(editor, /const getI18n = deps\.shellHelpers\./);
+  assert.doesNotMatch(editor, /const getEditorBasePath = deps\.shellHelpers\./);
   assert.doesNotMatch(editor, /const syncCurrentTreeData = deps\.syncCurrentTreeData;/);
   assert.doesNotMatch(editor, /const resolveParentIdForCreate = deps\.resolveParentIdForCreate;/);
 });

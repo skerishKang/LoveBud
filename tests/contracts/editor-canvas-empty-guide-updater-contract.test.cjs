@@ -22,7 +22,7 @@ test('canvas empty guide updater preserves warning fallback', () => {
 });
 
 test('editor entrypoint delegates canvas empty guide updater construction to shell helper', () => {
-  assert.match(editorSource, /const createEditorCanvasEmptyGuideUpdater\s*=\s*shellHelpers\.createEditorCanvasEmptyGuideUpdater/);
+  assert.match(editorSource, /const createEditorCanvasEmptyGuideUpdater\s*=\s*deps\.shellHelpers\.createEditorCanvasEmptyGuideUpdater/);
   assert.match(editorSource, /LoveBudEditorShellHelpers\.createEditorCanvasEmptyGuideUpdater missing/);
   assert.match(editorSource, /const updateCanvasEmptyGuide\s*=\s*createEditorCanvasEmptyGuideUpdater\(\{/);
   assert.match(editorSource, /emptyGuideUIHelper,\s*getTreeMemories:\s*\(\)\s*=>\s*treeMemories\(\),\s*log/s);

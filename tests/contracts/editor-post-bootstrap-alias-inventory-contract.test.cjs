@@ -13,14 +13,9 @@ test('post-bootstrap namespace-level deps aliases remain inventoried', () => {
   const editor = read('js/editor.js');
 
   const expectedNamespaceAliases = [
-    'const shellHelpers = deps.shellHelpers;'
   ];
 
-  for (const alias of expectedNamespaceAliases) {
-    assert.ok(editor.includes(alias), `namespace alias should remain after #2123: ${alias}`);
-  }
-
-  assert.equal(expectedNamespaceAliases.length, 1, 'exactly 1 namespace deps alias should remain');
+  assert.equal(expectedNamespaceAliases.length, 0, 'no namespace deps aliases should remain');
 });
 
 test('direct deps function aliases remain inventoried', () => {
@@ -162,7 +157,8 @@ test('remaining helper method aliases: none — all 20 helper method aliases hav
     'const editorBindings = deps.editorBindings;',
     'const editorSaveStatus = deps.editorSaveStatus;',
     'const editorDataLoader = deps.editorDataLoader;',
-    'const editorTreeHelpers = deps.editorTreeHelpers;'
+    'const editorTreeHelpers = deps.editorTreeHelpers;',
+    'const shellHelpers = deps.shellHelpers;'
   ];
 
   for (const alias of forbiddenLocalAliases) {
@@ -251,6 +247,16 @@ test('remaining helper method aliases: none — all 20 helper method aliases hav
   // Verify call site context for tree helpers
   assert.match(editor, /runEditorInitialLoadFlow\(\{[\s\S]*syncCurrentTreeData:\s*deps\.syncCurrentTreeData/);
   assert.match(editor, /resolveParentIdForCreate:\s*deps\.resolveParentIdForCreate/);
+
+  // Verify shellHelpers is gone and deps.shellHelpers used directly
+  assert.doesNotMatch(editor, /const\s+shellHelpers\s*=\s*deps\.shellHelpers;/);
+  assert.doesNotMatch(editor, /(?<![A-Za-z0-9_$])(?<!\.)shellHelpers\.[A-Za-z0-9_$]+/);
+  assert.ok(editor.includes('deps.shellHelpers'), 'editor should use deps.shellHelpers directly');
+  assert.equal(
+    (editor.match(/deps\.shellHelpers\.[A-Za-z0-9_$]+/g) || []).length,
+    11,
+    'editor should read all 11 shell helper methods from deps.shellHelpers directly'
+  );
 
   // Verify call site context for memory thumbnail resolver
   assert.match(editor, /createEditorDetailUI\(\{[\s\S]*resolveMemoryThumbnail:\s*deps\.resolveMemoryThumbnail/);

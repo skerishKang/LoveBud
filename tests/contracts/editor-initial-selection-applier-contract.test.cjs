@@ -82,7 +82,7 @@ test('initial selection applier falls back to createInitialMemory when selected 
 });
 
 test('editor entrypoint delegates initial selection application to shell helper', () => {
-  assert.match(editorSource, /const createEditorInitialSelectionApplier\s*=\s*shellHelpers\.createEditorInitialSelectionApplier/);
+  assert.match(editorSource, /const createEditorInitialSelectionApplier\s*=\s*deps\.shellHelpers\.createEditorInitialSelectionApplier/);
   assert.match(editorSource, /LoveBudEditorShellHelpers\.createEditorInitialSelectionApplier missing/);
   assert.match(editorSource, /const applyEditorInitialSelection\s*=\s*createEditorInitialSelectionApplier\(\{/);
   assert.match(editorSource, /getTreeMemories:\s*\(\)\s*=>\s*treeMemories\(\)/);
