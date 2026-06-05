@@ -13,7 +13,6 @@ test('post-bootstrap namespace-level deps aliases remain inventoried', () => {
   const editor = read('js/editor.js');
 
   const expectedNamespaceAliases = [
-    'const editorTreeHelpers = deps.editorTreeHelpers;',
     'const shellHelpers = deps.shellHelpers;'
   ];
 
@@ -21,7 +20,7 @@ test('post-bootstrap namespace-level deps aliases remain inventoried', () => {
     assert.ok(editor.includes(alias), `namespace alias should remain after #2123: ${alias}`);
   }
 
-  assert.equal(expectedNamespaceAliases.length, 2, 'exactly 2 namespace deps aliases should remain');
+  assert.equal(expectedNamespaceAliases.length, 1, 'exactly 1 namespace deps alias should remain');
 });
 
 test('direct deps function aliases remain inventoried', () => {
@@ -162,7 +161,8 @@ test('remaining helper method aliases: none — all 20 helper method aliases hav
     'const editorSelectionUI = deps.editorSelectionUI;',
     'const editorBindings = deps.editorBindings;',
     'const editorSaveStatus = deps.editorSaveStatus;',
-    'const editorDataLoader = deps.editorDataLoader;'
+    'const editorDataLoader = deps.editorDataLoader;',
+    'const editorTreeHelpers = deps.editorTreeHelpers;'
   ];
 
   for (const alias of forbiddenLocalAliases) {
@@ -196,6 +196,7 @@ test('remaining helper method aliases: none — all 20 helper method aliases hav
   assert.ok(editor.includes('deps.editorBindings'), 'editor should use deps.editorBindings directly');
   assert.ok(editor.includes('deps.editorSaveStatus'), 'editor should use deps.editorSaveStatus directly');
   assert.ok(editor.includes('deps.editorDataLoader'), 'editor should use deps.editorDataLoader directly');
+  assert.ok(editor.includes('deps.editorTreeHelpers'), 'editor should use deps.editorTreeHelpers directly');
 
   // Verify call site context for tree load error helpers
   assert.match(editor, /buildTreeLoadErrorCopy:\s*deps\.buildTreeLoadErrorCopy/);
@@ -234,6 +235,17 @@ test('remaining helper method aliases: none — all 20 helper method aliases hav
     (editor.match(/editorDataLoader:\s*deps\.editorDataLoader/g) || []).length,
     2,
     'editor should pass deps.editorDataLoader directly at both data loader call sites'
+  );
+
+  // Verify call site context for tree helpers (4 direct usages)
+  assert.match(editor, /deps\.editorTreeHelpers\.createInitialMemory/);
+  assert.match(editor, /editorTreeHelpers:\s*deps\.editorTreeHelpers/);
+  assert.match(editor, /deps\.editorTreeHelpers\.createTreeVisibilityUpdater/);
+  assert.match(editor, /applyUpdatedTreeVisibility:\s*deps\.editorTreeHelpers\.applyUpdatedTreeVisibility/);
+  assert.equal(
+    (editor.match(/deps\.editorTreeHelpers/g) || []).length,
+    4,
+    'editor should use deps.editorTreeHelpers directly at all tree helper call sites'
   );
 
   // Verify call site context for tree helpers

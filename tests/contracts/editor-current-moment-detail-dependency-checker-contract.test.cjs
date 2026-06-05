@@ -49,7 +49,7 @@ test('current moment detail dependency slice leaves sidebar guard and downstream
     editorSource,
     /LoveBudEditorShellHelpers\.createSidebarTreeActionsUpdater missing/
   );
-  assert.match(editorSource, /const updateTreeVisibility\s*=\s*editorTreeHelpers\.createTreeVisibilityUpdater\(/);
+  assert.match(editorSource, /const updateTreeVisibility\s*=\s*deps\.editorTreeHelpers\.createTreeVisibilityUpdater\(/);
   assert.match(editorSource, /window\.createEditorDetailUI\(/);
   assert.match(editorSource, /openCurrentMomentDetail/);
   assert.match(editorSource, /createEditorRefreshSaveRuntime\(/);
