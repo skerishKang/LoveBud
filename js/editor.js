@@ -43,7 +43,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const runEditorInitialLoadFlow = deps.runEditorInitialLoadFlow;
     const createEditorRefreshSaveRuntime = deps.createEditorRefreshSaveRuntime;
     const createEditorStartupContext = deps.createEditorStartupContext;
-    const showToast = deps.showToast;
     const i18n = deps.i18n;
     const safeI18nText = deps.safeI18nText;
     if (typeof deps.registerEditorAuthStart !== 'function') { reportEditorBootstrapMissingDependency('LoveBudEditorPageHelpers.registerEditorAuthStart missing'); return; }
@@ -218,7 +217,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 apiClient: window.apiClient,
                 createDefaultTreeTitle: () => safeI18nText(i18n, 'default_tree_title', '러브트리'),
                 getConfirmedSessionUser: deps.getConfirmedSessionUser,
-                showToast,
+                showToast: deps.showToast,
                 redirectToEditorLogin: deps.redirectToEditorLogin,
                 buildTreeLoadErrorCopy: deps.buildTreeLoadErrorCopy,
                 renderTreeLoadError: deps.renderTreeLoadError,
@@ -395,7 +394,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 getTreeMemories: () => treeMemories(),
                 getCurrentTreeData: () => window.currentTreeData || {},
                 getLocalSaveMode: () => isLocalSaveMode,
-                showToast,
+                showToast: deps.showToast,
                 updateTreeVisibility,
                 openCurrentMomentDetail,
                 focusSelectedMoment,
@@ -482,7 +481,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateSaveStatus,
                 updateDetailPanel,
                 updateSidebarStatus,
-                showToast,
+                showToast: deps.showToast,
                 getCurrentEditingMemory: () => currentEditingMemory,
                 setCurrentEditingMemory: (value) => { currentEditingMemory = value; },
                 getTreeMemories: () => window.currentTreeMemories || [],
@@ -512,7 +511,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 getCanonicalRootId: () => canonicalRootId,
                 resolveParentIdForCreate: deps.resolveParentIdForCreate,
                 updateSaveStatus,
-                showToast,
+                showToast: deps.showToast,
                 getYouTubeInputErrorMessage: (rawUrl) => deps.getYouTubeInputErrorMessage(i18n, rawUrl),
                 nextMemoryId,
                 normalizeMemory,
@@ -558,7 +557,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     emptyGuideUIHelper,
                     getTreeId: () => treeId,
                     updateTreeVisibility,
-                    showToast,
+                    showToast: deps.showToast,
                     safeI18nText,
                     i18n,
                     getHttpStatus: deps.getHttpStatus,

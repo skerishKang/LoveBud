@@ -53,11 +53,11 @@ test('inline show toast fallback preserves console log fallback format', () => {
 test('editor entrypoint requires showToast through deps (createInlineShowToastFallback removed, replaced with deps.showToast)', () => {
   assert.match(
     editorSource,
-    /const\s+showToast\s*=\s*deps\.showToast/
+    /showToast:\s*deps\.showToast/
   );
   assert.doesNotMatch(
     editorSource,
-    /const\s+showToast\s*=\s*deps\.showToast\s*\|\|/
+    /const\s+showToast\s*=\s*deps\.showToast/
   );
   assert.doesNotMatch(
     editorSource,
