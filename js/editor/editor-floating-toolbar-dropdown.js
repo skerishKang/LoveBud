@@ -76,7 +76,7 @@
 
   /**
    * Bind dropdown events: more button click, document click-outside,
-   * and secondary action dispatch (delete, share, focus).
+   * and secondary action dispatch (delete, share, focus, scout).
    */
   function bindDropdownEvents(ctx) {
     var dropdown = ctx.dropdown;
@@ -84,6 +84,7 @@
     var deleteAction = ctx.deleteAction;
     var shareAction = ctx.shareAction;
     var focusAction = ctx.focusAction;
+    var scoutAction = ctx.scoutAction;
 
     // More button: toggle dropdown
     if (moreBtn) {
@@ -148,6 +149,24 @@
         var focusBtn = document.getElementById('focusSelectedBtn');
         if (focusBtn) {
           focusBtn.click();
+        }
+      });
+    }
+
+    // Secondary action: Scout draft (manual entry)
+    if (scoutAction) {
+      scoutAction.addEventListener('click', function (e) {
+        e.stopPropagation();
+        hideDropdown(dropdown, moreBtn);
+        if (window.LoveBudScoutDraftUI && window.LoveBudScoutDraftUI.open) {
+          // Get the currently selected node ID from the context
+          // ctx.selectedNode might be a function (getSelectedNodeEl) or an element
+          var selectedNodeEl = ctx.selectedNode;
+          if (typeof selectedNodeEl === 'function') {
+            selectedNodeEl = selectedNodeEl();
+          }
+          var selectedId = selectedNodeEl ? (selectedNodeEl.dataset.id || selectedNodeEl.getAttribute('data-id')) : null;
+          window.LoveBudScoutDraftUI.open(selectedId);
         }
       });
     }

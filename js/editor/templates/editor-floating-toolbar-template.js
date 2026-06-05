@@ -34,6 +34,10 @@ export function buildFloatingToolbarTemplate() {
         </button>
         <!-- Secondary actions dropdown for "..." button -->
         <div id="ftbDropdown" class="editor-ftb-dropdown is-hidden" role="menu" aria-label="추가 행동" style="display:none;">
+            <button type="button" class="editor-ftb-dropdown-item" id="ftbScoutAction" role="menuitem" data-action="scout">
+                <span class="material-symbols-outlined" aria-hidden="true">scanner</span>
+                <span data-i18n="scout_trigger_label">Scout로 순간 저장</span>
+            </button>
             <button type="button" class="editor-ftb-dropdown-item" id="ftbDeleteAction" role="menuitem" data-action="delete">
                 <span class="material-symbols-outlined" aria-hidden="true">delete</span>
                 <span>순간 삭제</span>
