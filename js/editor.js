@@ -28,7 +28,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const shellHelpers = deps.shellHelpers;
     const editorSaveStatus = deps.editorSaveStatus;
     const editorTreeHelpers = deps.editorTreeHelpers;
-    const editorBindings = deps.editorBindings;
     const editorDataLoader = deps.editorDataLoader;
     const bindEditorPageEvents = deps.bindEditorPageEvents;
     const runEditorInitialLoadFlow = deps.runEditorInitialLoadFlow;
@@ -542,7 +541,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 bindEditorPageEvents({
                     canEdit,
                     sidebarUIHelper,
-                    editorBindings,
+                    editorBindings: deps.editorBindings,
                     emptyGuideUIHelper,
                     getTreeId: () => treeId,
                     updateTreeVisibility,
