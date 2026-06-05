@@ -138,6 +138,24 @@
         'scout_trigger_tooltip': {
             ko: '직접 링크와 메모로 순간을 저장합니다 (AI 없이)',
             en: 'Save a moment manually with link and note (no AI)'
+        },
+
+        // Suggestion button & messages
+        'scout_suggest_btn': {
+            ko: 'AI 제안 받기',
+            en: 'Get AI Suggestion'
+        },
+        'scout_suggest_applied': {
+            ko: '제안이 적용되었습니다.',
+            en: 'Suggestion applied.'
+        },
+        'scout_suggest_unavailable': {
+            ko: 'AI 제안을 불러오지 못했습니다. 직접 입력 후 저장할 수 있습니다.',
+            en: 'AI suggestion unavailable. You can enter content and save manually.'
+        },
+        'scout_suggest_error': {
+            ko: 'AI 제안을 불러오지 못했습니다.',
+            en: 'Failed to get AI suggestion.'
         }
     };
 })();

@@ -239,6 +239,15 @@
     background: var(--color-cream-200);
 }
 
+/* Suggestion feedback area */
+.scout-suggest-feedback {
+    font-size: 0.8125rem;
+    padding: 12px 16px;
+    border-radius: 10px;
+    background: rgba(249, 168, 149, 0.1);
+    color: var(--color-brown-600);
+}
+
 /* Preview overlay */
 .scout-preview-overlay {
     position: fixed;
