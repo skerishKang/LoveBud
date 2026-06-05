@@ -10,7 +10,11 @@ const editorSource = fs.readFileSync('js/editor.js', 'utf8');
 test('editor.js now uses createEditorDebugReporter required deps helper without fallback', () => {
   assert.match(
     editorSource,
-    /const\s+createEditorDebugReporter\s*=\s*deps\.createEditorDebugReporter/
+    /deps\.createEditorDebugReporter/
+  );
+  assert.doesNotMatch(
+    editorSource,
+    /const\s+createEditorDebugReporter\s*=\s*deps\.createEditorDebugReporter;/
   );
   assert.doesNotMatch(
     editorSource,
@@ -38,7 +42,7 @@ test('editor-shell-helpers.js createEditorDebugReporter pushes to debugState.err
 // --- 3. Missing-helper guard moved to bootstrap section ---
 
 test('editor.js resolves createEditorDebugReporter through deps in bootstrap section', () => {
-  const editorDebugIndex = editorSource.indexOf('createEditorDebugReporter = deps.createEditorDebugReporter');
+  const editorDebugIndex = editorSource.indexOf('deps.createEditorDebugReporter');
   assert.ok(editorDebugIndex !== -1, 'createEditorDebugReporter must be resolved through deps');
 
   const guardContextStart = editorSource.lastIndexOf('reportEditorBootstrapMissingDependency', editorDebugIndex);
@@ -46,12 +50,12 @@ test('editor.js resolves createEditorDebugReporter through deps in bootstrap sec
 });
 
 test('editor.js createEditorDebugReporter deps resolution is before startEditor definition', () => {
-  const editorDebugIndex = editorSource.indexOf('createEditorDebugReporter = deps.createEditorDebugReporter');
+  const depsIndex = editorSource.indexOf('const deps = entryDependenciesResult.deps;');
   const startEditorIndex = editorSource.indexOf('const startEditor = async () => {');
 
-  assert.ok(editorDebugIndex !== -1, 'createEditorDebugReporter deps resolution must exist');
+  assert.ok(depsIndex !== -1, 'deps resolution must exist');
   assert.ok(startEditorIndex !== -1, 'startEditor must exist');
-  assert.ok(editorDebugIndex < startEditorIndex, 'deps resolution must be before startEditor');
+  assert.ok(depsIndex < startEditorIndex, 'deps resolution must be before startEditor');
 });
 
 test('editor.js no longer guards createEditorDebugReporter inside startEditor', () => {
@@ -60,28 +64,6 @@ test('editor.js no longer guards createEditorDebugReporter inside startEditor', 
   assert.equal(guardInside, -1, 'there must be no createEditorDebugReporter missing guard inside startEditor');
 });
 
-// --- 4. Startup dependency waiter unchanged ---
-
-test('editor.js now uses createEditorStartupDependencyWaiter as required helper without fallback', () => {
-  assert.match(
-    editorSource,
-    /const\s+createEditorStartupDependencyWaiter\s*=\s*deps\.createEditorStartupDependencyWaiter;/
-  );
-  assert.doesNotMatch(
-    editorSource,
-    /const\s+createEditorStartupDependencyWaiter\s*=\s*deps\.createEditorStartupDependencyWaiter\s*\|\|/
-  );
-});
-
-test('editor.js guards missing createEditorStartupDependencyWaiter before use', () => {
-  assert.match(
-    editorSource,
-    /LoveBudEditorShellHelpers\.createEditorStartupDependencyWaiter missing/
-  );
-});
-
-// --- 5. Debug reporter call and log/reportError flow preserved ---
-
 test('editor.js calls createEditorDebugReporter inside startEditor', () => {
-  assert.match(editorSource, /const\s*\{\s*log,\s*reportError\s*\}\s*=\s*createEditorDebugReporter\(\)/);
+  assert.match(editorSource, /const\s*\{\s*log,\s*reportError\s*\}\s*=\s*deps\.createEditorDebugReporter\(\)/);
 });

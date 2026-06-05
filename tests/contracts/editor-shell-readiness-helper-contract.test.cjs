@@ -175,8 +175,8 @@ test('editor.js delegates applyEditorEditabilityState through required shell hel
 });
 
 test('editor.js now uses createEditorDebugReporter as required deps helper without fallback', () => {
-  assert.match(editorSource, /deps\.createEditorDebugReporter;/);
-  assert.doesNotMatch(editorSource, /deps\.createEditorDebugReporter\s*\|\|/);
+  assert.match(editorSource, /deps\.createEditorDebugReporter/);
+  assert.doesNotMatch(editorSource, /const createEditorDebugReporter = deps\.createEditorDebugReporter;/);
 });
 
 test('editor.js now uses createEditorStartupDependencyWaiter as required helper without fallback', () => {
@@ -187,7 +187,7 @@ test('editor.js now uses createEditorStartupDependencyWaiter as required helper 
 // --- 7. editor.js uses helpers in startup path ---
 
 test('editor.js calls createEditorDebugReporter in startup path', () => {
-  assert.match(editorSource, /createEditorDebugReporter\(\)/);
+  assert.match(editorSource, /deps\.createEditorDebugReporter\(\)/);
 });
 
 test('editor.js calls createEditorStartupDependencyWaiter with log and reportError', () => {
@@ -217,7 +217,7 @@ test('editor.js guards missing markEditorReady before startup proceeds', () => {
 });
 
 test('editor.js guards missing createEditorStartupDependencyWaiter after debug reporter creation', () => {
-  const reporterCall = editorSource.indexOf('createEditorDebugReporter()');
+  const reporterCall = editorSource.indexOf('deps.createEditorDebugReporter()');
   const waiterGuard = editorSource.indexOf('LoveBudEditorShellHelpers.createEditorStartupDependencyWaiter missing');
 
   assert.ok(reporterCall !== -1, 'createEditorDebugReporter() call must exist');

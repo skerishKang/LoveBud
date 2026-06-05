@@ -44,15 +44,14 @@ test('direct deps function aliases remain inventoried', () => {
     'const i18n = deps.i18n;',
     'const getEditorBasePath = deps.getEditorBasePath;',
     'const redirectToEditorLogin = deps.redirectToEditorLogin;',
-    'const safeI18nText = deps.safeI18nText;',
-    'const createEditorDebugReporter = deps.createEditorDebugReporter;'
+    'const safeI18nText = deps.safeI18nText;'
   ];
 
   for (const alias of expectedDirectAliases) {
     assert.ok(editor.includes(alias), `direct deps alias should remain: ${alias}`);
   }
 
-  assert.equal(expectedDirectAliases.length, 6, 'exactly 6 direct deps function aliases');
+  assert.equal(expectedDirectAliases.length, 5, 'exactly 5 direct deps function aliases');
 });
 
 test('first batch helper method aliases now use direct deps aliases', () => {
@@ -162,7 +161,8 @@ test('remaining helper method aliases: none — all 20 helper method aliases hav
     'const resolveParentIdForCreate = deps.resolveParentIdForCreate;',
     'const resolveMemoryThumbnail = deps.resolveMemoryThumbnail;',
     'const getMyTreesHref = deps.getMyTreesHref;',
-    'const getYouTubeInputErrorMessage = deps.getYouTubeInputErrorMessage;'
+    'const getYouTubeInputErrorMessage = deps.getYouTubeInputErrorMessage;',
+    'const createEditorDebugReporter = deps.createEditorDebugReporter;'
   ];
 
   for (const alias of forbiddenLocalAliases) {
@@ -185,6 +185,7 @@ test('remaining helper method aliases: none — all 20 helper method aliases hav
   assert.ok(editor.includes('deps.resolveMemoryThumbnail'), 'editor should use deps.resolveMemoryThumbnail directly');
   assert.ok(editor.includes('deps.getMyTreesHref'), 'editor should use deps.getMyTreesHref directly');
   assert.ok(editor.includes('deps.getYouTubeInputErrorMessage'), 'editor should use deps.getYouTubeInputErrorMessage directly');
+  assert.ok(editor.includes('deps.createEditorDebugReporter'), 'editor should use deps.createEditorDebugReporter directly');
 
   // Verify call site context for tree load error helpers
   assert.match(editor, /buildTreeLoadErrorCopy:\s*deps\.buildTreeLoadErrorCopy/);
@@ -213,6 +214,9 @@ test('remaining helper method aliases: none — all 20 helper method aliases hav
 
   // Verify call site context for YouTube input error resolver
   assert.match(editor, /getYouTubeInputErrorMessage:\s*\(rawUrl\)\s*=>\s*deps\.getYouTubeInputErrorMessage\(i18n,\s*rawUrl\)/);
+
+  // Verify call site context for debug reporter
+  assert.match(editor, /const\s*\{\s*log,\s*reportError\s*\}\s*=\s*deps\.createEditorDebugReporter\(\);/);
 });
 
 test('resolver-owned duplicate bootstrap guards remain removed after cleanup', () => {
