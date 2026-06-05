@@ -3,7 +3,9 @@ const fs = require('node:fs');
 const test = require('node:test');
 const vm = require('node:vm');
 
+const shellUtilsSource = fs.readFileSync('js/editor/editor-shell-utils.js', 'utf8');
 const shellHelpersSource = fs.readFileSync('js/editor/editor-shell-helpers.js', 'utf8');
+const combinedShellSource = shellUtilsSource + '\n' + shellHelpersSource;
 const editorSource = fs.readFileSync('js/editor.js', 'utf8');
 
 function loadShellHelpers(overrides = {}) {
@@ -35,6 +37,7 @@ function loadShellHelpers(overrides = {}) {
   Object.assign(context, overrides);
   context.window.window = context.window;
   vm.createContext(context);
+  vm.runInContext(shellUtilsSource, context);
   vm.runInContext(shellHelpersSource, context);
 
   return {
@@ -56,7 +59,7 @@ test('editor shell helpers export applyEditorEditabilityState', () => {
 });
 
 test('editor shell helpers export createEditorDebugReporter', () => {
-  assert.match(shellHelpersSource, /createEditorDebugReporter:\s*function\(options\)/);
+  assert.match(combinedShellSource, /createEditorDebugReporter:\s*function\(options\)/);
 });
 
 test('editor shell helpers export createEditorStartupDependencyWaiter', () => {
@@ -106,19 +109,19 @@ test('applyEditorEditabilityState defaults canEdit to true', () => {
 // --- 4. createEditorDebugReporter behavior ---
 
 test('createEditorDebugReporter logs entries to debugState.logs', () => {
-  const start = shellHelpersSource.indexOf('createEditorDebugReporter: function(options)');
+  const start = combinedShellSource.indexOf('createEditorDebugReporter: function(options)');
   assert.notEqual(start, -1, 'createEditorDebugReporter must exist');
 
-  const end = shellHelpersSource.indexOf('},', start);
-  const block = shellHelpersSource.slice(start, end);
+  const end = combinedShellSource.indexOf('createEditorStartDependencyGuard:', start);
+  const block = combinedShellSource.slice(start, end);
 
   assert.match(block, /debugState\.logs\.push\(entry\)/);
 });
 
 test('createEditorDebugReporter records error entries to debugState.errors', () => {
-  const start = shellHelpersSource.indexOf('createEditorDebugReporter: function(options)');
-  const end = shellHelpersSource.indexOf('},', start);
-  const block = shellHelpersSource.slice(start, end);
+  const start = combinedShellSource.indexOf('createEditorDebugReporter: function(options)');
+  const end = combinedShellSource.indexOf('createEditorStartDependencyGuard:', start);
+  const block = combinedShellSource.slice(start, end);
 
   assert.match(block, /debugState\.errors\.push\(/);
 });

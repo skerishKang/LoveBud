@@ -2,7 +2,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const test = require('node:test');
 
-const shellHelpersSource = fs.readFileSync('js/editor/editor-shell-helpers.js', 'utf8');
+const shellHelpersSource = fs.readFileSync('js/editor/editor-shell-utils.js', 'utf8');
 const editorSource = fs.readFileSync('js/editor.js', 'utf8');
 const editorHtmlSource = fs.readFileSync('pages/editor.html', 'utf8');
 
@@ -10,8 +10,8 @@ function getCreateInlineShowToastFallbackBlock() {
   const start = shellHelpersSource.indexOf('createInlineShowToastFallback: function()');
   assert.notEqual(start, -1, 'createInlineShowToastFallback helper must exist');
 
-  const end = shellHelpersSource.indexOf('// Shell copy application', start);
-  assert.notEqual(end, -1, 'createInlineShowToastFallback block must end before shell copy application');
+  const end = shellHelpersSource.indexOf('getYouTubeInputErrorMessageFallback:', start);
+  assert.notEqual(end, -1, 'createInlineShowToastFallback block must end before getYouTubeInputErrorMessageFallback');
 
   return shellHelpersSource.slice(start, end);
 }

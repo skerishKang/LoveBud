@@ -10,8 +10,8 @@ function getApplyEditorShellCopyBlock() {
   const start = shellHelpersSource.indexOf('applyEditorShellCopy: function(safeI18nText, i18n)');
   assert.notEqual(start, -1, 'applyEditorShellCopy helper must exist');
 
-  const end = shellHelpersSource.indexOf('// Editor ready marker', start);
-  assert.notEqual(end, -1, 'applyEditorShellCopy block must end before editor ready marker');
+  const end = shellHelpersSource.indexOf('markEditorReady:', start);
+  assert.notEqual(end, -1, 'applyEditorShellCopy block must end before markEditorReady');
 
   return shellHelpersSource.slice(start, end);
 }

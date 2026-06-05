@@ -2,7 +2,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const test = require('node:test');
 
-const shellHelpersSource = fs.readFileSync('js/editor/editor-shell-helpers.js', 'utf8');
+const shellHelpersSource = fs.readFileSync('js/editor/editor-shell-utils.js', 'utf8');
 const editorSource = fs.readFileSync('js/editor.js', 'utf8');
 
 // --- 1. Current state: local fallback removed, required boundary ---

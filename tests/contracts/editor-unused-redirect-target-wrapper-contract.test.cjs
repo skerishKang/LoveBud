@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const test = require('node:test');
 
 const editorSource = fs.readFileSync('js/editor.js', 'utf8');
-const shellHelpersSource = fs.readFileSync('js/editor/editor-shell-helpers.js', 'utf8');
+const shellHelpersSource = fs.readFileSync('js/editor/editor-shell-utils.js', 'utf8');
 const pageHelpersSource = fs.readFileSync('js/editor/editor-page-helpers.js', 'utf8');
 
 test('editor no longer owns unused redirect target wrapper', () => {
