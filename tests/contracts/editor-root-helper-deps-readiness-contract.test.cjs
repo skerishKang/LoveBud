@@ -61,6 +61,6 @@ test('editor entrypoint uses root helpers from deps for downstream calls', () =>
   assert.match(editor, /window\.createEditorMemoryActions\(\{[\s\S]*?isRootMemory/);
   assert.match(editor, /window\.createEditorMemoryActions\(\{[\s\S]*?findRootMemory/);
   assert.match(editor, /window\.createEditorDetailUI\(\{[\s\S]*?isRootMemory/);
-  assert.match(editor, /getYouTubeInputErrorMessage\(i18n/);
+  assert.match(editor, /getYouTubeInputErrorMessage\(deps\.i18n/);
   assert.match(editor, /getCanonicalRootId\(treeMemories\(\)\)/);
 });

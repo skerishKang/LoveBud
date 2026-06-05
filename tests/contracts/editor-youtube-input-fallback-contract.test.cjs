@@ -82,6 +82,6 @@ test('editor no longer owns local YouTube validation body inside wrapper', () =>
 test('memory form keeps YouTube input error message injection intact', () => {
   assert.match(
     editorSource,
-    /getYouTubeInputErrorMessage:\s*\(rawUrl\)\s*=>\s*deps\.getYouTubeInputErrorMessage\(i18n,\s*rawUrl\)/
+    /getYouTubeInputErrorMessage:\s*\(rawUrl\)\s*=>\s*deps\.getYouTubeInputErrorMessage\(deps\.i18n,\s*rawUrl\)/
   );
 });

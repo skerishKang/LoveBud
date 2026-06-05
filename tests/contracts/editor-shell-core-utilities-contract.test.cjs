@@ -51,7 +51,7 @@ test('editor entrypoint keeps core utility fallback resolution intact', () => {
     editorSource,
     /shellHelpers\.getI18n/
   );
-  assert.match(editorSource, /const i18n\s*=\s*deps\.i18n/);
+  assert.doesNotMatch(editorSource, /const i18n\s*=\s*deps\.i18n/);
 
   // getEditorBasePath now from deps (direct usage, no alias)
   assert.match(
@@ -113,6 +113,6 @@ test('editor entrypoint requires getMyTreesHref through direct deps pattern', ()
   // check parameter passing is intact
   assert.match(
     editorSource,
-    /deps\.createPrepareEditorShell\(\{\s*applyEditorShellCopy:\s*deps\.applyEditorShellCopy,\s*safeI18nText:\s*deps\.safeI18nText,\s*i18n,\s*getMyTreesHref:\s*deps\.getMyTreesHref\s*\}\)/
+    /deps\.createPrepareEditorShell\(\{\s*applyEditorShellCopy:\s*deps\.applyEditorShellCopy,\s*safeI18nText:\s*deps\.safeI18nText,\s*i18n:\s*deps\.i18n,\s*getMyTreesHref:\s*deps\.getMyTreesHref\s*\}\)/
   );
 });
