@@ -181,6 +181,8 @@
    * @param {HTMLElement} [ctx.deleteAction]
    * @param {HTMLElement} [ctx.shareAction]
    * @param {HTMLElement} [ctx.focusAction]
+   * @param {HTMLElement} [ctx.scoutAction]
+   * @param {Function|HTMLElement} [ctx.selectedNode]
    */
   function bindToolbarDropdown(ctx) {
     if (!ctx) return;
@@ -190,7 +192,9 @@
       moreBtn: ctx.moreBtn,
       deleteAction: ctx.deleteAction,
       shareAction: ctx.shareAction,
-      focusAction: ctx.focusAction
+      focusAction: ctx.focusAction,
+      scoutAction: ctx.scoutAction,
+      selectedNode: ctx.selectedNode
     });
   }
 

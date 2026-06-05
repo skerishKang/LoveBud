@@ -108,6 +108,19 @@
         const emotionTagsResult = validateEmotionTags(emotionTags);
         if (!emotionTagsResult.ok) return { ok: false, message: emotionTagsResult.message, field: 'emotionTags' };
 
+        // Ensure at least one of sourceUrl, excerpt, or memo has content
+        const hasSourceUrl = !!sourceUrlResult.value;
+        const hasExcerpt = !!excerptResult.value;
+        const hasMemo = !!memoResult.value;
+
+        if (!hasSourceUrl && !hasExcerpt && !hasMemo) {
+            return {
+                ok: false,
+                message: '출처 링크나 저장할 내용을 입력해 주세요.',
+                field: 'sourceUrl'
+            };
+        }
+
         const draft = {
             // Scout-specific metadata
             scoutVersion: 1,

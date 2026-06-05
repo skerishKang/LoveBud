@@ -243,7 +243,7 @@
         shareAction: shareAction,
         focusAction: focusAction,
         scoutAction: scoutAction,
-        selectedNode: getSelectedNodeEl()
+        selectedNode: getSelectedNodeEl
       });
     }
 
