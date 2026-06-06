@@ -316,10 +316,14 @@ const tests = [
                 code.includes('"stub"'),
         'Endpoint should default to stub provider mode');
 
-      // No live provider call in the main path
-      const hasLiveProviderCall = code.includes('callLiveProvider');
-      assert.ok(hasLiveProviderCall === false || code.includes('Future: call live provider'),
-        'Live provider call should be commented/guarded as future work');
+      // Live provider call path: either placeholder or actual adapter.suggest (still safe-fail)
+      const hasAdapterCall = code.includes('adapter.suggest');
+      const hasPlaceholder = code.includes('callLiveProvider') || code.includes('Future: call live provider');
+      assert.ok(hasAdapterCall || hasPlaceholder,
+        'Live provider should be behind adapter.suggest call or placeholder — no real provider call');
+      // Verify no real provider URL or SDK is referenced
+      assert.ok(!code.includes('api.openai') && !code.includes('api.anthropic'),
+        'No real provider URLs in endpoint');
     }
   },
 

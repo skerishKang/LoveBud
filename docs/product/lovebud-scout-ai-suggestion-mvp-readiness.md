@@ -85,7 +85,8 @@ Ready for a narrow live-provider implementation planning slice, but not ready fo
 |---|---|---|
 | Live provider prompt / response contract | `[PRODUCT] Define Scout live-provider prompt and response contract` | ✅ Completed (#2235) |
 | Prompt template + copyright policy | `[PRODUCT] Define Scout live-provider prompt and response contract` | ✅ Completed (#2235) |
-| Live provider adapter skeleton | `[TECH] Add Scout live provider adapter skeleton` | 🟡 Next |
+| Live provider adapter skeleton | `[TECH] Add Scout live provider adapter skeleton` | ✅ Completed (#2238) |
+| Endpoint adapter skeleton wiring | `[TECH] Wire Scout endpoint to adapter skeleton behind disabled live mode` | ✅ Completed (#2239) |
 | Firebase auth verification implementation | `[TECH] Add Scout Firebase auth verification boundary` |  |
 | Rate-limit storage implementation | `[TECH] Add Scout rate-limit persistence boundary` |  |
 | Staging flag policy / deployment pipeline | `[PRODUCT] Define Scout staging feature flag process` |  |

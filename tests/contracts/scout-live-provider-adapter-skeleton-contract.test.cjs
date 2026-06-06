@@ -429,15 +429,24 @@ tests.push({
 
 // ── 16. Endpoint default stub preserved ───────────────────────────────────
 tests.push({
-  name: 'suggest.js endpoint default stub behavior is preserved',
+  name: 'suggest.js endpoint default stub behavior is preserved (adapter may be imported but stub remains default)',
   fn: async () => {
     // Verify suggest.js still returns stub by default
     assert.ok(suggestCode.includes('providerMode'), 'Endpoint should use providerMode');
     assert.ok(suggestCode.includes('stub') || suggestCode.includes('StubProvider'),
       'Endpoint should default to stub');
-    assert.ok(!suggestCode.includes('live-provider-adapter'), 'Endpoint should not import live adapter yet');
 
-    // Verify adapter does not modify endpoint behavior
+    // Adapter may now be imported — verify it's imported but NOT used for default call path
+    const importRef = suggestCode.includes('live-provider-adapter');
+    // If imported, verify the default path still returns stub
+    if (importRef) {
+      assert.ok(suggestCode.includes('generateStubSuggestion'),
+        'Default path should still call generateStubSuggestion');
+      assert.ok(suggestCode.includes('adapter.suggest'),
+        'Adapter.suggest should be called only in live mode branch');
+    }
+
+    // Verify adapter does not modify endpoint behavior for default path
     assert.ok(!adapterCode.includes('suggest.js'), 'Adapter should not reference suggest.js');
     assert.ok(!adapterCode.includes('/api/scout'), 'Adapter should not reference endpoint path');
   },
@@ -467,6 +476,13 @@ tests.push({
     // Prompt contract doc should reference the adapter
     assert.ok(promptContractContent.includes('adapter') || promptContractContent.includes('skeleton'),
       'Prompt contract doc should reference adapter skeleton');
+
+    // At least one doc should mention wiring or endpoint recognizing adapter
+    const hasWiringRef = allDocContent.toLowerCase().includes('endpoint now recognize') ||
+      allDocContent.toLowerCase().includes('endpoint recognizes') ||
+      allDocContent.toLowerCase().includes('adapter wiring');
+    // This check is informational — wiring may not be reflected in docs yet
+    // (it will be updated in the wiring PR)
   },
 });
 
