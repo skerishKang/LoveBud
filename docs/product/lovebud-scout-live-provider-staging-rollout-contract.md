@@ -26,6 +26,15 @@
 
 ## Baseline
 
+## Endpoint Live Error Taxonomy Contract (slice update)
+
+- endpoint error taxonomy contract added (`docs/product/lovebud-scout-live-endpoint-error-taxonomy-contract.md`)
+- error categories / canonical error codes / HTTP status mapping / response body shape / Retry-After policy / observability mapping / sensitive data prohibition all locked
+- real Firebase / KV / provider API work remains blocked
+- endpoint default remains stub
+- UI default remains `local_stub`
+- `tests/contracts/scout-live-endpoint-error-taxonomy-contract.test.cjs` — focused taxonomy contract
+
 ## Endpoint Live Auth/Rate-Limit Readiness Audit (slice update)
 
 - endpoint live auth/rate-limit readiness audit added (`docs/product/lovebud-scout-live-auth-rate-limit-readiness-audit.md`)
