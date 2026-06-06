@@ -372,5 +372,5 @@ SCOUT_LLM_RETRY_ATTEMPTS=2
 
 - **Created**: 2026-06-06
 - **Author**: Audit follow-up for #1882
-- **Status**: Phase C (serverless endpoint boundary audit) complete, **Phase D prep (endpoint skeleton) implemented**, **Auth/RL contract added (placeholder enforcement)**, **Live Config boundary added (CONFIG_MISSING fallback)**, **Endpt Client boundary added (disabled by default)**, **Source Selector boundary added (local_stub default, endpoint_client requires feature flag)**
+- **Status**: Phase C (serverless endpoint boundary audit) complete, **Phase D prep (endpoint skeleton) implemented**, **Auth/RL contract added (placeholder enforcement)**, **Live Config boundary added (CONFIG_MISSING fallback)**, **Endpt Client boundary added (disabled by default)**, **Source Selector boundary added (local_stub default, endpoint_client requires feature flag)**, **Endpoint opt-in QA scenario added (default local_stub, endpoint_client behind explicit flag only)**
 - **Next Review**: After Phase D implementation decision
