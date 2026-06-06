@@ -17,6 +17,7 @@
 - Mock-only pipeline complete: config → adapter → prompt builder → executor → timeout/retry → response validator → output safety filter → sanitized logging
 - Post-mock readiness audit complete: 10 blockers identified, real provider API call verdict: **No**
 - Provider-specific adapter skeleton exists, disabled by default, returns safe-fail
+- Provider-specific adapter selection boundary exists, disabled-by-default, inert registry, neutral example provider only
 
 ## Purpose
 

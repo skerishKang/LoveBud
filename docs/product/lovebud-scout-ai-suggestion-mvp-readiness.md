@@ -27,7 +27,8 @@
 | 10 | Suggestion source selector boundary (`local_stub` default, `endpoint_client` requires feature flag) | #2229 | ✅ Complete |
 | 11 | Endpoint suggestion opt-in QA scenario (23 contract tests) | #2231 | ✅ Complete |
 | 12 | Live-provider prompt/response contract (with Product Prompt safety note) | #2235 | ✅ Complete |
-| 13 | Provider-specific adapter skeleton (`functions/api/scout/provider-specific-adapter.js`) | (this PR) | ✅ Complete |
+| 13 | Provider-specific adapter skeleton (`functions/api/scout/provider-specific-adapter.js`) | ✅ Complete | #2272 |
+| 14 | Provider-specific adapter selection boundary (`functions/api/scout/provider-specific-adapter.js`) | (this PR) | ✅ Complete |
 
 ---
 

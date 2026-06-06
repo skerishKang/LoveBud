@@ -5,7 +5,7 @@
 - current main HEAD: `f7d37545`
 - related issue: #1882
 - Browse #1661 remains out of scope
-- current provider status: provider-specific adapter skeleton added behind disabled mode
+- current provider status: provider-specific adapter skeleton added behind disabled mode; provider-specific adapter selection boundary added (inert registry, neutral example provider only)
 - endpoint default remains stub
 - frontend default remains local_stub
 - no real provider API call is made, no SDK/fetch/credentials
