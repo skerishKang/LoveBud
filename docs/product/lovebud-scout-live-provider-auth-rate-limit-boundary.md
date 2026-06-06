@@ -2,6 +2,22 @@
 
 ## Document Status
 
+## Auth/Rate-Limit Runtime Boundary Skeleton (slice update)
+
+- auth/rate-limit runtime boundary skeleton added (functions/api/scout/live-auth-rate-limit-boundary.js)
+- dependency injection seam only (verifyToken / checkRateLimit injected via context)
+- no Firebase Admin SDK import / no Firebase token verification
+- no KV / Durable Object / D1 runtime storage call
+- no real provider API call
+- endpoint default remains stub
+- frontend default remains local_stub
+- staging_live and production_live remain blocked
+
+- `functions/api/scout/live-auth-rate-limit-boundary.js` — runtime boundary skeleton + DI seam + safe-fail defaults
+- `tests/contracts/scout-live-auth-rate-limit-runtime-boundary-contract.test.cjs` — 28 sub-tests covering DI, safe defaults, no SDK / no storage / no fetch
+- `verifyScoutLiveAuthBoundary` / `checkScoutLiveRateLimitBoundary` wrappers expose injected `verifyToken` / `checkRateLimit`
+
+
 - **Status**: Complete — defines Firebase auth enforcement policy, unauthenticated request behavior, persistent rate-limit storage requirements, and quota policies for the Scout live provider path. Provider-specific adapter skeleton added behind disabled mode. Provider-specific adapter selection boundary added behind disabled mode (inert registry, neutral example provider only).
 - **current main HEAD**: `f7d37545`
 - **related issue**: #1882

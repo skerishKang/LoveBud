@@ -2,6 +2,22 @@
 
 ## Baseline
 
+## Auth/Rate-Limit Runtime Boundary Skeleton (slice update)
+
+- auth/rate-limit runtime boundary skeleton added (functions/api/scout/live-auth-rate-limit-boundary.js)
+- dependency injection seam only (verifyToken / checkRateLimit injected via context)
+- no Firebase Admin SDK import / no Firebase token verification
+- no KV / Durable Object / D1 runtime storage call
+- no real provider API call
+- endpoint default remains stub
+- frontend default remains local_stub
+- staging_live and production_live remain blocked
+
+- `functions/api/scout/live-auth-rate-limit-boundary.js` — runtime boundary skeleton + DI seam + safe-fail defaults
+- `tests/contracts/scout-live-auth-rate-limit-runtime-boundary-contract.test.cjs` — 28 sub-tests covering DI, safe defaults, no SDK / no storage / no fetch
+- `verifyScoutLiveAuthBoundary` / `checkScoutLiveRateLimitBoundary` wrappers expose injected `verifyToken` / `checkRateLimit`
+
+
 - **current main HEAD**: `6afb0aa5`
 - **related issue**: #1882 (PRODUCT: Explore LoveBud Scout link-based fan assistant MVP)
 - **Browse #1661** remains out of scope
