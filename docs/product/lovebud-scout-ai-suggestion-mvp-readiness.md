@@ -88,6 +88,7 @@ Ready for a narrow live-provider implementation planning slice, but not ready fo
 | Live provider adapter skeleton | `[TECH] Add Scout live provider adapter skeleton` | ✅ Completed (#2238) |
 | Endpoint adapter skeleton wiring | `[TECH] Wire Scout endpoint to adapter skeleton behind disabled live mode` | ✅ Completed (#2239) |
 | Mock execution contract | `[TECH] Add Scout live provider adapter mock execution contract` | ✅ Completed (#2241) |
+| Logging boundary | `[TECH] Add Scout live provider adapter logging boundary` | ✅ Completed (#2243) |
 | Firebase auth verification implementation | `[TECH] Add Scout Firebase auth verification boundary` |  |
 | Rate-limit storage implementation | `[TECH] Add Scout rate-limit persistence boundary` |  |
 | Staging flag policy / deployment pipeline | `[PRODUCT] Define Scout staging feature flag process` |  |

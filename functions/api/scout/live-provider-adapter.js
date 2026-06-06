@@ -61,7 +61,146 @@ const ERROR_CODES = Object.freeze({
 
 const SCOUT_LIVE_PROVIDER_ADAPTER_STATUS = Object.freeze({ ...ADAPTER_STATUS });
 
-// ─── Prompt Builder ───────────────────────────────────────────────────────────
+// ─── Safe Logging Constants ────────────────────────────────────────────────────
+
+const SCOUT_LOG_ALLOWED_FIELDS = Object.freeze([
+  'requestId',
+  'providerMode',
+  'status',
+  'errorCode',
+  'latencyMs',
+  'inputLength',
+  'outputFieldCount',
+  'emotionTagCount',
+  'hasSourceUrl',
+  'language',
+  'tone',
+  'timestamp',
+]);
+
+const SCOUT_LOG_PROHIBITED_KEYS = Object.freeze([
+  'prompt',
+  'excerpt',
+  'summary',
+  'memo',
+  'translationSuggestion',
+  'summarySuggestion',
+  'memoSuggestion',
+  'titleSuggestion',
+  'rawProviderResponse',
+  'rawModelOutput',
+  'sourceUrl',
+  'apiKey',
+  'API_KEY',
+  'authorization',
+  'Authorization',
+  'bearer',
+  'token',
+  'session',
+  'cookie',
+  'firebaseCredential',
+  'uid',
+  'email',
+  'phone',
+  'password',
+  'secret',
+]);
+
+/**
+ * Recursively sanitizes a payload object — redacts or removes prohibited fields,
+ * keeps allowed safe fields only. Never throws.
+ *
+ * @param {Object} payload - The raw event payload to sanitize
+ * @param {Set} [prohibitedSet] - Internal use for recursion
+ * @returns {Object} sanitized payload
+ */
+function sanitizeScoutLiveProviderLogPayload(payload) {
+  try {
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+      return {};
+    }
+
+    const prohibitedSet = new Set(SCOUT_LOG_PROHIBITED_KEYS);
+    const result = {};
+
+    for (const [key, value] of Object.entries(payload)) {
+      // Strip prohibited keys entirely
+      if (prohibitedSet.has(key)) {
+        continue;
+      }
+
+      if (value !== null && typeof value === 'object') {
+        if (Array.isArray(value)) {
+          // Arrays: sanitize each item if object, keep primitives as-is (safe)
+          result[key] = value.map(item => {
+            if (item && typeof item === 'object' && !Array.isArray(item)) {
+              return sanitizeScoutLiveProviderLogPayload(item);
+            }
+            return item;
+          });
+        } else {
+          // Nested object: recurse
+          result[key] = sanitizeScoutLiveProviderLogPayload(value);
+        }
+      } else {
+        // Primitive: keep as-is (safe by definition in curated payload)
+        result[key] = value;
+      }
+    }
+
+    return result;
+  } catch {
+    // Never throw
+    return {};
+  }
+}
+
+/**
+ * Creates a safe logging event from adapter execution context.
+ * Only safe observability fields are included — no prompt/excerpt/sourceUrl/API key/PII.
+ *
+ * @param {Object} context - Adapter execution context
+ * @param {string} [context.requestId] - Request identifier
+ * @param {string} context.providerMode - The provider mode at time of execution
+ * @param {string} context.status - 'success' or 'error'
+ * @param {string} [context.errorCode] - Error code if status is error
+ * @param {number} context.latencyMs - Round-trip latency in milliseconds
+ * @param {number} [context.inputLength] - Total length of excerpt/summary/memo
+ * @param {number} [context.outputFieldCount] - Number of non-empty suggestion fields
+ * @param {number} [context.emotionTagCount] - Number of emotion tags
+ * @param {boolean} [context.hasSourceUrl] - Whether a source URL was provided
+ * @param {string} [context.language] - Normalized language
+ * @param {string} [context.tone] - Normalized tone
+ * @returns {Object} sanitized log event
+ */
+function createScoutLiveProviderLogEvent(context) {
+  try {
+    if (!context || typeof context !== 'object') {
+      return {};
+    }
+
+    const event = {
+      requestId: typeof context.requestId === 'string' ? context.requestId : '',
+      providerMode: typeof context.providerMode === 'string' ? context.providerMode : 'unknown',
+      status: typeof context.status === 'string' ? context.status : 'unknown',
+      errorCode: typeof context.errorCode === 'string' && context.errorCode.length > 0 ? context.errorCode : '',
+      latencyMs: typeof context.latencyMs === 'number' && context.latencyMs >= 0 ? context.latencyMs : 0,
+      inputLength: typeof context.inputLength === 'number' && context.inputLength >= 0 ? context.inputLength : 0,
+      outputFieldCount: typeof context.outputFieldCount === 'number' && context.outputFieldCount >= 0 ? context.outputFieldCount : 0,
+      emotionTagCount: typeof context.emotionTagCount === 'number' && context.emotionTagCount >= 0 ? context.emotionTagCount : 0,
+      hasSourceUrl: typeof context.hasSourceUrl === 'boolean' ? context.hasSourceUrl : false,
+      language: typeof context.language === 'string' ? context.language : '',
+      tone: typeof context.tone === 'string' ? context.tone : '',
+      timestamp: new Date().toISOString(),
+    };
+
+    // Sanitize as safety net (should be clean by construction)
+    return sanitizeScoutLiveProviderLogPayload(event);
+  } catch {
+    // Never throw
+    return {};
+  }
+}
 
 /**
  * Normalizes and validates raw input fields for the prompt.
@@ -310,12 +449,36 @@ function validateScoutLiveProviderResponse(rawResponse, options) {
  *   Signature: async ({ prompt, normalizedInput }) => rawProviderResponse
  *   When provided, adapter.suggest() runs prompt builder → executor → response validator.
  *   When absent, adapter.suggest() returns CONFIG_MISSING safe-fail.
+ * @param {Function} [config.logger] - Optional injected logger for observability.
+ *   Signature: (event) => void
+ *   Receives sanitized events only — no prompt/excerpt/sourceUrl/API key/PII.
+ *   Throw-safe: logger failures are swallowed and never break suggest().
+ * @param {string} [config.requestId] - Optional request identifier for log events.
  * @returns {Object} adapter - { name, version, status, suggest, buildPrompt, validateResponse }
  */
 function createScoutLiveProviderAdapter(config) {
   const effectiveConfig = config || {};
   const hasConfig = effectiveConfig.provider && effectiveConfig.apiKey;
   const executor = typeof effectiveConfig.executor === 'function' ? effectiveConfig.executor : null;
+  const logger = typeof effectiveConfig.logger === 'function' ? effectiveConfig.logger : null;
+  const requestId = typeof effectiveConfig.requestId === 'string' && effectiveConfig.requestId.length > 0
+    ? effectiveConfig.requestId
+    : '';
+
+  /**
+   * Safely emits a log event through the injected logger if present.
+   * Never throws — logger failures are swallowed silently.
+   * Only sanitized events are passed to the logger.
+   */
+  function safeLogEvent(context) {
+    if (!logger) return;
+    try {
+      const event = createScoutLiveProviderLogEvent(context);
+      logger(event);
+    } catch {
+      // Swallow — logger must never break suggestion flow
+    }
+  }
 
   return {
     name: 'scout-live-provider-adapter-skeleton',
@@ -333,14 +496,44 @@ function createScoutLiveProviderAdapter(config) {
      * @returns {Promise<{ ok: boolean, providerMode?: string, suggestion?: Object, error?: { code: string, message: string } }>}
      */
     async suggest(input) {
+      const startTime = Date.now();
+
       // Validate input first
       const promptResult = buildScoutLiveProviderPrompt(input);
       if (!promptResult.ok) {
+        safeLogEvent({
+          requestId,
+          providerMode: 'live_mock',
+          status: 'error',
+          errorCode: promptResult.error?.code || 'VALIDATION_ERROR',
+          latencyMs: Date.now() - startTime,
+          inputLength: computeInputLength(input),
+          outputFieldCount: 0,
+          emotionTagCount: 0,
+          hasSourceUrl: !!(input?.sourceUrl),
+          language: promptResult.normalizedInput?.requestedLanguage || '',
+          tone: promptResult.normalizedInput?.desiredTone || '',
+        });
         return promptResult;
       }
 
+      const ni = promptResult.normalizedInput;
+
       // If no executor injected, return safe unavailable (no real provider call)
       if (!executor) {
+        safeLogEvent({
+          requestId,
+          providerMode: 'config_missing',
+          status: 'error',
+          errorCode: 'CONFIG_MISSING',
+          latencyMs: Date.now() - startTime,
+          inputLength: computeInputLength(input),
+          outputFieldCount: 0,
+          emotionTagCount: 0,
+          hasSourceUrl: !!(input?.sourceUrl),
+          language: ni.requestedLanguage,
+          tone: ni.desiredTone,
+        });
         return {
           ok: false,
           error: {
@@ -358,6 +551,19 @@ function createScoutLiveProviderAdapter(config) {
           normalizedInput: promptResult.normalizedInput,
         });
       } catch (executorError) {
+        safeLogEvent({
+          requestId,
+          providerMode: 'live_mock',
+          status: 'error',
+          errorCode: 'PROVIDER_ERROR',
+          latencyMs: Date.now() - startTime,
+          inputLength: computeInputLength(input),
+          outputFieldCount: 0,
+          emotionTagCount: 0,
+          hasSourceUrl: !!(input?.sourceUrl),
+          language: ni.requestedLanguage,
+          tone: ni.desiredTone,
+        });
         return {
           ok: false,
           error: {
@@ -370,10 +576,23 @@ function createScoutLiveProviderAdapter(config) {
       // Validate and normalize the executor output
       const validationResult = validateScoutLiveProviderResponse(
         rawResponse,
-        { requestedLanguage: promptResult.normalizedInput.requestedLanguage }
+        { requestedLanguage: ni.requestedLanguage }
       );
 
       if (!validationResult.ok) {
+        safeLogEvent({
+          requestId,
+          providerMode: 'live_mock',
+          status: 'error',
+          errorCode: 'PROVIDER_ERROR',
+          latencyMs: Date.now() - startTime,
+          inputLength: computeInputLength(input),
+          outputFieldCount: 0,
+          emotionTagCount: 0,
+          hasSourceUrl: !!(input?.sourceUrl),
+          language: ni.requestedLanguage,
+          tone: ni.desiredTone,
+        });
         return {
           ok: false,
           error: {
@@ -383,11 +602,34 @@ function createScoutLiveProviderAdapter(config) {
         };
       }
 
+      // Count non-empty output fields
+      const suggestion = validationResult.suggestion;
+      let outputFieldCount = 0;
+      if (suggestion.titleSuggestion) outputFieldCount++;
+      if (suggestion.summarySuggestion) outputFieldCount++;
+      if (suggestion.translationSuggestion) outputFieldCount++;
+      if (suggestion.memoSuggestion) outputFieldCount++;
+      if (suggestion.safetyNote) outputFieldCount++;
+
+      safeLogEvent({
+        requestId,
+        providerMode: 'live_mock',
+        status: 'success',
+        errorCode: '',
+        latencyMs: Date.now() - startTime,
+        inputLength: computeInputLength(input),
+        outputFieldCount,
+        emotionTagCount: suggestion.emotionTags?.length || 0,
+        hasSourceUrl: !!(input?.sourceUrl),
+        language: ni.requestedLanguage,
+        tone: ni.desiredTone,
+      });
+
       // Return normalized mock suggestion
       return {
         ok: true,
         providerMode: 'live_mock',
-        suggestion: validationResult.suggestion,
+        suggestion,
       };
     },
 
@@ -409,6 +651,25 @@ function createScoutLiveProviderAdapter(config) {
   };
 }
 
+/**
+ * Computes a safe input length metric for logging.
+ * Returns total character length of excerpt + summary + memo.
+ * Never throws.
+ * @param {Object} input - Raw input object
+ * @returns {number}
+ */
+function computeInputLength(input) {
+  try {
+    if (!input || typeof input !== 'object') return 0;
+    const excerpt = String(input.excerpt || '').length;
+    const summary = String(input.summary || '').length;
+    const memo = String(input.memo || '').length;
+    return excerpt + summary + memo;
+  } catch {
+    return 0;
+  }
+}
+
 // ─── Exports ──────────────────────────────────────────────────────────────────
 
 // ES module style for Cloudflare Pages Functions
@@ -417,4 +678,6 @@ export {
   buildScoutLiveProviderPrompt,
   validateScoutLiveProviderResponse,
   createScoutLiveProviderAdapter,
+  createScoutLiveProviderLogEvent,
+  sanitizeScoutLiveProviderLogPayload,
 };
