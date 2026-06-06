@@ -2,11 +2,11 @@
 
 ## Document Status
 
-- **Status**: Complete — defines Firebase auth enforcement policy, unauthenticated request behavior, persistent rate-limit storage requirements, and quota policies for the Scout live provider path. Provider-specific adapter skeleton added behind disabled mode.
+- **Status**: Complete — defines Firebase auth enforcement policy, unauthenticated request behavior, persistent rate-limit storage requirements, and quota policies for the Scout live provider path. Provider-specific adapter skeleton added behind disabled mode. Provider-specific adapter selection boundary added behind disabled mode (inert registry, neutral example provider only).
 - **current main HEAD**: `f7d37545`
 - **related issue**: #1882
 - **Browse #1661** remains out of scope
-- **current live provider status**: provider-specific adapter skeleton added; disabled-by-default; no provider API call; staging_live and production_live remain blocked
+- **current live provider status**: provider-specific adapter skeleton added; provider-specific adapter selection boundary added (inert registry, neutral example provider only); disabled-by-default; no provider API call; staging_live and production_live remain blocked
 
 ## Baseline
 
@@ -19,6 +19,7 @@
 - Staging live execution verdict: **No** (staging gates not satisfied)
 - Production live execution verdict: **No** (production gates not satisfied)
 - Provider-specific adapter skeleton exists, disabled by default, returns safe-fail
+- Provider-specific adapter selection boundary exists, disabled-by-default, inert registry, neutral example provider only
 
 ## Current State
 

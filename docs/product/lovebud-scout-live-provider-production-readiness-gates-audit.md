@@ -2,11 +2,11 @@
 
 ## Document Status
 
-- **Status**: Complete — integrates and reviews all existing readiness, staging rollout, auth/rate-limit, cost/quota, and secret/incident contracts. Defines go/no-go matrix. Provider-specific adapter skeleton added behind disabled mode.
+- **Status**: Complete — integrates and reviews all existing readiness, staging rollout, auth/rate-limit, cost/quota, and secret/incident contracts. Defines go/no-go matrix. Provider-specific adapter skeleton added behind disabled mode. Provider-specific adapter selection boundary added behind disabled mode.
 - **current main HEAD**: `f7d37545`
 - **related issue**: #1882
 - **Browse #1661** remains out of scope
-- **current live provider status**: provider-specific adapter skeleton added behind disabled mode; no provider API call; staging_live and production_live remain blocked
+- **current live provider status**: provider-specific adapter skeleton added behind disabled mode; provider-specific adapter selection boundary added (inert registry, neutral example provider only); no provider API call; staging_live and production_live remain blocked
 
 ## Baseline
 
@@ -17,6 +17,7 @@
 - Staging rollout, auth/rate-limit, cost/quota, secret/incident contracts complete
 - Real provider API call verdict: **No** (all slices to date)
 - Provider-specific adapter skeleton exists, disabled by default, returns safe-fail
+- Provider-specific adapter selection boundary exists, disabled-by-default, inert registry, neutral example provider only
 
 ## Current State Summary
 
@@ -39,7 +40,8 @@ All design contracts and the provider-specific adapter skeleton for the Scout li
 | 13 | Cost/quota abuse monitoring contract | ✅ Complete | #2265 |
 | 14 | Secret rotation and incident runbook contract | ✅ Complete | #2267 |
 | 15 | Production readiness gates audit | ✅ Complete | #2270 |
-| 16 | **Provider-specific adapter skeleton** | ✅ **New (this PR)** | — |
+| 16 | Provider-specific adapter skeleton | ✅ Complete | #2272 |
+| 17 | **Provider-specific adapter selection boundary** | ✅ **New (this PR)** | — |
 
 ## Purpose
 
@@ -80,6 +82,7 @@ All design contracts and the provider-specific adapter skeleton for the Scout li
 | **Product Prompt safety note** — EN/KR canonical, 7 invariants | ✅ Pass | `docs/product/lovebud-scout-live-provider-prompt-response-contract.md` |
 | **live provider adapter skeleton** — prompt builder, response validator, no real call | ✅ Pass | `functions/api/scout/live-provider-adapter.js` |
 | **provider-specific adapter skeleton** — config normalization, factory, disabled by default | ✅ Pass | `functions/api/scout/provider-specific-adapter.js` |
+| **provider-specific adapter selection boundary** — inert registry, neutral example provider, unknown provider safe-fail | ✅ Pass | `functions/api/scout/provider-specific-adapter.js` |
 | **mock execution** — adapter accepts injected executor, network-free | ✅ Pass | `functions/api/scout/live-provider-adapter.js` |
 | **logging boundary** — safe observability helpers, allowed/prohibited fields | ✅ Pass | `functions/api/scout/live-provider-adapter.js` |
 | **timeout/retry boundary** — constants, runScoutLiveProviderExecutorWithTimeout, safe clamping | ✅ Pass | `functions/api/scout/live-provider-adapter.js` |

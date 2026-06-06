@@ -31,6 +31,7 @@
 | Prompt/response contract | Pass | docs + tests |
 | Product Prompt safety note | Pass | EN/KR canonical |
 | Adapter skeleton | Pass | no real call |
+| Provider-specific adapter selection boundary | Pass | `functions/api/scout/provider-specific-adapter.js` (inert registry, neutral example provider) |
 | Provider-specific adapter skeleton | Pass | `functions/api/scout/provider-specific-adapter.js` (disabled by default) |
 | Mock executor path | Pass | network-free |
 | Logging boundary | Pass | safe observability only |

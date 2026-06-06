@@ -16,7 +16,7 @@
 ## Audit Purpose
 
 - 실제 provider API 연동 전 readiness를 재점검한다.
-- Mock executor integration 및 provider-specific adapter skeleton 이후 구현된 경계를 인벤토리한다.
+- Mock executor integration, provider-specific adapter skeleton, and provider-specific adapter selection boundary 이후 구현된 경계를 인벤토리한다.
 - 실제 provider 구현 전에 해결해야 할 blocker와 gate를 고정한다.
 - 이 문서는 audit-only로, 실제 provider call을 추가하지 않는다.
 
@@ -36,7 +36,9 @@
 | Prompt/response contract | ✅ Pass | docs + tests |
 | Product Prompt safety note | ✅ Pass | EN/KR canonical |
 | Adapter skeleton | ✅ Pass | no real call |
+| Provider-specific adapter selection boundary | Pass | `functions/api/scout/provider-specific-adapter.js` (inert registry, neutral example provider) |
 | Provider-specific adapter skeleton | ✅ Pass | `functions/api/scout/provider-specific-adapter.js` (disabled by default) |
+| Provider-specific adapter selection boundary | ✅ Pass | `functions/api/scout/provider-specific-adapter.js` (inert registry, neutral example provider) |
 | Mock executor path | ✅ Pass | network-free |
 | Logging boundary | ✅ Pass | safe observability only |
 | Timeout/retry boundary | ✅ Pass | mock executor only |

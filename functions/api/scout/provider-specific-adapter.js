@@ -1,6 +1,6 @@
 /**
  * Scout Provider-Specific Adapter Skeleton
- * v20260607-1
+ * v20260607-2
  *
  * Pure-function adapter skeleton for a future provider-specific live LLM suggestion provider.
  *
@@ -177,100 +177,134 @@ export function createScoutProviderSpecificAdapter(config) {
   };
 }
 
-// ─── Selection Constants ───────────────────────────────────────────────────────
+// ─── Selection Boundary Constants ──────────────────────────────────────────────
 
+/**
+ * Selection boundary status values.
+ *
+ * The selection helper ALWAYS returns one of these statuses:
+ *   - CONFIG_MISSING: required fields (provider / model / API key presence) are absent
+ *   - UNKNOWN_PROVIDER: provider name is not registered in the inert registry
+ *   - SELECTED_DISABLED: provider was selected, but the returned adapter is still
+ *                       in a disabled state. suggest() always safe-fails.
+ */
 export const SCOUT_PROVIDER_SPECIFIC_ADAPTER_SELECTION_STATUS = Object.freeze({
-  DISABLED: 'DISABLED',
+  CONFIG_MISSING: 'config_missing',
+  UNKNOWN_PROVIDER: 'unknown_provider',
+  SELECTED_DISABLED: 'selected_disabled',
+});
+
+export const SCOUT_PROVIDER_SPECIFIC_ADAPTER_SELECTION_ERROR_CODES = Object.freeze({
+  PROVIDER_UNAVAILABLE: 'PROVIDER_UNAVAILABLE',
   CONFIG_MISSING: 'CONFIG_MISSING',
-  UNSUPPORTED_PROVIDER: 'UNSUPPORTED_PROVIDER',
-  SELECTED: 'SELECTED',
 });
 
-export const SCOUT_PROVIDER_SPECIFIC_ADAPTER_IDS = Object.freeze({
-  NVIDIA: 'nvidia',
-  OPENAI_COMPATIBLE: 'openai_compatible',
-  GROQ: 'groq',
-  MISTRAL: 'mistral',
-});
+// ─── Inert Provider Registry ──────────────────────────────────────────────────
 
-// ─── Provider Normalization ───────────────────────────────────────────────────
+const SCOUT_PROVIDER_SPECIFIC_ADAPTER_EXAMPLE_NAME = 'example_provider';
 
-function normalizeProviderId(provider) {
-  if (typeof provider !== 'string') return null;
-  const normalized = provider.toLowerCase().trim();
-  if (normalized === 'nvidia') {
-    return SCOUT_PROVIDER_SPECIFIC_ADAPTER_IDS.NVIDIA;
-  }
-  if (normalized === 'openai_compatible' || normalized === 'openai-compatible' || normalized === 'openai compatible') {
-    return SCOUT_PROVIDER_SPECIFIC_ADAPTER_IDS.OPENAI_COMPATIBLE;
-  }
-  if (normalized === 'groq') {
-    return SCOUT_PROVIDER_SPECIFIC_ADAPTER_IDS.GROQ;
-  }
-  if (normalized === 'mistral') {
-    return SCOUT_PROVIDER_SPECIFIC_ADAPTER_IDS.MISTRAL;
-  }
-  return null;
+/**
+ * Returns the inert provider-specific adapter registry.
+ *
+ * The registry is a frozen object that maps provider name strings to factory
+ * functions. Each factory returns a provider-specific adapter instance via
+ * `createScoutProviderSpecificAdapter`. The factories are inert: no SDK
+ * import, no fetch, no API key value propagation.
+ *
+ * Invariants:
+ *   - Pure function, returns a frozen object
+ *   - Does NOT contain real provider names (openai/anthropic/gemini/groq/mistral/nvidia/...)
+ *   - Does NOT perform any I/O
+ *   - Does NOT import any provider SDK
+ *
+ * @returns {Object} frozen registry mapping provider names to factory functions
+ */
+export function getScoutProviderSpecificAdapterRegistry() {
+  return Object.freeze({
+    [SCOUT_PROVIDER_SPECIFIC_ADAPTER_EXAMPLE_NAME]: createScoutProviderSpecificAdapter,
+  });
 }
 
 // ─── Selection Helper ──────────────────────────────────────────────────────────
 
 /**
- * Selects the appropriate provider-specific adapter skeleton based on configuration.
+ * Selects a provider-specific adapter based on configuration.
  *
- * @param {Object} [envOrConfig={}] - Environment variables or config object
- * @returns {Object} { status, providerId, adapter, errorCode, safeForLiveCall }
+ * Policy:
+ *   - Reuses `normalizeScoutProviderSpecificAdapterConfig` for config validation.
+ *   - If the normalized config status is `CONFIG_MISSING`, the selection returns
+ *     the same status with `adapter: null` and a safe error code.
+ *   - If a provider name is given but is NOT in the inert registry, returns
+ *     `UNKNOWN_PROVIDER` with `adapter: null` and `PROVIDER_UNAVAILABLE`.
+ *   - If a provider name is given AND is in the registry, the registry's
+ *     factory is invoked with the original config to produce an adapter. The
+ *     adapter is always returned in a disabled state (no real provider call).
+ *     The selection status is `SELECTED_DISABLED`.
+ *
+ * The selection result NEVER contains:
+ *   - The raw API key value
+ *   - Any fetched URL response
+ *   - Any executor invocation result
+ *   - Any side-effect (no fetch, no localStorage, no DB write)
+ *
+ * @param {Object} [config] - raw config (same shape as `normalizeScoutProviderSpecificAdapterConfig` accepts)
+ * @returns {Object} { ok, status, provider, adapter, error }
  */
-export function selectScoutProviderSpecificAdapter(envOrConfig = {}) {
-  const cfg = (envOrConfig && typeof envOrConfig === 'object') ? envOrConfig : {};
+export function selectScoutProviderSpecificAdapter(config) {
+  const normalized = normalizeScoutProviderSpecificAdapterConfig(config || {});
 
-  // Extract enabled flag
-  const enabled = cfg.enabled === true || cfg.enabled === 'true' || cfg.enabled === '1' ||
-                  cfg.SCOUT_PROVIDER_SPECIFIC_ADAPTER_ENABLED === true || cfg.SCOUT_PROVIDER_SPECIFIC_ADAPTER_ENABLED === 'true' || cfg.SCOUT_PROVIDER_SPECIFIC_ADAPTER_ENABLED === '1';
+  const baseShape = {
+    ok: false,
+    provider: normalized.provider || '',
+    adapter: null,
+  };
 
-  const provider = String(cfg.provider || cfg.SCOUT_SUGGEST_LLM_PROVIDER || '').trim();
-  const model = String(cfg.model || cfg.SCOUT_SUGGEST_MODEL || '').trim();
-  const apiKey = cfg.apiKey || cfg.SCOUT_SUGGEST_LLM_API_KEY || '';
-  const hasApiKey = Boolean(apiKey) && apiKey.length > 0;
-
-  if (!enabled) {
+  if (normalized.status === SCOUT_PROVIDER_SPECIFIC_ADAPTER_STATUS.CONFIG_MISSING) {
     return {
-      status: SCOUT_PROVIDER_SPECIFIC_ADAPTER_SELECTION_STATUS.DISABLED,
-      providerId: null,
-      adapter: null,
-      errorCode: 'PROVIDER_UNAVAILABLE',
-      safeForLiveCall: false,
-    };
-  }
-
-  if (!provider || !model || !hasApiKey) {
-    return {
+      ...baseShape,
       status: SCOUT_PROVIDER_SPECIFIC_ADAPTER_SELECTION_STATUS.CONFIG_MISSING,
-      providerId: null,
-      adapter: null,
-      errorCode: 'CONFIG_MISSING',
-      safeForLiveCall: false,
+      error: {
+        code: SCOUT_PROVIDER_SPECIFIC_ADAPTER_SELECTION_ERROR_CODES.CONFIG_MISSING,
+        message: normalized.error && normalized.error.message
+          ? normalized.error.message
+          : 'Scout provider-specific adapter configuration is missing.',
+      },
     };
   }
 
-  const providerId = normalizeProviderId(provider);
-  if (!providerId) {
+  if (!normalized.provider) {
     return {
-      status: SCOUT_PROVIDER_SPECIFIC_ADAPTER_SELECTION_STATUS.UNSUPPORTED_PROVIDER,
-      providerId: null,
-      adapter: null,
-      errorCode: 'UNSUPPORTED_PROVIDER',
-      safeForLiveCall: false,
+      ...baseShape,
+      provider: '',
+      status: SCOUT_PROVIDER_SPECIFIC_ADAPTER_SELECTION_STATUS.CONFIG_MISSING,
+      error: {
+        code: SCOUT_PROVIDER_SPECIFIC_ADAPTER_SELECTION_ERROR_CODES.CONFIG_MISSING,
+        message: 'Scout provider-specific adapter is missing provider name.',
+      },
     };
   }
 
-  const adapter = createScoutProviderSpecificAdapter(cfg);
+  const registry = getScoutProviderSpecificAdapterRegistry();
+  const factory = registry[normalized.provider];
+  if (typeof factory !== 'function') {
+    return {
+      ...baseShape,
+      provider: normalized.provider,
+      status: SCOUT_PROVIDER_SPECIFIC_ADAPTER_SELECTION_STATUS.UNKNOWN_PROVIDER,
+      error: {
+        code: SCOUT_PROVIDER_SPECIFIC_ADAPTER_SELECTION_ERROR_CODES.PROVIDER_UNAVAILABLE,
+        message: 'Scout provider-specific adapter is not registered for this provider.',
+      },
+    };
+  }
+
+  const adapter = factory(config || {});
 
   return {
-    status: SCOUT_PROVIDER_SPECIFIC_ADAPTER_SELECTION_STATUS.SELECTED,
-    providerId,
+    ok: true,
+    status: SCOUT_PROVIDER_SPECIFIC_ADAPTER_SELECTION_STATUS.SELECTED_DISABLED,
+    provider: normalized.provider,
     adapter,
-    errorCode: null,
-    safeForLiveCall: false,
+    error: null,
   };
 }
