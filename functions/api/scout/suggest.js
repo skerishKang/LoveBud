@@ -65,7 +65,9 @@ function getScoutSuggestRateLimitPolicy(tier) {
 // TODO: Persistent rate-limit storage — future boundary only
 // async function checkScoutRateLimit(userId, tier) { /* placeholder using KV/Durable Objects */ }
 
-// ─── Live Provider Configuration Boundary (Contract-only, placeholder) ─────────────
+import {
+  createScoutLiveProviderAdapter,
+} from "./live-provider-adapter.js";
 
 const SCOUT_SUGGEST_PROVIDER_MODES = {
   STUB: 'stub',
@@ -293,9 +295,20 @@ export async function onRequestPost(context) {
     if (!providerConfig.safeToCallLiveProvider) {
       return buildErrorResponse(providerConfig.error.code, providerConfig.error.message, requestId, 503);
     }
-    // Future: call live provider when config is complete
-    // try { return await callLiveProvider(validation.normalized, env); }
-    // catch { return buildErrorResponse('PROVIDER_UNAVAILABLE', 'AI suggestion service temporarily unavailable', requestId, 503); }
+    // Live mode: adapter skeleton recognizes live provider config but does NOT make real calls
+    const adapter = createScoutLiveProviderAdapter({
+      provider: env?.SCOUT_SUGGEST_LLM_PROVIDER,
+      apiKey: env?.SCOUT_SUGGEST_LLM_API_KEY,
+      baseUrl: env?.SCOUT_SUGGEST_LLM_BASE_URL,
+    });
+    const adapterResult = await adapter.suggest(validation.normalized);
+    if (!adapterResult.ok) {
+      return buildErrorResponse(adapterResult.error.code, adapterResult.error.message, requestId, 503);
+    }
+    // Future: when adapter returns ok:true, build success response from adapterResult.suggestion
+    // For now, return stub (adapter currently always returns CONFIG_MISSING)
+    const stubFallback = generateStubSuggestion(validation.normalized);
+    return buildSuccessResponse(stubFallback, providerConfig.providerMode, requestId);
   }
 
   // ─── Live provider integration — placeholder for Phase D ──────────────────

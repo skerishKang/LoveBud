@@ -288,6 +288,8 @@ This slice would implement:
 
 **Adopted as implemented:** Live provider adapter skeleton (`functions/api/scout/live-provider-adapter.js`) added. Includes prompt builder (`buildScoutLiveProviderPrompt`), response validator (`validateScoutLiveProviderResponse`), and adapter interface (`createScoutLiveProviderAdapter`) — no real provider call, no SDK, no fetch, no secrets. Default source remains `local_stub`.
 
+**Endpoint wiring:** `functions/api/scout/suggest.js` now imports the adapter skeleton. Live mode calls `adapter.suggest()` but still safe-fails with `CONFIG_MISSING` — no real provider call. Default stub path is preserved unchanged.
+
 **Alternatives (independent order):**
 
 - `[TECH] Add Scout prompt builder contract`
