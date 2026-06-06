@@ -199,7 +199,7 @@ class ScoutStubSuggestionProvider {
 | **Phase D prep** | **Endpoint Skeleton (stub-first)** | `functions/api/scout/suggest.js`, skeleton contract tests |
 | **Auth/RL Contract** | **Auth/Rate-Limit Boundary** | `parseScoutAuthorizationHeader`, `getScoutSuggestRateLimitPolicy`, auth/RL contract tests |
 | **Live Config Boundary** | **Provider Config Boundary** | `resolveScoutSuggestProviderMode`, `SCOUT_SUGGEST_PROVIDER_MODES`, CONFIG_MISSING fallback, config contract tests |
-| **Endpt Client Boundary** | **Endpoint Client Wrapper** | `js/scout/scout-suggestion-endpoint-client.js`, endpoint client contract tests, disabled-by-default |
+| **Source Selector Boundary** | **Suggestion Source Selector** | `js/scout/scout-suggestion-source-selector.js`, source selector contract tests, local_stub default, endpoint_client requires feature flag |
 | **Phase D** | Real provider behind env config | OpenAICompatibleProvider, env-based model selection |
 | **Phase E** | Rate limiting / abuse controls / hardening | Quota, caching, monitoring, fallback UX |
 
@@ -249,5 +249,5 @@ class ScoutStubSuggestionProvider {
 
 - **Created**: 2026-06-05
 - **Author**: Audit follow-up for #1882
-- **Status**: Phase A (audit) complete, Phase B (stub contract) implemented, **Phase D prep (endpoint skeleton) implemented**, **Auth/RL contract added (placeholder enforcement)**, **Live Config boundary added (CONFIG_MISSING fallback)**, **Endpt Client boundary added (disabled by default)**
+- **Status**: Phase A (audit) complete, Phase B (stub contract) implemented, **Phase D prep (endpoint skeleton) implemented**, **Auth/RL contract added (placeholder enforcement)**, **Live Config boundary added (CONFIG_MISSING fallback)**, **Endpt Client boundary added (disabled by default)**, **Source Selector boundary added (local_stub default, endpoint_client requires feature flag)**
 - **Next Review**: After Phase D implementation decision
