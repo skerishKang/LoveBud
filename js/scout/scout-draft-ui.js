@@ -427,7 +427,11 @@
             setSuggestionState('loading');
 
             try {
-                const provider = ScoutSuggestionProvider.createScoutStubSuggestionProvider();
+                // Use source selector if available, otherwise direct stub provider
+                const sourceSelector = window.LoveBudScoutSuggestionSourceSelector;
+                const provider = sourceSelector
+                    ? sourceSelector.createScoutSuggestionSourceProvider()
+                    : ScoutSuggestionProvider.createScoutStubSuggestionProvider();
                 const suggestion = await provider.suggest({
                     sourceUrl: sourceUrl,
                     excerpt: excerpt,
@@ -450,7 +454,7 @@
                 }
 
                 setSuggestionState('success', t('scout_suggest_applied') || '제안이 적용되었습니다.');
-                scoutUIDebugLog('[ScoutDraftUI] Stub suggestion applied', suggestion);
+                scoutUIDebugLog('[ScoutDraftUI] Suggestion applied', suggestion);
             } catch (err) {
                 setSuggestionState('error', t('scout_suggest_error') || 'AI 제안을 불러오지 못했습니다.');
                 scoutUIDebugLog('[ScoutDraftUI] Suggestion error', err);
