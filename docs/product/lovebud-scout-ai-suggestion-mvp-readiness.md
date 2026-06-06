@@ -25,6 +25,7 @@
 | 9 | Endpoint client wrapper (`js/scout/scout-suggestion-endpoint-client.js`, disabled by default) | #2227 | ✅ Complete |
 | 10 | Suggestion source selector boundary (`local_stub` default, `endpoint_client` requires feature flag) | #2229 | ✅ Complete |
 | 11 | Endpoint suggestion opt-in QA scenario (23 contract tests) | #2231 | ✅ Complete |
+| 12 | Live-provider prompt/response contract (with Product Prompt safety note) | #2235 | ✅ Complete |
 
 ---
 
@@ -66,7 +67,7 @@ Ready for a narrow live-provider implementation planning slice, but not ready fo
 
 3. **Live provider adapter does not exist** — There is no `LiveProvider` class implementing the provider abstraction (`createScoutSuggestionProvider` interface). The `suggest.js` endpoint always returns stub responses even when live provider mode is selected.
 
-4. **Provider prompt/copyright policy needs final contract** — The prompt that would be sent to a live provider is not yet defined as a contract. While the LLM provider boundary doc sketches allowed/disallowed prompt content, there is no formal prompt template or copyright policy document.
+4. **Provider prompt/copyright policy — resolved** ❌ → ✅ Live-provider prompt and response contract is now defined. See [lovebud-scout-live-provider-prompt-response-contract.md](lovebud-scout-live-provider-prompt-response-contract.md). The Product Prompt safety note is specified with English/Korean canonical versions and 7 invariants.
 
 5. **Abuse handling and logging need implementation** — No structured logging, metrics, or abuse detection exists in the endpoint. Observability section in the endpoint boundary doc defines desirable metrics but nothing is wired.
 
@@ -80,14 +81,14 @@ Ready for a narrow live-provider implementation planning slice, but not ready fo
 
 ### Can be next
 
-| Item | Recommended Slice |
-|---|---|
-| Live provider prompt / response contract | `[PRODUCT] Define Scout live-provider prompt and response contract` |
-| Prompt template + copyright policy | `[PRODUCT] Define Scout live-provider prompt and response contract` |
-| Live provider adapter skeleton | `[TECH] Add Scout live provider adapter skeleton` |
-| Firebase auth verification implementation | `[TECH] Add Scout Firebase auth verification boundary` |
-| Rate-limit storage implementation | `[TECH] Add Scout rate-limit persistence boundary` |
-| Staging flag policy / deployment pipeline | `[PRODUCT] Define Scout staging feature flag process` |
+| Item | Recommended Slice | Status |
+|---|---|---|
+| Live provider prompt / response contract | `[PRODUCT] Define Scout live-provider prompt and response contract` | ✅ Completed (#2235) |
+| Prompt template + copyright policy | `[PRODUCT] Define Scout live-provider prompt and response contract` | ✅ Completed (#2235) |
+| Live provider adapter skeleton | `[TECH] Add Scout live provider adapter skeleton` | 🟡 Next |
+| Firebase auth verification implementation | `[TECH] Add Scout Firebase auth verification boundary` |  |
+| Rate-limit storage implementation | `[TECH] Add Scout rate-limit persistence boundary` |  |
+| Staging flag policy / deployment pipeline | `[PRODUCT] Define Scout staging feature flag process` |  |
 
 ### Still not now
 
@@ -104,24 +105,26 @@ Ready for a narrow live-provider implementation planning slice, but not ready fo
 ## Recommended Next Slice
 
 ```
-[PRODUCT] Define Scout live-provider prompt and response contract
+
+[TECH] Add Scout live provider adapter skeleton
 ```
 
-**Why this comes first:**
-- Before any live provider code is written, the prompt boundary must be locked down as a formal contract.
-- Copyright policy, user-provided text only, max output length, safety note, language/tone behavior, and emotion tag generation rules should all be defined before an API key is added.
-- This slice can be completed **without any API key, provider call, or network dependency**.
+**Why this comes next:**
+- The prompt and response contract is now finalized (blocker #4 resolved).
+- The next logical step is to build the adapter interface, prompt builder, and response validator as a skeleton.
+- The skeleton must still return `CONFIG_MISSING` or `PROVIDER_UNAVAILABLE` when live provider is not configured.
+- This slice can use mock provider for testing — no real API key needed.
 
 **Alternatives (in order of safety):**
 
 | Slice | Risk Level | Notes |
 |---|---|---|
-| `[PRODUCT] Define Scout live-provider prompt and response contract` | 🟢 Lowest | Prompt/copyright contract only; no code changes |
+| `[TECH] Add Scout live provider adapter skeleton` | 🟡 Low | Prompt contract done; skeleton returns CONFIG_MISSING |
 | `[TECH] Add Scout Firebase auth verification boundary` | 🟡 Low | Auth verification contract; can use test tokens |
 | `[TECH] Add Scout rate-limit persistence boundary` | 🟡 Low | Storage contract; can use in-memory stub for tests |
-| `[TECH] Add Scout live provider adapter skeleton` | 🟠 Medium | Requires prompt contract first (safer order) |
+| `[TECH] Add Scout prompt builder contract` | 🟢 Lowest | Extracted from contract doc; no code changes |
 
-**Caution:** Live provider adapter skeleton should wait until the prompt contract is finalized, because the adapter's `suggest(input)` behavior depends directly on the prompt policy.
+**Caution:** Live provider adapter skeleton should NOT make any real provider call. It should return a safe `CONFIG_MISSING` or `PROVIDER_UNAVAILABLE` response when the live provider is not configured.
 
 ---
 
