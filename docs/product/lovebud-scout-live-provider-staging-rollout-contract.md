@@ -2,11 +2,11 @@
 
 ## Document Status
 
-- **Status**: Complete — defines staging/production rollout gates, kill switch, rollback, and opt-in policies for the Scout live provider path.
-- **current main HEAD**: `ed26bbc7`
+- **Status**: Complete — defines staging/production rollout gates, kill switch, rollback, and opt-in policies for the Scout live provider path. Provider-specific adapter skeleton added behind disabled mode.
+- **current main HEAD**: `f7d37545`
 - **related issue**: #1882
 - **Browse #1661** remains out of scope
-- **current live provider status**: mock-only integration complete; real provider API call remains blocked
+- **current live provider status**: provider-specific adapter skeleton added; disabled-by-default; no provider API call; staging_live and production_live remain blocked
 
 ## Baseline
 
@@ -16,6 +16,7 @@
 - No real provider SDK import, no fetch, no API key value propagation
 - Mock-only pipeline complete: config → adapter → prompt builder → executor → timeout/retry → response validator → output safety filter → sanitized logging
 - Post-mock readiness audit complete: 10 blockers identified, real provider API call verdict: **No**
+- Provider-specific adapter skeleton exists, disabled by default, returns safe-fail
 
 ## Purpose
 

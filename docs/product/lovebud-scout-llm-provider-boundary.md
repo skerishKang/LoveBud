@@ -2,10 +2,12 @@
 
 ## Baseline
 
-- **current main HEAD**: `06ce3b67`
-- **related PRs**: #2203-2225 inclusive (Scout Draft MVP through live config boundary)
+- **current main HEAD**: `f7d37545`
+- **related PRs**: #2203-2270 inclusive (Scout Draft MVP through production readiness gates audit)
 - **related issues**: #1882 (PRODUCT: Explore LoveBud Scout link-based fan assistant MVP), #1661 (DB/API: Add tree-level social counts for Browse sorting)
-- **current Scout capabilities**: Manual draft entry with user-provided source URL, excerpt, memo, emotion tags → save to LoveTree via existing add-memory flow
+- **current Scout status**: provider-specific adapter skeleton added behind disabled mode; no provider API call; staging_live and production_live remain blocked
+- **endpoint default**: remains stub (deterministic, network-free)
+- **frontend default**: remains local_stub (no endpoint client)
 
 ---
 

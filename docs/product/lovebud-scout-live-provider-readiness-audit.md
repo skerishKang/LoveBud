@@ -2,11 +2,11 @@
 
 ## Baseline
 
-- **current main HEAD**: `34ab91a5`
+- **current main HEAD**: `f7d37545`
 - **related issue**: #1882 (PRODUCT: Explore LoveBud Scout link-based fan assistant MVP)
 - **Browse #1661** remains out of scope
 - **open PR count**: 0
-- **current live provider status**: not implemented, not enabled by default
+- **current live provider status**: provider-specific adapter skeleton added behind disabled mode; no provider API call; staging_live and production_live remain blocked
 
 ## Audit Purpose
 
@@ -31,6 +31,7 @@
 | Prompt/response contract | Pass | docs + tests |
 | Product Prompt safety note | Pass | EN/KR canonical |
 | Adapter skeleton | Pass | no real call |
+| Provider-specific adapter skeleton | Pass | `functions/api/scout/provider-specific-adapter.js` (disabled by default) |
 | Mock executor path | Pass | network-free |
 | Logging boundary | Pass | safe observability only |
 | Timeout/retry boundary | Pass | mock executor only |

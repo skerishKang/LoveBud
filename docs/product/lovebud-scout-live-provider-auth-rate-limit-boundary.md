@@ -2,11 +2,11 @@
 
 ## Document Status
 
-- **Status**: Complete — defines Firebase auth enforcement policy, unauthenticated request behavior, persistent rate-limit storage requirements, and quota policies for the Scout live provider path.
-- **current main HEAD**: `971add93`
+- **Status**: Complete — defines Firebase auth enforcement policy, unauthenticated request behavior, persistent rate-limit storage requirements, and quota policies for the Scout live provider path. Provider-specific adapter skeleton added behind disabled mode.
+- **current main HEAD**: `f7d37545`
 - **related issue**: #1882
 - **Browse #1661** remains out of scope
-- **current live provider status**: staging rollout contract complete; auth/rate-limit persistence boundary defined; real provider API call remains blocked
+- **current live provider status**: provider-specific adapter skeleton added; disabled-by-default; no provider API call; staging_live and production_live remain blocked
 
 ## Baseline
 
@@ -18,10 +18,11 @@
 - Real provider API call verdict: **No** (all slices to date)
 - Staging live execution verdict: **No** (staging gates not satisfied)
 - Production live execution verdict: **No** (production gates not satisfied)
+- Provider-specific adapter skeleton exists, disabled by default, returns safe-fail
 
 ## Current State
 
-The `functions/api/scout/suggest.js` endpoint currently has placeholder auth and rate-limit enforcement:
+The `functions/api/scout/suggest.js` endpoint currently has placeholder auth and rate-limit enforcement, and the provider-specific adapter skeleton is added behind disabled mode:
 
 - `parseScoutAuthorizationHeader()` — parses Bearer token but does not verify against Firebase
 - `verifyScoutFirebaseToken()` — TODO comment only, no Firebase Admin SDK integration

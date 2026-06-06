@@ -2,11 +2,11 @@
 
 ## Document Status
 
-- **Status**: Complete — defines secret storage policy, rotation policy, emergency revocation, incident response workflow, severity levels, rollback/kill-switch drills, provider compromise handling, and post-incident review for the Scout live provider path.
-- **current main HEAD**: `5ab19996`
+- **Status**: Complete — defines secret storage policy, rotation policy, emergency revocation, incident response workflow, severity levels, rollback/kill-switch drills, provider compromise handling, and post-incident review for the Scout live provider path. Provider-specific adapter skeleton added behind disabled mode.
+- **current main HEAD**: `f7d37545`
 - **related issue**: #1882
 - **Browse #1661** remains out of scope
-- **current live provider status**: cost/quota abuse monitoring contract complete; secret/incident runbook defined; real provider API call remains blocked
+- **current live provider status**: provider-specific adapter skeleton added; disabled-by-default; no provider API call; staging_live and production_live remain blocked
 
 ## Baseline
 
@@ -16,10 +16,11 @@
 - No real provider SDK import, no fetch, no API key value propagation
 - Staging rollout, auth/rate-limit, cost/quota abuse contracts complete
 - Real provider API call verdict: **No** (all slices to date)
+- Provider-specific adapter skeleton exists, disabled by default, returns safe-fail
 
 ## Current State
 
-Secret rotation, emergency revocation, and incident response are **not implemented** at runtime. The deployment checklist defines high-level secret management rules but does not specify rotation frequency, emergency revocation workflow, incident severity levels, or provider compromise handling. This contract fills that gap.
+Secret rotation, emergency revocation, and incident response are **not implemented** at runtime. The provider-specific adapter skeleton is added behind disabled mode. The deployment checklist defines high-level secret management rules but does not specify rotation frequency, emergency revocation workflow, incident severity levels, or provider compromise handling. This contract fills that gap.
 
 ## Purpose
 
