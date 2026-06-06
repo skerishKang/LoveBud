@@ -489,14 +489,14 @@ tests.push({
       suggestCode.includes('providerMode') && (suggestCode.includes('"stub"') || suggestCode.includes("'stub'")),
       'suggest.js must keep default providerMode:"stub"'
     );
-    // Boundary must not be wired into suggest.js yet
+    // Boundary is now wired into suggest.js
     assert.ok(
-      !suggestCode.includes('live-auth-rate-limit-boundary'),
-      'suggest.js must not import live-auth-rate-limit-boundary.js (slice scope)'
+      suggestCode.includes('live-auth-rate-limit-boundary'),
+      'suggest.js must import live-auth-rate-limit-boundary.js'
     );
     assert.ok(
-      !suggestCode.includes('verifyScoutLiveAuthBoundary'),
-      'suggest.js must not import verifyScoutLiveAuthBoundary (slice scope)'
+      suggestCode.includes('verifyScoutLiveAuthBoundary'),
+      'suggest.js must import verifyScoutLiveAuthBoundary'
     );
   },
 });
