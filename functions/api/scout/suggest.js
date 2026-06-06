@@ -298,14 +298,24 @@ export async function onRequestPost(context) {
   // ─── Live provider configuration boundary (contract-defined, placeholder) ─────
   const providerConfig = resolveScoutSuggestProviderMode(env);
   if (providerConfig.providerMode === SCOUT_SUGGEST_PROVIDER_MODES.LIVE) {
+    // ── DI seam: injected mock verifier/limiter (test-only) ──
+    // shape: { verifyToken?, checkRateLimit?, requestId }
+    // Production: both verifyToken and checkRateLimit are undefined; boundary safe-fails.
+    // Tests: pass mocks via { context: { verifyToken, checkRateLimit } }.
+    const liveDependencies = {
+      verifyToken: context?.verifyToken,
+      checkRateLimit: context?.checkRateLimit,
+      requestId,
+    };
+
     // ── Live-mode auth boundary (canonical, DI-injected, safe-fail) ──
-    const authResult = await verifyScoutLiveAuthBoundary(request, context);
+    const authResult = await verifyScoutLiveAuthBoundary(request, liveDependencies);
     if (!authResult.ok) {
       return buildErrorResponse(authResult.error.code, authResult.error.message, requestId, 401);
     }
 
     // ── Live-mode rate-limit boundary (canonical, DI-injected, safe-fail) ──
-    const rateLimitResult = await checkScoutLiveRateLimitBoundary(request, authResult, context);
+    const rateLimitResult = await checkScoutLiveRateLimitBoundary(request, authResult, liveDependencies);
     if (!rateLimitResult.ok) {
       const status = (rateLimitResult.status === 'rate_limited') ? 429 : 503;
       const headers = {
