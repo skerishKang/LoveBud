@@ -200,6 +200,7 @@ class ScoutStubSuggestionProvider {
 | **Auth/RL Contract** | **Auth/Rate-Limit Boundary** | `parseScoutAuthorizationHeader`, `getScoutSuggestRateLimitPolicy`, auth/RL contract tests |
 | **Live Config Boundary** | **Provider Config Boundary** | `resolveScoutSuggestProviderMode`, `SCOUT_SUGGEST_PROVIDER_MODES`, CONFIG_MISSING fallback, config contract tests |
 | **Source Selector Boundary** | **Suggestion Source Selector** | `js/scout/scout-suggestion-source-selector.js`, source selector contract tests, local_stub default, endpoint_client requires feature flag |
+| **Prompt/Response Contract** | **Live Provider Prompt/Response Boundary** | `docs/product/lovebud-scout-live-provider-prompt-response-contract.md`, prompt/response contract tests, allowed/prohibited inputs, copyright/safety boundary |
 | **Phase D** | Real provider behind env config | OpenAICompatibleProvider, env-based model selection |
 | **Phase E** | Rate limiting / abuse controls / hardening | Quota, caching, monitoring, fallback UX |
 
@@ -249,5 +250,5 @@ class ScoutStubSuggestionProvider {
 
 - **Created**: 2026-06-05
 - **Author**: Audit follow-up for #1882
-- **Status**: Phase A (audit) complete, Phase B (stub contract) implemented, **Phase D prep (endpoint skeleton) implemented**, **Auth/RL contract added (placeholder enforcement)**, **Live Config boundary added (CONFIG_MISSING fallback)**, **Endpt Client boundary added (disabled by default)**, **Source Selector boundary added (local_stub default, endpoint_client requires feature flag)**, **Endpoint opt-in QA scenario added (default local_stub, endpoint_client behind explicit flag only)**
+- **Status**: Phase A (audit) complete, Phase B (stub contract) implemented, **Phase D prep (endpoint skeleton) implemented**, **Auth/RL contract added (placeholder enforcement)**, **Live Config boundary added (CONFIG_MISSING fallback)**, **Endpt Client boundary added (disabled by default)**, **Source Selector boundary added (local_stub default, endpoint_client requires feature flag)**, **Endpoint opt-in QA scenario added (default local_stub, endpoint_client behind explicit flag only)**, **MVP Readiness Audit completed (ready for next boundary planning, not ready for default live usage)**, **Live-provider prompt/response contract defined, live provider calls remain out of scope**
 - **Next Review**: After Phase D implementation decision
