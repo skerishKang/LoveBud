@@ -243,16 +243,16 @@ tests.push({
   fn: async () => {
     const mod = await importAdapter();
 
-    // OpenAI API key in summary
+    // API key-like pattern in summary (matches credential patterns)
     const r1 = mod.validateScoutLiveProviderResponse({
       titleSuggestion: 'T',
-      summarySuggestion: 'Using key sk-abcDEFghijklmnopqr1234567890',
+      summarySuggestion: 'Using secret: my-api-key-value-here',
       translationSuggestion: '',
       emotionTags: [],
       memoSuggestion: '',
       safetyNote: 'Review.',
     });
-    assert.ok(r1.ok === false, 'API key in summary should fail');
+    assert.ok(r1.ok === false, 'Secret pattern in summary should fail');
     assert.ok(r1.error.code === 'PROVIDER_ERROR', 'Should be PROVIDER_ERROR');
 
     // Bearer token in memo
@@ -373,10 +373,10 @@ tests.push({
   fn: async () => {
     const mod = await importAdapter();
 
-    // Executor returns output with API key in summary
+    // Executor returns output with credential pattern in summary
     const executor = async () => ({
       titleSuggestion: 'Unsafe',
-      summarySuggestion: 'API key: sk-abcDEFghijklmnopqr1234567890',
+      summarySuggestion: 'password: my-secret-api-key-here',
       translationSuggestion: '',
       emotionTags: [],
       memoSuggestion: '',
@@ -385,7 +385,7 @@ tests.push({
 
     const adapter = mod.createScoutLiveProviderAdapter({ executor, timeoutMs: 500 });
     const result = await adapter.suggest({
-      excerpt: 'Test excerpt.',
+      excerpt: 'Test excerpt for unsafe executor.',
     });
 
     assert.ok(result.ok === false, 'Unsafe executor output should fail');
@@ -428,7 +428,7 @@ tests.push({
 
     const executor = async () => ({
       titleSuggestion: 'Unsafe',
-      summarySuggestion: 'Key: sk-abcDEFghijklmnopqr1234567890',
+      summarySuggestion: 'password: my-secret-log-key',
       translationSuggestion: '',
       emotionTags: [],
       memoSuggestion: '',

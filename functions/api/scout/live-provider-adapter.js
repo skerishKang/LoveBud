@@ -409,9 +409,9 @@ function filterScoutLiveProviderOutput(rawOutput, context) {
 
   // ── 3. Check credential-like patterns in text ─────────────────────
   const credentialPatterns = [
-    /sk-[a-zA-Z0-9]{20,}/,             // OpenAI sk- keys
-    /AIza[0-9A-Za-z_-]{35}/,            // Firebase/GCP API keys
-    /ghp_[a-zA-Z0-9]{36,}/,             // GitHub tokens
+    /sk-[a-zA-Z0-9]{20,}/,             // OpenAI sk- keys // gitguardian: ignore
+    /AIza[0-9A-Za-z_-]{35}/,            // Firebase/GCP API keys // gitguardian: ignore
+    /ghp_[a-zA-Z0-9]{36,}/,             // GitHub tokens // gitguardian: ignore
     /\bbearer\s+[a-zA-Z0-9._-]+/i,      // Bearer tokens
     /\bauthorization\s*:/i,              // Authorization header-like
     /\b(password|secret)\s*[:=]/i,       // Password/secret assignment
