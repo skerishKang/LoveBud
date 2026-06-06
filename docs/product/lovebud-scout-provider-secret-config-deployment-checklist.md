@@ -147,7 +147,8 @@ SCOUT_SUGGEST_LLM_BASE_URL
 14. staging rollout contract exists (rollout modes, kill switch, rollback, opt-in policy documented).
 17. auth/rate-limit persistence boundary exists (Firebase auth enforcement, persistent storage requirements, quota policy documented).
 18. cost/quota abuse monitoring contract exists (cost caps, quota budget, abuse monitoring, provider failure accounting documented).
-19. post-mock readiness audit exists (blocker inventory + next gate definition).
+19. secret rotation and incident runbook contract exists (secret storage/rotation, emergency revocation, incident response, compromise handling documented).
+20. post-mock readiness audit exists (blocker inventory + next gate definition).
 
 ## Non-goals
 

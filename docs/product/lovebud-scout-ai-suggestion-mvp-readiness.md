@@ -97,6 +97,7 @@ Ready for a narrow live-provider implementation planning slice, but not ready fo
 | Staging rollout contract | `[TECH] Add Scout live provider staging rollout contract` | ✅ Completed (#2261) |
 | Auth/rate-limit persistence boundary | `[TECH] Add Scout live provider auth/rate-limit persistence boundary` | ✅ Completed (#2263) |
 | Cost/quota abuse monitoring contract | `[TECH] Add Scout live provider cost/quota abuse monitoring contract` | ✅ Completed (#2265) |
+| Secret rotation and incident runbook contract | `[TECH] Add Scout live provider secret rotation and incident runbook contract` | ✅ Completed (#2267) |
 | Firebase auth verification implementation | `[TECH] Add Scout Firebase auth verification boundary` |  |
 | Rate-limit storage implementation | `[TECH] Add Scout rate-limit persistence boundary` |  |
 | Staging flag policy / deployment pipeline | `[PRODUCT] Define Scout staging feature flag process` |  |

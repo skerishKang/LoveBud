@@ -372,9 +372,7 @@ Before enabling `production_live`:
 
 ## Recommended Next Slice
 
-```
-[TECH] Add Scout live provider secret rotation and incident runbook contract
-```
+**[TECH] Add Scout live provider secret rotation and incident runbook contract** → ✅ Completed (PR #2267)
 
 **Why:** After cost/quota/abuse monitoring is defined, the next requirement before any real provider call is secret rotation, incident response, rollback drill procedure, and provider compromise handling. This slice would document the operational runbook without implementing secrets infrastructure.
 
