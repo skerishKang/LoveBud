@@ -2,8 +2,8 @@
 
 ## Baseline
 
-- **current main HEAD**: `8f814273`
-- **related PRs**: #2203 (Scout Draft Manual MVP), #2205 (toolbar wiring + validation hotfix), #2207 (save-flow boundary audit), #2209 (add-memory flow integration), #2211 (LLM provider boundary document), #2213 (Scout stub suggestion provider + contract), #2215 (Scout Draft modal stub suggestion UI wiring)
+- **current main HEAD**: `0e404038`
+- **related PRs**: #2203 (Scout Draft Manual MVP), #2205 (toolbar wiring + validation hotfix), #2207 (save-flow boundary audit), #2209 (add-memory flow integration), #2211 (LLM provider boundary document), #2213 (Scout stub suggestion provider + contract), #2215 (Scout Draft modal stub suggestion UI wiring), #2217 (unavailable boundary), #2219 (serverless endpoint boundary audit)
 - **related issues**: #1882 (PRODUCT: Explore LoveBud Scout link-based fan assistant MVP), #1661 (DB/API: Add tree-level social counts for Browse sorting)
 - **current Scout capabilities**: Manual draft entry with user-provided source URL, excerpt, memo, emotion tags → save to LoveTree via existing add-memory flow
 
@@ -195,7 +195,8 @@ class ScoutStubSuggestionProvider {
 |---|---|---|
 | **Phase A** | Audit only | 이 문서 (`lovebud-scout-llm-provider-boundary.md`) |
 | **Phase B** | Stub suggestion provider + UI contract | `ScoutStubSuggestionProvider`, suggestion request/response contract test |
-| **Phase C** | Server/serverless endpoint boundary | `/api/scout/suggest` endpoint, provider abstraction wiring |
+| **Phase C** | Server/serverless endpoint boundary | Endpoint boundary audit + contract tests |
+| **Phase D prep** | **Endpoint Skeleton (stub-first)** | `functions/api/scout/suggest.js`, skeleton contract tests |
 | **Phase D** | Real provider behind env config | OpenAICompatibleProvider, env-based model selection |
 | **Phase E** | Rate limiting / abuse controls / hardening | Quota, caching, monitoring, fallback UX |
 
@@ -245,5 +246,5 @@ class ScoutStubSuggestionProvider {
 
 - **Created**: 2026-06-05
 - **Author**: Audit follow-up for #1882
-- **Status**: Phase A (audit) complete, Phase B (stub contract) implemented
-- **Next Review**: After Phase B UI wiring decision
+- **Status**: Phase A (audit) complete, Phase B (stub contract) implemented, **Phase D prep (endpoint skeleton) implemented**
+- **Next Review**: After Phase D implementation decision
