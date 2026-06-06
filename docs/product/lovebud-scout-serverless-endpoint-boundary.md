@@ -2,8 +2,8 @@
 
 ## Baseline
 
-- **current main HEAD**: `0e404038`
-- **related PRs**: #2203 (Scout Draft Manual MVP), #2205 (toolbar wiring), #2207 (save-flow boundary), #2209 (add-memory flow), #2211 (LLM provider boundary), #2213 (stub suggestion provider), #2215 (UI wiring), #2217 (unavailable boundary), #2219 (serverless endpoint boundary audit)
+- **current main HEAD**: `9f285a3a`
+- **related PRs**: #2203 (Scout Draft Manual MVP), #2205 (toolbar wiring), #2207 (save-flow boundary), #2209 (add-memory flow), #2211 (LLM provider boundary), #2213 (stub suggestion provider), #2215 (UI wiring), #2217 (unavailable boundary), #2219 (serverless endpoint boundary audit), #2221 (endpoint skeleton)
 - **related issues**: #1882 (PRODUCT: Explore LoveBud Scout link-based fan assistant MVP), #1661 (DB/API: Add tree-level social counts for Browse sorting)
 - **current Scout capabilities**: Manual draft entry + stub suggestion UI wiring + unavailable/pending boundary
 
@@ -324,6 +324,7 @@ SCOUT_LLM_RETRY_ATTEMPTS=2
 | **Phase B** | Stub Provider + UI Contract | `scout-suggestion-provider.js`, UI wiring, contracts |
 | **Phase C** | **Serverless Endpoint Boundary** | **This document + endpoint contract tests** |
 | **Phase D prep** | **Endpoint Skeleton (stub-first)** | `functions/api/scout/suggest.js`, skeleton contract tests |
+| **Auth/RL Contract** | **Auth/Rate-Limit Boundary** | `parseScoutAuthorizationHeader`, `getScoutSuggestRateLimitPolicy`, auth/RL contract tests |
 | **Phase D** | Live Provider Implementation | OpenAICompatibleProvider, env config, deployment |
 | **Phase E** | Hardening | Rate limiting, circuit breaker, observability, abuse controls |
 
@@ -369,5 +370,5 @@ SCOUT_LLM_RETRY_ATTEMPTS=2
 
 - **Created**: 2026-06-06
 - **Author**: Audit follow-up for #1882
-- **Status**: Phase C (serverless endpoint boundary audit) complete, **Phase D prep (endpoint skeleton) implemented**
+- **Status**: Phase C (serverless endpoint boundary audit) complete, **Phase D prep (endpoint skeleton) implemented**, **Auth/RL contract added (placeholder enforcement)**
 - **Next Review**: After Phase D implementation decision
