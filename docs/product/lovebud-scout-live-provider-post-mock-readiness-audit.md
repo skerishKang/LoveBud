@@ -168,7 +168,7 @@ This requires KV/Durable Object/D1 decisions and is higher risk. Recommend stagi
 ## Next Steps Beyond Staging Rollout
 
 1. ~~`[TECH] Add Scout live provider staging rollout contract`~~ ✅ Completed (PR #2261)
-2. `[TECH] Add Scout live provider auth/rate-limit persistence boundary`
+2. ~~`[TECH] Add Scout live provider auth/rate-limit persistence boundary`~~ ✅ Completed (PR #2263)
 3. `[TECH] Add Scout live provider cost/quota control boundary`
 4. `[TECH] Add Scout live provider abuse monitoring boundary`
 5. `[TECH] Add Scout live provider integration test policy`

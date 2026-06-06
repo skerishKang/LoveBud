@@ -312,6 +312,8 @@ This slice would implement:
 
 **Staging rollout contract:** Completed. Defines staging/production rollout gates, kill switch, rollback, and opt-in policies for the Scout live provider path. Documents 5 rollout modes (local_stub, endpoint_stub, live_mock, staging_live, production_live), default behavior policy, 14 staging activation gates, 10 production activation gates, kill switch mechanism and emergency procedure, rollback policy (from staging/production), opt-in rules, and monitoring allowed/prohibited fields. Verdict: Ready for staging rollout contract work (Yes), Ready for staging live execution (No), Ready for production live execution (No). See `docs/product/lovebud-scout-live-provider-staging-rollout-contract.md`.
 
+**Auth/rate-limit persistence boundary:** Completed. Defines Firebase auth enforcement policy, unauthenticated request behavior, persistent rate-limit storage requirements, storage candidates (KV, Durable Object, D1), rate-limit dimensions (userId, IP hash, session, providerMode, endpoint path, rolling window), quota policy (per-minute soft, per-hour hard, per-day cost cap), failure modes (AUTH_REQUIRED, AUTH_INVALID, RATE_LIMITED, RATE_LIMIT_UNAVAILABLE), privacy/logging minimization (allowed/prohibited fields), abuse/cost gates (pre-consumption validation, quota reservation, provider failure accounting, suspicious usage monitoring), and preflight checklist before staging live. Verdict: Ready for auth documentation (Yes), Ready for staging live (No), Ready for real provider API call (No). See `docs/product/lovebud-scout-live-provider-auth-rate-limit-boundary.md`.
+
 **Alternatives (independent order):**
 
 - `[TECH] Add Scout prompt builder contract`
