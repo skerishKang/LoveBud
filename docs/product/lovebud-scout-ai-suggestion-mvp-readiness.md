@@ -136,6 +136,15 @@ Ready for a narrow live-provider implementation planning slice, but not ready fo
 
 **Caution:** Any real provider slice must NOT make real provider calls by default. All CI tests must remain network-free. Provider calls must be behind explicit opt-in config.
 
+## Production Readiness Gates Audit Status
+
+A consolidated [production readiness gates audit](lovebud-scout-live-provider-production-readiness-gates-audit.md) has been completed. It provides:
+- Go/no-go matrix for first real provider adapter, staging_live, and production_live
+- Endpoint default remains stub; UI default remains local_stub
+- First provider-specific adapter skeleton is conditional only if disabled-by-default and no provider API call
+- staging_live and production_live remain blocked
+- Real provider API call remains blocked in the current slice
+
 ---
 
 ## Final Decision

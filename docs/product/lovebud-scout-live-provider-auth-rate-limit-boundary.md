@@ -354,6 +354,15 @@ Before enabling `staging_live`:
 ```
 This would implement the Firebase Admin SDK token verification behind the `live` mode flag — still no real provider call, but the auth logic would be wired and testable with mock tokens.
 
+## Production Readiness Gates Audit Status
+
+A consolidated [production readiness gates audit](lovebud-scout-live-provider-production-readiness-gates-audit.md) has been completed. It provides:
+- Go/no-go matrix for first real provider adapter, staging_live, and production_live
+- Endpoint default remains stub; UI default remains local_stub
+- First provider-specific adapter skeleton is conditional only if disabled-by-default and no provider API call
+- staging_live and production_live remain blocked
+- Real provider API call remains blocked in the current slice
+
 ## Non-goals (this document)
 
 - ❌ No real LLM provider implementation

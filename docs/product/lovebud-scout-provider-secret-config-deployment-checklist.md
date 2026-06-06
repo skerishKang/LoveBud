@@ -150,6 +150,15 @@ SCOUT_SUGGEST_LLM_BASE_URL
 19. secret rotation and incident runbook contract exists (secret storage/rotation, emergency revocation, incident response, compromise handling documented).
 20. post-mock readiness audit exists (blocker inventory + next gate definition).
 
+## Production Readiness Gates Audit Status
+
+A consolidated [production readiness gates audit](lovebud-scout-live-provider-production-readiness-gates-audit.md) has been completed. It provides:
+- Go/no-go matrix for first real provider adapter, staging_live, and production_live
+- Endpoint default remains stub; UI default remains local_stub
+- First provider-specific adapter skeleton is conditional only if disabled-by-default and no provider API call
+- staging_live and production_live remain blocked
+- Real provider API call remains blocked in the current slice
+
 ## Non-goals
 
 - no real provider in this PR
