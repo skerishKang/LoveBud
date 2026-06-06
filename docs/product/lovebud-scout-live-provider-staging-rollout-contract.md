@@ -91,6 +91,8 @@ Staging에서 live provider를 활성화하기 전에 반드시 충족되어야 
 
 Gates 6, 7, 8, 12, 13, 14 are **not yet satisfied**. Staging live execution is blocked until all gates are met.
 
+> **Note:** Gates 6 (Firebase auth) and 7 (rate-limit persistence) are now defined in the [auth/rate-limit boundary document](lovebud-scout-live-provider-auth-rate-limit-boundary.md). Implementation is deferred to a future slice.
+
 ## Production Activation Gates
 
 Production에서 live provider를 활성화하기 전에 반드시 추가로 충족되어야 할 조건:
