@@ -2,6 +2,21 @@
 
 ## Baseline
 
+## Endpoint Injected Dependency Contract (slice update)
+
+- endpoint constructs explicit `liveDependencies = { verifyToken, checkRateLimit, requestId }` DI seam in suggest.js
+- default stub / explicit stub skip injected dependencies (verifier/limiter not called)
+- live mode uses injected `verifyToken` through `context.verifyToken` (and `checkRateLimit` through `context.checkRateLimit`)
+- missing injected `verifyToken` → safe-fail `AUTH_INVALID` / `AUTH_REQUIRED`
+- missing injected `checkRateLimit` → safe-fail `RATE_LIMIT_UNAVAILABLE`
+- auth failure short-circuits limiter (limiter is not called)
+- limiter payload only carries safe fields (`userKey` / `providerMode` / `bucket`); raw token / API key / prompt / excerpt / full sourceUrl are never propagated
+- mock dependency helper stores call metadata only (call counts + `tokenWasReceived: Boolean` + length) — raw token value is never retained
+- no Firebase Admin SDK / no KV / DO / D1 / no provider SDK / no fetch / no axios
+- endpoint default stub / frontend `local_stub` / endpoint client disabled remain preserved
+- staging_live and production_live remain blocked
+- `tests/contracts/scout-live-auth-rate-limit-endpoint-di-contract.test.cjs` — 20 sub-tests covering DI shape, default-stub skip, explicit-stub skip, live injected verifier/limiter, auth-failure short-circuit, missing-dep safe-fail, safe payload fields, response non-leakage, mock helper no-raw-token, no Firebase / no KV-DO-D1 / no provider SDK / no fetch
+
 ## Live Auth/Rate-Limit Endpoint Safe-Fail Wiring (slice update)
 
 - live auth/rate-limit endpoint safe-fail wiring added
