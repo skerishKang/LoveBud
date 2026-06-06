@@ -129,6 +129,25 @@ const SCOUT_LIVE_PROVIDER_OUTPUT_SAFETY_LIMITS = Object.freeze({
   minExcerptReproductionBlockLen: 160,
 });
 
+// ─── Real Provider Adapter Interface Constants ───────────────────────────────────
+
+const SCOUT_LIVE_PROVIDER_INTERFACE_STATUS = Object.freeze({
+  DISABLED: 'disabled',
+  CONFIG_MISSING: 'config_missing',
+  READY_FOR_ADAPTER: 'ready_for_adapter',
+});
+
+const SCOUT_LIVE_PROVIDER_CONFIG_KEYS = Object.freeze({
+  PROVIDER_MODE: 'SCOUT_SUGGEST_PROVIDER_MODE',
+  LLM_PROVIDER: 'SCOUT_SUGGEST_LLM_PROVIDER',
+  MODEL: 'SCOUT_SUGGEST_MODEL',
+  API_KEY: 'SCOUT_SUGGEST_LLM_API_KEY',
+  LIVE_ADAPTER_ENABLED: 'SCOUT_SUGGEST_LIVE_ADAPTER_ENABLED',
+  BASE_URL: 'SCOUT_SUGGEST_LLM_BASE_URL',
+  TIMEOUT_MS: 'SCOUT_SUGGEST_TIMEOUT_MS',
+  MAX_RETRIES: 'SCOUT_SUGGEST_MAX_RETRIES',
+});
+
 /**
  * Recursively sanitizes a payload object — redacts or removes prohibited fields,
  * keeps allowed safe fields only. Never throws.
@@ -903,6 +922,124 @@ async function runScoutLiveProviderExecutorWithTimeout(executor, payload, option
   };
 }
 
+// ─── Real Provider Config Normalization ──────────────────────────────────────────
+
+/**
+ * Normalizes environment or config object into a structured provider config.
+ * Never returns the API key value — only hasApiKey boolean.
+ * Never validates against a real provider.
+ * Always returns a safe status: disabled, config_missing, or ready_for_adapter.
+ *
+ * @param {Object} [envOrConfig={}] - Environment-like object or partial config
+ * @returns {Object} normalized config { ok, status, provider, model, hasApiKey, baseUrl, timeoutMs, maxRetries, error }
+ */
+function normalizeScoutLiveProviderConfig(envOrConfig) {
+  const cfg = (envOrConfig && typeof envOrConfig === 'object') ? envOrConfig : {};
+
+  const providerMode = String(cfg.SCOUT_SUGGEST_PROVIDER_MODE || cfg.providerMode || '').toLowerCase();
+  const liveAdapterEnabled = String(cfg.SCOUT_SUGGEST_LIVE_ADAPTER_ENABLED || cfg.liveAdapterEnabled || '');
+  const provider = String(cfg.SCOUT_SUGGEST_LLM_PROVIDER || cfg.provider || '').trim();
+  const model = String(cfg.SCOUT_SUGGEST_MODEL || cfg.model || '').trim();
+  const rawApiKey = cfg.SCOUT_SUGGEST_LLM_API_KEY || cfg.apiKey || '';
+  const hasApiKey = Boolean(rawApiKey) && rawApiKey.length > 0;
+  const rawBaseUrl = String(cfg.SCOUT_SUGGEST_LLM_BASE_URL || cfg.baseUrl || '').trim();
+  const rawTimeoutMs = parseInt(cfg.SCOUT_SUGGEST_TIMEOUT_MS || cfg.timeoutMs, 10);
+  const rawMaxRetries = parseInt(cfg.SCOUT_SUGGEST_MAX_RETRIES || cfg.maxRetries, 10);
+
+  const policy = SCOUT_LIVE_PROVIDER_TIMEOUT_RETRY_POLICY;
+  const timeoutMs = Number.isFinite(rawTimeoutMs)
+    ? Math.max(policy.minTimeoutMs, Math.min(policy.maxTimeoutMs, rawTimeoutMs))
+    : policy.defaultTimeoutMs;
+  const maxRetries = Number.isFinite(rawMaxRetries)
+    ? Math.max(0, Math.min(policy.maxAllowedRetries, rawMaxRetries))
+    : policy.defaultMaxRetries;
+
+  const isLiveMode = providerMode === 'live';
+  const isEnabled = liveAdapterEnabled === 'true' || liveAdapterEnabled === '1';
+
+  if (!isLiveMode || !isEnabled) {
+    return {
+      ok: false,
+      status: SCOUT_LIVE_PROVIDER_INTERFACE_STATUS.DISABLED,
+      provider: provider || '',
+      model: model || '',
+      hasApiKey,
+      baseUrl: rawBaseUrl,
+      timeoutMs,
+      maxRetries,
+      error: {
+        code: 'PROVIDER_UNAVAILABLE',
+        message: 'Scout live provider adapter is disabled.',
+      },
+    };
+  }
+
+  if (!provider || !model || !hasApiKey) {
+    return {
+      ok: false,
+      status: SCOUT_LIVE_PROVIDER_INTERFACE_STATUS.CONFIG_MISSING,
+      provider: provider || '',
+      model: model || '',
+      hasApiKey,
+      baseUrl: rawBaseUrl,
+      timeoutMs,
+      maxRetries,
+      error: {
+        code: 'CONFIG_MISSING',
+        message: 'Scout live suggestion provider is not configured.',
+      },
+    };
+  }
+
+  return {
+    ok: true,
+    status: SCOUT_LIVE_PROVIDER_INTERFACE_STATUS.READY_FOR_ADAPTER,
+    provider,
+    model,
+    hasApiKey,
+    baseUrl: rawBaseUrl,
+    timeoutMs,
+    maxRetries,
+    error: null,
+  };
+}
+
+// ─── Real Provider Adapter Interface ─────────────────────────────────────────────
+
+/**
+ * Creates a real provider adapter interface behind disabled live mode.
+ * Does NOT call any real provider. All states return safe-fail suggest().
+ *
+ * @param {Object} envOrConfig - Environment config (env vars or partial config)
+ * @returns {Object} { status, config, suggest }
+ */
+function createScoutRealProviderAdapterInterface(envOrConfig) {
+  const config = normalizeScoutLiveProviderConfig(envOrConfig);
+
+  return {
+    status: config.status,
+    config: {
+      provider: config.provider,
+      model: config.model,
+      hasApiKey: config.hasApiKey,
+      baseUrl: config.baseUrl,
+      timeoutMs: config.timeoutMs,
+      maxRetries: config.maxRetries,
+    },
+    suggest: async () => ({
+      ok: false,
+      error: {
+        code: config.status === SCOUT_LIVE_PROVIDER_INTERFACE_STATUS.CONFIG_MISSING
+          ? 'CONFIG_MISSING'
+          : 'PROVIDER_UNAVAILABLE',
+        message: config.status === SCOUT_LIVE_PROVIDER_INTERFACE_STATUS.CONFIG_MISSING
+          ? 'Scout live suggestion provider is not configured.'
+          : 'Scout live provider adapter is disabled.',
+      },
+    }),
+  };
+}
+
 // ─── Exports ──────────────────────────────────────────────────────────────────
 
 // ES module style for Cloudflare Pages Functions
@@ -910,6 +1047,8 @@ export {
   SCOUT_LIVE_PROVIDER_ADAPTER_STATUS,
   SCOUT_LIVE_PROVIDER_TIMEOUT_RETRY_POLICY,
   SCOUT_LIVE_PROVIDER_OUTPUT_SAFETY_LIMITS,
+  SCOUT_LIVE_PROVIDER_INTERFACE_STATUS,
+  SCOUT_LIVE_PROVIDER_CONFIG_KEYS,
   buildScoutLiveProviderPrompt,
   validateScoutLiveProviderResponse,
   createScoutLiveProviderAdapter,
@@ -917,4 +1056,6 @@ export {
   sanitizeScoutLiveProviderLogPayload,
   runScoutLiveProviderExecutorWithTimeout,
   filterScoutLiveProviderOutput,
+  normalizeScoutLiveProviderConfig,
+  createScoutRealProviderAdapterInterface,
 };

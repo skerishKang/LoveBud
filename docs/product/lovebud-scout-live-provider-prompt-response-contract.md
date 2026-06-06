@@ -302,6 +302,8 @@ This slice would implement:
 
 **Secret/config deployment checklist:** Completed. Defines secret management rules (no committed secrets, no frontend API keys, no secret values in logs/errors), allowed future config names (SCOUT_SUGGEST_PROVIDER_MODE, etc.), deployment storage policy (Cloudflare platform secrets only, staging/prod separation), staging/production rollout checklists, rollback/kill switch, CI/test policy (network-free, mock-only), logging policy, user-facing safety policy, and pre-integration gates. No real provider call, no API key, no live default behavior. See `docs/product/lovebud-scout-provider-secret-config-deployment-checklist.md`.
 
+**Real provider adapter interface:** Completed. `normalizeScoutLiveProviderConfig` normalizes env/config into structured provider config (provider, model, hasApiKey boolean, baseUrl, timeoutMs, maxRetries). `createScoutRealProviderAdapterInterface` returns disabled-by-default adapter interface where suggest() safe-fails with PROVIDER_UNAVAILABLE or CONFIG_MISSING. API key value is never returned — only hasApiKey boolean. timeout/retry values clamped to existing policy. No real provider call, no SDK import, no fetch, no credentials, no live default behavior. See `functions/api/scout/live-provider-adapter.js`.
+
 **Alternatives (independent order):**
 
 - `[TECH] Add Scout prompt builder contract`
