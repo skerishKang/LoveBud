@@ -294,6 +294,8 @@ This slice would implement:
 
 **Logging boundary:** Safe observability helpers `createScoutLiveProviderLogEvent` and `sanitizeScoutLiveProviderLogPayload` added. Allowed log fields: `requestId`, `providerMode`, `status`, `errorCode`, `latencyMs`, `inputLength`, `outputFieldCount`, `emotionTagCount`, `hasSourceUrl`, `language`, `tone`. Prohibited: `prompt`, `excerpt`, `summary`, `memo`, `sourceUrl` raw value, suggestion text fields, API keys, auth tokens, cookies, PII. Optional injected logger receives sanitized events only; logger throw is safely swallowed. No real provider call, no SDK, no fetch, no secrets. See `tests/contracts/scout-live-provider-logging-boundary-contract.test.cjs`.
 
+**Timeout/retry boundary:** `SCOUT_LIVE_PROVIDER_TIMEOUT_RETRY_POLICY` constants added (default `timeoutMs: 8000`, `maxRetries: 0`, `maxAllowedRetries: 1`). `runScoutLiveProviderExecutorWithTimeout` helper wraps mock executor with timeout/retry. `createScoutLiveProviderAdapter()` accepts `timeoutMs`/`maxRetries` config — executor throw/timeout triggers retry; retry exhaustion maps to `PROVIDER_ERROR`. Malformed output does not retry (validation failure). Values are safe-clamped. Sanitized logging includes `retryCount`/`maxRetries` in event. No real provider call. See `tests/contracts/scout-live-provider-timeout-retry-boundary-contract.test.cjs`.
+
 **Alternatives (independent order):**
 
 - `[TECH] Add Scout prompt builder contract`
