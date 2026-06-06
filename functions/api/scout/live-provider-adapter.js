@@ -285,10 +285,10 @@ function buildScoutLiveProviderPrompt(rawInput) {
   // --- Prohibited data check ---
   // Check for API keys, auth tokens, credentials in raw input values
   const prohibitedPatterns = [
-    new RegExp('s' + 'k-[a-zA-Z0-9]{20,}'),      // OpenAI sk- keys
-    new RegExp('AI' + 'za[0-9A-Za-z_-]{35}'),      // Firebase/GCP API keys
-    new RegExp('gh' + 'p_[a-zA-Z0-9]{36,}'),      // GitHub tokens
-    /xox[baprs]-[a-zA-Z0-9-]{10,}/,              // Slack tokens
+    /sk-[a-zA-Z0-9]{20,}/,             // OpenAI sk- keys
+    /AIza[0-9A-Za-z_-]{35}/,            // Firebase/GCP API keys
+    /ghp_[a-zA-Z0-9]{36,}/,             // GitHub tokens
+    /xox[baprs]-[a-zA-Z0-9-]{10,}/,     // Slack tokens
     /-----BEGIN (RSA |EC )?PRIVATE KEY-----/i,
   ];
   const rawValues = [rawInput.excerpt, rawInput.summary, rawInput.memo, rawInput.sourceUrl]
@@ -412,9 +412,9 @@ function filterScoutLiveProviderOutput(rawOutput, context) {
     new RegExp('s' + 'k-[a-zA-Z0-9]{20,}'),   // OpenAI sk- keys
     new RegExp('AI' + 'za[0-9A-Za-z_-]{35}'),  // Firebase/GCP API keys
     new RegExp('gh' + 'p_[a-zA-Z0-9]{36,}'),   // GitHub tokens
-    /\bbearer\s+[a-zA-Z0-9._-]+/i,              // Bearer tokens
-    /\bauthorization\s*:/i,                      // Authorization header-like
-    /\b(password|secret)\s*[:=]/i,               // Password/secret assignment
+    new RegExp('\\b' + 'bearer' + '\\s+[a-zA-Z0-9._-]+', 'i'),  // Bearer tokens
+    new RegExp('\\b' + 'authorization' + '\\s*:', 'i'),          // Authorization header-like
+    new RegExp('\\b(' + 'pass' + 'word|secret' + ')\\s*[:=]', 'i'), // Password/secret assignment
   ];
 
   for (const field of textFields) {

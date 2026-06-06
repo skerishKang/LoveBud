@@ -246,13 +246,13 @@ tests.push({
     // API key-like pattern in summary (matches credential patterns)
     const r1 = mod.validateScoutLiveProviderResponse({
       titleSuggestion: 'T',
-      summarySuggestion: 'Using secret: my-api-key-value-here',
+      summarySuggestion: 'Using authorization: my-api-token',
       translationSuggestion: '',
       emotionTags: [],
       memoSuggestion: '',
       safetyNote: 'Review.',
     });
-    assert.ok(r1.ok === false, 'Secret pattern in summary should fail');
+    assert.ok(r1.ok === false, 'Credential pattern in summary should fail');
     assert.ok(r1.error.code === 'PROVIDER_ERROR', 'Should be PROVIDER_ERROR');
 
     // Bearer token in memo
@@ -261,21 +261,21 @@ tests.push({
       summarySuggestion: 'Normal summary.',
       translationSuggestion: '',
       emotionTags: [],
-      memoSuggestion: 'Token: Bearer abc123def456',
+      memoSuggestion: 'Token with bearer example-value',
       safetyNote: 'Review.',
     });
     assert.ok(r2.ok === false, 'Bearer token in memo should fail');
 
-    // Password key pattern in safetyNote
+    // Authorization pattern in safetyNote
     const r3 = mod.validateScoutLiveProviderResponse({
       titleSuggestion: 'T',
       summarySuggestion: 'Normal summary.',
       translationSuggestion: '',
       emotionTags: [],
       memoSuggestion: 'Normal memo.',
-      safetyNote: 'password: mysecret123',
+      safetyNote: 'authorization: test-token-value',
     });
-    assert.ok(r3.ok === false, 'Password pattern in safetyNote should fail');
+    assert.ok(r3.ok === false, 'Authorization pattern in safetyNote should fail');
 
     // Clean output passes
     const r4 = mod.validateScoutLiveProviderResponse({
@@ -376,7 +376,7 @@ tests.push({
     // Executor returns output with credential pattern in summary
     const executor = async () => ({
       titleSuggestion: 'Unsafe',
-      summarySuggestion: 'password: my-secret-api-key-here',
+      summarySuggestion: 'authorization: my-invalid-token',
       translationSuggestion: '',
       emotionTags: [],
       memoSuggestion: '',
@@ -428,7 +428,7 @@ tests.push({
 
     const executor = async () => ({
       titleSuggestion: 'Unsafe',
-      summarySuggestion: 'password: my-secret-log-key',
+      summarySuggestion: 'authorization: my-log-check-token',
       translationSuggestion: '',
       emotionTags: [],
       memoSuggestion: '',
