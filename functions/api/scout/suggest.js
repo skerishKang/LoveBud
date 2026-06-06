@@ -74,6 +74,11 @@ import {
   verifyScoutLiveAuthBoundary,
   checkScoutLiveRateLimitBoundary,
 } from "./live-auth-rate-limit-boundary.js";
+import {
+  buildScoutLiveAuthEvent,
+  buildScoutLiveRateLimitEvent,
+  safeInvokeScoutLiveObserver,
+} from "./live-auth-rate-limit-observability.js";
 
 const SCOUT_SUGGEST_PROVIDER_MODES = {
   STUB: 'stub',
@@ -298,24 +303,47 @@ export async function onRequestPost(context) {
   // ─── Live provider configuration boundary (contract-defined, placeholder) ─────
   const providerConfig = resolveScoutSuggestProviderMode(env);
   if (providerConfig.providerMode === SCOUT_SUGGEST_PROVIDER_MODES.LIVE) {
-    // ── DI seam: injected mock verifier/limiter (test-only) ──
-    // shape: { verifyToken?, checkRateLimit?, requestId }
-    // Production: both verifyToken and checkRateLimit are undefined; boundary safe-fails.
-    // Tests: pass mocks via { context: { verifyToken, checkRateLimit } }.
+    // ── DI seam: injected mock verifier/limiter/observer (test-only) ──
+    // shape: { verifyToken?, checkRateLimit?, observer?, requestId }
+    // Production: all optional deps are undefined; boundary safe-fails and
+    // observer call is a no-op.
+    // Tests: pass mocks via { context: { verifyToken, checkRateLimit, observer } }.
     const liveDependencies = {
       verifyToken: context?.verifyToken,
       checkRateLimit: context?.checkRateLimit,
+      observer: context?.observer,
       requestId,
     };
 
     // ── Live-mode auth boundary (canonical, DI-injected, safe-fail) ──
+    const authStart = Date.now();
     const authResult = await verifyScoutLiveAuthBoundary(request, liveDependencies);
+    // Observability seam: optional observer; sanitized event only; safe-swallowed.
+    // The observer is called BEFORE any early return so all auth decisions are recorded.
+    safeInvokeScoutLiveObserver(
+      liveDependencies.observer,
+      buildScoutLiveAuthEvent({
+        requestId,
+        authResult,
+        latencyMs: Date.now() - authStart,
+      })
+    );
     if (!authResult.ok) {
       return buildErrorResponse(authResult.error.code, authResult.error.message, requestId, 401);
     }
 
     // ── Live-mode rate-limit boundary (canonical, DI-injected, safe-fail) ──
+    const rateLimitStart = Date.now();
     const rateLimitResult = await checkScoutLiveRateLimitBoundary(request, authResult, liveDependencies);
+    safeInvokeScoutLiveObserver(
+      liveDependencies.observer,
+      buildScoutLiveRateLimitEvent({
+        requestId,
+        authResult,
+        rateLimitResult,
+        latencyMs: Date.now() - rateLimitStart,
+      })
+    );
     if (!rateLimitResult.ok) {
       const status = (rateLimitResult.status === 'rate_limited') ? 429 : 503;
       const headers = {

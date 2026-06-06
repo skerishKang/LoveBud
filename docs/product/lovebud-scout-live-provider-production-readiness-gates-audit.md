@@ -2,6 +2,20 @@
 
 ## Document Status
 
+## Endpoint Live Auth/Rate-Limit Observability Contract (slice update)
+
+- sanitized observability contract added for endpoint live auth/rate-limit boundary decisions
+- allowlist event fields: `requestId`, `providerMode`, `boundaryDecision`, `authStatus`, `rateLimitStatus`, `errorCode`, `retryAfterSeconds`, `quotaBucket`, `userKeyHash` (redacted), `latencyMs`
+- prohibited fields: raw token, API key, prompt, excerpt, raw request body, full sourceUrl, raw provider output, PII, credentials
+- pure helper module: `functions/api/scout/live-auth-rate-limit-observability.js`
+- optional observer wired through `context.observer`; observer throw is safe-swallowed
+- default stub / explicit stub: no live auth/rate-limit observability event emitted
+- live mode: auth + rate-limit decisions emit one sanitized event each
+- no real logging backend / no Firebase Admin SDK / no KV-DO-D1 / no provider SDK / no fetch
+- endpoint default stub / frontend `local_stub` / endpoint client disabled remain preserved
+- `staging_live` and `production_live` remain blocked
+- `tests/contracts/scout-live-auth-rate-limit-endpoint-observability-contract.test.cjs` — 24 sub-tests
+
 ## Endpoint Injected Dependency Contract (slice update)
 
 - endpoint constructs explicit `liveDependencies = { verifyToken, checkRateLimit, requestId }` DI seam in suggest.js
