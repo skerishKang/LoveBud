@@ -298,6 +298,8 @@ This slice would implement:
 
 **Output safety filter:** `SCOUT_LIVE_PROVIDER_OUTPUT_SAFETY_LIMITS` constants and `filterScoutLiveProviderOutput` helper added. Safety filter integrated into `validateScoutLiveProviderResponse` — strips prohibited metadata fields (`rawProviderResponse`, `rawModelOutput`, `debug`, `trace`, `log`, `metadata`), blocks credential-like patterns (API keys, Bearer tokens, passwords), blocks excessive/full excerpt reproduction (≥160 chars), blocks sourceUrl raw repetition in suggestion text, clamps text fields to safety limits. All unsafe patterns map to `PROVIDER_ERROR`. Safe output passes normally. No real provider call. See `tests/contracts/scout-live-provider-output-safety-filter-contract.test.cjs`.
 
+**Live provider readiness audit:** Completed. Scout live provider path is ready for a narrow, disabled-by-default real-provider adapter planning slice, but not ready for default live AI usage or frontend default endpoint routing. 9 blockers documented (Firebase auth placeholder, rate-limit persistence placeholder, real provider adapter missing, secret management, staging rollout, abuse monitoring, cost/quota, no real-provider integration tests, GitGuardian false positive advisory). See `docs/product/lovebud-scout-live-provider-readiness-audit.md`.
+
 **Alternatives (independent order):**
 
 - `[TECH] Add Scout prompt builder contract`
@@ -311,5 +313,6 @@ This slice would implement:
 
 ```
 The prompt and response contract is ready to guide a future live-provider adapter skeleton,
-but live provider calls remain out of scope.
+but live provider calls remain out of scope. The readiness audit (#2249) confirms: ready for a narrow
+disabled-by-default real-provider planning slice, but not ready for default live AI usage.
 ```

@@ -2,9 +2,9 @@
 
 ## Baseline
 
-- **current main HEAD**: `bbac249d`
+- **current main HEAD**: `34ab91a5`
 - **related issue**: #1882 (PRODUCT: Explore LoveBud Scout link-based fan assistant MVP)
-- **recently merged Scout PRs**: #2203–#2231 inclusive (Scout Draft MVP through endpoint opt-in QA)
+- **recently merged Scout PRs**: #2203–#2249 inclusive (Scout Draft MVP through live provider readiness audit)
 - **current open PR count**: 0
 - **current open issues**: #1882 (Scout MVP), #1661 (Browse sorting / out of scope)
 
@@ -91,6 +91,7 @@ Ready for a narrow live-provider implementation planning slice, but not ready fo
 | Logging boundary | `[TECH] Add Scout live provider adapter logging boundary` | ✅ Completed (#2243) |
 | Timeout/retry boundary | `[TECH] Add Scout live provider timeout retry boundary` | ✅ Completed (#2245) |
 | Output safety filter | `[TECH] Add Scout live provider output safety filter boundary` | ✅ Completed (#2247) |
+| Live provider readiness audit | `[PRODUCT] Audit Scout live provider readiness before real integration` | ✅ Completed (#2249) |
 | Firebase auth verification implementation | `[TECH] Add Scout Firebase auth verification boundary` |  |
 | Rate-limit storage implementation | `[TECH] Add Scout rate-limit persistence boundary` |  |
 | Staging flag policy / deployment pipeline | `[PRODUCT] Define Scout staging feature flag process` |  |
@@ -110,26 +111,24 @@ Ready for a narrow live-provider implementation planning slice, but not ready fo
 ## Recommended Next Slice
 
 ```
-
-[TECH] Add Scout live provider adapter skeleton
+[TECH] Add Scout real provider adapter interface behind disabled live mode
 ```
 
 **Why this comes next:**
-- The prompt and response contract is now finalized (blocker #4 resolved).
-- The next logical step is to build the adapter interface, prompt builder, and response validator as a skeleton.
-- The skeleton must still return `CONFIG_MISSING` or `PROVIDER_UNAVAILABLE` when live provider is not configured.
-- This slice can use mock provider for testing — no real API key needed.
+- The readiness audit confirms all intermediate boundaries are in place.
+- The next logical step is to build the real provider adapter interface with opt-in live mode.
+- This slice would still use mock provider for testing — no real API key needed.
 
 **Alternatives (in order of safety):**
 
 | Slice | Risk Level | Notes |
 |---|---|---|
-| `[TECH] Add Scout live provider adapter skeleton` | 🟡 Low | Prompt contract done; skeleton returns CONFIG_MISSING |
+| `[TECH] Add Scout provider secret/config documentation and deployment checklist` | 🟢 Lowest | Docs only; no code changes |
 | `[TECH] Add Scout Firebase auth verification boundary` | 🟡 Low | Auth verification contract; can use test tokens |
 | `[TECH] Add Scout rate-limit persistence boundary` | 🟡 Low | Storage contract; can use in-memory stub for tests |
-| `[TECH] Add Scout prompt builder contract` | 🟢 Lowest | Extracted from contract doc; no code changes |
+| `[TECH] Add Scout real provider adapter interface` | 🟡 Low | Behind disabled live mode; mock-only tests |
 
-**Caution:** Live provider adapter skeleton should NOT make any real provider call. It should return a safe `CONFIG_MISSING` or `PROVIDER_UNAVAILABLE` response when the live provider is not configured.
+**Caution:** Any real provider slice must NOT make real provider calls by default. All CI tests must remain network-free. Provider calls must be behind explicit opt-in config.
 
 ---
 
