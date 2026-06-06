@@ -43,6 +43,7 @@
 | Staging rollout contract | Pass | rollout modes, kill switch, rollback, opt-in policy (PR #2261) |
 | Auth/rate-limit persistence boundary | Pass | Firebase auth enforcement, persistent rate-limit storage requirements, quota policy (PR #2263) |
 | Cost/quota abuse monitoring contract | Pass | cost caps, quota budget, abuse monitoring, provider failure accounting (PR #2265) |
+| Secret rotation and incident runbook contract | Pass | secret storage/rotation, emergency revocation, incident response, compromise handling (PR #2267) |
 
 ## Readiness Verdict
 

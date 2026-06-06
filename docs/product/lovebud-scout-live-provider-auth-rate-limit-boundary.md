@@ -309,6 +309,7 @@ Before enabling `staging_live`:
 
 - [ ] Auth/rate-limit persistence boundary documented (this document ✅)
 - [ ] Cost/quota abuse monitoring contract documented — see [cost/quota abuse monitoring contract](lovebud-scout-live-provider-cost-quota-abuse-monitoring-contract.md)
+- [ ] Secret rotation and incident runbook contract documented — see [secret incident runbook contract](lovebud-scout-live-provider-secret-incident-runbook-contract.md)
 - [ ] Firebase Admin SDK token verification implemented (future slice)
 - [ ] Persistent rate-limit storage implemented (future slice)
 - [ ] Auth enforcement wired in suggest.js live mode branch
