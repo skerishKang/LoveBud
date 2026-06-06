@@ -35,6 +35,7 @@
 | Logging boundary | Pass | safe observability only |
 | Timeout/retry boundary | Pass | mock executor only |
 | Output safety filter | Pass | unsafe output → PROVIDER_ERROR |
+| Secret/config/deployment checklist | Pass | docs + contract |
 
 ## Readiness Verdict
 

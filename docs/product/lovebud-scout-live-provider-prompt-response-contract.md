@@ -300,6 +300,8 @@ This slice would implement:
 
 **Live provider readiness audit:** Completed. Scout live provider path is ready for a narrow, disabled-by-default real-provider adapter planning slice, but not ready for default live AI usage or frontend default endpoint routing. 9 blockers documented (Firebase auth placeholder, rate-limit persistence placeholder, real provider adapter missing, secret management, staging rollout, abuse monitoring, cost/quota, no real-provider integration tests, GitGuardian false positive advisory). See `docs/product/lovebud-scout-live-provider-readiness-audit.md`.
 
+**Secret/config deployment checklist:** Completed. Defines secret management rules (no committed secrets, no frontend API keys, no secret values in logs/errors), allowed future config names (SCOUT_SUGGEST_PROVIDER_MODE, etc.), deployment storage policy (Cloudflare platform secrets only, staging/prod separation), staging/production rollout checklists, rollback/kill switch, CI/test policy (network-free, mock-only), logging policy, user-facing safety policy, and pre-integration gates. No real provider call, no API key, no live default behavior. See `docs/product/lovebud-scout-provider-secret-config-deployment-checklist.md`.
+
 **Alternatives (independent order):**
 
 - `[TECH] Add Scout prompt builder contract`
