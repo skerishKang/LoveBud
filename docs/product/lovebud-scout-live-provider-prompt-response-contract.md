@@ -296,6 +296,8 @@ This slice would implement:
 
 **Timeout/retry boundary:** `SCOUT_LIVE_PROVIDER_TIMEOUT_RETRY_POLICY` constants added (default `timeoutMs: 8000`, `maxRetries: 0`, `maxAllowedRetries: 1`). `runScoutLiveProviderExecutorWithTimeout` helper wraps mock executor with timeout/retry. `createScoutLiveProviderAdapter()` accepts `timeoutMs`/`maxRetries` config — executor throw/timeout triggers retry; retry exhaustion maps to `PROVIDER_ERROR`. Malformed output does not retry (validation failure). Values are safe-clamped. Sanitized logging includes `retryCount`/`maxRetries` in event. No real provider call. See `tests/contracts/scout-live-provider-timeout-retry-boundary-contract.test.cjs`.
 
+**Output safety filter:** `SCOUT_LIVE_PROVIDER_OUTPUT_SAFETY_LIMITS` constants and `filterScoutLiveProviderOutput` helper added. Safety filter integrated into `validateScoutLiveProviderResponse` — strips prohibited metadata fields (`rawProviderResponse`, `rawModelOutput`, `debug`, `trace`, `log`, `metadata`), blocks credential-like patterns (API keys, Bearer tokens, passwords), blocks excessive/full excerpt reproduction (≥160 chars), blocks sourceUrl raw repetition in suggestion text, clamps text fields to safety limits. All unsafe patterns map to `PROVIDER_ERROR`. Safe output passes normally. No real provider call. See `tests/contracts/scout-live-provider-output-safety-filter-contract.test.cjs`.
+
 **Alternatives (independent order):**
 
 - `[TECH] Add Scout prompt builder contract`
