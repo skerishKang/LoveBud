@@ -90,6 +90,7 @@ Ready for a narrow live-provider implementation planning slice, but not ready fo
 | Mock execution contract | `[TECH] Add Scout live provider adapter mock execution contract` | ✅ Completed (#2241) |
 | Logging boundary | `[TECH] Add Scout live provider adapter logging boundary` | ✅ Completed (#2243) |
 | Timeout/retry boundary | `[TECH] Add Scout live provider timeout retry boundary` | ✅ Completed (#2245) |
+| Output safety filter | `[TECH] Add Scout live provider output safety filter boundary` | ✅ Completed (#2247) |
 | Firebase auth verification implementation | `[TECH] Add Scout Firebase auth verification boundary` |  |
 | Rate-limit storage implementation | `[TECH] Add Scout rate-limit persistence boundary` |  |
 | Staging flag policy / deployment pipeline | `[PRODUCT] Define Scout staging feature flag process` |  |

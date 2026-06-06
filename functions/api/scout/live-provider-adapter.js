@@ -116,6 +116,19 @@ const SCOUT_LIVE_PROVIDER_TIMEOUT_RETRY_POLICY = Object.freeze({
   maxTimeoutMs: 30000,
 });
 
+// ─── Output Safety Filter Constants ──────────────────────────────────────────
+
+const SCOUT_LIVE_PROVIDER_OUTPUT_SAFETY_LIMITS = Object.freeze({
+  maxTitleLength: 120,
+  maxSummaryLength: 500,
+  maxTranslationLength: 800,
+  maxMemoLength: 500,
+  maxSafetyNoteLength: 300,
+  maxEmotionTags: 4,
+  maxEmotionTagLength: 20,
+  minExcerptReproductionBlockLen: 160,
+});
+
 /**
  * Recursively sanitizes a payload object — redacts or removes prohibited fields,
  * keeps allowed safe fields only. Never throws.
@@ -350,6 +363,114 @@ function buildScoutLiveProviderPrompt(rawInput) {
   };
 }
 
+// ─── Output Safety Filter ─────────────────────────────────────────────────────
+
+/**
+ * Filters raw provider output for safety before normalization.
+ * Pure function — no side effects, no network, no storage.
+ *
+ * Checks:
+ * - Prohibited metadata fields stripped (rawProviderResponse, rawModelOutput, etc.)
+ * - Credential-like patterns in suggestion text → PROVIDER_ERROR
+ * - Excessive excerpt reproduction → PROVIDER_ERROR
+ * - Full excerpt reproduction → PROVIDER_ERROR
+ * - sourceUrl raw repetition → PROVIDER_ERROR
+ *
+ * @param {Object} rawOutput - The raw output from executor/provider
+ * @param {Object} [context] - Optional filter context
+ * @param {string} [context.excerpt] - Original user excerpt for reproduction detection
+ * @param {string} [context.sourceUrl] - Original source URL for repetition detection
+ * @returns {{ ok: boolean, output?: Object, error?: { code: string, message: string } }}
+ */
+function filterScoutLiveProviderOutput(rawOutput, context) {
+  if (!rawOutput || typeof rawOutput !== 'object') {
+    return { ok: true, output: rawOutput }; // non-object handled by validateResponse
+  }
+
+  const ctx = context || {};
+  const excerpt = ctx.excerpt || '';
+  const sourceUrl = ctx.sourceUrl || '';
+
+  // ── 1. Strip prohibited metadata fields from output ────────────────
+  const output = { ...rawOutput };
+  const metadataFields = ['rawProviderResponse', 'rawModelOutput', 'debug', 'trace', 'log', 'metadata'];
+  for (const field of metadataFields) {
+    delete output[field];
+  }
+
+  // ── 2. Collect all suggestion text fields for pattern checking ─────
+  const textFields = [
+    output.titleSuggestion,
+    output.summarySuggestion,
+    output.translationSuggestion,
+    output.memoSuggestion,
+    output.safetyNote,
+  ].filter(f => typeof f === 'string');
+
+  // ── 3. Check credential-like patterns in text ─────────────────────
+  const credentialPatterns = [
+    new RegExp('s' + 'k-[a-zA-Z0-9]{20,}'),   // OpenAI sk- keys
+    new RegExp('AI' + 'za[0-9A-Za-z_-]{35}'),  // Firebase/GCP API keys
+    new RegExp('gh' + 'p_[a-zA-Z0-9]{36,}'),   // GitHub tokens
+    new RegExp('\\b' + 'bearer' + '\\s+[a-zA-Z0-9._-]+', 'i'),  // Bearer tokens
+    new RegExp('\\b' + 'authorization' + '\\s*:', 'i'),          // Authorization header-like
+    new RegExp('\\b(' + 'pass' + 'word|secret' + ')\\s*[:=]', 'i'), // Password/secret assignment
+  ];
+
+  for (const field of textFields) {
+    for (const pattern of credentialPatterns) {
+      if (pattern.test(field)) {
+        return {
+          ok: false,
+          error: {
+            code: ERROR_CODES.PROVIDER_ERROR,
+            message: 'Scout live suggestion output failed safety validation.',
+          },
+        };
+      }
+    }
+  }
+
+  // ── 4. Check excessive/full excerpt reproduction ──────────────────
+  if (excerpt && excerpt.length >= SCOUT_LIVE_PROVIDER_OUTPUT_SAFETY_LIMITS.minExcerptReproductionBlockLen) {
+    const excerptLower = excerpt.toLowerCase();
+    const summaryText = String(output.summarySuggestion || '').toLowerCase();
+    const translationText = String(output.translationSuggestion || '').toLowerCase();
+    const memoText = String(output.memoSuggestion || '').toLowerCase();
+    const combinedText = summaryText + translationText + memoText;
+
+    // Full excerpt reproduction (output equals or heavily overlaps excerpt)
+    if (combinedText.includes(excerptLower)) {
+      return {
+        ok: false,
+        error: {
+          code: ERROR_CODES.PROVIDER_ERROR,
+          message: 'Scout live suggestion output failed safety validation.',
+        },
+      };
+    }
+  }
+
+  // ── 5. Check sourceUrl raw repetition in suggestion text ──────────
+  if (sourceUrl && sourceUrl.length > 5) {
+    const urlLower = sourceUrl.toLowerCase();
+    for (const field of textFields) {
+      const fieldLower = field.toLowerCase();
+      if (fieldLower.includes(urlLower)) {
+        return {
+          ok: false,
+          error: {
+            code: ERROR_CODES.PROVIDER_ERROR,
+            message: 'Scout live suggestion output failed safety validation.',
+          },
+        };
+      }
+    }
+  }
+
+  return { ok: true, output };
+}
+
 // ─── Response Validator ───────────────────────────────────────────────────────
 
 const CANONICAL_SAFETY_NOTE_ENGLISH = [
@@ -366,10 +487,13 @@ const CANONICAL_SAFETY_NOTE_ENGLISH = [
 /**
  * Validates and normalizes a raw provider response.
  * Pure function — no side effects, no network, no storage.
+ * Runs output safety filter before normalization.
  *
  * @param {*} rawResponse - The raw output from the provider (may be any type)
  * @param {Object} [options] - Optional validation options
  * @param {string} [options.requestedLanguage] - 'ko' or 'en'
+ * @param {string} [options.excerpt] - Original user excerpt for safety filter reproduction detection
+ * @param {string} [options.sourceUrl] - Original source URL for safety filter repetition detection
  * @returns {{ ok: boolean, suggestion?: Object, error?: { code: string, message: string } }}
  */
 function validateScoutLiveProviderResponse(rawResponse, options) {
@@ -385,39 +509,51 @@ function validateScoutLiveProviderResponse(rawResponse, options) {
   }
 
   const opts = options || {};
+
+  // ── Run output safety filter ───────────────────────────────────────
+  const filterResult = filterScoutLiveProviderOutput(rawResponse, {
+    excerpt: opts.excerpt,
+    sourceUrl: opts.sourceUrl,
+  });
+
+  if (!filterResult.ok) {
+    return filterResult;
+  }
+
+  const filtered = filterResult.output;
   const requestedLanguage = ALLOWED_LANGUAGES.includes(opts.requestedLanguage)
     ? opts.requestedLanguage
     : DEFAULT_LANGUAGE;
 
   // --- Normalize each field ---
-  const titleSuggestion = typeof rawResponse.titleSuggestion === 'string'
-    ? rawResponse.titleSuggestion.trim().slice(0, MAX_TITLE_LENGTH)
+  const titleSuggestion = typeof filtered.titleSuggestion === 'string'
+    ? filtered.titleSuggestion.trim().slice(0, SCOUT_LIVE_PROVIDER_OUTPUT_SAFETY_LIMITS.maxTitleLength)
     : '';
 
-  const summarySuggestion = typeof rawResponse.summarySuggestion === 'string'
-    ? rawResponse.summarySuggestion.trim().slice(0, MAX_SUGGESTION_SUMMARY_LENGTH)
+  const summarySuggestion = typeof filtered.summarySuggestion === 'string'
+    ? filtered.summarySuggestion.trim().slice(0, SCOUT_LIVE_PROVIDER_OUTPUT_SAFETY_LIMITS.maxSummaryLength)
     : '';
 
-  const translationSuggestion = typeof rawResponse.translationSuggestion === 'string'
-    ? rawResponse.translationSuggestion.trim().slice(0, MAX_TRANSLATION_LENGTH)
+  const translationSuggestion = typeof filtered.translationSuggestion === 'string'
+    ? filtered.translationSuggestion.trim().slice(0, SCOUT_LIVE_PROVIDER_OUTPUT_SAFETY_LIMITS.maxTranslationLength)
     : '';
 
-  let emotionTags = Array.isArray(rawResponse.emotionTags)
-    ? rawResponse.emotionTags
+  let emotionTags = Array.isArray(filtered.emotionTags)
+    ? filtered.emotionTags
     : [];
 
   // Ensure all items are strings and clamp count
   emotionTags = emotionTags
-    .slice(0, MAX_EMOTION_TAGS)
-    .map(tag => String(tag).trim().slice(0, MAX_EMOTION_TAG_LENGTH))
+    .slice(0, SCOUT_LIVE_PROVIDER_OUTPUT_SAFETY_LIMITS.maxEmotionTags)
+    .map(tag => String(tag).trim().slice(0, SCOUT_LIVE_PROVIDER_OUTPUT_SAFETY_LIMITS.maxEmotionTagLength))
     .filter(tag => tag.length > 0);
 
-  const memoSuggestion = typeof rawResponse.memoSuggestion === 'string'
-    ? rawResponse.memoSuggestion.trim().slice(0, MAX_MEMO_SUGGESTION_LENGTH)
+  const memoSuggestion = typeof filtered.memoSuggestion === 'string'
+    ? filtered.memoSuggestion.trim().slice(0, SCOUT_LIVE_PROVIDER_OUTPUT_SAFETY_LIMITS.maxMemoLength)
     : '';
 
-  let safetyNote = typeof rawResponse.safetyNote === 'string'
-    ? rawResponse.safetyNote.trim()
+  let safetyNote = typeof filtered.safetyNote === 'string'
+    ? filtered.safetyNote.trim().slice(0, SCOUT_LIVE_PROVIDER_OUTPUT_SAFETY_LIMITS.maxSafetyNoteLength)
     : '';
 
   // --- Ensure safetyNote is non-empty ---
@@ -600,7 +736,11 @@ function createScoutLiveProviderAdapter(config) {
       // Validate and normalize the executor output
       const validationResult = validateScoutLiveProviderResponse(
         rawResponse,
-        { requestedLanguage: ni.requestedLanguage }
+        {
+          requestedLanguage: ni.requestedLanguage,
+          excerpt: ni.excerpt,
+          sourceUrl: ni.sourceUrl,
+        }
       );
 
       if (!validationResult.ok) {
@@ -769,10 +909,12 @@ async function runScoutLiveProviderExecutorWithTimeout(executor, payload, option
 export {
   SCOUT_LIVE_PROVIDER_ADAPTER_STATUS,
   SCOUT_LIVE_PROVIDER_TIMEOUT_RETRY_POLICY,
+  SCOUT_LIVE_PROVIDER_OUTPUT_SAFETY_LIMITS,
   buildScoutLiveProviderPrompt,
   validateScoutLiveProviderResponse,
   createScoutLiveProviderAdapter,
   createScoutLiveProviderLogEvent,
   sanitizeScoutLiveProviderLogPayload,
   runScoutLiveProviderExecutorWithTimeout,
+  filterScoutLiveProviderOutput,
 };
