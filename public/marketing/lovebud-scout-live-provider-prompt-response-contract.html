@@ -1,0 +1,958 @@
+<!doctype html>
+<html lang="ko" dir="ltr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <meta name="description" content="LoveBud Scout AI 제안 Prompt 및 Response 계약 — Safety &amp; Contract Visualization" />
+    <meta name="theme-color" content="#4a1a6b" />
+    <title>Scout AI Suggestion Prompt &amp; Response Contract | LoveBud</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet" />
+    <style>
+      /* ───── CSS Variables – Purple/Violet Safety & Contract Theme ───── */
+      :root {
+        --contract-primary: #6b21a8;
+        --contract-primary-rgb: 107, 33, 168;
+        --contract-primary-vibrant: #7c3aed;
+        --contract-primary-soft: #c4a5f0;
+        --contract-gradient-start: #4a1a6b;
+        --contract-gradient-mid: #6b21a8;
+        --contract-gradient-end: #7c3aed;
+        --contract-accent-warm: #f59e0b;
+        --contract-accent-rose: #f472b6;
+        --contract-surface: #faf5ff;
+        --contract-surface-dark: #1e0a2e;
+        --contract-on-surface: #2d1447;
+        --contract-on-surface-variant: #5b3f7a;
+        --contract-on-surface-note: #8b71a6;
+        --contract-outline: rgba(107, 33, 168, 0.2);
+        --contract-card-bg: rgba(255, 255, 255, 0.92);
+        --contract-card-shadow: 0 8px 32px rgba(107, 33, 168, 0.08);
+        --contract-card-radius: 20px;
+        --contract-hero-title: clamp(2.4rem, 5.5vw, 4.2rem);
+        --contract-hero-subtitle: clamp(1.1rem, 2.2vw, 1.5rem);
+        --contract-body-size: clamp(0.95rem, 1.2vw, 1.1rem);
+        --font-heading: 'Outfit', 'Noto Sans KR', sans-serif;
+        --font-body: 'Noto Sans KR', sans-serif;
+        --radius-sm: 8px;
+        --radius-md: 16px;
+        --radius-lg: 24px;
+        --radius-full: 9999px;
+        --focus-ring: 0 0 0 3px rgba(124, 58, 237, 0.5);
+        --transition-base: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        --content-max: 960px;
+      }
+
+      /* ───── Reset & Base ───── */
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      html {
+        scroll-behavior: smooth;
+        -webkit-text-size-adjust: 100%;
+      }
+
+      body {
+        font-family: var(--font-body);
+        font-size: var(--contract-body-size);
+        line-height: 1.7;
+        color: var(--contract-on-surface);
+        background: var(--contract-surface);
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* ───── Skip to content ───── */
+      .skip-link {
+        position: absolute;
+        top: -100%;
+        left: 16px;
+        z-index: 10000;
+        padding: 12px 24px;
+        background: var(--contract-primary);
+        color: #fff;
+        font-weight: 700;
+        font-size: 0.95rem;
+        border-radius: var(--radius-sm);
+        text-decoration: none;
+        transition: top var(--transition-base);
+      }
+
+      .skip-link:focus {
+        top: 16px;
+        outline: none;
+        box-shadow: var(--focus-ring);
+      }
+
+      /* ───── Focus Indicators ───── */
+      a:focus-visible,
+      button:focus-visible,
+      [tabindex]:focus-visible {
+        outline: 3px solid var(--contract-primary-vibrant);
+        outline-offset: 3px;
+        border-radius: var(--radius-sm);
+      }
+
+      /* ───── Header / Nav ───── */
+      header {
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        background: rgba(74, 26, 107, 0.88);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      nav {
+        max-width: var(--content-max);
+        margin: 0 auto;
+        padding: 14px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .nav-brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-family: var(--font-heading);
+        font-weight: 700;
+        font-size: 1.15rem;
+        color: #fff;
+        text-decoration: none;
+      }
+
+      .nav-brand:hover {
+        color: var(--contract-primary-soft);
+      }
+
+      .nav-brand-icon {
+        font-size: 1.5rem;
+        line-height: 1;
+      }
+
+      .nav-links {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        list-style: none;
+      }
+
+      .nav-links a {
+        color: rgba(255, 255, 255, 0.85);
+        text-decoration: none;
+        padding: 8px 14px;
+        border-radius: var(--radius-full);
+        font-size: 0.88rem;
+        font-weight: 500;
+        transition: background var(--transition-base), color var(--transition-base);
+      }
+
+      .nav-links a:hover,
+      .nav-links a:focus-visible {
+        background: rgba(255, 255, 255, 0.12);
+        color: #fff;
+      }
+
+      .nav-links a[aria-current="page"] {
+        background: rgba(255, 255, 255, 0.16);
+        color: #fff;
+        font-weight: 700;
+      }
+
+      /* ───── Hero Section ───── */
+      .hero {
+        position: relative;
+        background: linear-gradient(135deg, var(--contract-gradient-start) 0%, var(--contract-gradient-mid) 50%, var(--contract-gradient-end) 100%);
+        color: #fff;
+        padding: 80px 24px 72px;
+        text-align: center;
+        overflow: hidden;
+      }
+
+      .hero::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(ellipse at 20% 50%, rgba(244, 114, 182, 0.15) 0%, transparent 50%),
+                    radial-gradient(ellipse at 80% 20%, rgba(245, 158, 11, 0.08) 0%, transparent 50%),
+                    radial-gradient(ellipse at 50% 80%, rgba(196, 165, 240, 0.1) 0%, transparent 50%);
+        pointer-events: none;
+      }
+
+      .hero-content {
+        position: relative;
+        max-width: var(--content-max);
+        margin: 0 auto;
+        z-index: 1;
+      }
+
+      .hero-icon {
+        font-size: 3.5rem;
+        line-height: 1;
+        margin-bottom: 16px;
+        display: block;
+        animation: hero-float 3s ease-in-out infinite;
+      }
+
+      @keyframes hero-float {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-8px); }
+      }
+
+      .hero h1 {
+        font-family: var(--font-heading);
+        font-size: var(--contract-hero-title);
+        font-weight: 800;
+        line-height: 1.1;
+        letter-spacing: -0.03em;
+        margin-bottom: 16px;
+      }
+
+      .hero h1 .highlight {
+        background: linear-gradient(135deg, #f472b6, #f59e0b);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+
+      .hero-subtitle {
+        font-size: var(--contract-hero-subtitle);
+        font-weight: 400;
+        opacity: 0.9;
+        max-width: 680px;
+        margin: 0 auto 28px;
+        line-height: 1.6;
+      }
+
+      .hero-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        justify-content: center;
+      }
+
+      .hero-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 18px;
+        border-radius: var(--radius-full);
+        background: rgba(255, 255, 255, 0.14);
+        backdrop-filter: blur(4px);
+        font-size: 0.82rem;
+        font-weight: 500;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+
+      /* ───── Main Content ───── */
+      main {
+        flex: 1;
+      }
+
+      section {
+        max-width: var(--content-max);
+        margin: 0 auto;
+        padding: 48px 24px;
+      }
+
+      .section-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-family: var(--font-heading);
+        font-weight: 700;
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--contract-primary);
+        margin-bottom: 12px;
+      }
+
+      .section-label::after {
+        content: '';
+        flex: 1;
+        height: 2px;
+        background: var(--contract-outline);
+        min-width: 40px;
+        margin-left: 10px;
+      }
+
+      h2 {
+        font-family: var(--font-heading);
+        font-size: clamp(1.5rem, 3vw, 2.2rem);
+        font-weight: 700;
+        line-height: 1.25;
+        color: var(--contract-on-surface);
+        margin-bottom: 20px;
+      }
+
+      h3 {
+        font-family: var(--font-heading);
+        font-size: clamp(1.1rem, 1.8vw, 1.4rem);
+        font-weight: 600;
+        color: var(--contract-on-surface);
+        margin-bottom: 12px;
+      }
+
+      p {
+        margin-bottom: 16px;
+        color: var(--contract-on-surface-variant);
+      }
+
+      /* ───── Cards ───── */
+      .card-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 20px;
+        margin: 24px 0;
+      }
+
+      .card {
+        background: var(--contract-card-bg);
+        border: 1px solid var(--contract-outline);
+        border-radius: var(--contract-card-radius);
+        padding: 24px;
+        box-shadow: var(--contract-card-shadow);
+        transition: transform var(--transition-base), box-shadow var(--transition-base);
+      }
+
+      .card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 40px rgba(107, 33, 168, 0.12);
+      }
+
+      .card-icon {
+        font-size: 2rem;
+        line-height: 1;
+        margin-bottom: 12px;
+        display: inline-block;
+      }
+
+      .card h3 {
+        font-size: 1.05rem;
+        margin-bottom: 8px;
+      }
+
+      .card p {
+        font-size: 0.92rem;
+        margin-bottom: 0;
+        color: var(--contract-on-surface-variant);
+      }
+
+      /* ───── Status / Pill Tags ───── */
+      .tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 12px;
+        border-radius: var(--radius-full);
+        font-size: 0.78rem;
+        font-weight: 600;
+      }
+
+      .tag-allowed {
+        background: rgba(34, 197, 94, 0.12);
+        color: #15803d;
+      }
+
+      .tag-prohibited {
+        background: rgba(239, 68, 68, 0.12);
+        color: #b91c1c;
+      }
+
+      .tag-required {
+        background: rgba(124, 58, 237, 0.1);
+        color: var(--contract-primary);
+      }
+
+      /* ───── Table ───── */
+      .contract-table-wrap {
+        overflow-x: auto;
+        margin: 20px 0;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--contract-outline);
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9rem;
+      }
+
+      thead {
+        background: linear-gradient(135deg, var(--contract-gradient-start), var(--contract-gradient-mid));
+        color: #fff;
+      }
+
+      th {
+        text-align: left;
+        padding: 14px 18px;
+        font-family: var(--font-heading);
+        font-weight: 600;
+        font-size: 0.85rem;
+        letter-spacing: 0.03em;
+      }
+
+      td {
+        padding: 12px 18px;
+        border-bottom: 1px solid var(--contract-outline);
+        color: var(--contract-on-surface-variant);
+      }
+
+      tbody tr:last-child td {
+        border-bottom: none;
+      }
+
+      tbody tr:nth-child(even) {
+        background: rgba(107, 33, 168, 0.03);
+      }
+
+      tbody tr:hover {
+        background: rgba(107, 33, 168, 0.06);
+      }
+
+      /* ───── Safety Note Block ───── */
+      .safety-block {
+        background: linear-gradient(135deg, rgba(124, 58, 237, 0.06), rgba(244, 114, 182, 0.06));
+        border-left: 4px solid var(--contract-primary);
+        border-radius: var(--radius-md);
+        padding: 24px;
+        margin: 24px 0;
+      }
+
+      .safety-block code {
+        display: block;
+        white-space: pre-wrap;
+        font-family: var(--font-body);
+        font-size: 0.88rem;
+        line-height: 1.7;
+        color: var(--contract-on-surface-variant);
+        background: rgba(255, 255, 255, 0.5);
+        padding: 16px;
+        border-radius: var(--radius-sm);
+        margin-top: 12px;
+      }
+
+      /* ───── Feature List ───── */
+      .feature-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 12px;
+        margin: 20px 0;
+        list-style: none;
+      }
+
+      .feature-list li {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 12px 16px;
+        background: var(--contract-card-bg);
+        border: 1px solid var(--contract-outline);
+        border-radius: var(--radius-sm);
+        font-size: 0.92rem;
+        color: var(--contract-on-surface-variant);
+      }
+
+      .feature-list li .icon {
+        flex-shrink: 0;
+        font-size: 1.1rem;
+        line-height: 1.4;
+      }
+
+      /* ───── Final Decision ───── */
+      .decision-block {
+        background: linear-gradient(135deg, var(--contract-gradient-start), var(--contract-gradient-end));
+        color: #fff;
+        border-radius: var(--radius-lg);
+        padding: 36px 32px;
+        margin: 32px 0;
+        text-align: center;
+      }
+
+      .decision-block p {
+        color: rgba(255, 255, 255, 0.9);
+        font-size: 1.05rem;
+        margin-bottom: 0;
+      }
+
+      .decision-block .big-icon {
+        font-size: 3rem;
+        display: block;
+        margin-bottom: 12px;
+      }
+
+      /* ───── Footer ───── */
+      footer {
+        background: var(--contract-gradient-start);
+        color: rgba(255, 255, 255, 0.7);
+        text-align: center;
+        padding: 32px 24px;
+        font-size: 0.85rem;
+        line-height: 1.8;
+        margin-top: auto;
+      }
+
+      footer a {
+        color: var(--contract-primary-soft);
+        text-decoration: underline;
+        text-underline-offset: 3px;
+      }
+
+      footer a:hover {
+        color: #fff;
+      }
+
+      /* ───── Responsive ───── */
+      @media (max-width: 900px) {
+        .hero {
+          padding: 56px 20px 48px;
+        }
+        .card-grid {
+          grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        }
+        .feature-list {
+          grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        }
+      }
+
+      @media (max-width: 640px) {
+        nav {
+          flex-wrap: wrap;
+          gap: 8px;
+          padding: 12px 16px;
+        }
+        .nav-links {
+          width: 100%;
+          justify-content: center;
+        }
+        .nav-links a {
+          font-size: 0.82rem;
+          padding: 6px 10px;
+        }
+        .hero {
+          padding: 40px 16px 36px;
+        }
+        .hero-icon {
+          font-size: 2.5rem;
+        }
+        section {
+          padding: 32px 16px;
+        }
+        .card-grid {
+          grid-template-columns: 1fr;
+        }
+        .feature-list {
+          grid-template-columns: 1fr;
+        }
+        .decision-block {
+          padding: 28px 20px;
+        }
+        table {
+          font-size: 0.82rem;
+        }
+        th,
+        td {
+          padding: 10px 12px;
+        }
+      }
+
+      @media (max-width: 400px) {
+        .hero-badges {
+          flex-direction: column;
+          align-items: center;
+        }
+        .nav-links {
+          gap: 4px;
+        }
+        .nav-links a {
+          font-size: 0.75rem;
+          padding: 4px 8px;
+        }
+      }
+
+      /* ───── prefers-reduced-motion ───── */
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.01ms !important;
+        }
+        html {
+          scroll-behavior: auto;
+        }
+      }
+
+      /* ───── prefers-color-scheme: dark ───── */
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --contract-surface: #12071d;
+          --contract-on-surface: #e5d9f2;
+          --contract-on-surface-variant: #b8a6ce;
+          --contract-on-surface-note: #8b71a6;
+          --contract-card-bg: rgba(30, 10, 46, 0.92);
+          --contract-card-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+          --contract-outline: rgba(124, 58, 237, 0.2);
+        }
+
+        body {
+          --contract-surface: #12071d;
+          --contract-on-surface: #e5d9f2;
+          --contract-on-surface-variant: #b8a6ce;
+        }
+
+        .card {
+          background: rgba(30, 10, 46, 0.92);
+          border-color: rgba(124, 58, 237, 0.2);
+        }
+
+        .safety-block {
+          background: linear-gradient(135deg, rgba(124, 58, 237, 0.08), rgba(244, 114, 182, 0.08));
+        }
+
+        .safety-block code {
+          background: rgba(0, 0, 0, 0.3);
+          color: var(--contract-on-surface-variant);
+        }
+
+        .tag-allowed {
+          background: rgba(34, 197, 94, 0.15);
+          color: #4ade80;
+        }
+
+        .tag-prohibited {
+          background: rgba(239, 68, 68, 0.15);
+          color: #f87171;
+        }
+
+        .tag-required {
+          background: rgba(124, 58, 237, 0.15);
+          color: #a78bfa;
+        }
+
+        .feature-list li {
+          background: rgba(30, 10, 46, 0.92);
+          border-color: rgba(124, 58, 237, 0.2);
+        }
+
+        footer {
+          background: #0d0316;
+        }
+
+        header {
+          background: rgba(30, 10, 46, 0.92);
+        }
+      }
+
+      /* ───── Print Styles ───── */
+      @media print {
+        header,
+        footer,
+        .skip-link {
+          display: none !important;
+        }
+
+        body {
+          background: #fff !important;
+          color: #000 !important;
+          font-size: 11pt;
+        }
+
+        .hero {
+          background: #f5f0ff !important;
+          color: #000 !important;
+          padding: 24pt 0 !important;
+        }
+
+        .hero h1 .highlight {
+          -webkit-text-fill-color: #6b21a8;
+          color: #6b21a8;
+        }
+
+        .card {
+          break-inside: avoid;
+          box-shadow: none !important;
+          border: 1px solid #ccc !important;
+        }
+
+        .decision-block {
+          background: #f5f0ff !important;
+          color: #000 !important;
+          border: 2px solid #6b21a8 !important;
+        }
+
+        .decision-block p {
+          color: #000 !important;
+        }
+
+        a {
+          color: #6b21a8 !important;
+          text-decoration: underline !important;
+        }
+
+        h2,
+        h3 {
+          page-break-after: avoid;
+        }
+
+        p,
+        li {
+          orphans: 3;
+          widows: 3;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Skip to content link -->
+    <a class="skip-link" href="#main-content">본문으로 바로가기 (Skip to content)</a>
+
+    <!-- Header -->
+    <header role="banner">
+      <nav aria-label="사이트 네비게이션 (Site navigation)">
+        <a href="/" class="nav-brand" aria-label="LoveBud 홈">
+          <span class="nav-brand-icon" aria-hidden="true">🌳</span>
+          <span>LoveBud</span>
+        </a>
+        <ul class="nav-links" role="list">
+          <li><a href="https://github.com/skerishKang/LoveBud" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+          <li><a href="/docs/product/lovebud-scout-ai-suggestion-mvp-readiness.md" target="_blank">Readiness</a></li>
+          <li><a href="#product-prompt" aria-current="page">Prompt</a></li>
+        </ul>
+      </nav>
+    </header>
+
+    <!-- Hero -->
+    <div class="hero" role="region" aria-label="Hero section">
+      <div class="hero-content">
+        <span class="hero-icon" aria-hidden="true">🔐</span>
+        <h1>Scout AI Suggestion<br /><span class="highlight">Prompt &amp; Response Contract</span></h1>
+        <p class="hero-subtitle">
+          Safety &amp; Contract Visualization — A formal contract defining how a future Scout live provider must behave:
+          what it may receive, what it may emit, and where the safety line is drawn.
+        </p>
+        <div class="hero-badges">
+          <span class="hero-badge">🛡️ Product Prompt</span>
+          <span class="hero-badge">📋 Response Schema</span>
+          <span class="hero-badge">🚫 Prohibited Inputs</span>
+          <span class="hero-badge">✅ Allowed Inputs</span>
+          <span class="hero-badge">🔒 Safety Note</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <main id="main-content" tabindex="-1">
+      <!-- Product Prompt (Safety Note) -->
+      <section id="product-prompt" aria-labelledby="product-prompt-heading">
+        <div class="section-label">Product Prompt</div>
+        <h2 id="product-prompt-heading">🛡️ Safety Note Contract</h2>
+        <p>
+          The Product Prompt's safety note contains the <strong>non-negotiable instructions</strong> that must appear in
+          any live provider's prompt. The <code>safetyNote</code> returned in every response echoes these instructions
+          back to the user, ensuring transparency.
+        </p>
+
+        <div class="safety-block" role="region" aria-label="English safety note">
+          <h3>🇬🇧 English Canonical</h3>
+          <code>This is an AI-generated suggestion. The provider was instructed to:
+- Use only the user-entered excerpt/memo text (no fetching, no inference)
+- Produce a transformative summary, not a verbatim reproduction
+- Return short, editable suggestions, not final saved content
+- Refuse to invent facts about the source beyond the user's text
+- Refuse to handle credentials, tokens, API keys, or PII
+- Refuse to bypass copyright or claim the source was fully read
+Always review the suggestion before saving it to your LoveTree.</code>
+        </div>
+
+        <div class="safety-block" role="region" aria-label="Korean safety note">
+          <h3>🇰🇷 Korean Canonical</h3>
+          <code>이 제안은 AI가 생성한 초안입니다. 다음 사항이 provider에 지시되었습니다:
+- 사용자가 직접 입력한 발췌/메모 텍스트만 사용 (자동 fetch 금지)
+- 원문 복제가 아닌 변형된(transformative) 요약만 생성
+- 짧고 편집 가능한 제안을 반환하며 최종 저장 콘텐츠가 아님
+- 사용자 입력 외의 사실/정보를 임의로 만들어내지 않음
+- 자격증명, 토큰, API key, PII는 절대 처리하지 않음
+- 저작권 우회 또는 원문을 모두 읽었다는 주장은 하지 않음
+LoveTree에 저장하기 전 반드시 제안 내용을 직접 검토해 주세요.</code>
+        </div>
+
+        <details>
+          <summary>📋 Safety Note Invariants (7 rules)</summary>
+          <ol style="margin-top:12px;padding-left:20px;">
+            <li>The safety note must be present in <strong>every</strong> provider response — not only on error.</li>
+            <li>The safety note must not be empty, and must not be replaced with marketing copy.</li>
+            <li>The safety note must contain at least one of: "review", "검토", or equivalent in the request language.</li>
+            <li>The safety note must not contain any credential, API key, or environment variable name.</li>
+            <li>The safety note language should match <code>requestedLanguage</code> when possible.</li>
+            <li>If the provider returns a response without a safety note, the adapter must inject the canonical safety note (never silently drop it).</li>
+            <li>The safety note is the <strong>only</strong> part of the response the user can rely on for transparency.</li>
+          </ol>
+        </details>
+      </section>
+
+      <!-- Allowed / Prohibited Inputs -->
+      <section aria-labelledby="input-boundary-heading">
+        <div class="section-label">Input Boundary</div>
+        <h2 id="input-boundary-heading">📤 Allowed vs Prohibited Prompt Inputs</h2>
+
+        <h3>✅ Allowed Inputs</h3>
+        <ul class="feature-list" role="list">
+          <li><span class="icon" aria-hidden="true">📝</span> User-entered excerpt</li>
+          <li><span class="icon" aria-hidden="true">📋</span> User-entered summary</li>
+          <li><span class="icon" aria-hidden="true">🗒️</span> User memo</li>
+          <li><span class="icon" aria-hidden="true">🔗</span> Source URL string (attribution only)</li>
+          <li><span class="icon" aria-hidden="true">🌐</span> Requested language (ko/en)</li>
+          <li><span class="icon" aria-hidden="true">🎭</span> Desired tone (casual/polite/emotional)</li>
+          <li><span class="icon" aria-hidden="true">📏</span> Max output length</li>
+        </ul>
+
+        <h3>🚫 Prohibited Inputs</h3>
+        <ul class="feature-list" role="list">
+          <li><span class="icon" aria-hidden="true">🔑</span> API keys</li>
+          <li><span class="icon" aria-hidden="true">🆔</span> Auth / session tokens</li>
+          <li><span class="icon" aria-hidden="true">👤</span> Hidden user profile / PII</li>
+          <li><span class="icon" aria-hidden="true">🌲</span> Unrelated LoveTree data</li>
+          <li><span class="icon" aria-hidden="true">💬</span> Private messages not in Scout Draft</li>
+          <li><span class="icon" aria-hidden="true">📰</span> Full article text (no crawling)</li>
+          <li><span class="icon" aria-hidden="true">🔒</span> Paywalled / private content</li>
+          <li><span class="icon" aria-hidden="true">💾</span> Raw browser storage / cookies</li>
+          <li><span class="icon" aria-hidden="true">🔥</span> Firebase credentials</li>
+          <li><span class="icon" aria-hidden="true">🗄️</span> DB records not selected by user</li>
+        </ul>
+      </section>
+
+      <!-- Response Schema -->
+      <section aria-labelledby="response-schema-heading">
+        <div class="section-label">Response Contract</div>
+        <h2 id="response-schema-heading">📋 Suggestion Response Schema</h2>
+        <p>Every live provider response must conform to this schema after normalization:</p>
+
+        <div class="contract-table-wrap" role="region" aria-label="Response schema table">
+          <table>
+            <caption style="padding:10px 0;text-align:left;font-weight:600;">Response Fields (6 required)</caption>
+            <thead>
+              <tr>
+                <th scope="col">Field</th>
+                <th scope="col">Type</th>
+                <th scope="col">Max Length</th>
+                <th scope="col">Required</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td><code>titleSuggestion</code></td><td>string</td><td>50 chars</td><td><span class="tag tag-required">✅ Required</span></td></tr>
+              <tr><td><code>summarySuggestion</code></td><td>string</td><td>200 chars</td><td><span class="tag tag-required">✅ Required</span></td></tr>
+              <tr><td><code>translationSuggestion</code></td><td>string</td><td>500 chars</td><td><span class="tag tag-required">✅ Required</span></td></tr>
+              <tr><td><code>emotionTags</code></td><td>string[]</td><td>4 items, each ≤20 chars</td><td><span class="tag tag-required">✅ Required</span></td></tr>
+              <tr><td><code>memoSuggestion</code></td><td>string</td><td>500 chars</td><td><span class="tag tag-required">✅ Required</span></td></tr>
+              <tr><td><code>safetyNote</code></td><td>string</td><td>—</td><td><span class="tag tag-required">✅ Required</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="contract-table-wrap" role="region" aria-label="Error code mapping">
+          <table>
+            <caption style="padding:10px 0;text-align:left;font-weight:600;">Failure-to-Error-Code Mapping</caption>
+            <thead>
+              <tr>
+                <th scope="col">Failure</th>
+                <th scope="col">Error Code</th>
+                <th scope="col">HTTP Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Missing live provider config</td><td><code>CONFIG_MISSING</code></td><td>503</td></tr>
+              <tr><td>Provider returns malformed JSON</td><td><code>PROVIDER_ERROR</code></td><td>502</td></tr>
+              <tr><td>Provider timeout</td><td><code>PROVIDER_ERROR</code></td><td>502</td></tr>
+              <tr><td>Provider returns unsafe content</td><td><code>PROVIDER_ERROR</code></td><td>502</td></tr>
+              <tr><td>Validation failure</td><td><code>VALIDATION_ERROR</code></td><td>400</td></tr>
+              <tr><td>Rate limited</td><td><code>RATE_LIMITED</code></td><td>429</td></tr>
+              <tr><td>Network error (endpoint → provider)</td><td><code>PROVIDER_UNAVAILABLE</code></td><td>503</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Contract Summary Cards -->
+      <section aria-labelledby="contract-summary-heading">
+        <div class="section-label">Contract Overview</div>
+        <h2 id="contract-summary-heading">📌 Key Contract Guardrails</h2>
+
+        <div class="card-grid">
+          <article class="card">
+            <span class="card-icon" aria-hidden="true">🔒</span>
+            <h3>Copyright Boundary</h3>
+            <p>No automatic article retrieval, no full-text reproduction, no long verbatim copying. Only <strong>transformative summaries</strong>. User review required before save.</p>
+          </article>
+          <article class="card">
+            <span class="card-icon" aria-hidden="true">🛡️</span>
+            <h3>Safety Boundary</h3>
+            <p>No hidden data inference, no credential handling, no source impersonation. Every response must include a <code>safetyNote</code>.</p>
+          </article>
+          <article class="card">
+            <span class="card-icon" aria-hidden="true">🎯</span>
+            <h3>Validation Rules</h3>
+            <p><code>emotionTags</code> max 4 items, each ≤20 chars. Invalid provider responses map to <code>PROVIDER_ERROR</code>. No raw model response applied directly to UI.</p>
+          </article>
+          <article class="card">
+            <span class="card-icon" aria-hidden="true">🌐</span>
+            <h3>Language &amp; Tone</h3>
+            <p><code>requestedLanguage</code> (ko/en) and <code>desiredTone</code> (casual/polite/emotional) guidance. Unsupported values fall back safely. No invented facts beyond user input.</p>
+          </article>
+          <article class="card">
+            <span class="card-icon" aria-hidden="true">✨</span>
+            <h3>UI Application</h3>
+            <p>Editable fields only. User must click "저장" (Save) to persist. No auto-save. Manual save always available even when suggestion fails.</p>
+          </article>
+          <article class="card">
+            <span class="card-icon" aria-hidden="true">⛔</span>
+            <h3>Non-Goals</h3>
+            <p>No live provider implementation, no API keys, no external URL fetch, no crawler, no auto-save, no DB/schema migration, no Browse #1661 work.</p>
+          </article>
+        </div>
+      </section>
+
+      <!-- Final Decision -->
+      <section aria-labelledby="final-decision-heading">
+        <div class="section-label">Verdict</div>
+        <div class="decision-block" role="region" aria-label="Final decision">
+          <span class="big-icon" aria-hidden="true">📜</span>
+          <p>
+            The prompt and response contract is ready to guide a future live-provider adapter skeleton,
+            but live provider calls remain out of scope.
+          </p>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer role="contentinfo">
+      <p>
+        <span aria-hidden="true">🌳</span> LoveBud Scout — AI Suggestion Prompt &amp; Response Contract
+        <br />
+        <a href="https://github.com/skerishKang/LoveBud/issues/1882" target="_blank" rel="noopener noreferrer">
+          Issue #1882
+        </a>
+        · Reference:
+        <a href="../../../docs/product/lovebud-scout-ai-suggestion-mvp-readiness.md" target="_blank">
+          Readiness Audit
+        </a>
+        · <a href="../../../docs/product/lovebud-scout-live-provider-prompt-response-contract.md" target="_blank">
+          Full Contract Document
+        </a>
+      </p>
+    </footer>
+  </body>
+</html>
