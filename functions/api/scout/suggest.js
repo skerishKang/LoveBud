@@ -70,6 +70,10 @@ import {
   createScoutRealProviderAdapterInterface,
   SCOUT_LIVE_PROVIDER_INTERFACE_STATUS,
 } from "./live-provider-adapter.js";
+import {
+  verifyScoutLiveAuthBoundary,
+  checkScoutLiveRateLimitBoundary,
+} from "./live-auth-rate-limit-boundary.js";
 
 const SCOUT_SUGGEST_PROVIDER_MODES = {
   STUB: 'stub',
@@ -294,6 +298,31 @@ export async function onRequestPost(context) {
   // ─── Live provider configuration boundary (contract-defined, placeholder) ─────
   const providerConfig = resolveScoutSuggestProviderMode(env);
   if (providerConfig.providerMode === SCOUT_SUGGEST_PROVIDER_MODES.LIVE) {
+    // ── Live-mode auth boundary (canonical, DI-injected, safe-fail) ──
+    const authResult = await verifyScoutLiveAuthBoundary(request, context);
+    if (!authResult.ok) {
+      return buildErrorResponse(authResult.error.code, authResult.error.message, requestId, 401);
+    }
+
+    // ── Live-mode rate-limit boundary (canonical, DI-injected, safe-fail) ──
+    const rateLimitResult = await checkScoutLiveRateLimitBoundary(request, authResult, context);
+    if (!rateLimitResult.ok) {
+      const status = (rateLimitResult.status === 'rate_limited') ? 429 : 503;
+      const headers = {
+        'content-type': 'application/json; charset=utf-8',
+        'x-lovebud-upstream': 'cloudflare',
+        'x-lovebud-route-status': rateLimitResult.error.code.toLowerCase().replace(/_/g, '-'),
+        [REQUEST_ID_HEADER]: requestId,
+      };
+      if (rateLimitResult.retryAfterSeconds > 0) {
+        headers['retry-after'] = String(rateLimitResult.retryAfterSeconds);
+      }
+      return new Response(
+        JSON.stringify({ ok: false, error: { code: rateLimitResult.error.code, message: rateLimitResult.error.message } }),
+        { status, headers }
+      );
+    }
+
     if (!providerConfig.safeToCallLiveProvider) {
       return buildErrorResponse(providerConfig.error.code, providerConfig.error.message, requestId, 503);
     }

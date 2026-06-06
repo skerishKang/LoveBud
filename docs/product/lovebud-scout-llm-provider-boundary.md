@@ -2,6 +2,16 @@
 
 ## Baseline
 
+## Live Auth/Rate-Limit Endpoint Safe-Fail Wiring (slice update)
+
+- live auth/rate-limit endpoint safe-fail wiring added
+- Live mode now routes through the auth/rate-limit boundary before any provider path
+- Default endpoint behavior remains stub
+- Frontend default remains local_stub
+- No Firebase Admin SDK, KV, DO, D1, provider SDK, fetch, or persistence is added
+- No real provider API call is enabled
+- staging_live and production_live remain blocked
+
 ## Auth/Rate-Limit Runtime Boundary Skeleton (slice update)
 
 - auth/rate-limit runtime boundary skeleton added (functions/api/scout/live-auth-rate-limit-boundary.js)

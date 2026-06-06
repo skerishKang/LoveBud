@@ -1,13 +1,14 @@
 /**
  * Scout Live Auth/Rate-Limit Boundary Reconcile Contract Tests
- * v20260607-1
+ * v20260607-2
  *
  * Locks in the reconcile decision after PR #2278:
  * - functions/api/scout/live-auth-rate-limit-boundary.js is the canonical
  *   auth/rate-limit runtime boundary skeleton
  * - functions/api/scout/live-provider-auth-rate-limit-boundary.js (the parallel
  *   agent's implementation) is NOT adopted
- * - suggest.js does not import any auth/rate-limit boundary yet
+ * - After the endpoint safe-fail wiring slice, suggest.js imports the
+ *   canonical boundary only — never the parallel file
  * - endpoint default stub / frontend local_stub are preserved
  * - no Firebase Admin SDK / no KV-DO-D1 / no provider SDK / no fetch
  *
@@ -94,25 +95,17 @@ tests.push({
   },
 });
 
-// ── 4. suggest.js does not import any auth/rate-limit boundary yet ──────────
+// ── 4. suggest.js imports canonical boundary only (after wiring slice) ─────
 tests.push({
-  name: 'suggest.js does not import any auth/rate-limit boundary (reconcile scope)',
+  name: 'suggest.js imports the canonical boundary (only) after endpoint wiring slice',
   fn: () => {
     assert.ok(
-      !suggestCode.includes('live-auth-rate-limit-boundary'),
-      'suggest.js must not import live-auth-rate-limit-boundary.js (slice scope)'
+      suggestCode.includes('live-auth-rate-limit-boundary'),
+      'suggest.js must import live-auth-rate-limit-boundary.js (canonical, intentional wiring)'
     );
     assert.ok(
       !suggestCode.includes('live-provider-auth-rate-limit-boundary'),
-      'suggest.js must not import live-provider-auth-rate-limit-boundary.js (parallel file)'
-    );
-    assert.ok(
-      !suggestCode.includes('verifyScoutLiveAuthBoundary'),
-      'suggest.js must not import verifyScoutLiveAuthBoundary (slice scope)'
-    );
-    assert.ok(
-      !suggestCode.includes('checkScoutLiveRateLimitBoundary'),
-      'suggest.js must not import checkScoutLiveRateLimitBoundary (slice scope)'
+      'suggest.js must NOT import live-provider-auth-rate-limit-boundary.js (parallel file, never adopted)'
     );
   },
 });
