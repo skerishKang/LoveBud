@@ -2,6 +2,16 @@
 
 ## Document Status
 
+## Endpoint Live Auth/Rate-Limit Readiness Audit (slice update)
+
+- endpoint live auth/rate-limit readiness audit added (`docs/product/lovebud-scout-live-auth-rate-limit-readiness-audit.md`)
+- endpoint safe-fail wiring, DI contract, and observability contract are complete
+- real Firebase / KV / provider API work remains blocked (NO-GO)
+- endpoint default remains stub
+- UI default remains `local_stub`
+- recommended next slice: endpoint error taxonomy contract
+- audit verdict: ready for endpoint error taxonomy contract; NOT ready for real Firebase/KV, `staging_live`, `production_live`, or real provider API call
+
 ## Endpoint Live Auth/Rate-Limit Observability Contract (slice update)
 
 - sanitized observability contract added for endpoint live auth/rate-limit boundary decisions
