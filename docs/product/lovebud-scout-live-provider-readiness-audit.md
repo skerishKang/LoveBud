@@ -40,6 +40,7 @@
 | Disabled-mode endpoint contract | Pass | endpoint live mode → PROVIDER_UNAVAILABLE/CONFIG_MISSING |
 | Mock executor integration | Pass | ready_for_adapter + executor → full mock pipeline |
 | Post-mock readiness audit | Pass | blocker inventory + next gate definition (PR #2259) |
+| Staging rollout contract | Pass | rollout modes, kill switch, rollback, opt-in policy (PR #2261) |
 
 ## Readiness Verdict
 

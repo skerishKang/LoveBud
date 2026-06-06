@@ -310,6 +310,8 @@ This slice would implement:
 
 **Post-mock integration readiness audit:** Completed. Adds post-mock readiness audit after mock executor integration. Documents implemented boundaries inventory, mock-only pipeline completeness, default behavior (endpoint stub, frontend local_stub), confirmed guardrails, 10 remaining blockers before real provider implementation, gates for first real provider slice, and verdict. Verdict: Ready for staging rollout contract work (Yes), Ready for real provider API call (No). See `docs/product/lovebud-scout-live-provider-post-mock-readiness-audit.md`.
 
+**Staging rollout contract:** Completed. Defines staging/production rollout gates, kill switch, rollback, and opt-in policies for the Scout live provider path. Documents 5 rollout modes (local_stub, endpoint_stub, live_mock, staging_live, production_live), default behavior policy, 14 staging activation gates, 10 production activation gates, kill switch mechanism and emergency procedure, rollback policy (from staging/production), opt-in rules, and monitoring allowed/prohibited fields. Verdict: Ready for staging rollout contract work (Yes), Ready for staging live execution (No), Ready for production live execution (No). See `docs/product/lovebud-scout-live-provider-staging-rollout-contract.md`.
+
 **Alternatives (independent order):**
 
 - `[TECH] Add Scout prompt builder contract`
