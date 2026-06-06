@@ -1010,11 +1010,92 @@ function normalizeScoutLiveProviderConfig(envOrConfig) {
  * Creates a real provider adapter interface behind disabled live mode.
  * Does NOT call any real provider. All states return safe-fail suggest().
  *
- * @param {Object} envOrConfig - Environment config (env vars or partial config)
+ * When the status is READY_FOR_ADAPTER and a test-only executor is injected
+ * via envOrConfig.executor, routes through the existing mock executor pipeline
+ * (createScoutLiveProviderAdapter) for network-free mock execution.
+ *
+ * When no executor is injected, or when status is DISABLED or CONFIG_MISSING,
+ * suggest() returns a safe error without calling any pipeline.
+ *
+ * API key value is NEVER passed to the mock adapter — only hasApiKey
+ * presence is used for status determination. The executor receives the
+ * built prompt, never the raw API key.
+ *
+ * @param {Object} envOrConfig - Environment config (env vars or partial config).
+ *   May also contain injected test-only properties:
+ *   - executor: async ({ prompt, normalizedInput }) => rawResponse
+ *   - logger: (event) => void
+ *   - requestId: string
  * @returns {Object} { status, config, suggest }
  */
 function createScoutRealProviderAdapterInterface(envOrConfig) {
   const config = normalizeScoutLiveProviderConfig(envOrConfig);
+
+  if (config.status !== SCOUT_LIVE_PROVIDER_INTERFACE_STATUS.READY_FOR_ADAPTER) {
+    return {
+      status: config.status,
+      config: {
+        provider: config.provider,
+        model: config.model,
+        hasApiKey: config.hasApiKey,
+        baseUrl: config.baseUrl,
+        timeoutMs: config.timeoutMs,
+        maxRetries: config.maxRetries,
+      },
+      suggest: async () => ({
+        ok: false,
+        error: config.error ?? {
+          code: 'PROVIDER_UNAVAILABLE',
+          message: 'Scout live provider adapter is unavailable.',
+        },
+      }),
+    };
+  }
+
+  // READY_FOR_ADAPTER: check for injected executor
+  const executor = (envOrConfig && typeof envOrConfig.executor === 'function')
+    ? envOrConfig.executor
+    : null;
+  const logger = (envOrConfig && typeof envOrConfig.logger === 'function')
+    ? envOrConfig.logger
+    : null;
+  const requestId = (envOrConfig && typeof envOrConfig.requestId === 'string' && envOrConfig.requestId.length > 0)
+    ? envOrConfig.requestId
+    : '';
+
+  if (!executor) {
+    // No executor injected — safe-fail (no real provider call)
+    return {
+      status: config.status,
+      config: {
+        provider: config.provider,
+        model: config.model,
+        hasApiKey: config.hasApiKey,
+        baseUrl: config.baseUrl,
+        timeoutMs: config.timeoutMs,
+        maxRetries: config.maxRetries,
+      },
+      suggest: async () => ({
+        ok: false,
+        error: {
+          code: 'PROVIDER_UNAVAILABLE',
+          message: 'Scout live provider adapter is not yet connected.',
+        },
+      }),
+    };
+  }
+
+  // Build a mock adapter via the existing createScoutLiveProviderAdapter
+  // NOTE: API key value is NEVER passed — only safe config fields.
+  const mockAdapter = createScoutLiveProviderAdapter({
+    provider: config.provider,
+    baseUrl: config.baseUrl,
+    executor,
+    logger,
+    requestId,
+    timeoutMs: config.timeoutMs,
+    maxRetries: config.maxRetries,
+  });
 
   return {
     status: config.status,
@@ -1026,17 +1107,14 @@ function createScoutRealProviderAdapterInterface(envOrConfig) {
       timeoutMs: config.timeoutMs,
       maxRetries: config.maxRetries,
     },
-    suggest: async () => ({
-      ok: false,
-      error: {
-        code: config.status === SCOUT_LIVE_PROVIDER_INTERFACE_STATUS.CONFIG_MISSING
-          ? 'CONFIG_MISSING'
-          : 'PROVIDER_UNAVAILABLE',
-        message: config.status === SCOUT_LIVE_PROVIDER_INTERFACE_STATUS.CONFIG_MISSING
-          ? 'Scout live suggestion provider is not configured.'
-          : 'Scout live provider adapter is disabled.',
-      },
-    }),
+    suggest: async (input) => {
+      const result = await mockAdapter.suggest(input);
+      // Ensure the result's providerMode reflects the interface context
+      return {
+        ...result,
+        providerMode: 'live_mock',
+      };
+    },
   };
 }
 
