@@ -65,6 +65,49 @@ function getScoutSuggestRateLimitPolicy(tier) {
 // TODO: Persistent rate-limit storage — future boundary only
 // async function checkScoutRateLimit(userId, tier) { /* placeholder using KV/Durable Objects */ }
 
+// ─── Live Provider Configuration Boundary (Contract-only, placeholder) ─────────────
+
+const SCOUT_SUGGEST_PROVIDER_MODES = {
+  STUB: 'stub',
+  LIVE: 'live',
+};
+
+function resolveScoutSuggestProviderMode(env) {
+  // Default is stub — no live provider call ever made without explicit config
+  const mode = (env?.SCOUT_SUGGEST_PROVIDER_MODE || '').toLowerCase();
+
+  if (mode === SCOUT_SUGGEST_PROVIDER_MODES.LIVE) {
+    // Check if required live config is present (placeholder — no actual secret required yet)
+    const hasLiveConfig = !!(
+      env?.SCOUT_SUGGEST_LLM_PROVIDER &&
+      env?.SCOUT_SUGGEST_LLM_API_KEY &&
+      env?.SCOUT_SUGGEST_MODEL
+    );
+    if (!hasLiveConfig) {
+      return {
+        providerMode: SCOUT_SUGGEST_PROVIDER_MODES.LIVE,
+        status: 'config_missing',
+        safeToCallLiveProvider: false,
+        error: { code: 'CONFIG_MISSING', message: 'Scout live suggestion provider is not configured' },
+      };
+    }
+    return {
+      providerMode: SCOUT_SUGGEST_PROVIDER_MODES.LIVE,
+      status: 'available',
+      safeToCallLiveProvider: true,
+      error: null,
+    };
+  }
+
+  // Default: stub mode
+  return {
+    providerMode: SCOUT_SUGGEST_PROVIDER_MODES.STUB,
+    status: 'available',
+    safeToCallLiveProvider: false,
+    error: null,
+  };
+}
+
 async function readBoundedBody(request) {
   let bodyText;
   try {
@@ -244,6 +287,17 @@ export async function onRequestPost(context) {
   // const allowed = await checkScoutRateLimit(userId, tier); // future boundary
   // if (!allowed) return buildErrorResponse('RATE_LIMITED', 'Too many requests', requestId, 429);
 
+  // ─── Live provider configuration boundary (contract-defined, placeholder) ─────
+  const providerConfig = resolveScoutSuggestProviderMode(env);
+  if (providerConfig.providerMode === SCOUT_SUGGEST_PROVIDER_MODES.LIVE) {
+    if (!providerConfig.safeToCallLiveProvider) {
+      return buildErrorResponse(providerConfig.error.code, providerConfig.error.message, requestId, 503);
+    }
+    // Future: call live provider when config is complete
+    // try { return await callLiveProvider(validation.normalized, env); }
+    // catch { return buildErrorResponse('PROVIDER_UNAVAILABLE', 'AI suggestion service temporarily unavailable', requestId, 503); }
+  }
+
   // ─── Live provider integration — placeholder for Phase D ──────────────────
   // if (env.SCOUT_LLM_API_KEY) {
   //   try { return await callLiveProvider(validation.normalized, env); }
@@ -256,7 +310,7 @@ export async function onRequestPost(context) {
   // Return deterministic stub suggestion
   const suggestion = generateStubSuggestion(validation.normalized);
 
-  return buildSuccessResponse(suggestion, 'stub', requestId);
+  return buildSuccessResponse(suggestion, providerConfig.providerMode, requestId);
 }
 
 // ─── Other methods: not allowed ─────────────────────────────────────────────
