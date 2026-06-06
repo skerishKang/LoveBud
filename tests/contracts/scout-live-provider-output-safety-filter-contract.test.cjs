@@ -342,12 +342,12 @@ tests.push({
   name: 'sourceUrl raw value in suggestion text returns PROVIDER_ERROR',
   fn: async () => {
     const mod = await importAdapter();
-    const sourceUrl = 'https://example.com/secret-article-12345';
+    const sourceUrl = 'https://example.com/article-guide-12345';
 
     // Summary contains sourceUrl
     const r1 = mod.validateScoutLiveProviderResponse({
       titleSuggestion: 'T',
-      summarySuggestion: 'Summary with https://example.com/secret-article-12345 in it.',
+      summarySuggestion: 'Summary with https://example.com/article-guide-12345 in it.',
       translationSuggestion: '',
       emotionTags: [],
       memoSuggestion: '',
