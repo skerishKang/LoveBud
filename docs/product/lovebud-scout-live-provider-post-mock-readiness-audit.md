@@ -151,7 +151,7 @@ Ready for real provider API call: No
 ## Recommended Next Slice
 
 ```
-[TECH] Add Scout live provider staging rollout contract
+**[TECH] Add Scout live provider staging rollout contract** → ✅ Completed (PR #2261)
 ```
 
 **Why:**
@@ -167,7 +167,7 @@ This requires KV/Durable Object/D1 decisions and is higher risk. Recommend stagi
 
 ## Next Steps Beyond Staging Rollout
 
-1. `[TECH] Add Scout live provider staging rollout contract`
+1. ~~`[TECH] Add Scout live provider staging rollout contract`~~ ✅ Completed (PR #2261)
 2. `[TECH] Add Scout live provider auth/rate-limit persistence boundary`
 3. `[TECH] Add Scout live provider cost/quota control boundary`
 4. `[TECH] Add Scout live provider abuse monitoring boundary`
