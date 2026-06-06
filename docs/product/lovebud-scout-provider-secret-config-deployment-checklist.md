@@ -145,8 +145,9 @@ SCOUT_SUGGEST_LLM_BASE_URL
 11. disabled-mode endpoint contract exists (live mode recognizes adapter interface states).
 12. mock executor integration exists (ready_for_adapter + executor → full mock pipeline).
 14. staging rollout contract exists (rollout modes, kill switch, rollback, opt-in policy documented).
-16. auth/rate-limit persistence boundary exists (Firebase auth enforcement, persistent storage requirements, quota policy documented).
-17. post-mock readiness audit exists (blocker inventory + next gate definition).
+17. auth/rate-limit persistence boundary exists (Firebase auth enforcement, persistent storage requirements, quota policy documented).
+18. cost/quota abuse monitoring contract exists (cost caps, quota budget, abuse monitoring, provider failure accounting documented).
+19. post-mock readiness audit exists (blocker inventory + next gate definition).
 
 ## Non-goals
 
