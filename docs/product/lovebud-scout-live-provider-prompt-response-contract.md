@@ -292,6 +292,8 @@ This slice would implement:
 
 **Mock execution contract:** `createScoutLiveProviderAdapter()` accepts an injected `executor` option (test-only). When an executor is provided, `adapter.suggest()` runs `prompt builder → executor → response validator`. When absent, returns `CONFIG_MISSING` safe-fail. No real provider call, no SDK, no fetch, no secrets. See `tests/contracts/scout-live-provider-mock-execution-contract.test.cjs`.
 
+**Logging boundary:** Safe observability helpers `createScoutLiveProviderLogEvent` and `sanitizeScoutLiveProviderLogPayload` added. Allowed log fields: `requestId`, `providerMode`, `status`, `errorCode`, `latencyMs`, `inputLength`, `outputFieldCount`, `emotionTagCount`, `hasSourceUrl`, `language`, `tone`. Prohibited: `prompt`, `excerpt`, `summary`, `memo`, `sourceUrl` raw value, suggestion text fields, API keys, auth tokens, cookies, PII. Optional injected logger receives sanitized events only; logger throw is safely swallowed. No real provider call, no SDK, no fetch, no secrets. See `tests/contracts/scout-live-provider-logging-boundary-contract.test.cjs`.
+
 **Alternatives (independent order):**
 
 - `[TECH] Add Scout prompt builder contract`
