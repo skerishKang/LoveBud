@@ -26,6 +26,45 @@ function getOrCreateRequestId(request) {
   return generateRequestId();
 }
 
+// ─── Auth / Rate-Limit Boundary Helpers (Contract-only, placeholder) ──────────────
+
+const SCOUT_SUGGEST_RATE_LIMITS = {
+  free: { requestsPerMinute: 5, windowSeconds: 60 },
+  authenticated: { requestsPerMinute: 10, windowSeconds: 60 },
+};
+
+function parseScoutAuthorizationHeader(headerValue) {
+  if (!headerValue || typeof headerValue !== 'string') {
+    return { ok: false, scheme: '', token: '', errorCode: 'UNAUTHORIZED', message: 'Authorization header missing' };
+  }
+  const parts = headerValue.trim().split(/\s+/);
+  if (parts.length !== 2) {
+    return { ok: false, scheme: '', token: '', errorCode: 'UNAUTHORIZED', message: 'Authorization header malformed' };
+  }
+  const [scheme, token] = parts;
+  if (scheme.toLowerCase() !== 'bearer') {
+    return { ok: false, scheme, token: '', errorCode: 'UNAUTHORIZED', message: 'Authorization scheme must be Bearer' };
+  }
+  if (!token || token.length === 0) {
+    return { ok: false, scheme, token: '', errorCode: 'UNAUTHORIZED', message: 'Bearer token missing' };
+  }
+  // Token value is intentionally NOT logged or included in error messages
+  return { ok: true, scheme: 'Bearer', token: token.trim(), errorCode: '', message: '' };
+}
+
+function getScoutSuggestRateLimitPolicy(tier) {
+  const normalizedTier = (tier === 'authenticated' ? 'authenticated' : 'free');
+  const policy = SCOUT_SUGGEST_RATE_LIMITS[normalizedTier];
+  return { tier: normalizedTier, requestsPerMinute: policy.requestsPerMinute, windowSeconds: policy.windowSeconds };
+}
+
+// TODO: Firebase Admin SDK verification — future boundary only
+// import { getAuth } from 'firebase-admin/auth';
+// async function verifyScoutFirebaseToken(token) { /* placeholder */ }
+
+// TODO: Persistent rate-limit storage — future boundary only
+// async function checkScoutRateLimit(userId, tier) { /* placeholder using KV/Durable Objects */ }
+
 async function readBoundedBody(request) {
   let bodyText;
   try {
@@ -188,15 +227,24 @@ export async function onRequestPost(context) {
     return buildErrorResponse('VALIDATION_ERROR', validation.errors.join('; '), requestId, 400);
   }
 
-  // TODO: Auth verification — placeholder for Phase D
-  // const authHeader = request.headers.get('authorization') || request.headers.get('Authorization');
-  // if (!authHeader) return buildErrorResponse('UNAUTHORIZED', 'Authorization required', requestId, 401);
-  // Verify Firebase ID token here when ready
+  // ─── Auth boundary (contract-defined, placeholder enforcement) ──────────────
+  // Current mode: stub-only dev → Authorization NOT enforced
+  // TODO: When live provider is enabled, enforce Bearer auth here:
+  // const authResult = parseScoutAuthorizationHeader(
+  //   request.headers.get('authorization') || request.headers.get('Authorization')
+  // );
+  // if (!authResult.ok) return buildErrorResponse(authResult.errorCode, authResult.message, requestId, 401);
+  // const userId = await verifyScoutFirebaseToken(authResult.token); // future boundary
 
-  // TODO: Rate limiting — placeholder for Phase D
-  // Check rate limit via KV/Durable Objects when ready
+  // ─── Rate-limit boundary (contract-defined, placeholder enforcement) ────────
+  // Current mode: stub-only dev → rate limit NOT enforced
+  // TODO: When live provider is enabled, enforce rate limit here:
+  // const tier = userId ? 'authenticated' : 'free';
+  // const rateLimitPolicy = getScoutSuggestRateLimitPolicy(tier);
+  // const allowed = await checkScoutRateLimit(userId, tier); // future boundary
+  // if (!allowed) return buildErrorResponse('RATE_LIMITED', 'Too many requests', requestId, 429);
 
-  // TODO: Live provider integration — placeholder for Phase D
+  // ─── Live provider integration — placeholder for Phase D ──────────────────
   // if (env.SCOUT_LLM_API_KEY) {
   //   try { return await callLiveProvider(validation.normalized, env); }
   //   catch { return buildErrorResponse('PROVIDER_UNAVAILABLE', 'AI suggestion service temporarily unavailable', requestId, 503); }
