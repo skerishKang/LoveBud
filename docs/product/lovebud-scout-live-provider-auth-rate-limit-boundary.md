@@ -17,6 +17,29 @@
 - `tests/contracts/scout-live-auth-rate-limit-runtime-boundary-contract.test.cjs` — 28 sub-tests covering DI, safe defaults, no SDK / no storage / no fetch
 - `verifyScoutLiveAuthBoundary` / `checkScoutLiveRateLimitBoundary` wrappers expose injected `verifyToken` / `checkRateLimit`
 
+## Endpoint Live Auth/Rate-Limit Observability Contract (slice update)
+
+- sanitized observability contract added for endpoint live auth/rate-limit boundary decisions
+- allowlist event fields: `requestId`, `providerMode`, `boundaryDecision`, `authStatus`, `rateLimitStatus`, `errorCode`, `retryAfterSeconds`, `quotaBucket`, `userKeyHash` (redacted), `latencyMs`
+- prohibited fields: raw token, API key, prompt, excerpt, raw request body, full sourceUrl, raw provider output, PII, credentials
+- pure helper module: `functions/api/scout/live-auth-rate-limit-observability.js`
+  - exports `SCOUT_LIVE_OBSERVABILITY_FIELDS` allowlist, `SCOUT_LIVE_OBSERVABILITY_DECISIONS` constants
+  - exports `buildScoutLiveAuthEvent` / `buildScoutLiveRateLimitEvent` pure event builders
+  - exports `sanitizeScoutLiveBoundaryEvent` (drops unknown fields, re-applies allowlist)
+  - exports `safeInvokeScoutLiveObserver` (safe-swallow wrapper, never throws)
+  - exports `createScoutLiveBoundaryObserver` (in-memory ring buffer for tests)
+- endpoint wires an **optional** observer through `liveDependencies.observer` (i.e. `context.observer`)
+- observer is called BEFORE early-return so all decisions (success + failure) are recorded
+- observer throw is safe-swallowed: endpoint response is unchanged
+- default stub / explicit stub: observer is NOT called (no live event emitted)
+- live mode: auth + rate-limit decisions emit one sanitized event each
+- userKey is NEVER logged raw; only `userKeyHash = "hk_" + safeAlnum(userKey)` (max 64 chars)
+- no real logging backend (no console.log/error, no fetch-based logger, no external logger SDK)
+- no Firebase Admin SDK / no KV / DO / D1 / no provider SDK / no fetch / no axios
+- endpoint default stub / frontend `local_stub` / endpoint client disabled remain preserved
+- `staging_live` and `production_live` remain blocked
+- `tests/contracts/scout-live-auth-rate-limit-endpoint-observability-contract.test.cjs` — 24 sub-tests covering helper exports, allowlist shape, AUTH_REQUIRED / AUTH_INVALID / RATE_LIMIT_UNAVAILABLE / RATE_LIMITED / RATE_LIMIT_ALLOWED events, default/explicit stub observer skip, observer throw safe-swallow, allowlist-only event keys, raw token / API key / prompt / excerpt / full sourceUrl exclusion, limiter payload sanitization regression, no logging backend / no Firebase / no KV-DO-D1 / no provider SDK / no fetch
+
 ## Endpoint Injected Dependency Contract (slice update)
 
 - endpoint constructs explicit `liveDependencies = { verifyToken, checkRateLimit, requestId }` DI seam in suggest.js
