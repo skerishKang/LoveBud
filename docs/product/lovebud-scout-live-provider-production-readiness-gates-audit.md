@@ -319,3 +319,12 @@ This would implement the runtime auth/rate-limit dependency injection seam witho
 - ❌ No frontend behavior change
 - ❌ No persistence or auto-save
 - ❌ No Browse #1661 work
+
+## Reconcile (slice update)
+
+- PR #2278 `functions/api/scout/live-auth-rate-limit-boundary.js` is the **canonical** auth/rate-limit runtime boundary skeleton
+- **Parallel** `functions/api/scout/live-provider-auth-rate-limit-boundary.js` implementation is **not adopted** (different API surface, not merged)
+- Endpoint live auth/rate-limit wiring remains a **separate future slice** — this slice does not wire the boundary into `suggest.js`
+- Endpoint default remains `stub` — deterministic, no live provider call
+- Frontend default remains `local_stub` — no network, no endpoint client
+- No Firebase Admin SDK / no KV / Durable Object / D1 / no provider API call
