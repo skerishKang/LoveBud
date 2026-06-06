@@ -37,6 +37,7 @@
 | Output safety filter | Pass | unsafe output → PROVIDER_ERROR |
 | Secret/config/deployment checklist | Pass | docs + contract |
 | Real provider adapter interface | Pass | config normalization + disabled safe-fail |
+| Disabled-mode endpoint contract | Pass | endpoint live mode → PROVIDER_UNAVAILABLE/CONFIG_MISSING |
 
 ## Readiness Verdict
 

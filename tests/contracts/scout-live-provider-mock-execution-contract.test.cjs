@@ -497,11 +497,11 @@ tests.push({
       suggestCode.includes('providerMode: SCOUT_SUGGEST_PROVIDER_MODES.STUB'),
       'Default endpoint path should return stub providerMode');
 
-    // suggest.js should NOT inject a mock executor into createScoutLiveProviderAdapter
-    // (the adapter is called without executor: suggest.js only passes provider/apiKey/baseUrl)
-    const adapterCreationLines = suggestCode.split('\n').filter(l => l.includes('createScoutLiveProviderAdapter'));
-    for (const line of adapterCreationLines) {
-      assert.ok(!line.includes('executor'), 'suggest.js should not inject executor into adapter');
+    // suggest.js now uses createScoutRealProviderAdapterInterface instead of createScoutLiveProviderAdapter
+    // Verify it does NOT inject a mock executor
+    const interfaceCreationLines = suggestCode.split('\n').filter(l => l.includes('createScoutRealProviderAdapterInterface'));
+    for (const line of interfaceCreationLines) {
+      assert.ok(!line.includes('executor'), 'suggest.js should not inject executor into real adapter interface');
     }
 
     // The existing skeleton adapter test's test #16 already verifies adapter import but default stub preserved

@@ -504,8 +504,9 @@ tests.push({
     assert.ok(suggestCode.includes("SCOUT_SUGGEST_PROVIDER_MODES.STUB") ||
       suggestCode.includes("'stub'"), 'Default endpoint path should return stub');
 
-    const adapterCreationLines = suggestCode.split('\n').filter(l => l.includes('createScoutLiveProviderAdapter'));
-    for (const line of adapterCreationLines) {
+    // suggest.js now uses createScoutRealProviderAdapterInterface instead of createScoutLiveProviderAdapter
+    const interfaceCreationLines = suggestCode.split('\n').filter(l => l.includes('createScoutRealProviderAdapterInterface'));
+    for (const line of interfaceCreationLines) {
       assert.ok(!line.includes('executor'), 'suggest.js should not inject executor');
     }
   },

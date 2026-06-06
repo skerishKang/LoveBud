@@ -442,8 +442,9 @@ tests.push({
     if (importRef) {
       assert.ok(suggestCode.includes('generateStubSuggestion'),
         'Default path should still call generateStubSuggestion');
-      assert.ok(suggestCode.includes('adapter.suggest'),
-        'Adapter.suggest should be called only in live mode branch');
+      // Live mode now uses createScoutRealProviderAdapterInterface with structured status
+      assert.ok(suggestCode.includes('createScoutRealProviderAdapterInterface'),
+        'Live mode should use createScoutRealProviderAdapterInterface');
     }
 
     // Verify adapter does not modify endpoint behavior for default path

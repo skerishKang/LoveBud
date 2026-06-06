@@ -488,11 +488,12 @@ tests.push({
     assert.ok(suggestCode.includes("SCOUT_SUGGEST_PROVIDER_MODES.STUB") ||
       suggestCode.includes("'stub'"), 'Default endpoint path should return stub providerMode');
 
-    // suggest.js should NOT inject logger or executor into createScoutLiveProviderAdapter
-    const adapterCreationLines = suggestCode.split('\n').filter(l => l.includes('createScoutLiveProviderAdapter'));
-    for (const line of adapterCreationLines) {
-      assert.ok(!line.includes('executor'), 'suggest.js should not inject executor into adapter');
-      assert.ok(!line.includes('logger'), 'suggest.js should not inject logger into adapter');
+    // suggest.js now uses createScoutRealProviderAdapterInterface instead of createScoutLiveProviderAdapter
+    // Verify the live mode branch does NOT inject executor or logger
+    const interfaceCreationLines = suggestCode.split('\n').filter(l => l.includes('createScoutRealProviderAdapterInterface'));
+    for (const line of interfaceCreationLines) {
+      assert.ok(!line.includes('executor'), 'suggest.js should not inject executor');
+      assert.ok(!line.includes('logger'), 'suggest.js should not inject logger');
     }
   },
 });
