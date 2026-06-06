@@ -405,6 +405,15 @@ Every SEV0 or SEV1 incident must have a post-incident review within 5 business d
 - Final readiness verdict for first real provider adapter slice
 - No runtime changes, no provider calls, no secrets
 
+## Production Readiness Gates Audit Status
+
+A consolidated [production readiness gates audit](lovebud-scout-live-provider-production-readiness-gates-audit.md) has been completed. It provides:
+- Go/no-go matrix for first real provider adapter, staging_live, and production_live
+- Endpoint default remains stub; UI default remains local_stub
+- First provider-specific adapter skeleton is conditional only if disabled-by-default and no provider API call
+- staging_live and production_live remain blocked
+- Real provider API call remains blocked in the current slice
+
 ## Non-goals (this document)
 
 - ❌ No real LLM provider implementation

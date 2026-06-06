@@ -145,6 +145,15 @@ The Scout live provider path is ready for a narrow, disabled-by-default real-pro
 but not ready for default live AI usage or frontend default endpoint routing.
 ```
 
+## Production Readiness Gates Audit Status
+
+A consolidated [production readiness gates audit](lovebud-scout-live-provider-production-readiness-gates-audit.md) has been completed. It provides:
+- Go/no-go matrix for first real provider adapter, staging_live, and production_live
+- Endpoint default remains stub; UI default remains local_stub
+- First provider-specific adapter skeleton is conditional only if disabled-by-default and no provider API call
+- staging_live and production_live remain blocked
+- Real provider API call remains blocked in the current slice
+
 ## Non-goals
 
 - no real provider in this PR
