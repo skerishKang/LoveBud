@@ -2,11 +2,12 @@
 
 ## Baseline
 
-- **current main HEAD**: `34ab91a5`
+- **current main HEAD**: `f7d37545`
 - **related issue**: #1882 (PRODUCT: Explore LoveBud Scout link-based fan assistant MVP)
-- **recently merged Scout PRs**: #2203–#2249 inclusive (Scout Draft MVP through live provider readiness audit)
+- **recently merged Scout PRs**: #2203–#2270 inclusive (Scout Draft MVP through production readiness gates audit)
 - **current open PR count**: 0
 - **current open issues**: #1882 (Scout MVP), #1661 (Browse sorting / out of scope)
+- **current live provider status**: provider-specific adapter skeleton added behind disabled mode; no provider API call; staging_live and production_live remain blocked
 
 ---
 
@@ -26,6 +27,7 @@
 | 10 | Suggestion source selector boundary (`local_stub` default, `endpoint_client` requires feature flag) | #2229 | ✅ Complete |
 | 11 | Endpoint suggestion opt-in QA scenario (23 contract tests) | #2231 | ✅ Complete |
 | 12 | Live-provider prompt/response contract (with Product Prompt safety note) | #2235 | ✅ Complete |
+| 13 | Provider-specific adapter skeleton (`functions/api/scout/provider-specific-adapter.js`) | (this PR) | ✅ Complete |
 
 ---
 

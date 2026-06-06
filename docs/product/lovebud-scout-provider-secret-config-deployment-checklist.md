@@ -2,12 +2,13 @@
 
 ## Baseline
 
-- current main HEAD: `6a28387e`
+- current main HEAD: `f7d37545`
 - related issue: #1882
 - Browse #1661 remains out of scope
-- current provider status: real provider adapter interface added (disabled by default)
+- current provider status: provider-specific adapter skeleton added behind disabled mode
 - endpoint default remains stub
 - frontend default remains local_stub
+- no real provider API call is made, no SDK/fetch/credentials
 
 ## Purpose
 

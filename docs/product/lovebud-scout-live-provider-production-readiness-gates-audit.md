@@ -2,11 +2,11 @@
 
 ## Document Status
 
-- **Status**: Complete — integrates and reviews all existing readiness, staging rollout, auth/rate-limit, cost/quota, and secret/incident contracts. Defines go/no-go matrix for first real provider adapter implementation, staging_live execution, and production_live execution.
-- **current main HEAD**: `cd06dce3`
+- **Status**: Complete — integrates and reviews all existing readiness, staging rollout, auth/rate-limit, cost/quota, and secret/incident contracts. Defines go/no-go matrix. Provider-specific adapter skeleton added behind disabled mode.
+- **current main HEAD**: `f7d37545`
 - **related issue**: #1882
 - **Browse #1661** remains out of scope
-- **current live provider status**: all design contracts complete; production readiness gates audit complete; real provider API call remains blocked
+- **current live provider status**: provider-specific adapter skeleton added behind disabled mode; no provider API call; staging_live and production_live remain blocked
 
 ## Baseline
 
@@ -16,10 +16,11 @@
 - No real provider SDK import, no fetch, no API key value propagation
 - Staging rollout, auth/rate-limit, cost/quota, secret/incident contracts complete
 - Real provider API call verdict: **No** (all slices to date)
+- Provider-specific adapter skeleton exists, disabled by default, returns safe-fail
 
 ## Current State Summary
 
-All design contracts for the Scout live provider path are now complete:
+All design contracts and the provider-specific adapter skeleton for the Scout live provider path are now complete:
 
 | # | Contract | Status | PR |
 |---|---|---|---|
@@ -37,7 +38,8 @@ All design contracts for the Scout live provider path are now complete:
 | 12 | Auth/rate-limit persistence boundary | ✅ Complete | #2263 |
 | 13 | Cost/quota abuse monitoring contract | ✅ Complete | #2265 |
 | 14 | Secret rotation and incident runbook contract | ✅ Complete | #2267 |
-| 15 | **Production readiness gates audit** | ✅ **New (this PR)** | — |
+| 15 | Production readiness gates audit | ✅ Complete | #2270 |
+| 16 | **Provider-specific adapter skeleton** | ✅ **New (this PR)** | — |
 
 ## Purpose
 
@@ -77,6 +79,7 @@ All design contracts for the Scout live provider path are now complete:
 | **prompt/response contract** — allowed fields, prohibited fields, Product Prompt safety note | ✅ Pass | `docs/product/lovebud-scout-live-provider-prompt-response-contract.md` |
 | **Product Prompt safety note** — EN/KR canonical, 7 invariants | ✅ Pass | `docs/product/lovebud-scout-live-provider-prompt-response-contract.md` |
 | **live provider adapter skeleton** — prompt builder, response validator, no real call | ✅ Pass | `functions/api/scout/live-provider-adapter.js` |
+| **provider-specific adapter skeleton** — config normalization, factory, disabled by default | ✅ Pass | `functions/api/scout/provider-specific-adapter.js` |
 | **mock execution** — adapter accepts injected executor, network-free | ✅ Pass | `functions/api/scout/live-provider-adapter.js` |
 | **logging boundary** — safe observability helpers, allowed/prohibited fields | ✅ Pass | `functions/api/scout/live-provider-adapter.js` |
 | **timeout/retry boundary** — constants, runScoutLiveProviderExecutorWithTimeout, safe clamping | ✅ Pass | `functions/api/scout/live-provider-adapter.js` |

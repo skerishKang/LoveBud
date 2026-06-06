@@ -2,11 +2,11 @@
 
 ## Document Status
 
-- **Status**: Complete — defines cost cap policy, quota budget, usage accounting, abuse monitoring, suspicious usage reporting, provider failure accounting, abuse escalation, and manual kill-switch triggers for the Scout live provider path.
-- **current main HEAD**: `5199a92a`
+- **Status**: Complete — defines cost cap policy, quota budget, usage accounting, abuse monitoring, suspicious usage reporting, provider failure accounting, abuse escalation, and manual kill-switch triggers for the Scout live provider path. Provider-specific adapter skeleton added behind disabled mode.
+- **current main HEAD**: `f7d37545`
 - **related issue**: #1882
 - **Browse #1661** remains out of scope
-- **current live provider status**: auth/rate-limit boundary defined; cost/quota/abuse monitoring contract defined; real provider API call remains blocked
+- **current live provider status**: provider-specific adapter skeleton added; disabled-by-default; no provider API call; staging_live and production_live remain blocked
 
 ## Baseline
 
@@ -17,10 +17,11 @@
 - Staging rollout contract complete
 - Auth/rate-limit persistence boundary complete
 - Real provider API call verdict: **No** (all slices to date)
+- Provider-specific adapter skeleton exists, disabled by default, returns safe-fail
 
 ## Current State
 
-Cost/quota/abuse monitoring is **not implemented** at runtime. The auth/rate-limit boundary document defines abuse/cost gates at the design level but does not specify monitoring outputs, cost caps, or escalation policies. This contract fills that gap.
+Cost/quota/abuse monitoring is **not implemented** at runtime. The provider-specific adapter skeleton is added behind disabled mode. The auth/rate-limit boundary document defines abuse/cost gates at the design level but does not specify monitoring outputs, cost caps, or escalation policies. This contract fills that gap.
 
 ## Purpose
 

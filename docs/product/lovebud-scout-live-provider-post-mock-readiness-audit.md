@@ -2,21 +2,21 @@
 
 ## Baseline
 
-- **current main HEAD**: `e2697d76`
+- **current main HEAD**: `f7d37545`
 - **related issue**: #1882 (PRODUCT: Explore LoveBud Scout link-based fan assistant MVP)
 - **Browse #1661** remains out of scope
 - **open PR count**: 0
-- **recent completion**: Mock executor integration (PR #2258) — real provider adapter interface can route through existing mock pipeline when injected executor is present
+- **recent completion**: Provider-specific adapter skeleton added behind disabled mode
 
 ## Audit Date / Status
 
-- **Audit date**: 2026-06-06
-- **Status**: Complete — post-mock integration readiness gap analysis
+- **Audit date**: 2026-06-07
+- **Status**: Complete — post-mock integration readiness gap analysis. Provider-specific adapter skeleton added.
 
 ## Audit Purpose
 
 - 실제 provider API 연동 전 readiness를 재점검한다.
-- Mock executor integration 이후 구현된 경계를 인벤토리한다.
+- Mock executor integration 및 provider-specific adapter skeleton 이후 구현된 경계를 인벤토리한다.
 - 실제 provider 구현 전에 해결해야 할 blocker와 gate를 고정한다.
 - 이 문서는 audit-only로, 실제 provider call을 추가하지 않는다.
 
@@ -36,6 +36,7 @@
 | Prompt/response contract | ✅ Pass | docs + tests |
 | Product Prompt safety note | ✅ Pass | EN/KR canonical |
 | Adapter skeleton | ✅ Pass | no real call |
+| Provider-specific adapter skeleton | ✅ Pass | `functions/api/scout/provider-specific-adapter.js` (disabled by default) |
 | Mock executor path | ✅ Pass | network-free |
 | Logging boundary | ✅ Pass | safe observability only |
 | Timeout/retry boundary | ✅ Pass | mock executor only |
@@ -45,7 +46,7 @@
 | Real provider adapter interface | ✅ Pass | config normalization + disabled safe-fail |
 | Disabled-mode endpoint contract | ✅ Pass | endpoint live mode → PROVIDER_UNAVAILABLE/CONFIG_MISSING |
 | Mock executor integration | ✅ Pass | ready_for_adapter + executor → full mock pipeline |
-| **Post-mock readiness audit (this PR)** | ✅ **New** | blocker inventory + next gate definition |
+| Post-mock readiness audit (this PR) | ✅ Pass | blocker inventory + next gate definition |
 
 ## Confirmed Mock-Only Pipeline
 
