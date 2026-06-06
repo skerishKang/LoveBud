@@ -65,7 +65,7 @@ Ready for a narrow live-provider implementation planning slice, but not ready fo
 
 2. **Rate-limit persistence is placeholder only** — `checkScoutRateLimit()` is a TODO comment. Without persistent storage (KV, Durable Objects, D1), rate limits cannot be enforced across requests.
 
-3. **Live provider adapter does not exist** — There is no `LiveProvider` class implementing the provider abstraction (`createScoutSuggestionProvider` interface). The `suggest.js` endpoint always returns stub responses even when live provider mode is selected.
+3. **Live provider adapter — resolved** ❌ → ✅ Scout live provider adapter skeleton is now implemented. See `functions/api/scout/live-provider-adapter.js`. Includes prompt builder (`buildScoutLiveProviderPrompt`), response validator (`validateScoutLiveProviderResponse`), and adapter interface (`createScoutLiveProviderAdapter`). No real provider call, no SDK import, no fetch, no secrets. The adapter returns `CONFIG_MISSING` when not configured. The `suggest.js` endpoint stub behavior is preserved unchanged.
 
 4. **Provider prompt/copyright policy — resolved** ❌ → ✅ Live-provider prompt and response contract is now defined. See [lovebud-scout-live-provider-prompt-response-contract.md](lovebud-scout-live-provider-prompt-response-contract.md). The Product Prompt safety note is specified with English/Korean canonical versions and 7 invariants.
 

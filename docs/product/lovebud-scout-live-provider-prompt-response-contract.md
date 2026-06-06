@@ -286,6 +286,8 @@ This slice would implement:
 
 **Caution:** The skeleton must still **not** make any real provider call. It should return a safe `CONFIG_MISSING` or `PROVIDER_UNAVAILABLE` response when the live provider is not configured.
 
+**Adopted as implemented:** Live provider adapter skeleton (`functions/api/scout/live-provider-adapter.js`) added. Includes prompt builder (`buildScoutLiveProviderPrompt`), response validator (`validateScoutLiveProviderResponse`), and adapter interface (`createScoutLiveProviderAdapter`) — no real provider call, no SDK, no fetch, no secrets. Default source remains `local_stub`.
+
 **Alternatives (independent order):**
 
 - `[TECH] Add Scout prompt builder contract`
