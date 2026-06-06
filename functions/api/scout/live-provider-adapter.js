@@ -106,6 +106,16 @@ const SCOUT_LOG_PROHIBITED_KEYS = Object.freeze([
   'secret',
 ]);
 
+// ─── Timeout / Retry Constants ───────────────────────────────────────────────
+
+const SCOUT_LIVE_PROVIDER_TIMEOUT_RETRY_POLICY = Object.freeze({
+  defaultTimeoutMs: 8000,
+  defaultMaxRetries: 0,
+  maxAllowedRetries: 1,
+  minTimeoutMs: 50,
+  maxTimeoutMs: 30000,
+});
+
 /**
  * Recursively sanitizes a payload object — redacts or removes prohibited fields,
  * keeps allowed safe fields only. Never throws.
@@ -454,6 +464,8 @@ function validateScoutLiveProviderResponse(rawResponse, options) {
  *   Receives sanitized events only — no prompt/excerpt/sourceUrl/API key/PII.
  *   Throw-safe: logger failures are swallowed and never break suggest().
  * @param {string} [config.requestId] - Optional request identifier for log events.
+ * @param {number} [config.timeoutMs] - Optional timeout override for executor (clamped to [50, 30000]).
+ * @param {number} [config.maxRetries] - Optional max retries for executor (clamped to [0, maxAllowedRetries]).
  * @returns {Object} adapter - { name, version, status, suggest, buildPrompt, validateResponse }
  */
 function createScoutLiveProviderAdapter(config) {
@@ -464,6 +476,8 @@ function createScoutLiveProviderAdapter(config) {
   const requestId = typeof effectiveConfig.requestId === 'string' && effectiveConfig.requestId.length > 0
     ? effectiveConfig.requestId
     : '';
+  const timeoutMs = effectiveConfig.timeoutMs;
+  const maxRetries = effectiveConfig.maxRetries;
 
   /**
    * Safely emits a log event through the injected logger if present.
@@ -543,14 +557,17 @@ function createScoutLiveProviderAdapter(config) {
         };
       }
 
-      // ── Mock executor path (network-free, provider-SDK-free) ───────────
-      let rawResponse;
-      try {
-        rawResponse = await executor({
+      // ── Mock executor path with timeout/retry (network-free, provider-SDK-free) ─
+      const execResult = await runScoutLiveProviderExecutorWithTimeout(
+        executor,
+        {
           prompt: promptResult.prompt,
           normalizedInput: promptResult.normalizedInput,
-        });
-      } catch (executorError) {
+        },
+        { timeoutMs, maxRetries }
+      );
+
+      if (!execResult.ok) {
         safeLogEvent({
           requestId,
           providerMode: 'live_mock',
@@ -563,6 +580,11 @@ function createScoutLiveProviderAdapter(config) {
           hasSourceUrl: !!(input?.sourceUrl),
           language: ni.requestedLanguage,
           tone: ni.desiredTone,
+          retryCount: execResult.retryCount || 0,
+          maxRetries: Math.min(
+            typeof maxRetries === 'number' && maxRetries >= 0 ? maxRetries : 0,
+            SCOUT_LIVE_PROVIDER_TIMEOUT_RETRY_POLICY.maxAllowedRetries
+          ),
         });
         return {
           ok: false,
@@ -572,6 +594,8 @@ function createScoutLiveProviderAdapter(config) {
           },
         };
       }
+
+      const rawResponse = execResult.result;
 
       // Validate and normalize the executor output
       const validationResult = validateScoutLiveProviderResponse(
@@ -670,14 +694,85 @@ function computeInputLength(input) {
   }
 }
 
+// ─── Timeout / Retry Helper ─────────────────────────────────────────────────
+
+/**
+ * Runs a mock executor with a timeout and optional retry.
+ * Network-free — uses Promise.race with setTimeout for timeout simulation.
+ * No AbortController, no fetch, no SDK.
+ *
+ * - executor throw/timeout → retry if retries remain
+ * - retry exhaustion → returns PROVIDER_ERROR
+ * - successful result → returned as-is
+ *
+ * @param {Function} executor - Async function ({ prompt, normalizedInput }) => rawResponse
+ * @param {Object} payload - { prompt, normalizedInput } passed to executor
+ * @param {Object} [options]
+ * @param {number} [options.timeoutMs] - Timeout in ms (clamped to [50, 30000])
+ * @param {number} [options.maxRetries] - Max retries (clamped to [0, maxAllowedRetries])
+ * @returns {Promise<{ ok: boolean, result?: any, retryCount?: number, error?: { code: string, message: string } }>}
+ */
+async function runScoutLiveProviderExecutorWithTimeout(executor, payload, options) {
+  const opts = options || {};
+  const policy = SCOUT_LIVE_PROVIDER_TIMEOUT_RETRY_POLICY;
+
+  // Clamp timeoutMs
+  let timeoutMs = typeof opts.timeoutMs === 'number' && opts.timeoutMs >= policy.minTimeoutMs
+    ? opts.timeoutMs
+    : policy.defaultTimeoutMs;
+  if (timeoutMs > policy.maxTimeoutMs) timeoutMs = policy.maxTimeoutMs;
+
+  // Clamp maxRetries
+  let maxRetries = typeof opts.maxRetries === 'number' && opts.maxRetries >= 0
+    ? opts.maxRetries
+    : policy.defaultMaxRetries;
+  if (maxRetries > policy.maxAllowedRetries) maxRetries = policy.maxAllowedRetries;
+
+  let retryCount = 0;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    let timeoutId;
+    try {
+      const result = await Promise.race([
+        executor(payload),
+        new Promise((_, reject) => {
+          timeoutId = setTimeout(() => reject(new Error('TIMEOUT')), timeoutMs);
+        }),
+      ]);
+      clearTimeout(timeoutId);
+      return { ok: true, result, retryCount };
+    } catch (err) {
+      clearTimeout(timeoutId);
+      retryCount++;
+      // On last attempt, don't retry
+      if (attempt >= maxRetries) break;
+      // Small delay between retries (test-friendly: 0)
+      if (opts.retryDelayMs > 0) {
+        await new Promise(r => setTimeout(r, opts.retryDelayMs));
+      }
+    }
+  }
+
+  return {
+    ok: false,
+    error: {
+      code: 'PROVIDER_ERROR',
+      message: 'Scout live suggestion provider failed safely.',
+    },
+    retryCount,
+  };
+}
+
 // ─── Exports ──────────────────────────────────────────────────────────────────
 
 // ES module style for Cloudflare Pages Functions
 export {
   SCOUT_LIVE_PROVIDER_ADAPTER_STATUS,
+  SCOUT_LIVE_PROVIDER_TIMEOUT_RETRY_POLICY,
   buildScoutLiveProviderPrompt,
   validateScoutLiveProviderResponse,
   createScoutLiveProviderAdapter,
   createScoutLiveProviderLogEvent,
   sanitizeScoutLiveProviderLogPayload,
+  runScoutLiveProviderExecutorWithTimeout,
 };
