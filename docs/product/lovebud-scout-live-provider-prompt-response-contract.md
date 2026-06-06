@@ -290,6 +290,8 @@ This slice would implement:
 
 **Endpoint wiring:** `functions/api/scout/suggest.js` now imports the adapter skeleton. Live mode calls `adapter.suggest()` but still safe-fails with `CONFIG_MISSING` — no real provider call. Default stub path is preserved unchanged.
 
+**Mock execution contract:** `createScoutLiveProviderAdapter()` accepts an injected `executor` option (test-only). When an executor is provided, `adapter.suggest()` runs `prompt builder → executor → response validator`. When absent, returns `CONFIG_MISSING` safe-fail. No real provider call, no SDK, no fetch, no secrets. See `tests/contracts/scout-live-provider-mock-execution-contract.test.cjs`.
+
 **Alternatives (independent order):**
 
 - `[TECH] Add Scout prompt builder contract`

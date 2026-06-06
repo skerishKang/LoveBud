@@ -297,18 +297,25 @@ function validateScoutLiveProviderResponse(rawResponse, options) {
 /**
  * Creates a Scout live provider adapter.
  *
- * CURRENTLY: Returns safe unavailable errors. Does NOT call any real provider.
+ * CURRENTLY: Returns safe unavailable errors when no executor is provided.
+ * When an injected mock executor is present, runs prompt builder → executor
+ * → response validator (network-free, no real provider call).
  * FUTURE: When a real provider is configured, this will route to the provider.
  *
  * @param {Object} [config] - Optional adapter configuration
  * @param {string} [config.provider] - Future: provider name (ignored in skeleton)
  * @param {string} [config.apiKey] - Future: API key (ignored in skeleton — NEVER used)
  * @param {string} [config.baseUrl] - Future: base URL (ignored in skeleton)
+ * @param {Function} [config.executor] - Injected mock executor for test/contract only.
+ *   Signature: async ({ prompt, normalizedInput }) => rawProviderResponse
+ *   When provided, adapter.suggest() runs prompt builder → executor → response validator.
+ *   When absent, adapter.suggest() returns CONFIG_MISSING safe-fail.
  * @returns {Object} adapter - { name, version, status, suggest, buildPrompt, validateResponse }
  */
 function createScoutLiveProviderAdapter(config) {
   const effectiveConfig = config || {};
   const hasConfig = effectiveConfig.provider && effectiveConfig.apiKey;
+  const executor = typeof effectiveConfig.executor === 'function' ? effectiveConfig.executor : null;
 
   return {
     name: 'scout-live-provider-adapter-skeleton',
@@ -318,11 +325,12 @@ function createScoutLiveProviderAdapter(config) {
     /**
      * Suggests using the live provider.
      *
-     * CURRENTLY: Returns a safe unavailable error regardless of config.
-     * FUTURE: Will call the configured live provider.
+     * When an executor is injected (test-only), runs the full flow:
+     *   prompt builder → injected executor → response validator
+     * When no executor, returns CONFIG_MISSING safe-fail (no real provider call).
      *
      * @param {Object} input - Suggestion input (same shape as buildScoutLiveProviderPrompt input)
-     * @returns {Promise<{ ok: boolean, suggestion?: Object, error?: { code: string, message: string } }>}
+     * @returns {Promise<{ ok: boolean, providerMode?: string, suggestion?: Object, error?: { code: string, message: string } }>}
      */
     async suggest(input) {
       // Validate input first
@@ -331,13 +339,55 @@ function createScoutLiveProviderAdapter(config) {
         return promptResult;
       }
 
-      // Skeleton: always return safe unavailable (no real provider call)
+      // If no executor injected, return safe unavailable (no real provider call)
+      if (!executor) {
+        return {
+          ok: false,
+          error: {
+            code: ERROR_CODES.CONFIG_MISSING,
+            message: 'Scout live suggestion provider is not configured.',
+          },
+        };
+      }
+
+      // ── Mock executor path (network-free, provider-SDK-free) ───────────
+      let rawResponse;
+      try {
+        rawResponse = await executor({
+          prompt: promptResult.prompt,
+          normalizedInput: promptResult.normalizedInput,
+        });
+      } catch (executorError) {
+        return {
+          ok: false,
+          error: {
+            code: ERROR_CODES.PROVIDER_ERROR,
+            message: 'Scout live suggestion provider failed safely.',
+          },
+        };
+      }
+
+      // Validate and normalize the executor output
+      const validationResult = validateScoutLiveProviderResponse(
+        rawResponse,
+        { requestedLanguage: promptResult.normalizedInput.requestedLanguage }
+      );
+
+      if (!validationResult.ok) {
+        return {
+          ok: false,
+          error: {
+            code: ERROR_CODES.PROVIDER_ERROR,
+            message: 'Scout live suggestion provider failed safely.',
+          },
+        };
+      }
+
+      // Return normalized mock suggestion
       return {
-        ok: false,
-        error: {
-          code: ERROR_CODES.CONFIG_MISSING,
-          message: 'Scout live suggestion provider is not configured.',
-        },
+        ok: true,
+        providerMode: 'live_mock',
+        suggestion: validationResult.suggestion,
       };
     },
 
