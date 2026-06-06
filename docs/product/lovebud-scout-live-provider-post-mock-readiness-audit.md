@@ -169,7 +169,7 @@ This requires KV/Durable Object/D1 decisions and is higher risk. Recommend stagi
 
 1. ~~`[TECH] Add Scout live provider staging rollout contract`~~ ✅ Completed (PR #2261)
 2. ~~`[TECH] Add Scout live provider auth/rate-limit persistence boundary`~~ ✅ Completed (PR #2263)
-3. `[TECH] Add Scout live provider cost/quota control boundary`
+3. ~~`[TECH] Add Scout live provider cost/quota control boundary`~~ ✅ Completed (PR #2265)
 4. `[TECH] Add Scout live provider abuse monitoring boundary`
 5. `[TECH] Add Scout live provider integration test policy`
 6. `[PRODUCT] Code-level kill-switch contract for Scout live provider`

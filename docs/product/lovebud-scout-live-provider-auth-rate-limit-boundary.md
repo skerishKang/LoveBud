@@ -308,6 +308,7 @@ Reservation prevents quota exhaustion by concurrent requests but adds complexity
 Before enabling `staging_live`:
 
 - [ ] Auth/rate-limit persistence boundary documented (this document ✅)
+- [ ] Cost/quota abuse monitoring contract documented — see [cost/quota abuse monitoring contract](lovebud-scout-live-provider-cost-quota-abuse-monitoring-contract.md)
 - [ ] Firebase Admin SDK token verification implemented (future slice)
 - [ ] Persistent rate-limit storage implemented (future slice)
 - [ ] Auth enforcement wired in suggest.js live mode branch
