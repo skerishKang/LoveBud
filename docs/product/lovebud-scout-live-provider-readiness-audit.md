@@ -36,6 +36,7 @@
 | Timeout/retry boundary | Pass | mock executor only |
 | Output safety filter | Pass | unsafe output → PROVIDER_ERROR |
 | Secret/config/deployment checklist | Pass | docs + contract |
+| Real provider adapter interface | Pass | config normalization + disabled safe-fail |
 
 ## Readiness Verdict
 

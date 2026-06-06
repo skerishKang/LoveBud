@@ -2,10 +2,10 @@
 
 ## Baseline
 
-- current main HEAD: `83abb4e0`
+- current main HEAD: `6a28387e`
 - related issue: #1882
 - Browse #1661 remains out of scope
-- current provider status: no real provider implemented
+- current provider status: real provider adapter interface added (disabled by default)
 - endpoint default remains stub
 - frontend default remains local_stub
 
