@@ -176,3 +176,101 @@ export function createScoutProviderSpecificAdapter(config) {
     },
   };
 }
+
+// ─── Selection Constants ───────────────────────────────────────────────────────
+
+export const SCOUT_PROVIDER_SPECIFIC_ADAPTER_SELECTION_STATUS = Object.freeze({
+  DISABLED: 'DISABLED',
+  CONFIG_MISSING: 'CONFIG_MISSING',
+  UNSUPPORTED_PROVIDER: 'UNSUPPORTED_PROVIDER',
+  SELECTED: 'SELECTED',
+});
+
+export const SCOUT_PROVIDER_SPECIFIC_ADAPTER_IDS = Object.freeze({
+  NVIDIA: 'nvidia',
+  OPENAI_COMPATIBLE: 'openai_compatible',
+  GROQ: 'groq',
+  MISTRAL: 'mistral',
+});
+
+// ─── Provider Normalization ───────────────────────────────────────────────────
+
+function normalizeProviderId(provider) {
+  if (typeof provider !== 'string') return null;
+  const normalized = provider.toLowerCase().trim();
+  if (normalized === 'nvidia') {
+    return SCOUT_PROVIDER_SPECIFIC_ADAPTER_IDS.NVIDIA;
+  }
+  if (normalized === 'openai_compatible' || normalized === 'openai-compatible' || normalized === 'openai compatible') {
+    return SCOUT_PROVIDER_SPECIFIC_ADAPTER_IDS.OPENAI_COMPATIBLE;
+  }
+  if (normalized === 'groq') {
+    return SCOUT_PROVIDER_SPECIFIC_ADAPTER_IDS.GROQ;
+  }
+  if (normalized === 'mistral') {
+    return SCOUT_PROVIDER_SPECIFIC_ADAPTER_IDS.MISTRAL;
+  }
+  return null;
+}
+
+// ─── Selection Helper ──────────────────────────────────────────────────────────
+
+/**
+ * Selects the appropriate provider-specific adapter skeleton based on configuration.
+ *
+ * @param {Object} [envOrConfig={}] - Environment variables or config object
+ * @returns {Object} { status, providerId, adapter, errorCode, safeForLiveCall }
+ */
+export function selectScoutProviderSpecificAdapter(envOrConfig = {}) {
+  const cfg = (envOrConfig && typeof envOrConfig === 'object') ? envOrConfig : {};
+
+  // Extract enabled flag
+  const enabled = cfg.enabled === true || cfg.enabled === 'true' || cfg.enabled === '1' ||
+                  cfg.SCOUT_PROVIDER_SPECIFIC_ADAPTER_ENABLED === true || cfg.SCOUT_PROVIDER_SPECIFIC_ADAPTER_ENABLED === 'true' || cfg.SCOUT_PROVIDER_SPECIFIC_ADAPTER_ENABLED === '1';
+
+  const provider = String(cfg.provider || cfg.SCOUT_SUGGEST_LLM_PROVIDER || '').trim();
+  const model = String(cfg.model || cfg.SCOUT_SUGGEST_MODEL || '').trim();
+  const apiKey = cfg.apiKey || cfg.SCOUT_SUGGEST_LLM_API_KEY || '';
+  const hasApiKey = Boolean(apiKey) && apiKey.length > 0;
+
+  if (!enabled) {
+    return {
+      status: SCOUT_PROVIDER_SPECIFIC_ADAPTER_SELECTION_STATUS.DISABLED,
+      providerId: null,
+      adapter: null,
+      errorCode: 'PROVIDER_UNAVAILABLE',
+      safeForLiveCall: false,
+    };
+  }
+
+  if (!provider || !model || !hasApiKey) {
+    return {
+      status: SCOUT_PROVIDER_SPECIFIC_ADAPTER_SELECTION_STATUS.CONFIG_MISSING,
+      providerId: null,
+      adapter: null,
+      errorCode: 'CONFIG_MISSING',
+      safeForLiveCall: false,
+    };
+  }
+
+  const providerId = normalizeProviderId(provider);
+  if (!providerId) {
+    return {
+      status: SCOUT_PROVIDER_SPECIFIC_ADAPTER_SELECTION_STATUS.UNSUPPORTED_PROVIDER,
+      providerId: null,
+      adapter: null,
+      errorCode: 'UNSUPPORTED_PROVIDER',
+      safeForLiveCall: false,
+    };
+  }
+
+  const adapter = createScoutProviderSpecificAdapter(cfg);
+
+  return {
+    status: SCOUT_PROVIDER_SPECIFIC_ADAPTER_SELECTION_STATUS.SELECTED,
+    providerId,
+    adapter,
+    errorCode: null,
+    safeForLiveCall: false,
+  };
+}

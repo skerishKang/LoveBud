@@ -2,16 +2,16 @@
 
 ## Baseline
 
-- **current main HEAD**: `f7d37545`
+- **current main HEAD**: `6afb0aa5`
 - **related issue**: #1882 (PRODUCT: Explore LoveBud Scout link-based fan assistant MVP)
 - **Browse #1661** remains out of scope
 - **open PR count**: 0
-- **recent completion**: Provider-specific adapter skeleton added behind disabled mode
+- **recent completion**: Provider-specific adapter selection boundary added
 
 ## Audit Date / Status
 
 - **Audit date**: 2026-06-07
-- **Status**: Complete — post-mock integration readiness gap analysis. Provider-specific adapter skeleton added.
+- **Status**: Complete — post-mock integration readiness gap analysis. Provider-specific adapter selection boundary added.
 
 ## Audit Purpose
 

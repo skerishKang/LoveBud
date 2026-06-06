@@ -2,10 +2,10 @@
 
 ## Baseline
 
-- **current main HEAD**: `f7d37545`
-- **related PRs**: #2203-2270 inclusive (Scout Draft MVP through production readiness gates audit)
+- **current main HEAD**: `6afb0aa5`
+- **related PRs**: #2203-2272 inclusive (Scout Draft MVP through provider-specific adapter skeleton)
 - **related issues**: #1882 (PRODUCT: Explore LoveBud Scout link-based fan assistant MVP), #1661 (DB/API: Add tree-level social counts for Browse sorting)
-- **current Scout status**: provider-specific adapter skeleton added behind disabled mode; no provider API call; staging_live and production_live remain blocked
+- **current Scout status**: provider-specific adapter selection boundary added; provider-specific adapter skeleton added behind disabled mode; no provider API call; staging_live and production_live remain blocked
 - **endpoint default**: remains stub (deterministic, network-free)
 - **frontend default**: remains local_stub (no endpoint client)
 
