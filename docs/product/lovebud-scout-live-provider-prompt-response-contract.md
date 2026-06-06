@@ -306,6 +306,8 @@ This slice would implement:
 
 **Disabled-mode endpoint contract:** Completed. Endpoint live mode branch (`suggest.js`) now uses `createScoutRealProviderAdapterInterface` for structured state handling. DISABLED → PROVIDER_UNAVAILABLE. CONFIG_MISSING → CONFIG_MISSING. READY_FOR_ADAPTER → safe-fail (PROVIDER_UNAVAILABLE, no real call in this slice). Default stub path unchanged. Existing `createScoutLiveProviderAdapter` export preserved for future integration. See `functions/api/scout/suggest.js`.
 
+**Mock executor integration:** Completed. `createScoutRealProviderAdapterInterface` now accepts injected `executor`, `logger`, and `requestId` via envOrConfig. When `READY_FOR_ADAPTER` and executor is a function, routes through `createScoutLiveProviderAdapter` mock pipeline: prompt builder → executor → timeout/retry → response validator → output safety filter → sanitized logging. No executor → safe-fail PROVIDER_UNAVAILABLE. DISABLED/CONFIG_MISSING → executor not called. API key value never reaches pipeline, result, or logs — only `hasApiKey` boolean used. See `functions/api/scout/live-provider-adapter.js`.
+
 **Alternatives (independent order):**
 
 - `[TECH] Add Scout prompt builder contract`

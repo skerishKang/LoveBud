@@ -38,6 +38,7 @@
 | Secret/config/deployment checklist | Pass | docs + contract |
 | Real provider adapter interface | Pass | config normalization + disabled safe-fail |
 | Disabled-mode endpoint contract | Pass | endpoint live mode → PROVIDER_UNAVAILABLE/CONFIG_MISSING |
+| Mock executor integration | Pass | ready_for_adapter + executor → full mock pipeline |
 
 ## Readiness Verdict
 
