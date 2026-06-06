@@ -2,11 +2,11 @@
 
 ## Document Status
 
-- **Status**: Complete — defines staging/production rollout gates, kill switch, rollback, and opt-in policies for the Scout live provider path. Provider-specific adapter skeleton added behind disabled mode.
-- **current main HEAD**: `f7d37545`
+- **Status**: Complete — defines staging/production rollout gates, kill switch, rollback, and opt-in policies for the Scout live provider path. Provider-specific adapter selection boundary added.
+- **current main HEAD**: `6afb0aa5`
 - **related issue**: #1882
 - **Browse #1661** remains out of scope
-- **current live provider status**: provider-specific adapter skeleton added; disabled-by-default; no provider API call; staging_live and production_live remain blocked
+- **current live provider status**: provider-specific adapter selection boundary added; provider-specific adapter skeleton added; disabled-by-default; no provider API call; staging_live and production_live remain blocked
 
 ## Baseline
 

@@ -2,11 +2,11 @@
 
 ## Baseline
 
-- **current main HEAD**: `f7d37545`
+- **current main HEAD**: `6afb0aa5`
 - **related issue**: #1882 (PRODUCT: Explore LoveBud Scout link-based fan assistant MVP)
 - **Browse #1661** remains out of scope
 - **open PR count**: 0
-- **current live provider status**: provider-specific adapter skeleton added behind disabled mode; no provider API call; staging_live and production_live remain blocked
+- **current live provider status**: provider-specific adapter selection boundary added; provider-specific adapter skeleton added behind disabled mode; no provider API call; staging_live and production_live remain blocked
 
 ## Audit Purpose
 
