@@ -3,16 +3,17 @@
  * v20260606-1
  *
  * Contract tests verifying that:
- * - Endpoint imports/references adapter skeleton
+ * - Endpoint imports/references real provider adapter interface
  * - Default endpoint remains stub
  * - Explicit stub remains stub
+ * - Live mode disabled → PROVIDER_UNAVAILABLE
  * - Live mode missing config → CONFIG_MISSING
- * - Live mode configured → still safe-fail (no real provider call)
- * - Adapter error maps to structured error
+ * - Live mode ready_for_adapter → safe-fail (no real provider call)
  * - No provider SDK/no fetch/no source fetch/no secret leak
  * - Endpoint validation preserved
  * - Default UI/client unchanged
  * - No auto-save/persistence
+ * - createScoutLiveProviderAdapter remains exported
  * - Docs updated
  */
 
@@ -64,14 +65,17 @@ function test(name, fn) {
 
 console.log('Scout Endpoint → Adapter Skeleton Wiring Contract Tests\n');
 
-// ── 1. Endpoint imports or references adapter skeleton ─────────────────────
-test('Endpoint imports or references adapter skeleton', () => {
+// ── 1. Endpoint imports or references real provider adapter interface ───────
+test('Endpoint imports or references real provider adapter interface', () => {
   assert.ok(suggestCode.includes('live-provider-adapter'),
     'suggest.js should import from live-provider-adapter');
-  assert.ok(suggestCode.includes('createScoutLiveProviderAdapter'),
-    'suggest.js should use createScoutLiveProviderAdapter');
-  assert.ok(suggestCode.includes('adapter.suggest'),
-    'suggest.js should call adapter.suggest in live mode');
+  assert.ok(suggestCode.includes('createScoutRealProviderAdapterInterface'),
+    'suggest.js should use createScoutRealProviderAdapterInterface');
+  assert.ok(suggestCode.includes('SCOUT_LIVE_PROVIDER_INTERFACE_STATUS'),
+    'suggest.js should reference SCOUT_LIVE_PROVIDER_INTERFACE_STATUS');
+  // createScoutLiveProviderAdapter remains exported from adapter file
+  assert.ok(adapterCode.includes('createScoutLiveProviderAdapter'),
+    'adapter should still export createScoutLiveProviderAdapter');
 });
 
 // ── 2. Default endpoint remains stub ──────────────────────────────────────
@@ -81,8 +85,6 @@ test('Default endpoint remains stub (no env) — deterministic stub response', (
   assert.ok(suggestCode.includes('providerMode:'),
     'Endpoint should include providerMode in response');
   // Default path should still call generateStubSuggestion
-  const defaultBranch = suggestCode.match(/\/\/ ─── Live provider integration[\s\S]*?(?=\/\/ ───|export)/);
-  // The default path after the live provider branch still calls generateStubSuggestion
   assert.ok(suggestCode.includes('Return deterministic stub suggestion'),
     'Default path should have comment about returning deterministic stub');
   assert.ok(suggestCode.includes("suggestion = generateStubSuggestion"),
@@ -91,8 +93,6 @@ test('Default endpoint remains stub (no env) — deterministic stub response', (
 
 // ── 3. Explicit stub remains stub ─────────────────────────────────────────
 test('Explicit SCOUT_SUGGEST_PROVIDER_MODE=stub returns providerMode:"stub"', () => {
-  // The resolveScoutSuggestProviderMode function returns stub for mode=stub
-  // We can verify the code path exists
   assert.ok(suggestCode.includes('STUB') || suggestCode.includes("'stub'"),
     'Endpoint should handle STUB mode');
   assert.ok(suggestCode.includes("providerMode: SCOUT_SUGGEST_PROVIDER_MODES.STUB"),
@@ -101,8 +101,6 @@ test('Explicit SCOUT_SUGGEST_PROVIDER_MODE=stub returns providerMode:"stub"', ()
 
 // ── 4. Live mode missing config safe failure ──────────────────────────────
 test('Live mode missing config returns CONFIG_MISSING safe error', () => {
-  // The resolveScoutSuggestProviderMode returns CONFIG_MISSING when live mode
-  // but config missing
   assert.ok(suggestCode.includes('config_missing'),
     'Endpoint should handle config_missing status');
   assert.ok(suggestCode.includes('CONFIG_MISSING'),
@@ -114,31 +112,20 @@ test('Live mode missing config returns CONFIG_MISSING safe error', () => {
     'Error message should not expose env var names');
 });
 
-// ── 5. Live mode configured still no real provider call ──────────────────
-test('Live mode with config still safe-fails — no real provider call', () => {
-  // Verify adapter.suggest is called but returns CONFIG_MISSING
-  assert.ok(suggestCode.includes('adapter.suggest'),
-    'Endpoint should call adapter.suggest in live mode');
-  // Verify adapter still returns CONFIG_MISSING (no real call)
-  assert.ok(adapterCode.includes('CONFIG_MISSING'),
-    'Adapter should still return CONFIG_MISSING');
-
-  // No fetch in live path
-  const liveBranch = suggestCode.split('adapter.suggest');
-  assert.ok(!adapterCode.includes('fetch('),
-    'Adapter should not use fetch');
+// ── 5. Live mode disabled → PROVIDER_UNAVAILABLE ─────────────────────────
+test('Live mode disabled adapter returns PROVIDER_UNAVAILABLE', () => {
+  assert.ok(suggestCode.includes('DISABLED'),
+    'Endpoint should handle DISABLED status from real provider adapter interface');
+  assert.ok(suggestCode.includes('PROVIDER_UNAVAILABLE'),
+    'Endpoint should return PROVIDER_UNAVAILABLE for disabled state');
 });
 
-// ── 6. Adapter result maps to structured error ───────────────────────────
-test('Adapter ok:false result maps to endpoint structured error with 503', () => {
-  // Check endpoint handles adapter error
-  assert.ok(suggestCode.includes('if (!adapterResult.ok)'),
-    'Endpoint should check adapterResult.ok');
-  assert.ok(suggestCode.includes('buildErrorResponse(adapterResult.error.code'),
-    'Endpoint should map adapter error to buildErrorResponse');
-  // 503 status for adapter errors
-  assert.ok(suggestCode.includes(', 503'),
-    'Endpoint should return 503 for adapter errors');
+// ── 6. Live mode ready_for_adapter safe-fails ────────────────────────────
+test('Live mode ready_for_adapter still safe-fails — no real provider call', () => {
+  assert.ok(suggestCode.includes('READY_FOR_ADAPTER'),
+    'Endpoint should handle READY_FOR_ADAPTER status');
+  assert.ok(suggestCode.includes('PROVIDER_UNAVAILABLE'),
+    'Endpoint should return PROVIDER_UNAVAILABLE for ready state');
 });
 
 // ── 7. No provider SDK import ──────────────────────────────────────────
@@ -159,7 +146,6 @@ test('No real provider SDK import or provider-specific code', () => {
 // ── 8. No external fetch / source fetch ─────────────────────────────────
 test('No external fetch, XMLHttpRequest, or sourceUrl fetch', () => {
   const combinedCode = suggestCode + adapterCode;
-  // Check only non-comment code
   const codeWOComments = combinedCode.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
   assert.ok(!codeWOComments.includes('fetch('),
     'Should not have executable fetch calls');
@@ -167,7 +153,6 @@ test('No external fetch, XMLHttpRequest, or sourceUrl fetch', () => {
     'Should not use XMLHttpRequest');
   assert.ok(!codeWOComments.includes('axios'),
     'Should not use axios');
-  // Allow headers.get() — that's just reading request headers, not external HTTP
   const httpGetCalls = codeWOComments.match(/[^a-zA-Z]\.get\(/g);
   if (httpGetCalls) {
     const unsafeGets = httpGetCalls.filter(g => !g.includes('.headers'));
@@ -179,9 +164,8 @@ test('No external fetch, XMLHttpRequest, or sourceUrl fetch', () => {
 // ── 9. No secrets leak in error messages ─────────────────────────────────
 test('CONFIG_MISSING/PROVIDER_UNAVAILABLE error messages do not leak secrets', () => {
   suggestCode.split('\n').forEach((line, idx) => {
-    if (line.includes('CONFIG_MISSING') || line.includes('Error response:') ||
+    if (line.includes('CONFIG_MISSING') || line.includes('PROVIDER_UNAVAILABLE') ||
         line.includes('error.code') || line.includes('error.message')) {
-      // Check no env var names in error messages
       const envVars = ['SCOUT_SUGGEST_LLM_API_KEY', 'SCOUT_SUGGEST_LLM_PROVIDER',
         'SCOUT_SUGGEST_MODEL', 'SCOUT_SUGGEST_LLM_BASE_URL'];
       for (const ev of envVars) {
@@ -192,9 +176,17 @@ test('CONFIG_MISSING/PROVIDER_UNAVAILABLE error messages do not leak secrets', (
       }
     }
   });
-  // Adapter error messages should not contain API key or token
-  assert.ok(!adapterCode.match(/message.*sk-[a-zA-Z0-9]/),
-    'Adapter error messages should not contain API key patterns');
+  adapterCode.split('\n').forEach((line, idx) => {
+    if (line.includes('CONFIG_MISSING') || line.includes('PROVIDER_UNAVAILABLE') ||
+        line.includes('error.code') || line.includes('error.message')) {
+      if (line.toLowerCase().includes('api') || line.toLowerCase().includes('key') ||
+          line.toLowerCase().includes('token') || line.toLowerCase().includes('secret')) {
+        // Allow the message to mention "API key" as a description but not the actual value
+        assert.ok(!line.match(/message.*['"][a-zA-Z0-9_-]{20,}['"]/),
+          `Line ${idx + 1} may leak credential value: "${line.trim()}"`);
+      }
+    }
+  });
 });
 
 // ── 10. Endpoint request validation preserved ──────────────────────────
@@ -215,13 +207,12 @@ test('Endpoint request validation preserved: excerpt required, sourceUrl validat
 
 // ── 11. Endpoint client / default UI unchanged ─────────────────────────
 test('Default Scout Draft UI and endpoint client behavior unchanged', () => {
-  // Draft UI still uses local_stub as default source
   assert.ok(draftUiCode.includes('local_stub') || draftUiCode.includes('createScoutSuggestionSourceProvider'),
     'Draft UI should still use source selector');
   assert.ok(!draftUiCode.includes('live-provider-adapter'),
     'Draft UI should not import adapter');
-  assert.ok(!draftUiCode.includes('createScoutLiveProviderAdapter'),
-    'Draft UI should not create adapter');
+  assert.ok(!draftUiCode.includes('createScoutRealProviderAdapterInterface'),
+    'Draft UI should not create real provider adapter interface');
 
   // Endpoint client default is still disabled
   assert.ok(endpointClientCode.includes('isScoutSuggestionEndpointClientEnabled'),
@@ -248,12 +239,13 @@ test('No auto-save, no persistence in suggest.js or adapter', () => {
 });
 
 // ── 13. Docs updated ──────────────────────────────────────────────────
-test('At least one Scout boundary doc references adapter wiring or endpoint recognizes adapter', () => {
+test('At least one Scout boundary doc references live provider adapter interface or disabled endpoint contract', () => {
   const allDocContent = endpointBoundaryContent + readinessContent + promptContractContent + llmBoundaryContent;
-  // Should reference adapter skeleton (from previous PR)
-  const hasAdapterRef = allDocContent.toLowerCase().includes('adapter skeleton') ||
-    allDocContent.toLowerCase().includes('live provider adapter');
-  assert.ok(hasAdapterRef, 'At least one doc should reference adapter skeleton');
+  // Should reference real provider adapter interface or disabled endpoint contract
+  const hasInterfaceRef = allDocContent.toLowerCase().includes('real provider adapter') ||
+    allDocContent.toLowerCase().includes('disabled endpoint') ||
+    allDocContent.toLowerCase().includes('adapter interface');
+  assert.ok(hasInterfaceRef, 'At least one doc should reference real provider adapter interface');
 
   // Should mention live mode remains disabled/safe-fail
   const hasSafeFailRef = allDocContent.toLowerCase().includes('safe-fail') ||
@@ -264,7 +256,8 @@ test('At least one Scout boundary doc references adapter wiring or endpoint reco
   // Should mention default endpoint remains stub
   const hasStubRef = allDocContent.toLowerCase().includes('default source remains') ||
     allDocContent.toLowerCase().includes('endpoint remains stub') ||
-    allDocContent.toLowerCase().includes('deterministic stub');
+    allDocContent.toLowerCase().includes('deterministic stub') ||
+    allDocContent.toLowerCase().includes('default remains stub');
   assert.ok(hasStubRef, 'Docs should mention default remains stub');
 });
 

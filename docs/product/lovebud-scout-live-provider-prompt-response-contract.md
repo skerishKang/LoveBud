@@ -304,6 +304,8 @@ This slice would implement:
 
 **Real provider adapter interface:** Completed. `normalizeScoutLiveProviderConfig` normalizes env/config into structured provider config (provider, model, hasApiKey boolean, baseUrl, timeoutMs, maxRetries). `createScoutRealProviderAdapterInterface` returns disabled-by-default adapter interface where suggest() safe-fails with PROVIDER_UNAVAILABLE or CONFIG_MISSING. API key value is never returned — only hasApiKey boolean. timeout/retry values clamped to existing policy. No real provider call, no SDK import, no fetch, no credentials, no live default behavior. See `functions/api/scout/live-provider-adapter.js`.
 
+**Disabled-mode endpoint contract:** Completed. Endpoint live mode branch (`suggest.js`) now uses `createScoutRealProviderAdapterInterface` for structured state handling. DISABLED → PROVIDER_UNAVAILABLE. CONFIG_MISSING → CONFIG_MISSING. READY_FOR_ADAPTER → safe-fail (PROVIDER_UNAVAILABLE, no real call in this slice). Default stub path unchanged. Existing `createScoutLiveProviderAdapter` export preserved for future integration. See `functions/api/scout/suggest.js`.
+
 **Alternatives (independent order):**
 
 - `[TECH] Add Scout prompt builder contract`

@@ -142,6 +142,7 @@ SCOUT_SUGGEST_LLM_BASE_URL
 8. provider integration PR proves no default live usage.
 9. CI remains network-free.
 10. rollback plan documented.
+11. disabled-mode endpoint contract exists (live mode recognizes adapter interface states).
 
 ## Non-goals
 
