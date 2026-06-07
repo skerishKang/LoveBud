@@ -445,3 +445,70 @@ slice, no runtime code change):
   (Firebase Admin SDK / external auth / KV / DO / D1 / external
   observability / provider API / `staging_live` / `production_live`
   / parallel boundary): **No** (all blocked)
+
+## Firebase Auth Verifier Implementation Plan Status
+
+The runtime Firebase auth verifier implementation plan/audit has been
+added as a docs+tests-only slice (v20260607-1, plan/audit slice, no
+runtime code change, no Firebase Admin SDK import):
+
+- A new plan document has been added:
+  `docs/product/lovebud-scout-runtime-firebase-auth-verifier-implementation-plan.md`
+- The plan satisfies step 1 of the runtime adapter implementation gate
+  contract's required next implementation order
+- The plan inventories the current mock-disabled verifier adapter,
+  verifier dependency wiring, endpoint live branch wiring, error
+  taxonomy, observability, secret/config policy, rollback policy, and
+  privacy/safety payload policy
+- The plan defines the future implementation surface for Firebase Admin
+  SDK integration **without** implementing it
+- The plan defines:
+  - future target module (`functions/api/scout/live-auth-verifier-adapter.js`)
+  - future target factory (`createScoutLiveAuthVerifierAdapter`)
+  - future disabled-by-default `firebase` mode
+  - future env-gated config names (example:
+    `SCOUT_RUNTIME_FIREBASE_VERIFIER_ENABLED`,
+    `SCOUT_RUNTIME_FIREBASE_PROJECT_ID`,
+    `SCOUT_RUNTIME_FIREBASE_SERVICE_ACCOUNT_KEY`)
+  - Firebase Admin SDK boundary (no global init at import time, no
+    token verification at import time, no service account exposure,
+    no token / service account logs)
+  - token handling policy (raw Authorization header only at endpoint
+    auth boundary, raw token only inside verifier call boundary, no
+    raw token logs, no raw token persistence, no raw token propagation
+    to storage / rate-limit / provider / observability, `tokenHash` /
+    `authorizationScheme` only in safe payloads)
+  - future verifier input / output contract (private rawToken
+    boundary, allowed payload fields, no raw Firebase claims, no raw
+    decoded token, no raw UID / email in response)
+  - error mapping (`AUTH_INVALID` / `VERIFY_UNAVAILABLE` /
+    `CONFIG_MISSING` / `VERIFY_PAYLOAD_PROHIBITED` /
+    `VERIFY_NOT_IMPLEMENTED`)
+  - required future tests (side-effect-free import, default
+    mock-disabled, Firebase mode disabled unless env opt-in, no
+    token logs, no service account logs, no provider API call, no
+    storage call, no endpoint default live, safe error mapping,
+    observer safe-swallow unchanged)
+  - required future docs (gate status update, secret/config
+    checklist, staging rollout plan, production readiness gates,
+    incident/rotation runbook)
+- All previous defaults are preserved:
+  - endpoint default `providerMode: "stub"`
+  - frontend source selector default `local_stub`
+  - endpoint client default disabled
+  - source selector `endpoint_client` default disabled
+  - `verifierAdapter` / `storageAdapter` default mock-disabled
+- The 4 runtime files remain locked by md5 normalized for LF/CRLF
+  (cross-platform stable): dep-adapter `796a2aef…`, verifier
+  `5a0a8534…`, storage `a4419b1e…`, suggest `deb6a6d7…`
+- This plan slice is docs+tests only; no runtime code change, no
+  Firebase Admin SDK import
+- Recommended next slice: `[PRODUCT] Plan Scout runtime rate-limit
+  storage implementation` (gate step 2), or `[PRODUCT]` audit
+  slice for the rollback / kill-switch policy and observability
+  policy docs
+- Verdict: Firebase auth verifier implementation plan: **Yes**;
+  real Firebase Admin SDK in this PR: **No**; real token
+  verification in this PR: **No**; `staging_live` / `production_live`
+  / provider API / external auth service / endpoint default live
+  in this PR: **No** (all blocked)
