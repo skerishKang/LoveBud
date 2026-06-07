@@ -243,6 +243,21 @@ function mapStorageResultToDependencyResponse(storageResult) {
       retryAfterSeconds: null,
     };
   }
+  if (
+    code === 'STORAGE_KV_DISABLED' ||
+    code === 'STORAGE_DURABLE_OBJECT_DISABLED' ||
+    code === 'STORAGE_D1_DISABLED' ||
+    code === 'STORAGE_CONFIG_MISSING'
+  ) {
+    return {
+      allowed: false,
+      code: SCOUT_LIVE_DEPENDENCY_ADAPTER_CODES.RATE_LIMIT_STORAGE_UNAVAILABLE,
+      reason: typeof res.reason === 'string' && res.reason.length > 0
+        ? res.reason
+        : 'rate-limit storage scaffold is disabled or not configured',
+      retryAfterSeconds: null,
+    };
+  }
   // Unknown / missing code → generic storage-unavailable safe-fail
   return {
     allowed: false,

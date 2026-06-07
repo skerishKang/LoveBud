@@ -1,19 +1,18 @@
 /**
  * Scout Disabled Storage Mapping Dependency Contract Tests
- * v20260607-1
+ * v20260607-2
  *
- * Locks the expected dependency-adapter behavior for disabled rate-limit
- * storage scaffold outcomes:
+ * Locks the dependency-adapter explicit mapping behavior for disabled
+ * rate-limit storage scaffold outcomes:
  * - STORAGE_KV_DISABLED
  * - STORAGE_DURABLE_OBJECT_DISABLED
  * - STORAGE_D1_DISABLED
  * - STORAGE_CONFIG_MISSING
  *
  * Contract expectation in this slice:
- * - dependency adapter does NOT add explicit per-backend mapping yet
- * - these outcomes still fail closed through the existing unknown storage
- *   result fallback
- * - mapped dependency code remains RATE_LIMIT_STORAGE_UNAVAILABLE
+ * - dependency adapter now contains explicit disabled-storage mapping branches
+ * - these outcomes fail closed as RATE_LIMIT_STORAGE_UNAVAILABLE
+ * - unknown storage-code fallback remains preserved
  */
 
 'use strict';
@@ -51,18 +50,20 @@ async function loadDepModule() {
   return depModulePromise;
 }
 
+const DISABLED_STORAGE_CODES = Object.freeze([
+  'STORAGE_KV_DISABLED',
+  'STORAGE_DURABLE_OBJECT_DISABLED',
+  'STORAGE_D1_DISABLED',
+  'STORAGE_CONFIG_MISSING',
+]);
+
 const tests = [];
 
 tests.push({
-  name: 'Disabled storage scaffold codes are still covered by existing dependency-adapter fallback',
+  name: 'Disabled storage scaffold codes explicitly map to storage unavailable',
   fn: async () => {
     const mod = await loadDepModule();
-    for (const storageCodeValue of [
-      'STORAGE_KV_DISABLED',
-      'STORAGE_DURABLE_OBJECT_DISABLED',
-      'STORAGE_D1_DISABLED',
-      'STORAGE_CONFIG_MISSING',
-    ]) {
+    for (const storageCodeValue of DISABLED_STORAGE_CODES) {
       const adapter = mod.createScoutLiveDependencyAdapter({
         storageAdapter: {
           kind: 'test_storage_adapter',
@@ -73,30 +74,76 @@ tests.push({
         },
       });
       const result = await adapter.checkRateLimit({ requestId: 'req_test' });
-      assert.strictEqual(result.allowed, false, `${storageCodeValue} fallback must deny`);
+      assert.strictEqual(result.allowed, false, `${storageCodeValue} explicit mapping must deny`);
       assert.strictEqual(
         result.code,
         mod.SCOUT_LIVE_DEPENDENCY_ADAPTER_CODES.RATE_LIMIT_STORAGE_UNAVAILABLE,
-        `${storageCodeValue} fallback must map to RATE_LIMIT_STORAGE_UNAVAILABLE`
+        `${storageCodeValue} explicit mapping must return RATE_LIMIT_STORAGE_UNAVAILABLE`
       );
     }
   },
 });
 
 tests.push({
-  name: 'Dependency adapter does not yet contain explicit disabled-storage mapping branches',
+  name: 'Dependency adapter contains explicit disabled-storage mapping branches',
   fn: () => {
-    assert.ok(!depCode.includes('STORAGE_KV_DISABLED'), 'dependency adapter must not yet map KV disabled scaffold');
-    assert.ok(!depCode.includes('STORAGE_DURABLE_OBJECT_DISABLED'), 'dependency adapter must not yet map Durable Object disabled scaffold');
-    assert.ok(!depCode.includes('STORAGE_D1_DISABLED'), 'dependency adapter must not yet map D1 disabled scaffold');
+    for (const storageCodeValue of DISABLED_STORAGE_CODES) {
+      assert.ok(depCode.includes(storageCodeValue), `dependency adapter must explicitly map ${storageCodeValue}`);
+    }
+    const firstDisabledCode = depCode.indexOf('STORAGE_KV_DISABLED');
+    const unknownFallback = depCode.indexOf('rate-limit storage adapter returned an unknown result');
+    assert.ok(firstDisabledCode >= 0, 'explicit disabled-storage mapping block must exist');
+    assert.ok(unknownFallback > firstDisabledCode, 'explicit disabled-storage mapping must appear before unknown fallback');
   },
 });
 
 tests.push({
-  name: 'Existing storage-unavailable fallback message/contract is preserved',
-  fn: () => {
-    assert.ok(depCode.includes('RATE_LIMIT_STORAGE_UNAVAILABLE'), 'dependency adapter must expose RATE_LIMIT_STORAGE_UNAVAILABLE');
-    assert.ok(depCode.includes('rate-limit storage adapter returned an unknown result') || depCode.includes('rate-limit storage adapter threw an exception'), 'dependency adapter must retain storage-unavailable fallback path');
+  name: 'Unknown storage-code fallback remains preserved',
+  fn: async () => {
+    const mod = await loadDepModule();
+    const adapter = mod.createScoutLiveDependencyAdapter({
+      storageAdapter: {
+        kind: 'test_storage_adapter',
+        isMockDisabled: false,
+        async checkQuota() {
+          return { allowed: false, code: 'STORAGE_FUTURE_UNKNOWN', reason: 'fixture unknown storage code' };
+        },
+      },
+    });
+    const result = await adapter.checkRateLimit({ requestId: 'req_test' });
+    assert.strictEqual(result.allowed, false, 'unknown storage fallback must deny');
+    assert.strictEqual(
+      result.code,
+      mod.SCOUT_LIVE_DEPENDENCY_ADAPTER_CODES.RATE_LIMIT_STORAGE_UNAVAILABLE,
+      'unknown storage fallback must remain RATE_LIMIT_STORAGE_UNAVAILABLE'
+    );
+    assert.ok(depCode.includes('rate-limit storage adapter returned an unknown result'), 'dependency adapter must retain unknown storage fallback message');
+  },
+});
+
+tests.push({
+  name: 'Existing storage mappings remain preserved',
+  fn: async () => {
+    const mod = await loadDepModule();
+    const cases = [
+      ['STORAGE_MOCK_DISABLED', mod.SCOUT_LIVE_DEPENDENCY_ADAPTER_CODES.RATE_LIMIT_NOT_IMPLEMENTED],
+      ['STORAGE_NOT_IMPLEMENTED', mod.SCOUT_LIVE_DEPENDENCY_ADAPTER_CODES.RATE_LIMIT_NOT_IMPLEMENTED],
+      ['STORAGE_PAYLOAD_PROHIBITED', mod.SCOUT_LIVE_DEPENDENCY_ADAPTER_CODES.RATE_LIMIT_PAYLOAD_PROHIBITED],
+    ];
+    for (const [storageCodeValue, expectedDependencyCode] of cases) {
+      const adapter = mod.createScoutLiveDependencyAdapter({
+        storageAdapter: {
+          kind: 'test_storage_adapter',
+          isMockDisabled: false,
+          async checkQuota() {
+            return { allowed: false, code: storageCodeValue, reason: 'fixture existing storage code' };
+          },
+        },
+      });
+      const result = await adapter.checkRateLimit({ requestId: 'req_test' });
+      assert.strictEqual(result.allowed, false, `${storageCodeValue} must deny`);
+      assert.strictEqual(result.code, expectedDependencyCode, `${storageCodeValue} mapping must be preserved`);
+    }
   },
 });
 
@@ -133,16 +180,17 @@ tests.push({
     for (const provider of ['openai', 'anthropic', 'gemini', 'groq', 'mistral', 'nvidia']) {
       assert.ok(!new RegExp(`(import|require).*${provider}`, 'i').test(depCode), `dependency adapter must not import ${provider}`);
     }
+    assert.ok(storageCode.includes('STORAGE_KV_DISABLED'), 'storage adapter disabled scaffold code must remain');
   },
 });
 
 tests.push({
-  name: 'Docs reflect fallback-only alignment for disabled storage mapping',
+  name: 'Docs reflect explicit mapping promotion for disabled storage mapping',
   fn: () => {
     const docPath = path.join(ROOT, 'docs/product/lovebud-scout-storage-safe-fail-fallback-docs-alignment.md');
     const doc = readFileSafe(docPath);
-    assert.ok(doc.includes('RATE_LIMIT_STORAGE_UNAVAILABLE'), 'docs must reference RATE_LIMIT_STORAGE_UNAVAILABLE fallback');
-    assert.ok(doc.includes('existing dependency-adapter unknown storage-code safe-fail fallback') || doc.includes('fallback-only'), 'docs must describe fallback-only behavior');
+    assert.ok(doc.includes('RATE_LIMIT_STORAGE_UNAVAILABLE'), 'docs must reference RATE_LIMIT_STORAGE_UNAVAILABLE');
+    assert.ok(doc.includes('explicit mapping') || doc.includes('Explicit Mapping'), 'docs must describe explicit mapping promotion');
   },
 });
 
