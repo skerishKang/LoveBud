@@ -569,3 +569,98 @@ change, no deployment rollback):
   real external observability backend in this PR: **No**;
   `staging_live` / `production_live` opt-in in this PR: **No**
   (all blocked)
+
+## Runtime Observability Policy Audit Status
+
+The Scout runtime observability policy audit has been added as a
+docs+tests-only slice (v20260607-1, audit slice, no runtime code
+change, no external observability backend, no live metrics sink,
+no live alerting pipeline):
+
+- A new audit document has been added:
+  `docs/product/lovebud-scout-runtime-observability-policy-audit.md`
+- The audit satisfies **gate evidence 11 of 11** in the runtime
+  adapter implementation gate contract
+- After this audit, all 11 gate evidence items are now complete;
+  gate step 3 (one disabled-by-default runtime adapter
+  implementation scaffold) may begin
+- The audit defines the safe event schema for all 10 observability
+  surfaces (endpoint request lifecycle / auth verifier / rate-limit
+  storage / provider adapter / error taxonomy / rollback /
+  cost-quota / staging_live / production_live / incident
+  response)
+- The audit defines the allowed observability field allowlist
+  (17 safe fields: requestId / providerMode / endpointPath /
+  errorCode / safeStatus / latencyMs / retryAfterSeconds /
+  quotaBucket / decisionId / adapterKind / mockDisabled /
+  environmentLabel / severity / retryCount / maxRetries /
+  timeoutMs / eventType)
+- The audit defines the prohibited observability fields (raw
+  token / authorization / firebaseToken / API key / secret /
+  service account / prompt / excerpt / sourceUrl / raw request
+  body / raw provider response / raw Firebase claims / raw
+  decoded token / raw storage key / raw UID / email / raw IP /
+  cookie / sessionCookie)
+- The audit defines:
+  - safe event schema (base / auth / rate-limit / provider /
+    rollback / cost / staging / production / incident)
+  - error taxonomy alignment (AUTH_REQUIRED / AUTH_INVALID /
+    RATE_LIMITED / RATE_LIMIT_UNAVAILABLE /
+    RATE_LIMIT_PAYLOAD_PROHIBITED /
+    RATE_LIMIT_STORAGE_UNAVAILABLE / PROVIDER_UNAVAILABLE /
+    CONFIG_MISSING / PROVIDER_ERROR / VALIDATION_ERROR)
+  - privacy / safety policy (safe metadata only / no sensitive
+    payload capture / no replay of sensitive payloads / no raw
+    source material / no prompt/excerpt/sourceUrl logging / no
+    token/API key/service account logging)
+  - external observability backend policy (not implemented /
+    disabled-by-default / environment-gated / independent
+    kill-switch / fail closed or silently drop telemetry / must
+    not block endpoint response / must not change endpoint
+    response body / must not auto-save data)
+  - alerting policy (no alerts implemented / future alerts
+    sanitized fields only / alert thresholds documented before
+    staging_live / alert messages no sensitive values)
+  - incident observability policy (safe IDs/hashes only / no raw
+    token/API key/prompt/sourceUrl in incident reports /
+    sensitive logging suspected disables external backend first
+    / rollback decision trace safe fields only)
+  - rollback / kill-switch alignment (observability backend
+    independent kill-switch / rollback events safe / kill-switch
+    activation no secrets / fallback baseline stub/local_stub)
+  - required future tests (observer safe-swallow / external
+    backend disabled by default / external backend kill-switch
+    prevents export / no sensitive fields in emitted events / no
+    prompt/excerpt/sourceUrl in events / no raw token/API
+    key/service account in events / endpoint response unaffected
+    by observer failures / no provider API call from
+    observability / no storage/auth call from observability /
+    docs examples safe fake metadata only)
+- All previous defaults are preserved:
+  - endpoint default `providerMode: "stub"`
+  - frontend source selector default `local_stub`
+  - endpoint client default disabled
+  - source selector `endpoint_client` default disabled
+  - `verifierAdapter` / `storageAdapter` default mock-disabled
+  - `staging_live` / `production_live` blocked
+  - external observability backend not integrated
+  - live alerting pipeline not implemented
+- The 4 runtime files remain locked by md5 normalized for
+  LF/CRLF (cross-platform stable): dep-adapter `796a2aef…`,
+  verifier `5a0a8534…`, storage `a4419b1e…`, suggest
+  `deb6a6d7…`
+- This audit slice is docs+tests only; no runtime code change,
+  no external observability backend integration, no live metrics
+  sink, no live tracing sink, no live alerting sink, no
+  Firebase Admin SDK import, no KV / Durable Object / D1
+  implementation, no provider API call
+- Recommended next slice: `[TECH] Add one disabled-by-default
+  runtime adapter implementation scaffold` (gate step 3, still
+  scaffold, not a real production live implementation)
+- Verdict: runtime observability policy audit: **Yes**; gate
+  evidence 11 of 11 complete after this audit: **Yes**; real
+  external observability backend in this PR: **No**; real
+  alerting in this PR: **No**; real Firebase Admin SDK in this
+  PR: **No**; real KV / Durable Object / D1 in this PR: **No**;
+  real provider API in this PR: **No**; `staging_live` /
+  `production_live` opt-in in this PR: **No** (all blocked)
