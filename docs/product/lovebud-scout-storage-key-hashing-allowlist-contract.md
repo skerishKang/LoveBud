@@ -218,6 +218,15 @@ This slice does not implement:
 - deployment or secret changes;
 - Browse #1661 work.
 
+Plain-language non-goals locked for contract tests:
+
+- No runtime storage key builder implementation;
+- No real KV, Durable Object, or D1 implementation;
+- No endpoint behavior change;
+- No frontend default source change;
+- No provider integration;
+- No Browse #1661 work.
+
 ## 14. Current verdict
 
 GO for contract/readiness documentation and contract tests.
