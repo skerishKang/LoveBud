@@ -970,3 +970,29 @@ behavior):
   **No**; real KV / Durable Object / D1 in this PR: **No**;
   `staging_live` / `production_live` opt-in in this PR: **No**
   (all blocked)
+
+## Firebase Auth Verifier Disabled Scaffold Readiness Audit Status
+
+A CTO review / readiness audit (v20260607-1) has been added for the
+first disabled-by-default runtime adapter implementation scaffold
+(Scout Firebase auth verifier). The audit is docs+tests only — no
+runtime behavior change. Findings:
+
+- The scaffold remains disabled-by-default and safe-fail only
+- The scaffold is **not** a real Firebase implementation
+- The scaffold does **not** import `firebase-admin`
+- The scaffold does **not** perform real token verification
+- The dependency adapter and `suggest.js` remain unchanged
+- The endpoint default `providerMode: "stub"` is preserved
+- The explicit stub path is preserved
+- The frontend default `local_stub` is preserved
+- The endpoint client default disabled state is preserved
+- The locked runtime files remain locked by LF/CRLF-normalized
+  md5 (verifier `81f80368…`, dep-adapter `796a2aef…`, storage
+  `a4419b1e…`, suggest `deb6a6d7…`)
+- Recommended next slice:
+  `[TECH] Wire disabled Firebase auth verifier scaffold into
+  dependency adapter contract`
+- Verdict: CTO review / readiness audit complete: **Yes**; real
+  Firebase Admin SDK: **No**; real token verification: **No**;
+  `staging_live` / `production_live` opt-in: **No** (all blocked)
