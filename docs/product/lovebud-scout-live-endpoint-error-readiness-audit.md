@@ -232,3 +232,16 @@ tests/contracts/scout-real-provider-adapter-interface-contract.test.cjs
 - `docs/product/lovebud-scout-live-provider-staging-rollout-contract.md`
 - `docs/product/lovebud-scout-ai-suggestion-mvp-readiness.md`
 - `docs/product/lovebud-scout-live-provider-readiness-audit.md`
+
+## Storage Adapter Dependency Wiring Status
+
+The storage adapter skeleton is now wired into the live dependency adapter mock path (v20260607-1, wiring slice):
+- `live-auth-rate-limit-dependency-adapter.js` imports `createScoutLiveRateLimitStorageAdapter` from `live-rate-limit-storage-adapter.js`
+- `createScoutLiveDependencyAdapter(options?)` accepts a `storageAdapter` option
+- When `storageAdapter` is not provided, the canonical mock-disabled storage adapter (`createScoutLiveRateLimitStorageAdapter({ mockDisabled: true })`) is used as the default
+- `checkRateLimit` routes through `storageAdapter.checkQuota` with an **allowlisted payload only** (no raw token / API key / prompt / excerpt / sourceUrl / raw request body)
+- Storage adapter results are mapped to dependency-adapter safe-fail codes (RATE_LIMIT_NOT_IMPLEMENTED / RATE_LIMIT_PAYLOAD_PROHIBITED / RATE_LIMIT_STORAGE_UNAVAILABLE)
+- Storage adapter throw is safe-swallowed (no throw propagation)
+- `suggest.js` is NOT modified in this slice (wiring is dependency-internal)
+- No real KV / Durable Object / D1 / database / fetch / env storage binding
+- Real KV / DO / D1 / database / Firebase / provider SDK / staging / production all remain blocked

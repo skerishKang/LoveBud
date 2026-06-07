@@ -183,3 +183,23 @@ The dependency adapter skeleton is now wired into `functions/api/scout/suggest.j
 - Wiring into `suggest.js` LIVE branch: **DONE** (mock-disabled, live-branch-only)
 - Real `verifyToken` / `checkRateLimit` / `requestId` implementations: **NO**
 - Real Firebase / KV / DO / D1 / provider SDK / staging / production: **NO**
+
+## Storage Adapter Dependency Wiring Status
+
+The storage adapter skeleton is now wired into the live dependency adapter mock path (v20260607-1, wiring slice):
+- `live-auth-rate-limit-dependency-adapter.js` imports `createScoutLiveRateLimitStorageAdapter` from `live-rate-limit-storage-adapter.js`
+- `createScoutLiveDependencyAdapter(options?)` accepts a `storageAdapter` option
+- When `storageAdapter` is not provided, the canonical mock-disabled storage adapter (`createScoutLiveRateLimitStorageAdapter({ mockDisabled: true })`) is used as the default
+- `checkRateLimit` routes through `storageAdapter.checkQuota` with an **allowlisted payload only** (no raw token / API key / prompt / excerpt / sourceUrl / raw request body)
+- Storage adapter results are mapped to dependency-adapter safe-fail codes:
+  - `STORAGE_MOCK_DISABLED` → `RATE_LIMIT_NOT_IMPLEMENTED`
+  - `STORAGE_NOT_IMPLEMENTED` → `RATE_LIMIT_NOT_IMPLEMENTED`
+  - `STORAGE_PAYLOAD_PROHIBITED` → `RATE_LIMIT_PAYLOAD_PROHIBITED`
+  - unknown / missing → `RATE_LIMIT_STORAGE_UNAVAILABLE`
+- Storage adapter throw is safe-swallowed (no throw propagation)
+- The dependency adapter's `verifyToken` mock-disabled default behavior is unchanged
+- The dependency adapter object remains frozen (immutable)
+- `suggest.js` is NOT modified in this slice (wiring is dependency-internal)
+- No real KV / Durable Object / D1 / database / fetch / env storage binding
+- No Firebase Admin SDK, no provider SDK, no env.SCOUT_*
+- Real KV / DO / D1 / database / Firebase / provider SDK / staging / production all remain blocked

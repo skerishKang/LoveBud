@@ -509,3 +509,15 @@ A [storage adapter skeleton](lovebud-scout-live-rate-limit-storage-adapter-skele
 - ❌ No frontend behavior change
 - ❌ No persistence or auto-save
 - ❌ No Browse #1661 work
+
+## Storage Adapter Dependency Wiring Status
+
+The storage adapter skeleton is now wired into the live dependency adapter mock path (v20260607-1, wiring slice):
+- `createScoutLiveDependencyAdapter(options?)` accepts a `storageAdapter` option
+- When `storageAdapter` is not provided, the canonical mock-disabled storage adapter is used as the default
+- `checkRateLimit` routes through `storageAdapter.checkQuota` with an allowlisted payload only
+- Storage adapter results are mapped to dependency-adapter safe-fail codes
+- Storage adapter throw is safe-swallowed
+- `suggest.js` is NOT modified in this slice (wiring is dependency-internal)
+- No real KV / Durable Object / D1 / database / fetch / env storage binding
+- Real KV / DO / D1 / database / Firebase / provider SDK / staging / production all remain blocked
