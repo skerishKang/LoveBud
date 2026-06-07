@@ -529,3 +529,44 @@ The storage adapter skeleton is now wired into the live dependency adapter mock 
 - `suggest.js` is NOT modified in this slice (wiring is dependency-internal)
 - No real KV / Durable Object / D1 / database / fetch / env storage binding
 - Real KV / DO / D1 / database / Firebase / provider SDK / staging / production all remain blocked
+
+## Auth Verifier Adapter Skeleton Status
+
+The auth verifier adapter skeleton has been added as a separate file
+(`functions/api/scout/live-auth-verifier-adapter.js`, v20260607-1) ahead
+of any Firebase Admin SDK integration. Status:
+
+- A new `live-auth-verifier-adapter.js` module has been added with
+  `createScoutLiveAuthVerifierAdapter(options?)` factory
+- Default `mockDisabled: true` fail-closed behavior; `verifyToken` always
+  returns `{ allowed: false, code: "VERIFIER_MOCK_DISABLED", userKey: null, userKeyHash: null }`
+- `mockDisabled: false` mode returns `VERIFIER_NOT_IMPLEMENTED` shape
+- Object.freeze applied to the returned adapter
+- `sanitizeScoutLiveAuthVerifierPayload(payload, options?)` pure helper
+  exported with `onProhibitedField: 'drop' | 'reject'` modes
+- Allowed fields (allowlist): `requestId`, `tokenHash`,
+  `authorizationScheme`, `providerMode`, `endpointPath`, `nowMs`
+- Prohibited fields (denylist): `token`, `rawToken`, `authorization`,
+  `authorizationHeader`, `apiKey`, `secret`, `password`, `cookie`,
+  `sessionCookie`, `firebaseToken`, provider API key fields
+  (`openaiApiKey`, `anthropicApiKey`, `geminiApiKey`, `groqApiKey`,
+  `mistralApiKey`, `nvidiaApiKey`), `prompt`, `excerpt`, `sourceUrl`,
+  `rawRequestBody`
+- No Firebase Admin SDK / no `getAuth` / no `verifyIdToken` /
+  no `verifyAccessToken` / no `cert` / no `initializeApp` in code
+- No fetch / XMLHttpRequest / axios / external auth service URL
+- No env auth binding (`env.AUTH`, `env.FIREBASE`,
+  `process.env.SCOUT_*`, `import.meta.env`) access
+- No KV / Durable Object / D1 / database runtime access
+- No provider SDK imports (OpenAI / Anthropic / Gemini / Groq / Mistral
+  / NVIDIA / Cohere / Perplexity)
+- `verifyToken` result never includes raw token / authorization /
+  apiKey / firebaseToken / sessionCookie
+- Dependency adapter is NOT yet wired to the verifier (separate slice)
+- `suggest.js` is NOT yet wired to the verifier (separate slice)
+- Endpoint default `providerMode: "stub"` preserved
+- Frontend source selector default `local_stub` preserved
+- Frontend endpoint client default disabled preserved
+- Runtime Firebase Admin SDK / real token verification /
+  external auth service call: **NO** (blocked)
+- `staging_live` / `production_live` rollout: **NO** (blocked)
