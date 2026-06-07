@@ -1,0 +1,289 @@
+# Scout Live Auth/Rate-Limit Adapter Wiring Readiness Audit
+
+> Status: **audit complete (mock-disabled stage)**
+> Version: v20260607-1
+> Audience: Scout live provider engineering, CTO, Document Lead
+> Scope: comprehensive audit of the mock-disabled live auth/rate-limit
+> adapter wiring before any runtime implementation gate.
+> Related issue: #1882
+
+## 1. Purpose
+
+This document audits the **completed mock-disabled live auth/rate-limit
+adapter wiring** before any runtime implementation gate contract is
+introduced. It inventories every mock-disabled piece — auth verifier
+adapter skeleton, auth verifier dependency wiring, rate-limit storage
+adapter skeleton, storage adapter dependency wiring, dependency adapter
+endpoint wiring, endpoint error taxonomy, observability, DI, and
+safe-fail boundaries — and confirms they are aligned, fail-closed, and
+do not reach any external runtime backend.
+
+The goal of this audit is to give the next reviewer a single source of
+truth for the current state so that the runtime implementation gate
+contract can be added without surprise gaps.
+
+## 2. Non-goals
+
+- No runtime behavior changes
+- No endpoint code changes
+- No real LLM provider implementation
+- No live provider API call
+- No provider SDK imports
+- No Firebase Admin SDK integration
+- No real Firebase token verification
+- No KV / Durable Object / D1 implementation
+- No runtime persistent rate-limit storage call
+- No external observability / logging backend integration
+- No external URL fetching
+- No crawler or metadata extraction
+- No frontend default endpoint_client behavior
+- No source selector default change
+- No backend / schema migration
+- No automatic save
+- No Browse #1661 work
+
+## 3. Baseline commit
+
+- main HEAD at audit time: `3ac2d940` (post PR #2304)
+- last runtime code change: PR #2304 (`refactor(scout): wire auth
+  verifier into live dependency mock path`)
+- last test-only / docs-only change: none yet (this audit is the first
+  pure audit slice)
+- open issues at audit time: #1882, #1661, #2281, #2234
+- pre-existing test failure bucket: 3 editor-canvas failures (out of
+  scope for this audit)
+
+## 4. Completed wiring inventory
+
+| # | Slice | Module / Contract | Status |
+|---|-------|-------------------|--------|
+| 1 | Auth verifier adapter skeleton | `functions/api/scout/live-auth-verifier-adapter.js` | **Done** |
+| 2 | Auth verifier dependency wiring | `live-auth-rate-limit-dependency-adapter.js` `verifierAdapter` option | **Done** |
+| 3 | Rate-limit storage adapter skeleton | `functions/api/scout/live-rate-limit-storage-adapter.js` | **Done** |
+| 4 | Storage adapter dependency wiring | `live-auth-rate-limit-dependency-adapter.js` `storageAdapter` option | **Done** |
+| 5 | Dependency adapter endpoint wiring | `functions/api/scout/suggest.js` LIVE branch `liveDependencies` | **Done** |
+| 6 | Endpoint error taxonomy | `SCOUT_LIVE_ENDPOINT_ERROR_TAXONOMY` codes | **Done** |
+| 7 | Endpoint error readiness audit | `scout-live-endpoint-error-readiness-audit` doc + contract | **Done** |
+| 8 | Endpoint observability | `live-auth-rate-limit-observability.js` allowlist + ring buffer | **Done** |
+| 9 | Endpoint DI | `liveDependencies = { verifyToken, checkRateLimit, observer, requestId }` | **Done** |
+| 10 | Endpoint safe-fail wiring | `live-auth-rate-limit-boundary.js` safe-fail mappings | **Done** |
+| 11 | Boundary reconcile | `live-auth-rate-limit-boundary.js` canonical / `live-provider-auth-rate-limit-boundary.js` not adopted | **Done** |
+| 12 | Runtime boundary | `live-auth-rate-limit-boundary.js` mock-disabled default | **Done** |
+
+All 12 items are locked by contract tests (see §13).
+
+## 5. Confirmed default behavior
+
+| Default | Status | Source of truth |
+|---------|--------|-----------------|
+| `createScoutLiveAuthVerifierAdapter` default `mockDisabled: true` | Confirmed | module default + skeleton test |
+| `createScoutLiveRateLimitStorageAdapter` default `mockDisabled: true` | Confirmed | module default + skeleton test |
+| `createScoutLiveDependencyAdapter` default `mockDisabled: true` | Confirmed | module default + skeleton test |
+| `createScoutLiveDependencyAdapter` default `verifierAdapter` is mock-disabled | Confirmed | verifier dependency wiring test |
+| `createScoutLiveDependencyAdapter` default `storageAdapter` is mock-disabled | Confirmed | storage dependency wiring test |
+| Endpoint `providerMode` default `"stub"` in `suggest.js` | Confirmed | endpoint wiring test |
+| Explicit `providerMode: "stub"` path | Confirmed | endpoint wiring test |
+| Frontend source selector default `local_stub` | Confirmed | source selector contract |
+| Frontend endpoint client default disabled | Confirmed | endpoint client contract |
+| Dependency adapter object remains frozen | Confirmed | all wiring tests |
+
+## 6. Confirmed auth path
+
+- `verifyToken` is provided by the dependency adapter.
+- It routes through the injected (or default mock-disabled) verifier
+  adapter via `verifierAdapter.verifyToken`.
+- The verifier payload is built from `AUTH_VERIFIER_PAYLOAD_ALLOWED_FIELDS`
+  only: `requestId`, `tokenHash`, `authorizationScheme`, `providerMode`,
+  `endpointPath`, `nowMs`.
+- Prohibited fields are dropped before the verifier call: `token`,
+  `rawToken`, `authorization`, `authorizationHeader`, `apiKey`, `secret`,
+  `password`, `cookie`, `sessionCookie`, `firebaseToken`,
+  `openaiApiKey`, `anthropicApiKey`, `geminiApiKey`, `groqApiKey`,
+  `mistralApiKey`, `nvidiaApiKey`, `prompt`, `excerpt`, `sourceUrl`,
+  `rawRequestBody`.
+- Verifier result codes are mapped to dependency-adapter safe-fail codes:
+  - `VERIFIER_MOCK_DISABLED` → `VERIFY_NOT_IMPLEMENTED`
+  - `VERIFIER_NOT_IMPLEMENTED` → `VERIFY_NOT_IMPLEMENTED`
+  - `VERIFIER_PAYLOAD_PROHIBITED` → `VERIFY_PAYLOAD_PROHIBITED`
+  - unknown / missing code → `VERIFY_UNAVAILABLE`
+- Verifier adapter throw is safe-swallowed → `VERIFY_UNAVAILABLE`.
+- `userKey` / `userKeyHash` remain `null` in skeleton / mock-disabled
+  mode (the skeleton does not return real user identifiers).
+- The dep adapter does not propagate raw user identifiers from the
+  verifier result in this slice.
+
+## 7. Confirmed rate-limit path
+
+- `checkRateLimit` is provided by the dependency adapter.
+- It routes through the injected (or default mock-disabled) storage
+  adapter via `storageAdapter.checkQuota`.
+- The storage payload is built from `STORAGE_PAYLOAD_ALLOWED_FIELDS`
+  only: `requestId`, `userKeyHash`, `ipHash`, `sessionKeyHash`,
+  `endpointPath`, `providerMode`, `windowKey`, `limitName`, `nowMs`.
+- Prohibited fields are dropped before the storage call: the same
+  denylist as the verifier payload plus `rawProviderResponse`,
+  `rawModelOutput`.
+- Storage result codes are mapped to dependency-adapter safe-fail codes:
+  - `STORAGE_MOCK_DISABLED` → `RATE_LIMIT_NOT_IMPLEMENTED`
+  - `STORAGE_NOT_IMPLEMENTED` → `RATE_LIMIT_NOT_IMPLEMENTED`
+  - `STORAGE_PAYLOAD_PROHIBITED` → `RATE_LIMIT_PAYLOAD_PROHIBITED`
+  - unknown / missing code → `RATE_LIMIT_STORAGE_UNAVAILABLE`
+- Storage adapter throw is safe-swallowed → `RATE_LIMIT_STORAGE_UNAVAILABLE`.
+- `consumeQuota` / `releaseQuota` are defined on the storage adapter
+  skeleton but not yet called from the dependency adapter in this
+  slice (consume / release are separate, future slices).
+
+## 8. Confirmed privacy / safety behavior
+
+| Concern | Verifier payload | Storage payload | Endpoint response | Observability event |
+|---------|------------------|-----------------|-------------------|---------------------|
+| Raw token | Not propagated (dropped at dep adapter seam) | Not propagated (dropped at dep adapter seam) | Not present in any response field | Not logged |
+| `authorization` header | Not propagated | Not propagated | Not present in response | Not logged |
+| `firebaseToken` | Not propagated | Not propagated | Not present in response | Not logged |
+| API key (`apiKey` / `openaiApiKey` / etc.) | Not propagated | Not propagated | Not present in response | Not logged |
+| `password` / `cookie` / `sessionCookie` | Not propagated | Not propagated | Not present in response | Not logged |
+| `prompt` / `excerpt` / `sourceUrl` | Not propagated | Not propagated | Not present in response | Not logged |
+| `rawRequestBody` / `rawProviderResponse` / `rawModelOutput` | Not propagated | Not propagated | Not present in response | Not logged |
+| `userKey` / `userKeyHash` | n/a (skeleton returns `null`) | n/a (storage uses `userKeyHash` only) | `null` in skeleton mode | Not logged in skeleton mode |
+
+The denylist enforcement is the **single source of truth** at the
+dep-adapter seam and is locked by both the verifier dependency wiring
+and storage dependency wiring contract tests.
+
+## 9. Confirmed no external runtime access
+
+| External access | Status in code | Locked by |
+|-----------------|----------------|-----------|
+| Firebase Admin SDK (`firebase-admin`) | **No** import | verifier + storage + dep adapter code-only checks |
+| `getAuth` | **No** reference | verifier + dep adapter code-only checks |
+| `verifyIdToken` | **No** reference | verifier + dep adapter code-only checks |
+| `verifyAccessToken` | **No** reference | verifier + dep adapter code-only checks |
+| `cert(...)` | **No** call | verifier + dep adapter code-only checks |
+| `initializeApp(...)` | **No** call | verifier + dep adapter code-only checks |
+| KV / Durable Object / D1 / database | **No** import / reference | storage + dep adapter code-only checks |
+| `env.KV` / `env.DB` / `env.AUTH` / `env.FIREBASE` | **No** read | all scout module code-only checks |
+| `fetch` / `XMLHttpRequest` / `axios` | **No** call | all scout module code-only checks |
+| OpenAI / Anthropic / Gemini / Groq / Mistral / NVIDIA / Cohere / Perplexity SDK | **No** import | all scout module code-only checks |
+| `process.env.SCOUT_*` / `import.meta.env` | **No** read | all scout module code-only checks |
+| `api_key =` assignment / `bearer ` embedding | **No** | all scout module code-only checks |
+
+## 10. Go / no-go matrix
+
+| Item | Status | Notes |
+|------|--------|-------|
+| Auth verifier adapter skeleton | **Done** | PR #2302 |
+| Auth verifier dependency wiring | **Done** | PR #2304 |
+| Rate-limit storage adapter skeleton | **Done** | PR #2299 |
+| Storage adapter dependency wiring | **Done** | PR #2301 |
+| Dependency adapter endpoint wiring | **Done** | PR #2297 |
+| Endpoint error taxonomy | **Done** | PR #2291 / #2293 |
+| Endpoint observability | **Done** | PR #2287 |
+| Endpoint DI | **Done** | PR #2285 |
+| Endpoint safe-fail wiring | **Done** | PR #2283 / #2280 / #2278 |
+| Boundary reconcile | **Done** | PR #2280 |
+| Runtime boundary | **Done** | PR #2278 |
+| Runtime Firebase auth verifier | **No** | Blocked |
+| Runtime `getAuth().verifyIdToken` | **No** | Blocked |
+| Runtime external auth service | **No** | Blocked |
+| Runtime KV / Durable Object / D1 rate-limit storage | **No** | Blocked |
+| Runtime persistent rate-limit storage | **No** | Blocked |
+| Runtime external observability backend | **No** | Blocked |
+| `staging_live` rollout | **No** | Blocked |
+| `production_live` rollout | **No** | Blocked |
+| Real provider API call | **No** | Blocked |
+
+## 11. Remaining blockers
+
+A runtime implementation gate is the next step. The remaining blockers
+that must be cleared (or explicitly waived by the gate contract) are:
+
+1. **Runtime implementation gate contract not yet added** — no audit
+   lock exists for the conditions under which a real Firebase verifier
+   or real KV / DO / D1 storage may be wired in.
+2. **No real Firebase Admin SDK integration** — `firebase-admin` import,
+   `getAuth().verifyIdToken`, `cert(...)`, secret wiring all blocked.
+3. **No real persistent quota backend** — no KV binding, no Durable
+   Object namespace, no D1 database, no third-party quota service.
+4. **No external observability backend** — no Sentry, no Datadog, no
+   Cloudflare Logpush wiring.
+5. **No staging soak** — no `staging_live` rollout, no traffic mirror,
+   no synthetic load.
+6. **No kill-switch drill result** — no runbook exercise, no incident
+   simulation.
+7. **No secret rotation drill result** — no rotation runbook, no
+   break-glass credential plan.
+8. **No production approval** — CTO / Document Lead / Document Web
+   approval chain not yet exercised.
+9. **No consume / release rate-limit path** — `consumeQuota` and
+   `releaseQuota` are skeleton-only and not yet wired into the
+   dep adapter.
+10. **No `userKey` / `userKeyHash` propagation from a real verifier** —
+    skeleton returns `null`; the propagation contract is documented
+    but never exercised in mock-disabled mode.
+
+## 12. Recommended next slice
+
+`[TECH] Add Scout live auth/rate-limit runtime adapter implementation
+gate contract`
+
+Scope of the next slice (mock-disabled / no real implementation):
+
+- Add a runtime implementation gate contract (a contract test +
+  accompanying doc) that locks the conditions under which any real
+  Firebase Admin SDK, real KV / DO / D1, real external auth service,
+  real provider API, or `staging_live` / `production_live` rollout may
+  be wired in.
+- The gate contract must explicitly forbid any runtime change without
+  (a) a real implementation contract, (b) a real audit trail of the
+  mock-disabled wiring, (c) CTO approval, (d) secret rotation
+  readiness.
+- No actual Firebase / KV / DO / D1 / provider API call is introduced
+  in the gate slice. The gate slice is a contract / docs / test-only
+  slice.
+- The gate contract becomes a precondition for any future PR that
+  would introduce a real runtime adapter.
+
+## 13. Locks / evidence
+
+This audit is locked by:
+
+- `tests/contracts/scout-live-auth-verifier-dependency-wiring-contract.test.cjs` (25 sub-tests)
+- `tests/contracts/scout-live-auth-verifier-adapter-skeleton-contract.test.cjs` (24 sub-tests)
+- `tests/contracts/scout-live-storage-adapter-dependency-wiring-contract.test.cjs` (24 sub-tests)
+- `tests/contracts/scout-live-rate-limit-storage-adapter-skeleton-contract.test.cjs` (24 sub-tests)
+- `tests/contracts/scout-live-auth-rate-limit-dependency-adapter-endpoint-wiring-contract.test.cjs` (20 sub-tests)
+- `tests/contracts/scout-live-auth-rate-limit-dependency-adapter-skeleton-contract.test.cjs` (21 sub-tests)
+- `tests/contracts/scout-live-endpoint-error-readiness-audit-contract.test.cjs` (16 sub-tests)
+- `tests/contracts/scout-live-endpoint-error-taxonomy-contract.test.cjs` (24 sub-tests)
+- `tests/contracts/scout-live-auth-rate-limit-readiness-audit-contract.test.cjs` (16 sub-tests)
+- `tests/contracts/scout-live-auth-rate-limit-endpoint-observability-contract.test.cjs` (24 sub-tests)
+- `tests/contracts/scout-live-auth-rate-limit-endpoint-di-contract.test.cjs` (20 sub-tests)
+- `tests/contracts/scout-live-auth-rate-limit-endpoint-safe-fail-wiring-contract.test.cjs` (20 sub-tests)
+- `tests/contracts/scout-live-auth-rate-limit-boundary-reconcile-contract.test.cjs` (13 sub-tests)
+- `tests/contracts/scout-live-auth-rate-limit-runtime-boundary-contract.test.cjs` (28 sub-tests)
+- `tests/contracts/scout-live-provider-auth-rate-limit-boundary.test.cjs`
+- `tests/contracts/scout-live-provider-production-readiness-gates-audit-contract.test.cjs`
+- `tests/contracts/scout-live-provider-staging-rollout-contract.test.cjs`
+- `tests/contracts/scout-real-provider-mock-executor-integration-contract.test.cjs`
+- `tests/contracts/scout-real-provider-disabled-endpoint-contract.test.cjs`
+- `tests/contracts/scout-real-provider-adapter-interface-contract.test.cjs`
+- `tests/contracts/scout-live-auth-rate-limit-adapter-wiring-readiness-audit-contract.test.cjs` (this slice)
+
+The audit contract test (this slice) verifies the **content** of this
+document against the actual repository state and the locked default
+behavior.
+
+## 14. Explicit verdict
+
+- Ready for runtime implementation gate contract: **Yes**
+- Ready for real Firebase Admin SDK implementation: **No**
+- Ready for real KV / DO / D1 rate-limit storage implementation: **No**
+- Ready for real external auth service call: **No**
+- Ready for real external observability backend: **No**
+- Ready for `staging_live` rollout: **No**
+- Ready for `production_live` rollout: **No**
+- Ready for real provider API call: **No**
+
+The mock-disabled wiring is consistent, fail-closed, and free of
+external runtime access. The next prerequisite is the runtime
+implementation gate contract, not a real implementation PR.

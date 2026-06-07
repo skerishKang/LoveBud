@@ -339,3 +339,38 @@ adapter mock path (v20260607-1, wiring slice):
 - Real Firebase Admin SDK / real token verification / external auth
   service / `staging_live` / `production_live` / provider API all
   remain blocked
+
+## Adapter Wiring Readiness Audit Status
+
+The live auth/rate-limit adapter wiring has been audited as a single
+coherent mock-disabled stage (v20260607-1, audit-only slice):
+
+- A new readiness audit document has been added:
+  `docs/product/lovebud-scout-live-auth-rate-limit-adapter-wiring-readiness-audit.md`
+- The audit inventories and confirms:
+  - auth verifier adapter skeleton (PR #2302)
+  - auth verifier dependency wiring (PR #2304)
+  - rate-limit storage adapter skeleton (PR #2299)
+  - storage adapter dependency wiring (PR #2301)
+  - dependency adapter endpoint wiring (PR #2297)
+  - endpoint error taxonomy, observability, DI, safe-fail wiring
+  - boundary reconcile and runtime boundary
+- `mockDisabled:true` fail-closed default is confirmed consistent across
+  verifier, storage, and dependency adapter
+- Sensitive data (raw token / authorization / firebaseToken / API key
+  / prompt / excerpt / sourceUrl / raw request body) is confirmed not
+  propagated to verifier / storage / limiter / observability / response
+  payloads
+- No real Firebase Admin SDK, no real Firebase token verification, no
+  real KV / Durable Object / D1, no real provider API, no external
+  observability backend
+- Endpoint default `providerMode: "stub"` preserved
+- Explicit `providerMode: "stub"` path preserved
+- Frontend source selector default `local_stub` preserved
+- Frontend endpoint client default disabled preserved
+- This audit slice is docs+tests only; no runtime code change
+- Recommended next slice: `[TECH] Add Scout live auth/rate-limit
+  runtime adapter implementation gate contract`
+- Verdict: ready for runtime implementation gate contract: **Yes**;
+  ready for real Firebase / KV / staging / production / provider API:
+  **No** (all blocked)
