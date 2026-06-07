@@ -1,5 +1,15 @@
 # LoveBud Scout Live Provider Endpoint Error Taxonomy Contract
 
+## Endpoint Live Error Readiness Audit (slice update)
+
+- endpoint error readiness audit added (`docs/product/lovebud-scout-live-endpoint-error-readiness-audit.md`)
+- error taxonomy, safe-fail wiring, DI, and observability are aligned
+- runtime Firebase / KV / provider API work remains blocked
+- runtime dependency adapter skeleton (mock-disabled, no external calls) is the next recommended slice
+- endpoint default remains stub
+- UI default remains `local_stub`
+- `tests/contracts/scout-live-endpoint-error-readiness-audit-contract.test.cjs` — focused error readiness audit
+
 ## Baseline
 
 - **current main HEAD**: `cdcaf6d2`
