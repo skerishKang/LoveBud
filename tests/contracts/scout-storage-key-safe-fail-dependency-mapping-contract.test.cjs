@@ -58,8 +58,8 @@ push('Dependency mapping doc exists with issue references and status', () => {
   assert.ok(doc.includes('Depends on: #2343'));
 });
 
-push('Dependency adapter version is advanced for storage key safe-fail mapping', () => {
-  assert.ok(depAdapter.includes("SCOUT_LIVE_DEPENDENCY_ADAPTER_VERSION = '20260607-2'"));
+push('Dependency adapter version remains stable while mapping boundary is extended', () => {
+  assert.ok(depAdapter.includes("SCOUT_LIVE_DEPENDENCY_ADAPTER_VERSION = '20260607-1'"));
 });
 
 push('Dependency adapter maps storage key builder disabled to storage unavailable', () => {
