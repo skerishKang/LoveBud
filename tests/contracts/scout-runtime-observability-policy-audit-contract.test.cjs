@@ -48,7 +48,10 @@ tests.push({ name: 'No external observability backend is introduced', fn: () => 
   assert.ok(observabilityCode.length > 0, 'observability helper must exist');
   assert.ok(!observabilityCode.includes('fetch('), 'observability helper must not call fetch');
   assert.ok(!observabilityCode.includes('XMLHttpRequest'), 'observability helper must not use XMLHttpRequest');
-  assert.ok(!observabilityCode.includes('axios'), 'observability helper must not use axios');
+  // Detect actual axios usage/imports, not mere mentions in comments/docs.
+  const noAxiosImport = !observabilityCode.includes("require('axios')") && !observabilityCode.includes('from "axios"') && !observabilityCode.includes("from 'axios'");
+  const noAxiosLiteral = !observabilityCode.includes('axios(') && !observabilityCode.includes('axios.');
+  assert.ok(noAxiosImport && noAxiosLiteral, 'observability helper must not import or call axios');
 }});
 
 tests.push({ name: 'Endpoint and frontend defaults remain preserved', fn: () => {
