@@ -498,3 +498,85 @@ runtime code change, no Firebase Admin SDK import):
   verification in this PR: **No**; `staging_live` / `production_live`
   / provider API / external auth service / endpoint default live
   in this PR: **No** (all blocked)
+
+## Rate-limit Storage Implementation Plan Status
+
+The runtime rate-limit storage implementation plan/audit has been
+added as a docs+tests-only slice (v20260607-1, plan/audit slice, no
+runtime code change, no KV / Durable Object / D1 implementation):
+
+- A new plan document has been added:
+  `docs/product/lovebud-scout-runtime-rate-limit-storage-implementation-plan.md`
+- The plan satisfies step 2 of the runtime adapter implementation
+  gate contract's required next implementation order
+- The plan inventories the current mock-disabled storage adapter,
+  storage dependency wiring, auth verifier plan, endpoint live
+  branch wiring, error taxonomy, observability, cost/quota/abuse
+  policy, rollback policy, and privacy/safety payload policy
+- The plan defines the future implementation surface for KV /
+  Durable Object / D1 storage **without** implementing it
+- The plan defines:
+  - future target module
+    (`functions/api/scout/live-rate-limit-storage-adapter.js`)
+  - future target factory
+    (`createScoutLiveRateLimitStorageAdapter`)
+  - future disabled-by-default `kv` / `durable_object` / `d1` modes
+  - future env-gated config names (example:
+    `SCOUT_RUNTIME_RATE_LIMIT_BACKEND`,
+    `SCOUT_RUNTIME_RATE_LIMIT_KV_BINDING`,
+    `SCOUT_RUNTIME_RATE_LIMIT_DO_BINDING`,
+    `SCOUT_RUNTIME_RATE_LIMIT_D1_BINDING`,
+    `SCOUT_RUNTIME_RATE_LIMIT_QUOTA_BUCKET`,
+    `SCOUT_RUNTIME_RATE_LIMIT_WINDOW_SECONDS`,
+    `SCOUT_RUNTIME_RATE_LIMIT_LIMIT_PER_WINDOW`)
+  - storage backend boundary (no storage connection at import time,
+    no quota read/write at import time, no binding/secret exposure,
+    no raw storage key logs)
+  - storage key policy (hash-based userKeyHash / ipHash /
+    sessionKeyHash, endpointPath / providerMode / quotaBucket /
+    windowKey / limitName, no raw UID/email/IP/token/authorization/
+    API key, stable key format required)
+  - storage payload policy (allowed fields, prohibited fields, no
+    raw token, no authorization header, no firebaseToken, no API
+    key, no prompt/excerpt/sourceUrl/raw request body, no raw
+    UID/email/IP/provider response)
+  - future storage input / output contract (checkQuota /
+    consumeQuota / releaseQuota, decisionId, retryAfterSeconds,
+    remaining quota if safe, no raw storage key, no raw user
+    identifier)
+  - quota lifecycle policy (pre-consumption validation, reservation
+    before provider call, consume after provider success, release
+    on provider failure, failure accounting, idempotency guard)
+  - error mapping (RATE_LIMITED / RATE_LIMIT_UNAVAILABLE /
+    RATE_LIMIT_STORAGE_UNAVAILABLE / CONFIG_MISSING /
+    RATE_LIMIT_PAYLOAD_PROHIBITED / RATE_LIMIT_NOT_IMPLEMENTED)
+  - required future tests (side-effect-free import, default
+    mock-disabled, KV/DO/D1 modes disabled unless env opt-in, no
+    raw token/API key, no raw user identifiers, storage
+    unavailable safe-fail, quota exceeded maps to RATE_LIMITED,
+    consume/release idempotency, no provider API call, no
+    endpoint default live)
+  - required future docs (gate status update, cost/quota/abuse
+    monitoring contract, staging rollout plan, production
+    readiness gates, incident/rotation runbook, separate
+    rollback / observability policy docs)
+- All previous defaults are preserved:
+  - endpoint default `providerMode: "stub"`
+  - frontend source selector default `local_stub`
+  - endpoint client default disabled
+  - source selector `endpoint_client` default disabled
+  - `verifierAdapter` / `storageAdapter` default mock-disabled
+- The 4 runtime files remain locked by md5 normalized for LF/CRLF
+  (cross-platform stable): dep-adapter `796a2aef…`, verifier
+  `5a0a8534…`, storage `a4419b1e…`, suggest `deb6a6d7…`
+- This plan slice is docs+tests only; no runtime code change, no
+  KV / Durable Object / D1 implementation, no runtime quota
+  persistence
+- Recommended next slice: `[PRODUCT] Add Scout rollback /
+  kill-switch policy audit` (gate evidence 2), or `[PRODUCT] Add
+  Scout runtime observability policy audit` (gate evidence 3)
+- Verdict: rate-limit storage implementation plan: **Yes**; real
+  KV / Durable Object / D1 in this PR: **No**; runtime quota
+  persistence in this PR: **No**; `staging_live` / `production_live`
+  / provider API / external auth service / endpoint default live
+  in this PR: **No** (all blocked)
