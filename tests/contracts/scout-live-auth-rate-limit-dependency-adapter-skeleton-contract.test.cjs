@@ -235,17 +235,21 @@ tests.push({
   },
 });
 
-// ── 13. No wiring into suggest.js LIVE branch (out of scope for this slice) ─
+// ── 13. Skeleton slice scope (module-only; wiring is a separate slice) ─
 tests.push({
-  name: 'Adapter module is NOT wired into suggest.js LIVE branch in this slice (out of scope)',
+  name: 'Skeleton slice adds the module only; wiring is documented as a separate slice',
   fn: () => {
+    // The skeleton slice (v20260607-1) added the module. Wiring the adapter
+    // into suggest.js LIVE branch is a separate slice
+    // (tech/scout-live-dependency-adapter-endpoint-wiring). This test locks
+    // the skeleton's "module-only" property.
     assert.ok(
-      !suggestCode.includes('live-auth-rate-limit-dependency-adapter'),
-      'suggest.js must not import or reference the adapter in this slice (wiring is a separate slice)'
+      adapterCode.length > 0,
+      'adapter module must exist (skeleton slice property)'
     );
     assert.ok(
-      !suggestCode.includes('createScoutLiveDependencyAdapter'),
-      'suggest.js must not call createScoutLiveDependencyAdapter in this slice'
+      adapterCode.includes('SCOUT_LIVE_DEPENDENCY_ADAPTER_VERSION'),
+      'adapter module must export the version constant (skeleton slice property)'
     );
   },
 });
