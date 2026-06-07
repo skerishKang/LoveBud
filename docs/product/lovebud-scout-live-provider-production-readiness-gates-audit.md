@@ -406,3 +406,43 @@ A [dependency adapter skeleton](lovebud-scout-live-auth-rate-limit-dependency-ad
 - Endpoint default remains `stub` — deterministic, no live provider call
 - Frontend default remains `local_stub` — no network, no endpoint client
 - No Firebase Admin SDK / no KV / Durable Object / D1 / no provider API call
+
+## Runtime Adapter Implementation Gate Status
+
+The live auth/rate-limit runtime adapter implementation gate contract
+has been added as a docs+tests-only slice (v20260607-1, gate contract
+slice, no runtime code change):
+
+- A new gate contract document has been added:
+  `docs/product/lovebud-scout-live-auth-rate-limit-runtime-adapter-implementation-gate-contract.md`
+- The gate locks 8 surfaces as forbidden until the gate is satisfied:
+  - real Firebase Admin SDK
+  - real external auth service
+  - real KV / Durable Object / D1 storage
+  - real external observability backend
+  - real provider API call
+  - `staging_live` opt-in
+  - `production_live` opt-in
+  - parallel `live-provider-auth-rate-limit-boundary.js` adoption
+- The gate requires 11 pre-implementation evidence items to exist on
+  `main` before any of the 8 surfaces can be unlocked
+- The gate requires 5 ordered implementation steps
+  (plan verifier → plan storage → one disabled-by-default impl →
+  staging smoke → staging opt-in)
+- All previous defaults are preserved:
+  - endpoint default `providerMode: "stub"`
+  - frontend source selector default `local_stub`
+  - endpoint client default disabled
+  - source selector `endpoint_client` default disabled
+  - `verifierAdapter` / `storageAdapter` default mock-disabled
+- The 4 runtime files remain locked by md5 normalized for LF/CRLF
+  (cross-platform stable): dep-adapter `796a2aef…`, verifier
+  `5a0a8534…`, storage `a4419b1e…`, suggest `deb6a6d7…`
+- This gate slice is docs+tests only; no runtime code change
+- Recommended next slice: `[PRODUCT] Plan Scout runtime Firebase
+  auth verifier implementation` (or `[PRODUCT] Plan Scout runtime
+  rate-limit storage implementation`)
+- Verdict: gate contract locked: **Yes**; all 8 surfaces
+  (Firebase Admin SDK / external auth / KV / DO / D1 / external
+  observability / provider API / `staging_live` / `production_live`
+  / parallel boundary): **No** (all blocked)
