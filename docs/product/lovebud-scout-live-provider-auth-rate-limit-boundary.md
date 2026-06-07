@@ -460,12 +460,29 @@ A consolidated [production readiness gates audit](lovebud-scout-live-provider-pr
 
 ## Dependency Adapter Skeleton Status
 
-A consolidated [dependency adapter skeleton](lovebud-scout-live-auth-rate-limit-dependency-adapter-skeleton.md) has been added (v20260607-1). It provides:
+A [dependency adapter skeleton](lovebud-scout-live-auth-rate-limit-dependency-adapter-skeleton.md) has been added (v20260607-1). It provides:
 - A mock-disabled factory (`createScoutLiveDependencyAdapter`) returning default `verifyToken` / `checkRateLimit` / `requestId`
 - Default `mockDisabled:true` so the endpoint cannot accidentally allow real traffic in skeleton mode
 - No real Firebase Admin SDK, no real KV/DO/D1, no provider SDK, no fetch
-- Not wired into `suggest.js` LIVE branch in this slice (wiring is a separate slice)
+- **Now wired into `suggest.js` LIVE branch** (wiring slice, live-branch-only, mock-disabled)
 - Endpoint default `providerMode:"stub"` and frontend default `local_stub` preserved
+- Real `verifyToken` / `checkRateLimit` / `requestId` implementations, staging_live, and production_live all remain blocked
+
+See the [Dependency Adapter Endpoint Wiring Status](#dependency-adapter-endpoint-wiring-status) section below for details.
+
+## Dependency Adapter Endpoint Wiring Status
+
+The dependency adapter skeleton is now wired into `functions/api/scout/suggest.js` LIVE branch (v20260607-1, wiring slice):
+- `suggest.js` imports `createScoutLiveDependencyAdapter` from `live-auth-rate-limit-dependency-adapter.js`
+- Wiring is **live-branch-only** (only inside `providerConfig.providerMode === "live"`)
+- Default stub path and explicit stub path do NOT use the adapter
+- Live mode uses the mock-disabled adapter by default (fail-closed)
+- Tests can inject a real adapter via `context.liveAdapter` or `context.liveDependencies`
+- Legacy direct DI (`context.verifyToken` / `context.checkRateLimit`) still works alongside the new injection
+- When no real limiter is configured, the boundary's "rate-limit unavailable" safe-fail path fires (RATE_LIMIT_UNAVAILABLE / 503), preserving the existing taxonomy
+- Observer safe-swallow remains
+- Endpoint default `providerMode:"stub"`, frontend default `local_stub`, and endpoint client default disabled are all unchanged
+- Real Firebase Admin SDK, real KV/DO/D1, provider SDK, and fetch are still NOT used
 - Real `verifyToken` / `checkRateLimit` / `requestId` implementations, staging_live, and production_live all remain blocked
 
 ## Non-goals (this document)

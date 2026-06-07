@@ -79,6 +79,9 @@ import {
   buildScoutLiveRateLimitEvent,
   safeInvokeScoutLiveObserver,
 } from "./live-auth-rate-limit-observability.js";
+import {
+  createScoutLiveDependencyAdapter,
+} from "./live-auth-rate-limit-dependency-adapter.js";
 
 const SCOUT_SUGGEST_PROVIDER_MODES = {
   STUB: 'stub',
@@ -303,14 +306,38 @@ export async function onRequestPost(context) {
   // ─── Live provider configuration boundary (contract-defined, placeholder) ─────
   const providerConfig = resolveScoutSuggestProviderMode(env);
   if (providerConfig.providerMode === SCOUT_SUGGEST_PROVIDER_MODES.LIVE) {
+    // ── Dependency adapter seam (mock-disabled by default) ──
+    // Tests can inject a full adapter via { context: { liveAdapter } } or
+    // { context: { liveDependencies } }. When neither is provided, the
+    // canonical mock-disabled skeleton is used (fail-closed) so the
+    // endpoint cannot accidentally allow real traffic in skeleton mode.
+    // No real Firebase Admin SDK / no real persistent rate-limit storage /
+    // no provider SDK / no fetch is invoked by the skeleton.
+    const liveAdapter =
+      context?.liveAdapter ||
+      context?.liveDependencies ||
+      createScoutLiveDependencyAdapter({ mockDisabled: true });
+
     // ── DI seam: injected mock verifier/limiter/observer (test-only) ──
     // shape: { verifyToken?, checkRateLimit?, observer?, requestId }
-    // Production: all optional deps are undefined; boundary safe-fails and
-    // observer call is a no-op.
-    // Tests: pass mocks via { context: { verifyToken, checkRateLimit, observer } }.
+    // Production: verifyToken comes from the mock-disabled adapter (deny);
+    // checkRateLimit is intentionally left undefined in skeleton mode so
+    // the boundary's "rate-limit unavailable" safe-fail path fires
+    // (preserves the RATE_LIMIT_UNAVAILABLE / 503 taxonomy). Observer
+    // call is a no-op.
+    // Tests: pass mocks via any of:
+    //   { context: { liveAdapter } }        (full adapter with verifyToken/checkRateLimit/requestId)
+    //   { context: { liveDependencies } }   (alias of liveAdapter)
+    //   { context: { verifyToken, checkRateLimit, observer } }  (legacy direct DI)
+    const hasRealLimiter = typeof context?.checkRateLimit === 'function';
+    const hasRealAdapter = !!(context?.liveAdapter || context?.liveDependencies);
     const liveDependencies = {
-      verifyToken: context?.verifyToken,
-      checkRateLimit: context?.checkRateLimit,
+      verifyToken: typeof context?.verifyToken === 'function'
+        ? context.verifyToken
+        : liveAdapter.verifyToken,
+      checkRateLimit: hasRealLimiter
+        ? context.checkRateLimit
+        : (hasRealAdapter ? liveAdapter.checkRateLimit : undefined),
       observer: context?.observer,
       requestId,
     };
