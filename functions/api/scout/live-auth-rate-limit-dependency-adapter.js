@@ -247,7 +247,9 @@ function mapStorageResultToDependencyResponse(storageResult) {
     code === 'STORAGE_KV_DISABLED' ||
     code === 'STORAGE_DURABLE_OBJECT_DISABLED' ||
     code === 'STORAGE_D1_DISABLED' ||
-    code === 'STORAGE_CONFIG_MISSING'
+    code === 'STORAGE_CONFIG_MISSING' ||
+    code === 'STORAGE_KEY_BUILDER_DISABLED' ||
+    code === 'STORAGE_KEY_PAYLOAD_PROHIBITED'
   ) {
     return {
       allowed: false,
