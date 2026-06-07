@@ -309,13 +309,24 @@ function mapVerifierResultToDependencyResponse(verifierResult) {
       userKeyHash: null,
     };
   }
-  if (code === 'VERIFIER_MOCK_DISABLED' || code === 'VERIFIER_NOT_IMPLEMENTED') {
+  if (code === 'VERIFIER_FIREBASE_DISABLED' || code === 'VERIFIER_MOCK_DISABLED' || code === 'VERIFIER_NOT_IMPLEMENTED') {
     return {
       allowed: false,
       code: SCOUT_LIVE_DEPENDENCY_ADAPTER_CODES.VERIFY_NOT_IMPLEMENTED,
       reason: typeof res.reason === 'string' && res.reason.length > 0
         ? res.reason
         : 'auth verifier adapter is not implemented',
+      userKey: null,
+      userKeyHash: null,
+    };
+  }
+  if (code === 'VERIFIER_CONFIG_MISSING') {
+    return {
+      allowed: false,
+      code: SCOUT_LIVE_DEPENDENCY_ADAPTER_CODES.VERIFY_UNAVAILABLE,
+      reason: typeof res.reason === 'string' && res.reason.length > 0
+        ? res.reason
+        : 'auth verifier configuration is missing',
       userKey: null,
       userKeyHash: null,
     };

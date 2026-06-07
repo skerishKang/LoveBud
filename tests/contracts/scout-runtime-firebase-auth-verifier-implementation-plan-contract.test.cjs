@@ -75,7 +75,7 @@ const RELATED_DOCS = [
 // been intentionally changed, the plan doc must be updated and these
 // hashes refreshed.
 const LOCKED_HASHES = {
-  dep: '796a2aefe46a8629764950eab8e3a42e',
+  dep: 'd20edde7af022100fcbe69763a04c589',
   verifier: '81f80368fe80bb8a770b251efc085509',
   storage: 'a4419b1e8fc286219ae75bf88271416c',
   suggest: 'deb6a6d7b03d9db48ad215607cefcd0d',
