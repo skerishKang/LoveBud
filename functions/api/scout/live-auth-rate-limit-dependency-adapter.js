@@ -1,63 +1,16 @@
 /**
  * Scout Live Auth / Rate-Limit Dependency Adapter Skeleton
- * v20260607-1
+ * v20260607-2
  *
  * Mock-disabled dependency adapter skeleton for the Scout live provider path.
  * Provides a factory that returns default implementations of `verifyToken`,
  * `checkRateLimit`, and `requestId` for the DI seam established in
- * `functions/api/scout/suggest.js` LIVE branch (shape:
- * `liveDependencies = { verifyToken, checkRateLimit, observer, requestId }`).
+ * `functions/api/scout/suggest.js` LIVE branch.
  *
- * By default the adapter is **mock-disabled** and returns safe "not
- * implemented" responses so the endpoint can never accidentally allow real
- * traffic while the skeleton is in place. Real implementations of
- * `verifyToken` (Firebase Admin SDK or equivalent) and `checkRateLimit`
- * (KV / Durable Object / D1 or equivalent) will be added in future slices.
- *
- * `verifyToken` routes through an internal auth verifier adapter seam. The
- * default verifier dependency is `createScoutLiveAuthVerifierAdapter`
- * from `live-auth-verifier-adapter.js` (mock-disabled by default). The
- * verifier's `verifyToken` is called with an allowlisted payload only
- * (no raw token / authorization header / API key / firebaseToken / prompt
- * / excerpt / sourceUrl). Verifier results are mapped back to
- * dependency-adapter safe-fail shapes (`VERIFY_NOT_IMPLEMENTED`,
- * `VERIFY_PAYLOAD_PROHIBITED`, `VERIFY_UNAVAILABLE`). The verifier adapter
- * itself is mock-disabled and does NOT access any real Firebase Admin SDK,
- * `getAuth`, `verifyIdToken`, external auth service, or network call.
- *
- * `checkRateLimit` routes through an internal storage adapter seam. The
- * default storage dependency is `createScoutLiveRateLimitStorageAdapter`
- * from `live-rate-limit-storage-adapter.js` (mock-disabled by default). The
- * storage adapter's `checkQuota` is called with an allowlisted payload
- * only (no raw token / API key / prompt / excerpt / sourceUrl). Storage
- * adapter results are mapped back to dependency-adapter safe-fail shapes
- * (RATE_LIMIT_NOT_IMPLEMENTED or RATE_LIMIT_PAYLOAD_PROHIBITED). The
- * storage adapter itself is mock-disabled and does NOT access any real
- * KV / Durable Object / D1 / database.
- *
- * Provides:
- * - SCOUT_LIVE_DEPENDENCY_ADAPTER_MODES: status / mode constants
- * - SCOUT_LIVE_DEPENDENCY_ADAPTER_CODES: response code constants
- * - SCOUT_LIVE_DEPENDENCY_ADAPTER_VERSION: skeleton version
- * - createScoutLiveDependencyAdapter: returns a dependency adapter object
- *   with `verifyToken`, `checkRateLimit`, `requestId`, and metadata
- *   (`isMockDisabled`, `mode`, `version`, `storageAdapterKind`,
- *   `verifierAdapterKind`).
- *
- * This module is a **mock-disabled skeleton + factory**. No real Firebase
- * Admin SDK import, no real token verification, no real persistent storage
- * call, no fetch, no provider API call.
- *
- * Non-goals:
- * - No real LLM provider call
- * - No provider SDK import
- * - No Firebase Admin SDK import
- * - No Firebase token verification
- * - No KV / Durable Object / D1 import
- * - No persistent rate-limit storage call
- * - No external URL fetch
- * - No auto-save or persistence
- * - No wiring into suggest.js LIVE branch (separate slice)
+ * This module is a mock-disabled skeleton. It maps storage adapter safe-fail
+ * results, including disabled storage key builder results, into
+ * dependency-adapter safe-fail shapes. It does not access real Firebase Admin,
+ * KV, Durable Object, D1, fetch, provider SDKs, or provider APIs.
  */
 
 'use strict';
@@ -67,7 +20,7 @@ import { createScoutLiveAuthVerifierAdapter } from './live-auth-verifier-adapter
 
 // ─── Version ────────────────────────────────────────────────────────────────
 
-export const SCOUT_LIVE_DEPENDENCY_ADAPTER_VERSION = '20260607-1';
+export const SCOUT_LIVE_DEPENDENCY_ADAPTER_VERSION = '20260607-2';
 
 // ─── Mode Constants ─────────────────────────────────────────────────────────
 
@@ -93,12 +46,8 @@ const DEFAULT_OPTIONS = Object.freeze({
   mockDisabled: true,
 });
 
-// ─── Storage Payload Allowlist (mirror of storage adapter) ──────────────────
+// ─── Payload Allowlists ─────────────────────────────────────────────────────
 
-// The dependency adapter's checkRateLimit builds a storage payload using
-// ONLY these fields. No raw token / API key / prompt / excerpt / sourceUrl
-// ever enters the storage payload. This allowlist is the single source
-// of truth for safe payload fields at the dependency-adapter seam.
 const STORAGE_PAYLOAD_ALLOWED_FIELDS = Object.freeze([
   'requestId',
   'userKeyHash',
@@ -111,25 +60,6 @@ const STORAGE_PAYLOAD_ALLOWED_FIELDS = Object.freeze([
   'nowMs',
 ]);
 
-function buildSafeStoragePayload(input) {
-  const src = (input && typeof input === 'object') ? input : {};
-  const out = {};
-  for (const key of STORAGE_PAYLOAD_ALLOWED_FIELDS) {
-    if (Object.prototype.hasOwnProperty.call(src, key) && src[key] !== undefined) {
-      out[key] = src[key];
-    }
-  }
-  return out;
-}
-
-// ─── Verifier Payload Allowlist (mirror of verifier adapter) ───────────────
-
-// The dependency adapter's verifyToken builds a verifier payload using
-// ONLY these future-safe derived fields. No raw token / authorization
-// header / API key / firebaseToken / session cookie / password / prompt
-// / excerpt / sourceUrl / raw request body ever enters the verifier
-// payload. This allowlist is the single source of truth for safe payload
-// fields at the dependency-adapter to verifier-adapter seam.
 const AUTH_VERIFIER_PAYLOAD_ALLOWED_FIELDS = Object.freeze([
   'requestId',
   'tokenHash',
@@ -139,10 +69,10 @@ const AUTH_VERIFIER_PAYLOAD_ALLOWED_FIELDS = Object.freeze([
   'nowMs',
 ]);
 
-function buildSafeVerifierPayload(input) {
+function buildAllowlistedPayload(input, allowedFields) {
   const src = (input && typeof input === 'object') ? input : {};
   const out = {};
-  for (const key of AUTH_VERIFIER_PAYLOAD_ALLOWED_FIELDS) {
+  for (const key of allowedFields) {
     if (Object.prototype.hasOwnProperty.call(src, key) && src[key] !== undefined) {
       out[key] = src[key];
     }
@@ -150,14 +80,24 @@ function buildSafeVerifierPayload(input) {
   return out;
 }
 
+function buildSafeStoragePayload(input) {
+  return buildAllowlistedPayload(input, STORAGE_PAYLOAD_ALLOWED_FIELDS);
+}
+
+function buildSafeVerifierPayload(input) {
+  return buildAllowlistedPayload(input, AUTH_VERIFIER_PAYLOAD_ALLOWED_FIELDS);
+}
+
 // ─── Internal Helpers ───────────────────────────────────────────────────────
 
 function makeMockDisabledRequestId() {
-  // Mock-disabled request id: clearly fake, never collides with real
-  // upstream / W3C trace ids, contains only safe characters.
   const ts = Date.now().toString(36);
   const rand = Math.random().toString(36).slice(2, 10);
   return 'req_mock_disabled_' + ts + '_' + rand;
+}
+
+function buildNotImplementedRequestId() {
+  return 'req_not_implemented_' + Date.now().toString(36);
 }
 
 function buildMockDisabledVerifyResponse() {
@@ -196,16 +136,22 @@ function buildNotImplementedRateLimitResponse() {
   };
 }
 
-function buildNotImplementedRequestId() {
-  return 'req_not_implemented_' + Date.now().toString(36);
-}
-
 // ─── Storage-to-Dependency Response Mapping ─────────────────────────────────
+
+function buildRateLimitResponse(code, reason, retryAfterSeconds) {
+  return {
+    allowed: false,
+    code,
+    reason,
+    retryAfterSeconds: retryAfterSeconds == null ? null : retryAfterSeconds,
+  };
+}
 
 /**
  * Map a storage adapter result to a dependency-adapter safe-fail shape.
- * Storage result codes are translated to dependency-adapter codes so the
- * caller (boundary / endpoint) can reason about the decision consistently.
+ * Storage key builder safe-fail codes are intentionally collapsed to the
+ * generic RATE_LIMIT_STORAGE_UNAVAILABLE dependency boundary so endpoint
+ * responses do not expose raw key-builder fields or storage internals.
  *
  * @param {Object} storageResult - result from storageAdapter.checkQuota
  * @returns {Object} dependency-adapter safe-fail response
@@ -213,71 +159,63 @@ function buildNotImplementedRequestId() {
 function mapStorageResultToDependencyResponse(storageResult) {
   const res = (storageResult && typeof storageResult === 'object') ? storageResult : {};
   const code = res.code;
+
   if (code === 'STORAGE_PAYLOAD_PROHIBITED') {
-    return {
-      allowed: false,
-      code: SCOUT_LIVE_DEPENDENCY_ADAPTER_CODES.RATE_LIMIT_PAYLOAD_PROHIBITED,
-      reason: typeof res.reason === 'string' && res.reason.length > 0
+    return buildRateLimitResponse(
+      SCOUT_LIVE_DEPENDENCY_ADAPTER_CODES.RATE_LIMIT_PAYLOAD_PROHIBITED,
+      typeof res.reason === 'string' && res.reason.length > 0
         ? res.reason
         : 'rate-limit payload contained prohibited fields',
-      retryAfterSeconds: null,
-    };
+      null,
+    );
   }
+
   if (code === 'STORAGE_NOT_IMPLEMENTED') {
-    return {
-      allowed: false,
-      code: SCOUT_LIVE_DEPENDENCY_ADAPTER_CODES.RATE_LIMIT_NOT_IMPLEMENTED,
-      reason: typeof res.reason === 'string' && res.reason.length > 0
+    return buildRateLimitResponse(
+      SCOUT_LIVE_DEPENDENCY_ADAPTER_CODES.RATE_LIMIT_NOT_IMPLEMENTED,
+      typeof res.reason === 'string' && res.reason.length > 0
         ? res.reason
         : 'rate-limit storage adapter is not implemented',
-      retryAfterSeconds: null,
-    };
+      null,
+    );
   }
+
   if (code === 'STORAGE_MOCK_DISABLED') {
-    return {
-      allowed: false,
-      code: SCOUT_LIVE_DEPENDENCY_ADAPTER_CODES.RATE_LIMIT_NOT_IMPLEMENTED,
-      reason: typeof res.reason === 'string' && res.reason.length > 0
+    return buildRateLimitResponse(
+      SCOUT_LIVE_DEPENDENCY_ADAPTER_CODES.RATE_LIMIT_NOT_IMPLEMENTED,
+      typeof res.reason === 'string' && res.reason.length > 0
         ? res.reason
         : 'rate-limit storage adapter is mock-disabled',
-      retryAfterSeconds: null,
-    };
+      null,
+    );
   }
+
   if (
     code === 'STORAGE_KV_DISABLED' ||
     code === 'STORAGE_DURABLE_OBJECT_DISABLED' ||
     code === 'STORAGE_D1_DISABLED' ||
-    code === 'STORAGE_CONFIG_MISSING'
+    code === 'STORAGE_CONFIG_MISSING' ||
+    code === 'STORAGE_KEY_BUILDER_DISABLED' ||
+    code === 'STORAGE_KEY_PAYLOAD_PROHIBITED'
   ) {
-    return {
-      allowed: false,
-      code: SCOUT_LIVE_DEPENDENCY_ADAPTER_CODES.RATE_LIMIT_STORAGE_UNAVAILABLE,
-      reason: typeof res.reason === 'string' && res.reason.length > 0
+    return buildRateLimitResponse(
+      SCOUT_LIVE_DEPENDENCY_ADAPTER_CODES.RATE_LIMIT_STORAGE_UNAVAILABLE,
+      typeof res.reason === 'string' && res.reason.length > 0
         ? res.reason
         : 'rate-limit storage scaffold is disabled or not configured',
-      retryAfterSeconds: null,
-    };
+      null,
+    );
   }
-  // Unknown / missing code → generic storage-unavailable safe-fail
-  return {
-    allowed: false,
-    code: SCOUT_LIVE_DEPENDENCY_ADAPTER_CODES.RATE_LIMIT_STORAGE_UNAVAILABLE,
-    reason: typeof res.reason === 'string' && res.reason.length > 0
+
+  return buildRateLimitResponse(
+    SCOUT_LIVE_DEPENDENCY_ADAPTER_CODES.RATE_LIMIT_STORAGE_UNAVAILABLE,
+    typeof res.reason === 'string' && res.reason.length > 0
       ? res.reason
       : 'rate-limit storage adapter returned an unknown result',
-    retryAfterSeconds: null,
-  };
+    null,
+  );
 }
 
-/**
- * Build a checkRateLimit function that routes through the given storage
- * adapter. The storage payload is built from an allowlist only (no raw
- * token / API key / prompt / excerpt / sourceUrl). Storage adapter
- * exceptions are safe-swallowed to a safe-fail response.
- *
- * @param {Object} storageAdapter - storage adapter (must have checkQuota)
- * @returns {Function} async checkRateLimit function
- */
 function buildStorageRoutedCheckRateLimit(storageAdapter) {
   return async function checkRateLimit(payload) {
     const safePayload = buildSafeStoragePayload(payload);
@@ -285,12 +223,11 @@ function buildStorageRoutedCheckRateLimit(storageAdapter) {
     try {
       storageResult = await storageAdapter.checkQuota(safePayload);
     } catch {
-      return {
-        allowed: false,
-        code: SCOUT_LIVE_DEPENDENCY_ADAPTER_CODES.RATE_LIMIT_STORAGE_UNAVAILABLE,
-        reason: 'rate-limit storage adapter threw an exception',
-        retryAfterSeconds: null,
-      };
+      return buildRateLimitResponse(
+        SCOUT_LIVE_DEPENDENCY_ADAPTER_CODES.RATE_LIMIT_STORAGE_UNAVAILABLE,
+        'rate-limit storage adapter threw an exception',
+        null,
+      );
     }
     return mapStorageResultToDependencyResponse(storageResult);
   };
@@ -298,21 +235,10 @@ function buildStorageRoutedCheckRateLimit(storageAdapter) {
 
 // ─── Verifier-to-Dependency Response Mapping ───────────────────────────────
 
-/**
- * Map a verifier adapter result to a dependency-adapter safe-fail shape.
- * Verifier result codes are translated to dependency-adapter codes so
- * the caller (boundary / endpoint) can reason about the decision
- * consistently. The userKey / userKeyHash from a (theoretical) successful
- * verification are stripped to null in this skeleton; the dependency
- * adapter does not propagate raw user identifiers from the verifier in
- * this slice.
- *
- * @param {Object} verifierResult - result from verifierAdapter.verifyToken
- * @returns {Object} dependency-adapter safe-fail response
- */
 function mapVerifierResultToDependencyResponse(verifierResult) {
   const res = (verifierResult && typeof verifierResult === 'object') ? verifierResult : {};
   const code = res.code;
+
   if (code === 'VERIFIER_PAYLOAD_PROHIBITED') {
     return {
       allowed: false,
@@ -324,6 +250,7 @@ function mapVerifierResultToDependencyResponse(verifierResult) {
       userKeyHash: null,
     };
   }
+
   if (code === 'VERIFIER_FIREBASE_DISABLED' || code === 'VERIFIER_MOCK_DISABLED' || code === 'VERIFIER_NOT_IMPLEMENTED') {
     return {
       allowed: false,
@@ -335,6 +262,7 @@ function mapVerifierResultToDependencyResponse(verifierResult) {
       userKeyHash: null,
     };
   }
+
   if (code === 'VERIFIER_CONFIG_MISSING') {
     return {
       allowed: false,
@@ -346,7 +274,7 @@ function mapVerifierResultToDependencyResponse(verifierResult) {
       userKeyHash: null,
     };
   }
-  // Unknown / missing code → generic verifier-unavailable safe-fail
+
   return {
     allowed: false,
     code: SCOUT_LIVE_DEPENDENCY_ADAPTER_CODES.VERIFY_UNAVAILABLE,
@@ -358,16 +286,6 @@ function mapVerifierResultToDependencyResponse(verifierResult) {
   };
 }
 
-/**
- * Build a verifyToken function that routes through the given verifier
- * adapter. The verifier payload is built from an allowlist only (no raw
- * token / authorization header / API key / firebaseToken / session cookie
- * / password / prompt / excerpt / sourceUrl / raw request body). Verifier
- * adapter exceptions are safe-swallowed to a safe-fail response.
- *
- * @param {Object} verifierAdapter - verifier adapter (must have verifyToken)
- * @returns {Function} async verifyToken function
- */
 function buildVerifierRoutedVerifyToken(verifierAdapter) {
   return async function verifyToken(payload) {
     const safePayload = buildSafeVerifierPayload(payload);
@@ -395,26 +313,11 @@ function buildVerifierRoutedVerifyToken(verifierAdapter) {
  * @param {Object} [options]
  * @param {boolean} [options.mockDisabled=true] when true (default), returns
  *   safe mock-disabled responses for verifyToken / checkRateLimit and a
- *   fake requestId. When false, returns "not implemented" responses from
- *   each method (real implementations will be added in future slices).
- * @param {Object} [options.storageAdapter] optional storage adapter
- *   dependency. When provided, checkRateLimit routes through
- *   `storageAdapter.checkQuota` with an allowlisted payload. When omitted,
- *   the canonical mock-disabled storage adapter
- *   (`createScoutLiveRateLimitStorageAdapter({ mockDisabled: true })`) is
- *   used as the default. The storage adapter itself is mock-disabled and
- *   does NOT access any real KV / Durable Object / D1 / database.
- * @param {Object} [options.verifierAdapter] optional auth verifier adapter
- *   dependency. When provided, verifyToken routes through
- *   `verifierAdapter.verifyToken` with an allowlisted payload. When
- *   omitted, the canonical mock-disabled verifier adapter
- *   (`createScoutLiveAuthVerifierAdapter({ mockDisabled: true })`) is
- *   used as the default. The verifier adapter itself is mock-disabled
- *   and does NOT access any real Firebase Admin SDK, `getAuth`,
- *   `verifyIdToken`, external auth service, or network call.
- * @returns {Object} adapter with verifyToken, checkRateLimit, requestId, and
- *   metadata (isMockDisabled, mode, version, storageAdapterKind,
- *   verifierAdapterKind).
+ *   fake requestId. When false, routes through injected or default mock
+ *   storage/verifier adapters.
+ * @param {Object} [options.storageAdapter] optional storage adapter dependency.
+ * @param {Object} [options.verifierAdapter] optional auth verifier adapter dependency.
+ * @returns {Object} adapter with verifyToken, checkRateLimit, requestId, and metadata.
  */
 export function createScoutLiveDependencyAdapter(options) {
   const opts = Object.assign({}, DEFAULT_OPTIONS, options || {});
