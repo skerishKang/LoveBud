@@ -300,3 +300,56 @@ of any Firebase Admin SDK integration. Status:
 - Runtime Firebase Admin SDK / real token verification /
   external auth service call: **NO** (blocked)
 - `staging_live` / `production_live` rollout: **NO** (blocked)
+
+## Auth Verifier Adapter Dependency Wiring Status
+
+The auth verifier adapter skeleton is now wired into the live dependency
+adapter mock path (v20260607-1, wiring slice):
+
+- `live-auth-rate-limit-dependency-adapter.js` imports
+  `createScoutLiveAuthVerifierAdapter` from `live-auth-verifier-adapter.js`
+- `createScoutLiveDependencyAdapter(options?)` accepts a `verifierAdapter`
+  option
+- When `verifierAdapter` is not provided, the canonical mock-disabled
+  verifier adapter
+  (`createScoutLiveAuthVerifierAdapter({ mockDisabled: true })`) is used
+  as the default
+- `verifyToken` routes through `verifierAdapter.verifyToken` with an
+  **allowlisted payload only** (no raw token / authorization header /
+  API key / firebaseToken / session cookie / password / prompt /
+  excerpt / sourceUrl / raw request body / provider API key fields)
+- Allowed verifier payload fields (single source of truth at the dep
+  adapter → verifier seam):
+  - `requestId`
+  - `tokenHash`
+  - `authorizationScheme`
+  - `providerMode`
+  - `endpointPath`
+  - `nowMs`
+- Verifier result codes are mapped to dependency-adapter safe-fail codes:
+  - `VERIFIER_MOCK_DISABLED` → `VERIFY_NOT_IMPLEMENTED`
+  - `VERIFIER_NOT_IMPLEMENTED` → `VERIFY_NOT_IMPLEMENTED`
+  - `VERIFIER_PAYLOAD_PROHIBITED` → `VERIFY_PAYLOAD_PROHIBITED`
+  - unknown / missing code → `VERIFY_UNAVAILABLE`
+- Verifier adapter throw is safe-swallowed (no throw propagation,
+  returns `VERIFY_UNAVAILABLE`)
+- The dependency adapter's `checkRateLimit` storage adapter wiring is
+  unchanged
+- The dependency adapter object remains frozen (immutable)
+- `verifyToken` result still includes `userKey: null` and
+  `userKeyHash: null` in mock-disabled / not-implemented mode (skeleton
+  does not return real user identifiers)
+- `suggest.js` is NOT modified in this slice (wiring is dependency-internal)
+- New dependency-adapter response codes:
+  - `VERIFY_PAYLOAD_PROHIBITED`
+  - `VERIFY_UNAVAILABLE`
+- No real Firebase Admin SDK, no `getAuth`, no `verifyIdToken`, no
+  `verifyAccessToken`, no `cert`, no `initializeApp` in code
+- No fetch / XMLHttpRequest / axios / external auth URL
+- No KV / Durable Object / D1 / database / env auth binding
+  (`env.AUTH`, `env.FIREBASE`, `process.env.SCOUT_*`, `import.meta.env`)
+- No provider SDK imports (OpenAI / Anthropic / Gemini / Groq / Mistral
+  / NVIDIA / Cohere / Perplexity)
+- Real Firebase Admin SDK / real token verification / external auth
+  service / `staging_live` / `production_live` / provider API all
+  remain blocked

@@ -374,21 +374,22 @@ tests.push({
   },
 });
 
-// ── 21. Dependency adapter is NOT wired to verifier yet ───────────────────
+// ── 21. Dependency adapter wiring is a separate slice (no overclaim) ──────
 tests.push({
-  name: 'Dependency adapter is not wired to the verifier adapter in this slice (separate slice)',
+  name: 'Verifier adapter skeleton does not overclaim — wiring into the dependency adapter is a separate slice',
   fn: () => {
+    // The skeleton slice (v20260607-1) only added the verifier module. Wiring
+    // the verifier adapter into the dependency adapter is a separate slice
+    // (tech/scout-auth-verifier-dependency-wiring). This test locks the
+    // skeleton's "module-only" property by asserting that the verifier
+    // module itself does not reach into the dependency adapter.
     assert.ok(
-      !depAdapterCode.includes('live-auth-verifier-adapter'),
-      'dependency adapter must not import the verifier adapter in this slice'
+      !verifierCode.includes('live-auth-rate-limit-dependency-adapter'),
+      'verifier adapter must not import the dependency adapter module'
     );
     assert.ok(
-      !depAdapterCode.includes('createScoutLiveAuthVerifierAdapter'),
-      'dependency adapter must not call createScoutLiveAuthVerifierAdapter in this slice'
-    );
-    assert.ok(
-      !depAdapterCode.includes('verifyTokenAdapter'),
-      'dependency adapter must not reference a verifyTokenAdapter seam in this slice'
+      !verifierCode.includes('createScoutLiveDependencyAdapter'),
+      'verifier adapter must not call createScoutLiveDependencyAdapter'
     );
   },
 });
