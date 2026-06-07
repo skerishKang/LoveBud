@@ -445,6 +445,18 @@ The dependency adapter skeleton is now wired into `functions/api/scout/suggest.j
 - Real Firebase Admin SDK, real KV/DO/D1, provider SDK, and fetch are still NOT used
 - Real `verifyToken` / `checkRateLimit` / `requestId` implementations, staging_live, and production_live all remain blocked
 
+## Storage Adapter Skeleton Status
+
+A [storage adapter skeleton](lovebud-scout-live-rate-limit-storage-adapter-skeleton.md) has been added (v20260607-1). It provides:
+- A mock-disabled factory (`createScoutLiveRateLimitStorageAdapter`) returning default `checkQuota` / `consumeQuota` / `releaseQuota` / `sanitizePayload`
+- Default `mockDisabled:true` so the endpoint cannot accidentally read or write real storage in skeleton mode
+- No real KV / Durable Object / D1 / database / fetch / env storage binding access
+- Storage payload sensitive data guardrails: allowlist (requestId, userKeyHash, ipHash, etc.) + denylist (token, apiKey, prompt, excerpt, sourceUrl, rawRequestBody, etc.)
+- Response codes (`STORAGE_MOCK_DISABLED`, `STORAGE_NOT_IMPLEMENTED`) mappable to `RATE_LIMIT_UNAVAILABLE` at the endpoint boundary
+- Not wired into `suggest.js` LIVE branch in this slice (wiring is a separate slice)
+- Endpoint default `providerMode:"stub"` and frontend default `local_stub` preserved
+- Real KV / Durable Object / D1 / database implementations, staging_live, and production_live all remain blocked
+
 ## Non-goals (This Audit)
 
 - ❌ No actual endpoint implementation

@@ -93,6 +93,8 @@ This skeleton sits **alongside** the canonical boundary skeleton:
   helper (v20260607-1)
 - `functions/api/scout/live-auth-rate-limit-dependency-adapter.js` —
   dependency adapter skeleton (this document, v20260607-1)
+- `functions/api/scout/live-rate-limit-storage-adapter.js` — storage adapter
+  skeleton (v20260607-1, separate slice)
 
 The dependency adapter skeleton is a **separate module** with a **clear
 single responsibility** (provide default `verifyToken` / `checkRateLimit` /
@@ -144,6 +146,8 @@ The adapter skeleton does not:
 - Staging soak
 - Kill-switch drill
 - Secret rotation drill
+- Real storage adapter implementation (KV / Durable Object / D1) — see
+  [storage adapter skeleton](lovebud-scout-live-rate-limit-storage-adapter-skeleton.md)
 
 ## 9. Recommended next slice
 
