@@ -392,3 +392,15 @@ A consolidated [production readiness gates audit](lovebud-scout-live-provider-pr
 - Endpoint default remains `stub` — deterministic, no live provider call
 - Frontend default remains `local_stub` — no network, no endpoint client
 - No Firebase Admin SDK / no KV / Durable Object / D1 / no provider API call
+
+## Storage Adapter Dependency Wiring Status
+
+The storage adapter skeleton is now wired into the live dependency adapter mock path (v20260607-1, wiring slice):
+- `createScoutLiveDependencyAdapter(options?)` accepts a `storageAdapter` option
+- When `storageAdapter` is not provided, the canonical mock-disabled storage adapter is used as the default
+- `checkRateLimit` routes through `storageAdapter.checkQuota` with an allowlisted payload only
+- Storage adapter results are mapped to dependency-adapter safe-fail codes
+- Storage adapter throw is safe-swallowed
+- `suggest.js` is NOT modified in this slice (wiring is dependency-internal)
+- No real KV / Durable Object / D1 / database / fetch / env storage binding
+- Real KV / DO / D1 / database / Firebase / provider SDK / staging / production all remain blocked
