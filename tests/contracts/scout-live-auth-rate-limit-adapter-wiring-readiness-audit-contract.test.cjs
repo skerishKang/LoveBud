@@ -57,14 +57,17 @@ const RELATED_DOCS = [
 
 // Locked hashes captured at audit time. The runtime code files must
 // match these hashes after the audit slice (this slice is docs+tests
-// only; no runtime code change). If a future audit runs and the
-// runtime modules have been intentionally changed, the audit doc must
-// be updated and these hashes refreshed.
+// only; no runtime code change). Hashes are computed on the
+// CRLF-normalized file content (raw text with \r\n replaced by \n) so
+// that the lock is stable across Windows (CRLF) and CI Linux (LF)
+// environments. If a future audit runs and the runtime modules have
+// been intentionally changed, the audit doc must be updated and these
+// hashes refreshed.
 const LOCKED_HASHES = {
-  dep: 'e9377715b59bdc28496a9a4e548ce22b',
-  verifier: '06dd18ce50916e609052f8121a4c223f',
-  storage: 'b81dc9eb82c649f0396cd862ed5a7c25',
-  suggest: 'e12e9ac11b76663ed69978b112b3a085',
+  dep: '796a2aefe46a8629764950eab8e3a42e',
+  verifier: '5a0a853429d6f94962a6b1bf6e71dc09',
+  storage: 'a4419b1e8fc286219ae75bf88271416c',
+  suggest: 'deb6a6d7b03d9db48ad215607cefcd0d',
 };
 
 function readFileSafe(filePath) {
@@ -77,8 +80,24 @@ function readFileSafe(filePath) {
 
 function hashOf(filePath) {
   try {
-    const buf = fs.readFileSync(filePath);
-    return crypto.createHash('md5').update(buf).digest('hex');
+    // Normalize line endings so the locked-hash check is stable across
+    // Windows (CRLF) and CI Linux (LF) environments. The audit's
+    // invariant is "the runtime code was not modified by this slice",
+    // which is a content-level claim independent of CRLF / LF choice.
+    const raw = fs.readFileSync(filePath, 'utf-8');
+    const normalized = raw.replace(/\r\n/g, '\n');
+    return crypto.createHash('md5').update(normalized, 'utf-8').digest('hex');
+  } catch {
+    return '';
+  }
+}
+
+function lockedHashOf(filePath) {
+  // Same normalization for the locked reference hashes.
+  try {
+    const raw = fs.readFileSync(filePath, 'utf-8');
+    const normalized = raw.replace(/\r\n/g, '\n');
+    return crypto.createHash('md5').update(normalized, 'utf-8').digest('hex');
   } catch {
     return '';
   }
