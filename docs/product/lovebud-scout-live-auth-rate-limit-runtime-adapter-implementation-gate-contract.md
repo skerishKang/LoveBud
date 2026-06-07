@@ -541,3 +541,80 @@ runtime code change, no KV / Durable Object / D1 implementation):
   persistence in this PR: **No**; `staging_live` / `production_live`
   / provider API / external auth service / endpoint default live
   in this PR: **No** (all blocked)
+
+## Rollback / Kill-switch Policy Audit Status
+
+The Scout rollback / kill-switch policy audit has been added as a
+docs+tests-only slice (v20260607-1, audit slice, no runtime code
+change, no kill-switch implementation, no Cloudflare env/secret
+change, no deployment rollback):
+
+- A new audit document has been added:
+  `docs/product/lovebud-scout-rollback-kill-switch-policy-audit.md`
+- The audit satisfies gate evidence 10 of 11 in the runtime
+  adapter implementation gate contract
+- The audit inventories the current safe baseline (endpoint
+  default `providerMode: "stub"`, explicit stub source,
+  frontend default `local_stub`, endpoint client default
+  disabled, `verifierAdapter` / `storageAdapter` default
+  mock-disabled, `staging_live` / `production_live` blocked)
+- The audit defines 8 independent kill-switch surfaces
+  (Firebase auth verifier, rate-limit storage, external
+  observability, provider API, endpoint live mode, endpoint
+  client, `staging_live`, `production_live`) and the required
+  future kill-switch controls for each
+- The audit defines:
+  - rollback baseline (endpoint default stub + explicit stub +
+    frontend local_stub + endpoint client disabled + verifier
+    and storage mock-disabled)
+  - 8-scenario incident rollback decision tree (verifier
+    outage / storage outage / provider API failure / external
+    observability outage / quota spike / cost spike / safety
+    regression / secret rotation)
+  - per-surface rollback policies (secret/config rollback,
+    quota/cost rollback, auth verifier rollback, rate-limit
+    storage rollback, provider API rollback, observability
+    rollback, staging / prod rollback)
+  - privacy / safety rules during rollback (no raw token, no
+    authorization header, no firebaseToken, no API key, no
+    prompt / excerpt / sourceUrl / raw request body, no raw
+    provider response, no raw user identifier in any log,
+    error, event, or incident note)
+  - disabled-by-default + env-gated + safe-fallback pattern
+    for every kill-switch
+  - required future tests (default mock-disabled, env opt-in
+    paths, no live default, safe-fallback to stub / local_stub
+    / disabled, no raw secrets or identifiers in any log /
+    error / event)
+  - required future docs (gate status update, incident
+    runbook, secret rotation runbook, quota incident
+    runbook, observability policy doc, separate observability
+    policy doc — gate evidence 11 of 11)
+- All previous defaults are preserved:
+  - endpoint default `providerMode: "stub"`
+  - frontend source selector default `local_stub`
+  - endpoint client default disabled
+  - source selector `endpoint_client` default disabled
+  - `verifierAdapter` / `storageAdapter` default mock-disabled
+  - `staging_live` / `production_live` blocked
+- The 4 runtime files remain locked by md5 normalized for
+  LF/CRLF (cross-platform stable): dep-adapter `796a2aef…`,
+  verifier `5a0a8534…`, storage `a4419b1e…`, suggest
+  `deb6a6d7…`
+- This audit slice is docs+tests only; no runtime code change,
+  no kill-switch implementation, no Cloudflare env/secret
+  change, no deployment rollback, no provider API call, no
+  Firebase Admin SDK import, no KV / Durable Object / D1
+  implementation
+- Recommended next slice: `[PRODUCT] Add Scout runtime
+  observability policy audit` (gate evidence 11 of 11).
+  After that is merged, all 11 gate evidence items will be
+  complete, and gate step 3 (one disabled-by-default runtime
+  adapter implementation) may begin
+- Verdict: rollback / kill-switch policy audit: **Yes**; real
+  kill-switch implementation in this PR: **No**; real Firebase
+  Admin SDK in this PR: **No**; real KV / Durable Object / D1
+  in this PR: **No**; real provider API in this PR: **No**;
+  real external observability backend in this PR: **No**;
+  `staging_live` / `production_live` opt-in in this PR: **No**
+  (all blocked)
