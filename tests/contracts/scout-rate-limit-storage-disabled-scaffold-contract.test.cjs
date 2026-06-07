@@ -1,6 +1,6 @@
 /**
  * Scout Rate-Limit Storage Disabled Runtime Scaffold Contract Tests
- * v20260607-1
+ * v20260607-2
  *
  * Locks the disabled-by-default runtime storage scaffold for Scout live
  * rate-limit storage. This is scaffold-only: no real KV, Durable Object,
@@ -209,12 +209,13 @@ tests.push({
 });
 
 tests.push({
-  name: 'Dependency adapter and suggest.js are not wired to runtime storage scaffold in this slice',
+  name: 'Dependency adapter explicitly maps disabled storage scaffold while suggest.js remains unwired',
   fn: () => {
     assert.ok(depAdapterCode.length > 0, 'dependency adapter must exist');
-    assert.ok(!depAdapterCode.includes('STORAGE_KV_DISABLED'), 'dependency adapter must not yet map KV disabled scaffold');
-    assert.ok(!depAdapterCode.includes('STORAGE_DURABLE_OBJECT_DISABLED'), 'dependency adapter must not yet map Durable Object disabled scaffold');
-    assert.ok(!depAdapterCode.includes('STORAGE_D1_DISABLED'), 'dependency adapter must not yet map D1 disabled scaffold');
+    assert.ok(depAdapterCode.includes('STORAGE_KV_DISABLED'), 'dependency adapter must explicitly map KV disabled scaffold');
+    assert.ok(depAdapterCode.includes('STORAGE_DURABLE_OBJECT_DISABLED'), 'dependency adapter must explicitly map Durable Object disabled scaffold');
+    assert.ok(depAdapterCode.includes('STORAGE_D1_DISABLED'), 'dependency adapter must explicitly map D1 disabled scaffold');
+    assert.ok(depAdapterCode.includes('STORAGE_CONFIG_MISSING'), 'dependency adapter must explicitly map storage config missing');
     assert.ok(!suggestCode.includes('live-rate-limit-storage-adapter'), 'suggest.js must not import storage adapter in this slice');
     assert.ok(!suggestCode.includes('createScoutLiveRateLimitStorageAdapter'), 'suggest.js must not call storage adapter factory in this slice');
   },
