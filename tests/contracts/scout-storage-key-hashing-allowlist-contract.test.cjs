@@ -254,8 +254,10 @@ push('No provider integration is introduced by this contract slice', () => {
 
 push('Contract test itself stays policy-only and does not import runtime modules', () => {
   const self = fs.readFileSync(__filename, 'utf-8');
-  assert.ok(!self.includes('require(\'../../functions/api/scout/live-rate-limit-storage-adapter.js\')'), 'contract test must not require ESM runtime module');
-  assert.ok(!self.includes('await import('), 'contract test must not dynamically import runtime module');
+  const runtimeRequireToken = 'require(' + '\'../../functions/api/scout/live-rate-limit-storage-adapter.js\'' + ')';
+  const dynamicImportToken = 'await ' + 'import(';
+  assert.ok(!self.includes(runtimeRequireToken), 'contract test must not require ESM runtime module');
+  assert.ok(!self.includes(dynamicImportToken), 'contract test must not dynamically import runtime module');
 });
 
 (async () => {
