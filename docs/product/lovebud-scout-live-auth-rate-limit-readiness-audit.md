@@ -11,6 +11,21 @@
 - **current open issues**: #1882 (Scout MVP), #1661 (Browse sorting / out of scope), #2234 (Scout live-provider prompt/response contract)
 - **current live provider status**: provider-specific adapter skeleton + selection boundary added behind disabled mode; no provider API call; staging_live and production_live remain blocked; endpoint live auth/rate-limit now has DI contract + sanitized observability contract in place
 
+## Endpoint Live Error Taxonomy Contract (slice update)
+
+- endpoint error taxonomy contract added (`docs/product/lovebud-scout-live-endpoint-error-taxonomy-contract.md`)
+- error categories: `request_validation`, `auth`, `rate_limit`, `config`, `provider_availability`, `provider_response`, `output_safety`, `observability`, `internal_boundary`
+- canonical error codes: `INVALID_REQUEST`, `VALIDATION_ERROR`, `AUTH_REQUIRED`, `AUTH_INVALID`, `RATE_LIMITED`, `RATE_LIMIT_UNAVAILABLE`, `CONFIG_MISSING`, `PROVIDER_UNAVAILABLE`, `PROVIDER_ERROR`, `OUTPUT_SAFETY_BLOCKED`, `OBSERVABILITY_UNAVAILABLE`, `INTERNAL_BOUNDARY_ERROR`
+- HTTP status mapping locked (400 / 401 / 429 / 503 / 422 / 502 / 500)
+- response body shape locked: `{ ok: false, providerMode: "live", error: { code, message } }`
+- `Retry-After` header policy: only on `RATE_LIMITED` with positive `retryAfterSeconds`
+- observability mapping locked: auth/rate-limit error codes → `boundaryDecision` / `authStatus` / `rateLimitStatus` / `errorCode`; `OBSERVABILITY_UNAVAILABLE` is never returned to the client (safe-swallowed)
+- sensitive data prohibition locked for all response headers / bodies / observability events
+- endpoint default remains stub
+- UI default remains `local_stub`
+- real Firebase / KV / provider API work remains blocked
+- `tests/contracts/scout-live-endpoint-error-taxonomy-contract.test.cjs` — focused taxonomy contract
+
 ## Document Status
 
 - This document is an **audit-only** deliverable. It does not change runtime behavior.
