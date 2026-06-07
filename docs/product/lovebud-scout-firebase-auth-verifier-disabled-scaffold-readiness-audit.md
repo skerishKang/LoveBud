@@ -598,3 +598,21 @@ implementation PR must reject the PR. Never batch `git checkout
 main` with `git checkout -b` in the same tool call. Never commit
 without first running `git branch --show-current` and confirming
 the result.
+
+## Disabled Firebase Verifier Dependency Wiring Status
+
+The disabled Firebase auth verifier scaffold result codes are now wired into the Scout live dependency adapter contract (v20260607-1, wiring-only slice, no runtime live behavior change, no real Firebase Admin SDK, no real token verification):
+
+- `VERIFIER_FIREBASE_DISABLED` maps to `VERIFY_NOT_IMPLEMENTED`
+- `VERIFIER_CONFIG_MISSING` maps to `VERIFY_UNAVAILABLE`
+- Existing mappings preserved: `VERIFIER_MOCK_DISABLED`, `VERIFIER_NOT_IMPLEMENTED`, `VERIFIER_PAYLOAD_PROHIBITED` → same dependency-adapter codes
+- Unknown verifier code and verifier throw still safe-fail to `VERIFY_UNAVAILABLE`
+- No automatic Firebase mode enable in dependency adapter
+- Default `createScoutLiveDependencyAdapter()` behavior remains `mockDisabled: true`
+- `suggest.js` remains unchanged
+- Endpoint default `providerMode: "stub"` preserved
+- Explicit stub path preserved
+- Frontend default `local_stub` preserved
+- Endpoint client default disabled preserved
+- `staging_live` / `production_live` remain blocked
+- No real Firebase Admin SDK / no real token verification / no fetch / no provider SDK / no env secret usage / no KV / DO / D1

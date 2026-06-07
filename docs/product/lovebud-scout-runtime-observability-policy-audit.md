@@ -728,28 +728,20 @@ behavior):
   `staging_live` / `production_live` opt-in in this PR: **No**
   (all blocked)
 
-## Firebase Auth Verifier Disabled Scaffold Readiness Audit Status
+## Disabled Firebase Verifier Dependency Wiring Status
 
-A CTO review / readiness audit (v20260607-1) has been added for the
-first disabled-by-default runtime adapter implementation scaffold
-(Scout Firebase auth verifier). The audit is docs+tests only — no
-runtime behavior change. Findings:
+The disabled Firebase auth verifier scaffold result codes are now wired into the Scout live dependency adapter contract (v20260607-1, wiring-only slice, no runtime live behavior change, no real Firebase Admin SDK, no real token verification):
 
-- The scaffold remains disabled-by-default and safe-fail only
-- The scaffold is **not** a real Firebase implementation
-- The scaffold does **not** import `firebase-admin`
-- The scaffold does **not** perform real token verification
-- The dependency adapter and `suggest.js` remain unchanged
-- The endpoint default `providerMode: "stub"` is preserved
-- The explicit stub path is preserved
-- The frontend default `local_stub` is preserved
-- The endpoint client default disabled state is preserved
-- The locked runtime files remain locked by LF/CRLF-normalized
-  md5 (verifier `81f80368…`, dep-adapter `796a2aef…`, storage
-  `a4419b1e…`, suggest `deb6a6d7…`)
-- Recommended next slice:
-  `[TECH] Wire disabled Firebase auth verifier scaffold into
-  dependency adapter contract`
-- Verdict: CTO review / readiness audit complete: **Yes**; real
-  Firebase Admin SDK: **No**; real token verification: **No**;
-  `staging_live` / `production_live` opt-in: **No** (all blocked)
+- `VERIFIER_FIREBASE_DISABLED` maps to `VERIFY_NOT_IMPLEMENTED`
+- `VERIFIER_CONFIG_MISSING` maps to `VERIFY_UNAVAILABLE`
+- Existing mappings preserved: `VERIFIER_MOCK_DISABLED`, `VERIFIER_NOT_IMPLEMENTED`, `VERIFIER_PAYLOAD_PROHIBITED` → same dependency-adapter codes
+- Unknown verifier code and verifier throw still safe-fail to `VERIFY_UNAVAILABLE`
+- No automatic Firebase mode enable in dependency adapter
+- Default `createScoutLiveDependencyAdapter()` behavior remains `mockDisabled: true`
+- `suggest.js` remains unchanged
+- Endpoint default `providerMode: "stub"` preserved
+- Explicit stub path preserved
+- Frontend default `local_stub` preserved
+- Endpoint client default disabled preserved
+- `staging_live` / `production_live` remain blocked
+- No real Firebase Admin SDK / no real token verification / no fetch / no provider SDK / no env secret usage / no KV / DO / D1
