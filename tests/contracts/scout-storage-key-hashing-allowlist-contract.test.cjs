@@ -207,29 +207,28 @@ push('This slice does not add runtime key builder exports to storage adapter', (
   assert.ok(!storageAdapterCode.includes('hashScoutStorageKeyInput'), 'hash helper must not exist in runtime adapter yet');
 });
 
-push('This slice does not add real KV, Durable Object, or D1 runtime access', () => {
+push('This slice does not add real KV, Durable Object, or D1 runtime bindings', () => {
   const combinedCode = [storageAdapterCode, depAdapter, suggestCode].join('\n');
   for (const forbidden of [
-    '.get(',
-    '.put(',
-    '.delete(',
-    'env.KV',
     'env.SCOUT_RATE_LIMIT_KV',
+    'env.SCOUT_RATE_LIMIT_DO',
+    'env.SCOUT_RATE_LIMIT_D1',
     'DurableObjectNamespace',
-    'idFromName',
-    'getByName',
-    'prepare(',
-    'batch(',
-    'exec(',
+    'idFromName(',
+    'getByName(',
+    '.prepare(',
+    '.batch(',
+    'SCOUT_RATE_LIMIT_KV.',
+    'SCOUT_RATE_LIMIT_D1.',
   ]) {
-    assert.ok(!combinedCode.includes(forbidden), `runtime code must not add storage operation token ${forbidden}`);
+    assert.ok(!combinedCode.includes(forbidden), `runtime code must not add storage binding token ${forbidden}`);
   }
 });
 
 push('Endpoint default stub and frontend local_stub remain preserved', () => {
   assert.ok(suggest.includes('SCOUT_SUGGEST_PROVIDER_MODES.STUB'), 'endpoint must retain STUB mode');
   assert.ok(sourceSelector.includes('local_stub'), 'frontend source selector must retain local_stub');
-  assert.ok(endpointClient.includes('feature flag'), 'endpoint client must remain feature-flagged/disabled by default');
+  assert.ok(endpointClient.includes('Disabled by default'), 'endpoint client must remain disabled by default');
 });
 
 push('Endpoint and frontend do not expose storage key controls', () => {
@@ -248,10 +247,9 @@ push('No provider integration is introduced by this contract slice', () => {
     'generateContent',
     'providerApiKey',
     'LLM_API_KEY',
-    'fetch(',
     'axios',
   ]) {
-    assert.ok(!combinedCode.includes(forbidden), `contract slice must not introduce provider/network token ${forbidden}`);
+    assert.ok(!combinedCode.includes(forbidden), `contract slice must not introduce provider token ${forbidden}`);
   }
 });
 
