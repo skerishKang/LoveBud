@@ -83,7 +83,7 @@ const RELATED_DOCS = [
 // hashes refreshed.
 const LOCKED_HASHES = {
   dep: '796a2aefe46a8629764950eab8e3a42e',
-  verifier: '5a0a853429d6f94962a6b1bf6e71dc09',
+  verifier: '81f80368fe80bb8a770b251efc085509',
   storage: 'a4419b1e8fc286219ae75bf88271416c',
   suggest: 'deb6a6d7b03d9db48ad215607cefcd0d',
 };
