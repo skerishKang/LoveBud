@@ -693,3 +693,79 @@ no live alerting pipeline):
   PR: **No**; real KV / Durable Object / D1 in this PR: **No**;
   real provider API in this PR: **No**; `staging_live` /
   `production_live` opt-in in this PR: **No** (all blocked)
+
+## Firebase Auth Verifier Disabled Scaffold Status
+
+The first disabled-by-default runtime adapter implementation
+scaffold for the Scout Firebase auth verifier has been added as a
+scaffold slice (v20260607-1, scaffold slice, no real Firebase
+Admin SDK, no real token verification, no endpoint default live
+behavior):
+
+- The auth verifier adapter
+  (`functions/api/scout/live-auth-verifier-adapter.js`) has been
+  extended with a future Firebase scaffold mode
+- New mode constants: `SCOUT_LIVE_AUTH_VERIFIER_ADAPTER_MODES`
+  now includes `FIREBASE_DISABLED` and `FIREBASE_CONFIG_MISSING`
+- New response code constants:
+  `SCOUT_LIVE_AUTH_VERIFIER_ADAPTER_CODES` now includes
+  `VERIFIER_FIREBASE_DISABLED` and `VERIFIER_CONFIG_MISSING`
+- The factory `createScoutLiveAuthVerifierAdapter(options)` now
+  accepts an optional `verifierMode` option that, combined with
+  `mockDisabled: false`, selects one of the Firebase scaffold
+  branches
+- The Firebase scaffold branches safe-fail with
+  `VERIFIER_FIREBASE_DISABLED` or `VERIFIER_CONFIG_MISSING`
+  without importing or calling the Firebase Admin SDK, without
+  verifying any token, and without reading any env / secret
+- The scaffold does **not** change the existing
+  `createScoutLiveAuthVerifierAdapter({})` default behavior
+  (`mockDisabled: true`, `mode: MOCK_DISABLED`,
+  `code: VERIFIER_MOCK_DISABLED`)
+- The scaffold does **not** change the existing
+  `createScoutLiveAuthVerifierAdapter({ mockDisabled: false })`
+  behavior (`mode: NOT_IMPLEMENTED`,
+  `code: VERIFIER_NOT_IMPLEMENTED`)
+- Module import remains side-effect-free: no Firebase init, no
+  token verify, no storage call, no provider call, no env read
+- No Firebase Admin SDK import (`firebase-admin`,
+  `firebase-admin/app`, `firebase-admin/auth`)
+- No `getAuth` / `verifyIdToken` / `verifyAccessToken` /
+  `cert` / `initializeApp` call
+- No fetch / XMLHttpRequest / axios
+- No KV / Durable Object / D1 / database access
+- No provider SDK imports (OpenAI / Anthropic / Gemini / Groq /
+  Mistral / NVIDIA / Cohere / Perplexity)
+- No `process.env` / `import.meta.env` / `env.SCOUT_*` /
+  `env.FIREBASE_*` reads
+- No raw token / authorization header / API key / firebaseToken
+  in any response, log, or storage payload
+- All previous defaults are preserved:
+  - endpoint default `providerMode: "stub"`
+  - explicit stub path (`providerMode: "stub"`) unchanged
+  - frontend source selector default `local_stub`
+  - endpoint client default disabled
+  - source selector `endpoint_client` default disabled
+  - `verifierAdapter` / `storageAdapter` default mock-disabled
+  - `staging_live` / `production_live` blocked
+  - dependency adapter behavior unchanged
+  - `suggest.js` unchanged
+- The 3 locked runtime files (dep-adapter, storage, suggest)
+  remain locked by md5 normalized for LF/CRLF (cross-platform
+  stable). The auth verifier adapter is intentionally modified
+  in this scaffold slice (it gets the new Firebase scaffold
+  code) and is therefore NOT in the lock list
+- This scaffold slice is disabled-by-default and safe-fail
+  only; no real Firebase Admin SDK, no real token verification,
+  no real external auth service call, no real provider API call,
+  no real KV / Durable Object / D1 implementation
+- Recommended next slice: `[TECH] Wire disabled Firebase auth
+  verifier scaffold into dependency adapter contract` or
+  `[TECH] Add disabled rate-limit storage runtime scaffold`
+- Verdict: Firebase auth verifier disabled scaffold: **Yes**;
+  real Firebase Admin SDK in this PR: **No**; real token
+  verification in this PR: **No**; real external auth service
+  call in this PR: **No**; real provider API in this PR:
+  **No**; real KV / Durable Object / D1 in this PR: **No**;
+  `staging_live` / `production_live` opt-in in this PR: **No**
+  (all blocked)
