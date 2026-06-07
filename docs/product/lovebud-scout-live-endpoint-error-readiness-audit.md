@@ -163,6 +163,16 @@ The following are intentionally **not yet implemented** and block any real runti
 - Ready for `production_live` execution: **No**
 - Ready for real provider API call: **No**
 
+## Dependency Adapter Skeleton Status
+
+A [dependency adapter skeleton](lovebud-scout-live-auth-rate-limit-dependency-adapter-skeleton.md) has been added (v20260607-1). It provides:
+- A mock-disabled factory (`createScoutLiveDependencyAdapter`) returning default `verifyToken` / `checkRateLimit` / `requestId`
+- Default `mockDisabled:true` so the endpoint cannot accidentally allow real traffic in skeleton mode
+- No real Firebase Admin SDK, no real KV/DO/D1, no provider SDK, no fetch
+- Not wired into `suggest.js` LIVE branch in this slice (wiring is a separate slice)
+- Endpoint default `providerMode:"stub"` and frontend default `local_stub` preserved
+- Real `verifyToken` / `checkRateLimit` / `requestId` implementations, staging_live, and production_live all remain blocked
+
 ## Audited Test Files (all required to keep passing)
 
 ```text
