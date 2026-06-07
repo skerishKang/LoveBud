@@ -842,3 +842,16 @@ runtime behavior change. Findings:
 - Verdict: CTO review / readiness audit complete: **Yes**; real
   Firebase Admin SDK: **No**; real token verification: **No**;
   `staging_live` / `production_live` opt-in: **No** (all blocked)
+
+## Disabled Firebase Verifier Dependency Wiring Status
+
+A subsequent slice (PR #2324) has wired the disabled Firebase auth verifier scaffold into the dependency adapter contract. It provides:
+- `VERIFIER_FIREBASE_DISABLED` → `VERIFY_NOT_IMPLEMENTED` safe-fail mapping
+- `VERIFIER_CONFIG_MISSING` → `VERIFY_UNAVAILABLE` safe-fail mapping
+- Existing verifier mappings preserved
+- Default dependency adapter `mockDisabled:true` behavior unchanged
+- Dependency adapter does not auto-enable Firebase mode
+- No Firebase Admin SDK / real token verification / fetch / provider SDK / env secret usage
+- `suggest.js` unchanged (no Firebase scaffold wiring in this slice)
+- Endpoint default remains `stub`; explicit `stub` preserved
+- Frontend default remains `local_stub`; endpoint client default remains disabled

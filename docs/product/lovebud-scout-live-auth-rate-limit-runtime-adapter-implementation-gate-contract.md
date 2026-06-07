@@ -297,6 +297,7 @@ Skipping a step or changing the order requires CTO approval.
 - `1ec55a6e` (PR #2301 — storage adapter dependency wiring).
 - `ac42e0af` (PR #2302 — auth verifier adapter skeleton).
 - `3ac2d940` (PR #2304 — auth verifier dependency wiring).
+- `05557c67` (PR #2324 — disabled Firebase verifier dependency wiring).
 - All 12 wiring/boundary items in PR #2307 audit marked Done.
 - All 4 runtime files locked by md5 in PR #2307 audit:
   dep-adapter `796a2aef…`, verifier `5a0a8534…`,
@@ -316,6 +317,19 @@ Skipping a step or changing the order requires CTO approval.
 - `npm test` adds 1 new passing test, total `1957 → 1958`.
 - `npm run verify` 284/284.
 - PR merged with squash, all CI checks green.
+
+## 13. Disabled Firebase Verifier Dependency Wiring Status
+
+A subsequent slice (PR #2324) has wired the disabled Firebase auth verifier scaffold into the dependency adapter contract. It provides:
+- `VERIFIER_FIREBASE_DISABLED` → `VERIFY_NOT_IMPLEMENTED` safe-fail mapping
+- `VERIFIER_CONFIG_MISSING` → `VERIFY_UNAVAILABLE` safe-fail mapping
+- Existing verifier mappings preserved
+- Default dependency adapter `mockDisabled:true` behavior unchanged
+- Dependency adapter does not auto-enable Firebase mode
+- No Firebase Admin SDK / real token verification / fetch / provider SDK / env secret usage
+- `suggest.js` unchanged (no Firebase scaffold wiring in this slice)
+- Endpoint default remains `stub`; explicit `stub` preserved
+- Frontend default remains `local_stub`; endpoint client default remains disabled
 
 ## 14. Go / no-go matrix
 

@@ -83,7 +83,7 @@ const RELATED_DOCS = [
 // slice does NOT modify any of them.
 const LOCKED_HASHES = {
   verifier: '81f80368fe80bb8a770b251efc085509',
-  depAdapter: '796a2aefe46a8629764950eab8e3a42e',
+  depAdapter: 'd20edde7af022100fcbe69763a04c589',
   storage: 'a4419b1e8fc286219ae75bf88271416c',
   suggest: 'deb6a6d7b03d9db48ad215607cefcd0d',
 };
