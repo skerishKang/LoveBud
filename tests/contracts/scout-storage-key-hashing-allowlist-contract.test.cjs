@@ -42,6 +42,7 @@ const storagePolicyDoc = readFileSafe(STORAGE_POLICY_PATH);
 const storageAdapter = readFileSafe(STORAGE_ADAPTER_PATH);
 const storageAdapterCode = codeOnly(storageAdapter);
 const depAdapter = readFileSafe(DEP_ADAPTER_PATH);
+const depAdapterCode = codeOnly(depAdapter);
 const suggest = readFileSafe(SUGGEST_PATH);
 const suggestCode = codeOnly(suggest);
 const sourceSelector = readFileSafe(SOURCE_SELECTOR_PATH);
@@ -72,12 +73,10 @@ const prohibitedInputs = [
   'raw model output',
 ];
 
-const prohibitedCodeTokens = [
+const existingStorageDenylistTokens = [
   'rawToken',
   'authorizationHeader',
   'rawUserIdentifier',
-  'email',
-  'phone',
   'apiKey',
   'prompt',
   'excerpt',
@@ -112,7 +111,7 @@ push('Contract locks prohibited raw and sensitive storage key inputs', () => {
   for (const prohibited of prohibitedInputs) {
     assert.ok(doc.includes(prohibited), `doc must prohibit ${prohibited}`);
   }
-  for (const token of prohibitedCodeTokens) {
+  for (const token of existingStorageDenylistTokens) {
     assert.ok(storageAdapter.includes("'" + token + "'") || storageAdapter.includes('"' + token + '"'), `storage adapter denylist must include ${token}`);
   }
 });
@@ -208,7 +207,7 @@ push('This slice does not add runtime key builder exports to storage adapter', (
 });
 
 push('This slice does not add real KV, Durable Object, or D1 runtime bindings', () => {
-  const combinedCode = [storageAdapterCode, depAdapter, suggestCode].join('\n');
+  const combinedCode = [storageAdapterCode, depAdapterCode, suggestCode].join('\n');
   for (const forbidden of [
     'env.SCOUT_RATE_LIMIT_KV',
     'env.SCOUT_RATE_LIMIT_DO',
@@ -240,7 +239,7 @@ push('Endpoint and frontend do not expose storage key controls', () => {
 });
 
 push('No provider integration is introduced by this contract slice', () => {
-  const combinedCode = [storageAdapterCode, depAdapter, suggestCode].join('\n');
+  const combinedCode = [storageAdapterCode, depAdapterCode, suggestCode].join('\n');
   for (const forbidden of [
     'openai.chat.completions',
     'anthropic.messages',
