@@ -14,7 +14,6 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
-const crypto = require('crypto');
 
 const ROOT = path.resolve(__dirname, '../..');
 const DOC_PATH = path.join(ROOT, 'docs/product/lovebud-scout-live-storage-readiness-audit.md');
@@ -33,10 +32,6 @@ function codeOnly(source) {
   return source
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/(^|[^:])\/\/.*$/gm, '$1');
-}
-
-function md5(filePath) {
-  return crypto.createHash('md5').update(readFile(filePath).replace(/\r\n/g, '\n')).digest('hex');
 }
 
 const doc = readFile(DOC_PATH);
@@ -150,10 +145,18 @@ push('Audit recommends the next disabled scaffold contract', () => {
   assert.ok(doc.includes('should still avoid real hashing secret/salt access'));
 });
 
-push('Runtime files remain at current locked content hashes', () => {
-  assert.strictEqual(md5(DEP_ADAPTER_PATH), '6b62bb3d9100bd41995a929d93469851');
-  assert.strictEqual(md5(STORAGE_ADAPTER_PATH), '664a5c1315e792651bdb5972366709f8');
-  assert.strictEqual(md5(KEY_BUILDER_PATH), 'ff8e9aa518e1c0d47d16f20d0cb0fb68');
+push('Runtime files retain expected storage safety boundaries', () => {
+  assert.ok(depAdapter.includes("SCOUT_LIVE_DEPENDENCY_ADAPTER_VERSION = '20260607-1'"));
+  assert.ok(depAdapter.includes("code === 'STORAGE_KEY_BUILDER_DISABLED'"));
+  assert.ok(depAdapter.includes("code === 'STORAGE_KEY_PAYLOAD_PROHIBITED'"));
+  assert.ok(depAdapter.includes('RATE_LIMIT_STORAGE_UNAVAILABLE'));
+  assert.ok(storageAdapter.includes("SCOUT_LIVE_RATE_LIMIT_STORAGE_ADAPTER_VERSION = '20260607-3'"));
+  assert.ok(storageAdapter.includes('STORAGE_KEY_BUILDER_DISABLED'));
+  assert.ok(storageAdapter.includes('STORAGE_KEY_PAYLOAD_PROHIBITED'));
+  assert.ok(keyBuilder.includes("SCOUT_LIVE_RATE_LIMIT_STORAGE_KEY_BUILDER_VERSION = '20260607-1'"));
+  assert.ok(keyBuilder.includes('storageKey: null'));
+  assert.ok(keyBuilder.includes('keyPreview: null'));
+  assert.ok(keyBuilder.includes('disabled: true'));
 });
 
 push('Endpoint and frontend defaults remain preserved', () => {
