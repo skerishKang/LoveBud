@@ -1,0 +1,1 @@
+const fs=require('fs');const p='functions/api/scout/live-rate-limit-storage-hash-helper.js';const s=fs.readFileSync(p,'utf8');for(const x of ['SCOUT_RATE_LIMIT_KV','SCOUT_RATE_LIMIT_DO','SCOUT_RATE_LIMIT_D1','DurableObjectNamespace','idFromName','getByName','prepare','batch','exec']){if(s.includes(x)){throw new Error(x)}}console.log('hash helper no-storage guardrail ok');
