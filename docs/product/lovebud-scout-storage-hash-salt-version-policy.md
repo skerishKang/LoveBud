@@ -6,7 +6,9 @@ Rules:
 - No real hashing in this slice.
 - No salt or secret access in this slice.
 - Future hashes need a version label.
-- Future salts must stay server-side only.
-- Staging and production must not share hash namespace.
+- Future salts stay server-side only.
+- Staging and production use separate namespaces.
 - Rotation needs a rollback plan.
-- Frontend must never see salts, secrets
+- Frontend never sees salts or hash keys.
+
+Verdict: docs and contracts only. No runtime change.
