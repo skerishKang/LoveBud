@@ -1,0 +1,1 @@
+'use strict';const fs=require('fs');const p='functions/api/scout/live-rate-limit-storage-hash-helper.js';const s=fs.readFileSync(p,'utf8');for(const x of ['userKeyHash','token','sanitizeHashPayload'])if(!s.includes(x))throw Error(x);
