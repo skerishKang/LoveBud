@@ -1,5 +1,5 @@
-export const VERSION='20260609-2';
 export const DISABLED='STORAGE_HASH_HELPER_DISABLED';
 export const ALLOWED_INPUTS=['userKeyHash'];
-export const PROHIBITED_INPUTS=['token','authorization','email','apiKey','prompt'];
-export function sanitizeHashPayload(p){const s=p&&typeof p==='object'?p:{};return s.userKeyHash===undefined
+export const PROHIBITED_INPUTS=['token'];
+export function sanitizeHashPayload(p){return p&&p.userKeyHash?{userKeyHash:p.userKeyHash}:{}};
+export function createScoutLiveRateLimitStorageHashHelper(){return{disabled:true,sanitize:sanitizeHashPayload,hash:()=>({ok:false,disabled:true,code:DISABLED,hash:null,hashPreview:null})};}
