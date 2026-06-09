@@ -1,19 +1,8 @@
-# LoveBud Scout Storage Hash Helper Disabled Scaffold
+# Scout storage hash helper disabled scaffold
 
-Status: disabled scaffold / no real hashing
-Parent issue: #1882
-Slice issue: #2351
-Depends on: #2349
+Status: disabled scaffold.
+Issue: #2351. Parent: #1882. Depends: #2349.
 
-This slice adds a minimal disabled hash helper.
+The helper is disabled. It returns ok false, disabled true, code STORAGE_HASH_HELPER_DISABLED, and hash null.
 
-Required result:
-
-```text
-ok: false
-disabled: true
-code: STORAGE_HASH_HELPER_DISABLED
-hash: null
-```
-
-Non-goals: no real hashing, no secret or salt access, no crypto API, no
+Forbidden: real hashing; salt access; crypto calls; KV; DO; D1; endpoint wiring; frontend change
