@@ -1,8 +1,1 @@
-'use strict';
-const assert=require('assert');
-const fs=require('fs');
-const path=require('path');
-const root=path.resolve(__dirname,'../..');
-const helper=fs.readFileSync(path.join(root,'functions/api/scout/live-rate-limit-storage-hash-helper.js'),'utf8');
-const doc=fs.readFileSync(path.join(root,'docs/product/lovebud-scout-storage-hash-helper-prohibited-regression.md'),'utf8');
-assert(helper
+'use strict';const fs=require('fs');const path=require('path');const r=path.resolve(__dirname,'../..');const h=fs.readFileSync(path.join(r,'functions/api/scout/live-rate-limit-storage-hash-helper.js'),'utf8');const d=fs.readFileSync(path.join(r,'docs/product/lovebud-scout-storage-hash-helper-pro
