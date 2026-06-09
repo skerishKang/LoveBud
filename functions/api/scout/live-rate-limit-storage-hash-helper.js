@@ -1,10 +1,4 @@
-'use strict';
-
-export const SCOUT_LIVE_RATE_LIMIT_STORAGE_HASH_HELPER_VERSION = '20260609-1';
-
-export const SCOUT_LIVE_RATE_LIMIT_STORAGE_HASH_HELPER_CODES = Object.freeze({
-  STORAGE_HASH_HELPER_DISABLED: 'STORAGE_HASH_HELPER_DISABLED',
-  STORAGE_HASH_PAYLOAD_PROHIBITED: 'STORAGE_HASH_PAYLOAD_PROHIBITED',
-});
-
-export function buildScoutLiveRateLimitStorage
+export const STORAGE_HASH_HELPER_DISABLED='STORAGE_HASH_HELPER_DISABLED';
+export const STORAGE_HASH_PAYLOAD_PROHIBITED='STORAGE_HASH_PAYLOAD_PROHIBITED';
+export function hash(){return {ok:false,disabled:true,code:STORAGE_HASH_HELPER_DISABLED,hash:null,hashPreview:null};}
+export function createScoutLiveRateLimitStorageHashHelper(){return Object
