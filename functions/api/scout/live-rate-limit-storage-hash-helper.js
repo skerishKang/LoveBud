@@ -1,2 +1,5 @@
+export const VERSION='20260609-1';
 export const DISABLED='STORAGE_HASH_HELPER_DISABLED';
-export function createScoutLiveRateLimitStorageHashHelper(){return{disabled:true,hash:()=>({ok:false,disabled:true,code:DISABLED,hash:null})};}
+export const ALLOWED_INPUTS=Object.freeze(['userKeyHash','ipHash','sessionKeyHash','endpointPath','providerMode','limitName','windowKey']);
+export const PROHIBITED_INPUTS=Object.freeze(['token','authorization','rawUserId','email','phone','apiKey','prompt','excerpt','sourceUrl','rawRequestBody','rawProviderResponse','rawModelOutput']);
+export function createScoutLiveRate
