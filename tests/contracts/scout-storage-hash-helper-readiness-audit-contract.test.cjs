@@ -1,0 +1,1 @@
+const fs=require('fs');const a=fs.readFileSync('docs/product/lovebud-scout-storage-hash-helper-readiness-audit.md','utf8');for(const s of ['#2363','disabled hash helper scaffold','sanitizer allows only userKeyHash','no-crypto guardrail','no-storage-backend guardrail','NO-GO: real hashing','NO-GO: KV, Durable Object, or D1']){if(!a.includes(s))throw new Error(s)}
