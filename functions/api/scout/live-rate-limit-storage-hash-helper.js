@@ -17,4 +17,10 @@ export const SCOUT_LIVE_RATE_LIMIT_STORAGE_HASH_HELPER_VERSION = '20260609-1';
 // ─── Modes ──────────────────────────────────────────────────────────────────
 
 export const SCOUT_LIVE_RATE_LIMIT_STORAGE_HASH_HELPER_MODES = Object.freeze({
-  DISABLED:
+  DISABLED: 'disabled',
+  NOT_IMPLEMENTED: 'not_implemented',
+});
+
+// ─── Codes ──────────────────────────────────────────────────────────────────
+
+export const SCOUT_L
