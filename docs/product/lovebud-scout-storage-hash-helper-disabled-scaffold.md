@@ -8,6 +8,25 @@ Depends on: #2349
 
 ## Purpose
 
-This slice adds a disabled Scout storage hash helper scaffold before any real hash implementation exists.
+This slice adds a disabled Scout storage hash helper scaffold before real hashing is allowed.
 
-The helper is intentionally minimal. It may expose a disabled factory and a safe-fail hash
+## Current behavior
+
+The helper returns a disabled safe-fail result only.
+
+Required response shape:
+
+```text
+ok: false
+disabled: true
+code: STORAGE_HASH_HELPER_DISABLED
+hash: null
+```
+
+## Non-goals
+
+- No real hashing implementation.
+- No secret or salt access.
+- No crypto API call.
+- No runtime storage key generation for live traffic.
+- No real
