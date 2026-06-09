@@ -1,8 +1,8 @@
-# Scout hash helper no-crypto guardrail
+# Scout storage hash helper no-crypto guardrail
 
-Status: contract only.
-Issue: #2358.
+Status: regression only.
+Issue: #2360.
+Refs: #1882.
 
-The storage hash helper must not use crypto, HMAC, salt, secret, KV, Durable Object, D1, provider SDK, fetch, endpoint wiring, frontend wiring, or Browse #1661.
-
-Allowed now: disabled helper, sanitizer, null hash, null preview.
+The storage hash helper must stay disabled.
+It must not use crypto digest, createHash, HMAC, salt, secret, KV, Durable Object, D1, provider SDKs, endpoint wiring, frontend wiring, or Browse #1661.
