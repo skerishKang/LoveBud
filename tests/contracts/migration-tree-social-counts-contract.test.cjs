@@ -6,8 +6,10 @@ const test = require('node:test');
 const ROOT = path.join(__dirname, '..', '..');
 const migrationPath = path.join(ROOT, 'scripts', 'migration-add-tree-social-counts.sql');
 const memoryReactionMigrationPath = path.join(ROOT, 'scripts', 'migration-add-reactions-comments.sql');
+const routerPath = path.join(ROOT, 'functions', 'api', '[[path]].js');
 const sql = fs.readFileSync(migrationPath, 'utf8');
 const memoryReactionSql = fs.readFileSync(memoryReactionMigrationPath, 'utf8');
+const router = fs.readFileSync(routerPath, 'utf8');
 
 test('tree social counts migration creates tree_likes separately from memory reactions', () => {
   assert.match(sql, /CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+tree_likes/i);
@@ -33,13 +35,12 @@ test('tree social counts migration creates aggregate counts table', () => {
   assert.match(sql, /updated_at\s+TIMESTAMP\s+WITH\s+TIME\s+ZONE\s+NOT\s+NULL\s+DEFAULT\s+NOW\(\)/i);
 });
 
-test('tree social counts migration prepares future sort indexes without enabling API sort', () => {
+test('tree social counts migration prepares future count indexes without changing router behavior', () => {
   assert.match(sql, /idx_tree_social_counts_like_count/i);
   assert.match(sql, /ON\s+tree_social_counts\(like_count\s+DESC,\s*updated_at\s+DESC\)/i);
   assert.match(sql, /idx_tree_social_counts_view_count/i);
   assert.match(sql, /ON\s+tree_social_counts\(view_count\s+DESC,\s*updated_at\s+DESC\)/i);
-  assert.doesNotMatch(sql, /sort=likes/i);
-  assert.doesNotMatch(sql, /sort=views/i);
+  assert.match(router, /url\.searchParams\.get\('sort'\) === 'popular' \? 'popular' : 'latest'/);
 });
 
 test('tree social counts migration keeps scope narrow', () => {
