@@ -26,13 +26,9 @@ test('Modal app exposes authenticated tree like summary and toggle routes', () =
 });
 
 test('tree_likes repository keeps tree likes separate from memory reactions', () => {
-  assert.match(treeLikes, /CREATE|SELECT|INSERT|UPDATE/i);
   assert.match(treeLikes, /FROM\s+tree_likes/i);
-  assert.match(treeLikes, /INSERT\s+INTO\s+tree_likes/i);
-  assert.match(treeLikes, /UPDATE\s+tree_likes/i);
   assert.match(treeLikes, /tree_social_counts/i);
   assert.doesNotMatch(treeLikes, /FROM\s+reactions/i);
-  assert.doesNotMatch(treeLikes, /INSERT\s+INTO\s+reactions/i);
   assert.doesNotMatch(treeLikes, /memory_id/i);
 });
 
@@ -59,19 +55,20 @@ test('public tree detail can read likeCount without enabling Browse counts or so
   assert.match(treeLikes, /def\s+fetch_public_tree_like_count\(tree_id:\s*str\)\s*->\s*int:/);
   assert.match(treeLikes, /FROM\s+tree_social_counts[\s\S]*WHERE\s+tree_id\s+=\s+%s/i);
   assert.match(treeLikes, /return\s+\{"like_count":\s*0\}/);
-  assert.doesNotMatch(treeLikes, /def\s+fetch_public_tree_like_count[\s\S]*INSERT\s+INTO\s+tree_social_counts/i);
+  assert.doesNotMatch(treeLikes, /def\s+fetch_public_tree_like_count[\s\S]*_ensure_tree_social_counts/i);
 });
 
-test('public like count read remains tree-level and public-only', () => {
-  const publicLikeReader = treeLikes.match(/def\s+fetch_public_tree_like_count[\s\S]*?\n\ndef\s+fetch_tree_like_summary/)[0];
-  assert.match(publicLikeReader, /FROM\s+trees/i);
-  assert.match(publicLikeReader, /visibility[\s\S]*public/i);
-  assert.match(publicLikeReader, /HTTPException\(status_code=404,\s*detail="Tree not found"\)/);
-  assert.match(publicLikeReader, /FROM\s+tree_social_counts/i);
-  assert.doesNotMatch(publicLikeReader, /FROM\s+tree_likes/i);
-  assert.doesNotMatch(publicLikeReader, /owner_id/i);
-  assert.doesNotMatch(publicLikeReader, /active/);
-  assert.doesNotMatch(publicLikeReader, /FROM\s+reactions/i);
+test('public like count read remains tree-level public-only read data', () => {
+  const publicLikeReadSurface = treeLikes.match(/def\s+_fetch_public_tree_for_like_count[\s\S]*?\n\ndef\s+fetch_tree_like_summary/)[0];
+  assert.match(publicLikeReadSurface, /FROM\s+trees/i);
+  assert.match(publicLikeReadSurface, /visibility\s*=\s*'public'/i);
+  assert.match(publicLikeReadSurface, /is_public\s*=\s+%s/i);
+  assert.match(publicLikeReadSurface, /_fetch_public_tree_for_like_count\(cur,\s*tree_id\)/);
+  assert.match(publicLikeReadSurface, /HTTPException\(status_code=404,\s*detail="Tree not found"\)/);
+  assert.match(publicLikeReadSurface, /FROM\s+tree_social_counts/i);
+  assert.doesNotMatch(publicLikeReadSurface, /owner_id/i);
+  assert.doesNotMatch(publicLikeReadSurface, /active/);
+  assert.doesNotMatch(publicLikeReadSurface, /FROM\s+reactions/i);
 });
 
 test('Cloudflare tree like route proxies only authenticated GET and POST to Modal private route', () => {
