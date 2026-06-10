@@ -52,6 +52,28 @@ test('tree like toggle updates active row and aggregate count safely', () => {
   assert.match(treeLikes, /"likeCount"/);
 });
 
+test('public tree detail can read likeCount without enabling Browse counts or sort', () => {
+  assert.match(modalApp, /fetch_public_tree_like_count/);
+  assert.match(modalApp, /@web_app\.get\("\/modal\/trees\/\{tree_id\}"\)/);
+  assert.match(modalApp, /tree\["likeCount"\]\s*=\s*fetch_public_tree_like_count\(safe_tree_id\)/);
+  assert.match(treeLikes, /def\s+fetch_public_tree_like_count\(tree_id:\s*str\)\s*->\s*int:/);
+  assert.match(treeLikes, /FROM\s+tree_social_counts[\s\S]*WHERE\s+tree_id\s+=\s+%s/i);
+  assert.match(treeLikes, /return\s+\{"like_count":\s*0\}/);
+  assert.doesNotMatch(treeLikes, /def\s+fetch_public_tree_like_count[\s\S]*INSERT\s+INTO\s+tree_social_counts/i);
+});
+
+test('public like count read remains tree-level and public-only', () => {
+  const publicLikeReader = treeLikes.match(/def\s+fetch_public_tree_like_count[\s\S]*?\n\ndef\s+fetch_tree_like_summary/)[0];
+  assert.match(publicLikeReader, /FROM\s+trees/i);
+  assert.match(publicLikeReader, /visibility[\s\S]*public/i);
+  assert.match(publicLikeReader, /HTTPException\(status_code=404,\s*detail="Tree not found"\)/);
+  assert.match(publicLikeReader, /FROM\s+tree_social_counts/i);
+  assert.doesNotMatch(publicLikeReader, /FROM\s+tree_likes/i);
+  assert.doesNotMatch(publicLikeReader, /owner_id/i);
+  assert.doesNotMatch(publicLikeReader, /active/);
+  assert.doesNotMatch(publicLikeReader, /FROM\s+reactions/i);
+});
+
 test('Cloudflare tree like route proxies only authenticated GET and POST to Modal private route', () => {
   assert.match(cloudflareRoute, /export\s+async\s+function\s+onRequestGet/);
   assert.match(cloudflareRoute, /export\s+async\s+function\s+onRequestPost/);
@@ -63,7 +85,7 @@ test('Cloudflare tree like route proxies only authenticated GET and POST to Moda
   assert.doesNotMatch(cloudflareRoute, /sort=views/);
 });
 
-test('Unit A2 does not enable Browse sort or public Browse count payloads', () => {
+test('Unit A3 does not enable Browse sort or public Browse count payloads', () => {
   assert.match(catchAllRoute, /searchParams\.get\('sort'\) === 'popular' \? 'popular' : 'latest'/);
   assert.doesNotMatch(catchAllRoute, /sort'\) === 'likes'/);
   assert.doesNotMatch(catchAllRoute, /sort'\) === 'views'/);
