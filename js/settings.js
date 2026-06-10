@@ -311,13 +311,6 @@
         closeSettings();
       }
     });
-
-    document.addEventListener('click', function(e) {
-      var trigger = e.target.closest('.user-dropdown-trigger');
-      if (!trigger) return;
-      e.preventDefault();
-      e.stopPropagation();
-    }, true);
   }
 
   var settingsStarted = false;
