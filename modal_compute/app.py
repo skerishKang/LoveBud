@@ -49,6 +49,7 @@ from modal_compute.reactions import (
 from modal_compute.tree_likes import (
     toggle_tree_like,
     fetch_tree_like_summary,
+    fetch_public_tree_like_count,
 )
 from modal_compute.comments import (
     create_comment,
@@ -215,6 +216,7 @@ def get_public_tree_detail(
         if not tree:
             logger.log_error(status_code=404, error_category="NOT_FOUND")
             raise HTTPException(status_code=404, detail="Tree not found")
+        tree["likeCount"] = fetch_public_tree_like_count(safe_tree_id)
         logger.log_success(status_code=200)
         return tree
     except HTTPException:
