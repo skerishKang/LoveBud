@@ -46,6 +46,23 @@ def _table_exists(cur, table_name: str) -> bool:
     return bool(row and row.get("exists"))
 
 
+def _table_has_column(cur, table_name: str, column_name: str) -> bool:
+    cur.execute(
+        """
+        SELECT EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = %s
+              AND column_name = %s
+        ) AS "exists"
+        """,
+        (table_name, column_name),
+    )
+    row = cur.fetchone()
+    return bool(row and row.get("exists"))
+
+
 def _ensure_tree_social_counts(cur, tree_id: str) -> None:
     cur.execute(
         """
@@ -71,6 +88,36 @@ def _fetch_like_count(cur, tree_id: str) -> int:
     return int(row.get("like_count") or 0) if row else 0
 
 
+def _fetch_public_tree_for_like_count(cur, tree_id: str) -> dict[str, Any] | None:
+    if _table_has_column(cur, "trees", "visibility"):
+        cur.execute(
+            """
+            SELECT id
+            FROM trees
+            WHERE id = %s
+              AND visibility = 'public'
+            LIMIT 1
+            """,
+            (tree_id,),
+        )
+        return cur.fetchone()
+
+    if _table_has_column(cur, "trees", "is_public"):
+        cur.execute(
+            """
+            SELECT id
+            FROM trees
+            WHERE id = %s
+              AND is_public = %s
+            LIMIT 1
+            """,
+            (tree_id, True),
+        )
+        return cur.fetchone()
+
+    return None
+
+
 def fetch_public_tree_like_count(tree_id: str) -> int:
     """Read the public tree-level like count without creating aggregate rows.
 
@@ -81,17 +128,8 @@ def fetch_public_tree_like_count(tree_id: str) -> int:
     def operation() -> dict[str, Any] | None:
         with get_db_connection() as conn:
             with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    SELECT id, visibility
-                    FROM trees
-                    WHERE id = %s
-                    LIMIT 1
-                    """,
-                    (tree_id,),
-                )
-                tree = cur.fetchone()
-                if not tree or str(tree.get("visibility") or "public") != "public":
+                tree = _fetch_public_tree_for_like_count(cur, tree_id)
+                if not tree:
                     return None
 
                 if not _table_exists(cur, "tree_social_counts"):
