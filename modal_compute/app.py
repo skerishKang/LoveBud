@@ -2,41 +2,20 @@ from __future__ import annotations
 
 import json
 import time
-import uuid
-from datetime import datetime
-from typing import Any
 
 import modal
 from fastapi import FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse
 
 from modal_compute.auth import (
     PlusRequiredError,
-    get_firebase_certs,
     require_firebase_user,
-    require_plus_for_private_storage,
 )
 from modal_compute.config import _allowed_origins as _config_allowed_origins
-from modal_compute.db import (
-    get_db_connection,
-    run_db_with_retry,
-)
-from modal_compute.logging import RequestLogger, log_request_event
-from modal_compute.api_response_helpers import (
-    add_request_id_to_response,
-    parse_json_body,
-)
+from modal_compute.logging import RequestLogger
+from modal_compute.api_response_helpers import parse_json_body
 from modal_compute.validation import (
-    _to_isoformat,
-    estimate_stage,
-    parse_tags,
-    normalize_tags,
-    normalize_memory_row,
-    normalize_tree_row,
-    normalize_row,
-    validate_visibility,
-    validate_optional_string,
     validate_required_uuid,
     validate_optional_uuid,
     validate_required_id,
@@ -63,17 +42,13 @@ from modal_compute.owner_writes import (
     delete_owner_memory,
     fork_public_tree,
 )
-
-from modal_compute.write_validation import (
-    fetch_tree_for_owner_check,
-    require_tree_owner,
-    fetch_memory_for_owner_check,
-    require_memory_owner,
-)
 from modal_compute.reactions import (
     toggle_reaction,
     fetch_reaction_summary,
-    fetch_reaction_counts,
+)
+from modal_compute.tree_likes import (
+    toggle_tree_like,
+    fetch_tree_like_summary,
 )
 from modal_compute.comments import (
     create_comment,
@@ -84,8 +59,6 @@ from modal_compute.comments import (
 def _allowed_origins() -> list[str]:
     return _config_allowed_origins()
 
-
-# --- Modal App Setup ---
 
 app = modal.App("lovebud-browse-snapshot")
 
@@ -159,7 +132,7 @@ def get_growing_browse_snapshot(
     x_lovebud_request_id: str | None = Header(default=None),
 ) -> list[dict]:
     handler_start = time.time()
-    print(f"[LoveBudModal] [TIMING] /modal/browse/growing handler entry")
+    print("[LoveBudModal] [TIMING] /modal/browse/growing handler entry")
     logger = RequestLogger(
         request_id=x_lovebud_request_id,
         route="/modal/browse/growing",
@@ -167,17 +140,13 @@ def get_growing_browse_snapshot(
     )
     try:
         result = fetch_growing_public_tree_snapshots(limit=limit)
-
         serialize_start = time.time()
         serialized_data = json.dumps(result)
         serialize_duration = (time.time() - serialize_start) * 1000
         print(f"[LoveBudModal] [TIMING] Result serialization (json.dumps) took {serialize_duration:.2f}ms (size={len(serialized_data)} bytes)")
-
         logger.log_success(status_code=200)
-
         total_elapsed = (time.time() - handler_start) * 1000
         print(f"[LoveBudModal] [TIMING] /modal/browse/growing handler response return. Total elapsed: {total_elapsed:.2f}ms")
-
         return result
     except Exception:
         logger.log_error(status_code=500, error_category="UNEXPECTED_ERROR")
@@ -316,6 +285,24 @@ def delete_private_tree(
     return delete_owner_tree(user["uid"], tree_id)
 
 
+@web_app.post("/modal/private/trees/{tree_id}/likes")
+def post_tree_like(
+    tree_id: str,
+    authorization: str | None = Header(default=None),
+) -> dict:
+    user = require_firebase_user(authorization)
+    return toggle_tree_like(tree_id, user["uid"])
+
+
+@web_app.get("/modal/private/trees/{tree_id}/likes")
+def get_tree_likes(
+    tree_id: str,
+    authorization: str | None = Header(default=None),
+) -> dict:
+    user = require_firebase_user(authorization)
+    return fetch_tree_like_summary(tree_id, user["uid"])
+
+
 @web_app.get("/modal/private/memories")
 def get_private_memories(
     treeId: str | None = None,
@@ -357,9 +344,6 @@ def delete_private_memory(
     return delete_owner_memory(user["uid"], memory_id)
 
 
-# ---- Reactions ---------------------------------------------------------------
-
-
 @web_app.post("/modal/private/memories/{memory_id}/reactions")
 async def post_memory_reaction(
     memory_id: str,
@@ -379,9 +363,6 @@ def get_memory_reactions(
 ) -> dict:
     user = require_firebase_user(authorization)
     return fetch_reaction_summary(memory_id, user["uid"])
-
-
-# ---- Comments ----------------------------------------------------------------
 
 
 @web_app.post("/modal/private/memories/{memory_id}/comments")
