@@ -108,6 +108,9 @@
         const buildTreeLoadErrorCopy = editorPageHelpers.buildTreeLoadErrorCopy;
         if (typeof buildTreeLoadErrorCopy !== 'function') return stopMissing(windowRef, 'LoveBudEditorPageHelpers.buildTreeLoadErrorCopy');
 
+        const registerEditorAuthStart = editorPageHelpers.registerEditorAuthStart;
+        if (typeof registerEditorAuthStart !== 'function') return stopMissing(windowRef, 'LoveBudEditorPageHelpers.registerEditorAuthStart');
+
         const applyEditorShellCopy = shellHelpers.applyEditorShellCopy;
         if (typeof applyEditorShellCopy !== 'function') return stopMissing(windowRef, 'LoveBudEditorShellHelpers.applyEditorShellCopy');
 
@@ -175,6 +178,7 @@
                 getYouTubeInputErrorMessage,
                 renderTreeLoadError,
                 buildTreeLoadErrorCopy,
+                registerEditorAuthStart,
                 applyEditorShellCopy,
                 createPrepareEditorShell,
                 nextMemoryIdFromMemories: editorTreeHelpers.nextMemoryIdFromMemories,
