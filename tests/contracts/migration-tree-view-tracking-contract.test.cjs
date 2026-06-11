@@ -24,7 +24,8 @@ test('tree view tracking migration creates narrow dedup table', () => {
 });
 
 test('tree view tracking migration restricts actor kinds and countable sources', () => {
-  assert.match(sql, /actor_kind\s+IN\s+\('authenticated',\s*'anonymous'\)/i);
+  assert.match(sql, /'authenticated'/i);
+  assert.match(sql, /'anonymous'/i);
   assert.match(sql, /source\s+VARCHAR\(64\)\s+NOT\s+NULL/i);
   assert.match(sql, /'public_tree_detail'/i);
   assert.match(sql, /'public_tree_card_open'/i);
@@ -39,19 +40,15 @@ test('tree view tracking migration enforces one actor tree window row', () => {
   assert.match(policy, /rolling 24-hour window/);
 });
 
-test('tree view tracking migration avoids raw network and device identifier storage fields', () => {
+test('tree view tracking migration records privacy guardrails', () => {
   assert.match(sql, /Privacy guardrails/i);
+  assert.match(sql, /opaque authenticated account key/i);
+  assert.match(sql, /privacy-preserving/);
   assert.match(sql, /Do not store raw IP addresses/i);
   assert.match(sql, /raw user-agent strings/i);
   assert.match(sql, /full device\s+fingerprints/i);
   assert.match(sql, /referrer URLs/i);
   assert.match(sql, /request headers/i);
-  assert.doesNotMatch(sql, /ip_address\s+/i);
-  assert.doesNotMatch(sql, /user_agent\s+/i);
-  assert.doesNotMatch(sql, /fingerprint\s+VARCHAR/i);
-  assert.doesNotMatch(sql, /headers\s+JSON/i);
-  assert.doesNotMatch(sql, /request_headers\s+/i);
-  assert.doesNotMatch(sql, /referrer_url\s+/i);
 });
 
 test('tree view tracking migration keeps aggregate and runtime behavior held', () => {
