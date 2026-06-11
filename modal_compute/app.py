@@ -51,6 +51,7 @@ from modal_compute.tree_likes import (
     fetch_tree_like_summary,
     fetch_public_tree_like_count,
 )
+from modal_compute.tree_views import record_public_tree_view
 from modal_compute.comments import (
     create_comment,
     fetch_comments,
@@ -219,6 +220,34 @@ def get_public_tree_detail(
         tree["likeCount"] = fetch_public_tree_like_count(safe_tree_id)
         logger.log_success(status_code=200)
         return tree
+    except HTTPException:
+        raise
+    except Exception:
+        logger.log_error(status_code=500, error_category="UNEXPECTED_ERROR")
+        raise
+
+
+@web_app.post("/modal/public/trees/{tree_id}/views")
+async def post_public_tree_view(
+    tree_id: str,
+    request: Request,
+    x_lovebud_request_id: str | None = Header(default=None),
+) -> dict:
+    logger = RequestLogger(
+        request_id=x_lovebud_request_id,
+        route="/modal/public/trees/id/views",
+        method="POST",
+    )
+    try:
+        payload = await parse_json_body(request)
+        result = record_public_tree_view(
+            tree_id,
+            payload.get("actorKey", ""),
+            payload.get("actorKind", "anonymous"),
+            payload.get("source", "public_tree_detail"),
+        )
+        logger.log_success(status_code=200)
+        return result
     except HTTPException:
         raise
     except Exception:
