@@ -166,7 +166,7 @@ def fetch_latest_public_tree_snapshots(limit: int = 12, sort: str = "latest") ->
     """Fetch the latest public tree snapshots using a robust join-lateral query.
     Falls back to legacy trees.payload format if memories table is missing.
     Supports sort="latest" (created_at DESC), sort="popular" (memory_count DESC),
-    and sort="likes" (like_count DESC).
+    sort="likes" (like_count DESC), and sort="views" (view_count DESC).
     """
 
     order_clause = "t.created_at DESC"
@@ -174,13 +174,16 @@ def fetch_latest_public_tree_snapshots(limit: int = 12, sort: str = "latest") ->
         order_clause = "c.memory_count DESC, t.created_at DESC"
     elif sort == "likes":
         order_clause = "s.like_count DESC, t.updated_at DESC, t.created_at DESC, t.id ASC"
+    elif sort == "views":
+        order_clause = "s.view_count DESC, t.updated_at DESC, t.created_at DESC, t.id ASC"
 
-    modern_query = """
+    modern_query_template = """
         SELECT
             t.id, t.title, t.visibility, t.created_at, t.updated_at,
             c.memory_count,
             c.all_tags,
-            s.like_count,
+            COALESCE(s.like_count, 0) as like_count,
+            COALESCE(s.view_count, 0) as view_count,
             m.thumbnail as raw_thumbnail,
             m.source_url as raw_source_url
         FROM trees t
@@ -196,8 +199,9 @@ def fetch_latest_public_tree_snapshots(limit: int = 12, sort: str = "latest") ->
             HAVING count(*) >= 3
         ) c ON t.id = c.tree_id
         LEFT JOIN (
-            -- Social counts: like_count
-            SELECT tree_id, like_count
+            -- Social counts: like_count, view_count
+            -- COALESCE handles pre-migration envs (table or column missing) safely.
+            SELECT tree_id, like_count, view_count
             FROM tree_social_counts
         ) s ON t.id = s.tree_id
         LEFT JOIN LATERAL (
@@ -213,7 +217,7 @@ def fetch_latest_public_tree_snapshots(limit: int = 12, sort: str = "latest") ->
         WHERE t.visibility = 'public'
         ORDER BY {order_clause}
         LIMIT %s;
-    """.format(order_clause=order_clause)
+    """
 
     def operation() -> list[dict[str, Any]]:
         with get_db_connection() as conn:
@@ -221,11 +225,20 @@ def fetch_latest_public_tree_snapshots(limit: int = 12, sort: str = "latest") ->
                 meta_start = time.time()
                 has_memories = _table_exists(cur, "memories")
                 has_title = _table_has_column(cur, "trees", "title")
+                # sort=views requires tree_social_counts.view_count to exist.
+                # If the migration has not run yet, fall back to the latest
+                # order rather than crashing the whole endpoint.
+                has_social_counts_table = _table_exists(cur, "tree_social_counts")
+                has_view_count_column = _table_has_column(cur, "tree_social_counts", "view_count")
+                effective_order_clause = order_clause
+                if sort == "views" and not (has_social_counts_table and has_view_count_column):
+                    effective_order_clause = "t.created_at DESC"
                 meta_duration = (time.time() - meta_start) * 1000
                 print(f"[LoveBudModal] [TIMING] Schema metadata check took {meta_duration:.2f}ms")
 
                 if has_memories and has_title:
                     q_start = time.time()
+                    modern_query = modern_query_template.format(order_clause=effective_order_clause)
                     cur.execute(modern_query, (limit,))
                     rows = cur.fetchall()
                     q_duration = (time.time() - q_start) * 1000

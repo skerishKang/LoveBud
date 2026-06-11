@@ -79,11 +79,14 @@ function isBrowseSummaryRequest(request) {
 
 function buildBrowseCacheRequest(request) {
   const url = new URL(request.url);
-  const sort = url.searchParams.get('sort') === 'popular'
+  const requestedSort = url.searchParams.get('sort');
+  const sort = requestedSort === 'popular'
     ? 'popular'
-    : url.searchParams.get('sort') === 'likes'
+    : requestedSort === 'likes'
       ? 'likes'
-      : 'latest';
+      : requestedSort === 'views'
+        ? 'views'
+        : 'latest';
   const limit = Math.min(Math.max(Number(url.searchParams.get('limit') || 12) || 12, 1), 60);
   const cacheUrl = new URL(url.origin);
   cacheUrl.pathname = '/__cache/community/trees';
@@ -108,11 +111,14 @@ function buildModalUrl(request, env) {
 
   if (path === '/api/community/trees' && sourceUrl.searchParams.get('view') === 'summary') {
     const limit = Math.min(Math.max(Number(sourceUrl.searchParams.get('limit') || 12) || 12, 1), 60);
-    const sort = sourceUrl.searchParams.get('sort') === 'popular'
+    const requestedSort = sourceUrl.searchParams.get('sort');
+    const sort = requestedSort === 'popular'
       ? 'popular'
-      : sourceUrl.searchParams.get('sort') === 'likes'
+      : requestedSort === 'likes'
         ? 'likes'
-        : 'latest';
+        : requestedSort === 'views'
+          ? 'views'
+          : 'latest';
     target.pathname = '/modal/browse/latest';
     target.searchParams.set('limit', String(limit));
     target.searchParams.set('sort', sort);

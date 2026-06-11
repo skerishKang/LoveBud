@@ -119,7 +119,7 @@ def get_latest_browse_snapshot(
         method="GET",
     )
     try:
-        safe_sort = sort if sort in {"latest", "popular", "likes"} else "latest"
+        safe_sort = sort if sort in {"latest", "popular", "likes", "views"} else "latest"
         result = fetch_latest_public_tree_snapshots(limit=limit, sort=safe_sort)
         logger.log_success(status_code=200)
         return result

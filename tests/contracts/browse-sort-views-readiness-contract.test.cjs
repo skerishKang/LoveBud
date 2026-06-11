@@ -94,39 +94,42 @@ test('Audit document lists every existing contract the next slice must update', 
   }
 });
 
-test('Runtime baseline: router does not accept sort=views (audited-as-correct)', () => {
+test('Runtime baseline: router now accepts sort=views (delegated to views contract)', () => {
   const router = read(routerPath);
 
-  // The router does not match === 'views' for sort
+  // Router no longer uses the old `sort === 'views'` ternary (it uses requestedSort helper)
   assert.doesNotMatch(router, /sort'\)\s*===\s*'views'/);
 
-  // The router only accepts popular and likes as non-latest
+  // Router accepts popular and likes as non-latest
   assert.match(router, /'popular'\s*\?\s*'popular'/);
   assert.match(router, /'likes'\s*\?\s*'likes'/);
+
+  // Router also accepts views now (Unit C runtime slice)
+  assert.match(router, /'views'\s*\?\s*'views'/);
 });
 
-test('Runtime baseline: modal endpoint does not accept sort=views (audited-as-correct)', () => {
+test('Runtime baseline: modal endpoint now accepts sort=views in safe_sort set', () => {
   const modalApp = read(modalAppPath);
 
-  // safe_sort allow-set does not include 'views'
+  // safe_sort allow-set now includes 'views' (Unit C runtime slice)
   const safeSortLine = modalApp.match(/safe_sort\s*=\s*sort\s+if\s+sort\s+in\s+\{[^}]+\}/);
   assert.ok(safeSortLine, 'safe_sort line must exist');
-  assert.doesNotMatch(safeSortLine[0], /["']views["']/);
+  assert.match(safeSortLine[0], /["']views["']/);
 });
 
-test('Runtime baseline: public_reads has no sort=views order_clause branch (audited-as-correct)', () => {
+test('Runtime baseline: public_reads has a sort=views order_clause branch', () => {
   const publicReads = read(publicReadsPath);
 
   // The like_count branch exists (for sort=likes)
   assert.match(publicReads, /elif\s+sort\s*==\s*["']likes["']/);
   // The popular branch exists
   assert.match(publicReads, /if\s+sort\s*==\s*["']popular["']/);
-  // The default fallback exists
+  // The views branch exists (Unit C runtime slice)
+  assert.match(publicReads, /elif\s+sort\s*==\s*["']views["']/);
+  // views order clause uses s.view_count DESC with deterministic tie-breakers
+  assert.match(publicReads, /s\.view_count\s+DESC,\s*t\.updated_at\s+DESC,\s*t\.created_at\s+DESC,\s*t\.id\s+ASC/);
+  // Default fallback exists
   assert.match(publicReads, /order_clause\s*=\s*["']t\.created_at DESC["']/);
-
-  // No views branch yet
-  assert.doesNotMatch(publicReads, /elif\s+sort\s*==\s*["']views["']/);
-  assert.doesNotMatch(publicReads, /if\s+sort\s*==\s*["']views["']/);
 });
 
 test('Runtime baseline: viewCount is NOT in Browse/Search summary payload (boundary preserved)', () => {
@@ -137,12 +140,9 @@ test('Runtime baseline: viewCount is NOT in Browse/Search summary payload (bound
   assert.doesNotMatch(validation, /"viewCount"/);
   assert.doesNotMatch(publicReads, /"viewCount"/);
 
-  // No s.view_count in modern latest query (only s.like_count is selected)
-  const latestSection = publicReads.substring(
-    publicReads.indexOf('fetch_latest_public_tree_snapshots'),
-    publicReads.indexOf('fetch_growing_public_tree_snapshots')
-  );
-  assert.doesNotMatch(latestSection, /s\.view_count/);
+  // modern latest query selects s.view_count internally (for sort=views ordering)
+  // but it must NOT be exposed in the normalize_row payload
+  // (the validation assertion above already enforces the payload boundary)
 
   // Growing query section has no social counts join at all
   const growingSection = publicReads.substring(
