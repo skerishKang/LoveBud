@@ -73,12 +73,13 @@ test('tree view count policy holds sort and UI changes', () => {
   assert.match(content, /This Unit B policy slice does not close #1661/);
 });
 
-test('current router still does not accept views or likes sort', () => {
+test('current router accepts latest, popular, and likes sort (views still rejected)', () => {
   const router = read(routerPath);
 
-  assert.match(router, /url\.searchParams\.get\('sort'\) === 'popular' \? 'popular' : 'latest'/);
-  assert.doesNotMatch(router, /sort'\) === 'views'/);
-  assert.doesNotMatch(router, /sort'\) === 'likes'/);
+  // sort=likes is now supported (Unit C, multiline ternary)
+  assert.match(router, /'likes'\s*\?\s*'likes'/);
+  // sort=views must remain rejected (Unit B policy)
+  assert.doesNotMatch(router, /sort'\)\s*===\s*'views'/);
 });
 
 test('current Browse summary remains without tree view count payload', () => {

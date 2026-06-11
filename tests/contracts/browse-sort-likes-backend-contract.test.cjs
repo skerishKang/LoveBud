@@ -49,43 +49,51 @@ test('Public reads fetch_latest_public_tree_snapshots supports sort=likes', () =
   assert.match(publicReads, /t\.created_at\s+DESC/);
   assert.match(publicReads, /t\.id\s+ASC/);
 
-  // Join with tree_social_counts
+  // Join with tree_social_counts (only like_count)
   assert.match(publicReads, /LEFT JOIN\s+\(\s*--\s*Social counts/);
-  assert.match(publicReads, /SELECT\s+tree_id,\s+like_count,\s+view_count/);
+  assert.match(publicReads, /SELECT\s+tree_id,\s+like_count/);
   assert.match(publicReads, /FROM\s+tree_social_counts/);
   assert.match(publicReads, /s\s+ON\s+t\.id\s*=\s*s\.tree_id/);
 
-  // Select like_count and view_count in modern query
+  // Select like_count but NOT view_count in modern query
   assert.match(publicReads, /s\.like_count,/);
-  assert.match(publicReads, /s\.view_count,/);
+  assert.doesNotMatch(publicReads, /s\.view_count,/);
 });
 
-test('Normalize row includes likeCount and viewCount from modern query', () => {
-  // validation.py normalize_row includes likeCount/viewCount
+test('Normalize row includes likeCount from modern query but NOT viewCount', () => {
+  // validation.py normalize_row includes likeCount conditionally
   const validation = fs.readFileSync(path.join(ROOT, 'modal_compute', 'validation.py'), 'utf8');
-  assert.match(validation, /"likeCount":\s*row\.get\(["']like_count["'],\s*0\)\s+or\s+0/);
-  assert.match(validation, /"viewCount":\s*row\.get\(["']view_count["'],\s*0\)\s+or\s+0/);
+  assert.match(validation, /result\["likeCount"\]\s*=\s*row\.get\(["']like_count["'],\s*0\)\s+or\s+0/);
+  assert.doesNotMatch(validation, /"viewCount"/);
+
+  // include_like_count parameter exists
+  assert.match(validation, /include_like_count:\s*bool\s*=\s*False/);
 });
 
-test('Growing public tree snapshots also includes likeCount/viewCount', () => {
-  // Growing modern query joins tree_social_counts
+test('Growing public tree snapshots does NOT include social counts join', () => {
+  // Growing modern query does NOT join tree_social_counts
   assert.match(publicReads, /def\s+fetch_growing_public_tree_snapshots/);
-  assert.match(publicReads, /s\.like_count,/);
-  assert.match(publicReads, /s\.view_count,/);
-  assert.match(publicReads, /LEFT JOIN\s+\(\s*--\s*Social counts/);
-  assert.match(publicReads, /SELECT\s+tree_id,\s+like_count,\s+view_count/);
-  assert.match(publicReads, /FROM\s+tree_social_counts/);
 
-  // Growing legacy fallback includes likeCount/viewCount
-  assert.match(publicReads, /"likeCount":\s*0,/);
-  assert.match(publicReads, /"viewCount":\s*0,/);
+  // The growing function's modern_query should NOT have s.like_count
+  const growingSection = publicReads.substring(
+    publicReads.indexOf('fetch_growing_public_tree_snapshots'),
+    publicReads.indexOf('def fetch_public_memories')
+  );
+  assert.doesNotMatch(growingSection, /s\.like_count,/);
+  assert.doesNotMatch(growingSection, /s\.view_count,/);
+  assert.doesNotMatch(growingSection, /LEFT JOIN.*Social counts/);
+  assert.doesNotMatch(growingSection, /FROM\s+tree_social_counts/);
+
+  // Growing legacy fallback does NOT include likeCount/viewCount
+  assert.doesNotMatch(growingSection, /"likeCount":\s*0,/);
+  assert.doesNotMatch(growingSection, /"viewCount":\s*0,/);
 });
 
 test('Browse sort=views remains unsupported (falls back to latest)', () => {
   // Catch-all still only accepts popular and likes as non-latest
   assert.match(catchAllRoute, /===.*popular/);
   assert.match(catchAllRoute, /===.*likes/);
-  
+
   // No views handling
   assert.doesNotMatch(catchAllRoute, /===.*views/);
   assert.doesNotMatch(catchAllRoute, /\?\s*['"]views['"]/);

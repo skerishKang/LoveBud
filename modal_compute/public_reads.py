@@ -181,7 +181,6 @@ def fetch_latest_public_tree_snapshots(limit: int = 12, sort: str = "latest") ->
             c.memory_count,
             c.all_tags,
             s.like_count,
-            s.view_count,
             m.thumbnail as raw_thumbnail,
             m.source_url as raw_source_url
         FROM trees t
@@ -197,8 +196,8 @@ def fetch_latest_public_tree_snapshots(limit: int = 12, sort: str = "latest") ->
             HAVING count(*) >= 3
         ) c ON t.id = c.tree_id
         LEFT JOIN (
-            -- Social counts: like_count, view_count
-            SELECT tree_id, like_count, view_count
+            -- Social counts: like_count
+            SELECT tree_id, like_count
             FROM tree_social_counts
         ) s ON t.id = s.tree_id
         LEFT JOIN LATERAL (
@@ -231,7 +230,7 @@ def fetch_latest_public_tree_snapshots(limit: int = 12, sort: str = "latest") ->
                     rows = cur.fetchall()
                     q_duration = (time.time() - q_start) * 1000
                     print(f"[LoveBudModal] Latest browse query took {q_duration:.2f}ms (limit={limit})")
-                    return [normalize_row(row) for row in rows]
+                    return [normalize_row(row, include_like_count=True) for row in rows]
 
                 # Fallback: legacy schema (name/is_public/payload)
                 has_name = _table_has_column(cur, "trees", "name")
@@ -285,8 +284,6 @@ def fetch_latest_public_tree_snapshots(limit: int = 12, sort: str = "latest") ->
                         "theme": "LoveTree",
                         "timeRange": "",
                         "representativeMemorySourceUrl": rep_source_url or "",
-                        "likeCount": 0,
-                        "viewCount": 0,
                     })
                     if len(result) >= limit:
                         break
@@ -305,8 +302,6 @@ def fetch_growing_public_tree_snapshots(limit: int = 6) -> list[dict[str, Any]]:
             t.id, t.title, t.visibility, t.created_at, t.updated_at,
             c.memory_count,
             c.all_tags,
-            s.like_count,
-            s.view_count,
             m.thumbnail as raw_thumbnail,
             m.source_url as raw_source_url
         FROM trees t
@@ -320,11 +315,6 @@ def fetch_growing_public_tree_snapshots(limit: int = 6) -> list[dict[str, Any]]:
             GROUP BY tree_id
             HAVING count(*) BETWEEN 1 AND 2
         ) c ON t.id = c.tree_id
-        LEFT JOIN (
-            -- Social counts: like_count, view_count
-            SELECT tree_id, like_count, view_count
-            FROM tree_social_counts
-        ) s ON t.id = s.tree_id
         LEFT JOIN LATERAL (
             SELECT thumbnail, source_url
             FROM memories
@@ -357,12 +347,7 @@ def fetch_growing_public_tree_snapshots(limit: int = 6) -> list[dict[str, Any]]:
                     rows = cur.fetchall()
                     q_duration = (time.time() - q_start) * 1000
                     print(f"[LoveBudModal] [TIMING] SQL execution took {q_duration:.2f}ms (limit={limit})")
-                    
-                    map_start = time.time()
-                    res = [normalize_row(row, stage_override="growing") for row in rows]
-                    map_duration = (time.time() - map_start) * 1000
-                    print(f"[LoveBudModal] [TIMING] Result mapping/normalization took {map_duration:.2f}ms")
-                    return res
+                    return [normalize_row(row, stage_override="growing") for row in rows]
 
                 # Fallback: legacy schema (name/is_public/payload)
                 has_name = _table_has_column(cur, "trees", "name")
@@ -421,8 +406,6 @@ def fetch_growing_public_tree_snapshots(limit: int = 6) -> list[dict[str, Any]]:
                         "theme": "LoveTree",
                         "timeRange": "",
                         "representativeMemorySourceUrl": rep_source_url or "",
-                        "likeCount": 0,
-                        "viewCount": 0,
                     })
                     if len(result) >= limit:
                         break

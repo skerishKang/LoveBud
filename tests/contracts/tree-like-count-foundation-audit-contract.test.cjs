@@ -117,18 +117,17 @@ test('Audit: toggle_tree_like prevents repeated active likes per user/tree', () 
   assert.match(treeLikes, /SET\s+like_count\s*=\s*like_count\s*\+\s*1/);
 });
 
-test('Audit: no sort=likes, Browse summary likeCount, or UI label changes', () => {
-  // Catch-all route falls back to latest
-  assert.match(catchAllRoute, /searchParams\.get\('sort'\) === 'popular' \? 'popular' : 'latest'/);
-  assert.doesNotMatch(catchAllRoute, /sort'\) === 'likes'/);
-  assert.doesNotMatch(catchAllRoute, /sort'\) === 'views'/);
+test('Audit: sort=likes is now enabled; UI labels and viewCount summary are still forbidden', () => {
+  // sort=likes is now enabled (Unit C)
+  assert.match(catchAllRoute, /'likes'\s*\?\s*'likes'/);
+  // sort=views remains unsupported
+  assert.doesNotMatch(catchAllRoute, /sort'\)\s*===\s*'views'/);
 
-  // Browse summary has no likeCount
-  assert.doesNotMatch(browseSnapshot, /likeCount/);
+  // viewCount still forbidden in Browse summary (Unit B policy)
   assert.doesNotMatch(browseSnapshot, /viewCount/);
 
-  // Cloudflare likes route does not expose sort
-  assert.doesNotMatch(cloudflareLikes, /sort=likes/);
+  // likeCount is now allowed in latest Browse summary (Unit C, opt-in)
+  // but Browse UI labels are still forbidden (Unit D slice)
   assert.doesNotMatch(cloudflareLikes, /sort=views/);
 });
 
@@ -146,7 +145,7 @@ test('Audit: view tracking foundation parallel exists but separate', () => {
   assert.match(migrationLike, /idx_tree_social_counts_view_count/);
 });
 
-test('Audit: public detail likeCount matches viewCount boundary decision', () => {
+test('Audit: public detail likeCount matches viewCount boundary decision; sort=likes is now enabled (Unit C)', () => {
   // Both likeCount and viewCount added to public detail (app.py)
   assert.match(modalApp, /tree\["likeCount"\]\s*=\s*fetch_public_tree_like_count/);
   assert.match(modalApp, /tree\["viewCount"\]\s*=\s*fetch_public_tree_view_count/);
@@ -155,9 +154,10 @@ test('Audit: public detail likeCount matches viewCount boundary decision', () =>
   assert.match(treeLikes, /FROM\s+tree_social_counts/);
   assert.match(treeViews, /FROM\s+tree_social_counts/);
 
-  // Neither enables Browse summary or sort
-  assert.doesNotMatch(browseSnapshot, /likeCount/);
+  // viewCount still forbidden in Browse summary (Unit B policy boundary)
   assert.doesNotMatch(browseSnapshot, /viewCount/);
-  assert.doesNotMatch(catchAllRoute, /sort'\) === 'likes'/);
-  assert.doesNotMatch(catchAllRoute, /sort'\) === 'views'/);
+  // sort=views still unsupported
+  assert.doesNotMatch(catchAllRoute, /sort'\)\s*===\s*'views'/);
+  // sort=likes is now enabled (Unit C runtime slice)
+  assert.match(catchAllRoute, /'likes'\s*\?\s*'likes'/);
 });
